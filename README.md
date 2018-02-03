@@ -6,6 +6,8 @@ Currently a lot remains to be implemented but the basic framework is there for i
 
 Along with implementing the original functionality and features, I plan to add additional capabilities beyond the original such as larger city/map sizes, additional network types, adding buildings beyond the initial tileset limitations, action/history tracking along with replays and more.
 
+![Screenshot](/screenshots/1.png)
+
 ## Installation
 1. `git clone https://github.com/rage8885/OpenSC2K` or download this repository
 2. `cd OpenSC2K`
@@ -43,6 +45,9 @@ These functions will toggle various debug overlays and views built in to the eng
  - `J` toggles an overlay on top of networks
  - `T` toggles the clip boundary debug view (and sets the clipping box to 200px away from the window border)
  - `F5` to reload the application / re-initialize
+
+![Screenshot](/screenshots/2.png)
+![Screenshot](/screenshots/3.png)
 
 ## Acknowledgements
 Using sc2kparser created by Objelisks distributed under the terms of the ISC license.
