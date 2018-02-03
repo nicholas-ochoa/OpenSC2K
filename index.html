@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>SC2K</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      html, body {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        overflow: hidden;
+        display: block;
+        background-color: #371700;
+      }
+      #interfaceCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+      #vectorCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+      #primaryCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+    </style>
+    <script src="js/game.js"></script>
+    <script src="js/graphics.js"></script>
+    <script src="js/ui.js"></script>
+    <script src="js/events.js"></script>
+    <script src="js/data.js"></script>
+    <script src="js/util.js"></script>
+    <script src="js/tiles.js"></script>
+    <script src="js/debug.js"></script>
+    <script src="js/import.js"></script>
+  </head>
+  <body onload="game.init();">
+    <canvas id="interfaceCanvas" style="z-index: 3;"></canvas>
+    <canvas id="vectorCanvas" style="z-index: 2;"></canvas>
+    <canvas id="primaryCanvas" style="z-index: 1;"></canvas>
+  </body>
+</html>
