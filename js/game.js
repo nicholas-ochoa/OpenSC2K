@@ -14,7 +14,7 @@ var game = {
   tilesY: 128,
   waterLevel: 4,
   mapRotation: 0, //0 == normal, 0 degree, 1 = 90 degrees, 2 = 180 degrees, 3 = 270 degrees
-  
+
   corners: ['1000','0100','0010','0001'],
 
 
@@ -52,6 +52,12 @@ var game = {
     this.debug.begin();
     this.graphics.clearCanvas();
 
+    if (!game.data.ready) {
+      this.data.loadingMessage();
+      this.debug.end();
+      return;
+    }
+
     for(var tY = 0; tY < this.tilesY; tY++){
       for(var tX = (this.tilesX - 1); tX >= 0; tX--){
         var cell = this.getMapCell(tX, tY);
@@ -77,7 +83,12 @@ var game = {
     // run any remaining debug code
     this.debug.main();
     this.debug.end();
+
+    this.graphics.loopEnd();
   },
+
+
+
 
 
   drawTerrainTile: function(cell) {

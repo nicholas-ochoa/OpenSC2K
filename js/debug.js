@@ -78,14 +78,14 @@ game.debug = {
   showFrameStats: function() {
     var width = 170;
     var height = 30;
-    var x = game.graphics.primaryContext.canvas.width - width;
-    var y = game.graphics.primaryContext.canvas.height - height;
+    var x = game.graphics.interfaceContext.canvas.width - width;
+    var y = game.graphics.interfaceContext.canvas.height - height;
 
     game.graphics.drawPoly([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }, { x: 0, y: 0 }], 'rgba(0,0,0,.5)', 'rgba(255,255,255,.7)', x + 10, y + 10);
 
-    game.graphics.primaryContext.font = '10px Verdana';
-    game.graphics.primaryContext.fillStyle = 'rgba(255,255,255,1)';
-    game.graphics.primaryContext.fillText(this.msPerFrame+' m/s per frame ('+this.fps+' FPS)', x + 20, y + 24);
+    game.graphics.interfaceContext.font = '10px Verdana';
+    game.graphics.interfaceContext.fillStyle = 'rgba(255,255,255,1)';
+    game.graphics.interfaceContext.fillText(this.msPerFrame+' m/s per frame ('+this.fps+' FPS)', x + 20, y + 24);
   },
 
 
@@ -149,9 +149,9 @@ game.debug = {
       var tileType = tileType + ' K';
     }
 
-    game.graphics.primaryContext.font = '8px Verdana';
-    game.graphics.primaryContext.fillStyle = textStyle;
-    game.graphics.primaryContext.fillText(tileType, cell.coordinates.center.x - 16, cell.coordinates.center.y + 3);
+    game.graphics.interfaceContext.font = '8px Verdana';
+    game.graphics.interfaceContext.fillStyle = textStyle;
+    game.graphics.interfaceContext.fillText(tileType, cell.coordinates.center.x - 16, cell.coordinates.center.y + 3);
     game.ui.selectionBox(cell.x, cell.y, line, 2, fill);
   },
 
@@ -181,9 +181,9 @@ game.debug = {
       return;
     }
 
-    game.graphics.primaryContext.font = '8px Verdana';
-    game.graphics.primaryContext.fillStyle = 'rgba(255, 255, 255, .25)';
-    game.graphics.primaryContext.fillText(tile.name.substring(0,8), cell.coordinates.center.x - 16, cell.coordinates.center.y + 3);
+    game.graphics.interfaceContext.font = '8px Verdana';
+    game.graphics.interfaceContext.fillStyle = 'rgba(255, 255, 255, .25)';
+    game.graphics.interfaceContext.fillText(tile.name.substring(0,8), cell.coordinates.center.x - 16, cell.coordinates.center.y + 3);
     game.ui.selectionBox(cell.x, cell.y, line, 2, fill);
   },
 
@@ -222,9 +222,9 @@ game.debug = {
       color = '128,128,128';
 
     game.ui.selectionBox(cell.x, cell.y, 'rgba('+color+',.5)', 2, 'rgba('+color+',.3)');
-    game.graphics.primaryContext.font = '8px Verdana';
-    game.graphics.primaryContext.fillStyle = 'rgba(255, 255, 255, .7)';
-    game.graphics.primaryContext.fillText(tile.type, cell.coordinates.center.x - 10, cell.coordinates.center.y + 3);
+    game.graphics.interfaceContext.font = '8px Verdana';
+    game.graphics.interfaceContext.fillStyle = 'rgba(255, 255, 255, .7)';
+    game.graphics.interfaceContext.fillText(tile.type, cell.coordinates.center.x - 10, cell.coordinates.center.y + 3);
   },
 
 
@@ -264,9 +264,9 @@ game.debug = {
     if(!this.showTileCoordinates)
       return;
 
-    game.graphics.primaryContext.font = '8px Verdana';
-    game.graphics.primaryContext.fillStyle = 'rgba(255, 255, 255, .5)';
-    game.graphics.primaryContext.fillText(cell.x+', '+cell.y+', '+cell.z, cell.coordinates.center.x - 16, cell.coordinates.center.y + 3);
+    game.graphics.interfaceContext.font = '8px Verdana';
+    game.graphics.interfaceContext.fillStyle = 'rgba(255, 255, 255, .5)';
+    game.graphics.interfaceContext.fillText(cell.x+', '+cell.y+', '+cell.z, cell.coordinates.center.x - 16, cell.coordinates.center.y + 3);
 
   },
 
@@ -277,9 +277,9 @@ game.debug = {
 
     this.tileCount++;
 
-    game.graphics.primaryContext.font = '8px Verdana';
-    game.graphics.primaryContext.fillStyle = 'rgba(255, 255, 255, .5)';
-    game.graphics.primaryContext.fillText(this.tileCount, cell.coordinates.center.x - 10, cell.coordinates.center.y + 3);
+    game.graphics.interfaceContext.font = '8px Verdana';
+    game.graphics.interfaceContext.fillStyle = 'rgba(255, 255, 255, .5)';
+    game.graphics.interfaceContext.fillText(this.tileCount, cell.coordinates.center.x - 10, cell.coordinates.center.y + 3);
 
   },
 
@@ -305,9 +305,9 @@ game.debug = {
 
     var polygon = [
       { x: game.graphics.clipBoundary.top,                                                y: game.graphics.clipBoundary.top },
-      { x: game.graphics.primaryContext.canvas.width - game.graphics.clipBoundary.top,    y: game.graphics.clipBoundary.top },
-      { x: game.graphics.primaryContext.canvas.width - game.graphics.clipBoundary.top,    y: game.graphics.primaryContext.canvas.height - game.graphics.clipBoundary.top },
-      { x: game.graphics.clipBoundary.top,                                                y: game.graphics.primaryContext.canvas.height - game.graphics.clipBoundary.top },
+      { x: game.graphics.interfaceContext.canvas.width - game.graphics.clipBoundary.top,    y: game.graphics.clipBoundary.top },
+      { x: game.graphics.interfaceContext.canvas.width - game.graphics.clipBoundary.top,    y: game.graphics.interfaceContext.canvas.height - game.graphics.clipBoundary.top },
+      { x: game.graphics.clipBoundary.top,                                                y: game.graphics.interfaceContext.canvas.height - game.graphics.clipBoundary.top },
       { x: game.graphics.clipBoundary.top,                                                y: game.graphics.clipBoundary.top }
     ];
 
@@ -329,19 +329,19 @@ game.debug = {
     game.graphics.drawPoly([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }, { x: 0, y: 0 }], 'rgba(0,0,0,.4)', 'rgba(255,255,255,.7)', 10, 10);
 
     // draw text
-    game.graphics.primaryContext.font = '10px Verdana';
-    game.graphics.primaryContext.fillStyle = 'rgba(255,255,255,.9)';
+    game.graphics.interfaceContext.font = '10px Verdana';
+    game.graphics.interfaceContext.fillStyle = 'rgba(255,255,255,.9)';
 
     if(game.isCursorOnMap()) {
       var cell = game.getMapCell(game.ui.cursorTileX, game.ui.cursorTileY);
-      game.graphics.primaryContext.fillText('tile x: '+cell.x+', y: '+cell.y+', z: '+cell.z, 20, line); line += 15;
+      game.graphics.interfaceContext.fillText('tile x: '+cell.x+', y: '+cell.y+', z: '+cell.z, 20, line); line += 15;
     }
 
-    game.graphics.primaryContext.fillText('cursor x: '+game.ui.cursorX+', y: '+game.ui.cursorY, 20, line); line += 15;
-    game.graphics.primaryContext.fillText('selected tile x: '+game.ui.selectedTileX+', y: '+game.ui.selectedTileY, 20, line); line += 15;
-    game.graphics.primaryContext.fillText('map rotation: '+game.mapRotation, 20, line); line += 15;
-    game.graphics.primaryContext.fillText('city rotation: '+game.data.cityRotation, 20, line); line += 15;
-    game.graphics.primaryContext.fillText('active cursor tool: '+game.events.activeCursorTool, 20, line); line += 15;
+    game.graphics.interfaceContext.fillText('cursor x: '+game.ui.cursorX+', y: '+game.ui.cursorY, 20, line); line += 15;
+    game.graphics.interfaceContext.fillText('selected tile x: '+game.ui.selectedTileX+', y: '+game.ui.selectedTileY, 20, line); line += 15;
+    game.graphics.interfaceContext.fillText('map rotation: '+game.mapRotation, 20, line); line += 15;
+    game.graphics.interfaceContext.fillText('city rotation: '+game.data.cityRotation, 20, line); line += 15;
+    game.graphics.interfaceContext.fillText('active cursor tool: '+game.events.activeCursorTool, 20, line); line += 15;
   },
 
 
@@ -353,7 +353,7 @@ game.debug = {
     if (!this.showSelectedTileInfo)
       return;
 
-    var context = game.graphics.primaryContext;
+    var context = game.graphics.interfaceContext;
     var cell = game.getMapCell(game.ui.cursorTileX, game.ui.cursorTileY);
 
     if (!cell)
@@ -470,21 +470,21 @@ game.debug = {
 
     var topLeftX = 10;
     var topLeftY = 10;
-    var topRightX = game.graphics.primaryContext.canvas.width - 10;
-    var topRightY = game.graphics.primaryContext.canvas.height - 10;
+    var topRightX = game.graphics.interfaceContext.canvas.width - 10;
+    var topRightY = game.graphics.interfaceContext.canvas.height - 10;
     var bottomLeftX = 10;
     var bottomLeftY = 10;
-    var bottomRightX = game.graphics.primaryContext.canvas.width - 10;
-    var bottomRightY = game.graphics.primaryContext.canvas.height - 10;
+    var bottomRightX = game.graphics.interfaceContext.canvas.width - 10;
+    var bottomRightY = game.graphics.interfaceContext.canvas.height - 10;
 
-    var topCenterX = (game.graphics.primaryContext.canvas.width / 2);
+    var topCenterX = (game.graphics.interfaceContext.canvas.width / 2);
     var topCenterY = 10;
-    var rightCenterX = game.graphics.primaryContext.canvas.width - 10;
-    var rightCenterY = game.graphics.primaryContext.canvas.height / 2;
-    var bottomCenterX = (game.graphics.primaryContext.canvas.width / 2);
-    var bottomCenterY = game.graphics.primaryContext.canvas.height - 10;
+    var rightCenterX = game.graphics.interfaceContext.canvas.width - 10;
+    var rightCenterY = game.graphics.interfaceContext.canvas.height / 2;
+    var bottomCenterX = (game.graphics.interfaceContext.canvas.width / 2);
+    var bottomCenterY = game.graphics.interfaceContext.canvas.height - 10;
     var leftCenterX = 10;
-    var leftCenterY = game.graphics.primaryContext.canvas.height / 2;
+    var leftCenterY = game.graphics.interfaceContext.canvas.height / 2;
 
     // debug: draw lines to the 4 corners and the center
     if (type == 'lines') {

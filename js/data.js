@@ -14,6 +14,9 @@ game.data = {
   buildings: new Array(),
   map: new Array(),
 
+  totalImages: 0,
+  loadedImages: 0,
+  ready: false,
 
   load: function() {
     var database = require('better-sqlite3');
@@ -23,6 +26,15 @@ game.data = {
     this.loadTiles();
     this.loadMap();
     this.maintenance();
+  },
+
+
+  loadingMessage: function() {
+    game.graphics.primaryContext.font = '24px Verdana';
+    game.graphics.primaryContext.fillStyle = 'rgba(255, 255, 255, 1)';
+    game.graphics.primaryContext.textAlign = 'center';
+    game.graphics.primaryContext.fillText('Loading resources..', document.documentElement.clientWidth / 2, game.graphics.primaryContext.canvas.height / 2);
+    game.graphics.primaryContext.textAlign = 'left';
   },
 
 
@@ -42,23 +54,6 @@ game.data = {
     var rows = this.db.prepare(`select * from tiles order by id asc`).all();
   
     for (i = 0; i < rows.length; i++) {
-      var frames = new Array();
-
-      if (rows[i].frames == 0){
-        var img = new Image();
-        img.src = this.tilePath + rows[i].image + '.' + game.graphics.imageFormat;
-        frames[0] = img;
-      }else{
-        for(f = 0; f < rows[i].frames; f++){
-          var img = new Image();
-          img.src = this.tilePath + rows[i].image + '-' + f + '.' + game.graphics.imageFormat;
-          frames[f] = img;
-        }
-      }
-
-      let width = img.width / 32;
-      let height = img.height / 32;
-
       this.tiles[rows[i].id] = {
         id:              rows[i].id,
         name:            rows[i].name,
@@ -66,9 +61,9 @@ game.data = {
         type:            rows[i].type,
         size:            rows[i].lot_size,
         frames:          rows[i].frames,
-        width:           width,
-        height:          height,
-        image:           frames,
+        width:           undefined,
+        height:          undefined,
+        image:           new Array(),
         slopes:          game.util.toJson(rows[i].slopes),
         polygon:         game.util.toJson(rows[i].polygon),
         lines:           game.util.toJson(rows[i].lines),
@@ -82,6 +77,13 @@ game.data = {
     };
   },
 
+
+  checkImageLoad: function(){
+    if (this.totalImages === this.loadedImages)
+      this.ready = true;
+    else
+      this.ready = false;
+  },
 
 
   loadMap: function() {

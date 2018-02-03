@@ -17,6 +17,7 @@
       }
       #interfaceCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
       #vectorCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
+      #animationCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
       #primaryCanvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; }
     </style>
     <script src="js/game.js"></script>
@@ -30,8 +31,9 @@
     <script src="js/import.js"></script>
   </head>
   <body onload="game.init();">
-    <canvas id="interfaceCanvas" style="z-index: 3;"></canvas>
-    <canvas id="vectorCanvas" style="z-index: 2;"></canvas>
+    <canvas id="interfaceCanvas" style="z-index: 4;"></canvas>
+    <canvas id="vectorCanvas" style="z-index: 3;"></canvas>
+    <canvas id="animationCanvas" style="z-index: 2;"></canvas>
     <canvas id="primaryCanvas" style="z-index: 1;"></canvas>
   </body>
 </html>
