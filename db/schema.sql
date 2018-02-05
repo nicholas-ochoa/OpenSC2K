@@ -16,8 +16,9 @@ create table tiles (
   rotate_1       integer,
   rotate_2       integer,
   rotate_3       integer,
+
   flip_h         text,
-  flip_v         text,
+  flip_alt_tile  text,
 
   primary key (id)
 );

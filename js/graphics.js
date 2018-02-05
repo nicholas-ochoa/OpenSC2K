@@ -1,4 +1,6 @@
 game.graphics = {
+  tilePath: 'images/tiles/',
+  imageFormat: 'png',
 
   primaryCanvas: undefined,
   primaryContext: undefined,
@@ -6,6 +8,13 @@ game.graphics = {
   interfaceCanvas: undefined,
   interfaceContext: undefined,
 
+  tilemap: {},
+  tilemapImages: {},
+  totalTilemaps: 4,
+  loadedTilemaps: 0,
+  ready: false,
+
+  drawFrame: true, // if true a frame draw occurs
   animationFrame: 0, //frame number
   animationFrameRate: 500, // ms between each frame
   maxAnimationFrames: 512,
@@ -15,11 +24,18 @@ game.graphics = {
   tileWidth: 64,
   layerOffset: 24,
 
-  imageFormat: 'png',
+  scale: 1,
 
-  tileCache: new Object(),
-  vectorTileCache: new Object(),
-  transformedTileCache: new Object(),
+  tileCache: {},
+  vectorTileCache: {},
+  transformedTileCache: {},
+
+  clipOffset: {
+    top: 50,
+    right: -100,
+    bottom: -200,
+    left: -100
+  },
 
   clipBoundary: {
     top: 0,
@@ -28,11 +44,11 @@ game.graphics = {
     left: 0
   },
 
-  tilemap: undefined,
-  tilemapImages: new Object(),
-  drawFrame: true,
 
 
+  //
+  // create the initial rendering canvas for primary and interface components
+  //
   createRenderingCanvas: function() {
     this.primaryCanvas = document.querySelectorAll('#primaryCanvas');
     this.primaryContext = this.primaryCanvas[0].getContext('2d');
@@ -40,8 +56,10 @@ game.graphics = {
     this.interfaceCanvas = document.querySelectorAll('#interfaceCanvas');
     this.interfaceContext = this.interfaceCanvas[0].getContext('2d');
 
-    // set initial properties
+    this.scaledInterfaceCanvas = document.querySelectorAll('#interfaceCanvas');
+    this.scaledInterfaceContext = this.interfaceCanvas[0].getContext('2d');
 
+    // set initial properties
     var width = document.documentElement.clientWidth;
     var height = document.documentElement.clientHeight;
 
@@ -51,103 +69,89 @@ game.graphics = {
     this.interfaceContext.canvas.width  = width;
     this.interfaceContext.canvas.height = height;
 
+    this.scaledInterfaceContext.canvas.width  = width;
+    this.scaledInterfaceContext.canvas.height = height;
+
     this.primaryContext.imageSmoothingEnabled = false;
     this.interfaceContext.imageSmoothingEnabled = false;
+    this.scaledInterfaceContext.imageSmoothingEnabled = false;
 
     this.loadTilemaps();
   },
 
-
-  setTilemap: function(tilemapId, canvas){
-    this.tilemapImages[tilemapId] = canvas;
+  //
+  // initial loading message while images and resources load
+  //
+  loadingMessage: function() {
+    this.interfaceContext.font = '24px Verdana';
+    this.interfaceContext.fillStyle = 'rgba(255, 255, 255, 1)';
+    this.interfaceContext.textAlign = 'center';
+    this.interfaceContext.fillText('Loading resources..', document.documentElement.clientWidth / 2, document.documentElement.clientHeight / 2);
+    this.interfaceContext.textAlign = 'left';
   },
 
 
-  loadTilemaps: function() {
-    var tilemapJson = game.fs.readFileSync(__dirname + '/images/tilemap/tilemap.json');
+  //
+  // checks whether the tilemap images are loaded
+  //
+  checkLoad: function(){
+    if (this.totalTilemaps === this.loadedTilemaps)
+      this.ready = true;
+    else
+      this.ready = false;
 
+    if (this.ready)
+      console.log('Tilemaps Loaded');
+  },
+
+
+  //
+  // loads the tilemaps into memory
+  //
+  loadTilemaps: function() {
+    console.log('Loading Tilemaps..');
+
+    var tilemapJson = game.fs.readFileSync(__dirname + '/images/tilemap/tilemap.json');
     this.tilemap = JSON.parse(tilemapJson);
 
-    game.data.totalImages = 4;
-
-
-    var img = new Image();
-    img.src = 'images/tilemap/tilemap_0.png';
-    img.setAttribute('tilemap_id', 0);
-    img.onload = function(){
-      var tilemapId = this.getAttribute('tilemap_id');
-      var canvas = document.createElement('canvas');
-      canvas.width = this.width;
-      canvas.height = this.height;
-      var context = canvas.getContext('2d');
-      context.drawImage(this, 0, 0);
-      game.graphics.setTilemap(tilemapId, canvas);
-
-      game.data.loadedImages++;
-      game.data.checkImageLoad();
-    }
-
-    var img = new Image();
-    img.src = 'images/tilemap/tilemap_1.png';
-    img.setAttribute('tilemap_id', 1);
-    img.onload = function(){
-      var tilemapId = this.getAttribute('tilemap_id');
-      var canvas = document.createElement('canvas');
-      canvas.width = this.width;
-      canvas.height = this.height;
-      var context = canvas.getContext('2d');
-      context.drawImage(this, 0, 0);
-      game.graphics.setTilemap(tilemapId, canvas);
-
-      game.data.loadedImages++;
-      game.data.checkImageLoad();
-    }
-
-    var img = new Image();
-    img.src = 'images/tilemap/tilemap_2.png';
-    img.setAttribute('tilemap_id', 2);
-    img.onload = function(){
-      var tilemapId = this.getAttribute('tilemap_id');
-      var canvas = document.createElement('canvas');
-      canvas.width = this.width;
-      canvas.height = this.height;
-      var context = canvas.getContext('2d');
-      context.drawImage(this, 0, 0);
-      game.graphics.setTilemap(tilemapId, canvas);
-
-      game.data.loadedImages++;
-      game.data.checkImageLoad();
-    }
-
-    var img = new Image();
-    img.src = 'images/tilemap/tilemap_3.png';
-    img.setAttribute('tilemap_id', 3);
-    img.onload = function(){
-      var tilemapId = this.getAttribute('tilemap_id');
-      var canvas = document.createElement('canvas');
-      canvas.width = this.width;
-      canvas.height = this.height;
-      var context = canvas.getContext('2d');
-      context.drawImage(this, 0, 0);
-      game.graphics.setTilemap(tilemapId, canvas);
-
-      game.data.loadedImages++;
-      game.data.checkImageLoad();
+    for (i = 0; i < this.totalTilemaps; i++){
+      var img = new Image();
+      img.src = 'images/tilemap/tilemap_'+i+'.png';
+      img.setAttribute('tilemap_id', i);
+      img.onload = function(){
+        var tilemapId = this.getAttribute('tilemap_id');
+        var canvas = document.createElement('canvas');
+        canvas.width = this.width;
+        canvas.height = this.height;
+        var context = canvas.getContext('2d');
+        context.drawImage(this, 0, 0);
+        game.graphics.tilemapImages[tilemapId] = canvas;
+        game.graphics.loadedTilemaps++;
+        console.log(' - tilemap_'+tilemapId+'.png loaded');
+        game.graphics.checkLoad();
+      }
     }
   },
 
 
+  //
+  // called on page load, resize events
+  // updates the canvas width and height
+  // updates the camera clipping bounds
+  // updates all map cell coordinates
+  // sets the game origin X/Y coordinates
+  //
   updateCanvasSize: function() {
     this.drawFrame = true;
     
     var width = document.documentElement.clientWidth;
     var height = document.documentElement.clientHeight;
 
-    this.primaryContext.canvas.width  = width;
-    this.primaryContext.canvas.height = height;
+    this.primaryCanvas.width  = width;
+    this.primaryCanvas.height = height;
 
-    this.interfaceContext.canvas.width  = width;
-    this.interfaceContext.canvas.height = height;
+    this.interfaceCanvas.width  = width;
+    this.interfaceCanvas.height = height;
 
     game.originX = (width / 2 - game.tilesX * this.tileWidth / 2) + game.ui.cameraOffsetX;
     game.originY = (height / 2) + game.ui.cameraOffsetY;
@@ -156,15 +160,31 @@ game.graphics = {
       for(var tY = 0; tY < game.tilesY; tY++)
         game.data.map[tX][tY].coordinates = this.getCoordinates(game.data.map[tX][tY]);
 
+    // set viewport clipping boundary
     this.clipBoundary = {
-      top: 0 + game.debug.clipOffset,
-      right: 0 + this.primaryContext.canvas.width - game.debug.clipOffset,
-      bottom: 0 + this.primaryContext.canvas.height - game.debug.clipOffset,
-      left: 0 + game.debug.clipOffset
+      top: 0 + (this.clipOffset.top + game.debug.clipOffset),
+      right: 0 + this.primaryContext.canvas.width - (this.clipOffset.right + game.debug.clipOffset),
+      bottom: 0 + this.primaryContext.canvas.height - (this.clipOffset.bottom + game.debug.clipOffset),
+      left: 0 + (this.clipOffset.left + game.debug.clipOffset)
     };
   },
 
 
+
+  setScale: function(scale) {
+    this.scale = scale;
+
+    this.primaryContext.scale(this.scale, this.scale);
+    this.scaledInterfaceContext.scale(this.scale, this.scale);
+  },
+
+
+
+
+  //
+  // calculate cell coordinates during tile load
+  // used for positioning tiles when drawing to the canvas
+  //
   getCoordinates: function(cell){
     // originally cell.width, needed?
     var cellWidth = 1;
@@ -213,11 +233,11 @@ game.graphics = {
 
 
 
-
-
-
-
-
+  //
+  // game animation loop
+  // every 500ms (this.animationFrameRate), this increases the frame counter by 1
+  // sets draw frame to true to force an update
+  //
   animationFrames: function() {
     this.animationFrame--;
 
@@ -234,25 +254,41 @@ game.graphics = {
   },
 
 
-
+  //
+  // sets draw frame to false at the end of a draw frame
+  //
   loopEnd: function() {
     this.drawFrame = false;
   },
 
 
+  //
+  // set draw frame to true to force update of primary canvas
+  //
+  setDrawFrame: function() {
+    this.drawFrame = true;
+  },
 
+
+  //
+  // clears the interface canvas every tick
+  // clears the primary canvas once per draw frame
+  //
   clearCanvas: function() {
     var width = document.documentElement.clientWidth;
     var height = document.documentElement.clientHeight;
     
     this.interfaceContext.clearRect(0, 0, width, height);
+    this.scaledInterfaceContext.clearRect(0, 0, width, height);
     
     if (this.drawFrame)
       this.primaryContext.clearRect(0, 0, width, height);
   },
 
 
-
+  //
+  // calculates if the provided cell object exists within the camera clipping boundary
+  //
   isCellInsideClipBoundary: function(cell) {
     if (cell.coordinates.center.x < this.clipBoundary.left || cell.coordinates.center.x > this.clipBoundary.right)
       return false;
@@ -264,7 +300,9 @@ game.graphics = {
   },
 
 
-
+  //
+  // calculates if the provided x/y coordinates are within the camera clipping boundary
+  //
   isInsideClipBoundary: function(x, y) {
     if (x < this.clipBoundary.left - (this.tileHeight * 4) || x > this.clipBoundary.right + (this.tileHeight * 3))
       return false;
@@ -276,39 +314,88 @@ game.graphics = {
   },
 
 
+  //
+  // returns true if the tile should be flipped horizontally (mirrored)
+  // based on the tile object, cell object, current map rotation and original city rotation
+  // todo: needs work, does not work as expected
+  //
+  flipTile: function(tile, cell) {
+    if (tile.id > 110) //256
+      return false;
 
-  drawTile: function(tileId, cell, topOffset = 0) {
-    let x = cell.coordinates.bottom.x;
-    let y = cell.coordinates.bottom.y;
-
-    if (!this.isInsideClipBoundary(x, y))
+    if (tile.flip_h == 'N')
       return;
 
-    // get tile ID, look up tilemap position
-    let tile = this.getTile(tileId);
-    let tilemapId = tile.id;
+    if (game.data.cityRotation == 0) {
 
-    // do we need the mirrored tile?
-    if (this.flipTile(tile, cell))
-      tilemapId = tilemapId+'_H';
+      if ([0,2].includes(game.mapRotation))
+        if (cell.rotate == 'Y')
+          return false;
+        else
+          return true;
 
-    // get tile frame sequence
-    let frame = this.getFrame(tile);
-    tilemapId = tilemapId+'_'+frame;
+      if ([1,3].includes(game.mapRotation))
+        if (cell.rotate == 'Y')
+          return false;
+        else
+          return true;
 
-    let tilemap = this.tilemap[tilemapId];
+    } else if (game.data.cityRotation == 1) {
 
-    // bitwise shift to round
-    x = x - (tilemap.w / 2) << 0;
-    y = y - (tilemap.h) - topOffset << 0;
+      if ([0,2].includes(game.mapRotation))
+        if (cell.rotate == 'Y')
+          return false;
+        else
+          return true;
 
-    if (this.drawFrame)
-      this.primaryContext.drawImage(this.tilemapImages[tilemap.t], tilemap.x, tilemap.y, tilemap.w, tilemap.h, x, y, tilemap.w, tilemap.h);
+      if ([1,3].includes(game.mapRotation))
+        if (cell.rotate == 'Y')
+          return false;
+        else
+          return true;
 
+
+
+    } else if (game.data.cityRotation == 2) {
+
+      if ([0,2].includes(game.mapRotation))
+        if (cell.rotate == 'Y')
+          return false;
+        else
+          return true;
+
+      if ([1,3].includes(game.mapRotation))
+        if (cell.rotate == 'Y')
+          return false;
+        else
+          return true;
+
+
+
+    } else if (game.data.cityRotation == 3) {
+
+      if ([0,2].includes(game.mapRotation))
+        if (cell.rotate == 'Y')
+          return false;
+        else
+          return true;
+
+      if ([1,3].includes(game.mapRotation))
+        if (cell.rotate == 'Y')
+          return false;
+        else
+          return true;
+
+    }
+
+    return false;
   },
 
 
 
+  //
+  // returns the current animation frame for a given tile object
+  //
   getFrame: function(tile) {
     if (tile.frames == 0)
       return 0;
@@ -317,68 +404,36 @@ game.graphics = {
   },
 
 
-  drawTile2: function(tileId, cell, topOffset = 0) {
-    let x = cell.coordinates.bottom.x;
-    let y = cell.coordinates.bottom.y;
+  //
+  // returns the appropriate tile for the current map rotation
+  //
+  getTile: function(tileId, cell = null) {
+    let tile = game.data.tiles[tileId];
+    let rotation = game.mapRotation;
 
-    if (!this.isInsideClipBoundary(x, y))
-      return;
+    if (tile.flip_alt_tile == 'Y' && cell !== null){
+      if ([0,2].includes(rotation) && this.flipTile(tile, cell)){
 
-    //if (!(tileId == 217 || tileId == 209 || tileId == 245 || tileId == 139))
-    //  return;
+        if (rotation < 3)
+          rotation++
+        else
+          rotation = 0;
 
-    //if (!(tileId == 214 || tileId == 218 || tileId == 247 || tileId == 204))
-    //  return;
+      } else if ([1,3].includes(rotation) && !this.flipTile(tile, cell)) {
+        if (rotation < 3)
+          rotation++
+        else
+          rotation = 0;
 
-    let tile = this.getTile(tileId);
-    let image = this.getFrame(tile);
-
-    // bitwise shift to round
-    x = x - (image.width / 2) << 0;
-    y = y - (image.height) - topOffset << 0;
-
-    if (this.flipTile(tile, cell)) {
-      this.drawImage(image, x, y, tileId, true);
-      //this.primaryContext.strokeRect(x, y, image.width, image.height);
-    } else {
-      this.drawImage(image, x, y, tileId);
+      } else if ([1,3].includes(rotation) && this.flipTile(tile, cell)) {
+        if (rotation < 3)
+          rotation++
+        else
+          rotation = 0;
+      }
     }
 
-    // debug: outline tile
-    //if (game.debug.outlineBuildingTiles)
-      //this.primaryContext.strokeRect(x, y, image.width, image.height);
-  },
-
-
-
-  flipTile: function(tile, cell) {
-    if (tile.id > 256)
-      return false;
-
-    if (cell.rotate != 'Y')
-      return false;
-
-    if (tile.flip_h != 'Y')
-      return false;
-
-    if (game.mapRotation == 0 || game.mapRotation == 2)
-      if (game.data.cityRotation == 1 || game.data.cityRotation == 3)
-        return true;
-
-    if (game.mapRotation == 1 || game.mapRotation == 3)
-      if (game.data.cityRotation == 2 || game.data.cityRotation == 4)
-        return true;
-
-    return false;
-  },
-
-
-
-  // returns the appropriate tile for the current map rotation
-  getTile: function(tileId) {
-    let tile = game.data.tiles[tileId];
-
-    switch (game.mapRotation) {
+    switch (rotation) {
       case 0:
         tile = game.data.tiles[tile.rotate_0];
         break;
@@ -397,67 +452,62 @@ game.graphics = {
   },
 
 
+  //
+  // draws a tile from the tilemap to the primary canvas
+  //
+  drawTile: function(tileId, cell, topOffset = 0, heightMap = false) {
+    // only do work if we're within the current draw frame
+    if (!this.drawFrame)
+      return;
 
+    let x = cell.coordinates.bottom.x;
+    let y = cell.coordinates.bottom.y;
 
-  // for animated tiles, returns the current frame to display based on the global animationFrame counter / timer
-  // non animated tiles (frame count 0) just return the first frame in the array
-  getFrame2: function(tile) {
-    if (tile.frames == 0)
-      return tile.image[0];
-    
-    let frame = this.animationFrame - Math.floor(this.animationFrame / tile.frames) * tile.frames;
-    return tile.image[frame];
+    if (!this.isInsideClipBoundary(x, y))
+      return;
+
+    // get tile ID, look up tilemap position
+    let tile = this.getTile(tileId, cell);
+    let tilemapId = tile.id;
+
+    // debug toggle for animated tiles
+    if (game.debug.hideAnimatedTiles && tile.frames > 0)
+      return;
+
+    // do we need the mirrored tile?
+    if (this.flipTile(tile, cell) && !heightMap)
+      tilemapId = tilemapId+'_H';
+
+    // get tile frame sequence
+    let frame = this.getFrame(tile);
+
+    if (heightMap && cell.water_level == 'dry')
+      tilemapId = tilemapId+'_VT_'+cell.z;
+    else if (heightMap && cell.water_level != 'dry')
+      tilemapId = tilemapId+'_VW_'+cell.z;
+    else
+      tilemapId = tilemapId+'_'+frame;
+
+    let tilemap = this.tilemap[tilemapId];
+
+    if (tilemap === undefined){
+    //  console.log(tilemapId);
+    //  console.log(cell);
+      return;
+    }
+
+    // bitwise shift to round
+    x = x - (tilemap.w / 2) << 0;
+    y = y - (tilemap.h) - topOffset << 0;
+
+    this.primaryContext.drawImage(this.tilemapImages[tilemap.t], tilemap.x, tilemap.y, tilemap.w, tilemap.h, x, y, tilemap.w, tilemap.h);
   },
 
 
-
-  // wrapper for the canvas drawImage function
-  // will flip horizontally or vertically
-  drawImage: function (image, x, y, tileId = null, flip_h = false, flip_v = false) {
-
-    // if no transforms, just draw the image
-    if (!flip_h && !flip_v) {
-      this.primaryContext.drawImage(image, x, y);
-      return;
-    }
-    
-    // return cached tile image if available
-    if (this.transformedTileCache[tileId] !== undefined && tileId !== null) {
-      var cachedImage = this.transformedTileCache[tileId];
-      this.primaryContext.drawImage(cachedImage, x, y);
-      return;
-    }
-
-    // create temporary canvas and render the transformed tile
-    var canvas = document.createElement('canvas');
-    canvas.width = image.width;
-    canvas.height = image.height;
-    var context = canvas.getContext('2d');
-
-    // horizontal flip
-    if (flip_h) {
-      // debug: draw rect around transformed tiles
-      // context.strokeStyle = 'rgba(255,0,255,1)';
-      // context.strokeRect(0, 0, canvas.width, canvas.height);
-      context.scale(-1,1);
-      context.translate(-canvas.width - image.width, 0);
-      context.drawImage(image, canvas.width, 0);
-    }else{
-      context.drawImage(image, 0, 0);
-    }
-
-    this.primaryContext.drawImage(canvas, x, y);
-
-    // save to cache as a png
-    var cachedImage = new Image();
-    cachedImage.src = canvas.toDataURL();
-
-    if (cachedImage.src != 'data:,')
-      this.transformedTileCache[tileId] = cachedImage;
-  },
-
-
-
+  //
+  // draws a "vector" based tile
+  // todo: needs work, vector tiles are now pre-generated and included on tilemaps
+  //
   drawVectorTile: function (tileId, fillColor, strokeColor, innerStrokeColor, offsetX, offsetY, renderingArea) {
     var renderingArea = typeof renderingArea !== 'undefined' ? renderingArea : this.interfaceContext;
     var cacheId = tileId + fillColor + strokeColor + innerStrokeColor;
@@ -488,15 +538,17 @@ game.graphics = {
   },
 
 
-
-
-
+  //
+  // calculate distance in pixels between two sets of x/y coordinates
+  //
   distanceBetweenPoints: function(x1, y1, x2, y2) {
     return distance = Math.sqrt((x1 - x2) * (x1 - x2) + (y1 - y2) * (y1 - y2));
   },
 
 
-
+  //
+  // returns true if a given x/y coordinate pair exists within the bounds of the provided polygon object
+  //
   isPointInPolygon: function(x, y, polygon) {
     var p = { x: x, y: y };
     var isInside = false;
@@ -528,7 +580,10 @@ game.graphics = {
 
 
 
-
+  //
+  // draws a vector polygon
+  // todo: normalize the input params offsetX/offsetY
+  //
   drawPoly: function(polygon, fillColor, strokeColor, offsetX, offsetY, width, renderingArea) {
     if (polygon == null)
       return;
@@ -555,6 +610,31 @@ game.graphics = {
   },
 
 
+
+  //
+  // draws a vector line
+  // todo: normalize the input params offsetX/offsetY
+  //
+  drawLine: function(x1, y1, x2, y2, color, width, renderingArea) {
+    var renderingArea = typeof renderingArea !== 'undefined' ? renderingArea : this.interfaceContext;
+    var width = typeof width !== 'undefined' ? width : 1;
+    var color = typeof color !== 'undefined' ? color : 'white';
+
+    renderingArea.strokeStyle = color;
+    renderingArea.lineWidth = width;
+    renderingArea.beginPath();
+    renderingArea.moveTo(Math.floor(x1), Math.floor(y1));
+    renderingArea.lineTo(Math.floor(x2), Math.floor(y2));
+    renderingArea.stroke();
+    renderingArea.closePath();
+  },
+
+
+
+  //
+  // draws an array of vector lines
+  // todo: normalize the input params offsetX/offsetY
+  //
   drawLines: function(lines, strokeColor, offsetX, offsetY, renderingArea) {
     if (lines == null)
       return;
@@ -567,21 +647,6 @@ game.graphics = {
 
     for (var i = 0; i < lines.length; i++)
       this.drawLine(lines[i].x1 + offsetX, lines[i].y1 + offsetY, lines[i].x2 + offsetX, lines[i].y2 + offsetY, strokeColor, width, renderingArea);
-  },
-
-
-  drawLine: function(x1, y1, x2, y2, color, width, renderingArea) {
-    var renderingArea = typeof renderingArea !== 'undefined' ? renderingArea : this.interfaceContext;
-    var color = typeof color !== 'undefined' ? color : 'white';
-    var width = typeof width !== 'undefined' ? width : 1;
-
-    renderingArea.strokeStyle = color;
-    renderingArea.lineWidth = width;
-    renderingArea.beginPath();
-    renderingArea.moveTo(Math.floor(x1), Math.floor(y1));
-    renderingArea.lineTo(Math.floor(x2), Math.floor(y2));
-    renderingArea.stroke();
-    renderingArea.closePath();
   },
 
 

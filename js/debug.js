@@ -8,6 +8,7 @@ game.debug = {
   hideBuildings: false,
   hideWater: false,
   hideTerrainEdge: false,
+  hideAnimatedTiles: false,
 
   showTileCoordinates: false,
   showHeightMap: false,
@@ -21,7 +22,7 @@ game.debug = {
 
   higlightSelectedCellSurroundings: false,
   showSelectedTileInfo: true,
-  
+
   showOverlayInfo: true,
   showStatsPanel: false,
 
@@ -228,33 +229,22 @@ game.debug = {
   },
 
 
-
-
-
   heightMap: function(cell) {
-    if(!this.showHeightMap)
+    if(!game.debug.showHeightMap)
       return;
 
-    var offsetX = cell.coordinates.top.x;
+    if (cell.tiles.terrain == null || cell.tiles.terrain == 0 || cell.tiles.terrain < 256 || cell.tiles.terrain > 268)
+      return;
 
-    var tile = game.graphics.getTile(cell.tiles.terrain);
+    let tile = cell.tiles.terrain;
+    let topOffset = 0;
 
-    if (tile.slopes[0] == 1 || tile.slopes[1] == 1 || tile.slopes[2] == 1 || tile.slopes[3] == 1)
-      if (cell.water == 1)
-        var offsetY = cell.coordinates.top.y;
-      else
-        var offsetY = cell.coordinates.top.y - game.layerOffset;
+    if (tile == 256)
+      topOffset = 0 - game.graphics.tileHeight;
     else
-      if (cell.water == 1)
-        var offsetY = cell.coordinates.top.y + game.layerOffset;
-      else
-        var offsetY = cell.coordinates.top.y;
+      topOffset = 0 - (game.graphics.layerOffset / 3);
 
-    if (cell.water == 1)
-      game.graphics.drawVectorTile(cell.tiles.terrain, game.tiles.waterHeightMap[cell.z].fill, game.tiles.waterHeightMap[cell.z].stroke, game.tiles.waterHeightMap[cell.z].lines, offsetX, offsetY);
-    else
-      game.graphics.drawVectorTile(cell.tiles.terrain, game.tiles.landHeightMap[cell.z].fill, game.tiles.landHeightMap[cell.z].stroke, game.tiles.landHeightMap[cell.z].lines, offsetX, offsetY);
-
+    game.graphics.drawTile(tile, cell, topOffset, true);
   },
 
 
@@ -291,7 +281,7 @@ game.debug = {
     if (!this.showClipBounds) {
       this.clipOffset = 0;
     }else{
-      this.clipOffset = 200;
+      this.clipOffset = 400;
     }
 
     game.graphics.updateCanvasSize();
@@ -370,51 +360,46 @@ game.debug = {
 
     if (cell.tiles.terrain > 0){
       let tile = game.graphics.getTile(cell.tiles.terrain);
-      let image = game.graphics.getFrame(tile);
 
       textData.push('Terrain: '+cell.tiles.terrain+' (R'+game.mapRotation+': '+tile.id+')');
       textData.push('  Slopes: '+tile.slopes);
-      textData.push('  Image Size: '+image.width+'x'+image.height);
       textData.push('  Frames: '+tile.frames);
+      textData.push('  Water Level: '+cell.water_level);
       textData.push('');
     }
 
     if (cell.tiles.building > 0){
       let tile = game.graphics.getTile(cell.tiles.building);
-      let image = game.graphics.getFrame(tile);
 
       textData.push('Building: '+cell.tiles.building+' (R'+game.mapRotation+': '+tile.id+')');
       textData.push('  Name: '+tile.description);
       textData.push('  Lot Size: '+tile.size);
-      textData.push('  Image Size: '+image.width+'x'+image.height);
       textData.push('  Frames: '+tile.frames);
       textData.push('  Corners: '+cell.corners+' / '+game.corners[game.mapRotation])
-      textData.push('  KeyTile: '+(cell.corners == game.corners[game.mapRotation] ? 'Y':'N'));
-      textData.push('  Flip H / V: '+tile.flip_h+' / '+tile.flip_v);
+      textData.push('  Key Tile: '+(cell.corners == game.corners[game.mapRotation] ? 'Y':'N'));
+      textData.push('  Transforms:');
+      textData.push('    Tile Flip: '+tile.flip_h);
+      textData.push('    Alt Flip Tile: '+tile.flip_alt_tile);
+      textData.push('    Cell Rotate: '+cell.rotate);
+      textData.push('    Display Mirrored: '+(game.graphics.flipTile(tile, cell) ? 'Y':'N'));
       textData.push('');
     }
 
     if (cell.tiles.zone > 0){
       let tile = game.graphics.getTile(cell.tiles.zone);
-      let image = game.graphics.getFrame(tile);
 
       textData.push('Zone: '+cell.tiles.zone+' (R'+game.mapRotation+': '+tile.id+')');
       textData.push('  Type: '+tile.name);
       textData.push('  Description: '+tile.description);
-      textData.push('  Image Size: '+image.width+'x'+image.height);
       textData.push('');
     }
 
-    textData.push('');
-    textData.push('Water Level: '+cell.water_level);
-    textData.push('Edge Cell: '+cell.edge);
-    textData.push('Rotate: '+cell.rotate);
 
 
     // draw background
     var height = 20 + (textData.length * 15);
     var width = 220
-    game.graphics.drawPoly([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }, { x: 0, y: 0 }], 'rgba(0,0,0,.3)', 'rgba(255,255,255,.6)', game.ui.cursorX + 10, game.ui.cursorY + 10);
+    game.graphics.drawPoly([{ x: 0, y: 0 }, { x: width, y: 0 }, { x: width, y: height }, { x: 0, y: height }, { x: 0, y: 0 }], 'rgba(0,0,0,.5)', 'rgba(255,255,255,.75)', game.ui.cursorX + 10, game.ui.cursorY + 10);
 
     var lineX = game.ui.cursorX + 20;
     var lineY = game.ui.cursorY + 25;

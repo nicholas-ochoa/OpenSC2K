@@ -46,18 +46,45 @@ game.ui = {
 
 
 
-  selectionBox: function(tX, tY, color, width, fillColor) {
+  selectionBox: function(tX, tY, lineColor = 'rgba(255,255,0,.75)', width = 2, fillColor = 'rgba(0,0,0,0)') {
     var cell = game.getMapCell(tX, tY);
 
     if (!game.graphics.isCellInsideClipBoundary(cell))
       return;
 
-    var lineColor = typeof color !== 'undefined' ? color : 'rgba(255, 255, 0, .75)';
-    var lineWidth = typeof width !== 'undefined' ? width : 2;
-    var fillColor = typeof fillColor !== 'undefined' ? fillColor : 'rgba(0,0,0,0)';
-
     var offsetX = cell.coordinates.top.x;
     var tile = game.graphics.getTile(cell.tiles.terrain);
+
+
+
+
+    // if (cell.tiles.terrain == null || cell.tiles.terrain == 0)
+    //   return;
+
+    // let tileId = cell.tiles.terrain;
+    // let topOffset = 0;
+    
+    // if (((cell.water_level == 'submerged' || cell.water_level == 'shore') && cell.z < this.waterLevel) && (!this.debug.hideWater))
+    //   topOffset = ((this.waterLevel - cell.z) * this.graphics.layerOffset);
+
+    // if ((cell.water_level == 'submerged') && (!this.debug.hideWater))
+    //   tileId = 270;
+
+    // if ((cell.water_level == 'shore' || cell.water_level == 'surface') && (!this.debug.hideWater))
+    //   tileId = cell.tiles.terrain + 14;
+
+    // if ((cell.water_level == 'waterfall') && (!this.debug.hideWater))
+    //   tileId = 284;
+
+    // if (this.debug.hideWater)
+    //   if (cell.water_level == 'surface')
+    //     tileId = 256;
+    //   else if (cell.water_level == 'waterfall')
+    //     tileId = 269;
+
+
+
+
 
     if (tile.slopes[0] == 1 || tile.slopes[1] == 1 || tile.slopes[2] == 1 || tile.slopes[3] == 1)
       if (cell.water == 1)
@@ -71,9 +98,9 @@ game.ui = {
         var offsetY = cell.coordinates.top.y;
 
     if (cell.water == 1)
-      game.graphics.drawVectorTile(tile.id, fillColor, lineColor, 'rgba(0,0,0,0)', offsetX, offsetY);
+      game.graphics.drawVectorTile(tile.id, fillColor, lineColor, 'rgba(0,0,0,0)', offsetX, offsetY, game.graphics.scaledInterfaceContext);
     else
-      game.graphics.drawVectorTile(tile.id, fillColor, lineColor, 'rgba(0,0,0,0)', offsetX, offsetY);
+      game.graphics.drawVectorTile(tile.id, fillColor, lineColor, 'rgba(0,0,0,0)', offsetX, offsetY, game.graphics.scaledInterfaceContext);
 
   },
 

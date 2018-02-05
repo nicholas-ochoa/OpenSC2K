@@ -34,7 +34,7 @@ game.events = {
 
 
   keyEvent: function(event) {
-    //console.log('Key Event: '+ event.key);
+    game.graphics.setDrawFrame();
 
     switch(event.key){
       case '1':
@@ -53,7 +53,7 @@ game.events = {
         break;
 
       case 'a':
-        game.debug.showSelectedTileInfo = !game.debug.showSelectedTileInfo;
+        game.debug.hideAnimatedTiles = !game.debug.hideAnimatedTiles;
         break;
 
       case 'z':
@@ -93,7 +93,23 @@ game.events = {
         break;
 
       case 'h':
-        game.debug.showHeightMap = !game.debug.showHeightMap;
+        game.debug.showHeightMap   = !game.debug.showHeightMap;
+
+        if (game.debug.showHeightMap) {
+          game.debug.hideTerrain     = true;
+          game.debug.hideZones       = true;
+          game.debug.hideBuildings   = true;
+          game.debug.hideNetworks    = true;
+          game.debug.hideWater       = true;
+          game.debug.hideTerrainEdge = true;
+        } else {
+          game.debug.hideTerrain     = false;
+          game.debug.hideZones       = false;
+          game.debug.hideBuildings   = false;
+          game.debug.hideNetworks    = false;
+          game.debug.hideWater       = false;
+          game.debug.hideTerrainEdge = false;
+        }
         break;
 
       case 'k':
@@ -120,7 +136,7 @@ game.events = {
         game.import.openFile();
         break;
 
-      case 0:
+      case '0':
         game.data.clear();
         window.location.reload();
         break;

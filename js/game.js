@@ -17,7 +17,6 @@ var game = {
 
   corners: ['1000','0100','0010','0001'],
 
-
   init: function() {
     this.app = require('electron').remote;
     this.fs = require('fs');
@@ -52,8 +51,8 @@ var game = {
     this.debug.begin();
     this.graphics.clearCanvas();
 
-    if (!game.data.ready) {
-      this.data.loadingMessage();
+    if (!game.graphics.ready) {
+      this.graphics.loadingMessage();
       this.debug.end();
       return;
     }
@@ -98,17 +97,24 @@ var game = {
     let tileId = cell.tiles.terrain;
     let topOffset = 0;
 
-    if ((cell.water_level == 'submerged' || cell.water_level == 'shore') && cell.z < this.waterLevel)
+    if (((cell.water_level == 'submerged' || cell.water_level == 'shore') && cell.z < this.waterLevel) && (!this.debug.hideWater))
       topOffset = ((this.waterLevel - cell.z) * this.graphics.layerOffset);
 
-    if (cell.water_level == 'submerged')
+    if ((cell.water_level == 'submerged') && (!this.debug.hideWater))
       tileId = 270;
 
-    if (cell.water_level == 'shore' || cell.water_level == 'surface')
+    if ((cell.water_level == 'shore' || cell.water_level == 'surface') && (!this.debug.hideWater))
       tileId = cell.tiles.terrain + 14;
 
-    if (cell.water_level == 'waterfall')
+    if ((cell.water_level == 'waterfall') && (cell.tiles.building != 198) && (!this.debug.hideWater))
       tileId = 284;
+
+    if (this.debug.hideWater)
+      if (cell.water_level == 'surface')
+        tileId = 256;
+      else if (cell.water_level == 'waterfall')
+        tileId = 269;
+
 
     if(!this.debug.hideTerrain)
       this.graphics.drawTile(tileId, cell, topOffset);
@@ -141,6 +147,9 @@ var game = {
 
     if ((cell.water_level == 'submerged' || cell.water_level == 'shore') && cell.z < this.waterLevel)
       topOffset = ((this.waterLevel - cell.z) * this.graphics.layerOffset);
+
+    if (cell.tiles.terrain == 269)
+      topOffset += this.graphics.layerOffset;
 
     if ((this.mapRotation == 0 && cell.corners[0] == 1) ||
         (this.mapRotation == 1 && cell.corners[2] == 1) ||
@@ -205,9 +214,6 @@ var game = {
       return;
 
 
-    if (!this.graphics.isCellInsideClipBoundary(cell))
-      return;
-
     var tile = 269;
     var topOffset = 0;
 
@@ -218,7 +224,7 @@ var game = {
     }
 
     // draw water blocks when needed
-    if (cell.water_level == 'submerged' || cell.water_level == 'shore') {
+    if ((cell.water_level == 'submerged' || cell.water_level == 'shore') && (!this.debug.hideWater)) {
       tile = 284;
       for (i = game.waterLevel; i > 0; i--){
         topOffset = -(game.graphics.layerOffset * i) + (game.graphics.layerOffset * game.waterLevel);
@@ -227,7 +233,6 @@ var game = {
           this.graphics.drawTile(tile, cell, topOffset);
       }
     }
-
   },
 
 
@@ -303,11 +308,9 @@ var game = {
   },
 
 
-
-  // todo: only shifting images on rotate
-  // need to shift tile reference entirely
-  // so heightmap and underlying map structure match
-  // the tile displayed
+  //
+  // shifts tiles based on rotation and updates the tile array
+  //
   rotateMap: function(direction) {
     var rotatedMap = new Array();
 
@@ -327,10 +330,19 @@ var game = {
         
         if (typeof rotatedMap[newX] == 'undefined')
           rotatedMap[newX] = new Array();
-        
+
+        // update tile position x/y
         rotatedMap[newY][newX] = this.data.map[mX][mY];
         rotatedMap[newY][newX].x = newY;
         rotatedMap[newY][newX].y = newX;
+
+        // if building tile should flip, toggle rotate flag
+        let buildingTile = this.graphics.getTile(this.data.map[mX][mY].tiles.building);
+
+        if (rotatedMap[newY][newX].rotate == 'Y')
+          rotatedMap[newY][newX].rotate = 'N';
+        else if (rotatedMap[newY][newX].rotate == 'N' && buildingTile.flip_h == 'Y')
+          rotatedMap[newY][newX].rotate = 'Y';
 
         
         if (direction == 'left'){
