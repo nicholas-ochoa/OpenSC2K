@@ -10,11 +10,11 @@ Along with implementing the original functionality and features, I plan to add a
 
 ## Installation
 1. `git clone https://github.com/rage8885/OpenSC2K` or download this repository
-2. `cd OpenSC2K`
-3. `npm install` downloads and installs the dependancies
-4. `npm start` to run
-
-I've done all development and testing on macOS - while it should run fine on Windows or Linux (or anything that runs Node and Electron) I cannot confirm that the above steps will work as-is.
+1. `cd OpenSC2K`
+1. **Windows**: `npm install --global --production windows-build-tools` (as admin) installs Windows specific prerequisites
+1. `npm install` downloads and installs the dependancies
+1. **Windows/Linux**: `node_modules/.bin/electron-rebuild -f -w better-sqlite3` rebuilds Electron with better-sqlite3 bindings
+1. `npm start` to run
 
 ## Usage
 By default, there is no saved city loaded - select a valid SimCity 2000 .sc2 saved game when the file open prompt appears. The city will be imported and saved within the SQLite database and prompt to reload. Right now, the last imported city will automatically load with no option to change cities. To import a new city, press `O` and the file open prompt should appear.
