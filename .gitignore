@@ -12,3 +12,6 @@ images/.DS_Store
 Icon?
 ehthumbs.db
 Thumbs.db
+images/test/
+images/test/*
+assets/*

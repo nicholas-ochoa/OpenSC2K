@@ -19,6 +19,7 @@
     "electron-rebuild": "^1.7.3"
   },
   "dependencies": {
-    "better-sqlite3": "^4.1.0"
+    "better-sqlite3": "^4.1.0",
+    "bmp-js": "^0.0.3"
   }
 }
