@@ -9,11 +9,29 @@ Along with implementing the original functionality and features, I plan to add a
 ![Screenshot](/screenshots/1.png)
 
 ## Installation
+
+### OS X
 1. `git clone https://github.com/rage8885/OpenSC2K` or download this repository
 1. `cd OpenSC2K`
-1. **Windows**: `npm install --global --production windows-build-tools` (as admin) installs Windows specific prerequisites
 1. `npm install` downloads and installs the dependancies
-1. **Windows/Linux**: `node_modules/.bin/electron-rebuild -f -w better-sqlite3` rebuilds Electron with better-sqlite3 bindings
+1. `npm start` to run
+
+### Windows
+1. `git clone https://github.com/rage8885/OpenSC2K` or download this repository
+1. `cd OpenSC2K`
+1. `npm install --global --production windows-build-tools` (as admin) installs Windows specific prerequisites
+1. `npm config set msvs_version 2015 --global` changes config to use correct version of msvs
+1. Close all shell/cmd windows and open a new one (non-admin) to reload npm config with correct version
+1. Navigate to the OpenSC2K directory
+1. `npm install` downloads and installs the dependencies
+1. `node_modules\.bin\electron-rebuild -f -w better-sqlite3` rebuilds Electron with better-sqlite3 bindings
+1. `npm start` to run
+
+### Linux
+1. `git clone https://github.com/rage8885/OpenSC2K` or download this repository
+1. `cd OpenSC2K`
+1. `npm install` downloads and installs the dependencies
+1. `node_modules/.bin/electron-rebuild -f -w better-sqlite3` rebuilds Electron with better-sqlite3 bindings
 1. `npm start` to run
 
 ## Usage
