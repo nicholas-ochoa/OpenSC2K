@@ -14,6 +14,7 @@ Along with implementing the original functionality and features, I plan to add a
 1. `git clone https://github.com/rage8885/OpenSC2K` or download this repository
 1. `cd OpenSC2K`
 1. `npm install` downloads and installs the dependancies
+1. `node_modules/.bin/electron-rebuild -f -w better-sqlite3` rebuilds Electorn with better-sqlite3 bindings
 1. `npm start` to run
 
 ### Windows
