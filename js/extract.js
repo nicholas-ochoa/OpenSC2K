@@ -1,28 +1,15 @@
 game.extract = {
+  palette: [],
 
   //
-  // display file open prompt
+  // extract original game assets into something we can use
   //
-  openFile: function() {
-    //let largeDatFile = '/assets/LARGE.DAT';
-    //let bytes = game.fs.readFileSync(__dirname + largeDatFile);
+  assets: function() {
+    // parse palette BMP file
+    this.parsePalette();
 
-    game.app.dialog.showOpenDialog((fileNames) => {
-      if (fileNames === undefined){
-        return;
-      }
-
-      game.fs.readFile(fileNames[0], (err, data) => {
-        if (err) {
-          console.log('Error reading file: '+err.message);
-          return;
-        }
-
-        let bytes = new Uint8Array(data);
-        this.parse(bytes);
-
-      });
-    });
+    // parse LARGE.DAT
+    this.parseLargeDat();
   },
 
 
@@ -57,18 +44,11 @@ game.extract = {
 
 
 
-
-
-
-
-
-
-
-
   //
   // parses the LARGE.dat
   //
-  parse: function(bytes) {
+  parseLargeDat: function() {
+    let bytes = game.fs.readFileSync(__dirname + '/assets/LARGE.DAT');
     let fileSize = bytes.byteLength;
     let imageHeaderSize = 10;
 
@@ -258,7 +238,7 @@ game.extract = {
         var tempCtx = tempCanvas.getContext('2d');
 
         // palette lookup
-        context.fillStyle = this.palette(pixelValue);
+        context.fillStyle = this.getColorFromPalette(pixelValue);
         context.fillRect(x, y, 1, 1);
 
         x++;
@@ -306,182 +286,11 @@ game.extract = {
   // hardcoded palette for now, need to rework and pull these values from
   // the original game palette files to support animation
   //
-  palette: function(value){
+  getColorFromPalette: function(value){
     if (value === null)
       return 'rgba(0,0,0,0)';
 
-    var palette = [];
-    var color = 0;
-
-    for (c = 0; c < 256; c++) {
-      var rgba = {};
-
-      rgba.r = color;
-      color += 7;
-
-      rgba.g = color;
-      color += 7;
-
-      rgba.b = color;
-      color += 7;
-
-      rgba.a = 1;
-
-      palette[c] = rgba;
-    }
-
-    palette[0] = { r: 0, g: 0, b: 0, a: 1 };
-    palette[0xA4] = { r: 103, g: 103, b: 103, a: 1 };
-    palette[0xA0] = { r: 159, g: 159, b: 159, a: 1 };
-    palette[0x9F] = { r: 171, g: 171, b: 171, a: 1 };
-    palette[0xA1] = { r: 143, g: 143, b: 143, a: 1 };
-    palette[0xFF] = { r: 255, g: 255, b: 255, a: 1 };
-    palette[0x48] = { r: 7, g: 115, b: 0, a: 1 };
-    palette[0x46] = { r: 7, g: 167, b: 0, a: 1 };
-    palette[0x49] = { r: 7, g: 91, b: 0, a: 1 };
-    palette[0x27] = { r: 175, g: 63, b: 27, a: 1 };
-    palette[0x2B] = { r: 255, g: 159, b: 159, a: 1 };
-    palette[0x73] = { r: 203, g: 199, b: 135, a: 1 };
-    palette[0x55] = { r: 107, g: 199, b: 219, a: 1 };
-    palette[0x58] = { r: 19, g: 123, b: 183, a: 1 };
-    palette[0x59] = { r: 0, g: 99, b: 171, a: 1 };
-    palette[0x33] = { r: 191, g: 179, b: 43, a: 1 };
-    palette[0x31] = { r: 231, g: 231, b: 75, a: 1 };
-    palette[0x26] = { r: 199, g: 87, b: 43, a: 1 };
-    palette[0xA5] = { r: 87, g: 87, b: 87, a: 1 };
-    palette[0x47] = { r: 7, g: 139, b: 0, a: 1 };
-    palette[0x4A] = { r: 7, g: 67, b: 0, a: 1 };
-    palette[0x4F] = { r: 0, g: 207, b: 207, a: 1 };
-    palette[0x29] = { r: 127, g: 23, b: 7, a: 1 };
-    palette[0x7D] = { r: 107, g: 71, b: 27, a: 1 };
-    palette[0xA3] = { r: 115, g: 115, b: 115, a: 1 };
-    palette[0xA8] = { r: 47, g: 47, b: 47, a: 1 };
-    palette[0xA7] = { r: 59, g: 59, b: 59, a: 1 };
-    palette[0x9E] = { r: 187, g: 187, b: 187, a: 1 };
-    palette[0x73] = { r: 203, g: 199, b: 135, a: 1 };
-    palette[0x74] = { r: 191, g: 183, b: 119, a: 1 };
-    palette[0x9D] = { r: 199, g: 199, b: 199, a: 1 };
-    palette[0x2E] = { r: 255, g: 67, b: 67, a: 1 };
-    palette[0x2F] = { r: 255, g: 35, b: 35, a: 1 };
-    palette[0x9A] = { r: 243, g: 243, b: 243, a: 1 };
-    palette[0x87] = { r: 19, g: 183, b: 243, a: 1 };
-    palette[0x88] = { r: 15, g: 167, b: 219, a: 1 };
-    palette[0x51] = { r: 0, g: 115, b: 115, a: 1 };
-    palette[0x52] = { r: 0, g: 67, b: 67, a: 1 };
-    palette[0xA6] = { r: 75, g: 75, b: 75, a: 1 };
-    palette[0xE0] = { r: 201, g: 2, b: 2, a: 1 };
-    palette[0x8A] = { r: 27, g: 119, b: 211, a: 1 };
-    palette[0x8F] = { r: 0, g: 0, b: 119, a: 1 };
-    palette[0x7A] = { r: 135, g: 107, b: 51, a: 1 };
-    palette[0x78] = { r: 155, g: 135, b: 71, a: 1 };
-    palette[0x89] = { r: 7, g: 147, b: 215, a: 1 };
-    palette[0x9B] = { r: 227, g: 227, b: 227, a: 1 };
-    palette[0x76] = { r: 171, g: 159, b: 95, a: 1 };
-    palette[0x7C] = { r: 115, g: 83, b: 35, a: 1 };
-    palette[0x37] = { r: 111, g: 87, b: 0, a: 1 };
-    palette[0xA9] = { r: 37, g: 37, b: 37, a: 1 };
-    palette[0x21] = { r: 119, g: 0, b: 0, a: 1 };
-    palette[0xA2] = { r: 131, g: 131, b: 131, a: 1 };
-    palette[0x9C] = { r: 215, g: 215, b: 215, a: 1 };
-    palette[0xAA] = { r: 19, g: 19, b: 19, a: 1 };
-    palette[0x8B] = { r: 11, g: 83, b: 243, a: 1 };
-    palette[0x86] = { r: 139, g: 223, b: 239, a: 1 };
-    palette[0x63] = { r: 0, g: 0, b: 227, a: 1 };
-    palette[0x5E] = { r: 67, g: 67, b: 255, a: 1 };
-    palette[0x75] = { r: 183, g: 171, b: 107, a: 1 };
-    palette[0x77] = { r: 163, g: 147, b: 83, a: 1 };
-    palette[0x7B] = { r: 123, g: 95, b: 43, a: 1 };
-    palette[0x80] = { r: 75, g: 39, b: 11, a: 1 };
-    palette[0x82] = { r: 55, g: 23, b: 0, a: 1 };
-    palette[0x79] = { r: 143, g: 119, b: 59, a: 1 };
-    palette[0x34] = { r: 171, g: 155, b: 31, a: 1 };
-    palette[0x3F] = { r: 99, g: 159, b: 0, a: 1 };
-    palette[0x7E] = { r: 95, g: 59, b: 19, a: 1 };
-    palette[0x5F] = { r: 35, g: 39, b: 255, a: 1 };
-    palette[0x5D] = { r: 95, g: 99, b: 255, a: 1 };
-    palette[0x64] = { r: 0, g: 0, b: 203, a: 1 };
-    palette[0x67] = { r: 0, g: 0, b: 127, a: 1 };
-    palette[0x69] = { r: 0, g: 0, b: 79, a: 1 };
-    palette[0x62] = { r: 0, g: 0, b: 239, a: 1 };
-    palette[0x65] = { r: 0, g: 0, b: 179, a: 1 };
-    palette[0x1F] = { r: 171, g: 0, b: 0, a: 1 };
-    palette[0x1E] = { r: 199, g: 0, b: 0, a: 1 };
-    palette[0x1C] = { r: 255, g: 0, b: 0, a: 1 };
-    palette[0x1D] = { r: 227, g: 0, b: 0, a: 1 };
-    palette[0x20] = { r: 147, g: 0, b: 0, a: 1 };
-    palette[0x22] = { r: 91, g: 0, b: 0, a: 1 };
-    palette[0x60] = { r: 0, g: 7, b: 255, a: 1 };
-    palette[0xCF] = { r: 73, g: 69, b: 255, a: 1 };
-    palette[0xCE] = { r: 92, g: 119, b: 255, a: 1 };
-    palette[0xCD] = { r: 39, g: 32, b: 255, a: 1 };
-    palette[0xCC] = { r: 73, g: 69, b: 255, a: 1 };
-    palette[0xCB] = { r: 92, g: 119, b: 255, a: 1 };
-    palette[0xCA] = { r: 99, g: 155, b: 255, a: 1 };
-    palette[0xC9] = { r: 16, g: 10, b: 255, a: 1 };
-    palette[0xC8] = { r: 39, g: 32, b: 255, a: 1 };
-    palette[0x2D] = { r: 255, g: 95, b: 95, a: 1 };
-    palette[0x2C] = { r: 255, g: 127, b: 127, a: 1 };
-    palette[0x28] = { r: 151, g: 39, b: 19, a: 1 };
-    palette[0x23] = { r: 67, g: 0, b: 0, a: 1 };
-    palette[0x2A] = { r: 103, g: 7, b: 0, a: 1 };
-    palette[0x24] = { r: 251, g: 143, b: 75, a: 1 };
-    palette[0x7F] = { r: 87, g: 51, b: 15, a: 1 };
-    palette[0x81] = { r: 67, g: 31, b: 7, a: 1 };
-    palette[0x83] = { r: 47, g: 15, b: 0, a: 1 };
-    palette[0x30] = { r: 251, g: 255, b: 163, a: 1 };
-    palette[0xE8] = { r: 0, g: 0, b: 0, a: 1 };
-    palette[0x32] = { r: 211, g: 207, b: 59, a: 1 };
-    palette[0x25] = { r: 223, g: 111, b: 55, a: 1 };
-    palette[0x35] = { r: 151, g: 131, b: 19, a: 1 };
-    palette[0x36] = { r: 131, g: 107, b: 11, a: 1 };
-    palette[0x38] = { r: 91, g: 67, b: 0, a: 1 };
-    palette[0x39] = { r: 199, g: 255, b: 67, a: 1 };
-    palette[0x3C] = { r: 147, g: 231, b: 0, a: 1 };
-    palette[0x3D] = { r: 131, g: 207, b: 0, a: 1 };
-    palette[0x3E] = { r: 119, g: 183, b: 0, a: 1 };
-    palette[0x43] = { r: 0, g: 239, b: 0, a: 1 };
-    palette[0x44] = { r: 0, g: 215, b: 0, a: 1 };
-    palette[0x45] = { r: 7, g: 191, b: 0, a: 1 };
-    palette[0x41] = { r: 99, g: 255, b: 95, a: 1 };
-    palette[0x40] = { r: 159, g: 255, b: 159, a: 1 };
-    palette[0x8E] = { r: 0, g: 0, b: 215, a: 1 };
-    palette[0x61] = { r: 0, g: 0, b: 255, a: 1 };
-    palette[0xD0] = { r: 35, g: 39, b: 255, a: 1 };
-    palette[0xD1] = { r: 35, g: 39, b: 255, a: 1 };
-    palette[0xD2] = { r: 49, g: 62, b: 255, a: 1 };
-    palette[0xD3] = { r: 35, g: 39, b: 255, a: 1 };
-    palette[0x84] = { r: 39, g: 11, b: 0, a: 1 };
-    palette[0x8C] = { r: 31, g: 0, b: 251, a: 1 };
-    palette[0x90] = { r: 0, g: 0, b: 167, a: 1 };
-    palette[0x8D] = { r: 0, g: 35, b: 247, a: 1 };
-    palette[0x6D] = { r: 191, g: 67, b: 255, a: 1 };
-    palette[0xC5] = { r: 64, g: 16, b: 3, a: 1 };
-    palette[0xC3] = { r: 255, g: 15, b: 17, a: 1 };
-    palette[0xC4] = { r: 255, g: 249, b: 6, a: 1 };
-    palette[0x6B] = { r: 231, g: 187, b: 255, a: 1 };
-    palette[0x6C] = { r: 211, g: 127, b: 255, a: 1 };
-    palette[0x70] = { r: 99, g: 0, b: 159, a: 1 };
-    palette[0x6F] = { r: 131, g: 0, b: 207, a: 1 };
-    palette[0x6A] = { r: 0, g: 0, b: 67, a: 1 };
-    palette[0x50] = { r: 0, g: 159, b: 159, a: 1 };
-    palette[0x42] = { r: 35, g: 255, b: 35, a: 1 };
-    palette[0x85] = { r: 187, g: 179, b: 135, a: 1 };
-    palette[0x12] = { r: 16, g: 117, b: 101, a: 1 };
-    palette[0x13] = { r: 20, g: 125, b: 109, a: 1 };
-    palette[0x14] = { r: 24, g: 154, b: 134, a: 1 };
-    palette[0x15] = { r: 24, g: 166, b: 142, a: 1 };
-    palette[0x16] = { r: 28, g: 178, b: 154, a: 1 };
-    palette[0x17] = { r: 28, g: 190, b: 166, a: 1 };
-    palette[0x18] = { r: 32, g: 207, b: 178, a: 1 };
-    palette[0x19] = { r: 255, g: 255, b: 255, a: 1 };
-    palette[0x1A] = { r: 255, g: 85, b: 85, a: 1 };
-    palette[0x1B] = { r: 255, g: 85, b: 255, a: 1 };
-    palette[0x3A] = { r: 182, g: 255, b: 32, a: 1 };
-    palette[0x3B] = { r: 162, g: 255, b: 0, a: 1 };
-    palette[0x66] = { r: 0, g: 0, b: 154, a: 1 };
-    palette[0x68] = { r: 0, g: 0, b: 89, a: 1 };
-
-    return 'rgba('+palette[value].r+', '+palette[value].g+', '+palette[value].b+', '+palette[value].a+')';
+    return this.palette[value];
   },
 
 
@@ -490,6 +299,63 @@ game.extract = {
 
 
 
+  //
+  // parse sc2k BMP palette file
+  //
+  parsePalette: function() {
+    // decode BMP file into an array of pixels (rgba)
+    var bmp = require('bmp-js');
+    var buffer = game.fs.readFileSync(__dirname + '/assets/PAL_MSTR.BMP');
+    var data = bmp.decode(buffer);
+
+    var width = data.width;
+    var height = data.height;
+    var offset = 0;
+    var c = {}, paletteData = [];
+
+    for (y = 0; y < height; y++){
+      for (x = 0; x < width; x++){
+        c = {};
+
+        c.b = data.data[offset + 0];
+        c.g = data.data[offset + 1];
+        c.r = data.data[offset + 2];
+        c.a = data.data[offset + 3];
+
+        if (paletteData[x] === undefined)
+          paletteData[x] = [];
+
+        if (paletteData[x][y] === undefined)
+          paletteData[x][y] = [];
+
+        paletteData[x][y] = c;
+
+        offset += 4;
+
+        if (data.data[offset] === undefined)
+          break;
+
+      }
+    }
+
+    // get palette colors from BMP pixel array
+    var startRow = 15;
+    var startColumn = 1;
+    var colorWidth = 6;
+    var colorHeight = 5;
+    var cX, cY, color = null;
+
+    for (y = 1; y <= 16; y++) {
+      for (x = 1; x <= 16; x++) {
+        cX = startColumn + (x * colorWidth);
+        cY = startRow + (y * colorHeight);
+        color = 'rgba('+paletteData[cX][cY].r+', '+paletteData[cX][cY].g+', '+paletteData[cX][cY].b+', '+paletteData[cX][cY].a+')'
+        this.palette.push(color);
+      }
+    }
+
+    return paletteData;
+  },
 
 
 
