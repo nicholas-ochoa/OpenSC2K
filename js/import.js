@@ -91,12 +91,13 @@ game.import = {
           return;
         }
 
-        if (!this.isSimCity2000SaveFile){
+	let bytes = new Uint8Array(data);
+
+        if (!this.isSimCity2000SaveFile(bytes)){
           console.log('File is not a valid SimCity 2000 SC2 Save File');
           return;
         }
 
-        let bytes = new Uint8Array(data);
         this.parse(bytes);
 
       });
