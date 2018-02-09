@@ -1,5 +1,8 @@
 game.extract = {
+
   palette: [],
+  animatedPaletteIndexes: [],
+  imageStack: [],
 
   //
   // extract original game assets into something we can use
@@ -10,6 +13,9 @@ game.extract = {
 
     // parse LARGE.DAT
     this.parseLargeDat();
+
+    // write tiles to png on disk
+    this.writeImagesToDisk();
   },
 
 
@@ -100,11 +106,21 @@ game.extract = {
       images[imageArray[i].id] = imageArray[i];
     }
 
+    console.log('Completed');
+
+
     // create tile images
-    console.log('Writing Files..');
+    console.log('Creating tile images');
+
     for (let imageId in images) {
+      // decode image block
       images[imageId].imageBlock = this.imageBlock(images[imageId].data);
-      this.createTileImage(imageId, images[imageId]);
+
+      // any animated pixels?
+      images[imageId].animated = this.animatedTile(images[imageId]);
+
+      // create tile images
+      this.createTileImage(images[imageId]);
     }
 
     console.log('Completed');
@@ -214,60 +230,77 @@ game.extract = {
 
 
 
-  createTileImage: function(imageId, data) {
-    var canvas = document.createElement('canvas');
-    canvas.width = data.width * 2;
-    canvas.height = data.height * 2;
-    var context = canvas.getContext('2d');
-    context.scale(2,2);
-
+  createTileImage: function(image) {
     var x = 0;
     var y = 0;
+    var paletteIndex = 0;
+    var stack = {};
+    var animations = {};
+    var frameCount = 1;
+    var doubleFrameCount = 0;
 
-    // for each row
-    for (i = 0; i < data.imageBlock.length; i++){
+    if (image.animated)
+      frameCount = 24;
+
+    // loop on each frame
+    for (var frame = 0; frame < frameCount; frame++) {
+      var canvas = document.createElement('canvas');
+      canvas.width = image.width * 2;
+      canvas.height = image.height * 2;
+      var context = canvas.getContext('2d');
+      context.scale(2,2);
+
       x = 0;
+      y = 0;
 
-      // for each pixel
-      for (p = 0; p < data.imageBlock[i].parsedData.length; p++){
-        var pixelValue = data.imageBlock[i].parsedData[p];
+      // for each row
+      for (var iY = 0; iY < image.imageBlock.length; iY++){
+        x = 0;
 
-        var tempCanvas = document.createElement('canvas');
-        tempCanvas.width = 1;
-        tempCanvas.height = 1;
-        var tempCtx = tempCanvas.getContext('2d');
+        // for each pixel in a row
+        for (var iX = 0; iX < image.imageBlock[iY].parsedData.length; iX++){
 
-        // palette lookup
-        context.fillStyle = this.getColorFromPalette(pixelValue);
-        context.fillRect(x, y, 1, 1);
+          // get palette index for imageblock x/y coordinate
+          paletteIndex = image.imageBlock[iY].parsedData[iX];
+          animations = this.animations(paletteIndex);
 
-        x++;
+          // animated pixel? shift palette index by frame offset
+          if (this.animatedPaletteIndexes.includes(paletteIndex)){
+            for (f = 0; f < frame; f++){
+              if (paletteIndex >= animations.end){
+                paletteIndex = animations.start;
+              }else{
+                if (animations.showFramesTwice){
+                  if (doubleFrameCount % 2 == 0){
+                    paletteIndex += 1;
+                  }
+
+                  doubleFrameCount++;
+                }else{
+                  paletteIndex += 1;
+                }
+              }
+            }
+          }
+            
+          // palette lookup and draw pixel
+          context.fillStyle = this.getColorFromPalette(paletteIndex);
+          context.fillRect(x, y, 1, 1);
+
+          x++;
+        }
+
+        y++;
       }
 
-      y++;
+      // save to the image stack
+      data = canvas.toDataURL();
+      this.imageStack.push({ id: image.id, frame: frame, data: data });
     }
-
-    // write to primary canvas context
-    //setTimeout(function(){
-    //  game.graphics.primaryContext.clearRect(10, 10, canvas.width, canvas.height);
-    //  game.graphics.primaryContext.strokeStyle = 'rgba(255,0,0,.5)';
-    //  game.graphics.primaryContext.strokeRect(10, 10, canvas.width, canvas.height);
-    //  game.graphics.primaryContext.drawImage(canvas,10,10);
-    //}, 100 + this.delay);
-    //this.delay += 100
-
-    // save canvas to file
-    canvas.toBlob((blob) => {
-      var fileReader = new FileReader();
-      
-      fileReader.onload = (event) => {
-        var id = imageId;
-        game.extract.writeFile(id, event.target.result);
-      };
-
-      fileReader.readAsArrayBuffer(blob);
-    });
   },
+
+
+
 
 
   //
@@ -276,24 +309,135 @@ game.extract = {
   // and directly convert to tilemap
   // todo: utility function to support dumping images to disk for non-engine usage
   //
-  writeFile: function(imageId, data) {
-    game.fs.writeFileSync(__dirname + '/images/test/'+imageId+'.png', Buffer.from(new Uint8Array(data)));
+  writeImagesToDisk: function() {
+    console.log('Writing Files');
+
+    for (var i = 0; i < this.imageStack.length; i++) {
+      let imageId = this.imageStack[i].id;
+      let frameId = this.imageStack[i].frame;
+      let data = this.imageStack[i].data.replace(/^data:image\/\w+;base64,/, "");
+      let buffer = new Buffer(data, 'base64');
+
+      game.fs.writeFileSync(__dirname + '/images/test/'+imageId+'_'+frameId+'.png', buffer);
+    }
+
+    console.log('Completed');
   },
 
 
 
+
+
+
   //
-  // hardcoded palette for now, need to rework and pull these values from
-  // the original game palette files to support animation
+  // look up rgba color for a palette index
   //
-  getColorFromPalette: function(value){
-    if (value === null)
+  getColorFromPalette: function(idx){
+    if (idx === null)
       return 'rgba(0,0,0,0)';
 
-    return this.palette[value];
+    return this.palette[idx];
   },
 
 
+
+  //
+  // determines the type of animation based on the palette indexes utilized in the tile
+  // returns the animation details (type, frames, start index) when it finds any pixel
+  // that utilizes an animated palette index
+  //
+  animatedTile: function (image) {
+    var x = 0, y = 0;
+
+    for (i = 0; i < image.imageBlock.length; i++){
+      x = 0;
+
+      for (p = 0; p < image.imageBlock[i].parsedData.length; p++){
+
+        // if any animated pixels found, return true
+        if (this.animatedPaletteIndexes.includes(image.imageBlock[i].parsedData[p]))
+          return true;
+
+        x++;
+      }
+
+      y++;
+    }
+
+    return false;
+  },
+
+
+
+  //
+  // returns the animation details (type, frames, start index) based on palette index provided
+  //
+  animations: function (paletteIndex) {
+    var animation = { type: null, showFramesTwice: false, frames: 24, start: 0 };
+
+    if ([200,201,202,203,204,205,206,207,208,209,210,211].includes(paletteIndex)) {
+      animation.type = 'blue';
+      animation.showFramesTwice = false;
+      animation.start = 200;
+      animation.end = 211;
+
+    } else if ([171,172,173,174,175,176,177,178].includes(paletteIndex)) {
+      animation.type = 'grey_blue_short';
+      animation.showFramesTwice = false;
+      animation.start = 171;
+      animation.end = 178;
+
+    } else if ([179,180,181,182,183,184,185,186].includes(paletteIndex)) {
+      animation.type = 'grey_black';
+      animation.showFramesTwice = false;
+      animation.start = 179;
+      animation.end = 186;
+
+    } else if ([187,188,189,190,191,192,193,194].includes(paletteIndex)) {
+      animation.type = 'grey_blue_long';
+      animation.showFramesTwice = false;
+      animation.start = 187;
+      animation.end = 194;
+
+    } else if ([212,213,214,215,216,217,218,219].includes(paletteIndex)) {
+      animation.type = 'grey_brown';
+      animation.showFramesTwice = false;
+      animation.start = 212;
+      animation.end = 219;
+
+    } else if ([195,196,197,198].includes(paletteIndex)) {
+      animation.type = 'brown_red_yellow_black';
+      animation.showFramesTwice = false;
+      animation.start = 195;
+      animation.end = 198;
+
+    } else if ([224,225].includes(paletteIndex)) {
+      animation.type = 'flash_red';
+      animation.showFramesTwice = true;
+      animation.start = 224;
+      animation.end = 225;
+
+    } else if ([226,227].includes(paletteIndex)) {
+      animation.type = 'flash_yellow';
+      animation.showFramesTwice = true;
+      animation.start = 226;
+      animation.end = 227;
+
+    } else if ([228,229].includes(paletteIndex)) {
+      animation.type = 'flash_green';
+      animation.showFramesTwice = true;
+      animation.start = 228;
+      animation.end = 229;
+
+    } else if ([230,231].includes(paletteIndex)) {
+      animation.type = 'flash_blue';
+      animation.showFramesTwice = true;
+      animation.start = 230;
+      animation.end = 231;
+    }
+
+    return animation;
+  },
 
 
 
@@ -307,12 +451,12 @@ game.extract = {
     var bmp = require('bmp-js');
     var buffer = game.fs.readFileSync(__dirname + '/assets/PAL_MSTR.BMP');
     var data = bmp.decode(buffer);
-
     var width = data.width;
     var height = data.height;
     var offset = 0;
     var c = {}, paletteData = [];
 
+    // build array of BMP image data
     for (y = 0; y < height; y++){
       for (x = 0; x < width; x++){
         c = {};
@@ -330,11 +474,11 @@ game.extract = {
 
         paletteData[x][y] = c;
 
+        // offset + 4 since we're reading 4 bytes (rgba) for each pixel
         offset += 4;
 
         if (data.data[offset] === undefined)
           break;
-
       }
     }
 
@@ -345,6 +489,8 @@ game.extract = {
     var colorHeight = 5;
     var cX, cY, color = null;
 
+    // loop through each palette color in the source BMP and index them in order
+    // left to right, top to bottom (16x16)
     for (y = 1; y <= 16; y++) {
       for (x = 1; x <= 16; x++) {
         cX = startColumn + (x * colorWidth);
@@ -354,8 +500,24 @@ game.extract = {
       }
     }
 
-    return paletteData;
+    // these palette indexes are used for the 'animations' when rotating palettes
+    this.animatedPaletteIndexes = [
+      200,201,202,203,204,205,206,207,208,209,210,211,171,172,
+      173,174,175,176,177,178,179,180,181,182,183,184,185,186,
+      187,188,189,190,191,192,193,194,212,213,214,215,216,217,
+      218,219,195,196,197,198,224,225,226,227,228,229,230,231
+    ];
   },
+
+
+
+
+
+
+
+
+
+
 
 
 
