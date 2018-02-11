@@ -5,7 +5,7 @@ export const load = async () => {
   data.db = await knex({
     client: `sqlite`,
     connection: {
-      filename: `./src/db/database.sqlite`
+      filename: `./db/database.sqlite`
     },
     pool: {
       afterCreate: (connection, cb) => connection.run(`PRAGMA journal_mode = WAL`, cb) // eslint-disable-line

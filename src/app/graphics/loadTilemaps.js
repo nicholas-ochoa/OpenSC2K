@@ -5,7 +5,7 @@ import graphics, { checkLoad } from "./"
 export const loadTilemaps = () => {
   info(`Loading Tilemaps..`)
 
-  const tilemapJson = readFileSync(`${__dirname}/../../images/tilemap/tilemap.json`)
+  const tilemapJson = readFileSync(`./images/tilemap/tilemap.json`)
   graphics.tilemap = JSON.parse(tilemapJson)
 
   const onload = (img, tilemapId) => {
@@ -22,7 +22,7 @@ export const loadTilemaps = () => {
 
   for (let i = 0; i < graphics.totalTilemaps; i++) {
     let img = new Image()
-    img.src = `src/images/tilemap/tilemap_${i}.png`
+    img.src = `./images/tilemap/tilemap_${i}.png`
     img.setAttribute(`tilemap_id`, i)
     img.onload = onload(img, i)
   }
