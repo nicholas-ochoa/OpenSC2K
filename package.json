@@ -6,6 +6,7 @@
   "main": "main.js",
   "scripts": {
     "start": "electron .",
+    "postinstall": "npm run rebuild",
     "rebuild": "electron-rebuild -f -w better-sqlite3"
   },
   "repository": {
