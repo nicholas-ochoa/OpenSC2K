@@ -5,8 +5,15 @@
   "homepage": "https://github.com/rage8885/OpenSC2K",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "rebuild": "electron-rebuild -f -w better-sqlite3"
+    "precommit": "lint-staged",
+    "start": "electron -r babel-register .",
+    "test": "cross-env NODE_ENV=test nyc ava --verbose --color --tap",
+    "test:watch": "ava --watch",
+    "coverage": "cross-env NODE_ENV=test nyc report --reporter=text-lcov > coverage.lcov && codecov",
+    "coverage:report": "cross-env NODE_ENV=test nyc report --color",
+    "electron:rebuild": "electron-rebuild -f -w sqlite3 -p",
+    "snyk:protect": "snyk protect",
+    "prepublish": "yarn electron:rebuild && yarn snyk:protect"
   },
   "repository": {
     "type": "git",
@@ -14,12 +21,109 @@
   },
   "author": "Nicholas Ochoa",
   "license": "GPL-3.0",
-  "devDependencies": {
-    "electron": "^1.8.2-beta.3",
-    "electron-rebuild": "^1.7.3"
-  },
   "dependencies": {
-    "better-sqlite3": "^4.1.0",
-    "bmp-js": "^0.0.3"
+    "babel-polyfill": "7.0.0-beta.3",
+    "bmp-js": "^0.0.3",
+    "electron": "^1.8.2-beta.3",
+    "knex": "^0.14.2",
+    "sqlite3": "^3.1.13"
+  },
+  "devDependencies": {
+    "ava": "^0.25.0",
+    "babel-cli": "7.0.0-beta.3",
+    "babel-core": "7.0.0-beta.3",
+    "babel-eslint": "^8.0.1",
+    "babel-loader": "^7.1.2",
+    "babel-minify-webpack-plugin": "^0.2.0",
+    "babel-node": "7.0.0-beta.3",
+    "babel-plugin-espower": "^2.3.2",
+    "babel-plugin-inline-dotenv": "^1.1.1",
+    "babel-plugin-inline-replace-variables": "^1.3.1",
+    "babel-plugin-istanbul": "^4.1.5",
+    "babel-plugin-lodash": "^3.2.11",
+    "babel-plugin-provide-modules": "^1.0.3",
+    "babel-plugin-webpack-alias": "^2.1.2",
+    "babel-preset-env": "2.0.0-beta.0",
+    "babel-preset-flow": "^7.0.0-beta.3",
+    "babel-preset-power-assert": "^2.0.0",
+    "babel-preset-stage-0": "^7.0.0-beta.3",
+    "babel-register": "7.0.0-beta.3",
+    "codecov": "^3.0.0",
+    "copy-webpack-plugin": "^4.4.1",
+    "cross-env": "^5.0.5",
+    "del-cli": "^1.1.0",
+    "dotenv": "^5.0.0",
+    "electron-log": "^2.2.14",
+    "electron-rebuild": "^1.7.3",
+    "eslint": "^4.17.0",
+    "eslint-import-resolver-webpack": "^0.8.3",
+    "eslint-plugin-ava": "^4.2.2",
+    "eslint-plugin-compat": "^2.0.1",
+    "eslint-plugin-flowtype": "^2.37.0",
+    "eslint-plugin-graphql": "^1.4.0-1",
+    "eslint-plugin-import": "^2.7.0",
+    "eslint-plugin-jest": "^21.2.0",
+    "eslint-plugin-promise": "^3.5.0",
+    "eslint-plugin-react": "^7.4.0",
+    "extract-text-webpack-plugin": "^3.0.2",
+    "flow": "^0.2.3",
+    "flow-bin": "^0.65.0",
+    "html-webpack-plugin": "^2.30.1",
+    "lint-staged": "^6.0.0",
+    "lodash": "^4.17.5",
+    "lodash-webpack-plugin": "^0.11.4",
+    "nodemon": "^1.14.6",
+    "nyc": "^11.2.1",
+    "power-assert": "^1.4.4",
+    "prettier": "^1.7.0",
+    "snyk": "^1.69.6",
+    "sw-precache-webpack-plugin": "^0.11.4",
+    "tap-nyan": "^1.1.0",
+    "webpack": "^3.10.0",
+    "webpack-bundle-analyzer": "^2.10.0",
+    "webpack-node-externals": "^1.6.0"
+  },
+  "lint-staged": {
+    "src/**/*.{js,jsx}": [
+      "prettier --write",
+      "eslint --fix",
+      "git add"
+    ]
+  },
+  "snyk": true,
+  "ava": {
+    "files": [
+      "!src/**/*.js",
+      "!**/webpack.config.js",
+      "src/**/__TEST__/*.spec.js"
+    ],
+    "source": [
+      "src/**/*.{js,jsx}",
+      "!dist/**/*"
+    ],
+    "concurrency": 5,
+    "failFast": true,
+    "failWithoutAssertions": false,
+    "tap": "tap-nyan",
+    "powerAssert": true,
+    "require": [
+      "babel-register",
+      "babel-polyfill",
+      "isomorphic-fetch"
+    ],
+    "babel": "inherit"
+  },
+  "nyc": {
+    "require": [
+      "babel-register"
+    ],
+    "cache": true,
+    "sourceMap": false,
+    "instrument": false,
+    "exclude": [
+      "src/**/__TEST__/*.spec.js",
+      "build",
+      "dist"
+    ]
   }
 }

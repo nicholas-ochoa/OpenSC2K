@@ -1,39 +1,37 @@
-const electron = require('electron');
-const path = require('path');
-const url = require('url');
+import path from "path"
+import url from "url"
+import { app, BrowserWindow } from "electron"
+import logger from "electron-log"
 
-const app = electron.app;
-const BrowserWindow = electron.BrowserWindow;
+logger.transports.rendererConsole.level = `debug`
 
-let mainWindow;
+let mainWindow
 
-app.commandLine.appendSwitch('remote-debugging-port', '2000');
-app.commandLine.appendSwitch('enable-precise-memory-info');
+app.commandLine.appendSwitch(`remote-debugging-port`, `2000`)
+app.commandLine.appendSwitch(`enable-precise-memory-info`)
 
-function createWindow () {
+app.on(`ready`, () => {
   mainWindow = new BrowserWindow({
     width: 1280,
     height: 1024,
     webPreferences: {
       experimentalCanvasFeatures: true
     }
-  });
+  })
 
   mainWindow.loadURL(url.format({
-    pathname: path.join(__dirname, 'index.html'),
-    protocol: 'file:',
+    pathname: path.join(__dirname, `index.html`),
+    protocol: `file:`,
     slashes: true
-  }));
+  }))
 
   mainWindow.webContents.openDevTools()
 
-  mainWindow.on('closed', function () {
-    mainWindow = null;
-  });
-}
+  mainWindow.on(`closed`, () => {
+    mainWindow = null
+  })
+})
 
-app.on('ready', createWindow);
-
-app.on('window-all-closed', function () {
-  app.quit();
-});
+app.on(`window-all-closed`, () => {
+  app.quit()
+})

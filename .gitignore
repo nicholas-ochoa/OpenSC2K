@@ -1,8 +1,8 @@
 .DS_Store
 .gitignore
 node_modules
-db/database.db-shm
-db/database.db-wal
+*.sqlite-shm
+*.sqlite-wal
 images/.DS_Store
 */.DS_Store
 .DS_Store?
@@ -12,6 +12,6 @@ images/.DS_Store
 Icon?
 ehthumbs.db
 Thumbs.db
-images/test/
-images/test/*
+src/images/test/
+src/images/test/*
 assets/*

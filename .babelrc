@@ -1,0 +1,50 @@
+{
+  "ignore": [
+    "src/**/_TEST_/*.spec.js"
+  ],
+  "plugins": [
+    ["babel-plugin-webpack-alias", { "findConfig": true }],
+    "inline-dotenv",
+    ["inline-replace-variables", {
+      "ENV": { "type": "node", "replacement": "process.env.NODE_ENV" },
+    }],
+    ["provide-modules", {
+      "console": ["log"],
+      "electron-log": ["error", "warn", "info", "verbose", "debug", "silly"]
+    }]
+  ],
+  "presets": [
+    ["env", {
+      "targets": { "node": "6.10" },
+      "useBuiltIns": "usage"
+    }],
+    "stage-0",
+    "flow"
+  ],
+  "env": {
+    "test": {
+      "sourceMaps": "inline",
+      "plugins": [
+        "istanbul",
+        ["babel-plugin-webpack-alias", { "findConfig": true }],
+        "inline-dotenv",
+        ["inline-replace-variables", {
+          "ENV": { "type": "node", "replacement": "process.env.NODE_ENV" },
+        }],
+        ["provide-modules", {
+          "console": ["log"],
+          "electron-log": ["error", "warn", "info", "verbose", "debug", "silly"]
+        }]
+      ],
+      "presets": [
+        "babel-preset-power-assert",
+        ["env", {
+          "targets": { "node": "6.10" },
+          "useBuiltIns": "usage"
+        }],
+        "stage-0",
+        "flow"
+      ]
+    }
+  }
+}
