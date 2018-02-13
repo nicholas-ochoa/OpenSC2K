@@ -1,0 +1,100 @@
+# OpenSC2K
+OpenSC2K - Remake Open Source dari SimCity 2000 yang ditulis dalam JavaScript menggunakan HTML5 Canvas API, SQLite dan dibangun di atas [Electron](https://github.com/atom/electron).
+
+## Ikhtisar
+Saat ini masih banyak yang harus diimplementasikan namun kerangka dasarnya ada untuk mengimpor dan melihat kota. Banyak barang tetap sama sekali tidak diimplementasikan seperti simulasi aktual, pembuatan banyak ubin dan bangunan khusus, mendukung tingkat zoom dan hal lain yang ada di luar pengimporan dan penayangan.
+
+Seiring dengan penerapan fungsi dan fitur asli, saya berencana untuk menambahkan kemampuan tambahan di luar yang asli seperti ukuran kota / peta yang lebih besar, jenis jaringan tambahan, menambahkan bangunan di luar keterbatasan tileset awal, pelacakan tindakan / riwayat bersama dengan tayangan ulang dan lainnya.
+
+![Screenshot](/screenshots/1.png)
+
+## Instalasi
+
+### OS X
+1. `git clone https: // github.com / rage8885 / OpenSC2K` atau download repositori ini
+1. `cd OpenSC2K`
+1. `npm install` mendownload dan menginstal dependancies
+1. `node_modules / .bin / elektron-rebuild -f -w better-sqlite3` membangun kembali Elektron dengan binding sqlite3 yang lebih baik.
+1. `npm start` untuk menjalankan
+
+### Windows
+1. `git clone https: // github.com / rage8885 / OpenSC2K` atau download repositori ini
+1. `cd OpenSC2K`
+1. `npm install --global --production windows-build-tools` (sebagai admin) menginstal prasyarat Windows tertentu
+1. `npm config set msvs_version 2015 --global` ubah konfigurasi untuk menggunakan versi msvs yang benar
+1. Tutup semua jendela shell / cmd dan buka yang baru (non-admin) untuk memuat ulang konfigurasi npm dengan versi yang benar
+1. Arahkan ke direktori OpenSC2K
+1. `npm install` mendownload dan menginstal dependensi
+1. `node_modules \ .bin \ elektron-rebuild -f -w better-sqlite3` membangun kembali Elektron dengan binding yang lebih baik-sqlite3
+1. `npm start` untuk menjalankan
+
+### Linux
+1. `git clone https: // github.com / rage8885 / OpenSC2K` atau download repositori ini
+1. `cd OpenSC2K`
+1. `npm install` mendownload dan menginstal dependensi
+1. `node_modules / .bin / elektron-rebuild -f -w better-sqlite3` membangun kembali Elektron dengan binding sqlite3 yang lebih baik.
+1. `npm start` untuk menjalankan
+
+## Pemakaian
+Secara default, tidak ada kota yang tersimpan - pilih permainan SimCity 2000 .sc2 yang tersimpan saat file prompt terbuka muncul. Kota akan diimpor dan disimpan dalam database SQLite dan diminta untuk memuat ulang. Saat ini, kota impor terakhir secara otomatis akan memuat tanpa pilihan untuk mengubah kota. Untuk mengimpor kota baru, tekan `O` dan prompt terbuka file akan muncul.
+
+Tombol Tambahan:
+ - `O` to open a new .sc2 file for import
+ - `Q` or `W` to rotate the camera left or right respectively.
+ - `1` sets the current cursor tool to none
+ - `2` sets the current cursor tool to "center" (center the map on click)
+ - `3` sets the current cursor tool to "info" (displays tile info)
+ - `0` clears the database (deletes all cities)
+ - Arrow keys to move the camera around
+
+### Hamparan Debug
+Fungsi ini akan mengaktifkan berbagai hamparan dan tampilan debug yang dibangun di mesin untuk membantu pengembangan. Banyak lapisan ini berdampak negatif pada kinerja secara signifikan.
+
+ - `Z` toggles building key tile display (corners)
+ - `C` toggles display of tile coordinates
+ - `I` toggles display of a sequence number on each tile in the order of rendering
+ - `X` toggles display of terrain layer
+ - `V` toggles display of zones layer
+ - `Y` toggles display of networks layer (roads, rails, powerlines, highways)
+ - `B` toggles display of buildings
+ - `N` toggles display of water
+ - `M` toggles display of terrain edge blocks
+ - `H` toggles display of terrain height map
+ - `K` toggles an overlay on top of zones
+ - `J` toggles an overlay on top of networks
+ - `T` toggles the clip boundary debug view (and sets the clipping box to 200px away from the window border)
+ - `F5` to reload the application / re-initialize
+
+![Screenshot](/screenshots/2.png)
+![Screenshot](/screenshots/3.png)
+
+## Ucapan Terima Kasih
+Menggunakan sc2kparser yang dibuat oleh Objelisks didistribusikan berdasarkan persyaratan lisensi ISC.
+<https://github.com/Objelisks/sc2kparser>
+
+Based on the work of Dale Floer
+ - SimCity 2000 specifications (*.sc2)
+ - MIF / LARGE.DAT graphics extraction
+
+Berdasarkan karya David Moews
+  - SimCity 2000 untuk format file MS-DOS; informasi parsial tidak resmi <http://djm.cc/dmoews.html>
+
+## Lisensi
+OpenSC2K - Remake Open Source SimCity 2000
+
+hak cipta (C) 2018 Nicholas Ochoa
+
+Program ini adalah perangkat lunak bebas: Anda dapat mendistribusikan dan / atau memodifikasi
+itu berdasarkan ketentuan dari Lisensi Publik Umum GNU yang diterbitkan oleh
+Free Software Foundation, baik versi 3 dari Lisensi, atau
+(sesuai pilihanmu) versi yang lebih baru.
+
+Program ini didistribusikan dengan harapan akan bermanfaat,
+tapi TANPA JAMINAN APAPUN; bahkan tanpa jaminan tersirat
+KELAYAKAN UNTUK DIPERDAGANGKAN ATAU KESESUAIAN UNTUK TUJUAN TERTENTU. Lihat
+GNU General Public License untuk lebih jelasnya.
+
+Anda seharusnya sudah menerima salinan dari GNU General Public License
+bersama dengan program ini. Jika tidak, lihat <http://www.gnu.org/licenses/>.
+
+Meliputi aset dan grafis yang diekstraksi dari CD Edisi Khusus SimCity 2000 asli. Aset ini TIDAK dilindungi oleh Lisensi Publik Umum GNU yang digunakan oleh proyek ini dan merupakan hak cipta EA / Maxis. Saya termasuk aset ini dengan harapan karena permainan telah tersedia secara gratis di berbagai titik waktu oleh EA, dan karena sudah 24 tahun menerbitkan proyek ini, tidak ada tindakan yang akan dilakukan. Singkat cerita, tolong jangan menuntut saya! Jangka panjang, saya berencana menambahkan fungsionalitas untuk mengambil aset dari file permainan asli dalam proyek ini.
