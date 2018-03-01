@@ -10,7 +10,7 @@ class debugInterface {
 
   createInterface () {
     this.gui = new dat.GUI();
-    this.gui.closed = true;
+    this.gui.closed = false;
 
     let f1 = this.gui.addFolder('Performance');
     f1.add(this.scene.sys.game.loop, 'actualFps', 'FPS').listen();
@@ -23,11 +23,17 @@ class debugInterface {
     let w1 = this.gui.addFolder('Cursor World Point');
     w1.add(this.scene.worldPoint, 'x', 'X').listen();
     w1.add(this.scene.worldPoint, 'y', 'Y').listen();
+
+    let w2 = this.gui.addFolder('Highlighted Cell');
+    w2.add(this.scene.city.map.selectedCell, 'x', 'X').listen();
+    w2.add(this.scene.city.map.selectedCell, 'y', 'Y').listen();
+    w2.open();
     
     let g2 = this.gui.addFolder('Camera');
     g2.add(this.scene.cameras.main, 'scrollX', 'X').listen();
     g2.add(this.scene.cameras.main, 'scrollY', 'Y').listen();
     g2.add(this.scene.cameras.main, 'zoom', 'Zoom', 0.1, 2).step(0.1).listen();
+    g2.open();
 
     let g3 = this.gui.addFolder('City');
     g3.add(this, 'loadCity', 'Open City');

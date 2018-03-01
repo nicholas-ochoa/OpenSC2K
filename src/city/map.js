@@ -4,11 +4,17 @@ class map {
   constructor (options) {
     this.scene = options.scene;
     this.common = this.scene.sys.game.common;
+    this.city = options.city;
 
     this.loaded = false;
     this.width = options.width;
     this.height = options.height;
     this.cells = [];
+
+    this.selectedCell = {
+      x: 0,
+      y: 0
+    }
 
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
@@ -25,6 +31,34 @@ class map {
     return this.cells[x][y];
   }
 
+  getSurroundingCells (cell) {
+    let cells = {};
+    let cellX = 0;
+    let cellY = 0;
+
+    for (let x = -1; x < 2; x++) {
+      for (let y = -1; y < 2; y++) {
+        cellX = cell.x + x;
+        cellY = cell.y + y;
+
+        if (x == -1 && y == -1) cells.southWest = this.cells[cellX][cellY];
+        if (x == -1 && y ==  0) cells.south = this.cells[cellX][cellY];
+        if (x == -1 && y ==  1) cells.southEast = this.cells[cellX][cellY];
+
+        if (x == 0 && y == -1) cells.west = this.cells[cellX][cellY];
+        if (x == 0 && y ==  0) cells.center = this.cells[cellX][cellY];
+        if (x == 0 && y ==  1) cells.east = this.cells[cellX][cellY];
+
+        if (x == 1 && y == -1) cells.northWest = this.cells[cellX][cellY];
+        if (x == 1 && y ==  0) cells.north = this.cells[cellX][cellY];
+        if (x == 1 && y ==  1) cells.northEast = this.cells[cellX][cellY];
+       
+      }
+    }
+
+    return cells;
+  }
+
   load () {
     let data = this.common.data;
 
@@ -32,6 +66,8 @@ class map {
       let d = data.cells[i];
       let mapCell = new cell({
         scene: this.scene,
+        city: this.city,
+        map: this,
         x: d.x,
         y: d.y,
         z: d.z,

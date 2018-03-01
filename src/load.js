@@ -91,6 +91,7 @@ class load extends Phaser.Scene {
         height:                 (firstTexture.height * this.sys.game.common.scale),
         imageName:              data.image,
         lines:                  data.lines,
+        logic:                  data.logic || false,
         name:                   data.name,
         hitbox:                 data.hitbox || new Phaser.Geom.Polygon([new Phaser.Geom.Point(0, 0), new Phaser.Geom.Point(32, 16), new Phaser.Geom.Point(0, 32), new Phaser.Geom.Point(-32, 16), new Phaser.Geom.Point(0, 0)]),
         outline:                data.outline || new Phaser.Geom.Polygon([new Phaser.Geom.Point(0, 0), new Phaser.Geom.Point(32, 16), new Phaser.Geom.Point(0, 32), new Phaser.Geom.Point(-32, 16), new Phaser.Geom.Point(0, 0)]),

@@ -18,7 +18,8 @@ class city {
     this.map = new map({
       scene: this.scene,
       width: this.width,
-      height: this.height
+      height: this.height,
+      city: this
     });
   }
 
@@ -75,7 +76,6 @@ class city {
       modifier = 3;
 
     this.cityRotation = util.wrap(this.rotation + modifier, 0, 3);
-    //console.log('cityRotation:', this.cityRotation, 'importedRotation:', this.rotation, 'modifier:', modifier);
   }
 }
 

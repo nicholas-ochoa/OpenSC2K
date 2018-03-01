@@ -48,7 +48,7 @@
     "jszip": "^3.1.5",
     "localforage": "^1.5.7",
     "lodash": "^4.17.5",
-    "phaser": "3.1.0",
+    "phaser": "photonstorm/phaser",
     "save-file": "^1.2.0",
     "source-map-support": "^0.5.3"
   }

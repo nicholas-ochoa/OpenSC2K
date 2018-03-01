@@ -28,6 +28,92 @@ class building extends tile {
 
     return true;
   }
+
+  create () {
+    if (!this.draw)
+      return;
+
+    if (this.tile.size > 1)
+      this.depth--;
+
+    super.create();
+
+    if (this.flipTile)
+      this.sprite.setFlipX(true);
+  }
+
+  tileLogic () {
+    if (!this.tile.logic)
+      return;
+
+    if (this.tile.logic.create)
+      this[this.tile.logic.create]();
+  }
+
+  // rotate pier sections to match orientation with the crane onshore
+  pier () {
+    let cellX = 0;
+    let cellY = 0;
+
+    if (this.tileId == 224)
+      this.cell.properties.special.pierCrane = true;
+
+    // check tiles in each direction to determine pier orientation
+    if (this.tileId == 223) {
+      // north
+      for (let x = 1; x < 5; x++) {
+        cellX = this.cell.x + x;
+        cellY = this.cell.y;
+
+        if (this.map.cells[cellX][cellY].getBuildingTileId() == 224) {
+          this.cell.properties.special.pierDirection = 'n';
+          continue;
+        }
+      }
+
+      // west
+      for (let y = 1; y < 5; y++) {
+        cellX = this.cell.x;
+        cellY = this.cell.y + y;
+
+        if (this.map.cells[cellX][cellY].getBuildingTileId() == 224) {
+          this.cell.properties.special.pierDirection = 'w';
+          continue;
+        }
+      }
+
+      // south
+      for (let x = -5; x < 0; x++) {
+        cellX = this.cell.x + x;
+        cellY = this.cell.y;
+
+        if (this.map.cells[cellX][cellY].getBuildingTileId() == 224) {
+          this.cell.properties.special.pierDirection = 's';
+          continue;
+        }
+      }
+
+      // east
+      for (let y = -5; y < 0; y++) {
+        cellX = this.cell.x;
+        cellY = this.cell.y + y;
+
+        if (this.map.cells[cellX][cellY].getBuildingTileId() == 224) {
+          this.cell.properties.special.pierDirection = 'e';
+          continue;
+        }
+      }
+    }
+
+
+    // rotate tile
+    if ((this.cell.properties.special.pierDirection == 'e' || this.cell.properties.special.pierDirection == 'w') && [1,3].includes(this.city.cityRotation))
+      this.flipTile = true;
+
+    if ((this.cell.properties.special.pierDirection == 'n' || this.cell.properties.special.pierDirection == 's') && [0,2].includes(this.city.cityRotation))
+      this.flipTile = true;
+
+  }
 }
 
 export default building;

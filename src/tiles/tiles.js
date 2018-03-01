@@ -2,11 +2,15 @@ class tile {
   constructor (options) {
     this.scene = options.scene;
     this.common = this.scene.sys.game.common;
+    this.city = options.city;
+    this.map = options.map;
 
     this.draw = false;
     this.flipTile = false;
 
     this.tileId = options.tileId;
+    this.originalTileId = options.tileId;
+
     this.cell = options.cell || undefined;
     this.depth = this.cell.depth || 0;
     this.x = options.x || this.cell.position.bottom.x || 0;
@@ -73,9 +77,15 @@ class tile {
       return this.cell.properties.rotate;
   }
 
+  tileLogic () {
+    return;
+  }
+
   create () {
     if (!this.draw)
       return;
+
+    this.tileLogic();
 
     this.cell.addTile(this);
     this.calculatePosition();

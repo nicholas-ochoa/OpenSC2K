@@ -3162,6 +3162,9 @@ var data = [
   flip: false,
   flipMode: null,
   requiresTerrainLayer: false,
+  logic: {
+    create: 'pier'
+  }
 },
 {
   id: 224,
@@ -3176,6 +3179,9 @@ var data = [
   flip: false,
   flipMode: null,
   requiresTerrainLayer: false,
+  logic: {
+    create: 'pier'
+  }
 },
 {
   id: 225,

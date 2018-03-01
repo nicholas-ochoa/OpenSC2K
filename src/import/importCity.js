@@ -1,5 +1,7 @@
 import { alreadyDecompressedSegments } from './constants';
-import segmentHandlers from './segmentHandlers'
+import segmentHandlers from './segmentHandlers';
+import Util from '../common/utils';
+import jszip from 'jszip';
 
 class importCity {
   constructor (options) {
@@ -14,7 +16,7 @@ class importCity {
     let city;
 
     city = 'CAPEQUES.SC2'; //r3
-    //city = 'BAYVIEW.SC2'; //r2, bridges
+    city = 'BAYVIEW.SC2'; //r2, bridges
     //city = 'EGYPTFAL.SC2'; //r1
     //city = 'NEWCITY.SC2'; //r0
 
@@ -29,21 +31,18 @@ class importCity {
     xhr.send();
   }
 
-  createFileOpen () {
-    let input = document.createElement('input');
-
-    input.id = 'fileOpen';
-    input.type = 'file';
-    input.onchange = (event) => {
-      this.parseFile(event.target.files[0]);
-    }
-
-    document.body.appendChild(input);
-  }
-
   openFile () {
-    if (!document.querySelector('#fileOpen'))
-      this.createFileOpen();
+    if (!document.querySelector('#fileOpen')) {
+      let input = document.createElement('input');
+
+      input.id = 'fileOpen';
+      input.type = 'file';
+      input.onchange = (event) => {
+        this.parseFile(event.target.files[0]);
+      }
+
+      document.body.appendChild(input);
+    }
 
     let event = new MouseEvent('click', {
       view: window,
@@ -54,37 +53,62 @@ class importCity {
     let fileOpenEvent = fileOpen.dispatchEvent(event);
   }
 
-  parseFile (file) {
+  async parseSave (file) {
+    let zip = new jszip();
+    let data;
+
+    await zip.loadAsync(file).then(async content => {
+      data = await content.file('data.json').async('string');
+    });
+
+    data = await JSON.parse(data);
+
+    return data;
+  }
+
+  async parseFile (file) {
     let reader = new FileReader();
 
-    reader.onload = (event) => {
+    reader.onload = async event => {
       let bytes = new Uint8Array(event.target.result);
 
-      if (!this.isSimCity2000SaveFile(bytes)) throw 'File is not a valid SimCity 2000 SC2 Save File';
+      if (this.isOpenSC2KSaveFile(bytes)) {
+        this.common.data = await this.parseSave(bytes);
+
+        console.log(this.common.data);
+
+      } else {
+        if (!this.isSimCity2000SaveFile(bytes))
+          throw 'File is not a valid SimCity 2000 SC2 Save File';
       
-      this.common.data = this.parse(bytes);
+        this.common.data = this.parse(bytes);
+      }
+
+      if (!this.common.data)
+        throw 'Could not load save';
+
       this.scene.scene.start('load');
     }
 
     reader.readAsArrayBuffer(file);
   }
 
+  isOpenSC2KSaveFile (bytes) {
+    // check to see if this is an OpenSC2K save
+    if (bytes[0] != 0x50 || bytes[1] != 0x4B || bytes[2] != 0x03 || bytes[3] != 0x04)
+      return false;
+
+    return true;
+  }
+
   isSimCity2000SaveFile (bytes) {
     // check IFF header
-    if (bytes[0] !== 0x46 ||
-       bytes[1] !== 0x4F ||
-       bytes[2] !== 0x52 ||
-       bytes[3] !== 0x4D) {
+    if (bytes[0] !== 0x46 || bytes[1] !== 0x4F || bytes[2] !== 0x52 || bytes[3] !== 0x4D)
       return false;
-    }
 
     // check sc2k header
-    if (bytes[8] !== 0x53 ||
-       bytes[9] !== 0x43 ||
-       bytes[10] !== 0x44 ||
-       bytes[11] !== 0x48) {
+    if (bytes[8] !== 0x53 || bytes[9] !== 0x43 || bytes[10] !== 0x44 || bytes[11] !== 0x48)
       return false;
-    }
 
     return true;
   }

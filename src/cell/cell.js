@@ -15,10 +15,13 @@ class cell {
   constructor (options) {
     this.scene = options.scene;
     this.common = this.scene.sys.game.common;
-    
+
     this.x = options.x || 0;
     this.y = options.y || 0;
     this.z = options.z || 0;
+    
+    this.map = options.map;
+    this.city = options.city;
 
     this.calculatePosition();
 
@@ -44,6 +47,7 @@ class cell {
     this.sprites = [];
 
     this.properties = {
+      special:             {},
       network:             false,
       conductive:          options.conductive          || false,
       powered:             options.powered             || false,
@@ -242,12 +246,14 @@ class cell {
       });
     });
 
-    hitbox.on('pointermove', function (event, pointX, pointY) {
-      return;
+    hitbox.on('pointermove', (event, pointX, pointY) => {
+      this.map.selectedCell.x = this.x;
+      this.map.selectedCell.y = this.y;
     });
 
     hitbox.on('pointerdown', function (event, pointX, pointY, camera) {
-      console.log(this.cell);
+      let cells = this.cell.map.getSurroundingCells(this.cell);
+      console.log(cells);
     });
 
     hitbox.setInteractive(tile.tile.hitbox, Phaser.Geom.Polygon.Contains);
@@ -283,6 +289,8 @@ class cell {
   setTerrain (tileId) {
     this.terrain = new terrain({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
@@ -310,6 +318,8 @@ class cell {
 
     this.water = new water({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
@@ -335,6 +345,8 @@ class cell {
   setZone (tileId) {
     this.zone = new zone({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
@@ -362,6 +374,8 @@ class cell {
 
     this.road = new road({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
@@ -389,6 +403,8 @@ class cell {
 
     this.rail = new rail({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
@@ -418,6 +434,8 @@ class cell {
 
     this.power = new power({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
@@ -446,6 +464,8 @@ class cell {
 
     this.highway = new highway({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
@@ -471,6 +491,8 @@ class cell {
   setHeightmap (tileId) {
     this.heightmap = new heightmap({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
@@ -501,6 +523,8 @@ class cell {
 
     this.subway = new subway({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
@@ -528,6 +552,8 @@ class cell {
 
     this.pipes = new pipes({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
@@ -553,6 +579,8 @@ class cell {
   setBuilding (tileId) {
     this.building = new building({
       scene: this.scene,
+      city: this.city,
+      map: this.map,
       tileId: tileId,
       cell: this
     });
