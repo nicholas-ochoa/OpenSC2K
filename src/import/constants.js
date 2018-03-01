@@ -1,0 +1,441 @@
+let alreadyDecompressedSegments = {
+  'ALTM': true,
+  'CNAM': true,
+}
+
+
+let xzonMap = {
+  0: null,
+  1: 291,
+  2: 292,
+  3: 293,
+  4: 294,
+  5: 295,
+  6: 296,
+  7: 297,
+  8: 298,
+  9: 299,
+}
+
+
+let xterMap = {
+  // land
+  0x00: 256, // 0
+  0x01: 260,
+  0x02: 257,
+  0x03: 258,
+  0x04: 259,
+  0x05: 264,
+  0x06: 261,
+  0x07: 262,
+  0x08: 263,
+  0x09: 268,
+  0x0A: 265,
+  0x0B: 266,
+  0x0C: 267,
+  0x0D: 269, // 13
+
+  // not used
+  0x0E: null,
+  0x0F: null,
+
+  // underwater
+  0x10: 270, // 16
+  0x11: 270,
+  0x12: 270,
+  0x13: 270,
+  0x14: 270,
+  0x15: 270,
+  0x16: 270,
+  0x17: 270,
+  0x18: 270,
+  0x19: 270,
+  0x1A: 270,
+  0x1B: 270,
+  0x1C: 270,
+  0x1D: 270, // 29
+
+  // not used
+  0x1E: null,
+  0x1F: null,
+
+  // shoreline
+  0x20: 270, // 32
+  0x21: 274,
+  0x22: 271,
+  0x23: 272,
+  0x24: 273,
+  0x25: 278,
+  0x26: 275,
+  0x27: 276,
+  0x28: 277,
+  0x29: 282,
+  0x2A: 279,
+  0x2B: 280,
+  0x2C: 281,
+  0x2D: 283, // 45
+
+  // not used
+  0x2E: null,
+  0x2F: null,
+
+  // surface water
+  0x30: 270, // 48
+  0x31: 274,
+  0x32: 271,
+  0x33: 272,
+  0x34: 273,
+  0x35: 278,
+  0x36: 275,
+  0x37: 276,
+  0x38: 277,
+  0x39: 282,
+  0x3A: 279,
+  0x3B: 280,
+  0x3C: 281,
+  0x3D: 283, // 61
+
+  // waterfall
+  0x3E: 284, // 62
+
+  // not used
+  0x3F: null,
+
+  // streams
+  0x40: 286, // 64
+  0x41: 285,
+  0x42: 290,
+  0x43: 287,
+  0x44: 288,
+  0x45: 289, // 69
+}
+
+
+let xundMap = {
+  0x00: null, // 0
+
+  // subway
+  0x01: 319, // 1
+  0x02: 320,
+  0x03: 321,
+  0x04: 322,
+  0x05: 323,
+  0x06: 324,
+  0x07: 325,
+  0x08: 326,
+  0x09: 327,
+  0x0A: 328,
+  0x0B: 329,
+  0x0C: 330,
+  0x0D: 331,
+  0x0E: 332,
+  0x0F: 333, // 15
+
+  // pipes
+  0x10: 334, // 16
+  0x11: 335,
+  0x12: 336,
+  0x13: 337,
+  0x14: 338,
+  0x15: 339,
+  0x16: 340,
+  0x17: 341,
+  0x18: 342,
+  0x19: 343,
+  0x1A: 344,
+  0x1B: 345,
+  0x1C: 346,
+  0x1D: 347,
+  0x1E: 348, // 30
+  
+  // subway/pipes crossover
+  0x1F: 349, // 31
+  0x20: 350, // 32
+  
+  // building pipes
+  0x21: 351, // 33
+  
+  // missle silo base
+  0x22: 352, // 34
+
+  // subway transition
+  0x23: 353, // 35
+}
+
+let xbldMap = {
+  0x00: 'building',
+  0x01: 'building',
+  0x02: 'building',
+  0x03: 'building',
+  0x04: 'building',
+  0x05: 'building',
+  0x06: 'building',
+  0x07: 'building',
+  0x08: 'building',
+  0x09: 'building',
+  0x0A: 'building',
+  0x0B: 'building',
+  0x0C: 'building',
+  0x0D: 'building',
+
+  0x0E: 'power',
+  0x0F: 'power',
+  0x10: 'power',
+  0x11: 'power',
+  0x12: 'power',
+  0x13: 'power',
+  0x14: 'power',
+  0x15: 'power',
+  0x16: 'power',
+  0x17: 'power',
+  0x18: 'power',
+  0x19: 'power',
+  0x1A: 'power',
+  0x1B: 'power',
+  0x1C: 'power',
+
+  0x1D: 'road',
+  0x1E: 'road',
+  0x1F: 'road',
+  0x20: 'road',
+  0x21: 'road',
+  0x22: 'road',
+  0x23: 'road',
+  0x24: 'road',
+  0x25: 'road',
+  0x26: 'road',
+  0x27: 'road',
+  0x28: 'road',
+  0x29: 'road',
+  0x2A: 'road',
+  0x2B: 'road',
+
+  0x2C: 'rail',
+  0x2D: 'rail',
+  0x2E: 'rail',
+  0x2F: 'rail',
+  0x30: 'rail',
+  0x31: 'rail',
+  0x32: 'rail',
+  0x33: 'rail',
+  0x34: 'rail',
+  0x35: 'rail',
+  0x36: 'rail',
+  0x37: 'rail',
+  0x38: 'rail',
+  0x39: 'rail',
+  0x3A: 'rail',
+  0x3B: 'rail',
+  0x3C: 'rail',
+  0x3D: 'rail',
+  0x3E: 'rail',
+
+  0x3F: 'road',
+  0x40: 'road',
+  0x41: 'road',
+  0x42: 'road',
+
+  0x43: ['power', 'road'],
+  0x44: ['power', 'road'],
+
+  0x45: ['road', 'rail'],
+  0x46: ['road', 'rail'],
+
+  0x47: ['power', 'rail'],
+  0x48: ['power', 'rail'],
+
+  0x49: ['highway'],
+  0x4A: ['highway'],
+
+  0x4B: ['highway', 'road'],
+  0x4C: ['highway', 'road'],
+
+  0x4D: ['highway', 'rail'],
+  0x4E: ['highway', 'rail'],
+  
+  0x4F: ['highway', 'power'],
+  0x50: ['highway', 'power'],
+  
+  0x51: 'road',
+  0x52: 'road',
+  0x53: 'road',
+  0x54: 'road',
+  0x55: 'road',
+  0x56: 'road',
+  0x57: 'road',
+  0x58: 'road',
+  0x59: 'road',
+
+  0x5A: 'rail',
+  0x5B: 'rail',
+
+  0x5C: 'power',
+  
+  0x5D: 'highway',
+  0x5E: 'highway',
+  0x5F: 'highway',
+  0x60: 'highway',
+  0x61: 'highway',
+  0x62: 'highway',
+  0x63: 'highway',
+  0x64: 'highway',
+  0x65: 'highway',
+  0x66: 'highway',
+  0x67: 'highway',
+  0x68: 'highway',
+  0x69: 'highway',
+  0x6A: 'highway',
+  0x6B: 'highway',
+
+  0x6C: 'rail',
+  0x6D: 'rail',
+  0x6E: 'rail',
+  0x6F: 'rail',
+
+  0x70: 'building',
+  0x71: 'building',
+  0x72: 'building',
+  0x73: 'building',
+  0x74: 'building',
+  0x75: 'building',
+  0x76: 'building',
+  0x77: 'building',
+  0x78: 'building',
+  0x79: 'building',
+  0x7A: 'building',
+  0x7B: 'building',
+  0x7C: 'building',
+  0x7D: 'building',
+  0x7E: 'building',
+  0x7F: 'building',
+  0x80: 'building',
+  0x81: 'building',
+  0x82: 'building',
+  0x83: 'building',
+  0x84: 'building',
+  0x85: 'building',
+  0x86: 'building',
+  0x87: 'building',
+  0x88: 'building',
+  0x89: 'building',
+  0x8A: 'building',
+  0x8B: 'building',
+  0x8C: 'building',
+  0x8D: 'building',
+  0x8E: 'building',
+  0x8F: 'building',
+  0x90: 'building',
+  0x91: 'building',
+  0x92: 'building',
+  0x93: 'building',
+  0x94: 'building',
+  0x95: 'building',
+  0x96: 'building',
+  0x97: 'building',
+  0x98: 'building',
+  0x99: 'building',
+  0x9A: 'building',
+  0x9B: 'building',
+  0x9C: 'building',
+  0x9D: 'building',
+  0x9E: 'building',
+  0x9F: 'building',
+  0xA0: 'building',
+  0xA1: 'building',
+  0xA2: 'building',
+  0xA3: 'building',
+  0xA4: 'building',
+  0xA5: 'building',
+  0xA6: 'building',
+  0xA7: 'building',
+  0xA8: 'building',
+  0xA9: 'building',
+  0xAA: 'building',
+  0xAB: 'building',
+  0xAC: 'building',
+  0xAD: 'building',
+  0xAE: 'building',
+  0xAF: 'building',
+  0xB0: 'building',
+  0xB1: 'building',
+  0xB2: 'building',
+  0xB3: 'building',
+  0xB4: 'building',
+  0xB5: 'building',
+  0xB6: 'building',
+  0xB7: 'building',
+  0xB8: 'building',
+  0xB9: 'building',
+  0xBA: 'building',
+  0xBB: 'building',
+  0xBC: 'building',
+  0xBD: 'building',
+  0xBE: 'building',
+  0xBF: 'building',
+  0xC0: 'building',
+  0xC1: 'building',
+  0xC2: 'building',
+  0xC3: 'building',
+  0xC4: 'building',
+  0xC5: 'building',
+  0xC6: 'building',
+  0xC7: 'building',
+  0xC8: 'building',
+  0xC9: 'building',
+  0xCA: 'building',
+  0xCB: 'building',
+  0xCC: 'building',
+  0xCD: 'building',
+  0xCE: 'building',
+  0xCF: 'building',
+  0xD0: 'building',
+  0xD1: 'building',
+  0xD2: 'building',
+  0xD3: 'building',
+  0xD4: 'building',
+  0xD5: 'building',
+  0xD6: 'building',
+  0xD7: 'building',
+  0xD8: 'building',
+  0xD9: 'building',
+  0xDA: 'building',
+  0xDB: 'building',
+  0xDC: 'building',
+  0xDD: 'building',
+  0xDE: 'building',
+  0xDF: 'building',
+  0xE0: 'building',
+  0xE1: 'building',
+  0xE2: 'building',
+  0xE3: 'building',
+  0xE4: 'building',
+  0xE5: 'building',
+  0xE6: 'building',
+  0xE7: 'building',
+  0xE8: 'building',
+  0xE9: 'building',
+  0xEA: 'building',
+  0xEB: 'building',
+  0xEC: 'building',
+  0xED: 'building',
+  0xEE: 'building',
+  0xEF: 'building',
+  0xF0: 'building',
+  0xF1: 'building',
+  0xF2: 'building',
+  0xF3: 'building',
+  0xF4: 'building',
+  0xF5: 'building',
+  0xF6: 'building',
+  0xF7: 'building',
+  0xF8: 'building',
+  0xF9: 'building',
+  0xFA: 'building',
+  0xFB: 'building',
+  0xFC: 'building',
+  0xFD: 'building',
+  0xFE: 'building',
+  0xFF: 'building',
+}
+
+export { alreadyDecompressedSegments, xundMap, xzonMap, xterMap }

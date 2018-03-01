@@ -1,10 +1,9 @@
+node_modules/
+dist/
 .DS_Store
 .gitignore
-node_modules
-db/database.db-shm
-db/database.db-wal
-js/.DS_Store
-images/.DS_Store
+assets/images/.DS_Store
+assets/tiles/.DS_Store
 */.DS_Store
 .DS_Store?
 ._*
@@ -13,6 +12,5 @@ images/.DS_Store
 Icon?
 ehthumbs.db
 Thumbs.db
-images/test/
-images/test/*
-assets/*
+OpenSC2K.sublime-project
+OpenSC2K.sublime-workspace

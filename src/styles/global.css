@@ -1,0 +1,17 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: black;
+  overflow: hidden;
+}
+
+#content {
+  display: block;
+  width: 100%;
+  text-align: center;
+}
+
+#fileOpen {
+  visibility: hidden;
+}
