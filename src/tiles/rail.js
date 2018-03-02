@@ -5,7 +5,7 @@ class rail extends tile {
     super(options);
 
     this.type = 'rail';
-    this.depth = this.depth - 0;
+    this.depth = 0;
   }
 
   checkTile () {

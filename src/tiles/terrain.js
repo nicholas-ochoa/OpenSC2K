@@ -5,7 +5,7 @@ class terrain extends tile {
     super(options);
 
     this.type = 'terrain';
-    this.depth = this.depth - 64;
+    this.depth = -32;
   }
 
   checkTile () {
@@ -19,6 +19,13 @@ class terrain extends tile {
       return false;
 
     return true;
+  }
+
+  create () {
+    if (this.cell.hasBuilding() && !this.cell.building.tile.requiresTerrainLayer)
+      return false;
+      
+    super.create();
   }
 }
 

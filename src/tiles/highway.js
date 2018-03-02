@@ -5,7 +5,7 @@ class highway extends tile {
     super(options);
 
     this.type = 'highway';
-    this.depth = this.cell.depth + 2;
+    this.depth = +2;
   }
 
   checkTile () {
@@ -13,9 +13,6 @@ class highway extends tile {
       return false;
 
     if (![73,74,75,76,77,78,79,80,93,94,95,96,97,98,99,100,101,102,103,104,105,106,107].includes(this.tileId))
-      return false;
-
-    if (!this.cell.properties.cornersBottomLeft && ![93,94,95,96].includes(this.tileId))
       return false;
 
     return true;
@@ -46,6 +43,9 @@ class highway extends tile {
   }
 
   create () {
+    if (!this.checkKeyTile() && ![93,94,95,96].includes(this.tileId))
+      this.draw = false;
+      
     if (!this.draw)
       return;
 

@@ -16,6 +16,20 @@ class map {
       y: 0
     }
 
+    this.sprites = {
+      building: [],
+      road: [],
+      rail: [],
+      highway: [],
+      terrain: [],
+      water: [],
+      power: [],
+      subway: [],
+      pipe: [],
+      zone: [],
+      heightmap: []
+    }
+
     for (let x = 0; x < this.width; x++) {
       for (let y = 0; y < this.height; y++) {
         if (!this.cells[x]) this.cells[x] = [];
@@ -41,17 +55,17 @@ class map {
         cellX = cell.x + x;
         cellY = cell.y + y;
 
-        if (x == -1 && y == -1) cells.southWest = this.cells[cellX][cellY];
-        if (x == -1 && y ==  0) cells.south = this.cells[cellX][cellY];
-        if (x == -1 && y ==  1) cells.southEast = this.cells[cellX][cellY];
+        if (x == -1 && y == -1) cells.sw = this.cells[cellX][cellY];
+        if (x == -1 && y ==  0) cells.s = this.cells[cellX][cellY];
+        if (x == -1 && y ==  1) cells.se = this.cells[cellX][cellY];
 
-        if (x == 0 && y == -1) cells.west = this.cells[cellX][cellY];
-        if (x == 0 && y ==  0) cells.center = this.cells[cellX][cellY];
-        if (x == 0 && y ==  1) cells.east = this.cells[cellX][cellY];
+        if (x == 0 && y == -1) cells.w = this.cells[cellX][cellY];
+        if (x == 0 && y ==  0) cells.c = this.cells[cellX][cellY];
+        if (x == 0 && y ==  1) cells.e = this.cells[cellX][cellY];
 
-        if (x == 1 && y == -1) cells.northWest = this.cells[cellX][cellY];
-        if (x == 1 && y ==  0) cells.north = this.cells[cellX][cellY];
-        if (x == 1 && y ==  1) cells.northEast = this.cells[cellX][cellY];
+        if (x == 1 && y == -1) cells.nw = this.cells[cellX][cellY];
+        if (x == 1 && y ==  0) cells.n = this.cells[cellX][cellY];
+        if (x == 1 && y ==  1) cells.ne = this.cells[cellX][cellY];
        
       }
     }
@@ -101,8 +115,8 @@ class map {
       if (d.tiles.zone) mapCell.setZone(d.tiles.zone);
       if (d.tiles.rail) mapCell.setRail(d.tiles.rail);
       if (d.tiles.highway) mapCell.setHighway(d.tiles.highway);
-      if (d.tiles.subway) mapCell.setSubway(d.tiles.subway);
-      if (d.tiles.pipes) mapCell.setPipes(d.tiles.pipes);
+      //if (d.tiles.subway) mapCell.setSubway(d.tiles.subway);
+      //if (d.tiles.pipe) mapCell.setPipe(d.tiles.pipe);
 
       if (!this.cells[mapCell.x]) this.cells[mapCell.x] = [];
       if (!this.cells[mapCell.x][mapCell.y]) this.cells[mapCell.x][mapCell.y] = [];
@@ -134,6 +148,19 @@ class map {
   shutdown () {
     this.loaded = false;
     this.map.cells = [];
+  }
+
+  toggleLayerVisibility (type) {
+    if (this.sprites[type].length == 0)
+      return;
+
+    let visible = this.sprites[type][0].visible ? false : true;
+    let active = this.sprites[type][0].active ? false : true;
+
+    this.sprites[type].forEach((sprite) => {
+      sprite.setVisible(visible);
+      sprite.setActive(active);
+    });
   }
 
 

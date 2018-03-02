@@ -8,7 +8,7 @@ class heightmap extends tile {
     super(options);
 
     this.type = 'heightmap';
-    this.depth = this.depth - 64;
+    this.depth = 64;
   }
 
   getTile () {
@@ -50,8 +50,11 @@ class heightmap extends tile {
     this.sprite.setScale(this.common.scale);
     this.sprite.setOrigin(0, 0);
     this.sprite.setDepth(this.depth);
+
+    // hidden by default
+    this.sprite.setVisible(false);
     
-    this.cell.addSprite(this.sprite);
+    this.cell.addSprite(this.sprite, this.type);
   }
 }
 

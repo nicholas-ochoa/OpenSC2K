@@ -5,13 +5,12 @@ class road extends tile {
     super(options);
 
     this.type = 'road';
-    this.depth = this.depth - 0;
+    this.depth = 4;
   }
 
   checkTile () {
     if (!super.checkTile())
       return false;
-
 
     if (![29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,63,64,65,66,67,68,69,70,81,82,83,84,85,86,87,88,89].includes(this.tileId))
       return false;

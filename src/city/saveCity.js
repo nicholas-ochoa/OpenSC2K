@@ -60,7 +60,7 @@ class saveCity {
             terrain: mapCell.getTerrainTileId(),
             heightmap: mapCell.getHeightmapTileId(),
             subway: mapCell.getSubwayTileId(),
-            pipes: mapCell.getPipesTileId(),
+            pipe: mapCell.getPipeTileId(),
           }
         };
 

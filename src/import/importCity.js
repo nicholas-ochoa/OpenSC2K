@@ -16,7 +16,7 @@ class importCity {
     let city;
 
     city = 'CAPEQUES.SC2'; //r3
-    city = 'BAYVIEW.SC2'; //r2, bridges
+    //qcity = 'BAYVIEW.SC2'; //r2, bridges
     //city = 'EGYPTFAL.SC2'; //r1
     //city = 'NEWCITY.SC2'; //r0
 
@@ -189,7 +189,7 @@ class importCity {
           power:               tile.XBLD.power || null,
           highway:             tile.XBLD.highway || null,
           subway:              tile.XUND.subway || null,
-          pipes:               tile.XUND.pipes || null,
+          pipe:                tile.XUND.pipes || null,
         },
 
         cornersTopLeft:        tile.XZON.topLeft,

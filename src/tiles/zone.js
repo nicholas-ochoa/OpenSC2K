@@ -5,6 +5,7 @@ class zone extends tile {
     super(options);
 
     this.type = 'zone';
+    this.depth = -10;
   }
 
   checkTile () {
@@ -17,6 +18,12 @@ class zone extends tile {
     return true;
   }
 
+  create () {
+    if (this.cell.hasBuilding())
+      return false;
+      
+    super.create();
+  }
 }
 
 export default zone;

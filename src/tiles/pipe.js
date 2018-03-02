@@ -5,7 +5,7 @@ class pipe extends tile {
     super(options);
 
     this.type = 'pipe';
-    this.depth = this.depth - 0;
+    this.depth = -40;
   }
 
   checkTile () {
@@ -17,7 +17,16 @@ class pipe extends tile {
           461,462,463,464,465,466,467].includes(this.tileId))
       return false;
 
+    return false;
+
     return true;
+  }
+
+  create () {
+    super.create();
+
+    if (this.sprite)
+      this.sprite.setVisible(false); // hidden by default
   }
 }
 

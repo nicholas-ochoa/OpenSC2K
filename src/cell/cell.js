@@ -7,7 +7,7 @@ import road from '../tiles/road'
 import rail from '../tiles/rail'
 import highway from '../tiles/highway'
 import power from '../tiles/power'
-import pipes from '../tiles/pipes'
+import pipe from '../tiles/pipe'
 import subway from '../tiles/subway'
 import heightmap from '../tiles/heightmap'
 
@@ -41,7 +41,7 @@ class cell {
     this.terrain    = null;
     this.heightmap  = null;
     this.subway     = null;
-    this.pipes      = null;
+    this.pipe       = null;
 
     this.tiles = [];
     this.sprites = [];
@@ -118,7 +118,7 @@ class cell {
   }
 
   create () {
-    //if (this.heightmap) this.heightmap.create();
+    if (this.heightmap) this.heightmap.create();
     if (this.water) this.water.create();
     if (this.terrain) this.terrain.create();
     if (this.road) this.road.create();
@@ -128,7 +128,7 @@ class cell {
     if (this.building) this.building.create();
     if (this.highway) this.highway.create();
     //if (this.subway) this.subway.create();
-    //if (this.pipes) this.pipes.create();
+    //if (this.pipe) this.pipe.create();
 
     this.setInteraction();
 
@@ -161,8 +161,9 @@ class cell {
     this.hitbox.setActive(true);
   }
 
-  addSprite (sprite) {
+  addSprite (sprite, type) {
     this.sprites.push(sprite);
+    this.map.sprites[type].push(sprite);
   }
 
   getSprites () {
@@ -253,7 +254,7 @@ class cell {
 
     hitbox.on('pointerdown', function (event, pointX, pointY, camera) {
       let cells = this.cell.map.getSurroundingCells(this.cell);
-      console.log(cells);
+      console.log(cells.c);
     });
 
     hitbox.setInteractive(tile.tile.hitbox, Phaser.Geom.Polygon.Contains);
@@ -277,7 +278,6 @@ class cell {
     return this.terrain.tileId;
   }
 
-
   getTerrain () {
     if (!this.terrain)
       return;
@@ -285,6 +285,12 @@ class cell {
     return this.terrain;
   }
 
+  hasTerrain () {
+    if (this.terrain && this.terrain.draw)
+      return true;
+
+    return false;
+  }
 
   setTerrain (tileId) {
     this.terrain = new terrain({
@@ -304,7 +310,6 @@ class cell {
     return this.water.tileId;
   }
 
-
   getWater () {
     if (!this.water)
       return;
@@ -312,6 +317,12 @@ class cell {
     return this.water;
   }
 
+  hasWater () {
+    if (this.water && this.water.draw)
+      return true;
+
+    return false;
+  }
 
   setWater (tileId) {
     this.properties.waterCovered = true;
@@ -333,7 +344,6 @@ class cell {
     return this.zone.tileId;
   }
 
-
   getZone () {
     if (!this.zone)
       return;
@@ -341,6 +351,12 @@ class cell {
     return this.zone;
   }
 
+  hasZone () {
+    if (this.zone && this.zone.draw)
+      return true;
+
+    return false;
+  }
 
   setZone (tileId) {
     this.zone = new zone({
@@ -360,7 +376,6 @@ class cell {
     return this.road.tileId;
   }
 
-
   getRoad () {
     if (!this.road)
       return;
@@ -368,6 +383,12 @@ class cell {
     return this.road;
   }
 
+  hasRoad () {
+    if (this.road && this.road.draw)
+      return true;
+
+    return false;
+  }
 
   setRoad (tileId) {
     this.properties.network = true;
@@ -389,7 +410,6 @@ class cell {
     return this.rail.tileId;
   }
 
-
   getRail () {
     if (!this.rail)
       return;
@@ -397,6 +417,12 @@ class cell {
     return this.rail;
   }
 
+  hasRail () {
+    if (this.rail && this.rail.draw)
+      return true;
+
+    return false;
+  }
 
   setRail (tileId) {
     this.properties.network = true;
@@ -408,7 +434,6 @@ class cell {
       tileId: tileId,
       cell: this
     });
-    
   }
 
 
@@ -419,7 +444,6 @@ class cell {
     return this.power.tileId;
   }
 
-
   getPower () {
     if (!this.power)
       return;
@@ -427,6 +451,12 @@ class cell {
     return this.power;
   }
 
+  hasPower () {
+    if (this.power && this.power.draw)
+      return true;
+
+    return false;
+  }
 
   setPower (tileId) {
     // mark cell as power conductive
@@ -450,7 +480,6 @@ class cell {
     return this.highway.tileId;
   }
 
-
   getHighway () {
     if (!this.highway)
       return;
@@ -458,6 +487,12 @@ class cell {
     return this.highway;
   }
 
+  hasHighway () {
+    if (this.highway && this.highway.draw)
+      return true;
+
+    return false;
+  }
 
   setHighway (tileId) {
     this.properties.network = true;
@@ -479,7 +514,6 @@ class cell {
     return this.heightmap.tileId;
   }
 
-
   getHeightmap () {
     if (!this.heightmap)
       return;
@@ -487,6 +521,12 @@ class cell {
     return this.heightmap;
   }
 
+  hasHeightmap () {
+    if (this.heightmap && this.heightmap.draw)
+      return true;
+
+    return false;
+  }
 
   setHeightmap (tileId) {
     this.heightmap = new heightmap({
@@ -506,7 +546,6 @@ class cell {
     return this.subway.tileId;
   }
 
-
   getSubway () {
     if (!this.subway)
       return;
@@ -514,6 +553,12 @@ class cell {
     return this.subway;
   }
 
+  hasSubway () {
+    if (this.subway && this.subway.draw)
+      return true;
+
+    return false;
+  }
 
   setSubway (tileId) {
     this.properties.subway = true;
@@ -531,26 +576,31 @@ class cell {
   }
 
 
-  getPipesTileId () {
-    if (!this.pipes)
+  getPipeTileId () {
+    if (!this.pipe)
       return 0;
 
-    return this.pipes.tileId;
+    return this.pipe.tileId;
   }
 
-
-  getPipes () {
-    if (!this.pipes)
+  getPipe () {
+    if (!this.pipe)
       return;
 
-    return this.pipes;
+    return this.pipe;
   }
 
+  hasPipe () {
+    if (this.pipe && this.pipe.draw)
+      return true;
 
-  setPipes (tileId) {
+    return false;
+  }
+
+  setPipe (tileId) {
     this.properties.piped = true;
 
-    this.pipes = new pipes({
+    this.pipe = new pipe({
       scene: this.scene,
       city: this.city,
       map: this.map,
@@ -567,7 +617,6 @@ class cell {
     return this.building.tileId;
   }
 
-
   getBuilding () {
     if (!this.building)
       return;
@@ -575,6 +624,12 @@ class cell {
     return this.building;
   }
 
+  hasBuilding () {
+    if (this.building)
+      return true;
+
+    return false;
+  }
 
   setBuilding (tileId) {
     this.building = new building({

@@ -12,7 +12,7 @@ class tile {
     this.originalTileId = options.tileId;
 
     this.cell = options.cell || undefined;
-    this.depth = this.cell.depth || 0;
+    this.depth = 0;
     this.x = options.x || this.cell.position.bottom.x || 0;
     this.y = options.y || this.cell.position.bottom.y || 0;
     this.type = options.type || 'terrain';
@@ -44,6 +44,25 @@ class tile {
     return true;
   }
 
+  checkKeyTile () {
+    if (this.tile.size == 1)
+      return true;
+    
+    if (this.city.keyTile == 'bottomRight' && !this.cell.properties.cornersBottomRight)
+      return false;
+
+    if (this.city.keyTile == 'bottomLeft' && !this.cell.properties.cornersBottomLeft)
+      return false;
+
+    if (this.city.keyTile == 'topRight' && !this.cell.properties.cornersTopRight)
+      return false;
+
+    if (this.city.keyTile == 'topLeft' && !this.cell.properties.cornersTopLeft)
+      return false;
+
+    return true;
+  }
+
   calculatePosition () {
     if ((this.cell.getProperty('waterLevel') == 'submerged' || this.cell.getProperty('waterLevel') == 'shore') && this.cell.z < this.scene.city.waterLevel)
       this.offset = ((this.scene.city.waterLevel - this.cell.z) * this.common.layerOffset);
@@ -52,8 +71,6 @@ class tile {
 
     this.x = this.cell.position.bottom.x - (this.tile.width / 2) << 0;
     this.y = this.cell.position.bottom.y - (this.tile.height) - this.offset << 0;
-
-    this.depth = this.cell.depth || 0;
   }
 
   setVisible (bool) {
@@ -98,9 +115,9 @@ class tile {
     this.sprite.cell = this.cell;
     this.sprite.setScale(this.common.scale);
     this.sprite.setOrigin(0, 0);
-    this.sprite.setDepth(this.depth);
+    this.sprite.setDepth(this.cell.depth + this.depth);
     
-    this.cell.addSprite(this.sprite);
+    this.cell.addSprite(this.sprite, this.type);
   }
 
   drawOutline (gfx, type = 'outline') {

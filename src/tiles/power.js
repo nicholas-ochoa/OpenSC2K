@@ -5,7 +5,7 @@ class power extends tile {
     super(options);
 
     this.type = 'power';
-    this.depth = this.depth - 0;
+    this.depth = 5;
   }
 
   checkTile () {

@@ -5,7 +5,7 @@ class water extends tile {
     super(options);
 
     this.type = 'water';
-    this.depth = this.depth - 63;
+    this.depth = -31;
   }
 
   checkTile () {
@@ -18,9 +18,6 @@ class water extends tile {
     if (this.cell.getProperty('waterLevel') == 'dry')
       return false;
 
-    if (this.cell.building && (this.cell.building.tileId == 198 || this.cell.building.tileId == 199))
-      return false;
-
     return true;
   }
 
@@ -28,8 +25,8 @@ class water extends tile {
     if (!this.draw)
       return;
 
-    if (this.cell.building && (this.cell.building.tileId == 198 || this.cell.building.tileId == 199))
-      return;
+    if (this.cell.hasBuilding())
+      return false;
 
     if (this.cell.z < this.scene.city.waterLevel)
       this.offset = (0 - (this.scene.city.waterLevel - this.cell.z) * this.common.layerOffset);

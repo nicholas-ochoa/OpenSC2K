@@ -40,9 +40,9 @@ class worldCamera {
     });
 
     this.camera.backgroundColor = this.scene.backgroundColor;
-    this.camera.scrollX = 1980;
+    this.camera.scrollX = 3383;
     this.camera.scrollY = -358;
-    this.camera.zoom = 1.2;
+    this.camera.zoom = 0.5;
   }
 
   update (delta) {

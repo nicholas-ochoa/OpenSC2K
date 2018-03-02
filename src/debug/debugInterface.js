@@ -5,12 +5,15 @@ class debugInterface {
     this.scene = options.scene;
     this.common = this.scene.sys.game.common;
 
+    this.toggleLayer = this.toggleLayerInit();
+
     this.createInterface();
+
   }
 
   createInterface () {
     this.gui = new dat.GUI();
-    this.gui.closed = false;
+    this.gui.closed = true;
 
     let f1 = this.gui.addFolder('Performance');
     f1.add(this.scene.sys.game.loop, 'actualFps', 'FPS').listen();
@@ -27,13 +30,11 @@ class debugInterface {
     let w2 = this.gui.addFolder('Highlighted Cell');
     w2.add(this.scene.city.map.selectedCell, 'x', 'X').listen();
     w2.add(this.scene.city.map.selectedCell, 'y', 'Y').listen();
-    w2.open();
     
     let g2 = this.gui.addFolder('Camera');
     g2.add(this.scene.cameras.main, 'scrollX', 'X').listen();
     g2.add(this.scene.cameras.main, 'scrollY', 'Y').listen();
     g2.add(this.scene.cameras.main, 'zoom', 'Zoom', 0.1, 2).step(0.1).listen();
-    g2.open();
 
     let g3 = this.gui.addFolder('City');
     g3.add(this, 'loadCity', 'Open City');
@@ -43,9 +44,56 @@ class debugInterface {
     g4.add(this, 'pauseResumeWorld', 'Pause / Resume');
     g4.add(this, 'sleepWakeWorld', 'Sleep / Wake');
 
-    //let g5 = this.gui.addFolder('UI');
-    //g5.add(this, 'pauseResumeUI', 'Pause / Resume');
-    //g5.add(this, 'sleepWakeUI', 'Sleep / Wake');
+    let l1 = this.gui.addFolder('Layer Visibility');
+    l1.add(this.toggleLayer, 'terrain', 'Terrain');
+    l1.add(this.toggleLayer, 'heightmap', 'Height Map');
+    l1.add(this.toggleLayer, 'water', 'Water');
+    l1.add(this.toggleLayer, 'road', 'Road');
+    l1.add(this.toggleLayer, 'power', 'Power');
+    l1.add(this.toggleLayer, 'building', 'Building');
+    l1.add(this.toggleLayer, 'zone', 'Zone');
+    l1.add(this.toggleLayer, 'rail', 'Rail');
+    l1.add(this.toggleLayer, 'highway', 'Highway');
+    //l1.add(this.toggleLayer, 'subway', 'Subway');
+    //l1.add(this.toggleLayer, 'pipes', 'Pipes');
+  }
+
+  toggleLayerInit () {
+    return {
+      terrain: () => {
+        this.common.world.city.map.toggleLayerVisibility('terrain');
+      },
+      heightmap: () => {
+        this.common.world.city.map.toggleLayerVisibility('heightmap');
+      },
+      water: () => {
+        this.common.world.city.map.toggleLayerVisibility('water');
+      },
+      road: () => {
+        this.common.world.city.map.toggleLayerVisibility('road');
+      },
+      power: () => {
+        this.common.world.city.map.toggleLayerVisibility('power');
+      },
+      building: () => {
+        this.common.world.city.map.toggleLayerVisibility('building');
+      },
+      zone: () => {
+        this.common.world.city.map.toggleLayerVisibility('zone');
+      },
+      rail: () => {
+        this.common.world.city.map.toggleLayerVisibility('rail');
+      },
+      highway: () => {
+        this.common.world.city.map.toggleLayerVisibility('highway');
+      },
+      subway: () => {
+        this.common.world.city.map.toggleLayerVisibility('subway');
+      },
+      pipes: () => {
+        this.common.world.city.map.toggleLayerVisibility('pipes');
+      },
+    }
   }
 
 

@@ -5,7 +5,7 @@ class subway extends tile {
     super(options);
 
     this.type = 'subway';
-    this.depth = this.depth - 0;
+    this.depth = -50;
   }
 
   checkTile () {
@@ -17,6 +17,13 @@ class subway extends tile {
       return false;
 
     return true;
+  }
+
+  create () {
+    super.create();
+
+    if (this.sprite)
+      this.sprite.setVisible(false); // hidden by default
   }
 }
 

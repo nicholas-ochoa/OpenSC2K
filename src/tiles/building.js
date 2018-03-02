@@ -5,7 +5,7 @@ class building extends tile {
     super(options);
 
     this.type = 'building';
-    this.depth = this.depth - 0;
+    this.depth = +1;
   }
 
   checkTile () {
@@ -23,18 +23,19 @@ class building extends tile {
           248,249,250,251,252,253,254,255].includes(this.tileId))
       return false;
 
-    if (!this.cell.properties.cornersBottomLeft)
-      return false;
-
     return true;
   }
 
   create () {
+    if (!this.checkKeyTile())
+      this.draw = false;
+
     if (!this.draw)
       return;
 
-    if (this.tile.size > 1)
-      this.depth--;
+    if (this.tile.size == 2) this.depth--;
+    if (this.tile.size == 3) this.depth -= 65;
+    if (this.tile.size == 4) this.depth -= 129;
 
     super.create();
 
