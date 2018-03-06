@@ -2,7 +2,6 @@ import Phaser from 'phaser';
 import tileData from './tiles/data';
 import utils from './common/utils';
 import common from './common/common';
-import localforage from 'localforage';
 import saveCity from './city/saveCity';
 import importCity from './import/importCity';
 
@@ -20,10 +19,6 @@ class load extends Phaser.Scene {
 
     this.common = this.sys.game.common;
 
-    //this.sys.game.storage = localforage.createInstance({
-    //  name: "OpenSC2K"
-    //});
-
     this.load.atlas(this.sys.game.common.tilemap, 'assets/tiles/tilemap_0.png', 'assets/tiles/tilemap_0.json');
   }
 
@@ -37,6 +32,7 @@ class load extends Phaser.Scene {
     this.loadTiles();
     this.initialized = true;
     this.common.load = this;
+
     this.scene.switch('title');
   }
 

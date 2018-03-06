@@ -21,6 +21,7 @@ class terrain extends tile {
     return true;
   }
 
+
   create () {
     if (this.cell.hasBuilding() && !this.cell.building.tile.requiresTerrainLayer)
       return false;

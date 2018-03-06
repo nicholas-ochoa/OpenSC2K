@@ -21,12 +21,6 @@ class highway extends tile {
   getTile () {
     super.getTile();
 
-    this.tileId = this.common.tiles[this.tileId].rotate[this.scene.city.cityRotation];
-    if (!this.common.tiles[this.tileId])
-      return false;
-
-    this.tile = this.common.tiles[this.tileId];
-
     if (this.flip())
       this.flipTile = true;
 

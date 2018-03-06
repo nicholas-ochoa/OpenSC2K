@@ -55,17 +55,17 @@ class map {
         cellX = cell.x + x;
         cellY = cell.y + y;
 
-        if (x == -1 && y == -1) cells.sw = this.cells[cellX][cellY];
-        if (x == -1 && y ==  0) cells.s = this.cells[cellX][cellY];
-        if (x == -1 && y ==  1) cells.se = this.cells[cellX][cellY];
+        if (x == -1 && y == -1 && this.cells[cellX] && this.cells[cellX][cellY]) cells.sw = this.cells[cellX][cellY];
+        if (x == -1 && y ==  0 && this.cells[cellX] && this.cells[cellX][cellY]) cells.s = this.cells[cellX][cellY];
+        if (x == -1 && y ==  1 && this.cells[cellX] && this.cells[cellX][cellY]) cells.se = this.cells[cellX][cellY];
 
-        if (x == 0 && y == -1) cells.w = this.cells[cellX][cellY];
-        if (x == 0 && y ==  0) cells.c = this.cells[cellX][cellY];
-        if (x == 0 && y ==  1) cells.e = this.cells[cellX][cellY];
+        if (x == 0 && y == -1 && this.cells[cellX] && this.cells[cellX][cellY]) cells.w = this.cells[cellX][cellY];
+        if (x == 0 && y ==  0 && this.cells[cellX] && this.cells[cellX][cellY]) cells.c = this.cells[cellX][cellY];
+        if (x == 0 && y ==  1 && this.cells[cellX] && this.cells[cellX][cellY]) cells.e = this.cells[cellX][cellY];
 
-        if (x == 1 && y == -1) cells.nw = this.cells[cellX][cellY];
-        if (x == 1 && y ==  0) cells.n = this.cells[cellX][cellY];
-        if (x == 1 && y ==  1) cells.ne = this.cells[cellX][cellY];
+        if (x == 1 && y == -1 && this.cells[cellX] && this.cells[cellX][cellY]) cells.nw = this.cells[cellX][cellY];
+        if (x == 1 && y ==  0 && this.cells[cellX] && this.cells[cellX][cellY]) cells.n = this.cells[cellX][cellY];
+        if (x == 1 && y ==  1 && this.cells[cellX] && this.cells[cellX][cellY]) cells.ne = this.cells[cellX][cellY];
        
       }
     }
@@ -106,8 +106,8 @@ class map {
         importedData: d
       });
 
-      if (d.tiles.terrain) mapCell.setTerrain(d.tiles.terrain);
       if (d.tiles.terrain) mapCell.setHeightmap(d.tiles.terrain);
+      if (d.tiles.terrain) mapCell.setTerrain(d.tiles.terrain);
       if (d.tiles.water) mapCell.setWater(d.tiles.water);
       if (d.tiles.road) mapCell.setRoad(d.tiles.road);
       if (d.tiles.power) mapCell.setPower(d.tiles.power);
@@ -155,11 +155,11 @@ class map {
       return;
 
     let visible = this.sprites[type][0].visible ? false : true;
-    let active = this.sprites[type][0].active ? false : true;
+    //let active = this.sprites[type][0].active ? false : true;
 
     this.sprites[type].forEach((sprite) => {
       sprite.setVisible(visible);
-      sprite.setActive(active);
+      //sprite.setActive(active);
     });
   }
 
@@ -179,45 +179,18 @@ class map {
     }
   }
 
-
   calculateCellDepthSorting () {
-    var depth = 0;
-    var c;
-    var x;
-    var y;
+    let depth = 64;
 
-    // top half of map (includes center row)
-    x = this.width;
-    y = 0;
-
-    for (c = 0; c <= this.width; c++) {
-      for (x = (x - c); x < this.width; x++) {
+    for (let x = 0; x < this.width; x++) {
+      for (let y = 0; y < this.height; y++) {
         let mapCell = this.getCell(x, y);
-        mapCell.setDepth(depth);
+        mapCell.setDepth((x + y) * depth);
         mapCell.updatePosition();
-        y += 1;
       }
-
-      depth += 64;
-      y = 0;
-    }
-
-    // bottom half of map (does not include center row)
-    x = 0;
-    y = this.height;
-
-    for (c = (this.height - 1); c >= 0; c--) {
-      for (y = (y - c); y < this.height; y++) {
-        let mapCell = this.getCell(x, y);
-        mapCell.setDepth(depth);
-        mapCell.updatePosition();
-        x += 1;
-      }
-
-      depth += 64;
-      x = 0;
     }
   }
+
 }
 
 export default map;

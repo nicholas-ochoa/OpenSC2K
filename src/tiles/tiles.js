@@ -32,6 +32,7 @@ class tile {
     if (!this.common.tiles[this.tileId])
       return false;
 
+    this.tileId = this.common.tiles[this.tileId].rotate[this.scene.city.cityRotation];
     this.tile = this.common.tiles[this.tileId];
 
     return true;

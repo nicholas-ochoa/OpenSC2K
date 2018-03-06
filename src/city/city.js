@@ -29,7 +29,6 @@ class city {
       return;
     }
 
-
     this.name = this.common.data.info.name;
     this.rotation = this.common.data.info.rotation;
     this.waterLevel = this.common.data.info.waterLevel;
@@ -61,29 +60,19 @@ class city {
   }
 
   rotationModifier () {
-    let modifier = 0;
-
-    if (this.rotation == 3) {
-      modifier = 0;
-      this.keyTile = 'bottomLeft';
-    }
-
-    if (this.rotation == 2) {
-      modifier = 1;
+    if (this.rotation == 3)
       this.keyTile = 'bottomRight';
-    }
 
-    if (this.rotation == 1) {
-      modifier = 2;
+    if (this.rotation == 2)
       this.keyTile = 'topRight';
-    }
 
-    if (this.rotation == 0) {
-      modifier = 3;
+    if (this.rotation == 1)
       this.keyTile = 'topLeft';
-    }
 
-    this.cityRotation = util.wrap(this.rotation + modifier, 0, 3);
+    if (this.rotation == 0)
+      this.keyTile = 'bottomLeft';
+    
+    this.cityRotation = 0;
   }
 }
 

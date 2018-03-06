@@ -16,7 +16,7 @@ class importCity {
     let city;
 
     city = 'CAPEQUES.SC2'; //r3
-    //qcity = 'BAYVIEW.SC2'; //r2, bridges
+    //city = 'BAYVIEW.SC2'; //r2, bridges
     //city = 'EGYPTFAL.SC2'; //r1
     //city = 'NEWCITY.SC2'; //r0
 

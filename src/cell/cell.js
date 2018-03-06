@@ -25,7 +25,7 @@ class cell {
 
     this.calculatePosition();
 
-    this.depth = options.depth || 0;
+    this.depth = options.depth || ((options.x + options.y) * 64);
 
     this.initialized = false;
     this.interaction = null;
@@ -89,11 +89,16 @@ class cell {
   }
 
   calculatePosition () {
-    let offsetX = this.x * (this.common.tileWidth / 2) + (this.y * (this.common.tileWidth / 2));
-    let offsetY = this.y * (this.common.tileHeight / 2) - (this.x * (this.common.tileHeight / 2));
+    let offsetX = (this.x - this.y) * (this.common.tileWidth / 2);
+    let offsetY = (this.y + this.x) * (this.common.tileHeight / 2);
     let offsetZ = (this.z > 1 ? (this.common.layerOffset * this.z) + this.common.layerOffset : 0);
 
     this.position = {
+      offsets: {
+        x: offsetX,
+        y: offsetY,
+        z: offsetZ,
+      },
       top: {
         x: offsetX + (this.common.tileWidth / 2),
         y: offsetY - offsetZ
@@ -116,6 +121,7 @@ class cell {
       }
     }
   }
+
 
   create () {
     if (this.heightmap) this.heightmap.create();
@@ -236,6 +242,7 @@ class cell {
 
       sprites.forEach((sprite) => {
         sprite.setTint(0xaa0000);
+        //sprite.setVisible(false);
       });
     });
 
@@ -243,7 +250,9 @@ class cell {
       sprites = this.cell.getSprites();
 
       sprites.forEach((sprite) => {
+
         sprite.clearTint();
+        //sprite.setVisible(true);
       });
     });
 
@@ -253,8 +262,16 @@ class cell {
     });
 
     hitbox.on('pointerdown', function (event, pointX, pointY, camera) {
+      // sprites = this.cell.getSprites();
+      // console.log(sprites);
+
       let cells = this.cell.map.getSurroundingCells(this.cell);
       console.log(cells.c);
+
+      //console.log('cornersBottomRight: '+cells.c.properties.cornersBottomRight);
+      //console.log('cornersBottomLeft: '+cells.c.properties.cornersBottomLeft);
+      //console.log('cornersTopRight: '+cells.c.properties.cornersTopRight);
+      //console.log('cornersTopLeft: '+cells.c.properties.cornersTopLeft);
     });
 
     hitbox.setInteractive(tile.tile.hitbox, Phaser.Geom.Polygon.Contains);
@@ -267,6 +284,7 @@ class cell {
     if (debugHitbox)
       tile.drawOutline(hitbox, 'hitbox');
 
+    //this.addSprite(hitbox, 'hitbox');
     this.hitbox = hitbox;
   }
 

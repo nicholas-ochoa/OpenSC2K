@@ -13,7 +13,25 @@
   "scripts": {
     "start": "webpack",
     "dev": "webpack",
-    "test": "eslint ./src/**.js"
+    "test": "eslint ./src/**.js",
+    "import-assets": "babel-node src/import/index.js --presets env",
+    "import-assets-dev": "babel-node --inspect src/import/index.js --presets env"
+  },
+  "dependencies": {
+    "babel-cli": "^6.26.0",
+    "babel-plugin-static-fs": "^1.1.0",
+    "binary-parser": "^1.3.2",
+    "bmp-js": "^0.0.3",
+    "crypto-js": "^3.1.9-1",
+    "dat.gui": "rage8885/dat.gui",
+    "file-saver": "^1.3.3",
+    "jszip": "^3.1.5",
+    "lodash": "^4.17.5",
+    "mathjs": "^4.0.0",
+    "phaser": "photonstorm/phaser",
+    "pngjs-image": "rage8885/pngjs-image",
+    "save-file": "^1.2.0",
+    "window": "^4.2.5"
   },
   "devDependencies": {
     "babel-core": "^6.25.0",
@@ -36,20 +54,9 @@
     "expose-loader": "^0.7.3",
     "html-webpack-plugin": "^2.30.1",
     "raw-loader": "^0.5.1",
+    "source-map-support": "^0.5.3",
     "style-loader": "^0.20.2",
     "webpack": "3.11.0",
     "webpack-build-notifier": "^0.1.22"
-  },
-  "dependencies": {
-    "bmp-js": "^0.0.3",
-    "crypto-js": "^3.1.9-1",
-    "dat.gui": "rage8885/dat.gui",
-    "file-saver": "^1.3.3",
-    "jszip": "^3.1.5",
-    "localforage": "^1.5.7",
-    "lodash": "^4.17.5",
-    "phaser": "photonstorm/phaser",
-    "save-file": "^1.2.0",
-    "source-map-support": "^0.5.3"
   }
 }
