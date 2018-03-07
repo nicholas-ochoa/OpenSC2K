@@ -10,7 +10,7 @@ class debugInterface {
 
   createInterface () {
     this.gui = new dat.GUI();
-    this.gui.closed = false;
+    this.gui.closed = true;
 
     let f1 = this.gui.addFolder('Performance');
     f1.add(this.scene.sys.game.loop, 'actualFps', 'FPS').listen();
@@ -53,7 +53,6 @@ class debugInterface {
     l1.add(this.toggleLayer, 'highway', 'Highway');
     //l1.add(this.toggleLayer, 'subway', 'Subway');
     //l1.add(this.toggleLayer, 'pipes', 'Pipes');
-    l1.open();
   }
 
   toggleLayerInit () {

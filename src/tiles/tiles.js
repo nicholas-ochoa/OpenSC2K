@@ -32,7 +32,7 @@ class tile {
     if (!this.common.tiles[this.tileId])
       return false;
 
-    this.tileId = this.common.tiles[this.tileId].rotate[this.scene.city.cityRotation];
+    this.tileId = this.common.tiles[this.tileId].rotate[this.scene.city.cameraRotation];
     this.tile = this.common.tiles[this.tileId];
 
     return true;
@@ -89,7 +89,7 @@ class tile {
     if (!this.tile.flip)
       return false;
     
-    if (this.scene.city.cityRotation == 1 || this.scene.city.cityRotation == 3)
+    if (this.scene.city.cameraRotation == 1 || this.scene.city.cameraRotation == 3)
       return this.cell.properties.rotate ? false : true;
     else
       return this.cell.properties.rotate;

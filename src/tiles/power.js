@@ -21,22 +21,11 @@ class power extends tile {
   getTile () {
     super.getTile();
 
-    this.tileId = this.common.tiles[this.tileId].rotate[this.scene.city.cityRotation];
-
-    if (!this.common.tiles[this.tileId])
-      return false;
-
-    this.tile = this.common.tiles[this.tileId];
-
     if (this.flip())
       this.flipTile = true;
 
     if (this.flipTile && this.tile.flipMode == 'alternateTile') {
-      this.tileId = this.common.tiles[this.tileId].rotate[this.scene.city.cityRotation];
-
-      if (!this.common.tiles[this.tileId])
-          return false;
-
+      this.tileId = this.common.tiles[this.tileId].rotate[this.scene.city.cameraRotation];
       this.tile = this.common.tiles[this.tileId];
     }
 
@@ -44,7 +33,7 @@ class power extends tile {
   }
 
   create () {
-    if (!this.draw)
+    if (!this.draw || !this.checkTile())
       return;
 
     if (this.cell.z < this.scene.city.waterLevel)

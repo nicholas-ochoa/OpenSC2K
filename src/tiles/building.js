@@ -5,7 +5,7 @@ class building extends tile {
     super(options);
 
     this.type = 'building';
-    this.depth = +1;
+    this.depth = 1;
   }
 
   checkTile () {
@@ -26,11 +26,18 @@ class building extends tile {
     return true;
   }
 
-  create () {
-    if (!this.checkKeyTile())
-      this.draw = false;
 
-    if (!this.draw)
+  getTile () {
+    super.getTile();
+
+    if (this.tile.flip && !this.flip())
+      this.flipTile = true;
+
+    return true;
+  }
+
+  create () {
+    if (!this.checkKeyTile() || !this.draw)
       return;
 
     if (this.tile.size == 2) this.depth--;
@@ -55,6 +62,8 @@ class building extends tile {
   pier () {
     let cellX = 0;
     let cellY = 0;
+
+    this.flipTile = false;
 
     if (this.tileId == 224)
       this.cell.properties.special.pierCrane = true;
@@ -108,10 +117,10 @@ class building extends tile {
 
 
     // rotate tile
-    if ((this.cell.properties.special.pierDirection == 'e' || this.cell.properties.special.pierDirection == 'w') && [1,3].includes(this.city.cityRotation))
+    if ((this.cell.properties.special.pierDirection == 'e' || this.cell.properties.special.pierDirection == 'w') && [1,3].includes(this.city.cameraRotation))
       this.flipTile = true;
 
-    if ((this.cell.properties.special.pierDirection == 'n' || this.cell.properties.special.pierDirection == 's') && [0,2].includes(this.city.cityRotation))
+    if ((this.cell.properties.special.pierDirection == 'n' || this.cell.properties.special.pierDirection == 's') && [0,2].includes(this.city.cameraRotation))
       this.flipTile = true;
 
   }

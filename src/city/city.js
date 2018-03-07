@@ -72,7 +72,7 @@ class city {
     if (this.rotation == 0)
       this.keyTile = 'bottomLeft';
     
-    this.cityRotation = 0;
+    this.cameraRotation = 0;
   }
 }
 

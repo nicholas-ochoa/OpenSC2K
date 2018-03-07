@@ -89,8 +89,8 @@ class load extends Phaser.Scene {
         lines:                  data.lines,
         logic:                  data.logic || false,
         name:                   data.name,
-        hitbox:                 data.hitbox || new Phaser.Geom.Polygon([new Phaser.Geom.Point(0, 0), new Phaser.Geom.Point(32, 16), new Phaser.Geom.Point(0, 32), new Phaser.Geom.Point(-32, 16), new Phaser.Geom.Point(0, 0)]),
-        outline:                data.outline || new Phaser.Geom.Polygon([new Phaser.Geom.Point(0, 0), new Phaser.Geom.Point(32, 16), new Phaser.Geom.Point(0, 32), new Phaser.Geom.Point(-32, 16), new Phaser.Geom.Point(0, 0)]),
+        hitbox:                 this.shape(data.hitbox),
+        outline:                this.shape(data.outline),
         requiresTerrainLayer:   data.requiresTerrainLayer,
         rotate:                 data.rotate,
         size:                   data.size,
@@ -116,6 +116,19 @@ class load extends Phaser.Scene {
 
       this.sys.game.common.tiles[data.id] = tile;
     }
+  }
+
+  shape (shape) {
+    if (!shape)
+      return new Phaser.Geom.Polygon([new Phaser.Geom.Point(0, 0), new Phaser.Geom.Point(32, 16), new Phaser.Geom.Point(0, 32), new Phaser.Geom.Point(-32, 16), new Phaser.Geom.Point(0, 0)]);
+
+    let polygon = [];
+
+    shape.forEach(vector => {
+      polygon.push(new Phaser.Geom.Point(vector.x, vector.y));
+    });
+
+    return new Phaser.Geom.Polygon(polygon);
   }
 }
 

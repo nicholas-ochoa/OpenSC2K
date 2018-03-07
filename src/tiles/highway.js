@@ -25,11 +25,7 @@ class highway extends tile {
       this.flipTile = true;
 
     if (this.flipTile && this.tile.flipMode == 'alternateTile') {
-      this.tileId = this.common.tiles[this.tileId].rotate[this.scene.city.cityRotation];
-
-      if (!this.common.tiles[this.tileId])
-          return false;
-
+      this.tileId = this.common.tiles[this.tileId].rotate[this.scene.city.cameraRotation];
       this.tile = this.common.tiles[this.tileId];
     }
 
@@ -37,20 +33,15 @@ class highway extends tile {
   }
 
   create () {
-    if (!this.checkKeyTile() && ![93,94,95,96].includes(this.tileId))
-      this.draw = false;
-      
-    if (!this.draw)
+    if ((!this.checkKeyTile() && ![93,94,95,96].includes(this.tileId)) || !this.draw || !this.checkTile())
       return;
 
+    if (this.tile.size == 2) this.depth--;
+    
     if (this.cell.z < this.scene.city.waterLevel)
       this.offset = (0 - (this.scene.city.waterLevel - this.cell.z) * this.common.layerOffset);
 
     super.create();
-
-    this.depth = this.cell.depth + 2;
-
-    this.sprite.setDepth(this.depth);
 
     if (this.flipTile)
       this.sprite.setFlipX(true);

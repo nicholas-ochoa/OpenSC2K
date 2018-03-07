@@ -241,8 +241,8 @@ class cell {
       sprites = this.cell.getSprites();
 
       sprites.forEach((sprite) => {
-        sprite.setTint(0xaa0000);
-        //sprite.setVisible(false);
+         if (sprite.visible)
+           sprite.setTint(0xaa0000);
       });
     });
 
@@ -250,9 +250,8 @@ class cell {
       sprites = this.cell.getSprites();
 
       sprites.forEach((sprite) => {
-
-        sprite.clearTint();
-        //sprite.setVisible(true);
+        if (sprite.visible)
+          sprite.clearTint();
       });
     });
 
