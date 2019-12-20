@@ -46,7 +46,8 @@ module.exports = {
   ],
   resolve: {
     alias: {
-      'phaser': phaser
+      'phaser': phaser,
+      'pathfinding': pathfinding
     }
   },
   module: {
