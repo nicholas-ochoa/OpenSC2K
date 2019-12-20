@@ -18,7 +18,7 @@
     "bmp-js": "rage8885/bmp-js",
     "dat.gui": "rage8885/dat.gui",
     "file-saver": "^2.0.0",
-    "jquery": "^3.3.1",
+    "jquery": "^3.4.0",
     "jszip": "^3.1.5",
     "pathfinding": "^0.4.18",
     "phaser": "3.16.0-rc2"
