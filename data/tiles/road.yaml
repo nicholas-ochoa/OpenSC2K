@@ -1,0 +1,200 @@
+all:
+  type: road
+  size: 1
+  simulation: traffic
+
+tiles:
+  29:
+    description: Road (straight)
+    rotate: [29, 30, 29, 30]
+    traffic:
+      light: 400
+      heavy: 427
+
+  30:
+    description: Road (straight)
+    rotate: [30, 29, 30, 29]
+    traffic:
+      light: 401
+      heavy: 428
+
+  31:
+    description: Road (sloped)
+    rotate: [31, 32, 33, 34]
+    traffic:
+      light: 402
+      heavy: 429
+
+  32:
+    description: Road (sloped)
+    rotate: [32, 33, 34, 31]
+    traffic:
+      light: 403
+      heavy: 430
+
+  33:
+    description: Road (sloped)
+    rotate: [33, 34, 31, 32]
+    traffic:
+      light: 404
+      heavy: 431
+
+  34:
+    description: Road (sloped)
+    rotate: [34, 31, 32, 33]
+    traffic:
+      light: 405
+      heavy: 432
+
+  35:
+    description: Road (curve)
+    rotate: [35, 36, 37, 38]
+    traffic:
+      light: 406
+      heavy: 433
+
+  36:
+    description: Road (curve)
+    rotate: [36, 37, 38, 35]
+    traffic:
+      light: 407
+      heavy: 434
+
+  37:
+    description: Road (curve)
+    rotate: [37, 38, 35, 36]
+    traffic:
+      light: 408
+      heavy: 435
+
+  38:
+    description: Road (curve)
+    rotate: [38, 35, 36, 37]
+    traffic:
+      light: 409
+      heavy: 436
+
+  39:
+    description: Road (3 way intersection)
+    rotate: [39, 40, 41, 42]
+    traffic:
+      light: 401
+      heavy: 428
+
+  40:
+    description: Road (3 way intersection)
+    rotate: [40, 41, 42, 39]
+    traffic:
+      light: 400
+      heavy: 427
+
+  41:
+    description: Road (3 way intersection)
+    rotate: [41, 42, 39, 40]
+    traffic:
+      light: 401
+      heavy: 428
+
+  42:
+    description: Road (3 way intersection)
+    rotate: [42, 39, 40, 41]
+    traffic:
+      light: 400
+      heavy: 427
+
+  43:
+    description: Road (4 way intersection)
+    traffic:
+      light: 401
+      heavy: 428
+
+  63:
+    description: Tunnel entrance (south)
+    rotate: [63, 64, 65, 66]
+    depthAdjustment: -1
+
+  64:
+    description: Tunnel entrance
+    rotate: [64, 65, 66, 63]
+    depthAdjustment: -1
+
+  65:
+    description: Tunnel entrance (north)
+    rotate: [65, 66, 63, 64]
+    depthAdjustment: -1
+
+  66:
+    description: Tunnel entrance
+    rotate: [66, 63, 64, 65]
+    depthAdjustment: -1
+
+  69:
+    subtype: rail
+    description: Road / rails
+    rotate: [69, 70, 69, 70]
+
+  70:
+    subtype: rail
+    description: Road / rails
+    rotate: [70, 69, 70, 69]
+
+  81:
+    description: Suspension bridge
+    rotate: [81, 85, 81, 85]
+    flip: true
+    flipMode: alternateTile
+    bridge: true
+
+  82:
+    description: Suspension bridge
+    rotate: [82, 84, 82, 84]
+    flip: true
+    flipMode: alternateTile
+    bridge: true
+
+  83:
+    description: Suspension bridge
+    rotate: [83, 83, 83, 83]
+    flip: true
+    flipMode: alternateTile
+    bridge: true
+
+  84:
+    description: Suspension bridge
+    rotate: [84, 82, 84, 82]
+    flip: true
+    flipMode: alternateTile
+    bridge: true
+
+  85:
+    description: Suspension bridge
+    rotate: [85, 81, 85, 81]
+    flip: true
+    flipMode: alternateTile
+    bridge: true
+
+  86:
+    description: Road (Bridge Lift)
+    flip: true
+    bridge: true
+
+  87:
+    description: Road (Causeway)
+    flip: true
+    bridge: true
+    traffic:
+      light: 400
+      heavy: 427
+
+  88:
+    description: Road (Bridge Down)
+    flip: true
+    bridge: true
+    traffic:
+      light: 400
+      heavy: 427
+
+  89:
+    description: Road (Bridge Up)
+    flip: true
+    bridge: true

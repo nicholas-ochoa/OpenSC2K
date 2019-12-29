@@ -1,0 +1,63 @@
+all:
+  type: building
+
+tiles:
+  219:
+    description: Statue
+    size: 1
+    microsimulator:
+      data1:
+        description:
+        type:
+      data2:
+        description: Year Built
+        type: constructionYear
+      data3:
+        description: Pigeons Perched
+        type: statuePigeons
+      data4:
+        description:
+        type:
+
+  247:
+    description: Church
+    size: 2
+
+  248:
+    description: Marina
+    size: 3
+    microsimulator:
+      type: cityWide
+      data1:
+        description:
+        type:
+      data2:
+        description: Boats
+        type: marinaBoats
+      data3:
+        description:
+        type:
+      data4:
+        description:
+        type:
+
+  255:
+    description: Braun Llama-dome
+    size: 4
+    microsimulator:
+      data1:
+        description: Weddings
+        type: domeWeddings
+      data2:
+        description: Visitors
+        type: domeVisitors
+      data3:
+        description: Llama Sightings
+        type: domeLlamaSightings
+      data4:
+        description: Complaints
+        type: domeComplaints
+      data5:
+        reference: data1
+        description: Bungee Jumps
+        type: domeBungeeJumps

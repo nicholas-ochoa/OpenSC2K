@@ -1,0 +1,115 @@
+all:
+  type: building
+
+tiles:
+  124:
+    description: Gas station
+    size: 1
+
+  125:
+    description: Bed & breakfast inn
+    size: 1
+
+  126:
+    description: Convenience store
+    size: 1
+
+  127:
+    description: Gas station
+    size: 1
+
+  128:
+    description: Small office building
+    size: 1
+
+  129:
+    description: Office building
+    size: 1
+
+  131:
+    description: Cassidy's Toy Store
+    size: 1
+
+  148:
+    description: Shopping center
+    size: 2
+
+  149:
+    description: Grocery store
+    size: 2
+
+  150:
+    description: Office building
+    size: 2
+
+  151:
+    description: Resort hotel
+    size: 2
+
+  152:
+    description: Office building
+    size: 2
+
+  153:
+    description: Office / Retail
+    size: 2
+
+  154:
+    description: Office building
+    size: 2
+
+  155:
+    description: Office building
+    size: 2
+
+  156:
+    description: Office building
+    size: 2
+
+  157:
+    description: Office building
+    size: 2
+
+  178:
+    description: Office park
+    size: 3
+    importOptions:
+      frameCount: 1
+
+  179:
+    description: Office tower
+    size: 3
+
+  180:
+    description: Mini-mall
+    size: 3
+    importOptions:
+      frameCount: 1
+
+  181:
+    description: Theater square
+    size: 3
+
+  182:
+    description: Drive-in theater
+    size: 3
+
+  183:
+    description: Office tower
+    size: 3
+
+  184:
+    description: Office tower
+    size: 3
+
+  185:
+    description: Parking lot
+    size: 3
+
+  186:
+    description: Historic office building
+    size: 3
+
+  187:
+    description: Corporate headquarters
+    size: 3

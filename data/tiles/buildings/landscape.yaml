@@ -1,0 +1,42 @@
+all:
+  type: building
+  subtype: landscape
+  size: 1
+  requiresTerrain: true
+
+tiles:
+  1:
+    description: Rubble
+
+  2:
+    description: Rubble
+
+  3:
+    description: Rubble
+
+  4:
+    description: Rubble
+
+  5:
+    description: Radioactive waste
+
+  6:
+    description: Trees
+
+  7:
+    description: Trees
+
+  8:
+    description: Trees
+
+  9:
+    description: Trees
+
+  10:
+    description: Trees
+
+  11:
+    description: Trees
+
+  12:
+    description: Trees

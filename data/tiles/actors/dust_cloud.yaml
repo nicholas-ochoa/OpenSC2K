@@ -1,0 +1,16 @@
+all:
+  type: actor
+  size: 1
+
+tiles:
+  392:
+    description: dust_cloud_1
+
+  393:
+    description: dust_cloud_2
+
+  394:
+    description: dust_cloud_3
+
+  395:
+    description: dust_cloud_4

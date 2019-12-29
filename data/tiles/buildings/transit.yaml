@@ -1,0 +1,58 @@
+all:
+  type: building
+
+tiles:
+  233:
+    subtype: subway
+    description: Subway station
+    size: 1
+    microsimulator:
+      type: cityWide
+      data1:
+        description:
+        type:
+      data2:
+        description: Subway Stations
+        type: subwayStationCount
+      data3:
+        description:
+        type:
+      data4:
+        description: Passengers / day
+        type: subwayStationPassengers
+
+  236:
+    description: Bus station
+    size: 2
+    microsimulator:
+      type: cityWide
+      data1:
+        description:
+        type:
+      data2:
+        description: Bus Stations
+        type: busStationCount
+      data3:
+        description: Buses
+        type: busStationBuses
+      data4:
+        description: Passengers / day
+        type: busStationPassengers
+
+  237:
+    description: Rail station
+    size: 2
+    microsimulator:
+      type: cityWide
+      data1:
+        description:
+        type:
+      data2:
+        description: Rail Stations
+        type: railStationCount
+      data3:
+        description:
+        type:
+      data4:
+        description: Passengers / day
+        type: railStationPassengers

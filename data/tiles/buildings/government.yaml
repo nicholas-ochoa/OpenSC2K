@@ -1,0 +1,38 @@
+all:
+  type: building
+
+tiles:
+  208:
+    description: City hall
+    size: 3
+    microsimulator:
+      data1:
+        description:
+        type:
+      data2:
+        description: Employees
+        type: workers
+      data3:
+        description: Year Built
+        type: constructionYear
+      data4:
+        description:
+        type:
+
+  243:
+    description: Mayor's house
+    size: 2
+    microsimulator:
+      data1:
+        description: Door Steps
+        type: mayorDoorSteps
+      data2:
+        description: Year Built
+        type: constructionYear
+      data3:
+        description: Approval Rating
+        type: mayorApprovalRating
+        max: 100
+      data4:
+        description: Employees
+        type: workers

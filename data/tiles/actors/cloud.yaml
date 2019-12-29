@@ -1,0 +1,7 @@
+all:
+  type: actor
+  size: 2
+
+tiles:
+  496:
+    description: cloud

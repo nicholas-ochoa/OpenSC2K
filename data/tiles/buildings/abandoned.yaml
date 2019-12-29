@@ -1,0 +1,28 @@
+all:
+  type: building
+  description: Abandoned building
+
+tiles:
+  138:
+    size: 1
+
+  139:
+    size: 1
+
+  170:
+    size: 2
+
+  171:
+    size: 2
+
+  172:
+    size: 2
+
+  173:
+    size: 2
+
+  196:
+    size: 3
+
+  197:
+    size: 3

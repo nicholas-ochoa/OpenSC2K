@@ -1,0 +1,58 @@
+all:
+  type: building
+
+tiles:
+  212:
+    description: Museum
+    size: 3
+    microsimulator:
+      type: cityWide
+      data1:
+        description:
+        type:
+      data2:
+        description: Attendance
+        type: museumAttendance
+      data3:
+        description: Exhibits
+        type: museumExhibits
+      data4:
+        description:
+        type:
+
+  215:
+    description: Stadium
+    size: 4
+    microsimulator:
+      data1:
+        description: Wins
+        type: stadiumWins
+      data2:
+        description: Attendance
+        type: stadiumAttendance
+        max: 25000
+      data3:
+        description:
+        type:
+      data4:
+        description:
+        type:
+
+  218:
+    description: Zoo
+    size: 4
+    microsimulator:
+      data1:
+        description: Other Dromedaries
+        type: zooOther
+      data2:
+        description: Peruvian Llamas
+        type: zooLlamasP
+      data3:
+        description: Andean Llamas
+        type: zooLlamasA
+      data4:
+        description: Alpacas
+        type: zooAlpacas
+    importOptions:
+      frameCount: 1

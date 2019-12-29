@@ -1,0 +1,56 @@
+tiles:
+  root:
+    - explosion.yaml
+    - fire.yaml
+    - highway.yaml
+    - monster.yaml
+    - overlay.yaml
+    - pipe.yaml
+    - power.yaml
+    - rail.yaml
+    - road.yaml
+    - sign.yaml
+    - subway.yaml
+    - terrain.yaml
+    - underground.yaml
+    - water.yaml
+    - zone.yaml
+  actors:
+    - airplane.yaml
+    - bulldozer.yaml
+    - cargo_ship.yaml
+    - cloud.yaml
+    - dust_cloud.yaml
+    - flood_waters.yaml
+    - maxis_man.yaml
+    - nessie.yaml
+    - rioters.yaml
+    - sail_boat.yaml
+    - simcopter.yaml
+    - tornado.yaml
+    - train.yaml
+  buildings:
+    - abandoned.yaml
+    - airport.yaml
+    - arco.yaml
+    - commercial.yaml
+    - construction.yaml
+    - education.yaml
+    - entertainment.yaml
+    - government.yaml
+    - industrial.yaml
+    - landscape.yaml
+    - military.yaml
+    - parks.yaml
+    - power_plant.yaml
+    - residential.yaml
+    - seaport.yaml
+    - services.yaml
+    - special.yaml
+    - transit.yaml
+    - utility.yaml
+  traffic:
+    - highway_heavy.yaml
+    - highway_light.yaml
+    - road_heavy.yaml
+    - road_light.yaml

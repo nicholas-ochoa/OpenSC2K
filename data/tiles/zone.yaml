@@ -1,0 +1,31 @@
+all:
+  type: zone
+  size: 1
+
+tiles:
+  291:
+    description: Low Density Residential Zone
+
+  292:
+    description: High Density Residential Zone
+
+  293:
+    description: Low Density Commercial Zone
+
+  294:
+    description: High Density Commercial Zone
+
+  295:
+    description: Low Density Industrial Zone
+
+  296:
+    description: High Density Industrial Zone
+
+  297:
+    description: Military Zone
+
+  298:
+    description: Airport Zone
+
+  299:
+    description: Seaport Zone

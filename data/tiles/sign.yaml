@@ -1,0 +1,13 @@
+all:
+  type: sign
+  size: 1
+
+tiles:
+  382:
+    description: Police Sign
+
+  383:
+    description: Fire Dept. Sign
+
+  384:
+    description: Military Sign

@@ -1,0 +1,28 @@
+all:
+  type: building
+  description: Construction
+
+tiles:
+  136:
+    size: 1
+
+  137:
+    size: 1
+
+  166:
+    size: 2
+
+  167:
+    size: 2
+
+  168:
+    size: 2
+
+  169:
+    size: 2
+
+  194:
+    size: 3
+
+  195:
+    size: 3

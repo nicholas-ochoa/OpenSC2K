@@ -1,0 +1,19 @@
+all:
+  type: actor
+  size: 2
+
+tiles:
+  369:
+    description: cargo_ship_1
+
+  370:
+    description: cargo_ship_2
+
+  371:
+    description: cargo_ship_3
+
+  372:
+    description: cargo_ship_4
+
+  373:
+    description: cargo_ship_5

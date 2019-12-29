@@ -1,0 +1,84 @@
+all:
+  size: 1
+  type: power
+
+tiles:
+  14:
+    description: Power lines
+    rotate: [14, 15, 14, 15]
+
+  15:
+    description: Power lines
+    rotate: [15, 14, 15, 14]
+
+  16:
+    description: Power lines
+    rotate: [16, 17, 18, 19]
+
+  17:
+    description: Power lines
+    rotate: [17, 18, 19, 16]
+
+  18:
+    description: Power lines
+    rotate: [18, 19, 16, 17]
+
+  19:
+    description: Power lines
+    rotate: [19, 16, 17, 18]
+
+  20:
+    description: Power lines
+    rotate: [20, 21, 22, 23]
+
+  21:
+    description: Power lines
+    rotate: [21, 22, 23, 20]
+
+  22:
+    description: Power lines
+    rotate: [22, 23, 20, 21]
+
+  23:
+    description: Power lines
+    rotate: [23, 20, 21, 22]
+
+  24:
+    description: Power lines
+    rotate: [24, 25, 26, 27]
+
+  25:
+    description: Power lines
+    rotate: [25, 26, 27, 24]
+
+  26:
+    description: Power lines
+    rotate: [26, 27, 24, 25]
+
+  27:
+    description: Power lines
+    rotate: [27, 24, 25, 26]
+
+  28:
+    description: Power lines
+
+  67:
+    subtype: road
+    description: Road / power lines
+    rotate: [67, 68, 67, 68]
+    baseLayer: 29
+    importOptions:
+      dropColor: [124, 155, 161]
+
+  68:
+    subtype: road
+    description: Road / power lines
+    rotate: [68, 67, 68, 67]
+    baseLayer: 30
+    importOptions:
+      dropColor: [124, 155, 161]
+
+  92:
+    description: Elevated power lines
+    flip: true
+    bridge: true

@@ -1,0 +1,46 @@
+all:
+  type: underground
+  size: 1
+
+tiles:
+  305:
+    description: underground_land_1
+
+  306:
+    description: underground_land_2
+
+  307:
+    description: underground_land_3
+
+  308:
+    description: underground_land_4
+
+  309:
+    description: underground_land_5
+
+  310:
+    description: underground_land_6
+
+  311:
+    description: underground_land_7
+
+  312:
+    description: underground_land_8
+
+  313:
+    description: underground_land_9
+
+  314:
+    description: underground_land_10
+
+  315:
+    description: underground_land_11
+
+  316:
+    description: underground_land_12
+
+  317:
+    description: underground_land_13
+
+  318:
+    description: underground_land_14

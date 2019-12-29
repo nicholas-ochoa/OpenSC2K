@@ -1,0 +1,13 @@
+all:
+  type: explosion
+  size: 2
+
+tiles:
+  387:
+    description: explosion_1
+
+  388:
+    description: explosion_2
+
+  389:
+    description: explosion_3

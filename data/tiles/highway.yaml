@@ -1,0 +1,202 @@
+all:
+  type: highway
+  simulation: highwayTraffic
+  size: 1
+
+tiles:
+  73:
+    description: Highway (straight)
+    direction: ns
+    rotate: [73, 74, 73, 74]
+    traffic:
+      light: [410, 411]
+      heavy: [437, 438]
+
+  74:
+    description: Highway (straight)
+    direction: ew
+    rotate: [74, 73, 74, 73]
+    traffic:
+      flip: true
+      light: [410, 411]
+      heavy: [437, 438]
+
+  75:
+    subtype: road
+    description: Highway / road
+    direction: ns
+    rotate: [75, 76, 75, 76]
+    traffic:
+      light: [410, 411]
+      heavy: [437, 438]
+
+  76:
+    subtype: road
+    description: Highway / road
+    direction: ew
+    rotate: [76, 75, 76, 75]
+    traffic:
+      flip: true
+      light: [410, 411]
+      heavy: [437, 438]
+
+  77:
+    subtype: rail
+    description: Highway / rails
+    direction: ns
+    rotate: [77, 78, 77, 78]
+    traffic:
+      light: [410, 411]
+      heavy: [437, 438]
+
+  78:
+    subtype: rail
+    description: Highway / rails
+    direction: ew
+    rotate: [78, 77, 78, 77]
+    traffic:
+      flip: true
+      light: [410, 411]
+      heavy: [437, 438]
+
+  79:
+    subtype: power
+    description: Highway / power lines
+    direction: ns
+    rotate: [79, 80, 79, 80]
+    traffic:
+      light: [410, 411]
+      heavy: [437, 438]
+
+  80:
+    subtype: power
+    description: Highway / power lines
+    direction: ew
+    rotate: [80, 79, 80, 79]
+    traffic:
+      flip: true
+      light: [410, 411]
+      heavy: [437, 438]
+
+  93:
+    description: Highway Onramp
+    rotate: [93, 96, 93, 96]
+    flip: true
+    flipMode: alternateTile
+    highwayOnramp: true
+    traffic:
+      light: 414
+      heavy: 414
+
+  94:
+    description: Highway Onramp
+    rotate: [94, 95, 94, 95]
+    flip: true
+    flipMode: alternateTile
+    highwayOnramp: true
+    traffic:
+      light: 415
+      heavy: 415
+
+  95:
+    description: Highway Onramp
+    rotate: [95, 94, 95, 94]
+    flip: true
+    flipMode: alternateTile
+    highwayOnramp: true
+    traffic:
+      light: 416
+      heavy: 416
+
+  96:
+    description: Highway Onramp
+    rotate: [96, 93, 96, 93]
+    flip: true
+    flipMode: alternateTile
+    highwayOnramp: true
+    traffic:
+      light: 417
+      heavy: 417
+
+  97:
+    description: Highway (Slope)
+    size: 2
+    rotate: [97, 98, 99, 100]
+    traffic:
+      light: 418
+      heavy: 441
+
+  98:
+    description: Highway (Slope)
+    size: 2
+    rotate: [98, 99, 100, 97]
+    traffic:
+      light: 419
+      heavy: 442
+
+  99:
+    description: Highway (Slope)
+    size: 2
+    rotate: [99, 100, 97, 98]
+    traffic:
+      light: 420
+      heavy: 443
+
+  100:
+    description: Highway (Slope)
+    size: 2
+    rotate: [100, 97, 98, 99]
+    traffic:
+      light: 421
+      heavy: 444
+
+  101:
+    description: Highway (Curve)
+    size: 2
+    rotate: [101, 102, 103, 104]
+    traffic:
+      light: 422
+      heavy: 445
+
+  102:
+    description: Highway (Curve)
+    size: 2
+    rotate: [102, 103, 104, 101]
+    traffic:
+      light: 423
+      heavy: 446
+
+  103:
+    description: Highway (Curve)
+    size: 2
+    rotate: [103, 104, 101, 102]
+    traffic:
+      light: 424
+      heavy: 447
+
+  104:
+    description: Highway (Curve)
+    size: 2
+    rotate: [104, 101, 102, 103]
+    traffic:
+      light: 425
+      heavy: 448
+
+  105:
+    description: Highway (Cloverleaf)
+    size: 2
+    traffic:
+      light: 426
+      heavy: 449
+
+  106:
+    description: Highway (Reinforced Bridge w/ Support)
+    size: 2
+    flip: true
+    bridge: true
+
+  107:
+    description: Highway (Reinforced Bridge)
+    size: 2
+    flip: true
+    bridge: true

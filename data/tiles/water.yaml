@@ -1,0 +1,140 @@
+all:
+  type: water
+  size: 1
+  hitbox:
+    reference: 256
+  heightmap:
+    reference: 256
+
+tiles:
+  270:
+    description: water_tile_1
+    frames: 2
+
+  271:
+    description: water_tile_2
+    frames: 2
+    heightmap:
+      reference: 257
+    rotate: [271, 272, 273, 274]
+
+  272:
+    description: water_tile_3
+    frames: 2
+    heightmap:
+      reference: 258
+    rotate: [272, 273, 274, 271]
+
+  273:
+    description: water_tile_4
+    frames: 2
+    heightmap:
+      reference: 259
+    rotate: [273, 274, 271, 272]
+
+  274:
+    description: water_tile_5
+    frames: 2
+    heightmap:
+      reference: 260
+    rotate: [274, 271, 272, 273]
+
+  275:
+    description: water_tile_6
+    frames: 2
+    heightmap:
+      reference: 261
+    rotate: [275, 276, 277, 278]
+
+  276:
+    description: water_tile_7
+    frames: 2
+    heightmap:
+      reference: 262
+    rotate: [276, 277, 278, 275]
+
+  277:
+    description: water_tile_8
+    frames: 2
+    heightmap:
+      reference: 263
+    rotate: [277, 278, 275, 276]
+
+  278:
+    description: water_tile_9
+    frames: 2
+    heightmap:
+      reference: 264
+    rotate: [278, 275, 276, 277]
+
+  279:
+    description: water_tile_10
+    frames: 2
+    heightmap:
+      reference: 265
+    rotate: [279, 280, 281, 282]
+
+  280:
+    description: water_tile_11
+    frames: 2
+    heightmap:
+      reference: 266
+    rotate: [280, 281, 282, 279]
+
+  281:
+    description: water_tile_12
+    frames: 2
+    heightmap:
+      reference: 267
+    rotate: [281, 282, 279, 280]
+
+  282:
+    description: water_tile_13
+    frames: 2
+    heightmap:
+      reference: 268
+    rotate: [282, 279, 280, 281]
+
+  283:
+    description: water_tile_14
+    frames: 2
+    heightmap:
+      reference: 269
+
+  284:
+    description: waterfall
+    hitbox:
+      reference: 269
+    heightmap:
+      reference: 269
+    frames: 3
+
+  285:
+    description: water_tile_15
+    frames: 2
+    rotate: [285, 286, 285, 286]
+
+  286:
+    description: water_tile_16
+    frames: 2
+    rotate: [286, 285, 286, 285]
+
+  287:
+    description: water_tile_17
+    frames: 2
+    rotate: [287, 288, 289, 290]
+
+  288:
+    description: water_tile_18
+    frames: 2
+    rotate: [288, 289, 290, 287]
+
+  289:
+    description: water_tile_19
+    frames: 2
+    rotate: [289, 290, 287, 288]
+
+  290:
+    description: water_tile_20
+    frames: 2
+    rotate: [290, 287, 288, 289]

@@ -1,0 +1,199 @@
+all:
+  type: building
+
+tiles:
+  198:
+    subtype: water
+    description: Hydroelectric power
+    size: 1
+    rotate: [198, 199, 198, 199]
+    flip: true
+    flipMode: alternateTile
+    microsimulator:
+      type: cityWide
+      data1:
+        description:
+        type:
+      data2:
+        description: Hydro Generators
+        type: hydroGeneratorCount
+      data3:
+        description: Max System Output
+        type: hydroGeneratorMegawatts
+      data4:
+        description:
+        type:
+
+  199:
+    subtype: water
+    description: Hydroelectric power
+    size: 1
+    rotate: [199, 198, 199, 198]
+    flip: true
+    flipMode: alternateTile
+    microsimulator:
+      type: cityWide
+      data1:
+        description:
+        type:
+      data2:
+        description: Hydro Generators
+        type: hydroGeneratorCount
+      data3:
+        description: Max System Output
+        type: hydroGeneratorMegawatts
+      data4:
+        description:
+        type:
+
+  200:
+    description: Wind power
+    size: 1
+    microsimulator:
+      type: cityWide
+      data1:
+        description:
+        type:
+      data2:
+        description: Wind Generators
+        type: windGeneratorCount
+      data3:
+        description: Max System Output
+        type: windGeneratorMegawatts
+      data4:
+        description:
+        type:
+
+  201:
+    description: Natural gas power plant
+    size: 4
+    microsimulator:
+      data1:
+        description: Age
+        type: years
+        max: 50
+      data2:
+        description: Max Output
+        type: megawatts
+      data3:
+        description: Current Load
+        type: capacity
+        max: 100
+      data4:
+        description:
+        type:
+
+  202:
+    description: Oil power plant
+    size: 4
+    microsimulator:
+      data1:
+        description: Age
+        type: years
+        max: 50
+      data2:
+        description: Max Output
+        type: megawatts
+      data3:
+        description: Current Load
+        type: capacity
+        max: 100
+      data4:
+        description:
+        type:
+
+  203:
+    description: Nuclear power plant
+    size: 4
+    microsimulator:
+      data1:
+        description: Age
+        type: years
+        max: 50
+      data2:
+        description: Max Output
+        type: megawatts
+      data3:
+        description: Current Load
+        type: capacity
+        max: 100
+      data4:
+        description:
+        type:
+
+  204:
+    description: Solar power plant
+    size: 4
+    microsimulator:
+      data1:
+        description: Age
+        type: years
+        max: 50
+      data2:
+        description: Max Output
+        type: megawatts
+      data3:
+        description: Current Load
+        type: capacity
+        max: 100
+      data4:
+        description:
+        type:
+
+  205:
+    description: Microwave power receiver
+    size: 4
+    microsimulator:
+      data1:
+        description: Age
+        type: years
+        max: 50
+      data2:
+        description: Max Output
+        type: megawatts
+      data3:
+        description: Current Load
+        type: capacity
+        max: 100
+      data4:
+        description:
+        type:
+
+  206:
+    description: Fusion power plant
+    size: 4
+    microsimulator:
+      data1:
+        description: Age
+        type: years
+        max: 50
+      data2:
+        description: Max Output
+        type: megawatts
+      data3:
+        description: Current Load
+        type: capacity
+        max: 100
+      data4:
+        description:
+        type:
+
+  207:
+    description: Coal power plant
+    size: 4
+    frameRate: 4
+    microsimulator:
+      data1:
+        description: Age
+        type: years
+        max: 50
+      data2:
+        description: Max Output
+        type: megawatts
+      data3:
+        description: Current Load
+        type: capacity
+        max: 100
+      data4:
+        description:
+        type:

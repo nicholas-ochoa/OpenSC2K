@@ -1,0 +1,50 @@
+all:
+  type: monster
+  size: 2
+
+tiles:
+  385:
+    description: space_ray
+    size: 1
+
+  478:
+    description: monster_parts_1
+
+  479:
+    description: monster_parts_2
+
+  480:
+    description: monster_parts_3
+
+  481:
+    description: monster_parts_4
+
+  482:
+    description: monster_parts_5
+
+  483:
+    description: monster_parts_6
+
+  484:
+    description: monster_parts_7
+
+  485:
+    description: monster_parts_8
+
+  486:
+    description: monster_parts_9
+
+  487:
+    description: monster_parts_10
+
+  488:
+    description: monster_parts_11
+
+  489:
+    description: monster_parts_12
+
+  490:
+    description: monster_parts_13
+
+  491:
+    description: monster_parts_14

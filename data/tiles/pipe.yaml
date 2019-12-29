@@ -1,0 +1,108 @@
+all:
+  type: pipe
+  size: 1
+
+tiles:
+  334:
+    description: water_pipe_1
+
+  335:
+    description: water_pipe_2
+
+  336:
+    description: water_pipe_3
+
+  337:
+    description: water_pipe_4
+
+  338:
+    description: water_pipe_5
+
+  339:
+    description: water_pipe_6
+
+  340:
+    description: water_pipe_7
+
+  341:
+    description: water_pipe_8
+
+  342:
+    description: water_pipe_9
+
+  343:
+    description: water_pipe_10
+
+  344:
+    description: water_pipe_11
+
+  345:
+    description: water_pipe_12
+
+  346:
+    description: water_pipe_13
+
+  347:
+    description: water_pipe_14
+
+  348:
+    description: water_pipe_15
+
+  351:
+    description: Building Pipes
+
+  450:
+    description: water_pipes_on_1
+
+  451:
+    description: water_pipes_on_2
+
+  452:
+    description: water_pipes_on_3
+
+  453:
+    description: water_pipes_on_4
+
+  454:
+    description: water_pipes_on_5
+
+  455:
+    description: water_pipes_on_6
+
+  456:
+    description: water_pipes_on_7
+
+  457:
+    description: water_pipes_on_8
+
+  458:
+    description: water_pipes_on_9
+
+  459:
+    description: water_pipes_on_10
+
+  460:
+    description: water_pipes_on_11
+
+  461:
+    description: water_pipes_on_12
+
+  462:
+    description: water_pipes_on_13
+
+  463:
+    description: water_pipes_on_14
+
+  464:
+    description: water_pipes_on_15
+
+  465:
+    subtype: subway
+    description: subway_water_pipe_on_1
+
+  466:
+    subtype: subway
+    description: subway_water_pipe_on_2
+
+  467:
+    description: building_pipes_on

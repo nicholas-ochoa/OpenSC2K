@@ -1,0 +1,10 @@
+all:
+  type: actor
+  size: 1
+
+tiles:
+  493:
+    description: rioters_1
+
+  494:
+    description: rioters_2

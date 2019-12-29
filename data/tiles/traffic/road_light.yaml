@@ -1,0 +1,56 @@
+all:
+  type: traffic
+  frameRate: 6
+  size: 1
+  reverseAnimation: true
+  importOptions:
+    dropColor:
+    - 161
+    - 177
+
+tiles:
+  400:
+    description: Light Traffic (straight)
+    rotate: [400, 401, 400, 401]
+
+  401:
+    description: Light Traffic (straight)
+    rotate: [401, 400, 401, 400]
+
+  402:
+    description: Light Traffic (sloped)
+    rotate: [402, 403, 404, 405]
+
+  403:
+    description: Light Traffic (sloped)
+    rotate: [403, 404, 405, 402]
+
+  404:
+    description: Light Traffic (sloped)
+    rotate: [404, 405, 402, 403]
+
+  405:
+    description: Light Traffic (sloped)
+    rotate: [405, 402, 403, 404]
+
+  406:
+    description: Light Traffic (curve)
+    rotate: [406, 407, 408, 409]
+
+  407:
+    description: Light Traffic (curve)
+    rotate: [407, 408, 409, 406]
+
+  408:
+    description: Light Traffic (curve)
+    rotate: [408, 409, 406, 407]
+
+  409:
+    description: Light Traffic (curve)
+    rotate: [409, 406, 407, 408]
+
+  412:
+    description: Light Traffic
+
+  413:
+    description: Light Traffic

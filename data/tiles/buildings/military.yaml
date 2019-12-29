@@ -1,0 +1,19 @@
+all:
+  type: building
+
+tiles:
+  231:
+    description: F-15b
+    size: 1
+
+  240:
+    description: Loading bay
+    size: 2
+
+  241:
+    description: Top secret
+    size: 2
+
+  249:
+    description: Missile silo
+    size: 3

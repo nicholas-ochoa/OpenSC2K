@@ -1,0 +1,19 @@
+all:
+  type: actor
+  size: 1
+
+tiles:
+  364:
+    description: sim_copter_1
+
+  365:
+    description: sim_copter_2
+
+  366:
+    description: sim_copter_3
+
+  367:
+    description: sim_copter_4
+
+  368:
+    description: sim_copter_5

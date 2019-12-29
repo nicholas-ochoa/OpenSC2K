@@ -1,0 +1,60 @@
+all:
+  type: traffic
+  size: 1
+  reverseAnimation: true
+  frameRate: 6
+  importOptions:
+    dropColor:
+    - 161
+    - 177
+
+tiles:
+  437:
+    description: Heavy Traffic (Highway Straight)
+
+  438:
+    description: Heavy Traffic (Highway Straight)
+
+  441:
+    description: Heavy Traffic (Highway Slope)
+    size: 2
+    rotate: [441, 442, 443, 444]
+
+  442:
+    description: Heavy Traffic (Highway Slope)
+    size: 2
+    rotate: [442, 443, 444, 441]
+
+  443:
+    description: Heavy Traffic (Highway Slope)
+    size: 2
+    rotate: [443, 444, 441, 442]
+
+  444:
+    description: Heavy Traffic (Highway Slope)
+    size: 2
+    rotate: [444, 441, 442, 443]
+
+  445:
+    description: Heavy Traffic (Highway Curve)
+    size: 2
+    rotate: [445, 446, 447, 448]
+
+  446:
+    description: Heavy Traffic (Highway Curve)
+    size: 2
+    rotate: [446, 447, 448, 445]
+
+  447:
+    description: Heavy Traffic (Highway Curve)
+    size: 2
+    rotate: [447, 448, 445, 446]
+
+  448:
+    description: Heavy Traffic (Highway Curve)
+    size: 2
+    rotate: [448, 445, 446, 447]
+
+  449:
+    description: Heavy Traffic (Highway Cloverleaf)
+    size: 2

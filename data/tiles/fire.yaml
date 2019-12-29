@@ -1,0 +1,16 @@
+all:
+  type: fire
+  size: 1
+
+tiles:
+  396:
+    description: fire_1
+
+  397:
+    description: fire_2
+
+  398:
+    description: fire_3
+
+  399:
+    description: fire_4

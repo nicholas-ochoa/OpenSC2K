@@ -1,0 +1,73 @@
+all:
+  type: overlay
+  size: 1
+
+tiles:
+  300:
+    description: green_tile
+
+  301:
+    description: blue_tile
+
+  302:
+    description: yellow_tile
+
+  303:
+    description: red_tile
+
+  304:
+    description: grey_tile
+
+  352:
+    description: grey_box_1
+
+  353:
+    description: grey_box_2
+
+  354:
+    description: green_outline
+
+  355:
+    description: blue_outline
+
+  356:
+    description: brown_outline
+
+  357:
+    description: red_outline
+
+  358:
+    description: grey_outline
+
+  386:
+    description: power_outage_lightning
+
+  468:
+    description: density_view_1
+
+  469:
+    description: density_view_2
+
+  470:
+    description: density_view_3
+
+  471:
+    description: density_view_4
+
+  472:
+    description: density_view_5
+
+  473:
+    description: density_view_6
+
+  474:
+    description: density_view_7
+
+  475:
+    description: density_view_8
+
+  476:
+    description: green_plus_tile
+
+  477:
+    description: red_negative_tile

@@ -1,0 +1,75 @@
+all:
+  type: building
+
+tiles:
+  132:
+    description: Warehouse
+    size: 1
+
+  133:
+    description: Chemical storage
+    size: 1
+
+  134:
+    description: Warehouse
+    size: 1
+
+  135:
+    description: Industrial substation
+    size: 1
+
+  158:
+    description: Warehouse
+    size: 2
+
+  159:
+    description: Chemical processing
+    size: 2
+
+  160:
+    description: Factory
+    size: 2
+
+  161:
+    description: Factory
+    size: 2
+
+  162:
+    description: Factory
+    size: 2
+
+  163:
+    description: Factory
+    size: 2
+
+  164:
+    description: Factory
+    size: 2
+
+  165:
+    description: Factory
+    size: 2
+
+  188:
+    description: Chemical processing
+    size: 3
+
+  189:
+    description: Large factory
+    size: 3
+
+  190:
+    description: Industrial thingamajig
+    size: 3
+
+  191:
+    description: Factory
+    size: 3
+
+  192:
+    description: Large warehouse
+    size: 3
+
+  193:
+    description: Warehouse
+    size: 3

@@ -1,0 +1,41 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "sourceMap": true,
+    "noImplicitAny": false,
+    "noImplicitThis": true,
+    "alwaysStrict": true,
+    "strictBindCallApply": true,
+    "strictNullChecks": false,
+    "strictPropertyInitialization": false,
+    "strictFunctionTypes": true,
+    "moduleResolution": "node",
+    "baseUrl": "src",
+    "paths": {
+      "cell/*": [ "cell/*" ],
+      "city/*": [ "city/*" ],
+      "src/*": [ "*" ],
+      "events/*": [ "events/*" ],
+      "sc2/*": [ "sc2/*" ],
+      "sim/*": [ "sim/*" ],
+      "startup/*": [ "startup/*" ],
+      "tiles/*": [ "tiles/*" ],
+      "ui/*": [ "ui/*" ],
+      "utils/*": [ "utils/*" ],
+      "world/*": [ "world/*" ]
+    },
+    "typeRoots": [
+      "node_modules/@types",
+      "./node_modules/phaser/types"
+    ],
+    "esModuleInterop": true
+  },
+  "include": [
+    "src/index.ts"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
+}

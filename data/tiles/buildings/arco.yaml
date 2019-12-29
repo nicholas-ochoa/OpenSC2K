@@ -1,0 +1,30 @@
+all:
+  type: building
+  size: 4
+  microsimulator:
+    data1:
+      description: Condition
+      type: grade
+    data2:
+      description: Design Capacity
+      type: arcoCapacity
+      unit: thousands
+    data3:
+      description: Residents
+      type: arcoPopulation
+    data4:
+      description: Year Built
+      type: constructionYear
+
+tiles:
+  251:
+    description: Plymouth arcology
+
+  252:
+    description: Forest arcology
+
+  253:
+    description: Darco arcology
+
+  254:
+    description: Launch arcology

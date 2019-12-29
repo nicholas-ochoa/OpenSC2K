@@ -1,0 +1,10 @@
+all:
+  type: actor
+  size: 1
+
+tiles:
+  390:
+    description: bulldozer_1
+
+  391:
+    description: bulldozer_2

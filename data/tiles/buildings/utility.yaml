@@ -1,0 +1,50 @@
+all:
+  type: building
+
+tiles:
+  220:
+    description: Water pump
+    size: 1
+
+  235:
+    description: Water tower
+    size: 2
+
+  244:
+    description: Water treatment plant
+    size: 2
+    microsimulator:
+      data1:
+        description:
+        type:
+      data2:
+        description: Untreated Water
+        type: waterCubicFeet
+        unit: thousands
+      data3:
+        description: Treated Water
+        type: waterCubicFeet
+        unit: thousands
+      data4:
+        description:
+        type:
+
+  250:
+    description: Desalination plant
+    size: 3
+    microsimulator:
+      data1:
+        description: Current Load
+        type: capacity
+        max: 100
+      data2:
+        description: Salt / tons Removed
+        type: desalinationSaltRemoved
+      data3:
+        description: Employees
+        type: workers
+      data4:
+        description:
+        type:
+    importOptions:
+      frameCount: 1

@@ -1,0 +1,19 @@
+all:
+  type: actor
+  size: 2
+
+tiles:
+  359:
+    description: airplane_1
+
+  360:
+    description: airplane_2
+
+  361:
+    description: airplane_3
+
+  362:
+    description: airplane_4
+
+  363:
+    description: airplane_5

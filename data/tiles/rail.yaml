@@ -1,0 +1,119 @@
+all:
+  size: 1
+  type: rail
+
+tiles:
+  44:
+    description: Rails (straight)
+    rotate: [44, 45, 44, 45]
+
+  45:
+    description: Rails (straight)
+    rotate: [45, 44, 45, 44]
+
+  46:
+    description: Rails (slope)
+    rotate: [46, 47, 48, 49]
+
+  47:
+    description: Rails (slope)
+    rotate: [47, 48, 49, 46]
+
+  48:
+    description: Rails (slope)
+    rotate: [48, 49, 46, 47]
+
+  49:
+    description: Rails (slope)
+    rotate: [49, 46, 47, 48]
+
+  50:
+    description: Rails (curve)
+    rotate: [50, 51, 52, 53]
+
+  51:
+    description: Rails (curve)
+    rotate: [51, 52, 53, 50]
+
+  52:
+    description: Rails (curve)
+    rotate: [52, 53, 50, 51]
+
+  53:
+    description: Rails (curve)
+    rotate: [53, 50, 51, 52]
+
+  54:
+    description: Rails (junction)
+    rotate: [54, 55, 56, 57]
+
+  55:
+    description: Rails (junction)
+    rotate: [55, 56, 57, 54]
+
+  56:
+    description: Rails (junction)
+    rotate: [56, 57, 54, 55]
+
+  57:
+    description: Rails (junction)
+    rotate: [57, 54, 55, 56]
+
+  58:
+    description: Rails (X junction)
+
+  59:
+    description: Rails (slope)
+    rotate: [59, 60, 61, 62]
+
+  60:
+    description: Rails (slope)
+    rotate: [60, 61, 62, 59]
+
+  61:
+    description: Rails (slope)
+    rotate: [61, 62, 59, 60]
+
+  62:
+    description: Rails (slope)
+    rotate: [62, 59, 60, 61]
+
+  71:
+    subtype: power
+    description: Rails / power lines
+    rotate: [71, 72, 71, 72]
+
+  72:
+    subtype: power
+    description: Rails / power lines
+    rotate: [72, 71, 72, 71]
+
+  90:
+    description: Rail bridge
+    flip: true
+    bridge: true
+
+  91:
+    description: Rail bridge
+    flip: true
+    bridge: true
+
+  108:
+    subtype: subway
+    description: Subway <-> Rails Transition
+    rotate: [108, 109, 110, 111]
+
+  109:
+    subtype: subway
+    description: Subway <-> Rails Transition
+    rotate: [109, 110, 111, 108]
+
+  110:
+    subtype: subway
+    description: Subway <-> Rails Transition
+    rotate: [110, 111, 108, 109]
+
+  111:
+    subtype: subway
+    description: Subway <-> Rails Transition
+    rotate: [111, 108, 109, 110]

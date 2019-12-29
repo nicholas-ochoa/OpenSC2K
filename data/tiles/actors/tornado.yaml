@@ -1,0 +1,13 @@
+all:
+  type: actor
+  size: 2
+
+tiles:
+  497:
+    description: tornado_1
+
+  498:
+    description: tornado_2
+
+  499:
+    description: tornado_3

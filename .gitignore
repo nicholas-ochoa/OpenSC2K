@@ -1,21 +1,28 @@
+# assets
 assets/cities/*
 !assets/cities/NEWCITY.SC2
 !assets/cities/TESTCITY.SC2
 assets/images/*
 assets/import/*
 assets/tiles/*
+
+# generated
 node_modules/
 dist/*
-.DS_Store
-.gitignore
+
+# os generated
+*.log
 */.DS_Store
-.DS_Store?
 ._*
+.DS_Store
+.DS_Store?
 .Spotlight-V100
 .Trashes
-Icon?
 ehthumbs.db
+Icon?
 Thumbs.db
+
+# project files
 *.sublime-project
 *.sublime-workspace
-*.log
+.vscode/

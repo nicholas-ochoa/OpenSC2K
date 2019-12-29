@@ -1,0 +1,10 @@
+all:
+  type: actor
+  size: 1
+
+tiles:
+  380:
+    description: sail_boat_1
+
+  381:
+    description: sail_boat_2

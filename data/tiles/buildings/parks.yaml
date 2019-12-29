@@ -1,0 +1,27 @@
+all:
+  type: building
+
+tiles:
+  13:
+    description: Small park
+    size: 1
+
+  213:
+    description: Park (big)
+    size: 3
+    microsimulator:
+      type: cityWide
+      data1:
+        description:
+        type:
+      data2:
+        description: Attendance
+        type: parkAttendance
+      data3:
+        description: Acres
+        type: parkAcres
+      data4:
+        description: Employees
+        type: parkWorkers
+    importOptions:
+      frameCount: 1

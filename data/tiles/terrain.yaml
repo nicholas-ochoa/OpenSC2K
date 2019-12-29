@@ -1,0 +1,382 @@
+all:
+  type: terrain
+  size: 1
+
+tiles:
+  256:
+    description: land
+    heightmap:
+      lower:
+      - x: 16
+        y: 0
+      - x: 32
+        y: 8
+      - x: 16
+        y: 16
+      - x: 0
+        y: 8
+
+  257:
+    description: land
+    heightmap:
+      southEast:
+      - x: 16
+        y: 0
+      - x: 32
+        y: 20
+      - x: 16
+        y: 28
+      - x: 0
+        y: 8
+      rockSouthWest:
+      - x: 16
+        y: 28
+      - x: 0
+        y: 8
+      - x: 0
+        y: 20
+    rotate: [257, 258, 259, 260]
+
+  258:
+    description: land
+    heightmap:
+      southWest:
+      - x: 16
+        y: 0
+      - x: 0
+        y: 20
+      - x: 16
+        y: 28
+      - x: 32
+        y: 8
+      rockSouthEast:
+      - x: 16
+        y: 28
+      - x: 32
+        y: 8
+      - x: 32
+        y: 20
+    rotate: [258, 259, 260, 257]
+
+  259:
+    description: land
+    heightmap:
+      northEast:
+      - x: 16
+        y: 4
+      - x: 32
+        y: 0
+      - x: 16
+        y: 8
+      - x: 0
+        y: 12
+      rockSouthWest:
+      - x: 16
+        y: 8
+      - x: 16
+        y: 20
+      - x: 0
+        y: 12
+      rockSouthEast:
+      - x: 16
+        y: 8
+      - x: 32
+        y: 0
+      - x: 32
+        y: 12
+      - x: 16
+        y: 20
+    rotate: [259, 260, 257, 258]
+
+  260:
+    description: land
+    heightmap:
+      northEast:
+      - x: 16
+        y: 4
+      - x: 32
+        y: 12
+      - x: 16
+        y: 8
+      - x: 0
+        y: 0
+      rockSouthWest:
+      - x: 0
+        y: 0
+      - x: 16
+        y: 8
+      - x: 16
+        y: 20
+      - x: 0
+        y: 12
+      rockSouthEast:
+      - x: 16
+        y: 8
+      - x: 32
+        y: 12
+      - x: 16
+        y: 20
+    rotate: [260, 257, 258, 259]
+
+  261:
+    description: land
+    heightmap:
+      upper:
+      - x: 0
+        y: 8
+      - x: 16
+        y: 0
+      - x: 32
+        y: 8
+      south:
+      - x: 0
+        y: 8
+      - x: 16
+        y: 28
+      - x: 32
+        y: 8
+      rockSouthWest:
+      - x: 0
+        y: 8
+      - x: 16
+        y: 28
+      - x: 0
+        y: 20
+      rockSouthEast:
+      - x: 32
+        y: 8
+      - x: 16
+        y: 28
+      - x: 32
+        y: 20
+    rotate: [261, 262, 263, 264]
+
+  262:
+    description: land
+    heightmap:
+      upper:
+      - x: 16
+        y: 0
+      - x: 32
+        y: 8
+      - x: 16
+        y: 16
+      west:
+      - x: 16
+        y: 0
+      - x: 16
+        y: 16
+      - x: 0
+        y: 20
+      rockSouthWest:
+      - x: 16
+        y: 28
+      - x: 16
+        y: 16
+      - x: 0
+        y: 20
+      rockSouthEast:
+      - x: 32
+        y: 8
+      - x: 32
+        y: 20
+      - x: 16
+        y: 28
+      - x: 16
+        y: 16
+    rotate: [262, 263, 264, 261]
+
+  263:
+    description: land
+    heightmap:
+      upper:
+      - x: 0
+        y: 0
+      - x: 32
+        y: 0
+      - x: 16
+        y: 8
+      rockSouthWest:
+      - x: 0
+        y: 0
+      - x: 16
+        y: 8
+      - x: 16
+        y: 20
+      - x: 0
+        y: 12
+      rockSouthEast:
+      - x: 32
+        y: 0
+      - x: 16
+        y: 8
+      - x: 16
+        y: 20
+      - x: 32
+        y: 12
+    rotate: [263, 264, 261, 262]
+
+  264:
+    description: land
+    heightmap:
+      upper:
+      - x: 0
+        y: 8
+      - x: 16
+        y: 0
+      - x: 16
+        y: 16
+      east:
+      - x: 16
+        y: 0
+      - x: 32
+        y: 20
+      - x: 16
+        y: 16
+      rockSouthWest:
+      - x: 16
+        y: 16
+      - x: 0
+        y: 8
+      - x: 0
+        y: 20
+      - x: 16
+        y: 28
+      rockSouthEast:
+      - x: 16
+        y: 16
+      - x: 32
+        y: 20
+      - x: 16
+        y: 28
+    rotate: [264, 261, 262, 263]
+
+  265:
+    description: land
+    heightmap:
+      lower:
+      - x: 0
+        y: 20
+      - x: 32
+        y: 20
+      - x: 16
+        y: 28
+      south:
+      - x: 0
+        y: 20
+      - x: 32
+        y: 20
+      - x: 16
+        y: 0
+    rotate: [265, 266, 267, 268]
+
+  266:
+    description: land
+    heightmap:
+      lower:
+      - x: 0
+        y: 12
+      - x: 16
+        y: 4
+      - x: 16
+        y: 20
+      west:
+      - x: 16
+        y: 4
+      - x: 32
+        y: 0
+      - x: 16
+        y: 20
+      rockSouthEast:
+      - x: 32
+        y: 0
+      - x: 16
+        y: 20
+      - x: 32
+        y: 12
+    rotate: [266, 267, 268, 265]
+
+  267:
+    description: land
+    heightmap:
+      lower:
+      - x: 0
+        y: 8
+      - x: 16
+        y: 0
+      - x: 32
+        y: 8
+      - x: 16
+        y: 4
+      rockSouthWest:
+      - x: 16
+        y: 4
+      - x: 32
+        y: 8
+      - x: 16
+        y: 16
+      rockSouthEast:
+      - x: 16
+        y: 4
+      - x: 0
+        y: 8
+      - x: 16
+        y: 16
+    rotate: [267, 268, 265, 266]
+
+  268:
+    description: land
+    heightmap:
+      lower:
+      - x: 32
+        y: 12
+      - x: 16
+        y: 4
+      - x: 16
+        y: 20
+      east:
+      - x: 16
+        y: 4
+      - x: 0
+        y: 0
+      - x: 16
+        y: 20
+      rockSouthWest:
+      - x: 0
+        y: 0
+      - x: 16
+        y: 20
+      - x: 0
+        y: 12
+    rotate: [268, 265, 266, 267]
+
+  269:
+    description: rock
+    heightmap:
+      upper:
+      - x: 16
+        y: 0
+      - x: 32
+        y: 8
+      - x: 16
+        y: 16
+      - x: 0
+        y: 8
+      rockSouthWest:
+      - x: 32
+        y: 8
+      - x: 32
+        y: 20
+      - x: 16
+        y: 28
+      - x: 16
+        y: 16
+      rockSouthEast:
+      - x: 0
+        y: 8
+      - x: 16
+        y: 16
+      - x: 16
+        y: 28
+      - x: 0
+        y: 20

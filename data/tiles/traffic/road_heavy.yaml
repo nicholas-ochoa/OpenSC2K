@@ -1,0 +1,58 @@
+all:
+  type: traffic
+  size: 1
+  reverseAnimation: true
+  frameRate: 6
+  importOptions:
+    dropColor:
+    - 161
+    - 177
+
+tiles:
+  427:
+    description: Heavy Traffic (straight)
+    flip: true
+    rotate: [427, 428, 427, 428]
+
+  428:
+    description: Heavy Traffic (straight)
+    flip: true
+    rotate: [428, 427, 428, 427]
+
+  429:
+    description: Heavy Traffic (sloped)
+    rotate: [429, 430, 431, 432]
+
+  430:
+    description: Heavy Traffic (sloped)
+    rotate: [430, 431, 432, 429]
+
+  431:
+    description: Heavy Traffic (sloped)
+    rotate: [431, 432, 429, 430]
+
+  432:
+    description: Heavy Traffic (sloped)
+    rotate: [432, 429, 430, 431]
+
+  433:
+    description: Heavy Traffic (curve)
+    rotate: [433, 434, 435, 436]
+
+  434:
+    description: Heavy Traffic (curve)
+    rotate: [434, 435, 436, 433]
+
+  435:
+    description: Heavy Traffic (curve)
+    rotate: [435, 436, 433, 434]
+
+  436:
+    description: Heavy Traffic (curve)
+    rotate: [436, 433, 434, 435]
+
+  439:
+    description: Heavy Traffic
+
+  440:
+    description: Heavy Traffic

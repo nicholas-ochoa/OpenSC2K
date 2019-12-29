@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "es6",
+    "module": "commonjs",
+    "sourceMap": true,
+    "noImplicitAny": false,
+    "noImplicitThis": false,
+    "alwaysStrict": true,
+    "resolveJsonModule": true,
+    "strictBindCallApply": true,
+    "strictNullChecks": false,
+    "strictPropertyInitialization": false,
+    "strictFunctionTypes": true,
+    "moduleResolution": "node",
+    "baseUrl": "src",
+    "paths": {
+      "artwork/*": [ "artwork/*" ],
+      "palette/*": [ "palette/*" ],
+      "sc2/*": [ "sc2/*" ],
+      "tiles/*": [ "tiles/*" ],
+      "utils/*": [ "utils/*" ]
+    },
+    "typeRoots": [
+      "node_modules/@types",
+      "node_modules/phaser/types"
+    ],
+    "esModuleInterop": true
+  },
+  "include": [
+    "src/index.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

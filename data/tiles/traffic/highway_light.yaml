@@ -1,0 +1,88 @@
+all:
+  type: traffic
+  size: 1
+  reverseAnimation: true
+  frameRate: 6
+  importOptions:
+    dropColor:
+    - 161
+    - 177
+
+tiles:
+  410:
+    description: Light Traffic (Highway Straight)
+    flip: true
+    rotate: [410, 411, 410, 411]
+
+  411:
+    description: Light Traffic (Highway Straight)
+    flip: true
+    rotate: [411, 410, 411, 410]
+
+  414:
+    description: Light Traffic (Highway Onramp)
+    rotate: [414, 417, 414, 417]
+    flip: true
+    flipMode: alternateTile
+
+  415:
+    description: Light Traffic (Highway Onramp)
+    rotate: [415, 416, 415, 416]
+    flip: true
+    flipMode: alternateTile
+
+  416:
+    description: Light Traffic (Highway Onramp)
+    rotate: [416, 415, 416, 415]
+    flip: true
+    flipMode: alternateTile
+
+  417:
+    description: Light Traffic (Highway Onramp)
+    rotate: [417, 414, 417, 414]
+    flip: true
+    flipMode: alternateTile
+
+  418:
+    description: Light Traffic (Highway Slope)
+    size: 2
+    rotate: [418, 419, 420, 421]
+
+  419:
+    description: Light Traffic (Highway Slope)
+    size: 2
+    rotate: [419, 420, 421, 418]
+
+  420:
+    description: Light Traffic (Highway Slope)
+    size: 2
+    rotate: [420, 421, 418, 419]
+
+  421:
+    description: Light Traffic (Highway Slope)
+    size: 2
+    rotate: [421, 418, 419, 420]
+
+  422:
+    description: Light Traffic (Highway Curve)
+    size: 2
+    rotate: [422, 423, 424, 425]
+
+  423:
+    description: Light Traffic (Highway Curve)
+    size: 2
+    rotate: [423, 424, 425, 422]
+
+  424:
+    description: Light Traffic (Highway Curve)
+    size: 2
+    rotate: [424, 425, 422, 423]
+
+  425:
+    description: Light Traffic (Highway Curve)
+    size: 2
+    rotate: [425, 422, 423, 424]
+
+  426:
+    description: Light Traffic (Highway Cloverleaf)
+    size: 2

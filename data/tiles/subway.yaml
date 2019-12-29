@@ -1,0 +1,65 @@
+all:
+  type: subway
+  size: 1
+
+tiles:
+  319:
+    description: Subway (straight)
+
+  320:
+    description: Subway (straight)
+
+  321:
+    description: Subway (slope)
+    rotate: [321, 322, 323, 324]
+
+  322:
+    description: Subway (slope)
+    rotate: [322, 323, 324, 321]
+
+  323:
+    description: Subway (slope)
+    rotate: [327, 328, 325, 326]
+
+  324:
+    description: Subway (slope)
+    rotate: [328, 325, 326, 327]
+
+  325:
+    description: Subway (corner)
+    rotate: [325, 326, 327, 328]
+
+  326:
+    description: Subway (corner)
+    rotate: [326, 327, 328, 325]
+
+  327:
+    description: Subway (corner)
+    rotate: [327, 328, 325, 326]
+
+  328:
+    description: Subway (corner)
+    rotate: [328, 325, 326, 327]
+
+  329:
+    description: Subway (intersection)
+
+  330:
+    description: Subway (intersection)
+
+  331:
+    description: Subway (intersection)
+
+  332:
+    description: Subway (intersection)
+
+  333:
+    description: Subway (intersection)
+
+  349:
+    subtype: pipe
+    description: Subway (straight) with Pipe
+
+  350:
+    subtype: pipe
+    description: Subway (straight) with Pipe

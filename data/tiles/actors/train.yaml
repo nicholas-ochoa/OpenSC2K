@@ -1,0 +1,19 @@
+all:
+  type: actor
+  size: 1
+
+tiles:
+  374:
+    description: train_1
+
+  375:
+    description: train_2
+
+  376:
+    description: train_3
+
+  377:
+    description: train_4
+
+  378:
+    description: train_5

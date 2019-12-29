@@ -1,0 +1,103 @@
+all:
+  type: building
+
+tiles:
+  112:
+    description: Lower-class homes
+    size: 1
+
+  113:
+    description: Lower-class homes
+    size: 1
+
+  114:
+    description: Lower-class homes
+    size: 1
+
+  115:
+    description: Lower-class homes
+    size: 1
+
+  116:
+    description: Middle-class homes
+    size: 1
+
+  117:
+    description: Middle-class homes
+    size: 1
+
+  118:
+    description: Middle-class homes
+    size: 1
+
+  119:
+    description: Middle-class homes
+    size: 1
+
+  120:
+    description: Luxury homes
+    size: 1
+
+  121:
+    description: Luxury homes
+    size: 1
+
+  122:
+    description: Luxury homes
+    size: 1
+
+  123:
+    description: Luxury homes
+    size: 1
+
+  130:
+    description: Warehouse
+    size: 1
+
+  140:
+    description: Cheap apartments
+    size: 2
+
+  141:
+    description: Apartments
+    size: 2
+
+  142:
+    description: Apartments
+    size: 2
+
+  143:
+    description: Nice apartments
+    size: 2
+
+  144:
+    description: Nice apartments
+    size: 2
+
+  145:
+    description: Condominium
+    size: 2
+
+  146:
+    description: Condominium
+    size: 2
+
+  147:
+    description: Condominium
+    size: 2
+
+  174:
+    description: Large apartment building
+    size: 3
+
+  175:
+    description: Large apartment building
+    size: 3
+
+  176:
+    description: Condominium
+    size: 3
+
+  177:
+    description: Condominium
+    size: 3

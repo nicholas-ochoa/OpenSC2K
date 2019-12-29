@@ -1,0 +1,14 @@
+---
+paths:
+  assets: assets/
+  cities: assets/cities/
+  data: data/
+  tiles: data/tiles/
+  tilemap:
+    image: assets/tilemap/tilemap.png
+    data: assets/tilemap/tilemap.json
+  import:
+    large_dat: assets/import/LARGE.DAT
+    smallmed_dat: assets/import/SMALLMED.DAT
+    special_dat: assets/import/SPECIAL.DAT
+    pal_mstr_bmp: assets/import/PAL_MSTR.BMP

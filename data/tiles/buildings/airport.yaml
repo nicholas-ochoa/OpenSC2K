@@ -1,0 +1,44 @@
+all:
+  type: building
+  size: 1
+
+tiles:
+  221:
+    description: Runway (straight)
+    flip: true
+
+  222:
+    description: Runway (intersection)
+
+  225:
+    description: Control tower
+
+  226:
+    description: Control tower
+
+  228:
+    description: Airport building
+
+  229:
+    description: Airport building
+
+  230:
+    description: Tarmac
+
+  232:
+    description: Hangar
+
+  234:
+    description: Radar
+
+  238:
+    description: Parking lot
+    size: 2
+
+  239:
+    description: Parking lot
+    size: 2
+
+  246:
+    description: Hangar
+    size: 2

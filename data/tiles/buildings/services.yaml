@@ -1,0 +1,74 @@
+all:
+  type: building
+
+tiles:
+  209:
+    description: Hospital
+    size: 3
+    microsimulator:
+      data1:
+        description: Grade
+        type: grade
+      data2:
+        description: Patients
+        type: hospitalPatients
+        max: 1000
+      data3:
+        description: Doctors
+        type: workers
+      data4:
+        description: Annual Cost
+        type: funds
+
+  210:
+    description: Police station
+    size: 3
+    microsimulator:
+      data1:
+        description: Annual Cost
+        type: funds
+      data2:
+        description: Officers
+        type: workers
+      data3:
+        description: Crimes Reported
+        type: crimes
+      data4:
+        description: Arrests
+        type: arrests
+
+  211:
+    description: Fire station
+    size: 3
+    microsimulator:
+      data1:
+        description: Annual Cost
+        type: funds
+      data2:
+        description: Firefighers
+        type: workers
+      data3:
+        description: Fire Engines
+        type: fireEquipment
+      data4:
+        description: Response Time
+        type: fireResponseTime
+
+  216:
+    description: Prison
+    size: 4
+    microsimulator:
+      data1:
+        description: Escapes
+        type: prisonEscapes
+      data2:
+        description: Inmates
+        type: prisonInmates
+        max: 10000
+      data3:
+        description: Guards
+        type: workers
+      data4:
+        description: Capacity
+        type: capacity
+        max: 100

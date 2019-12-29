@@ -1,0 +1,23 @@
+all:
+  type: building
+
+tiles:
+  223:
+    description: Pier
+    size: 1
+    logic:
+      create: pier
+
+  224:
+    description: Crane
+    size: 1
+    logic:
+      create: pier
+
+  227:
+    description: Seaport warehouse
+    size: 1
+
+  242:
+    description: Cargo yard
+    size: 2
