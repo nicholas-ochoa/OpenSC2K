@@ -1,15 +1,16 @@
 import fs from 'fs';
 import path from 'path';
-import { getData } from './getData';
+import { parse } from './parse';
 import { data } from './data';
 import config from 'config';
+import { ipcMain } from 'electron';
 
 export function load() {
-  const fileList = fs.readdirSync(path.resolve(config.get<string>('paths.tiles')));
+  const fileList = fs.readdirSync(path.resolve(config.get('paths.tiles')));
   const yamlFiles: string[] = [];
 
   for (const fileName of fileList) {
-    const filePath: string = path.join(config.get<string>('paths.tiles'), fileName);
+    const filePath: string = path.join(config.get('paths.tiles'), fileName);
 
     if (fs.statSync(filePath).isDirectory()) {
       const subFileList = fs.readdirSync(filePath);
@@ -24,10 +25,15 @@ export function load() {
   }
 
   for (const yaml of yamlFiles) {
-    const parsed = getData(yaml);
+    const parsed = parse(yaml);
 
     for (const idx in parsed) {
       data[idx] = parsed[idx];
     }
   }
 }
+
+ipcMain.handle('tiles.load', (event, filePath) => {
+  load();
+  return data;
+});

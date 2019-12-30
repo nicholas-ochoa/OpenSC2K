@@ -4,7 +4,7 @@ import config from 'config';
 
 // parse BMP file into a palette of 256 colors
 export function parse(): any[] {
-  const buffer: Buffer = fs.readFileSync(config.get<string>('paths.import.pal_mstr_bmp'));
+  const buffer: Buffer = fs.readFileSync(config.get('paths.import.pal_mstr_bmp'));
   const file: any = bmp.decode(buffer);
   const image: any[] = [];
   const palette: any[] = [];

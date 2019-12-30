@@ -9,7 +9,7 @@ import tiles from 'tiles';
 
 // parse dat file into raw image data for each frame
 export function load(): void {
-  const buffer: Buffer = fs.readFileSync(config.get<string>('paths.import.large_dat'));
+  const buffer: Buffer = fs.readFileSync(config.get('paths.import.large_dat'));
   const arrayBuffer: ArrayBuffer = new Uint8Array(buffer).buffer;
 
   // determine how many images to extract

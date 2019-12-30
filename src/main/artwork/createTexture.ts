@@ -3,14 +3,8 @@ import tiles from 'tiles';
 import palette from 'palette';
 import config from 'config';
 import { image } from 'utils';
-import { check } from './check';
 
 export function createTexture(): void {
-  // check for existing files, skip load if they exist
-  if (check()) {
-    return;
-  }
-
   let x: number = 1;
   let y: number = 1;
   let maxWidth: number = 16;
@@ -109,8 +103,8 @@ export function createTexture(): void {
       jsonData[key] = json[key];
     });
 
-  fs.writeFileSync(config.get<string>('paths.tilemap.data'), JSON.stringify({ frames: jsonData }));
+  fs.writeFileSync(config.get('paths.tilemap.data'), JSON.stringify({ frames: jsonData }));
 
   // save tilemap image
-  image.save(img, config.get<string>('paths.tilemap.image'));
+  image.save(img, config.get('paths.tilemap.image'));
 }

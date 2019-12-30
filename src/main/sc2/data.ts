@@ -1,3 +1,5 @@
+import { ipcMain } from 'electron';
+
 const data: any = {
   info: {},
   cells: [],
@@ -17,3 +19,7 @@ export default {
 };
 
 export { data, cells, segments, info };
+
+ipcMain.handle('tiles.data', event => {
+  return data;
+});

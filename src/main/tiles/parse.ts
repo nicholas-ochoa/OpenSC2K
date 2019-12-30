@@ -1,7 +1,7 @@
 import fs from 'fs';
 import yaml from 'js-yaml';
 
-export function getData(file: string) {
+export function parse(file: string) {
   let yamlData: any;
   const data: any[] = [];
 

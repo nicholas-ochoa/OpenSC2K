@@ -12,7 +12,7 @@ module.exports = env => {
     context: process.cwd(),
     resolve: {
       alias: {
-        '@phaser': path.resolve(__dirname, './node_modules/phaser/src'),
+        phaser: path.resolve(__dirname, './node_modules/phaser/src'),
       },
       extensions: ['.js', '.jsx', '.json', '.less', '.css'],
       modules: [path.resolve(__dirname, 'lib'), 'node_modules'],
@@ -21,8 +21,8 @@ module.exports = env => {
       library: ['phaser.custom'],
     },
     output: {
-      filename: `[name].dll.js`,
       path: path.resolve(__dirname, './dist/dlls'),
+      filename: `[name].dll.js`,
       library: '[name]',
     },
     devtool: 'source-map',

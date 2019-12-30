@@ -1,10 +1,7 @@
-function init() {
-  console.log('initialized');
-  console.log('called3');
-}
+import startup from 'startup';
 
 if (document.readyState !== 'loading') {
-  init();
+  startup.init();
 } else {
-  document.addEventListener('DOMContentLoaded', init);
+  document.addEventListener('DOMContentLoaded', startup.init);
 }

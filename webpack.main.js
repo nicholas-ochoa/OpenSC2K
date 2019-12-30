@@ -32,9 +32,9 @@ module.exports = env => {
       new webpack.WatchIgnorePlugin([/dist/, /node_modules/]),
       new NodemonPlugin({
         nodeArgs: ['--inspect'],
-        watch: ['./dist/', './config', './data'],
+        watch: env.watchRenderer ? ['./dist/', './config', './data'] : ['./dist/main/', './config', './data'],
         verbose: false,
-        exec: 'cross-env NODE_ENV=development run-electron .',
+        exec: 'cross-env NODE_ENV=development run-electron . --inspect',
         ext: 'js,yaml',
         delay: 3,
       }),
