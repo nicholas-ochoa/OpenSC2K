@@ -15,7 +15,7 @@
     "dev:dll": "webpack --config webpack.libs.js --env.development",
     "dev:main": "webpack --config webpack.main.js --env.development",
     "dev:renderer": "webpack --config webpack.renderer.js --env.development",
-    "dev": "concurrently \"npm:dev:renderer\" \"npm:dev:main\" -c redBright,greenBright -n \"render,  main\""
+    "dev": "concurrently \"npm:dev:renderer\" \"npm:dev:main\" -k -c redBright,greenBright -n \"render,  main\""
   },
   "dependencies": {
     "@types/electron": "^1.6.10",
