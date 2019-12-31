@@ -1,3 +1,4 @@
+import 'source-map-support/register';
 import startup from 'startup';
 
 if (document.readyState !== 'loading') {

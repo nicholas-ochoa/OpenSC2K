@@ -33,7 +33,7 @@ export function load() {
   }
 }
 
-ipcMain.handle('tiles.load', (event, filePath) => {
+ipcMain.handle('tiles.load', () => {
   load();
   return data;
 });

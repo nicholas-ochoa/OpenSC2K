@@ -1,5 +1,5 @@
 import { load } from './load';
+import { reload } from './reload';
 import { data } from './data';
-import { getData } from './getData';
 
-export default { load, data, getData };
+export default { load, reload, data };

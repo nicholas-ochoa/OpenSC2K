@@ -86,7 +86,9 @@ export function createTexture(): void {
 
         // flag tile as loaded if the frame count matches the current frame
         // or if the tile has no frames
-        if (tile.frames == f + 1 || tile.frames == 1) tile.loaded = true;
+        if (tile.frames == f + 1 || tile.frames == 1) {
+          tile.loaded = true;
+        }
       }
     }
 

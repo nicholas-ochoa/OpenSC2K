@@ -1,35 +1,24 @@
 import Phaser from 'phaser';
-import { globalAny } from 'utils/globalAny';
-import artwork from 'artwork';
+import { globals } from 'utils/globals';
 
-export default class world extends Phaser.Scene {
+export class world extends Phaser.Scene {
   constructor() {
     super({ key: 'world' });
   }
 
-  async preload() {
-    globalAny.world = this;
-    globalAny.scene = this;
-
-    await artwork.load();
+  init() {
+    globals.scenes.world = this;
+    globals.world = this;
   }
 
   create() {
-    console.log('create scene!');
+    this.add.sprite(400, 400, 'tilemap').play('1254').setScale(3);
 
-    const atlasTexture = this.textures.get('tilemap');
-    const frames = atlasTexture.getFrameNames();
-
-    for (let i = 0; i < frames.length; i++) {
-      const x = Phaser.Math.Between(0, 800);
-      const y = Phaser.Math.Between(0, 600);
-
-      this.add.image(x, y, 'tilemap', frames[i]);
-    }
+    this.start();
   }
 
   start() {
-    console.log('scene start!');
+    console.log('world scene start!');
   }
 
   update(time: integer, delta: number) {

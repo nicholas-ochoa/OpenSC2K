@@ -1,5 +1,8 @@
+import { load } from './load';
 import { get } from './get';
+import { set } from './set';
+import { data } from './data';
 
-export default { get };
+export default { load, get, set, data };
 
-export { get };
+export { load, get, set, data };

@@ -1,39 +1,39 @@
 import tiles from 'tiles';
-import { globalAny } from 'utils/globalAny';
+import { globals } from 'utils/globals';
 
-export async function createAnimations() {
-  const scene = globalAny.scene;
-
-  await tiles.getData();
+export function animations() {
+  const scene = globals.scenes.load;
 
   for (let i = 1; i < tiles.data.length; i++) {
     const tile = tiles.data[i];
+    const imageName: string = tile.id + 1000;
 
-    // set up animations
     if (tile.frames > 1) {
       scene.anims.create({
-        key: tile.id,
+        key: `${imageName}`,
         frames: scene.anims.generateFrameNames('tilemap', {
-          prefix: tile.id + '_',
+          prefix: `${imageName}_`,
           start: tile.reverseAnimation ? tile.frames : 0,
           end: tile.reverseAnimation ? 0 : tile.frames,
         }),
         repeat: -1,
-        frameRate: tile.frameRate || 2,
-        delay: tile.animationDelay || 0,
+        frameRate: tile.frameRate ?? 2,
+        delay: tile.animationDelay ?? 0,
       });
 
       scene.anims.create({
-        key: tile.id + '_R',
+        key: `${imageName}_R`,
         frames: scene.anims.generateFrameNames('tilemap', {
-          prefix: tile.id + '_',
+          prefix: `${imageName}_`,
           start: tile.reverseAnimation ? 0 : tile.frames,
           end: tile.reverseAnimation ? tile.frames : 0,
         }),
         repeat: -1,
-        frameRate: tile.frameRate || 2,
-        delay: tile.animationDelay || 0,
+        frameRate: tile.frameRate ?? 2,
+        delay: tile.animationDelay ?? 0,
       });
     }
   }
+
+  globals.loaded.animations = true;
 }

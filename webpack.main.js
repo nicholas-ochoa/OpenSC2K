@@ -24,7 +24,7 @@ module.exports = env => {
       nodeEnv: false,
     },
     devtool: 'source-map',
-    stats: 'errors-only',
+    stats: 'errors-warnings',
     performance: { hints: false },
     plugins: [
       new CleanWebpackPlugin(),

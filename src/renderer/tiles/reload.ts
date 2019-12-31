@@ -2,14 +2,18 @@ import { ipcRenderer } from 'electron';
 import { data } from './data';
 import { globals } from 'utils/globals';
 
-export async function load(): Promise<void> {
+export async function reload(): Promise<void> {
   let tileData: any;
+
+  globals.loaded.tiles = false;
 
   for (const idx in data) {
     delete data[idx];
   }
 
   try {
+    await ipcRenderer.invoke('tiles.load');
+
     tileData = await ipcRenderer.invoke('tiles.data');
   } catch (e) {
     console.error(e);
@@ -22,7 +26,4 @@ export async function load(): Promise<void> {
   delete data[0];
 
   globals.loaded.tiles = true;
-
-  globals.tiles = data;
-  globals.tileData = tileData;
 }

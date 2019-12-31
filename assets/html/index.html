@@ -3,7 +3,10 @@
   <head>
     <meta charset="UTF-8">
     <title>OpenSC2K</title>
-    <base href="../">
+    <script type="text/javascript">
+      const app = require('electron').remote.app;
+      document.head.innerHTML = document.head.innerHTML + "<base href='" + app.getAppPath() + "/' />";
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
     <meta http-equiv="cleartype" content="on">
     <meta http-equiv="Content-Security-Policy" content="
@@ -15,11 +18,11 @@
       style-src * data: blob: 'unsafe-inline';
       font-src * data: blob: 'unsafe-inline';
     ">
-    <link href="css/global.css" rel="stylesheet" type="text/css" />
+    <link href="./assets/css/global.css" rel="stylesheet" type="text/css" />
   </head>
   <body>
     <div id="content"></div>
-    <script type="text/javascript" src="../dist/dlls/library.dll.js"></script>
-    <script type="text/javascript" src="../dist/renderer/renderer.js"></script>
+    <script type="text/javascript" src="./dist/dlls/library.dll.js"></script>
+    <script type="text/javascript" src="./dist/renderer/renderer.js"></script>
   </body>
 </html>

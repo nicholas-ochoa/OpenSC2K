@@ -1,7 +1,8 @@
-import { ipcRenderer } from 'electron';
+import _ from 'lodash';
+import { data } from './data';
 
-export async function get(path: string): Promise<string> {
-  const value: string = await ipcRenderer.invoke('config.get', 'paths.tilemap.image');
+export function get(path: string): string {
+  const value: string = _.get(data, path);
 
   return value;
 }

@@ -1,7 +1,37 @@
-import { game } from './game';
-//import { tilemap } from './tilemap';
+import Phaser from 'phaser';
+import { load } from 'load';
+import { world } from 'world';
+import { globals } from 'utils/globals';
+import { setGlobals } from './setGlobals';
+import config from 'config';
+import tiles from 'tiles';
 
-export function init() {
-  game();
-  //tilemap();
+export async function init() {
+  const phaserConfig: any = {
+    gameTitle: 'OpenSC2K',
+    gameURL: 'https://github.com/rage8885/OpenSC2K',
+    gameVersion: '1.0',
+    renderType: Phaser.WEBGL,
+    parent: 'content',
+    expandParent: true,
+    autoRound: true,
+    pixelArt: true,
+    //batchSize: 32767,
+    //inputGamepad: false,
+    sbanner: false,
+    audio: {
+      noAudio: true,
+    },
+    width: window.innerWidth,
+    height: window.innerHeight,
+    scaleMode: Phaser.Scale.ScaleModes.RESIZE,
+    scene: [load, world],
+  };
+
+  setGlobals();
+
+  await tiles.load();
+  await config.load();
+
+  globals.game = new Phaser.Game(phaserConfig);
 }

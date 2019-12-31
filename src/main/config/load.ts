@@ -2,6 +2,8 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { data } from './data';
+import { ipcMain } from 'electron';
+import { app } from 'electron';
 
 export function load() {
   const configDir: string = path.join(process.cwd(), 'config');
@@ -10,6 +12,8 @@ export function load() {
   for (const prop in data) {
     delete data[prop];
   }
+
+  data.appPath = app.getAppPath();
 
   for (const fileName of fileList) {
     let yamlData: any;
@@ -27,3 +31,8 @@ export function load() {
     }
   }
 }
+
+ipcMain.handle('config.load', () => {
+  load();
+  return data;
+});

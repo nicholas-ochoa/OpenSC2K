@@ -1,8 +1,19 @@
 import { app, BrowserWindow } from 'electron';
 import path from 'path';
 import debug from 'electron-debug';
+import config from 'config';
+import tiles from 'tiles';
+import palette from 'palette';
+import artwork from 'artwork';
+import { watchRenderer } from 'utils/watchRenderer';
 
 export async function init() {
+  await config.load();
+
+  await tiles.load();
+  await palette.load();
+  await artwork.load();
+
   debug();
 
   const win: Electron.BrowserWindow = new BrowserWindow({
@@ -18,6 +29,8 @@ export async function init() {
   win.on('closed', () => {
     app.quit();
   });
+
+  watchRenderer(win);
 
   app.on('window-all-closed', () => {
     app.quit();

@@ -29,6 +29,7 @@
       "tiles/*": [ "tiles/*" ],
       "ui/*": [ "ui/*" ],
       "utils/*": [ "utils/*" ],
+      "load/*": [ "load/*" ],
       "world/*": [ "world/*" ]
     },
     "typeRoots": [
