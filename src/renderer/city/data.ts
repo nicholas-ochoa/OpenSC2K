@@ -1,19 +1,7 @@
-const data: any = {
-  info: {},
-  cells: [],
-  segments: {},
+export const data: any = {
+  name: 'Default City',
+  properties: {
+    rotation: 0,
+    waterLevel: 4,
+  },
 };
-
-const cells = data.cells;
-
-const segments = data.segments;
-
-const info = data.info;
-
-export default {
-  cells,
-  segments,
-  info,
-};
-
-export { data, cells, segments, info };
