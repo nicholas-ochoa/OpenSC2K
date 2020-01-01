@@ -3,7 +3,6 @@ import path from 'path';
 import { parse } from './parse';
 import { data } from './data';
 import config from 'config';
-import { ipcMain } from 'electron';
 
 export function load() {
   const fileList = fs.readdirSync(path.resolve(config.get('paths.tiles')));
@@ -32,8 +31,3 @@ export function load() {
     }
   }
 }
-
-ipcMain.handle('tiles.load', () => {
-  load();
-  return data;
-});

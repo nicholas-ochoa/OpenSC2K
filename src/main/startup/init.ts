@@ -1,36 +1,46 @@
 import { app, BrowserWindow } from 'electron';
+import { watchRenderer } from 'utils/watchRenderer';
 import path from 'path';
-import debug from 'electron-debug';
 import config from 'config';
 import tiles from 'tiles';
 import palette from 'palette';
 import artwork from 'artwork';
-import { watchRenderer } from 'utils/watchRenderer';
+import ui from 'ui';
 
 export async function init() {
+  // load assets
   await config.load();
-
   await tiles.load();
   await palette.load();
   await artwork.load();
 
-  debug();
+  // register listeners
+  await config.register();
+  await tiles.register();
 
-  const win: Electron.BrowserWindow = new BrowserWindow({
+  // main window
+  ui.windows.main = await new BrowserWindow({
     webPreferences: {
       nodeIntegration: true,
     },
   });
 
-  win.setContentSize(1024, 768);
+  const main: Electron.BrowserWindow = ui.windows.main;
 
-  win.loadFile(path.resolve('assets/html/index.html'));
+  // configure electron
+  ui.applicationMenu();
 
-  win.on('closed', () => {
+  main.webContents.openDevTools();
+
+  main.setContentSize(1024, 768);
+
+  main.loadFile(path.resolve('assets/html/index.html'));
+
+  main.on('closed', () => {
     app.quit();
   });
 
-  watchRenderer(win);
+  watchRenderer();
 
   app.on('window-all-closed', () => {
     app.quit();

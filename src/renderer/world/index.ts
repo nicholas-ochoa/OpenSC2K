@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { globals } from 'utils/globals';
+import city from 'city';
 
 export class world extends Phaser.Scene {
   constructor() {
@@ -14,11 +15,7 @@ export class world extends Phaser.Scene {
   create() {
     this.add.sprite(400, 400, 'tilemap').play('1254').setScale(3);
 
-    this.start();
-  }
-
-  start() {
-    console.log('world scene start!');
+    city.create();
   }
 
   update(time: integer, delta: number) {

@@ -2,7 +2,6 @@ import fs from 'fs';
 import path from 'path';
 import yaml from 'js-yaml';
 import { data } from './data';
-import { ipcMain } from 'electron';
 import { app } from 'electron';
 
 export function load() {
@@ -31,8 +30,3 @@ export function load() {
     }
   }
 }
-
-ipcMain.handle('config.load', () => {
-  load();
-  return data;
-});

@@ -1,8 +1,9 @@
 import chokidar from 'chokidar';
 import config from 'config';
 import path from 'path';
+import ui from 'ui';
 
-export function watchRenderer(win: any) {
+export function watchRenderer() {
   const appPath: string = config.get('appPath');
   const rendererOutput: string = path.join(appPath, 'dist', 'renderer');
 
@@ -14,6 +15,6 @@ export function watchRenderer(win: any) {
     })
     .on('change', (event, path) => {
       console.log('Reload renderer..');
-      win.reload();
+      ui.windows.main?.reload();
     });
 }

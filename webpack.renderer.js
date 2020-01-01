@@ -22,7 +22,7 @@ module.exports = env => {
       path: path.resolve(__dirname, 'dist', 'renderer'),
     },
     devtool: 'source-map',
-    stats: 'errors-warnings',
+    stats: 'errors-only',
     performance: { hints: false },
     plugins: [
       new CleanWebpackPlugin(),

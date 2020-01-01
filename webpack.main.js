@@ -24,7 +24,7 @@ module.exports = env => {
       nodeEnv: false,
     },
     devtool: 'source-map',
-    stats: 'errors-warnings',
+    stats: 'errors-only',
     performance: { hints: false },
     plugins: [
       new CleanWebpackPlugin(),
@@ -32,7 +32,7 @@ module.exports = env => {
       new webpack.WatchIgnorePlugin([/dist/, /node_modules/]),
       new NodemonPlugin({
         nodeArgs: ['--inspect'],
-        watch: env.watchRenderer ? ['./dist/', './config', './data'] : ['./dist/main/', './config', './data'],
+        watch: ['./dist/main/'],
         verbose: false,
         exec: 'cross-env NODE_ENV=development run-electron . --inspect',
         ext: 'js,yaml',

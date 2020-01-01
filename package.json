@@ -14,10 +14,8 @@
     "lint": "eslint --color --fix --ext .js,.ts,.json ./src",
     "dev:dll": "webpack --config webpack.libs.js --env.development",
     "dev:main": "webpack --config webpack.main.js --env.development",
-    "dev:main:wr": "webpack --config webpack.main.js --env.development --env.watchRenderer",
     "dev:renderer": "webpack --config webpack.renderer.js --env.development",
-    "dev": "concurrently \"npm:dev:renderer\" \"npm:dev:main\" -k -c yellowBright,cyanBright -n \"render,  main\" -i --default-input-target \"  main\"",
-    "dev:w": "concurrently \"npm:dev:renderer\" \"npm:dev:main:wr\" -k -c yellowBright,cyanBright -n \"render,  main\" -i --default-input-target \"  main\""
+    "dev": "concurrently \"npm:dev:renderer\" \"npm:dev:main\" -k -c yellowBright,cyanBright -n \"render,  main\" -i --default-input-target \"  main\""
   },
   "dependencies": {
     "bmp-ts": "^1.0.3",
