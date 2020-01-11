@@ -1,11 +1,14 @@
 import { load } from './load';
 import { register } from './register';
-import sc2 from 'sc2';
+import City from 'City';
+import Grid from 'Grid';
 
-export async function create() {
+export async function create(this: City) {
   register();
 
   await load('assets/cities/CAPEQUES.SC2');
 
-  console.log(sc2.data);
+  this.grid = new Grid();
+
+  await this.grid.create();
 }

@@ -3,9 +3,9 @@ import config from 'config';
 import { globals } from 'utils/globals';
 import { animations } from './animations';
 
-export class load extends Phaser.Scene {
+export class Load extends Phaser.Scene {
   constructor() {
-    super({ key: 'load' });
+    super({ key: 'Load' });
   }
 
   init() {
@@ -26,7 +26,7 @@ export class load extends Phaser.Scene {
 
   update(time: integer, delta: number) {
     if (globals.loaded.tiles && globals.loaded.textures && globals.loaded.animations) {
-      this.scene.start('world');
+      this.scene.start('World');
     }
   }
 }

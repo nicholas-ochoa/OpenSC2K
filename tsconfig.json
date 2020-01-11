@@ -12,13 +12,16 @@
     "strictPropertyInitialization": false,
     "strictFunctionTypes": true,
     "moduleResolution": "node",
+    "experimentalDecorators": true,
     "baseUrl": ".",
     "paths": {
       "artwork/*": [ "artwork/*" ],
       "assets/*": [ "../../assets/*" ],
-      "cell/*": [ "cell/*" ],
-      "city/*": [ "city/*" ],
+      "Cell/*": [ "Cell/*" ],
+      "City/*": [ "City/*" ],
+      "Grid/*": [ "Grid/*" ],
       "common/*": [ "../common/*" ],
+      "constants/*": [ "../common/constants/*" ],
       "config/*": [ "config/*" ],
       "data/*": [ "../../data/*" ],
       "events/*": [ "events/*" ],
@@ -29,8 +32,8 @@
       "tiles/*": [ "tiles/*" ],
       "ui/*": [ "ui/*" ],
       "utils/*": [ "utils/*" ],
-      "load/*": [ "load/*" ],
-      "world/*": [ "world/*" ]
+      "Load/*": [ "Load/*" ],
+      "World/*": [ "World/*" ]
     },
     "typeRoots": [
       "node_modules/@types",

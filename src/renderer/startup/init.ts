@@ -1,6 +1,6 @@
 import Phaser from 'phaser';
-import { load } from 'load';
-import { world } from 'world';
+import { Load } from 'Load';
+import { World } from 'World';
 import { globals } from 'utils/globals';
 import { setGlobals } from './setGlobals';
 import config from 'config';
@@ -25,7 +25,7 @@ export async function init() {
     width: window.innerWidth,
     height: window.innerHeight,
     scaleMode: Phaser.Scale.ScaleModes.RESIZE,
-    scene: [load, world],
+    scene: [Load, World],
   };
 
   setGlobals();

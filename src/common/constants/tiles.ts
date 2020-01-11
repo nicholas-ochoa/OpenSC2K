@@ -1,0 +1,7 @@
+const TILE_WIDTH = 32;
+const TILE_HEIGHT = 16;
+const LAYER_OFFSET = 12;
+
+export default { TILE_WIDTH, TILE_HEIGHT, LAYER_OFFSET };
+
+export { TILE_WIDTH, TILE_HEIGHT, LAYER_OFFSET };

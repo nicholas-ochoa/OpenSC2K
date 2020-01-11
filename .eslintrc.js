@@ -2,9 +2,9 @@ module.exports = {
   parser: '@typescript-eslint/parser',
   extends: [
     'plugin:@typescript-eslint/recommended',
-    'prettier/@typescript-eslint',
+    //'prettier/@typescript-eslint',
     'plugin:json/recommended',
-    'plugin:prettier/recommended', // must be the last entry
+    //'plugin:prettier/recommended', // must be the last entry
   ],
   parserOptions: {
     ecmaVersion: 6,
