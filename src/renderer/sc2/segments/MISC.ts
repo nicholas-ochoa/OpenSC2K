@@ -2,140 +2,143 @@ import { data } from '../data';
 import tiles from 'tiles';
 
 export function MISC(bytes: Buffer) {
-  // uncomment the console.log statement to work on this section
+  // uncomment the console.log hex(), statement to work on this section
   // still very much a WIP
   // will optimize once all data structions are properties are identified properly
 
   let offset = 0;
   const misc: any = {};
 
+  function hex() {
+    return '0x' + offset.toString(16).padStart(4, '0').toUpperCase();
+  }
+
   // 0 terrain edit, 1 city, 2 disaster
-  misc.cityMode = bytes.readUInt32BE(offset += 4);
-  // console.log('gameMode', misc.gameMode);
+  misc.cityMode = gameMode[bytes.readUInt32BE(offset += 4)];
+  // console.log(hex(), 'gameMode', misc.gameMode);
 
   // 0 through 3 corresponding to city rotation
   misc.rotation = bytes.readUInt32BE(offset += 4);
-  // console.log('rotation', misc.rotation);
+  // console.log(hex(), 'rotation', misc.rotation);
 
   // year the city was founded
   misc.baseYear = bytes.readUInt32BE(offset += 4);
-  // console.log('baseYear', misc.baseYear);
+  // console.log(hex(), 'baseYear', misc.baseYear);
 
   // days since city was founded.
   // 300 days per year, 12 months, 25 days per month
   misc.simCycle = bytes.readUInt32BE(offset += 4);
-  // console.log('simCycle', misc.simCycle);
+  // console.log(hex(), 'simCycle', misc.simCycle);
 
   // total money
-  misc.totalFunds = bytes.readUInt32BE(offset += 4);
-  // console.log('totalFunds', misc.totalFunds);
+  misc.totalFunds = bytes.readInt32BE(offset += 4);
+  // console.log(hex(), 'totalFunds', misc.totalFunds);
 
   // total number of bonds taken out
   // todo: does not work
   misc.totalBondCount = bytes.readUInt32BE(offset += 4);
-  // console.log('totalBonds', misc.totalBonds);
+  // console.log(hex(), 'totalBonds', misc.totalBondCount);
 
   // starting difficulty
   misc.gameLevel = bytes.readUInt32BE(offset += 4);
-  // console.log('gameLevel', misc.gameLevel);
+  // console.log(hex(), 'gameLevel', misc.gameLevel);
 
   // reward tier obtained. 0 = none, 1 = mayor's mansion
   // 2 = city hall, 3 = statue, 4 = military
   // 5 = llama dome, 6 = arcos
   misc.cityStatus = bytes.readUInt32BE(offset += 4);
-  // console.log('cityStatus', misc.cityStatus);
+  // console.log(hex(), 'cityStatus', misc.cityStatus);
 
   // total city value (show bonds dialog)
   // multiply by 1,000 to get value shown in game
   misc.cityValue = bytes.readUInt32BE(offset += 4);
-  // console.log('cityValue', misc.cityValue);
+  // console.log(hex(), 'cityValue', misc.cityValue);
 
   // sum of all values in XVAL
   misc.landValue = bytes.readUInt32BE(offset += 4);
-  // console.log('landValue', misc.landValue);
+  // console.log(hex(), 'landValue', misc.landValue);
 
   // sum of all values in XCRM
   misc.crimeCount = bytes.readUInt32BE(offset += 4);
-  // console.log('crimeCount', misc.crimeCount);
+  // console.log(hex(), 'crimeCount', misc.crimeCount);
 
   // not a sum of XTRF values
   misc.trafficCount = bytes.readUInt32BE(offset += 4);
-  // console.log('trafficCount', misc.trafficCount);
+  // console.log(hex(), 'trafficCount', misc.trafficCount);
 
   // unknown
   misc.pollution = bytes.readUInt32BE(offset += 4);
-  // console.log('pollution', misc.pollution);
+  // console.log(hex(), 'pollution', misc.pollution);
 
   // unknown
   misc.cityFame = bytes.readUInt32BE(offset += 4);
-  // console.log('cityFame', misc.cityFame);
+  // console.log(hex(), 'cityFame', misc.cityFame);
 
   // unknown
   misc.advertising = bytes.readUInt32BE(offset += 4);
-  // console.log('advertising', misc.advertising);
+  // console.log(hex(), 'advertising', misc.advertising);
 
   // unknown
   misc.garbage = bytes.readUInt32BE(offset += 4);
-  // console.log('garbage', misc.garbage);
+  // console.log(hex(), 'garbage', misc.garbage);
 
   // percentage of population that is working
   misc.workerPercent = bytes.readUInt32BE(offset += 4);
-  // console.log('workerPercent', misc.workerPercent);
+  // console.log(hex(), 'workerPercent', misc.workerPercent);
 
   // work force life expectancy
   misc.workerHealth = bytes.readUInt32BE(offset += 4);
-  // console.log('workerHealth', misc.workerHealth);
+  // console.log(hex(), 'workerHealth', misc.workerHealth);
 
   // work force education quotient
   misc.workerEQ = bytes.readUInt32BE(offset += 4);
-  // console.log('workerEQ', misc.workerEQ);
+  // console.log(hex(), 'workerEQ', misc.workerEQ);
 
   // population of simnation
   // multiply by 1,000 to get value shown in game
   misc.nationalPopulation = bytes.readUInt32BE(offset += 4);
-  // console.log('nationalPopulation', misc.nationalPopulation);
+  // console.log(hex(), 'nationalPopulation', misc.nationalPopulation);
 
   // unknown
   misc.nationalValue = bytes.readUInt32BE(offset += 4);
-  // console.log('nationalValue', misc.nationalValue);
+  // console.log(hex(), 'nationalValue', misc.nationalValue);
 
   // unknown
   misc.nationalTax = bytes.readUInt32BE(offset += 4);
-  // console.log('nationalTax', misc.nationalTax);
+  // console.log(hex(), 'nationalTax', misc.nationalTax);
 
   // unknown
   misc.nationalTrend = bytes.readUInt32BE(offset += 4);
-  // console.log('nationalTrend', misc.nationalTrend);
+  // console.log(hex(), 'nationalTrend', misc.nationalTrend);
 
   // unknown, weather related
   misc.heat = bytes.readUInt32BE(offset += 4);
-  // console.log('heat', misc.heat);
+  // console.log(hex(), 'heat', misc.heat);
 
   // unknown, weather related
   misc.wind = bytes.readUInt32BE(offset += 4);
-  // console.log('wind', misc.wind);
+  // console.log(hex(), 'wind', misc.wind);
 
   // unknown, weather related
   misc.humid = bytes.readUInt32BE(offset += 4);
-  // console.log('humid', misc.humid);
+  // console.log(hex(), 'humid', misc.humid);
 
   // weather displayed in game on the status bar
   misc.weatherTrend = weatherTrends[bytes.readUInt32BE(offset += 4)];
-  // console.log('weatherTrend', misc.weatherTrend);
+  // console.log(hex(), 'weatherTrend', misc.weatherTrend);
 
   // currently active disaster
   misc.disaster = disasters[bytes.readUInt32BE(offset += 4)];
-  // console.log('disaster', misc.disaster);
+  // console.log(hex(), 'disaster', misc.disaster);
 
   // unknown
   misc.oldResidentialPopulation = bytes.readUInt32BE(offset += 4);
-  // console.log('oldResidentialPopulation', misc.oldResidentialPopulation);
+  // console.log(hex(), 'oldResidentialPopulation', misc.oldResidentialPopulation);
 
   // 0x000...0011111 where the last 5 bits represent:
   // 11111 = all, 00001 = mayor's only, 10000 = arco only
   misc.rewards = bytes.readUInt32BE(offset += 4);
-  // console.log('rewards', misc.rewards);
-
+  // console.log(hex(), 'rewards', misc.rewards);
 
   // graph data
   misc.graphs = {};
@@ -151,42 +154,54 @@ export function MISC(bytes: Buffer) {
       population: bytes.readUInt32BE(offset += 4),
     };
 
+    // console.log(hex(), `graphs.population[${i}].age`, misc.graphs.population[i].age);
+    // console.log(hex(), `graphs.population[${i}].population`, misc.graphs.population[i].population);
+
     // health - resident age graph, values unknown
     misc.graphs.health[i] = {
       age: graphAgeRange[i],
       value: bytes.readUInt32BE(offset += 4),
     };
 
+    // console.log(hex(), `graphs.health[${i}].age`, misc.graphs.health[i].age);
+    // console.log(hex(), `graphs.health[${i}].value`, misc.graphs.health[i].value);
+
     // education - resident age graph, values unknown
     misc.graphs.education[i] = {
       age: graphAgeRange[i],
       value: bytes.readUInt32BE(offset += 4),
     };
-  }
 
-  // console.log('graphs.population', misc.graphs.population);
-  // console.log('graphs.health', misc.graphs.health);
-  // console.log('graphs.education', misc.graphs.education);
+    // console.log(hex(), `graphs.education[${i}].age`, misc.graphs.education[i].age);
+    // console.log(hex(), `graphs.education[${i}].value`, misc.graphs.education[i].value);
+  }
 
   // ingame: city industry dialog
   // ratios: range 0 to 99?
   // tax rates: 0 to 10?
   // demand: 0 to 512?
   for (let i = 0; i < 11; i++) {
-    const row = {};
+    misc.graphs.industry[i] = {};
 
-    row.type = cityIndustries[i];
-    row.ratios = bytes.readUInt32BE(offset += 4);
-    row.taxRates = bytes.readUInt32BE(offset += 4);
-    row.demand = bytes.readUInt32BE(offset += 4);
+    misc.graphs.industry[i].type = cityIndustries[i];
+    // console.log(hex(), `graphs.industry[${i}].type`, misc.graphs.industry[i].type);
 
-    misc.graphs.industry[i] = row;
+    misc.graphs.industry[i].ratios = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `graphs.industry[${i}].ratios`, misc.graphs.industry[i].ratios);
+
+    misc.graphs.industry[i].taxRates = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `graphs.industry[${i}].taxRates`, misc.graphs.industry[i].taxRates);
+
+    misc.graphs.industry[i].demand = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `graphs.industry[${i}].demand`, misc.graphs.industry[i].demand);
   }
-
-  // console.log('graphs.industry', misc.graphs.industry);
 
   // total counts of each tile type, index
   // by tile id from XBLD range 0 to 255
+  // this counts number of TILES not number
+  // of objects. for example, the llama dome is
+  // 4x4 and shows up as tile count of 16 if a
+  // single structure is placed on the map
   misc.tileCounts = [];
 
   for (let i = 0; i < 256; i++) {
@@ -196,35 +211,29 @@ export function MISC(bytes: Buffer) {
       description: tiles.data[i]?.description,
       count: bytes.readUInt32BE(offset += 4),
     };
+
+    // console.log(hex(), `tileCounts[${i}].id`, misc.tileCounts[i].id);
+    // console.log(hex(), `tileCounts[${i}].type`, misc.tileCounts[i].type);
+    // console.log(hex(), `tileCounts[${i}].description`, misc.tileCounts[i].description);
+    // console.log(hex(), `tileCounts[${i}].count`, misc.tileCounts[i].count);
   }
 
-  // console.log('tileCounts', misc.tileCounts);
-
-  // population for each zone type
-  // 0x00: populated tile count
-  // 0x01: ^^^ part of this somehow?
-  // 0x02: residential tile count
-  // 0x03: ^^^ part of this somehow?
-  // 0x04: commercial tile count
-  // 0x05: ^^^ part of this somehow?
-  // 0x06: industrial tile count
-  // 0x07: ^^^ part of this somehow?
   misc.zonePop = [];
 
+  // populated tile counts
+  // mapped to zone types? (table below)
   for (let i = 0; i < 8; i++) {
-    misc.zonePop[i] = bytes.readUInt32BE(offset += 4);
+    misc.zonePop[zoneMap[i]] = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `zonePop[${zoneMap[i]}]`, misc.zonePop[zoneMap[i]]);
   }
-
-  // console.log('zonePop', misc.zonePop);
 
   // bond rates
   misc.bondRate = [];
-
   for (let i = 0; i < 50; i++) {
     misc.bondRate[i] = bytes.readInt32BE(offset += 4);
   }
 
-  // console.log('bondRate', misc.bondRate);
+  // console.log(hex(), 'bondRate', misc.bondRate);
 
   // 4x4 of neighbors
   // lower left, upper left, upper right, bottom right
@@ -233,382 +242,726 @@ export function MISC(bytes: Buffer) {
   for (let i = 0; i < 4; i++) {
     misc.neighbors[i] = {};
     misc.neighbors[i].index = bytes.readUInt32BE(offset += 4); // index into a name lookup table?
+    // console.log(hex(), `neighbors[${i}].index`, misc.neighbors[i].index);
+
     misc.neighbors[i].population = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `neighbors[${i}].population`, misc.neighbors[i].population);
+
     misc.neighbors[i].value = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `neighbors[${i}].value`, misc.neighbors[i].value);
+
     misc.neighbors[i].fame = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `neighbors[${i}].fame`, misc.neighbors[i].fame);
   }
-
-  // console.log('neighbors', misc.neighbors);
-
-  misc.unknown = bytes.readUInt32BE(offset += 4);
-  // console.log('unknown', misc.unknown);
 
   misc.rci = {};
 
   // signed 32b int range -1999 to 2000
   misc.rci.residential = bytes.readInt32BE(offset += 4);
-  // console.log('rci.residential', misc.rci.residential);
+  // console.log(hex(), 'rci.residential', misc.rci.residential);
 
   // signed 32b int range -1999 to 2000
   misc.rci.commercial = bytes.readInt32BE(offset += 4);
-  // console.log('rci.commercial', misc.rci.commercial);
+  // console.log(hex(), 'rci.commercial', misc.rci.commercial);
 
   // signed 32b int range -1999 to 2000
   misc.rci.industrial = bytes.readInt32BE(offset += 4);
-  // console.log('rci.industrial', misc.rci.industrial);
+  // console.log(hex(), 'rci.industrial', misc.rci.industrial);
 
   misc.unknown = bytes.readUInt32BE(offset += 4);
-  // console.log('unknown', misc.unknown);
+  // console.log(hex(), 'unknown', misc.unknown);
 
   misc.unknown = bytes.readUInt32BE(offset += 4);
-  // console.log('unknown', misc.unknown);
+  // console.log(hex(), 'unknown', misc.unknown);
 
   misc.unknown = bytes.readUInt32BE(offset += 4);
-  // console.log('unknown', misc.unknown);
+  // console.log(hex(), 'unknown', misc.unknown);
 
   misc.unknown = bytes.readUInt32BE(offset += 4);
-  // console.log('unknown', misc.unknown);
+  // console.log(hex(), 'unknown', misc.unknown);
 
   misc.unknown = bytes.readUInt32BE(offset += 4);
-  // console.log('unknown', misc.unknown);
+  // console.log(hex(), 'unknown', misc.unknown);
 
-
+  // the year a technology was invented
+  // defaults to 0 if a city was saved after
+  // the tech was invented
   misc.inventions = {};
 
   misc.inventions.gasPower = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.gasPower', misc.inventions.gasPower);
+  // console.log(hex(), 'inventions.gasPower', misc.inventions.gasPower);
 
   misc.inventions.nuclearPower = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.nuclearPower', misc.inventions.nuclearPower);
+  // console.log(hex(), 'inventions.nuclearPower', misc.inventions.nuclearPower);
 
   misc.inventions.solarPower = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.solarPower', misc.inventions.solarPower);
+  // console.log(hex(), 'inventions.solarPower', misc.inventions.solarPower);
 
   misc.inventions.windPower = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.windPower', misc.inventions.windPower);
+  // console.log(hex(), 'inventions.windPower', misc.inventions.windPower);
 
   misc.inventions.microwavePower = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.microwavePower', misc.inventions.microwavePower);
+  // console.log(hex(), 'inventions.microwavePower', misc.inventions.microwavePower);
 
   misc.inventions.fusionPower = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.fusionPower', misc.inventions.fusionPower);
+  // console.log(hex(), 'inventions.fusionPower', misc.inventions.fusionPower);
 
   misc.inventions.airport = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.airport', misc.inventions.airport);
+  // console.log(hex(), 'inventions.airport', misc.inventions.airport);
 
   misc.inventions.highways = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.highways', misc.inventions.highways);
+  // console.log(hex(), 'inventions.highways', misc.inventions.highways);
 
   misc.inventions.buses = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.buses', misc.inventions.buses);
+  // console.log(hex(), 'inventions.buses', misc.inventions.buses);
 
   misc.inventions.subways = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.subways', misc.inventions.subways);
+  // console.log(hex(), 'inventions.subways', misc.inventions.subways);
 
   misc.inventions.waterTreatment = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.waterTreatment', misc.inventions.waterTreatment);
+  // console.log(hex(), 'inventions.waterTreatment', misc.inventions.waterTreatment);
 
   misc.inventions.desalinisation = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.desalinisation', misc.inventions.desalinisation);
+  // console.log(hex(), 'inventions.desalinisation', misc.inventions.desalinisation);
 
   misc.inventions.plymouth = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.plymouth', misc.inventions.plymouth);
+  // console.log(hex(), 'inventions.plymouth', misc.inventions.plymouth);
 
   misc.inventions.forest = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.forest', misc.inventions.forest);
+  // console.log(hex(), 'inventions.forest', misc.inventions.forest);
 
   misc.inventions.darco = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.darco', misc.inventions.darco);
+  // console.log(hex(), 'inventions.darco', misc.inventions.darco);
 
   misc.inventions.launch = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.launch', misc.inventions.launch);
+  // console.log(hex(), 'inventions.launch', misc.inventions.launch);
 
   misc.inventions.highways2 = bytes.readUInt32BE(offset += 4);
-  // console.log('inventions.highways2', misc.inventions.highways2);
-
+  // console.log(hex(), 'inventions.highways2', misc.inventions.highways2);
 
   misc.budget = {};
-  misc.budget.propertyTax = {};
 
-  misc.budget.propertyTax.current = {};
-  misc.budget.propertyTax.current.population = bytes.readUInt32BE(offset += 4);
-  misc.budget.propertyTax.current.taxRate = bytes.readUInt32BE(offset += 4); // range 0 to 20
-  misc.budget.propertyTax.current.unknown = bytes.readUInt32BE(offset += 4);
+  misc.budget.residentialTaxRate = {};
+  misc.budget.residentialTaxRate.current = {};
+
+  misc.budget.residentialTaxRate.current.population = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.residentialTaxRate.current.population', misc.budget.residentialTaxRate.current.population);
+
+  misc.budget.residentialTaxRate.current.taxRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.residentialTaxRate.current.taxRate', misc.budget.residentialTaxRate.current.taxRate);
+
+  misc.budget.residentialTaxRate.current.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.residentialTaxRate.current.unknown', misc.budget.residentialTaxRate.current.unknown);
 
   for (let i = 0; i < 12; i++) {
-    if (!misc.budget.propertyTax[months[i]]) {
-      misc.budget.propertyTax[months[i]] = {};
+    if (!misc.budget.residentialTaxRate[months[i]]) {
+      misc.budget.residentialTaxRate[months[i]] = {};
     }
 
-    misc.budget.propertyTax[months[i]].taxRate = bytes.readUInt32BE(offset += 4);
-    misc.budget.propertyTax[months[i]].population = bytes.readUInt32BE(offset += 4);
+    misc.budget.residentialTaxRate[months[i]].population = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), 'budget.residentialTaxRate[' + months[i] + '].population', misc.budget.residentialTaxRate[months[i]].population);
+
+    misc.budget.residentialTaxRate[months[i]].taxRate = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), 'budget.residentialTaxRate[' + months[i] + '].taxRate', misc.budget.residentialTaxRate[months[i]].taxRate);
   }
 
-  // console.log('budget.propertyTax', misc.budget.propertyTax);
+  misc.budget.commercialTaxRate = {};
+  misc.budget.commercialTaxRate.current = {};
 
-  // todo: left off here
+  misc.budget.commercialTaxRate.current.population = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.commercialTaxRate.current.population', misc.budget.commercialTaxRate.current.population);
 
-  misc.budget.residentialTaxRate = [];
+  misc.budget.commercialTaxRate.current.taxRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.commercialTaxRate.current.taxRate', misc.budget.commercialTaxRate.current.taxRate);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.residentialTaxRate[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.commercialTaxRate.current.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.commercialTaxRate.current.unknown', misc.budget.commercialTaxRate.current.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.commercialTaxRate[months[i]]) {
+      misc.budget.commercialTaxRate[months[i]] = {};
+    }
+
+    misc.budget.commercialTaxRate[months[i]].population = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), 'budget.commercialTaxRate[' + months[i] + '].population', misc.budget.commercialTaxRate[months[i]].population);
+
+    misc.budget.commercialTaxRate[months[i]].taxRate = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), 'budget.commercialTaxRate[' + months[i] + '].taxRate', misc.budget.commercialTaxRate[months[i]].taxRate);
   }
 
-  // console.log('budget.residentialTaxRate', misc.budget.residentialTaxRate);
+  misc.budget.industrialTaxRate = {};
+  misc.budget.industrialTaxRate.current = {};
 
-  misc.budget.commercialTaxRate = [];
+  misc.budget.industrialTaxRate.current.population = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.industrialTaxRate.current.population', misc.budget.industrialTaxRate.current.population);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.commercialTaxRate[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.industrialTaxRate.current.taxRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.industrialTaxRate.current.taxRate', misc.budget.industrialTaxRate.current.taxRate);
+
+  misc.budget.industrialTaxRate.current.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.industrialTaxRate.current.unknown', misc.budget.industrialTaxRate.current.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.industrialTaxRate[months[i]]) {
+      misc.budget.industrialTaxRate[months[i]] = {};
+    }
+
+    misc.budget.industrialTaxRate[months[i]].population = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), 'budget.industrialTaxRate[' + months[i] + '].population', misc.budget.industrialTaxRate[months[i]].population);
+
+    misc.budget.industrialTaxRate[months[i]].taxRate = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), 'budget.industrialTaxRate[' + months[i] + '].taxRate', misc.budget.industrialTaxRate[months[i]].taxRate);
   }
 
-  // console.log('budget.commercialTaxRate', misc.budget.commercialTaxRate);
+  misc.budget.ordinances = {};
+  misc.budget.ordinances.current = {};
 
-  misc.budget.industrialTaxRate = [];
+  // unknown, budget ordinances?
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.industrialTaxRate[i] = bytes.readUInt32BE(offset += 4);
+  // unknown
+  misc.budget.ordinances.current.population = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.ordinances.current.population', misc.budget.ordinances.current.population);
+
+  // unknown, tax rate?
+  misc.budget.ordinances.current.taxRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.ordinances.current.taxRate', misc.budget.ordinances.current.taxRate);
+
+  // unknown
+  misc.budget.ordinances.current.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.ordinances.current.unknown', misc.budget.ordinances.current.unknown);
+
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.ordinances[months[i]]) {
+      misc.budget.ordinances[months[i]] = {};
+    }
+
+    // unknown
+    misc.budget.ordinances[months[i]].population = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.ordinances[${months[i]}].population`, misc.budget.ordinances[months[i]].population);
+
+    // unknown, tax rate?
+    misc.budget.ordinances[months[i]].taxRate = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.ordinances[${months[i]}].taxRate`, misc.budget.ordinances[months[i]].taxRate);
   }
-
-  // console.log('budget.industrialTaxRate', misc.budget.industrialTaxRate);
-
-  misc.budget.ordinances = [];
-
-  for (let i = 0; i < 27; i++) {
-    misc.budget.ordinances[i] = bytes.readUInt32BE(offset += 4);
-  }
-
-  // console.log('budget.ordinances', misc.budget.ordinances);
 
   misc.budget.bonds = [];
 
+  // budget - bonds screen
+  // unknown
   for (let i = 0; i < 27; i++) {
     misc.budget.bonds[i] = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.bonds[${i}]`, misc.budget.bonds[i]);
   }
 
-  // console.log('budget.bonds', misc.budget.bonds);
+  misc.budget.police = {};
 
-  // city services info
-  misc.cityServicesBudget = [];
+  misc.budget.police.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.police.tileCount', misc.budget.police.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.cityServicesBudget[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.police.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.police.currentFundingRate', misc.budget.police.currentFundingRate);
+
+  misc.budget.police.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.police.unknown', misc.budget.police.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.police[months[i]]) {
+      misc.budget.police[months[i]] = {};
+    }
+
+    misc.budget.police[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.police[${months[i]}].tileCount`, misc.budget.police[months[i]].tileCount);
+
+    misc.budget.police[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.police[${months[i]}].funding`, misc.budget.police[months[i]].funding);
   }
 
-  // console.log('cityServicesBudget', misc.cityServicesBudget);
+  misc.budget.fire = {};
 
-  misc.budget.police = [];
+  misc.budget.fire.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.fire.tileCount', misc.budget.fire.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.police[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.fire.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.fire.currentFundingRate', misc.budget.fire.currentFundingRate);
+
+  misc.budget.fire.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.fire.unknown', misc.budget.fire.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.fire[months[i]]) {
+      misc.budget.fire[months[i]] = {};
+    }
+
+    misc.budget.fire[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.fire[${months[i]}].tileCount`, misc.budget.fire[months[i]].tileCount);
+
+    misc.budget.fire[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.fire[${months[i]}].funding`, misc.budget.fire[months[i]].funding);
   }
 
-  // console.log('budget.police', misc.budget.police);
+  misc.budget.health = {};
 
-  misc.budget.fire = [];
+  misc.budget.health.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.health.tileCount', misc.budget.health.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.fire[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.health.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.health.currentFundingRate', misc.budget.health.currentFundingRate);
+
+  misc.budget.health.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.health.unknown', misc.budget.health.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.health[months[i]]) {
+      misc.budget.health[months[i]] = {};
+    }
+
+    misc.budget.health[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.health[${months[i]}].tileCount`, misc.budget.health[months[i]].tileCount);
+
+    misc.budget.health[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.health[${months[i]}].funding`, misc.budget.health[months[i]].funding);
   }
 
-  // console.log('budget.fire', misc.budget.fire);
+  misc.budget.schools = {};
 
-  misc.budget.health = [];
+  misc.budget.schools.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.schools.tileCount', misc.budget.schools.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.health[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.schools.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.schools.currentFundingRate', misc.budget.schools.currentFundingRate);
+
+  misc.budget.schools.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.schools.unknown', misc.budget.schools.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.schools[months[i]]) {
+      misc.budget.schools[months[i]] = {};
+    }
+
+    misc.budget.schools[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.schools[${months[i]}].tileCount`, misc.budget.schools[months[i]].tileCount);
+
+    misc.budget.schools[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.schools[${months[i]}].funding`, misc.budget.schools[months[i]].funding);
   }
 
-  // console.log('budget.health', misc.budget.health);
+  misc.budget.colleges = {};
 
-  misc.budget.schools = [];
+  misc.budget.colleges.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.colleges.tileCount', misc.budget.colleges.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.schools[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.colleges.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.colleges.currentFundingRate', misc.budget.colleges.currentFundingRate);
+
+  misc.budget.colleges.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.colleges.unknown', misc.budget.colleges.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.colleges[months[i]]) {
+      misc.budget.colleges[months[i]] = {};
+    }
+
+    misc.budget.colleges[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.colleges[${months[i]}].tileCount`, misc.budget.colleges[months[i]].tileCount);
+
+    misc.budget.colleges[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.colleges[${months[i]}].funding`, misc.budget.colleges[months[i]].funding);
   }
 
-  // console.log('budget.schools', misc.budget.schools);
+  misc.budget.roads = {};
 
-  misc.budget.colleges = [];
+  misc.budget.roads.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.roads.tileCount', misc.budget.roads.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.colleges[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.roads.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.roads.currentFundingRate', misc.budget.roads.currentFundingRate);
+
+  misc.budget.roads.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.roads.unknown', misc.budget.roads.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.roads[months[i]]) {
+      misc.budget.roads[months[i]] = {};
+    }
+
+    misc.budget.roads[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.roads[${months[i]}].tileCount`, misc.budget.roads[months[i]].tileCount);
+
+    misc.budget.roads[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.roads[${months[i]}].funding`, misc.budget.roads[months[i]].funding);
   }
 
-  // console.log('budget.colleges', misc.budget.colleges);
+  misc.budget.highways = {};
 
-  misc.budget.roads = [];
+  misc.budget.highways.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.highways.tileCount', misc.budget.highways.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.roads[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.highways.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.highways.currentFundingRate', misc.budget.highways.currentFundingRate);
+
+  misc.budget.highways.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.highways.unknown', misc.budget.highways.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.highways[months[i]]) {
+      misc.budget.highways[months[i]] = {};
+    }
+
+    misc.budget.highways[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.highways[${months[i]}].tileCount`, misc.budget.highways[months[i]].tileCount);
+
+    misc.budget.highways[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.highways[${months[i]}].funding`, misc.budget.highways[months[i]].funding);
   }
 
-  // console.log('budget.roads', misc.budget.roads);
+  misc.budget.bridges = {};
 
-  misc.budget.highways = [];
+  misc.budget.bridges.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.bridges.tileCount', misc.budget.bridges.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.highways[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.bridges.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.bridges.currentFundingRate', misc.budget.bridges.currentFundingRate);
+
+  misc.budget.bridges.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.bridges.unknown', misc.budget.bridges.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.bridges[months[i]]) {
+      misc.budget.bridges[months[i]] = {};
+    }
+
+    misc.budget.bridges[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.bridges[${months[i]}].tileCount`, misc.budget.bridges[months[i]].tileCount);
+
+    misc.budget.bridges[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.bridges[${months[i]}].funding`, misc.budget.bridges[months[i]].funding);
   }
 
-  // console.log('budget.highways', misc.budget.highways);
+  misc.budget.rail = {};
 
-  misc.budget.bridges = [];
+  misc.budget.rail.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.rail.tileCount', misc.budget.rail.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.bridges[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.rail.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.rail.currentFundingRate', misc.budget.rail.currentFundingRate);
+
+  misc.budget.rail.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.rail.unknown', misc.budget.rail.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.rail[months[i]]) {
+      misc.budget.rail[months[i]] = {};
+    }
+
+    misc.budget.rail[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.rail[${months[i]}].tileCount`, misc.budget.rail[months[i]].tileCount);
+
+    misc.budget.rail[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.rail[${months[i]}].funding`, misc.budget.rail[months[i]].funding);
   }
 
-  // console.log('budget.bridges', misc.budget.bridges);
+  misc.budget.subway = {};
 
-  misc.budget.rail = [];
+  misc.budget.subway.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.subway.tileCount', misc.budget.subway.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.rail[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.subway.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.subway.currentFundingRate', misc.budget.subway.currentFundingRate);
+
+  misc.budget.subway.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.subway.unknown', misc.budget.subway.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.subway[months[i]]) {
+      misc.budget.subway[months[i]] = {};
+    }
+
+    misc.budget.subway[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.subway[${months[i]}].tileCount`, misc.budget.subway[months[i]].tileCount);
+
+    misc.budget.subway[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.subway[${months[i]}].funding`, misc.budget.subway[months[i]].funding);
   }
 
-  // console.log('budget.rail', misc.budget.rail);
+  misc.budget.tunnel = {};
 
-  misc.budget.subway = [];
+  misc.budget.tunnel.tileCount = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.tunnel.tileCount', misc.budget.tunnel.tileCount);
 
-  for (let i = 0; i < 27; i++) {
-    misc.budget.subway[i] = bytes.readUInt32BE(offset += 4);
+  misc.budget.tunnel.currentFundingRate = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.tunnel.currentFundingRate', misc.budget.tunnel.currentFundingRate);
+
+  misc.budget.tunnel.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'budget.tunnel.unknown', misc.budget.tunnel.unknown);
+
+  for (let i = 0; i < 12; i++) {
+    if (!misc.budget.tunnel[months[i]]) {
+      misc.budget.tunnel[months[i]] = {};
+    }
+
+    misc.budget.tunnel[months[i]].tileCount = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.tunnel[${months[i]}].tileCount`, misc.budget.tunnel[months[i]].tileCount);
+
+    misc.budget.tunnel[months[i]].funding = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `budget.tunnel[${months[i]}].funding`, misc.budget.tunnel[months[i]].funding);
   }
 
-  // console.log('budget.subway', misc.budget.subway);
-
-  misc.budget.tunnel = [];
-
-  for (let i = 0; i < 27; i++) {
-    misc.budget.tunnel[i] = bytes.readUInt32BE(offset += 4);
-  }
-
-  // console.log('budget.tunnel', misc.budget.tunnel);
-
+  // unknown, year end
   misc.yearEnd = bytes.readUInt32BE(offset += 4);
-  // console.log('yearEnd', misc.yearEnd);
+  // console.log(hex(), 'yearEnd', misc.yearEnd);
 
-  misc.globalSeaLevel = bytes.readUInt32BE(offset += 4);
-  // console.log('globalSeaLevel', misc.globalSeaLevel);
+  // water table level
+  misc.seaLevel = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'seaLevel', misc.seaLevel);
 
+  // was this city generated with coastal terrain?
   misc.terrainCoast = bytes.readUInt32BE(offset += 4);
-  // console.log('terrainCoast', misc.terrainCoast);
+  // console.log(hex(), 'terrainCoast', misc.terrainCoast);
 
+  // was this city generated with river terrain?
   misc.terrainRiver = bytes.readUInt32BE(offset += 4);
-  // console.log('terrainRiver', misc.terrainRiver);
+  // console.log(hex(), 'terrainRiver', misc.terrainRiver);
 
-  misc.military = bytes.readUInt32BE(offset += 4);
-  // console.log('military', misc.military);
+  // military base offered / denied - or type of base (table below)
+  misc.military = militaryBase[bytes.readUInt32BE(offset += 4)];
+  // console.log(hex(), 'military', misc.military);
 
 
   misc.newspaperList = [];
 
+  // newspaper list, unknown
+  // 6x5B struct
+  // 9x6B struct
   for (let i = 0; i < 21; i++) {
     misc.newspaperList[i] = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `newspaperList[${i}]`, misc.newspaperList[i]);
   }
 
-  // console.log('newspaperList', misc.newspaperList);
+  // unknown values
+  // appears to be a group of 9 fields
+  // related to the next 9 groups of 6 fields?
+  for (let i = 0; i < 9; i++) {
+    misc.unknown = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `field ${i}: unknown`, misc.unknown);
+  }
 
+  // related to the 9 fields above? appears to be grouped together
+  for (let i = 0; i < 9; i++) {
+    misc.unknown = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `group ${i}: unknown`, misc.unknown);
+
+    misc.unknown = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `group ${i}: unknown`, misc.unknown);
+
+    misc.unknown = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `group ${i}: unknown`, misc.unknown);
+
+    misc.unknown = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `group ${i}: unknown`, misc.unknown);
+
+    misc.unknown = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `group ${i}: unknown`, misc.unknown);
+
+    misc.unknown = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `group ${i}: unknown`, misc.unknown);
+  }
+
+  // ordinance flags (bit flags)
+  // finance section = last 4 bits
   misc.ordinances = bytes.readUInt32BE(offset += 4);
-  // console.log('ordinances', misc.ordinances);
+  // console.log(hex(), 'ordinances', misc.ordinances, misc.ordinances.toString(2).padStart('0', 32));
 
+  // finance / sales tax
+  // const v01 = (misc.ordinances & 0b00000000000000000000000000000001) !== 0; console.log('v01:', v01);
+
+  // finance / income tax
+  // const v02 = (misc.ordinances & 0b00000000000000000000000000000010) !== 0; console.log('v02:', v02);
+
+  // finance / legalized gambling
+  // const v03 = (misc.ordinances & 0b00000000000000000000000000000100) !== 0; console.log('v03:', v03);
+
+  // finance / parking fines
+  // const v04 = (misc.ordinances & 0b00000000000000000000000000001000) !== 0; console.log('v04:', v04);
+
+  // safety & health / volunteer fire dept
+  // const v05 = (misc.ordinances & 0b00000000000000000000000000010000) !== 0; console.log('v05:', v05);
+
+  // safety & health / public smoking ban
+  // const v06 = (misc.ordinances & 0b00000000000000000000000000100000) !== 0; console.log('v06:', v06);
+
+  // safety & health / free clinics
+  // const v07 = (misc.ordinances & 0b00000000000000000000000001000000) !== 0; console.log('v07:', v07);
+
+  // safety & health / junior sports
+  // const v08 = (misc.ordinances & 0b00000000000000000000000010000000) !== 0; console.log('v08:', v08);
+
+  // education / pro-reading
+  // const v09 = (misc.ordinances & 0b00000000000000000000000100000000) !== 0; console.log('v09:', v09);
+
+  // education / anti-drug
+  // const v10 = (misc.ordinances & 0b00000000000000000000001000000000) !== 0; console.log('v10:', v10);
+
+  // education / cpr-training
+  // const v11 = (misc.ordinances & 0b00000000000000000000010000000000) !== 0; console.log('v11:', v11);
+
+  // education / neighborhood watch
+  // const v12 = (misc.ordinances & 0b00000000000000000000100000000000) !== 0; console.log('v12:', v12);
+
+  // promotional / tourist advertising
+  // const v13 = (misc.ordinances & 0b00000000000000000001000000000000) !== 0; console.log('v13:', v13);
+
+  // promotional / business advertising
+  // const v14 = (misc.ordinances & 0b00000000000000000010000000000000) !== 0; console.log('v14:', v14);
+
+  // promotional / city beautification
+  // const v15 = (misc.ordinances & 0b00000000000000000100000000000000) !== 0; console.log('v15:', v15);
+
+  // promotional / annual carnival
+  // const v16 = (misc.ordinances & 0b00000000000000001000000000000000) !== 0; console.log('v16:', v16);
+
+  // other / energy conservation
+  // const v17 = (misc.ordinances & 0b00000000000000010000000000000000) !== 0; console.log('v17:', v17);
+
+  // other / nuclear free zone
+  // const v18 = (misc.ordinances & 0b00000000000000100000000000000000) !== 0; console.log('v18:', v18);
+
+  // other / homeless shelter
+  // const v19 = (misc.ordinances & 0b00000000000001000000000000000000) !== 0; console.log('v19:', v19);
+
+  // other / pollution controls
+  // const v20 = (misc.ordinances & 0b00000000000010000000000000000000) !== 0; console.log('v20:', v20);
+
+  // unknown
   misc.unemployed = bytes.readUInt32BE(offset += 4);
-  // console.log('unemployed', misc.unemployed);
+  // console.log(hex(), 'unemployed', misc.unemployed);
 
 
   misc.militaryCount = [];
 
-  for (let i = 0; i < 8; i++) {
+  // unknown, count of military tiles?
+  for (let i = 0; i < 16; i++) {
     misc.militaryCount[i] = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `militaryCount[${i}]`, misc.militaryCount[i]);
   }
 
-  // console.log('militaryCount', misc.militaryCount);
-
+  // unknown, count of underground subway tiles?
   misc.subwayCount = bytes.readUInt32BE(offset += 4);
-  // console.log('subwayCount', misc.subwayCount);
+  // console.log(hex(), 'subwayCount', misc.subwayCount);
 
-  misc.gameSpeed = bytes.readUInt32BE(offset += 4);
-  // console.log('gameSpeed', misc.gameSpeed);
-
+  // game speed, table below
+  misc.gameSpeed = gameSpeed[bytes.readUInt32BE(offset += 4)];
+  // console.log(hex(), 'gameSpeed', misc.gameSpeed);
 
   misc.options = {};
-  misc.options.autoBudget = bytes.readUInt32BE(offset += 4);
-  // console.log('options.autoBudget', misc.options.autoBudget);
 
+  // is automatic budget enabled?
+  misc.options.AutoBudget = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'options.AutoBudget', misc.options.AutoBudget);
+
+  // is auto goto event enabled?
   misc.options.autoGoto = bytes.readUInt32BE(offset += 4);
-  // console.log('options.autoGoto', misc.options.autoGoto);
+  // console.log(hex(), 'options.autoGoto', misc.options.autoGoto);
 
-  misc.options.userSoundOn = bytes.readUInt32BE(offset += 4);
-  // console.log('options.userSoundOn', misc.options.userSoundOn);
+  // are sound effects enabled?
+  misc.options.soundEffects = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'options.soundEffects', misc.options.soundEffects);
 
-  misc.options.userMusicOn = bytes.readUInt32BE(offset += 4);
-  // console.log('options.userMusicOn', misc.options.userMusicOn);
+  // is music enabled?
+  misc.options.music = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'options.music', misc.options.music);
 
-  misc.options.noDisasters = bytes.readUInt32BE(offset += 4);
-  // console.log('options.noDisasters', misc.options.noDisasters);
+  // is no disasters enabled?
+  misc.noDisasters = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'noDisasters', misc.noDisasters);
 
-  misc.options.paperDeliver = bytes.readUInt32BE(offset += 4);
-  // console.log('options.paperDeliver', misc.options.paperDeliver);
+  // is newspaper delivery enabled?
+  misc.newspaperDelivery = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'newspaperDelivery', misc.newspaperDelivery);
 
-  misc.options.paperExtra = bytes.readUInt32BE(offset += 4);
-  // console.log('options.paperExtra', misc.options.paperExtra);
+  // newspaper selected for delivery
+  misc.newspaperSelection = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'newspaperSelection', misc.newspaperSelection);
 
-  misc.options.paperChoice = bytes.readUInt32BE(offset += 4);
-  // console.log('options.paperChoice', misc.options.paperChoice);
+  // unknown
+  misc.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'unknown', misc.unknown);
 
-  misc.unknown1 = bytes.readUInt32BE(offset += 4);
-  // console.log('unknown1', misc.unknown1);
+  // unknown
+  misc.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'unknown', misc.unknown);
 
+  // unknown, something to do with zoom and position of map
+  misc.cameraZoomUnknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'cameraZoomUnknown', misc.cameraZoomUnknown);
 
-  misc.camera = {};
-  misc.camera.zoom = bytes.readUInt32BE(offset += 4);
-  // console.log('camera.zoom', misc.camera.zoom);
+  // center of view coordinates
+  misc.cameraPositionX = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'cameraPositionX', misc.cameraPositionX);
 
-  misc.camera.cityCenterX = bytes.readUInt32BE(offset += 4);
-  // console.log('camera.cityCenterX', misc.camera.cityCenterX);
+  // center of view coordinates
+  misc.cameraPositionY = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'cameraPositionY', misc.cameraPositionY);
 
-  misc.camera.cityCenterY = bytes.readUInt32BE(offset += 4);
-  // console.log('camera.cityCenterY', misc.camera.cityCenterY);
+  // total city population from arcos
+  misc.arcoPopulation = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'arcoPopulation', misc.arcoPopulation);
 
-  misc.globalArcoPopulation = bytes.readUInt32BE(offset += 4);
-  // console.log('globalArcoPopulation', misc.globalArcoPopulation);
+  // count of tiles that are connected to neighbor cities
+  misc.connectionTiles = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'connectionTiles', misc.connectionTiles);
 
-  misc.connectTiles = bytes.readUInt32BE(offset += 4);
-  // console.log('connectTiles', misc.connectTiles);
+  // count of active sports teams from stadiums
+  misc.sportsTeams = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'sportsTeams', misc.sportsTeams);
 
-  misc.teamsActive = bytes.readUInt32BE(offset += 4);
-  // console.log('teamsActive', misc.teamsActive);
+  // total city population (not include arcos)
+  misc.normalPopulation = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'normalPopulation', misc.normalPopulation);
 
-  misc.totalPopulation = bytes.readUInt32BE(offset += 4);
-  // console.log('totalPopulation', misc.totalPopulation);
-
+  // unknown
   misc.industryBonus = bytes.readUInt32BE(offset += 4);
-  // console.log('industryBonus', misc.industryBonus);
+  // console.log(hex(), 'industryBonus', misc.industryBonus);
 
-  misc.polluteBonus = bytes.readUInt32BE(offset += 4);
-  // console.log('polluteBonus', misc.polluteBonus);
+  // unknown, signed?
+  misc.pollutionBonus = bytes.readInt32BE(offset += 4);
+  // console.log(hex(), 'pollutionBonus', misc.pollutionBonus);
 
+  // sum of all police station microsim arrests
   misc.oldArrest = bytes.readUInt32BE(offset += 4);
-  // console.log('oldArrest', misc.oldArrest);
+  // console.log(hex(), 'oldArrest', misc.oldArrest);
 
+  // unknown
   misc.policeBonus = bytes.readUInt32BE(offset += 4);
-  // console.log('policeBonus', misc.policeBonus);
+  // console.log(hex(), 'policeBonus', misc.policeBonus);
 
-  misc.disasterObject = bytes.readUInt32BE(offset += 4);
-  // console.log('disasterObject', misc.disasterObject);
+  // unknown, signed?
+  misc.disaster = bytes.readInt32BE(offset += 4);
+  // console.log(hex(), 'disaster', misc.disaster);
 
-  misc.currentDisaster = bytes.readUInt32BE(offset += 4);
-  // console.log('currentDisaster', misc.currentDisaster);
+  // unknown
+  misc.unknown = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'unknown', misc.unknown);
 
+  // 1 = disaster happening, 0 = normal
   misc.disasterActive = bytes.readUInt32BE(offset += 4);
-  // console.log('disasterActive', misc.disasterActive);
+  // console.log(hex(), 'disasterActive', misc.disasterActive);
 
-  misc.gotoDisaster = bytes.readUInt32BE(offset += 4);
-  // console.log('gotoDisaster', misc.gotoDisaster);
+  // unknown: go disaster
+  misc.goDisaster = bytes.readUInt32BE(offset += 4);
+  // console.log(hex(), 'goDisaster', misc.goDisaster);
 
+  // unknown, water pipes?
   misc.sewerBonus = bytes.readUInt32BE(offset += 4);
-  // console.log('sewerBonus', misc.sewerBonus);
+  // console.log(hex(), 'sewerBonus', misc.sewerBonus);
 
+  // unknown, all zero bytes beyond this point
+  for (let i = 0; i < 155; i++) {
+    misc.unknown = bytes.readUInt32BE(offset += 4);
+    // console.log(hex(), `unknown[${i}]`, misc.unknown);
+  }
+
+  // console.log(hex(), 'end');
 
   data.segments.MISC = misc;
 }
@@ -619,12 +972,9 @@ const gameMode = {
   0x02: 'disaster',
 };
 
-const offeredMilitary = {
-  0x00: false,
-  0x01: true,
-};
-
-const militaryType = {
+const militaryBase = {
+  0x00: 'not offered',
+  0x01: 'offered base, no suitable location / refused',
   0x02: 'army',
   0x03: 'air',
   0x04: 'naval',
@@ -637,6 +987,19 @@ const gameSpeed = {
   0x03: 'Llama',
   0x04: 'Cheetah',
   0x05: 'African Swallow',
+};
+
+const zoneMap = {
+  0x00: 'none',
+  0x01: 'lightResidential',
+  0x02: 'denseResidential',
+  0x03: 'lightCommercial',
+  0x04: 'denseCommercial',
+  0x05: 'lightIndustrial',
+  0x06: 'denseIndustrial',
+  0x07: 'military',
+  0x08: 'airport',
+  0x09: 'seaport',
 };
 
 const weatherTrends = {
