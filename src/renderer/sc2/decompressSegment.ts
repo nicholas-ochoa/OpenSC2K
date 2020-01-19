@@ -1,5 +1,5 @@
-export function decompressSegment(bytes) {
-  const output = [];
+export function decompressSegment(bytes: Buffer) {
+  const output: number[] = [];
   let dataCount = 0;
 
   for (let i = 0; i < bytes.length; i++) {
@@ -13,17 +13,19 @@ export function decompressSegment(bytes) {
     if (bytes[i] < 128) {
       dataCount = bytes[i];
 
-      // run-length encoded byte
     } else {
+      // run-length encoded byte
       const repeatCount = bytes[i] - 127;
       const repeated = bytes[i + 1];
 
-      for (let i = 0; i < repeatCount; i++) output.push(repeated);
+      for (let i = 0; i < repeatCount; i++) {
+        output.push(repeated);
+      }
 
       // skip the next byte
       i += 1;
     }
   }
 
-  return Uint8Array.from(output);
+  return Buffer.from(output);
 }

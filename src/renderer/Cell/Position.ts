@@ -2,8 +2,9 @@ import Cell from 'Cell';
 import Point from './Point';
 import Location, { Point3D } from './Location';
 import { TILE_WIDTH, TILE_HEIGHT, LAYER_OFFSET } from 'common/constants/tiles';
+import Corners from './Corners';
 
-export default class Position {
+export default class {
   #data;
   #cell: Cell;
   #location: Location;
@@ -13,6 +14,7 @@ export default class Position {
   #seaLevel: number;
 
   public rotate: boolean = false;
+  public corners: Corners;
 
   constructor(options) {
     this.#cell = options.cell;
@@ -20,6 +22,7 @@ export default class Position {
 
     this.#location = new Location({ x: options.data.x, y: options.data.y, z: options.data.segments.ALTM.altitude });
     //this.rotate = options.data.rotate;
+    this.corners = new Corners({ ...this.#data.segments.XZON });
 
     this.update();
   }

@@ -1,8 +1,6 @@
 import { data } from '../data';
 
-export function XTHG(bytes: any) {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-
+export function XTHG(bytes: Buffer) {
   data.segments.XTHG = [];
 
   for (let i = 0; i < bytes.byteLength; i++) {
@@ -12,23 +10,27 @@ export function XTHG(bytes: any) {
 
     const xthg: any = {};
 
-    xthg.id = view.getUint8(offset + 0);
+    xthg.id = bytes.readUInt8(offset + 0);
     xthg.type = types[xthg.id];
     xthg.actor = actors[xthg.id];
 
-    xthg.direction = xthg.type == 'actor' ? direction[view.getUint8(offset + 1)] : view.getUint8(offset + 1);
+    if (xthg.type == 'actor') {
+      xthg.direction = direction[bytes.readUInt8(offset + 1)];
+    } else {
+      xthg.direction = bytes.readUInt8(offset + 1);
+    }
 
-    xthg.x = view.getUint8(offset + 3);
-    xthg.y = view.getUint8(offset + 4);
-    xthg.z = view.getUint8(offset + 5);
+    xthg.x = bytes.readUInt8(offset + 3);
+    xthg.y = bytes.readUInt8(offset + 4);
+    xthg.z = bytes.readUInt8(offset + 5);
 
-    xthg.data2 = view.getUint8(offset + 2); // identifier? sequence number? type?
-    xthg.data7 = view.getUint8(offset + 6);
-    xthg.data8 = view.getUint8(offset + 7);
-    xthg.data9 = view.getUint8(offset + 8);
-    xthg.dataA = view.getUint8(offset + 9);
-    xthg.dataB = view.getUint8(offset + 10);
-    xthg.dataC = view.getUint8(offset + 11);
+    xthg.data2 = bytes.readUInt8(offset + 2); // identifier? sequence number? type?
+    xthg.data7 = bytes.readUInt8(offset + 6);
+    xthg.data8 = bytes.readUInt8(offset + 7);
+    xthg.data9 = bytes.readUInt8(offset + 8);
+    xthg.dataA = bytes.readUInt8(offset + 9);
+    xthg.dataB = bytes.readUInt8(offset + 10);
+    xthg.dataC = bytes.readUInt8(offset + 11);
 
     data.segments.XTHG.push(xthg);
   }

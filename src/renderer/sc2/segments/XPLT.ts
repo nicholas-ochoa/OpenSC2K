@@ -1,11 +1,10 @@
 import { data } from '../data';
-import { resize } from 'utils';
+import { resize } from '../resize';
 
-export function XPLT(bytes: any) {
-  const view = new Uint8Array(bytes);
+export function XPLT(bytes: Buffer) {
   let xplt = [];
 
-  view.forEach((bits, i) => {
+  bytes.forEach((bits, i) => {
     xplt[i] = bits;
   });
 

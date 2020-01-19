@@ -1,6 +1,6 @@
 // resize a bitmap data array using nearest neighbor algorithm
-export function resize(data: any, sourceSize: number, destSize: number) {
-  const resizedData: any = [];
+export function resize(data: number[], sourceSize: number, destSize: number) {
+  const resizedData: number[] = [];
 
   for (let i = 0; i < destSize; i++) {
     for (let j = 0; j < destSize; j++) {

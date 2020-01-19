@@ -1,11 +1,10 @@
 import { data } from '../data';
-import { resize } from 'utils';
+import { resize } from '../resize';
 
-export function XVAL(bytes: any) {
-  const view = new Uint8Array(bytes);
+export function XVAL(bytes: Buffer) {
   let xval = [];
 
-  view.forEach((bits, i) => {
+  bytes.forEach((bits, i) => {
     xval[i] = bits;
   });
 

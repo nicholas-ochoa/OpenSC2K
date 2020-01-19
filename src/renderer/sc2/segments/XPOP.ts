@@ -1,11 +1,10 @@
 import { data } from '../data';
-import { resize } from 'utils';
+import { resize } from '../resize';
 
-export function XPOP(bytes: any) {
-  const view = new Uint8Array(bytes);
+export function XPOP(bytes: Buffer) {
   let xpop = [];
 
-  view.forEach((bits, i) => {
+  bytes.forEach((bits, i) => {
     xpop[i] = bits;
   });
 

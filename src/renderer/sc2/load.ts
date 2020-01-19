@@ -9,5 +9,6 @@ export function load(fileName?: string): void {
 
   console.time('load');
   parse(fileName ?? config.get('paths.cities') + '/DEFAULT.SC2');
+  console.log(data);
   console.timeEnd('load');
 }

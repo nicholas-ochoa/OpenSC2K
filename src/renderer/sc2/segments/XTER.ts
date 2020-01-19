@@ -1,43 +1,36 @@
 import { data } from '../data';
-import { bin2str } from 'utils';
 
-export function XTER(bytes: any) {
-  bytes.forEach((bits: any, i: any) => {
+export function XTER(bytes: Buffer) {
+  bytes.forEach((bits, i) => {
     const xter: any = {};
 
     xter.terrain = xterMap[bits].terrain;
     xter.water = xterMap[bits].water;
     xter.type = xterMap[bits].type;
 
-    // raw binary values as strings for research/debug
-    xter.binaryText = {
-      bits: bin2str(bits, 8),
-    };
-
     data.cells[i].segments.XTER = xter;
   });
 }
 
-// terrain tile id is set in all cases
-// so we know what type of terrain tile to
-// display when water is hidden or heightmap
-// is displayed
+// terrain tile id is set in all cases so we know
+// what type of terrain tile to display when water
+// is hidden or heightmap is displayed
 const xterMap = {
   // land
-  0x00: { terrain: 256, water: null, type: 'dry' },
-  0x01: { terrain: 257, water: null, type: 'dry' },
-  0x02: { terrain: 258, water: null, type: 'dry' },
-  0x03: { terrain: 259, water: null, type: 'dry' },
-  0x04: { terrain: 260, water: null, type: 'dry' },
-  0x05: { terrain: 261, water: null, type: 'dry' },
-  0x06: { terrain: 262, water: null, type: 'dry' },
-  0x07: { terrain: 263, water: null, type: 'dry' },
-  0x08: { terrain: 264, water: null, type: 'dry' },
-  0x09: { terrain: 265, water: null, type: 'dry' },
-  0x0a: { terrain: 266, water: null, type: 'dry' },
-  0x0b: { terrain: 267, water: null, type: 'dry' },
-  0x0c: { terrain: 268, water: null, type: 'dry' },
-  0x0d: { terrain: 269, water: null, type: 'dry' },
+  0x00: { terrain: 256, water: null, type: 'land' },
+  0x01: { terrain: 257, water: null, type: 'land' },
+  0x02: { terrain: 258, water: null, type: 'land' },
+  0x03: { terrain: 259, water: null, type: 'land' },
+  0x04: { terrain: 260, water: null, type: 'land' },
+  0x05: { terrain: 261, water: null, type: 'land' },
+  0x06: { terrain: 262, water: null, type: 'land' },
+  0x07: { terrain: 263, water: null, type: 'land' },
+  0x08: { terrain: 264, water: null, type: 'land' },
+  0x09: { terrain: 265, water: null, type: 'land' },
+  0x0a: { terrain: 266, water: null, type: 'land' },
+  0x0b: { terrain: 267, water: null, type: 'land' },
+  0x0c: { terrain: 268, water: null, type: 'land' },
+  0x0d: { terrain: 269, water: null, type: 'land' },
 
   // underwater
   0x10: { terrain: 256, water: 270, type: 'submerged' },
@@ -55,21 +48,21 @@ const xterMap = {
   0x1c: { terrain: 268, water: 270, type: 'submerged' },
   0x1d: { terrain: 269, water: 270, type: 'submerged' },
 
-  // shoreline
-  0x20: { terrain: 256, water: 270, type: 'shore' },
-  0x21: { terrain: 257, water: 271, type: 'shore' },
-  0x22: { terrain: 258, water: 272, type: 'shore' },
-  0x23: { terrain: 259, water: 273, type: 'shore' },
-  0x24: { terrain: 260, water: 274, type: 'shore' },
-  0x25: { terrain: 261, water: 275, type: 'shore' },
-  0x26: { terrain: 262, water: 276, type: 'shore' },
-  0x27: { terrain: 263, water: 277, type: 'shore' },
-  0x28: { terrain: 264, water: 278, type: 'shore' },
-  0x29: { terrain: 265, water: 279, type: 'shore' },
-  0x2a: { terrain: 266, water: 280, type: 'shore' },
-  0x2b: { terrain: 267, water: 281, type: 'shore' },
-  0x2c: { terrain: 268, water: 282, type: 'shore' },
-  0x2d: { terrain: 269, water: 283, type: 'shore' },
+  // coast
+  0x20: { terrain: 256, water: 270, type: 'coast' },
+  0x21: { terrain: 257, water: 271, type: 'coast' },
+  0x22: { terrain: 258, water: 272, type: 'coast' },
+  0x23: { terrain: 259, water: 273, type: 'coast' },
+  0x24: { terrain: 260, water: 274, type: 'coast' },
+  0x25: { terrain: 261, water: 275, type: 'coast' },
+  0x26: { terrain: 262, water: 276, type: 'coast' },
+  0x27: { terrain: 263, water: 277, type: 'coast' },
+  0x28: { terrain: 264, water: 278, type: 'coast' },
+  0x29: { terrain: 265, water: 279, type: 'coast' },
+  0x2a: { terrain: 266, water: 280, type: 'coast' },
+  0x2b: { terrain: 267, water: 281, type: 'coast' },
+  0x2c: { terrain: 268, water: 282, type: 'coast' },
+  0x2d: { terrain: 269, water: 283, type: 'coast' },
 
   // surface water
   0x30: { terrain: 256, water: 270, type: 'surface' },

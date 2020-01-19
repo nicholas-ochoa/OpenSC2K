@@ -1,11 +1,10 @@
 import { data } from '../data';
-import { resize } from 'utils';
+import { resize } from '../resize';
 
-export function XFIR(bytes: any) {
-  const view = new Uint8Array(bytes);
+export function XFIR(bytes: Buffer) {
   let xfir = [];
 
-  view.forEach((bits, i) => {
+  bytes.forEach((bits, i) => {
     xfir[i] = bits;
   });
 

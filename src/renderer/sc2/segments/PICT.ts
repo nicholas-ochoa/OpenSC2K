@@ -1,6 +1,6 @@
 import { data } from '../data';
 
-export function PICT(bytes: any) {
+export function PICT(bytes: Buffer) {
   const pict: any = {};
 
   // similar format to game artwork

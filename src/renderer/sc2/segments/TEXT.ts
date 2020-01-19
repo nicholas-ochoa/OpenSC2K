@@ -1,7 +1,7 @@
 import { data } from '../data';
-import { bytesToAscii } from 'utils';
+import { bytesToAscii } from '../bytesToAscii';
 
-export function TEXT(bytes: any) {
+export function TEXT(bytes: Buffer) {
   const text: any = {};
 
   text.text = bytesToAscii(bytes.subarray(4));

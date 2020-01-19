@@ -23,6 +23,7 @@ export function parse(fileName: string): void {
   }
 
   // iterate through each data segment and parse
+  // ignoring the first 12 bytes of the file
   const segmentData = splitSegments(buffer.subarray(12));
 
   Object.keys(segmentData)

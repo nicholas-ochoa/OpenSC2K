@@ -1,27 +1,21 @@
 import { data } from '../data';
-import { bin2str } from 'utils';
 import tiles from 'tiles';
 
-export function XBLD(bytes: any) {
-  const view = new Uint8Array(bytes);
-
-  view.forEach((bits, i) => {
+export function XBLD(bytes: Buffer) {
+  bytes.forEach((bits, i) => {
     const xbld: any = {};
 
-    if (tiles.data[bits]) {
+    if (bits > 0) {
       xbld.id = bits;
-      xbld.type = tiles.data[bits].type || xbld.type;
-      xbld.subtype = tiles.data[bits].subtype || xbld.subtype;
-    }
 
-    if (xbld.id > 0) {
-      xbld.desc = tiles.data[xbld.id];
-    }
+      if (tiles.data[bits]?.type) {
+        xbld.type = tiles.data[bits].type;
+      }
 
-    // raw binary values as strings for research/debug
-    xbld.binaryText = {
-      bits: bin2str(bits, 8),
-    };
+      if (tiles.data[bits]?.subtype) {
+        xbld.subtype = tiles.data[bits].subtype;
+      }
+    }
 
     data.cells[i].segments.XBLD = xbld;
   });

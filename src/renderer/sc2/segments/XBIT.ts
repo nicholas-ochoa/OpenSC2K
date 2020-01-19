@@ -1,27 +1,23 @@
 import { data } from '../data';
-import { bin2str } from 'utils';
 
-export function XBIT(bytes: any) {
-  const view = new Uint8Array(bytes);
-
-  view.forEach((bits, i) => {
+export function XBIT(bytes: Buffer) {
+  bytes.forEach((bits, i) => {
     const xbit: any = {};
 
     // can this tile receive power?
     xbit.wired = (bits & 0b10000000) !== 0;
 
-    // does this tile HAVE power?
+    // does this tile have power?
     xbit.powered = (bits & 0b01000000) !== 0;
 
     // can this tile receive piped water?
     xbit.piped = (bits & 0b00100000) !== 0;
 
-    // does this tile HAVE piped water?
+    // does this tile have piped water?
     xbit.watered = (bits & 0b00010000) !== 0;
 
-    // mask for XVAL
-    // not currently used
-    //xbit.xvalMask      = (bits & 0b00001000) !== 0;
+    // land value mask
+    xbit.xvalMask = (bits & 0b00001000) !== 0;
 
     // is this tile covered by water?
     xbit.waterCovered = (bits & 0b00000100) !== 0;
@@ -31,10 +27,6 @@ export function XBIT(bytes: any) {
 
     // is tile salt water or fresh water?
     xbit.saltWater = (bits & 0b00000001) !== 0;
-
-    xbit.binaryText = {
-      bits: bin2str(bits, 8),
-    };
 
     data.cells[i].segments.XBIT = xbit;
   });

@@ -1,9 +1,7 @@
 import { data } from '../data';
 
-export function XTXT(bytes: any) {
-  const view = new Uint8Array(bytes);
-
-  view.forEach((bits: any, i: any) => {
+export function XTXT(bytes: Buffer) {
+  bytes.forEach((bits: any, i: any) => {
     const xtxt: any = {};
 
     xtxt.data = bits;

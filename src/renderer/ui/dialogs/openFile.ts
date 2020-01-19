@@ -11,8 +11,8 @@ export async function openFile(
   const dialog = remote.dialog;
 
   const defaultFilters: electron.FileFilter[] = [
-    { name: 'SimCity 2000 and OpenSC2K Cities', extensions: ['sc2', 'opensc2k'] },
-    { name: 'SimCity 2000 Cities', extensions: ['sc2'] },
+    { name: 'SimCity 2000 and OpenSC2K Cities', extensions: ['sc2', 'scn', 'opensc2k'] },
+    { name: 'SimCity 2000 Cities', extensions: ['sc2', 'scn'] },
     { name: 'OpenSC2K Cities', extensions: ['opensc2k'] },
   ];
 

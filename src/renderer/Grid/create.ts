@@ -16,9 +16,9 @@ export async function create(this: Grid) {
       data.cells[x][y] = [];
     }
 
-    data.cells[x][y] = new Cell({ data: sc2.data.cells[i] });
+    //data.cells[x][y] = new Cell({ data: sc2.data.cells[i] });
     data.list.push(data.cells[x][y]);
   }
 
-  console.log(data.cells);
+  //console.log(data.cells);
 }

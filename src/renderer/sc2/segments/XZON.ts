@@ -1,10 +1,7 @@
 import { data } from '../data';
-import { bin2str } from 'utils';
 
-export function XZON(bytes: any) {
-  const view = new Uint8Array(bytes);
-
-  view.forEach((bits, i) => {
+export function XZON(bytes: Buffer) {
+  bytes.forEach((bits, i) => {
     const xzon: any = {};
 
     // indicates the tile is a key / corner tile
@@ -18,29 +15,21 @@ export function XZON(bytes: any) {
     xzon.none = (bits & 0b11110000) === 0;
 
     // tile zone id and type
-    xzon.zone = xzonMap[bits & 0b00001111].id;
-    xzon.zoneType = xzonMap[bits & 0b00001111].type;
-
-    // raw binary values as strings for research/debug
-    xzon.binaryText = {
-      bits: bin2str(bits, 8),
-      first4bits: bin2str((bits & 0b11110000) >> 4, 4),
-      last4bits: bin2str(bits & 0b00001111, 4),
-    };
+    xzon.zone = xzonMap[bits & 0b00001111];
 
     data.cells[i].segments.XZON = xzon;
   });
 }
 
 const xzonMap = {
-  0x00: { id: null, type: null },
-  0x01: { id: 291, type: 'l_res' },
-  0x02: { id: 292, type: 'd_res' },
-  0x03: { id: 293, type: 'l_comm' },
-  0x04: { id: 294, type: 'd_comm' },
-  0x05: { id: 295, type: 'l_ind' },
-  0x06: { id: 296, type: 'd_ind' },
-  0x07: { id: 297, type: 'mil' },
-  0x08: { id: 298, type: 'air' },
-  0x09: { id: 299, type: 'sea' },
+  0x00: {},
+  0x01: { id: 291, type: 'lightResidential' },
+  0x02: { id: 292, type: 'denseResidential' },
+  0x03: { id: 293, type: 'lightCommercial' },
+  0x04: { id: 294, type: 'denseCommercial' },
+  0x05: { id: 295, type: 'lightIndustrial' },
+  0x06: { id: 296, type: 'denseIndustrial' },
+  0x07: { id: 297, type: 'military' },
+  0x08: { id: 298, type: 'airport' },
+  0x09: { id: 299, type: 'seaport' },
 };

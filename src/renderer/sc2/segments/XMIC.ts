@@ -1,8 +1,6 @@
 import { data } from '../data';
 
-export function XMIC(bytes: any) {
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-
+export function XMIC(bytes: Buffer) {
   data.segments.XMIC = [];
 
   for (let i = 0; i < bytes.byteLength; i++) {
@@ -14,12 +12,14 @@ export function XMIC(bytes: any) {
 
     const xmic: any = {};
 
-    xmic.building = view.getUint8(offset);
+    xmic.building = bytes.readUInt8(offset);
 
-    xmic.data1 = xmic.building == 0 ? 0 : view.getUint8(offset + 1);
-    xmic.data2 = xmic.building == 0 ? 0 : view.getUint16(offset + 2);
-    xmic.data3 = xmic.building == 0 ? 0 : view.getUint16(offset + 4);
-    xmic.data4 = xmic.building == 0 ? 0 : view.getUint16(offset + 6);
+    if (xmic.building !== 0) {
+      xmic.data1 = bytes.readUInt8(offset + 1);
+      xmic.data2 = bytes.readUInt16BE(offset + 2);
+      xmic.data3 = bytes.readUInt16BE(offset + 4);
+      xmic.data4 = bytes.readUInt16BE(offset + 6);
+    }
 
     data.segments.XMIC.push(xmic);
   }
