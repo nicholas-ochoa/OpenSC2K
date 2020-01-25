@@ -2,9 +2,8 @@ import { data } from '../data';
 import tiles from 'tiles';
 
 export function MISC(bytes: Buffer) {
-  // uncomment the console.log hex(), statement to work on this section
-  // still very much a WIP
-  // will optimize once all data structions are properties are identified properly
+  // uncomment the console.log(hex(), ...), statement to display offsets in the console
+  // still very much a WIP, will optimize once all data structions are properties are identified properly
 
   let offset = 0;
   const misc: any = {};
@@ -768,69 +767,41 @@ export function MISC(bytes: Buffer) {
   }
 
   // ordinance flags (bit flags)
-  // finance section = last 4 bits
-  misc.ordinances = bytes.readUInt32BE(offset += 4);
+  misc.ordinances = {
+    finance: {},
+    safetyAndHealth: {},
+    education: {},
+    promotional: {},
+    other: {},
+  };
+
+  const ordinances = bytes.readUInt32BE(offset += 4);
   // console.log(hex(), 'ordinances', misc.ordinances, misc.ordinances.toString(2).padStart('0', 32));
 
-  // finance / sales tax
-  // const v01 = (misc.ordinances & 0b00000000000000000000000000000001) !== 0; console.log('v01:', v01);
+  misc.ordinances.finance.salesTax = (ordinances & 0b00000000000000000001) !== 0;
+  misc.ordinances.finance.incomeTax = (ordinances & 0b00000000000000000010) !== 0;
+  misc.ordinances.finance.legalizedGambling = (ordinances & 0b00000000000000000100) !== 0;
+  misc.ordinances.finance.parkingFines = (ordinances & 0b00000000000000001000) !== 0;
 
-  // finance / income tax
-  // const v02 = (misc.ordinances & 0b00000000000000000000000000000010) !== 0; console.log('v02:', v02);
+  misc.ordinances.safetyAndHealth.volunteerFireDept = (ordinances & 0b00000000000000010000) !== 0;
+  misc.ordinances.safetyAndHealth.publicSmokingBan = (ordinances & 0b00000000000000100000) !== 0;
+  misc.ordinances.safetyAndHealth.freeClinics = (ordinances & 0b00000000000001000000) !== 0;
+  misc.ordinances.safetyAndHealth.juniorSports = (ordinances & 0b00000000000010000000) !== 0;
 
-  // finance / legalized gambling
-  // const v03 = (misc.ordinances & 0b00000000000000000000000000000100) !== 0; console.log('v03:', v03);
+  misc.ordinances.education.proReadingCampaign = (ordinances & 0b00000000000100000000) !== 0;
+  misc.ordinances.education.antiDrugCampaign = (ordinances & 0b00000000001000000000) !== 0;
+  misc.ordinances.education.cprTraining = (ordinances & 0b00000000010000000000) !== 0;
+  misc.ordinances.education.neighborhoodWatch = (ordinances & 0b00000000100000000000) !== 0;
 
-  // finance / parking fines
-  // const v04 = (misc.ordinances & 0b00000000000000000000000000001000) !== 0; console.log('v04:', v04);
+  misc.ordinances.promotional.touristAdvertising = (ordinances & 0b00000001000000000000) !== 0;
+  misc.ordinances.promotional.businessAdvertising = (ordinances & 0b00000010000000000000) !== 0;
+  misc.ordinances.promotional.cityBeautification = (ordinances & 0b00000100000000000000) !== 0;
+  misc.ordinances.promotional.annualCarnival = (ordinances & 0b00001000000000000000) !== 0;
 
-  // safety & health / volunteer fire dept
-  // const v05 = (misc.ordinances & 0b00000000000000000000000000010000) !== 0; console.log('v05:', v05);
-
-  // safety & health / public smoking ban
-  // const v06 = (misc.ordinances & 0b00000000000000000000000000100000) !== 0; console.log('v06:', v06);
-
-  // safety & health / free clinics
-  // const v07 = (misc.ordinances & 0b00000000000000000000000001000000) !== 0; console.log('v07:', v07);
-
-  // safety & health / junior sports
-  // const v08 = (misc.ordinances & 0b00000000000000000000000010000000) !== 0; console.log('v08:', v08);
-
-  // education / pro-reading
-  // const v09 = (misc.ordinances & 0b00000000000000000000000100000000) !== 0; console.log('v09:', v09);
-
-  // education / anti-drug
-  // const v10 = (misc.ordinances & 0b00000000000000000000001000000000) !== 0; console.log('v10:', v10);
-
-  // education / cpr-training
-  // const v11 = (misc.ordinances & 0b00000000000000000000010000000000) !== 0; console.log('v11:', v11);
-
-  // education / neighborhood watch
-  // const v12 = (misc.ordinances & 0b00000000000000000000100000000000) !== 0; console.log('v12:', v12);
-
-  // promotional / tourist advertising
-  // const v13 = (misc.ordinances & 0b00000000000000000001000000000000) !== 0; console.log('v13:', v13);
-
-  // promotional / business advertising
-  // const v14 = (misc.ordinances & 0b00000000000000000010000000000000) !== 0; console.log('v14:', v14);
-
-  // promotional / city beautification
-  // const v15 = (misc.ordinances & 0b00000000000000000100000000000000) !== 0; console.log('v15:', v15);
-
-  // promotional / annual carnival
-  // const v16 = (misc.ordinances & 0b00000000000000001000000000000000) !== 0; console.log('v16:', v16);
-
-  // other / energy conservation
-  // const v17 = (misc.ordinances & 0b00000000000000010000000000000000) !== 0; console.log('v17:', v17);
-
-  // other / nuclear free zone
-  // const v18 = (misc.ordinances & 0b00000000000000100000000000000000) !== 0; console.log('v18:', v18);
-
-  // other / homeless shelter
-  // const v19 = (misc.ordinances & 0b00000000000001000000000000000000) !== 0; console.log('v19:', v19);
-
-  // other / pollution controls
-  // const v20 = (misc.ordinances & 0b00000000000010000000000000000000) !== 0; console.log('v20:', v20);
+  misc.ordinances.other.energyConservation = (ordinances & 0b00010000000000000000) !== 0;
+  misc.ordinances.other.nuclearFreeZone = (ordinances & 0b00100000000000000000) !== 0;
+  misc.ordinances.other.homelessShelter = (ordinances & 0b01000000000000000000) !== 0;
+  misc.ordinances.other.pollutionControls = (ordinances & 0b10000000000000000000) !== 0;
 
   // unknown
   misc.unemployed = bytes.readUInt32BE(offset += 4);
