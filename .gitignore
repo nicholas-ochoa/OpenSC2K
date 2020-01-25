@@ -5,6 +5,7 @@ assets/cities/*
 assets/images/*
 assets/import/*
 assets/tiles/*
+assets/tilemap/*
 
 # generated
 node_modules/
