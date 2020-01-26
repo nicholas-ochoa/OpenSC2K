@@ -1,0 +1,4 @@
+cursors:
+  - name: ADVICED
+    offset: 0x0f4304
+    size: 0x0748

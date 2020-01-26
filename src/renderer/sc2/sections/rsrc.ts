@@ -1,41 +1,131 @@
 import ReadBytes from '../ReadBytes';
 
-export async function rsrc(bytes: Buffer, offset: number): Promise<any> {
-  const data: any = {};
+export async function rsrc(bytes: Buffer, section: any, exe: any): Promise<any> {
   const read = new ReadBytes();
 
-  read.buffer = bytes;
+  read.buffer = section.data;
   read.endianness = 'little';
   read.log = true;
+  read.labelMaxWidth = 25;
 
-  read.group('resource directory header', false);
+  const data: any = table(bytes, section, exe);
+
+  return data;
+}
+
+function table(bytes: Buffer, section: any, exe: any, type?: string, offset?: number): any {
+  const read = new ReadBytes();
+
+  if (offset) {
+    console.log(type, hex(offset));
+  }
+
+  read.buffer = !type ? section.data : bytes;
+  read.offset = !type ? 0 : offset;
+  read.endianness = 'little';
+  read.log = true;
+  read.labelMaxWidth = 25;
+
+  read.group('resource directory table', false);
+
+  const data: any = {};
+
   data.characteristics = read.uint32('characteristics');
   data.timeDate = read.uint32('timeDate');
   data.majorVer = read.uint16('majorVer');
   data.minorVer = read.uint16('minorVer');
   data.numberOfNameEntries = read.uint16('numberOfNameEntries');
   data.numberOfIdEntries = read.uint16('numberOfIdEntries');
-  read.groupEnd();
+  data.nodes = [];
 
-  read.group('resource directory entries', false);
-  const entries: number = data.numberOfNameEntries + data.numberOfIdEntries;
-  data.entries = [];
+  if (data.numberOfNameEntries + data.numberOfIdEntries > 0) {
+    for (let i = 0; i < data.numberOfNameEntries + data.numberOfIdEntries; i++) {
+      data.nodes[i] = {};
 
-  for (let i = 0; i < entries; i++) {
-    read.group(`entry ${i}`, false);
-    data.entries[i] = {};
-    data.entries[i].nameOffset = read.uint32(`${i} nameOffset`);
-    data.entries[i].resourceType = resourceTypes[data.entries[i].nameOffset];
-    console.log(data.entries[i].resourceType);
-    data.entries[i].integerId = read.uint32(`${i} integerId`);
-    data.entries[i].dataEntryOffset = read.uint32(`${i} dataEntryOffset`);
-    data.entries[i].subdirOffset = read.uint32(`${i} subdirOffset`) << 1 >> 1;
-    read.groupEnd();
+      const result: any = node(bytes, section, exe, type, read.offset);
+
+      data.nodes[i].nodes = result.data;
+      read.offset = result.offset;
+    }
   }
 
   read.groupEnd();
 
   return data;
+}
+
+function node(bytes: Buffer, section: any, exe: any, type?: string, offset?: number): any {
+  const read = new ReadBytes();
+
+  if (offset) {
+    console.log(type, hex(offset));
+  }
+
+  read.buffer = !type ? section.data : bytes;
+  read.offset = offset;
+  read.endianness = 'little';
+  read.log = true;
+  read.labelMaxWidth = 10;
+
+  const highBit = 0x80000000;
+  const baseOffset = exe.dataDirectories.resourceTable.address;
+
+  read.group('node', false);
+
+  const data: any = {};
+
+  data.type = resourceTypes[read.uint32(`type`)];
+
+  if (type) {
+    data.type = type;
+  }
+
+  data.offset = read.uint32(`offset`);
+
+  if (data.offset < highBit) {
+    console.log('entry');
+    // data.entry = entry(bytes, type, data.offset);
+  } else {
+    data.offset = data.offset - highBit + baseOffset;
+
+    const result: any = table(bytes, section, exe, data.type, data.offset);
+
+    data.nodes = result.data;
+    //read.offset = result.offset;
+  }
+
+  read.groupEnd();
+
+  return { data, offset: read.offset };
+}
+
+// function entry(bytes: Buffer, type: string, offset: number): any {
+//   const read = new ReadBytes();
+//   read.buffer = bytes;
+//   read.endianness = 'little';
+//   read.log = true;
+//   read.labelMaxWidth = 10;
+//   read.offset = offset;
+
+//   const highBit = 0x80000000;
+//   const baseOffset = exe.dataDirectories.resourceTable.address;
+
+//   read.group('entry', false);
+
+//   const data: any = {};
+//   data.dataRva = read.uint32('dataRva');
+//   data.size = read.uint32('size');
+//   data.type = type;
+//   data.codePage = read.uint32('codePage');
+//   data.reserved = read.uint32('reserved');
+
+//   read.groupEnd();
+
+//   return data;
+// }
+
+function hex(value: number, length: number = 8): string {
+  return '0x' + value.toString(16).padStart(length, '0').toLowerCase();
 }
 
 const resourceTypes = {

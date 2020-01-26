@@ -1,0 +1,140 @@
+bitmaps:
+  - name: ADVICED
+    offset: 0x0f4304
+    size: 0x0748
+
+  - name: ADVICEF
+    offset: 0x0f4a4c
+    size: 0x0748
+
+  - name: ADVICEU
+    offset: 0x0f5194
+    size: 0x0748
+
+  - name: BOOKD
+    offset: 0x0f58dc
+    size: 0x0728
+
+  - name: BOOKF
+    offset: 0x0f6004
+    size: 0x0728
+
+  - name: BOOKU
+    offset: 0x0f672c
+    size: 0x0728
+
+  - name: CHECKD
+    offset: 0x0f6e54
+    size: 0x0528
+
+  - name: CHECKF
+    offset: 0x0f737c
+    size: 0x0528
+
+  - name: CHECKU
+    offset: 0x0f78a4
+    size: 0x0528
+
+  - name: CTL3D_3DCHECK
+    offset: 0x0f7dcc
+    size: 0x05e4
+
+  - name: MAPBUTTONIMAGED
+    offset: 0x112168
+    size: 0x0658
+
+  - name: MAPBUTTONIMAGEU
+    offset: 0x111b10
+    size: 0x0658
+
+  - name: PAPERCLOSED
+    offset: 0x112888
+    size: 0x00c8
+
+  - name: PAPERCLOSEU
+    offset: 0x1127c0
+    size: 0x00c8
+
+  - name: CITY_TOOLBAR_ICONS
+    offset: 0x1048f0
+    size: 0x5224
+
+  - name: LANDSCAPE_ICON
+    offset: 0x10d91c
+    size: 0x156c
+
+  - name: INDUSTRY_ICONS
+    offset: 0x10cb54
+    size: 0x0dc8
+
+  - name: HOURGLASS_0
+    offset: 0x109b14
+    size: 0x0608
+
+  - name: HOURGLASS_1
+    offset: 0x10a11c
+    size: 0x0608
+
+  - name: HOURGLASS_2
+    offset: 0x10a724
+    size: 0x0608
+
+  - name: HOURGLASS_3
+    offset: 0x10ad2c
+    size: 0x0608
+
+  - name: HOURGLASS_4
+    offset: 0x10b334
+    size: 0x0608
+
+  - name: HOURGLASS_5
+    offset: 0x10b93c
+    size: 0x0608
+
+  - name: HOURGLASS_6
+    offset: 0x10bf44
+    size: 0x0608
+
+  - name: HOURGLASS_7
+    offset: 0x10c54c
+    size: 0x0608
+
+  - name: ADVISOR_0
+    offset: 0x0f83b0
+    size: 0x18a8
+
+  - name: ADVISOR_1
+    offset: 0x0f9c58
+    size: 0x18a8
+
+  - name: ADVISOR_2
+    offset: 0x0fb500
+    size: 0x18a8
+
+  - name: ADVISOR_3
+    offset: 0x0fcda8
+    size: 0x18a8
+
+  - name: ADVISOR_4
+    offset: 0x0fe650
+    size: 0x18a8
+
+  - name: ADVISOR_5
+    offset: 0x0ffef8
+    size: 0x18a8
+
+  - name: ADVISOR_6
+    offset: 0x1017a0
+    size: 0x18a8
+
+  - name: ADVISOR_7
+    offset: 0x103048
+    size: 0x18a8
+
+  - name: TERRAIN_EDITOR_TOOLBAR_ICONS
+    offset: 0x10ee88
+    size: 0x2c88
+
+  - name: GRAPH_ICONS
+    offset: 0x112950
+    size: 0x09c8

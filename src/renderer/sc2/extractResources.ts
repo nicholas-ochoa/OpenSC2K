@@ -8,7 +8,7 @@ export async function extractResources(fileName: string): Promise<void> {
 
   read.buffer = fs.readFileSync(fileName);
   read.endianness = 'little';
-  read.log = true;
+  read.log = false;
 
   read.group('dos stub', true);
   exeData.dosStubMagic = read.uint16('dosStubMagic');
@@ -59,44 +59,93 @@ export async function extractResources(fileName: string): Promise<void> {
   exeData.sizeOfHeapCommit = read.uint32('sizeOfHeapCommit');
   exeData.loaderFlags = read.uint32('loaderFlags');
   exeData.numberOfRvaAndSizes = read.uint32('numberOfRvaAndSizes');
-  exeData.exportTableAddress = read.uint32('exportTableAddress');
-  exeData.exportTableSize = read.uint32('exportTableSize');
-  exeData.importTableAddress = read.uint32('importTableAddress');
-  exeData.importTableSize = read.uint32('importTableSize');
-  exeData.resourceTableAddress = read.uint32('resourceTableAddress');
-  exeData.resourceTableSize = read.uint32('resourceTableSize');
-  exeData.exceptionTableAddress = read.uint32('exceptionTableAddress');
-  exeData.exceptionTableSize = read.uint32('exceptionTableSize');
-  exeData.certTableAddress = read.uint32('certTableAddress');
-  exeData.certTableSize = read.uint32('certTableSize');
-  exeData.baseRelocTableAddress = read.uint32('baseRelocTableAddress');
-  exeData.baseRelocTableSize = read.uint32('baseRelocTableSize');
-  exeData.debugAddress = read.uint32('debugAddress');
-  exeData.debugSize = read.uint32('debugSize');
-  exeData.archAddress = read.uint32('archAddress');
-  exeData.archSize = read.uint32('archSize');
-  exeData.globalPtrAddress = read.uint32('globalPtrAddress');
-  exeData.globalPtrSize = read.uint32('globalPtrSize');
-  exeData.tlsTableAddress = read.uint32('tlsTableAddress');
-  exeData.tlsTableSize = read.uint32('tlsTableSize');
-  exeData.loadConfigTableAddress = read.uint32('loadConfigTableAddress');
-  exeData.loadConfigTableSize = read.uint32('loadConfigTableSize');
-  exeData.boundImportAddress = read.uint32('boundImportAddress');
-  exeData.boundImportSize = read.uint32('boundImportSize');
-  exeData.iatAddress = read.uint32('iatAddress');
-  exeData.iatSize = read.uint32('iatSize');
-  exeData.delayImportEscAddress = read.uint32('delayImportEscAddress');
-  exeData.delayImportEscSize = read.uint32('delayImportEscSize');
-  exeData.clsRuntimeHeaerAddress = read.uint32('clsRuntimeHeaerAddress');
-  exeData.clsRuntimeHeaerSize = read.uint32('clsRuntimeHeaerSize');
-  exeData.reservedAddress = read.uint32('reservedAddress');
-  exeData.reservedSize = read.uint32('reservedSize');
+
+  exeData.dataDirectories = {};
+
+  exeData.dataDirectories.exportTable = {
+    address: read.uint32('exportTableAddress'),
+    size: read.uint32('exportTableSize'),
+  };
+
+  exeData.dataDirectories.importTable = {
+    address: read.uint32('importTableAddress'),
+    size: read.uint32('importTableSize'),
+  };
+
+  exeData.dataDirectories.resourceTable = {
+    address: read.uint32('resourceTableAddress'),
+    size: read.uint32('resourceTableSize'),
+  };
+
+  exeData.dataDirectories.exceptionTable = {
+    address: read.uint32('exceptionTableAddress'),
+    size: read.uint32('exceptionTableSize'),
+  };
+
+  exeData.dataDirectories.certTable = {
+    address: read.uint32('certTableAddress'),
+    size: read.uint32('certTableSize'),
+  };
+
+  exeData.dataDirectories.baseRelocTable = {
+    address: read.uint32('baseRelocTableAddress'),
+    size: read.uint32('baseRelocTableSize'),
+  };
+
+  exeData.dataDirectories.debug = {
+    address: read.uint32('debugAddress'),
+    size: read.uint32('debugSize'),
+  };
+
+  exeData.dataDirectories.arch = {
+    address: read.uint32('archAddress'),
+    size: read.uint32('archSize'),
+  };
+
+  exeData.dataDirectories.globalPtr = {
+    address: read.uint32('globalPtrAddress'),
+    size: read.uint32('globalPtrSize'),
+  };
+
+  exeData.dataDirectories.tlsTable = {
+    address: read.uint32('tlsTableAddress'),
+    size: read.uint32('tlsTableSize'),
+  };
+
+  exeData.dataDirectories.loadConfigTable = {
+    address: read.uint32('loadConfigTableAddress'),
+    size: read.uint32('loadConfigTableSize'),
+  };
+
+  exeData.dataDirectories.boundImport = {
+    address: read.uint32('boundImportAddress'),
+    size: read.uint32('boundImportSize'),
+  };
+
+  exeData.dataDirectories.iat = {
+    address: read.uint32('iatAddress'),
+    size: read.uint32('iatSize'),
+  };
+
+  exeData.dataDirectories.delayImportDesc = {
+    address: read.uint32('delayImportDescAddress'),
+    size: read.uint32('delayImportDescSize'),
+  };
+
+  exeData.dataDirectories.clsRuntimeHeader = {
+    address: read.uint32('clsRuntimeHeaderAddress'),
+    size: read.uint32('clsRuntimeHeaderSize'),
+  };
+
+  exeData.dataDirectories.reserved = {
+    address: read.uint32('reservedAddress'),
+    size: read.uint32('reservedSize'),
+  };
+
   read.groupEnd();
 
   read.group('section table', false);
   exeData.sections = {};
-
-  read.log = true;
 
   for (let i = 0; i < exeData.numberOfSections; i++) {
     read.group(`section header: ${i}`, false);
@@ -118,14 +167,9 @@ export async function extractResources(fileName: string): Promise<void> {
     const end: number = exeData.sections[name].pointerToRawData + exeData.sections[name].sizeOfRawData;
     exeData.sections[name].data = read.buffer.subarray(start, end);
 
-    if (sections[name]) {
-      exeData.sections[name].parsedData = await sections[name](exeData.sections[name].data, exeData.resourceTableAddress);
-    }
-
-    // if (name == 'rsrc') {
-      // console.log(exeData.sections[name].data);
-      // console.log(exeData.sections[name].parsedData);
-    // }
+    //if (sections[name]) {
+    //  exeData.sections[name].parsedData = await sections[name](read.buffer, exeData.sections[name], exeData);
+    //}
 
     read.groupEnd();
   }
