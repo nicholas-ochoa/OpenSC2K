@@ -18,6 +18,7 @@
     "dev": "concurrently \"npm:dev:renderer\" \"npm:dev:main\" -k -c yellowBright,cyanBright -n \"render,  main\" -i --default-input-target \"  main\""
   },
   "dependencies": {
+    "ansi-colors": "^4.1.1",
     "bmp-ts": "^1.0.3",
     "chokidar": "^3.3.1",
     "compute-lcm": "^1.1.0",

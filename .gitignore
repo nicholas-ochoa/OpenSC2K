@@ -6,6 +6,8 @@ assets/images/*
 assets/import/*
 assets/tiles/*
 assets/tilemap/*
+assets/binaries/*
+reference_images
 
 # generated
 node_modules/

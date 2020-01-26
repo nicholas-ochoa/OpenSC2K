@@ -1,0 +1,120 @@
+@font-face {
+  font-family: 'Marlett';
+  src: url('../fonts/Marlett.woff2') format('woff2');
+  font-weight: 500;
+  font-style: normal;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  color: #000000;
+  background-color: #d4d0c8;
+  overflow: hidden;
+}
+
+* {
+  font-family: Tahoma, Verdana, sans-serif;
+  font-size: 11px;
+}
+
+#dialog {
+  width: 440px;
+  border-width: 1px;
+  border-color: #FFFFFF #808080 #808080 #FFFFFF;
+  border-style: solid;
+  color: #000000;
+  background-color: #d4d0c8;
+  overflow: hidden;
+}
+
+#titlebar {
+  display: block;
+  width: 100%;
+  background-color: #000080;
+  height: 20px;
+}
+
+#titlebar .text {
+  font-weight: bold;
+  color: #ffffff;
+  display: inline-block;
+  font-family: "MS Sans Serif";
+  font-size: 10px;
+  text-align: left;
+  margin: 4px;
+}
+
+#titlebar .buttons {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  width: 60px;
+  text-align: right;
+}
+
+#titlebar .btn-close {
+  display: inline-block;
+  border-width: 1px;
+  border-color: #ffffff #808080 #808080 #ffffff;
+  border-style: solid;
+  background-color: #d4d0c8;
+  color: #000000;
+  text-align: center;
+  height: 13.5px;
+  width: 14px;
+  font-size: 9px;
+  font-weight: bold;
+  font-family: Marlett;
+  margin: 2px 2px 2px 0;
+  padding: 0;
+}
+
+#titlebar .btn-close:focus {
+  outline: none;
+}
+
+input {
+  border-width: 1px;
+  border-color: #808080 #FFFFFF #FFFFFF #808080;
+  border-style: solid;
+  padding: 1px;
+}
+
+button:focus, input:focus {
+  outline: none;
+}
+
+button {
+  border-width: 1px;
+  border-color: #FFFFFF #808080 #808080 #FFFFFF;
+  border-style: solid;
+}
+
+button:active {
+  border-width: 1px;
+  border-color: #808080 #FFFFFF #FFFFFF #808080;
+  border-style: solid;
+  background-color: #c2beb6;
+}
+
+.field {
+  width: 60px;
+}
+
+.field-small {
+  width: 30px;
+}
+
+.numeric {
+  text-align: right;
+}
+
+.budget-table tr {
+  height: 20px;
+}
+
+.budget-table input {
+  background-color: #d4d0c8;
+}

@@ -22,6 +22,7 @@ export async function init() {
   ui.windows.main = await new BrowserWindow({
     webPreferences: {
       nodeIntegration: true,
+      nodeIntegrationInSubFrames: true,
     },
   });
 

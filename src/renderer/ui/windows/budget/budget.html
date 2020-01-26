@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>OpenSC2K</title>
+    <script type="text/javascript">
+      const app = require('electron').remote.app;
+      document.head.innerHTML = document.head.innerHTML + "<base href='" + app.getAppPath() + "/' />";
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <meta http-equiv="cleartype" content="on">
+    <meta http-equiv="Content-Security-Policy" content="
+      default-src *  data: blob: 'unsafe-inline';
+      script-src * data: blob: 'unsafe-inline';
+      connect-src * data: blob: 'unsafe-inline';
+      img-src * data: blob: 'unsafe-inline';
+      frame-src * data: blob: ;
+      style-src * data: blob: 'unsafe-inline';
+      font-src * data: blob: 'unsafe-inline';
+    ">
+    <link href="./assets/css/ui.css" rel="stylesheet" type="text/css" />
+  </head>
+  <body>
+    <div id="dialog">
+      <div id="titlebar">
+        <span class="text">Budget</span>
+        <div class="buttons"><button class="btn-close">r</button></div>
+      </div>
+      <div id="content">
+        <table class="budget-table">
+          <tr>
+            <td colspan="2">
+              <div>
+                Cape Quest<br>
+                2020 Budget<br>
+                January 2020
+              </div>
+            </td>
+            <td><center>2020<br>Year End<br>Expense</center></td>
+            <td><center>2021<br><br>Estimate</center></td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td><label for="propertyTaxRate">Property</label></td>
+            <td><input type="text" name="propertyTaxRate" class="field-small" value="5">%</td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="6346"></td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="347"></td>
+            <td><button>Advice</button></td>
+            <td><button>Help</button></td>
+          </tr>
+          <tr>
+            <td><label for="propertyTaxRate">City Ordinances</label></td>
+            <td></td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="6346"></td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="347"></td>
+            <td><button>Advice</button></td>
+            <td><button>Help</button></td>
+          </tr>
+          <tr>
+            <td><label for="propertyTaxRate">Bond</label></td>
+            <td></td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="6346"></td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="347"></td>
+            <td><button>Advice</button></td>
+            <td><button>Help</button></td>
+          </tr>
+          <tr>
+            <td><label for="propertyTaxRate">Police</label></td>
+            <td><input type="text" name="propertyTaxRate" class="field-small" value="5">%</td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="6346"></td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="347"></td>
+            <td><button>Advice</button></td>
+            <td><button>Help</button></td>
+          </tr>
+          <tr>
+            <td><label for="propertyTaxRate">Fire</label></td>
+            <td><input type="text" name="propertyTaxRate" class="field-small" value="5">%</td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="6346"></td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="347"></td>
+            <td><button>Advice</button></td>
+            <td><button>Help</button></td>
+          </tr>
+          <tr>
+            <td><label for="propertyTaxRate">Health &amp; Wellness</label></td>
+            <td><input type="text" name="propertyTaxRate" class="field-small" value="5">%</td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="6346"></td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="347"></td>
+            <td><button>Advice</button></td>
+            <td><button>Help</button></td>
+          </tr>
+          <tr>
+            <td><label for="propertyTaxRate">Education</label></td>
+            <td><input type="text" name="propertyTaxRate" class="field-small" value="5">%</td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="6346"></td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="347"></td>
+            <td><button>Advice</button></td>
+            <td><button>Help</button></td>
+          </tr>
+          <tr>
+            <td><label for="propertyTaxRate">Transit</label></td>
+            <td><input type="text" name="propertyTaxRate" class="field-small" value="5">%</td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="6346"></td>
+            <td><input type="text" name="propertyTaxRate" class="field numeric" value="347"></td>
+            <td><button>Advice</button></td>
+            <td><button>Help</button></td>
+          </tr>
+          <tr>
+            <td colspan="2">Year to Date Cashflow $</td>
+            <td class="numeric">$-65</td>
+            <td class="numeric"></td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td colspan="2">Estimated Cashflow $</td>
+            <td class="numeric"></td>
+            <td class="numeric">$117</td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td colspan="2">Current Funds $</td>
+            <td class="numeric">$4,166</td>
+            <td class="numeric"></td>
+            <td colspan="2"></td>
+          </tr>
+          <tr>
+            <td colspan="6"></td>
+          </tr>
+          <tr>
+            <td colspan="2">End of Year Funds $</td>
+            <td class="numeric">$4,101</td>
+            <td class="numeric"></td>
+            <td colspan="2"></td>
+          </tr>
+        </table>
+      </div>
+    </div>
+  </body>
+</html>

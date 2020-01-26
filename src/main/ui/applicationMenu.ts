@@ -5,6 +5,10 @@ function openCity() {
   ui.windows.main.webContents.send('menu.file.openCity');
 }
 
+function openBudgetWindow() {
+  ui.budget();
+}
+
 export function applicationMenu() {
   const template: any = [
     {
@@ -13,6 +17,10 @@ export function applicationMenu() {
         new MenuItem({
           label: 'Open City...',
           click: openCity,
+        }),
+        new MenuItem({
+          label: 'Budget Window',
+          click: openBudgetWindow
         }),
         { role: 'quit' },
       ],
