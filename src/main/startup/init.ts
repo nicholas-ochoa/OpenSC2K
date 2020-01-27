@@ -6,6 +6,7 @@ import tiles from 'tiles';
 import palette from 'palette';
 import artwork from 'artwork';
 import ui from 'ui';
+import resources from 'resources';
 
 export async function init() {
   // load assets
@@ -13,6 +14,7 @@ export async function init() {
   await tiles.load();
   await palette.load();
   await artwork.load();
+  await resources.load();
 
   // register listeners
   await config.register();

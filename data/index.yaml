@@ -54,3 +54,8 @@ tiles:
     - highway_light.yaml
     - road_heavy.yaml
     - road_light.yaml
+
+resources:
+  - bitmaps.yaml
+  - cursors.yaml
+  - icons.yaml

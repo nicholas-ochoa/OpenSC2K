@@ -26,6 +26,7 @@
       "data/*": [ "../../data/*" ],
       "events/*": [ "events/*" ],
       "palette/*": [ "palette/*" ],
+      "resources/*": [ "resources/*" ],
       "sc2/*": [ "sc2/*" ],
       "sim/*": [ "sim/*" ],
       "startup/*": [ "startup/*" ],

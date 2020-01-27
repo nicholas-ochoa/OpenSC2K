@@ -1,41 +1,42 @@
 icons:
-  - name: APP_ICON_32
-    offset: 0x0ea720
-    size: 0x02e8
+  format: ico
+  list:
+    - name: APP_ICON_32
+      offset: 0x0ea720
+      size: 0x02e8
 
-  - name: APP_ICON_16
-    offset: 0x0eaa08
-    size: 0x0128
+    - name: APP_ICON_16
+      offset: 0x0eaa08
+      size: 0x0128
 
-  - name: APP_ICON_32
-    offset: 0x0eab54
-    size: 0x02e8
+    - name: APP_ICON_32
+      offset: 0x0eab54
+      size: 0x02e8
 
-  - name: APP_ICON_16
-    offset: 0x0eae3c
-    size: 0x0128
+    - name: APP_ICON_16
+      offset: 0x0eae3c
+      size: 0x0128
 
-  - name: APP_ICON_32
-    offset: 0x0eaf88
-    size: 0x02e8
+    - name: APP_ICON_32
+      offset: 0x0eaf88
+      size: 0x02e8
 
-  - name: APP_ICON_16
-    offset: 0x0eb270
-    size: 0x0128
+    - name: APP_ICON_16
+      offset: 0x0eb270
+      size: 0x0128
 
-  - name: MAP_1_32
-    offset: 0x0eb3bc
-    size: 0x02e8
+    - name: MAP_1_32
+      offset: 0x0eb3bc
+      size: 0x02e8
 
-  - name: MAP_1_16
-    offset: 0x0eb6a4
-    size: 0x0128
+    - name: MAP_1_16
+      offset: 0x0eb6a4
+      size: 0x0128
 
-  - name: MAP_2_16
-    offset: 0x0eb7f0
-    size: 0x0128
+    - name: MAP_2_16
+      offset: 0x0eb7f0
+      size: 0x0128
 
-  - name: MAP_2_32
-    offset: 0x0eb918
-    size: 0x02e8
-
+    - name: MAP_2_32
+      offset: 0x0eb918
+      size: 0x02e8

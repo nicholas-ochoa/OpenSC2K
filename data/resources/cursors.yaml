@@ -1,4 +1,406 @@
 cursors:
-  - name: ADVICED
-    offset: 0x0f4304
-    size: 0x0748
+  format: cur
+  list:
+    - name: CURSOR_11
+      offset: 0x0fa0d4
+      size: 0x0134
+
+    - name: CURSOR_12
+      offset: 0x0fa21c
+      size: 0x0134
+
+    - name: CURSOR_13
+      offset: 0x0fa364
+      size: 0x0200
+
+    - name: CURSOR_14
+      offset: 0x0fa578
+      size: 0x0134
+
+    - name: CURSOR_15
+      offset: 0x0fa6c0
+      size: 0x0134
+
+    - name: CURSOR_16
+      offset: 0x0fa808
+      size: 0x0200
+
+    - name: CURSOR_17
+      offset: 0x0faa1c
+      size: 0x0200
+
+    - name: CURSOR_18
+      offset: 0x0fac30
+      size: 0x0200
+
+    - name: CURSOR_19
+      offset: 0x0fae44
+      size: 0x0200
+
+    - name: CURSOR_20
+      offset: 0x0fb058
+      size: 0x0200
+
+    - name: CURSOR_21
+      offset: 0x0fb26c
+      size: 0x0134
+
+    - name: CURSOR_22
+      offset: 0x0fb3b4
+      size: 0x0134
+
+    - name: CURSOR_23
+      offset: 0x0fb4fc
+      size: 0x0134
+
+    - name: CURSOR_24
+      offset: 0x0fb644
+      size: 0x0134
+
+    - name: CURSOR_25
+      offset: 0x0fb78c
+      size: 0x0134
+
+    - name: CURSOR_26
+      offset: 0x0fb8d4
+      size: 0x0134
+
+    - name: CURSOR_27
+      offset: 0x0fba1c
+      size: 0x0134
+
+    - name: CURSOR_28
+      offset: 0x0fbb64
+      size: 0x0134
+
+    - name: CURSOR_29
+      offset: 0x0fbcac
+      size: 0x0134
+
+    - name: CURSOR_30
+      offset: 0x0fbdf4
+      size: 0x0134
+
+    - name: CURSOR_31
+      offset: 0x0fbf3c
+      size: 0x0134
+
+    - name: CURSOR_32
+      offset: 0x0fc084
+      size: 0x0134
+
+    - name: CURSOR_33
+      offset: 0x0fc1cc
+      size: 0x0134
+
+    - name: CURSOR_34
+      offset: 0x0fc314
+      size: 0x0134
+
+    - name: CURSOR_35
+      offset: 0x0fc45c
+      size: 0x0134
+
+    - name: CURSOR_36
+      offset: 0x0fc5a4
+      size: 0x0134
+
+    - name: CURSOR_37
+      offset: 0x0fc6ec
+      size: 0x0134
+
+    - name: CURSOR_38
+      offset: 0x0fc834
+      size: 0x0134
+
+    - name: CURSOR_39
+      offset: 0x0fc97c
+      size: 0x0134
+
+    - name: CURSOR_40
+      offset: 0x0fcac4
+      size: 0x0134
+
+    - name: CURSOR_41
+      offset: 0x0fcc0c
+      size: 0x0134
+
+    - name: CURSOR_42
+      offset: 0x0fcd54
+      size: 0x0134
+
+    - name: CURSOR_43
+      offset: 0x0fce9c
+      size: 0x0134
+
+    - name: CURSOR_44
+      offset: 0x0fcfe4
+      size: 0x0134
+
+    - name: CURSOR_45
+      offset: 0x0fd12c
+      size: 0x0134
+
+    - name: CURSOR_46
+      offset: 0x0fd274
+      size: 0x0134
+
+    - name: CURSOR_47
+      offset: 0x0fd3bc
+      size: 0x0134
+
+    - name: CURSOR_48
+      offset: 0x0fd504
+      size: 0x0134
+
+    - name: CURSOR_49
+      offset: 0x0fd64c
+      size: 0x0134
+
+    - name: CURSOR_50
+      offset: 0x0fd794
+      size: 0x0134
+
+    - name: CURSOR_51
+      offset: 0x0fd8dc
+      size: 0x0134
+
+    - name: CURSOR_52
+      offset: 0x0fda24
+      size: 0x0134
+
+    - name: CURSOR_53
+      offset: 0x0fdb6c
+      size: 0x0134
+
+    - name: CURSOR_54
+      offset: 0x0fdcb4
+      size: 0x0134
+
+    - name: CURSOR_55
+      offset: 0x0fddfc
+      size: 0x0134
+
+    - name: CURSOR_56
+      offset: 0x0fdf44
+      size: 0x0134
+
+    - name: CURSOR_57
+      offset: 0x0fe08c
+      size: 0x0134
+
+    - name: CURSOR_58
+      offset: 0x0fe1d4
+      size: 0x0134
+
+    - name: CURSOR_59
+      offset: 0x0fe31c
+      size: 0x0134
+
+    - name: CURSOR_60
+      offset: 0x0fe464
+      size: 0x0134
+
+    - name: CURSOR_61
+      offset: 0x0fe5ac
+      size: 0x0134
+
+    - name: CURSOR_62
+      offset: 0x0fe6f4
+      size: 0x0134
+
+    - name: CURSOR_63
+      offset: 0x0fe83c
+      size: 0x0134
+
+    - name: CURSOR_64
+      offset: 0x0fe984
+      size: 0x0134
+
+    - name: CURSOR_65
+      offset: 0x0feacc
+      size: 0x0134
+
+    - name: CURSOR_66
+      offset: 0x0fec14
+      size: 0x0134
+
+    - name: CURSOR_67
+      offset: 0x0fed5c
+      size: 0x0134
+
+    - name: CURSOR_68
+      offset: 0x0feea4
+      size: 0x0134
+
+    - name: CURSOR_69
+      offset: 0x0fefec
+      size: 0x0134
+
+    - name: CURSOR_70
+      offset: 0x0ff134
+      size: 0x0134
+
+    - name: CURSOR_71
+      offset: 0x0ff27c
+      size: 0x0134
+
+    - name: CURSOR_72
+      offset: 0x0ff3c4
+      size: 0x0134
+
+    - name: CURSOR_73
+      offset: 0x0ff50c
+      size: 0x0134
+
+    - name: CURSOR_74
+      offset: 0x0ff654
+      size: 0x0134
+
+    - name: CURSOR_75
+      offset: 0x0ff79c
+      size: 0x0134
+
+    - name: CURSOR_76
+      offset: 0x0ff8e4
+      size: 0x0134
+
+    - name: CURSOR_77
+      offset: 0x0ffa2c
+      size: 0x0134
+
+    - name: CURSOR_78
+      offset: 0x0ffb74
+      size: 0x0134
+
+    - name: CURSOR_79
+      offset: 0x0ffcbc
+      size: 0x0134
+
+    - name: CURSOR_80
+      offset: 0x0ffe04
+      size: 0x0134
+
+    - name: CURSOR_81
+      offset: 0x0fff4c
+      size: 0x0134
+
+    - name: CURSOR_82
+      offset: 0x100094
+      size: 0x0134
+
+    - name: CURSOR_83
+      offset: 0x1001dc
+      size: 0x0134
+
+    - name: CURSOR_84
+      offset: 0x100324
+      size: 0x0134
+
+    - name: CURSOR_85
+      offset: 0x10046c
+      size: 0x0134
+
+    - name: CURSOR_86
+      offset: 0x1005b4
+      size: 0x0134
+
+    - name: CURSOR_87
+      offset: 0x1006fc
+      size: 0x0134
+
+    - name: CURSOR_88
+      offset: 0x100844
+      size: 0x0134
+
+    - name: CURSOR_89
+      offset: 0x10098c
+      size: 0x0134
+
+    - name: CURSOR_90
+      offset: 0x100ad4
+      size: 0x0134
+
+    - name: CURSOR_91
+      offset: 0x100c1c
+      size: 0x0134
+
+    - name: CURSOR_92
+      offset: 0x100d64
+      size: 0x0134
+
+    - name: CURSOR_93
+      offset: 0x100eac
+      size: 0x0134
+
+    - name: CURSOR_94
+      offset: 0x100ff4
+      size: 0x0134
+
+    - name: CURSOR_95
+      offset: 0x10113c
+      size: 0x0134
+
+    - name: CURSOR_96
+      offset: 0x101284
+      size: 0x0134
+
+    - name: CURSOR_97
+      offset: 0x1013cc
+      size: 0x0134
+
+    - name: CURSOR_98
+      offset: 0x101514
+      size: 0x0134
+
+    - name: CURSOR_99
+      offset: 0x10165c
+      size: 0x0134
+
+    - name: CURSOR_100
+      offset: 0x1017a4
+      size: 0x0134
+
+    - name: CURSOR_101
+      offset: 0x1018ec
+      size: 0x0134
+
+    - name: CURSOR_102
+      offset: 0x101a34
+      size: 0x0134
+
+    - name: CURSOR_103
+      offset: 0x101b7c
+      size: 0x0134
+
+    - name: CURSOR_104
+      offset: 0x101cc4
+      size: 0x0134
+
+    - name: CURSOR_105
+      offset: 0x101e0c
+      size: 0x0134
+
+    - name: CURSOR_106
+      offset: 0x101f54
+      size: 0x0134
+
+    - name: CURSOR_107
+      offset: 0x10209c
+      size: 0x0134
+
+    - name: CURSOR_108
+      offset: 0x1021e4
+      size: 0x0134
+
+    - name: CURSOR_109
+      offset: 0x10232c
+      size: 0x0134
+
+    - name: CURSOR_110
+      offset: 0x102474
+      size: 0x0134
+
+    - name: CURSOR_111
+      offset: 0x1025bc
+      size: 0x0134
