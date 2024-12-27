@@ -6,18 +6,18 @@ const phaser = path.join(__dirname, '/node_modules/phaser/src/phaser.js');
 module.exports = {
   mode: 'development',
   entry: {
-    app: ['@babel/polyfill', path.resolve(__dirname, 'src/index.js')]
+    app: ['@babel/polyfill', path.resolve(__dirname, 'src/index.js')],
   },
   output: {
     pathinfo: true,
     path: path.resolve(__dirname, 'dist'),
-    filename: 'app.js'
+    filename: 'app.js',
   },
   devtool: 'source-map',
   devServer: {
     contentBase: path.join(__dirname, './'),
     port: 3000,
-    disableHostCheck: true
+    disableHostCheck: true,
   },
   optimization: {
     runtimeChunk: false,
@@ -28,8 +28,8 @@ module.exports = {
           name: 'vendors',
           chunks: 'all',
         },
-      }
-    }
+      },
+    },
   },
   plugins: [
     new webpack.DefinePlugin({
@@ -37,29 +37,31 @@ module.exports = {
       CANVAS_RENDERER: true,
     }),
     new HtmlWebpackPlugin({
-      template: 'src/index.html'
+      template: 'src/index.html',
     }),
     new webpack.ProvidePlugin({
       $: 'jquery',
-      jQuery: 'jquery'
-    })
+      jQuery: 'jquery',
+    }),
   ],
   resolve: {
     alias: {
-      'phaser': phaser
-    }
+      phaser,
+    },
   },
   module: {
     rules: [
       {
         test: /\.js$/,
         exclude: /(node_modules)/,
-        use: [{
-          loader: 'babel-loader',
-          options: {
-            cacheDirectory: true
-          }
-        }],
+        use: [
+          {
+            loader: 'babel-loader',
+            options: {
+              cacheDirectory: true,
+            },
+          },
+        ],
       },
       {
         test: /\.(css)$/,
@@ -68,27 +70,29 @@ module.exports = {
           {
             loader: 'css-loader',
             options: {
-              sourceMap: true
-            }
-          }
-        ]
+              sourceMap: true,
+            },
+          },
+        ],
       },
       {
         test: /\.(png|jpg|gif|svg|eot|ttf|woff|woff2)$/,
         loader: 'url-loader',
         options: {
-          limit: 10000
-        }
+          limit: 10000,
+        },
       },
       {
         test: /phaser-split\.js$/,
         loader: 'expose-loader',
-        options: 'Phaser'
+        options: {
+          exposes: 'Phaser',
+        },
       },
       {
         test: [/\.vert$/, /\.frag$/],
-        loader: 'raw-loader'
-      }
-    ]
-  }
+        loader: 'raw-loader',
+      },
+    ],
+  },
 };
