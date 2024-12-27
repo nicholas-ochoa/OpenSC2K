@@ -1,6 +1,16 @@
-{
-  "plugins": ["@babel/plugin-proposal-class-properties", "@babel/plugin-proposal-optional-chaining"],
-  "presets": [
-    "@babel/preset-env"
-  ]
-}
+# Remove the existing Git history
+rm -rf .git
+
+# Reinitialize the repository
+git init
+
+# Add all files to the new repository
+git add .
+
+# Commit the current state
+git commit -m "Initial commit with current state"
+# Add the remote repository
+git remote add origin <remote-repository-URL>
+
+# Push the changes, forcing an overwrite of the remote history
+git push --force origin main
