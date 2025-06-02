@@ -1,0 +1,17 @@
+# Local copyrighted evidence
+/references/
+
+# Godot generated data
+.godot/
+game/.godot/
+*.tmp
+*.log
+
+# Reverse-engineering workspaces
+*.gpr
+*.rep/
+ghidra-project/
+
+# Platform files
+.DS_Store
+
