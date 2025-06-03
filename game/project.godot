@@ -1,0 +1,24 @@
+; Engine configuration file.
+; Edit through the Godot editor when practical.
+
+config_version=5
+
+[application]
+
+config/name="OpenSC2K Godot"
+run/main_scene="res://main.tscn"
+
+[display]
+
+window/size/viewport_width=1024
+window/size/viewport_height=768
+window/size/window_width_override=1024
+window/size/window_height_override=768
+window/stretch/mode="canvas_items"
+
+[rendering]
+
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"
+environment/defaults/default_clear_color=Color(0.035, 0.047, 0.059, 1)
+
