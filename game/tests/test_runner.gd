@@ -2,6 +2,7 @@ extends SceneTree
 
 const RleCodec = preload("res://src/formats/maxis_rle.gd")
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
+const CityModel = preload("res://src/model/city_state.gd")
 
 var failures := 0
 var checks := 0
@@ -70,6 +71,19 @@ func _test_reference_corpus(reference_root: String) -> void:
 			_check(
 				rebuilt.data == FileAccess.get_file_as_bytes(path),
 				"%s rebuild is byte-identical" % path.get_file()
+			)
+
+		var city := CityModel.from_document(document)
+		_check(city.is_valid(), "%s creates a city model: %s" % [path.get_file(), city.load_error])
+		if city.is_valid():
+			_check(city.index_of(0, 0) == 0, "%s map origin is stable" % path.get_file())
+			_check(
+				city.index_of(127, 127) == 16383,
+				"%s map end is stable" % path.get_file()
+			)
+			_check(
+				city.current_month() >= 1 and city.current_month() <= 12,
+				"%s month is in range" % path.get_file()
 			)
 
 		for chunk in document.chunks:
