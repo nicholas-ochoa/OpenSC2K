@@ -5,6 +5,7 @@ const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
+const Clock = preload("res://src/simulation/simulation_clock.gd")
 
 var failures := 0
 var checks := 0
@@ -20,6 +21,8 @@ func _init() -> void:
 	_test_invalid_rle()
 	_test_palette_and_minimap(reference_root)
 	_test_reference_corpus(reference_root)
+	_test_simulation_clock()
+	_test_modified_save(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -123,6 +126,64 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 		var image := Minimap.create_image(loaded_city, loaded_palette, mode)
 		_check(image.get_width() == 128, "%s minimap width is 128" % mode)
 		_check(image.get_height() == 128, "%s minimap height is 128" % mode)
+
+
+func _test_simulation_clock() -> void:
+	var clock := Clock.new(0)
+	var phases: Array[Dictionary] = []
+	for unused in 25:
+		phases.append(clock.advance_day())
+	_check(phases[0].month_day == 1, "First simulation tick advances to day 1")
+	_check(phases[0].actions == PackedStringArray(["power"]), "Day 1 schedules power")
+	for month_day in range(3, 19):
+		var phase := phases[month_day - 1]
+		_check(phase.actions == PackedStringArray(["growth"]), "Day %d schedules growth" % month_day)
+		_check(
+			phase.growth_step == int((month_day - 3) / 4) % 4,
+			"Day %d has the correct growth step" % month_day
+		)
+		_check(
+			phase.growth_substep == (month_day + 1) % 4,
+			"Day %d has the correct growth substep" % month_day
+		)
+	_check(phases[18].actions == PackedStringArray(["traffic"]), "Day 19 schedules traffic")
+	_check(phases[19].actions == PackedStringArray(["water"]), "Day 20 schedules water")
+	_check(phases[24].month_day == 0, "The 25th tick starts the next month")
+	_check(
+		phases[24].actions == PackedStringArray(["month_start", "budget"]),
+		"Month start schedules budget work"
+	)
+
+
+func _test_modified_save(reference_root: String) -> void:
+	var source_path := reference_root.path_join("DEFAULT.SC2")
+	var document := Sc2Document.load_path(source_path)
+	var loaded_city := CityModel.from_document(document)
+	_check(loaded_city.set_age_in_days(311), "City age can change")
+	_check(loaded_city.set_funds(-12345), "City funds can change")
+	var serialized := document.serialize()
+	_check(serialized.ok, "Modified city serializes")
+	if not serialized.ok:
+		return
+	_check(serialized.data != FileAccess.get_file_as_bytes(source_path), "Modified save bytes change")
+
+	var reparsed := Sc2Document.new()
+	_check(reparsed.parse(serialized.data), "Modified save parses again: %s" % reparsed.parse_error)
+	if reparsed.is_valid():
+		_check(reparsed.misc_u32(0x10) == 311, "Modified city age is preserved")
+		_check(reparsed.misc_i32(0x14) == -12345, "Modified city funds are preserved")
+
+	var original := Sc2Document.load_path(source_path)
+	for original_chunk in original.chunks:
+		if original_chunk.chunk_id == "MISC":
+			continue
+		var modified_chunk := reparsed.find_chunk(original_chunk.chunk_id)
+		_check(modified_chunk != null, "%s stays present after edit" % original_chunk.chunk_id)
+		if modified_chunk != null:
+			_check(
+				modified_chunk.stored_payload == original_chunk.stored_payload,
+				"%s stored bytes stay unchanged after MISC edit" % original_chunk.chunk_id
+			)
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:

@@ -142,12 +142,22 @@ func funds() -> int:
 	return document.misc_i32(0x14)
 
 
+func set_funds(value: int) -> bool:
+	return document.set_misc_i32(0x14, value)
+
+
 func founding_year() -> int:
 	return document.misc_u32(0x0c)
 
 
 func age_in_days() -> int:
 	return document.misc_u32(0x10)
+
+
+func set_age_in_days(value: int) -> bool:
+	if value < 0:
+		return false
+	return document.set_misc_u32(0x10, value)
 
 
 func current_year() -> int:
@@ -177,4 +187,3 @@ func rci_demand() -> Vector3i:
 func _byte_at(data: PackedByteArray, x: int, y: int) -> int:
 	var index := index_of(x, y)
 	return 0 if index < 0 else data[index]
-

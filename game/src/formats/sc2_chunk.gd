@@ -1,5 +1,3 @@
-# todo: wire edited chunks into the save path
-
 class_name Sc2Chunk
 extends RefCounted
 

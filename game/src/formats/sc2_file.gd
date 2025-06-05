@@ -161,6 +161,21 @@ func misc_i32(offset: int) -> int:
 	return value
 
 
+func set_misc_u32(offset: int, value: int) -> bool:
+	var chunk := find_chunk("MISC")
+	if chunk == null or offset < 0 or offset + 4 > chunk.decoded_payload.size():
+		return false
+	var changed := chunk.decoded_payload.duplicate()
+	var encoded_value := _u32_be(value & 0xffffffff)
+	for index in 4:
+		changed[offset + index] = encoded_value[index]
+	return chunk.set_decoded_payload(changed)
+
+
+func set_misc_i32(offset: int, value: int) -> bool:
+	return set_misc_u32(offset, value)
+
+
 func serialize(force_rebuild: bool = false) -> Dictionary:
 	var has_changes := false
 	for chunk in chunks:
@@ -224,4 +239,3 @@ static func _is_chunk_id(value: String) -> bool:
 		if byte < 0x20 or byte > 0x7e:
 			return false
 	return true
-
