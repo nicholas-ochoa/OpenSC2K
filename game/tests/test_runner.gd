@@ -3,6 +3,8 @@ extends SceneTree
 const RleCodec = preload("res://src/formats/maxis_rle.gd")
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
+const Palette = preload("res://src/assets/sc2_palette.gd")
+const Minimap = preload("res://src/view/city_minimap.gd")
 
 var failures := 0
 var checks := 0
@@ -16,6 +18,7 @@ func _init() -> void:
 
 	_test_rle()
 	_test_invalid_rle()
+	_test_palette_and_minimap(reference_root)
 	_test_reference_corpus(reference_root)
 
 	if failures == 0:
@@ -103,6 +106,23 @@ func _test_reference_corpus(reference_root: String) -> void:
 	if default_city.is_valid():
 		_check(default_city.city_name() == "New City", "Default city name is New City")
 		_check(default_city.misc_u32(0) == 0x122, "Default MISC marker is 0x122")
+
+
+func _test_palette_and_minimap(reference_root: String) -> void:
+	var loaded_palette := Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
+	_check(loaded_palette.is_valid(), "Master Windows palette loads")
+	if not loaded_palette.is_valid():
+		return
+
+	var document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
+	var loaded_city := CityModel.from_document(document)
+	_check(loaded_city.is_valid(), "Starter city loads for minimap test")
+	if not loaded_city.is_valid():
+		return
+	for mode in ["structures", "zones", "power", "water"]:
+		var image := Minimap.create_image(loaded_city, loaded_palette, mode)
+		_check(image.get_width() == 128, "%s minimap width is 128" % mode)
+		_check(image.get_height() == 128, "%s minimap height is 128" % mode)
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
