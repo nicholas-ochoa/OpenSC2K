@@ -4,6 +4,7 @@ const RleCodec = preload("res://src/formats/maxis_rle.gd")
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
+const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 
@@ -20,6 +21,7 @@ func _init() -> void:
 	_test_rle()
 	_test_invalid_rle()
 	_test_palette_and_minimap(reference_root)
+	_test_sprite_archives(reference_root)
 	_test_reference_corpus(reference_root)
 	_test_simulation_clock()
 	_test_modified_save(reference_root)
@@ -109,6 +111,10 @@ func _test_reference_corpus(reference_root: String) -> void:
 	if default_city.is_valid():
 		_check(default_city.city_name() == "New City", "Default city name is New City")
 		_check(default_city.misc_u32(0) == 0x122, "Default MISC marker is 0x122")
+		var default_model := CityModel.from_document(default_city)
+		_check(default_model.land_altitude(0, 0) == 4, "Default origin land altitude is 4")
+		_check(default_model.water_altitude(0, 0) == 4, "Default origin water level is 4")
+		_check(default_model.tunnel_levels(0, 0) == 0, "Default origin tunnel depth is 0")
 
 
 func _test_palette_and_minimap(reference_root: String) -> void:
@@ -126,6 +132,35 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 		var image := Minimap.create_image(loaded_city, loaded_palette, mode)
 		_check(image.get_width() == 128, "%s minimap width is 128" % mode)
 		_check(image.get_height() == 128, "%s minimap height is 128" % mode)
+
+
+func _test_sprite_archives(reference_root: String) -> void:
+	var expected_counts := {
+		"LARGE.DAT": 501,
+		"SMALLMED.DAT": 904,
+		"SPECIAL.DAT": 50,
+	}
+	for filename in expected_counts:
+		var archive := SpriteArchive.load_path(reference_root.path_join("DATA").path_join(filename))
+		_check(archive.is_valid(), "%s parses: %s" % [filename, archive.parse_error])
+		if not archive.is_valid():
+			continue
+		_check(archive.entries.size() == expected_counts[filename], "%s entry count matches" % filename)
+		for entry in archive.entries:
+			var decoded := entry.decode_indices()
+			_check(decoded.ok, "%s sprite %d decodes: %s" % [filename, entry.sprite_id, decoded.error])
+
+	var palette := Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
+	var large := SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
+	var terrain := large.find_sprite(1256)
+	_check(terrain != null, "Large terrain sprite 1256 is present")
+	if terrain != null:
+		_check(terrain.width == 32 and terrain.height == 17, "Large terrain sprite is 32 by 17")
+		var rendered := terrain.create_image(palette)
+		_check(rendered.ok, "Large terrain sprite renders: %s" % rendered.error)
+		if rendered.ok:
+			_check(rendered.image.get_width() == 32, "Rendered terrain sprite width is 32")
+			_check(rendered.image.get_height() == 17, "Rendered terrain sprite height is 17")
 
 
 func _test_simulation_clock() -> void:

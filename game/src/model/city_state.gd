@@ -58,17 +58,17 @@ func index_of(x: int, y: int) -> int:
 
 func land_altitude(x: int, y: int) -> int:
 	var index := index_of(x, y)
-	return 0 if index < 0 else (altitude_words[index] >> 11) & 0x1f
+	return 0 if index < 0 else altitude_words[index] & 0x1f
 
 
 func water_altitude(x: int, y: int) -> int:
 	var index := index_of(x, y)
-	return 0 if index < 0 else (altitude_words[index] >> 6) & 0x1f
+	return 0 if index < 0 else (altitude_words[index] >> 5) & 0x1f
 
 
 func tunnel_levels(x: int, y: int) -> int:
 	var index := index_of(x, y)
-	return 0 if index < 0 else altitude_words[index] & 0x3f
+	return 0 if index < 0 else (altitude_words[index] >> 10) & 0x3f
 
 
 func terrain_id(x: int, y: int) -> int:
