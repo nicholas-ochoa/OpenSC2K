@@ -150,6 +150,10 @@ func founding_year() -> int:
 	return document.misc_u32(0x0c)
 
 
+func compass_rotation() -> int:
+	return document.misc_u32(0x08) & 0x03
+
+
 func age_in_days() -> int:
 	return document.misc_u32(0x10)
 

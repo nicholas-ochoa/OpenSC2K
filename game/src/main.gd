@@ -5,11 +5,14 @@ extends Control
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
+const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
+const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 
 var city: CityState
 var palette: Sc2Palette
-var overlay_mode := "structures"
+var large_sprites: Sc2SpriteArchive
+var overlay_mode := "city"
 
 var map_texture: TextureRect
 var city_label: Label
@@ -24,6 +27,10 @@ func _ready() -> void:
 	palette = Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
 	if not palette.is_valid():
 		_show_error(palette.load_error)
+		return
+	large_sprites = SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
+	if not large_sprites.is_valid():
+		_show_error(large_sprites.parse_error)
 		return
 
 	var initial_city := reference_root.path_join("CITIES/STARTER.SC2")
@@ -68,7 +75,7 @@ func _build_interface() -> void:
 	var mode_bar := HBoxContainer.new()
 	mode_bar.add_theme_constant_override("separation", 6)
 	page.add_child(mode_bar)
-	for mode in ["structures", "zones", "power", "water"]:
+	for mode in ["city", "structures", "zones", "power", "water"]:
 		var button := Button.new()
 		button.text = mode.capitalize()
 		button.pressed.connect(_set_overlay.bind(mode))
@@ -174,7 +181,15 @@ func _set_overlay(mode: String) -> void:
 func _refresh_map() -> void:
 	if city == null or palette == null:
 		return
-	var image := Minimap.create_image(city, palette, overlay_mode)
+	var image: Image
+	if overlay_mode == "city":
+		var rendered := IsometricRenderer.create_image(city, palette, large_sprites)
+		if not rendered.ok:
+			_show_error(rendered.error)
+			return
+		image = rendered.image
+	else:
+		image = Minimap.create_image(city, palette, overlay_mode)
 	map_texture.texture = ImageTexture.create_from_image(image)
 
 

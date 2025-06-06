@@ -6,6 +6,7 @@ const CityModel = preload("res://src/model/city_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
+const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 
 var failures := 0
@@ -161,6 +162,14 @@ func _test_sprite_archives(reference_root: String) -> void:
 		if rendered.ok:
 			_check(rendered.image.get_width() == 32, "Rendered terrain sprite width is 32")
 			_check(rendered.image.get_height() == 17, "Rendered terrain sprite height is 17")
+
+	var starter_document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
+	var starter := CityModel.from_document(starter_document)
+	var asset_errors := IsometricRenderer.validate_assets(starter, large)
+	_check(asset_errors.is_empty(), "Starter city has every required large sprite: %s" % asset_errors)
+	_check(IsometricRenderer.terrain_sprite_id(0x00, false) == 1256, "Flat land uses sprite 1256")
+	_check(IsometricRenderer.terrain_sprite_id(0x10, true) == 1270, "Submerged land uses sprite 1270")
+	_check(IsometricRenderer.terrain_sprite_id(0x45, true) == 1290, "Last water tile uses sprite 1290")
 
 
 func _test_simulation_clock() -> void:
