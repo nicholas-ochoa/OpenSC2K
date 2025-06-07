@@ -83,12 +83,64 @@ func terrain_id(x: int, y: int) -> int:
 	return _byte_at(terrain, x, y)
 
 
+func set_terrain_id(x: int, y: int, value: int) -> bool:
+	if value < 0 or value > 0xff:
+		return false
+	var changed := terrain.duplicate()
+	if not _set_byte_at(changed, x, y, value):
+		return false
+	if not document.find_chunk("XTER").set_decoded_payload(changed):
+		return false
+	terrain = changed
+	return true
+
+
 func building_id(x: int, y: int) -> int:
 	return _byte_at(buildings, x, y)
 
 
+func set_building_id(x: int, y: int, value: int) -> bool:
+	if value < 0 or value > 0xff:
+		return false
+	var changed := buildings.duplicate()
+	if not _set_byte_at(changed, x, y, value):
+		return false
+	if not document.find_chunk("XBLD").set_decoded_payload(changed):
+		return false
+	buildings = changed
+	return true
+
+
 func zone_id(x: int, y: int) -> int:
 	return _byte_at(zones, x, y) & 0x0f
+
+
+func set_zone_id(x: int, y: int, value: int) -> bool:
+	if value < 0 or value > 0x0f:
+		return false
+	var index := index_of(x, y)
+	if index < 0:
+		return false
+	var changed := zones.duplicate()
+	changed[index] = (changed[index] & 0xf0) | value
+	if not document.find_chunk("XZON").set_decoded_payload(changed):
+		return false
+	zones = changed
+	return true
+
+
+func set_building_corners(x: int, y: int, value: int) -> bool:
+	if value < 0 or value > 0xf0 or value & 0x0f:
+		return false
+	var index := index_of(x, y)
+	if index < 0:
+		return false
+	var changed := zones.duplicate()
+	changed[index] = value | (changed[index] & 0x0f)
+	if not document.find_chunk("XZON").set_decoded_payload(changed):
+		return false
+	zones = changed
+	return true
 
 
 func building_corners(x: int, y: int) -> int:
@@ -99,8 +151,32 @@ func underground_id(x: int, y: int) -> int:
 	return _byte_at(underground, x, y)
 
 
+func set_underground_id(x: int, y: int, value: int) -> bool:
+	if value < 0 or value > 0xff:
+		return false
+	var changed := underground.duplicate()
+	if not _set_byte_at(changed, x, y, value):
+		return false
+	if not document.find_chunk("XUND").set_decoded_payload(changed):
+		return false
+	underground = changed
+	return true
+
+
 func text_overlay_id(x: int, y: int) -> int:
 	return _byte_at(text_overlays, x, y)
+
+
+func set_text_overlay_id(x: int, y: int, value: int) -> bool:
+	if value < 0 or value > 0xff:
+		return false
+	var changed := text_overlays.duplicate()
+	if not _set_byte_at(changed, x, y, value):
+		return false
+	if not document.find_chunk("XTXT").set_decoded_payload(changed):
+		return false
+	text_overlays = changed
+	return true
 
 
 func is_salt_water(x: int, y: int) -> bool:
@@ -129,6 +205,50 @@ func is_powered(x: int, y: int) -> bool:
 
 func is_powerable(x: int, y: int) -> bool:
 	return (_byte_at(tile_flags, x, y) & 0x80) != 0
+
+
+func set_tile_flag(x: int, y: int, mask: int, enabled: bool) -> bool:
+	if mask < 0 or mask > 0xff:
+		return false
+	var index := index_of(x, y)
+	if index < 0:
+		return false
+	var changed := tile_flags.duplicate()
+	if enabled:
+		changed[index] |= mask
+	else:
+		changed[index] &= ~mask & 0xff
+	if not document.find_chunk("XBIT").set_decoded_payload(changed):
+		return false
+	tile_flags = changed
+	return true
+
+
+func set_land_altitude(x: int, y: int, value: int) -> bool:
+	if value < 0 or value > 0x1f:
+		return false
+	var index := index_of(x, y)
+	if index < 0:
+		return false
+	return _set_altitude_word(x, y, (altitude_words[index] & ~0x1f) | value)
+
+
+func set_water_altitude(x: int, y: int, value: int) -> bool:
+	if value < 0 or value > 0x1f:
+		return false
+	var index := index_of(x, y)
+	if index < 0:
+		return false
+	return _set_altitude_word(x, y, (altitude_words[index] & ~0x3e0) | (value << 5))
+
+
+func set_tunnel_levels(x: int, y: int, value: int) -> bool:
+	if value < 0 or value > 0x3f:
+		return false
+	var index := index_of(x, y)
+	if index < 0:
+		return false
+	return _set_altitude_word(x, y, (altitude_words[index] & ~0xfc00) | (value << 10))
 
 
 func city_name() -> String:
@@ -301,6 +421,30 @@ func rci_demand() -> Vector3i:
 func _byte_at(data: PackedByteArray, x: int, y: int) -> int:
 	var index := index_of(x, y)
 	return 0 if index < 0 else data[index]
+
+
+func _set_byte_at(data: PackedByteArray, x: int, y: int, value: int) -> bool:
+	var index := index_of(x, y)
+	if index < 0:
+		return false
+	data[index] = value
+	return true
+
+
+func _set_altitude_word(x: int, y: int, value: int) -> bool:
+	var index := index_of(x, y)
+	if index < 0:
+		return false
+	var chunk := document.find_chunk("ALTM")
+	if chunk == null:
+		return false
+	var changed := chunk.decoded_payload.duplicate()
+	changed[index * 2] = (value >> 8) & 0xff
+	changed[index * 2 + 1] = value & 0xff
+	if not chunk.set_decoded_payload(changed):
+		return false
+	altitude_words[index] = value
+	return true
 
 
 static func _read_u16_be(data: PackedByteArray, offset: int) -> int:

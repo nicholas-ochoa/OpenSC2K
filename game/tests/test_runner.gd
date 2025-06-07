@@ -28,6 +28,7 @@ func _init() -> void:
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
 	_test_modified_save(reference_root)
+	_test_map_edits(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -271,6 +272,42 @@ func _test_modified_save(reference_root: String) -> void:
 				modified_chunk.stored_payload == original_chunk.stored_payload,
 				"%s stored bytes stay unchanged after MISC edit" % original_chunk.chunk_id
 			)
+
+
+func _test_map_edits(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	_check(city.set_terrain_id(4, 5, 0x2a), "Terrain tile can change")
+	_check(city.set_building_id(4, 5, 0x8a), "Building tile can change")
+	_check(city.set_zone_id(4, 5, 0x05), "Zone can change")
+	_check(city.set_building_corners(4, 5, 0xa0), "Building corners can change")
+	_check(city.set_underground_id(4, 5, 0x22), "Underground tile can change")
+	_check(city.set_text_overlay_id(4, 5, 0x31), "Text overlay can change")
+	_check(city.set_tile_flag(4, 5, 0x40, true), "Tile powered flag can change")
+	_check(city.set_land_altitude(4, 5, 17), "Land altitude can change")
+	_check(city.set_water_altitude(4, 5, 19), "Water altitude can change")
+	_check(city.set_tunnel_levels(4, 5, 41), "Tunnel depth can change")
+	var serialized := document.serialize()
+	_check(serialized.ok, "Map-edited city serializes")
+	if not serialized.ok:
+		return
+	var reparsed := Sc2Document.new()
+	_check(reparsed.parse(serialized.data), "Map-edited city parses")
+	if not reparsed.is_valid():
+		return
+	var result := CityModel.from_document(reparsed)
+	_check(result.terrain_id(4, 5) == 0x2a, "Terrain edit persists")
+	_check(result.building_id(4, 5) == 0x8a, "Building edit persists")
+	_check(result.zone_id(4, 5) == 0x05, "Zone edit persists")
+	_check(result.building_corners(4, 5) == 0xa0, "Building corners persist")
+	_check(result.underground_id(4, 5) == 0x22, "Underground edit persists")
+	_check(result.text_overlay_id(4, 5) == 0x31, "Text overlay edit persists")
+	_check(result.is_powered(4, 5), "Tile flag edit persists")
+	_check(result.land_altitude(4, 5) == 17, "Land altitude edit persists")
+	_check(result.water_altitude(4, 5) == 19, "Water altitude edit persists")
+	_check(result.tunnel_levels(4, 5) == 41, "Tunnel depth edit persists")
+	_check(not result.set_zone_id(-1, 0, 1), "Out-of-range map edits fail")
+	_check(not result.set_land_altitude(0, 0, 32), "Out-of-range altitude fails")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
