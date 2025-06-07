@@ -3,6 +3,14 @@ extends RefCounted
 
 const MAP_SIZE := 128
 const TILE_COUNT := MAP_SIZE * MAP_SIZE
+const LABEL_COUNT := 256
+const LABEL_RECORD_SIZE := 25
+const MICROSIM_COUNT := 150
+const MICROSIM_RECORD_SIZE := 8
+const THING_COUNT := 40
+const THING_RECORD_SIZE := 12
+const GRAPH_COUNT := 16
+const GRAPH_VALUE_COUNT := 52
 
 var document: Sc2File
 var load_error := ""
@@ -128,14 +136,116 @@ func city_name() -> String:
 
 
 func mayor_name() -> String:
-	var labels := document.find_chunk("XLAB")
-	if labels == null or labels.decoded_payload.size() < 25:
+	return label(0)
+
+
+func label(label_id: int) -> String:
+	if label_id < 0 or label_id >= LABEL_COUNT:
 		return ""
-	var declared_length: int = mini(labels.decoded_payload[0], 23)
-	var end := 1
-	while end < 1 + declared_length and labels.decoded_payload[end] != 0:
+	var chunk := document.find_chunk("XLAB")
+	if chunk == null:
+		return ""
+	var offset := label_id * LABEL_RECORD_SIZE
+	var declared_length: int = mini(chunk.decoded_payload[offset], 23)
+	var start := offset + 1
+	var end := start
+	while end < start + declared_length and chunk.decoded_payload[end] != 0:
 		end += 1
-	return labels.decoded_payload.slice(1, end).get_string_from_ascii()
+	return chunk.decoded_payload.slice(start, end).get_string_from_ascii()
+
+
+func set_label(label_id: int, value: String) -> bool:
+	if label_id < 0 or label_id >= LABEL_COUNT:
+		return false
+	var chunk := document.find_chunk("XLAB")
+	if chunk == null:
+		return false
+	var encoded := value.to_ascii_buffer()
+	if encoded.size() > 23:
+		encoded = encoded.slice(0, 23)
+	var changed := chunk.decoded_payload.duplicate()
+	var offset := label_id * LABEL_RECORD_SIZE
+	changed[offset] = encoded.size()
+	for index in encoded.size():
+		changed[offset + 1 + index] = encoded[index]
+	changed[offset + 1 + encoded.size()] = 0
+	return chunk.set_decoded_payload(changed)
+
+
+func microsim(microsim_id: int) -> Dictionary:
+	if microsim_id < 0 or microsim_id >= MICROSIM_COUNT:
+		return {}
+	var chunk := document.find_chunk("XMIC")
+	if chunk == null:
+		return {}
+	var offset := microsim_id * MICROSIM_RECORD_SIZE
+	return {
+		"tile_id": int(chunk.decoded_payload[offset]),
+		"stat_0": int(chunk.decoded_payload[offset + 1]),
+		"stat_1": _read_u16_be(chunk.decoded_payload, offset + 2),
+		"stat_2": _read_u16_be(chunk.decoded_payload, offset + 4),
+		"stat_3": _read_u16_be(chunk.decoded_payload, offset + 6),
+	}
+
+
+func thing(thing_id: int) -> Dictionary:
+	if thing_id < 0 or thing_id >= THING_COUNT:
+		return {}
+	var chunk := document.find_chunk("XTHG")
+	if chunk == null:
+		return {}
+	var offset := thing_id * THING_RECORD_SIZE
+	return {
+		"type": int(chunk.decoded_payload[offset]),
+		"direction": int(chunk.decoded_payload[offset + 1]),
+		"state": int(chunk.decoded_payload[offset + 2]),
+		"x": int(chunk.decoded_payload[offset + 3]),
+		"y": int(chunk.decoded_payload[offset + 4]),
+		"z": int(chunk.decoded_payload[offset + 5]),
+		"px": int(chunk.decoded_payload[offset + 6]),
+		"py": int(chunk.decoded_payload[offset + 7]),
+		"dx": int(chunk.decoded_payload[offset + 8]),
+		"dy": int(chunk.decoded_payload[offset + 9]),
+		"label": int(chunk.decoded_payload[offset + 10]),
+		"goal": int(chunk.decoded_payload[offset + 11]),
+	}
+
+
+func graph_series(graph_id: int) -> Dictionary:
+	if graph_id < 0 or graph_id >= GRAPH_COUNT:
+		return {}
+	var chunk := document.find_chunk("XGRP")
+	if chunk == null:
+		return {}
+	var values := PackedInt64Array()
+	var offset := graph_id * GRAPH_VALUE_COUNT * 4
+	for index in GRAPH_VALUE_COUNT:
+		values.append(_read_u32_be(chunk.decoded_payload, offset + index * 4))
+	return {
+		"year": values.slice(0, 12),
+		"decade": values.slice(12, 32),
+		"century": values.slice(32, 52),
+	}
+
+
+func city_mode() -> int:
+	return document.misc_u32(0x04)
+
+
+func difficulty() -> int:
+	return document.misc_u32(0x1c)
+
+
+func city_status() -> int:
+	return document.misc_u32(0x20)
+
+
+func weather_type() -> int:
+	return document.misc_u32(0x6c)
+
+
+func disaster_type() -> int:
+	return document.misc_u32(0x70)
 
 
 func funds() -> int:
@@ -191,3 +301,16 @@ func rci_demand() -> Vector3i:
 func _byte_at(data: PackedByteArray, x: int, y: int) -> int:
 	var index := index_of(x, y)
 	return 0 if index < 0 else data[index]
+
+
+static func _read_u16_be(data: PackedByteArray, offset: int) -> int:
+	return (data[offset] << 8) | data[offset + 1]
+
+
+static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
+	return (
+		(data[offset] << 24)
+		| (data[offset + 1] << 16)
+		| (data[offset + 2] << 8)
+		| data[offset + 3]
+	)

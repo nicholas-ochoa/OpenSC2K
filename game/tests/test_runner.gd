@@ -94,6 +94,13 @@ func _test_reference_corpus(reference_root: String) -> void:
 				city.current_month() >= 1 and city.current_month() <= 12,
 				"%s month is in range" % path.get_file()
 			)
+			_check(city.label(0).length() <= 23, "%s mayor label is bounded" % path.get_file())
+			_check(city.microsim(149).size() == 5, "%s has 150 microsim records" % path.get_file())
+			_check(city.thing(39).size() == 12, "%s has 40 thing records" % path.get_file())
+			var graph := city.graph_series(15)
+			_check(graph.year.size() == 12, "%s graph has 12 monthly values" % path.get_file())
+			_check(graph.decade.size() == 20, "%s graph has 20 decade values" % path.get_file())
+			_check(graph.century.size() == 20, "%s graph has 20 century values" % path.get_file())
 
 		for chunk in document.chunks:
 			if not chunk.is_compressed:
@@ -205,6 +212,7 @@ func _test_modified_save(reference_root: String) -> void:
 	var loaded_city := CityModel.from_document(document)
 	_check(loaded_city.set_age_in_days(311), "City age can change")
 	_check(loaded_city.set_funds(-12345), "City funds can change")
+	_check(loaded_city.set_label(0, "Test Mayor"), "Mayor label can change")
 	var serialized := document.serialize()
 	_check(serialized.ok, "Modified city serializes")
 	if not serialized.ok:
@@ -216,10 +224,12 @@ func _test_modified_save(reference_root: String) -> void:
 	if reparsed.is_valid():
 		_check(reparsed.misc_u32(0x10) == 311, "Modified city age is preserved")
 		_check(reparsed.misc_i32(0x14) == -12345, "Modified city funds are preserved")
+		var reparsed_city := CityModel.from_document(reparsed)
+		_check(reparsed_city.mayor_name() == "Test Mayor", "Modified mayor label is preserved")
 
 	var original := Sc2Document.load_path(source_path)
 	for original_chunk in original.chunks:
-		if original_chunk.chunk_id == "MISC":
+		if original_chunk.chunk_id == "MISC" or original_chunk.chunk_id == "XLAB":
 			continue
 		var modified_chunk := reparsed.find_chunk(original_chunk.chunk_id)
 		_check(modified_chunk != null, "%s stays present after edit" % original_chunk.chunk_id)
