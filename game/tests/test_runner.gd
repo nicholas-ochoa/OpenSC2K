@@ -3,6 +3,7 @@ extends SceneTree
 const RleCodec = preload("res://src/formats/maxis_rle.gd")
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
+const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
@@ -24,6 +25,7 @@ func _init() -> void:
 	_test_palette_and_minimap(reference_root)
 	_test_sprite_archives(reference_root)
 	_test_reference_corpus(reference_root)
+	_test_scenarios(reference_root)
 	_test_simulation_clock()
 	_test_modified_save(reference_root)
 
@@ -204,6 +206,37 @@ func _test_simulation_clock() -> void:
 		phases[24].actions == PackedStringArray(["month_start", "budget"]),
 		"Month start schedules budget work"
 	)
+
+
+func _test_scenarios(reference_root: String) -> void:
+	var paths := _files_with_extension(reference_root.path_join("SCENARIO"), "SCN")
+	_check(paths.size() == 18, "Supplied scenario count is 18")
+	var legacy_count := 0
+	var extended_count := 0
+	for path in paths:
+		var document := Sc2Document.load_path(path)
+		var scenario := ScenarioModel.from_document(document)
+		_check(scenario.is_valid(), "%s scenario model loads: %s" % [path.get_file(), scenario.load_error])
+		if not scenario.is_valid():
+			continue
+		if scenario.format_size == ScenarioModel.LEGACY_SIZE:
+			legacy_count += 1
+		else:
+			extended_count += 1
+		_check(scenario.time_limit_months > 0, "%s has a positive time limit" % path.get_file())
+		_check(not scenario.selection_description().is_empty(), "%s has selection text" % path.get_file())
+		_check(not scenario.opening_description().is_empty(), "%s has opening text" % path.get_file())
+		var picture := scenario.picture_indices()
+		_check(picture.ok, "%s picture parses: %s" % [path.get_file(), picture.error])
+		if picture.ok:
+			_check(picture.width == 65, "%s picture width is 65" % path.get_file())
+			_check(picture.height == 65 or picture.height == 66, "%s picture height is 65 or 66" % path.get_file())
+			_check(
+				picture.pixels.size() == picture.width * picture.height,
+				"%s picture has the declared pixel count" % path.get_file()
+			)
+	_check(legacy_count == 15, "Fifteen supplied scenarios use the 52-byte SCEN layout")
+	_check(extended_count == 3, "Three supplied scenarios use the 56-byte SCEN layout")
 
 
 func _test_modified_save(reference_root: String) -> void:
