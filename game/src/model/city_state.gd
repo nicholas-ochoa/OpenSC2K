@@ -224,6 +224,16 @@ func set_tile_flag(x: int, y: int, mask: int, enabled: bool) -> bool:
 	return true
 
 
+func replace_tile_flags(value: PackedByteArray) -> bool:
+	if value.size() != TILE_COUNT:
+		return false
+	var chunk := document.find_chunk("XBIT")
+	if chunk == null or not chunk.set_decoded_payload(value):
+		return false
+	tile_flags = value.duplicate()
+	return true
+
+
 func set_land_altitude(x: int, y: int, value: int) -> bool:
 	if value < 0 or value > 0x1f:
 		return false

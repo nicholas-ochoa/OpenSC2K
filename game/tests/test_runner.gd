@@ -9,6 +9,8 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
+const Random = preload("res://src/simulation/sim_random.gd")
+const Power = preload("res://src/simulation/power_phase.gd")
 
 var failures := 0
 var checks := 0
@@ -27,6 +29,7 @@ func _init() -> void:
 	_test_reference_corpus(reference_root)
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
+	_test_random_and_power(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
 
@@ -238,6 +241,37 @@ func _test_scenarios(reference_root: String) -> void:
 			)
 	_check(legacy_count == 15, "Fifteen supplied scenarios use the 52-byte SCEN layout")
 	_check(extended_count == 3, "Three supplied scenarios use the 56-byte SCEN layout")
+
+
+func _test_random_and_power(reference_root: String) -> void:
+	var random := Random.new(1)
+	var sequence := PackedInt32Array()
+	for unused in 5:
+		sequence.append(random.next_u15())
+	_check(
+		sequence == PackedInt32Array([41, 18467, 6334, 26500, 19169]),
+		"Simulation random sequence matches the executable runtime"
+	)
+
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	_check(city.set_building_id(10, 10, 0xc6), "Power test places a hydro plant")
+	_check(city.set_building_id(10, 11, 0x0e), "Power test places a power line")
+	_check(city.set_building_id(10, 12, 0x70), "Power test places a consumer")
+	_check(city.set_building_id(20, 20, 0x70), "Power test places a disconnected consumer")
+	for point in [Vector2i(10, 10), Vector2i(10, 11), Vector2i(10, 12), Vector2i(20, 20)]:
+		_check(city.set_tile_flag(point.x, point.y, 0x80, true), "Power test tile is powerable")
+	var result := Power.run(city, Random.new(1))
+	_check(result.ok, "Power phase completes: %s" % result.error)
+	if result.ok:
+		_check(result.generation == 40, "Hydro plant generates 40 power units")
+		_check(result.consumers == 1, "Connected component has one consumer")
+		_check(result.supplied_consumers == 1, "Connected consumer receives power")
+		_check(result.usage_percent == 2, "Power usage percentage uses integer division")
+		_check(city.is_powered(10, 10), "Power source is marked powered")
+		_check(city.is_powered(10, 11), "Power line is marked powered")
+		_check(city.is_powered(10, 12), "Connected consumer is marked powered")
+		_check(not city.is_powered(20, 20), "Disconnected consumer is not powered")
 
 
 func _test_modified_save(reference_root: String) -> void:
