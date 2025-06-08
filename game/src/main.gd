@@ -1,5 +1,3 @@
-# todo: save a copy without overwriting the source city
-
 extends Control
 
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
@@ -10,20 +8,24 @@ const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 
 var city: CityState
+var current_document: Sc2File
 var palette: Sc2Palette
 var large_sprites: Sc2SpriteArchive
 var overlay_mode := "city"
+var reference_root := ""
 
 var map_texture: TextureRect
 var city_label: Label
 var details_label: Label
 var status_label: Label
 var file_dialog: FileDialog
+var save_dialog: FileDialog
+var save_button: Button
 
 
 func _ready() -> void:
 	_build_interface()
-	var reference_root := ProjectSettings.globalize_path("res://../references")
+	reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
 	palette = Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
 	if not palette.is_valid():
 		_show_error(palette.load_error)
@@ -71,6 +73,12 @@ func _build_interface() -> void:
 	open_button.text = "Open City"
 	open_button.pressed.connect(_open_city_dialog)
 	header.add_child(open_button)
+
+	save_button = Button.new()
+	save_button.text = "Save Copy"
+	save_button.disabled = true
+	save_button.pressed.connect(_open_save_dialog)
+	header.add_child(save_button)
 
 	var mode_bar := HBoxContainer.new()
 	mode_bar.add_theme_constant_override("separation", 6)
@@ -128,12 +136,29 @@ func _build_interface() -> void:
 	file_dialog.file_selected.connect(_load_city)
 	add_child(file_dialog)
 
+	save_dialog = FileDialog.new()
+	save_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	save_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	save_dialog.add_filter("*.SC2, *.sc2", "SimCity 2000 cities")
+	save_dialog.file_selected.connect(_save_copy)
+	add_child(save_dialog)
+
 
 func _open_city_dialog() -> void:
 	var city_directory := ProjectSettings.globalize_path("res://../references/CITIES")
 	if DirAccess.dir_exists_absolute(city_directory):
 		file_dialog.current_dir = city_directory
 	file_dialog.popup_centered_ratio(0.8)
+
+
+func _open_save_dialog() -> void:
+	if current_document == null:
+		return
+	var save_directory := ProjectSettings.globalize_path("user://cities")
+	DirAccess.make_dir_recursive_absolute(save_directory)
+	save_dialog.current_dir = save_directory
+	save_dialog.current_file = current_document.source_path.get_file().get_basename() + ".SC2"
+	save_dialog.popup_centered_ratio(0.8)
 
 
 func _load_city(path: String) -> void:
@@ -148,6 +173,8 @@ func _load_city(path: String) -> void:
 		return
 
 	city = loaded_city
+	current_document = document
+	save_button.disabled = false
 	city_label.text = (
 		city.city_name() if not city.city_name().is_empty() else path.get_file().get_basename()
 	)
@@ -169,6 +196,37 @@ func _load_city(path: String) -> void:
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Loaded %s\nMap view: %s" % [path.get_file(), overlay_mode.capitalize()]
 	_refresh_map()
+
+
+func _save_copy(path: String) -> void:
+	if current_document == null:
+		_show_error("No city is loaded.")
+		return
+	var output_path := path
+	if output_path.get_extension().is_empty():
+		output_path += ".SC2"
+	output_path = output_path.simplify_path()
+	if output_path == reference_root or output_path.begins_with(reference_root + "/"):
+		_show_error("Choose a location outside the read-only references directory.")
+		return
+
+	var serialized := current_document.serialize()
+	if not serialized.ok:
+		_show_error(serialized.error)
+		return
+	var output := FileAccess.open(output_path, FileAccess.WRITE)
+	if output == null:
+		_show_error("Cannot open save output: %s" % error_string(FileAccess.get_open_error()))
+		return
+	output.store_buffer(serialized.data)
+	output.flush()
+	var write_error := output.get_error()
+	output.close()
+	if write_error != OK:
+		_show_error("Cannot write save output: %s" % error_string(write_error))
+		return
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Saved city copy\n%s" % output_path
 
 
 func _set_overlay(mode: String) -> void:
