@@ -11,6 +11,7 @@ const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const Power = preload("res://src/simulation/power_phase.gd")
+const Water = preload("res://src/simulation/water_phase.gd")
 
 var failures := 0
 var checks := 0
@@ -30,6 +31,7 @@ func _init() -> void:
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
 	_test_random_and_power(reference_root)
+	_test_water(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
 
@@ -272,6 +274,33 @@ func _test_random_and_power(reference_root: String) -> void:
 		_check(city.is_powered(10, 11), "Power line is marked powered")
 		_check(city.is_powered(10, 12), "Connected consumer is marked powered")
 		_check(not city.is_powered(20, 20), "Disconnected consumer is not powered")
+
+
+func _test_water(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	_check(city.set_building_id(30, 30, 0xdc), "Water test places a pump")
+	_check(city.set_building_id(30, 31, 0x00), "Water test clears a pipe tile")
+	_check(city.set_building_id(30, 32, 0x70), "Water test places a consumer")
+	_check(city.set_building_id(40, 40, 0x70), "Water test places a disconnected consumer")
+	for point in [Vector2i(30, 30), Vector2i(30, 31), Vector2i(30, 32), Vector2i(40, 40)]:
+		_check(city.set_tile_flag(point.x, point.y, 0x20, true), "Water test tile is piped")
+	_check(city.set_tile_flag(30, 30, 0x40, true), "Water pump is powered")
+	_check(city.set_tile_flag(29, 30, 0x04, true), "Fresh water is next to the pump")
+	_check(city.set_tile_flag(29, 30, 0x01, false), "Pump water is not salt water")
+	var expected_supply := int((document.misc_u32(0x68) & 0xff) / 2) + (
+		document.misc_u32(0x0e40) * 5
+	) + 10
+	var result := Water.run(city)
+	_check(result.ok, "Water phase completes: %s" % result.error)
+	if result.ok:
+		_check(result.supply == expected_supply, "Pump supply uses rain, water level, and fresh water")
+		_check(result.consumers == 1, "Water component has one consumer")
+		_check(result.watered_consumers == 1, "Connected consumer receives water")
+		_check(city.is_watered(30, 30), "Powered pump is marked watered")
+		_check(city.is_watered(30, 31), "Connected pipe is marked watered")
+		_check(city.is_watered(30, 32), "Connected consumer is marked watered")
+		_check(not city.is_watered(40, 40), "Disconnected consumer is not watered")
 
 
 func _test_modified_save(reference_root: String) -> void:
