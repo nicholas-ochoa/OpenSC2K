@@ -12,6 +12,7 @@ const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const Power = preload("res://src/simulation/power_phase.gd")
 const Water = preload("res://src/simulation/water_phase.gd")
+const Simulation = preload("res://src/simulation/simulation_engine.gd")
 
 var failures := 0
 var checks := 0
@@ -32,6 +33,7 @@ func _init() -> void:
 	_test_simulation_clock()
 	_test_random_and_power(reference_root)
 	_test_water(reference_root)
+	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
 
@@ -301,6 +303,30 @@ func _test_water(reference_root: String) -> void:
 		_check(city.is_watered(30, 31), "Connected pipe is marked watered")
 		_check(city.is_watered(30, 32), "Connected consumer is marked watered")
 		_check(not city.is_watered(40, 40), "Disconnected consumer is not watered")
+
+
+func _test_simulation_engine(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	_check(city.set_age_in_days(0), "Simulation engine test resets the city day")
+	var engine := Simulation.new(city, 1)
+	var day_one := engine.advance_day()
+	_check(day_one.ok, "Simulation engine advances day one")
+	_check(day_one.day == 1 and city.age_in_days() == 1, "Simulation engine stores the new day")
+	_check(day_one.applied == PackedStringArray(["power"]), "Simulation engine applies power on day one")
+	_check(day_one.pending.is_empty(), "Day one has no unimplemented scheduled phase")
+	var day_two := engine.advance_day()
+	_check(day_two.ok, "Simulation engine advances day two")
+	_check(
+		day_two.pending == PackedStringArray(["pollution_terrain_land_value"]),
+		"Simulation engine reports the unimplemented day-two phase"
+	)
+	_check(not day_two.complete, "A day with a pending phase is not complete")
+	var latest := day_two
+	while latest.day < 20:
+		latest = engine.advance_day()
+	_check(latest.applied == PackedStringArray(["water"]), "Simulation engine applies water on day 20")
+	_check(latest.pending.is_empty(), "Day 20 has no unimplemented scheduled phase")
 
 
 func _test_modified_save(reference_root: String) -> void:
