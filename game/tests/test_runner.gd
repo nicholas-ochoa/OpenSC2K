@@ -248,6 +248,23 @@ func _test_scenarios(reference_root: String) -> void:
 	_check(legacy_count == 15, "Fifteen supplied scenarios use the 52-byte SCEN layout")
 	_check(extended_count == 3, "Three supplied scenarios use the 56-byte SCEN layout")
 
+	var city_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(city_document)
+	var goals := ScenarioModel.new()
+	var all_disabled := goals.evaluate_goals(city)
+	_check(all_disabled.ok and all_disabled.met, "Zero scenario goals are met")
+	goals.cash_goal = all_disabled.values.cash_after_bonds + 1
+	var cash_failure := goals.evaluate_goals(city)
+	_check(not cash_failure.met, "Cash goal detects an insufficient city balance")
+	_check(cash_failure.unmet == PackedStringArray(["cash"]), "Cash goal reports its exact failure")
+	goals.cash_goal = 0
+	goals.pollution_limit = maxi(city_document.misc_u32(0x34) - 1, 1)
+	if city_document.misc_u32(0x34) > goals.pollution_limit:
+		_check(
+			goals.evaluate_goals(city).unmet.has("pollution"),
+			"Pollution upper limit detects an excess"
+		)
+
 
 func _test_random_and_power(reference_root: String) -> void:
 	var random := Random.new(1)

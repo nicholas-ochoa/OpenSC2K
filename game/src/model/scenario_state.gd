@@ -120,6 +120,72 @@ func picture_indices() -> Dictionary:
 	return {"ok": true, "width": width, "height": height, "pixels": pixels, "error": ""}
 
 
+func evaluate_goals(city: CityState) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	var unmet := PackedStringArray()
+	var values := {
+		"city_size": city.document.misc_u32(0x102c),
+		"residential": city.document.misc_i32(0x077c),
+		"commercial": city.document.misc_i32(0x07e8),
+		"industrial": city.document.misc_i32(0x0854),
+		"cash_after_bonds": city.funds() - city.document.misc_i32(0x18),
+		"land_value": city.document.misc_i32(0x28),
+		"life_expectancy": city.document.misc_i32(0x48),
+		"education": city.document.misc_i32(0x4c),
+		"pollution": city.document.misc_u32(0x34),
+		"crime": city.document.misc_u32(0x2c),
+		"traffic": city.document.misc_u32(0x30),
+	}
+	_check_minimum(unmet, "city_size", values.city_size, city_size_goal, true)
+	_check_minimum(unmet, "residential", values.residential, residential_goal)
+	_check_minimum(unmet, "commercial", values.commercial, commercial_goal)
+	_check_minimum(unmet, "industrial", values.industrial, industrial_goal)
+	_check_minimum(unmet, "cash", values.cash_after_bonds, cash_goal)
+	_check_minimum(unmet, "land_value", values.land_value, land_value_goal)
+	_check_minimum(unmet, "life_expectancy", values.life_expectancy, life_expectancy_goal)
+	_check_minimum(unmet, "education", values.education, education_goal)
+	_check_limit(unmet, "pollution", values.pollution, pollution_limit)
+	_check_limit(unmet, "crime", values.crime, crime_limit)
+	_check_limit(unmet, "traffic", values.traffic, traffic_limit)
+
+	if first_building_id != 0:
+		var first_count := city.document.misc_u32(0x01f0 + first_building_id * 4)
+		values["first_building_tiles"] = first_count
+		if first_count < first_building_tile_count:
+			unmet.append("first_building")
+	if second_building_id != 0:
+		var second_count := city.document.misc_u32(0x01f0 + second_building_id * 4)
+		values["second_building_tiles"] = second_count
+		if second_count < second_building_tile_count:
+			unmet.append("second_building")
+	return {
+		"ok": true,
+		"met": unmet.is_empty(),
+		"unmet": unmet,
+		"values": values,
+		"error": "",
+	}
+
+
+static func _check_minimum(
+	unmet: PackedStringArray,
+	name: String,
+	actual: int,
+	required: int,
+	zero_disables: bool = false
+) -> void:
+	if (not zero_disables or required != 0) and actual < required:
+		unmet.append(name)
+
+
+static func _check_limit(
+	unmet: PackedStringArray, name: String, actual: int, limit: int
+) -> void:
+	if limit > 0 and actual > limit:
+		unmet.append(name)
+
+
 func _text_chunk(expected_header: int) -> String:
 	for chunk in document.chunks:
 		if chunk.chunk_id != "TEXT" or chunk.decoded_payload.size() < 4:
