@@ -12,6 +12,7 @@ const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const Power = preload("res://src/simulation/power_phase.gd")
 const Water = preload("res://src/simulation/water_phase.gd")
+const Traffic = preload("res://src/simulation/traffic_phase.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 
 var failures := 0
@@ -33,6 +34,7 @@ func _init() -> void:
 	_test_simulation_clock()
 	_test_random_and_power(reference_root)
 	_test_water(reference_root)
+	_test_traffic(reference_root)
 	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
@@ -323,10 +325,34 @@ func _test_simulation_engine(reference_root: String) -> void:
 	)
 	_check(not day_two.complete, "A day with a pending phase is not complete")
 	var latest := day_two
-	while latest.day < 20:
+	while latest.day < 19:
 		latest = engine.advance_day()
+	_check(latest.applied == PackedStringArray(["traffic"]), "Simulation engine applies traffic on day 19")
+	_check(latest.pending.is_empty(), "Day 19 has no unimplemented scheduled phase")
+	latest = engine.advance_day()
 	_check(latest.applied == PackedStringArray(["water"]), "Simulation engine applies water on day 20")
 	_check(latest.pending.is_empty(), "Day 20 has no unimplemented scheduled phase")
+
+
+func _test_traffic(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
+	var city := CityModel.from_document(document)
+	var original := document.find_chunk("XTRF").decoded_payload.duplicate()
+	var expected_total := 0
+	for value in original:
+		expected_total += int(value) - (int(value) >> 2)
+	var result := Traffic.run(city)
+	_check(result.ok, "Traffic phase completes: %s" % result.error)
+	if not result.ok:
+		return
+	_check(result.traffic_count == expected_total, "Traffic phase returns the decayed total")
+	_check(document.misc_u32(0x30) == expected_total, "Traffic phase stores the city traffic count")
+	var changed := document.find_chunk("XTRF").decoded_payload
+	for index in original.size():
+		_check(
+			changed[index] == int(original[index]) - (int(original[index]) >> 2),
+			"Traffic value %d decays by one quarter" % index
+		)
 
 
 func _test_modified_save(reference_root: String) -> void:

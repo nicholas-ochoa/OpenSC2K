@@ -43,6 +43,12 @@ func advance_day() -> Dictionary:
 					return {"ok": false, "error": water.error}
 				phase_results[action] = water
 				applied.append(action)
+			"traffic":
+				var traffic := TrafficPhase.run(city)
+				if not traffic.ok:
+					return {"ok": false, "error": traffic.error}
+				phase_results[action] = traffic
+				applied.append(action)
 			_:
 				pending.append(action)
 	return {
