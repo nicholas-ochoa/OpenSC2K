@@ -3,6 +3,125 @@ extends RefCounted
 
 const SERIES_COUNT := 16
 const VALUES_PER_SERIES := 52
+const MISC_SIZE := 4800
+const MISC_CITY_LAND_VALUE := 0x0028
+const MISC_CITY_CRIME := 0x002c
+const MISC_CITY_TRAFFIC := 0x0030
+const MISC_CITY_POLLUTION := 0x0034
+const MISC_WORKFORCE_LE := 0x0048
+const MISC_WORKFORCE_EQ := 0x004c
+const MISC_NATIONAL_POPULATION := 0x0050
+const MISC_NATIONAL_VALUE := 0x0054
+const MISC_NATIONAL_FEDERAL_RATE := 0x0058
+const MISC_TILE_COUNTS := 0x01f0
+const MISC_ZONE_POPULATIONS := 0x05f0
+const MISC_BUDGETS := 0x077c
+const MISC_BUDGET_RECORD_SIZE := 0x006c
+const MISC_UNEMPLOYMENT := 0x0fa4
+const MISC_ARCOLOGY_POPULATION := 0x1020
+
+const BUDGET_ROAD := 10
+const BUDGET_HIGHWAY := 11
+const BUDGET_BRIDGE := 12
+const FIRST_ARCOLOGY := 0xfb
+const LAST_ARCOLOGY := 0xfe
+
+
+static func run(
+	city: CityState, developed_tiles: int, power_usage_percent: int, water_usage_percent: int
+) -> Dictionary:
+	var calculation := calculate_current_values(
+		city, developed_tiles, power_usage_percent, water_usage_percent
+	)
+	if not calculation.ok:
+		return calculation
+	var chunk := city.document.find_chunk("XGRP")
+	if chunk == null or chunk.decoded_payload.size() != SERIES_COUNT * VALUES_PER_SERIES * 4:
+		return {"ok": false, "error": "XGRP is missing or has the wrong size"}
+	if not city.document.set_misc_u32(MISC_UNEMPLOYMENT, calculation.unemployment):
+		return {"ok": false, "error": "cannot store the unemployment percentage"}
+	var history := advance(city, calculation.values)
+	if not history.ok:
+		return history
+	history["values"] = calculation.values
+	history["unemployment"] = calculation.unemployment
+	return history
+
+
+static func calculate_current_values(
+	city: CityState, developed_tiles: int, power_usage_percent: int, water_usage_percent: int
+) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	var misc := city.document.find_chunk("MISC")
+	if misc == null or misc.decoded_payload.size() != MISC_SIZE:
+		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+	if developed_tiles < 0 or developed_tiles > CityState.TILE_COUNT:
+		return {"ok": false, "error": "developed tile count is out of range"}
+	if power_usage_percent < 0 or power_usage_percent > 100:
+		return {"ok": false, "error": "power usage percentage is out of range"}
+	if water_usage_percent < 0 or water_usage_percent > 100:
+		return {"ok": false, "error": "water usage percentage is out of range"}
+
+	var zone_populations := PackedInt64Array()
+	for index in 8:
+		zone_populations.append(
+			city.document.misc_u32(MISC_ZONE_POPULATIONS + index * 4)
+		)
+	var total_zone_population := 0
+	for index in range(1, 7):
+		total_zone_population += zone_populations[index]
+	var tax_populations := PackedInt64Array(
+		[
+			zone_populations[1] + zone_populations[2],
+			zone_populations[3] + zone_populations[4],
+			zone_populations[5] + zone_populations[6],
+		]
+	)
+
+	var arcology_tiles := 0
+	for tile_id in range(FIRST_ARCOLOGY, LAST_ARCOLOGY + 1):
+		arcology_tiles += city.document.misc_i32(MISC_TILE_COUNTS + tile_id * 4)
+	var arcology_count := _divide_toward_zero(arcology_tiles, 16)
+	var arcology_adjustment := 0
+	if arcology_count > 140:
+		arcology_adjustment = (arcology_count * 5 - 700) * 4000
+	var arcology_population := city.document.misc_u32(MISC_ARCOLOGY_POPULATION)
+	var adjusted_arcology_population := arcology_population + arcology_adjustment
+
+	var transport_cost := 1
+	for budget_id in [BUDGET_ROAD, BUDGET_HIGHWAY, BUDGET_BRIDGE]:
+		transport_cost += city.document.misc_i32(
+			MISC_BUDGETS + budget_id * MISC_BUDGET_RECORD_SIZE
+		)
+	if transport_cost <= 0:
+		return {"ok": false, "error": "transport graph divisor is not positive"}
+	var developed_divisor := _divide_toward_zero(developed_tiles, 4) + 1
+	var unemployment := int(
+		zone_populations[7] * 100 / (total_zone_population + zone_populations[7] + 1)
+	)
+
+	var values := PackedInt64Array(
+		[
+			arcology_population + total_zone_population * 10 + arcology_adjustment,
+			_divide_toward_zero(adjusted_arcology_population, 2) + tax_populations[0] * 10,
+			_divide_toward_zero(adjusted_arcology_population, 4) + tax_populations[1] * 10,
+			_divide_toward_zero(adjusted_arcology_population, 4) + tax_populations[2] * 10,
+			int(city.document.misc_u32(MISC_CITY_TRAFFIC) / transport_cost),
+			int(city.document.misc_u32(MISC_CITY_POLLUTION) / developed_divisor),
+			int(city.document.misc_u32(MISC_CITY_LAND_VALUE) / developed_divisor),
+			int(city.document.misc_u32(MISC_CITY_CRIME) / developed_divisor),
+			100 - power_usage_percent,
+			100 - water_usage_percent,
+			city.document.misc_u32(MISC_WORKFORCE_LE),
+			city.document.misc_u32(MISC_WORKFORCE_EQ),
+			unemployment,
+			city.document.misc_u32(MISC_NATIONAL_VALUE),
+			city.document.misc_u32(MISC_NATIONAL_POPULATION),
+			city.document.misc_i32(MISC_NATIONAL_FEDERAL_RATE),
+		]
+	)
+	return {"ok": true, "values": values, "unemployment": unemployment, "error": ""}
 
 
 static func advance(city: CityState, current_values: PackedInt64Array) -> Dictionary:
@@ -45,3 +164,7 @@ static func _write_value(data: PackedByteArray, series: int, index: int, value: 
 	data[offset + 1] = (value >> 16) & 0xff
 	data[offset + 2] = (value >> 8) & 0xff
 	data[offset + 3] = value & 0xff
+
+
+static func _divide_toward_zero(value: int, divisor: int) -> int:
+	return int(value / divisor)

@@ -384,18 +384,69 @@ func _test_graph_history(reference_root: String) -> void:
 			_write_u32_be(data, (series * CityModel.GRAPH_VALUE_COUNT + index) * 4, series * 1000 + index)
 	_check(document.find_chunk("XGRP").set_decoded_payload(data), "Graph test installs known history")
 	_check(city.set_age_in_days(150), "Graph test selects July")
-	var current := PackedInt64Array()
-	for series in CityModel.GRAPH_COUNT:
-		current.append(900000 + series)
-	var result := Graphs.advance(city, current)
-	_check(result.ok, "Graph history advances: %s" % result.error)
+	for index in 8:
+		_check(
+			document.set_misc_u32(0x05f0 + index * 4, [0, 10, 20, 5, 7, 3, 4, 9][index]),
+			"Graph test installs zone population %d" % index
+		)
+	for tile_id in range(0xfb, 0xff):
+		_check(
+			document.set_misc_u32(0x01f0 + tile_id * 4, 600),
+			"Graph test installs arcology tile count %d" % tile_id
+		)
+	for setting in [
+		[0x1020, 1000],
+		[0x0030, 1000],
+		[0x0bb4, 9],
+		[0x0c20, 10],
+		[0x0c8c, 5],
+		[0x0048, 78],
+		[0x004c, 91],
+		[0x0050, 54321],
+		[0x0054, 98765],
+		[0x0058, 8],
+	]:
+		_check(
+			document.set_misc_u32(setting[0], setting[1]),
+			"Graph test installs MISC value 0x%x" % setting[0]
+		)
+	var developed_tiles := 400
+	var developed_divisor := int(developed_tiles / 4) + 1
+	_check(document.set_misc_u32(0x0034, developed_divisor * 11), "Graph test installs pollution")
+	_check(document.set_misc_u32(0x0028, developed_divisor * 22), "Graph test installs land value")
+	_check(document.set_misc_u32(0x002c, developed_divisor * 33), "Graph test installs crime")
+	var expected := PackedInt64Array(
+		[
+			201490,
+			100800,
+			50370,
+			50320,
+			40,
+			11,
+			22,
+			33,
+			77,
+			55,
+			78,
+			91,
+			15,
+			98765,
+			54321,
+			8,
+		]
+	)
+	var result := Graphs.run(city, developed_tiles, 23, 45)
+	_check(result.ok, "Graph statistics and history advance: %s" % result.error)
 	if not result.ok:
 		return
+	_check(result.values == expected, "Graph phase calculates all sixteen current values")
+	_check(result.unemployment == 15, "Graph phase calculates unemployment")
+	_check(document.misc_u32(0x0fa4) == 15, "Graph phase stores unemployment in MISC")
 	for series in CityModel.GRAPH_COUNT:
 		var values := city.graph_series(series)
-		_check(values.year[0] == current[series], "Graph %d stores its current month" % series)
+		_check(values.year[0] == expected[series], "Graph %d stores its current month" % series)
 		_check(values.year[1] == series * 1000, "Graph %d shifts monthly history" % series)
-		_check(values.decade[0] == current[series], "Graph %d stores its July half-year value" % series)
+		_check(values.decade[0] == expected[series], "Graph %d stores its July half-year value" % series)
 		_check(values.decade[1] == series * 1000 + 12, "Graph %d shifts half-year history" % series)
 		_check(values.century[0] == series * 1000 + 32, "Graph %d leaves century history in July" % series)
 
