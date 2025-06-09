@@ -13,6 +13,7 @@ const Random = preload("res://src/simulation/sim_random.gd")
 const Power = preload("res://src/simulation/power_phase.gd")
 const Water = preload("res://src/simulation/water_phase.gd")
 const Traffic = preload("res://src/simulation/traffic_phase.gd")
+const Graphs = preload("res://src/simulation/graph_history.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 
 var failures := 0
@@ -35,6 +36,7 @@ func _init() -> void:
 	_test_random_and_power(reference_root)
 	_test_water(reference_root)
 	_test_traffic(reference_root)
+	_test_graph_history(reference_root)
 	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
@@ -370,6 +372,39 @@ func _test_traffic(reference_root: String) -> void:
 			changed[index] == int(original[index]) - (int(original[index]) >> 2),
 			"Traffic value %d decays by one quarter" % index
 		)
+
+
+func _test_graph_history(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	var data := PackedByteArray()
+	data.resize(CityModel.GRAPH_COUNT * CityModel.GRAPH_VALUE_COUNT * 4)
+	for series in CityModel.GRAPH_COUNT:
+		for index in CityModel.GRAPH_VALUE_COUNT:
+			_write_u32_be(data, (series * CityModel.GRAPH_VALUE_COUNT + index) * 4, series * 1000 + index)
+	_check(document.find_chunk("XGRP").set_decoded_payload(data), "Graph test installs known history")
+	_check(city.set_age_in_days(150), "Graph test selects July")
+	var current := PackedInt64Array()
+	for series in CityModel.GRAPH_COUNT:
+		current.append(900000 + series)
+	var result := Graphs.advance(city, current)
+	_check(result.ok, "Graph history advances: %s" % result.error)
+	if not result.ok:
+		return
+	for series in CityModel.GRAPH_COUNT:
+		var values := city.graph_series(series)
+		_check(values.year[0] == current[series], "Graph %d stores its current month" % series)
+		_check(values.year[1] == series * 1000, "Graph %d shifts monthly history" % series)
+		_check(values.decade[0] == current[series], "Graph %d stores its July half-year value" % series)
+		_check(values.decade[1] == series * 1000 + 12, "Graph %d shifts half-year history" % series)
+		_check(values.century[0] == series * 1000 + 32, "Graph %d leaves century history in July" % series)
+
+
+func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:
+	data[offset] = (value >> 24) & 0xff
+	data[offset + 1] = (value >> 16) & 0xff
+	data[offset + 2] = (value >> 8) & 0xff
+	data[offset + 3] = value & 0xff
 
 
 func _test_modified_save(reference_root: String) -> void:
