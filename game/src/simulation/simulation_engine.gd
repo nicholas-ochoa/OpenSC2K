@@ -1,4 +1,3 @@
-# todo: pollution phase
 # todo: land value and service maps still pending
 # todo: demand calculation
 # todo: education and health

@@ -13,6 +13,7 @@ const Random = preload("res://src/simulation/sim_random.gd")
 const Power = preload("res://src/simulation/power_phase.gd")
 const Water = preload("res://src/simulation/water_phase.gd")
 const Traffic = preload("res://src/simulation/traffic_phase.gd")
+const Pollution = preload("res://src/simulation/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/graph_history.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 
@@ -36,6 +37,7 @@ func _init() -> void:
 	_test_random_and_power(reference_root)
 	_test_water(reference_root)
 	_test_traffic(reference_root)
+	_test_pollution(reference_root)
 	_test_graph_history(reference_root)
 	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
@@ -372,6 +374,43 @@ func _test_traffic(reference_root: String) -> void:
 			changed[index] == int(original[index]) - (int(original[index]) >> 2),
 			"Traffic value %d decays by one quarter" % index
 		)
+
+
+func _test_pollution(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var buildings := PackedByteArray()
+	buildings.resize(CityModel.TILE_COUNT)
+	buildings[20 * CityModel.MAP_SIZE + 20] = 0xc9
+	buildings[20 * CityModel.MAP_SIZE + 21] = 0xcb
+	buildings[21 * CityModel.MAP_SIZE + 20] = 0x05
+	_check(document.find_chunk("XBLD").set_decoded_payload(buildings), "Pollution test installs buildings")
+	var traffic := PackedByteArray()
+	traffic.resize(64 * 64)
+	traffic[10 * 64 + 10] = 100
+	_check(document.find_chunk("XTRF").set_decoded_payload(traffic), "Pollution test installs traffic")
+	var previous := PackedByteArray()
+	previous.resize(64 * 64)
+	previous[10 * 64 + 10] = 20
+	_check(document.find_chunk("XPLT").set_decoded_payload(previous), "Pollution test installs old pollution")
+	_check(document.set_misc_u32(0x0fa0, 0), "Pollution test clears ordinances")
+	_check(document.set_misc_u32(0x1034, 0), "Pollution test clears the pollution bonus")
+	_check(document.set_misc_u32(0x1050, 0), "Pollution test clears the sewer bonus")
+	var city := CityModel.from_document(document)
+	var result := Pollution.run(city)
+	_check(result.ok, "Pollution map phase completes: %s" % result.error)
+	if not result.ok:
+		return
+	var pollution := document.find_chunk("XPLT").decoded_payload
+	_check(pollution[10 * 64 + 10] == 63, "Pollution source uses traffic, history, and tile weights")
+	for point in [Vector2i(9, 10), Vector2i(11, 10), Vector2i(10, 9), Vector2i(10, 11)]:
+		_check(pollution[point.x * 64 + point.y] == 31, "Pollution spreads to a direct neighbor")
+	var nonzero_count := 0
+	for value in pollution:
+		if value != 0:
+			nonzero_count += 1
+	_check(nonzero_count == 5, "Pollution smoothing changes only the source and direct neighbors")
+	_check(result.pollution_total == 187, "Pollution phase returns the smoothed total")
+	_check(document.misc_u32(0x34) == 187, "Pollution phase stores the city pollution total")
 
 
 func _test_graph_history(reference_root: String) -> void:
