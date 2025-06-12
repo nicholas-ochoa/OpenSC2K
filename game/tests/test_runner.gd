@@ -341,10 +341,11 @@ func _test_simulation_engine(reference_root: String) -> void:
 	var day_two := engine.advance_day()
 	_check(day_two.ok, "Simulation engine advances day two")
 	_check(
-		day_two.pending == PackedStringArray(["pollution_terrain_land_value"]),
-		"Simulation engine reports the unimplemented day-two phase"
+		day_two.applied == PackedStringArray(["pollution_terrain_land_value"]),
+		"Simulation engine applies the combined day-two scan"
 	)
-	_check(not day_two.complete, "A day with a pending phase is not complete")
+	_check(day_two.pending.is_empty(), "Day two has no unimplemented scheduled phase")
+	_check(engine.developed_tiles >= 0, "Simulation engine retains the developed-tile count")
 	var latest := day_two
 	while latest.day < 19:
 		latest = engine.advance_day()
@@ -411,6 +412,50 @@ func _test_pollution(reference_root: String) -> void:
 	_check(nonzero_count == 5, "Pollution smoothing changes only the source and direct neighbors")
 	_check(result.pollution_total == 187, "Pollution phase returns the smoothed total")
 	_check(document.misc_u32(0x34) == 187, "Pollution phase stores the city pollution total")
+
+	var clean_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XBIT"]:
+		_check(
+			clean_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Combined scan test clears %s" % chunk_id
+		)
+	for chunk_id in ["XTRF", "XPLT", "XVAL", "XCRM"]:
+		_check(
+			clean_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(64 * 64, 0)),
+			"Combined scan test clears %s" % chunk_id
+		)
+	for chunk_id in ["XPLC", "XFIR", "XPOP", "XROG"]:
+		_check(
+			clean_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(32 * 32, 0)),
+			"Combined scan test clears %s" % chunk_id
+		)
+	var clean_buildings := clean_document.find_chunk("XBLD").decoded_payload.duplicate()
+	clean_buildings[40 * 128 + 40] = 0x1d
+	_check(
+		clean_document.find_chunk("XBLD").set_decoded_payload(clean_buildings),
+		"Combined scan test places one road tile"
+	)
+	for offset in [0x0fa0, 0x1034, 0x103c, 0x1050]:
+		_check(clean_document.set_misc_u32(offset, 0), "Combined scan test clears MISC 0x%x" % offset)
+	var clean_city := CityModel.from_document(clean_document)
+	var clean_result := Pollution.run(clean_city)
+	_check(clean_result.ok, "Combined day-two scan completes: %s" % clean_result.error)
+	if not clean_result.ok:
+		return
+	_check(clean_result.developed_tiles == 1, "Combined scan counts one developed tile")
+	_check(clean_result.city_center == Vector2i.ZERO, "Roads do not enter the city-center average")
+	_check(clean_result.pollution_total == 0, "Clean road fixture has no pollution")
+	_check(clean_result.land_value_total == 96, "Land-value scan stores the exact fixture total")
+	_check(
+		clean_document.find_chunk("XVAL").decoded_payload[20 * 64 + 20] == 96,
+		"Land-value scan uses quarter-map smoothing and center distance"
+	)
+	_check(clean_city.tile_flags[20 * 128 + 20] & 0x08, "Developed area sets the temporary mark")
+	_check(clean_document.find_chunk("XPOP").decoded_payload[10 * 32 + 10] == 0, "Road adds no population")
+	_check(clean_document.find_chunk("XROG").decoded_payload[10 * 32 + 10] == 16, "Growth map uses the recovered bias")
+	_check(clean_result.crime_total == 0, "Negative crime pressure clamps to zero")
+	_check(clean_document.misc_u32(0x28) == 96, "Combined scan stores the land-value total")
+	_check(clean_document.misc_u32(0x2c) == 0, "Combined scan stores the crime total")
 
 
 func _test_graph_history(reference_root: String) -> void:

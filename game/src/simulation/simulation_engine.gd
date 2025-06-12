@@ -1,4 +1,3 @@
-# todo: land value and service maps still pending
 # todo: demand calculation
 # todo: education and health
 # todo: run the zone growth scan on the growth days
@@ -10,6 +9,9 @@ extends RefCounted
 var city: CityState
 var clock: SimulationClock
 var random: SimRandom
+var developed_tiles := -1
+var power_usage_percent := -1
+var water_usage_percent := -1
 
 
 func _init(initial_city: CityState, random_seed := 1) -> void:
@@ -35,12 +37,21 @@ func advance_day() -> Dictionary:
 				if not power.ok:
 					return {"ok": false, "error": power.error}
 				phase_results[action] = power
+				power_usage_percent = power.usage_percent
+				applied.append(action)
+			"pollution_terrain_land_value":
+				var scan := PollutionPhase.run(city)
+				if not scan.ok:
+					return {"ok": false, "error": scan.error}
+				phase_results[action] = scan
+				developed_tiles = scan.developed_tiles
 				applied.append(action)
 			"water":
 				var water := WaterPhase.run(city)
 				if not water.ok:
 					return {"ok": false, "error": water.error}
 				phase_results[action] = water
+				water_usage_percent = water.usage_percent
 				applied.append(action)
 			"traffic":
 				var traffic := TrafficPhase.run(city)
