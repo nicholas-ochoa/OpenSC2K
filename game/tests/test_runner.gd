@@ -16,6 +16,7 @@ const Traffic = preload("res://src/simulation/traffic_phase.gd")
 const Pollution = preload("res://src/simulation/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/graph_history.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
+const Tools = preload("res://src/tools/tool_catalog.gd")
 
 var failures := 0
 var checks := 0
@@ -42,6 +43,7 @@ func _init() -> void:
 	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
+	_test_tool_catalog()
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -610,6 +612,24 @@ func _test_map_edits(reference_root: String) -> void:
 	_check(result.tunnel_levels(4, 5) == 41, "Tunnel depth edit persists")
 	_check(not result.set_zone_id(-1, 0, 1), "Out-of-range map edits fail")
 	_check(not result.set_land_altitude(0, 0, 32), "Out-of-range altitude fails")
+
+
+func _test_tool_catalog() -> void:
+	_check(Tools.GROUPS.size() == 18, "Tool catalog has all eighteen original groups")
+	_check(Tools.all_tools().size() == 69, "Tool catalog has all sixty-nine original entries")
+	var coal := Tools.tool(3, 2)
+	_check(coal.name == "Coal Power Plant", "Tool catalog preserves the coal plant position")
+	_check(coal.cost == 4000 and coal.area == 4, "Coal plant uses the executable cost and area")
+	var road := Tools.tool(6, 0)
+	_check(road.cost == 10 and road.area == 1, "Road uses the executable cost and area")
+	var college := Tools.tool(12, 1)
+	_check(college.cost == 1000 and college.area == 4, "College uses the executable cost and area")
+	var prison := Tools.tool(13, 3)
+	_check(prison.cost == 3000 and prison.area == 4, "Prison uses the executable cost and area")
+	var marina := Tools.tool(14, 4)
+	_check(marina.cost == 1000 and marina.area == 3, "Marina uses the executable cost and area")
+	_check(Tools.tool(-1, 0).is_empty(), "Tool catalog rejects an invalid group")
+	_check(Tools.tool(0, 12).is_empty(), "Tool catalog rejects an invalid subtool")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
