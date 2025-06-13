@@ -17,6 +17,7 @@ const Pollution = preload("res://src/simulation/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/graph_history.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
+const Zones = preload("res://src/tools/zone_command.gd")
 
 var failures := 0
 var checks := 0
@@ -44,6 +45,7 @@ func _init() -> void:
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
 	_test_tool_catalog()
+	_test_zone_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -630,6 +632,47 @@ func _test_tool_catalog() -> void:
 	_check(marina.cost == 1000 and marina.area == 3, "Marina uses the executable cost and area")
 	_check(Tools.tool(-1, 0).is_empty(), "Tool catalog rejects an invalid group")
 	_check(Tools.tool(0, 12).is_empty(), "Tool catalog rejects an invalid subtool")
+
+
+func _test_zone_command(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XBIT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Zone command test clears %s" % chunk_id
+		)
+	var buildings := document.find_chunk("XBLD").decoded_payload.duplicate()
+	buildings[11 * 128 + 11] = 0x1d
+	_check(document.find_chunk("XBLD").set_decoded_payload(buildings), "Zone test places a road")
+	var flags := document.find_chunk("XBIT").decoded_payload.duplicate()
+	flags[12 * 128 + 12] = 0x04
+	_check(document.find_chunk("XBIT").set_decoded_payload(flags), "Zone test places water")
+	var zones := document.find_chunk("XZON").decoded_payload.duplicate()
+	zones[10 * 128 + 10] = 0xa0
+	zones[12 * 128 + 11] = 0x07
+	_check(document.find_chunk("XZON").set_decoded_payload(zones), "Zone test installs corner and military bits")
+	_check(document.set_misc_i32(0x14, 100), "Zone test sets city funds")
+	var city := CityModel.from_document(document)
+	var command := Zones.apply_rectangle(city, 9, 0, Vector2i(10, 10), Vector2i(12, 12))
+	_check(command.ok, "Residential zone rectangle applies: %s" % command.error)
+	if not command.ok:
+		return
+	_check(command.zone_type == 1, "Light residential maps to zone type one")
+	_check(command.tile_indices.size() == 6, "Zone command skips road, water, and military tiles")
+	_check(command.cost == 30 and city.funds() == 70, "Zone command charges per changed tile")
+	_check(city.zones[10 * 128 + 10] == 0xa1, "Zone command preserves building-corner bits")
+	_check(city.zone_id(11, 11) == 0, "Zone command leaves a road unchanged")
+	_check(city.zone_id(12, 12) == 0, "Zone command leaves water unchanged")
+	_check(city.zone_id(12, 11) == 7, "Zone command leaves a military zone unchanged")
+	var undo := Zones.undo(city, command)
+	_check(undo.ok and undo.restored_tiles == 6, "Zone command undo restores all changed tiles")
+	_check(city.funds() == 100, "Zone command undo restores funds")
+	_check(city.zones[10 * 128 + 10] == 0xa0, "Zone command undo restores original XZON bytes")
+	var later := Zones.apply_rectangle(city, 11, 1, Vector2i(10, 10), Vector2i(12, 12))
+	_check(later.ok, "Later zoning command succeeds")
+	_check(later.cost == 60, "Later zoning command uses changed-tile cost")
+	var stale := Zones.undo(city, command)
+	_check(not stale.ok, "Undo rejects a command after later zone changes")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:

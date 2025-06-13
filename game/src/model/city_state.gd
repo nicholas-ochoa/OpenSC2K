@@ -143,6 +143,16 @@ func set_building_corners(x: int, y: int, value: int) -> bool:
 	return true
 
 
+func replace_zones(value: PackedByteArray) -> bool:
+	if value.size() != TILE_COUNT:
+		return false
+	var chunk := document.find_chunk("XZON")
+	if chunk == null or not chunk.set_decoded_payload(value):
+		return false
+	zones = value.duplicate()
+	return true
+
+
 func building_corners(x: int, y: int) -> int:
 	return _byte_at(zones, x, y) & 0xf0
 
