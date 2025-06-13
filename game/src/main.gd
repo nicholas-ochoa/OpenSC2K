@@ -6,6 +6,9 @@ const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
+const MapControl = preload("res://src/view/city_map_control.gd")
+const Tools = preload("res://src/tools/tool_catalog.gd")
+const Zones = preload("res://src/tools/zone_command.gd")
 
 var city: CityState
 var current_document: Sc2File
@@ -13,14 +16,20 @@ var palette: Sc2Palette
 var large_sprites: Sc2SpriteArchive
 var overlay_mode := "city"
 var reference_root := ""
+var selected_group := 9
+var selected_subtool := 0
+var last_zone_command: Dictionary = {}
 
-var map_texture: TextureRect
+var map_view: CityMapControl
 var city_label: Label
 var details_label: Label
 var status_label: Label
 var file_dialog: FileDialog
 var save_dialog: FileDialog
 var save_button: Button
+var group_selector: OptionButton
+var tool_selector: OptionButton
+var undo_button: Button
 
 
 func _ready() -> void:
@@ -100,11 +109,11 @@ func _build_interface() -> void:
 	map_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	content.add_child(map_panel)
 
-	map_texture = TextureRect.new()
-	map_texture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	map_texture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	map_texture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	map_panel.add_child(map_texture)
+	map_view = MapControl.new()
+	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_view.selection_completed.connect(_apply_map_selection)
+	map_panel.add_child(map_view)
 
 	var sidebar := VBoxContainer.new()
 	sidebar.custom_minimum_size = Vector2(295, 0)
@@ -121,6 +130,27 @@ func _build_interface() -> void:
 	details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	details_label.add_theme_font_size_override("font_size", 18)
 	sidebar.add_child(details_label)
+
+	var tool_heading := Label.new()
+	tool_heading.text = "City Tool"
+	tool_heading.add_theme_font_size_override("font_size", 20)
+	sidebar.add_child(tool_heading)
+
+	group_selector = OptionButton.new()
+	for group_index in Tools.GROUPS.size():
+		group_selector.add_item(Tools.GROUPS[group_index].name, group_index)
+	group_selector.item_selected.connect(_select_tool_group)
+	sidebar.add_child(group_selector)
+
+	tool_selector = OptionButton.new()
+	tool_selector.item_selected.connect(_select_subtool)
+	sidebar.add_child(tool_selector)
+
+	undo_button = Button.new()
+	undo_button.text = "Undo Last Zone"
+	undo_button.disabled = true
+	undo_button.pressed.connect(_undo_last_zone)
+	sidebar.add_child(undo_button)
 
 	status_label = Label.new()
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -142,6 +172,9 @@ func _build_interface() -> void:
 	save_dialog.add_filter("*.SC2, *.sc2", "SimCity 2000 cities")
 	save_dialog.file_selected.connect(_save_copy)
 	add_child(save_dialog)
+
+	group_selector.select(selected_group)
+	_select_tool_group(selected_group)
 
 
 func _open_city_dialog() -> void:
@@ -174,28 +207,17 @@ func _load_city(path: String) -> void:
 
 	city = loaded_city
 	current_document = document
+	last_zone_command = {}
+	undo_button.disabled = true
 	save_button.disabled = false
 	city_label.text = (
 		city.city_name() if not city.city_name().is_empty() else path.get_file().get_basename()
 	)
-	var demand := city.rci_demand()
-	details_label.text = (
-		"Mayor: %s\nDate: %04d-%02d-%02d\nPopulation: %s\nFunds: $%s\n\nDemand\nR: %+d\nC: %+d\nI: %+d"
-		% [
-			city.mayor_name() if not city.mayor_name().is_empty() else "Unknown",
-			city.current_year(),
-			city.current_month(),
-			city.current_day(),
-			_format_number(city.population()),
-			_format_number(city.funds()),
-			demand.x,
-			demand.y,
-			demand.z,
-		]
-	)
+	_refresh_details()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Loaded %s\nMap view: %s" % [path.get_file(), overlay_mode.capitalize()]
 	_refresh_map()
+	_update_edit_state()
 
 
 func _save_copy(path: String) -> void:
@@ -231,6 +253,7 @@ func _save_copy(path: String) -> void:
 
 func _set_overlay(mode: String) -> void:
 	overlay_mode = mode
+	_update_edit_state()
 	if city != null:
 		status_label.text = "Map view: %s" % overlay_mode.capitalize()
 		_refresh_map()
@@ -248,7 +271,94 @@ func _refresh_map() -> void:
 		image = rendered.image
 	else:
 		image = Minimap.create_image(city, palette, overlay_mode)
-	map_texture.texture = ImageTexture.create_from_image(image)
+	map_view.set_city_view(city, ImageTexture.create_from_image(image))
+
+
+func _select_tool_group(index: int) -> void:
+	selected_group = group_selector.get_item_id(index)
+	tool_selector.clear()
+	var group := Tools.group(selected_group)
+	for subtool_index in group.tools.size():
+		var tool := Tools.tool(selected_group, subtool_index)
+		var price := "Free" if tool.cost == 0 else "$%s" % _format_number(tool.cost)
+		tool_selector.add_item("%s — %s" % [tool.name, price], subtool_index)
+	selected_subtool = 0
+	tool_selector.select(0)
+	_update_edit_state()
+
+
+func _select_subtool(index: int) -> void:
+	selected_subtool = tool_selector.get_item_id(index)
+	_update_edit_state()
+
+
+func _update_edit_state() -> void:
+	if map_view == null:
+		return
+	var is_zone_tool := selected_group >= Zones.GROUP_PORTS and selected_group <= Zones.GROUP_INDUSTRIAL
+	map_view.set_edit_enabled(city != null and overlay_mode == "city" and is_zone_tool)
+	if city == null or status_label == null:
+		return
+	var tool := Tools.tool(selected_group, selected_subtool)
+	status_label.remove_theme_color_override("font_color")
+	if is_zone_tool:
+		status_label.text = "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool.name
+	else:
+		status_label.text = "%s is in the original tool catalog. Its command is not implemented yet." % tool.name
+
+
+func _apply_map_selection(start: Vector2i, finish: Vector2i) -> void:
+	if city == null:
+		return
+	var command := Zones.apply_rectangle(city, selected_group, selected_subtool, start, finish)
+	if not command.ok:
+		_show_error("Cannot apply %s: %s" % [Tools.tool(selected_group, selected_subtool).name, command.error])
+		return
+	last_zone_command = command
+	undo_button.disabled = false
+	_refresh_details()
+	_refresh_map()
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "%s changed %d tiles for $%s." % [
+		Tools.tool(selected_group, selected_subtool).name,
+		command.tile_indices.size(),
+		_format_number(command.cost),
+	]
+
+
+func _undo_last_zone() -> void:
+	if city == null or last_zone_command.is_empty():
+		return
+	var result := Zones.undo(city, last_zone_command)
+	if not result.ok:
+		_show_error("Cannot undo the last zone: %s" % result.error)
+		return
+	last_zone_command = {}
+	undo_button.disabled = true
+	_refresh_details()
+	_refresh_map()
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
+
+
+func _refresh_details() -> void:
+	if city == null:
+		return
+	var demand := city.rci_demand()
+	details_label.text = (
+		"Mayor: %s\nDate: %04d-%02d-%02d\nPopulation: %s\nFunds: $%s\n\nDemand\nR: %+d\nC: %+d\nI: %+d"
+		% [
+			city.mayor_name() if not city.mayor_name().is_empty() else "Unknown",
+			city.current_year(),
+			city.current_month(),
+			city.current_day(),
+			_format_number(city.population()),
+			_format_number(city.funds()),
+			demand.x,
+			demand.y,
+			demand.z,
+		]
+	)
 
 
 func _show_error(message: String) -> void:

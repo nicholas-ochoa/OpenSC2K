@@ -197,6 +197,22 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(IsometricRenderer.terrain_sprite_id(0x00, false) == 1256, "Flat land uses sprite 1256")
 	_check(IsometricRenderer.terrain_sprite_id(0x10, true) == 1270, "Submerged land uses sprite 1270")
 	_check(IsometricRenderer.terrain_sprite_id(0x45, true) == 1290, "Last water tile uses sprite 1290")
+	_check(
+		starter_document.find_chunk("ALTM").set_decoded_payload(_filled_bytes(128 * 128 * 2, 0)),
+		"Isometric lookup fixture clears altitude",
+	)
+	_check(
+		starter_document.find_chunk("XTER").set_decoded_payload(_filled_bytes(128 * 128, 0)),
+		"Isometric lookup fixture clears terrain",
+	)
+	starter = CityModel.from_document(starter_document)
+	for expected in [Vector2i.ZERO, Vector2i(24, 93), Vector2i(64, 64), Vector2i(127, 127)]:
+		var polygon := IsometricRenderer.tile_polygon(starter, expected.x, expected.y)
+		var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
+		_check(
+			IsometricRenderer.screen_to_tile(starter, center) == expected,
+			"Isometric screen lookup finds tile %s" % expected,
+		)
 
 
 func _test_simulation_clock() -> void:

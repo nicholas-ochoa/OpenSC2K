@@ -1,5 +1,3 @@
-# todo: mouse picking for the map tools
-
 class_name CityIsometricRenderer
 extends RefCounted
 
@@ -82,6 +80,40 @@ static func terrain_sprite_id(terrain: int, water_flag: bool) -> int:
 	elif water_flag or (terrain >= 0x10 and terrain <= 0x1e):
 		tile_id = 270
 	return 1000 + tile_id
+
+
+static func tile_polygon(city: CityState, x: int, y: int) -> PackedVector2Array:
+	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
+		return PackedVector2Array()
+	var altitude := city.land_altitude(x, y)
+	if city.terrain_id(x, y) >= 0x10:
+		altitude = city.water_altitude(x, y)
+	var origin_x := SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+	var left := Vector2(
+		origin_x + (x - y) * HALF_WIDTH,
+		TOP_MARGIN + (x + y) * HALF_HEIGHT - altitude * ALTITUDE_STEP
+	)
+	return PackedVector2Array([
+		left + Vector2(HALF_WIDTH, 0),
+		left + Vector2(TILE_WIDTH, HALF_HEIGHT),
+		left + Vector2(HALF_WIDTH, TILE_HEIGHT - 1),
+		left + Vector2(0, HALF_HEIGHT),
+	])
+
+
+static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
+	if city == null or not city.is_valid():
+		return Vector2i(-1, -1)
+	var result := Vector2i(-1, -1)
+	for diagonal in CityState.MAP_SIZE * 2 - 1:
+		for y in diagonal + 1:
+			var x := diagonal - y
+			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+				continue
+			var polygon := tile_polygon(city, x, y)
+			if Geometry2D.is_point_in_polygon(point, polygon):
+				result = Vector2i(x, y)
+	return result
 
 
 static func _draw_tile(
