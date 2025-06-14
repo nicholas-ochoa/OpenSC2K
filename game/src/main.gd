@@ -295,7 +295,7 @@ func _select_subtool(index: int) -> void:
 func _update_edit_state() -> void:
 	if map_view == null:
 		return
-	var is_zone_tool := selected_group >= Zones.GROUP_PORTS and selected_group <= Zones.GROUP_INDUSTRIAL
+	var is_zone_tool := Zones.supports_tool(selected_group, selected_subtool)
 	map_view.set_edit_enabled(city != null and overlay_mode == "city" and is_zone_tool)
 	if city == null or status_label == null:
 		return

@@ -2,6 +2,8 @@ class_name ZoneCommand
 extends RefCounted
 
 const GROUP_PORTS := 8
+const GROUP_BULLDOZER := 0
+const SUBTOOL_DEZONE := 4
 const GROUP_RESIDENTIAL := 9
 const GROUP_COMMERCIAL := 10
 const GROUP_INDUSTRIAL := 11
@@ -30,17 +32,16 @@ static func apply_rectangle(
 	if city.tile_flags[city.index_of(start.x, start.y)] & FLAG_WATER:
 		return {"ok": false, "error": "a zone drag cannot start on water"}
 	var tool := ToolCatalog.tool(group_index, subtool_index)
-	if tool.is_empty() or not ZONE_TYPES.has(group_index):
+	var zone_type := _zone_type_for_tool(group_index, subtool_index)
+	if tool.is_empty() or zone_type < 0:
 		return {"ok": false, "error": "tool is not a zoning tool"}
-	var zone_types: Array = ZONE_TYPES[group_index]
-	if subtool_index < 0 or subtool_index >= zone_types.size():
-		return {"ok": false, "error": "zoning subtool is out of range"}
-	var zone_type: int = zone_types[subtool_index]
 	var minimum := Vector2i(mini(start.x, finish.x), mini(start.y, finish.y))
 	var maximum := Vector2i(maxi(start.x, finish.x), maxi(start.y, finish.y))
 	var changed := city.zones.duplicate()
+	var changed_buildings := city.buildings.duplicate()
 	var tile_indices := PackedInt32Array()
 	var previous_values := PackedByteArray()
+	var previous_buildings := PackedByteArray()
 	for x in range(minimum.x, maximum.x + 1):
 		for y in range(minimum.y, maximum.y + 1):
 			var index := city.index_of(x, y)
@@ -50,7 +51,10 @@ static func apply_rectangle(
 				continue
 			tile_indices.append(index)
 			previous_values.append(changed[index])
+			previous_buildings.append(changed_buildings[index])
 			changed[index] = (changed[index] & 0xf0) | zone_type
+			if zone_type == 0 and changed_buildings[index] > 0 and changed_buildings[index] < 5:
+				changed_buildings[index] = 0
 	if tile_indices.is_empty():
 		return {"ok": false, "error": "no eligible tiles would change"}
 	var cost: int = tile_indices.size() * int(tool.cost)
@@ -59,8 +63,14 @@ static func apply_rectangle(
 		return {"ok": false, "error": "insufficient funds", "cost": cost}
 	if not city.replace_zones(changed):
 		return {"ok": false, "error": "cannot store updated XZON data"}
+	if not city.replace_buildings(changed_buildings):
+		city.replace_zones(_restore_values(changed, tile_indices, previous_values))
+		return {"ok": false, "error": "cannot store updated XBLD data"}
 	if not city.set_funds(previous_funds - cost):
 		city.replace_zones(_restore_values(changed, tile_indices, previous_values))
+		city.replace_buildings(
+			_restore_values(changed_buildings, tile_indices, previous_buildings)
+		)
 		return {"ok": false, "error": "cannot store the updated city funds"}
 	return {
 		"ok": true,
@@ -70,6 +80,8 @@ static func apply_rectangle(
 		"tile_indices": tile_indices,
 		"previous_values": previous_values,
 		"new_values": _values_at(changed, tile_indices),
+		"previous_buildings": previous_buildings,
+		"new_buildings": _values_at(changed_buildings, tile_indices),
 		"previous_funds": previous_funds,
 		"cost": cost,
 		"error": "",
@@ -84,21 +96,54 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
 	var previous: PackedByteArray = command.get("previous_values", PackedByteArray())
 	var expected: PackedByteArray = command.get("new_values", PackedByteArray())
-	if indices.size() != previous.size() or indices.size() != expected.size():
+	var previous_buildings: PackedByteArray = command.get(
+		"previous_buildings", PackedByteArray()
+	)
+	var expected_buildings: PackedByteArray = command.get("new_buildings", PackedByteArray())
+	if (
+		indices.size() != previous.size()
+		or indices.size() != expected.size()
+		or indices.size() != previous_buildings.size()
+		or indices.size() != expected_buildings.size()
+	):
 		return {"ok": false, "error": "zone undo data has the wrong size"}
 	for position in indices.size():
-		if city.zones[indices[position]] != expected[position]:
+		if (
+			city.zones[indices[position]] != expected[position]
+			or city.buildings[indices[position]] != expected_buildings[position]
+		):
 			return {"ok": false, "error": "city changed after this zone command"}
 	var current := city.zones.duplicate()
+	var current_buildings := city.buildings.duplicate()
 	var restored := _restore_values(current, indices, previous)
+	var restored_buildings := _restore_values(current_buildings, indices, previous_buildings)
 	var current_funds := city.funds()
 	if not city.replace_zones(restored):
 		return {"ok": false, "error": "cannot restore XZON data"}
+	if not city.replace_buildings(restored_buildings):
+		city.replace_zones(current)
+		return {"ok": false, "error": "cannot restore XBLD data"}
 	if not city.set_funds(int(command.previous_funds)):
 		city.replace_zones(current)
+		city.replace_buildings(current_buildings)
 		city.set_funds(current_funds)
 		return {"ok": false, "error": "cannot restore city funds"}
 	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
+
+
+static func supports_tool(group_index: int, subtool_index: int) -> bool:
+	return _zone_type_for_tool(group_index, subtool_index) >= 0
+
+
+static func _zone_type_for_tool(group_index: int, subtool_index: int) -> int:
+	if group_index == GROUP_BULLDOZER and subtool_index == SUBTOOL_DEZONE:
+		return 0
+	if not ZONE_TYPES.has(group_index):
+		return -1
+	var zone_types: Array = ZONE_TYPES[group_index]
+	if subtool_index < 0 or subtool_index >= zone_types.size():
+		return -1
+	return zone_types[subtool_index]
 
 
 static func _tile_is_eligible(city: CityState, index: int) -> bool:

@@ -689,6 +689,25 @@ func _test_zone_command(reference_root: String) -> void:
 	_check(later.cost == 60, "Later zoning command uses changed-tile cost")
 	var stale := Zones.undo(city, command)
 	_check(not stale.ok, "Undo rejects a command after later zone changes")
+	_check(city.set_building_id(10, 10, 3), "De-zone test places rubble")
+	var dezone := Zones.apply_rectangle(city, 0, 4, Vector2i(10, 10), Vector2i(12, 12))
+	_check(dezone.ok and dezone.cost == 6, "De-zone removes six zones for one dollar each")
+	_check(city.zone_id(10, 10) == 0, "De-zone clears the zone nibble")
+	_check(city.building_id(10, 10) == 0, "De-zone clears rubble tile IDs one through four")
+	var undo_dezone := Zones.undo(city, dezone)
+	_check(undo_dezone.ok, "De-zone command can be undone")
+	_check(city.zone_id(10, 10) == 6, "De-zone undo restores the zone")
+	_check(city.building_id(10, 10) == 3, "De-zone undo restores rubble")
+	_check(city.set_funds(3), "Insufficient-funds fixture sets city funds")
+	var zones_before_failure := city.zones.duplicate()
+	var buildings_before_failure := city.buildings.duplicate()
+	var rejected := Zones.apply_rectangle(city, 10, 0, Vector2i(10, 10), Vector2i(12, 12))
+	_check(not rejected.ok and rejected.cost == 30, "Zone command reports insufficient funds")
+	_check(city.funds() == 3, "Rejected zone command preserves funds")
+	_check(
+		city.zones == zones_before_failure and city.buildings == buildings_before_failure,
+		"Rejected zone command preserves map data",
+	)
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
