@@ -15,6 +15,7 @@ const Water = preload("res://src/simulation/water_phase.gd")
 const Traffic = preload("res://src/simulation/traffic_phase.gd")
 const Pollution = preload("res://src/simulation/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/graph_history.gd")
+const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -41,6 +42,7 @@ func _init() -> void:
 	_test_traffic(reference_root)
 	_test_pollution(reference_root)
 	_test_graph_history(reference_root)
+	_test_rci_demand(reference_root)
 	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
@@ -374,6 +376,68 @@ func _test_simulation_engine(reference_root: String) -> void:
 	latest = engine.advance_day()
 	_check(latest.applied == PackedStringArray(["water"]), "Simulation engine applies water on day 20")
 	_check(latest.pending.is_empty(), "Day 20 has no unimplemented scheduled phase")
+	latest = engine.advance_day()
+	_check(
+		latest.applied == PackedStringArray(["rci_demand", "graphs"]),
+		"Simulation engine applies demand and graphs on day 21",
+	)
+	_check(
+		latest.pending == PackedStringArray(["education_health"]),
+		"Day 21 reports only education and health as pending",
+	)
+
+
+func _test_rci_demand(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for index in 8:
+		_check(document.set_misc_i32(0x05f0 + index * 4, 0), "RCI fixture clears zone population")
+	for entry in [[1, 100], [2, 50], [3, 40], [4, 10], [5, 20], [6, 5]]:
+		_check(
+			document.set_misc_i32(0x05f0 + entry[0] * 4, entry[1]),
+			"RCI fixture sets zone population %d" % entry[0],
+		)
+	for offset in [0x0718, 0x071c, 0x0720, 0x0fa0, 0x1030]:
+		_check(document.set_misc_i32(offset, 0), "RCI fixture clears MISC 0x%x" % offset)
+	for tile_id in [0xd5, 0xd7, 0xda, 0xdd, 0xde, 0xe0, 0xf8]:
+		_check(
+			document.set_misc_i32(0x01f0 + tile_id * 4, 0),
+			"RCI fixture clears tile count %d" % tile_id,
+		)
+	for category in 3:
+		_check(document.set_misc_i32(0x077c + category * 0x6c + 4, 0), "RCI fixture clears tax rate")
+	_check(document.set_misc_i32(0x0074, 100), "RCI fixture sets old residential population")
+	_check(document.set_misc_i32(0x0040, 10), "RCI fixture sets garbage")
+	_check(document.set_misc_i32(0x1020, 120), "RCI fixture sets arcology population")
+	_check(document.set_misc_i32(0x102c, 1000), "RCI fixture sets old total population")
+	_check(document.set_misc_i32(0x001c, 1), "RCI fixture sets difficulty")
+	var text_overlays := _filled_bytes(128 * 128, 0)
+	text_overlays[0] = 0xfa
+	text_overlays[1] = 0xfa
+	_check(document.find_chunk("XTXT").set_decoded_payload(text_overlays), "RCI fixture sets connection labels")
+	var buildings := document.find_chunk("XBLD").decoded_payload.duplicate()
+	buildings[0] = 0x1d
+	buildings[1] = 0x2c
+	_check(document.find_chunk("XBLD").set_decoded_payload(buildings), "RCI fixture sets road and rail connections")
+	var city := CityModel.from_document(document)
+	var result := RciDemand.run(city)
+	_check(result.ok, "RCI demand phase completes: %s" % result.error)
+	if not result.ok:
+		return
+	_check(result.tax_population == PackedInt64Array([150, 50, 25]), "RCI phase combines light and dense populations")
+	_check(result.normal_population == 2250, "RCI phase calculates normal population")
+	_check(result.commerce_connections == 1, "RCI phase counts road neighbor connections")
+	_check(result.industry_connections == 1, "RCI phase counts rail neighbor connections")
+	_check(
+		result.demands == PackedInt32Array([-90, -265, 510]),
+		"RCI phase reproduces controlled demand changes: %s" % result.demands,
+	)
+	_check(document.misc_i32(0x05f0) == 225, "RCI phase stores the total zone population")
+	_check(document.misc_i32(0x102c) == 2250, "RCI phase stores normal population")
+	_check(document.misc_i32(0x0040) == 2260, "RCI phase accumulates garbage")
+	_check(document.misc_i32(0x0074) == 150, "RCI phase stores residential tax population")
+	_check(document.misc_i32(0x077c) == 1520, "RCI phase stores residential budget population")
+	_check(document.misc_i32(0x07e8) == 510, "RCI phase stores commercial budget population")
+	_check(document.misc_i32(0x0854) == 260, "RCI phase stores industrial budget population")
 
 
 func _test_traffic(reference_root: String) -> void:

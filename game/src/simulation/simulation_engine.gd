@@ -1,4 +1,3 @@
-# todo: demand calculation
 # todo: education and health
 # todo: run the zone growth scan on the growth days
 # todo: monthly budget is only a schedule entry for now
@@ -58,6 +57,23 @@ func advance_day() -> Dictionary:
 				if not traffic.ok:
 					return {"ok": false, "error": traffic.error}
 				phase_results[action] = traffic
+				applied.append(action)
+			"rci_demand":
+				var demand := RciDemandPhase.run(city)
+				if not demand.ok:
+					return {"ok": false, "error": demand.error}
+				phase_results[action] = demand
+				applied.append(action)
+			"graphs":
+				if developed_tiles < 0 or power_usage_percent < 0 or water_usage_percent < 0:
+					pending.append(action)
+					continue
+				var graphs := GraphHistory.run(
+					city, developed_tiles, power_usage_percent, water_usage_percent
+				)
+				if not graphs.ok:
+					return {"ok": false, "error": graphs.error}
+				phase_results[action] = graphs
 				applied.append(action)
 			_:
 				pending.append(action)
