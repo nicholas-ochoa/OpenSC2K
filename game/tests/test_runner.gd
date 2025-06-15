@@ -19,6 +19,7 @@ const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
+const Signs = preload("res://src/tools/sign_command.gd")
 
 var failures := 0
 var checks := 0
@@ -48,6 +49,7 @@ func _init() -> void:
 	_test_map_edits(reference_root)
 	_test_tool_catalog()
 	_test_zone_command(reference_root)
+	_test_sign_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -772,6 +774,33 @@ func _test_zone_command(reference_root: String) -> void:
 		city.zones == zones_before_failure and city.buildings == buildings_before_failure,
 		"Rejected zone command preserves map data",
 	)
+
+
+func _test_sign_command(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(
+		document.find_chunk("XTXT").set_decoded_payload(_filled_bytes(128 * 128, 0)),
+		"Sign fixture clears text overlays",
+	)
+	var city := CityModel.from_document(document)
+	_check(city.set_label(1, ""), "Sign fixture clears first user label")
+	var created := Signs.set_sign(city, Vector2i(4, 5), "Harbor District")
+	_check(created.ok, "Sign command creates a sign: %s" % created.error)
+	_check(created.label_id == 1, "Sign command allocates the first free user label")
+	_check(city.text_overlay_id(4, 5) == 1, "Sign command stores the XTXT label ID")
+	_check(city.label(1) == "Harbor District", "Sign command stores XLAB text")
+	var edited := Signs.set_sign(city, Vector2i(4, 5), "New Harbor")
+	_check(edited.ok and edited.label_id == 1, "Sign command edits its existing label")
+	_check(Signs.undo(city, edited).ok, "Sign edit can be undone")
+	_check(city.label(1) == "Harbor District", "Sign undo restores the exact text")
+	var removed := Signs.set_sign(city, Vector2i(4, 5), "")
+	_check(removed.ok, "Empty sign text removes the sign")
+	_check(city.text_overlay_id(4, 5) == 0 and city.label(1).is_empty(), "Sign removal clears XTXT and XLAB")
+	_check(Signs.undo(city, removed).ok, "Sign removal can be undone")
+	_check(city.text_overlay_id(4, 5) == 1 and city.label(1) == "Harbor District", "Sign removal undo restores both chunks")
+	_check(city.set_text_overlay_id(9, 9, 51), "Sign fixture sets a protected label")
+	var protected := Signs.set_sign(city, Vector2i(9, 9), "Blocked")
+	_check(not protected.ok, "Sign command rejects a protected simulation label")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:

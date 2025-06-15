@@ -199,6 +199,16 @@ func set_text_overlay_id(x: int, y: int, value: int) -> bool:
 	return true
 
 
+func replace_text_overlays(value: PackedByteArray) -> bool:
+	if value.size() != TILE_COUNT:
+		return false
+	var chunk := document.find_chunk("XTXT")
+	if chunk == null or not chunk.set_decoded_payload(value):
+		return false
+	text_overlays = value.duplicate()
+	return true
+
+
 func is_salt_water(x: int, y: int) -> bool:
 	return (_byte_at(tile_flags, x, y) & 0x01) != 0
 

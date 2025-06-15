@@ -9,6 +9,7 @@ const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
+const Signs = preload("res://src/tools/sign_command.gd")
 
 var city: CityState
 var current_document: Sc2File
@@ -18,7 +19,8 @@ var overlay_mode := "city"
 var reference_root := ""
 var selected_group := 9
 var selected_subtool := 0
-var last_zone_command: Dictionary = {}
+var last_edit_command: Dictionary = {}
+var pending_sign_tile := Vector2i(-1, -1)
 
 var map_view: CityMapControl
 var city_label: Label
@@ -30,6 +32,8 @@ var save_button: Button
 var group_selector: OptionButton
 var tool_selector: OptionButton
 var undo_button: Button
+var sign_dialog: ConfirmationDialog
+var sign_input: LineEdit
 
 
 func _ready() -> void:
@@ -147,9 +151,9 @@ func _build_interface() -> void:
 	sidebar.add_child(tool_selector)
 
 	undo_button = Button.new()
-	undo_button.text = "Undo Last Zone"
+	undo_button.text = "Undo Last Edit"
 	undo_button.disabled = true
-	undo_button.pressed.connect(_undo_last_zone)
+	undo_button.pressed.connect(_undo_last_edit)
 	sidebar.add_child(undo_button)
 
 	status_label = Label.new()
@@ -172,6 +176,22 @@ func _build_interface() -> void:
 	save_dialog.add_filter("*.SC2, *.sc2", "SimCity 2000 cities")
 	save_dialog.file_selected.connect(_save_copy)
 	add_child(save_dialog)
+
+	sign_dialog = ConfirmationDialog.new()
+	sign_dialog.title = "City Sign"
+	sign_dialog.dialog_text = "Enter sign text. An empty value removes the sign."
+	sign_dialog.min_size = Vector2i(440, 170)
+	sign_dialog.confirmed.connect(_commit_sign)
+	sign_dialog.canceled.connect(_cancel_sign)
+	sign_input = LineEdit.new()
+	sign_input.max_length = 23
+	sign_input.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	sign_input.offset_left = 14
+	sign_input.offset_top = 58
+	sign_input.offset_right = -14
+	sign_input.offset_bottom = 92
+	sign_dialog.add_child(sign_input)
+	add_child(sign_dialog)
 
 	group_selector.select(selected_group)
 	_select_tool_group(selected_group)
@@ -207,7 +227,7 @@ func _load_city(path: String) -> void:
 
 	city = loaded_city
 	current_document = document
-	last_zone_command = {}
+	last_edit_command = {}
 	undo_button.disabled = true
 	save_button.disabled = false
 	city_label.text = (
@@ -296,13 +316,18 @@ func _update_edit_state() -> void:
 	if map_view == null:
 		return
 	var is_zone_tool := Zones.supports_tool(selected_group, selected_subtool)
-	map_view.set_edit_enabled(city != null and overlay_mode == "city" and is_zone_tool)
+	var is_sign_tool := selected_group == 15
+	map_view.set_edit_enabled(
+		city != null and overlay_mode == "city" and (is_zone_tool or is_sign_tool)
+	)
 	if city == null or status_label == null:
 		return
 	var tool := Tools.tool(selected_group, selected_subtool)
 	status_label.remove_theme_color_override("font_color")
 	if is_zone_tool:
 		status_label.text = "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool.name
+	elif is_sign_tool:
+		status_label.text = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 	else:
 		status_label.text = "%s is in the original tool catalog. Its command is not implemented yet." % tool.name
 
@@ -310,11 +335,15 @@ func _update_edit_state() -> void:
 func _apply_map_selection(start: Vector2i, finish: Vector2i) -> void:
 	if city == null:
 		return
+	if selected_group == 15:
+		_open_sign_dialog(finish)
+		return
 	var command := Zones.apply_rectangle(city, selected_group, selected_subtool, start, finish)
 	if not command.ok:
 		_show_error("Cannot apply %s: %s" % [Tools.tool(selected_group, selected_subtool).name, command.error])
 		return
-	last_zone_command = command
+	command["command_type"] = "zone"
+	last_edit_command = command
 	undo_button.disabled = false
 	_refresh_details()
 	_refresh_map()
@@ -326,19 +355,58 @@ func _apply_map_selection(start: Vector2i, finish: Vector2i) -> void:
 	]
 
 
-func _undo_last_zone() -> void:
-	if city == null or last_zone_command.is_empty():
+func _undo_last_edit() -> void:
+	if city == null or last_edit_command.is_empty():
 		return
-	var result := Zones.undo(city, last_zone_command)
+	var command_type: String = last_edit_command.get("command_type", "")
+	var result: Dictionary
+	if command_type == "sign":
+		result = Signs.undo(city, last_edit_command)
+	else:
+		result = Zones.undo(city, last_edit_command)
 	if not result.ok:
-		_show_error("Cannot undo the last zone: %s" % result.error)
+		_show_error("Cannot undo the last edit: %s" % result.error)
 		return
-	last_zone_command = {}
+	last_edit_command = {}
 	undo_button.disabled = true
 	_refresh_details()
 	_refresh_map()
 	status_label.remove_theme_color_override("font_color")
-	status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
+	if command_type == "sign":
+		status_label.text = "Restored the previous sign."
+	else:
+		status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
+
+
+func _open_sign_dialog(point: Vector2i) -> void:
+	var overlay := city.text_overlay_id(point.x, point.y)
+	if overlay > Signs.LAST_USER_LABEL:
+		_show_error("This tile has a protected simulation label.")
+		return
+	pending_sign_tile = point
+	sign_input.text = city.label(overlay) if overlay > 0 else ""
+	sign_dialog.popup_centered()
+	sign_input.grab_focus()
+	sign_input.select_all()
+
+
+func _commit_sign() -> void:
+	if city == null or pending_sign_tile.x < 0:
+		return
+	var result := Signs.set_sign(city, pending_sign_tile, sign_input.text)
+	pending_sign_tile = Vector2i(-1, -1)
+	if not result.ok:
+		_show_error("Cannot change sign: %s" % result.error)
+		return
+	last_edit_command = result
+	undo_button.disabled = false
+	_refresh_map()
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
+
+
+func _cancel_sign() -> void:
+	pending_sign_tile = Vector2i(-1, -1)
 
 
 func _refresh_details() -> void:

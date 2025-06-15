@@ -59,6 +59,7 @@ func _draw() -> void:
 		Rect2(offset, Vector2(city_texture.get_size()) * scale),
 		false
 	)
+	_draw_signs(scale, offset)
 	if selection_start.x < 0 or selection_end.x < 0 or city == null:
 		return
 	var minimum := Vector2i(
@@ -76,6 +77,26 @@ func _draw() -> void:
 			draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28))
 			local_polygon.append(local_polygon[0])
 			draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9), 1.0)
+
+
+func _draw_signs(scale: float, offset: Vector2) -> void:
+	if city == null or city_texture.get_width() <= CityState.MAP_SIZE:
+		return
+	var font := get_theme_default_font()
+	for index in CityState.TILE_COUNT:
+		var label_id := city.text_overlays[index]
+		if label_id < 1 or label_id > 50:
+			continue
+		var text := city.label(label_id)
+		if text.is_empty():
+			continue
+		var x := int(index / CityState.MAP_SIZE)
+		var y := index % CityState.MAP_SIZE
+		var polygon := Renderer.tile_polygon(city, x, y)
+		var position := offset + (polygon[0] + polygon[2]) * 0.5 * scale
+		draw_circle(position, 4.0, Color("fff06a"))
+		if zoom_factor >= 2.0:
+			draw_string(font, position + Vector2(7, 4), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
 
 
 func _gui_input(event: InputEvent) -> void:
