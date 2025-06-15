@@ -10,6 +10,7 @@ const MapControl = preload("res://src/view/city_map_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
+const Queries = preload("res://src/tools/query_info.gd")
 
 var city: CityState
 var current_document: Sc2File
@@ -34,6 +35,7 @@ var tool_selector: OptionButton
 var undo_button: Button
 var sign_dialog: ConfirmationDialog
 var sign_input: LineEdit
+var query_dialog: AcceptDialog
 
 
 func _ready() -> void:
@@ -193,6 +195,11 @@ func _build_interface() -> void:
 	sign_dialog.add_child(sign_input)
 	add_child(sign_dialog)
 
+	query_dialog = AcceptDialog.new()
+	query_dialog.title = "Query"
+	query_dialog.min_size = Vector2i(500, 440)
+	add_child(query_dialog)
+
 	group_selector.select(selected_group)
 	_select_tool_group(selected_group)
 
@@ -317,8 +324,11 @@ func _update_edit_state() -> void:
 		return
 	var is_zone_tool := Zones.supports_tool(selected_group, selected_subtool)
 	var is_sign_tool := selected_group == 15
+	var is_query_tool := selected_group == 16
 	map_view.set_edit_enabled(
-		city != null and overlay_mode == "city" and (is_zone_tool or is_sign_tool)
+		city != null
+		and overlay_mode == "city"
+		and (is_zone_tool or is_sign_tool or is_query_tool)
 	)
 	if city == null or status_label == null:
 		return
@@ -328,12 +338,17 @@ func _update_edit_state() -> void:
 		status_label.text = "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool.name
 	elif is_sign_tool:
 		status_label.text = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
+	elif is_query_tool:
+		status_label.text = "Query selected. Click a city tile to inspect it."
 	else:
 		status_label.text = "%s is in the original tool catalog. Its command is not implemented yet." % tool.name
 
 
 func _apply_map_selection(start: Vector2i, finish: Vector2i) -> void:
 	if city == null:
+		return
+	if selected_group == 16:
+		_open_query(finish)
 		return
 	if selected_group == 15:
 		_open_sign_dialog(finish)
@@ -407,6 +422,15 @@ func _commit_sign() -> void:
 
 func _cancel_sign() -> void:
 	pending_sign_tile = Vector2i(-1, -1)
+
+
+func _open_query(point: Vector2i) -> void:
+	var result := Queries.inspect(city, point)
+	if not result.ok:
+		_show_error("Cannot query tile: %s" % result.error)
+		return
+	query_dialog.dialog_text = Queries.format_text(result)
+	query_dialog.popup_centered()
 
 
 func _refresh_details() -> void:

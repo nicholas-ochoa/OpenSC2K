@@ -20,6 +20,7 @@ const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
+const Queries = preload("res://src/tools/query_info.gd")
 
 var failures := 0
 var checks := 0
@@ -50,6 +51,7 @@ func _init() -> void:
 	_test_tool_catalog()
 	_test_zone_command(reference_root)
 	_test_sign_command(reference_root)
+	_test_query_info(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -801,6 +803,81 @@ func _test_sign_command(reference_root: String) -> void:
 	_check(city.set_text_overlay_id(9, 9, 51), "Sign fixture sets a protected label")
 	var protected := Signs.set_sign(city, Vector2i(9, 9), "Blocked")
 	_check(not protected.ok, "Sign command rejects a protected simulation label")
+
+
+func _test_query_info(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XTXT", "XBIT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Query fixture clears %s" % chunk_id,
+		)
+	var traffic := _filled_bytes(64 * 64, 0)
+	traffic[4 * 64 + 5] = 8
+	traffic[5 * 64 + 4] = 8
+	traffic[5 * 64 + 5] = 8
+	_check(document.find_chunk("XTRF").set_decoded_payload(traffic), "Query fixture sets traffic")
+	for entry in [["XVAL", 9], ["XCRM", 61], ["XPLT", 181]]:
+		var values := _filled_bytes(64 * 64, 0)
+		values[5 * 64 + 5] = entry[1]
+		_check(document.find_chunk(entry[0]).set_decoded_payload(values), "Query fixture sets %s" % entry[0])
+	_check(document.set_misc_u32(0x0e40, 4), "Query fixture sets water level")
+	var city := CityModel.from_document(document)
+	_check(city.set_building_id(10, 10, 0x1d), "Query fixture places a road")
+	_check(city.set_zone_id(10, 10, 1), "Query fixture zones the road")
+	_check(city.set_land_altitude(10, 10, 6), "Query fixture sets altitude")
+	_check(city.set_tile_flag(10, 10, 0x40, true), "Query fixture powers the road")
+	var info := Queries.inspect(city, Vector2i(10, 10))
+	_check(info.ok and info.kind == "general", "General query succeeds: %s" % info.error)
+	_check(info.title == "Road", "General query classifies the tile")
+	_check(info.zone_name == "Residential" and info.zone_density == "low-density", "Query reports zone type and density")
+	_check(info.traffic == 4, "Query reproduces adjacent road traffic calculation")
+	_check(info.altitude_feet == 250 and not info.altitude_is_depth, "Query reproduces clear-terrain altitude")
+	_check(info.land_value == 10, "Query reports land value in thousands per acre")
+	_check(info.crime_level == "Medium", "Query uses the recovered crime thresholds")
+	_check(info.pollution_level == "Very High", "Query uses the recovered pollution thresholds")
+	_check(info.shows_utilities and info.powered, "Query reports utility state")
+	_check(Queries._level_name(1) == "None", "Query threshold one is None")
+	_check(Queries._level_name(2) == "Low", "Query threshold two is Low")
+	_check(Queries._level_name(60) == "Low", "Query threshold sixty is Low")
+	_check(Queries._level_name(61) == "Medium", "Query threshold sixty-one is Medium")
+	_check(Queries._level_name(120) == "Medium", "Query threshold one-twenty is Medium")
+	_check(Queries._level_name(121) == "High", "Query threshold one-twenty-one is High")
+	_check(Queries._level_name(180) == "High", "Query threshold one-eighty is High")
+	_check(Queries._level_name(181) == "Very High", "Query threshold one-eighty-one is Very High")
+	_check(document.set_misc_u32(0x68, 8), "Query pump fixture sets rain")
+	_check(city.set_building_id(20, 20, 0xdc), "Query pump fixture places a pump")
+	_check(city.set_tile_flag(20, 20, 0x40, true), "Query pump fixture powers the pump")
+	_check(city.set_tile_flag(19, 20, 0x04, true), "Query pump fixture places fresh water")
+	var pump := Queries.inspect(city, Vector2i(20, 20))
+	_check(pump.title == "Water pump", "Query identifies a water pump")
+	_check(pump.water_detail == "Water: 24480 gallons per month", "Query reports recovered pump output")
+	for tower_tile in [Vector2i(30, 30), Vector2i(31, 30), Vector2i(30, 29), Vector2i(31, 29)]:
+		_check(city.set_building_id(tower_tile.x, tower_tile.y, 0xeb), "Query tower fixture places a tower tile")
+	for watered_tile in [Vector2i(30, 30), Vector2i(31, 30), Vector2i(30, 29)]:
+		_check(city.set_tile_flag(watered_tile.x, watered_tile.y, 0x10, true), "Query tower fixture stores water")
+	var tower := Queries.inspect(city, Vector2i(31, 29))
+	_check(tower.title == "Water tower", "Query identifies a water tower")
+	_check(tower.water_detail == "Water: 30000 stored gallons", "Query counts stored tower water")
+
+	var microsim_data := document.find_chunk("XMIC").decoded_payload.duplicate()
+	microsim_data[0] = 0xd0
+	microsim_data[1] = 7
+	microsim_data[2] = 0x01
+	microsim_data[3] = 0x02
+	microsim_data[4] = 0x03
+	microsim_data[5] = 0x04
+	microsim_data[6] = 0x05
+	microsim_data[7] = 0x06
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsim_data), "Query fixture sets microsim data")
+	_check(city.set_label(51, "Civic Center"), "Query fixture names a microsim")
+	_check(city.set_text_overlay_id(10, 10, 51), "Query fixture attaches a microsim")
+	var specific := Queries.inspect(city, Vector2i(10, 10))
+	_check(specific.ok and specific.kind == "specific", "Specific query follows XTXT to XMIC")
+	_check(specific.title == "Civic Center" and specific.microsim.stat_0 == 7, "Specific query reports its label and rating")
+	_check(specific.microsim.stat_1 == 0x0102, "Specific query reads big-endian statistic one")
+	_check(specific.microsim.stat_2 == 0x0304, "Specific query reads big-endian statistic two")
+	_check(specific.microsim.stat_3 == 0x0506, "Specific query reads big-endian statistic three")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
