@@ -325,10 +325,11 @@ func _update_edit_state() -> void:
 	var is_zone_tool := Zones.supports_tool(selected_group, selected_subtool)
 	var is_sign_tool := selected_group == 15
 	var is_query_tool := selected_group == 16
+	var is_center_tool := selected_group == 17
 	map_view.set_edit_enabled(
 		city != null
 		and overlay_mode == "city"
-		and (is_zone_tool or is_sign_tool or is_query_tool)
+		and (is_zone_tool or is_sign_tool or is_query_tool or is_center_tool)
 	)
 	if city == null or status_label == null:
 		return
@@ -340,12 +341,19 @@ func _update_edit_state() -> void:
 		status_label.text = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 	elif is_query_tool:
 		status_label.text = "Query selected. Click a city tile to inspect it."
+	elif is_center_tool:
+		status_label.text = "Center View selected. Click a city tile to center the map on it."
 	else:
 		status_label.text = "%s is in the original tool catalog. Its command is not implemented yet." % tool.name
 
 
 func _apply_map_selection(start: Vector2i, finish: Vector2i) -> void:
 	if city == null:
+		return
+	if selected_group == 17:
+		if map_view.center_on_tile(finish):
+			status_label.remove_theme_color_override("font_color")
+			status_label.text = "Centered the map on tile %d, %d." % [finish.x, finish.y]
 		return
 	if selected_group == 16:
 		_open_query(finish)

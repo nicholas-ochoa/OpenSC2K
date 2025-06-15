@@ -49,6 +49,18 @@ func zoom_percent() -> int:
 	return roundi(zoom_factor * 100.0)
 
 
+func center_on_tile(point: Vector2i) -> bool:
+	if city == null or city.index_of(point.x, point.y) < 0:
+		return false
+	var polygon := Renderer.tile_polygon(city, point.x, point.y)
+	if polygon.size() != 4:
+		return false
+	source_center = (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
+	_clamp_source_center()
+	queue_redraw()
+	return true
+
+
 func _draw() -> void:
 	if city_texture == null:
 		return

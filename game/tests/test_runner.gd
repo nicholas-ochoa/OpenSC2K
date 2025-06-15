@@ -8,6 +8,7 @@ const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
+const MapControl = preload("res://src/view/city_map_control.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const Power = preload("res://src/simulation/power_phase.gd")
@@ -219,6 +220,17 @@ func _test_sprite_archives(reference_root: String) -> void:
 			IsometricRenderer.screen_to_tile(starter, center) == expected,
 			"Isometric screen lookup finds tile %s" % expected,
 		)
+	var map_control := MapControl.new()
+	map_control.city = starter
+	var center_tile := Vector2i(64, 64)
+	var center_polygon := IsometricRenderer.tile_polygon(starter, center_tile.x, center_tile.y)
+	var expected_center := (
+		center_polygon[0] + center_polygon[1] + center_polygon[2] + center_polygon[3]
+	) * 0.25
+	_check(map_control.center_on_tile(center_tile), "Center tool accepts a city tile")
+	_check(map_control.source_center == expected_center, "Center tool uses the altitude-aware tile center")
+	_check(not map_control.center_on_tile(Vector2i(-1, 0)), "Center tool rejects an invalid tile")
+	map_control.free()
 
 
 func _test_simulation_clock() -> void:
