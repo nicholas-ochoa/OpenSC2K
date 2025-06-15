@@ -22,6 +22,7 @@ const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
+const Landscapes = preload("res://src/tools/landscape_command.gd")
 
 var failures := 0
 var checks := 0
@@ -53,6 +54,7 @@ func _init() -> void:
 	_test_zone_command(reference_root)
 	_test_sign_command(reference_root)
 	_test_query_info(reference_root)
+	_test_landscape_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -890,6 +892,89 @@ func _test_query_info(reference_root: String) -> void:
 	_check(specific.microsim.stat_1 == 0x0102, "Specific query reads big-endian statistic one")
 	_check(specific.microsim.stat_2 == 0x0304, "Specific query reads big-endian statistic two")
 	_check(specific.microsim.stat_3 == 0x0506, "Specific query reads big-endian statistic three")
+
+
+func _test_landscape_command(reference_root: String) -> void:
+	var tree_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XTXT", "XBIT"]:
+		_check(
+			tree_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Tree fixture clears %s" % chunk_id,
+		)
+	_check(tree_document.set_misc_i32(0x14, 100), "Tree fixture sets funds")
+	_check(tree_document.set_misc_u32(0x01f0, 16384), "Tree fixture counts clear tiles")
+	for tree_id in range(6, 13):
+		_check(tree_document.set_misc_u32(0x01f0 + tree_id * 4, 0), "Tree fixture clears tree count")
+	var tree_city := CityModel.from_document(tree_document)
+	var tree_random := Random.new(1)
+	var first_tree := Landscapes.apply_path(
+		tree_city, 1, 0, [Vector2i(10, 10)], tree_random
+	)
+	_check(first_tree.ok, "Tree tool places a tree: %s" % first_tree.error)
+	_check(tree_city.building_id(10, 10) == 7, "Tree tool uses the executable random first tree ID")
+	_check(tree_city.funds() == 97, "Tree tool charges three dollars")
+	_check(tree_document.misc_u32(0x01f0) == 16383, "Tree tool decrements the old tile count")
+	_check(tree_document.misc_u32(0x01f0 + 7 * 4) == 1, "Tree tool increments the new tile count")
+	var denser_tree := Landscapes.apply_path(
+		tree_city, 1, 0, [Vector2i(10, 10)], tree_random
+	)
+	_check(denser_tree.ok and tree_city.building_id(10, 10) == 8, "Tree tool advances an existing tree")
+	_check(Landscapes.undo(tree_city, denser_tree, tree_random).ok, "Later tree action can be undone")
+	_check(tree_city.building_id(10, 10) == 7 and tree_city.funds() == 97, "Tree undo restores map and funds")
+	_check(Landscapes.undo(tree_city, first_tree, tree_random).ok, "First tree action can be undone")
+	_check(tree_city.building_id(10, 10) == 0 and tree_random.state == 1, "Tree undo restores tile and random state")
+	_check(tree_city.funds() == 100, "Tree undo restores original funds")
+	_check(tree_city.set_tile_flag(11, 11, 0x04, true), "Tree rejection fixture marks water")
+	var rejected_tree := Landscapes.apply_path(
+		tree_city, 1, 0, [Vector2i(11, 11)], tree_random
+	)
+	_check(not rejected_tree.ok, "Tree tool rejects water")
+
+	var water_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XTXT", "XBIT"]:
+		_check(
+			water_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Water fixture clears %s" % chunk_id,
+		)
+	_check(water_document.set_misc_i32(0x14, 500), "Water fixture sets funds")
+	_check(water_document.set_misc_u32(0x01f0, 16383), "Water fixture counts clear tiles")
+	_check(water_document.set_misc_u32(0x01f0 + 6 * 4, 1), "Water fixture counts one tree")
+	var water_city := CityModel.from_document(water_document)
+	_check(water_city.set_building_id(10, 10, 6), "Water fixture places a tree")
+	_check(water_city.set_zone_id(10, 10, 1), "Water fixture places a zone")
+	_check(water_city.set_building_corners(10, 10, 0xa0), "Water fixture sets corner bits")
+	_check(water_city.set_land_altitude(10, 10, 5), "Water fixture sets land altitude")
+	_check(water_city.set_water_altitude(10, 10, 2), "Water fixture sets old water altitude")
+	_check(water_city.set_tile_flag(9, 10, 0x04, true), "Water fixture places adjacent water")
+	_check(water_city.set_terrain_id(9, 10, 0x3d), "Water fixture sets adjacent water shape")
+	var water_random := Random.new(123)
+	var water := Landscapes.apply_path(
+		water_city, 1, 1, [Vector2i(10, 10)], water_random
+	)
+	_check(water.ok, "Water tool places water: %s" % water.error)
+	_check(water_city.funds() == 400 and water.cost == 100, "Water tool charges one hundred dollars")
+	_check(water_city.is_water(10, 10) and water_city.building_id(10, 10) == 0, "Water tool clears the building and sets XBIT water")
+	_check(water_city.zone_id(10, 10) == 0 and water_city.building_corners(10, 10) == 0xa0, "Water tool clears only the zone nibble")
+	_check(water_city.water_altitude(10, 10) == 5, "Water tool copies land altitude to water altitude")
+	_check(water_city.terrain_id(10, 10) == 0x44, "Water tool selects the west-connected surface shape")
+	_check(water_city.terrain_id(9, 10) == 0x42, "Water tool retiles adjacent water")
+	_check(water_document.misc_u32(0x01f0 + 6 * 4) == 0, "Water tool decrements the cleared tree count")
+	_check(water_document.misc_u32(0x01f0) == 16384, "Water tool increments the clear building count")
+	_check(Landscapes.undo(water_city, water, water_random).ok, "Water action can be undone")
+	_check(not water_city.is_water(10, 10) and water_city.building_id(10, 10) == 6, "Water undo restores map data")
+	_check(water_city.zone_id(10, 10) == 1 and water_city.building_corners(10, 10) == 0xa0, "Water undo restores XZON")
+	_check(water_city.land_altitude(10, 10) == 5 and water_city.water_altitude(10, 10) == 2, "Water undo restores ALTM")
+	_check(water_city.funds() == 500, "Water undo restores funds")
+	_check(water_city.set_text_overlay_id(12, 12, 250), "Water rejection fixture sets protected text")
+	var protected_water := Landscapes.apply_path(
+		water_city, 1, 1, [Vector2i(12, 12)], water_random
+	)
+	_check(not protected_water.ok, "Water tool rejects XTXT values above 249")
+	_check(water_city.set_funds(99), "Water funds fixture sets insufficient funds")
+	var unaffordable_water := Landscapes.apply_path(
+		water_city, 1, 1, [Vector2i(13, 13)], water_random
+	)
+	_check(not unaffordable_water.ok and unaffordable_water.error == "insufficient funds", "Water tool reports insufficient funds")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:

@@ -1,7 +1,7 @@
 class_name CityMapControl
 extends Control
 
-signal selection_completed(start: Vector2i, finish: Vector2i)
+signal selection_completed(start: Vector2i, finish: Vector2i, path: Array[Vector2i])
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const MIN_ZOOM := 1.0
@@ -11,10 +11,12 @@ const ZOOM_STEP := 1.25
 var city: CityState
 var city_texture: Texture2D
 var edit_enabled := false
+var selection_mode := "rectangle"
 var zoom_factor := 1.0
 var source_center := Vector2.ZERO
 var selection_start := Vector2i(-1, -1)
 var selection_end := Vector2i(-1, -1)
+var selection_path: Array[Vector2i] = []
 var _panning := false
 
 
@@ -34,14 +36,16 @@ func set_city_view(value: CityState, texture: Texture2D) -> void:
 	queue_redraw()
 
 
-func set_edit_enabled(value: bool) -> void:
+func set_edit_enabled(value: bool, mode := "rectangle") -> void:
 	edit_enabled = value
+	selection_mode = mode
 	mouse_default_cursor_shape = (
 		Control.CURSOR_CROSS if edit_enabled else Control.CURSOR_ARROW
 	)
 	if not edit_enabled:
 		selection_start = Vector2i(-1, -1)
 		selection_end = Vector2i(-1, -1)
+		selection_path.clear()
 	queue_redraw()
 
 
@@ -74,21 +78,29 @@ func _draw() -> void:
 	_draw_signs(scale, offset)
 	if selection_start.x < 0 or selection_end.x < 0 or city == null:
 		return
-	var minimum := Vector2i(
-		mini(selection_start.x, selection_end.x), mini(selection_start.y, selection_end.y)
-	)
-	var maximum := Vector2i(
-		maxi(selection_start.x, selection_end.x), maxi(selection_start.y, selection_end.y)
-	)
-	for x in range(minimum.x, maximum.x + 1):
-		for y in range(minimum.y, maximum.y + 1):
-			var source_polygon := Renderer.tile_polygon(city, x, y)
-			var local_polygon := PackedVector2Array()
-			for point in source_polygon:
-				local_polygon.append(offset + point * scale)
-			draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28))
-			local_polygon.append(local_polygon[0])
-			draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9), 1.0)
+	var highlighted: Array[Vector2i] = []
+	if selection_mode == "path":
+		highlighted = selection_path
+	elif selection_mode == "point":
+		highlighted = [selection_end]
+	else:
+		var minimum := Vector2i(
+			mini(selection_start.x, selection_end.x), mini(selection_start.y, selection_end.y)
+		)
+		var maximum := Vector2i(
+			maxi(selection_start.x, selection_end.x), maxi(selection_start.y, selection_end.y)
+		)
+		for x in range(minimum.x, maximum.x + 1):
+			for y in range(minimum.y, maximum.y + 1):
+				highlighted.append(Vector2i(x, y))
+	for tile in highlighted:
+		var source_polygon := Renderer.tile_polygon(city, tile.x, tile.y)
+		var local_polygon := PackedVector2Array()
+		for point in source_polygon:
+			local_polygon.append(offset + point * scale)
+		draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28))
+		local_polygon.append(local_polygon[0])
+		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9), 1.0)
 
 
 func _draw_signs(scale: float, offset: Vector2) -> void:
@@ -140,14 +152,17 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 		if tile.x >= 0:
 			selection_start = tile
 			selection_end = tile
+			selection_path = [tile]
 			queue_redraw()
 	else:
 		if selection_start.x >= 0:
 			if tile.x >= 0:
 				selection_end = tile
-			selection_completed.emit(selection_start, selection_end)
+				_append_selection_tile(tile)
+			selection_completed.emit(selection_start, selection_end, selection_path.duplicate())
 			selection_start = Vector2i(-1, -1)
 			selection_end = Vector2i(-1, -1)
+			selection_path.clear()
 			queue_redraw()
 	accept_event()
 
@@ -163,8 +178,14 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		var tile := _tile_at(event.position)
 		if tile.x >= 0 and tile != selection_end:
 			selection_end = tile
+			_append_selection_tile(tile)
 			queue_redraw()
 		accept_event()
+
+
+func _append_selection_tile(tile: Vector2i) -> void:
+	if selection_path.is_empty() or selection_path[-1] != tile:
+		selection_path.append(tile)
 
 
 func _tile_at(local_point: Vector2) -> Vector2i:
