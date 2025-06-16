@@ -408,7 +408,7 @@ func _apply_map_selection(
 		return
 	if Buildings.supports_tool(selected_group, selected_subtool):
 		var building := Buildings.apply(
-			city, selected_group, selected_subtool, finish, nuisance_random
+			city, selected_group, selected_subtool, finish, nuisance_random, tool_random
 		)
 		if not building.ok:
 			_show_error(
@@ -453,7 +453,7 @@ func _undo_last_edit() -> void:
 	elif command_type == "landscape":
 		result = Landscapes.undo(city, last_edit_command, tool_random)
 	elif command_type == "building":
-		result = Buildings.undo(city, last_edit_command, nuisance_random)
+		result = Buildings.undo(city, last_edit_command, nuisance_random, tool_random)
 	else:
 		result = Zones.undo(city, last_edit_command)
 	if not result.ok:

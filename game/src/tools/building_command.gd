@@ -24,6 +24,84 @@ const RADIOACTIVITY := 0x05
 const SMALL_PARK := 0x0d
 const BIG_PARK := 0xd5
 const MARINA := 0xf8
+const MICROSIM_DYNAMIC_FIRST := 10
+const MICROSIM_LABEL_BASE := 51
+
+const MICROSIM_TYPE_BY_TILE := {
+	0xc6: 21,
+	0xc7: 21,
+	0xc8: 20,
+	0xc9: 1,
+	0xca: 1,
+	0xcb: 1,
+	0xcc: 1,
+	0xcd: 1,
+	0xce: 1,
+	0xcf: 1,
+	0xd0: 2,
+	0xd1: 3,
+	0xd2: 4,
+	0xd3: 5,
+	0xd4: 23,
+	0xd5: 22,
+	0xd6: 6,
+	0xd7: 7,
+	0xd8: 8,
+	0xd9: 9,
+	0xda: 10,
+	0xdb: 11,
+	0xe9: 19,
+	0xec: 17,
+	0xed: 18,
+	0xf3: 12,
+	0xf4: 13,
+	0xf5: 24,
+	0xf8: 25,
+	0xfa: 14,
+	0xfb: 15,
+	0xfc: 15,
+	0xfd: 15,
+	0xfe: 15,
+	0xff: 16,
+}
+
+const DEFAULT_MICROSIM_LABELS := {
+	0xc6: "Hydro Power",
+	0xc7: "Hydro Power",
+	0xc8: "Wind Power",
+	0xc9: "Gas Power",
+	0xca: "Oil Power",
+	0xcb: "Nuclear Power",
+	0xcc: "Solar Power",
+	0xcd: "Microwave Power",
+	0xce: "Fusion Power",
+	0xcf: "Coal Power",
+	0xd0: "City Hall",
+	0xd1: "Hospital",
+	0xd2: "Police Station",
+	0xd3: "Fire Station",
+	0xd4: "Museum",
+	0xd5: "SimPark System",
+	0xd6: "School",
+	0xd7: "Stadium",
+	0xd8: "Prison",
+	0xd9: "College",
+	0xda: "Zoo",
+	0xdb: "Statue",
+	0xe9: "SimSubway",
+	0xec: "SimBus System",
+	0xed: "SimRail System",
+	0xf3: "Mayor's House",
+	0xf4: "Water Treatment",
+	0xf5: "Library System",
+	0xf8: "Marina",
+	0xfa: "Desalinization",
+	0xfb: "Plymouth Arco",
+	0xfc: "Forest Arco",
+	0xfd: "Darco",
+	0xfe: "Launch Arco",
+	0xff: "Llama Dome",
+}
 
 const TILE_BY_TOOL := {
 	38: 0xcf,
@@ -104,7 +182,8 @@ static func apply(
 	group_index: int,
 	subtool_index: int,
 	selected: Vector2i,
-	nuisance_random: GameLcgRandom
+	nuisance_random: GameLcgRandom,
+	process_random: SimRandom
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -112,6 +191,8 @@ static func apply(
 		return {"ok": false, "error": "tool does not place a shared building"}
 	if nuisance_random == null:
 		return {"ok": false, "error": "nuisance random state is required"}
+	if process_random == null:
+		return {"ok": false, "error": "process random state is required"}
 
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 	var cost := int(tool.cost)
@@ -130,6 +211,9 @@ static func apply(
 	var terrain: PackedByteArray = changed_payloads.XTER
 	var zones: PackedByteArray = changed_payloads.XZON
 	var flags: PackedByteArray = changed_payloads.XBIT
+	var text_overlays: PackedByteArray = changed_payloads.XTXT
+	var labels: PackedByteArray = changed_payloads.XLAB
+	var microsims: PackedByteArray = changed_payloads.XMIC
 	var misc: PackedByteArray = changed_payloads.MISC
 	var tile_id := tile_for_tool(group_index, subtool_index)
 
@@ -138,6 +222,7 @@ static func apply(
 		return {"ok": false, "error": site_check.error, "cost": cost}
 
 	var random_state_before := nuisance_random.state
+	var process_random_state_before := process_random.state
 	if NUISANCE_TILES.has(tile_id):
 		var residential_tiles := _count_nearby_residential(zones, selected, area)
 		if nuisance_random.next_mod(200) < residential_tiles:
@@ -148,6 +233,10 @@ static func apply(
 				"residential_tiles": residential_tiles,
 			}
 
+	var overlay_id := _provision_microsim(
+		microsims, labels, text_overlays, tile_id, city.current_year(), process_random
+	)
+
 	var placed_flags := FLAG_PIPED if tile_id == SMALL_PARK or tile_id == BIG_PARK else STRUCTURE_FLAGS
 	var tile_indices := PackedInt32Array()
 	for x in range(site.position.x, site.end.x):
@@ -157,6 +246,8 @@ static func apply(
 			buildings[index] = tile_id
 			zones[index] = 0
 			flags[index] = (flags[index] & 0x1f) | placed_flags
+			if overlay_id != 0:
+				text_overlays[index] = overlay_id
 			tile_indices.append(index)
 	_set_corners(zones, site, area, city.compass_rotation())
 	if BUDGET_CURRENT.has(tile_id):
@@ -165,11 +256,12 @@ static func apply(
 	_write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
-	for chunk_id in ["XBLD", "XZON", "XBIT", "MISC"]:
+	for chunk_id in ["XBLD", "XZON", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not _apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		nuisance_random.state = random_state_before
+		process_random.state = process_random_state_before
 		return {"ok": false, "error": "cannot store building changes"}
 
 	return {
@@ -181,24 +273,36 @@ static func apply(
 		"site": site,
 		"tile_indices": tile_indices,
 		"cost": cost,
+		"overlay_id": overlay_id,
 		"changed_ids": changed_ids,
 		"old_payloads": old_payloads,
 		"new_payloads": changed_payloads,
 		"random_state_before": random_state_before,
 		"random_state_after": nuisance_random.state,
+		"process_random_state_before": process_random_state_before,
+		"process_random_state_after": process_random.state,
 		"error": "",
 	}
 
 
-static func undo(city: CityState, command: Dictionary, nuisance_random: GameLcgRandom) -> Dictionary:
+static func undo(
+	city: CityState,
+	command: Dictionary,
+	nuisance_random: GameLcgRandom,
+	process_random: SimRandom
+) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not command.get("ok", false) or command.get("command_type", "") != "building":
 		return {"ok": false, "error": "building command is invalid"}
 	if nuisance_random == null:
 		return {"ok": false, "error": "nuisance random state is required"}
+	if process_random == null:
+		return {"ok": false, "error": "process random state is required"}
 	if nuisance_random.state != int(command.get("random_state_after", -1)):
 		return {"ok": false, "error": "random state changed after this building command"}
+	if process_random.state != int(command.get("process_random_state_after", -1)):
+		return {"ok": false, "error": "process random state changed after this building command"}
 	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
 	var old_payloads: Dictionary = command.get("old_payloads", {})
 	var new_payloads: Dictionary = command.get("new_payloads", {})
@@ -209,6 +313,7 @@ static func undo(city: CityState, command: Dictionary, nuisance_random: GameLcgR
 	if not _apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore building changes"}
 	nuisance_random.state = int(command.random_state_before)
+	process_random.state = int(command.process_random_state_before)
 	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
 	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
 
@@ -260,6 +365,129 @@ static func _count_nearby_residential(
 	return count
 
 
+static func _provision_microsim(
+	microsims: PackedByteArray,
+	labels: PackedByteArray,
+	text_overlays: PackedByteArray,
+	tile_id: int,
+	current_year: int,
+	process_random: SimRandom
+) -> int:
+	var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(tile_id, 0))
+	if microsim_type == 0:
+		return 0
+	var record_id := -1
+	if microsim_type <= 16:
+		for checked_id in range(MICROSIM_DYNAMIC_FIRST, CityState.MICROSIM_COUNT):
+			if microsims[checked_id * CityState.MICROSIM_RECORD_SIZE] == 0:
+				record_id = checked_id
+				break
+	else:
+		record_id = microsim_type - 16
+	if record_id < 0 and tile_id >= 0xfb:
+		for checked_id in range(MICROSIM_DYNAMIC_FIRST, CityState.MICROSIM_COUNT):
+			if microsims[checked_id * CityState.MICROSIM_RECORD_SIZE] < 0xfb:
+				record_id = checked_id
+				var old_overlay_id := checked_id + MICROSIM_LABEL_BASE
+				for index in text_overlays.size():
+					if text_overlays[index] == old_overlay_id:
+						text_overlays[index] = 0
+				break
+	if record_id < 0:
+		return 0
+
+	var record_offset := record_id * CityState.MICROSIM_RECORD_SIZE
+	if microsim_type <= 16:
+		for offset in CityState.MICROSIM_RECORD_SIZE:
+			microsims[record_offset + offset] = 0
+	microsims[record_offset] = tile_id
+	_initialize_microsim(microsims, record_id, tile_id, current_year, process_random)
+
+	var label_id := record_id + MICROSIM_LABEL_BASE
+	var label_offset := label_id * CityState.LABEL_RECORD_SIZE
+	if microsim_type <= 16 or labels[label_offset] == 0:
+		_write_label(labels, label_id, str(DEFAULT_MICROSIM_LABELS.get(tile_id, "")))
+	return label_id
+
+
+static func _initialize_microsim(
+	microsims: PackedByteArray,
+	record_id: int,
+	tile_id: int,
+	current_year: int,
+	process_random: SimRandom
+) -> void:
+	var offset := record_id * CityState.MICROSIM_RECORD_SIZE
+	match tile_id:
+		0xc6, 0xc7:
+			_write_u16_be(microsims, offset + 2, _read_u16_be(microsims, offset + 2) + 1)
+			_write_u16_be(microsims, offset + 4, _read_u16_be(microsims, offset + 4) + 20)
+		0xc8:
+			_write_u16_be(microsims, offset + 2, _read_u16_be(microsims, offset + 2) + 1)
+			_write_u16_be(microsims, offset + 4, _read_u16_be(microsims, offset + 4) + 4)
+		0xc9, 0xcc:
+			_write_u16_be(microsims, offset + 2, 50)
+		0xca:
+			_write_u16_be(microsims, offset + 2, 220)
+		0xcb:
+			_write_u16_be(microsims, offset + 2, 500)
+		0xcd:
+			_write_u16_be(microsims, offset + 2, 1600)
+		0xce:
+			_write_u16_be(microsims, offset + 2, 2500)
+		0xcf:
+			_write_u16_be(microsims, offset + 2, 200)
+		0xd1, 0xd6, 0xd9:
+			microsims[offset + 1] = 6
+		0xd5:
+			_write_u16_be(microsims, offset + 4, _read_u16_be(microsims, offset + 4) + 9)
+		0xdb:
+			_write_u16_be(microsims, offset + 2, current_year)
+		0xe9, 0xec, 0xed:
+			_write_u16_be(microsims, offset + 2, _read_u16_be(microsims, offset + 2) + 1)
+		0xf3:
+			_write_u16_be(microsims, offset + 2, current_year)
+			_write_u16_be(microsims, offset + 4, process_random.next_u15() % 30 + 10)
+			_write_u16_be(microsims, offset + 6, process_random.next_u15() % 60)
+		0xfb:
+			microsims[offset + 1] = 5
+			_write_u16_be(microsims, offset + 2, 55)
+			_write_u16_be(microsims, offset + 6, current_year)
+		0xfc:
+			microsims[offset + 1] = 5
+			_write_u16_be(microsims, offset + 2, 30)
+			_write_u16_be(microsims, offset + 6, current_year)
+		0xfd:
+			microsims[offset + 1] = 5
+			_write_u16_be(microsims, offset + 2, 45)
+			_write_u16_be(microsims, offset + 6, current_year)
+		0xfe:
+			microsims[offset + 1] = 5
+			_write_u16_be(microsims, offset + 2, 65)
+			_write_u16_be(microsims, offset + 6, current_year)
+
+
+static func _write_label(labels: PackedByteArray, label_id: int, value: String) -> void:
+	var encoded := value.to_ascii_buffer()
+	if encoded.size() > 23:
+		encoded = encoded.slice(0, 23)
+	var offset := label_id * CityState.LABEL_RECORD_SIZE
+	for record_byte in CityState.LABEL_RECORD_SIZE:
+		labels[offset + record_byte] = 0
+	labels[offset] = encoded.size()
+	for index in encoded.size():
+		labels[offset + 1 + index] = encoded[index]
+
+
+static func _read_u16_be(data: PackedByteArray, offset: int) -> int:
+	return (data[offset] << 8) | data[offset + 1]
+
+
+static func _write_u16_be(data: PackedByteArray, offset: int, value: int) -> void:
+	data[offset] = (value >> 8) & 0xff
+	data[offset + 1] = value & 0xff
+
+
 # The zone and building corner flags share one byte.
 static func _set_corners(zones: PackedByteArray, site: Rect2i, area: int, rotation: int) -> void:
 	if area == 1:
@@ -291,6 +519,9 @@ static func _city_payloads(city: CityState) -> Dictionary:
 		["XTER", CityState.TILE_COUNT],
 		["XZON", CityState.TILE_COUNT],
 		["XBIT", CityState.TILE_COUNT],
+		["XTXT", CityState.TILE_COUNT],
+		["XLAB", CityState.LABEL_COUNT * CityState.LABEL_RECORD_SIZE],
+		["XMIC", CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE],
 		["MISC", 4800],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
@@ -328,6 +559,7 @@ static func _refresh_city_arrays(city: CityState) -> void:
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
 	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
+	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
 
 
 static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
