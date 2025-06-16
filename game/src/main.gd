@@ -13,6 +13,8 @@ const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
+const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
+const Buildings = preload("res://src/tools/building_command.gd")
 
 var city: CityState
 var current_document: Sc2File
@@ -25,6 +27,7 @@ var selected_subtool := 0
 var last_edit_command: Dictionary = {}
 var pending_sign_tile := Vector2i(-1, -1)
 var tool_random := Random.new(1)
+var nuisance_random := GameRandom.new(Time.get_ticks_msec() | 1)
 
 var map_view: CityMapControl
 var city_label: Label
@@ -327,6 +330,7 @@ func _update_edit_state() -> void:
 		return
 	var is_zone_tool := Zones.supports_tool(selected_group, selected_subtool)
 	var is_landscape_tool := Landscapes.supports_tool(selected_group, selected_subtool)
+	var is_building_tool := Buildings.supports_tool(selected_group, selected_subtool)
 	var is_sign_tool := selected_group == 15
 	var is_query_tool := selected_group == 16
 	var is_center_tool := selected_group == 17
@@ -336,6 +340,7 @@ func _update_edit_state() -> void:
 		and (
 			is_zone_tool
 			or is_landscape_tool
+			or is_building_tool
 			or is_sign_tool
 			or is_query_tool
 			or is_center_tool
@@ -350,6 +355,8 @@ func _update_edit_state() -> void:
 		status_label.text = "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool.name
 	elif is_landscape_tool:
 		status_label.text = "%s selected. Click or drag across eligible city tiles." % tool.name
+	elif is_building_tool:
+		status_label.text = "%s selected. Click a clear city site to build it." % tool.name
 	elif is_sign_tool:
 		status_label.text = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 	elif is_query_tool:
@@ -399,6 +406,26 @@ func _apply_map_selection(
 		if landscape.skipped_insufficient > 0:
 			status_label.text += " Funds were not sufficient for %d later path tiles." % landscape.skipped_insufficient
 		return
+	if Buildings.supports_tool(selected_group, selected_subtool):
+		var building := Buildings.apply(
+			city, selected_group, selected_subtool, finish, nuisance_random
+		)
+		if not building.ok:
+			_show_error(
+				"Cannot build %s: %s"
+				% [Tools.tool(selected_group, selected_subtool).name, building.error]
+			)
+			return
+		last_edit_command = building
+		undo_button.disabled = false
+		_refresh_details()
+		_refresh_map()
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Built %s for $%s." % [
+			Tools.tool(selected_group, selected_subtool).name,
+			_format_number(building.cost),
+		]
+		return
 	var command := Zones.apply_rectangle(city, selected_group, selected_subtool, start, finish)
 	if not command.ok:
 		_show_error("Cannot apply %s: %s" % [Tools.tool(selected_group, selected_subtool).name, command.error])
@@ -425,6 +452,8 @@ func _undo_last_edit() -> void:
 		result = Signs.undo(city, last_edit_command)
 	elif command_type == "landscape":
 		result = Landscapes.undo(city, last_edit_command, tool_random)
+	elif command_type == "building":
+		result = Buildings.undo(city, last_edit_command, nuisance_random)
 	else:
 		result = Zones.undo(city, last_edit_command)
 	if not result.ok:
@@ -439,6 +468,8 @@ func _undo_last_edit() -> void:
 		status_label.text = "Restored the previous sign."
 	elif command_type == "landscape":
 		status_label.text = "Restored %d landscape actions and the previous funds value." % result.restored_tiles
+	elif command_type == "building":
+		status_label.text = "Removed the last building and restored %d tiles." % result.restored_tiles
 	else:
 		status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
 

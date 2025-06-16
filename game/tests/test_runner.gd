@@ -23,6 +23,8 @@ const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
+const Buildings = preload("res://src/tools/building_command.gd")
+const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 
 var failures := 0
 var checks := 0
@@ -55,6 +57,7 @@ func _init() -> void:
 	_test_sign_command(reference_root)
 	_test_query_info(reference_root)
 	_test_landscape_command(reference_root)
+	_test_building_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -975,6 +978,80 @@ func _test_landscape_command(reference_root: String) -> void:
 		water_city, 1, 1, [Vector2i(13, 13)], water_random
 	)
 	_check(not unaffordable_water.ok and unaffordable_water.error == "insufficient funds", "Water tool reports insufficient funds")
+
+
+func _test_building_command(reference_root: String) -> void:
+	_check(Buildings.tile_for_tool(3, 2) == 0xcf, "Building table maps coal power")
+	_check(Buildings.tile_for_tool(14, 4) == 0xf8, "Building table maps the marina")
+	_check(Buildings.supports_tool(13, 0), "Building command supports police stations")
+	_check(not Buildings.supports_tool(3, 3), "Hydroelectric power remains a special tool")
+	_check(Buildings.footprint(Vector2i(20, 20), 1) == Rect2i(20, 20, 1, 1), "One-tile footprint starts at the pointer")
+	_check(Buildings.footprint(Vector2i(20, 20), 2) == Rect2i(20, 20, 2, 2), "Two-tile footprint starts at the pointer")
+	_check(Buildings.footprint(Vector2i(20, 20), 4) == Rect2i(19, 19, 4, 4), "Four-tile footprint starts one tile before the pointer")
+
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XBIT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Building fixture clears %s" % chunk_id,
+		)
+	_check(document.set_misc_i32(0x14, 20000), "Building fixture sets funds")
+	_check(document.set_misc_u32(0x01f0, 16384), "Building fixture counts clear tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xcf * 4, 0), "Building fixture clears coal count")
+	_check(document.set_misc_u32(0x077c + 5 * 0x6c, 2), "Building fixture sets police count")
+	var city := CityModel.from_document(document)
+	var random := GameRandom.new(1)
+	var coal := Buildings.apply(city, 3, 2, Vector2i(20, 20), random)
+	_check(coal.ok, "Coal plant placement succeeds: %s" % coal.error)
+	_check(coal.site == Rect2i(19, 19, 4, 4), "Coal plant uses the original asymmetric footprint")
+	_check(coal.tile_indices.size() == 16, "Coal plant changes sixteen map tiles")
+	_check(city.funds() == 16000, "Coal plant charges its tool cost once")
+	_check(city.building_id(19, 19) == 0xcf and city.building_id(22, 22) == 0xcf, "Coal plant fills its footprint")
+	_check(city.tile_flags[19 * 128 + 19] & 0xe0 == 0xe0, "Coal plant sets structure utility flags")
+	_check(city.zones[19 * 128 + 19] == 0x10, "Rotation zero stores the bottom-left corner")
+	_check(city.zones[22 * 128 + 19] == 0x20, "Rotation zero stores the bottom-right corner")
+	_check(city.zones[22 * 128 + 22] == 0x40, "Rotation zero stores the top-left corner")
+	_check(city.zones[19 * 128 + 22] == 0x80, "Rotation zero stores the top-right corner")
+	_check(document.misc_u32(0x01f0) == 16368, "Coal plant decrements clear tile count")
+	_check(document.misc_u32(0x01f0 + 0xcf * 4) == 16, "Coal plant increments its tile count")
+	_check(Buildings.undo(city, coal, random).ok, "Coal plant placement can be undone")
+	_check(city.funds() == 20000 and city.building_id(19, 19) == 0, "Building undo restores funds and tiles")
+
+	var police := Buildings.apply(city, 13, 0, Vector2i(30, 30), random)
+	_check(police.ok, "Police station placement succeeds")
+	_check(document.misc_u32(0x077c + 5 * 0x6c) == 3, "Police station increments the current budget count")
+	_check(Buildings.undo(city, police, random).ok, "Police station placement can be undone")
+	var park := Buildings.apply(city, 14, 0, Vector2i(40, 40), random)
+	_check(park.ok, "Small park placement succeeds")
+	_check(city.tile_flags[40 * 128 + 40] & 0xe0 == 0x20, "Small park gets only the piped structure flag")
+	_check(city.building_corners(40, 40) == 0xf0, "One-tile building gets all corner bits")
+	_check(Buildings.undo(city, park, random).ok, "Small park placement can be undone")
+
+	var edge := Buildings.apply(city, 3, 2, Vector2i(1, 1), random)
+	_check(not edge.ok and edge.error.contains("fit"), "Four-tile building rejects the inner map edge")
+	_check(city.set_building_id(20, 20, 0x1d), "Blocked-site fixture places a road")
+	var blocked := Buildings.apply(city, 3, 2, Vector2i(20, 20), random)
+	_check(not blocked.ok and blocked.error.contains("protected"), "Building placement rejects a road")
+	_check(city.set_building_id(20, 20, 0), "Blocked-site fixture removes the road")
+	_check(city.set_zone_id(20, 20, 7), "Military fixture sets a military zone")
+	var military := Buildings.apply(city, 3, 2, Vector2i(20, 20), random)
+	_check(not military.ok and military.error.contains("military"), "Building placement rejects military zones")
+	_check(city.set_zone_id(20, 20, 0), "Military fixture clears the military zone")
+
+	for x in range(50, 53):
+		for y in range(50, 53):
+			_check(city.set_tile_flag(x, y, 0x04, x == 50), "Marina fixture sets shoreline water")
+	var marina := Buildings.apply(city, 14, 4, Vector2i(51, 51), random)
+	_check(marina.ok, "Marina placement accepts mixed land and water")
+	_check(Buildings.undo(city, marina, random).ok, "Marina placement can be undone")
+	for y in range(50, 53):
+		_check(city.set_tile_flag(50, y, 0x04, false), "Marina dry fixture removes water")
+	var dry_marina := Buildings.apply(city, 14, 4, Vector2i(51, 51), random)
+	_check(not dry_marina.ok and dry_marina.error.contains("land and water"), "Marina rejects an all-dry site")
+
+	_check(city.set_funds(3999), "Building funds fixture sets insufficient funds")
+	var unaffordable := Buildings.apply(city, 3, 2, Vector2i(60, 60), random)
+	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "Building command reports insufficient funds")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
