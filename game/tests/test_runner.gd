@@ -990,7 +990,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(Buildings.footprint(Vector2i(20, 20), 4) == Rect2i(19, 19, 4, 4), "Four-tile footprint starts one tile before the pointer")
 
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
-	for chunk_id in ["XBLD", "XTER", "XZON", "XBIT", "XTXT"]:
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Building fixture clears %s" % chunk_id,
@@ -1049,6 +1049,27 @@ func _test_building_command(reference_root: String) -> void:
 	_check(city.microsim(10).stat_2 >= 10 and city.microsim(10).stat_2 <= 39, "Mayor house initializes the recovered age statistic")
 	_check(Buildings.undo(city, mayor_house, random, process_random).ok, "Mayor house placement can be undone")
 	_check(process_random.state == mayor_random_before, "Building undo restores the process random state")
+
+	_check(city.set_underground_id(59, 60, 0x1e), "Pump fixture places an adjacent isolated pipe")
+	var pump := Buildings.apply(city, 4, 1, Vector2i(60, 60), random, process_random)
+	_check(pump.ok, "Water pump placement succeeds")
+	_check(city.underground_id(59, 60) == 0x11 and city.underground_id(60, 60) == 0x11, "Water pump reconnects its adjacent pipe")
+	_check(city.is_piped(60, 60), "Water pump keeps the piped flag")
+	_check(Buildings.undo(city, pump, random, process_random).ok, "Water pump underground changes can be undone")
+	_check(city.underground_id(59, 60) == 0x1e and city.underground_id(60, 60) == 0, "Pump undo restores both underground tiles")
+
+	_check(city.set_underground_id(64, 65, 0x0f), "Subway fixture places an adjacent isolated subway")
+	var subway_station := Buildings.apply(city, 7, 3, Vector2i(65, 65), random, process_random)
+	_check(subway_station.ok, "Subway station placement succeeds")
+	_check(city.underground_id(65, 65) == 0x23, "Subway station writes the underground entrance")
+	_check(city.underground_id(64, 65) == 0x02, "Subway station reconnects its adjacent subway")
+	_check(not city.is_piped(65, 65) and city.is_powered(65, 65) and city.is_powerable(65, 65), "Subway station clears only the piped structure flag")
+	_check(Buildings.undo(city, subway_station, random, process_random).ok, "Subway station underground changes can be undone")
+
+	var statue := Buildings.apply(city, 5, 2, Vector2i(68, 68), random, process_random)
+	_check(statue.ok, "Statue placement succeeds")
+	_check(city.is_piped(68, 68) and city.is_powered(68, 68) and not city.is_powerable(68, 68), "Statue clears the powerable flag")
+	_check(Buildings.undo(city, statue, random, process_random).ok, "Statue placement can be undone")
 
 	var edge := Buildings.apply(city, 3, 2, Vector2i(1, 1), random, process_random)
 	_check(not edge.ok and edge.error.contains("fit"), "Four-tile building rejects the inner map edge")

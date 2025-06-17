@@ -24,6 +24,17 @@ const RADIOACTIVITY := 0x05
 const SMALL_PARK := 0x0d
 const BIG_PARK := 0xd5
 const MARINA := 0xf8
+const STATUE := 0xdb
+const WATER_PUMP := 0xdc
+const SUBWAY_STATION := 0xe9
+const UNDER_SUBWAY_FIRST := 0x01
+const UNDER_SUBWAY_LAST := 0x0f
+const UNDER_PIPE_FIRST := 0x10
+const UNDER_PIPE_LAST := 0x1e
+const UNDER_PIPE_SUBWAY_LR := 0x1f
+const UNDER_PIPE_SUBWAY_TB := 0x20
+const UNDER_UNKNOWN := 0x22
+const UNDER_SUBWAY_ENTRANCE := 0x23
 const MICROSIM_DYNAMIC_FIRST := 10
 const MICROSIM_LABEL_BASE := 51
 
@@ -155,6 +166,48 @@ const CORNER_BOTTOM_LEFT := [0x10, 0x20, 0x40, 0x80]
 const CORNER_BOTTOM_RIGHT := [0x20, 0x40, 0x80, 0x10]
 const CORNER_TOP_LEFT := [0x40, 0x80, 0x10, 0x20]
 const CORNER_TOP_RIGHT := [0x80, 0x10, 0x20, 0x40]
+const NETWORK_SHAPES := [0, 0, 1, 6, 0, 0, 7, 11, 1, 9, 1, 10, 8, 13, 12, 14]
+const FORCED_TERRAIN_SHAPES := [0, 2, 3, 4, 5, 0, 0, 0, 1, 1, 1, 1, 1, 1, 1, 1]
+const FORCED_TERRAIN_MASKS := {
+	1: true,
+	2: true,
+	3: true,
+	4: true,
+	9: true,
+	10: true,
+	11: true,
+	12: true,
+}
+const VERTICAL_TERRAIN_BLOCKS := {
+	1: true,
+	3: true,
+	15: true,
+	17: true,
+	19: true,
+	31: true,
+	33: true,
+	35: true,
+	47: true,
+	68: true,
+	69: true,
+	70: true,
+	71: true,
+}
+const HORIZONTAL_TERRAIN_BLOCKS := {
+	2: true,
+	4: true,
+	15: true,
+	18: true,
+	20: true,
+	31: true,
+	34: true,
+	36: true,
+	47: true,
+	68: true,
+	69: true,
+	70: true,
+	71: true,
+}
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
@@ -211,6 +264,7 @@ static func apply(
 	var terrain: PackedByteArray = changed_payloads.XTER
 	var zones: PackedByteArray = changed_payloads.XZON
 	var flags: PackedByteArray = changed_payloads.XBIT
+	var underground: PackedByteArray = changed_payloads.XUND
 	var text_overlays: PackedByteArray = changed_payloads.XTXT
 	var labels: PackedByteArray = changed_payloads.XLAB
 	var microsims: PackedByteArray = changed_payloads.XMIC
@@ -250,13 +304,19 @@ static func apply(
 				text_overlays[index] = overlay_id
 			tile_indices.append(index)
 	_set_corners(zones, site, area, city.compass_rotation())
+	if tile_id == STATUE:
+		flags[selected.x * CityState.MAP_SIZE + selected.y] &= ~FLAG_POWERABLE & 0xff
+	elif tile_id == WATER_PUMP:
+		_place_pipe(underground, terrain, flags, selected)
+	elif tile_id == SUBWAY_STATION:
+		_place_subway_station(underground, terrain, flags, selected)
 	if BUDGET_CURRENT.has(tile_id):
 		var budget_offset: int = MISC_BUDGETS + int(BUDGET_CURRENT[tile_id]) * BUDGET_RECORD_SIZE
 		_write_u32_be(misc, budget_offset, _read_u32_be(misc, budget_offset) + 1)
 	_write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
-	for chunk_id in ["XBLD", "XZON", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
+	for chunk_id in ["XBLD", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not _apply_payloads(city, changed_ids, changed_payloads, old_payloads):
@@ -501,6 +561,126 @@ static func _set_corners(zones: PackedByteArray, site: Rect2i, area: int, rotati
 	zones[site.position.x * CityState.MAP_SIZE + far.y] = CORNER_TOP_RIGHT[view]
 
 
+static func _place_pipe(
+	underground: PackedByteArray,
+	terrain: PackedByteArray,
+	flags: PackedByteArray,
+	point: Vector2i
+) -> void:
+	var index := point.x * CityState.MAP_SIZE + point.y
+	var old_tile := int(underground[index])
+	if (old_tile >= UNDER_PIPE_FIRST and old_tile <= UNDER_PIPE_LAST) or old_tile == UNDER_PIPE_SUBWAY_LR or old_tile == UNDER_PIPE_SUBWAY_TB:
+		return
+	if old_tile == 0:
+		underground[index] = UNDER_PIPE_FIRST
+	elif old_tile == 1:
+		underground[index] = UNDER_PIPE_SUBWAY_LR
+	elif old_tile == 2:
+		underground[index] = UNDER_PIPE_SUBWAY_TB
+	else:
+		return
+	flags[index] |= FLAG_PIPED
+	_retile_neighborhood(underground, terrain, point, true)
+
+
+# connect and retile the subway before replacing the center with the station
+static func _place_subway_station(
+	underground: PackedByteArray,
+	terrain: PackedByteArray,
+	flags: PackedByteArray,
+	point: Vector2i
+) -> void:
+	var index := point.x * CityState.MAP_SIZE + point.y
+	var old_tile := int(underground[index])
+	var inserted := false
+	if old_tile == 0:
+		underground[index] = UNDER_SUBWAY_FIRST
+		inserted = true
+	elif old_tile == UNDER_PIPE_FIRST:
+		underground[index] = UNDER_PIPE_SUBWAY_TB
+		inserted = true
+	elif old_tile == UNDER_PIPE_FIRST + 1:
+		underground[index] = UNDER_PIPE_SUBWAY_LR
+		inserted = true
+	if inserted:
+		_retile_neighborhood(underground, terrain, point, false)
+	underground[index] = UNDER_SUBWAY_ENTRANCE
+	flags[index] &= ~FLAG_PIPED & 0xff
+
+
+static func _retile_neighborhood(
+	underground: PackedByteArray, terrain: PackedByteArray, point: Vector2i, pipes: bool
+) -> void:
+	_retile_underground(underground, terrain, point, pipes)
+	for offset in [Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1)]:
+		var near: Vector2i = point + offset
+		if near.x >= 0 and near.x < 128 and near.y >= 0 and near.y < 128:
+			_retile_underground(underground, terrain, near, pipes)
+
+
+static func _retile_underground(
+	underground: PackedByteArray, terrain: PackedByteArray, point: Vector2i, pipes: bool
+) -> void:
+	var index := point.x * CityState.MAP_SIZE + point.y
+	var current := int(underground[index])
+	if pipes:
+		if current < UNDER_PIPE_FIRST or current > UNDER_PIPE_LAST:
+			return
+	else:
+		if current < UNDER_SUBWAY_FIRST or current > UNDER_SUBWAY_LAST:
+			return
+	var terrain_shape := int(terrain[index]) & 0x0f if terrain[index] <= 0x30 else 0
+	var base := UNDER_PIPE_FIRST if pipes else UNDER_SUBWAY_FIRST
+	if FORCED_TERRAIN_MASKS.has(terrain_shape):
+		underground[index] = base + FORCED_TERRAIN_SHAPES[terrain_shape]
+		return
+
+	var connections := 0
+	if point.x > 0:
+		var west_index := (point.x - 1) * CityState.MAP_SIZE + point.y
+		if _underground_connects(underground[west_index], pipes) and _allows_horizontal(terrain[west_index]):
+			connections |= 8
+	if point.x < 127:
+		var east_index := (point.x + 1) * CityState.MAP_SIZE + point.y
+		if _underground_connects(underground[east_index], pipes) and _allows_horizontal(terrain[east_index]):
+			connections |= 2
+	if point.y > 0:
+		var north_index := point.x * CityState.MAP_SIZE + point.y - 1
+		if _underground_connects(underground[north_index], pipes) and _allows_vertical(terrain[north_index]):
+			connections |= 1
+	if point.y < 127:
+		var south_index := point.x * CityState.MAP_SIZE + point.y + 1
+		if _underground_connects(underground[south_index], pipes) and _allows_vertical(terrain[south_index]):
+			connections |= 4
+	if pipes and connections == 0:
+		connections = 15
+	underground[index] = base + NETWORK_SHAPES[connections]
+
+
+static func _underground_connects(tile_id: int, pipes: bool) -> bool:
+	if pipes:
+		return (
+			(tile_id >= UNDER_PIPE_FIRST and tile_id <= UNDER_PIPE_LAST)
+			or tile_id == UNDER_PIPE_SUBWAY_LR
+			or tile_id == UNDER_PIPE_SUBWAY_TB
+		)
+	return (
+		(tile_id >= UNDER_SUBWAY_FIRST and tile_id <= UNDER_SUBWAY_LAST)
+		or tile_id == UNDER_SUBWAY_ENTRANCE
+		or tile_id == UNDER_PIPE_SUBWAY_LR
+		or tile_id == UNDER_PIPE_SUBWAY_TB
+		or tile_id == UNDER_UNKNOWN
+	)
+
+
+static func _allows_vertical(terrain_id: int) -> bool:
+	return terrain_id >= 0 and terrain_id <= 71 and not VERTICAL_TERRAIN_BLOCKS.has(terrain_id)
+
+
+static func _allows_horizontal(terrain_id: int) -> bool:
+	return terrain_id >= 0 and terrain_id <= 71 and not HORIZONTAL_TERRAIN_BLOCKS.has(terrain_id)
+
+
 static func _update_building_count(
 	misc: PackedByteArray, zone: int, old_building: int, new_building: int
 ) -> void:
@@ -518,6 +698,7 @@ static func _city_payloads(city: CityState) -> Dictionary:
 		["XBLD", CityState.TILE_COUNT],
 		["XTER", CityState.TILE_COUNT],
 		["XZON", CityState.TILE_COUNT],
+		["XUND", CityState.TILE_COUNT],
 		["XBIT", CityState.TILE_COUNT],
 		["XTXT", CityState.TILE_COUNT],
 		["XLAB", CityState.LABEL_COUNT * CityState.LABEL_RECORD_SIZE],
@@ -558,6 +739,7 @@ static func _refresh_city_arrays(city: CityState) -> void:
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
+	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
 	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
 	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
 
