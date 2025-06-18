@@ -25,6 +25,7 @@ const Queries = preload("res://src/tools/query_info.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
+const Networks = preload("res://src/tools/network_command.gd")
 
 var failures := 0
 var checks := 0
@@ -58,6 +59,7 @@ func _init() -> void:
 	_test_query_info(reference_root)
 	_test_landscape_command(reference_root)
 	_test_building_command(reference_root)
+	_test_network_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -1096,6 +1098,64 @@ func _test_building_command(reference_root: String) -> void:
 	_check(city.set_funds(3999), "Building funds fixture sets insufficient funds")
 	var unaffordable := Buildings.apply(city, 3, 2, Vector2i(60, 60), random, process_random)
 	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "Building command reports insufficient funds")
+
+
+func _test_network_command(reference_root: String) -> void:
+	_check(Networks.supports_tool(6, 0), "Network command supports roads")
+	_check(Networks.supports_tool(7, 1), "Network command supports subways")
+	_check(not Networks.supports_tool(6, 1), "Highways remain a separate network tool")
+	_check(
+		Networks.route(Vector2i(10, 10), Vector2i(13, 12))
+		== [Vector2i(10, 10), Vector2i(11, 10), Vector2i(11, 11), Vector2i(12, 11), Vector2i(12, 12), Vector2i(13, 12)],
+		"Network route follows the recovered dominant-axis rule",
+	)
+
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Network fixture clears %s" % chunk_id,
+		)
+	_check(document.set_misc_i32(0x14, 10000), "Network fixture sets funds")
+	_check(document.set_misc_u32(0x01f0, 16384), "Network fixture counts clear tiles")
+	var city := CityModel.from_document(document)
+
+	var road := Networks.apply(city, 6, 0, Vector2i(10, 10), Vector2i(14, 10))
+	_check(road.ok and road.points.size() == 5, "Road drag builds five tiles")
+	_check(road.cost == 50 and city.funds() == 9950, "Road drag charges ten dollars per route tile")
+	for x in range(10, 15):
+		_check(city.building_id(x, 10) == 0x1e, "Road drag stores a connected road shape")
+	_check(Networks.undo(city, road).ok, "Road drag can be undone")
+	_check(city.funds() == 10000 and city.building_id(12, 10) == 0, "Road undo restores funds and tiles")
+
+	_check(city.set_building_id(20, 20, 0x1d), "Rail crossover fixture places a road")
+	var rail_crossing := Networks.apply(city, 7, 0, Vector2i(20, 20), Vector2i(21, 20))
+	_check(rail_crossing.ok and city.building_id(20, 20) == 0x45, "Rail tool creates the recovered road crossover")
+	_check(Networks.undo(city, rail_crossing).ok, "Rail crossover can be undone")
+
+	var pipes := Networks.apply(city, 4, 0, Vector2i(10, 30), Vector2i(12, 30))
+	_check(pipes.ok and pipes.cost == 9, "Pipe drag charges three dollars per tile")
+	for x in range(10, 13):
+		_check(city.underground_id(x, 30) == 0x11, "Pipe drag stores connected pipe shapes")
+		_check(city.is_piped(x, 30), "Pipe drag sets the piped flag")
+	_check(Networks.undo(city, pipes).ok, "Pipe drag can be undone")
+
+	var subway := Networks.apply(city, 7, 1, Vector2i(30, 30), Vector2i(30, 32))
+	_check(subway.ok and subway.cost == 300, "Subway drag charges one hundred dollars per tile")
+	for y in range(30, 33):
+		_check(city.underground_id(30, y) == 0x01, "Subway drag stores connected subway shapes")
+	_check(Networks.undo(city, subway).ok, "Subway drag can be undone")
+
+	_check(city.set_building_id(42, 40, 0x51), "Partial-route fixture places an obstruction")
+	var partial := Networks.apply(city, 6, 0, Vector2i(40, 40), Vector2i(44, 40))
+	_check(partial.ok and partial.stopped_early, "Road route stops at an obstruction")
+	_check(partial.points == [Vector2i(40, 40), Vector2i(41, 40)], "Road route keeps the clear prefix")
+	_check(partial.cost == 20, "Partial road route charges only its planned prefix")
+	_check(Networks.undo(city, partial).ok, "Partial road route can be undone")
+
+	_check(city.set_funds(1), "Network funds fixture sets insufficient funds")
+	var unaffordable := Networks.apply(city, 3, 0, Vector2i(50, 50), Vector2i(51, 50))
+	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "Network command reports insufficient funds")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
