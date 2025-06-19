@@ -26,6 +26,7 @@ const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 const Networks = preload("res://src/tools/network_command.gd")
+const Hydro = preload("res://src/tools/hydro_command.gd")
 
 var failures := 0
 var checks := 0
@@ -60,6 +61,7 @@ func _init() -> void:
 	_test_landscape_command(reference_root)
 	_test_building_command(reference_root)
 	_test_network_command(reference_root)
+	_test_hydro_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -1156,6 +1158,38 @@ func _test_network_command(reference_root: String) -> void:
 	_check(city.set_funds(1), "Network funds fixture sets insufficient funds")
 	var unaffordable := Networks.apply(city, 3, 0, Vector2i(50, 50), Vector2i(51, 50))
 	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "Network command reports insufficient funds")
+
+
+func _test_hydro_command(reference_root: String) -> void:
+	_check(Hydro.supports_tool(3, 3), "Hydroelectric command supports the hydro tool")
+	_check(not Hydro.supports_tool(3, 2), "Hydroelectric command rejects coal power")
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XZON", "XBIT", "XTXT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Hydroelectric fixture clears %s" % chunk_id,
+		)
+	_check(document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Hydroelectric fixture clears XLAB")
+	_check(document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Hydroelectric fixture clears XMIC")
+	_check(document.set_misc_i32(0x14, 1000), "Hydroelectric fixture sets funds")
+	_check(document.set_misc_u32(0x01f0, 16384), "Hydroelectric fixture counts clear tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xc7 * 4, 0), "Hydroelectric fixture clears hydro count")
+	var city := CityModel.from_document(document)
+	_check(city.set_terrain_id(20, 20, 0x2e), "Hydroelectric fixture places a waterfall")
+	_check(city.set_land_altitude(20, 20, 5), "Hydroelectric fixture sets waterfall altitude")
+	_check(city.set_land_altitude(20, 19, 6), "Hydroelectric fixture sets a higher north tile")
+	var process_random := Random.new(33)
+	var command := Hydro.apply(city, 3, 3, Vector2i(20, 20), process_random)
+	_check(command.ok, "Hydroelectric placement succeeds: %s" % command.error)
+	_check(command.tile_id == 0xc7 and city.building_id(20, 20) == 0xc7, "Hydroelectric tile follows the recovered slope orientation")
+	_check(city.funds() == 600 and city.is_powerable(20, 20), "Hydroelectric placement charges cost and sets powerable")
+	_check(city.zones[20 * 128 + 20] == 0xf0, "Hydroelectric placement sets all corner bits")
+	_check(command.overlay_id == 56 and city.label(56) == "Hydro Power", "Hydroelectric placement uses fixed XMIC record five")
+	_check(city.microsim(5).stat_1 == 1 and city.microsim(5).stat_2 == 20, "Hydroelectric placement increments fixed XMIC totals")
+	_check(Hydro.undo(city, command, process_random).ok, "Hydroelectric placement can be undone")
+	_check(city.building_id(20, 20) == 0 and city.funds() == 1000, "Hydroelectric undo restores the tile and funds")
+	var wrong_terrain := Hydro.apply(city, 3, 3, Vector2i(21, 21), process_random)
+	_check(not wrong_terrain.ok and wrong_terrain.error.contains("waterfall"), "Hydroelectric placement requires waterfall terrain")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
