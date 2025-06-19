@@ -18,6 +18,7 @@ const Buildings = preload("res://src/tools/building_command.gd")
 const Networks = preload("res://src/tools/network_command.gd")
 const Hydro = preload("res://src/tools/hydro_command.gd")
 const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
+const Onramps = preload("res://src/tools/onramp_command.gd")
 
 var city: CityState
 var current_document: Sc2File
@@ -337,6 +338,7 @@ func _update_edit_state() -> void:
 	var is_network_tool := Networks.supports_tool(selected_group, selected_subtool)
 	var is_hydro_tool := Hydro.supports_tool(selected_group, selected_subtool)
 	var is_subway_to_rail_tool := SubwayToRail.supports_tool(selected_group, selected_subtool)
+	var is_onramp_tool := Onramps.supports_tool(selected_group, selected_subtool)
 	var is_sign_tool := selected_group == 15
 	var is_query_tool := selected_group == 16
 	var is_center_tool := selected_group == 17
@@ -350,6 +352,7 @@ func _update_edit_state() -> void:
 			or is_network_tool
 			or is_hydro_tool
 			or is_subway_to_rail_tool
+			or is_onramp_tool
 			or is_sign_tool
 			or is_query_tool
 			or is_center_tool
@@ -372,6 +375,8 @@ func _update_edit_state() -> void:
 		status_label.text = "Hydroelectric Power Plant selected. Click an unused waterfall tile."
 	elif is_subway_to_rail_tool:
 		status_label.text = "Subway-to-Rail Connection selected. Click beside a rail or subway."
+	elif is_onramp_tool:
+		status_label.text = "On-ramp selected. Click on clear terrain between a highway and a perpendicular road."
 	elif is_sign_tool:
 		status_label.text = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 	elif is_query_tool:
@@ -465,6 +470,18 @@ func _apply_map_selection(
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built a subway-to-rail connection at no charge. Listed cost: $%s." % _format_number(connection.listed_cost)
 		return
+	if Onramps.supports_tool(selected_group, selected_subtool):
+		var onramp := Onramps.apply(city, selected_group, selected_subtool, finish)
+		if not onramp.ok:
+			_show_error("Cannot build on-ramp: %s" % onramp.error)
+			return
+		last_edit_command = onramp
+		undo_button.disabled = false
+		_refresh_details()
+		_refresh_map()
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Built an on-ramp for $%s." % _format_number(onramp.cost)
+		return
 	if Buildings.supports_tool(selected_group, selected_subtool):
 		var building := Buildings.apply(
 			city, selected_group, selected_subtool, finish, nuisance_random, tool_random
@@ -519,6 +536,8 @@ func _undo_last_edit() -> void:
 		result = Hydro.undo(city, last_edit_command, tool_random)
 	elif command_type == "subway_to_rail":
 		result = SubwayToRail.undo(city, last_edit_command)
+	elif command_type == "onramp":
+		result = Onramps.undo(city, last_edit_command)
 	else:
 		result = Zones.undo(city, last_edit_command)
 	if not result.ok:
@@ -541,6 +560,8 @@ func _undo_last_edit() -> void:
 		status_label.text = "Removed the last hydroelectric plant."
 	elif command_type == "subway_to_rail":
 		status_label.text = "Removed the last subway-to-rail connection."
+	elif command_type == "onramp":
+		status_label.text = "Removed the last on-ramp."
 	else:
 		status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
 

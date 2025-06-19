@@ -28,6 +28,7 @@ const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 const Networks = preload("res://src/tools/network_command.gd")
 const Hydro = preload("res://src/tools/hydro_command.gd")
 const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
+const Onramps = preload("res://src/tools/onramp_command.gd")
 
 var failures := 0
 var checks := 0
@@ -64,6 +65,7 @@ func _init() -> void:
 	_test_network_command(reference_root)
 	_test_hydro_command(reference_root)
 	_test_subway_to_rail_command(reference_root)
+	_test_onramp_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -1225,6 +1227,52 @@ func _test_subway_to_rail_command(reference_root: String) -> void:
 	_check(city.set_underground_id(21, 20, 0), "Missing-neighbor fixture removes adjacent subway")
 	var no_neighbor := SubwayToRail.apply(city, 7, 4, Vector2i(20, 20))
 	_check(not no_neighbor.ok and no_neighbor.error.contains("adjacent"), "Subway-to-rail placement requires an adjacent network")
+
+
+func _test_onramp_command(reference_root: String) -> void:
+	_check(Onramps.supports_tool(6, 3), "On-ramp command supports its catalog tool")
+	_check(not Onramps.supports_tool(6, 1), "On-ramp command rejects the highway tool")
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XBIT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"On-ramp fixture clears %s" % chunk_id,
+		)
+	_check(document.set_misc_i32(0x14, 100), "On-ramp fixture sets funds")
+	_check(document.set_misc_u32(0x01f0, 16382), "On-ramp fixture counts clear tiles")
+	_check(document.set_misc_u32(0x01f0 + 0x49 * 4, 1), "On-ramp fixture counts highway")
+	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 1), "On-ramp fixture counts road")
+	var city := CityModel.from_document(document)
+	_check(city.set_building_id(21, 20, 0x49), "On-ramp fixture places east highway")
+	_check(city.set_building_id(20, 19, 0x1d), "On-ramp fixture places north road")
+	var north := Onramps.apply(city, 6, 3, Vector2i(20, 20))
+	_check(north.ok, "North-road on-ramp succeeds: %s" % north.error)
+	_check(north.tile_id == 0x5f and city.building_id(20, 20) == 0x5f, "East highway and north road select ramp 0x5f")
+	_check(city.building_id(20, 19) == 0x2b, "On-ramp converts its adjacent road to tile 0x2b")
+	_check((city.tile_flags[20 * 128 + 20] & 0x02) != 0, "North-road on-ramp sets the flipped flag")
+	_check(city.funds() == 75 and north.cost == 25, "On-ramp charges the catalog cost")
+	_check(Onramps.undo(city, north).ok, "On-ramp placement can be undone")
+	_check(city.building_id(20, 20) == 0 and city.building_id(20, 19) == 0x1d, "On-ramp undo restores both surface tiles")
+	_check(city.funds() == 100, "On-ramp undo restores funds")
+
+	_check(city.set_building_id(21, 20, 0), "Second on-ramp fixture removes east highway")
+	_check(city.set_building_id(20, 19, 0), "Second on-ramp fixture removes north road")
+	_check(city.set_building_id(20, 19, 0x49), "Second on-ramp fixture places north highway")
+	_check(city.set_building_id(21, 20, 0x1d), "Second on-ramp fixture places east road")
+	var east := Onramps.apply(city, 6, 3, Vector2i(20, 20))
+	_check(east.ok and east.tile_id == 0x5d, "North highway and east road select ramp 0x5d")
+	_check(Onramps.undo(city, east).ok, "East-road on-ramp can be undone")
+	_check(city.set_building_id(20, 19, 0), "Invalid arrangement fixture removes north highway")
+	_check(city.set_building_id(21, 20, 0), "Invalid arrangement fixture removes east road")
+	_check(city.set_building_id(21, 20, 0x49), "Invalid arrangement fixture places east highway")
+	_check(city.set_building_id(19, 20, 0x1d), "Invalid arrangement fixture places west road")
+	var parallel := Onramps.apply(city, 6, 3, Vector2i(20, 20))
+	_check(not parallel.ok and parallel.error.contains("perpendicular"), "On-ramp rejects a road parallel to the highway")
+	_check(city.set_funds(24), "On-ramp funds fixture sets insufficient funds")
+	_check(city.set_building_id(19, 20, 0), "On-ramp funds fixture removes west road")
+	_check(city.set_building_id(20, 19, 0x1d), "On-ramp funds fixture places north road")
+	var unaffordable := Onramps.apply(city, 6, 3, Vector2i(20, 20))
+	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "On-ramp command reports insufficient funds")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
