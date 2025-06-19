@@ -27,6 +27,7 @@ const Buildings = preload("res://src/tools/building_command.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 const Networks = preload("res://src/tools/network_command.gd")
 const Hydro = preload("res://src/tools/hydro_command.gd")
+const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
 
 var failures := 0
 var checks := 0
@@ -62,6 +63,7 @@ func _init() -> void:
 	_test_building_command(reference_root)
 	_test_network_command(reference_root)
 	_test_hydro_command(reference_root)
+	_test_subway_to_rail_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -1190,6 +1192,39 @@ func _test_hydro_command(reference_root: String) -> void:
 	_check(city.building_id(20, 20) == 0 and city.funds() == 1000, "Hydroelectric undo restores the tile and funds")
 	var wrong_terrain := Hydro.apply(city, 3, 3, Vector2i(21, 21), process_random)
 	_check(not wrong_terrain.ok and wrong_terrain.error.contains("waterfall"), "Hydroelectric placement requires waterfall terrain")
+
+
+func _test_subway_to_rail_command(reference_root: String) -> void:
+	_check(SubwayToRail.supports_tool(7, 4), "Subway-to-rail command supports its catalog tool")
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Subway-to-rail fixture clears %s" % chunk_id,
+		)
+	_check(document.set_misc_i32(0x14, 0), "Subway-to-rail fixture clears funds")
+	_check(document.set_misc_u32(0x01f0, 16383), "Subway-to-rail fixture counts clear tiles")
+	_check(document.set_misc_u32(0x01f0 + 0x2c * 4, 1), "Subway-to-rail fixture counts rail")
+	var city := CityModel.from_document(document)
+	_check(city.set_building_id(21, 20, 0x2c), "Subway-to-rail fixture places adjacent rail")
+	_check(city.set_zone_id(20, 20, 3), "Subway-to-rail fixture places a commercial zone")
+	var surface := SubwayToRail.apply(city, 7, 4, Vector2i(20, 20))
+	_check(surface.ok, "Subway-to-rail placement beside surface rail succeeds: %s" % surface.error)
+	_check(surface.tile_id == 0x6c and city.building_id(20, 20) == 0x6c, "East rail selects connector orientation zero")
+	_check(city.underground_id(20, 20) == 0x23, "Subway-to-rail placement writes underground entrance 0x23")
+	_check(city.zones[20 * 128 + 20] == 0xf3, "Subway-to-rail placement preserves the zone and sets all corners")
+	_check(city.funds() == 0 and surface.cost == 0 and surface.listed_cost == 250, "Subway-to-rail reproduces the executable's missing cost deduction")
+	_check(SubwayToRail.undo(city, surface).ok, "Subway-to-rail placement can be undone")
+	_check(city.building_id(20, 20) == 0 and city.underground_id(20, 20) == 0, "Subway-to-rail undo restores surface and underground maps")
+
+	_check(city.set_building_id(21, 20, 0), "Underground connection fixture removes surface rail")
+	_check(city.set_underground_id(21, 20, 0x01), "Underground connection fixture places adjacent subway")
+	var underground := SubwayToRail.apply(city, 7, 4, Vector2i(20, 20))
+	_check(underground.ok and underground.tile_id == 0x6e, "East subway selects the opposite connector orientation")
+	_check(SubwayToRail.undo(city, underground).ok, "Underground-oriented connector can be undone")
+	_check(city.set_underground_id(21, 20, 0), "Missing-neighbor fixture removes adjacent subway")
+	var no_neighbor := SubwayToRail.apply(city, 7, 4, Vector2i(20, 20))
+	_check(not no_neighbor.ok and no_neighbor.error.contains("adjacent"), "Subway-to-rail placement requires an adjacent network")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
