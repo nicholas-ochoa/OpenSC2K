@@ -30,6 +30,7 @@ const Hydro = preload("res://src/tools/hydro_command.gd")
 const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
 const Onramps = preload("res://src/tools/onramp_command.gd")
 const Tunnels = preload("res://src/tools/tunnel_command.gd")
+const Highways = preload("res://src/tools/highway_command.gd")
 
 var failures := 0
 var checks := 0
@@ -68,6 +69,7 @@ func _init() -> void:
 	_test_subway_to_rail_command(reference_root)
 	_test_onramp_command(reference_root)
 	_test_tunnel_command(reference_root)
+	_test_highway_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -1323,6 +1325,58 @@ func _test_tunnel_command(reference_root: String) -> void:
 	_check(city.set_funds(449), "Tunnel funds fixture sets insufficient funds")
 	var unaffordable := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
 	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "Tunnel command reports insufficient funds")
+
+
+func _test_highway_command(reference_root: String) -> void:
+	_check(Highways.supports_tool(6, 1), "Highway command supports its catalog tool")
+	_check(not Highways.supports_tool(6, 0), "Highway command rejects the road tool")
+	_check(Highways.snap_anchor(Vector2i(11, 13)) == Vector2i(10, 12), "Highway pointer snaps to even coordinates")
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT"]:
+		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
+			"Highway fixture clears %s" % chunk_id,
+		)
+	_check(document.set_misc_i32(0x14, 1000), "Highway fixture sets funds")
+	_check(document.set_misc_u32(0x01f0, 16384), "Highway fixture counts clear tiles")
+	var city := CityModel.from_document(document)
+	var straight := Highways.apply(city, 6, 1, Vector2i(10, 10), Vector2i(14, 10))
+	_check(straight.ok and straight.sections.size() == 3, "Highway drag builds three 2-by-2 sections")
+	_check(straight.cost == 300 and city.funds() == 700, "Highway drag charges one hundred dollars per section")
+	for x in range(10, 16):
+		for y in range(10, 12):
+			_check(city.building_id(x, y) == 0x4a, "Horizontal highway stores straight tile 0x4a")
+			_check(city.zones[x * 128 + y] == 0xf0, "Straight highway sets all XZON corner bits")
+	_check(Highways.undo(city, straight).ok, "Straight highway can be undone")
+	_check(city.funds() == 1000 and city.building_id(12, 10) == 0, "Highway undo restores funds and tiles")
+
+	var turn := Highways.apply(city, 6, 1, Vector2i(10, 10), Vector2i(12, 12))
+	_check(turn.ok and turn.sections == [Vector2i(10, 10), Vector2i(10, 12), Vector2i(12, 12)], "Highway route follows the recovered dominant-axis rule")
+	_check(city.building_id(10, 10) == 0x49, "Highway turn starts with a vertical section")
+	_check(city.building_id(10, 12) == 0x65, "North-east highway turn uses shaped tile 0x65")
+	_check(city.building_id(12, 12) == 0x4a, "Highway turn ends with a horizontal section")
+	_check((city.zones[10 * 128 + 12] & 0xf0) != 0xf0, "Shaped highway stores a 2-by-2 corner mask")
+	_check(Highways.undo(city, turn).ok, "Turning highway can be undone")
+
+	_check(city.set_building_id(10, 10, 0x1e), "Highway crossing fixture places a horizontal road")
+	_check(document.set_misc_u32(0x01f0, 16383), "Highway crossing fixture updates clear count")
+	_check(document.set_misc_u32(0x01f0 + 0x1e * 4, 1), "Highway crossing fixture counts road")
+	var crossing_city := CityModel.from_document(document)
+	var crossing := Highways.apply(crossing_city, 6, 1, Vector2i(10, 10), Vector2i(10, 12))
+	_check(crossing.ok, "Highway can cross a perpendicular road: %s" % crossing.error)
+	_check(crossing_city.building_id(10, 10) == 0x4b, "Vertical highway and horizontal road use crossover 0x4b")
+	_check(Highways.undo(crossing_city, crossing).ok, "Highway crossover can be undone")
+	_check(crossing_city.set_building_id(10, 10, 0), "Highway obstruction fixture removes road")
+	_check(crossing_city.set_building_id(14, 10, 0xd0), "Highway obstruction fixture places a building")
+	var partial := Highways.apply(crossing_city, 6, 1, Vector2i(10, 10), Vector2i(16, 10))
+	_check(partial.ok and partial.stopped_early, "Highway route stops at an obstruction")
+	_check(partial.sections == [Vector2i(10, 10), Vector2i(12, 10)], "Highway route keeps its clear prefix")
+	_check(partial.cost == 200, "Partial highway charges only its clear sections")
+	_check(Highways.undo(crossing_city, partial).ok, "Partial highway can be undone")
+	_check(crossing_city.set_tile_flag(10, 10, 0x04, true), "Highway water fixture sets water")
+	var water := Highways.apply(crossing_city, 6, 1, Vector2i(10, 10), Vector2i(10, 10))
+	_check(not water.ok and water.error.contains("bridges"), "Highway reports its unimplemented bridge path")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
