@@ -29,6 +29,7 @@ const Networks = preload("res://src/tools/network_command.gd")
 const Hydro = preload("res://src/tools/hydro_command.gd")
 const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
 const Onramps = preload("res://src/tools/onramp_command.gd")
+const Tunnels = preload("res://src/tools/tunnel_command.gd")
 
 var failures := 0
 var checks := 0
@@ -66,6 +67,7 @@ func _init() -> void:
 	_test_hydro_command(reference_root)
 	_test_subway_to_rail_command(reference_root)
 	_test_onramp_command(reference_root)
+	_test_tunnel_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -1273,6 +1275,54 @@ func _test_onramp_command(reference_root: String) -> void:
 	_check(city.set_building_id(20, 19, 0x1d), "On-ramp funds fixture places north road")
 	var unaffordable := Onramps.apply(city, 6, 3, Vector2i(20, 20))
 	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "On-ramp command reports insufficient funds")
+
+
+func _test_tunnel_command(reference_root: String) -> void:
+	_check(Tunnels.supports_tool(6, 2), "Tunnel command supports its catalog tool")
+	_check(not Tunnels.supports_tool(6, 1), "Tunnel command rejects the highway tool")
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT"]:
+		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
+			"Tunnel fixture clears %s" % chunk_id,
+		)
+	_check(document.set_misc_i32(0x14, 1000), "Tunnel fixture sets funds")
+	_check(document.set_misc_u32(0x01f0, 16383), "Tunnel fixture counts clear tiles")
+	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 1), "Tunnel fixture counts road")
+	var city := CityModel.from_document(document)
+	_check(city.set_terrain_id(20, 20, 3), "Tunnel fixture places an east-facing slope")
+	_check(city.set_land_altitude(20, 20, 5), "Tunnel fixture sets start altitude")
+	_check(city.set_land_altitude(21, 20, 6), "Tunnel fixture raises the hill interior")
+	_check(city.set_terrain_id(22, 20, 1), "Tunnel fixture places the opposite slope")
+	_check(city.set_land_altitude(22, 20, 5), "Tunnel fixture sets finish altitude")
+	_check(city.set_building_id(19, 20, 0x1d), "Tunnel fixture places an adjacent road")
+	var command := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
+	_check(command.ok, "East-facing tunnel succeeds: %s" % command.error)
+	_check(command.finish == Vector2i(22, 20) and command.points.size() == 3, "Tunnel finds the first tile at the start altitude")
+	_check(city.building_id(20, 20) == 0x41 and city.building_id(22, 20) == 0x3f, "Tunnel writes paired east and west entrances")
+	_check(city.tunnel_levels(20, 20) == 1 and city.tunnel_levels(21, 20) == 2 and city.tunnel_levels(22, 20) == 1, "Tunnel writes recovered ALTM depths")
+	_check(city.building_id(19, 20) == 0x1e, "Tunnel reconnects an adjacent road")
+	_check(command.cost == 450 and city.funds() == 550, "Tunnel charges each traversed tile")
+	_check(Tunnels.undo(city, command).ok, "Tunnel placement can be undone")
+	_check(city.building_id(20, 20) == 0 and city.building_id(22, 20) == 0, "Tunnel undo restores both entrances")
+	_check(city.tunnel_levels(21, 20) == 0 and city.funds() == 1000, "Tunnel undo restores ALTM and funds")
+
+	_check(city.set_tunnel_levels(21, 20, 1), "Tunnel conflict fixture places an existing tunnel")
+	var conflict := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
+	_check(not conflict.ok and conflict.error.contains("another tunnel"), "Tunnel rejects an existing ALTM tunnel path")
+	_check(city.set_tunnel_levels(21, 20, 0), "Tunnel conflict fixture removes existing tunnel")
+	_check(city.set_underground_id(21, 20, 0x10), "Tunnel conflict fixture places a pipe at depth two")
+	var pipe_conflict := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
+	_check(not pipe_conflict.ok and pipe_conflict.error.contains("underground"), "Tunnel rejects a pipe at the matching depth")
+	_check(city.set_underground_id(21, 20, 0), "Tunnel conflict fixture removes pipe")
+	_check(city.set_terrain_id(22, 20, 2), "Tunnel exit fixture changes the opposite slope")
+	var no_exit := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
+	_check(not no_exit.ok and no_exit.error.contains("opposite slope"), "Tunnel requires the recovered opposite exit slope")
+	_check(city.set_terrain_id(22, 20, 1), "Tunnel funds fixture restores the exit slope")
+	_check(city.set_funds(449), "Tunnel funds fixture sets insufficient funds")
+	var unaffordable := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
+	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "Tunnel command reports insufficient funds")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:

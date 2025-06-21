@@ -432,6 +432,9 @@ static func _apply_payloads(
 
 
 static func _refresh_city_arrays(city: CityState) -> void:
+	var altitude := city.document.find_chunk("ALTM").decoded_payload
+	for index in CityState.TILE_COUNT:
+		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()

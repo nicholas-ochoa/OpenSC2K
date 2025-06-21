@@ -19,6 +19,7 @@ const Networks = preload("res://src/tools/network_command.gd")
 const Hydro = preload("res://src/tools/hydro_command.gd")
 const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
 const Onramps = preload("res://src/tools/onramp_command.gd")
+const Tunnels = preload("res://src/tools/tunnel_command.gd")
 
 var city: CityState
 var current_document: Sc2File
@@ -339,6 +340,7 @@ func _update_edit_state() -> void:
 	var is_hydro_tool := Hydro.supports_tool(selected_group, selected_subtool)
 	var is_subway_to_rail_tool := SubwayToRail.supports_tool(selected_group, selected_subtool)
 	var is_onramp_tool := Onramps.supports_tool(selected_group, selected_subtool)
+	var is_tunnel_tool := Tunnels.supports_tool(selected_group, selected_subtool)
 	var is_sign_tool := selected_group == 15
 	var is_query_tool := selected_group == 16
 	var is_center_tool := selected_group == 17
@@ -353,6 +355,7 @@ func _update_edit_state() -> void:
 			or is_hydro_tool
 			or is_subway_to_rail_tool
 			or is_onramp_tool
+			or is_tunnel_tool
 			or is_sign_tool
 			or is_query_tool
 			or is_center_tool
@@ -377,6 +380,8 @@ func _update_edit_state() -> void:
 		status_label.text = "Subway-to-Rail Connection selected. Click beside a rail or subway."
 	elif is_onramp_tool:
 		status_label.text = "On-ramp selected. Click on clear terrain between a highway and a perpendicular road."
+	elif is_tunnel_tool:
+		status_label.text = "Tunnel selected. Click a cardinal slope that faces through a hill."
 	elif is_sign_tool:
 		status_label.text = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 	elif is_query_tool:
@@ -482,6 +487,20 @@ func _apply_map_selection(
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built an on-ramp for $%s." % _format_number(onramp.cost)
 		return
+	if Tunnels.supports_tool(selected_group, selected_subtool):
+		var tunnel := Tunnels.apply(city, selected_group, selected_subtool, finish)
+		if not tunnel.ok:
+			_show_error("Cannot build tunnel: %s" % tunnel.error)
+			return
+		last_edit_command = tunnel
+		undo_button.disabled = false
+		_refresh_details()
+		_refresh_map()
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Built a %d-tile tunnel for $%s." % [
+			tunnel.points.size(), _format_number(tunnel.cost)
+		]
+		return
 	if Buildings.supports_tool(selected_group, selected_subtool):
 		var building := Buildings.apply(
 			city, selected_group, selected_subtool, finish, nuisance_random, tool_random
@@ -538,6 +557,8 @@ func _undo_last_edit() -> void:
 		result = SubwayToRail.undo(city, last_edit_command)
 	elif command_type == "onramp":
 		result = Onramps.undo(city, last_edit_command)
+	elif command_type == "tunnel":
+		result = Tunnels.undo(city, last_edit_command)
 	else:
 		result = Zones.undo(city, last_edit_command)
 	if not result.ok:
@@ -562,6 +583,8 @@ func _undo_last_edit() -> void:
 		status_label.text = "Removed the last subway-to-rail connection."
 	elif command_type == "onramp":
 		status_label.text = "Removed the last on-ramp."
+	elif command_type == "tunnel":
+		status_label.text = "Removed the last tunnel."
 	else:
 		status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
 
