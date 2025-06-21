@@ -21,6 +21,7 @@ const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
 const Onramps = preload("res://src/tools/onramp_command.gd")
 const Tunnels = preload("res://src/tools/tunnel_command.gd")
 const Highways = preload("res://src/tools/highway_command.gd")
+const Demolish = preload("res://src/tools/demolish_command.gd")
 
 var city: CityState
 var current_document: Sc2File
@@ -343,6 +344,7 @@ func _update_edit_state() -> void:
 	var is_onramp_tool := Onramps.supports_tool(selected_group, selected_subtool)
 	var is_tunnel_tool := Tunnels.supports_tool(selected_group, selected_subtool)
 	var is_highway_tool := Highways.supports_tool(selected_group, selected_subtool)
+	var is_demolish_tool := Demolish.supports_tool(selected_group, selected_subtool)
 	var is_sign_tool := selected_group == 15
 	var is_query_tool := selected_group == 16
 	var is_center_tool := selected_group == 17
@@ -359,11 +361,12 @@ func _update_edit_state() -> void:
 			or is_onramp_tool
 			or is_tunnel_tool
 			or is_highway_tool
+			or is_demolish_tool
 			or is_sign_tool
 			or is_query_tool
 			or is_center_tool
 		),
-		"rectangle" if is_zone_tool else ("path" if is_landscape_tool or is_network_tool or is_highway_tool else "point"),
+		"rectangle" if is_zone_tool else ("path" if is_landscape_tool or is_network_tool or is_highway_tool or is_demolish_tool else "point"),
 	)
 	if city == null or status_label == null:
 		return
@@ -387,6 +390,8 @@ func _update_edit_state() -> void:
 		status_label.text = "Tunnel selected. Click a cardinal slope that faces through a hill."
 	elif is_highway_tool:
 		status_label.text = "Highway selected. Drag between city tiles to build a two-tile-wide route."
+	elif is_demolish_tool:
+		status_label.text = "Demolish selected. Click or drag across eligible city tiles."
 	elif is_sign_tool:
 		status_label.text = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 	elif is_query_tool:
@@ -435,6 +440,26 @@ func _apply_map_selection(
 		]
 		if landscape.skipped_insufficient > 0:
 			status_label.text += " Funds were not sufficient for %d later path tiles." % landscape.skipped_insufficient
+		return
+	if Demolish.supports_tool(selected_group, selected_subtool):
+		var demolition := Demolish.apply_path(
+			city, selected_group, selected_subtool, path, tool_random
+		)
+		if not demolition.ok:
+			_show_error("Cannot demolish: %s" % demolition.error)
+			return
+		last_edit_command = demolition
+		undo_button.disabled = false
+		_refresh_details()
+		_refresh_map()
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Applied %d demolition actions for $%s." % [
+			demolition.action_count, _format_number(demolition.cost)
+		]
+		if demolition.skipped_specialized > 0:
+			status_label.text += " %d specialized structures were not changed." % demolition.skipped_specialized
+		if demolition.easter_events > 0:
+			status_label.text += " A hidden tree event stopped demolition on %d tiles." % demolition.easter_events
 		return
 	if Networks.supports_tool(selected_group, selected_subtool):
 		var network := Networks.apply(city, selected_group, selected_subtool, start, finish)
@@ -582,6 +607,8 @@ func _undo_last_edit() -> void:
 		result = Tunnels.undo(city, last_edit_command)
 	elif command_type == "highway":
 		result = Highways.undo(city, last_edit_command)
+	elif command_type == "demolish":
+		result = Demolish.undo(city, last_edit_command, tool_random)
 	else:
 		result = Zones.undo(city, last_edit_command)
 	if not result.ok:
@@ -610,6 +637,8 @@ func _undo_last_edit() -> void:
 		status_label.text = "Removed the last tunnel."
 	elif command_type == "highway":
 		status_label.text = "Restored the previous highway route across %d tiles." % result.restored_tiles
+	elif command_type == "demolish":
+		status_label.text = "Restored %d demolished tiles and the previous funds value." % result.restored_tiles
 	else:
 		status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
 

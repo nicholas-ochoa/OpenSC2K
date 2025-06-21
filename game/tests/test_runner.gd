@@ -31,6 +31,7 @@ const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
 const Onramps = preload("res://src/tools/onramp_command.gd")
 const Tunnels = preload("res://src/tools/tunnel_command.gd")
 const Highways = preload("res://src/tools/highway_command.gd")
+const Demolish = preload("res://src/tools/demolish_command.gd")
 
 var failures := 0
 var checks := 0
@@ -70,6 +71,7 @@ func _init() -> void:
 	_test_onramp_command(reference_root)
 	_test_tunnel_command(reference_root)
 	_test_highway_command(reference_root)
+	_test_demolish_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -1377,6 +1379,64 @@ func _test_highway_command(reference_root: String) -> void:
 	_check(crossing_city.set_tile_flag(10, 10, 0x04, true), "Highway water fixture sets water")
 	var water := Highways.apply(crossing_city, 6, 1, Vector2i(10, 10), Vector2i(10, 10))
 	_check(not water.ok and water.error.contains("bridges"), "Highway reports its unimplemented bridge path")
+
+
+func _test_demolish_command(reference_root: String) -> void:
+	_check(Demolish.supports_tool(0, 0), "Demolish command supports its catalog tool")
+	_check(not Demolish.supports_tool(0, 4), "Demolish command rejects De-zone")
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Demolish fixture clears %s" % chunk_id,
+		)
+	_check(document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Demolish fixture clears XLAB")
+	_check(document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Demolish fixture clears XMIC")
+	_check(document.set_misc_i32(0x14, 1000), "Demolish fixture sets funds")
+	_check(document.set_misc_u32(0x01f0, 16384), "Demolish fixture counts clear tiles")
+	var city := CityModel.from_document(document)
+	var placement_random := GameRandom.new(11)
+	var process_random := Random.new(17)
+	var hospital := Buildings.apply(city, 13, 2, Vector2i(20, 20), placement_random, process_random)
+	_check(hospital.ok and hospital.overlay_id == 61, "Demolish fixture places a dynamic hospital")
+	var demolition_random := Random.new(29)
+	var building := Demolish.apply_path(city, 0, 0, [Vector2i(20, 20)], demolition_random)
+	_check(building.ok and building.action_count == 1 and building.tile_indices.size() == 9, "Demolish removes a complete 3-by-3 building")
+	for x in range(19, 22):
+		for y in range(19, 22):
+			_check(city.building_id(x, y) >= 1 and city.building_id(x, y) <= 4, "Demolished dry building becomes rubble")
+			_check((city.zones[x * 128 + y] & 0xf0) == 0, "Demolish clears building corner bits")
+			_check((city.tile_flags[x * 128 + y] & 0xc2) == 0, "Demolish clears flip, powered, and powerable flags")
+			_check(city.text_overlay_id(x, y) == 0, "Demolish clears dynamic text overlays")
+	_check(city.microsim(10).tile_id == 0 and city.label(61).is_empty(), "Demolish releases dynamic XMIC and XLAB records")
+	_check(building.cost == 1 and city.funds() == 499, "One building demolition costs one dollar")
+	_check(Demolish.undo(city, building, demolition_random).ok, "Building demolition can be undone")
+	_check(city.building_id(20, 20) == 0xd1 and city.funds() == 500, "Demolish undo restores the building and funds")
+
+	var simple_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			simple_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Simple demolish fixture clears %s" % chunk_id,
+		)
+	_check(simple_document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Simple demolish fixture clears XLAB")
+	_check(simple_document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Simple demolish fixture clears XMIC")
+	_check(simple_document.set_misc_i32(0x14, 10), "Simple demolish fixture sets funds")
+	_check(simple_document.set_misc_u32(0x01f0, 16383), "Simple demolish fixture counts clear tiles")
+	_check(simple_document.set_misc_u32(0x01f0 + 3 * 4, 1), "Simple demolish fixture counts rubble")
+	var simple_city := CityModel.from_document(simple_document)
+	_check(simple_city.set_building_id(10, 10, 3), "Simple demolish fixture places rubble")
+	var rubble := Demolish.apply_path(simple_city, 0, 0, [Vector2i(10, 10)], demolition_random)
+	_check(rubble.ok and simple_city.building_id(10, 10) == 0, "Demolish clears rubble")
+	_check(rubble.cost == 1 and simple_city.funds() == 9, "Rubble demolition charges one dollar")
+	_check(Demolish.undo(simple_city, rubble, demolition_random).ok, "Rubble demolition can be undone")
+	_check(simple_city.set_zone_id(10, 10, 7), "Protected demolish fixture sets military zone")
+	var military := Demolish.apply_path(simple_city, 0, 0, [Vector2i(10, 10)], demolition_random)
+	_check(not military.ok and military.error.contains("eligible"), "Demolish rejects military zones")
+	_check(simple_city.set_zone_id(10, 10, 0), "Highway demolish fixture clears military zone")
+	_check(simple_city.set_building_id(10, 10, 0x49), "Highway demolish fixture places highway")
+	var highway := Demolish.apply_path(simple_city, 0, 0, [Vector2i(10, 10)], demolition_random)
+	_check(not highway.ok and highway.error.contains("specialized"), "Demolish reports specialized highway work")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
