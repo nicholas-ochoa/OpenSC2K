@@ -32,6 +32,7 @@ const Onramps = preload("res://src/tools/onramp_command.gd")
 const Tunnels = preload("res://src/tools/tunnel_command.gd")
 const Highways = preload("res://src/tools/highway_command.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
+const TerrainTools = preload("res://src/tools/terrain_command.gd")
 
 var failures := 0
 var checks := 0
@@ -72,6 +73,7 @@ func _init() -> void:
 	_test_tunnel_command(reference_root)
 	_test_highway_command(reference_root)
 	_test_demolish_command(reference_root)
+	_test_terrain_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -1437,6 +1439,57 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(simple_city.set_building_id(10, 10, 0x49), "Highway demolish fixture places highway")
 	var highway := Demolish.apply_path(simple_city, 0, 0, [Vector2i(10, 10)], demolition_random)
 	_check(not highway.ok and highway.error.contains("specialized"), "Demolish reports specialized highway work")
+
+
+func _test_terrain_command(reference_root: String) -> void:
+	_check(TerrainTools.supports_tool(0, 1), "Terrain command supports Level Terrain")
+	_check(TerrainTools.supports_tool(0, 2), "Terrain command supports Raise Terrain")
+	_check(TerrainTools.supports_tool(0, 3), "Terrain command supports Lower Terrain")
+	_check(not TerrainTools.supports_tool(0, 0), "Terrain command rejects Demolish")
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT"]:
+		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
+			"Terrain fixture clears %s" % chunk_id,
+		)
+	_check(document.set_misc_i32(0x14, 200), "Terrain fixture sets funds")
+	_check(document.set_misc_u32(0x0e40, 0), "Terrain fixture sets sea level")
+	_check(document.set_misc_u32(0x01f0, 16384), "Terrain fixture counts clear tiles")
+	var city := CityModel.from_document(document)
+	var raised := TerrainTools.apply_path(city, 0, 2, Vector2i(20, 20), [Vector2i(20, 20)])
+	_check(raised.ok and city.land_altitude(20, 20) == 1, "Raise Terrain increases the selected altitude")
+	_check(raised.cost == 25 and city.funds() == 175, "Raise Terrain charges each raised dependency")
+	_check(city.terrain_id(20, 19) == 4 and city.terrain_id(21, 20) == 1, "Raise Terrain uses the recovered terrain shape table")
+	_check(TerrainTools.undo(city, raised).ok, "Raise Terrain can be undone")
+	_check(city.land_altitude(20, 20) == 0 and city.funds() == 200, "Raise undo restores altitude and funds")
+
+	_check(city.set_land_altitude(20, 20, 1), "Lower Terrain fixture raises the selected tile")
+	var lowered := TerrainTools.apply_path(city, 0, 3, Vector2i(20, 20), [Vector2i(20, 20)])
+	_check(lowered.ok and city.land_altitude(20, 20) == 0, "Lower Terrain decreases the selected altitude")
+	_check(lowered.cost == 25 and city.funds() == 175, "Lower Terrain charges the selected height change")
+	_check(TerrainTools.undo(city, lowered).ok, "Lower Terrain can be undone")
+
+	_check(city.set_land_altitude(30, 30, 5), "Level Terrain fixture sets the source height")
+	_check(city.set_land_altitude(31, 30, 3), "Level Terrain fixture sets a lower path height")
+	_check(city.set_land_altitude(31, 29, 3), "Level Terrain fixture sets the north dependency height")
+	_check(city.set_land_altitude(32, 30, 3), "Level Terrain fixture sets the east dependency height")
+	_check(city.set_land_altitude(31, 31, 3), "Level Terrain fixture sets the south dependency height")
+	var leveled := TerrainTools.apply_path(
+		city, 0, 1, Vector2i(30, 30), [Vector2i(30, 30), Vector2i(31, 30)]
+	)
+	_check(leveled.ok and leveled.target_altitude == 5, "Level Terrain captures the drag-start altitude")
+	_check(city.land_altitude(31, 30) == 4, "Level Terrain moves a path tile one level toward its target")
+	_check(TerrainTools.undo(city, leveled).ok, "Level Terrain can be undone")
+	_check(city.set_land_altitude(50, 50, 1), "Lower propagation fixture sets the selected height")
+	_check(city.set_land_altitude(51, 50, 3), "Lower propagation fixture sets a high neighbor")
+	var propagated := TerrainTools.apply_path(city, 0, 3, Vector2i(50, 50), [Vector2i(50, 50)])
+	_check(propagated.ok and city.land_altitude(50, 50) == 0, "Lower Terrain applies its selected change before propagation")
+	_check(city.land_altitude(51, 50) == 2 and propagated.cost == 50, "Lower Terrain lowers a neighbor more than one level higher")
+	_check(TerrainTools.undo(city, propagated).ok, "Propagated Lower Terrain can be undone")
+	_check(city.set_building_id(40, 40, 0x1d), "Terrain conflict fixture places a road")
+	var conflict := TerrainTools.apply_path(city, 0, 2, Vector2i(40, 40), [Vector2i(40, 40)])
+	_check(not conflict.ok and conflict.error.contains("structure"), "Terrain command reports unimplemented structure conflicts")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
