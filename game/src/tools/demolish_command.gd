@@ -10,15 +10,24 @@ const DYNAMIC_LABEL_LAST := 200
 const MICROSIM_LABEL_BASE := 51
 const PROTECTED_CONNECTION_LABEL := 0xff
 const FLAG_CLEAR_AFTER_STRUCTURE := 0x3d
-const SPECIAL_HIGHWAY_FIRST := 0x49
-const SPECIAL_HIGHWAY_LAST := 0x5c
-const SPECIAL_SHAPED_HIGHWAY_FIRST := 0x61
-const SPECIAL_SHAPED_HIGHWAY_LAST := 0x6b
+const FLAG_FLIPPED := 0x02
+const FLAG_WATER := 0x04
+const HIGHWAY_STRAIGHT_FIRST := 0x49
+const HIGHWAY_STRAIGHT_LAST := 0x50
+const BRIDGE_FIRST := 0x51
+const BRIDGE_LAST := 0x5c
+const HIGHWAY_SHAPED_FIRST := 0x61
+const HIGHWAY_SHAPED_LAST := 0x69
+const REINFORCED_BRIDGE_FIRST := 0x6a
+const REINFORCED_BRIDGE_LAST := 0x6b
 const TUNNEL_FIRST := 0x3f
 const TUNNEL_LAST := 0x42
-const FIRE_FIRST := 0xdd
-const FIRE_LAST := 0xe0
+const RUNWAY_FIRST := 0xdd
+const RUNWAY_LAST := 0xde
+const PIER_FIRST := 0xdf
+const PIER_LAST := 0xe0
 const SUBWAY_STATION := 0xe9
+const TUNNEL_MASK := 0x7c00
 
 const CORNER_BOTTOM_LEFT := [0x10, 0x20, 0x40, 0x80]
 const CORNER_BOTTOM_RIGHT := [0x20, 0x40, 0x80, 0x10]
@@ -50,7 +59,12 @@ static func apply_path(
 	var old_payloads := BuildingCommand._city_payloads(city)
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
+	var altitude_chunk := city.document.find_chunk("ALTM")
+	if altitude_chunk == null or altitude_chunk.decoded_payload.size() != CityState.TILE_COUNT * 2:
+		return {"ok": false, "error": "required altitude data is missing or invalid"}
+	old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
 	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
+	var altitude: PackedByteArray = changed_payloads.ALTM
 	var buildings: PackedByteArray = changed_payloads.XBLD
 	var terrain: PackedByteArray = changed_payloads.XTER
 	var zones: PackedByteArray = changed_payloads.XZON
@@ -77,6 +91,7 @@ static func apply_path(
 			continue
 		var result := _demolish_point(
 			city,
+			altitude,
 			buildings,
 			terrain,
 			zones,
@@ -107,17 +122,18 @@ static func apply_path(
 		if skipped_insufficient > 0:
 			return {"ok": false, "error": "insufficient funds", "cost": cost_per_action}
 		if skipped_specialized > 0:
-			return {"ok": false, "error": "specialized highway, bridge, tunnel, or fire demolition is not implemented"}
+			return {"ok": false, "error": "reinforced-bridge or malformed-network demolition is not implemented"}
 		return {"ok": false, "error": "no eligible tiles changed"}
 	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - total_cost)
 
 	var changed_ids := PackedStringArray()
-	for chunk_id in ["XBLD", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not BuildingCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		random.state = random_state_before
 		return {"ok": false, "error": "cannot store demolition changes"}
+	_refresh_altitude(city, changed_payloads.ALTM)
 	return {
 		"ok": true,
 		"command_type": "demolish",
@@ -156,6 +172,7 @@ static func undo(city: CityState, command: Dictionary, random: SimRandom) -> Dic
 			return {"ok": false, "error": "city changed after this demolish command"}
 	if not BuildingCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore demolition changes"}
+	_refresh_altitude(city, old_payloads.ALTM)
 	random.state = int(command.random_state_before)
 	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
 	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
@@ -163,6 +180,7 @@ static func undo(city: CityState, command: Dictionary, random: SimRandom) -> Dic
 
 static func _demolish_point(
 	city: CityState,
+	altitude: PackedByteArray,
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	zones: PackedByteArray,
@@ -181,17 +199,49 @@ static func _demolish_point(
 		return {"changed": false}
 	if text_overlays[index] == PROTECTED_CONNECTION_LABEL:
 		return {"changed": false}
-	if terrain[index] >= 0x30:
-		return {"changed": false, "specialized": true}
-	if tile_id == 0:
-		return {"changed": false}
+	if tile_id >= TUNNEL_FIRST and tile_id <= TUNNEL_LAST:
+		return _demolish_tunnel(
+			altitude, buildings, terrain, zones, flags, misc, point, tile_id
+		)
+	if tile_id >= BRIDGE_FIRST and tile_id <= BRIDGE_LAST:
+		return _demolish_bridge(
+			altitude, buildings, terrain, zones, underground, flags, misc, point
+		)
+	if tile_id >= RUNWAY_FIRST and tile_id <= PIER_LAST:
+		return _demolish_transport_component(
+			buildings, terrain, zones, underground, flags, misc, point, tile_id, random
+		)
+	if _is_highway_tile(tile_id):
+		return _demolish_highway_section(
+			buildings,
+			terrain,
+			zones,
+			underground,
+			flags,
+			text_overlays,
+			labels,
+			microsims,
+			misc,
+			point,
+			random,
+			city.compass_rotation()
+		)
 	if _requires_special_demolition(tile_id):
 		return {"changed": false, "specialized": true}
+	var had_structure := tile_id >= 0x0d
+	var was_water := (flags[index] & FLAG_WATER) != 0
+	if tile_id == 0:
+		if terrain[index] < 0x30 and not was_water:
+			return {"changed": false}
+		_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
+		return {"changed": true, "indices": PackedInt32Array([index])}
 
 	if tile_id < 0x0d:
 		if tile_id >= 0x06 and random.next_u15() % 20 == 0:
 			return {"changed": true, "easter_event": true, "indices": PackedInt32Array()}
 		NetworkCommand._replace_building(buildings, zones, misc, index, 0)
+		if terrain[index] >= 0x30 or was_water:
+			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
 		_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, [point])
 		return {"changed": true, "indices": PackedInt32Array([index])}
 
@@ -216,16 +266,305 @@ static func _demolish_point(
 	_retile_after_demolition(
 		buildings, terrain, zones, underground, flags, misc, changed_points
 	)
+	if terrain[index] >= 0x30 or was_water:
+		if had_structure and was_water:
+			_retile_surface_water(terrain, flags, point, true)
+		else:
+			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
 	return {"changed": true, "indices": indices}
 
 
 static func _requires_special_demolition(tile_id: int) -> bool:
+	return tile_id >= REINFORCED_BRIDGE_FIRST and tile_id <= REINFORCED_BRIDGE_LAST
+
+
+static func _is_highway_tile(tile_id: int) -> bool:
 	return (
-		(tile_id >= SPECIAL_HIGHWAY_FIRST and tile_id <= SPECIAL_HIGHWAY_LAST)
-		or (tile_id >= SPECIAL_SHAPED_HIGHWAY_FIRST and tile_id <= SPECIAL_SHAPED_HIGHWAY_LAST)
-		or (tile_id >= TUNNEL_FIRST and tile_id <= TUNNEL_LAST)
-		or (tile_id >= FIRE_FIRST and tile_id <= FIRE_LAST)
+		(tile_id >= HIGHWAY_STRAIGHT_FIRST and tile_id <= HIGHWAY_STRAIGHT_LAST)
+		or (tile_id >= HIGHWAY_SHAPED_FIRST and tile_id <= HIGHWAY_SHAPED_LAST)
 	)
+
+
+static func _demolish_tunnel(
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	start: Vector2i,
+	tile_id: int
+) -> Dictionary:
+	var direction: Vector2i = [
+		Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1)
+	][tile_id - TUNNEL_FIRST]
+	var points: Array[Vector2i] = [start]
+	var current := start + direction
+	while current.x >= 0 and current.x < 128 and current.y >= 0 and current.y < 128:
+		points.append(current)
+		var current_id := int(buildings[current.x * CityState.MAP_SIZE + current.y])
+		if current_id >= TUNNEL_FIRST and current_id <= TUNNEL_LAST:
+			break
+		current += direction
+	if points.size() < 2 or current.x < 0 or current.x >= 128 or current.y < 0 or current.y >= 128:
+		return {"changed": false, "specialized": true}
+
+	for point in points:
+		var index := point.x * CityState.MAP_SIZE + point.y
+		_clear_tunnel_level(altitude, index)
+	for entrance in [points[0], points[-1]]:
+		var entrance_index: int = entrance.x * CityState.MAP_SIZE + entrance.y
+		NetworkCommand._replace_building(buildings, zones, misc, entrance_index, 0)
+		zones[entrance_index] &= 0x0f
+		_retile_adjacent_roads(buildings, terrain, zones, flags, misc, entrance)
+	var indices := PackedInt32Array()
+	for point in points:
+		indices.append(point.x * CityState.MAP_SIZE + point.y)
+	return {"changed": true, "indices": indices}
+
+
+static func _demolish_transport_component(
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	start: Vector2i,
+	tile_id: int,
+	random: SimRandom
+) -> Dictionary:
+	var first := RUNWAY_FIRST if tile_id <= RUNWAY_LAST else PIER_FIRST
+	var last := RUNWAY_LAST if tile_id <= RUNWAY_LAST else PIER_LAST
+	var make_rubble := first == RUNWAY_FIRST
+	var stack: Array[Vector2i] = [start]
+	var visited := {}
+	var component: Array[Vector2i] = []
+	while not stack.is_empty():
+		var point: Vector2i = stack.pop_back()
+		if visited.has(point):
+			continue
+		visited[point] = true
+		var index := point.x * CityState.MAP_SIZE + point.y
+		var current_id := int(buildings[index])
+		if current_id < first or current_id > last:
+			continue
+		component.append(point)
+		for offset in DIRECTIONS:
+			var neighbor: Vector2i = point + offset
+			if neighbor.x >= 0 and neighbor.x < 128 and neighbor.y >= 0 and neighbor.y < 128:
+				stack.append(neighbor)
+
+	var indices := PackedInt32Array()
+	for point in component:
+		var index := point.x * CityState.MAP_SIZE + point.y
+		var replacement := 1 + (random.next_u15() & 3) if make_rubble else 0
+		NetworkCommand._replace_building(buildings, zones, misc, index, replacement)
+		zones[index] &= 0x0f
+		flags[index] &= FLAG_CLEAR_AFTER_STRUCTURE
+		indices.append(index)
+	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, component)
+	return {"changed": not component.is_empty(), "indices": indices}
+
+
+static func _demolish_highway_section(
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	text_overlays: PackedByteArray,
+	labels: PackedByteArray,
+	microsims: PackedByteArray,
+	misc: PackedByteArray,
+	selected: Vector2i,
+	random: SimRandom,
+	rotation: int
+) -> Dictionary:
+	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
+	if not HighwayCommand._anchor_is_in_bounds(anchor):
+		return {"changed": false, "specialized": true}
+	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+		var point: Vector2i = anchor + offset
+		if not _is_highway_tile(buildings[point.x * CityState.MAP_SIZE + point.y]):
+			return {"changed": false, "specialized": true}
+
+	var points: Array[Vector2i] = []
+	var indices := PackedInt32Array()
+	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+		var point: Vector2i = anchor + offset
+		var index := point.x * CityState.MAP_SIZE + point.y
+		var replacement := 1 + (random.next_u15() & 3) if terrain[index] == 0 else 0
+		NetworkCommand._replace_building(buildings, zones, misc, index, replacement)
+		zones[index] &= 0x0f
+		flags[index] &= FLAG_CLEAR_AFTER_STRUCTURE
+		_release_overlay(text_overlays, labels, microsims, index)
+		points.append(point)
+		indices.append(index)
+	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points)
+
+	var adjacent_sections: Array[Vector2i] = []
+	for direction in DIRECTIONS:
+		var adjacent: Vector2i = anchor + direction * 2
+		if HighwayCommand._anchor_is_in_bounds(adjacent) and HighwayCommand._section_exists(buildings, adjacent):
+			adjacent_sections.append(adjacent)
+	if not adjacent_sections.is_empty():
+		HighwayCommand._retile_affected_sections(buildings, zones, misc, adjacent_sections, rotation)
+	return {"changed": true, "indices": indices}
+
+
+static func _demolish_bridge(
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	selected: Vector2i
+) -> Dictionary:
+	var selected_index := selected.x * CityState.MAP_SIZE + selected.y
+	var direction := Vector2i(1, 0) if (flags[selected_index] & FLAG_FLIPPED) != 0 else Vector2i(0, 1)
+	var first := selected
+	while _point_is_in_bounds(first - direction):
+		var previous := first - direction
+		var previous_id := int(buildings[previous.x * CityState.MAP_SIZE + previous.y])
+		if previous_id < BRIDGE_FIRST or previous_id > BRIDGE_LAST:
+			break
+		first = previous
+	var finish := selected
+	while _point_is_in_bounds(finish + direction):
+		var next := finish + direction
+		var next_id := int(buildings[next.x * CityState.MAP_SIZE + next.y])
+		if next_id < BRIDGE_FIRST or next_id > BRIDGE_LAST:
+			break
+		finish = next
+
+	var points: Array[Vector2i] = []
+	var indices := PackedInt32Array()
+	var current := first
+	while true:
+		var index := current.x * CityState.MAP_SIZE + current.y
+		NetworkCommand._replace_building(buildings, zones, misc, index, 0)
+		zones[index] &= 0x0f
+		flags[index] &= ~FLAG_FLIPPED & 0xff
+		points.append(current)
+		indices.append(index)
+		if current == finish:
+			break
+		current += direction
+
+	for bank in [first - direction, finish + direction]:
+		if not _point_is_in_bounds(bank):
+			continue
+		var bank_index: int = bank.x * CityState.MAP_SIZE + bank.y
+		if (flags[bank_index] & FLAG_WATER) != 0:
+			continue
+		NetworkCommand._replace_building(buildings, zones, misc, bank_index, 0)
+		var land := _land_altitude(altitude, bank_index)
+		_set_land_altitude(altitude, bank_index, maxi(0, land - 1))
+		flags[bank_index] |= FLAG_WATER
+		flags[bank_index] &= ~FLAG_FLIPPED & 0xff
+		TerrainCommand._retile_region(
+			altitude,
+			buildings,
+			terrain,
+			zones,
+			flags,
+			misc,
+			PackedInt32Array([bank_index]),
+			BuildingCommand._read_u32_be(misc, 0x0e40) & 0x1f
+		)
+		points.append(bank)
+		indices.append(bank_index)
+	_retile_surface_water(terrain, flags, selected, true)
+	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points)
+	return {"changed": true, "indices": indices}
+
+
+static func _remove_surface_water(
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i
+) -> void:
+	var index := point.x * CityState.MAP_SIZE + point.y
+	if terrain[index] == 0x3e:
+		TerrainCommand._retile_region(
+			altitude,
+			buildings,
+			terrain,
+			zones,
+			flags,
+			misc,
+			PackedInt32Array([index]),
+			BuildingCommand._read_u32_be(misc, 0x0e40) & 0x1f
+		)
+	else:
+		terrain[index] = 0
+	flags[index] &= ~FLAG_WATER & 0xff
+	_retile_surface_water(terrain, flags, point, false)
+
+
+static func _retile_surface_water(
+	terrain: PackedByteArray, flags: PackedByteArray, point: Vector2i, include_center: bool
+) -> void:
+	for x in range(maxi(0, point.x - 1), mini(128, point.x + 2)):
+		for y in range(maxi(0, point.y - 1), mini(128, point.y + 2)):
+			if not include_center and x == point.x and y == point.y:
+				continue
+			var index := x * CityState.MAP_SIZE + y
+			if (flags[index] & FLAG_WATER) == 0:
+				continue
+			var shape := LandscapeCommand._water_shape(flags, x, y)
+			var transition := LandscapeCommand._water_transition(terrain[index], shape)
+			if not transition.early_return:
+				terrain[index] = transition.value
+
+
+static func _retile_adjacent_roads(
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i
+) -> void:
+	for offset in DIRECTIONS:
+		var neighbor: Vector2i = point + offset
+		if _point_is_in_bounds(neighbor):
+			NetworkCommand._retile_surface(
+				buildings, terrain, zones, flags, misc, neighbor, NetworkCommand.MODE_ROAD
+			)
+
+
+static func _clear_tunnel_level(altitude: PackedByteArray, index: int) -> void:
+	var offset := index * 2
+	var word := (altitude[offset] << 8) | altitude[offset + 1]
+	word &= ~TUNNEL_MASK & 0xffff
+	altitude[offset] = (word >> 8) & 0xff
+	altitude[offset + 1] = word & 0xff
+
+
+static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
+	return altitude[index * 2 + 1] & 0x1f
+
+
+static func _set_land_altitude(altitude: PackedByteArray, index: int, value: int) -> void:
+	var offset := index * 2
+	altitude[offset + 1] = (altitude[offset + 1] & 0xe0) | (value & 0x1f)
+
+
+static func _point_is_in_bounds(point: Vector2i) -> bool:
+	return point.x >= 0 and point.x < 128 and point.y >= 0 and point.y < 128
+
+
+static func _refresh_altitude(city: CityState, altitude: PackedByteArray) -> void:
+	for index in CityState.TILE_COUNT:
+		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 
 static func _building_area(tile_id: int) -> int:

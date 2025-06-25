@@ -1438,7 +1438,83 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(simple_city.set_zone_id(10, 10, 0), "Highway demolish fixture clears military zone")
 	_check(simple_city.set_building_id(10, 10, 0x49), "Highway demolish fixture places highway")
 	var highway := Demolish.apply_path(simple_city, 0, 0, [Vector2i(10, 10)], demolition_random)
-	_check(not highway.ok and highway.error.contains("specialized"), "Demolish reports specialized highway work")
+	_check(not highway.ok and highway.error.contains("malformed"), "Demolish rejects a malformed highway section")
+	_check(simple_city.set_building_id(10, 10, 0), "Highway demolition fixture removes its malformed tile")
+	_check(simple_document.set_misc_i32(0x14, 500), "Highway demolition fixture sets funds")
+	var placed_highway := Highways.apply(simple_city, 6, 1, Vector2i(10, 10), Vector2i(10, 10))
+	_check(placed_highway.ok, "Highway demolition fixture builds one complete section")
+	var removed_highway := Demolish.apply_path(simple_city, 0, 0, [Vector2i(11, 11)], demolition_random)
+	_check(removed_highway.ok and removed_highway.tile_indices.size() == 4, "Demolish removes a complete 2-by-2 highway section")
+	for x in range(10, 12):
+		for y in range(10, 12):
+			_check(simple_city.building_id(x, y) >= 1 and simple_city.building_id(x, y) <= 4, "Demolished highway becomes rubble")
+	_check(Demolish.undo(simple_city, removed_highway, demolition_random).ok, "Highway demolition can be undone")
+	_check(Highways.undo(simple_city, placed_highway).ok, "Highway fixture can be removed after demolition undo")
+
+	var special_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
+		_check(
+			special_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
+			"Special demolition fixture clears %s" % chunk_id,
+		)
+	_check(special_document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Special demolition fixture clears XLAB")
+	_check(special_document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Special demolition fixture clears XMIC")
+	_check(special_document.set_misc_i32(0x14, 100), "Special demolition fixture sets funds")
+	_check(special_document.set_misc_u32(0x0e40, 0), "Special demolition fixture sets sea level")
+	_check(special_document.set_misc_u32(0x01f0, 16384), "Special demolition fixture counts clear tiles")
+	var special_city := CityModel.from_document(special_document)
+	_check(special_city.set_building_id(30, 30, 0x3f), "Tunnel demolition fixture places its first entrance")
+	_check(special_city.set_building_id(28, 30, 0x41), "Tunnel demolition fixture places its second entrance")
+	for x in range(28, 31):
+		_check(special_city.set_tunnel_levels(x, 30, 3), "Tunnel demolition fixture stores tunnel depth")
+	var tunnel := Demolish.apply_path(special_city, 0, 0, [Vector2i(30, 30)], demolition_random)
+	_check(tunnel.ok and tunnel.tile_indices.size() == 3, "Demolish follows a tunnel to its paired entrance")
+	_check(special_city.building_id(30, 30) == 0 and special_city.building_id(28, 30) == 0, "Tunnel demolition clears both entrances")
+	for x in range(28, 31):
+		_check(special_city.tunnel_levels(x, 30) == 0, "Tunnel demolition clears each saved depth")
+	_check(Demolish.undo(special_city, tunnel, demolition_random).ok, "Tunnel demolition can be undone")
+
+	for point in [Vector2i(40, 40), Vector2i(41, 40), Vector2i(41, 41)]:
+		_check(special_city.set_building_id(point.x, point.y, 0xdd), "Runway demolition fixture places a connected tile")
+	_check(special_city.set_building_id(45, 45, 0xdd), "Runway demolition fixture places a separate tile")
+	var runway := Demolish.apply_path(special_city, 0, 0, [Vector2i(40, 40)], demolition_random)
+	_check(runway.ok and runway.tile_indices.size() == 3, "Demolish removes one connected runway component")
+	_check(special_city.building_id(45, 45) == 0xdd, "Runway demolition preserves a separate component")
+	for point in [Vector2i(40, 40), Vector2i(41, 40), Vector2i(41, 41)]:
+		_check(special_city.building_id(point.x, point.y) >= 1 and special_city.building_id(point.x, point.y) <= 4, "Demolished runway becomes rubble")
+	_check(Demolish.undo(special_city, runway, demolition_random).ok, "Runway demolition can be undone")
+
+	for point in [Vector2i(50, 50), Vector2i(50, 51)]:
+		_check(special_city.set_building_id(point.x, point.y, 0xdf), "Pier demolition fixture places a connected tile")
+	var pier := Demolish.apply_path(special_city, 0, 0, [Vector2i(50, 50)], demolition_random)
+	_check(pier.ok and special_city.building_id(50, 50) == 0 and special_city.building_id(50, 51) == 0, "Demolish clears a connected pier component")
+	_check(Demolish.undo(special_city, pier, demolition_random).ok, "Pier demolition can be undone")
+
+	_check(special_document.set_misc_u32(0x0e40, 1), "Bridge demolition fixture sets sea level")
+	for x in range(70, 73):
+		_check(special_city.set_building_id(x, 70, 0x51 + x - 70), "Bridge demolition fixture places a span tile")
+		_check(special_city.set_terrain_id(x, 70, 0x30), "Bridge demolition fixture places water terrain")
+		_check(special_city.set_tile_flag(x, 70, 0x04, true), "Bridge demolition fixture marks span water")
+		_check(special_city.set_tile_flag(x, 70, 0x02, true), "Bridge demolition fixture sets a horizontal span")
+	for x in [69, 73]:
+		_check(special_city.set_land_altitude(x, 70, 1), "Bridge demolition fixture raises a bank")
+		_check(special_city.set_building_id(x, 70, 0x1d), "Bridge demolition fixture places a bank road")
+	var bridge := Demolish.apply_path(special_city, 0, 0, [Vector2i(71, 70)], demolition_random)
+	_check(bridge.ok and bridge.tile_indices.size() == 5, "Demolish clears one bridge span and its banks")
+	for x in range(70, 73):
+		_check(special_city.building_id(x, 70) == 0, "Bridge demolition clears each span tile")
+	for x in [69, 73]:
+		_check(special_city.land_altitude(x, 70) == 0, "Bridge demolition lowers each dry bank")
+		_check((special_city.tile_flags[x * 128 + 70] & 0x04) != 0, "Bridge demolition restores bank water")
+	_check(Demolish.undo(special_city, bridge, demolition_random).ok, "Bridge demolition can be undone")
+
+	_check(special_city.set_terrain_id(60, 60, 0x3d), "Water demolition fixture sets water terrain")
+	_check(special_city.set_tile_flag(60, 60, 0x04, true), "Water demolition fixture sets its water flag")
+	var water_tile := Demolish.apply_path(special_city, 0, 0, [Vector2i(60, 60)], demolition_random)
+	_check(water_tile.ok and special_city.terrain_id(60, 60) == 0, "Demolish removes surface water terrain")
+	_check((special_city.tile_flags[60 * 128 + 60] & 0x04) == 0, "Water demolition clears the water flag")
+	_check(Demolish.undo(special_city, water_tile, demolition_random).ok, "Water demolition can be undone")
 
 
 func _test_terrain_command(reference_root: String) -> void:
