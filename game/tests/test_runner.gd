@@ -19,6 +19,7 @@ const Graphs = preload("res://src/simulation/graph_history.gd")
 const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
+const Transport = preload("res://src/simulation/transport_trip.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -62,6 +63,7 @@ func _init() -> void:
 	_test_rci_demand(reference_root)
 	_test_education_health(reference_root)
 	_test_month_start(reference_root)
+	_test_transport_trip(reference_root)
 	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
@@ -447,6 +449,45 @@ func _test_month_start(reference_root: String) -> void:
 		_check(document.misc_i32(0x05f0 + index * 4) == 0, "Month-start clears zone population %d" % index)
 	_check(document.misc_i32(0x05ec) == 0x12345678, "Month-start preserves preceding MISC data")
 	_check(document.misc_i32(0x0610) == 0x23456789, "Month-start preserves following MISC data")
+
+
+func _test_transport_trip(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XZON", "XUND", "XTXT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Transport fixture clears %s" % chunk_id,
+		)
+	_check(
+		document.find_chunk("XTRF").set_decoded_payload(_filled_bytes(64 * 64, 0)),
+		"Transport fixture clears XTRF",
+	)
+	var city := CityModel.from_document(document)
+	for point in [Vector2i(20, 21), Vector2i(20, 22), Vector2i(20, 23)]:
+		_check(city.set_building_id(point.x, point.y, 0x1d), "Transport fixture places a road")
+	_check(city.set_zone_id(20, 20, 1), "Transport fixture sets the origin zone")
+	_check(city.set_zone_id(20, 24, 3), "Transport fixture sets a job destination")
+	var result := Transport.run(city, Vector2i(20, 20), 1, 2, Random.new(1))
+	_check(result.ok and result.reached_destination, "Road trip reaches a compatible zone")
+	_check(result.path_length == 3, "Road trip records the three-tile path")
+	var traffic := document.find_chunk("XTRF").decoded_payload
+	_check(traffic[10 * 64 + 10] == 2, "Road trip adds traffic to its first coarse cell")
+	_check(traffic[10 * 64 + 11] == 4, "Road trip accumulates two tiles in one coarse cell")
+
+	_check(city.set_zone_id(20, 24, 1), "Transport fixture changes the destination to residential")
+	var before_failed_trip: PackedByteArray = document.find_chunk("XTRF").decoded_payload.duplicate()
+	var failed := Transport.run(city, Vector2i(20, 20), 1, 2, Random.new(1))
+	_check(failed.ok and not failed.reached_destination, "Trip rejects an incompatible destination")
+	_check(document.find_chunk("XTRF").decoded_payload == before_failed_trip, "Failed trip preserves XTRF")
+
+	_check(city.set_building_id(1, 0, 0x1d), "Connection fixture places an edge road")
+	_check(city.set_text_overlay_id(1, 0, 0xfa), "Connection fixture marks a city connection")
+	var connection := Transport.run(city, Vector2i(1, 1), 5, 1, Random.new(7))
+	_check(connection.ok and connection.reached_destination, "Trip can leave through a city connection")
+	_check(
+		document.find_chunk("XTRF").decoded_payload[0] == 1,
+		"Connection trip adds its density to the edge traffic cell",
+	)
 
 
 func _test_rci_demand(reference_root: String) -> void:
