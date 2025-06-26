@@ -17,6 +17,7 @@ const Traffic = preload("res://src/simulation/traffic_phase.gd")
 const Pollution = preload("res://src/simulation/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/graph_history.gd")
 const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
+const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -58,6 +59,7 @@ func _init() -> void:
 	_test_pollution(reference_root)
 	_test_graph_history(reference_root)
 	_test_rci_demand(reference_root)
+	_test_education_health(reference_root)
 	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
@@ -417,13 +419,10 @@ func _test_simulation_engine(reference_root: String) -> void:
 	_check(latest.pending.is_empty(), "Day 20 has no unimplemented scheduled phase")
 	latest = engine.advance_day()
 	_check(
-		latest.applied == PackedStringArray(["rci_demand", "graphs"]),
-		"Simulation engine applies demand and graphs on day 21",
+		latest.applied == PackedStringArray(["rci_demand", "education_health", "graphs"]),
+		"Simulation engine applies demand, demographics, and graphs on day 21",
 	)
-	_check(
-		latest.pending == PackedStringArray(["education_health"]),
-		"Day 21 reports only education and health as pending",
-	)
+	_check(latest.pending.is_empty(), "Day 21 has no unimplemented scheduled phase")
 
 
 func _test_rci_demand(reference_root: String) -> void:
@@ -477,6 +476,113 @@ func _test_rci_demand(reference_root: String) -> void:
 	_check(document.misc_i32(0x077c) == 1520, "RCI phase stores residential budget population")
 	_check(document.misc_i32(0x07e8) == 510, "RCI phase stores commercial budget population")
 	_check(document.misc_i32(0x0854) == 260, "RCI phase stores industrial budget population")
+
+
+func _test_education_health(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for cohort in 20:
+		for field in [0, 4, 8]:
+			_check(
+				document.set_misc_u32(0x007c + cohort * 12 + field, 0),
+				"Demographic fixture clears cohort %d field %d" % [cohort, field],
+			)
+	for setting in [
+		[0x102c, 600],
+		[0x0034, 0],
+		[0x0044, 0],
+		[0x0048, 0],
+		[0x004c, 60],
+		[0x060c, 0],
+		[0x077c, 400],
+		[0x0fa0, 0x0760],
+		[0x01f0 + 0xd1 * 4, 9],
+		[0x01f0 + 0xd6 * 4, 9],
+		[0x01f0 + 0xd9 * 4, 16],
+		[0x077c + 7 * 0x006c + 4, 100],
+		[0x077c + 8 * 0x006c + 4, 100],
+		[0x077c + 9 * 0x006c + 4, 100],
+		[0x007c + 2 * 12, 300],
+		[0x0080 + 2 * 12, 18000],
+		[0x0084 + 2 * 12, 24000],
+		[0x007c + 10 * 12, 300],
+		[0x0080 + 10 * 12, 18000],
+		[0x0084 + 10 * 12, 24000],
+	]:
+		_check(
+			document.set_misc_u32(setting[0], setting[1]),
+			"Demographic fixture sets MISC 0x%x" % setting[0],
+		)
+	var city := CityModel.from_document(document)
+	var result := EducationHealth.run(city, Random.new(1))
+	_check(result.ok, "Education and health phase completes: %s" % result.error)
+	if not result.ok:
+		return
+	_check(result.population == 600, "Demographic phase preserves the controlled population")
+	_check(result.deaths == 0 and result.births == 0, "Healthy fixture has no deaths or births")
+	_check(result.immigrants == 0 and result.emigrants == 0, "Balanced fixture needs no migration")
+	_check(result.health_capacity == 26, "Hospitals and free clinics calculate health capacity")
+	_check(result.school_capacity == 15, "Funded schools calculate education capacity")
+	_check(result.college_capacity == 50, "Funded colleges calculate education capacity")
+	_check(result.newborn_life_expectancy == 100, "Health ordinances raise newborn life expectancy")
+	_check(document.misc_u32(0x007c + 2 * 12) == 295, "One sixtieth of a cohort ages each month")
+	_check(document.misc_u32(0x007c + 3 * 12) == 5, "Aged residents enter the next cohort")
+	_check(document.misc_u32(0x0080 + 2 * 12) == 17700, "Aging transfers source education points")
+	_check(document.misc_u32(0x0080 + 3 * 12) == 450, "College capacity increases transferred education")
+	_check(document.misc_u32(0x0084 + 2 * 12) == 23600, "Aging transfers source life points")
+	_check(document.misc_u32(0x0084 + 3 * 12) == 400, "The next cohort receives life points")
+	_check(result.workforce_population == 295, "Workforce uses cohorts four through ten")
+	_check(document.misc_u32(0x0044) == 49, "Demographic phase stores workforce percentage")
+	_check(document.misc_u32(0x0048) == 80, "Demographic phase stores workforce life expectancy")
+	_check(document.misc_u32(0x004c) == 60, "Demographic phase stores workforce education quotient")
+
+	var empty_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(empty_document.set_misc_u32(0x102c, 0), "Empty demographic fixture clears city population")
+	_check(empty_document.set_misc_u32(0x007c, 99), "Empty demographic fixture installs a stale cohort")
+	var empty_result := EducationHealth.run(CityModel.from_document(empty_document), Random.new(1))
+	_check(empty_result.ok and empty_result.empty_city, "Zero population takes the empty-city path")
+	_check(empty_document.misc_u32(0x007c) == 0, "Empty-city path clears demographic tables")
+
+	var mortality_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for cohort in 20:
+		for field in [0, 4, 8]:
+			_check(
+				mortality_document.set_misc_u32(0x007c + cohort * 12 + field, 0),
+				"Mortality fixture clears cohort %d field %d" % [cohort, field],
+			)
+	_check(mortality_document.set_misc_u32(0x102c, 230), "Mortality fixture sets city population")
+	_check(mortality_document.set_misc_u32(0x007c + 19 * 12, 240), "Mortality fixture sets oldest population")
+	_check(mortality_document.set_misc_u32(0x0080 + 19 * 12, 24000), "Mortality fixture sets education points")
+	var mortality_result := EducationHealth.run(
+		CityModel.from_document(mortality_document), Random.new(1)
+	)
+	_check(mortality_result.ok, "Mortality fixture completes: %s" % mortality_result.error)
+	if mortality_result.ok:
+		_check(mortality_result.deaths == 10, "Mortality uses the recovered two-stage divisor")
+		_check(mortality_document.misc_u32(0x007c + 19 * 12) == 230, "Mortality removes residents")
+		_check(mortality_document.misc_u32(0x0080 + 19 * 12) == 23000, "Mortality removes education in proportion")
+
+	var migration_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for cohort in 20:
+		for field in [0, 4, 8]:
+			_check(
+				migration_document.set_misc_u32(0x007c + cohort * 12 + field, 0),
+				"Migration fixture clears cohort %d field %d" % [cohort, field],
+			)
+	_check(migration_document.set_misc_u32(0x102c, 16), "Migration fixture sets city population")
+	var migration_result := EducationHealth.run(
+		CityModel.from_document(migration_document), Random.new(1)
+	)
+	_check(migration_result.ok, "Migration fixture completes: %s" % migration_result.error)
+	if migration_result.ok:
+		_check(migration_result.immigrants == 16, "Demographic phase adds missing residents")
+		for cohort in range(0, 8):
+			_check(
+				migration_document.misc_u32(0x007c + cohort * 12) == 2,
+				"Migration uses recovered cohort order at cohort %d" % cohort,
+			)
+		_check(migration_document.misc_u32(0x0044) == 47, "Migration updates workforce percentage")
+		_check(migration_document.misc_u32(0x0048) == 59, "Migration installs default workforce life points")
+		_check(migration_document.misc_u32(0x004c) == 84, "Migration installs default workforce education points")
 
 
 func _test_traffic(reference_root: String) -> void:

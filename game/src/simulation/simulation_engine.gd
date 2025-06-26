@@ -1,4 +1,3 @@
-# todo: education and health
 # todo: run the zone growth scan on the growth days
 # todo: monthly budget is only a schedule entry for now
 
@@ -63,6 +62,12 @@ func advance_day() -> Dictionary:
 				if not demand.ok:
 					return {"ok": false, "error": demand.error}
 				phase_results[action] = demand
+				applied.append(action)
+			"education_health":
+				var demographics := EducationHealthPhase.run(city, random)
+				if not demographics.ok:
+					return {"ok": false, "error": demographics.error}
+				phase_results[action] = demographics
 				applied.append(action)
 			"graphs":
 				if developed_tiles < 0 or power_usage_percent < 0 or water_usage_percent < 0:
