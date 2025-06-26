@@ -18,6 +18,7 @@ const Pollution = preload("res://src/simulation/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/graph_history.gd")
 const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
+const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -60,6 +61,7 @@ func _init() -> void:
 	_test_graph_history(reference_root)
 	_test_rci_demand(reference_root)
 	_test_education_health(reference_root)
+	_test_month_start(reference_root)
 	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
@@ -423,6 +425,28 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"Simulation engine applies demand, demographics, and graphs on day 21",
 	)
 	_check(latest.pending.is_empty(), "Day 21 has no unimplemented scheduled phase")
+
+
+func _test_month_start(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var original_values := PackedInt32Array()
+	for index in 8:
+		var value := (index + 1) * 13
+		original_values.append(value)
+		_check(
+			document.set_misc_i32(0x05f0 + index * 4, value),
+			"Month-start fixture sets zone population %d" % index,
+		)
+	_check(document.set_misc_i32(0x05ec, 0x12345678), "Month-start fixture sets preceding data")
+	_check(document.set_misc_i32(0x0610, 0x23456789), "Month-start fixture sets following data")
+	var city := CityModel.from_document(document)
+	var result := MonthStart.run(city)
+	_check(result.ok, "Month-start phase completes: %s" % result.error)
+	_check(result.cleared_population_fields == 8, "Month-start phase reports eight cleared fields")
+	for index in 8:
+		_check(document.misc_i32(0x05f0 + index * 4) == 0, "Month-start clears zone population %d" % index)
+	_check(document.misc_i32(0x05ec) == 0x12345678, "Month-start preserves preceding MISC data")
+	_check(document.misc_i32(0x0610) == 0x23456789, "Month-start preserves following MISC data")
 
 
 func _test_rci_demand(reference_root: String) -> void:

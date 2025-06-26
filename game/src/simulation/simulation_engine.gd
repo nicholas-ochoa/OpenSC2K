@@ -30,6 +30,12 @@ func advance_day() -> Dictionary:
 	var phase_results: Dictionary = {}
 	for action in schedule.actions:
 		match action:
+			"month_start":
+				var month_start := MonthStartPhase.run(city)
+				if not month_start.ok:
+					return {"ok": false, "error": month_start.error}
+				phase_results[action] = month_start
+				applied.append(action)
 			"power":
 				var power := PowerPhase.run(city, random)
 				if not power.ok:
