@@ -23,6 +23,7 @@ const Tunnels = preload("res://src/tools/tunnel_command.gd")
 const Highways = preload("res://src/tools/highway_command.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
 const TerrainTools = preload("res://src/tools/terrain_command.gd")
+const Dispatch = preload("res://src/tools/dispatch_command.gd")
 
 var city: CityState
 var current_document: Sc2File
@@ -36,6 +37,8 @@ var last_edit_command: Dictionary = {}
 var pending_sign_tile := Vector2i(-1, -1)
 var tool_random := Random.new(1)
 var nuisance_random := GameRandom.new(Time.get_ticks_msec() | 1)
+var dispatch_cycles := PackedInt32Array([0, 0, 0])
+var dispatch_initialized := false
 
 var map_view: CityMapControl
 var city_label: Label
@@ -249,6 +252,8 @@ func _load_city(path: String) -> void:
 	city = loaded_city
 	current_document = document
 	last_edit_command = {}
+	dispatch_cycles = PackedInt32Array([0, 0, 0])
+	dispatch_initialized = false
 	undo_button.disabled = true
 	save_button.disabled = false
 	city_label.text = (
@@ -317,6 +322,9 @@ func _refresh_map() -> void:
 
 func _select_tool_group(index: int) -> void:
 	selected_group = group_selector.get_item_id(index)
+	if selected_group == Dispatch.GROUP_DISPATCH:
+		dispatch_cycles = PackedInt32Array([0, 0, 0])
+		dispatch_initialized = false
 	tool_selector.clear()
 	var group := Tools.group(selected_group)
 	for subtool_index in group.tools.size():
@@ -347,6 +355,7 @@ func _update_edit_state() -> void:
 	var is_highway_tool := Highways.supports_tool(selected_group, selected_subtool)
 	var is_demolish_tool := Demolish.supports_tool(selected_group, selected_subtool)
 	var is_terrain_tool := TerrainTools.supports_tool(selected_group, selected_subtool)
+	var is_dispatch_tool := Dispatch.supports_tool(selected_group, selected_subtool)
 	var is_sign_tool := selected_group == 15
 	var is_query_tool := selected_group == 16
 	var is_center_tool := selected_group == 17
@@ -365,6 +374,7 @@ func _update_edit_state() -> void:
 			or is_highway_tool
 			or is_demolish_tool
 			or is_terrain_tool
+			or is_dispatch_tool
 			or is_sign_tool
 			or is_query_tool
 			or is_center_tool
@@ -397,6 +407,12 @@ func _update_edit_state() -> void:
 		status_label.text = "Demolish selected. Click or drag across eligible city tiles."
 	elif is_terrain_tool:
 		status_label.text = "%s selected. Click or drag across terrain." % tool.name
+	elif is_dispatch_tool:
+		var available := Dispatch.availability(city)
+		var count := 0
+		if available.ok:
+			count = [available.police, available.fire, available.military][selected_subtool]
+		status_label.text = "%s selected. Click dry, unlabeled terrain to deploy one of %d available units." % [tool.name, count]
 	elif is_sign_tool:
 		status_label.text = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 	elif is_query_tool:
@@ -422,6 +438,35 @@ func _apply_map_selection(
 		return
 	if selected_group == 15:
 		_open_sign_dialog(finish)
+		return
+	if Dispatch.supports_tool(selected_group, selected_subtool):
+		var cycles_before := dispatch_cycles.duplicate()
+		var initialized_before := dispatch_initialized
+		var dispatch := Dispatch.apply(
+			city,
+			selected_group,
+			selected_subtool,
+			finish,
+			dispatch_cycles[selected_subtool],
+			not dispatch_initialized
+		)
+		if not dispatch.ok:
+			_show_error("Cannot dispatch unit: %s" % dispatch.error)
+			return
+		dispatch["dispatch_cycles_before"] = cycles_before
+		dispatch["dispatch_initialized_before"] = initialized_before
+		dispatch_initialized = true
+		dispatch_cycles[selected_subtool] = int(dispatch.slot_index)
+		dispatch["dispatch_cycles_after"] = dispatch_cycles.duplicate()
+		last_edit_command = dispatch
+		undo_button.disabled = false
+		_refresh_map()
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Deployed %s unit %d of %d." % [
+			Tools.tool(selected_group, selected_subtool).name,
+			dispatch.slot_index,
+			dispatch.available,
+		]
 		return
 	if Landscapes.supports_tool(selected_group, selected_subtool):
 		var landscape := Landscapes.apply_path(
@@ -636,11 +681,18 @@ func _undo_last_edit() -> void:
 		result = Demolish.undo(city, last_edit_command, tool_random)
 	elif command_type == "terrain":
 		result = TerrainTools.undo(city, last_edit_command)
+	elif command_type == "dispatch":
+		result = Dispatch.undo(city, last_edit_command)
 	else:
 		result = Zones.undo(city, last_edit_command)
 	if not result.ok:
 		_show_error("Cannot undo the last edit: %s" % result.error)
 		return
+	if command_type == "dispatch":
+		dispatch_cycles = last_edit_command.get("dispatch_cycles_before", dispatch_cycles)
+		dispatch_initialized = bool(
+			last_edit_command.get("dispatch_initialized_before", dispatch_initialized)
+		)
 	last_edit_command = {}
 	undo_button.disabled = true
 	_refresh_details()
@@ -668,6 +720,8 @@ func _undo_last_edit() -> void:
 		status_label.text = "Restored %d demolished tiles and the previous funds value." % result.restored_tiles
 	elif command_type == "terrain":
 		status_label.text = "Restored %d terrain tiles and the previous funds value." % result.restored_tiles
+	elif command_type == "dispatch":
+		status_label.text = "Restored the previous dispatched unit."
 	else:
 		status_label.text = "Restored %d tiles and the previous funds value." % result.restored_tiles
 

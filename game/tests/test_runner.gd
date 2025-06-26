@@ -33,6 +33,7 @@ const Tunnels = preload("res://src/tools/tunnel_command.gd")
 const Highways = preload("res://src/tools/highway_command.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
 const TerrainTools = preload("res://src/tools/terrain_command.gd")
+const Dispatch = preload("res://src/tools/dispatch_command.gd")
 
 var failures := 0
 var checks := 0
@@ -74,6 +75,7 @@ func _init() -> void:
 	_test_highway_command(reference_root)
 	_test_demolish_command(reference_root)
 	_test_terrain_command(reference_root)
+	_test_dispatch_command(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -1566,6 +1568,61 @@ func _test_terrain_command(reference_root: String) -> void:
 	_check(city.set_building_id(40, 40, 0x1d), "Terrain conflict fixture places a road")
 	var conflict := TerrainTools.apply_path(city, 0, 2, Vector2i(40, 40), [Vector2i(40, 40)])
 	_check(not conflict.ok and conflict.error.contains("structure"), "Terrain command reports unimplemented structure conflicts")
+
+
+func _test_dispatch_command(reference_root: String) -> void:
+	_check(Dispatch.supports_tool(2, 0), "Dispatch command supports Police")
+	_check(Dispatch.supports_tool(2, 1), "Dispatch command supports Fire")
+	_check(Dispatch.supports_tool(2, 2), "Dispatch command supports Military")
+	_check(not Dispatch.supports_tool(3, 0), "Dispatch command rejects another tool group")
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBIT", "XTXT", "XTHG"]:
+		var size := 480 if chunk_id == "XTHG" else 128 * 128
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
+			"Dispatch fixture clears %s" % chunk_id,
+		)
+	_check(document.set_misc_u32(0x01f0 + 0xd2 * 4, 9), "Dispatch fixture counts one police station")
+	_check(document.set_misc_u32(0x01f0 + 0xd3 * 4, 18), "Dispatch fixture counts two fire stations")
+	_check(document.set_misc_u32(0x0e4c, 4), "Dispatch fixture selects a navy base")
+	var things: PackedByteArray = document.find_chunk("XTHG").decoded_payload.duplicate()
+	things[5 * 12] = 7
+	things[5 * 12 + 3] = 5
+	things[5 * 12 + 4] = 5
+	_check(document.find_chunk("XTHG").set_decoded_payload(things), "Dispatch fixture stores an old police unit")
+	var text: PackedByteArray = document.find_chunk("XTXT").decoded_payload.duplicate()
+	text[5 * 128 + 5] = 206
+	_check(document.find_chunk("XTXT").set_decoded_payload(text), "Dispatch fixture labels the old police unit")
+	var city := CityModel.from_document(document)
+	var available := Dispatch.availability(city)
+	_check(available.ok and available.police == 1, "Police availability is station tile count divided by eight")
+	_check(available.fire == 2, "Fire availability is station tile count divided by eight")
+	_check(available.military == 3, "A navy base supplies three military units")
+
+	var police := Dispatch.apply(city, 2, 0, Vector2i(10, 10), 0, true)
+	_check(police.ok and police.slot_index == 1 and police.thing_index == 1, "Police dispatch resets old units and uses the first record")
+	_check(city.thing(1).type == 7 and city.thing(1).x == 10 and city.thing(1).y == 10, "Police dispatch stores the XTHG unit")
+	_check(city.text_overlay_id(10, 10) == 202 and city.text_overlay_id(5, 5) == 0, "Police dispatch moves the XTXT unit marker")
+	_check(IsometricRenderer.dispatch_sprite_id(city, 10, 10) == 1381, "Police dispatch selects the recovered large sprite")
+	_check(Dispatch.undo(city, police).ok, "Police dispatch can be undone")
+	_check(city.thing(5).type == 7 and city.text_overlay_id(5, 5) == 206, "Dispatch undo restores units cleared at session start")
+	police = Dispatch.apply(city, 2, 0, Vector2i(10, 10), 0, true)
+	var moved_police := Dispatch.apply(city, 2, 0, Vector2i(11, 10), police.slot_index, false)
+	_check(moved_police.ok and moved_police.slot_index == 1, "A second Police action wraps its one-unit cycle")
+	_check(city.text_overlay_id(10, 10) == 0 and city.text_overlay_id(11, 10) == 202, "Wrapped Police dispatch relocates its unit")
+	_check(Dispatch.undo(city, moved_police).ok, "Relocated Police dispatch can be undone")
+
+	var fire := Dispatch.apply(city, 2, 1, Vector2i(20, 20), 0, false)
+	_check(fire.ok and fire.available == 2 and city.thing(fire.thing_index).type == 8, "Fire dispatch adds an XTHG fire unit")
+	var military := Dispatch.apply(city, 2, 2, Vector2i(21, 20), 0, false)
+	_check(military.ok and military.available == 3 and city.thing(military.thing_index).type == 14, "Military dispatch adds an XTHG military unit")
+	_check(Dispatch.undo(city, military).ok, "Military dispatch can be undone")
+	_check(city.set_tile_flag(30, 30, 0x04, true), "Dispatch water fixture marks a water tile")
+	var water := Dispatch.apply(city, 2, 1, Vector2i(30, 30), fire.slot_index, false)
+	_check(not water.ok and water.error.contains("water"), "Dispatch rejects a water target")
+	_check(document.set_misc_u32(0x01f0 + 0xd2 * 4, 0), "Dispatch unavailable fixture removes police capacity")
+	var no_police := Dispatch.apply(city, 2, 0, Vector2i(31, 30), police.slot_index, false)
+	_check(not no_police.ok and no_police.error.contains("available"), "Dispatch rejects an unavailable unit type")
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:

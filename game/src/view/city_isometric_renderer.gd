@@ -9,6 +9,7 @@ const HALF_HEIGHT := 8
 const ALTITUDE_STEP := 12
 const TOP_MARGIN := 512
 const SIDE_MARGIN := 32
+const DISPATCH_SPRITES := {7: 1381, 8: 1382, 14: 1383}
 
 
 static func create_image(
@@ -60,6 +61,9 @@ static func validate_assets(city: CityState, sprites: Sc2SpriteArchive) -> Packe
 				var building_sprite := 1000 + building
 				if sprites.find_sprite(building_sprite) == null:
 					missing[building_sprite] = true
+			var dispatch_sprite := dispatch_sprite_id(city, x, y)
+			if dispatch_sprite > 0 and sprites.find_sprite(dispatch_sprite) == null:
+				missing[dispatch_sprite] = true
 	var ids := missing.keys()
 	ids.sort()
 	for sprite_id in ids:
@@ -144,13 +148,26 @@ static func _draw_tile(
 		var zone_image := _sprite_image(sprites, palette, cache, 1290 + zone, false)
 		_blend_on_base(output, zone_image, screen_x, base_y)
 
-	if building_id == 0 or not _should_draw_building(city, x, y, building_id):
-		return
-	var flip := city.is_flipped(x, y)
-	if (city.compass_rotation() == 1 or city.compass_rotation() == 3) and not _fixed_rotation_tile(building_id):
-		flip = not flip
-	var building := _sprite_image(sprites, palette, cache, 1000 + building_id, flip)
-	_blend_on_base(output, building, screen_x, base_y)
+	if building_id > 0 and _should_draw_building(city, x, y, building_id):
+		var flip := city.is_flipped(x, y)
+		if (city.compass_rotation() == 1 or city.compass_rotation() == 3) and not _fixed_rotation_tile(building_id):
+			flip = not flip
+		var building := _sprite_image(sprites, palette, cache, 1000 + building_id, flip)
+		_blend_on_base(output, building, screen_x, base_y)
+	var dispatch_sprite := dispatch_sprite_id(city, x, y)
+	if dispatch_sprite > 0:
+		var dispatch_image := _sprite_image(sprites, palette, cache, dispatch_sprite, false)
+		_blend_on_base(output, dispatch_image, screen_x, base_y)
+
+
+static func dispatch_sprite_id(city: CityState, x: int, y: int) -> int:
+	var overlay := city.text_overlay_id(x, y)
+	if overlay < 202 or overlay > 240:
+		return 0
+	var thing := city.thing(overlay - 201)
+	if thing.is_empty() or thing.x != x or thing.y != y:
+		return 0
+	return int(DISPATCH_SPRITES.get(thing.type, 0))
 
 
 # four occupied corners, one sprite, compass picks the winner
