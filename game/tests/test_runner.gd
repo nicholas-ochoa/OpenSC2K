@@ -11,6 +11,7 @@ const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
+const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
 const Power = preload("res://src/simulation/power_phase.gd")
 const Water = preload("res://src/simulation/water_phase.gd")
 const Traffic = preload("res://src/simulation/traffic_phase.gd")
@@ -355,6 +356,18 @@ func _test_random_and_power(reference_root: String) -> void:
 		sequence == PackedInt32Array([41, 18467, 6334, 26500, 19169]),
 		"Simulation random sequence matches the executable runtime"
 	)
+	var lfsr := LfsrRandom.new(1)
+	var lfsr_sequence := PackedInt32Array()
+	for unused in 16:
+		lfsr_sequence.append(lfsr.next_word())
+	_check(
+		lfsr_sequence == PackedInt32Array([
+			2, 4, 8, 16, 32, 64, 128, 256,
+			512, 1024, 2048, 4096, 8192, 16384, 32768, 7157,
+		]),
+		"Simulation LFSR sequence matches the executable",
+	)
+	_check(LfsrRandom.new(1).next_mask(0x03) == 2, "LFSR mask returns the low requested bits")
 
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
