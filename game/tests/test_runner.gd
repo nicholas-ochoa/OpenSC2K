@@ -20,6 +20,7 @@ const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Transport = preload("res://src/simulation/transport_trip.gd")
+const Growth = preload("res://src/simulation/growth_phase.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -40,6 +41,13 @@ const Dispatch = preload("res://src/tools/dispatch_command.gd")
 
 var failures := 0
 var checks := 0
+
+
+class ZeroRandom:
+	extends RefCounted
+
+	func next_u15() -> int:
+		return 0
 
 
 func _init() -> void:
@@ -64,6 +72,7 @@ func _init() -> void:
 	_test_education_health(reference_root)
 	_test_month_start(reference_root)
 	_test_transport_trip(reference_root)
+	_test_growth_phase(reference_root)
 	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
@@ -413,7 +422,11 @@ func _test_simulation_engine(reference_root: String) -> void:
 	)
 	_check(day_two.pending.is_empty(), "Day two has no unimplemented scheduled phase")
 	_check(engine.developed_tiles >= 0, "Simulation engine retains the developed-tile count")
-	var latest := day_two
+	var day_three := engine.advance_day()
+	_check(day_three.ok, "Simulation engine advances the first growth day")
+	_check(day_three.phase_results.has("growth"), "Simulation engine runs the RCI growth core")
+	_check(day_three.pending == PackedStringArray(["growth"]), "Incomplete non-RCI growth stays pending")
+	var latest := day_three
 	while latest.day < 19:
 		latest = engine.advance_day()
 	_check(latest.applied == PackedStringArray(["traffic"]), "Simulation engine applies traffic on day 19")
@@ -488,6 +501,100 @@ func _test_transport_trip(reference_root: String) -> void:
 		document.find_chunk("XTRF").decoded_payload[0] == 1,
 		"Connection trip adds its density to the edge traffic cell",
 	)
+
+
+func _test_growth_phase(reference_root: String) -> void:
+	var normal := _growth_fixture(reference_root, 0xae, 1, 2000)
+	var normal_result := Growth.run(normal.city, ZeroRandom.new(), 0, 0)
+	_check(normal_result.ok, "Normal growth scan completes: %s" % normal_result.error)
+	_check(normal_result.scanned_tiles == 1024, "Growth scan processes one sixteenth of the map")
+	_check(normal_result.rci_tiles == 1, "Growth scan processes the controlled RCI anchor")
+	_check(normal.document.misc_u32(0x05f4) == 36, "Density four adds 36 residential units")
+	_check(normal_result.successful_trips == 1, "Developed zone completes its transport trip")
+	_check(normal.city.building_id(20, 20) == 0xae, "Stable density-four zone keeps its building")
+
+	var bare := _growth_fixture(reference_root, 0, 1, 2000)
+	var bare_result := Growth.run(bare.city, ZeroRandom.new(), 0, 0)
+	_check(bare_result.ok, "Bare-zone growth scan completes: %s" % bare_result.error)
+	_check(bare_result.started_construction == 1, "Bare powered zone starts construction")
+	_check(bare.city.building_id(20, 20) == 0x88, "Bare zone gets the first construction tile")
+	_check(bare.city.building_corners(20, 20) == 0xf0, "One-tile construction sets all corner bits")
+	_check(
+		bare.city.tile_flags[20 * 128 + 20] & 0xe0 == 0xe0,
+		"Construction sets utility flags",
+	)
+
+	var declining := _growth_fixture(reference_root, 0x70, 1, -2000)
+	var decline_result := Growth.run(declining.city, ZeroRandom.new(), 0, 0)
+	_check(decline_result.ok, "Declining-zone scan completes: %s" % decline_result.error)
+	_check(decline_result.abandoned_buildings == 1, "Low demand abandons the controlled building")
+	_check(declining.city.building_id(20, 20) == 0x8a, "Density-one zone uses an abandoned tile")
+	_check(declining.document.misc_u32(0x05f4) == 1, "Population is counted before abandonment")
+
+	var abandoned := _growth_fixture(reference_root, 0x8a, 1, 2000)
+	var recovery_result := Growth.run(abandoned.city, ZeroRandom.new(), 0, 0)
+	_check(recovery_result.ok, "Abandoned-zone scan completes: %s" % recovery_result.error)
+	_check(recovery_result.recovered_buildings == 1, "High demand recovers an abandoned building")
+	_check(abandoned.city.building_id(20, 20) == 0x70, "Recovered residence uses value group zero")
+	_check(abandoned.document.misc_u32(0x060c) == 1, "Abandoned population is counted before recovery")
+
+	var construction := _growth_fixture(reference_root, 0x88, 1, 2000)
+	var construction_result := Growth.run(construction.city, ZeroRandom.new(), 0, 0)
+	_check(construction_result.ok, "Construction completion scan completes: %s" % construction_result.error)
+	_check(construction_result.completed_construction == 1, "Construction completes on the controlled roll")
+	_check(construction.city.building_id(20, 20) == 0x70, "Residential construction becomes occupied")
+
+	var church := _growth_fixture(reference_root, 0xa6, 1, 2000)
+	for point in [Vector2i(20, 19), Vector2i(21, 19), Vector2i(21, 20)]:
+		_check(church.city.set_building_id(point.x, point.y, 0xa6), "Church fixture fills construction footprint")
+		_check(church.city.set_zone_id(point.x, point.y, 1), "Church fixture zones construction footprint")
+	_check(church.document.set_misc_u32(0x01f0 + 0xa6 * 4, 4), "Church fixture counts construction tiles")
+	_check(church.document.set_misc_u32(0x01f0 + 0xf7 * 4, 0), "Church fixture clears church count")
+	_check(church.document.set_misc_u32(0x102c, 1000), "Church fixture sets city population")
+	var church_result := Growth.run(church.city, ZeroRandom.new(), 0, 0)
+	_check(church_result.ok, "Church growth scan completes: %s" % church_result.error)
+	_check(church_result.churches_built == 1, "Residential density construction can make a church")
+	for point in [Vector2i(20, 19), Vector2i(21, 19), Vector2i(20, 20), Vector2i(21, 20)]:
+		_check(church.city.building_id(point.x, point.y) == 0xf7, "Church fills its two-by-two footprint")
+		_check(church.city.zone_id(point.x, point.y) == 0, "Church clears the RCI zone nibble")
+
+
+func _growth_fixture(
+	reference_root: String, origin_building: int, origin_zone: int, demand: int
+) -> Dictionary:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var buildings := _filled_bytes(128 * 128, 0)
+	for point in [Vector2i(20, 21), Vector2i(20, 22), Vector2i(20, 23), Vector2i(20, 24)]:
+		buildings[point.x * 128 + point.y] = 0x1d
+	buildings[20 * 128 + 20] = origin_building
+	var zones := _filled_bytes(128 * 128, 0)
+	zones[20 * 128 + 20] = 0x80 | origin_zone
+	zones[20 * 128 + 25] = 3
+	var flags := _filled_bytes(128 * 128, 0)
+	flags[20 * 128 + 20] = 0x40
+	for entry in [
+		["XBLD", buildings],
+		["XZON", zones],
+		["XBIT", flags],
+		["XUND", _filled_bytes(128 * 128, 0)],
+		["XTXT", _filled_bytes(128 * 128, 0)],
+		["XTRF", _filled_bytes(64 * 64, 0)],
+		["XVAL", _filled_bytes(64 * 64, 0)],
+	]:
+		_check(
+			document.find_chunk(entry[0]).set_decoded_payload(entry[1]),
+			"Growth fixture sets %s" % entry[0],
+		)
+	for index in 8:
+		_check(document.set_misc_u32(0x05f0 + index * 4, 0), "Growth fixture clears population %d" % index)
+	_check(document.set_misc_i32(0x0718, demand), "Growth fixture sets residential demand")
+	_check(document.set_misc_i32(0x071c, 0), "Growth fixture clears commercial demand")
+	_check(document.set_misc_i32(0x0720, 0), "Growth fixture clears industrial demand")
+	_check(document.set_misc_u32(0x0008, 0), "Growth fixture sets compass rotation")
+	_check(document.set_misc_u32(0x102c, 0), "Growth fixture clears normal population")
+	_check(document.set_misc_u32(0x01f0, 16379), "Growth fixture counts clear tiles")
+	_check(document.set_misc_u32(0x01f0 + origin_building * 4, 1), "Growth fixture counts origin tile")
+	return {"document": document, "city": CityModel.from_document(document)}
 
 
 func _test_rci_demand(reference_root: String) -> void:

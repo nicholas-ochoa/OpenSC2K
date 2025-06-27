@@ -1,4 +1,3 @@
-# todo: run the zone growth scan on the growth days
 # todo: monthly budget is only a schedule entry for now
 
 class_name SimulationEngine
@@ -43,6 +42,17 @@ func advance_day() -> Dictionary:
 				phase_results[action] = power
 				power_usage_percent = power.usage_percent
 				applied.append(action)
+			"growth":
+				var growth := GrowthPhase.run(
+					city, random, schedule.growth_step, schedule.growth_substep
+				)
+				if not growth.ok:
+					return {"ok": false, "error": growth.error}
+				phase_results[action] = growth
+				if growth.complete:
+					applied.append(action)
+				else:
+					pending.append(action)
 			"pollution_terrain_land_value":
 				var scan := PollutionPhase.run(city)
 				if not scan.ok:
