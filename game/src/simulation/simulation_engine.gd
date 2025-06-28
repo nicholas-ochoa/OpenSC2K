@@ -6,15 +6,17 @@ extends RefCounted
 var city: CityState
 var clock: SimulationClock
 var random: SimRandom
+var lfsr_random: SimLfsrRandom
 var developed_tiles := -1
 var power_usage_percent := -1
 var water_usage_percent := -1
 
 
-func _init(initial_city: CityState, random_seed := 1) -> void:
+func _init(initial_city: CityState, random_seed := 1, lfsr_seed := 1) -> void:
 	city = initial_city
 	clock = SimulationClock.new(initial_city.age_in_days() if initial_city != null else 0)
 	random = SimRandom.new(random_seed)
+	lfsr_random = SimLfsrRandom.new(lfsr_seed)
 
 
 func advance_day() -> Dictionary:
@@ -44,7 +46,7 @@ func advance_day() -> Dictionary:
 				applied.append(action)
 			"growth":
 				var growth := GrowthPhase.run(
-					city, random, schedule.growth_step, schedule.growth_substep
+					city, random, schedule.growth_step, schedule.growth_substep, lfsr_random
 				)
 				if not growth.ok:
 					return {"ok": false, "error": growth.error}

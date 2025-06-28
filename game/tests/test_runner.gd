@@ -51,6 +51,20 @@ class ZeroRandom:
 		return 0
 
 
+class ZeroLfsrRandom:
+	extends RefCounted
+
+	func next_mask(_mask: int) -> int:
+		return 0
+
+
+class NonzeroLfsrRandom:
+	extends RefCounted
+
+	func next_mask(_mask: int) -> int:
+		return 1
+
+
 func _init() -> void:
 	var arguments := OS.get_cmdline_user_args()
 	var reference_root := ProjectSettings.globalize_path("res://../references")
@@ -421,12 +435,14 @@ func _test_simulation_engine(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
 	_check(city.set_age_in_days(0), "Simulation engine test resets the city day")
-	var engine := Simulation.new(city, 1)
+	var engine := Simulation.new(city, 1, 7)
+	_check(engine.lfsr_random.state == 7, "Simulation engine accepts an explicit LFSR seed")
 	var day_one := engine.advance_day()
 	_check(day_one.ok, "Simulation engine advances day one")
 	_check(day_one.day == 1 and city.age_in_days() == 1, "Simulation engine stores the new day")
 	_check(day_one.applied == PackedStringArray(["power"]), "Simulation engine applies power on day one")
 	_check(day_one.pending.is_empty(), "Day one has no unimplemented scheduled phase")
+	_check(engine.lfsr_random.state == 7, "Non-growth phases preserve the LFSR state")
 	var day_two := engine.advance_day()
 	_check(day_two.ok, "Simulation engine advances day two")
 	_check(
@@ -439,6 +455,7 @@ func _test_simulation_engine(reference_root: String) -> void:
 	_check(day_three.ok, "Simulation engine advances the first growth day")
 	_check(day_three.phase_results.has("growth"), "Simulation engine runs the RCI growth core")
 	_check(day_three.pending == PackedStringArray(["growth"]), "Incomplete non-RCI growth stays pending")
+	_check(engine.lfsr_random.state != 7, "Growth continues the engine LFSR sequence")
 	var latest := day_three
 	while latest.day < 19:
 		latest = engine.advance_day()
@@ -518,7 +535,7 @@ func _test_transport_trip(reference_root: String) -> void:
 
 func _test_growth_phase(reference_root: String) -> void:
 	var normal := _growth_fixture(reference_root, 0xae, 1, 2000)
-	var normal_result := Growth.run(normal.city, ZeroRandom.new(), 0, 0)
+	var normal_result := Growth.run(normal.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(normal_result.ok, "Normal growth scan completes: %s" % normal_result.error)
 	_check(normal_result.scanned_tiles == 1024, "Growth scan processes one sixteenth of the map")
 	_check(normal_result.rci_tiles == 1, "Growth scan processes the controlled RCI anchor")
@@ -527,7 +544,7 @@ func _test_growth_phase(reference_root: String) -> void:
 	_check(normal.city.building_id(20, 20) == 0xae, "Stable density-four zone keeps its building")
 
 	var bare := _growth_fixture(reference_root, 0, 1, 2000)
-	var bare_result := Growth.run(bare.city, ZeroRandom.new(), 0, 0)
+	var bare_result := Growth.run(bare.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(bare_result.ok, "Bare-zone growth scan completes: %s" % bare_result.error)
 	_check(bare_result.started_construction == 1, "Bare powered zone starts construction")
 	_check(bare.city.building_id(20, 20) == 0x88, "Bare zone gets the first construction tile")
@@ -538,21 +555,23 @@ func _test_growth_phase(reference_root: String) -> void:
 	)
 
 	var declining := _growth_fixture(reference_root, 0x70, 1, -2000)
-	var decline_result := Growth.run(declining.city, ZeroRandom.new(), 0, 0)
+	var decline_result := Growth.run(declining.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(decline_result.ok, "Declining-zone scan completes: %s" % decline_result.error)
 	_check(decline_result.abandoned_buildings == 1, "Low demand abandons the controlled building")
 	_check(declining.city.building_id(20, 20) == 0x8a, "Density-one zone uses an abandoned tile")
 	_check(declining.document.misc_u32(0x05f4) == 1, "Population is counted before abandonment")
 
 	var abandoned := _growth_fixture(reference_root, 0x8a, 1, 2000)
-	var recovery_result := Growth.run(abandoned.city, ZeroRandom.new(), 0, 0)
+	var recovery_result := Growth.run(abandoned.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(recovery_result.ok, "Abandoned-zone scan completes: %s" % recovery_result.error)
 	_check(recovery_result.recovered_buildings == 1, "High demand recovers an abandoned building")
 	_check(abandoned.city.building_id(20, 20) == 0x70, "Recovered residence uses value group zero")
 	_check(abandoned.document.misc_u32(0x060c) == 1, "Abandoned population is counted before recovery")
 
 	var construction := _growth_fixture(reference_root, 0x88, 1, 2000)
-	var construction_result := Growth.run(construction.city, ZeroRandom.new(), 0, 0)
+	var construction_result := Growth.run(
+		construction.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new()
+	)
 	_check(construction_result.ok, "Construction completion scan completes: %s" % construction_result.error)
 	_check(construction_result.completed_construction == 1, "Construction completes on the controlled roll")
 	_check(construction.city.building_id(20, 20) == 0x70, "Residential construction becomes occupied")
@@ -564,12 +583,100 @@ func _test_growth_phase(reference_root: String) -> void:
 	_check(church.document.set_misc_u32(0x01f0 + 0xa6 * 4, 4), "Church fixture counts construction tiles")
 	_check(church.document.set_misc_u32(0x01f0 + 0xf7 * 4, 0), "Church fixture clears church count")
 	_check(church.document.set_misc_u32(0x102c, 1000), "Church fixture sets city population")
-	var church_result := Growth.run(church.city, ZeroRandom.new(), 0, 0)
+	var church_result := Growth.run(church.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(church_result.ok, "Church growth scan completes: %s" % church_result.error)
 	_check(church_result.churches_built == 1, "Residential density construction can make a church")
 	for point in [Vector2i(20, 19), Vector2i(21, 19), Vector2i(20, 20), Vector2i(21, 20)]:
 		_check(church.city.building_id(point.x, point.y) == 0xf7, "Church fills its two-by-two footprint")
 		_check(church.city.zone_id(point.x, point.y) == 0, "Church clears the RCI zone nibble")
+
+	_test_transport_maintenance(reference_root)
+
+
+func _test_transport_maintenance(reference_root: String) -> void:
+	var road := _maintenance_fixture(reference_root, 0x1d, 0)
+	_check(road.city.set_tile_flag(20, 20, 0x80, true), "Road decay fixture sets powerable")
+	_check(road.document.set_misc_i32(0x077c + 10 * 0x6c + 4, 0), "Road decay fixture removes funding")
+	var road_result := Growth.run(road.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	_check(road_result.ok and road_result.decayed_roads == 1, "Unfunded road decays on the rare check")
+	_check(road.city.building_id(20, 20) == 1, "Road decay makes process-selected rubble")
+	_check(road.city.tile_flags[20 * 128 + 20] & 0x80 == 0, "Road decay clears powerable")
+
+	var rail := _maintenance_fixture(reference_root, 0x2c, 0)
+	_check(rail.city.set_tile_flag(20, 20, 0x80, true), "Rail decay fixture sets powerable")
+	_check(rail.document.set_misc_i32(0x077c + 13 * 0x6c + 4, 0), "Rail decay fixture removes funding")
+	var rail_result := Growth.run(rail.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	_check(rail_result.ok and rail_result.decayed_rails == 1, "Unfunded rail decays on the rare check")
+	_check(rail.city.building_id(20, 20) == 1, "Rail decay makes process-selected rubble")
+	_check(rail.city.tile_flags[20 * 128 + 20] & 0x80 == 0, "Rail decay clears powerable")
+
+	var highway := _maintenance_fixture(reference_root, 0x49, 0)
+	for point in [Vector2i(21, 20), Vector2i(20, 21), Vector2i(21, 21)]:
+		_check(highway.city.set_building_id(point.x, point.y, 0x49), "Highway decay fixture fills its section")
+	_check(highway.city.set_tile_flag(21, 20, 0x04, true), "Highway decay fixture sets one water tile")
+	_check(highway.document.set_misc_u32(0x01f0 + 0x49 * 4, 4), "Highway decay fixture counts its tiles")
+	_check(highway.document.set_misc_i32(0x077c + 11 * 0x6c + 4, 0), "Highway decay fixture removes funding")
+	var highway_result := Growth.run(highway.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	_check(highway_result.ok and highway_result.decayed_highway_tiles == 4, "Unfunded highway decays as one section")
+	_check(highway.city.building_id(21, 20) == 0, "Highway decay clears a water tile")
+	for point in [Vector2i(20, 20), Vector2i(20, 21), Vector2i(21, 21)]:
+		_check(highway.city.building_id(point.x, point.y) == 1, "Highway decay makes rubble on dry land")
+
+	var subway := _maintenance_fixture(reference_root, 0, 0x01)
+	_check(subway.document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Subway decay fixture removes funding")
+	var subway_result := Growth.run(subway.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	_check(subway_result.ok and subway_result.decayed_subway_tiles == 1, "Unfunded subway decays on the rare check")
+	_check(subway.city.underground_id(20, 20) == 0, "Subway decay clears a subway tile")
+	_check(subway.document.misc_u32(0x0fe8) == 0, "Subway decay decrements the saved XUND count")
+
+	var crossover := _maintenance_fixture(reference_root, 0, 0x1f)
+	_check(crossover.document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Crossover decay fixture removes funding")
+	var crossover_result := Growth.run(crossover.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	_check(crossover_result.ok and crossover_result.decayed_subway_tiles == 1, "Subway crossover loses its rail layer")
+	_check(crossover.city.underground_id(20, 20) == 0x11, "Subway crossover preserves its pipe layer")
+	_check(crossover.document.misc_u32(0x0fe8) == 0, "Crossover decay decrements the saved XUND count")
+
+	var station := _maintenance_fixture(reference_root, 0xe9, 0x23)
+	_check(station.document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Station decay fixture removes funding")
+	var station_result := Growth.run(station.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	_check(station_result.ok and station_result.deferred_station_removals == 1, "Station decay reports pending surface demolition")
+	_check(station.city.building_id(20, 20) == 0xe9, "Deferred station decay preserves the surface station")
+	_check(station.city.underground_id(20, 20) == 0x23, "Deferred station decay preserves its entrance")
+
+	var funded := _maintenance_fixture(reference_root, 0x1d, 0)
+	var funded_result := Growth.run(funded.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	_check(funded_result.ok and funded_result.decayed_roads == 0, "Full road funding prevents decay")
+	_check(funded.city.building_id(20, 20) == 0x1d, "Full road funding preserves the road")
+
+
+func _maintenance_fixture(reference_root: String, surface_tile: int, underground_tile: int) -> Dictionary:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var buildings := _filled_bytes(128 * 128, 0)
+	var zones := _filled_bytes(128 * 128, 0)
+	var underground := _filled_bytes(128 * 128, 0)
+	var flags := _filled_bytes(128 * 128, 0)
+	var index := 20 * 128 + 20
+	buildings[index] = surface_tile
+	underground[index] = underground_tile
+	for entry in [
+		["XBLD", buildings],
+		["XZON", zones],
+		["XUND", underground],
+		["XBIT", flags],
+		["XTRF", _filled_bytes(64 * 64, 0)],
+		["XVAL", _filled_bytes(64 * 64, 0)],
+	]:
+		_check(document.find_chunk(entry[0]).set_decoded_payload(entry[1]), "Maintenance fixture sets %s" % entry[0])
+	for budget_index in range(10, 16):
+		_check(
+			document.set_misc_i32(0x077c + budget_index * 0x6c + 4, 100),
+			"Maintenance fixture fully funds budget %d" % budget_index,
+		)
+	_check(document.set_misc_u32(0x01f0, 16384 - int(surface_tile != 0)), "Maintenance fixture counts clear tiles")
+	if surface_tile != 0:
+		_check(document.set_misc_u32(0x01f0 + surface_tile * 4, 1), "Maintenance fixture counts its surface tile")
+	_check(document.set_misc_u32(0x0fe8, int(underground_tile != 0)), "Maintenance fixture counts its subway tile")
+	return {"document": document, "city": CityModel.from_document(document)}
 
 
 func _growth_fixture(

@@ -8,6 +8,9 @@ const MISC_SIZE := 4800
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_ZONE_POPULATIONS := 0x05f0
 const MISC_DEMAND := 0x0718
+const MISC_BUDGETS := 0x077c
+const MISC_BUDGET_RECORD_SIZE := 0x006c
+const MISC_SUBWAY_COUNT := 0x0fe8
 const MISC_NORMAL_POPULATION := 0x102c
 const POPULATION_BY_DENSITY := [0, 1, 8, 12, 36]
 const BUILDING_BASE := [
@@ -38,11 +41,17 @@ const CLASS_ABANDONED := 4
 const CHURCH_TILE := 0xf7
 
 
-static func run(city: CityState, random, step: int, substep: int) -> Dictionary:
+static func run(
+	city: CityState, random, step: int, substep: int, lfsr_random = null
+) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible random generator is required"}
+	if lfsr_random == null:
+		lfsr_random = SimLfsrRandom.new(1)
+	if not lfsr_random.has_method("next_mask"):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
 	if step < 0 or step > 3 or substep < 0 or substep > 3:
 		return {"ok": false, "error": "growth partition is outside the supported range"}
 	var payloads := _payloads(city)
@@ -52,6 +61,7 @@ static func run(city: CityState, random, step: int, substep: int) -> Dictionary:
 	var original := _duplicate_payloads(payloads)
 	var buildings: PackedByteArray = payloads.XBLD
 	var zones: PackedByteArray = payloads.XZON
+	var underground: PackedByteArray = payloads.XUND
 	var flags: PackedByteArray = payloads.XBIT
 	var traffic: PackedByteArray = payloads.XTRF
 	var land_value: PackedByteArray = payloads.XVAL
@@ -71,6 +81,12 @@ static func run(city: CityState, random, step: int, substep: int) -> Dictionary:
 		"churches_built": 0,
 		"successful_trips": 0,
 		"failed_trips": 0,
+		"decayed_roads": 0,
+		"decayed_rails": 0,
+		"decayed_highway_tiles": 0,
+		"decayed_subway_tiles": 0,
+		"deferred_bridge_collapses": 0,
+		"deferred_station_removals": 0,
 	}
 
 	for x in range(step, CityState.MAP_SIZE, 4):
@@ -79,16 +95,37 @@ static func run(city: CityState, random, step: int, substep: int) -> Dictionary:
 			var index := x * CityState.MAP_SIZE + y
 			var zone_byte := int(zones[index])
 			var zone := zone_byte & 0x0f
-			if zone < 1 or zone > 6:
+			if zone == 0:
+				_process_surface_maintenance(
+					buildings, zones, flags, misc, Vector2i(x, y), random, lfsr_random, counters
+				)
+				_process_subway_maintenance(
+					buildings, zones, flags, underground, misc,
+					Vector2i(x, y), random, lfsr_random, counters
+				)
+				continue
+			if zone > 6:
+				_process_subway_maintenance(
+					buildings, zones, flags, underground, misc,
+					Vector2i(x, y), random, lfsr_random, counters
+				)
 				continue
 			var building := int(buildings[index])
 			var density := 0
 			var status := STATUS_NORMAL
 			if building < 0x70:
 				if building >= 0x1d or not TransportTrip.has_nearby_transport(buildings, Vector2i(x, y)):
+					_process_subway_maintenance(
+						buildings, zones, flags, underground, misc,
+						Vector2i(x, y), random, lfsr_random, counters
+					)
 					continue
 			else:
 				if building > 0xc5 or zone_byte & anchor_mask == 0:
+					_process_subway_maintenance(
+						buildings, zones, flags, underground, misc,
+						Vector2i(x, y), random, lfsr_random, counters
+					)
 					continue
 				density = _density(building)
 				status = _status(building)
@@ -100,7 +137,7 @@ static func run(city: CityState, random, step: int, substep: int) -> Dictionary:
 				var trip := TransportTrip.trace(
 					buildings,
 					zones,
-					city.underground,
+					underground,
 					city.text_overlays,
 					city.altitude_words,
 					traffic,
@@ -139,6 +176,10 @@ static func run(city: CityState, random, step: int, substep: int) -> Dictionary:
 						land_value,
 					)
 					counters.abandoned_buildings += 1
+					_process_subway_maintenance(
+						buildings, zones, flags, underground, misc,
+						Vector2i(x, y), random, lfsr_random, counters
+					)
 					continue
 
 			if status == STATUS_CONSTRUCTION:
@@ -165,6 +206,10 @@ static func run(city: CityState, random, step: int, substep: int) -> Dictionary:
 							rotation,
 						)
 					counters.completed_construction += 1
+					_process_subway_maintenance(
+						buildings, zones, flags, underground, misc,
+						Vector2i(x, y), random, lfsr_random, counters
+					)
 					continue
 			elif status == STATUS_ABANDONED:
 				var abandoned_population: int = POPULATION_BY_DENSITY[density]
@@ -184,6 +229,10 @@ static func run(city: CityState, random, step: int, substep: int) -> Dictionary:
 						rotation,
 					)
 					counters.recovered_buildings += 1
+				_process_subway_maintenance(
+					buildings, zones, flags, underground, misc,
+					Vector2i(x, y), random, lfsr_random, counters
+				)
 				continue
 
 			if _can_advance_density(zone_byte, zone, density, land_value, x, y):
@@ -206,10 +255,14 @@ static func run(city: CityState, random, step: int, substep: int) -> Dictionary:
 							counters.started_construction += 1
 						else:
 							counters.advanced_construction += 1
+			_process_subway_maintenance(
+				buildings, zones, flags, underground, misc,
+				Vector2i(x, y), random, lfsr_random, counters
+			)
 
 	if not _apply_payloads(
 		city,
-		PackedStringArray(["XBLD", "XZON", "XBIT", "XTRF", "MISC"]),
+		PackedStringArray(["XBLD", "XZON", "XUND", "XBIT", "XTRF", "MISC"]),
 		payloads,
 		original,
 	):
@@ -219,6 +272,158 @@ static func run(city: CityState, random, step: int, substep: int) -> Dictionary:
 	counters["complete"] = false
 	counters["error"] = ""
 	return counters
+
+
+static func _process_surface_maintenance(
+	buildings: PackedByteArray,
+	zones: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i,
+	random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	var index := _index(point)
+	var tile := int(buildings[index])
+	if tile < 0x1d or lfsr_random.next_mask(0x7f) != 0:
+		return
+	if _is_road_budget_tile(tile):
+		if _maintenance_fails(misc, 10, random, 100):
+			_replace_building(buildings, zones, misc, index, 1 + (random.next_u15() & 3))
+			flags[index] &= 0x7f
+			counters.decayed_roads += 1
+		return
+	if _is_rail_budget_tile(tile):
+		if _maintenance_fails(misc, 13, random, 100):
+			_replace_building(buildings, zones, misc, index, 1 + (random.next_u15() & 3))
+			flags[index] &= 0x7f
+			counters.decayed_rails += 1
+		return
+	if _is_bridge_budget_tile(tile):
+		var wind := _read_u32(misc, 0x0064) & 0xff
+		if _maintenance_fails(misc, 12, random, 50, wind):
+			counters.deferred_bridge_collapses += 1
+		return
+	if _is_highway_budget_tile(tile):
+		if point.x & 1 or point.y & 1:
+			return
+		if not _maintenance_fails(misc, 11, random, 100):
+			return
+		for highway_point in [
+			point,
+			point + Vector2i(1, 0),
+			point + Vector2i(0, 1),
+			point + Vector2i(1, 1),
+		]:
+			var highway_index := _index(highway_point)
+			var replacement := 0
+			if flags[highway_index] & 0x04 == 0:
+				replacement = 1 + (random.next_u15() & 3)
+			_replace_building(buildings, zones, misc, highway_index, replacement)
+			counters.decayed_highway_tiles += 1
+
+
+static func _process_subway_maintenance(
+	_buildings: PackedByteArray,
+	zones: PackedByteArray,
+	_flags: PackedByteArray,
+	underground: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i,
+	random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	if lfsr_random.next_mask(0x7f) != 0:
+		return
+	var index := _index(point)
+	var old_tile := int(underground[index])
+	if not _is_subway_tile(old_tile):
+		return
+	if not _maintenance_fails(misc, 14, random, 100):
+		return
+	var replacement := 0
+	if old_tile == 0x1f:
+		replacement = 0x11
+	elif old_tile == 0x20:
+		replacement = 0x10
+	elif old_tile == 0x23:
+		counters.deferred_station_removals += 1
+		return
+	_replace_underground(underground, zones, misc, index, replacement)
+	counters.decayed_subway_tiles += 1
+
+
+static func _maintenance_fails(
+	misc: PackedByteArray,
+	budget_index: int,
+	random,
+	random_range: int,
+	additional_value := 0
+) -> bool:
+	var funding := _read_i32(
+		misc, MISC_BUDGETS + budget_index * MISC_BUDGET_RECORD_SIZE + 4
+	)
+	return funding != 100 and additional_value + random.next_u15() % random_range >= funding
+
+
+static func _is_road_budget_tile(tile: int) -> bool:
+	return (
+		(tile >= 0x1d and tile <= 0x2b)
+		or (tile >= 0x3f and tile <= 0x46)
+		or tile == 0x4b
+		or tile == 0x4c
+		or (tile >= 0x5d and tile <= 0x60)
+	)
+
+
+static func _is_rail_budget_tile(tile: int) -> bool:
+	return (
+		(tile >= 0x2c and tile <= 0x3e)
+		or (tile >= 0x45 and tile <= 0x48)
+		or (tile >= 0x6c and tile <= 0x6f)
+		or tile == 0x4d
+		or tile == 0x4e
+	)
+
+
+static func _is_bridge_budget_tile(tile: int) -> bool:
+	return (tile >= 0x51 and tile <= 0x5c) or tile == 0x6a or tile == 0x6b
+
+
+static func _is_highway_budget_tile(tile: int) -> bool:
+	return (tile >= 0x49 and tile <= 0x50) or (tile >= 0x61 and tile <= 0x69)
+
+
+static func _is_subway_tile(tile: int) -> bool:
+	return (
+		(tile > 0 and tile < 0x10)
+		or tile == 0x1f
+		or tile == 0x20
+		or tile == 0x22
+		or tile == 0x23
+	)
+
+
+static func _replace_underground(
+	underground: PackedByteArray,
+	zones: PackedByteArray,
+	misc: PackedByteArray,
+	index: int,
+	new_tile: int
+) -> void:
+	var old_tile := int(underground[index])
+	if old_tile == new_tile:
+		return
+	if (zones[index] & 0x0f) != 7:
+		var count := _read_u32(misc, MISC_SUBWAY_COUNT)
+		if _is_subway_tile(old_tile):
+			count = (count - 1) & 0xffff
+		if _is_subway_tile(new_tile):
+			count = (count + 1) & 0xffff
+		_write_u32(misc, MISC_SUBWAY_COUNT, count)
+	underground[index] = new_tile
 
 
 static func _can_advance_density(
@@ -692,6 +897,7 @@ static func _payloads(city: CityState) -> Dictionary:
 	for checked in [
 		["XBLD", CityState.TILE_COUNT],
 		["XZON", CityState.TILE_COUNT],
+		["XUND", CityState.TILE_COUNT],
 		["XBIT", CityState.TILE_COUNT],
 		["XTRF", MAP_VALUE_COUNT],
 		["XVAL", MAP_VALUE_COUNT],
@@ -733,6 +939,7 @@ static func _apply_payloads(
 static func _refresh_city(city: CityState) -> void:
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
+	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
 	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
 
 
