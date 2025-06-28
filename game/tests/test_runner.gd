@@ -768,11 +768,61 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(crossover.document.misc_u32(0x0fe8) == 0, "Crossover decay decrements the saved XUND count")
 
 	var station := _maintenance_fixture(reference_root, 0xe9, 0x23)
+	_check(station.city.set_text_overlay_id(20, 20, 54), "Station decay fixture sets its microsim label")
+	_check(station.city.set_tile_flag(20, 20, 0xe2, true), "Station decay fixture sets utility and flip flags")
 	_check(station.document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Station decay fixture removes funding")
 	var station_result := Growth.run(station.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
-	_check(station_result.ok and station_result.deferred_station_removals == 1, "Station decay reports pending surface demolition")
-	_check(station.city.building_id(20, 20) == 0xe9, "Deferred station decay preserves the surface station")
-	_check(station.city.underground_id(20, 20) == 0x23, "Deferred station decay preserves its entrance")
+	_check(station_result.ok and station_result.removed_subway_stations == 1, "Unfunded subway station is removed")
+	_check(station_result.decayed_subway_tiles == 1, "Station removal counts one decayed subway tile")
+	_check(station.city.building_id(20, 20) == 1, "Station decay makes process-selected rubble")
+	_check(station.city.underground_id(20, 20) == 0, "Station decay clears its entrance")
+	_check(station.city.text_overlay_id(20, 20) == 0, "Station decay clears its fixed microsim overlay")
+	_check(
+		station.city.tile_flags[20 * 128 + 20] == 0x20,
+		"Station decay clears powered, powerable, and flip flags",
+	)
+	_check(station.document.misc_u32(0x0fe8) == 0, "Station decay decrements the subway count")
+
+	var bridge := _maintenance_fixture(reference_root, 0x51, 0)
+	for x in range(18, 25):
+		for y in range(19, 22):
+			_check(bridge.city.set_land_altitude(x, y, 0), "Bridge decay fixture levels the waterbed")
+	for x in range(20, 23):
+		_check(bridge.city.set_building_id(x, 20, 0x51), "Bridge decay fixture places a span tile")
+		_check(bridge.city.set_terrain_id(x, 20, 0x30), "Bridge decay fixture places water terrain")
+		_check(bridge.city.set_tile_flag(x, 20, 0x06, true), "Bridge decay fixture marks horizontal water")
+	for x in [19, 23]:
+		_check(bridge.city.set_building_id(x, 20, 0x1d), "Bridge decay fixture places a bank road")
+		_check(bridge.city.set_land_altitude(x, 20, 1), "Bridge decay fixture raises a bank")
+	_check(bridge.document.set_misc_u32(0x01f0, 16379), "Bridge decay fixture counts clear tiles")
+	_check(bridge.document.set_misc_u32(0x01f0 + 0x51 * 4, 3), "Bridge decay fixture counts span tiles")
+	_check(bridge.document.set_misc_u32(0x01f0 + 0x1d * 4, 2), "Bridge decay fixture counts bank roads")
+	_check(bridge.document.set_misc_u32(0x0e40, 1), "Bridge decay fixture sets sea level")
+	_check(bridge.document.set_misc_i32(0x077c + 12 * 0x6c + 4, 0), "Bridge decay fixture removes funding")
+	var bridge_result := Growth.run(bridge.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	_check(bridge_result.ok and bridge_result.collapsed_bridges == 1, "Unfunded bridge span collapses")
+	_check(bridge_result.deferred_bridge_effects == 1, "Bridge collapse reports pending news and visual effects")
+	for x in range(20, 23):
+		_check(bridge.city.building_id(x, 20) == 0, "Bridge collapse clears each span tile")
+	for x in [19, 23]:
+		_check(bridge.city.building_id(x, 20) == 0, "Bridge collapse clears a bank road")
+		_check(
+			bridge.city.land_altitude(x, 20) == 0,
+			"Bridge collapse lowers a dry bank: %d" % bridge.city.land_altitude(x, 20),
+		)
+		_check(
+			bridge.city.tile_flags[x * 128 + 20] & 0x04 != 0,
+			"Bridge collapse restores bank water: 0x%02x" % bridge.city.tile_flags[x * 128 + 20],
+		)
+	_check(bridge.document.misc_u32(0x01f0 + 0x51 * 4) == 0, "Bridge collapse clears its tile count")
+
+	var reinforced := _maintenance_fixture(reference_root, 0x6a, 0)
+	_check(reinforced.document.set_misc_i32(0x077c + 12 * 0x6c + 4, 0), "Reinforced bridge fixture removes funding")
+	var reinforced_result := Growth.run(
+		reinforced.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new()
+	)
+	_check(reinforced_result.ok and reinforced_result.deferred_bridge_collapses == 1, "Reinforced bridge collapse stays explicit")
+	_check(reinforced.city.building_id(20, 20) == 0x6a, "Deferred reinforced bridge stays unchanged")
 
 	var funded := _maintenance_fixture(reference_root, 0x1d, 0)
 	var funded_result := Growth.run(funded.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())

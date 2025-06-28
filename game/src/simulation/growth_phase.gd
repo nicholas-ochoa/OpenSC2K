@@ -3,6 +3,7 @@
 class_name GrowthPhase
 extends RefCounted
 
+const Demolish = preload("res://src/tools/demolish_command.gd")
 const MAP_VALUE_COUNT := 64 * 64
 const MISC_SIZE := 4800
 const MISC_TILE_COUNTS := 0x01f0
@@ -83,10 +84,14 @@ static func run(
 		return {"ok": false, "error": "growth input chunks are missing or have the wrong size"}
 
 	var original := _duplicate_payloads(payloads)
+	var altitude: PackedByteArray = payloads.ALTM
+	var altitudes := city.altitude_words.duplicate()
+	var terrain: PackedByteArray = payloads.XTER
 	var buildings: PackedByteArray = payloads.XBLD
 	var zones: PackedByteArray = payloads.XZON
 	var underground: PackedByteArray = payloads.XUND
 	var flags: PackedByteArray = payloads.XBIT
+	var text_overlays: PackedByteArray = payloads.XTXT
 	var traffic: PackedByteArray = payloads.XTRF
 	var land_value: PackedByteArray = payloads.XVAL
 	var misc: PackedByteArray = payloads.MISC
@@ -109,7 +114,10 @@ static func run(
 		"decayed_rails": 0,
 		"decayed_highway_tiles": 0,
 		"decayed_subway_tiles": 0,
+		"collapsed_bridges": 0,
+		"removed_subway_stations": 0,
 		"deferred_bridge_collapses": 0,
+		"deferred_bridge_effects": 0,
 		"deferred_station_removals": 0,
 		"special_growth_attempts": 0,
 		"special_tiles_placed": 0,
@@ -126,10 +134,11 @@ static func run(
 			var zone := zone_byte & 0x0f
 			if zone == 0:
 				_process_surface_maintenance(
-					buildings, zones, flags, misc, Vector2i(x, y), random, lfsr_random, counters
+					altitude, altitudes, terrain, buildings, zones, underground, flags,
+					misc, Vector2i(x, y), random, lfsr_random, counters
 				)
 				_process_subway_maintenance(
-					buildings, zones, flags, underground, misc,
+					terrain, buildings, zones, flags, text_overlays, underground, misc,
 					Vector2i(x, y), random, lfsr_random, counters
 				)
 				continue
@@ -139,8 +148,8 @@ static func run(
 					zones,
 					underground,
 					flags,
-					city.terrain,
-					city.altitude_words,
+					terrain,
+					altitudes,
 					misc,
 					Vector2i(x, y),
 					random,
@@ -148,7 +157,7 @@ static func run(
 					counters,
 				)
 				_process_subway_maintenance(
-					buildings, zones, flags, underground, misc,
+					terrain, buildings, zones, flags, text_overlays, underground, misc,
 					Vector2i(x, y), random, lfsr_random, counters
 				)
 				continue
@@ -158,14 +167,14 @@ static func run(
 			if building < 0x70:
 				if building >= 0x1d or not TransportTrip.has_nearby_transport(buildings, Vector2i(x, y)):
 					_process_subway_maintenance(
-						buildings, zones, flags, underground, misc,
+						terrain, buildings, zones, flags, text_overlays, underground, misc,
 						Vector2i(x, y), random, lfsr_random, counters
 					)
 					continue
 			else:
 				if building > 0xc5 or zone_byte & anchor_mask == 0:
 					_process_subway_maintenance(
-						buildings, zones, flags, underground, misc,
+						terrain, buildings, zones, flags, text_overlays, underground, misc,
 						Vector2i(x, y), random, lfsr_random, counters
 					)
 					continue
@@ -180,8 +189,8 @@ static func run(
 					buildings,
 					zones,
 					underground,
-					city.text_overlays,
-					city.altitude_words,
+					text_overlays,
+					altitudes,
 					traffic,
 					Vector2i(x, y),
 					zone,
@@ -219,7 +228,7 @@ static func run(
 					)
 					counters.abandoned_buildings += 1
 					_process_subway_maintenance(
-						buildings, zones, flags, underground, misc,
+						terrain, buildings, zones, flags, text_overlays, underground, misc,
 						Vector2i(x, y), random, lfsr_random, counters
 					)
 					continue
@@ -249,7 +258,7 @@ static func run(
 						)
 					counters.completed_construction += 1
 					_process_subway_maintenance(
-						buildings, zones, flags, underground, misc,
+						terrain, buildings, zones, flags, text_overlays, underground, misc,
 						Vector2i(x, y), random, lfsr_random, counters
 					)
 					continue
@@ -272,7 +281,7 @@ static func run(
 					)
 					counters.recovered_buildings += 1
 				_process_subway_maintenance(
-					buildings, zones, flags, underground, misc,
+					terrain, buildings, zones, flags, text_overlays, underground, misc,
 					Vector2i(x, y), random, lfsr_random, counters
 				)
 				continue
@@ -285,7 +294,7 @@ static func run(
 						flags,
 						misc,
 						land_value,
-						city.altitude_words,
+						altitudes,
 						Vector2i(x, y),
 						density,
 						zone,
@@ -298,16 +307,15 @@ static func run(
 						else:
 							counters.advanced_construction += 1
 			_process_subway_maintenance(
-				buildings, zones, flags, underground, misc,
+				terrain, buildings, zones, flags, text_overlays, underground, misc,
 				Vector2i(x, y), random, lfsr_random, counters
 			)
 
-	if not _apply_payloads(
-		city,
-		PackedStringArray(["XBLD", "XZON", "XUND", "XBIT", "XTRF", "MISC"]),
-		payloads,
-		original,
-	):
+	var changed_ids := PackedStringArray()
+	for chunk_id in ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT", "XTRF", "MISC"]:
+		if payloads[chunk_id] != original[chunk_id]:
+			changed_ids.append(chunk_id)
+	if not _apply_payloads(city, changed_ids, payloads, original):
 		return {"ok": false, "error": "cannot store growth phase data"}
 	counters["ok"] = true
 	counters["rci_complete"] = true
@@ -808,8 +816,12 @@ static func _special_axis_is_flipped(x_delta: int, rotation: int) -> bool:
 
 
 static func _process_surface_maintenance(
+	altitude: PackedByteArray,
+	altitudes: PackedInt32Array,
+	terrain: PackedByteArray,
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
+	underground: PackedByteArray,
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
@@ -836,7 +848,18 @@ static func _process_surface_maintenance(
 	if _is_bridge_budget_tile(tile):
 		var wind := _read_u32(misc, 0x0064) & 0xff
 		if _maintenance_fails(misc, 12, random, 50, wind):
-			counters.deferred_bridge_collapses += 1
+			if tile == 0x6a or tile == 0x6b:
+				counters.deferred_bridge_collapses += 1
+				return
+			var result := Demolish._demolish_bridge(
+				altitude, buildings, terrain, zones, underground, flags, misc, point
+			)
+			if not result.get("changed", false):
+				counters.deferred_bridge_collapses += 1
+				return
+			_sync_altitudes(altitude, altitudes)
+			counters.collapsed_bridges += 1
+			counters.deferred_bridge_effects += 1
 		return
 	if _is_highway_budget_tile(tile):
 		if point.x & 1 or point.y & 1:
@@ -858,9 +881,11 @@ static func _process_surface_maintenance(
 
 
 static func _process_subway_maintenance(
-	_buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	buildings: PackedByteArray,
 	zones: PackedByteArray,
-	_flags: PackedByteArray,
+	flags: PackedByteArray,
+	text_overlays: PackedByteArray,
 	underground: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
@@ -882,7 +907,21 @@ static func _process_subway_maintenance(
 	elif old_tile == 0x20:
 		replacement = 0x10
 	elif old_tile == 0x23:
-		counters.deferred_station_removals += 1
+		if buildings[index] != 0xe9:
+			counters.deferred_station_removals += 1
+			return
+		var surface_replacement := 0
+		if terrain[index] == 0:
+			surface_replacement = 1 + (random.next_u15() & 3)
+		_replace_building(buildings, zones, misc, index, surface_replacement)
+		zones[index] &= 0x0f
+		flags[index] &= 0x3d
+		var overlay := int(text_overlays[index])
+		if overlay < 0xc9 or overlay == 0xfa:
+			text_overlays[index] = 0
+		_replace_underground(underground, zones, misc, index, 0)
+		counters.removed_subway_stations += 1
+		counters.decayed_subway_tiles += 1
 		return
 	_replace_underground(underground, zones, misc, index, replacement)
 	counters.decayed_subway_tiles += 1
@@ -1428,9 +1467,12 @@ static func _replace_building(
 static func _payloads(city: CityState) -> Dictionary:
 	var result := {}
 	for checked in [
+		["ALTM", CityState.TILE_COUNT * 2],
+		["XTER", CityState.TILE_COUNT],
 		["XBLD", CityState.TILE_COUNT],
 		["XZON", CityState.TILE_COUNT],
 		["XUND", CityState.TILE_COUNT],
+		["XTXT", CityState.TILE_COUNT],
 		["XBIT", CityState.TILE_COUNT],
 		["XTRF", MAP_VALUE_COUNT],
 		["XVAL", MAP_VALUE_COUNT],
@@ -1470,10 +1512,20 @@ static func _apply_payloads(
 
 
 static func _refresh_city(city: CityState) -> void:
+	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
+	for index in CityState.TILE_COUNT:
+		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
+	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
 	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
+	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
 	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
+
+
+static func _sync_altitudes(altitude: PackedByteArray, altitudes: PackedInt32Array) -> void:
+	for index in CityState.TILE_COUNT:
+		altitudes[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 
 static func _index(point: Vector2i) -> int:
