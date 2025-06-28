@@ -65,6 +65,23 @@ class NonzeroLfsrRandom:
 		return 1
 
 
+class SequenceRandom:
+	extends RefCounted
+
+	var values := PackedInt32Array()
+	var position := 0
+
+	func _init(initial_values: Array[int]) -> void:
+		values = PackedInt32Array(initial_values)
+
+	func next_u15() -> int:
+		if position >= values.size():
+			return 1
+		var value := int(values[position])
+		position += 1
+		return value
+
+
 func _init() -> void:
 	var arguments := OS.get_cmdline_user_args()
 	var reference_root := ProjectSettings.globalize_path("res://../references")
@@ -590,7 +607,121 @@ func _test_growth_phase(reference_root: String) -> void:
 		_check(church.city.building_id(point.x, point.y) == 0xf7, "Church fills its two-by-two footprint")
 		_check(church.city.zone_id(point.x, point.y) == 0, "Church clears the RCI zone nibble")
 
+	_test_special_zone_growth(reference_root)
 	_test_transport_maintenance(reference_root)
+
+
+func _test_special_zone_growth(reference_root: String) -> void:
+	var airport := _special_growth_fixture(reference_root)
+	for x in range(20, 25):
+		_check(airport.city.set_zone_id(x, 21, 8), "Airport fixture zones its runway strip")
+	_check(airport.city.set_tile_flag(20, 21, 0x40, true), "Airport fixture powers its origin")
+	var airport_result := Growth.run(
+		airport.city, ZeroRandom.new(), 0, 1, NonzeroLfsrRandom.new()
+	)
+	_check(airport_result.ok, "Airport growth scan completes: %s" % airport_result.error)
+	_check(airport_result.special_tiles_placed == 5, "Airport growth places a five-tile runway")
+	for x in range(20, 25):
+		_check(airport.city.building_id(x, 21) == 0xdd, "Airport runway uses tile 0xdd")
+		_check(airport.city.building_corners(x, 21) == 0xf0, "Airport runway sets all corner bits")
+		_check(
+			airport.city.tile_flags[x * 128 + 21] & 0xc0 == 0xc0,
+			"Civilian runway tiles are powered and powerable",
+		)
+	_check(airport.document.misc_u32(0x01f0 + 0xdd * 4) == 5, "Airport growth counts runway tiles")
+
+	var seaport := _special_growth_fixture(reference_root)
+	_check(seaport.city.set_zone_id(20, 20, 9), "Seaport fixture zones its crane origin")
+	_check(seaport.city.set_tile_flag(20, 20, 0x40, true), "Seaport fixture powers its origin")
+	for y in range(21, 26):
+		_check(seaport.city.set_tile_flag(20, y, 0x04, true), "Seaport fixture marks pier water")
+	_check(seaport.city.set_land_altitude(20, 25, 0), "Seaport fixture lowers the last water tile")
+	_check(seaport.city.set_water_altitude(20, 25, 2), "Seaport fixture makes the last tile deep")
+	var seaport_result := Growth.run(
+		seaport.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new()
+	)
+	_check(seaport_result.ok, "Seaport growth scan completes: %s" % seaport_result.error)
+	_check(seaport_result.special_tiles_placed == 5, "Seaport growth places one crane and four piers")
+	_check(seaport.city.building_id(20, 20) == 0xe0, "Seaport growth places its crane")
+	_check(seaport.city.zone_id(20, 20) == 9, "Seaport crane stays in the seaport zone")
+	for y in range(21, 25):
+		_check(seaport.city.building_id(20, y) == 0xdf, "Seaport growth places a pier tile")
+		_check(seaport.city.building_corners(20, y) == 0xf0, "Seaport pier sets all corner bits")
+	_check(seaport.city.building_id(20, 25) == 0, "Seaport growth keeps the depth-check tile clear")
+	_check(seaport.document.misc_u32(0x01f0 + 0xe0 * 4) == 1, "Seaport growth counts its crane")
+	_check(seaport.document.misc_u32(0x01f0 + 0xdf * 4) == 4, "Seaport growth counts its piers")
+
+	var silos := _special_growth_fixture(reference_root)
+	for x in range(18, 21):
+		for y in range(18, 21):
+			_check(silos.city.set_zone_id(x, y, 7), "Missile fixture zones its military plot")
+	_check(silos.document.set_misc_u32(0x0e4c, 5), "Missile fixture selects a missile base")
+	_check(silos.document.set_misc_u32(0x01f0, 16375), "Missile fixture excludes military tiles from the normal count")
+	_check(silos.document.set_misc_u32(0x0fa8, 9), "Missile fixture counts military other tiles")
+	var silo_result := Growth.run(silos.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
+	_check(silo_result.ok, "Missile growth scan completes: %s" % silo_result.error)
+	_check(silo_result.special_tiles_placed == 9, "Missile growth places a three-by-three silo")
+	for x in range(18, 21):
+		for y in range(18, 21):
+			_check(silos.city.building_id(x, y) == 0xf9, "Missile growth fills the surface plot")
+			_check(silos.city.underground_id(x, y) == 0x22, "Missile growth fills the underground plot")
+	_check(silos.document.misc_u32(0x0fa8) == 0, "Missile growth consumes military other tiles")
+	_check(silos.document.misc_u32(0x0fa8 + 15 * 4) == 9, "Missile growth counts silo tiles")
+	_check(silos.document.misc_u32(0x0fe8) == 0, "Military silo subway tiles do not change the city subway count")
+
+	var army := _special_growth_fixture(reference_root)
+	for x in range(20, 22):
+		for y in range(20, 22):
+			_check(army.city.set_zone_id(x, y, 7), "Army fixture zones its building plot")
+			_check(army.city.set_tile_flag(x, y, 0xe0, true), "Army fixture sets utility flags")
+	_check(army.document.set_misc_u32(0x0e4c, 2), "Army fixture selects an army base")
+	_check(army.document.set_misc_u32(0x01f0, 16380), "Army fixture excludes military tiles from the normal count")
+	_check(army.document.set_misc_u32(0x0fa8, 4), "Army fixture counts military other tiles")
+	var army_result := Growth.run(army.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
+	_check(army_result.ok, "Army growth scan completes: %s" % army_result.error)
+	_check(army_result.special_growth_attempts == 1, "Army growth attempts one controlled building")
+	_check(army_result.special_tiles_placed == 0, "Win95 military item placement rejects its own zone")
+	for x in range(20, 22):
+		for y in range(20, 22):
+			_check(army.city.building_id(x, y) == 0, "Win95 military placement leaves the plot clear")
+			_check(army.city.tile_flags[x * 128 + y] & 0xf0 == 0, "Win95 military placement clears utility flags")
+
+	var air_force := _special_growth_fixture(reference_root)
+	for x in range(21, 26):
+		_check(air_force.city.set_zone_id(x, 21, 7), "Air Force fixture zones its runway strip")
+	_check(air_force.city.set_building_id(10, 10, 0xdd), "Air Force fixture places one civilian runway")
+	_check(air_force.city.set_building_id(23, 21, 0x1d), "Air Force fixture places a military road")
+	_check(air_force.city.set_terrain_id(23, 21, 1), "Air Force fixture sets terrain under the road")
+	_check(air_force.city.set_underground_id(23, 21, 1), "Air Force fixture sets a subway under the road")
+	_check(air_force.document.set_misc_u32(0x0e4c, 3), "Air Force fixture selects an air base")
+	_check(air_force.document.set_misc_u32(0x01f0, 16378), "Air Force fixture counts normal clear tiles")
+	_check(air_force.document.set_misc_u32(0x01f0 + 0xdd * 4, 1), "Air Force fixture counts its civilian runway")
+	_check(air_force.document.set_misc_u32(0x0fa8, 5), "Air Force fixture counts military other tiles")
+	var air_force_result := Growth.run(
+		air_force.city, ZeroRandom.new(), 1, 1, NonzeroLfsrRandom.new()
+	)
+	_check(air_force_result.ok, "Air Force growth scan completes: %s" % air_force_result.error)
+	_check(air_force_result.special_tiles_placed == 5, "Air Force growth places a five-tile runway")
+	for x in range(21, 26):
+		_check(air_force.city.building_id(x, 21) == 0xdd, "Air Force growth follows normal-runway parity")
+	_check(air_force.city.terrain_id(23, 21) == 1, "Win95 military runway growth preserves underlying terrain")
+	_check(air_force.city.underground_id(23, 21) == 1, "Win95 military runway growth preserves its subway")
+	_check(air_force.document.misc_u32(0x01f0 + 0xdd * 4) == 1, "Military runways do not change the normal runway count")
+	_check(air_force.document.misc_u32(0x0fa8) == 0, "Air Force growth consumes military other tiles")
+	_check(air_force.document.misc_u32(0x0fa8 + 4) == 5, "Air Force growth counts military runway tiles")
+
+	var aircraft := _special_growth_fixture(reference_root)
+	_check(aircraft.city.set_zone_id(20, 20, 8), "Aircraft fixture sets an airport zone")
+	_check(aircraft.city.set_building_id(20, 20, 0xdd), "Aircraft fixture places a runway")
+	_check(aircraft.city.set_tile_flag(20, 20, 0x40, true), "Aircraft fixture powers its runway")
+	_check(aircraft.document.set_misc_u32(0x01f0, 16383), "Aircraft fixture counts clear tiles")
+	_check(aircraft.document.set_misc_u32(0x01f0 + 0xdd * 4, 1), "Aircraft fixture counts its runway")
+	var aircraft_result := Growth.run(
+		aircraft.city, SequenceRandom.new([1, 0, 0]), 0, 0, NonzeroLfsrRandom.new()
+	)
+	_check(aircraft_result.ok, "Aircraft growth scan completes: %s" % aircraft_result.error)
+	_check(aircraft_result.deferred_helicopters == 1, "Powered airport runway requests a helicopter")
+	_check(aircraft_result.deferred_airplanes == 0, "Helicopter request does not also request an airplane")
 
 
 func _test_transport_maintenance(reference_root: String) -> void:
@@ -676,6 +807,40 @@ func _maintenance_fixture(reference_root: String, surface_tile: int, underground
 	if surface_tile != 0:
 		_check(document.set_misc_u32(0x01f0 + surface_tile * 4, 1), "Maintenance fixture counts its surface tile")
 	_check(document.set_misc_u32(0x0fe8, int(underground_tile != 0)), "Maintenance fixture counts its subway tile")
+	return {"document": document, "city": CityModel.from_document(document)}
+
+
+func _special_growth_fixture(reference_root: String) -> Dictionary:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for entry in [
+		["XBLD", _filled_bytes(128 * 128, 0)],
+		["XZON", _filled_bytes(128 * 128, 0)],
+		["XUND", _filled_bytes(128 * 128, 0)],
+		["XBIT", _filled_bytes(128 * 128, 0)],
+		["XTER", _filled_bytes(128 * 128, 0)],
+		["XTRF", _filled_bytes(64 * 64, 0)],
+		["XVAL", _filled_bytes(64 * 64, 0)],
+	]:
+		_check(
+			document.find_chunk(entry[0]).set_decoded_payload(entry[1]),
+			"Special growth fixture sets %s" % entry[0],
+		)
+	for tile in 256:
+		_check(document.set_misc_u32(0x01f0 + tile * 4, 0), "Special growth fixture clears tile count")
+	_check(document.set_misc_u32(0x01f0, 16384), "Special growth fixture counts clear tiles")
+	for military_index in 16:
+		_check(
+			document.set_misc_u32(0x0fa8 + military_index * 4, 0),
+			"Special growth fixture clears military tile count",
+		)
+	for budget_index in range(10, 16):
+		_check(
+			document.set_misc_i32(0x077c + budget_index * 0x6c + 4, 100),
+			"Special growth fixture fully funds transport",
+		)
+	_check(document.set_misc_u32(0x0008, 0), "Special growth fixture sets compass rotation")
+	_check(document.set_misc_u32(0x0e4c, 0), "Special growth fixture clears military base type")
+	_check(document.set_misc_u32(0x0fe8, 0), "Special growth fixture clears the subway count")
 	return {"document": document, "city": CityModel.from_document(document)}
 
 
