@@ -23,6 +23,7 @@ const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Transport = preload("res://src/simulation/transport_trip.gd")
 const Growth = preload("res://src/simulation/growth_phase.gd")
 const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
+const MovingThingTick = preload("res://src/simulation/moving_thing_phase.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -82,6 +83,29 @@ class MicrosimLfsrRandom:
 		return 0
 
 
+class SequenceLfsrRandom:
+	extends RefCounted
+
+	var values := PackedInt32Array()
+	var position := 0
+
+	func _init(initial_values: Array[int]) -> void:
+		values = PackedInt32Array(initial_values)
+
+	func next_mask(mask: int) -> int:
+		return _next() & mask
+
+	func next_mod(divisor: int) -> int:
+		return _next() % divisor
+
+	func _next() -> int:
+		if position >= values.size():
+			return 1
+		var value := int(values[position])
+		position += 1
+		return value
+
+
 class SequenceRandom:
 	extends RefCounted
 
@@ -122,6 +146,7 @@ func _init() -> void:
 	_test_month_start(reference_root)
 	_test_transport_trip(reference_root)
 	_test_growth_phase(reference_root)
+	_test_moving_thing_phase(reference_root)
 	_test_simulation_engine(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
@@ -931,6 +956,87 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	)
 	_check(arcology_result.ok and arcology_result.arcologies_updated == 1, "Arcology updates its XMIC statistic")
 	_check(arcology.city.microsim(10).stat_0 == 8, "Arcology rating uses land value, crime, pollution, power, and water")
+
+
+func _test_moving_thing_phase(reference_root: String) -> void:
+	var moving := _special_growth_fixture(reference_root)
+	_set_sailboat(moving, 1, Vector2i(20, 20), 1)
+	_check(moving.city.set_tile_flag(20, 20, 0x04, true), "Moving sailboat fixture marks its current water")
+	_check(moving.city.set_tile_flag(21, 20, 0x04, true), "Moving sailboat fixture marks its next water")
+	var move_result := MovingThingTick.run(
+		moving.city, ZeroRandom.new(), SequenceLfsrRandom.new([1])
+	)
+	_check(move_result.ok and move_result.moved_sailboats == 1, "Sailboat tick moves on a clear water route")
+	var moved_sailboat: Dictionary = moving.city.thing(1)
+	_check(
+		moved_sailboat.x == 21
+		and moved_sailboat.y == 20
+		and moved_sailboat.px == 4
+		and moved_sailboat.py == 4,
+		"Sailboat movement advances one tile and keeps its recovered sub-tile position",
+	)
+	_check(moving.city.text_overlay_id(20, 20) == 0, "Sailboat movement clears its old XTXT cell")
+	_check(moving.city.text_overlay_id(21, 20) == 202, "Sailboat movement links its new XTXT cell")
+
+	var turning := _special_growth_fixture(reference_root)
+	_set_sailboat(turning, 1, Vector2i(20, 20), 1)
+	_check(turning.city.set_tile_flag(20, 20, 0x04, true), "Turning sailboat fixture marks water")
+	var turn_result := MovingThingTick.run(
+		turning.city, SequenceRandom.new([2]), SequenceLfsrRandom.new([0, 1])
+	)
+	_check(turn_result.ok and turn_result.turned_sailboats == 1, "Sailboat turns on its LFSR gate")
+	_check(
+		turning.city.thing(1).direction == 2
+		and turning.city.thing(1).x == 20
+		and turning.city.thing(1).y == 20,
+		"Sailboat turn uses the process generator and stays on its tile",
+	)
+
+	var distress := _special_growth_fixture(reference_root)
+	_set_sailboat(distress, 1, Vector2i(20, 20), 0)
+	_check(distress.city.set_tile_flag(20, 20, 0x04, true), "Distress fixture marks water")
+	var distress_result := MovingThingTick.run(
+		distress.city, ZeroRandom.new(), SequenceLfsrRandom.new([0, 0])
+	)
+	_check(
+		distress_result.ok
+		and distress_result.distressed_sailboats == 1
+		and distress_result.deferred_news == 1,
+		"Sailboat distress sets its state and reports the pending news item",
+	)
+	_check(distress.city.thing(1).state == 1, "Distressed sailboat stores state one")
+	var removal_result := MovingThingTick.run(
+		distress.city, ZeroRandom.new(), SequenceLfsrRandom.new([0])
+	)
+	_check(removal_result.ok and removal_result.removed_sailboats == 1, "Distressed sailboat expires on its LFSR gate")
+	_check(distress.city.thing(1).type == 0, "Expired sailboat releases its XTHG record")
+	_check(distress.city.text_overlay_id(20, 20) == 0, "Expired sailboat clears its XTXT cell")
+
+	var marina := _special_growth_fixture(reference_root)
+	_set_sailboat(marina, 1, Vector2i(20, 20), 1)
+	_check(marina.city.set_building_id(21, 20, 0xf8), "Sailboat destination fixture places a marina")
+	var marina_result := MovingThingTick.run(
+		marina.city, ZeroRandom.new(), SequenceLfsrRandom.new([1])
+	)
+	_check(marina_result.ok and marina_result.removed_sailboats == 1, "Sailboat disappears when it reaches a marina")
+	_check(marina.city.thing(1).type == 0, "Marina arrival releases the sailboat record")
+	_check(marina.city.text_overlay_id(20, 20) == 0, "Marina arrival clears the sailboat link")
+
+
+func _set_sailboat(
+	fixture: Dictionary, record: int, point: Vector2i, direction: int, state := 0
+) -> void:
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	var offset := record * 12
+	things[offset] = 9
+	things[offset + 1] = direction
+	things[offset + 2] = state
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 6] = 4
+	things[offset + 7] = 4
+	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Sailboat fixture stores its XTHG record")
+	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Sailboat fixture links its XTXT record")
 
 
 func _test_transport_maintenance(reference_root: String) -> void:

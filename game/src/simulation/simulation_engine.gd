@@ -23,6 +23,10 @@ func _init(
 	game_random = GameLcgRandom.new(game_random_seed)
 
 
+func advance_moving_things() -> Dictionary:
+	return MovingThingPhase.run(city, random, lfsr_random)
+
+
 func advance_day() -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
