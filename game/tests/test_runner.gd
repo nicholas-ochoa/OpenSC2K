@@ -830,10 +830,16 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	_check(station.city.set_building_id(20, 20, 0xed), "Train fixture places a rail station")
 	_check(station.city.set_tile_flag(20, 20, 0x40, true), "Train fixture powers its station")
 	_check(station.city.set_building_id(20, 18, 0x2c), "Train fixture places its spawn rail")
-	_check(station.city.set_building_id(20, 17, 0x2c), "Train fixture places its route rail")
+	_check(station.city.set_building_id(19, 18, 0x2c), "Train fixture places its west route rail")
+	_check(station.city.set_building_id(21, 18, 0x2c), "Train fixture places its east route rail")
 	_check(station.document.set_misc_u32(0x01f0 + 0xed * 4, 4), "Train fixture sets the station count")
 	var train_result := Growth.run(
-		station.city, ZeroRandom.new(), 0, 0, MicrosimLfsrRandom.new()
+		station.city,
+		ZeroRandom.new(),
+		0,
+		0,
+		MicrosimLfsrRandom.new(),
+		NonzeroLfsrRandom.new()
 	)
 	_check(train_result.ok and train_result.spawned_trains == 1, "Rail station spawns a train")
 	_check(station.city.text_overlay_id(20, 18) == 202, "Train engine attaches to its rail tile")
@@ -842,13 +848,13 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	var second_car: Dictionary = station.city.thing(3)
 	_check(
 		engine.type == 10
-		and engine.direction == 0
+		and engine.direction == 1
 		and engine.state == 2
 		and engine.x == 20
 		and engine.y == 18
-		and engine.px == 20
-		and engine.py == 17,
-		"Train engine links its first car and points north along the route",
+		and engine.px == 21
+		and engine.py == 18,
+		"Train engine links its first car and follows the game-LCG search order",
 	)
 	_check(
 		first_car.type == 11
@@ -868,7 +874,7 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	_check(
 		MovingThings.spawn_train(
 			full_buildings, full_things, full_text, Vector2i(20, 20),
-			ZeroRandom.new(), ZeroLfsrRandom.new()
+			ZeroLfsrRandom.new(), ZeroLfsrRandom.new()
 		),
 		"Full-pool train creator keeps the supplied unchecked-allocation result",
 	)

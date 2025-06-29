@@ -66,7 +66,12 @@ const MILITARY_TILE_COUNT_INDEX := {
 
 
 static func run(
-	city: CityState, random, step: int, substep: int, lfsr_random = null
+	city: CityState,
+	random,
+	step: int,
+	substep: int,
+	lfsr_random = null,
+	game_random = null
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -79,6 +84,10 @@ static func run(
 		or not lfsr_random.has_method("next_mod")
 	):
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	if game_random == null:
+		game_random = GameLcgRandom.new(1)
+	if not game_random.has_method("next_mod"):
+		return {"ok": false, "error": "a compatible game random generator is required"}
 	if step < 0 or step > 3 or substep < 0 or substep > 3:
 		return {"ok": false, "error": "growth partition is outside the supported range"}
 	var payloads := _payloads(city)
@@ -150,7 +159,7 @@ static func run(
 				_process_microsim_growth(
 					buildings, zones, flags, text_overlays, microsims, things,
 					land_value, crime, pollution, misc, Vector2i(x, y), maintenance_tile,
-					random, lfsr_random, counters
+					game_random, lfsr_random, counters
 				)
 				_process_subway_maintenance(
 					terrain, buildings, zones, flags, text_overlays, underground, misc,
@@ -940,7 +949,7 @@ static func _process_microsim_growth(
 	misc: PackedByteArray,
 	point: Vector2i,
 	tile: int,
-	_random,
+	game_random,
 	lfsr_random,
 	counters: Dictionary
 ) -> void:
@@ -951,7 +960,7 @@ static func _process_microsim_growth(
 		var train_limit := int(_special_tile_count(misc, 0xed, false) / 4)
 		if MovingThings.count_type(things, MovingThings.TYPE_TRAIN_ENGINE) < train_limit:
 			if MovingThings.spawn_train(
-				buildings, things, text_overlays, point, _random, lfsr_random
+				buildings, things, text_overlays, point, game_random, lfsr_random
 			):
 				counters.spawned_trains += 1
 		return

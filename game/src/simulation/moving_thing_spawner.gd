@@ -214,12 +214,12 @@ static func spawn_train(
 	things: PackedByteArray,
 	text: PackedByteArray,
 	station: Vector2i,
-	random,
+	game_random,
 	lfsr_random
 ) -> bool:
 	for search_offset in TRAIN_SEARCH_OFFSETS:
 		var start: Vector2i = station + search_offset
-		if _spawn_train_record(buildings, things, text, start, random, lfsr_random):
+		if _spawn_train_record(buildings, things, text, start, game_random, lfsr_random):
 			return true
 	return false
 
@@ -229,7 +229,7 @@ static func _spawn_train_record(
 	things: PackedByteArray,
 	text: PackedByteArray,
 	start: Vector2i,
-	random,
+	game_random,
 	lfsr_random
 ) -> bool:
 	if count_type(things, TYPE_TRAIN_ENGINE) > 4:
@@ -242,7 +242,7 @@ static func _spawn_train_record(
 		return false
 	var initial_direction: int = lfsr_random.next_mod(4)
 	var direction := _train_direction(
-		buildings, text, start, initial_direction, random.next_u15() % 2
+		buildings, text, start, initial_direction, game_random.next_mod(2)
 	)
 	if direction < 0:
 		return false
