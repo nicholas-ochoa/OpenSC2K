@@ -22,6 +22,7 @@ const EducationHealth = preload("res://src/simulation/education_health_phase.gd"
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Transport = preload("res://src/simulation/transport_trip.gd")
 const Growth = preload("res://src/simulation/growth_phase.gd")
+const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -57,12 +58,28 @@ class ZeroLfsrRandom:
 	func next_mask(_mask: int) -> int:
 		return 0
 
+	func next_mod(_divisor: int) -> int:
+		return 0
+
 
 class NonzeroLfsrRandom:
 	extends RefCounted
 
 	func next_mask(_mask: int) -> int:
 		return 1
+
+	func next_mod(divisor: int) -> int:
+		return 1 % divisor
+
+
+class MicrosimLfsrRandom:
+	extends RefCounted
+
+	func next_mask(mask: int) -> int:
+		return 0 if mask == 3 else 1
+
+	func next_mod(_divisor: int) -> int:
+		return 0
 
 
 class SequenceRandom:
@@ -720,8 +737,194 @@ func _test_special_zone_growth(reference_root: String) -> void:
 		aircraft.city, SequenceRandom.new([1, 0, 0]), 0, 0, NonzeroLfsrRandom.new()
 	)
 	_check(aircraft_result.ok, "Aircraft growth scan completes: %s" % aircraft_result.error)
-	_check(aircraft_result.deferred_helicopters == 1, "Powered airport runway requests a helicopter")
-	_check(aircraft_result.deferred_airplanes == 0, "Helicopter request does not also request an airplane")
+	_check(aircraft_result.spawned_helicopters == 1, "Powered airport runway spawns a helicopter")
+	_check(aircraft.city.text_overlay_id(20, 20) == 202, "Helicopter attaches record one to its runway")
+	var helicopter: Dictionary = aircraft.city.thing(1)
+	_check(
+		helicopter.type == 2
+		and helicopter.direction == 2
+		and helicopter.state == 0
+		and helicopter.x == 20
+		and helicopter.y == 20,
+		"Helicopter stores its recovered type, direction, state, and position",
+	)
+	_check(
+		helicopter.px == 8
+		and helicopter.py == 8
+		and helicopter.dx == 1
+		and helicopter.dy == 1,
+		"Helicopter stores its recovered sub-tile and random destination fields",
+	)
+
+	var airplane := _special_growth_fixture(reference_root)
+	_check(airplane.city.set_zone_id(20, 20, 8), "Airplane fixture sets an airport zone")
+	_check(airplane.city.set_building_id(20, 20, 0xdd), "Airplane fixture places a runway")
+	_check(airplane.city.set_tile_flag(20, 20, 0x40, true), "Airplane fixture powers its runway")
+	_check(airplane.document.set_misc_u32(0x01f0, 16383), "Airplane fixture counts clear tiles")
+	_check(airplane.document.set_misc_u32(0x01f0 + 0xdd * 4, 1), "Airplane fixture counts its runway")
+	var airplane_result := Growth.run(
+		airplane.city, SequenceRandom.new([1, 0, 4, 9]), 0, 0, NonzeroLfsrRandom.new()
+	)
+	_check(airplane_result.ok and airplane_result.spawned_airplanes == 1, "Airport spawns an airplane")
+	var plane: Dictionary = airplane.city.thing(1)
+	_check(
+		plane.type == 1
+		and plane.direction == 0
+		and plane.state == 0
+		and plane.x == 20
+		and plane.y == 20
+		and plane.z == 0,
+		"Local airplane stores its recovered position and runway direction",
+	)
+	_check(
+		plane.px == 8 and plane.py == 8 and plane.dx == 20 and plane.dy == 20,
+		"Local airplane stores its recovered sub-tile and destination fields",
+	)
+	_check(airplane.city.text_overlay_id(20, 20) == 202, "Airplane attaches its XTHG record")
+	var edge_things := _filled_bytes(40 * 12, 0)
+	var edge_text := _filled_bytes(128 * 128, 0)
+	var edge_result := MovingThings.spawn_airplane(
+		edge_things, edge_text, Vector2i(20, 20), 2, SequenceRandom.new([0, 2, 7])
+	)
+	_check(edge_result.spawned, "Airplane creator accepts an empty moving-thing pool")
+	_check(
+		edge_things[12 + 1] == 7
+		and edge_things[12 + 2] == 0x23
+		and edge_things[12 + 3] == 127
+		and edge_things[12 + 4] == 17
+		and edge_things[12 + 5] == 16,
+		"Map-edge airplane stores its selected edge, direction, height, and runway state",
+	)
+	_check(
+		edge_things[12 + 8] == 4
+		and edge_things[12 + 9] == 20
+		and edge_text[127 * 128 + 17] == 202,
+		"Map-edge airplane stores its runway target and attached XTXT record",
+	)
+
+	var ship_fixture := _special_growth_fixture(reference_root)
+	_check(ship_fixture.city.set_zone_id(20, 20, 9), "Ship fixture sets a seaport zone")
+	_check(ship_fixture.city.set_building_id(20, 20, 0xe0), "Ship fixture places a crane")
+	_check(ship_fixture.city.set_terrain_id(2, 10, 0x10), "Ship fixture places edge water")
+	var ship_result := Growth.run(
+		ship_fixture.city, SequenceRandom.new([1, 0, 0]), 0, 0, NonzeroLfsrRandom.new()
+	)
+	_check(ship_result.ok and ship_result.spawned_ships == 1, "Seaport crane spawns a cargo ship")
+	var ship: Dictionary = ship_fixture.city.thing(1)
+	_check(
+		ship.type == 3
+		and ship.direction == 3
+		and ship.x == 2
+		and ship.y == 10
+		and ship.z == 1,
+		"Cargo ship uses the last water tile on its selected edge",
+	)
+	_check(ship.px == 8 and ship.py == 8, "Cargo ship stores its recovered sub-tile position")
+	_check(ship_fixture.city.text_overlay_id(2, 10) == 202, "Cargo ship attaches its XTHG record")
+
+	_test_growth_microsimulations(reference_root)
+
+
+func _test_growth_microsimulations(reference_root: String) -> void:
+	var station := _special_growth_fixture(reference_root)
+	_check(station.city.set_building_id(20, 20, 0xed), "Train fixture places a rail station")
+	_check(station.city.set_tile_flag(20, 20, 0x40, true), "Train fixture powers its station")
+	_check(station.city.set_building_id(20, 18, 0x2c), "Train fixture places its spawn rail")
+	_check(station.city.set_building_id(20, 17, 0x2c), "Train fixture places its route rail")
+	_check(station.document.set_misc_u32(0x01f0 + 0xed * 4, 4), "Train fixture sets the station count")
+	var train_result := Growth.run(
+		station.city, ZeroRandom.new(), 0, 0, MicrosimLfsrRandom.new()
+	)
+	_check(train_result.ok and train_result.spawned_trains == 1, "Rail station spawns a train")
+	_check(station.city.text_overlay_id(20, 18) == 202, "Train engine attaches to its rail tile")
+	var engine: Dictionary = station.city.thing(1)
+	var first_car: Dictionary = station.city.thing(2)
+	var second_car: Dictionary = station.city.thing(3)
+	_check(
+		engine.type == 10
+		and engine.direction == 0
+		and engine.state == 2
+		and engine.x == 20
+		and engine.y == 18
+		and engine.px == 20
+		and engine.py == 17,
+		"Train engine links its first car and points north along the route",
+	)
+	_check(
+		first_car.type == 11
+		and first_car.state == 3
+		and second_car.type == 11
+		and first_car.px == 20
+		and first_car.py == 18,
+		"Train stores two linked car records at its initial tile",
+	)
+	var full_buildings := _filled_bytes(128 * 128, 0)
+	var full_things := _filled_bytes(40 * 12, 0)
+	var full_text := _filled_bytes(128 * 128, 0)
+	full_buildings[20 * 128 + 18] = 0x2c
+	full_buildings[20 * 128 + 17] = 0x2c
+	for record in range(1, 40):
+		full_things[record * 12] = 7
+	_check(
+		MovingThings.spawn_train(
+			full_buildings, full_things, full_text, Vector2i(20, 20),
+			ZeroRandom.new(), ZeroLfsrRandom.new()
+		),
+		"Full-pool train creator keeps the supplied unchecked-allocation result",
+	)
+	_check(
+		full_things[0] == 11 and full_text[20 * 128 + 18] == 201,
+		"Full-pool train creator writes reserved record zero like the supplied executable",
+	)
+
+	var marina := _special_growth_fixture(reference_root)
+	_check(marina.city.set_building_id(20, 20, 0xf8), "Sailboat fixture places a marina")
+	_check(marina.city.set_tile_flag(20, 20, 0x40, true), "Sailboat fixture powers its marina")
+	_check(marina.city.set_tile_flag(20, 19, 0x04, true), "Sailboat fixture marks north water")
+	_check(marina.document.set_misc_u32(0x01f0 + 0xf8 * 4, 9), "Sailboat fixture sets the marina count")
+	var sailboat_result := Growth.run(
+		marina.city, ZeroRandom.new(), 0, 0, MicrosimLfsrRandom.new()
+	)
+	_check(
+		sailboat_result.ok and sailboat_result.spawned_sailboats == 1,
+		"Marina spawns one sailboat on its valid adjacent water tile",
+	)
+	var sailboat: Dictionary = marina.city.thing(1)
+	_check(
+		sailboat.type == 9
+		and sailboat.direction == 0
+		and sailboat.x == 20
+		and sailboat.y == 19
+		and sailboat.px == 4
+		and sailboat.py == 4,
+		"Sailboat stores its recovered direction and sub-tile position",
+	)
+	_check(marina.city.text_overlay_id(20, 19) == 202, "Sailboat attaches its XTHG record")
+
+	var arcology := _special_growth_fixture(reference_root)
+	_check(arcology.city.set_building_id(20, 20, 0xfb), "Arcology fixture places an arcology tile")
+	_check(arcology.city.set_building_corners(20, 20, 0x80), "Arcology fixture sets the absolute anchor bit")
+	_check(arcology.city.set_text_overlay_id(20, 20, 61), "Arcology fixture attaches dynamic XMIC record ten")
+	_check(arcology.city.set_tile_flag(20, 20, 0x40, true), "Arcology fixture powers the tile")
+	_check(arcology.document.set_misc_u32(0x0008, 3), "Arcology fixture rotates the city")
+	var microsims: PackedByteArray = arcology.document.find_chunk("XMIC").decoded_payload.duplicate()
+	microsims[10 * 8] = 0xfb
+	_check(arcology.document.find_chunk("XMIC").set_decoded_payload(microsims), "Arcology fixture sets its XMIC type")
+	var coarse_index := 10 * 64 + 10
+	var land_value: PackedByteArray = arcology.document.find_chunk("XVAL").decoded_payload.duplicate()
+	land_value[coarse_index] = 224
+	_check(arcology.document.find_chunk("XVAL").set_decoded_payload(land_value), "Arcology fixture sets land value")
+	var crime: PackedByteArray = arcology.document.find_chunk("XCRM").decoded_payload.duplicate()
+	crime[coarse_index] = 64
+	_check(arcology.document.find_chunk("XCRM").set_decoded_payload(crime), "Arcology fixture sets crime")
+	var pollution: PackedByteArray = arcology.document.find_chunk("XPLT").decoded_payload.duplicate()
+	pollution[coarse_index] = 32
+	_check(arcology.document.find_chunk("XPLT").set_decoded_payload(pollution), "Arcology fixture sets pollution")
+	var arcology_result := Growth.run(
+		arcology.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new()
+	)
+	_check(arcology_result.ok and arcology_result.arcologies_updated == 1, "Arcology updates its XMIC statistic")
+	_check(arcology.city.microsim(10).stat_0 == 8, "Arcology rating uses land value, crime, pollution, power, and water")
 
 
 func _test_transport_maintenance(reference_root: String) -> void:
@@ -866,10 +1069,15 @@ func _special_growth_fixture(reference_root: String) -> Dictionary:
 		["XBLD", _filled_bytes(128 * 128, 0)],
 		["XZON", _filled_bytes(128 * 128, 0)],
 		["XUND", _filled_bytes(128 * 128, 0)],
+		["XTXT", _filled_bytes(128 * 128, 0)],
 		["XBIT", _filled_bytes(128 * 128, 0)],
 		["XTER", _filled_bytes(128 * 128, 0)],
 		["XTRF", _filled_bytes(64 * 64, 0)],
+		["XPLT", _filled_bytes(64 * 64, 0)],
 		["XVAL", _filled_bytes(64 * 64, 0)],
+		["XCRM", _filled_bytes(64 * 64, 0)],
+		["XMIC", _filled_bytes(150 * 8, 0)],
+		["XTHG", _filled_bytes(40 * 12, 0)],
 	]:
 		_check(
 			document.find_chunk(entry[0]).set_decoded_payload(entry[1]),

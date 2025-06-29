@@ -1,9 +1,8 @@
-# todo: spawn traffic from the growth scan
-
 class_name GrowthPhase
 extends RefCounted
 
 const Demolish = preload("res://src/tools/demolish_command.gd")
+const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
 const MAP_VALUE_COUNT := 64 * 64
 const MISC_SIZE := 4800
 const MISC_TILE_COUNTS := 0x01f0
@@ -75,7 +74,10 @@ static func run(
 		return {"ok": false, "error": "a compatible random generator is required"}
 	if lfsr_random == null:
 		lfsr_random = SimLfsrRandom.new(1)
-	if not lfsr_random.has_method("next_mask"):
+	if (
+		not lfsr_random.has_method("next_mask")
+		or not lfsr_random.has_method("next_mod")
+	):
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 	if step < 0 or step > 3 or substep < 0 or substep > 3:
 		return {"ok": false, "error": "growth partition is outside the supported range"}
@@ -92,8 +94,12 @@ static func run(
 	var underground: PackedByteArray = payloads.XUND
 	var flags: PackedByteArray = payloads.XBIT
 	var text_overlays: PackedByteArray = payloads.XTXT
+	var microsims: PackedByteArray = payloads.XMIC
+	var things: PackedByteArray = payloads.XTHG
 	var traffic: PackedByteArray = payloads.XTRF
+	var pollution: PackedByteArray = payloads.XPLT
 	var land_value: PackedByteArray = payloads.XVAL
+	var crime: PackedByteArray = payloads.XCRM
 	var misc: PackedByteArray = payloads.MISC
 	var rotation := city.compass_rotation() & 3
 	var anchor_mask: int = ANCHOR_MASKS[rotation]
@@ -121,9 +127,12 @@ static func run(
 		"deferred_station_removals": 0,
 		"special_growth_attempts": 0,
 		"special_tiles_placed": 0,
-		"deferred_airplanes": 0,
-		"deferred_helicopters": 0,
-		"deferred_ships": 0,
+		"arcologies_updated": 0,
+		"spawned_airplanes": 0,
+		"spawned_helicopters": 0,
+		"spawned_ships": 0,
+		"spawned_sailboats": 0,
+		"spawned_trains": 0,
 	}
 
 	for x in range(step, CityState.MAP_SIZE, 4):
@@ -133,9 +142,15 @@ static func run(
 			var zone_byte := int(zones[index])
 			var zone := zone_byte & 0x0f
 			if zone == 0:
+				var maintenance_tile := int(buildings[index])
 				_process_surface_maintenance(
 					altitude, altitudes, terrain, buildings, zones, underground, flags,
 					misc, Vector2i(x, y), random, lfsr_random, counters
+				)
+				_process_microsim_growth(
+					buildings, zones, flags, text_overlays, microsims, things,
+					land_value, crime, pollution, misc, Vector2i(x, y), maintenance_tile,
+					random, lfsr_random, counters
 				)
 				_process_subway_maintenance(
 					terrain, buildings, zones, flags, text_overlays, underground, misc,
@@ -150,6 +165,8 @@ static func run(
 					flags,
 					terrain,
 					altitudes,
+					text_overlays,
+					things,
 					misc,
 					Vector2i(x, y),
 					random,
@@ -312,7 +329,10 @@ static func run(
 			)
 
 	var changed_ids := PackedStringArray()
-	for chunk_id in ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT", "XTRF", "MISC"]:
+	for chunk_id in [
+		"ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XMIC", "XTHG",
+		"XBIT", "XTRF", "MISC",
+	]:
 		if payloads[chunk_id] != original[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not _apply_payloads(city, changed_ids, payloads, original):
@@ -331,6 +351,8 @@ static func _process_special_zone(
 	flags: PackedByteArray,
 	terrain: PackedByteArray,
 	altitudes: PackedInt32Array,
+	text_overlays: PackedByteArray,
+	things: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
 	random,
@@ -354,11 +376,13 @@ static func _process_special_zone(
 				fallback_tile = 0xe8
 			3:
 				selected_tile = _airport_growth_selection(
-					buildings, flags, misc, point, current_tile, true, random, counters
+					flags, text_overlays, things, misc, point, current_tile,
+					true, rotation, random, counters
 				)
 			4:
 				selected_tile = _seaport_growth_selection(
-					misc, current_tile, true, random, counters
+					terrain, text_overlays, things, misc, point, current_tile,
+					true, random, counters
 				)
 				fallback_tile = 0xe3
 			5:
@@ -368,10 +392,14 @@ static func _process_special_zone(
 				return
 	elif zone == 8:
 		selected_tile = _airport_growth_selection(
-			buildings, flags, misc, point, current_tile, false, random, counters
+			flags, text_overlays, things, misc, point, current_tile,
+			false, rotation, random, counters
 		)
 	elif zone == 9:
-		selected_tile = _seaport_growth_selection(misc, current_tile, false, random, counters)
+		selected_tile = _seaport_growth_selection(
+			terrain, text_overlays, things, misc, point, current_tile,
+			false, random, counters
+		)
 		fallback_tile = 0xe3
 	else:
 		return
@@ -400,12 +428,14 @@ static func _process_special_zone(
 
 
 static func _airport_growth_selection(
-	_buildings: PackedByteArray,
 	flags: PackedByteArray,
+	text_overlays: PackedByteArray,
+	things: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
 	current_tile: int,
 	military: bool,
+	rotation: int,
 	random,
 	counters: Dictionary
 ) -> int:
@@ -415,9 +445,18 @@ static func _airport_growth_selection(
 		if flags[_index(point)] & 0x40 == 0:
 			return -1
 		if random.next_u15() % 10 < 4:
-			counters.deferred_helicopters += 1
+			var helicopter := MovingThings.spawn_helicopter(
+				things, text_overlays, point, random
+			)
+			if helicopter.spawned:
+				counters.spawned_helicopters += 1
 		else:
-			counters.deferred_airplanes += 1
+			var runway_axis := 2 if bool(flags[_index(point)] & 0x02) != bool(rotation & 1) else 0
+			var airplane := MovingThings.spawn_airplane(
+				things, text_overlays, point, runway_axis, random
+			)
+			if airplane.spawned:
+				counters.spawned_airplanes += 1
 		return -1
 	var runway_groups := int(
 		(_special_tile_count(misc, 0xdd, military) + _special_tile_count(misc, 0xde, military)) / 5
@@ -446,7 +485,11 @@ static func _airport_growth_selection(
 
 
 static func _seaport_growth_selection(
+	terrain: PackedByteArray,
+	text_overlays: PackedByteArray,
+	things: PackedByteArray,
 	misc: PackedByteArray,
+	point: Vector2i,
 	current_tile: int,
 	military: bool,
 	random,
@@ -454,7 +497,11 @@ static func _seaport_growth_selection(
 ) -> int:
 	if random.next_u15() & 3:
 		if not military and current_tile == 0xe0 and random.next_u15() & 3 == 0:
-			counters.deferred_ships += 1
+			var ship := MovingThings.spawn_ship(
+				terrain, things, text_overlays, point, random
+			)
+			if ship.spawned:
+				counters.spawned_ships += 1
 		return -1
 	var crane_count := _special_tile_count(misc, 0xe0, military)
 	if int(_special_tile_count(misc, 0xf2, military) / 4) >= crane_count:
@@ -878,6 +925,66 @@ static func _process_surface_maintenance(
 				replacement = 1 + (random.next_u15() & 3)
 			_replace_building(buildings, zones, misc, highway_index, replacement)
 			counters.decayed_highway_tiles += 1
+
+
+static func _process_microsim_growth(
+	buildings: PackedByteArray,
+	zones: PackedByteArray,
+	flags: PackedByteArray,
+	text_overlays: PackedByteArray,
+	microsims: PackedByteArray,
+	things: PackedByteArray,
+	land_value: PackedByteArray,
+	crime: PackedByteArray,
+	pollution: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i,
+	tile: int,
+	_random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	var index := _index(point)
+	if tile == 0xed:
+		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
+			return
+		var train_limit := int(_special_tile_count(misc, 0xed, false) / 4)
+		if MovingThings.count_type(things, MovingThings.TYPE_TRAIN_ENGINE) < train_limit:
+			if MovingThings.spawn_train(
+				buildings, things, text_overlays, point, _random, lfsr_random
+			):
+				counters.spawned_trains += 1
+		return
+	if tile == 0xf8:
+		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
+			return
+		var sailboat_limit := int(_special_tile_count(misc, 0xf8, false) / 9)
+		if MovingThings.count_type(things, MovingThings.TYPE_SAILBOAT) < sailboat_limit:
+			counters.spawned_sailboats += MovingThings.spawn_sailboats(
+				buildings, flags, things, text_overlays, point, lfsr_random
+			)
+		return
+	if tile < 0xfb or tile > 0xfe or zones[index] & 0xf0 != 0x80:
+		return
+	var label := int(text_overlays[index])
+	if label < 51 or label > 200:
+		return
+	var record_offset := (label - 51) * CityState.MICROSIM_RECORD_SIZE
+	if microsims[record_offset] < 0xfb or microsims[record_offset] > 0xfe:
+		return
+	var coarse_index := int(point.x / 2) * 64 + int(point.y / 2)
+	var value := (
+		int(land_value[coarse_index] >> 5)
+		- int(crime[coarse_index] >> 5)
+		- int(pollution[coarse_index] >> 5)
+		+ 12
+	)
+	if flags[index] & 0x40 == 0:
+		value = int(value / 2.0)
+	if flags[index] & 0x10 == 0:
+		value = int(value / 2.0)
+	microsims[record_offset + 1] = clampi(value, 0, 12)
+	counters.arcologies_updated += 1
 
 
 static func _process_subway_maintenance(
@@ -1473,9 +1580,13 @@ static func _payloads(city: CityState) -> Dictionary:
 		["XZON", CityState.TILE_COUNT],
 		["XUND", CityState.TILE_COUNT],
 		["XTXT", CityState.TILE_COUNT],
+		["XMIC", CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE],
+		["XTHG", CityState.THING_COUNT * CityState.THING_RECORD_SIZE],
 		["XBIT", CityState.TILE_COUNT],
 		["XTRF", MAP_VALUE_COUNT],
+		["XPLT", MAP_VALUE_COUNT],
 		["XVAL", MAP_VALUE_COUNT],
+		["XCRM", MAP_VALUE_COUNT],
 		["MISC", MISC_SIZE],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
