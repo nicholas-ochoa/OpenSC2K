@@ -1022,6 +1022,143 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(marina.city.thing(1).type == 0, "Marina arrival releases the sailboat record")
 	_check(marina.city.text_overlay_id(20, 20) == 0, "Marina arrival clears the sailboat link")
 
+	var train := _special_growth_fixture(reference_root)
+	for x in range(20, 23):
+		_check(train.city.set_building_id(x, 20, 0x2c), "Moving train fixture places surface rail")
+	_set_train(train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
+	var train_result := MovingThingTick.run(
+		train.city, ZeroRandom.new(), SequenceLfsrRandom.new([0, 1]), ZeroLfsrRandom.new()
+	)
+	_check(train_result.ok and train_result.moved_trains == 1, "Train tick advances a clear consist")
+	var moved_engine: Dictionary = train.city.thing(1)
+	_check(
+		moved_engine.x == 21
+		and moved_engine.y == 20
+		and moved_engine.px == 22
+		and moved_engine.py == 20
+		and moved_engine.direction == 1
+		and moved_engine.dx == 2,
+		"Train engine moves and plans its next straight rail cell",
+	)
+	_check(
+		train.city.thing(2).x == 20
+		and train.city.thing(2).px == 21
+		and train.city.thing(3).x == 20
+		and train.city.thing(3).px == 20,
+		"Train cars copy the prior engine and first-car states in order",
+	)
+	_check(train.city.text_overlay_id(20, 20) == 0, "Train movement restores the tail XTXT value")
+	_check(train.city.text_overlay_id(21, 20) == 202, "Train movement attaches the engine at its new cell")
+
+	var station := _special_growth_fixture(reference_root)
+	_check(station.city.set_building_id(20, 20, 0x2c), "Pausing train fixture places current rail")
+	_check(station.city.set_building_id(21, 20, 0x2c), "Pausing train fixture places destination rail")
+	_check(station.city.set_building_id(20, 19, 0xed), "Pausing train fixture places an adjacent station")
+	_set_train(station, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
+	var pause_result := MovingThingTick.run(
+		station.city, ZeroRandom.new(), SequenceLfsrRandom.new([1]), ZeroLfsrRandom.new()
+	)
+	_check(pause_result.ok and pause_result.paused_trains == 1, "Surface train pauses beside a station")
+	_check(
+		station.city.thing(1).x == 20 and station.city.thing(1).px == 21,
+		"Station pause keeps the train position and destination",
+	)
+
+	var turning_train := _special_growth_fixture(reference_root)
+	_check(turning_train.city.set_building_id(20, 20, 0x2c), "Turning train fixture places current rail")
+	_check(turning_train.city.set_building_id(21, 20, 0x2c), "Turning train fixture places destination rail")
+	_check(turning_train.city.set_building_id(21, 19, 0x2c), "Turning train fixture places north rail")
+	_set_train(turning_train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
+	var train_turn_result := MovingThingTick.run(
+		turning_train.city,
+		SequenceRandom.new([1]),
+		SequenceLfsrRandom.new([0, 0, 0]),
+		ZeroLfsrRandom.new()
+	)
+	_check(train_turn_result.ok and train_turn_result.turned_trains == 1, "Train takes its random side route")
+	_check(
+		turning_train.city.thing(1).x == 21
+		and turning_train.city.thing(1).y == 20
+		and turning_train.city.thing(1).px == 21
+		and turning_train.city.thing(1).py == 19
+		and turning_train.city.thing(1).direction == 1
+		and turning_train.city.thing(1).dx == 0,
+		"Random train turn keeps the supplied prior-direction field quirk",
+	)
+
+	var subway_train := _special_growth_fixture(reference_root)
+	_check(subway_train.city.set_building_id(20, 20, 0x2c), "Subway train fixture places current rail")
+	_check(subway_train.city.set_building_id(21, 20, 0x6c), "Subway train fixture places a transition tile")
+	_check(subway_train.city.set_underground_id(22, 20, 1), "Subway train fixture places its next subway")
+	_set_train(subway_train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
+	var subway_train_result := MovingThingTick.run(
+		subway_train.city,
+		ZeroRandom.new(),
+		SequenceLfsrRandom.new([0, 1]),
+		ZeroLfsrRandom.new()
+	)
+	_check(subway_train_result.ok and subway_train_result.moved_trains == 1, "Train enters a subway transition")
+	_check(
+		subway_train.city.thing(1).type == 12
+		and subway_train.city.thing(1).x == 21
+		and subway_train.city.thing(1).px == 22,
+		"Surface engine becomes a subway engine and plans an underground route",
+	)
+
+	var reversing_train := _special_growth_fixture(reference_root)
+	_check(reversing_train.city.set_building_id(20, 20, 0x2c), "Reversing train fixture places its old rail")
+	_check(reversing_train.city.set_building_id(21, 20, 0x2c), "Reversing train fixture places its current rail")
+	_set_train(reversing_train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
+	var reversing_things: PackedByteArray = reversing_train.document.find_chunk("XTHG").decoded_payload.duplicate()
+	reversing_things[2 * 12 + 10] = 7
+	reversing_things[3 * 12 + 10] = 201
+	_check(
+		reversing_train.document.find_chunk("XTHG").set_decoded_payload(reversing_things),
+		"Reversing train fixture sets its preserved tail labels",
+	)
+	var reverse_result := MovingThingTick.run(
+		reversing_train.city,
+		ZeroRandom.new(),
+		SequenceLfsrRandom.new([0, 1]),
+		ZeroLfsrRandom.new()
+	)
+	_check(reverse_result.ok and reverse_result.reversed_trains == 1, "Train reverses when no next route is open")
+	_check(
+		reversing_train.city.thing(1).x == 20
+		and reversing_train.city.thing(1).px == 20
+		and reversing_train.city.thing(1).direction == 3
+		and reversing_train.city.thing(1).dx == 7
+		and reversing_train.city.thing(1).label == 7,
+		"Dead-end reversal moves the engine to the tail and faces it backward",
+	)
+	_check(
+		reversing_train.city.thing(3).x == 21
+		and reversing_train.city.thing(3).px == 21,
+		"Dead-end reversal moves the tail record to the prior engine position",
+	)
+
+	var crashed_train := _special_growth_fixture(reference_root)
+	_set_train(crashed_train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
+	var crash_result := MovingThingTick.run(
+		crashed_train.city,
+		ZeroRandom.new(),
+		SequenceLfsrRandom.new([0]),
+		ZeroLfsrRandom.new()
+	)
+	_check(
+		crash_result.ok
+		and crash_result.removed_trains == 1
+		and crash_result.deferred_train_crashes == 1,
+		"Train without a route removes its consist and reports deferred crash effects",
+	)
+	_check(
+		crashed_train.city.thing(1).type == 0
+		and crashed_train.city.thing(2).type == 0
+		and crashed_train.city.thing(3).type == 0,
+		"Train crash releases all three linked records",
+	)
+	_check(crashed_train.city.text_overlay_id(20, 20) == 0, "Train crash clears the engine XTXT cell")
+
 
 func _set_sailboat(
 	fixture: Dictionary, record: int, point: Vector2i, direction: int, state := 0
@@ -1037,6 +1174,27 @@ func _set_sailboat(
 	things[offset + 7] = 4
 	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Sailboat fixture stores its XTHG record")
 	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Sailboat fixture links its XTXT record")
+
+
+func _set_train(
+	fixture: Dictionary,
+	current: Vector2i,
+	destination: Vector2i,
+	direction: int,
+	engine_type: int
+) -> void:
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	for record in range(1, 4):
+		var offset := record * 12
+		things[offset] = engine_type if record == 1 else engine_type + 1
+		things[offset + 1] = direction
+		things[offset + 2] = record + 1 if record < 3 else 0
+		things[offset + 3] = current.x
+		things[offset + 4] = current.y
+		things[offset + 6] = destination.x if record == 1 else current.x
+		things[offset + 7] = destination.y if record == 1 else current.y
+	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Train fixture stores its linked XTHG records")
+	_check(fixture.city.set_text_overlay_id(current.x, current.y, 202), "Train fixture links its engine XTXT record")
 
 
 func _test_transport_maintenance(reference_root: String) -> void:

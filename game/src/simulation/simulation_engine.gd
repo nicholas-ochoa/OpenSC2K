@@ -24,7 +24,7 @@ func _init(
 
 
 func advance_moving_things() -> Dictionary:
-	return MovingThingPhase.run(city, random, lfsr_random)
+	return MovingThingPhase.run(city, random, lfsr_random, game_random)
 
 
 func advance_day() -> Dictionary:
