@@ -6,6 +6,10 @@ const RECORD_SIZE := 12
 const FIRST_RECORD := 1
 const LAST_RECORD := 39
 const TEXT_LABEL_BASE := 201
+const TYPE_AIRPLANE := 1
+const TYPE_HELICOPTER := 2
+const TYPE_SHIP := 3
+const TYPE_EXPLOSION := 6
 const TYPE_SAILBOAT := 9
 const TYPE_TRAIN_ENGINE := 10
 const TYPE_TRAIN_CAR := 11
@@ -15,11 +19,26 @@ const TILE_PIER := 0xdf
 const TILE_MARINA := 0xf8
 const TILE_RAIL_STATION := 0xed
 const SUBTILE_LIMIT := 16
+const MISC_CITY_CENTER_X := 0x1018
+const MISC_CITY_CENTER_Y := 0x101c
 const SAIL_SUBTILE_X := [0, 16, 0, -16]
 const SAIL_SUBTILE_Y := [-16, 0, 16, 0]
 const CARDINAL_DIRECTIONS := [
 	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0),
 ]
+const EIGHT_DIRECTIONS := [
+	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
+	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1),
+]
+const AIR_ROUTE_DELTAS := [
+	Vector2i(0, -3), Vector2i(3, -3), Vector2i(3, 0), Vector2i(3, 3),
+	Vector2i(0, 3), Vector2i(-3, 3), Vector2i(-3, 0), Vector2i(-3, -3),
+]
+const AIR_DIRECTION_OFFSETS := [1, 7, 2, 6, 3, 5, 4]
+const THING_SPEEDS := {
+	TYPE_AIRPLANE: 16,
+	TYPE_HELICOPTER: 8,
+}
 const TRAIN_DIRECTION_ORDERS := [
 	[0, 3, 1, 2],
 	[0, 1, 3, 2],
@@ -49,6 +68,7 @@ static func run(city: CityState, random, lfsr_random, game_random = null) -> Dic
 		return {"ok": false, "error": "a compatible game random generator is required"}
 	var building_chunk := city.document.find_chunk("XBLD")
 	var underground_chunk := city.document.find_chunk("XUND")
+	var traffic_chunk := city.document.find_chunk("XTRF")
 	var text_chunk := city.document.find_chunk("XTXT")
 	var thing_chunk := city.document.find_chunk("XTHG")
 	var flag_chunk := city.document.find_chunk("XBIT")
@@ -57,6 +77,8 @@ static func run(city: CityState, random, lfsr_random, game_random = null) -> Dic
 		or building_chunk.decoded_payload.size() != CityState.TILE_COUNT
 		or underground_chunk == null
 		or underground_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or traffic_chunk == null
+		or traffic_chunk.decoded_payload.size() != 64 * 64
 		or text_chunk == null
 		or text_chunk.decoded_payload.size() != CityState.TILE_COUNT
 		or thing_chunk == null
@@ -68,6 +90,7 @@ static func run(city: CityState, random, lfsr_random, game_random = null) -> Dic
 
 	var buildings: PackedByteArray = building_chunk.decoded_payload
 	var underground: PackedByteArray = underground_chunk.decoded_payload
+	var traffic: PackedByteArray = traffic_chunk.decoded_payload
 	var flags: PackedByteArray = flag_chunk.decoded_payload
 	var original_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
 	var original_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
@@ -75,8 +98,12 @@ static func run(city: CityState, random, lfsr_random, game_random = null) -> Dic
 	var things: PackedByteArray = original_things.duplicate()
 	var counters := {
 		"scanned_records": LAST_RECORD,
+		"active_airplanes": 0,
+		"active_helicopters": 0,
+		"active_ships": 0,
 		"active_sailboats": 0,
 		"active_trains": 0,
+		"moved_helicopters": 0,
 		"moved_sailboats": 0,
 		"moved_trains": 0,
 		"turned_sailboats": 0,
@@ -86,14 +113,31 @@ static func run(city: CityState, random, lfsr_random, game_random = null) -> Dic
 		"distressed_sailboats": 0,
 		"removed_sailboats": 0,
 		"removed_trains": 0,
+		"removed_helicopters": 0,
+		"crashed_helicopters": 0,
 		"malformed_records": 0,
 		"deferred_news": 0,
+		"deferred_traffic_news_checks": 0,
 		"deferred_train_crashes": 0,
 	}
+	var city_center := Vector2i(
+		city.document.misc_u32(MISC_CITY_CENTER_X),
+		city.document.misc_u32(MISC_CITY_CENTER_Y)
+	)
 
 	for record in range(FIRST_RECORD, LAST_RECORD + 1):
 		var offset := record * RECORD_SIZE
 		match int(things[offset]):
+			TYPE_AIRPLANE:
+				counters.active_airplanes += 1
+			TYPE_HELICOPTER:
+				counters.active_helicopters += 1
+				_update_helicopter(
+					buildings, underground, traffic, text, things, record,
+					city_center, random, counters
+				)
+			TYPE_SHIP:
+				counters.active_ships += 1
 			TYPE_SAILBOAT:
 				counters.active_sailboats += 1
 				_update_sailboat(
@@ -116,9 +160,93 @@ static func run(city: CityState, random, lfsr_random, game_random = null) -> Dic
 	counters["ok"] = true
 	counters["sailboats_complete"] = true
 	counters["train_routes_complete"] = true
+	counters["helicopters_save_visible_complete"] = true
 	counters["complete"] = false
 	counters["error"] = ""
 	return counters
+
+
+static func _update_helicopter(
+	buildings: PackedByteArray,
+	underground: PackedByteArray,
+	traffic: PackedByteArray,
+	text: PackedByteArray,
+	things: PackedByteArray,
+	record: int,
+	city_center: Vector2i,
+	random,
+	counters: Dictionary
+) -> void:
+	var offset := record * RECORD_SIZE
+	var current := Vector2i(things[offset + 3], things[offset + 4])
+	var current_index := _index(current)
+	var direction := int(things[offset + 1])
+	if current_index < 0 or direction < 0 or direction >= EIGHT_DIRECTIONS.size():
+		_remove_thing(text, things, record)
+		counters.removed_helicopters += 1
+		counters.malformed_records += 1
+		return
+	if buildings[current_index] > 0xfa:
+		_convert_to_explosion(things, record, 5, 0)
+		counters.crashed_helicopters += 1
+		return
+	match int(things[offset + 2]):
+		0:
+			things[offset + 1] = (direction + 1) & 7
+			if things[offset + 5] < 10:
+				things[offset + 5] += 1
+			else:
+				things[offset + 2] = 2
+		2:
+			var target := Vector2i(things[offset + 8], things[offset + 9])
+			direction = _steer_direction(direction, current, target)
+			things[offset + 1] = direction
+			_advance_air_direction(buildings, things, record)
+			direction = int(things[offset + 1])
+			var motion := _move_thing_eight_way(
+				TYPE_HELICOPTER, text, things, record, direction
+			)
+			if motion < 0:
+				counters.removed_helicopters += 1
+				return
+			counters.moved_helicopters += 1
+			current = Vector2i(things[offset + 3], things[offset + 4])
+			var traffic_index := int(current.x / 2) * 64 + int(current.y / 2)
+			if traffic[traffic_index] > 0xa9:
+				counters.deferred_traffic_news_checks += 1
+			if _thing_distance(current, target) < 2:
+				var target_x: int = (random.next_u15() & 0x3f) - 0x20 + city_center.x
+				var target_y: int = (random.next_u15() & 0x3f) - 0x20 + city_center.y
+				if target_x < 0 or target_x >= MAP_SIZE:
+					target_x = (random.next_u15() & 0x3f) + 0x20
+				if target_y < 0 or target_y >= MAP_SIZE:
+					target_y = (random.next_u15() & 0x3f) + 0x20
+				things[offset + 8] = target_x
+				things[offset + 9] = target_y
+				if (
+					random.next_u15() & 1
+					and buildings[_index(current)] == 0
+					and underground[_index(current)] == 0
+				):
+					things[offset + 2] = 3
+		3:
+			things[offset + 1] = (direction + 1) & 7
+			if things[offset + 5] > 2:
+				things[offset + 5] -= 1
+			else:
+				things[offset + 2] = 4
+		4:
+			if random.next_u15() % 20 == 0:
+				things[offset + 2] = 0
+		5:
+			things[offset + 1] = (direction + 2) & 7
+			if things[offset + 5] == 4:
+				counters.deferred_news += 1
+			if things[offset + 5] > 2:
+				things[offset + 5] -= 1
+			else:
+				_convert_to_explosion(things, record, 0x11, 1)
+				counters.crashed_helicopters += 1
 
 
 static func _update_sailboat(
@@ -488,6 +616,120 @@ static func _remove_thing(
 	var index := _index(point)
 	if index >= 0:
 		text[index] = 0
+
+
+static func _convert_to_explosion(
+	things: PackedByteArray, record: int, state: int, goal: int
+) -> void:
+	var offset := record * RECORD_SIZE
+	things[offset] = TYPE_EXPLOSION
+	things[offset + 1] = 0
+	things[offset + 2] = state
+	things[offset + 11] = goal
+
+
+static func _move_thing_eight_way(
+	thing_type: int,
+	text: PackedByteArray,
+	things: PackedByteArray,
+	record: int,
+	direction: int
+) -> int:
+	if not THING_SPEEDS.has(thing_type) or direction < 0 or direction >= EIGHT_DIRECTIONS.size():
+		_remove_thing(text, things, record)
+		return -1
+	var offset := record * RECORD_SIZE
+	var speed: int = THING_SPEEDS[thing_type]
+	var subtile_x: int = int(things[offset + 6]) + EIGHT_DIRECTIONS[direction].x * speed
+	var subtile_y: int = int(things[offset + 7]) + EIGHT_DIRECTIONS[direction].y * speed
+	var tile_delta := Vector2i.ZERO
+	if subtile_x > SUBTILE_LIMIT:
+		subtile_x -= SUBTILE_LIMIT
+		tile_delta.x = 1
+	elif subtile_x < 0:
+		subtile_x += SUBTILE_LIMIT
+		tile_delta.x = -1
+	if subtile_y > SUBTILE_LIMIT:
+		subtile_y -= SUBTILE_LIMIT
+		tile_delta.y = 1
+	elif subtile_y < 0:
+		subtile_y += SUBTILE_LIMIT
+		tile_delta.y = -1
+	things[offset + 6] = subtile_x
+	things[offset + 7] = subtile_y
+	if tile_delta == Vector2i.ZERO:
+		return 0
+	var current := Vector2i(things[offset + 3], things[offset + 4])
+	var current_index := _index(current)
+	if current_index < 0:
+		_remove_thing(text, things, record)
+		return -1
+	text[current_index] = things[offset + 10]
+	var next := current + tile_delta
+	var next_index := _index(next)
+	while next_index >= 0 and text[next_index] >= TEXT_LABEL_BASE:
+		things[offset + 3] = next.x
+		things[offset + 4] = next.y
+		next += tile_delta
+		next_index = _index(next)
+	if next_index < 0:
+		_remove_thing(text, things, record)
+		return -1
+	things[offset + 3] = next.x
+	things[offset + 4] = next.y
+	things[offset + 10] = text[next_index]
+	text[next_index] = record + TEXT_LABEL_BASE
+	return 1
+
+
+static func _advance_air_direction(
+	buildings: PackedByteArray, things: PackedByteArray, record: int
+) -> void:
+	var offset := record * RECORD_SIZE
+	var direction := int(things[offset + 1]) & 7
+	var current := Vector2i(things[offset + 3], things[offset + 4])
+	if not _air_route_blocked(buildings, current, direction):
+		return
+	for direction_offset in AIR_DIRECTION_OFFSETS:
+		direction = (int(things[offset + 1]) + int(direction_offset)) & 7
+		if not _air_route_blocked(buildings, current, direction):
+			break
+	things[offset + 1] = direction
+
+
+static func _air_route_blocked(
+	buildings: PackedByteArray, current: Vector2i, direction: int
+) -> bool:
+	var checked_index := _index(current + AIR_ROUTE_DELTAS[direction])
+	return checked_index >= 0 and buildings[checked_index] >= 0xfb
+
+
+static func _turn_one_step(direction: int, target: int) -> int:
+	if direction <= target:
+		return (direction - 1) & 7 if target - direction > 4 else (direction + 1) & 7
+	return (direction + 1) & 7 if direction - target > 4 else (direction - 1) & 7
+
+
+static func _direction_between(start: Vector2i, target: Vector2i) -> int:
+	var difference := target - start
+	var absolute_x := absi(difference.x)
+	var absolute_y := absi(difference.y)
+	if absolute_x < int((absolute_y + 1) / 2):
+		return 0 if difference.y < 0 else 4
+	if absolute_y < int((absolute_x + 1) / 2):
+		return 6 if difference.x < 0 else 2
+	if difference.x < 0:
+		return 7 if difference.y < 0 else 5
+	return 1 if difference.y < 0 else 3
+
+
+static func _steer_direction(direction: int, start: Vector2i, target: Vector2i) -> int:
+	var desired := _direction_between(start, target)
+	return direction if desired == direction else _turn_one_step(direction, desired)
+
+
+static func _thing_distance(start: Vector2i, target: Vector2i) -> int:
+	return absi(target.x - start.x) + absi(target.y - start.y)
 
 
 static func _index(point: Vector2i) -> int:

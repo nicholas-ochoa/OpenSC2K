@@ -959,6 +959,109 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 
 
 func _test_moving_thing_phase(reference_root: String) -> void:
+	var helicopter := _special_growth_fixture(reference_root)
+	_set_helicopter(helicopter, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 0, 0)
+	var takeoff_result := MovingThingTick.run(
+		helicopter.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
+	)
+	_check(
+		takeoff_result.ok
+		and takeoff_result.active_helicopters == 1
+		and helicopter.city.thing(1).direction == 3
+		and helicopter.city.thing(1).z == 1,
+		"Helicopter takeoff rotates and gains one height unit",
+	)
+
+	var flight := _special_growth_fixture(reference_root)
+	_set_helicopter(flight, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 10)
+	var first_flight := MovingThingTick.run(
+		flight.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
+	)
+	var second_flight := MovingThingTick.run(
+		flight.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
+	)
+	_check(
+		first_flight.ok
+		and second_flight.ok
+		and first_flight.moved_helicopters == 1
+		and second_flight.moved_helicopters == 1,
+		"Cruising helicopter advances on each off-cycle tick",
+	)
+	_check(
+		flight.city.thing(1).x == 21
+		and flight.city.thing(1).y == 20
+		and flight.city.thing(1).px == 8
+		and flight.city.thing(1).py == 8,
+		"Helicopter uses the recovered eight-unit sub-tile speed",
+	)
+	_check(flight.city.text_overlay_id(20, 20) == 0, "Helicopter clears its old XTXT cell")
+	_check(flight.city.text_overlay_id(21, 20) == 202, "Helicopter links its new XTXT cell")
+
+	var avoiding := _special_growth_fixture(reference_root)
+	_set_helicopter(avoiding, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 10)
+	_check(avoiding.city.set_building_id(23, 20, 0xfb), "Helicopter obstacle fixture places an arcology")
+	var avoid_result := MovingThingTick.run(
+		avoiding.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
+	)
+	_check(
+		avoid_result.ok and avoiding.city.thing(1).direction == 3,
+		"Helicopter selects the first clear recovered obstacle-avoidance direction",
+	)
+
+	var retargeting := _special_growth_fixture(reference_root)
+	_check(retargeting.document.set_misc_u32(0x1018, 50), "Helicopter fixture sets city-center X")
+	_check(retargeting.document.set_misc_u32(0x101c, 60), "Helicopter fixture sets city-center Y")
+	_set_helicopter(retargeting, 1, Vector2i(20, 20), Vector2i(20, 20), 2, 2, 10)
+	var retarget_result := MovingThingTick.run(
+		retargeting.city, SequenceRandom.new([32, 32, 1]), NonzeroLfsrRandom.new()
+	)
+	_check(
+		retarget_result.ok
+		and retargeting.city.thing(1).dx == 50
+		and retargeting.city.thing(1).dy == 60
+		and retargeting.city.thing(1).state == 3,
+		"Helicopter selects a city-center target and can start landing on clear ground",
+	)
+
+	var landing := _special_growth_fixture(reference_root)
+	_set_helicopter(landing, 1, Vector2i(20, 20), Vector2i(20, 20), 2, 3, 3)
+	MovingThingTick.run(landing.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new())
+	MovingThingTick.run(landing.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new())
+	_check(
+		landing.city.thing(1).state == 4 and landing.city.thing(1).z == 2,
+		"Helicopter landing rotates, descends, and enters its ground wait state",
+	)
+	MovingThingTick.run(landing.city, ZeroRandom.new(), NonzeroLfsrRandom.new())
+	_check(landing.city.thing(1).state == 0, "Helicopter ground wait restarts on its process-random gate")
+
+	var forced_crash := _special_growth_fixture(reference_root)
+	_set_helicopter(forced_crash, 1, Vector2i(20, 20), Vector2i(20, 20), 2, 5, 2)
+	var forced_crash_result := MovingThingTick.run(
+		forced_crash.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
+	)
+	_check(
+		forced_crash_result.ok
+		and forced_crash_result.crashed_helicopters == 1
+		and forced_crash.city.thing(1).type == 6
+		and forced_crash.city.thing(1).state == 0x11
+		and forced_crash.city.thing(1).goal == 1,
+		"Helicopter emergency descent becomes the recovered explosion record",
+	)
+
+	var building_crash := _special_growth_fixture(reference_root)
+	_set_helicopter(building_crash, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 10)
+	_check(building_crash.city.set_building_id(20, 20, 0xfb), "Helicopter crash fixture places an arcology")
+	var building_crash_result := MovingThingTick.run(
+		building_crash.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
+	)
+	_check(
+		building_crash_result.ok
+		and building_crash.city.thing(1).type == 6
+		and building_crash.city.thing(1).state == 5
+		and building_crash.city.thing(1).goal == 0,
+		"Helicopter collision with an arcology becomes a non-spreading explosion",
+	)
+
 	var moving := _special_growth_fixture(reference_root)
 	_set_sailboat(moving, 1, Vector2i(20, 20), 1)
 	_check(moving.city.set_tile_flag(20, 20, 0x04, true), "Moving sailboat fixture marks its current water")
@@ -1174,6 +1277,32 @@ func _set_sailboat(
 	things[offset + 7] = 4
 	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Sailboat fixture stores its XTHG record")
 	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Sailboat fixture links its XTXT record")
+
+
+func _set_helicopter(
+	fixture: Dictionary,
+	record: int,
+	point: Vector2i,
+	target: Vector2i,
+	direction: int,
+	state: int,
+	height: int
+) -> void:
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	var offset := record * 12
+	things[offset] = 2
+	things[offset + 1] = direction
+	things[offset + 2] = state
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 5] = height
+	things[offset + 6] = 8
+	things[offset + 7] = 8
+	things[offset + 8] = target.x
+	things[offset + 9] = target.y
+	things[offset + 10] = fixture.city.text_overlay_id(point.x, point.y)
+	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Helicopter fixture stores its XTHG record")
+	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Helicopter fixture links its XTXT record")
 
 
 func _set_train(
