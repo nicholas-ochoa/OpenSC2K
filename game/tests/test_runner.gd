@@ -831,10 +831,22 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	_check(ship_fixture.city.set_zone_id(20, 20, 9), "Ship fixture sets a seaport zone")
 	_check(ship_fixture.city.set_building_id(20, 20, 0xe0), "Ship fixture places a crane")
 	_check(ship_fixture.city.set_terrain_id(2, 10, 0x10), "Ship fixture places edge water")
+	var stale_ship_record: PackedByteArray = ship_fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	stale_ship_record[12 + 8] = 77
+	stale_ship_record[12 + 9] = 88
+	_check(
+		ship_fixture.document.find_chunk("XTHG").set_decoded_payload(stale_ship_record),
+		"Ship fixture sets stale target bytes",
+	)
 	var ship_result := Growth.run(
 		ship_fixture.city, SequenceRandom.new([1, 0, 0]), 0, 0, NonzeroLfsrRandom.new()
 	)
-	_check(ship_result.ok and ship_result.spawned_ships == 1, "Seaport crane spawns a cargo ship")
+	_check(
+		ship_result.ok
+		and ship_result.spawned_ships == 1
+		and ship_result.ship_home == Vector2i(2, 10),
+		"Seaport crane spawns a cargo ship and reports its process-local home",
+	)
 	var ship: Dictionary = ship_fixture.city.thing(1)
 	_check(
 		ship.type == 3
@@ -845,6 +857,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 		"Cargo ship uses the last water tile on its selected edge",
 	)
 	_check(ship.px == 8 and ship.py == 8, "Cargo ship stores its recovered sub-tile position")
+	_check(ship.dx == 77 and ship.dy == 88, "Cargo-ship creation keeps stale target bytes")
 	_check(ship_fixture.city.text_overlay_id(2, 10) == 202, "Cargo ship attaches its XTHG record")
 
 	_test_growth_microsimulations(reference_root)
@@ -959,6 +972,123 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 
 
 func _test_moving_thing_phase(reference_root: String) -> void:
+	var ship := _special_growth_fixture(reference_root)
+	_set_ship(ship, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 0)
+	_check(ship.city.set_tile_flag(20, 20, 0x04, true), "Cargo-ship fixture marks current water")
+	_check(ship.city.set_tile_flag(24, 20, 0x04, true), "Cargo-ship fixture marks look-ahead water")
+	var first_ship_move := MovingThingTick.run(
+		ship.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	var second_ship_move := MovingThingTick.run(
+		ship.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	_check(
+		first_ship_move.ok
+		and second_ship_move.ok
+		and first_ship_move.moved_ships == 1
+		and second_ship_move.moved_ships == 1,
+		"Cargo ship advances on a valid four-cell look-ahead route",
+	)
+	_check(
+		ship.city.thing(1).x == 21
+		and ship.city.thing(1).y == 20
+		and ship.city.thing(1).px == 4
+		and ship.city.thing(1).py == 8,
+		"Cargo ship uses the recovered twelve-unit sub-tile grid",
+	)
+	_check(ship.city.text_overlay_id(20, 20) == 0, "Cargo ship clears its old XTXT cell")
+	_check(ship.city.text_overlay_id(21, 20) == 202, "Cargo ship links its new XTXT cell")
+
+	var docking_ship := _special_growth_fixture(reference_root)
+	_set_ship(docking_ship, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 0)
+	_check(docking_ship.city.set_tile_flag(20, 20, 0x04, true), "Docking ship marks current water")
+	_check(docking_ship.city.set_tile_flag(24, 20, 0x04, true), "Docking ship marks route water")
+	_check(docking_ship.city.set_building_id(22, 20, 0xdf), "Docking ship places a pier two cells away")
+	var dock_result := MovingThingTick.run(
+		docking_ship.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	_check(
+		dock_result.ok
+		and dock_result.docked_ships == 1
+		and docking_ship.city.thing(1).state == 3,
+		"Cargo ship enters dock wait beside a pier",
+	)
+	var depart_result := MovingThingTick.run(
+		docking_ship.city,
+		SequenceRandom.new([1]),
+		ZeroLfsrRandom.new(),
+		null,
+		Vector2i(2, 10)
+	)
+	_check(
+		depart_result.ok
+		and depart_result.departing_ships == 1
+		and depart_result.deferred_news == 1
+		and docking_ship.city.thing(1).state == 4
+		and docking_ship.city.thing(1).dx == 2
+		and docking_ship.city.thing(1).dy == 10,
+		"Cargo ship leaves dock toward its process-local home coordinates",
+	)
+
+	var blocked_ship := _special_growth_fixture(reference_root)
+	_set_ship(blocked_ship, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 0)
+	_check(blocked_ship.city.set_tile_flag(20, 20, 0x04, true), "Blocked ship marks current water")
+	var block_result := MovingThingTick.run(
+		blocked_ship.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	_check(
+		block_result.ok and blocked_ship.city.thing(1).state == 1,
+		"Cargo ship starts a target turn when its look-ahead route is blocked",
+	)
+	_check(blocked_ship.city.set_tile_flag(24, 20, 0x04, true), "Turning ship opens its target route")
+	MovingThingTick.run(blocked_ship.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new())
+	MovingThingTick.run(blocked_ship.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new())
+	_check(
+		blocked_ship.city.thing(1).direction == 2 and blocked_ship.city.thing(1).state == 0,
+		"Cargo ship turns one step per tick and resumes travel when its target route opens",
+	)
+
+	var escaping_ship := _special_growth_fixture(reference_root)
+	_set_ship(escaping_ship, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2)
+	_check(escaping_ship.city.set_tile_flag(20, 20, 0x04, true), "Escaping ship marks current water")
+	_check(escaping_ship.city.set_tile_flag(23, 23, 0x04, true), "Escaping ship opens its diagonal route")
+	var escape_result := MovingThingTick.run(
+		escaping_ship.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	_check(
+		escape_result.ok
+		and escaping_ship.city.thing(1).direction == 3
+		and escaping_ship.city.thing(1).state == 0,
+		"Cargo ship escape search selects the first valid recovered direction",
+	)
+
+	var trapped_ship := _special_growth_fixture(reference_root)
+	_set_ship(trapped_ship, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2)
+	_check(trapped_ship.city.set_tile_flag(20, 20, 0x04, true), "Trapped ship marks current water")
+	var trapped_result := MovingThingTick.run(
+		trapped_ship.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	_check(
+		trapped_result.ok
+		and trapped_result.removed_ships == 1
+		and trapped_ship.city.thing(1).type == 0,
+		"Cargo ship releases its record when all eight escape routes fail",
+	)
+
+	var grounded_ship := _special_growth_fixture(reference_root)
+	_set_ship(grounded_ship, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 0)
+	var grounded_result := MovingThingTick.run(
+		grounded_ship.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	_check(
+		grounded_result.ok
+		and grounded_result.crashed_ships == 1
+		and grounded_ship.city.thing(1).type == 6
+		and grounded_ship.city.thing(1).state == 0
+		and grounded_ship.city.thing(1).goal == 0,
+		"Cargo ship on dry land becomes the recovered explosion record",
+	)
+
 	var helicopter := _special_growth_fixture(reference_root)
 	_set_helicopter(helicopter, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 0, 0)
 	var takeoff_result := MovingThingTick.run(
@@ -1303,6 +1433,31 @@ func _set_helicopter(
 	things[offset + 10] = fixture.city.text_overlay_id(point.x, point.y)
 	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Helicopter fixture stores its XTHG record")
 	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Helicopter fixture links its XTXT record")
+
+
+func _set_ship(
+	fixture: Dictionary,
+	record: int,
+	point: Vector2i,
+	target: Vector2i,
+	direction: int,
+	state: int
+) -> void:
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	var offset := record * 12
+	things[offset] = 3
+	things[offset + 1] = direction
+	things[offset + 2] = state
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 5] = 1
+	things[offset + 6] = 8
+	things[offset + 7] = 8
+	things[offset + 8] = target.x
+	things[offset + 9] = target.y
+	things[offset + 10] = fixture.city.text_overlay_id(point.x, point.y)
+	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Cargo-ship fixture stores its XTHG record")
+	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Cargo-ship fixture links its XTXT record")
 
 
 func _set_train(

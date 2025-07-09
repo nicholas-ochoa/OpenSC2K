@@ -8,6 +8,7 @@ var clock: SimulationClock
 var random: SimRandom
 var lfsr_random: SimLfsrRandom
 var game_random: GameLcgRandom
+var ship_home := Vector2i(-1, -1)
 var developed_tiles := -1
 var power_usage_percent := -1
 var water_usage_percent := -1
@@ -21,10 +22,16 @@ func _init(
 	random = SimRandom.new(random_seed)
 	lfsr_random = SimLfsrRandom.new(lfsr_seed)
 	game_random = GameLcgRandom.new(game_random_seed)
+	if initial_city != null and initial_city.is_valid():
+		for record in range(1, CityState.THING_COUNT):
+			var thing := initial_city.thing(record)
+			if thing.get("type", 0) == 3:
+				ship_home = Vector2i(thing.x, thing.y)
+				break
 
 
 func advance_moving_things() -> Dictionary:
-	return MovingThingPhase.run(city, random, lfsr_random, game_random)
+	return MovingThingPhase.run(city, random, lfsr_random, game_random, ship_home)
 
 
 func advance_day() -> Dictionary:
@@ -64,6 +71,8 @@ func advance_day() -> Dictionary:
 				if not growth.ok:
 					return {"ok": false, "error": growth.error}
 				phase_results[action] = growth
+				if growth.has("ship_home"):
+					ship_home = growth.ship_home
 				if growth.complete:
 					applied.append(action)
 				else:
