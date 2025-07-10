@@ -972,6 +972,111 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 
 
 func _test_moving_thing_phase(reference_root: String) -> void:
+	var explosion := _special_growth_fixture(reference_root)
+	_set_explosion(explosion, 1, Vector2i(20, 20), 5, 0, 0)
+	_check(explosion.city.set_building_id(20, 20, 0x90), "Explosion fixture places its center building")
+	var first_explosion_frame := MovingThingTick.run(
+		explosion.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	var second_explosion_frame := MovingThingTick.run(
+		explosion.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	var final_explosion_frame := MovingThingTick.run(
+		explosion.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	_check(
+		first_explosion_frame.ok
+		and first_explosion_frame.deferred_news == 1
+		and second_explosion_frame.ok
+		and final_explosion_frame.ok,
+		"Explosion record requests news and advances through two animation frames",
+	)
+	_check(
+		explosion.city.thing(1).type == 0
+		and explosion.city.building_id(20, 20) == 0
+		and explosion.city.text_overlay_id(20, 20) == 0,
+		"Finished non-spreading explosion removes its record, center building, and link: %s %d %d"
+		% [explosion.city.thing(1), explosion.city.building_id(20, 20), explosion.city.text_overlay_id(20, 20)],
+	)
+
+	var spreading_explosion := _special_growth_fixture(reference_root)
+	_set_explosion(spreading_explosion, 1, Vector2i(20, 20), 5, 1, 2)
+	var spreading_traffic: PackedByteArray = spreading_explosion.document.find_chunk("XTRF").decoded_payload.duplicate()
+	spreading_traffic[10 * 64 + 10] = 200
+	_check(
+		spreading_explosion.document.find_chunk("XTRF").set_decoded_payload(spreading_traffic),
+		"Spreading explosion fixture sets traffic",
+	)
+	var spread_result := MovingThingTick.run(
+		spreading_explosion.city,
+		SequenceRandom.new([1]),
+		SequenceLfsrRandom.new([2, 2, 3, 2, 2, 3, 1, 2])
+	)
+	_check(
+		spread_result.ok and spread_result.spread_explosion_fires == 4,
+		"Spreading explosion applies four LFSR-selected fire attempts",
+	)
+	_check(
+		spreading_explosion.city.text_overlay_id(20, 20) == 0xff
+		and spreading_explosion.city.text_overlay_id(21, 20) == 0xff
+		and spreading_explosion.city.text_overlay_id(20, 21) == 0xff
+		and spreading_explosion.city.text_overlay_id(19, 20) == 0xff,
+		"Explosion damage writes fire overlays at the recovered positions",
+	)
+	_check(
+		spreading_explosion.document.find_chunk("XTRF").decoded_payload[10 * 64 + 10] == 0,
+		"Explosion fire clears coarse traffic",
+	)
+
+	var labeled_explosion := _special_growth_fixture(reference_root)
+	_set_explosion(labeled_explosion, 1, Vector2i(20, 20), 5, 1, 2)
+	_check(labeled_explosion.city.set_label(1, "Blast Zone"), "Explosion fixture sets a user label")
+	_check(labeled_explosion.city.set_text_overlay_id(21, 20, 1), "Explosion fixture places a user label")
+	var label_damage := MovingThingTick.run(
+		labeled_explosion.city,
+		SequenceRandom.new([1]),
+		SequenceLfsrRandom.new([3, 2, 3, 2, 3, 2, 3, 2])
+	)
+	_check(
+		label_damage.ok
+		and labeled_explosion.city.label(1).is_empty()
+		and labeled_explosion.city.text_overlay_id(21, 20) == 0xff,
+		"Explosion damage releases a user label before it starts fire",
+	)
+
+	var rubble_explosion := _special_growth_fixture(reference_root)
+	_set_explosion(rubble_explosion, 1, Vector2i(20, 20), 5, 1, 2)
+	_check(rubble_explosion.city.set_building_id(21, 20, 0x90), "Rubble explosion fixture places a building")
+	_check(rubble_explosion.city.set_text_overlay_id(21, 20, 241), "Rubble explosion fixture places overlay 241")
+	var rubble_result := MovingThingTick.run(
+		rubble_explosion.city,
+		SequenceRandom.new([1]),
+		SequenceLfsrRandom.new([3, 2, 0, 3, 2, 0, 3, 2, 0, 3, 2, 0])
+	)
+	_check(
+		rubble_result.ok
+		and rubble_result.rubble_explosion_hits == 4
+		and rubble_explosion.city.building_id(21, 20) == 1
+		and rubble_explosion.city.text_overlay_id(21, 20) == 241,
+		"Explosion overlay 241 through 249 changes the building to LFSR-selected rubble: %s %d %d"
+		% [rubble_result, rubble_explosion.city.building_id(21, 20), rubble_explosion.city.text_overlay_id(21, 20)],
+	)
+
+	var facility_explosion := _special_growth_fixture(reference_root)
+	_set_explosion(facility_explosion, 1, Vector2i(20, 20), 5, 1, 2)
+	_check(facility_explosion.city.set_text_overlay_id(21, 20, 51), "Facility explosion fixture places XMIC overlay 51")
+	var facility_result := MovingThingTick.run(
+		facility_explosion.city,
+		SequenceRandom.new([1]),
+		SequenceLfsrRandom.new([3, 2, 3, 2, 3, 2, 3, 2])
+	)
+	_check(
+		facility_result.ok
+		and facility_result.deferred_facility_explosion_hits == 4
+		and not facility_result.explosion_map_damage_complete,
+		"Explosion reports linked-facility demolition until that full damage path is implemented",
+	)
+
 	var airplane := _special_growth_fixture(reference_root)
 	_set_airplane(airplane, 1, Vector2i(20, 20), Vector2i(20, 20), 2, 0, 0)
 	_check(airplane.city.set_building_id(20, 20, 0xdd), "Airplane takeoff fixture places a runway")
@@ -1609,6 +1714,27 @@ func _set_airplane(
 	things[offset + 10] = fixture.city.text_overlay_id(point.x, point.y)
 	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Airplane fixture stores its XTHG record")
 	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Airplane fixture links its XTXT record")
+
+
+func _set_explosion(
+	fixture: Dictionary,
+	record: int,
+	point: Vector2i,
+	state: int,
+	goal: int,
+	frame: int
+) -> void:
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	var offset := record * 12
+	things[offset] = 6
+	things[offset + 1] = frame
+	things[offset + 2] = state
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 10] = fixture.city.text_overlay_id(point.x, point.y)
+	things[offset + 11] = goal
+	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Explosion fixture stores its XTHG record")
+	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Explosion fixture links its XTXT record")
 
 
 func _set_train(

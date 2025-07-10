@@ -1,6 +1,7 @@
 class_name MovingThingPhase
 extends RefCounted
 
+const NetworkTiles = preload("res://src/tools/network_command.gd")
 const MAP_SIZE := 128
 const RECORD_SIZE := 12
 const FIRST_RECORD := 1
@@ -82,7 +83,8 @@ static func run(
 	random,
 	lfsr_random,
 	game_random = null,
-	ship_home := Vector2i(-1, -1)
+	ship_home := Vector2i(-1, -1),
+	allow_disaster_damage := true
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -105,6 +107,8 @@ static func run(
 	var text_chunk := city.document.find_chunk("XTXT")
 	var thing_chunk := city.document.find_chunk("XTHG")
 	var flag_chunk := city.document.find_chunk("XBIT")
+	var label_chunk := city.document.find_chunk("XLAB")
+	var misc_chunk := city.document.find_chunk("MISC")
 	if (
 		building_chunk == null
 		or building_chunk.decoded_payload.size() != CityState.TILE_COUNT
@@ -120,14 +124,25 @@ static func run(
 		or thing_chunk.decoded_payload.size() != CityState.THING_COUNT * RECORD_SIZE
 		or flag_chunk == null
 		or flag_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or label_chunk == null
+		or label_chunk.decoded_payload.size() != CityState.LABEL_COUNT * CityState.LABEL_RECORD_SIZE
+		or misc_chunk == null
+		or misc_chunk.decoded_payload.size() != 4800
 	):
 		return {"ok": false, "error": "moving-thing input chunks are missing or have the wrong size"}
 
-	var buildings: PackedByteArray = building_chunk.decoded_payload
+	var original_buildings: PackedByteArray = building_chunk.decoded_payload.duplicate()
+	var buildings: PackedByteArray = original_buildings.duplicate()
 	var underground: PackedByteArray = underground_chunk.decoded_payload
-	var zones: PackedByteArray = zone_chunk.decoded_payload
-	var traffic: PackedByteArray = traffic_chunk.decoded_payload
+	var original_zones: PackedByteArray = zone_chunk.decoded_payload.duplicate()
+	var zones: PackedByteArray = original_zones.duplicate()
+	var original_traffic: PackedByteArray = traffic_chunk.decoded_payload.duplicate()
+	var traffic: PackedByteArray = original_traffic.duplicate()
 	var flags: PackedByteArray = flag_chunk.decoded_payload
+	var original_labels: PackedByteArray = label_chunk.decoded_payload.duplicate()
+	var labels: PackedByteArray = original_labels.duplicate()
+	var original_misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+	var misc: PackedByteArray = original_misc.duplicate()
 	var original_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
 	var original_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	var text: PackedByteArray = original_text.duplicate()
@@ -137,6 +152,7 @@ static func run(
 		"active_airplanes": 0,
 		"active_helicopters": 0,
 		"active_ships": 0,
+		"active_explosions": 0,
 		"active_sailboats": 0,
 		"active_trains": 0,
 		"moved_helicopters": 0,
@@ -160,6 +176,11 @@ static func run(
 		"crashed_ships": 0,
 		"docked_ships": 0,
 		"departing_ships": 0,
+		"removed_explosions": 0,
+		"spread_explosion_fires": 0,
+		"rubble_explosion_hits": 0,
+		"deferred_facility_explosion_hits": 0,
+		"deferred_connection_count_updates": 0,
 		"malformed_records": 0,
 		"deferred_news": 0,
 		"deferred_traffic_news_checks": 0,
@@ -191,6 +212,12 @@ static func run(
 					buildings, underground, flags, text, things, record,
 					ship_home, random, lfsr_random, counters
 				)
+			TYPE_EXPLOSION:
+				counters.active_explosions += 1
+				_update_explosion(
+					buildings, zones, flags, traffic, text, labels, misc,
+					things, record, lfsr_random, allow_disaster_damage, counters
+				)
 			TYPE_SAILBOAT:
 				counters.active_sailboats += 1
 				_update_sailboat(
@@ -203,12 +230,25 @@ static func run(
 					random, lfsr_random, game_random, counters
 				)
 
-	if things != original_things and not thing_chunk.set_decoded_payload(things):
-		return {"ok": false, "error": "cannot store XTHG after the moving-thing tick"}
-	if text != original_text and not text_chunk.set_decoded_payload(text):
-		if things != original_things:
-			thing_chunk.set_decoded_payload(original_things)
-		return {"ok": false, "error": "cannot store XTXT after the moving-thing tick"}
+	var applied: Array = []
+	for update in [
+		[thing_chunk, things, original_things, "XTHG"],
+		[text_chunk, text, original_text, "XTXT"],
+		[building_chunk, buildings, original_buildings, "XBLD"],
+		[zone_chunk, zones, original_zones, "XZON"],
+		[traffic_chunk, traffic, original_traffic, "XTRF"],
+		[label_chunk, labels, original_labels, "XLAB"],
+		[misc_chunk, misc, original_misc, "MISC"],
+	]:
+		if update[1] == update[2]:
+			continue
+		if not update[0].set_decoded_payload(update[1]):
+			for rollback in applied:
+				rollback[0].set_decoded_payload(rollback[1])
+			return {"ok": false, "error": "cannot store %s after the moving-thing tick" % update[3]}
+		applied.push_front([update[0], update[2]])
+	city.buildings = buildings.duplicate()
+	city.zones = zones.duplicate()
 	city.text_overlays = text.duplicate()
 	counters["ok"] = true
 	counters["sailboats_complete"] = true
@@ -216,9 +256,102 @@ static func run(
 	counters["helicopters_save_visible_complete"] = true
 	counters["ships_save_visible_complete"] = true
 	counters["airplanes_save_visible_complete"] = true
+	counters["explosion_records_complete"] = true
+	counters["explosion_map_damage_complete"] = (
+		counters.deferred_facility_explosion_hits == 0
+		and counters.deferred_connection_count_updates == 0
+	)
 	counters["complete"] = false
 	counters["error"] = ""
 	return counters
+
+
+static func _update_explosion(
+	buildings: PackedByteArray,
+	zones: PackedByteArray,
+	flags: PackedByteArray,
+	traffic: PackedByteArray,
+	text: PackedByteArray,
+	labels: PackedByteArray,
+	misc: PackedByteArray,
+	things: PackedByteArray,
+	record: int,
+	lfsr_random,
+	allow_disaster_damage: bool,
+	counters: Dictionary
+) -> void:
+	var offset := record * RECORD_SIZE
+	var frame := int(things[offset + 1])
+	if frame == 0:
+		counters.deferred_news += 1
+	if frame < 2:
+		things[offset + 1] = (frame + 1) & 0xff
+		return
+	var center := Vector2i(things[offset + 3], things[offset + 4])
+	var center_index := _index(center)
+	_remove_thing(text, things, record)
+	counters.removed_explosions += 1
+	if center_index < 0:
+		counters.malformed_records += 1
+		return
+	buildings[center_index] = 0
+	if things[offset + 11] == 0 or not allow_disaster_damage:
+		return
+	for _attempt in 4:
+		var damaged := center + Vector2i(
+			lfsr_random.next_mod(5) - 2,
+			lfsr_random.next_mod(5) - 2
+		)
+		var damage_result := _apply_explosion_damage(
+			buildings, zones, flags, traffic, text, labels, misc, damaged, lfsr_random
+		)
+		if damage_result == 1:
+			counters.spread_explosion_fires += 1
+		elif damage_result == 4:
+			counters.spread_explosion_fires += 1
+			counters.deferred_connection_count_updates += 1
+		elif damage_result == 2:
+			counters.rubble_explosion_hits += 1
+		elif damage_result == 3:
+			counters.deferred_facility_explosion_hits += 1
+
+
+static func _apply_explosion_damage(
+	buildings: PackedByteArray,
+	zones: PackedByteArray,
+	flags: PackedByteArray,
+	traffic: PackedByteArray,
+	text: PackedByteArray,
+	labels: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i,
+	lfsr_random
+) -> int:
+	var index := _index(point)
+	if index < 0 or flags[index] & 0x04 != 0:
+		return 0
+	var overlay := int(text[index])
+	var result_code := 1
+	if overlay > 0:
+		if overlay < 51:
+			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
+		elif overlay < TEXT_LABEL_BASE:
+			# this path demolishes the full linked facility before it starts fire
+			return 3
+		elif overlay < 241:
+			return 0
+		elif overlay < 250:
+			NetworkTiles._replace_building(
+				buildings, zones, misc, index, lfsr_random.next_mod(4) + 1
+			)
+			return 2
+		elif overlay != 250:
+			return 0
+		else:
+			result_code = 4
+	text[index] = 0xff
+	traffic[int(point.x / 2) * 64 + int(point.y / 2)] = 0
+	return result_code
 
 
 static func _update_airplane(
