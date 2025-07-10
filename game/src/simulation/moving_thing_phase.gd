@@ -53,6 +53,18 @@ const THING_SPEEDS := {
 	TYPE_AIRPLANE: 16,
 	TYPE_HELICOPTER: 8,
 }
+# final supplied smallmed.dat metadata heights for sprite ids 0x71 through 0xfa
+const BUILDING_SPRITE_HEIGHTS := [
+	5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 6, 8, 7, 6, 6, 8,
+	12, 7, 9, 5, 8, 6, 7, 5, 5, 5, 5, 10, 11, 11, 11, 16,
+	14, 20, 20, 9, 11, 11, 12, 12, 14, 19, 17, 19, 22, 11, 11, 11,
+	10, 10, 14, 15, 16, 10, 12, 12, 17, 14, 15, 18, 19, 18, 23, 15,
+	24, 16, 22, 17, 24, 16, 30, 35, 20, 28, 38, 13, 24, 15, 15, 15,
+	13, 21, 17, 18, 24, 9, 9, 11, 23, 29, 21, 20, 24, 18, 28, 18,
+	21, 19, 17, 15, 14, 15, 22, 19, 23, 17, 13, 5, 5, 5, 6, 11,
+	16, 18, 5, 6, 6, 5, 5, 6, 6, 5, 17, 10, 11, 10, 10, 10,
+	14, 9, 10, 10, 14, 10, 13, 14, 13, 16,
+]
 const TRAIN_DIRECTION_ORDERS := [
 	[0, 3, 1, 2],
 	[0, 1, 3, 2],
@@ -88,6 +100,7 @@ static func run(
 		return {"ok": false, "error": "a compatible game random generator is required"}
 	var building_chunk := city.document.find_chunk("XBLD")
 	var underground_chunk := city.document.find_chunk("XUND")
+	var zone_chunk := city.document.find_chunk("XZON")
 	var traffic_chunk := city.document.find_chunk("XTRF")
 	var text_chunk := city.document.find_chunk("XTXT")
 	var thing_chunk := city.document.find_chunk("XTHG")
@@ -97,6 +110,8 @@ static func run(
 		or building_chunk.decoded_payload.size() != CityState.TILE_COUNT
 		or underground_chunk == null
 		or underground_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or zone_chunk == null
+		or zone_chunk.decoded_payload.size() != CityState.TILE_COUNT
 		or traffic_chunk == null
 		or traffic_chunk.decoded_payload.size() != 64 * 64
 		or text_chunk == null
@@ -110,6 +125,7 @@ static func run(
 
 	var buildings: PackedByteArray = building_chunk.decoded_payload
 	var underground: PackedByteArray = underground_chunk.decoded_payload
+	var zones: PackedByteArray = zone_chunk.decoded_payload
 	var traffic: PackedByteArray = traffic_chunk.decoded_payload
 	var flags: PackedByteArray = flag_chunk.decoded_payload
 	var original_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
@@ -124,6 +140,7 @@ static func run(
 		"active_sailboats": 0,
 		"active_trains": 0,
 		"moved_helicopters": 0,
+		"moved_airplanes": 0,
 		"moved_ships": 0,
 		"moved_sailboats": 0,
 		"moved_trains": 0,
@@ -136,6 +153,9 @@ static func run(
 		"removed_trains": 0,
 		"removed_helicopters": 0,
 		"crashed_helicopters": 0,
+		"removed_airplanes": 0,
+		"crashed_airplanes": 0,
+		"landed_airplanes": 0,
 		"removed_ships": 0,
 		"crashed_ships": 0,
 		"docked_ships": 0,
@@ -155,6 +175,10 @@ static func run(
 		match int(things[offset]):
 			TYPE_AIRPLANE:
 				counters.active_airplanes += 1
+				_update_airplane(
+					buildings, zones, text, things, record,
+					random, lfsr_random, counters
+				)
 			TYPE_HELICOPTER:
 				counters.active_helicopters += 1
 				_update_helicopter(
@@ -191,9 +215,149 @@ static func run(
 	counters["train_routes_complete"] = true
 	counters["helicopters_save_visible_complete"] = true
 	counters["ships_save_visible_complete"] = true
+	counters["airplanes_save_visible_complete"] = true
 	counters["complete"] = false
 	counters["error"] = ""
 	return counters
+
+
+static func _update_airplane(
+	buildings: PackedByteArray,
+	zones: PackedByteArray,
+	text: PackedByteArray,
+	things: PackedByteArray,
+	record: int,
+	random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	var offset := record * RECORD_SIZE
+	var current := Vector2i(things[offset + 3], things[offset + 4])
+	var current_index := _index(current)
+	var direction := int(things[offset + 1])
+	if current_index < 0 or direction < 0 or direction >= EIGHT_DIRECTIONS.size():
+		_remove_thing(text, things, record)
+		counters.removed_airplanes += 1
+		counters.malformed_records += 1
+		return
+	var building := int(buildings[current_index])
+	if building > 0x70 and zones[current_index] & 0x0f != 8:
+		if building > 0xfa:
+			_convert_to_explosion(
+				things, record, 5, 1 if lfsr_random.next_mod(16) == 0 else 0
+			)
+			counters.crashed_airplanes += 1
+			return
+		var sprite_height: int = BUILDING_SPRITE_HEIGHTS[building - 0x71]
+		if things[offset + 5] < int(sprite_height / 3):
+			_convert_to_explosion(things, record, 5, 1)
+			counters.crashed_airplanes += 1
+			return
+	var state: int = int(things[offset + 2]) & 0x0f
+	match state:
+		0:
+			if _move_thing_eight_way(TYPE_AIRPLANE, text, things, record, direction) < 0:
+				counters.removed_airplanes += 1
+				return
+			counters.moved_airplanes += 1
+			if things[offset + 5] == 0:
+				counters.deferred_news += 1
+			if things[offset + 5] < 14:
+				things[offset + 5] += 1
+			else:
+				things[offset + 2] = 2
+		1:
+			if _move_thing_eight_way(TYPE_AIRPLANE, text, things, record, direction) < 0:
+				counters.removed_airplanes += 1
+				return
+			counters.moved_airplanes += 1
+			things[offset + 5] = (int(things[offset + 5]) - 1) & 0xff
+			if things[offset + 5] == 0:
+				counters.deferred_news += 1
+				current = Vector2i(things[offset + 3], things[offset + 4])
+				current_index = _index(current)
+				if current_index >= 0:
+					text[current_index] = things[offset + 10]
+				if current_index < 0 or buildings[current_index] != 0xdd:
+					_convert_to_explosion(things, record, 5, 1)
+					counters.crashed_airplanes += 1
+				else:
+					_remove_thing(text, things, record)
+					counters.removed_airplanes += 1
+					counters.landed_airplanes += 1
+		2:
+			direction = _random_direction_step(direction, 5, random)
+			things[offset + 1] = direction
+			_advance_air_direction(buildings, things, record)
+			direction = int(things[offset + 1])
+			if _move_thing_eight_way(TYPE_AIRPLANE, text, things, record, direction) < 0:
+				counters.removed_airplanes += 1
+				return
+			counters.moved_airplanes += 1
+		3:
+			var target := Vector2i(things[offset + 8], things[offset + 9])
+			var planned_direction := _direction_quadrant(current, target)
+			things[offset + 1] = planned_direction
+			_advance_air_direction(buildings, things, record)
+			direction = int(things[offset + 1])
+			if _move_thing_eight_way(TYPE_AIRPLANE, text, things, record, direction) < 0:
+				counters.removed_airplanes += 1
+				return
+			counters.moved_airplanes += 1
+			current = Vector2i(things[offset + 3], things[offset + 4])
+			if _thing_distance(current, target) < 2:
+				var runway_axis: int = int(things[offset + 2]) >> 4
+				things[offset + 1] = _turn_one_step(planned_direction, runway_axis)
+				things[offset + 2] = runway_axis * 0x10 + 4
+				_adjust_airplane_target(things, offset, runway_axis)
+		4:
+			var target := Vector2i(things[offset + 8], things[offset + 9])
+			direction = _steer_direction(direction, current, target)
+			things[offset + 1] = direction
+			if _move_thing_eight_way(TYPE_AIRPLANE, text, things, record, direction) < 0:
+				counters.removed_airplanes += 1
+				return
+			counters.moved_airplanes += 1
+			current = Vector2i(things[offset + 3], things[offset + 4])
+			if _thing_distance(current, target) < 2:
+				var runway_axis: int = int(things[offset + 2]) >> 4
+				things[offset + 1] = runway_axis
+				things[offset + 2] = 1
+				match runway_axis:
+					1, 5:
+						things[offset + 3] = things[offset + 8]
+					3, 7:
+						things[offset + 4] = things[offset + 9]
+		7:
+			if things[offset + 5] != 0:
+				things[offset + 5] -= 1
+				if things[offset + 5] == 8:
+					counters.deferred_news += 1
+				var old_direction := direction
+				things[offset + 1] = (direction + 1) & 7
+				if _move_thing_eight_way(
+					TYPE_AIRPLANE, text, things, record, old_direction
+				) < 0:
+					counters.removed_airplanes += 1
+					return
+				counters.moved_airplanes += 1
+			else:
+				_convert_to_explosion(things, record, 5, 1)
+				counters.crashed_airplanes += 1
+
+
+static func _adjust_airplane_target(
+	things: PackedByteArray, offset: int, runway_axis: int
+) -> void:
+	match runway_axis:
+		1:
+			things[offset + 9] = (int(things[offset + 9]) - 6) & 0xff
+		3:
+			things[offset + 8] = (int(things[offset + 8]) + 6) & 0xff
+		5:
+			things[offset + 9] = (int(things[offset + 9]) + 6) & 0xff
+		7:
+			things[offset + 8] = (int(things[offset + 8]) - 6) & 0xff
 
 
 static func _update_helicopter(
@@ -922,6 +1086,25 @@ static func _turn_one_step(direction: int, target: int) -> int:
 	if direction <= target:
 		return (direction - 1) & 7 if target - direction > 4 else (direction + 1) & 7
 	return (direction + 1) & 7 if direction - target > 4 else (direction - 1) & 7
+
+
+static func _random_direction_step(direction: int, divisor: int, random) -> int:
+	if random.next_u15() % divisor == 0:
+		return (direction + random.next_u15() % 3 - 1) & 7
+	return direction
+
+
+static func _direction_quadrant(start: Vector2i, target: Vector2i) -> int:
+	var difference := target - start
+	if difference.x < 0:
+		if difference.y < 0:
+			return 7
+		return 6 if difference.y == 0 else 5
+	if difference.x == 0:
+		return 0 if difference.y < 0 else 4
+	if difference.y < 0:
+		return 1
+	return 2 if difference.y == 0 else 3
 
 
 static func _direction_between(start: Vector2i, target: Vector2i) -> int:
