@@ -316,6 +316,45 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(IsometricRenderer.terrain_sprite_id(0x00, false) == 1256, "Flat land uses sprite 1256")
 	_check(IsometricRenderer.terrain_sprite_id(0x10, true) == 1270, "Submerged land uses sprite 1270")
 	_check(IsometricRenderer.terrain_sprite_id(0x45, true) == 1290, "Last water tile uses sprite 1290")
+	var plane_visual := IsometricRenderer.moving_thing_sprite({
+		"type": 1, "direction": 4, "state": 2,
+	})
+	_check(
+		plane_visual.sprite_id == 1362 and plane_visual.flip,
+		"Airplane view uses the recovered direction offset and mirror",
+	)
+	var ship_visual := IsometricRenderer.moving_thing_sprite({
+		"type": 3, "direction": 7, "state": 0,
+	})
+	_check(
+		ship_visual.sprite_id == 1369 and not ship_visual.flip,
+		"Cargo-ship view uses the recovered north-west sprite",
+	)
+	var sail_visual := IsometricRenderer.moving_thing_sprite({
+		"type": 9, "direction": 2, "state": 0,
+	})
+	_check(
+		sail_visual.sprite_id == 1381 and sail_visual.flip,
+		"Sailboat view uses the recovered cardinal offset and mirror",
+	)
+	_check(
+		IsometricRenderer.moving_thing_sprite({
+			"type": 9, "direction": 2, "state": 1,
+		}).sprite_id == 1379,
+		"A distressed sailboat uses the Nessie sprite",
+	)
+	_check(
+		IsometricRenderer.moving_thing_sprite({
+			"type": 6, "direction": 2, "state": 0,
+		}).sprite_id == 1389,
+		"Explosion frame two uses the third recovered sprite",
+	)
+	_check(
+		IsometricRenderer.moving_thing_sprite({
+			"type": 10, "direction": 0, "state": 0,
+		}).is_empty(),
+		"The generic view defers trains to their custom renderer",
+	)
 	_check(
 		starter_document.find_chunk("ALTM").set_decoded_payload(_filled_bytes(128 * 128 * 2, 0)),
 		"Isometric lookup fixture clears altitude",

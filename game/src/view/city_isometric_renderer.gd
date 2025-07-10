@@ -1,3 +1,5 @@
+# fixme: trains need their above-ground draw pass
+
 class_name CityIsometricRenderer
 extends RefCounted
 
@@ -10,6 +12,14 @@ const ALTITUDE_STEP := 12
 const TOP_MARGIN := 512
 const SIDE_MARGIN := 32
 const DISPATCH_SPRITES := {7: 1381, 8: 1382, 14: 1383}
+const THING_SPRITES := [
+	0, 1359, 1364, 1369, 1390, 1490, 1387, 1382, 1383,
+	1380, 1374, 1374, 1374, 1374, 1384, 1497, 1495,
+]
+const SHIP_DIRECTION_POSITION := [1, 2, 3, 4, 3, 2, 1, 0]
+const SHIP_DIRECTION_FLIP := [false, false, false, false, true, true, true, false]
+const THING_DIRECTION_POSITION := [0, 1, 1, 0]
+const THING_DIRECTION_FLIP := [false, false, true, true]
 
 
 static func create_image(
@@ -64,6 +74,9 @@ static func validate_assets(city: CityState, sprites: Sc2SpriteArchive) -> Packe
 			var dispatch_sprite := dispatch_sprite_id(city, x, y)
 			if dispatch_sprite > 0 and sprites.find_sprite(dispatch_sprite) == null:
 				missing[dispatch_sprite] = true
+			var moving_visual := moving_thing_visual(city, x, y)
+			if not moving_visual.is_empty() and sprites.find_sprite(moving_visual.sprite_id) == null:
+				missing[moving_visual.sprite_id] = true
 	var ids := missing.keys()
 	ids.sort()
 	for sprite_id in ids:
@@ -158,6 +171,9 @@ static func _draw_tile(
 	if dispatch_sprite > 0:
 		var dispatch_image := _sprite_image(sprites, palette, cache, dispatch_sprite, false)
 		_blend_on_base(output, dispatch_image, screen_x, base_y)
+	var moving_visual := moving_thing_visual(city, x, y)
+	if not moving_visual.is_empty():
+		_draw_moving_thing(output, city, palette, sprites, cache, moving_visual)
 
 
 static func dispatch_sprite_id(city: CityState, x: int, y: int) -> int:
@@ -168,6 +184,100 @@ static func dispatch_sprite_id(city: CityState, x: int, y: int) -> int:
 	if thing.is_empty() or thing.x != x or thing.y != y:
 		return 0
 	return int(DISPATCH_SPRITES.get(thing.type, 0))
+
+
+static func moving_thing_visual(city: CityState, x: int, y: int) -> Dictionary:
+	var overlay := city.text_overlay_id(x, y)
+	if overlay < 201 or overlay > 240:
+		return {}
+	var record := overlay - 201
+	var thing := city.thing(record)
+	if thing.is_empty() or thing.x != x or thing.y != y:
+		return {}
+	var sprite := moving_thing_sprite(thing)
+	if sprite.is_empty():
+		return {}
+	return {
+		"sprite_id": sprite.sprite_id,
+		"flip": sprite.flip,
+		"record": record,
+		"type": thing.type,
+		"x": x,
+		"y": y,
+		"z": thing.z,
+		"px": thing.px,
+		"py": thing.py,
+	}
+
+
+static func moving_thing_sprite(thing: Dictionary) -> Dictionary:
+	if thing.is_empty():
+		return {}
+	var type := int(thing.get("type", 0))
+	var direction := int(thing.get("direction", 0))
+	var state := int(thing.get("state", 0))
+	if type < 1 or type >= THING_SPRITES.size():
+		return {}
+	var sprite_id: int = THING_SPRITES[type]
+	var flip := false
+	match type:
+		1, 2, 3:
+			if direction < 0 or direction >= SHIP_DIRECTION_POSITION.size():
+				return {}
+			sprite_id += SHIP_DIRECTION_POSITION[direction]
+			flip = SHIP_DIRECTION_FLIP[direction]
+		4:
+			if direction < 0 or direction >= THING_DIRECTION_POSITION.size():
+				return {}
+			sprite_id += THING_DIRECTION_POSITION[direction]
+			flip = THING_DIRECTION_FLIP[direction]
+		6:
+			if direction < 0 or direction > 2:
+				return {}
+			sprite_id += direction
+		9:
+			if state != 0:
+				sprite_id = 1379
+			elif direction < 0 or direction >= THING_DIRECTION_POSITION.size():
+				return {}
+			else:
+				sprite_id += THING_DIRECTION_POSITION[direction]
+				flip = THING_DIRECTION_FLIP[direction]
+		16:
+			if direction < 0 or direction > 7:
+				return {}
+			flip = direction > 3
+		_:
+			return {}
+	return {"sprite_id": sprite_id, "flip": flip}
+
+
+static func _draw_moving_thing(
+	output: Image,
+	city: CityState,
+	palette: Sc2Palette,
+	sprites: Sc2SpriteArchive,
+	cache: Dictionary,
+	visual: Dictionary
+) -> void:
+	var sprite := _sprite_image(
+		sprites, palette, cache, visual.sprite_id, visual.flip
+	)
+	var altitude := city.land_altitude(visual.x, visual.y)
+	if city.is_water(visual.x, visual.y):
+		altitude = city.water_altitude(visual.x, visual.y)
+	var center_x: int = (
+		SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+		+ (visual.x - visual.y) * HALF_WIDTH + HALF_WIDTH
+		+ visual.px - visual.py
+	)
+	var top_y: int = (
+		TOP_MARGIN + (visual.x + visual.y) * HALF_HEIGHT
+		+ int((visual.px + visual.py) / 2)
+		- altitude * ALTITUDE_STEP - visual.z * 8 - sprite.get_height()
+	)
+	var destination := Vector2i(center_x - int(sprite.get_width() / 2), top_y)
+	output.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), destination)
 
 
 # four occupied corners, one sprite, compass picks the winner
