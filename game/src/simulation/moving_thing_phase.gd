@@ -184,7 +184,7 @@ static func run(
 		"malformed_records": 0,
 		"deferred_news": 0,
 		"deferred_traffic_news_checks": 0,
-		"deferred_train_crashes": 0,
+		"created_train_crash_explosions": 0,
 	}
 	var city_center := Vector2i(
 		city.document.misc_u32(MISC_CITY_CENTER_X),
@@ -920,7 +920,8 @@ static func _update_train(
 		_remove_train(text, things, record, first_car, second_car)
 		counters.active_trains -= 1
 		counters.removed_trains += 1
-		counters.deferred_train_crashes += 1
+		if _spawn_explosion(text, things, current, 0, 0, 0):
+			counters.created_train_crash_explosions += 1
 		return
 	var destination := Vector2i(things[offset + 6], things[offset + 7])
 	var destination_index := _index(destination)
@@ -1116,6 +1117,39 @@ static func _remove_train(
 	_remove_thing(text, things, engine_record)
 	_remove_thing(text, things, first_car_record)
 	_remove_thing(text, things, second_car_record)
+
+
+static func _spawn_explosion(
+	text: PackedByteArray,
+	things: PackedByteArray,
+	point: Vector2i,
+	height: int,
+	state: int,
+	goal: int
+) -> bool:
+	var index := _index(point)
+	if index < 0 or text[index] >= TEXT_LABEL_BASE:
+		return false
+	var record := 0
+	for checked_record in range(FIRST_RECORD, LAST_RECORD + 1):
+		if things[checked_record * RECORD_SIZE] == 0:
+			record = checked_record
+			break
+	if record == 0:
+		return false
+	var offset := record * RECORD_SIZE
+	things[offset] = TYPE_EXPLOSION
+	things[offset + 1] = 0
+	things[offset + 2] = state
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 5] = height
+	things[offset + 6] = 8
+	things[offset + 7] = 8
+	things[offset + 10] = text[index]
+	things[offset + 11] = goal
+	text[index] = record + TEXT_LABEL_BASE
+	return true
 
 
 static func _remove_thing(

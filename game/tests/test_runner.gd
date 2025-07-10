@@ -1611,16 +1611,22 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(
 		crash_result.ok
 		and crash_result.removed_trains == 1
-		and crash_result.deferred_train_crashes == 1,
-		"Train without a route removes its consist and reports deferred crash effects",
+		and crash_result.created_train_crash_explosions == 1,
+		"Train without a route removes its consist and creates a crash explosion",
 	)
 	_check(
-		crashed_train.city.thing(1).type == 0
+		crashed_train.city.thing(1).type == 6
+		and crashed_train.city.thing(1).direction == 0
+		and crashed_train.city.thing(1).state == 0
+		and crashed_train.city.thing(1).z == 0
+		and crashed_train.city.thing(1).px == 8
+		and crashed_train.city.thing(1).py == 8
+		and crashed_train.city.thing(1).goal == 0
 		and crashed_train.city.thing(2).type == 0
 		and crashed_train.city.thing(3).type == 0,
-		"Train crash releases all three linked records",
+		"Train crash reuses the first released record for a non-spreading explosion",
 	)
-	_check(crashed_train.city.text_overlay_id(20, 20) == 0, "Train crash clears the engine XTXT cell")
+	_check(crashed_train.city.text_overlay_id(20, 20) == 202, "Train crash links its explosion to XTXT")
 
 
 func _set_sailboat(
