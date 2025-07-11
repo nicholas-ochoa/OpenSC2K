@@ -382,6 +382,35 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(map_control.source_center == expected_center, "Center tool uses the altitude-aware tile center")
 	_check(not map_control.center_on_tile(Vector2i(-1, 0)), "Center tool rejects an invalid tile")
 	map_control.free()
+	_check(starter.set_building_id(64, 64, 0x2e), "Train drawing fixture adds a rail tile")
+	var straight_train := IsometricRenderer.train_sprite(starter, 64, 64, {
+		"type": 10, "dx": 0,
+	})
+	_check(
+		straight_train.sprite_id == 1377 and straight_train.flip,
+		"Train view maps a rail tile to its recovered sprite variant",
+	)
+	_check(starter.set_building_id(64, 64, 0x36), "Train drawing fixture adds a turn tile")
+	var turning_train := IsometricRenderer.train_sprite(starter, 64, 64, {
+		"type": 11, "dx": 1,
+	})
+	_check(
+		turning_train.variant == 17 and turning_train.sprite_id == 1375,
+		"Train view uses the saved transition on a turn tile",
+	)
+	_check(
+		turning_train.screen_y == 6 and not turning_train.flip,
+		"Train view applies the recovered turn position and mirror",
+	)
+	_check(starter.set_building_id(64, 64, 0x5a), "Train drawing fixture adds a tunnel tile")
+	_check(starter.set_tile_flag(64, 64, 0x02, true), "Train drawing fixture mirrors the tunnel")
+	var tunnel_train := IsometricRenderer.train_sprite(starter, 64, 64, {
+		"type": 10, "dx": 0,
+	})
+	_check(
+		tunnel_train.variant == 1 and tunnel_train.elevation == 12,
+		"Tunnel train view uses the water level, raised track, and flip flag",
+	)
 
 
 func _test_simulation_clock() -> void:
