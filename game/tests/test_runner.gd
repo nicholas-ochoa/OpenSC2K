@@ -1178,6 +1178,60 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		"Facility blast creates rubble and fire and releases XMIC and XLAB",
 	)
 
+	var tornado := _special_growth_fixture(reference_root)
+	_set_tornado(tornado, 1, Vector2i(20, 20), 2)
+	_check(tornado.city.set_building_id(20, 20, 0x1d), "Tornado fixture places a road")
+	_check(tornado.document.set_misc_u32(0x01f0, 16383), "Tornado fixture counts occupied land")
+	_check(tornado.document.set_misc_u32(0x01f0 + 0x1d * 4, 1), "Tornado fixture counts its road")
+	var tornado_result := MovingThingTick.run(
+		tornado.city,
+		SequenceRandom.new([0, 1, 0, 1]),
+		NonzeroLfsrRandom.new()
+	)
+	_check(
+		tornado_result.ok
+		and tornado_result.active_tornadoes == 1
+		and tornado_result.tornado_demolitions == 1
+		and tornado_result.moved_tornadoes == 1,
+		"Tornado demolishes a structure and makes its first movement",
+	)
+	_check(
+		tornado.city.building_id(20, 20) == 1
+		and tornado.city.thing(1).px == 16
+		and tornado.city.thing(1).py == 16,
+		"Tornado stores rubble and its eight-unit sub-tile movement",
+	)
+
+	var fast_tornado := _special_growth_fixture(reference_root)
+	_set_tornado(fast_tornado, 1, Vector2i(20, 20), 2)
+	var fast_tornado_result := MovingThingTick.run(
+		fast_tornado.city,
+		SequenceRandom.new([0, 0, 1, 0, 0, 1]),
+		NonzeroLfsrRandom.new()
+	)
+	_check(
+		fast_tornado_result.ok
+		and fast_tornado_result.moved_tornadoes == 2
+		and fast_tornado.city.thing(1).x == 21
+		and fast_tornado.city.thing(1).px == 8,
+		"Tornado makes a second movement over a low tile",
+	)
+
+	var expired_tornado := _special_growth_fixture(reference_root)
+	_set_tornado(expired_tornado, 1, Vector2i(20, 20), 2)
+	var expired_tornado_result := MovingThingTick.run(
+		expired_tornado.city,
+		SequenceRandom.new([0, 0, 0]),
+		NonzeroLfsrRandom.new()
+	)
+	_check(
+		expired_tornado_result.ok
+		and expired_tornado_result.removed_tornadoes == 1
+		and expired_tornado.city.thing(1).type == 0
+		and expired_tornado.city.text_overlay_id(20, 20) == 0,
+		"Tornado expires on its recovered first low-byte random gate",
+	)
+
 	var airplane := _special_growth_fixture(reference_root)
 	_set_airplane(airplane, 1, Vector2i(20, 20), Vector2i(20, 20), 2, 0, 0)
 	_check(airplane.city.set_building_id(20, 20, 0xdd), "Airplane takeoff fixture places a runway")
@@ -1842,6 +1896,21 @@ func _set_explosion(
 	things[offset + 11] = goal
 	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Explosion fixture stores its XTHG record")
 	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Explosion fixture links its XTXT record")
+
+
+func _set_tornado(
+	fixture: Dictionary, record: int, point: Vector2i, direction: int
+) -> void:
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	var offset := record * 12
+	things[offset] = 15
+	things[offset + 1] = direction
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 6] = 8
+	things[offset + 7] = 8
+	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Tornado fixture stores its XTHG record")
+	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Tornado fixture links its XTXT record")
 
 
 func _set_train(

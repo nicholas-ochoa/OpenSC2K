@@ -191,13 +191,14 @@ static func _demolish_point(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random
+	random,
+	force_damage := false
 ) -> Dictionary:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	var tile_id := int(buildings[index])
-	if (zones[index] & 0x0f) == MILITARY_ZONE or tile_id == RADIOACTIVITY:
+	if not force_damage and ((zones[index] & 0x0f) == MILITARY_ZONE or tile_id == RADIOACTIVITY):
 		return {"changed": false}
-	if text_overlays[index] == PROTECTED_CONNECTION_LABEL:
+	if not force_damage and text_overlays[index] == PROTECTED_CONNECTION_LABEL:
 		return {"changed": false}
 	if tile_id >= TUNNEL_FIRST and tile_id <= TUNNEL_LAST:
 		return _demolish_tunnel(

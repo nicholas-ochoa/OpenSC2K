@@ -17,6 +17,7 @@ const TYPE_TRAIN_ENGINE := 10
 const TYPE_TRAIN_CAR := 11
 const TYPE_SUBWAY_ENGINE := 12
 const TYPE_SUBWAY_CAR := 13
+const TYPE_TORNADO := 15
 const TILE_PIER := 0xdf
 const TILE_MARINA := 0xf8
 const TILE_RAIL_STATION := 0xed
@@ -54,6 +55,7 @@ const SHIP_ROUTE_BUILDINGS := {
 const THING_SPEEDS := {
 	TYPE_AIRPLANE: 16,
 	TYPE_HELICOPTER: 8,
+	TYPE_TORNADO: 8,
 }
 # final supplied smallmed.dat metadata heights for sprite ids 0x71 through 0xfa
 const BUILDING_SPRITE_HEIGHTS := [
@@ -173,11 +175,13 @@ static func run(
 		"active_explosions": 0,
 		"active_sailboats": 0,
 		"active_trains": 0,
+		"active_tornadoes": 0,
 		"moved_helicopters": 0,
 		"moved_airplanes": 0,
 		"moved_ships": 0,
 		"moved_sailboats": 0,
 		"moved_trains": 0,
+		"moved_tornadoes": 0,
 		"turned_sailboats": 0,
 		"turned_trains": 0,
 		"paused_trains": 0,
@@ -195,6 +199,8 @@ static func run(
 		"docked_ships": 0,
 		"departing_ships": 0,
 		"removed_explosions": 0,
+		"removed_tornadoes": 0,
+		"tornado_demolitions": 0,
 		"spread_explosion_fires": 0,
 		"rubble_explosion_hits": 0,
 		"damaged_facilities": 0,
@@ -249,6 +255,13 @@ static func run(
 					buildings, underground, text, things, record,
 					random, lfsr_random, game_random, counters
 				)
+			TYPE_TORNADO:
+				counters.active_tornadoes += 1
+				_update_tornado(
+					city, altitude, buildings, terrain, zones, underground,
+					flags, text, labels, microsims, misc, things, record,
+					random, counters
+				)
 
 	var applied: Array = []
 	for update in [
@@ -287,6 +300,7 @@ static func run(
 	counters["ships_save_visible_complete"] = true
 	counters["airplanes_save_visible_complete"] = true
 	counters["explosion_records_complete"] = true
+	counters["tornadoes_save_visible_complete"] = true
 	counters["explosion_map_damage_complete"] = (
 		counters.deferred_facility_explosion_hits == 0
 		and counters.deferred_connection_count_updates == 0
@@ -418,11 +432,70 @@ static func _damage_linked_facility(
 ) -> void:
 	var result := Demolish._demolish_point(
 		city, altitude, buildings, terrain, zones, underground,
-		flags, text, labels, microsims, misc, point, random
+		flags, text, labels, microsims, misc, point, random, true
 	)
 	for index in result.get("indices", PackedInt32Array()):
 		if flags[index] & 0x04 == 0:
 			text[index] = 0xff
+
+
+static func _update_tornado(
+	city: CityState,
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	text: PackedByteArray,
+	labels: PackedByteArray,
+	microsims: PackedByteArray,
+	misc: PackedByteArray,
+	things: PackedByteArray,
+	record: int,
+	random,
+	counters: Dictionary
+) -> void:
+	var offset := record * RECORD_SIZE
+	var current := Vector2i(things[offset + 3], things[offset + 4])
+	var index := _index(current)
+	var direction := int(things[offset + 1])
+	if index < 0 or direction < 0 or direction >= EIGHT_DIRECTIONS.size():
+		_remove_thing(text, things, record)
+		counters.removed_tornadoes += 1
+		counters.malformed_records += 1
+		return
+	var building := int(buildings[index])
+	if building > 5:
+		var demolition := Demolish._demolish_point(
+			city, altitude, buildings, terrain, zones, underground,
+			flags, text, labels, microsims, misc, current, random, true
+		)
+		if demolition.get("changed", false):
+			counters.tornado_demolitions += 1
+	var first_direction: int = (
+		direction + random.next_u15() % 3 - random.next_u15() % 3
+	) & 7
+	if _move_thing_eight_way(TYPE_TORNADO, text, things, record, first_direction) < 0:
+		counters.removed_tornadoes += 1
+		return
+	counters.moved_tornadoes += 1
+	if random.next_u15() & 0xff == 0:
+		_remove_thing(text, things, record)
+		counters.removed_tornadoes += 1
+		return
+	if building >= 0x0d:
+		return
+	var second_direction: int = (
+		direction + (random.next_u15() & 1) - (random.next_u15() & 1)
+	) & 7
+	if _move_thing_eight_way(TYPE_TORNADO, text, things, record, second_direction) < 0:
+		counters.removed_tornadoes += 1
+		return
+	counters.moved_tornadoes += 1
+	if random.next_u15() & 0xff == 0:
+		_remove_thing(text, things, record)
+		counters.removed_tornadoes += 1
 
 
 static func _update_airplane(
