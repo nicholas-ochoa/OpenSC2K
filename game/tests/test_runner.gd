@@ -426,6 +426,15 @@ func _test_sprite_archives(reference_root: String) -> void:
 		tunnel_train.variant == 1 and tunnel_train.elevation == 12,
 		"Tunnel train view uses the water level, raised track, and flip flag",
 	)
+	var tornado_visual := IsometricRenderer.tornado_sprite(starter, 64, 64, {
+		"type": 15, "px": 8, "py": 8,
+	}, 1)
+	_check(
+		tornado_visual.sprite_id == 1498
+		and tornado_visual.flip
+		and tornado_visual.tornado,
+		"Tornado view selects a stable recovered frame and mirror",
+	)
 
 
 func _test_simulation_clock() -> void:

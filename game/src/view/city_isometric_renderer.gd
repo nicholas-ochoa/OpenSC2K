@@ -209,7 +209,13 @@ static func moving_thing_visual(city: CityState, x: int, y: int) -> Dictionary:
 	var type := int(thing.type)
 	if (thing.x != x or thing.y != y) and type != 10 and type != 11:
 		return {}
-	var sprite := train_sprite(city, x, y, thing) if type == 10 or type == 11 else moving_thing_sprite(thing)
+	var sprite: Dictionary
+	if type == 10 or type == 11:
+		sprite = train_sprite(city, x, y, thing)
+	elif type == 15:
+		sprite = tornado_sprite(city, x, y, thing, record)
+	else:
+		sprite = moving_thing_sprite(thing)
 	if sprite.is_empty():
 		return {}
 	return {
@@ -226,6 +232,7 @@ static func moving_thing_visual(city: CityState, x: int, y: int) -> Dictionary:
 		"screen_x": sprite.get("screen_x", 0),
 		"screen_y": sprite.get("screen_y", 0),
 		"elevation": sprite.get("elevation", 0),
+		"tornado": sprite.get("tornado", false),
 	}
 
 
@@ -315,6 +322,27 @@ static func train_sprite(
 	}
 
 
+static func tornado_sprite(
+	city: CityState, x: int, y: int, thing: Dictionary, record: int
+) -> Dictionary:
+	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
+		return {}
+	if int(thing.get("type", 0)) != 15:
+		return {}
+	var phase := (
+		int(thing.get("px", 0)) + int(thing.get("py", 0)) + x + y + record
+	)
+	var altitude := city.land_altitude(x, y)
+	if city.is_water(x, y):
+		altitude = city.water_altitude(x, y)
+	return {
+		"sprite_id": THING_SPRITES[15] + phase % 3,
+		"flip": (phase & 1) != 0,
+		"tornado": true,
+		"elevation": altitude * ALTITUDE_STEP,
+	}
+
+
 static func _draw_moving_thing(
 	output: Image,
 	city: CityState,
@@ -326,6 +354,22 @@ static func _draw_moving_thing(
 	var sprite := _sprite_image(
 		sprites, palette, cache, visual.sprite_id, visual.flip
 	)
+	if visual.tornado:
+		var tornado_right_x: int = (
+			SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+			+ (visual.x - visual.y) * HALF_WIDTH + HALF_WIDTH
+		)
+		var tornado_top_y: int = (
+			TOP_MARGIN + (visual.x + visual.y) * HALF_HEIGHT
+			- visual.elevation - sprite.get_height()
+		)
+		var tornado_destination := Vector2i(
+			tornado_right_x - sprite.get_width(), tornado_top_y
+		)
+		output.blend_rect(
+			sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), tornado_destination
+		)
+		return
 	if visual.train:
 		var train_center_x: int = (
 			SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
