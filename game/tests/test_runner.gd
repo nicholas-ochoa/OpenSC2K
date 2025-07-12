@@ -1241,6 +1241,61 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		"Tornado expires on its recovered first low-byte random gate",
 	)
 
+	var maxis_man := _special_growth_fixture(reference_root)
+	_set_maxis_man(maxis_man, 1, Vector2i(20, 20), 0, 241, Vector2i(30, 20))
+	_check(maxis_man.city.set_text_overlay_id(30, 20, 241), "Maxis Man fixture places its fixed target")
+	var maxis_result := MovingThingTick.run(
+		maxis_man.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
+	)
+	_check(
+		maxis_result.ok
+		and maxis_result.active_maxis_men == 1
+		and maxis_result.moved_maxis_men == 2,
+		"Maxis Man moves twice toward a clear fixed target",
+	)
+	_check(
+		maxis_man.city.thing(1).x == 22
+		and maxis_man.city.thing(1).y == 20
+		and maxis_man.city.thing(1).direction == 2,
+		"Maxis Man stores its pursuit direction and moved coordinates",
+	)
+
+	var firefighting_maxis := _special_growth_fixture(reference_root)
+	_set_maxis_man(firefighting_maxis, 1, Vector2i(20, 20), 0, 241, Vector2i(21, 20))
+	_check(firefighting_maxis.city.set_text_overlay_id(21, 20, 0xff), "Maxis Man fixture starts target fire")
+	var firefighting_result := MovingThingTick.run(
+		firefighting_maxis.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	_check(
+		firefighting_result.ok
+		and firefighting_result.maxis_man_extinguished_fires == 1
+		and firefighting_result.moved_maxis_men == 1
+		and firefighting_maxis.city.thing(1).x == 21
+		and firefighting_maxis.city.text_overlay_id(21, 20) == 202,
+		"Maxis Man clears a fire and moves into its cell on an odd random bit",
+	)
+
+	var attacking_maxis := _special_growth_fixture(reference_root)
+	_set_idle_thing(attacking_maxis, 1, Vector2i(21, 20), 14, 5)
+	_set_maxis_man(attacking_maxis, 39, Vector2i(20, 20), 0, 1, Vector2i.ZERO)
+	var attack_result := MovingThingTick.run(
+		attacking_maxis.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
+	)
+	_check(
+		attack_result.ok
+		and attack_result.maxis_man_destroyed_targets == 1
+		and attack_result.maxis_man_explosions == 1
+		and attacking_maxis.city.thing(39).state == 2,
+		"Maxis Man destroys its exact XTHG target on the recovered random gate",
+	)
+	_check(
+		attacking_maxis.city.thing(1).type == 6
+		and attacking_maxis.city.thing(1).direction == 0
+		and attacking_maxis.city.thing(1).z == 5
+		and attacking_maxis.city.text_overlay_id(21, 20) == 202,
+		"Maxis Man replaces the target with a spreading explosion",
+	)
+
 	var airplane := _special_growth_fixture(reference_root)
 	_set_airplane(airplane, 1, Vector2i(20, 20), Vector2i(20, 20), 2, 0, 0)
 	_check(airplane.city.set_building_id(20, 20, 0xdd), "Airplane takeoff fixture places a runway")
@@ -1920,6 +1975,46 @@ func _set_tornado(
 	things[offset + 7] = 8
 	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Tornado fixture stores its XTHG record")
 	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Tornado fixture links its XTXT record")
+
+
+func _set_maxis_man(
+	fixture: Dictionary,
+	record: int,
+	point: Vector2i,
+	state: int,
+	goal: int,
+	target: Vector2i
+) -> void:
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	var offset := record * 12
+	things[offset] = 16
+	things[offset + 1] = 2
+	things[offset + 2] = state
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 5] = 5
+	things[offset + 6] = 8
+	things[offset + 7] = 8
+	things[offset + 8] = target.x
+	things[offset + 9] = target.y
+	things[offset + 11] = goal
+	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Maxis Man fixture stores its XTHG record")
+	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Maxis Man fixture links its XTXT record")
+
+
+func _set_idle_thing(
+	fixture: Dictionary, record: int, point: Vector2i, type: int, height: int
+) -> void:
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	var offset := record * 12
+	things[offset] = type
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 5] = height
+	things[offset + 6] = 8
+	things[offset + 7] = 8
+	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Target fixture stores its XTHG record")
+	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Target fixture links its XTXT record")
 
 
 func _set_train(
