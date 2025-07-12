@@ -191,7 +191,7 @@ static func _demolish_point(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random: SimRandom
+	random
 ) -> Dictionary:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	var tile_id := int(buildings[index])
@@ -254,7 +254,7 @@ static func _demolish_point(
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			var changed_index := x * CityState.MAP_SIZE + y
-			var rubble := 1 + (random.next_u15() & 3) if terrain[changed_index] == 0 else 0
+			var rubble: int = 1 + (random.next_u15() & 3) if terrain[changed_index] == 0 else 0
 			NetworkCommand._replace_building(buildings, zones, misc, changed_index, rubble)
 			zones[changed_index] &= 0x0f
 			flags[changed_index] &= FLAG_CLEAR_AFTER_STRUCTURE
@@ -332,7 +332,7 @@ static func _demolish_transport_component(
 	misc: PackedByteArray,
 	start: Vector2i,
 	tile_id: int,
-	random: SimRandom
+	random
 ) -> Dictionary:
 	var first := RUNWAY_FIRST if tile_id <= RUNWAY_LAST else PIER_FIRST
 	var last := RUNWAY_LAST if tile_id <= RUNWAY_LAST else PIER_LAST
@@ -358,7 +358,7 @@ static func _demolish_transport_component(
 	var indices := PackedInt32Array()
 	for point in component:
 		var index := point.x * CityState.MAP_SIZE + point.y
-		var replacement := 1 + (random.next_u15() & 3) if make_rubble else 0
+		var replacement: int = 1 + (random.next_u15() & 3) if make_rubble else 0
 		NetworkCommand._replace_building(buildings, zones, misc, index, replacement)
 		zones[index] &= 0x0f
 		flags[index] &= FLAG_CLEAR_AFTER_STRUCTURE
@@ -378,7 +378,7 @@ static func _demolish_highway_section(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	selected: Vector2i,
-	random: SimRandom,
+	random,
 	rotation: int
 ) -> Dictionary:
 	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
@@ -394,7 +394,7 @@ static func _demolish_highway_section(
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
 		var index := point.x * CityState.MAP_SIZE + point.y
-		var replacement := 1 + (random.next_u15() & 3) if terrain[index] == 0 else 0
+		var replacement: int = 1 + (random.next_u15() & 3) if terrain[index] == 0 else 0
 		NetworkCommand._replace_building(buildings, zones, misc, index, replacement)
 		zones[index] &= 0x0f
 		flags[index] &= FLAG_CLEAR_AFTER_STRUCTURE

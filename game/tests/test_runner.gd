@@ -1147,7 +1147,17 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var facility_explosion := _special_growth_fixture(reference_root)
 	_set_explosion(facility_explosion, 1, Vector2i(20, 20), 5, 1, 2)
-	_check(facility_explosion.city.set_text_overlay_id(21, 20, 51), "Facility explosion fixture places XMIC overlay 51")
+	_check(facility_explosion.city.set_building_id(21, 20, 0x8b), "Facility explosion fixture places a building")
+	_check(facility_explosion.document.set_misc_u32(0x01f0, 16383), "Facility explosion fixture counts occupied land")
+	_check(facility_explosion.document.set_misc_u32(0x01f0 + 0x8b * 4, 1), "Facility explosion fixture counts its building")
+	var facility_microsims: PackedByteArray = facility_explosion.document.find_chunk("XMIC").decoded_payload.duplicate()
+	facility_microsims[10 * 8] = 0x8b
+	_check(
+		facility_explosion.document.find_chunk("XMIC").set_decoded_payload(facility_microsims),
+		"Facility explosion fixture stores its XMIC record",
+	)
+	_check(facility_explosion.city.set_label(61, "Blast Facility"), "Facility explosion fixture sets its XLAB record")
+	_check(facility_explosion.city.set_text_overlay_id(21, 20, 61), "Facility explosion fixture places XMIC overlay 61")
 	var facility_result := MovingThingTick.run(
 		facility_explosion.city,
 		SequenceRandom.new([1]),
@@ -1155,9 +1165,17 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 	_check(
 		facility_result.ok
-		and facility_result.deferred_facility_explosion_hits == 4
-		and not facility_result.explosion_map_damage_complete,
-		"Explosion reports linked-facility demolition until that full damage path is implemented",
+		and facility_result.damaged_facilities == 1
+		and facility_result.deferred_facility_explosion_hits == 0
+		and facility_result.explosion_map_damage_complete,
+		"Explosion applies the full linked-facility damage path once",
+	)
+	_check(
+		facility_explosion.city.building_id(21, 20) == 2
+		and facility_explosion.city.text_overlay_id(21, 20) == 0xff
+		and facility_explosion.city.microsim(10).tile_id == 0
+		and facility_explosion.city.label(61).is_empty(),
+		"Facility blast creates rubble and fire and releases XMIC and XLAB",
 	)
 
 	var airplane := _special_growth_fixture(reference_root)

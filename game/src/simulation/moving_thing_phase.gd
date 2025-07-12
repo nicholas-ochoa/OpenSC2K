@@ -2,6 +2,7 @@ class_name MovingThingPhase
 extends RefCounted
 
 const NetworkTiles = preload("res://src/tools/network_command.gd")
+const Demolish = preload("res://src/tools/demolish_command.gd")
 const MAP_SIZE := 128
 const RECORD_SIZE := 12
 const FIRST_RECORD := 1
@@ -101,6 +102,8 @@ static func run(
 	if not game_random.has_method("next_mod"):
 		return {"ok": false, "error": "a compatible game random generator is required"}
 	var building_chunk := city.document.find_chunk("XBLD")
+	var altitude_chunk := city.document.find_chunk("ALTM")
+	var terrain_chunk := city.document.find_chunk("XTER")
 	var underground_chunk := city.document.find_chunk("XUND")
 	var zone_chunk := city.document.find_chunk("XZON")
 	var traffic_chunk := city.document.find_chunk("XTRF")
@@ -108,10 +111,15 @@ static func run(
 	var thing_chunk := city.document.find_chunk("XTHG")
 	var flag_chunk := city.document.find_chunk("XBIT")
 	var label_chunk := city.document.find_chunk("XLAB")
+	var microsim_chunk := city.document.find_chunk("XMIC")
 	var misc_chunk := city.document.find_chunk("MISC")
 	if (
 		building_chunk == null
 		or building_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or altitude_chunk == null
+		or altitude_chunk.decoded_payload.size() != CityState.TILE_COUNT * 2
+		or terrain_chunk == null
+		or terrain_chunk.decoded_payload.size() != CityState.TILE_COUNT
 		or underground_chunk == null
 		or underground_chunk.decoded_payload.size() != CityState.TILE_COUNT
 		or zone_chunk == null
@@ -126,6 +134,8 @@ static func run(
 		or flag_chunk.decoded_payload.size() != CityState.TILE_COUNT
 		or label_chunk == null
 		or label_chunk.decoded_payload.size() != CityState.LABEL_COUNT * CityState.LABEL_RECORD_SIZE
+		or microsim_chunk == null
+		or microsim_chunk.decoded_payload.size() != CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE
 		or misc_chunk == null
 		or misc_chunk.decoded_payload.size() != 4800
 	):
@@ -133,14 +143,22 @@ static func run(
 
 	var original_buildings: PackedByteArray = building_chunk.decoded_payload.duplicate()
 	var buildings: PackedByteArray = original_buildings.duplicate()
-	var underground: PackedByteArray = underground_chunk.decoded_payload
+	var original_altitude: PackedByteArray = altitude_chunk.decoded_payload.duplicate()
+	var altitude: PackedByteArray = original_altitude.duplicate()
+	var original_terrain: PackedByteArray = terrain_chunk.decoded_payload.duplicate()
+	var terrain: PackedByteArray = original_terrain.duplicate()
+	var original_underground: PackedByteArray = underground_chunk.decoded_payload.duplicate()
+	var underground: PackedByteArray = original_underground.duplicate()
 	var original_zones: PackedByteArray = zone_chunk.decoded_payload.duplicate()
 	var zones: PackedByteArray = original_zones.duplicate()
 	var original_traffic: PackedByteArray = traffic_chunk.decoded_payload.duplicate()
 	var traffic: PackedByteArray = original_traffic.duplicate()
-	var flags: PackedByteArray = flag_chunk.decoded_payload
+	var original_flags: PackedByteArray = flag_chunk.decoded_payload.duplicate()
+	var flags: PackedByteArray = original_flags.duplicate()
 	var original_labels: PackedByteArray = label_chunk.decoded_payload.duplicate()
 	var labels: PackedByteArray = original_labels.duplicate()
+	var original_microsims: PackedByteArray = microsim_chunk.decoded_payload.duplicate()
+	var microsims: PackedByteArray = original_microsims.duplicate()
 	var original_misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var misc: PackedByteArray = original_misc.duplicate()
 	var original_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
@@ -179,6 +197,7 @@ static func run(
 		"removed_explosions": 0,
 		"spread_explosion_fires": 0,
 		"rubble_explosion_hits": 0,
+		"damaged_facilities": 0,
 		"deferred_facility_explosion_hits": 0,
 		"deferred_connection_count_updates": 0,
 		"malformed_records": 0,
@@ -215,8 +234,9 @@ static func run(
 			TYPE_EXPLOSION:
 				counters.active_explosions += 1
 				_update_explosion(
-					buildings, zones, flags, traffic, text, labels, misc,
-					things, record, lfsr_random, allow_disaster_damage, counters
+					city, altitude, buildings, terrain, zones, underground,
+					flags, traffic, text, labels, microsims, misc, things,
+					record, random, lfsr_random, allow_disaster_damage, counters
 				)
 			TYPE_SAILBOAT:
 				counters.active_sailboats += 1
@@ -234,10 +254,15 @@ static func run(
 	for update in [
 		[thing_chunk, things, original_things, "XTHG"],
 		[text_chunk, text, original_text, "XTXT"],
+		[altitude_chunk, altitude, original_altitude, "ALTM"],
 		[building_chunk, buildings, original_buildings, "XBLD"],
+		[terrain_chunk, terrain, original_terrain, "XTER"],
 		[zone_chunk, zones, original_zones, "XZON"],
+		[underground_chunk, underground, original_underground, "XUND"],
+		[flag_chunk, flags, original_flags, "XBIT"],
 		[traffic_chunk, traffic, original_traffic, "XTRF"],
 		[label_chunk, labels, original_labels, "XLAB"],
+		[microsim_chunk, microsims, original_microsims, "XMIC"],
 		[misc_chunk, misc, original_misc, "MISC"],
 	]:
 		if update[1] == update[2]:
@@ -248,8 +273,13 @@ static func run(
 			return {"ok": false, "error": "cannot store %s after the moving-thing tick" % update[3]}
 		applied.push_front([update[0], update[2]])
 	city.buildings = buildings.duplicate()
+	city.terrain = terrain.duplicate()
 	city.zones = zones.duplicate()
+	city.underground = underground.duplicate()
 	city.text_overlays = text.duplicate()
+	city.tile_flags = flags.duplicate()
+	for index in CityState.TILE_COUNT:
+		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 	counters["ok"] = true
 	counters["sailboats_complete"] = true
 	counters["train_routes_complete"] = true
@@ -267,15 +297,21 @@ static func run(
 
 
 static func _update_explosion(
+	city: CityState,
+	altitude: PackedByteArray,
 	buildings: PackedByteArray,
+	terrain: PackedByteArray,
 	zones: PackedByteArray,
+	underground: PackedByteArray,
 	flags: PackedByteArray,
 	traffic: PackedByteArray,
 	text: PackedByteArray,
 	labels: PackedByteArray,
+	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	things: PackedByteArray,
 	record: int,
+	random,
 	lfsr_random,
 	allow_disaster_damage: bool,
 	counters: Dictionary
@@ -303,7 +339,8 @@ static func _update_explosion(
 			lfsr_random.next_mod(5) - 2
 		)
 		var damage_result := _apply_explosion_damage(
-			buildings, zones, flags, traffic, text, labels, misc, damaged, lfsr_random
+			city, altitude, buildings, terrain, zones, underground, flags,
+			traffic, text, labels, microsims, misc, damaged, random, lfsr_random
 		)
 		if damage_result == 1:
 			counters.spread_explosion_fires += 1
@@ -313,18 +350,25 @@ static func _update_explosion(
 		elif damage_result == 2:
 			counters.rubble_explosion_hits += 1
 		elif damage_result == 3:
-			counters.deferred_facility_explosion_hits += 1
+			counters.damaged_facilities += 1
+			counters.spread_explosion_fires += 1
 
 
 static func _apply_explosion_damage(
+	city: CityState,
+	altitude: PackedByteArray,
 	buildings: PackedByteArray,
+	terrain: PackedByteArray,
 	zones: PackedByteArray,
+	underground: PackedByteArray,
 	flags: PackedByteArray,
 	traffic: PackedByteArray,
 	text: PackedByteArray,
 	labels: PackedByteArray,
+	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
+	random,
 	lfsr_random
 ) -> int:
 	var index := _index(point)
@@ -336,8 +380,11 @@ static func _apply_explosion_damage(
 		if overlay < 51:
 			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
 		elif overlay < TEXT_LABEL_BASE:
-			# this path demolishes the full linked facility before it starts fire
-			return 3
+			_damage_linked_facility(
+				city, altitude, buildings, terrain, zones, underground,
+				flags, text, labels, microsims, misc, point, random
+			)
+			result_code = 3
 		elif overlay < 241:
 			return 0
 		elif overlay < 250:
@@ -352,6 +399,30 @@ static func _apply_explosion_damage(
 	text[index] = 0xff
 	traffic[int(point.x / 2) * 64 + int(point.y / 2)] = 0
 	return result_code
+
+
+static func _damage_linked_facility(
+	city: CityState,
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	text: PackedByteArray,
+	labels: PackedByteArray,
+	microsims: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i,
+	random
+) -> void:
+	var result := Demolish._demolish_point(
+		city, altitude, buildings, terrain, zones, underground,
+		flags, text, labels, microsims, misc, point, random
+	)
+	for index in result.get("indices", PackedInt32Array()):
+		if flags[index] & 0x04 == 0:
+			text[index] = 0xff
 
 
 static func _update_airplane(
