@@ -299,6 +299,21 @@ func _test_sprite_archives(reference_root: String) -> void:
 
 	var palette := Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
 	var large := SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
+	_check(
+		IsometricRenderer.shadow_color(palette, palette.color(0x5f)).to_rgba32()
+		== palette.color(0x64).to_rgba32(),
+		"Aircraft shadow remaps palette index 0x5f to 0x64",
+	)
+	_check(
+		IsometricRenderer.shadow_color(palette, palette.color(0x74)).to_rgba32()
+		== palette.color(0x7e).to_rgba32(),
+		"Aircraft shadow remaps the ground-color range to 0x7e",
+	)
+	_check(
+		IsometricRenderer.shadow_color(palette, palette.color(0x73)).to_rgba32()
+		== palette.color(0x73).to_rgba32(),
+		"Aircraft shadow keeps colors outside its recovered ranges",
+	)
 	var terrain := large.find_sprite(1256)
 	_check(terrain != null, "Large terrain sprite 1256 is present")
 	if terrain != null:

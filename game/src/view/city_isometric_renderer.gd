@@ -356,7 +356,41 @@ static func _draw_moving_thing(
 		- altitude * ALTITUDE_STEP - visual.z * 8 - sprite.get_height()
 	)
 	var destination := Vector2i(center_x - int(sprite.get_width() / 2), top_y)
+	if visual.type in [1, 2, 16] and city.building_id(visual.x, visual.y) < 0x71:
+		var shadow_destination := destination + Vector2i(0, 8 * (visual.z - 2))
+		_blend_shadow(output, sprite, palette, shadow_destination)
 	output.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), destination)
+
+
+static func shadow_color(palette: Sc2Palette, destination: Color) -> Color:
+	if palette == null or not palette.is_valid():
+		return destination
+	var packed := destination.to_rgba32()
+	if packed == palette.color(0x5f).to_rgba32():
+		return palette.color(0x64)
+	for palette_index in range(0x74, 0x7f):
+		if packed == palette.color(palette_index).to_rgba32():
+			return palette.color(0x7e)
+	return destination
+
+
+static func _blend_shadow(
+	output: Image, mask: Image, palette: Sc2Palette, destination: Vector2i
+) -> void:
+	for source_y in mask.get_height():
+		var output_y := destination.y + source_y
+		if output_y < 0 or output_y >= output.get_height():
+			continue
+		for source_x in mask.get_width():
+			if mask.get_pixel(source_x, source_y).a == 0.0:
+				continue
+			var output_x := destination.x + source_x
+			if output_x < 0 or output_x >= output.get_width():
+				continue
+			var current := output.get_pixel(output_x, output_y)
+			var changed := shadow_color(palette, current)
+			if changed != current:
+				output.set_pixel(output_x, output_y, changed)
 
 
 # four occupied corners, one sprite, compass picks the winner
