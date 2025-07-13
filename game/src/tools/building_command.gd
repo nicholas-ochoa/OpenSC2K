@@ -431,7 +431,7 @@ static func _provision_microsim(
 	text_overlays: PackedByteArray,
 	tile_id: int,
 	current_year: int,
-	process_random: SimRandom
+	process_random
 ) -> int:
 	var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(tile_id, 0))
 	if microsim_type == 0:
@@ -475,7 +475,7 @@ static func _initialize_microsim(
 	record_id: int,
 	tile_id: int,
 	current_year: int,
-	process_random: SimRandom
+	process_random
 ) -> void:
 	var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 	match tile_id:

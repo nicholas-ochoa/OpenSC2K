@@ -3,6 +3,8 @@ extends RefCounted
 
 const NetworkTiles = preload("res://src/tools/network_command.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
+const Landscape = preload("res://src/tools/landscape_command.gd")
+const Buildings = preload("res://src/tools/building_command.gd")
 const MAP_SIZE := 128
 const RECORD_SIZE := 12
 const FIRST_RECORD := 1
@@ -11,6 +13,7 @@ const TEXT_LABEL_BASE := 201
 const TYPE_AIRPLANE := 1
 const TYPE_HELICOPTER := 2
 const TYPE_SHIP := 3
+const TYPE_MONSTER := 5
 const TYPE_EXPLOSION := 6
 const TYPE_SAILBOAT := 9
 const TYPE_TRAIN_ENGINE := 10
@@ -56,6 +59,7 @@ const SHIP_ROUTE_BUILDINGS := {
 const THING_SPEEDS := {
 	TYPE_AIRPLANE: 16,
 	TYPE_HELICOPTER: 8,
+	TYPE_MONSTER: 8,
 	TYPE_TORNADO: 8,
 	TYPE_MAXIS_MAN: 16,
 }
@@ -174,6 +178,7 @@ static func run(
 		"active_airplanes": 0,
 		"active_helicopters": 0,
 		"active_ships": 0,
+		"active_monsters": 0,
 		"active_explosions": 0,
 		"active_sailboats": 0,
 		"active_trains": 0,
@@ -182,6 +187,7 @@ static func run(
 		"moved_helicopters": 0,
 		"moved_airplanes": 0,
 		"moved_ships": 0,
+		"moved_monsters": 0,
 		"moved_sailboats": 0,
 		"moved_trains": 0,
 		"moved_tornadoes": 0,
@@ -205,6 +211,11 @@ static func run(
 		"removed_explosions": 0,
 		"removed_tornadoes": 0,
 		"removed_maxis_men": 0,
+		"removed_monsters": 0,
+		"monster_damage_hits": 0,
+		"monster_forced_airplanes": 0,
+		"monster_forced_helicopters": 0,
+		"monster_military_collisions": 0,
 		"tornado_demolitions": 0,
 		"maxis_man_extinguished_fires": 0,
 		"maxis_man_destroyed_targets": 0,
@@ -244,6 +255,13 @@ static func run(
 				_update_ship(
 					buildings, underground, flags, text, things, record,
 					ship_home, random, lfsr_random, counters
+				)
+			TYPE_MONSTER:
+				counters.active_monsters += 1
+				_update_monster(
+					city, altitude, buildings, terrain, zones, underground,
+					flags, traffic, text, labels, microsims, misc, things,
+					record, city_center, random, lfsr_random, counters
 				)
 			TYPE_EXPLOSION:
 				counters.active_explosions += 1
@@ -315,6 +333,7 @@ static func run(
 	counters["explosion_records_complete"] = true
 	counters["tornadoes_save_visible_complete"] = true
 	counters["maxis_man_save_visible_complete"] = true
+	counters["monsters_save_visible_complete"] = true
 	counters["explosion_map_damage_complete"] = (
 		counters.deferred_facility_explosion_hits == 0
 		and counters.deferred_connection_count_updates == 0
@@ -451,6 +470,190 @@ static func _damage_linked_facility(
 	for index in result.get("indices", PackedInt32Array()):
 		if flags[index] & 0x04 == 0:
 			text[index] = 0xff
+
+
+static func _update_monster(
+	city: CityState,
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	traffic: PackedByteArray,
+	text: PackedByteArray,
+	labels: PackedByteArray,
+	microsims: PackedByteArray,
+	misc: PackedByteArray,
+	things: PackedByteArray,
+	record: int,
+	city_center: Vector2i,
+	random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	var offset := record * RECORD_SIZE
+	var current := Vector2i(things[offset + 3], things[offset + 4])
+	var current_index := _index(current)
+	var direction := int(things[offset + 1])
+	if current_index < 0 or direction < 0 or direction >= EIGHT_DIRECTIONS.size():
+		_remove_thing(text, things, record)
+		counters.removed_monsters += 1
+		counters.malformed_records += 1
+		return
+	if counters.active_airplanes > 0:
+		for checked_record in range(FIRST_RECORD, LAST_RECORD + 1):
+			var checked_offset := checked_record * RECORD_SIZE
+			if things[checked_offset] == TYPE_AIRPLANE:
+				things[checked_offset + 2] = 7
+				counters.monster_forced_airplanes += 1
+	if counters.active_helicopters > 0:
+		for checked_record in range(FIRST_RECORD, LAST_RECORD + 1):
+			var checked_offset := checked_record * RECORD_SIZE
+			if things[checked_offset] == TYPE_HELICOPTER:
+				things[checked_offset + 2] = 5
+				counters.monster_forced_helicopters += 1
+	var state := int(things[offset + 2])
+	var move_direction := direction
+	match state:
+		0:
+			if things[offset + 5] < 9:
+				things[offset + 2] = 1
+			else:
+				things[offset + 5] -= 1
+			things[offset + 8] = 0
+			things[offset + 9] = 0
+			move_direction = _direction_quadrant(current, city_center)
+		1:
+			if random.next_u15() % 25 == 0:
+				things[offset + 2] = 2
+			things[offset + 8] = random.next_u15() & 0x7f
+			things[offset + 9] = random.next_u15() & 0x7f
+			move_direction = _random_direction_step(direction, 5, random)
+			_monster_damage(
+				city, altitude, buildings, terrain, zones, underground,
+				flags, traffic, text, labels, microsims, misc, things,
+				offset, current, random, lfsr_random, counters
+			)
+		2:
+			if things[offset + 5] < 15:
+				things[offset + 5] += 1
+			else:
+				things[offset + 2] = 3 if random.next_u15() % 3 == 0 else 0
+			var animation: int = (random.next_u15() & 7) * 9
+			things[offset + 8] = animation
+			things[offset + 9] = animation
+			move_direction = _random_direction_step(direction, 5, random)
+		3:
+			things[offset + 8] = 0
+			things[offset + 9] = 0
+			if random.next_u15() & 1:
+				things[offset + 8] = 36
+				things[offset + 9] = 36
+			if lfsr_random.next_mod(100) == 0:
+				_remove_thing(text, things, record)
+				counters.removed_monsters += 1
+				return
+		_:
+			_remove_thing(text, things, record)
+			counters.removed_monsters += 1
+			counters.malformed_records += 1
+			return
+	if things[offset + 2] != 3:
+		var military_point: Vector2i = current + EIGHT_DIRECTIONS[move_direction]
+		var military_index := _index(military_point)
+		if military_index >= 0:
+			var overlay := int(text[military_index])
+			if overlay >= TEXT_LABEL_BASE and overlay < 241:
+				var target_record := overlay - TEXT_LABEL_BASE
+				if things[target_record * RECORD_SIZE] == 14:
+					things[offset + 2] = 3
+					counters.monster_military_collisions += 1
+					return
+	things[offset + 1] = move_direction
+	if _move_thing_eight_way(TYPE_MONSTER, text, things, record, move_direction) < 0:
+		counters.removed_monsters += 1
+		return
+	counters.moved_monsters += 1
+	if things[offset + 8] & 0x80:
+		counters.deferred_news += 1
+
+
+static func _monster_damage(
+	city: CityState,
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	traffic: PackedByteArray,
+	text: PackedByteArray,
+	labels: PackedByteArray,
+	microsims: PackedByteArray,
+	misc: PackedByteArray,
+	things: PackedByteArray,
+	offset: int,
+	current: Vector2i,
+	random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	var point := current + Vector2i.ONE
+	var index := _index(point)
+	if index < 0:
+		return
+	var building := int(buildings[index])
+	var goal := int(things[offset + 11])
+	if goal == 0:
+		if building <= 5:
+			return
+		var damage_result := _apply_explosion_damage(
+			city, altitude, buildings, terrain, zones, underground, flags,
+			traffic, text, labels, microsims, misc, point, random, lfsr_random
+		)
+		if damage_result == 1:
+			counters.spread_explosion_fires += 1
+		elif damage_result == 3:
+			counters.damaged_facilities += 1
+			counters.spread_explosion_fires += 1
+		elif damage_result == 4:
+			counters.spread_explosion_fires += 1
+			counters.deferred_connection_count_updates += 1
+		if damage_result != 0 and damage_result != 2:
+			things[offset + 8] |= 0x80
+			counters.monster_damage_hits += 1
+		return
+	if flags[index] & 0x04 or building <= 0x0d or building == 200:
+		return
+	var demolition := Demolish._demolish_point(
+		city, altitude, buildings, terrain, zones, underground,
+		flags, text, labels, microsims, misc, point, random, true
+	)
+	if not demolition.get("changed", false):
+		return
+	match goal:
+		1:
+			NetworkTiles._replace_building(
+				buildings, zones, misc, index, (random.next_u15() & 3) + 9
+			)
+		2:
+			Landscape._place_water(
+				buildings, terrain, zones, flags, altitude, text, misc, point
+			)
+		3:
+			var overlay_id := Buildings._provision_microsim(
+				microsims, labels, text, 200, city.current_year(), random
+			)
+			NetworkTiles._replace_building(buildings, zones, misc, index, 200)
+			zones[index] = 0xf0
+			flags[index] = (flags[index] & 0x1f) | 0xe0
+			if overlay_id != 0:
+				text[index] = overlay_id
+		_:
+			pass
+	things[offset + 8] |= 0x80
+	counters.monster_damage_hits += 1
 
 
 static func _update_tornado(

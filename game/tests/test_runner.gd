@@ -1296,6 +1296,86 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		"Maxis Man replaces the target with a spreading explosion",
 	)
 
+	var monster := _special_growth_fixture(reference_root)
+	_check(monster.document.set_misc_u32(0x1018, 30), "Monster fixture sets city-center X")
+	_check(monster.document.set_misc_u32(0x101c, 20), "Monster fixture sets city-center Y")
+	_set_monster(monster, 1, Vector2i(20, 20), 2, 0, 10, 0)
+	var monster_result := MovingThingTick.run(
+		monster.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
+	)
+	_check(
+		monster_result.ok
+		and monster_result.active_monsters == 1
+		and monster_result.moved_monsters == 1
+		and monster.city.thing(1).z == 9
+		and monster.city.thing(1).direction == 2,
+		"Descending monster moves toward the saved city center",
+	)
+
+	var radioactive_monster := _special_growth_fixture(reference_root)
+	_set_monster(radioactive_monster, 1, Vector2i(20, 20), 2, 1, 8, 1)
+	_check(radioactive_monster.city.set_building_id(21, 21, 0x8b), "Monster damage fixture places a building")
+	_check(radioactive_monster.document.set_misc_u32(0x01f0, 16383), "Monster damage fixture counts occupied land")
+	_check(radioactive_monster.document.set_misc_u32(0x01f0 + 0x8b * 4, 1), "Monster damage fixture counts its building")
+	var radioactive_result := MovingThingTick.run(
+		radioactive_monster.city,
+		SequenceRandom.new([1, 0, 0, 1, 0, 2]),
+		NonzeroLfsrRandom.new()
+	)
+	_check(
+		radioactive_result.ok
+		and radioactive_result.monster_damage_hits == 1
+		and radioactive_result.moved_monsters == 1
+		and radioactive_result.deferred_news == 1,
+		"Goal-one monster demolishes its diagonal target and marks a damage effect",
+	)
+	_check(
+		radioactive_monster.city.building_id(21, 21) == 11
+		and radioactive_monster.city.thing(1).dx == 0x80,
+		"Goal-one monster replaces the target with process-random radiation",
+	)
+
+	var military_monster := _special_growth_fixture(reference_root)
+	_check(military_monster.document.set_misc_u32(0x1018, 30), "Monster collision fixture sets city-center X")
+	_check(military_monster.document.set_misc_u32(0x101c, 20), "Monster collision fixture sets city-center Y")
+	_set_monster(military_monster, 1, Vector2i(20, 20), 2, 0, 10, 0)
+	_set_idle_thing(military_monster, 2, Vector2i(21, 20), 14, 0)
+	var military_result := MovingThingTick.run(
+		military_monster.city, ZeroRandom.new(), NonzeroLfsrRandom.new()
+	)
+	_check(
+		military_result.ok
+		and military_result.monster_military_collisions == 1
+		and military_monster.city.thing(1).state == 3
+		and military_monster.city.thing(1).x == 20,
+		"Monster enters state three when a military unit blocks its next cell",
+	)
+
+	var fleeing_plane := _special_growth_fixture(reference_root)
+	_set_airplane(fleeing_plane, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 14)
+	_set_monster(fleeing_plane, 2, Vector2i(30, 30), 2, 0, 10, 0)
+	var fleeing_result := MovingThingTick.run(
+		fleeing_plane.city, SequenceRandom.new([1]), NonzeroLfsrRandom.new()
+	)
+	_check(
+		fleeing_result.ok
+		and fleeing_result.monster_forced_airplanes == 1
+		and fleeing_plane.city.thing(1).state == 7,
+		"Monster forces airplanes already scanned in the tick into falling state",
+	)
+
+	var expired_monster := _special_growth_fixture(reference_root)
+	_set_monster(expired_monster, 1, Vector2i(20, 20), 2, 3, 10, 0)
+	var expired_monster_result := MovingThingTick.run(
+		expired_monster.city, ZeroRandom.new(), ZeroLfsrRandom.new()
+	)
+	_check(
+		expired_monster_result.ok
+		and expired_monster_result.removed_monsters == 1
+		and expired_monster.city.thing(1).type == 0,
+		"State-three monster expires on its LFSR modulo-100 gate",
+	)
+
 	var airplane := _special_growth_fixture(reference_root)
 	_set_airplane(airplane, 1, Vector2i(20, 20), Vector2i(20, 20), 2, 0, 0)
 	_check(airplane.city.set_building_id(20, 20, 0xdd), "Airplane takeoff fixture places a runway")
@@ -2000,6 +2080,30 @@ func _set_maxis_man(
 	things[offset + 11] = goal
 	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Maxis Man fixture stores its XTHG record")
 	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Maxis Man fixture links its XTXT record")
+
+
+func _set_monster(
+	fixture: Dictionary,
+	record: int,
+	point: Vector2i,
+	direction: int,
+	state: int,
+	height: int,
+	goal: int
+) -> void:
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	var offset := record * 12
+	things[offset] = 5
+	things[offset + 1] = direction
+	things[offset + 2] = state
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 5] = height
+	things[offset + 6] = 8
+	things[offset + 7] = 8
+	things[offset + 11] = goal
+	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Monster fixture stores its XTHG record")
+	_check(fixture.city.set_text_overlay_id(point.x, point.y, record + 201), "Monster fixture links its XTXT record")
 
 
 func _set_idle_thing(
