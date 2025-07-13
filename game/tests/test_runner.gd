@@ -435,6 +435,48 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and tornado_visual.tornado,
 		"Tornado view selects a stable recovered frame and mirror",
 	)
+	var monster_layers := IsometricRenderer.monster_layers(starter, 64, 64, {
+		"type": 5,
+		"z": 10,
+		"px": 8,
+		"py": 8,
+		"dx": 0xa5,
+		"dy": 0x9b,
+	}, 1)
+	_check(monster_layers.size() == 15, "Monster view builds all composite sprite layers")
+	_check(
+		monster_layers[0].sprite_id == 1483
+		and monster_layers[0].screen_x == -95
+		and monster_layers[0].screen_y == 924
+		and not monster_layers[0].flip,
+		"Monster view positions the left upper outer layer",
+	)
+	_check(
+		monster_layers[3].sprite_id == 1483
+		and monster_layers[3].screen_x == 73
+		and monster_layers[3].screen_y == 878
+		and monster_layers[3].flip,
+		"Monster view mirrors and positions the right upper outer layer",
+	)
+	_check(
+		monster_layers[6].sprite_id == 1385
+		and monster_layers[6].screen_x == -2
+		and monster_layers[6].screen_y == 886,
+		"Monster DX effect bit inserts the recovered effect sprite",
+	)
+	_check(
+		monster_layers[7].sprite_id == 1491
+		and monster_layers[7].screen_x == -48
+		and monster_layers[7].screen_y == 794,
+		"Monster DY effect bit selects a stable alternate head",
+	)
+	_check(
+		monster_layers[14].sprite_id == 1488
+		and monster_layers[14].screen_x == 12
+		and monster_layers[14].screen_y == 932
+		and monster_layers[14].flip,
+		"Monster view mirrors and positions the right lower outer layer",
+	)
 
 
 func _test_simulation_clock() -> void:

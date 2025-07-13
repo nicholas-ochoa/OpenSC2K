@@ -32,6 +32,14 @@ const TRAIN_SPRITE_FLIP := [
 ]
 const TRAIN_SCREEN_X := [0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0]
 const TRAIN_SCREEN_Y := [0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 8, 8, 6, 6, 0, 0, 0, 6]
+const MONSTER_UPPER_FIRST_X := [-15, -3]
+const MONSTER_UPPER_SECOND_X := [-24, 14]
+const MONSTER_UPPER_FIRST_Y := [6, 52]
+const MONSTER_UPPER_SECOND_Y := [43, 33]
+const MONSTER_LOWER_FIRST_X := [-15, 2]
+const MONSTER_LOWER_SECOND_X := [-20, 18]
+const MONSTER_LOWER_FIRST_Y := [6, 32]
+const MONSTER_LOWER_SECOND_Y := [49, 46]
 
 
 static func create_image(
@@ -87,8 +95,13 @@ static func validate_assets(city: CityState, sprites: Sc2SpriteArchive) -> Packe
 			if dispatch_sprite > 0 and sprites.find_sprite(dispatch_sprite) == null:
 				missing[dispatch_sprite] = true
 			var moving_visual := moving_thing_visual(city, x, y)
-			if not moving_visual.is_empty() and sprites.find_sprite(moving_visual.sprite_id) == null:
-				missing[moving_visual.sprite_id] = true
+			if not moving_visual.is_empty():
+				if moving_visual.get("monster", false):
+					for layer in moving_visual.layers:
+						if sprites.find_sprite(layer.sprite_id) == null:
+							missing[layer.sprite_id] = true
+				elif sprites.find_sprite(moving_visual.sprite_id) == null:
+					missing[moving_visual.sprite_id] = true
 	var ids := missing.keys()
 	ids.sort()
 	for sprite_id in ids:
@@ -210,7 +223,17 @@ static func moving_thing_visual(city: CityState, x: int, y: int) -> Dictionary:
 	if (thing.x != x or thing.y != y) and type != 10 and type != 11:
 		return {}
 	var sprite: Dictionary
-	if type == 10 or type == 11:
+	if type == 5:
+		var layers := monster_layers(city, x, y, thing, record)
+		if layers.is_empty():
+			return {}
+		sprite = {
+			"sprite_id": layers[0].sprite_id,
+			"flip": layers[0].flip,
+			"monster": true,
+			"layers": layers,
+		}
+	elif type == 10 or type == 11:
 		sprite = train_sprite(city, x, y, thing)
 	elif type == 15:
 		sprite = tornado_sprite(city, x, y, thing, record)
@@ -233,6 +256,8 @@ static func moving_thing_visual(city: CityState, x: int, y: int) -> Dictionary:
 		"screen_y": sprite.get("screen_y", 0),
 		"elevation": sprite.get("elevation", 0),
 		"tornado": sprite.get("tornado", false),
+		"monster": sprite.get("monster", false),
+		"layers": sprite.get("layers", []),
 	}
 
 
@@ -343,6 +368,122 @@ static func tornado_sprite(
 	}
 
 
+# For monsters, dx stores body-part flags rather than velocity.
+static func monster_layers(
+	city: CityState, x: int, y: int, thing: Dictionary, record: int
+) -> Array[Dictionary]:
+	var layers: Array[Dictionary] = []
+	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
+		return layers
+	if int(thing.get("type", 0)) != 5:
+		return layers
+	var altitude := city.land_altitude(x, y)
+	if city.is_water(x, y):
+		altitude = city.water_altitude(x, y)
+	var z := int(thing.get("z", 0))
+	var dx := int(thing.get("dx", 0))
+	var dy := int(thing.get("dy", 0))
+	var body_x := (x - y - 3) * HALF_WIDTH
+	var body_y := (x + y) * HALF_HEIGHT - (altitude + z) * ALTITUDE_STEP
+	var upper_x := body_x - 20
+	var upper_y := body_y - 75
+
+	var dx_left_first := dx & 1
+	var dx_left_second := (dx >> 1) & 1
+	layers.append(_monster_layer(
+		1482 + ((dx >> 2) & 1),
+		upper_x + MONSTER_UPPER_FIRST_X[dx_left_first]
+			+ MONSTER_UPPER_SECOND_X[dx_left_second],
+		upper_y + MONSTER_UPPER_FIRST_Y[dx_left_first]
+			+ MONSTER_UPPER_SECOND_Y[dx_left_second],
+		false
+	))
+	layers.append(_monster_layer(
+		1480 + dx_left_second,
+		upper_x + MONSTER_UPPER_FIRST_X[dx_left_first],
+		upper_y + MONSTER_UPPER_FIRST_Y[dx_left_first],
+		false
+	))
+	layers.append(_monster_layer(1478 + dx_left_first, upper_x, upper_y, false))
+
+	var dx_right_first := (dx >> 3) & 1
+	var dx_right_second := (dx >> 4) & 1
+	var right_upper_x: int = body_x + 82 - MONSTER_UPPER_FIRST_X[dx_right_first]
+	layers.append(_monster_layer(
+		1482 + ((dx >> 5) & 1),
+		right_upper_x - MONSTER_UPPER_SECOND_X[dx_right_second],
+		upper_y + MONSTER_UPPER_FIRST_Y[dx_right_first]
+			+ MONSTER_UPPER_SECOND_Y[dx_right_second],
+		true
+	))
+	layers.append(_monster_layer(
+		1480 + dx_right_second,
+		right_upper_x,
+		upper_y + MONSTER_UPPER_FIRST_Y[dx_right_first],
+		true
+	))
+	layers.append(_monster_layer(
+		1478 + dx_right_first, body_x + 82, upper_y, true
+	))
+
+	if dx & 0x80:
+		layers.append(_monster_layer(1385, body_x + 46, body_y - 18, false))
+	var head_sprite := 1490
+	if dy & 0x80:
+		head_sprite += (
+			int(thing.get("px", 0)) + int(thing.get("py", 0))
+			+ x + y + record
+		) & 1
+	layers.append(_monster_layer(head_sprite, body_x, body_y - 110, false))
+	layers.append(_monster_layer(head_sprite, body_x + 60, body_y - 110, true))
+
+	var lower_x := body_x - 20
+	var lower_y := body_y - 50
+	var dy_left_first := dy & 1
+	var dy_left_second := (dy >> 1) & 1
+	var left_lower_x: int = lower_x + MONSTER_LOWER_FIRST_X[dy_left_first]
+	var left_lower_y: int = lower_y + MONSTER_LOWER_FIRST_Y[dy_left_first]
+	layers.append(_monster_layer(1484 + dy_left_first, lower_x, lower_y, false))
+	layers.append(_monster_layer(
+		1486 + dy_left_second, left_lower_x, left_lower_y, false
+	))
+	layers.append(_monster_layer(
+		1488 + ((dy >> 2) & 1),
+		left_lower_x + MONSTER_LOWER_SECOND_X[dy_left_second],
+		left_lower_y + MONSTER_LOWER_SECOND_Y[dy_left_second],
+		false
+	))
+
+	var dy_right_first := (dy >> 3) & 1
+	var dy_right_second := (dy >> 4) & 1
+	var right_lower_x: int = body_x + 80 - MONSTER_LOWER_FIRST_X[dy_right_first]
+	var right_lower_y: int = lower_y + MONSTER_LOWER_FIRST_Y[dy_right_first]
+	layers.append(_monster_layer(
+		1484 + dy_right_first, body_x + 80, lower_y, true
+	))
+	layers.append(_monster_layer(
+		1486 + dy_right_second, right_lower_x, right_lower_y, true
+	))
+	layers.append(_monster_layer(
+		1488 + ((dy >> 5) & 1),
+		right_lower_x - MONSTER_LOWER_SECOND_X[dy_right_second],
+		right_lower_y + MONSTER_LOWER_SECOND_Y[dy_right_second],
+		true
+	))
+	return layers
+
+
+static func _monster_layer(
+	sprite_id: int, screen_x: int, screen_y: int, flip: bool
+) -> Dictionary:
+	return {
+		"sprite_id": sprite_id,
+		"screen_x": screen_x,
+		"screen_y": screen_y,
+		"flip": flip,
+	}
+
+
 static func _draw_moving_thing(
 	output: Image,
 	city: CityState,
@@ -351,6 +492,28 @@ static func _draw_moving_thing(
 	cache: Dictionary,
 	visual: Dictionary
 ) -> void:
+	if visual.monster:
+		var monster_origin_x := SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+		var monster_has_shadow := city.building_id(visual.x, visual.y) < 0x71
+		for layer in visual.layers:
+			var monster_part := _sprite_image(
+				sprites, palette, cache, layer.sprite_id, layer.flip
+			)
+			var monster_destination := Vector2i(
+				monster_origin_x + layer.screen_x,
+				TOP_MARGIN + layer.screen_y
+			)
+			if monster_has_shadow:
+				_blend_shadow(
+					output, monster_part, palette,
+					monster_destination + Vector2i(0, 8 * visual.z)
+				)
+			output.blend_rect(
+				monster_part,
+				Rect2i(Vector2i.ZERO, monster_part.get_size()),
+				monster_destination
+			)
+		return
 	var sprite := _sprite_image(
 		sprites, palette, cache, visual.sprite_id, visual.flip
 	)
