@@ -12,6 +12,9 @@ var ship_home := Vector2i(-1, -1)
 var developed_tiles := -1
 var power_usage_percent := -1
 var water_usage_percent := -1
+var commerce_connections := 0
+var industry_connections := 0
+var traffic_news_deadline_msec := 0
 
 
 func _init(
@@ -23,6 +26,9 @@ func _init(
 	lfsr_random = SimLfsrRandom.new(lfsr_seed)
 	game_random = GameLcgRandom.new(game_random_seed)
 	if initial_city != null and initial_city.is_valid():
+		var connections := RciDemandPhase.connection_counts(initial_city)
+		commerce_connections = connections.commerce
+		industry_connections = connections.industry
 		for record in range(1, CityState.THING_COUNT):
 			var thing := initial_city.thing(record)
 			if thing.get("type", 0) == 3:
@@ -30,8 +36,28 @@ func _init(
 				break
 
 
-func advance_moving_things() -> Dictionary:
-	return MovingThingPhase.run(city, random, lfsr_random, game_random, ship_home)
+func advance_moving_things(current_time_msec := -1) -> Dictionary:
+	if current_time_msec < 0:
+		current_time_msec = Time.get_ticks_msec()
+	var result := MovingThingPhase.run(
+		city,
+		random,
+		lfsr_random,
+		game_random,
+		ship_home,
+		true,
+		current_time_msec,
+		traffic_news_deadline_msec
+	)
+	if not result.get("ok", false):
+		return result
+	traffic_news_deadline_msec = result.traffic_news_deadline_msec
+	for change in result.connection_count_changes:
+		if change.kind == "commerce":
+			commerce_connections = (commerce_connections + int(change.delta)) & 0xffff
+		else:
+			industry_connections = (industry_connections + int(change.delta)) & 0xffff
+	return result
 
 
 func advance_day() -> Dictionary:

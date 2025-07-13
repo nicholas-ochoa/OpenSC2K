@@ -98,7 +98,7 @@ static func run(city: CityState) -> Dictionary:
 	)
 	industrial_target = maxf(industrial_target, MINIMUM_INDUSTRIAL_TARGET)
 
-	var connections := _connection_counts(city)
+	var connections := connection_counts(city)
 	commercial_target = minf(
 		commercial_target,
 		float(
@@ -156,7 +156,7 @@ static func run(city: CityState) -> Dictionary:
 	}
 
 
-static func _connection_counts(city: CityState) -> Dictionary:
+static func connection_counts(city: CityState) -> Dictionary:
 	var commerce := 0
 	var industry := 0
 	for index in CityState.TILE_COUNT:

@@ -28,6 +28,16 @@ const TILE_RAIL_STATION := 0xed
 const SUBTILE_LIMIT := 16
 const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
+const NEWS_EXPLOSION := 0x1f8
+const NEWS_TRAFFIC := 0x1fe
+const NEWS_MONSTER_DAMAGE := 0x202
+const NEWS_AIR_DISASTER := 0x203
+const NEWS_SHIP := 0x205
+const NEWS_AIRPLANE_TAKEOFF := 0x206
+const NEWS_AIRPLANE_LANDING := 0x207
+const NEWS_TRAIN := 0x20c
+const NEWS_SAILBOAT_DISTRESS := 0x20f
+const TRAFFIC_NEWS_DELAY_MSEC := 5000
 const SAIL_SUBTILE_X := [0, 16, 0, -16]
 const SAIL_SUBTILE_Y := [-16, 0, 16, 0]
 const CARDINAL_DIRECTIONS := [
@@ -93,7 +103,9 @@ static func run(
 	lfsr_random,
 	game_random = null,
 	ship_home := Vector2i(-1, -1),
-	allow_disaster_damage := true
+	allow_disaster_damage := true,
+	traffic_news_time_msec := -1,
+	traffic_news_deadline_msec := 0
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -109,6 +121,8 @@ static func run(
 		game_random = GameLcgRandom.new(1)
 	if not game_random.has_method("next_mod"):
 		return {"ok": false, "error": "a compatible game random generator is required"}
+	if traffic_news_time_msec < 0:
+		traffic_news_time_msec = Time.get_ticks_msec()
 	var building_chunk := city.document.find_chunk("XBLD")
 	var altitude_chunk := city.document.find_chunk("ALTM")
 	var terrain_chunk := city.document.find_chunk("XTER")
@@ -224,10 +238,12 @@ static func run(
 		"rubble_explosion_hits": 0,
 		"damaged_facilities": 0,
 		"deferred_facility_explosion_hits": 0,
-		"deferred_connection_count_updates": 0,
 		"malformed_records": 0,
-		"deferred_news": 0,
-		"deferred_traffic_news_checks": 0,
+		"news_items": [],
+		"traffic_news_checks": 0,
+		"traffic_news_time_msec": traffic_news_time_msec,
+		"traffic_news_deadline_msec": traffic_news_deadline_msec,
+		"connection_count_changes": [],
 		"created_train_crash_explosions": 0,
 	}
 	var city_center := Vector2i(
@@ -334,10 +350,7 @@ static func run(
 	counters["tornadoes_save_visible_complete"] = true
 	counters["maxis_man_save_visible_complete"] = true
 	counters["monsters_save_visible_complete"] = true
-	counters["explosion_map_damage_complete"] = (
-		counters.deferred_facility_explosion_hits == 0
-		and counters.deferred_connection_count_updates == 0
-	)
+	counters["explosion_map_damage_complete"] = counters.deferred_facility_explosion_hits == 0
 	counters["complete"] = false
 	counters["error"] = ""
 	return counters
@@ -366,7 +379,7 @@ static func _update_explosion(
 	var offset := record * RECORD_SIZE
 	var frame := int(things[offset + 1])
 	if frame == 0:
-		counters.deferred_news += 1
+		_queue_news(counters, NEWS_EXPLOSION)
 	if frame < 2:
 		things[offset + 1] = (frame + 1) & 0xff
 		return
@@ -393,7 +406,7 @@ static func _update_explosion(
 			counters.spread_explosion_fires += 1
 		elif damage_result == 4:
 			counters.spread_explosion_fires += 1
-			counters.deferred_connection_count_updates += 1
+			_record_connection_count_change(counters, buildings[_index(damaged)], damaged)
 		elif damage_result == 2:
 			counters.rubble_explosion_hits += 1
 		elif damage_result == 3:
@@ -576,7 +589,7 @@ static func _update_monster(
 		return
 	counters.moved_monsters += 1
 	if things[offset + 8] & 0x80:
-		counters.deferred_news += 1
+		_queue_news(counters, NEWS_MONSTER_DAMAGE)
 
 
 static func _monster_damage(
@@ -619,7 +632,7 @@ static func _monster_damage(
 			counters.spread_explosion_fires += 1
 		elif damage_result == 4:
 			counters.spread_explosion_fires += 1
-			counters.deferred_connection_count_updates += 1
+			_record_connection_count_change(counters, buildings[index], point)
 		if damage_result != 0 and damage_result != 2:
 			things[offset + 8] |= 0x80
 			counters.monster_damage_hits += 1
@@ -757,7 +770,7 @@ static func _update_maxis_man(
 				if overlay == goal + TEXT_LABEL_BASE and random.next_u15() & 3 == 0:
 					_remove_thing(text, things, goal)
 					counters.maxis_man_destroyed_targets += 1
-					counters.deferred_news += 1
+					_queue_news(counters, NEWS_EXPLOSION)
 					if _spawn_explosion(text, things, next, things[offset + 5], 0, 1):
 						counters.maxis_man_explosions += 1
 					things[offset + 2] = 2
@@ -904,7 +917,7 @@ static func _update_airplane(
 				return
 			counters.moved_airplanes += 1
 			if things[offset + 5] == 0:
-				counters.deferred_news += 1
+				_queue_news(counters, NEWS_AIRPLANE_TAKEOFF)
 			if things[offset + 5] < 14:
 				things[offset + 5] += 1
 			else:
@@ -916,7 +929,7 @@ static func _update_airplane(
 			counters.moved_airplanes += 1
 			things[offset + 5] = (int(things[offset + 5]) - 1) & 0xff
 			if things[offset + 5] == 0:
-				counters.deferred_news += 1
+				_queue_news(counters, NEWS_AIRPLANE_LANDING)
 				current = Vector2i(things[offset + 3], things[offset + 4])
 				current_index = _index(current)
 				if current_index >= 0:
@@ -975,7 +988,7 @@ static func _update_airplane(
 			if things[offset + 5] != 0:
 				things[offset + 5] -= 1
 				if things[offset + 5] == 8:
-					counters.deferred_news += 1
+					_queue_news(counters, NEWS_AIR_DISASTER)
 				var old_direction := direction
 				things[offset + 1] = (direction + 1) & 7
 				if _move_thing_eight_way(
@@ -1050,7 +1063,12 @@ static func _update_helicopter(
 			current = Vector2i(things[offset + 3], things[offset + 4])
 			var traffic_index := int(current.x / 2) * 64 + int(current.y / 2)
 			if traffic[traffic_index] > 0xa9:
-				counters.deferred_traffic_news_checks += 1
+				counters.traffic_news_checks += 1
+				if counters.traffic_news_deadline_msec < counters.traffic_news_time_msec:
+					counters.traffic_news_deadline_msec = (
+						counters.traffic_news_time_msec + TRAFFIC_NEWS_DELAY_MSEC
+					)
+					_queue_news(counters, NEWS_TRAFFIC)
 			if _thing_distance(current, target) < 2:
 				var target_x: int = (random.next_u15() & 0x3f) - 0x20 + city_center.x
 				var target_y: int = (random.next_u15() & 0x3f) - 0x20 + city_center.y
@@ -1078,7 +1096,7 @@ static func _update_helicopter(
 		5:
 			things[offset + 1] = (direction + 2) & 7
 			if things[offset + 5] == 4:
-				counters.deferred_news += 1
+				_queue_news(counters, NEWS_AIR_DISASTER)
 			if things[offset + 5] > 2:
 				things[offset + 5] -= 1
 			else:
@@ -1100,7 +1118,7 @@ static func _update_ship(
 ) -> void:
 	var offset := record * RECORD_SIZE
 	if random.next_u15() & 0xff == 0:
-		counters.deferred_news += 1
+		_queue_news(counters, NEWS_SHIP)
 	var current := Vector2i(things[offset + 3], things[offset + 4])
 	var current_index := _index(current)
 	var direction := int(things[offset + 1])
@@ -1172,7 +1190,7 @@ static func _update_ship(
 		3:
 			if lfsr_random.next_mod(30) == 0:
 				things[offset + 2] = 4
-				counters.deferred_news += 1
+				_queue_news(counters, NEWS_SHIP)
 				counters.departing_ships += 1
 				var home := ship_home if _index(ship_home) >= 0 else current
 				things[offset + 8] = home.x
@@ -1306,7 +1324,7 @@ static func _update_sailboat(
 		if lfsr_random.next_mod(4000) == 0:
 			things[offset + 2] = 1
 			counters.distressed_sailboats += 1
-			counters.deferred_news += 1
+			_queue_news(counters, NEWS_SAILBOAT_DISTRESS)
 		things[offset + 1] = (direction + random.next_u15() % 3 - 1) & 3
 		counters.turned_sailboats += 1
 		return
@@ -1476,7 +1494,7 @@ static func _update_train(
 			direction = turn_direction
 			counters.turned_trains += 1
 		if random.next_u15() & 0xff == 0:
-			counters.deferred_news += 1
+			_queue_news(counters, NEWS_TRAIN)
 	var next: Vector2i = current + CARDINAL_DIRECTIONS[direction]
 	if not _train_route_valid(buildings, underground, text, next, engine_type):
 		var selected := _select_train_direction(
@@ -1804,6 +1822,27 @@ static func _steer_direction(direction: int, start: Vector2i, target: Vector2i) 
 
 static func _thing_distance(start: Vector2i, target: Vector2i) -> int:
 	return absi(target.x - start.x) + absi(target.y - start.y)
+
+
+static func _queue_news(counters: Dictionary, news_type: int) -> void:
+	counters.news_items.append({"type": news_type, "argument": 0})
+
+
+static func _record_connection_count_change(
+	counters: Dictionary, tile_id: int, point: Vector2i
+) -> void:
+	var is_commerce := (
+		(tile_id >= 0x1d and tile_id <= 0x2b)
+		or (tile_id >= 0x3f and tile_id <= 0x46)
+		or tile_id == 0x4b
+		or tile_id == 0x4c
+		or (tile_id >= 0x5d and tile_id <= 0x60)
+	)
+	counters.connection_count_changes.append({
+		"kind": "commerce" if is_commerce else "industry",
+		"delta": -1,
+		"point": point,
+	})
 
 
 static func _index(point: Vector2i) -> int:

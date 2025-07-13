@@ -1127,7 +1127,8 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 	_check(
 		first_explosion_frame.ok
-		and first_explosion_frame.deferred_news == 1
+		and first_explosion_frame.news_items.size() == 1
+		and first_explosion_frame.news_items[0].type == 0x1f8
 		and second_explosion_frame.ok
 		and final_explosion_frame.ok,
 		"Explosion record requests news and advances through two animation frames",
@@ -1236,6 +1237,25 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		"Facility blast creates rubble and fire and releases XMIC and XLAB",
 	)
 
+	var connection_explosion := _special_growth_fixture(reference_root)
+	_set_explosion(connection_explosion, 1, Vector2i(20, 20), 5, 1, 2)
+	_check(connection_explosion.city.set_building_id(21, 20, 0x1d), "Connection blast fixture places a road")
+	_check(connection_explosion.city.set_text_overlay_id(21, 20, 250), "Connection blast fixture places a neighbor label")
+	var connection_result := MovingThingTick.run(
+		connection_explosion.city,
+		SequenceRandom.new([1]),
+		SequenceLfsrRandom.new([3, 2, 3, 2, 3, 2, 3, 2])
+	)
+	_check(
+		connection_result.ok
+		and connection_result.connection_count_changes.size() == 1
+		and connection_result.connection_count_changes[0].kind == "commerce"
+		and connection_result.connection_count_changes[0].delta == -1
+		and connection_result.connection_count_changes[0].point == Vector2i(21, 20)
+		and connection_result.explosion_map_damage_complete,
+		"Explosion damage reports the original commerce-connection decrement",
+	)
+
 	var tornado := _special_growth_fixture(reference_root)
 	_set_tornado(tornado, 1, Vector2i(20, 20), 2)
 	_check(tornado.city.set_building_id(20, 20, 0x1d), "Tornado fixture places a road")
@@ -1334,6 +1354,8 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		attack_result.ok
 		and attack_result.maxis_man_destroyed_targets == 1
 		and attack_result.maxis_man_explosions == 1
+		and attack_result.news_items.size() == 1
+		and attack_result.news_items[0].type == 0x1f8
 		and attacking_maxis.city.thing(39).state == 2,
 		"Maxis Man destroys its exact XTHG target on the recovered random gate",
 	)
@@ -1375,7 +1397,8 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		radioactive_result.ok
 		and radioactive_result.monster_damage_hits == 1
 		and radioactive_result.moved_monsters == 1
-		and radioactive_result.deferred_news == 1,
+		and radioactive_result.news_items.size() == 1
+		and radioactive_result.news_items[0].type == 0x202,
 		"Goal-one monster demolishes its diagonal target and marks a damage effect",
 	)
 	_check(
@@ -1436,7 +1459,8 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		takeoff_plane_result.ok
 		and takeoff_plane_result.active_airplanes == 1
 		and takeoff_plane_result.moved_airplanes == 1
-		and takeoff_plane_result.deferred_news == 1
+		and takeoff_plane_result.news_items.size() == 1
+		and takeoff_plane_result.news_items[0].type == 0x206
 		and airplane.city.thing(1).x == 21
 		and airplane.city.thing(1).z == 1,
 		"Airplane takeoff moves at sixteen sub-tiles, gains height, and requests news",
@@ -1488,6 +1512,8 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(
 		landing_plane_result.ok
 		and landing_plane_result.landed_airplanes == 1
+		and landing_plane_result.news_items.size() == 1
+		and landing_plane_result.news_items[0].type == 0x207
 		and landing_plane.city.thing(1).type == 0
 		and landing_plane.city.text_overlay_id(21, 20) == 0,
 		"Airplane completes descent and releases its record on a runway",
@@ -1542,7 +1568,8 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 	_check(
 		falling_result.ok
-		and falling_result.deferred_news == 1
+		and falling_result.news_items.size() == 1
+		and falling_result.news_items[0].type == 0x203
 		and falling_plane.city.thing(1).z == 8
 		and falling_plane.city.thing(1).direction == 3
 		and falling_plane.city.thing(1).x == 21
@@ -1601,7 +1628,8 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(
 		depart_result.ok
 		and depart_result.departing_ships == 1
-		and depart_result.deferred_news == 1
+		and depart_result.news_items.size() == 1
+		and depart_result.news_items[0].type == 0x205
 		and docking_ship.city.thing(1).state == 4
 		and docking_ship.city.thing(1).dx == 2
 		and docking_ship.city.thing(1).dy == 10,
@@ -1704,6 +1732,34 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 	_check(flight.city.text_overlay_id(20, 20) == 0, "Helicopter clears its old XTXT cell")
 	_check(flight.city.text_overlay_id(21, 20) == 202, "Helicopter links its new XTXT cell")
+
+	var traffic_helicopter := _special_growth_fixture(reference_root)
+	_set_helicopter(traffic_helicopter, 1, Vector2i(20, 20), Vector2i(40, 20), 2, 2, 10)
+	_check(
+		traffic_helicopter.document.find_chunk("XTRF").set_decoded_payload(_filled_bytes(64 * 64, 200)),
+		"Traffic-news fixture fills the traffic map",
+	)
+	var first_traffic_news := MovingThingTick.run(
+		traffic_helicopter.city, ZeroRandom.new(), NonzeroLfsrRandom.new(), null,
+		Vector2i(-1, -1), true, 1000, 0
+	)
+	var throttled_traffic_news := MovingThingTick.run(
+		traffic_helicopter.city, ZeroRandom.new(), NonzeroLfsrRandom.new(), null,
+		Vector2i(-1, -1), true, 6000, first_traffic_news.traffic_news_deadline_msec
+	)
+	var resumed_traffic_news := MovingThingTick.run(
+		traffic_helicopter.city, ZeroRandom.new(), NonzeroLfsrRandom.new(), null,
+		Vector2i(-1, -1), true, 6001, throttled_traffic_news.traffic_news_deadline_msec
+	)
+	_check(
+		first_traffic_news.ok
+		and first_traffic_news.news_items.size() == 1
+		and first_traffic_news.news_items[0].type == 0x1fe
+		and first_traffic_news.traffic_news_deadline_msec == 6000
+		and throttled_traffic_news.news_items.is_empty()
+		and resumed_traffic_news.news_items.size() == 1,
+		"Helicopter traffic news uses the recovered strict five-second deadline",
+	)
 
 	var avoiding := _special_growth_fixture(reference_root)
 	_set_helicopter(avoiding, 1, Vector2i(20, 20), Vector2i(30, 20), 2, 2, 10)
@@ -1812,8 +1868,9 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(
 		distress_result.ok
 		and distress_result.distressed_sailboats == 1
-		and distress_result.deferred_news == 1,
-		"Sailboat distress sets its state and reports the pending news item",
+		and distress_result.news_items.size() == 1
+		and distress_result.news_items[0].type == 0x20f,
+		"Sailboat distress sets its state and returns news item 0x20f",
 	)
 	_check(distress.city.thing(1).state == 1, "Distressed sailboat stores state one")
 	var removal_result := MovingThingTick.run(
@@ -1882,11 +1939,17 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_set_train(turning_train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
 	var train_turn_result := MovingThingTick.run(
 		turning_train.city,
-		SequenceRandom.new([1]),
+		SequenceRandom.new([0]),
 		SequenceLfsrRandom.new([0, 0, 0]),
 		ZeroLfsrRandom.new()
 	)
-	_check(train_turn_result.ok and train_turn_result.turned_trains == 1, "Train takes its random side route")
+	_check(
+		train_turn_result.ok
+		and train_turn_result.turned_trains == 1
+		and train_turn_result.news_items.size() == 1
+		and train_turn_result.news_items[0].type == 0x20c,
+		"Train side turn returns the recovered random news item",
+	)
 	_check(
 		turning_train.city.thing(1).x == 21
 		and turning_train.city.thing(1).y == 20
