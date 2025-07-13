@@ -17,7 +17,9 @@ var source_center := Vector2.ZERO
 var selection_start := Vector2i(-1, -1)
 var selection_end := Vector2i(-1, -1)
 var selection_path: Array[Vector2i] = []
+var transient_effects: Array[Dictionary] = []
 var _panning := false
+var _effect_generation := 0
 
 
 func _ready() -> void:
@@ -65,6 +67,23 @@ func center_on_tile(point: Vector2i) -> bool:
 	return true
 
 
+func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void:
+	_effect_generation += 1
+	transient_effects = effects.duplicate()
+	queue_redraw()
+	if transient_effects.is_empty() or not is_inside_tree():
+		return
+	var timer := get_tree().create_timer(maxf(0.0, float(duration)))
+	timer.timeout.connect(_expire_transient_effects.bind(_effect_generation))
+
+
+func _expire_transient_effects(generation: int) -> void:
+	if generation != _effect_generation:
+		return
+	transient_effects.clear()
+	queue_redraw()
+
+
 func _draw() -> void:
 	if city_texture == null:
 		return
@@ -75,6 +94,7 @@ func _draw() -> void:
 		Rect2(offset, Vector2(city_texture.get_size()) * scale),
 		false
 	)
+	_draw_transient_effects(scale, offset)
 	_draw_signs(scale, offset)
 	if selection_start.x < 0 or selection_end.x < 0 or city == null:
 		return
@@ -101,6 +121,19 @@ func _draw() -> void:
 		draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28))
 		local_polygon.append(local_polygon[0])
 		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9), 1.0)
+
+
+func _draw_transient_effects(scale: float, offset: Vector2) -> void:
+	for effect in transient_effects:
+		var texture: Texture2D = effect.get("texture") as Texture2D
+		if texture == null:
+			continue
+		var source_position: Vector2 = effect.get("position", Vector2.ZERO)
+		draw_texture_rect(
+			texture,
+			Rect2(offset + source_position * scale, Vector2(texture.get_size()) * scale),
+			false
+		)
 
 
 func _draw_signs(scale: float, offset: Vector2) -> void:

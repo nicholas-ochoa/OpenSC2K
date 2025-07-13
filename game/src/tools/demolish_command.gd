@@ -28,6 +28,8 @@ const PIER_FIRST := 0xdf
 const PIER_LAST := 0xe0
 const SUBWAY_STATION := 0xe9
 const TUNNEL_MASK := 0x7c00
+const BRIDGE_DEBRIS_SPRITE := 1392
+const SOUND_EXPLODE := 504
 
 const CORNER_BOTTOM_LEFT := [0x10, 0x20, 0x40, 0x80]
 const CORNER_BOTTOM_RIGHT := [0x20, 0x40, 0x80, 0x10]
@@ -81,6 +83,8 @@ static func apply_path(
 	var skipped_specialized := 0
 	var skipped_insufficient := 0
 	var easter_events := 0
+	var effect_events: Array[Dictionary] = []
+	var sound_events: Array[int] = []
 	var random_state_before := random.state
 
 	for point in points:
@@ -113,6 +117,10 @@ static func apply_path(
 		total_cost += cost_per_action
 		if result.get("easter_event", false):
 			easter_events += 1
+		var result_effects: Array = result.get("effect_events", [])
+		effect_events.append_array(result_effects)
+		if not result_effects.is_empty():
+			sound_events.append(SOUND_EXPLODE)
 		for index in result.get("indices", PackedInt32Array()):
 			if not changed_indices.has(index):
 				changed_indices.append(index)
@@ -145,6 +153,8 @@ static func apply_path(
 		"skipped_specialized": skipped_specialized,
 		"skipped_insufficient": skipped_insufficient,
 		"easter_events": easter_events,
+		"effect_events": effect_events,
+		"sound_events": sound_events,
 		"changed_ids": changed_ids,
 		"old_payloads": old_payloads,
 		"new_payloads": changed_payloads,
@@ -206,11 +216,13 @@ static func _demolish_point(
 		)
 	if tile_id >= BRIDGE_FIRST and tile_id <= BRIDGE_LAST:
 		return _demolish_bridge(
-			altitude, buildings, terrain, zones, underground, flags, misc, point
+			altitude, buildings, terrain, zones, underground, flags, misc,
+			point, random, not force_damage
 		)
 	if tile_id >= REINFORCED_BRIDGE_FIRST and tile_id <= REINFORCED_BRIDGE_LAST:
 		return _demolish_reinforced_bridge(
-			altitude, buildings, terrain, zones, underground, flags, misc, point
+			altitude, buildings, terrain, zones, underground, flags, misc,
+			point, random, not force_damage
 		)
 	if tile_id >= RUNWAY_FIRST and tile_id <= PIER_LAST:
 		return _demolish_transport_component(
@@ -420,7 +432,9 @@ static func _demolish_bridge(
 	underground: PackedByteArray,
 	flags: PackedByteArray,
 	misc: PackedByteArray,
-	selected: Vector2i
+	selected: Vector2i,
+	random = null,
+	emit_effects := false
 ) -> Dictionary:
 	var selected_index := selected.x * CityState.MAP_SIZE + selected.y
 	var direction := Vector2i(1, 0) if (flags[selected_index] & FLAG_FLIPPED) != 0 else Vector2i(0, 1)
@@ -441,9 +455,17 @@ static func _demolish_bridge(
 
 	var points: Array[Vector2i] = []
 	var indices := PackedInt32Array()
+	var effect_events: Array[Dictionary] = []
 	var current := first
 	while true:
 		var index := current.x * CityState.MAP_SIZE + current.y
+		if emit_effects and random != null:
+			effect_events.append({
+				"point": current,
+				"sprite_id": BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3),
+				"screen_offset": Vector2i.ZERO,
+				"flip": (random.next_u15() & 1) != 0,
+			})
 		NetworkCommand._replace_building(buildings, zones, misc, index, 0)
 		zones[index] &= 0x0f
 		flags[index] &= ~FLAG_FLIPPED & 0xff
@@ -478,7 +500,11 @@ static func _demolish_bridge(
 		indices.append(bank_index)
 	_retile_surface_water(terrain, flags, selected, true)
 	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points)
-	return {"changed": true, "indices": indices}
+	return {
+		"changed": true,
+		"indices": indices,
+		"effect_events": effect_events,
+	}
 
 
 static func _demolish_reinforced_bridge(
@@ -489,7 +515,9 @@ static func _demolish_reinforced_bridge(
 	underground: PackedByteArray,
 	flags: PackedByteArray,
 	misc: PackedByteArray,
-	selected: Vector2i
+	selected: Vector2i,
+	random = null,
+	emit_effects := false
 ) -> Dictionary:
 	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
 	if not _reinforced_section_is_valid(buildings, anchor):
@@ -507,8 +535,21 @@ static func _demolish_reinforced_bridge(
 
 	var points: Array[Vector2i] = []
 	var indices := PackedInt32Array()
+	var effect_events: Array[Dictionary] = []
 	var current := first
 	while true:
+		if emit_effects and random != null:
+			var effect_sprite: int = BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3)
+			for screen_offset in [
+				Vector2i(0, 0), Vector2i(16, -8),
+				Vector2i(32, 0), Vector2i(32, 8),
+			]:
+				effect_events.append({
+					"point": current,
+					"sprite_id": effect_sprite,
+					"screen_offset": screen_offset,
+					"flip": (random.next_u15() & 1) != 0,
+				})
 		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 			var point: Vector2i = current + offset
 			var index := point.x * CityState.MAP_SIZE + point.y
@@ -546,7 +587,11 @@ static func _demolish_reinforced_bridge(
 			indices.append(bank_index)
 	_retile_surface_water(terrain, flags, selected, true)
 	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points)
-	return {"changed": true, "indices": indices}
+	return {
+		"changed": true,
+		"indices": indices,
+		"effect_events": effect_events,
+	}
 
 
 static func _reinforced_section_is_valid(

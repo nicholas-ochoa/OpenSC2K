@@ -14,6 +14,8 @@ const MISC_MILITARY_BASE_TYPE := 0x0e4c
 const MISC_MILITARY_TILE_COUNTS := 0x0fa8
 const MISC_SUBWAY_COUNT := 0x0fe8
 const MISC_NORMAL_POPULATION := 0x102c
+const NEWSPAPER_BRIDGE_COLLAPSE := 39
+const SOUND_EXPLODE := 504
 const POPULATION_BY_DENSITY := [0, 1, 8, 12, 36]
 const BUILDING_BASE := [
 	0, 0x70, 0x8c, 0x90, 0xae,
@@ -133,6 +135,10 @@ static func run(
 		"removed_subway_stations": 0,
 		"deferred_bridge_collapses": 0,
 		"deferred_bridge_effects": 0,
+		"bridge_effects": [],
+		"view_center_requests": [],
+		"news_items": [],
+		"sound_events": [],
 		"deferred_station_removals": 0,
 		"special_growth_attempts": 0,
 		"special_tiles_placed": 0,
@@ -908,18 +914,26 @@ static func _process_surface_maintenance(
 			var result: Dictionary
 			if tile == 0x6a or tile == 0x6b:
 				result = Demolish._demolish_reinforced_bridge(
-					altitude, buildings, terrain, zones, underground, flags, misc, point
+					altitude, buildings, terrain, zones, underground, flags, misc,
+					point, random, true
 				)
 			else:
 				result = Demolish._demolish_bridge(
-					altitude, buildings, terrain, zones, underground, flags, misc, point
+					altitude, buildings, terrain, zones, underground, flags, misc,
+					point, random, true
 				)
 			if not result.get("changed", false):
 				counters.deferred_bridge_collapses += 1
 				return
 			_sync_altitudes(altitude, altitudes)
 			counters.collapsed_bridges += 1
-			counters.deferred_bridge_effects += 1
+			counters.bridge_effects.append_array(result.get("effect_events", []))
+			counters.view_center_requests.append(point)
+			counters.news_items.append({
+				"type": NEWSPAPER_BRIDGE_COLLAPSE,
+				"argument": 0,
+			})
+			counters.sound_events.append(SOUND_EXPLODE)
 		return
 	if _is_highway_budget_tile(tile):
 		if point.x & 1 or point.y & 1:

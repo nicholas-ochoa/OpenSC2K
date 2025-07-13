@@ -158,6 +158,24 @@ static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
 	return result
 
 
+static func bridge_effect_position(
+	city: CityState, effect: Dictionary, sprite_height: int
+) -> Vector2i:
+	if city == null or not city.is_valid():
+		return Vector2i(-1, -1)
+	var point: Vector2i = effect.get("point", Vector2i(-1, -1))
+	if city.index_of(point.x, point.y) < 0 or sprite_height < 0:
+		return Vector2i(-1, -1)
+	var offset: Vector2i = effect.get("screen_offset", Vector2i.ZERO)
+	return Vector2i(
+		SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+			+ (point.x - point.y) * HALF_WIDTH + offset.x,
+		TOP_MARGIN + (point.x + point.y) * HALF_HEIGHT
+			- city.water_altitude(point.x, point.y) * ALTITUDE_STEP
+			- sprite_height + offset.y
+	)
+
+
 static func _draw_tile(
 	output: Image,
 	city: CityState,

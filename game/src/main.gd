@@ -53,6 +53,7 @@ var undo_button: Button
 var sign_dialog: ConfirmationDialog
 var sign_input: LineEdit
 var query_dialog: AcceptDialog
+var sound_player: AudioStreamPlayer
 
 
 func _ready() -> void:
@@ -137,6 +138,9 @@ func _build_interface() -> void:
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_view.selection_completed.connect(_apply_map_selection)
 	map_panel.add_child(map_view)
+
+	sound_player = AudioStreamPlayer.new()
+	add_child(sound_player)
 
 	var sidebar := VBoxContainer.new()
 	sidebar.custom_minimum_size = Vector2(295, 0)
@@ -318,6 +322,43 @@ func _refresh_map() -> void:
 	else:
 		image = Minimap.create_image(city, palette, overlay_mode)
 	map_view.set_city_view(city, ImageTexture.create_from_image(image))
+
+
+func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
+	if overlay_mode != "city" or city == null:
+		return
+	var visuals: Array[Dictionary] = []
+	for effect in effect_events:
+		var sprite := large_sprites.find_sprite(int(effect.get("sprite_id", 0)))
+		if sprite == null:
+			continue
+		var rendered := sprite.create_image(palette)
+		if not rendered.ok:
+			continue
+		var effect_image: Image = rendered.image
+		if effect.get("flip", false):
+			effect_image.flip_x()
+		var position := IsometricRenderer.bridge_effect_position(
+			city, effect, effect_image.get_height()
+		)
+		if position.x < 0 or position.y < 0:
+			continue
+		visuals.append({
+			"texture": ImageTexture.create_from_image(effect_image),
+			"position": Vector2(position),
+		})
+	map_view.show_transient_effects(visuals, 0.1)
+	if sound_events.is_empty():
+		return
+	var sound_path := reference_root.path_join(
+		"SOUNDS/%d.WAV" % int(sound_events[0])
+	)
+	if not FileAccess.file_exists(sound_path):
+		return
+	var stream := AudioStreamWAV.load_from_file(sound_path)
+	if stream != null:
+		sound_player.stream = stream
+		sound_player.play()
 
 
 func _select_tool_group(index: int) -> void:
@@ -502,6 +543,7 @@ func _apply_map_selection(
 		undo_button.disabled = false
 		_refresh_details()
 		_refresh_map()
+		_show_effect_events(demolition.effect_events, demolition.sound_events)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Applied %d demolition actions for $%s." % [
 			demolition.action_count, _format_number(demolition.cost)

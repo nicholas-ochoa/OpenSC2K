@@ -435,6 +435,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and tornado_visual.tornado,
 		"Tornado view selects a stable recovered frame and mirror",
 	)
+	_check(
+		IsometricRenderer.bridge_effect_position(starter, {
+			"point": Vector2i(64, 64),
+			"screen_offset": Vector2i(16, -8),
+		}, 10) == Vector2i(2096, 1518),
+		"Bridge debris view uses water altitude and the recovered screen offset",
+	)
 	var monster_layers := IsometricRenderer.monster_layers(starter, 64, 64, {
 		"type": 5,
 		"z": 10,
@@ -2259,9 +2266,32 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(bridge.document.set_misc_u32(0x01f0 + 0x1d * 4, 2), "Bridge decay fixture counts bank roads")
 	_check(bridge.document.set_misc_u32(0x0e40, 1), "Bridge decay fixture sets sea level")
 	_check(bridge.document.set_misc_i32(0x077c + 12 * 0x6c + 4, 0), "Bridge decay fixture removes funding")
-	var bridge_result := Growth.run(bridge.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	var bridge_random := SequenceRandom.new([0, 2, 1, 3, 0, 1, 1])
+	var bridge_result := Growth.run(bridge.city, bridge_random, 0, 0, ZeroLfsrRandom.new())
 	_check(bridge_result.ok and bridge_result.collapsed_bridges == 1, "Unfunded bridge span collapses")
-	_check(bridge_result.deferred_bridge_effects == 1, "Bridge collapse reports pending news and visual effects")
+	_check(
+		bridge_result.deferred_bridge_effects == 0
+		and bridge_result.bridge_effects.size() == 3
+		and bridge_random.position == 7,
+		"Bridge collapse creates debris and consumes its process-random values",
+	)
+	_check(
+		bridge_result.bridge_effects[0].sprite_id == 1394
+		and bridge_result.bridge_effects[0].flip
+		and bridge_result.bridge_effects[1].sprite_id == 1395
+		and not bridge_result.bridge_effects[1].flip
+		and bridge_result.bridge_effects[2].sprite_id == 1393
+		and bridge_result.bridge_effects[2].flip,
+		"Bridge collapse selects each debris sprite and mirror in original order",
+	)
+	_check(
+		bridge_result.view_center_requests == [Vector2i(20, 20)]
+		and bridge_result.sound_events == [504]
+		and bridge_result.news_items.size() == 1
+		and bridge_result.news_items[0].type == 39
+		and bridge_result.news_items[0].argument == 0,
+		"Bridge collapse requests view centering, sound, and newspaper type 39",
+	)
 	for x in range(20, 23):
 		_check(bridge.city.building_id(x, 20) == 0, "Bridge collapse clears each span tile")
 	for x in [19, 23]:
@@ -2316,14 +2346,33 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(reinforced_span.document.set_misc_u32(0x01f0 + 0x49 * 4, 1), "Reinforced collapse fixture counts its bank")
 	_check(reinforced_span.document.set_misc_u32(0x0e40, 1), "Reinforced collapse fixture sets sea level")
 	_check(reinforced_span.document.set_misc_i32(0x077c + 12 * 0x6c + 4, 0), "Reinforced collapse fixture removes funding")
+	var reinforced_span_random := SequenceRandom.new([
+		0,
+		3, 1, 0, 1, 0,
+		2, 0, 1, 0, 1,
+		1, 1, 1, 0, 0,
+	])
 	var reinforced_span_result := Growth.run(
-		reinforced_span.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new()
+		reinforced_span.city, reinforced_span_random, 0, 0, ZeroLfsrRandom.new()
 	)
 	_check(
 		reinforced_span_result.ok
 		and reinforced_span_result.collapsed_bridges == 1
 		and reinforced_span_result.deferred_bridge_collapses == 0,
 		"A valid unfunded reinforced span collapses",
+	)
+	_check(
+		reinforced_span_result.bridge_effects.size() == 12
+		and reinforced_span_random.position == 16,
+		"Reinforced collapse creates four debris effects per section",
+	)
+	_check(
+		reinforced_span_result.bridge_effects[0].sprite_id == 1395
+		and reinforced_span_result.bridge_effects[4].sprite_id == 1394
+		and reinforced_span_result.bridge_effects[8].sprite_id == 1393
+		and reinforced_span_result.bridge_effects[1].screen_offset == Vector2i(16, -8)
+		and reinforced_span_result.bridge_effects[3].screen_offset == Vector2i(32, 8),
+		"Reinforced collapse shares one sprite across each recovered four-part layout",
 	)
 	for x in range(20, 26):
 		for y in range(20, 22):
@@ -3637,7 +3686,13 @@ func _test_demolish_command(reference_root: String) -> void:
 		_check(special_city.set_land_altitude(x, 70, 1), "Bridge demolition fixture raises a bank")
 		_check(special_city.set_building_id(x, 70, 0x1d), "Bridge demolition fixture places a bank road")
 	var bridge := Demolish.apply_path(special_city, 0, 0, [Vector2i(71, 70)], demolition_random)
-	_check(bridge.ok and bridge.tile_indices.size() == 5, "Demolish clears one bridge span and its banks")
+	_check(
+		bridge.ok
+		and bridge.tile_indices.size() == 5
+		and bridge.effect_events.size() == 3
+		and bridge.sound_events == [504],
+		"Demolish clears one bridge span and requests its debris and sound",
+	)
 	for x in range(70, 73):
 		_check(special_city.building_id(x, 70) == 0, "Bridge demolition clears each span tile")
 	for x in [69, 73]:
@@ -3660,7 +3715,10 @@ func _test_demolish_command(reference_root: String) -> void:
 		special_city, 0, 0, [Vector2i(80, 80)], demolition_random
 	)
 	_check(
-		reinforced_bridge.ok and reinforced_bridge.tile_indices.size() == 13,
+		reinforced_bridge.ok
+		and reinforced_bridge.tile_indices.size() == 13
+		and reinforced_bridge.effect_events.size() == 12
+		and reinforced_bridge.sound_events == [504],
 		"Demolish clears a reinforced span and the original forward-bank cell",
 	)
 	for x in range(80, 86):
