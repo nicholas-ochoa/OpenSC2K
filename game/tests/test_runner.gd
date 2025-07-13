@@ -2282,7 +2282,63 @@ func _test_transport_maintenance(reference_root: String) -> void:
 		reinforced.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new()
 	)
 	_check(reinforced_result.ok and reinforced_result.deferred_bridge_collapses == 1, "Reinforced bridge collapse stays explicit")
-	_check(reinforced.city.building_id(20, 20) == 0x6a, "Deferred reinforced bridge stays unchanged")
+	_check(reinforced.city.building_id(20, 20) == 0x6a, "Malformed reinforced bridge stays unchanged")
+
+	var reinforced_span := _maintenance_fixture(reference_root, 0, 0)
+	for x in range(18, 29):
+		for y in range(19, 23):
+			_check(
+				reinforced_span.city.set_land_altitude(x, y, 0),
+				"Reinforced collapse fixture levels the waterbed",
+			)
+	for section in 3:
+		var section_tile := 0x6b if section != 1 else 0x6a
+		for x_offset in 2:
+			for y_offset in 2:
+				var point := Vector2i(20 + section * 2 + x_offset, 20 + y_offset)
+				_check(
+					reinforced_span.city.set_building_id(point.x, point.y, section_tile),
+					"Reinforced collapse fixture places a span tile",
+				)
+				_check(
+					reinforced_span.city.set_terrain_id(point.x, point.y, 0x30),
+					"Reinforced collapse fixture places water terrain",
+				)
+				_check(
+					reinforced_span.city.set_tile_flag(point.x, point.y, 0x04, true),
+					"Reinforced collapse fixture marks span water",
+				)
+	_check(reinforced_span.city.set_building_id(26, 21, 0x49), "Reinforced collapse fixture places its forward bank")
+	_check(reinforced_span.city.set_land_altitude(26, 21, 1), "Reinforced collapse fixture raises its forward bank")
+	_check(reinforced_span.document.set_misc_u32(0x01f0, 16371), "Reinforced collapse fixture counts clear tiles")
+	_check(reinforced_span.document.set_misc_u32(0x01f0 + 0x6a * 4, 4), "Reinforced collapse fixture counts pylons")
+	_check(reinforced_span.document.set_misc_u32(0x01f0 + 0x6b * 4, 8), "Reinforced collapse fixture counts normal spans")
+	_check(reinforced_span.document.set_misc_u32(0x01f0 + 0x49 * 4, 1), "Reinforced collapse fixture counts its bank")
+	_check(reinforced_span.document.set_misc_u32(0x0e40, 1), "Reinforced collapse fixture sets sea level")
+	_check(reinforced_span.document.set_misc_i32(0x077c + 12 * 0x6c + 4, 0), "Reinforced collapse fixture removes funding")
+	var reinforced_span_result := Growth.run(
+		reinforced_span.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new()
+	)
+	_check(
+		reinforced_span_result.ok
+		and reinforced_span_result.collapsed_bridges == 1
+		and reinforced_span_result.deferred_bridge_collapses == 0,
+		"A valid unfunded reinforced span collapses",
+	)
+	for x in range(20, 26):
+		for y in range(20, 22):
+			_check(
+				reinforced_span.city.building_id(x, y) == 0,
+				"Reinforced collapse clears each two-wide span tile",
+			)
+	_check(reinforced_span.city.building_id(26, 21) == 0, "Reinforced collapse clears the original forward-bank cell")
+	_check(reinforced_span.city.land_altitude(26, 21) == 0, "Reinforced collapse lowers the forward-bank cell")
+	_check(
+		reinforced_span.city.tile_flags[26 * 128 + 21] & 0x04 != 0,
+		"Reinforced collapse restores water on the forward-bank cell",
+	)
+	_check(reinforced_span.document.misc_u32(0x01f0 + 0x6a * 4) == 0, "Reinforced collapse clears its pylon count")
+	_check(reinforced_span.document.misc_u32(0x01f0 + 0x6b * 4) == 0, "Reinforced collapse clears its normal-span count")
 
 	var funded := _maintenance_fixture(reference_root, 0x1d, 0)
 	var funded_result := Growth.run(funded.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
@@ -3588,6 +3644,33 @@ func _test_demolish_command(reference_root: String) -> void:
 		_check(special_city.land_altitude(x, 70) == 0, "Bridge demolition lowers each dry bank")
 		_check((special_city.tile_flags[x * 128 + 70] & 0x04) != 0, "Bridge demolition restores bank water")
 	_check(Demolish.undo(special_city, bridge, demolition_random).ok, "Bridge demolition can be undone")
+
+	for section in 3:
+		var reinforced_tile := 0x6b if section != 1 else 0x6a
+		for x_offset in 2:
+			for y_offset in 2:
+				var point := Vector2i(80 + section * 2 + x_offset, 80 + y_offset)
+				_check(special_city.set_building_id(point.x, point.y, reinforced_tile), "Reinforced demolition fixture places a span tile")
+				_check(special_city.set_terrain_id(point.x, point.y, 0x30), "Reinforced demolition fixture places water terrain")
+				_check(special_city.set_tile_flag(point.x, point.y, 0x04, true), "Reinforced demolition fixture marks span water")
+	for bank_point in [Vector2i(78, 81), Vector2i(86, 81)]:
+		_check(special_city.set_building_id(bank_point.x, bank_point.y, 0x49), "Reinforced demolition fixture places a bank")
+		_check(special_city.set_land_altitude(bank_point.x, bank_point.y, 1), "Reinforced demolition fixture raises a bank")
+	var reinforced_bridge := Demolish.apply_path(
+		special_city, 0, 0, [Vector2i(80, 80)], demolition_random
+	)
+	_check(
+		reinforced_bridge.ok and reinforced_bridge.tile_indices.size() == 13,
+		"Demolish clears a reinforced span and the original forward-bank cell",
+	)
+	for x in range(80, 86):
+		for y in range(80, 82):
+			_check(special_city.building_id(x, y) == 0, "Reinforced demolition clears each span tile")
+	_check(special_city.building_id(78, 81) == 0x49, "Reinforced demolition preserves the rear bank")
+	_check(special_city.building_id(86, 81) == 0, "Reinforced demolition clears the forward bank")
+	_check(special_city.land_altitude(86, 81) == 0, "Reinforced demolition lowers the forward bank")
+	_check((special_city.tile_flags[86 * 128 + 81] & 0x04) != 0, "Reinforced demolition restores forward-bank water")
+	_check(Demolish.undo(special_city, reinforced_bridge, demolition_random).ok, "Reinforced bridge demolition can be undone")
 
 	_check(special_city.set_terrain_id(60, 60, 0x3d), "Water demolition fixture sets water terrain")
 	_check(special_city.set_tile_flag(60, 60, 0x04, true), "Water demolition fixture sets its water flag")

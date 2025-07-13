@@ -122,7 +122,7 @@ static func apply_path(
 		if skipped_insufficient > 0:
 			return {"ok": false, "error": "insufficient funds", "cost": cost_per_action}
 		if skipped_specialized > 0:
-			return {"ok": false, "error": "reinforced-bridge or malformed-network demolition is not implemented"}
+			return {"ok": false, "error": "reinforced bridge or network data is malformed"}
 		return {"ok": false, "error": "no eligible tiles changed"}
 	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - total_cost)
 
@@ -208,6 +208,10 @@ static func _demolish_point(
 		return _demolish_bridge(
 			altitude, buildings, terrain, zones, underground, flags, misc, point
 		)
+	if tile_id >= REINFORCED_BRIDGE_FIRST and tile_id <= REINFORCED_BRIDGE_LAST:
+		return _demolish_reinforced_bridge(
+			altitude, buildings, terrain, zones, underground, flags, misc, point
+		)
 	if tile_id >= RUNWAY_FIRST and tile_id <= PIER_LAST:
 		return _demolish_transport_component(
 			buildings, terrain, zones, underground, flags, misc, point, tile_id, random
@@ -227,8 +231,6 @@ static func _demolish_point(
 			random,
 			city.compass_rotation()
 		)
-	if _requires_special_demolition(tile_id):
-		return {"changed": false, "specialized": true}
 	var had_structure := tile_id >= 0x0d
 	var was_water := (flags[index] & FLAG_WATER) != 0
 	if tile_id == 0:
@@ -273,10 +275,6 @@ static func _demolish_point(
 		else:
 			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
 	return {"changed": true, "indices": indices}
-
-
-static func _requires_special_demolition(tile_id: int) -> bool:
-	return tile_id >= REINFORCED_BRIDGE_FIRST and tile_id <= REINFORCED_BRIDGE_LAST
 
 
 static func _is_highway_tile(tile_id: int) -> bool:
@@ -481,6 +479,89 @@ static func _demolish_bridge(
 	_retile_surface_water(terrain, flags, selected, true)
 	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points)
 	return {"changed": true, "indices": indices}
+
+
+static func _demolish_reinforced_bridge(
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	selected: Vector2i
+) -> Dictionary:
+	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
+	if not _reinforced_section_is_valid(buildings, anchor):
+		return {"changed": false, "specialized": true}
+	var anchor_tile := int(buildings[anchor.x * CityState.MAP_SIZE + anchor.y])
+	# the executable selects the span axis from the section's tile kind
+	# this makes 0x6b advance on x and 0x6a advance on y
+	var direction := Vector2i(2, 0) if anchor_tile == REINFORCED_BRIDGE_LAST else Vector2i(0, 2)
+	var first := anchor
+	while _reinforced_section_is_valid(buildings, first - direction):
+		first -= direction
+	var finish := anchor
+	while _reinforced_section_is_valid(buildings, finish + direction):
+		finish += direction
+
+	var points: Array[Vector2i] = []
+	var indices := PackedInt32Array()
+	var current := first
+	while true:
+		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+			var point: Vector2i = current + offset
+			var index := point.x * CityState.MAP_SIZE + point.y
+			NetworkCommand._replace_building(buildings, zones, misc, index, 0)
+			zones[index] &= 0x0f
+			flags[index] &= ~FLAG_FLIPPED & 0xff
+			points.append(point)
+			indices.append(index)
+		if current == finish:
+			break
+		current += direction
+
+	# The original changes only the lower-left cell of the forward bank section
+	# on a two-wide bridge. It leaves the bank behind the span alone.
+	var bank := finish + direction + Vector2i(0, 1)
+	if _point_is_in_bounds(bank):
+		var bank_index := bank.x * CityState.MAP_SIZE + bank.y
+		if (flags[bank_index] & FLAG_WATER) == 0:
+			NetworkCommand._replace_building(buildings, zones, misc, bank_index, 0)
+			var land := _land_altitude(altitude, bank_index)
+			_set_land_altitude(altitude, bank_index, maxi(0, land - 1))
+			flags[bank_index] |= FLAG_WATER
+			flags[bank_index] &= ~FLAG_FLIPPED & 0xff
+			TerrainCommand._retile_region(
+				altitude,
+				buildings,
+				terrain,
+				zones,
+				flags,
+				misc,
+				PackedInt32Array([bank_index]),
+				BuildingCommand._read_u32_be(misc, 0x0e40) & 0x1f
+			)
+			points.append(bank)
+			indices.append(bank_index)
+	_retile_surface_water(terrain, flags, selected, true)
+	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points)
+	return {"changed": true, "indices": indices}
+
+
+static func _reinforced_section_is_valid(
+	buildings: PackedByteArray, anchor: Vector2i
+) -> bool:
+	if anchor.x < 0 or anchor.y < 0 or anchor.x > 126 or anchor.y > 126:
+		return false
+	var tile := int(buildings[anchor.x * CityState.MAP_SIZE + anchor.y])
+	if tile < REINFORCED_BRIDGE_FIRST or tile > REINFORCED_BRIDGE_LAST:
+		return false
+	for offset in [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+		var point: Vector2i = anchor + offset
+		if buildings[point.x * CityState.MAP_SIZE + point.y] != tile:
+			return false
+	return true
 
 
 static func _remove_surface_water(

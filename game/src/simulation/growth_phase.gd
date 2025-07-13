@@ -905,12 +905,15 @@ static func _process_surface_maintenance(
 	if _is_bridge_budget_tile(tile):
 		var wind := _read_u32(misc, 0x0064) & 0xff
 		if _maintenance_fails(misc, 12, random, 50, wind):
+			var result: Dictionary
 			if tile == 0x6a or tile == 0x6b:
-				counters.deferred_bridge_collapses += 1
-				return
-			var result := Demolish._demolish_bridge(
-				altitude, buildings, terrain, zones, underground, flags, misc, point
-			)
+				result = Demolish._demolish_reinforced_bridge(
+					altitude, buildings, terrain, zones, underground, flags, misc, point
+				)
+			else:
+				result = Demolish._demolish_bridge(
+					altitude, buildings, terrain, zones, underground, flags, misc, point
+				)
 			if not result.get("changed", false):
 				counters.deferred_bridge_collapses += 1
 				return
