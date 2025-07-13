@@ -521,9 +521,9 @@ static func _demolish_reinforced_bridge(
 			break
 		current += direction
 
-	# The original changes only the lower-left cell of the forward bank section
+	# The original changes only the origin cell of the forward bank section
 	# on a two-wide bridge. It leaves the bank behind the span alone.
-	var bank := finish + direction + Vector2i(0, 1)
+	var bank := finish + direction
 	if _point_is_in_bounds(bank):
 		var bank_index := bank.x * CityState.MAP_SIZE + bank.y
 		if (flags[bank_index] & FLAG_WATER) == 0:

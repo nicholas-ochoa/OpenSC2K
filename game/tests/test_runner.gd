@@ -2308,8 +2308,8 @@ func _test_transport_maintenance(reference_root: String) -> void:
 					reinforced_span.city.set_tile_flag(point.x, point.y, 0x04, true),
 					"Reinforced collapse fixture marks span water",
 				)
-	_check(reinforced_span.city.set_building_id(26, 21, 0x49), "Reinforced collapse fixture places its forward bank")
-	_check(reinforced_span.city.set_land_altitude(26, 21, 1), "Reinforced collapse fixture raises its forward bank")
+	_check(reinforced_span.city.set_building_id(26, 20, 0x49), "Reinforced collapse fixture places its forward bank")
+	_check(reinforced_span.city.set_land_altitude(26, 20, 1), "Reinforced collapse fixture raises its forward bank")
 	_check(reinforced_span.document.set_misc_u32(0x01f0, 16371), "Reinforced collapse fixture counts clear tiles")
 	_check(reinforced_span.document.set_misc_u32(0x01f0 + 0x6a * 4, 4), "Reinforced collapse fixture counts pylons")
 	_check(reinforced_span.document.set_misc_u32(0x01f0 + 0x6b * 4, 8), "Reinforced collapse fixture counts normal spans")
@@ -2331,10 +2331,10 @@ func _test_transport_maintenance(reference_root: String) -> void:
 				reinforced_span.city.building_id(x, y) == 0,
 				"Reinforced collapse clears each two-wide span tile",
 			)
-	_check(reinforced_span.city.building_id(26, 21) == 0, "Reinforced collapse clears the original forward-bank cell")
-	_check(reinforced_span.city.land_altitude(26, 21) == 0, "Reinforced collapse lowers the forward-bank cell")
+	_check(reinforced_span.city.building_id(26, 20) == 0, "Reinforced collapse clears the original forward-bank cell")
+	_check(reinforced_span.city.land_altitude(26, 20) == 0, "Reinforced collapse lowers the forward-bank cell")
 	_check(
-		reinforced_span.city.tile_flags[26 * 128 + 21] & 0x04 != 0,
+		reinforced_span.city.tile_flags[26 * 128 + 20] & 0x04 != 0,
 		"Reinforced collapse restores water on the forward-bank cell",
 	)
 	_check(reinforced_span.document.misc_u32(0x01f0 + 0x6a * 4) == 0, "Reinforced collapse clears its pylon count")
@@ -3653,7 +3653,7 @@ func _test_demolish_command(reference_root: String) -> void:
 				_check(special_city.set_building_id(point.x, point.y, reinforced_tile), "Reinforced demolition fixture places a span tile")
 				_check(special_city.set_terrain_id(point.x, point.y, 0x30), "Reinforced demolition fixture places water terrain")
 				_check(special_city.set_tile_flag(point.x, point.y, 0x04, true), "Reinforced demolition fixture marks span water")
-	for bank_point in [Vector2i(78, 81), Vector2i(86, 81)]:
+	for bank_point in [Vector2i(78, 80), Vector2i(86, 80)]:
 		_check(special_city.set_building_id(bank_point.x, bank_point.y, 0x49), "Reinforced demolition fixture places a bank")
 		_check(special_city.set_land_altitude(bank_point.x, bank_point.y, 1), "Reinforced demolition fixture raises a bank")
 	var reinforced_bridge := Demolish.apply_path(
@@ -3666,10 +3666,10 @@ func _test_demolish_command(reference_root: String) -> void:
 	for x in range(80, 86):
 		for y in range(80, 82):
 			_check(special_city.building_id(x, y) == 0, "Reinforced demolition clears each span tile")
-	_check(special_city.building_id(78, 81) == 0x49, "Reinforced demolition preserves the rear bank")
-	_check(special_city.building_id(86, 81) == 0, "Reinforced demolition clears the forward bank")
-	_check(special_city.land_altitude(86, 81) == 0, "Reinforced demolition lowers the forward bank")
-	_check((special_city.tile_flags[86 * 128 + 81] & 0x04) != 0, "Reinforced demolition restores forward-bank water")
+	_check(special_city.building_id(78, 80) == 0x49, "Reinforced demolition preserves the rear bank")
+	_check(special_city.building_id(86, 80) == 0, "Reinforced demolition clears the forward bank")
+	_check(special_city.land_altitude(86, 80) == 0, "Reinforced demolition lowers the forward bank")
+	_check((special_city.tile_flags[86 * 128 + 80] & 0x04) != 0, "Reinforced demolition restores forward-bank water")
 	_check(Demolish.undo(special_city, reinforced_bridge, demolition_random).ok, "Reinforced bridge demolition can be undone")
 
 	_check(special_city.set_terrain_id(60, 60, 0x3d), "Water demolition fixture sets water terrain")
