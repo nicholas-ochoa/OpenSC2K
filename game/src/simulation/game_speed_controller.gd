@@ -48,7 +48,9 @@ func speed_name() -> String:
 	return SPEED_NAMES.get(speed, "Paused")
 
 
-func advance_time(delta_msec: float, current_time_msec := -1) -> Dictionary:
+func advance_time(
+	delta_msec: float, current_time_msec := -1, simulation_suspended := false
+) -> Dictionary:
 	var result := _empty_result()
 	if engine == null or engine.city == null or not engine.city.is_valid():
 		result.error = "city is invalid"
@@ -68,7 +70,7 @@ func advance_time(delta_msec: float, current_time_msec := -1) -> Dictionary:
 		simulation_ready = simulation_ready or _is_day_due()
 		var pulse_time := current_time_msec - int(accumulator_msec)
 
-		if speed > Speed.PAUSED:
+		if speed > Speed.PAUSED and not simulation_suspended:
 			var moving := engine.advance_moving_things(pulse_time)
 			if not moving.get("ok", false):
 				result.error = moving.get("error", "moving-thing update failed")
@@ -76,7 +78,7 @@ func advance_time(delta_msec: float, current_time_msec := -1) -> Dictionary:
 			result.moving_results.append(moving)
 			_append_runtime_events(result, moving)
 
-		if speed > Speed.PAUSED and simulation_ready:
+		if speed > Speed.PAUSED and simulation_ready and not simulation_suspended:
 			var day_error := _run_day(result)
 			if not day_error.is_empty():
 				result.error = day_error
@@ -86,7 +88,12 @@ func advance_time(delta_msec: float, current_time_msec := -1) -> Dictionary:
 			else:
 				simulation_ready = false
 
-	if speed > Speed.PAUSED and simulation_ready and not ran_swallow_day:
+	if (
+		speed > Speed.PAUSED
+		and simulation_ready
+		and not ran_swallow_day
+		and not simulation_suspended
+	):
 		var day_error := _run_day(result)
 		if not day_error.is_empty():
 			result.error = day_error

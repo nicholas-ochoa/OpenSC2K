@@ -739,6 +739,19 @@ func _test_game_speed_controller(reference_root: String) -> void:
 		and cheetah_city.age_in_days() == 1,
 		"Cheetah advances moving things and one day every 200 ms",
 	)
+	var cheetah_suspended := cheetah.advance_time(200.0, 400, true)
+	_check(
+		cheetah_suspended.base_ticks == 1
+		and cheetah_suspended.moving_results.is_empty()
+		and cheetah_suspended.day_results.is_empty()
+		and cheetah.simulation_ready,
+		"A map drag keeps timer phase but suspends simulation work",
+	)
+	var cheetah_resumed := cheetah.advance_time(0.0, 400)
+	_check(
+		cheetah_resumed.day_results.size() == 1 and cheetah_city.age_in_days() == 2,
+		"Simulation consumes the ready day after a map drag",
+	)
 
 	var swallow_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
 	_check(swallow_city.set_age_in_days(0), "Swallow fixture resets the city day")
