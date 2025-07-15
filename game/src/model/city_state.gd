@@ -434,6 +434,16 @@ func set_age_in_days(value: int) -> bool:
 	return document.set_misc_u32(0x10, value)
 
 
+func simulation_speed() -> int:
+	return document.misc_u32(0x0fec)
+
+
+func set_simulation_speed(value: int) -> bool:
+	if value < 1 or value > 5:
+		return false
+	return document.set_misc_u32(0x0fec, value)
+
+
 func current_year() -> int:
 	return founding_year() + int(age_in_days() / 300)
 

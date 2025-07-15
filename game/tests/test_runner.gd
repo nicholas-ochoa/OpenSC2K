@@ -25,6 +25,7 @@ const Growth = preload("res://src/simulation/growth_phase.gd")
 const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
 const MovingThingTick = preload("res://src/simulation/moving_thing_phase.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
+const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
@@ -148,6 +149,7 @@ func _init() -> void:
 	_test_growth_phase(reference_root)
 	_test_moving_thing_phase(reference_root)
 	_test_simulation_engine(reference_root)
+	_test_game_speed_controller(reference_root)
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
 	_test_tool_catalog()
@@ -670,6 +672,90 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"Simulation engine applies demand, demographics, and graphs on day 21",
 	)
 	_check(latest.pending.is_empty(), "Day 21 has no unimplemented scheduled phase")
+
+
+func _test_game_speed_controller(reference_root: String) -> void:
+	var paused_document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
+	var paused_city := CityModel.from_document(paused_document)
+	_check(paused_city.simulation_speed() == 1, "STARTER stores the paused simulation speed")
+	_check(paused_city.set_age_in_days(0), "Speed fixture resets the city day")
+	var paused_engine := Simulation.new(paused_city, 1, 7, 13)
+	var paused := GameSpeed.new(paused_engine)
+	_check(paused.speed == GameSpeed.Speed.PAUSED, "Speed controller loads the saved speed")
+	var paused_result := paused.advance_time(1600.0, 1600)
+	_check(paused_result.ok and paused_result.base_ticks == 8, "Pause retains the 200 ms base timer")
+	_check(
+		paused_result.day_results.is_empty() and paused_result.moving_results.is_empty(),
+		"Pause stops days and moving things",
+	)
+	_check(paused.simulation_ready and paused_city.age_in_days() == 0, "Pause retains a pending day")
+	_check(not paused.set_speed(0) and not paused.set_speed(6), "Speed rejects invalid values")
+	_check(paused.set_speed(GameSpeed.Speed.TURTLE), "Speed changes to Turtle")
+	_check(paused_city.simulation_speed() == 2, "Speed changes update the saved MISC field")
+	var resumed := paused.advance_time(0.0, 1600)
+	_check(
+		resumed.ok and resumed.day_results.size() == 1 and paused_city.age_in_days() == 1,
+		"Turtle consumes a day that became ready during pause",
+	)
+	var turtle_early := paused.advance_time(799.0, 2399)
+	_check(
+		turtle_early.base_ticks == 3
+		and turtle_early.moving_results.size() == 3
+		and turtle_early.day_results.is_empty(),
+		"Turtle waits for four base ticks",
+	)
+	var turtle_due := paused.advance_time(1.0, 2400)
+	_check(
+		turtle_due.base_ticks == 1
+		and turtle_due.moving_results.size() == 1
+		and turtle_due.day_results.size() == 1
+		and paused_city.age_in_days() == 2,
+		"Turtle advances one day every 800 ms",
+	)
+
+	var llama_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
+	_check(llama_city.set_age_in_days(0), "Llama fixture resets the city day")
+	_check(llama_city.set_simulation_speed(3), "Llama fixture stores its speed")
+	var llama := GameSpeed.new(Simulation.new(llama_city, 1, 7, 13))
+	var llama_early := llama.advance_time(399.0, 399)
+	_check(
+		llama_early.base_ticks == 1 and llama_early.day_results.is_empty(),
+		"Llama waits for two base ticks",
+	)
+	var llama_due := llama.advance_time(1.0, 400)
+	_check(
+		llama_due.day_results.size() == 1 and llama_city.age_in_days() == 1,
+		"Llama advances one day every 400 ms",
+	)
+
+	var cheetah_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
+	_check(cheetah_city.set_age_in_days(0), "Cheetah fixture resets the city day")
+	_check(cheetah_city.set_simulation_speed(4), "Cheetah fixture stores its speed")
+	var cheetah := GameSpeed.new(Simulation.new(cheetah_city, 1, 7, 13))
+	var cheetah_due := cheetah.advance_time(200.0, 200)
+	_check(
+		cheetah_due.moving_results.size() == 1
+		and cheetah_due.day_results.size() == 1
+		and cheetah_city.age_in_days() == 1,
+		"Cheetah advances moving things and one day every 200 ms",
+	)
+
+	var swallow_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
+	_check(swallow_city.set_age_in_days(0), "Swallow fixture resets the city day")
+	_check(swallow_city.set_simulation_speed(5), "Swallow fixture stores its speed")
+	var swallow := GameSpeed.new(Simulation.new(swallow_city, 1, 7, 13))
+	var swallow_due := swallow.advance_time(200.0, 200)
+	_check(
+		swallow_due.day_results.size() == 1 and swallow_city.age_in_days() == 1,
+		"African Swallow advances on the 200 ms timer",
+	)
+	var swallow_idle := swallow.advance_time(0.0, 200)
+	_check(
+		swallow_idle.moving_results.is_empty()
+		and swallow_idle.day_results.size() == 1
+		and swallow_city.age_in_days() == 2,
+		"African Swallow advances again on the next idle cycle",
+	)
 
 
 func _test_month_start(reference_root: String) -> void:
