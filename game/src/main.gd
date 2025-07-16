@@ -24,6 +24,21 @@ const Highways = preload("res://src/tools/highway_command.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
 const TerrainTools = preload("res://src/tools/terrain_command.gd")
 const Dispatch = preload("res://src/tools/dispatch_command.gd")
+const Simulation = preload("res://src/simulation/simulation_engine.gd")
+const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
+
+const NEWS_NAMES := {
+	39: "Bridge collapse",
+	0x1f8: "Explosion",
+	0x1fe: "Traffic report",
+	0x202: "Monster attack",
+	0x203: "Air disaster",
+	0x205: "Cargo ship report",
+	0x206: "Airplane takeoff",
+	0x207: "Airplane landing",
+	0x20c: "Train report",
+	0x20f: "Sailboat distress",
+}
 
 var city: CityState
 var current_document: Sc2File
@@ -39,6 +54,10 @@ var tool_random := Random.new(1)
 var nuisance_random := GameRandom.new(Time.get_ticks_msec() | 1)
 var dispatch_cycles := PackedInt32Array([0, 0, 0])
 var dispatch_initialized := false
+var simulation_engine: SimulationEngine
+var speed_controller: GameSpeedController
+var simulation_map_dirty := false
+var recent_news := PackedStringArray()
 
 var map_view: CityMapControl
 var city_label: Label
@@ -50,6 +69,8 @@ var save_button: Button
 var group_selector: OptionButton
 var tool_selector: OptionButton
 var undo_button: Button
+var speed_selector: OptionButton
+var news_label: Label
 var sign_dialog: ConfirmationDialog
 var sign_input: LineEdit
 var query_dialog: AcceptDialog
@@ -73,6 +94,44 @@ func _ready() -> void:
 		_load_city(initial_city)
 	else:
 		_show_error("Choose an original SC2 or SCN file to start.")
+
+
+func _process(delta: float) -> void:
+	if speed_controller == null or city == null:
+		return
+	var result := speed_controller.advance_time(
+		delta * 1000.0,
+		Time.get_ticks_msec(),
+		map_view != null and map_view.is_left_drag_active()
+	)
+	if not result.ok:
+		speed_controller.set_speed(GameSpeed.Speed.PAUSED)
+		speed_selector.select(0)
+		_show_error("Simulation stopped: %s" % result.error)
+		return
+
+	var ran_days: bool = not result.day_results.is_empty()
+	var moved_things := _moving_things_are_active(result.moving_results)
+	if ran_days or moved_things:
+		last_edit_command = {}
+		undo_button.disabled = true
+		simulation_map_dirty = true
+	if ran_days:
+		_refresh_details()
+
+	var force_refresh: bool = (
+		not result.effect_events.is_empty()
+		or not result.view_center_requests.is_empty()
+	)
+	if simulation_map_dirty and (result.base_ticks > 0 or force_refresh):
+		_refresh_map()
+		simulation_map_dirty = false
+	for point in result.view_center_requests:
+		map_view.center_on_tile(point)
+	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
+		_show_effect_events(result.effect_events, result.sound_events)
+	if not result.news_items.is_empty():
+		_show_news_items(result.news_items)
 
 
 func _build_interface() -> void:
@@ -144,7 +203,7 @@ func _build_interface() -> void:
 
 	var sidebar := VBoxContainer.new()
 	sidebar.custom_minimum_size = Vector2(295, 0)
-	sidebar.add_theme_constant_override("separation", 12)
+	sidebar.add_theme_constant_override("separation", 8)
 	content.add_child(sidebar)
 
 	city_label = Label.new()
@@ -155,8 +214,26 @@ func _build_interface() -> void:
 
 	details_label = Label.new()
 	details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	details_label.add_theme_font_size_override("font_size", 18)
+	details_label.add_theme_font_size_override("font_size", 16)
 	sidebar.add_child(details_label)
+
+	var simulation_heading := Label.new()
+	simulation_heading.text = "Simulation Speed"
+	simulation_heading.add_theme_font_size_override("font_size", 20)
+	sidebar.add_child(simulation_heading)
+
+	speed_selector = OptionButton.new()
+	for speed_value in range(GameSpeed.Speed.PAUSED, GameSpeed.Speed.AFRICAN_SWALLOW + 1):
+		speed_selector.add_item(GameSpeed.SPEED_NAMES[speed_value], speed_value)
+	speed_selector.disabled = true
+	speed_selector.item_selected.connect(_select_speed)
+	sidebar.add_child(speed_selector)
+
+	news_label = Label.new()
+	news_label.text = "News\nNo new reports."
+	news_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	news_label.add_theme_color_override("font_color", Color("f2d879"))
+	sidebar.add_child(news_label)
 
 	var tool_heading := Label.new()
 	tool_heading.text = "City Tool"
@@ -255,6 +332,22 @@ func _load_city(path: String) -> void:
 
 	city = loaded_city
 	current_document = document
+	var process_seed := tool_random.state
+	var game_seed := nuisance_random.state
+	var lfsr_seed := (
+		simulation_engine.lfsr_random.state
+		if simulation_engine != null
+		else (Time.get_ticks_msec() & 0xffff) | 1
+	)
+	simulation_engine = Simulation.new(city, process_seed, lfsr_seed, game_seed)
+	speed_controller = GameSpeed.new(simulation_engine)
+	tool_random = simulation_engine.random
+	nuisance_random = simulation_engine.game_random
+	speed_selector.select(speed_controller.speed - GameSpeed.Speed.PAUSED)
+	speed_selector.disabled = false
+	simulation_map_dirty = false
+	recent_news.clear()
+	news_label.text = "News\nNo new reports."
 	last_edit_command = {}
 	dispatch_cycles = PackedInt32Array([0, 0, 0])
 	dispatch_initialized = false
@@ -309,6 +402,17 @@ func _set_overlay(mode: String) -> void:
 		_refresh_map()
 
 
+func _select_speed(index: int) -> void:
+	if speed_controller == null:
+		return
+	var selected_speed := speed_selector.get_item_id(index)
+	if not speed_controller.set_speed(selected_speed):
+		_show_error("Cannot change the simulation speed.")
+		return
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "%s speed selected." % speed_controller.speed_name()
+
+
 func _refresh_map() -> void:
 	if city == null or palette == null:
 		return
@@ -325,29 +429,30 @@ func _refresh_map() -> void:
 
 
 func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
-	if overlay_mode != "city" or city == null:
+	if city == null:
 		return
 	var visuals: Array[Dictionary] = []
-	for effect in effect_events:
-		var sprite := large_sprites.find_sprite(int(effect.get("sprite_id", 0)))
-		if sprite == null:
-			continue
-		var rendered := sprite.create_image(palette)
-		if not rendered.ok:
-			continue
-		var effect_image: Image = rendered.image
-		if effect.get("flip", false):
-			effect_image.flip_x()
-		var position := IsometricRenderer.bridge_effect_position(
-			city, effect, effect_image.get_height()
-		)
-		if position.x < 0 or position.y < 0:
-			continue
-		visuals.append({
-			"texture": ImageTexture.create_from_image(effect_image),
-			"position": Vector2(position),
-		})
-	map_view.show_transient_effects(visuals, 0.1)
+	if overlay_mode == "city":
+		for effect in effect_events:
+			var sprite := large_sprites.find_sprite(int(effect.get("sprite_id", 0)))
+			if sprite == null:
+				continue
+			var rendered := sprite.create_image(palette)
+			if not rendered.ok:
+				continue
+			var effect_image: Image = rendered.image
+			if effect.get("flip", false):
+				effect_image.flip_x()
+			var position := IsometricRenderer.bridge_effect_position(
+				city, effect, effect_image.get_height()
+			)
+			if position.x < 0 or position.y < 0:
+				continue
+			visuals.append({
+				"texture": ImageTexture.create_from_image(effect_image),
+				"position": Vector2(position),
+			})
+		map_view.show_transient_effects(visuals, 0.1)
 	if sound_events.is_empty():
 		return
 	var sound_path := reference_root.path_join(
@@ -359,6 +464,35 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 	if stream != null:
 		sound_player.stream = stream
 		sound_player.play()
+
+
+func _show_news_items(news_items: Array) -> void:
+	for item in news_items:
+		var news_type := int(item.get("type", 0))
+		var name: String = NEWS_NAMES.get(news_type, "City report")
+		recent_news.insert(0, "%s (0x%X)" % [name, news_type])
+	while recent_news.size() > 3:
+		recent_news.remove_at(recent_news.size() - 1)
+	if not recent_news.is_empty():
+		news_label.text = "News\n" + "\n".join(recent_news)
+
+
+func _moving_things_are_active(results: Array) -> bool:
+	for result in results:
+		for key in [
+			"active_airplanes",
+			"active_helicopters",
+			"active_ships",
+			"active_monsters",
+			"active_explosions",
+			"active_sailboats",
+			"active_trains",
+			"active_tornadoes",
+			"active_maxis_men",
+		]:
+			if int(result.get(key, 0)) > 0:
+				return true
+	return false
 
 
 func _select_tool_group(index: int) -> void:
@@ -813,7 +947,7 @@ func _refresh_details() -> void:
 		return
 	var demand := city.rci_demand()
 	details_label.text = (
-		"Mayor: %s\nDate: %04d-%02d-%02d\nPopulation: %s\nFunds: $%s\n\nDemand\nR: %+d\nC: %+d\nI: %+d"
+		"Mayor: %s\nDate: %04d-%02d-%02d\nPopulation: %s\nFunds: $%s\nDemand: R %+d  C %+d  I %+d"
 		% [
 			city.mayor_name() if not city.mayor_name().is_empty() else "Unknown",
 			city.current_year(),

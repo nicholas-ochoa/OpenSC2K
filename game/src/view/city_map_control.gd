@@ -55,6 +55,10 @@ func zoom_percent() -> int:
 	return roundi(zoom_factor * 100.0)
 
 
+func is_left_drag_active() -> bool:
+	return selection_start.x >= 0
+
+
 func center_on_tile(point: Vector2i) -> bool:
 	if city == null or city.index_of(point.x, point.y) < 0:
 		return false

@@ -398,6 +398,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(map_control.center_on_tile(center_tile), "Center tool accepts a city tile")
 	_check(map_control.source_center == expected_center, "Center tool uses the altitude-aware tile center")
 	_check(not map_control.center_on_tile(Vector2i(-1, 0)), "Center tool rejects an invalid tile")
+	_check(not map_control.is_left_drag_active(), "Map control starts without an active left drag")
+	map_control.selection_start = center_tile
+	_check(map_control.is_left_drag_active(), "Map control reports an active left drag")
 	map_control.free()
 	_check(starter.set_building_id(64, 64, 0x2e), "Train drawing fixture adds a rail tile")
 	var straight_train := IsometricRenderer.train_sprite(starter, 64, 64, {
