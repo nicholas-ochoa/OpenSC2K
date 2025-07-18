@@ -126,12 +126,15 @@ func _run_day(result: Dictionary) -> String:
 	for action in day.get("pending", PackedStringArray()):
 		if not result.pending_actions.has(action):
 			result.pending_actions.append(action)
-	var growth: Dictionary = day.get("phase_results", {}).get("growth", {})
-	if not growth.is_empty():
-		result.effect_events.append_array(growth.get("bridge_effects", []))
-		result.news_items.append_array(growth.get("news_items", []))
-		result.sound_events.append_array(growth.get("sound_events", []))
-		result.view_center_requests.append_array(growth.get("view_center_requests", []))
+	var phase_results: Dictionary = day.get("phase_results", {})
+	for phase_name in phase_results:
+		var phase_result: Dictionary = phase_results[phase_name]
+		result.effect_events.append_array(phase_result.get("effect_events", []))
+		if phase_name == "growth":
+			result.effect_events.append_array(phase_result.get("bridge_effects", []))
+		result.news_items.append_array(phase_result.get("news_items", []))
+		result.sound_events.append_array(phase_result.get("sound_events", []))
+		result.view_center_requests.append_array(phase_result.get("view_center_requests", []))
 	return ""
 
 

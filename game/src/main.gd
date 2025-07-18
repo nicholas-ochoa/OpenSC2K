@@ -29,6 +29,7 @@ const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
 
 const NEWS_NAMES := {
 	39: "Bridge collapse",
+	0x29: "New ordinance",
 	0x1f8: "Explosion",
 	0x1fe: "Traffic report",
 	0x202: "Monster attack",

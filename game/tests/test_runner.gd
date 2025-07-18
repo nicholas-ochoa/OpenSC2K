@@ -677,6 +677,14 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"Simulation engine applies demand, demographics, and graphs on day 21",
 	)
 	_check(latest.pending.is_empty(), "Day 21 has no unimplemented scheduled phase")
+	while latest.day < 25:
+		latest = engine.advance_day()
+	_check(
+		latest.applied == PackedStringArray(["month_start", "budget"]),
+		"Simulation engine applies month start and budget on day 25",
+	)
+	_check(latest.pending.is_empty(), "Normal month-start budget work is complete")
+	_check(latest.phase_results.has("budget"), "Simulation engine exposes the budget result")
 
 
 func _test_game_speed_controller(reference_root: String) -> void:
@@ -773,6 +781,23 @@ func _test_game_speed_controller(reference_root: String) -> void:
 		and swallow_idle.day_results.size() == 1
 		and swallow_city.age_in_days() == 2,
 		"African Swallow advances again on the next idle cycle",
+	)
+
+	var budget_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
+	_check(budget_city.set_age_in_days(24), "Controller budget fixture selects day 24")
+	_check(budget_city.set_simulation_speed(4), "Controller budget fixture stores Cheetah speed")
+	_check(budget_city.set_funds(100000), "Controller budget fixture sets ordinance funds")
+	_check(budget_city.document.set_misc_u32(0x0fa0, 0), "Controller budget fixture clears ordinances")
+	_check(budget_city.document.set_misc_u32(0x1000, 0), "Controller budget fixture enables random events")
+	var budget_controller := GameSpeed.new(Simulation.new(budget_city, 3, 7, 13))
+	var budget_tick := budget_controller.advance_time(200.0, 200)
+	_check(
+		budget_tick.ok
+		and budget_tick.day_results.size() == 1
+		and budget_tick.news_items.size() == 1
+		and budget_tick.news_items[0].type == 0x29
+		and budget_tick.news_items[0].argument == 14,
+		"Controller forwards monthly ordinance news",
 	)
 
 

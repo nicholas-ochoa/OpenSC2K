@@ -1,5 +1,3 @@
-# todo: monthly budget is only a schedule entry for now
-
 class_name SimulationEngine
 extends RefCounted
 
@@ -78,6 +76,15 @@ func advance_day() -> Dictionary:
 					return {"ok": false, "error": month_start.error}
 				phase_results[action] = month_start
 				applied.append(action)
+			"budget":
+				var budget := BudgetPhase.run(city, random)
+				if not budget.ok:
+					return {"ok": false, "error": budget.error}
+				phase_results[action] = budget
+				if budget.complete:
+					applied.append(action)
+				else:
+					pending.append(action)
 			"power":
 				var power := PowerPhase.run(city, random)
 				if not power.ok:
