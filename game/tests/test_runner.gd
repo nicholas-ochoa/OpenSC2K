@@ -20,6 +20,7 @@ const Graphs = preload("res://src/simulation/graph_history.gd")
 const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
+const Budget = preload("res://src/simulation/budget_phase.gd")
 const Transport = preload("res://src/simulation/transport_trip.gd")
 const Growth = preload("res://src/simulation/growth_phase.gd")
 const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
@@ -145,6 +146,7 @@ func _init() -> void:
 	_test_rci_demand(reference_root)
 	_test_education_health(reference_root)
 	_test_month_start(reference_root)
+	_test_budget_phase(reference_root)
 	_test_transport_trip(reference_root)
 	_test_growth_phase(reference_root)
 	_test_moving_thing_phase(reference_root)
@@ -794,6 +796,114 @@ func _test_month_start(reference_root: String) -> void:
 		_check(document.misc_i32(0x05f0 + index * 4) == 0, "Month-start clears zone population %d" % index)
 	_check(document.misc_i32(0x05ec) == 0x12345678, "Month-start preserves preceding MISC data")
 	_check(document.misc_i32(0x0610) == 0x23456789, "Month-start preserves following MISC data")
+
+
+func _test_budget_phase(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	_check(city.set_age_in_days(0), "Budget fixture selects January")
+	var cleared_counts := true
+	for tile_id in 256:
+		cleared_counts = (
+			document.set_misc_i32(0x01f0 + tile_id * 4, 0)
+			and cleared_counts
+		)
+	_check(cleared_counts, "Budget fixture clears all tile counts")
+	_check(document.set_misc_u32(0x0fe8, 4), "Budget fixture sets the subway count")
+	for budget_id in 16:
+		_check(
+			document.set_misc_i32(0x077c + budget_id * 0x6c, 0)
+			and document.set_misc_i32(0x077c + budget_id * 0x6c + 4, 0)
+			and document.set_misc_i32(0x077c + budget_id * 0x6c + 8, 0),
+			"Budget fixture clears record %d" % budget_id,
+		)
+	_check(document.set_misc_i32(0x077c, 900), "Budget fixture sets residential population")
+	_check(document.set_misc_i32(0x0780, 7), "Budget fixture sets residential tax")
+	_check(document.set_misc_i32(0x0bb4, 123), "Budget fixture sets prior road costs")
+	_check(document.set_misc_i32(0x0bb8, 80), "Budget fixture sets road funding")
+	_check(document.set_misc_u32(0x0fa0, (1 << 0) | (1 << 4)), "Budget fixture enables ordinances")
+	for entry in [
+		[0x1d, 2], [0x3f, 3], [0x45, 5], [0x51, 7], [0x61, 11], [0x6a, 13],
+		[0x6c, 17], [0xd1, 18], [0xd2, 27], [0xd3, 36], [0xd6, 45], [0xd9, 32],
+		[0xe9, 19], [0xec, 8], [0xed, 6],
+	]:
+		_check(
+			document.set_misc_i32(0x01f0 + int(entry[0]) * 4, int(entry[1])),
+			"Budget fixture sets tile count 0x%02X" % int(entry[0]),
+		)
+	var result := Budget.run(city, SequenceRandom.new([1]))
+	_check(result.ok, "Budget phase completes: %s" % result.error)
+	_check(document.misc_i32(0x0788) == 900, "Budget stores January residential count")
+	_check(document.misc_i32(0x078c) == 7, "Budget stores January residential tax")
+	_check(document.misc_i32(0x0784) == 6300, "Budget accumulates funded residential tax")
+	_check(document.misc_i32(0x0bc0) == 123, "Budget stores prior January road costs")
+	_check(document.misc_i32(0x0bc4) == 80, "Budget stores prior January road funding")
+	_check(document.misc_i32(0x0bbc) == 9840, "Budget accumulates funded road costs")
+	_check(result.current_costs[3] == 600, "Budget calculates active ordinance cost")
+	_check(result.current_costs[4] == document.misc_i32(0x18), "Budget copies the bond count")
+	_check(
+		result.current_costs.slice(5, 10) == PackedInt32Array([3, 4, 2, 5, 2]),
+		"Budget rebuilds service counts with the recovered footprint divisors",
+	)
+	_check(
+		result.current_costs.slice(10, 16) == PackedInt32Array([510, 24, 20, 28, 23, 3]),
+		"Budget rebuilds road, highway, bridge, rail, subway, and tunnel costs",
+	)
+	_check(document.misc_u32(0x0e3c) == 0, "January does not set the year-end flag")
+
+	var december_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var december_city := CityModel.from_document(december_document)
+	_check(december_city.set_age_in_days(275), "December budget fixture selects month 12")
+	_check(december_document.set_misc_u32(0x0e3c, 0), "December budget fixture clears year end")
+	var december := Budget.run(december_city, SequenceRandom.new([1]))
+	_check(december.ok and december.month == 11, "December budget phase completes")
+	_check(december_document.misc_u32(0x0e3c) == 1, "December sets the year-end flag")
+
+	var annual_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var annual_city := CityModel.from_document(annual_document)
+	_check(annual_city.set_age_in_days(300), "Annual budget fixture selects next January")
+	_check(annual_city.set_funds(0), "Annual budget fixture clears funds")
+	_check(annual_document.set_misc_u32(0x0e3c, 1), "Annual budget fixture sets year end")
+	_check(annual_document.set_misc_u32(0x0ff0, 1), "Annual budget fixture enables auto budget")
+	for budget_id in 16:
+		_check(
+			annual_document.set_misc_i32(0x077c + budget_id * 0x6c, 0)
+			and annual_document.set_misc_i32(0x077c + budget_id * 0x6c + 4, 0)
+			and annual_document.set_misc_i32(0x077c + budget_id * 0x6c + 8, 0),
+			"Annual budget fixture clears record %d" % budget_id,
+		)
+	for entry in [[0, 900], [3, 900], [4, 1200], [5, 12], [10, 12000]]:
+		_check(
+			annual_document.set_misc_i32(0x077c + int(entry[0]) * 0x6c + 8, int(entry[1])),
+			"Annual budget fixture sets year-to-date record %d" % int(entry[0]),
+		)
+	var annual := Budget.run(annual_city, SequenceRandom.new([1]))
+	_check(annual.ok and annual.settled_year, "Budget settles the prior year in January")
+	_check(annual_city.funds() == -1, "Budget applies the recovered annual divisors")
+	_check(annual_document.misc_u32(0x0e3c) == 0, "Annual settlement clears year end")
+	_check(
+		annual.auto_budget_disabled and annual_document.misc_u32(0x0ff0) == 0,
+		"Negative annual funds disable auto budget",
+	)
+	_check(
+		annual.annual_microsim_update_pending and not annual.complete,
+		"Annual microsimulation work stays visible",
+	)
+
+	var ordinance_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var ordinance_city := CityModel.from_document(ordinance_document)
+	_check(ordinance_city.set_age_in_days(25), "Ordinance fixture selects February")
+	_check(ordinance_city.set_funds(60000), "Ordinance fixture sets sufficient funds")
+	_check(ordinance_document.set_misc_u32(0x0fa0, 0), "Ordinance fixture clears ordinances")
+	_check(ordinance_document.set_misc_u32(0x1000, 0), "Ordinance fixture enables random events")
+	var ordinance := Budget.run(ordinance_city, SequenceRandom.new([0, 0, 5]))
+	_check(ordinance.ok and ordinance.news_items.size() == 1, "Budget emits a random ordinance event")
+	_check(
+		ordinance_document.misc_u32(0x0fa0) == 1 << 5
+		and ordinance.news_items[0].type == 0x29
+		and ordinance.news_items[0].argument == 5,
+		"Budget stores and reports the selected ordinance",
+	)
 
 
 func _test_transport_trip(reference_root: String) -> void:
