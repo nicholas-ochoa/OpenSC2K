@@ -26,6 +26,7 @@ const TerrainTools = preload("res://src/tools/terrain_command.gd")
 const Dispatch = preload("res://src/tools/dispatch_command.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
+const Budget = preload("res://src/simulation/budget_phase.gd")
 
 const NEWS_NAMES := {
 	39: "Bridge collapse",
@@ -40,6 +41,25 @@ const NEWS_NAMES := {
 	0x20c: "Train report",
 	0x20f: "Sailboat distress",
 }
+
+const BUDGET_NAMES := [
+	"Residential Tax",
+	"Commercial Tax",
+	"Industrial Tax",
+	"Ordinances",
+	"Bonds",
+	"Police",
+	"Fire",
+	"Health",
+	"School",
+	"College",
+	"Road",
+	"Highway",
+	"Bridge",
+	"Rail",
+	"Subway",
+	"Tunnel",
+]
 
 var city: CityState
 var current_document: Sc2File
@@ -59,6 +79,7 @@ var simulation_engine: SimulationEngine
 var speed_controller: GameSpeedController
 var simulation_map_dirty := false
 var recent_news := PackedStringArray()
+var annual_budget_pending := false
 
 var map_view: CityMapControl
 var city_label: Label
@@ -67,6 +88,7 @@ var status_label: Label
 var file_dialog: FileDialog
 var save_dialog: FileDialog
 var save_button: Button
+var budget_button: Button
 var group_selector: OptionButton
 var tool_selector: OptionButton
 var undo_button: Button
@@ -76,6 +98,10 @@ var sign_dialog: ConfirmationDialog
 var sign_input: LineEdit
 var query_dialog: AcceptDialog
 var sound_player: AudioStreamPlayer
+var budget_dialog: ConfirmationDialog
+var budget_notice_label: Label
+var budget_controls: Array[SpinBox] = []
+var auto_budget_check: CheckBox
 
 
 func _ready() -> void:
@@ -103,7 +129,7 @@ func _process(delta: float) -> void:
 	var result := speed_controller.advance_time(
 		delta * 1000.0,
 		Time.get_ticks_msec(),
-		map_view != null and map_view.is_left_drag_active()
+		(map_view != null and map_view.is_left_drag_active()) or budget_dialog.visible
 	)
 	if not result.ok:
 		speed_controller.set_speed(GameSpeed.Speed.PAUSED)
@@ -111,6 +137,10 @@ func _process(delta: float) -> void:
 		_show_error("Simulation stopped: %s" % result.error)
 		return
 
+	_consume_simulation_result(result)
+
+
+func _consume_simulation_result(result: Dictionary) -> void:
 	var ran_days: bool = not result.day_results.is_empty()
 	var moved_things := _moving_things_are_active(result.moving_results)
 	if ran_days or moved_things:
@@ -133,6 +163,9 @@ func _process(delta: float) -> void:
 		_show_effect_events(result.effect_events, result.sound_events)
 	if not result.news_items.is_empty():
 		_show_news_items(result.news_items)
+	for request in result.interaction_requests:
+		if request.get("type", "") == "annual_budget":
+			_open_budget_dialog(request.get("funding_values", PackedInt32Array()), true)
 
 
 func _build_interface() -> void:
@@ -166,6 +199,12 @@ func _build_interface() -> void:
 	open_button.text = "Open City"
 	open_button.pressed.connect(_open_city_dialog)
 	header.add_child(open_button)
+
+	budget_button = Button.new()
+	budget_button.text = "Budget"
+	budget_button.disabled = true
+	budget_button.pressed.connect(_open_manual_budget)
+	header.add_child(budget_button)
 
 	save_button = Button.new()
 	save_button.text = "Save Copy"
@@ -299,6 +338,58 @@ func _build_interface() -> void:
 	query_dialog.min_size = Vector2i(500, 440)
 	add_child(query_dialog)
 
+	budget_dialog = ConfirmationDialog.new()
+	budget_dialog.title = "Budget"
+	budget_dialog.min_size = Vector2i(680, 720)
+	budget_dialog.get_ok_button().text = "Apply"
+	budget_dialog.confirmed.connect(_commit_budget)
+	budget_dialog.canceled.connect(_cancel_budget)
+	var budget_scroll := ScrollContainer.new()
+	budget_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	budget_scroll.offset_left = 16
+	budget_scroll.offset_top = 48
+	budget_scroll.offset_right = -16
+	budget_scroll.offset_bottom = -58
+	budget_dialog.add_child(budget_scroll)
+	var budget_rows := VBoxContainer.new()
+	budget_rows.custom_minimum_size = Vector2(620, 0)
+	budget_rows.add_theme_constant_override("separation", 6)
+	budget_scroll.add_child(budget_rows)
+	budget_notice_label = Label.new()
+	budget_notice_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	budget_notice_label.custom_minimum_size = Vector2(600, 48)
+	budget_rows.add_child(budget_notice_label)
+	auto_budget_check = CheckBox.new()
+	auto_budget_check.text = "Use the same funding automatically next year"
+	budget_rows.add_child(auto_budget_check)
+	for budget_id in BUDGET_NAMES.size():
+		var row := HBoxContainer.new()
+		var row_label := Label.new()
+		row_label.text = BUDGET_NAMES[budget_id]
+		row_label.custom_minimum_size = Vector2(360, 0)
+		row_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		row.add_child(row_label)
+		var control := SpinBox.new()
+		control.custom_minimum_size = Vector2(180, 32)
+		control.rounded = true
+		control.step = 1
+		control.min_value = -2147483648
+		control.max_value = 2147483647
+		if budget_id <= Budget.BUDGET_INDUSTRIAL:
+			control.min_value = 0
+			control.max_value = 22
+			control.suffix = "% tax"
+		elif budget_id >= Budget.BUDGET_POLICE:
+			control.min_value = 0
+			control.max_value = 100
+			control.suffix = "% funded"
+		else:
+			control.editable = false
+		row.add_child(control)
+		budget_controls.append(control)
+		budget_rows.add_child(row)
+	add_child(budget_dialog)
+
 	group_selector.select(selected_group)
 	_select_tool_group(selected_group)
 
@@ -320,6 +411,73 @@ func _open_save_dialog() -> void:
 	save_dialog.popup_centered_ratio(0.8)
 
 
+func _open_manual_budget() -> void:
+	if city == null:
+		return
+	_open_budget_dialog(Budget.funding_values(city), false)
+
+
+func _open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
+	if city == null or values.size() != Budget.BUDGET_COUNT:
+		_show_error("Cannot open the budget because its saved values are invalid.")
+		return
+	annual_budget_pending = annual
+	budget_dialog.title = "Annual Budget" if annual else "Budget"
+	budget_notice_label.text = (
+		"Set the tax rates and service funding. Apply this budget to finish the annual settlement."
+		if annual
+		else "Set the tax rates and service funding. Ordinance and bond values are calculated by the simulation."
+	)
+	auto_budget_check.button_pressed = city.document.misc_u32(Budget.MISC_AUTO_BUDGET) != 0
+	budget_dialog.get_cancel_button().disabled = annual
+	budget_dialog.exclusive = annual
+	for budget_id in Budget.BUDGET_COUNT:
+		budget_controls[budget_id].value = values[budget_id]
+	budget_dialog.popup_centered()
+
+
+func _budget_values() -> PackedInt32Array:
+	var values := PackedInt32Array()
+	for control in budget_controls:
+		values.append(roundi(control.value))
+	return values
+
+
+func _commit_budget() -> void:
+	if city == null:
+		return
+	var values := _budget_values()
+	var auto_budget := auto_budget_check.button_pressed
+	if annual_budget_pending:
+		var result := speed_controller.resolve_annual_budget(values, auto_budget)
+		if not result.ok:
+			_show_error("Cannot apply the annual budget: %s" % result.error)
+			call_deferred("_restore_annual_budget_dialog")
+			return
+		annual_budget_pending = false
+		_consume_simulation_result(result)
+		_refresh_details()
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Annual budget applied. The simulation can continue."
+		return
+	var stored := Budget.set_funding(city, values, auto_budget)
+	if not stored.ok:
+		_show_error("Cannot save the budget: %s" % stored.error)
+		return
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Budget funding saved."
+
+
+func _cancel_budget() -> void:
+	if annual_budget_pending:
+		_commit_budget()
+
+
+func _restore_annual_budget_dialog() -> void:
+	if annual_budget_pending:
+		budget_dialog.popup_centered()
+
+
 func _load_city(path: String) -> void:
 	var document := Sc2Document.load_path(path)
 	if not document.is_valid():
@@ -331,6 +489,9 @@ func _load_city(path: String) -> void:
 		_show_error(loaded_city.load_error)
 		return
 
+	if budget_dialog.visible:
+		budget_dialog.hide()
+	annual_budget_pending = false
 	city = loaded_city
 	current_document = document
 	var process_seed := tool_random.state
@@ -354,6 +515,7 @@ func _load_city(path: String) -> void:
 	dispatch_initialized = false
 	undo_button.disabled = true
 	save_button.disabled = false
+	budget_button.disabled = false
 	city_label.text = (
 		city.city_name() if not city.city_name().is_empty() else path.get_file().get_basename()
 	)

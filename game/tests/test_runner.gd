@@ -991,6 +991,25 @@ func _test_budget_phase(reference_root: String) -> void:
 		manual_document.find_chunk("MISC").decoded_payload == manual_before,
 		"A pending manual annual budget preserves MISC",
 	)
+	var funding_values := PackedInt32Array([
+		8, 7, 6, 0, 0, 100, 95, 90, 85, 80, 75, 70, 65, 60, 55, 50,
+	])
+	var stored_funding := Budget.set_funding(manual_city, funding_values, true)
+	_check(stored_funding.ok, "Budget stores all funding values")
+	_check(
+		Budget.funding_values(manual_city) == funding_values,
+		"Budget reads back all stored funding values",
+	)
+	_check(manual_document.misc_u32(0x0ff0) == 1, "Budget stores Auto Budget")
+	var stored_misc: PackedByteArray = manual_document.find_chunk("MISC").decoded_payload.duplicate()
+	var short_values := funding_values.duplicate()
+	short_values.resize(15)
+	var invalid_funding := Budget.set_funding(manual_city, short_values, false)
+	_check(not invalid_funding.ok, "Budget rejects an incomplete funding array")
+	_check(
+		manual_document.find_chunk("MISC").decoded_payload == stored_misc,
+		"A rejected funding update preserves MISC",
+	)
 
 	var ordinance_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var ordinance_city := CityModel.from_document(ordinance_document)
