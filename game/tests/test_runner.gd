@@ -21,6 +21,7 @@ const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
+const Milestones = preload("res://src/simulation/milestone_phase.gd")
 const Transport = preload("res://src/simulation/transport_trip.gd")
 const Growth = preload("res://src/simulation/growth_phase.gd")
 const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
@@ -147,6 +148,7 @@ func _init() -> void:
 	_test_education_health(reference_root)
 	_test_month_start(reference_root)
 	_test_budget_phase(reference_root)
+	_test_milestone_phase(reference_root)
 	_test_transport_trip(reference_root)
 	_test_growth_phase(reference_root)
 	_test_moving_thing_phase(reference_root)
@@ -677,6 +679,13 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"Simulation engine applies demand, demographics, and graphs on day 21",
 	)
 	_check(latest.pending.is_empty(), "Day 21 has no unimplemented scheduled phase")
+	latest = engine.advance_day()
+	_check(latest.phase_results.has("milestones"), "Simulation engine runs milestones on day 22")
+	_check(
+		latest.applied == PackedStringArray(["milestones"])
+		and latest.pending == PackedStringArray(["scenario", "bankruptcy"]),
+		"Day 22 keeps only scenario and bankruptcy work pending",
+	)
 	while latest.day < 25:
 		latest = engine.advance_day()
 	_check(
@@ -1025,6 +1034,63 @@ func _test_budget_phase(reference_root: String) -> void:
 		and ordinance.news_items[0].argument == 5,
 		"Budget stores and reports the selected ordinance",
 	)
+
+
+func _test_milestone_phase(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	_check(document.set_misc_u32(0x0020, 0), "Milestone fixture clears progression")
+	_check(document.set_misc_u32(0x0078, 0), "Milestone fixture clears reward grants")
+	_check(document.set_misc_u32(0x1020, 999999), "Milestone fixture sets arcology population")
+	_check(document.set_misc_u32(0x102c, 2000), "Milestone fixture reaches the exact threshold")
+	var exact := Milestones.run(city)
+	_check(exact.ok and not exact.advanced, "A milestone needs population above its threshold")
+	_check(document.misc_u32(0x0020) == 0, "Arcology population does not advance a milestone")
+
+	_check(document.set_misc_u32(0x102c, 2001), "Milestone fixture exceeds the first threshold")
+	var first := Milestones.run(city)
+	_check(first.ok and first.advanced and first.progression == 1, "Milestone advances one level")
+	_check(document.misc_u32(0x0078) == 1, "The first milestone grants the mayor house")
+	_check(
+		first.news_items.size() == 1
+		and first.news_items[0].type == 3
+		and first.news_items[0].argument == 0,
+		"Milestone emits growth news with the old level",
+	)
+
+	_check(document.set_misc_u32(0x102c, 10001), "Milestone fixture exceeds the second threshold")
+	var second := Milestones.run(city)
+	_check(second.progression == 2, "A later milestone still advances only one level")
+	_check(document.misc_u32(0x0078) == 3, "The second milestone preserves and adds reward bits")
+
+	var military_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var military_city := CityModel.from_document(military_document)
+	_check(military_document.set_misc_u32(0x0020, 3), "Military milestone fixture sets progression")
+	_check(military_document.set_misc_u32(0x0078, 7), "Military milestone fixture sets prior rewards")
+	_check(military_document.set_misc_u32(0x102c, 60001), "Military milestone fixture sets population")
+	var military := Milestones.run(military_city)
+	_check(
+		military.ok
+		and military.progression == 4
+		and military.military_proposal_pending
+		and not military.complete,
+		"The fourth milestone keeps the military proposal visible",
+	)
+	_check(military_document.misc_u32(0x0078) == 7, "The military milestone does not grant a reward")
+
+	_check(military_document.set_misc_u32(0x102c, 90001), "Llama milestone fixture sets population")
+	var llama := Milestones.run(military_city)
+	_check(llama.ok and llama.progression == 5 and llama.reward_id == 3, "The fifth milestone grants the llama dome")
+	_check(military_document.misc_u32(0x0078) == 15, "The llama milestone stores reward bit three")
+
+	var final_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var final_city := CityModel.from_document(final_document)
+	_check(final_document.set_misc_u32(0x0020, 9), "Final milestone fixture sets progression")
+	_check(final_document.set_misc_u32(0x102c, 10000001), "Final milestone fixture sets population")
+	var final := Milestones.run(final_city)
+	_check(final.ok and final.progression == 10, "The last recovered threshold advances progression")
+	var exhausted := Milestones.run(final_city)
+	_check(exhausted.ok and not exhausted.advanced, "Progression stops after the recovered threshold table")
 
 
 func _test_transport_trip(reference_root: String) -> void:

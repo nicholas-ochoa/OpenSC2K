@@ -192,6 +192,15 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 					return {"ok": false, "error": graphs.error}
 				phase_results[action] = graphs
 				applied.append(action)
+			"milestones":
+				var milestones := MilestonePhase.run(city)
+				if not milestones.ok:
+					return {"ok": false, "error": milestones.error}
+				phase_results[action] = milestones
+				if milestones.complete:
+					applied.append(action)
+				else:
+					pending.append(action)
 			_:
 				pending.append(action)
 	return {

@@ -29,6 +29,7 @@ const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
 
 const NEWS_NAMES := {
+	3: "City milestone",
 	39: "Bridge collapse",
 	0x29: "New ordinance",
 	0x1f8: "Explosion",
