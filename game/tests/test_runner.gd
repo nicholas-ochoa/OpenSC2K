@@ -515,7 +515,7 @@ func _test_simulation_clock() -> void:
 	_check(phases[19].actions == PackedStringArray(["water"]), "Day 20 schedules water")
 	_check(phases[24].month_day == 0, "The 25th tick starts the next month")
 	_check(
-		phases[24].actions == PackedStringArray(["month_start", "budget"]),
+		phases[24].actions == PackedStringArray(["budget", "month_start"]),
 		"Month start schedules budget work"
 	)
 
@@ -680,11 +680,41 @@ func _test_simulation_engine(reference_root: String) -> void:
 	while latest.day < 25:
 		latest = engine.advance_day()
 	_check(
-		latest.applied == PackedStringArray(["month_start", "budget"]),
-		"Simulation engine applies month start and budget on day 25",
+		latest.applied == PackedStringArray(["budget", "month_start"]),
+		"Simulation engine applies budget before month start on day 25",
 	)
 	_check(latest.pending.is_empty(), "Normal month-start budget work is complete")
 	_check(latest.phase_results.has("budget"), "Simulation engine exposes the budget result")
+
+	var annual_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var annual_city := CityModel.from_document(annual_document)
+	_check(annual_city.set_age_in_days(299), "Annual engine fixture selects the last day")
+	_check(annual_document.set_misc_u32(0x0e3c, 1), "Annual engine fixture sets year end")
+	_check(annual_document.set_misc_u32(0x0ff0, 0), "Annual engine fixture disables auto budget")
+	var annual_engine := Simulation.new(annual_city, 1, 7, 13)
+	var annual_request := annual_engine.advance_day()
+	_check(
+		annual_request.ok
+		and annual_request.day == 300
+		and annual_request.interaction_requests.size() == 1
+		and annual_request.interaction_requests[0].type == "annual_budget",
+		"Simulation engine defers a manual annual budget",
+	)
+	var rejected_advance := annual_engine.advance_day()
+	_check(
+		not rejected_advance.ok and annual_city.age_in_days() == 300,
+		"Simulation engine cannot skip a pending annual budget",
+	)
+	var annual_resolution := annual_engine.resolve_annual_budget(
+		annual_request.interaction_requests[0].funding_values, true
+	)
+	_check(annual_resolution.ok, "Simulation engine resolves the annual budget")
+	_check(
+		annual_resolution.applied == PackedStringArray(["month_start"])
+		and annual_resolution.pending == PackedStringArray(["budget"]),
+		"Annual resolution keeps only annual microsimulation work pending",
+	)
+	_check(annual_document.misc_u32(0x0ff0) == 1, "Annual resolution stores Auto Budget")
 
 
 func _test_game_speed_controller(reference_root: String) -> void:
@@ -800,6 +830,37 @@ func _test_game_speed_controller(reference_root: String) -> void:
 		"Controller forwards monthly ordinance news",
 	)
 
+	var annual_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
+	_check(annual_city.set_age_in_days(299), "Controller annual fixture selects the last day")
+	_check(annual_city.set_simulation_speed(4), "Controller annual fixture stores Cheetah speed")
+	_check(annual_city.document.set_misc_u32(0x0e3c, 1), "Controller annual fixture sets year end")
+	_check(annual_city.document.set_misc_u32(0x0ff0, 0), "Controller annual fixture disables Auto Budget")
+	var annual_controller := GameSpeed.new(Simulation.new(annual_city, 1, 7, 13))
+	var annual_request := annual_controller.advance_time(200.0, 200)
+	_check(
+		annual_request.ok
+		and annual_request.interaction_requests.size() == 1
+		and annual_controller.interaction_blocked,
+		"Controller blocks on the annual budget interaction",
+	)
+	var blocked_tick := annual_controller.advance_time(200.0, 400)
+	_check(
+		blocked_tick.ok
+		and blocked_tick.base_ticks == 1
+		and blocked_tick.day_results.is_empty()
+		and blocked_tick.moving_results.is_empty(),
+		"Annual budget interaction retains timer phase and suspends work",
+	)
+	var annual_resolution := annual_controller.resolve_annual_budget(
+		annual_request.interaction_requests[0].funding_values, false
+	)
+	_check(
+		annual_resolution.ok
+		and not annual_controller.interaction_blocked
+		and annual_resolution.day_results.size() == 1,
+		"Controller resumes after annual budget resolution",
+	)
+
 
 func _test_month_start(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
@@ -913,6 +974,22 @@ func _test_budget_phase(reference_root: String) -> void:
 	_check(
 		annual.annual_microsim_update_pending and not annual.complete,
 		"Annual microsimulation work stays visible",
+	)
+
+	var manual_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var manual_city := CityModel.from_document(manual_document)
+	_check(manual_city.set_age_in_days(300), "Manual budget fixture selects January")
+	_check(manual_document.set_misc_u32(0x0e3c, 1), "Manual budget fixture sets year end")
+	_check(manual_document.set_misc_u32(0x0ff0, 0), "Manual budget fixture disables Auto Budget")
+	var manual_before: PackedByteArray = manual_document.find_chunk("MISC").decoded_payload.duplicate()
+	var manual := Budget.run(manual_city, SequenceRandom.new([1]))
+	_check(
+		manual.ok and manual.requires_annual_budget and not manual.complete,
+		"Budget phase requests manual annual funding",
+	)
+	_check(
+		manual_document.find_chunk("MISC").decoded_payload == manual_before,
+		"A pending manual annual budget preserves MISC",
 	)
 
 	var ordinance_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))

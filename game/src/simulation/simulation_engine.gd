@@ -13,6 +13,8 @@ var water_usage_percent := -1
 var commerce_connections := 0
 var industry_connections := 0
 var traffic_news_deadline_msec := 0
+var pending_interaction := ""
+var pending_day_schedule: Dictionary = {}
 
 
 func _init(
@@ -61,9 +63,46 @@ func advance_moving_things(current_time_msec := -1) -> Dictionary:
 func advance_day() -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+	if not pending_interaction.is_empty():
+		return {"ok": false, "error": "%s interaction is pending" % pending_interaction}
 	var schedule := clock.advance_day()
 	if not city.set_age_in_days(clock.city_days):
 		return {"ok": false, "error": "cannot store the new simulation day"}
+	if BudgetPhase.requires_annual_budget(city):
+		pending_interaction = "annual_budget"
+		pending_day_schedule = schedule
+		return {
+			"ok": true,
+			"day": clock.city_days,
+			"schedule": schedule,
+			"applied": PackedStringArray(),
+			"pending": schedule.actions.duplicate(),
+			"phase_results": {},
+			"interaction_requests": [{
+				"type": "annual_budget",
+				"funding_values": BudgetPhase.funding_values(city),
+				"auto_budget": false,
+			}],
+			"complete": false,
+			"error": "",
+		}
+	return _run_day_schedule(schedule, false)
+
+
+func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> Dictionary:
+	if pending_interaction != "annual_budget" or pending_day_schedule.is_empty():
+		return {"ok": false, "error": "no annual budget interaction is pending"}
+	var stored := BudgetPhase.set_funding(city, funding_values, auto_budget)
+	if not stored.ok:
+		return stored
+	var result := _run_day_schedule(pending_day_schedule, true)
+	if result.get("ok", false):
+		pending_interaction = ""
+		pending_day_schedule = {}
+	return result
+
+
+func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Dictionary:
 
 	var applied := PackedStringArray()
 	var pending := PackedStringArray()
@@ -77,7 +116,7 @@ func advance_day() -> Dictionary:
 				phase_results[action] = month_start
 				applied.append(action)
 			"budget":
-				var budget := BudgetPhase.run(city, random)
+				var budget := BudgetPhase.run(city, random, annual_budget_approved)
 				if not budget.ok:
 					return {"ok": false, "error": budget.error}
 				phase_results[action] = budget
@@ -162,6 +201,7 @@ func advance_day() -> Dictionary:
 		"applied": applied,
 		"pending": pending,
 		"phase_results": phase_results,
+		"interaction_requests": [],
 		"complete": pending.is_empty(),
 		"error": "",
 	}

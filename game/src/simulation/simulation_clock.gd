@@ -40,7 +40,7 @@ static func state_for_day(days: int) -> Dictionary:
 
 	match month_day:
 		0:
-			actions.append_array(["month_start", "budget"])
+			actions.append_array(["budget", "month_start"])
 		1:
 			actions.append("power")
 		2:

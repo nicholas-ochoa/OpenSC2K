@@ -23,6 +23,7 @@ var speed := Speed.PAUSED
 var accumulator_msec := 0.0
 var subtick_counter := 0
 var simulation_ready := false
+var interaction_blocked := false
 
 
 func _init(initial_engine: SimulationEngine) -> void:
@@ -70,7 +71,7 @@ func advance_time(
 		simulation_ready = simulation_ready or _is_day_due()
 		var pulse_time := current_time_msec - int(accumulator_msec)
 
-		if speed > Speed.PAUSED and not simulation_suspended:
+		if speed > Speed.PAUSED and not simulation_suspended and not interaction_blocked:
 			var moving := engine.advance_moving_things(pulse_time)
 			if not moving.get("ok", false):
 				result.error = moving.get("error", "moving-thing update failed")
@@ -78,7 +79,12 @@ func advance_time(
 			result.moving_results.append(moving)
 			_append_runtime_events(result, moving)
 
-		if speed > Speed.PAUSED and simulation_ready and not simulation_suspended:
+		if (
+			speed > Speed.PAUSED
+			and simulation_ready
+			and not simulation_suspended
+			and not interaction_blocked
+		):
 			var day_error := _run_day(result)
 			if not day_error.is_empty():
 				result.error = day_error
@@ -93,6 +99,7 @@ func advance_time(
 		and simulation_ready
 		and not ran_swallow_day
 		and not simulation_suspended
+		and not interaction_blocked
 	):
 		var day_error := _run_day(result)
 		if not day_error.is_empty():
@@ -101,6 +108,23 @@ func advance_time(
 		if speed != Speed.AFRICAN_SWALLOW:
 			simulation_ready = false
 
+	result.ok = true
+	return result
+
+
+func resolve_annual_budget(
+	funding_values: PackedInt32Array, auto_budget: bool
+) -> Dictionary:
+	var result := _empty_result()
+	if engine == null or not interaction_blocked:
+		result.error = "no annual budget interaction is pending"
+		return result
+	var day := engine.resolve_annual_budget(funding_values, auto_budget)
+	if not day.get("ok", false):
+		result.error = day.get("error", "annual budget resolution failed")
+		return result
+	interaction_blocked = false
+	_consume_day_result(result, day)
 	result.ok = true
 	return result
 
@@ -122,7 +146,16 @@ func _run_day(result: Dictionary) -> String:
 	var day := engine.advance_day()
 	if not day.get("ok", false):
 		return day.get("error", "simulation day failed")
+	_consume_day_result(result, day)
+	return ""
+
+
+func _consume_day_result(result: Dictionary, day: Dictionary) -> void:
 	result.day_results.append(day)
+	var requests: Array = day.get("interaction_requests", [])
+	result.interaction_requests.append_array(requests)
+	if not requests.is_empty():
+		interaction_blocked = true
 	for action in day.get("pending", PackedStringArray()):
 		if not result.pending_actions.has(action):
 			result.pending_actions.append(action)
@@ -135,7 +168,6 @@ func _run_day(result: Dictionary) -> String:
 		result.news_items.append_array(phase_result.get("news_items", []))
 		result.sound_events.append_array(phase_result.get("sound_events", []))
 		result.view_center_requests.append_array(phase_result.get("view_center_requests", []))
-	return ""
 
 
 func _append_runtime_events(result: Dictionary, phase_result: Dictionary) -> void:
@@ -156,5 +188,6 @@ func _empty_result() -> Dictionary:
 		"effect_events": [],
 		"sound_events": [],
 		"view_center_requests": [],
+		"interaction_requests": [],
 		"pending_actions": PackedStringArray(),
 	}

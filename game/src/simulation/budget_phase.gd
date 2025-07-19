@@ -53,7 +53,7 @@ const SERVICE_TILE_IDS := {
 const NEWS_ORDINANCE := 0x29
 
 
-static func run(city: CityState, random) -> Dictionary:
+static func run(city: CityState, random, annual_budget_approved := false) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -67,6 +67,20 @@ static func run(city: CityState, random) -> Dictionary:
 	var funds := funds_before
 	var settled_year := false
 	var auto_budget_disabled := false
+	if (
+		_read_u32(misc, MISC_YEAR_END) != 0
+		and month == 0
+		and _read_u32(misc, MISC_AUTO_BUDGET) == 0
+		and not annual_budget_approved
+	):
+		return {
+			"ok": true,
+			"error": "",
+			"month": month,
+			"requires_annual_budget": true,
+			"complete": false,
+			"news_items": [],
+		}
 
 	if _read_u32(misc, MISC_YEAR_END) != 0 and month == 0:
 		settled_year = true
@@ -180,11 +194,50 @@ static func run(city: CityState, random) -> Dictionary:
 		"funds_before": funds_before,
 		"funds_after": _read_i32(misc, MISC_FUNDS),
 		"auto_budget_disabled": auto_budget_disabled,
+		"requires_annual_budget": false,
 		"current_costs": current_costs,
 		"news_items": news_items,
 		"annual_microsim_update_pending": settled_year,
 		"complete": not settled_year,
 	}
+
+
+static func requires_annual_budget(city: CityState) -> bool:
+	if city == null or not city.is_valid():
+		return false
+	return (
+		city.age_in_days() % 300 == 0
+		and city.document.misc_u32(MISC_YEAR_END) != 0
+		and city.document.misc_u32(MISC_AUTO_BUDGET) == 0
+	)
+
+
+static func funding_values(city: CityState) -> PackedInt32Array:
+	var values := PackedInt32Array()
+	if city == null or not city.is_valid():
+		return values
+	for budget_id in BUDGET_COUNT:
+		values.append(city.document.misc_i32(_budget_offset(budget_id) + BUDGET_FUNDING))
+	return values
+
+
+static func set_funding(
+	city: CityState, values: PackedInt32Array, auto_budget: bool
+) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	if values.size() != BUDGET_COUNT:
+		return {"ok": false, "error": "sixteen budget funding values are required"}
+	var misc_chunk := city.document.find_chunk("MISC")
+	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
+		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+	for budget_id in BUDGET_COUNT:
+		_write_i32(misc, _budget_offset(budget_id) + BUDGET_FUNDING, values[budget_id])
+	_write_u32(misc, MISC_AUTO_BUDGET, 1 if auto_budget else 0)
+	if not misc_chunk.set_decoded_payload(misc):
+		return {"ok": false, "error": "cannot store budget funding values"}
+	return {"ok": true, "error": ""}
 
 
 static func _ordinance_cost(misc: PackedByteArray) -> int:
