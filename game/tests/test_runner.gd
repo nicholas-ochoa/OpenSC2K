@@ -153,6 +153,7 @@ func _init() -> void:
 	_test_budget_phase(reference_root)
 	_test_milestone_phase(reference_root)
 	_test_annual_microsim_phase(reference_root)
+	_test_annual_service_microsim_phase(reference_root)
 	_test_transport_trip(reference_root)
 	_test_growth_phase(reference_root)
 	_test_moving_thing_phase(reference_root)
@@ -1280,6 +1281,94 @@ func _test_annual_microsim_phase(reference_root: String) -> void:
 		document.find_chunk("XMIC").decoded_payload == before_invalid,
 		"A rejected annual transit update preserves XMIC",
 	)
+
+
+func _test_annual_service_microsim_phase(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+	var service_tiles := [0xd1, 0xd2, 0xd3, 0xd6, 0xd7, 0xd8, 0xd9]
+	for index in service_tiles.size():
+		microsims[(index + 1) * 8] = service_tiles[index]
+	microsims[1 * 8 + 1] = 10
+	microsims[4 * 8 + 1] = 8
+	microsims[6 * 8 + 2] = 0x1f
+	microsims[6 * 8 + 3] = 0x40
+	microsims[7 * 8 + 1] = 7
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "Annual service fixture installs XMIC records")
+	_check(document.set_misc_u32(0x002c, 900), "Annual service fixture sets crime")
+	_check(document.set_misc_u32(0x007c + 1 * 12, 1000), "Annual service fixture sets first student cohort")
+	_check(document.set_misc_u32(0x007c + 2 * 12, 2000), "Annual service fixture sets second student cohort")
+	_check(document.set_misc_u32(0x007c + 3 * 12, 4000), "Annual service fixture sets college cohort")
+	_check(document.set_misc_u32(0x01f0 + 0xd1 * 4, 18), "Annual service fixture counts hospital tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xd2 * 4, 9), "Annual service fixture counts police tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xd6 * 4, 18), "Annual service fixture counts school tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xd7 * 4, 16), "Annual service fixture counts stadium tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xd8 * 4, 16), "Annual service fixture counts prison tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xd9 * 4, 16), "Annual service fixture counts college tiles")
+	_check(document.set_misc_u32(0x1020, 10000), "Annual service fixture sets arcology population")
+	_check(document.set_misc_u32(0x102c, 90000), "Annual service fixture sets normal population")
+	_check(document.set_misc_u32(0x1038, 400), "Annual service fixture sets old arrests")
+	_check(document.set_misc_u32(0x103c, 1), "Annual service fixture sets prison bonus")
+	_check(document.set_misc_u32(0x077c + 5 * 0x006c + 4, 80), "Annual service fixture sets police funding")
+	_check(document.set_misc_u32(0x077c + 6 * 0x006c + 4, 60), "Annual service fixture sets fire funding")
+	_check(document.set_misc_u32(0x077c + 7 * 0x006c + 4, 70), "Annual service fixture sets health funding")
+	_check(document.set_misc_u32(0x077c + 8 * 0x006c + 4, 80), "Annual service fixture sets school funding")
+	_check(document.set_misc_u32(0x077c + 9 * 0x006c + 4, 90), "Annual service fixture sets college funding")
+	var random := SequenceRandom.new([5, 7, 3, 4, 9, 3, 7, 5, 10, 3, 11, 6])
+	var result := AnnualMicrosims.run(city, 0, 0, 0, random)
+	_check(result.ok, "Annual service statistics complete: %s" % result.error)
+	_check(
+		result.updated_hospital_records == 1
+		and result.updated_police_records == 1
+		and result.updated_fire_records == 1
+		and result.updated_school_records == 1
+		and result.updated_stadium_records == 1
+		and result.updated_prison_records == 1
+		and result.updated_college_records == 1,
+		"Annual service statistics report each updated record",
+	)
+	var hospital := city.microsim(1)
+	_check(
+		hospital.stat_0 == 0
+		and hospital.stat_1 == 1007
+		and hospital.stat_2 == 69
+		and hospital.stat_3 == 35,
+		"Annual hospital statistics use population, health funding, and three random values",
+	)
+	var police := city.microsim(2)
+	_check(
+		police.stat_0 == 80 and police.stat_1 == 160 and police.stat_2 == 100 and police.stat_3 == 29,
+		"Annual police statistics use crime, funding, and the old prison bonus",
+	)
+	var fire := city.microsim(3)
+	_check(
+		fire.stat_0 == 60 and fire.stat_1 == 30 and fire.stat_2 == 2 and fire.stat_3 == 11,
+		"Annual fire statistics use funding and the process random value",
+	)
+	var school := city.microsim(4)
+	_check(
+		school.stat_0 == 7 and school.stat_1 == 1507 and school.stat_2 == 49 and school.stat_3 == 20,
+		"Annual school statistics use student cohorts and school funding",
+	)
+	var stadium := city.microsim(5)
+	_check(
+		stadium.stat_0 == 12 and stadium.stat_1 == 6260,
+		"Annual stadium statistics use adjusted population and two random values",
+	)
+	var prison := city.microsim(6)
+	_check(
+		prison.stat_0 == 0 and prison.stat_1 == 5000 and prison.stat_2 == 240 and prison.stat_3 == 64,
+		"Annual prison statistics use old arrests and police funding",
+	)
+	var college := city.microsim(7)
+	_check(
+		college.stat_0 == 6 and college.stat_1 == 3333 and college.stat_2 == 166 and college.stat_3 == 90,
+		"Annual college statistics use its cohort and college funding",
+	)
+	_check(document.misc_u32(0x1038) == 29, "Annual police statistics replace old arrests")
+	_check(document.misc_u32(0x103c) == 1, "Annual prison statistics rebuild the prison bonus")
+	_check(random.position == 12, "Annual services consume process random values in record order")
 
 
 func _test_transport_trip(reference_root: String) -> void:
