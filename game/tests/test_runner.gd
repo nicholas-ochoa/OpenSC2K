@@ -1199,17 +1199,47 @@ func _test_annual_microsim_phase(reference_root: String) -> void:
 	microsims[3 * 8] = 0xe9
 	microsims[3 * 8 + 4] = 0x56
 	microsims[3 * 8 + 5] = 0x78
-	_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "Annual XMIC fixture installs transit records")
+	microsims[4 * 8] = 0xc6
+	microsims[5 * 8] = 0xc8
+	microsims[6 * 8] = 0xd0
+	microsims[7 * 8] = 0xd4
+	microsims[8 * 8] = 0xd5
+	microsims[8 * 8 + 4] = 0x00
+	microsims[8 * 8 + 5] = 0x64
+	microsims[9 * 8] = 0xf5
+	microsims[9 * 8 + 4] = 0x03
+	microsims[9 * 8 + 5] = 0xe8
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "Annual XMIC fixture installs facility records")
 	_check(document.set_misc_u32(0x01f0 + 0xec * 4, 12), "Annual XMIC fixture counts bus tiles")
 	_check(document.set_misc_u32(0x01f0 + 0xed * 4, 20), "Annual XMIC fixture counts rail tiles")
 	_check(document.set_misc_u32(0x01f0 + 0xe9 * 4, 9), "Annual XMIC fixture counts subway tiles")
-	var result := AnnualMicrosims.run_transit(city, 70000, 123, 456)
-	_check(result.ok, "Annual transit statistics complete: %s" % result.error)
+	_check(document.set_misc_u32(0x01f0 + 0xc6 * 4, 3), "Annual XMIC fixture counts first hydro tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xc7 * 4, 4), "Annual XMIC fixture counts second hydro tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xc8 * 4, 5), "Annual XMIC fixture counts wind tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xd4 * 4, 4), "Annual XMIC fixture counts museum tiles")
+	_check(document.set_misc_u32(0x01f0 + 0x0d * 4, 18), "Annual XMIC fixture counts small park tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xd5 * 4, 9), "Annual XMIC fixture counts big park tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xf5 * 4, 2), "Annual XMIC fixture counts library tiles")
+	_check(document.set_misc_u32(0x1020, 10000), "Annual XMIC fixture sets arcology population")
+	_check(document.set_misc_u32(0x102c, 90000), "Annual XMIC fixture sets normal population")
+	_check(document.set_misc_u32(0x077c + 8 * 0x006c + 4, 75), "Annual XMIC fixture sets school funding")
+	_check(document.set_misc_u32(0x077c + 9 * 0x006c + 4, 80), "Annual XMIC fixture sets college funding")
+	var result := AnnualMicrosims.run(city, 70000, 123, 456)
+	_check(result.ok, "Annual microsimulation statistics complete: %s" % result.error)
 	_check(
 		result.updated_bus_records == 1
 		and result.updated_rail_records == 1
 		and result.updated_subway_records == 1,
 		"Annual transit statistics report all updated records",
+	)
+	_check(
+		result.updated_hydro_records == 1
+		and result.updated_wind_records == 1
+		and result.updated_city_hall_records == 1
+		and result.updated_museum_records == 1
+		and result.updated_park_records == 1
+		and result.updated_library_records == 1,
+		"Annual facility statistics report all deterministic records",
 	)
 	var bus := city.microsim(1)
 	_check(
@@ -1226,9 +1256,26 @@ func _test_annual_microsim_phase(reference_root: String) -> void:
 		subway.stat_1 == 9 and subway.stat_2 == 0x5678 and subway.stat_3 == 456,
 		"Annual subway statistics preserve statistic two",
 	)
+	var hydro := city.microsim(4)
+	_check(hydro.stat_1 == 7 and hydro.stat_2 == 140, "Annual hydro statistics store capacity")
+	var wind := city.microsim(5)
+	_check(wind.stat_1 == 5 and wind.stat_2 == 20, "Annual wind statistics store capacity")
+	_check(city.microsim(6).stat_1 == 111, "Annual city hall statistics apply the population cap")
+	var museum := city.microsim(7)
+	_check(museum.stat_1 == 1280 and museum.stat_2 == 32, "Annual museum statistics use college funding")
+	var park := city.microsim(8)
+	_check(
+		park.stat_1 == 15000 and park.stat_2 == 27 and park.stat_3 == 3,
+		"Annual big park statistics store capped visitors and park counts",
+	)
+	var library := city.microsim(9)
+	_check(
+		library.stat_0 == 0 and library.stat_1 == 600 and library.stat_2 == 1050,
+		"Annual library statistics use school funding and population",
+	)
 	var before_invalid: PackedByteArray = document.find_chunk("XMIC").decoded_payload.duplicate()
-	var invalid := AnnualMicrosims.run_transit(city, -1, 0, 0)
-	_check(not invalid.ok, "Annual transit statistics reject a negative passenger count")
+	var invalid := AnnualMicrosims.run(city, -1, 0, 0)
+	_check(not invalid.ok, "Annual microsimulation statistics reject a negative passenger count")
 	_check(
 		document.find_chunk("XMIC").decoded_payload == before_invalid,
 		"A rejected annual transit update preserves XMIC",
