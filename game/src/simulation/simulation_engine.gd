@@ -17,6 +17,9 @@ var pending_interaction := ""
 var pending_day_schedule: Dictionary = {}
 var scenario: ScenarioState
 var terminal_state := false
+var bus_passengers := 0
+var rail_passengers := 0
+var subway_passengers := 0
 
 
 func _init(
@@ -130,6 +133,16 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				if not budget.ok:
 					return {"ok": false, "error": budget.error}
 				phase_results[action] = budget
+				if budget.settled_year:
+					var annual_microsim := MicrosimAnnualPhase.run_transit(
+						city, bus_passengers, rail_passengers, subway_passengers
+					)
+					if not annual_microsim.ok:
+						return {"ok": false, "error": annual_microsim.error}
+					phase_results["annual_microsim"] = annual_microsim
+					bus_passengers = 0
+					rail_passengers = 0
+					subway_passengers = 0
 				if budget.complete:
 					applied.append(action)
 				else:
@@ -153,6 +166,9 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				if not growth.ok:
 					return {"ok": false, "error": growth.error}
 				phase_results[action] = growth
+				bus_passengers = (bus_passengers + int(growth.bus_passengers)) & 0xffffffff
+				rail_passengers = (rail_passengers + int(growth.rail_passengers)) & 0xffffffff
+				subway_passengers = (subway_passengers + int(growth.subway_passengers)) & 0xffffffff
 				if growth.has("ship_home"):
 					ship_home = growth.ship_home
 				if growth.complete:

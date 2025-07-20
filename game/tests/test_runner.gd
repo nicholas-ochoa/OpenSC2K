@@ -24,6 +24,7 @@ const Budget = preload("res://src/simulation/budget_phase.gd")
 const Milestones = preload("res://src/simulation/milestone_phase.gd")
 const ScenarioPhaseRunner = preload("res://src/simulation/scenario_phase.gd")
 const Bankruptcy = preload("res://src/simulation/bankruptcy_phase.gd")
+const AnnualMicrosims = preload("res://src/simulation/microsim_annual_phase.gd")
 const Transport = preload("res://src/simulation/transport_trip.gd")
 const Growth = preload("res://src/simulation/growth_phase.gd")
 const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
@@ -151,6 +152,7 @@ func _init() -> void:
 	_test_month_start(reference_root)
 	_test_budget_phase(reference_root)
 	_test_milestone_phase(reference_root)
+	_test_annual_microsim_phase(reference_root)
 	_test_transport_trip(reference_root)
 	_test_growth_phase(reference_root)
 	_test_moving_thing_phase(reference_root)
@@ -758,6 +760,9 @@ func _test_simulation_engine(reference_root: String) -> void:
 	_check(annual_document.set_misc_u32(0x0e3c, 1), "Annual engine fixture sets year end")
 	_check(annual_document.set_misc_u32(0x0ff0, 0), "Annual engine fixture disables auto budget")
 	var annual_engine := Simulation.new(annual_city, 1, 7, 13)
+	annual_engine.bus_passengers = 11
+	annual_engine.rail_passengers = 12
+	annual_engine.subway_passengers = 13
 	var annual_request := annual_engine.advance_day()
 	_check(
 		annual_request.ok
@@ -781,6 +786,16 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"Annual resolution keeps only annual microsimulation work pending",
 	)
 	_check(annual_document.misc_u32(0x0ff0) == 1, "Annual resolution stores Auto Budget")
+	_check(
+		annual_resolution.phase_results.has("annual_microsim"),
+		"Annual resolution runs the facility-statistics phase",
+	)
+	_check(
+		annual_engine.bus_passengers == 0
+		and annual_engine.rail_passengers == 0
+		and annual_engine.subway_passengers == 0,
+		"Annual resolution clears the engine passenger counters",
+	)
 
 
 func _test_game_speed_controller(reference_root: String) -> void:
@@ -1171,6 +1186,53 @@ func _test_milestone_phase(reference_root: String) -> void:
 	_check(final.ok and final.progression == 10, "The last recovered threshold advances progression")
 	var exhausted := Milestones.run(final_city)
 	_check(exhausted.ok and not exhausted.advanced, "Progression stops after the recovered threshold table")
+
+
+func _test_annual_microsim_phase(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+	microsims[1 * 8] = 0xec
+	microsims[2 * 8] = 0xed
+	microsims[2 * 8 + 4] = 0x12
+	microsims[2 * 8 + 5] = 0x34
+	microsims[3 * 8] = 0xe9
+	microsims[3 * 8 + 4] = 0x56
+	microsims[3 * 8 + 5] = 0x78
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "Annual XMIC fixture installs transit records")
+	_check(document.set_misc_u32(0x01f0 + 0xec * 4, 12), "Annual XMIC fixture counts bus tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xed * 4, 20), "Annual XMIC fixture counts rail tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xe9 * 4, 9), "Annual XMIC fixture counts subway tiles")
+	var result := AnnualMicrosims.run_transit(city, 70000, 123, 456)
+	_check(result.ok, "Annual transit statistics complete: %s" % result.error)
+	_check(
+		result.updated_bus_records == 1
+		and result.updated_rail_records == 1
+		and result.updated_subway_records == 1,
+		"Annual transit statistics report all updated records",
+	)
+	var bus := city.microsim(1)
+	_check(
+		bus.stat_1 == 3 and bus.stat_2 == 12 and bus.stat_3 == (70000 & 0xffff),
+		"Annual bus statistics store depots and wrapped passengers",
+	)
+	var rail := city.microsim(2)
+	_check(
+		rail.stat_1 == 5 and rail.stat_2 == 0x1234 and rail.stat_3 == 123,
+		"Annual rail statistics preserve statistic two",
+	)
+	var subway := city.microsim(3)
+	_check(
+		subway.stat_1 == 9 and subway.stat_2 == 0x5678 and subway.stat_3 == 456,
+		"Annual subway statistics preserve statistic two",
+	)
+	var before_invalid: PackedByteArray = document.find_chunk("XMIC").decoded_payload.duplicate()
+	var invalid := AnnualMicrosims.run_transit(city, -1, 0, 0)
+	_check(not invalid.ok, "Annual transit statistics reject a negative passenger count")
+	_check(
+		document.find_chunk("XMIC").decoded_payload == before_invalid,
+		"A rejected annual transit update preserves XMIC",
+	)
 
 
 func _test_transport_trip(reference_root: String) -> void:

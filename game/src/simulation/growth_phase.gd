@@ -127,6 +127,9 @@ static func run(
 		"churches_built": 0,
 		"successful_trips": 0,
 		"failed_trips": 0,
+		"bus_passengers": 0,
+		"rail_passengers": 0,
+		"subway_passengers": 0,
 		"decayed_roads": 0,
 		"decayed_rails": 0,
 		"decayed_highway_tiles": 0,
@@ -234,6 +237,12 @@ static func run(
 					return trip
 				if trip.reached_destination:
 					counters.successful_trips += 1
+					if trip.used_bus:
+						counters.bus_passengers += density
+					if trip.used_rail:
+						counters.rail_passengers += density
+					if trip.used_subway:
+						counters.subway_passengers += density
 					growth_pressure = _read_i32(
 						misc, MISC_DEMAND + int((zone - 1) / 2) * 4
 					) + 2000
