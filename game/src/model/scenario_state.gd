@@ -168,6 +168,20 @@ func evaluate_goals(city: CityState) -> Dictionary:
 	}
 
 
+func set_time_limit_months(value: int) -> bool:
+	if not is_valid() or value < 0 or value > 0xffff:
+		return false
+	var chunk := document.find_chunk("SCEN")
+	if chunk == null or chunk.decoded_payload.size() != format_size:
+		return false
+	var data: PackedByteArray = chunk.decoded_payload.duplicate()
+	_write_u16_be(data, 0x08, value)
+	if not chunk.set_decoded_payload(data):
+		return false
+	time_limit_months = value
+	return true
+
+
 static func _check_minimum(
 	unmet: PackedStringArray,
 	name: String,
@@ -205,6 +219,11 @@ static func _read_u16_be(data: PackedByteArray, offset: int) -> int:
 
 static func _read_u16_le(data: PackedByteArray, offset: int) -> int:
 	return data[offset] | (data[offset + 1] << 8)
+
+
+static func _write_u16_be(data: PackedByteArray, offset: int, value: int) -> void:
+	data[offset] = (value >> 8) & 0xff
+	data[offset + 1] = value & 0xff
 
 
 static func _read_u32_be(data: PackedByteArray, offset: int) -> int:

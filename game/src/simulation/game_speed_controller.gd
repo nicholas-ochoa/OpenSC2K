@@ -24,6 +24,7 @@ var accumulator_msec := 0.0
 var subtick_counter := 0
 var simulation_ready := false
 var interaction_blocked := false
+var terminal_blocked := false
 
 
 func _init(initial_engine: SimulationEngine) -> void:
@@ -71,7 +72,12 @@ func advance_time(
 		simulation_ready = simulation_ready or _is_day_due()
 		var pulse_time := current_time_msec - int(accumulator_msec)
 
-		if speed > Speed.PAUSED and not simulation_suspended and not interaction_blocked:
+		if (
+			speed > Speed.PAUSED
+			and not simulation_suspended
+			and not interaction_blocked
+			and not terminal_blocked
+		):
 			var moving := engine.advance_moving_things(pulse_time)
 			if not moving.get("ok", false):
 				result.error = moving.get("error", "moving-thing update failed")
@@ -84,6 +90,7 @@ func advance_time(
 			and simulation_ready
 			and not simulation_suspended
 			and not interaction_blocked
+			and not terminal_blocked
 		):
 			var day_error := _run_day(result)
 			if not day_error.is_empty():
@@ -100,6 +107,7 @@ func advance_time(
 		and not ran_swallow_day
 		and not simulation_suspended
 		and not interaction_blocked
+		and not terminal_blocked
 	):
 		var day_error := _run_day(result)
 		if not day_error.is_empty():
@@ -163,11 +171,14 @@ func _consume_day_result(result: Dictionary, day: Dictionary) -> void:
 	for phase_name in phase_results:
 		var phase_result: Dictionary = phase_results[phase_name]
 		result.effect_events.append_array(phase_result.get("effect_events", []))
+		result.game_over_events.append_array(phase_result.get("game_over_events", []))
 		if phase_name == "growth":
 			result.effect_events.append_array(phase_result.get("bridge_effects", []))
 		result.news_items.append_array(phase_result.get("news_items", []))
 		result.sound_events.append_array(phase_result.get("sound_events", []))
 		result.view_center_requests.append_array(phase_result.get("view_center_requests", []))
+	if not result.game_over_events.is_empty():
+		terminal_blocked = true
 
 
 func _append_runtime_events(result: Dictionary, phase_result: Dictionary) -> void:
@@ -189,5 +200,6 @@ func _empty_result() -> Dictionary:
 		"sound_events": [],
 		"view_center_requests": [],
 		"interaction_requests": [],
+		"game_over_events": [],
 		"pending_actions": PackedStringArray(),
 	}

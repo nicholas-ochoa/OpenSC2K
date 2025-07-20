@@ -15,6 +15,8 @@ var industry_connections := 0
 var traffic_news_deadline_msec := 0
 var pending_interaction := ""
 var pending_day_schedule: Dictionary = {}
+var scenario: ScenarioState
+var terminal_state := false
 
 
 func _init(
@@ -26,6 +28,10 @@ func _init(
 	lfsr_random = SimLfsrRandom.new(lfsr_seed)
 	game_random = GameLcgRandom.new(game_random_seed)
 	if initial_city != null and initial_city.is_valid():
+		if initial_city.document.find_chunk("SCEN") != null:
+			var loaded_scenario := ScenarioState.from_document(initial_city.document)
+			if loaded_scenario.is_valid():
+				scenario = loaded_scenario
 		var connections := RciDemandPhase.connection_counts(initial_city)
 		commerce_connections = connections.commerce
 		industry_connections = connections.industry
@@ -37,6 +43,8 @@ func _init(
 
 
 func advance_moving_things(current_time_msec := -1) -> Dictionary:
+	if terminal_state:
+		return {"ok": false, "error": "the game has ended"}
 	if current_time_msec < 0:
 		current_time_msec = Time.get_ticks_msec()
 	var result := MovingThingPhase.run(
@@ -65,6 +73,8 @@ func advance_day() -> Dictionary:
 		return {"ok": false, "error": "city is invalid"}
 	if not pending_interaction.is_empty():
 		return {"ok": false, "error": "%s interaction is pending" % pending_interaction}
+	if terminal_state:
+		return {"ok": false, "error": "the game has ended"}
 	var schedule := clock.advance_day()
 	if not city.set_age_in_days(clock.city_days):
 		return {"ok": false, "error": "cannot store the new simulation day"}
@@ -201,6 +211,22 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 					applied.append(action)
 				else:
 					pending.append(action)
+			"scenario":
+				var scenario_check := ScenarioPhase.run(scenario, city)
+				if not scenario_check.ok:
+					return {"ok": false, "error": scenario_check.error}
+				phase_results[action] = scenario_check
+				applied.append(action)
+				if not scenario_check.game_over_events.is_empty():
+					terminal_state = true
+			"bankruptcy":
+				var bankruptcy := BankruptcyPhase.run(city)
+				if not bankruptcy.ok:
+					return {"ok": false, "error": bankruptcy.error}
+				phase_results[action] = bankruptcy
+				applied.append(action)
+				if not bankruptcy.game_over_events.is_empty():
+					terminal_state = true
 			_:
 				pending.append(action)
 	return {

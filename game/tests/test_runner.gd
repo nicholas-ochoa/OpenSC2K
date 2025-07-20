@@ -22,6 +22,8 @@ const EducationHealth = preload("res://src/simulation/education_health_phase.gd"
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
 const Milestones = preload("res://src/simulation/milestone_phase.gd")
+const ScenarioPhaseRunner = preload("res://src/simulation/scenario_phase.gd")
+const Bankruptcy = preload("res://src/simulation/bankruptcy_phase.gd")
 const Transport = preload("res://src/simulation/transport_trip.gd")
 const Growth = preload("res://src/simulation/growth_phase.gd")
 const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
@@ -569,6 +571,61 @@ func _test_scenarios(reference_root: String) -> void:
 			"Pollution upper limit detects an excess"
 		)
 
+	var scenario_document := Sc2Document.load_path(paths[0])
+	var countdown := ScenarioModel.from_document(scenario_document)
+	var scenario_city := CityModel.from_document(scenario_document)
+	_check(countdown.set_time_limit_months(1), "Scenario countdown stores one remaining month")
+	countdown.city_size_goal = 0xffffffff
+	var failure := ScenarioPhaseRunner.run(countdown, scenario_city)
+	_check(
+		failure.ok
+		and failure.outcome == "failure"
+		and failure.remaining_months == 0
+		and failure.game_over_events[0].type == "scenario_failure",
+		"An unmet scenario fails when its last month expires",
+	)
+	var reparsed_countdown := ScenarioModel.from_document(scenario_document)
+	_check(reparsed_countdown.time_limit_months == 0, "Scenario countdown updates the SCEN chunk")
+
+	var victory_document := Sc2Document.load_path(paths[0])
+	var victory := ScenarioModel.from_document(victory_document)
+	var victory_city := CityModel.from_document(victory_document)
+	var victory_time := victory.time_limit_months
+	victory.city_size_goal = 0
+	victory.residential_goal = -2147483648
+	victory.commercial_goal = -2147483648
+	victory.industrial_goal = -2147483648
+	victory.cash_goal = -2147483648
+	victory.land_value_goal = -2147483648
+	victory.life_expectancy_goal = 0
+	victory.education_goal = 0
+	victory.pollution_limit = 0
+	victory.crime_limit = 0
+	victory.traffic_limit = 0
+	victory.first_building_id = 0
+	victory.second_building_id = 0
+	var won := ScenarioPhaseRunner.run(victory, victory_city)
+	_check(
+		won.ok
+		and won.outcome == "victory"
+		and won.game_over_events[0].type == "scenario_victory",
+		"A scenario with all goals met emits victory",
+	)
+	_check(victory.time_limit_months == victory_time, "Scenario victory does not decrement time")
+
+	var solvent := Bankruptcy.run(city)
+	_check(solvent.ok and not solvent.bankrupt, "A solvent city passes the bankruptcy check")
+	_check(city.set_funds(-100000), "Bankruptcy fixture reaches the exact limit")
+	_check(not Bankruptcy.run(city).bankrupt, "Funds at negative one hundred thousand are allowed")
+	_check(city.set_funds(-100001), "Bankruptcy fixture passes the strict limit")
+	var bankrupt := Bankruptcy.run(city)
+	_check(
+		bankrupt.bankrupt
+		and bankrupt.game_over_events.size() == 1
+		and bankrupt.game_over_events[0].type == "bankruptcy",
+		"Funds below negative one hundred thousand emit bankruptcy",
+	)
+
 
 func _test_random_and_power(reference_root: String) -> void:
 	var random := Random.new(1)
@@ -682,9 +739,9 @@ func _test_simulation_engine(reference_root: String) -> void:
 	latest = engine.advance_day()
 	_check(latest.phase_results.has("milestones"), "Simulation engine runs milestones on day 22")
 	_check(
-		latest.applied == PackedStringArray(["milestones"])
-		and latest.pending == PackedStringArray(["scenario", "bankruptcy"]),
-		"Day 22 keeps only scenario and bankruptcy work pending",
+		latest.applied == PackedStringArray(["milestones", "scenario", "bankruptcy"])
+		and latest.pending.is_empty(),
+		"Simulation engine applies all normal day-22 checks",
 	)
 	while latest.day < 25:
 		latest = engine.advance_day()
@@ -868,6 +925,29 @@ func _test_game_speed_controller(reference_root: String) -> void:
 		and not annual_controller.interaction_blocked
 		and annual_resolution.day_results.size() == 1,
 		"Controller resumes after annual budget resolution",
+	)
+
+	var terminal_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
+	_check(terminal_city.set_age_in_days(21), "Terminal fixture selects day 21")
+	_check(terminal_city.set_simulation_speed(4), "Terminal fixture stores Cheetah speed")
+	_check(terminal_city.document.set_misc_u32(0x0020, 10), "Terminal fixture exhausts milestones")
+	_check(terminal_city.set_funds(-100001), "Terminal fixture sets bankrupt funds")
+	var terminal_controller := GameSpeed.new(Simulation.new(terminal_city, 1, 7, 13))
+	var terminal_tick := terminal_controller.advance_time(200.0, 200)
+	_check(
+		terminal_tick.ok
+		and terminal_tick.game_over_events.size() == 1
+		and terminal_tick.game_over_events[0].type == "bankruptcy"
+		and terminal_controller.terminal_blocked,
+		"Controller exposes bankruptcy and enters terminal state",
+	)
+	var terminal_wait := terminal_controller.advance_time(200.0, 400)
+	_check(
+		terminal_wait.ok
+		and terminal_wait.base_ticks == 1
+		and terminal_wait.day_results.is_empty()
+		and terminal_wait.moving_results.is_empty(),
+		"Terminal state keeps timer phase and stops simulation work",
 	)
 
 

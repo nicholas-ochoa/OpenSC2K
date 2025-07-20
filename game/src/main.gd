@@ -81,6 +81,7 @@ var speed_controller: GameSpeedController
 var simulation_map_dirty := false
 var recent_news := PackedStringArray()
 var annual_budget_pending := false
+var game_over_active := false
 
 var map_view: CityMapControl
 var city_label: Label
@@ -103,6 +104,7 @@ var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
 var auto_budget_check: CheckBox
+var game_over_dialog: AcceptDialog
 
 
 func _ready() -> void:
@@ -130,7 +132,9 @@ func _process(delta: float) -> void:
 	var result := speed_controller.advance_time(
 		delta * 1000.0,
 		Time.get_ticks_msec(),
-		(map_view != null and map_view.is_left_drag_active()) or budget_dialog.visible
+		(map_view != null and map_view.is_left_drag_active())
+		or budget_dialog.visible
+		or game_over_active
 	)
 	if not result.ok:
 		speed_controller.set_speed(GameSpeed.Speed.PAUSED)
@@ -164,6 +168,8 @@ func _consume_simulation_result(result: Dictionary) -> void:
 		_show_effect_events(result.effect_events, result.sound_events)
 	if not result.news_items.is_empty():
 		_show_news_items(result.news_items)
+	if not result.game_over_events.is_empty():
+		_show_game_over_events(result.game_over_events)
 	for request in result.interaction_requests:
 		if request.get("type", "") == "annual_budget":
 			_open_budget_dialog(request.get("funding_values", PackedInt32Array()), true)
@@ -338,6 +344,9 @@ func _build_interface() -> void:
 	query_dialog.title = "Query"
 	query_dialog.min_size = Vector2i(500, 440)
 	add_child(query_dialog)
+	game_over_dialog = AcceptDialog.new()
+	game_over_dialog.min_size = Vector2i(460, 220)
+	add_child(game_over_dialog)
 
 	budget_dialog = ConfirmationDialog.new()
 	budget_dialog.title = "Budget"
@@ -492,7 +501,10 @@ func _load_city(path: String) -> void:
 
 	if budget_dialog.visible:
 		budget_dialog.hide()
+	if game_over_dialog.visible:
+		game_over_dialog.hide()
 	annual_budget_pending = false
+	game_over_active = false
 	city = loaded_city
 	current_document = document
 	var process_seed := tool_random.state
@@ -639,6 +651,28 @@ func _show_news_items(news_items: Array) -> void:
 		recent_news.remove_at(recent_news.size() - 1)
 	if not recent_news.is_empty():
 		news_label.text = "News\n" + "\n".join(recent_news)
+
+
+func _show_game_over_events(events: Array) -> void:
+	game_over_active = true
+	var messages := PackedStringArray()
+	for event in events:
+		match event.get("type", ""):
+			"scenario_victory":
+				messages.append("The scenario goals are complete.")
+			"scenario_failure":
+				messages.append("The scenario time limit expired.")
+			"bankruptcy":
+				messages.append("The city is bankrupt. The mayor was impeached.")
+	game_over_dialog.title = "Game Over" if events.size() != 1 else (
+		"Scenario Complete"
+		if events[0].get("type", "") == "scenario_victory"
+		else "Game Over"
+	)
+	game_over_dialog.dialog_text = "\n".join(messages) + "\n\nOpen another city to continue."
+	game_over_dialog.popup_centered()
+	status_label.add_theme_color_override("font_color", Color("ffcf70"))
+	status_label.text = "\n".join(messages)
 
 
 func _moving_things_are_active(results: Array) -> bool:
