@@ -154,6 +154,7 @@ func _init() -> void:
 	_test_milestone_phase(reference_root)
 	_test_annual_microsim_phase(reference_root)
 	_test_annual_service_microsim_phase(reference_root)
+	_test_annual_special_microsim_phase(reference_root)
 	_test_transport_trip(reference_root)
 	_test_growth_phase(reference_root)
 	_test_moving_thing_phase(reference_root)
@@ -1369,6 +1370,128 @@ func _test_annual_service_microsim_phase(reference_root: String) -> void:
 	_check(document.misc_u32(0x1038) == 29, "Annual police statistics replace old arrests")
 	_check(document.misc_u32(0x103c) == 1, "Annual prison statistics rebuild the prison bonus")
 	_check(random.position == 12, "Annual services consume process random values in record order")
+
+
+func _test_annual_special_microsim_phase(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+	var special_tiles := [0xc9, 0xda, 0xdb, 0xf3, 0xf4, 0xf8, 0xfb, 0xfe, 0xff]
+	for index in special_tiles.size():
+		microsims[(index + 1) * 8] = special_tiles[index]
+	microsims[1 * 8 + 1] = 10
+	microsims[4 * 8 + 1] = 3
+	microsims[4 * 8 + 4] = 0x12
+	microsims[4 * 8 + 5] = 0x34
+	microsims[4 * 8 + 6] = 0
+	microsims[4 * 8 + 7] = 2
+	microsims[7 * 8 + 1] = 12
+	microsims[7 * 8 + 2] = 0
+	microsims[7 * 8 + 3] = 10
+	microsims[7 * 8 + 4] = 0
+	microsims[7 * 8 + 5] = 100
+	microsims[8 * 8 + 1] = 10
+	microsims[8 * 8 + 2] = 0
+	microsims[8 * 8 + 3] = 20
+	microsims[8 * 8 + 4] = 0
+	microsims[8 * 8 + 5] = 200
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "Annual special fixture installs XMIC records")
+	_check(document.set_misc_u32(0x01f0 + 0xf8 * 4, 9), "Annual special fixture counts marina tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xfb * 4, 16), "Annual special fixture counts first arcology tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xfe * 4, 16), "Annual special fixture counts launch arcology tiles")
+	_check(document.set_misc_u32(0x077c + 0 * 0x006c + 4, 7), "Annual special fixture sets residential tax")
+	_check(document.set_misc_u32(0x077c + 1 * 0x006c + 4, 7), "Annual special fixture sets commercial tax")
+	_check(document.set_misc_u32(0x077c + 2 * 0x006c + 4, 7), "Annual special fixture sets industrial tax")
+	_check(document.set_misc_u32(0x1020, 10000), "Annual special fixture sets arcology population")
+	_check(document.set_misc_u32(0x102c, 90000), "Annual special fixture sets normal population")
+	var process_random := SequenceRandom.new([6, 43, 5, 123, 31, 0xaa, 0x3ff, 0x7f, 0x3f])
+	var lfsr := SequenceLfsrRandom.new([5, 7, 9])
+	var game_lcg := SequenceLfsrRandom.new([101, 202, 303, 404])
+	var result := AnnualMicrosims.run(
+		city, 0, 0, 0, process_random, lfsr, game_lcg, 80, 70
+	)
+	_check(result.ok, "Annual special statistics complete: %s" % result.error)
+	var power := city.microsim(1)
+	_check(
+		power.stat_0 == 11 and power.stat_2 == 86,
+		"Annual power statistics age the plant and use the power percentage",
+	)
+	var zoo := city.microsim(2)
+	_check(
+		zoo.stat_0 == 1 and zoo.stat_1 == 2 and zoo.stat_2 == 3 and zoo.stat_3 == 4,
+		"Annual zoo statistics use four game LCG values",
+	)
+	_check(city.microsim(3).stat_2 == 1, "Annual statue statistics use one process random value")
+	var mayor_house := city.microsim(4)
+	_check(
+		mayor_house.stat_0 == 4 and mayor_house.stat_2 == 0x1234 and mayor_house.stat_3 == 1,
+		"Annual mayor house statistics advance the term and preserve the pending approval value",
+	)
+	var water_facility := city.microsim(5)
+	_check(
+		water_facility.stat_0 == 75 and water_facility.stat_1 == 23 and water_facility.stat_2 == 166,
+		"Annual water-facility statistics use water demand and three process random values",
+	)
+	_check(city.microsim(6).stat_1 == 77, "Annual marina statistics use tile count and one LFSR value")
+	_check(city.microsim(7).stat_2 == 1109, "Annual first arcology statistics apply tax growth")
+	_check(city.microsim(8).stat_2 == 1413, "Annual launch arcology statistics apply tax growth")
+	_check(document.misc_u32(0x1020) == 2522, "Annual arcology statistics replace arcology population")
+	var dome := city.microsim(9)
+	_check(
+		dome.stat_0 == 0xaa and dome.stat_1 == 12273 and dome.stat_2 == 1661 and dome.stat_3 == 830,
+		"Annual Llama Dome statistics use four process random values",
+	)
+	_check(process_random.position == 9, "Annual special facilities consume process random values in order")
+	_check(lfsr.position == 3, "Annual marinas and arcologies consume LFSR values in order")
+	_check(game_lcg.position == 4, "Annual zoos consume game LCG values in order")
+	_check(result.random_records_pending == 1, "Annual special statistics keep mayor approval pending")
+
+	var renewal_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var renewal_city := CityModel.from_document(renewal_document)
+	var renewal_microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+	renewal_microsims[8] = 0xc9
+	renewal_microsims[9] = 50
+	_check(renewal_document.find_chunk("XMIC").set_decoded_payload(renewal_microsims), "Annual renewal fixture installs an old power plant")
+	var renewal_text: PackedByteArray = renewal_document.find_chunk("XTXT").decoded_payload.duplicate()
+	renewal_text[1 * CityState.MAP_SIZE + 2] = 52
+	_check(renewal_document.find_chunk("XTXT").set_decoded_payload(renewal_text), "Annual renewal fixture links the power plant")
+	_check(renewal_document.set_misc_u32(0x0014, 3000), "Annual renewal fixture sets funds")
+	_check(renewal_document.set_misc_u32(0x1000, 1), "Annual renewal fixture disables disasters")
+	var renewal := AnnualMicrosims.run(renewal_city, 0, 0, 0, ZeroRandom.new(), null, null, 80, -1)
+	_check(renewal.ok, "Annual power renewal completes: %s" % renewal.error)
+	_check(renewal_city.microsim(1).stat_0 == 0, "Annual power renewal resets plant age")
+	_check(renewal_city.funds() == 1000, "Annual gas-power renewal deducts the original cost")
+	_check(renewal.expired_power_records.is_empty(), "A paid annual power renewal does not request demolition")
+	renewal_microsims[9] = 50
+	_check(renewal_document.find_chunk("XMIC").set_decoded_payload(renewal_microsims), "Annual expiry fixture restores old plant age")
+	_check(renewal_document.set_misc_u32(0x1000, 0), "Annual expiry fixture enables disasters")
+	var expired := AnnualMicrosims.run(renewal_city, 0, 0, 0, ZeroRandom.new(), null, null, 80, -1)
+	_check(expired.ok, "Annual expired-power update completes: %s" % expired.error)
+	_check(expired.expired_power_records.size() == 1, "Annual expired power reports pending demolition")
+	_check(renewal_city.microsim(1).stat_0 == 51, "Pending annual power demolition preserves the incremented age")
+
+	var aus_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var aus_city := CityModel.from_document(aus_document)
+	var aus_microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+	aus_microsims[8] = 0xff
+	aus_microsims[14] = 0x12
+	aus_microsims[15] = 0x34
+	_check(aus_document.find_chunk("XMIC").set_decoded_payload(aus_microsims), "Annual AUS fixture installs a Llama Dome")
+	_check(aus_document.set_misc_u32(0x102c, 8000), "Annual AUS fixture sets normal population")
+	var aus_random := SequenceRandom.new([1, 2, 3])
+	var aus_result := AnnualMicrosims.run(
+		aus_city, 0, 0, 0, aus_random, null, null, -1, -1, true
+	)
+	_check(aus_result.ok, "Annual AUS Llama Dome update completes: %s" % aus_result.error)
+	var aus_dome := aus_city.microsim(1)
+	_check(
+		aus_dome.stat_0 == 2
+		and aus_dome.stat_1 == 1001
+		and aus_dome.stat_2 == 13
+		and aus_dome.stat_3 == 0x1234,
+		"The Australian Llama Dome path uses three values and preserves statistic three",
+	)
+	_check(aus_random.position == 3, "The Australian Llama Dome path consumes three process random values")
 
 
 func _test_transport_trip(reference_root: String) -> void:

@@ -5,8 +5,10 @@ const MISC_SIZE := 4800
 const MISC_CITY_CRIME := 0x002c
 const MISC_RAW_POPULATION := 0x007c
 const MISC_DEMOGRAPHIC_RECORD_SIZE := 0x000c
+const MISC_FUNDS := 0x0014
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_BUDGETS := 0x077c
+const MISC_NO_DISASTERS := 0x1000
 const MISC_ARCOLOGY_POPULATION := 0x1020
 const MISC_NORMAL_POPULATION := 0x102c
 const MISC_OLD_ARRESTS := 0x1038
@@ -18,11 +20,22 @@ const BUDGET_FIRE := 6
 const BUDGET_HEALTH := 7
 const BUDGET_SCHOOL := 8
 const BUDGET_COLLEGE := 9
+const POWER_PLANT_COSTS := {
+	0xc9: 2000,
+	0xca: 6600,
+	0xcb: 15000,
+	0xcc: 1300,
+	0xcd: 28000,
+	0xce: 40000,
+	0xcf: 4000,
+}
 
 const TILE_SMALL_PARK := 0x0d
 const TILE_HYDRO_ONE := 0xc6
 const TILE_HYDRO_TWO := 0xc7
 const TILE_WIND_POWER := 0xc8
+const TILE_POWER_FIRST := 0xc9
+const TILE_POWER_LAST := 0xcf
 const TILE_CITY_HALL := 0xd0
 const TILE_HOSPITAL := 0xd1
 const TILE_POLICE_STATION := 0xd2
@@ -33,10 +46,21 @@ const TILE_SCHOOL := 0xd6
 const TILE_STADIUM := 0xd7
 const TILE_PRISON := 0xd8
 const TILE_COLLEGE := 0xd9
+const TILE_ZOO := 0xda
+const TILE_STATUE := 0xdb
 const TILE_SUBWAY_STATION := 0xe9
 const TILE_BUS_DEPOT := 0xec
 const TILE_RAIL_STATION := 0xed
+const TILE_MAYOR_HOUSE := 0xf3
+const TILE_WATER_TREATMENT := 0xf4
 const TILE_LIBRARY := 0xf5
+const TILE_MARINA := 0xf8
+const TILE_DESALINIZATION := 0xfa
+const TILE_ARCOLOGY_FIRST := 0xfb
+const TILE_ARCOLOGY_LAST := 0xfe
+const TILE_LAUNCH_ARCOLOGY := 0xfe
+const TILE_LLAMADOME := 0xff
+const NEWS_POWER_PLANT := 0x24
 const NEWS_EDUCATION := 0x26
 
 
@@ -45,7 +69,12 @@ static func run(
 	bus_passengers: int,
 	rail_passengers: int,
 	subway_passengers: int,
-	random = null
+	random = null,
+	lfsr_random = null,
+	game_random = null,
+	power_usage_percent := -1,
+	water_usage_percent := -1,
+	australian_locale := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -80,6 +109,14 @@ static func run(
 		"stadium": 0,
 		"prison": 0,
 		"college": 0,
+		"power": 0,
+		"zoo": 0,
+		"statue": 0,
+		"mayor_house": 0,
+		"water_facility": 0,
+		"marina": 0,
+		"arcology": 0,
+		"llamadome": 0,
 	}
 	var old_arrests := 0
 	var prison_population := 0
@@ -87,6 +124,9 @@ static func run(
 	var news_items := []
 	var random_records_pending := 0
 	var low_school_score := false
+	var expired_power_records := []
+	var arcology_population := 0
+	var arcology_launch_pending := false
 	var updated_subway := 0
 	var updated_bus := 0
 	var updated_rail := 0
@@ -103,6 +143,36 @@ static func run(
 				_write_u16_be(microsims, offset + 2, wind_count)
 				_write_u16_be(microsims, offset + 4, wind_count * 4)
 				counts.wind += 1
+			var power_tile when power_tile >= TILE_POWER_FIRST and power_tile <= TILE_POWER_LAST:
+				if not _has_process_random(random):
+					random_records_pending += 1
+					continue
+				microsims[offset + 1] = (int(microsims[offset + 1]) + 1) & 0xff
+				var power_random: int = random.next_u15()
+				if power_usage_percent >= 0:
+					_write_u16_be(
+						microsims, offset + 4, (power_random & 0x07) + power_usage_percent
+					)
+				else:
+					random_records_pending += 1
+				if int(microsims[offset + 1]) > 48:
+					news_items.append({"type": NEWS_POWER_PLANT, "argument": power_tile + 0x37})
+				if int(microsims[offset + 1]) > 50:
+					var location := _find_microsim_location(city, record_id)
+					if not location.is_empty():
+						var plant_cost: int = POWER_PLANT_COSTS.get(power_tile, 0)
+						var funds := _read_i32(misc, MISC_FUNDS)
+						if _read_u32(misc, MISC_NO_DISASTERS) != 0 and funds >= plant_cost:
+							_write_i32(misc, MISC_FUNDS, funds - plant_cost)
+							microsims[offset + 1] = 0
+						else:
+							expired_power_records.append({
+								"record": record_id,
+								"tile": power_tile,
+								"x": location.x,
+								"y": location.y,
+							})
+				counts.power += 1
 			TILE_CITY_HALL:
 				_write_u16_be(microsims, offset + 2, _population_cap(misc, 200, 900))
 				counts.city_hall += 1
@@ -311,6 +381,21 @@ static func run(
 				_write_u16_be(microsims, offset + 4, college_staff)
 				microsims[offset + 1] = _service_score(college_capacity * 4, college_staff, 5)
 				counts.college += 1
+			TILE_ZOO:
+				if not _has_game_random(game_random):
+					random_records_pending += 1
+					continue
+				microsims[offset + 1] = game_random.next_mod(100) & 0xff
+				_write_u16_be(microsims, offset + 2, game_random.next_mod(100))
+				_write_u16_be(microsims, offset + 4, game_random.next_mod(100))
+				_write_u16_be(microsims, offset + 6, game_random.next_mod(100))
+				counts.zoo += 1
+			TILE_STATUE:
+				if not _has_process_random(random):
+					random_records_pending += 1
+					continue
+				_write_u16_be(microsims, offset + 4, random.next_u15() % 42)
+				counts.statue += 1
 			TILE_SUBWAY_STATION:
 				_write_u16_be(microsims, offset + 2, subway_count)
 				_write_u16_be(microsims, offset + 6, subway_passengers)
@@ -324,6 +409,33 @@ static func run(
 				_write_u16_be(microsims, offset + 2, int(rail_count / 4))
 				_write_u16_be(microsims, offset + 6, rail_passengers)
 				updated_rail += 1
+			TILE_MAYOR_HOUSE:
+				if _read_u16_be(microsims, offset + 6) != 0:
+					_write_u16_be(microsims, offset + 6, _read_u16_be(microsims, offset + 6) - 1)
+					microsims[offset + 1] = (int(microsims[offset + 1]) + 1) & 0xff
+				random_records_pending += 1
+				counts.mayor_house += 1
+			TILE_WATER_TREATMENT, TILE_DESALINIZATION:
+				if not _has_process_random(random):
+					random_records_pending += 1
+					continue
+				var water_first: int = random.next_u15()
+				var water_second: int = random.next_u15()
+				var water_third: int = random.next_u15()
+				if water_usage_percent >= 0:
+					microsims[offset + 1] = ((water_first & 0x07) + water_usage_percent) & 0xff
+				else:
+					random_records_pending += 1
+				_write_u16_be(microsims, offset + 2, water_second % 100)
+				_write_u16_be(
+					microsims,
+					offset + 4,
+					mini(
+						(water_third & 0x1f) + 135,
+						_divide_toward_zero(_read_u32(misc, MISC_NORMAL_POPULATION), 50)
+					)
+				)
+				counts.water_facility += 1
 			TILE_LIBRARY:
 				var library_count := _tile_count(misc, TILE_LIBRARY)
 				var school_funding := _budget_funding(misc, BUDGET_SCHOOL)
@@ -342,6 +454,84 @@ static func run(
 				var library_score := int(library_count * school_funding * 300 / population)
 				microsims[offset + 1] = mini(library_score, 12) & 0xff
 				counts.library += 1
+			TILE_MARINA:
+				if not _has_lfsr_random(lfsr_random):
+					random_records_pending += 1
+					continue
+				_write_u16_be(
+					microsims,
+					offset + 2,
+					_population_cap(
+						misc,
+						_to_i16(lfsr_random.next_mod(20) + _tile_count(misc, TILE_MARINA) * 8),
+						150
+					)
+				)
+				counts.marina += 1
+			var arcology_tile when arcology_tile >= TILE_ARCOLOGY_FIRST and arcology_tile <= TILE_ARCOLOGY_LAST:
+				if not _has_lfsr_random(lfsr_random):
+					random_records_pending += 1
+					continue
+				var arcology_count := maxi(_arcology_count(misc), 1)
+				var arcology_capacity := _population_cap(
+					misc,
+					_to_i16(_divide_toward_zero(_read_u16_be(microsims, offset + 2) * 1000, 10)),
+					arcology_count * 20
+				) & 0xffff
+				var tax_effect := (
+					_divide_toward_zero(
+						60
+						- _budget_funding(misc, 0)
+						- _budget_funding(misc, 1)
+						- _budget_funding(misc, 2),
+						6
+					)
+					+ int(microsims[offset + 1])
+				)
+				var arcology_growth := mini((tax_effect * 5 - 50) * 40, arcology_capacity)
+				var next_population := (
+					arcology_growth
+					+ _divide_toward_zero(_read_u16_be(microsims, offset + 4), 50)
+					+ _read_u16_be(microsims, offset + 4)
+				)
+				next_population = mini(
+					next_population, _read_u16_be(microsims, offset + 2) * 1000
+				)
+				var arcology_record_population := (
+					_to_i16(lfsr_random.next_mask(0x3f)) + _to_i16(next_population)
+				)
+				_write_u16_be(microsims, offset + 4, arcology_record_population)
+				arcology_population = _to_i32(
+					arcology_population + (arcology_record_population & 0xffff)
+				)
+				counts.arcology += 1
+			TILE_LLAMADOME:
+				if not _has_process_random(random):
+					random_records_pending += 1
+					continue
+				if australian_locale:
+					_write_u16_be(
+						microsims,
+						offset + 2,
+						(random.next_u15() & 0x3ff)
+						+ (_read_u32(misc, MISC_NORMAL_POPULATION) >> 3)
+					)
+					microsims[offset + 1] = random.next_u15() & 0x7f
+					_write_u16_be(microsims, offset + 4, (random.next_u15() & 0x7f) + 10)
+				else:
+					microsims[offset + 1] = random.next_u15() & 0xff
+					var dome_population: int = (
+						(_read_u32(misc, MISC_NORMAL_POPULATION) >> 3)
+						+ (random.next_u15() & 0x3ff)
+					)
+					_write_u16_be(microsims, offset + 2, dome_population)
+					_write_u16_be(
+						microsims, offset + 4, (random.next_u15() & 0x7f) + (dome_population >> 3)
+					)
+					_write_u16_be(
+						microsims, offset + 6, (random.next_u15() & 0x3f) + (dome_population >> 4)
+					)
+				counts.llamadome += 1
 	if _has_process_random(random):
 		_write_u32(misc, MISC_OLD_ARRESTS, old_arrests)
 		_write_u32(
@@ -353,6 +543,12 @@ static func run(
 		)
 		if low_school_score:
 			news_items.append({"type": NEWS_EDUCATION, "argument": 0})
+	if _has_lfsr_random(lfsr_random):
+		_write_u32(misc, MISC_ARCOLOGY_POPULATION, arcology_population)
+		arcology_launch_pending = (
+			_divide_toward_zero(_tile_count(misc, TILE_LAUNCH_ARCOLOGY), 16) > 300
+			and arcology_population > 6000000
+		)
 	if not microsim_chunk.set_decoded_payload(microsims):
 		return {"ok": false, "error": "cannot store annual microsimulation statistics"}
 	if not misc_chunk.set_decoded_payload(misc):
@@ -376,7 +572,17 @@ static func run(
 		"updated_stadium_records": counts.stadium,
 		"updated_prison_records": counts.prison,
 		"updated_college_records": counts.college,
+		"updated_power_records": counts.power,
+		"updated_zoo_records": counts.zoo,
+		"updated_statue_records": counts.statue,
+		"updated_mayor_house_records": counts.mayor_house,
+		"updated_water_facility_records": counts.water_facility,
+		"updated_marina_records": counts.marina,
+		"updated_arcology_records": counts.arcology,
+		"updated_llamadome_records": counts.llamadome,
 		"random_records_pending": random_records_pending,
+		"expired_power_records": expired_power_records,
+		"arcology_launch_pending": arcology_launch_pending,
 		"news_items": news_items,
 		"passenger_counters_reset": true,
 		"complete": false,
@@ -405,6 +611,35 @@ static func _raw_population(misc: PackedByteArray, cohort: int) -> int:
 
 static func _has_process_random(random) -> bool:
 	return random != null and random.has_method("next_u15")
+
+
+static func _has_lfsr_random(random) -> bool:
+	return random != null and random.has_method("next_mask") and random.has_method("next_mod")
+
+
+static func _has_game_random(random) -> bool:
+	return random != null and random.has_method("next_mod")
+
+
+static func _find_microsim_location(city: CityState, record_id: int) -> Dictionary:
+	var text_chunk := city.document.find_chunk("XTXT")
+	if text_chunk == null or text_chunk.decoded_payload.size() != CityState.MAP_SIZE * CityState.MAP_SIZE:
+		return {}
+	var text_id := record_id + 51
+	for x in CityState.MAP_SIZE:
+		for y in CityState.MAP_SIZE:
+			if int(text_chunk.decoded_payload[x * CityState.MAP_SIZE + y]) == text_id:
+				if x == 0 and y == 0:
+					return {}
+				return {"x": x, "y": y}
+	return {}
+
+
+static func _arcology_count(misc: PackedByteArray) -> int:
+	var count := 0
+	for tile_id in range(TILE_ARCOLOGY_FIRST, TILE_ARCOLOGY_LAST + 1):
+		count += _tile_count(misc, tile_id)
+	return _divide_toward_zero(count, 16)
 
 
 static func _service_score(
@@ -479,11 +714,20 @@ static func _to_i16(value: int) -> int:
 	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped
 
 
+static func _to_i32(value: int) -> int:
+	var wrapped := value & 0xffffffff
+	return wrapped - 0x100000000 if wrapped >= 0x80000000 else wrapped
+
+
 static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
 	data[offset] = (value >> 24) & 0xff
 	data[offset + 1] = (value >> 16) & 0xff
 	data[offset + 2] = (value >> 8) & 0xff
 	data[offset + 3] = value & 0xff
+
+
+static func _write_i32(data: PackedByteArray, offset: int, value: int) -> void:
+	_write_u32(data, offset, value & 0xffffffff)
 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
