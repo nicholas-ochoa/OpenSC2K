@@ -44,6 +44,8 @@ const NEWS_NAMES := {
 	0x207: "Airplane landing",
 	0x20c: "Train report",
 	0x20f: "Sailboat distress",
+	0x211: "Arcology launch",
+	0x212: "Arcology launch complete",
 }
 
 const BUDGET_NAMES := [

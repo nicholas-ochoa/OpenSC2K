@@ -8,6 +8,7 @@ const MISC_DEMOGRAPHIC_RECORD_SIZE := 0x000c
 const MISC_FUNDS := 0x0014
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_BUDGETS := 0x077c
+const MISC_AUTO_GOTO := 0x0ff4
 const MISC_NO_DISASTERS := 0x1000
 const MISC_ARCOLOGY_POPULATION := 0x1020
 const MISC_NORMAL_POPULATION := 0x102c
@@ -62,6 +63,9 @@ const TILE_LAUNCH_ARCOLOGY := 0xfe
 const TILE_LLAMADOME := 0xff
 const NEWS_POWER_PLANT := 0x24
 const NEWS_EDUCATION := 0x26
+const NEWS_ARCOLOGY_LAUNCH_START := 0x211
+const NEWS_ARCOLOGY_LAUNCH_END := 0x212
+const SOUND_EXPLOSION := 504
 
 
 static func run(
@@ -91,8 +95,18 @@ static func run(
 		or misc_chunk.decoded_payload.size() != MISC_SIZE
 	):
 		return {"ok": false, "error": "XMIC or MISC has the wrong size"}
-	var microsims: PackedByteArray = microsim_chunk.decoded_payload.duplicate()
-	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+	var old_payloads := BuildingCommand._city_payloads(city)
+	var altitude_chunk := city.document.find_chunk("ALTM")
+	if (
+		old_payloads.is_empty()
+		or altitude_chunk == null
+		or altitude_chunk.decoded_payload.size() != CityState.TILE_COUNT * 2
+	):
+		return {"ok": false, "error": "annual map payloads are missing or invalid"}
+	old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
+	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
+	var microsims: PackedByteArray = changed_payloads.XMIC
+	var misc: PackedByteArray = changed_payloads.MISC
 	var subway_count := _tile_count(misc, TILE_SUBWAY_STATION)
 	var bus_count := _tile_count(misc, TILE_BUS_DEPOT)
 	var rail_count := _tile_count(misc, TILE_RAIL_STATION)
@@ -126,8 +140,14 @@ static func run(
 	var random_records_pending := 0
 	var low_school_score := false
 	var expired_power_records := []
+	var demolished_power_records := []
 	var arcology_population := 0
 	var arcology_launch_pending := false
+	var launch_arcology_records := 0
+	var launched_structures := 0
+	var arcology_launched := false
+	var sound_events := []
+	var view_center_requests := []
 	var updated_subway := 0
 	var updated_bus := 0
 	var updated_rail := 0
@@ -159,7 +179,7 @@ static func run(
 				if int(microsims[offset + 1]) > 48:
 					news_items.append({"type": NEWS_POWER_PLANT, "argument": power_tile + 0x37})
 				if int(microsims[offset + 1]) > 50:
-					var location := _find_microsim_location(city, record_id)
+					var location := _find_microsim_location(changed_payloads.XTXT, record_id)
 					if not location.is_empty():
 						var plant_cost: int = POWER_PLANT_COSTS.get(power_tile, 0)
 						var funds := _read_i32(misc, MISC_FUNDS)
@@ -167,12 +187,23 @@ static func run(
 							_write_i32(misc, MISC_FUNDS, funds - plant_cost)
 							microsims[offset + 1] = 0
 						else:
-							expired_power_records.append({
+							var expired_record := {
 								"record": record_id,
 								"tile": power_tile,
 								"x": location.x,
 								"y": location.y,
-							})
+							}
+							_consume_demolition_animation_random(random, 4)
+							var demolition := DemolishCommand.damage_structure_payloads(
+								city, changed_payloads, Vector2i(location.x, location.y), random
+							)
+							if demolition.get("changed", false):
+								demolished_power_records.append(expired_record)
+								sound_events.append(SOUND_EXPLOSION)
+								if _read_u32(misc, MISC_AUTO_GOTO) != 0:
+									view_center_requests.append(Vector2i(location.x, location.y))
+							else:
+								expired_power_records.append(expired_record)
 				counts.power += 1
 			TILE_CITY_HALL:
 				_write_u16_be(microsims, offset + 2, _population_cap(misc, 200, 900))
@@ -505,6 +536,8 @@ static func run(
 				arcology_population = _to_i32(
 					arcology_population + (arcology_record_population & 0xffff)
 				)
+				if arcology_tile == TILE_LAUNCH_ARCOLOGY:
+					launch_arcology_records += 1
 				counts.arcology += 1
 			TILE_LLAMADOME:
 				if not _has_process_random(random):
@@ -550,10 +583,38 @@ static func run(
 			_divide_toward_zero(_tile_count(misc, TILE_LAUNCH_ARCOLOGY), 16) > 300
 			and arcology_population > 6000000
 		)
-	if not microsim_chunk.set_decoded_payload(microsims):
-		return {"ok": false, "error": "cannot store annual microsimulation statistics"}
-	if not misc_chunk.set_decoded_payload(misc):
-		return {"ok": false, "error": "cannot store annual microsimulation carry-over"}
+		if arcology_launch_pending and _has_process_random(random):
+			news_items.append({"type": NEWS_ARCOLOGY_LAUNCH_START, "argument": 0})
+			var text_overlays: PackedByteArray = changed_payloads.XTXT
+			for x in CityState.MAP_SIZE:
+				for y in CityState.MAP_SIZE:
+					var map_index := x * CityState.MAP_SIZE + y
+					if int(text_overlays[map_index]) != 0xfe:
+						continue
+					var tile_id := int(changed_payloads.XBLD[map_index])
+					var area := DemolishCommand.structure_area(tile_id)
+					if tile_id >= 6:
+						_consume_demolition_animation_random(random, area)
+					var demolition := DemolishCommand.damage_structure_payloads(
+						city, changed_payloads, Vector2i(x, y), random
+					)
+					if demolition.get("changed", false):
+						launched_structures += 1
+						sound_events.append(SOUND_EXPLOSION)
+			_write_i32(
+				misc,
+				MISC_FUNDS,
+				_to_i32(_read_i32(misc, MISC_FUNDS) + launch_arcology_records * 100000)
+			)
+			news_items.append({"type": NEWS_ARCOLOGY_LAUNCH_END, "argument": 0})
+			arcology_launched = true
+			arcology_launch_pending = false
+	var changed_ids := PackedStringArray()
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
+		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
+			changed_ids.append(chunk_id)
+	if not BuildingCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
+		return {"ok": false, "error": "cannot store annual microsimulation changes"}
 	return {
 		"ok": true,
 		"error": "",
@@ -583,10 +644,22 @@ static func run(
 		"updated_llamadome_records": counts.llamadome,
 		"random_records_pending": random_records_pending,
 		"expired_power_records": expired_power_records,
+		"demolished_power_records": demolished_power_records,
 		"arcology_launch_pending": arcology_launch_pending,
+		"arcology_launched": arcology_launched,
+		"launch_arcology_records": launch_arcology_records,
+		"launched_structures": launched_structures,
 		"news_items": news_items,
+		"sound_events": sound_events,
+		"view_center_requests": view_center_requests,
 		"passenger_counters_reset": true,
-		"complete": false,
+		"complete": (
+			_has_process_random(random)
+			and _has_lfsr_random(lfsr_random)
+			and random_records_pending == 0
+			and expired_power_records.is_empty()
+			and not arcology_launch_pending
+		),
 	}
 
 
@@ -622,14 +695,20 @@ static func _has_game_random(random) -> bool:
 	return random != null and random.has_method("next_mod")
 
 
-static func _find_microsim_location(city: CityState, record_id: int) -> Dictionary:
-	var text_chunk := city.document.find_chunk("XTXT")
-	if text_chunk == null or text_chunk.decoded_payload.size() != CityState.MAP_SIZE * CityState.MAP_SIZE:
+static func _consume_demolition_animation_random(random, area: int) -> void:
+	for _layer in area:
+		for _tile in area * area:
+			random.next_u15()
+			random.next_u15()
+
+
+static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int) -> Dictionary:
+	if text_overlays.size() != CityState.MAP_SIZE * CityState.MAP_SIZE:
 		return {}
 	var text_id := record_id + 51
 	for x in CityState.MAP_SIZE:
 		for y in CityState.MAP_SIZE:
-			if int(text_chunk.decoded_payload[x * CityState.MAP_SIZE + y]) == text_id:
+			if int(text_overlays[x * CityState.MAP_SIZE + y]) == text_id:
 				if x == 0 and y == 0:
 					return {}
 				return {"x": x, "y": y}

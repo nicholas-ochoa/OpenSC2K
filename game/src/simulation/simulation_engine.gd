@@ -141,6 +141,7 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				if not budget.ok:
 					return {"ok": false, "error": budget.error}
 				phase_results[action] = budget
+				var annual_complete := true
 				if budget.settled_year:
 					var annual_microsim := MicrosimAnnualPhase.run(
 						city,
@@ -158,10 +159,11 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 					if not annual_microsim.ok:
 						return {"ok": false, "error": annual_microsim.error}
 					phase_results["annual_microsim"] = annual_microsim
+					annual_complete = annual_microsim.complete
 					bus_passengers = 0
 					rail_passengers = 0
 					subway_passengers = 0
-				if budget.complete:
+				if (budget.complete or budget.settled_year) and annual_complete:
 					applied.append(action)
 				else:
 					pending.append(action)

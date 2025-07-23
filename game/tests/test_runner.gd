@@ -130,6 +130,16 @@ class SequenceRandom:
 		return value
 
 
+class CountingRandom:
+	extends RefCounted
+
+	var position := 0
+
+	func next_u15() -> int:
+		position += 1
+		return position & 0x7fff
+
+
 func _init() -> void:
 	var arguments := OS.get_cmdline_user_args()
 	var reference_root := ProjectSettings.globalize_path("res://../references")
@@ -156,6 +166,7 @@ func _init() -> void:
 	_test_annual_microsim_phase(reference_root)
 	_test_annual_service_microsim_phase(reference_root)
 	_test_annual_special_microsim_phase(reference_root)
+	_test_arcology_launch_phase(reference_root)
 	_test_mayor_approval_phase(reference_root)
 	_test_transport_trip(reference_root)
 	_test_growth_phase(reference_root)
@@ -785,13 +796,14 @@ func _test_simulation_engine(reference_root: String) -> void:
 	)
 	_check(annual_resolution.ok, "Simulation engine resolves the annual budget")
 	_check(
-		annual_resolution.applied == PackedStringArray(["month_start"])
-		and annual_resolution.pending == PackedStringArray(["budget"]),
-		"Annual resolution keeps only annual microsimulation work pending",
+		annual_resolution.applied == PackedStringArray(["budget", "month_start"])
+		and annual_resolution.pending.is_empty(),
+		"Annual resolution completes the budget and microsimulation work",
 	)
 	_check(annual_document.misc_u32(0x0ff0) == 1, "Annual resolution stores Auto Budget")
 	_check(
-		annual_resolution.phase_results.has("annual_microsim"),
+		annual_resolution.phase_results.has("annual_microsim")
+		and annual_resolution.phase_results.annual_microsim.complete,
 		"Annual resolution runs the facility-statistics phase",
 	)
 	_check(
@@ -1464,13 +1476,50 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	_check(renewal_city.microsim(1).stat_0 == 0, "Annual power renewal resets plant age")
 	_check(renewal_city.funds() == 1000, "Annual gas-power renewal deducts the original cost")
 	_check(renewal.expired_power_records.is_empty(), "A paid annual power renewal does not request demolition")
-	renewal_microsims[9] = 50
-	_check(renewal_document.find_chunk("XMIC").set_decoded_payload(renewal_microsims), "Annual expiry fixture restores old plant age")
-	_check(renewal_document.set_misc_u32(0x1000, 0), "Annual expiry fixture enables disasters")
-	var expired := AnnualMicrosims.run(renewal_city, 0, 0, 0, ZeroRandom.new(), null, null, 80, -1)
+
+	var expiry_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			expiry_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Annual expiry fixture clears %s" % chunk_id,
+		)
+	_check(expiry_document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Annual expiry fixture clears XLAB")
+	_check(expiry_document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Annual expiry fixture clears XMIC")
+	_check(expiry_document.set_misc_i32(0x14, 10000), "Annual expiry fixture sets funds")
+	_check(expiry_document.set_misc_u32(0x01f0, 16384), "Annual expiry fixture counts clear tiles")
+	_check(expiry_document.set_misc_u32(0x01f0 + 0xc9 * 4, 0), "Annual expiry fixture clears gas count")
+	_check(expiry_document.set_misc_u32(0x1000, 0), "Annual expiry fixture enables disasters")
+	var expiry_city := CityModel.from_document(expiry_document)
+	var gas := Buildings.apply(
+		expiry_city, 3, 5, Vector2i(20, 20), GameRandom.new(1), Random.new(1)
+	)
+	_check(gas.ok and gas.overlay_id == 61, "Annual expiry fixture builds a gas plant")
+	var old_power: PackedByteArray = expiry_document.find_chunk("XMIC").decoded_payload.duplicate()
+	old_power[10 * 8 + 1] = 50
+	_check(expiry_document.find_chunk("XMIC").set_decoded_payload(old_power), "Annual expiry fixture sets plant age 50")
+	var expiry_random := CountingRandom.new()
+	var expired := AnnualMicrosims.run(
+		expiry_city, 0, 0, 0, expiry_random, null, null, 80, -1
+	)
 	_check(expired.ok, "Annual expired-power update completes: %s" % expired.error)
-	_check(expired.expired_power_records.size() == 1, "Annual expired power reports pending demolition")
-	_check(renewal_city.microsim(1).stat_0 == 51, "Pending annual power demolition preserves the incremented age")
+	_check(
+		expired.demolished_power_records.size() == 1 and expired.expired_power_records.is_empty(),
+		"Annual expired power completes its demolition",
+	)
+	_check(expiry_city.microsim(10).tile_id == 0, "Annual power demolition releases the XMIC record")
+	_check(expiry_city.label(61).is_empty(), "Annual power demolition releases the facility label")
+	_check(expiry_city.text_overlay_id(19, 19) == 0, "Annual power demolition clears XTXT")
+	_check(
+		expiry_city.building_id(19, 19) >= 1
+		and expiry_city.building_id(19, 19) <= 4
+		and expiry_city.building_id(22, 22) >= 1
+		and expiry_city.building_id(22, 22) <= 4,
+		"Annual power demolition changes the full plant to rubble",
+	)
+	_check(expiry_document.misc_u32(0x01f0 + 0xc9 * 4) == 0, "Annual power demolition clears the gas tile count")
+	_check(expiry_random.position == 145, "Annual power demolition consumes plant and visual random values in order")
+	_check(not expired.news_items.has({"type": 0x1f8, "argument": 0}), "Annual power demolition does not report sound as news")
+	_check(expired.sound_events == [504], "Annual power demolition reports the explosion sound")
 
 	var aus_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var aus_city := CityModel.from_document(aus_document)
@@ -1551,6 +1600,80 @@ func _test_mayor_approval_phase(reference_root: String) -> void:
 		mayor_house.stat_0 == 6 and mayor_house.stat_2 == 0 and mayor_house.stat_3 == 0,
 		"Repeated mayor-house queries advance the saved term fields",
 	)
+
+
+func _test_arcology_launch_phase(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
+			"Arcology launch fixture clears %s" % chunk_id,
+		)
+	_check(document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Arcology launch fixture clears XLAB")
+	_check(document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Arcology launch fixture clears XMIC")
+	_check(document.set_misc_i32(0x14, 20000000), "Arcology launch fixture sets funds")
+	_check(document.set_misc_u32(0x01f0, 16384), "Arcology launch fixture counts clear tiles")
+	_check(document.set_misc_u32(0x01f0 + 0xfe * 4, 0), "Arcology launch fixture clears launch count")
+	var city := CityModel.from_document(document)
+	var launch := Buildings.apply(
+		city, 5, 8, Vector2i(20, 20), GameRandom.new(1), Random.new(1)
+	)
+	_check(launch.ok and launch.site == Rect2i(19, 19, 4, 4), "Arcology launch fixture builds a launch arcology")
+	var text_overlays: PackedByteArray = document.find_chunk("XTXT").decoded_payload.duplicate()
+	for index in launch.tile_indices:
+		text_overlays[index] = 0xfe
+	_check(document.find_chunk("XTXT").set_decoded_payload(text_overlays), "Arcology launch fixture installs launch markers")
+	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+	for record_id in range(1, 101):
+		var offset := record_id * CityState.MICROSIM_RECORD_SIZE
+		microsims[offset] = 0xfe
+		microsims[offset + 1] = 12
+		microsims[offset + 2] = 0
+		microsims[offset + 3] = 65
+		microsims[offset + 4] = 0xea
+		microsims[offset + 5] = 0x60
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "Arcology launch fixture installs one hundred records")
+	_check(document.set_misc_u32(0x01f0 + 0xfe * 4, 4816), "Arcology launch fixture crosses the tile threshold")
+	_check(document.set_misc_u32(0x1020, 6000000), "Arcology launch fixture sets old arcology population")
+	_check(document.set_misc_u32(0x102c, 20000000), "Arcology launch fixture sets normal population")
+	for budget_id in 3:
+		_check(document.set_misc_u32(0x077c + budget_id * 0x006c + 4, 0), "Arcology launch fixture clears tax %d" % budget_id)
+	var lfsr_values: Array[int] = []
+	for _index in 100:
+		lfsr_values.append(0)
+	var lfsr := SequenceLfsrRandom.new(lfsr_values)
+	var process_random := CountingRandom.new()
+	var result := AnnualMicrosims.run(city, 0, 0, 0, process_random, lfsr)
+	_check(result.ok, "Arcology launch completes: %s" % result.error)
+	_check(result.arcology_launched and not result.arcology_launch_pending, "Arcology launch resolves its threshold event")
+	_check(result.launch_arcology_records == 100, "Arcology launch counts XMIC launch records")
+	_check(
+		result.launched_structures == 1,
+		"Arcology launch demolishes each marked structure once: %s" % result.launched_structures,
+	)
+	_check(document.misc_u32(0x1020) == 6360000, "Arcology launch stores the new arcology population")
+	_check(city.funds() == 29800000, "Arcology launch awards one hundred thousand dollars per record")
+	_check(
+		city.building_id(19, 19) >= 1
+		and city.building_id(19, 19) <= 4
+		and city.building_id(22, 22) >= 1
+		and city.building_id(22, 22) <= 4,
+		"Arcology launch changes the marked structure to rubble: %d, %d"
+		% [city.building_id(19, 19), city.building_id(22, 22)],
+	)
+	_check(city.text_overlay_id(19, 19) == 0xfe, "Arcology launch preserves its special XTXT marker")
+	_check(document.misc_u32(0x01f0 + 0xfe * 4) == 4800, "Arcology launch decrements demolished tile counts")
+	_check(process_random.position == 144, "Arcology launch consumes visual and rubble random values")
+	_check(lfsr.position == 100, "Arcology launch consumes one LFSR value per record")
+	_check(
+		result.news_items == [
+			{"type": 0x211, "argument": 0},
+			{"type": 0x212, "argument": 0},
+		],
+		"Arcology launch reports start and completion news: %s" % [result.news_items],
+	)
+	_check(result.sound_events == [504], "Arcology launch reports one explosion sound: %s" % [result.sound_events])
+	_check(result.complete, "Arcology launch completes the annual microsimulation action")
 
 
 func _test_transport_trip(reference_root: String) -> void:

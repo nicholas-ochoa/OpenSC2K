@@ -42,6 +42,38 @@ static func supports_tool(group_index: int, subtool_index: int) -> bool:
 	return group_index == GROUP_BULLDOZER and subtool_index == SUBTOOL_DEMOLISH
 
 
+static func structure_area(tile_id: int) -> int:
+	return _building_area(tile_id)
+
+
+static func damage_structure_payloads(
+	city: CityState, payloads: Dictionary, point: Vector2i, random
+) -> Dictionary:
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
+		if not payloads.has(chunk_id):
+			return {"changed": false, "error": "%s payload is missing" % chunk_id}
+	var index := city.index_of(point.x, point.y)
+	if index < 0 or int(payloads.XBLD[index]) < 6:
+		return {"changed": false}
+	return _demolish_point(
+		city,
+		payloads.ALTM,
+		payloads.XBLD,
+		payloads.XTER,
+		payloads.XZON,
+		payloads.XUND,
+		payloads.XBIT,
+		payloads.XTXT,
+		payloads.XLAB,
+		payloads.XMIC,
+		payloads.MISC,
+		point,
+		random,
+		true,
+		false
+	)
+
+
 static func apply_path(
 	city: CityState,
 	group_index: int,
@@ -202,7 +234,8 @@ static func _demolish_point(
 	misc: PackedByteArray,
 	point: Vector2i,
 	random,
-	force_damage := false
+	force_damage := false,
+	retile_neighbors := true
 ) -> Dictionary:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	var tile_id := int(buildings[index])
@@ -278,9 +311,10 @@ static func _demolish_point(
 			changed_points.append(Vector2i(x, y))
 	if tile_id == SUBWAY_STATION or (tile_id >= 0x6c and tile_id <= 0x70):
 		underground[index] = 0
-	_retile_after_demolition(
-		buildings, terrain, zones, underground, flags, misc, changed_points
-	)
+	if retile_neighbors:
+		_retile_after_demolition(
+			buildings, terrain, zones, underground, flags, misc, changed_points
+		)
 	if terrain[index] >= 0x30 or was_water:
 		if had_structure and was_water:
 			_retile_surface_water(terrain, flags, point, true)
