@@ -25,6 +25,7 @@ const Milestones = preload("res://src/simulation/milestone_phase.gd")
 const ScenarioPhaseRunner = preload("res://src/simulation/scenario_phase.gd")
 const Bankruptcy = preload("res://src/simulation/bankruptcy_phase.gd")
 const AnnualMicrosims = preload("res://src/simulation/microsim_annual_phase.gd")
+const MayorApproval = preload("res://src/simulation/mayor_approval_phase.gd")
 const Transport = preload("res://src/simulation/transport_trip.gd")
 const Growth = preload("res://src/simulation/growth_phase.gd")
 const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
@@ -155,6 +156,7 @@ func _init() -> void:
 	_test_annual_microsim_phase(reference_root)
 	_test_annual_service_microsim_phase(reference_root)
 	_test_annual_special_microsim_phase(reference_root)
+	_test_mayor_approval_phase(reference_root)
 	_test_transport_trip(reference_root)
 	_test_growth_phase(reference_root)
 	_test_moving_thing_phase(reference_root)
@@ -1424,8 +1426,8 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	_check(city.microsim(3).stat_2 == 1, "Annual statue statistics use one process random value")
 	var mayor_house := city.microsim(4)
 	_check(
-		mayor_house.stat_0 == 4 and mayor_house.stat_2 == 0x1234 and mayor_house.stat_3 == 1,
-		"Annual mayor house statistics advance the term and preserve the pending approval value",
+		mayor_house.stat_0 == 4 and mayor_house.stat_2 == 0 and mayor_house.stat_3 == 1,
+		"Annual mayor house statistics advance the term and store process approval",
 	)
 	var water_facility := city.microsim(5)
 	_check(
@@ -1444,7 +1446,7 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	_check(process_random.position == 9, "Annual special facilities consume process random values in order")
 	_check(lfsr.position == 3, "Annual marinas and arcologies consume LFSR values in order")
 	_check(game_lcg.position == 4, "Annual zoos consume game LCG values in order")
-	_check(result.random_records_pending == 1, "Annual special statistics keep mayor approval pending")
+	_check(result.random_records_pending == 0, "Annual special statistics have all required random sources")
 
 	var renewal_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var renewal_city := CityModel.from_document(renewal_document)
@@ -1492,6 +1494,63 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 		"The Australian Llama Dome path uses three values and preserves statistic three",
 	)
 	_check(aus_random.position == 3, "The Australian Llama Dome path consumes three process random values")
+
+
+func _test_mayor_approval_phase(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+	microsims[8] = 0xf3
+	microsims[9] = 4
+	microsims[14] = 0
+	microsims[15] = 2
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "Mayor approval fixture installs a mayor house")
+	var graphs: PackedByteArray = document.find_chunk("XGRP").decoded_payload.duplicate()
+	_write_u32_be(graphs, 4 * CityModel.GRAPH_VALUE_COUNT * 4, 10)
+	_write_u32_be(graphs, 5 * CityModel.GRAPH_VALUE_COUNT * 4, 20)
+	_write_u32_be(graphs, 6 * CityModel.GRAPH_VALUE_COUNT * 4, 30)
+	_write_u32_be(graphs, 7 * CityModel.GRAPH_VALUE_COUNT * 4, 40)
+	_check(document.find_chunk("XGRP").set_decoded_payload(graphs), "Mayor approval fixture installs graph values")
+	_check(document.set_misc_u32(0x0048, 65), "Mayor approval fixture sets life expectancy")
+	_check(document.set_misc_u32(0x004c, 90), "Mayor approval fixture sets education")
+	_check(document.set_misc_u32(0x0fa4, 5), "Mayor approval fixture sets unemployment")
+	_check(document.set_misc_u32(0x077c + 4, 7), "Mayor approval fixture sets residential tax")
+	_check(document.set_misc_u32(0x102c, 1000), "Mayor approval fixture sets city population")
+	var favorable_values: Array[int] = []
+	for _index in 100:
+		favorable_values.append(190)
+	var favorable_random := SequenceRandom.new(favorable_values)
+	var favorable := MayorApproval.run(city, favorable_random, 79)
+	_check(favorable.ok, "Mayor approval calculation completes: %s" % favorable.error)
+	_check(
+		favorable.weights == PackedInt32Array([10, 20, 40, 5, 21, 10, 5]),
+		"Mayor approval uses traffic, pollution, crime, unemployment, tax, education, and health",
+	)
+	_check(favorable.approval == 100, "Mayor approval counts all favorable survey samples")
+	_check(favorable_random.position == 100, "Mayor approval consumes 100 process random values")
+	_check(
+		favorable.news_items == [{"type": 0x201, "argument": 0}],
+		"Mayor approval reports the upward 80-percent threshold",
+	)
+	var mayor_house := city.microsim(1)
+	_check(
+		mayor_house.stat_0 == 5 and mayor_house.stat_2 == 100 and mayor_house.stat_3 == 1,
+		"Mayor approval updates all mayor-house annual fields",
+	)
+	var complaint_values: Array[int] = []
+	for _index in 100:
+		complaint_values.append(0)
+	var complaint_random := SequenceRandom.new(complaint_values)
+	var complaints := MayorApproval.run(city, complaint_random, favorable.approval)
+	_check(complaints.ok, "Mayor complaint calculation completes: %s" % complaints.error)
+	_check(complaints.approval == 0, "Mayor approval excludes complaint survey samples")
+	_check(complaints.survey_counts[0] == 100, "Mayor survey counts the first complaint")
+	_check(complaints.ranking[0] == 0, "Mayor survey ranks the largest complaint first")
+	mayor_house = city.microsim(1)
+	_check(
+		mayor_house.stat_0 == 6 and mayor_house.stat_2 == 0 and mayor_house.stat_3 == 0,
+		"Repeated mayor-house queries advance the saved term fields",
+	)
 
 
 func _test_transport_trip(reference_root: String) -> void:

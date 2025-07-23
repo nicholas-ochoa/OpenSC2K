@@ -74,7 +74,8 @@ static func run(
 	game_random = null,
 	power_usage_percent := -1,
 	water_usage_percent := -1,
-	australian_locale := false
+	australian_locale := false,
+	mayor_approval := 0
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -410,10 +411,10 @@ static func run(
 				_write_u16_be(microsims, offset + 6, rail_passengers)
 				updated_rail += 1
 			TILE_MAYOR_HOUSE:
+				_write_u16_be(microsims, offset + 4, mayor_approval)
 				if _read_u16_be(microsims, offset + 6) != 0:
 					_write_u16_be(microsims, offset + 6, _read_u16_be(microsims, offset + 6) - 1)
 					microsims[offset + 1] = (int(microsims[offset + 1]) + 1) & 0xff
-				random_records_pending += 1
 				counts.mayor_house += 1
 			TILE_WATER_TREATMENT, TILE_DESALINIZATION:
 				if not _has_process_random(random):

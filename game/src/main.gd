@@ -30,10 +30,13 @@ const Budget = preload("res://src/simulation/budget_phase.gd")
 
 const NEWS_NAMES := {
 	3: "City milestone",
+	0x24: "Power plant report",
+	0x26: "Education report",
 	39: "Bridge collapse",
 	0x29: "New ordinance",
 	0x1f8: "Explosion",
 	0x1fe: "Traffic report",
+	0x201: "High mayor approval",
 	0x202: "Monster attack",
 	0x203: "Air disaster",
 	0x205: "Cargo ship report",
@@ -1136,6 +1139,13 @@ func _open_query(point: Vector2i) -> void:
 	if not result.ok:
 		_show_error("Cannot query tile: %s" % result.error)
 		return
+	if result.get("overlay_id", 0) == 111 and simulation_engine != null:
+		var approval := simulation_engine.recalculate_mayor_house()
+		if not approval.get("ok", false):
+			_show_error("Cannot calculate mayor approval: %s" % approval.error)
+			return
+		_show_news_items(approval.news_items)
+		result = Queries.inspect(city, point)
 	query_dialog.dialog_text = Queries.format_text(result)
 	query_dialog.popup_centered()
 

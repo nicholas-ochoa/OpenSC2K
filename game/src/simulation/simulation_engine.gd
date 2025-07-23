@@ -20,6 +20,7 @@ var terminal_state := false
 var bus_passengers := 0
 var rail_passengers := 0
 var subway_passengers := 0
+var mayor_approval := 0
 
 
 func _init(
@@ -115,6 +116,13 @@ func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) 
 	return result
 
 
+func recalculate_mayor_house() -> Dictionary:
+	var result := MayorApprovalPhase.run(city, random, mayor_approval)
+	if result.get("ok", false):
+		mayor_approval = result.approval
+	return result
+
+
 func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Dictionary:
 
 	var applied := PackedStringArray()
@@ -143,7 +151,9 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 						lfsr_random,
 						game_random,
 						power_usage_percent,
-						water_usage_percent
+						water_usage_percent,
+						false,
+						mayor_approval
 					)
 					if not annual_microsim.ok:
 						return {"ok": false, "error": annual_microsim.error}
