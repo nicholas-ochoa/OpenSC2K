@@ -22,6 +22,7 @@ const EducationHealth = preload("res://src/simulation/education_health_phase.gd"
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
 const Milestones = preload("res://src/simulation/milestone_phase.gd")
+const MilitaryProposal = preload("res://src/simulation/military_proposal_phase.gd")
 const ScenarioPhaseRunner = preload("res://src/simulation/scenario_phase.gd")
 const Bankruptcy = preload("res://src/simulation/bankruptcy_phase.gd")
 const AnnualMicrosims = preload("res://src/simulation/microsim_annual_phase.gd")
@@ -140,6 +141,21 @@ class CountingRandom:
 		return position & 0x7fff
 
 
+class SequenceModuloRandom:
+	extends RefCounted
+
+	var values := PackedInt32Array()
+	var position := 0
+
+	func _init(initial_values: Array[int]) -> void:
+		values = PackedInt32Array(initial_values)
+
+	func next_mod(divisor: int) -> int:
+		var value := int(values[position]) if position < values.size() else 0
+		position += 1
+		return value % divisor
+
+
 func _init() -> void:
 	var arguments := OS.get_cmdline_user_args()
 	var reference_root := ProjectSettings.globalize_path("res://../references")
@@ -163,6 +179,7 @@ func _init() -> void:
 	_test_month_start(reference_root)
 	_test_budget_phase(reference_root)
 	_test_milestone_phase(reference_root)
+	_test_military_proposal_phase(reference_root)
 	_test_annual_microsim_phase(reference_root)
 	_test_annual_service_microsim_phase(reference_root)
 	_test_annual_special_microsim_phase(reference_root)
@@ -1202,6 +1219,141 @@ func _test_milestone_phase(reference_root: String) -> void:
 	_check(final.ok and final.progression == 10, "The last recovered threshold advances progression")
 	var exhausted := Milestones.run(final_city)
 	_check(exhausted.ok and not exhausted.advanced, "Progression stops after the recovered threshold table")
+
+
+func _test_military_proposal_phase(reference_root: String) -> void:
+	var declined_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var declined_city := CityModel.from_document(declined_document)
+	var declined := MilitaryProposal.resolve(declined_city, false, null)
+	_check(declined.ok and not declined.accepted, "The player can decline a military proposal")
+	_check(
+		declined.base_type == MilitaryProposal.BASE_DECLINED
+		and declined_document.misc_u32(MilitaryProposal.MISC_BASE_TYPE) == MilitaryProposal.BASE_DECLINED,
+		"A declined proposal stores the original base type",
+	)
+	_check(declined.changed_indices.is_empty(), "A declined proposal does not change map zones")
+
+	var air_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT"]:
+		_check(
+			air_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)),
+			"Air Force fixture clears %s" % chunk_id,
+		)
+	_check(
+		air_document.find_chunk("ALTM").set_decoded_payload(_filled_bytes(CityState.TILE_COUNT * 2, 0)),
+		"Air Force fixture levels the map",
+	)
+	_check(
+		air_document.set_misc_u32(MilitaryProposal.MISC_TILE_COUNTS, CityState.TILE_COUNT),
+		"Air Force fixture counts clear tiles",
+	)
+	_check(
+		air_document.set_misc_u32(MilitaryProposal.MISC_MILITARY_TILE_COUNTS, 0),
+		"Air Force fixture clears its military count",
+	)
+	var air_city := CityModel.from_document(air_document)
+	var air_random := SequenceModuloRandom.new([10, 20])
+	var air := MilitaryProposal.resolve(air_city, true, air_random)
+	_check(
+		air.ok
+		and air.accepted
+		and air.base_type == MilitaryProposal.BASE_AIR_FORCE
+		and air.notice_id == MilitaryProposal.NOTICE_AIR_FORCE,
+		"A level candidate becomes an Air Force base",
+	)
+	_check(
+		air.site == Rect2i(10, 20, 8, 8)
+		and air.view_center_requests == [Vector2i(14, 24)]
+		and air_random.position == 2,
+		"The Air Force search accepts the first suitable eight-by-eight plot",
+	)
+	_check(air.changed_indices.size() == 64, "The Air Force proposal zones all clear plot tiles")
+	_check(
+		air_city.zone_id(10, 20) == MilitaryProposal.ZONE_MILITARY
+		and air_city.zone_id(17, 27) == MilitaryProposal.ZONE_MILITARY,
+		"The Air Force proposal stores military zones at both plot corners",
+	)
+	_check(
+		air_document.misc_u32(MilitaryProposal.MISC_TILE_COUNTS) == CityState.TILE_COUNT - 64
+		and air_document.misc_u32(MilitaryProposal.MISC_MILITARY_TILE_COUNTS) == 64,
+		"The Air Force proposal moves each zoned tile into the military count",
+	)
+
+	var army_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT"]:
+		_check(
+			army_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)),
+			"Army fixture clears %s" % chunk_id,
+		)
+	var army_altitude := _filled_bytes(CityState.TILE_COUNT * 2, 0)
+	army_altitude[(10 * CityState.MAP_SIZE + 21) * 2 + 1] = 1
+	_check(
+		army_document.find_chunk("ALTM").set_decoded_payload(army_altitude),
+		"Army fixture makes one plot tile uneven",
+	)
+	var army_city := CityModel.from_document(army_document)
+	var army := MilitaryProposal.resolve(army_city, true, SequenceModuloRandom.new([10, 20]))
+	_check(
+		army.ok
+		and army.base_type == MilitaryProposal.BASE_ARMY
+		and army.notice_id == MilitaryProposal.NOTICE_ARMY,
+		"A suitable uneven candidate becomes an Army base",
+	)
+
+	var missile_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var missile_buildings := _filled_bytes(CityState.TILE_COUNT, 0x0d)
+	var expected_sites: Array[Rect2i] = []
+	for origin in [Vector2i(5, 5), Vector2i(15, 15), Vector2i(25, 25), Vector2i(35, 35), Vector2i(45, 45), Vector2i(55, 55)]:
+		expected_sites.append(Rect2i(origin, Vector2i(3, 3)))
+		for x in range(origin.x, origin.x + 3):
+			for y in range(origin.y, origin.y + 3):
+				missile_buildings[x * CityState.MAP_SIZE + y] = 0
+	_check(
+		missile_document.find_chunk("XBLD").set_decoded_payload(missile_buildings),
+		"Missile fixture installs six clear sites",
+	)
+	for chunk_id in ["XTER", "XZON", "XUND", "XBIT"]:
+		_check(
+			missile_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)),
+			"Missile fixture clears %s" % chunk_id,
+		)
+	_check(
+		missile_document.find_chunk("ALTM").set_decoded_payload(_filled_bytes(CityState.TILE_COUNT * 2, 0)),
+		"Missile fixture levels the map",
+	)
+	_check(
+		missile_document.set_misc_u32(MilitaryProposal.MISC_TILE_COUNTS, 54)
+		and missile_document.set_misc_u32(MilitaryProposal.MISC_MILITARY_TILE_COUNTS, 0),
+		"Missile fixture initializes tile counts",
+	)
+	var missile_values: Array[int] = []
+	for _attempt in 24:
+		missile_values.append_array([100, 100])
+	for site in expected_sites:
+		missile_values.append_array([site.position.x, site.position.y])
+	var missile_random := SequenceModuloRandom.new(missile_values)
+	var missile_city := CityModel.from_document(missile_document)
+	var missile := MilitaryProposal.resolve(missile_city, true, missile_random)
+	_check(
+		missile.ok
+		and missile.accepted
+		and missile.base_type == MilitaryProposal.BASE_MISSILE_SILOS
+		and missile.notice_id == MilitaryProposal.NOTICE_MISSILE_SILOS,
+		"Six small candidates become missile silos when no large plot is suitable",
+	)
+	_check(
+		missile.sites == expected_sites
+		and missile.site == expected_sites[-1]
+		and missile.view_center_requests == [expected_sites[-1].position]
+		and missile_random.position == 60,
+		"The missile search preserves the executable attempt order and final view target",
+	)
+	_check(missile.changed_indices.size() == 54, "The missile proposal zones six three-by-three sites")
+	_check(
+		missile_document.misc_u32(MilitaryProposal.MISC_TILE_COUNTS) == 0
+		and missile_document.misc_u32(MilitaryProposal.MISC_MILITARY_TILE_COUNTS) == 54,
+		"The missile proposal moves all site tiles into the military count",
+	)
 
 
 func _test_annual_microsim_phase(reference_root: String) -> void:
