@@ -137,6 +137,21 @@ func resolve_annual_budget(
 	return result
 
 
+func resolve_military_proposal(accepted: bool) -> Dictionary:
+	var result := _empty_result()
+	if engine == null or not interaction_blocked:
+		result.error = "no military proposal interaction is pending"
+		return result
+	var day := engine.resolve_military_proposal(accepted)
+	if not day.get("ok", false):
+		result.error = day.get("error", "military proposal resolution failed")
+		return result
+	interaction_blocked = false
+	_consume_day_result(result, day)
+	result.ok = true
+	return result
+
+
 func _is_day_due() -> bool:
 	match speed:
 		Speed.PAUSED:

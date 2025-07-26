@@ -116,6 +116,30 @@ func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) 
 	return result
 
 
+func resolve_military_proposal(accepted: bool) -> Dictionary:
+	if pending_interaction != "military_proposal" or pending_day_schedule.is_empty():
+		return {"ok": false, "error": "no military proposal interaction is pending"}
+	var proposal := MilitaryProposalPhase.resolve(city, accepted, game_random)
+	if not proposal.ok:
+		return proposal
+	var original_schedule: Dictionary = pending_day_schedule
+	var remaining_schedule := _schedule_after(original_schedule, "milestones")
+	pending_interaction = ""
+	pending_day_schedule = {}
+	var result := _run_day_schedule(remaining_schedule, false)
+	if not result.get("ok", false):
+		return result
+	var applied := PackedStringArray(["milestones"])
+	applied.append_array(result.applied)
+	var phase_results := {"military_proposal": proposal}
+	for phase_name in result.phase_results:
+		phase_results[phase_name] = result.phase_results[phase_name]
+	result.schedule = original_schedule
+	result.applied = applied
+	result.phase_results = phase_results
+	return result
+
+
 func recalculate_mayor_house() -> Dictionary:
 	var result := MayorApprovalPhase.run(city, random, mayor_approval)
 	if result.get("ok", false):
@@ -243,10 +267,27 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				if not milestones.ok:
 					return {"ok": false, "error": milestones.error}
 				phase_results[action] = milestones
-				if milestones.complete:
-					applied.append(action)
-				else:
+				if milestones.military_proposal_pending:
+					pending_interaction = "military_proposal"
+					pending_day_schedule = schedule
 					pending.append(action)
+					var remaining_schedule := _schedule_after(schedule, action)
+					pending.append_array(remaining_schedule.actions)
+					return {
+						"ok": true,
+						"day": clock.city_days,
+						"schedule": schedule,
+						"applied": applied,
+						"pending": pending,
+						"phase_results": phase_results,
+						"interaction_requests": [{
+							"type": "military_proposal",
+							"notification_id": 0xf0,
+						}],
+						"complete": false,
+						"error": "",
+					}
+				applied.append(action)
 			"scenario":
 				var scenario_check := ScenarioPhase.run(scenario, city)
 				if not scenario_check.ok:
@@ -276,3 +317,15 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 		"complete": pending.is_empty(),
 		"error": "",
 	}
+
+
+func _schedule_after(schedule: Dictionary, completed_action: String) -> Dictionary:
+	var remaining := schedule.duplicate(true)
+	remaining.actions = PackedStringArray()
+	var found := false
+	for action in schedule.actions:
+		if found:
+			remaining.actions.append(action)
+		elif action == completed_action:
+			found = true
+	return remaining

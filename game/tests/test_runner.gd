@@ -830,6 +830,45 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"Annual resolution clears the engine passenger counters",
 	)
 
+	var military_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var military_city := CityModel.from_document(military_document)
+	_check(military_city.set_age_in_days(21), "Military engine fixture selects day 21")
+	_check(military_document.set_misc_u32(0x0020, 3), "Military engine fixture sets progression")
+	_check(military_document.set_misc_u32(0x102c, 60001), "Military engine fixture sets population")
+	_check(military_city.set_funds(-100001), "Military engine fixture sets bankrupt funds")
+	var military_engine := Simulation.new(military_city, 1, 7, 13)
+	var military_request := military_engine.advance_day()
+	_check(
+		military_request.ok
+		and military_request.day == 22
+		and military_request.interaction_requests.size() == 1
+		and military_request.interaction_requests[0].type == "military_proposal"
+		and military_request.pending == PackedStringArray(["milestones", "scenario", "bankruptcy"]),
+		"Simulation engine blocks the remaining day-22 checks on a military proposal",
+	)
+	_check(
+		not military_engine.terminal_state and military_document.misc_u32(0x0020) == 4,
+		"The pending proposal stores its milestone but defers bankruptcy",
+	)
+	var rejected_military_advance := military_engine.advance_day()
+	_check(
+		not rejected_military_advance.ok and military_city.age_in_days() == 22,
+		"Simulation engine cannot skip a pending military proposal",
+	)
+	var military_resolution := military_engine.resolve_military_proposal(false)
+	_check(
+		military_resolution.ok
+		and military_resolution.applied == PackedStringArray(["milestones", "scenario", "bankruptcy"])
+		and military_resolution.pending.is_empty()
+		and military_resolution.phase_results.military_proposal.base_type == MilitaryProposal.BASE_DECLINED,
+		"A military decision resumes and completes the day-22 schedule",
+	)
+	_check(
+		military_engine.terminal_state
+		and military_resolution.phase_results.bankruptcy.game_over_events.size() == 1,
+		"Deferred bankruptcy runs after the military decision",
+	)
+
 
 func _test_game_speed_controller(reference_root: String) -> void:
 	var paused_document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
@@ -973,6 +1012,28 @@ func _test_game_speed_controller(reference_root: String) -> void:
 		and not annual_controller.interaction_blocked
 		and annual_resolution.day_results.size() == 1,
 		"Controller resumes after annual budget resolution",
+	)
+
+	var military_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
+	_check(military_city.set_age_in_days(21), "Controller military fixture selects day 21")
+	_check(military_city.set_simulation_speed(4), "Controller military fixture stores Cheetah speed")
+	_check(military_city.document.set_misc_u32(0x0020, 3), "Controller military fixture sets progression")
+	_check(military_city.document.set_misc_u32(0x102c, 60001), "Controller military fixture sets population")
+	var military_controller := GameSpeed.new(Simulation.new(military_city, 1, 7, 13))
+	var military_request := military_controller.advance_time(200.0, 200)
+	_check(
+		military_request.ok
+		and military_request.interaction_requests.size() == 1
+		and military_controller.interaction_blocked,
+		"Controller blocks on the military proposal interaction",
+	)
+	var military_resolution := military_controller.resolve_military_proposal(false)
+	_check(
+		military_resolution.ok
+		and not military_controller.interaction_blocked
+		and military_resolution.day_results.size() == 1
+		and military_resolution.pending_actions.is_empty(),
+		"Controller resumes after the military decision",
 	)
 
 	var terminal_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))

@@ -86,6 +86,7 @@ var speed_controller: GameSpeedController
 var simulation_map_dirty := false
 var recent_news := PackedStringArray()
 var annual_budget_pending := false
+var military_proposal_pending := false
 var game_over_active := false
 
 var map_view: CityMapControl
@@ -110,6 +111,7 @@ var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
 var auto_budget_check: CheckBox
 var game_over_dialog: AcceptDialog
+var military_dialog: ConfirmationDialog
 
 
 func _ready() -> void:
@@ -139,6 +141,7 @@ func _process(delta: float) -> void:
 		Time.get_ticks_msec(),
 		(map_view != null and map_view.is_left_drag_active())
 		or budget_dialog.visible
+		or military_dialog.visible
 		or game_over_active
 	)
 	if not result.ok:
@@ -178,6 +181,8 @@ func _consume_simulation_result(result: Dictionary) -> void:
 	for request in result.interaction_requests:
 		if request.get("type", "") == "annual_budget":
 			_open_budget_dialog(request.get("funding_values", PackedInt32Array()), true)
+		elif request.get("type", "") == "military_proposal":
+			_open_military_proposal()
 
 
 func _build_interface() -> void:
@@ -352,6 +357,19 @@ func _build_interface() -> void:
 	game_over_dialog = AcceptDialog.new()
 	game_over_dialog.min_size = Vector2i(460, 220)
 	add_child(game_over_dialog)
+	military_dialog = ConfirmationDialog.new()
+	military_dialog.title = "Military Base Proposal"
+	military_dialog.dialog_text = (
+		"The military wants to build a base in the city. "
+		+ "The base does not cost city funds. Do you accept the proposal?"
+	)
+	military_dialog.min_size = Vector2i(500, 210)
+	military_dialog.get_ok_button().text = "Accept"
+	military_dialog.get_cancel_button().text = "Decline"
+	military_dialog.exclusive = true
+	military_dialog.confirmed.connect(_accept_military_proposal)
+	military_dialog.canceled.connect(_decline_military_proposal)
+	add_child(military_dialog)
 
 	budget_dialog = ConfirmationDialog.new()
 	budget_dialog.title = "Budget"
@@ -493,6 +511,52 @@ func _restore_annual_budget_dialog() -> void:
 		budget_dialog.popup_centered()
 
 
+func _open_military_proposal() -> void:
+	military_proposal_pending = true
+	military_dialog.popup_centered()
+
+
+func _accept_military_proposal() -> void:
+	_resolve_military_proposal(true)
+
+
+func _decline_military_proposal() -> void:
+	_resolve_military_proposal(false)
+
+
+func _resolve_military_proposal(accepted: bool) -> void:
+	if not military_proposal_pending or speed_controller == null:
+		return
+	var result := speed_controller.resolve_military_proposal(accepted)
+	if not result.ok:
+		_show_error("Cannot resolve the military proposal: %s" % result.error)
+		call_deferred("_restore_military_proposal_dialog")
+		return
+	military_proposal_pending = false
+	_consume_simulation_result(result)
+	_refresh_details()
+	status_label.remove_theme_color_override("font_color")
+	var proposal: Dictionary = result.day_results[0].phase_results.military_proposal
+	match int(proposal.base_type):
+		2:
+			status_label.text = "The Army base site is reserved."
+		3:
+			status_label.text = "The Air Force base site is reserved."
+		5:
+			status_label.text = "The missile silo sites are reserved."
+		_:
+			status_label.text = (
+				"The military proposal was declined."
+				if not accepted
+				else "The military could not find a suitable site."
+			)
+
+
+func _restore_military_proposal_dialog() -> void:
+	if military_proposal_pending:
+		military_dialog.popup_centered()
+
+
 func _load_city(path: String) -> void:
 	var document := Sc2Document.load_path(path)
 	if not document.is_valid():
@@ -508,6 +572,9 @@ func _load_city(path: String) -> void:
 		budget_dialog.hide()
 	if game_over_dialog.visible:
 		game_over_dialog.hide()
+	military_proposal_pending = false
+	if military_dialog.visible:
+		military_dialog.hide()
 	annual_budget_pending = false
 	game_over_active = false
 	city = loaded_city
