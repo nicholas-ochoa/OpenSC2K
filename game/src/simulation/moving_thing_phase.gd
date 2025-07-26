@@ -351,7 +351,7 @@ static func run(
 	counters["maxis_man_save_visible_complete"] = true
 	counters["monsters_save_visible_complete"] = true
 	counters["explosion_map_damage_complete"] = counters.deferred_facility_explosion_hits == 0
-	counters["complete"] = false
+	counters["complete"] = counters.explosion_map_damage_complete
 	counters["error"] = ""
 	return counters
 

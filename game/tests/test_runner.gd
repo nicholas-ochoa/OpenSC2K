@@ -754,7 +754,10 @@ func _test_simulation_engine(reference_root: String) -> void:
 	var day_three := engine.advance_day()
 	_check(day_three.ok, "Simulation engine advances the first growth day")
 	_check(day_three.phase_results.has("growth"), "Simulation engine runs the RCI growth core")
-	_check(day_three.pending == PackedStringArray(["growth"]), "Incomplete non-RCI growth stays pending")
+	_check(
+		day_three.applied == PackedStringArray(["growth"]) and day_three.pending.is_empty(),
+		"Simulation engine completes the full growth partition",
+	)
 	_check(engine.lfsr_random.state != 7, "Growth continues the engine LFSR sequence")
 	var latest := day_three
 	while latest.day < 19:
@@ -2180,8 +2183,9 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	_check(
 		ship_result.ok
 		and ship_result.spawned_ships == 1
-		and ship_result.ship_home == Vector2i(2, 10),
-		"Seaport crane spawns a cargo ship and reports its process-local home",
+		and ship_result.ship_home == Vector2i(2, 10)
+		and ship_result.news_items == [{"type": 0x205, "argument": 0}],
+		"Seaport crane spawns a cargo ship and reports its home and immediate news",
 	)
 	var ship: Dictionary = ship_fixture.city.thing(1)
 	_check(
@@ -2322,6 +2326,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 	_check(
 		first_explosion_frame.ok
+		and first_explosion_frame.complete
 		and first_explosion_frame.news_items.size() == 1
 		and first_explosion_frame.news_items[0].type == 0x1f8
 		and second_explosion_frame.ok

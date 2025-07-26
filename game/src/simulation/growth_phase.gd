@@ -363,7 +363,7 @@ static func run(
 		return {"ok": false, "error": "cannot store growth phase data"}
 	counters["ok"] = true
 	counters["rci_complete"] = true
-	counters["complete"] = false
+	counters["complete"] = true
 	counters["error"] = ""
 	return counters
 
@@ -527,6 +527,7 @@ static func _seaport_growth_selection(
 			if ship.spawned:
 				counters.spawned_ships += 1
 				counters["ship_home"] = ship.point
+				counters.news_items.append({"type": 0x205, "argument": 0})
 		return -1
 	var crane_count := _special_tile_count(misc, 0xe0, military)
 	if int(_special_tile_count(misc, 0xf2, military) / 4) >= crane_count:
