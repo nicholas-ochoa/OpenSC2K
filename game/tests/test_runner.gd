@@ -23,6 +23,7 @@ const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
 const Milestones = preload("res://src/simulation/milestone_phase.gd")
 const MilitaryProposal = preload("res://src/simulation/military_proposal_phase.gd")
+const DisasterStart = preload("res://src/simulation/disaster_start_phase.gd")
 const ScenarioPhaseRunner = preload("res://src/simulation/scenario_phase.gd")
 const Bankruptcy = preload("res://src/simulation/bankruptcy_phase.gd")
 const AnnualMicrosims = preload("res://src/simulation/microsim_annual_phase.gd")
@@ -180,6 +181,7 @@ func _init() -> void:
 	_test_budget_phase(reference_root)
 	_test_milestone_phase(reference_root)
 	_test_military_proposal_phase(reference_root)
+	_test_disaster_start_phase(reference_root)
 	_test_annual_microsim_phase(reference_root)
 	_test_annual_service_microsim_phase(reference_root)
 	_test_annual_special_microsim_phase(reference_root)
@@ -1417,6 +1419,86 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 		missile_document.misc_u32(MilitaryProposal.MISC_TILE_COUNTS) == 0
 		and missile_document.misc_u32(MilitaryProposal.MISC_MILITARY_TILE_COUNTS) == 54,
 		"The missile proposal moves all site tiles into the military count",
+	)
+
+
+func _test_disaster_start_phase(reference_root: String) -> void:
+	var monster_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var things := _filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)
+	things[CityState.THING_RECORD_SIZE] = 14
+	things[CityState.THING_RECORD_SIZE + 3] = 20
+	things[CityState.THING_RECORD_SIZE + 4] = 20
+	things[CityState.THING_RECORD_SIZE + 10] = 42
+	_check(monster_document.find_chunk("XTHG").set_decoded_payload(things), "Monster start fixture installs an occupied record")
+	var text := _filled_bytes(CityState.TILE_COUNT, 0)
+	text[20 * CityState.MAP_SIZE + 20] = 202
+	_check(monster_document.find_chunk("XTXT").set_decoded_payload(text), "Monster start fixture links the occupied record")
+	var monster_city := CityModel.from_document(monster_document)
+	var monster_random := SequenceRandom.new([3, 4, 0, 2])
+	var monster := DisasterStart.start(monster_city, DisasterStart.DISASTER_MONSTER, Vector2i(20, 20), monster_random)
+	_check(
+		monster.ok
+		and monster.started
+		and monster.complete
+		and monster.record == 1
+		and monster.sound_events == [DisasterStart.SOUND_SIREN]
+		and monster.view_center_requests == [Vector2i(20, 20)],
+		"Monster disaster replaces an occupied moving object and reports runtime effects",
+	)
+	var monster_thing := monster_city.thing(1)
+	_check(
+		monster_thing.type == 5
+		and monster_thing.direction == 2
+		and monster_thing.state == 0
+		and monster_thing.x == 20
+		and monster_thing.y == 20
+		and monster_thing.z == 15
+		and monster_thing.px == 8
+		and monster_thing.py == 8,
+		"Monster disaster stores its fixed initial XTHG fields",
+	)
+	_check(
+		monster_thing.dx == 3
+		and monster_thing.dy == 4
+		and monster_thing.label == 42
+		and monster_thing.goal == 3
+		and monster_city.text_overlay_id(20, 20) == 202,
+		"Monster disaster stores its random fields, prior label, goal, and XTXT link",
+	)
+	_check(DisasterStart.has_active_object(monster_city, DisasterStart.DISASTER_MONSTER), "Monster activity is visible to the disaster controller")
+
+	var tornado_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(tornado_document.find_chunk("XTHG").set_decoded_payload(_filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)), "Tornado start fixture clears XTHG")
+	_check(tornado_document.find_chunk("XTXT").set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)), "Tornado start fixture clears XTXT")
+	var tornado_city := CityModel.from_document(tornado_document)
+	_check(tornado_city.set_land_altitude(127, 0, 11), "Tornado start fixture raises the clamped point")
+	var tornado := DisasterStart.start(tornado_city, DisasterStart.DISASTER_TORNADO, Vector2i(200, -3), SequenceRandom.new([5, 6, 7]))
+	var tornado_thing := tornado_city.thing(1)
+	_check(
+		tornado.ok
+		and tornado.started
+		and tornado.point == Vector2i(127, 0)
+		and tornado_thing.type == 15
+		and tornado_thing.direction == 5
+		and tornado_thing.z == 11,
+		"Tornado disaster clamps its target and stores direction and terrain height",
+	)
+	_check(
+		tornado_thing.dx == 6
+		and tornado_thing.dy == 7
+		and tornado_city.text_overlay_id(127, 0) == 202,
+		"Tornado disaster stores its random animation fields and XTXT link",
+	)
+
+	var unsupported_before: PackedByteArray = tornado_document.find_chunk("XTHG").decoded_payload.duplicate()
+	var unsupported := DisasterStart.start(tornado_city, 9, Vector2i(10, 10), SequenceRandom.new([]))
+	_check(
+		unsupported.ok and not unsupported.started and not unsupported.complete,
+		"An unimplemented disaster remains explicit",
+	)
+	_check(
+		tornado_document.find_chunk("XTHG").decoded_payload == unsupported_before,
+		"An unimplemented disaster does not change moving objects",
 	)
 
 
