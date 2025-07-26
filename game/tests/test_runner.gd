@@ -874,6 +874,55 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"Deferred bankruptcy runs after the military decision",
 	)
 
+	var monster_scenario_document := Sc2Document.load_path(reference_root.path_join("SCENARIO/ATLANTA.SCN"))
+	var monster_scenario_city := CityModel.from_document(monster_scenario_document)
+	_check(monster_scenario_city.set_age_in_days(0), "Monster scenario engine fixture resets the day")
+	_check(monster_scenario_document.set_misc_u32(0x0004, 1), "Monster scenario engine fixture selects city mode")
+	var monster_scenario_engine := Simulation.new(monster_scenario_city, 1, 7, 13)
+	var monster_start := monster_scenario_engine.advance_day()
+	_check(
+		monster_start.ok
+		and monster_start.phase_results.has("disaster_start")
+		and monster_start.phase_results.disaster_start.disaster_type == DisasterStart.DISASTER_MONSTER
+		and monster_start.phase_results.disaster_start.started
+		and monster_scenario_engine.active_disaster_type == DisasterStart.DISASTER_MONSTER,
+		"A scenario starts its queued monster after the first calendar tick",
+	)
+	_check(
+		monster_scenario_city.city_mode() == 2
+		and monster_scenario_city.disaster_type() == 0,
+		"A started scenario disaster clears the trigger and stores disaster mode",
+	)
+	var blocked_disaster_day := monster_scenario_engine.advance_day()
+	_check(
+		not blocked_disaster_day.ok and monster_scenario_city.age_in_days() == 1,
+		"An active scenario disaster blocks direct calendar advancement",
+	)
+	var monster_things := _filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)
+	_check(monster_scenario_document.find_chunk("XTHG").set_decoded_payload(monster_things), "Monster scenario fixture ends the moving object")
+	var ended_monster := monster_scenario_engine.advance_disaster_tick()
+	_check(
+		ended_monster.ok
+		and ended_monster.complete
+		and ended_monster.ended_type == DisasterStart.DISASTER_MONSTER
+		and monster_scenario_engine.active_disaster_type == 0
+		and monster_scenario_city.city_mode() == 1,
+		"The disaster controller restores city mode after the monster ends",
+	)
+
+	var unsupported_scenario_document := Sc2Document.load_path(reference_root.path_join("SCENARIO/BARCELON.SCN"))
+	var unsupported_scenario_city := CityModel.from_document(unsupported_scenario_document)
+	_check(unsupported_scenario_city.set_age_in_days(0), "Unsupported scenario fixture resets the day")
+	var unsupported_scenario_engine := Simulation.new(unsupported_scenario_city, 1, 7, 13)
+	var unsupported_start := unsupported_scenario_engine.advance_day()
+	_check(
+		unsupported_start.ok
+		and unsupported_start.pending.has("disaster_start")
+		and not unsupported_start.complete
+		and unsupported_scenario_engine.unsupported_disaster_type == 9,
+		"An unsupported scenario disaster stays explicit in the engine result",
+	)
+
 
 func _test_game_speed_controller(reference_root: String) -> void:
 	var paused_document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
@@ -1039,6 +1088,27 @@ func _test_game_speed_controller(reference_root: String) -> void:
 		and military_resolution.day_results.size() == 1
 		and military_resolution.pending_actions.is_empty(),
 		"Controller resumes after the military decision",
+	)
+
+	var monster_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("SCENARIO/ATLANTA.SCN")))
+	_check(monster_city.set_age_in_days(0), "Controller monster scenario fixture resets the day")
+	_check(monster_city.set_simulation_speed(4), "Controller monster scenario fixture stores Cheetah speed")
+	var monster_controller := GameSpeed.new(Simulation.new(monster_city, 1, 7, 13))
+	var monster_start := monster_controller.advance_time(200.0, 200)
+	_check(
+		monster_start.ok
+		and monster_start.day_results.size() == 1
+		and monster_start.sound_events.has(DisasterStart.SOUND_SIREN)
+		and not monster_start.view_center_requests.is_empty(),
+		"Controller forwards scenario monster start effects",
+	)
+	var monster_tick := monster_controller.advance_time(200.0, 400)
+	_check(
+		monster_tick.ok
+		and monster_tick.moving_results.size() == 1
+		and monster_tick.disaster_results.size() == 1
+		and monster_city.age_in_days() == 1,
+		"Controller updates an active monster without advancing the calendar",
 	)
 
 	var terminal_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))

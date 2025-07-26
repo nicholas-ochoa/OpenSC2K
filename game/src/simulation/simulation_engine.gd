@@ -21,6 +21,10 @@ var bus_passengers := 0
 var rail_passengers := 0
 var subway_passengers := 0
 var mayor_approval := 0
+var pending_disaster_type := 0
+var pending_disaster_point := Vector2i.ZERO
+var active_disaster_type := 0
+var unsupported_disaster_type := 0
 
 
 func _init(
@@ -32,10 +36,13 @@ func _init(
 	lfsr_random = SimLfsrRandom.new(lfsr_seed)
 	game_random = GameLcgRandom.new(game_random_seed)
 	if initial_city != null and initial_city.is_valid():
+		pending_disaster_type = initial_city.disaster_type() & 0xffff
 		if initial_city.document.find_chunk("SCEN") != null:
 			var loaded_scenario := ScenarioState.from_document(initial_city.document)
 			if loaded_scenario.is_valid():
 				scenario = loaded_scenario
+				pending_disaster_type = scenario.disaster_type
+				pending_disaster_point = Vector2i(scenario.disaster_x, scenario.disaster_y)
 		var connections := RciDemandPhase.connection_counts(initial_city)
 		commerce_connections = connections.commerce
 		industry_connections = connections.industry
@@ -79,6 +86,8 @@ func advance_day() -> Dictionary:
 		return {"ok": false, "error": "%s interaction is pending" % pending_interaction}
 	if terminal_state:
 		return {"ok": false, "error": "the game has ended"}
+	if active_disaster_type != 0:
+		return {"ok": false, "error": "a disaster is active"}
 	var schedule := clock.advance_day()
 	if not city.set_age_in_days(clock.city_days):
 		return {"ok": false, "error": "cannot store the new simulation day"}
@@ -100,7 +109,7 @@ func advance_day() -> Dictionary:
 			"complete": false,
 			"error": "",
 		}
-	return _run_day_schedule(schedule, false)
+	return _append_pending_disaster(_run_day_schedule(schedule, false))
 
 
 func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> Dictionary:
@@ -113,7 +122,7 @@ func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) 
 	if result.get("ok", false):
 		pending_interaction = ""
 		pending_day_schedule = {}
-	return result
+	return _append_pending_disaster(result)
 
 
 func resolve_military_proposal(accepted: bool) -> Dictionary:
@@ -137,7 +146,31 @@ func resolve_military_proposal(accepted: bool) -> Dictionary:
 	result.schedule = original_schedule
 	result.applied = applied
 	result.phase_results = phase_results
-	return result
+	return _append_pending_disaster(result)
+
+
+func advance_disaster_tick() -> Dictionary:
+	if active_disaster_type == 0:
+		return {"ok": false, "error": "no disaster is active"}
+	var still_active := DisasterStartPhase.has_active_object(city, active_disaster_type)
+	var ended_type := 0
+	if not still_active:
+		ended_type = active_disaster_type
+		active_disaster_type = 0
+		if not city.document.set_misc_u32(0x0004, 1):
+			return {"ok": false, "error": "cannot restore city mode after the disaster"}
+	return {
+		"ok": true,
+		"error": "",
+		"active": still_active,
+		"disaster_type": active_disaster_type if still_active else ended_type,
+		"ended_type": ended_type,
+		"news_items": [],
+		"effect_events": [],
+		"sound_events": [],
+		"view_center_requests": [],
+		"complete": not still_active,
+	}
 
 
 func recalculate_mayor_house() -> Dictionary:
@@ -329,3 +362,28 @@ func _schedule_after(schedule: Dictionary, completed_action: String) -> Dictiona
 		elif action == completed_action:
 			found = true
 	return remaining
+
+
+func _append_pending_disaster(result: Dictionary) -> Dictionary:
+	if not result.get("ok", false) or not result.get("interaction_requests", []).is_empty():
+		return result
+	if pending_disaster_type == 0:
+		return result
+	var disaster_type := pending_disaster_type
+	pending_disaster_type = 0
+	if not city.document.set_misc_u32(0x0070, 0):
+		return {"ok": false, "error": "cannot clear the pending disaster type"}
+	var started := DisasterStartPhase.start(city, disaster_type, pending_disaster_point, random)
+	if not started.ok:
+		return started
+	result.phase_results["disaster_start"] = started
+	if started.started:
+		active_disaster_type = disaster_type
+		if not city.document.set_misc_u32(0x0004, 2):
+			return {"ok": false, "error": "cannot store active disaster mode"}
+		result.applied.append("disaster_start")
+	elif not started.complete:
+		unsupported_disaster_type = disaster_type
+		result.pending.append("disaster_start")
+		result.complete = false
+	return result

@@ -166,6 +166,13 @@ func _is_day_due() -> bool:
 
 
 func _run_day(result: Dictionary) -> String:
+	if engine.active_disaster_type != 0:
+		var disaster := engine.advance_disaster_tick()
+		if not disaster.get("ok", false):
+			return disaster.get("error", "disaster update failed")
+		result.disaster_results.append(disaster)
+		_append_runtime_events(result, disaster)
+		return ""
 	var day := engine.advance_day()
 	if not day.get("ok", false):
 		return day.get("error", "simulation day failed")
@@ -209,6 +216,7 @@ func _empty_result() -> Dictionary:
 		"error": "",
 		"base_ticks": 0,
 		"moving_results": [],
+		"disaster_results": [],
 		"day_results": [],
 		"news_items": [],
 		"effect_events": [],
