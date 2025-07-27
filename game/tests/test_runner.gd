@@ -355,6 +355,11 @@ func _test_sprite_archives(reference_root: String) -> void:
 
 	var palette := Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
 	var large := SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
+	var small_medium_base := SpriteArchive.load_path(reference_root.path_join("DATA/SMALLMED.DAT"))
+	var special := SpriteArchive.load_path(reference_root.path_join("DATA/SPECIAL.DAT"))
+	var small_medium := SpriteArchive.combine([small_medium_base, special])
+	_check(small_medium.is_valid(), "Small, medium, and special sprite archives combine")
+	_check(small_medium.find_sprite(698) != null, "Special archive supplies medium hydro sprite 698")
 	_check(
 		IsometricRenderer.shadow_color(palette, palette.color(0x5f)).to_rgba32()
 		== palette.color(0x64).to_rgba32(),
@@ -384,9 +389,66 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var starter := CityModel.from_document(starter_document)
 	var asset_errors := IsometricRenderer.validate_assets(starter, large)
 	_check(asset_errors.is_empty(), "Starter city has every required large sprite: %s" % asset_errors)
+	var small_asset_errors := IsometricRenderer.validate_assets(
+		starter, small_medium, IsometricRenderer.VIEW_SMALL
+	)
+	_check(
+		small_asset_errors.is_empty(),
+		"Starter city has every required small sprite: %s" % small_asset_errors,
+	)
+	var medium_asset_errors := IsometricRenderer.validate_assets(
+		starter, small_medium, IsometricRenderer.VIEW_MEDIUM
+	)
+	_check(
+		medium_asset_errors.is_empty(),
+		"Starter city has every required medium sprite: %s" % medium_asset_errors,
+	)
 	_check(IsometricRenderer.terrain_sprite_id(0x00, false) == 1256, "Flat land uses sprite 1256")
 	_check(IsometricRenderer.terrain_sprite_id(0x10, true) == 1270, "Submerged land uses sprite 1270")
 	_check(IsometricRenderer.terrain_sprite_id(0x45, true) == 1290, "Last water tile uses sprite 1290")
+	_check(
+		IsometricRenderer.terrain_sprite_id(0x00, false, 0) == 256,
+		"Small flat land uses sprite 256",
+	)
+	_check(
+		IsometricRenderer.terrain_sprite_id(0x00, false, 500) == 756,
+		"Medium flat land uses sprite 756",
+	)
+	_check(
+		IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_SMALL)
+		== Vector2i(1040, 736),
+		"Small city view has the recovered quarter-scale canvas",
+	)
+	_check(
+		IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_MEDIUM)
+		== Vector2i(2080, 1472),
+		"Medium city view has the recovered half-scale canvas",
+	)
+	var small_terrain := small_medium.find_sprite(256)
+	var medium_terrain := small_medium.find_sprite(756)
+	_check(
+		small_terrain != null and small_terrain.width == 8 and small_terrain.height == 5,
+		"Small terrain sprite is 8 by 5",
+	)
+	_check(
+		medium_terrain != null and medium_terrain.width == 16 and medium_terrain.height == 9,
+		"Medium terrain sprite is 16 by 9",
+	)
+	var city_paths := _files_with_extension(reference_root.path_join("CITIES"), "SC2")
+	city_paths.append_array(_files_with_extension(reference_root.path_join("SCENARIO"), "SCN"))
+	for path in city_paths:
+		var view_city := CityModel.from_document(Sc2Document.load_path(path))
+		if not view_city.is_valid():
+			continue
+		for view_size in [IsometricRenderer.VIEW_SMALL, IsometricRenderer.VIEW_MEDIUM]:
+			var view_errors := IsometricRenderer.validate_assets(
+				view_city, small_medium, view_size
+			)
+			_check(
+				view_errors.is_empty(),
+				"%s has all required view-%d sprites: %s"
+				% [path.get_file(), view_size, view_errors],
+			)
 	var plane_visual := IsometricRenderer.moving_thing_sprite({
 		"type": 1, "direction": 4, "state": 2,
 	})

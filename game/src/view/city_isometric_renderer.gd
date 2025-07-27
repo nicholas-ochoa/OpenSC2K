@@ -9,6 +9,10 @@ const HALF_HEIGHT := 8
 const ALTITUDE_STEP := 12
 const TOP_MARGIN := 512
 const SIDE_MARGIN := 32
+const VIEW_SMALL := 0
+const VIEW_MEDIUM := 1
+const VIEW_LARGE := 2
+const IMAGE_SIZE_LARGE := Vector2i(4160, 2944)
 const DISPATCH_SPRITES := {7: 1381, 8: 1382, 14: 1383}
 const THING_SPRITES := [
 	0, 1359, 1364, 1369, 1390, 1490, 1387, 1382, 1383,
@@ -43,7 +47,10 @@ const MONSTER_LOWER_SECOND_Y := [49, 46]
 
 
 static func create_image(
-	city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive
+	city: CityState,
+	palette: Sc2Palette,
+	sprites: Sc2SpriteArchive,
+	view_size := VIEW_LARGE
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
@@ -52,15 +59,17 @@ static func create_image(
 	if sprites == null or not sprites.is_valid():
 		return _failure("large sprite archive is invalid")
 
-	var asset_errors := validate_assets(city, sprites)
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return _failure("city view size is invalid")
+	var asset_errors := validate_assets(city, sprites, view_size)
 	if not asset_errors.is_empty():
 		return _failure(asset_errors[0])
 
-	var image_width := CityState.MAP_SIZE * TILE_WIDTH + SIDE_MARGIN * 2
-	var image_height := CityState.MAP_SIZE * TILE_HEIGHT + TOP_MARGIN + 256
-	var output := Image.create(image_width, image_height, false, Image.FORMAT_RGBA8)
+	var output_size := output_size_for_view(view_size)
+	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
 	output.fill(Color("18242c"))
-	var origin_x := SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+	var origin_x: int = configuration.side_margin + CityState.MAP_SIZE * configuration.half_width
 	var cache: Dictionary = {}
 
 	for diagonal in CityState.MAP_SIZE * 2 - 1:
@@ -68,40 +77,49 @@ static func create_image(
 			var x := diagonal - y
 			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
 				continue
-			_draw_tile(output, city, palette, sprites, cache, origin_x, x, y)
+			_draw_tile(output, city, palette, sprites, cache, configuration, origin_x, x, y)
 
 	return {"ok": true, "image": output, "error": ""}
 
 
-static func validate_assets(city: CityState, sprites: Sc2SpriteArchive) -> PackedStringArray:
+static func validate_assets(
+	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
+) -> PackedStringArray:
 	var errors := PackedStringArray()
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		errors.append("city view size is invalid")
+		return errors
 	var missing: Dictionary = {}
 	for x in CityState.MAP_SIZE:
 		for y in CityState.MAP_SIZE:
-			var terrain_sprite := terrain_sprite_id(city.terrain_id(x, y), city.is_water(x, y))
+			var terrain_sprite := terrain_sprite_id(
+				city.terrain_id(x, y), city.is_water(x, y), configuration.sprite_base
+			)
 			if sprites.find_sprite(terrain_sprite) == null:
 				missing[terrain_sprite] = true
 			var zone := city.zone_id(x, y)
 			if zone > 0 and city.building_id(x, y) == 0:
-				var zone_sprite := 1290 + zone
+				var zone_sprite: int = configuration.sprite_base + 290 + zone
 				if sprites.find_sprite(zone_sprite) == null:
 					missing[zone_sprite] = true
 			var building := city.building_id(x, y)
 			if building > 0 and _should_draw_building(city, x, y, building):
-				var building_sprite := 1000 + building
+				var building_sprite: int = configuration.sprite_base + building
 				if sprites.find_sprite(building_sprite) == null:
 					missing[building_sprite] = true
-			var dispatch_sprite := dispatch_sprite_id(city, x, y)
-			if dispatch_sprite > 0 and sprites.find_sprite(dispatch_sprite) == null:
-				missing[dispatch_sprite] = true
-			var moving_visual := moving_thing_visual(city, x, y)
-			if not moving_visual.is_empty():
-				if moving_visual.get("monster", false):
-					for layer in moving_visual.layers:
-						if sprites.find_sprite(layer.sprite_id) == null:
-							missing[layer.sprite_id] = true
-				elif sprites.find_sprite(moving_visual.sprite_id) == null:
-					missing[moving_visual.sprite_id] = true
+			if view_size == VIEW_LARGE:
+				var dispatch_sprite := dispatch_sprite_id(city, x, y)
+				if dispatch_sprite > 0 and sprites.find_sprite(dispatch_sprite) == null:
+					missing[dispatch_sprite] = true
+				var moving_visual := moving_thing_visual(city, x, y)
+				if not moving_visual.is_empty():
+					if moving_visual.get("monster", false):
+						for layer in moving_visual.layers:
+							if sprites.find_sprite(layer.sprite_id) == null:
+								missing[layer.sprite_id] = true
+					elif sprites.find_sprite(moving_visual.sprite_id) == null:
+						missing[moving_visual.sprite_id] = true
 	var ids := missing.keys()
 	ids.sort()
 	for sprite_id in ids:
@@ -109,7 +127,7 @@ static func validate_assets(city: CityState, sprites: Sc2SpriteArchive) -> Packe
 	return errors
 
 
-static func terrain_sprite_id(terrain: int, water_flag: bool) -> int:
+static func terrain_sprite_id(terrain: int, water_flag: bool, sprite_base := 1000) -> int:
 	var tile_id := 256
 	if terrain >= 0x00 and terrain <= 0x0e:
 		tile_id = 256 + terrain
@@ -121,7 +139,41 @@ static func terrain_sprite_id(terrain: int, water_flag: bool) -> int:
 		tile_id = 256 + terrain - 35
 	elif water_flag or (terrain >= 0x10 and terrain <= 0x1e):
 		tile_id = 270
-	return 1000 + tile_id
+	return sprite_base + tile_id
+
+
+static func view_configuration(view_size: int) -> Dictionary:
+	match view_size:
+		VIEW_SMALL:
+			return {
+				"view_size": VIEW_SMALL,
+				"divisor": 4, "tile_width": 8, "tile_height": 5,
+				"half_width": 4, "half_height": 2, "altitude_step": 3,
+				"top_margin": 128, "side_margin": 8, "sprite_base": 0,
+			}
+		VIEW_MEDIUM:
+			return {
+				"view_size": VIEW_MEDIUM,
+				"divisor": 2, "tile_width": 16, "tile_height": 9,
+				"half_width": 8, "half_height": 4, "altitude_step": 6,
+				"top_margin": 256, "side_margin": 16, "sprite_base": 500,
+			}
+		VIEW_LARGE:
+			return {
+				"view_size": VIEW_LARGE,
+				"divisor": 1, "tile_width": TILE_WIDTH, "tile_height": TILE_HEIGHT,
+				"half_width": HALF_WIDTH, "half_height": HALF_HEIGHT,
+				"altitude_step": ALTITUDE_STEP, "top_margin": TOP_MARGIN,
+				"side_margin": SIDE_MARGIN, "sprite_base": 1000,
+			}
+	return {}
+
+
+static func output_size_for_view(view_size: int) -> Vector2i:
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return Vector2i.ZERO
+	return IMAGE_SIZE_LARGE / int(configuration.divisor)
 
 
 static func tile_polygon(city: CityState, x: int, y: int) -> PackedVector2Array:
@@ -182,6 +234,7 @@ static func _draw_tile(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
+	configuration: Dictionary,
 	origin_x: int,
 	x: int,
 	y: int
@@ -192,31 +245,44 @@ static func _draw_tile(
 	if terrain_id >= 0x10:
 		terrain_altitude = city.water_altitude(x, y)
 
-	var screen_x := origin_x + (x - y) * HALF_WIDTH
-	var base_y := TOP_MARGIN + (x + y) * HALF_HEIGHT - terrain_altitude * ALTITUDE_STEP
+	var screen_x: int = origin_x + (x - y) * int(configuration.half_width)
+	var base_y: int = (
+		int(configuration.top_margin)
+		+ (x + y) * int(configuration.half_height)
+		- terrain_altitude * int(configuration.altitude_step)
+	)
 
 	if building_id < 108:
-		var terrain := _sprite_image(sprites, palette, cache, terrain_sprite_id(terrain_id, city.is_water(x, y)), false)
-		_blend_on_base(output, terrain, screen_x, base_y)
+		var terrain := _sprite_image(
+			sprites, palette, cache,
+			terrain_sprite_id(terrain_id, city.is_water(x, y), configuration.sprite_base),
+			false
+		)
+		_blend_on_base(output, terrain, screen_x, base_y, configuration.tile_height)
 
 	var zone := city.zone_id(x, y)
 	if zone > 0 and building_id == 0:
-		var zone_image := _sprite_image(sprites, palette, cache, 1290 + zone, false)
-		_blend_on_base(output, zone_image, screen_x, base_y)
+		var zone_image := _sprite_image(
+			sprites, palette, cache, int(configuration.sprite_base) + 290 + zone, false
+		)
+		_blend_on_base(output, zone_image, screen_x, base_y, configuration.tile_height)
 
 	if building_id > 0 and _should_draw_building(city, x, y, building_id):
 		var flip := city.is_flipped(x, y)
 		if (city.compass_rotation() == 1 or city.compass_rotation() == 3) and not _fixed_rotation_tile(building_id):
 			flip = not flip
-		var building := _sprite_image(sprites, palette, cache, 1000 + building_id, flip)
-		_blend_on_base(output, building, screen_x, base_y)
-	var dispatch_sprite := dispatch_sprite_id(city, x, y)
-	if dispatch_sprite > 0:
-		var dispatch_image := _sprite_image(sprites, palette, cache, dispatch_sprite, false)
-		_blend_on_base(output, dispatch_image, screen_x, base_y)
-	var moving_visual := moving_thing_visual(city, x, y)
-	if not moving_visual.is_empty():
-		_draw_moving_thing(output, city, palette, sprites, cache, moving_visual)
+		var building := _sprite_image(
+			sprites, palette, cache, int(configuration.sprite_base) + building_id, flip
+		)
+		_blend_on_base(output, building, screen_x, base_y, configuration.tile_height)
+	if configuration.view_size == VIEW_LARGE:
+		var dispatch_sprite := dispatch_sprite_id(city, x, y)
+		if dispatch_sprite > 0:
+			var dispatch_image := _sprite_image(sprites, palette, cache, dispatch_sprite, false)
+			_blend_on_base(output, dispatch_image, screen_x, base_y, configuration.tile_height)
+		var moving_visual := moving_thing_visual(city, x, y)
+		if not moving_visual.is_empty():
+			_draw_moving_thing(output, city, palette, sprites, cache, moving_visual)
 
 
 static func dispatch_sprite_id(city: CityState, x: int, y: int) -> int:
@@ -651,8 +717,10 @@ static func _sprite_image(
 	return image
 
 
-static func _blend_on_base(output: Image, sprite: Image, x: int, base_y: int) -> void:
-	var destination := Vector2i(x, base_y + TILE_HEIGHT - sprite.get_height())
+static func _blend_on_base(
+	output: Image, sprite: Image, x: int, base_y: int, tile_height := TILE_HEIGHT
+) -> void:
+	var destination := Vector2i(x, base_y + tile_height - sprite.get_height())
 	output.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), destination)
 
 

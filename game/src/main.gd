@@ -72,6 +72,7 @@ var city: CityState
 var current_document: Sc2File
 var palette: Sc2Palette
 var large_sprites: Sc2SpriteArchive
+var small_medium_sprites: Sc2SpriteArchive
 var overlay_mode := "city"
 var reference_root := ""
 var selected_group := 9
@@ -135,6 +136,19 @@ func _ready() -> void:
 	if not large_sprites.is_valid():
 		_show_error(large_sprites.parse_error)
 		return
+	var base_small_medium := SpriteArchive.load_path(
+		reference_root.path_join("DATA/SMALLMED.DAT")
+	)
+	if not base_small_medium.is_valid():
+		_show_error(base_small_medium.parse_error)
+		return
+	var special_sprites := SpriteArchive.load_path(
+		reference_root.path_join("DATA/SPECIAL.DAT")
+	)
+	if not special_sprites.is_valid():
+		_show_error(special_sprites.parse_error)
+		return
+	small_medium_sprites = SpriteArchive.combine([base_small_medium, special_sprites])
 
 	var initial_city := reference_root.path_join("CITIES/STARTER.SC2")
 	if FileAccess.file_exists(initial_city):
@@ -161,6 +175,17 @@ func _process(delta: float) -> void:
 		return
 
 	_consume_simulation_result(result)
+
+
+func _unhandled_key_input(event: InputEvent) -> void:
+	if not event is InputEventKey or not event.pressed or event.echo or map_view == null:
+		return
+	if event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL:
+		if map_view.zoom_in():
+			get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_MINUS:
+		if map_view.zoom_out():
+			get_viewport().set_input_as_handled()
 
 
 func _consume_simulation_result(result: Dictionary) -> void:
@@ -341,7 +366,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_view.selection_completed.connect(_apply_map_selection)
-	map_view.zoom_changed.connect(_update_zoom_controls)
+	map_view.zoom_changed.connect(_on_city_zoom_changed)
 	map_panel.add_child(map_view)
 
 	sound_player = AudioStreamPlayer.new()
@@ -634,6 +659,12 @@ func _update_zoom_controls(percent: int) -> void:
 		zoom_out_button.disabled = not map_view.can_zoom_out()
 
 
+func _on_city_zoom_changed(percent: int) -> void:
+	_update_zoom_controls(percent)
+	if city != null and overlay_mode == "city":
+		_refresh_map()
+
+
 func _on_file_menu(id: int) -> void:
 	match id:
 		0: _open_city_dialog()
@@ -906,13 +937,30 @@ func _refresh_map() -> void:
 		return
 	var image: Image
 	if overlay_mode == "city":
-		var rendered := IsometricRenderer.create_image(city, palette, large_sprites)
+		var view_size := IsometricRenderer.VIEW_LARGE
+		var sprite_archive := large_sprites
+		if map_view.zoom_percent() <= 25:
+			view_size = IsometricRenderer.VIEW_SMALL
+			sprite_archive = small_medium_sprites
+		elif map_view.zoom_percent() <= 50:
+			view_size = IsometricRenderer.VIEW_MEDIUM
+			sprite_archive = small_medium_sprites
+		var rendered := IsometricRenderer.create_image(
+			city, palette, sprite_archive, view_size
+		)
 		if not rendered.ok:
 			_show_error(rendered.error)
 			return
 		image = rendered.image
+		if view_size != IsometricRenderer.VIEW_LARGE:
+			image.resize(
+				IsometricRenderer.IMAGE_SIZE_LARGE.x,
+				IsometricRenderer.IMAGE_SIZE_LARGE.y,
+				Image.INTERPOLATE_NEAREST,
+			)
 	else:
 		image = Minimap.create_image(city, palette, overlay_mode)
+		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
 	map_view.set_city_view(city, ImageTexture.create_from_image(image))
 
 

@@ -119,6 +119,20 @@ static func load_path(path: String) -> Sc2SpriteArchive:
 	return archive
 
 
+static func combine(archives: Array[Sc2SpriteArchive]) -> Sc2SpriteArchive:
+	var result := Sc2SpriteArchive.new()
+	for archive in archives:
+		if archive == null or not archive.is_valid():
+			result.parse_error = "cannot combine an invalid sprite archive"
+			result.entries.clear()
+			result.entries_by_id.clear()
+			return result
+		for entry in archive.entries:
+			result.entries.append(entry)
+			result.entries_by_id[entry.sprite_id] = entry
+	return result
+
+
 func parse(bytes: PackedByteArray) -> bool:
 	entries.clear()
 	entries_by_id.clear()
