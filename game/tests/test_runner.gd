@@ -8,6 +8,7 @@ const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
+const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
@@ -326,6 +327,17 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 
 
 func _test_sprite_archives(reference_root: String) -> void:
+	var toolbar := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 2)
+	_check(toolbar.ok, "Windows toolbar bitmap resource loads: %s" % toolbar.error)
+	if toolbar.ok:
+		_check(
+			toolbar.image.get_size() == Vector2i(865, 23),
+			"Windows toolbar bitmap resource has its confirmed size",
+		)
+	_check(
+		not PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 0xffff).ok,
+		"Windows bitmap loader rejects a missing numeric resource",
+	)
 	var expected_counts := {
 		"LARGE.DAT": 501,
 		"SMALLMED.DAT": 904,
