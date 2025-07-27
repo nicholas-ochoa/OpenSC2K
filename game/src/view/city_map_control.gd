@@ -2,17 +2,17 @@ class_name CityMapControl
 extends Control
 
 signal selection_completed(start: Vector2i, finish: Vector2i, path: Array[Vector2i])
+signal zoom_changed(percent: int)
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
-const MIN_ZOOM := 1.0
-const MAX_ZOOM := 12.0
-const ZOOM_STEP := 1.25
+const ZOOM_LEVELS := [0.25, 0.5, 1.0, 2.0]
+const DEFAULT_ZOOM_INDEX := 2
 
 var city: CityState
 var city_texture: Texture2D
 var edit_enabled := false
 var selection_mode := "rectangle"
-var zoom_factor := 1.0
+var zoom_factor: float = ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]
 var source_center := Vector2.ZERO
 var selection_start := Vector2i(-1, -1)
 var selection_end := Vector2i(-1, -1)
@@ -25,6 +25,7 @@ var _effect_generation := 0
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	resized.connect(_on_resized)
 
 
@@ -53,6 +54,22 @@ func set_edit_enabled(value: bool, mode := "rectangle") -> void:
 
 func zoom_percent() -> int:
 	return roundi(zoom_factor * 100.0)
+
+
+func zoom_in(local_point := Vector2.INF) -> bool:
+	return _change_zoom(1, local_point)
+
+
+func zoom_out(local_point := Vector2.INF) -> bool:
+	return _change_zoom(-1, local_point)
+
+
+func can_zoom_in() -> bool:
+	return _zoom_index() < ZOOM_LEVELS.size() - 1
+
+
+func can_zoom_out() -> bool:
+	return _zoom_index() > 0
 
 
 func is_left_drag_active() -> bool:
@@ -171,11 +188,11 @@ func _gui_input(event: InputEvent) -> void:
 
 func _handle_mouse_button(event: InputEventMouseButton) -> void:
 	if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-		_zoom_at(event.position, ZOOM_STEP)
+		zoom_in(event.position)
 		accept_event()
 		return
 	if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-		_zoom_at(event.position, 1.0 / ZOOM_STEP)
+		zoom_out(event.position)
 		accept_event()
 		return
 	if event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:
@@ -231,27 +248,44 @@ func _tile_at(local_point: Vector2) -> Vector2i:
 	return Renderer.screen_to_tile(city, source_point)
 
 
-func _zoom_at(local_point: Vector2, multiplier: float) -> void:
+func _change_zoom(direction: int, local_point: Vector2) -> bool:
+	var old_index := _zoom_index()
+	var new_index := clampi(old_index + direction, 0, ZOOM_LEVELS.size() - 1)
+	if new_index == old_index:
+		return false
+	var anchor := local_point
+	if not anchor.is_finite():
+		anchor = size * 0.5
 	var old_scale := _view_scale()
-	var source_point := (local_point - _draw_offset(old_scale)) / old_scale
-	zoom_factor = clampf(zoom_factor * multiplier, MIN_ZOOM, MAX_ZOOM)
+	var source_point := source_center
+	if old_scale > 0.0:
+		source_point = (anchor - _draw_offset(old_scale)) / old_scale
+	zoom_factor = ZOOM_LEVELS[new_index]
 	var new_scale := _view_scale()
-	source_center = source_point + (size * 0.5 - local_point) / new_scale
+	source_center = source_point + (size * 0.5 - anchor) / new_scale
 	_clamp_source_center()
+	zoom_changed.emit(zoom_percent())
 	queue_redraw()
+	return true
+
+
+func _zoom_index() -> int:
+	var closest := 0
+	var distance := absf(zoom_factor - ZOOM_LEVELS[0])
+	for index in range(1, ZOOM_LEVELS.size()):
+		var candidate := absf(zoom_factor - ZOOM_LEVELS[index])
+		if candidate < distance:
+			closest = index
+			distance = candidate
+	return closest
 
 
 func _view_scale() -> float:
-	if city_texture == null:
-		return 1.0
-	var source_size := Vector2(city_texture.get_size())
-	if source_size.x <= 0.0 or source_size.y <= 0.0 or size.x <= 0.0 or size.y <= 0.0:
-		return 1.0
-	return minf(size.x / source_size.x, size.y / source_size.y) * zoom_factor
+	return zoom_factor
 
 
 func _draw_offset(scale: float) -> Vector2:
-	return size * 0.5 - source_center * scale
+	return (size * 0.5 - source_center * scale).round()
 
 
 func _clamp_source_center() -> void:

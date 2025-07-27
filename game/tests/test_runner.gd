@@ -444,6 +444,12 @@ func _test_sprite_archives(reference_root: String) -> void:
 		)
 	var map_control := MapControl.new()
 	map_control.city = starter
+	_check(map_control.zoom_percent() == 100, "City view starts at native large-sprite scale")
+	_check(map_control.zoom_in(), "City view accepts a fixed zoom-in step")
+	_check(map_control.zoom_percent() == 200, "City view zoom-in doubles source pixels")
+	_check(not map_control.zoom_in(), "City view rejects zoom above the largest fixed level")
+	_check(map_control.zoom_out(), "City view accepts a fixed zoom-out step")
+	_check(map_control.zoom_percent() == 100, "City view zoom-out restores native scale")
 	var center_tile := Vector2i(64, 64)
 	var center_polygon := IsometricRenderer.tile_polygon(starter, center_tile.x, center_tile.y)
 	var expected_center := (

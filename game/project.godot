@@ -21,4 +21,4 @@ window/stretch/mode="canvas_items"
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
 environment/defaults/default_clear_color=Color(0.035, 0.047, 0.059, 1)
-
+textures/default_filters/use_nearest_mipmap_filter=false
