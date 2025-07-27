@@ -4,6 +4,7 @@ const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
+const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
@@ -102,6 +103,11 @@ var tool_selector: OptionButton
 var undo_button: Button
 var speed_selector: OptionButton
 var news_label: Label
+var title_stats_label: Label
+var zoom_label: Label
+var zoom_in_button: Button
+var zoom_out_button: Button
+var toolbar_buttons: Array[Button] = []
 var sign_dialog: ConfirmationDialog
 var sign_input: LineEdit
 var query_dialog: AcceptDialog
@@ -115,8 +121,12 @@ var military_dialog: ConfirmationDialog
 
 
 func _ready() -> void:
-	_build_interface()
 	reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
+	var toolbar_resource := PeBitmap.load_numeric(
+		reference_root.path_join("SIMCITY.EXE"), 2
+	)
+	var toolbar_art: Image = toolbar_resource.get("image") as Image if toolbar_resource.ok else null
+	_build_interface(toolbar_art)
 	palette = Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
 	if not palette.is_valid():
 		_show_error(palette.load_error)
@@ -185,98 +195,182 @@ func _consume_simulation_result(result: Dictionary) -> void:
 			_open_military_proposal()
 
 
-func _build_interface() -> void:
+func _build_interface(toolbar_art: Image) -> void:
+	theme = _create_classic_theme()
 	var background := ColorRect.new()
-	background.color = Color("101820")
+	background.color = Color("c0c0c0")
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(background)
 
-	var root_margin := MarginContainer.new()
-	root_margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	root_margin.add_theme_constant_override("margin_left", 20)
-	root_margin.add_theme_constant_override("margin_top", 16)
-	root_margin.add_theme_constant_override("margin_right", 20)
-	root_margin.add_theme_constant_override("margin_bottom", 18)
-	add_child(root_margin)
-
 	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 12)
-	root_margin.add_child(page)
+	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	page.add_theme_constant_override("separation", 0)
+	add_child(page)
 
-	var header := HBoxContainer.new()
-	page.add_child(header)
+	var menu_bar := PanelContainer.new()
+	menu_bar.custom_minimum_size = Vector2(0, 27)
+	menu_bar.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("ffffff"), 0))
+	page.add_child(menu_bar)
+	var menu_row := HBoxContainer.new()
+	menu_row.add_theme_constant_override("separation", 0)
+	menu_bar.add_child(menu_row)
+	_add_menu(menu_row, "File", [
+		["Open City...", 0], ["Save City As...", 1], ["Exit", 2],
+	], _on_file_menu)
+	_add_menu(menu_row, "Speed", [
+		["Pause", 0], ["Turtle", 1], ["Llama", 2], ["Cheetah", 3],
+		["African Swallow", 4],
+	], _on_speed_menu)
+	_add_menu(menu_row, "Options", [
+		["City View", 0], ["Structures Map", 1], ["Zones Map", 2],
+		["Power Map", 3], ["Water Map", 4],
+	], _on_options_menu)
+	var disasters_menu := _add_menu(menu_row, "Disasters", [], Callable())
+	disasters_menu.disabled = true
+	disasters_menu.tooltip_text = "Manual disasters are not available yet."
+	_add_menu(menu_row, "Windows", [["Budget", 0]], _on_windows_menu)
+	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
+	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
 
-	var title := Label.new()
-	title.text = "SIMCITY 2000"
-	title.add_theme_font_size_override("font_size", 34)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title)
-
-	var open_button := Button.new()
-	open_button.text = "Open City"
-	open_button.pressed.connect(_open_city_dialog)
-	header.add_child(open_button)
-
-	budget_button = Button.new()
-	budget_button.text = "Budget"
-	budget_button.disabled = true
-	budget_button.pressed.connect(_open_manual_budget)
-	header.add_child(budget_button)
-
-	save_button = Button.new()
-	save_button.text = "Save Copy"
-	save_button.disabled = true
-	save_button.pressed.connect(_open_save_dialog)
-	header.add_child(save_button)
-
-	var mode_bar := HBoxContainer.new()
-	mode_bar.add_theme_constant_override("separation", 6)
-	page.add_child(mode_bar)
-	for mode in ["city", "structures", "zones", "power", "water"]:
-		var button := Button.new()
-		button.text = mode.capitalize()
-		button.pressed.connect(_set_overlay.bind(mode))
-		mode_bar.add_child(button)
+	var title_bar := ColorRect.new()
+	title_bar.color = Color("000080")
+	title_bar.custom_minimum_size = Vector2(0, 28)
+	page.add_child(title_bar)
+	var title_row := HBoxContainer.new()
+	title_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	title_row.offset_left = 6
+	title_row.offset_right = -6
+	title_bar.add_child(title_row)
+	city_label = Label.new()
+	city_label.text = "OpenSC2K — No city loaded"
+	city_label.add_theme_color_override("font_color", Color.WHITE)
+	city_label.add_theme_font_size_override("font_size", 15)
+	city_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_row.add_child(city_label)
+	title_stats_label = Label.new()
+	title_stats_label.text = "Paused"
+	title_stats_label.add_theme_color_override("font_color", Color.WHITE)
+	title_row.add_child(title_stats_label)
 
 	var content := HBoxContainer.new()
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 18)
+	content.add_theme_constant_override("separation", 4)
 	page.add_child(content)
 
+	var toolbar_panel := PanelContainer.new()
+	toolbar_panel.custom_minimum_size = Vector2(190, 0)
+	toolbar_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
+	content.add_child(toolbar_panel)
+	var toolbar_margin := MarginContainer.new()
+	for side in ["left", "top", "right", "bottom"]:
+		toolbar_margin.add_theme_constant_override("margin_" + side, 7)
+	toolbar_panel.add_child(toolbar_margin)
+	var toolbar := VBoxContainer.new()
+	toolbar.add_theme_constant_override("separation", 5)
+	toolbar_margin.add_child(toolbar)
+	var toolbar_title := Label.new()
+	toolbar_title.text = "City Toolbar"
+	toolbar_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	toolbar_title.add_theme_color_override("font_color", Color("000080"))
+	toolbar_title.add_theme_font_size_override("font_size", 15)
+	toolbar.add_child(toolbar_title)
+
+	var tool_grid := GridContainer.new()
+	tool_grid.columns = 3
+	tool_grid.add_theme_constant_override("h_separation", 3)
+	tool_grid.add_theme_constant_override("v_separation", 3)
+	tool_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	toolbar.add_child(tool_grid)
+	var tool_button_group := ButtonGroup.new()
+	for group_index in Tools.GROUPS.size():
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(48, 38)
+		button.toggle_mode = true
+		button.button_group = tool_button_group
+		button.tooltip_text = Tools.GROUPS[group_index].name
+		button.icon = _toolbar_group_icon(toolbar_art, group_index)
+		button.text = str(group_index + 1) if button.icon == null else ""
+		button.pressed.connect(_choose_tool_group.bind(group_index))
+		tool_grid.add_child(button)
+		toolbar_buttons.append(button)
+
+	var camera_row := HBoxContainer.new()
+	camera_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	camera_row.add_theme_constant_override("separation", 3)
+	toolbar.add_child(camera_row)
+	zoom_out_button = _icon_button(toolbar_art, Rect2i(462, 0, 23, 23), "Zoom Out")
+	zoom_out_button.pressed.connect(_zoom_out)
+	camera_row.add_child(zoom_out_button)
+	zoom_in_button = _icon_button(toolbar_art, Rect2i(486, 0, 23, 23), "Zoom In")
+	zoom_in_button.pressed.connect(_zoom_in)
+	camera_row.add_child(zoom_in_button)
+	zoom_label = Label.new()
+	zoom_label.text = "100%"
+	zoom_label.custom_minimum_size = Vector2(48, 0)
+	zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	camera_row.add_child(zoom_label)
+
+	var category_label := Label.new()
+	category_label.text = "Tool Category"
+	toolbar.add_child(category_label)
+	group_selector = OptionButton.new()
+	for group_index in Tools.GROUPS.size():
+		group_selector.add_item(Tools.GROUPS[group_index].name, group_index)
+	group_selector.item_selected.connect(_select_tool_group)
+	toolbar.add_child(group_selector)
+	var tool_label := Label.new()
+	tool_label.text = "Active Tool"
+	toolbar.add_child(tool_label)
+	tool_selector = OptionButton.new()
+	tool_selector.item_selected.connect(_select_subtool)
+	toolbar.add_child(tool_selector)
+	undo_button = Button.new()
+	undo_button.text = "Undo Last Edit"
+	undo_button.disabled = true
+	undo_button.pressed.connect(_undo_last_edit)
+	toolbar.add_child(undo_button)
+
 	var map_panel := PanelContainer.new()
-	map_panel.custom_minimum_size = Vector2(640, 640)
+	map_panel.custom_minimum_size = Vector2(560, 480)
 	map_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_panel.add_theme_stylebox_override("panel", _classic_box(Color("000000"), Color("404040"), 2))
 	content.add_child(map_panel)
 
 	map_view = MapControl.new()
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_view.selection_completed.connect(_apply_map_selection)
+	map_view.zoom_changed.connect(_update_zoom_controls)
 	map_panel.add_child(map_view)
 
 	sound_player = AudioStreamPlayer.new()
 	add_child(sound_player)
 
+	var sidebar_panel := PanelContainer.new()
+	sidebar_panel.custom_minimum_size = Vector2(245, 0)
+	sidebar_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
+	content.add_child(sidebar_panel)
+	var sidebar_margin := MarginContainer.new()
+	for side in ["left", "top", "right", "bottom"]:
+		sidebar_margin.add_theme_constant_override("margin_" + side, 8)
+	sidebar_panel.add_child(sidebar_margin)
 	var sidebar := VBoxContainer.new()
-	sidebar.custom_minimum_size = Vector2(295, 0)
-	sidebar.add_theme_constant_override("separation", 8)
-	content.add_child(sidebar)
-
-	city_label = Label.new()
-	city_label.text = "No city loaded"
-	city_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	city_label.add_theme_font_size_override("font_size", 26)
-	sidebar.add_child(city_label)
+	sidebar.add_theme_constant_override("separation", 7)
+	sidebar_margin.add_child(sidebar)
+	var city_information_heading := Label.new()
+	city_information_heading.text = "City Information"
+	city_information_heading.add_theme_color_override("font_color", Color("000080"))
+	city_information_heading.add_theme_font_size_override("font_size", 16)
+	sidebar.add_child(city_information_heading)
 
 	details_label = Label.new()
 	details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	details_label.add_theme_font_size_override("font_size", 16)
 	sidebar.add_child(details_label)
 
 	var simulation_heading := Label.new()
 	simulation_heading.text = "Simulation Speed"
-	simulation_heading.add_theme_font_size_override("font_size", 20)
+	simulation_heading.add_theme_color_override("font_color", Color("000080"))
 	sidebar.add_child(simulation_heading)
 
 	speed_selector = OptionButton.new()
@@ -287,37 +381,54 @@ func _build_interface() -> void:
 	sidebar.add_child(speed_selector)
 
 	news_label = Label.new()
-	news_label.text = "News\nNo new reports."
+	news_label.text = "Latest Reports\nNo new reports."
 	news_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	news_label.add_theme_color_override("font_color", Color("f2d879"))
+	news_label.add_theme_color_override("font_color", Color("202020"))
 	sidebar.add_child(news_label)
 
-	var tool_heading := Label.new()
-	tool_heading.text = "City Tool"
-	tool_heading.add_theme_font_size_override("font_size", 20)
-	sidebar.add_child(tool_heading)
+	var view_heading := Label.new()
+	view_heading.text = "Map Display"
+	view_heading.add_theme_color_override("font_color", Color("000080"))
+	sidebar.add_child(view_heading)
+	var view_grid := GridContainer.new()
+	view_grid.columns = 2
+	view_grid.add_theme_constant_override("h_separation", 4)
+	view_grid.add_theme_constant_override("v_separation", 4)
+	sidebar.add_child(view_grid)
+	for mode in ["city", "structures", "zones", "power", "water"]:
+		var button := Button.new()
+		button.text = mode.capitalize()
+		button.pressed.connect(_set_overlay.bind(mode))
+		view_grid.add_child(button)
 
-	group_selector = OptionButton.new()
-	for group_index in Tools.GROUPS.size():
-		group_selector.add_item(Tools.GROUPS[group_index].name, group_index)
-	group_selector.item_selected.connect(_select_tool_group)
-	sidebar.add_child(group_selector)
+	var spacer := Control.new()
+	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	sidebar.add_child(spacer)
+	var open_button := Button.new()
+	open_button.text = "Open City..."
+	open_button.pressed.connect(_open_city_dialog)
+	sidebar.add_child(open_button)
+	budget_button = Button.new()
+	budget_button.text = "Budget..."
+	budget_button.disabled = true
+	budget_button.pressed.connect(_open_manual_budget)
+	sidebar.add_child(budget_button)
+	save_button = Button.new()
+	save_button.text = "Save City As..."
+	save_button.disabled = true
+	save_button.pressed.connect(_open_save_dialog)
+	sidebar.add_child(save_button)
 
-	tool_selector = OptionButton.new()
-	tool_selector.item_selected.connect(_select_subtool)
-	sidebar.add_child(tool_selector)
-
-	undo_button = Button.new()
-	undo_button.text = "Undo Last Edit"
-	undo_button.disabled = true
-	undo_button.pressed.connect(_undo_last_edit)
-	sidebar.add_child(undo_button)
-
+	var status_panel := PanelContainer.new()
+	status_panel.custom_minimum_size = Vector2(0, 34)
+	status_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
+	page.add_child(status_panel)
 	status_label = Label.new()
+	status_label.text = "Ready."
+	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	status_label.add_theme_color_override("font_color", Color("9db2c5"))
-	status_label.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sidebar.add_child(status_label)
+	status_label.add_theme_color_override("font_color", Color("202020"))
+	status_panel.add_child(status_label)
 
 	file_dialog = FileDialog.new()
 	file_dialog.access = FileDialog.ACCESS_FILESYSTEM
@@ -425,6 +536,135 @@ func _build_interface() -> void:
 
 	group_selector.select(selected_group)
 	_select_tool_group(selected_group)
+	_update_zoom_controls(map_view.zoom_percent())
+
+
+func _create_classic_theme() -> Theme:
+	var result := Theme.new()
+	result.default_font_size = 14
+	result.set_color("font_color", "Label", Color("101010"))
+	result.set_color("font_color", "Button", Color("101010"))
+	result.set_color("font_hover_color", "Button", Color("101010"))
+	result.set_color("font_pressed_color", "Button", Color("101010"))
+	result.set_color("font_color", "OptionButton", Color("101010"))
+	result.set_stylebox("normal", "Button", _classic_box(Color("c0c0c0"), Color("ffffff"), 2))
+	result.set_stylebox("hover", "Button", _classic_box(Color("d0d0d0"), Color("ffffff"), 2))
+	result.set_stylebox("pressed", "Button", _classic_box(Color("a0a0a0"), Color("404040"), 2))
+	result.set_stylebox("focus", "Button", _classic_box(Color("c0c0c0"), Color("000000"), 1))
+	result.set_stylebox("normal", "OptionButton", _classic_box(Color("ffffff"), Color("808080"), 2))
+	result.set_stylebox("hover", "OptionButton", _classic_box(Color("ffffff"), Color("000080"), 2))
+	result.set_stylebox("pressed", "OptionButton", _classic_box(Color("e0e0e0"), Color("404040"), 2))
+	result.set_stylebox("normal", "PanelContainer", _classic_box(Color("c0c0c0"), Color("808080"), 1))
+	return result
+
+
+func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = color
+	box.border_color = border
+	box.set_border_width_all(width)
+	box.content_margin_left = 5
+	box.content_margin_top = 3
+	box.content_margin_right = 5
+	box.content_margin_bottom = 3
+	return box
+
+
+func _add_menu(parent: Control, label: String, items: Array, callback: Callable) -> MenuButton:
+	var menu := MenuButton.new()
+	menu.text = label
+	menu.flat = true
+	menu.custom_minimum_size = Vector2(0, 25)
+	parent.add_child(menu)
+	for item in items:
+		menu.get_popup().add_item(item[0], item[1])
+	if callback.is_valid():
+		menu.get_popup().id_pressed.connect(callback)
+	return menu
+
+
+func _toolbar_group_icon(toolbar_art: Image, group_index: int) -> Texture2D:
+	const REGIONS := [
+		Rect2i(0, 0, 23, 23), Rect2i(24, 0, 26, 23), Rect2i(50, 0, 20, 23),
+		Rect2i(70, 0, 25, 23), Rect2i(95, 0, 21, 23), Rect2i(116, 0, 24, 23),
+		Rect2i(140, 0, 23, 23), Rect2i(163, 0, 23, 23), Rect2i(186, 0, 23, 23),
+		Rect2i(209, 0, 23, 23), Rect2i(232, 0, 23, 23), Rect2i(255, 0, 23, 23),
+		Rect2i(278, 0, 23, 23), Rect2i(302, 0, 23, 23), Rect2i(325, 0, 23, 23),
+		Rect2i(348, 0, 29, 23), Rect2i(377, 0, 26, 23), Rect2i(510, 0, 23, 23),
+	]
+	if group_index < 0 or group_index >= REGIONS.size():
+		return null
+	return _toolbar_icon(toolbar_art, REGIONS[group_index])
+
+
+func _toolbar_icon(toolbar_art: Image, region: Rect2i) -> Texture2D:
+	if toolbar_art == null or not Rect2i(Vector2i.ZERO, toolbar_art.get_size()).encloses(region):
+		return null
+	return ImageTexture.create_from_image(toolbar_art.get_region(region))
+
+
+func _icon_button(toolbar_art: Image, region: Rect2i, tooltip: String) -> Button:
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(40, 34)
+	button.icon = _toolbar_icon(toolbar_art, region)
+	button.text = tooltip.left(1) if button.icon == null else ""
+	button.tooltip_text = tooltip
+	return button
+
+
+func _choose_tool_group(group_index: int) -> void:
+	group_selector.select(group_index)
+	_select_tool_group(group_index)
+
+
+func _zoom_in() -> void:
+	map_view.zoom_in()
+
+
+func _zoom_out() -> void:
+	map_view.zoom_out()
+
+
+func _update_zoom_controls(percent: int) -> void:
+	if zoom_label != null:
+		zoom_label.text = "%d%%" % percent
+	if zoom_in_button != null:
+		zoom_in_button.disabled = not map_view.can_zoom_in()
+	if zoom_out_button != null:
+		zoom_out_button.disabled = not map_view.can_zoom_out()
+
+
+func _on_file_menu(id: int) -> void:
+	match id:
+		0: _open_city_dialog()
+		1: _open_save_dialog()
+		2: get_tree().quit()
+
+
+func _on_speed_menu(id: int) -> void:
+	if speed_controller == null:
+		return
+	speed_selector.select(id)
+	_select_speed(id)
+
+
+func _on_options_menu(id: int) -> void:
+	var modes := ["city", "structures", "zones", "power", "water"]
+	if id >= 0 and id < modes.size():
+		_set_overlay(modes[id])
+
+
+func _on_windows_menu(id: int) -> void:
+	if id == 0:
+		_open_manual_budget()
+
+
+func _on_newspaper_menu(_id: int) -> void:
+	status_label.text = "The latest reports are visible in the City Information panel."
+
+
+func _on_help_menu(_id: int) -> void:
+	status_label.text = "Select a tool, then use the city view. Use the wheel to zoom. Use the right or middle mouse button to pan."
 
 
 func _open_city_dialog() -> void:
@@ -594,19 +834,19 @@ func _load_city(path: String) -> void:
 	speed_selector.disabled = false
 	simulation_map_dirty = false
 	recent_news.clear()
-	news_label.text = "News\nNo new reports."
+	news_label.text = "Latest Reports\nNo new reports."
 	last_edit_command = {}
 	dispatch_cycles = PackedInt32Array([0, 0, 0])
 	dispatch_initialized = false
 	undo_button.disabled = true
 	save_button.disabled = false
 	budget_button.disabled = false
-	city_label.text = (
+	city_label.text = "OpenSC2K — %s" % (
 		city.city_name() if not city.city_name().is_empty() else path.get_file().get_basename()
 	)
 	_refresh_details()
 	status_label.remove_theme_color_override("font_color")
-	status_label.text = "Loaded %s\nMap view: %s" % [path.get_file(), overlay_mode.capitalize()]
+	status_label.text = "Loaded %s. Map view: %s." % [path.get_file(), overlay_mode.capitalize()]
 	_refresh_map()
 	_update_edit_state()
 
@@ -639,7 +879,7 @@ func _save_copy(path: String) -> void:
 		_show_error("Cannot write save output: %s" % error_string(write_error))
 		return
 	status_label.remove_theme_color_override("font_color")
-	status_label.text = "Saved city copy\n%s" % output_path
+	status_label.text = "Saved city copy: %s" % output_path
 
 
 func _set_overlay(mode: String) -> void:
@@ -722,7 +962,7 @@ func _show_news_items(news_items: Array) -> void:
 	while recent_news.size() > 3:
 		recent_news.remove_at(recent_news.size() - 1)
 	if not recent_news.is_empty():
-		news_label.text = "News\n" + "\n".join(recent_news)
+		news_label.text = "Latest Reports\n" + "\n".join(recent_news)
 
 
 func _show_game_over_events(events: Array) -> void:
@@ -767,6 +1007,8 @@ func _moving_things_are_active(results: Array) -> bool:
 
 func _select_tool_group(index: int) -> void:
 	selected_group = group_selector.get_item_id(index)
+	for button_index in toolbar_buttons.size():
+		toolbar_buttons[button_index].button_pressed = button_index == selected_group
 	if selected_group == Dispatch.GROUP_DISPATCH:
 		dispatch_cycles = PackedInt32Array([0, 0, 0])
 		dispatch_initialized = false
@@ -1223,15 +1465,17 @@ func _refresh_details() -> void:
 	if city == null:
 		return
 	var demand := city.rci_demand()
+	title_stats_label.text = "%04d-%02d-%02d   $%s" % [
+		city.current_year(),
+		city.current_month(),
+		city.current_day(),
+		_format_number(city.funds()),
+	]
 	details_label.text = (
-		"Mayor: %s\nDate: %04d-%02d-%02d\nPopulation: %s\nFunds: $%s\nDemand: R %+d  C %+d  I %+d"
+		"Mayor: %s\nPopulation: %s\n\nDemand\nResidential: %+d\nCommercial: %+d\nIndustrial: %+d"
 		% [
 			city.mayor_name() if not city.mayor_name().is_empty() else "Unknown",
-			city.current_year(),
-			city.current_month(),
-			city.current_day(),
 			_format_number(city.population()),
-			_format_number(city.funds()),
 			demand.x,
 			demand.y,
 			demand.z,
