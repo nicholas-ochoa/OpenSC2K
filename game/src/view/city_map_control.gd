@@ -88,6 +88,12 @@ func center_on_tile(point: Vector2i) -> bool:
 	return true
 
 
+func center_tile() -> Vector2i:
+	if city == null:
+		return Vector2i(-1, -1)
+	return Renderer.screen_to_tile(city, source_center + Vector2(0, -0.5))
+
+
 func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void:
 	_effect_generation += 1
 	transient_effects = effects.duplicate()

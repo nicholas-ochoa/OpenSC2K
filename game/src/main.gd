@@ -25,6 +25,7 @@ const Highways = preload("res://src/tools/highway_command.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
 const TerrainTools = preload("res://src/tools/terrain_command.gd")
 const Dispatch = preload("res://src/tools/dispatch_command.gd")
+const CityRotation = preload("res://src/tools/city_rotation_command.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
@@ -108,6 +109,8 @@ var title_stats_label: Label
 var zoom_label: Label
 var zoom_in_button: Button
 var zoom_out_button: Button
+var rotate_counter_clockwise_button: Button
+var rotate_clockwise_button: Button
 var toolbar_buttons: Array[Button] = []
 var sign_dialog: ConfirmationDialog
 var sign_input: LineEdit
@@ -186,6 +189,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_MINUS:
 		if map_view.zoom_out():
 			get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_Q:
+		_rotate_city(true)
+		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_W:
+		_rotate_city(false)
+		get_viewport().set_input_as_handled()
 
 
 func _consume_simulation_result(result: Dictionary) -> void:
@@ -323,6 +332,18 @@ func _build_interface(toolbar_art: Image) -> void:
 	camera_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	camera_row.add_theme_constant_override("separation", 3)
 	toolbar.add_child(camera_row)
+	rotate_counter_clockwise_button = _icon_button(
+		toolbar_art, Rect2i(405, 0, 27, 23), "Rotate Counter-Clockwise (Q)"
+	)
+	rotate_counter_clockwise_button.disabled = true
+	rotate_counter_clockwise_button.pressed.connect(_rotate_city.bind(true))
+	camera_row.add_child(rotate_counter_clockwise_button)
+	rotate_clockwise_button = _icon_button(
+		toolbar_art, Rect2i(433, 0, 27, 23), "Rotate Clockwise (W)"
+	)
+	rotate_clockwise_button.disabled = true
+	rotate_clockwise_button.pressed.connect(_rotate_city.bind(false))
+	camera_row.add_child(rotate_clockwise_button)
 	zoom_out_button = _icon_button(toolbar_art, Rect2i(462, 0, 23, 23), "Zoom Out")
 	zoom_out_button.pressed.connect(_zoom_out)
 	camera_row.add_child(zoom_out_button)
@@ -650,6 +671,35 @@ func _zoom_out() -> void:
 	map_view.zoom_out()
 
 
+func _rotate_city(counter_clockwise: bool) -> void:
+	if city == null:
+		_show_error("No city is loaded.")
+		return
+	var old_center := Vector2i(-1, -1)
+	if overlay_mode == "city":
+		old_center = map_view.center_tile()
+	var new_center := CityRotation.rotate_point(
+		old_center, CityState.MAP_SIZE, counter_clockwise
+	)
+	var result := CityRotation.apply(city, counter_clockwise)
+	if not result.ok:
+		_show_error("Cannot rotate city: %s" % result.error)
+		return
+	if simulation_engine != null:
+		simulation_engine.rotate_runtime_coordinates(counter_clockwise)
+	last_edit_command = {}
+	undo_button.disabled = true
+	map_view.show_transient_effects([])
+	_refresh_map()
+	if new_center.x >= 0:
+		map_view.center_on_tile(new_center)
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Rotated %s. Compass: %d." % [
+		"counter-clockwise" if counter_clockwise else "clockwise",
+		result.new_compass,
+	]
+
+
 func _update_zoom_controls(percent: int) -> void:
 	if zoom_label != null:
 		zoom_label.text = "%d%%" % percent
@@ -657,6 +707,10 @@ func _update_zoom_controls(percent: int) -> void:
 		zoom_in_button.disabled = not map_view.can_zoom_in()
 	if zoom_out_button != null:
 		zoom_out_button.disabled = not map_view.can_zoom_out()
+	if rotate_counter_clockwise_button != null:
+		rotate_counter_clockwise_button.disabled = city == null
+	if rotate_clockwise_button != null:
+		rotate_clockwise_button.disabled = city == null
 
 
 func _on_city_zoom_changed(percent: int) -> void:
@@ -872,6 +926,7 @@ func _load_city(path: String) -> void:
 	undo_button.disabled = true
 	save_button.disabled = false
 	budget_button.disabled = false
+	_update_zoom_controls(map_view.zoom_percent())
 	city_label.text = "OpenSC2K — %s" % (
 		city.city_name() if not city.city_name().is_empty() else path.get_file().get_basename()
 	)

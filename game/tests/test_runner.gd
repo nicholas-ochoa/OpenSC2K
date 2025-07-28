@@ -51,6 +51,7 @@ const Highways = preload("res://src/tools/highway_command.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
 const TerrainTools = preload("res://src/tools/terrain_command.gd")
 const Dispatch = preload("res://src/tools/dispatch_command.gd")
+const CityRotation = preload("res://src/tools/city_rotation_command.gd")
 
 var failures := 0
 var checks := 0
@@ -210,6 +211,7 @@ func _init() -> void:
 	_test_demolish_command(reference_root)
 	_test_terrain_command(reference_root)
 	_test_dispatch_command(reference_root)
+	_test_city_rotation(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -519,6 +521,10 @@ func _test_sprite_archives(reference_root: String) -> void:
 	) * 0.25
 	_check(map_control.center_on_tile(center_tile), "Center tool accepts a city tile")
 	_check(map_control.source_center == expected_center, "Center tool uses the altitude-aware tile center")
+	_check(
+		map_control.center_tile() == center_tile,
+		"Map control reports centered tile %s, got %s" % [center_tile, map_control.center_tile()],
+	)
 	_check(not map_control.center_on_tile(Vector2i(-1, 0)), "Center tool rejects an invalid tile")
 	_check(not map_control.is_left_drag_active(), "Map control starts without an active left drag")
 	map_control.selection_start = center_tile
@@ -5337,6 +5343,148 @@ func _test_dispatch_command(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x01f0 + 0xd2 * 4, 0), "Dispatch unavailable fixture removes police capacity")
 	var no_police := Dispatch.apply(city, 2, 0, Vector2i(31, 30), police.slot_index, false)
 	_check(not no_police.ok and no_police.error.contains("available"), "Dispatch rejects an unavailable unit type")
+
+
+func _test_city_rotation(reference_root: String) -> void:
+	_check(
+		CityRotation.rotate_point(Vector2i(10, 20), 128, true) == Vector2i(20, 117),
+		"Counter-clockwise rotation transforms a full-map point",
+	)
+	_check(
+		CityRotation.rotate_point(Vector2i(10, 20), 128, false) == Vector2i(107, 10),
+		"Clockwise rotation transforms a full-map point",
+	)
+	_check(
+		CityRotation.surface_tile_after_rotation(0x1f, true) == 0x22
+		and CityRotation.surface_tile_after_rotation(0x1f, false) == 0x20,
+		"Rotation uses the recovered surface-network lookup tables",
+	)
+	_check(
+		CityRotation.terrain_tile_after_rotation(0x01, true) == 0x04
+		and CityRotation.terrain_tile_after_rotation(0x01, false) == 0x02,
+		"Rotation uses the recovered terrain lookup tables",
+	)
+	_check(
+		CityRotation.underground_tile_after_rotation(0x03, true) == 0x06
+		and CityRotation.underground_tile_after_rotation(0x03, false) == 0x04,
+		"Rotation uses the recovered underground lookup tables",
+	)
+
+	var document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
+	var things: PackedByteArray = document.find_chunk("XTHG").decoded_payload.duplicate()
+	things.fill(0)
+	var airplane := 1 * CityModel.THING_RECORD_SIZE
+	things[airplane] = 1
+	things[airplane + 1] = 0
+	things[airplane + 2] = 0x24
+	things[airplane + 3] = 10
+	things[airplane + 4] = 20
+	things[airplane + 8] = 40
+	things[airplane + 9] = 50
+	var train := 2 * CityModel.THING_RECORD_SIZE
+	things[train] = 10
+	things[train + 1] = 0
+	things[train + 3] = 30
+	things[train + 4] = 40
+	things[train + 6] = 60
+	things[train + 7] = 70
+	things[train + 8] = 0
+	_check(document.find_chunk("XTHG").set_decoded_payload(things), "Rotation fixture stores moving things")
+	var city := CityModel.from_document(document)
+	_check(city.set_building_id(10, 10, 0x51), "Rotation fixture stores an unflipped bridge")
+	_check(city.set_tile_flag(10, 10, 0x02, false), "Rotation fixture clears the first bridge flip")
+	_check(city.set_building_id(11, 10, 0x51), "Rotation fixture stores a flipped bridge")
+	_check(city.set_tile_flag(11, 10, 0x02, true), "Rotation fixture sets the second bridge flip")
+	_check(city.set_building_id(12, 10, 0x5d), "Rotation fixture stores an unflipped on-ramp")
+	_check(city.set_tile_flag(12, 10, 0x02, false), "Rotation fixture clears the first ramp flip")
+	_check(city.set_building_id(13, 10, 0x5d), "Rotation fixture stores a flipped on-ramp")
+	_check(city.set_tile_flag(13, 10, 0x02, true), "Rotation fixture sets the second ramp flip")
+	_check(city.set_terrain_id(14, 10, 0x01), "Rotation fixture stores directional terrain")
+	_check(city.set_underground_id(15, 10, 0x03), "Rotation fixture stores a directional subway")
+	var old_payloads := {}
+	for specification in CityRotation.REQUIRED_CHUNKS:
+		var chunk_id: String = specification[0]
+		old_payloads[chunk_id] = document.find_chunk(chunk_id).decoded_payload.duplicate()
+	var old_compass := city.compass_rotation()
+	var rotated := CityRotation.apply(city, true)
+	_check(rotated.ok, "Counter-clockwise city rotation succeeds: %s" % rotated.error)
+	_check(
+		city.compass_rotation() == ((old_compass + 1) & 3),
+		"Counter-clockwise rotation increments the saved compass",
+	)
+	_check(
+		city.building_id(10, 117) == 0x51 and city.is_flipped(10, 117),
+		"Counter-clockwise rotation toggles an unflipped bridge",
+	)
+	_check(
+		city.building_id(10, 116) == 0x55 and not city.is_flipped(10, 116),
+		"Counter-clockwise rotation retiles a flipped bridge",
+	)
+	_check(
+		city.building_id(10, 115) == 0x5e and city.is_flipped(10, 115),
+		"Counter-clockwise rotation retiles an unflipped on-ramp",
+	)
+	_check(
+		city.building_id(10, 114) == 0x60 and not city.is_flipped(10, 114),
+		"Counter-clockwise rotation retiles a flipped on-ramp",
+	)
+	_check(
+		city.terrain_id(10, 113) == 0x04 and city.underground_id(10, 112) == 0x06,
+		"Counter-clockwise rotation retiles terrain and underground networks",
+	)
+	var old_traffic: PackedByteArray = old_payloads.XTRF
+	var rotated_traffic: PackedByteArray = document.find_chunk("XTRF").decoded_payload
+	_check(
+		rotated_traffic[7 * 64 + 58] == old_traffic[5 * 64 + 7],
+		"Counter-clockwise rotation transforms a coarse-map coordinate",
+	)
+	var rotated_airplane := city.thing(1)
+	_check(
+		rotated_airplane.x == 20 and rotated_airplane.y == 117
+		and rotated_airplane.direction == 6,
+		"Counter-clockwise rotation transforms an airplane position and direction",
+	)
+	_check(
+		rotated_airplane.dx == 50 and rotated_airplane.dy == 87
+		and rotated_airplane.state == 0x04,
+		"Counter-clockwise rotation transforms an airplane target and runway axis",
+	)
+	var rotated_train := city.thing(2)
+	_check(
+		rotated_train.x == 40 and rotated_train.y == 97
+		and rotated_train.direction == 3,
+		"Counter-clockwise rotation transforms a train position and direction",
+	)
+	_check(
+		rotated_train.px == 70 and rotated_train.py == 67 and rotated_train.dx == 6,
+		"Counter-clockwise rotation transforms a train route state",
+	)
+	var serialized := document.serialize()
+	var reloaded_document := Sc2Document.new()
+	_check(serialized.ok and reloaded_document.parse(serialized.data), "A rotated city serializes and reloads")
+	var reloaded := CityModel.from_document(reloaded_document)
+	_check(
+		reloaded.is_valid() and reloaded.compass_rotation() == city.compass_rotation(),
+		"A reloaded city retains its rotated compass",
+	)
+	var restored := CityRotation.apply(city, false)
+	_check(restored.ok, "Inverse clockwise city rotation succeeds: %s" % restored.error)
+	for specification in CityRotation.REQUIRED_CHUNKS:
+		var chunk_id: String = specification[0]
+		_check(
+			document.find_chunk(chunk_id).decoded_payload == old_payloads[chunk_id],
+			"Opposite rotations restore %s bytes" % chunk_id,
+		)
+	var engine := Simulation.new(city, 1, 1, 1)
+	engine.ship_home = Vector2i(10, 20)
+	engine.pending_disaster_type = 1
+	engine.pending_disaster_point = Vector2i(30, 40)
+	engine.rotate_runtime_coordinates(true)
+	_check(
+		engine.ship_home == Vector2i(20, 117)
+		and engine.pending_disaster_point == Vector2i(40, 97),
+		"Rotation transforms process-local simulation coordinates",
+	)
 
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:

@@ -180,6 +180,21 @@ func recalculate_mayor_house() -> Dictionary:
 	return result
 
 
+func rotate_runtime_coordinates(counter_clockwise: bool) -> void:
+	if ship_home.x >= 0 and ship_home.y >= 0:
+		ship_home = _rotate_runtime_point(ship_home, counter_clockwise)
+	if pending_disaster_type != 0:
+		pending_disaster_point = _rotate_runtime_point(
+			pending_disaster_point, counter_clockwise
+		)
+
+
+static func _rotate_runtime_point(point: Vector2i, counter_clockwise: bool) -> Vector2i:
+	if counter_clockwise:
+		return Vector2i(point.y, CityState.MAP_SIZE - 1 - point.x)
+	return Vector2i(CityState.MAP_SIZE - 1 - point.y, point.x)
+
+
 func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Dictionary:
 
 	var applied := PackedStringArray()
