@@ -3,6 +3,7 @@ extends RefCounted
 
 const MAP_SIZE := 128
 const TILE_COUNT := MAP_SIZE * MAP_SIZE
+const COARSE_MAP_SIZE := 64
 const LABEL_COUNT := 256
 const LABEL_RECORD_SIZE := 25
 const MICROSIM_COUNT := 150
@@ -235,6 +236,16 @@ func is_powered(x: int, y: int) -> bool:
 
 func is_powerable(x: int, y: int) -> bool:
 	return (_byte_at(tile_flags, x, y) & 0x80) != 0
+
+
+func traffic_density(x: int, y: int) -> int:
+	var index := index_of(x, y)
+	if index < 0:
+		return 0
+	var chunk := document.find_chunk("XTRF")
+	if chunk == null or chunk.decoded_payload.size() != COARSE_MAP_SIZE * COARSE_MAP_SIZE:
+		return 0
+	return chunk.decoded_payload[(x >> 1) * COARSE_MAP_SIZE + (y >> 1)]
 
 
 func set_tile_flag(x: int, y: int, mask: int, enabled: bool) -> bool:

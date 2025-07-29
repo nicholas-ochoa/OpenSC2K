@@ -1001,7 +1001,8 @@ func _refresh_map() -> void:
 			view_size = IsometricRenderer.VIEW_MEDIUM
 			sprite_archive = small_medium_sprites
 		var rendered := IsometricRenderer.create_image(
-			city, palette, sprite_archive, view_size
+			city, palette, sprite_archive, view_size,
+			int(Time.get_ticks_msec() / 100)
 		)
 		if not rendered.ok:
 			_show_error(rendered.error)

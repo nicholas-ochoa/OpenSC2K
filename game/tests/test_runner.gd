@@ -386,6 +386,21 @@ func _test_sprite_archives(reference_root: String) -> void:
 		if rendered.ok:
 			_check(rendered.image.get_width() == 32, "Rendered terrain sprite width is 32")
 			_check(rendered.image.get_height() == 17, "Rendered terrain sprite height is 17")
+	var power_marker := large.find_sprite(1386)
+	_check(
+		power_marker != null and power_marker.width == 32 and power_marker.height == 16,
+		"Large unpowered marker is the recovered 32 by 16 sprite",
+	)
+	var fire_frame := large.find_sprite(1396)
+	_check(
+		fire_frame != null and fire_frame.width == 32 and fire_frame.height == 24,
+		"First large fire frame is the recovered 32 by 24 sprite",
+	)
+	var traffic_frame := large.find_sprite(1400)
+	_check(
+		traffic_frame != null and traffic_frame.width == 32 and traffic_frame.height == 17,
+		"First large traffic frame is the recovered 32 by 17 sprite",
+	)
 
 	var starter_document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
 	var starter := CityModel.from_document(starter_document)
@@ -435,6 +450,173 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		medium_terrain != null and medium_terrain.width == 16 and medium_terrain.height == 9,
 		"Medium terrain sprite is 16 by 9",
+	)
+	var overlay_document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
+	var overlay_city := CityModel.from_document(overlay_document)
+	var overlay_point := Vector2i(64, 64)
+	var traffic_index := 32 * CityModel.COARSE_MAP_SIZE + 32
+	var traffic_data: PackedByteArray = (
+		overlay_document.find_chunk("XTRF").decoded_payload.duplicate()
+	)
+	_check(
+		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x1d),
+		"Traffic view fixture installs a straight road",
+	)
+	traffic_data[traffic_index] = 85
+	_check(
+		overlay_document.find_chunk("XTRF").set_decoded_payload(traffic_data),
+		"Traffic view fixture stores the first threshold",
+	)
+	_check(
+		overlay_city.traffic_density(overlay_point.x, overlay_point.y) == 85,
+		"City model reads the shared 64 by 64 traffic cell",
+	)
+	_check(
+		IsometricRenderer.traffic_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).is_empty(),
+		"Normal road traffic does not draw at density 85",
+	)
+	traffic_data[traffic_index] = 86
+	_check(
+		overlay_document.find_chunk("XTRF").set_decoded_payload(traffic_data),
+		"Traffic view fixture crosses the first threshold",
+	)
+	var low_traffic := IsometricRenderer.traffic_overlay_visual(
+		overlay_city, overlay_point.x, overlay_point.y
+	)
+	_check(
+		low_traffic.sprite_id == 1400
+		and low_traffic.variant == 1
+		and not low_traffic.flip,
+		"Normal road traffic selects the recovered low-density large sprite",
+	)
+	_check(
+		IsometricRenderer.traffic_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_MEDIUM
+		).sprite_id == 900,
+		"Medium traffic uses its native sprite set",
+	)
+	_check(
+		IsometricRenderer.traffic_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_SMALL
+		).sprite_id == 400,
+		"Small traffic uses its native sprite set",
+	)
+	traffic_data[traffic_index] = 171
+	_check(
+		overlay_document.find_chunk("XTRF").set_decoded_payload(traffic_data),
+		"Traffic view fixture crosses the second threshold",
+	)
+	_check(
+		IsometricRenderer.traffic_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).sprite_id == 1427,
+		"Normal road traffic selects the recovered high-density variant",
+	)
+	_check(
+		IsometricRenderer.traffic_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_SMALL
+		).is_empty(),
+		"Small view omits high-density variants absent from its source archive",
+	)
+	_check(
+		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x49),
+		"Traffic view fixture installs a highway",
+	)
+	traffic_data[traffic_index] = 29
+	_check(
+		overlay_document.find_chunk("XTRF").set_decoded_payload(traffic_data),
+		"Traffic view fixture crosses the highway threshold",
+	)
+	_check(
+		IsometricRenderer.traffic_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).sprite_id == 1410,
+		"Highway traffic uses the recovered lower threshold and lane sprite",
+	)
+	traffic_data[traffic_index] = 57
+	_check(
+		overlay_document.find_chunk("XTRF").set_decoded_payload(traffic_data),
+		"Traffic view fixture crosses the second highway threshold",
+	)
+	_check(
+		IsometricRenderer.traffic_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).sprite_id == 1437,
+		"Highway traffic selects the recovered high-density lane sprite",
+	)
+	_check(
+		IsometricRenderer._should_draw_building(
+			overlay_city, overlay_point.x, overlay_point.y, 0x61
+		),
+		"Highway tiles below 0x70 draw without zone anchor bits",
+	)
+	_check(
+		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x70),
+		"Power-marker fixture installs a zone building",
+	)
+	_check(
+		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x80, true),
+		"Power-marker fixture marks the building as powerable",
+	)
+	_check(
+		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x40, false),
+		"Power-marker fixture clears the powered flag",
+	)
+	_check(
+		IsometricRenderer.power_marker_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).sprite_id == 1386,
+		"Unpowered zone building selects the recovered large marker",
+	)
+	_check(
+		IsometricRenderer.power_marker_visual(
+			overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_SMALL
+		).sprite_id == 386,
+		"Small view selects its native unpowered marker",
+	)
+	_check(
+		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x40, true),
+		"Power-marker fixture sets the powered flag",
+	)
+	_check(
+		IsometricRenderer.power_marker_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).is_empty(),
+		"Powered zone building does not draw an unpowered marker",
+	)
+	_check(
+		overlay_city.set_text_overlay_id(overlay_point.x, overlay_point.y, 0xff),
+		"Fire view fixture installs the fire marker",
+	)
+	_check(
+		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x04, false),
+		"Fire view fixture uses a land tile",
+	)
+	var fire_visual := IsometricRenderer.fire_overlay_visual(
+		overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_LARGE, 3
+	)
+	_check(
+		fire_visual.sprite_id == 1399 and not fire_visual.flip,
+		"Fire view selects the recovered large frame from its visual phase",
+	)
+	var flipped_fire := IsometricRenderer.fire_overlay_visual(
+		overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_LARGE, 4
+	)
+	_check(
+		flipped_fire.sprite_id == 1396 and flipped_fire.flip,
+		"Fire view changes frame and mirror without simulation random state",
+	)
+	_check(
+		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x04, true),
+		"Fire view fixture changes to a water tile",
+	)
+	_check(
+		IsometricRenderer.fire_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).is_empty(),
+		"Fire does not draw on a saved water tile",
 	)
 	var city_paths := _files_with_extension(reference_root.path_join("CITIES"), "SC2")
 	city_paths.append_array(_files_with_extension(reference_root.path_join("SCENARIO"), "SCN"))

@@ -13,6 +13,22 @@ const VIEW_SMALL := 0
 const VIEW_MEDIUM := 1
 const VIEW_LARGE := 2
 const IMAGE_SIZE_LARGE := Vector2i(4160, 2944)
+const TRAFFIC_SPRITE_OFFSET := 399
+const POWER_MARKER_SPRITE_OFFSET := 386
+const FIRE_SPRITE_OFFSET := 396
+const TRAFFIC_TILE_VARIANTS := [
+	1, 49, 1, 49, 1, 49, 1, 49, 1, 49, 1, 49, 1, 49, 1, 49,
+	1, 49, 1, 49, 1, 49, 1, 49, 1, 0, 0, 0, 0, 1, 2, 3,
+	4, 5, 6, 7, 8, 9, 10, 2, 1, 2, 1, 2, 0, 0, 0, 0,
+	0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 2,
+	1, 0, 0, 1, 2, 1, 2, 0, 0, 11, 12, 11, 12, 11, 12, 11,
+	12, 13, 13, 13, 13, 13, 13, 13, 13, 0, 0, 0, 0, 15, 16, 17,
+	18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 0, 0, 0, 0, 28, 29,
+]
+const TRAFFIC_HIGH_VARIANTS := [
+	0, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41,
+	15, 16, 17, 18, 42, 43, 44, 45, 46, 47, 48, 49, 50,
+]
 const DISPATCH_SPRITES := {7: 1381, 8: 1382, 14: 1383}
 const THING_SPRITES := [
 	0, 1359, 1364, 1369, 1390, 1490, 1387, 1382, 1383,
@@ -50,7 +66,8 @@ static func create_image(
 	city: CityState,
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
-	view_size := VIEW_LARGE
+	view_size := VIEW_LARGE,
+	animation_phase := 0
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
@@ -77,7 +94,10 @@ static func create_image(
 			var x := diagonal - y
 			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
 				continue
-			_draw_tile(output, city, palette, sprites, cache, configuration, origin_x, x, y)
+			_draw_tile(
+				output, city, palette, sprites, cache, configuration,
+				origin_x, x, y, animation_phase
+			)
 
 	return {"ok": true, "image": output, "error": ""}
 
@@ -108,6 +128,17 @@ static func validate_assets(
 				var building_sprite: int = configuration.sprite_base + building
 				if sprites.find_sprite(building_sprite) == null:
 					missing[building_sprite] = true
+				var traffic_visual := traffic_overlay_visual(city, x, y, view_size)
+				if not traffic_visual.is_empty() and sprites.find_sprite(traffic_visual.sprite_id) == null:
+					missing[traffic_visual.sprite_id] = true
+				var power_marker := power_marker_visual(city, x, y, view_size)
+				if not power_marker.is_empty() and sprites.find_sprite(power_marker.sprite_id) == null:
+					missing[power_marker.sprite_id] = true
+			if city.text_overlay_id(x, y) == 0xff and not city.is_water(x, y):
+				for frame in 4:
+					var fire_sprite: int = configuration.sprite_base + FIRE_SPRITE_OFFSET + frame
+					if sprites.find_sprite(fire_sprite) == null:
+						missing[fire_sprite] = true
 			if view_size == VIEW_LARGE:
 				var dispatch_sprite := dispatch_sprite_id(city, x, y)
 				if dispatch_sprite > 0 and sprites.find_sprite(dispatch_sprite) == null:
@@ -237,7 +268,8 @@ static func _draw_tile(
 	configuration: Dictionary,
 	origin_x: int,
 	x: int,
-	y: int
+	y: int,
+	animation_phase: int
 ) -> void:
 	var terrain_id := city.terrain_id(x, y)
 	var building_id := city.building_id(x, y)
@@ -267,14 +299,35 @@ static func _draw_tile(
 		)
 		_blend_on_base(output, zone_image, screen_x, base_y, configuration.tile_height)
 
+	var building_image: Image
 	if building_id > 0 and _should_draw_building(city, x, y, building_id):
 		var flip := city.is_flipped(x, y)
 		if (city.compass_rotation() == 1 or city.compass_rotation() == 3) and not _fixed_rotation_tile(building_id):
 			flip = not flip
-		var building := _sprite_image(
+		building_image = _sprite_image(
 			sprites, palette, cache, int(configuration.sprite_base) + building_id, flip
 		)
-		_blend_on_base(output, building, screen_x, base_y, configuration.tile_height)
+		_blend_on_base(output, building_image, screen_x, base_y, configuration.tile_height)
+		var traffic_visual := traffic_overlay_visual(city, x, y, configuration.view_size)
+		if not traffic_visual.is_empty():
+			var traffic_image := _sprite_image(
+				sprites, palette, cache, traffic_visual.sprite_id, traffic_visual.flip
+			)
+			_blend_on_base(
+				output, traffic_image, screen_x, base_y, configuration.tile_height
+			)
+		var power_marker := power_marker_visual(city, x, y, configuration.view_size)
+		if not power_marker.is_empty():
+			var marker_image := _sprite_image(
+				sprites, palette, cache, power_marker.sprite_id, false
+			)
+			var marker_x := (
+				screen_x + int(building_image.get_width() / 2)
+				- int(marker_image.get_width() / 2)
+			)
+			_blend_on_base(
+				output, marker_image, marker_x, base_y, configuration.tile_height
+			)
 	if configuration.view_size == VIEW_LARGE:
 		var dispatch_sprite := dispatch_sprite_id(city, x, y)
 		if dispatch_sprite > 0:
@@ -283,6 +336,101 @@ static func _draw_tile(
 		var moving_visual := moving_thing_visual(city, x, y)
 		if not moving_visual.is_empty():
 			_draw_moving_thing(output, city, palette, sprites, cache, moving_visual)
+	var fire_visual := fire_overlay_visual(
+		city, x, y, configuration.view_size, animation_phase
+	)
+	if not fire_visual.is_empty():
+		var fire_image := _sprite_image(
+			sprites, palette, cache, fire_visual.sprite_id, fire_visual.flip
+		)
+		var fire_x := (
+			screen_x + int(configuration.half_width) - int(fire_image.get_width() / 2)
+		)
+		_blend_on_base(output, fire_image, fire_x, base_y, configuration.tile_height)
+
+
+static func traffic_overlay_visual(
+	city: CityState, x: int, y: int, view_size := VIEW_LARGE
+) -> Dictionary:
+	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
+		return {}
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return {}
+	var tile := city.building_id(x, y)
+	if tile < 0 or tile >= TRAFFIC_TILE_VARIANTS.size():
+		return {}
+	var variant: int = TRAFFIC_TILE_VARIANTS[tile]
+	if variant == 0:
+		return {}
+	var density := city.traffic_density(x, y)
+	var low_threshold := 85
+	var high_threshold := 170
+	if tile >= 0x49 and tile <= 0x50:
+		low_threshold = 28
+		high_threshold = 56
+	if density <= low_threshold:
+		return {}
+	var flip := city.is_flipped(x, y)
+	# traffic variants depend on tile parity as well as density
+	if variant == 11 and (x & 1) != 0:
+		variant = 12
+	elif variant == 12:
+		flip = true
+		if (y & 1) != 0:
+			variant = 11
+	if density > high_threshold:
+		if variant < 0 or variant >= TRAFFIC_HIGH_VARIANTS.size():
+			return {}
+		variant = TRAFFIC_HIGH_VARIANTS[variant]
+	if variant == 0:
+		return {}
+	# The small archive ends at traffic variant 27, even though the original
+	# painter can request later IDs.
+	if view_size == VIEW_SMALL and variant > 27:
+		return {}
+	return {
+		"sprite_id": int(configuration.sprite_base) + TRAFFIC_SPRITE_OFFSET + variant,
+		"flip": flip,
+		"variant": variant,
+		"density": density,
+	}
+
+
+static func power_marker_visual(
+	city: CityState, x: int, y: int, view_size := VIEW_LARGE
+) -> Dictionary:
+	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
+		return {}
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return {}
+	if (
+		city.building_id(x, y) < 0x70
+		or not city.is_powerable(x, y)
+		or city.is_powered(x, y)
+	):
+		return {}
+	return {
+		"sprite_id": int(configuration.sprite_base) + POWER_MARKER_SPRITE_OFFSET,
+	}
+
+
+static func fire_overlay_visual(
+	city: CityState, x: int, y: int, view_size := VIEW_LARGE, animation_phase := 0
+) -> Dictionary:
+	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
+		return {}
+	if city.text_overlay_id(x, y) != 0xff or city.is_water(x, y):
+		return {}
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return {}
+	var phase := animation_phase + x * 3 + y * 5
+	return {
+		"sprite_id": int(configuration.sprite_base) + FIRE_SPRITE_OFFSET + (phase & 3),
+		"flip": ((phase >> 2) & 1) != 0,
+	}
 
 
 static func dispatch_sprite_id(city: CityState, x: int, y: int) -> int:
@@ -686,7 +834,7 @@ static func _blend_shadow(
 
 # four occupied corners, one sprite, compass picks the winner
 static func _should_draw_building(city: CityState, x: int, y: int, building_id: int) -> bool:
-	if building_id <= 0x60:
+	if building_id < 0x70:
 		return true
 	var anchor_masks := [0x80, 0x10, 0x20, 0x40]
 	return (city.building_corners(x, y) & anchor_masks[city.compass_rotation()]) != 0
