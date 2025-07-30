@@ -124,6 +124,15 @@ static func validate_assets(
 			)
 			if sprites.find_sprite(terrain_sprite) == null:
 				missing[terrain_sprite] = true
+			if x == CityState.MAP_SIZE - 1 or y == CityState.MAP_SIZE - 1:
+				if city.land_altitude(x, y) > 0:
+					var land_edge_sprite: int = configuration.sprite_base + 269
+					if sprites.find_sprite(land_edge_sprite) == null:
+						missing[land_edge_sprite] = true
+				if city.is_water(x, y) and city.water_altitude(x, y) > city.land_altitude(x, y):
+					var water_edge_sprite: int = configuration.sprite_base + 284
+					if sprites.find_sprite(water_edge_sprite) == null:
+						missing[water_edge_sprite] = true
 			var zone := city.zone_id(x, y)
 			if zone > 0 and city.building_id(x, y) == 0:
 				var zone_sprite: int = configuration.sprite_base + 290 + zone
@@ -287,9 +296,15 @@ static func _draw_tile(
 		terrain_altitude = city.water_altitude(x, y)
 
 	var screen_x: int = origin_x + (x - y) * int(configuration.half_width)
+	var flat_base_y: int = (
+		int(configuration.top_margin) + (x + y) * int(configuration.half_height)
+	)
+	_draw_edge_stacks(
+		output, city, palette, sprites, cache, configuration,
+		screen_x, flat_base_y, x, y
+	)
 	var base_y: int = (
-		int(configuration.top_margin)
-		+ (x + y) * int(configuration.half_height)
+		flat_base_y
 		- terrain_altitude * int(configuration.altitude_step)
 	)
 
@@ -376,6 +391,55 @@ static func _draw_tile(
 		)
 		_blend_on_base(
 			output, special_image, special_x, special_base_y,
+			configuration.tile_height
+		)
+
+
+static func edge_stack_visuals(
+	city: CityState, x: int, y: int, view_size := VIEW_LARGE
+) -> Array[Dictionary]:
+	var visuals: Array[Dictionary] = []
+	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
+		return visuals
+	if x != CityState.MAP_SIZE - 1 and y != CityState.MAP_SIZE - 1:
+		return visuals
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return visuals
+	var land := city.land_altitude(x, y)
+	for level in land:
+		visuals.append({
+			"sprite_id": int(configuration.sprite_base) + 269,
+			"elevation": level * int(configuration.altitude_step),
+		})
+	if city.is_water(x, y):
+		var water := city.water_altitude(x, y)
+		for level in range(land, water):
+			visuals.append({
+				"sprite_id": int(configuration.sprite_base) + 284,
+				"elevation": level * int(configuration.altitude_step),
+			})
+	return visuals
+
+
+static func _draw_edge_stacks(
+	output: Image,
+	city: CityState,
+	palette: Sc2Palette,
+	sprites: Sc2SpriteArchive,
+	cache: Dictionary,
+	configuration: Dictionary,
+	screen_x: int,
+	flat_base_y: int,
+	x: int,
+	y: int
+) -> void:
+	for visual in edge_stack_visuals(city, x, y, configuration.view_size):
+		var edge_image := _sprite_image(
+			sprites, palette, cache, visual.sprite_id, false
+		)
+		_blend_on_base(
+			output, edge_image, screen_x, flat_base_y - visual.elevation,
 			configuration.tile_height
 		)
 

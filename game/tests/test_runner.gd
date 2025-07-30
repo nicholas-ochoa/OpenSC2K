@@ -696,6 +696,55 @@ func _test_sprite_archives(reference_root: String) -> void:
 		).sprite_id == 493,
 		"Special marker 0xfe uses its native small effect frame",
 	)
+	var edge_point := Vector2i(127, 64)
+	_check(
+		overlay_city.set_land_altitude(edge_point.x, edge_point.y, 3),
+		"Edge-stack fixture sets three land levels",
+	)
+	var land_edges := IsometricRenderer.edge_stack_visuals(
+		overlay_city, edge_point.x, edge_point.y
+	)
+	_check(
+		land_edges.size() == 3
+		and land_edges[0].sprite_id == 1269
+		and land_edges[0].elevation == 0
+		and land_edges[2].elevation == 24,
+		"Large map edge repeats the land-side sprite at 12-pixel steps",
+	)
+	_check(
+		overlay_city.set_water_altitude(edge_point.x, edge_point.y, 5),
+		"Edge-stack fixture sets five water levels",
+	)
+	_check(
+		overlay_city.set_tile_flag(edge_point.x, edge_point.y, 0x04, true),
+		"Edge-stack fixture marks the edge as water",
+	)
+	var water_edges := IsometricRenderer.edge_stack_visuals(
+		overlay_city, edge_point.x, edge_point.y
+	)
+	_check(
+		water_edges.size() == 5
+		and water_edges[3].sprite_id == 1284
+		and water_edges[3].elevation == 36
+		and water_edges[4].sprite_id == 1284,
+		"Large map edge adds water-side sprites above the land stack",
+	)
+	var small_edges := IsometricRenderer.edge_stack_visuals(
+		overlay_city, edge_point.x, edge_point.y, IsometricRenderer.VIEW_SMALL
+	)
+	_check(
+		small_edges.size() == 5
+		and small_edges[0].sprite_id == 269
+		and small_edges[4].sprite_id == 284
+		and small_edges[4].elevation == 12,
+		"Small map edge uses native side sprites at three-pixel steps",
+	)
+	_check(
+		IsometricRenderer.edge_stack_visuals(
+			overlay_city, 126, 64, IsometricRenderer.VIEW_LARGE
+		).is_empty(),
+		"Interior tiles do not draw map-edge stacks",
+	)
 	var city_paths := _files_with_extension(reference_root.path_join("CITIES"), "SC2")
 	city_paths.append_array(_files_with_extension(reference_root.path_join("SCENARIO"), "SCN"))
 	for path in city_paths:
