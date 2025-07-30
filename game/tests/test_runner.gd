@@ -642,6 +642,60 @@ func _test_sprite_archives(reference_root: String) -> void:
 		).is_empty(),
 		"Fire does not draw on a saved water tile",
 	)
+	_check(
+		overlay_city.set_text_overlay_id(overlay_point.x, overlay_point.y, 0xfb),
+		"Special-overlay fixture installs marker 0xfb",
+	)
+	_check(
+		IsometricRenderer.special_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).sprite_id == 1496,
+		"Special marker 0xfb uses its recovered large sprite on water",
+	)
+	_check(
+		overlay_city.set_text_overlay_id(overlay_point.x, overlay_point.y, 0xfc),
+		"Special-overlay fixture installs marker 0xfc",
+	)
+	_check(
+		IsometricRenderer.special_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y,
+			IsometricRenderer.VIEW_MEDIUM
+		).sprite_id == 992,
+		"Special marker 0xfc uses its native medium sprite on water",
+	)
+	_check(
+		overlay_city.set_text_overlay_id(overlay_point.x, overlay_point.y, 0xfd),
+		"Special-overlay fixture installs marker 0xfd",
+	)
+	_check(
+		IsometricRenderer.special_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).is_empty(),
+		"Special marker 0xfd does not draw on a saved water tile",
+	)
+	_check(
+		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x04, false),
+		"Special-overlay fixture changes back to dry land",
+	)
+	var launch_effect := IsometricRenderer.special_overlay_visual(
+		overlay_city, overlay_point.x, overlay_point.y,
+		IsometricRenderer.VIEW_LARGE, 1
+	)
+	_check(
+		launch_effect.sprite_id == 1494 and launch_effect.overlay == 0xfd,
+		"Special marker 0xfd selects one of the recovered two-frame effects",
+	)
+	_check(
+		overlay_city.set_text_overlay_id(overlay_point.x, overlay_point.y, 0xfe),
+		"Special-overlay fixture installs marker 0xfe",
+	)
+	_check(
+		IsometricRenderer.special_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y,
+			IsometricRenderer.VIEW_SMALL, 0
+		).sprite_id == 493,
+		"Special marker 0xfe uses its native small effect frame",
+	)
 	var city_paths := _files_with_extension(reference_root.path_join("CITIES"), "SC2")
 	city_paths.append_array(_files_with_extension(reference_root.path_join("SCENARIO"), "SCN"))
 	for path in city_paths:

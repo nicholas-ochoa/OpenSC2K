@@ -15,7 +15,13 @@ const VIEW_LARGE := 2
 const IMAGE_SIZE_LARGE := Vector2i(4160, 2944)
 const TRAFFIC_SPRITE_OFFSET := 399
 const POWER_MARKER_SPRITE_OFFSET := 386
-const FIRE_SPRITE_OFFSET := 396
+const SPECIAL_OVERLAY_SPRITE_OFFSETS := {
+	0xfb: [496],
+	0xfc: [492],
+	0xfd: [493, 494],
+	0xfe: [493, 494],
+	0xff: [396, 397, 398, 399],
+}
 const TRAFFIC_TILE_VARIANTS := [
 	1, 49, 1, 49, 1, 49, 1, 49, 1, 49, 1, 49, 1, 49, 1, 49,
 	1, 49, 1, 49, 1, 49, 1, 49, 1, 0, 0, 0, 0, 1, 2, 3,
@@ -134,11 +140,14 @@ static func validate_assets(
 				var power_marker := power_marker_visual(city, x, y, view_size)
 				if not power_marker.is_empty() and sprites.find_sprite(power_marker.sprite_id) == null:
 					missing[power_marker.sprite_id] = true
-			if city.text_overlay_id(x, y) == 0xff and not city.is_water(x, y):
-				for frame in 4:
-					var fire_sprite: int = configuration.sprite_base + FIRE_SPRITE_OFFSET + frame
-					if sprites.find_sprite(fire_sprite) == null:
-						missing[fire_sprite] = true
+			var special_overlay := city.text_overlay_id(x, y)
+			if SPECIAL_OVERLAY_SPRITE_OFFSETS.has(special_overlay):
+				var can_draw_on_water := special_overlay == 0xfb or special_overlay == 0xfc
+				if not city.is_water(x, y) or can_draw_on_water:
+					for sprite_offset in SPECIAL_OVERLAY_SPRITE_OFFSETS[special_overlay]:
+						var special_sprite: int = configuration.sprite_base + sprite_offset
+						if sprites.find_sprite(special_sprite) == null:
+							missing[special_sprite] = true
 			if view_size == VIEW_LARGE:
 				var dispatch_sprite := dispatch_sprite_id(city, x, y)
 				if dispatch_sprite > 0 and sprites.find_sprite(dispatch_sprite) == null:
@@ -346,17 +355,29 @@ static func _draw_tile(
 		var moving_visual := moving_thing_visual(city, x, y)
 		if not moving_visual.is_empty():
 			_draw_moving_thing(output, city, palette, sprites, cache, moving_visual)
-	var fire_visual := fire_overlay_visual(
+	var special_visual := special_overlay_visual(
 		city, x, y, configuration.view_size, animation_phase
 	)
-	if not fire_visual.is_empty():
-		var fire_image := _sprite_image(
-			sprites, palette, cache, fire_visual.sprite_id, fire_visual.flip
+	if not special_visual.is_empty():
+		var special_image := _sprite_image(
+			sprites, palette, cache, special_visual.sprite_id, special_visual.flip
 		)
-		var fire_x := (
-			screen_x + int(configuration.half_width) - int(fire_image.get_width() / 2)
+		var special_x := (
+			screen_x + int(configuration.half_width)
+			- int(special_image.get_width() / 2)
 		)
-		_blend_on_base(output, fire_image, fire_x, base_y, configuration.tile_height)
+		var special_altitude := city.land_altitude(x, y)
+		if city.is_water(x, y):
+			special_altitude = city.water_altitude(x, y)
+		var special_base_y := (
+			int(configuration.top_margin)
+			+ (x + y) * int(configuration.half_height)
+			- special_altitude * int(configuration.altitude_step)
+		)
+		_blend_on_base(
+			output, special_image, special_x, special_base_y,
+			configuration.tile_height
+		)
 
 
 static func _draw_highway_ground(
@@ -471,17 +492,33 @@ static func power_marker_visual(
 static func fire_overlay_visual(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE, animation_phase := 0
 ) -> Dictionary:
+	if city == null or city.text_overlay_id(x, y) != 0xff:
+		return {}
+	return special_overlay_visual(city, x, y, view_size, animation_phase)
+
+
+static func special_overlay_visual(
+	city: CityState, x: int, y: int, view_size := VIEW_LARGE, animation_phase := 0
+) -> Dictionary:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return {}
-	if city.text_overlay_id(x, y) != 0xff or city.is_water(x, y):
+	var overlay := city.text_overlay_id(x, y)
+	if not SPECIAL_OVERLAY_SPRITE_OFFSETS.has(overlay):
+		return {}
+	if city.is_water(x, y) and overlay != 0xfb and overlay != 0xfc:
 		return {}
 	var configuration := view_configuration(view_size)
 	if configuration.is_empty():
 		return {}
 	var phase := animation_phase + x * 3 + y * 5
+	var sprite_offsets: Array = SPECIAL_OVERLAY_SPRITE_OFFSETS[overlay]
+	var sprite_offset: int = sprite_offsets[0]
+	if sprite_offsets.size() > 1:
+		sprite_offset = sprite_offsets[phase % sprite_offsets.size()]
 	return {
-		"sprite_id": int(configuration.sprite_base) + FIRE_SPRITE_OFFSET + (phase & 3),
+		"sprite_id": int(configuration.sprite_base) + sprite_offset,
 		"flip": ((phase >> 2) & 1) != 0,
+		"overlay": overlay,
 	}
 
 
