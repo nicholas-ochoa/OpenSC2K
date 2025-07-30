@@ -284,7 +284,8 @@ static func _draw_tile(
 		- terrain_altitude * int(configuration.altitude_step)
 	)
 
-	if building_id < 108:
+	var is_highway_composite := building_id >= 0x61 and building_id <= 0x6b
+	if building_id < 0x70 and not is_highway_composite:
 		var terrain := _sprite_image(
 			sprites, palette, cache,
 			terrain_sprite_id(terrain_id, city.is_water(x, y), configuration.sprite_base),
@@ -301,20 +302,29 @@ static func _draw_tile(
 
 	var building_image: Image
 	if building_id > 0 and _should_draw_building(city, x, y, building_id):
+		var building_base_y := base_y
+		if is_highway_composite:
+			_draw_highway_ground(
+				output, city, palette, sprites, cache, configuration,
+				screen_x, base_y, x, y
+			)
+			building_base_y += int(configuration.half_height)
 		var flip := city.is_flipped(x, y)
 		if (city.compass_rotation() == 1 or city.compass_rotation() == 3) and not _fixed_rotation_tile(building_id):
 			flip = not flip
 		building_image = _sprite_image(
 			sprites, palette, cache, int(configuration.sprite_base) + building_id, flip
 		)
-		_blend_on_base(output, building_image, screen_x, base_y, configuration.tile_height)
+		_blend_on_base(
+			output, building_image, screen_x, building_base_y, configuration.tile_height
+		)
 		var traffic_visual := traffic_overlay_visual(city, x, y, configuration.view_size)
 		if not traffic_visual.is_empty():
 			var traffic_image := _sprite_image(
 				sprites, palette, cache, traffic_visual.sprite_id, traffic_visual.flip
 			)
 			_blend_on_base(
-				output, traffic_image, screen_x, base_y, configuration.tile_height
+				output, traffic_image, screen_x, building_base_y, configuration.tile_height
 			)
 		var power_marker := power_marker_visual(city, x, y, configuration.view_size)
 		if not power_marker.is_empty():
@@ -347,6 +357,48 @@ static func _draw_tile(
 			screen_x + int(configuration.half_width) - int(fire_image.get_width() / 2)
 		)
 		_blend_on_base(output, fire_image, fire_x, base_y, configuration.tile_height)
+
+
+static func _draw_highway_ground(
+	output: Image,
+	city: CityState,
+	palette: Sc2Palette,
+	sprites: Sc2SpriteArchive,
+	cache: Dictionary,
+	configuration: Dictionary,
+	screen_x: int,
+	base_y: int,
+	x: int,
+	y: int
+) -> void:
+	var source_offsets := [
+		Vector2i(0, 0), Vector2i(0, -1),
+		Vector2i(1, -1), Vector2i(1, 0),
+	]
+	var screen_offsets := [
+		Vector2i(0, 0),
+		Vector2i(configuration.half_width, -configuration.half_height),
+		Vector2i(configuration.tile_width, 0),
+		Vector2i(configuration.half_width, configuration.half_height),
+	]
+	for index in source_offsets.size():
+		var source: Vector2i = Vector2i(x, y) + source_offsets[index]
+		if city.index_of(source.x, source.y) < 0:
+			continue
+		var terrain := _sprite_image(
+			sprites, palette, cache,
+			terrain_sprite_id(
+				city.terrain_id(source.x, source.y),
+				city.is_water(source.x, source.y),
+				configuration.sprite_base
+			),
+			false
+		)
+		var position: Vector2i = screen_offsets[index]
+		_blend_on_base(
+			output, terrain, screen_x + position.x, base_y + position.y,
+			configuration.tile_height
+		)
 
 
 static func traffic_overlay_visual(
@@ -834,7 +886,7 @@ static func _blend_shadow(
 
 # four occupied corners, one sprite, compass picks the winner
 static func _should_draw_building(city: CityState, x: int, y: int, building_id: int) -> bool:
-	if building_id < 0x70:
+	if building_id <= 0x60 or (building_id >= 0x6c and building_id <= 0x6f):
 		return true
 	var anchor_masks := [0x80, 0x10, 0x20, 0x40]
 	return (city.building_corners(x, y) & anchor_masks[city.compass_rotation()]) != 0

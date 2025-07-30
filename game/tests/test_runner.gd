@@ -547,10 +547,34 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Highway traffic selects the recovered high-density lane sprite",
 	)
 	_check(
+		overlay_city.set_building_corners(overlay_point.x, overlay_point.y, 0),
+		"Highway coverage fixture clears zone anchor bits",
+	)
+	_check(
+		not IsometricRenderer._should_draw_building(
+			overlay_city, overlay_point.x, overlay_point.y, 0x61
+		),
+		"Elevated highway waits for its compass-selected anchor",
+	)
+	_check(
+		IsometricRenderer._should_draw_building(
+			overlay_city, overlay_point.x, overlay_point.y, 0x6c
+		),
+		"Subway-to-rail tiles draw without zone anchor bits",
+	)
+	var compass_masks := [0x80, 0x10, 0x20, 0x40]
+	_check(
+		overlay_city.set_building_corners(
+			overlay_point.x, overlay_point.y,
+			compass_masks[overlay_city.compass_rotation()]
+		),
+		"Highway coverage fixture sets the active anchor bit",
+	)
+	_check(
 		IsometricRenderer._should_draw_building(
 			overlay_city, overlay_point.x, overlay_point.y, 0x61
 		),
-		"Highway tiles below 0x70 draw without zone anchor bits",
+		"Elevated highway draws from its compass-selected anchor",
 	)
 	_check(
 		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x70),
