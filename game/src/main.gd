@@ -106,6 +106,7 @@ var undo_button: Button
 var speed_selector: OptionButton
 var news_label: Label
 var title_stats_label: Label
+var fps_label: Label
 var zoom_label: Label
 var zoom_in_button: Button
 var zoom_out_button: Button
@@ -122,6 +123,7 @@ var budget_controls: Array[SpinBox] = []
 var auto_budget_check: CheckBox
 var game_over_dialog: AcceptDialog
 var military_dialog: ConfirmationDialog
+var fps_update_seconds := 0.0
 
 
 func _ready() -> void:
@@ -161,6 +163,7 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	_update_fps(delta)
 	if speed_controller == null or city == null:
 		return
 	var result := speed_controller.advance_time(
@@ -285,6 +288,12 @@ func _build_interface(toolbar_art: Image) -> void:
 	title_stats_label.text = "Paused"
 	title_stats_label.add_theme_color_override("font_color", Color.WHITE)
 	title_row.add_child(title_stats_label)
+	fps_label = Label.new()
+	fps_label.text = "FPS: --"
+	fps_label.custom_minimum_size = Vector2(76, 0)
+	fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	fps_label.add_theme_color_override("font_color", Color.WHITE)
+	title_row.add_child(fps_label)
 
 	var content := HBoxContainer.new()
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -711,6 +720,14 @@ func _update_zoom_controls(percent: int) -> void:
 		rotate_counter_clockwise_button.disabled = city == null
 	if rotate_clockwise_button != null:
 		rotate_clockwise_button.disabled = city == null
+
+
+func _update_fps(delta: float) -> void:
+	fps_update_seconds += delta
+	if fps_label == null or fps_update_seconds < 0.25:
+		return
+	fps_update_seconds = fmod(fps_update_seconds, 0.25)
+	fps_label.text = "FPS: %d" % Engine.get_frames_per_second()
 
 
 func _on_city_zoom_changed(percent: int) -> void:
