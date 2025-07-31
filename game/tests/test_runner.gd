@@ -979,6 +979,29 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and monster_layers[14].flip,
 		"Monster view mirrors and positions the right lower outer layer",
 	)
+	var small_monster_layers := IsometricRenderer.monster_layers(starter, 64, 64, {
+		"type": 5,
+		"z": 10,
+		"px": 8,
+		"py": 8,
+		"dx": 0xa5,
+		"dy": 0x9b,
+	}, 1, IsometricRenderer.VIEW_SMALL)
+	_check(
+		small_monster_layers.size() == 15,
+		"Small monster view keeps every composite layer",
+	)
+	_check(
+		small_monster_layers[0].sprite_id == 483
+		and small_monster_layers[0].screen_x == -23
+		and small_monster_layers[0].screen_y == 231,
+		"Small monster view uses native sprites and signed quarter-scale offsets",
+	)
+	_check(
+		small_monster_layers[6].sprite_id == 385
+		and small_monster_layers[7].sprite_id == 491,
+		"Small monster view scales the effect and alternate head sprites",
+	)
 
 
 func _test_simulation_clock() -> void:

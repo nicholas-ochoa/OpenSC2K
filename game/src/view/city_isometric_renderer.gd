@@ -644,9 +644,7 @@ static func moving_thing_visual(
 		return {}
 	var sprite: Dictionary
 	if type == 5:
-		if view_size != VIEW_LARGE:
-			return {}
-		var layers := monster_layers(city, x, y, thing, record)
+		var layers := monster_layers(city, x, y, thing, record, view_size)
 		if layers.is_empty():
 			return {}
 		sprite = {
@@ -809,12 +807,19 @@ static func tornado_sprite(
 
 # For monsters, dx stores body-part flags rather than velocity.
 static func monster_layers(
-	city: CityState, x: int, y: int, thing: Dictionary, record: int
+	city: CityState,
+	x: int,
+	y: int,
+	thing: Dictionary,
+	record: int,
+	view_size := VIEW_LARGE
 ) -> Array[Dictionary]:
 	var layers: Array[Dictionary] = []
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return layers
 	if int(thing.get("type", 0)) != 5:
+		return layers
+	if view_configuration(view_size).is_empty():
 		return layers
 	var altitude := city.land_altitude(x, y)
 	if city.is_water(x, y):
@@ -909,6 +914,12 @@ static func monster_layers(
 		right_lower_y + MONSTER_LOWER_SECOND_Y[dy_right_second],
 		true
 	))
+	if view_size != VIEW_LARGE:
+		var divisor := 4 if view_size == VIEW_SMALL else 2
+		for layer in layers:
+			layer.sprite_id += (view_size - VIEW_LARGE) * 500
+			layer.screen_x = int(layer.screen_x / divisor)
+			layer.screen_y = int(layer.screen_y / divisor)
 	return layers
 
 
@@ -933,7 +944,10 @@ static func _draw_moving_thing(
 	configuration: Dictionary
 ) -> void:
 	if visual.monster:
-		var monster_origin_x := SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+		var monster_origin_x := (
+			int(configuration.side_margin)
+			+ CityState.MAP_SIZE * int(configuration.half_width)
+		)
 		var monster_has_shadow := city.building_id(visual.x, visual.y) < 0x71
 		for layer in visual.layers:
 			var monster_part := _sprite_image(
@@ -941,12 +955,13 @@ static func _draw_moving_thing(
 			)
 			var monster_destination := Vector2i(
 				monster_origin_x + layer.screen_x,
-				TOP_MARGIN + layer.screen_y
+				int(configuration.top_margin) + layer.screen_y
 			)
 			if monster_has_shadow:
 				_blend_shadow(
 					output, monster_part, palette,
-					monster_destination + Vector2i(0, 8 * visual.z)
+					monster_destination
+						+ Vector2i(0, int(configuration.half_height) * visual.z)
 				)
 			output.blend_rect(
 				monster_part,
