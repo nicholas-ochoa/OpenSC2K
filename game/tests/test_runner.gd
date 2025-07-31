@@ -5632,7 +5632,19 @@ func _test_dispatch_command(reference_root: String) -> void:
 	_check(police.ok and police.slot_index == 1 and police.thing_index == 1, "Police dispatch resets old units and uses the first record")
 	_check(city.thing(1).type == 7 and city.thing(1).x == 10 and city.thing(1).y == 10, "Police dispatch stores the XTHG unit")
 	_check(city.text_overlay_id(10, 10) == 202 and city.text_overlay_id(5, 5) == 0, "Police dispatch moves the XTXT unit marker")
-	_check(IsometricRenderer.dispatch_sprite_id(city, 10, 10) == 1381, "Police dispatch selects the recovered large sprite")
+	_check(IsometricRenderer.dispatch_sprite_id(city, 10, 10) == 1382, "Police dispatch selects the recovered large sprite")
+	_check(
+		IsometricRenderer.dispatch_sprite_id(
+			city, 10, 10, IsometricRenderer.VIEW_MEDIUM
+		) == 882,
+		"Police dispatch selects the native medium sprite",
+	)
+	_check(
+		IsometricRenderer.dispatch_sprite_id(
+			city, 10, 10, IsometricRenderer.VIEW_SMALL
+		) == 382,
+		"Police dispatch selects the native small sprite",
+	)
 	_check(Dispatch.undo(city, police).ok, "Police dispatch can be undone")
 	_check(city.thing(5).type == 7 and city.text_overlay_id(5, 5) == 206, "Dispatch undo restores units cleared at session start")
 	police = Dispatch.apply(city, 2, 0, Vector2i(10, 10), 0, true)

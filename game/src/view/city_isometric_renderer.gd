@@ -35,7 +35,7 @@ const TRAFFIC_HIGH_VARIANTS := [
 	0, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41,
 	15, 16, 17, 18, 42, 43, 44, 45, 46, 47, 48, 49, 50,
 ]
-const DISPATCH_SPRITES := {7: 1381, 8: 1382, 14: 1383}
+const DISPATCH_SPRITE_OFFSETS := {7: 382, 8: 383, 14: 384}
 const THING_SPRITES := [
 	0, 1359, 1364, 1369, 1390, 1490, 1387, 1382, 1383,
 	1380, 1374, 1374, 1374, 1374, 1384, 1497, 1495,
@@ -157,10 +157,10 @@ static func validate_assets(
 						var special_sprite: int = configuration.sprite_base + sprite_offset
 						if sprites.find_sprite(special_sprite) == null:
 							missing[special_sprite] = true
+			var dispatch_sprite := dispatch_sprite_id(city, x, y, view_size)
+			if dispatch_sprite > 0 and sprites.find_sprite(dispatch_sprite) == null:
+				missing[dispatch_sprite] = true
 			if view_size == VIEW_LARGE:
-				var dispatch_sprite := dispatch_sprite_id(city, x, y)
-				if dispatch_sprite > 0 and sprites.find_sprite(dispatch_sprite) == null:
-					missing[dispatch_sprite] = true
 				var moving_visual := moving_thing_visual(city, x, y)
 				if not moving_visual.is_empty():
 					if moving_visual.get("monster", false):
@@ -362,11 +362,23 @@ static func _draw_tile(
 			_blend_on_base(
 				output, marker_image, marker_x, base_y, configuration.tile_height
 			)
+	var dispatch_sprite := dispatch_sprite_id(city, x, y, configuration.view_size)
+	if dispatch_sprite > 0:
+		var dispatch_image := _sprite_image(
+			sprites, palette, cache, dispatch_sprite, false
+		)
+		var dispatch_x := (
+			screen_x + int(configuration.half_width)
+			- int(dispatch_image.get_width() / 2)
+		)
+		var dispatch_base_y := (
+			flat_base_y - city.land_altitude(x, y) * int(configuration.altitude_step)
+		)
+		_blend_on_base(
+			output, dispatch_image, dispatch_x, dispatch_base_y,
+			configuration.tile_height
+		)
 	if configuration.view_size == VIEW_LARGE:
-		var dispatch_sprite := dispatch_sprite_id(city, x, y)
-		if dispatch_sprite > 0:
-			var dispatch_image := _sprite_image(sprites, palette, cache, dispatch_sprite, false)
-			_blend_on_base(output, dispatch_image, screen_x, base_y, configuration.tile_height)
 		var moving_visual := moving_thing_visual(city, x, y)
 		if not moving_visual.is_empty():
 			_draw_moving_thing(output, city, palette, sprites, cache, moving_visual)
@@ -586,14 +598,22 @@ static func special_overlay_visual(
 	}
 
 
-static func dispatch_sprite_id(city: CityState, x: int, y: int) -> int:
+static func dispatch_sprite_id(
+	city: CityState, x: int, y: int, view_size := VIEW_LARGE
+) -> int:
 	var overlay := city.text_overlay_id(x, y)
 	if overlay < 202 or overlay > 240:
 		return 0
 	var thing := city.thing(overlay - 201)
 	if thing.is_empty() or thing.x != x or thing.y != y:
 		return 0
-	return int(DISPATCH_SPRITES.get(thing.type, 0))
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return 0
+	var sprite_offset := int(DISPATCH_SPRITE_OFFSETS.get(thing.type, 0))
+	if sprite_offset == 0:
+		return 0
+	return int(configuration.sprite_base) + sprite_offset
 
 
 static func moving_thing_visual(city: CityState, x: int, y: int) -> Dictionary:
