@@ -332,14 +332,14 @@ static func _draw_tile(
 		if is_highway_composite:
 			_draw_highway_ground(
 				output, city, palette, sprites, cache, configuration,
-				screen_x, base_y, x, y
-			)
-			building_base_y += int(configuration.half_height)
-		var flip := city.is_flipped(x, y)
-		if (city.compass_rotation() == 1 or city.compass_rotation() == 3) and not _fixed_rotation_tile(building_id):
-			flip = not flip
+					screen_x, base_y, x, y
+				)
+		var flip := building_sprite_flip(city, x, y, building_id)
 		building_image = _sprite_image(
 			sprites, palette, cache, int(configuration.sprite_base) + building_id, flip
+		)
+		building_base_y += building_baseline_offset(
+			building_id, terrain_id, building_image.get_width(), configuration.view_size
 		)
 		_blend_on_base(
 			output, building_image, screen_x, building_base_y, configuration.tile_height
@@ -1075,10 +1075,30 @@ static func _should_draw_building(city: CityState, x: int, y: int, building_id: 
 	return (city.building_corners(x, y) & anchor_masks[city.compass_rotation()]) != 0
 
 
-static func _fixed_rotation_tile(building_id: int) -> bool:
-	return (building_id >= 0x49 and building_id <= 0x50) or (
-		building_id >= 0x61 and building_id <= 0x69
-	)
+# for buildings, flipped means unflipped every other compass turn
+static func building_sprite_flip(
+	city: CityState, x: int, y: int, building_id: int
+) -> bool:
+	var flip := city.is_flipped(x, y)
+	if building_id >= 0x70 and (city.compass_rotation() & 1) != 0:
+		flip = not flip
+	return flip
+
+
+# These sprites use their width to set the vertical offset.
+static func building_baseline_offset(
+	building_id: int, terrain_id: int, sprite_width: int, view_size := VIEW_LARGE
+) -> int:
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty() or sprite_width < 0:
+		return 0
+	if building_id >= 0x61 and building_id <= 0x6b:
+		return int(configuration.half_height)
+	if building_id >= 0x70:
+		return int(sprite_width / 4) - int(configuration.half_height)
+	if terrain_id == 0x0d:
+		return -int(configuration.altitude_step)
+	return 0
 
 
 static func _sprite_image(

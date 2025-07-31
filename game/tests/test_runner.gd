@@ -577,6 +577,54 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Elevated highway draws from its compass-selected anchor",
 	)
 	_check(
+		overlay_document.set_misc_u32(0x0008, 3),
+		"Network orientation fixture sets an odd compass rotation",
+	)
+	_check(
+		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x02, false),
+		"Network orientation fixture clears the saved mirror",
+	)
+	_check(
+		not IsometricRenderer.building_sprite_flip(
+			overlay_city, overlay_point.x, overlay_point.y, 0x1d
+		),
+		"Compass rotation does not add a mirror to a network sprite",
+	)
+	_check(
+		IsometricRenderer.building_sprite_flip(
+			overlay_city, overlay_point.x, overlay_point.y, 0x70
+		),
+		"Odd compass rotation adds the original mirror to a building sprite",
+	)
+	_check(
+		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x02, true),
+		"Network orientation fixture sets the saved mirror",
+	)
+	_check(
+		IsometricRenderer.building_sprite_flip(
+			overlay_city, overlay_point.x, overlay_point.y, 0x2c
+		)
+		and not IsometricRenderer.building_sprite_flip(
+			overlay_city, overlay_point.x, overlay_point.y, 0x70
+		),
+		"Saved mirror stays direct for rail and combines with compass for buildings",
+	)
+	_check(
+		IsometricRenderer.building_baseline_offset(0x1d, 0x0d, 32) == -12
+		and IsometricRenderer.building_baseline_offset(0x1d, 0x00, 32) == 0,
+		"A network on terrain shape 0x0d uses the recovered raised baseline",
+	)
+	_check(
+		IsometricRenderer.building_baseline_offset(0x70, 0x00, 128) == 24
+		and IsometricRenderer.building_baseline_offset(
+			0x70, 0x00, 64, IsometricRenderer.VIEW_MEDIUM
+		) == 12
+		and IsometricRenderer.building_baseline_offset(
+			0x70, 0x00, 32, IsometricRenderer.VIEW_SMALL
+		) == 6,
+		"Large footprints use the native quarter-width baseline at every zoom",
+	)
+	_check(
 		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x70),
 		"Power-marker fixture installs a zone building",
 	)
