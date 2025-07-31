@@ -40,6 +40,9 @@ const THING_SPRITES := [
 	0, 1359, 1364, 1369, 1390, 1490, 1387, 1382, 1383,
 	1380, 1374, 1374, 1374, 1374, 1384, 1497, 1495,
 ]
+const THING_MINIMUM_VIEW := [0, 0, 2, 0, 0, 0, 1, 0, 0, 2, 2, 2, 2, 3, 0, 0, 2]
+const THING_X_DIVISOR := [4, 2, 1]
+const THING_Y_DIVISOR := [8, 4, 2]
 const SHIP_DIRECTION_POSITION := [1, 2, 3, 4, 3, 2, 1, 0]
 const SHIP_DIRECTION_FLIP := [false, false, false, false, true, true, true, false]
 const THING_DIRECTION_POSITION := [0, 1, 1, 0]
@@ -160,15 +163,14 @@ static func validate_assets(
 			var dispatch_sprite := dispatch_sprite_id(city, x, y, view_size)
 			if dispatch_sprite > 0 and sprites.find_sprite(dispatch_sprite) == null:
 				missing[dispatch_sprite] = true
-			if view_size == VIEW_LARGE:
-				var moving_visual := moving_thing_visual(city, x, y)
-				if not moving_visual.is_empty():
-					if moving_visual.get("monster", false):
-						for layer in moving_visual.layers:
-							if sprites.find_sprite(layer.sprite_id) == null:
-								missing[layer.sprite_id] = true
-					elif sprites.find_sprite(moving_visual.sprite_id) == null:
-						missing[moving_visual.sprite_id] = true
+			var moving_visual := moving_thing_visual(city, x, y, view_size)
+			if not moving_visual.is_empty():
+				if moving_visual.get("monster", false):
+					for layer in moving_visual.layers:
+						if sprites.find_sprite(layer.sprite_id) == null:
+							missing[layer.sprite_id] = true
+				elif sprites.find_sprite(moving_visual.sprite_id) == null:
+					missing[moving_visual.sprite_id] = true
 	var ids := missing.keys()
 	ids.sort()
 	for sprite_id in ids:
@@ -378,10 +380,13 @@ static func _draw_tile(
 			output, dispatch_image, dispatch_x, dispatch_base_y,
 			configuration.tile_height
 		)
-	if configuration.view_size == VIEW_LARGE:
-		var moving_visual := moving_thing_visual(city, x, y)
-		if not moving_visual.is_empty():
-			_draw_moving_thing(output, city, palette, sprites, cache, moving_visual)
+	var moving_visual := moving_thing_visual(
+		city, x, y, configuration.view_size, animation_phase
+	)
+	if not moving_visual.is_empty():
+		_draw_moving_thing(
+			output, city, palette, sprites, cache, moving_visual, configuration
+		)
 	var special_visual := special_overlay_visual(
 		city, x, y, configuration.view_size, animation_phase
 	)
@@ -616,7 +621,13 @@ static func dispatch_sprite_id(
 	return int(configuration.sprite_base) + sprite_offset
 
 
-static func moving_thing_visual(city: CityState, x: int, y: int) -> Dictionary:
+static func moving_thing_visual(
+	city: CityState,
+	x: int,
+	y: int,
+	view_size := VIEW_LARGE,
+	animation_phase := 0
+) -> Dictionary:
 	var overlay := city.text_overlay_id(x, y)
 	if overlay < 201 or overlay > 240:
 		return {}
@@ -625,10 +636,16 @@ static func moving_thing_visual(city: CityState, x: int, y: int) -> Dictionary:
 	if thing.is_empty():
 		return {}
 	var type := int(thing.type)
+	if type < 0 or type >= THING_MINIMUM_VIEW.size():
+		return {}
+	if view_size < THING_MINIMUM_VIEW[type]:
+		return {}
 	if (thing.x != x or thing.y != y) and type != 10 and type != 11:
 		return {}
 	var sprite: Dictionary
 	if type == 5:
+		if view_size != VIEW_LARGE:
+			return {}
 		var layers := monster_layers(city, x, y, thing, record)
 		if layers.is_empty():
 			return {}
@@ -641,9 +658,11 @@ static func moving_thing_visual(city: CityState, x: int, y: int) -> Dictionary:
 	elif type == 10 or type == 11:
 		sprite = train_sprite(city, x, y, thing)
 	elif type == 15:
-		sprite = tornado_sprite(city, x, y, thing, record)
+		sprite = tornado_sprite(city, x, y, thing, record, view_size)
 	else:
-		sprite = moving_thing_sprite(thing)
+		sprite = moving_thing_sprite(thing, view_size)
+		if type == 6 and not sprite.is_empty():
+			sprite.flip = ((animation_phase + record + x + y) & 1) != 0
 	if sprite.is_empty():
 		return {}
 	return {
@@ -663,10 +682,11 @@ static func moving_thing_visual(city: CityState, x: int, y: int) -> Dictionary:
 		"tornado": sprite.get("tornado", false),
 		"monster": sprite.get("monster", false),
 		"layers": sprite.get("layers", []),
+		"view_size": view_size,
 	}
 
 
-static func moving_thing_sprite(thing: Dictionary) -> Dictionary:
+static func moving_thing_sprite(thing: Dictionary, view_size := VIEW_LARGE) -> Dictionary:
 	if thing.is_empty():
 		return {}
 	var type := int(thing.get("type", 0))
@@ -674,7 +694,11 @@ static func moving_thing_sprite(thing: Dictionary) -> Dictionary:
 	var state := int(thing.get("state", 0))
 	if type < 1 or type >= THING_SPRITES.size():
 		return {}
-	var sprite_id: int = THING_SPRITES[type]
+	if view_size < VIEW_SMALL or view_size > VIEW_LARGE:
+		return {}
+	if view_size < THING_MINIMUM_VIEW[type]:
+		return {}
+	var sprite_id: int = THING_SPRITES[type] + (view_size - VIEW_LARGE) * 500
 	var flip := false
 	match type:
 		1, 2, 3:
@@ -693,7 +717,7 @@ static func moving_thing_sprite(thing: Dictionary) -> Dictionary:
 			sprite_id += direction
 		9:
 			if state != 0:
-				sprite_id = 1379
+				sprite_id = 379 + view_size * 500
 			elif direction < 0 or direction >= THING_DIRECTION_POSITION.size():
 				return {}
 			else:
@@ -753,11 +777,19 @@ static func train_sprite(
 
 
 static func tornado_sprite(
-	city: CityState, x: int, y: int, thing: Dictionary, record: int
+	city: CityState,
+	x: int,
+	y: int,
+	thing: Dictionary,
+	record: int,
+	view_size := VIEW_LARGE
 ) -> Dictionary:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return {}
 	if int(thing.get("type", 0)) != 15:
+		return {}
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
 		return {}
 	var phase := (
 		int(thing.get("px", 0)) + int(thing.get("py", 0)) + x + y + record
@@ -766,10 +798,12 @@ static func tornado_sprite(
 	if city.is_water(x, y):
 		altitude = city.water_altitude(x, y)
 	return {
-		"sprite_id": THING_SPRITES[15] + phase % 3,
+		"sprite_id": (
+			THING_SPRITES[15] + (view_size - VIEW_LARGE) * 500 + phase % 3
+		),
 		"flip": (phase & 1) != 0,
 		"tornado": true,
-		"elevation": altitude * ALTITUDE_STEP,
+		"elevation": altitude * int(configuration.altitude_step),
 	}
 
 
@@ -895,7 +929,8 @@ static func _draw_moving_thing(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
-	visual: Dictionary
+	visual: Dictionary,
+	configuration: Dictionary
 ) -> void:
 	if visual.monster:
 		var monster_origin_x := SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
@@ -924,11 +959,14 @@ static func _draw_moving_thing(
 	)
 	if visual.tornado:
 		var tornado_right_x: int = (
-			SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
-			+ (visual.x - visual.y) * HALF_WIDTH + HALF_WIDTH
+			int(configuration.side_margin)
+			+ CityState.MAP_SIZE * int(configuration.half_width)
+			+ (visual.x - visual.y) * int(configuration.half_width)
+			+ int(configuration.half_width)
 		)
 		var tornado_top_y: int = (
-			TOP_MARGIN + (visual.x + visual.y) * HALF_HEIGHT
+			int(configuration.top_margin)
+			+ (visual.x + visual.y) * int(configuration.half_height)
 			- visual.elevation - sprite.get_height()
 		)
 		var tornado_destination := Vector2i(
@@ -957,19 +995,28 @@ static func _draw_moving_thing(
 	var altitude := city.land_altitude(visual.x, visual.y)
 	if city.is_water(visual.x, visual.y):
 		altitude = city.water_altitude(visual.x, visual.y)
+	var view_size := int(configuration.view_size)
+	var x_divisor: int = THING_X_DIVISOR[view_size]
+	var y_divisor: int = THING_Y_DIVISOR[view_size]
 	var center_x: int = (
-		SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
-		+ (visual.x - visual.y) * HALF_WIDTH + HALF_WIDTH
-		+ visual.px - visual.py
+		int(configuration.side_margin)
+		+ CityState.MAP_SIZE * int(configuration.half_width)
+		+ (visual.x - visual.y) * int(configuration.half_width)
+		+ int(configuration.half_width)
+		+ int((visual.px - visual.py) / x_divisor)
 	)
 	var top_y: int = (
-		TOP_MARGIN + (visual.x + visual.y) * HALF_HEIGHT
-		+ int((visual.px + visual.py) / 2)
-		- altitude * ALTITUDE_STEP - visual.z * 8 - sprite.get_height()
+		int(configuration.top_margin)
+		+ (visual.x + visual.y) * int(configuration.half_height)
+		+ int((visual.px + visual.py) / y_divisor)
+		- altitude * int(configuration.altitude_step)
+		- visual.z * int(configuration.half_height) - sprite.get_height()
 	)
 	var destination := Vector2i(center_x - int(sprite.get_width() / 2), top_y)
 	if visual.type in [1, 2, 16] and city.building_id(visual.x, visual.y) < 0x71:
-		var shadow_destination := destination + Vector2i(0, 8 * (visual.z - 2))
+		var shadow_destination := destination + Vector2i(
+			0, int(configuration.half_height) * (visual.z - 2)
+		)
 		_blend_shadow(output, sprite, palette, shadow_destination)
 	output.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), destination)
 

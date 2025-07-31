@@ -767,12 +767,38 @@ func _test_sprite_archives(reference_root: String) -> void:
 		plane_visual.sprite_id == 1362 and plane_visual.flip,
 		"Airplane view uses the recovered direction offset and mirror",
 	)
+	var medium_plane := IsometricRenderer.moving_thing_sprite({
+		"type": 1, "direction": 4, "state": 2,
+	}, IsometricRenderer.VIEW_MEDIUM)
+	_check(
+		medium_plane.sprite_id == 862 and medium_plane.flip,
+		"Airplane view selects the native medium direction sprite",
+	)
+	var small_plane := IsometricRenderer.moving_thing_sprite({
+		"type": 1, "direction": 4, "state": 2,
+	}, IsometricRenderer.VIEW_SMALL)
+	_check(
+		small_plane.sprite_id == 362 and small_plane.flip,
+		"Airplane view selects the native small direction sprite",
+	)
 	var ship_visual := IsometricRenderer.moving_thing_sprite({
 		"type": 3, "direction": 7, "state": 0,
 	})
 	_check(
 		ship_visual.sprite_id == 1369 and not ship_visual.flip,
 		"Cargo-ship view uses the recovered north-west sprite",
+	)
+	_check(
+		IsometricRenderer.moving_thing_sprite({
+			"type": 3, "direction": 7, "state": 0,
+		}, IsometricRenderer.VIEW_SMALL).sprite_id == 369,
+		"Cargo-ship view selects the native small sprite",
+	)
+	_check(
+		IsometricRenderer.moving_thing_sprite({
+			"type": 4, "direction": 2, "state": 0,
+		}, IsometricRenderer.VIEW_MEDIUM).sprite_id == 891,
+		"Bulldozer view selects the native medium direction sprite",
 	)
 	var sail_visual := IsometricRenderer.moving_thing_sprite({
 		"type": 9, "direction": 2, "state": 0,
@@ -792,6 +818,24 @@ func _test_sprite_archives(reference_root: String) -> void:
 			"type": 6, "direction": 2, "state": 0,
 		}).sprite_id == 1389,
 		"Explosion frame two uses the third recovered sprite",
+	)
+	_check(
+		IsometricRenderer.moving_thing_sprite({
+			"type": 6, "direction": 2, "state": 0,
+		}, IsometricRenderer.VIEW_MEDIUM).sprite_id == 889,
+		"Explosion view selects the native medium frame",
+	)
+	_check(
+		IsometricRenderer.moving_thing_sprite({
+			"type": 6, "direction": 2, "state": 0,
+		}, IsometricRenderer.VIEW_SMALL).is_empty(),
+		"Explosion stays hidden below its recovered minimum view",
+	)
+	_check(
+		IsometricRenderer.moving_thing_sprite({
+			"type": 2, "direction": 2, "state": 0,
+		}, IsometricRenderer.VIEW_MEDIUM).is_empty(),
+		"Helicopter stays hidden below its recovered minimum view",
 	)
 	_check(
 		IsometricRenderer.moving_thing_sprite({
@@ -876,6 +920,15 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and tornado_visual.flip
 		and tornado_visual.tornado,
 		"Tornado view selects a stable recovered frame and mirror",
+	)
+	var small_tornado := IsometricRenderer.tornado_sprite(starter, 64, 64, {
+		"type": 15, "px": 8, "py": 8,
+	}, 1, IsometricRenderer.VIEW_SMALL)
+	_check(
+		small_tornado.sprite_id == 498
+		and small_tornado.elevation == 0
+		and small_tornado.flip,
+		"Tornado view selects its native small frame and altitude scale",
 	)
 	_check(
 		IsometricRenderer.bridge_effect_position(starter, {
