@@ -1050,6 +1050,44 @@ func _test_sprite_archives(reference_root: String) -> void:
 		}, 10) == Vector2i(2096, 1518),
 		"Bridge debris view uses water altitude and the recovered screen offset",
 	)
+	_check(
+		IsometricRenderer.effect_sprite_id(1392, IsometricRenderer.VIEW_SMALL) == 392
+		and IsometricRenderer.effect_sprite_id(1392, IsometricRenderer.VIEW_MEDIUM) == 892
+		and IsometricRenderer.effect_sprite_id(1392, IsometricRenderer.VIEW_LARGE) == 1392,
+		"Bridge debris selects its native sprite at each zoom",
+	)
+	var small_debris := small_medium.find_sprite(392)
+	var small_debris_height := small_debris.height if small_debris != null else -1
+	var small_debris_position := IsometricRenderer.bridge_effect_position(
+		starter,
+		{
+			"point": Vector2i(64, 64),
+			"screen_offset": Vector2i(16, -8),
+		},
+		small_debris_height,
+		IsometricRenderer.VIEW_SMALL
+	)
+	_check(
+		small_debris != null
+		and small_debris_position == Vector2i(524, 382 - small_debris.height),
+		"Small bridge debris scales its tile anchor and recovered offset",
+	)
+	var medium_debris := small_medium.find_sprite(892)
+	var medium_debris_height := medium_debris.height if medium_debris != null else -1
+	var medium_debris_position := IsometricRenderer.bridge_effect_position(
+		starter,
+		{
+			"point": Vector2i(64, 64),
+			"screen_offset": Vector2i(16, -8),
+		},
+		medium_debris_height,
+		IsometricRenderer.VIEW_MEDIUM
+	)
+	_check(
+		medium_debris != null
+		and medium_debris_position == Vector2i(1048, 764 - medium_debris.height),
+		"Medium bridge debris scales its tile anchor and recovered offset",
+	)
 	var monster_layers := IsometricRenderer.monster_layers(starter, 64, 64, {
 		"type": 5,
 		"z": 10,

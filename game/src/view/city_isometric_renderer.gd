@@ -263,21 +263,40 @@ static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
 
 
 static func bridge_effect_position(
-	city: CityState, effect: Dictionary, sprite_height: int
+	city: CityState,
+	effect: Dictionary,
+	sprite_height: int,
+	view_size := VIEW_LARGE
 ) -> Vector2i:
 	if city == null or not city.is_valid():
 		return Vector2i(-1, -1)
 	var point: Vector2i = effect.get("point", Vector2i(-1, -1))
 	if city.index_of(point.x, point.y) < 0 or sprite_height < 0:
 		return Vector2i(-1, -1)
-	var offset: Vector2i = effect.get("screen_offset", Vector2i.ZERO)
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return Vector2i(-1, -1)
+	var divisor := int(configuration.divisor)
+	var large_offset: Vector2i = effect.get("screen_offset", Vector2i.ZERO)
+	var offset := Vector2i(
+		int(large_offset.x / divisor), int(large_offset.y / divisor)
+	)
 	return Vector2i(
-		SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
-			+ (point.x - point.y) * HALF_WIDTH + offset.x,
-		TOP_MARGIN + (point.x + point.y) * HALF_HEIGHT
-			- city.water_altitude(point.x, point.y) * ALTITUDE_STEP
+		int(configuration.side_margin)
+			+ CityState.MAP_SIZE * int(configuration.half_width)
+			+ (point.x - point.y) * int(configuration.half_width) + offset.x,
+		int(configuration.top_margin)
+			+ (point.x + point.y) * int(configuration.half_height)
+			- city.water_altitude(point.x, point.y) * int(configuration.altitude_step)
 			- sprite_height + offset.y
 	)
+
+
+static func effect_sprite_id(large_sprite_id: int, view_size := VIEW_LARGE) -> int:
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty() or large_sprite_id < 1000:
+		return -1
+	return int(configuration.sprite_base) + large_sprite_id - 1000
 
 
 static func _draw_tile(

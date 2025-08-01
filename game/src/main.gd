@@ -1245,8 +1245,14 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 		return
 	var visuals: Array[Dictionary] = []
 	if overlay_mode == "city":
+		var view_size := _city_view_size()
+		var sprite_archive := _sprite_archive_for_view(view_size)
+		var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
 		for effect in effect_events:
-			var sprite := large_sprites.find_sprite(int(effect.get("sprite_id", 0)))
+			var sprite_id := IsometricRenderer.effect_sprite_id(
+				int(effect.get("sprite_id", 0)), view_size
+			)
+			var sprite := sprite_archive.find_sprite(sprite_id)
 			if sprite == null:
 				continue
 			var rendered := sprite.create_image(palette)
@@ -1256,13 +1262,19 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 			if effect.get("flip", false):
 				effect_image.flip_x()
 			var position := IsometricRenderer.bridge_effect_position(
-				city, effect, effect_image.get_height()
+				city, effect, effect_image.get_height(), view_size
 			)
 			if position.x < 0 or position.y < 0:
 				continue
+			if divisor > 1:
+				effect_image.resize(
+					effect_image.get_width() * divisor,
+					effect_image.get_height() * divisor,
+					Image.INTERPOLATE_NEAREST
+				)
 			visuals.append({
 				"texture": ImageTexture.create_from_image(effect_image),
-				"position": Vector2(position),
+				"position": Vector2(position * divisor),
 			})
 		map_view.show_transient_effects(visuals, 0.1)
 	if sound_events.is_empty():
