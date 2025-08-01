@@ -76,7 +76,8 @@ static func create_image(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	view_size := VIEW_LARGE,
-	animation_phase := 0
+	animation_phase := 0,
+	include_moving_things := true
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
@@ -105,7 +106,7 @@ static func create_image(
 				continue
 			_draw_tile(
 				output, city, palette, sprites, cache, configuration,
-				origin_x, x, y, animation_phase
+				origin_x, x, y, animation_phase, include_moving_things
 			)
 
 	return {"ok": true, "image": output, "error": ""}
@@ -289,7 +290,8 @@ static func _draw_tile(
 	origin_x: int,
 	x: int,
 	y: int,
-	animation_phase: int
+	animation_phase: int,
+	include_moving_things: bool
 ) -> void:
 	var terrain_id := city.terrain_id(x, y)
 	var building_id := city.building_id(x, y)
@@ -380,13 +382,14 @@ static func _draw_tile(
 			output, dispatch_image, dispatch_x, dispatch_base_y,
 			configuration.tile_height
 		)
-	var moving_visual := moving_thing_visual(
-		city, x, y, configuration.view_size, animation_phase
-	)
-	if not moving_visual.is_empty():
-		_draw_moving_thing(
-			output, city, palette, sprites, cache, moving_visual, configuration
+	if include_moving_things:
+		var moving_visual := moving_thing_visual(
+			city, x, y, configuration.view_size, animation_phase
 		)
+		if not moving_visual.is_empty():
+			_draw_moving_thing(
+				output, city, palette, sprites, cache, moving_visual, configuration
+			)
 	var special_visual := special_overlay_visual(
 		city, x, y, configuration.view_size, animation_phase
 	)
@@ -943,6 +946,59 @@ static func _draw_moving_thing(
 	visual: Dictionary,
 	configuration: Dictionary
 ) -> void:
+	for command in moving_thing_draw_commands_for_visual(
+		city, sprites, visual, configuration
+	):
+		var sprite := _sprite_image(
+			sprites, palette, cache, command.sprite_id, command.flip
+		)
+		if command.shadow:
+			_blend_shadow(output, sprite, palette, command.position)
+		else:
+			output.blend_rect(
+				sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), command.position
+			)
+
+
+static func moving_thing_draw_commands(
+	city: CityState,
+	sprites: Sc2SpriteArchive,
+	view_size := VIEW_LARGE,
+	animation_phase := 0
+) -> Array[Dictionary]:
+	var commands: Array[Dictionary] = []
+	if city == null or not city.is_valid() or sprites == null or not sprites.is_valid():
+		return commands
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return commands
+	for diagonal in CityState.MAP_SIZE * 2 - 1:
+		for y in diagonal + 1:
+			var x := diagonal - y
+			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+				continue
+			var visual := moving_thing_visual(
+				city, x, y, view_size, animation_phase
+			)
+			if visual.is_empty():
+				continue
+			commands.append_array(
+				moving_thing_draw_commands_for_visual(
+					city, sprites, visual, configuration
+				)
+			)
+	return commands
+
+
+static func moving_thing_draw_commands_for_visual(
+	city: CityState,
+	sprites: Sc2SpriteArchive,
+	visual: Dictionary,
+	configuration: Dictionary
+) -> Array[Dictionary]:
+	var commands: Array[Dictionary] = []
+	if visual.is_empty() or configuration.is_empty():
+		return commands
 	if visual.monster:
 		var monster_origin_x := (
 			int(configuration.side_margin)
@@ -950,90 +1006,126 @@ static func _draw_moving_thing(
 		)
 		var monster_has_shadow := city.building_id(visual.x, visual.y) < 0x71
 		for layer in visual.layers:
-			var monster_part := _sprite_image(
-				sprites, palette, cache, layer.sprite_id, layer.flip
-			)
-			var monster_destination := Vector2i(
+			var destination := Vector2i(
 				monster_origin_x + layer.screen_x,
 				int(configuration.top_margin) + layer.screen_y
 			)
 			if monster_has_shadow:
-				_blend_shadow(
-					output, monster_part, palette,
-					monster_destination
-						+ Vector2i(0, int(configuration.half_height) * visual.z)
-				)
-			output.blend_rect(
-				monster_part,
-				Rect2i(Vector2i.ZERO, monster_part.get_size()),
-				monster_destination
-			)
-		return
-	var sprite := _sprite_image(
-		sprites, palette, cache, visual.sprite_id, visual.flip
-	)
+				commands.append(_moving_draw_command(
+					layer.sprite_id, layer.flip,
+					destination + Vector2i(
+						0, int(configuration.half_height) * visual.z
+					),
+					true
+				))
+			commands.append(_moving_draw_command(
+				layer.sprite_id, layer.flip, destination, false
+			))
+		return commands
+
+	var entry := sprites.find_sprite(visual.sprite_id)
+	if entry == null:
+		return commands
+	var destination := Vector2i.ZERO
 	if visual.tornado:
-		var tornado_right_x: int = (
+		var right_x: int = (
 			int(configuration.side_margin)
 			+ CityState.MAP_SIZE * int(configuration.half_width)
 			+ (visual.x - visual.y) * int(configuration.half_width)
 			+ int(configuration.half_width)
 		)
-		var tornado_top_y: int = (
+		destination = Vector2i(
+			right_x - entry.width,
 			int(configuration.top_margin)
-			+ (visual.x + visual.y) * int(configuration.half_height)
-			- visual.elevation - sprite.get_height()
+				+ (visual.x + visual.y) * int(configuration.half_height)
+				- visual.elevation - entry.height
 		)
-		var tornado_destination := Vector2i(
-			tornado_right_x - sprite.get_width(), tornado_top_y
-		)
-		output.blend_rect(
-			sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), tornado_destination
-		)
-		return
-	if visual.train:
-		var train_center_x: int = (
+	elif visual.train:
+		var center_x: int = (
 			SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
 			+ (visual.x - visual.y) * HALF_WIDTH + HALF_WIDTH + visual.screen_x
 		)
-		var train_top_y: int = (
+		destination = Vector2i(
+			center_x - int(entry.width / 2),
 			TOP_MARGIN + (visual.x + visual.y) * HALF_HEIGHT + visual.screen_y
-			- visual.elevation - sprite.get_height()
+				- visual.elevation - entry.height
 		)
-		var train_destination := Vector2i(
-			train_center_x - int(sprite.get_width() / 2), train_top_y
+	else:
+		var altitude := city.land_altitude(visual.x, visual.y)
+		if city.is_water(visual.x, visual.y):
+			altitude = city.water_altitude(visual.x, visual.y)
+		var view_size := int(configuration.view_size)
+		var center_x: int = (
+			int(configuration.side_margin)
+			+ CityState.MAP_SIZE * int(configuration.half_width)
+			+ (visual.x - visual.y) * int(configuration.half_width)
+			+ int(configuration.half_width)
+			+ int((visual.px - visual.py) / THING_X_DIVISOR[view_size])
 		)
-		output.blend_rect(
-			sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), train_destination
+		destination = Vector2i(
+			center_x - int(entry.width / 2),
+			int(configuration.top_margin)
+				+ (visual.x + visual.y) * int(configuration.half_height)
+				+ int((visual.px + visual.py) / THING_Y_DIVISOR[view_size])
+				- altitude * int(configuration.altitude_step)
+				- visual.z * int(configuration.half_height) - entry.height
 		)
-		return
-	var altitude := city.land_altitude(visual.x, visual.y)
-	if city.is_water(visual.x, visual.y):
-		altitude = city.water_altitude(visual.x, visual.y)
-	var view_size := int(configuration.view_size)
-	var x_divisor: int = THING_X_DIVISOR[view_size]
-	var y_divisor: int = THING_Y_DIVISOR[view_size]
-	var center_x: int = (
-		int(configuration.side_margin)
-		+ CityState.MAP_SIZE * int(configuration.half_width)
-		+ (visual.x - visual.y) * int(configuration.half_width)
-		+ int(configuration.half_width)
-		+ int((visual.px - visual.py) / x_divisor)
-	)
-	var top_y: int = (
-		int(configuration.top_margin)
-		+ (visual.x + visual.y) * int(configuration.half_height)
-		+ int((visual.px + visual.py) / y_divisor)
-		- altitude * int(configuration.altitude_step)
-		- visual.z * int(configuration.half_height) - sprite.get_height()
-	)
-	var destination := Vector2i(center_x - int(sprite.get_width() / 2), top_y)
-	if visual.type in [1, 2, 16] and city.building_id(visual.x, visual.y) < 0x71:
-		var shadow_destination := destination + Vector2i(
-			0, int(configuration.half_height) * (visual.z - 2)
-		)
-		_blend_shadow(output, sprite, palette, shadow_destination)
-	output.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), destination)
+		if visual.type in [1, 2, 16] and city.building_id(visual.x, visual.y) < 0x71:
+			commands.append(_moving_draw_command(
+				visual.sprite_id, visual.flip,
+				destination + Vector2i(
+					0, int(configuration.half_height) * (visual.z - 2)
+				),
+				true
+			))
+	commands.append(_moving_draw_command(
+		visual.sprite_id, visual.flip, destination, false
+	))
+	return commands
+
+
+static func _moving_draw_command(
+	sprite_id: int, flip: bool, position: Vector2i, shadow: bool
+) -> Dictionary:
+	return {
+		"sprite_id": sprite_id,
+		"flip": flip,
+		"position": position,
+		"shadow": shadow,
+	}
+
+
+static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) -> Array:
+	if city == null or not city.is_valid():
+		return []
+	var traffic := city.document.find_chunk("XTRF")
+	return [
+		view_size,
+		city.compass_rotation(),
+		hash(city.altitude_words),
+		hash(city.terrain),
+		hash(city.buildings),
+		hash(city.zones),
+		hash(city.tile_flags),
+		hash(traffic.decoded_payload) if traffic != null else 0,
+		_static_text_overlay_signature(city),
+	]
+
+
+static func _static_text_overlay_signature(city: CityState) -> int:
+	var values := PackedInt32Array()
+	for index in city.text_overlays.size():
+		var overlay := int(city.text_overlays[index])
+		if (overlay >= 1 and overlay <= 50) or overlay >= 251:
+			values.append(index)
+			values.append(overlay)
+		elif overlay >= 201 and overlay <= 240:
+			var thing := city.thing(overlay - 201)
+			if int(thing.get("type", 0)) in DISPATCH_SPRITE_OFFSETS:
+				values.append(index)
+				for key in ["type", "direction", "state", "x", "y", "z", "px", "py"]:
+					values.append(int(thing.get(key, 0)))
+	return hash(values)
 
 
 static func shadow_color(palette: Sc2Palette, destination: Color) -> Color:

@@ -305,6 +305,17 @@ func _test_reference_corpus(reference_root: String) -> void:
 	if default_city.is_valid():
 		_check(default_city.city_name() == "New City", "Default city name is New City")
 		_check(default_city.misc_u32(0) == 0x122, "Default MISC marker is 0x122")
+		var render_copy := default_city.duplicate_document()
+		_check(render_copy.is_valid(), "A render document copy stays valid")
+		_check(
+			render_copy.serialize().data == default_city.serialize().data,
+			"A render document copy preserves all city bytes",
+		)
+		_check(render_copy.set_misc_u32(0x10, 123), "A render document copy can change")
+		_check(
+			default_city.misc_u32(0x10) != 123,
+			"A render document copy does not change the live city",
+		)
 		var default_model := CityModel.from_document(default_city)
 		_check(default_model.land_altitude(0, 0) == 4, "Default origin land altitude is 4")
 		_check(default_model.water_altitude(0, 0) == 4, "Default origin water level is 4")
@@ -900,6 +911,56 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Isometric lookup fixture clears terrain",
 	)
 	starter = CityModel.from_document(starter_document)
+	_check(starter.set_building_id(64, 64, 0), "Moving overlay fixture clears its tile")
+	_check(starter.set_tile_flag(64, 64, 0x04, false), "Moving overlay fixture uses dry land")
+	var plane_entry := large.find_sprite(plane_visual.sprite_id)
+	var plane_commands := IsometricRenderer.moving_thing_draw_commands_for_visual(
+		starter,
+		large,
+		{
+			"sprite_id": plane_visual.sprite_id,
+			"flip": plane_visual.flip,
+			"type": 1,
+			"x": 64,
+			"y": 64,
+			"z": 2,
+			"px": 8,
+			"py": 8,
+			"train": false,
+			"tornado": false,
+			"monster": false,
+		},
+		IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
+	)
+	var expected_plane_position := Vector2i(
+		2096 - int(plane_entry.width / 2), 1528 - plane_entry.height
+	)
+	_check(
+		plane_commands.size() == 2
+		and plane_commands[0].shadow
+		and plane_commands[0].position == expected_plane_position
+		and not plane_commands[1].shadow
+		and plane_commands[1].position == expected_plane_position,
+		"Moving overlay commands preserve the recovered sprite and shadow positions",
+	)
+	var static_signature := IsometricRenderer.static_visual_signature(starter)
+	_check(
+		starter.set_text_overlay_id(64, 64, 201),
+		"Static-signature fixture adds an inactive moving-object link",
+	)
+	_check(
+		IsometricRenderer.static_visual_signature(starter) == static_signature,
+		"Moving-object links do not invalidate the static city image",
+	)
+	_check(
+		starter.set_text_overlay_id(64, 64, 0xfb),
+		"Static-signature fixture adds a special map marker",
+	)
+	_check(
+		IsometricRenderer.static_visual_signature(starter) != static_signature,
+		"A static special marker invalidates the static city image",
+	)
+	_check(starter.set_text_overlay_id(64, 64, 0), "Static-signature fixture clears its marker")
 	for expected in [Vector2i.ZERO, Vector2i(24, 93), Vector2i(64, 64), Vector2i(127, 127)]:
 		var polygon := IsometricRenderer.tile_polygon(starter, expected.x, expected.y)
 		var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
@@ -930,6 +991,10 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(not map_control.is_left_drag_active(), "Map control starts without an active left drag")
 	map_control.selection_start = center_tile
 	_check(map_control.is_left_drag_active(), "Map control reports an active left drag")
+	map_control.set_dynamic_sprites([{"position": Vector2(10, 20)}])
+	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")
+	map_control.set_dynamic_sprites([])
+	_check(map_control.dynamic_sprites.is_empty(), "Map control clears its dynamic sprite layer")
 	map_control.free()
 	_check(starter.set_building_id(64, 64, 0x2e), "Train drawing fixture adds a rail tile")
 	var straight_train := IsometricRenderer.train_sprite(starter, 64, 64, {

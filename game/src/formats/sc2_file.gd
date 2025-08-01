@@ -126,6 +126,24 @@ func is_valid() -> bool:
 	return parse_error.is_empty()
 
 
+func duplicate_document() -> Sc2File:
+	var result := Sc2File.new()
+	result.source_bytes = source_bytes.duplicate()
+	result.source_path = source_path
+	result.parse_error = parse_error
+	for chunk in chunks:
+		var copied := Sc2Chunk.new()
+		copied.chunk_id = chunk.chunk_id
+		copied.source_offset = chunk.source_offset
+		copied.stored_payload = chunk.stored_payload.duplicate()
+		copied.decoded_payload = chunk.decoded_payload.duplicate()
+		copied.expected_decoded_size = chunk.expected_decoded_size
+		copied.is_compressed = chunk.is_compressed
+		copied.is_dirty = chunk.is_dirty
+		result.chunks.append(copied)
+	return result
+
+
 # Use the first chunk with a given ID. Sprite lookup uses the last duplicate.
 func find_chunk(chunk_id: String, occurrence: int = 0) -> Sc2Chunk:
 	for chunk in chunks:

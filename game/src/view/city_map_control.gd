@@ -18,6 +18,7 @@ var selection_start := Vector2i(-1, -1)
 var selection_end := Vector2i(-1, -1)
 var selection_path: Array[Vector2i] = []
 var transient_effects: Array[Dictionary] = []
+var dynamic_sprites: Array[Dictionary] = []
 var _panning := false
 var _effect_generation := 0
 
@@ -104,6 +105,11 @@ func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void
 	timer.timeout.connect(_expire_transient_effects.bind(_effect_generation))
 
 
+func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
+	dynamic_sprites = sprites.duplicate()
+	queue_redraw()
+
+
 func _expire_transient_effects(generation: int) -> void:
 	if generation != _effect_generation:
 		return
@@ -121,6 +127,7 @@ func _draw() -> void:
 		Rect2(offset, Vector2(city_texture.get_size()) * scale),
 		false
 	)
+	_draw_dynamic_sprites(scale, offset)
 	_draw_transient_effects(scale, offset)
 	_draw_signs(scale, offset)
 	if selection_start.x < 0 or selection_end.x < 0 or city == null:
@@ -159,6 +166,20 @@ func _draw_transient_effects(scale: float, offset: Vector2) -> void:
 		draw_texture_rect(
 			texture,
 			Rect2(offset + source_position * scale, Vector2(texture.get_size()) * scale),
+			false
+		)
+
+
+func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
+	for visual in dynamic_sprites:
+		var texture: Texture2D = visual.get("texture") as Texture2D
+		if texture == null:
+			continue
+		var source_position: Vector2 = visual.get("position", Vector2.ZERO)
+		var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
+		draw_texture_rect(
+			texture,
+			Rect2(offset + source_position * scale, source_size * scale),
 			false
 		)
 

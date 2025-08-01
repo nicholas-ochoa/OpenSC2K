@@ -7,6 +7,7 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
+const RenderJob = preload("res://src/view/city_render_job.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -91,6 +92,12 @@ var recent_news := PackedStringArray()
 var annual_budget_pending := false
 var military_proposal_pending := false
 var game_over_active := false
+var static_city_image: Image
+var static_visual_signature: Array = []
+var dynamic_sprite_cache: Dictionary = {}
+var static_render_thread: Thread
+var static_render_job: CityRenderJob
+var static_render_epoch := 0
 
 var map_view: CityMapControl
 var city_label: Label
@@ -164,6 +171,7 @@ func _ready() -> void:
 
 func _process(delta: float) -> void:
 	_update_fps(delta)
+	_poll_static_render()
 	if speed_controller == null or city == null:
 		return
 	var result := speed_controller.advance_time(
@@ -214,9 +222,14 @@ func _consume_simulation_result(result: Dictionary) -> void:
 		not result.effect_events.is_empty()
 		or not result.view_center_requests.is_empty()
 	)
-	if simulation_map_dirty and (result.base_ticks > 0 or force_refresh):
-		_refresh_map()
+	var map_refresh_requested: bool = simulation_map_dirty and (
+		result.base_ticks > 0 or force_refresh
+	)
+	if map_refresh_requested:
+		_refresh_map(false)
 		simulation_map_dirty = false
+	elif result.base_ticks > 0:
+		_refresh_moving_things()
 	for point in result.view_center_requests:
 		map_view.center_on_tile(point)
 	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
@@ -921,6 +934,10 @@ func _load_city(path: String) -> void:
 	game_over_active = false
 	city = loaded_city
 	current_document = document
+	static_render_epoch += 1
+	static_city_image = null
+	static_visual_signature = []
+	dynamic_sprite_cache.clear()
 	var process_seed := tool_random.state
 	var game_seed := nuisance_random.state
 	var lfsr_seed := (
@@ -1004,22 +1021,31 @@ func _select_speed(index: int) -> void:
 	status_label.text = "%s speed selected." % speed_controller.speed_name()
 
 
-func _refresh_map() -> void:
+func _refresh_map(force := true) -> void:
 	if city == null or palette == null:
 		return
 	var image: Image
 	if overlay_mode == "city":
-		var view_size := IsometricRenderer.VIEW_LARGE
-		var sprite_archive := large_sprites
-		if map_view.zoom_percent() <= 25:
-			view_size = IsometricRenderer.VIEW_SMALL
-			sprite_archive = small_medium_sprites
-		elif map_view.zoom_percent() <= 50:
-			view_size = IsometricRenderer.VIEW_MEDIUM
-			sprite_archive = small_medium_sprites
+		var view_size := _city_view_size()
+		var sprite_archive := _sprite_archive_for_view(view_size)
+		var current_signature := IsometricRenderer.static_visual_signature(
+			city, view_size
+		)
+		if (
+			not force
+			and static_city_image != null
+			and current_signature == static_visual_signature
+		):
+			_refresh_moving_things(view_size)
+			return
+		if not force:
+			_request_static_render(current_signature, view_size, sprite_archive)
+			_refresh_moving_things(view_size)
+			return
+		static_render_epoch += 1
 		var rendered := IsometricRenderer.create_image(
 			city, palette, sprite_archive, view_size,
-			int(Time.get_ticks_msec() / 100)
+			int(Time.get_ticks_msec() / 100), false
 		)
 		if not rendered.ok:
 			_show_error(rendered.error)
@@ -1031,10 +1057,187 @@ func _refresh_map() -> void:
 				IsometricRenderer.IMAGE_SIZE_LARGE.y,
 				Image.INTERPOLATE_NEAREST,
 			)
+		static_city_image = image
+		static_visual_signature = current_signature
 	else:
 		image = Minimap.create_image(city, palette, overlay_mode)
 		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
+		static_city_image = null
+		static_visual_signature = []
+		map_view.set_dynamic_sprites([])
 	map_view.set_city_view(city, ImageTexture.create_from_image(image))
+	if overlay_mode == "city":
+		_refresh_moving_things(_city_view_size())
+
+
+func _request_static_render(
+	signature: Array, view_size: int, sprite_archive: Sc2SpriteArchive
+) -> void:
+	if static_render_thread != null:
+		return
+	var snapshot_document := current_document.duplicate_document()
+	var snapshot := CityModel.from_document(snapshot_document)
+	if not snapshot.is_valid():
+		_show_error("Cannot prepare the city for drawing: %s" % snapshot.load_error)
+		return
+	static_render_job = RenderJob.new()
+	static_render_job.city_snapshot = snapshot
+	static_render_job.palette = palette
+	static_render_job.sprites = sprite_archive
+	static_render_job.view_size = view_size
+	static_render_job.animation_phase = int(Time.get_ticks_msec() / 100)
+	static_render_job.signature = signature.duplicate()
+	static_render_job.epoch = static_render_epoch
+	static_render_thread = Thread.new()
+	var start_error := static_render_thread.start(
+		static_render_job.run, Thread.PRIORITY_LOW
+	)
+	if start_error != OK:
+		static_render_thread = null
+		static_render_job = null
+		_show_error("Cannot start the city renderer: %s" % error_string(start_error))
+
+
+func _poll_static_render() -> void:
+	if static_render_thread == null or static_render_thread.is_alive():
+		return
+	var rendered: Dictionary = static_render_thread.wait_to_finish()
+	static_render_thread = null
+	static_render_job = null
+	if not rendered.get("ok", false):
+		_show_error(rendered.get("error", "city rendering failed"))
+		return
+	if (
+		city == null
+		or overlay_mode != "city"
+		or int(rendered.epoch) != static_render_epoch
+		or int(rendered.view_size) != _city_view_size()
+	):
+		return
+	static_city_image = rendered.image
+	static_visual_signature = rendered.signature
+	map_view.set_city_view(
+		city, ImageTexture.create_from_image(static_city_image)
+	)
+	_refresh_moving_things(int(rendered.view_size))
+	var latest_signature := IsometricRenderer.static_visual_signature(
+		city, int(rendered.view_size)
+	)
+	if latest_signature != static_visual_signature:
+		_request_static_render(
+			latest_signature,
+			int(rendered.view_size),
+			_sprite_archive_for_view(int(rendered.view_size))
+		)
+
+
+func _exit_tree() -> void:
+	if static_render_thread != null and static_render_thread.is_started():
+		static_render_thread.wait_to_finish()
+	static_render_thread = null
+	static_render_job = null
+
+
+func _city_view_size() -> int:
+	if map_view.zoom_percent() <= 25:
+		return IsometricRenderer.VIEW_SMALL
+	if map_view.zoom_percent() <= 50:
+		return IsometricRenderer.VIEW_MEDIUM
+	return IsometricRenderer.VIEW_LARGE
+
+
+func _sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
+	return small_medium_sprites if view_size < IsometricRenderer.VIEW_LARGE else large_sprites
+
+
+func _refresh_moving_things(view_size := -1) -> void:
+	if city == null or palette == null or map_view == null or overlay_mode != "city":
+		if map_view != null:
+			map_view.set_dynamic_sprites([])
+		return
+	if view_size < 0:
+		view_size = _city_view_size()
+	var sprite_archive := _sprite_archive_for_view(view_size)
+	var configuration := IsometricRenderer.view_configuration(view_size)
+	var divisor := int(configuration.divisor)
+	var commands := IsometricRenderer.moving_thing_draw_commands(
+		city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
+	)
+	var visuals: Array[Dictionary] = []
+	for command in commands:
+		var resource := _dynamic_sprite_resource(
+			sprite_archive, command.sprite_id, command.flip, divisor
+		)
+		if resource.is_empty():
+			continue
+		var position := Vector2i(command.position) * divisor
+		var texture: Texture2D = resource.texture
+		if command.shadow:
+			var shadow_image := _dynamic_shadow_image(resource.image, position)
+			if shadow_image == null:
+				continue
+			texture = ImageTexture.create_from_image(shadow_image)
+		visuals.append({
+			"texture": texture,
+			"position": Vector2(position),
+			"size": Vector2(resource.image.get_size()),
+		})
+	map_view.set_dynamic_sprites(visuals)
+
+
+func _dynamic_sprite_resource(
+	sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool, divisor: int
+) -> Dictionary:
+	var key := "%d:%d:%d" % [sprite_id, int(flip), divisor]
+	if dynamic_sprite_cache.has(key):
+		return dynamic_sprite_cache[key]
+	var entry := sprite_archive.find_sprite(sprite_id)
+	if entry == null:
+		return {}
+	var rendered := entry.create_image(palette)
+	if not rendered.ok:
+		return {}
+	var image: Image = rendered.image
+	if flip:
+		image.flip_x()
+	if divisor > 1:
+		image.resize(
+			image.get_width() * divisor,
+			image.get_height() * divisor,
+			Image.INTERPOLATE_NEAREST
+		)
+	var resource := {
+		"image": image,
+		"texture": ImageTexture.create_from_image(image),
+	}
+	dynamic_sprite_cache[key] = resource
+	return resource
+
+
+func _dynamic_shadow_image(mask: Image, position: Vector2i) -> Image:
+	if static_city_image == null:
+		return null
+	var shadow := Image.create(
+		mask.get_width(), mask.get_height(), false, Image.FORMAT_RGBA8
+	)
+	shadow.fill(Color.TRANSPARENT)
+	var changed_pixels := 0
+	for source_y in mask.get_height():
+		var output_y := position.y + source_y
+		if output_y < 0 or output_y >= static_city_image.get_height():
+			continue
+		for source_x in mask.get_width():
+			if mask.get_pixel(source_x, source_y).a == 0.0:
+				continue
+			var output_x := position.x + source_x
+			if output_x < 0 or output_x >= static_city_image.get_width():
+				continue
+			var current := static_city_image.get_pixel(output_x, output_y)
+			var changed := IsometricRenderer.shadow_color(palette, current)
+			if changed != current:
+				shadow.set_pixel(source_x, source_y, changed)
+				changed_pixels += 1
+	return shadow if changed_pixels > 0 else null
 
 
 func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
