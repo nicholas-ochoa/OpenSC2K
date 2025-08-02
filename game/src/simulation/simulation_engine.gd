@@ -388,7 +388,9 @@ func _append_pending_disaster(result: Dictionary) -> Dictionary:
 	pending_disaster_type = 0
 	if not city.document.set_misc_u32(0x0070, 0):
 		return {"ok": false, "error": "cannot clear the pending disaster type"}
-	var started := DisasterStartPhase.start(city, disaster_type, pending_disaster_point, random)
+	var started := DisasterStartPhase.start(
+		city, disaster_type, pending_disaster_point, random, lfsr_random
+	)
 	if not started.ok:
 		return started
 	result.phase_results["disaster_start"] = started

@@ -2216,6 +2216,82 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 	_check(DisasterStart.has_active_object(monster_city, DisasterStart.DISASTER_MONSTER), "Monster activity is visible to the disaster controller")
 
+	var fire_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var fire_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	var fire_point := Vector2i(60, 69)
+	fire_buildings[fire_point.x * CityState.MAP_SIZE + fire_point.y] = 0x70
+	_check(
+		fire_document.find_chunk("XBLD").set_decoded_payload(fire_buildings)
+		and fire_document.find_chunk("XBIT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and fire_document.find_chunk("XTXT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and fire_document.find_chunk("XTRF").set_decoded_payload(_filled_bytes(64 * 64, 9))
+		and fire_document.set_misc_u32(DisasterStart.MISC_CITY_CENTER_X, 60)
+		and fire_document.set_misc_u32(DisasterStart.MISC_CITY_CENTER_Y, 70),
+		"Fire start fixture installs a building north of the city center",
+	)
+	var fire_city := CityModel.from_document(fire_document)
+	var fire_random := SequenceRandom.new([20, 20])
+	var fire_lfsr := SequenceLfsrRandom.new([])
+	var fire := DisasterStart.start(
+		fire_city, DisasterStart.DISASTER_FIRE, Vector2i.ZERO, fire_random, fire_lfsr
+	)
+	_check(
+		fire.ok
+		and fire.started
+		and fire.complete
+		and fire.point == fire_point
+		and fire.sound_events == [DisasterStart.SOUND_SIREN]
+		and fire.view_center_requests == [fire_point],
+		"Fire starts at the first suitable point in the center spiral",
+	)
+	_check(
+		fire_city.building_id(fire_point.x, fire_point.y) == 0x70
+		and fire_city.text_overlay_id(fire_point.x, fire_point.y) == 0xff
+		and fire_document.find_chunk("XTRF").decoded_payload[30 * 64 + 34] == 0,
+		"Fire marks XTXT, clears coarse traffic, and preserves the source building",
+	)
+	_check(
+		fire_random.position == 2 and fire_lfsr.position == 0,
+		"A first-point fire consumes only the two process-random center offsets",
+	)
+
+	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(
+		fallback_document.find_chunk("XBLD").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and fallback_document.find_chunk("XBIT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and fallback_document.find_chunk("XTXT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and fallback_document.set_misc_u32(DisasterStart.MISC_CITY_CENTER_X, 64)
+		and fallback_document.set_misc_u32(DisasterStart.MISC_CITY_CENTER_Y, 64),
+		"Fire fallback fixture clears all buildings",
+	)
+	var fallback_city := CityModel.from_document(fallback_document)
+	var fallback_lfsr := SequenceLfsrRandom.new([12, 13])
+	var fallback := DisasterStart.start(
+		fallback_city,
+		DisasterStart.DISASTER_FIRE,
+		Vector2i(99, 99),
+		SequenceRandom.new([20, 20]),
+		fallback_lfsr
+	)
+	_check(
+		fallback.ok
+		and fallback.started
+		and fallback.point == Vector2i(12, 13)
+		and fallback_city.text_overlay_id(12, 13) == 0xff
+		and fallback_lfsr.position == 2,
+		"Fire falls back to two game-LFSR coordinates after the spiral fails",
+	)
+
 	var tornado_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	_check(tornado_document.find_chunk("XTHG").set_decoded_payload(_filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)), "Tornado start fixture clears XTHG")
 	_check(tornado_document.find_chunk("XTXT").set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)), "Tornado start fixture clears XTXT")

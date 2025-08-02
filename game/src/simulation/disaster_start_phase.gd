@@ -1,20 +1,43 @@
 class_name DisasterStartPhase
 extends RefCounted
 
+const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
 const DISASTER_NONE := 0
+const DISASTER_FIRE := 1
 const DISASTER_TORNADO := 7
 const DISASTER_MONSTER := 8
 const TYPE_MONSTER := 5
 const TYPE_TORNADO := 15
 const TEXT_THING_BASE := 201
 const SOUND_SIREN := 520
+const MISC_CITY_CENTER_X := 0x1018
+const MISC_CITY_CENTER_Y := 0x101c
+const FIRE_SPIRAL_X := [0, 1, 0, -1]
+const FIRE_SPIRAL_Y := [-1, 0, 1, 0]
+const MAP_CHUNK_SIZES := {
+	"ALTM": CityState.TILE_COUNT * 2,
+	"XBLD": CityState.TILE_COUNT,
+	"XTER": CityState.TILE_COUNT,
+	"XZON": CityState.TILE_COUNT,
+	"XUND": CityState.TILE_COUNT,
+	"XBIT": CityState.TILE_COUNT,
+	"XTRF": 64 * 64,
+	"XTXT": CityState.TILE_COUNT,
+	"XLAB": CityState.LABEL_COUNT * CityState.LABEL_RECORD_SIZE,
+	"XMIC": CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE,
+	"MISC": 4800,
+}
 
 
-static func start(city: CityState, disaster_type: int, point: Vector2i, random) -> Dictionary:
+static func start(
+	city: CityState, disaster_type: int, point: Vector2i, random, lfsr_random = null
+) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if disaster_type == DISASTER_NONE:
 		return _result(disaster_type, point, false, true, 0)
+	if disaster_type == DISASTER_FIRE:
+		return _start_fire(city, random, lfsr_random)
 	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
 		return _result(disaster_type, point, false, false, 0)
 	if random == null or not random.has_method("next_u15"):
@@ -69,6 +92,81 @@ static func start(city: CityState, disaster_type: int, point: Vector2i, random) 
 	return _result(disaster_type, clamped, true, true, record)
 
 
+static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if (
+		lfsr_random == null
+		or not lfsr_random.has_method("next_mask")
+		or not lfsr_random.has_method("next_mod")
+	):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "fire disaster input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var point := Vector2i(
+		_read_u32_be(payloads.MISC, MISC_CITY_CENTER_X) - 20 + random.next_u15() % 40,
+		_read_u32_be(payloads.MISC, MISC_CITY_CENTER_Y) - 20 + random.next_u15() % 40
+	)
+	var direction := 0
+	var run_length := 1
+	var step := 0
+	while run_length < 64:
+		point.x += FIRE_SPIRAL_X[direction]
+		point.y += FIRE_SPIRAL_Y[direction]
+		var index := _index(point)
+		if (
+			index >= 0
+			and payloads.XBLD[index] > 0x6f
+			and _apply_fire_damage(city, payloads, point, random, lfsr_random) != 0
+		):
+			return _store_fire(city, original, payloads, point)
+		step += 1
+		if step >= run_length:
+			step = 0
+			if direction & 1 != 0:
+				run_length += 1
+			direction = (direction + 1) & 3
+	for _attempt in 200:
+		point = Vector2i(lfsr_random.next_mask(0x7f), lfsr_random.next_mask(0x7f))
+		if _apply_fire_damage(city, payloads, point, random, lfsr_random) != 0:
+			return _store_fire(city, original, payloads, point)
+	var result := _result(DISASTER_FIRE, point, false, true, 0)
+	result["notice_ids"] = [0xf5]
+	return result
+
+
+static func _apply_fire_damage(
+	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
+) -> int:
+	return DisasterMapDamage.apply(
+		city,
+		payloads.ALTM,
+		payloads.XBLD,
+		payloads.XTER,
+		payloads.XZON,
+		payloads.XUND,
+		payloads.XBIT,
+		payloads.XTRF,
+		payloads.XTXT,
+		payloads.XLAB,
+		payloads.XMIC,
+		payloads.MISC,
+		point,
+		random,
+		lfsr_random
+	)
+
+
+static func _store_fire(
+	city: CityState, original: Dictionary, payloads: Dictionary, point: Vector2i
+) -> Dictionary:
+	if not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the fire disaster"}
+	return _result(DISASTER_FIRE, point, true, true, 0)
+
+
 static func has_active_object(city: CityState, disaster_type: int) -> bool:
 	if city == null or not city.is_valid():
 		return false
@@ -90,6 +188,8 @@ static func _result(
 		"started": started,
 		"implemented": complete,
 		"record": record,
+		"news_items": [],
+		"notice_ids": [],
 		"sound_events": [SOUND_SIREN] if started else [],
 		"view_center_requests": [point] if started else [],
 		"complete": complete,
@@ -122,3 +222,65 @@ static func _remove_thing(things: PackedByteArray, text: PackedByteArray, record
 			text[index] = things[offset + 10]
 	for byte_index in CityState.THING_RECORD_SIZE:
 		things[offset + byte_index] = 0
+
+
+static func _map_payloads(city: CityState) -> Dictionary:
+	var result := {}
+	for chunk_id in MAP_CHUNK_SIZES:
+		var chunk := city.document.find_chunk(chunk_id)
+		if chunk == null or chunk.decoded_payload.size() != MAP_CHUNK_SIZES[chunk_id]:
+			return {}
+		result[chunk_id] = chunk.decoded_payload.duplicate()
+	return result
+
+
+static func _duplicate_payloads(payloads: Dictionary) -> Dictionary:
+	var result := {}
+	for chunk_id in payloads:
+		result[chunk_id] = payloads[chunk_id].duplicate()
+	return result
+
+
+static func _apply_map_payloads(
+	city: CityState, original: Dictionary, payloads: Dictionary
+) -> bool:
+	var applied := PackedStringArray()
+	for chunk_id in MAP_CHUNK_SIZES:
+		if payloads[chunk_id] == original[chunk_id]:
+			continue
+		var chunk := city.document.find_chunk(chunk_id)
+		if chunk == null or not chunk.set_decoded_payload(payloads[chunk_id]):
+			for rollback_id in applied:
+				city.document.find_chunk(rollback_id).set_decoded_payload(original[rollback_id])
+			_refresh_city_arrays(city)
+			return false
+		applied.append(chunk_id)
+	_refresh_city_arrays(city)
+	return true
+
+
+static func _refresh_city_arrays(city: CityState) -> void:
+	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
+	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
+	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
+	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
+	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
+	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
+	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
+	for index in CityState.TILE_COUNT:
+		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
+
+
+static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
+	return (
+		(data[offset] << 24)
+		| (data[offset + 1] << 16)
+		| (data[offset + 2] << 8)
+		| data[offset + 3]
+	)
+
+
+static func _index(point: Vector2i) -> int:
+	if point.x < 0 or point.y < 0 or point.x >= CityState.MAP_SIZE or point.y >= CityState.MAP_SIZE:
+		return -1
+	return point.x * CityState.MAP_SIZE + point.y
