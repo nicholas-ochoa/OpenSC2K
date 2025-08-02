@@ -1,6 +1,23 @@
 class_name Sc2Palette
 extends RefCounted
 
+const FAST_CYCLE_START := 0xab
+# can't just rotate the palette array, the groups have different cycles
+const FAST_CYCLE_TABLE := [
+	1, 2, 3, 4, 5, 6, 7, 0,
+	9, 10, 11, 12, 13, 14, 15, 8,
+	17, 18, 19, 20, 21, 22, 23, 16,
+	25, 26, 27, 24, 28,
+	36, 29, 30, 31, 32, 33, 34, 35,
+	40, 37, 38, 39,
+	48, 41, 42, 43, 44, 45, 46, 47,
+]
+const SLOW_CYCLE_START := 0xe0
+const SLOW_CYCLE_TABLE := [
+	1, 0, 3, 2, 5, 4, 7, 6,
+	9, 8, 11, 10, 13, 12, 14, 0,
+]
+
 var colors: Array[Color] = []
 var load_error := ""
 
@@ -53,6 +70,48 @@ func color(index: int) -> Color:
 	return colors[index]
 
 
+# this gray is an address, not a color
+static func index_encoding() -> Sc2Palette:
+	var palette := Sc2Palette.new()
+	for index in 256:
+		palette.colors.append(Color8(index, index, index, 255))
+	return palette
+
+
+func animation_index_map(base_ticks: int) -> PackedInt32Array:
+	var indices := PackedInt32Array()
+	indices.resize(256)
+	for index in 256:
+		indices[index] = index
+
+	var fast_steps := posmod(maxi(0, base_ticks), 8)
+	for _step in fast_steps:
+		_apply_cycle(indices, FAST_CYCLE_START, FAST_CYCLE_TABLE)
+
+	var slow_ticks := maxi(0, base_ticks) / 8
+	if slow_ticks > 0:
+		var slow_steps := 1 + posmod(slow_ticks - 1, 2)
+		for _step in slow_steps:
+			_apply_cycle(indices, SLOW_CYCLE_START, SLOW_CYCLE_TABLE)
+	return indices
+
+
+func animation_image(base_ticks: int) -> Image:
+	var image := Image.create(256, 1, false, Image.FORMAT_RGBA8)
+	var indices := animation_index_map(base_ticks)
+	for index in 256:
+		image.set_pixel(index, 0, color(indices[index]))
+	return image
+
+
+static func _apply_cycle(
+	indices: PackedInt32Array, start: int, cycle_table: Array
+) -> void:
+	var previous := indices.duplicate()
+	for destination in cycle_table.size():
+		indices[start + destination] = previous[start + int(cycle_table[destination])]
+
+
 static func _read_u16_le(bytes: PackedByteArray, offset: int) -> int:
 	return bytes[offset] | (bytes[offset + 1] << 8)
 
@@ -64,4 +123,3 @@ static func _read_u32_le(bytes: PackedByteArray, offset: int) -> int:
 		| (bytes[offset + 2] << 16)
 		| (bytes[offset + 3] << 24)
 	)
-
