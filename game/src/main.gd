@@ -1336,7 +1336,7 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 			var effect_image: Image = rendered.image
 			if effect.get("flip", false):
 				effect_image.flip_x()
-			var position := IsometricRenderer.bridge_effect_position(
+			var position := IsometricRenderer.transient_effect_position(
 				city, effect, effect_image.get_height(), view_size
 			)
 			if position.x < 0 or position.y < 0:
@@ -1350,6 +1350,7 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 			visuals.append({
 				"texture": ImageTexture.create_from_image(effect_image),
 				"position": Vector2(position * divisor),
+				"frame": int(effect.get("frame", 0)),
 			})
 		map_view.show_transient_effects(visuals, 0.1)
 	if sound_events.is_empty():

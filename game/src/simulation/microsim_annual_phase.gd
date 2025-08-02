@@ -148,6 +148,8 @@ static func run(
 	var arcology_launched := false
 	var sound_events := []
 	var view_center_requests := []
+	var effect_events: Array[Dictionary] = []
+	var next_effect_frame := 0
 	var updated_subway := 0
 	var updated_bus := 0
 	var updated_rail := 0
@@ -193,11 +195,15 @@ static func run(
 								"x": location.x,
 								"y": location.y,
 							}
-							_consume_demolition_animation_random(random, 4)
 							var demolition := DemolishCommand.damage_structure_payloads(
-								city, changed_payloads, Vector2i(location.x, location.y), random
+								city, changed_payloads, Vector2i(location.x, location.y), random, true
 							)
 							if demolition.get("changed", false):
+								next_effect_frame = DemolishCommand.append_effect_sequence(
+									effect_events,
+									demolition.get("effect_events", []),
+									next_effect_frame
+								)
 								demolished_power_records.append(expired_record)
 								sound_events.append(SOUND_EXPLOSION)
 								if _read_u32(misc, MISC_AUTO_GOTO) != 0:
@@ -591,14 +597,15 @@ static func run(
 					var map_index := x * CityState.MAP_SIZE + y
 					if int(text_overlays[map_index]) != 0xfe:
 						continue
-					var tile_id := int(changed_payloads.XBLD[map_index])
-					var area := DemolishCommand.structure_area(tile_id)
-					if tile_id >= 6:
-						_consume_demolition_animation_random(random, area)
 					var demolition := DemolishCommand.damage_structure_payloads(
-						city, changed_payloads, Vector2i(x, y), random
+						city, changed_payloads, Vector2i(x, y), random, true
 					)
 					if demolition.get("changed", false):
+						next_effect_frame = DemolishCommand.append_effect_sequence(
+							effect_events,
+							demolition.get("effect_events", []),
+							next_effect_frame
+						)
 						launched_structures += 1
 						sound_events.append(SOUND_EXPLOSION)
 			_write_i32(
@@ -650,6 +657,7 @@ static func run(
 		"launch_arcology_records": launch_arcology_records,
 		"launched_structures": launched_structures,
 		"news_items": news_items,
+		"effect_events": effect_events,
 		"sound_events": sound_events,
 		"view_center_requests": view_center_requests,
 		"passenger_counters_reset": true,
@@ -693,13 +701,6 @@ static func _has_lfsr_random(random) -> bool:
 
 static func _has_game_random(random) -> bool:
 	return random != null and random.has_method("next_mod")
-
-
-static func _consume_demolition_animation_random(random, area: int) -> void:
-	for _layer in area:
-		for _tile in area * area:
-			random.next_u15()
-			random.next_u15()
 
 
 static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int) -> Dictionary:

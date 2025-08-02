@@ -137,12 +137,18 @@ func center_tile() -> Vector2i:
 
 func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void:
 	_effect_generation += 1
-	transient_effects = effects.duplicate()
+	transient_effects.clear()
 	queue_redraw()
-	if transient_effects.is_empty() or not is_inside_tree():
+	if effects.is_empty() or not is_inside_tree():
 		return
-	var timer := get_tree().create_timer(maxf(0.0, float(duration)))
-	timer.timeout.connect(_expire_transient_effects.bind(_effect_generation))
+	var sequence: Array[Dictionary] = []
+	sequence.append_array(effects)
+	var last_frame := 0
+	for effect in sequence:
+		last_frame = maxi(last_frame, int(effect.get("frame", 0)))
+	_show_transient_effect_frame(
+		sequence, 0, last_frame, maxf(0.0, float(duration)), _effect_generation
+	)
 
 
 func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
@@ -156,6 +162,29 @@ func _expire_transient_effects(generation: int) -> void:
 		return
 	transient_effects.clear()
 	queue_redraw()
+
+
+func _show_transient_effect_frame(
+	effects: Array[Dictionary],
+	frame: int,
+	last_frame: int,
+	duration: float,
+	generation: int
+) -> void:
+	if generation != _effect_generation:
+		return
+	transient_effects.clear()
+	for effect in effects:
+		if int(effect.get("frame", 0)) == frame:
+			transient_effects.append(effect)
+	queue_redraw()
+	var timer := get_tree().create_timer(duration)
+	if frame >= last_frame:
+		timer.timeout.connect(_expire_transient_effects.bind(generation))
+	else:
+		timer.timeout.connect(_show_transient_effect_frame.bind(
+			effects, frame + 1, last_frame, duration, generation
+		))
 
 
 func _draw() -> void:

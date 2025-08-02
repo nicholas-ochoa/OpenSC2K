@@ -47,7 +47,7 @@ static func structure_area(tile_id: int) -> int:
 
 
 static func damage_structure_payloads(
-	city: CityState, payloads: Dictionary, point: Vector2i, random
+	city: CityState, payloads: Dictionary, point: Vector2i, random, emit_effects := false
 ) -> Dictionary:
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
 		if not payloads.has(chunk_id):
@@ -70,8 +70,24 @@ static func damage_structure_payloads(
 		point,
 		random,
 		true,
-		false
+		false,
+		emit_effects
 	)
+
+
+static func append_effect_sequence(
+	destination: Array[Dictionary], source: Array, first_frame: int
+) -> int:
+	if source.is_empty():
+		return first_frame
+	var frame_count := 0
+	for source_effect in source:
+		var effect: Dictionary = source_effect.duplicate()
+		var source_frame := int(effect.get("frame", 0))
+		effect["frame"] = first_frame + source_frame
+		destination.append(effect)
+		frame_count = maxi(frame_count, source_frame + 1)
+	return first_frame + frame_count
 
 
 static func apply_path(
@@ -117,6 +133,7 @@ static func apply_path(
 	var easter_events := 0
 	var effect_events: Array[Dictionary] = []
 	var sound_events: Array[int] = []
+	var next_effect_frame := 0
 	var random_state_before := random.state
 
 	for point in points:
@@ -150,7 +167,9 @@ static func apply_path(
 		if result.get("easter_event", false):
 			easter_events += 1
 		var result_effects: Array = result.get("effect_events", [])
-		effect_events.append_array(result_effects)
+		next_effect_frame = append_effect_sequence(
+			effect_events, result_effects, next_effect_frame
+		)
 		if not result_effects.is_empty():
 			sound_events.append(SOUND_EXPLODE)
 		for index in result.get("indices", PackedInt32Array()):
@@ -235,7 +254,8 @@ static func _demolish_point(
 	point: Vector2i,
 	random,
 	force_damage := false,
-	retile_neighbors := true
+	retile_neighbors := true,
+	emit_effects := true
 ) -> Dictionary:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	var tile_id := int(buildings[index])
@@ -245,24 +265,27 @@ static func _demolish_point(
 		return {"changed": false}
 	if tile_id >= TUNNEL_FIRST and tile_id <= TUNNEL_LAST:
 		return _demolish_tunnel(
-			altitude, buildings, terrain, zones, flags, misc, point, tile_id
+			altitude, buildings, terrain, zones, flags, misc, point, tile_id,
+			random, emit_effects
 		)
 	if tile_id >= BRIDGE_FIRST and tile_id <= BRIDGE_LAST:
 		return _demolish_bridge(
 			altitude, buildings, terrain, zones, underground, flags, misc,
-			point, random, not force_damage
+			point, random, emit_effects
 		)
 	if tile_id >= REINFORCED_BRIDGE_FIRST and tile_id <= REINFORCED_BRIDGE_LAST:
 		return _demolish_reinforced_bridge(
 			altitude, buildings, terrain, zones, underground, flags, misc,
-			point, random, not force_damage
+			point, random, emit_effects
 		)
 	if tile_id >= RUNWAY_FIRST and tile_id <= PIER_LAST:
 		return _demolish_transport_component(
-			buildings, terrain, zones, underground, flags, misc, point, tile_id, random
+			altitude, buildings, terrain, zones, underground, flags, misc,
+			point, tile_id, random, emit_effects
 		)
 	if _is_highway_tile(tile_id):
 		return _demolish_highway_section(
+			altitude,
 			buildings,
 			terrain,
 			zones,
@@ -274,7 +297,8 @@ static func _demolish_point(
 			misc,
 			point,
 			random,
-			city.compass_rotation()
+			city.compass_rotation(),
+			emit_effects
 		)
 	var had_structure := tile_id >= 0x0d
 	var was_water := (flags[index] & FLAG_WATER) != 0
@@ -287,16 +311,28 @@ static func _demolish_point(
 	if tile_id < 0x0d:
 		if tile_id >= 0x06 and random.next_u15() % 20 == 0:
 			return {"changed": true, "easter_event": true, "indices": PackedInt32Array()}
+		var network_effects: Array[Dictionary] = []
+		if tile_id >= 0x06 and emit_effects:
+			network_effects.append(_dust_effect(
+				point, _effect_altitude(altitude, flags, index), random, 0, Vector2i.ZERO
+			))
 		NetworkCommand._replace_building(buildings, zones, misc, index, 0)
 		if terrain[index] >= 0x30 or was_water:
 			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
 		_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, [point])
-		return {"changed": true, "indices": PackedInt32Array([index])}
+		return {
+			"changed": true,
+			"indices": PackedInt32Array([index]),
+			"effect_events": network_effects,
+		}
 
 	var area := _building_area(tile_id)
 	var site := _find_building_site(buildings, zones, point, tile_id, area, city.compass_rotation())
 	if site.size == Vector2i.ZERO:
 		return {"changed": false}
+	var effect_events: Array[Dictionary] = []
+	if emit_effects:
+		effect_events = _structure_effects(altitude, flags, site, area, random)
 	var indices := PackedInt32Array()
 	var changed_points: Array[Vector2i] = []
 	for x in range(site.position.x, site.end.x):
@@ -320,7 +356,7 @@ static func _demolish_point(
 			_retile_surface_water(terrain, flags, point, true)
 		else:
 			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
-	return {"changed": true, "indices": indices}
+	return {"changed": true, "indices": indices, "effect_events": effect_events}
 
 
 static func _is_highway_tile(tile_id: int) -> bool:
@@ -338,7 +374,9 @@ static func _demolish_tunnel(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	start: Vector2i,
-	tile_id: int
+	tile_id: int,
+	random,
+	emit_effects: bool
 ) -> Dictionary:
 	var direction: Vector2i = [
 		Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1)
@@ -353,6 +391,14 @@ static func _demolish_tunnel(
 		current += direction
 	if points.size() < 2 or current.x < 0 or current.x >= 128 or current.y < 0 or current.y >= 128:
 		return {"changed": false, "specialized": true}
+	var effect_events: Array[Dictionary] = []
+	if emit_effects:
+		for endpoint in [points[0], points[-1]]:
+			var entrance: Vector2i = endpoint
+			var entrance_index: int = entrance.x * CityState.MAP_SIZE + entrance.y
+			effect_events.append(_dust_effect(
+				entrance, _land_altitude(altitude, entrance_index), random, 0, Vector2i.ZERO
+			))
 
 	for point in points:
 		var index := point.x * CityState.MAP_SIZE + point.y
@@ -365,10 +411,11 @@ static func _demolish_tunnel(
 	var indices := PackedInt32Array()
 	for point in points:
 		indices.append(point.x * CityState.MAP_SIZE + point.y)
-	return {"changed": true, "indices": indices}
+	return {"changed": true, "indices": indices, "effect_events": effect_events}
 
 
 static func _demolish_transport_component(
+	altitude: PackedByteArray,
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	zones: PackedByteArray,
@@ -377,7 +424,8 @@ static func _demolish_transport_component(
 	misc: PackedByteArray,
 	start: Vector2i,
 	tile_id: int,
-	random
+	random,
+	emit_effects: bool
 ) -> Dictionary:
 	var first := RUNWAY_FIRST if tile_id <= RUNWAY_LAST else PIER_FIRST
 	var last := RUNWAY_LAST if tile_id <= RUNWAY_LAST else PIER_LAST
@@ -401,18 +449,33 @@ static func _demolish_transport_component(
 				stack.append(neighbor)
 
 	var indices := PackedInt32Array()
+	var effect_events: Array[Dictionary] = []
 	for point in component:
 		var index := point.x * CityState.MAP_SIZE + point.y
 		var replacement: int = 1 + (random.next_u15() & 3) if make_rubble else 0
+		if emit_effects:
+			var effect_altitude := (
+				_land_altitude(altitude, index)
+				if make_rubble
+				else _effect_altitude(altitude, flags, index)
+			)
+			effect_events.append(_dust_effect(
+				point, effect_altitude, random, 0, Vector2i.ZERO
+			))
 		NetworkCommand._replace_building(buildings, zones, misc, index, replacement)
 		zones[index] &= 0x0f
 		flags[index] &= FLAG_CLEAR_AFTER_STRUCTURE
 		indices.append(index)
 	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, component)
-	return {"changed": not component.is_empty(), "indices": indices}
+	return {
+		"changed": not component.is_empty(),
+		"indices": indices,
+		"effect_events": effect_events,
+	}
 
 
 static func _demolish_highway_section(
+	altitude: PackedByteArray,
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	zones: PackedByteArray,
@@ -424,7 +487,8 @@ static func _demolish_highway_section(
 	misc: PackedByteArray,
 	selected: Vector2i,
 	random,
-	rotation: int
+	rotation: int,
+	emit_effects: bool
 ) -> Dictionary:
 	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
 	if not HighwayCommand._anchor_is_in_bounds(anchor):
@@ -436,6 +500,11 @@ static func _demolish_highway_section(
 
 	var points: Array[Vector2i] = []
 	var indices := PackedInt32Array()
+	var effect_events: Array[Dictionary] = []
+	if emit_effects:
+		effect_events = _structure_effects(
+			altitude, flags, Rect2i(anchor, Vector2i(2, 2)), 2, random
+		)
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
 		var index := point.x * CityState.MAP_SIZE + point.y
@@ -455,7 +524,7 @@ static func _demolish_highway_section(
 			adjacent_sections.append(adjacent)
 	if not adjacent_sections.is_empty():
 		HighwayCommand._retile_affected_sections(buildings, zones, misc, adjacent_sections, rotation)
-	return {"changed": true, "indices": indices}
+	return {"changed": true, "indices": indices, "effect_events": effect_events}
 
 
 static func _demolish_bridge(
@@ -499,6 +568,8 @@ static func _demolish_bridge(
 				"sprite_id": BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3),
 				"screen_offset": Vector2i.ZERO,
 				"flip": (random.next_u15() & 1) != 0,
+				"frame": 0,
+				"altitude": _water_altitude(altitude, index),
 			})
 		NetworkCommand._replace_building(buildings, zones, misc, index, 0)
 		zones[index] &= 0x0f
@@ -574,6 +645,7 @@ static func _demolish_reinforced_bridge(
 	while true:
 		if emit_effects and random != null:
 			var effect_sprite: int = BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3)
+			var current_index := current.x * CityState.MAP_SIZE + current.y
 			for screen_offset in [
 				Vector2i(0, 0), Vector2i(16, -8),
 				Vector2i(32, 0), Vector2i(32, 8),
@@ -583,6 +655,8 @@ static func _demolish_reinforced_bridge(
 					"sprite_id": effect_sprite,
 					"screen_offset": screen_offset,
 					"flip": (random.next_u15() & 1) != 0,
+					"frame": 0,
+					"altitude": _water_altitude(altitude, current_index),
 				})
 		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 			var point: Vector2i = current + offset
@@ -712,6 +786,60 @@ static func _clear_tunnel_level(altitude: PackedByteArray, index: int) -> void:
 
 static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
 	return altitude[index * 2 + 1] & 0x1f
+
+
+static func _water_altitude(altitude: PackedByteArray, index: int) -> int:
+	return (((altitude[index * 2] << 8) | altitude[index * 2 + 1]) >> 5) & 0x1f
+
+
+static func _effect_altitude(
+	altitude: PackedByteArray, flags: PackedByteArray, index: int
+) -> int:
+	return (
+		_water_altitude(altitude, index)
+		if (flags[index] & FLAG_WATER) != 0
+		else _land_altitude(altitude, index)
+	)
+
+
+static func _dust_effect(
+	point: Vector2i, effect_altitude: int, random, frame: int, screen_offset: Vector2i
+) -> Dictionary:
+	return {
+		"point": point,
+		"sprite_id": BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3),
+		"screen_offset": screen_offset,
+		"flip": (random.next_u15() & 1) != 0,
+		"frame": frame,
+		"altitude": effect_altitude,
+	}
+
+
+static func _structure_effects(
+	altitude: PackedByteArray,
+	flags: PackedByteArray,
+	site: Rect2i,
+	area: int,
+	random
+) -> Array[Dictionary]:
+	var effects: Array[Dictionary] = []
+	var anchor := Vector2i(site.position.x, site.end.y - 1)
+	var anchor_index := anchor.x * CityState.MAP_SIZE + anchor.y
+	var effect_altitude := _effect_altitude(altitude, flags, anchor_index)
+	for frame in area:
+		for x_offset in area:
+			for y_offset in area:
+				var effect_point := Vector2i(
+					site.position.x + x_offset, site.end.y - 1 - y_offset
+				)
+				effects.append(_dust_effect(
+					effect_point,
+					effect_altitude,
+					random,
+					frame,
+					Vector2i(0, -frame * 8)
+				))
+	return effects
 
 
 static func _set_land_altitude(altitude: PackedByteArray, index: int, value: int) -> void:

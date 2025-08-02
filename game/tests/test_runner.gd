@@ -1092,6 +1092,21 @@ func _test_sprite_archives(reference_root: String) -> void:
 		}, 10) == Vector2i(2096, 1518),
 		"Bridge debris view uses water altitude and the recovered screen offset",
 	)
+	var default_effect_position := IsometricRenderer.transient_effect_position(
+		starter, {"point": Vector2i(64, 64)}, 10
+	)
+	var raised_effect_position := IsometricRenderer.transient_effect_position(
+		starter,
+		{
+			"point": Vector2i(64, 64),
+			"altitude": starter.water_altitude(64, 64) + 2,
+		},
+		10
+	)
+	_check(
+		raised_effect_position == default_effect_position + Vector2i(0, -24),
+		"Transient effects can preserve their pre-demolition altitude",
+	)
 	_check(
 		IsometricRenderer.effect_sprite_id(1392, IsometricRenderer.VIEW_SMALL) == 392
 		and IsometricRenderer.effect_sprite_id(1392, IsometricRenderer.VIEW_MEDIUM) == 892
@@ -2550,6 +2565,13 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	)
 	_check(expiry_document.misc_u32(0x01f0 + 0xc9 * 4) == 0, "Annual power demolition clears the gas tile count")
 	_check(expiry_random.position == 145, "Annual power demolition consumes plant and visual random values in order")
+	_check(
+		expired.effect_events.size() == 64
+		and expired.effect_events[0].frame == 0
+		and expired.effect_events[16].frame == 1
+		and expired.effect_events[63].frame == 3,
+		"Annual power demolition returns four ordered native dust frames",
+	)
 	_check(not expired.news_items.has({"type": 0x1f8, "argument": 0}), "Annual power demolition does not report sound as news")
 	_check(expired.sound_events == [504], "Annual power demolition reports the explosion sound")
 
@@ -2696,6 +2718,12 @@ func _test_arcology_launch_phase(reference_root: String) -> void:
 	_check(city.text_overlay_id(19, 19) == 0xfe, "Arcology launch preserves its special XTXT marker")
 	_check(document.misc_u32(0x01f0 + 0xfe * 4) == 4800, "Arcology launch decrements demolished tile counts")
 	_check(process_random.position == 144, "Arcology launch consumes visual and rubble random values")
+	_check(
+		result.effect_events.size() == 64
+		and result.effect_events[0].frame == 0
+		and result.effect_events[63].frame == 3,
+		"Arcology launch returns its four ordered native dust frames",
+	)
 	_check(lfsr.position == 100, "Arcology launch consumes one LFSR value per record")
 	_check(
 		result.news_items == [
@@ -5668,6 +5696,25 @@ func _test_demolish_command(reference_root: String) -> void:
 	var demolition_random := Random.new(29)
 	var building := Demolish.apply_path(city, 0, 0, [Vector2i(20, 20)], demolition_random)
 	_check(building.ok and building.action_count == 1 and building.tile_indices.size() == 9, "Demolish removes a complete 3-by-3 building")
+	_check(
+		building.effect_events.size() == 27
+		and building.sound_events == [504]
+		and building.effect_events[0].point == Vector2i(19, 21)
+		and building.effect_events[0].frame == 0
+		and building.effect_events[9].frame == 1
+		and building.effect_events[9].screen_offset == Vector2i(0, -8)
+		and building.effect_events[26].point == Vector2i(21, 19)
+		and building.effect_events[26].frame == 2
+		and building.effect_events[26].screen_offset == Vector2i(0, -16),
+		"Building demolition emits one native dust frame per footprint level",
+	)
+	var expected_demolition_random := Random.new(29)
+	for _value in 63:
+		expected_demolition_random.next_u15()
+	_check(
+		demolition_random.state == expected_demolition_random.state,
+		"Building demolition consumes visual values before its nine rubble values",
+	)
 	for x in range(19, 22):
 		for y in range(19, 22):
 			_check(city.building_id(x, y) >= 1 and city.building_id(x, y) <= 4, "Demolished dry building becomes rubble")
@@ -5708,7 +5755,14 @@ func _test_demolish_command(reference_root: String) -> void:
 	var placed_highway := Highways.apply(simple_city, 6, 1, Vector2i(10, 10), Vector2i(10, 10))
 	_check(placed_highway.ok, "Highway demolition fixture builds one complete section")
 	var removed_highway := Demolish.apply_path(simple_city, 0, 0, [Vector2i(11, 11)], demolition_random)
-	_check(removed_highway.ok and removed_highway.tile_indices.size() == 4, "Demolish removes a complete 2-by-2 highway section")
+	_check(
+		removed_highway.ok
+		and removed_highway.tile_indices.size() == 4
+		and removed_highway.effect_events.size() == 8
+		and removed_highway.effect_events[0].frame == 0
+		and removed_highway.effect_events[4].frame == 1,
+		"Demolish removes a complete 2-by-2 highway section with two dust frames",
+	)
 	for x in range(10, 12):
 		for y in range(10, 12):
 			_check(simple_city.building_id(x, y) >= 1 and simple_city.building_id(x, y) <= 4, "Demolished highway becomes rubble")
@@ -5733,7 +5787,14 @@ func _test_demolish_command(reference_root: String) -> void:
 	for x in range(28, 31):
 		_check(special_city.set_tunnel_levels(x, 30, 3), "Tunnel demolition fixture stores tunnel depth")
 	var tunnel := Demolish.apply_path(special_city, 0, 0, [Vector2i(30, 30)], demolition_random)
-	_check(tunnel.ok and tunnel.tile_indices.size() == 3, "Demolish follows a tunnel to its paired entrance")
+	_check(
+		tunnel.ok
+		and tunnel.tile_indices.size() == 3
+		and tunnel.effect_events.size() == 2
+		and tunnel.effect_events[0].point == Vector2i(30, 30)
+		and tunnel.effect_events[1].point == Vector2i(28, 30),
+		"Demolish follows a tunnel and emits dust at both entrances",
+	)
 	_check(special_city.building_id(30, 30) == 0 and special_city.building_id(28, 30) == 0, "Tunnel demolition clears both entrances")
 	for x in range(28, 31):
 		_check(special_city.tunnel_levels(x, 30) == 0, "Tunnel demolition clears each saved depth")
@@ -5743,7 +5804,10 @@ func _test_demolish_command(reference_root: String) -> void:
 		_check(special_city.set_building_id(point.x, point.y, 0xdd), "Runway demolition fixture places a connected tile")
 	_check(special_city.set_building_id(45, 45, 0xdd), "Runway demolition fixture places a separate tile")
 	var runway := Demolish.apply_path(special_city, 0, 0, [Vector2i(40, 40)], demolition_random)
-	_check(runway.ok and runway.tile_indices.size() == 3, "Demolish removes one connected runway component")
+	_check(
+		runway.ok and runway.tile_indices.size() == 3 and runway.effect_events.size() == 3,
+		"Demolish removes one connected runway component with dust on each tile",
+	)
 	_check(special_city.building_id(45, 45) == 0xdd, "Runway demolition preserves a separate component")
 	for point in [Vector2i(40, 40), Vector2i(41, 40), Vector2i(41, 41)]:
 		_check(special_city.building_id(point.x, point.y) >= 1 and special_city.building_id(point.x, point.y) <= 4, "Demolished runway becomes rubble")
@@ -5752,7 +5816,13 @@ func _test_demolish_command(reference_root: String) -> void:
 	for point in [Vector2i(50, 50), Vector2i(50, 51)]:
 		_check(special_city.set_building_id(point.x, point.y, 0xdf), "Pier demolition fixture places a connected tile")
 	var pier := Demolish.apply_path(special_city, 0, 0, [Vector2i(50, 50)], demolition_random)
-	_check(pier.ok and special_city.building_id(50, 50) == 0 and special_city.building_id(50, 51) == 0, "Demolish clears a connected pier component")
+	_check(
+		pier.ok
+		and special_city.building_id(50, 50) == 0
+		and special_city.building_id(50, 51) == 0
+		and pier.effect_events.size() == 2,
+		"Demolish clears a connected pier component with dust on each tile",
+	)
 	_check(Demolish.undo(special_city, pier, demolition_random).ok, "Pier demolition can be undone")
 
 	_check(special_document.set_misc_u32(0x0e40, 1), "Bridge demolition fixture sets sea level")

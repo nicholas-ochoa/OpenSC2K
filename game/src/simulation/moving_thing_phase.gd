@@ -478,7 +478,7 @@ static func _damage_linked_facility(
 ) -> void:
 	var result := Demolish._demolish_point(
 		city, altitude, buildings, terrain, zones, underground,
-		flags, text, labels, microsims, misc, point, random, true
+		flags, text, labels, microsims, misc, point, random, true, true, false
 	)
 	for index in result.get("indices", PackedInt32Array()):
 		if flags[index] & 0x04 == 0:
@@ -641,7 +641,7 @@ static func _monster_damage(
 		return
 	var demolition := Demolish._demolish_point(
 		city, altitude, buildings, terrain, zones, underground,
-		flags, text, labels, microsims, misc, point, random, true
+		flags, text, labels, microsims, misc, point, random, true, true, false
 	)
 	if not demolition.get("changed", false):
 		return
@@ -699,7 +699,7 @@ static func _update_tornado(
 	if building > 5:
 		var demolition := Demolish._demolish_point(
 			city, altitude, buildings, terrain, zones, underground,
-			flags, text, labels, microsims, misc, current, random, true
+			flags, text, labels, microsims, misc, current, random, true, true, false
 		)
 		if demolition.get("changed", false):
 			counters.tornado_demolitions += 1
