@@ -73,6 +73,7 @@ const BUDGET_NAMES := [
 var city: CityState
 var current_document: Sc2File
 var palette: Sc2Palette
+var palette_index_encoding: Sc2Palette
 var large_sprites: Sc2SpriteArchive
 var small_medium_sprites: Sc2SpriteArchive
 var overlay_mode := "city"
@@ -93,11 +94,14 @@ var annual_budget_pending := false
 var military_proposal_pending := false
 var game_over_active := false
 var static_city_image: Image
+var static_palette_index_image: Image
 var static_visual_signature: Array = []
 var dynamic_sprite_cache: Dictionary = {}
 var static_render_thread: Thread
 var static_render_job: CityRenderJob
 var static_render_epoch := 0
+var palette_cycle_ticks := 0
+var palette_cycle_texture: ImageTexture
 
 var map_view: CityMapControl
 var city_label: Label
@@ -144,6 +148,8 @@ func _ready() -> void:
 	if not palette.is_valid():
 		_show_error(palette.load_error)
 		return
+	palette_index_encoding = Palette.index_encoding()
+	_update_palette_cycle_texture()
 	large_sprites = SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
 	if not large_sprites.is_valid():
 		_show_error(large_sprites.parse_error)
@@ -174,19 +180,29 @@ func _process(delta: float) -> void:
 	_poll_static_render()
 	if speed_controller == null or city == null:
 		return
-	var result := speed_controller.advance_time(
-		delta * 1000.0,
-		Time.get_ticks_msec(),
+	var interaction_suspended := (
 		(map_view != null and map_view.is_left_drag_active())
 		or budget_dialog.visible
 		or military_dialog.visible
 		or game_over_active
+	)
+	var result := speed_controller.advance_time(
+		delta * 1000.0,
+		Time.get_ticks_msec(),
+		interaction_suspended
 	)
 	if not result.ok:
 		speed_controller.set_speed(GameSpeed.Speed.PAUSED)
 		speed_selector.select(0)
 		_show_error("Simulation stopped: %s" % result.error)
 		return
+	if (
+		result.base_ticks > 0
+		and speed_controller.speed != GameSpeed.Speed.PAUSED
+		and not interaction_suspended
+	):
+		palette_cycle_ticks += int(result.base_ticks)
+		_update_palette_cycle_texture()
 
 	_consume_simulation_result(result)
 
@@ -936,7 +952,10 @@ func _load_city(path: String) -> void:
 	current_document = document
 	static_render_epoch += 1
 	static_city_image = null
+	static_palette_index_image = null
 	static_visual_signature = []
+	palette_cycle_ticks = 0
+	_update_palette_cycle_texture()
 	dynamic_sprite_cache.clear()
 	var process_seed := tool_random.state
 	var game_seed := nuisance_random.state
@@ -1025,6 +1044,7 @@ func _refresh_map(force := true) -> void:
 	if city == null or palette == null:
 		return
 	var image: Image
+	var index_image: Image
 	if overlay_mode == "city":
 		var view_size := _city_view_size()
 		var sprite_archive := _sprite_archive_for_view(view_size)
@@ -1051,21 +1071,45 @@ func _refresh_map(force := true) -> void:
 			_show_error(rendered.error)
 			return
 		image = rendered.image
+		var indexed := IsometricRenderer.create_image(
+			city, palette_index_encoding, sprite_archive, view_size,
+			int(Time.get_ticks_msec() / 100), false
+		)
+		if not indexed.ok:
+			_show_error(indexed.error)
+			return
+		index_image = indexed.image
 		if view_size != IsometricRenderer.VIEW_LARGE:
 			image.resize(
 				IsometricRenderer.IMAGE_SIZE_LARGE.x,
 				IsometricRenderer.IMAGE_SIZE_LARGE.y,
 				Image.INTERPOLATE_NEAREST,
 			)
+			index_image.resize(
+				IsometricRenderer.IMAGE_SIZE_LARGE.x,
+				IsometricRenderer.IMAGE_SIZE_LARGE.y,
+				Image.INTERPOLATE_NEAREST,
+			)
+		index_image.convert(Image.FORMAT_R8)
 		static_city_image = image
+		static_palette_index_image = index_image
 		static_visual_signature = current_signature
 	else:
 		image = Minimap.create_image(city, palette, overlay_mode)
 		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
 		static_city_image = null
+		static_palette_index_image = null
 		static_visual_signature = []
 		map_view.set_dynamic_sprites([])
-	map_view.set_city_view(city, ImageTexture.create_from_image(image))
+	map_view.set_city_view(
+		city,
+		ImageTexture.create_from_image(image),
+		(
+			ImageTexture.create_from_image(index_image)
+			if index_image != null
+			else null
+		),
+	)
 	if overlay_mode == "city":
 		_refresh_moving_things(_city_view_size())
 
@@ -1083,6 +1127,7 @@ func _request_static_render(
 	static_render_job = RenderJob.new()
 	static_render_job.city_snapshot = snapshot
 	static_render_job.palette = palette
+	static_render_job.index_palette = palette_index_encoding
 	static_render_job.sprites = sprite_archive
 	static_render_job.view_size = view_size
 	static_render_job.animation_phase = int(Time.get_ticks_msec() / 100)
@@ -1115,9 +1160,12 @@ func _poll_static_render() -> void:
 	):
 		return
 	static_city_image = rendered.image
+	static_palette_index_image = rendered.index_image
 	static_visual_signature = rendered.signature
 	map_view.set_city_view(
-		city, ImageTexture.create_from_image(static_city_image)
+		city,
+		ImageTexture.create_from_image(static_city_image),
+		ImageTexture.create_from_image(static_palette_index_image),
 	)
 	_refresh_moving_things(int(rendered.view_size))
 	var latest_signature := IsometricRenderer.static_visual_signature(
@@ -1136,6 +1184,18 @@ func _exit_tree() -> void:
 		static_render_thread.wait_to_finish()
 	static_render_thread = null
 	static_render_job = null
+
+
+func _update_palette_cycle_texture() -> void:
+	if palette == null or not palette.is_valid():
+		return
+	var image := palette.animation_image(palette_cycle_ticks)
+	if palette_cycle_texture == null:
+		palette_cycle_texture = ImageTexture.create_from_image(image)
+	else:
+		palette_cycle_texture.update(image)
+	if map_view != null:
+		map_view.set_animated_palette(palette_cycle_texture)
 
 
 func _city_view_size() -> int:
@@ -1172,13 +1232,16 @@ func _refresh_moving_things(view_size := -1) -> void:
 			continue
 		var position := Vector2i(command.position) * divisor
 		var texture: Texture2D = resource.texture
+		var index_texture: Texture2D = resource.index_texture
 		if command.shadow:
 			var shadow_image := _dynamic_shadow_image(resource.image, position)
 			if shadow_image == null:
 				continue
 			texture = ImageTexture.create_from_image(shadow_image)
+			index_texture = null
 		visuals.append({
 			"texture": texture,
+			"index_texture": index_texture,
 			"position": Vector2(position),
 			"size": Vector2(resource.image.get_size()),
 		})
@@ -1198,17 +1261,29 @@ func _dynamic_sprite_resource(
 	if not rendered.ok:
 		return {}
 	var image: Image = rendered.image
+	var indexed := entry.create_image(palette_index_encoding)
+	if not indexed.ok:
+		return {}
+	var index_image: Image = indexed.image
 	if flip:
 		image.flip_x()
+		index_image.flip_x()
 	if divisor > 1:
 		image.resize(
 			image.get_width() * divisor,
 			image.get_height() * divisor,
 			Image.INTERPOLATE_NEAREST
 		)
+		index_image.resize(
+			index_image.get_width() * divisor,
+			index_image.get_height() * divisor,
+			Image.INTERPOLATE_NEAREST
+		)
+	index_image.convert(Image.FORMAT_R8)
 	var resource := {
 		"image": image,
 		"texture": ImageTexture.create_from_image(image),
+		"index_texture": ImageTexture.create_from_image(index_image),
 	}
 	dynamic_sprite_cache[key] = resource
 	return resource

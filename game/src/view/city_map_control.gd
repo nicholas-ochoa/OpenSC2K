@@ -7,9 +7,34 @@ signal zoom_changed(percent: int)
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const ZOOM_LEVELS := [0.25, 0.5, 1.0, 2.0]
 const DEFAULT_ZOOM_INDEX := 2
+const PALETTE_CYCLE_SHADER := """
+shader_type canvas_item;
+
+uniform sampler2D palette_indices : filter_nearest, repeat_disable;
+uniform sampler2D animated_palette : source_color, filter_nearest, repeat_disable;
+uniform bool palette_cycle_enabled = false;
+
+void fragment() {
+	vec4 base_color = texture(TEXTURE, UV);
+	int palette_index = int(round(texture(palette_indices, UV).r * 255.0));
+	bool animated_index =
+		(palette_index >= 171 && palette_index <= 198) ||
+		(palette_index >= 200 && palette_index <= 219) ||
+		(palette_index >= 224 && palette_index <= 239);
+	if (palette_cycle_enabled && animated_index) {
+		vec2 palette_uv = vec2((float(palette_index) + 0.5) / 256.0, 0.5);
+		vec4 cycle_color = texture(animated_palette, palette_uv);
+		COLOR = vec4(cycle_color.rgb, base_color.a);
+	} else {
+		COLOR = base_color;
+	}
+}
+"""
 
 var city: CityState
 var city_texture: Texture2D
+var palette_index_texture: Texture2D
+var animated_palette_texture: Texture2D
 var edit_enabled := false
 var selection_mode := "rectangle"
 var zoom_factor: float = ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]
@@ -21,23 +46,37 @@ var transient_effects: Array[Dictionary] = []
 var dynamic_sprites: Array[Dictionary] = []
 var _panning := false
 var _effect_generation := 0
+var _base_layer: TextureRect
+var _base_material: ShaderMaterial
+var _palette_shader: Shader
+var _dynamic_layers: Array[TextureRect] = []
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_ensure_base_layer()
 	resized.connect(_on_resized)
 
 
-func set_city_view(value: CityState, texture: Texture2D) -> void:
+func set_city_view(
+	value: CityState, texture: Texture2D, index_texture: Texture2D = null
+) -> void:
 	var reset_center := city_texture == null or city_texture.get_size() != texture.get_size()
 	city = value
 	city_texture = texture
+	palette_index_texture = index_texture
 	if reset_center and city_texture != null:
 		source_center = Vector2(city_texture.get_size()) * 0.5
 	_clamp_source_center()
+	_sync_base_layer()
 	queue_redraw()
+
+
+func set_animated_palette(texture: Texture2D) -> void:
+	animated_palette_texture = texture
+	_sync_base_material()
 
 
 func set_edit_enabled(value: bool, mode := "rectangle") -> void:
@@ -85,6 +124,7 @@ func center_on_tile(point: Vector2i) -> bool:
 		return false
 	source_center = (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
 	_clamp_source_center()
+	_sync_base_layer()
 	queue_redraw()
 	return true
 
@@ -107,6 +147,7 @@ func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void
 
 func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
 	dynamic_sprites = sprites.duplicate()
+	_sync_dynamic_layers()
 	queue_redraw()
 
 
@@ -122,12 +163,14 @@ func _draw() -> void:
 		return
 	var scale := _view_scale()
 	var offset := _draw_offset(scale)
-	draw_texture_rect(
-		city_texture,
-		Rect2(offset, Vector2(city_texture.get_size()) * scale),
-		false
-	)
-	_draw_dynamic_sprites(scale, offset)
+	if _base_layer == null:
+		draw_texture_rect(
+			city_texture,
+			Rect2(offset, Vector2(city_texture.get_size()) * scale),
+			false
+		)
+	if _base_layer == null:
+		_draw_dynamic_sprites(scale, offset)
 	_draw_transient_effects(scale, offset)
 	_draw_signs(scale, offset)
 	if selection_start.x < 0 or selection_end.x < 0 or city == null:
@@ -252,6 +295,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	if _panning:
 		source_center -= event.relative / _view_scale()
 		_clamp_source_center()
+		_sync_base_layer()
 		queue_redraw()
 		accept_event()
 		return
@@ -291,6 +335,7 @@ func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	var new_scale := _view_scale()
 	source_center = source_point + (size * 0.5 - anchor) / new_scale
 	_clamp_source_center()
+	_sync_base_layer()
 	zoom_changed.emit(zoom_percent())
 	queue_redraw()
 	return true
@@ -331,4 +376,111 @@ func _clamp_source_center() -> void:
 
 func _on_resized() -> void:
 	_clamp_source_center()
+	_sync_base_layer()
 	queue_redraw()
+
+
+func _ensure_base_layer() -> void:
+	if _base_layer != null:
+		return
+	_base_layer = TextureRect.new()
+	_base_layer.name = "CityBaseLayer"
+	_base_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_base_layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_base_layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	_base_layer.stretch_mode = TextureRect.STRETCH_SCALE
+	_base_layer.show_behind_parent = true
+	_palette_shader = Shader.new()
+	_palette_shader.code = PALETTE_CYCLE_SHADER
+	_base_material = _new_palette_material()
+	_base_layer.material = _base_material
+	add_child(_base_layer)
+	_sync_base_layer()
+
+
+func _sync_base_layer() -> void:
+	if _base_layer == null:
+		return
+	if city_texture == null:
+		_base_layer.hide()
+		return
+	var scale := _view_scale()
+	_base_layer.texture = city_texture
+	_base_layer.position = _draw_offset(scale)
+	_base_layer.size = Vector2(city_texture.get_size()) * scale
+	_base_layer.show()
+	_sync_base_material()
+	_sync_dynamic_layers()
+
+
+func _sync_base_material() -> void:
+	if _base_material == null:
+		return
+	_base_material.set_shader_parameter("palette_indices", palette_index_texture)
+	_base_material.set_shader_parameter("animated_palette", animated_palette_texture)
+	_base_material.set_shader_parameter(
+		"palette_cycle_enabled",
+		palette_index_texture != null and animated_palette_texture != null,
+	)
+	for layer in _dynamic_layers:
+		var layer_material := layer.material as ShaderMaterial
+		if layer_material != null:
+			layer_material.set_shader_parameter(
+				"animated_palette", animated_palette_texture
+			)
+			layer_material.set_shader_parameter(
+				"palette_cycle_enabled",
+				layer.get_meta("has_palette_indices", false)
+				and animated_palette_texture != null,
+			)
+
+
+func _sync_dynamic_layers() -> void:
+	if _base_layer == null or city_texture == null:
+		return
+	while _dynamic_layers.size() < dynamic_sprites.size():
+		var layer := TextureRect.new()
+		layer.name = "DynamicSpriteLayer%d" % _dynamic_layers.size()
+		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		layer.stretch_mode = TextureRect.STRETCH_SCALE
+		layer.show_behind_parent = true
+		layer.material = _new_palette_material()
+		add_child(layer)
+		_dynamic_layers.append(layer)
+	var scale := _view_scale()
+	var offset := _draw_offset(scale)
+	for index in _dynamic_layers.size():
+		var layer := _dynamic_layers[index]
+		if index >= dynamic_sprites.size():
+			layer.hide()
+			continue
+		var visual := dynamic_sprites[index]
+		var texture: Texture2D = visual.get("texture") as Texture2D
+		if texture == null:
+			layer.hide()
+			continue
+		var index_texture: Texture2D = visual.get("index_texture") as Texture2D
+		var source_position: Vector2 = visual.get("position", Vector2.ZERO)
+		var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
+		layer.texture = texture
+		layer.position = offset + source_position * scale
+		layer.size = source_size * scale
+		layer.set_meta("has_palette_indices", index_texture != null)
+		var layer_material := layer.material as ShaderMaterial
+		layer_material.set_shader_parameter("palette_indices", index_texture)
+		layer_material.set_shader_parameter(
+			"animated_palette", animated_palette_texture
+		)
+		layer_material.set_shader_parameter(
+			"palette_cycle_enabled",
+			index_texture != null and animated_palette_texture != null,
+		)
+		layer.show()
+
+
+func _new_palette_material() -> ShaderMaterial:
+	var material := ShaderMaterial.new()
+	material.shader = _palette_shader
+	return material
