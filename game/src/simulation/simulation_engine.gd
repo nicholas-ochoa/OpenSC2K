@@ -182,6 +182,30 @@ func advance_disaster_tick() -> Dictionary:
 	return phase_result
 
 
+func start_disaster(disaster_type: int, point: Vector2i) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	if terminal_state:
+		return {"ok": false, "error": "the game has ended"}
+	if not pending_interaction.is_empty():
+		return {"ok": false, "error": "%s interaction is pending" % pending_interaction}
+	if active_disaster_type != 0:
+		return {"ok": false, "error": "a disaster is already active"}
+	var started := DisasterStartPhase.start(city, disaster_type, point, random, lfsr_random)
+	if not started.get("ok", false):
+		return started
+	if not started.get("started", false):
+		if not started.get("complete", false):
+			unsupported_disaster_type = disaster_type
+		return started
+	active_disaster_type = disaster_type
+	unsupported_disaster_type = 0
+	if not city.document.set_misc_u32(0x0004, 2):
+		active_disaster_type = 0
+		return {"ok": false, "error": "cannot store active disaster mode"}
+	return started
+
+
 func recalculate_mayor_house() -> Dictionary:
 	var result := MayorApprovalPhase.run(city, random, mayor_approval)
 	if result.get("ok", false):

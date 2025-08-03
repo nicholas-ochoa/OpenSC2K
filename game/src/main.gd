@@ -29,6 +29,7 @@ const Dispatch = preload("res://src/tools/dispatch_command.gd")
 const CityRotation = preload("res://src/tools/city_rotation_command.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
+const DisasterStart = preload("res://src/simulation/disaster_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
 
 const NEWS_NAMES := {
@@ -296,9 +297,20 @@ func _build_interface(toolbar_art: Image) -> void:
 		["City View", 0], ["Structures Map", 1], ["Zones Map", 2],
 		["Power Map", 3], ["Water Map", 4],
 	], _on_options_menu)
-	var disasters_menu := _add_menu(menu_row, "Disasters", [], Callable())
-	disasters_menu.disabled = true
-	disasters_menu.tooltip_text = "Manual disasters are not available yet."
+	var disasters_menu := _add_menu(menu_row, "Disasters", [
+		["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],
+		["Air Crash", 5], ["Earthquake", 6], ["Tornado", 7], ["Monster", 8],
+		["Meltdown", 9], ["Microwave", 10], ["Volcano", 11], ["Firestorm", 12],
+		["Mass Riots", 13], ["Mass Floods", 14], ["Pollution", 15],
+		["Hurricane", 16], ["Helicopter Crash", 17], ["Plane Crash", 18],
+	], _on_disaster_menu)
+	var implemented_disasters := {1: true, 7: true, 8: true}
+	for item_index in disasters_menu.get_popup().item_count:
+		var disaster_id := disasters_menu.get_popup().get_item_id(item_index)
+		disasters_menu.get_popup().set_item_disabled(
+			item_index, not implemented_disasters.has(disaster_id)
+		)
+	disasters_menu.tooltip_text = "Fire, Tornado, and Monster are available."
 	_add_menu(menu_row, "Windows", [["Budget", 0]], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
@@ -788,6 +800,39 @@ func _on_options_menu(id: int) -> void:
 	var modes := ["city", "structures", "zones", "power", "water"]
 	if id >= 0 and id < modes.size():
 		_set_overlay(modes[id])
+
+
+func _on_disaster_menu(id: int) -> void:
+	if city == null or simulation_engine == null:
+		_show_error("Load a city before you start a disaster.")
+		return
+	var point := map_view.center_tile()
+	if point.x < 0:
+		point = Vector2i(64, 64)
+	var result := simulation_engine.start_disaster(id, point)
+	if not result.get("ok", false):
+		_show_error("Cannot start the disaster: %s" % result.get("error", "unknown error"))
+		return
+	if not result.get("started", false):
+		_show_error("The selected disaster could not start.")
+		return
+	last_edit_command = {}
+	undo_button.disabled = true
+	simulation_map_dirty = false
+	_refresh_map(false)
+	for requested_point in result.get("view_center_requests", []):
+		map_view.center_on_tile(requested_point)
+	_show_effect_events(
+		result.get("effect_events", []), result.get("sound_events", [])
+	)
+	_show_news_items(result.get("news_items", []))
+	var disaster_name: String = {
+		DisasterStart.DISASTER_FIRE: "Fire",
+		DisasterStart.DISASTER_TORNADO: "Tornado",
+		DisasterStart.DISASTER_MONSTER: "Monster",
+	}.get(id, "Disaster")
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "%s started." % disaster_name
 
 
 func _on_windows_menu(id: int) -> void:

@@ -2445,6 +2445,25 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		% [active_tick, ended_tick, engine.active_disaster_type, engine_fixture.city.city_mode()],
 	)
 
+	var manual := _fire_map_fixture(reference_root, Vector2i(20, 20), 0)
+	_check(manual.city.set_text_overlay_id(20, 20, 0), "Manual disaster fixture clears fire")
+	var manual_engine := Simulation.new(manual.city, 1, 7, 13)
+	var manual_start := manual_engine.start_disaster(
+		DisasterStart.DISASTER_TORNADO, Vector2i(22, 23)
+	)
+	var duplicate_start := manual_engine.start_disaster(
+		DisasterStart.DISASTER_MONSTER, Vector2i(24, 25)
+	)
+	_check(
+		manual_start.ok
+		and manual_start.started
+		and manual_engine.active_disaster_type == DisasterStart.DISASTER_TORNADO
+		and manual.city.city_mode() == 2
+		and manual.city.thing(1).type == 15
+		and not duplicate_start.ok,
+		"The public engine entry point starts one manual disaster and rejects a second",
+	)
+
 
 func _test_annual_microsim_phase(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
