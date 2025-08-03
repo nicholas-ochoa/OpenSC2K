@@ -21,10 +21,13 @@ static func apply(
 	misc: PackedByteArray,
 	point: Vector2i,
 	random,
-	lfsr_random
+	lfsr_random,
+	allow_small_tile := false
 ) -> int:
 	var index := _index(point)
 	if index < 0 or flags[index] & 0x04 != 0:
+		return 0
+	if buildings[index] < 6 and not allow_small_tile:
 		return 0
 	var overlay := int(text[index])
 	var result_code := 1

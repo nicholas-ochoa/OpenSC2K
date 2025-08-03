@@ -2260,10 +2260,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
 	_check(
-		fallback_document.find_chunk("XBLD").set_decoded_payload(
-			_filled_bytes(CityState.TILE_COUNT, 0)
-		)
+		fallback_document.find_chunk("XBLD").set_decoded_payload(fallback_buildings)
 		and fallback_document.find_chunk("XBIT").set_decoded_payload(
 			_filled_bytes(CityState.TILE_COUNT, 0)
 		)
@@ -2272,7 +2272,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		)
 		and fallback_document.set_misc_u32(DisasterStart.MISC_CITY_CENTER_X, 64)
 		and fallback_document.set_misc_u32(DisasterStart.MISC_CITY_CENTER_Y, 64),
-		"Fire fallback fixture clears all buildings",
+		"Fire fallback fixture installs one non-building surface tile",
 	)
 	var fallback_city := CityModel.from_document(fallback_document)
 	var fallback_lfsr := SequenceLfsrRandom.new([12, 13])
@@ -3263,6 +3263,11 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var spreading_explosion := _special_growth_fixture(reference_root)
 	_set_explosion(spreading_explosion, 1, Vector2i(20, 20), 5, 1, 2)
+	for point in [Vector2i(21, 20), Vector2i(20, 21), Vector2i(19, 20)]:
+		_check(
+			spreading_explosion.city.set_building_id(point.x, point.y, 6),
+			"Spreading explosion fixture makes the target combustible",
+		)
 	var spreading_traffic: PackedByteArray = spreading_explosion.document.find_chunk("XTRF").decoded_payload.duplicate()
 	spreading_traffic[10 * 64 + 10] = 200
 	_check(
@@ -3275,15 +3280,15 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		SequenceLfsrRandom.new([2, 2, 3, 2, 2, 3, 1, 2])
 	)
 	_check(
-		spread_result.ok and spread_result.spread_explosion_fires == 4,
-		"Spreading explosion applies four LFSR-selected fire attempts",
+		spread_result.ok and spread_result.spread_explosion_fires == 3,
+		"Spreading explosion applies three valid LFSR-selected fire attempts",
 	)
 	_check(
-		spreading_explosion.city.text_overlay_id(20, 20) == 0xff
+		spreading_explosion.city.text_overlay_id(20, 20) == 0
 		and spreading_explosion.city.text_overlay_id(21, 20) == 0xff
 		and spreading_explosion.city.text_overlay_id(20, 21) == 0xff
 		and spreading_explosion.city.text_overlay_id(19, 20) == 0xff,
-		"Explosion damage writes fire overlays at the recovered positions",
+		"Explosion damage rejects the cleared center and burns combustible neighbors",
 	)
 	_check(
 		spreading_explosion.document.find_chunk("XTRF").decoded_payload[10 * 64 + 10] == 0,
@@ -3292,6 +3297,10 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var labeled_explosion := _special_growth_fixture(reference_root)
 	_set_explosion(labeled_explosion, 1, Vector2i(20, 20), 5, 1, 2)
+	_check(
+		labeled_explosion.city.set_building_id(21, 20, 6),
+		"Explosion fixture makes the labeled tile combustible",
+	)
 	_check(labeled_explosion.city.set_label(1, "Blast Zone"), "Explosion fixture sets a user label")
 	_check(labeled_explosion.city.set_text_overlay_id(21, 20, 1), "Explosion fixture places a user label")
 	var label_damage := MovingThingTick.run(
@@ -3317,10 +3326,10 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 	_check(
 		rubble_result.ok
-		and rubble_result.rubble_explosion_hits == 4
+		and rubble_result.rubble_explosion_hits == 1
 		and rubble_explosion.city.building_id(21, 20) == 1
 		and rubble_explosion.city.text_overlay_id(21, 20) == 241,
-		"Explosion overlay 241 through 249 changes the building to LFSR-selected rubble: %s %d %d"
+		"Explosion overlay 241 through 249 changes a combustible tile to LFSR-selected rubble once: %s %d %d"
 		% [rubble_result, rubble_explosion.city.building_id(21, 20), rubble_explosion.city.text_overlay_id(21, 20)],
 	)
 
