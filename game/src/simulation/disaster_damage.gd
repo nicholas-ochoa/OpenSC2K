@@ -35,9 +35,9 @@ static func apply(
 		if overlay < 51:
 			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
 		elif overlay < TEXT_LABEL_BASE:
-			_damage_linked_facility(
+			burn_structure(
 				city, altitude, buildings, terrain, zones, underground,
-				flags, text, labels, microsims, misc, point, random
+				flags, text, labels, microsims, misc, point, random, lfsr_random, false
 			)
 			result_code = 3
 		elif overlay < 241:
@@ -56,7 +56,7 @@ static func apply(
 	return result_code
 
 
-static func _damage_linked_facility(
+static func burn_structure(
 	city: CityState,
 	altitude: PackedByteArray,
 	buildings: PackedByteArray,
@@ -69,8 +69,10 @@ static func _damage_linked_facility(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random
-) -> void:
+	random,
+	lfsr_random,
+	clear_current := true
+) -> Dictionary:
 	var result := Demolish._demolish_point(
 		city, altitude, buildings, terrain, zones, underground,
 		flags, text, labels, microsims, misc, point, random, true, true, false
@@ -78,6 +80,15 @@ static func _damage_linked_facility(
 	for index in result.get("indices", PackedInt32Array()):
 		if flags[index] & 0x04 == 0:
 			text[index] = 0xff
+	var point_index := _index(point)
+	if clear_current and point_index >= 0 and text[point_index] == 0xff:
+		text[point_index] = 0
+		var tile := int(buildings[point_index])
+		if (tile < 0x3f or tile > 0x42) and tile < 0x61:
+			NetworkTiles._replace_building(
+				buildings, zones, misc, point_index, lfsr_random.next_mod(4) + 1
+			)
+	return result
 
 
 static func _index(point: Vector2i) -> int:

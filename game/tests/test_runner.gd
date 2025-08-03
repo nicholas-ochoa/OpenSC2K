@@ -25,6 +25,7 @@ const Budget = preload("res://src/simulation/budget_phase.gd")
 const Milestones = preload("res://src/simulation/milestone_phase.gd")
 const MilitaryProposal = preload("res://src/simulation/military_proposal_phase.gd")
 const DisasterStart = preload("res://src/simulation/disaster_start_phase.gd")
+const DisasterMap = preload("res://src/simulation/disaster_map_phase.gd")
 const ScenarioPhaseRunner = preload("res://src/simulation/scenario_phase.gd")
 const Bankruptcy = preload("res://src/simulation/bankruptcy_phase.gd")
 const AnnualMicrosims = preload("res://src/simulation/microsim_annual_phase.gd")
@@ -184,6 +185,7 @@ func _init() -> void:
 	_test_milestone_phase(reference_root)
 	_test_military_proposal_phase(reference_root)
 	_test_disaster_start_phase(reference_root)
+	_test_disaster_map_phase(reference_root)
 	_test_annual_microsim_phase(reference_root)
 	_test_annual_service_microsim_phase(reference_root)
 	_test_annual_special_microsim_phase(reference_root)
@@ -2324,6 +2326,123 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	_check(
 		tornado_document.find_chunk("XTHG").decoded_payload == unsupported_before,
 		"An unimplemented disaster does not change moving objects",
+	)
+
+
+func _test_disaster_map_phase(reference_root: String) -> void:
+	var water := _fire_map_fixture(reference_root, Vector2i(20, 20), 6, true)
+	var water_random := SequenceRandom.new([0])
+	var water_lfsr := SequenceLfsrRandom.new([])
+	var water_tick := DisasterMap.run_fire(water.city, water_random, water_lfsr)
+	_check(
+		water_tick.ok
+		and water_tick.active
+		and water_tick.map_changed
+		and water_tick.water_extinctions == 1
+		and water_tick.remaining_fires == 0
+		and water_tick.sound_events == [DisasterMap.SOUND_FIRE],
+		"A selected fire marker on water clears and keeps the disaster active for this scan",
+	)
+	_check(
+		water.city.text_overlay_id(20, 20) == 0
+		and water_random.position == 1
+		and water_lfsr.position == 0,
+		"Water extinction consumes only its process-random update gate",
+	)
+	var empty_tick := DisasterMap.run_fire(
+		water.city, SequenceRandom.new([]), SequenceLfsrRandom.new([])
+	)
+	_check(
+		empty_tick.ok and not empty_tick.active and empty_tick.sound_events.is_empty(),
+		"A later fire scan ends after no marker remains",
+	)
+
+	var spread := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(spread.city.set_building_id(19, 20, 6), "Fire spread fixture adds a west target")
+	var spread_random := SequenceRandom.new([0, 0])
+	var spread_tick := DisasterMap.run_fire(
+		spread.city, spread_random, SequenceLfsrRandom.new([])
+	)
+	_check(
+		spread_tick.ok
+		and spread_tick.spread_attempts == 1
+		and spread_tick.spread_fires == 1
+		and spread.city.text_overlay_id(19, 20) == 0xff
+		and spread_random.position == 2,
+		"Fire choice zero spreads west through the shared damage helper",
+	)
+
+	var covered := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x70)
+	var covered_random := SequenceRandom.new([0, 4, 0, 2])
+	var covered_lfsr := SequenceLfsrRandom.new([3])
+	var covered_tick := DisasterMap.run_fire(covered.city, covered_random, covered_lfsr)
+	_check(
+		covered_tick.ok
+		and covered_tick.coverage_extinctions == 1
+		and covered_tick.remaining_fires == 0
+		and covered.city.text_overlay_id(20, 20) == 0
+		and covered.city.building_id(20, 20) == 4,
+		"Fire coverage plus eight extinguishes and replaces a burning structure with LFSR rubble",
+	)
+	_check(
+		covered_random.position == 4 and covered_lfsr.position == 1,
+		"Coverage extinction preserves the process and LFSR random order",
+	)
+
+	var collapsing := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x70)
+	var collapse_random := SequenceRandom.new([0, 5, 1])
+	var collapse_lfsr := SequenceLfsrRandom.new([2, 0])
+	var collapse_tick := DisasterMap.run_fire(
+		collapsing.city, collapse_random, collapse_lfsr
+	)
+	var explosion: Dictionary = collapsing.city.thing(1)
+	_check(
+		collapse_tick.ok
+		and collapse_tick.structure_collapses == 1
+		and collapse_tick.created_explosions == 1
+		and explosion.type == 6
+		and explosion.x == 20
+		and explosion.y == 20
+		and explosion.z == 0
+		and explosion.state == 0
+		and explosion.goal == 1,
+		"Fire choice five collapses a building and creates the gated explosion record",
+	)
+	_check(
+		collapsing.city.text_overlay_id(20, 20) == 202
+		and collapse_random.position == 3
+		and collapse_lfsr.position == 2,
+		"Fire collapse links its explosion and preserves the original random order",
+	)
+	var toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x85)
+	var toxic_tick := DisasterMap.run_fire(
+		toxic.city, SequenceRandom.new([0, 5, 1]), SequenceLfsrRandom.new([2, 1])
+	)
+	_check(
+		toxic_tick.ok
+		and toxic_tick.structure_collapses == 1
+		and toxic_tick.created_explosions == 0
+		and toxic_tick.toxic_markers == 1
+		and toxic.city.text_overlay_id(20, 20) == DisasterMap.TOXIC_OVERLAY,
+		"A special burning structure can leave the recovered toxic marker",
+	)
+
+	var engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), 6, true)
+	_check(engine_fixture.document.set_misc_u32(0x0004, 2), "Fire engine fixture selects disaster mode")
+	var engine := Simulation.new(engine_fixture.city, 3, 7, 13)
+	engine.active_disaster_type = DisasterStart.DISASTER_FIRE
+	var active_tick := engine.advance_disaster_tick()
+	var ended_tick := engine.advance_disaster_tick()
+	_check(
+		active_tick.ok
+		and active_tick.active
+		and ended_tick.ok
+		and ended_tick.complete
+		and ended_tick.ended_type == DisasterStart.DISASTER_FIRE
+		and engine.active_disaster_type == 0
+		and engine_fixture.city.city_mode() == 1,
+		"The engine runs fire-map ticks and restores city mode one scan after the last fire: %s %s %d %d"
+		% [active_tick, ended_tick, engine.active_disaster_type, engine_fixture.city.city_mode()],
 	)
 
 
@@ -4614,6 +4733,36 @@ func _maintenance_fixture(reference_root: String, surface_tile: int, underground
 	if surface_tile != 0:
 		_check(document.set_misc_u32(0x01f0 + surface_tile * 4, 1), "Maintenance fixture counts its surface tile")
 	_check(document.set_misc_u32(0x0fe8, int(underground_tile != 0)), "Maintenance fixture counts its subway tile")
+	return {"document": document, "city": CityModel.from_document(document)}
+
+
+func _fire_map_fixture(
+	reference_root: String, point: Vector2i, tile: int, water := false
+) -> Dictionary:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var index := point.x * CityState.MAP_SIZE + point.y
+	var buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	var flags := _filled_bytes(CityState.TILE_COUNT, 0)
+	var text := _filled_bytes(CityState.TILE_COUNT, 0)
+	buildings[index] = tile
+	flags[index] = 0x04 if water else 0
+	text[index] = DisasterMap.FIRE_OVERLAY
+	for entry in [
+		["XBLD", buildings],
+		["XZON", _filled_bytes(CityState.TILE_COUNT, 0)],
+		["XUND", _filled_bytes(CityState.TILE_COUNT, 0)],
+		["XBIT", flags],
+		["XTXT", text],
+		["XTER", _filled_bytes(CityState.TILE_COUNT, 0)],
+		["XTRF", _filled_bytes(64 * 64, 0)],
+		["XFIR", _filled_bytes(32 * 32, 0)],
+		["XTHG", _filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)],
+	]:
+		if not document.find_chunk(entry[0]).set_decoded_payload(entry[1]):
+			return {"document": document, "city": null}
+	document.set_misc_u32(0x01f0, CityState.TILE_COUNT - int(tile != 0))
+	if tile != 0:
+		document.set_misc_u32(0x01f0 + tile * 4, 1)
 	return {"document": document, "city": CityModel.from_document(document)}
 
 

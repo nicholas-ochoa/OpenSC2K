@@ -119,7 +119,7 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 		if (
 			index >= 0
 			and payloads.XBLD[index] > 0x6f
-			and _apply_fire_damage(city, payloads, point, random, lfsr_random) != 0
+			and _starts_fire(_apply_fire_damage(city, payloads, point, random, lfsr_random))
 		):
 			return _store_fire(city, original, payloads, point)
 		step += 1
@@ -130,7 +130,7 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 			direction = (direction + 1) & 3
 	for _attempt in 200:
 		point = Vector2i(lfsr_random.next_mask(0x7f), lfsr_random.next_mask(0x7f))
-		if _apply_fire_damage(city, payloads, point, random, lfsr_random) != 0:
+		if _starts_fire(_apply_fire_damage(city, payloads, point, random, lfsr_random)):
 			return _store_fire(city, original, payloads, point)
 	var result := _result(DISASTER_FIRE, point, false, true, 0)
 	result["notice_ids"] = [0xf5]
@@ -159,6 +159,10 @@ static func _apply_fire_damage(
 	)
 
 
+static func _starts_fire(result_code: int) -> bool:
+	return result_code == 1 or result_code == 3 or result_code == 4
+
+
 static func _store_fire(
 	city: CityState, original: Dictionary, payloads: Dictionary, point: Vector2i
 ) -> Dictionary:
@@ -169,6 +173,8 @@ static func _store_fire(
 
 static func has_active_object(city: CityState, disaster_type: int) -> bool:
 	if city == null or not city.is_valid():
+		return false
+	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
 		return false
 	var chunk := city.document.find_chunk("XTHG")
 	if chunk == null or chunk.decoded_payload.size() != CityState.THING_COUNT * CityState.THING_RECORD_SIZE:

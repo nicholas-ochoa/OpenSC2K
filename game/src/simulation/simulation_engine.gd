@@ -1,6 +1,8 @@
 class_name SimulationEngine
 extends RefCounted
 
+const DisasterMap = preload("res://src/simulation/disaster_map_phase.gd")
+
 var city: CityState
 var clock: SimulationClock
 var random: SimRandom
@@ -152,25 +154,32 @@ func resolve_military_proposal(accepted: bool) -> Dictionary:
 func advance_disaster_tick() -> Dictionary:
 	if active_disaster_type == 0:
 		return {"ok": false, "error": "no disaster is active"}
-	var still_active := DisasterStartPhase.has_active_object(city, active_disaster_type)
+	var phase_result := {
+		"ok": true,
+		"error": "",
+		"active": DisasterStartPhase.has_active_object(city, active_disaster_type),
+		"map_changed": false,
+		"news_items": [],
+		"effect_events": [],
+		"sound_events": [],
+		"view_center_requests": [],
+	}
+	if active_disaster_type == DisasterStartPhase.DISASTER_FIRE:
+		phase_result = DisasterMap.run_fire(city, random, lfsr_random)
+		if not phase_result.get("ok", false):
+			return phase_result
+	var still_active: bool = phase_result.active
 	var ended_type := 0
 	if not still_active:
 		ended_type = active_disaster_type
 		active_disaster_type = 0
 		if not city.document.set_misc_u32(0x0004, 1):
 			return {"ok": false, "error": "cannot restore city mode after the disaster"}
-	return {
-		"ok": true,
-		"error": "",
-		"active": still_active,
-		"disaster_type": active_disaster_type if still_active else ended_type,
-		"ended_type": ended_type,
-		"news_items": [],
-		"effect_events": [],
-		"sound_events": [],
-		"view_center_requests": [],
-		"complete": not still_active,
-	}
+	phase_result["active"] = still_active
+	phase_result["disaster_type"] = active_disaster_type if still_active else ended_type
+	phase_result["ended_type"] = ended_type
+	phase_result["complete"] = not still_active
+	return phase_result
 
 
 func recalculate_mayor_house() -> Dictionary:

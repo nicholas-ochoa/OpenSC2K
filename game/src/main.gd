@@ -226,8 +226,13 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 func _consume_simulation_result(result: Dictionary) -> void:
 	var ran_days: bool = not result.day_results.is_empty()
+	var changed_disaster_map := false
+	for disaster in result.disaster_results:
+		if disaster.get("map_changed", false):
+			changed_disaster_map = true
+			break
 	var moved_things := _moving_things_are_active(result.moving_results)
-	if ran_days or moved_things:
+	if ran_days or moved_things or changed_disaster_map:
 		last_edit_command = {}
 		undo_button.disabled = true
 		simulation_map_dirty = true
