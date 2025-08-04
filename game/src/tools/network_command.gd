@@ -24,6 +24,51 @@ const NETWORK_TOOLS := {
 
 const NETWORK_SHAPES := [0, 0, 1, 6, 0, 0, 7, 11, 1, 9, 1, 10, 8, 13, 12, 14]
 const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+const TERRAIN_REQUIRES_GRADING := [
+	false, false, false, false, false, true, true, true,
+	true, true, true, true, true, false, false, false,
+]
+const TERRAIN_IS_NETWORK_SLOPE := [
+	false, true, true, true, true, false, false, false,
+	false, true, true, true, true, false, false, false,
+]
+const TERRAIN_BLOCKS_DIRECTION := [
+	false, false, false, false,
+	true, false, true, false,
+	false, true, false, true,
+	true, false, true, false,
+	false, true, false, true,
+	false, false, false, false,
+	false, false, false, false,
+	false, false, false, false,
+	false, false, false, false,
+	false, false, false, false,
+	false, false, false, false,
+	false, false, false, false,
+	false, false, false, false,
+	false, false, false, false,
+	false, false, false, false,
+	false, false, false, false,
+]
+const GRADED_TERRAIN := [
+	0, 0, 1, 0,
+	0, 0, 0, 0,
+	0, 0, 1, 1,
+	0, 0, 1, 1,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	0, 0, 0, 0,
+	2, 1, 2, 1,
+	2, 3, 2, 3,
+	4, 3, 4, 3,
+	4, 1, 4, 1,
+	0, 0, 1, 6,
+	0, 0, 7, 11,
+	1, 9, 1, 10,
+]
+const NETWORK_SLOPE_SHAPES := [0, 2, 3, 4, 5]
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
@@ -71,18 +116,26 @@ static func apply(
 	if planned.is_empty():
 		return {"ok": false, "error": "network cannot start on this tile"}
 	var tool := ToolCatalog.tool(group_index, subtool_index)
-	var cost := planned.size() * int(tool.cost)
+	var graded_tiles := 0
+	if mode == MODE_ROAD or mode == MODE_RAIL or mode == MODE_POWER:
+		for point in planned:
+			var terrain_id := int(terrain[point.x * CityState.MAP_SIZE + point.y])
+			if terrain_id < 0x30 and TERRAIN_REQUIRES_GRADING[terrain_id & 0x0f]:
+				graded_tiles += 1
+	var cost := planned.size() * int(tool.cost) + graded_tiles * 25
 	if city.funds() < cost:
 		return {"ok": false, "error": "insufficient funds", "cost": cost}
 
-	for point in planned:
+	for point_index in planned.size():
+		var point := planned[point_index]
+		var direction := _route_direction(planned, point_index)
 		match mode:
 			MODE_ROAD:
-				_place_surface(buildings, terrain, zones, flags, misc, point, MODE_ROAD)
+				_place_surface(buildings, terrain, zones, flags, misc, point, MODE_ROAD, direction)
 			MODE_RAIL:
-				_place_surface(buildings, terrain, zones, flags, misc, point, MODE_RAIL)
+				_place_surface(buildings, terrain, zones, flags, misc, point, MODE_RAIL, direction)
 			MODE_POWER:
-				_place_surface(buildings, terrain, zones, flags, misc, point, MODE_POWER)
+				_place_surface(buildings, terrain, zones, flags, misc, point, MODE_POWER, direction)
 			MODE_SUBWAY:
 				_place_underground(underground, terrain, flags, point, false)
 			MODE_PIPE:
@@ -90,7 +143,7 @@ static func apply(
 	_write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
-	for chunk_id in ["XBLD", "XZON", "XUND", "XBIT", "MISC"]:
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not _apply_payloads(city, changed_ids, changed_payloads, old_payloads):
@@ -103,6 +156,7 @@ static func apply(
 		"mode": mode,
 		"points": planned,
 		"cost": cost,
+		"graded_tiles": graded_tiles,
 		"stopped_early": planned[-1] != finish,
 		"changed_ids": changed_ids,
 		"old_payloads": old_payloads,
@@ -144,7 +198,20 @@ static func _plan_route(
 	var current := start
 	var direction := _primary_direction(current, finish)
 	if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, current, mode, direction):
-		return result
+		if start == finish:
+			for candidate_direction in DIRECTIONS.size():
+				if _tile_is_eligible(
+					buildings, terrain, zones, underground, flags, altitude,
+					current, mode, candidate_direction
+				):
+					result.append(current)
+					return result
+		var start_alternate := _alternate_direction(current, finish, direction)
+		if start_alternate < 0 or not _tile_is_eligible(
+			buildings, terrain, zones, underground, flags, altitude,
+			current, mode, start_alternate
+		):
+			return result
 	result.append(current)
 	while current != finish:
 		direction = _primary_direction(current, finish)
@@ -179,6 +246,20 @@ static func _alternate_direction(current: Vector2i, finish: Vector2i, primary: i
 	return 1 if difference.x > 0 else 3
 
 
+static func _route_direction(points: Array[Vector2i], index: int) -> int:
+	if points.size() <= 1:
+		return 0
+	var difference: Vector2i
+	if index + 1 < points.size():
+		difference = points[index + 1] - points[index]
+	else:
+		difference = points[index] - points[index - 1]
+	for direction in DIRECTIONS.size():
+		if DIRECTIONS[direction] == difference:
+			return direction
+	return 0
+
+
 static func _tile_is_eligible(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
@@ -208,7 +289,12 @@ static func _tile_is_eligible(
 			return under_tile + (direction & 1) == 0x11
 		return under_tile + (direction & 1) == 0x02
 
-	if flags[index] & FLAG_WATER or terrain[index] != 0:
+	if flags[index] & FLAG_WATER:
+		return false
+	var terrain_id := int(terrain[index])
+	if terrain_id >= 0x10 and terrain_id < 0x20:
+		return false
+	if terrain_id < 0x40 and TERRAIN_BLOCKS_DIRECTION[(terrain_id & 0x0f) * 4 + direction]:
 		return false
 	var building := int(buildings[index])
 	if building == 0x05 or building == 0x0d or building > 0x50:
@@ -226,9 +312,11 @@ static func _place_surface(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	mode: int
+	mode: int,
+	direction: int
 ) -> void:
 	var index := point.x * CityState.MAP_SIZE + point.y
+	_grade_surface_terrain(terrain, flags, point, direction)
 	var old_tile := int(buildings[index])
 	var new_tile := _surface_replacement(old_tile, mode)
 	if new_tile < 0:
@@ -239,6 +327,23 @@ static func _place_surface(
 	else:
 		zones[index] &= 0xf0
 	_retile_surface_neighborhood(buildings, terrain, zones, flags, misc, point, mode)
+
+
+static func _grade_surface_terrain(
+	terrain: PackedByteArray, flags: PackedByteArray, point: Vector2i, direction: int
+) -> void:
+	var index := point.x * CityState.MAP_SIZE + point.y
+	var terrain_id := int(terrain[index])
+	if terrain_id >= 0x30:
+		return
+	var shape := terrain_id & 0x0f
+	if not TERRAIN_REQUIRES_GRADING[shape]:
+		return
+	if TERRAIN_IS_NETWORK_SLOPE[shape]:
+		terrain[index] = (terrain_id & 0xf0) | GRADED_TERRAIN[shape * 4 + direction]
+		return
+	terrain[index] = 0x0d if terrain_id < 0x10 else 0x1d
+	flags[index] &= ~FLAG_WATER
 
 
 static func _surface_replacement(old_tile: int, mode: int) -> int:
@@ -295,6 +400,16 @@ static func _retile_surface(
 		if current < 0x0e or current > 0x1c:
 			return
 		base = 0x0e
+
+	var terrain_id := int(terrain[index])
+	if terrain_id < 0x30:
+		var terrain_shape := terrain_id & 0x0f
+		if TERRAIN_IS_NETWORK_SLOPE[terrain_shape] and terrain_shape < NETWORK_SLOPE_SHAPES.size():
+			_replace_building(
+				buildings, zones, misc, index,
+				base + NETWORK_SLOPE_SHAPES[terrain_shape]
+			)
+			return
 
 	var connections := 0
 	for direction in 4:

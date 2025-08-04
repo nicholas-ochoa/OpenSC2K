@@ -576,6 +576,16 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Small view omits high-density variants absent from its source archive",
 	)
 	_check(
+		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x0e),
+		"Traffic exclusion fixture installs a power line",
+	)
+	_check(
+		IsometricRenderer.traffic_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).is_empty(),
+		"Busy traffic cells do not draw traffic sprites on power lines",
+	)
+	_check(
 		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x49),
 		"Traffic view fixture installs a highway",
 	)
@@ -600,6 +610,21 @@ func _test_sprite_archives(reference_root: String) -> void:
 			overlay_city, overlay_point.x, overlay_point.y
 		).sprite_id == 1437,
 		"Highway traffic selects the recovered high-density lane sprite",
+	)
+	_check(
+		overlay_city.set_building_id(overlay_point.x, overlay_point.y, 0x61),
+		"Traffic view fixture installs an elevated highway",
+	)
+	traffic_data[traffic_index] = 29
+	_check(
+		overlay_document.find_chunk("XTRF").set_decoded_payload(traffic_data),
+		"Traffic view fixture restores the first highway threshold",
+	)
+	_check(
+		not IsometricRenderer.traffic_overlay_visual(
+			overlay_city, overlay_point.x, overlay_point.y
+		).is_empty(),
+		"Elevated highway traffic uses the recovered lower threshold",
 	)
 	_check(
 		overlay_city.set_building_corners(overlay_point.x, overlay_point.y, 0),
@@ -5828,6 +5853,67 @@ func _test_network_command(reference_root: String) -> void:
 	var rail_crossing := Networks.apply(city, 7, 0, Vector2i(20, 20), Vector2i(21, 20))
 	_check(rail_crossing.ok and city.building_id(20, 20) == 0x45, "Rail tool creates the recovered road crossover")
 	_check(Networks.undo(city, rail_crossing).ok, "Rail crossover can be undone")
+
+	_check(city.set_terrain_id(30, 30, 1), "Road-grade fixture installs a north-south slope")
+	var graded_road := Networks.apply(city, 6, 0, Vector2i(30, 30), Vector2i(30, 30))
+	_check(
+		graded_road.ok
+		and graded_road.cost == 10
+		and graded_road.graded_tiles == 0
+		and city.building_id(30, 30) == 0x1f,
+		"Road tool uses the recovered graded sprite on a simple slope",
+	)
+	_check(Networks.undo(city, graded_road).ok, "Graded road can be undone")
+	_check(city.set_terrain_id(30, 30, 0), "Road-grade fixture restores flat terrain")
+	_check(city.set_terrain_id(31, 30, 9), "Road-grade fixture installs a compound slope")
+	var reshaped_road := Networks.apply(city, 6, 0, Vector2i(31, 30), Vector2i(32, 30))
+	_check(
+		reshaped_road.ok
+		and reshaped_road.cost == 45
+		and reshaped_road.graded_tiles == 1
+		and city.terrain_id(31, 30) == 1
+		and city.building_id(31, 30) == 0x1f,
+		"Road tool grades a compound slope and charges the recovered extra cost",
+	)
+	_check(Networks.undo(city, reshaped_road).ok, "Reshaped road can be undone")
+
+	var crossing_road := Networks.apply(city, 6, 0, Vector2i(60, 60), Vector2i(64, 60))
+	_check(crossing_road.ok, "Power-crossing fixture builds a straight road")
+	var road_power := Networks.apply(city, 3, 0, Vector2i(62, 58), Vector2i(62, 62))
+	_check(
+		road_power.ok
+		and road_power.points.size() == 5
+		and city.building_id(62, 60) == 0x44,
+		"Power line crosses a perpendicular road",
+	)
+	_check(Networks.undo(city, road_power).ok, "Road power crossing can be undone")
+	_check(Networks.undo(city, crossing_road).ok, "Power-crossing road can be undone")
+	_check(city.set_building_id(65, 65, 0x1d), "Single power-crossing fixture places a road")
+	var single_road_power := Networks.apply(city, 3, 0, Vector2i(65, 65), Vector2i(65, 65))
+	_check(
+		single_road_power.ok and city.building_id(65, 65) == 0x43,
+		"A single click makes the perpendicular power and road crossing",
+	)
+	_check(Networks.undo(city, single_road_power).ok, "Single road power crossing can be undone")
+
+	var crossing_rail := Networks.apply(city, 7, 0, Vector2i(70, 70), Vector2i(74, 70))
+	_check(crossing_rail.ok, "Power-crossing fixture builds straight rail")
+	var rail_power := Networks.apply(city, 3, 0, Vector2i(72, 68), Vector2i(72, 72))
+	_check(
+		rail_power.ok
+		and rail_power.points.size() == 5
+		and city.building_id(72, 70) == 0x48,
+		"Power line crosses a perpendicular rail",
+	)
+	_check(Networks.undo(city, rail_power).ok, "Rail power crossing can be undone")
+	_check(Networks.undo(city, crossing_rail).ok, "Power-crossing rail can be undone")
+	_check(city.set_building_id(75, 75, 0x2c), "Single power-crossing fixture places rail")
+	var single_rail_power := Networks.apply(city, 3, 0, Vector2i(75, 75), Vector2i(75, 75))
+	_check(
+		single_rail_power.ok and city.building_id(75, 75) == 0x47,
+		"A single click makes the perpendicular power and rail crossing",
+	)
+	_check(Networks.undo(city, single_rail_power).ok, "Single rail power crossing can be undone")
 
 	var pipes := Networks.apply(city, 4, 0, Vector2i(10, 30), Vector2i(12, 30))
 	_check(pipes.ok and pipes.cost == 9, "Pipe drag charges three dollars per tile")

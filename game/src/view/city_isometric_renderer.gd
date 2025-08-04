@@ -546,7 +546,9 @@ static func traffic_overlay_visual(
 	if configuration.is_empty():
 		return {}
 	var tile := city.building_id(x, y)
-	if tile < 0 or tile >= TRAFFIC_TILE_VARIANTS.size():
+	# the executable enters its traffic branch only for road-or-higher xbld
+	# values. earlier table entries belong to other painter paths
+	if tile < 0x1d or tile >= TRAFFIC_TILE_VARIANTS.size():
 		return {}
 	var variant: int = TRAFFIC_TILE_VARIANTS[tile]
 	if variant == 0:
@@ -554,7 +556,7 @@ static func traffic_overlay_visual(
 	var density := city.traffic_density(x, y)
 	var low_threshold := 85
 	var high_threshold := 170
-	if tile >= 0x49 and tile <= 0x50:
+	if (tile >= 0x49 and tile <= 0x50) or (tile >= 0x61 and tile <= 0x6b):
 		low_threshold = 28
 		high_threshold = 56
 	if density <= low_threshold:

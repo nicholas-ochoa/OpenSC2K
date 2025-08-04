@@ -779,7 +779,7 @@ func _update_fps(delta: float) -> void:
 func _on_city_zoom_changed(percent: int) -> void:
 	_update_zoom_controls(percent)
 	if city != null and overlay_mode == "city":
-		_refresh_map()
+		_refresh_map(false)
 
 
 func _on_file_menu(id: int) -> void:
@@ -1610,7 +1610,7 @@ func _apply_map_selection(
 		dispatch["dispatch_cycles_after"] = dispatch_cycles.duplicate()
 		last_edit_command = dispatch
 		undo_button.disabled = false
-		_refresh_map()
+		_refresh_map(false)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Deployed %s unit %d of %d." % [
 			Tools.tool(selected_group, selected_subtool).name,
@@ -1631,7 +1631,7 @@ func _apply_map_selection(
 		last_edit_command = landscape
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map()
+		_refresh_map(false)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "%s changed %d path tiles for $%s." % [
 			Tools.tool(selected_group, selected_subtool).name,
@@ -1651,7 +1651,7 @@ func _apply_map_selection(
 		last_edit_command = demolition
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map()
+		_refresh_map(false)
 		_show_effect_events(demolition.effect_events, demolition.sound_events)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Applied %d demolition actions for $%s." % [
@@ -1672,7 +1672,7 @@ func _apply_map_selection(
 		last_edit_command = terrain_change
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map()
+		_refresh_map(false)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "%s applied %d actions for $%s." % [
 			Tools.tool(selected_group, selected_subtool).name,
@@ -1693,7 +1693,7 @@ func _apply_map_selection(
 		last_edit_command = network
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map()
+		_refresh_map(false)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built %d %s tiles for $%s." % [
 			network.points.size(),
@@ -1711,7 +1711,7 @@ func _apply_map_selection(
 		last_edit_command = hydro
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map()
+		_refresh_map(false)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built hydroelectric power for $%s." % _format_number(hydro.cost)
 		return
@@ -1722,7 +1722,7 @@ func _apply_map_selection(
 			return
 		last_edit_command = connection
 		undo_button.disabled = false
-		_refresh_map()
+		_refresh_map(false)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built a subway-to-rail connection at no charge. Listed cost: $%s." % _format_number(connection.listed_cost)
 		return
@@ -1734,7 +1734,7 @@ func _apply_map_selection(
 		last_edit_command = onramp
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map()
+		_refresh_map(false)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built an on-ramp for $%s." % _format_number(onramp.cost)
 		return
@@ -1746,7 +1746,7 @@ func _apply_map_selection(
 		last_edit_command = tunnel
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map()
+		_refresh_map(false)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built a %d-tile tunnel for $%s." % [
 			tunnel.points.size(), _format_number(tunnel.cost)
@@ -1760,7 +1760,7 @@ func _apply_map_selection(
 		last_edit_command = highway
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map()
+		_refresh_map(false)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built %d highway sections for $%s." % [
 			highway.sections.size(), _format_number(highway.cost)
@@ -1781,7 +1781,7 @@ func _apply_map_selection(
 		last_edit_command = building
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map()
+		_refresh_map(false)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built %s for $%s." % [
 			Tools.tool(selected_group, selected_subtool).name,
@@ -1796,7 +1796,7 @@ func _apply_map_selection(
 	last_edit_command = command
 	undo_button.disabled = false
 	_refresh_details()
-	_refresh_map()
+	_refresh_map(false)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "%s changed %d tiles for $%s." % [
 		Tools.tool(selected_group, selected_subtool).name,
@@ -1847,7 +1847,7 @@ func _undo_last_edit() -> void:
 	last_edit_command = {}
 	undo_button.disabled = true
 	_refresh_details()
-	_refresh_map()
+	_refresh_map(false)
 	status_label.remove_theme_color_override("font_color")
 	if command_type == "sign":
 		status_label.text = "Restored the previous sign."
@@ -1899,7 +1899,7 @@ func _commit_sign() -> void:
 		return
 	last_edit_command = result
 	undo_button.disabled = false
-	_refresh_map()
+	_refresh_map(false)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
 
