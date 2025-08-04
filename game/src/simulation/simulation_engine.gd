@@ -27,6 +27,7 @@ var pending_disaster_type := 0
 var pending_disaster_point := Vector2i.ZERO
 var active_disaster_type := 0
 var unsupported_disaster_type := 0
+var disaster_map_counter := 0
 
 
 func _init(
@@ -168,11 +169,19 @@ func advance_disaster_tick() -> Dictionary:
 		phase_result = DisasterMap.run_fire(city, random, lfsr_random)
 		if not phase_result.get("ok", false):
 			return phase_result
+	elif active_disaster_type == DisasterStartPhase.DISASTER_FLOOD:
+		phase_result = DisasterMap.run_flood(
+			city, random, lfsr_random, disaster_map_counter
+		)
+		if not phase_result.get("ok", false):
+			return phase_result
+		disaster_map_counter = int(phase_result.get("map_counter", disaster_map_counter))
 	var still_active: bool = phase_result.active
 	var ended_type := 0
 	if not still_active:
 		ended_type = active_disaster_type
 		active_disaster_type = 0
+		disaster_map_counter = 0
 		if not city.document.set_misc_u32(0x0004, 1):
 			return {"ok": false, "error": "cannot restore city mode after the disaster"}
 	phase_result["active"] = still_active
@@ -199,9 +208,11 @@ func start_disaster(disaster_type: int, point: Vector2i) -> Dictionary:
 			unsupported_disaster_type = disaster_type
 		return started
 	active_disaster_type = disaster_type
+	disaster_map_counter = int(started.get("map_counter", 0))
 	unsupported_disaster_type = 0
 	if not city.document.set_misc_u32(0x0004, 2):
 		active_disaster_type = 0
+		disaster_map_counter = 0
 		return {"ok": false, "error": "cannot store active disaster mode"}
 	return started
 
@@ -429,6 +440,7 @@ func _append_pending_disaster(result: Dictionary) -> Dictionary:
 	result.phase_results["disaster_start"] = started
 	if started.started:
 		active_disaster_type = disaster_type
+		disaster_map_counter = int(started.get("map_counter", 0))
 		if not city.document.set_misc_u32(0x0004, 2):
 			return {"ok": false, "error": "cannot store active disaster mode"}
 		result.applied.append("disaster_start")

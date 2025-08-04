@@ -4,12 +4,14 @@ extends RefCounted
 const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
 const DISASTER_NONE := 0
 const DISASTER_FIRE := 1
+const DISASTER_FLOOD := 2
 const DISASTER_TORNADO := 7
 const DISASTER_MONSTER := 8
 const TYPE_MONSTER := 5
 const TYPE_TORNADO := 15
 const TEXT_THING_BASE := 201
 const SOUND_SIREN := 520
+const SOUND_FLOOD := 511
 const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
 const FIRE_SPIRAL_X := [0, 1, 0, -1]
@@ -38,6 +40,8 @@ static func start(
 		return _result(disaster_type, point, false, true, 0)
 	if disaster_type == DISASTER_FIRE:
 		return _start_fire(city, random, lfsr_random)
+	if disaster_type == DISASTER_FLOOD:
+		return _start_flood(city, point, lfsr_random)
 	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
 		return _result(disaster_type, point, false, false, 0)
 	if random == null or not random.has_method("next_u15"):
@@ -137,6 +141,58 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 	return result
 
 
+static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random) -> Dictionary:
+	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "flood disaster input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	for radius in CityState.MAP_SIZE:
+		for x_offset in range(-radius, radius + 1):
+			for y_offset in range(-radius, radius + 1):
+				var point := requested_point + Vector2i(x_offset, y_offset)
+				var index := _index(point)
+				if index < 0 or payloads.XTER[index] < 0x20 or payloads.XTER[index] >= 0x30:
+					continue
+				if x_offset > 0:
+					_seed_flood_if_dry(payloads, point + Vector2i(-1, 0))
+				if y_offset > 0:
+					_seed_flood_if_dry(payloads, point + Vector2i(0, -1))
+				if x_offset < 127:
+					_seed_flood_if_dry(payloads, point + Vector2i(1, 0))
+				if y_offset < 127:
+					_seed_flood_if_dry(payloads, point + Vector2i(0, 1))
+				return _store_flood(city, original, payloads, point)
+	for _attempt in 200:
+		var point := Vector2i(lfsr_random.next_mask(0x7f), lfsr_random.next_mask(0x7f))
+		if payloads.XTER[_index(point)] == 0:
+			payloads.XTXT[_index(point)] = 0xfc
+			return _store_flood(city, original, payloads, point)
+	return _flood_result(requested_point, false)
+
+
+static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i) -> void:
+	var index := _index(point)
+	if index >= 0 and payloads.XBIT[index] & 0x04 == 0:
+		payloads.XTXT[index] = 0xfc
+
+
+static func _store_flood(
+	city: CityState, original: Dictionary, payloads: Dictionary, point: Vector2i
+) -> Dictionary:
+	if not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the flood disaster"}
+	return _flood_result(point, true)
+
+
+static func _flood_result(point: Vector2i, started: bool) -> Dictionary:
+	var result := _result(DISASTER_FLOOD, point, started, true, 0)
+	result["sound_events"] = [SOUND_FLOOD, SOUND_SIREN] if started else []
+	result["map_counter"] = 60 if started else 0
+	return result
+
+
 static func _apply_fire_damage(
 	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
 ) -> int:
@@ -196,6 +252,7 @@ static func _result(
 		"record": record,
 		"news_items": [],
 		"notice_ids": [],
+		"map_counter": 0,
 		"sound_events": [SOUND_SIREN] if started else [],
 		"view_center_requests": [point] if started else [],
 		"complete": complete,

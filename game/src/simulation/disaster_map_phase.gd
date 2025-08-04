@@ -6,6 +6,7 @@ const Demolish = preload("res://src/tools/demolish_command.gd")
 const FIRE_OVERLAY := 0xff
 const TOXIC_OVERLAY := 0xfb
 const SOUND_FIRE := 0x1fb
+const SOUND_FLOOD := 0x1ff
 const TYPE_EXPLOSION := 6
 const TEXT_THING_BASE := 201
 const SPECIAL_TOXIC_BUILDINGS := {0x85: true, 0x9f: true, 0xbc: true}
@@ -114,6 +115,107 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 	return counters
 
 
+static func run_flood(
+	city: CityState, random, lfsr_random, map_counter: int
+) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if (
+		lfsr_random == null
+		or not lfsr_random.has_method("next_mask")
+		or not lfsr_random.has_method("next_mod")
+	):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "flood-map input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var counter := maxi(map_counter - 1, 0)
+	var counters := {
+		"flood_markers_scanned": 0,
+		"flood_updates": 0,
+		"spread_attempts": 0,
+		"spread_floods": 0,
+		"expired_floods": 0,
+		"random_extinctions": 0,
+		"damaged_structures": 0,
+	}
+	var active := false
+	for x in CityState.MAP_SIZE:
+		for y in CityState.MAP_SIZE:
+			var index := x * CityState.MAP_SIZE + y
+			if payloads.XTXT[index] != 0xfc:
+				continue
+			active = true
+			counters.flood_markers_scanned += 1
+			if counter == 0 and lfsr_random.next_mask(1) != 0:
+				payloads.XTXT[index] = 0
+				counters.expired_floods += 1
+				continue
+			var update := counter > 51
+			if not update:
+				update = random.next_u15() & 3 == 0
+			if not update:
+				continue
+			counters.flood_updates += 1
+			var point := Vector2i(x, y)
+			if counter < 30 and random.next_u15() & 3 == 0:
+				if payloads.XBLD[index] > 0x6f:
+					DisasterMapDamage.burn_structure(
+						city,
+						payloads.ALTM,
+						payloads.XBLD,
+						payloads.XTER,
+						payloads.XZON,
+						payloads.XUND,
+						payloads.XBIT,
+						payloads.XTXT,
+						payloads.XLAB,
+						payloads.XMIC,
+						payloads.MISC,
+						point,
+						random,
+						lfsr_random,
+						false,
+						false
+					)
+					counters.damaged_structures += 1
+				payloads.XTXT[index] = 0
+				counters.random_extinctions += 1
+			if counter > 0:
+				counters.spread_attempts += 1
+				var target: Vector2i = point + CARDINAL_DIRECTIONS[random.next_u15() & 3]
+				if _apply_flood_damage(
+					city,
+					payloads,
+					target,
+					_altitude_word(payloads.ALTM, index) & 0x1f,
+					random,
+					lfsr_random
+				) == 1:
+					counters.spread_floods += 1
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the flood-map tick"}
+	var sound_events: Array[int] = []
+	if active and random.next_u15() & 7 == 0:
+		sound_events.append(SOUND_FLOOD)
+	counters["ok"] = true
+	counters["error"] = ""
+	counters["active"] = active
+	counters["remaining_floods"] = payloads.XTXT.count(0xfc)
+	counters["map_counter"] = counter
+	counters["map_changed"] = map_changed
+	counters["news_items"] = []
+	counters["effect_events"] = []
+	counters["sound_events"] = sound_events
+	counters["view_center_requests"] = []
+	counters["complete"] = true
+	return counters
+
+
 static func _apply_damage(
 	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
 ) -> int:
@@ -138,6 +240,34 @@ static func _apply_damage(
 
 static func _starts_fire(result_code: int) -> bool:
 	return result_code == 1 or result_code == 3 or result_code == 4
+
+
+static func _apply_flood_damage(
+	city: CityState,
+	payloads: Dictionary,
+	point: Vector2i,
+	maximum_altitude: int,
+	random,
+	lfsr_random
+) -> int:
+	return DisasterMapDamage.apply_flood(
+		city,
+		payloads.ALTM,
+		payloads.XBLD,
+		payloads.XTER,
+		payloads.XZON,
+		payloads.XUND,
+		payloads.XBIT,
+		payloads.XTRF,
+		payloads.XTXT,
+		payloads.XLAB,
+		payloads.XMIC,
+		payloads.MISC,
+		point,
+		maximum_altitude,
+		random,
+		lfsr_random
+	)
 
 
 static func _collapse_structure(
@@ -281,3 +411,7 @@ static func _index(point: Vector2i) -> int:
 	if point.x < 0 or point.y < 0 or point.x >= CityState.MAP_SIZE or point.y >= CityState.MAP_SIZE:
 		return -1
 	return point.x * CityState.MAP_SIZE + point.y
+
+
+static func _altitude_word(altitude: PackedByteArray, index: int) -> int:
+	return (altitude[index * 2] << 8) | altitude[index * 2 + 1]

@@ -37,7 +37,8 @@ static func apply(
 		elif overlay < TEXT_LABEL_BASE:
 			burn_structure(
 				city, altitude, buildings, terrain, zones, underground,
-				flags, text, labels, microsims, misc, point, random, lfsr_random, false
+				flags, text, labels, microsims, misc, point, random, lfsr_random,
+				true, false
 			)
 			result_code = 3
 		elif overlay < 241:
@@ -56,6 +57,53 @@ static func apply(
 	return result_code
 
 
+static func apply_flood(
+	city: CityState,
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	traffic: PackedByteArray,
+	text: PackedByteArray,
+	labels: PackedByteArray,
+	microsims: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i,
+	maximum_altitude: int,
+	random,
+	lfsr_random
+) -> int:
+	var index := _index(point)
+	if index < 0 or _altitude_word(altitude, index) & 0x1f > maximum_altitude:
+		return 0
+	if terrain[index] >= 0x10 and terrain[index] <= 0x1f:
+		return 0
+	var overlay := int(text[index])
+	if overlay > 0:
+		if overlay < 51:
+			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
+		elif overlay < TEXT_LABEL_BASE:
+			burn_structure(
+				city, altitude, buildings, terrain, zones, underground,
+				flags, text, labels, microsims, misc, point, random, lfsr_random,
+				false, false
+			)
+		elif overlay < 241:
+			return 0
+		elif overlay < 250:
+			NetworkTiles._replace_building(
+				buildings, zones, misc, index, lfsr_random.next_mod(4) + 1
+			)
+			return 2
+		else:
+			return 0
+	text[index] = 0xfc
+	traffic[int(point.x / 2) * 64 + int(point.y / 2)] = 0
+	return 1
+
+
 static func burn_structure(
 	city: CityState,
 	altitude: PackedByteArray,
@@ -71,6 +119,7 @@ static func burn_structure(
 	point: Vector2i,
 	random,
 	lfsr_random,
+	mark_fire := true,
 	clear_current := true
 ) -> Dictionary:
 	var result := Demolish._demolish_point(
@@ -78,10 +127,10 @@ static func burn_structure(
 		flags, text, labels, microsims, misc, point, random, true, true, false
 	)
 	for index in result.get("indices", PackedInt32Array()):
-		if flags[index] & 0x04 == 0:
+		if mark_fire and flags[index] & 0x04 == 0:
 			text[index] = 0xff
 	var point_index := _index(point)
-	if clear_current and point_index >= 0 and text[point_index] == 0xff:
+	if mark_fire and clear_current and point_index >= 0 and text[point_index] == 0xff:
 		text[point_index] = 0
 		var tile := int(buildings[point_index])
 		if (tile < 0x3f or tile > 0x42) and tile < 0x61:
@@ -89,6 +138,10 @@ static func burn_structure(
 				buildings, zones, misc, point_index, lfsr_random.next_mod(4) + 1
 			)
 	return result
+
+
+static func _altitude_word(altitude: PackedByteArray, index: int) -> int:
+	return (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 
 static func _index(point: Vector2i) -> int:

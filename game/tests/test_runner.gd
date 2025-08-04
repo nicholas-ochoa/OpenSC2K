@@ -2261,6 +2261,47 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"A first-point fire consumes only the two process-random center offsets",
 	)
 
+	var flood_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var flood_terrain := _filled_bytes(CityState.TILE_COUNT, 0)
+	var flood_source := Vector2i(20, 20)
+	flood_terrain[flood_source.x * CityState.MAP_SIZE + flood_source.y] = 0x20
+	_check(
+		flood_document.find_chunk("XTER").set_decoded_payload(flood_terrain)
+		and flood_document.find_chunk("XBIT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and flood_document.find_chunk("XTXT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		),
+		"Flood start fixture installs one shoreline terrain cell",
+	)
+	var flood_city := CityModel.from_document(flood_document)
+	var flood_lfsr := SequenceLfsrRandom.new([])
+	var flood := DisasterStart.start(
+		flood_city,
+		DisasterStart.DISASTER_FLOOD,
+		flood_source,
+		SequenceRandom.new([]),
+		flood_lfsr
+	)
+	_check(
+		flood.ok
+		and flood.started
+		and flood.point == flood_source
+		and flood.map_counter == 60
+		and flood.sound_events == [DisasterStart.SOUND_FLOOD, DisasterStart.SOUND_SIREN]
+		and flood.view_center_requests == [flood_source],
+		"Flood starts on the first shoreline terrain cell and reports its runtime state",
+	)
+	_check(
+		flood_city.text_overlay_id(19, 20) == 0
+		and flood_city.text_overlay_id(20, 19) == 0
+		and flood_city.text_overlay_id(21, 20) == 0xfc
+		and flood_city.text_overlay_id(20, 21) == 0xfc
+		and flood_lfsr.position == 0,
+		"A radius-zero flood preserves the supplied east-and-south seeding asymmetry",
+	)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
@@ -2425,6 +2466,102 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and toxic_tick.toxic_markers == 1
 		and toxic.city.text_overlay_id(20, 20) == DisasterMap.TOXIC_OVERLAY,
 		"A special burning structure can leave the recovered toxic marker",
+	)
+
+	var flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		flood.city.set_text_overlay_id(20, 20, 0xfc)
+		and flood.city.set_building_id(19, 20, 6),
+		"Flood tick fixture installs its source and west target",
+	)
+	var flood_random := SequenceRandom.new([0, 0])
+	var flood_lfsr := SequenceLfsrRandom.new([])
+	var flood_tick := DisasterMap.run_flood(flood.city, flood_random, flood_lfsr, 60)
+	_check(
+		flood_tick.ok
+		and flood_tick.active
+		and flood_tick.map_counter == 59
+		and flood_tick.flood_updates == 1
+		and flood_tick.spread_floods == 1
+		and flood_tick.remaining_floods == 2
+		and flood_tick.sound_events == [DisasterMap.SOUND_FLOOD]
+		and flood.city.text_overlay_id(19, 20) == 0xfc,
+		"An early flood tick spreads west and can request the recovered flood sound",
+	)
+	_check(
+		flood_random.position == 2 and flood_lfsr.position == 0,
+		"An early flood spread preserves its process-random order",
+	)
+
+	var expired_flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		expired_flood.city.set_text_overlay_id(20, 20, 0xfc),
+		"Expired flood fixture installs its marker",
+	)
+	var expired_random := SequenceRandom.new([1])
+	var expired_lfsr := SequenceLfsrRandom.new([1])
+	var expired_tick := DisasterMap.run_flood(
+		expired_flood.city, expired_random, expired_lfsr, 1
+	)
+	var no_flood_tick := DisasterMap.run_flood(
+		expired_flood.city, SequenceRandom.new([]), SequenceLfsrRandom.new([]), 0
+	)
+	_check(
+		expired_tick.ok
+		and expired_tick.active
+		and expired_tick.map_counter == 0
+		and expired_tick.expired_floods == 1
+		and expired_tick.remaining_floods == 0
+		and no_flood_tick.ok
+		and not no_flood_tick.active,
+		"A zero-counter LFSR bit clears flood and the next scan ends it",
+	)
+	_check(
+		expired_random.position == 1 and expired_lfsr.position == 1,
+		"Expired flood consumes its LFSR gate before the final sound gate",
+	)
+
+	var uphill := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		uphill.city.set_text_overlay_id(20, 20, 0xfc)
+		and uphill.city.set_building_id(19, 20, 6)
+		and uphill.city.set_land_altitude(20, 20, 0)
+		and uphill.city.set_land_altitude(19, 20, 1),
+		"Uphill flood fixture raises the west target",
+	)
+	var uphill_tick := DisasterMap.run_flood(
+		uphill.city, SequenceRandom.new([0, 1]), SequenceLfsrRandom.new([]), 60
+	)
+	_check(
+		uphill_tick.ok
+		and uphill_tick.spread_attempts == 1
+		and uphill_tick.spread_floods == 0
+		and uphill.city.text_overlay_id(19, 20) == 0,
+		"Flood cannot spread to a higher low-five-bit altitude",
+	)
+
+	var manual_flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 0)
+	var shoreline := _filled_bytes(CityState.TILE_COUNT, 0)
+	shoreline[20 * CityState.MAP_SIZE + 20] = 0x20
+	_check(
+		manual_flood.city.set_text_overlay_id(20, 20, 0)
+		and manual_flood.document.find_chunk("XTER").set_decoded_payload(shoreline),
+		"Manual flood fixture installs a clear shoreline point",
+	)
+	var flood_engine := Simulation.new(manual_flood.city, 1, 7, 13)
+	var manual_flood_start := flood_engine.start_disaster(
+		DisasterStart.DISASTER_FLOOD, Vector2i(20, 20)
+	)
+	var manual_flood_tick := flood_engine.advance_disaster_tick()
+	_check(
+		manual_flood_start.ok
+		and manual_flood_start.started
+		and flood_engine.active_disaster_type == DisasterStart.DISASTER_FLOOD
+		and manual_flood_tick.ok
+		and manual_flood_tick.active
+		and manual_flood_tick.map_counter == 59
+		and flood_engine.disaster_map_counter == 59,
+		"The engine keeps the flood lifetime counter from start through recurring ticks",
 	)
 
 	var engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), 6, true)
