@@ -47,8 +47,8 @@ const TERRAIN_BLOCKS_DIRECTION := [
 	false, false, false, false,
 	false, false, false, false,
 	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
+	true, false, true, false,
+	true, false, true, false,
 ]
 const GRADED_TERRAIN := [
 	0, 0, 1, 0,
