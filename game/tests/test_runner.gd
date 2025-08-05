@@ -2617,6 +2617,110 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Toxic abandonment consumes the normal building-selection random value",
 	)
 
+	var idle_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		idle_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_REVERSE),
+		"Idle riot fixture installs its reverse marker",
+	)
+	var idle_riot_random := SequenceRandom.new([0, 1, 4, 0])
+	var idle_riot_tick := DisasterMap.run_riot(
+		idle_riot.city, idle_riot_random, SequenceLfsrRandom.new([])
+	)
+	_check(
+		idle_riot_tick.ok
+		and idle_riot_tick.active
+		and idle_riot_tick.riot_updates == 1
+		and idle_riot_tick.remaining_riots == 1
+		and idle_riot_tick.sound_events == [DisasterMap.SOUND_RIOT]
+		and idle_riot.city.text_overlay_id(20, 20) == DisasterMap.RIOT_OVERLAY_FORWARD,
+		"An unsupported reverse riot changes to the forward phase and can request sound",
+	)
+	_check(
+		idle_riot_random.position == 4,
+		"An unsupported riot consumes its two gates, damage choice, and final sound gate",
+	)
+
+	var water_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), 6, true)
+	_check(
+		water_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_FORWARD),
+		"Water riot fixture installs its forward marker",
+	)
+	var water_riot_random := SequenceRandom.new([0, 1, 1])
+	var water_riot_tick := DisasterMap.run_riot(
+		water_riot.city, water_riot_random, SequenceLfsrRandom.new([])
+	)
+	_check(
+		water_riot_tick.ok
+		and water_riot_tick.expired_riots == 1
+		and water_riot_tick.remaining_riots == 0
+		and water_riot_random.position == 3,
+		"An updating riot expires on water after its second process-random gate",
+	)
+
+	var reverse_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		reverse_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_REVERSE)
+		and reverse_riot.city.set_building_id(19, 20, 0x1e),
+		"Reverse riot fixture adds a supported west road",
+	)
+	var reverse_riot_random := SequenceRandom.new([0, 1, 4, 1, 1])
+	var reverse_riot_tick := DisasterMap.run_riot(
+		reverse_riot.city, reverse_riot_random, SequenceLfsrRandom.new([])
+	)
+	_check(
+		reverse_riot_tick.ok
+		and reverse_riot_tick.propagated_riots == 1
+		and reverse_riot.city.text_overlay_id(20, 20) == 0
+		and reverse_riot.city.text_overlay_id(19, 20) == DisasterMap.RIOT_OVERLAY_REVERSE,
+		"A reverse riot propagates west along a supported network tile",
+	)
+	_check(
+		reverse_riot_random.position == 5,
+		"A one-connection reverse riot skips the connection-choice random value",
+	)
+
+	var forward_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		forward_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_FORWARD)
+		and forward_riot.city.set_building_id(21, 20, 0x3f),
+		"Forward riot fixture adds a supported east rail tile",
+	)
+	var forward_riot_random := SequenceRandom.new([0, 1, 4, 1, 1, 1])
+	var forward_riot_tick := DisasterMap.run_riot(
+		forward_riot.city, forward_riot_random, SequenceLfsrRandom.new([])
+	)
+	_check(
+		forward_riot_tick.ok
+		and forward_riot_tick.riot_markers_scanned == 2
+		and forward_riot_tick.riot_updates == 1
+		and forward_riot_tick.propagated_riots == 1
+		and forward_riot.city.text_overlay_id(21, 20) == DisasterMap.RIOT_OVERLAY_FORWARD,
+		"A forward riot propagates east and receives a second scan gate later in the pass",
+	)
+	_check(
+		forward_riot_random.position == 6,
+		"Forward riot reprocessing preserves the native in-place random order",
+	)
+
+	var damaging_riot := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		damaging_riot.city.set_text_overlay_id(20, 20, DisasterMap.RIOT_OVERLAY_REVERSE)
+		and damaging_riot.city.set_building_id(19, 20, 6),
+		"Riot damage fixture adds a combustible west target",
+	)
+	var damaging_riot_tick := DisasterMap.run_riot(
+		damaging_riot.city,
+		SequenceRandom.new([0, 1, 0, 1]),
+		SequenceLfsrRandom.new([]),
+	)
+	_check(
+		damaging_riot_tick.ok
+		and damaging_riot_tick.damage_attempts == 1
+		and damaging_riot_tick.started_fires == 1
+		and damaging_riot.city.text_overlay_id(19, 20) == DisasterMap.FIRE_OVERLAY,
+		"A low riot damage choice starts fire through the shared disaster helper",
+	)
+
 	var flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
 	_check(
 		flood.city.set_text_overlay_id(20, 20, 0xfc)

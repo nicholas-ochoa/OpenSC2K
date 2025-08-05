@@ -6,8 +6,11 @@ const Demolish = preload("res://src/tools/demolish_command.gd")
 const Growth = preload("res://src/simulation/growth_phase.gd")
 const FIRE_OVERLAY := 0xff
 const TOXIC_OVERLAY := 0xfb
+const RIOT_OVERLAY_FORWARD := 0xfd
+const RIOT_OVERLAY_REVERSE := 0xfe
 const SOUND_FIRE := 0x1fb
 const SOUND_FLOOD := 0x1ff
+const SOUND_RIOT := 0x200
 const TYPE_EXPLOSION := 6
 const TEXT_THING_BASE := 201
 const SPECIAL_TOXIC_BUILDINGS := {0x85: true, 0x9f: true, 0xbc: true}
@@ -285,6 +288,113 @@ static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
 	return counters
 
 
+static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if (
+		lfsr_random == null
+		or not lfsr_random.has_method("next_mask")
+		or not lfsr_random.has_method("next_mod")
+	):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "riot-map input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var counters := {
+		"riot_markers_scanned": 0,
+		"riot_updates": 0,
+		"expired_riots": 0,
+		"damage_attempts": 0,
+		"started_fires": 0,
+		"traffic_cells_cleared": 0,
+		"propagated_riots": 0,
+		"blocked_propagations": 0,
+	}
+	var active := false
+	for x in CityState.MAP_SIZE:
+		for y in CityState.MAP_SIZE:
+			var index := x * CityState.MAP_SIZE + y
+			var marker := int(payloads.XTXT[index])
+			if marker != RIOT_OVERLAY_FORWARD and marker != RIOT_OVERLAY_REVERSE:
+				continue
+			active = true
+			counters.riot_markers_scanned += 1
+			if random.next_u15() & 3 != 0:
+				continue
+			counters.riot_updates += 1
+			if random.next_u15() & 0xff == 0 or payloads.XBIT[index] & 0x04 != 0:
+				payloads.XTXT[index] = 0
+				counters.expired_riots += 1
+				continue
+			var traffic_index := int(x / 2) * 64 + int(y / 2)
+			if payloads.XTRF[traffic_index] != 0:
+				counters.traffic_cells_cleared += 1
+			payloads.XTRF[traffic_index] = 0
+			var damage_direction: int = random.next_u15() & 0x7f
+			if damage_direction < 4:
+				counters.damage_attempts += 1
+				if _starts_fire(
+					_apply_damage(
+						city,
+						payloads,
+						Vector2i(x, y) + CARDINAL_DIRECTIONS[damage_direction],
+						random,
+						lfsr_random,
+					)
+				):
+					counters.started_fires += 1
+			var first_direction: int = 0 if marker == RIOT_OVERLAY_REVERSE else 2
+			var second_direction: int = 1 if marker == RIOT_OVERLAY_REVERSE else 3
+			var connections := 0
+			if _riot_supports(payloads.XBLD, Vector2i(x, y) + CARDINAL_DIRECTIONS[first_direction]):
+				connections |= 1
+			if _riot_supports(payloads.XBLD, Vector2i(x, y) + CARDINAL_DIRECTIONS[second_direction]):
+				connections |= 2
+			var opposite_marker: int = (
+				RIOT_OVERLAY_FORWARD
+				if marker == RIOT_OVERLAY_REVERSE
+				else RIOT_OVERLAY_REVERSE
+			)
+			if connections == 0:
+				payloads.XTXT[index] = opposite_marker
+				continue
+			payloads.XTXT[index] = opposite_marker if random.next_u15() & 7 == 0 else 0
+			if connections == 3:
+				connections = (random.next_u15() & 1) + 1
+			var spread_direction: int = first_direction if connections == 1 else second_direction
+			if _place_riot_marker(
+				payloads.XTXT,
+				Vector2i(x, y) + CARDINAL_DIRECTIONS[spread_direction],
+				marker,
+			):
+				counters.propagated_riots += 1
+			else:
+				counters.blocked_propagations += 1
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the riot-map tick"}
+	var sound_events: Array[int] = []
+	if active and random.next_u15() & 7 == 0:
+		sound_events.append(SOUND_RIOT)
+	counters["ok"] = true
+	counters["error"] = ""
+	counters["active"] = active
+	counters["remaining_riots"] = (
+		payloads.XTXT.count(RIOT_OVERLAY_FORWARD)
+		+ payloads.XTXT.count(RIOT_OVERLAY_REVERSE)
+	)
+	counters["map_changed"] = map_changed
+	counters["news_items"] = []
+	counters["effect_events"] = []
+	counters["sound_events"] = sound_events
+	counters["view_center_requests"] = []
+	counters["complete"] = true
+	return counters
+
+
 static func _apply_damage(
 	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
 ) -> int:
@@ -432,6 +542,31 @@ static func _place_toxic_marker(text: PackedByteArray, point: Vector2i) -> bool:
 	if index < 0 or text[index] >= 51:
 		return false
 	text[index] = TOXIC_OVERLAY
+	return true
+
+
+static func _riot_supports(buildings: PackedByteArray, point: Vector2i) -> bool:
+	var index := _index(point)
+	if index < 0:
+		return false
+	var tile := int(buildings[index])
+	return (
+		(tile > 0 and tile < 5)
+		or (tile > 0x1d and tile < 0x2c)
+		or (tile > 0x3e and tile < 0x47)
+		or tile == 0x4b
+		or tile == 0x4c
+		or (tile > 0x5c and tile < 0x61)
+	)
+
+
+static func _place_riot_marker(
+	text: PackedByteArray, point: Vector2i, marker: int
+) -> bool:
+	var index := _index(point)
+	if index < 0 or text[index] >= 51:
+		return false
+	text[index] = marker
 	return true
 
 
