@@ -3,6 +3,7 @@ extends RefCounted
 
 const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
+const Growth = preload("res://src/simulation/growth_phase.gd")
 const FIRE_OVERLAY := 0xff
 const TOXIC_OVERLAY := 0xfb
 const SOUND_FIRE := 0x1fb
@@ -21,6 +22,7 @@ const MAP_CHUNK_SIZES := {
 	"XUND": CityState.TILE_COUNT,
 	"XBIT": CityState.TILE_COUNT,
 	"XTRF": 64 * 64,
+	"XVAL": 64 * 64,
 	"XTXT": CityState.TILE_COUNT,
 	"XLAB": CityState.LABEL_COUNT * CityState.LABEL_RECORD_SIZE,
 	"XMIC": CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE,
@@ -216,6 +218,73 @@ static func run_flood(
 	return counters
 
 
+static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "toxic-map input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var counters := {
+		"toxic_markers_scanned": 0,
+		"toxic_updates": 0,
+		"lfsr_expirations": 0,
+		"water_expirations": 0,
+		"moved_markers": 0,
+		"blocked_moves": 0,
+		"abandoned_structures": 0,
+	}
+	var active := false
+	for x in CityState.MAP_SIZE:
+		for y in CityState.MAP_SIZE:
+			var index := x * CityState.MAP_SIZE + y
+			if payloads.XTXT[index] != TOXIC_OVERLAY:
+				continue
+			active = true
+			counters.toxic_markers_scanned += 1
+			if random.next_u15() & 1 != 0:
+				continue
+			counters.toxic_updates += 1
+			if lfsr_random.next_mask(0x3f) == 0:
+				payloads.XTXT[index] = 0
+				counters.lfsr_expirations += 1
+				continue
+			if payloads.XBIT[index] & 0x04 != 0 and random.next_u15() & 0x0f == 0:
+				payloads.XTXT[index] = 0
+				counters.water_expirations += 1
+				continue
+			var point := Vector2i(x, y)
+			if _abandon_toxic_structure(city, payloads, point, random):
+				counters.abandoned_structures += 1
+			var direction := _lowest_toxic_direction(payloads.ALTM, point)
+			if direction < 0:
+				direction = random.next_u15() & 3
+			payloads.XTXT[index] = 0
+			var target: Vector2i = point + CARDINAL_DIRECTIONS[direction]
+			if _place_toxic_marker(payloads.XTXT, target):
+				counters.moved_markers += 1
+			else:
+				counters.blocked_moves += 1
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the toxic-map tick"}
+	counters["ok"] = true
+	counters["error"] = ""
+	counters["active"] = active
+	counters["remaining_toxic"] = payloads.XTXT.count(TOXIC_OVERLAY)
+	counters["map_changed"] = map_changed
+	counters["news_items"] = []
+	counters["effect_events"] = []
+	counters["sound_events"] = []
+	counters["view_center_requests"] = []
+	counters["complete"] = true
+	return counters
+
+
 static func _apply_damage(
 	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
 ) -> int:
@@ -303,6 +372,67 @@ static func _building_site(
 	return Demolish._find_building_site(
 		payloads.XBLD, payloads.XZON, point, tile, area, city.compass_rotation()
 	)
+
+
+static func _abandon_toxic_structure(
+	city: CityState, payloads: Dictionary, point: Vector2i, random
+) -> bool:
+	var index := _index(point)
+	var tile := int(payloads.XBLD[index])
+	if tile < 0x70 or tile > 0xc5 or _is_construction_or_abandoned(tile):
+		return false
+	var area: int = Demolish._building_area(tile)
+	var site := Demolish._find_building_site(
+		payloads.XBLD, payloads.XZON, point, tile, area, city.compass_rotation()
+	)
+	if site.size == Vector2i.ZERO:
+		return false
+	var anchor := Vector2i(site.position.x, site.end.y - 1)
+	Growth._abandon(
+		payloads.XBLD,
+		payloads.XZON,
+		payloads.XBIT,
+		payloads.MISC,
+		anchor,
+		4 if area == 3 else area,
+		0,
+		random,
+		city.compass_rotation(),
+		payloads.XVAL,
+	)
+	return payloads.XBLD[index] != tile
+
+
+static func _is_construction_or_abandoned(tile: int) -> bool:
+	return (
+		(tile >= 0x88 and tile <= 0x8b)
+		or (tile >= 0xa6 and tile <= 0xad)
+		or (tile >= 0xc2 and tile <= 0xc5)
+	)
+
+
+static func _lowest_toxic_direction(altitude: PackedByteArray, point: Vector2i) -> int:
+	var point_index := _index(point)
+	var lowest := _altitude_word(altitude, point_index) & 0x1f
+	var direction := -1
+	for checked_direction in CARDINAL_DIRECTIONS.size():
+		var target: Vector2i = point + CARDINAL_DIRECTIONS[checked_direction]
+		var target_index := _index(target)
+		if target_index < 0:
+			continue
+		var target_height := _altitude_word(altitude, target_index) & 0x1f
+		if target_height < lowest:
+			lowest = target_height
+			direction = checked_direction
+	return direction
+
+
+static func _place_toxic_marker(text: PackedByteArray, point: Vector2i) -> bool:
+	var index := _index(point)
+	if index < 0 or text[index] >= 51:
+		return false
+	text[index] = TOXIC_OVERLAY
+	return true
 
 
 static func _seed_special_toxic(

@@ -2493,6 +2493,130 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"A special burning structure can leave the recovered toxic marker",
 	)
 
+	var expired_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		expired_toxic.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY),
+		"Toxic expiry fixture installs its marker",
+	)
+	var toxic_expiry_random := SequenceRandom.new([0])
+	var toxic_expiry_lfsr := SequenceLfsrRandom.new([0])
+	var toxic_expiry := DisasterMap.run_toxic(
+		expired_toxic.city, toxic_expiry_random, toxic_expiry_lfsr
+	)
+	_check(
+		toxic_expiry.ok
+		and toxic_expiry.active
+		and toxic_expiry.lfsr_expirations == 1
+		and toxic_expiry.remaining_toxic == 0
+		and expired_toxic.city.text_overlay_id(20, 20) == 0,
+		"A selected toxic marker expires on the one-in-64 LFSR gate",
+	)
+	_check(
+		toxic_expiry_random.position == 1 and toxic_expiry_lfsr.position == 1,
+		"Toxic LFSR expiry consumes no later process-random value",
+	)
+
+	var water_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 6, true)
+	_check(
+		water_toxic.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY),
+		"Water toxic fixture installs its marker",
+	)
+	var water_toxic_random := SequenceRandom.new([0, 0])
+	var water_toxic_lfsr := SequenceLfsrRandom.new([1])
+	var water_toxic_tick := DisasterMap.run_toxic(
+		water_toxic.city, water_toxic_random, water_toxic_lfsr
+	)
+	_check(
+		water_toxic_tick.ok
+		and water_toxic_tick.water_expirations == 1
+		and water_toxic_tick.remaining_toxic == 0
+		and water_toxic_random.position == 2
+		and water_toxic_lfsr.position == 1,
+		"A selected toxic marker on water has the recovered one-in-16 expiry gate",
+	)
+
+	var downhill_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		downhill_toxic.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY)
+		and downhill_toxic.city.set_land_altitude(20, 20, 5)
+		and downhill_toxic.city.set_land_altitude(19, 20, 3)
+		and downhill_toxic.city.set_land_altitude(20, 19, 6)
+		and downhill_toxic.city.set_land_altitude(21, 20, 6)
+		and downhill_toxic.city.set_land_altitude(20, 21, 6),
+		"Downhill toxic fixture sets one lower neighbor",
+	)
+	var downhill_random := SequenceRandom.new([0])
+	var downhill_lfsr := SequenceLfsrRandom.new([1])
+	var downhill_tick := DisasterMap.run_toxic(
+		downhill_toxic.city, downhill_random, downhill_lfsr
+	)
+	_check(
+		downhill_tick.ok
+		and downhill_tick.moved_markers == 1
+		and downhill_tick.remaining_toxic == 1
+		and downhill_toxic.city.text_overlay_id(20, 20) == 0
+		and downhill_toxic.city.text_overlay_id(19, 20) == DisasterMap.TOXIC_OVERLAY,
+		"A toxic marker moves to its first strictly lower cardinal neighbor",
+	)
+	_check(
+		downhill_random.position == 1 and downhill_lfsr.position == 1,
+		"A downhill toxic move does not consume a fallback direction value",
+	)
+
+	var flat_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		flat_toxic.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY)
+		and flat_toxic.city.set_land_altitude(20, 20, 5)
+		and flat_toxic.city.set_land_altitude(19, 20, 5)
+		and flat_toxic.city.set_land_altitude(20, 19, 5)
+		and flat_toxic.city.set_land_altitude(21, 20, 5)
+		and flat_toxic.city.set_land_altitude(20, 21, 5),
+		"Flat toxic fixture levels all cardinal neighbors",
+	)
+	var flat_random := SequenceRandom.new([0, 2, 1])
+	var flat_lfsr := SequenceLfsrRandom.new([1])
+	var flat_tick := DisasterMap.run_toxic(flat_toxic.city, flat_random, flat_lfsr)
+	_check(
+		flat_tick.ok
+		and flat_tick.toxic_markers_scanned == 2
+		and flat_tick.toxic_updates == 1
+		and flat_tick.moved_markers == 1
+		and flat_toxic.city.text_overlay_id(21, 20) == DisasterMap.TOXIC_OVERLAY,
+		"A flat toxic marker uses the process-random cardinal direction",
+	)
+	_check(
+		flat_random.position == 3 and flat_lfsr.position == 1,
+		"A marker that moves later in scan order receives its native second scan gate",
+	)
+
+	var abandoned_toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x70)
+	_check(
+		abandoned_toxic.city.set_zone_id(20, 20, 1)
+		and abandoned_toxic.city.set_building_corners(20, 20, 0xf0)
+		and abandoned_toxic.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY)
+		and abandoned_toxic.city.set_land_altitude(20, 20, 5)
+		and abandoned_toxic.city.set_land_altitude(19, 20, 3)
+		and abandoned_toxic.city.set_land_altitude(20, 19, 6)
+		and abandoned_toxic.city.set_land_altitude(21, 20, 6)
+		and abandoned_toxic.city.set_land_altitude(20, 21, 6),
+		"Toxic abandonment fixture installs a normal residential building",
+	)
+	var abandon_random := SequenceRandom.new([0, 1])
+	var abandon_tick := DisasterMap.run_toxic(
+		abandoned_toxic.city, abandon_random, SequenceLfsrRandom.new([1])
+	)
+	_check(
+		abandon_tick.ok
+		and abandon_tick.abandoned_structures == 1
+		and abandoned_toxic.city.building_id(20, 20) == 0x8b
+		and abandoned_toxic.city.zone_id(20, 20) == 1,
+		"A toxic cloud changes a normal RCI building to its abandoned class before moving",
+	)
+	_check(
+		abandon_random.position == 2,
+		"Toxic abandonment consumes the normal building-selection random value",
+	)
+
 	var flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
 	_check(
 		flood.city.set_text_overlay_id(20, 20, 0xfc)
@@ -2605,6 +2729,27 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and engine_fixture.city.city_mode() == 1,
 		"The engine runs fire-map ticks and restores city mode one scan after the last fire: %s %s %d %d"
 		% [active_tick, ended_tick, engine.active_disaster_type, engine_fixture.city.city_mode()],
+	)
+
+	var toxic_engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		toxic_engine_fixture.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY)
+		and toxic_engine_fixture.document.set_misc_u32(0x0004, 2),
+		"Toxic engine fixture selects disaster mode and installs its marker",
+	)
+	var toxic_engine := Simulation.new(toxic_engine_fixture.city, 0, 0, 13)
+	toxic_engine.active_disaster_type = DisasterStart.DISASTER_FIRE
+	var active_toxic_tick := toxic_engine.advance_disaster_tick()
+	var ended_toxic_tick := toxic_engine.advance_disaster_tick()
+	_check(
+		active_toxic_tick.ok
+		and active_toxic_tick.active
+		and active_toxic_tick.lfsr_expirations == 1
+		and ended_toxic_tick.ok
+		and ended_toxic_tick.complete
+		and toxic_engine.active_disaster_type == 0
+		and toxic_engine_fixture.city.city_mode() == 1,
+		"The engine continues a map disaster through toxic residue and ends one scan later",
 	)
 
 	var manual := _fire_map_fixture(reference_root, Vector2i(20, 20), 0)

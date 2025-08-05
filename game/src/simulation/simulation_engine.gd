@@ -169,6 +169,10 @@ func advance_disaster_tick() -> Dictionary:
 		phase_result = DisasterMap.run_fire(city, random, lfsr_random)
 		if not phase_result.get("ok", false):
 			return phase_result
+		if not phase_result.get("active", false):
+			phase_result = DisasterMap.run_toxic(city, random, lfsr_random)
+			if not phase_result.get("ok", false):
+				return phase_result
 	elif active_disaster_type == DisasterStartPhase.DISASTER_FLOOD:
 		phase_result = DisasterMap.run_flood(
 			city, random, lfsr_random, disaster_map_counter
@@ -176,6 +180,10 @@ func advance_disaster_tick() -> Dictionary:
 		if not phase_result.get("ok", false):
 			return phase_result
 		disaster_map_counter = int(phase_result.get("map_counter", disaster_map_counter))
+		if not phase_result.get("active", false):
+			phase_result = DisasterMap.run_toxic(city, random, lfsr_random)
+			if not phase_result.get("ok", false):
+				return phase_result
 	var still_active: bool = phase_result.active
 	var ended_type := 0
 	if not still_active:
