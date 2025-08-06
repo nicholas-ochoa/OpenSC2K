@@ -304,13 +304,13 @@ func _build_interface(toolbar_art: Image) -> void:
 		["Mass Riots", 13], ["Mass Floods", 14], ["Pollution", 15],
 		["Hurricane", 16], ["Helicopter Crash", 17], ["Plane Crash", 18],
 	], _on_disaster_menu)
-	var implemented_disasters := {1: true, 2: true, 7: true, 8: true}
+	var implemented_disasters := {1: true, 2: true, 4: true, 7: true, 8: true}
 	for item_index in disasters_menu.get_popup().item_count:
 		var disaster_id := disasters_menu.get_popup().get_item_id(item_index)
 		disasters_menu.get_popup().set_item_disabled(
 			item_index, not implemented_disasters.has(disaster_id)
 		)
-	disasters_menu.tooltip_text = "Fire, Flood, Tornado, and Monster are available."
+	disasters_menu.tooltip_text = "Fire, Flood, Toxic Spill, Tornado, and Monster are available."
 	_add_menu(menu_row, "Windows", [["Budget", 0]], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
@@ -829,6 +829,7 @@ func _on_disaster_menu(id: int) -> void:
 	var disaster_name: String = {
 		DisasterStart.DISASTER_FIRE: "Fire",
 		DisasterStart.DISASTER_FLOOD: "Flood",
+		DisasterStart.DISASTER_TOXIC_SPILL: "Toxic Spill",
 		DisasterStart.DISASTER_TORNADO: "Tornado",
 		DisasterStart.DISASTER_MONSTER: "Monster",
 	}.get(id, "Disaster")

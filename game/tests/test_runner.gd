@@ -2327,6 +2327,42 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"A radius-zero flood preserves the supplied east-and-south seeding asymmetry",
 	)
 
+	var toxic_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(
+		toxic_document.find_chunk("XTXT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		),
+		"Toxic-spill start fixture clears XTXT",
+	)
+	var toxic_city := CityModel.from_document(toxic_document)
+	var toxic_point := Vector2i(30, 31)
+	var toxic_start := DisasterStart.start(
+		toxic_city,
+		DisasterStart.DISASTER_TOXIC_SPILL,
+		toxic_point,
+		SequenceRandom.new([]),
+	)
+	_check(
+		toxic_start.ok
+		and toxic_start.started
+		and toxic_start.complete
+		and toxic_start.point == toxic_point
+		and toxic_start.sound_events == [DisasterStart.SOUND_SIREN]
+		and toxic_start.view_center_requests == [toxic_point]
+		and toxic_city.text_overlay_id(toxic_point.x, toxic_point.y) == DisasterMap.TOXIC_OVERLAY,
+		"Toxic Spill writes XTXT 0xFB directly at the requested point",
+	)
+	var outside_toxic := DisasterStart.start(
+		toxic_city,
+		DisasterStart.DISASTER_TOXIC_SPILL,
+		Vector2i(-1, 31),
+		SequenceRandom.new([]),
+	)
+	_check(
+		outside_toxic.ok and not outside_toxic.started and outside_toxic.complete,
+		"Toxic Spill rejects an out-of-map compatibility API point",
+	)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
@@ -2973,6 +3009,30 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and toxic_engine.active_disaster_type == 0
 		and toxic_engine_fixture.city.city_mode() == 1,
 		"The engine continues a map disaster through toxic residue and ends one scan later",
+	)
+
+	var toxic_spill_fixture := _fire_map_fixture(reference_root, Vector2i(24, 25), 0)
+	_check(
+		toxic_spill_fixture.city.set_text_overlay_id(24, 25, 0),
+		"Toxic Spill engine fixture clears its target",
+	)
+	var toxic_spill_engine := Simulation.new(toxic_spill_fixture.city, 0, 0, 13)
+	var toxic_spill_start := toxic_spill_engine.start_disaster(
+		DisasterStart.DISASTER_TOXIC_SPILL, Vector2i(24, 25)
+	)
+	var toxic_spill_tick := toxic_spill_engine.advance_disaster_tick()
+	var toxic_spill_end := toxic_spill_engine.advance_disaster_tick()
+	_check(
+		toxic_spill_start.ok
+		and toxic_spill_start.started
+		and toxic_spill_engine.active_disaster_type == 0
+		and toxic_spill_tick.ok
+		and toxic_spill_tick.active
+		and toxic_spill_tick.lfsr_expirations == 1
+		and toxic_spill_end.ok
+		and toxic_spill_end.complete
+		and toxic_spill_fixture.city.city_mode() == 1,
+		"Toxic Spill enters disaster mode, runs its map branch, and restores city mode",
 	)
 
 	var manual := _fire_map_fixture(reference_root, Vector2i(20, 20), 0)

@@ -5,6 +5,7 @@ const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
 const DISASTER_NONE := 0
 const DISASTER_FIRE := 1
 const DISASTER_FLOOD := 2
+const DISASTER_TOXIC_SPILL := 4
 const DISASTER_TORNADO := 7
 const DISASTER_MONSTER := 8
 const TYPE_MONSTER := 5
@@ -42,6 +43,8 @@ static func start(
 		return _start_fire(city, random, lfsr_random)
 	if disaster_type == DISASTER_FLOOD:
 		return _start_flood(city, point, lfsr_random)
+	if disaster_type == DISASTER_TOXIC_SPILL:
+		return _start_toxic_spill(city, point)
 	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
 		return _result(disaster_type, point, false, false, 0)
 	if random == null or not random.has_method("next_u15"):
@@ -170,6 +173,21 @@ static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random
 			payloads.XTXT[_index(point)] = 0xfc
 			return _store_flood(city, original, payloads, point)
 	return _flood_result(requested_point, false)
+
+
+static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
+	var index := _index(point)
+	if index < 0:
+		return _result(DISASTER_TOXIC_SPILL, point, false, true, 0)
+	var text_chunk := city.document.find_chunk("XTXT")
+	if text_chunk == null or text_chunk.decoded_payload.size() != CityState.TILE_COUNT:
+		return {"ok": false, "error": "toxic-spill map data is missing or invalid"}
+	var text: PackedByteArray = text_chunk.decoded_payload.duplicate()
+	text[index] = 0xfb
+	if not text_chunk.set_decoded_payload(text):
+		return {"ok": false, "error": "cannot store the toxic spill"}
+	city.text_overlays = text.duplicate()
+	return _result(DISASTER_TOXIC_SPILL, point, true, true, 0)
 
 
 static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i) -> void:
