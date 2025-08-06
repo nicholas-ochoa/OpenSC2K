@@ -184,6 +184,13 @@ func advance_disaster_tick() -> Dictionary:
 			phase_result = DisasterMap.run_toxic(city, random, lfsr_random)
 			if not phase_result.get("ok", false):
 				return phase_result
+	var dispatch_result := DisasterMap.run_dispatch(city, random, lfsr_random)
+	if not dispatch_result.get("ok", false):
+		return dispatch_result
+	phase_result["dispatch_map"] = dispatch_result
+	phase_result["map_changed"] = bool(phase_result.get("map_changed", false)) or bool(
+		dispatch_result.get("map_changed", false)
+	)
 	var still_active: bool = phase_result.active
 	var ended_type := 0
 	if not still_active:

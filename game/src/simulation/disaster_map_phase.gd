@@ -4,6 +4,7 @@ extends RefCounted
 const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
 const Growth = preload("res://src/simulation/growth_phase.gd")
+const NetworkTiles = preload("res://src/tools/network_command.gd")
 const FIRE_OVERLAY := 0xff
 const TOXIC_OVERLAY := 0xfb
 const RIOT_OVERLAY_FORWARD := 0xfd
@@ -12,6 +13,9 @@ const SOUND_FIRE := 0x1fb
 const SOUND_FLOOD := 0x1ff
 const SOUND_RIOT := 0x200
 const TYPE_EXPLOSION := 6
+const TYPE_POLICE := 7
+const TYPE_FIRE_DISPATCH := 8
+const TYPE_MILITARY := 14
 const TEXT_THING_BASE := 201
 const SPECIAL_TOXIC_BUILDINGS := {0x85: true, 0x9f: true, 0xbc: true}
 const CARDINAL_DIRECTIONS := [
@@ -395,6 +399,69 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 	return counters
 
 
+static func run_dispatch(city: CityState, random, lfsr_random) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if (
+		lfsr_random == null
+		or not lfsr_random.has_method("next_mask")
+		or not lfsr_random.has_method("next_mod")
+	):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "dispatch-map input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var counters := {
+		"dispatch_markers_scanned": 0,
+		"fire_suppression_attempts": 0,
+		"fire_extinctions": 0,
+		"riot_suppression_attempts": 0,
+		"riot_suppressions": 0,
+	}
+	for x in CityState.MAP_SIZE:
+		for y in CityState.MAP_SIZE:
+			var index := x * CityState.MAP_SIZE + y
+			var overlay := int(payloads.XTXT[index])
+			if overlay <= 200 or overlay >= 241:
+				continue
+			var record := overlay - TEXT_THING_BASE
+			var thing_type := int(payloads.XTHG[record * CityState.THING_RECORD_SIZE])
+			counters.dispatch_markers_scanned += 1
+			var suppresses_fire := thing_type == TYPE_FIRE_DISPATCH or thing_type == TYPE_MILITARY
+			if thing_type == TYPE_POLICE:
+				suppresses_fire = lfsr_random.next_mask(0x0f) == 0
+			if suppresses_fire:
+				counters.fire_suppression_attempts += 1
+				var fire_target: Vector2i = (
+					Vector2i(x, y) + CARDINAL_DIRECTIONS[random.next_u15() & 3]
+				)
+				if _extinguish_dispatch_fire(city, payloads, fire_target, random, lfsr_random):
+					counters.fire_extinctions += 1
+			if thing_type == TYPE_POLICE or thing_type == TYPE_MILITARY:
+				counters.riot_suppression_attempts += 1
+				var riot_target: Vector2i = (
+					Vector2i(x, y) + CARDINAL_DIRECTIONS[random.next_u15() & 3]
+				)
+				if _clear_riot_marker(payloads.XTXT, riot_target):
+					counters.riot_suppressions += 1
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the dispatch-map tick"}
+	counters["ok"] = true
+	counters["error"] = ""
+	counters["active"] = false
+	counters["map_changed"] = map_changed
+	counters["news_items"] = []
+	counters["effect_events"] = []
+	counters["sound_events"] = []
+	counters["view_center_requests"] = []
+	counters["complete"] = true
+	return counters
+
+
 static func _apply_damage(
 	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
 ) -> int:
@@ -567,6 +634,71 @@ static func _place_riot_marker(
 	if index < 0 or text[index] >= 51:
 		return false
 	text[index] = marker
+	return true
+
+
+static func _extinguish_dispatch_fire(
+	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
+) -> bool:
+	var index := _index(point)
+	if index < 0 or payloads.XTXT[index] != FIRE_OVERLAY:
+		return false
+	payloads.XTXT[index] = 0
+	var tile := int(payloads.XBLD[index])
+	if tile >= 0x3f and tile <= 0x42:
+		return true
+	if tile < 0x61:
+		Demolish._demolish_point(
+			city,
+			payloads.ALTM,
+			payloads.XBLD,
+			payloads.XTER,
+			payloads.XZON,
+			payloads.XUND,
+			payloads.XBIT,
+			payloads.XTXT,
+			payloads.XLAB,
+			payloads.XMIC,
+			payloads.MISC,
+			point,
+			random,
+			true,
+			true,
+			false,
+		)
+		NetworkTiles._replace_building(
+			payloads.XBLD, payloads.XZON, payloads.MISC, index, lfsr_random.next_mod(4) + 1
+		)
+	elif payloads.XBIT[index] & 0xf0 == 0xf0:
+		Demolish._demolish_point(
+			city,
+			payloads.ALTM,
+			payloads.XBLD,
+			payloads.XTER,
+			payloads.XZON,
+			payloads.XUND,
+			payloads.XBIT,
+			payloads.XTXT,
+			payloads.XLAB,
+			payloads.XMIC,
+			payloads.MISC,
+			point,
+			random,
+			true,
+			true,
+			false,
+		)
+	return true
+
+
+static func _clear_riot_marker(text: PackedByteArray, point: Vector2i) -> bool:
+	var index := _index(point)
+	if index < 0:
+		return false
+	var marker := int(text[index])
+	if marker != RIOT_OVERLAY_FORWARD and marker != RIOT_OVERLAY_REVERSE:
+		return false
+	text[index] = 0
 	return true
 
 

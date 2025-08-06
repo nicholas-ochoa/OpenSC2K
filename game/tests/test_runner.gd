@@ -2721,6 +2721,102 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"A low riot damage choice starts fire through the shared disaster helper",
 	)
 
+	var fire_dispatch := _dispatch_map_fixture(
+		reference_root, Dispatch.TYPE_FIRE, Vector2i(20, 20)
+	)
+	_check(
+		fire_dispatch.city.set_building_id(19, 20, 6)
+		and fire_dispatch.city.set_text_overlay_id(19, 20, DisasterMap.FIRE_OVERLAY),
+		"Fire dispatch fixture adds a burning west network tile",
+	)
+	var fire_dispatch_random := SequenceRandom.new([0, 1])
+	var fire_dispatch_lfsr := SequenceLfsrRandom.new([2])
+	var fire_dispatch_tick := DisasterMap.run_dispatch(
+		fire_dispatch.city, fire_dispatch_random, fire_dispatch_lfsr
+	)
+	_check(
+		fire_dispatch_tick.ok
+		and fire_dispatch_tick.dispatch_markers_scanned == 1
+		and fire_dispatch_tick.fire_suppression_attempts == 1
+		and fire_dispatch_tick.fire_extinctions == 1
+		and fire_dispatch.city.text_overlay_id(19, 20) == 0
+		and fire_dispatch.city.building_id(19, 20) == 3,
+		"A fire unit extinguishes its selected neighbor and leaves LFSR-selected rubble",
+	)
+	_check(
+		fire_dispatch_random.position == 2 and fire_dispatch_lfsr.position == 1,
+		"Fire dispatch preserves direction, demolition, and rubble random order",
+	)
+
+	var rail_dispatch := _dispatch_map_fixture(
+		reference_root, Dispatch.TYPE_FIRE, Vector2i(20, 20)
+	)
+	_check(
+		rail_dispatch.city.set_building_id(19, 20, 0x3f)
+		and rail_dispatch.city.set_text_overlay_id(19, 20, DisasterMap.FIRE_OVERLAY),
+		"Rail dispatch fixture adds a burning west rail tile",
+	)
+	var rail_dispatch_tick := DisasterMap.run_dispatch(
+		rail_dispatch.city, SequenceRandom.new([0]), SequenceLfsrRandom.new([])
+	)
+	_check(
+		rail_dispatch_tick.ok
+		and rail_dispatch_tick.fire_extinctions == 1
+		and rail_dispatch.city.text_overlay_id(19, 20) == 0
+		and rail_dispatch.city.building_id(19, 20) == 0x3f,
+		"Dispatch extinguishes rail values 0x3F through 0x42 without demolition",
+	)
+
+	var police_dispatch := _dispatch_map_fixture(
+		reference_root, Dispatch.TYPE_POLICE, Vector2i(20, 20)
+	)
+	_check(
+		police_dispatch.city.set_building_id(19, 20, 0x3f)
+		and police_dispatch.city.set_text_overlay_id(19, 20, DisasterMap.FIRE_OVERLAY)
+		and police_dispatch.city.set_text_overlay_id(21, 20, DisasterMap.RIOT_OVERLAY_FORWARD),
+		"Police dispatch fixture adds west fire and east riot markers",
+	)
+	var police_dispatch_random := SequenceRandom.new([0, 2])
+	var police_dispatch_lfsr := SequenceLfsrRandom.new([0])
+	var police_dispatch_tick := DisasterMap.run_dispatch(
+		police_dispatch.city, police_dispatch_random, police_dispatch_lfsr
+	)
+	_check(
+		police_dispatch_tick.ok
+		and police_dispatch_tick.fire_extinctions == 1
+		and police_dispatch_tick.riot_suppressions == 1
+		and police_dispatch.city.text_overlay_id(19, 20) == 0
+		and police_dispatch.city.text_overlay_id(21, 20) == 0,
+		"A police unit can pass its LFSR fire gate and always attempts riot suppression",
+	)
+	_check(
+		police_dispatch_random.position == 2 and police_dispatch_lfsr.position == 1,
+		"Police dispatch consumes its LFSR gate before two process-random directions",
+	)
+
+	var gated_police := _dispatch_map_fixture(
+		reference_root, Dispatch.TYPE_POLICE, Vector2i(20, 20)
+	)
+	_check(
+		gated_police.city.set_building_id(19, 20, 0x3f)
+		and gated_police.city.set_text_overlay_id(19, 20, DisasterMap.FIRE_OVERLAY)
+		and gated_police.city.set_text_overlay_id(21, 20, DisasterMap.RIOT_OVERLAY_REVERSE),
+		"Gated police fixture adds west fire and east riot markers",
+	)
+	var gated_police_random := SequenceRandom.new([2])
+	var gated_police_tick := DisasterMap.run_dispatch(
+		gated_police.city, gated_police_random, SequenceLfsrRandom.new([1])
+	)
+	_check(
+		gated_police_tick.ok
+		and gated_police_tick.fire_suppression_attempts == 0
+		and gated_police_tick.riot_suppressions == 1
+		and gated_police.city.text_overlay_id(19, 20) == DisasterMap.FIRE_OVERLAY
+		and gated_police.city.text_overlay_id(21, 20) == 0
+		and gated_police_random.position == 1,
+		"A failed police fire gate does not block its separate riot-suppression attempt",
+	)
+
 	var flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
 	_check(
 		flood.city.set_text_overlay_id(20, 20, 0xfc)
@@ -2833,6 +2929,29 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and engine_fixture.city.city_mode() == 1,
 		"The engine runs fire-map ticks and restores city mode one scan after the last fire: %s %s %d %d"
 		% [active_tick, ended_tick, engine.active_disaster_type, engine_fixture.city.city_mode()],
+	)
+
+	var dispatch_engine_fixture := _dispatch_map_fixture(
+		reference_root, Dispatch.TYPE_FIRE, Vector2i(20, 20)
+	)
+	_check(
+		dispatch_engine_fixture.city.set_building_id(19, 20, 0x3f)
+		and dispatch_engine_fixture.city.set_text_overlay_id(
+			19, 20, DisasterMap.FIRE_OVERLAY
+		)
+		and dispatch_engine_fixture.document.set_misc_u32(0x0004, 2),
+		"Dispatch engine fixture adds a burning west rail tile",
+	)
+	var dispatch_engine := Simulation.new(dispatch_engine_fixture.city, 2, 1, 13)
+	dispatch_engine.active_disaster_type = DisasterStart.DISASTER_FIRE
+	var dispatch_engine_tick := dispatch_engine.advance_disaster_tick()
+	_check(
+		dispatch_engine_tick.ok
+		and dispatch_engine_tick.active
+		and dispatch_engine_tick.dispatch_map.fire_extinctions == 1
+		and dispatch_engine_fixture.city.text_overlay_id(19, 20) == 0
+		and dispatch_engine_fixture.city.building_id(19, 20) == 0x3f,
+		"The active disaster engine applies map-side dispatch suppression after its fire scan",
 	)
 
 	var toxic_engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
@@ -5194,6 +5313,25 @@ func _fire_map_fixture(
 	if tile != 0:
 		document.set_misc_u32(0x01f0 + tile * 4, 1)
 	return {"document": document, "city": CityModel.from_document(document)}
+
+
+func _dispatch_map_fixture(
+	reference_root: String, thing_type: int, point: Vector2i
+) -> Dictionary:
+	var fixture := _fire_map_fixture(reference_root, point, 0)
+	if fixture.city == null:
+		return fixture
+	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+	var offset := CityState.THING_RECORD_SIZE
+	things[offset] = thing_type
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	if (
+		not fixture.document.find_chunk("XTHG").set_decoded_payload(things)
+		or not fixture.city.set_text_overlay_id(point.x, point.y, 202)
+	):
+		fixture.city = null
+	return fixture
 
 
 func _special_growth_fixture(reference_root: String) -> Dictionary:
