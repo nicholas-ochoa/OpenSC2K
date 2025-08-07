@@ -1037,6 +1037,23 @@ func _test_sprite_archives(reference_root: String) -> void:
 			IsometricRenderer.screen_to_tile(starter, center) == expected,
 			"Isometric screen lookup finds tile %s" % expected,
 		)
+	var capeques := CityModel.from_document(
+		Sc2Document.load_path(reference_root.path_join("CITIES/CAPEQUES.SC2"))
+	)
+	for expected in [
+		Vector2i(0, 0), Vector2i(18, 44), Vector2i(47, 93),
+		Vector2i(64, 64), Vector2i(96, 31), Vector2i(127, 127),
+	]:
+		var polygon := IsometricRenderer.tile_polygon(capeques, expected.x, expected.y)
+		for offset in [Vector2.ZERO, Vector2(5, 2), Vector2(-5, -2)]:
+			var screen_point: Vector2 = (
+				(polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25 + offset
+			)
+			_check(
+				IsometricRenderer.screen_to_tile(capeques, screen_point)
+				== _brute_force_screen_to_tile(capeques, screen_point),
+				"Fast isometric lookup matches the full Capeques scan at %s" % screen_point,
+			)
 	var map_control := MapControl.new()
 	map_control.city = starter
 	_check(map_control.zoom_percent() == 100, "City view starts at native large-sprite scale")
@@ -7083,6 +7100,20 @@ func _filled_bytes(size: int, value: int) -> PackedByteArray:
 	var result := PackedByteArray()
 	result.resize(size)
 	result.fill(value)
+	return result
+
+
+func _brute_force_screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
+	var result := Vector2i(-1, -1)
+	for diagonal in CityModel.MAP_SIZE * 2 - 1:
+		for y in diagonal + 1:
+			var x := diagonal - y
+			if x >= CityModel.MAP_SIZE or y >= CityModel.MAP_SIZE:
+				continue
+			if Geometry2D.is_point_in_polygon(
+				point, IsometricRenderer.tile_polygon(city, x, y)
+			):
+				result = Vector2i(x, y)
 	return result
 
 

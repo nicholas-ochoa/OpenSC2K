@@ -247,18 +247,43 @@ static func tile_polygon(city: CityState, x: int, y: int) -> PackedVector2Array:
 	])
 
 
+# try the heights and keep the front tile; one inverse transform isn't enough
 static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
 	if city == null or not city.is_valid():
 		return Vector2i(-1, -1)
+	# a tile can use any saved land or water altitude from 0 through 31. solve
+	# the isometric axes for each possible altitude, then test only nearby map
+	# cells. this keeps the same front-most result as the old full-map scan
+	var origin_x := SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+	var difference_axis := (point.x - origin_x - HALF_WIDTH) / float(HALF_WIDTH)
+	var candidates: Dictionary = {}
+	for altitude in 32:
+		var sum_axis := (
+			(point.y - TOP_MARGIN - HALF_HEIGHT + altitude * ALTITUDE_STEP)
+			/ float(HALF_HEIGHT)
+		)
+		var estimated_x := (sum_axis + difference_axis) * 0.5
+		var estimated_y := (sum_axis - difference_axis) * 0.5
+		var center_x := roundi(estimated_x)
+		var center_y := roundi(estimated_y)
+		for x_offset in range(-1, 2):
+			for y_offset in range(-1, 2):
+				var x := center_x + x_offset
+				var y := center_y + y_offset
+				if city.index_of(x, y) >= 0:
+					candidates[x * CityState.MAP_SIZE + y] = true
 	var result := Vector2i(-1, -1)
-	for diagonal in CityState.MAP_SIZE * 2 - 1:
-		for y in diagonal + 1:
-			var x := diagonal - y
-			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
-				continue
-			var polygon := tile_polygon(city, x, y)
-			if Geometry2D.is_point_in_polygon(point, polygon):
-				result = Vector2i(x, y)
+	var result_order := -1
+	for index in candidates:
+		var x: int = int(index) / CityState.MAP_SIZE
+		var y: int = int(index) % CityState.MAP_SIZE
+		var order := (x + y) * CityState.MAP_SIZE + y
+		if order <= result_order:
+			continue
+		var polygon := tile_polygon(city, x, y)
+		if Geometry2D.is_point_in_polygon(point, polygon):
+			result = Vector2i(x, y)
+			result_order = order
 	return result
 
 
