@@ -95,7 +95,6 @@ var annual_budget_pending := false
 var military_proposal_pending := false
 var game_over_active := false
 var static_city_image: Image
-var static_palette_index_image: Image
 var static_visual_signature: Array = []
 var dynamic_sprite_cache: Dictionary = {}
 var static_render_thread: Thread
@@ -435,7 +434,9 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_panel.custom_minimum_size = Vector2(560, 480)
 	map_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_panel.add_theme_stylebox_override("panel", _classic_box(Color("000000"), Color("404040"), 2))
+	map_panel.add_theme_stylebox_override(
+		"panel", _classic_box(Color("18242c"), Color("404040"), 2)
+	)
 	content.add_child(map_panel)
 
 	map_view = MapControl.new()
@@ -1004,7 +1005,6 @@ func _load_city(path: String) -> void:
 	current_document = document
 	static_render_epoch += 1
 	static_city_image = null
-	static_palette_index_image = null
 	static_visual_signature = []
 	palette_cycle_ticks = 0
 	_update_palette_cycle_texture()
@@ -1096,7 +1096,6 @@ func _refresh_map(force := true) -> void:
 	if city == null or palette == null:
 		return
 	var image: Image
-	var index_image: Image
 	if overlay_mode == "city":
 		var view_size := _city_view_size()
 		var sprite_archive := _sprite_archive_for_view(view_size)
@@ -1115,52 +1114,32 @@ func _refresh_map(force := true) -> void:
 			_refresh_moving_things(view_size)
 			return
 		static_render_epoch += 1
-		var rendered := IsometricRenderer.create_image(
-			city, palette, sprite_archive, view_size,
-			int(Time.get_ticks_msec() / 100), false
-		)
-		if not rendered.ok:
-			_show_error(rendered.error)
-			return
-		image = rendered.image
 		var indexed := IsometricRenderer.create_image(
 			city, palette_index_encoding, sprite_archive, view_size,
-			int(Time.get_ticks_msec() / 100), false
+			int(Time.get_ticks_msec() / 100), false, true
 		)
 		if not indexed.ok:
 			_show_error(indexed.error)
 			return
-		index_image = indexed.image
+		image = indexed.image
 		if view_size != IsometricRenderer.VIEW_LARGE:
 			image.resize(
 				IsometricRenderer.IMAGE_SIZE_LARGE.x,
 				IsometricRenderer.IMAGE_SIZE_LARGE.y,
 				Image.INTERPOLATE_NEAREST,
 			)
-			index_image.resize(
-				IsometricRenderer.IMAGE_SIZE_LARGE.x,
-				IsometricRenderer.IMAGE_SIZE_LARGE.y,
-				Image.INTERPOLATE_NEAREST,
-			)
-		index_image.convert(Image.FORMAT_R8)
 		static_city_image = image
-		static_palette_index_image = index_image
 		static_visual_signature = current_signature
 	else:
 		image = Minimap.create_image(city, palette, overlay_mode)
 		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
 		static_city_image = null
-		static_palette_index_image = null
 		static_visual_signature = []
 		map_view.set_dynamic_sprites([])
+	var texture := ImageTexture.create_from_image(image)
 	map_view.set_city_view(
-		city,
-		ImageTexture.create_from_image(image),
-		(
-			ImageTexture.create_from_image(index_image)
-			if index_image != null
-			else null
-		),
+		city, texture, texture if overlay_mode == "city" else null,
+		overlay_mode == "city"
 	)
 	if overlay_mode == "city":
 		_refresh_moving_things(_city_view_size())
@@ -1178,7 +1157,6 @@ func _request_static_render(
 		return
 	static_render_job = RenderJob.new()
 	static_render_job.city_snapshot = snapshot
-	static_render_job.palette = palette
 	static_render_job.index_palette = palette_index_encoding
 	static_render_job.sprites = sprite_archive
 	static_render_job.view_size = view_size
@@ -1211,13 +1189,11 @@ func _poll_static_render() -> void:
 		or int(rendered.view_size) != _city_view_size()
 	):
 		return
-	static_city_image = rendered.image
-	static_palette_index_image = rendered.index_image
+	static_city_image = rendered.index_image
 	static_visual_signature = rendered.signature
+	var texture := ImageTexture.create_from_image(static_city_image)
 	map_view.set_city_view(
-		city,
-		ImageTexture.create_from_image(static_city_image),
-		ImageTexture.create_from_image(static_palette_index_image),
+		city, texture, texture, true
 	)
 	_refresh_moving_things(int(rendered.view_size))
 	var latest_signature := IsometricRenderer.static_visual_signature(
@@ -1294,6 +1270,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 		visuals.append({
 			"texture": texture,
 			"index_texture": index_texture,
+			"palette_lookup_all": true,
 			"position": Vector2(position),
 			"size": Vector2(resource.image.get_size()),
 		})
@@ -1309,33 +1286,23 @@ func _dynamic_sprite_resource(
 	var entry := sprite_archive.find_sprite(sprite_id)
 	if entry == null:
 		return {}
-	var rendered := entry.create_image(palette)
-	if not rendered.ok:
-		return {}
-	var image: Image = rendered.image
 	var indexed := entry.create_image(palette_index_encoding)
 	if not indexed.ok:
 		return {}
-	var index_image: Image = indexed.image
+	var image: Image = indexed.image
 	if flip:
 		image.flip_x()
-		index_image.flip_x()
 	if divisor > 1:
 		image.resize(
 			image.get_width() * divisor,
 			image.get_height() * divisor,
 			Image.INTERPOLATE_NEAREST
 		)
-		index_image.resize(
-			index_image.get_width() * divisor,
-			index_image.get_height() * divisor,
-			Image.INTERPOLATE_NEAREST
-		)
-	index_image.convert(Image.FORMAT_R8)
+	var texture := ImageTexture.create_from_image(image)
 	var resource := {
 		"image": image,
-		"texture": ImageTexture.create_from_image(image),
-		"index_texture": ImageTexture.create_from_image(index_image),
+		"texture": texture,
+		"index_texture": texture,
 	}
 	dynamic_sprite_cache[key] = resource
 	return resource
@@ -1360,9 +1327,13 @@ func _dynamic_shadow_image(mask: Image, position: Vector2i) -> Image:
 			if output_x < 0 or output_x >= static_city_image.get_width():
 				continue
 			var current := static_city_image.get_pixel(output_x, output_y)
-			var changed := IsometricRenderer.shadow_color(palette, current)
-			if changed != current:
-				shadow.set_pixel(source_x, source_y, changed)
+			var palette_index := roundi(current.r * 255.0)
+			var changed_index := IsometricRenderer.shadow_palette_index(palette_index)
+			if changed_index != palette_index:
+				shadow.set_pixel(
+					source_x, source_y,
+					Color8(changed_index, changed_index, changed_index, 255)
+				)
 				changed_pixels += 1
 	return shadow if changed_pixels > 0 else null
 

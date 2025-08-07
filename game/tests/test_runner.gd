@@ -432,6 +432,12 @@ func _test_sprite_archives(reference_root: String) -> void:
 		== palette.color(0x73).to_rgba32(),
 		"Aircraft shadow keeps colors outside its recovered ranges",
 	)
+	_check(
+		IsometricRenderer.shadow_palette_index(0x5f) == 0x64
+		and IsometricRenderer.shadow_palette_index(0x74) == 0x7e
+		and IsometricRenderer.shadow_palette_index(0x73) == 0x73,
+		"Indexed aircraft shadows use the recovered palette remap",
+	)
 	var terrain := large.find_sprite(1256)
 	_check(terrain != null, "Large terrain sprite 1256 is present")
 	if terrain != null:
@@ -474,6 +480,14 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		medium_asset_errors.is_empty(),
 		"Starter city has every required medium sprite: %s" % medium_asset_errors,
+	)
+	var indexed_city := IsometricRenderer.create_image(
+		starter, Palette.index_encoding(), small_medium,
+		IsometricRenderer.VIEW_SMALL, 0, false, true
+	)
+	_check(
+		indexed_city.ok and indexed_city.image.get_pixel(0, 0).a == 0.0,
+		"Indexed city rendering keeps its outer canvas transparent",
 	)
 	_check(IsometricRenderer.terrain_sprite_id(0x00, false) == 1256, "Flat land uses sprite 1256")
 	_check(IsometricRenderer.terrain_sprite_id(0x10, true) == 1270, "Submerged land uses sprite 1270")

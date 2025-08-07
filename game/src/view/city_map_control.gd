@@ -13,6 +13,7 @@ shader_type canvas_item;
 uniform sampler2D palette_indices : filter_nearest, repeat_disable;
 uniform sampler2D animated_palette : source_color, filter_nearest, repeat_disable;
 uniform bool palette_cycle_enabled = false;
+uniform bool palette_lookup_all = false;
 
 void fragment() {
 	vec4 base_color = texture(TEXTURE, UV);
@@ -21,7 +22,7 @@ void fragment() {
 		(palette_index >= 171 && palette_index <= 198) ||
 		(palette_index >= 200 && palette_index <= 219) ||
 		(palette_index >= 224 && palette_index <= 239);
-	if (palette_cycle_enabled && animated_index) {
+	if (palette_cycle_enabled && (palette_lookup_all || animated_index)) {
 		vec2 palette_uv = vec2((float(palette_index) + 0.5) / 256.0, 0.5);
 		vec4 cycle_color = texture(animated_palette, palette_uv);
 		COLOR = vec4(cycle_color.rgb, base_color.a);
@@ -35,6 +36,7 @@ var city: CityState
 var city_texture: Texture2D
 var palette_index_texture: Texture2D
 var animated_palette_texture: Texture2D
+var base_palette_lookup_all := false
 var edit_enabled := false
 var selection_mode := "rectangle"
 var zoom_factor: float = ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]
@@ -61,12 +63,16 @@ func _ready() -> void:
 
 
 func set_city_view(
-	value: CityState, texture: Texture2D, index_texture: Texture2D = null
+	value: CityState,
+	texture: Texture2D,
+	index_texture: Texture2D = null,
+	palette_lookup_all := false
 ) -> void:
 	var reset_center := city_texture == null or city_texture.get_size() != texture.get_size()
 	city = value
 	city_texture = texture
 	palette_index_texture = index_texture
+	base_palette_lookup_all = palette_lookup_all
 	if reset_center and city_texture != null:
 		source_center = Vector2(city_texture.get_size()) * 0.5
 	_clamp_source_center()
@@ -451,6 +457,7 @@ func _sync_base_material() -> void:
 		"palette_cycle_enabled",
 		palette_index_texture != null and animated_palette_texture != null,
 	)
+	_base_material.set_shader_parameter("palette_lookup_all", base_palette_lookup_all)
 	for layer in _dynamic_layers:
 		var layer_material := layer.material as ShaderMaterial
 		if layer_material != null:
@@ -461,6 +468,9 @@ func _sync_base_material() -> void:
 				"palette_cycle_enabled",
 				layer.get_meta("has_palette_indices", false)
 				and animated_palette_texture != null,
+			)
+			layer_material.set_shader_parameter(
+				"palette_lookup_all", layer.get_meta("palette_lookup_all", false)
 			)
 
 
@@ -497,6 +507,7 @@ func _sync_dynamic_layers() -> void:
 		layer.position = offset + source_position * scale
 		layer.size = source_size * scale
 		layer.set_meta("has_palette_indices", index_texture != null)
+		layer.set_meta("palette_lookup_all", visual.get("palette_lookup_all", false))
 		var layer_material := layer.material as ShaderMaterial
 		layer_material.set_shader_parameter("palette_indices", index_texture)
 		layer_material.set_shader_parameter(
@@ -505,6 +516,9 @@ func _sync_dynamic_layers() -> void:
 		layer_material.set_shader_parameter(
 			"palette_cycle_enabled",
 			index_texture != null and animated_palette_texture != null,
+		)
+		layer_material.set_shader_parameter(
+			"palette_lookup_all", visual.get("palette_lookup_all", false)
 		)
 		layer.show()
 

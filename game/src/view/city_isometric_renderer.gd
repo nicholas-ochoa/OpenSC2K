@@ -77,7 +77,9 @@ static func create_image(
 	sprites: Sc2SpriteArchive,
 	view_size := VIEW_LARGE,
 	animation_phase := 0,
-	include_moving_things := true
+	include_moving_things := true,
+	transparent_background := false,
+	validate_required_assets := true
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
@@ -89,13 +91,14 @@ static func create_image(
 	var configuration := view_configuration(view_size)
 	if configuration.is_empty():
 		return _failure("city view size is invalid")
-	var asset_errors := validate_assets(city, sprites, view_size)
-	if not asset_errors.is_empty():
-		return _failure(asset_errors[0])
+	if validate_required_assets:
+		var asset_errors := validate_assets(city, sprites, view_size)
+		if not asset_errors.is_empty():
+			return _failure(asset_errors[0])
 
 	var output_size := output_size_for_view(view_size)
 	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
-	output.fill(Color("18242c"))
+	output.fill(Color.TRANSPARENT if transparent_background else Color("18242c"))
 	var origin_x: int = configuration.side_margin + CityState.MAP_SIZE * configuration.half_width
 	var cache: Dictionary = {}
 
@@ -1196,6 +1199,14 @@ static func shadow_color(palette: Sc2Palette, destination: Color) -> Color:
 		if packed == palette.color(palette_index).to_rgba32():
 			return palette.color(0x7e)
 	return destination
+
+
+static func shadow_palette_index(index: int) -> int:
+	if index == 0x5f:
+		return 0x64
+	if index >= 0x74 and index < 0x7f:
+		return 0x7e
+	return index
 
 
 static func _blend_shadow(
