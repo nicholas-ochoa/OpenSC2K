@@ -2398,6 +2398,66 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Toxic Spill rejects an out-of-map compatibility API point",
 	)
 
+	var pollution_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var pollution_text := _filled_bytes(CityState.TILE_COUNT, 0)
+	var pollution_point := Vector2i(10, 10)
+	pollution_text[pollution_point.x * CityState.MAP_SIZE + pollution_point.y] = 201
+	_check(
+		pollution_document.find_chunk("XTXT").set_decoded_payload(pollution_text)
+		and pollution_document.set_misc_u32(DisasterStart.MISC_NORMAL_POPULATION, 30000),
+		"Pollution start fixture sets its population and an occupied overlay",
+	)
+	var pollution_city := CityModel.from_document(pollution_document)
+	var pollution_values: Array[int] = [
+		4, 4, 7, 4, 0, 0, 4, 4,
+		4, 4, 4, 4, 4, 4, 4, 4,
+	]
+	var pollution_random := SequenceRandom.new(pollution_values)
+	var pollution_start := DisasterStart.start(
+		pollution_city,
+		DisasterStart.DISASTER_POLLUTION,
+		pollution_point,
+		pollution_random,
+	)
+	_check(
+		pollution_start.ok
+		and pollution_start.started
+		and pollution_start.complete
+		and pollution_start.attempt_count == 8
+		and pollution_start.seed_writes == 8
+		and pollution_start.sound_events == [DisasterStart.SOUND_SIREN]
+		and pollution_start.view_center_requests == [pollution_point],
+		"Pollution uses normal population for its seed count and reports a start",
+	)
+	_check(
+		pollution_city.text_overlay_id(10, 10) == DisasterMap.TOXIC_OVERLAY
+		and pollution_city.text_overlay_id(13, 10) == DisasterMap.TOXIC_OVERLAY
+		and pollution_city.text_overlay_id(6, 6) == DisasterMap.TOXIC_OVERLAY
+		and pollution_random.position == 16,
+		"Pollution consumes two random values per attempt and overwrites valid XTXT cells",
+	)
+	var missed_pollution_random := SequenceRandom.new([
+		4, 4, 4, 4, 4, 4, 4, 4,
+		4, 4, 4, 4, 4, 4, 4, 4,
+	])
+	var missed_pollution := DisasterStart.start(
+		pollution_city,
+		DisasterStart.DISASTER_POLLUTION,
+		Vector2i(-10, -10),
+		missed_pollution_random,
+	)
+	_check(
+		missed_pollution.ok
+		and not missed_pollution.started
+		and missed_pollution.complete
+		and missed_pollution.attempt_count == 8
+		and missed_pollution.seed_writes == 0
+		and missed_pollution.sound_events.is_empty()
+		and missed_pollution_random.position == 16,
+		"Pollution consumes all attempts but does not start when every seed is outside the map: %s pos=%d"
+		% [missed_pollution, missed_pollution_random.position],
+	)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
@@ -3068,6 +3128,41 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and toxic_spill_end.complete
 		and toxic_spill_fixture.city.city_mode() == 1,
 		"Toxic Spill enters disaster mode, runs its map branch, and restores city mode",
+	)
+
+	var pollution_engine_fixture := _fire_map_fixture(
+		reference_root, Vector2i(24, 25), 0
+	)
+	_check(
+		pollution_engine_fixture.city.set_text_overlay_id(24, 25, 0)
+		and pollution_engine_fixture.document.set_misc_u32(
+			DisasterStart.MISC_NORMAL_POPULATION, 0
+		),
+		"Pollution engine fixture clears its target and population",
+	)
+	var pollution_engine := Simulation.new(pollution_engine_fixture.city, 0, 0, 13)
+	var pollution_engine_start := pollution_engine.start_disaster(
+		DisasterStart.DISASTER_POLLUTION, Vector2i(24, 25)
+	)
+	var pollution_ticks: Array[Dictionary] = []
+	while pollution_engine.active_disaster_type != 0 and pollution_ticks.size() < 128:
+		var pollution_result := pollution_engine.advance_disaster_tick()
+		pollution_ticks.append(pollution_result)
+		if not pollution_result.get("ok", false):
+			break
+	var pollution_tick: Dictionary = pollution_ticks[0] if not pollution_ticks.is_empty() else {}
+	var pollution_end: Dictionary = pollution_ticks[-1] if not pollution_ticks.is_empty() else {}
+	_check(
+		pollution_engine_start.ok
+		and pollution_engine_start.started
+		and pollution_tick.ok
+		and pollution_tick.active
+		and pollution_end.ok
+		and pollution_end.complete
+		and pollution_engine.active_disaster_type == 0
+		and pollution_engine_fixture.city.city_mode() == 1,
+		"Pollution enters disaster mode, runs toxic clouds, and restores city mode: %s %s %s active=%d mode=%d"
+		% [pollution_engine_start, pollution_tick, pollution_end, pollution_engine.active_disaster_type, pollution_engine_fixture.city.city_mode()],
 	)
 
 	var manual := _fire_map_fixture(reference_root, Vector2i(20, 20), 0)

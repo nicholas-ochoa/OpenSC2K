@@ -184,7 +184,10 @@ func advance_disaster_tick() -> Dictionary:
 			phase_result = DisasterMap.run_toxic(city, random, lfsr_random)
 			if not phase_result.get("ok", false):
 				return phase_result
-	elif active_disaster_type == DisasterStartPhase.DISASTER_TOXIC_SPILL:
+	elif (
+		active_disaster_type == DisasterStartPhase.DISASTER_TOXIC_SPILL
+		or active_disaster_type == DisasterStartPhase.DISASTER_POLLUTION
+	):
 		phase_result = DisasterMap.run_toxic(city, random, lfsr_random)
 		if not phase_result.get("ok", false):
 			return phase_result

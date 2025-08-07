@@ -8,6 +8,7 @@ const DISASTER_FLOOD := 2
 const DISASTER_TOXIC_SPILL := 4
 const DISASTER_TORNADO := 7
 const DISASTER_MONSTER := 8
+const DISASTER_POLLUTION := 15
 const TYPE_MONSTER := 5
 const TYPE_TORNADO := 15
 const TEXT_THING_BASE := 201
@@ -15,6 +16,7 @@ const SOUND_SIREN := 520
 const SOUND_FLOOD := 511
 const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
+const MISC_NORMAL_POPULATION := 0x102c
 const FIRE_SPIRAL_X := [0, 1, 0, -1]
 const FIRE_SPIRAL_Y := [-1, 0, 1, 0]
 const MAP_CHUNK_SIZES := {
@@ -45,6 +47,8 @@ static func start(
 		return _start_flood(city, point, lfsr_random)
 	if disaster_type == DISASTER_TOXIC_SPILL:
 		return _start_toxic_spill(city, point)
+	if disaster_type == DISASTER_POLLUTION:
+		return _start_pollution(city, point, random)
 	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
 		return _result(disaster_type, point, false, false, 0)
 	if random == null or not random.has_method("next_u15"):
@@ -188,6 +192,42 @@ static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
 		return {"ok": false, "error": "cannot store the toxic spill"}
 	city.text_overlays = text.duplicate()
 	return _result(DISASTER_TOXIC_SPILL, point, true, true, 0)
+
+
+static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	var text_chunk := city.document.find_chunk("XTXT")
+	if text_chunk == null or text_chunk.decoded_payload.size() != CityState.TILE_COUNT:
+		return {"ok": false, "error": "pollution-disaster map data is missing or invalid"}
+	var attempt_count := (
+		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
+	) & 0xffff
+	if attempt_count & 0x8000:
+		attempt_count -= 0x10000
+	var text: PackedByteArray = text_chunk.decoded_payload.duplicate()
+	var seed_writes := 0
+	if attempt_count > 0:
+		for _attempt in attempt_count:
+			var seed_point := point + Vector2i(
+				(random.next_u15() & 7) - 4,
+				(random.next_u15() & 7) - 4
+			)
+			var index := _index(seed_point)
+			if index < 0:
+				continue
+			text[index] = 0xfb
+			seed_writes += 1
+	if seed_writes > 0:
+		if not text_chunk.set_decoded_payload(text):
+			return {"ok": false, "error": "cannot store the pollution disaster"}
+		city.text_overlays = text.duplicate()
+	var result := _result(
+		DISASTER_POLLUTION, point, seed_writes > 0, true, 0
+	)
+	result["attempt_count"] = maxi(attempt_count, 0)
+	result["seed_writes"] = seed_writes
+	return result
 
 
 static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i) -> void:
