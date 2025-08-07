@@ -20,6 +20,7 @@ const SLOW_CYCLE_TABLE := [
 
 var colors: Array[Color] = []
 var load_error := ""
+var is_index_encoding := false
 
 
 static func load_bmp(path: String) -> Sc2Palette:
@@ -73,6 +74,7 @@ func color(index: int) -> Color:
 # this gray is an address, not a color
 static func index_encoding() -> Sc2Palette:
 	var palette := Sc2Palette.new()
+	palette.is_index_encoding = true
 	for index in 256:
 		palette.colors.append(Color8(index, index, index, 255))
 	return palette

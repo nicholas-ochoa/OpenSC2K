@@ -1290,6 +1290,8 @@ func _dynamic_sprite_resource(
 	if not indexed.ok:
 		return {}
 	var image: Image = indexed.image
+	if flip or divisor > 1:
+		image = image.duplicate()
 	if flip:
 		image.flip_x()
 	if divisor > 1:

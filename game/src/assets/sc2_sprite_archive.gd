@@ -9,6 +9,8 @@ class SpriteEntry extends RefCounted:
 	var height := 0
 	var duplicate_index := 0
 	var encoded_pixels := PackedByteArray()
+	var _index_image: Image
+	var _index_image_mutex := Mutex.new()
 
 
 	func decode_indices() -> Dictionary:
@@ -83,6 +85,8 @@ class SpriteEntry extends RefCounted:
 	func create_image(palette: Sc2Palette) -> Dictionary:
 		if not palette.is_valid():
 			return _failure("palette is invalid")
+		if palette.is_index_encoding:
+			return _create_index_image()
 		var decoded := decode_indices()
 		if not decoded.ok:
 			return decoded
@@ -95,6 +99,32 @@ class SpriteEntry extends RefCounted:
 					image.set_pixel(x, y, palette.color(palette_index))
 				else:
 					image.set_pixel(x, y, Color.TRANSPARENT)
+		return {"ok": true, "image": image, "error": ""}
+
+
+	func _create_index_image() -> Dictionary:
+		_index_image_mutex.lock()
+		if _index_image != null:
+			var cached := {"ok": true, "image": _index_image, "error": ""}
+			_index_image_mutex.unlock()
+			return cached
+		var decoded := decode_indices()
+		if not decoded.ok:
+			_index_image_mutex.unlock()
+			return decoded
+		var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
+		var pixels: PackedInt32Array = decoded.pixels
+		for y in height:
+			for x in width:
+				var palette_index := pixels[y * width + x]
+				if palette_index >= 0:
+					image.set_pixel(
+						x, y, Color8(palette_index, palette_index, palette_index, 255)
+					)
+				else:
+					image.set_pixel(x, y, Color.TRANSPARENT)
+		_index_image = image
+		_index_image_mutex.unlock()
 		return {"ok": true, "image": image, "error": ""}
 
 

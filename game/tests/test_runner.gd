@@ -371,6 +371,10 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 		== loaded_palette.color(0xac).to_rgba32(),
 		"Animated palette image contains the cycled master colors",
 	)
+	_check(
+		Palette.index_encoding().is_index_encoding,
+		"The synthetic palette identifies its cache-safe index encoding",
+	)
 
 	var document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
 	var loaded_city := CityModel.from_document(document)

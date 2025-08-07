@@ -1276,6 +1276,7 @@ static func _sprite_image(
 	var rendered := entry.create_image(palette)
 	var image: Image = rendered.image
 	if flip:
+		image = image.duplicate()
 		image.flip_x()
 	cache[key] = image
 	return image
