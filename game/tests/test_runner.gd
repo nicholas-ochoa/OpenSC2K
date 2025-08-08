@@ -1095,6 +1095,39 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(not map_control.is_left_drag_active(), "Map control starts without an active left drag")
 	map_control.selection_start = center_tile
 	_check(map_control.is_left_drag_active(), "Map control reports an active left drag")
+	map_control.selection_end = center_tile + Vector2i(2, 1)
+	map_control.selection_mode = "rectangle"
+	map_control._rebuild_selection_path()
+	_check(
+		map_control.selection_tiles().size() == 6,
+		"Rectangle selection contains every tile while it grows",
+	)
+	map_control.selection_end = center_tile + Vector2i(1, 0)
+	map_control._rebuild_selection_path()
+	_check(
+		map_control.selection_tiles() == [center_tile, center_tile + Vector2i(1, 0)],
+		"Rectangle selection shrinks from its fixed start",
+	)
+	map_control.selection_mode = "path"
+	map_control.selection_end = center_tile + Vector2i(3, 2)
+	map_control._rebuild_selection_path()
+	var preview_path := map_control.selection_tiles()
+	_check(
+		preview_path == [
+			center_tile,
+			center_tile + Vector2i(1, 0),
+			center_tile + Vector2i(1, 1),
+			center_tile + Vector2i(2, 1),
+			center_tile + Vector2i(2, 2),
+			center_tile + Vector2i(3, 2),
+		],
+		"Path selection follows a contiguous diagonal route",
+	)
+	_check(map_control.cancel_active_selection(), "Map control cancels an active selection")
+	_check(
+		not map_control.is_left_drag_active() and map_control.selection_tiles().is_empty(),
+		"Canceled selection cannot commit any preview tiles",
+	)
 	map_control.set_dynamic_sprites([{"position": Vector2(10, 20)}])
 	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")
 	map_control.set_dynamic_sprites([])

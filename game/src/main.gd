@@ -445,6 +445,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_view.selection_completed.connect(_apply_map_selection)
+	map_view.selection_canceled.connect(_on_map_selection_canceled)
 	map_view.zoom_changed.connect(_on_city_zoom_changed)
 	map_panel.add_child(map_view)
 
@@ -783,6 +784,13 @@ func _on_city_zoom_changed(percent: int) -> void:
 	_update_zoom_controls(percent)
 	if city != null and overlay_mode == "city":
 		_refresh_map(false)
+
+
+func _on_map_selection_canceled() -> void:
+	if status_label == null:
+		return
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Selection canceled. No action was taken."
 
 
 func _on_file_menu(id: int) -> void:
@@ -1506,7 +1514,15 @@ func _update_edit_state() -> void:
 			or is_query_tool
 			or is_center_tool
 		),
-		"rectangle" if is_zone_tool else ("path" if is_landscape_tool or is_network_tool or is_highway_tool or is_demolish_tool or is_terrain_tool else "point"),
+		(
+			"rectangle"
+			if is_zone_tool or is_demolish_tool
+			else (
+				"path"
+				if is_landscape_tool or is_network_tool or is_highway_tool or is_terrain_tool
+				else "point"
+			)
+		),
 	)
 	if city == null or status_label == null:
 		return
@@ -1531,7 +1547,7 @@ func _update_edit_state() -> void:
 	elif is_highway_tool:
 		status_label.text = "Highway selected. Drag between city tiles to build a two-tile-wide route."
 	elif is_demolish_tool:
-		status_label.text = "Demolish selected. Click or drag across eligible city tiles."
+		status_label.text = "Demolish selected. Drag a rectangle across eligible city tiles."
 	elif is_terrain_tool:
 		status_label.text = "%s selected. Click or drag across terrain." % tool.name
 	elif is_dispatch_tool:

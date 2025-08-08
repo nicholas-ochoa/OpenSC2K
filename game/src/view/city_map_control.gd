@@ -2,6 +2,7 @@ class_name CityMapControl
 extends Control
 
 signal selection_completed(start: Vector2i, finish: Vector2i, path: Array[Vector2i])
+signal selection_canceled()
 signal zoom_changed(percent: int)
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
@@ -120,6 +121,21 @@ func can_zoom_out() -> bool:
 
 func is_left_drag_active() -> bool:
 	return selection_start.x >= 0
+
+
+func selection_tiles() -> Array[Vector2i]:
+	return selection_path.duplicate()
+
+
+func cancel_active_selection() -> bool:
+	if selection_start.x < 0:
+		return false
+	selection_start = Vector2i(-1, -1)
+	selection_end = Vector2i(-1, -1)
+	selection_path.clear()
+	queue_redraw()
+	selection_canceled.emit()
+	return true
 
 
 func center_on_tile(point: Vector2i) -> bool:
@@ -300,6 +316,10 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 		zoom_out(event.position)
 		accept_event()
 		return
+	if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed and cancel_active_selection():
+		_panning = false
+		accept_event()
+		return
 	if event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:
 		_panning = event.pressed
 		accept_event()
@@ -311,17 +331,15 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 		if tile.x >= 0:
 			selection_start = tile
 			selection_end = tile
-			selection_path = [tile]
+			_rebuild_selection_path()
 			queue_redraw()
 	else:
 		if selection_start.x >= 0:
 			if tile.x >= 0:
 				selection_end = tile
-				_append_selection_tile(tile)
+				_rebuild_selection_path()
 			selection_completed.emit(selection_start, selection_end, selection_path.duplicate())
-			selection_start = Vector2i(-1, -1)
-			selection_end = Vector2i(-1, -1)
-			selection_path.clear()
+			_clear_selection()
 			queue_redraw()
 	accept_event()
 
@@ -338,14 +356,46 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		var tile := _tile_at(event.position)
 		if tile.x >= 0 and tile != selection_end:
 			selection_end = tile
-			_append_selection_tile(tile)
+			_rebuild_selection_path()
 			queue_redraw()
 		accept_event()
 
 
-func _append_selection_tile(tile: Vector2i) -> void:
-	if selection_path.is_empty() or selection_path[-1] != tile:
-		selection_path.append(tile)
+func _rebuild_selection_path() -> void:
+	selection_path.clear()
+	if selection_start.x < 0 or selection_end.x < 0:
+		return
+	if selection_mode == "point":
+		selection_path.append(selection_end)
+		return
+	if selection_mode == "rectangle":
+		var minimum := Vector2i(
+			mini(selection_start.x, selection_end.x),
+			mini(selection_start.y, selection_end.y),
+		)
+		var maximum := Vector2i(
+			maxi(selection_start.x, selection_end.x),
+			maxi(selection_start.y, selection_end.y),
+		)
+		for x in range(minimum.x, maximum.x + 1):
+			for y in range(minimum.y, maximum.y + 1):
+				selection_path.append(Vector2i(x, y))
+		return
+	var current := selection_start
+	selection_path.append(current)
+	while current != selection_end:
+		var difference := selection_end - current
+		if absi(difference.y) < absi(difference.x):
+			current.x += 1 if difference.x > 0 else -1
+		else:
+			current.y += 1 if difference.y > 0 else -1
+		selection_path.append(current)
+
+
+func _clear_selection() -> void:
+	selection_start = Vector2i(-1, -1)
+	selection_end = Vector2i(-1, -1)
+	selection_path.clear()
 
 
 func _tile_at(local_point: Vector2) -> Vector2i:
