@@ -10,6 +10,7 @@ const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
+const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
@@ -1133,6 +1134,29 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.set_dynamic_sprites([])
 	_check(map_control.dynamic_sprites.is_empty(), "Map control clears its dynamic sprite layer")
 	map_control.free()
+	var underground_city := CityModel.from_document(starter.document.duplicate_document())
+	for fixture in [
+		[Vector2i(20, 20), 0x01, 0x2c],
+		[Vector2i(21, 20), 0x0f, 0x3a],
+		[Vector2i(22, 20), 0x10, 0x0e],
+		[Vector2i(23, 20), 0x1e, 0x1c],
+		[Vector2i(24, 20), 0x1f, 0x47],
+		[Vector2i(25, 20), 0x20, 0x48],
+		[Vector2i(26, 20), 0x22, 0xf9],
+		[Vector2i(27, 20), 0x23, 0xe9],
+	]:
+		_check(underground_city.set_underground_id(fixture[0].x, fixture[0].y, fixture[1]), "Underground view fixture stores tile 0x%02X" % fixture[1])
+	_check(UndergroundView.prepare_render_city(underground_city), "Underground city view prepares a render snapshot")
+	for fixture in [
+		[Vector2i(20, 20), 0x2c], [Vector2i(21, 20), 0x3a],
+		[Vector2i(22, 20), 0x0e], [Vector2i(23, 20), 0x1c],
+		[Vector2i(24, 20), 0x47], [Vector2i(25, 20), 0x48],
+		[Vector2i(26, 20), 0xf9], [Vector2i(27, 20), 0xe9],
+	]:
+		_check(
+			underground_city.building_id(fixture[0].x, fixture[0].y) == fixture[1],
+			"Underground view maps its saved tile to native surface artwork",
+		)
 	_check(starter.set_building_id(64, 64, 0x2e), "Train drawing fixture adds a rail tile")
 	var straight_train := IsometricRenderer.train_sprite(starter, 64, 64, {
 		"type": 10, "dx": 0,

@@ -8,6 +8,7 @@ const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
+const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -70,6 +71,7 @@ const BUDGET_NAMES := [
 	"Subway",
 	"Tunnel",
 ]
+const MAP_DISPLAY_MODES := ["city", "underground", "structures", "zones", "power", "water"]
 
 var city: CityState
 var current_document: Sc2File
@@ -96,6 +98,9 @@ var military_proposal_pending := false
 var game_over_active := false
 var static_city_image: Image
 var static_visual_signature: Array = []
+var static_render_mode := ""
+var static_display_city: CityState
+var static_view_cache: Dictionary = {}
 var dynamic_sprite_cache: Dictionary = {}
 var static_render_thread: Thread
 var static_render_job: CityRenderJob
@@ -124,6 +129,8 @@ var zoom_out_button: Button
 var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
 var toolbar_buttons: Array[Button] = []
+var sidebar_panel: PanelContainer
+var sidebar_toggle_button: Button
 var sign_dialog: ConfirmationDialog
 var sign_input: LineEdit
 var query_dialog: AcceptDialog
@@ -293,8 +300,8 @@ func _build_interface(toolbar_art: Image) -> void:
 		["African Swallow", 4],
 	], _on_speed_menu)
 	_add_menu(menu_row, "Options", [
-		["City View", 0], ["Structures Map", 1], ["Zones Map", 2],
-		["Power Map", 3], ["Water Map", 4],
+		["City View", 0], ["Underground View", 1], ["Structures Map", 2],
+		["Zones Map", 3], ["Power Map", 4], ["Water Map", 5],
 	], _on_options_menu)
 	var disasters_menu := _add_menu(menu_row, "Disasters", [
 		["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],
@@ -312,7 +319,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	disasters_menu.tooltip_text = (
 		"Fire, Flood, Toxic Spill, Tornado, Monster, and Pollution are available."
 	)
-	_add_menu(menu_row, "Windows", [["Budget", 0]], _on_windows_menu)
+	_add_menu(menu_row, "Windows", [["Budget", 0], ["City Information", 1]], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
 
@@ -379,6 +386,8 @@ func _build_interface(toolbar_art: Image) -> void:
 		button.button_group = tool_button_group
 		button.tooltip_text = Tools.GROUPS[group_index].name
 		button.icon = _toolbar_group_icon(toolbar_art, group_index)
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 		button.text = str(group_index + 1) if button.icon == null else ""
 		button.pressed.connect(_choose_tool_group.bind(group_index))
 		tool_grid.add_child(button)
@@ -452,7 +461,15 @@ func _build_interface(toolbar_art: Image) -> void:
 	sound_player = AudioStreamPlayer.new()
 	add_child(sound_player)
 
-	var sidebar_panel := PanelContainer.new()
+	sidebar_toggle_button = Button.new()
+	sidebar_toggle_button.text = ">"
+	sidebar_toggle_button.tooltip_text = "Hide City Information"
+	sidebar_toggle_button.custom_minimum_size = Vector2(24, 0)
+	sidebar_toggle_button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	sidebar_toggle_button.pressed.connect(_toggle_sidebar)
+	content.add_child(sidebar_toggle_button)
+
+	sidebar_panel = PanelContainer.new()
 	sidebar_panel.custom_minimum_size = Vector2(245, 0)
 	sidebar_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
 	content.add_child(sidebar_panel)
@@ -500,7 +517,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	view_grid.add_theme_constant_override("h_separation", 4)
 	view_grid.add_theme_constant_override("v_separation", 4)
 	sidebar.add_child(view_grid)
-	for mode in ["city", "structures", "zones", "power", "water"]:
+	for mode in MAP_DISPLAY_MODES:
 		var button := Button.new()
 		button.text = mode.capitalize()
 		button.pressed.connect(_set_overlay.bind(mode))
@@ -705,13 +722,33 @@ func _toolbar_group_icon(toolbar_art: Image, group_index: int) -> Texture2D:
 func _toolbar_icon(toolbar_art: Image, region: Rect2i) -> Texture2D:
 	if toolbar_art == null or not Rect2i(Vector2i.ZERO, toolbar_art.get_size()).encloses(region):
 		return null
-	return ImageTexture.create_from_image(toolbar_art.get_region(region))
+	var image := toolbar_art.get_region(region)
+	image.convert(Image.FORMAT_RGBA8)
+	var background := image.get_pixel(0, 0)
+	var minimum := Vector2i(image.get_width(), image.get_height())
+	var maximum := Vector2i(-1, -1)
+	for y in image.get_height():
+		for x in image.get_width():
+			var color := image.get_pixel(x, y)
+			if color.is_equal_approx(background):
+				image.set_pixel(x, y, Color(color.r, color.g, color.b, 0.0))
+			else:
+				minimum.x = mini(minimum.x, x)
+				minimum.y = mini(minimum.y, y)
+				maximum.x = maxi(maximum.x, x)
+				maximum.y = maxi(maximum.y, y)
+	if maximum.x < minimum.x:
+		return null
+	var bounds := Rect2i(minimum, maximum - minimum + Vector2i.ONE)
+	return ImageTexture.create_from_image(image.get_region(bounds))
 
 
 func _icon_button(toolbar_art: Image, region: Rect2i, tooltip: String) -> Button:
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(40, 34)
 	button.icon = _toolbar_icon(toolbar_art, region)
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	button.text = tooltip.left(1) if button.icon == null else ""
 	button.tooltip_text = tooltip
 	return button
@@ -735,7 +772,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 		_show_error("No city is loaded.")
 		return
 	var old_center := Vector2i(-1, -1)
-	if overlay_mode == "city":
+	if overlay_mode == "city" or overlay_mode == "underground":
 		old_center = map_view.center_tile()
 	var new_center := CityRotation.rotate_point(
 		old_center, CityState.MAP_SIZE, counter_clockwise
@@ -782,7 +819,7 @@ func _update_fps(delta: float) -> void:
 
 func _on_city_zoom_changed(percent: int) -> void:
 	_update_zoom_controls(percent)
-	if city != null and overlay_mode == "city":
+	if city != null and overlay_mode in ["city", "underground"]:
 		_refresh_map(false)
 
 
@@ -808,9 +845,8 @@ func _on_speed_menu(id: int) -> void:
 
 
 func _on_options_menu(id: int) -> void:
-	var modes := ["city", "structures", "zones", "power", "water"]
-	if id >= 0 and id < modes.size():
-		_set_overlay(modes[id])
+	if id >= 0 and id < MAP_DISPLAY_MODES.size():
+		_set_overlay(MAP_DISPLAY_MODES[id])
 
 
 func _on_disaster_menu(id: int) -> void:
@@ -852,6 +888,22 @@ func _on_disaster_menu(id: int) -> void:
 func _on_windows_menu(id: int) -> void:
 	if id == 0:
 		_open_manual_budget()
+	elif id == 1:
+		_set_sidebar_expanded(not sidebar_panel.visible)
+
+
+func _toggle_sidebar() -> void:
+	_set_sidebar_expanded(not sidebar_panel.visible)
+
+
+func _set_sidebar_expanded(expanded: bool) -> void:
+	if sidebar_panel == null or sidebar_toggle_button == null:
+		return
+	sidebar_panel.visible = expanded
+	sidebar_toggle_button.text = ">" if expanded else "<"
+	sidebar_toggle_button.tooltip_text = (
+		"Hide City Information" if expanded else "Show City Information"
+	)
 
 
 func _on_newspaper_menu(_id: int) -> void:
@@ -1017,6 +1069,9 @@ func _load_city(path: String) -> void:
 	static_render_epoch += 1
 	static_city_image = null
 	static_visual_signature = []
+	static_render_mode = ""
+	static_display_city = null
+	static_view_cache.clear()
 	palette_cycle_ticks = 0
 	_update_palette_cycle_texture()
 	dynamic_sprite_cache.clear()
@@ -1085,11 +1140,13 @@ func _save_copy(path: String) -> void:
 
 
 func _set_overlay(mode: String) -> void:
+	if not MAP_DISPLAY_MODES.has(mode):
+		return
 	overlay_mode = mode
 	_update_edit_state()
 	if city != null:
 		status_label.text = "Map view: %s" % overlay_mode.capitalize()
-		_refresh_map()
+		_refresh_map(false)
 
 
 func _select_speed(index: int) -> void:
@@ -1107,26 +1164,54 @@ func _refresh_map(force := true) -> void:
 	if city == null or palette == null:
 		return
 	var image: Image
-	if overlay_mode == "city":
+	if overlay_mode == "city" or overlay_mode == "underground":
 		var view_size := _city_view_size()
 		var sprite_archive := _sprite_archive_for_view(view_size)
-		var current_signature := IsometricRenderer.static_visual_signature(
-			city, view_size
-		)
+		var current_signature := _static_signature_for_mode(overlay_mode, view_size)
+		var cached: Dictionary = static_view_cache.get(overlay_mode, {})
+		if (
+			not cached.is_empty()
+			and cached.get("signature", []) == current_signature
+			and int(cached.get("view_size", -1)) == view_size
+		):
+			static_city_image = cached.image
+			static_visual_signature = current_signature
+			static_render_mode = overlay_mode
+			static_display_city = cached.display_city
+			var cached_texture := ImageTexture.create_from_image(static_city_image)
+			map_view.set_city_view(
+				static_display_city, cached_texture, cached_texture, true
+			)
+			if overlay_mode == "city":
+				_refresh_moving_things(view_size)
+			else:
+				map_view.set_dynamic_sprites([])
+			return
 		if (
 			not force
 			and static_city_image != null
+			and static_render_mode == overlay_mode
 			and current_signature == static_visual_signature
 		):
-			_refresh_moving_things(view_size)
+			if overlay_mode == "city":
+				_refresh_moving_things(view_size)
 			return
 		if not force:
-			_request_static_render(current_signature, view_size, sprite_archive)
-			_refresh_moving_things(view_size)
+			_request_static_render(current_signature, view_size, sprite_archive, overlay_mode)
+			if overlay_mode == "city":
+				_refresh_moving_things(view_size)
+			else:
+				map_view.set_dynamic_sprites([])
 			return
 		static_render_epoch += 1
+		var display_city := city
+		if overlay_mode == "underground":
+			display_city = CityModel.from_document(current_document.duplicate_document())
+			if not UndergroundView.prepare_render_city(display_city):
+				_show_error("Cannot prepare the underground city view.")
+				return
 		var indexed := IsometricRenderer.create_image(
-			city, palette_index_encoding, sprite_archive, view_size,
+			display_city, palette_index_encoding, sprite_archive, view_size,
 			int(Time.get_ticks_msec() / 100), false, true
 		)
 		if not indexed.ok:
@@ -1141,6 +1226,14 @@ func _refresh_map(force := true) -> void:
 			)
 		static_city_image = image
 		static_visual_signature = current_signature
+		static_render_mode = overlay_mode
+		static_display_city = display_city
+		static_view_cache[overlay_mode] = {
+			"image": image,
+			"signature": current_signature,
+			"display_city": display_city,
+			"view_size": view_size,
+		}
 	else:
 		image = Minimap.create_image(city, palette, overlay_mode)
 		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
@@ -1149,15 +1242,16 @@ func _refresh_map(force := true) -> void:
 		map_view.set_dynamic_sprites([])
 	var texture := ImageTexture.create_from_image(image)
 	map_view.set_city_view(
-		city, texture, texture if overlay_mode == "city" else null,
-		overlay_mode == "city"
+		static_display_city if overlay_mode in ["city", "underground"] else city,
+		texture, texture if overlay_mode in ["city", "underground"] else null,
+		overlay_mode in ["city", "underground"]
 	)
 	if overlay_mode == "city":
 		_refresh_moving_things(_city_view_size())
 
 
 func _request_static_render(
-	signature: Array, view_size: int, sprite_archive: Sc2SpriteArchive
+	signature: Array, view_size: int, sprite_archive: Sc2SpriteArchive, render_mode := "city"
 ) -> void:
 	if static_render_thread != null:
 		return
@@ -1174,6 +1268,7 @@ func _request_static_render(
 	static_render_job.animation_phase = int(Time.get_ticks_msec() / 100)
 	static_render_job.signature = signature.duplicate()
 	static_render_job.epoch = static_render_epoch
+	static_render_job.render_mode = render_mode
 	static_render_thread = Thread.new()
 	var start_error := static_render_thread.start(
 		static_render_job.run, Thread.PRIORITY_LOW
@@ -1195,27 +1290,47 @@ func _poll_static_render() -> void:
 		return
 	if (
 		city == null
-		or overlay_mode != "city"
 		or int(rendered.epoch) != static_render_epoch
 		or int(rendered.view_size) != _city_view_size()
+		or String(rendered.get("render_mode", "city")) != overlay_mode
 	):
+		if city != null and overlay_mode in ["city", "underground"]:
+			_refresh_map(false)
 		return
 	static_city_image = rendered.index_image
 	static_visual_signature = rendered.signature
+	static_render_mode = String(rendered.render_mode)
+	static_display_city = rendered.display_city
+	static_view_cache[static_render_mode] = {
+		"image": static_city_image,
+		"signature": static_visual_signature,
+		"display_city": static_display_city,
+		"view_size": int(rendered.view_size),
+	}
 	var texture := ImageTexture.create_from_image(static_city_image)
 	map_view.set_city_view(
-		city, texture, texture, true
+		static_display_city, texture, texture, true
 	)
-	_refresh_moving_things(int(rendered.view_size))
-	var latest_signature := IsometricRenderer.static_visual_signature(
-		city, int(rendered.view_size)
+	if overlay_mode == "city":
+		_refresh_moving_things(int(rendered.view_size))
+	else:
+		map_view.set_dynamic_sprites([])
+	var latest_signature := _static_signature_for_mode(
+		overlay_mode, int(rendered.view_size)
 	)
 	if latest_signature != static_visual_signature:
 		_request_static_render(
 			latest_signature,
 			int(rendered.view_size),
-			_sprite_archive_for_view(int(rendered.view_size))
+			_sprite_archive_for_view(int(rendered.view_size)),
+			overlay_mode,
 		)
+
+
+func _static_signature_for_mode(mode: String, view_size: int) -> Array:
+	if mode == "underground":
+		return UndergroundView.visual_signature(city, view_size)
+	return IsometricRenderer.static_visual_signature(city, view_size)
 
 
 func _exit_tree() -> void:
@@ -1494,9 +1609,19 @@ func _update_edit_state() -> void:
 	var is_sign_tool := selected_group == 15
 	var is_query_tool := selected_group == 16
 	var is_center_tool := selected_group == 17
+	var is_underground_network_tool := (
+		(selected_group == 4 and selected_subtool == 0)
+		or (selected_group == 7 and selected_subtool == 1)
+	)
 	map_view.set_edit_enabled(
 		city != null
-		and overlay_mode == "city"
+			and (
+				overlay_mode == "city"
+				or (
+					overlay_mode == "underground"
+					and is_underground_network_tool
+				)
+			)
 		and (
 			is_zone_tool
 			or is_landscape_tool
