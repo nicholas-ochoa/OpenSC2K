@@ -1212,7 +1212,7 @@ func _refresh_map(force := true) -> void:
 				return
 		var indexed := IsometricRenderer.create_image(
 			display_city, palette_index_encoding, sprite_archive, view_size,
-			int(Time.get_ticks_msec() / 100), false, true
+			int(Time.get_ticks_msec() / 100), false, true, true, false
 		)
 		if not indexed.ok:
 			_show_error(indexed.error)
@@ -1374,7 +1374,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 	var sprite_archive := _sprite_archive_for_view(view_size)
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := int(configuration.divisor)
-	var commands := IsometricRenderer.moving_thing_draw_commands(
+	var commands := IsometricRenderer.dynamic_draw_commands(
 		city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
 	)
 	var visuals: Array[Dictionary] = []

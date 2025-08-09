@@ -1045,9 +1045,18 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Static-signature fixture adds a special map marker",
 	)
 	_check(
-		IsometricRenderer.static_visual_signature(starter) != static_signature,
-		"A static special marker invalidates the static city image",
+		IsometricRenderer.static_visual_signature(starter) == static_signature,
+		"A dynamic special marker does not invalidate the static city image",
 	)
+	var dynamic_specials := IsometricRenderer.dynamic_draw_commands(
+		starter, large, IsometricRenderer.VIEW_LARGE, 0
+	)
+	var found_dynamic_special := false
+	for command in dynamic_specials:
+		if int(command.get("overlay", 0)) == 0xfb:
+			found_dynamic_special = true
+			break
+	_check(found_dynamic_special, "The dynamic city layer draws a special map marker")
 	_check(starter.set_text_overlay_id(64, 64, 0), "Static-signature fixture clears its marker")
 	for expected in [Vector2i.ZERO, Vector2i(24, 93), Vector2i(64, 64), Vector2i(127, 127)]:
 		var polygon := IsometricRenderer.tile_polygon(starter, expected.x, expected.y)
@@ -1058,6 +1067,19 @@ func _test_sprite_archives(reference_root: String) -> void:
 		)
 	var capeques := CityModel.from_document(
 		Sc2Document.load_path(reference_root.path_join("CITIES/CAPEQUES.SC2"))
+	)
+	var capeques_dynamic := IsometricRenderer.dynamic_draw_commands(
+		capeques, large, IsometricRenderer.VIEW_LARGE, 0
+	)
+	var capeques_dynamic_moving: Array[Dictionary] = []
+	for command in capeques_dynamic:
+		if not command.has("overlay"):
+			capeques_dynamic_moving.append(command)
+	_check(
+		capeques_dynamic_moving == IsometricRenderer.moving_thing_draw_commands(
+			capeques, large, IsometricRenderer.VIEW_LARGE, 0
+		),
+		"Indexed dynamic lookup preserves Capeques moving-object draw order",
 	)
 	for expected in [
 		Vector2i(0, 0), Vector2i(18, 44), Vector2i(47, 93),

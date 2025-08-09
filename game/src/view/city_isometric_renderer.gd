@@ -36,6 +36,7 @@ const TRAFFIC_HIGH_VARIANTS := [
 	15, 16, 17, 18, 42, 43, 44, 45, 46, 47, 48, 49, 50,
 ]
 const DISPATCH_SPRITE_OFFSETS := {7: 382, 8: 383, 14: 384}
+const TEXT_THING_BASE := 201
 const THING_SPRITES := [
 	0, 1359, 1364, 1369, 1390, 1490, 1387, 1382, 1383,
 	1380, 1374, 1374, 1374, 1374, 1384, 1497, 1495,
@@ -79,7 +80,8 @@ static func create_image(
 	animation_phase := 0,
 	include_moving_things := true,
 	transparent_background := false,
-	validate_required_assets := true
+	validate_required_assets := true,
+	include_special_overlays := true
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
@@ -107,10 +109,11 @@ static func create_image(
 			var x := diagonal - y
 			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
 				continue
-			_draw_tile(
-				output, city, palette, sprites, cache, configuration,
-				origin_x, x, y, animation_phase, include_moving_things
-			)
+				_draw_tile(
+					output, city, palette, sprites, cache, configuration,
+					origin_x, x, y, animation_phase, include_moving_things,
+					include_special_overlays
+				)
 
 	return {"ok": true, "image": output, "error": ""}
 
@@ -350,7 +353,8 @@ static func _draw_tile(
 	x: int,
 	y: int,
 	animation_phase: int,
-	include_moving_things: bool
+	include_moving_things: bool,
+	include_special_overlays: bool
 ) -> void:
 	var terrain_id := city.terrain_id(x, y)
 	var building_id := city.building_id(x, y)
@@ -449,29 +453,30 @@ static func _draw_tile(
 			_draw_moving_thing(
 				output, city, palette, sprites, cache, moving_visual, configuration
 			)
-	var special_visual := special_overlay_visual(
-		city, x, y, configuration.view_size, animation_phase
-	)
-	if not special_visual.is_empty():
-		var special_image := _sprite_image(
-			sprites, palette, cache, special_visual.sprite_id, special_visual.flip
+	if include_special_overlays:
+		var special_visual := special_overlay_visual(
+			city, x, y, configuration.view_size, animation_phase
 		)
-		var special_x := (
-			screen_x + int(configuration.half_width)
-			- int(special_image.get_width() / 2)
-		)
-		var special_altitude := city.land_altitude(x, y)
-		if city.is_water(x, y):
-			special_altitude = city.water_altitude(x, y)
-		var special_base_y := (
-			int(configuration.top_margin)
-			+ (x + y) * int(configuration.half_height)
-			- special_altitude * int(configuration.altitude_step)
-		)
-		_blend_on_base(
-			output, special_image, special_x, special_base_y,
-			configuration.tile_height
-		)
+		if not special_visual.is_empty():
+			var special_image := _sprite_image(
+				sprites, palette, cache, special_visual.sprite_id, special_visual.flip
+			)
+			var special_x := (
+				screen_x + int(configuration.half_width)
+				- int(special_image.get_width() / 2)
+			)
+			var special_altitude := city.land_altitude(x, y)
+			if city.is_water(x, y):
+				special_altitude = city.water_altitude(x, y)
+			var special_base_y := (
+				int(configuration.top_margin)
+				+ (x + y) * int(configuration.half_height)
+				- special_altitude * int(configuration.altitude_step)
+			)
+			_blend_on_base(
+				output, special_image, special_x, special_base_y,
+				configuration.tile_height
+			)
 
 
 static func edge_stack_visuals(
@@ -1051,6 +1056,112 @@ static func moving_thing_draw_commands(
 	return commands
 
 
+static func dynamic_draw_commands(
+	city: CityState,
+	sprites: Sc2SpriteArchive,
+	view_size := VIEW_LARGE,
+	animation_phase := 0
+) -> Array[Dictionary]:
+	var commands: Array[Dictionary] = []
+	if city == null or not city.is_valid() or sprites == null or not sprites.is_valid():
+		return commands
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return commands
+	var entries: Array[Dictionary] = []
+	for record in CityState.THING_COUNT:
+		var thing := city.thing(record)
+		var point := Vector2i(int(thing.get("x", -1)), int(thing.get("y", -1)))
+		if (
+			int(thing.get("type", 0)) == 0
+			or city.index_of(point.x, point.y) < 0
+			or city.text_overlay_id(point.x, point.y) != TEXT_THING_BASE + record
+		):
+			continue
+		entries.append({
+			"order": (point.x + point.y) * CityState.MAP_SIZE + point.y,
+			"record": record,
+			"point": point,
+			"special": false,
+		})
+	for overlay in SPECIAL_OVERLAY_SPRITE_OFFSETS:
+		var found := city.text_overlays.find(int(overlay))
+		while found >= 0:
+			var point := Vector2i(
+				int(found / CityState.MAP_SIZE), found % CityState.MAP_SIZE
+			)
+			entries.append({
+				"order": (point.x + point.y) * CityState.MAP_SIZE + point.y,
+				"record": CityState.THING_COUNT,
+				"point": point,
+				"special": true,
+			})
+			found = city.text_overlays.find(int(overlay), found + 1)
+	entries.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
+		if int(left.order) == int(right.order):
+			return int(left.record) < int(right.record)
+		return int(left.order) < int(right.order)
+	)
+	for entry in entries:
+		var point: Vector2i = entry.point
+		if entry.special:
+			var special_visual := special_overlay_visual(
+				city, point.x, point.y, view_size, animation_phase
+			)
+			var command := special_overlay_draw_command(
+				city, sprites, point, special_visual, configuration
+			)
+			if not command.is_empty():
+				commands.append(command)
+		else:
+			var moving_visual := moving_thing_visual(
+				city, point.x, point.y, view_size, animation_phase
+			)
+			commands.append_array(
+				moving_thing_draw_commands_for_visual(
+					city, sprites, moving_visual, configuration
+				)
+			)
+	return commands
+
+
+static func special_overlay_draw_command(
+	city: CityState,
+	sprites: Sc2SpriteArchive,
+	point: Vector2i,
+	visual: Dictionary,
+	configuration: Dictionary
+) -> Dictionary:
+	if visual.is_empty() or configuration.is_empty():
+		return {}
+	var entry := sprites.find_sprite(int(visual.sprite_id))
+	if entry == null:
+		return {}
+	var altitude := city.land_altitude(point.x, point.y)
+	if city.is_water(point.x, point.y):
+		altitude = city.water_altitude(point.x, point.y)
+	var screen_x := (
+		int(configuration.side_margin)
+		+ CityState.MAP_SIZE * int(configuration.half_width)
+		+ (point.x - point.y) * int(configuration.half_width)
+	)
+	var base_y := (
+		int(configuration.top_margin)
+		+ (point.x + point.y) * int(configuration.half_height)
+		- altitude * int(configuration.altitude_step)
+	)
+	return {
+		"sprite_id": int(visual.sprite_id),
+		"flip": bool(visual.flip),
+		"position": Vector2i(
+			screen_x + int(configuration.half_width) - int(entry.width / 2),
+			base_y + int(configuration.tile_height) - entry.height,
+		),
+		"shadow": false,
+		"overlay": int(visual.overlay),
+	}
+
+
 static func moving_thing_draw_commands_for_visual(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
@@ -1177,7 +1288,7 @@ static func _static_text_overlay_signature(city: CityState) -> int:
 	var values := PackedInt32Array()
 	for index in city.text_overlays.size():
 		var overlay := int(city.text_overlays[index])
-		if (overlay >= 1 and overlay <= 50) or overlay >= 251:
+		if overlay >= 1 and overlay <= 50:
 			values.append(index)
 			values.append(overlay)
 		elif overlay >= 201 and overlay <= 240:

@@ -26,7 +26,7 @@ func run() -> Dictionary:
 		}
 	var indexed := Renderer.create_image(
 		city_snapshot, index_palette, sprites, view_size, animation_phase,
-		false, true, false
+		false, true, false, false
 	)
 	if not indexed.ok:
 		return {
