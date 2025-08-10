@@ -494,6 +494,10 @@ func _test_sprite_archives(reference_root: String) -> void:
 		indexed_city.ok and indexed_city.image.get_pixel(0, 0).a == 0.0,
 		"Indexed city rendering keeps its outer canvas transparent",
 	)
+	_check(
+		indexed_city.ok and indexed_city.image.get_used_rect().has_area(),
+		"Indexed city rendering draws nontransparent map pixels",
+	)
 	_check(IsometricRenderer.terrain_sprite_id(0x00, false) == 1256, "Flat land uses sprite 1256")
 	_check(IsometricRenderer.terrain_sprite_id(0x10, true) == 1270, "Submerged land uses sprite 1270")
 	_check(IsometricRenderer.terrain_sprite_id(0x45, true) == 1290, "Last water tile uses sprite 1290")

@@ -109,11 +109,11 @@ static func create_image(
 			var x := diagonal - y
 			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
 				continue
-				_draw_tile(
-					output, city, palette, sprites, cache, configuration,
-					origin_x, x, y, animation_phase, include_moving_things,
-					include_special_overlays
-				)
+			_draw_tile(
+				output, city, palette, sprites, cache, configuration,
+				origin_x, x, y, animation_phase, include_moving_things,
+				include_special_overlays
+			)
 
 	return {"ok": true, "image": output, "error": ""}
 
