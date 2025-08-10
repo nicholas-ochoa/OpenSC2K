@@ -155,57 +155,15 @@ func resolve_military_proposal(accepted: bool) -> Dictionary:
 func advance_disaster_tick() -> Dictionary:
 	if active_disaster_type == 0:
 		return {"ok": false, "error": "no disaster is active"}
-	var phase_result := {
-		"ok": true,
-		"error": "",
-		"active": DisasterStartPhase.has_active_object(city, active_disaster_type),
-		"map_changed": false,
-		"news_items": [],
-		"effect_events": [],
-		"sound_events": [],
-		"view_center_requests": [],
-	}
-	if active_disaster_type == DisasterStartPhase.DISASTER_FIRE:
-		phase_result = DisasterMap.run_fire(city, random, lfsr_random)
-		if not phase_result.get("ok", false):
-			return phase_result
-		if not phase_result.get("active", false):
-			phase_result = DisasterMap.run_toxic(city, random, lfsr_random)
-			if not phase_result.get("ok", false):
-				return phase_result
-	elif active_disaster_type == DisasterStartPhase.DISASTER_FLOOD:
-		phase_result = DisasterMap.run_flood(
-			city, random, lfsr_random, disaster_map_counter
-		)
-		if not phase_result.get("ok", false):
-			return phase_result
-		disaster_map_counter = int(phase_result.get("map_counter", disaster_map_counter))
-		if not phase_result.get("active", false):
-			phase_result = DisasterMap.run_toxic(city, random, lfsr_random)
-			if not phase_result.get("ok", false):
-				return phase_result
-	elif (
-		active_disaster_type == DisasterStartPhase.DISASTER_TOXIC_SPILL
-		or active_disaster_type == DisasterStartPhase.DISASTER_POLLUTION
-	):
-		phase_result = DisasterMap.run_toxic(city, random, lfsr_random)
-		if not phase_result.get("ok", false):
-			return phase_result
-	elif (
-		active_disaster_type == DisasterStartPhase.DISASTER_RIOT
-		or active_disaster_type == DisasterStartPhase.DISASTER_MASS_RIOTS
-	):
-		phase_result = DisasterMap.run_riot(city, random, lfsr_random)
-		if not phase_result.get("ok", false):
-			return phase_result
-	var dispatch_result := DisasterMap.run_dispatch(city, random, lfsr_random)
-	if not dispatch_result.get("ok", false):
-		return dispatch_result
-	phase_result["dispatch_map"] = dispatch_result
-	phase_result["map_changed"] = bool(phase_result.get("map_changed", false)) or bool(
-		dispatch_result.get("map_changed", false)
+	var phase_result := DisasterMap.run_all(
+		city, random, lfsr_random, disaster_map_counter
 	)
-	var still_active: bool = phase_result.active
+	if not phase_result.get("ok", false):
+		return phase_result
+	disaster_map_counter = int(phase_result.get("map_counter", disaster_map_counter))
+	var still_active: bool = bool(phase_result.active) or DisasterStartPhase.has_active_object(
+		city, active_disaster_type
+	)
 	var ended_type := 0
 	if not still_active:
 		ended_type = active_disaster_type

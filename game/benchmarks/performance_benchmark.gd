@@ -7,6 +7,9 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
+const DisasterMap = preload("res://src/simulation/disaster_map_phase.gd")
+const Random = preload("res://src/simulation/sim_random.gd")
+const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
 
 
 func _init() -> void:
@@ -73,6 +76,38 @@ func _init() -> void:
 	for dynamic_index in 40:
 		Renderer.dynamic_draw_commands(city, sprites, Renderer.VIEW_LARGE, dynamic_index)
 	print("dynamic_layer_40: %d us" % (Time.get_ticks_usec() - started))
+
+	var split_disaster_city := CityModel.from_document(city.document.duplicate_document())
+	var split_random := Random.new(1)
+	var split_lfsr := LfsrRandom.new(1)
+	var split_ok := true
+	started = Time.get_ticks_usec()
+	for _disaster_index in 40:
+		var fire_tick := DisasterMap.run_fire(
+			split_disaster_city, split_random, split_lfsr
+		)
+		var dispatch_tick := DisasterMap.run_dispatch(
+			split_disaster_city, split_random, split_lfsr
+		)
+		split_ok = split_ok and fire_tick.ok and dispatch_tick.ok
+	print(
+		"split_disaster_map_40: %d us; ok=%s"
+		% [Time.get_ticks_usec() - started, split_ok]
+	)
+	var unified_disaster_city := CityModel.from_document(city.document.duplicate_document())
+	var unified_random := Random.new(1)
+	var unified_lfsr := LfsrRandom.new(1)
+	var unified_ok := true
+	started = Time.get_ticks_usec()
+	for _disaster_index in 40:
+		var unified_tick := DisasterMap.run_all(
+			unified_disaster_city, unified_random, unified_lfsr, 0
+		)
+		unified_ok = unified_ok and unified_tick.ok
+	print(
+		"unified_disaster_map_40: %d us; ok=%s"
+		% [Time.get_ticks_usec() - started, unified_ok]
+	)
 
 	var simulation_city := CityModel.from_document(city.document.duplicate_document())
 	var simulation := Simulation.new(simulation_city, 1, 1, 1)

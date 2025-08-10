@@ -39,6 +39,160 @@ const MAP_CHUNK_SIZES := {
 }
 
 
+static func run_all(
+	city: CityState, random, lfsr_random, map_counter: int
+) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if (
+		lfsr_random == null
+		or not lfsr_random.has_method("next_mask")
+		or not lfsr_random.has_method("next_mod")
+	):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "disaster-map input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var counter := maxi(map_counter - 1, 0)
+	var counters := {
+		"fire_markers_scanned": 0,
+		"fire_updates": 0,
+		"spread_attempts": 0,
+		"spread_fires": 0,
+		"water_extinctions": 0,
+		"coverage_extinctions": 0,
+		"structure_collapses": 0,
+		"created_explosions": 0,
+		"toxic_markers": 0,
+		"flood_markers_scanned": 0,
+		"flood_updates": 0,
+		"flood_spread_attempts": 0,
+		"spread_floods": 0,
+		"expired_floods": 0,
+		"random_extinctions": 0,
+		"damaged_structures": 0,
+		"toxic_markers_scanned": 0,
+		"toxic_updates": 0,
+		"lfsr_expirations": 0,
+		"water_expirations": 0,
+		"moved_markers": 0,
+		"blocked_moves": 0,
+		"abandoned_structures": 0,
+		"riot_markers_scanned": 0,
+		"riot_updates": 0,
+		"expired_riots": 0,
+		"damage_attempts": 0,
+		"started_fires": 0,
+		"traffic_cells_cleared": 0,
+		"propagated_riots": 0,
+		"blocked_propagations": 0,
+	}
+	var dispatch := {
+		"dispatch_markers_scanned": 0,
+		"fire_suppression_attempts": 0,
+		"fire_extinctions": 0,
+		"riot_suppression_attempts": 0,
+		"riot_suppressions": 0,
+	}
+	var fire_active := false
+	var flood_active := false
+	var toxic_active := false
+	var riot_active := false
+	for x in CityState.MAP_SIZE:
+		for y in CityState.MAP_SIZE:
+			var index := x * CityState.MAP_SIZE + y
+			var overlay := int(payloads.XTXT[index])
+			if overlay == FIRE_OVERLAY:
+				fire_active = true
+				_process_fire_cell(
+					city, payloads, Vector2i(x, y), index, random, lfsr_random, counters
+				)
+			elif overlay == RIOT_OVERLAY_REVERSE or overlay == RIOT_OVERLAY_FORWARD:
+				riot_active = true
+				_process_riot_cell(
+					city,
+					payloads,
+					Vector2i(x, y),
+					index,
+					overlay,
+					random,
+					lfsr_random,
+					counters
+				)
+			elif overlay == TOXIC_OVERLAY:
+				toxic_active = true
+				_process_toxic_cell(
+					city, payloads, Vector2i(x, y), index, random, lfsr_random, counters
+				)
+			elif overlay == 0xfc:
+				flood_active = true
+				_process_flood_cell(
+					city,
+					payloads,
+					Vector2i(x, y),
+					index,
+					counter,
+					random,
+					lfsr_random,
+					counters
+				)
+			elif overlay > 200 and overlay < 241:
+				_process_dispatch_cell(
+					city,
+					payloads,
+					Vector2i(x, y),
+					overlay,
+					random,
+					lfsr_random,
+					dispatch
+				)
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the disaster-map tick"}
+	var sound_events: Array[int] = []
+	if riot_active and random.next_u15() & 7 == 0:
+		sound_events.append(SOUND_RIOT)
+	if flood_active and random.next_u15() & 7 == 0:
+		sound_events.append(SOUND_FLOOD)
+	if fire_active:
+		sound_events.append(SOUND_FIRE)
+	counters["ok"] = true
+	counters["error"] = ""
+	counters["active"] = fire_active or flood_active or toxic_active or riot_active
+	counters["fire_active"] = fire_active
+	counters["flood_active"] = flood_active
+	counters["toxic_active"] = toxic_active
+	counters["riot_active"] = riot_active
+	counters["remaining_fires"] = payloads.XTXT.count(FIRE_OVERLAY)
+	counters["remaining_floods"] = payloads.XTXT.count(0xfc)
+	counters["remaining_toxic"] = payloads.XTXT.count(TOXIC_OVERLAY)
+	counters["remaining_riots"] = (
+		payloads.XTXT.count(RIOT_OVERLAY_FORWARD)
+		+ payloads.XTXT.count(RIOT_OVERLAY_REVERSE)
+	)
+	counters["map_counter"] = counter
+	counters["map_changed"] = map_changed
+	counters["news_items"] = []
+	counters["effect_events"] = []
+	counters["sound_events"] = sound_events
+	counters["view_center_requests"] = []
+	counters["complete"] = true
+	dispatch["ok"] = true
+	dispatch["error"] = ""
+	dispatch["active"] = false
+	dispatch["map_changed"] = map_changed
+	dispatch["news_items"] = []
+	dispatch["effect_events"] = []
+	dispatch["sound_events"] = []
+	dispatch["view_center_requests"] = []
+	dispatch["complete"] = true
+	counters["dispatch_map"] = dispatch
+	return counters
+
+
 static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -460,6 +614,231 @@ static func run_dispatch(city: CityState, random, lfsr_random) -> Dictionary:
 	counters["view_center_requests"] = []
 	counters["complete"] = true
 	return counters
+
+
+static func _process_fire_cell(
+	city: CityState,
+	payloads: Dictionary,
+	point: Vector2i,
+	index: int,
+	random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	counters.fire_markers_scanned += 1
+	if random.next_u15() & 3 != 0:
+		return
+	counters.fire_updates += 1
+	if payloads.XBIT[index] & 0x04 != 0:
+		payloads.XTXT[index] = 0
+		counters.water_extinctions += 1
+		return
+	var choice: int = random.next_u15() & 7
+	if choice < 4:
+		counters.spread_attempts += 1
+		var target: Vector2i = point + CARDINAL_DIRECTIONS[choice]
+		if _starts_fire(_apply_damage(city, payloads, target, random, lfsr_random)):
+			counters.spread_fires += 1
+	elif choice == 5:
+		var tile := int(payloads.XBLD[index])
+		if tile > 0x6f:
+			var toxic_site := Rect2i()
+			if SPECIAL_TOXIC_BUILDINGS.has(tile):
+				toxic_site = _building_site(city, payloads, point, tile)
+			_collapse_structure(city, payloads, point, tile, random, lfsr_random)
+			counters.structure_collapses += 1
+			if lfsr_random.next_mask(0x0f) == 0 and _spawn_explosion(
+				payloads.XTXT, payloads.XTHG, point, 0, 0, 1
+			):
+				counters.created_explosions += 1
+			if SPECIAL_TOXIC_BUILDINGS.has(tile):
+				counters.toxic_markers += _seed_special_toxic(payloads, toxic_site, point)
+	else:
+		var coverage := int(payloads.XFIR[int(point.x / 4) * 32 + int(point.y / 4)]) + 8
+		if (random.next_u15() & 0xff) < coverage:
+			_collapse_structure(
+				city, payloads, point, int(payloads.XBLD[index]), random, lfsr_random
+			)
+			counters.coverage_extinctions += 1
+
+
+static func _process_flood_cell(
+	city: CityState,
+	payloads: Dictionary,
+	point: Vector2i,
+	index: int,
+	counter: int,
+	random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	counters.flood_markers_scanned += 1
+	if counter == 0 and lfsr_random.next_mask(1) != 0:
+		payloads.XTXT[index] = 0
+		counters.expired_floods += 1
+		return
+	var update := counter > 51
+	if not update:
+		update = random.next_u15() & 3 == 0
+	if not update:
+		return
+	counters.flood_updates += 1
+	if counter < 30 and random.next_u15() & 3 == 0:
+		if payloads.XBLD[index] > 0x6f:
+			DisasterMapDamage.burn_structure(
+				city,
+				payloads.ALTM,
+				payloads.XBLD,
+				payloads.XTER,
+				payloads.XZON,
+				payloads.XUND,
+				payloads.XBIT,
+				payloads.XTXT,
+				payloads.XLAB,
+				payloads.XMIC,
+				payloads.MISC,
+				point,
+				random,
+				lfsr_random,
+				false,
+				false
+			)
+			counters.damaged_structures += 1
+		payloads.XTXT[index] = 0
+		counters.random_extinctions += 1
+	if counter > 0:
+		counters.flood_spread_attempts += 1
+		var target: Vector2i = point + CARDINAL_DIRECTIONS[random.next_u15() & 3]
+		if _apply_flood_damage(
+			city,
+			payloads,
+			target,
+			_altitude_word(payloads.ALTM, index) & 0x1f,
+			random,
+			lfsr_random
+		) == 1:
+			counters.spread_floods += 1
+
+
+static func _process_toxic_cell(
+	city: CityState,
+	payloads: Dictionary,
+	point: Vector2i,
+	index: int,
+	random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	counters.toxic_markers_scanned += 1
+	if random.next_u15() & 1 != 0:
+		return
+	counters.toxic_updates += 1
+	if lfsr_random.next_mask(0x3f) == 0:
+		payloads.XTXT[index] = 0
+		counters.lfsr_expirations += 1
+		return
+	if payloads.XBIT[index] & 0x04 != 0 and random.next_u15() & 0x0f == 0:
+		payloads.XTXT[index] = 0
+		counters.water_expirations += 1
+		return
+	if _abandon_toxic_structure(city, payloads, point, random):
+		counters.abandoned_structures += 1
+	var direction := _lowest_toxic_direction(payloads.ALTM, point)
+	if direction < 0:
+		direction = random.next_u15() & 3
+	payloads.XTXT[index] = 0
+	var target: Vector2i = point + CARDINAL_DIRECTIONS[direction]
+	if _place_toxic_marker(payloads.XTXT, target):
+		counters.moved_markers += 1
+	else:
+		counters.blocked_moves += 1
+
+
+static func _process_riot_cell(
+	city: CityState,
+	payloads: Dictionary,
+	point: Vector2i,
+	index: int,
+	marker: int,
+	random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	counters.riot_markers_scanned += 1
+	if random.next_u15() & 3 != 0:
+		return
+	counters.riot_updates += 1
+	if random.next_u15() & 0xff == 0 or payloads.XBIT[index] & 0x04 != 0:
+		payloads.XTXT[index] = 0
+		counters.expired_riots += 1
+		return
+	var traffic_index := int(point.x / 2) * 64 + int(point.y / 2)
+	if payloads.XTRF[traffic_index] != 0:
+		counters.traffic_cells_cleared += 1
+	payloads.XTRF[traffic_index] = 0
+	var damage_direction: int = random.next_u15() & 0x7f
+	if damage_direction < 4:
+		counters.damage_attempts += 1
+		if _starts_fire(
+			_apply_damage(
+				city,
+				payloads,
+				point + CARDINAL_DIRECTIONS[damage_direction],
+				random,
+				lfsr_random,
+			)
+		):
+			counters.started_fires += 1
+	var first_direction: int = 0 if marker == RIOT_OVERLAY_REVERSE else 2
+	var second_direction: int = 1 if marker == RIOT_OVERLAY_REVERSE else 3
+	var connections := 0
+	if _riot_supports(payloads.XBLD, point + CARDINAL_DIRECTIONS[first_direction]):
+		connections |= 1
+	if _riot_supports(payloads.XBLD, point + CARDINAL_DIRECTIONS[second_direction]):
+		connections |= 2
+	var opposite_marker: int = (
+		RIOT_OVERLAY_FORWARD if marker == RIOT_OVERLAY_REVERSE else RIOT_OVERLAY_REVERSE
+	)
+	if connections == 0:
+		payloads.XTXT[index] = opposite_marker
+		return
+	payloads.XTXT[index] = opposite_marker if random.next_u15() & 7 == 0 else 0
+	if connections == 3:
+		connections = (random.next_u15() & 1) + 1
+	var spread_direction: int = first_direction if connections == 1 else second_direction
+	if _place_riot_marker(
+		payloads.XTXT, point + CARDINAL_DIRECTIONS[spread_direction], marker
+	):
+		counters.propagated_riots += 1
+	else:
+		counters.blocked_propagations += 1
+
+
+static func _process_dispatch_cell(
+	city: CityState,
+	payloads: Dictionary,
+	point: Vector2i,
+	overlay: int,
+	random,
+	lfsr_random,
+	counters: Dictionary
+) -> void:
+	var record := overlay - TEXT_THING_BASE
+	var thing_type := int(payloads.XTHG[record * CityState.THING_RECORD_SIZE])
+	counters.dispatch_markers_scanned += 1
+	var suppresses_fire := thing_type == TYPE_FIRE_DISPATCH or thing_type == TYPE_MILITARY
+	if thing_type == TYPE_POLICE:
+		suppresses_fire = lfsr_random.next_mask(0x0f) == 0
+	if suppresses_fire:
+		counters.fire_suppression_attempts += 1
+		var fire_target: Vector2i = point + CARDINAL_DIRECTIONS[random.next_u15() & 3]
+		if _extinguish_dispatch_fire(city, payloads, fire_target, random, lfsr_random):
+			counters.fire_extinctions += 1
+	if thing_type == TYPE_POLICE or thing_type == TYPE_MILITARY:
+		counters.riot_suppression_attempts += 1
+		var riot_target: Vector2i = point + CARDINAL_DIRECTIONS[random.next_u15() & 3]
+		if _clear_riot_marker(payloads.XTXT, riot_target):
+			counters.riot_suppressions += 1
 
 
 static func _apply_damage(

@@ -3290,6 +3290,39 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"The active disaster engine applies map-side dispatch suppression after its fire scan",
 	)
 
+	var mixed_map := _dispatch_map_fixture(
+		reference_root, Dispatch.TYPE_FIRE, Vector2i(5, 5)
+	)
+	_check(
+		mixed_map.city != null
+		and mixed_map.city.set_text_overlay_id(
+			10, 10, DisasterMap.RIOT_OVERLAY_REVERSE
+		)
+		and mixed_map.city.set_text_overlay_id(20, 20, DisasterMap.FIRE_OVERLAY)
+		and mixed_map.city.set_tile_flag(20, 20, 0x04, true),
+		"Mixed disaster fixture orders dispatch, riot, and fire markers by map position",
+	)
+	var mixed_random := SequenceRandom.new([3, 1, 0, 1])
+	var mixed_tick := DisasterMap.run_all(
+		mixed_map.city, mixed_random, SequenceLfsrRandom.new([]), 0
+	)
+	_check(
+		mixed_tick.ok
+		and mixed_tick.active
+		and mixed_tick.dispatch_map.fire_suppression_attempts == 1
+		and mixed_tick.riot_markers_scanned == 1
+		and mixed_tick.fire_markers_scanned == 1
+		and mixed_tick.water_extinctions == 1
+		and mixed_tick.sound_events == [DisasterMap.SOUND_FIRE],
+		"The combined scan processes all marker classes and keeps original sound order",
+	)
+	_check(
+		mixed_random.position == 4
+		and mixed_map.city.text_overlay_id(10, 10) == DisasterMap.RIOT_OVERLAY_REVERSE
+		and mixed_map.city.text_overlay_id(20, 20) == 0,
+		"The combined scan consumes random state in X-before-Y marker order",
+	)
+
 	var toxic_engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
 	_check(
 		toxic_engine_fixture.city.set_text_overlay_id(20, 20, DisasterMap.TOXIC_OVERLAY)
