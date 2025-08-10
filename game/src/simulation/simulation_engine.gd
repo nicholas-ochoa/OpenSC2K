@@ -191,6 +191,13 @@ func advance_disaster_tick() -> Dictionary:
 		phase_result = DisasterMap.run_toxic(city, random, lfsr_random)
 		if not phase_result.get("ok", false):
 			return phase_result
+	elif (
+		active_disaster_type == DisasterStartPhase.DISASTER_RIOT
+		or active_disaster_type == DisasterStartPhase.DISASTER_MASS_RIOTS
+	):
+		phase_result = DisasterMap.run_riot(city, random, lfsr_random)
+		if not phase_result.get("ok", false):
+			return phase_result
 	var dispatch_result := DisasterMap.run_dispatch(city, random, lfsr_random)
 	if not dispatch_result.get("ok", false):
 		return dispatch_result

@@ -5,20 +5,25 @@ const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
 const DISASTER_NONE := 0
 const DISASTER_FIRE := 1
 const DISASTER_FLOOD := 2
+const DISASTER_RIOT := 3
 const DISASTER_TOXIC_SPILL := 4
 const DISASTER_TORNADO := 7
 const DISASTER_MONSTER := 8
+const DISASTER_MASS_RIOTS := 13
 const DISASTER_POLLUTION := 15
 const TYPE_MONSTER := 5
 const TYPE_TORNADO := 15
 const TEXT_THING_BASE := 201
 const SOUND_SIREN := 520
 const SOUND_FLOOD := 511
+const SOUND_RIOT := 512
 const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
 const MISC_NORMAL_POPULATION := 0x102c
 const FIRE_SPIRAL_X := [0, 1, 0, -1]
 const FIRE_SPIRAL_Y := [-1, 0, 1, 0]
+const RIOT_OVERLAY_FORWARD := 0xfd
+const RIOT_OVERLAY_REVERSE := 0xfe
 const MAP_CHUNK_SIZES := {
 	"ALTM": CityState.TILE_COUNT * 2,
 	"XBLD": CityState.TILE_COUNT,
@@ -45,8 +50,12 @@ static func start(
 		return _start_fire(city, random, lfsr_random)
 	if disaster_type == DISASTER_FLOOD:
 		return _start_flood(city, point, lfsr_random)
+	if disaster_type == DISASTER_RIOT:
+		return _start_riot(city, point, random)
 	if disaster_type == DISASTER_TOXIC_SPILL:
 		return _start_toxic_spill(city, point)
+	if disaster_type == DISASTER_MASS_RIOTS:
+		return _start_mass_riots(city, point, random)
 	if disaster_type == DISASTER_POLLUTION:
 		return _start_pollution(city, point, random)
 	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
@@ -192,6 +201,146 @@ static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
 		return {"ok": false, "error": "cannot store the toxic spill"}
 	city.text_overlays = text.duplicate()
 	return _result(DISASTER_TOXIC_SPILL, point, true, true, 0)
+
+
+static func _start_riot(city: CityState, point: Vector2i, random) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	var riot_maps := _riot_map_payloads(city)
+	if riot_maps.is_empty():
+		return {"ok": false, "error": "riot disaster map data is missing or invalid"}
+	var text: PackedByteArray = riot_maps.XTXT.duplicate()
+	var current_point := point
+	var seed_points: Array[Vector2i] = []
+	for _attempt in 3:
+		var seed_point := _find_riot_seed(
+			current_point, riot_maps.XBLD, riot_maps.XBIT, text
+		)
+		if seed_point.x < 0:
+			if seed_points.is_empty():
+				return _riot_result(DISASTER_RIOT, point, seed_points, 3)
+			continue
+		current_point = seed_point
+		text[_index(seed_point)] = RIOT_OVERLAY_FORWARD + (random.next_u15() & 1)
+		seed_points.append(seed_point)
+	if not _store_riot_text(city, text):
+		return {"ok": false, "error": "cannot store the riot disaster"}
+	return _riot_result(DISASTER_RIOT, current_point, seed_points, 3)
+
+
+static func _start_mass_riots(city: CityState, point: Vector2i, random) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	var riot_maps := _riot_map_payloads(city)
+	if riot_maps.is_empty():
+		return {"ok": false, "error": "mass-riot disaster map data is missing or invalid"}
+	var attempt_count := (
+		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
+	) & 0xffff
+	if attempt_count & 0x8000:
+		attempt_count -= 0x10000
+	var text: PackedByteArray = riot_maps.XTXT.duplicate()
+	var final_point := point
+	var seed_points: Array[Vector2i] = []
+	if attempt_count > 0:
+		for _attempt in attempt_count:
+			var candidate := point + Vector2i(
+				(random.next_u15() & 0x1f) - 16,
+				(random.next_u15() & 0x1f) - 16,
+			)
+			if _index(candidate) < 0:
+				continue
+			final_point = candidate
+			var seed_point := _find_riot_seed(
+				candidate, riot_maps.XBLD, riot_maps.XBIT, text
+			)
+			if seed_point.x < 0:
+				continue
+			final_point = seed_point
+			text[_index(seed_point)] = RIOT_OVERLAY_FORWARD + (random.next_u15() & 1)
+			seed_points.append(seed_point)
+	if not seed_points.is_empty() and not _store_riot_text(city, text):
+		return {"ok": false, "error": "cannot store the mass-riot disaster"}
+	return _riot_result(
+		DISASTER_MASS_RIOTS, final_point, seed_points, maxi(attempt_count, 0)
+	)
+
+
+static func _riot_map_payloads(city: CityState) -> Dictionary:
+	var result := {}
+	for chunk_id in ["XBLD", "XBIT", "XTXT"]:
+		var chunk := city.document.find_chunk(chunk_id)
+		if chunk == null or chunk.decoded_payload.size() != CityState.TILE_COUNT:
+			return {}
+		result[chunk_id] = chunk.decoded_payload
+	return result
+
+
+static func _find_riot_seed(
+	origin: Vector2i,
+	buildings: PackedByteArray,
+	flags: PackedByteArray,
+	text: PackedByteArray
+) -> Vector2i:
+	var point := origin
+	var direction := 0
+	var run_length := 1
+	var step := 0
+	while run_length < CityState.MAP_SIZE:
+		point += Vector2i(FIRE_SPIRAL_X[direction], FIRE_SPIRAL_Y[direction])
+		var index := _index(point)
+		if (
+			index >= 0
+			and _riot_start_supports(int(buildings[index]))
+			and flags[index] & 0x04 == 0
+			and text[index] == 0
+		):
+			return point
+		step += 1
+		if step >= run_length:
+			step = 0
+			if direction & 1 != 0:
+				run_length += 1
+			direction = (direction + 1) & 3
+	return Vector2i(-1, -1)
+
+
+static func _riot_start_supports(tile: int) -> bool:
+	return (
+		(tile >= 0x1d and tile <= 0x2b)
+		or (tile >= 0x3f and tile <= 0x46)
+		or tile == 0x4b
+		or tile == 0x4c
+		or (tile >= 0x5d and tile <= 0x60)
+	)
+
+
+static func _store_riot_text(city: CityState, text: PackedByteArray) -> bool:
+	var chunk := city.document.find_chunk("XTXT")
+	if chunk == null or not chunk.set_decoded_payload(text):
+		return false
+	city.text_overlays = text.duplicate()
+	return true
+
+
+static func _riot_result(
+	disaster_type: int,
+	point: Vector2i,
+	seed_points: Array[Vector2i],
+	attempt_count: int
+) -> Dictionary:
+	var started := not seed_points.is_empty()
+	var result := _result(disaster_type, point, started, true, 0)
+	result["attempt_count"] = attempt_count
+	result["seed_writes"] = seed_points.size()
+	result["seed_points"] = seed_points
+	var sounds: Array[int] = []
+	for _seed in seed_points:
+		sounds.append(SOUND_RIOT)
+	if started:
+		sounds.append(SOUND_SIREN)
+	result["sound_events"] = sounds
+	return result
 
 
 static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictionary:

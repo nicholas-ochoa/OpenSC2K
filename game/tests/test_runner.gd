@@ -2541,6 +2541,128 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		% [missed_pollution, missed_pollution_random.position],
 	)
 
+	var riot_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var riot_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	for y in [19, 18, 17]:
+		riot_buildings[20 * CityState.MAP_SIZE + y] = 0x1d
+	_check(
+		riot_document.find_chunk("XBLD").set_decoded_payload(riot_buildings)
+		and riot_document.find_chunk("XBIT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and riot_document.find_chunk("XTXT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		),
+		"Riot start fixture installs three northbound road cells",
+	)
+	var riot_city := CityModel.from_document(riot_document)
+	var riot_random := SequenceRandom.new([0, 1, 0])
+	var riot_start := DisasterStart.start(
+		riot_city, DisasterStart.DISASTER_RIOT, Vector2i(20, 20), riot_random
+	)
+	_check(
+		riot_start.ok
+		and riot_start.started
+		and riot_start.complete
+		and riot_start.seed_writes == 3
+		and riot_start.seed_points == [Vector2i(20, 19), Vector2i(20, 18), Vector2i(20, 17)]
+		and riot_start.point == Vector2i(20, 17)
+		and riot_start.view_center_requests == [Vector2i(20, 17)],
+		"Riot makes three spiral starts and keeps the last successful point",
+	)
+	_check(
+		riot_city.text_overlay_id(20, 19) == DisasterStart.RIOT_OVERLAY_FORWARD
+		and riot_city.text_overlay_id(20, 18) == DisasterStart.RIOT_OVERLAY_REVERSE
+		and riot_city.text_overlay_id(20, 17) == DisasterStart.RIOT_OVERLAY_FORWARD
+		and riot_start.sound_events == [
+			DisasterStart.SOUND_RIOT,
+			DisasterStart.SOUND_RIOT,
+			DisasterStart.SOUND_RIOT,
+			DisasterStart.SOUND_SIREN,
+		]
+		and riot_random.position == 3,
+		"Riot uses one orientation bit and sound request for each seeded marker",
+	)
+
+	var rejected_riot_document := Sc2Document.load_path(
+		reference_root.path_join("DEFAULT.SC2")
+	)
+	var rejected_riot_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	rejected_riot_buildings[20 * CityState.MAP_SIZE + 20] = 0x1d
+	rejected_riot_buildings[20 * CityState.MAP_SIZE + 19] = 0x1c
+	_check(
+		rejected_riot_document.find_chunk("XBLD").set_decoded_payload(
+			rejected_riot_buildings
+		)
+		and rejected_riot_document.find_chunk("XBIT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and rejected_riot_document.find_chunk("XTXT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		),
+		"Rejected riot fixture keeps only the origin and a tile below the supported range",
+	)
+	var rejected_riot_random := SequenceRandom.new([1])
+	var rejected_riot := DisasterStart.start(
+		CityModel.from_document(rejected_riot_document),
+		DisasterStart.DISASTER_RIOT,
+		Vector2i(20, 20),
+		rejected_riot_random,
+	)
+	_check(
+		rejected_riot.ok
+		and not rejected_riot.started
+		and rejected_riot.complete
+		and rejected_riot.seed_writes == 0
+		and rejected_riot_random.position == 0,
+		"Riot excludes its origin and XBLD below 0x1D without consuming random state",
+	)
+
+	var mass_riot_document := Sc2Document.load_path(
+		reference_root.path_join("DEFAULT.SC2")
+	)
+	_check(
+		mass_riot_document.find_chunk("XBLD").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0x1d)
+		)
+		and mass_riot_document.find_chunk("XBIT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and mass_riot_document.find_chunk("XTXT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and mass_riot_document.set_misc_u32(DisasterStart.MISC_NORMAL_POPULATION, 20000),
+		"Mass-riot fixture installs a dry road map and normal population",
+	)
+	var mass_riot_values: Array[int] = []
+	for x_value in [16, 20, 24, 28, 0, 4, 8]:
+		mass_riot_values.append_array([x_value, 16, x_value & 1])
+	var mass_riot_random := SequenceRandom.new(mass_riot_values)
+	var mass_riot_city := CityModel.from_document(mass_riot_document)
+	var mass_riot_start := DisasterStart.start(
+		mass_riot_city,
+		DisasterStart.DISASTER_MASS_RIOTS,
+		Vector2i(64, 64),
+		mass_riot_random,
+	)
+	_check(
+		mass_riot_start.ok
+		and mass_riot_start.started
+		and mass_riot_start.attempt_count == 7
+		and mass_riot_start.seed_writes == 7
+		and mass_riot_start.point == Vector2i(56, 63)
+		and mass_riot_random.position == 21,
+		"Mass Riots uses population plus five attempts and three random values per successful seed",
+	)
+	_check(
+		mass_riot_city.text_overlay_id(64, 63) == DisasterStart.RIOT_OVERLAY_FORWARD
+		and mass_riot_city.text_overlay_id(68, 63) == DisasterStart.RIOT_OVERLAY_FORWARD
+		and mass_riot_city.text_overlay_id(56, 63) == DisasterStart.RIOT_OVERLAY_FORWARD
+		and mass_riot_start.sound_events.size() == 8
+		and mass_riot_start.sound_events[-1] == DisasterStart.SOUND_SIREN,
+		"Mass Riots stores each marker and appends the common siren after riot sounds",
+	)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
@@ -3246,6 +3368,38 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and pollution_engine_fixture.city.city_mode() == 1,
 		"Pollution enters disaster mode, runs toxic clouds, and restores city mode: %s %s %s active=%d mode=%d"
 		% [pollution_engine_start, pollution_tick, pollution_end, pollution_engine.active_disaster_type, pollution_engine_fixture.city.city_mode()],
+	)
+
+	var riot_engine_document := Sc2Document.load_path(
+		reference_root.path_join("DEFAULT.SC2")
+	)
+	_check(
+		riot_engine_document.find_chunk("XBLD").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0x1d)
+		)
+		and riot_engine_document.find_chunk("XBIT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		)
+		and riot_engine_document.find_chunk("XTXT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		),
+		"Riot engine fixture installs a dry road map",
+	)
+	var riot_engine_city := CityModel.from_document(riot_engine_document)
+	var riot_engine := Simulation.new(riot_engine_city, 1, 7, 13)
+	var riot_engine_start := riot_engine.start_disaster(
+		DisasterStart.DISASTER_RIOT, Vector2i(64, 64)
+	)
+	var riot_engine_tick := riot_engine.advance_disaster_tick()
+	_check(
+		riot_engine_start.ok
+		and riot_engine_start.started
+		and riot_engine_tick.ok
+		and riot_engine_tick.active
+		and riot_engine_tick.riot_markers_scanned > 0
+		and riot_engine.active_disaster_type == DisasterStart.DISASTER_RIOT
+		and riot_engine_city.city_mode() == 2,
+		"Riot enters disaster mode and runs its recurring map branch",
 	)
 
 	var manual := _fire_map_fixture(reference_root, Vector2i(20, 20), 0)
