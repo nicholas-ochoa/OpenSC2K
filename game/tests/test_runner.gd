@@ -2663,6 +2663,88 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Mass Riots stores each marker and appends the common siren after riot sounds",
 	)
 
+	var earthquake_point := Vector2i(64, 64)
+	var earthquake_damage_point := Vector2i(32, 32)
+	var earthquake_fixture := _fire_map_fixture(
+		reference_root, earthquake_damage_point, 0x1d
+	)
+	_check(
+		earthquake_fixture.city != null
+		and earthquake_fixture.city.set_text_overlay_id(
+			earthquake_damage_point.x, earthquake_damage_point.y, 0
+		),
+		"Earthquake fixture installs one eligible tile at its first offset",
+	)
+	var earthquake_values: Array[int] = [0, 0]
+	for _gate in 4224:
+		earthquake_values.append(1)
+	var earthquake_random := SequenceRandom.new(earthquake_values)
+	var earthquake_start := DisasterStart.start(
+		earthquake_fixture.city,
+		DisasterStart.DISASTER_EARTHQUAKE,
+		earthquake_point,
+		earthquake_random,
+		SequenceLfsrRandom.new([]),
+	)
+	_check(
+		earthquake_start.ok
+		and earthquake_start.started
+		and earthquake_start.complete
+		and earthquake_start.gate_attempts == 4225
+		and earthquake_start.gate_hits == 1
+		and earthquake_start.eligible_targets == 1
+		and earthquake_start.fire_damage_attempts == 1
+		and earthquake_start.structure_damage_attempts == 0
+		and earthquake_start.map_changed,
+		"Earthquake scans all 65 by 65 offsets and selects fire damage with the next random value",
+	)
+	_check(
+		earthquake_random.position == 4226
+		and earthquake_fixture.city.text_overlay_id(
+			earthquake_damage_point.x, earthquake_damage_point.y
+		) == DisasterMap.FIRE_OVERLAY,
+		"Earthquake consumes one gate per offset and starts fire on its selected cell",
+	)
+	_check(
+		earthquake_start.effect_events == [{
+			"type": "earthquake", "frames": 24, "frame_msec": 5, "distance": 4,
+		}]
+		and earthquake_start.sound_events.size() == 25
+		and earthquake_start.sound_events[0] == DisasterStart.SOUND_EARTHQUAKE
+		and earthquake_start.sound_events[23] == DisasterStart.SOUND_EARTHQUAKE
+		and earthquake_start.sound_events[24] == DisasterStart.SOUND_SIREN
+		and earthquake_start.view_center_requests == [earthquake_point],
+		"Earthquake reports its 24 shake frames, repeated sound, siren, and view center",
+	)
+
+	var empty_earthquake_fixture := _fire_map_fixture(
+		reference_root, Vector2i(20, 20), 0
+	)
+	_check(
+		empty_earthquake_fixture.city.set_text_overlay_id(20, 20, 0),
+		"Empty earthquake fixture clears its inherited fire marker",
+	)
+	var empty_earthquake_values: Array[int] = [0]
+	for _gate in 4224:
+		empty_earthquake_values.append(1)
+	var empty_earthquake_random := SequenceRandom.new(empty_earthquake_values)
+	var empty_earthquake := DisasterStart.start(
+		empty_earthquake_fixture.city,
+		DisasterStart.DISASTER_EARTHQUAKE,
+		Vector2i.ZERO,
+		empty_earthquake_random,
+		SequenceLfsrRandom.new([]),
+	)
+	_check(
+		empty_earthquake.ok
+		and empty_earthquake.started
+		and not empty_earthquake.map_changed
+		and empty_earthquake.gate_hits == 1
+		and empty_earthquake.eligible_targets == 0
+		and empty_earthquake_random.position == 4225,
+		"Earthquake consumes its random gate before it rejects an out-of-map offset",
+	)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6

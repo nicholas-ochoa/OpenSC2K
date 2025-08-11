@@ -7,6 +7,7 @@ const DISASTER_FIRE := 1
 const DISASTER_FLOOD := 2
 const DISASTER_RIOT := 3
 const DISASTER_TOXIC_SPILL := 4
+const DISASTER_EARTHQUAKE := 6
 const DISASTER_TORNADO := 7
 const DISASTER_MONSTER := 8
 const DISASTER_MASS_RIOTS := 13
@@ -17,6 +18,7 @@ const TEXT_THING_BASE := 201
 const SOUND_SIREN := 520
 const SOUND_FLOOD := 511
 const SOUND_RIOT := 512
+const SOUND_EARTHQUAKE := 504
 const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
 const MISC_NORMAL_POPULATION := 0x102c
@@ -54,6 +56,8 @@ static func start(
 		return _start_riot(city, point, random)
 	if disaster_type == DISASTER_TOXIC_SPILL:
 		return _start_toxic_spill(city, point)
+	if disaster_type == DISASTER_EARTHQUAKE:
+		return _start_earthquake(city, point, random, lfsr_random)
 	if disaster_type == DISASTER_MASS_RIOTS:
 		return _start_mass_riots(city, point, random)
 	if disaster_type == DISASTER_POLLUTION:
@@ -379,6 +383,82 @@ static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictio
 	return result
 
 
+static func _start_earthquake(
+	city: CityState, point: Vector2i, random, lfsr_random
+) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if (
+		lfsr_random == null
+		or not lfsr_random.has_method("next_mask")
+		or not lfsr_random.has_method("next_mod")
+	):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "earthquake disaster input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var gate_hits := 0
+	var eligible_targets := 0
+	var fire_damage_attempts := 0
+	var structure_damage_attempts := 0
+	for x_offset in range(-32, 33):
+		for y_offset in range(-32, 33):
+			if random.next_u15() & 0x3f != 0:
+				continue
+			gate_hits += 1
+			var target := point + Vector2i(x_offset, y_offset)
+			var index := _index(target)
+			if index < 0 or payloads.XBLD[index] <= 0x0d:
+				continue
+			eligible_targets += 1
+			if random.next_u15() & 3 == 0:
+				fire_damage_attempts += 1
+				_apply_fire_damage(city, payloads, target, random, lfsr_random)
+			else:
+				structure_damage_attempts += 1
+				DisasterMapDamage.burn_structure(
+					city,
+					payloads.ALTM,
+					payloads.XBLD,
+					payloads.XTER,
+					payloads.XZON,
+					payloads.XUND,
+					payloads.XBIT,
+					payloads.XTXT,
+					payloads.XLAB,
+					payloads.XMIC,
+					payloads.MISC,
+					target,
+					random,
+					lfsr_random,
+					false,
+					false
+				)
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the earthquake disaster"}
+	var result := _result(DISASTER_EARTHQUAKE, point, true, true, 0)
+	result["gate_attempts"] = 65 * 65
+	result["gate_hits"] = gate_hits
+	result["eligible_targets"] = eligible_targets
+	result["fire_damage_attempts"] = fire_damage_attempts
+	result["structure_damage_attempts"] = structure_damage_attempts
+	result["map_changed"] = map_changed
+	result["effect_events"] = [{
+		"type": "earthquake",
+		"frames": 24,
+		"frame_msec": 5,
+		"distance": 4,
+	}]
+	var sounds: Array[int] = []
+	for _frame in 24:
+		sounds.append(SOUND_EARTHQUAKE)
+	sounds.append(SOUND_SIREN)
+	result["sound_events"] = sounds
+	return result
+
+
 static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i) -> void:
 	var index := _index(point)
 	if index >= 0 and payloads.XBIT[index] & 0x04 == 0:
@@ -509,6 +589,13 @@ static func _duplicate_payloads(payloads: Dictionary) -> Dictionary:
 	for chunk_id in payloads:
 		result[chunk_id] = payloads[chunk_id].duplicate()
 	return result
+
+
+static func _payloads_changed(original: Dictionary, payloads: Dictionary) -> bool:
+	for chunk_id in MAP_CHUNK_SIZES:
+		if payloads[chunk_id] != original[chunk_id]:
+			return true
+	return false
 
 
 static func _apply_map_payloads(

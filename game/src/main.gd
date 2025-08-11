@@ -311,7 +311,7 @@ func _build_interface(toolbar_art: Image) -> void:
 		["Hurricane", 16], ["Helicopter Crash", 17], ["Plane Crash", 18],
 	], _on_disaster_menu)
 	var implemented_disasters := {
-		1: true, 2: true, 3: true, 4: true, 7: true, 8: true, 13: true, 15: true,
+		1: true, 2: true, 3: true, 4: true, 6: true, 7: true, 8: true, 13: true, 15: true,
 	}
 	for item_index in disasters_menu.get_popup().item_count:
 		var disaster_id := disasters_menu.get_popup().get_item_id(item_index)
@@ -319,7 +319,7 @@ func _build_interface(toolbar_art: Image) -> void:
 			item_index, not implemented_disasters.has(disaster_id)
 		)
 	disasters_menu.tooltip_text = (
-		"Fire, Flood, Riot, Toxic Spill, Tornado, Monster, Mass Riots, and Pollution are available."
+		"Fire, Flood, Riot, Toxic Spill, Earthquake, Tornado, Monster, Mass Riots, and Pollution are available."
 	)
 	_add_menu(menu_row, "Windows", [["Budget", 0], ["City Information", 1]], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
@@ -880,6 +880,7 @@ func _on_disaster_menu(id: int) -> void:
 		DisasterStart.DISASTER_FLOOD: "Flood",
 		DisasterStart.DISASTER_RIOT: "Riot",
 		DisasterStart.DISASTER_TOXIC_SPILL: "Toxic Spill",
+		DisasterStart.DISASTER_EARTHQUAKE: "Earthquake",
 		DisasterStart.DISASTER_TORNADO: "Tornado",
 		DisasterStart.DISASTER_MONSTER: "Monster",
 		DisasterStart.DISASTER_MASS_RIOTS: "Mass Riots",
@@ -1474,11 +1475,20 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 	if city == null:
 		return
 	var visuals: Array[Dictionary] = []
+	for effect in effect_events:
+		if effect.get("type", "") == "earthquake":
+			map_view.shake_view(
+				int(effect.get("frames", 24)),
+				float(effect.get("frame_msec", 5)) / 1000.0,
+				float(effect.get("distance", 4)),
+			)
 	if overlay_mode == "city":
 		var view_size := _city_view_size()
 		var sprite_archive := _sprite_archive_for_view(view_size)
 		var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
 		for effect in effect_events:
+			if effect.get("type", "") == "earthquake":
+				continue
 			var sprite_id := IsometricRenderer.effect_sprite_id(
 				int(effect.get("sprite_id", 0)), view_size
 			)

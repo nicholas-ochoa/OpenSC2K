@@ -49,6 +49,8 @@ var transient_effects: Array[Dictionary] = []
 var dynamic_sprites: Array[Dictionary] = []
 var _panning := false
 var _effect_generation := 0
+var _shake_generation := 0
+var _shake_offset := Vector2.ZERO
 var _base_layer: TextureRect
 var _base_material: ShaderMaterial
 var _palette_shader: Shader
@@ -173,6 +175,22 @@ func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void
 	)
 
 
+func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
+	_shake_generation += 1
+	_shake_offset = Vector2.ZERO
+	if frames <= 0 or not is_inside_tree():
+		_sync_base_layer()
+		queue_redraw()
+		return
+	_show_shake_frame(
+		0,
+		frames,
+		maxf(0.0, float(frame_duration)),
+		maxf(0.0, float(distance)),
+		_shake_generation
+	)
+
+
 func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
 	dynamic_sprites = sprites.duplicate()
 	_sync_dynamic_layers()
@@ -207,6 +225,24 @@ func _show_transient_effect_frame(
 		timer.timeout.connect(_show_transient_effect_frame.bind(
 			effects, frame + 1, last_frame, duration, generation
 		))
+
+
+func _show_shake_frame(
+	frame: int, frames: int, duration: float, distance: float, generation: int
+) -> void:
+	if generation != _shake_generation:
+		return
+	if frame >= frames:
+		_shake_offset = Vector2.ZERO
+		_sync_base_layer()
+		queue_redraw()
+		return
+	_shake_offset = Vector2(-distance * maxf(1.0, zoom_factor), 0.0) if frame & 1 == 0 else Vector2.ZERO
+	_sync_base_layer()
+	queue_redraw()
+	get_tree().create_timer(duration).timeout.connect(
+		_show_shake_frame.bind(frame + 1, frames, duration, distance, generation)
+	)
 
 
 func _draw() -> void:
@@ -442,7 +478,7 @@ func _view_scale() -> float:
 
 
 func _draw_offset(scale: float) -> Vector2:
-	return (size * 0.5 - source_center * scale).round()
+	return (size * 0.5 - source_center * scale).round() + _shake_offset
 
 
 func _clamp_source_center() -> void:
