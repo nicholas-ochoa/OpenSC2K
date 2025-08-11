@@ -1150,10 +1150,40 @@ func _test_sprite_archives(reference_root: String) -> void:
 		],
 		"Path selection follows a contiguous diagonal route",
 	)
-	_check(map_control.cancel_active_selection(), "Map control cancels an active selection")
+	var selection_cancel_signals := [0]
+	var selection_complete_signals := [0]
+	map_control.selection_canceled.connect(func() -> void:
+		selection_cancel_signals[0] += 1
+	)
+	map_control.selection_completed.connect(func(
+		_start: Vector2i, _finish: Vector2i, _path: Array[Vector2i]
+	) -> void:
+		selection_complete_signals[0] += 1
+	)
+	map_control.edit_enabled = true
+	map_control.city_texture = ImageTexture.create_from_image(
+		Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	)
+	var cancel_event := InputEventMouseButton.new()
+	cancel_event.button_index = MOUSE_BUTTON_RIGHT
+	cancel_event.pressed = true
+	map_control._handle_mouse_button(cancel_event)
+	_check(
+		selection_cancel_signals[0] == 1,
+		"Mouse button 2 emits one selection-canceled signal",
+	)
 	_check(
 		not map_control.is_left_drag_active() and map_control.selection_tiles().is_empty(),
 		"Canceled selection cannot commit any preview tiles",
+	)
+	var release_event := InputEventMouseButton.new()
+	release_event.button_index = MOUSE_BUTTON_LEFT
+	release_event.pressed = false
+	release_event.position = Vector2.ZERO
+	map_control._handle_mouse_button(release_event)
+	_check(
+		selection_complete_signals[0] == 0,
+		"Left-button release cannot commit a mouse-button-2 cancellation",
 	)
 	map_control.set_dynamic_sprites([{"position": Vector2(10, 20)}])
 	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")
