@@ -136,6 +136,23 @@ class SequenceRandom:
 		return value
 
 
+class SparseRandom:
+	extends RefCounted
+
+	var values := {}
+	var default_value := 1
+	var position := 0
+
+	func _init(initial_values: Dictionary, fallback := 1) -> void:
+		values = initial_values.duplicate()
+		default_value = fallback
+
+	func next_u15() -> int:
+		var value := int(values.get(position, default_value))
+		position += 1
+		return value
+
+
 class CountingRandom:
 	extends RefCounted
 
@@ -1764,7 +1781,7 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"The disaster controller restores city mode after the monster ends",
 	)
 
-	var unsupported_scenario_document := Sc2Document.load_path(reference_root.path_join("SCENARIO/BARCELON.SCN"))
+	var unsupported_scenario_document := Sc2Document.load_path(reference_root.path_join("SCENARIO/SILICONV.SCN"))
 	var unsupported_scenario_city := CityModel.from_document(unsupported_scenario_document)
 	_check(unsupported_scenario_city.set_age_in_days(0), "Unsupported scenario fixture resets the day")
 	var unsupported_scenario_engine := Simulation.new(unsupported_scenario_city, 1, 7, 13)
@@ -1773,7 +1790,7 @@ func _test_simulation_engine(reference_root: String) -> void:
 		unsupported_start.ok
 		and unsupported_start.pending.has("disaster_start")
 		and not unsupported_start.complete
-		and unsupported_scenario_engine.unsupported_disaster_type == 9,
+		and unsupported_scenario_engine.unsupported_disaster_type == 10,
 		"An unsupported scenario disaster stays explicit in the engine result",
 	)
 
@@ -2775,6 +2792,206 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Earthquake consumes its random gate before it rejects an out-of-map offset",
 	)
 
+	var meltdown_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			meltdown_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT, 0)
+			),
+			"Meltdown fixture clears %s" % chunk_id,
+		)
+	_check(
+		meltdown_document.find_chunk("ALTM").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT * 2, 0)
+		)
+		and meltdown_document.find_chunk("XTRF").set_decoded_payload(
+			_filled_bytes(64 * 64, 9)
+		)
+		and meltdown_document.find_chunk("XLAB").set_decoded_payload(
+			_filled_bytes(CityState.LABEL_COUNT * CityState.LABEL_RECORD_SIZE, 0)
+		)
+		and meltdown_document.find_chunk("XMIC").set_decoded_payload(
+			_filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+		),
+		"Meltdown fixture clears linked map state",
+	)
+	var meltdown_buildings: PackedByteArray = (
+		meltdown_document.find_chunk("XBLD").decoded_payload.duplicate()
+	)
+	var meltdown_zones: PackedByteArray = (
+		meltdown_document.find_chunk("XZON").decoded_payload.duplicate()
+	)
+	var meltdown_flags: PackedByteArray = (
+		meltdown_document.find_chunk("XBIT").decoded_payload.duplicate()
+	)
+	var military_target := Vector2i(32, 33)
+	var fire_target := Vector2i(32, 34)
+	var toxic_target := Vector2i(32, 35)
+	meltdown_buildings[military_target.x * CityState.MAP_SIZE + military_target.y] = 0xdd
+	meltdown_zones[military_target.x * CityState.MAP_SIZE + military_target.y] = 7
+	meltdown_buildings[toxic_target.x * CityState.MAP_SIZE + toxic_target.y] = 0x0d
+	meltdown_flags[toxic_target.x * CityState.MAP_SIZE + toxic_target.y] = 0x04
+	_check(
+		meltdown_document.find_chunk("XBLD").set_decoded_payload(meltdown_buildings)
+		and meltdown_document.find_chunk("XZON").set_decoded_payload(meltdown_zones)
+		and meltdown_document.find_chunk("XBIT").set_decoded_payload(meltdown_flags),
+		"Meltdown fixture installs military, fire, and water-toxic targets",
+	)
+	var meltdown_misc: PackedByteArray = (
+		meltdown_document.find_chunk("MISC").decoded_payload.duplicate()
+	)
+	for tile_id in 256:
+		_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS + tile_id * 4, 0)
+	for military_index in 16:
+		_write_u32_be(
+			meltdown_misc,
+			Growth.MISC_MILITARY_TILE_COUNTS + military_index * 4,
+			0,
+		)
+	_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS, CityState.TILE_COUNT - 2)
+	_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x0d * 4, 1)
+	_write_u32_be(meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4, 1)
+	_write_u32_be(meltdown_misc, Buildings.MISC_FUNDS, 50000)
+	_check(
+		meltdown_document.find_chunk("MISC").set_decoded_payload(meltdown_misc),
+		"Meltdown fixture initializes normal and military tile counts",
+	)
+	var meltdown_city := CityModel.from_document(meltdown_document)
+	var nuclear_placement := Buildings.apply(
+		meltdown_city,
+		3,
+		6,
+		Vector2i(64, 64),
+		GameRandom.new(1),
+		Random.new(1),
+	)
+	_check(
+		nuclear_placement.ok
+		and nuclear_placement.site == Rect2i(63, 63, 4, 4)
+		and nuclear_placement.tile_id == DisasterStart.NUCLEAR_POWER_PLANT,
+		"Meltdown fixture places one valid four-by-four nuclear power plant",
+	)
+	var meltdown_random := SparseRandom.new({
+		16: 0,
+		17: 1,
+		19: 1,
+		20: 0,
+		21: 0,
+		22: 0,
+		23: 1,
+		25: 1,
+	})
+	var meltdown_start := DisasterStart.start(
+		meltdown_city,
+		DisasterStart.DISASTER_MELTDOWN,
+		Vector2i.ZERO,
+		meltdown_random,
+		SequenceLfsrRandom.new([]),
+	)
+	var meltdown_center := Vector2i(64, 65)
+	_check(
+		meltdown_start.ok
+		and meltdown_start.started
+		and meltdown_start.complete
+		and meltdown_start.plant_point == Vector2i(63, 63)
+		and meltdown_start.plant_site == Rect2i(63, 63, 4, 4)
+		and meltdown_start.point == meltdown_center
+		and meltdown_start.view_center_requests == [meltdown_center]
+		and meltdown_start.sound_events == [DisasterStart.SOUND_SIREN],
+		"Meltdown finds the first nuclear plant, normalizes its center, and reports a start",
+	)
+	_check(
+		meltdown_start.gate_attempts == 4225
+		and meltdown_start.gate_hits == 3
+		and meltdown_start.fire_damage_attempts == 1
+		and meltdown_start.structure_damage_attempts == 2
+		and meltdown_start.radioactive_writes == 17
+		and meltdown_start.toxic_writes == 1
+		and meltdown_start.map_changed
+		and meltdown_random.position == 4264,
+		"Meltdown preserves the 65-by-65 scan branches and exact process-random order: %s pos=%d"
+		% [meltdown_start, meltdown_random.position],
+	)
+	_check(
+		meltdown_city.building_id(military_target.x, military_target.y)
+			== DisasterStart.RADIOACTIVITY_TILE
+		and meltdown_city.text_overlay_id(fire_target.x, fire_target.y)
+			== DisasterMap.FIRE_OVERLAY
+		and meltdown_city.text_overlay_id(toxic_target.x, toxic_target.y)
+			== DisasterMap.TOXIC_OVERLAY
+		and meltdown_city.tile_flags[
+			toxic_target.x * CityState.MAP_SIZE + toxic_target.y
+		] & 0x04 != 0,
+		"Meltdown writes radiation on dry land, fire on an open cell, and toxic waste on water: military=%d fire=%d toxic=%d flags=%d"
+		% [
+			meltdown_city.building_id(military_target.x, military_target.y),
+			meltdown_city.text_overlay_id(fire_target.x, fire_target.y),
+			meltdown_city.text_overlay_id(toxic_target.x, toxic_target.y),
+			meltdown_city.tile_flags[toxic_target.x * CityState.MAP_SIZE + toxic_target.y],
+		],
+	)
+	var stored_meltdown_misc: PackedByteArray = (
+		meltdown_document.find_chunk("MISC").decoded_payload
+	)
+	_check(
+		Buildings._read_u32_be(
+			stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0xcb * 4
+		) == 0
+		and Buildings._read_u32_be(
+			stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x05 * 4
+		) == 16
+		and Buildings._read_u32_be(
+			stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS
+		) == 1
+		and Buildings._read_u32_be(
+			stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4
+		) == 0,
+		"Meltdown moves normal and military tile counts to their radiation buckets: nuclear=%d normal=%d military0=%d military1=%d"
+		% [
+			Buildings._read_u32_be(
+				stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0xcb * 4
+			),
+			Buildings._read_u32_be(
+				stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x05 * 4
+			),
+			Buildings._read_u32_be(
+				stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS
+			),
+			Buildings._read_u32_be(
+				stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4
+			),
+		],
+	)
+	for x in range(63, 67):
+		for y in range(63, 67):
+			_check(
+				meltdown_city.building_id(x, y) == DisasterStart.RADIOACTIVITY_TILE,
+				"Meltdown radiation core covers plant tile %d,%d" % [x, y],
+			)
+	var no_plant_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(
+		no_plant_document.find_chunk("XBLD").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		),
+		"No-plant meltdown fixture clears all nuclear plants",
+	)
+	var no_plant_random := SparseRandom.new({})
+	var no_plant_meltdown := DisasterStart.start(
+		CityModel.from_document(no_plant_document),
+		DisasterStart.DISASTER_MELTDOWN,
+		Vector2i(20, 20),
+		no_plant_random,
+		SequenceLfsrRandom.new([]),
+	)
+	_check(
+		no_plant_meltdown.ok
+		and not no_plant_meltdown.started
+		and no_plant_meltdown.complete
+		and no_plant_meltdown.sound_events.is_empty()
+		and no_plant_random.position == 0,
+		"Meltdown does not start or consume random state when the city has no nuclear plant",
+	)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
@@ -2832,7 +3049,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var unsupported_before: PackedByteArray = tornado_document.find_chunk("XTHG").decoded_payload.duplicate()
-	var unsupported := DisasterStart.start(tornado_city, 9, Vector2i(10, 10), SequenceRandom.new([]))
+	var unsupported := DisasterStart.start(tornado_city, 10, Vector2i(10, 10), SequenceRandom.new([]))
 	_check(
 		unsupported.ok and not unsupported.started and not unsupported.complete,
 		"An unimplemented disaster remains explicit",

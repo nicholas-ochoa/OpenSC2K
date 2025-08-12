@@ -2,6 +2,8 @@ class_name DisasterStartPhase
 extends RefCounted
 
 const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
+const Demolish = preload("res://src/tools/demolish_command.gd")
+const GrowthPhase = preload("res://src/simulation/growth_phase.gd")
 const DISASTER_NONE := 0
 const DISASTER_FIRE := 1
 const DISASTER_FLOOD := 2
@@ -10,6 +12,7 @@ const DISASTER_TOXIC_SPILL := 4
 const DISASTER_EARTHQUAKE := 6
 const DISASTER_TORNADO := 7
 const DISASTER_MONSTER := 8
+const DISASTER_MELTDOWN := 9
 const DISASTER_MASS_RIOTS := 13
 const DISASTER_POLLUTION := 15
 const TYPE_MONSTER := 5
@@ -26,6 +29,8 @@ const FIRE_SPIRAL_X := [0, 1, 0, -1]
 const FIRE_SPIRAL_Y := [-1, 0, 1, 0]
 const RIOT_OVERLAY_FORWARD := 0xfd
 const RIOT_OVERLAY_REVERSE := 0xfe
+const NUCLEAR_POWER_PLANT := 0xcb
+const RADIOACTIVITY_TILE := 0x05
 const MAP_CHUNK_SIZES := {
 	"ALTM": CityState.TILE_COUNT * 2,
 	"XBLD": CityState.TILE_COUNT,
@@ -58,6 +63,8 @@ static func start(
 		return _start_toxic_spill(city, point)
 	if disaster_type == DISASTER_EARTHQUAKE:
 		return _start_earthquake(city, point, random, lfsr_random)
+	if disaster_type == DISASTER_MELTDOWN:
+		return _start_meltdown(city, point, random, lfsr_random)
 	if disaster_type == DISASTER_MASS_RIOTS:
 		return _start_mass_riots(city, point, random)
 	if disaster_type == DISASTER_POLLUTION:
@@ -457,6 +464,159 @@ static func _start_earthquake(
 	sounds.append(SOUND_SIREN)
 	result["sound_events"] = sounds
 	return result
+
+
+static func _start_meltdown(
+	city: CityState, requested_point: Vector2i, random, lfsr_random
+) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "meltdown disaster input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var plant_point := _find_nuclear_power_plant(payloads.XBLD, requested_point)
+	if plant_point.x < 0:
+		return _result(DISASTER_MELTDOWN, requested_point, false, true, 0)
+
+	var center := plant_point
+	var site := Demolish._find_building_site(
+		payloads.XBLD,
+		payloads.XZON,
+		plant_point,
+		NUCLEAR_POWER_PLANT,
+		4,
+		city.compass_rotation(),
+	)
+	if site.size != Vector2i.ZERO:
+		center = Vector2i(site.position.x + 1, site.end.y - 2)
+	DisasterMapDamage.burn_structure(
+		city,
+		payloads.ALTM,
+		payloads.XBLD,
+		payloads.XTER,
+		payloads.XZON,
+		payloads.XUND,
+		payloads.XBIT,
+		payloads.XTXT,
+		payloads.XLAB,
+		payloads.XMIC,
+		payloads.MISC,
+		center,
+		random,
+		lfsr_random,
+		true,
+		true,
+	)
+
+	var gate_hits := 0
+	var fire_damage_attempts := 0
+	var structure_damage_attempts := 0
+	var radioactive_writes := 0
+	var toxic_writes := 0
+	for x_offset in range(-32, 33):
+		for y_offset in range(-32, 33):
+			if random.next_u15() & 0x1f != 0:
+				continue
+			gate_hits += 1
+			var target := center + Vector2i(x_offset, y_offset)
+			var index := _index(target)
+			if index < 0:
+				continue
+			if random.next_u15() & 3 == 0:
+				fire_damage_attempts += 1
+				DisasterMapDamage.apply(
+					city,
+					payloads.ALTM,
+					payloads.XBLD,
+					payloads.XTER,
+					payloads.XZON,
+					payloads.XUND,
+					payloads.XBIT,
+					payloads.XTRF,
+					payloads.XTXT,
+					payloads.XLAB,
+					payloads.XMIC,
+					payloads.MISC,
+					target,
+					random,
+					lfsr_random,
+					true,
+				)
+			else:
+				structure_damage_attempts += 1
+				DisasterMapDamage.burn_structure(
+					city,
+					payloads.ALTM,
+					payloads.XBLD,
+					payloads.XTER,
+					payloads.XZON,
+					payloads.XUND,
+					payloads.XBIT,
+					payloads.XTXT,
+					payloads.XLAB,
+					payloads.XMIC,
+					payloads.MISC,
+					target,
+					random,
+					lfsr_random,
+					false,
+					false,
+				)
+				if random.next_u15() & 1 != 0:
+					if payloads.XBIT[index] & 0x04 == 0:
+						if _write_radioactivity(payloads, target):
+							radioactive_writes += 1
+					else:
+						payloads.XTXT[index] = 0xfb
+						toxic_writes += 1
+
+	for x_offset in range(-1, 3):
+		for y_offset in range(-2, 2):
+			if random.next_u15() & 1 != 0:
+				if _write_radioactivity(payloads, center + Vector2i(x_offset, y_offset)):
+					radioactive_writes += 1
+
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the meltdown disaster"}
+	var result := _result(DISASTER_MELTDOWN, center, true, true, 0)
+	result["plant_point"] = plant_point
+	result["plant_site"] = site
+	result["gate_attempts"] = 65 * 65
+	result["gate_hits"] = gate_hits
+	result["fire_damage_attempts"] = fire_damage_attempts
+	result["structure_damage_attempts"] = structure_damage_attempts
+	result["radioactive_writes"] = radioactive_writes
+	result["toxic_writes"] = toxic_writes
+	result["map_changed"] = map_changed
+	return result
+
+
+static func _find_nuclear_power_plant(
+	buildings: PackedByteArray, requested_point: Vector2i
+) -> Vector2i:
+	var requested_index := _index(requested_point)
+	if requested_index >= 0 and buildings[requested_index] == NUCLEAR_POWER_PLANT:
+		return requested_point
+	for x in CityState.MAP_SIZE:
+		for y in CityState.MAP_SIZE:
+			if buildings[x * CityState.MAP_SIZE + y] == NUCLEAR_POWER_PLANT:
+				return Vector2i(x, y)
+	return Vector2i(-1, -1)
+
+
+static func _write_radioactivity(payloads: Dictionary, point: Vector2i) -> bool:
+	var index := _index(point)
+	if index < 0:
+		return false
+	var old_tile := int(payloads.XBLD[index])
+	GrowthPhase._replace_special_building(
+		payloads.XBLD, payloads.XZON, payloads.MISC, index, RADIOACTIVITY_TILE
+	)
+	return old_tile != RADIOACTIVITY_TILE
 
 
 static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i) -> void:

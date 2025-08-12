@@ -3,6 +3,7 @@ extends RefCounted
 
 const MISC_FUNDS := 0x0014
 const MISC_TILE_COUNTS := 0x01f0
+const MISC_MILITARY_TILE_COUNTS := 0x0fa8
 const MILITARY_ZONE := 7
 const FLAG_WATER := 0x04
 const FLAG_PIPED := 0x20
@@ -69,6 +70,23 @@ const GRADED_TERRAIN := [
 	1, 9, 1, 10,
 ]
 const NETWORK_SLOPE_SHAPES := [0, 2, 3, 4, 5]
+const MILITARY_TILE_COUNT_INDEX := {
+	0xdd: 1,
+	0xde: 2,
+	0xef: 3,
+	0xf2: 4,
+	0xea: 5,
+	0xe3: 6,
+	0xe4: 7,
+	0xe5: 8,
+	0xf1: 9,
+	0xe0: 10,
+	0xe2: 11,
+	0xe7: 12,
+	0xe8: 13,
+	0xf6: 14,
+	0xf9: 15,
+}
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
@@ -497,11 +515,17 @@ static func _replace_building(
 	if old_tile == new_tile:
 		return
 	var zone := zones[index] & 0x0f
-	if zone != MILITARY_ZONE:
-		var old_offset := MISC_TILE_COUNTS + old_tile * 4
-		var new_offset := MISC_TILE_COUNTS + new_tile * 4
-		_write_u32_be(misc, old_offset, (_read_u32_be(misc, old_offset) - 1) & 0xffff)
-		_write_u32_be(misc, new_offset, (_read_u32_be(misc, new_offset) + 1) & 0xffff)
+	var old_offset := MISC_TILE_COUNTS + old_tile * 4
+	var new_offset := MISC_TILE_COUNTS + new_tile * 4
+	if zone == MILITARY_ZONE:
+		old_offset = MISC_MILITARY_TILE_COUNTS + int(
+			MILITARY_TILE_COUNT_INDEX.get(old_tile, 0)
+		) * 4
+		new_offset = MISC_MILITARY_TILE_COUNTS + int(
+			MILITARY_TILE_COUNT_INDEX.get(new_tile, 0)
+		) * 4
+	_write_u32_be(misc, old_offset, (_read_u32_be(misc, old_offset) - 1) & 0xffff)
+	_write_u32_be(misc, new_offset, (_read_u32_be(misc, new_offset) + 1) & 0xffff)
 	buildings[index] = new_tile
 
 
