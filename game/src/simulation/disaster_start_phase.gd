@@ -16,6 +16,7 @@ const DISASTER_MONSTER := 8
 const DISASTER_MELTDOWN := 9
 const DISASTER_MICROWAVE := 10
 const DISASTER_VOLCANO := 11
+const DISASTER_FIRESTORM := 12
 const DISASTER_MASS_RIOTS := 13
 const DISASTER_POLLUTION := 15
 const TYPE_MONSTER := 5
@@ -86,6 +87,8 @@ static func start(
 		return _start_microwave(city, random, lfsr_random)
 	if disaster_type == DISASTER_VOLCANO:
 		return _start_volcano(city, point, random)
+	if disaster_type == DISASTER_FIRESTORM:
+		return _start_firestorm(city, point, random, lfsr_random)
 	if disaster_type == DISASTER_MASS_RIOTS:
 		return _start_mass_riots(city, point, random)
 	if disaster_type == DISASTER_POLLUTION:
@@ -852,6 +855,79 @@ static func _volcano_raise_is_valid(
 			if not _volcano_raise_is_valid(heights, zones, flags, neighbor, visited):
 				return false
 	return true
+
+
+static func _start_firestorm(
+	city: CityState, center: Vector2i, random, lfsr_random
+) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "firestorm disaster input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var point := center
+	var direction := 0
+	var run_length := 1
+	var run_step := 0
+	var remaining := 65
+	var scan_steps := 0
+	var attempted_in_map := 0
+	var result_codes := PackedInt32Array()
+	var accepted_points: Array[Vector2i] = []
+	while remaining > 0 and run_length < 128:
+		point += Vector2i(FIRE_SPIRAL_X[direction], FIRE_SPIRAL_Y[direction])
+		scan_steps += 1
+		if _index(point) >= 0:
+			attempted_in_map += 1
+			var result_code := DisasterMapDamage.apply(
+				city,
+				payloads.ALTM,
+				payloads.XBLD,
+				payloads.XTER,
+				payloads.XZON,
+				payloads.XUND,
+				payloads.XBIT,
+				payloads.XTRF,
+				payloads.XTXT,
+				payloads.XLAB,
+				payloads.XMIC,
+				payloads.MISC,
+				point,
+				random,
+				lfsr_random,
+				true,
+			)
+			if result_code != 0:
+				remaining -= 1
+				result_codes.append(result_code)
+				accepted_points.append(point)
+		run_step += 1
+		if run_step >= run_length:
+			run_step = 0
+			if direction & 1 != 0:
+				run_length += 1
+			direction = (direction + 1) & 3
+
+	var started := remaining < 65
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the firestorm disaster"}
+	var result := _result(DISASTER_FIRESTORM, center, started, true, 0)
+	result["requested_point"] = center
+	result["scan_finish"] = point
+	result["scan_steps"] = scan_steps
+	result["attempted_in_map"] = attempted_in_map
+	result["successful_cells"] = 65 - remaining
+	result["remaining_cells"] = remaining
+	result["result_codes"] = result_codes
+	result["accepted_points"] = accepted_points
+	result["map_changed"] = map_changed
+	if started:
+		result["view_center_requests"] = [point]
+	return result
 
 
 static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i) -> void:

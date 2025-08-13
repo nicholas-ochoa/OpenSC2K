@@ -3225,6 +3225,93 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Volcano charges 1,000 temporary dollars for each rejected water raise",
 	)
 
+	var firestorm_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			firestorm_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT, 0)
+			),
+			"Firestorm fixture clears %s" % chunk_id,
+		)
+	_check(
+		firestorm_document.find_chunk("ALTM").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT * 2, 0)
+		)
+		and firestorm_document.find_chunk("XTRF").set_decoded_payload(
+			_filled_bytes(64 * 64, 9)
+		),
+		"Firestorm fixture clears altitude and fills traffic",
+	)
+	var firestorm_city := CityModel.from_document(firestorm_document)
+	var firestorm_random := SparseRandom.new({})
+	var firestorm_lfsr := SequenceLfsrRandom.new([])
+	var firestorm := DisasterStart.start(
+		firestorm_city,
+		DisasterStart.DISASTER_FIRESTORM,
+		Vector2i(64, 64),
+		firestorm_random,
+		firestorm_lfsr,
+	)
+	_check(
+		firestorm.ok
+		and firestorm.started
+		and firestorm.complete
+		and firestorm.successful_cells == 65
+		and firestorm.remaining_cells == 0
+		and firestorm.scan_steps == 65
+		and firestorm.attempted_in_map == 65
+		and firestorm.scan_finish == Vector2i(67, 68)
+		and firestorm.map_changed,
+		"Firestorm stops after 65 accepted cells on its clockwise square spiral",
+	)
+	_check(
+		firestorm.accepted_points.size() == 65
+		and firestorm.accepted_points[0] == Vector2i(64, 63)
+		and firestorm.accepted_points[-1] == Vector2i(67, 68)
+		and firestorm.result_codes.size() == 65
+		and firestorm.result_codes.count(1) == 65
+		and firestorm_city.text_overlay_id(64, 63) == DisasterMap.FIRE_OVERLAY
+		and firestorm_city.text_overlay_id(67, 68) == DisasterMap.FIRE_OVERLAY,
+		"Firestorm uses the shared small-tile damage option for every accepted cell",
+	)
+	_check(
+		firestorm.sound_events == [DisasterStart.SOUND_SIREN]
+		and firestorm.view_center_requests == [Vector2i(67, 68)]
+		and firestorm_random.position == 0
+		and firestorm_lfsr.position == 0,
+		"Clear Firestorm cells consume no random state and center the view on the last scan cell",
+	)
+
+	var blocked_firestorm_document := Sc2Document.load_path(
+		reference_root.path_join("DEFAULT.SC2")
+	)
+	_check(
+		blocked_firestorm_document.find_chunk("XBIT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0x04)
+		),
+		"Blocked Firestorm fixture marks every cell as water",
+	)
+	var blocked_firestorm := DisasterStart.start(
+		CityModel.from_document(blocked_firestorm_document),
+		DisasterStart.DISASTER_FIRESTORM,
+		Vector2i(64, 64),
+		SparseRandom.new({}),
+		SequenceLfsrRandom.new([]),
+	)
+	_check(
+		blocked_firestorm.ok
+		and not blocked_firestorm.started
+		and blocked_firestorm.complete
+		and blocked_firestorm.successful_cells == 0
+		and blocked_firestorm.scan_steps == 16256
+		and blocked_firestorm.attempted_in_map == 16255
+		and blocked_firestorm.scan_finish == Vector2i(128, 0)
+		and not blocked_firestorm.map_changed
+		and blocked_firestorm.sound_events.is_empty()
+		and blocked_firestorm.view_center_requests.is_empty(),
+		"Firestorm reports failure after its full run-length-127 spiral finds no dry cell",
+	)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
@@ -3282,7 +3369,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var unsupported_before: PackedByteArray = tornado_document.find_chunk("XTHG").decoded_payload.duplicate()
-	var unsupported := DisasterStart.start(tornado_city, 12, Vector2i(10, 10), SequenceRandom.new([]))
+	var unsupported := DisasterStart.start(tornado_city, 14, Vector2i(10, 10), SequenceRandom.new([]))
 	_check(
 		unsupported.ok and not unsupported.started and not unsupported.complete,
 		"An unimplemented disaster remains explicit",
