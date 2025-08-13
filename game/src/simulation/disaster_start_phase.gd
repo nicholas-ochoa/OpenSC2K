@@ -4,6 +4,7 @@ extends RefCounted
 const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
 const GrowthPhase = preload("res://src/simulation/growth_phase.gd")
+const TerrainCommand = preload("res://src/tools/terrain_command.gd")
 const DISASTER_NONE := 0
 const DISASTER_FIRE := 1
 const DISASTER_FLOOD := 2
@@ -14,6 +15,7 @@ const DISASTER_TORNADO := 7
 const DISASTER_MONSTER := 8
 const DISASTER_MELTDOWN := 9
 const DISASTER_MICROWAVE := 10
+const DISASTER_VOLCANO := 11
 const DISASTER_MASS_RIOTS := 13
 const DISASTER_POLLUTION := 15
 const TYPE_MONSTER := 5
@@ -24,6 +26,8 @@ const SOUND_FLOOD := 511
 const SOUND_RIOT := 512
 const SOUND_MICROWAVE := 514
 const SOUND_EARTHQUAKE := 504
+const SOUND_VOLCANO := 507
+const VOLCANO_BUDGET := 25000
 const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
 const MISC_NORMAL_POPULATION := 0x102c
@@ -80,6 +84,8 @@ static func start(
 		return _start_meltdown(city, point, random, lfsr_random)
 	if disaster_type == DISASTER_MICROWAVE:
 		return _start_microwave(city, random, lfsr_random)
+	if disaster_type == DISASTER_VOLCANO:
+		return _start_volcano(city, point, random)
 	if disaster_type == DISASTER_MASS_RIOTS:
 		return _start_mass_riots(city, point, random)
 	if disaster_type == DISASTER_POLLUTION:
@@ -711,6 +717,141 @@ static func _find_first_building(buildings: PackedByteArray, tile_id: int) -> Ve
 			if buildings[x * CityState.MAP_SIZE + y] == tile_id:
 				return Vector2i(x, y)
 	return Vector2i(-1, -1)
+
+
+static func _start_volcano(city: CityState, center: Vector2i, random) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "volcano disaster input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var heights := TerrainCommand._decode_heights(payloads.ALTM)
+	var remaining_budget := VOLCANO_BUDGET
+	var iterations := 0
+	var successful_raises := 0
+	var rejected_raises := 0
+	var near_toxic_writes := 0
+	var near_fire_writes := 0
+	var distant_toxic_writes := 0
+	var distant_fire_writes := 0
+	var changed_indices := PackedInt32Array()
+	var sounds: Array[int] = [SOUND_VOLCANO]
+	while remaining_budget > 0:
+		var near_point := Vector2i.ZERO
+		while true:
+			near_point = center + Vector2i(
+				random.next_u15() % 5 - 2,
+				random.next_u15() % 5 - 2,
+			)
+			if _index(near_point) >= 0:
+				break
+		var near_index := _index(near_point)
+		if random.next_u15() & 1 == 0:
+			payloads.XTXT[near_index] = 0xfb
+			near_toxic_writes += 1
+		else:
+			payloads.XTXT[near_index] = 0xff
+			near_fire_writes += 1
+
+		if _volcano_raise_is_valid(heights, payloads.XZON, payloads.XBIT, near_point):
+			var trial := TerrainCommand._plan_raise(
+				heights, payloads.XZON, payloads.XBLD, near_point, remaining_budget
+			)
+			if trial.get("valid", false):
+				heights = trial.heights
+				remaining_budget = int(trial.funds)
+				TerrainCommand._write_heights(payloads.ALTM, heights, trial.modified)
+				for index in trial.zone_indices:
+					payloads.XZON[index] &= 0xf0
+				var retile_indices := TerrainCommand._expanded_indices(trial.modified)
+				TerrainCommand._retile_region(
+					payloads.ALTM,
+					payloads.XBLD,
+					payloads.XTER,
+					payloads.XZON,
+					payloads.XBIT,
+					payloads.MISC,
+					retile_indices,
+					_read_u32_be(payloads.MISC, 0x0e40),
+				)
+				for index in retile_indices:
+					if not changed_indices.has(index):
+						changed_indices.append(index)
+				successful_raises += 1
+			else:
+				remaining_budget -= 1000
+				rejected_raises += 1
+		else:
+			remaining_budget -= 1000
+			rejected_raises += 1
+
+		var distant_point := center + Vector2i(
+			(random.next_u15() & 0x1f) - 16,
+			(random.next_u15() & 0x1f) - 16,
+		)
+		var distant_index := _index(distant_point)
+		if distant_index >= 0:
+			if payloads.XBIT[distant_index] & 0x04 != 0:
+				payloads.XTXT[distant_index] = 0xfb
+				distant_toxic_writes += 1
+			else:
+				payloads.XTXT[distant_index] = 0xff
+				distant_fire_writes += 1
+		iterations += 1
+		if random.next_u15() & 7 != 0:
+			sounds.append(SOUND_EARTHQUAKE)
+
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the volcano disaster"}
+	var result := _result(DISASTER_VOLCANO, center, true, true, 0)
+	sounds.append(SOUND_SIREN)
+	result["sound_events"] = sounds
+	result["iterations"] = iterations
+	result["successful_raises"] = successful_raises
+	result["rejected_raises"] = rejected_raises
+	result["temporary_budget_spent"] = VOLCANO_BUDGET - remaining_budget
+	result["near_toxic_writes"] = near_toxic_writes
+	result["near_fire_writes"] = near_fire_writes
+	result["distant_toxic_writes"] = distant_toxic_writes
+	result["distant_fire_writes"] = distant_fire_writes
+	result["terrain_indices"] = changed_indices
+	result["map_changed"] = map_changed
+	return result
+
+
+static func _volcano_raise_is_valid(
+	heights: PackedInt32Array,
+	zones: PackedByteArray,
+	flags: PackedByteArray,
+	point: Vector2i,
+	visited := {},
+) -> bool:
+	var index := _index(point)
+	if index < 0 or visited.has(index):
+		return true
+	if zones[index] & 0x0f == TerrainCommand.MILITARY_ZONE:
+		return false
+	if flags[index] & 0x04 != 0 or heights[index] > TerrainCommand.MAX_RAISE_SOURCE:
+		return false
+	visited[index] = true
+	for offset in TerrainCommand.NEIGHBOR_OFFSETS:
+		var neighbor: Vector2i = point + offset
+		var neighbor_index := _index(neighbor)
+		if neighbor_index < 0:
+			continue
+		if zones[neighbor_index] & 0x0f == TerrainCommand.MILITARY_ZONE:
+			return false
+		if flags[neighbor_index] & 0x04 != 0:
+			return false
+	for offset in TerrainCommand.CARDINAL_OFFSETS:
+		var neighbor: Vector2i = point + offset
+		var neighbor_index := _index(neighbor)
+		if neighbor_index >= 0 and heights[neighbor_index] < heights[index]:
+			if not _volcano_raise_is_valid(heights, zones, flags, neighbor, visited):
+				return false
+	return true
 
 
 static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i) -> void:

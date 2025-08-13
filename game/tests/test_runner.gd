@@ -3131,6 +3131,100 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Microwave does not start or consume random state when no microwave plant exists",
 	)
 
+	var volcano_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			volcano_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT, 0)
+			),
+			"Volcano fixture clears %s" % chunk_id,
+		)
+	_check(
+		volcano_document.find_chunk("ALTM").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT * 2, 0)
+		)
+		and volcano_document.set_misc_i32(0x14, 12345)
+		and volcano_document.set_misc_u32(0x0e40, 0),
+		"Volcano fixture clears altitude and sets city funds and sea level",
+	)
+	var volcano_city := CityModel.from_document(volcano_document)
+	var volcano_random := SparseRandom.new({}, 0)
+	var volcano := DisasterStart.start(
+		volcano_city,
+		DisasterStart.DISASTER_VOLCANO,
+		Vector2i(64, 64),
+		volcano_random,
+	)
+	_check(
+		volcano.ok
+		and volcano.started
+		and volcano.complete
+		and volcano.point == Vector2i(64, 64)
+		and volcano.successful_raises > 0
+		and volcano.rejected_raises == 0
+		and volcano.temporary_budget_spent == DisasterStart.VOLCANO_BUDGET
+		and volcano.map_changed
+		and volcano_city.funds() == 12345,
+		"Volcano spends its separate terrain budget and preserves city funds",
+	)
+	_check(
+		volcano_city.land_altitude(62, 62) > 0
+		and volcano_city.text_overlay_id(62, 62) == DisasterMap.TOXIC_OVERLAY
+		and volcano_city.text_overlay_id(48, 48) == DisasterMap.FIRE_OVERLAY
+		and volcano.near_toxic_writes == volcano.iterations
+		and volcano.distant_fire_writes == volcano.iterations,
+		"Volcano raises its five-by-five core and writes the two recovered marker classes",
+	)
+	_check(
+		volcano_random.position == volcano.iterations * 6
+		and volcano.sound_events == [
+			DisasterStart.SOUND_VOLCANO,
+			DisasterStart.SOUND_SIREN,
+		]
+		and volcano.view_center_requests == [Vector2i(64, 64)],
+		"Volcano preserves the per-iteration random order, sound gate, and view center",
+	)
+
+	var wet_volcano_document := Sc2Document.load_path(
+		reference_root.path_join("DEFAULT.SC2")
+	)
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XTXT"]:
+		_check(
+			wet_volcano_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT, 0)
+			),
+			"Wet Volcano fixture clears %s" % chunk_id,
+		)
+	_check(
+		wet_volcano_document.find_chunk("ALTM").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT * 2, 0)
+		)
+		and wet_volcano_document.find_chunk("XBIT").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0x04)
+		),
+		"Wet Volcano fixture clears altitude and marks every cell as water",
+	)
+	var wet_volcano_city := CityModel.from_document(wet_volcano_document)
+	var wet_volcano_random := SparseRandom.new({}, 0)
+	var wet_volcano := DisasterStart.start(
+		wet_volcano_city,
+		DisasterStart.DISASTER_VOLCANO,
+		Vector2i(64, 64),
+		wet_volcano_random,
+	)
+	_check(
+		wet_volcano.ok
+		and wet_volcano.started
+		and wet_volcano.iterations == 25
+		and wet_volcano.successful_raises == 0
+		and wet_volcano.rejected_raises == 25
+		and wet_volcano.temporary_budget_spent == DisasterStart.VOLCANO_BUDGET
+		and wet_volcano_city.land_altitude(62, 62) == 0
+		and wet_volcano_city.text_overlay_id(48, 48) == DisasterMap.TOXIC_OVERLAY
+		and wet_volcano_random.position == 150,
+		"Volcano charges 1,000 temporary dollars for each rejected water raise",
+	)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
@@ -3188,7 +3282,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var unsupported_before: PackedByteArray = tornado_document.find_chunk("XTHG").decoded_payload.duplicate()
-	var unsupported := DisasterStart.start(tornado_city, 11, Vector2i(10, 10), SequenceRandom.new([]))
+	var unsupported := DisasterStart.start(tornado_city, 12, Vector2i(10, 10), SequenceRandom.new([]))
 	_check(
 		unsupported.ok and not unsupported.started and not unsupported.complete,
 		"An unimplemented disaster remains explicit",
