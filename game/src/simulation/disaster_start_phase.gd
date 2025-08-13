@@ -13,6 +13,7 @@ const DISASTER_EARTHQUAKE := 6
 const DISASTER_TORNADO := 7
 const DISASTER_MONSTER := 8
 const DISASTER_MELTDOWN := 9
+const DISASTER_MICROWAVE := 10
 const DISASTER_MASS_RIOTS := 13
 const DISASTER_POLLUTION := 15
 const TYPE_MONSTER := 5
@@ -21,6 +22,7 @@ const TEXT_THING_BASE := 201
 const SOUND_SIREN := 520
 const SOUND_FLOOD := 511
 const SOUND_RIOT := 512
+const SOUND_MICROWAVE := 514
 const SOUND_EARTHQUAKE := 504
 const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
@@ -31,6 +33,17 @@ const RIOT_OVERLAY_FORWARD := 0xfd
 const RIOT_OVERLAY_REVERSE := 0xfe
 const NUCLEAR_POWER_PLANT := 0xcb
 const RADIOACTIVITY_TILE := 0x05
+const MICROWAVE_POWER_PLANT := 0xcd
+const EIGHT_DIRECTIONS := [
+	Vector2i(0, -1),
+	Vector2i(1, -1),
+	Vector2i(1, 0),
+	Vector2i(1, 1),
+	Vector2i(0, 1),
+	Vector2i(-1, 1),
+	Vector2i(-1, 0),
+	Vector2i(-1, -1),
+]
 const MAP_CHUNK_SIZES := {
 	"ALTM": CityState.TILE_COUNT * 2,
 	"XBLD": CityState.TILE_COUNT,
@@ -65,6 +78,8 @@ static func start(
 		return _start_earthquake(city, point, random, lfsr_random)
 	if disaster_type == DISASTER_MELTDOWN:
 		return _start_meltdown(city, point, random, lfsr_random)
+	if disaster_type == DISASTER_MICROWAVE:
+		return _start_microwave(city, random, lfsr_random)
 	if disaster_type == DISASTER_MASS_RIOTS:
 		return _start_mass_riots(city, point, random)
 	if disaster_type == DISASTER_POLLUTION:
@@ -617,6 +632,85 @@ static func _write_radioactivity(payloads: Dictionary, point: Vector2i) -> bool:
 		payloads.XBLD, payloads.XZON, payloads.MISC, index, RADIOACTIVITY_TILE
 	)
 	return old_tile != RADIOACTIVITY_TILE
+
+
+static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "microwave disaster input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var plant_point := _find_first_building(payloads.XBLD, MICROWAVE_POWER_PLANT)
+	if plant_point.x < 0:
+		return _result(DISASTER_MICROWAVE, plant_point, false, true, 0)
+
+	var point := plant_point
+	var remaining := 39
+	var direction: int = random.next_u15()
+	var damage_points: Array[Vector2i] = []
+	var toxic_writes := 0
+	var view_centers: Array[Vector2i] = [plant_point]
+	var sounds: Array[int] = []
+	while remaining > 0:
+		var index := _index(point)
+		if index < 0:
+			break
+		if payloads.XBLD[index] != MICROWAVE_POWER_PLANT:
+			if payloads.XBIT[index] & 0x04 != 0:
+				payloads.XTXT[index] = 0xfb
+				toxic_writes += 1
+			if remaining % 10 == 0:
+				view_centers.append(point)
+			DisasterMapDamage.apply(
+				city,
+				payloads.ALTM,
+				payloads.XBLD,
+				payloads.XTER,
+				payloads.XZON,
+				payloads.XUND,
+				payloads.XBIT,
+				payloads.XTRF,
+				payloads.XTXT,
+				payloads.XLAB,
+				payloads.XMIC,
+				payloads.MISC,
+				point,
+				random,
+				lfsr_random,
+				true,
+			)
+			damage_points.append(point)
+			sounds.append(SOUND_MICROWAVE)
+		remaining -= 1
+		point += EIGHT_DIRECTIONS[direction & 7]
+		direction = random.next_u15()
+
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the microwave disaster"}
+	var result := _result(DISASTER_MICROWAVE, plant_point, true, true, 0)
+	sounds.append(SOUND_SIREN)
+	result["sound_events"] = sounds
+	result["view_center_requests"] = view_centers
+	result["plant_point"] = plant_point
+	result["path_finish"] = point
+	result["path_steps"] = 39 - remaining
+	result["damage_points"] = damage_points
+	result["damage_attempts"] = damage_points.size()
+	result["toxic_writes"] = toxic_writes
+	result["map_changed"] = map_changed
+	return result
+
+
+static func _find_first_building(buildings: PackedByteArray, tile_id: int) -> Vector2i:
+	for x in CityState.MAP_SIZE:
+		for y in CityState.MAP_SIZE:
+			if buildings[x * CityState.MAP_SIZE + y] == tile_id:
+				return Vector2i(x, y)
+	return Vector2i(-1, -1)
 
 
 static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i) -> void:

@@ -312,7 +312,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	], _on_disaster_menu)
 	var implemented_disasters := {
 		1: true, 2: true, 3: true, 4: true, 6: true, 7: true, 8: true, 9: true,
-		13: true, 15: true,
+		10: true, 13: true, 15: true,
 	}
 	for item_index in disasters_menu.get_popup().item_count:
 		var disaster_id := disasters_menu.get_popup().get_item_id(item_index)
@@ -320,7 +320,7 @@ func _build_interface(toolbar_art: Image) -> void:
 			item_index, not implemented_disasters.has(disaster_id)
 		)
 	disasters_menu.tooltip_text = (
-		"Fire, Flood, Riot, Toxic Spill, Earthquake, Tornado, Monster, Meltdown, Mass Riots, and Pollution are available."
+		"Fire, Flood, Riot, Toxic Spill, Earthquake, Tornado, Monster, Meltdown, Microwave, Mass Riots, and Pollution are available."
 	)
 	_add_menu(menu_row, "Windows", [["Budget", 0], ["City Information", 1]], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
@@ -885,6 +885,7 @@ func _on_disaster_menu(id: int) -> void:
 		DisasterStart.DISASTER_TORNADO: "Tornado",
 		DisasterStart.DISASTER_MONSTER: "Monster",
 		DisasterStart.DISASTER_MELTDOWN: "Meltdown",
+		DisasterStart.DISASTER_MICROWAVE: "Microwave",
 		DisasterStart.DISASTER_MASS_RIOTS: "Mass Riots",
 		DisasterStart.DISASTER_POLLUTION: "Pollution",
 	}.get(id, "Disaster")

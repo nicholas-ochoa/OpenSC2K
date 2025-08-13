@@ -1781,7 +1781,7 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"The disaster controller restores city mode after the monster ends",
 	)
 
-	var unsupported_scenario_document := Sc2Document.load_path(reference_root.path_join("SCENARIO/SILICONV.SCN"))
+	var unsupported_scenario_document := Sc2Document.load_path(reference_root.path_join("SCENARIO/CHARLEST.SCN"))
 	var unsupported_scenario_city := CityModel.from_document(unsupported_scenario_document)
 	_check(unsupported_scenario_city.set_age_in_days(0), "Unsupported scenario fixture resets the day")
 	var unsupported_scenario_engine := Simulation.new(unsupported_scenario_city, 1, 7, 13)
@@ -1790,7 +1790,7 @@ func _test_simulation_engine(reference_root: String) -> void:
 		unsupported_start.ok
 		and unsupported_start.pending.has("disaster_start")
 		and not unsupported_start.complete
-		and unsupported_scenario_engine.unsupported_disaster_type == 10,
+		and unsupported_scenario_engine.unsupported_disaster_type == 16,
 		"An unsupported scenario disaster stays explicit in the engine result",
 	)
 
@@ -2992,6 +2992,145 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Meltdown does not start or consume random state when the city has no nuclear plant",
 	)
 
+	var microwave_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			microwave_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT, 0)
+			),
+			"Microwave fixture clears %s" % chunk_id,
+		)
+	_check(
+		microwave_document.find_chunk("ALTM").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT * 2, 0)
+		)
+		and microwave_document.find_chunk("XTRF").set_decoded_payload(
+			_filled_bytes(64 * 64, 9)
+		),
+		"Microwave fixture clears altitude and fills traffic",
+	)
+	var microwave_plant := Vector2i(10, 10)
+	var microwave_water := Vector2i(20, 10)
+	var microwave_buildings: PackedByteArray = (
+		microwave_document.find_chunk("XBLD").decoded_payload.duplicate()
+	)
+	var microwave_flags: PackedByteArray = (
+		microwave_document.find_chunk("XBIT").decoded_payload.duplicate()
+	)
+	microwave_buildings[microwave_plant.x * CityState.MAP_SIZE + microwave_plant.y] = (
+		DisasterStart.MICROWAVE_POWER_PLANT
+	)
+	microwave_flags[microwave_water.x * CityState.MAP_SIZE + microwave_water.y] = 0x04
+	_check(
+		microwave_document.find_chunk("XBLD").set_decoded_payload(microwave_buildings)
+		and microwave_document.find_chunk("XBIT").set_decoded_payload(microwave_flags),
+		"Microwave fixture places its plant and one water path cell",
+	)
+	var microwave_city := CityModel.from_document(microwave_document)
+	var microwave_values: Array[int] = []
+	for _step in 40:
+		microwave_values.append(2)
+	var microwave_random := SequenceRandom.new(microwave_values)
+	var microwave_start := DisasterStart.start(
+		microwave_city,
+		DisasterStart.DISASTER_MICROWAVE,
+		Vector2i(99, 99),
+		microwave_random,
+		SequenceLfsrRandom.new([]),
+	)
+	_check(
+		microwave_start.ok
+		and microwave_start.started
+		and microwave_start.complete
+		and microwave_start.plant_point == microwave_plant
+		and microwave_start.point == microwave_plant
+		and microwave_start.path_finish == Vector2i(49, 10)
+		and microwave_start.path_steps == 39
+		and microwave_start.damage_attempts == 38
+		and microwave_start.toxic_writes == 1
+		and microwave_start.map_changed
+		and microwave_random.position == 40,
+		"Microwave ignores the requested point and follows 39 random eight-direction steps",
+	)
+	_check(
+		microwave_start.view_center_requests == [
+			Vector2i(10, 10),
+			Vector2i(19, 10),
+			Vector2i(29, 10),
+			Vector2i(39, 10),
+		]
+		and microwave_start.sound_events.size() == 39
+		and microwave_start.sound_events[0] == DisasterStart.SOUND_MICROWAVE
+		and microwave_start.sound_events[-2] == DisasterStart.SOUND_MICROWAVE
+		and microwave_start.sound_events[-1] == DisasterStart.SOUND_SIREN,
+		"Microwave requests periodic view centers, one sound per damaged point, and the siren",
+	)
+	_check(
+		microwave_city.building_id(microwave_plant.x, microwave_plant.y)
+			== DisasterStart.MICROWAVE_POWER_PLANT
+		and microwave_city.text_overlay_id(microwave_plant.x, microwave_plant.y) == 0
+		and microwave_city.text_overlay_id(11, 10) == DisasterMap.FIRE_OVERLAY
+		and microwave_city.text_overlay_id(microwave_water.x, microwave_water.y)
+			== DisasterMap.TOXIC_OVERLAY
+		and microwave_city.text_overlay_id(48, 10) == DisasterMap.FIRE_OVERLAY,
+		"Microwave preserves its plant, burns dry path cells, and writes toxic waste on water",
+	)
+	var edge_microwave_document := Sc2Document.load_path(
+		reference_root.path_join("DEFAULT.SC2")
+	)
+	var edge_microwave_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	edge_microwave_buildings[127 * CityState.MAP_SIZE + 10] = (
+		DisasterStart.MICROWAVE_POWER_PLANT
+	)
+	_check(
+		edge_microwave_document.find_chunk("XBLD").set_decoded_payload(
+			edge_microwave_buildings
+		),
+		"Edge Microwave fixture places one plant at the east boundary",
+	)
+	var edge_microwave_random := SequenceRandom.new([2, 7])
+	var edge_microwave := DisasterStart.start(
+		CityModel.from_document(edge_microwave_document),
+		DisasterStart.DISASTER_MICROWAVE,
+		Vector2i.ZERO,
+		edge_microwave_random,
+		SequenceLfsrRandom.new([]),
+	)
+	_check(
+		edge_microwave.ok
+		and edge_microwave.started
+		and edge_microwave.path_steps == 1
+		and edge_microwave.path_finish == Vector2i(128, 10)
+		and edge_microwave.damage_attempts == 0
+		and not edge_microwave.map_changed
+		and edge_microwave.sound_events == [DisasterStart.SOUND_SIREN]
+		and edge_microwave_random.position == 2,
+		"Microwave stops after an out-of-map move and retains its final random read",
+	)
+	var no_microwave_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(
+		no_microwave_document.find_chunk("XBLD").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT, 0)
+		),
+		"No-plant Microwave fixture clears every microwave plant",
+	)
+	var no_microwave_random := SparseRandom.new({})
+	var no_microwave := DisasterStart.start(
+		CityModel.from_document(no_microwave_document),
+		DisasterStart.DISASTER_MICROWAVE,
+		Vector2i.ZERO,
+		no_microwave_random,
+		SequenceLfsrRandom.new([]),
+	)
+	_check(
+		no_microwave.ok
+		and not no_microwave.started
+		and no_microwave.complete
+		and no_microwave.sound_events.is_empty()
+		and no_microwave_random.position == 0,
+		"Microwave does not start or consume random state when no microwave plant exists",
+	)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
@@ -3049,7 +3188,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var unsupported_before: PackedByteArray = tornado_document.find_chunk("XTHG").decoded_payload.duplicate()
-	var unsupported := DisasterStart.start(tornado_city, 10, Vector2i(10, 10), SequenceRandom.new([]))
+	var unsupported := DisasterStart.start(tornado_city, 11, Vector2i(10, 10), SequenceRandom.new([]))
 	_check(
 		unsupported.ok and not unsupported.started and not unsupported.complete,
 		"An unimplemented disaster remains explicit",
