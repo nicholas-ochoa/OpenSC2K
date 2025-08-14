@@ -3312,6 +3312,105 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Firestorm reports failure after its full run-length-127 spiral finds no dry cell",
 	)
 
+	var mass_flood_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			mass_flood_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT, 0)
+			),
+			"Mass Floods fixture clears %s" % chunk_id,
+		)
+	_check(
+		mass_flood_document.find_chunk("ALTM").set_decoded_payload(
+			_filled_bytes(CityState.TILE_COUNT * 2, 0)
+		)
+		and mass_flood_document.find_chunk("XTRF").set_decoded_payload(
+			_filled_bytes(64 * 64, 9)
+		)
+		and mass_flood_document.set_misc_u32(DisasterStart.MISC_NORMAL_POPULATION, 0),
+		"Mass Floods fixture clears altitude and population and fills traffic",
+	)
+	var mass_flood_terrain := _filled_bytes(CityState.TILE_COUNT, 0)
+	mass_flood_terrain[64 * CityState.MAP_SIZE + 64] = 0x20
+	_check(
+		mass_flood_document.find_chunk("XTER").set_decoded_payload(mass_flood_terrain),
+		"Mass Floods fixture places one shoreline cell",
+	)
+	var mass_flood_city := CityModel.from_document(mass_flood_document)
+	var mass_flood_random := SparseRandom.new({}, 16)
+	var mass_flood_lfsr := SequenceLfsrRandom.new([])
+	var mass_flood := DisasterStart.start(
+		mass_flood_city,
+		DisasterStart.DISASTER_MASS_FLOODS,
+		Vector2i(64, 64),
+		mass_flood_random,
+		mass_flood_lfsr,
+	)
+	_check(
+		mass_flood.ok
+		and mass_flood.started
+		and mass_flood.complete
+		and mass_flood.attempt_count == 5
+		and mass_flood.valid_candidates == 5
+		and mass_flood.seed_writes == 5
+		and mass_flood.delay_frames == 5
+		and mass_flood.map_counter == 60
+		and mass_flood.map_changed,
+		"Mass Floods runs five ordinary Flood starts for a zero-population city",
+	)
+	_check(
+		mass_flood.candidate_points.size() == 5
+		and mass_flood.candidate_points.count(Vector2i(64, 64)) == 5
+		and mass_flood.seed_points.size() == 5
+		and mass_flood.seed_points.count(Vector2i(64, 64)) == 5
+		and mass_flood_city.text_overlay_id(65, 64) == DisasterMap.FLOOD_OVERLAY
+		and mass_flood_city.text_overlay_id(64, 65) == DisasterMap.FLOOD_OVERLAY,
+		"Each valid Mass Floods candidate uses the ordinary shoreline and asymmetric seed rules",
+	)
+	_check(
+		mass_flood.sound_events.size() == 6
+		and mass_flood.sound_events.count(DisasterStart.SOUND_FLOOD) == 5
+		and mass_flood.sound_events[-1] == DisasterStart.SOUND_SIREN
+		and mass_flood.view_center_requests == [Vector2i(64, 64)]
+		and mass_flood_random.position == 10
+		and mass_flood_lfsr.position == 0,
+		"Mass Floods preserves candidate random order, flood sounds, and the original view center",
+	)
+
+	var invalid_mass_flood_document := Sc2Document.load_path(
+		reference_root.path_join("DEFAULT.SC2")
+	)
+	_check(
+		invalid_mass_flood_document.set_misc_u32(
+			DisasterStart.MISC_NORMAL_POPULATION, 0
+		),
+		"Invalid Mass Floods fixture clears normal population",
+	)
+	var invalid_mass_flood_random := SparseRandom.new({}, 0)
+	var invalid_mass_flood_lfsr := SequenceLfsrRandom.new([])
+	var invalid_mass_flood := DisasterStart.start(
+		CityModel.from_document(invalid_mass_flood_document),
+		DisasterStart.DISASTER_MASS_FLOODS,
+		Vector2i.ZERO,
+		invalid_mass_flood_random,
+		invalid_mass_flood_lfsr,
+	)
+	_check(
+		invalid_mass_flood.ok
+		and not invalid_mass_flood.started
+		and invalid_mass_flood.complete
+		and invalid_mass_flood.attempt_count == 5
+		and invalid_mass_flood.valid_candidates == 0
+		and invalid_mass_flood.seed_writes == 0
+		and invalid_mass_flood.map_counter == 0
+		and not invalid_mass_flood.map_changed
+		and invalid_mass_flood.sound_events.is_empty()
+		and invalid_mass_flood.view_center_requests.is_empty()
+		and invalid_mass_flood_random.position == 10
+		and invalid_mass_flood_lfsr.position == 0,
+		"Mass Floods consumes point values but skips the Flood helper for invalid candidates",
+	)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
@@ -3369,7 +3468,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var unsupported_before: PackedByteArray = tornado_document.find_chunk("XTHG").decoded_payload.duplicate()
-	var unsupported := DisasterStart.start(tornado_city, 14, Vector2i(10, 10), SequenceRandom.new([]))
+	var unsupported := DisasterStart.start(tornado_city, 16, Vector2i(10, 10), SequenceRandom.new([]))
 	_check(
 		unsupported.ok and not unsupported.started and not unsupported.complete,
 		"An unimplemented disaster remains explicit",

@@ -18,6 +18,7 @@ const DISASTER_MICROWAVE := 10
 const DISASTER_VOLCANO := 11
 const DISASTER_FIRESTORM := 12
 const DISASTER_MASS_RIOTS := 13
+const DISASTER_MASS_FLOODS := 14
 const DISASTER_POLLUTION := 15
 const TYPE_MONSTER := 5
 const TYPE_TORNADO := 15
@@ -91,6 +92,8 @@ static func start(
 		return _start_firestorm(city, point, random, lfsr_random)
 	if disaster_type == DISASTER_MASS_RIOTS:
 		return _start_mass_riots(city, point, random)
+	if disaster_type == DISASTER_MASS_FLOODS:
+		return _start_mass_floods(city, point, random, lfsr_random)
 	if disaster_type == DISASTER_POLLUTION:
 		return _start_pollution(city, point, random)
 	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
@@ -927,6 +930,60 @@ static func _start_firestorm(
 	result["map_changed"] = map_changed
 	if started:
 		result["view_center_requests"] = [point]
+	return result
+
+
+static func _start_mass_floods(
+	city: CityState, center: Vector2i, random, lfsr_random
+) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "mass-flood disaster input chunks are missing or invalid"}
+	var attempt_count := (
+		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
+	) & 0xffff
+	if attempt_count & 0x8000:
+		attempt_count -= 0x10000
+	var candidate_points: Array[Vector2i] = []
+	var seed_points: Array[Vector2i] = []
+	if attempt_count > 0:
+		for _attempt in attempt_count:
+			var candidate := center + Vector2i(
+				(random.next_u15() & 0x1f) - 16,
+				(random.next_u15() & 0x1f) - 16,
+			)
+			if _index(candidate) < 0:
+				continue
+			candidate_points.append(candidate)
+			var flood := _start_flood(city, candidate, lfsr_random)
+			if not flood.get("ok", false):
+				return flood
+			if flood.get("started", false):
+				seed_points.append(flood.point)
+
+	var started := not seed_points.is_empty()
+	var current := _map_payloads(city)
+	var map_changed := not current.is_empty() and _payloads_changed(original, current)
+	var result := _result(DISASTER_MASS_FLOODS, center, started, true, 0)
+	result["attempt_count"] = maxi(attempt_count, 0)
+	result["valid_candidates"] = candidate_points.size()
+	result["candidate_points"] = candidate_points
+	result["seed_writes"] = seed_points.size()
+	result["successful_starts"] = seed_points.size()
+	result["seed_points"] = seed_points
+	result["delay_frames"] = candidate_points.size()
+	result["map_changed"] = map_changed
+	if started:
+		var sounds: Array[int] = []
+		for _seed in seed_points:
+			sounds.append(SOUND_FLOOD)
+		sounds.append(SOUND_SIREN)
+		result["sound_events"] = sounds
+		result["map_counter"] = 60
 	return result
 
 

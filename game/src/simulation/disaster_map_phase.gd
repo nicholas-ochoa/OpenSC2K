@@ -7,6 +7,7 @@ const Growth = preload("res://src/simulation/growth_phase.gd")
 const NetworkTiles = preload("res://src/tools/network_command.gd")
 const FIRE_OVERLAY := 0xff
 const TOXIC_OVERLAY := 0xfb
+const FLOOD_OVERLAY := 0xfc
 const RIOT_OVERLAY_FORWARD := 0xfd
 const RIOT_OVERLAY_REVERSE := 0xfe
 const SOUND_FIRE := 0x1fb
