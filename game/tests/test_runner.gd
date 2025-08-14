@@ -1782,6 +1782,17 @@ func _test_simulation_engine(reference_root: String) -> void:
 	)
 
 	var unsupported_scenario_document := Sc2Document.load_path(reference_root.path_join("SCENARIO/CHARLEST.SCN"))
+	var unsupported_scenario_data: PackedByteArray = (
+		unsupported_scenario_document.find_chunk("SCEN").decoded_payload.duplicate()
+	)
+	unsupported_scenario_data[0x04] = 0
+	unsupported_scenario_data[0x05] = 17
+	_check(
+		unsupported_scenario_document.find_chunk("SCEN").set_decoded_payload(
+			unsupported_scenario_data
+		),
+		"Unsupported scenario fixture selects disaster 17",
+	)
 	var unsupported_scenario_city := CityModel.from_document(unsupported_scenario_document)
 	_check(unsupported_scenario_city.set_age_in_days(0), "Unsupported scenario fixture resets the day")
 	var unsupported_scenario_engine := Simulation.new(unsupported_scenario_city, 1, 7, 13)
@@ -1790,7 +1801,7 @@ func _test_simulation_engine(reference_root: String) -> void:
 		unsupported_start.ok
 		and unsupported_start.pending.has("disaster_start")
 		and not unsupported_start.complete
-		and unsupported_scenario_engine.unsupported_disaster_type == 16,
+		and unsupported_scenario_engine.unsupported_disaster_type == 17,
 		"An unsupported scenario disaster stays explicit in the engine result",
 	)
 
@@ -3411,6 +3422,83 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Mass Floods consumes point values but skips the Flood helper for invalid candidates",
 	)
 
+	var hurricane_cases := [
+		{"rotation": 3, "direction": 0, "damage": 20, "flood": 50, "lfsr": 70},
+		{"rotation": 0, "direction": 1, "damage": 20, "flood": 100, "lfsr": 120},
+		{"rotation": 1, "direction": 2, "damage": 10, "flood": 100, "lfsr": 110},
+		{"rotation": 2, "direction": 3, "damage": 20, "flood": 50, "lfsr": 70},
+	]
+	for hurricane_case in hurricane_cases:
+		var hurricane_document := Sc2Document.load_path(
+			reference_root.path_join("DEFAULT.SC2")
+		)
+		for chunk_id in ["XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+			_check(
+				hurricane_document.find_chunk(chunk_id).set_decoded_payload(
+					_filled_bytes(CityState.TILE_COUNT, 0)
+				),
+				"Hurricane direction %d clears %s" % [hurricane_case.direction, chunk_id],
+			)
+		_check(
+			hurricane_document.find_chunk("XBLD").set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT, 0x1d)
+			)
+			and hurricane_document.find_chunk("ALTM").set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT * 2, 0)
+			)
+			and hurricane_document.find_chunk("XTRF").set_decoded_payload(
+				_filled_bytes(64 * 64, 9)
+			)
+			and hurricane_document.set_misc_u32(0x08, hurricane_case.rotation),
+			"Hurricane direction %d installs a uniform edge target map"
+			% hurricane_case.direction,
+		)
+		var hurricane_values: Array[int] = []
+		for value in hurricane_case.lfsr:
+			hurricane_values.append(value)
+		var hurricane_lfsr := SequenceLfsrRandom.new(hurricane_values)
+		var hurricane_random := SequenceRandom.new([])
+		var hurricane_city := CityModel.from_document(hurricane_document)
+		var hurricane := DisasterStart.start(
+			hurricane_city,
+			DisasterStart.DISASTER_HURRICANE,
+			Vector2i(64, 64),
+			hurricane_random,
+			hurricane_lfsr,
+		)
+		_check(
+			hurricane.ok
+			and hurricane.started
+			and hurricane.complete
+			and hurricane.direction == hurricane_case.direction
+			and hurricane.damage_scans == hurricane_case.damage
+			and hurricane.damage_attempts == hurricane_case.damage
+			and hurricane.flood_attempts == hurricane_case.flood
+			and hurricane.flood_writes == hurricane_case.flood
+			and hurricane.map_counter == 60
+			and hurricane.hurricane_counter == 50
+			and hurricane.map_changed,
+			"Hurricane direction %d preserves its damage and flood budgets"
+			% hurricane_case.direction,
+		)
+		_check(
+			hurricane_lfsr.position == hurricane_case.lfsr
+			and hurricane.view_center_requests.is_empty()
+			and hurricane.sound_events[0] == DisasterStart.SOUND_HURRICANE
+			and hurricane.sound_events[-2] == DisasterStart.SOUND_HURRICANE
+			and hurricane.sound_events[-1] == DisasterStart.SOUND_SIREN,
+			"Hurricane direction %d preserves random use, sound order, and no view center"
+			% hurricane_case.direction,
+		)
+		var expected_effects: int = 20 if hurricane_case.direction in [0, 3] else 0
+		_check(
+			hurricane.effect_events.size() == expected_effects
+			and hurricane.sound_events.count(DisasterStart.SOUND_EARTHQUAKE)
+			== expected_effects,
+			"Hurricane direction %d emits only source-enabled edge damage effects"
+			% hurricane_case.direction,
+		)
+
 	var fallback_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var fallback_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
 	fallback_buildings[12 * CityState.MAP_SIZE + 13] = 6
@@ -3468,7 +3556,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var unsupported_before: PackedByteArray = tornado_document.find_chunk("XTHG").decoded_payload.duplicate()
-	var unsupported := DisasterStart.start(tornado_city, 16, Vector2i(10, 10), SequenceRandom.new([]))
+	var unsupported := DisasterStart.start(tornado_city, 17, Vector2i(10, 10), SequenceRandom.new([]))
 	_check(
 		unsupported.ok and not unsupported.started and not unsupported.complete,
 		"An unimplemented disaster remains explicit",
@@ -4069,6 +4157,68 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and mixed_map.city.text_overlay_id(10, 10) == DisasterMap.RIOT_OVERLAY_REVERSE
 		and mixed_map.city.text_overlay_id(20, 20) == 0,
 		"The combined scan consumes random state in X-before-Y marker order",
+	)
+
+	var hurricane_tick_fixture := _fire_map_fixture(
+		reference_root, Vector2i(20, 21), 0x71
+	)
+	_check(
+		hurricane_tick_fixture.city.set_text_overlay_id(20, 21, 0),
+		"Hurricane tick fixture clears its tall-building overlay",
+	)
+	var hurricane_tick_random := SequenceRandom.new([0, 0, 0, 0])
+	var hurricane_tick_lfsr := SequenceLfsrRandom.new([0, 20, 21])
+	var hurricane_tick := DisasterMap.run_all(
+		hurricane_tick_fixture.city,
+		hurricane_tick_random,
+		hurricane_tick_lfsr,
+		60,
+		50,
+	)
+	_check(
+		hurricane_tick.ok
+		and hurricane_tick.hurricane_counter == 49
+		and hurricane_tick.hurricane_damage_attempts == 1
+		and hurricane_tick.hurricane_damaged_structures == 1
+		and hurricane_tick_fixture.city.building_id(20, 21) < 5
+		and hurricane_tick.view_center_requests == [Vector2i(20, 21)],
+		"An active hurricane tick can damage and center a source-qualified tall building",
+	)
+	_check(
+		hurricane_tick.sound_events == [
+			DisasterMap.SOUND_HURRICANE, DisasterMap.SOUND_EARTHQUAKE,
+		]
+		and hurricane_tick.effect_events.size() == 1
+		and hurricane_tick_lfsr.position == 3
+		and hurricane_tick_random.position == 4,
+		"Hurricane recurring damage preserves its sound, effect, and random order",
+	)
+
+	var gated_hurricane_fixture := _fire_map_fixture(
+		reference_root, Vector2i(20, 21), 0x71
+	)
+	_check(
+		gated_hurricane_fixture.city.set_text_overlay_id(20, 21, 0),
+		"Gated hurricane fixture clears its overlay",
+	)
+	var gated_hurricane_random := SequenceRandom.new([1])
+	var gated_hurricane_lfsr := SequenceLfsrRandom.new([1])
+	var gated_hurricane_tick := DisasterMap.run_all(
+		gated_hurricane_fixture.city,
+		gated_hurricane_random,
+		gated_hurricane_lfsr,
+		60,
+		50,
+	)
+	_check(
+		gated_hurricane_tick.ok
+		and gated_hurricane_tick.hurricane_counter == 49
+		and gated_hurricane_tick.hurricane_damage_attempts == 0
+		and not gated_hurricane_tick.map_changed
+		and gated_hurricane_tick.sound_events.is_empty()
+		and gated_hurricane_random.position == 1
+		and gated_hurricane_lfsr.position == 1,
+		"A hurricane tick consumes only its sound and LFSR gates when both reject",
 	)
 
 	var toxic_engine_fixture := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)

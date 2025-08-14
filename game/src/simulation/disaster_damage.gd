@@ -120,11 +120,12 @@ static func burn_structure(
 	random,
 	lfsr_random,
 	mark_fire := true,
-	clear_current := true
+	clear_current := true,
+	emit_effects := false
 ) -> Dictionary:
 	var result := Demolish._demolish_point(
 		city, altitude, buildings, terrain, zones, underground,
-		flags, text, labels, microsims, misc, point, random, true, true, false
+		flags, text, labels, microsims, misc, point, random, true, true, emit_effects
 	)
 	for index in result.get("indices", PackedInt32Array()):
 		if mark_fire and flags[index] & 0x04 == 0:

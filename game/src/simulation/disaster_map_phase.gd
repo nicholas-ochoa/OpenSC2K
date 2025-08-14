@@ -13,6 +13,8 @@ const RIOT_OVERLAY_REVERSE := 0xfe
 const SOUND_FIRE := 0x1fb
 const SOUND_FLOOD := 0x1ff
 const SOUND_RIOT := 0x200
+const SOUND_HURRICANE := 0x1f6
+const SOUND_EARTHQUAKE := 0x1f8
 const TYPE_EXPLOSION := 6
 const TYPE_POLICE := 7
 const TYPE_FIRE_DISPATCH := 8
@@ -41,7 +43,7 @@ const MAP_CHUNK_SIZES := {
 
 
 static func run_all(
-	city: CityState, random, lfsr_random, map_counter: int
+	city: CityState, random, lfsr_random, map_counter: int, hurricane_counter := 0
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -90,6 +92,8 @@ static func run_all(
 		"traffic_cells_cleared": 0,
 		"propagated_riots": 0,
 		"blocked_propagations": 0,
+		"hurricane_damage_attempts": 0,
+		"hurricane_damaged_structures": 0,
 	}
 	var dispatch := {
 		"dispatch_markers_scanned": 0,
@@ -150,16 +154,55 @@ static func run_all(
 					lfsr_random,
 					dispatch
 				)
-	var map_changed := _payloads_changed(original, payloads)
-	if map_changed and not _apply_map_payloads(city, original, payloads):
-		return {"ok": false, "error": "cannot store the disaster-map tick"}
 	var sound_events: Array[int] = []
+	var effect_events: Array[Dictionary] = []
+	var view_center_requests: Array[Vector2i] = []
 	if riot_active and random.next_u15() & 7 == 0:
 		sound_events.append(SOUND_RIOT)
 	if flood_active and random.next_u15() & 7 == 0:
 		sound_events.append(SOUND_FLOOD)
 	if fire_active:
 		sound_events.append(SOUND_FIRE)
+	var next_hurricane_counter := hurricane_counter
+	if counter != 0 and hurricane_counter != 0:
+		if random.next_u15() & 7 == 0:
+			sound_events.append(SOUND_HURRICANE)
+		if lfsr_random.next_mask(1) == 0:
+			var hurricane_point := Vector2i(
+				lfsr_random.next_mod(128), lfsr_random.next_mod(128)
+			)
+			var hurricane_index := _index(hurricane_point)
+			if payloads.XBLD[hurricane_index] > 0x70:
+				counters.hurricane_damage_attempts += 1
+				var damage := DisasterMapDamage.burn_structure(
+					city,
+					payloads.ALTM,
+					payloads.XBLD,
+					payloads.XTER,
+					payloads.XZON,
+					payloads.XUND,
+					payloads.XBIT,
+					payloads.XTXT,
+					payloads.XLAB,
+					payloads.XMIC,
+					payloads.MISC,
+					hurricane_point,
+					random,
+					lfsr_random,
+					false,
+					false,
+					true,
+				)
+				if damage.get("changed", false):
+					counters.hurricane_damaged_structures += 1
+				for effect in damage.get("effect_events", []):
+					effect_events.append(effect)
+				sound_events.append(SOUND_EARTHQUAKE)
+				view_center_requests.append(hurricane_point)
+		next_hurricane_counter = maxi(hurricane_counter - 1, 0)
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the disaster-map tick"}
 	counters["ok"] = true
 	counters["error"] = ""
 	counters["active"] = fire_active or flood_active or toxic_active or riot_active
@@ -175,11 +218,12 @@ static func run_all(
 		+ payloads.XTXT.count(RIOT_OVERLAY_REVERSE)
 	)
 	counters["map_counter"] = counter
+	counters["hurricane_counter"] = next_hurricane_counter
 	counters["map_changed"] = map_changed
 	counters["news_items"] = []
-	counters["effect_events"] = []
+	counters["effect_events"] = effect_events
 	counters["sound_events"] = sound_events
-	counters["view_center_requests"] = []
+	counters["view_center_requests"] = view_center_requests
 	counters["complete"] = true
 	dispatch["ok"] = true
 	dispatch["error"] = ""

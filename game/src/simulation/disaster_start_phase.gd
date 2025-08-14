@@ -20,6 +20,7 @@ const DISASTER_FIRESTORM := 12
 const DISASTER_MASS_RIOTS := 13
 const DISASTER_MASS_FLOODS := 14
 const DISASTER_POLLUTION := 15
+const DISASTER_HURRICANE := 16
 const TYPE_MONSTER := 5
 const TYPE_TORNADO := 15
 const TEXT_THING_BASE := 201
@@ -29,6 +30,7 @@ const SOUND_RIOT := 512
 const SOUND_MICROWAVE := 514
 const SOUND_EARTHQUAKE := 504
 const SOUND_VOLCANO := 507
+const SOUND_HURRICANE := 502
 const VOLCANO_BUDGET := 25000
 const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
@@ -96,6 +98,8 @@ static func start(
 		return _start_mass_floods(city, point, random, lfsr_random)
 	if disaster_type == DISASTER_POLLUTION:
 		return _start_pollution(city, point, random)
+	if disaster_type == DISASTER_HURRICANE:
+		return _start_hurricane(city, point, random, lfsr_random)
 	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
 		return _result(disaster_type, point, false, false, 0)
 	if random == null or not random.has_method("next_u15"):
@@ -985,6 +989,192 @@ static func _start_mass_floods(
 		result["sound_events"] = sounds
 		result["map_counter"] = 60
 	return result
+
+
+static func _start_hurricane(
+	city: CityState, requested_point: Vector2i, random, lfsr_random
+) -> Dictionary:
+	if random == null or not random.has_method("next_u15"):
+		return {"ok": false, "error": "a compatible process random generator is required"}
+	if (
+		lfsr_random == null
+		or not lfsr_random.has_method("next_mask")
+		or not lfsr_random.has_method("next_mod")
+	):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var original := _map_payloads(city)
+	if original.is_empty():
+		return {"ok": false, "error": "hurricane disaster input chunks are missing or invalid"}
+	var payloads := _duplicate_payloads(original)
+	var direction := (city.compass_rotation() + 1) & 3
+	var damage_points: Array[Vector2i] = []
+	var flood_points: Array[Vector2i] = []
+	var effect_events: Array[Dictionary] = []
+	var sounds: Array[int] = [SOUND_HURRICANE]
+	var damage_scans := 0
+	if direction == 0:
+		for _attempt in 20:
+			damage_scans += 1
+			var x: int = lfsr_random.next_mask(0x7f)
+			var y := 127
+			while y >= 0:
+				if y > 0 and payloads.XBLD[_index(Vector2i(x, y))] > 0x0c:
+					break
+				y -= lfsr_random.next_mod(20)
+			if y > 0:
+				_hurricane_damage(
+					city, payloads, Vector2i(x, y), random, lfsr_random,
+					damage_points, effect_events, sounds, true
+				)
+		sounds.append(SOUND_HURRICANE)
+		_hurricane_flood_edge(payloads, lfsr_random, direction, 50, flood_points)
+	elif direction == 1:
+		for _attempt in 20:
+			damage_scans += 1
+			var y: int = lfsr_random.next_mask(0x7f)
+			var x := 127
+			while x >= 0:
+				if x > 0 and payloads.XBLD[_index(Vector2i(x, y))] > 0x0c:
+					break
+				x -= lfsr_random.next_mod(20)
+			if x > 0:
+				_hurricane_damage(
+					city, payloads, Vector2i(x, y), random, lfsr_random,
+					damage_points, effect_events, sounds, false
+				)
+		sounds.append(SOUND_HURRICANE)
+		_hurricane_flood_edge(payloads, lfsr_random, direction, 100, flood_points)
+	elif direction == 2:
+		var attempt := 0
+		while attempt < 20:
+			damage_scans += 1
+			var next_attempt := attempt + 1
+			var x: int = lfsr_random.next_mask(0x7f)
+			var y := 0
+			while y < 128:
+				if y < 127 and payloads.XBLD[_index(Vector2i(x, y))] > 0x0c:
+					break
+				y += lfsr_random.next_mod(20)
+			if y < 127:
+				next_attempt = attempt + 2
+				_hurricane_damage(
+					city, payloads, Vector2i(x, y), random, lfsr_random,
+					damage_points, effect_events, sounds, false
+				)
+			attempt = next_attempt
+		sounds.append(SOUND_HURRICANE)
+		_hurricane_flood_edge(payloads, lfsr_random, direction, 100, flood_points)
+	else:
+		for _attempt in 20:
+			damage_scans += 1
+			var y: int = lfsr_random.next_mask(0x7f)
+			var x := 0
+			while x < 128:
+				if x < 127 and payloads.XBLD[_index(Vector2i(x, y))] > 0x0c:
+					break
+				x += lfsr_random.next_mod(20)
+			if x < 127:
+				_hurricane_damage(
+					city, payloads, Vector2i(x, y), random, lfsr_random,
+					damage_points, effect_events, sounds, true
+				)
+		sounds.append(SOUND_HURRICANE)
+		_hurricane_flood_edge(payloads, lfsr_random, direction, 50, flood_points)
+	sounds.append(SOUND_HURRICANE)
+	var map_changed := _payloads_changed(original, payloads)
+	if map_changed and not _apply_map_payloads(city, original, payloads):
+		return {"ok": false, "error": "cannot store the hurricane disaster"}
+	var result := _result(DISASTER_HURRICANE, requested_point, true, true, 0)
+	sounds.append(SOUND_SIREN)
+	result["sound_events"] = sounds
+	result["view_center_requests"] = []
+	result["effect_events"] = effect_events
+	result["map_counter"] = 60
+	result["hurricane_counter"] = 50
+	result["direction"] = direction
+	result["damage_scans"] = damage_scans
+	result["damage_attempts"] = damage_points.size()
+	result["damage_points"] = damage_points
+	result["flood_attempts"] = 50 if direction == 0 or direction == 3 else 100
+	result["flood_writes"] = flood_points.size()
+	result["flood_points"] = flood_points
+	result["map_changed"] = map_changed
+	return result
+
+
+static func _hurricane_damage(
+	city: CityState,
+	payloads: Dictionary,
+	point: Vector2i,
+	random,
+	lfsr_random,
+	damage_points: Array[Vector2i],
+	effect_events: Array[Dictionary],
+	sounds: Array[int],
+	emit_effects: bool
+) -> void:
+	var damage := DisasterMapDamage.burn_structure(
+		city,
+		payloads.ALTM,
+		payloads.XBLD,
+		payloads.XTER,
+		payloads.XZON,
+		payloads.XUND,
+		payloads.XBIT,
+		payloads.XTXT,
+		payloads.XLAB,
+		payloads.XMIC,
+		payloads.MISC,
+		point,
+		random,
+		lfsr_random,
+		false,
+		false,
+		emit_effects,
+	)
+	damage_points.append(point)
+	if emit_effects:
+		for effect in damage.get("effect_events", []):
+			effect_events.append(effect)
+		sounds.append(SOUND_EARTHQUAKE)
+
+
+static func _hurricane_flood_edge(
+	payloads: Dictionary,
+	lfsr_random,
+	direction: int,
+	attempt_count: int,
+	flood_points: Array[Vector2i]
+) -> void:
+	for _attempt in attempt_count:
+		var fixed: int = lfsr_random.next_mask(0x7f)
+		var point := Vector2i.ZERO
+		if direction == 0:
+			point = Vector2i(fixed, 127)
+			while point.y >= 0 and payloads.XBLD[_index(point)] <= 5:
+				point.y -= 1
+			if point.y <= 0:
+				continue
+		elif direction == 1:
+			point = Vector2i(127, fixed)
+			while point.x >= 0 and payloads.XBLD[_index(point)] <= 5:
+				point.x -= 1
+			if point.x <= 0:
+				continue
+		elif direction == 2:
+			point = Vector2i(fixed, 0)
+			while point.y < 127 and payloads.XBLD[_index(point)] <= 5:
+				point.y += 1
+			if point.y >= 127:
+				continue
+		else:
+			point = Vector2i(0, fixed)
+			while point.x < 128 and payloads.XBLD[_index(point)] <= 5:
+				point.x += 1
+			if point.x >= 127:
+				continue
+		payloads.XTXT[_index(point)] = 0xfc
+		flood_points.append(point)
 
 
 static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i) -> void:
