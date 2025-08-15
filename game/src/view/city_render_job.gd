@@ -44,10 +44,16 @@ func run() -> Dictionary:
 			Renderer.IMAGE_SIZE_LARGE.y,
 			Image.INTERPOLATE_NEAREST
 		)
+	var occlusion_commands: Array[Dictionary] = []
+	if render_mode == "city":
+		occlusion_commands = Renderer.static_occlusion_commands(
+			city_snapshot, sprites, view_size
+		)
 	return {
 		"ok": true,
 		"error": "",
 		"index_image": index_image,
+		"occlusion_commands": occlusion_commands,
 		"signature": signature,
 		"view_size": view_size,
 		"epoch": epoch,

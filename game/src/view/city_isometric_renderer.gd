@@ -397,8 +397,8 @@ static func _draw_tile(
 		if is_highway_composite:
 			_draw_highway_ground(
 				output, city, palette, sprites, cache, configuration,
-					screen_x, base_y, x, y
-				)
+				screen_x, base_y, x, y
+			)
 		var flip := building_sprite_flip(city, x, y, building_id)
 		building_image = _sprite_image(
 			sprites, palette, cache, int(configuration.sprite_base) + building_id, flip
@@ -414,8 +414,16 @@ static func _draw_tile(
 			var traffic_image := _sprite_image(
 				sprites, palette, cache, traffic_visual.sprite_id, traffic_visual.flip
 			)
+			var masked_traffic := _traffic_masked_image(
+				traffic_image, building_image, palette, cache,
+				"traffic:%d:%d:%d:%d" % [
+					traffic_visual.sprite_id, int(traffic_visual.flip),
+					building_id, int(flip),
+				]
+			)
 			_blend_on_base(
-				output, traffic_image, screen_x, building_base_y, configuration.tile_height
+				output, masked_traffic, screen_x, building_base_y,
+				configuration.tile_height
 			)
 		var power_marker := power_marker_visual(city, x, y, configuration.view_size)
 		if not power_marker.is_empty():
@@ -1048,11 +1056,13 @@ static func moving_thing_draw_commands(
 			)
 			if visual.is_empty():
 				continue
-			commands.append_array(
-				moving_thing_draw_commands_for_visual(
-					city, sprites, visual, configuration
-				)
+			var visual_commands := moving_thing_draw_commands_for_visual(
+				city, sprites, visual, configuration
 			)
+			var draw_order := (x + y) * CityState.MAP_SIZE + y
+			for command in visual_commands:
+				command.depth_order = draw_order
+				commands.append(command)
 	return commands
 
 
@@ -1104,24 +1114,26 @@ static func dynamic_draw_commands(
 	)
 	for entry in entries:
 		var point: Vector2i = entry.point
+		var entry_commands: Array[Dictionary] = []
 		if entry.special:
 			var special_visual := special_overlay_visual(
 				city, point.x, point.y, view_size, animation_phase
 			)
-			var command := special_overlay_draw_command(
+			var special_command := special_overlay_draw_command(
 				city, sprites, point, special_visual, configuration
 			)
-			if not command.is_empty():
-				commands.append(command)
+			if not special_command.is_empty():
+				entry_commands.append(special_command)
 		else:
 			var moving_visual := moving_thing_visual(
 				city, point.x, point.y, view_size, animation_phase
 			)
-			commands.append_array(
-				moving_thing_draw_commands_for_visual(
-					city, sprites, moving_visual, configuration
-				)
+			entry_commands = moving_thing_draw_commands_for_visual(
+				city, sprites, moving_visual, configuration
 			)
+		for command in entry_commands:
+			command.depth_order = int(entry.order)
+			commands.append(command)
 	return commands
 
 
@@ -1176,11 +1188,14 @@ static func moving_thing_draw_commands_for_visual(
 			int(configuration.side_margin)
 			+ CityState.MAP_SIZE * int(configuration.half_width)
 		)
+		var monster_origin_y: int = (
+			int(configuration.top_margin) + int(configuration.tile_height)
+		)
 		var monster_has_shadow := city.building_id(visual.x, visual.y) < 0x71
 		for layer in visual.layers:
 			var destination := Vector2i(
 				monster_origin_x + layer.screen_x,
-				int(configuration.top_margin) + layer.screen_y
+				monster_origin_y + layer.screen_y
 			)
 			if monster_has_shadow:
 				commands.append(_moving_draw_command(
@@ -1210,6 +1225,7 @@ static func moving_thing_draw_commands_for_visual(
 			right_x - entry.width,
 			int(configuration.top_margin)
 				+ (visual.x + visual.y) * int(configuration.half_height)
+				+ int(configuration.tile_height)
 				- visual.elevation - entry.height
 		)
 	elif visual.train:
@@ -1219,7 +1235,8 @@ static func moving_thing_draw_commands_for_visual(
 		)
 		destination = Vector2i(
 			center_x - int(entry.width / 2),
-			TOP_MARGIN + (visual.x + visual.y) * HALF_HEIGHT + visual.screen_y
+			TOP_MARGIN + TILE_HEIGHT
+				+ (visual.x + visual.y) * HALF_HEIGHT + visual.screen_y
 				- visual.elevation - entry.height
 		)
 	else:
@@ -1238,6 +1255,7 @@ static func moving_thing_draw_commands_for_visual(
 			center_x - int(entry.width / 2),
 			int(configuration.top_margin)
 				+ (visual.x + visual.y) * int(configuration.half_height)
+				+ int(configuration.tile_height)
 				+ int((visual.px + visual.py) / THING_Y_DIVISOR[view_size])
 				- altitude * int(configuration.altitude_step)
 				- visual.z * int(configuration.half_height) - entry.height
@@ -1250,9 +1268,12 @@ static func moving_thing_draw_commands_for_visual(
 				),
 				true
 			))
-	commands.append(_moving_draw_command(
+	var main_command := _moving_draw_command(
 		visual.sprite_id, visual.flip, destination, false
-	))
+	)
+	if visual.train and city.building_id(visual.x, visual.y) in [0x47, 0x48]:
+		main_command.same_tile_foreground_indices = PackedInt32Array([0x00, 0x2a])
+	commands.append(main_command)
 	return commands
 
 
@@ -1264,6 +1285,209 @@ static func _moving_draw_command(
 		"flip": flip,
 		"position": position,
 		"shadow": shadow,
+	}
+
+
+static func static_occlusion_commands(
+	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
+) -> Array[Dictionary]:
+	var commands: Array[Dictionary] = []
+	if city == null or not city.is_valid() or sprites == null or not sprites.is_valid():
+		return commands
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return commands
+	var origin_x: int = (
+		int(configuration.side_margin)
+		+ CityState.MAP_SIZE * int(configuration.half_width)
+	)
+	for diagonal in CityState.MAP_SIZE * 2 - 1:
+		for y in diagonal + 1:
+			var x := diagonal - y
+			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+				continue
+			var order := (x + y) * CityState.MAP_SIZE + y
+			commands.append_array(_tile_occlusion_commands(
+				city, sprites, configuration, origin_x, x, y, order
+			))
+	return commands
+
+
+static func _tile_occlusion_commands(
+	city: CityState,
+	sprites: Sc2SpriteArchive,
+	configuration: Dictionary,
+	origin_x: int,
+	x: int,
+	y: int,
+	draw_order: int
+) -> Array[Dictionary]:
+	var commands: Array[Dictionary] = []
+	var terrain_id := city.terrain_id(x, y)
+	var building_id := city.building_id(x, y)
+	var terrain_altitude := city.land_altitude(x, y)
+	if terrain_id >= 0x10:
+		terrain_altitude = city.water_altitude(x, y)
+	var screen_x := origin_x + (x - y) * int(configuration.half_width)
+	var flat_base_y := (
+		int(configuration.top_margin) + (x + y) * int(configuration.half_height)
+	)
+	if x == CityState.MAP_SIZE - 1 or y == CityState.MAP_SIZE - 1:
+		for visual in edge_stack_visuals(city, x, y, configuration.view_size):
+			_append_occluder(
+				commands, sprites, visual.sprite_id, false,
+				Vector2i(
+					screen_x,
+					flat_base_y - visual.elevation + int(configuration.tile_height)
+				),
+				draw_order
+			)
+	var base_y := flat_base_y - terrain_altitude * int(configuration.altitude_step)
+	var is_highway_composite := building_id >= 0x61 and building_id <= 0x6b
+	if building_id < 0x70 and not is_highway_composite:
+		_append_occluder(
+			commands, sprites,
+			terrain_sprite_id(terrain_id, city.is_water(x, y), configuration.sprite_base),
+			false, Vector2i(screen_x, base_y + int(configuration.tile_height)), draw_order
+		)
+	var zone := city.zone_id(x, y)
+	if zone > 0 and building_id == 0:
+		_append_occluder(
+			commands, sprites, int(configuration.sprite_base) + 290 + zone, false,
+			Vector2i(screen_x, base_y + int(configuration.tile_height)), draw_order
+		)
+	if building_id > 0 and _should_draw_building(city, x, y, building_id):
+		if is_highway_composite:
+			var source_offsets := [
+				Vector2i(0, 0), Vector2i(0, -1),
+				Vector2i(1, -1), Vector2i(1, 0),
+			]
+			var screen_offsets := [
+				Vector2i(0, 0),
+				Vector2i(configuration.half_width, -configuration.half_height),
+				Vector2i(configuration.tile_width, 0),
+				Vector2i(configuration.half_width, configuration.half_height),
+			]
+			for index in source_offsets.size():
+				var source: Vector2i = Vector2i(x, y) + source_offsets[index]
+				if city.index_of(source.x, source.y) < 0:
+					continue
+				_append_occluder(
+					commands, sprites,
+					terrain_sprite_id(
+						city.terrain_id(source.x, source.y), city.is_water(source.x, source.y),
+						configuration.sprite_base
+					),
+					false,
+					Vector2i(screen_x, base_y + int(configuration.tile_height))
+						+ screen_offsets[index],
+					draw_order
+				)
+		var building_flip := building_sprite_flip(city, x, y, building_id)
+		var building_sprite_id := int(configuration.sprite_base) + building_id
+		var building_entry = sprites.find_sprite(building_sprite_id)
+		if building_entry != null:
+			var building_base_y := base_y + building_baseline_offset(
+				building_id, terrain_id, building_entry.width, configuration.view_size
+			)
+			_append_occluder(
+				commands, sprites, building_sprite_id, building_flip,
+				Vector2i(screen_x, building_base_y + int(configuration.tile_height)),
+				draw_order
+			)
+			var power_marker := power_marker_visual(city, x, y, configuration.view_size)
+			if not power_marker.is_empty():
+				var marker_entry = sprites.find_sprite(power_marker.sprite_id)
+				if marker_entry != null:
+					_append_occluder(
+						commands, sprites, power_marker.sprite_id, false,
+						Vector2i(
+							screen_x + int(building_entry.width / 2)
+								- int(marker_entry.width / 2),
+							base_y + int(configuration.tile_height)
+						),
+						draw_order
+					)
+	var dispatch_sprite := dispatch_sprite_id(city, x, y, configuration.view_size)
+	if dispatch_sprite > 0:
+		var dispatch_entry = sprites.find_sprite(dispatch_sprite)
+		if dispatch_entry != null:
+			_append_occluder(
+				commands, sprites, dispatch_sprite, false,
+				Vector2i(
+					screen_x + int(configuration.half_width)
+						- int(dispatch_entry.width / 2),
+					flat_base_y
+						- city.land_altitude(x, y) * int(configuration.altitude_step)
+						+ int(configuration.tile_height)
+				),
+				draw_order
+			)
+	return commands
+
+
+static func _append_occluder(
+	commands: Array[Dictionary],
+	sprites: Sc2SpriteArchive,
+	sprite_id: int,
+	flip: bool,
+	base_position: Vector2i,
+	draw_order: int
+) -> void:
+	var entry = sprites.find_sprite(sprite_id)
+	if entry == null:
+		return
+	commands.append({
+		"sprite_id": sprite_id,
+		"flip": flip,
+		"position": base_position - Vector2i(0, entry.height),
+		"size": Vector2i(entry.width, entry.height),
+		"depth_order": draw_order,
+	})
+
+
+static func occlude_dynamic_with_mask(
+	sprite: Image,
+	occluder_mask: Image,
+	position: Vector2i,
+	index_image: Image = null,
+	same_tile_foreground_indices := PackedInt32Array()
+) -> Dictionary:
+	if sprite == null:
+		return {"image": sprite, "occluded_pixels": 0}
+	var visible: Image
+	var occluded_pixels := 0
+	for source_y in sprite.get_height():
+		for source_x in sprite.get_width():
+			var source_color: Color = sprite.get_pixel(source_x, source_y)
+			if source_color.a == 0.0:
+				continue
+			var hidden := (
+				occluder_mask != null
+				and occluder_mask.get_pixel(source_x, source_y).a > 0.0
+			)
+			var map_point := position + Vector2i(source_x, source_y)
+			if (
+				not hidden
+				and index_image != null
+				and not same_tile_foreground_indices.is_empty()
+				and map_point.x >= 0
+				and map_point.y >= 0
+				and map_point.x < index_image.get_width()
+				and map_point.y < index_image.get_height()
+			):
+				var palette_index := roundi(index_image.get_pixelv(map_point).r * 255.0)
+				hidden = same_tile_foreground_indices.has(palette_index)
+			if not hidden:
+				continue
+			if visible == null:
+				visible = sprite.duplicate()
+			source_color.a = 0.0
+			visible.set_pixel(source_x, source_y, source_color)
+			occluded_pixels += 1
+	return {
+		"image": sprite if visible == null else visible,
+		"occluded_pixels": occluded_pixels,
 	}
 
 
@@ -1394,11 +1618,44 @@ static func _sprite_image(
 
 
 static func _blend_on_base(
-	output: Image, sprite: Image, x: int, base_y: int, tile_height := TILE_HEIGHT
+	output: Image,
+	sprite: Image,
+	x: int,
+	base_y: int,
+	tile_height := TILE_HEIGHT
 ) -> void:
 	var destination := Vector2i(x, base_y + tile_height - sprite.get_height())
 	output.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), destination)
 
 
+static func _traffic_masked_image(
+	sprite: Image,
+	surface: Image,
+	palette: Sc2Palette,
+	cache: Dictionary = {},
+	cache_key := ""
+) -> Image:
+	if not cache_key.is_empty() and cache.has(cache_key):
+		return cache[cache_key]
+	var masked: Image = sprite.duplicate()
+	var target := palette.color(0xa1).to_rgba32()
+	var vertical_offset := surface.get_height() - sprite.get_height()
+	for source_y in sprite.get_height():
+		var surface_y := source_y + vertical_offset
+		for source_x in sprite.get_width():
+			var keep := (
+				source_x < surface.get_width()
+				and surface_y >= 0
+				and surface_y < surface.get_height()
+				and surface.get_pixel(source_x, surface_y).to_rgba32() == target
+			)
+			if keep:
+				continue
+			var source_color: Color = masked.get_pixel(source_x, source_y)
+			source_color.a = 0.0
+			masked.set_pixel(source_x, source_y, source_color)
+	if not cache_key.is_empty():
+		cache[cache_key] = masked
+	return masked
 static func _failure(message: String) -> Dictionary:
 	return {"ok": false, "error": message}

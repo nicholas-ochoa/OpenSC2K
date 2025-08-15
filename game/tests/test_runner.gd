@@ -586,6 +586,19 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and not low_traffic.flip,
 		"Normal road traffic selects the recovered low-density large sprite",
 	)
+	var traffic_base := Image.create(2, 1, false, Image.FORMAT_RGBA8)
+	traffic_base.set_pixel(0, 0, Color8(0xa1, 0xa1, 0xa1, 255))
+	traffic_base.set_pixel(1, 0, Color8(0xa0, 0xa0, 0xa0, 255))
+	var traffic_pixels := Image.create(2, 1, false, Image.FORMAT_RGBA8)
+	traffic_pixels.fill(Color8(0xc8, 0xc8, 0xc8, 255))
+	var masked_traffic := IsometricRenderer._traffic_masked_image(
+		traffic_pixels, traffic_base, Palette.index_encoding()
+	)
+	_check(
+		masked_traffic.get_pixel(0, 0).a == 1.0
+		and masked_traffic.get_pixel(1, 0).a == 0.0,
+		"Traffic pixels replace only the recovered road-deck palette index",
+	)
 	_check(
 		IsometricRenderer.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_MEDIUM
@@ -1042,7 +1055,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
 	)
 	var expected_plane_position := Vector2i(
-		2096 - int(plane_entry.width / 2), 1528 - plane_entry.height
+		2096 - int(plane_entry.width / 2), 1545 - plane_entry.height
 	)
 	_check(
 		plane_commands.size() == 2
@@ -1050,7 +1063,45 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and plane_commands[0].position == expected_plane_position
 		and not plane_commands[1].shadow
 		and plane_commands[1].position == expected_plane_position,
-		"Moving overlay commands preserve the recovered sprite and shadow positions",
+		"Moving overlay commands use the recovered baseline and shadow positions",
+	)
+	var moving_fixture := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	moving_fixture.fill(Color.WHITE)
+	var occluder_fixture := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	occluder_fixture.fill(Color.TRANSPARENT)
+	occluder_fixture.set_pixel(1, 1, Color.WHITE)
+	var occluded := IsometricRenderer.occlude_dynamic_with_mask(
+		moving_fixture, occluder_fixture, Vector2i(1, 1)
+	)
+	_check(
+		occluded.occluded_pixels == 1
+		and occluded.image.get_pixel(1, 1).a == 0.0,
+		"Dynamic occlusion hides a pixel painted by a later map sprite",
+	)
+	var unobscured := IsometricRenderer.occlude_dynamic_with_mask(
+		moving_fixture, null, Vector2i(1, 1)
+	)
+	_check(
+		unobscured.occluded_pixels == 0 and unobscured.image == moving_fixture,
+		"Dynamic occlusion keeps pixels without a later map sprite",
+	)
+	var index_fixture := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	index_fixture.fill(Color8(0xa1, 0xa1, 0xa1, 255))
+	index_fixture.set_pixel(2, 2, Color8(0, 0, 0, 255))
+	var wire_occluded := IsometricRenderer.occlude_dynamic_with_mask(
+		moving_fixture, null, Vector2i(1, 1), index_fixture,
+		PackedInt32Array([0x00, 0x2a])
+	)
+	_check(
+		wire_occluded.occluded_pixels == 1
+		and wire_occluded.image.get_pixel(1, 1).a == 0.0,
+		"Same-tile wire masking keeps rail crossover cables in front",
+	)
+	var static_occluders := IsometricRenderer.static_occlusion_commands(starter, large)
+	_check(
+		static_occluders.size() >= CityState.TILE_COUNT
+		and int(static_occluders[0].depth_order) <= int(static_occluders[-1].depth_order),
+		"Static occlusion commands keep the isometric map order",
 	)
 	var static_signature := IsometricRenderer.static_visual_signature(starter)
 	_check(
@@ -1237,6 +1288,66 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		straight_train.sprite_id == 1377 and straight_train.flip,
 		"Train view maps a rail tile to its recovered sprite variant",
+	)
+	var train_entry := large.find_sprite(straight_train.sprite_id)
+	var train_commands := IsometricRenderer.moving_thing_draw_commands_for_visual(
+		starter,
+		large,
+		{
+			"sprite_id": straight_train.sprite_id,
+			"flip": straight_train.flip,
+			"type": 10,
+			"x": 64,
+			"y": 64,
+			"z": 0,
+			"px": 0,
+			"py": 0,
+			"train": true,
+			"screen_x": straight_train.screen_x,
+			"screen_y": straight_train.screen_y,
+			"elevation": straight_train.elevation,
+			"tornado": false,
+			"monster": false,
+		},
+		IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
+	)
+	_check(
+		train_commands.size() == 1
+		and train_commands[0].position == Vector2i(
+			2096 - int(train_entry.width / 2), 1553 - train_entry.height
+		),
+		"Surface train uses the same recovered baseline as its rail tile",
+	)
+	_check(starter.set_building_id(64, 64, 0x48), "Train wire fixture adds a rail-power crossover")
+	var crossing_train := IsometricRenderer.train_sprite(starter, 64, 64, {
+		"type": 10, "dx": 0,
+	})
+	var crossing_commands := IsometricRenderer.moving_thing_draw_commands_for_visual(
+		starter,
+		large,
+		{
+			"sprite_id": crossing_train.sprite_id,
+			"flip": crossing_train.flip,
+			"type": 10,
+			"x": 64,
+			"y": 64,
+			"z": 0,
+			"px": 0,
+			"py": 0,
+			"train": true,
+			"screen_x": crossing_train.screen_x,
+			"screen_y": crossing_train.screen_y,
+			"elevation": crossing_train.elevation,
+			"tornado": false,
+			"monster": false,
+		},
+		IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
+	)
+	_check(
+		crossing_commands.size() == 1
+		and crossing_commands[0].same_tile_foreground_indices
+			== PackedInt32Array([0x00, 0x2a]),
+		"Train crossover keeps the native power-wire palette in front",
 	)
 	_check(starter.set_building_id(64, 64, 0x36), "Train drawing fixture adds a turn tile")
 	var turning_train := IsometricRenderer.train_sprite(starter, 64, 64, {
