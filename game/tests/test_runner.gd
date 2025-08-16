@@ -1407,6 +1407,80 @@ func _test_sprite_archives(reference_root: String) -> void:
 			== PackedInt32Array([0x00, 0x2a]),
 		"Train crossover keeps the native power-wire palette in front",
 	)
+	var index_palette := Palette.index_encoding()
+	var crossing_terrain: Image = large.find_sprite(1256).create_image(index_palette).image
+	var crossing_surface: Image = large.find_sprite(1072).create_image(index_palette).image
+	var crossing_train_image: Image = (
+		large.find_sprite(crossing_train.sprite_id).create_image(index_palette).image.duplicate()
+	)
+	if crossing_train.flip:
+		crossing_train_image.flip_x()
+	var crossing_height := maxi(
+		crossing_terrain.get_height(),
+		maxi(crossing_surface.get_height(), crossing_train_image.get_height()),
+	)
+	var crossing_fixture := Image.create(
+		32, crossing_height, false, Image.FORMAT_RGBA8
+	)
+	crossing_fixture.fill(Color.TRANSPARENT)
+	crossing_fixture.blend_rect(
+		crossing_terrain,
+		Rect2i(Vector2i.ZERO, crossing_terrain.get_size()),
+		Vector2i(0, crossing_height - crossing_terrain.get_height()),
+	)
+	crossing_fixture.blend_rect(
+		crossing_surface,
+		Rect2i(Vector2i.ZERO, crossing_surface.get_size()),
+		Vector2i(0, crossing_height - crossing_surface.get_height()),
+	)
+	var crossing_train_position := Vector2i(
+		16 + crossing_train.screen_x - int(crossing_train_image.get_width() / 2),
+		crossing_height + crossing_train.screen_y - crossing_train_image.get_height(),
+	)
+	var actual_crossing_mask := IsometricRenderer.occlude_dynamic_with_mask(
+		crossing_train_image,
+		null,
+		crossing_train_position,
+		crossing_fixture,
+		PackedInt32Array([0x00, 0x2a]),
+	)
+	var crossing_composite: Image = crossing_fixture.duplicate()
+	crossing_composite.blend_rect(
+		actual_crossing_mask.image,
+		Rect2i(Vector2i.ZERO, actual_crossing_mask.image.get_size()),
+		crossing_train_position,
+	)
+	var wire_overlap := 0
+	var wire_preserved := 0
+	var rail_deck_replaced := 0
+	for train_y in crossing_train_image.get_height():
+		for train_x in crossing_train_image.get_width():
+			if crossing_train_image.get_pixel(train_x, train_y).a == 0.0:
+				continue
+			var map_point := crossing_train_position + Vector2i(train_x, train_y)
+			if not Rect2i(Vector2i.ZERO, crossing_fixture.get_size()).has_point(map_point):
+				continue
+			var static_index := roundi(crossing_fixture.get_pixelv(map_point).r * 255.0)
+			if static_index in [0x00, 0x2a]:
+				wire_overlap += 1
+				if (
+					crossing_composite.get_pixelv(map_point).to_rgba32()
+					== crossing_fixture.get_pixelv(map_point).to_rgba32()
+				):
+					wire_preserved += 1
+			elif (
+				static_index in [0xa0, 0x7c]
+				and crossing_composite.get_pixelv(map_point).to_rgba32()
+				!= crossing_fixture.get_pixelv(map_point).to_rgba32()
+			):
+				rail_deck_replaced += 1
+	_check(
+		wire_overlap > 0
+		and wire_preserved == wire_overlap
+		and rail_deck_replaced > 0
+		and actual_crossing_mask.occluded_pixels == wire_overlap,
+		"The native train draws over the rail deck but stays behind crossover wires",
+	)
 	_check(starter.set_building_id(64, 64, 0x36), "Train drawing fixture adds a turn tile")
 	var turning_train := IsometricRenderer.train_sprite(starter, 64, 64, {
 		"type": 11, "dx": 1,
