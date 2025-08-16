@@ -32,13 +32,37 @@ const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
 const DisasterStart = preload("res://src/simulation/disaster_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
+const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 
 const NEWS_NAMES := {
+	1: "Local news",
+	4: "New invention",
+	5: "New innovation",
+	6: "War report",
+	7: "Market report",
+	8: "Sports report",
+	0x0b: "Political report",
+	0x0c: "Diplomatic report",
+	0x0d: "Disaster report",
+	0x0e: "Medical report",
+	0x0f: "Upbeat report",
+	0x10: "High crime",
+	0x11: "High traffic",
+	0x12: "High pollution",
+	0x13: "Poor education",
+	0x14: "Poor health",
+	0x15: "Poor employment",
 	3: "City milestone",
 	0x24: "Power plant report",
 	0x26: "Education report",
 	39: "Bridge collapse",
 	0x29: "New ordinance",
+	0x3d: "Low crime",
+	0x3e: "Low traffic",
+	0x3f: "Low pollution",
+	0x40: "Good education",
+	0x41: "Good health",
+	0x42: "Good employment",
 	0x1f8: "Explosion",
 	0x1fe: "Traffic report",
 	0x201: "High mayor approval",
@@ -2137,6 +2161,12 @@ func _refresh_details() -> void:
 	if city == null:
 		return
 	var demand := city.rci_demand()
+	var weather_trend := city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff
+	var weather_name: String = (
+		RciAftermath.WEATHER_NAMES[weather_trend]
+		if weather_trend < RciAftermath.WEATHER_NAMES.size()
+		else "Unknown"
+	)
 	title_stats_label.text = "%04d-%02d-%02d   $%s" % [
 		city.current_year(),
 		city.current_month(),
@@ -2144,10 +2174,11 @@ func _refresh_details() -> void:
 		_format_number(city.funds()),
 	]
 	details_label.text = (
-		"Mayor: %s\nPopulation: %s\n\nDemand\nResidential: %+d\nCommercial: %+d\nIndustrial: %+d"
+		"Mayor: %s\nPopulation: %s\nWeather: %s\n\nDemand\nResidential: %+d\nCommercial: %+d\nIndustrial: %+d"
 		% [
 			city.mayor_name() if not city.mayor_name().is_empty() else "Unknown",
 			_format_number(city.population()),
+			weather_name,
 			demand.x,
 			demand.y,
 			demand.z,

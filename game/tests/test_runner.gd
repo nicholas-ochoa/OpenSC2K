@@ -20,6 +20,7 @@ const Traffic = preload("res://src/simulation/traffic_phase.gd")
 const Pollution = preload("res://src/simulation/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/graph_history.gd")
 const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
+const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
@@ -197,6 +198,7 @@ func _init() -> void:
 	_test_pollution(reference_root)
 	_test_graph_history(reference_root)
 	_test_rci_demand(reference_root)
+	_test_rci_aftermath(reference_root)
 	_test_education_health(reference_root)
 	_test_month_start(reference_root)
 	_test_budget_phase(reference_root)
@@ -1887,6 +1889,11 @@ func _test_simulation_engine(reference_root: String) -> void:
 	_check(
 		latest.applied == PackedStringArray(["rci_demand", "education_health", "graphs"]),
 		"Simulation engine applies demand, demographics, and graphs on day 21",
+	)
+	_check(
+		latest.phase_results.has("rci_aftermath")
+		and latest.phase_results.rci_aftermath.has("weather_trend"),
+		"Simulation engine runs monthly ecology, news, inventions, and weather after demand",
 	)
 	_check(latest.pending.is_empty(), "Day 21 has no unimplemented scheduled phase")
 	latest = engine.advance_day()
@@ -7147,6 +7154,181 @@ func _test_rci_demand(reference_root: String) -> void:
 	_check(document.misc_i32(0x077c) == 1520, "RCI phase stores residential budget population")
 	_check(document.misc_i32(0x07e8) == 510, "RCI phase stores commercial budget population")
 	_check(document.misc_i32(0x0854) == 260, "RCI phase stores industrial budget population")
+
+
+func _test_rci_aftermath(reference_root: String) -> void:
+	_check(
+		RciAftermath.WEATHER_TRANSITIONS.size() == 384
+		and RciAftermath.weather_transition(0, 0, 7) == 8
+		and RciAftermath.weather_transition(8, 2, 7) == 11
+		and RciAftermath.weather_transition(11, 3, 3) == 8,
+		"Weather transitions use all 384 bytes of the supplied four-season table",
+	)
+
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var source := Vector2i(10, 20)
+	var neighbor := Vector2i(11, 20)
+	var source_index := source.x * CityModel.MAP_SIZE + source.y
+	var neighbor_index := neighbor.x * CityModel.MAP_SIZE + neighbor.y
+	var buildings: PackedByteArray = document.find_chunk("XBLD").decoded_payload.duplicate()
+	var zones: PackedByteArray = document.find_chunk("XZON").decoded_payload.duplicate()
+	var flags: PackedByteArray = document.find_chunk("XBIT").decoded_payload.duplicate()
+	buildings[source_index] = 6
+	buildings[neighbor_index] = 0
+	zones[source_index] &= 0xf0
+	zones[neighbor_index] &= 0xf0
+	flags[source_index] &= ~0x04
+	flags[neighbor_index] &= ~0x04
+	_check(document.find_chunk("XBLD").set_decoded_payload(buildings), "RCI aftermath fixture stores a young tree")
+	_check(document.find_chunk("XZON").set_decoded_payload(zones), "RCI aftermath fixture clears military zones")
+	_check(document.find_chunk("XBIT").set_decoded_payload(flags), "RCI aftermath fixture clears water flags")
+	for setting in [
+		[0x01f0 + 0 * 4, 100],
+		[0x01f0 + 6 * 4, 1],
+		[0x01f0 + 7 * 4, 0],
+		[0x01f0 + 0xd7 * 4, 0],
+		[0x0048, 60],
+		[0x004c, 80],
+		[0x0060, 100],
+		[0x0064, 20],
+		[0x0068, 10],
+		[0x006c, 0],
+		[0x0fa4, 0],
+	]:
+		_check(document.set_misc_u32(setting[0], setting[1]), "RCI aftermath fixture sets MISC 0x%x" % setting[0])
+	var graphs: PackedByteArray = document.find_chunk("XGRP").decoded_payload.duplicate()
+	for series in [4, 5, 7]:
+		_write_u32_be(graphs, series * CityModel.GRAPH_VALUE_COUNT * 4, 0)
+	_check(document.find_chunk("XGRP").set_decoded_payload(graphs), "RCI aftermath fixture stores quiet graph values")
+	var tree_random := SequenceRandom.new([
+		10, 20, 0,
+		1,
+		127, 0, 127, 0, 127, 0,
+		0, 0,
+		0, 0,
+		1,
+		7,
+	])
+	var city := CityModel.from_document(document)
+	var result := RciAftermath.run(city, tree_random, 0)
+	_check(result.ok, "RCI aftermath phase completes: %s" % result.error)
+	if result.ok:
+		_check(
+			city.building_id(source.x, source.y) == 7
+			and city.building_id(neighbor.x, neighbor.y) == 6,
+			"Monthly ecology matures one tree and seeds its selected neighbor",
+		)
+		_check(
+			document.misc_u32(0x01f0) == 99
+			and document.misc_u32(0x01f0 + 6 * 4) == 1
+			and document.misc_u32(0x01f0 + 7 * 4) == 1,
+			"Monthly ecology updates the saved tile counts",
+		)
+		_check(
+			result.weather_trend == 8
+			and result.heat == 137
+			and result.wind == 40
+			and result.rain == 20,
+			"Weather uses the recovered transition and target averages",
+		)
+		_check(
+			document.misc_u32(0x0060) == 137
+			and document.misc_u32(0x0064) == 40
+			and document.misc_u32(0x0068) == 20
+			and document.misc_u32(0x006c) == 8,
+			"Weather stores all four save-visible MISC fields",
+		)
+		_check(
+			result.news_items == [
+				{"type": RciAftermath.NEWS_JUNK, "argument": 0},
+				{"type": 0x0b, "argument": 0},
+			],
+			"The ordinary monthly news branch keeps its original order",
+		)
+		_check(tree_random.position == 16, "Tree, news, invention, and weather checks consume 16 random values")
+
+	var news_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(news_document.set_misc_u32(0x000c, 1900), "News fixture sets the founding year")
+	_check(news_document.set_misc_u32(0x0048, 50), "News fixture sets low health")
+	_check(news_document.set_misc_u32(0x004c, 50), "News fixture sets low education")
+	_check(news_document.set_misc_u32(0x005c, 2), "News fixture sets the national trend")
+	_check(news_document.set_misc_u32(0x0060, 100), "News fixture sets heat")
+	_check(news_document.set_misc_u32(0x0064, 10), "News fixture sets wind")
+	_check(news_document.set_misc_u32(0x0068, 20), "News fixture sets rain")
+	_check(news_document.set_misc_u32(0x006c, 1), "News fixture sets clear weather")
+	_check(news_document.set_misc_u32(0x01f0 + 0xd7 * 4, 1), "News fixture counts a stadium")
+	_check(news_document.set_misc_u32(0x0738 + 7 * 4, 1901), "News fixture schedules an innovation")
+	_check(news_document.set_misc_u32(0x0fa4, 10), "News fixture sets unemployment")
+	_check(news_document.set_misc_u32(0x1028, 1 << 2), "News fixture enables sports team 2")
+	var news_flags: PackedByteArray = news_document.find_chunk("XBIT").decoded_payload.duplicate()
+	var news_point := Vector2i(40, 40)
+	news_flags[news_point.x * CityModel.MAP_SIZE + news_point.y] |= 0x04
+	_check(news_document.find_chunk("XBIT").set_decoded_payload(news_flags), "News fixture makes the ecology point water")
+	var news_graphs: PackedByteArray = news_document.find_chunk("XGRP").decoded_payload.duplicate()
+	for series in [4, 5, 7]:
+		_write_u32_be(news_graphs, series * CityModel.GRAPH_VALUE_COUNT * 4, 20)
+	_check(news_document.find_chunk("XGRP").set_decoded_payload(news_graphs), "News fixture stores high graph values")
+	var news_city := CityModel.from_document(news_document)
+	_check(news_city.set_age_in_days(300), "News fixture selects 1901")
+	var news_random := SequenceRandom.new([
+		40, 40,
+		0, 0, 0,
+		2,
+		0, 15, 0, 15, 0, 15,
+		0, 3,
+		79, 59,
+		0,
+		0,
+	])
+	var news_result := RciAftermath.run(news_city, news_random, 2)
+	_check(news_result.ok, "Controlled RCI news phase completes: %s" % news_result.error)
+	if news_result.ok:
+		var news_types := PackedInt32Array()
+		for item in news_result.news_items:
+			news_types.append(int(item.type))
+		_check(
+			news_types == PackedInt32Array([1, 6, 7, 8, 17, 18, 16, 21, 19, 20, 5]),
+			"RCI news checks emit the recovered ordered story types: %s" % news_types,
+		)
+		_check(
+			news_result.news_items[2].argument == 2
+			and news_result.news_items[3].argument == 2,
+			"Market and sports stories retain their native arguments",
+		)
+		_check(news_result.invention_index == 7, "The first due innovation is released")
+		_check(news_document.misc_u32(0x0738 + 7 * 4) == 0, "A released innovation clears its saved year")
+		_check(news_random.position == 18, "The full controlled news path consumes 18 random values")
+
+	var radioactive_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var radioactive_buildings: PackedByteArray = radioactive_document.find_chunk("XBLD").decoded_payload.duplicate()
+	var radioactive_flags: PackedByteArray = radioactive_document.find_chunk("XBIT").decoded_payload.duplicate()
+	var radioactive_zones: PackedByteArray = radioactive_document.find_chunk("XZON").decoded_payload.duplicate()
+	var radioactive_point := Vector2i(50, 50)
+	var radioactive_neighbor := Vector2i(51, 50)
+	var radioactive_index := radioactive_point.x * CityModel.MAP_SIZE + radioactive_point.y
+	var radioactive_neighbor_index := radioactive_neighbor.x * CityModel.MAP_SIZE + radioactive_neighbor.y
+	radioactive_buildings[radioactive_index] = 5
+	radioactive_buildings[radioactive_neighbor_index] = 0
+	radioactive_flags[radioactive_index] &= ~0x04
+	radioactive_flags[radioactive_neighbor_index] &= ~0x04
+	radioactive_zones[radioactive_index] &= 0xf0
+	radioactive_zones[radioactive_neighbor_index] &= 0xf0
+	_check(radioactive_document.find_chunk("XBLD").set_decoded_payload(radioactive_buildings), "Ecology fixture stores radioactivity")
+	_check(radioactive_document.find_chunk("XBIT").set_decoded_payload(radioactive_flags), "Ecology fixture stores dry land")
+	_check(radioactive_document.find_chunk("XZON").set_decoded_payload(radioactive_zones), "Ecology fixture stores normal zones")
+	_check(radioactive_document.set_misc_u32(0x006c, 0), "Ecology fixture sets valid weather")
+	var radioactive_result := RciAftermath.run(
+		CityModel.from_document(radioactive_document),
+		SequenceRandom.new([50, 50, 0, 0, 0]),
+		0
+	)
+	_check(radioactive_result.ok, "Radioactivity ecology path completes: %s" % radioactive_result.error)
+	if radioactive_result.ok:
+		_check(
+			radioactive_document.find_chunk("XBLD").decoded_payload[radioactive_index] == 0
+			and radioactive_document.find_chunk("XBLD").decoded_payload[radioactive_neighbor_index] == 6,
+			"Radioactivity can decay before the independent tree-spread gate",
+		)
 
 
 func _test_education_health(reference_root: String) -> void:
