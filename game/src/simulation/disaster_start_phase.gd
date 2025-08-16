@@ -10,6 +10,7 @@ const DISASTER_FIRE := 1
 const DISASTER_FLOOD := 2
 const DISASTER_RIOT := 3
 const DISASTER_TOXIC_SPILL := 4
+const DISASTER_AIR_CRASH := 5
 const DISASTER_EARTHQUAKE := 6
 const DISASTER_TORNADO := 7
 const DISASTER_MONSTER := 8
@@ -21,7 +22,11 @@ const DISASTER_MASS_RIOTS := 13
 const DISASTER_MASS_FLOODS := 14
 const DISASTER_POLLUTION := 15
 const DISASTER_HURRICANE := 16
+const DISASTER_HELICOPTER_CRASH := 17
+const DISASTER_PLANE_CRASH := 18
+const TYPE_AIRPLANE := 1
 const TYPE_MONSTER := 5
+const TYPE_EXPLOSION := 6
 const TYPE_TORNADO := 15
 const TEXT_THING_BASE := 201
 const SOUND_SIREN := 520
@@ -82,6 +87,8 @@ static func start(
 		return _start_riot(city, point, random)
 	if disaster_type == DISASTER_TOXIC_SPILL:
 		return _start_toxic_spill(city, point)
+	if disaster_type == DISASTER_AIR_CRASH or disaster_type == DISASTER_HELICOPTER_CRASH:
+		return _start_crash_wrapper(disaster_type, point)
 	if disaster_type == DISASTER_EARTHQUAKE:
 		return _start_earthquake(city, point, random, lfsr_random)
 	if disaster_type == DISASTER_MELTDOWN:
@@ -100,6 +107,8 @@ static func start(
 		return _start_pollution(city, point, random)
 	if disaster_type == DISASTER_HURRICANE:
 		return _start_hurricane(city, point, random, lfsr_random)
+	if disaster_type == DISASTER_PLANE_CRASH:
+		return _start_plane_crash(city, lfsr_random)
 	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
 		return _result(disaster_type, point, false, false, 0)
 	if random == null or not random.has_method("next_u15"):
@@ -152,6 +161,58 @@ static func start(
 		return {"ok": false, "error": "cannot link the disaster moving object"}
 	city.text_overlays = text.duplicate()
 	return _result(disaster_type, clamped, true, true, record)
+
+
+static func _start_crash_wrapper(disaster_type: int, point: Vector2i) -> Dictionary:
+	var result := _result(disaster_type, point, true, true, 0)
+	result.view_center_requests = []
+	return result
+
+
+static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
+	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
+		return {"ok": false, "error": "a compatible LFSR generator is required"}
+	var thing_chunk := city.document.find_chunk("XTHG")
+	var text_chunk := city.document.find_chunk("XTXT")
+	if (
+		thing_chunk == null
+		or thing_chunk.decoded_payload.size()
+		!= CityState.THING_COUNT * CityState.THING_RECORD_SIZE
+		or text_chunk == null
+		or text_chunk.decoded_payload.size() != CityState.TILE_COUNT
+	):
+		return {"ok": false, "error": "plane-crash moving-object data is missing or invalid"}
+	var things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
+	var text: PackedByteArray = text_chunk.decoded_payload.duplicate()
+	var point := Vector2i.ZERO
+	while true:
+		point = Vector2i(
+			lfsr_random.next_mask(0x3f) + 0x20,
+			lfsr_random.next_mask(0x3f) + 0x20
+		)
+		if text[_index(point)] == 0:
+			break
+	var record := _first_free_record(things)
+	if record == 0:
+		return _result(DISASTER_PLANE_CRASH, point, false, true, 0)
+	var offset := record * CityState.THING_RECORD_SIZE
+	things[offset] = TYPE_AIRPLANE
+	things[offset + 2] = 7
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 5] = 16
+	things[offset + 6] = 8
+	things[offset + 7] = 8
+	things[offset + 10] = 0
+	text[_index(point)] = record + TEXT_THING_BASE
+	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
+	if not thing_chunk.set_decoded_payload(things):
+		return {"ok": false, "error": "cannot store the crashing plane"}
+	if not text_chunk.set_decoded_payload(text):
+		thing_chunk.set_decoded_payload(old_things)
+		return {"ok": false, "error": "cannot link the crashing plane"}
+	city.text_overlays = text.duplicate()
+	return _result(DISASTER_PLANE_CRASH, point, true, true, record)
 
 
 static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
@@ -1232,16 +1293,21 @@ static func _store_fire(
 	return _result(DISASTER_FIRE, point, true, true, 0)
 
 
-static func has_active_object(city: CityState, disaster_type: int) -> bool:
+static func has_active_object(city: CityState, _disaster_type: int) -> bool:
 	if city == null or not city.is_valid():
-		return false
-	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
 		return false
 	var chunk := city.document.find_chunk("XTHG")
 	if chunk == null or chunk.decoded_payload.size() != CityState.THING_COUNT * CityState.THING_RECORD_SIZE:
 		return false
-	var type := TYPE_TORNADO if disaster_type == DISASTER_TORNADO else TYPE_MONSTER
-	return _count_type(chunk.decoded_payload, type) > 0
+	var things: PackedByteArray = chunk.decoded_payload
+	for record in range(1, CityState.THING_COUNT):
+		var offset := record * CityState.THING_RECORD_SIZE
+		var type := int(things[offset])
+		if type == TYPE_MONSTER or type == TYPE_TORNADO or type == TYPE_EXPLOSION:
+			return true
+		if type == TYPE_AIRPLANE and things[offset + 2] == 7:
+			return true
+	return false
 
 
 static func _result(

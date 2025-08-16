@@ -29,6 +29,7 @@ const TILE_RAIL_STATION := 0xed
 const SUBTILE_LIMIT := 16
 const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
+const MISC_PENDING_DISASTER := 0x0070
 const NEWS_EXPLOSION := 0x1f8
 const NEWS_TRAFFIC := 0x1fe
 const NEWS_MONSTER_DAMAGE := 0x202
@@ -246,6 +247,7 @@ static func run(
 		"traffic_news_deadline_msec": traffic_news_deadline_msec,
 		"connection_count_changes": [],
 		"created_train_crash_explosions": 0,
+		"disaster_start_requests": [],
 	}
 	var city_center := Vector2i(
 		city.document.misc_u32(MISC_CITY_CENTER_X),
@@ -379,6 +381,7 @@ static func _update_explosion(
 ) -> void:
 	var offset := record * RECORD_SIZE
 	var frame := int(things[offset + 1])
+	var disaster_type := int(things[offset + 2])
 	if frame == 0:
 		_queue_news(counters, NEWS_EXPLOSION)
 	if frame < 2:
@@ -394,6 +397,7 @@ static func _update_explosion(
 	buildings[center_index] = 0
 	if things[offset + 11] == 0 or not allow_disaster_damage:
 		return
+	var caused_damage := false
 	for _attempt in 4:
 		var damaged := center + Vector2i(
 			lfsr_random.next_mod(5) - 2,
@@ -404,15 +408,26 @@ static func _update_explosion(
 			traffic, text, labels, microsims, misc, damaged, random, lfsr_random
 		)
 		if damage_result == 1:
+			caused_damage = true
 			counters.spread_explosion_fires += 1
 		elif damage_result == 4:
+			caused_damage = true
 			counters.spread_explosion_fires += 1
 			_record_connection_count_change(counters, buildings[_index(damaged)], damaged)
 		elif damage_result == 2:
+			caused_damage = true
 			counters.rubble_explosion_hits += 1
 		elif damage_result == 3:
+			caused_damage = true
 			counters.damaged_facilities += 1
 			counters.spread_explosion_fires += 1
+	if caused_damage and city.city_mode() != 2:
+		var requested_type := disaster_type if disaster_type != 0 else 1
+		_write_u32_be(misc, MISC_PENDING_DISASTER, requested_type)
+		counters.disaster_start_requests.append({
+			"type": requested_type,
+			"point": center,
+		})
 
 
 static func _update_monster(
@@ -1756,6 +1771,13 @@ static func _thing_distance(start: Vector2i, target: Vector2i) -> int:
 
 static func _queue_news(counters: Dictionary, news_type: int) -> void:
 	counters.news_items.append({"type": news_type, "argument": 0})
+
+
+static func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:
+	data[offset] = (value >> 24) & 0xff
+	data[offset + 1] = (value >> 16) & 0xff
+	data[offset + 2] = (value >> 8) & 0xff
+	data[offset + 3] = value & 0xff
 
 
 static func _record_connection_count_change(

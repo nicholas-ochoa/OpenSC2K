@@ -2024,28 +2024,37 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"The disaster controller restores city mode after the monster ends",
 	)
 
-	var unsupported_scenario_document := Sc2Document.load_path(reference_root.path_join("SCENARIO/CHARLEST.SCN"))
-	var unsupported_scenario_data: PackedByteArray = (
-		unsupported_scenario_document.find_chunk("SCEN").decoded_payload.duplicate()
+	var crash_scenario_document := Sc2Document.load_path(reference_root.path_join("SCENARIO/CHARLEST.SCN"))
+	var crash_scenario_data: PackedByteArray = (
+		crash_scenario_document.find_chunk("SCEN").decoded_payload.duplicate()
 	)
-	unsupported_scenario_data[0x04] = 0
-	unsupported_scenario_data[0x05] = 17
+	crash_scenario_data[0x04] = 0
+	crash_scenario_data[0x05] = DisasterStart.DISASTER_HELICOPTER_CRASH
 	_check(
-		unsupported_scenario_document.find_chunk("SCEN").set_decoded_payload(
-			unsupported_scenario_data
+		crash_scenario_document.find_chunk("SCEN").set_decoded_payload(
+			crash_scenario_data
 		),
-		"Unsupported scenario fixture selects disaster 17",
+		"Crash scenario fixture selects the helicopter crash wrapper",
 	)
-	var unsupported_scenario_city := CityModel.from_document(unsupported_scenario_document)
-	_check(unsupported_scenario_city.set_age_in_days(0), "Unsupported scenario fixture resets the day")
-	var unsupported_scenario_engine := Simulation.new(unsupported_scenario_city, 1, 7, 13)
-	var unsupported_start := unsupported_scenario_engine.advance_day()
+	var crash_scenario_city := CityModel.from_document(crash_scenario_document)
+	_check(crash_scenario_city.set_age_in_days(0), "Crash scenario fixture resets the day")
+	var crash_scenario_engine := Simulation.new(crash_scenario_city, 1, 7, 13)
+	var crash_start := crash_scenario_engine.advance_day()
 	_check(
-		unsupported_start.ok
-		and unsupported_start.pending.has("disaster_start")
-		and not unsupported_start.complete
-		and unsupported_scenario_engine.unsupported_disaster_type == 17,
-		"An unsupported scenario disaster stays explicit in the engine result",
+		crash_start.ok
+		and crash_start.applied.has("disaster_start")
+		and crash_scenario_engine.active_disaster_type
+		== DisasterStart.DISASTER_HELICOPTER_CRASH
+		and crash_scenario_city.city_mode() == 2,
+		"A scheduled no-op crash wrapper enters disaster mode",
+	)
+	var crash_end := crash_scenario_engine.advance_disaster_tick()
+	_check(
+		crash_end.ok
+		and crash_end.complete
+		and crash_scenario_engine.active_disaster_type == 0
+		and crash_scenario_city.city_mode() == 1,
+		"A no-op crash wrapper ends on the next eligible disaster tick",
 	)
 
 
@@ -3798,15 +3807,84 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Tornado disaster stores its random animation fields and XTXT link",
 	)
 
-	var unsupported_before: PackedByteArray = tornado_document.find_chunk("XTHG").decoded_payload.duplicate()
-	var unsupported := DisasterStart.start(tornado_city, 17, Vector2i(10, 10), SequenceRandom.new([]))
-	_check(
-		unsupported.ok and not unsupported.started and not unsupported.complete,
-		"An unimplemented disaster remains explicit",
+	var wrapper_before: PackedByteArray = tornado_document.find_chunk("XTHG").decoded_payload.duplicate()
+	var air_wrapper := DisasterStart.start(
+		tornado_city,
+		DisasterStart.DISASTER_AIR_CRASH,
+		Vector2i(10, 10),
+		SequenceRandom.new([])
+	)
+	var helicopter_wrapper := DisasterStart.start(
+		tornado_city,
+		DisasterStart.DISASTER_HELICOPTER_CRASH,
+		Vector2i(11, 11),
+		SequenceRandom.new([])
 	)
 	_check(
-		tornado_document.find_chunk("XTHG").decoded_payload == unsupported_before,
-		"An unimplemented disaster does not change moving objects",
+		air_wrapper.ok
+		and air_wrapper.started
+		and air_wrapper.view_center_requests.is_empty()
+		and helicopter_wrapper.ok
+		and helicopter_wrapper.started
+		and helicopter_wrapper.view_center_requests.is_empty(),
+		"The two original no-op crash wrappers start without moving the view",
+	)
+	_check(
+		tornado_document.find_chunk("XTHG").decoded_payload == wrapper_before,
+		"The two crash wrappers preserve the supplied moving objects",
+	)
+
+	var plane_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var plane_things := _filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)
+	plane_things[CityState.THING_RECORD_SIZE + 1] = 6
+	plane_things[CityState.THING_RECORD_SIZE + 8] = 11
+	plane_things[CityState.THING_RECORD_SIZE + 9] = 12
+	plane_things[CityState.THING_RECORD_SIZE + 11] = 13
+	var plane_text := _filled_bytes(CityState.TILE_COUNT, 0)
+	plane_text[35 * CityState.MAP_SIZE + 36] = 50
+	_check(
+		plane_document.find_chunk("XTHG").set_decoded_payload(plane_things)
+		and plane_document.find_chunk("XTXT").set_decoded_payload(plane_text),
+		"Plane crash fixture installs one occupied random point and a stale free record",
+	)
+	var plane_city := CityModel.from_document(plane_document)
+	var plane_lfsr := SequenceLfsrRandom.new([3, 4, 7, 8])
+	var plane_crash := DisasterStart.start(
+		plane_city,
+		DisasterStart.DISASTER_PLANE_CRASH,
+		Vector2i(99, 99),
+		SequenceRandom.new([]),
+		plane_lfsr
+	)
+	var crashing_plane := plane_city.thing(1)
+	_check(
+		plane_crash.ok
+		and plane_crash.started
+		and plane_crash.point == Vector2i(39, 40)
+		and plane_crash.view_center_requests == [Vector2i(39, 40)]
+		and plane_lfsr.position == 4,
+		"Plane Crash retries an occupied central point and centers on the accepted point",
+	)
+	_check(
+		crashing_plane.type == 1
+		and crashing_plane.direction == 6
+		and crashing_plane.state == 7
+		and crashing_plane.x == 39
+		and crashing_plane.y == 40
+		and crashing_plane.z == 16
+		and crashing_plane.px == 8
+		and crashing_plane.py == 8
+		and crashing_plane.dx == 11
+		and crashing_plane.dy == 12
+		and crashing_plane.label == 0
+		and crashing_plane.goal == 13,
+		"Plane Crash writes only the recovered XTHG fields and preserves stale free fields",
+	)
+	_check(
+		plane_city.text_overlay_id(35, 36) == 50
+		and plane_city.text_overlay_id(39, 40) == 202
+		and DisasterStart.has_active_object(plane_city, DisasterStart.DISASTER_PLANE_CRASH),
+		"Plane Crash preserves the rejected label and links an active falling plane",
 	)
 
 
@@ -5549,8 +5627,14 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		SequenceLfsrRandom.new([2, 2, 3, 2, 2, 3, 1, 2])
 	)
 	_check(
-		spread_result.ok and spread_result.spread_explosion_fires == 3,
-		"Spreading explosion applies three valid LFSR-selected fire attempts",
+		spread_result.ok
+		and spread_result.spread_explosion_fires == 3
+		and spread_result.disaster_start_requests == [{
+			"type": DisasterStart.DISASTER_AIR_CRASH,
+			"point": Vector2i(20, 20),
+		}]
+		and spreading_explosion.city.disaster_type() == DisasterStart.DISASTER_AIR_CRASH,
+		"A damaging airplane explosion stores its recovered Air Crash trigger",
 	)
 	_check(
 		spreading_explosion.city.text_overlay_id(20, 20) == 0

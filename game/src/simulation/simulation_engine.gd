@@ -80,6 +80,9 @@ func advance_moving_things(current_time_msec := -1) -> Dictionary:
 			commerce_connections = (commerce_connections + int(change.delta)) & 0xffff
 		else:
 			industry_connections = (industry_connections + int(change.delta)) & 0xffff
+	for request in result.disaster_start_requests:
+		pending_disaster_type = int(request.type)
+		pending_disaster_point = request.point
 	return result
 
 
