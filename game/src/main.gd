@@ -41,6 +41,8 @@ const NEWS_NAMES := {
 	6: "War report",
 	7: "Market report",
 	8: "Sports report",
+	9: "Federal rate increase",
+	10: "Federal rate decrease",
 	0x0b: "Political report",
 	0x0c: "Diplomatic report",
 	0x0d: "Disaster report",

@@ -21,6 +21,7 @@ const Pollution = preload("res://src/simulation/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/graph_history.gd")
 const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
+const SimNation = preload("res://src/simulation/simnation_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
@@ -199,6 +200,7 @@ func _init() -> void:
 	_test_graph_history(reference_root)
 	_test_rci_demand(reference_root)
 	_test_rci_aftermath(reference_root)
+	_test_simnation(reference_root)
 	_test_education_health(reference_root)
 	_test_month_start(reference_root)
 	_test_budget_phase(reference_root)
@@ -1894,6 +1896,11 @@ func _test_simulation_engine(reference_root: String) -> void:
 		latest.phase_results.has("rci_aftermath")
 		and latest.phase_results.rci_aftermath.has("weather_trend"),
 		"Simulation engine runs monthly ecology, news, inventions, and weather after demand",
+	)
+	_check(
+		latest.phase_results.has("simnation")
+		and latest.phase_results.simnation.has("national_population"),
+		"Simulation engine runs SimNation before demographics",
 	)
 	_check(latest.pending.is_empty(), "Day 21 has no unimplemented scheduled phase")
 	latest = engine.advance_day()
@@ -7329,6 +7336,106 @@ func _test_rci_aftermath(reference_root: String) -> void:
 			and radioactive_document.find_chunk("XBLD").decoded_payload[radioactive_neighbor_index] == 6,
 			"Radioactivity can decay before the independent tree-spread gate",
 		)
+
+
+func _test_simnation(reference_root: String) -> void:
+	_check(
+		SimNation.economy_level(44) == 0
+		and SimNation.economy_level(45) == 1
+		and SimNation.economy_level(60) == 2
+		and SimNation.economy_level(75) == 3,
+		"SimNation uses the recovered national-value level boundaries",
+	)
+
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x0050, 1_200_000],
+		[0x0054, 3_000_000],
+		[0x0058, 4],
+		[0x005c, 2],
+		[0x06dc, 1_200_000],
+		[0x06e0, 600_000],
+		[0x06ec, 0],
+		[0x06f0, 0],
+		[0x06fc, 6_000_000],
+		[0x0700, 4_000_000],
+		[0x070c, 1],
+		[0x0710, 0],
+	]:
+		_check(document.set_misc_u32(setting[0], setting[1]), "SimNation fixture sets MISC 0x%x" % setting[0])
+	var random := SequenceRandom.new([1, 0, 0, 2, 4, 0, 1, 0, 1])
+	var result := SimNation.run(CityModel.from_document(document), random)
+	_check(result.ok, "SimNation phase completes: %s" % result.error)
+	if result.ok:
+		_check(
+			result.national_population == 1_202_000
+			and result.national_value == 3_000_000,
+			"SimNation moves national population and value about their centers",
+		)
+		_check(
+			result.neighbor_populations == PackedInt64Array([1_202_000, 0, 5_980_000, 2]),
+			"SimNation updates each non-ocean neighbor population in compass order",
+		)
+		_check(
+			result.neighbor_values == PackedInt64Array([597_500, 0, 4_006_666, 0]),
+			"SimNation updates neighbor values with federal and local economy factors",
+		)
+		_check(result.news_items.is_empty(), "A quiet SimNation month emits no report")
+		_check(random.position == 9, "The quiet neighbor update consumes nine process-random values")
+		_check(
+			document.misc_u32(0x0050) == 1_202_000
+			and document.misc_u32(0x06e0) == 597_500
+			and document.misc_u32(0x0700) == 4_006_666,
+			"SimNation stores the national and neighbor fields in MISC",
+		)
+
+	var news_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x0050, 1_000_000],
+		[0x0054, 800_000],
+		[0x0058, 3],
+		[0x005c, 0],
+		[0x06dc, 0], [0x06ec, 0], [0x06fc, 0], [0x070c, 0],
+	]:
+		_check(news_document.set_misc_u32(setting[0], setting[1]), "SimNation news fixture sets MISC 0x%x" % setting[0])
+	var news_random := SequenceRandom.new([0, 0, 0, 99, 0, 1])
+	var news_result := SimNation.run(CityModel.from_document(news_document), news_random)
+	_check(news_result.ok, "Controlled SimNation news phase completes: %s" % news_result.error)
+	if news_result.ok:
+		_check(
+			news_result.news_items == [
+				{"type": 9, "argument": 4},
+				{"type": 10, "argument": 3},
+				{"type": 7, "argument": 3},
+			],
+			"SimNation emits federal-rate and national-economy reports in native order",
+		)
+		_check(
+			news_result.national_value == 804_000
+			and news_result.federal_rate == 3
+			and news_result.economy_trend == 3,
+			"SimNation applies the controlled national-news update",
+		)
+		_check(news_random.position == 6, "The national-news path consumes six process-random values")
+
+	var shock_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x0050, 1_000_000], [0x0054, 1_000_000], [0x0058, 3], [0x005c, 0],
+		[0x06dc, 1200], [0x06e0, 1200],
+		[0x06ec, 0], [0x06fc, 0], [0x070c, 0],
+	]:
+		_check(shock_document.set_misc_u32(setting[0], setting[1]), "Regional shock fixture sets MISC 0x%x" % setting[0])
+	var shock_random := SequenceRandom.new([1, 0, 0, 0, 0, 0])
+	var shock_result := SimNation.run(CityModel.from_document(shock_document), shock_random)
+	_check(shock_result.ok, "Regional shock phase completes: %s" % shock_result.error)
+	if shock_result.ok:
+		_check(
+			shock_result.shocked_neighbor == 0
+			and shock_result.neighbor_populations[0] == 900
+			and shock_result.neighbor_values[0] == 600,
+			"The one-in-64 regional shock keeps 75 percent population and 50 percent value",
+		)
+		_check(shock_random.position == 6, "The regional-shock path consumes six process-random values")
 
 
 func _test_education_health(reference_root: String) -> void:
