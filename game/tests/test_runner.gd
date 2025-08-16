@@ -1259,27 +1259,85 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(map_control.dynamic_sprites.is_empty(), "Map control clears its dynamic sprite layer")
 	map_control.free()
 	var underground_city := CityModel.from_document(starter.document.duplicate_document())
+	_check(
+		UndergroundView.terrain_wireframe_offset(0x00) == 0x131
+		and UndergroundView.terrain_wireframe_offset(0x0e) == 0x13e
+		and UndergroundView.terrain_wireframe_offset(0x10) == 0x131
+		and UndergroundView.terrain_wireframe_offset(0x2e) == 0x13e
+		and UndergroundView.terrain_wireframe_offset(0x45) == 0x131,
+		"Underground terrain uses the recovered wireframe lookup table",
+	)
 	for fixture in [
-		[Vector2i(20, 20), 0x01, 0x2c],
-		[Vector2i(21, 20), 0x0f, 0x3a],
-		[Vector2i(22, 20), 0x10, 0x0e],
-		[Vector2i(23, 20), 0x1e, 0x1c],
-		[Vector2i(24, 20), 0x1f, 0x47],
-		[Vector2i(25, 20), 0x20, 0x48],
-		[Vector2i(26, 20), 0x22, 0xf9],
-		[Vector2i(27, 20), 0x23, 0xe9],
+		[Vector2i(20, 20), 0x01, 1319],
+		[Vector2i(21, 20), 0x0f, 1333],
+		[Vector2i(22, 20), 0x10, 1334],
+		[Vector2i(23, 20), 0x1e, 1348],
+		[Vector2i(24, 20), 0x1f, 1349],
+		[Vector2i(25, 20), 0x20, 1350],
+		[Vector2i(26, 20), 0x22, 1352],
+		[Vector2i(27, 20), 0x23, 1353],
 	]:
-		_check(underground_city.set_underground_id(fixture[0].x, fixture[0].y, fixture[1]), "Underground view fixture stores tile 0x%02X" % fixture[1])
-	_check(UndergroundView.prepare_render_city(underground_city), "Underground city view prepares a render snapshot")
-	for fixture in [
-		[Vector2i(20, 20), 0x2c], [Vector2i(21, 20), 0x3a],
-		[Vector2i(22, 20), 0x0e], [Vector2i(23, 20), 0x1c],
-		[Vector2i(24, 20), 0x47], [Vector2i(25, 20), 0x48],
-		[Vector2i(26, 20), 0xf9], [Vector2i(27, 20), 0xe9],
-	]:
+		var point: Vector2i = fixture[0]
 		_check(
-			underground_city.building_id(fixture[0].x, fixture[0].y) == fixture[1],
-			"Underground view maps its saved tile to native surface artwork",
+			underground_city.set_underground_id(point.x, point.y, fixture[1]),
+			"Underground view fixture stores tile 0x%02X" % fixture[1],
+		)
+		_check(
+			UndergroundView.tile_sprite_ids(underground_city, point.x, point.y)[0]
+			== fixture[2],
+			"Underground tile 0x%02X selects native sprite %d" % [fixture[1], fixture[2]],
+		)
+	var wet_pipe := Vector2i(22, 20)
+	_check(
+		underground_city.set_tile_flag(wet_pipe.x, wet_pipe.y, 0x20, true)
+		and underground_city.set_tile_flag(wet_pipe.x, wet_pipe.y, 0x10, true),
+		"Underground fixture marks a pipe as active and watered",
+	)
+	_check(
+		UndergroundView.tile_sprite_ids(underground_city, wet_pipe.x, wet_pipe.y)[0]
+		== 1450,
+		"Watered pipe selects the recovered blue native sprite",
+	)
+	var piped_subway := Vector2i(20, 20)
+	_check(
+		underground_city.set_tile_flag(piped_subway.x, piped_subway.y, 0x20, true),
+		"Underground fixture marks the subway tile as piped",
+	)
+	_check(
+		UndergroundView.tile_sprite_ids(
+			underground_city, piped_subway.x, piped_subway.y
+		) == PackedInt32Array([1319, 1351]),
+		"A piped subway adds the recovered underground service overlay",
+	)
+	_check(
+		underground_city.set_building_id(20, 20, 0xff),
+		"Underground fixture adds a surface building",
+	)
+	_check(
+		UndergroundView.tile_sprite_ids(underground_city, 20, 20)
+		== PackedInt32Array([1319, 1351]),
+		"Surface buildings do not change underground drawing",
+	)
+	var underground_errors := UndergroundView.validate_assets(
+		underground_city, large, IsometricRenderer.VIEW_LARGE
+	)
+	_check(
+		underground_errors.is_empty(),
+		"Underground view has every required large sprite: %s" % underground_errors,
+	)
+	var underground_image := UndergroundView.create_image(
+		underground_city,
+		Palette.index_encoding(),
+		small_medium,
+		IsometricRenderer.VIEW_SMALL,
+		true,
+	)
+	_check(underground_image.ok, "Underground view renders: %s" % underground_image.error)
+	if underground_image.ok:
+		_check(
+			underground_image.image.get_pixel(0, 0).to_rgba32()
+			== Color8(255, 255, 255, 255).to_rgba32(),
+			"Underground view uses the recovered white background",
 		)
 	_check(starter.set_building_id(64, 64, 0x2e), "Train drawing fixture adds a rail tile")
 	var straight_train := IsometricRenderer.train_sprite(starter, 64, 64, {

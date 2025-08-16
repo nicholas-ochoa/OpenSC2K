@@ -1220,15 +1220,16 @@ func _refresh_map(force := true) -> void:
 			return
 		static_render_epoch += 1
 		var display_city := city
+		var indexed: Dictionary
 		if overlay_mode == "underground":
-			display_city = CityModel.from_document(current_document.duplicate_document())
-			if not UndergroundView.prepare_render_city(display_city):
-				_show_error("Cannot prepare the underground city view.")
-				return
-		var indexed := IsometricRenderer.create_image(
-			display_city, palette_index_encoding, sprite_archive, view_size,
-			int(Time.get_ticks_msec() / 100), false, true, true, false
-		)
+			indexed = UndergroundView.create_image(
+				display_city, palette_index_encoding, sprite_archive, view_size, true
+			)
+		else:
+			indexed = IsometricRenderer.create_image(
+				display_city, palette_index_encoding, sprite_archive, view_size,
+				int(Time.get_ticks_msec() / 100), false, true, true, false
+			)
 		if not indexed.ok:
 			_show_error(indexed.error)
 			return

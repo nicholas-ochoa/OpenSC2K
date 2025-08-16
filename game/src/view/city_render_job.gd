@@ -15,19 +15,16 @@ var render_mode := "city"
 
 
 func run() -> Dictionary:
-	if render_mode == "underground" and not UndergroundView.prepare_render_city(city_snapshot):
-		return {
-			"ok": false,
-			"error": "cannot prepare the underground city view",
-			"signature": signature,
-			"view_size": view_size,
-			"epoch": epoch,
-			"render_mode": render_mode,
-		}
-	var indexed := Renderer.create_image(
-		city_snapshot, index_palette, sprites, view_size, animation_phase,
-		false, true, false, false
-	)
+	var indexed: Dictionary
+	if render_mode == "underground":
+		indexed = UndergroundView.create_image(
+			city_snapshot, index_palette, sprites, view_size, false
+		)
+	else:
+		indexed = Renderer.create_image(
+			city_snapshot, index_palette, sprites, view_size, animation_phase,
+			false, true, false, false
+		)
 	if not indexed.ok:
 		return {
 			"ok": false,
