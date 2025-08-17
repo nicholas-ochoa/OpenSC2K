@@ -22,6 +22,7 @@ const Graphs = preload("res://src/simulation/graph_history.gd")
 const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 const SimNation = preload("res://src/simulation/simnation_phase.gd")
+const Industries = preload("res://src/simulation/industry_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
@@ -201,6 +202,7 @@ func _init() -> void:
 	_test_rci_demand(reference_root)
 	_test_rci_aftermath(reference_root)
 	_test_simnation(reference_root)
+	_test_industries(reference_root)
 	_test_education_health(reference_root)
 	_test_month_start(reference_root)
 	_test_budget_phase(reference_root)
@@ -1901,6 +1903,11 @@ func _test_simulation_engine(reference_root: String) -> void:
 		latest.phase_results.has("simnation")
 		and latest.phase_results.simnation.has("national_population"),
 		"Simulation engine runs SimNation before demographics",
+	)
+	_check(
+		latest.phase_results.has("industries")
+		and latest.phase_results.industries.has("mix_bonus"),
+		"Simulation engine runs individual industries before demographics",
 	)
 	_check(latest.pending.is_empty(), "Day 21 has no unimplemented scheduled phase")
 	latest = engine.advance_day()
@@ -7436,6 +7443,126 @@ func _test_simnation(reference_root: String) -> void:
 			"The one-in-64 regional shock keeps 75 percent population and 50 percent value",
 		)
 		_check(shock_random.position == 6, "The regional-shock path consumes six process-random values")
+
+
+func _test_industries(reference_root: String) -> void:
+	_check(
+		Industries.world_demands(1900, 25)
+		== PackedInt32Array([25, 20, 25, 10, 17, 22, 10, 17, 12, 5, 15]),
+		"Industry world demand interpolates between the executable's 50-year rows",
+	)
+	_check(
+		Industries.world_demands(2100, 0)
+		== PackedInt32Array([10, 20, 10, 10, 20, 20, 50, 30, 20, 80, 50]),
+		"Industry world demand retains the final executable row after 2100",
+	)
+
+	var stable_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x000c, 1900], [0x0010, 0], [0x004c, 80], [0x0fa0, 0],
+		[0x0604, 40], [0x0608, 60],
+	]:
+		_check(stable_document.set_misc_u32(setting[0], setting[1]), "Industry fixture sets MISC 0x%x" % setting[0])
+	var stable_ratios := [30, 10, 10, 0, 0, 10, 0, 0, 0, 0, 40]
+	var initial_demands := [20, 20, 10, 10, 15, 5, 0, 15, 8, 0, 10]
+	for industry in 11:
+		var base := 0x016c + industry * 0x0c
+		_check(stable_document.set_misc_u32(base, initial_demands[industry]), "Industry fixture sets demand %d" % industry)
+		_check(stable_document.set_misc_u32(base + 4, 0), "Industry fixture clears tax %d" % industry)
+		_check(stable_document.set_misc_u32(base + 8, stable_ratios[industry]), "Industry fixture sets ratio %d" % industry)
+	var stable_lfsr_values: Array[int] = []
+	stable_lfsr_values.resize(44)
+	stable_lfsr_values.fill(64)
+	var stable_random := SequenceRandom.new([])
+	var stable_lfsr := SequenceLfsrRandom.new(stable_lfsr_values)
+	var stable_result := Industries.run(
+		CityModel.from_document(stable_document), stable_random, stable_lfsr, 0
+	)
+	_check(stable_result.ok, "Stable industry phase completes: %s" % stable_result.error)
+	if stable_result.ok:
+		_check(
+			stable_result.demands == PackedInt32Array(initial_demands),
+			"Four midpoint LFSR values retain each matching world demand",
+		)
+		_check(
+			stable_result.ratios == PackedInt64Array(stable_ratios)
+			and stable_result.ratio_total_after == 100,
+			"Matching industry population leaves all eleven ratios unchanged",
+		)
+		_check(
+			stable_result.pollution_share == 59
+			and stable_result.pollution_bonus == 1
+			and stable_result.maximum_share == 39
+			and stable_result.mix_bonus == 3,
+			"Industry ratios produce both recovered industrial-mix bonuses",
+		)
+		_check(stable_lfsr.position == 44, "Industry demand consumes four LFSR values per industry")
+		_check(stable_random.position == 0, "Balanced industry ratios consume no process-random values")
+		_check(
+			stable_document.misc_u32(0x1030) == 3
+			and stable_document.misc_u32(0x1034) == 1,
+			"Industry phase stores both industrial-mix bonuses",
+		)
+
+	var growth_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x000c, 1900], [0x0010, 0], [0x004c, 131], [0x0fa0, 0x00080000],
+		[0x0604, 44], [0x0608, 44],
+	]:
+		_check(growth_document.set_misc_u32(setting[0], setting[1]), "Industry growth fixture sets MISC 0x%x" % setting[0])
+	for industry in 11:
+		var base := 0x016c + industry * 0x0c
+		_check(growth_document.set_misc_u32(base, 100), "Industry growth fixture sets demand %d" % industry)
+		_check(growth_document.set_misc_u32(base + 4, 70), "Industry growth fixture sets tax %d" % industry)
+		_check(growth_document.set_misc_u32(base + 8, 0), "Industry growth fixture clears ratio %d" % industry)
+	var growth_lfsr := SequenceLfsrRandom.new(stable_lfsr_values)
+	var growth_random := SequenceRandom.new([1, 1, 1, 1, 1, 1, 1, 1, 1])
+	var growth_result := Industries.run(
+		CityModel.from_document(growth_document), growth_random, growth_lfsr, 1
+	)
+	_check(growth_result.ok, "Growing industry phase completes: %s" % growth_result.error)
+	if growth_result.ok:
+		_check(
+			growth_result.demands == PackedInt32Array([80, 80, 77, 77, 78, 76, 75, 78, 77, 75, 77]),
+			"Industry demand smooths the old and random world values",
+		)
+		_check(
+			growth_result.adjusted_demands
+			== PackedInt32Array([2, 2, 0, 7, 15, 0, 20, 8, 7, 20, 7]),
+			"Clean Industry, population growth, workforce EQ, and taxes adjust exact sectors",
+		)
+		_check(
+			growth_result.ratios
+			== PackedInt64Array([2, 2, 0, 7, 15, 0, 20, 8, 7, 20, 7]),
+			"Positive industry demand distributes the full population shortage",
+		)
+		_check(growth_random.position == 9, "Nine positive industries consume nine rounding values")
+		_check(growth_lfsr.position == 44, "Growing industry demand preserves the LFSR call count")
+
+	var excess_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x000c, 1900], [0x0010, 0], [0x004c, 80], [0x0fa0, 0],
+		[0x0604, 50], [0x0608, 50],
+	]:
+		_check(excess_document.set_misc_u32(setting[0], setting[1]), "Industry excess fixture sets MISC 0x%x" % setting[0])
+	for industry in 11:
+		var base := 0x016c + industry * 0x0c
+		_check(excess_document.set_misc_u32(base, initial_demands[industry]), "Industry excess fixture sets demand %d" % industry)
+		_check(excess_document.set_misc_u32(base + 4, 0), "Industry excess fixture clears tax %d" % industry)
+		_check(excess_document.set_misc_u32(base + 8, 100), "Industry excess fixture sets ratio %d" % industry)
+	var excess_lfsr := SequenceLfsrRandom.new(stable_lfsr_values)
+	var excess_random := SequenceRandom.new([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
+	var excess_result := Industries.run(
+		CityModel.from_document(excess_document), excess_random, excess_lfsr, 0
+	)
+	_check(excess_result.ok, "Excess industry phase completes: %s" % excess_result.error)
+	if excess_result.ok:
+		_check(
+			excess_result.ratios == PackedInt64Array([9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9])
+			and excess_result.ratio_total_after == 99,
+			"Excess industry ratios use proportional removal and random rounding",
+		)
+		_check(excess_random.position == 11, "Excess removal consumes one rounding value per industry")
 
 
 func _test_education_health(reference_root: String) -> void:

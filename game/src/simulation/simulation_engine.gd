@@ -4,6 +4,7 @@ extends RefCounted
 const DisasterMap = preload("res://src/simulation/disaster_map_phase.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 const SimNation = preload("res://src/simulation/simnation_phase.gd")
+const Industries = preload("res://src/simulation/industry_phase.gd")
 
 var city: CityState
 var clock: SimulationClock
@@ -345,6 +346,16 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				if not simnation.ok:
 					return {"ok": false, "error": simnation.error}
 				phase_results["simnation"] = simnation
+				var demand_result: Dictionary = phase_results.get("rci_demand", {})
+				var population_growth := maxi(
+					int(demand_result.get("normal_population", 0))
+					- int(demand_result.get("previous_population", 0)),
+					0
+				)
+				var industries := Industries.run(city, random, lfsr_random, population_growth)
+				if not industries.ok:
+					return {"ok": false, "error": industries.error}
+				phase_results["industries"] = industries
 				var demographics := EducationHealthPhase.run(city, random)
 				if not demographics.ok:
 					return {"ok": false, "error": demographics.error}
