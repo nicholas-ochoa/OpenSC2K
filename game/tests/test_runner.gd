@@ -1109,6 +1109,33 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and int(static_occluders[0].depth_order) <= int(static_occluders[-1].depth_order),
 		"Static occlusion commands keep the isometric map order",
 	)
+	var occlusion_grid := IsometricRenderer.build_occlusion_grid(static_occluders, 1)
+	var occlusion_target_index := int(static_occluders.size() / 2)
+	var occlusion_target: Dictionary = static_occluders[occlusion_target_index]
+	var occlusion_target_bounds := Rect2i(
+		Vector2i(occlusion_target.position), Vector2i(occlusion_target.size)
+	)
+	var occlusion_candidates := IsometricRenderer.occlusion_candidate_indices(
+		occlusion_grid, occlusion_target_bounds
+	)
+	var occlusion_candidates_complete := true
+	for occluder_index in static_occluders.size():
+		var candidate: Dictionary = static_occluders[occluder_index]
+		var candidate_bounds := Rect2i(
+			Vector2i(candidate.position), Vector2i(candidate.size)
+		)
+		if (
+			occlusion_target_bounds.intersects(candidate_bounds)
+			and not occlusion_candidates.has(occluder_index)
+		):
+			occlusion_candidates_complete = false
+			break
+	_check(
+		occlusion_candidates_complete
+		and occlusion_candidates.has(occlusion_target_index)
+		and occlusion_candidates.size() < static_occluders.size(),
+		"The occlusion grid keeps all local overlaps and rejects distant sprites",
+	)
 	var static_signature := IsometricRenderer.static_visual_signature(starter)
 	_check(
 		starter.set_text_overlay_id(64, 64, 201),
@@ -1409,13 +1436,34 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	_check(
 		crossing_commands.size() == 1
-		and crossing_commands[0].same_tile_foreground_indices
-			== PackedInt32Array([0x00, 0x2a]),
-		"Train crossover keeps the native power-wire palette in front",
+		and crossing_commands[0].train
+		and not crossing_commands[0].has("same_tile_foreground_indices"),
+		"Train commands request the dedicated power-line foreground mask",
+	)
+	_check(
+		IsometricRenderer.train_power_foreground_reference_sprite_id(0x0e) == -1
+		and IsometricRenderer.train_power_foreground_reference_sprite_id(0x48) == 1045
+		and IsometricRenderer.train_power_foreground_reference_sprite_id(0x2d) == 0,
+		"Power lines and crossovers select their train foreground source",
+	)
+	var crossing_foreground_command: Dictionary = {}
+	var crossing_depth := (64 + 64) * CityState.MAP_SIZE + 64
+	for command in IsometricRenderer.static_occlusion_commands(starter, large):
+		if int(command.sprite_id) == 1072 and int(command.depth_order) == crossing_depth:
+			crossing_foreground_command = command
+			break
+	_check(
+		int(crossing_foreground_command.get("train_foreground_reference_sprite_id", 0))
+			== 1045,
+		"Static rail-power crossover commands retain the rail-only reference",
 	)
 	var index_palette := Palette.index_encoding()
 	var crossing_terrain: Image = large.find_sprite(1256).create_image(index_palette).image
 	var crossing_surface: Image = large.find_sprite(1072).create_image(index_palette).image
+	var crossing_rail: Image = large.find_sprite(1045).create_image(index_palette).image
+	var crossing_foreground := IsometricRenderer.foreground_difference_mask(
+		crossing_surface, crossing_rail
+	)
 	var crossing_train_image: Image = (
 		large.find_sprite(crossing_train.sprite_id).create_image(index_palette).image.duplicate()
 	)
@@ -1443,12 +1491,23 @@ func _test_sprite_archives(reference_root: String) -> void:
 		16 + crossing_train.screen_x - int(crossing_train_image.get_width() / 2),
 		crossing_height + crossing_train.screen_y - crossing_train_image.get_height(),
 	)
+	var crossing_surface_position := Vector2i(
+		0, crossing_height - crossing_surface.get_height()
+	)
+	var crossing_train_foreground := Image.create(
+		crossing_train_image.get_width(), crossing_train_image.get_height(),
+		false, Image.FORMAT_RGBA8
+	)
+	crossing_train_foreground.fill(Color.TRANSPARENT)
+	crossing_train_foreground.blend_rect(
+		crossing_foreground,
+		Rect2i(Vector2i.ZERO, crossing_foreground.get_size()),
+		crossing_surface_position - crossing_train_position,
+	)
 	var actual_crossing_mask := IsometricRenderer.occlude_dynamic_with_mask(
 		crossing_train_image,
-		null,
+		crossing_train_foreground,
 		crossing_train_position,
-		crossing_fixture,
-		PackedInt32Array([0x00, 0x2a]),
 	)
 	var crossing_composite: Image = crossing_fixture.duplicate()
 	crossing_composite.blend_rect(
@@ -1456,8 +1515,8 @@ func _test_sprite_archives(reference_root: String) -> void:
 		Rect2i(Vector2i.ZERO, actual_crossing_mask.image.get_size()),
 		crossing_train_position,
 	)
-	var wire_overlap := 0
-	var wire_preserved := 0
+	var foreground_overlap := 0
+	var foreground_preserved := 0
 	var rail_deck_replaced := 0
 	for train_y in crossing_train_image.get_height():
 		for train_x in crossing_train_image.get_width():
@@ -1467,13 +1526,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 			if not Rect2i(Vector2i.ZERO, crossing_fixture.get_size()).has_point(map_point):
 				continue
 			var static_index := roundi(crossing_fixture.get_pixelv(map_point).r * 255.0)
-			if static_index in [0x00, 0x2a]:
-				wire_overlap += 1
+			if crossing_train_foreground.get_pixel(train_x, train_y).a > 0.0:
+				foreground_overlap += 1
 				if (
 					crossing_composite.get_pixelv(map_point).to_rgba32()
 					== crossing_fixture.get_pixelv(map_point).to_rgba32()
 				):
-					wire_preserved += 1
+					foreground_preserved += 1
 			elif (
 				static_index in [0xa0, 0x7c]
 				and crossing_composite.get_pixelv(map_point).to_rgba32()
@@ -1481,11 +1540,11 @@ func _test_sprite_archives(reference_root: String) -> void:
 			):
 				rail_deck_replaced += 1
 	_check(
-		wire_overlap > 0
-		and wire_preserved == wire_overlap
+		foreground_overlap > 0
+		and foreground_preserved == foreground_overlap
 		and rail_deck_replaced > 0
-		and actual_crossing_mask.occluded_pixels == wire_overlap,
-		"The native train draws over the rail deck but stays behind crossover wires",
+		and actual_crossing_mask.occluded_pixels == foreground_overlap,
+		"The train draws over the rail deck but stays behind the full power-line foreground",
 	)
 	_check(starter.set_building_id(64, 64, 0x36), "Train drawing fixture adds a turn tile")
 	var turning_train := IsometricRenderer.train_sprite(starter, 64, 64, {

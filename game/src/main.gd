@@ -124,11 +124,13 @@ var military_proposal_pending := false
 var game_over_active := false
 var static_city_image: Image
 var static_occlusion_commands: Array[Dictionary] = []
+var static_occlusion_grid: Dictionary = {}
 var static_visual_signature: Array = []
 var static_render_mode := ""
 var static_display_city: CityState
 var static_view_cache: Dictionary = {}
 var dynamic_sprite_cache: Dictionary = {}
+var dynamic_foreground_cache: Dictionary = {}
 var static_render_thread: Thread
 var static_render_job: CityRenderJob
 var static_render_epoch := 0
@@ -1112,6 +1114,7 @@ func _load_city(path: String) -> void:
 	static_render_epoch += 1
 	static_city_image = null
 	static_occlusion_commands.clear()
+	static_occlusion_grid.clear()
 	static_visual_signature = []
 	static_render_mode = ""
 	static_display_city = null
@@ -1119,6 +1122,7 @@ func _load_city(path: String) -> void:
 	palette_cycle_ticks = 0
 	_update_palette_cycle_texture()
 	dynamic_sprite_cache.clear()
+	dynamic_foreground_cache.clear()
 	var process_seed := tool_random.state
 	var game_seed := nuisance_random.state
 	var lfsr_seed := (
@@ -1219,7 +1223,9 @@ func _refresh_map(force := true) -> void:
 			and int(cached.get("view_size", -1)) == view_size
 		):
 			static_city_image = cached.image
-			static_occlusion_commands.assign(cached.get("occlusion_commands", []))
+			_set_static_occlusion_commands(
+				cached.get("occlusion_commands", []), view_size
+			)
 			static_visual_signature = current_signature
 			static_render_mode = overlay_mode
 			static_display_city = cached.display_city
@@ -1271,11 +1277,12 @@ func _refresh_map(force := true) -> void:
 				Image.INTERPOLATE_NEAREST,
 			)
 		static_city_image = image
-		static_occlusion_commands = (
+		var occlusion_commands: Array[Dictionary] = (
 			IsometricRenderer.static_occlusion_commands(display_city, sprite_archive, view_size)
 			if overlay_mode == "city"
 			else []
 		)
+		_set_static_occlusion_commands(occlusion_commands, view_size)
 		static_visual_signature = current_signature
 		static_render_mode = overlay_mode
 		static_display_city = display_city
@@ -1291,6 +1298,7 @@ func _refresh_map(force := true) -> void:
 		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
 		static_city_image = null
 		static_occlusion_commands.clear()
+		static_occlusion_grid.clear()
 		static_visual_signature = []
 		map_view.set_dynamic_sprites([])
 	var texture := ImageTexture.create_from_image(image)
@@ -1351,7 +1359,7 @@ func _poll_static_render() -> void:
 			_refresh_map(false)
 		return
 	static_city_image = rendered.index_image
-	static_occlusion_commands.assign(rendered.occlusion_commands)
+	_set_static_occlusion_commands(rendered.occlusion_commands, int(rendered.view_size))
 	static_visual_signature = rendered.signature
 	static_render_mode = String(rendered.render_mode)
 	static_display_city = rendered.display_city
@@ -1444,7 +1452,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 		var index_texture: Texture2D = resource.index_texture
 		var occluder_mask := _dynamic_occluder_image(
 			sprite_archive, divisor, position, resource.image.get_size(),
-			int(command.get("depth_order", -1))
+			int(command.get("depth_order", -1)), bool(command.get("train", false))
 		)
 		if command.shadow:
 			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask)
@@ -1475,33 +1483,96 @@ func _dynamic_occluder_image(
 	divisor: int,
 	position: Vector2i,
 	size: Vector2i,
-	draw_order: int
+	draw_order: int,
+	is_train := false
 ) -> Image:
 	if draw_order < 0 or static_occlusion_commands.is_empty():
 		return null
 	var bounds := Rect2i(position, size)
+	if static_occlusion_grid.is_empty():
+		static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
+			static_occlusion_commands, divisor
+		)
 	var mask: Image
-	for command in static_occlusion_commands:
-		if int(command.depth_order) <= draw_order:
+	var later_occluder_added := false
+	var candidate_indices := IsometricRenderer.occlusion_candidate_indices(
+		static_occlusion_grid, bounds
+	)
+	for command_index in candidate_indices:
+		var command := static_occlusion_commands[command_index]
+		var later_static := int(command.depth_order) > draw_order
+		var train_foreground := (
+			is_train and command.has("train_foreground_reference_sprite_id")
+		)
+		var use_later_static := (
+			later_static and not later_occluder_added and not train_foreground
+		)
+		if not use_later_static and not train_foreground:
 			continue
 		var occluder_position := Vector2i(command.position) * divisor
 		var occluder_size := Vector2i(command.size) * divisor
-		if not bounds.intersects(Rect2i(occluder_position, occluder_size)):
+		var overlap := bounds.intersection(
+			Rect2i(occluder_position, occluder_size)
+		)
+		if overlap.get_area() <= 0:
 			continue
 		var resource := _dynamic_sprite_resource(
 			sprite_archive, int(command.sprite_id), bool(command.flip), divisor
 		)
 		if resource.is_empty():
 			continue
+		var occluder_image: Image = resource.image
+		if train_foreground:
+			occluder_image = _dynamic_train_foreground_image(
+				sprite_archive, command, divisor, resource.image
+			)
 		if mask == null:
 			mask = Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
 			mask.fill(Color.TRANSPARENT)
 		mask.blend_rect(
-			resource.image,
-			Rect2i(Vector2i.ZERO, resource.image.get_size()),
-			occluder_position - position,
+			occluder_image,
+			Rect2i(overlap.position - occluder_position, overlap.size),
+			overlap.position - position,
 		)
+		if use_later_static:
+			later_occluder_added = true
+			if not is_train:
+				break
 	return mask
+
+
+func _set_static_occlusion_commands(commands: Array, view_size: int) -> void:
+	static_occlusion_commands.assign(commands)
+	var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
+	static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
+		static_occlusion_commands, divisor
+	)
+
+
+func _dynamic_train_foreground_image(
+	sprite_archive: Sc2SpriteArchive,
+	command: Dictionary,
+	divisor: int,
+	surface: Image
+) -> Image:
+	var reference_sprite_id := int(command.train_foreground_reference_sprite_id)
+	if reference_sprite_id < 0:
+		return surface
+	var key := "%d:%d:%d:%d" % [
+		int(command.sprite_id), int(command.flip), divisor, reference_sprite_id,
+	]
+	if dynamic_foreground_cache.has(key):
+		return dynamic_foreground_cache[key]
+	var reference := _dynamic_sprite_resource(
+		sprite_archive, reference_sprite_id, bool(command.flip), divisor
+	)
+	if reference.is_empty():
+		return surface
+	var foreground := IsometricRenderer.foreground_difference_mask(
+		surface, reference.image
+	)
+	dynamic_foreground_cache[key] = foreground
+	return foreground
 
 
 func _dynamic_sprite_resource(

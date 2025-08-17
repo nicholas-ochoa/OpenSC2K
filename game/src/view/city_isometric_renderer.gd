@@ -62,6 +62,15 @@ const TRAIN_SPRITE_FLIP := [
 ]
 const TRAIN_SCREEN_X := [0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 0, 0, 8, 0]
 const TRAIN_SCREEN_Y := [0, 0, 0, 0, 0, 0, 0, 8, 0, 0, 8, 8, 6, 6, 0, 0, 0, 6]
+const OCCLUSION_CELL_SIZE := 128
+const POWER_CROSSING_BASE_TILE := {
+	0x43: 0x1d,
+	0x44: 0x1e,
+	0x47: 0x2c,
+	0x48: 0x2d,
+	0x4f: 0x49,
+	0x50: 0x4a,
+}
 const MONSTER_UPPER_FIRST_X := [-15, -3]
 const MONSTER_UPPER_SECOND_X := [-24, 14]
 const MONSTER_UPPER_FIRST_Y := [6, 52]
@@ -1271,8 +1280,8 @@ static func moving_thing_draw_commands_for_visual(
 	var main_command := _moving_draw_command(
 		visual.sprite_id, visual.flip, destination, false
 	)
-	if visual.train and city.building_id(visual.x, visual.y) in [0x47, 0x48]:
-		main_command.same_tile_foreground_indices = PackedInt32Array([0x00, 0x2a])
+	if visual.train:
+		main_command.train = true
 	commands.append(main_command)
 	return commands
 
@@ -1393,7 +1402,10 @@ static func _tile_occlusion_commands(
 			_append_occluder(
 				commands, sprites, building_sprite_id, building_flip,
 				Vector2i(screen_x, building_base_y + int(configuration.tile_height)),
-				draw_order
+				draw_order,
+				train_power_foreground_reference_sprite_id(
+					building_id, int(configuration.sprite_base)
+				)
 			)
 			var power_marker := power_marker_visual(city, x, y, configuration.view_size)
 			if not power_marker.is_empty():
@@ -1432,18 +1444,122 @@ static func _append_occluder(
 	sprite_id: int,
 	flip: bool,
 	base_position: Vector2i,
-	draw_order: int
+	draw_order: int,
+	train_foreground_reference_sprite_id := 0
 ) -> void:
 	var entry = sprites.find_sprite(sprite_id)
 	if entry == null:
 		return
-	commands.append({
+	var command := {
 		"sprite_id": sprite_id,
 		"flip": flip,
 		"position": base_position - Vector2i(0, entry.height),
 		"size": Vector2i(entry.width, entry.height),
 		"depth_order": draw_order,
-	})
+	}
+	if train_foreground_reference_sprite_id != 0:
+		command.train_foreground_reference_sprite_id = (
+			train_foreground_reference_sprite_id
+		)
+	commands.append(command)
+
+
+static func train_power_foreground_reference_sprite_id(
+	building_id: int, sprite_base := 1000
+) -> int:
+	if building_id >= 0x0e and building_id <= 0x1c:
+		return -1
+	var reference_tile := int(POWER_CROSSING_BASE_TILE.get(building_id, -1))
+	return 0 if reference_tile < 0 else sprite_base + reference_tile
+
+
+static func foreground_difference_mask(sprite: Image, background: Image) -> Image:
+	if sprite == null:
+		return null
+	if background == null:
+		return sprite
+	var mask := Image.create(
+		sprite.get_width(), sprite.get_height(), false, Image.FORMAT_RGBA8
+	)
+	mask.fill(Color.TRANSPARENT)
+	var background_y_offset := sprite.get_height() - background.get_height()
+	for y in sprite.get_height():
+		for x in sprite.get_width():
+			var source := sprite.get_pixel(x, y)
+			if source.a == 0.0:
+				continue
+			var background_y := y - background_y_offset
+			var changed := (
+				x >= background.get_width()
+				or background_y < 0
+				or background_y >= background.get_height()
+			)
+			if not changed:
+				changed = (
+					source.to_rgba32()
+					!= background.get_pixel(x, background_y).to_rgba32()
+				)
+			if changed:
+				mask.set_pixel(x, y, source)
+	return mask
+
+
+static func build_occlusion_grid(
+	commands: Array[Dictionary], divisor: int
+) -> Dictionary:
+	var grid := {}
+	for command_index in commands.size():
+		var command := commands[command_index]
+		var bounds := Rect2i(
+			Vector2i(command.position) * divisor,
+			Vector2i(command.size) * divisor,
+		)
+		if bounds.get_area() <= 0:
+			continue
+		var last_pixel := bounds.position + bounds.size - Vector2i.ONE
+		var first_cell := Vector2i(
+			floori(float(bounds.position.x) / float(OCCLUSION_CELL_SIZE)),
+			floori(float(bounds.position.y) / float(OCCLUSION_CELL_SIZE)),
+		)
+		var last_cell := Vector2i(
+			floori(float(last_pixel.x) / float(OCCLUSION_CELL_SIZE)),
+			floori(float(last_pixel.y) / float(OCCLUSION_CELL_SIZE)),
+		)
+		for cell_y in range(first_cell.y, last_cell.y + 1):
+			for cell_x in range(first_cell.x, last_cell.x + 1):
+				var cell := Vector2i(cell_x, cell_y)
+				var cell_indices: Array = grid.get(cell, [])
+				cell_indices.append(command_index)
+				grid[cell] = cell_indices
+	return grid
+
+
+static func occlusion_candidate_indices(
+	grid: Dictionary, bounds: Rect2i
+) -> Array[int]:
+	var result: Array[int] = []
+	if bounds.get_area() <= 0 or grid.is_empty():
+		return result
+	var last_pixel := bounds.position + bounds.size - Vector2i.ONE
+	var first_cell := Vector2i(
+		floori(float(bounds.position.x) / float(OCCLUSION_CELL_SIZE)),
+		floori(float(bounds.position.y) / float(OCCLUSION_CELL_SIZE)),
+	)
+	var last_cell := Vector2i(
+		floori(float(last_pixel.x) / float(OCCLUSION_CELL_SIZE)),
+		floori(float(last_pixel.y) / float(OCCLUSION_CELL_SIZE)),
+	)
+	var seen := {}
+	for cell_y in range(first_cell.y, last_cell.y + 1):
+		for cell_x in range(first_cell.x, last_cell.x + 1):
+			for value in grid.get(Vector2i(cell_x, cell_y), []):
+				var command_index := int(value)
+				if seen.has(command_index):
+					continue
+				seen[command_index] = true
+				result.append(command_index)
+	result.sort()
+	return result
 
 
 static func occlude_dynamic_with_mask(
