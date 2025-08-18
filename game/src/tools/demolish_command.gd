@@ -95,7 +95,8 @@ static func apply_path(
 	group_index: int,
 	subtool_index: int,
 	points: Array[Vector2i],
-	random: SimRandom
+	random: SimRandom,
+	underground_view := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -142,20 +143,38 @@ static func apply_path(
 		if city.funds() - total_cost < cost_per_action:
 			skipped_insufficient += 1
 			continue
-		var result := _demolish_point(
-			city,
-			altitude,
-			buildings,
-			terrain,
-			zones,
-			underground,
-			flags,
-			text_overlays,
-			labels,
-			microsims,
-			misc,
-			point,
-			random
+		var result := (
+			_demolish_underground_point(
+				city,
+				altitude,
+				buildings,
+				terrain,
+				zones,
+				underground,
+				flags,
+				text_overlays,
+				labels,
+				microsims,
+				misc,
+				point,
+				random
+			)
+			if underground_view
+			else _demolish_point(
+				city,
+				altitude,
+				buildings,
+				terrain,
+				zones,
+				underground,
+				flags,
+				text_overlays,
+				labels,
+				microsims,
+				misc,
+				point,
+				random
+			)
 		)
 		if result.get("specialized", false):
 			skipped_specialized += 1
@@ -198,6 +217,7 @@ static func apply_path(
 		"command_type": "demolish",
 		"group_index": group_index,
 		"subtool_index": subtool_index,
+		"underground_view": underground_view,
 		"tile_indices": changed_indices,
 		"action_count": action_count,
 		"cost": total_cost,
@@ -346,7 +366,9 @@ static func _demolish_point(
 			indices.append(changed_index)
 			changed_points.append(Vector2i(x, y))
 	if tile_id == SUBWAY_STATION or (tile_id >= 0x6c and tile_id <= 0x70):
-		underground[index] = 0
+		BuildingCommand._replace_underground(
+			underground, zones, misc, index, 0
+		)
 	if retile_neighbors:
 		_retile_after_demolition(
 			buildings, terrain, zones, underground, flags, misc, changed_points
@@ -357,6 +379,74 @@ static func _demolish_point(
 		else:
 			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
 	return {"changed": true, "indices": indices, "effect_events": effect_events}
+
+
+static func _demolish_underground_point(
+	city: CityState,
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	flags: PackedByteArray,
+	text_overlays: PackedByteArray,
+	labels: PackedByteArray,
+	microsims: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i,
+	random
+) -> Dictionary:
+	var index := point.x * CityState.MAP_SIZE + point.y
+	if (zones[index] & 0x0f) == MILITARY_ZONE:
+		return {"changed": false}
+	if text_overlays[index] == PROTECTED_CONNECTION_LABEL:
+		return {"changed": false}
+	var altitude_offset := index * 2
+	var altitude_word := (
+		(altitude[altitude_offset] << 8) | altitude[altitude_offset + 1]
+	)
+	var tunnel_level := (altitude_word & TUNNEL_MASK) >> 10
+	var underground_tile := int(underground[index])
+	if (
+		underground_tile == 0
+		and tunnel_level != 1
+		and (flags[index] & BuildingCommand.FLAG_PIPED) == 0
+	):
+		return {"changed": false}
+
+	if buildings[index] < 0x70:
+		flags[index] &= ~BuildingCommand.FLAG_PIPED & 0xff
+	var indices := PackedInt32Array([index])
+	var effect_events: Array = []
+	if tunnel_level == 1 or underground_tile == 0x23:
+		var surface_result := _demolish_point(
+			city,
+			altitude,
+			buildings,
+			terrain,
+			zones,
+			underground,
+			flags,
+			text_overlays,
+			labels,
+			microsims,
+			misc,
+			point,
+			random
+		)
+		for changed_index in surface_result.get("indices", PackedInt32Array()):
+			if not indices.has(changed_index):
+				indices.append(changed_index)
+		effect_events = surface_result.get("effect_events", [])
+	BuildingCommand._replace_underground(underground, zones, misc, index, 0)
+	_retile_after_demolition(
+		buildings, terrain, zones, underground, flags, misc, [point]
+	)
+	return {
+		"changed": true,
+		"indices": indices,
+		"effect_events": effect_events,
+	}
 
 
 static func _is_highway_tile(tile_id: int) -> bool:

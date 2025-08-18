@@ -1807,7 +1807,7 @@ func _update_edit_state() -> void:
 				overlay_mode == "city"
 				or (
 					overlay_mode == "underground"
-					and is_underground_network_tool
+					and (is_underground_network_tool or is_demolish_tool)
 				)
 			)
 		and (
@@ -1949,7 +1949,12 @@ func _apply_map_selection(
 		return
 	if Demolish.supports_tool(selected_group, selected_subtool):
 		var demolition := Demolish.apply_path(
-			city, selected_group, selected_subtool, path, tool_random
+			city,
+			selected_group,
+			selected_subtool,
+			path,
+			tool_random,
+			overlay_mode == "underground"
 		)
 		if not demolition.ok:
 			_show_error("Cannot demolish: %s" % demolition.error)

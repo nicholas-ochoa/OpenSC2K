@@ -155,9 +155,13 @@ static func apply(
 			MODE_POWER:
 				_place_surface(buildings, terrain, zones, flags, misc, point, MODE_POWER, direction)
 			MODE_SUBWAY:
-				_place_underground(underground, terrain, flags, point, false)
+				_place_underground(
+					underground, terrain, zones, flags, misc, point, false
+				)
 			MODE_PIPE:
-				_place_underground(underground, terrain, flags, point, true)
+				_place_underground(
+					underground, terrain, zones, flags, misc, point, true
+				)
 	_write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
@@ -470,31 +474,35 @@ static func _rail_connects(tile_id: int) -> bool:
 static func _place_underground(
 	underground: PackedByteArray,
 	terrain: PackedByteArray,
+	zones: PackedByteArray,
 	flags: PackedByteArray,
+	misc: PackedByteArray,
 	point: Vector2i,
 	pipes: bool
 ) -> void:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	var old_tile := int(underground[index])
+	var new_tile := -1
 	if pipes:
 		if old_tile == 0:
-			underground[index] = 0x10
+			new_tile = 0x10
 		elif old_tile == 0x01:
-			underground[index] = 0x1f
+			new_tile = 0x1f
 		elif old_tile == 0x02:
-			underground[index] = 0x20
+			new_tile = 0x20
 		else:
 			return
 		flags[index] |= FLAG_PIPED
 	else:
 		if old_tile == 0:
-			underground[index] = 0x01
+			new_tile = 0x01
 		elif old_tile == 0x10:
-			underground[index] = 0x20
+			new_tile = 0x20
 		elif old_tile == 0x11:
-			underground[index] = 0x1f
+			new_tile = 0x1f
 		else:
 			return
+	BuildingCommand._replace_underground(underground, zones, misc, index, new_tile)
 	_retile_underground_neighborhood(underground, terrain, point, pipes)
 
 

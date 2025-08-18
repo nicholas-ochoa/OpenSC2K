@@ -58,7 +58,9 @@ static func apply(
 	var flags: PackedByteArray = changed_payloads.XBIT
 	var misc: PackedByteArray = changed_payloads.MISC
 
-	BuildingCommand._place_subway_station(underground, terrain, flags, point)
+	BuildingCommand._place_subway_station(
+		underground, terrain, zones, flags, misc, point
+	)
 	var tile_id := CONNECTOR_FIRST + orientation
 	NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
 	zones[index] |= 0xf0

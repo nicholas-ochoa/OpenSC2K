@@ -8269,6 +8269,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Building fixture clears XMIC")
 	_check(document.set_misc_i32(0x14, 20000), "Building fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16384), "Building fixture counts clear tiles")
+	_check(document.set_misc_u32(0x0fe8, 0), "Building fixture clears subway count")
 	_check(document.set_misc_u32(0x01f0 + 0xcf * 4, 0), "Building fixture clears coal count")
 	_check(document.set_misc_u32(0x077c + 5 * 0x6c, 2), "Building fixture sets police count")
 	var city := CityModel.from_document(document)
@@ -8329,12 +8330,15 @@ func _test_building_command(reference_root: String) -> void:
 	_check(city.underground_id(59, 60) == 0x1e and city.underground_id(60, 60) == 0, "Pump undo restores both underground tiles")
 
 	_check(city.set_underground_id(64, 65, 0x0f), "Subway fixture places an adjacent isolated subway")
+	_check(document.set_misc_u32(0x0fe8, 1), "Subway fixture counts its adjacent subway")
 	var subway_station := Buildings.apply(city, 7, 3, Vector2i(65, 65), random, process_random)
 	_check(subway_station.ok, "Subway station placement succeeds")
 	_check(city.underground_id(65, 65) == 0x23, "Subway station writes the underground entrance")
 	_check(city.underground_id(64, 65) == 0x02, "Subway station reconnects its adjacent subway")
+	_check(document.misc_u32(0x0fe8) == 2, "Subway station increments the saved subway count")
 	_check(not city.is_piped(65, 65) and city.is_powered(65, 65) and city.is_powerable(65, 65), "Subway station clears only the piped structure flag")
 	_check(Buildings.undo(city, subway_station, random, process_random).ok, "Subway station underground changes can be undone")
+	_check(document.misc_u32(0x0fe8) == 1, "Subway station undo restores the saved subway count")
 
 	var statue := Buildings.apply(city, 5, 2, Vector2i(68, 68), random, process_random)
 	_check(statue.ok, "Statue placement succeeds")
@@ -8386,6 +8390,7 @@ func _test_network_command(reference_root: String) -> void:
 		)
 	_check(document.set_misc_i32(0x14, 10000), "Network fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16384), "Network fixture counts clear tiles")
+	_check(document.set_misc_u32(0x0fe8, 0), "Network fixture clears subway count")
 	var city := CityModel.from_document(document)
 
 	var road := Networks.apply(city, 6, 0, Vector2i(10, 10), Vector2i(14, 10))
@@ -8473,7 +8478,9 @@ func _test_network_command(reference_root: String) -> void:
 	_check(subway.ok and subway.cost == 300, "Subway drag charges one hundred dollars per tile")
 	for y in range(30, 33):
 		_check(city.underground_id(30, y) == 0x01, "Subway drag stores connected subway shapes")
+	_check(document.misc_u32(0x0fe8) == 3, "Subway drag increments the saved subway count")
 	_check(Networks.undo(city, subway).ok, "Subway drag can be undone")
+	_check(document.misc_u32(0x0fe8) == 0, "Subway undo restores the saved subway count")
 
 	_check(city.set_building_id(42, 40, 0x51), "Partial-route fixture places an obstruction")
 	var partial := Networks.apply(city, 6, 0, Vector2i(40, 40), Vector2i(44, 40))
@@ -8530,6 +8537,7 @@ func _test_subway_to_rail_command(reference_root: String) -> void:
 	_check(document.set_misc_i32(0x14, 0), "Subway-to-rail fixture clears funds")
 	_check(document.set_misc_u32(0x01f0, 16383), "Subway-to-rail fixture counts clear tiles")
 	_check(document.set_misc_u32(0x01f0 + 0x2c * 4, 1), "Subway-to-rail fixture counts rail")
+	_check(document.set_misc_u32(0x0fe8, 0), "Subway-to-rail fixture clears subway count")
 	var city := CityModel.from_document(document)
 	_check(city.set_building_id(21, 20, 0x2c), "Subway-to-rail fixture places adjacent rail")
 	_check(city.set_zone_id(20, 20, 3), "Subway-to-rail fixture places a commercial zone")
@@ -8537,10 +8545,12 @@ func _test_subway_to_rail_command(reference_root: String) -> void:
 	_check(surface.ok, "Subway-to-rail placement beside surface rail succeeds: %s" % surface.error)
 	_check(surface.tile_id == 0x6c and city.building_id(20, 20) == 0x6c, "East rail selects connector orientation zero")
 	_check(city.underground_id(20, 20) == 0x23, "Subway-to-rail placement writes underground entrance 0x23")
+	_check(document.misc_u32(0x0fe8) == 1, "Subway-to-rail increments the saved subway count")
 	_check(city.zones[20 * 128 + 20] == 0xf3, "Subway-to-rail placement preserves the zone and sets all corners")
 	_check(city.funds() == 0 and surface.cost == 0 and surface.listed_cost == 250, "Subway-to-rail reproduces the executable's missing cost deduction")
 	_check(SubwayToRail.undo(city, surface).ok, "Subway-to-rail placement can be undone")
 	_check(city.building_id(20, 20) == 0 and city.underground_id(20, 20) == 0, "Subway-to-rail undo restores surface and underground maps")
+	_check(document.misc_u32(0x0fe8) == 0, "Subway-to-rail undo restores the saved subway count")
 
 	_check(city.set_building_id(21, 20, 0), "Underground connection fixture removes surface rail")
 	_check(city.set_underground_id(21, 20, 0x01), "Underground connection fixture places adjacent subway")
@@ -8791,6 +8801,159 @@ func _test_demolish_command(reference_root: String) -> void:
 			_check(simple_city.building_id(x, y) >= 1 and simple_city.building_id(x, y) <= 4, "Demolished highway becomes rubble")
 	_check(Demolish.undo(simple_city, removed_highway, demolition_random).ok, "Highway demolition can be undone")
 	_check(Highways.undo(simple_city, placed_highway).ok, "Highway fixture can be removed after demolition undo")
+
+	var underground_document := Sc2Document.load_path(
+		reference_root.path_join("DEFAULT.SC2")
+	)
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
+		_check(
+			underground_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(size, 0)
+			),
+			"Underground demolition fixture clears %s" % chunk_id,
+		)
+	_check(
+		underground_document.find_chunk("XLAB").set_decoded_payload(
+			_filled_bytes(6400, 0)
+		),
+		"Underground demolition fixture clears XLAB",
+	)
+	_check(
+		underground_document.find_chunk("XMIC").set_decoded_payload(
+			_filled_bytes(1200, 0)
+		),
+		"Underground demolition fixture clears XMIC",
+	)
+	_check(
+		underground_document.set_misc_i32(0x14, 5000),
+		"Underground demolition fixture sets funds",
+	)
+	_check(
+		underground_document.set_misc_u32(0x01f0, 16384),
+		"Underground demolition fixture counts clear tiles",
+	)
+	_check(
+		underground_document.set_misc_u32(0x0fe8, 3),
+		"Underground demolition fixture counts three subway tiles",
+	)
+	var underground_city := CityModel.from_document(underground_document)
+	for y in range(19, 22):
+		_check(
+			underground_city.set_underground_id(20, y, 0x01),
+			"Underground demolition fixture places subway",
+		)
+	var underground_random := Random.new(101)
+	var removed_subway := Demolish.apply_path(
+		underground_city,
+		0,
+		0,
+		[Vector2i(20, 20)],
+		underground_random,
+		true
+	)
+	_check(
+		removed_subway.ok
+		and removed_subway.underground_view
+		and removed_subway.action_count == 1
+		and removed_subway.cost == 1
+		and underground_city.underground_id(20, 20) == 0
+		and underground_document.misc_u32(0x0fe8) == 2,
+		"Underground Demolish removes one subway tile and updates its count",
+	)
+	_check(
+		underground_city.underground_id(20, 19) == 0x01
+		and underground_city.underground_id(20, 21) == 0x01,
+		"Underground Demolish reconnects the remaining subway ends",
+	)
+	_check(
+		Demolish.undo(underground_city, removed_subway, underground_random).ok
+		and underground_city.underground_id(20, 20) == 0x01
+		and underground_document.misc_u32(0x0fe8) == 3,
+		"Underground subway demolition can be undone with its saved count",
+	)
+	for y in range(29, 32):
+		_check(
+			underground_city.set_underground_id(30, y, 0x10),
+			"Underground demolition fixture places pipe",
+		)
+		_check(
+			underground_city.set_tile_flag(30, y, 0x20, true),
+			"Underground demolition fixture marks pipe",
+		)
+	var removed_pipe := Demolish.apply_path(
+		underground_city,
+		0,
+		0,
+		[Vector2i(30, 30)],
+		underground_random,
+		true
+	)
+	_check(
+		removed_pipe.ok
+		and underground_city.underground_id(30, 30) == 0
+		and not underground_city.is_piped(30, 30)
+		and underground_document.misc_u32(0x0fe8) == 3,
+		"Underground Demolish clears a pipe and its saved piped bit",
+	)
+	_check(
+		underground_city.underground_id(30, 29) == 0x1e
+		and underground_city.underground_id(30, 31) == 0x1e,
+		"Underground Demolish reconnects the remaining pipe ends",
+	)
+	_check(
+		Demolish.undo(underground_city, removed_pipe, underground_random).ok
+		and underground_city.underground_id(30, 30) == 0x10
+		and underground_city.is_piped(30, 30),
+		"Underground pipe demolition can be undone",
+	)
+	var station_random := GameRandom.new(111)
+	var station_process_random := Random.new(113)
+	var placed_station := Buildings.apply(
+		underground_city,
+		7,
+		3,
+		Vector2i(40, 40),
+		station_random,
+		station_process_random
+	)
+	_check(
+		placed_station.ok
+		and underground_city.underground_id(40, 40) == 0x23
+		and underground_document.misc_u32(0x0fe8) == 4,
+		"Underground demolition fixture places and counts a subway station",
+	)
+	var removed_station := Demolish.apply_path(
+		underground_city,
+		0,
+		0,
+		[Vector2i(40, 40)],
+		underground_random,
+		true
+	)
+	_check(
+		removed_station.ok
+		and underground_city.underground_id(40, 40) == 0
+		and underground_city.building_id(40, 40) >= 1
+		and underground_city.building_id(40, 40) <= 4
+		and underground_document.misc_u32(0x0fe8) == 3,
+		"Underground Demolish removes a subway entrance and its surface station",
+	)
+	_check(
+		Demolish.undo(underground_city, removed_station, underground_random).ok
+		and underground_city.underground_id(40, 40) == 0x23
+		and underground_city.building_id(40, 40) == 0xe9,
+		"Underground subway-station demolition can be undone",
+	)
+	_check(
+		Buildings.undo(
+			underground_city,
+			placed_station,
+			station_random,
+			station_process_random
+		).ok,
+		"Underground demolition fixture removes the restored station",
+	)
 
 	var special_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:

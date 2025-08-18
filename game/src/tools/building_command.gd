@@ -4,6 +4,7 @@ extends RefCounted
 const MISC_FUNDS := 0x0014
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_BUDGETS := 0x077c
+const MISC_SUBWAY_COUNT := 0x0fe8
 const BUDGET_RECORD_SIZE := 0x006c
 const BUDGET_CURRENT := {
 	0xd1: 7,
@@ -307,9 +308,9 @@ static func apply(
 	if tile_id == STATUE:
 		flags[selected.x * CityState.MAP_SIZE + selected.y] &= ~FLAG_POWERABLE & 0xff
 	elif tile_id == WATER_PUMP:
-		_place_pipe(underground, terrain, flags, selected)
+		_place_pipe(underground, terrain, zones, flags, misc, selected)
 	elif tile_id == SUBWAY_STATION:
-		_place_subway_station(underground, terrain, flags, selected)
+		_place_subway_station(underground, terrain, zones, flags, misc, selected)
 	if BUDGET_CURRENT.has(tile_id):
 		var budget_offset: int = MISC_BUDGETS + int(BUDGET_CURRENT[tile_id]) * BUDGET_RECORD_SIZE
 		_write_u32_be(misc, budget_offset, _read_u32_be(misc, budget_offset) + 1)
@@ -564,21 +565,25 @@ static func _set_corners(zones: PackedByteArray, site: Rect2i, area: int, rotati
 static func _place_pipe(
 	underground: PackedByteArray,
 	terrain: PackedByteArray,
+	zones: PackedByteArray,
 	flags: PackedByteArray,
+	misc: PackedByteArray,
 	point: Vector2i
 ) -> void:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	var old_tile := int(underground[index])
 	if (old_tile >= UNDER_PIPE_FIRST and old_tile <= UNDER_PIPE_LAST) or old_tile == UNDER_PIPE_SUBWAY_LR or old_tile == UNDER_PIPE_SUBWAY_TB:
 		return
+	var new_tile := -1
 	if old_tile == 0:
-		underground[index] = UNDER_PIPE_FIRST
+		new_tile = UNDER_PIPE_FIRST
 	elif old_tile == 1:
-		underground[index] = UNDER_PIPE_SUBWAY_LR
+		new_tile = UNDER_PIPE_SUBWAY_LR
 	elif old_tile == 2:
-		underground[index] = UNDER_PIPE_SUBWAY_TB
+		new_tile = UNDER_PIPE_SUBWAY_TB
 	else:
 		return
+	_replace_underground(underground, zones, misc, index, new_tile)
 	flags[index] |= FLAG_PIPED
 	_retile_neighborhood(underground, terrain, point, true)
 
@@ -587,25 +592,55 @@ static func _place_pipe(
 static func _place_subway_station(
 	underground: PackedByteArray,
 	terrain: PackedByteArray,
+	zones: PackedByteArray,
 	flags: PackedByteArray,
+	misc: PackedByteArray,
 	point: Vector2i
 ) -> void:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	var old_tile := int(underground[index])
-	var inserted := false
+	var inserted_tile := -1
 	if old_tile == 0:
-		underground[index] = UNDER_SUBWAY_FIRST
-		inserted = true
+		inserted_tile = UNDER_SUBWAY_FIRST
 	elif old_tile == UNDER_PIPE_FIRST:
-		underground[index] = UNDER_PIPE_SUBWAY_TB
-		inserted = true
+		inserted_tile = UNDER_PIPE_SUBWAY_TB
 	elif old_tile == UNDER_PIPE_FIRST + 1:
-		underground[index] = UNDER_PIPE_SUBWAY_LR
-		inserted = true
-	if inserted:
+		inserted_tile = UNDER_PIPE_SUBWAY_LR
+	if inserted_tile >= 0:
+		_replace_underground(underground, zones, misc, index, inserted_tile)
 		_retile_neighborhood(underground, terrain, point, false)
-	underground[index] = UNDER_SUBWAY_ENTRANCE
+	_replace_underground(underground, zones, misc, index, UNDER_SUBWAY_ENTRANCE)
 	flags[index] &= ~FLAG_PIPED & 0xff
+
+
+static func _replace_underground(
+	underground: PackedByteArray,
+	zones: PackedByteArray,
+	misc: PackedByteArray,
+	index: int,
+	new_tile: int
+) -> void:
+	var old_tile := int(underground[index])
+	if old_tile == new_tile:
+		return
+	if (zones[index] & 0x0f) != MILITARY_ZONE:
+		var count := _read_u32_be(misc, MISC_SUBWAY_COUNT)
+		if _is_subway_tile(old_tile):
+			count = (count - 1) & 0xffff
+		if _is_subway_tile(new_tile):
+			count = (count + 1) & 0xffff
+		_write_u32_be(misc, MISC_SUBWAY_COUNT, count)
+	underground[index] = new_tile
+
+
+static func _is_subway_tile(tile_id: int) -> bool:
+	return (
+		(tile_id > 0 and tile_id < UNDER_PIPE_FIRST)
+		or tile_id == UNDER_PIPE_SUBWAY_LR
+		or tile_id == UNDER_PIPE_SUBWAY_TB
+		or tile_id == UNDER_UNKNOWN
+		or tile_id == UNDER_SUBWAY_ENTRANCE
+	)
 
 
 static func _retile_neighborhood(
