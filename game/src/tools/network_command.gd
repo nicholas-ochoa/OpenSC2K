@@ -6,6 +6,7 @@ const MISC_TILE_COUNTS := 0x01f0
 const MISC_MILITARY_TILE_COUNTS := 0x0fa8
 const MILITARY_ZONE := 7
 const FLAG_WATER := 0x04
+const FLAG_FLIPPED := 0x02
 const FLAG_PIPED := 0x20
 const FLAG_POWERABLE := 0x80
 
@@ -14,6 +15,28 @@ const MODE_RAIL := 1
 const MODE_POWER := 2
 const MODE_SUBWAY := 3
 const MODE_PIPE := 4
+
+const BRIDGE_CANCELLED := -2
+const BRIDGE_UNSELECTED := -1
+const BRIDGE_WIRE := 0
+const BRIDGE_RAIL := 1
+const BRIDGE_ROAD_CAUSEWAY := 2
+const BRIDGE_ROAD_RAISING := 3
+const BRIDGE_ROAD_SUSPENSION := 4
+
+const BRIDGE_NAMES := [
+	"Raised Wires",
+	"Rail Bridge",
+	"Causeway",
+	"Raising Bridge",
+	"Suspension Bridge",
+]
+const BRIDGE_COSTS := [10, 75, 25, 50, 75]
+const BRIDGE_MODE_MASKS := [0x1c, 0x02, 0x01]
+const BRIDGE_SHORE_DIRECTIONS := [
+	0, 2, 4, 8, 1, 6, 12, 9,
+	3, 0, 0, 0, 0, 0, 0, 0,
+]
 
 const NETWORK_TOOLS := {
 	36: MODE_POWER,
@@ -108,7 +131,8 @@ static func apply(
 	group_index: int,
 	subtool_index: int,
 	start: Vector2i,
-	finish: Vector2i
+	finish: Vector2i,
+	bridge_type := BRIDGE_UNSELECTED
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -130,19 +154,88 @@ static func apply(
 	var altitude: PackedByteArray = changed_payloads.ALTM
 	var mode := int(NETWORK_TOOLS[group_index * ToolCatalog.MAX_SLOTS_PER_GROUP + subtool_index])
 
-	var planned := _plan_route(buildings, terrain, zones, underground, flags, altitude, start, finish, mode)
-	if planned.is_empty():
-		return {"ok": false, "error": "network cannot start on this tile"}
+	var planned := _plan_route(
+		buildings, terrain, zones, underground, flags, altitude,
+		start, finish, mode
+	)
+	var bridge_plan := {}
+	var surface_mode := mode == MODE_ROAD or mode == MODE_RAIL or mode == MODE_POWER
+	if surface_mode:
+		if planned.is_empty() and _is_bridge_wrapper_tile(terrain, flags, start):
+			bridge_plan = _plan_bridge_from_start(
+				buildings, terrain, start, city.compass_rotation()
+			)
+		elif not planned.is_empty():
+			var exit_direction := _route_exit_direction(planned, start, finish)
+			var bridge_start: Vector2i = planned[-1] + DIRECTIONS[exit_direction]
+			if _is_bridge_wrapper_tile(terrain, flags, bridge_start):
+				bridge_plan = _scan_bridge(
+					buildings, terrain, bridge_start, exit_direction, false
+				)
+	if planned.is_empty() and not bridge_plan.get("ok", false):
+		return {
+			"ok": false,
+			"error": bridge_plan.get("error", "network cannot start on this tile"),
+		}
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 	var graded_tiles := 0
-	if mode == MODE_ROAD or mode == MODE_RAIL or mode == MODE_POWER:
+	if surface_mode:
 		for point in planned:
 			var terrain_id := int(terrain[point.x * CityState.MAP_SIZE + point.y])
 			if terrain_id < 0x30 and TERRAIN_REQUIRES_GRADING[terrain_id & 0x0f]:
 				graded_tiles += 1
-	var cost := planned.size() * int(tool.cost) + graded_tiles * 25
-	if city.funds() < cost:
-		return {"ok": false, "error": "insufficient funds", "cost": cost}
+	var dry_cost := planned.size() * int(tool.cost) + graded_tiles * 25
+	if city.funds() < dry_cost:
+		return {"ok": false, "error": "insufficient funds", "cost": dry_cost}
+
+	var selected_bridge := bridge_type
+	var bridge_choices: Array[Dictionary] = []
+	if bridge_plan.get("ok", false):
+		bridge_choices = _bridge_choices(int(bridge_plan.span_length), mode)
+		if mode == MODE_ROAD and selected_bridge == BRIDGE_UNSELECTED:
+			return {
+				"ok": false,
+				"bridge_selection_required": true,
+				"bridge_choices": bridge_choices,
+				"bridge_span_length": bridge_plan.span_length,
+				"dry_cost": dry_cost,
+				"dry_points": planned,
+				"error": "bridge type selection is required",
+			}
+		if mode == MODE_RAIL:
+			selected_bridge = BRIDGE_RAIL
+		elif mode == MODE_POWER:
+			selected_bridge = BRIDGE_WIRE
+		if selected_bridge >= 0 and not _bridge_choice_exists(
+			bridge_choices, selected_bridge
+		):
+			return {"ok": false, "error": "selected bridge type is not available"}
+
+	if (
+		bridge_plan.get("ok", false)
+		and selected_bridge == BRIDGE_CANCELLED
+		and planned.is_empty()
+	):
+		return {"ok": false, "cancelled": true, "error": "bridge selection canceled"}
+
+	var bridge_cost := 0
+	var bridge_built := false
+	var bridge_error := ""
+	if bridge_plan.get("ok", false) and selected_bridge >= 0:
+		bridge_cost = (
+			int(bridge_plan.span_length) * int(BRIDGE_COSTS[selected_bridge])
+		)
+		if city.funds() - dry_cost < bridge_cost:
+			bridge_error = "insufficient funds for the bridge"
+			if planned.is_empty():
+				return {
+					"ok": false,
+					"error": "insufficient funds",
+					"cost": bridge_cost,
+				}
+		else:
+			bridge_built = true
+	var cost := dry_cost + (bridge_cost if bridge_built else 0)
 
 	for point_index in planned.size():
 		var point := planned[point_index]
@@ -162,29 +255,58 @@ static func apply(
 				_place_underground(
 					underground, terrain, zones, flags, misc, point, true
 				)
+	var bridge_points: Array[Vector2i] = []
+	if bridge_built:
+		bridge_points = _place_bridge(
+			altitude,
+			buildings,
+			terrain,
+			zones,
+			flags,
+			misc,
+			bridge_plan,
+			selected_bridge
+		)
 	_write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
-	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "MISC"]:
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not _apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		return {"ok": false, "error": "cannot store network changes"}
+	var all_points: Array[Vector2i] = planned.duplicate()
+	all_points.append_array(bridge_points)
 	return {
 		"ok": true,
 		"command_type": "network",
 		"group_index": group_index,
 		"subtool_index": subtool_index,
 		"mode": mode,
-		"points": planned,
+		"points": all_points,
+		"dry_points": planned,
+		"bridge_points": bridge_points,
+		"bridge_built": bridge_built,
+		"bridge_type": selected_bridge if bridge_built else BRIDGE_UNSELECTED,
+		"bridge_name": bridge_type_name(selected_bridge) if bridge_built else "",
+		"bridge_span_length": bridge_plan.get("span_length", 0),
+		"bridge_cost": bridge_cost if bridge_built else 0,
+		"bridge_error": bridge_error,
 		"cost": cost,
+		"dry_cost": dry_cost,
 		"graded_tiles": graded_tiles,
-		"stopped_early": planned[-1] != finish,
+		"stopped_early": not bridge_built and planned[-1] != finish,
 		"changed_ids": changed_ids,
 		"old_payloads": old_payloads,
 		"new_payloads": changed_payloads,
 		"error": "",
 	}
+
+
+static func bridge_type_name(bridge_type: int) -> String:
+	if bridge_type < 0 or bridge_type >= BRIDGE_NAMES.size():
+		return "Unknown Bridge"
+	return BRIDGE_NAMES[bridge_type]
 
 
 static func undo(city: CityState, command: Dictionary) -> Dictionary:
@@ -203,6 +325,251 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 		return {"ok": false, "error": "cannot restore network changes"}
 	var points: Array = command.get("points", [])
 	return {"ok": true, "restored_tiles": points.size(), "error": ""}
+
+
+static func _is_bridge_wrapper_tile(
+	terrain: PackedByteArray, flags: PackedByteArray, point: Vector2i
+) -> bool:
+	if point.x < 0 or point.x >= 128 or point.y < 0 or point.y >= 128:
+		return false
+	var index := point.x * CityState.MAP_SIZE + point.y
+	return (flags[index] & FLAG_WATER) != 0 and terrain[index] < 0x40
+
+
+static func _plan_bridge_from_start(
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	start: Vector2i,
+	view_rotation: int
+) -> Dictionary:
+	for direction in [
+		view_rotation & 3,
+		(view_rotation + 2) & 3,
+		(view_rotation + 1) & 3,
+		(view_rotation - 1) & 3,
+	]:
+		var plan := _scan_bridge(buildings, terrain, start, direction, true)
+		if plan.get("direction_allowed", false):
+			return plan
+	return {"ok": false, "error": "bridge does not face open water"}
+
+
+static func _scan_bridge(
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	start: Vector2i,
+	direction: int,
+	require_direction: bool
+) -> Dictionary:
+	if start.x < 0 or start.x >= 128 or start.y < 0 or start.y >= 128:
+		return {"ok": false, "error": "bridge start is outside the city"}
+	var start_index := start.x * CityState.MAP_SIZE + start.y
+	var terrain_id := int(terrain[start_index])
+	if terrain_id < 0x20 or terrain_id >= 0x40:
+		return {"ok": false, "error": "bridge must start on shoreline terrain"}
+	var direction_mask := int(BRIDGE_SHORE_DIRECTIONS[terrain_id & 0x0f])
+	if direction_mask == 0:
+		return {"ok": false, "error": "bridge shoreline shape is not eligible"}
+	var direction_allowed := (direction_mask & (1 << direction)) != 0
+	if require_direction and not direction_allowed:
+		return {"ok": false, "direction_allowed": false, "error": ""}
+
+	var span_length := 0
+	var checked := start
+	while true:
+		if span_length != 0:
+			var checked_index := checked.x * CityState.MAP_SIZE + checked.y
+			if buildings[checked_index] != 0:
+				return {
+					"ok": false,
+					"direction_allowed": true,
+					"error": "bridge path contains a structure",
+				}
+		checked += DIRECTIONS[direction]
+		if checked.x < 0 or checked.x >= 128 or checked.y < 0 or checked.y >= 128:
+			return {
+				"ok": false,
+				"direction_allowed": true,
+				"error": "bridge does not reach another bank",
+			}
+		span_length += 1
+		var checked_terrain := int(
+			terrain[checked.x * CityState.MAP_SIZE + checked.y]
+		)
+		if checked_terrain <= 0x0f or checked_terrain >= 0x40:
+			break
+	return {
+		"ok": true,
+		"direction_allowed": true,
+		"start": start,
+		"direction": direction,
+		"span_length": span_length,
+	}
+
+
+static func _route_exit_direction(
+	planned: Array[Vector2i], start: Vector2i, finish: Vector2i
+) -> int:
+	if planned.size() > 1:
+		return _direction_index(planned[-1] - planned[-2])
+	return _primary_direction(start, finish)
+
+
+static func _direction_index(offset: Vector2i) -> int:
+	for direction in DIRECTIONS.size():
+		if DIRECTIONS[direction] == offset:
+			return direction
+	return 0
+
+
+static func _bridge_choices(span_length: int, mode: int) -> Array[Dictionary]:
+	var available_mask := 0x07
+	if span_length > 4 and span_length < 12:
+		available_mask |= 0x08
+	if span_length > 6:
+		available_mask |= 0x10
+	available_mask &= int(BRIDGE_MODE_MASKS[mode])
+	var result: Array[Dictionary] = []
+	for bridge_type in BRIDGE_NAMES.size():
+		if (available_mask & (1 << bridge_type)) == 0:
+			continue
+		result.append({
+			"type": bridge_type,
+			"name": bridge_type_name(bridge_type),
+			"cost_per_tile": BRIDGE_COSTS[bridge_type],
+			"cost": span_length * int(BRIDGE_COSTS[bridge_type]),
+		})
+	return result
+
+
+static func _bridge_choice_exists(choices: Array[Dictionary], bridge_type: int) -> bool:
+	for choice in choices:
+		if int(choice.type) == bridge_type:
+			return true
+	return false
+
+
+static func _place_bridge(
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	plan: Dictionary,
+	bridge_type: int
+) -> Array[Vector2i]:
+	var start: Vector2i = plan.start
+	var direction := int(plan.direction)
+	var span_length := int(plan.span_length)
+	var offset: Vector2i = DIRECTIONS[direction]
+	var result: Array[Vector2i] = []
+	_place_bridge_bank(
+		altitude, buildings, terrain, zones, flags, misc,
+		start, direction, bridge_type, true
+	)
+	result.append(start)
+	for span_index in range(1, span_length - 1):
+		var point := start + offset * span_index
+		var index := point.x * CityState.MAP_SIZE + point.y
+		if (direction & 1) != 0:
+			flags[index] |= FLAG_FLIPPED
+		_replace_building(
+			buildings,
+			zones,
+			misc,
+			index,
+			_bridge_tile(bridge_type, span_length, span_index, direction)
+		)
+		if bridge_type == BRIDGE_WIRE:
+			flags[index] |= FLAG_POWERABLE
+		result.append(point)
+	var finish_offset := maxi(1, span_length - 1)
+	var finish := start + offset * finish_offset
+	_place_bridge_bank(
+		altitude, buildings, terrain, zones, flags, misc,
+		finish, direction, bridge_type, false
+	)
+	result.append(finish)
+	return result
+
+
+static func _place_bridge_bank(
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	flags: PackedByteArray,
+	misc: PackedByteArray,
+	point: Vector2i,
+	direction: int,
+	bridge_type: int,
+	first: bool
+) -> void:
+	var index := point.x * CityState.MAP_SIZE + point.y
+	if terrain[index] < 0x30:
+		_set_land_altitude(
+			altitude, index, _land_altitude(altitude, index) + 1
+		)
+	terrain[index] = (
+		((direction + (1 if first else -1)) & 3) + 1
+	)
+	flags[index] &= ~FLAG_WATER & 0xff
+	var mode := MODE_POWER
+	if bridge_type == BRIDGE_RAIL:
+		mode = MODE_RAIL
+	elif bridge_type >= BRIDGE_ROAD_CAUSEWAY:
+		mode = MODE_ROAD
+	_place_surface(buildings, terrain, zones, flags, misc, point, mode, direction)
+
+
+static func _bridge_tile(
+	bridge_type: int, span_length: int, span_index: int, direction: int
+) -> int:
+	match bridge_type:
+		BRIDGE_WIRE:
+			return 0x5c
+		BRIDGE_RAIL:
+			var middle := int(span_length / 2)
+			if (
+				span_index != middle
+				and span_index >= middle - 2
+				and span_index <= middle + 2
+			):
+				return 0x5b
+			return 0x5a
+		BRIDGE_ROAD_RAISING:
+			var quarter := int((span_length + 1) / 4)
+			if span_index < quarter:
+				return 0x57
+			if span_index == quarter:
+				return 0x56
+			if span_index < span_length - quarter - 1:
+				return 0x58
+			if span_length - quarter - span_index == 1:
+				return 0x56
+			return 0x57
+		BRIDGE_ROAD_SUSPENSION:
+			var pattern_span := (span_length - 2) % 5 + 2
+			var first_pattern := int(pattern_span / 2)
+			var pattern_end := span_length - int((pattern_span + 1) / 2)
+			if span_index < first_pattern or span_index >= pattern_end:
+				return 0x57
+			var pattern_index := (span_index - first_pattern) % 5
+			return 0x51 + pattern_index if direction == 0 or direction == 3 else 0x55 - pattern_index
+		_:
+			return 0x57
+
+
+static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
+	return altitude[index * 2 + 1] & 0x1f
+
+
+static func _set_land_altitude(
+	altitude: PackedByteArray, index: int, value: int
+) -> void:
+	var offset := index * 2
+	altitude[offset + 1] = (altitude[offset + 1] & 0xe0) | (value & 0x1f)
 
 
 static func _plan_route(
@@ -311,9 +678,9 @@ static func _tile_is_eligible(
 			return under_tile + (direction & 1) == 0x11
 		return under_tile + (direction & 1) == 0x02
 
-	if flags[index] & FLAG_WATER:
-		return false
 	var terrain_id := int(terrain[index])
+	if flags[index] & FLAG_WATER and terrain_id < 0x40:
+		return false
 	if terrain_id >= 0x10 and terrain_id < 0x20:
 		return false
 	if terrain_id < 0x40 and TERRAIN_BLOCKS_DIRECTION[(terrain_id & 0x0f) * 4 + direction]:

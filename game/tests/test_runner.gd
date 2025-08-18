@@ -8489,6 +8489,171 @@ func _test_network_command(reference_root: String) -> void:
 	_check(partial.cost == 20, "Partial road route charges only its planned prefix")
 	_check(Networks.undo(city, partial).ok, "Partial road route can be undone")
 
+	for x in range(80, 89):
+		_check(city.set_land_altitude(x, 20, 4), "Bridge fixture sets land altitude")
+		_check(city.set_water_altitude(x, 20, 5), "Bridge fixture sets water altitude")
+		_check(city.set_tile_flag(x, 20, 0x04, x < 88), "Bridge fixture sets surface water")
+		_check(
+			city.set_terrain_id(x, 20, 0x21 if x == 80 else (0x10 if x < 88 else 0)),
+			"Bridge fixture sets shoreline and water terrain",
+		)
+	var bridge_request := Networks.apply(
+		city, 6, 0, Vector2i(80, 20), Vector2i(88, 20)
+	)
+	_check(
+		not bridge_request.ok
+		and bridge_request.bridge_selection_required
+		and bridge_request.bridge_span_length == 8
+		and bridge_request.bridge_choices.size() == 3
+		and bridge_request.bridge_choices[0].type == Networks.BRIDGE_ROAD_CAUSEWAY
+		and bridge_request.bridge_choices[1].type == Networks.BRIDGE_ROAD_RAISING
+		and bridge_request.bridge_choices[2].type == Networks.BRIDGE_ROAD_SUSPENSION,
+		"Road bridge request offers all recovered choices for an eight-tile span",
+	)
+	_check(
+		Networks._bridge_choices(4, Networks.MODE_ROAD).size() == 1
+		and Networks._bridge_choices(5, Networks.MODE_ROAD).size() == 2
+		and Networks._bridge_choices(7, Networks.MODE_ROAD).size() == 3
+		and Networks._bridge_choices(12, Networks.MODE_ROAD).size() == 2,
+		"Road bridge choices use the recovered length limits",
+	)
+	var causeway := Networks.apply(
+		city,
+		6,
+		0,
+		Vector2i(80, 20),
+		Vector2i(88, 20),
+		Networks.BRIDGE_ROAD_CAUSEWAY
+	)
+	_check(
+		causeway.ok
+		and causeway.bridge_built
+		and causeway.bridge_name == "Causeway"
+		and causeway.bridge_span_length == 8
+		and causeway.bridge_points.size() == 8
+		and causeway.bridge_cost == 200
+		and causeway.cost == 200
+		and city.funds() == 9800,
+		"Causeway uses the recovered span count and cost",
+	)
+	_check(
+		city.terrain_id(80, 20) == 3
+		and city.terrain_id(87, 20) == 1
+		and city.land_altitude(80, 20) == 5
+		and city.land_altitude(87, 20) == 5
+		and not city.is_water(80, 20)
+		and not city.is_water(87, 20),
+		"Causeway raises and reshapes both recovered bank tiles",
+	)
+	for x in range(81, 87):
+		_check(
+			city.building_id(x, 20) == 0x57
+			and city.is_water(x, 20)
+			and (city.tile_flags[x * 128 + 20] & 0x02) != 0,
+			"Causeway stores horizontal span tiles with the recovered mirror flag",
+		)
+	_check(Networks.undo(city, causeway).ok, "Causeway placement can be undone")
+	_check(
+		city.funds() == 10000
+		and city.terrain_id(80, 20) == 0x21
+		and city.land_altitude(80, 20) == 4
+		and city.is_water(80, 20),
+		"Causeway undo restores funds, terrain, altitude, and water",
+	)
+
+	var raising_bridge := Networks.apply(
+		city,
+		6,
+		0,
+		Vector2i(80, 20),
+		Vector2i(88, 20),
+		Networks.BRIDGE_ROAD_RAISING
+	)
+	_check(
+		raising_bridge.ok
+		and raising_bridge.bridge_cost == 400
+		and [
+			city.building_id(81, 20), city.building_id(82, 20),
+			city.building_id(83, 20), city.building_id(84, 20),
+			city.building_id(85, 20), city.building_id(86, 20),
+		] == [0x57, 0x56, 0x58, 0x58, 0x56, 0x57],
+		"Raising bridge writes the recovered tower and raised-deck pattern",
+	)
+	_check(Networks.undo(city, raising_bridge).ok, "Raising bridge placement can be undone")
+
+	var suspension_bridge := Networks.apply(
+		city,
+		6,
+		0,
+		Vector2i(80, 20),
+		Vector2i(88, 20),
+		Networks.BRIDGE_ROAD_SUSPENSION
+	)
+	_check(
+		suspension_bridge.ok
+		and suspension_bridge.bridge_cost == 600
+		and [
+			city.building_id(81, 20), city.building_id(82, 20),
+			city.building_id(83, 20), city.building_id(84, 20),
+			city.building_id(85, 20), city.building_id(86, 20),
+		] == [0x55, 0x54, 0x53, 0x52, 0x51, 0x57],
+		"Suspension bridge writes the recovered five-piece pattern",
+	)
+	_check(Networks.undo(city, suspension_bridge).ok, "Suspension bridge placement can be undone")
+
+	var rail_bridge := Networks.apply(
+		city, 7, 0, Vector2i(80, 20), Vector2i(88, 20)
+	)
+	_check(
+		rail_bridge.ok
+		and rail_bridge.bridge_type == Networks.BRIDGE_RAIL
+		and rail_bridge.bridge_cost == 600
+		and [
+			city.building_id(81, 20), city.building_id(82, 20),
+			city.building_id(83, 20), city.building_id(84, 20),
+			city.building_id(85, 20), city.building_id(86, 20),
+		] == [0x5a, 0x5b, 0x5b, 0x5a, 0x5b, 0x5b],
+		"Rail bridge uses the recovered price and pylon pattern",
+	)
+	_check(Networks.undo(city, rail_bridge).ok, "Rail bridge placement can be undone")
+
+	var wire_bridge := Networks.apply(
+		city, 3, 0, Vector2i(80, 20), Vector2i(88, 20)
+	)
+	_check(
+		wire_bridge.ok
+		and wire_bridge.bridge_type == Networks.BRIDGE_WIRE
+		and wire_bridge.bridge_cost == 80,
+		"Raised wires use the recovered ten-dollar span price",
+	)
+	for x in range(81, 87):
+		_check(
+			city.building_id(x, 20) == 0x5c and city.is_powerable(x, 20),
+			"Raised wires store powered bridge tiles",
+		)
+	_check(Networks.undo(city, wire_bridge).ok, "Raised-wire placement can be undone")
+
+	_check(city.set_funds(100), "Bridge funds fixture limits available funds")
+	var bridge_after_road := Networks.apply(
+		city,
+		6,
+		0,
+		Vector2i(75, 20),
+		Vector2i(88, 20),
+		Networks.BRIDGE_ROAD_CAUSEWAY
+	)
+	_check(
+		bridge_after_road.ok
+		and not bridge_after_road.bridge_built
+		and bridge_after_road.bridge_error == "insufficient funds for the bridge"
+		and bridge_after_road.dry_points.size() == 5
+		and bridge_after_road.cost == 50
+		and city.funds() == 50,
+		"An unaffordable bridge keeps and charges the recovered dry route prefix",
+	)
+	_check(Networks.undo(city, bridge_after_road).ok, "Unaffordable bridge prefix can be undone")
+	_check(city.set_funds(10000), "Network fixture restores funds after bridge checks")
+
 	_check(city.set_funds(1), "Network funds fixture sets insufficient funds")
 	var unaffordable := Networks.apply(city, 3, 0, Vector2i(50, 50), Vector2i(51, 50))
 	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "Network command reports insufficient funds")
