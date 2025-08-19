@@ -10,6 +10,11 @@ const STRAIGHT_LAST := 0x50
 const SHAPED_FIRST := 0x61
 const SHAPED_LAST := 0x6b
 const FLAG_WATER := 0x04
+const CONNECTION_LABEL := 0xfa
+const CONNECTION_COST := 1500
+const CONNECTION_UNSELECTED := -1
+const CONNECTION_CANCELLED := 0
+const CONNECTION_CONFIRMED := 1
 
 const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 const SHAPE_BY_CONNECTIONS := [2, 2, 3, 8, 2, 2, 9, 12, 3, 11, 3, 12, 10, 12, 12, 12]
@@ -28,7 +33,8 @@ static func apply(
 	group_index: int,
 	subtool_index: int,
 	selected_start: Vector2i,
-	selected_finish: Vector2i
+	selected_finish: Vector2i,
+	connection_choice := CONNECTION_UNSELECTED
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -42,32 +48,80 @@ static func apply(
 	var old_payloads := NetworkCommand._city_payloads(city)
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
+	var text_chunk := city.document.find_chunk("XTXT")
+	if text_chunk == null or text_chunk.decoded_payload.size() != CityState.TILE_COUNT:
+		return {"ok": false, "error": "required city data is missing or invalid"}
+	old_payloads["XTXT"] = text_chunk.decoded_payload.duplicate()
 	var buildings: PackedByteArray = old_payloads.XBLD
 	var terrain: PackedByteArray = old_payloads.XTER
 	var flags: PackedByteArray = old_payloads.XBIT
+	var text_overlays: PackedByteArray = old_payloads.XTXT
 	var sections := _plan_flat_route(buildings, terrain, flags, start, finish)
 	if sections.is_empty():
 		if _section_has_water(flags, start):
 			return {"ok": false, "error": "highway bridges are not implemented"}
 		return {"ok": false, "error": "highway cannot start on this section"}
-	var cost := sections.size() * int(ToolCatalog.tool(group_index, subtool_index).cost)
-	if city.funds() < cost:
-		return {"ok": false, "error": "insufficient funds", "cost": cost}
+	var route_cost := sections.size() * int(ToolCatalog.tool(group_index, subtool_index).cost)
+	if city.funds() < route_cost:
+		return {"ok": false, "error": "insufficient funds", "cost": route_cost}
+	var connection_anchor: Vector2i = sections[-1]
+	var connection_available := (
+		_is_connection_exit(sections, finish)
+		and text_overlays[start.x * CityState.MAP_SIZE + start.y] != CONNECTION_LABEL
+	)
+	var connection_affordable := city.funds() - route_cost >= CONNECTION_COST
+	if (
+		connection_available
+		and connection_affordable
+		and connection_choice == CONNECTION_UNSELECTED
+	):
+		return {
+			"ok": false,
+			"connection_selection_required": true,
+			"connection_anchor": connection_anchor,
+			"connection_cost": CONNECTION_COST,
+			"route_cost": route_cost,
+			"sections": sections,
+			"error": "neighbor connection confirmation is required",
+		}
+	if connection_choice == CONNECTION_CONFIRMED:
+		if not connection_available:
+			return {"ok": false, "error": "neighbor connection is not available"}
+		if not connection_affordable:
+			return {
+				"ok": false,
+				"error": "insufficient funds",
+				"cost": route_cost + CONNECTION_COST,
+			}
+	var connection_built := connection_choice == CONNECTION_CONFIRMED
+	var cost := route_cost + (CONNECTION_COST if connection_built else 0)
 
 	var changed_payloads := NetworkCommand._duplicate_payloads(old_payloads)
 	buildings = changed_payloads.XBLD
 	terrain = changed_payloads.XTER
 	var zones: PackedByteArray = changed_payloads.XZON
 	flags = changed_payloads.XBIT
+	text_overlays = changed_payloads.XTXT
 	var misc: PackedByteArray = changed_payloads.MISC
 	for section_index in sections.size():
 		var direction := _section_direction(sections, section_index, finish)
 		_place_straight_section(buildings, zones, misc, sections[section_index], direction & 1)
-	_retile_affected_sections(buildings, zones, misc, sections, city.compass_rotation())
+	if connection_built:
+		text_overlays[
+			connection_anchor.x * CityState.MAP_SIZE + connection_anchor.y
+		] = CONNECTION_LABEL
+	_retile_affected_sections(
+		buildings,
+		zones,
+		misc,
+		sections,
+		city.compass_rotation(),
+		text_overlays
+	)
 	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
-	for chunk_id in ["XBLD", "XZON", "MISC"]:
+	for chunk_id in ["XBLD", "XZON", "XTXT", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not NetworkCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
@@ -87,6 +141,18 @@ static func apply(
 		"sections": sections,
 		"tile_indices": tile_indices,
 		"cost": cost,
+		"route_cost": route_cost,
+		"connection_built": connection_built,
+		"connection_cancelled": (
+			connection_available and connection_choice == CONNECTION_CANCELLED
+		),
+		"connection_anchor": connection_anchor,
+		"connection_cost": CONNECTION_COST if connection_built else 0,
+		"connection_error": (
+			"insufficient funds for the neighbor connection"
+			if connection_available and not connection_affordable
+			else ""
+		),
 		"stopped_early": sections[-1] != finish,
 		"changed_ids": changed_ids,
 		"old_payloads": old_payloads,
@@ -238,7 +304,8 @@ static func _retile_affected_sections(
 	zones: PackedByteArray,
 	misc: PackedByteArray,
 	placed: Array[Vector2i],
-	rotation: int
+	rotation: int,
+	text_overlays := PackedByteArray()
 ) -> void:
 	var affected := {}
 	for anchor in placed:
@@ -255,6 +322,18 @@ static func _retile_affected_sections(
 			var neighbor: Vector2i = anchor + DIRECTIONS[direction_index] * 2
 			if _neighbor_can_connect(buildings, neighbor, direction_index):
 				connections |= 1 << direction_index
+		if (
+			text_overlays.size() == CityState.TILE_COUNT
+			and text_overlays[anchor.x * CityState.MAP_SIZE + anchor.y] == CONNECTION_LABEL
+		):
+			if anchor.y < 2:
+				connections |= 1
+			if anchor.x > 125:
+				connections |= 2
+			if anchor.y > 125:
+				connections |= 4
+			if anchor.x < 2:
+				connections |= 8
 		_write_shape(
 			buildings, zones, misc, anchor, SHAPE_BY_CONNECTIONS[connections], rotation
 		)
@@ -333,6 +412,23 @@ static func _direction_between(start: Vector2i, finish: Vector2i) -> int:
 
 static func _anchor_is_in_bounds(anchor: Vector2i) -> bool:
 	return anchor.x >= 0 and anchor.x <= 126 and anchor.y >= 0 and anchor.y <= 126
+
+
+static func _is_connection_exit(
+	sections: Array[Vector2i], finish: Vector2i
+) -> bool:
+	if sections.is_empty():
+		return false
+	var last_index := sections.size() - 1
+	var direction := _section_direction(sections, last_index, finish)
+	var after_exit: Vector2i = sections[last_index] + DIRECTIONS[direction] * 2
+	if not _anchor_is_in_bounds(after_exit):
+		return true
+	return sections.size() == 1 and _anchor_is_on_border(sections[0])
+
+
+static func _anchor_is_on_border(anchor: Vector2i) -> bool:
+	return anchor.x == 0 or anchor.x == 126 or anchor.y == 0 or anchor.y == 126
 
 
 static func _section_has_water(flags: PackedByteArray, anchor: Vector2i) -> bool:

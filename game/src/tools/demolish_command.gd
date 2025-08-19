@@ -613,7 +613,9 @@ static func _demolish_highway_section(
 		if HighwayCommand._anchor_is_in_bounds(adjacent) and HighwayCommand._section_exists(buildings, adjacent):
 			adjacent_sections.append(adjacent)
 	if not adjacent_sections.is_empty():
-		HighwayCommand._retile_affected_sections(buildings, zones, misc, adjacent_sections, rotation)
+		HighwayCommand._retile_affected_sections(
+			buildings, zones, misc, adjacent_sections, rotation, text_overlays
+		)
 	return {"changed": true, "indices": indices, "effect_events": effect_events}
 
 

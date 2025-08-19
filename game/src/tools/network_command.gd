@@ -956,6 +956,9 @@ static func _refresh_city_arrays(city: CityState) -> void:
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
 	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
+	var text_chunk := city.document.find_chunk("XTXT")
+	if text_chunk != null:
+		city.text_overlays = text_chunk.decoded_payload.duplicate()
 	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
 
 

@@ -8814,7 +8814,7 @@ func _test_tunnel_command(reference_root: String) -> void:
 	_check(Tunnels.supports_tool(6, 2), "Tunnel command supports its catalog tool")
 	_check(not Tunnels.supports_tool(6, 1), "Tunnel command rejects the highway tool")
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
-	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT"]:
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
@@ -8908,6 +8908,78 @@ func _test_highway_command(reference_root: String) -> void:
 	_check(crossing_city.set_tile_flag(10, 10, 0x04, true), "Highway water fixture sets water")
 	var water := Highways.apply(crossing_city, 6, 1, Vector2i(10, 10), Vector2i(10, 10))
 	_check(not water.ok and water.error.contains("bridges"), "Highway reports its unimplemented bridge path")
+
+	var connection_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
+		_check(
+			connection_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(size, 0)
+			),
+			"Highway connection fixture clears %s" % chunk_id,
+		)
+	_check(connection_document.set_misc_i32(0x14, 5000), "Highway connection fixture sets funds")
+	_check(connection_document.set_misc_u32(0x01f0, 16384), "Highway connection fixture counts clear tiles")
+	var connection_city := CityModel.from_document(connection_document)
+	var connection_request := Highways.apply(
+		connection_city, 6, 1, Vector2i(120, 10), Vector2i(126, 10)
+	)
+	_check(
+		not connection_request.ok
+		and connection_request.connection_selection_required
+		and connection_request.connection_anchor == Vector2i(126, 10)
+		and connection_request.connection_cost == 1500
+		and connection_request.route_cost == 400
+		and connection_city.funds() == 5000
+		and connection_city.building_id(120, 10) == 0,
+		"Highway exit requests the recovered neighbor connection before changing the city",
+	)
+	var canceled_connection := Highways.apply(
+		connection_city,
+		6,
+		1,
+		Vector2i(120, 10),
+		Vector2i(126, 10),
+		Highways.CONNECTION_CANCELLED
+	)
+	_check(
+		canceled_connection.ok
+		and canceled_connection.connection_cancelled
+		and not canceled_connection.connection_built
+		and canceled_connection.cost == 400
+		and connection_city.funds() == 4600
+		and connection_city.text_overlay_id(126, 10) == 0,
+		"Canceling a neighbor connection still builds and charges the highway route",
+	)
+	_check(
+		Highways.undo(connection_city, canceled_connection).ok
+		and connection_city.funds() == 5000,
+		"Canceled highway connection route can be undone",
+	)
+	var confirmed_connection := Highways.apply(
+		connection_city,
+		6,
+		1,
+		Vector2i(120, 10),
+		Vector2i(126, 10),
+		Highways.CONNECTION_CONFIRMED
+	)
+	_check(
+		confirmed_connection.ok
+		and confirmed_connection.connection_built
+		and confirmed_connection.cost == 1900
+		and confirmed_connection.connection_cost == 1500
+		and connection_city.funds() == 3100
+		and connection_city.text_overlay_id(126, 10) == 0xfa
+		and connection_city.building_id(126, 10) == 0x4a,
+		"Confirmed highway connection stores XTXT 0xFA and charges the recovered cost",
+	)
+	_check(
+		Highways.undo(connection_city, confirmed_connection).ok
+		and connection_city.funds() == 5000
+		and connection_city.text_overlay_id(126, 10) == 0,
+		"Highway connection undo restores the route, label, and funds",
+	)
 
 
 func _test_demolish_command(reference_root: String) -> void:
