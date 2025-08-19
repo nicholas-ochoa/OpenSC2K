@@ -289,6 +289,9 @@ static func apply(
 		"bridge_built": bridge_built,
 		"bridge_type": selected_bridge if bridge_built else BRIDGE_UNSELECTED,
 		"bridge_name": bridge_type_name(selected_bridge) if bridge_built else "",
+		"bridge_cancelled": (
+			bridge_plan.get("ok", false) and selected_bridge == BRIDGE_CANCELLED
+		),
 		"bridge_span_length": bridge_plan.get("span_length", 0),
 		"bridge_cost": bridge_cost if bridge_built else 0,
 		"bridge_error": bridge_error,

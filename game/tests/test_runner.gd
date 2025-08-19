@@ -8517,6 +8517,43 @@ func _test_network_command(reference_root: String) -> void:
 		and Networks._bridge_choices(12, Networks.MODE_ROAD).size() == 2,
 		"Road bridge choices use the recovered length limits",
 	)
+	var direct_bridge_cancel := Networks.apply(
+		city,
+		6,
+		0,
+		Vector2i(80, 20),
+		Vector2i(88, 20),
+		Networks.BRIDGE_CANCELLED
+	)
+	_check(
+		not direct_bridge_cancel.ok
+		and direct_bridge_cancel.cancelled
+		and city.funds() == 10000
+		and city.building_id(80, 20) == 0,
+		"Canceling a direct bridge does not change the city",
+	)
+	var prefix_bridge_cancel := Networks.apply(
+		city,
+		6,
+		0,
+		Vector2i(75, 20),
+		Vector2i(88, 20),
+		Networks.BRIDGE_CANCELLED
+	)
+	_check(
+		prefix_bridge_cancel.ok
+		and prefix_bridge_cancel.bridge_cancelled
+		and prefix_bridge_cancel.dry_points.size() == 5
+		and prefix_bridge_cancel.cost == 50
+		and city.funds() == 9950
+		and city.building_id(79, 20) != 0
+		and city.building_id(80, 20) == 0,
+		"Canceling a bridge keeps and charges its dry route prefix",
+	)
+	_check(
+		Networks.undo(city, prefix_bridge_cancel).ok and city.funds() == 10000,
+		"Canceled bridge prefix can be undone",
+	)
 	var causeway := Networks.apply(
 		city,
 		6,

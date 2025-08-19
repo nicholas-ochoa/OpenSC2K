@@ -162,6 +162,9 @@ var sidebar_panel: PanelContainer
 var sidebar_toggle_button: Button
 var sign_dialog: ConfirmationDialog
 var sign_input: LineEdit
+var bridge_dialog: ConfirmationDialog
+var bridge_choice_buttons: Array[Button] = []
+var pending_bridge_request: Dictionary = {}
 var query_dialog: AcceptDialog
 var sound_player: AudioStreamPlayer
 var budget_dialog: ConfirmationDialog
@@ -219,6 +222,7 @@ func _process(delta: float) -> void:
 	var interaction_suspended := (
 		(map_view != null and map_view.is_left_drag_active())
 		or budget_dialog.visible
+		or bridge_dialog.visible
 		or military_dialog.visible
 		or game_over_active
 	)
@@ -615,6 +619,31 @@ func _build_interface(toolbar_art: Image) -> void:
 	sign_input.offset_bottom = 92
 	sign_dialog.add_child(sign_input)
 	add_child(sign_dialog)
+
+	bridge_dialog = ConfirmationDialog.new()
+	bridge_dialog.title = "Select Bridge"
+	bridge_dialog.dialog_text = "Select a bridge type."
+	bridge_dialog.min_size = Vector2i(660, 250)
+	bridge_dialog.exclusive = true
+	bridge_dialog.get_ok_button().visible = false
+	bridge_dialog.get_cancel_button().text = "Cancel"
+	bridge_dialog.canceled.connect(_cancel_bridge)
+	var bridge_choices := HBoxContainer.new()
+	bridge_choices.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	bridge_choices.offset_left = 16
+	bridge_choices.offset_top = 72
+	bridge_choices.offset_right = -16
+	bridge_choices.offset_bottom = 180
+	bridge_choices.add_theme_constant_override("separation", 8)
+	bridge_dialog.add_child(bridge_choices)
+	for choice_index in 3:
+		var choice_button := Button.new()
+		choice_button.custom_minimum_size = Vector2(200, 104)
+		choice_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		choice_button.pressed.connect(_choose_bridge.bind(choice_index))
+		bridge_choices.add_child(choice_button)
+		bridge_choice_buttons.append(choice_button)
+	add_child(bridge_dialog)
 
 	query_dialog = AcceptDialog.new()
 	query_dialog.title = "Query"
@@ -1107,6 +1136,9 @@ func _load_city(path: String) -> void:
 	military_proposal_pending = false
 	if military_dialog.visible:
 		military_dialog.hide()
+	pending_bridge_request.clear()
+	if bridge_dialog.visible:
+		bridge_dialog.hide()
 	annual_budget_pending = false
 	game_over_active = false
 	city = loaded_city
@@ -1994,25 +2026,7 @@ func _apply_map_selection(
 			status_label.text += " %d structure conflicts were not changed." % terrain_change.skipped_conflicts
 		return
 	if Networks.supports_tool(selected_group, selected_subtool):
-		var network := Networks.apply(city, selected_group, selected_subtool, start, finish)
-		if not network.ok:
-			_show_error(
-				"Cannot build %s: %s"
-				% [Tools.tool(selected_group, selected_subtool).name, network.error]
-			)
-			return
-		last_edit_command = network
-		undo_button.disabled = false
-		_refresh_details()
-		_refresh_map(false)
-		status_label.remove_theme_color_override("font_color")
-		status_label.text = "Built %d %s tiles for $%s." % [
-			network.points.size(),
-			Tools.tool(selected_group, selected_subtool).name,
-			_format_number(network.cost),
-		]
-		if network.stopped_early:
-			status_label.text += " The route stopped at an obstruction."
+		_apply_network_selection(start, finish)
 		return
 	if Hydro.supports_tool(selected_group, selected_subtool):
 		var hydro := Hydro.apply(city, selected_group, selected_subtool, finish, tool_random)
@@ -2114,6 +2128,138 @@ func _apply_map_selection(
 		command.tile_indices.size(),
 		_format_number(command.cost),
 	]
+
+
+func _apply_network_selection(
+	start: Vector2i,
+	finish: Vector2i,
+	bridge_type := Networks.BRIDGE_UNSELECTED,
+	group_index := -1,
+	subtool_index := -1
+) -> void:
+	if group_index < 0:
+		group_index = selected_group
+	if subtool_index < 0:
+		subtool_index = selected_subtool
+	var tool_name: String = Tools.tool(group_index, subtool_index).name
+	var network := Networks.apply(
+		city, group_index, subtool_index, start, finish, bridge_type
+	)
+	if network.get("bridge_selection_required", false):
+		_open_bridge_dialog(start, finish, group_index, subtool_index, network)
+		return
+	if network.get("cancelled", false):
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Bridge selection canceled. No action was taken."
+		return
+	if not network.get("ok", false):
+		_show_error(
+			"Cannot build %s: %s"
+			% [tool_name, network.get("error", "unknown error")]
+		)
+		return
+	last_edit_command = network
+	undo_button.disabled = false
+	_refresh_details()
+	_refresh_map(false)
+	status_label.remove_theme_color_override("font_color")
+	var dry_count := int(network.get("dry_points", []).size())
+	if network.get("bridge_built", false):
+		if dry_count > 0:
+			status_label.text = "Built %d %s tiles and a %s across %d water tiles for $%s." % [
+				dry_count,
+				tool_name,
+				network.get("bridge_name", "bridge"),
+				int(network.get("bridge_span_length", 0)),
+				_format_number(int(network.get("cost", 0))),
+			]
+		else:
+			status_label.text = "Built a %s across %d water tiles for $%s." % [
+				network.get("bridge_name", "bridge"),
+				int(network.get("bridge_span_length", 0)),
+				_format_number(int(network.get("cost", 0))),
+			]
+	else:
+		status_label.text = "Built %d %s tiles for $%s." % [
+			dry_count, tool_name, _format_number(int(network.get("cost", 0)))
+		]
+		if network.get("bridge_cancelled", false):
+			status_label.text += " Bridge selection was canceled."
+		elif not String(network.get("bridge_error", "")).is_empty():
+			status_label.text += " The bridge was not built: %s." % network.bridge_error
+		elif network.get("stopped_early", false):
+			status_label.text += " The route stopped at an obstruction."
+
+
+func _open_bridge_dialog(
+	start: Vector2i,
+	finish: Vector2i,
+	group_index: int,
+	subtool_index: int,
+	result: Dictionary
+) -> void:
+	pending_bridge_request = {
+		"start": start,
+		"finish": finish,
+		"group_index": group_index,
+		"subtool_index": subtool_index,
+		"choices": result.get("bridge_choices", []),
+		"dry_points": result.get("dry_points", []),
+	}
+	bridge_dialog.dialog_text = "Select a bridge for %d water tiles." % int(
+		result.get("bridge_span_length", 0)
+	)
+	var choices: Array = pending_bridge_request.choices
+	for choice_index in bridge_choice_buttons.size():
+		var choice_button := bridge_choice_buttons[choice_index]
+		choice_button.visible = choice_index < choices.size()
+		if not choice_button.visible:
+			continue
+		var choice: Dictionary = choices[choice_index]
+		choice_button.text = "%s\n$%s total\n$%s for each water tile" % [
+			choice.get("name", "Bridge"),
+			_format_number(int(choice.get("cost", 0))),
+			_format_number(int(choice.get("cost_per_tile", 0))),
+		]
+		choice_button.tooltip_text = "Build %s" % choice.get("name", "bridge")
+	bridge_dialog.popup_centered()
+
+
+func _choose_bridge(choice_index: int) -> void:
+	if pending_bridge_request.is_empty():
+		return
+	var request := pending_bridge_request.duplicate(true)
+	var choices: Array = request.get("choices", [])
+	if choice_index < 0 or choice_index >= choices.size():
+		return
+	var choice: Dictionary = choices[choice_index]
+	pending_bridge_request.clear()
+	bridge_dialog.hide()
+	_apply_network_selection(
+		request.start,
+		request.finish,
+		int(choice.get("type", Networks.BRIDGE_UNSELECTED)),
+		int(request.group_index),
+		int(request.subtool_index)
+	)
+
+
+func _cancel_bridge() -> void:
+	if pending_bridge_request.is_empty():
+		return
+	var request := pending_bridge_request.duplicate(true)
+	pending_bridge_request.clear()
+	if request.get("dry_points", []).is_empty():
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Bridge selection canceled. No action was taken."
+		return
+	_apply_network_selection(
+		request.start,
+		request.finish,
+		Networks.BRIDGE_CANCELLED,
+		int(request.group_index),
+		int(request.subtool_index)
+	)
 
 
 func _undo_last_edit() -> void:
