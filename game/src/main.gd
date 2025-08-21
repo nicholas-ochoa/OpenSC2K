@@ -165,6 +165,8 @@ var sign_input: LineEdit
 var bridge_dialog: ConfirmationDialog
 var bridge_choice_buttons: Array[Button] = []
 var pending_bridge_request: Dictionary = {}
+var highway_connection_dialog: ConfirmationDialog
+var pending_highway_connection: Dictionary = {}
 var query_dialog: AcceptDialog
 var sound_player: AudioStreamPlayer
 var budget_dialog: ConfirmationDialog
@@ -223,6 +225,7 @@ func _process(delta: float) -> void:
 		(map_view != null and map_view.is_left_drag_active())
 		or budget_dialog.visible
 		or bridge_dialog.visible
+		or highway_connection_dialog.visible
 		or military_dialog.visible
 		or game_over_active
 	)
@@ -644,6 +647,19 @@ func _build_interface(toolbar_art: Image) -> void:
 		bridge_choices.add_child(choice_button)
 		bridge_choice_buttons.append(choice_button)
 	add_child(bridge_dialog)
+
+	highway_connection_dialog = ConfirmationDialog.new()
+	highway_connection_dialog.title = "Neighbor Connection"
+	highway_connection_dialog.dialog_text = (
+		"Build a highway connection to a neighboring city for $1,500?"
+	)
+	highway_connection_dialog.min_size = Vector2i(520, 210)
+	highway_connection_dialog.exclusive = true
+	highway_connection_dialog.get_ok_button().text = "Build Connection"
+	highway_connection_dialog.get_cancel_button().text = "Keep Highway"
+	highway_connection_dialog.confirmed.connect(_confirm_highway_connection)
+	highway_connection_dialog.canceled.connect(_cancel_highway_connection)
+	add_child(highway_connection_dialog)
 
 	query_dialog = AcceptDialog.new()
 	query_dialog.title = "Query"
@@ -1139,6 +1155,9 @@ func _load_city(path: String) -> void:
 	pending_bridge_request.clear()
 	if bridge_dialog.visible:
 		bridge_dialog.hide()
+	pending_highway_connection.clear()
+	if highway_connection_dialog.visible:
+		highway_connection_dialog.hide()
 	annual_budget_pending = false
 	game_over_active = false
 	city = loaded_city
@@ -2078,20 +2097,7 @@ func _apply_map_selection(
 		]
 		return
 	if Highways.supports_tool(selected_group, selected_subtool):
-		var highway := Highways.apply(city, selected_group, selected_subtool, start, finish)
-		if not highway.ok:
-			_show_error("Cannot build highway: %s" % highway.error)
-			return
-		last_edit_command = highway
-		undo_button.disabled = false
-		_refresh_details()
-		_refresh_map(false)
-		status_label.remove_theme_color_override("font_color")
-		status_label.text = "Built %d highway sections for $%s." % [
-			highway.sections.size(), _format_number(highway.cost)
-		]
-		if highway.stopped_early:
-			status_label.text += " The route stopped at an obstruction."
+		_apply_highway_selection(start, finish)
 		return
 	if Buildings.supports_tool(selected_group, selected_subtool):
 		var building := Buildings.apply(
@@ -2260,6 +2266,74 @@ func _cancel_bridge() -> void:
 		int(request.group_index),
 		int(request.subtool_index)
 	)
+
+
+func _apply_highway_selection(
+	start: Vector2i,
+	finish: Vector2i,
+	connection_choice := Highways.CONNECTION_UNSELECTED
+) -> void:
+	var highway := Highways.apply(
+		city, selected_group, selected_subtool, start, finish, connection_choice
+	)
+	if highway.get("connection_selection_required", false):
+		pending_highway_connection = {
+			"start": start,
+			"finish": finish,
+			"group_index": selected_group,
+			"subtool_index": selected_subtool,
+		}
+		highway_connection_dialog.dialog_text = (
+			"Build a highway connection to a neighboring city for $%s?\n"
+			+ "The %d-section highway costs $%s and remains if you cancel."
+		) % [
+			_format_number(int(highway.get("connection_cost", 0))),
+			highway.get("sections", []).size(),
+			_format_number(int(highway.get("route_cost", 0))),
+		]
+		highway_connection_dialog.popup_centered()
+		return
+	if not highway.get("ok", false):
+		_show_error("Cannot build highway: %s" % highway.get("error", "unknown error"))
+		return
+	last_edit_command = highway
+	undo_button.disabled = false
+	_refresh_details()
+	_refresh_map(false)
+	status_label.remove_theme_color_override("font_color")
+	if highway.get("connection_built", false):
+		status_label.text = "Built %d highway sections and a neighboring-city connection for $%s." % [
+			highway.sections.size(), _format_number(int(highway.cost))
+		]
+	else:
+		status_label.text = "Built %d highway sections for $%s." % [
+			highway.sections.size(), _format_number(int(highway.cost))
+		]
+		if highway.get("connection_cancelled", false):
+			status_label.text += " The neighbor connection was canceled."
+		elif not String(highway.get("connection_error", "")).is_empty():
+			status_label.text += " The connection was not offered because funds are too low."
+		elif highway.get("stopped_early", false):
+			status_label.text += " The route stopped at an obstruction."
+
+
+func _confirm_highway_connection() -> void:
+	_apply_pending_highway_connection(Highways.CONNECTION_CONFIRMED)
+
+
+func _cancel_highway_connection() -> void:
+	_apply_pending_highway_connection(Highways.CONNECTION_CANCELLED)
+
+
+func _apply_pending_highway_connection(connection_choice: int) -> void:
+	if pending_highway_connection.is_empty():
+		return
+	var request := pending_highway_connection.duplicate()
+	pending_highway_connection.clear()
+	highway_connection_dialog.hide()
+	selected_group = int(request.group_index)
+	selected_subtool = int(request.subtool_index)
+	_apply_highway_selection(request.start, request.finish, connection_choice)
 
 
 func _undo_last_edit() -> void:
