@@ -8981,6 +8981,148 @@ func _test_highway_command(reference_root: String) -> void:
 		"Highway connection undo restores the route, label, and funds",
 	)
 
+	var grade_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
+		_check(
+			grade_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(size, 0)
+			),
+			"Graded highway fixture clears %s" % chunk_id,
+		)
+	_check(grade_document.set_misc_i32(0x14, 5000), "Graded highway fixture sets funds")
+	_check(
+		grade_document.set_misc_u32(0x01f0, 16384),
+		"Graded highway fixture counts clear tiles",
+	)
+	var grade_city := CityModel.from_document(grade_document)
+	var north_slope := [
+		[Vector2i(20, 20), 1],
+		[Vector2i(21, 20), 1],
+		[Vector2i(21, 21), 0],
+		[Vector2i(20, 21), 0],
+	]
+	for entry in north_slope:
+		_check(
+			grade_city.set_terrain_id(entry[0].x, entry[0].y, entry[1]),
+			"Graded highway fixture writes the north slope",
+		)
+	var north_grade := Highways.apply(
+		grade_city, 6, 1, Vector2i(20, 20), Vector2i(20, 20)
+	)
+	_check(
+		north_grade.ok
+		and north_grade.graded_sections == 1
+		and north_grade.cost == 100
+		and grade_city.funds() == 4900,
+		"A north slope builds one graded highway section for one hundred dollars",
+	)
+	for point in [Vector2i(20, 20), Vector2i(21, 20), Vector2i(21, 21), Vector2i(20, 21)]:
+		_check(
+			grade_city.building_id(point.x, point.y) == 0x62,
+			"The north grade stores composite tile 0x62",
+		)
+	_check(
+		[
+			grade_city.terrain_id(20, 20),
+			grade_city.terrain_id(21, 20),
+			grade_city.terrain_id(21, 21),
+			grade_city.terrain_id(20, 21),
+		] == [0x0d, 0x0d, 0x02, 0x02],
+		"The north grade writes the recovered terrain pattern",
+	)
+	_check(
+		Highways.undo(grade_city, north_grade).ok
+		and grade_city.funds() == 5000
+		and grade_city.terrain_id(20, 20) == 1
+		and grade_city.building_id(20, 20) == 0,
+		"Graded highway undo restores terrain, tiles, and funds",
+	)
+
+	var east_slope := [
+		[Vector2i(30, 30), 0],
+		[Vector2i(31, 30), 1],
+		[Vector2i(31, 31), 1],
+		[Vector2i(30, 31), 0],
+	]
+	for entry in east_slope:
+		_check(
+			grade_city.set_terrain_id(entry[0].x, entry[0].y, entry[1]),
+			"Graded highway fixture writes the east slope",
+		)
+	var east_grade := Highways.apply(
+		grade_city, 6, 1, Vector2i(30, 30), Vector2i(30, 30)
+	)
+	_check(
+		east_grade.ok
+		and east_grade.graded_sections == 1
+		and grade_city.building_id(30, 30) == 0x63,
+		"An east slope builds composite highway tile 0x63",
+	)
+	_check(
+		[
+			grade_city.terrain_id(30, 30),
+			grade_city.terrain_id(31, 30),
+			grade_city.terrain_id(31, 31),
+			grade_city.terrain_id(30, 31),
+		] == [0x03, 0x0d, 0x0d, 0x03],
+		"The east grade writes the recovered terrain pattern",
+	)
+	_check(Highways.undo(grade_city, east_grade).ok, "The east grade can be undone")
+
+	_check(
+		grade_city.set_building_id(40, 40, 0xd0),
+		"Invalid highway grade fixture places a building",
+	)
+	_check(
+		Highways._terrain_section_shape(
+			grade_document.find_chunk("XBLD").decoded_payload,
+			grade_document.find_chunk("XTER").decoded_payload,
+			grade_document.find_chunk("ALTM").decoded_payload,
+			Vector2i(40, 40)
+		) == Highways.INVALID_TERRAIN_SHAPE,
+		"Highway terrain validation rejects an occupied section",
+	)
+	_check(
+		grade_city.set_building_id(40, 40, 0),
+		"Invalid highway grade fixture removes its building",
+	)
+
+	for x in range(52, 54):
+		for y in range(50, 52):
+			_check(
+				grade_city.set_land_altitude(x, y, 2),
+				"Highway elevation fixture raises the next section two levels",
+			)
+	var steep_route := Highways.apply(
+		grade_city, 6, 1, Vector2i(50, 50), Vector2i(52, 50)
+	)
+	_check(
+		steep_route.ok
+		and steep_route.stopped_early
+		and steep_route.sections == [Vector2i(50, 50)]
+		and steep_route.cost == 100,
+		"A highway route stops before a section more than one level away",
+	)
+	_check(Highways.undo(grade_city, steep_route).ok, "The stopped elevation route can be undone")
+	for x in range(52, 54):
+		for y in range(50, 52):
+			_check(
+				grade_city.set_land_altitude(x, y, 1),
+				"Highway elevation fixture lowers the next section to one level",
+			)
+	var stepped_route := Highways.apply(
+		grade_city, 6, 1, Vector2i(50, 50), Vector2i(52, 50)
+	)
+	_check(
+		stepped_route.ok
+		and not stepped_route.stopped_early
+		and stepped_route.sections.size() == 2
+		and stepped_route.cost == 200,
+		"A highway route accepts a section one level away",
+	)
+	_check(Highways.undo(grade_city, stepped_route).ok, "The one-level route can be undone")
+
 
 func _test_demolish_command(reference_root: String) -> void:
 	_check(Demolish.supports_tool(0, 0), "Demolish command supports its catalog tool")

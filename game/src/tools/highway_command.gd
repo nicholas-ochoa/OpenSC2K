@@ -18,6 +18,10 @@ const CONNECTION_CONFIRMED := 1
 
 const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 const SHAPE_BY_CONNECTIONS := [2, 2, 3, 8, 2, 2, 9, 12, 3, 11, 3, 12, 10, 12, 12, 12]
+const SLOPE_CLASS := [0, 1, 1, 1, 1, 2, 2, 2, 2, 3, 3, 3, 3, 4]
+const INVALID_TERRAIN_SHAPE := -1
+const FLAT_TERRAIN_SHAPE := 0x0f
+const FILLED_FLAT_TERRAIN_SHAPE := 0x4000
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
@@ -55,8 +59,11 @@ static func apply(
 	var buildings: PackedByteArray = old_payloads.XBLD
 	var terrain: PackedByteArray = old_payloads.XTER
 	var flags: PackedByteArray = old_payloads.XBIT
+	var altitude: PackedByteArray = old_payloads.ALTM
 	var text_overlays: PackedByteArray = old_payloads.XTXT
-	var sections := _plan_flat_route(buildings, terrain, flags, start, finish)
+	var sections := _plan_flat_route(
+		buildings, terrain, flags, altitude, start, finish
+	)
 	if sections.is_empty():
 		if _section_has_water(flags, start):
 			return {"ok": false, "error": "highway bridges are not implemented"}
@@ -101,11 +108,37 @@ static func apply(
 	terrain = changed_payloads.XTER
 	var zones: PackedByteArray = changed_payloads.XZON
 	flags = changed_payloads.XBIT
+	altitude = changed_payloads.ALTM
 	text_overlays = changed_payloads.XTXT
 	var misc: PackedByteArray = changed_payloads.MISC
+	var graded_sections := 0
 	for section_index in sections.size():
 		var direction := _section_direction(sections, section_index, finish)
-		_place_straight_section(buildings, zones, misc, sections[section_index], direction & 1)
+		var section := sections[section_index]
+		var terrain_shape := _terrain_section_shape(
+			buildings, terrain, altitude, section
+		)
+		if terrain_shape == FLAT_TERRAIN_SHAPE:
+			_place_straight_section(buildings, zones, misc, section, direction & 1)
+		elif terrain_shape == FILLED_FLAT_TERRAIN_SHAPE or terrain_shape == 0:
+			_prepare_flat_terrain(terrain, altitude, section)
+			_place_straight_section(buildings, zones, misc, section, direction & 1)
+			graded_sections += 1
+		else:
+			var grade_kind := _grade_kind_for_shape(terrain_shape)
+			if grade_kind < 0:
+				return {"ok": false, "error": "highway terrain grade is invalid"}
+			_place_graded_section(
+				altitude,
+				buildings,
+				terrain,
+				zones,
+				misc,
+				section,
+				grade_kind,
+				city.compass_rotation()
+			)
+			graded_sections += 1
 	if connection_built:
 		text_overlays[
 			connection_anchor.x * CityState.MAP_SIZE + connection_anchor.y
@@ -121,7 +154,7 @@ static func apply(
 	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
-	for chunk_id in ["XBLD", "XZON", "XTXT", "MISC"]:
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XTXT", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not NetworkCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
@@ -148,6 +181,7 @@ static func apply(
 		),
 		"connection_anchor": connection_anchor,
 		"connection_cost": CONNECTION_COST if connection_built else 0,
+		"graded_sections": graded_sections,
 		"connection_error": (
 			"insufficient funds for the neighbor connection"
 			if connection_available and not connection_affordable
@@ -183,24 +217,37 @@ static func _plan_flat_route(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	flags: PackedByteArray,
+	altitude: PackedByteArray,
 	start: Vector2i,
 	finish: Vector2i
 ) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var current := start
 	var direction := _primary_direction(current, finish)
-	if not _section_is_flat_eligible(buildings, terrain, flags, current, direction):
+	if not _section_is_flat_eligible(
+		buildings, terrain, flags, altitude, current, direction
+	):
 		return result
 	result.append(current)
 	while current != finish:
-		direction = _primary_direction(current, finish)
+		var current_shape := _terrain_section_shape(
+			buildings, terrain, altitude, current
+		)
+		if current_shape == FLAT_TERRAIN_SHAPE:
+			direction = _primary_direction(current, finish)
 		var next: Vector2i = current + DIRECTIONS[direction] * 2
-		if not _section_is_flat_eligible(buildings, terrain, flags, next, direction):
+		if not _section_follows(
+			buildings, terrain, flags, altitude, current, next, direction
+		):
+			if current_shape != FLAT_TERRAIN_SHAPE:
+				break
 			var alternate := _alternate_direction(current, finish, direction)
 			if alternate < 0:
 				break
 			next = current + DIRECTIONS[alternate] * 2
-			if not _section_is_flat_eligible(buildings, terrain, flags, next, alternate):
+			if not _section_follows(
+				buildings, terrain, flags, altitude, current, next, alternate
+			):
 				break
 			direction = alternate
 		current = next
@@ -230,6 +277,7 @@ static func _section_is_flat_eligible(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	flags: PackedByteArray,
+	altitude: PackedByteArray,
 	anchor: Vector2i,
 	direction: int
 ) -> bool:
@@ -238,14 +286,165 @@ static func _section_is_flat_eligible(
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
 		var index := point.x * CityState.MAP_SIZE + point.y
-		if terrain[index] != 0 or (flags[index] & FLAG_WATER) != 0:
+		if (flags[index] & FLAG_WATER) != 0:
 			return false
 		var tile_id := int(buildings[index])
 		if not _building_is_allowed(tile_id):
 			return false
 		if tile_id > 0x0e and not _network_can_cross(tile_id, direction):
 			return false
-	return true
+	return (
+		_terrain_section_shape(buildings, terrain, altitude, anchor)
+		!= INVALID_TERRAIN_SHAPE
+	)
+
+
+static func _section_follows(
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	flags: PackedByteArray,
+	altitude: PackedByteArray,
+	current: Vector2i,
+	candidate: Vector2i,
+	direction: int
+) -> bool:
+	if not _section_is_flat_eligible(
+		buildings, terrain, flags, altitude, candidate, direction
+	):
+		return false
+	return absi(
+		_section_altitude(terrain, altitude, candidate)
+		- _section_altitude(terrain, altitude, current)
+	) <= 1
+
+
+static func _terrain_section_shape(
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	altitude: PackedByteArray,
+	anchor: Vector2i
+) -> int:
+	if not _anchor_is_in_bounds(anchor):
+		return INVALID_TERRAIN_SHAPE
+	if (
+		buildings.size() != CityState.TILE_COUNT
+		or terrain.size() != CityState.TILE_COUNT
+		or altitude.size() != CityState.TILE_COUNT * 2
+	):
+		return INVALID_TERRAIN_SHAPE
+	var offsets := [
+		Vector2i.ZERO,
+		Vector2i(1, 0),
+		Vector2i(1, 1),
+		Vector2i(0, 1),
+	]
+	var class_masks := PackedInt32Array([0, 0, 0, 0, 0])
+	var heights := PackedInt32Array()
+	for offset_index in offsets.size():
+		var point: Vector2i = anchor + offsets[offset_index]
+		var index := point.x * CityState.MAP_SIZE + point.y
+		if not _building_is_allowed(int(buildings[index])):
+			return INVALID_TERRAIN_SHAPE
+		var terrain_id := int(terrain[index])
+		var slope_class: int = (
+			SLOPE_CLASS[terrain_id] if terrain_id < SLOPE_CLASS.size() else 0
+		)
+		class_masks[slope_class] |= 1 << offset_index
+		heights.append(_land_altitude(altitude, index))
+	var odd_slope_mask := class_masks[1] | class_masks[3]
+	var terrain_mask := (
+		class_masks[1] | class_masks[2] | class_masks[3] | class_masks[4]
+	)
+	if terrain_mask == 0:
+		return FLAT_TERRAIN_SHAPE
+	if (
+		(heights[2] < heights[0] and (terrain_mask & 1) != 0)
+		or (heights[0] < heights[2] and (terrain_mask & 4) != 0)
+		or (heights[3] < heights[1] and (terrain_mask & 2) != 0)
+		or (heights[1] < heights[3] and (terrain_mask & 8) != 0)
+	):
+		return INVALID_TERRAIN_SHAPE
+	var minimum_height := heights[0]
+	for height in heights:
+		minimum_height = mini(minimum_height, height)
+	var raised_mask := 0
+	for height_index in heights.size():
+		if minimum_height < heights[height_index]:
+			raised_mask |= 1 << height_index
+	if 0x0f - raised_mask == class_masks[4]:
+		return FILLED_FLAT_TERRAIN_SHAPE
+	if raised_mask == 0 and int(terrain[anchor.x * CityState.MAP_SIZE + anchor.y]) == 0x0d:
+		return FILLED_FLAT_TERRAIN_SHAPE
+
+	var result := 0
+	if raised_mask == 0:
+		if odd_slope_mask == 8 or odd_slope_mask == 1 or odd_slope_mask == 9:
+			result |= 1
+		if odd_slope_mask == 1 or odd_slope_mask == 2 or odd_slope_mask == 3:
+			result |= 2
+		if odd_slope_mask == 2 or odd_slope_mask == 4 or odd_slope_mask == 6:
+			result |= 4
+		if odd_slope_mask == 4 or odd_slope_mask == 8 or odd_slope_mask == 12:
+			result |= 8
+	if (
+		(raised_mask == 8 or raised_mask == 1 or raised_mask == 9)
+		and (odd_slope_mask & 6) == 6
+	):
+		result |= 1
+	if (
+		(raised_mask == 1 or raised_mask == 2 or raised_mask == 3)
+		and (odd_slope_mask & 12) == 12
+	):
+		result |= 2
+	if (
+		(raised_mask == 2 or raised_mask == 4 or raised_mask == 6)
+		and (odd_slope_mask & 9) == 9
+	):
+		result |= 4
+	if (
+		(raised_mask == 4 or raised_mask == 8 or raised_mask == 12)
+		and (odd_slope_mask & 3) == 3
+	):
+		result |= 8
+	if terrain_mask == 7:
+		if (class_masks[3] & 1) != 0:
+			result |= 4
+		if (class_masks[3] & 4) != 0:
+			result |= 2
+	if terrain_mask == 11:
+		if (class_masks[3] & 8) != 0:
+			result |= 2
+		if (class_masks[3] & 2) != 0:
+			result |= 1
+	if terrain_mask == 13:
+		if (class_masks[3] & 4) != 0:
+			result |= 1
+		if (class_masks[3] & 1) != 0:
+			result |= 8
+	if terrain_mask == 14:
+		if (class_masks[3] & 8) != 0:
+			result |= 4
+		if (class_masks[3] & 2) != 0:
+			result |= 8
+	return result
+
+
+static func _section_altitude(
+	terrain: PackedByteArray, altitude: PackedByteArray, anchor: Vector2i
+) -> int:
+	var result := 0
+	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+		var point: Vector2i = anchor + offset
+		var index := point.x * CityState.MAP_SIZE + point.y
+		var height := _land_altitude(altitude, index)
+		if terrain[index] != 0:
+			height += 1
+		result = maxi(result, height)
+	return result
+
+
+static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
+	return ((altitude[index * 2] << 8) | altitude[index * 2 + 1]) & 0x1f
 
 
 static func _building_is_allowed(tile_id: int) -> bool:
@@ -317,6 +516,8 @@ static func _retile_affected_sections(
 	for anchor: Vector2i in affected:
 		if _crossing_orientation(buildings, anchor) >= 0:
 			continue
+		if _section_grade_kind(buildings, anchor) >= 0:
+			continue
 		var connections := 0
 		for direction_index in 4:
 			var neighbor: Vector2i = anchor + DIRECTIONS[direction_index] * 2
@@ -335,7 +536,12 @@ static func _retile_affected_sections(
 			if anchor.x < 2:
 				connections |= 8
 		_write_shape(
-			buildings, zones, misc, anchor, SHAPE_BY_CONNECTIONS[connections], rotation
+			buildings,
+			zones,
+			misc,
+			anchor,
+			SHAPE_BY_CONNECTIONS[connections],
+			rotation
 		)
 
 
@@ -369,6 +575,105 @@ static func _crossing_orientation(buildings: PackedByteArray, anchor: Vector2i) 
 		if tile_id >= 0x4b and tile_id <= 0x50:
 			return 0 if (tile_id & 1) == 1 else 1
 	return -1
+
+
+static func _section_grade_kind(buildings: PackedByteArray, anchor: Vector2i) -> int:
+	var kind := -1
+	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+		var point: Vector2i = anchor + offset
+		var tile_id := int(buildings[point.x * CityState.MAP_SIZE + point.y])
+		if tile_id < 0x61 or tile_id > 0x64:
+			return -1
+		var tile_kind := tile_id - 0x5d
+		if kind >= 0 and tile_kind != kind:
+			return -1
+		kind = tile_kind
+	return kind
+
+
+static func _grade_kind_for_shape(terrain_shape: int) -> int:
+	if (terrain_shape & 2) != 0:
+		return 5
+	if (terrain_shape & 8) != 0:
+		return 7
+	if (terrain_shape & 1) != 0:
+		return 4
+	if (terrain_shape & 4) != 0:
+		return 6
+	return -1
+
+
+static func _prepare_flat_terrain(
+	terrain: PackedByteArray, altitude: PackedByteArray, anchor: Vector2i
+) -> void:
+	var target := _section_altitude(terrain, altitude, anchor)
+	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+		var point: Vector2i = anchor + offset
+		var index := point.x * CityState.MAP_SIZE + point.y
+		if _land_altitude(altitude, index) < target:
+			terrain[index] = 0x0d
+
+
+static func _place_graded_section(
+	altitude: PackedByteArray,
+	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
+	misc: PackedByteArray,
+	anchor: Vector2i,
+	kind: int,
+	rotation: int
+) -> void:
+	var target := _section_altitude(terrain, altitude, anchor)
+	var offsets := [
+		Vector2i.ZERO,
+		Vector2i(1, 0),
+		Vector2i(1, 1),
+		Vector2i(0, 1),
+	]
+	var all_at_target := true
+	for offset in offsets:
+		var point: Vector2i = anchor + offset
+		var index := point.x * CityState.MAP_SIZE + point.y
+		if _land_altitude(altitude, index) != target:
+			all_at_target = false
+			break
+	if not all_at_target:
+		for offset in offsets:
+			var point: Vector2i = anchor + offset
+			_set_land_altitude(
+				altitude, point.x * CityState.MAP_SIZE + point.y, target - 1
+			)
+	var terrain_pattern: Array[int]
+	match kind:
+		4:
+			terrain_pattern = [0x0d, 0x01, 0x01, 0x0d]
+		5:
+			terrain_pattern = [0x0d, 0x0d, 0x02, 0x02]
+		6:
+			terrain_pattern = [0x03, 0x0d, 0x0d, 0x03]
+		7:
+			terrain_pattern = [0x04, 0x04, 0x0d, 0x0d]
+		_:
+			return
+	var tile_id := 0x5d + kind
+	for offset_index in offsets.size():
+		var point: Vector2i = anchor + offsets[offset_index]
+		var index := point.x * CityState.MAP_SIZE + point.y
+		terrain[index] = terrain_pattern[offset_index]
+		zones[index] &= 0xf0
+		NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
+	BuildingCommand._set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation)
+
+
+static func _set_land_altitude(
+	altitude: PackedByteArray, index: int, value: int
+) -> void:
+	var offset := index * 2
+	var word := (altitude[offset] << 8) | altitude[offset + 1]
+	word = (word & ~0x1f) | (value & 0x1f)
+	altitude[offset] = (word >> 8) & 0xff
+	altitude[offset + 1] = word & 0xff
 
 
 static func _write_shape(
