@@ -8907,7 +8907,208 @@ func _test_highway_command(reference_root: String) -> void:
 	_check(Highways.undo(crossing_city, partial).ok, "Partial highway can be undone")
 	_check(crossing_city.set_tile_flag(10, 10, 0x04, true), "Highway water fixture sets water")
 	var water := Highways.apply(crossing_city, 6, 1, Vector2i(10, 10), Vector2i(10, 10))
-	_check(not water.ok and water.error.contains("bridges"), "Highway reports its unimplemented bridge path")
+	_check(
+		not water.ok and water.error.contains("open water"),
+		"Highway bridge start requires a valid 2-by-2 shoreline",
+	)
+
+	var bridge_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
+		_check(
+			bridge_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(size, 0)
+			),
+			"Highway bridge fixture clears %s" % chunk_id,
+		)
+	_check(bridge_document.set_misc_i32(0x14, 5000), "Highway bridge fixture sets funds")
+	_check(
+		bridge_document.set_misc_u32(0x01f0, CityState.TILE_COUNT),
+		"Highway bridge fixture counts clear tiles",
+	)
+	var bridge_city := CityModel.from_document(bridge_document)
+	for x in range(76, 88):
+		for y in range(20, 22):
+			var water_cell := x >= 80 and x < 86
+			_check(
+				bridge_city.set_land_altitude(x, y, 4 if water_cell else 6)
+				and bridge_city.set_water_altitude(x, y, 5)
+				and bridge_city.set_tile_flag(x, y, 0x04, water_cell)
+				and bridge_city.set_terrain_id(x, y, 0x10 if water_cell else 0),
+				"Highway bridge fixture writes its banks and water sections",
+			)
+	var bridge_request := Highways.apply(
+		bridge_city, 6, 1, Vector2i(76, 20), Vector2i(84, 20)
+	)
+	_check(
+		not bridge_request.ok
+		and bridge_request.bridge_selection_required
+		and bridge_request.dry_sections == [Vector2i(76, 20), Vector2i(78, 20)]
+		and bridge_request.bridge_span_length == 3
+		and bridge_request.bridge_choices.size() == 2
+		and bridge_request.bridge_choices[0].type == Highways.BRIDGE_HIGHWAY
+		and bridge_request.bridge_choices[0].cost == 600
+		and bridge_request.bridge_choices[1].type == Highways.BRIDGE_REINFORCED
+		and bridge_request.bridge_choices[1].cost == 900
+		and bridge_city.funds() == 5000,
+		"Highway water route offers the normal and reinforced bridge types",
+	)
+	var canceled_bridge := Highways.apply(
+		bridge_city,
+		6,
+		1,
+		Vector2i(76, 20),
+		Vector2i(84, 20),
+		Highways.CONNECTION_UNSELECTED,
+		Highways.BRIDGE_CANCELLED
+	)
+	_check(
+		canceled_bridge.ok
+		and canceled_bridge.bridge_cancelled
+		and not canceled_bridge.bridge_built
+		and canceled_bridge.sections.size() == 2
+		and canceled_bridge.cost == 200
+		and bridge_city.funds() == 4800
+		and bridge_city.building_id(78, 20) == 0x4a
+		and bridge_city.building_id(80, 20) == 0,
+		"Canceling a highway bridge keeps and charges the dry prefix",
+	)
+	_check(
+		Highways.undo(bridge_city, canceled_bridge).ok and bridge_city.funds() == 5000,
+		"Canceled highway bridge prefix can be undone",
+	)
+	var normal_bridge := Highways.apply(
+		bridge_city,
+		6,
+		1,
+		Vector2i(76, 20),
+		Vector2i(84, 20),
+		Highways.CONNECTION_UNSELECTED,
+		Highways.BRIDGE_HIGHWAY
+	)
+	_check(
+		normal_bridge.ok
+		and normal_bridge.bridge_built
+		and normal_bridge.bridge_name == "Highway Bridge"
+		and normal_bridge.bridge_span_length == 3
+		and normal_bridge.bridge_sections.size() == 3
+		and normal_bridge.bridge_cost == 600
+		and normal_bridge.cost == 800
+		and bridge_city.funds() == 4200,
+		"Normal highway bridge charges 200 dollars for each 2-by-2 section",
+	)
+	for x in range(80, 86):
+		for y in range(20, 22):
+			_check(
+				bridge_city.building_id(x, y) == 0x4a
+				and bridge_city.is_water(x, y)
+				and (bridge_city.zones[x * 128 + y] & 0xf0) == 0xf0,
+				"Normal highway bridge stores straight highway over water",
+			)
+	_check(
+		bridge_city.building_id(86, 20) == 0,
+		"Normal highway bridge does not construct a far-bank section",
+	)
+	_check(Highways.undo(bridge_city, normal_bridge).ok, "Normal highway bridge can be undone")
+	_check(
+		bridge_city.funds() == 5000 and bridge_city.building_id(80, 20) == 0,
+		"Normal highway bridge undo restores funds and water sections",
+	)
+
+	var reinforced_bridge := Highways.apply(
+		bridge_city,
+		6,
+		1,
+		Vector2i(76, 20),
+		Vector2i(84, 20),
+		Highways.CONNECTION_UNSELECTED,
+		Highways.BRIDGE_REINFORCED
+	)
+	_check(
+		reinforced_bridge.ok
+		and reinforced_bridge.bridge_built
+		and reinforced_bridge.bridge_name == "Reinforced Bridge"
+		and reinforced_bridge.bridge_cost == 900
+		and reinforced_bridge.cost == 1100
+		and reinforced_bridge.bridge_endpoint_sections
+		== [Vector2i(78, 20), Vector2i(86, 20)]
+		and bridge_city.funds() == 3900,
+		"Reinforced highway bridge charges 300 dollars per section and writes both banks",
+	)
+	_check(
+		[
+			bridge_city.building_id(80, 20),
+			bridge_city.building_id(82, 20),
+			bridge_city.building_id(84, 20),
+		] == [0x6b, 0x6a, 0x6b]
+		and bridge_city.building_id(78, 20) == 0x4a
+		and bridge_city.building_id(86, 20) == 0x4a,
+		"Reinforced highway bridge alternates deck and pylon sections",
+	)
+	for x in range(80, 86):
+		for y in range(20, 22):
+			_check(
+				bridge_city.is_water(x, y)
+				and (bridge_city.tile_flags[x * 128 + y] & 0x02) != 0,
+				"Horizontal reinforced bridge stores its recovered mirror bit",
+			)
+	_check(
+		Highways.undo(bridge_city, reinforced_bridge).ok
+		and bridge_city.funds() == 5000
+		and bridge_city.building_id(86, 20) == 0,
+		"Reinforced highway bridge undo restores the far bank and funds",
+	)
+
+	_check(bridge_city.set_funds(1000), "Highway bridge funds fixture limits funds")
+	var unaffordable_bridge := Highways.apply(
+		bridge_city,
+		6,
+		1,
+		Vector2i(76, 20),
+		Vector2i(84, 20),
+		Highways.CONNECTION_UNSELECTED,
+		Highways.BRIDGE_REINFORCED
+	)
+	_check(
+		unaffordable_bridge.ok
+		and not unaffordable_bridge.bridge_built
+		and unaffordable_bridge.bridge_error.contains("insufficient funds")
+		and unaffordable_bridge.cost == 200
+		and bridge_city.funds() == 800
+		and bridge_city.building_id(78, 20) == 0x4a
+		and bridge_city.building_id(80, 20) == 0,
+		"Unaffordable reinforced bridge keeps the charged dry prefix",
+	)
+	_check(Highways.undo(bridge_city, unaffordable_bridge).ok, "Unaffordable bridge prefix can be undone")
+	_check(bridge_city.set_funds(5000), "Highway bridge fixture restores funds")
+
+	for entry in [
+		[Vector2i(80, 20), 0, false],
+		[Vector2i(81, 20), 0x10, true],
+		[Vector2i(81, 21), 0, false],
+		[Vector2i(80, 21), 0x10, true],
+	]:
+		_check(
+			bridge_city.set_terrain_id(entry[0].x, entry[0].y, entry[1])
+			and bridge_city.set_tile_flag(entry[0].x, entry[0].y, 0x04, entry[2]),
+			"Direct highway bridge fixture writes its shoreline mask",
+		)
+	var direct_plan := Highways._plan_bridge_from_start(
+		bridge_document.find_chunk("XBLD").decoded_payload,
+		bridge_document.find_chunk("XTER").decoded_payload,
+		bridge_document.find_chunk("ALTM").decoded_payload,
+		Vector2i(80, 20),
+		0
+	)
+	_check(
+		Highways._bridge_terrain_code(
+			bridge_document.find_chunk("XTER").decoded_payload, Vector2i(80, 20)
+		) == 0x9060
+		and direct_plan.ok
+		and direct_plan.direction == 1
+		and direct_plan.span_length == 3,
+		"Direct highway bridge uses the recovered 2-by-2 shoreline direction table",
+	)
 
 	var connection_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
