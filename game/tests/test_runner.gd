@@ -9070,6 +9070,61 @@ func _test_highway_command(reference_root: String) -> void:
 	)
 	_check(Highways.undo(grade_city, east_grade).ok, "The east grade can be undone")
 
+	var high_neighbor_points := [
+		Vector2i(58, 60),
+		Vector2i(59, 60),
+		Vector2i(59, 61),
+		Vector2i(58, 61),
+	]
+	for point in high_neighbor_points:
+		_check(
+			grade_city.set_building_id(point.x, point.y, 0x4a)
+			and grade_city.set_building_corners(point.x, point.y, 0xf0)
+			and grade_city.set_land_altitude(point.x, point.y, 2),
+			"Highway retile fixture installs a higher west section",
+		)
+	_check(
+		grade_document.set_misc_u32(0x01f0, CityState.TILE_COUNT - 4)
+		and grade_document.set_misc_u32(0x01f0 + 0x4a * 4, 4),
+		"Highway retile fixture updates its tile counts",
+	)
+	var compound_slope := [
+		[Vector2i(60, 60), 1],
+		[Vector2i(61, 60), 0],
+		[Vector2i(61, 61), 0],
+		[Vector2i(60, 61), 0],
+	]
+	for entry in compound_slope:
+		_check(
+			grade_city.set_terrain_id(entry[0].x, entry[0].y, entry[1]),
+			"Highway retile fixture writes a two-direction terrain mask",
+		)
+	var neighbor_grade := Highways.apply(
+		grade_city, 6, 1, Vector2i(60, 60), Vector2i(60, 60)
+	)
+	_check(
+		neighbor_grade.ok
+		and neighbor_grade.graded_sections == 1
+		and grade_city.building_id(60, 60) == 0x61
+		and grade_city.building_id(58, 60) == 0x61,
+		"A height transition converts both joined sections to grade kind 4",
+	)
+	_check(
+		[
+			grade_city.terrain_id(60, 60),
+			grade_city.terrain_id(61, 60),
+			grade_city.terrain_id(61, 61),
+			grade_city.terrain_id(60, 61),
+		] == [0x0d, 0x01, 0x01, 0x0d],
+		"Elevation-aware highway retile writes the selected kind 4 terrain",
+	)
+	_check(
+		Highways.undo(grade_city, neighbor_grade).ok
+		and grade_city.building_id(60, 60) == 0
+		and grade_city.building_id(58, 60) == 0x4a,
+		"Elevation-aware grade undo preserves the pre-existing neighbor",
+	)
+
 	_check(
 		grade_city.set_building_id(40, 40, 0xd0),
 		"Invalid highway grade fixture places a building",

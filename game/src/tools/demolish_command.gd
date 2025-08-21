@@ -610,11 +610,22 @@ static func _demolish_highway_section(
 	var adjacent_sections: Array[Vector2i] = []
 	for direction in DIRECTIONS:
 		var adjacent: Vector2i = anchor + direction * 2
-		if HighwayCommand._anchor_is_in_bounds(adjacent) and HighwayCommand._section_exists(buildings, adjacent):
+		if (
+			HighwayCommand._anchor_is_in_bounds(adjacent)
+			and HighwayCommand._section_kind(buildings, zones, flags, adjacent) > 1
+		):
 			adjacent_sections.append(adjacent)
 	if not adjacent_sections.is_empty():
 		HighwayCommand._retile_affected_sections(
-			buildings, zones, misc, adjacent_sections, rotation, text_overlays
+			buildings,
+			terrain,
+			zones,
+			flags,
+			altitude,
+			misc,
+			adjacent_sections,
+			rotation,
+			text_overlays
 		)
 	return {"changed": true, "indices": indices, "effect_events": effect_events}
 
