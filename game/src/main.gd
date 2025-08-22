@@ -2202,19 +2202,26 @@ func _open_bridge_dialog(
 	finish: Vector2i,
 	group_index: int,
 	subtool_index: int,
-	result: Dictionary
+	result: Dictionary,
+	request_type := "network"
 ) -> void:
 	pending_bridge_request = {
 		"start": start,
 		"finish": finish,
 		"group_index": group_index,
 		"subtool_index": subtool_index,
+		"request_type": request_type,
 		"choices": result.get("bridge_choices", []),
-		"dry_points": result.get("dry_points", []),
+		"dry_points": result.get(
+			"dry_points", result.get("dry_sections", [])
+		),
 	}
-	bridge_dialog.dialog_text = "Select a bridge for %d water tiles." % int(
-		result.get("bridge_span_length", 0)
+	var span_units := (
+		"2 by 2 water sections" if request_type == "highway" else "water tiles"
 	)
+	bridge_dialog.dialog_text = "Select a bridge for %d %s." % [
+		int(result.get("bridge_span_length", 0)), span_units,
+	]
 	var choices: Array = pending_bridge_request.choices
 	for choice_index in bridge_choice_buttons.size():
 		var choice_button := bridge_choice_buttons[choice_index]
@@ -2222,10 +2229,14 @@ func _open_bridge_dialog(
 		if not choice_button.visible:
 			continue
 		var choice: Dictionary = choices[choice_index]
-		choice_button.text = "%s\n$%s total\n$%s for each water tile" % [
+		var cost_unit := (
+			"2 by 2 water section" if request_type == "highway" else "water tile"
+		)
+		choice_button.text = "%s\n$%s total\n$%s for each %s" % [
 			choice.get("name", "Bridge"),
 			_format_number(int(choice.get("cost", 0))),
 			_format_number(int(choice.get("cost_per_tile", 0))),
+			cost_unit,
 		]
 		choice_button.tooltip_text = "Build %s" % choice.get("name", "bridge")
 	bridge_dialog.popup_centered()
@@ -2241,6 +2252,16 @@ func _choose_bridge(choice_index: int) -> void:
 	var choice: Dictionary = choices[choice_index]
 	pending_bridge_request.clear()
 	bridge_dialog.hide()
+	if request.get("request_type", "network") == "highway":
+		selected_group = int(request.group_index)
+		selected_subtool = int(request.subtool_index)
+		_apply_highway_selection(
+			request.start,
+			request.finish,
+			Highways.CONNECTION_UNSELECTED,
+			int(choice.get("type", Highways.BRIDGE_UNSELECTED))
+		)
+		return
 	_apply_network_selection(
 		request.start,
 		request.finish,
@@ -2259,6 +2280,16 @@ func _cancel_bridge() -> void:
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Bridge selection canceled. No action was taken."
 		return
+	if request.get("request_type", "network") == "highway":
+		selected_group = int(request.group_index)
+		selected_subtool = int(request.subtool_index)
+		_apply_highway_selection(
+			request.start,
+			request.finish,
+			Highways.CONNECTION_UNSELECTED,
+			Highways.BRIDGE_CANCELLED
+		)
+		return
 	_apply_network_selection(
 		request.start,
 		request.finish,
@@ -2271,11 +2302,32 @@ func _cancel_bridge() -> void:
 func _apply_highway_selection(
 	start: Vector2i,
 	finish: Vector2i,
-	connection_choice := Highways.CONNECTION_UNSELECTED
+	connection_choice := Highways.CONNECTION_UNSELECTED,
+	bridge_type := Highways.BRIDGE_UNSELECTED
 ) -> void:
 	var highway := Highways.apply(
-		city, selected_group, selected_subtool, start, finish, connection_choice
+		city,
+		selected_group,
+		selected_subtool,
+		start,
+		finish,
+		connection_choice,
+		bridge_type
 	)
+	if highway.get("bridge_selection_required", false):
+		_open_bridge_dialog(
+			start,
+			finish,
+			selected_group,
+			selected_subtool,
+			highway,
+			"highway"
+		)
+		return
+	if highway.get("cancelled", false):
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Bridge selection canceled. No action was taken."
+		return
 	if highway.get("connection_selection_required", false):
 		pending_highway_connection = {
 			"start": start,
@@ -2301,7 +2353,21 @@ func _apply_highway_selection(
 	_refresh_details()
 	_refresh_map(false)
 	status_label.remove_theme_color_override("font_color")
-	if highway.get("connection_built", false):
+	if highway.get("bridge_built", false):
+		if highway.sections.is_empty():
+			status_label.text = "Built a %s across %d water sections for $%s." % [
+				highway.get("bridge_name", "highway bridge"),
+				int(highway.get("bridge_span_length", 0)),
+				_format_number(int(highway.cost)),
+			]
+		else:
+			status_label.text = "Built %d highway sections and a %s across %d water sections for $%s." % [
+				highway.sections.size(),
+				highway.get("bridge_name", "highway bridge"),
+				int(highway.get("bridge_span_length", 0)),
+				_format_number(int(highway.cost)),
+			]
+	elif highway.get("connection_built", false):
 		status_label.text = "Built %d highway sections and a neighboring-city connection for $%s." % [
 			highway.sections.size(), _format_number(int(highway.cost))
 		]
@@ -2311,6 +2377,10 @@ func _apply_highway_selection(
 		]
 		if highway.get("connection_cancelled", false):
 			status_label.text += " The neighbor connection was canceled."
+		elif highway.get("bridge_cancelled", false):
+			status_label.text += " The bridge selection was canceled."
+		elif not String(highway.get("bridge_error", "")).is_empty():
+			status_label.text += " The bridge was not built: %s." % highway.bridge_error
 		elif not String(highway.get("connection_error", "")).is_empty():
 			status_label.text += " The connection was not offered because funds are too low."
 		elif highway.get("stopped_early", false):
