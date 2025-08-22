@@ -8830,7 +8830,38 @@ func _test_tunnel_command(reference_root: String) -> void:
 	_check(city.set_terrain_id(22, 20, 1), "Tunnel fixture places the opposite slope")
 	_check(city.set_land_altitude(22, 20, 5), "Tunnel fixture sets finish altitude")
 	_check(city.set_building_id(19, 20, 0x1d), "Tunnel fixture places an adjacent road")
-	var command := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
+	var planned := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
+	_check(
+		planned.get("confirmation_required", false)
+		and planned.finish == Vector2i(22, 20)
+		and planned.points.size() == 3
+		and planned.cost == 450,
+		"Tunnel validates its path and cost before confirmation",
+	)
+	_check(
+		city.building_id(20, 20) == 0
+		and city.tunnel_levels(21, 20) == 0
+		and city.funds() == 1000,
+		"Tunnel confirmation request does not change the city",
+	)
+	var canceled := Tunnels.apply(
+		city, 6, 2, Vector2i(20, 20), Tunnels.CONFIRMATION_CANCELLED
+	)
+	_check(
+		canceled.get("cancelled", false)
+		and city.building_id(20, 20) == 0
+		and city.tunnel_levels(21, 20) == 0
+		and city.funds() == 1000,
+		"Tunnel cancel does not change the city",
+	)
+	var invalid_choice := Tunnels.apply(city, 6, 2, Vector2i(20, 20), 2)
+	_check(
+		not invalid_choice.ok and invalid_choice.error.contains("choice"),
+		"Tunnel rejects an unknown confirmation choice",
+	)
+	var command := Tunnels.apply(
+		city, 6, 2, Vector2i(20, 20), Tunnels.CONFIRMATION_CONFIRMED
+	)
 	_check(command.ok, "East-facing tunnel succeeds: %s" % command.error)
 	_check(command.finish == Vector2i(22, 20) and command.points.size() == 3, "Tunnel finds the first tile at the start altitude")
 	_check(city.building_id(20, 20) == 0x41 and city.building_id(22, 20) == 0x3f, "Tunnel writes paired east and west entrances")
@@ -8854,7 +8885,15 @@ func _test_tunnel_command(reference_root: String) -> void:
 	_check(not no_exit.ok and no_exit.error.contains("opposite slope"), "Tunnel requires the recovered opposite exit slope")
 	_check(city.set_terrain_id(22, 20, 1), "Tunnel funds fixture restores the exit slope")
 	_check(city.set_funds(449), "Tunnel funds fixture sets insufficient funds")
-	var unaffordable := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
+	var unaffordable_plan := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
+	_check(
+		unaffordable_plan.get("confirmation_required", false)
+		and unaffordable_plan.cost == 450,
+		"Tunnel asks for confirmation before it checks funds",
+	)
+	var unaffordable := Tunnels.apply(
+		city, 6, 2, Vector2i(20, 20), Tunnels.CONFIRMATION_CONFIRMED
+	)
 	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "Tunnel command reports insufficient funds")
 
 

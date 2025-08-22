@@ -9,6 +9,9 @@ const FIRST_ENTRANCE := 0x3f
 const TUNNEL_MASK := 0x7c00
 const ALTITUDE_DATA_MASK := 0x03ff
 const ONE_TUNNEL_LEVEL := 0x0400
+const CONFIRMATION_UNSELECTED := -1
+const CONFIRMATION_CANCELLED := 0
+const CONFIRMATION_CONFIRMED := 1
 const DIRECTIONS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
 
 
@@ -17,7 +20,11 @@ static func supports_tool(group_index: int, subtool_index: int) -> bool:
 
 
 static func apply(
-	city: CityState, group_index: int, subtool_index: int, start: Vector2i
+	city: CityState,
+	group_index: int,
+	subtool_index: int,
+	start: Vector2i,
+	confirmation_choice := CONFIRMATION_UNSELECTED
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -70,6 +77,28 @@ static func apply(
 			break
 		current += direction
 	var cost := points.size() * int(ToolCatalog.tool(group_index, subtool_index).cost)
+	if confirmation_choice == CONFIRMATION_UNSELECTED:
+		return {
+			"ok": false,
+			"confirmation_required": true,
+			"start": start,
+			"finish": finish,
+			"points": points,
+			"cost": cost,
+			"error": "tunnel construction confirmation is required",
+		}
+	if confirmation_choice == CONFIRMATION_CANCELLED:
+		return {
+			"ok": false,
+			"cancelled": true,
+			"start": start,
+			"finish": finish,
+			"points": points,
+			"cost": cost,
+			"error": "tunnel construction canceled",
+		}
+	if confirmation_choice != CONFIRMATION_CONFIRMED:
+		return {"ok": false, "error": "tunnel confirmation choice is invalid"}
 	if city.funds() < cost:
 		return {"ok": false, "error": "insufficient funds", "cost": cost}
 
