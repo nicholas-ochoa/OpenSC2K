@@ -167,6 +167,8 @@ var bridge_choice_buttons: Array[Button] = []
 var pending_bridge_request: Dictionary = {}
 var highway_connection_dialog: ConfirmationDialog
 var pending_highway_connection: Dictionary = {}
+var tunnel_dialog: ConfirmationDialog
+var pending_tunnel_request: Dictionary = {}
 var query_dialog: AcceptDialog
 var sound_player: AudioStreamPlayer
 var budget_dialog: ConfirmationDialog
@@ -226,6 +228,7 @@ func _process(delta: float) -> void:
 		or budget_dialog.visible
 		or bridge_dialog.visible
 		or highway_connection_dialog.visible
+		or tunnel_dialog.visible
 		or military_dialog.visible
 		or game_over_active
 	)
@@ -660,6 +663,17 @@ func _build_interface(toolbar_art: Image) -> void:
 	highway_connection_dialog.confirmed.connect(_confirm_highway_connection)
 	highway_connection_dialog.canceled.connect(_cancel_highway_connection)
 	add_child(highway_connection_dialog)
+
+	tunnel_dialog = ConfirmationDialog.new()
+	tunnel_dialog.title = "Construct Tunnel"
+	tunnel_dialog.dialog_text = "Do you wish to construct the tunnel?"
+	tunnel_dialog.min_size = Vector2i(500, 200)
+	tunnel_dialog.exclusive = true
+	tunnel_dialog.get_ok_button().text = "Yes"
+	tunnel_dialog.get_cancel_button().text = "No"
+	tunnel_dialog.confirmed.connect(_confirm_tunnel)
+	tunnel_dialog.canceled.connect(_cancel_tunnel)
+	add_child(tunnel_dialog)
 
 	query_dialog = AcceptDialog.new()
 	query_dialog.title = "Query"
@@ -1158,6 +1172,9 @@ func _load_city(path: String) -> void:
 	pending_highway_connection.clear()
 	if highway_connection_dialog.visible:
 		highway_connection_dialog.hide()
+	pending_tunnel_request.clear()
+	if tunnel_dialog.visible:
+		tunnel_dialog.hide()
 	annual_budget_pending = false
 	game_over_active = false
 	city = loaded_city
@@ -2083,18 +2100,7 @@ func _apply_map_selection(
 		status_label.text = "Built an on-ramp for $%s." % _format_number(onramp.cost)
 		return
 	if Tunnels.supports_tool(selected_group, selected_subtool):
-		var tunnel := Tunnels.apply(city, selected_group, selected_subtool, finish)
-		if not tunnel.ok:
-			_show_error("Cannot build tunnel: %s" % tunnel.error)
-			return
-		last_edit_command = tunnel
-		undo_button.disabled = false
-		_refresh_details()
-		_refresh_map(false)
-		status_label.remove_theme_color_override("font_color")
-		status_label.text = "Built a %d-tile tunnel for $%s." % [
-			tunnel.points.size(), _format_number(tunnel.cost)
-		]
+		_apply_tunnel_selection(finish)
 		return
 	if Highways.supports_tool(selected_group, selected_subtool):
 		_apply_highway_selection(start, finish)
@@ -2297,6 +2303,61 @@ func _cancel_bridge() -> void:
 		int(request.group_index),
 		int(request.subtool_index)
 	)
+
+
+func _apply_tunnel_selection(
+	start: Vector2i,
+	confirmation_choice := Tunnels.CONFIRMATION_UNSELECTED
+) -> void:
+	var tunnel := Tunnels.apply(
+		city, selected_group, selected_subtool, start, confirmation_choice
+	)
+	if tunnel.get("confirmation_required", false):
+		pending_tunnel_request = {
+			"start": start,
+			"group_index": selected_group,
+			"subtool_index": selected_subtool,
+		}
+		tunnel_dialog.dialog_text = (
+			"Engineers report that tunnel construction costs will be $%s.\n"
+			+ "Do you wish to construct the tunnel?"
+		) % _format_number(int(tunnel.cost))
+		tunnel_dialog.popup_centered()
+		return
+	if tunnel.get("cancelled", false):
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Tunnel construction canceled. No action was taken."
+		return
+	if not tunnel.get("ok", false):
+		_show_error("Cannot build tunnel: %s" % tunnel.get("error", "unknown error"))
+		return
+	last_edit_command = tunnel
+	undo_button.disabled = false
+	_refresh_details()
+	_refresh_map(false)
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Built a %d-tile tunnel for $%s." % [
+		tunnel.points.size(), _format_number(tunnel.cost)
+	]
+
+
+func _confirm_tunnel() -> void:
+	_apply_pending_tunnel(Tunnels.CONFIRMATION_CONFIRMED)
+
+
+func _cancel_tunnel() -> void:
+	_apply_pending_tunnel(Tunnels.CONFIRMATION_CANCELLED)
+
+
+func _apply_pending_tunnel(confirmation_choice: int) -> void:
+	if pending_tunnel_request.is_empty():
+		return
+	var request := pending_tunnel_request.duplicate()
+	pending_tunnel_request.clear()
+	tunnel_dialog.hide()
+	selected_group = int(request.group_index)
+	selected_subtool = int(request.subtool_index)
+	_apply_tunnel_selection(request.start, confirmation_choice)
 
 
 func _apply_highway_selection(
