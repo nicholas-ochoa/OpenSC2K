@@ -32,6 +32,7 @@ const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
 const DisasterStart = preload("res://src/simulation/disaster_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
+const Bonds = preload("res://src/simulation/bond_command.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 
 const NEWS_NAMES := {
@@ -175,6 +176,11 @@ var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
 var auto_budget_check: CheckBox
+var bond_summary_label: Label
+var issue_bond_button: Button
+var repay_bond_button: Button
+var bond_dialog: ConfirmationDialog
+var pending_bond_action := ""
 var game_over_dialog: AcceptDialog
 var military_dialog: ConfirmationDialog
 var fps_update_seconds := 0.0
@@ -229,6 +235,7 @@ func _process(delta: float) -> void:
 		or bridge_dialog.visible
 		or highway_connection_dialog.visible
 		or tunnel_dialog.visible
+		or bond_dialog.visible
 		or military_dialog.visible
 		or game_over_active
 	)
@@ -743,10 +750,37 @@ func _build_interface(toolbar_art: Image) -> void:
 			control.suffix = "% funded"
 		else:
 			control.editable = false
+		if budget_id == Budget.BUDGET_BONDS:
+			control.visible = false
 		row.add_child(control)
 		budget_controls.append(control)
 		budget_rows.add_child(row)
+		if budget_id == Budget.BUDGET_BONDS:
+			var bond_controls := HBoxContainer.new()
+			bond_controls.add_theme_constant_override("separation", 8)
+			bond_summary_label = Label.new()
+			bond_summary_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			bond_controls.add_child(bond_summary_label)
+			issue_bond_button = Button.new()
+			issue_bond_button.text = "Issue $10K Bond"
+			issue_bond_button.pressed.connect(_request_issue_bond)
+			bond_controls.add_child(issue_bond_button)
+			repay_bond_button = Button.new()
+			repay_bond_button.text = "Repay $10K Bond"
+			repay_bond_button.pressed.connect(_request_repay_bond)
+			bond_controls.add_child(repay_bond_button)
+			budget_rows.add_child(bond_controls)
 	add_child(budget_dialog)
+
+	bond_dialog = ConfirmationDialog.new()
+	bond_dialog.title = "Bond"
+	bond_dialog.min_size = Vector2i(500, 210)
+	bond_dialog.exclusive = true
+	bond_dialog.get_ok_button().text = "Yes"
+	bond_dialog.get_cancel_button().text = "No"
+	bond_dialog.confirmed.connect(_confirm_bond_action)
+	bond_dialog.canceled.connect(_cancel_bond_action)
+	add_child(bond_dialog)
 
 	group_selector.select(selected_group)
 	_select_tool_group(selected_group)
@@ -1057,7 +1091,120 @@ func _open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 	budget_dialog.exclusive = annual
 	for budget_id in Budget.BUDGET_COUNT:
 		budget_controls[budget_id].value = values[budget_id]
+	_update_bond_controls()
 	budget_dialog.popup_centered()
+
+
+func _request_issue_bond() -> void:
+	if city == null:
+		return
+	var result := Bonds.issue(city)
+	if not result.ok:
+		_show_error("Cannot issue a bond: %s" % result.error)
+		return
+	_update_bond_controls()
+	match result.status:
+		"confirmation_required":
+			pending_bond_action = "issue"
+			bond_dialog.title = "Issue Bond"
+			bond_dialog.dialog_text = (
+				"Current Rates are %d%%.\nDo You Want to Issue the Bond?" % int(result.rate)
+			)
+			bond_dialog.popup_centered()
+		"credit_denied":
+			_show_error(
+				"Sorry, your city may not issue more bonds\nuntil your credit rating improves."
+			)
+		"maximum_bonds":
+			_show_error("The City Council believes that 50 outstanding bonds are enough.")
+		_:
+			_show_error("The bond could not be issued.")
+
+
+func _request_repay_bond() -> void:
+	if city == null:
+		return
+	var result := Bonds.repay(city)
+	if not result.ok:
+		_show_error("Cannot repay a bond: %s" % result.error)
+		return
+	match result.status:
+		"confirmation_required":
+			pending_bond_action = "repay"
+			bond_dialog.title = "Repay Bond"
+			bond_dialog.dialog_text = (
+				"Oldest Bond Rate is %d%%\nDo You Want to Repay the Bond?" % int(result.rate)
+			)
+			bond_dialog.popup_centered()
+		"insufficient_funds":
+			_show_error("You Need $10,000 Cash\nto Repay an Outstanding Bond.")
+		"no_bonds":
+			_show_error("There are no outstanding bonds to repay.")
+		_:
+			_show_error("The bond could not be repaid.")
+
+
+func _confirm_bond_action() -> void:
+	_resolve_bond_action(Bonds.CONFIRMATION_CONFIRMED)
+
+
+func _cancel_bond_action() -> void:
+	_resolve_bond_action(Bonds.CONFIRMATION_CANCELLED)
+
+
+func _resolve_bond_action(confirmation: int) -> void:
+	if city == null or pending_bond_action.is_empty():
+		return
+	var action := pending_bond_action
+	pending_bond_action = ""
+	var result := (
+		Bonds.issue(city, confirmation)
+		if action == "issue"
+		else Bonds.repay(city, confirmation)
+	)
+	if not result.ok:
+		_show_error("Cannot update bonds: %s" % result.error)
+		return
+	_update_bond_controls()
+	_refresh_details()
+	status_label.remove_theme_color_override("font_color")
+	match result.status:
+		"issued":
+			status_label.text = "Issued a $10,000 bond at %d%%." % int(result.rate)
+		"repaid":
+			status_label.text = "Repaid the oldest $10,000 bond at %d%%." % int(result.rate)
+		"cancelled":
+			status_label.text = "Bond action canceled. No bond balance changed."
+		"credit_denied":
+			_show_error(
+				"Sorry, your city may not issue more bonds\nuntil your credit rating improves."
+			)
+		"maximum_bonds":
+			_show_error("The City Council believes that 50 outstanding bonds are enough.")
+		_:
+			_show_error("The bond action did not complete.")
+
+
+func _update_bond_controls() -> void:
+	if city == null or bond_summary_label == null:
+		return
+	var bond_count := city.document.misc_u32(Bonds.MISC_BONDS)
+	var funds := city.funds()
+	var average_fixed := city.document.misc_i32(
+		Budget.MISC_BUDGETS
+		+ Budget.BUDGET_BONDS * Budget.BUDGET_RECORD_SIZE
+		+ Budget.BUDGET_FUNDING
+	)
+	budget_controls[Budget.BUDGET_BONDS].value = average_fixed
+	if bond_count == 0:
+		bond_summary_label.text = "No outstanding bonds"
+	else:
+		var oldest := city.document.misc_u32(Bonds.MISC_BOND_RATES) & 0xffff
+		bond_summary_label.text = "%d outstanding; oldest %d%%; average %.2f%%" % [
+			bond_count, oldest, float(average_fixed) / 10000.0,
+		]
+	issue_bond_button.disabled = bond_count > Bonds.MAX_BONDS
+	repay_bond_button.disabled = bond_count == 0 or funds < Bonds.BOND_VALUE
 
 
 func _budget_values() -> PackedInt32Array:
@@ -1161,6 +1308,9 @@ func _load_city(path: String) -> void:
 
 	if budget_dialog.visible:
 		budget_dialog.hide()
+	pending_bond_action = ""
+	if bond_dialog.visible:
+		bond_dialog.hide()
 	if game_over_dialog.visible:
 		game_over_dialog.hide()
 	military_proposal_pending = false
