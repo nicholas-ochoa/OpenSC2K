@@ -9993,8 +9993,91 @@ func _test_terrain_command(reference_root: String) -> void:
 	_check(city.land_altitude(51, 50) == 2 and propagated.cost == 50, "Lower Terrain lowers a neighbor more than one level higher")
 	_check(TerrainTools.undo(city, propagated).ok, "Propagated Lower Terrain can be undone")
 	_check(city.set_building_id(40, 40, 0x1d), "Terrain conflict fixture places a road")
-	var conflict := TerrainTools.apply_path(city, 0, 2, Vector2i(40, 40), [Vector2i(40, 40)])
-	_check(not conflict.ok and conflict.error.contains("structure"), "Terrain command reports unimplemented structure conflicts")
+	_check(city.set_underground_id(40, 40, 0x01), "Terrain conflict fixture places a subway")
+	_check(document.set_misc_u32(0x01f0, 16383), "Terrain conflict fixture reduces the clear count")
+	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 1), "Terrain conflict fixture counts its road")
+	_check(document.set_misc_u32(0x0fe8, 1), "Terrain conflict fixture counts its subway")
+	var conflict_without_random := TerrainTools.apply_path(
+		city, 0, 2, Vector2i(40, 40), [Vector2i(40, 40)]
+	)
+	_check(
+		not conflict_without_random.ok and conflict_without_random.error.contains("random"),
+		"Terrain conflict demolition requires explicit process random state",
+	)
+	_check(
+		city.building_id(40, 40) == 0x1d and city.underground_id(40, 40) == 0x01,
+		"A rejected terrain conflict does not change either network",
+	)
+	var terrain_random := Random.new(0x1234)
+	var terrain_seed := terrain_random.state
+	var conflict := TerrainTools.apply_path(
+		city, 0, 2, Vector2i(40, 40), [Vector2i(40, 40)], terrain_random
+	)
+	_check(conflict.ok and city.land_altitude(40, 40) == 1, "Raise Terrain changes a network tile")
+	_check(
+		city.building_id(40, 40) == 0 and city.underground_id(40, 40) == 0,
+		"Terrain retile removes surface and underground networks",
+	)
+	_check(
+		document.misc_u32(0x01f0) == 16384
+		and document.misc_u32(0x01f0 + 0x1d * 4) == 0
+		and document.misc_u32(0x0fe8) == 0,
+		"Terrain conflict demolition updates surface and subway counts",
+	)
+	_check(
+		conflict.random_used and terrain_random.state != terrain_seed
+		and not conflict.effect_events.is_empty() and conflict.sound_events == [504],
+		"Terrain conflict demolition keeps its dust, sound, and random use",
+	)
+	_check(TerrainTools.undo(city, conflict, terrain_random).ok, "Network terrain demolition can be undone")
+	_check(
+		city.building_id(40, 40) == 0x1d and city.underground_id(40, 40) == 0x01
+		and city.land_altitude(40, 40) == 0 and terrain_random.state == terrain_seed,
+		"Terrain undo restores both networks, altitude, and random state",
+	)
+
+	_check(city.set_building_id(40, 40, 5), "Terrain tree fixture replaces the road with a tree")
+	_check(city.set_underground_id(40, 40, 0), "Terrain tree fixture removes its subway")
+	var tree_raise := TerrainTools.apply_path(
+		city, 0, 2, Vector2i(40, 40), [Vector2i(40, 40)]
+	)
+	_check(
+		tree_raise.ok and city.building_id(40, 40) == 5 and not tree_raise.random_used,
+		"Terrain retile preserves tile 5 trees without random use",
+	)
+	_check(TerrainTools.undo(city, tree_raise).ok, "Tree terrain change can be undone")
+
+	for x in range(60, 62):
+		for y in range(60, 62):
+			_check(city.set_building_id(x, y, 0x8c), "Terrain structure fixture fills its site")
+	_check(city.set_building_corners(60, 60, 0x10), "Terrain structure fixture sets bottom-left")
+	_check(city.set_building_corners(61, 60, 0x20), "Terrain structure fixture sets bottom-right")
+	_check(city.set_building_corners(61, 61, 0x40), "Terrain structure fixture sets top-left")
+	_check(city.set_building_corners(60, 61, 0x80), "Terrain structure fixture sets top-right")
+	_check(city.set_text_overlay_id(60, 60, 61), "Terrain structure fixture assigns a microsim label")
+	var structure_random := Random.new(0x5678)
+	var structure_raise := TerrainTools.apply_path(
+		city, 0, 2, Vector2i(60, 60), [Vector2i(60, 60)], structure_random
+	)
+	_check(structure_raise.ok, "Raise Terrain demolishes a complete multi-tile structure")
+	_check(
+		city.building_id(60, 60) == 0 and city.building_id(61, 60) == 0
+		and city.building_id(60, 61) == 0 and city.building_id(61, 61) == 0,
+		"Terrain demolition clears the complete two-by-two footprint",
+	)
+	_check(
+		city.text_overlay_id(60, 60) == 0 and structure_raise.changed_ids.has("XTXT"),
+		"Terrain demolition releases the structure overlay",
+	)
+	_check(
+		TerrainTools.undo(city, structure_raise, structure_random).ok,
+		"Multi-tile terrain demolition can be undone",
+	)
+	_check(
+		city.building_id(60, 60) == 0x8c and city.building_id(61, 61) == 0x8c
+		and city.text_overlay_id(60, 60) == 61,
+		"Terrain undo restores the complete structure and overlay",
+	)
 
 
 func _test_dispatch_command(reference_root: String) -> void:

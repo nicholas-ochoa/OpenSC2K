@@ -44,7 +44,8 @@ static func apply_path(
 	group_index: int,
 	subtool_index: int,
 	start: Vector2i,
-	points: Array[Vector2i]
+	points: Array[Vector2i],
+	random: SimRandom = null
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -53,16 +54,23 @@ static func apply_path(
 	if city.index_of(start.x, start.y) < 0 or points.is_empty():
 		return {"ok": false, "error": "terrain path is outside the city"}
 
-	var old_payloads := NetworkCommand._city_payloads(city)
+	var old_payloads := BuildingCommand._city_payloads(city)
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
-	var changed_payloads := NetworkCommand._duplicate_payloads(old_payloads)
+	var altitude_chunk := city.document.find_chunk("ALTM")
+	if altitude_chunk == null or altitude_chunk.decoded_payload.size() != CityState.TILE_COUNT * 2:
+		return {"ok": false, "error": "required altitude data is missing or invalid"}
+	old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
+	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
 	var altitude: PackedByteArray = changed_payloads.ALTM
 	var buildings: PackedByteArray = changed_payloads.XBLD
 	var terrain: PackedByteArray = changed_payloads.XTER
 	var zones: PackedByteArray = changed_payloads.XZON
 	var underground: PackedByteArray = changed_payloads.XUND
 	var flags: PackedByteArray = changed_payloads.XBIT
+	var text_overlays: PackedByteArray = changed_payloads.XTXT
+	var labels: PackedByteArray = changed_payloads.XLAB
+	var microsims: PackedByteArray = changed_payloads.XMIC
 	var misc: PackedByteArray = changed_payloads.MISC
 	var funds := city.funds()
 	var target_altitude := _land_altitude(altitude, city.index_of(start.x, start.y))
@@ -71,6 +79,11 @@ static func apply_path(
 	var changed_indices := PackedInt32Array()
 	var skipped_conflicts := 0
 	var skipped_insufficient := 0
+	var effect_events: Array[Dictionary] = []
+	var sound_events: Array[int] = []
+	var next_effect_frame := 0
+	var random_state_before := random.state if random != null else 0
+	var random_used := false
 
 	for point in points:
 		var index := city.index_of(point.x, point.y)
@@ -97,12 +110,34 @@ static func apply_path(
 			continue
 		var modified: PackedInt32Array = trial.modified
 		var retile_indices := _expanded_indices(modified)
-		if _has_unsupported_conflict(buildings, underground, retile_indices):
+		if random == null and _terrain_conflict_needs_random(buildings, retile_indices):
 			skipped_conflicts += 1
 			continue
 		_write_heights(altitude, trial.heights, modified)
 		for changed_index in trial.zone_indices:
 			zones[changed_index] &= 0xf0
+		var action_random_state := random.state if random != null else 0
+		var cleared := _clear_terrain_conflicts(
+			city,
+			altitude,
+			buildings,
+			terrain,
+			zones,
+			underground,
+			flags,
+			text_overlays,
+			labels,
+			microsims,
+			misc,
+			retile_indices,
+			random
+		)
+		if not cleared.ok:
+			if random != null:
+				random.state = action_random_state
+			skipped_conflicts += 1
+			continue
+		random_used = random_used or bool(cleared.random_used)
 		funds = int(trial.funds)
 		total_cost += int(trial.cost)
 		action_count += 1
@@ -116,20 +151,32 @@ static func apply_path(
 		for changed_index in retile_indices:
 			if not changed_indices.has(changed_index):
 				changed_indices.append(changed_index)
+		for changed_index in cleared.indices:
+			if not changed_indices.has(changed_index):
+				changed_indices.append(changed_index)
+		next_effect_frame = _append_effect_sequence(
+			effect_events, cleared.effect_events, next_effect_frame
+		)
+		for sound_id in cleared.sound_events:
+			sound_events.append(sound_id)
 
 	if action_count == 0:
+		if random != null:
+			random.state = random_state_before
 		if skipped_insufficient > 0:
 			return {"ok": false, "error": "insufficient funds", "cost": 25}
 		if skipped_conflicts > 0:
-			return {"ok": false, "error": "terrain change conflicts with a structure or underground network"}
+			return {"ok": false, "error": "terrain conflict demolition needs random state"}
 		return {"ok": false, "error": "no terrain height changed"}
 	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, funds)
 
 	var changed_ids := PackedStringArray()
-	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "MISC"]:
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not NetworkCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
+		if random != null:
+			random.state = random_state_before
 		return {"ok": false, "error": "cannot store terrain changes"}
 	return {
 		"ok": true,
@@ -142,18 +189,28 @@ static func apply_path(
 		"cost": total_cost,
 		"skipped_conflicts": skipped_conflicts,
 		"skipped_insufficient": skipped_insufficient,
+		"effect_events": effect_events,
+		"sound_events": sound_events,
 		"changed_ids": changed_ids,
 		"old_payloads": old_payloads,
 		"new_payloads": changed_payloads,
+		"random_used": random_used,
+		"random_state_before": random_state_before,
+		"random_state_after": random.state if random != null else random_state_before,
 		"error": "",
 	}
 
 
-static func undo(city: CityState, command: Dictionary) -> Dictionary:
+static func undo(city: CityState, command: Dictionary, random: SimRandom = null) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not command.get("ok", false) or command.get("command_type", "") != "terrain":
 		return {"ok": false, "error": "terrain command is invalid"}
+	if command.get("random_used", false):
+		if random == null:
+			return {"ok": false, "error": "random state is required"}
+		if random.state != int(command.get("random_state_after", -1)):
+			return {"ok": false, "error": "random state changed after this terrain command"}
 	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
 	var old_payloads: Dictionary = command.get("old_payloads", {})
 	var new_payloads: Dictionary = command.get("new_payloads", {})
@@ -163,6 +220,8 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 			return {"ok": false, "error": "city changed after this terrain command"}
 	if not NetworkCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore terrain changes"}
+	if command.get("random_used", false):
+		random.state = int(command.random_state_before)
 	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
 	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
 
@@ -341,15 +400,100 @@ static func _expanded_indices(indices: PackedInt32Array) -> PackedInt32Array:
 	return result
 
 
-static func _has_unsupported_conflict(
+static func _clear_terrain_conflicts(
+	city: CityState,
+	altitude: PackedByteArray,
 	buildings: PackedByteArray,
+	terrain: PackedByteArray,
+	zones: PackedByteArray,
 	underground: PackedByteArray,
-	indices: PackedInt32Array
+	flags: PackedByteArray,
+	text_overlays: PackedByteArray,
+	labels: PackedByteArray,
+	microsims: PackedByteArray,
+	misc: PackedByteArray,
+	indices: PackedInt32Array,
+	random: SimRandom
+) -> Dictionary:
+	var demolition = load("res://src/tools/demolish_command.gd")
+	var changed_indices := PackedInt32Array()
+	var effect_events: Array[Dictionary] = []
+	var sound_events: Array[int] = []
+	var next_effect_frame := 0
+	var random_used := false
+	for index in indices:
+		var point := Vector2i(int(index / CityState.MAP_SIZE), index % CityState.MAP_SIZE)
+		var old_building := int(buildings[index])
+		if old_building >= 0x0d:
+			if random == null:
+				return {"ok": false}
+			var demolished: Dictionary = demolition._demolish_point(
+				city,
+				altitude,
+				buildings,
+				terrain,
+				zones,
+				underground,
+				flags,
+				text_overlays,
+				labels,
+				microsims,
+				misc,
+				point,
+				random,
+				true,
+				false,
+				true
+			)
+			random_used = true
+			for changed_index in demolished.get("indices", PackedInt32Array()):
+				if not changed_indices.has(changed_index):
+					changed_indices.append(changed_index)
+			var effects: Array = demolished.get("effect_events", [])
+			next_effect_frame = _append_effect_sequence(
+				effect_events, effects, next_effect_frame
+			)
+			if not effects.is_empty():
+				sound_events.append(504)
+		if old_building != 5:
+			NetworkCommand._replace_building(buildings, zones, misc, index, 0)
+			if not changed_indices.has(index):
+				changed_indices.append(index)
+		if underground[index] != 0:
+			BuildingCommand._replace_underground(underground, zones, misc, index, 0)
+			if not changed_indices.has(index):
+				changed_indices.append(index)
+	return {
+		"ok": true,
+		"indices": changed_indices,
+		"effect_events": effect_events,
+		"sound_events": sound_events,
+		"random_used": random_used,
+	}
+
+
+static func _terrain_conflict_needs_random(
+	buildings: PackedByteArray, indices: PackedInt32Array
 ) -> bool:
 	for index in indices:
-		if buildings[index] >= 0x0d or underground[index] != 0:
+		if buildings[index] >= 0x0d:
 			return true
 	return false
+
+
+static func _append_effect_sequence(
+	destination: Array[Dictionary], source: Array, first_frame: int
+) -> int:
+	if source.is_empty():
+		return first_frame
+	var frame_count := 0
+	for source_effect in source:
+		var effect: Dictionary = source_effect.duplicate()
+		var source_frame := int(effect.get("frame", 0))
+		effect["frame"] = first_frame + source_frame
+		destination.append(effect)
+		frame_count = maxi(frame_count, source_frame + 1)
+	return first_frame + frame_count
 
 
 static func _retile_region(

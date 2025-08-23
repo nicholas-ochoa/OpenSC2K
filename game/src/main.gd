@@ -2193,7 +2193,7 @@ func _apply_map_selection(
 		return
 	if TerrainTools.supports_tool(selected_group, selected_subtool):
 		var terrain_change := TerrainTools.apply_path(
-			city, selected_group, selected_subtool, start, path
+			city, selected_group, selected_subtool, start, path, tool_random
 		)
 		if not terrain_change.ok:
 			_show_error("Cannot change terrain: %s" % terrain_change.error)
@@ -2202,6 +2202,7 @@ func _apply_map_selection(
 		undo_button.disabled = false
 		_refresh_details()
 		_refresh_map(false)
+		_show_effect_events(terrain_change.effect_events, terrain_change.sound_events)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "%s applied %d actions for $%s." % [
 			Tools.tool(selected_group, selected_subtool).name,
@@ -2643,7 +2644,7 @@ func _undo_last_edit() -> void:
 	elif command_type == "demolish":
 		result = Demolish.undo(city, last_edit_command, tool_random)
 	elif command_type == "terrain":
-		result = TerrainTools.undo(city, last_edit_command)
+		result = TerrainTools.undo(city, last_edit_command, tool_random)
 	elif command_type == "dispatch":
 		result = Dispatch.undo(city, last_edit_command)
 	else:
