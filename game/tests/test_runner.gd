@@ -25,6 +25,7 @@ const SimNation = preload("res://src/simulation/simnation_phase.gd")
 const Industries = preload("res://src/simulation/industry_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
+const CityValue = preload("res://src/simulation/city_value_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
 const Milestones = preload("res://src/simulation/milestone_phase.gd")
 const MilitaryProposal = preload("res://src/simulation/military_proposal_phase.gd")
@@ -205,6 +206,7 @@ func _init() -> void:
 	_test_industries(reference_root)
 	_test_education_health(reference_root)
 	_test_month_start(reference_root)
+	_test_city_value_phase(reference_root)
 	_test_budget_phase(reference_root)
 	_test_milestone_phase(reference_root)
 	_test_military_proposal_phase(reference_root)
@@ -2369,6 +2371,45 @@ func _test_month_start(reference_root: String) -> void:
 		_check(document.misc_i32(0x05f0 + index * 4) == 0, "Month-start clears zone population %d" % index)
 	_check(document.misc_i32(0x05ec) == 0x12345678, "Month-start preserves preceding MISC data")
 	_check(document.misc_i32(0x0610) == 0x23456789, "Month-start preserves following MISC data")
+
+
+func _test_city_value_phase(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	for tile_id in 256:
+		_check(
+			document.set_misc_i32(0x01f0 + tile_id * 4, 0),
+			"City-value fixture clears tile count 0x%02X" % tile_id,
+		)
+	_check(document.set_misc_u32(0x0fe8, 3), "City-value fixture sets subway count")
+	for entry in [
+		[0x0e, 2], [0x1d, 3], [0x2c, 4], [0x3f, 5], [0x51, 6],
+		[0x61, 7], [0x6c, 8], [0xc6, 2], [0xc9, 32], [0xd1, 18],
+		[0xd4, 9], [0xd5, 9], [0xd7, 16], [0xdc, 3], [0xdd, 2],
+		[0xdf, 2], [0xe9, 2], [0xeb, 8], [0xec, 8], [0xed, 8],
+		[0xf4, 9], [0xf5, 8], [0xf8, 9], [0xfa, 9], [0xfb, 16],
+	]:
+		_check(
+			document.set_misc_u32(0x01f0 + int(entry[0]) * 4, int(entry[1])),
+			"City-value fixture sets tile count 0x%02X" % int(entry[0]),
+		)
+	_check(document.set_misc_u32(0x01f0 + 0x0d * 4, 99), "City-value fixture sets small parks")
+	_check(document.set_misc_u32(0x01f0 + 0xd0 * 4, 99), "City-value fixture sets city halls")
+	var before := document.misc_i32(0x0024)
+	var calculated := CityValue.calculate(city)
+	_check(calculated.ok and calculated.city_value == 122556, "City value uses all recovered rules")
+	_check(document.misc_i32(0x0024) == before, "City-value calculation is read-only")
+	var result := CityValue.run(city)
+	_check(result.ok and result.city_value == 122556, "City-value phase completes")
+	_check(document.misc_i32(0x0024) == 122556, "City-value phase stores MISC city value")
+
+	_check(document.set_misc_u32(0x01f0 + 0x0e * 4, 0xffff), "City-value fixture sets signed count")
+	_check(document.set_misc_u32(0x0fe8, 0xffff), "City-value fixture sets signed subway count")
+	var signed_result := CityValue.calculate(city)
+	_check(
+		signed_result.ok and signed_result.city_value == 122554,
+		"City value sign-extends the supplied runtime counters",
+	)
 
 
 func _test_budget_phase(reference_root: String) -> void:
