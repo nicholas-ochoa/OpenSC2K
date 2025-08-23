@@ -26,6 +26,7 @@ const Industries = preload("res://src/simulation/industry_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
 const MonthStart = preload("res://src/simulation/month_start_phase.gd")
 const CityValue = preload("res://src/simulation/city_value_phase.gd")
+const Bonds = preload("res://src/simulation/bond_command.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
 const Milestones = preload("res://src/simulation/milestone_phase.gd")
 const MilitaryProposal = preload("res://src/simulation/military_proposal_phase.gd")
@@ -207,6 +208,7 @@ func _init() -> void:
 	_test_education_health(reference_root)
 	_test_month_start(reference_root)
 	_test_city_value_phase(reference_root)
+	_test_bond_command(reference_root)
 	_test_budget_phase(reference_root)
 	_test_milestone_phase(reference_root)
 	_test_military_proposal_phase(reference_root)
@@ -2410,6 +2412,125 @@ func _test_city_value_phase(reference_root: String) -> void:
 		signed_result.ok and signed_result.city_value == 122554,
 		"City value sign-extends the supplied runtime counters",
 	)
+
+
+func _test_bond_command(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var city := CityModel.from_document(document)
+	for tile_id in 256:
+		_check(
+			document.set_misc_i32(0x01f0 + tile_id * 4, 0),
+			"Bond fixture clears tile count 0x%02X" % tile_id,
+		)
+	_check(document.set_misc_u32(0x0fe8, 0), "Bond fixture clears subway count")
+	_check(city.set_funds(2000), "Bond fixture sets funds")
+	_check(document.set_misc_u32(0x0018, 0), "Bond fixture clears bond count")
+	_check(document.set_misc_i32(0x0024, 12345), "Bond fixture sets stale city value")
+	_check(document.set_misc_u32(0x0058, 3), "Bond fixture sets federal rate")
+	for rate_index in 50:
+		_check(
+			document.set_misc_u32(0x0610 + rate_index * 4, 0x77770000),
+			"Bond fixture clears rate %d" % rate_index,
+		)
+	var invalid_before: PackedByteArray = document.find_chunk("MISC").decoded_payload.duplicate()
+	var invalid := Bonds.issue(city, 2)
+	_check(not invalid.ok, "Bond issue rejects an invalid confirmation choice")
+	_check(
+		document.find_chunk("MISC").decoded_payload == invalid_before,
+		"Rejected bond confirmation preserves MISC",
+	)
+
+	var request := Bonds.issue(city)
+	_check(
+		request.ok and request.status == "confirmation_required"
+		and request.confirmation_required and request.rate == 4,
+		"Bond issue requests confirmation at federal rate plus one",
+	)
+	_check(document.misc_i32(0x0024) == 0, "Bond issue first rebuilds the city value")
+	_check(city.funds() == 2000 and document.misc_u32(0x0018) == 0, "Bond prompt does not issue")
+	var cancel_before: PackedByteArray = document.find_chunk("MISC").decoded_payload.duplicate()
+	var cancelled := Bonds.issue(city, Bonds.CONFIRMATION_CANCELLED)
+	_check(cancelled.ok and cancelled.status == "cancelled", "Bond issue can be declined")
+	_check(
+		document.find_chunk("MISC").decoded_payload == cancel_before,
+		"Declined bond issue preserves the post-valuation MISC data",
+	)
+
+	var first := Bonds.issue(city, Bonds.CONFIRMATION_CONFIRMED)
+	_check(first.ok and first.status == "issued" and first.changed, "Bond issue completes")
+	_check(city.funds() == 12000 and document.misc_u32(0x0018) == 1, "Bond issue adds $10,000")
+	_check(document.misc_u32(0x0610) == 4, "Bond issue appends the offered rate")
+	_check(document.misc_i32(0x092c) == 1, "Bond issue updates the budget bond count")
+	_check(document.misc_i32(0x0930) == 40000, "Bond issue updates the average rate")
+	_check(document.misc_u32(0x0614) == 0, "Bond issue normalizes saved rate fields")
+
+	_check(document.set_misc_u32(0x0058, 5), "Bond fixture changes federal rate")
+	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 100), "Bond fixture improves city value")
+	var second := Bonds.issue(city, Bonds.CONFIRMATION_CONFIRMED)
+	_check(second.ok and second.rate == 6, "A second bond uses the current rate")
+	_check(city.funds() == 22000 and document.misc_u32(0x0018) == 2, "Second bond is stored")
+	_check(document.misc_u32(0x0614) == 6, "Second bond uses the next saved rate slot")
+	_check(document.misc_i32(0x0930) == 50000, "Two bond rates use their integer average")
+
+	var repay_before: PackedByteArray = document.find_chunk("MISC").decoded_payload.duplicate()
+	var repay_request := Bonds.repay(city)
+	_check(
+		repay_request.ok and repay_request.status == "confirmation_required"
+		and repay_request.rate == 4,
+		"Bond repayment offers the oldest bond",
+	)
+	_check(
+		document.find_chunk("MISC").decoded_payload == repay_before,
+		"Bond repayment prompt preserves MISC",
+	)
+	var repay_cancel := Bonds.repay(city, Bonds.CONFIRMATION_CANCELLED)
+	_check(repay_cancel.ok and repay_cancel.status == "cancelled", "Bond repayment can be declined")
+	_check(
+		document.find_chunk("MISC").decoded_payload == repay_before,
+		"Declined bond repayment preserves MISC",
+	)
+	var repaid := Bonds.repay(city, Bonds.CONFIRMATION_CONFIRMED)
+	_check(repaid.ok and repaid.status == "repaid" and repaid.rate == 4, "Oldest bond is repaid")
+	_check(city.funds() == 12000 and document.misc_u32(0x0018) == 1, "Repayment removes $10,000")
+	_check(document.misc_u32(0x0610) == 6, "Repayment shifts the remaining rate forward")
+	_check(document.misc_u32(0x0614) == 6, "Repayment preserves the stale last active slot")
+	_check(document.misc_i32(0x092c) == 1 and document.misc_i32(0x0930) == 60000, "Repayment updates the bond budget")
+	var final_repay := Bonds.repay(city, Bonds.CONFIRMATION_CONFIRMED)
+	_check(final_repay.ok and final_repay.bond_count == 0, "Last bond can be repaid")
+	_check(city.funds() == 2000 and document.misc_i32(0x0930) == 0, "No bonds have zero average rate")
+	_check(document.misc_u32(0x0610) == 6, "Last repayment does not clear its stale rate")
+	var no_bonds_before: PackedByteArray = document.find_chunk("MISC").decoded_payload.duplicate()
+	var no_bonds := Bonds.repay(city)
+	_check(no_bonds.ok and no_bonds.status == "no_bonds", "Repayment reports no bonds")
+	_check(document.find_chunk("MISC").decoded_payload == no_bonds_before, "No-bond repayment is read-only")
+
+	var denied_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var denied_city := CityModel.from_document(denied_document)
+	for tile_id in 256:
+		denied_document.set_misc_i32(0x01f0 + tile_id * 4, 0)
+	_check(denied_document.set_misc_u32(0x01f0 + 0x1d * 4, 10), "Credit fixture sets roads")
+	_check(denied_document.set_misc_u32(0x0018, 1), "Credit fixture sets one bond")
+	_check(denied_document.set_misc_u32(0x0610, 4), "Credit fixture sets its rate")
+	_check(denied_city.set_funds(9999), "Credit fixture sets insufficient repayment funds")
+	var denied := Bonds.issue(denied_city)
+	_check(
+		denied.ok and denied.status == "credit_denied" and denied.credit_value == 24,
+		"Supplied 2,500 credit formula can deny a bond",
+	)
+	_check(denied_document.misc_i32(0x0024) == 100, "Denied issue stores rebuilt city value")
+	var insufficient := Bonds.repay(denied_city)
+	_check(
+		insufficient.ok and insufficient.status == "insufficient_funds",
+		"Repayment requires $10,000 before it asks for confirmation",
+	)
+
+	var maximum_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var maximum_city := CityModel.from_document(maximum_document)
+	for tile_id in 256:
+		maximum_document.set_misc_i32(0x01f0 + tile_id * 4, 0)
+	_check(maximum_document.set_misc_u32(0x0018, 50), "Maximum fixture sets fifty bonds")
+	var maximum := Bonds.issue(maximum_city)
+	_check(maximum.ok and maximum.status == "maximum_bonds", "Bond count is limited to fifty")
 
 
 func _test_budget_phase(reference_root: String) -> void:
