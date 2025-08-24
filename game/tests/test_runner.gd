@@ -8609,6 +8609,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(document.set_misc_i32(0x14, 20000), "Building fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16384), "Building fixture counts clear tiles")
 	_check(document.set_misc_u32(0x0fe8, 0), "Building fixture clears subway count")
+	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0), "Building fixture clears stadium teams")
 	_check(document.set_misc_u32(0x01f0 + 0xcf * 4, 0), "Building fixture clears coal count")
 	_check(document.set_misc_u32(0x077c + 5 * 0x6c, 2), "Building fixture sets police count")
 	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 0), "Building fixture clears progression")
@@ -8704,6 +8705,71 @@ func _test_building_command(reference_root: String) -> void:
 		"Building command rejects a reward that the city has not granted",
 	)
 	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0x0f), "Building fixture restores one-use rewards")
+
+	_check(
+		Buildings.stadium_team_choices(city) == PackedInt32Array([0, 1, 2, 3, 4]),
+		"A city without teams offers all five stadium teams",
+	)
+	_check(
+		Buildings.stadium_team_name(city, 2) == "Camels",
+		"An empty sports label uses the supplied default team name",
+	)
+	var stadium := Buildings.apply(
+		city, 14, 3, Vector2i(90, 90), random, process_random
+	)
+	_check(
+		stadium.ok
+		and stadium.stadium_team_selection_required
+		and stadium.overlay_id >= 61,
+		"Stadium placement requests a team when it gets an XMIC record",
+	)
+	var assigned_stadium := Buildings.assign_stadium_team(
+		city, stadium, 2, "Camel City Flyers"
+	)
+	_check(
+		assigned_stadium.ok,
+		"Stadium team assignment succeeds: %s" % assigned_stadium.error,
+	)
+	if assigned_stadium.ok:
+		var stadium_record_id := (
+			int(stadium.overlay_id) - Buildings.MICROSIM_LABEL_BASE
+		)
+		var stadium_record := city.microsim(stadium_record_id)
+		_check(
+			document.misc_u32(Buildings.MISC_STADIUM_TEAMS) == 0x04,
+			"Stadium assignment sets its saved team bit",
+		)
+		_check(
+			stadium_record.stat_2 == 2 and stadium_record.stat_3 == 0xfd,
+			"Stadium assignment stores the team index and sports-label ID in XMIC",
+		)
+		_check(
+			city.label(0xfd) == "Camel City Flyers",
+			"Stadium assignment stores the editable team name in XLAB",
+		)
+		_check(
+			Buildings.undo(
+				city, assigned_stadium.command, random, process_random
+			).ok,
+			"Assigned stadium placement can be undone as one transaction",
+		)
+		_check(
+			document.misc_u32(Buildings.MISC_STADIUM_TEAMS) == 0
+			and city.label(0xfd).is_empty()
+			and city.building_id(89, 89) == 0,
+			"Stadium undo restores the team bit, label, XMIC, and map",
+		)
+	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0x1b), "Stadium fixture uses four teams")
+	_check(
+		Buildings.stadium_team_choices(city) == PackedInt32Array([2]),
+		"The Stadium dialog offers only unused teams",
+	)
+	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0x1f), "Stadium fixture uses all teams")
+	_check(
+		Buildings.stadium_team_choices(city) == PackedInt32Array([0, 1, 2, 3, 4]),
+		"The Stadium dialog permits every team after all five are used",
+	)
+	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0), "Building fixture restores stadium teams")
 
 	var edge := Buildings.apply(city, 3, 2, Vector2i(1, 1), random, process_random)
 	_check(not edge.ok and edge.error.contains("fit"), "Four-tile building rejects the inner map edge")

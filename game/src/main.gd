@@ -171,6 +171,10 @@ var pending_bridge_request: Dictionary = {}
 var tool_choice_dialog: ConfirmationDialog
 var tool_choice_buttons: Array[Button] = []
 var pending_tool_choices: Dictionary = {}
+var stadium_dialog: ConfirmationDialog
+var stadium_team_selector: OptionButton
+var stadium_name_input: LineEdit
+var pending_stadium_command: Dictionary = {}
 var highway_connection_dialog: ConfirmationDialog
 var pending_highway_connection: Dictionary = {}
 var tunnel_dialog: ConfirmationDialog
@@ -239,6 +243,7 @@ func _process(delta: float) -> void:
 		or budget_dialog.visible
 		or bridge_dialog.visible
 		or tool_choice_dialog.visible
+		or stadium_dialog.visible
 		or highway_connection_dialog.visible
 		or tunnel_dialog.visible
 		or bond_dialog.visible
@@ -690,6 +695,32 @@ func _build_interface(toolbar_art: Image) -> void:
 		tool_choices.add_child(choice_button)
 		tool_choice_buttons.append(choice_button)
 	add_child(tool_choice_dialog)
+
+	stadium_dialog = ConfirmationDialog.new()
+	stadium_dialog.title = "Select Stadium Team"
+	stadium_dialog.dialog_text = "Select an unused team and edit its name."
+	stadium_dialog.min_size = Vector2i(520, 260)
+	stadium_dialog.exclusive = true
+	stadium_dialog.get_ok_button().text = "Assign Team"
+	stadium_dialog.get_cancel_button().text = "No Team"
+	stadium_dialog.confirmed.connect(_confirm_stadium_team)
+	stadium_dialog.canceled.connect(_cancel_stadium_team)
+	var stadium_fields := VBoxContainer.new()
+	stadium_fields.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	stadium_fields.offset_left = 16
+	stadium_fields.offset_top = 72
+	stadium_fields.offset_right = -16
+	stadium_fields.offset_bottom = 170
+	stadium_fields.add_theme_constant_override("separation", 10)
+	stadium_dialog.add_child(stadium_fields)
+	stadium_team_selector = OptionButton.new()
+	stadium_team_selector.item_selected.connect(_select_stadium_team)
+	stadium_fields.add_child(stadium_team_selector)
+	stadium_name_input = LineEdit.new()
+	stadium_name_input.max_length = 23
+	stadium_name_input.placeholder_text = "Team name"
+	stadium_fields.add_child(stadium_name_input)
+	add_child(stadium_dialog)
 
 	highway_connection_dialog = ConfirmationDialog.new()
 	highway_connection_dialog.title = "Neighbor Connection"
@@ -1355,6 +1386,9 @@ func _load_city(path: String) -> void:
 	pending_tool_choices.clear()
 	if tool_choice_dialog.visible:
 		tool_choice_dialog.hide()
+	pending_stadium_command.clear()
+	if stadium_dialog.visible:
+		stadium_dialog.hide()
 	pending_highway_connection.clear()
 	if highway_connection_dialog.visible:
 		highway_connection_dialog.hide()
@@ -2385,6 +2419,9 @@ func _apply_map_selection(
 			building_name,
 			_format_number(building.cost),
 		]
+		if building.get("stadium_team_selection_required", false):
+			_open_stadium_dialog(building)
+			status_label.text += " Select a stadium team."
 		return
 	var command := Zones.apply_rectangle(city, selected_group, selected_subtool, start, finish)
 	if not command.ok:
@@ -2518,6 +2555,69 @@ func _choose_tool_variant(choice_index: int) -> void:
 func _cancel_tool_choice() -> void:
 	pending_tool_choices.clear()
 	_update_edit_state()
+
+
+func _open_stadium_dialog(command: Dictionary) -> void:
+	var choices := Buildings.stadium_team_choices(city)
+	if choices.is_empty():
+		_show_error("Cannot read the available stadium teams.")
+		return
+	pending_stadium_command = command.duplicate(true)
+	stadium_team_selector.clear()
+	for team_index in choices:
+		stadium_team_selector.add_item(
+			Buildings.stadium_team_name(city, team_index), team_index
+		)
+	stadium_team_selector.select(0)
+	_select_stadium_team(0)
+	stadium_dialog.popup_centered()
+	stadium_name_input.grab_focus()
+	stadium_name_input.select_all()
+
+
+func _select_stadium_team(item_index: int) -> void:
+	if item_index < 0 or item_index >= stadium_team_selector.item_count:
+		return
+	var team_index := stadium_team_selector.get_item_id(item_index)
+	stadium_name_input.text = Buildings.stadium_team_name(city, team_index)
+	stadium_name_input.select_all()
+
+
+func _confirm_stadium_team() -> void:
+	if pending_stadium_command.is_empty():
+		return
+	var item_index := stadium_team_selector.selected
+	if item_index < 0:
+		_show_error("Select a stadium team.")
+		call_deferred("_restore_stadium_dialog")
+		return
+	var team_index := stadium_team_selector.get_item_id(item_index)
+	var result := Buildings.assign_stadium_team(
+		city,
+		pending_stadium_command,
+		team_index,
+		stadium_name_input.text,
+	)
+	if not result.ok:
+		_show_error("Cannot assign stadium team: %s" % result.error)
+		call_deferred("_restore_stadium_dialog")
+		return
+	last_edit_command = result.command
+	pending_stadium_command.clear()
+	_refresh_details()
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Assigned %s to the new stadium." % result.team_name
+
+
+func _cancel_stadium_team() -> void:
+	pending_stadium_command.clear()
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "The stadium was built without a team."
+
+
+func _restore_stadium_dialog() -> void:
+	if not pending_stadium_command.is_empty():
+		stadium_dialog.popup_centered()
 
 
 func _open_bridge_dialog(

@@ -28,6 +28,7 @@ const SMALL_PARK := 0x0d
 const BIG_PARK := 0xd5
 const MARINA := 0xf8
 const STATUE := 0xdb
+const STADIUM := 0xd7
 const WATER_PUMP := 0xdc
 const SUBWAY_STATION := 0xe9
 const UNDER_SUBWAY_FIRST := 0x01
@@ -40,6 +41,16 @@ const UNDER_UNKNOWN := 0x22
 const UNDER_SUBWAY_ENTRANCE := 0x23
 const MICROSIM_DYNAMIC_FIRST := 10
 const MICROSIM_LABEL_BASE := 51
+const MISC_STADIUM_TEAMS := 0x1028
+const STADIUM_TEAM_COUNT := 5
+const STADIUM_TEAM_LABEL_BASE := 0xfb
+const DEFAULT_STADIUM_TEAM_NAMES := [
+	"Llamas",
+	"Alpacas",
+	"Camels",
+	"Dromedaries",
+	"Army Ants",
+]
 
 const MICROSIM_TYPE_BY_TILE := {
 	0xc6: 21,
@@ -353,6 +364,116 @@ static func apply(
 		"random_state_after": nuisance_random.state,
 		"process_random_state_before": process_random_state_before,
 		"process_random_state_after": process_random.state,
+		"stadium_team_selection_required": tile_id == STADIUM and overlay_id != 0,
+		"error": "",
+	}
+
+
+static func stadium_team_choices(city: CityState) -> PackedInt32Array:
+	var result := PackedInt32Array()
+	if city == null or not city.is_valid():
+		return result
+	var misc_chunk := city.document.find_chunk("MISC")
+	if misc_chunk == null or misc_chunk.decoded_payload.size() != 4800:
+		return result
+	var used_mask := _read_u32_be(
+		misc_chunk.decoded_payload, MISC_STADIUM_TEAMS
+	) & 0x1f
+	for team_index in STADIUM_TEAM_COUNT:
+		if used_mask == 0x1f or (used_mask & (1 << team_index)) == 0:
+			result.append(team_index)
+	return result
+
+
+static func stadium_team_name(city: CityState, team_index: int) -> String:
+	if city == null or team_index < 0 or team_index >= STADIUM_TEAM_COUNT:
+		return ""
+	var saved_name := city.label(STADIUM_TEAM_LABEL_BASE + team_index)
+	return (
+		saved_name
+		if not saved_name.is_empty()
+		else DEFAULT_STADIUM_TEAM_NAMES[team_index]
+	)
+
+
+static func assign_stadium_team(
+	city: CityState,
+	command: Dictionary,
+	team_index: int,
+	team_name: String
+) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	if (
+		not command.get("ok", false)
+		or command.get("command_type", "") != "building"
+		or int(command.get("tile_id", 0)) != STADIUM
+		or not command.get("stadium_team_selection_required", false)
+	):
+		return {"ok": false, "error": "stadium building command is invalid"}
+	if not stadium_team_choices(city).has(team_index):
+		return {"ok": false, "error": "stadium team is not available"}
+	var overlay_id := int(command.get("overlay_id", 0))
+	var record_id := overlay_id - MICROSIM_LABEL_BASE
+	if record_id < MICROSIM_DYNAMIC_FIRST or record_id >= CityState.MICROSIM_COUNT:
+		return {"ok": false, "error": "stadium microsimulation link is invalid"}
+	var current_payloads := _city_payloads(city)
+	if current_payloads.is_empty():
+		return {"ok": false, "error": "required city data is missing or invalid"}
+	var expected_payloads: Dictionary = command.get("new_payloads", {})
+	var command_ids: PackedStringArray = command.get(
+		"changed_ids", PackedStringArray()
+	)
+	for chunk_id in command_ids:
+		if (
+			not expected_payloads.has(chunk_id)
+			or current_payloads[chunk_id] != expected_payloads[chunk_id]
+		):
+			return {"ok": false, "error": "city changed after stadium placement"}
+	var changed_payloads := _duplicate_payloads(current_payloads)
+	var microsims: PackedByteArray = changed_payloads.XMIC
+	var record_offset := record_id * CityState.MICROSIM_RECORD_SIZE
+	if microsims[record_offset] != STADIUM:
+		return {"ok": false, "error": "stadium microsimulation record is missing"}
+	_write_u16_be(microsims, record_offset + 4, team_index)
+	_write_u16_be(
+		microsims,
+		record_offset + 6,
+		STADIUM_TEAM_LABEL_BASE + team_index,
+	)
+	_write_label(
+		changed_payloads.XLAB,
+		STADIUM_TEAM_LABEL_BASE + team_index,
+		team_name,
+	)
+	var misc: PackedByteArray = changed_payloads.MISC
+	_write_u32_be(
+		misc,
+		MISC_STADIUM_TEAMS,
+		_read_u32_be(misc, MISC_STADIUM_TEAMS) | (1 << team_index),
+	)
+	var team_chunk_ids := PackedStringArray(["XLAB", "XMIC", "MISC"])
+	if not _apply_payloads(
+		city, team_chunk_ids, changed_payloads, current_payloads
+	):
+		return {"ok": false, "error": "cannot store stadium team"}
+	var updated_command := command.duplicate(true)
+	var updated_payloads: Dictionary = updated_command.new_payloads
+	for chunk_id in team_chunk_ids:
+		updated_payloads[chunk_id] = changed_payloads[chunk_id].duplicate()
+		if not command_ids.has(chunk_id):
+			command_ids.append(chunk_id)
+	updated_command["changed_ids"] = command_ids
+	updated_command["new_payloads"] = updated_payloads
+	updated_command["stadium_team_selection_required"] = false
+	updated_command["stadium_team_index"] = team_index
+	updated_command["stadium_team_label"] = STADIUM_TEAM_LABEL_BASE + team_index
+	return {
+		"ok": true,
+		"command": updated_command,
+		"team_index": team_index,
+		"team_label": STADIUM_TEAM_LABEL_BASE + team_index,
+		"team_name": team_name.left(23),
 		"error": "",
 	}
 
