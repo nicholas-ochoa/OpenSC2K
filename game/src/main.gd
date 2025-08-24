@@ -11,6 +11,7 @@ const RenderJob = preload("res://src/view/city_render_job.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
+const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
@@ -110,6 +111,7 @@ var overlay_mode := "city"
 var reference_root := ""
 var selected_group := 9
 var selected_subtool := 0
+var selected_tool_available := false
 var last_edit_command: Dictionary = {}
 var pending_sign_tile := Vector2i(-1, -1)
 var tool_random := Random.new(1)
@@ -166,6 +168,9 @@ var sign_input: LineEdit
 var bridge_dialog: ConfirmationDialog
 var bridge_choice_buttons: Array[Button] = []
 var pending_bridge_request: Dictionary = {}
+var tool_choice_dialog: ConfirmationDialog
+var tool_choice_buttons: Array[Button] = []
+var pending_tool_choices: Dictionary = {}
 var highway_connection_dialog: ConfirmationDialog
 var pending_highway_connection: Dictionary = {}
 var tunnel_dialog: ConfirmationDialog
@@ -233,6 +238,7 @@ func _process(delta: float) -> void:
 		(map_view != null and map_view.is_left_drag_active())
 		or budget_dialog.visible
 		or bridge_dialog.visible
+		or tool_choice_dialog.visible
 		or highway_connection_dialog.visible
 		or tunnel_dialog.visible
 		or bond_dialog.visible
@@ -657,6 +663,33 @@ func _build_interface(toolbar_art: Image) -> void:
 		bridge_choices.add_child(choice_button)
 		bridge_choice_buttons.append(choice_button)
 	add_child(bridge_dialog)
+
+	tool_choice_dialog = ConfirmationDialog.new()
+	tool_choice_dialog.title = "Select Building"
+	tool_choice_dialog.dialog_text = "Select a building type."
+	tool_choice_dialog.min_size = Vector2i(680, 390)
+	tool_choice_dialog.exclusive = true
+	tool_choice_dialog.get_ok_button().visible = false
+	tool_choice_dialog.get_cancel_button().text = "Cancel"
+	tool_choice_dialog.canceled.connect(_cancel_tool_choice)
+	var tool_choices := GridContainer.new()
+	tool_choices.columns = 3
+	tool_choices.set_anchors_preset(Control.PRESET_TOP_WIDE)
+	tool_choices.offset_left = 16
+	tool_choices.offset_top = 72
+	tool_choices.offset_right = -16
+	tool_choices.offset_bottom = 320
+	tool_choices.add_theme_constant_override("h_separation", 8)
+	tool_choices.add_theme_constant_override("v_separation", 8)
+	tool_choice_dialog.add_child(tool_choices)
+	for choice_index in 9:
+		var choice_button := Button.new()
+		choice_button.custom_minimum_size = Vector2(205, 72)
+		choice_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		choice_button.pressed.connect(_choose_tool_variant.bind(choice_index))
+		tool_choices.add_child(choice_button)
+		tool_choice_buttons.append(choice_button)
+	add_child(tool_choice_dialog)
 
 	highway_connection_dialog = ConfirmationDialog.new()
 	highway_connection_dialog.title = "Neighbor Connection"
@@ -1319,6 +1352,9 @@ func _load_city(path: String) -> void:
 	pending_bridge_request.clear()
 	if bridge_dialog.visible:
 		bridge_dialog.hide()
+	pending_tool_choices.clear()
+	if tool_choice_dialog.visible:
+		tool_choice_dialog.hide()
 	pending_highway_connection.clear()
 	if highway_connection_dialog.visible:
 		highway_connection_dialog.hide()
@@ -1983,23 +2019,80 @@ func _select_tool_group(index: int) -> void:
 		dispatch_initialized = false
 	tool_selector.clear()
 	var group := Tools.group(selected_group)
+	var first_available_index := -1
 	for subtool_index in group.tools.size():
+		if _is_tool_variant(selected_group, subtool_index):
+			continue
 		var tool := Tools.tool(selected_group, subtool_index)
 		var price := "Free" if tool.cost == 0 else "$%s" % _format_number(tool.cost)
 		tool_selector.add_item("%s — %s" % [tool.name, price], subtool_index)
-	selected_subtool = 0
-	tool_selector.select(0)
+		var item_index := tool_selector.item_count - 1
+		var available := city == null or ToolAvailability.is_available(
+			city, selected_group, subtool_index
+		)
+		tool_selector.set_item_disabled(item_index, not available)
+		if available and first_available_index < 0:
+			first_available_index = item_index
+	tool_selector.disabled = first_available_index < 0
+	var selected_item := first_available_index if first_available_index >= 0 else 0
+	tool_selector.select(selected_item)
+	selected_subtool = tool_selector.get_item_id(selected_item)
 	_update_edit_state()
 
 
 func _select_subtool(index: int) -> void:
 	selected_subtool = tool_selector.get_item_id(index)
 	_update_edit_state()
+	if selected_tool_available and _is_tool_chooser(selected_group, selected_subtool):
+		_open_tool_choice_dialog(selected_group)
+
+
+func _is_tool_chooser(group_index: int, subtool_index: int) -> bool:
+	return (
+		(group_index == 3 and subtool_index == 1)
+		or (group_index == 5 and subtool_index == 4)
+	)
+
+
+func _is_tool_variant(group_index: int, subtool_index: int) -> bool:
+	return (
+		(group_index == 3 and subtool_index >= 2)
+		or (group_index == 5 and subtool_index >= 5)
+	)
+
+
+func _refresh_tool_availability() -> bool:
+	if city == null or tool_selector == null:
+		return false
+	var changed := false
+	var available_count := 0
+	for item_index in tool_selector.item_count:
+		var subtool_index := tool_selector.get_item_id(item_index)
+		var available := ToolAvailability.is_available(
+			city, selected_group, subtool_index
+		)
+		if tool_selector.is_item_disabled(item_index) == available:
+			tool_selector.set_item_disabled(item_index, not available)
+			changed = true
+		if available:
+			available_count += 1
+	var selector_disabled := available_count == 0
+	if tool_selector.disabled != selector_disabled:
+		tool_selector.disabled = selector_disabled
+		changed = true
+	var current_available := ToolAvailability.is_available(
+		city, selected_group, selected_subtool
+	)
+	return changed or current_available != selected_tool_available
 
 
 func _update_edit_state() -> void:
 	if map_view == null:
 		return
+	var tool_available := city != null and ToolAvailability.is_available(
+		city, selected_group, selected_subtool
+	)
+	selected_tool_available = tool_available
 	var is_zone_tool := Zones.supports_tool(selected_group, selected_subtool)
 	var is_landscape_tool := Landscapes.supports_tool(selected_group, selected_subtool)
 	var is_building_tool := Buildings.supports_tool(selected_group, selected_subtool)
@@ -2020,7 +2113,7 @@ func _update_edit_state() -> void:
 		or (selected_group == 7 and selected_subtool == 1)
 	)
 	map_view.set_edit_enabled(
-		city != null
+		tool_available
 			and (
 				overlay_mode == "city"
 				or (
@@ -2059,7 +2152,11 @@ func _update_edit_state() -> void:
 		return
 	var tool := Tools.tool(selected_group, selected_subtool)
 	status_label.remove_theme_color_override("font_color")
-	if is_zone_tool:
+	if not tool_available:
+		status_label.text = "%s is not available in this city." % tool.name
+	elif _is_tool_chooser(selected_group, selected_subtool):
+		status_label.text = "%s selected. Select an available type from the choice window." % tool.name
+	elif is_zone_tool:
 		status_label.text = "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool.name
 	elif is_landscape_tool:
 		status_label.text = "%s selected. Click or drag across eligible city tiles." % tool.name
@@ -2101,6 +2198,12 @@ func _apply_map_selection(
 	start: Vector2i, finish: Vector2i, path: Array[Vector2i]
 ) -> void:
 	if city == null:
+		return
+	if not ToolAvailability.is_available(city, selected_group, selected_subtool):
+		_show_error(
+			"%s is not available in this city."
+			% Tools.tool(selected_group, selected_subtool).name
+		)
 		return
 	if selected_group == 17:
 		if map_view.center_on_tile(finish):
@@ -2257,22 +2360,29 @@ func _apply_map_selection(
 		_apply_highway_selection(start, finish)
 		return
 	if Buildings.supports_tool(selected_group, selected_subtool):
+		var building_group := selected_group
+		var building_subtool := selected_subtool
+		var building_name: String = Tools.tool(
+			building_group, building_subtool
+		).name
 		var building := Buildings.apply(
-			city, selected_group, selected_subtool, finish, nuisance_random, tool_random
+			city, building_group, building_subtool, finish, nuisance_random, tool_random
 		)
 		if not building.ok:
 			_show_error(
 				"Cannot build %s: %s"
-				% [Tools.tool(selected_group, selected_subtool).name, building.error]
+				% [building_name, building.error]
 			)
 			return
 		last_edit_command = building
 		undo_button.disabled = false
 		_refresh_details()
 		_refresh_map(false)
+		if building_group == 5 and building_subtool < 4:
+			_choose_tool_group(17)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built %s for $%s." % [
-			Tools.tool(selected_group, selected_subtool).name,
+			building_name,
 			_format_number(building.cost),
 		]
 		return
@@ -2352,6 +2462,62 @@ func _apply_network_selection(
 			status_label.text += " The bridge was not built: %s." % network.bridge_error
 		elif network.get("stopped_early", false):
 			status_label.text += " The route stopped at an obstruction."
+
+
+func _open_tool_choice_dialog(group_index: int) -> void:
+	if city == null or (group_index != 3 and group_index != 5):
+		return
+	var first_subtool := 2 if group_index == 3 else 5
+	var final_subtool := 10 if group_index == 3 else 8
+	var choices: Array[int] = []
+	for subtool_index in range(first_subtool, final_subtool + 1):
+		if ToolAvailability.is_available(city, group_index, subtool_index):
+			choices.append(subtool_index)
+	if choices.is_empty():
+		_show_error("No building type is available for this chooser.")
+		return
+	pending_tool_choices = {
+		"group_index": group_index,
+		"subtools": choices,
+	}
+	tool_choice_dialog.title = (
+		"Select Power Plant" if group_index == 3 else "Select Arcology"
+	)
+	tool_choice_dialog.dialog_text = (
+		"Select an available power plant."
+		if group_index == 3
+		else "Select an available arcology."
+	)
+	for choice_index in tool_choice_buttons.size():
+		var choice_button := tool_choice_buttons[choice_index]
+		choice_button.visible = choice_index < choices.size()
+		if not choice_button.visible:
+			continue
+		var tool := Tools.tool(group_index, choices[choice_index])
+		choice_button.text = "%s\n$%s" % [
+			tool.name,
+			_format_number(int(tool.cost)),
+		]
+		choice_button.tooltip_text = "Select %s" % tool.name
+	tool_choice_dialog.popup_centered()
+
+
+func _choose_tool_variant(choice_index: int) -> void:
+	if pending_tool_choices.is_empty():
+		return
+	var choices: Array = pending_tool_choices.get("subtools", [])
+	if choice_index < 0 or choice_index >= choices.size():
+		return
+	selected_group = int(pending_tool_choices.group_index)
+	selected_subtool = int(choices[choice_index])
+	pending_tool_choices.clear()
+	tool_choice_dialog.hide()
+	_update_edit_state()
+
+
+func _cancel_tool_choice() -> void:
+	pending_tool_choices.clear()
+	_update_edit_state()
 
 
 func _open_bridge_dialog(
@@ -2764,6 +2930,8 @@ func _refresh_details() -> void:
 			demand.z,
 		]
 	)
+	if _refresh_tool_availability():
+		_update_edit_state()
 
 
 func _show_error(message: String) -> void:
