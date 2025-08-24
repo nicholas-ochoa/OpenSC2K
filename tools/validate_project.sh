@@ -20,11 +20,11 @@ run_godot() {
 	fi
 }
 
-run_godot godot --headless --path "$repo_dir/game" --editor --quit
-run_godot godot --headless --path "$repo_dir/game" --quit-after 2
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --editor --quit
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --quit-after 2
 
 if [ -f "$repo_dir/game/tests/test_runner.gd" ]; then
-	run_godot godot --headless --path "$repo_dir/game" --script res://tests/test_runner.gd -- "$repo_dir/references"
+	run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/test_runner.gd -- "$repo_dir/references"
 fi
 
 git -C "$repo_dir" diff --check
