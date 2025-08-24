@@ -4,6 +4,8 @@ extends RefCounted
 const Availability = preload("res://src/tools/tool_availability.gd")
 
 const MISC_FUNDS := 0x0014
+const MISC_ARCOLOGY_POPULATION := 0x1020
+const MISC_NORMAL_POPULATION := 0x102c
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_BUDGETS := 0x077c
 const MISC_SUBWAY_COUNT := 0x0fe8
@@ -250,7 +252,8 @@ static func apply(
 	subtool_index: int,
 	selected: Vector2i,
 	nuisance_random: GameLcgRandom,
-	process_random: SimRandom
+	process_random: SimRandom,
+	australian_locale := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -304,7 +307,14 @@ static func apply(
 			}
 
 	var overlay_id := _provision_microsim(
-		microsims, labels, text_overlays, tile_id, city.current_year(), process_random
+		microsims,
+		labels,
+		text_overlays,
+		tile_id,
+		city.current_year(),
+		process_random,
+		misc,
+		australian_locale
 	)
 
 	var placed_flags := FLAG_PIPED if tile_id == SMALL_PARK or tile_id == BIG_PARK else STRUCTURE_FLAGS
@@ -564,7 +574,9 @@ static func _provision_microsim(
 	text_overlays: PackedByteArray,
 	tile_id: int,
 	current_year: int,
-	process_random
+	process_random,
+	misc := PackedByteArray(),
+	australian_locale := false
 ) -> int:
 	var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(tile_id, 0))
 	if microsim_type == 0:
@@ -594,7 +606,15 @@ static func _provision_microsim(
 		for offset in CityState.MICROSIM_RECORD_SIZE:
 			microsims[record_offset + offset] = 0
 	microsims[record_offset] = tile_id
-	_initialize_microsim(microsims, record_id, tile_id, current_year, process_random)
+	_initialize_microsim(
+		microsims,
+		misc,
+		record_id,
+		tile_id,
+		current_year,
+		process_random,
+		australian_locale
+	)
 
 	var label_id := record_id + MICROSIM_LABEL_BASE
 	var label_offset := label_id * CityState.LABEL_RECORD_SIZE
@@ -605,10 +625,12 @@ static func _provision_microsim(
 
 static func _initialize_microsim(
 	microsims: PackedByteArray,
+	misc: PackedByteArray,
 	record_id: int,
 	tile_id: int,
 	current_year: int,
-	process_random
+	process_random,
+	australian_locale: bool
 ) -> void:
 	var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 	match tile_id:
@@ -630,8 +652,32 @@ static func _initialize_microsim(
 			_write_u16_be(microsims, offset + 2, 2500)
 		0xcf:
 			_write_u16_be(microsims, offset + 2, 200)
+		0xd0:
+			_write_u16_be(microsims, offset + 2, _population_cap(misc, 200, 900))
+			_write_u16_be(microsims, offset + 4, current_year)
 		0xd1, 0xd6, 0xd9:
 			microsims[offset + 1] = 6
+		0xd2:
+			var police_funding := _read_i32_be(
+				misc, MISC_BUDGETS + 5 * BUDGET_RECORD_SIZE + 4
+			)
+			_write_u16_be(
+				microsims,
+				offset + 2,
+				_population_cap(misc, _to_i16(police_funding * 2), 90)
+			)
+		0xd3:
+			var fire_funding := _read_i32_be(
+				misc, MISC_BUDGETS + 6 * BUDGET_RECORD_SIZE + 4
+			)
+			_write_u16_be(
+				microsims,
+				offset + 2,
+				_population_cap(misc, _to_i16(_divide_toward_zero(fire_funding, 2)), 70)
+			)
+			_write_u16_be(microsims, offset + 4, 4)
+		0xd4:
+			microsims[offset + 1] = 100
 		0xd5:
 			_write_u16_be(microsims, offset + 4, _read_u16_be(microsims, offset + 4) + 9)
 		0xdb:
@@ -658,6 +704,43 @@ static func _initialize_microsim(
 			microsims[offset + 1] = 5
 			_write_u16_be(microsims, offset + 2, 65)
 			_write_u16_be(microsims, offset + 6, current_year)
+		0xff:
+			_write_u16_be(
+				microsims,
+				offset + 6,
+				current_year if australian_locale else process_random.next_u15() & 0x3f
+			)
+
+
+static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int) -> int:
+	if divisor == 0:
+		divisor = 100
+	var arcology_count := 0
+	for tile_id in range(0xfb, 0xff):
+		arcology_count += _to_i16(
+			_read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
+		)
+	arcology_count = _divide_toward_zero(arcology_count, 16)
+	var arcology_adjustment := 0
+	if arcology_count >= 141:
+		arcology_adjustment = arcology_count * 20000 - 2800000
+	var total_population := (
+		arcology_adjustment
+		+ _read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
+		+ _read_u32_be(misc, MISC_NORMAL_POPULATION)
+	)
+	var available := _divide_toward_zero(total_population, divisor) & 0xffff
+	var signed_maximum := _to_i16(maximum)
+	return signed_maximum if signed_maximum <= available else available
+
+
+static func _divide_toward_zero(value: int, divisor: int) -> int:
+	return int(value / float(divisor))
+
+
+static func _to_i16(value: int) -> int:
+	var wrapped := value & 0xffff
+	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped
 
 
 static func _write_label(labels: PackedByteArray, label_id: int, value: String) -> void:
@@ -918,6 +1001,11 @@ static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
 		| (data[offset + 2] << 8)
 		| data[offset + 3]
 	)
+
+
+static func _read_i32_be(data: PackedByteArray, offset: int) -> int:
+	var value := _read_u32_be(data, offset)
+	return value - 0x100000000 if value >= 0x80000000 else value
 
 
 static func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:

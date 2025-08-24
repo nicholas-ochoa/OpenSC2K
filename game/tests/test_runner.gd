@@ -8610,8 +8610,12 @@ func _test_building_command(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x01f0, 16384), "Building fixture counts clear tiles")
 	_check(document.set_misc_u32(0x0fe8, 0), "Building fixture clears subway count")
 	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0), "Building fixture clears stadium teams")
+	_check(document.set_misc_u32(Buildings.MISC_ARCOLOGY_POPULATION, 0), "Building fixture clears arcology population")
+	_check(document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 180000), "Building fixture sets normal population")
 	_check(document.set_misc_u32(0x01f0 + 0xcf * 4, 0), "Building fixture clears coal count")
 	_check(document.set_misc_u32(0x077c + 5 * 0x6c, 2), "Building fixture sets police count")
+	_check(document.set_misc_u32(0x077c + 5 * 0x6c + 4, 80), "Building fixture funds police")
+	_check(document.set_misc_u32(0x077c + 6 * 0x6c + 4, 80), "Building fixture funds fire")
 	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 0), "Building fixture clears progression")
 	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0x0f), "Building fixture grants one-use rewards")
 	for invention_index in ToolAvailability.INVENTION_COUNT:
@@ -8648,7 +8652,27 @@ func _test_building_command(reference_root: String) -> void:
 	var police := Buildings.apply(city, 13, 0, Vector2i(30, 30), random, process_random)
 	_check(police.ok, "Police station placement succeeds")
 	_check(document.misc_u32(0x077c + 5 * 0x6c) == 3, "Police station increments the current budget count")
+	_check(city.microsim(10).stat_1 == 160, "Police station starts with the funded population cap")
 	_check(Buildings.undo(city, police, random, process_random).ok, "Police station placement can be undone")
+	var fire := Buildings.apply(city, 13, 1, Vector2i(34, 30), random, process_random)
+	_check(fire.ok, "Fire station placement succeeds")
+	_check(
+		city.microsim(10).stat_1 == 40 and city.microsim(10).stat_2 == 4,
+		"Fire station starts with the funded population cap and four engines",
+	)
+	_check(Buildings.undo(city, fire, random, process_random).ok, "Fire station placement can be undone")
+	var city_hall := Buildings.apply(city, 5, 1, Vector2i(38, 30), random, process_random)
+	_check(city_hall.ok, "City Hall placement succeeds")
+	_check(
+		city.microsim(10).stat_1 == 200
+		and city.microsim(10).stat_2 == city.current_year(),
+		"City Hall starts with its population cap and construction year",
+	)
+	_check(Buildings.undo(city, city_hall, random, process_random).ok, "City Hall placement can be undone")
+	var museum := Buildings.apply(city, 12, 3, Vector2i(42, 30), random, process_random)
+	_check(museum.ok, "Museum placement succeeds")
+	_check(city.microsim(7).stat_0 == 100, "Museum system starts with score byte 100")
+	_check(Buildings.undo(city, museum, random, process_random).ok, "Museum placement can be undone")
 	var park := Buildings.apply(city, 14, 0, Vector2i(40, 40), random, process_random)
 	_check(park.ok, "Small park placement succeeds")
 	_check(city.tile_flags[40 * 128 + 40] & 0xe0 == 0x20, "Small park gets only the piped structure flag")
@@ -8672,6 +8696,31 @@ func _test_building_command(reference_root: String) -> void:
 	_check(Buildings.undo(city, mayor_house, random, process_random).ok, "Mayor house placement can be undone")
 	_check(document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x0f, "Mayor house undo restores its reward bit")
 	_check(process_random.state == mayor_random_before, "Building undo restores the process random state")
+	var llama_random := Random.new(123)
+	var expected_llama_random := Random.new(123)
+	var expected_llama_stat := expected_llama_random.next_u15() & 0x3f
+	var llama := Buildings.apply(city, 5, 3, Vector2i(84, 80), random, llama_random)
+	_check(llama.ok, "Llama Dome placement succeeds")
+	_check(
+		city.microsim(10).stat_3 == expected_llama_stat,
+		"US Llama Dome placement stores one masked process-random value",
+	)
+	_check(Buildings.undo(city, llama, random, llama_random).ok, "Llama Dome placement can be undone")
+	var australian_random := Random.new(456)
+	var australian_state := australian_random.state
+	var australian_llama := Buildings.apply(
+		city, 5, 3, Vector2i(84, 80), random, australian_random, true
+	)
+	_check(australian_llama.ok, "Australian Llama Dome placement succeeds")
+	_check(
+		city.microsim(10).stat_3 == city.current_year()
+		and australian_random.state == australian_state,
+		"Australian Llama Dome stores its construction year without random use",
+	)
+	_check(
+		Buildings.undo(city, australian_llama, random, australian_random).ok,
+		"Australian Llama Dome placement can be undone",
+	)
 
 	_check(city.set_underground_id(59, 60, 0x1e), "Pump fixture places an adjacent isolated pipe")
 	var pump := Buildings.apply(city, 4, 1, Vector2i(60, 60), random, process_random)
