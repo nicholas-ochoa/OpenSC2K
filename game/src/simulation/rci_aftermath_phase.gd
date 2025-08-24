@@ -1,6 +1,8 @@
 class_name RciAftermathPhase
 extends RefCounted
 
+const ToolAvailability = preload("res://src/tools/tool_availability.gd")
+
 const MISC_SIZE := 4800
 const MISC_START_YEAR := 0x000c
 const MISC_WEATHER_HEAT := 0x0060
@@ -128,6 +130,8 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 	var news_items: Array = [{"type": NEWS_JUNK, "argument": 0}]
 	_append_general_news(random, misc, graphs, news_items)
 	var invention_index := _release_invention(city, random, misc, news_items)
+	if invention_index >= 0:
+		ToolAvailability.rebuild_reward_mask(misc)
 
 	var old_trend := _read_u32(misc, MISC_WEATHER_TREND) & 0xff
 	if old_trend >= WEATHER_NAMES.size():

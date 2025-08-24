@@ -1,6 +1,8 @@
 class_name BuildingCommand
 extends RefCounted
 
+const Availability = preload("res://src/tools/tool_availability.gd")
+
 const MISC_FUNDS := 0x0014
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_BUDGETS := 0x077c
@@ -243,6 +245,8 @@ static func apply(
 		return {"ok": false, "error": "city is invalid"}
 	if not supports_tool(group_index, subtool_index):
 		return {"ok": false, "error": "tool does not place a shared building"}
+	if not Availability.is_available(city, group_index, subtool_index):
+		return {"ok": false, "error": "tool is not available in this city"}
 	if nuisance_random == null:
 		return {"ok": false, "error": "nuisance random state is required"}
 	if process_random == null:
@@ -314,6 +318,13 @@ static func apply(
 	if BUDGET_CURRENT.has(tile_id):
 		var budget_offset: int = MISC_BUDGETS + int(BUDGET_CURRENT[tile_id]) * BUDGET_RECORD_SIZE
 		_write_u32_be(misc, budget_offset, _read_u32_be(misc, budget_offset) + 1)
+	if group_index == 5 and subtool_index < 4:
+		var reward_mask := Availability.rebuild_reward_mask(misc)
+		_write_u32_be(
+			misc,
+			Availability.MISC_GRANTED_REWARDS,
+			reward_mask & ~(1 << subtool_index)
+		)
 	_write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()

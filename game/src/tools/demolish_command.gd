@@ -30,6 +30,13 @@ const SUBWAY_STATION := 0xe9
 const TUNNEL_MASK := 0x7c00
 const BRIDGE_DEBRIS_SPRITE := 1392
 const SOUND_EXPLODE := 504
+const MISC_GRANTED_REWARDS := 0x0078
+const REWARD_BIT_BY_TILE := {
+	0xf3: 0,
+	0xd0: 1,
+	0xdb: 2,
+	0xff: 3,
+}
 
 const CORNER_BOTTOM_LEFT := [0x10, 0x20, 0x40, 0x80]
 const CORNER_BOTTOM_RIGHT := [0x20, 0x40, 0x80, 0x10]
@@ -368,6 +375,13 @@ static func _demolish_point(
 	if tile_id == SUBWAY_STATION or (tile_id >= 0x6c and tile_id <= 0x70):
 		BuildingCommand._replace_underground(
 			underground, zones, misc, index, 0
+		)
+	if REWARD_BIT_BY_TILE.has(tile_id):
+		var reward_mask := BuildingCommand._read_u32_be(misc, MISC_GRANTED_REWARDS)
+		BuildingCommand._write_u32_be(
+			misc,
+			MISC_GRANTED_REWARDS,
+			reward_mask | (1 << int(REWARD_BIT_BY_TILE[tile_id]))
 		)
 	if retile_neighbors:
 		_retile_after_demolition(

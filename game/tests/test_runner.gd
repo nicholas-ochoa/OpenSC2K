@@ -43,6 +43,7 @@ const MovingThingTick = preload("res://src/simulation/moving_thing_phase.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
+const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
@@ -227,6 +228,7 @@ func _init() -> void:
 	_test_modified_save(reference_root)
 	_test_map_edits(reference_root)
 	_test_tool_catalog()
+	_test_tool_availability(reference_root)
 	_test_zone_command(reference_root)
 	_test_sign_command(reference_root)
 	_test_query_info(reference_root)
@@ -2722,6 +2724,20 @@ func _test_milestone_phase(reference_root: String) -> void:
 	var llama := Milestones.run(military_city)
 	_check(llama.ok and llama.progression == 5 and llama.reward_id == 3, "The fifth milestone grants the llama dome")
 	_check(military_document.misc_u32(0x0078) == 15, "The llama milestone stores reward bit three")
+	_check(
+		military_document.set_misc_u32(
+			ToolAvailability.MISC_INVENTION_YEARS + 12 * 4,
+			0,
+		),
+		"Arcology milestone fixture releases one arcology",
+	)
+	_check(military_document.set_misc_u32(0x102c, 120001), "Arcology milestone fixture sets population")
+	var arcology := Milestones.run(military_city)
+	_check(arcology.ok and arcology.progression == 6, "The sixth milestone advances progression")
+	_check(
+		military_document.misc_u32(0x0078) == 31,
+		"The sixth milestone enables the arcology chooser when one is released",
+	)
 
 	var final_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var final_city := CityModel.from_document(final_document)
@@ -3357,6 +3373,11 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x0d * 4, 1)
 	_write_u32_be(meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4, 1)
 	_write_u32_be(meltdown_misc, Buildings.MISC_FUNDS, 50000)
+	_write_u32_be(
+		meltdown_misc,
+		ToolAvailability.MISC_INVENTION_YEARS + 4,
+		0,
+	)
 	_check(
 		meltdown_document.find_chunk("MISC").set_decoded_payload(meltdown_misc),
 		"Meltdown fixture initializes normal and military tile counts",
@@ -5201,6 +5222,10 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	_check(expiry_document.set_misc_u32(0x01f0, 16384), "Annual expiry fixture counts clear tiles")
 	_check(expiry_document.set_misc_u32(0x01f0 + 0xc9 * 4, 0), "Annual expiry fixture clears gas count")
 	_check(expiry_document.set_misc_u32(0x1000, 0), "Annual expiry fixture enables disasters")
+	_check(
+		expiry_document.set_misc_u32(ToolAvailability.MISC_INVENTION_YEARS, 0),
+		"Annual expiry fixture unlocks gas power",
+	)
 	var expiry_city := CityModel.from_document(expiry_document)
 	var gas := Buildings.apply(
 		expiry_city, 3, 5, Vector2i(20, 20), GameRandom.new(1), Random.new(1)
@@ -5333,6 +5358,15 @@ func _test_arcology_launch_phase(reference_root: String) -> void:
 	_check(document.set_misc_i32(0x14, 20000000), "Arcology launch fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16384), "Arcology launch fixture counts clear tiles")
 	_check(document.set_misc_u32(0x01f0 + 0xfe * 4, 0), "Arcology launch fixture clears launch count")
+	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 6), "Arcology launch fixture sets metropolis progression")
+	for invention_index in range(12, 16):
+		_check(
+			document.set_misc_u32(
+				ToolAvailability.MISC_INVENTION_YEARS + invention_index * 4,
+				0,
+			),
+			"Arcology launch fixture unlocks arcology %d" % invention_index,
+		)
 	var city := CityModel.from_document(document)
 	var launch := Buildings.apply(
 		city, 5, 8, Vector2i(20, 20), GameRandom.new(1), Random.new(1)
@@ -7534,6 +7568,52 @@ func _test_rci_aftermath(reference_root: String) -> void:
 		_check(news_document.misc_u32(0x0738 + 7 * 4) == 0, "A released innovation clears its saved year")
 		_check(news_random.position == 18, "The full controlled news path consumes 18 random values")
 
+	var arcology_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(arcology_document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 6), "Arcology release fixture sets metropolis progression")
+	_check(arcology_document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0), "Arcology release fixture clears rewards")
+	_check(arcology_document.set_misc_u32(0x000c, 1900), "Arcology release fixture sets the founding year")
+	_check(arcology_document.set_misc_u32(0x006c, 1), "Arcology release fixture sets valid weather")
+	_check(arcology_document.set_misc_u32(0x01f0 + 0xd7 * 4, 0), "Arcology release fixture clears stadiums")
+	for invention_index in ToolAvailability.INVENTION_COUNT:
+		_check(
+			arcology_document.set_misc_u32(
+				ToolAvailability.MISC_INVENTION_YEARS + invention_index * 4,
+				1902,
+			),
+			"Arcology release fixture schedules invention %d" % invention_index,
+		)
+	_check(
+		arcology_document.set_misc_u32(
+			ToolAvailability.MISC_INVENTION_YEARS + 12 * 4,
+			1901,
+		),
+		"Arcology release fixture schedules its first arcology",
+	)
+	var arcology_flags: PackedByteArray = arcology_document.find_chunk("XBIT").decoded_payload.duplicate()
+	arcology_flags[40 * CityState.MAP_SIZE + 40] |= 0x04
+	_check(arcology_document.find_chunk("XBIT").set_decoded_payload(arcology_flags), "Arcology release fixture makes its ecology point water")
+	var arcology_city := CityModel.from_document(arcology_document)
+	_check(arcology_city.set_age_in_days(300), "Arcology release fixture selects 1901")
+	var arcology_release := RciAftermath.run(
+		arcology_city,
+		SequenceRandom.new([
+			40, 40,
+			1,
+			127, 0, 127, 0, 127, 0,
+			0, 127,
+			79, 59,
+			0,
+			0,
+		]),
+		0,
+	)
+	_check(
+		arcology_release.ok
+		and arcology_release.invention_index == 12
+		and arcology_document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x10,
+		"A released arcology rebuild enables its saved chooser bit",
+	)
+
 	var radioactive_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var radioactive_buildings: PackedByteArray = radioactive_document.find_chunk("XBLD").decoded_payload.duplicate()
 	var radioactive_flags: PackedByteArray = radioactive_document.find_chunk("XBIT").decoded_payload.duplicate()
@@ -8167,6 +8247,103 @@ func _test_tool_catalog() -> void:
 	_check(Tools.tool(0, 12).is_empty(), "Tool catalog rejects an invalid subtool")
 
 
+func _test_tool_availability(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 0), "Tool availability fixture clears progression")
+	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0), "Tool availability fixture clears rewards")
+	_check(document.set_misc_u32(ToolAvailability.MISC_ORDINANCES, 0), "Tool availability fixture clears ordinances")
+	for invention_index in ToolAvailability.INVENTION_COUNT:
+		_check(
+			document.set_misc_u32(
+				ToolAvailability.MISC_INVENTION_YEARS + invention_index * 4,
+				2100,
+			),
+			"Tool availability fixture schedules invention %d" % invention_index,
+		)
+	var city := CityModel.from_document(document)
+	var base := ToolAvailability.inspect(city)
+	_check(base.ok, "Tool availability reads the saved MISC state: %s" % base.error)
+	if not base.ok:
+		return
+	_check(
+		base.group_masks == PackedInt32Array([
+			0x1f, 0x03, 0x03, 0x03, 0x07, 0x00,
+			0x05, 0x05, 0x01, 0x03, 0x03, 0x03,
+			0x0f, 0x0f, 0x1f, 0x00, 0x00, 0x00,
+		]),
+		"Tool availability starts from the executable group-mask table",
+	)
+	_check(base.power_plant_mask == 0x07, "Coal, hydro, and oil are the initial power choices")
+	_check(
+		ToolAvailability.is_available(city, 3, 2)
+		and ToolAvailability.is_available(city, 3, 3)
+		and ToolAvailability.is_available(city, 3, 4)
+		and not ToolAvailability.is_available(city, 3, 5),
+		"Initial power availability includes only the first three plants",
+	)
+	_check(
+		ToolAvailability.is_available(city, 6, 0)
+		and ToolAvailability.is_available(city, 6, 2)
+		and not ToolAvailability.is_available(city, 6, 1)
+		and not ToolAvailability.is_available(city, 6, 4),
+		"Initial road availability includes road and tunnel only",
+	)
+	_check(
+		ToolAvailability.is_available(city, 2, 2),
+		"Dispatch selection stays available because live capacity controls dispatch",
+	)
+
+	for invention_index in range(12):
+		_check(
+			document.set_misc_u32(
+				ToolAvailability.MISC_INVENTION_YEARS + invention_index * 4,
+				0,
+			),
+			"Tool availability fixture releases invention %d" % invention_index,
+		)
+	var released := ToolAvailability.inspect(city)
+	_check(released.power_plant_mask == 0x1ff, "The first six inventions unlock all later power plants")
+	_check(
+		released.group_masks[8] == 0x03
+		and released.group_masks[6] == 0x1f
+		and released.group_masks[7] == 0x1f
+		and released.group_masks[4] == 0x1f,
+		"Transport and water inventions extend their exact executable masks",
+	)
+	_check(document.set_misc_u32(ToolAvailability.MISC_ORDINANCES, ToolAvailability.ORDINANCE_NUCLEAR_FREE), "Tool availability fixture enacts Nuclear-Free Zone")
+	_check(
+		not ToolAvailability.is_available(city, 3, 6),
+		"Nuclear-Free Zone hides an invented nuclear power plant",
+	)
+
+	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0x05), "Tool availability fixture grants mayor house and statue")
+	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 5), "Tool availability fixture stays below arcology progression")
+	_check(document.set_misc_u32(ToolAvailability.MISC_INVENTION_YEARS + 12 * 4, 0), "Tool availability fixture releases one arcology")
+	_check(
+		ToolAvailability.is_available(city, 5, 0)
+		and not ToolAvailability.is_available(city, 5, 1)
+		and ToolAvailability.is_available(city, 5, 2)
+		and not ToolAvailability.is_available(city, 5, 4),
+		"Saved reward bits control the four one-use rewards",
+	)
+	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 6), "Tool availability fixture reaches arcology progression")
+	_check(
+		ToolAvailability.is_available(city, 5, 4)
+		and ToolAvailability.is_available(city, 5, 5)
+		and not ToolAvailability.is_available(city, 5, 6),
+		"One released arcology enables the chooser and its first entry",
+	)
+	_check(document.set_misc_u32(ToolAvailability.MISC_INVENTION_YEARS + 15 * 4, 0), "Tool availability fixture releases a second arcology slot")
+	_check(
+		ToolAvailability.is_available(city, 5, 5)
+		and ToolAvailability.is_available(city, 5, 6)
+		and not ToolAvailability.is_available(city, 5, 7),
+		"Arcology availability uses the original released-count behavior",
+	)
+	var misc: PackedByteArray = document.find_chunk("MISC").decoded_payload.duplicate()
+	_check(ToolAvailability.rebuild_reward_mask(misc) == 0x15, "Availability rebuild preserves rewards and enables arcologies")
+
+
 func _test_zone_command(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	for chunk_id in ["XBLD", "XTER", "XZON", "XBIT"]:
@@ -8434,6 +8611,16 @@ func _test_building_command(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x0fe8, 0), "Building fixture clears subway count")
 	_check(document.set_misc_u32(0x01f0 + 0xcf * 4, 0), "Building fixture clears coal count")
 	_check(document.set_misc_u32(0x077c + 5 * 0x6c, 2), "Building fixture sets police count")
+	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 0), "Building fixture clears progression")
+	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0x0f), "Building fixture grants one-use rewards")
+	for invention_index in ToolAvailability.INVENTION_COUNT:
+		_check(
+			document.set_misc_u32(
+				ToolAvailability.MISC_INVENTION_YEARS + invention_index * 4,
+				0,
+			),
+			"Building fixture unlocks invention %d" % invention_index,
+		)
 	var city := CityModel.from_document(document)
 	var random := GameRandom.new(1)
 	var process_random := Random.new(1)
@@ -8477,10 +8664,12 @@ func _test_building_command(reference_root: String) -> void:
 	var mayor_random_before := process_random.state
 	var mayor_house := Buildings.apply(city, 5, 0, Vector2i(80, 80), random, process_random)
 	_check(mayor_house.ok and mayor_house.overlay_id == 61, "Mayor house allocates a dynamic microsim")
+	_check(document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x0e, "Mayor house placement consumes its saved reward bit")
 	_check(city.label(61) == "Mayor's House", "Mayor house gets its default label")
 	_check(city.microsim(10).stat_1 == city.current_year(), "Mayor house stores its construction year")
 	_check(city.microsim(10).stat_2 >= 10 and city.microsim(10).stat_2 <= 39, "Mayor house initializes the recovered age statistic")
 	_check(Buildings.undo(city, mayor_house, random, process_random).ok, "Mayor house placement can be undone")
+	_check(document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x0f, "Mayor house undo restores its reward bit")
 	_check(process_random.state == mayor_random_before, "Building undo restores the process random state")
 
 	_check(city.set_underground_id(59, 60, 0x1e), "Pump fixture places an adjacent isolated pipe")
@@ -8504,8 +8693,17 @@ func _test_building_command(reference_root: String) -> void:
 
 	var statue := Buildings.apply(city, 5, 2, Vector2i(68, 68), random, process_random)
 	_check(statue.ok, "Statue placement succeeds")
+	_check(document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x0b, "Statue placement consumes its saved reward bit")
 	_check(city.is_piped(68, 68) and city.is_powered(68, 68) and not city.is_powerable(68, 68), "Statue clears the powerable flag")
 	_check(Buildings.undo(city, statue, random, process_random).ok, "Statue placement can be undone")
+	_check(document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x0f, "Statue undo restores its reward bit")
+	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0), "Building fixture removes one-use rewards")
+	var locked_reward := Buildings.apply(city, 5, 0, Vector2i(75, 75), random, process_random)
+	_check(
+		not locked_reward.ok and locked_reward.error == "tool is not available in this city",
+		"Building command rejects a reward that the city has not granted",
+	)
+	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0x0f), "Building fixture restores one-use rewards")
 
 	var edge := Buildings.apply(city, 3, 2, Vector2i(1, 1), random, process_random)
 	_check(not edge.ok and edge.error.contains("fit"), "Four-tile building rejects the inner map edge")
@@ -9632,6 +9830,30 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(Demolish.undo(city, building, demolition_random).ok, "Building demolition can be undone")
 	_check(city.building_id(20, 20) == 0xd1 and city.funds() == 500, "Demolish undo restores the building and funds")
 
+	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0x02), "Reward demolition fixture grants City Hall")
+	var city_hall := Buildings.apply(
+		city, 5, 1, Vector2i(30, 30), placement_random, process_random
+	)
+	_check(
+		city_hall.ok
+		and document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0,
+		"Reward placement consumes the City Hall grant",
+	)
+	var removed_city_hall := Demolish.apply_path(
+		city, 0, 0, [Vector2i(30, 30)], demolition_random
+	)
+	_check(
+		removed_city_hall.ok
+		and document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x02,
+		"Demolishing City Hall restores its saved reward bit",
+	)
+	_check(
+		Demolish.undo(city, removed_city_hall, demolition_random).ok
+		and document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0,
+		"Reward demolition undo restores the consumed reward state",
+	)
+	_check(Buildings.undo(city, city_hall, placement_random, process_random).ok, "Reward demolition fixture removes City Hall")
+
 	var simple_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
@@ -9709,6 +9931,13 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(
 		underground_document.set_misc_u32(0x0fe8, 3),
 		"Underground demolition fixture counts three subway tiles",
+	)
+	_check(
+		underground_document.set_misc_u32(
+			ToolAvailability.MISC_INVENTION_YEARS + 9 * 4,
+			0,
+		),
+		"Underground demolition fixture unlocks subway stations",
 	)
 	var underground_city := CityModel.from_document(underground_document)
 	for y in range(19, 22):

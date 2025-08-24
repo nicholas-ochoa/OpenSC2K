@@ -1,6 +1,8 @@
 class_name MilestonePhase
 extends RefCounted
 
+const ToolAvailability = preload("res://src/tools/tool_availability.gd")
+
 const MISC_SIZE := 4800
 const MISC_PROGRESSION := 0x0020
 const MISC_GRANTED_REWARDS := 0x0078
@@ -53,6 +55,7 @@ static func run(city: CityState) -> Dictionary:
 			MISC_GRANTED_REWARDS,
 			_read_u32(misc, MISC_GRANTED_REWARDS) | (1 << reward_id)
 		)
+	ToolAvailability.rebuild_reward_mask(misc)
 
 	if not misc_chunk.set_decoded_payload(misc):
 		return {"ok": false, "error": "cannot store milestone state"}
