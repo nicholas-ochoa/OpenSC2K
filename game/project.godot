@@ -7,6 +7,7 @@ config_version=5
 
 config/name="OpenSC2K Godot"
 run/main_scene="res://main.tscn"
+config/icon="res://assets/icons/OpenSC2K.png"
 
 [display]
 
