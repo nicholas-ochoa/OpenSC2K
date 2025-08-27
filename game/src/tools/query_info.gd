@@ -10,6 +10,11 @@ const MILITARY_ZONE := 7
 const WATER_PUMP := 0xdc
 const WATER_TOWER := 0xeb
 const STADIUM_SPORT_RESOURCE_BASE := 786
+const CITY_HALL := 0xd0
+const LIBRARY := 0xf5
+const CITY_HALL_ACTION_RESOURCE := 810
+const LIBRARY_ACTION_RESOURCE := 811
+const ANALYSIS_RESOURCE_BASE := 988
 
 const MICROSIM_TYPE_BY_TILE := {
 	0xc6: 21,
@@ -144,6 +149,14 @@ static func inspect(
 		var microsim := city.microsim(overlay - FIRST_MICROSIM_LABEL)
 		if not microsim.is_empty() and microsim.tile_id != 0:
 			var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(microsim.tile_id, 0))
+			var action := ""
+			var action_resource_id := -1
+			if microsim.tile_id == CITY_HALL:
+				action = "city_analysis"
+				action_resource_id = CITY_HALL_ACTION_RESOURCE
+			elif microsim.tile_id == LIBRARY:
+				action = "library_ruminate"
+				action_resource_id = LIBRARY_ACTION_RESOURCE
 			return {
 				"ok": true,
 				"kind": "specific",
@@ -156,6 +169,8 @@ static func inspect(
 				"lines": _specific_lines(
 					city, microsim, microsim_type, resource_strings
 				),
+				"action": action,
+				"action_resource_id": action_resource_id,
 				"error": "",
 			}
 
@@ -255,9 +270,13 @@ static func format_text(info: Dictionary) -> String:
 
 static func resource_string_ids() -> PackedInt32Array:
 	var unique := {}
+	unique[CITY_HALL_ACTION_RESOURCE] = true
+	unique[LIBRARY_ACTION_RESOURCE] = true
 	for resource_id in range(
 		STADIUM_SPORT_RESOURCE_BASE, STADIUM_SPORT_RESOURCE_BASE + 5
 	):
+		unique[resource_id] = true
+	for resource_id in range(ANALYSIS_RESOURCE_BASE, ANALYSIS_RESOURCE_BASE + 12):
 		unique[resource_id] = true
 	for row in MICROSIM_RESOURCE_IDS:
 		for resource_id in row:

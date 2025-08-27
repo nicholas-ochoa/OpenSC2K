@@ -10,6 +10,7 @@ const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const PeString = preload("res://src/assets/pe_string_resource.gd")
+const TextUsa = preload("res://src/assets/text_usa_resource.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
@@ -48,6 +49,7 @@ const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
+const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -441,6 +443,24 @@ func _test_sprite_archives(reference_root: String) -> void:
 			reference_root.path_join("SIMCITY.EXE"), PackedInt32Array([0xffff])
 		).ok,
 		"Windows string loader rejects a missing resource block",
+	)
+	var library_text := TextUsa.load_ids(
+		reference_root.path_join("DATA/TEXT_USA.DAT"),
+		reference_root.path_join("DATA/TEXT_USA.IDX"),
+		PackedInt32Array([3000, 3001, 3002, 3003]),
+	)
+	_check(library_text.ok, "Indexed Library text loads: %s" % library_text.error)
+	if library_text.ok:
+		_check(library_text.strings.size() == 4, "Indexed Library text returns all four requested entries")
+		for resource_id in range(3000, 3004):
+			_check(not str(library_text.strings[resource_id]).is_empty(), "Library text entry %d is not empty" % resource_id)
+	_check(
+		not TextUsa.load_ids(
+			reference_root.path_join("DATA/TEXT_USA.DAT"),
+			reference_root.path_join("DATA/TEXT_USA.IDX"),
+			PackedInt32Array([0x7fffffff]),
+		).ok,
+		"Indexed text loader rejects a missing resource ID",
 	)
 	var expected_counts := {
 		"LARGE.DAT": 501,
@@ -8453,7 +8473,7 @@ func _test_query_info(reference_root: String) -> void:
 		"Query source strings load: %s" % original_strings_result.error,
 	)
 	var original_strings: Dictionary = original_strings_result.get("strings", {})
-	_check(original_strings.size() == 87, "Query requests each distinct facility and sport string")
+	_check(original_strings.size() == 101, "Query requests each distinct facility, action, and analysis string")
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	for chunk_id in ["XBLD", "XTER", "XZON", "XTXT", "XBIT"]:
 		_check(
@@ -8527,6 +8547,11 @@ func _test_query_info(reference_root: String) -> void:
 	_check(specific.microsim.stat_2 == 0x0304, "Specific query reads big-endian statistic two")
 	_check(specific.microsim.stat_3 == 0x0506, "Specific query reads big-endian statistic three")
 	_check(specific.microsim_type == 2, "Specific query maps City Hall to facility type two")
+	_check(
+		specific.action == "city_analysis"
+		and specific.action_resource_id == Queries.CITY_HALL_ACTION_RESOURCE,
+		"City Hall query exposes its Analyze action",
+	)
 	if original_strings_result.ok:
 		_check(
 			specific.lines
@@ -8603,6 +8628,75 @@ func _test_query_info(reference_root: String) -> void:
 			== str(original_strings[942]).replace("#1", "7"),
 			"Specific query preserves suffix digits after a numeric placeholder",
 		)
+
+	microsim_data[0] = 0xf5
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsim_data), "Query fixture sets Library data")
+	var library := Queries.inspect(city, Vector2i(10, 10), original_strings)
+	_check(
+		library.action == "library_ruminate"
+		and library.action_resource_id == Queries.LIBRARY_ACTION_RESOURCE,
+		"Library query exposes its Ruminate action",
+	)
+
+	var analysis_misc := document.find_chunk("MISC").decoded_payload.duplicate()
+	for tile_id in range(QueryFacilityActions.FIRST_BUILDING, 0x100):
+		_write_u32_be(
+			analysis_misc,
+			QueryFacilityActions.MISC_TILE_COUNTS + tile_id * 4,
+			0,
+		)
+	var category_examples := [
+		0x1d,
+		0x0e,
+		0xdc,
+		0x70,
+		0x7c,
+		0x84,
+		0xdd,
+		0xd4,
+		0xd0,
+		0x0d,
+		0xfb,
+	]
+	for tile_id in category_examples:
+		_write_u32_be(
+			analysis_misc,
+			QueryFacilityActions.MISC_TILE_COUNTS + tile_id * 4,
+			1,
+		)
+	_write_u32_be(
+		analysis_misc,
+		QueryFacilityActions.MISC_TILE_COUNTS + 0x88 * 4,
+		1,
+	)
+	_write_u32_be(
+		analysis_misc,
+		QueryFacilityActions.MISC_TILE_COUNTS + 0xff * 4,
+		1,
+	)
+	_check(
+		document.find_chunk("MISC").set_decoded_payload(analysis_misc),
+		"City analysis fixture sets saved tile counts",
+	)
+	var analysis := QueryFacilityActions.city_analysis(city, original_strings)
+	_check(analysis.ok, "City Hall analysis succeeds: %s" % analysis.error)
+	_check(analysis.total == 11 and analysis.counts[0] == 1, "City Hall analysis excludes hidden and unmatched tiles from its total")
+	for category_id in range(1, QueryFacilityActions.CATEGORY_COUNT):
+		_check(
+			analysis.counts[category_id] == 1
+			and analysis.categories[category_id - 1].percent == 9,
+			"City Hall analysis classifies category %d" % category_id,
+		)
+	if original_strings_result.ok:
+		_check(
+			analysis.header == str(original_strings[988])
+			and analysis.categories[0].name == str(original_strings[989]).strip_edges(),
+			"City Hall analysis uses the original table labels",
+		)
+	_check(
+		QueryFacilityActions.format_city_analysis(analysis).contains("9%"),
+		"City Hall analysis formats category percentages",
+	)
 
 
 func _test_landscape_command(reference_root: String) -> void:

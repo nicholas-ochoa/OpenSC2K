@@ -6,6 +6,7 @@ const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const PeString = preload("res://src/assets/pe_string_resource.gd")
+const TextUsa = preload("res://src/assets/text_usa_resource.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
@@ -16,6 +17,7 @@ const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
+const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -101,6 +103,7 @@ const BUDGET_NAMES := [
 	"Tunnel",
 ]
 const MAP_DISPLAY_MODES := ["city", "underground", "structures", "zones", "power", "water"]
+const LIBRARY_TEXT_IDS := [3000, 3001, 3002, 3003]
 
 var city: CityState
 var current_document: Sc2File
@@ -111,6 +114,7 @@ var small_medium_sprites: Sc2SpriteArchive
 var overlay_mode := "city"
 var reference_root := ""
 var original_query_strings: Dictionary = {}
+var library_texts: Dictionary = {}
 var selected_group := 9
 var selected_subtool := 0
 var selected_tool_available := false
@@ -182,6 +186,12 @@ var pending_highway_connection: Dictionary = {}
 var tunnel_dialog: ConfirmationDialog
 var pending_tunnel_request: Dictionary = {}
 var query_dialog: AcceptDialog
+var query_action_button: Button
+var active_query_result: Dictionary = {}
+var city_analysis_dialog: AcceptDialog
+var city_analysis_table: Tree
+var library_dialog: AcceptDialog
+var library_text_view: TextEdit
 var sound_player: AudioStreamPlayer
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
@@ -204,6 +214,13 @@ func _ready() -> void:
 	)
 	if string_resources.ok:
 		original_query_strings = string_resources.strings
+	var library_resources := TextUsa.load_ids(
+		reference_root.path_join("DATA/TEXT_USA.DAT"),
+		reference_root.path_join("DATA/TEXT_USA.IDX"),
+		PackedInt32Array(LIBRARY_TEXT_IDS),
+	)
+	if library_resources.ok:
+		library_texts = library_resources.strings
 	var toolbar_resource := PeBitmap.load_numeric(
 		reference_root.path_join("SIMCITY.EXE"), 2
 	)
@@ -756,7 +773,43 @@ func _build_interface(toolbar_art: Image) -> void:
 	query_dialog = AcceptDialog.new()
 	query_dialog.title = "Query"
 	query_dialog.min_size = Vector2i(500, 440)
+	query_action_button = query_dialog.add_button("", false)
+	query_action_button.visible = false
+	query_action_button.pressed.connect(_run_query_action)
 	add_child(query_dialog)
+	city_analysis_dialog = AcceptDialog.new()
+	city_analysis_dialog.title = "City Analysis"
+	city_analysis_dialog.min_size = Vector2i(600, 480)
+	city_analysis_table = Tree.new()
+	city_analysis_table.custom_minimum_size = Vector2i(540, 360)
+	city_analysis_table.columns = 3
+	city_analysis_table.column_titles_visible = true
+	city_analysis_table.hide_root = true
+	city_analysis_table.set_column_title(0, "LAND USE")
+	city_analysis_table.set_column_title(1, "ACRES")
+	city_analysis_table.set_column_title(2, "% of CITY")
+	city_analysis_table.set_column_expand(0, true)
+	city_analysis_table.set_column_expand(1, false)
+	city_analysis_table.set_column_expand(2, false)
+	city_analysis_table.set_column_custom_minimum_width(1, 100)
+	city_analysis_table.set_column_custom_minimum_width(2, 100)
+	city_analysis_dialog.get_label().visible = false
+	var analysis_content := city_analysis_dialog.get_label().get_parent()
+	analysis_content.add_child(city_analysis_table)
+	analysis_content.move_child(city_analysis_table, 0)
+	add_child(city_analysis_dialog)
+	library_dialog = AcceptDialog.new()
+	library_dialog.title = "Ruminate"
+	library_dialog.min_size = Vector2i(800, 620)
+	library_text_view = TextEdit.new()
+	library_text_view.custom_minimum_size = Vector2i(740, 500)
+	library_text_view.editable = false
+	library_text_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	library_dialog.get_label().visible = false
+	var library_content := library_dialog.get_label().get_parent()
+	library_content.add_child(library_text_view)
+	library_content.move_child(library_text_view, 0)
+	add_child(library_dialog)
 	game_over_dialog = AcceptDialog.new()
 	game_over_dialog.min_size = Vector2i(460, 220)
 	add_child(game_over_dialog)
@@ -3006,8 +3059,55 @@ func _open_query(point: Vector2i) -> void:
 			return
 		_show_news_items(approval.news_items)
 		result = Queries.inspect(city, point, original_query_strings)
+	active_query_result = result
+	var action := str(result.get("action", ""))
+	query_action_button.visible = not action.is_empty()
+	if not action.is_empty():
+		var action_resource_id := int(result.get("action_resource_id", -1))
+		var fallback := "Analyze" if action == "city_analysis" else "Ruminate"
+		query_action_button.text = str(
+			original_query_strings.get(action_resource_id, fallback)
+		)
 	query_dialog.dialog_text = Queries.format_text(result)
 	query_dialog.popup_centered()
+
+
+func _run_query_action() -> void:
+	if city == null:
+		return
+	query_dialog.hide()
+	match str(active_query_result.get("action", "")):
+		"city_analysis":
+			var analysis := QueryFacilityActions.city_analysis(
+				city, original_query_strings
+			)
+			if not analysis.ok:
+				_show_error("Cannot analyze city: %s" % analysis.error)
+				return
+			city_analysis_table.clear()
+			var root := city_analysis_table.create_item()
+			for category in analysis.categories:
+				var item := city_analysis_table.create_item(root)
+				item.set_text(0, str(category.name))
+				item.set_text(1, str(category.acres))
+				item.set_text(2, "%d%%" % category.percent)
+				item.set_text_alignment(1, HORIZONTAL_ALIGNMENT_RIGHT)
+				item.set_text_alignment(2, HORIZONTAL_ALIGNMENT_RIGHT)
+			city_analysis_dialog.popup_centered()
+		"library_ruminate":
+			if library_texts.size() != LIBRARY_TEXT_IDS.size():
+				_show_error("The Library text resources are missing or invalid.")
+				return
+			var sections := PackedStringArray()
+			for resource_id in LIBRARY_TEXT_IDS:
+				sections.append(
+					str(library_texts[resource_id])
+					.replace("\r\n", "\n")
+					.replace("\r", "\n")
+				)
+			library_text_view.text = "\n\n".join(sections)
+			library_text_view.scroll_vertical = 0
+			library_dialog.popup_centered()
 
 
 func _refresh_details() -> void:
