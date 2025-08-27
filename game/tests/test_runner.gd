@@ -9,6 +9,7 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
+const PeString = preload("res://src/assets/pe_string_resource.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
@@ -428,6 +429,18 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		not PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 0xffff).ok,
 		"Windows bitmap loader rejects a missing numeric resource",
+	)
+	var string_ids := PackedInt32Array([786, 790, 910, 982])
+	var strings := PeString.load_ids(reference_root.path_join("SIMCITY.EXE"), string_ids)
+	_check(strings.ok, "Windows string resources load: %s" % strings.error)
+	if strings.ok:
+		_check(strings.strings.size() == string_ids.size(), "Windows string loader returns each requested ID")
+		_check(strings.strings[910] == "#T", "Windows string loader decodes UTF-16 placeholders")
+	_check(
+		not PeString.load_ids(
+			reference_root.path_join("SIMCITY.EXE"), PackedInt32Array([0xffff])
+		).ok,
+		"Windows string loader rejects a missing resource block",
 	)
 	var expected_counts := {
 		"LARGE.DAT": 501,
@@ -8432,6 +8445,15 @@ func _test_sign_command(reference_root: String) -> void:
 
 
 func _test_query_info(reference_root: String) -> void:
+	var original_strings_result := PeString.load_ids(
+		reference_root.path_join("SIMCITY.EXE"), Queries.resource_string_ids()
+	)
+	_check(
+		original_strings_result.ok,
+		"Query source strings load: %s" % original_strings_result.error,
+	)
+	var original_strings: Dictionary = original_strings_result.get("strings", {})
+	_check(original_strings.size() == 87, "Query requests each distinct facility and sport string")
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	for chunk_id in ["XBLD", "XTER", "XZON", "XTXT", "XBIT"]:
 		_check(
@@ -8498,12 +8520,89 @@ func _test_query_info(reference_root: String) -> void:
 	_check(document.find_chunk("XMIC").set_decoded_payload(microsim_data), "Query fixture sets microsim data")
 	_check(city.set_label(51, "Civic Center"), "Query fixture names a microsim")
 	_check(city.set_text_overlay_id(10, 10, 51), "Query fixture attaches a microsim")
-	var specific := Queries.inspect(city, Vector2i(10, 10))
+	var specific := Queries.inspect(city, Vector2i(10, 10), original_strings)
 	_check(specific.ok and specific.kind == "specific", "Specific query follows XTXT to XMIC")
 	_check(specific.title == "Civic Center" and specific.microsim.stat_0 == 7, "Specific query reports its label and rating")
 	_check(specific.microsim.stat_1 == 0x0102, "Specific query reads big-endian statistic one")
 	_check(specific.microsim.stat_2 == 0x0304, "Specific query reads big-endian statistic two")
 	_check(specific.microsim.stat_3 == 0x0506, "Specific query reads big-endian statistic three")
+	_check(specific.microsim_type == 2, "Specific query maps City Hall to facility type two")
+	if original_strings_result.ok:
+		_check(
+			specific.lines
+			== PackedStringArray([
+				str(original_strings[945]).replace("#1", "258"),
+				str(original_strings[929]).replace("#2", "772"),
+			]),
+			"City Hall query expands its original resource rows",
+		)
+	var fallback := Queries.inspect(city, Vector2i(10, 10))
+	_check(
+		fallback.lines.size() == 4
+		and fallback.lines[0].contains("7")
+		and fallback.lines[3].contains("1286"),
+		"Specific query keeps raw values when original text is unavailable",
+	)
+
+	microsim_data = document.find_chunk("XMIC").decoded_payload.duplicate()
+	microsim_data[0] = 0xd7
+	microsim_data[1] = 23
+	microsim_data[2] = 0x46
+	microsim_data[3] = 0x50
+	microsim_data[4] = 0
+	microsim_data[5] = 2
+	microsim_data[6] = 0
+	microsim_data[7] = 0xfd
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsim_data), "Query fixture sets Stadium data")
+	_check(city.set_label(0xfd, "Camel City Flyers"), "Query fixture names a Stadium team")
+	var stadium := Queries.inspect(city, Vector2i(10, 10), original_strings)
+	_check(stadium.microsim_type == 7 and stadium.lines.size() == 5, "Stadium query uses all five original rows")
+	if original_strings_result.ok:
+		_check(
+			stadium.lines
+			== PackedStringArray([
+				str(original_strings[936]),
+				str(original_strings[924]).replace("#1", "18000"),
+				str(original_strings[958]).replace("#S", str(original_strings[788])),
+				"Camel City Flyers",
+				str(original_strings[982]).replace("#W", "23-17"),
+			]),
+			"Stadium query separates its sport, editable name, and record",
+		)
+
+	microsim_data[0] = 0xd1
+	microsim_data[1] = 12
+	microsim_data[2] = 0x01
+	microsim_data[3] = 0xf4
+	microsim_data[4] = 0
+	microsim_data[5] = 40
+	microsim_data[6] = 0x07
+	microsim_data[7] = 0xd0
+	_check(document.find_chunk("XMIC").set_decoded_payload(microsim_data), "Query fixture sets Hospital data")
+	var hospital := Queries.inspect(city, Vector2i(10, 10), original_strings)
+	if original_strings_result.ok:
+		_check(
+			hospital.lines[3] == str(original_strings[952]).replace("#G", "A+"),
+			"Specific query maps its rating byte to the original grade scale",
+		)
+		_check(
+			hospital.lines[4] == str(original_strings[920]).replace("#3", "2000"),
+			"Specific query expands statistic three",
+		)
+		var arcology := {
+			"tile_id": 0xfb,
+			"stat_0": 0,
+			"stat_1": 7,
+			"stat_2": 0,
+			"stat_3": 0,
+		}
+		_check(
+			Queries._expand_specific_template(
+				city, arcology, str(original_strings[942]), original_strings
+			)
+			== str(original_strings[942]).replace("#1", "7"),
+			"Specific query preserves suffix digits after a numeric placeholder",
+		)
 
 
 func _test_landscape_command(reference_root: String) -> void:

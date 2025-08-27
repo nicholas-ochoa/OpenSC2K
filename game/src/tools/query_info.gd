@@ -9,6 +9,91 @@ const FIRST_BUILDING_WITH_UTILITIES := 13
 const MILITARY_ZONE := 7
 const WATER_PUMP := 0xdc
 const WATER_TOWER := 0xeb
+const STADIUM_SPORT_RESOURCE_BASE := 786
+
+const MICROSIM_TYPE_BY_TILE := {
+	0xc6: 21,
+	0xc7: 21,
+	0xc8: 20,
+	0xc9: 1,
+	0xca: 1,
+	0xcb: 1,
+	0xcc: 1,
+	0xcd: 1,
+	0xce: 1,
+	0xcf: 1,
+	0xd0: 2,
+	0xd1: 3,
+	0xd2: 4,
+	0xd3: 5,
+	0xd4: 23,
+	0xd5: 22,
+	0xd6: 6,
+	0xd7: 7,
+	0xd8: 8,
+	0xd9: 9,
+	0xda: 10,
+	0xdb: 11,
+	0xe9: 19,
+	0xec: 17,
+	0xed: 18,
+	0xf3: 12,
+	0xf4: 13,
+	0xf5: 24,
+	0xf8: 25,
+	0xfa: 14,
+	0xfb: 15,
+	0xfc: 15,
+	0xfd: 15,
+	0xfe: 15,
+	0xff: 16,
+}
+
+# each row contains the five windows string resource ids used by one xmic type
+const MICROSIM_RESOURCE_IDS := [
+	[-1, -1, -1, -1, -1],
+	[960, 972, 916, -1, -1],
+	[945, 929, -1, -1, -1],
+	[925, 965, 943, 952, 920],
+	[962, 941, 922, -1, 919],
+	[951, 950, 970, -1, 919],
+	[935, 974, 976, 952, 920],
+	[936, 924, 958, 910, 982],
+	[934, 956, 953, 948, 911],
+	[938, 924, 976, 952, 920],
+	[966, 918, 917, 963, -1],
+	[954, 959, 928, 967, -1],
+	[921, 928, 947, 944, -1],
+	[937, -1, 978, 977, -1],
+	[971, 973, 946, -1, 940],
+	[942, 969, 930, -1, 940],
+	[980, 979, 957, 939, 931],
+	[932, 933, 964, 912, 901],
+	[968, 964, -1, 912, 903],
+	[975, 964, -1, 912, 904],
+	[981, 961, -1, 913, 909],
+	[955, 961, -1, 913, 908],
+	[923, 915, 947, 912, 902],
+	[923, 949, -1, 914, 907],
+	[924, 927, 952, 914, 905],
+	[926, -1, -1, 914, 906],
+]
+
+const GRADE_NAMES := [
+	"F",
+	"D-",
+	"D",
+	"D+",
+	"C-",
+	"C",
+	"C+",
+	"B-",
+	"B",
+	"B+",
+	"A-",
+	"A",
+	"A+",
+]
 
 const ZONE_NAMES := [
 	"Unzoned",
@@ -37,7 +122,9 @@ const ZONE_DENSITIES := [
 ]
 
 
-static func inspect(city: CityState, point: Vector2i) -> Dictionary:
+static func inspect(
+	city: CityState, point: Vector2i, resource_strings: Dictionary = {}
+) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if city.index_of(point.x, point.y) < 0:
@@ -56,6 +143,7 @@ static func inspect(city: CityState, point: Vector2i) -> Dictionary:
 	if overlay >= FIRST_MICROSIM_LABEL and overlay <= LAST_MICROSIM_LABEL:
 		var microsim := city.microsim(overlay - FIRST_MICROSIM_LABEL)
 		if not microsim.is_empty() and microsim.tile_id != 0:
+			var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(microsim.tile_id, 0))
 			return {
 				"ok": true,
 				"kind": "specific",
@@ -64,6 +152,10 @@ static func inspect(city: CityState, point: Vector2i) -> Dictionary:
 				"overlay_id": overlay,
 				"microsim_id": overlay - FIRST_MICROSIM_LABEL,
 				"microsim": microsim,
+				"microsim_type": microsim_type,
+				"lines": _specific_lines(
+					city, microsim, microsim_type, resource_strings
+				),
 				"error": "",
 			}
 
@@ -127,22 +219,12 @@ static func format_text(info: Dictionary) -> String:
 		return "Query failed: %s" % info.get("error", "unknown error")
 	var point: Vector2i = info.point
 	if info.kind == "specific":
-		var microsim: Dictionary = info.microsim
 		var title: String = info.title
 		if title.is_empty():
 			title = "City facility"
-		return (
-			"%s\nTile: %d, %d\n\nRating: %d\nValue 1: %d\nValue 2: %d\nValue 3: %d"
-			% [
-				title,
-				point.x,
-				point.y,
-				microsim.stat_0,
-				microsim.stat_1,
-				microsim.stat_2,
-				microsim.stat_3,
-			]
-		)
+		var specific_lines := PackedStringArray([title, ""])
+		specific_lines.append_array(info.lines)
+		return "\n".join(specific_lines)
 
 	var lines := PackedStringArray([
 		info.title,
@@ -169,6 +251,78 @@ static func format_text(info: Dictionary) -> String:
 		else:
 			lines.append(info.water_detail)
 	return "\n".join(lines)
+
+
+static func resource_string_ids() -> PackedInt32Array:
+	var unique := {}
+	for resource_id in range(
+		STADIUM_SPORT_RESOURCE_BASE, STADIUM_SPORT_RESOURCE_BASE + 5
+	):
+		unique[resource_id] = true
+	for row in MICROSIM_RESOURCE_IDS:
+		for resource_id in row:
+			if resource_id >= 0:
+				unique[resource_id] = true
+	var result := PackedInt32Array()
+	for resource_id in unique:
+		result.append(int(resource_id))
+	result.sort()
+	return result
+
+
+static func _specific_lines(
+	city: CityState,
+	microsim: Dictionary,
+	microsim_type: int,
+	resource_strings: Dictionary
+) -> PackedStringArray:
+	if resource_strings.is_empty():
+		return PackedStringArray([
+			"Rating: %d" % microsim.stat_0,
+			"Value 1: %d" % microsim.stat_1,
+			"Value 2: %d" % microsim.stat_2,
+			"Value 3: %d" % microsim.stat_3,
+		])
+	if microsim_type < 0 or microsim_type >= MICROSIM_RESOURCE_IDS.size():
+		return PackedStringArray()
+	var result := PackedStringArray()
+	for resource_id in MICROSIM_RESOURCE_IDS[microsim_type]:
+		if resource_id < 0:
+			continue
+		if not resource_strings.has(resource_id):
+			return _specific_lines(city, microsim, microsim_type, {})
+		var template := str(resource_strings[resource_id])
+		result.append(_expand_specific_template(city, microsim, template, resource_strings))
+	return result
+
+
+static func _expand_specific_template(
+	city: CityState,
+	microsim: Dictionary,
+	template: String,
+	resource_strings: Dictionary
+) -> String:
+	var grade_index := int(microsim.stat_0)
+	var grade := str(grade_index)
+	if grade_index >= 0 and grade_index < GRADE_NAMES.size():
+		grade = GRADE_NAMES[grade_index]
+	var sport_id := STADIUM_SPORT_RESOURCE_BASE + int(microsim.stat_2)
+	var sport := str(microsim.stat_2)
+	if resource_strings.has(sport_id):
+		sport = str(resource_strings[sport_id])
+	var wins_losses := ""
+	if int(microsim.stat_0) != 0:
+		wins_losses = "%d-%d" % [microsim.stat_0, 40 - int(microsim.stat_0)]
+	return (
+		template.replace("#0", str(microsim.stat_0))
+		.replace("#1", str(microsim.stat_1))
+		.replace("#2", str(microsim.stat_2))
+		.replace("#3", str(microsim.stat_3))
+		.replace("#G", grade)
+		.replace("#S", sport)
+		.replace("#T", city.label(int(microsim.stat_3)))
+		.replace("#W", wins_losses)
+	)
 
 
 static func _traffic(

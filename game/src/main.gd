@@ -5,6 +5,7 @@ const CityModel = preload("res://src/model/city_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
+const PeString = preload("res://src/assets/pe_string_resource.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
@@ -109,6 +110,7 @@ var large_sprites: Sc2SpriteArchive
 var small_medium_sprites: Sc2SpriteArchive
 var overlay_mode := "city"
 var reference_root := ""
+var original_query_strings: Dictionary = {}
 var selected_group := 9
 var selected_subtool := 0
 var selected_tool_available := false
@@ -197,6 +199,11 @@ var fps_update_seconds := 0.0
 
 func _ready() -> void:
 	reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
+	var string_resources := PeString.load_ids(
+		reference_root.path_join("SIMCITY.EXE"), Queries.resource_string_ids()
+	)
+	if string_resources.ok:
+		original_query_strings = string_resources.strings
 	var toolbar_resource := PeBitmap.load_numeric(
 		reference_root.path_join("SIMCITY.EXE"), 2
 	)
@@ -2988,7 +2995,7 @@ func _cancel_sign() -> void:
 
 
 func _open_query(point: Vector2i) -> void:
-	var result := Queries.inspect(city, point)
+	var result := Queries.inspect(city, point, original_query_strings)
 	if not result.ok:
 		_show_error("Cannot query tile: %s" % result.error)
 		return
@@ -2998,7 +3005,7 @@ func _open_query(point: Vector2i) -> void:
 			_show_error("Cannot calculate mayor approval: %s" % approval.error)
 			return
 		_show_news_items(approval.news_items)
-		result = Queries.inspect(city, point)
+		result = Queries.inspect(city, point, original_query_strings)
 	query_dialog.dialog_text = Queries.format_text(result)
 	query_dialog.popup_centered()
 
