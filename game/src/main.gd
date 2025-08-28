@@ -18,6 +18,7 @@ const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
+const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -190,8 +191,8 @@ var query_action_button: Button
 var active_query_result: Dictionary = {}
 var city_analysis_dialog: AcceptDialog
 var city_analysis_table: Tree
-var library_dialog: AcceptDialog
-var library_text_view: TextEdit
+var library_windows: Array[PanelContainer] = []
+var library_text_views: Array[TextEdit] = []
 var sound_player: AudioStreamPlayer
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
@@ -798,18 +799,50 @@ func _build_interface(toolbar_art: Image) -> void:
 	analysis_content.add_child(city_analysis_table)
 	analysis_content.move_child(city_analysis_table, 0)
 	add_child(city_analysis_dialog)
-	library_dialog = AcceptDialog.new()
-	library_dialog.title = "Ruminate"
-	library_dialog.min_size = Vector2i(800, 620)
-	library_text_view = TextEdit.new()
-	library_text_view.custom_minimum_size = Vector2i(740, 500)
-	library_text_view.editable = false
-	library_text_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	library_dialog.get_label().visible = false
-	var library_content := library_dialog.get_label().get_parent()
-	library_content.add_child(library_text_view)
-	library_content.move_child(library_text_view, 0)
-	add_child(library_dialog)
+	for index in LIBRARY_TEXT_IDS.size():
+		var library_window := PanelContainer.new()
+		library_window.name = "LibraryText%d" % LIBRARY_TEXT_IDS[index]
+		library_window.visible = false
+		library_window.mouse_filter = Control.MOUSE_FILTER_STOP
+		library_window.add_theme_stylebox_override(
+			"panel", _classic_box(Color("c0c0c0"), Color("404040"), 2)
+		)
+		library_window.gui_input.connect(
+			_on_library_window_input.bind(library_window)
+		)
+		var library_margin := MarginContainer.new()
+		for side in ["left", "top", "right", "bottom"]:
+			library_margin.add_theme_constant_override("margin_" + side, 8)
+		library_window.add_child(library_margin)
+		var library_column := VBoxContainer.new()
+		library_column.add_theme_constant_override("separation", 8)
+		library_margin.add_child(library_column)
+		var library_text_view := TextEdit.new()
+		library_text_view.editable = false
+		library_text_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+		library_text_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		library_text_view.add_theme_color_override("font_color", Color("101010"))
+		library_text_view.add_theme_color_override(
+			"font_readonly_color", Color("101010")
+		)
+		for state in ["normal", "focus", "read_only"]:
+			library_text_view.add_theme_stylebox_override(
+				state, _classic_box(Color("ffffff"), Color("808080"), 1)
+			)
+		library_text_view.gui_input.connect(
+			_on_library_window_input.bind(library_window)
+		)
+		library_column.add_child(library_text_view)
+		var library_button_row := HBoxContainer.new()
+		library_button_row.alignment = BoxContainer.ALIGNMENT_CENTER
+		library_column.add_child(library_button_row)
+		var library_ok_button := Button.new()
+		library_ok_button.text = "OK"
+		library_ok_button.pressed.connect(library_window.hide)
+		library_button_row.add_child(library_ok_button)
+		add_child(library_window)
+		library_windows.append(library_window)
+		library_text_views.append(library_text_view)
 	game_over_dialog = AcceptDialog.new()
 	game_over_dialog.min_size = Vector2i(460, 220)
 	add_child(game_over_dialog)
@@ -3098,16 +3131,37 @@ func _run_query_action() -> void:
 			if library_texts.size() != LIBRARY_TEXT_IDS.size():
 				_show_error("The Library text resources are missing or invalid.")
 				return
-			var sections := PackedStringArray()
-			for resource_id in LIBRARY_TEXT_IDS:
-				sections.append(
+			var window_rects := LibraryWindowLayout.rects(
+				Vector2i(get_viewport_rect().size), LIBRARY_TEXT_IDS.size()
+			)
+			for index in LIBRARY_TEXT_IDS.size():
+				var resource_id: int = LIBRARY_TEXT_IDS[index]
+				library_text_views[index].text = (
 					str(library_texts[resource_id])
 					.replace("\r\n", "\n")
 					.replace("\r", "\n")
 				)
-			library_text_view.text = "\n\n".join(sections)
-			library_text_view.scroll_vertical = 0
-			library_dialog.popup_centered()
+				library_text_views[index].scroll_vertical = 0
+				library_windows[index].position = window_rects[index].position
+				library_windows[index].size = window_rects[index].size
+				_bring_library_window_to_front(library_windows[index])
+				library_windows[index].show()
+
+
+func _on_library_window_input(event: InputEvent, window: PanelContainer) -> void:
+	if (
+		event is InputEventMouseButton
+		and event.button_index == MOUSE_BUTTON_LEFT
+		and event.pressed
+	):
+		_bring_library_window_to_front(window)
+
+
+func _bring_library_window_to_front(window: PanelContainer) -> void:
+	for other in library_windows:
+		if other != window and other.z_index > 1000:
+			other.z_index -= 1
+	window.z_index = 1000 + library_windows.size()
 
 
 func _refresh_details() -> void:

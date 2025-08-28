@@ -50,6 +50,7 @@ const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
+const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -454,6 +455,24 @@ func _test_sprite_archives(reference_root: String) -> void:
 		_check(library_text.strings.size() == 4, "Indexed Library text returns all four requested entries")
 		for resource_id in range(3000, 3004):
 			_check(not str(library_text.strings[resource_id]).is_empty(), "Library text entry %d is not empty" % resource_id)
+	var library_rects := LibraryWindowLayout.rects(Vector2i(1280, 800))
+	_check(library_rects.size() == 4, "Library presentation creates four windows")
+	if library_rects.size() == 4:
+		_check(
+			library_rects[0].size == LibraryWindowLayout.WINDOW_SIZE,
+			"Library windows use the configured readable size",
+		)
+		_check(
+			library_rects[3].position - library_rects[2].position
+			== LibraryWindowLayout.CASCADE_STEP,
+			"Library windows use a consistent cascade",
+		)
+		_check(
+			library_rects[0].position.x >= LibraryWindowLayout.VIEWPORT_MARGIN
+			and library_rects[3].end.x
+			<= 1280 - LibraryWindowLayout.VIEWPORT_MARGIN,
+			"Library cascade stays inside the viewport",
+		)
 	_check(
 		not TextUsa.load_ids(
 			reference_root.path_join("DATA/TEXT_USA.DAT"),
