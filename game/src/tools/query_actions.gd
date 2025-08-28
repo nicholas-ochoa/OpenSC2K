@@ -5,6 +5,8 @@ const FIRST_BUILDING := 0x0d
 const CATEGORY_COUNT := 12
 const CATEGORY_RESOURCE_BASE := 988
 const MISC_TILE_COUNTS := 0x01f0
+const FIRST_MICROSIM_LABEL := 51
+const LAST_MICROSIM_LABEL := 200
 
 const TILE_UPPER_BOUNDS := [
 	0x0e,
@@ -106,6 +108,31 @@ const FALLBACK_CATEGORY_NAMES := [
 	"Recreation",
 	"Arcologies",
 ]
+
+
+static func rename_facility(
+	city: CityState, info: Dictionary, value: String
+) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	if info.get("kind", "") != "specific":
+		return {"ok": false, "error": "query does not select a facility"}
+	var overlay_id := int(info.get("overlay_id", 0))
+	var point: Vector2i = info.get("point", Vector2i(-1, -1))
+	if overlay_id < FIRST_MICROSIM_LABEL or overlay_id > LAST_MICROSIM_LABEL:
+		return {"ok": false, "error": "facility label is invalid"}
+	if city.text_overlay_id(point.x, point.y) != overlay_id:
+		return {"ok": false, "error": "queried facility has changed"}
+	var old_value := city.label(overlay_id)
+	if not city.set_label(overlay_id, value):
+		return {"ok": false, "error": "cannot store facility name"}
+	return {
+		"ok": true,
+		"overlay_id": overlay_id,
+		"old_value": old_value,
+		"new_value": city.label(overlay_id),
+		"error": "",
+	}
 
 
 static func city_analysis(

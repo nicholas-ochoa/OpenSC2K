@@ -50,6 +50,7 @@ const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
+const QueryPresentation = preload("res://src/view/query_presentation.gd")
 const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
@@ -8532,6 +8533,7 @@ func _test_query_info(reference_root: String) -> void:
 	_check(city.set_zone_id(10, 10, 1), "Query fixture zones the road")
 	_check(city.set_land_altitude(10, 10, 6), "Query fixture sets altitude")
 	_check(city.set_tile_flag(10, 10, 0x40, true), "Query fixture powers the road")
+	_check(city.set_underground_id(10, 10, 0x1f), "Query fixture adds a pipe and subway crossover")
 	var info := Queries.inspect(city, Vector2i(10, 10))
 	_check(info.ok and info.kind == "general", "General query succeeds: %s" % info.error)
 	_check(info.title == "Road", "General query classifies the tile")
@@ -8542,6 +8544,26 @@ func _test_query_info(reference_root: String) -> void:
 	_check(info.crime_level == "Medium", "Query uses the recovered crime thresholds")
 	_check(info.pollution_level == "Very High", "Query uses the recovered pollution thresholds")
 	_check(info.shows_utilities and info.powered, "Query reports utility state")
+	_check(
+		info.tile_id == 0x1d
+		and info.sprite_id == 1029
+		and info.altitude_raw == 6
+		and info.zone_raw == 1,
+		"Advanced query reports raw tile, sprite, altitude, and zone values",
+	)
+	_check(
+		info.flags_raw == 0x40
+		and info.flag_names == PackedStringArray(["powered"])
+		and info.underground_name == "Crossover (PIPESTB_SUBWAYLR)",
+		"Advanced query decodes XBIT and XUND values",
+	)
+	var advanced_general_text := Queries.format_text(info)
+	_check(
+		advanced_general_text.contains("Tile ID: 29 / 0x1D")
+		and advanced_general_text.contains("XCRM: 61 / 0x3D")
+		and advanced_general_text.contains("Microsim ID: None"),
+		"General query formats the SC2KFix advanced data section",
+	)
 	_check(Queries._level_name(1) == "None", "Query threshold one is None")
 	_check(Queries._level_name(2) == "Low", "Query threshold two is Low")
 	_check(Queries._level_name(60) == "Low", "Query threshold sixty is Low")
@@ -8584,6 +8606,21 @@ func _test_query_info(reference_root: String) -> void:
 	_check(specific.microsim.stat_2 == 0x0304, "Specific query reads big-endian statistic two")
 	_check(specific.microsim.stat_3 == 0x0506, "Specific query reads big-endian statistic three")
 	_check(specific.microsim_type == 2, "Specific query maps City Hall to facility type two")
+	_check(
+		specific.sprite_id == 1208
+		and Queries.format_text(specific).contains("Data 3: 1286 / 0x0506"),
+		"Specific query shows its full-size sprite and raw XMIC data",
+	)
+	var renamed := QueryFacilityActions.rename_facility(city, specific, "New Civic Center")
+	_check(
+		renamed.ok and city.label(51) == "New Civic Center",
+		"Specific query can rename its linked facility",
+	)
+	_check(
+		QueryFacilityActions.rename_facility(city, specific, "12345678901234567890123456789").new_value.length() == 23,
+		"Query rename uses the saved XLAB length limit",
+	)
+	_check(city.set_label(51, "Civic Center"), "Query fixture restores the facility name")
 	_check(
 		specific.action == "city_analysis"
 		and specific.action_resource_id == Queries.CITY_HALL_ACTION_RESOURCE,
@@ -8673,6 +8710,12 @@ func _test_query_info(reference_root: String) -> void:
 		library.action == "library_ruminate"
 		and library.action_resource_id == Queries.LIBRARY_ACTION_RESOURCE,
 		"Library query exposes its Ruminate action",
+	)
+	var arcology_info := library.duplicate(true)
+	arcology_info.microsim.tile_id = 0xfb
+	_check(
+		QueryPresentation.sprite_id(city, arcology_info) == 1251,
+		"Query uses a full-size arcology sprite as corrected by SC2KFix",
 	)
 
 	var analysis_misc := document.find_chunk("MISC").decoded_payload.duplicate()

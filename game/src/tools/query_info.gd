@@ -1,6 +1,8 @@
 class_name QueryInfo
 extends RefCounted
 
+const Presentation = preload("res://src/view/query_presentation.gd")
+
 const FULL_MAP_SIZE := CityState.MAP_SIZE
 const DETAIL_MAP_SIZE := 64
 const FIRST_MICROSIM_LABEL := 51
@@ -126,6 +128,26 @@ const ZONE_DENSITIES := [
 	"",
 ]
 
+const UNDERGROUND_NAMES := [
+	"Bedrock Outline",
+	"Subway (LR)", "Subway (TB)", "Subway (HTB)", "Subway (LHR)",
+	"Subway (THB)", "Subway (HLR)", "Subway (BR)", "Subway (BL)",
+	"Subway (TL)", "Subway (TR)", "Subway (RTB)", "Subway (LBR)",
+	"Subway (TLB)", "Subway (LTR)", "Subway (LTBR)",
+	"Pipes (LR)", "Pipes (TB)", "Pipes (HTB)", "Pipes (LHR)",
+	"Pipes (THB)", "Pipes (HLR)", "Pipes (BR)", "Pipes (BL)",
+	"Pipes (TL)", "Pipes (TR)", "Pipes (RTB)", "Pipes (LBR)",
+	"Pipes (TLB)", "Pipes (LTR)", "Pipes (LTBR)",
+	"Crossover (PIPESTB_SUBWAYLR)", "Crossover (PIPESLR_SUBWAYTB)",
+	"Unwatered Base Piping", "Missile Silo", "Subway Entrance",
+]
+
+const FLAG_LABELS := [
+	[0x80, "powerable"], [0x40, "powered"], [0x20, "piped"],
+	[0x10, "watered"], [0x08, "mark"], [0x04, "water"],
+	[0x02, "flipped"], [0x01, "saltwater"],
+]
+
 
 static func inspect(
 	city: CityState, point: Vector2i, resource_strings: Dictionary = {}
@@ -157,7 +179,7 @@ static func inspect(
 			elif microsim.tile_id == LIBRARY:
 				action = "library_ruminate"
 				action_resource_id = LIBRARY_ACTION_RESOURCE
-			return {
+			var specific := {
 				"ok": true,
 				"kind": "specific",
 				"point": point,
@@ -173,6 +195,11 @@ static func inspect(
 				"action_resource_id": action_resource_id,
 				"error": "",
 			}
+			specific.merge(_advanced_details(
+				city, point, overlay - FIRST_MICROSIM_LABEL
+			))
+			specific["sprite_id"] = Presentation.sprite_id(city, specific)
+			return specific
 
 	var building := city.building_id(point.x, point.y)
 	var zone := city.zone_id(point.x, point.y)
@@ -226,6 +253,8 @@ static func inspect(
 		"overlay_id": overlay,
 		"error": "",
 	}
+	result.merge(_advanced_details(city, point))
+	result["sprite_id"] = Presentation.sprite_id(city, result)
 	return result
 
 
@@ -239,6 +268,8 @@ static func format_text(info: Dictionary) -> String:
 			title = "City facility"
 		var specific_lines := PackedStringArray([title, ""])
 		specific_lines.append_array(info.lines)
+		specific_lines.append("")
+		specific_lines.append_array(_advanced_lines(info))
 		return "\n".join(specific_lines)
 
 	var lines := PackedStringArray([
@@ -265,7 +296,90 @@ static func format_text(info: Dictionary) -> String:
 			lines.append("Watered: %s" % ("Yes" if info.watered else "No"))
 		else:
 			lines.append(info.water_detail)
+	lines.append("")
+	lines.append_array(_advanced_lines(info))
 	return "\n".join(lines)
+
+
+static func _advanced_details(
+	city: CityState, point: Vector2i, microsim_id := -1
+) -> Dictionary:
+	var index := city.index_of(point.x, point.y)
+	var detail_index := int(point.x / 2) * DETAIL_MAP_SIZE + int(point.y / 2)
+	var flags := int(city.tile_flags[index])
+	var flag_names := PackedStringArray()
+	for entry in FLAG_LABELS:
+		if flags & int(entry[0]):
+			flag_names.append(str(entry[1]))
+	var underground_id := city.underground_id(point.x, point.y)
+	var underground_name := "Unknown"
+	if underground_id >= 0 and underground_id < UNDERGROUND_NAMES.size():
+		underground_name = UNDERGROUND_NAMES[underground_id]
+	var zone_raw := int(city.zones[index])
+	return {
+		"tile_id": city.building_id(point.x, point.y),
+		"zone_id": zone_raw & 0x0f,
+		"altitude_raw": int(city.altitude_words[index]),
+		"land_value_raw": int(city.document.find_chunk("XVAL").decoded_payload[detail_index]),
+		"crime_raw": int(city.document.find_chunk("XCRM").decoded_payload[detail_index]),
+		"pollution_raw": int(city.document.find_chunk("XPLT").decoded_payload[detail_index]),
+		"zone_raw": zone_raw,
+		"corner_name": _corner_name(zone_raw & 0xf0),
+		"flags_raw": flags,
+		"flag_names": flag_names,
+		"underground_id": underground_id,
+		"underground_name": underground_name,
+		"microsim_id": microsim_id,
+	}
+
+
+static func _advanced_lines(info: Dictionary) -> PackedStringArray:
+	var point: Vector2i = info.point
+	var flag_names: PackedStringArray = info.get("flag_names", PackedStringArray())
+	var flag_text := "none" if flag_names.is_empty() else " ".join(flag_names)
+	var result := PackedStringArray([
+		"Advanced tile data",
+		"Tile ID: %d / 0x%02X" % [info.tile_id, info.tile_id],
+		"Sprite ID: %d / 0x%04X" % [info.sprite_id, info.sprite_id],
+		"Coordinates: X=%d  Y=%d" % [point.x, point.y],
+		"ALTM: 0x%04X" % info.altitude_raw,
+		"XVAL: %d / 0x%02X" % [info.land_value_raw, info.land_value_raw],
+		"XCRM: %d / 0x%02X" % [info.crime_raw, info.crime_raw],
+		"XPLT: %d / 0x%02X" % [info.pollution_raw, info.pollution_raw],
+		"XTXT: %d / 0x%02X" % [info.overlay_id, info.overlay_id],
+		"XZON: %s, zone 0x%X (raw 0x%02X)"
+		% [info.corner_name, info.zone_id, info.zone_raw],
+		"XBIT: %s (0x%02X)" % [flag_text, info.flags_raw],
+		"Underground: %s (XUND %d / 0x%02X)"
+		% [info.underground_name, info.underground_id, info.underground_id],
+	])
+	var microsim_id := int(info.get("microsim_id", -1))
+	if microsim_id < 0:
+		result.append("Microsim ID: None")
+		return result
+	var microsim: Dictionary = info.get("microsim", {})
+	result.append("Microsim ID: %d / 0x%02X" % [microsim_id, microsim_id])
+	result.append("Data 0: %d / 0x%02X" % [microsim.stat_0, microsim.stat_0])
+	for data_index in range(1, 4):
+		var value := int(microsim["stat_%d" % data_index])
+		result.append("Data %d: %d / 0x%04X" % [data_index, value, value])
+	return result
+
+
+static func _corner_name(mask: int) -> String:
+	match mask:
+		0x10:
+			return "Bottom-left corner"
+		0x20:
+			return "Bottom-right corner"
+		0x40:
+			return "Top-left corner"
+		0x80:
+			return "Top-right corner"
+		0xf0:
+			return "All four corners"
+		_:
+			return "No corners"
 
 
 static func resource_string_ids() -> PackedInt32Array:
