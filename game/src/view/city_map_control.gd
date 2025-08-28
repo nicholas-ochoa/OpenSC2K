@@ -6,6 +6,7 @@ signal selection_canceled()
 signal zoom_changed(percent: int)
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
+const BuildingTool = preload("res://src/tools/building_command.gd")
 const ZOOM_LEVELS := [0.25, 0.5, 1.0, 2.0]
 const DEFAULT_ZOOM_INDEX := 2
 const PALETTE_CYCLE_SHADER := """
@@ -40,11 +41,13 @@ var animated_palette_texture: Texture2D
 var base_palette_lookup_all := false
 var edit_enabled := false
 var selection_mode := "rectangle"
+var point_footprint_area := 1
 var zoom_factor: float = ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]
 var source_center := Vector2.ZERO
 var selection_start := Vector2i(-1, -1)
 var selection_end := Vector2i(-1, -1)
 var selection_path: Array[Vector2i] = []
+var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[Dictionary] = []
 var dynamic_sprites: Array[Dictionary] = []
 var _panning := false
@@ -63,6 +66,7 @@ func _ready() -> void:
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_ensure_base_layer()
 	resized.connect(_on_resized)
+	mouse_exited.connect(_clear_hover)
 
 
 func set_city_view(
@@ -88,9 +92,10 @@ func set_animated_palette(texture: Texture2D) -> void:
 	_sync_base_material()
 
 
-func set_edit_enabled(value: bool, mode := "rectangle") -> void:
+func set_edit_enabled(value: bool, mode := "rectangle", footprint_area := 1) -> void:
 	edit_enabled = value
 	selection_mode = mode
+	point_footprint_area = clampi(footprint_area, 1, 4)
 	mouse_default_cursor_shape = (
 		Control.CURSOR_CROSS if edit_enabled else Control.CURSOR_ARROW
 	)
@@ -98,6 +103,7 @@ func set_edit_enabled(value: bool, mode := "rectangle") -> void:
 		selection_start = Vector2i(-1, -1)
 		selection_end = Vector2i(-1, -1)
 		selection_path.clear()
+		hover_tile = Vector2i(-1, -1)
 	queue_redraw()
 
 
@@ -127,6 +133,18 @@ func is_left_drag_active() -> bool:
 
 func selection_tiles() -> Array[Vector2i]:
 	return selection_path.duplicate()
+
+
+func point_preview_tiles(point: Vector2i) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if city == null or city.index_of(point.x, point.y) < 0:
+		return result
+	var site := BuildingTool.footprint(point, point_footprint_area)
+	for x in range(site.position.x, site.end.x):
+		for y in range(site.position.y, site.end.y):
+			if city.index_of(x, y) >= 0:
+				result.append(Vector2i(x, y))
+	return result
 
 
 func cancel_active_selection() -> bool:
@@ -260,13 +278,16 @@ func _draw() -> void:
 		_draw_dynamic_sprites(scale, offset)
 	_draw_transient_effects(scale, offset)
 	_draw_signs(scale, offset)
-	if selection_start.x < 0 or selection_end.x < 0 or city == null:
+	if city == null:
 		return
 	var highlighted: Array[Vector2i] = []
-	if selection_mode == "path":
+	if selection_mode == "point":
+		var preview_point := selection_end if selection_end.x >= 0 else hover_tile
+		highlighted = point_preview_tiles(preview_point)
+	elif selection_start.x < 0 or selection_end.x < 0:
+		return
+	elif selection_mode == "path":
 		highlighted = selection_path
-	elif selection_mode == "point":
-		highlighted = [selection_end]
 	else:
 		var minimum := Vector2i(
 			mini(selection_start.x, selection_end.x), mini(selection_start.y, selection_end.y)
@@ -365,6 +386,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 	var tile := _tile_at(event.position)
 	if event.pressed:
 		if tile.x >= 0:
+			hover_tile = tile
 			selection_start = tile
 			selection_end = tile
 			_rebuild_selection_path()
@@ -388,8 +410,11 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		queue_redraw()
 		accept_event()
 		return
+	var tile := _tile_at(event.position)
+	if tile != hover_tile:
+		hover_tile = tile
+		queue_redraw()
 	if edit_enabled and selection_start.x >= 0 and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
-		var tile := _tile_at(event.position)
 		if tile.x >= 0 and tile != selection_end:
 			selection_end = tile
 			_rebuild_selection_path()
@@ -432,6 +457,13 @@ func _clear_selection() -> void:
 	selection_start = Vector2i(-1, -1)
 	selection_end = Vector2i(-1, -1)
 	selection_path.clear()
+
+
+func _clear_hover() -> void:
+	if hover_tile.x < 0:
+		return
+	hover_tile = Vector2i(-1, -1)
+	queue_redraw()
 
 
 func _tile_at(local_point: Vector2) -> Vector2i:

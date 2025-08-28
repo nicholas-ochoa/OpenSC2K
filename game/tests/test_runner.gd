@@ -1294,6 +1294,24 @@ func _test_sprite_archives(reference_root: String) -> void:
 		map_control.selection_tiles() == [center_tile, center_tile + Vector2i(1, 0)],
 		"Rectangle selection shrinks from its fixed start",
 	)
+	map_control.selection_mode = "point"
+	map_control.point_footprint_area = 4
+	_check(
+		map_control.point_preview_tiles(center_tile)
+		== [
+			Vector2i(63, 63), Vector2i(63, 64), Vector2i(63, 65), Vector2i(63, 66),
+			Vector2i(64, 63), Vector2i(64, 64), Vector2i(64, 65), Vector2i(64, 66),
+			Vector2i(65, 63), Vector2i(65, 64), Vector2i(65, 65), Vector2i(65, 66),
+			Vector2i(66, 63), Vector2i(66, 64), Vector2i(66, 65), Vector2i(66, 66),
+		],
+		"Point preview shows the complete asymmetric four-tile building footprint",
+	)
+	map_control.point_footprint_area = 2
+	_check(
+		map_control.point_preview_tiles(center_tile)
+		== [center_tile, Vector2i(64, 65), Vector2i(65, 64), Vector2i(65, 65)],
+		"Point preview starts a two-tile building footprint at the pointer",
+	)
 	map_control.selection_mode = "path"
 	map_control.selection_end = center_tile + Vector2i(3, 2)
 	map_control._rebuild_selection_path()

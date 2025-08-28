@@ -2235,6 +2235,10 @@ func _update_edit_state() -> void:
 	var is_sign_tool := selected_group == 15
 	var is_query_tool := selected_group == 16
 	var is_center_tool := selected_group == 17
+	var point_footprint_area := (
+		int(Tools.tool(selected_group, selected_subtool).get("area", 1))
+		if is_building_tool else 1
+	)
 	var is_underground_network_tool := (
 		(selected_group == 4 and selected_subtool == 0)
 		or (selected_group == 7 and selected_subtool == 1)
@@ -2274,6 +2278,7 @@ func _update_edit_state() -> void:
 				else "point"
 			)
 		),
+		point_footprint_area,
 	)
 	if city == null or status_label == null:
 		return
