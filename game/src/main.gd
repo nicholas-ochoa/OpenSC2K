@@ -186,8 +186,16 @@ var highway_connection_dialog: ConfirmationDialog
 var pending_highway_connection: Dictionary = {}
 var tunnel_dialog: ConfirmationDialog
 var pending_tunnel_request: Dictionary = {}
-var query_dialog: AcceptDialog
+var query_overlay: ColorRect
+var query_dialog: PanelContainer
+var query_title_label: Label
+var query_name_input: LineEdit
+var query_text_view: TextEdit
+var query_sprite_view: TextureRect
+var query_sprite_caption: Label
+var query_rename_button: Button
 var query_action_button: Button
+var query_ok_button: Button
 var active_query_result: Dictionary = {}
 var city_analysis_dialog: AcceptDialog
 var city_analysis_table: Tree
@@ -271,6 +279,7 @@ func _process(delta: float) -> void:
 		or stadium_dialog.visible
 		or highway_connection_dialog.visible
 		or tunnel_dialog.visible
+		or (query_overlay != null and query_overlay.visible)
 		or bond_dialog.visible
 		or military_dialog.visible
 		or game_over_active
@@ -299,7 +308,10 @@ func _process(delta: float) -> void:
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo or map_view == null:
 		return
-	if event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL:
+	if event.keycode == KEY_ESCAPE and query_overlay != null and query_overlay.visible:
+		_close_query(false)
+		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL:
 		if map_view.zoom_in():
 			get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_MINUS:
@@ -771,13 +783,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	tunnel_dialog.canceled.connect(_cancel_tunnel)
 	add_child(tunnel_dialog)
 
-	query_dialog = AcceptDialog.new()
-	query_dialog.title = "Query"
-	query_dialog.min_size = Vector2i(500, 440)
-	query_action_button = query_dialog.add_button("", false)
-	query_action_button.visible = false
-	query_action_button.pressed.connect(_run_query_action)
-	add_child(query_dialog)
+	_build_query_dialog()
 	city_analysis_dialog = AcceptDialog.new()
 	city_analysis_dialog.title = "City Analysis"
 	city_analysis_dialog.min_size = Vector2i(600, 480)
@@ -951,6 +957,7 @@ func _create_classic_theme() -> Theme:
 	result.set_color("font_color", "Button", Color("101010"))
 	result.set_color("font_hover_color", "Button", Color("101010"))
 	result.set_color("font_pressed_color", "Button", Color("101010"))
+	result.set_color("font_focus_color", "Button", Color("101010"))
 	result.set_color("font_color", "OptionButton", Color("101010"))
 	result.set_stylebox("normal", "Button", _classic_box(Color("c0c0c0"), Color("ffffff"), 2))
 	result.set_stylebox("hover", "Button", _classic_box(Color("d0d0d0"), Color("ffffff"), 2))
@@ -973,6 +980,125 @@ func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
 	box.content_margin_right = 5
 	box.content_margin_bottom = 3
 	return box
+
+
+func _build_query_dialog() -> void:
+	query_overlay = ColorRect.new()
+	query_overlay.name = "QueryOverlay"
+	query_overlay.color = Color(0.0, 0.0, 0.0, 0.22)
+	query_overlay.mouse_filter = Control.MOUSE_FILTER_STOP
+	query_overlay.z_index = 900
+	query_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	query_overlay.visible = false
+	add_child(query_overlay)
+
+	var query_center := CenterContainer.new()
+	query_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	query_overlay.add_child(query_center)
+	query_dialog = PanelContainer.new()
+	query_dialog.name = "QueryDialog"
+	query_dialog.custom_minimum_size = Vector2(820, 620)
+	query_dialog.mouse_filter = Control.MOUSE_FILTER_STOP
+	query_dialog.add_theme_stylebox_override(
+		"panel", _classic_box(Color("c0c0c0"), Color("404040"), 2)
+	)
+	query_center.add_child(query_dialog)
+
+	var query_column := VBoxContainer.new()
+	query_column.add_theme_constant_override("separation", 8)
+	query_dialog.add_child(query_column)
+	var query_title_bar := ColorRect.new()
+	query_title_bar.color = Color("000080")
+	query_title_bar.custom_minimum_size = Vector2(0, 30)
+	query_column.add_child(query_title_bar)
+	var query_title_row := HBoxContainer.new()
+	query_title_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	query_title_row.offset_left = 8
+	query_title_row.offset_right = -4
+	query_title_bar.add_child(query_title_row)
+	query_title_label = Label.new()
+	query_title_label.text = "Query"
+	query_title_label.add_theme_color_override("font_color", Color.WHITE)
+	query_title_label.add_theme_font_size_override("font_size", 15)
+	query_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	query_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	query_title_row.add_child(query_title_label)
+	var query_close_button := Button.new()
+	query_close_button.text = "X"
+	query_close_button.custom_minimum_size = Vector2(28, 24)
+	query_close_button.pressed.connect(_close_query.bind(false))
+	query_title_row.add_child(query_close_button)
+
+	var query_body := HBoxContainer.new()
+	query_body.add_theme_constant_override("separation", 10)
+	query_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	query_column.add_child(query_body)
+	var query_text_column := VBoxContainer.new()
+	query_text_column.custom_minimum_size = Vector2(555, 0)
+	query_text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	query_text_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	query_body.add_child(query_text_column)
+	query_name_input = LineEdit.new()
+	query_name_input.max_length = 23
+	query_name_input.editable = false
+	query_name_input.add_theme_color_override("font_color", Color("101010"))
+	query_name_input.add_theme_color_override("font_uneditable_color", Color("303030"))
+	for state in ["normal", "focus", "read_only"]:
+		query_name_input.add_theme_stylebox_override(
+			state, _classic_box(Color("ffffff"), Color("808080"), 1)
+		)
+	query_text_column.add_child(query_name_input)
+	query_text_view = TextEdit.new()
+	query_text_view.editable = false
+	query_text_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	query_text_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	query_text_view.add_theme_color_override("font_color", Color("101010"))
+	query_text_view.add_theme_color_override("font_readonly_color", Color("101010"))
+	for state in ["normal", "focus", "read_only"]:
+		query_text_view.add_theme_stylebox_override(
+			state, _classic_box(Color("ffffff"), Color("808080"), 1)
+		)
+	query_text_column.add_child(query_text_view)
+
+	var query_image_panel := PanelContainer.new()
+	query_image_panel.custom_minimum_size = Vector2(235, 0)
+	query_image_panel.add_theme_stylebox_override(
+		"panel", _classic_box(Color("ffffff"), Color("808080"), 1)
+	)
+	query_body.add_child(query_image_panel)
+	var query_image_column := VBoxContainer.new()
+	query_image_column.add_theme_constant_override("separation", 6)
+	query_image_panel.add_child(query_image_column)
+	query_sprite_caption = Label.new()
+	query_sprite_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	query_sprite_caption.add_theme_color_override("font_color", Color("101010"))
+	query_image_column.add_child(query_sprite_caption)
+	query_sprite_view = TextureRect.new()
+	query_sprite_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	query_sprite_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	query_sprite_view.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	query_sprite_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	query_image_column.add_child(query_sprite_view)
+
+	var query_button_row := HBoxContainer.new()
+	query_button_row.add_theme_constant_override("separation", 8)
+	query_column.add_child(query_button_row)
+	query_rename_button = Button.new()
+	query_rename_button.text = "Rename"
+	query_rename_button.pressed.connect(_enable_query_rename)
+	query_button_row.add_child(query_rename_button)
+	var query_button_spacer := Control.new()
+	query_button_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	query_button_row.add_child(query_button_spacer)
+	query_action_button = Button.new()
+	query_action_button.visible = false
+	query_action_button.pressed.connect(_run_query_action)
+	query_button_row.add_child(query_action_button)
+	query_ok_button = Button.new()
+	query_ok_button.text = "OK"
+	query_ok_button.custom_minimum_size = Vector2(70, 30)
+	query_ok_button.pressed.connect(_accept_query)
+	query_button_row.add_child(query_ok_button)
 
 
 func _add_menu(parent: Control, label: String, items: Array, callback: Callable) -> MenuButton:
@@ -3098,6 +3224,12 @@ func _open_query(point: Vector2i) -> void:
 		_show_news_items(approval.news_items)
 		result = Queries.inspect(city, point, original_query_strings)
 	active_query_result = result
+	var is_specific: bool = result.kind == "specific"
+	query_title_label.text = "Query — %s" % result.title
+	query_name_input.visible = is_specific
+	query_name_input.text = str(result.title) if is_specific else ""
+	query_name_input.editable = false
+	query_rename_button.visible = is_specific
 	var action := str(result.get("action", ""))
 	query_action_button.visible = not action.is_empty()
 	if not action.is_empty():
@@ -3106,14 +3238,72 @@ func _open_query(point: Vector2i) -> void:
 		query_action_button.text = str(
 			original_query_strings.get(action_resource_id, fallback)
 		)
-	query_dialog.dialog_text = Queries.format_text(result)
-	query_dialog.popup_centered()
+	query_text_view.text = Queries.format_text(result)
+	query_text_view.scroll_vertical = 0
+	var sprite_id := int(result.get("sprite_id", -1))
+	query_sprite_view.texture = _query_sprite_texture(sprite_id)
+	query_sprite_caption.text = (
+		"Tile %d  •  Sprite %d" % [result.tile_id, sprite_id]
+		if sprite_id >= 0 else "Image unavailable"
+	)
+	query_overlay.show()
+	query_ok_button.grab_focus()
+
+
+func _query_sprite_texture(sprite_id: int) -> Texture2D:
+	if sprite_id < 0 or palette == null:
+		return null
+	var archive: Sc2SpriteArchive = (
+		large_sprites if sprite_id >= 1000 else small_medium_sprites
+	)
+	if archive == null or not archive.is_valid():
+		return null
+	var entry := archive.find_sprite(sprite_id)
+	if entry == null:
+		return null
+	var image_result := entry.create_image(palette)
+	if not image_result.get("ok", false):
+		return null
+	return ImageTexture.create_from_image(image_result.image)
+
+
+func _enable_query_rename() -> void:
+	if active_query_result.get("kind", "") != "specific":
+		return
+	query_name_input.editable = true
+	query_name_input.grab_focus()
+	query_name_input.select_all()
+
+
+func _accept_query() -> void:
+	_close_query(true)
+
+
+func _close_query(commit_rename := false) -> bool:
+	if query_overlay == null or not query_overlay.visible:
+		return true
+	if (
+		commit_rename
+		and query_name_input.editable
+		and active_query_result.get("kind", "") == "specific"
+	):
+		var renamed := QueryFacilityActions.rename_facility(
+			city, active_query_result, query_name_input.text
+		)
+		if not renamed.ok:
+			_show_error("Cannot rename facility: %s" % renamed.error)
+			return false
+		active_query_result["title"] = renamed.new_value
+	query_overlay.hide()
+	query_sprite_view.texture = null
+	return true
 
 
 func _run_query_action() -> void:
 	if city == null:
 		return
-	query_dialog.hide()
+	if not _close_query(true):
+		return
 	match str(active_query_result.get("action", "")):
 		"city_analysis":
 			var analysis := QueryFacilityActions.city_analysis(
