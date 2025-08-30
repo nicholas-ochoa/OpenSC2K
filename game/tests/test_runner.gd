@@ -2311,6 +2311,23 @@ func _test_game_speed_controller(reference_root: String) -> void:
 		"African Swallow advances again on the next idle cycle",
 	)
 
+	var island_city := CityModel.from_document(
+		Sc2Document.load_path(reference_root.path_join("CITIES/ISLAND.SC2"))
+	)
+	var island_start_day := island_city.age_in_days()
+	_check(island_city.set_simulation_speed(4), "Island unpause fixture selects Cheetah")
+	var island_controller := GameSpeed.new(Simulation.new(island_city, 1, 7, 13))
+	var island_ticks_ok := true
+	for tick in 25:
+		var island_tick := island_controller.advance_time(200.0, (tick + 1) * 200)
+		if not island_tick.ok:
+			island_ticks_ok = false
+			break
+	_check(
+		island_ticks_ok and island_city.age_in_days() >= island_start_day + 25,
+		"Island runs 25 Cheetah ticks after unpause without a script or simulation error",
+	)
+
 	var budget_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
 	_check(budget_city.set_age_in_days(24), "Controller budget fixture selects day 24")
 	_check(budget_city.set_simulation_speed(4), "Controller budget fixture stores Cheetah speed")
