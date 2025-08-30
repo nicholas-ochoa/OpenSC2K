@@ -201,7 +201,6 @@ var city_analysis_dialog: AcceptDialog
 var city_analysis_table: Tree
 var library_windows: Array[PanelContainer] = []
 var library_text_views: Array[TextEdit] = []
-var sound_player: AudioStreamPlayer
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
@@ -555,9 +554,6 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.selection_canceled.connect(_on_map_selection_canceled)
 	map_view.zoom_changed.connect(_on_city_zoom_changed)
 	map_panel.add_child(map_view)
-
-	sound_player = AudioStreamPlayer.new()
-	add_child(sound_player)
 
 	sidebar_toggle_button = Button.new()
 	sidebar_toggle_button.text = ">"
@@ -2199,17 +2195,24 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 				"frame": int(effect.get("frame", 0)),
 			})
 		map_view.show_transient_effects(visuals, 0.1)
-	if sound_events.is_empty():
-		return
-	var sound_path := reference_root.path_join(
-		"SOUNDS/%d.WAV" % int(sound_events[0])
-	)
-	if not FileAccess.file_exists(sound_path):
-		return
-	var stream := AudioStreamWAV.load_from_file(sound_path)
-	if stream != null:
-		sound_player.stream = stream
-		sound_player.play()
+	_play_sound_events(sound_events)
+
+
+func _play_sound_events(sound_events: Array) -> void:
+	for sound_event in sound_events:
+		var sound_path := reference_root.path_join(
+			"SOUNDS/%d.WAV" % int(sound_event)
+		)
+		if not FileAccess.file_exists(sound_path):
+			continue
+		var stream := AudioStreamWAV.load_from_file(sound_path)
+		if stream == null:
+			continue
+		var player := AudioStreamPlayer.new()
+		player.stream = stream
+		player.finished.connect(player.queue_free)
+		add_child(player)
+		player.play()
 
 
 func _show_news_items(news_items: Array) -> void:
@@ -3247,6 +3250,7 @@ func _open_query(point: Vector2i) -> void:
 		if sprite_id >= 0 else "Image unavailable"
 	)
 	query_overlay.show()
+	_play_sound_events(result.get("sound_events", []))
 	query_ok_button.grab_focus()
 
 

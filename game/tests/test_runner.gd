@@ -8557,6 +8557,7 @@ func _test_query_info(reference_root: String) -> void:
 	var info := Queries.inspect(city, Vector2i(10, 10))
 	_check(info.ok and info.kind == "general", "General query succeeds: %s" % info.error)
 	_check(info.title == "Road", "General query classifies the tile")
+	_check(info.sound_events.is_empty(), "General query does not request a sound")
 	var named_info := Queries.inspect(city, Vector2i(10, 10), original_strings)
 	_check(
 		named_info.title
@@ -8663,6 +8664,7 @@ func _test_query_info(reference_root: String) -> void:
 	_check(specific.microsim.stat_2 == 0x0304, "Specific query reads big-endian statistic two")
 	_check(specific.microsim.stat_3 == 0x0506, "Specific query reads big-endian statistic three")
 	_check(specific.microsim_type == 2, "Specific query maps City Hall to facility type two")
+	_check(specific.sound_events == [513], "City Hall query requests original sound 513")
 	_check(
 		specific.sprite_id == 1208
 		and Queries.format_text(specific).contains("Data 3: 1286 / 0x0506"),
@@ -8773,6 +8775,25 @@ func _test_query_info(reference_root: String) -> void:
 	_check(
 		QueryPresentation.sprite_id(city, arcology_info) == 1251,
 		"Query uses a full-size arcology sprite as corrected by SC2KFix",
+	)
+	_check(
+		Queries.specific_sound_events(0xfb, 3) == [526, 512]
+		and Queries.specific_sound_events(0xfb, 4) == [526]
+		and Queries.specific_sound_events(0xfb, 10) == [526, 513],
+		"Arcology query keeps all three original age-dependent sound branches",
+	)
+	_check(
+		Queries.specific_sound_events(0xc8, 0) == [514]
+		and Queries.specific_sound_events(0xd1, 0) == [506]
+		and Queries.specific_sound_events(0xd3, 0) == [509]
+		and Queries.specific_sound_events(0xd6, 0) == [523]
+		and Queries.specific_sound_events(0xd8, 0) == [522]
+		and Queries.specific_sound_events(0xda, 0) == [527]
+		and Queries.specific_sound_events(0xec, 0) == [521]
+		and Queries.specific_sound_events(0xed, 0) == [524]
+		and Queries.specific_sound_events(0xf8, 0) == [511]
+		and Queries.specific_sound_events(0xf5, 0).is_empty(),
+		"Specific query maps each recovered facility sound class",
 	)
 
 	var analysis_misc := document.find_chunk("MISC").decoded_payload.duplicate()

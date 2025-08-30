@@ -224,6 +224,9 @@ static func inspect(
 				),
 				"action": action,
 				"action_resource_id": action_resource_id,
+				"sound_events": specific_sound_events(
+					int(microsim.tile_id), int(microsim.stat_0)
+				),
 				"error": "",
 			}
 			specific.merge(_advanced_details(
@@ -282,6 +285,7 @@ static func inspect(
 		"watered": city.is_watered(point.x, point.y),
 		"water_detail": _water_detail(city, point, building),
 		"overlay_id": overlay,
+		"sound_events": [],
 		"error": "",
 	}
 	result.merge(_advanced_details(city, point))
@@ -395,6 +399,38 @@ static func _advanced_lines(info: Dictionary) -> PackedStringArray:
 		var value := int(microsim["stat_%d" % data_index])
 		result.append("Data %d: %d / 0x%04X" % [data_index, value, value])
 	return result
+
+
+static func specific_sound_events(tile_id: int, statistic_0: int) -> Array[int]:
+	match tile_id:
+		0xc6, 0xc7, 0xc8, 0xc9, 0xca, 0xcb, 0xcc, 0xcd, 0xce, 0xcf:
+			return [514]
+		0xd0, 0xd5, 0xd7, 0xdb, 0xf3, 0xff:
+			return [513]
+		0xd1, 0xd2:
+			return [506]
+		0xd3:
+			return [509]
+		0xd6, 0xd9:
+			return [523]
+		0xd8:
+			return [522]
+		0xda:
+			return [527]
+		0xec:
+			return [521]
+		0xed:
+			return [524]
+		0xf8:
+			return [511]
+		0xfb, 0xfc, 0xfd, 0xfe:
+			if statistic_0 > 9:
+				return [526, 513]
+			if statistic_0 <= 3:
+				return [526, 512]
+			return [526]
+		_:
+			return []
 
 
 static func _corner_name(mask: int) -> String:
