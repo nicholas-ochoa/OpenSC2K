@@ -8528,7 +8528,10 @@ func _test_query_info(reference_root: String) -> void:
 		"Query source strings load: %s" % original_strings_result.error,
 	)
 	var original_strings: Dictionary = original_strings_result.get("strings", {})
-	_check(original_strings.size() == 101, "Query requests each distinct facility, action, and analysis string")
+	_check(
+		original_strings.size() == 259,
+		"Query requests each reachable tile name, facility, action, and analysis string",
+	)
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	for chunk_id in ["XBLD", "XTER", "XZON", "XTXT", "XBIT"]:
 		_check(
@@ -8554,6 +8557,17 @@ func _test_query_info(reference_root: String) -> void:
 	var info := Queries.inspect(city, Vector2i(10, 10))
 	_check(info.ok and info.kind == "general", "General query succeeds: %s" % info.error)
 	_check(info.title == "Road", "General query classifies the tile")
+	var named_info := Queries.inspect(city, Vector2i(10, 10), original_strings)
+	_check(
+		named_info.title
+		== str(original_strings[Queries.GENERAL_NAME_RESOURCE_BASE + 6]),
+		"General query loads the original road-range name",
+	)
+	_check(
+		Queries.general_name_resource_id(city, Vector2i(10, 10))
+		== Queries.GENERAL_NAME_RESOURCE_BASE + 6,
+		"General query applies the recovered road name indirection",
+	)
 	_check(info.zone_name == "Residential" and info.zone_density == "low-density", "Query reports zone type and density")
 	_check(info.traffic == 4, "Query reproduces adjacent road traffic calculation")
 	_check(info.altitude_feet == 250 and not info.altitude_is_depth, "Query reproduces clear-terrain altitude")
@@ -8589,6 +8603,32 @@ func _test_query_info(reference_root: String) -> void:
 	_check(Queries._level_name(121) == "High", "Query threshold one-twenty-one is High")
 	_check(Queries._level_name(180) == "High", "Query threshold one-eighty is High")
 	_check(Queries._level_name(181) == "Very High", "Query threshold one-eighty-one is Very High")
+	_check(city.set_building_id(40, 40, 0), "Query name fixture clears a terrain tile")
+	_check(city.set_tile_flag(40, 40, 0x04, false), "Query name fixture clears its water flag")
+	_check(
+		Queries.general_name_resource_id(city, Vector2i(40, 40))
+		== Queries.GENERAL_NAME_RESOURCE_BASE + Queries.GENERAL_CLEAR_NAME_INDEX,
+		"General query selects the original clear-terrain name",
+	)
+	_check(city.set_tile_flag(40, 40, 0x04, true), "Query name fixture sets its water flag")
+	_check(city.set_tile_flag(40, 40, 0x01, true), "Query name fixture sets its salt-water flag")
+	_check(
+		Queries.general_name_resource_id(city, Vector2i(40, 40))
+		== Queries.GENERAL_NAME_RESOURCE_BASE + Queries.GENERAL_SALT_WATER_NAME_INDEX,
+		"General query selects the original salt-water name",
+	)
+	_check(city.set_tile_flag(40, 40, 0x01, false), "Query name fixture clears its salt-water flag")
+	_check(
+		Queries.general_name_resource_id(city, Vector2i(40, 40))
+		== Queries.GENERAL_NAME_RESOURCE_BASE + Queries.GENERAL_FRESH_WATER_NAME_INDEX,
+		"General query selects the original fresh-water name",
+	)
+	_check(city.set_building_id(41, 40, 0xff), "Query name fixture places an exact-name tile")
+	_check(
+		Queries.general_name_resource_id(city, Vector2i(41, 40))
+		== Queries.GENERAL_NAME_RESOURCE_BASE + 153,
+		"General query gives tile FF its individual original name",
+	)
 	_check(document.set_misc_u32(0x68, 8), "Query pump fixture sets rain")
 	_check(city.set_building_id(20, 20, 0xdc), "Query pump fixture places a pump")
 	_check(city.set_tile_flag(20, 20, 0x40, true), "Query pump fixture powers the pump")

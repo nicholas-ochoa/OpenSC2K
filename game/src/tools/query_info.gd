@@ -17,6 +17,37 @@ const LIBRARY := 0xf5
 const CITY_HALL_ACTION_RESOURCE := 810
 const LIBRARY_ACTION_RESOURCE := 811
 const ANALYSIS_RESOURCE_BASE := 988
+const GENERAL_NAME_RESOURCE_BASE := 593
+const GENERAL_CLEAR_NAME_INDEX := 158
+const GENERAL_SALT_WATER_NAME_INDEX := 159
+const GENERAL_FRESH_WATER_NAME_INDEX := 160
+const GENERAL_SAILBOAT_NAME_INDEX := 161
+
+# the first strict upper bound greater than xbld selects the name index
+const GENERAL_NAME_UPPER_BOUNDS := [
+	0x01,
+	0x05,
+	0x06,
+	0x0d,
+	0x0e,
+	0x1d,
+	0x2c,
+	0x3f,
+	0x43,
+	0x47,
+	0x49,
+	0x51,
+	0x56,
+	0x5c,
+	0x5d,
+	0x61,
+	0x6a,
+	0x6c,
+	0x70,
+	0x74,
+	0x78,
+	0x7c,
+]
 
 const MICROSIM_TYPE_BY_TILE := {
 	0xc6: 21,
@@ -228,7 +259,7 @@ static func inspect(
 		"ok": true,
 		"kind": "general",
 		"point": point,
-		"title": _tile_description(city, point, building),
+		"title": _tile_description(city, point, building, resource_strings),
 		"building_id": building,
 		"terrain_id": terrain,
 		"zone_id": zone,
@@ -386,6 +417,10 @@ static func resource_string_ids() -> PackedInt32Array:
 	var unique := {}
 	unique[CITY_HALL_ACTION_RESOURCE] = true
 	unique[LIBRARY_ACTION_RESOURCE] = true
+	for name_index in range(0, 154):
+		unique[GENERAL_NAME_RESOURCE_BASE + name_index] = true
+	for name_index in range(GENERAL_CLEAR_NAME_INDEX, GENERAL_SAILBOAT_NAME_INDEX + 1):
+		unique[GENERAL_NAME_RESOURCE_BASE + name_index] = true
 	for resource_id in range(
 		STADIUM_SPORT_RESOURCE_BASE, STADIUM_SPORT_RESOURCE_BASE + 5
 	):
@@ -546,7 +581,54 @@ static func _water_tower_storage(city: CityState, point: Vector2i) -> int:
 	return 10000 if city.is_watered(point.x, point.y) else 0
 
 
-static func _tile_description(city: CityState, point: Vector2i, building: int) -> String:
+static func _tile_description(
+	city: CityState,
+	point: Vector2i,
+	building: int,
+	resource_strings: Dictionary = {}
+) -> String:
+	var resource_id := general_name_resource_id(city, point, building)
+	if resource_strings.has(resource_id):
+		var original_name := str(resource_strings[resource_id]).strip_edges()
+		if not original_name.is_empty():
+			return original_name
+	return _fallback_tile_description(city, point, building)
+
+
+static func general_name_resource_id(
+	city: CityState, point: Vector2i, building := -1
+) -> int:
+	if city == null or city.index_of(point.x, point.y) < 0:
+		return -1
+	if building < 0:
+		building = city.building_id(point.x, point.y)
+	var name_index := 0
+	if building < 0x7c:
+		for upper_bound_index in GENERAL_NAME_UPPER_BOUNDS.size():
+			name_index = upper_bound_index
+			if building < int(GENERAL_NAME_UPPER_BOUNDS[upper_bound_index]):
+				break
+	else:
+		name_index = building - 0x66
+	if building == 0:
+		name_index = GENERAL_CLEAR_NAME_INDEX
+		if city.is_water(point.x, point.y):
+			name_index = (
+				GENERAL_SALT_WATER_NAME_INDEX
+				if city.is_salt_water(point.x, point.y)
+				else GENERAL_FRESH_WATER_NAME_INDEX
+			)
+			var overlay := city.text_overlay_id(point.x, point.y)
+			if overlay >= 201 and overlay <= 240:
+				var thing := city.thing(overlay - 201)
+				if int(thing.get("type", 0)) == 9:
+					name_index = GENERAL_SAILBOAT_NAME_INDEX
+	return GENERAL_NAME_RESOURCE_BASE + name_index
+
+
+static func _fallback_tile_description(
+	city: CityState, point: Vector2i, building: int
+) -> String:
 	if building == 0:
 		if city.is_water(point.x, point.y):
 			return "Salt water" if city.is_salt_water(point.x, point.y) else "Fresh water"
