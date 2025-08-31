@@ -3,6 +3,12 @@ extends RefCounted
 
 const LEGACY_SIZE := 52
 const EXTENDED_SIZE := 56
+const TEMPLATE_HEADER := 0x80000000
+const TEMPLATE_TYPE_SIZES := {
+	"DBYT": 1,
+	"DWRD": 2,
+	"DLNG": 4,
+}
 
 var document: Sc2File
 var load_error := ""
@@ -118,6 +124,54 @@ func picture_indices() -> Dictionary:
 	if position != data.size():
 		return _failure("PICT has %d unparsed bytes" % (data.size() - position))
 	return {"ok": true, "width": width, "height": height, "pixels": pixels, "error": ""}
+
+
+func template_fields() -> Dictionary:
+	var chunk := document.find_chunk("TMPL") if document != null else null
+	if chunk == null:
+		return {
+			"ok": true,
+			"present": false,
+			"fields": [],
+			"scenario_size": 0,
+			"error": "",
+		}
+	var data := chunk.decoded_payload
+	if data.size() < 4 or _read_u32_be(data, 0) != TEMPLATE_HEADER:
+		return _failure("TMPL header is invalid")
+	var fields: Array[Dictionary] = []
+	var position := 4
+	var scenario_offset := 4
+	while position < data.size():
+		var name_length := int(data[position])
+		position += 1
+		if name_length == 0:
+			return _failure("TMPL field %d has an empty name" % fields.size())
+		if position + name_length + 4 > data.size():
+			return _failure("TMPL field %d is truncated" % fields.size())
+		var name := data.slice(position, position + name_length).get_string_from_ascii()
+		position += name_length
+		var type_code := data.slice(position, position + 4).get_string_from_ascii()
+		position += 4
+		if not TEMPLATE_TYPE_SIZES.has(type_code):
+			return _failure(
+				"TMPL field %d has unknown type %s" % [fields.size(), type_code]
+			)
+		var field_size := int(TEMPLATE_TYPE_SIZES[type_code])
+		fields.append({
+			"name": name,
+			"type_code": type_code,
+			"size": field_size,
+			"scenario_offset": scenario_offset,
+		})
+		scenario_offset += field_size
+	return {
+		"ok": true,
+		"present": true,
+		"fields": fields,
+		"scenario_size": scenario_offset,
+		"error": "",
+	}
 
 
 func evaluate_goals(city: CityState) -> Dictionary:

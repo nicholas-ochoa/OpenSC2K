@@ -1842,6 +1842,9 @@ func _test_scenarios(reference_root: String) -> void:
 	_check(paths.size() == 18, "Supplied scenario count is 18")
 	var legacy_count := 0
 	var extended_count := 0
+	var template_count := 0
+	var template_without_chunk_count := 0
+	var first_template_fields: Array = []
 	for path in paths:
 		var document := Sc2Document.load_path(path)
 		var scenario := ScenarioModel.from_document(document)
@@ -1864,8 +1867,76 @@ func _test_scenarios(reference_root: String) -> void:
 				picture.pixels.size() == picture.width * picture.height,
 				"%s picture has the declared pixel count" % path.get_file()
 			)
+		var template := scenario.template_fields()
+		_check(template.ok, "%s template parses: %s" % [path.get_file(), template.error])
+		if template.ok and template.present:
+			template_count += 1
+			_check(template.fields.size() == 17, "%s template has 17 fields" % path.get_file())
+			_check(
+				template.scenario_size == ScenarioModel.LEGACY_SIZE,
+				"%s template describes the complete legacy SCEN record" % path.get_file(),
+			)
+			_check(
+				template.fields[0] == {
+					"name": "Disaster Type",
+					"type_code": "DWRD",
+					"size": 2,
+					"scenario_offset": 4,
+				},
+				"%s template starts with the disaster type" % path.get_file(),
+			)
+			_check(
+				template.fields[-1] == {
+					"name": "Item Two Tiles",
+					"type_code": "DWRD",
+					"size": 2,
+					"scenario_offset": 50,
+				},
+				"%s template ends with the second tile count" % path.get_file(),
+			)
+			if first_template_fields.is_empty():
+				first_template_fields = template.fields
+			else:
+				_check(
+					template.fields == first_template_fields,
+					"%s uses the common supplied template" % path.get_file(),
+				)
+		elif template.ok:
+			template_without_chunk_count += 1
 	_check(legacy_count == 15, "Fifteen supplied scenarios use the 52-byte SCEN layout")
 	_check(extended_count == 3, "Three supplied scenarios use the 56-byte SCEN layout")
+	_check(template_count == 5, "Five supplied scenarios contain a TMPL chunk")
+	_check(template_without_chunk_count == 13, "Thirteen supplied scenarios omit the optional TMPL chunk")
+
+	var malformed_template_document := Sc2Document.load_path(
+		reference_root.path_join("SCENARIO/CHARLEST.SCN")
+	).duplicate_document()
+	var malformed_template_chunk := malformed_template_document.find_chunk("TMPL")
+	var malformed_template_data := malformed_template_chunk.decoded_payload.duplicate()
+	malformed_template_data.resize(malformed_template_data.size() - 1)
+	_check(
+		malformed_template_chunk.set_decoded_payload(malformed_template_data),
+		"Scenario fixture truncates TMPL",
+	)
+	_check(
+		not ScenarioModel.from_document(malformed_template_document).template_fields().ok,
+		"TMPL reader rejects a truncated field",
+	)
+	var unknown_template_document := Sc2Document.load_path(
+		reference_root.path_join("SCENARIO/CHARLEST.SCN")
+	).duplicate_document()
+	var unknown_template_chunk := unknown_template_document.find_chunk("TMPL")
+	var unknown_template_data := unknown_template_chunk.decoded_payload.duplicate()
+	for index in range(18, 22):
+		unknown_template_data[index] = 0x58
+	_check(
+		unknown_template_chunk.set_decoded_payload(unknown_template_data),
+		"Scenario fixture changes a TMPL type",
+	)
+	_check(
+		not ScenarioModel.from_document(unknown_template_document).template_fields().ok,
+		"TMPL reader rejects an unknown field type",
+	)
 
 	var city_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(city_document)
