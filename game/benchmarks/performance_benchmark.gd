@@ -6,6 +6,7 @@ const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
+const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const DisasterMap = preload("res://src/simulation/disaster_map_phase.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
@@ -76,6 +77,33 @@ func _init() -> void:
 	for dynamic_index in 40:
 		Renderer.dynamic_draw_commands(city, sprites, Renderer.VIEW_LARGE, dynamic_index)
 	print("dynamic_layer_40: %d us" % (Time.get_ticks_usec() - started))
+	var scenario_city := CityModel.from_document(
+		Sc2Document.load_path(reference_root.path_join("SCENARIO/CHARLEST.SCN"))
+	)
+	var scenario_simulation := Simulation.new(scenario_city, 1, 7, 13)
+	var scenario_day := scenario_simulation.advance_day()
+	for _hurricane_tick in 30:
+		var hurricane_tick := scenario_simulation.advance_disaster_tick()
+		if not hurricane_tick.ok:
+			printerr("Charleston hurricane benchmark failed: %s" % hurricane_tick.error)
+			quit(1)
+			return
+	var hurricane_commands := Renderer.dynamic_draw_commands(
+		scenario_city, sprites, Renderer.VIEW_LARGE, 30
+	)
+	var dynamic_canvas := DynamicSpriteCanvas.new()
+	started = Time.get_ticks_usec()
+	for _canvas_index in 40:
+		dynamic_canvas.set_visuals(hurricane_commands, 1.0, Vector2.ZERO)
+	print(
+		"hurricane_dynamic_canvas_40: %d us; commands=%d; ok=%s"
+		% [
+			Time.get_ticks_usec() - started,
+			hurricane_commands.size(),
+			scenario_day.ok,
+		]
+	)
+	dynamic_canvas.free()
 
 	var split_disaster_city := CityModel.from_document(city.document.duplicate_document())
 	var split_random := Random.new(1)

@@ -8,6 +8,7 @@ signal zoom_changed(percent: int)
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const BuildingTool = preload("res://src/tools/building_command.gd")
+const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const ZOOM_LEVELS := [0.25, 0.5, 1.0, 2.0]
 const DEFAULT_ZOOM_INDEX := 2
 const PALETTE_CYCLE_SHADER := """
@@ -20,7 +21,10 @@ uniform bool palette_lookup_all = false;
 
 void fragment() {
 	vec4 base_color = texture(TEXTURE, UV);
-	int palette_index = int(round(texture(palette_indices, UV).r * 255.0));
+	float encoded_index = (
+		palette_lookup_all ? base_color.r : texture(palette_indices, UV).r
+	);
+	int palette_index = int(round(encoded_index * 255.0));
 	bool animated_index =
 		(palette_index >= 171 && palette_index <= 198) ||
 		(palette_index >= 200 && palette_index <= 219) ||
@@ -58,8 +62,9 @@ var _shake_generation := 0
 var _shake_offset := Vector2.ZERO
 var _base_layer: TextureRect
 var _base_material: ShaderMaterial
+var _dynamic_canvas: CityDynamicSpriteCanvas
+var _dynamic_material: ShaderMaterial
 var _palette_shader: Shader
-var _dynamic_layers: Array[TextureRect] = []
 
 
 func _ready() -> void:
@@ -219,8 +224,12 @@ func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
 
 func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
 	dynamic_sprites = sprites.duplicate()
-	_sync_dynamic_layers()
+	_sync_dynamic_canvas()
 	queue_redraw()
+
+
+func dynamic_render_node_count() -> int:
+	return int(_dynamic_canvas != null)
 
 
 func _expire_transient_effects(generation: int) -> void:
@@ -562,6 +571,15 @@ func _ensure_base_layer() -> void:
 	_base_material = _new_palette_material()
 	_base_layer.material = _base_material
 	add_child(_base_layer)
+	_dynamic_canvas = DynamicSpriteCanvas.new()
+	_dynamic_canvas.name = "DynamicSpriteCanvas"
+	_dynamic_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_dynamic_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	_dynamic_canvas.show_behind_parent = true
+	_dynamic_material = _new_palette_material()
+	_dynamic_canvas.material = _dynamic_material
+	add_child(_dynamic_canvas)
+	_dynamic_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_sync_base_layer()
 
 
@@ -577,7 +595,7 @@ func _sync_base_layer() -> void:
 	_base_layer.size = Vector2(city_texture.get_size()) * scale
 	_base_layer.show()
 	_sync_base_material()
-	_sync_dynamic_layers()
+	_sync_dynamic_canvas()
 
 
 func _sync_base_material() -> void:
@@ -590,69 +608,25 @@ func _sync_base_material() -> void:
 		palette_index_texture != null and animated_palette_texture != null,
 	)
 	_base_material.set_shader_parameter("palette_lookup_all", base_palette_lookup_all)
-	for layer in _dynamic_layers:
-		var layer_material := layer.material as ShaderMaterial
-		if layer_material != null:
-			layer_material.set_shader_parameter(
-				"animated_palette", animated_palette_texture
-			)
-			layer_material.set_shader_parameter(
-				"palette_cycle_enabled",
-				layer.get_meta("has_palette_indices", false)
-				and animated_palette_texture != null,
-			)
-			layer_material.set_shader_parameter(
-				"palette_lookup_all", layer.get_meta("palette_lookup_all", false)
-			)
-
-
-func _sync_dynamic_layers() -> void:
-	if _base_layer == null or city_texture == null:
-		return
-	while _dynamic_layers.size() < dynamic_sprites.size():
-		var layer := TextureRect.new()
-		layer.name = "DynamicSpriteLayer%d" % _dynamic_layers.size()
-		layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-		layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		layer.stretch_mode = TextureRect.STRETCH_SCALE
-		layer.show_behind_parent = true
-		layer.material = _new_palette_material()
-		add_child(layer)
-		_dynamic_layers.append(layer)
-	var scale := _view_scale()
-	var offset := _draw_offset(scale)
-	for index in _dynamic_layers.size():
-		var layer := _dynamic_layers[index]
-		if index >= dynamic_sprites.size():
-			layer.hide()
-			continue
-		var visual := dynamic_sprites[index]
-		var texture: Texture2D = visual.get("texture") as Texture2D
-		if texture == null:
-			layer.hide()
-			continue
-		var index_texture: Texture2D = visual.get("index_texture") as Texture2D
-		var source_position: Vector2 = visual.get("position", Vector2.ZERO)
-		var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
-		layer.texture = texture
-		layer.position = offset + source_position * scale
-		layer.size = source_size * scale
-		layer.set_meta("has_palette_indices", index_texture != null)
-		layer.set_meta("palette_lookup_all", visual.get("palette_lookup_all", false))
-		var layer_material := layer.material as ShaderMaterial
-		layer_material.set_shader_parameter("palette_indices", index_texture)
-		layer_material.set_shader_parameter(
+	if _dynamic_material != null:
+		_dynamic_material.set_shader_parameter(
 			"animated_palette", animated_palette_texture
 		)
-		layer_material.set_shader_parameter(
-			"palette_cycle_enabled",
-			index_texture != null and animated_palette_texture != null,
+		_dynamic_material.set_shader_parameter(
+			"palette_cycle_enabled", animated_palette_texture != null
 		)
-		layer_material.set_shader_parameter(
-			"palette_lookup_all", visual.get("palette_lookup_all", false)
-		)
-		layer.show()
+		_dynamic_material.set_shader_parameter("palette_lookup_all", true)
+
+
+func _sync_dynamic_canvas() -> void:
+	if _dynamic_canvas == null:
+		return
+	if city_texture == null:
+		_dynamic_canvas.hide()
+		return
+	var scale := _view_scale()
+	var offset := _draw_offset(scale)
+	_dynamic_canvas.set_visuals(dynamic_sprites, scale, offset)
 
 
 func _new_palette_material() -> ShaderMaterial:

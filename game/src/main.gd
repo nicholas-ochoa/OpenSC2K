@@ -13,6 +13,7 @@ const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
+const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -106,6 +107,7 @@ const BUDGET_NAMES := [
 ]
 const MAP_DISPLAY_MODES := ["city", "underground", "structures", "zones", "power", "water"]
 const LIBRARY_TEXT_IDS := [3000, 3001, 3002, 3003]
+const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 
 var city: CityState
 var current_document: Sc2File
@@ -143,9 +145,13 @@ var static_display_city: CityState
 var static_view_cache: Dictionary = {}
 var dynamic_sprite_cache: Dictionary = {}
 var dynamic_foreground_cache: Dictionary = {}
+var dynamic_occluder_cache: Dictionary = {}
+var dynamic_visual_cache: Dictionary = {}
 var static_render_thread: Thread
 var static_render_job: CityRenderJob
 var static_render_epoch := 0
+var last_static_render_started_msec := -ACTIVE_DISASTER_RENDER_INTERVAL_MSEC
+var pending_static_render := false
 var palette_cycle_ticks := 0
 var palette_cycle_texture: ImageTexture
 
@@ -277,6 +283,7 @@ func _ready() -> void:
 func _process(delta: float) -> void:
 	_update_fps(delta)
 	_poll_static_render()
+	_start_pending_static_render()
 	if speed_controller == null or city == null:
 		return
 	var interaction_suspended := (
@@ -1704,10 +1711,13 @@ func _load_city(path: String) -> void:
 	static_render_mode = ""
 	static_display_city = null
 	static_view_cache.clear()
+	pending_static_render = false
 	palette_cycle_ticks = 0
 	_update_palette_cycle_texture()
 	dynamic_sprite_cache.clear()
 	dynamic_foreground_cache.clear()
+	dynamic_occluder_cache.clear()
+	dynamic_visual_cache.clear()
 	var process_seed := tool_random.state
 	var game_seed := nuisance_random.state
 	var lfsr_seed := (
@@ -1800,6 +1810,8 @@ func _refresh_map(force := true) -> void:
 		return
 	var image: Image
 	if overlay_mode == "city" or overlay_mode == "underground":
+		if force:
+			pending_static_render = false
 		var view_size := _city_view_size()
 		var sprite_archive := _sprite_archive_for_view(view_size)
 		var current_signature := _static_signature_for_mode(overlay_mode, view_size)
@@ -1881,6 +1893,7 @@ func _refresh_map(force := true) -> void:
 			"view_size": view_size,
 		}
 	else:
+		pending_static_render = false
 		image = Minimap.create_image(city, palette, overlay_mode)
 		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
 		static_city_image = null
@@ -1903,6 +1916,16 @@ func _request_static_render(
 ) -> void:
 	if static_render_thread != null:
 		return
+	var now_msec := Time.get_ticks_msec()
+	if (
+		simulation_engine != null
+		and simulation_engine.active_disaster_type != 0
+		and now_msec - last_static_render_started_msec
+			< ACTIVE_DISASTER_RENDER_INTERVAL_MSEC
+	):
+		pending_static_render = true
+		return
+	pending_static_render = false
 	var snapshot_document := current_document.duplicate_document()
 	var snapshot := CityModel.from_document(snapshot_document)
 	if not snapshot.is_valid():
@@ -1925,6 +1948,25 @@ func _request_static_render(
 		static_render_thread = null
 		static_render_job = null
 		_show_error("Cannot start the city renderer: %s" % error_string(start_error))
+	else:
+		last_static_render_started_msec = now_msec
+
+
+func _start_pending_static_render() -> void:
+	if (
+		not pending_static_render
+		or static_render_thread != null
+		or city == null
+		or overlay_mode not in ["city", "underground"]
+	):
+		return
+	var view_size := _city_view_size()
+	_request_static_render(
+		_static_signature_for_mode(overlay_mode, view_size),
+		view_size,
+		_sprite_archive_for_view(view_size),
+		overlay_mode,
+	)
 
 
 func _poll_static_render() -> void:
@@ -2029,6 +2071,16 @@ func _refresh_moving_things(view_size := -1) -> void:
 	)
 	var visuals: Array[Dictionary] = []
 	for command in commands:
+		var visual_cache_key := ""
+		if command.has("overlay"):
+			var command_position := Vector2i(command.position) * divisor
+			visual_cache_key = "%d:%d:%d:%d:%d:%d" % [
+				int(command.sprite_id), int(command.flip), command_position.x,
+				command_position.y, int(command.depth_order), view_size,
+			]
+			if dynamic_visual_cache.has(visual_cache_key):
+				visuals.append(dynamic_visual_cache[visual_cache_key])
+				continue
 		var resource := _dynamic_sprite_resource(
 			sprite_archive, command.sprite_id, command.flip, divisor
 		)
@@ -2037,6 +2089,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 		var position := Vector2i(command.position) * divisor
 		var texture: Texture2D = resource.texture
 		var index_texture: Texture2D = resource.index_texture
+		var visual_image: Image = resource.image
 		var occluder_mask := _dynamic_occluder_image(
 			sprite_archive, divisor, position, resource.image.get_size(),
 			int(command.get("depth_order", -1)), bool(command.get("train", false))
@@ -2045,6 +2098,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask)
 			if shadow_image == null:
 				continue
+			visual_image = shadow_image
 			texture = ImageTexture.create_from_image(shadow_image)
 			index_texture = null
 		else:
@@ -2053,16 +2107,23 @@ func _refresh_moving_things(view_size := -1) -> void:
 				command.get("same_tile_foreground_indices", PackedInt32Array())
 			)
 			if int(occluded.occluded_pixels) > 0:
+				visual_image = occluded.image
 				texture = ImageTexture.create_from_image(occluded.image)
 				index_texture = texture
-		visuals.append({
+		var visual := {
 			"texture": texture,
 			"index_texture": index_texture,
 			"palette_lookup_all": true,
 			"position": Vector2(position),
 			"size": Vector2(resource.image.get_size()),
-		})
-	map_view.set_dynamic_sprites(visuals)
+			"image": visual_image,
+			"special_overlay": command.has("overlay"),
+		}
+		visuals.append(visual)
+		if not visual_cache_key.is_empty():
+			dynamic_visual_cache[visual_cache_key] = visual
+	var batched_visuals := DynamicSpriteCanvas.batch_special_visuals(visuals)
+	map_view.set_dynamic_sprites(batched_visuals)
 
 
 func _dynamic_occluder_image(
@@ -2075,6 +2136,12 @@ func _dynamic_occluder_image(
 ) -> Image:
 	if draw_order < 0 or static_occlusion_commands.is_empty():
 		return null
+	var cache_key := "%d:%d:%d:%d:%d:%d:%d" % [
+		position.x, position.y, size.x, size.y, draw_order, int(is_train),
+		static_render_epoch,
+	]
+	if dynamic_occluder_cache.has(cache_key):
+		return dynamic_occluder_cache[cache_key] as Image
 	var bounds := Rect2i(position, size)
 	if static_occlusion_grid.is_empty():
 		static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
@@ -2125,11 +2192,14 @@ func _dynamic_occluder_image(
 			later_occluder_added = true
 			if not is_train:
 				break
+	dynamic_occluder_cache[cache_key] = mask
 	return mask
 
 
 func _set_static_occlusion_commands(commands: Array, view_size: int) -> void:
 	static_occlusion_commands.assign(commands)
+	dynamic_occluder_cache.clear()
+	dynamic_visual_cache.clear()
 	var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
 	static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
 		static_occlusion_commands, divisor

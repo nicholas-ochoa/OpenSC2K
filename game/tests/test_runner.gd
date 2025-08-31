@@ -12,6 +12,7 @@ const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const PeString = preload("res://src/assets/pe_string_resource.gd")
 const TextUsa = preload("res://src/assets/text_usa_resource.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
+const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
@@ -1386,8 +1387,44 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	map_control.set_dynamic_sprites([{"position": Vector2(10, 20)}])
 	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")
+	map_control._ensure_base_layer()
+	var many_dynamic_sprites: Array[Dictionary] = []
+	for index in 1500:
+		many_dynamic_sprites.append({"position": Vector2(index, index)})
+	map_control.set_dynamic_sprites(many_dynamic_sprites)
+	_check(
+		map_control.dynamic_sprites.size() == 1500
+		and map_control.dynamic_render_node_count() == 1,
+		"Map control batches 1,500 dynamic sprites in one render node",
+	)
 	map_control.set_dynamic_sprites([])
 	_check(map_control.dynamic_sprites.is_empty(), "Map control clears its dynamic sprite layer")
+	var marker_image := Image.create(4, 4, false, Image.FORMAT_RGBA8)
+	marker_image.fill(Color8(10, 10, 10, 255))
+	var marker_texture := ImageTexture.create_from_image(marker_image)
+	var batch_input: Array[Dictionary] = []
+	for index in 1500:
+		batch_input.append({
+			"texture": marker_texture,
+			"image": marker_image,
+			"position": Vector2(index % 100, int(index / 100)),
+			"size": Vector2(4, 4),
+			"special_overlay": true,
+		})
+	var separator := {
+		"texture": marker_texture,
+		"image": marker_image,
+		"position": Vector2.ZERO,
+		"size": Vector2(4, 4),
+	}
+	batch_input.insert(750, separator)
+	var batches := DynamicSpriteCanvas.batch_special_visuals(batch_input)
+	_check(
+		batches.size() < 10
+		and batches[3] == separator
+		and batches[0].get("special_batch", false),
+		"Dynamic marker batching keeps moving-object order and reduces 1,500 markers",
+	)
 	map_control.free()
 	var underground_city := CityModel.from_document(starter.document.duplicate_document())
 	_check(
