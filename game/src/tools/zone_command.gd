@@ -13,6 +13,10 @@ const FIRST_DEVELOPED_BUILDING := 0x70
 const RADIOACTIVITY := 0x05
 const SMALL_PARK := 0x0d
 const MILITARY_ZONE := 0x07
+const TERRAIN_REQUIRES_SURCHARGE := [
+	false, false, false, false, false, true, true, true,
+	true, true, true, true, true, false, false, false,
+]
 
 const ZONE_TYPES := {
 	GROUP_PORTS: [9, 8],
@@ -23,18 +27,19 @@ const ZONE_TYPES := {
 
 
 static func apply_rectangle(
-	city: CityState, group_index: int, subtool_index: int, start: Vector2i, finish: Vector2i
+	city: CityState,
+	group_index: int,
+	subtool_index: int,
+	start: Vector2i,
+	finish: Vector2i,
+	dragged := true
 ) -> Dictionary:
-	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
-	if not _point_is_valid(start) or not _point_is_valid(finish):
-		return {"ok": false, "error": "zone rectangle is outside the city"}
-	if city.tile_flags[city.index_of(start.x, start.y)] & FLAG_WATER:
-		return {"ok": false, "error": "a zone drag cannot start on water"}
-	var tool := ToolCatalog.tool(group_index, subtool_index)
-	var zone_type := _zone_type_for_tool(group_index, subtool_index)
-	if tool.is_empty() or zone_type < 0:
-		return {"ok": false, "error": "tool is not a zoning tool"}
+	var preview := preview_rectangle(
+		city, group_index, subtool_index, start, finish, dragged
+	)
+	if not preview.get("ok", false):
+		return preview
+	var zone_type := int(preview.zone_type)
 	var minimum := Vector2i(mini(start.x, finish.x), mini(start.y, finish.y))
 	var maximum := Vector2i(maxi(start.x, finish.x), maxi(start.y, finish.y))
 	var changed := city.zones.duplicate()
@@ -55,9 +60,9 @@ static func apply_rectangle(
 			changed[index] = (changed[index] & 0xf0) | zone_type
 			if zone_type == 0 and changed_buildings[index] > 0 and changed_buildings[index] < 5:
 				changed_buildings[index] = 0
-	if tile_indices.is_empty():
+	var cost := int(preview.cost)
+	if cost == 0:
 		return {"ok": false, "error": "no eligible tiles would change"}
-	var cost: int = tile_indices.size() * int(tool.cost)
 	var previous_funds := city.funds()
 	if previous_funds < cost:
 		return {"ok": false, "error": "insufficient funds", "cost": cost}
@@ -77,6 +82,9 @@ static func apply_rectangle(
 		"group_index": group_index,
 		"subtool_index": subtool_index,
 		"zone_type": zone_type,
+		"dragged": dragged,
+		"charged_tiles": int(preview.charged_tiles),
+		"terrain_surcharges": int(preview.terrain_surcharges),
 		"tile_indices": tile_indices,
 		"previous_values": previous_values,
 		"new_values": _values_at(changed, tile_indices),
@@ -84,6 +92,72 @@ static func apply_rectangle(
 		"new_buildings": _values_at(changed_buildings, tile_indices),
 		"previous_funds": previous_funds,
 		"cost": cost,
+		"error": "",
+	}
+
+
+static func preview_rectangle(
+	city: CityState,
+	group_index: int,
+	subtool_index: int,
+	start: Vector2i,
+	finish: Vector2i,
+	dragged := true
+) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	if not _point_is_valid(start) or not _point_is_valid(finish):
+		return {"ok": false, "error": "zone rectangle is outside the city"}
+	var tool := ToolCatalog.tool(group_index, subtool_index)
+	var zone_type := _zone_type_for_tool(group_index, subtool_index)
+	if tool.is_empty() or zone_type < 0:
+		return {"ok": false, "error": "tool is not a zoning tool"}
+	var start_index := city.index_of(start.x, start.y)
+	if city.tile_flags[start_index] & FLAG_WATER:
+		return {"ok": false, "error": "a zone selection cannot start on water"}
+	if (
+		city.buildings[start_index] == RADIOACTIVITY
+		or (city.zones[start_index] & 0x0f) == MILITARY_ZONE
+	):
+		return {"ok": false, "error": "a zone selection cannot start on this tile"}
+
+	var charged_tiles := 0
+	var terrain_surcharges := 0
+	var changed_tiles := 0
+	if not dragged:
+		charged_tiles = 1
+		var terrain_id := int(city.terrain[start_index])
+		if (
+			terrain_id < 0x30
+			and TERRAIN_REQUIRES_SURCHARGE[terrain_id & 0x0f]
+		):
+			terrain_surcharges = 1
+		if (
+			_tile_is_eligible(city, start_index)
+			and (city.zones[start_index] & 0x0f) != zone_type
+		):
+			changed_tiles = 1
+	else:
+		var minimum := Vector2i(mini(start.x, finish.x), mini(start.y, finish.y))
+		var maximum := Vector2i(maxi(start.x, finish.x), maxi(start.y, finish.y))
+		for x in range(minimum.x, maximum.x + 1):
+			for y in range(minimum.y, maximum.y + 1):
+				var index := city.index_of(x, y)
+				if not _tile_is_drag_price_eligible(city, index, zone_type):
+					continue
+				charged_tiles += 1
+				if _tile_is_eligible(city, index):
+					changed_tiles += 1
+	var cost := charged_tiles * int(tool.cost) + terrain_surcharges * 25
+	return {
+		"ok": true,
+		"zone_type": zone_type,
+		"dragged": dragged,
+		"charged_tiles": charged_tiles,
+		"changed_tiles": changed_tiles,
+		"terrain_surcharges": terrain_surcharges,
+		"cost": cost,
+		"affordable": city.funds() >= cost,
 		"error": "",
 	}
 
@@ -156,6 +230,20 @@ static func _tile_is_eligible(city: CityState, index: int) -> bool:
 		and building != RADIOACTIVITY
 		and building != SMALL_PARK
 		and (city.zones[index] & 0x0f) != MILITARY_ZONE
+	)
+
+
+static func _tile_is_drag_price_eligible(
+	city: CityState, index: int, zone_type: int
+) -> bool:
+	var building := city.buildings[index]
+	return (
+		city.terrain[index] == 0
+		and building < FIRST_ROAD
+		and building != RADIOACTIVITY
+		and building != SMALL_PARK
+		and (city.zones[index] & 0x0f) != MILITARY_ZONE
+		and (city.zones[index] & 0x0f) != zone_type
 	)
 
 

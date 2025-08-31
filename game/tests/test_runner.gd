@@ -8606,6 +8606,45 @@ func _test_zone_command(reference_root: String) -> void:
 	_check(document.find_chunk("XZON").set_decoded_payload(zones), "Zone test installs corner and military bits")
 	_check(document.set_misc_i32(0x14, 100), "Zone test sets city funds")
 	var city := CityModel.from_document(document)
+	_check(
+		city.set_terrain_id(12, 12, 0x10),
+		"Zone test gives its water tile a saved water terrain shape",
+	)
+	var rectangle_preview := Zones.preview_rectangle(
+		city, 9, 0, Vector2i(10, 10), Vector2i(12, 12), true
+	)
+	_check(
+		rectangle_preview.ok
+		and rectangle_preview.charged_tiles == 6
+		and rectangle_preview.changed_tiles == 6
+		and rectangle_preview.cost == 30,
+		"Zone drag preview counts only eligible changed tiles",
+	)
+	_check(city.set_terrain_id(10, 10, 9), "Zone click preview installs a terrain slope")
+	var slope_click_preview := Zones.preview_rectangle(
+		city, 9, 0, Vector2i(10, 10), Vector2i(10, 10), false
+	)
+	_check(
+		slope_click_preview.ok
+		and slope_click_preview.charged_tiles == 1
+		and slope_click_preview.changed_tiles == 0
+		and slope_click_preview.terrain_surcharges == 1
+		and slope_click_preview.cost == 30,
+		"Zone click preview includes the recovered slope surcharge",
+	)
+	_check(city.set_terrain_id(10, 10, 0), "Zone click preview restores flat terrain")
+	_check(
+		not Zones.preview_rectangle(
+			city, 9, 0, Vector2i(12, 12), Vector2i(10, 10), true
+		).ok,
+		"Zone selection cannot start on water",
+	)
+	_check(
+		not Zones.preview_rectangle(
+			city, 9, 0, Vector2i(12, 11), Vector2i(10, 10), true
+		).ok,
+		"Zone selection cannot start in a military zone",
+	)
 	var command := Zones.apply_rectangle(city, 9, 0, Vector2i(10, 10), Vector2i(12, 12))
 	_check(command.ok, "Residential zone rectangle applies: %s" % command.error)
 	if not command.ok:
@@ -8617,6 +8656,27 @@ func _test_zone_command(reference_root: String) -> void:
 	_check(city.zone_id(11, 11) == 0, "Zone command leaves a road unchanged")
 	_check(city.zone_id(12, 12) == 0, "Zone command leaves water unchanged")
 	_check(city.zone_id(12, 11) == 7, "Zone command leaves a military zone unchanged")
+	var same_zone_preview := Zones.preview_rectangle(
+		city, 9, 0, Vector2i(10, 10), Vector2i(10, 10), true
+	)
+	_check(
+		same_zone_preview.ok and same_zone_preview.cost == 0,
+		"Zone drag preview omits a tile that already has the selected zone",
+	)
+	var charged_click := Zones.apply_rectangle(
+		city, 9, 0, Vector2i(10, 10), Vector2i(10, 10), false
+	)
+	_check(
+		charged_click.ok
+		and charged_click.cost == 5
+		and charged_click.tile_indices.is_empty()
+		and city.funds() == 65,
+		"A true click keeps the executable's charge when the zone does not change",
+	)
+	_check(
+		Zones.undo(city, charged_click).ok and city.funds() == 70,
+		"Charge-only zone click can be undone",
+	)
 	var undo := Zones.undo(city, command)
 	_check(undo.ok and undo.restored_tiles == 6, "Zone command undo restores all changed tiles")
 	_check(city.funds() == 100, "Zone command undo restores funds")
