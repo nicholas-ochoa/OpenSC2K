@@ -1840,6 +1840,8 @@ func _test_simulation_clock() -> void:
 func _test_scenarios(reference_root: String) -> void:
 	var paths := _files_with_extension(reference_root.path_join("SCENARIO"), "SCN")
 	_check(paths.size() == 18, "Supplied scenario count is 18")
+	var scenario_palette := Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MAC.BMP"))
+	_check(scenario_palette.is_valid(), "Scenario palette loads: %s" % scenario_palette.load_error)
 	var legacy_count := 0
 	var extended_count := 0
 	var template_count := 0
@@ -1867,6 +1869,30 @@ func _test_scenarios(reference_root: String) -> void:
 				picture.pixels.size() == picture.width * picture.height,
 				"%s picture has the declared pixel count" % path.get_file()
 			)
+			var rendered_picture := scenario.picture_image(scenario_palette)
+			_check(
+				rendered_picture.ok,
+				"%s picture renders with PAL_MAC: %s" % [path.get_file(), rendered_picture.error],
+			)
+			if rendered_picture.ok:
+				var image: Image = rendered_picture.image
+				_check(
+					image.get_width() == picture.width and image.get_height() == picture.height,
+					"%s rendered picture keeps its dimensions" % path.get_file(),
+				)
+				_check(
+					image.get_pixel(0, picture.height - 1).is_equal_approx(
+						scenario_palette.color(picture.pixels[0])
+					),
+					"%s first stored picture row renders at the bottom" % path.get_file(),
+				)
+				var last_index: int = picture.pixels.size() - 1
+				_check(
+					image.get_pixel(picture.width - 1, 0).is_equal_approx(
+						scenario_palette.color(picture.pixels[last_index])
+					),
+					"%s last stored picture row renders at the top" % path.get_file(),
+				)
 		var template := scenario.template_fields()
 		_check(template.ok, "%s template parses: %s" % [path.get_file(), template.error])
 		if template.ok and template.present:

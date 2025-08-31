@@ -126,6 +126,32 @@ func picture_indices() -> Dictionary:
 	return {"ok": true, "width": width, "height": height, "pixels": pixels, "error": ""}
 
 
+func picture_image(palette: Sc2Palette) -> Dictionary:
+	if palette == null or not palette.is_valid():
+		return _failure("PICT palette is invalid")
+	var picture := picture_indices()
+	if not picture.ok:
+		return picture
+
+	var width: int = picture.width
+	var height: int = picture.height
+	var pixels: PackedByteArray = picture.pixels
+	var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
+	# the windows loader copies the first stored row to the base of a
+	# positive-height dib. gdi displays that row at the bottom
+	for source_y in height:
+		var destination_y := height - source_y - 1
+		for x in width:
+			image.set_pixel(x, destination_y, palette.color(pixels[source_y * width + x]))
+	return {
+		"ok": true,
+		"width": width,
+		"height": height,
+		"image": image,
+		"error": "",
+	}
+
+
 func template_fields() -> Dictionary:
 	var chunk := document.find_chunk("TMPL") if document != null else null
 	if chunk == null:
