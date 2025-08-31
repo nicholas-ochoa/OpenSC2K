@@ -2,6 +2,7 @@ extends Control
 
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
+const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
@@ -109,6 +110,7 @@ const LIBRARY_TEXT_IDS := [3000, 3001, 3002, 3003]
 var city: CityState
 var current_document: Sc2File
 var palette: Sc2Palette
+var scenario_palette: Sc2Palette
 var palette_index_encoding: Sc2Palette
 var large_sprites: Sc2SpriteArchive
 var small_medium_sprites: Sc2SpriteArchive
@@ -212,6 +214,9 @@ var bond_dialog: ConfirmationDialog
 var pending_bond_action := ""
 var game_over_dialog: AcceptDialog
 var military_dialog: ConfirmationDialog
+var scenario_dialog: AcceptDialog
+var scenario_picture_view: TextureRect
+var scenario_text_view: TextEdit
 var fps_update_seconds := 0.0
 
 
@@ -237,6 +242,10 @@ func _ready() -> void:
 	palette = Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
 	if not palette.is_valid():
 		_show_error(palette.load_error)
+		return
+	scenario_palette = Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MAC.BMP"))
+	if not scenario_palette.is_valid():
+		_show_error(scenario_palette.load_error)
 		return
 	palette_index_encoding = Palette.index_encoding()
 	_update_palette_cycle_texture()
@@ -281,6 +290,7 @@ func _process(delta: float) -> void:
 		or (query_overlay != null and query_overlay.visible)
 		or bond_dialog.visible
 		or military_dialog.visible
+		or scenario_dialog.visible
 		or game_over_active
 	)
 	var result := speed_controller.advance_time(
@@ -849,6 +859,45 @@ func _build_interface(toolbar_art: Image) -> void:
 	game_over_dialog = AcceptDialog.new()
 	game_over_dialog.min_size = Vector2i(460, 220)
 	add_child(game_over_dialog)
+	scenario_dialog = AcceptDialog.new()
+	scenario_dialog.title = "Scenario"
+	scenario_dialog.min_size = Vector2i(760, 520)
+	scenario_dialog.exclusive = true
+	scenario_dialog.get_ok_button().text = "Begin Scenario"
+	scenario_dialog.confirmed.connect(_begin_scenario)
+	scenario_dialog.get_label().visible = false
+	var scenario_content := HBoxContainer.new()
+	scenario_content.custom_minimum_size = Vector2(700, 400)
+	scenario_content.add_theme_constant_override("separation", 16)
+	var picture_frame := PanelContainer.new()
+	picture_frame.custom_minimum_size = Vector2(276, 276)
+	picture_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	picture_frame.add_theme_stylebox_override(
+		"panel", _classic_box(Color("ffffff"), Color("808080"), 2)
+	)
+	scenario_content.add_child(picture_frame)
+	scenario_picture_view = TextureRect.new()
+	scenario_picture_view.custom_minimum_size = Vector2(260, 260)
+	scenario_picture_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	scenario_picture_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	scenario_picture_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	picture_frame.add_child(scenario_picture_view)
+	scenario_text_view = TextEdit.new()
+	scenario_text_view.editable = false
+	scenario_text_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	scenario_text_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	scenario_text_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	scenario_text_view.add_theme_color_override("font_color", Color("101010"))
+	scenario_text_view.add_theme_color_override("font_readonly_color", Color("101010"))
+	for state in ["normal", "focus", "read_only"]:
+		scenario_text_view.add_theme_stylebox_override(
+			state, _classic_box(Color("ffffff"), Color("808080"), 1)
+		)
+	scenario_content.add_child(scenario_text_view)
+	var scenario_content_parent := scenario_dialog.get_label().get_parent()
+	scenario_content_parent.add_child(scenario_content)
+	scenario_content_parent.move_child(scenario_content, 0)
+	add_child(scenario_dialog)
 	military_dialog = ConfirmationDialog.new()
 	military_dialog.title = "Military Base Proposal"
 	military_dialog.dialog_text = (
@@ -1575,6 +1624,30 @@ func _restore_military_proposal_dialog() -> void:
 		military_dialog.popup_centered()
 
 
+func _open_scenario_intro(scenario: ScenarioState) -> void:
+	var rendered_picture := scenario.picture_image(scenario_palette)
+	if rendered_picture.ok:
+		scenario_picture_view.texture = ImageTexture.create_from_image(rendered_picture.image)
+	else:
+		scenario_picture_view.texture = null
+	var description := scenario.opening_description()
+	description = description.replace("\r\n", "\n").replace("\r", "\n")
+	scenario_text_view.text = description
+	scenario_text_view.scroll_vertical = 0
+	var name := city.city_name()
+	if name.is_empty():
+		name = current_document.source_path.get_file().get_basename()
+	scenario_dialog.title = "Scenario: %s" % name
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Review the scenario briefing before the simulation starts."
+	scenario_dialog.popup_centered()
+
+
+func _begin_scenario() -> void:
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Scenario started."
+
+
 func _load_city(path: String) -> void:
 	var document := Sc2Document.load_path(path)
 	if not document.is_valid():
@@ -1585,6 +1658,12 @@ func _load_city(path: String) -> void:
 	if not loaded_city.is_valid():
 		_show_error(loaded_city.load_error)
 		return
+	var loaded_scenario: ScenarioState
+	if document.find_chunk("SCEN") != null:
+		loaded_scenario = ScenarioModel.from_document(document)
+		if not loaded_scenario.is_valid():
+			_show_error(loaded_scenario.load_error)
+			return
 
 	if budget_dialog.visible:
 		budget_dialog.hide()
@@ -1593,6 +1672,8 @@ func _load_city(path: String) -> void:
 		bond_dialog.hide()
 	if game_over_dialog.visible:
 		game_over_dialog.hide()
+	if scenario_dialog.visible:
+		scenario_dialog.hide()
 	military_proposal_pending = false
 	if military_dialog.visible:
 		military_dialog.hide()
@@ -1658,6 +1739,8 @@ func _load_city(path: String) -> void:
 	status_label.text = "Loaded %s. Map view: %s." % [path.get_file(), overlay_mode.capitalize()]
 	_refresh_map()
 	_update_edit_state()
+	if loaded_scenario != null:
+		_open_scenario_intro(loaded_scenario)
 
 
 func _save_copy(path: String) -> void:
