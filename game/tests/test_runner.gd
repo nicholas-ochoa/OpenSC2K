@@ -1330,6 +1330,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	var selection_cancel_signals := [0]
 	var selection_complete_signals := [0]
+	var query_signal_points: Array[Vector2i] = []
 	map_control.selection_canceled.connect(func() -> void:
 		selection_cancel_signals[0] += 1
 	)
@@ -1337,6 +1338,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		_start: Vector2i, _finish: Vector2i, _path: Array[Vector2i]
 	) -> void:
 		selection_complete_signals[0] += 1
+	)
+	map_control.query_requested.connect(func(point: Vector2i) -> void:
+		query_signal_points.append(point)
 	)
 	map_control.edit_enabled = true
 	map_control.city_texture = ImageTexture.create_from_image(
@@ -1362,6 +1366,23 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		selection_complete_signals[0] == 0,
 		"Left-button release cannot commit a mouse-button-2 cancellation",
+	)
+	map_control.size = Vector2(800, 600)
+	map_control.shift_query_enabled = true
+	var shift_query_event := InputEventMouseButton.new()
+	shift_query_event.button_index = MOUSE_BUTTON_LEFT
+	shift_query_event.pressed = true
+	shift_query_event.shift_pressed = true
+	shift_query_event.position = map_control.size * 0.5
+	map_control._handle_mouse_button(shift_query_event)
+	_check(
+		query_signal_points == [center_tile],
+		"Shift-click emits Query for the selected landscape tile",
+	)
+	_check(
+		not map_control.is_left_drag_active()
+		and selection_complete_signals[0] == 0,
+		"Shift-click does not start or commit a landscape selection",
 	)
 	map_control.set_dynamic_sprites([{"position": Vector2(10, 20)}])
 	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")

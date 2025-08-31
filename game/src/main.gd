@@ -552,6 +552,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_view.selection_completed.connect(_apply_map_selection)
 	map_view.selection_canceled.connect(_on_map_selection_canceled)
+	map_view.query_requested.connect(_open_query)
 	map_view.zoom_changed.connect(_on_city_zoom_changed)
 	map_panel.add_child(map_view)
 
@@ -2408,6 +2409,7 @@ func _update_edit_state() -> void:
 			)
 		),
 		point_footprint_area,
+		is_landscape_tool,
 	)
 	if city == null or status_label == null:
 		return
@@ -2420,7 +2422,7 @@ func _update_edit_state() -> void:
 	elif is_zone_tool:
 		status_label.text = "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool.name
 	elif is_landscape_tool:
-		status_label.text = "%s selected. Click or drag across eligible city tiles." % tool.name
+		status_label.text = "%s selected. Click or drag across eligible city tiles. Hold Shift to Query." % tool.name
 	elif is_building_tool:
 		status_label.text = "%s selected. Click a clear city site to build it." % tool.name
 	elif is_network_tool:

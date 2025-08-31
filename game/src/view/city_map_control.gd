@@ -3,6 +3,7 @@ extends Control
 
 signal selection_completed(start: Vector2i, finish: Vector2i, path: Array[Vector2i])
 signal selection_canceled()
+signal query_requested(point: Vector2i)
 signal zoom_changed(percent: int)
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
@@ -42,6 +43,7 @@ var base_palette_lookup_all := false
 var edit_enabled := false
 var selection_mode := "rectangle"
 var point_footprint_area := 1
+var shift_query_enabled := false
 var zoom_factor: float = ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]
 var source_center := Vector2.ZERO
 var selection_start := Vector2i(-1, -1)
@@ -92,10 +94,16 @@ func set_animated_palette(texture: Texture2D) -> void:
 	_sync_base_material()
 
 
-func set_edit_enabled(value: bool, mode := "rectangle", footprint_area := 1) -> void:
+func set_edit_enabled(
+	value: bool,
+	mode := "rectangle",
+	footprint_area := 1,
+	shift_queries := false
+) -> void:
 	edit_enabled = value
 	selection_mode = mode
 	point_footprint_area = clampi(footprint_area, 1, 4)
+	shift_query_enabled = shift_queries
 	mouse_default_cursor_shape = (
 		Control.CURSOR_CROSS if edit_enabled else Control.CURSOR_ARROW
 	)
@@ -385,6 +393,12 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 		return
 	var tile := _tile_at(event.position)
 	if event.pressed:
+		if shift_query_enabled and event.shift_pressed:
+			if tile.x >= 0:
+				hover_tile = tile
+				query_requested.emit(tile)
+			accept_event()
+			return
 		if tile.x >= 0:
 			hover_tile = tile
 			selection_start = tile
