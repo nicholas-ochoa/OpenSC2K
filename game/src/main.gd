@@ -568,6 +568,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_view.selection_completed.connect(_apply_map_selection)
+	map_view.selection_changed.connect(_on_map_selection_changed)
 	map_view.selection_canceled.connect(_on_map_selection_canceled)
 	map_view.query_requested.connect(_open_query)
 	map_view.zoom_changed.connect(_on_city_zoom_changed)
@@ -1290,6 +1291,38 @@ func _on_map_selection_canceled() -> void:
 		return
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Selection canceled. No action was taken."
+
+
+func _on_map_selection_changed(
+	start: Vector2i,
+	finish: Vector2i,
+	_path: Array[Vector2i],
+	dragged: bool
+) -> void:
+	if city == null or not Zones.supports_tool(selected_group, selected_subtool):
+		map_view.clear_selection_price()
+		return
+	var preview := Zones.preview_rectangle(
+		city, selected_group, selected_subtool, start, finish, dragged
+	)
+	if not preview.get("ok", false):
+		map_view.clear_selection_price()
+		status_label.add_theme_color_override("font_color", Color("b00000"))
+		status_label.text = "Cannot start zone selection: %s" % preview.error
+		return
+	var cost := int(preview.cost)
+	var affordable := bool(preview.affordable)
+	map_view.set_selection_price(cost, affordable)
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "%s preview: %d charged %s for $%s." % [
+		Tools.tool(selected_group, selected_subtool).name,
+		int(preview.charged_tiles),
+		"tile" if int(preview.charged_tiles) == 1 else "tiles",
+		_format_number(cost),
+	]
+	if not affordable:
+		status_label.add_theme_color_override("font_color", Color("b00000"))
+		status_label.text += " Funds are not sufficient."
 
 
 func _on_file_menu(id: int) -> void:
@@ -2611,7 +2644,10 @@ func _update_edit_state() -> void:
 
 
 func _apply_map_selection(
-	start: Vector2i, finish: Vector2i, path: Array[Vector2i]
+	start: Vector2i,
+	finish: Vector2i,
+	path: Array[Vector2i],
+	dragged: bool
 ) -> void:
 	if city == null:
 		return
@@ -2805,7 +2841,9 @@ func _apply_map_selection(
 			_open_stadium_dialog(building)
 			status_label.text += " Select a stadium team."
 		return
-	var command := Zones.apply_rectangle(city, selected_group, selected_subtool, start, finish)
+	var command := Zones.apply_rectangle(
+		city, selected_group, selected_subtool, start, finish, dragged
+	)
 	if not command.ok:
 		_show_error("Cannot apply %s: %s" % [Tools.tool(selected_group, selected_subtool).name, command.error])
 		return

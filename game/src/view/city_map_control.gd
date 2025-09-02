@@ -1,7 +1,12 @@
 class_name CityMapControl
 extends Control
 
-signal selection_completed(start: Vector2i, finish: Vector2i, path: Array[Vector2i])
+signal selection_completed(
+	start: Vector2i, finish: Vector2i, path: Array[Vector2i], dragged: bool
+)
+signal selection_changed(
+	start: Vector2i, finish: Vector2i, path: Array[Vector2i], dragged: bool
+)
 signal selection_canceled()
 signal query_requested(point: Vector2i)
 signal zoom_changed(percent: int)
@@ -53,6 +58,9 @@ var source_center := Vector2.ZERO
 var selection_start := Vector2i(-1, -1)
 var selection_end := Vector2i(-1, -1)
 var selection_path: Array[Vector2i] = []
+var selection_moved := false
+var selection_price := -1
+var selection_price_affordable := true
 var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[Dictionary] = []
 var dynamic_sprites: Array[Dictionary] = []
@@ -109,6 +117,7 @@ func set_edit_enabled(
 	selection_mode = mode
 	point_footprint_area = clampi(footprint_area, 1, 4)
 	shift_query_enabled = shift_queries
+	clear_selection_price()
 	mouse_default_cursor_shape = (
 		Control.CURSOR_CROSS if edit_enabled else Control.CURSOR_ARROW
 	)
@@ -148,6 +157,30 @@ func selection_tiles() -> Array[Vector2i]:
 	return selection_path.duplicate()
 
 
+func selection_was_dragged() -> bool:
+	return selection_moved
+
+
+func set_selection_price(value: int, affordable := true) -> void:
+	selection_price = maxi(-1, value)
+	selection_price_affordable = affordable
+	queue_redraw()
+
+
+func clear_selection_price() -> void:
+	if selection_price < 0:
+		return
+	selection_price = -1
+	selection_price_affordable = true
+	queue_redraw()
+
+
+func selection_price_text() -> String:
+	if selection_price < 0:
+		return ""
+	return "$%s" % _format_price(selection_price)
+
+
 func point_preview_tiles(point: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	if city == null or city.index_of(point.x, point.y) < 0:
@@ -163,9 +196,7 @@ func point_preview_tiles(point: Vector2i) -> Array[Vector2i]:
 func cancel_active_selection() -> bool:
 	if selection_start.x < 0:
 		return false
-	selection_start = Vector2i(-1, -1)
-	selection_end = Vector2i(-1, -1)
-	selection_path.clear()
+	_clear_selection()
 	queue_redraw()
 	selection_canceled.emit()
 	return true
@@ -323,6 +354,30 @@ func _draw() -> void:
 		draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28))
 		local_polygon.append(local_polygon[0])
 		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9), 1.0)
+	_draw_selection_price(scale, offset)
+
+
+func _draw_selection_price(scale: float, offset: Vector2) -> void:
+	if selection_price < 0 or selection_start.x < 0:
+		return
+	var polygon := Renderer.tile_polygon(city, selection_start.x, selection_start.y)
+	if polygon.size() != 4:
+		return
+	var anchor := offset + (
+		polygon[0] + polygon[1] + polygon[2] + polygon[3]
+	) * 0.25 * scale + Vector2(10, -12)
+	var font := get_theme_default_font()
+	var text := selection_price_text()
+	var color := Color("101010") if selection_price_affordable else Color("c00000")
+	for outline in [
+		Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1), Vector2(-1, 0),
+		Vector2(1, 0), Vector2(-1, 1), Vector2(0, 1), Vector2(1, 1),
+	]:
+		draw_string(
+			font, anchor + outline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
+			Color.WHITE,
+		)
+	draw_string(font, anchor, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
 
 
 func _draw_transient_effects(scale: float, offset: Vector2) -> void:
@@ -412,14 +467,24 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			hover_tile = tile
 			selection_start = tile
 			selection_end = tile
+			selection_moved = false
 			_rebuild_selection_path()
+			selection_changed.emit(
+				selection_start, selection_end, selection_path.duplicate(), false
+			)
 			queue_redraw()
 	else:
 		if selection_start.x >= 0:
-			if tile.x >= 0:
+			if tile.x >= 0 and tile != selection_end:
 				selection_end = tile
+				selection_moved = true
 				_rebuild_selection_path()
-			selection_completed.emit(selection_start, selection_end, selection_path.duplicate())
+			selection_completed.emit(
+				selection_start,
+				selection_end,
+				selection_path.duplicate(),
+				selection_moved,
+			)
 			_clear_selection()
 			queue_redraw()
 	accept_event()
@@ -437,10 +502,17 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	if tile != hover_tile:
 		hover_tile = tile
 		queue_redraw()
-	if edit_enabled and selection_start.x >= 0 and Input.is_mouse_button_pressed(MOUSE_BUTTON_LEFT):
+	if edit_enabled and selection_start.x >= 0:
 		if tile.x >= 0 and tile != selection_end:
 			selection_end = tile
+			selection_moved = true
 			_rebuild_selection_path()
+			selection_changed.emit(
+				selection_start,
+				selection_end,
+				selection_path.duplicate(),
+				true,
+			)
 			queue_redraw()
 		accept_event()
 
@@ -480,6 +552,17 @@ func _clear_selection() -> void:
 	selection_start = Vector2i(-1, -1)
 	selection_end = Vector2i(-1, -1)
 	selection_path.clear()
+	selection_moved = false
+	clear_selection_price()
+
+
+static func _format_price(value: int) -> String:
+	var digits := str(absi(value))
+	var formatted := ""
+	while digits.length() > 3:
+		formatted = "," + digits.right(3) + formatted
+		digits = digits.left(digits.length() - 3)
+	return ("-" if value < 0 else "") + digits + formatted
 
 
 func _clear_hover() -> void:

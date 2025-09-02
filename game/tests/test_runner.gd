@@ -1331,14 +1331,19 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	var selection_cancel_signals := [0]
 	var selection_complete_signals := [0]
+	var selection_complete_drags: Array[bool] = []
 	var query_signal_points: Array[Vector2i] = []
 	map_control.selection_canceled.connect(func() -> void:
 		selection_cancel_signals[0] += 1
 	)
 	map_control.selection_completed.connect(func(
-		_start: Vector2i, _finish: Vector2i, _path: Array[Vector2i]
+		_start: Vector2i,
+		_finish: Vector2i,
+		_path: Array[Vector2i],
+		dragged: bool
 	) -> void:
 		selection_complete_signals[0] += 1
+		selection_complete_drags.append(dragged)
 	)
 	map_control.query_requested.connect(func(point: Vector2i) -> void:
 		query_signal_points.append(point)
@@ -1346,6 +1351,12 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.edit_enabled = true
 	map_control.city_texture = ImageTexture.create_from_image(
 		Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	)
+	map_control.set_selection_price(12345, false)
+	_check(
+		map_control.selection_price_text() == "$12,345"
+		and not map_control.selection_price_affordable,
+		"Map control formats an unaffordable selection price",
 	)
 	var cancel_event := InputEventMouseButton.new()
 	cancel_event.button_index = MOUSE_BUTTON_RIGHT
@@ -1356,7 +1367,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Mouse button 2 emits one selection-canceled signal",
 	)
 	_check(
-		not map_control.is_left_drag_active() and map_control.selection_tiles().is_empty(),
+		not map_control.is_left_drag_active()
+		and map_control.selection_tiles().is_empty()
+		and map_control.selection_price_text().is_empty(),
 		"Canceled selection cannot commit any preview tiles",
 	)
 	var release_event := InputEventMouseButton.new()
@@ -1365,10 +1378,42 @@ func _test_sprite_archives(reference_root: String) -> void:
 	release_event.position = Vector2.ZERO
 	map_control._handle_mouse_button(release_event)
 	_check(
-		selection_complete_signals[0] == 0,
+		selection_complete_signals[0] == 0 and selection_complete_drags.is_empty(),
 		"Left-button release cannot commit a mouse-button-2 cancellation",
 	)
 	map_control.size = Vector2(800, 600)
+	var drag_start_event := InputEventMouseButton.new()
+	drag_start_event.button_index = MOUSE_BUTTON_LEFT
+	drag_start_event.pressed = true
+	drag_start_event.position = map_control.size * 0.5
+	map_control._handle_mouse_button(drag_start_event)
+	var drag_target := center_tile + Vector2i(2, 0)
+	var drag_target_polygon := IsometricRenderer.tile_polygon(
+		starter, drag_target.x, drag_target.y
+	)
+	var drag_motion_event := InputEventMouseMotion.new()
+	drag_motion_event.position = map_control._draw_offset(map_control._view_scale()) + (
+		drag_target_polygon[0]
+		+ drag_target_polygon[1]
+		+ drag_target_polygon[2]
+		+ drag_target_polygon[3]
+	) * 0.25 * map_control._view_scale()
+	map_control._handle_mouse_motion(drag_motion_event)
+	_check(
+		map_control.selection_was_dragged()
+		and map_control.selection_end == drag_target,
+		"Active map selection follows local pointer motion",
+	)
+	var drag_release_event := InputEventMouseButton.new()
+	drag_release_event.button_index = MOUSE_BUTTON_LEFT
+	drag_release_event.pressed = false
+	drag_release_event.position = drag_motion_event.position
+	map_control._handle_mouse_button(drag_release_event)
+	_check(
+		selection_complete_signals[0] == 1
+		and selection_complete_drags == [true],
+		"Map selection reports that its completed action moved",
+	)
 	map_control.shift_query_enabled = true
 	var shift_query_event := InputEventMouseButton.new()
 	shift_query_event.button_index = MOUSE_BUTTON_LEFT
@@ -1382,7 +1427,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	_check(
 		not map_control.is_left_drag_active()
-		and selection_complete_signals[0] == 0,
+		and selection_complete_signals[0] == 1,
 		"Shift-click does not start or commit a landscape selection",
 	)
 	map_control.set_dynamic_sprites([{"position": Vector2(10, 20)}])
