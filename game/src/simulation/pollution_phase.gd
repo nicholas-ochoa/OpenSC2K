@@ -15,7 +15,7 @@ const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
 const MISC_POLLUTION_BONUS := 0x1034
 const MISC_PRISON_BONUS := 0x103c
-const MISC_SEWER_BONUS := 0x1050
+const MISC_TREATMENT_SUFFICIENT := 0x104c
 const CLEAN_INDUSTRY_ORDINANCE := 0x00080000
 const POLICE_COVERAGE_ORDINANCE := 0x00000800
 const FIRE_COVERAGE_ORDINANCE := 0x00000010
@@ -105,7 +105,7 @@ static func run(city: CityState) -> Dictionary:
 			temporary[_full_index(x, y)] = value
 
 	var base_divisor := (
-		city.document.misc_i32(MISC_SEWER_BONUS)
+		city.document.misc_i32(MISC_TREATMENT_SUFFICIENT)
 		- city.document.misc_i32(MISC_POLLUTION_BONUS)
 		+ 4
 	)

@@ -2183,10 +2183,28 @@ func _test_water(reference_root: String) -> void:
 		_check(result.supply == expected_supply, "Pump supply uses rain, water level, and fresh water")
 		_check(result.consumers == 1, "Water component has one consumer")
 		_check(result.watered_consumers == 1, "Connected consumer receives water")
+		_check(
+			result.treatment_capacity == 0
+			and not result.treatment_sufficient
+			and document.misc_u32(0x104c) == 0,
+			"Untreated served demand clears the saved treatment state",
+		)
 		_check(city.is_watered(30, 30), "Powered pump is marked watered")
 		_check(city.is_watered(30, 31), "Connected pipe is marked watered")
 		_check(city.is_watered(30, 32), "Connected consumer is marked watered")
 		_check(not city.is_watered(40, 40), "Disconnected consumer is not watered")
+		_check(
+			document.set_misc_u32(0x01f0 + 0xf4 * 4, 4),
+			"Water test records one complete treatment plant",
+		)
+		var treated := Water.run(city)
+		_check(
+			treated.ok
+			and treated.treatment_capacity == 2000
+			and treated.treatment_sufficient
+			and document.misc_u32(0x104c) == 1,
+			"One treatment plant covers 2,000 served demand units",
+		)
 
 
 func _test_simulation_engine(reference_root: String) -> void:
@@ -8300,7 +8318,8 @@ func _test_pollution(reference_root: String) -> void:
 	_check(document.find_chunk("XPLT").set_decoded_payload(previous), "Pollution test installs old pollution")
 	_check(document.set_misc_u32(0x0fa0, 0), "Pollution test clears ordinances")
 	_check(document.set_misc_u32(0x1034, 0), "Pollution test clears the pollution bonus")
-	_check(document.set_misc_u32(0x1050, 0), "Pollution test clears the sewer bonus")
+	_check(document.set_misc_u32(0x104c, 0), "Pollution test clears the treatment state")
+	_check(document.set_misc_u32(0x1050, 99), "Pollution test installs ignored trailing data")
 	var city := CityModel.from_document(document)
 	var result := Pollution.run(city)
 	_check(result.ok, "Pollution map phase completes: %s" % result.error)
@@ -8317,6 +8336,18 @@ func _test_pollution(reference_root: String) -> void:
 	_check(nonzero_count == 5, "Pollution smoothing changes only the source and direct neighbors")
 	_check(result.pollution_total == 187, "Pollution phase returns the smoothed total")
 	_check(document.misc_u32(0x34) == 187, "Pollution phase stores the city pollution total")
+	_check(
+		document.find_chunk("XPLT").set_decoded_payload(previous)
+		and document.set_misc_u32(0x104c, 1),
+		"Pollution test enables sufficient water treatment",
+	)
+	var treated_result := Pollution.run(city)
+	_check(
+		treated_result.ok
+		and document.find_chunk("XPLT").decoded_payload[10 * 64 + 10] == 56
+		and treated_result.pollution_total == 168,
+		"Sufficient treatment increases the pollution smoothing divisor",
+	)
 
 	var clean_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	for chunk_id in ["XBLD", "XTER", "XZON", "XBIT"]:
@@ -8340,7 +8371,7 @@ func _test_pollution(reference_root: String) -> void:
 		clean_document.find_chunk("XBLD").set_decoded_payload(clean_buildings),
 		"Combined scan test places one road tile"
 	)
-	for offset in [0x0fa0, 0x1034, 0x103c, 0x1050]:
+	for offset in [0x0fa0, 0x1034, 0x103c, 0x104c]:
 		_check(clean_document.set_misc_u32(offset, 0), "Combined scan test clears MISC 0x%x" % offset)
 	var clean_city := CityModel.from_document(clean_document)
 	var clean_result := Pollution.run(clean_city)

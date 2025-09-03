@@ -9,6 +9,8 @@ const FLAG_WATERED := 0x10
 const FLAG_PIPED := 0x20
 const FLAG_POWERED := 0x40
 const FIRST_CONSUMER := 0x70
+const MISC_TILE_COUNTS := 0x01f0
+const MISC_TREATMENT_SUFFICIENT := 0x104c
 const WATER_PUMP := 0xdc
 const WATER_TOWER := 0xeb
 const WATER_TREATMENT := 0xf4
@@ -67,12 +69,23 @@ static func run(city: CityState) -> Dictionary:
 	var usage_percent := 100
 	if total_supply != 0:
 		usage_percent = int(watered_consumers * 100 / total_supply)
+	var treatment_tile_count := _to_i16(
+		city.document.misc_u32(MISC_TILE_COUNTS + WATER_TREATMENT * 4) & 0xffff
+	)
+	var treatment_capacity := int(treatment_tile_count / 4) * 2000
+	var treatment_sufficient := watered_consumers <= treatment_capacity
+	if not city.document.set_misc_u32(
+		MISC_TREATMENT_SUFFICIENT, 1 if treatment_sufficient else 0
+	):
+		return {"ok": false, "error": "cannot store water-treatment state"}
 	return {
 		"ok": true,
 		"supply": total_supply,
 		"consumers": total_consumers,
 		"watered_consumers": watered_consumers,
 		"usage_percent": usage_percent,
+		"treatment_capacity": treatment_capacity,
+		"treatment_sufficient": treatment_sufficient,
 		"error": "",
 	}
 
@@ -175,3 +188,8 @@ static func _source_scan_order(rotation: int) -> PackedInt32Array:
 				for y in MAP_SIZE:
 					result.append(x * MAP_SIZE + y)
 	return result
+
+
+static func _to_i16(value: int) -> int:
+	value &= 0xffff
+	return value - 0x10000 if value >= 0x8000 else value
