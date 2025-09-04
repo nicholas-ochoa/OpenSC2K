@@ -11,6 +11,7 @@ const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const PeString = preload("res://src/assets/pe_string_resource.gd")
 const TextUsa = preload("res://src/assets/text_usa_resource.gd")
+const DataUsa = preload("res://src/assets/data_usa_resource.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
@@ -25,6 +26,7 @@ const Graphs = preload("res://src/simulation/graph_history.gd")
 const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
+const NewspaperTextGenerator = preload("res://src/simulation/newspaper_text.gd")
 const SimNation = preload("res://src/simulation/simnation_phase.gd")
 const Industries = preload("res://src/simulation/industry_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
@@ -211,6 +213,7 @@ func _init() -> void:
 	_test_graph_history(reference_root)
 	_test_rci_demand(reference_root)
 	_test_news_queue(reference_root)
+	_test_newspaper_text(reference_root)
 	_test_rci_aftermath(reference_root)
 	_test_simnation(reference_root)
 	_test_industries(reference_root)
@@ -7882,6 +7885,108 @@ func _test_news_queue(reference_root: String) -> void:
 	)
 
 
+func _test_newspaper_text(reference_root: String) -> void:
+	var data := DataUsa.load_path(
+		reference_root.path_join("DATA/DATA_USA.DAT"),
+		reference_root.path_join("DATA/DATA_USA.IDX"),
+	)
+	_check(data.is_valid(), "DATA_USA newspaper grammar loads: %s" % data.load_error)
+	if not data.is_valid():
+		return
+	_check(
+		data.bases.size() == 250 and data.counts.size() == 250,
+		"Newspaper grammar has both 250-entry phrase tables",
+	)
+	_check(data.offsets.size() == 2500, "Newspaper grammar has 2,500 phrase offsets")
+	_check(
+		data.bases[0] == 92 and data.counts[0] == 1,
+		"Newspaper grammar decodes the first base and count",
+	)
+	_check(
+		not DataUsa.load_path("/missing/DATA_USA.DAT", "/missing/DATA_USA.IDX").is_valid(),
+		"Newspaper grammar loader rejects missing files",
+	)
+
+	var executable_tokens := _load_pe_rva_bytes(
+		reference_root.path_join("SIMCITY.EXE"), 0x000ea228, 512
+	)
+	var implemented_tokens := PackedByteArray()
+	for token in 256:
+		var phrase_id := NewspaperTextGenerator.token_phrase_id(token)
+		implemented_tokens.append(phrase_id & 0xff)
+		implemented_tokens.append((phrase_id >> 8) & 0xff)
+	_check(
+		implemented_tokens == executable_tokens,
+		"Newspaper token map matches executable table 0x004ea228",
+	)
+	_check(
+		NewspaperTextGenerator.published_seed(0x1234, 250, 2, 0)
+		== 0x1234 + 10 + 1000 + 28,
+		"Newspaper top-story seed uses session, month, paper, and section values",
+	)
+	_check(
+		NewspaperTextGenerator.published_seed(0, 0, 0, 1) == 49
+		and NewspaperTextGenerator.published_seed(0, 0, 0, 4) == 70
+		and NewspaperTextGenerator.published_seed(0, 0, 0, 5) == -1,
+		"Newspaper seed map covers only the published saved story slots",
+	)
+
+	var document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
+	var city := CityModel.from_document(document)
+	var misc: PackedByteArray = document.find_chunk("MISC").decoded_payload
+	var teams := PackedStringArray()
+	for label_id in range(251, 256):
+		teams.append(city.label(label_id))
+	for slot in [0, 1, 2, 3, 4, 7, 8]:
+		var record := NewsQueue.story_record(misc, slot)
+		var seed := NewspaperTextGenerator.published_seed(
+			0x1234, city.age_in_days(), 0, slot
+		)
+		var rendered := NewspaperTextGenerator.render_story(
+			data, record, seed, city.city_name(), city.mayor_name(), teams
+		)
+		_check(rendered.ok, "Newspaper story slot %d renders: %s" % [slot, rendered.error])
+		if not rendered.ok:
+			continue
+		_check(not rendered.headline.is_empty(), "Newspaper story slot %d has a headline" % slot)
+		_check(not rendered.article.is_empty(), "Newspaper story slot %d has article text" % slot)
+		_check(
+			not rendered.headline.contains("�") and not rendered.article.contains("�"),
+			"Newspaper story slot %d decodes each source character" % slot,
+		)
+		var repeated := NewspaperTextGenerator.render_story(
+			data, record, seed, city.city_name(), city.mayor_name(), teams
+		)
+		_check(
+			repeated.ok
+			and repeated.headline == rendered.headline
+			and repeated.article == rendered.article
+			and repeated.auxiliary == rendered.auxiliary
+			and repeated.random_state == rendered.random_state,
+			"Newspaper story slot %d is deterministic for one display seed" % slot,
+		)
+	for story_type in 80:
+		var rendered := NewspaperTextGenerator.render_story(
+			data,
+			{
+				"type": story_type,
+				"argument": 0,
+				"auxiliary": PackedByteArray([0xff, 0xff, 0xff]),
+			},
+			0x4000 + story_type * 17,
+			city.city_name(),
+			city.mayor_name(),
+			teams,
+		)
+		_check(rendered.ok, "Newspaper grammar type %d renders: %s" % [story_type, rendered.error])
+		if rendered.ok:
+			_check(not rendered.headline.is_empty(), "Newspaper grammar type %d has a headline" % story_type)
+			_check(
+				not rendered.headline.contains("�") and not rendered.article.contains("�"),
+				"Newspaper grammar type %d decodes each source character" % story_type,
+			)
+
+
 func _test_rci_aftermath(reference_root: String) -> void:
 	_check(
 		RciAftermath.WEATHER_TRANSITIONS.size() == 384
@@ -8691,6 +8796,38 @@ func _read_u32_le(data: PackedByteArray, offset: int) -> int:
 		| (int(data[offset + 2]) << 16)
 		| (int(data[offset + 3]) << 24)
 	)
+
+
+func _read_u16_le(data: PackedByteArray, offset: int) -> int:
+	return int(data[offset]) | (int(data[offset + 1]) << 8)
+
+
+func _load_pe_rva_bytes(path: String, rva: int, size: int) -> PackedByteArray:
+	var data := FileAccess.get_file_as_bytes(path)
+	if data.size() < 0x40 or _read_u16_le(data, 0) != 0x5a4d:
+		return PackedByteArray()
+	var pe_offset := _read_u32_le(data, 0x3c)
+	if pe_offset < 0 or pe_offset > data.size() - 24:
+		return PackedByteArray()
+	var section_count := _read_u16_le(data, pe_offset + 6)
+	var optional_size := _read_u16_le(data, pe_offset + 20)
+	var section_offset := pe_offset + 24 + optional_size
+	if section_offset < 0 or section_offset > data.size() - section_count * 40:
+		return PackedByteArray()
+	for section_index in section_count:
+		var header := section_offset + section_index * 40
+		var virtual_size := _read_u32_le(data, header + 8)
+		var virtual_address := _read_u32_le(data, header + 12)
+		var raw_size := _read_u32_le(data, header + 16)
+		var raw_offset := _read_u32_le(data, header + 20)
+		var mapped_size := maxi(virtual_size, raw_size)
+		if rva < virtual_address or rva + size > virtual_address + mapped_size:
+			continue
+		var file_offset := raw_offset + rva - virtual_address
+		if file_offset < 0 or file_offset > data.size() - size:
+			return PackedByteArray()
+		return data.slice(file_offset, file_offset + size)
+	return PackedByteArray()
 
 
 func _clear_news_records(document) -> bool:
