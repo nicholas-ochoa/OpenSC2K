@@ -2,6 +2,7 @@ class_name RciAftermathPhase
 extends RefCounted
 
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
+const NewsQueue = preload("res://src/simulation/news_queue.gd")
 
 const MISC_SIZE := 4800
 const MISC_START_YEAR := 0x000c
@@ -127,6 +128,9 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 	var map_changes: Array = []
 
 	_update_random_tree(city, random, buildings, zones, flags, misc, map_changes)
+	var queue_decay := NewsQueue.decay_and_sort(misc)
+	if not queue_decay.ok:
+		return queue_decay
 	var news_items: Array = [{"type": NEWS_JUNK, "argument": 0}]
 	_append_general_news(random, misc, graphs, news_items)
 	var invention_index := _release_invention(city, random, misc, news_items)
@@ -148,6 +152,9 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 	_write_u32(misc, MISC_WEATHER_WIND, new_wind)
 	_write_u32(misc, MISC_WEATHER_RAIN, new_rain)
 	_write_u32(misc, MISC_WEATHER_TREND, new_trend)
+	var queue_insert := NewsQueue.insert_items(misc, news_items)
+	if not queue_insert.ok:
+		return queue_insert
 
 	if not building_chunk.set_decoded_payload(buildings):
 		return {"ok": false, "error": "cannot store the monthly tree update"}
@@ -172,6 +179,7 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 		"map_changed": not map_changes.is_empty(),
 		"invention_index": invention_index,
 		"news_items": news_items,
+		"news_queue_updated": true,
 	}
 
 

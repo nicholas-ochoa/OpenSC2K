@@ -24,6 +24,7 @@ const Pollution = preload("res://src/simulation/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/graph_history.gd")
 const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
+const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const SimNation = preload("res://src/simulation/simnation_phase.gd")
 const Industries = preload("res://src/simulation/industry_phase.gd")
 const EducationHealth = preload("res://src/simulation/education_health_phase.gd")
@@ -209,6 +210,7 @@ func _init() -> void:
 	_test_pollution(reference_root)
 	_test_graph_history(reference_root)
 	_test_rci_demand(reference_root)
+	_test_news_queue(reference_root)
 	_test_rci_aftermath(reference_root)
 	_test_simnation(reference_root)
 	_test_industries(reference_root)
@@ -7731,6 +7733,105 @@ func _test_rci_demand(reference_root: String) -> void:
 	_check(document.misc_i32(0x0854) == 260, "RCI phase stores industrial budget population")
 
 
+func _test_news_queue(reference_root: String) -> void:
+	var source_priorities := _load_indexed_u16_resource(reference_root, 1004)
+	var source_decays := _load_indexed_u16_resource(reference_root, 1005)
+	_check(
+		source_priorities == PackedInt32Array(NewsQueue.STORY_PRIORITIES),
+		"Newspaper priorities match DATA_USA resource 1004",
+	)
+	_check(
+		source_decays == PackedInt32Array(NewsQueue.STORY_DECAYS),
+		"Newspaper decays match DATA_USA resource 1005",
+	)
+
+	var misc := _filled_bytes(NewsQueue.MISC_SIZE, 0)
+	var decay_types := PackedInt32Array([2, 6, 7, 46, 39, 42, 61])
+	var decay_priorities := PackedInt32Array([900, 100, 40, 500, 250, 150, 100])
+	for slot in NewsQueue.STORY_RECORD_COUNT:
+		var offset := NewsQueue.STORY_OFFSET + slot * NewsQueue.STORY_RECORD_SIZE
+		var story_type := decay_types[slot] if slot < NewsQueue.QUEUE_COUNT else 11 + slot
+		var priority := decay_priorities[slot] if slot < NewsQueue.QUEUE_COUNT else 700 + slot
+		_write_u32_be(misc, offset, story_type)
+		_write_u32_be(misc, offset + 4, priority)
+		_write_u32_be(misc, offset + 8, slot)
+		_write_u32_be(misc, offset + 12, 0xa0 + slot)
+		_write_u32_be(misc, offset + 16, 0xb0 + slot)
+		_write_u32_be(misc, offset + 20, 0xc0 + slot)
+
+	var decay := NewsQueue.decay_and_sort(misc)
+	_check(decay.ok, "Newspaper queue decays and sorts: %s" % decay.error)
+	var decayed_types := PackedInt32Array()
+	var decayed_priorities := PackedInt32Array()
+	for slot in NewsQueue.QUEUE_COUNT:
+		var record := NewsQueue.story_record(misc, slot)
+		decayed_types.append(record.type)
+		decayed_priorities.append(record.priority)
+	_check(
+		decayed_types == PackedInt32Array([2, 39, 42, 6, 61, 46, 7]),
+		"Newspaper decay sorts complete records by descending priority",
+	)
+	_check(
+		decayed_priorities == PackedInt32Array([400, 200, 150, 90, 50, 0, 0]),
+		"Newspaper decay subtracts each story-specific value and clamps at zero",
+	)
+	_check(
+		NewsQueue.story_record(misc, 5).argument == 3
+		and NewsQueue.story_record(misc, 5).auxiliary == PackedByteArray([0xa3, 0xb3, 0xc3]),
+		"Newspaper sorting moves the argument and auxiliary bytes with a story",
+	)
+	_check(
+		NewsQueue.story_record(misc, 7).type == 18
+		and NewsQueue.story_record(misc, 7).priority == 707,
+		"Monthly newspaper decay does not change display record eight",
+	)
+
+	var insert_types := PackedInt32Array([2, 46, 8, 7, 61, 6, 42])
+	var insert_priorities := PackedInt32Array([1000, 500, 200, 200, 150, 100, 50])
+	for slot in NewsQueue.QUEUE_COUNT:
+		var offset := NewsQueue.STORY_OFFSET + slot * NewsQueue.STORY_RECORD_SIZE
+		_write_u32_be(misc, offset, insert_types[slot])
+		_write_u32_be(misc, offset + 4, insert_priorities[slot])
+		_write_u32_be(misc, offset + 8, slot)
+		_write_u32_be(misc, offset + 12, 0x80 + slot)
+		_write_u32_be(misc, offset + 16, 0x90 + slot)
+		_write_u32_be(misc, offset + 20, 0xa0 + slot)
+	var inserted := NewsQueue.insert(misc, 17, 0x102)
+	_check(
+		inserted.ok and inserted.slot == 2 and inserted.priority == 200,
+		"Newspaper inserts before older stories with equal priority",
+	)
+	var inserted_types := PackedInt32Array()
+	for slot in NewsQueue.QUEUE_COUNT:
+		inserted_types.append(NewsQueue.story_record(misc, slot).type)
+	_check(
+		inserted_types == PackedInt32Array([2, 46, 17, 8, 7, 61, 6]),
+		"Newspaper insertion displaces the seventh story",
+	)
+	var inserted_record := NewsQueue.story_record(misc, 2)
+	_check(
+		inserted_record.argument == 2
+		and inserted_record.auxiliary == PackedByteArray([0xff, 0xff, 0xff]),
+		"Newspaper insertion narrows the argument and resets auxiliary fields",
+	)
+	_check(
+		NewsQueue.story_record(misc, 3).argument == 2
+		and NewsQueue.story_record(misc, 3).auxiliary == PackedByteArray([0x82, 0x92, 0xa2]),
+		"Newspaper insertion preserves every field of a shifted story",
+	)
+	var before_invalid := misc.duplicate()
+	var invalid := NewsQueue.insert(misc, 80, 0)
+	_check(not invalid.ok and misc == before_invalid, "Newspaper rejects an invalid type without a write")
+	var mixed := NewsQueue.insert_items(
+		misc,
+		[{"type": 0x1f8, "argument": 0}, {"type": 39, "argument": 4}],
+	)
+	_check(
+		mixed.ok and mixed.inserted == 1 and NewsQueue.story_record(misc, 2).type == 39,
+		"Newspaper insertion skips non-story runtime notifications",
+	)
+
+
 func _test_rci_aftermath(reference_root: String) -> void:
 	_check(
 		RciAftermath.WEATHER_TRANSITIONS.size() == 384
@@ -7843,6 +7944,18 @@ func _test_rci_aftermath(reference_root: String) -> void:
 	for series in [4, 5, 7]:
 		_write_u32_be(news_graphs, series * CityModel.GRAPH_VALUE_COUNT * 4, 20)
 	_check(news_document.find_chunk("XGRP").set_decoded_payload(news_graphs), "News fixture stores high graph values")
+	var news_misc: PackedByteArray = news_document.find_chunk("MISC").decoded_payload.duplicate()
+	for slot in NewsQueue.STORY_RECORD_COUNT:
+		var offset := NewsQueue.STORY_OFFSET + slot * NewsQueue.STORY_RECORD_SIZE
+		_write_u32_be(news_misc, offset, 11 + slot)
+		_write_u32_be(news_misc, offset + 4, 0)
+		_write_u32_be(news_misc, offset + 8, 0)
+		for field in range(3, NewsQueue.STORY_FIELD_COUNT):
+			_write_u32_be(news_misc, offset + field * 4, 0xff)
+	_check(
+		news_document.find_chunk("MISC").set_decoded_payload(news_misc),
+		"News fixture clears the saved priority queue",
+	)
 	var news_city := CityModel.from_document(news_document)
 	_check(news_city.set_age_in_days(300), "News fixture selects 1901")
 	var news_random := SequenceRandom.new([
@@ -7873,6 +7986,22 @@ func _test_rci_aftermath(reference_root: String) -> void:
 		_check(news_result.invention_index == 7, "The first due innovation is released")
 		_check(news_document.misc_u32(0x0738 + 7 * 4) == 0, "A released innovation clears its saved year")
 		_check(news_random.position == 18, "The full controlled news path consumes 18 random values")
+		var queued_types := PackedInt32Array()
+		var queued_priorities := PackedInt32Array()
+		var saved_misc: PackedByteArray = news_document.find_chunk("MISC").decoded_payload
+		for slot in NewsQueue.QUEUE_COUNT:
+			var record := NewsQueue.story_record(saved_misc, slot)
+			queued_types.append(record.type)
+			queued_priorities.append(record.priority)
+		_check(
+			news_result.news_queue_updated
+			and queued_types == PackedInt32Array([5, 6, 20, 19, 21, 16, 18]),
+			"The monthly RCI phase stores its seven highest-priority stories",
+		)
+		_check(
+			queued_priorities == PackedInt32Array([1000, 360, 200, 200, 200, 200, 200]),
+			"The monthly RCI phase stores source-table priorities",
+		)
 
 	var arcology_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	_check(arcology_document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 6), "Arcology release fixture sets metropolis progression")
@@ -8476,6 +8605,42 @@ func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:
 	data[offset + 1] = (value >> 16) & 0xff
 	data[offset + 2] = (value >> 8) & 0xff
 	data[offset + 3] = value & 0xff
+
+
+func _load_indexed_u16_resource(reference_root: String, resource_id: int) -> PackedInt32Array:
+	var index := FileAccess.get_file_as_bytes(reference_root.path_join("DATA/DATA_USA.IDX"))
+	var data := FileAccess.get_file_as_bytes(reference_root.path_join("DATA/DATA_USA.DAT"))
+	if index.is_empty() or data.is_empty() or index.size() % 8 != 0:
+		return PackedInt32Array()
+	var start := -1
+	var end := -1
+	for offset in range(0, index.size(), 8):
+		var current_id := _read_u32_le(index, offset)
+		var current_start := _read_u32_le(index, offset + 4)
+		if start >= 0 and end < 0:
+			end = current_start
+			break
+		if current_id == resource_id:
+			start = current_start
+	if start < 0:
+		return PackedInt32Array()
+	if end < 0:
+		end = data.size()
+	if start > end or end > data.size() or (end - start) % 2 != 0:
+		return PackedInt32Array()
+	var values := PackedInt32Array()
+	for offset in range(start, end, 2):
+		values.append((int(data[offset]) << 8) | int(data[offset + 1]))
+	return values
+
+
+func _read_u32_le(data: PackedByteArray, offset: int) -> int:
+	return (
+		int(data[offset])
+		| (int(data[offset + 1]) << 8)
+		| (int(data[offset + 2]) << 16)
+		| (int(data[offset + 3]) << 24)
+	)
 
 
 func _test_modified_save(reference_root: String) -> void:
