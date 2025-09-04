@@ -5,6 +5,7 @@ const DisasterMap = preload("res://src/simulation/disaster_map_phase.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 const SimNation = preload("res://src/simulation/simnation_phase.gd")
 const Industries = preload("res://src/simulation/industry_phase.gd")
+const NewsQueue = preload("res://src/simulation/news_queue.gd")
 
 var city: CityState
 var clock: SimulationClock
@@ -77,6 +78,9 @@ func advance_moving_things(current_time_msec := -1) -> Dictionary:
 	)
 	if not result.get("ok", false):
 		return result
+	var queue_update := _persist_news_result(result)
+	if not queue_update.ok:
+		return queue_update
 	traffic_news_deadline_msec = result.traffic_news_deadline_msec
 	for change in result.connection_count_changes:
 		if change.kind == "commerce":
@@ -167,6 +171,9 @@ func advance_disaster_tick() -> Dictionary:
 	)
 	if not phase_result.get("ok", false):
 		return phase_result
+	var queue_update := _persist_news_result(phase_result)
+	if not queue_update.ok:
+		return queue_update
 	disaster_map_counter = int(phase_result.get("map_counter", disaster_map_counter))
 	disaster_hurricane_counter = int(
 		phase_result.get("hurricane_counter", disaster_hurricane_counter)
@@ -214,6 +221,9 @@ func start_disaster(disaster_type: int, point: Vector2i) -> Dictionary:
 		disaster_map_counter = 0
 		disaster_hurricane_counter = 0
 		return {"ok": false, "error": "cannot store active disaster mode"}
+	var queue_update := _persist_news_result(started)
+	if not queue_update.ok:
+		return queue_update
 	return started
 
 
@@ -221,6 +231,9 @@ func recalculate_mayor_house() -> Dictionary:
 	var result := MayorApprovalPhase.run(city, random, mayor_approval)
 	if result.get("ok", false):
 		mayor_approval = result.approval
+		var queue_update := _persist_news_result(result)
+		if not queue_update.ok:
+			return queue_update
 	return result
 
 
@@ -256,6 +269,9 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				var budget := BudgetPhase.run(city, random, annual_budget_approved)
 				if not budget.ok:
 					return {"ok": false, "error": budget.error}
+				var budget_news := _persist_news_result(budget)
+				if not budget_news.ok:
+					return budget_news
 				phase_results[action] = budget
 				var annual_complete := true
 				if budget.settled_year:
@@ -274,6 +290,9 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 					)
 					if not annual_microsim.ok:
 						return {"ok": false, "error": annual_microsim.error}
+					var annual_news := _persist_news_result(annual_microsim)
+					if not annual_news.ok:
+						return annual_news
 					phase_results["annual_microsim"] = annual_microsim
 					annual_complete = annual_microsim.complete
 					bus_passengers = 0
@@ -301,6 +320,9 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				)
 				if not growth.ok:
 					return {"ok": false, "error": growth.error}
+				var growth_news := _persist_news_result(growth)
+				if not growth_news.ok:
+					return growth_news
 				phase_results[action] = growth
 				bus_passengers = (bus_passengers + int(growth.bus_passengers)) & 0xffffffff
 				rail_passengers = (rail_passengers + int(growth.rail_passengers)) & 0xffffffff
@@ -339,12 +361,18 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				var aftermath := RciAftermath.run(city, random, int(schedule.season))
 				if not aftermath.ok:
 					return {"ok": false, "error": aftermath.error}
+				var aftermath_news := _persist_news_result(aftermath)
+				if not aftermath_news.ok:
+					return aftermath_news
 				phase_results["rci_aftermath"] = aftermath
 				applied.append(action)
 			"education_health":
 				var simnation := SimNation.run(city, random)
 				if not simnation.ok:
 					return {"ok": false, "error": simnation.error}
+				var simnation_news := _persist_news_result(simnation)
+				if not simnation_news.ok:
+					return simnation_news
 				phase_results["simnation"] = simnation
 				var demand_result: Dictionary = phase_results.get("rci_demand", {})
 				var population_growth := maxi(
@@ -376,6 +404,9 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				var milestones := MilestonePhase.run(city)
 				if not milestones.ok:
 					return {"ok": false, "error": milestones.error}
+				var milestone_news := _persist_news_result(milestones)
+				if not milestone_news.ok:
+					return milestone_news
 				phase_results[action] = milestones
 				if milestones.military_proposal_pending:
 					pending_interaction = "military_proposal"
@@ -441,6 +472,28 @@ func _schedule_after(schedule: Dictionary, completed_action: String) -> Dictiona
 	return remaining
 
 
+func _persist_news_result(result: Dictionary) -> Dictionary:
+	if result.get("news_queue_updated", false):
+		return {"ok": true, "error": "", "inserted": 0}
+	var news_items: Array = result.get("news_items", [])
+	if news_items.is_empty():
+		return {"ok": true, "error": "", "inserted": 0}
+	var misc_chunk := city.document.find_chunk("MISC")
+	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
+		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+	var insertion := NewsQueue.insert_items(misc, news_items)
+	if not insertion.ok:
+		return insertion
+	if insertion.inserted == 0:
+		return insertion
+	if not misc_chunk.set_decoded_payload(misc):
+		return {"ok": false, "error": "cannot store newspaper stories"}
+	result["news_queue_updated"] = true
+	result["news_queue_inserted"] = insertion.inserted
+	return insertion
+
+
 func _append_pending_disaster(result: Dictionary) -> Dictionary:
 	if not result.get("ok", false) or not result.get("interaction_requests", []).is_empty():
 		return result
@@ -455,6 +508,9 @@ func _append_pending_disaster(result: Dictionary) -> Dictionary:
 	)
 	if not started.ok:
 		return started
+	var queue_update := _persist_news_result(started)
+	if not queue_update.ok:
+		return queue_update
 	result.phase_results["disaster_start"] = started
 	if started.started:
 		active_disaster_type = disaster_type

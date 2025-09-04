@@ -2327,6 +2327,7 @@ func _test_simulation_engine(reference_root: String) -> void:
 	)
 
 	var military_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(_clear_news_records(military_document), "Military engine fixture clears story records")
 	var military_city := CityModel.from_document(military_document)
 	_check(military_city.set_age_in_days(21), "Military engine fixture selects day 21")
 	_check(military_document.set_misc_u32(0x0020, 3), "Military engine fixture sets progression")
@@ -2345,6 +2346,16 @@ func _test_simulation_engine(reference_root: String) -> void:
 	_check(
 		not military_engine.terminal_state and military_document.misc_u32(0x0020) == 4,
 		"The pending proposal stores its milestone but defers bankruptcy",
+	)
+	var milestone_story := NewsQueue.story_record(
+		military_document.find_chunk("MISC").decoded_payload, 0
+	)
+	_check(
+		military_request.phase_results.milestones.news_queue_updated
+		and milestone_story.type == 3
+		and milestone_story.priority == 1000
+		and milestone_story.argument == 3,
+		"The engine stores milestone news before its military interaction",
 	)
 	var rejected_military_advance := military_engine.advance_day()
 	_check(
@@ -7831,6 +7842,45 @@ func _test_news_queue(reference_root: String) -> void:
 		"Newspaper insertion skips non-story runtime notifications",
 	)
 
+	var engine_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(_clear_news_records(engine_document), "Engine newspaper fixture clears story records")
+	var engine_city := CityModel.from_document(engine_document)
+	var engine := Simulation.new(engine_city, 1, 7, 13)
+	var phase_result := {
+		"ok": true,
+		"news_items": [
+			{"type": 0x1fe, "argument": 0},
+			{"type": 9, "argument": 4},
+		],
+	}
+	var persisted := engine._persist_news_result(phase_result)
+	var persisted_record := NewsQueue.story_record(
+		engine_document.find_chunk("MISC").decoded_payload, 0
+	)
+	_check(
+		persisted.ok
+		and persisted.inserted == 1
+		and phase_result.news_queue_updated
+		and phase_result.news_queue_inserted == 1
+		and persisted_record.type == 9
+		and persisted_record.priority == 200
+		and persisted_record.argument == 4,
+		"Simulation engine persists valid story events and skips runtime notifications",
+	)
+	var before_duplicate: PackedByteArray = engine_document.find_chunk("MISC").decoded_payload.duplicate()
+	var already_updated := {
+		"ok": true,
+		"news_queue_updated": true,
+		"news_items": [{"type": 3, "argument": 0}],
+	}
+	var duplicate := engine._persist_news_result(already_updated)
+	_check(
+		duplicate.ok
+		and duplicate.inserted == 0
+		and engine_document.find_chunk("MISC").decoded_payload == before_duplicate,
+		"Simulation engine does not insert a phase result twice",
+	)
+
 
 func _test_rci_aftermath(reference_root: String) -> void:
 	_check(
@@ -8641,6 +8691,21 @@ func _read_u32_le(data: PackedByteArray, offset: int) -> int:
 		| (int(data[offset + 2]) << 16)
 		| (int(data[offset + 3]) << 24)
 	)
+
+
+func _clear_news_records(document) -> bool:
+	var misc_chunk = document.find_chunk("MISC")
+	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
+		return false
+	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+	for slot in NewsQueue.STORY_RECORD_COUNT:
+		var offset := NewsQueue.STORY_OFFSET + slot * NewsQueue.STORY_RECORD_SIZE
+		_write_u32_be(misc, offset, 11 + slot)
+		_write_u32_be(misc, offset + 4, 0)
+		_write_u32_be(misc, offset + 8, 0)
+		for field in range(3, NewsQueue.STORY_FIELD_COUNT):
+			_write_u32_be(misc, offset + field * 4, 0xff)
+	return misc_chunk.set_decoded_payload(misc)
 
 
 func _test_modified_save(reference_root: String) -> void:
