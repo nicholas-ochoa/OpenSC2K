@@ -41,6 +41,7 @@ const DisasterStart = preload("res://src/simulation/disaster_start_phase.gd")
 const Budget = preload("res://src/simulation/budget_phase.gd")
 const Bonds = preload("res://src/simulation/bond_command.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
+const NewsQueue = preload("res://src/simulation/news_queue.gd")
 
 const NEWS_NAMES := {
 	1: "Local news",
@@ -207,6 +208,8 @@ var query_ok_button: Button
 var active_query_result: Dictionary = {}
 var city_analysis_dialog: AcceptDialog
 var city_analysis_table: Tree
+var newspaper_dialog: AcceptDialog
+var newspaper_table: Tree
 var library_windows: Array[PanelContainer] = []
 var library_text_views: Array[TextEdit] = []
 var budget_dialog: ConfirmationDialog
@@ -820,6 +823,34 @@ func _build_interface(toolbar_art: Image) -> void:
 	analysis_content.add_child(city_analysis_table)
 	analysis_content.move_child(city_analysis_table, 0)
 	add_child(city_analysis_dialog)
+	newspaper_dialog = AcceptDialog.new()
+	newspaper_dialog.title = "Newspaper"
+	newspaper_dialog.min_size = Vector2i(640, 500)
+	newspaper_dialog.get_ok_button().text = "Close"
+	newspaper_dialog.get_label().visible = false
+	newspaper_table = Tree.new()
+	newspaper_table.name = "SavedNewspaperReports"
+	newspaper_table.custom_minimum_size = Vector2i(580, 380)
+	newspaper_table.columns = 3
+	newspaper_table.column_titles_visible = true
+	newspaper_table.hide_root = true
+	newspaper_table.set_column_title(0, "LATEST REPORTS")
+	newspaper_table.set_column_title(1, "TYPE")
+	newspaper_table.set_column_title(2, "DETAIL")
+	newspaper_table.set_column_expand(0, true)
+	newspaper_table.set_column_expand(1, false)
+	newspaper_table.set_column_expand(2, false)
+	newspaper_table.set_column_custom_minimum_width(1, 80)
+	newspaper_table.set_column_custom_minimum_width(2, 100)
+	newspaper_table.add_theme_color_override("font_color", Color("101010"))
+	newspaper_table.add_theme_color_override("title_button_color", Color("101010"))
+	newspaper_table.add_theme_stylebox_override(
+		"panel", _classic_box(Color("fff9df"), Color("808080"), 1)
+	)
+	var newspaper_content := newspaper_dialog.get_label().get_parent()
+	newspaper_content.add_child(newspaper_table)
+	newspaper_content.move_child(newspaper_table, 0)
+	add_child(newspaper_dialog)
 	for index in LIBRARY_TEXT_IDS.size():
 		var library_window := PanelContainer.new()
 		library_window.name = "LibraryText%d" % LIBRARY_TEXT_IDS[index]
@@ -1414,7 +1445,13 @@ func _set_sidebar_expanded(expanded: bool) -> void:
 
 
 func _on_newspaper_menu(_id: int) -> void:
-	status_label.text = "The latest reports are visible in the City Information panel."
+	if city == null or current_document == null:
+		return
+	_populate_newspaper_table()
+	newspaper_dialog.title = "The %s Newspaper" % (
+		city.city_name() if not city.city_name().is_empty() else "City"
+	)
+	newspaper_dialog.popup_centered()
 
 
 func _on_help_menu(_id: int) -> void:
@@ -1766,7 +1803,7 @@ func _load_city(path: String) -> void:
 	speed_selector.disabled = false
 	simulation_map_dirty = false
 	recent_news.clear()
-	news_label.text = "Latest Reports\nNo new reports."
+	_refresh_saved_news_summary()
 	last_edit_command = {}
 	dispatch_cycles = PackedInt32Array([0, 0, 0])
 	dispatch_initialized = false
@@ -2411,6 +2448,51 @@ func _show_news_items(news_items: Array) -> void:
 		recent_news.remove_at(recent_news.size() - 1)
 	if not recent_news.is_empty():
 		news_label.text = "Latest Reports\n" + "\n".join(recent_news)
+
+
+func _refresh_saved_news_summary() -> void:
+	if city == null or current_document == null:
+		news_label.text = "Latest Reports\nNo reports."
+		return
+	var misc_chunk := current_document.find_chunk("MISC")
+	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
+		news_label.text = "Latest Reports\nUnavailable."
+		return
+	var reports := PackedStringArray()
+	for slot in NewsQueue.QUEUE_COUNT:
+		var record := NewsQueue.story_record(misc_chunk.decoded_payload, slot)
+		if record.is_empty() or int(record.priority) <= 0:
+			continue
+		var story_type := int(record.type)
+		reports.append("%s (0x%02X)" % [NEWS_NAMES.get(story_type, "City report"), story_type])
+		if reports.size() == 3:
+			break
+	news_label.text = "Latest Reports\n" + (
+		"\n".join(reports) if not reports.is_empty() else "No reports."
+	)
+
+
+func _populate_newspaper_table() -> void:
+	newspaper_table.clear()
+	var root := newspaper_table.create_item()
+	var misc_chunk := current_document.find_chunk("MISC")
+	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
+		var unavailable := newspaper_table.create_item(root)
+		unavailable.set_text(0, "Saved reports are unavailable.")
+		return
+	for slot in NewsQueue.QUEUE_COUNT:
+		var record := NewsQueue.story_record(misc_chunk.decoded_payload, slot)
+		if record.is_empty():
+			continue
+		var story_type := int(record.type)
+		var item := newspaper_table.create_item(root)
+		item.set_text(0, NEWS_NAMES.get(story_type, "City report"))
+		item.set_text(1, "0x%02X" % story_type)
+		item.set_text(2, "Argument %d" % int(record.argument))
+		if int(record.priority) <= 0:
+			item.set_custom_color(0, Color("707070"))
+			item.set_custom_color(1, Color("707070"))
+			item.set_custom_color(2, Color("707070"))
 
 
 func _show_game_over_events(events: Array) -> void:
