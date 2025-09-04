@@ -95,6 +95,34 @@ static func render_story(
 	}
 
 
+static func render_headline(
+	data: DataUsaResource,
+	record: Dictionary,
+	seed: int,
+	city_text: String,
+	mayor_text: String,
+	teams: PackedStringArray
+) -> Dictionary:
+	var renderer := NewspaperText.new()
+	var setup := renderer._setup(data, record, city_text, mayor_text, teams)
+	if not setup.ok:
+		return setup
+	renderer.shared_choices.resize(DataUsaResource.TABLE_ENTRY_COUNT)
+	renderer.shared_choices.fill(-1)
+	renderer.random = Random.new(seed)
+	var headline_bytes := renderer._render_selected(0)
+	if not renderer.error.is_empty():
+		return renderer._failure(renderer.error)
+	return {
+		"ok": true,
+		"error": "",
+		"headline": renderer._title_case(renderer._decode_oem(headline_bytes, true)),
+		"argument": renderer.argument,
+		"auxiliary": renderer.auxiliary.duplicate(),
+		"random_state": renderer.random.state,
+	}
+
+
 func _setup(
 	data: DataUsaResource,
 	record: Dictionary,

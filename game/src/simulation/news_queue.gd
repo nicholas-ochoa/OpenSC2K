@@ -126,6 +126,27 @@ static func story_record(misc: PackedByteArray, slot: int) -> Dictionary:
 	}
 
 
+static func update_story_substitutions(
+	misc: PackedByteArray, slot: int, argument: int, auxiliary: PackedByteArray
+) -> Dictionary:
+	var validation := _validate_misc(misc)
+	if not validation.ok:
+		return validation
+	if slot < 0 or slot >= STORY_RECORD_COUNT:
+		return _failure("newspaper story slot is out of range")
+	if auxiliary.size() != 3:
+		return _failure("newspaper story auxiliary data has the wrong size")
+	var offset := _story_offset(slot)
+	_write_u32(misc, offset + ARGUMENT_FIELD * 4, argument & 0xff)
+	for index in 3:
+		_write_u32(
+			misc,
+			offset + (FIRST_AUXILIARY_FIELD + index) * 4,
+			auxiliary[index],
+		)
+	return {"ok": true, "error": ""}
+
+
 static func _validate_misc(misc: PackedByteArray) -> Dictionary:
 	if misc.size() != MISC_SIZE:
 		return _failure("MISC is missing or has the wrong size")

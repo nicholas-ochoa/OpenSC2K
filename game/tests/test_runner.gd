@@ -7836,6 +7836,16 @@ func _test_news_queue(reference_root: String) -> void:
 	var before_invalid := misc.duplicate()
 	var invalid := NewsQueue.insert(misc, 80, 0)
 	_check(not invalid.ok and misc == before_invalid, "Newspaper rejects an invalid type without a write")
+	var substitutions := NewsQueue.update_story_substitutions(
+		misc, 0, 0x102, PackedByteArray([3, 4, 5])
+	)
+	var substituted_record := NewsQueue.story_record(misc, 0)
+	_check(
+		substitutions.ok
+		and substituted_record.argument == 2
+		and substituted_record.auxiliary == PackedByteArray([3, 4, 5]),
+		"Newspaper stores narrowed generated substitutions in one saved record",
+	)
 	var mixed := NewsQueue.insert_items(
 		misc,
 		[{"type": 0x1f8, "argument": 0}, {"type": 39, "argument": 4}],
@@ -7964,6 +7974,13 @@ func _test_newspaper_text(reference_root: String) -> void:
 			and repeated.auxiliary == rendered.auxiliary
 			and repeated.random_state == rendered.random_state,
 			"Newspaper story slot %d is deterministic for one display seed" % slot,
+		)
+		var headline_only := NewspaperTextGenerator.render_headline(
+			data, record, seed, city.city_name(), city.mayor_name(), teams
+		)
+		_check(
+			headline_only.ok and headline_only.headline == rendered.headline,
+			"Newspaper story slot %d has the same standalone headline" % slot,
 		)
 	for story_type in 80:
 		var rendered := NewspaperTextGenerator.render_story(

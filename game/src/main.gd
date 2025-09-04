@@ -8,6 +8,7 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const PeString = preload("res://src/assets/pe_string_resource.gd")
 const TextUsa = preload("res://src/assets/text_usa_resource.gd")
+const DataUsa = preload("res://src/assets/data_usa_resource.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
@@ -42,6 +43,7 @@ const Budget = preload("res://src/simulation/budget_phase.gd")
 const Bonds = preload("res://src/simulation/bond_command.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
+const NewspaperTextGenerator = preload("res://src/simulation/newspaper_text.gd")
 
 const NEWS_NAMES := {
 	1: "Local news",
@@ -121,6 +123,8 @@ var overlay_mode := "city"
 var reference_root := ""
 var original_query_strings: Dictionary = {}
 var library_texts: Dictionary = {}
+var newspaper_data: DataUsaResource
+var newspaper_session_seed := 0
 var selected_group := 9
 var selected_subtool := 0
 var selected_tool_available := false
@@ -210,6 +214,8 @@ var city_analysis_dialog: AcceptDialog
 var city_analysis_table: Tree
 var newspaper_dialog: AcceptDialog
 var newspaper_table: Tree
+var newspaper_article_heading: Label
+var newspaper_article_view: TextEdit
 var library_windows: Array[PanelContainer] = []
 var library_text_views: Array[TextEdit] = []
 var budget_dialog: ConfirmationDialog
@@ -231,6 +237,13 @@ var fps_update_seconds := 0.0
 
 func _ready() -> void:
 	reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
+	newspaper_session_seed = Time.get_ticks_msec() & 0xffff
+	if newspaper_session_seed & 0x8000:
+		newspaper_session_seed -= 0x10000
+	newspaper_data = DataUsa.load_path(
+		reference_root.path_join("DATA/DATA_USA.DAT"),
+		reference_root.path_join("DATA/DATA_USA.IDX"),
+	)
 	var string_resources := PeString.load_ids(
 		reference_root.path_join("SIMCITY.EXE"), Queries.resource_string_ids()
 	)
@@ -825,31 +838,50 @@ func _build_interface(toolbar_art: Image) -> void:
 	add_child(city_analysis_dialog)
 	newspaper_dialog = AcceptDialog.new()
 	newspaper_dialog.title = "Newspaper"
-	newspaper_dialog.min_size = Vector2i(640, 500)
+	newspaper_dialog.min_size = Vector2i(700, 620)
 	newspaper_dialog.get_ok_button().text = "Close"
 	newspaper_dialog.get_label().visible = false
 	newspaper_table = Tree.new()
 	newspaper_table.name = "SavedNewspaperReports"
-	newspaper_table.custom_minimum_size = Vector2i(580, 380)
+	newspaper_table.custom_minimum_size = Vector2i(640, 280)
 	newspaper_table.columns = 3
 	newspaper_table.column_titles_visible = true
 	newspaper_table.hide_root = true
 	newspaper_table.set_column_title(0, "LATEST REPORTS")
 	newspaper_table.set_column_title(1, "TYPE")
-	newspaper_table.set_column_title(2, "DETAIL")
+	newspaper_table.set_column_title(2, "STATUS")
 	newspaper_table.set_column_expand(0, true)
 	newspaper_table.set_column_expand(1, false)
 	newspaper_table.set_column_expand(2, false)
 	newspaper_table.set_column_custom_minimum_width(1, 80)
 	newspaper_table.set_column_custom_minimum_width(2, 100)
 	newspaper_table.add_theme_color_override("font_color", Color("101010"))
+	newspaper_table.add_theme_color_override("font_hovered_color", Color("101010"))
+	newspaper_table.add_theme_color_override("font_hovered_selected_color", Color("101010"))
 	newspaper_table.add_theme_color_override("title_button_color", Color("101010"))
 	newspaper_table.add_theme_stylebox_override(
 		"panel", _classic_box(Color("fff9df"), Color("808080"), 1)
 	)
+	newspaper_table.item_selected.connect(_on_newspaper_story_selected)
+	newspaper_article_heading = Label.new()
+	newspaper_article_heading.text = "SELECTED ARTICLE"
+	newspaper_article_heading.add_theme_color_override("font_color", Color("f0f0f0"))
+	newspaper_article_view = TextEdit.new()
+	newspaper_article_view.name = "NewspaperArticle"
+	newspaper_article_view.custom_minimum_size = Vector2i(640, 190)
+	newspaper_article_view.editable = false
+	newspaper_article_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
+	newspaper_article_view.add_theme_color_override("font_color", Color("101010"))
+	newspaper_article_view.add_theme_color_override("font_readonly_color", Color("101010"))
+	newspaper_article_view.add_theme_color_override("background_color", Color("fff9df"))
 	var newspaper_content := newspaper_dialog.get_label().get_parent()
-	newspaper_content.add_child(newspaper_table)
-	newspaper_content.move_child(newspaper_table, 0)
+	var newspaper_layout := VBoxContainer.new()
+	newspaper_layout.add_theme_constant_override("separation", 6)
+	newspaper_layout.add_child(newspaper_table)
+	newspaper_layout.add_child(newspaper_article_heading)
+	newspaper_layout.add_child(newspaper_article_view)
+	newspaper_content.add_child(newspaper_layout)
+	newspaper_content.move_child(newspaper_layout, 0)
 	add_child(newspaper_dialog)
 	for index in LIBRARY_TEXT_IDS.size():
 		var library_window := PanelContainer.new()
@@ -2474,25 +2506,105 @@ func _refresh_saved_news_summary() -> void:
 
 func _populate_newspaper_table() -> void:
 	newspaper_table.clear()
+	newspaper_article_heading.text = "SELECTED ARTICLE"
+	newspaper_article_view.text = "Select a published report to read its article."
 	var root := newspaper_table.create_item()
 	var misc_chunk := current_document.find_chunk("MISC")
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
 		var unavailable := newspaper_table.create_item(root)
 		unavailable.set_text(0, "Saved reports are unavailable.")
 		return
+	var old_misc: PackedByteArray = misc_chunk.decoded_payload
+	var misc := old_misc.duplicate()
+	var teams := _newspaper_team_names()
 	for slot in NewsQueue.QUEUE_COUNT:
-		var record := NewsQueue.story_record(misc_chunk.decoded_payload, slot)
+		var record := NewsQueue.story_record(misc, slot)
 		if record.is_empty():
 			continue
 		var story_type := int(record.type)
+		var seed := NewspaperTextGenerator.published_seed(
+			newspaper_session_seed, city.age_in_days(), 0, slot
+		)
+		var headline: String = NEWS_NAMES.get(story_type, "City report")
+		if seed >= 0 and newspaper_data != null and newspaper_data.is_valid():
+			var rendered := NewspaperTextGenerator.render_headline(
+				newspaper_data,
+				record,
+				seed,
+				city.city_name(),
+				city.mayor_name(),
+				teams,
+			)
+			if rendered.ok:
+				headline = rendered.headline
+				NewsQueue.update_story_substitutions(
+					misc, slot, rendered.argument, rendered.auxiliary
+				)
 		var item := newspaper_table.create_item(root)
-		item.set_text(0, NEWS_NAMES.get(story_type, "City report"))
+		item.set_text(0, headline)
 		item.set_text(1, "0x%02X" % story_type)
-		item.set_text(2, "Argument %d" % int(record.argument))
+		item.set_text(2, "Published" if seed >= 0 else "Queued")
+		item.set_metadata(0, {"slot": slot, "seed": seed})
 		if int(record.priority) <= 0:
 			item.set_custom_color(0, Color("707070"))
 			item.set_custom_color(1, Color("707070"))
 			item.set_custom_color(2, Color("707070"))
+	if misc != old_misc:
+		misc_chunk.set_decoded_payload(misc)
+
+
+func _on_newspaper_story_selected() -> void:
+	var item := newspaper_table.get_selected()
+	if item == null or city == null or current_document == null:
+		return
+	var metadata_value = item.get_metadata(0)
+	if not metadata_value is Dictionary:
+		return
+	var metadata: Dictionary = metadata_value
+	newspaper_article_heading.text = item.get_text(0).to_upper()
+	item.deselect(0)
+	var slot := int(metadata.get("slot", -1))
+	var seed := int(metadata.get("seed", -1))
+	if seed < 0:
+		newspaper_article_view.text = (
+			"This report is still in the saved queue. It has no published article section."
+		)
+		return
+	if newspaper_data == null or not newspaper_data.is_valid():
+		newspaper_article_view.text = "The local DATA_USA newspaper text is unavailable."
+		return
+	var misc_chunk := current_document.find_chunk("MISC")
+	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
+		newspaper_article_view.text = "The saved newspaper record is unavailable."
+		return
+	var record := NewsQueue.story_record(misc_chunk.decoded_payload, slot)
+	var rendered := NewspaperTextGenerator.render_story(
+		newspaper_data,
+		record,
+		seed,
+		city.city_name(),
+		city.mayor_name(),
+		_newspaper_team_names(),
+	)
+	if not rendered.ok:
+		newspaper_article_view.text = "The article cannot be generated: %s" % rendered.error
+		return
+	newspaper_article_view.text = rendered.article
+	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+	var updated := NewsQueue.update_story_substitutions(
+		misc, slot, rendered.argument, rendered.auxiliary
+	)
+	if updated.ok and misc != misc_chunk.decoded_payload:
+		misc_chunk.set_decoded_payload(misc)
+
+
+func _newspaper_team_names() -> PackedStringArray:
+	var result := PackedStringArray()
+	if city == null:
+		return result
+	for label_id in range(251, 256):
+		result.append(city.label(label_id))
+	return result
 
 
 func _show_game_over_events(events: Array) -> void:
