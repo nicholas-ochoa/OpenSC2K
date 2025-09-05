@@ -519,7 +519,8 @@ static func _retile_region(
 		var shape := int(TERRAIN_SHAPES[higher_mask])
 		if shape != 0:
 			zones[index] &= 0xf0
-		if shape == 50:
+		var raised_basin := shape == 50
+		if raised_basin:
 			land = mini(31, land + 1)
 			_set_land_altitude(altitude, index, land)
 			shape = 0
@@ -531,7 +532,11 @@ static func _retile_region(
 		_set_water_altitude(altitude, index, sea_level)
 		if buildings[index] != 0 and buildings[index] != 5:
 			NetworkCommand._replace_building(buildings, zones, misc, index, 0)
-		terrain[index] = shape + (0x20 if sea_level - land == 1 else 0x10)
+		terrain[index] = (
+			0x10
+			if raised_basin
+			else shape + (0x20 if sea_level - land == 1 else 0x10)
+		)
 
 
 static func _decode_heights(altitude: PackedByteArray) -> PackedInt32Array:

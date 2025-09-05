@@ -11321,6 +11321,19 @@ func _test_terrain_command(reference_root: String) -> void:
 	_check(TerrainTools.supports_tool(0, 2), "Terrain command supports Raise Terrain")
 	_check(TerrainTools.supports_tool(0, 3), "Terrain command supports Lower Terrain")
 	_check(not TerrainTools.supports_tool(0, 0), "Terrain command rejects Demolish")
+	var executable_shapes := _load_pe_rva_bytes(
+		reference_root.path_join("SIMCITY.EXE"), 0x000e7958, 256
+	)
+	var shape_table_matches := executable_shapes.size() == TerrainTools.TERRAIN_SHAPES.size()
+	if shape_table_matches:
+		for shape_index in executable_shapes.size():
+			if executable_shapes[shape_index] != TerrainTools.TERRAIN_SHAPES[shape_index]:
+				shape_table_matches = false
+				break
+	_check(
+		shape_table_matches,
+		"Terrain shape table matches all 256 supplied executable bytes",
+	)
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
@@ -11447,6 +11460,46 @@ func _test_terrain_command(reference_root: String) -> void:
 		city.building_id(60, 60) == 0x8c and city.building_id(61, 61) == 0x8c
 		and city.text_overlay_id(60, 60) == 61,
 		"Terrain undo restores the complete structure and overlay",
+	)
+
+	var basin_altitude := _filled_bytes(CityState.TILE_COUNT * 2, 0)
+	var basin_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	var basin_terrain := _filled_bytes(CityState.TILE_COUNT, 0)
+	var basin_zones := _filled_bytes(CityState.TILE_COUNT, 0)
+	var basin_flags := _filled_bytes(CityState.TILE_COUNT, 0)
+	var basin_misc := document.find_chunk("MISC").decoded_payload.duplicate()
+	var basin_point := Vector2i(70, 70)
+	var basin_index := basin_point.x * CityState.MAP_SIZE + basin_point.y
+	basin_zones[basin_index] = 6
+	for offset in TerrainTools.CARDINAL_OFFSETS:
+		var neighbor: Vector2i = basin_point + offset
+		TerrainTools._set_land_altitude(
+			basin_altitude,
+			neighbor.x * CityState.MAP_SIZE + neighbor.y,
+			1,
+		)
+	TerrainTools._retile_region(
+		basin_altitude,
+		basin_buildings,
+		basin_terrain,
+		basin_zones,
+		basin_flags,
+		basin_misc,
+		PackedInt32Array([basin_index]),
+		2,
+	)
+	_check(
+		TerrainTools._land_altitude(basin_altitude, basin_index) == 1,
+		"Terrain sentinel 0x32 raises a surrounded basin by one level",
+	)
+	_check(
+		basin_terrain[basin_index] == 0x10
+		and (basin_flags[basin_index] & TerrainTools.FLAG_WATER) != 0,
+		"A raised basin below sea level uses the executable's deep-water terrain",
+	)
+	_check(
+		basin_zones[basin_index] == 0,
+		"The raised-basin terrain shape clears the zone nibble",
 	)
 
 
