@@ -11334,6 +11334,24 @@ func _test_terrain_command(reference_root: String) -> void:
 		shape_table_matches,
 		"Terrain shape table matches all 256 supplied executable bytes",
 	)
+	var ordered_heights := PackedInt32Array()
+	ordered_heights.resize(CityState.TILE_COUNT)
+	var ordered_zones := _filled_bytes(CityState.TILE_COUNT, 0)
+	var ordered_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+	var ordered_start := Vector2i(20, 20)
+	var ordered_west := Vector2i(19, 20)
+	var ordered_north := Vector2i(20, 19)
+	ordered_heights[ordered_start.x * CityState.MAP_SIZE + ordered_start.y] = 1
+	var ordered_raise := TerrainTools._plan_raise(
+		ordered_heights, ordered_zones, ordered_buildings, ordered_start, 25
+	)
+	_check(
+		ordered_raise.valid
+		and ordered_raise.heights[ordered_west.x * CityState.MAP_SIZE + ordered_west.y] == 1
+		and ordered_raise.heights[ordered_north.x * CityState.MAP_SIZE + ordered_north.y] == 0
+		and ordered_raise.heights[ordered_start.x * CityState.MAP_SIZE + ordered_start.y] == 1,
+		"Partial Raise Terrain funds apply in executable west-north-east-south order",
+	)
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128

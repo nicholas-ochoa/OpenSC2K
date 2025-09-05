@@ -15,6 +15,9 @@ const NEIGHBOR_OFFSETS := [
 ]
 const NEIGHBOR_MASKS := [3, 2, 6, 4, 12, 8, 9, 1]
 const CARDINAL_OFFSETS := [Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0)]
+const RAISE_DEPENDENCY_OFFSETS := [
+	Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1),
+]
 const TERRAIN_SHAPES := [
 	0, 9, 10, 2, 11, 13, 3, 6, 12, 1, 13, 5, 4, 8, 7, 50,
 	0, 2, 10, 2, 3, 6, 3, 6, 11, 0, 0, 0, 3, 6, 3, 6,
@@ -288,7 +291,7 @@ static func _collect_raise_dependencies(
 			if (zones[neighbor_index] & 0x0f) == MILITARY_ZONE:
 				return false
 	visiting[index] = true
-	for offset in CARDINAL_OFFSETS:
+	for offset in RAISE_DEPENDENCY_OFFSETS:
 		var neighbor: Vector2i = point + offset
 		if not _point_is_in_bounds(neighbor):
 			continue
