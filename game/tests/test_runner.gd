@@ -3101,7 +3101,7 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 	_check(declined.changed_indices.is_empty(), "A declined proposal does not change map zones")
 
 	var air_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
-	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT"]:
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			air_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)),
 			"Air Force fixture clears %s" % chunk_id,
@@ -10022,6 +10022,155 @@ func _test_network_command(reference_root: String) -> void:
 		_check(city.building_id(x, 10) == 0x1e, "Road drag stores a connected road shape")
 	_check(Networks.undo(city, road).ok, "Road drag can be undone")
 	_check(city.funds() == 10000 and city.building_id(12, 10) == 0, "Road undo restores funds and tiles")
+
+	var road_connection_request := Networks.apply(
+		city, 6, 0, Vector2i(124, 40), Vector2i(127, 40)
+	)
+	_check(
+		not road_connection_request.ok
+		and road_connection_request.connection_selection_required
+		and road_connection_request.connection_anchor == Vector2i(127, 40)
+		and road_connection_request.connection_cost == 1000
+		and road_connection_request.dry_cost == 40
+		and city.funds() == 10000
+		and city.building_id(124, 40) == 0,
+		"A road dragged out of the map requests its recovered neighbor connection",
+	)
+	var canceled_road_connection := Networks.apply(
+		city,
+		6,
+		0,
+		Vector2i(124, 40),
+		Vector2i(127, 40),
+		Networks.BRIDGE_UNSELECTED,
+		Networks.CONNECTION_CANCELLED
+	)
+	_check(
+		canceled_road_connection.ok
+		and canceled_road_connection.connection_cancelled
+		and not canceled_road_connection.connection_built
+		and canceled_road_connection.cost == 40
+		and city.funds() == 9960
+		and city.text_overlay_id(127, 40) == 0,
+		"Canceling a road connection keeps and charges the dry route",
+	)
+	_check(
+		Networks.undo(city, canceled_road_connection).ok and city.funds() == 10000,
+		"Canceled road connection route can be undone",
+	)
+	var confirmed_road_connection := Networks.apply(
+		city,
+		6,
+		0,
+		Vector2i(124, 40),
+		Vector2i(127, 40),
+		Networks.BRIDGE_UNSELECTED,
+		Networks.CONNECTION_CONFIRMED
+	)
+	_check(
+		confirmed_road_connection.ok
+		and confirmed_road_connection.connection_built
+		and confirmed_road_connection.cost == 1040
+		and confirmed_road_connection.connection_cost == 1000
+		and city.funds() == 8960
+		and city.text_overlay_id(127, 40) == 0xfa
+		and city.building_id(127, 40) == 0x1e,
+		"A confirmed road connection stores XTXT 0xFA and faces out of the map",
+	)
+	_check(
+		Networks.undo(city, confirmed_road_connection).ok
+		and city.funds() == 10000
+		and city.text_overlay_id(127, 40) == 0,
+		"Road connection undo restores the route, label, and funds",
+	)
+
+	var rail_connection_request := Networks.apply(
+		city, 7, 0, Vector2i(3, 42), Vector2i(0, 42)
+	)
+	_check(
+		not rail_connection_request.ok
+		and rail_connection_request.connection_selection_required
+		and rail_connection_request.connection_anchor == Vector2i(0, 42)
+		and rail_connection_request.connection_cost == 1500
+		and rail_connection_request.dry_cost == 100,
+		"A rail route requests the recovered 1,500-dollar neighbor connection",
+	)
+	var confirmed_rail_connection := Networks.apply(
+		city,
+		7,
+		0,
+		Vector2i(3, 42),
+		Vector2i(0, 42),
+		Networks.BRIDGE_UNSELECTED,
+		Networks.CONNECTION_CONFIRMED
+	)
+	_check(
+		confirmed_rail_connection.ok
+		and confirmed_rail_connection.cost == 1600
+		and city.funds() == 8400
+		and city.text_overlay_id(0, 42) == 0xfa
+		and city.building_id(0, 42) == 0x2d,
+		"A confirmed rail connection stores its label and outward rail shape",
+	)
+	_check(
+		Networks.undo(city, confirmed_rail_connection).ok and city.funds() == 10000,
+		"Rail connection can be undone",
+	)
+
+	var tangent_edge_route := Networks.apply(
+		city, 6, 0, Vector2i(20, 0), Vector2i(24, 0)
+	)
+	_check(
+		tangent_edge_route.ok
+		and not tangent_edge_route.get("connection_selection_required", false)
+		and tangent_edge_route.cost == 50
+		and city.text_overlay_id(24, 0) == 0,
+		"A multi-tile route tangent to the edge does not request a connection",
+	)
+	_check(Networks.undo(city, tangent_edge_route).ok, "Tangent edge route can be undone")
+
+	var corner_connection_request := Networks.apply(
+		city, 6, 0, Vector2i(0, 0), Vector2i(0, 0)
+	)
+	_check(
+		not corner_connection_request.ok
+		and corner_connection_request.connection_selection_required,
+		"A single click at a corner requests a road connection",
+	)
+	var corner_connection := Networks.apply(
+		city,
+		6,
+		0,
+		Vector2i(0, 0),
+		Vector2i(0, 0),
+		Networks.BRIDGE_UNSELECTED,
+		Networks.CONNECTION_CONFIRMED
+	)
+	_check(
+		corner_connection.ok
+		and city.text_overlay_id(0, 0) == 0xfa
+		and city.building_id(0, 0) == 0x26,
+		"A corner marker adds both recovered outside-map connection directions",
+	)
+	_check(Networks.undo(city, corner_connection).ok, "Corner road connection can be undone")
+
+	_check(city.set_funds(1039), "Road connection fixture limits funds below its exact total")
+	var unaffordable_road_connection := Networks.apply(
+		city, 6, 0, Vector2i(124, 44), Vector2i(127, 44)
+	)
+	_check(
+		unaffordable_road_connection.ok
+		and unaffordable_road_connection.connection_error.contains("insufficient")
+		and unaffordable_road_connection.cost == 40
+		and city.funds() == 999
+		and city.text_overlay_id(127, 44) == 0,
+		"Funds below the connection total build only the charged road route",
+	)
+	_check(
+		Networks.undo(city, unaffordable_road_connection).ok,
+		"Unaffordable road connection route can be undone",
+	)
+	_check(city.set_funds(10000), "Road connection fixture restores funds")
 
 	_check(city.set_building_id(20, 20, 0x1d), "Rail crossover fixture places a road")
 	var rail_crossing := Networks.apply(city, 7, 0, Vector2i(20, 20), Vector2i(21, 20))

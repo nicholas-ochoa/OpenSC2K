@@ -200,6 +200,8 @@ var stadium_dialog: ConfirmationDialog
 var stadium_team_selector: OptionButton
 var stadium_name_input: LineEdit
 var pending_stadium_command: Dictionary = {}
+var network_connection_dialog: ConfirmationDialog
+var pending_network_connection: Dictionary = {}
 var highway_connection_dialog: ConfirmationDialog
 var pending_highway_connection: Dictionary = {}
 var tunnel_dialog: ConfirmationDialog
@@ -325,6 +327,7 @@ func _process(delta: float) -> void:
 		or bridge_dialog.visible
 		or tool_choice_dialog.visible
 		or stadium_dialog.visible
+		or network_connection_dialog.visible
 		or highway_connection_dialog.visible
 		or tunnel_dialog.visible
 		or (forest_protest_dialog != null and forest_protest_dialog.visible)
@@ -807,6 +810,19 @@ func _build_interface(toolbar_art: Image) -> void:
 	stadium_name_input.placeholder_text = "Team name"
 	stadium_fields.add_child(stadium_name_input)
 	add_child(stadium_dialog)
+
+	network_connection_dialog = ConfirmationDialog.new()
+	network_connection_dialog.title = "Neighbor Connection"
+	network_connection_dialog.dialog_text = (
+		"Build a road connection to a neighboring city for $1,000?"
+	)
+	network_connection_dialog.min_size = Vector2i(520, 210)
+	network_connection_dialog.exclusive = true
+	network_connection_dialog.get_ok_button().text = "Build Connection"
+	network_connection_dialog.get_cancel_button().text = "Keep Route"
+	network_connection_dialog.confirmed.connect(_confirm_network_connection)
+	network_connection_dialog.canceled.connect(_cancel_network_connection)
+	add_child(network_connection_dialog)
 
 	highway_connection_dialog = ConfirmationDialog.new()
 	highway_connection_dialog.title = "Neighbor Connection"
@@ -1851,6 +1867,9 @@ func _load_city(path: String) -> void:
 	pending_stadium_command.clear()
 	if stadium_dialog.visible:
 		stadium_dialog.hide()
+	pending_network_connection.clear()
+	if network_connection_dialog.visible:
+		network_connection_dialog.hide()
 	pending_highway_connection.clear()
 	if highway_connection_dialog.visible:
 		highway_connection_dialog.hide()
@@ -3128,7 +3147,8 @@ func _apply_network_selection(
 	finish: Vector2i,
 	bridge_type := Networks.BRIDGE_UNSELECTED,
 	group_index := -1,
-	subtool_index := -1
+	subtool_index := -1,
+	connection_choice := Networks.CONNECTION_UNSELECTED
 ) -> void:
 	if group_index < 0:
 		group_index = selected_group
@@ -3136,7 +3156,13 @@ func _apply_network_selection(
 		subtool_index = selected_subtool
 	var tool_name: String = Tools.tool(group_index, subtool_index).name
 	var network := Networks.apply(
-		city, group_index, subtool_index, start, finish, bridge_type
+		city,
+		group_index,
+		subtool_index,
+		start,
+		finish,
+		bridge_type,
+		connection_choice
 	)
 	if network.get("bridge_selection_required", false):
 		_open_bridge_dialog(start, finish, group_index, subtool_index, network)
@@ -3144,6 +3170,26 @@ func _apply_network_selection(
 	if network.get("cancelled", false):
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Bridge selection canceled. No action was taken."
+		return
+	if network.get("connection_selection_required", false):
+		pending_network_connection = {
+			"start": start,
+			"finish": finish,
+			"group_index": group_index,
+			"subtool_index": subtool_index,
+			"bridge_type": bridge_type,
+		}
+		network_connection_dialog.dialog_text = (
+			"Build a %s connection to a neighboring city for $%s?\n"
+			+ "The %d-tile route costs $%s and remains if you cancel."
+		) % [
+			tool_name.to_lower(),
+			_format_number(int(network.get("connection_cost", 0))),
+			network.get("dry_points", []).size(),
+			_format_number(int(network.get("dry_cost", 0))),
+		]
+		network_connection_dialog.get_cancel_button().text = "Keep %s" % tool_name
+		network_connection_dialog.popup_centered()
 		return
 	if not network.get("ok", false):
 		_show_error(
@@ -3172,16 +3218,52 @@ func _apply_network_selection(
 				int(network.get("bridge_span_length", 0)),
 				_format_number(int(network.get("cost", 0))),
 			]
+	elif network.get("connection_built", false):
+		status_label.text = "Built %d %s tiles and a neighboring-city connection for $%s." % [
+			dry_count,
+			tool_name,
+			_format_number(int(network.get("cost", 0))),
+		]
 	else:
 		status_label.text = "Built %d %s tiles for $%s." % [
 			dry_count, tool_name, _format_number(int(network.get("cost", 0)))
 		]
 		if network.get("bridge_cancelled", false):
 			status_label.text += " Bridge selection was canceled."
+		elif network.get("connection_cancelled", false):
+			status_label.text += " The neighbor connection was canceled."
 		elif not String(network.get("bridge_error", "")).is_empty():
 			status_label.text += " The bridge was not built: %s." % network.bridge_error
+		elif not String(network.get("connection_error", "")).is_empty():
+			status_label.text += " The connection was not offered because funds are too low."
 		elif network.get("stopped_early", false):
 			status_label.text += " The route stopped at an obstruction."
+
+
+func _confirm_network_connection() -> void:
+	_apply_pending_network_connection(Networks.CONNECTION_CONFIRMED)
+
+
+func _cancel_network_connection() -> void:
+	_apply_pending_network_connection(Networks.CONNECTION_CANCELLED)
+
+
+func _apply_pending_network_connection(connection_choice: int) -> void:
+	if pending_network_connection.is_empty():
+		return
+	var request := pending_network_connection.duplicate()
+	pending_network_connection.clear()
+	network_connection_dialog.hide()
+	selected_group = int(request.group_index)
+	selected_subtool = int(request.subtool_index)
+	_apply_network_selection(
+		request.start,
+		request.finish,
+		int(request.bridge_type),
+		int(request.group_index),
+		int(request.subtool_index),
+		connection_choice
+	)
 
 
 func _open_tool_choice_dialog(group_index: int) -> void:

@@ -111,20 +111,25 @@ static func apply(
 	var terrain: PackedByteArray = changed_payloads.XTER
 	var zones: PackedByteArray = changed_payloads.XZON
 	var flags: PackedByteArray = changed_payloads.XBIT
+	var text_overlays: PackedByteArray = changed_payloads.XTXT
 	var misc: PackedByteArray = changed_payloads.MISC
 
 	var start_tile := start_terrain + 0x3e
 	var finish_tile := ((start_terrain + 1) & 3) + FIRST_ENTRANCE
 	NetworkCommand._replace_building(buildings, zones, misc, start_index, start_tile)
 	_set_tunnel_level(altitude, start_index, 1)
-	_retile_adjacent_roads(buildings, terrain, zones, flags, misc, start)
+	_retile_adjacent_roads(
+		buildings, terrain, zones, flags, misc, start, text_overlays
+	)
 	for point_index in range(1, points.size() - 1):
 		var point := points[point_index]
 		var index := point.x * CityState.MAP_SIZE + point.y
 		_set_tunnel_level(altitude, index, city.land_altitude(point.x, point.y) - start_altitude + 1)
 	NetworkCommand._replace_building(buildings, zones, misc, finish_index, finish_tile)
 	_set_tunnel_level(altitude, finish_index, 1)
-	_retile_adjacent_roads(buildings, terrain, zones, flags, misc, finish)
+	_retile_adjacent_roads(
+		buildings, terrain, zones, flags, misc, finish, text_overlays
+	)
 	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
@@ -191,11 +196,19 @@ static func _retile_adjacent_roads(
 	zones: PackedByteArray,
 	flags: PackedByteArray,
 	misc: PackedByteArray,
-	point: Vector2i
+	point: Vector2i,
+	text_overlays := PackedByteArray()
 ) -> void:
 	for offset in DIRECTIONS:
 		var neighbor: Vector2i = point + offset
 		if neighbor.x >= 0 and neighbor.x < 128 and neighbor.y >= 0 and neighbor.y < 128:
 			NetworkCommand._retile_surface(
-				buildings, terrain, zones, flags, misc, neighbor, NetworkCommand.MODE_ROAD
+				buildings,
+				terrain,
+				zones,
+				flags,
+				misc,
+				neighbor,
+				NetworkCommand.MODE_ROAD,
+				text_overlays
 			)

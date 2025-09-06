@@ -24,6 +24,13 @@ const BRIDGE_ROAD_CAUSEWAY := 2
 const BRIDGE_ROAD_RAISING := 3
 const BRIDGE_ROAD_SUSPENSION := 4
 
+const CONNECTION_LABEL := 0xfa
+const CONNECTION_UNSELECTED := -1
+const CONNECTION_CANCELLED := 0
+const CONNECTION_CONFIRMED := 1
+const ROAD_CONNECTION_COST := 1000
+const RAIL_CONNECTION_COST := 1500
+
 const BRIDGE_NAMES := [
 	"Raised Wires",
 	"Rail Bridge",
@@ -132,7 +139,8 @@ static func apply(
 	subtool_index: int,
 	start: Vector2i,
 	finish: Vector2i,
-	bridge_type := BRIDGE_UNSELECTED
+	bridge_type := BRIDGE_UNSELECTED,
+	connection_choice := CONNECTION_UNSELECTED
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -150,6 +158,7 @@ static func apply(
 	var zones: PackedByteArray = changed_payloads.XZON
 	var underground: PackedByteArray = changed_payloads.XUND
 	var flags: PackedByteArray = changed_payloads.XBIT
+	var text_overlays: PackedByteArray = changed_payloads.XTXT
 	var misc: PackedByteArray = changed_payloads.MISC
 	var altitude: PackedByteArray = changed_payloads.ALTM
 	var mode := int(NETWORK_TOOLS[group_index * ToolCatalog.MAX_SLOTS_PER_GROUP + subtool_index])
@@ -236,17 +245,66 @@ static func apply(
 		else:
 			bridge_built = true
 	var cost := dry_cost + (bridge_cost if bridge_built else 0)
+	var connection_anchor: Vector2i = planned[-1] if not planned.is_empty() else start
+	var connection_cost := _connection_cost(mode)
+	var connection_available: bool = (
+		not bridge_plan.get("ok", false)
+		and not planned.is_empty()
+		and connection_cost > 0
+		and _is_connection_exit(planned, start, finish)
+		and text_overlays[
+			connection_anchor.x * CityState.MAP_SIZE + connection_anchor.y
+		] != CONNECTION_LABEL
+	)
+	var connection_affordable: bool = city.funds() - dry_cost >= connection_cost
+	if (
+		connection_available
+		and connection_affordable
+		and connection_choice == CONNECTION_UNSELECTED
+	):
+		return {
+			"ok": false,
+			"connection_selection_required": true,
+			"connection_anchor": connection_anchor,
+			"connection_cost": connection_cost,
+			"dry_cost": dry_cost,
+			"dry_points": planned,
+			"error": "neighbor connection confirmation is required",
+		}
+	if connection_choice == CONNECTION_CONFIRMED:
+		if not connection_available:
+			return {"ok": false, "error": "neighbor connection is not available"}
+		if not connection_affordable:
+			return {
+				"ok": false,
+				"error": "insufficient funds",
+				"cost": dry_cost + connection_cost,
+			}
+	var connection_built := connection_choice == CONNECTION_CONFIRMED
+	var connection_error := ""
+	if connection_available and not connection_affordable:
+		connection_error = "insufficient funds for the neighbor connection"
+	cost += connection_cost if connection_built else 0
 
 	for point_index in planned.size():
 		var point := planned[point_index]
 		var direction := _route_direction(planned, point_index)
 		match mode:
 			MODE_ROAD:
-				_place_surface(buildings, terrain, zones, flags, misc, point, MODE_ROAD, direction)
+				_place_surface(
+					buildings, terrain, zones, flags, misc, point, MODE_ROAD,
+					direction, text_overlays
+				)
 			MODE_RAIL:
-				_place_surface(buildings, terrain, zones, flags, misc, point, MODE_RAIL, direction)
+				_place_surface(
+					buildings, terrain, zones, flags, misc, point, MODE_RAIL,
+					direction, text_overlays
+				)
 			MODE_POWER:
-				_place_surface(buildings, terrain, zones, flags, misc, point, MODE_POWER, direction)
+				_place_surface(
+					buildings, terrain, zones, flags, misc, point, MODE_POWER,
+					direction, text_overlays
+				)
 			MODE_SUBWAY:
 				_place_underground(
 					underground, terrain, zones, flags, misc, point, false
@@ -267,10 +325,24 @@ static func apply(
 			bridge_plan,
 			selected_bridge
 		)
+	if connection_built:
+		text_overlays[
+			connection_anchor.x * CityState.MAP_SIZE + connection_anchor.y
+		] = CONNECTION_LABEL
+		_retile_surface_neighborhood(
+			buildings,
+			terrain,
+			zones,
+			flags,
+			misc,
+			connection_anchor,
+			mode,
+			text_overlays
+		)
 	_write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
-	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "MISC"]:
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not _apply_payloads(city, changed_ids, changed_payloads, old_payloads):
@@ -295,6 +367,13 @@ static func apply(
 		"bridge_span_length": bridge_plan.get("span_length", 0),
 		"bridge_cost": bridge_cost if bridge_built else 0,
 		"bridge_error": bridge_error,
+		"connection_anchor": connection_anchor,
+		"connection_built": connection_built,
+		"connection_cancelled": (
+			connection_available and connection_choice == CONNECTION_CANCELLED
+		),
+		"connection_cost": connection_cost if connection_built else 0,
+		"connection_error": connection_error,
 		"cost": cost,
 		"dry_cost": dry_cost,
 		"graded_tiles": graded_tiles,
@@ -416,6 +495,36 @@ static func _route_exit_direction(
 	if planned.size() > 1:
 		return _direction_index(planned[-1] - planned[-2])
 	return _primary_direction(start, finish)
+
+
+static func _connection_cost(mode: int) -> int:
+	if mode == MODE_ROAD:
+		return ROAD_CONNECTION_COST
+	if mode == MODE_RAIL:
+		return RAIL_CONNECTION_COST
+	return 0
+
+
+static func _is_connection_exit(
+	planned: Array[Vector2i], start: Vector2i, finish: Vector2i
+) -> bool:
+	if planned.is_empty():
+		return false
+	var endpoint: Vector2i = planned[-1]
+	if not _point_is_edge(endpoint):
+		return false
+	if start == endpoint:
+		return true
+	var direction := _route_exit_direction(planned, start, finish)
+	return not _point_is_in_bounds(endpoint + DIRECTIONS[direction])
+
+
+static func _point_is_edge(point: Vector2i) -> bool:
+	return point.x == 0 or point.x == 127 or point.y == 0 or point.y == 127
+
+
+static func _point_is_in_bounds(point: Vector2i) -> bool:
+	return point.x >= 0 and point.x < 128 and point.y >= 0 and point.y < 128
 
 
 static func _direction_index(offset: Vector2i) -> int:
@@ -705,7 +814,8 @@ static func _place_surface(
 	misc: PackedByteArray,
 	point: Vector2i,
 	mode: int,
-	direction: int
+	direction: int,
+	text_overlays := PackedByteArray()
 ) -> void:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	_grade_surface_terrain(terrain, flags, point, direction)
@@ -718,7 +828,9 @@ static func _place_surface(
 		flags[index] |= FLAG_POWERABLE
 	else:
 		zones[index] &= 0xf0
-	_retile_surface_neighborhood(buildings, terrain, zones, flags, misc, point, mode)
+	_retile_surface_neighborhood(
+		buildings, terrain, zones, flags, misc, point, mode, text_overlays
+	)
 
 
 static func _grade_surface_terrain(
@@ -759,13 +871,18 @@ static func _retile_surface_neighborhood(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	mode: int
+	mode: int,
+	text_overlays := PackedByteArray()
 ) -> void:
-	_retile_surface(buildings, terrain, zones, flags, misc, point, mode)
+	_retile_surface(
+		buildings, terrain, zones, flags, misc, point, mode, text_overlays
+	)
 	for offset in DIRECTIONS:
 		var near: Vector2i = point + offset
 		if near.x >= 0 and near.x < 128 and near.y >= 0 and near.y < 128:
-			_retile_surface(buildings, terrain, zones, flags, misc, near, mode)
+			_retile_surface(
+				buildings, terrain, zones, flags, misc, near, mode, text_overlays
+			)
 
 
 static func _retile_surface(
@@ -775,7 +892,8 @@ static func _retile_surface(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	mode: int
+	mode: int,
+	text_overlays := PackedByteArray()
 ) -> void:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	var current := int(buildings[index])
@@ -804,9 +922,15 @@ static func _retile_surface(
 			return
 
 	var connections := 0
+	var has_connection_label := (
+		text_overlays.size() == CityState.TILE_COUNT
+		and text_overlays[index] == CONNECTION_LABEL
+	)
 	for direction in 4:
 		var near: Vector2i = point + DIRECTIONS[direction]
 		if near.x < 0 or near.x >= 128 or near.y < 0 or near.y >= 128:
+			if has_connection_label:
+				connections |= 1 << direction
 			continue
 		var near_index := near.x * CityState.MAP_SIZE + near.y
 		var connects := false
@@ -916,6 +1040,7 @@ static func _city_payloads(city: CityState) -> Dictionary:
 		["XZON", CityState.TILE_COUNT],
 		["XUND", CityState.TILE_COUNT],
 		["XBIT", CityState.TILE_COUNT],
+		["XTXT", CityState.TILE_COUNT],
 		["MISC", 4800],
 	]:
 		var chunk := city.document.find_chunk(checked[0])

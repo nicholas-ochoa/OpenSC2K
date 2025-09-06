@@ -65,7 +65,14 @@ static func apply(
 	NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
 	zones[index] |= 0xf0
 	NetworkCommand._retile_surface(
-		buildings, terrain, zones, flags, misc, neighbor, NetworkCommand.MODE_RAIL
+		buildings,
+		terrain,
+		zones,
+		flags,
+		misc,
+		neighbor,
+		NetworkCommand.MODE_RAIL,
+		changed_payloads.XTXT
 	)
 
 	var changed_ids := PackedStringArray()

@@ -359,7 +359,9 @@ static func _demolish_point(
 		NetworkCommand._replace_building(buildings, zones, misc, index, 0)
 		if terrain[index] >= 0x30 or was_water:
 			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
-		_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, [point])
+		_retile_after_demolition(
+			buildings, terrain, zones, underground, flags, misc, [point], text_overlays
+		)
 		return {
 			"changed": true,
 			"indices": PackedInt32Array([index]),
@@ -398,7 +400,14 @@ static func _demolish_point(
 		)
 	if retile_neighbors:
 		_retile_after_demolition(
-			buildings, terrain, zones, underground, flags, misc, changed_points
+			buildings,
+			terrain,
+			zones,
+			underground,
+			flags,
+			misc,
+			changed_points,
+			text_overlays
 		)
 	if terrain[index] >= 0x30 or was_water:
 		if had_structure and was_water:
@@ -467,7 +476,7 @@ static func _demolish_underground_point(
 		effect_events = surface_result.get("effect_events", [])
 	BuildingCommand._replace_underground(underground, zones, misc, index, 0)
 	_retile_after_demolition(
-		buildings, terrain, zones, underground, flags, misc, [point]
+		buildings, terrain, zones, underground, flags, misc, [point], text_overlays
 	)
 	return {
 		"changed": true,
@@ -1079,7 +1088,8 @@ static func _retile_after_demolition(
 	underground: PackedByteArray,
 	flags: PackedByteArray,
 	misc: PackedByteArray,
-	points: Array[Vector2i]
+	points: Array[Vector2i],
+	text_overlays := PackedByteArray()
 ) -> void:
 	for point in points:
 		for offset in DIRECTIONS:
@@ -1087,13 +1097,34 @@ static func _retile_after_demolition(
 			if neighbor.x < 0 or neighbor.x >= 128 or neighbor.y < 0 or neighbor.y >= 128:
 				continue
 			NetworkCommand._retile_surface(
-				buildings, terrain, zones, flags, misc, neighbor, NetworkCommand.MODE_ROAD
+				buildings,
+				terrain,
+				zones,
+				flags,
+				misc,
+				neighbor,
+				NetworkCommand.MODE_ROAD,
+				text_overlays
 			)
 			NetworkCommand._retile_surface(
-				buildings, terrain, zones, flags, misc, neighbor, NetworkCommand.MODE_RAIL
+				buildings,
+				terrain,
+				zones,
+				flags,
+				misc,
+				neighbor,
+				NetworkCommand.MODE_RAIL,
+				text_overlays
 			)
 			NetworkCommand._retile_surface(
-				buildings, terrain, zones, flags, misc, neighbor, NetworkCommand.MODE_POWER
+				buildings,
+				terrain,
+				zones,
+				flags,
+				misc,
+				neighbor,
+				NetworkCommand.MODE_POWER,
+				text_overlays
 			)
 		BuildingCommand._retile_neighborhood(underground, terrain, point, false)
 		BuildingCommand._retile_neighborhood(underground, terrain, point, true)
