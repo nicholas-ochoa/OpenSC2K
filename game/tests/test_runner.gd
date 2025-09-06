@@ -11437,16 +11437,21 @@ func _test_terrain_command(reference_root: String) -> void:
 		"Terrain undo restores both networks, altitude, and random state",
 	)
 
-	_check(city.set_building_id(40, 40, 5), "Terrain tree fixture replaces the road with a tree")
-	_check(city.set_underground_id(40, 40, 0), "Terrain tree fixture removes its subway")
-	var tree_raise := TerrainTools.apply_path(
+	_check(city.set_building_id(40, 40, 5), "Terrain radioactivity fixture replaces the road")
+	_check(city.set_underground_id(40, 40, 0), "Terrain radioactivity fixture removes its subway")
+	var radioactivity_raise := TerrainTools.apply_path(
 		city, 0, 2, Vector2i(40, 40), [Vector2i(40, 40)]
 	)
 	_check(
-		tree_raise.ok and city.building_id(40, 40) == 5 and not tree_raise.random_used,
-		"Terrain retile preserves tile 5 trees without random use",
+		radioactivity_raise.ok
+		and city.building_id(40, 40) == 5
+		and not radioactivity_raise.random_used,
+		"Terrain retile preserves XBLD 0x05 radioactivity without random use",
 	)
-	_check(TerrainTools.undo(city, tree_raise).ok, "Tree terrain change can be undone")
+	_check(
+		TerrainTools.undo(city, radioactivity_raise).ok,
+		"Radioactivity terrain change can be undone",
+	)
 
 	for x in range(60, 62):
 		for y in range(60, 62):
