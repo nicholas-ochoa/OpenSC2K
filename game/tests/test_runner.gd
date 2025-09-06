@@ -10315,6 +10315,10 @@ func _test_hydro_command(reference_root: String) -> void:
 	_check(document.set_misc_i32(0x14, 1000), "Hydroelectric fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16384), "Hydroelectric fixture counts clear tiles")
 	_check(document.set_misc_u32(0x01f0 + 0xc7 * 4, 0), "Hydroelectric fixture clears hydro count")
+	_check(
+		document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 49999),
+		"Hydroelectric fixture sets population below the utility threshold",
+	)
 	var city := CityModel.from_document(document)
 	_check(city.set_terrain_id(20, 20, 0x2e), "Hydroelectric fixture places a waterfall")
 	_check(city.set_land_altitude(20, 20, 5), "Hydroelectric fixture sets waterfall altitude")
@@ -10323,12 +10327,36 @@ func _test_hydro_command(reference_root: String) -> void:
 	var command := Hydro.apply(city, 3, 3, Vector2i(20, 20), process_random)
 	_check(command.ok, "Hydroelectric placement succeeds: %s" % command.error)
 	_check(command.tile_id == 0xc7 and city.building_id(20, 20) == 0xc7, "Hydroelectric tile follows the recovered slope orientation")
-	_check(city.funds() == 600 and city.is_powerable(20, 20), "Hydroelectric placement charges cost and sets powerable")
+	_check(
+		city.funds() == 600
+		and city.is_powerable(20, 20)
+		and city.is_powered(20, 20)
+		and command.immediate_power_refresh,
+		"Low-population hydroelectric placement charges cost and refreshes power",
+	)
 	_check(city.zones[20 * 128 + 20] == 0xf0, "Hydroelectric placement sets all corner bits")
 	_check(command.overlay_id == 56 and city.label(56) == "Hydro Power", "Hydroelectric placement uses fixed XMIC record five")
 	_check(city.microsim(5).stat_1 == 1 and city.microsim(5).stat_2 == 20, "Hydroelectric placement increments fixed XMIC totals")
 	_check(Hydro.undo(city, command, process_random).ok, "Hydroelectric placement can be undone")
 	_check(city.building_id(20, 20) == 0 and city.funds() == 1000, "Hydroelectric undo restores the tile and funds")
+	_check(
+		document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 50000),
+		"Hydroelectric fixture sets the strict utility threshold",
+	)
+	var threshold_command := Hydro.apply(
+		city, 3, 3, Vector2i(20, 20), process_random
+	)
+	_check(
+		threshold_command.ok
+		and not threshold_command.immediate_power_refresh
+		and city.is_powerable(20, 20)
+		and not city.is_powered(20, 20),
+		"Population 50,000 does not run the hydroelectric power refresh",
+	)
+	_check(
+		Hydro.undo(city, threshold_command, process_random).ok,
+		"Threshold hydroelectric placement can be undone",
+	)
 	var wrong_terrain := Hydro.apply(city, 3, 3, Vector2i(21, 21), process_random)
 	_check(not wrong_terrain.ok and wrong_terrain.error.contains("waterfall"), "Hydroelectric placement requires waterfall terrain")
 

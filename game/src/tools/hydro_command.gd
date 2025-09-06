@@ -1,6 +1,8 @@
 class_name HydroCommand
 extends RefCounted
 
+const Power = preload("res://src/simulation/power_phase.gd")
+
 const GROUP_POWER := 3
 const SUBTOOL_HYDRO := 3
 const TERRAIN_WATERFALL_A := 0x2e
@@ -70,6 +72,23 @@ static func apply(
 	if not BuildingCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		process_random.state = process_random_state_before
 		return {"ok": false, "error": "cannot store hydroelectric changes"}
+	var immediate_power_refresh := false
+	if city.document.misc_u32(BuildingCommand.MISC_NORMAL_POPULATION) < 50000:
+		var power_result := Power.run(city, process_random)
+		if not power_result.ok:
+			BuildingCommand._restore_payloads(city, old_payloads)
+			process_random.state = process_random_state_before
+			return {"ok": false, "error": "cannot refresh power after hydroelectric placement"}
+		immediate_power_refresh = true
+		changed_payloads = BuildingCommand._city_payloads(city)
+		if changed_payloads.is_empty():
+			BuildingCommand._restore_payloads(city, old_payloads)
+			process_random.state = process_random_state_before
+			return {"ok": false, "error": "cannot capture hydroelectric power changes"}
+		changed_ids.clear()
+		for chunk_id in changed_payloads:
+			if changed_payloads[chunk_id] != old_payloads[chunk_id]:
+				changed_ids.append(chunk_id)
 	return {
 		"ok": true,
 		"command_type": "hydro",
@@ -84,6 +103,7 @@ static func apply(
 		"new_payloads": changed_payloads,
 		"process_random_state_before": process_random_state_before,
 		"process_random_state_after": process_random.state,
+		"immediate_power_refresh": immediate_power_refresh,
 		"error": "",
 	}
 
