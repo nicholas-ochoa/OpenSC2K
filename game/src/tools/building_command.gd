@@ -2,6 +2,8 @@ class_name BuildingCommand
 extends RefCounted
 
 const Availability = preload("res://src/tools/tool_availability.gd")
+const Power = preload("res://src/simulation/power_phase.gd")
+const Water = preload("res://src/simulation/water_phase.gd")
 
 const MISC_FUNDS := 0x0014
 const MISC_ARCOLOGY_POPULATION := 0x1020
@@ -357,6 +359,38 @@ static func apply(
 		process_random.state = process_random_state_before
 		return {"ok": false, "error": "cannot store building changes"}
 
+	var immediate_power_refresh := false
+	var immediate_water_refresh := false
+	if _read_u32_be(misc, MISC_NORMAL_POPULATION) < 50000:
+		var selected_index := city.index_of(selected.x, selected.y)
+		if selected_index >= 0 and city.tile_flags[selected_index] & FLAG_POWERABLE:
+			var power_result := Power.run(city, process_random)
+			if not power_result.ok:
+				_restore_payloads(city, old_payloads)
+				nuisance_random.state = random_state_before
+				process_random.state = process_random_state_before
+				return {"ok": false, "error": "cannot refresh power after placement"}
+			immediate_power_refresh = true
+		if selected_index >= 0 and city.tile_flags[selected_index] & FLAG_PIPED:
+			var water_result := Water.run(city)
+			if not water_result.ok:
+				_restore_payloads(city, old_payloads)
+				nuisance_random.state = random_state_before
+				process_random.state = process_random_state_before
+				return {"ok": false, "error": "cannot refresh water after placement"}
+			immediate_water_refresh = true
+	if immediate_power_refresh or immediate_water_refresh:
+		changed_payloads = _city_payloads(city)
+		if changed_payloads.is_empty():
+			_restore_payloads(city, old_payloads)
+			nuisance_random.state = random_state_before
+			process_random.state = process_random_state_before
+			return {"ok": false, "error": "cannot capture utility changes"}
+		changed_ids.clear()
+		for chunk_id in changed_payloads:
+			if changed_payloads[chunk_id] != old_payloads[chunk_id]:
+				changed_ids.append(chunk_id)
+
 	return {
 		"ok": true,
 		"command_type": "building",
@@ -374,6 +408,8 @@ static func apply(
 		"random_state_after": nuisance_random.state,
 		"process_random_state_before": process_random_state_before,
 		"process_random_state_after": process_random.state,
+		"immediate_power_refresh": immediate_power_refresh,
+		"immediate_water_refresh": immediate_water_refresh,
 		"stadium_team_selection_required": tile_id == STADIUM and overlay_id != 0,
 		"error": "",
 	}
@@ -967,6 +1003,17 @@ static func _duplicate_payloads(payloads: Dictionary) -> Dictionary:
 	for chunk_id in payloads:
 		result[chunk_id] = payloads[chunk_id].duplicate()
 	return result
+
+
+static func _restore_payloads(city: CityState, old_payloads: Dictionary) -> bool:
+	var current_payloads := _city_payloads(city)
+	if current_payloads.is_empty():
+		return false
+	var changed_ids := PackedStringArray()
+	for chunk_id in old_payloads:
+		if current_payloads[chunk_id] != old_payloads[chunk_id]:
+			changed_ids.append(chunk_id)
+	return _apply_payloads(city, changed_ids, old_payloads, current_payloads)
 
 
 static func _apply_payloads(

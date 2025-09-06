@@ -9655,6 +9655,110 @@ func _test_building_command(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 	var random := GameRandom.new(1)
 	var process_random := Random.new(1)
+
+	var utility_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			utility_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT, 0)
+			),
+			"Immediate utility fixture clears %s" % chunk_id,
+		)
+	_check(
+		utility_document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)),
+		"Immediate utility fixture clears XLAB",
+	)
+	_check(
+		utility_document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)),
+		"Immediate utility fixture clears XMIC",
+	)
+	_check(utility_document.set_misc_i32(0x14, 5000), "Immediate utility fixture sets funds")
+	_check(
+		utility_document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 49999),
+		"Immediate utility fixture sets population below the threshold",
+	)
+	_check(
+		utility_document.set_misc_u32(Water.MISC_TREATMENT_SUFFICIENT, 0),
+		"Immediate utility fixture clears treatment state",
+	)
+	var utility_city := CityModel.from_document(utility_document)
+	_check(
+		utility_city.set_tile_flag(10, 10, 0x40, true)
+		and utility_city.set_tile_flag(10, 10, 0x10, true),
+		"Immediate utility fixture stores stale utility flags",
+	)
+	var utility_random := GameRandom.new(0x2211)
+	var utility_process_random := Random.new(0x3344)
+	var low_population_station := Buildings.apply(
+		utility_city,
+		13,
+		0,
+		Vector2i(20, 20),
+		utility_random,
+		utility_process_random,
+	)
+	_check(
+		low_population_station.ok
+		and low_population_station.immediate_power_refresh
+		and low_population_station.immediate_water_refresh,
+		"A low-population building immediately refreshes power and water",
+	)
+	_check(
+		not utility_city.is_powered(20, 20)
+		and utility_city.is_powerable(20, 20)
+		and utility_city.is_piped(20, 20),
+		"Immediate power removes the new isolated building's initial powered flag",
+	)
+	_check(
+		not utility_city.is_powered(10, 10)
+		and not utility_city.is_watered(10, 10)
+		and utility_document.misc_u32(Water.MISC_TREATMENT_SUFFICIENT) == 1,
+		"Immediate utility phases update existing flags and saved treatment state",
+	)
+	_check(
+		Buildings.undo(
+			utility_city,
+			low_population_station,
+			utility_random,
+			utility_process_random,
+		).ok,
+		"Immediate utility changes can be undone with their building",
+	)
+	_check(
+		utility_city.is_powered(10, 10)
+		and utility_city.is_watered(10, 10)
+		and utility_document.misc_u32(Water.MISC_TREATMENT_SUFFICIENT) == 0,
+		"Building undo restores the utility phase changes",
+	)
+	_check(
+		utility_document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 50000),
+		"Immediate utility fixture selects the strict threshold",
+	)
+	var threshold_station := Buildings.apply(
+		utility_city,
+		13,
+		0,
+		Vector2i(20, 20),
+		utility_random,
+		utility_process_random,
+	)
+	_check(
+		threshold_station.ok
+		and not threshold_station.immediate_power_refresh
+		and not threshold_station.immediate_water_refresh
+		and utility_city.is_powered(20, 20),
+		"Population 50,000 does not run the strict below-threshold refresh",
+	)
+	_check(
+		Buildings.undo(
+			utility_city,
+			threshold_station,
+			utility_random,
+			utility_process_random,
+		).ok,
+		"Threshold building placement can be undone",
+	)
+
 	var coal := Buildings.apply(city, 3, 2, Vector2i(20, 20), random, process_random)
 	_check(coal.ok, "Coal plant placement succeeds: %s" % coal.error)
 	_check(coal.site == Rect2i(19, 19, 4, 4), "Coal plant uses the original asymmetric footprint")
