@@ -69,6 +69,7 @@ const NEWS_NAMES := {
 	0x24: "Power plant report",
 	0x26: "Education report",
 	39: "Bridge collapse",
+	0x28: "Forest protest",
 	0x29: "New ordinance",
 	0x3d: "Low crime",
 	0x3e: "Low traffic",
@@ -111,6 +112,8 @@ const BUDGET_NAMES := [
 const MAP_DISPLAY_MODES := ["city", "underground", "structures", "zones", "power", "water"]
 const LIBRARY_TEXT_IDS := [3000, 3001, 3002, 3003]
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
+const FOREST_PROTEST_BITMAP_ID := 403
+const FOREST_PROTEST_STRING_ID := 236
 
 var city: CityState
 var current_document: Sc2File
@@ -122,6 +125,8 @@ var small_medium_sprites: Sc2SpriteArchive
 var overlay_mode := "city"
 var reference_root := ""
 var original_query_strings: Dictionary = {}
+var forest_protest_text := "Citizens are protesting forest demolition."
+var forest_protest_image: Image
 var library_texts: Dictionary = {}
 var newspaper_data: DataUsaResource
 var newspaper_session_seed := 0
@@ -216,6 +221,8 @@ var newspaper_dialog: AcceptDialog
 var newspaper_table: Tree
 var newspaper_article_heading: Label
 var newspaper_article_view: TextEdit
+var forest_protest_dialog: AcceptDialog
+var forest_protest_message: Label
 var library_windows: Array[PanelContainer] = []
 var library_text_views: Array[TextEdit] = []
 var budget_dialog: ConfirmationDialog
@@ -244,11 +251,16 @@ func _ready() -> void:
 		reference_root.path_join("DATA/DATA_USA.DAT"),
 		reference_root.path_join("DATA/DATA_USA.IDX"),
 	)
+	var string_resource_ids := Queries.resource_string_ids()
+	string_resource_ids.append(FOREST_PROTEST_STRING_ID)
 	var string_resources := PeString.load_ids(
-		reference_root.path_join("SIMCITY.EXE"), Queries.resource_string_ids()
+		reference_root.path_join("SIMCITY.EXE"), string_resource_ids
 	)
 	if string_resources.ok:
 		original_query_strings = string_resources.strings
+		forest_protest_text = string_resources.strings.get(
+			FOREST_PROTEST_STRING_ID, forest_protest_text
+		)
 	var library_resources := TextUsa.load_ids(
 		reference_root.path_join("DATA/TEXT_USA.DAT"),
 		reference_root.path_join("DATA/TEXT_USA.IDX"),
@@ -259,6 +271,11 @@ func _ready() -> void:
 	var toolbar_resource := PeBitmap.load_numeric(
 		reference_root.path_join("SIMCITY.EXE"), 2
 	)
+	var loaded_forest_protest := Image.load_from_file(
+		reference_root.path_join("BITMAPS/%d.BMP" % FOREST_PROTEST_BITMAP_ID)
+	)
+	if loaded_forest_protest != null and not loaded_forest_protest.is_empty():
+		forest_protest_image = loaded_forest_protest
 	var toolbar_art: Image = toolbar_resource.get("image") as Image if toolbar_resource.ok else null
 	_build_interface(toolbar_art)
 	palette = Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
@@ -310,6 +327,7 @@ func _process(delta: float) -> void:
 		or stadium_dialog.visible
 		or highway_connection_dialog.visible
 		or tunnel_dialog.visible
+		or (forest_protest_dialog != null and forest_protest_dialog.visible)
 		or (query_overlay != null and query_overlay.visible)
 		or bond_dialog.visible
 		or military_dialog.visible
@@ -883,6 +901,44 @@ func _build_interface(toolbar_art: Image) -> void:
 	newspaper_content.add_child(newspaper_layout)
 	newspaper_content.move_child(newspaper_layout, 0)
 	add_child(newspaper_dialog)
+	forest_protest_dialog = AcceptDialog.new()
+	forest_protest_dialog.name = "ForestProtestDialog"
+	forest_protest_dialog.title = "Forest Protest"
+	forest_protest_dialog.min_size = Vector2i(520, 230)
+	forest_protest_dialog.exclusive = true
+	forest_protest_dialog.get_ok_button().text = "OK"
+	forest_protest_dialog.get_label().visible = false
+	var protest_layout := HBoxContainer.new()
+	protest_layout.custom_minimum_size = Vector2(470, 130)
+	protest_layout.add_theme_constant_override("separation", 14)
+	var protest_picture_frame := PanelContainer.new()
+	protest_picture_frame.custom_minimum_size = Vector2(171, 116)
+	protest_picture_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	protest_picture_frame.add_theme_stylebox_override(
+		"panel", _classic_box(Color("ffffff"), Color("808080"), 2)
+	)
+	protest_layout.add_child(protest_picture_frame)
+	var protest_picture := TextureRect.new()
+	protest_picture.name = "ForestProtestImage"
+	protest_picture.custom_minimum_size = Vector2(155, 100)
+	protest_picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	protest_picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	protest_picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	if forest_protest_image != null:
+		protest_picture.texture = ImageTexture.create_from_image(forest_protest_image)
+	protest_picture_frame.add_child(protest_picture)
+	forest_protest_message = Label.new()
+	forest_protest_message.name = "ForestProtestMessage"
+	forest_protest_message.text = forest_protest_text
+	forest_protest_message.custom_minimum_size = Vector2(280, 100)
+	forest_protest_message.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	forest_protest_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	forest_protest_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	protest_layout.add_child(forest_protest_message)
+	var protest_content := forest_protest_dialog.get_label().get_parent()
+	protest_content.add_child(protest_layout)
+	protest_content.move_child(protest_layout, 0)
+	add_child(forest_protest_dialog)
 	for index in LIBRARY_TEXT_IDS.size():
 		var library_window := PanelContainer.new()
 		library_window.name = "LibraryText%d" % LIBRARY_TEXT_IDS[index]
@@ -2482,6 +2538,13 @@ func _show_news_items(news_items: Array) -> void:
 		news_label.text = "Latest Reports\n" + "\n".join(recent_news)
 
 
+func _show_forest_protest() -> void:
+	if forest_protest_dialog == null:
+		return
+	forest_protest_message.text = forest_protest_text
+	forest_protest_dialog.popup_centered()
+
+
 func _refresh_saved_news_summary() -> void:
 	if city == null or current_document == null:
 		news_label.text = "Latest Reports\nNo reports."
@@ -2931,6 +2994,9 @@ func _apply_map_selection(
 		_refresh_details()
 		_refresh_map(false)
 		_show_effect_events(demolition.effect_events, demolition.sound_events)
+		if demolition.easter_events > 0:
+			_refresh_saved_news_summary()
+			_show_forest_protest()
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Applied %d demolition actions for $%s." % [
 			demolition.action_count, _format_number(demolition.cost)
@@ -2938,7 +3004,10 @@ func _apply_map_selection(
 		if demolition.skipped_specialized > 0:
 			status_label.text += " %d specialized structures were not changed." % demolition.skipped_specialized
 		if demolition.easter_events > 0:
-			status_label.text += " A hidden tree event stopped demolition on %d tiles." % demolition.easter_events
+			status_label.text += " A forest protest kept %d %s." % [
+				demolition.easter_events,
+				"tree" if demolition.easter_events == 1 else "trees",
+			]
 		return
 	if TerrainTools.supports_tool(selected_group, selected_subtool):
 		var terrain_change := TerrainTools.apply_path(
@@ -3502,6 +3571,10 @@ func _undo_last_edit() -> void:
 	if city == null or last_edit_command.is_empty():
 		return
 	var command_type: String = last_edit_command.get("command_type", "")
+	var undo_forest_protest := (
+		command_type == "demolish"
+		and int(last_edit_command.get("easter_events", 0)) > 0
+	)
 	var result: Dictionary
 	if command_type == "sign":
 		result = Signs.undo(city, last_edit_command)
@@ -3541,6 +3614,8 @@ func _undo_last_edit() -> void:
 	undo_button.disabled = true
 	_refresh_details()
 	_refresh_map(false)
+	if undo_forest_protest:
+		_refresh_saved_news_summary()
 	status_label.remove_theme_color_override("font_color")
 	if command_type == "sign":
 		status_label.text = "Restored the previous sign."

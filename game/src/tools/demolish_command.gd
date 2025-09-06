@@ -1,6 +1,8 @@
 class_name DemolishCommand
 extends RefCounted
 
+const NewsQueue = preload("res://src/simulation/news_queue.gd")
+
 const GROUP_BULLDOZER := 0
 const SUBTOOL_DEMOLISH := 0
 const RADIOACTIVITY := 0x05
@@ -30,6 +32,8 @@ const SUBWAY_STATION := 0xe9
 const TUNNEL_MASK := 0x7c00
 const BRIDGE_DEBRIS_SPRITE := 1392
 const SOUND_EXPLODE := 504
+const SOUND_FOREST_PROTEST := 512
+const NEWS_FOREST_PROTEST := 0x28
 const MISC_GRANTED_REWARDS := 0x0078
 const REWARD_BIT_BY_TILE := {
 	0xf3: 0,
@@ -139,6 +143,7 @@ static func apply_path(
 	var skipped_specialized := 0
 	var skipped_insufficient := 0
 	var easter_events := 0
+	var news_items: Array[Dictionary] = []
 	var effect_events: Array[Dictionary] = []
 	var sound_events: Array[int] = []
 	var next_effect_frame := 0
@@ -192,6 +197,12 @@ static func apply_path(
 		total_cost += cost_per_action
 		if result.get("easter_event", false):
 			easter_events += 1
+			var news_result := NewsQueue.insert(misc, NEWS_FOREST_PROTEST, 0)
+			if not news_result.ok:
+				random.state = random_state_before
+				return {"ok": false, "error": "cannot store forest protest news"}
+			news_items.append({"type": NEWS_FOREST_PROTEST, "argument": 0})
+			sound_events.append(SOUND_FOREST_PROTEST)
 		var result_effects: Array = result.get("effect_events", [])
 		next_effect_frame = append_effect_sequence(
 			effect_events, result_effects, next_effect_frame
@@ -231,6 +242,8 @@ static func apply_path(
 		"skipped_specialized": skipped_specialized,
 		"skipped_insufficient": skipped_insufficient,
 		"easter_events": easter_events,
+		"news_items": news_items,
+		"news_queue_updated": easter_events > 0,
 		"effect_events": effect_events,
 		"sound_events": sound_events,
 		"changed_ids": changed_ids,

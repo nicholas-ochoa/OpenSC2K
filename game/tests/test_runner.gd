@@ -436,15 +436,32 @@ func _test_sprite_archives(reference_root: String) -> void:
 			toolbar.image.get_size() == Vector2i(865, 23),
 			"Windows toolbar bitmap resource has its confirmed size",
 		)
+	var protest_bitmap := Image.load_from_file(
+		reference_root.path_join("BITMAPS/403.BMP")
+	)
+	_check(
+		protest_bitmap != null and not protest_bitmap.is_empty(),
+		"Forest protest bitmap loads",
+	)
+	if protest_bitmap != null and not protest_bitmap.is_empty():
+		_check(
+			protest_bitmap.get_size() == Vector2i(155, 100),
+			"Forest protest bitmap has its executable size",
+		)
 	_check(
 		not PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 0xffff).ok,
 		"Windows bitmap loader rejects a missing numeric resource",
 	)
-	var string_ids := PackedInt32Array([786, 790, 910, 982])
+	var string_ids := PackedInt32Array([236, 786, 790, 910, 982])
 	var strings := PeString.load_ids(reference_root.path_join("SIMCITY.EXE"), string_ids)
 	_check(strings.ok, "Windows string resources load: %s" % strings.error)
 	if strings.ok:
 		_check(strings.strings.size() == string_ids.size(), "Windows string loader returns each requested ID")
+		_check(
+			strings.strings[236].begins_with("Citizens")
+			and strings.strings[236].contains("forest"),
+			"Windows string loader reads the forest protest notice",
+		)
 		_check(strings.strings[910] == "#T", "Windows string loader decodes UTF-16 placeholders")
 	_check(
 		not PeString.load_ids(
@@ -11144,6 +11161,50 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(rubble.ok and simple_city.building_id(10, 10) == 0, "Demolish clears rubble")
 	_check(rubble.cost == 1 and simple_city.funds() == 9, "Rubble demolition charges one dollar")
 	_check(Demolish.undo(simple_city, rubble, demolition_random).ok, "Rubble demolition can be undone")
+	for story_slot in NewsQueue.QUEUE_COUNT:
+		for story_field in NewsQueue.STORY_FIELD_COUNT:
+			_check(
+				simple_document.set_misc_u32(
+					NewsQueue.STORY_OFFSET
+					+ story_slot * NewsQueue.STORY_RECORD_SIZE
+					+ story_field * 4,
+					0,
+				),
+				"Forest protest fixture clears a newspaper story field",
+			)
+	_check(simple_city.set_building_id(10, 10, 0x06), "Forest protest fixture places a tree")
+	var forest_random := Random.new(19)
+	var forest_protest := Demolish.apply_path(
+		simple_city, 0, 0, [Vector2i(10, 10)], forest_random
+	)
+	var protest_story := NewsQueue.story_record(
+		simple_document.find_chunk("MISC").decoded_payload, 0
+	)
+	_check(
+		forest_protest.ok
+		and forest_protest.easter_events == 1
+		and forest_protest.sound_events == [Demolish.SOUND_FOREST_PROTEST]
+		and forest_protest.news_queue_updated
+		and forest_protest.news_items == [{"type": 0x28, "argument": 0}],
+		"The hidden tree branch reports its protest sound and newspaper story",
+	)
+	_check(
+		simple_city.building_id(10, 10) == 0x06
+		and simple_city.funds() == 9
+		and protest_story.type == 0x28
+		and protest_story.priority == NewsQueue.STORY_PRIORITIES[0x28],
+		"The forest protest charges one dollar, keeps the tree, and updates MISC",
+	)
+	_check(
+		Demolish.undo(simple_city, forest_protest, forest_random).ok
+		and simple_city.building_id(10, 10) == 0x06
+		and simple_city.funds() == 10
+		and NewsQueue.story_record(
+			simple_document.find_chunk("MISC").decoded_payload, 0
+		).type == 0
+		and forest_random.state == 19,
+		"Forest protest undo restores funds, news, and process random state",
+	)
 	_check(simple_city.set_zone_id(10, 10, 7), "Protected demolish fixture sets military zone")
 	var military := Demolish.apply_path(simple_city, 0, 0, [Vector2i(10, 10)], demolition_random)
 	_check(not military.ok and military.error.contains("eligible"), "Demolish rejects military zones")
