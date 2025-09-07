@@ -1985,6 +1985,7 @@ func _select_speed(index: int) -> void:
 func _refresh_map(force := true) -> void:
 	if city == null or palette == null:
 		return
+	map_view.set_signs_visible(overlay_mode == "city")
 	var image: Image
 	if overlay_mode == "city" or overlay_mode == "underground":
 		if force:

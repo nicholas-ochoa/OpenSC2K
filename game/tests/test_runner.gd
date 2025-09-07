@@ -1303,6 +1303,49 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	_check(not map_control.center_on_tile(Vector2i(-1, 0)), "Center tool rejects an invalid tile")
 	_check(not map_control.is_left_drag_active(), "Map control starts without an active left drag")
+	var small_sign := MapControl.sign_layout(
+		Vector2(100, 80), 40.0, IsometricRenderer.VIEW_SMALL
+	)
+	var medium_sign := MapControl.sign_layout(
+		Vector2(100, 80), 40.0, IsometricRenderer.VIEW_MEDIUM
+	)
+	var large_sign := MapControl.sign_layout(
+		Vector2(100, 80), 40.0, IsometricRenderer.VIEW_LARGE
+	)
+	var doubled_sign := MapControl.sign_layout(
+		Vector2(200, 160), 80.0, IsometricRenderer.VIEW_LARGE, 2.0
+	)
+	_check(
+		small_sign.panel == Rect2(72, 43, 56, 17)
+		and small_sign.post == Rect2(98, 60, 4, 20),
+		"Small-view sign uses the recovered panel and post geometry",
+	)
+	_check(
+		medium_sign.panel == Rect2(72, 26, 56, 19)
+		and medium_sign.post == Rect2(98, 45, 4, 35),
+		"Medium-view sign uses the recovered panel and post geometry",
+	)
+	_check(
+		large_sign.panel == Rect2(72, 9, 56, 21)
+		and large_sign.post == Rect2(98, 30, 4, 50),
+		"Large-view sign uses the recovered panel and post geometry",
+	)
+	_check(
+		doubled_sign.panel == Rect2(144, 18, 112, 42)
+		and doubled_sign.post == Rect2(196, 60, 8, 100),
+		"Extra-large sign doubles the native large-view geometry",
+	)
+	_check(
+		MapControl.sign_view_index(0.25) == IsometricRenderer.VIEW_SMALL
+		and MapControl.sign_view_index(0.5) == IsometricRenderer.VIEW_MEDIUM
+		and MapControl.sign_view_index(1.0) == IsometricRenderer.VIEW_LARGE
+		and MapControl.sign_view_index(2.0) == IsometricRenderer.VIEW_LARGE
+		and MapControl.sign_display_multiplier(2.0) == 2.0,
+		"Sign view selection follows all four city zoom levels",
+	)
+	map_control.set_signs_visible(false)
+	_check(not map_control.signs_visible, "Data views can hide surface signs")
+	map_control.set_signs_visible(true)
 	map_control.selection_start = center_tile
 	_check(map_control.is_left_drag_active(), "Map control reports an active left drag")
 	map_control.selection_end = center_tile + Vector2i(2, 1)

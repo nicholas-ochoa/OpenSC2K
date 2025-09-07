@@ -16,6 +16,13 @@ const BuildingTool = preload("res://src/tools/building_command.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const ZOOM_LEVELS := [0.25, 0.5, 1.0, 2.0]
 const DEFAULT_ZOOM_INDEX := 2
+const SIGN_FONT_HEIGHTS := [12, 14, 16]
+const SIGN_PANEL_FILL := Color("9f9f9f")
+const SIGN_POST_FILL := Color("bbbbbb")
+const SIGN_EDGE_LIGHT := Color("e3e3e3")
+const SIGN_EDGE_MIDDLE := Color("838383")
+const SIGN_EDGE_DARK := Color("575757")
+const SIGN_TEXT_COLOR := Color("000030")
 const PALETTE_CYCLE_SHADER := """
 shader_type canvas_item;
 
@@ -49,6 +56,7 @@ var city_texture: Texture2D
 var palette_index_texture: Texture2D
 var animated_palette_texture: Texture2D
 var base_palette_lookup_all := false
+var signs_visible := true
 var edit_enabled := false
 var selection_mode := "rectangle"
 var point_footprint_area := 1
@@ -73,6 +81,7 @@ var _base_material: ShaderMaterial
 var _dynamic_canvas: CityDynamicSpriteCanvas
 var _dynamic_material: ShaderMaterial
 var _palette_shader: Shader
+var _sign_font: SystemFont
 
 
 func _ready() -> void:
@@ -105,6 +114,13 @@ func set_city_view(
 func set_animated_palette(texture: Texture2D) -> void:
 	animated_palette_texture = texture
 	_sync_base_material()
+
+
+func set_signs_visible(value: bool) -> void:
+	if signs_visible == value:
+		return
+	signs_visible = value
+	queue_redraw()
 
 
 func set_edit_enabled(
@@ -408,23 +424,128 @@ func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
 
 
 func _draw_signs(scale: float, offset: Vector2) -> void:
-	if city == null or city_texture.get_width() <= CityState.MAP_SIZE:
+	if not signs_visible or city == null or city_texture.get_width() <= CityState.MAP_SIZE:
 		return
-	var font := get_theme_default_font()
-	for index in CityState.TILE_COUNT:
-		var label_id := city.text_overlays[index]
-		if label_id < 1 or label_id > 50:
-			continue
-		var text := city.label(label_id)
-		if text.is_empty():
-			continue
-		var x := int(index / CityState.MAP_SIZE)
-		var y := index % CityState.MAP_SIZE
-		var polygon := Renderer.tile_polygon(city, x, y)
-		var position := offset + (polygon[0] + polygon[2]) * 0.5 * scale
-		draw_circle(position, 4.0, Color("fff06a"))
-		if zoom_factor >= 2.0:
-			draw_string(font, position + Vector2(7, 4), text, HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+	var view_index := sign_view_index(zoom_factor)
+	var display_multiplier := sign_display_multiplier(zoom_factor)
+	var font := _get_sign_font()
+	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
+	for diagonal in CityState.MAP_SIZE * 2 - 1:
+		for y in diagonal + 1:
+			var x := diagonal - y
+			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+				continue
+			var label_id := city.text_overlay_id(x, y)
+			if label_id < 1 or label_id > 50:
+				continue
+			var label_text := city.label(label_id)
+			if label_text.is_empty():
+				continue
+			var polygon := Renderer.tile_polygon(city, x, y)
+			if polygon.size() != 4:
+				continue
+			# every native painter moves from the tile's top point by the
+			# equivalent of 16 pixels right and 8 pixels up in large space
+			var anchor := offset + (polygon[0] + Vector2(0, -8)) * scale
+			var text_width := font.get_string_size(
+				label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+			).x
+			var drawing_anchor := anchor
+			if display_multiplier > 1.0:
+				drawing_anchor = Vector2.ZERO
+				draw_set_transform(
+					anchor, 0.0, Vector2(display_multiplier, display_multiplier)
+				)
+			var layout := sign_layout(drawing_anchor, text_width, view_index)
+			_draw_raised_sign_part(layout.panel, SIGN_PANEL_FILL, 1.0)
+			var text_position := Vector2(
+				layout.panel.position.x + 4.0,
+				layout.panel.position.y + 2.0 + font.get_ascent(font_size),
+			)
+			draw_string(
+				font, text_position, label_text, HORIZONTAL_ALIGNMENT_LEFT, -1,
+				font_size, SIGN_TEXT_COLOR,
+			)
+			_draw_raised_sign_part(layout.post, SIGN_POST_FILL, 1.0)
+			if display_multiplier > 1.0:
+				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
+
+static func sign_view_index(zoom: float) -> int:
+	if zoom <= 0.25:
+		return Renderer.VIEW_SMALL
+	if zoom <= 0.5:
+		return Renderer.VIEW_MEDIUM
+	return Renderer.VIEW_LARGE
+
+
+static func sign_display_multiplier(zoom: float) -> float:
+	return 2.0 if zoom > 1.0 else 1.0
+
+
+static func sign_layout(
+	anchor: Vector2, text_width: float, view_index: int, display_multiplier := 1.0
+) -> Dictionary:
+	if view_index < Renderer.VIEW_SMALL or view_index > Renderer.VIEW_LARGE:
+		return {}
+	var multiplier: float = maxf(1.0, display_multiplier)
+	var width: float = roundf(text_width)
+	var font_height: float = float(SIGN_FONT_HEIGHTS[view_index]) * multiplier
+	var panel_bottom: float = (
+		anchor.y - (15.0 * view_index + 20.0) * multiplier
+	)
+	var panel_top: float = panel_bottom - font_height - 5.0 * multiplier
+	var panel_left: float = anchor.x - floorf(width * 0.5) - 8.0 * multiplier
+	var panel_right: float = panel_left + width + 16.0 * multiplier
+	return {
+		"panel": Rect2(
+			Vector2(panel_left, panel_top),
+			Vector2(panel_right - panel_left, panel_bottom - panel_top),
+		),
+		"post": Rect2(
+			Vector2(anchor.x - 2.0 * multiplier, panel_bottom),
+			Vector2(4.0 * multiplier, anchor.y - panel_bottom),
+		),
+	}
+
+
+func _get_sign_font() -> Font:
+	if _sign_font == null:
+		_sign_font = SystemFont.new()
+		# the executable asks for "ariel", windows substitutes arial
+		_sign_font.font_names = PackedStringArray(["Arial"])
+		_sign_font.font_weight = 600
+	return _sign_font
+
+
+func _draw_raised_sign_part(rect: Rect2, fill: Color, multiplier: float) -> void:
+	var edge := maxf(1.0, multiplier)
+	var left := rect.position.x
+	var top := rect.position.y
+	var right := rect.end.x
+	var bottom := rect.end.y
+	draw_rect(rect, fill)
+	draw_polyline(
+		PackedVector2Array([
+			Vector2(right - 2.0 * edge, top + edge),
+			Vector2(left + edge, top + edge),
+			Vector2(left + edge, bottom - 2.0 * edge),
+		]),
+		SIGN_EDGE_LIGHT, 2.0 * edge, false,
+	)
+	draw_polyline(
+		PackedVector2Array([
+			Vector2(left + edge, bottom - 2.0 * edge),
+			Vector2(right - 2.0 * edge, bottom - 2.0 * edge),
+			Vector2(right - 2.0 * edge, top + edge),
+		]),
+		SIGN_EDGE_DARK, 2.0 * edge, false,
+	)
+	draw_line(
+		Vector2(left, bottom - edge),
+		Vector2(left + edge, bottom - 2.0 * edge),
+		SIGN_EDGE_MIDDLE, edge, false,
+	)
 
 
 func _gui_input(event: InputEvent) -> void:
