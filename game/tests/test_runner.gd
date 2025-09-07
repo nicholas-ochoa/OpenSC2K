@@ -548,6 +548,23 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and IsometricRenderer.shadow_palette_index(0x73) == 0x73,
 		"Indexed aircraft shadows use the recovered palette remap",
 	)
+	var sign_palette_indices := PackedInt32Array([0x9b, 0x9e, 0xa0, 0xa2, 0xa5, 0x6a])
+	var sign_colors_ignore_shadow := true
+	for palette_index in sign_palette_indices:
+		if IsometricRenderer.shadow_palette_index(palette_index) != palette_index:
+			sign_colors_ignore_shadow = false
+	_check(
+		sign_colors_ignore_shadow,
+		"Aircraft shadows do not remap the recovered city-sign palette entries",
+	)
+	_check(
+		palette.color(0x9b).to_rgba32() == Color("e3e3e3").to_rgba32()
+		and palette.color(0x9e).to_rgba32() == Color("bbbbbb").to_rgba32()
+		and palette.color(0xa0).to_rgba32() == Color("9f9f9f").to_rgba32()
+		and palette.color(0xa2).to_rgba32() == Color("838383").to_rgba32()
+		and palette.color(0xa5).to_rgba32() == Color("575757").to_rgba32(),
+		"Recovered city-sign grays match their PAL_MSTR entries",
+	)
 	var terrain := large.find_sprite(1256)
 	_check(terrain != null, "Large terrain sprite 1256 is present")
 	if terrain != null:
