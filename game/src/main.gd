@@ -2010,6 +2010,7 @@ func _refresh_map(force := true) -> void:
 			map_view.set_city_view(
 				static_display_city, cached_texture, cached_texture, true
 			)
+			_refresh_sign_occlusion(view_size)
 			if overlay_mode == "city":
 				_refresh_moving_things(view_size)
 			else:
@@ -2021,11 +2022,13 @@ func _refresh_map(force := true) -> void:
 			and static_render_mode == overlay_mode
 			and current_signature == static_visual_signature
 		):
+			_refresh_sign_occlusion(view_size)
 			if overlay_mode == "city":
 				_refresh_moving_things(view_size)
 			return
 		if not force:
 			_request_static_render(current_signature, view_size, sprite_archive, overlay_mode)
+			_refresh_sign_occlusion(view_size)
 			if overlay_mode == "city":
 				_refresh_moving_things(view_size)
 			else:
@@ -2085,6 +2088,7 @@ func _refresh_map(force := true) -> void:
 		texture, texture if overlay_mode in ["city", "underground"] else null,
 		overlay_mode in ["city", "underground"]
 	)
+	_refresh_sign_occlusion(_city_view_size())
 	if overlay_mode == "city":
 		_refresh_moving_things(_city_view_size())
 
@@ -2181,6 +2185,7 @@ func _poll_static_render() -> void:
 	map_view.set_city_view(
 		static_display_city, texture, texture, true
 	)
+	_refresh_sign_occlusion(int(rendered.view_size))
 	if overlay_mode == "city":
 		_refresh_moving_things(int(rendered.view_size))
 	else:
@@ -2302,6 +2307,84 @@ func _refresh_moving_things(view_size := -1) -> void:
 			dynamic_visual_cache[visual_cache_key] = visual
 	var batched_visuals := DynamicSpriteCanvas.batch_special_visuals(visuals)
 	map_view.set_dynamic_sprites(batched_visuals)
+
+
+func _refresh_sign_occlusion(view_size: int) -> void:
+	if (
+		overlay_mode != "city"
+		or city == null
+		or map_view == null
+		or static_city_image == null
+		or static_occlusion_commands.is_empty()
+	):
+		if map_view != null:
+			map_view.set_sign_occlusion_visuals({})
+		return
+	var entries := map_view.sign_source_entries()
+	if entries.is_empty():
+		map_view.set_sign_occlusion_visuals({})
+		return
+	var sprite_archive := _sprite_archive_for_view(view_size)
+	var configuration := IsometricRenderer.view_configuration(view_size)
+	var divisor := int(configuration.divisor)
+	if static_occlusion_grid.is_empty():
+		static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
+			static_occlusion_commands, divisor
+		)
+	var color_indices := palette.animation_index_map(palette_cycle_ticks)
+	var image_bounds := Rect2i(Vector2i.ZERO, static_city_image.get_size())
+	var visuals := {}
+	for entry in entries:
+		var source_bounds: Rect2i = entry.bounds
+		var bounds := source_bounds.intersection(image_bounds)
+		if bounds.get_area() <= 0:
+			continue
+		var foreground := Image.create(
+			bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8
+		)
+		foreground.fill(Color.TRANSPARENT)
+		var copied_pixels := 0
+		var candidate_indices := IsometricRenderer.occlusion_candidate_indices(
+			static_occlusion_grid, bounds
+		)
+		for command_index in candidate_indices:
+			var command := static_occlusion_commands[command_index]
+			if int(command.depth_order) <= int(entry.draw_order):
+				continue
+			var command_position := Vector2i(command.position) * divisor
+			var command_size := Vector2i(command.size) * divisor
+			var overlap := bounds.intersection(Rect2i(command_position, command_size))
+			if overlap.get_area() <= 0:
+				continue
+			var resource := _dynamic_sprite_resource(
+				sprite_archive, int(command.sprite_id), bool(command.flip), divisor
+			)
+			if resource.is_empty():
+				continue
+			var mask: Image = resource.image
+			for map_y in range(overlap.position.y, overlap.end.y):
+				var mask_y := map_y - command_position.y
+				for map_x in range(overlap.position.x, overlap.end.x):
+					var mask_x := map_x - command_position.x
+					if mask.get_pixel(mask_x, mask_y).a == 0.0:
+						continue
+					var encoded := static_city_image.get_pixel(map_x, map_y)
+					var palette_index := roundi(encoded.r * 255.0)
+					var display_index := int(color_indices[palette_index])
+					foreground.set_pixel(
+						map_x - bounds.position.x, map_y - bounds.position.y,
+						palette.color(display_index),
+					)
+					copied_pixels += 1
+		if copied_pixels == 0:
+			continue
+		var texture := ImageTexture.create_from_image(foreground)
+		visuals[int(entry.key)] = {
+			"texture": texture,
+			"position": Vector2(bounds.position),
+			"size": Vector2(bounds.size),
+		}
+	map_view.set_sign_occlusion_visuals(visuals)
 
 
 func _dynamic_occluder_image(

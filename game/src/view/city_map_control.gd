@@ -72,6 +72,7 @@ var selection_price_affordable := true
 var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[Dictionary] = []
 var dynamic_sprites: Array[Dictionary] = []
+var sign_occlusion_visuals: Dictionary = {}
 var _panning := false
 var _effect_generation := 0
 var _shake_generation := 0
@@ -121,6 +122,52 @@ func set_signs_visible(value: bool) -> void:
 		return
 	signs_visible = value
 	queue_redraw()
+
+
+func set_sign_occlusion_visuals(value: Dictionary) -> void:
+	sign_occlusion_visuals = value.duplicate()
+	queue_redraw()
+
+
+func sign_source_entries() -> Array[Dictionary]:
+	var entries: Array[Dictionary] = []
+	if not signs_visible or city == null:
+		return entries
+	var view_index := sign_view_index(zoom_factor)
+	var divisor := int(Renderer.view_configuration(view_index).divisor)
+	var font := _get_sign_font()
+	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
+	for diagonal in CityState.MAP_SIZE * 2 - 1:
+		for y in diagonal + 1:
+			var x := diagonal - y
+			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+				continue
+			var label_id := city.text_overlay_id(x, y)
+			if label_id < 1 or label_id > 50:
+				continue
+			var label_text := city.label(label_id)
+			if label_text.is_empty():
+				continue
+			var polygon := Renderer.tile_polygon(city, x, y)
+			if polygon.size() != 4:
+				continue
+			var native_width := roundf(font.get_string_size(
+				label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+			).x)
+			var layout := sign_layout(
+				polygon[0] + Vector2(0, -8), native_width * divisor,
+				view_index, divisor,
+			)
+			var bounds: Rect2 = layout.panel.merge(layout.post)
+			entries.append({
+				"key": city.index_of(x, y),
+				"bounds": Rect2i(
+					Vector2i(floori(bounds.position.x), floori(bounds.position.y)),
+					Vector2i(ceili(bounds.size.x), ceili(bounds.size.y)),
+				),
+				"draw_order": (x + y) * CityState.MAP_SIZE + y,
+			})
+	return entries
 
 
 func set_edit_enabled(
@@ -469,6 +516,25 @@ func _draw_signs(scale: float, offset: Vector2) -> void:
 			_draw_raised_sign_part(layout.post, SIGN_POST_FILL, 1.0)
 			if display_multiplier > 1.0:
 				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+			_draw_sign_occlusion(
+				city.index_of(x, y), scale, offset
+			)
+
+
+func _draw_sign_occlusion(key: int, scale: float, offset: Vector2) -> void:
+	var visual: Dictionary = sign_occlusion_visuals.get(key, {})
+	if visual.is_empty():
+		return
+	var texture: Texture2D = visual.get("texture") as Texture2D
+	if texture == null:
+		return
+	var source_position: Vector2 = visual.get("position", Vector2.ZERO)
+	var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
+	draw_texture_rect(
+		texture,
+		Rect2(offset + source_position * scale, source_size * scale),
+		false,
+	)
 
 
 static func sign_view_index(zoom: float) -> int:

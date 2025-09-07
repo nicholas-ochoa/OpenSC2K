@@ -1343,6 +1343,29 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and MapControl.sign_display_multiplier(2.0) == 2.0,
 		"Sign view selection follows all four city zoom levels",
 	)
+	var sign_city := CityModel.from_document(starter.document.duplicate_document())
+	var sign_result := Signs.set_sign(sign_city, center_tile, "Depth Test")
+	_check(sign_result.ok, "Sign bounds fixture creates a user sign")
+	map_control.city = sign_city
+	for zoom_fixture in [
+		[0.25, 148], [0.5, 108], [1.0, 71], [2.0, 71],
+	]:
+		map_control.zoom_factor = zoom_fixture[0]
+		var sign_entries := map_control.sign_source_entries()
+		_check(
+			sign_entries.size() == 1
+			and sign_entries[0].bounds.size.y == zoom_fixture[1]
+			and sign_entries[0].draw_order == 16448,
+			"Sign source bounds match zoom %.2f" % zoom_fixture[0],
+		)
+	map_control.set_sign_occlusion_visuals({sign_city.index_of(64, 64): {"test": true}})
+	_check(
+		map_control.sign_occlusion_visuals.size() == 1,
+		"Map control accepts one localized sign-occlusion layer",
+	)
+	map_control.set_sign_occlusion_visuals({})
+	map_control.city = starter
+	map_control.zoom_factor = 1.0
 	map_control.set_signs_visible(false)
 	_check(not map_control.signs_visible, "Data views can hide surface signs")
 	map_control.set_signs_visible(true)
