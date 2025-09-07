@@ -1364,6 +1364,25 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Map control accepts one localized sign-occlusion layer",
 	)
 	map_control.set_sign_occlusion_visuals({})
+	var later_sign_visuals := MapControl.later_sign_occluder_visuals(
+		[
+			{"position": Vector2(100, 100), "size": Vector2(20, 20), "depth_order": 9},
+			{"position": Vector2(100, 100), "size": Vector2(20, 20), "depth_order": 10},
+			{"position": Vector2(150, 150), "size": Vector2(20, 20), "depth_order": 12},
+			{
+				"position": Vector2(100, 100), "size": Vector2(20, 20),
+				"depth_order": 13, "shadow": true,
+			},
+			{"position": Vector2(105, 105), "size": Vector2(20, 20), "depth_order": 14},
+		],
+		Rect2i(100, 100, 20, 20),
+		10,
+	)
+	_check(
+		later_sign_visuals.size() == 1
+		and later_sign_visuals[0].depth_order == 14,
+		"Only a later overlapping moving sprite occludes a city sign",
+	)
 	map_control.city = starter
 	map_control.zoom_factor = 1.0
 	map_control.set_signs_visible(false)

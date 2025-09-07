@@ -549,6 +549,22 @@ static func sign_display_multiplier(zoom: float) -> float:
 	return 2.0 if zoom > 1.0 else 1.0
 
 
+static func later_sign_occluder_visuals(
+	visuals: Array[Dictionary], bounds: Rect2i, draw_order: int
+) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for visual in visuals:
+		if bool(visual.get("shadow", false)) or int(visual.get("depth_order", -1)) <= draw_order:
+			continue
+		var visual_bounds := Rect2i(
+			Vector2i(visual.get("position", Vector2.ZERO)),
+			Vector2i(visual.get("size", Vector2.ZERO)),
+		)
+		if bounds.intersects(visual_bounds):
+			result.append(visual)
+	return result
+
+
 static func sign_layout(
 	anchor: Vector2, text_width: float, view_index: int, display_multiplier := 1.0
 ) -> Dictionary:

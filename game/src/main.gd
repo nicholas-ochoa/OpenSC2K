@@ -157,6 +157,8 @@ var dynamic_sprite_cache: Dictionary = {}
 var dynamic_foreground_cache: Dictionary = {}
 var dynamic_occluder_cache: Dictionary = {}
 var dynamic_visual_cache: Dictionary = {}
+var dynamic_sign_occluders: Array[Dictionary] = []
+var dynamic_sign_occlusion_grid: Dictionary = {}
 var static_render_thread: Thread
 var static_render_job: CityRenderJob
 var static_render_epoch := 0
@@ -1895,6 +1897,8 @@ func _load_city(path: String) -> void:
 	dynamic_foreground_cache.clear()
 	dynamic_occluder_cache.clear()
 	dynamic_visual_cache.clear()
+	dynamic_sign_occluders.clear()
+	dynamic_sign_occlusion_grid.clear()
 	var process_seed := tool_random.state
 	var game_seed := nuisance_random.state
 	var lfsr_seed := (
@@ -2010,11 +2014,13 @@ func _refresh_map(force := true) -> void:
 			map_view.set_city_view(
 				static_display_city, cached_texture, cached_texture, true
 			)
-			_refresh_sign_occlusion(view_size)
 			if overlay_mode == "city":
 				_refresh_moving_things(view_size)
 			else:
+				dynamic_sign_occluders.clear()
+				dynamic_sign_occlusion_grid.clear()
 				map_view.set_dynamic_sprites([])
+				_refresh_sign_occlusion(view_size)
 			return
 		if (
 			not force
@@ -2022,17 +2028,23 @@ func _refresh_map(force := true) -> void:
 			and static_render_mode == overlay_mode
 			and current_signature == static_visual_signature
 		):
-			_refresh_sign_occlusion(view_size)
-			if overlay_mode == "city":
-				_refresh_moving_things(view_size)
-			return
-		if not force:
-			_request_static_render(current_signature, view_size, sprite_archive, overlay_mode)
-			_refresh_sign_occlusion(view_size)
 			if overlay_mode == "city":
 				_refresh_moving_things(view_size)
 			else:
+				dynamic_sign_occluders.clear()
+				dynamic_sign_occlusion_grid.clear()
 				map_view.set_dynamic_sprites([])
+				_refresh_sign_occlusion(view_size)
+			return
+		if not force:
+			_request_static_render(current_signature, view_size, sprite_archive, overlay_mode)
+			if overlay_mode == "city":
+				_refresh_moving_things(view_size)
+			else:
+				dynamic_sign_occluders.clear()
+				dynamic_sign_occlusion_grid.clear()
+				map_view.set_dynamic_sprites([])
+				_refresh_sign_occlusion(view_size)
 			return
 		static_render_epoch += 1
 		var display_city := city
@@ -2081,6 +2093,8 @@ func _refresh_map(force := true) -> void:
 		static_occlusion_commands.clear()
 		static_occlusion_grid.clear()
 		static_visual_signature = []
+		dynamic_sign_occluders.clear()
+		dynamic_sign_occlusion_grid.clear()
 		map_view.set_dynamic_sprites([])
 	var texture := ImageTexture.create_from_image(image)
 	map_view.set_city_view(
@@ -2088,9 +2102,10 @@ func _refresh_map(force := true) -> void:
 		texture, texture if overlay_mode in ["city", "underground"] else null,
 		overlay_mode in ["city", "underground"]
 	)
-	_refresh_sign_occlusion(_city_view_size())
 	if overlay_mode == "city":
 		_refresh_moving_things(_city_view_size())
+	else:
+		_refresh_sign_occlusion(_city_view_size())
 
 
 func _request_static_render(
@@ -2185,11 +2200,13 @@ func _poll_static_render() -> void:
 	map_view.set_city_view(
 		static_display_city, texture, texture, true
 	)
-	_refresh_sign_occlusion(int(rendered.view_size))
 	if overlay_mode == "city":
 		_refresh_moving_things(int(rendered.view_size))
 	else:
+		dynamic_sign_occluders.clear()
+		dynamic_sign_occlusion_grid.clear()
 		map_view.set_dynamic_sprites([])
+		_refresh_sign_occlusion(int(rendered.view_size))
 	var latest_signature := _static_signature_for_mode(
 		overlay_mode, int(rendered.view_size)
 	)
@@ -2241,6 +2258,8 @@ func _sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
 
 func _refresh_moving_things(view_size := -1) -> void:
 	if city == null or palette == null or map_view == null or overlay_mode != "city":
+		dynamic_sign_occluders.clear()
+		dynamic_sign_occlusion_grid.clear()
 		if map_view != null:
 			map_view.set_dynamic_sprites([])
 		return
@@ -2301,12 +2320,19 @@ func _refresh_moving_things(view_size := -1) -> void:
 			"size": Vector2(resource.image.get_size()),
 			"image": visual_image,
 			"special_overlay": command.has("overlay"),
+			"depth_order": int(command.get("depth_order", -1)),
+			"shadow": bool(command.get("shadow", false)),
 		}
 		visuals.append(visual)
 		if not visual_cache_key.is_empty():
 			dynamic_visual_cache[visual_cache_key] = visual
+	dynamic_sign_occluders = visuals.duplicate()
+	dynamic_sign_occlusion_grid = IsometricRenderer.build_occlusion_grid(
+		dynamic_sign_occluders, 1
+	)
 	var batched_visuals := DynamicSpriteCanvas.batch_special_visuals(visuals)
 	map_view.set_dynamic_sprites(batched_visuals)
+	_refresh_sign_occlusion(view_size)
 
 
 func _refresh_sign_occlusion(view_size: int) -> void:
@@ -2369,6 +2395,35 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 					if mask.get_pixel(mask_x, mask_y).a == 0.0:
 						continue
 					var encoded := static_city_image.get_pixel(map_x, map_y)
+					var palette_index := roundi(encoded.r * 255.0)
+					var display_index := int(color_indices[palette_index])
+					foreground.set_pixel(
+						map_x - bounds.position.x, map_y - bounds.position.y,
+						palette.color(display_index),
+					)
+					copied_pixels += 1
+		var moving_candidates: Array[Dictionary] = []
+		for moving_index in IsometricRenderer.occlusion_candidate_indices(
+			dynamic_sign_occlusion_grid, bounds
+		):
+			moving_candidates.append(dynamic_sign_occluders[moving_index])
+		for visual in MapControl.later_sign_occluder_visuals(
+			moving_candidates, bounds, int(entry.draw_order)
+		):
+			var moving_image: Image = visual.get("image") as Image
+			if moving_image == null:
+				continue
+			var moving_position := Vector2i(visual.get("position", Vector2.ZERO))
+			var overlap := bounds.intersection(
+				Rect2i(moving_position, moving_image.get_size())
+			)
+			for map_y in range(overlap.position.y, overlap.end.y):
+				var moving_y := map_y - moving_position.y
+				for map_x in range(overlap.position.x, overlap.end.x):
+					var moving_x := map_x - moving_position.x
+					var encoded := moving_image.get_pixel(moving_x, moving_y)
+					if encoded.a == 0.0:
+						continue
 					var palette_index := roundi(encoded.r * 255.0)
 					var display_index := int(color_indices[palette_index])
 					foreground.set_pixel(
