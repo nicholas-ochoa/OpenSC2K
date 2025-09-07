@@ -580,6 +580,8 @@ static func _check_site(
 			var old_building := int(buildings[index])
 			if old_building >= ROAD_FIRST or old_building == RADIOACTIVITY or old_building == SMALL_PARK:
 				return {"ok": false, "error": "site contains a protected tile"}
+			if tile_id == SMALL_PARK and old_building > 0x0c:
+				return {"ok": false, "error": "site contains a protected tile"}
 			if (zones[index] & 0x0f) == MILITARY_ZONE:
 				return {"ok": false, "error": "site is in a military zone"}
 			var is_water := (flags[index] & FLAG_WATER) != 0

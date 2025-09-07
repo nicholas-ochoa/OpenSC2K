@@ -9886,6 +9886,17 @@ func _test_building_command(reference_root: String) -> void:
 	_check(museum.ok, "Museum placement succeeds")
 	_check(city.microsim(7).stat_0 == 100, "Museum system starts with score byte 100")
 	_check(Buildings.undo(city, museum, random, process_random).ok, "Museum placement can be undone")
+	_check(city.set_building_id(40, 40, 0x0e), "Small park rejection fixture places a power line")
+	var blocked_park := Buildings.apply(
+		city, 14, 0, Vector2i(40, 40), random, process_random
+	)
+	_check(
+		not blocked_park.ok
+		and blocked_park.error.contains("protected")
+		and city.building_id(40, 40) == 0x0e,
+		"Small park cannot replace a power line",
+	)
+	_check(city.set_building_id(40, 40, 0), "Small park rejection fixture clears its power line")
 	var park := Buildings.apply(city, 14, 0, Vector2i(40, 40), random, process_random)
 	_check(park.ok, "Small park placement succeeds")
 	_check(city.tile_flags[40 * 128 + 40] & 0xe0 == 0x20, "Small park gets only the piped structure flag")
