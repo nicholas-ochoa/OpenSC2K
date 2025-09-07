@@ -71,6 +71,10 @@ const POWER_CROSSING_BASE_TILE := {
 	0x4f: 0x49,
 	0x50: 0x4a,
 }
+const HIGHWAY_GROUND_SOURCE_OFFSETS := [
+	Vector2i(0, 0), Vector2i(0, -1),
+	Vector2i(1, -1), Vector2i(1, 0),
+]
 const MONSTER_UPPER_FIRST_X := [-15, -3]
 const MONSTER_UPPER_SECOND_X := [-24, 14]
 const MONSTER_UPPER_FIRST_Y := [6, 52]
@@ -557,34 +561,51 @@ static func _draw_highway_ground(
 	x: int,
 	y: int
 ) -> void:
-	var source_offsets := [
-		Vector2i(0, 0), Vector2i(0, -1),
-		Vector2i(1, -1), Vector2i(1, 0),
-	]
+	for visual in highway_ground_visuals(city, x, y, configuration.view_size):
+		var terrain := _sprite_image(
+			sprites, palette, cache, visual.sprite_id, false
+		)
+		var position: Vector2i = visual.offset
+		_blend_on_base(
+			output, terrain, screen_x + position.x, base_y + position.y,
+			configuration.tile_height
+		)
+
+
+static func highway_ground_visuals(
+	city: CityState, x: int, y: int, view_size := VIEW_LARGE
+) -> Array[Dictionary]:
+	var visuals: Array[Dictionary] = []
+	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
+		return visuals
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return visuals
+	# The small highway composite already includes the ground.
+	if view_size == VIEW_SMALL:
+		return visuals
 	var screen_offsets := [
 		Vector2i(0, 0),
 		Vector2i(configuration.half_width, -configuration.half_height),
 		Vector2i(configuration.tile_width, 0),
 		Vector2i(configuration.half_width, configuration.half_height),
 	]
-	for index in source_offsets.size():
-		var source: Vector2i = Vector2i(x, y) + source_offsets[index]
+	for index in HIGHWAY_GROUND_SOURCE_OFFSETS.size():
+		var source: Vector2i = (
+			Vector2i(x, y) + HIGHWAY_GROUND_SOURCE_OFFSETS[index]
+		)
 		if city.index_of(source.x, source.y) < 0:
 			continue
-		var terrain := _sprite_image(
-			sprites, palette, cache,
-			terrain_sprite_id(
+		visuals.append({
+			"source": source,
+			"sprite_id": terrain_sprite_id(
 				city.terrain_id(source.x, source.y),
 				city.is_water(source.x, source.y),
-				configuration.sprite_base
+				configuration.sprite_base,
 			),
-			false
-		)
-		var position: Vector2i = screen_offsets[index]
-		_blend_on_base(
-			output, terrain, screen_x + position.x, base_y + position.y,
-			configuration.tile_height
-		)
+			"offset": screen_offsets[index],
+		})
+	return visuals
 
 
 static func traffic_overlay_visual(
@@ -1367,29 +1388,14 @@ static func _tile_occlusion_commands(
 		)
 	if building_id > 0 and _should_draw_building(city, x, y, building_id):
 		if is_highway_composite:
-			var source_offsets := [
-				Vector2i(0, 0), Vector2i(0, -1),
-				Vector2i(1, -1), Vector2i(1, 0),
-			]
-			var screen_offsets := [
-				Vector2i(0, 0),
-				Vector2i(configuration.half_width, -configuration.half_height),
-				Vector2i(configuration.tile_width, 0),
-				Vector2i(configuration.half_width, configuration.half_height),
-			]
-			for index in source_offsets.size():
-				var source: Vector2i = Vector2i(x, y) + source_offsets[index]
-				if city.index_of(source.x, source.y) < 0:
-					continue
+			for visual in highway_ground_visuals(
+				city, x, y, configuration.view_size
+			):
 				_append_occluder(
-					commands, sprites,
-					terrain_sprite_id(
-						city.terrain_id(source.x, source.y), city.is_water(source.x, source.y),
-						configuration.sprite_base
-					),
+					commands, sprites, visual.sprite_id,
 					false,
 					Vector2i(screen_x, base_y + int(configuration.tile_height))
-						+ screen_offsets[index],
+						+ Vector2i(visual.offset),
 					draw_order
 				)
 		var building_flip := building_sprite_flip(city, x, y, building_id)

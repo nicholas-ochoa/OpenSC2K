@@ -814,6 +814,31 @@ func _test_sprite_archives(reference_root: String) -> void:
 		),
 		"Elevated highway draws from its compass-selected anchor",
 	)
+	var highway_ground := IsometricRenderer.highway_ground_visuals(
+		overlay_city, overlay_point.x, overlay_point.y
+	)
+	_check(
+		highway_ground.size() == 4
+		and highway_ground[0].source == Vector2i(64, 64)
+		and highway_ground[1].source == Vector2i(64, 63)
+		and highway_ground[2].source == Vector2i(65, 63)
+		and highway_ground[3].source == Vector2i(65, 64)
+		and highway_ground[3].offset == Vector2i(16, 8),
+		"Elevated highway redraws the recovered four-cell ground diamond",
+	)
+	var small_highway_ground := IsometricRenderer.highway_ground_visuals(
+		overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_SMALL
+	)
+	_check(
+		small_highway_ground.is_empty(),
+		"Small elevated highways omit the large and medium ground-redraw pass",
+	)
+	_check(
+		IsometricRenderer.highway_ground_visuals(overlay_city, 127, 0).size() == 1
+		and IsometricRenderer.highway_ground_visuals(overlay_city, 64, 0).size() == 2
+		and IsometricRenderer.highway_ground_visuals(overlay_city, 127, 64).size() == 2,
+		"Malformed edge highway anchors clip ground reads to valid map cells",
+	)
 	_check(
 		overlay_document.set_misc_u32(0x0008, 3),
 		"Network orientation fixture sets an odd compass rotation",
