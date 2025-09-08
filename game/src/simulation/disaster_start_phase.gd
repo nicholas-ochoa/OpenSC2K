@@ -228,6 +228,7 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 	if original.is_empty():
 		return {"ok": false, "error": "fire disaster input chunks are missing or invalid"}
 	var payloads := _duplicate_payloads(original)
+	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var point := Vector2i(
 		_read_u32_be(payloads.MISC, MISC_CITY_CENTER_X) - 20 + random.next_u15() % 40,
 		_read_u32_be(payloads.MISC, MISC_CITY_CENTER_Y) - 20 + random.next_u15() % 40
@@ -242,9 +243,13 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 		if (
 			index >= 0
 			and payloads.XBLD[index] > 0x6f
-			and _starts_fire(_apply_fire_damage(city, payloads, point, random, lfsr_random))
+			and _starts_fire(
+				_apply_fire_damage(
+					city, payloads, point, random, lfsr_random, runtime_events
+				)
+			)
 		):
-			return _store_fire(city, original, payloads, point)
+			return _store_fire(city, original, payloads, point, runtime_events)
 		step += 1
 		if step >= run_length:
 			step = 0
@@ -253,8 +258,10 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 			direction = (direction + 1) & 3
 	for _attempt in 200:
 		point = Vector2i(lfsr_random.next_mask(0x7f), lfsr_random.next_mask(0x7f))
-		if _starts_fire(_apply_fire_damage(city, payloads, point, random, lfsr_random)):
-			return _store_fire(city, original, payloads, point)
+		if _starts_fire(
+			_apply_fire_damage(city, payloads, point, random, lfsr_random, runtime_events)
+		):
+			return _store_fire(city, original, payloads, point, runtime_events)
 	var result := _result(DISASTER_FIRE, point, false, true, 0)
 	result["notice_ids"] = [0xf5]
 	return result
@@ -497,6 +504,7 @@ static func _start_earthquake(
 	if original.is_empty():
 		return {"ok": false, "error": "earthquake disaster input chunks are missing or invalid"}
 	var payloads := _duplicate_payloads(original)
+	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var gate_hits := 0
 	var eligible_targets := 0
 	var fire_damage_attempts := 0
@@ -513,7 +521,9 @@ static func _start_earthquake(
 			eligible_targets += 1
 			if random.next_u15() & 3 == 0:
 				fire_damage_attempts += 1
-				_apply_fire_damage(city, payloads, target, random, lfsr_random)
+				_apply_fire_damage(
+					city, payloads, target, random, lfsr_random, runtime_events
+				)
 			else:
 				structure_damage_attempts += 1
 				DisasterMapDamage.burn_structure(
@@ -544,15 +554,18 @@ static func _start_earthquake(
 	result["fire_damage_attempts"] = fire_damage_attempts
 	result["structure_damage_attempts"] = structure_damage_attempts
 	result["map_changed"] = map_changed
-	result["effect_events"] = [{
+	var effect_events: Array[Dictionary] = [{
 		"type": "earthquake",
 		"frames": 24,
 		"frame_msec": 5,
 		"distance": 4,
 	}]
+	effect_events.append_array(runtime_events.effect_events)
+	result["effect_events"] = effect_events
 	var sounds: Array[int] = []
 	for _frame in 24:
 		sounds.append(SOUND_EARTHQUAKE)
+	sounds.append_array(runtime_events.sound_events)
 	sounds.append(SOUND_SIREN)
 	result["sound_events"] = sounds
 	return result
@@ -569,6 +582,7 @@ static func _start_meltdown(
 	if original.is_empty():
 		return {"ok": false, "error": "meltdown disaster input chunks are missing or invalid"}
 	var payloads := _duplicate_payloads(original)
+	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var plant_point := _find_nuclear_power_plant(payloads.XBLD, requested_point)
 	if plant_point.x < 0:
 		return _result(DISASTER_MELTDOWN, requested_point, false, true, 0)
@@ -584,7 +598,7 @@ static func _start_meltdown(
 	)
 	if site.size != Vector2i.ZERO:
 		center = Vector2i(site.position.x + 1, site.end.y - 2)
-	DisasterMapDamage.burn_structure(
+	var plant_damage := DisasterMapDamage.burn_structure(
 		city,
 		payloads.ALTM,
 		payloads.XBLD,
@@ -601,7 +615,9 @@ static func _start_meltdown(
 		lfsr_random,
 		true,
 		true,
+		true,
 	)
+	DisasterMapDamage.append_damage_events(runtime_events, plant_damage)
 
 	var gate_hits := 0
 	var fire_damage_attempts := 0
@@ -636,6 +652,7 @@ static func _start_meltdown(
 					random,
 					lfsr_random,
 					true,
+					runtime_events,
 				)
 			else:
 				structure_damage_attempts += 1
@@ -684,6 +701,10 @@ static func _start_meltdown(
 	result["radioactive_writes"] = radioactive_writes
 	result["toxic_writes"] = toxic_writes
 	result["map_changed"] = map_changed
+	result["effect_events"] = runtime_events.effect_events
+	var sounds: Array[int] = runtime_events.sound_events.duplicate()
+	sounds.append(SOUND_SIREN)
+	result["sound_events"] = sounds
 	return result
 
 
@@ -730,7 +751,7 @@ static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary
 	var damage_points: Array[Vector2i] = []
 	var toxic_writes := 0
 	var view_centers: Array[Vector2i] = [plant_point]
-	var sounds: Array[int] = []
+	var runtime_events := DisasterMapDamage.new_runtime_events()
 	while remaining > 0:
 		var index := _index(point)
 		if index < 0:
@@ -758,9 +779,10 @@ static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary
 				random,
 				lfsr_random,
 				true,
+				runtime_events,
 			)
 			damage_points.append(point)
-			sounds.append(SOUND_MICROWAVE)
+			runtime_events.sound_events.append(SOUND_MICROWAVE)
 		remaining -= 1
 		point += EIGHT_DIRECTIONS[direction & 7]
 		direction = random.next_u15()
@@ -769,8 +791,10 @@ static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary
 	if map_changed and not _apply_map_payloads(city, original, payloads):
 		return {"ok": false, "error": "cannot store the microwave disaster"}
 	var result := _result(DISASTER_MICROWAVE, plant_point, true, true, 0)
+	var sounds: Array[int] = runtime_events.sound_events.duplicate()
 	sounds.append(SOUND_SIREN)
 	result["sound_events"] = sounds
+	result["effect_events"] = runtime_events.effect_events
 	result["view_center_requests"] = view_centers
 	result["plant_point"] = plant_point
 	result["path_finish"] = point
@@ -945,6 +969,7 @@ static func _start_firestorm(
 	var attempted_in_map := 0
 	var result_codes := PackedInt32Array()
 	var accepted_points: Array[Vector2i] = []
+	var runtime_events := DisasterMapDamage.new_runtime_events()
 	while remaining > 0 and run_length < 128:
 		point += Vector2i(FIRE_SPIRAL_X[direction], FIRE_SPIRAL_Y[direction])
 		scan_steps += 1
@@ -967,6 +992,7 @@ static func _start_firestorm(
 				random,
 				lfsr_random,
 				true,
+				runtime_events,
 			)
 			if result_code != 0:
 				remaining -= 1
@@ -993,8 +1019,12 @@ static func _start_firestorm(
 	result["result_codes"] = result_codes
 	result["accepted_points"] = accepted_points
 	result["map_changed"] = map_changed
+	result["effect_events"] = runtime_events.effect_events
 	if started:
 		result["view_center_requests"] = [point]
+		var sounds: Array[int] = runtime_events.sound_events.duplicate()
+		sounds.append(SOUND_SIREN)
+		result["sound_events"] = sounds
 	return result
 
 
@@ -1070,8 +1100,10 @@ static func _start_hurricane(
 	var direction := (city.compass_rotation() + 1) & 3
 	var damage_points: Array[Vector2i] = []
 	var flood_points: Array[Vector2i] = []
-	var effect_events: Array[Dictionary] = []
-	var sounds: Array[int] = [SOUND_HURRICANE]
+	var runtime_events := DisasterMapDamage.new_runtime_events()
+	var effect_events: Array[Dictionary] = runtime_events.effect_events
+	var sounds: Array[int] = runtime_events.sound_events
+	sounds.append(SOUND_HURRICANE)
 	var damage_scans := 0
 	if direction == 0:
 		for _attempt in 20:
@@ -1085,7 +1117,7 @@ static func _start_hurricane(
 			if y > 0:
 				_hurricane_damage(
 					city, payloads, Vector2i(x, y), random, lfsr_random,
-					damage_points, effect_events, sounds, true
+					damage_points, runtime_events, true
 				)
 		sounds.append(SOUND_HURRICANE)
 		_hurricane_flood_edge(payloads, lfsr_random, direction, 50, flood_points)
@@ -1101,7 +1133,7 @@ static func _start_hurricane(
 			if x > 0:
 				_hurricane_damage(
 					city, payloads, Vector2i(x, y), random, lfsr_random,
-					damage_points, effect_events, sounds, false
+					damage_points, runtime_events, false
 				)
 		sounds.append(SOUND_HURRICANE)
 		_hurricane_flood_edge(payloads, lfsr_random, direction, 100, flood_points)
@@ -1120,7 +1152,7 @@ static func _start_hurricane(
 				next_attempt = attempt + 2
 				_hurricane_damage(
 					city, payloads, Vector2i(x, y), random, lfsr_random,
-					damage_points, effect_events, sounds, false
+					damage_points, runtime_events, false
 				)
 			attempt = next_attempt
 		sounds.append(SOUND_HURRICANE)
@@ -1137,7 +1169,7 @@ static func _start_hurricane(
 			if x < 127:
 				_hurricane_damage(
 					city, payloads, Vector2i(x, y), random, lfsr_random,
-					damage_points, effect_events, sounds, true
+					damage_points, runtime_events, true
 				)
 		sounds.append(SOUND_HURRICANE)
 		_hurricane_flood_edge(payloads, lfsr_random, direction, 50, flood_points)
@@ -1170,8 +1202,7 @@ static func _hurricane_damage(
 	random,
 	lfsr_random,
 	damage_points: Array[Vector2i],
-	effect_events: Array[Dictionary],
-	sounds: Array[int],
+	runtime_events: Dictionary,
 	emit_effects: bool
 ) -> void:
 	var damage := DisasterMapDamage.burn_structure(
@@ -1195,9 +1226,7 @@ static func _hurricane_damage(
 	)
 	damage_points.append(point)
 	if emit_effects:
-		for effect in damage.get("effect_events", []):
-			effect_events.append(effect)
-		sounds.append(SOUND_EARTHQUAKE)
+		DisasterMapDamage.append_damage_events(runtime_events, damage)
 
 
 static func _hurricane_flood_edge(
@@ -1260,7 +1289,12 @@ static func _flood_result(point: Vector2i, started: bool) -> Dictionary:
 
 
 static func _apply_fire_damage(
-	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
+	city: CityState,
+	payloads: Dictionary,
+	point: Vector2i,
+	random,
+	lfsr_random,
+	runtime_events: Dictionary = {},
 ) -> int:
 	return DisasterMapDamage.apply(
 		city,
@@ -1277,7 +1311,9 @@ static func _apply_fire_damage(
 		payloads.MISC,
 		point,
 		random,
-		lfsr_random
+		lfsr_random,
+		false,
+		runtime_events,
 	)
 
 
@@ -1286,11 +1322,20 @@ static func _starts_fire(result_code: int) -> bool:
 
 
 static func _store_fire(
-	city: CityState, original: Dictionary, payloads: Dictionary, point: Vector2i
+	city: CityState,
+	original: Dictionary,
+	payloads: Dictionary,
+	point: Vector2i,
+	runtime_events: Dictionary,
 ) -> Dictionary:
 	if not _apply_map_payloads(city, original, payloads):
 		return {"ok": false, "error": "cannot store the fire disaster"}
-	return _result(DISASTER_FIRE, point, true, true, 0)
+	var result := _result(DISASTER_FIRE, point, true, true, 0)
+	result["effect_events"] = runtime_events.effect_events
+	var sounds: Array[int] = runtime_events.sound_events.duplicate()
+	sounds.append(SOUND_SIREN)
+	result["sound_events"] = sounds
+	return result
 
 
 static func has_active_object(city: CityState, _disaster_type: int) -> bool:

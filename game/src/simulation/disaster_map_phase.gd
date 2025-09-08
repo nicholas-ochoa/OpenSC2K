@@ -102,6 +102,7 @@ static func run_all(
 		"riot_suppression_attempts": 0,
 		"riot_suppressions": 0,
 	}
+	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var fire_active := false
 	var flood_active := false
 	var toxic_active := false
@@ -113,7 +114,8 @@ static func run_all(
 			if overlay == FIRE_OVERLAY:
 				fire_active = true
 				_process_fire_cell(
-					city, payloads, Vector2i(x, y), index, random, lfsr_random, counters
+					city, payloads, Vector2i(x, y), index, random, lfsr_random,
+					counters, runtime_events
 				)
 			elif overlay == RIOT_OVERLAY_REVERSE or overlay == RIOT_OVERLAY_FORWARD:
 				riot_active = true
@@ -125,7 +127,8 @@ static func run_all(
 					overlay,
 					random,
 					lfsr_random,
-					counters
+					counters,
+					runtime_events,
 				)
 			elif overlay == TOXIC_OVERLAY:
 				toxic_active = true
@@ -142,7 +145,8 @@ static func run_all(
 					counter,
 					random,
 					lfsr_random,
-					counters
+					counters,
+					runtime_events,
 				)
 			elif overlay > 200 and overlay < 241:
 				_process_dispatch_cell(
@@ -154,8 +158,8 @@ static func run_all(
 					lfsr_random,
 					dispatch
 				)
-	var sound_events: Array[int] = []
-	var effect_events: Array[Dictionary] = []
+	var sound_events: Array[int] = runtime_events.sound_events
+	var effect_events: Array[Dictionary] = runtime_events.effect_events
 	var view_center_requests: Array[Vector2i] = []
 	if riot_active and random.next_u15() & 7 == 0:
 		sound_events.append(SOUND_RIOT)
@@ -195,9 +199,7 @@ static func run_all(
 				)
 				if damage.get("changed", false):
 					counters.hurricane_damaged_structures += 1
-				for effect in damage.get("effect_events", []):
-					effect_events.append(effect)
-				sound_events.append(SOUND_EARTHQUAKE)
+				DisasterMapDamage.append_damage_events(runtime_events, damage)
 				view_center_requests.append(hurricane_point)
 		next_hurricane_counter = maxi(hurricane_counter - 1, 0)
 	var map_changed := _payloads_changed(original, payloads)
@@ -264,6 +266,7 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 		"created_explosions": 0,
 		"toxic_markers": 0,
 	}
+	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var active := false
 	for x in CityState.MAP_SIZE:
 		for y in CityState.MAP_SIZE:
@@ -284,7 +287,11 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 			if choice < 4:
 				counters.spread_attempts += 1
 				var target: Vector2i = point + CARDINAL_DIRECTIONS[choice]
-				if _starts_fire(_apply_damage(city, payloads, target, random, lfsr_random)):
+				if _starts_fire(
+					_apply_damage(
+						city, payloads, target, random, lfsr_random, runtime_events
+					)
+				):
 					counters.spread_fires += 1
 			elif choice == 5:
 				var tile := int(payloads.XBLD[index])
@@ -316,8 +323,11 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 	counters["remaining_fires"] = payloads.XTXT.count(FIRE_OVERLAY)
 	counters["map_changed"] = map_changed
 	counters["news_items"] = []
-	counters["effect_events"] = []
-	counters["sound_events"] = [SOUND_FIRE] if active else []
+	counters["effect_events"] = runtime_events.effect_events
+	var sound_events: Array[int] = runtime_events.sound_events
+	if active:
+		sound_events.append(SOUND_FIRE)
+	counters["sound_events"] = sound_events
 	counters["view_center_requests"] = []
 	counters["complete"] = true
 	return counters
@@ -350,6 +360,7 @@ static func run_flood(
 		"random_extinctions": 0,
 		"damaged_structures": 0,
 	}
+	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var active := false
 	for x in CityState.MAP_SIZE:
 		for y in CityState.MAP_SIZE:
@@ -401,13 +412,14 @@ static func run_flood(
 					target,
 					_altitude_word(payloads.ALTM, index) & 0x1f,
 					random,
-					lfsr_random
+					lfsr_random,
+					runtime_events,
 				) == 1:
 					counters.spread_floods += 1
 	var map_changed := _payloads_changed(original, payloads)
 	if map_changed and not _apply_map_payloads(city, original, payloads):
 		return {"ok": false, "error": "cannot store the flood-map tick"}
-	var sound_events: Array[int] = []
+	var sound_events: Array[int] = runtime_events.sound_events
 	if active and random.next_u15() & 7 == 0:
 		sound_events.append(SOUND_FLOOD)
 	counters["ok"] = true
@@ -417,7 +429,7 @@ static func run_flood(
 	counters["map_counter"] = counter
 	counters["map_changed"] = map_changed
 	counters["news_items"] = []
-	counters["effect_events"] = []
+	counters["effect_events"] = runtime_events.effect_events
 	counters["sound_events"] = sound_events
 	counters["view_center_requests"] = []
 	counters["complete"] = true
@@ -516,6 +528,7 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 		"propagated_riots": 0,
 		"blocked_propagations": 0,
 	}
+	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var active := false
 	for x in CityState.MAP_SIZE:
 		for y in CityState.MAP_SIZE:
@@ -546,6 +559,7 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 						Vector2i(x, y) + CARDINAL_DIRECTIONS[damage_direction],
 						random,
 						lfsr_random,
+						runtime_events,
 					)
 				):
 					counters.started_fires += 1
@@ -579,7 +593,7 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 	var map_changed := _payloads_changed(original, payloads)
 	if map_changed and not _apply_map_payloads(city, original, payloads):
 		return {"ok": false, "error": "cannot store the riot-map tick"}
-	var sound_events: Array[int] = []
+	var sound_events: Array[int] = runtime_events.sound_events
 	if active and random.next_u15() & 7 == 0:
 		sound_events.append(SOUND_RIOT)
 	counters["ok"] = true
@@ -591,7 +605,7 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 	)
 	counters["map_changed"] = map_changed
 	counters["news_items"] = []
-	counters["effect_events"] = []
+	counters["effect_events"] = runtime_events.effect_events
 	counters["sound_events"] = sound_events
 	counters["view_center_requests"] = []
 	counters["complete"] = true
@@ -668,7 +682,8 @@ static func _process_fire_cell(
 	index: int,
 	random,
 	lfsr_random,
-	counters: Dictionary
+	counters: Dictionary,
+	runtime_events: Dictionary,
 ) -> void:
 	counters.fire_markers_scanned += 1
 	if random.next_u15() & 3 != 0:
@@ -682,7 +697,9 @@ static func _process_fire_cell(
 	if choice < 4:
 		counters.spread_attempts += 1
 		var target: Vector2i = point + CARDINAL_DIRECTIONS[choice]
-		if _starts_fire(_apply_damage(city, payloads, target, random, lfsr_random)):
+		if _starts_fire(
+			_apply_damage(city, payloads, target, random, lfsr_random, runtime_events)
+		):
 			counters.spread_fires += 1
 	elif choice == 5:
 		var tile := int(payloads.XBLD[index])
@@ -715,7 +732,8 @@ static func _process_flood_cell(
 	counter: int,
 	random,
 	lfsr_random,
-	counters: Dictionary
+	counters: Dictionary,
+	runtime_events: Dictionary,
 ) -> void:
 	counters.flood_markers_scanned += 1
 	if counter == 0 and lfsr_random.next_mask(1) != 0:
@@ -760,7 +778,8 @@ static func _process_flood_cell(
 			target,
 			_altitude_word(payloads.ALTM, index) & 0x1f,
 			random,
-			lfsr_random
+			lfsr_random,
+			runtime_events,
 		) == 1:
 			counters.spread_floods += 1
 
@@ -807,7 +826,8 @@ static func _process_riot_cell(
 	marker: int,
 	random,
 	lfsr_random,
-	counters: Dictionary
+	counters: Dictionary,
+	runtime_events: Dictionary,
 ) -> void:
 	counters.riot_markers_scanned += 1
 	if random.next_u15() & 3 != 0:
@@ -831,6 +851,7 @@ static func _process_riot_cell(
 				point + CARDINAL_DIRECTIONS[damage_direction],
 				random,
 				lfsr_random,
+				runtime_events,
 			)
 		):
 			counters.started_fires += 1
@@ -887,7 +908,12 @@ static func _process_dispatch_cell(
 
 
 static func _apply_damage(
-	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
+	city: CityState,
+	payloads: Dictionary,
+	point: Vector2i,
+	random,
+	lfsr_random,
+	runtime_events: Dictionary = {},
 ) -> int:
 	return DisasterMapDamage.apply(
 		city,
@@ -904,7 +930,9 @@ static func _apply_damage(
 		payloads.MISC,
 		point,
 		random,
-		lfsr_random
+		lfsr_random,
+		false,
+		runtime_events,
 	)
 
 
@@ -918,7 +946,8 @@ static func _apply_flood_damage(
 	point: Vector2i,
 	maximum_altitude: int,
 	random,
-	lfsr_random
+	lfsr_random,
+	runtime_events: Dictionary = {},
 ) -> int:
 	return DisasterMapDamage.apply_flood(
 		city,
@@ -936,7 +965,8 @@ static func _apply_flood_damage(
 		point,
 		maximum_altitude,
 		random,
-		lfsr_random
+		lfsr_random,
+		runtime_events,
 	)
 
 

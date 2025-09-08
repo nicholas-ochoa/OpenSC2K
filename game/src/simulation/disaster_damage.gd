@@ -4,6 +4,31 @@ extends RefCounted
 const NetworkTiles = preload("res://src/tools/network_command.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
 const TEXT_LABEL_BASE := 201
+const SOUND_DAMAGE := 0x1f8
+
+
+static func new_runtime_events() -> Dictionary:
+	return {
+		"effect_events": [] as Array[Dictionary],
+		"sound_events": [] as Array[int],
+		"next_effect_frame": 0,
+	}
+
+
+static func append_damage_events(runtime_events: Dictionary, damage: Dictionary) -> void:
+	if runtime_events.is_empty():
+		return
+	var source: Array = damage.get("effect_events", [])
+	if source.is_empty():
+		return
+	var destination: Array[Dictionary] = runtime_events.get("effect_events", [])
+	runtime_events["next_effect_frame"] = Demolish.append_effect_sequence(
+		destination, source, int(runtime_events.get("next_effect_frame", 0))
+	)
+	runtime_events["effect_events"] = destination
+	var sounds: Array[int] = runtime_events.get("sound_events", [])
+	sounds.append(SOUND_DAMAGE)
+	runtime_events["sound_events"] = sounds
 
 
 static func apply(
@@ -22,7 +47,8 @@ static func apply(
 	point: Vector2i,
 	random,
 	lfsr_random,
-	allow_small_tile := false
+	allow_small_tile := false,
+	runtime_events: Dictionary = {},
 ) -> int:
 	var index := _index(point)
 	if index < 0 or flags[index] & 0x04 != 0:
@@ -35,11 +61,12 @@ static func apply(
 		if overlay < 51:
 			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
 		elif overlay < TEXT_LABEL_BASE:
-			burn_structure(
+			var damage := burn_structure(
 				city, altitude, buildings, terrain, zones, underground,
 				flags, text, labels, microsims, misc, point, random, lfsr_random,
-				true, false
+				true, false, true
 			)
+			append_damage_events(runtime_events, damage)
 			result_code = 3
 		elif overlay < 241:
 			return 0
@@ -73,7 +100,8 @@ static func apply_flood(
 	point: Vector2i,
 	maximum_altitude: int,
 	random,
-	lfsr_random
+	lfsr_random,
+	runtime_events: Dictionary = {},
 ) -> int:
 	var index := _index(point)
 	if index < 0 or _altitude_word(altitude, index) & 0x1f > maximum_altitude:
@@ -85,11 +113,12 @@ static func apply_flood(
 		if overlay < 51:
 			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
 		elif overlay < TEXT_LABEL_BASE:
-			burn_structure(
+			var damage := burn_structure(
 				city, altitude, buildings, terrain, zones, underground,
 				flags, text, labels, microsims, misc, point, random, lfsr_random,
-				false, false
+				false, false, true
 			)
+			append_damage_events(runtime_events, damage)
 		elif overlay < 241:
 			return 0
 		elif overlay < 250:

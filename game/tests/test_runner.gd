@@ -3864,14 +3864,14 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Meltdown fixture places one valid four-by-four nuclear power plant",
 	)
 	var meltdown_random := SparseRandom.new({
-		16: 0,
-		17: 1,
-		19: 1,
-		20: 0,
-		21: 0,
-		22: 0,
-		23: 1,
-		25: 1,
+		144: 0,
+		145: 1,
+		147: 1,
+		148: 0,
+		149: 0,
+		150: 0,
+		151: 1,
+		153: 1,
 	})
 	var meltdown_start := DisasterStart.start(
 		meltdown_city,
@@ -3889,7 +3889,13 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and meltdown_start.plant_site == Rect2i(63, 63, 4, 4)
 		and meltdown_start.point == meltdown_center
 		and meltdown_start.view_center_requests == [meltdown_center]
-		and meltdown_start.sound_events == [DisasterStart.SOUND_SIREN],
+		and meltdown_start.sound_events == [
+			DisasterStart.SOUND_EARTHQUAKE, DisasterStart.SOUND_SIREN,
+		]
+		and meltdown_start.effect_events.size() == 64
+		and meltdown_start.effect_events[0].frame == 0
+		and meltdown_start.effect_events[16].frame == 1
+		and meltdown_start.effect_events[63].frame == 3,
 		"Meltdown finds the first nuclear plant, normalizes its center, and reports a start",
 	)
 	_check(
@@ -3900,7 +3906,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and meltdown_start.radioactive_writes == 17
 		and meltdown_start.toxic_writes == 1
 		and meltdown_start.map_changed
-		and meltdown_random.position == 4264,
+		and meltdown_random.position == 4392,
 		"Meltdown preserves the 65-by-65 scan branches and exact process-random order: %s pos=%d"
 		% [meltdown_start, meltdown_random.position],
 	)
@@ -4472,11 +4478,17 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			% hurricane_case.direction,
 		)
 		var expected_effects: int = 20 if hurricane_case.direction in [0, 3] else 0
+		var last_effect_frame := (
+			int(hurricane.effect_events[-1].frame)
+			if not hurricane.effect_events.is_empty()
+			else -1
+		)
 		_check(
 			hurricane.effect_events.size() == expected_effects
 			and hurricane.sound_events.count(DisasterStart.SOUND_EARTHQUAKE)
-			== expected_effects,
-			"Hurricane direction %d emits only source-enabled edge damage effects"
+			== expected_effects
+			and last_effect_frame == expected_effects - 1,
+			"Hurricane direction %d emits sequential source-enabled edge damage effects"
 			% hurricane_case.direction,
 		)
 
@@ -4658,6 +4670,30 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and spread.city.text_overlay_id(19, 20) == 0xff
 		and spread_random.position == 2,
 		"Fire choice zero spreads west through the shared damage helper",
+	)
+
+	var linked_spread := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		linked_spread.city.set_building_id(19, 20, 0x70)
+		and linked_spread.city.set_text_overlay_id(19, 20, 51),
+		"Linked fire spread fixture adds a west microsimulation building",
+	)
+	var linked_spread_random := SequenceRandom.new([0, 0, 2, 1])
+	var linked_spread_tick := DisasterMap.run_fire(
+		linked_spread.city, linked_spread_random, SequenceLfsrRandom.new([])
+	)
+	_check(
+		linked_spread_tick.ok
+		and linked_spread_tick.spread_fires == 1
+		and linked_spread_tick.effect_events.size() == 1
+		and linked_spread_tick.effect_events[0].point == Vector2i(19, 20)
+		and linked_spread_tick.effect_events[0].sprite_id == 1394
+		and linked_spread_tick.effect_events[0].flip
+		and linked_spread_tick.sound_events == [
+			DisasterMap.SOUND_EARTHQUAKE, DisasterMap.SOUND_FIRE,
+		]
+		and linked_spread_random.position == 4,
+		"Shared fire damage emits native dust and consumes its two visual random values",
 	)
 
 	var covered := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x70)
@@ -5062,6 +5098,32 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	_check(
 		flood_random.position == 2 and flood_lfsr.position == 0,
 		"An early flood spread preserves its process-random order",
+	)
+
+	var linked_flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
+	_check(
+		linked_flood.city.set_text_overlay_id(20, 20, 0xfc)
+		and linked_flood.city.set_building_id(19, 20, 0x70)
+		and linked_flood.city.set_text_overlay_id(19, 20, 51),
+		"Linked flood fixture installs a west microsimulation building",
+	)
+	var linked_flood_random := SequenceRandom.new([0, 2, 1, 1])
+	var linked_flood_tick := DisasterMap.run_flood(
+		linked_flood.city,
+		linked_flood_random,
+		SequenceLfsrRandom.new([]),
+		60,
+	)
+	_check(
+		linked_flood_tick.ok
+		and linked_flood_tick.spread_floods == 1
+		and linked_flood_tick.effect_events.size() == 1
+		and linked_flood_tick.effect_events[0].point == Vector2i(19, 20)
+		and linked_flood_tick.effect_events[0].sprite_id == 1394
+		and linked_flood_tick.effect_events[0].flip
+		and linked_flood_tick.sound_events == [DisasterMap.SOUND_EARTHQUAKE]
+		and linked_flood_random.position == 4,
+		"Shared flood damage emits native dust and consumes its two visual random values",
 	)
 
 	var expired_flood := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
