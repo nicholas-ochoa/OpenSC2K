@@ -1345,6 +1345,40 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	_check(not map_control.center_on_tile(Vector2i(-1, 0)), "Center tool rejects an invalid tile")
 	_check(not map_control.is_left_drag_active(), "Map control starts without an active left drag")
+	var scroll_control := MapControl.new()
+	scroll_control.size = Vector2(400, 300)
+	var scroll_image := Image.create_empty(1000, 800, false, Image.FORMAT_RGBA8)
+	scroll_control.set_city_view(starter, ImageTexture.create_from_image(scroll_image))
+	var initial_scroll := scroll_control.scroll_state()
+	_check(
+		initial_scroll.content == Vector2(1000, 800)
+		and initial_scroll.page == Vector2(400, 300)
+		and initial_scroll.value == Vector2(300, 250),
+		"City scroll state reports content, visible page, and centered offsets",
+	)
+	_check(
+		scroll_control.set_scroll_value(0, 600)
+		and scroll_control.set_scroll_value(1, 500)
+		and scroll_control.source_center == Vector2(800, 650)
+		and scroll_control.scroll_state().value == Vector2(600, 500),
+		"City scroll values move the source center on both axes",
+	)
+	_check(
+		scroll_control.set_scroll_value(0, 999)
+		and scroll_control.scroll_state().value.x == 600
+		and not scroll_control.set_scroll_value(2, 0),
+		"City scroll values clamp to the last visible page and reject an invalid axis",
+	)
+	scroll_control.size = Vector2(1200, 900)
+	scroll_control._on_resized()
+	var fitted_scroll := scroll_control.scroll_state()
+	_check(
+		fitted_scroll.page == Vector2(1000, 800)
+		and fitted_scroll.value == Vector2.ZERO
+		and scroll_control.source_center == Vector2(500, 400),
+		"A viewport larger than the city centers the texture and fills each scroll page",
+	)
+	scroll_control.free()
 	var small_sign := MapControl.sign_layout(
 		Vector2(100, 80), 40.0, IsometricRenderer.VIEW_SMALL
 	)

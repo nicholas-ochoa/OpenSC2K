@@ -10,6 +10,7 @@ signal selection_changed(
 signal selection_canceled()
 signal query_requested(point: Vector2i)
 signal zoom_changed(percent: int)
+signal viewport_changed()
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const BuildingTool = preload("res://src/tools/building_command.gd")
@@ -110,6 +111,7 @@ func set_city_view(
 	_clamp_source_center()
 	_sync_base_layer()
 	queue_redraw()
+	viewport_changed.emit()
 
 
 func set_animated_palette(texture: Texture2D) -> void:
@@ -275,6 +277,7 @@ func center_on_tile(point: Vector2i) -> bool:
 	_clamp_source_center()
 	_sync_base_layer()
 	queue_redraw()
+	viewport_changed.emit()
 	return true
 
 
@@ -282,6 +285,41 @@ func center_tile() -> Vector2i:
 	if city == null:
 		return Vector2i(-1, -1)
 	return Renderer.screen_to_tile(city, source_center + Vector2(0, -0.5))
+
+
+func scroll_state() -> Dictionary:
+	if city_texture == null:
+		return {}
+	var content := Vector2(city_texture.get_size())
+	var visible := size / _view_scale()
+	var page := Vector2(
+		minf(content.x, visible.x),
+		minf(content.y, visible.y),
+	)
+	var value := source_center - page * 0.5
+	for axis in 2:
+		if page[axis] >= content[axis]:
+			value[axis] = 0.0
+		else:
+			value[axis] = clampf(value[axis], 0.0, content[axis] - page[axis])
+	return {"content": content, "page": page, "value": value}
+
+
+func set_scroll_value(axis: int, value: float) -> bool:
+	if axis < 0 or axis > 1:
+		return false
+	var state := scroll_state()
+	if state.is_empty():
+		return false
+	var offset: Vector2 = state.value
+	offset[axis] = value
+	var page: Vector2 = state.page
+	source_center = offset + page * 0.5
+	_clamp_source_center()
+	_sync_base_layer()
+	queue_redraw()
+	viewport_changed.emit()
+	return true
 
 
 func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void:
@@ -699,6 +737,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		_clamp_source_center()
 		_sync_base_layer()
 		queue_redraw()
+		viewport_changed.emit()
 		accept_event()
 		return
 	var tile := _tile_at(event.position)
@@ -800,6 +839,7 @@ func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	_sync_base_layer()
 	zoom_changed.emit(zoom_percent())
 	queue_redraw()
+	viewport_changed.emit()
 	return true
 
 
@@ -840,6 +880,7 @@ func _on_resized() -> void:
 	_clamp_source_center()
 	_sync_base_layer()
 	queue_redraw()
+	viewport_changed.emit()
 
 
 func _ensure_base_layer() -> void:

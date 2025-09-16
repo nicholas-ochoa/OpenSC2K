@@ -168,6 +168,9 @@ var palette_cycle_ticks := 0
 var palette_cycle_texture: ImageTexture
 
 var map_view: CityMapControl
+var map_horizontal_scroll: HScrollBar
+var map_vertical_scroll: VScrollBar
+var syncing_map_scrollbars := false
 var city_label: Label
 var details_label: Label
 var status_label: Label
@@ -602,6 +605,13 @@ func _build_interface(toolbar_art: Image) -> void:
 		"panel", _classic_box(Color("18242c"), Color("404040"), 2)
 	)
 	content.add_child(map_panel)
+	var map_grid := GridContainer.new()
+	map_grid.columns = 2
+	map_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_grid.add_theme_constant_override("h_separation", 0)
+	map_grid.add_theme_constant_override("v_separation", 0)
+	map_panel.add_child(map_grid)
 
 	map_view = MapControl.new()
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -611,7 +621,53 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.selection_canceled.connect(_on_map_selection_canceled)
 	map_view.query_requested.connect(_open_query)
 	map_view.zoom_changed.connect(_on_city_zoom_changed)
-	map_panel.add_child(map_view)
+	map_view.viewport_changed.connect(_sync_map_scrollbars)
+	map_grid.add_child(map_view)
+
+	var vertical_scroll_column := VBoxContainer.new()
+	vertical_scroll_column.custom_minimum_size = Vector2(18, 0)
+	vertical_scroll_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	vertical_scroll_column.add_theme_constant_override("separation", 0)
+	vertical_scroll_column.add_child(
+		_map_scroll_button("▲", "Scroll Up", 1, -1)
+	)
+	map_vertical_scroll = VScrollBar.new()
+	map_vertical_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_vertical_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_vertical_scroll.step = 1.0
+	_style_map_scrollbar(map_vertical_scroll)
+	map_vertical_scroll.value_changed.connect(_on_map_vertical_scroll)
+	vertical_scroll_column.add_child(map_vertical_scroll)
+	vertical_scroll_column.add_child(
+		_map_scroll_button("▼", "Scroll Down", 1, 1)
+	)
+	map_grid.add_child(vertical_scroll_column)
+
+	var horizontal_scroll_row := HBoxContainer.new()
+	horizontal_scroll_row.custom_minimum_size = Vector2(0, 18)
+	horizontal_scroll_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	horizontal_scroll_row.add_theme_constant_override("separation", 0)
+	horizontal_scroll_row.add_child(
+		_map_scroll_button("◀", "Scroll Left", 0, -1)
+	)
+	map_horizontal_scroll = HScrollBar.new()
+	map_horizontal_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	map_horizontal_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_horizontal_scroll.step = 1.0
+	_style_map_scrollbar(map_horizontal_scroll)
+	map_horizontal_scroll.value_changed.connect(_on_map_horizontal_scroll)
+	horizontal_scroll_row.add_child(map_horizontal_scroll)
+	horizontal_scroll_row.add_child(
+		_map_scroll_button("▶", "Scroll Right", 0, 1)
+	)
+	map_grid.add_child(horizontal_scroll_row)
+
+	var map_scroll_corner := Panel.new()
+	map_scroll_corner.custom_minimum_size = Vector2(18, 18)
+	map_scroll_corner.add_theme_stylebox_override(
+		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 1)
+	)
+	map_grid.add_child(map_scroll_corner)
 
 	sidebar_toggle_button = Button.new()
 	sidebar_toggle_button.text = ">"
@@ -1365,6 +1421,79 @@ func _zoom_in() -> void:
 
 func _zoom_out() -> void:
 	map_view.zoom_out()
+
+
+func _sync_map_scrollbars() -> void:
+	if (
+		map_view == null
+		or map_horizontal_scroll == null
+		or map_vertical_scroll == null
+	):
+		return
+	syncing_map_scrollbars = true
+	var state := map_view.scroll_state()
+	if state.is_empty():
+		_set_map_scrollbar_state(map_horizontal_scroll, 1.0, 1.0, 0.0)
+		_set_map_scrollbar_state(map_vertical_scroll, 1.0, 1.0, 0.0)
+	else:
+		var content: Vector2 = state.content
+		var page: Vector2 = state.page
+		var value: Vector2 = state.value
+		_set_map_scrollbar_state(map_horizontal_scroll, content.x, page.x, value.x)
+		_set_map_scrollbar_state(map_vertical_scroll, content.y, page.y, value.y)
+	syncing_map_scrollbars = false
+
+
+func _set_map_scrollbar_state(
+	scrollbar: ScrollBar, maximum: float, page: float, value: float
+) -> void:
+	scrollbar.min_value = 0.0
+	scrollbar.max_value = maxf(1.0, maximum)
+	scrollbar.page = clampf(page, 0.0, scrollbar.max_value)
+	scrollbar.value = clampf(value, 0.0, scrollbar.max_value - scrollbar.page)
+
+
+func _map_scroll_button(text: String, tooltip: String, axis: int, direction: int) -> Button:
+	var button := Button.new()
+	button.text = text
+	button.tooltip_text = tooltip
+	button.custom_minimum_size = Vector2(18, 18)
+	button.focus_mode = Control.FOCUS_NONE
+	button.add_theme_font_size_override("font_size", 9)
+	button.pressed.connect(_nudge_map_scroll.bind(axis, direction))
+	return button
+
+
+func _style_map_scrollbar(scrollbar: ScrollBar) -> void:
+	var track := _classic_box(Color("d4d0c8"), Color("808080"), 1)
+	track.set_content_margin_all(0.0)
+	var grabber := _classic_box(Color("c0c0c0"), Color("ffffff"), 1)
+	grabber.set_content_margin_all(4.0)
+	var pressed_grabber := _classic_box(Color("a0a0a0"), Color("404040"), 1)
+	pressed_grabber.set_content_margin_all(4.0)
+	for style_name in ["scroll", "scroll_focus"]:
+		scrollbar.add_theme_stylebox_override(style_name, track)
+	for style_name in ["grabber", "grabber_highlight"]:
+		scrollbar.add_theme_stylebox_override(style_name, grabber)
+	scrollbar.add_theme_stylebox_override("grabber_pressed", pressed_grabber)
+
+
+func _nudge_map_scroll(axis: int, direction: int) -> void:
+	var scrollbar: ScrollBar = (
+		map_horizontal_scroll if axis == 0 else map_vertical_scroll
+	)
+	if scrollbar != null:
+		scrollbar.value += 32.0 * direction
+
+
+func _on_map_horizontal_scroll(value: float) -> void:
+	if not syncing_map_scrollbars and map_view != null:
+		map_view.set_scroll_value(0, value)
+
+
+func _on_map_vertical_scroll(value: float) -> void:
+	if not syncing_map_scrollbars and map_view != null:
+		map_view.set_scroll_value(1, value)
 
 
 func _rotate_city(counter_clockwise: bool) -> void:
