@@ -6,6 +6,7 @@
 game/.godot/
 *.tmp
 *.log
+__pycache__/
 
 # Reverse-engineering workspaces
 *.gpr
@@ -14,4 +15,3 @@ ghidra-project/
 
 # Platform files
 .DS_Store
-
