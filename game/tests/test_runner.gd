@@ -15,6 +15,7 @@ const DataUsa = preload("res://src/assets/data_usa_resource.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
+const GraphView = preload("res://src/view/city_graph_control.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
@@ -8945,6 +8946,62 @@ func _test_graph_history(reference_root: String) -> void:
 			_write_u32_be(data, (series * CityModel.GRAPH_VALUE_COUNT + index) * 4, series * 1000 + index)
 	_check(document.find_chunk("XGRP").set_decoded_payload(data), "Graph test installs known history")
 	_check(city.set_age_in_days(150), "Graph test selects July")
+	var year_history := GraphView.history_for_scale(city, 2, GraphView.TIME_YEAR)
+	var decade_history := GraphView.history_for_scale(city, 2, GraphView.TIME_DECADE)
+	var century_history := GraphView.history_for_scale(city, 2, GraphView.TIME_CENTURY)
+	_check(
+		year_history.size() == 12
+		and year_history[0] == 2011
+		and year_history[-1] == 2000,
+		"Graph window orders monthly history from oldest to newest",
+	)
+	_check(
+		decade_history.size() == 20
+		and decade_history[0] == 2031
+		and decade_history[-1] == 2012,
+		"Graph window orders half-year history from oldest to newest",
+	)
+	_check(
+		century_history.size() == 20
+		and century_history[0] == 2051
+		and century_history[-1] == 2032,
+		"Graph window orders five-year history from oldest to newest",
+	)
+	var display_maxima := GraphView.display_maxima(city)
+	_check(
+		display_maxima[0] == 51
+		and display_maxima[1] == 51
+		and display_maxima[3] == 51,
+		"Graph window shares the City Size maximum with RCI series",
+	)
+	_check(
+		display_maxima[4] == 7051 and display_maxima[7] == 7051,
+		"Graph window shares the traffic through crime maximum",
+	)
+	_check(
+		display_maxima[13] == 14051 and display_maxima[14] == 14051,
+		"Graph window raises the GNP maximum to national population",
+	)
+	_check(
+		GraphView.DEFAULT_SELECTED_MASK == 0x000f
+		and GraphView.SERIES_MARKERS[15] == "%",
+		"Graph window uses the recovered defaults and Federal Rate marker",
+	)
+	_check(
+		GraphView.format_value(0, 9999) == "9999"
+		and GraphView.format_value(0, 10000) == "10k"
+		and GraphView.format_value(14, 999) == "999"
+		and GraphView.format_value(14, 1000) == "1k"
+		and GraphView.format_value(14, 1000000) == "1m",
+		"Graph window uses the recovered compact number thresholds",
+	)
+	var month_labels := GraphView.time_labels(city, GraphView.TIME_YEAR)
+	_check(
+		month_labels.size() == 12
+		and month_labels[0] == "Aug"
+		and month_labels[-1] == "Jul",
+		"Graph window aligns the one-year labels to the current month",
+	)
 	for index in 8:
 		_check(
 			document.set_misc_u32(0x05f0 + index * 4, [0, 10, 20, 5, 7, 3, 4, 9][index]),

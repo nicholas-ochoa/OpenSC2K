@@ -15,6 +15,7 @@ const RenderJob = preload("res://src/view/city_render_job.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
+const GraphView = preload("res://src/view/city_graph_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -232,6 +233,9 @@ var forest_protest_dialog: AcceptDialog
 var forest_protest_message: Label
 var library_windows: Array[PanelContainer] = []
 var library_text_views: Array[TextEdit] = []
+var graph_window: Window
+var graph_control: CityGraphControl
+var graph_series_buttons: Array[CheckBox] = []
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
@@ -475,7 +479,9 @@ func _build_interface(toolbar_art: Image) -> void:
 	disasters_menu.tooltip_text = (
 		"Air Crash and Helicopter Crash do nothing when selected, as in the original Windows game."
 	)
-	_add_menu(menu_row, "Windows", [["Budget", 0], ["City Information", 1]], _on_windows_menu)
+	_add_menu(menu_row, "Windows", [
+		["Graphs", 0], ["Budget", 1], ["City Information", 2],
+	], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
 
@@ -907,6 +913,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	add_child(tunnel_dialog)
 
 	_build_query_dialog()
+	_build_graph_window()
 	city_analysis_dialog = AcceptDialog.new()
 	city_analysis_dialog.title = "City Analysis"
 	city_analysis_dialog.min_size = Vector2i(600, 480)
@@ -1227,6 +1234,85 @@ func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
 	box.content_margin_right = 5
 	box.content_margin_bottom = 3
 	return box
+
+
+func _build_graph_window() -> void:
+	graph_window = Window.new()
+	graph_window.name = "GraphWindow"
+	graph_window.title = "Graph Window"
+	graph_window.size = Vector2i(860, 560)
+	graph_window.min_size = Vector2i(700, 480)
+	graph_window.transient = true
+	graph_window.exclusive = false
+	graph_window.visible = false
+	graph_window.close_requested.connect(graph_window.hide)
+	add_child(graph_window)
+
+	var background := PanelContainer.new()
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	background.add_theme_stylebox_override(
+		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
+	)
+	graph_window.add_child(background)
+	var margin := MarginContainer.new()
+	for side in ["left", "top", "right", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 10)
+	background.add_child(margin)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	margin.add_child(column)
+
+	var graph_frame := PanelContainer.new()
+	graph_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	graph_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	graph_frame.add_theme_stylebox_override(
+		"panel", _classic_box(Color("ffffff"), Color("404040"), 1)
+	)
+	column.add_child(graph_frame)
+	graph_control = GraphView.new()
+	graph_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	graph_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	graph_frame.add_child(graph_control)
+
+	var controls := HBoxContainer.new()
+	controls.add_theme_constant_override("separation", 16)
+	column.add_child(controls)
+	var series_grid := GridContainer.new()
+	series_grid.columns = 4
+	series_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	series_grid.add_theme_constant_override("h_separation", 8)
+	series_grid.add_theme_constant_override("v_separation", 2)
+	controls.add_child(series_grid)
+	for series in CityGraphControl.SERIES_COUNT:
+		var check := CheckBox.new()
+		check.text = CityGraphControl.SERIES_NAMES[series]
+		check.tooltip_text = "%s graph (%s)" % [
+			CityGraphControl.SERIES_NAMES[series],
+			CityGraphControl.SERIES_MARKERS[series],
+		]
+		check.custom_minimum_size = Vector2(132, 24)
+		check.button_pressed = bool(
+			CityGraphControl.DEFAULT_SELECTED_MASK & (1 << series)
+		)
+		check.toggled.connect(_on_graph_series_toggled.bind(series))
+		series_grid.add_child(check)
+		graph_series_buttons.append(check)
+
+	var scale_column := VBoxContainer.new()
+	scale_column.custom_minimum_size = Vector2(110, 0)
+	controls.add_child(scale_column)
+	var scale_heading := Label.new()
+	scale_heading.text = "Time Scale"
+	scale_heading.add_theme_color_override("font_color", Color("000080"))
+	scale_column.add_child(scale_heading)
+	var scale_group := ButtonGroup.new()
+	for entry in [["1 Year", 0], ["10 Years", 1], ["100 Yrs", 2]]:
+		var radio := CheckBox.new()
+		radio.text = entry[0]
+		radio.button_group = scale_group
+		radio.button_pressed = entry[1] == 0
+		radio.pressed.connect(_on_graph_time_scale.bind(entry[1]))
+		scale_column.add_child(radio)
 
 
 func _build_query_dialog() -> void:
@@ -1660,9 +1746,31 @@ func _on_disaster_menu(id: int) -> void:
 
 func _on_windows_menu(id: int) -> void:
 	if id == 0:
-		_open_manual_budget()
+		_open_graph_window()
 	elif id == 1:
+		_open_manual_budget()
+	elif id == 2:
 		_set_sidebar_expanded(not sidebar_panel.visible)
+
+
+func _open_graph_window() -> void:
+	if city == null or graph_window == null or graph_control == null:
+		return
+	graph_control.set_city(city)
+	if graph_window.visible:
+		graph_window.move_to_foreground()
+	else:
+		graph_window.popup_centered(Vector2i(860, 560))
+
+
+func _on_graph_series_toggled(enabled: bool, series: int) -> void:
+	if graph_control != null:
+		graph_control.set_series_enabled(series, enabled)
+
+
+func _on_graph_time_scale(scale: int) -> void:
+	if graph_control != null:
+		graph_control.set_time_scale(scale)
 
 
 func _toggle_sidebar() -> void:
@@ -4178,6 +4286,8 @@ func _bring_library_window_to_front(window: PanelContainer) -> void:
 func _refresh_details() -> void:
 	if city == null:
 		return
+	if graph_control != null and graph_window != null and graph_window.visible:
+		graph_control.set_city(city)
 	var demand := city.rci_demand()
 	var weather_trend := city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff
 	var weather_name: String = (
