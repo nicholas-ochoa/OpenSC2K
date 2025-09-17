@@ -9,6 +9,7 @@ class SpriteEntry extends RefCounted:
 	var height := 0
 	var duplicate_index := 0
 	var encoded_pixels := PackedByteArray()
+	var allow_unpadded_odd_runs := false
 	var _index_image: Image
 	var _index_image_mutex := Mutex.new()
 
@@ -70,9 +71,10 @@ class SpriteEntry extends RefCounted:
 							x += 1
 						position += count
 						if count % 2 == 1:
-							if position >= row_end:
+							if position < row_end:
+								position += 1
+							elif not allow_unpadded_odd_runs:
 								return _failure("odd pixel run has no padding byte")
-							position += 1
 					_:
 						return _failure("unsupported row mode %d" % mode)
 			row += 1

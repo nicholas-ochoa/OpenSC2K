@@ -6,6 +6,7 @@ const CityModel = preload("res://src/model/city_state.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
+const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
@@ -204,6 +205,7 @@ func _init() -> void:
 	_test_invalid_rle()
 	_test_palette_and_minimap(reference_root)
 	_test_sprite_archives(reference_root)
+	_test_scurk_mif(reference_root)
 	_test_reference_corpus(reference_root)
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
@@ -2073,6 +2075,96 @@ func _test_sprite_archives(reference_root: String) -> void:
 		small_monster_layers[6].sprite_id == 385
 		and small_monster_layers[7].sprite_id == 491,
 		"Small monster view scales the effect and alternate head sprites",
+	)
+
+
+func _test_scurk_mif(reference_root: String) -> void:
+	var scurk_directory := reference_root.path_join("SCURKART")
+	var mif_files := PackedStringArray()
+	for filename in DirAccess.get_files_at(scurk_directory):
+		if filename.get_extension().to_lower() == "mif":
+			mif_files.append(filename)
+	mif_files.sort()
+	_check(mif_files.size() == 31, "All 31 supplied SCURK tile sets are present")
+	for filename in mif_files:
+		var tile_set := ScurkTileSet.load_path(scurk_directory.path_join(filename))
+		_check(tile_set.is_valid(), "%s parses: %s" % [filename, tile_set.parse_error])
+
+	var original := ScurkTileSet.load_path(scurk_directory.path_join("ORIGINAL.MIF"))
+	_check(original.is_valid(), "ORIGINAL.MIF parses: %s" % original.parse_error)
+	if original.is_valid():
+		_check(
+			original.piece_count == 558
+			and original.shapes.size() == 558
+			and original.overrides.entries.size() == 558
+			and original.names.is_empty(),
+			"ORIGINAL.MIF contains 558 visible SHAP records",
+		)
+
+	var city_hall := ScurkTileSet.load_path(scurk_directory.path_join("CITYHAL.MIF"))
+	_check(city_hall.is_valid(), "CITYHAL.MIF parses: %s" % city_hall.parse_error)
+	if city_hall.is_valid():
+		_check(
+			city_hall.piece_count == 552
+			and city_hall.shapes.size() == 552
+			and city_hall.overrides.entries.size() == 3,
+			"CITYHAL.MIF keeps only its three visible overrides",
+		)
+		for expected in [[1208, 96, 85], [708, 48, 43], [208, 24, 22]]:
+			var entry := city_hall.overrides.find_sprite(expected[0])
+			_check(
+				entry != null and entry.width == expected[1] and entry.height == expected[2],
+				"CITYHAL.MIF sprite %d has its native dimensions" % expected[0],
+			)
+
+	var tile_set_one := ScurkTileSet.load_path(scurk_directory.path_join("TILESET1.MIF"))
+	_check(tile_set_one.is_valid(), "TILESET1.MIF parses: %s" % tile_set_one.parse_error)
+	if tile_set_one.is_valid():
+		_check(
+			tile_set_one.piece_count == 572
+			and tile_set_one.shapes.size() == 552
+			and tile_set_one.names.size() == 20,
+			"TILESET1.MIF contains 552 shapes and 20 names",
+		)
+		_check(
+			tile_set_one.names.get(0xb5, "") == "Theater",
+			"SCURK NAME records decode their full ID and terminal-null text",
+		)
+
+	var unpadded := Sc2SpriteArchive.SpriteEntry.new()
+	unpadded.sprite_id = 7
+	unpadded.width = 1
+	unpadded.height = 1
+	unpadded.encoded_pixels = PackedByteArray([3, 1, 1, 4, 7, 0, 2])
+	_check(
+		not unpadded.decode_indices().ok,
+		"Normal DAT sprites reject an unpadded odd pixel run",
+	)
+	unpadded.allow_unpadded_odd_runs = true
+	var decoded_unpadded := unpadded.decode_indices()
+	_check(
+		decoded_unpadded.ok and decoded_unpadded.pixels[0] == 7,
+		"SCURK sprites accept an odd pixel run that ends at the row boundary",
+	)
+
+	var city_hall_bytes := FileAccess.get_file_as_bytes(
+		scurk_directory.path_join("CITYHAL.MIF")
+	)
+	var bad_header := city_hall_bytes.duplicate()
+	bad_header[0] = 0
+	var bad_header_result := ScurkTileSet.new()
+	_check(
+		not bad_header_result.parse(bad_header)
+		and bad_header_result.parse_error.contains("MIFF/SC2K"),
+		"SCURK parser rejects an invalid form header",
+	)
+	var bad_pixel_length := city_hall_bytes.duplicate()
+	bad_pixel_length[161] = (bad_pixel_length[161] + 1) & 0xff
+	var bad_pixel_result := ScurkTileSet.new()
+	_check(
+		not bad_pixel_result.parse(bad_pixel_length)
+		and bad_pixel_result.parse_error.contains("pixel length"),
+		"SCURK parser rejects a SHAP pixel-length mismatch",
 	)
 
 
