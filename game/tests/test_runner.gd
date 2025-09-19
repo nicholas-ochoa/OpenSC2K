@@ -2116,6 +2116,17 @@ func _test_scurk_mif(reference_root: String) -> void:
 				entry != null and entry.width == expected[1] and entry.height == expected[2],
 				"CITYHAL.MIF sprite %d has its native dimensions" % expected[0],
 			)
+		var base_large := SpriteArchive.load_path(
+			reference_root.path_join("DATA/LARGE.DAT")
+		)
+		var combined_large := SpriteArchive.combine([base_large, city_hall.overrides])
+		_check(
+			combined_large.is_valid()
+			and combined_large.find_sprite(1208)
+			== city_hall.overrides.find_sprite(1208)
+			and combined_large.find_sprite(1207) == base_large.find_sprite(1207),
+			"A partial MIF replaces visible sprites and keeps blank base sprites",
+		)
 
 	var tile_set_one := ScurkTileSet.load_path(scurk_directory.path_join("TILESET1.MIF"))
 	_check(tile_set_one.is_valid(), "TILESET1.MIF parses: %s" % tile_set_one.parse_error)

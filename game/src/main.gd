@@ -5,6 +5,7 @@ const CityModel = preload("res://src/model/city_state.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
+const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const PeString = preload("res://src/assets/pe_string_resource.gd")
 const TextUsa = preload("res://src/assets/text_usa_resource.gd")
@@ -123,6 +124,10 @@ var scenario_palette: Sc2Palette
 var palette_index_encoding: Sc2Palette
 var large_sprites: Sc2SpriteArchive
 var small_medium_sprites: Sc2SpriteArchive
+var base_large_sprites: Sc2SpriteArchive
+var base_small_medium_sprites: Sc2SpriteArchive
+var active_scurk_tile_set: ScurkMif
+var active_scurk_name := ""
 var overlay_mode := "city"
 var reference_root := ""
 var original_query_strings: Dictionary = {}
@@ -177,6 +182,7 @@ var details_label: Label
 var status_label: Label
 var file_dialog: FileDialog
 var save_dialog: FileDialog
+var tile_set_dialog: FileDialog
 var save_button: Button
 var budget_button: Button
 var group_selector: OptionButton
@@ -299,9 +305,9 @@ func _ready() -> void:
 		return
 	palette_index_encoding = Palette.index_encoding()
 	_update_palette_cycle_texture()
-	large_sprites = SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
-	if not large_sprites.is_valid():
-		_show_error(large_sprites.parse_error)
+	base_large_sprites = SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
+	if not base_large_sprites.is_valid():
+		_show_error(base_large_sprites.parse_error)
 		return
 	var base_small_medium := SpriteArchive.load_path(
 		reference_root.path_join("DATA/SMALLMED.DAT")
@@ -315,7 +321,9 @@ func _ready() -> void:
 	if not special_sprites.is_valid():
 		_show_error(special_sprites.parse_error)
 		return
-	small_medium_sprites = SpriteArchive.combine([base_small_medium, special_sprites])
+	base_small_medium_sprites = SpriteArchive.combine([base_small_medium, special_sprites])
+	large_sprites = base_large_sprites
+	small_medium_sprites = base_small_medium_sprites
 
 	var initial_city := reference_root.path_join("CITIES/STARTER.SC2")
 	if FileAccess.file_exists(initial_city):
@@ -449,7 +457,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	menu_row.add_theme_constant_override("separation", 0)
 	menu_bar.add_child(menu_row)
 	_add_menu(menu_row, "File", [
-		["Open City...", 0], ["Save City As...", 1], ["Exit", 2],
+		["Open City...", 0], ["Save City As...", 1], ["Load Tile Set...", 2],
+		["Restore Original Tile Set", 3], ["Exit", 4],
 	], _on_file_menu)
 	_add_menu(menu_row, "Speed", [
 		["Pause", 0], ["Turtle", 1], ["Llama", 2], ["Cheetah", 3],
@@ -780,6 +789,13 @@ func _build_interface(toolbar_art: Image) -> void:
 	save_dialog.add_filter("*.SC2, *.sc2", "SimCity 2000 cities")
 	save_dialog.file_selected.connect(_save_copy)
 	add_child(save_dialog)
+
+	tile_set_dialog = FileDialog.new()
+	tile_set_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	tile_set_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	tile_set_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
+	tile_set_dialog.file_selected.connect(_load_tile_set)
+	add_child(tile_set_dialog)
 
 	sign_dialog = ConfirmationDialog.new()
 	sign_dialog.title = "City Sign"
@@ -1681,7 +1697,9 @@ func _on_file_menu(id: int) -> void:
 	match id:
 		0: _open_city_dialog()
 		1: _open_save_dialog()
-		2: get_tree().quit()
+		2: _open_tile_set_dialog()
+		3: _restore_original_tile_set()
+		4: get_tree().quit()
 
 
 func _on_speed_menu(id: int) -> void:
@@ -1816,6 +1834,73 @@ func _open_save_dialog() -> void:
 	save_dialog.current_dir = save_directory
 	save_dialog.current_file = current_document.source_path.get_file().get_basename() + ".SC2"
 	save_dialog.popup_centered_ratio(0.8)
+
+
+func _open_tile_set_dialog() -> void:
+	var tile_set_directory := ProjectSettings.globalize_path("res://../references/SCURKART")
+	if DirAccess.dir_exists_absolute(tile_set_directory):
+		tile_set_dialog.current_dir = tile_set_directory
+	tile_set_dialog.popup_centered_ratio(0.8)
+
+
+func _load_tile_set(path: String) -> void:
+	if base_large_sprites == null or base_small_medium_sprites == null:
+		_show_error("Original sprite data is not loaded.")
+		return
+	var tile_set := ScurkTileSet.load_path(path)
+	if not tile_set.is_valid():
+		_show_error("Cannot load tile set: %s" % tile_set.parse_error)
+		return
+	var new_large := SpriteArchive.combine([base_large_sprites, tile_set.overrides])
+	var new_small_medium := SpriteArchive.combine([
+		base_small_medium_sprites, tile_set.overrides,
+	])
+	if not new_large.is_valid() or not new_small_medium.is_valid():
+		_show_error("Cannot combine the tile set with the original sprite data.")
+		return
+	active_scurk_tile_set = tile_set
+	active_scurk_name = path.get_file()
+	large_sprites = new_large
+	small_medium_sprites = new_small_medium
+	_invalidate_sprite_art()
+	if city != null:
+		_refresh_map()
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Loaded tile set %s: %d graphic replacements and %d names." % [
+		active_scurk_name, tile_set.overrides.entries.size(), tile_set.names.size(),
+	]
+
+
+func _restore_original_tile_set() -> void:
+	if base_large_sprites == null or base_small_medium_sprites == null:
+		return
+	active_scurk_tile_set = null
+	active_scurk_name = ""
+	large_sprites = base_large_sprites
+	small_medium_sprites = base_small_medium_sprites
+	_invalidate_sprite_art()
+	if city != null:
+		_refresh_map()
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Restored the original tile set."
+
+
+func _invalidate_sprite_art() -> void:
+	static_render_epoch += 1
+	static_city_image = null
+	static_occlusion_commands.clear()
+	static_occlusion_grid.clear()
+	static_visual_signature = []
+	static_render_mode = ""
+	static_display_city = null
+	static_view_cache.clear()
+	pending_static_render = false
+	dynamic_sprite_cache.clear()
+	dynamic_foreground_cache.clear()
+	dynamic_occluder_cache.clear()
+	dynamic_visual_cache.clear()
+	dynamic_sign_occluders.clear()
+	dynamic_sign_occlusion_grid.clear()
 
 
 func _open_manual_budget() -> void:
@@ -4146,6 +4231,12 @@ func _open_query(point: Vector2i) -> void:
 			return
 		_show_news_items(approval.news_items)
 		result = Queries.inspect(city, point, original_query_strings)
+	if (
+		result.get("kind", "") == "general"
+		and active_scurk_tile_set != null
+		and active_scurk_tile_set.names.has(int(result.get("tile_id", -1)))
+	):
+		result.title = active_scurk_tile_set.names[int(result.tile_id)]
 	active_query_result = result
 	var is_specific: bool = result.kind == "specific"
 	query_title_label.text = "Query — %s" % result.title
