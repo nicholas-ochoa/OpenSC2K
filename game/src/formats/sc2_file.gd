@@ -165,6 +165,20 @@ func city_name() -> String:
 	return chunk.decoded_payload.slice(1, end).get_string_from_ascii()
 
 
+func set_city_name(value: String) -> bool:
+	var chunk := find_chunk("CNAM")
+	if chunk == null or chunk.decoded_payload.size() != DECODED_SIZES.CNAM:
+		return false
+	var encoded := value.to_ascii_buffer()
+	if encoded.size() > 30:
+		encoded = encoded.slice(0, 30)
+	var changed := chunk.decoded_payload.duplicate()
+	for index in encoded.size():
+		changed[index + 1] = encoded[index]
+	changed[encoded.size() + 1] = 0
+	return chunk.set_decoded_payload(changed)
+
+
 func misc_u32(offset: int) -> int:
 	var chunk := find_chunk("MISC")
 	if chunk == null or offset < 0 or offset + 4 > chunk.decoded_payload.size():

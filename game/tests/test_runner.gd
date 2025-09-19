@@ -71,6 +71,7 @@ const Demolish = preload("res://src/tools/demolish_command.gd")
 const TerrainTools = preload("res://src/tools/terrain_command.gd")
 const Dispatch = preload("res://src/tools/dispatch_command.gd")
 const CityRotation = preload("res://src/tools/city_rotation_command.gd")
+const NewCity = preload("res://src/model/new_city_setup.gd")
 
 var failures := 0
 var checks := 0
@@ -240,6 +241,7 @@ func _init() -> void:
 	_test_simulation_engine(reference_root)
 	_test_game_speed_controller(reference_root)
 	_test_modified_save(reference_root)
+	_test_new_city_setup(reference_root)
 	_test_map_edits(reference_root)
 	_test_tool_catalog()
 	_test_tool_availability(reference_root)
@@ -9294,6 +9296,153 @@ func _test_modified_save(reference_root: String) -> void:
 				modified_chunk.stored_payload == original_chunk.stored_payload,
 				"%s stored bytes stay unchanged after MISC edit" % original_chunk.chunk_id
 			)
+
+
+func _test_new_city_setup(reference_root: String) -> void:
+	var source_path := reference_root.path_join("DEFAULT.SC2")
+	var template := Sc2Document.load_path(source_path)
+	var original_name := template.city_name()
+	var original_misc := template.find_chunk("MISC").decoded_payload.duplicate()
+	var easy_random := Random.new(1)
+	var easy := NewCity.create(
+		template, "  Test City  ", "  Test Mayor  ", 1, 1900, easy_random
+	)
+	_check(easy.ok, "Easy new city initializes: %s" % easy.error)
+	if easy.ok:
+		var document: Sc2File = easy.document
+		var city := CityModel.from_document(document)
+		_check(
+			document.source_path.is_empty()
+			and city.city_name() == "Test City"
+			and city.mayor_name() == "Test Mayor",
+			"New city trims and stores its names without a source path",
+		)
+		_check(
+			city.city_mode() == 1
+			and city.difficulty() == 1
+			and city.founding_year() == 1900
+			and city.funds() == 20000,
+			"Easy new city stores its mode, difficulty, year, and funds",
+		)
+		_check(
+			document.misc_u32(NewCity.MISC_BONDS) == 0
+			and document.misc_u32(NewCity.MISC_NATIONAL_POPULATION) == 10000
+			and document.misc_u32(NewCity.MISC_NATIONAL_FEDERAL_RATE) == 3
+			and document.misc_u32(NewCity.MISC_NATIONAL_ECONOMY_TREND) == 0,
+			"Easy new city stores its national settings without a bond",
+		)
+		_check(
+			city.graph_series(NewCity.GRAPH_GNP).year[0] == 3
+			and city.graph_series(NewCity.GRAPH_NATIONAL_POPULATION).year[0] == 10000,
+			"New city seeds GNP and national-population history",
+		)
+		_check(
+			easy.invention_years
+			== PackedInt32Array([
+				1941, 1957, 1994, 1970, 2029, 2054, 1938, 1938, 1912,
+				1904, 1930, 1985, 1991, 2047, 2091, 2151, 2205,
+			]),
+			"New city uses the confirmed invention table and Microsoft random values",
+		)
+		var founding_story := NewsQueue.story_record(
+			document.find_chunk("MISC").decoded_payload, 0
+		)
+		_check(
+			founding_story.type == NewCity.FOUNDING_STORY_TYPE
+			and founding_story.priority == 1000,
+			"New city inserts the founding newspaper story",
+		)
+		var serialized := document.serialize()
+		var reparsed := Sc2Document.new()
+		_check(
+			serialized.ok and reparsed.parse(serialized.data),
+			"New city serializes and reparses: %s" % reparsed.parse_error,
+		)
+		if reparsed.is_valid():
+			_check(
+				reparsed.city_name() == "Test City"
+				and reparsed.misc_u32(NewCity.MISC_START_YEAR) == 1900,
+				"Reparsed new city preserves its identity and starting year",
+			)
+
+	var medium := NewCity.create(
+		template, "123456789012345678901234567890EXTRA",
+		"12345678901234567890123EXTRA", 2, 2000, Random.new(1)
+	)
+	_check(medium.ok, "Medium new city initializes: %s" % medium.error)
+	if medium.ok:
+		var medium_city := CityModel.from_document(medium.document)
+		_check(
+			medium_city.city_name() == "123456789012345678901234567890"
+			and medium_city.mayor_name() == "12345678901234567890123",
+			"New city applies the safe CNAM and XLAB limits",
+		)
+		_check(
+			medium_city.difficulty() == 2
+			and medium_city.funds() == 10000
+			and medium.document.misc_u32(NewCity.MISC_NATIONAL_POPULATION) == 60000
+			and medium.document.misc_u32(NewCity.MISC_NATIONAL_ECONOMY_TREND) == 1,
+			"Medium year 2000 uses the recovered economy settings",
+		)
+		_check(
+			medium.invention_years
+			== PackedInt32Array([
+				0, 0, 0, 0, 2029, 2054, 0, 0, 0, 0, 0, 0, 0,
+				2047, 2091, 2151, 2205,
+			]),
+			"Year 2000 clears inventions that were already available",
+		)
+
+	var hard := NewCity.create(
+		template, "", "", 3, 2050, Random.new(1)
+	)
+	_check(hard.ok, "Hard new city initializes: %s" % hard.error)
+	if hard.ok:
+		var hard_city := CityModel.from_document(hard.document)
+		var bond_budget := (
+			NewCity.MISC_BUDGETS + NewCity.BUDGET_BONDS * NewCity.BUDGET_RECORD_SIZE
+		)
+		_check(
+			hard_city.city_name() == "New City"
+			and hard_city.mayor_name() == "Mayor",
+			"Blank new-city names use safe defaults",
+		)
+		_check(
+			hard_city.difficulty() == 3
+			and hard_city.funds() == 10000
+			and hard.document.misc_u32(NewCity.MISC_BONDS) == 1
+			and hard.document.misc_u32(NewCity.MISC_BOND_RATES) == 3,
+			"Hard new city stores its 3 percent starting bond",
+		)
+		_check(
+			hard.document.misc_i32(bond_budget + NewCity.BUDGET_CURRENT) == 1
+			and hard.document.misc_i32(bond_budget + NewCity.BUDGET_FUNDING) == 30000
+			and hard.document.misc_i32(bond_budget + NewCity.BUDGET_YEAR_TO_DATE) == 30000
+			and hard.document.misc_i32(bond_budget + NewCity.BUDGET_COUNT_MONTH_0) == 1
+			and hard.document.misc_i32(bond_budget + NewCity.BUDGET_FUND_MONTH_0) == 30000,
+			"Hard new city initializes the saved Bonds budget record",
+		)
+		_check(
+			hard.document.misc_u32(NewCity.MISC_NATIONAL_POPULATION) == 150000
+			and hard.document.misc_u32(NewCity.MISC_NATIONAL_ECONOMY_TREND) == 2,
+			"Hard year 2050 uses the recovered national settings",
+		)
+
+	var rejected_random := Random.new(123)
+	_check(
+		not NewCity.create(template, "X", "Y", 0, 1900, rejected_random).ok
+		and rejected_random.state == 123,
+		"New city rejects an invalid difficulty without consuming random state",
+	)
+	_check(
+		not NewCity.create(template, "X", "Y", 1, 1975, Random.new(1)).ok,
+		"New city rejects an unsupported starting year",
+	)
+	_check(
+		template.city_name() == original_name
+		and template.find_chunk("MISC").decoded_payload == original_misc,
+		"New city setup never changes the supplied template",
+	)
 
 
 func _test_map_edits(reference_root: String) -> void:
