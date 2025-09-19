@@ -2,6 +2,7 @@ extends Control
 
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
+const NewCity = preload("res://src/model/new_city_setup.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
@@ -183,6 +184,11 @@ var status_label: Label
 var file_dialog: FileDialog
 var save_dialog: FileDialog
 var tile_set_dialog: FileDialog
+var new_city_dialog: ConfirmationDialog
+var new_city_name_input: LineEdit
+var new_city_mayor_input: LineEdit
+var new_city_difficulty: OptionButton
+var new_city_year: OptionButton
 var save_button: Button
 var budget_button: Button
 var group_selector: OptionButton
@@ -349,6 +355,7 @@ func _process(delta: float) -> void:
 		or tunnel_dialog.visible
 		or (forest_protest_dialog != null and forest_protest_dialog.visible)
 		or (query_overlay != null and query_overlay.visible)
+		or (new_city_dialog != null and new_city_dialog.visible)
 		or bond_dialog.visible
 		or military_dialog.visible
 		or scenario_dialog.visible
@@ -457,8 +464,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	menu_row.add_theme_constant_override("separation", 0)
 	menu_bar.add_child(menu_row)
 	_add_menu(menu_row, "File", [
-		["Open City...", 0], ["Save City As...", 1], ["Load Tile Set...", 2],
-		["Restore Original Tile Set", 3], ["Exit", 4],
+		["New City...", 0], ["Open City...", 1], ["Save City As...", 2],
+		["Load Tile Set...", 3], ["Restore Original Tile Set", 4], ["Exit", 5],
 	], _on_file_menu)
 	_add_menu(menu_row, "Speed", [
 		["Pause", 0], ["Turtle", 1], ["Llama", 2], ["Cheetah", 3],
@@ -749,6 +756,10 @@ func _build_interface(toolbar_art: Image) -> void:
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	sidebar.add_child(spacer)
+	var new_city_button := Button.new()
+	new_city_button.text = "New City..."
+	new_city_button.pressed.connect(_open_new_city_dialog)
+	sidebar.add_child(new_city_button)
 	var open_button := Button.new()
 	open_button.text = "Open City..."
 	open_button.pressed.connect(_open_city_dialog)
@@ -796,6 +807,54 @@ func _build_interface(toolbar_art: Image) -> void:
 	tile_set_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
 	tile_set_dialog.file_selected.connect(_load_tile_set)
 	add_child(tile_set_dialog)
+
+	new_city_dialog = ConfirmationDialog.new()
+	new_city_dialog.title = "New City"
+	# keep the built-in label in the layout. an empty label makes an embedded
+	# confirmationdialog reuse the full viewport height
+	new_city_dialog.dialog_text = " "
+	new_city_dialog.min_size = Vector2i(520, 390)
+	new_city_dialog.exclusive = true
+	new_city_dialog.get_ok_button().text = "Start New City"
+	new_city_dialog.confirmed.connect(_create_new_city)
+	var new_city_grid := GridContainer.new()
+	new_city_grid.columns = 2
+	new_city_grid.position = Vector2(18, 48)
+	new_city_grid.size = Vector2(484, 178)
+	new_city_grid.add_theme_constant_override("h_separation", 12)
+	new_city_grid.add_theme_constant_override("v_separation", 10)
+	new_city_dialog.add_child(new_city_grid)
+	for label_text in ["City Name", "Mayor Name", "Difficulty", "Starting Year"]:
+		var field_label := Label.new()
+		field_label.text = label_text
+		field_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		field_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		new_city_grid.add_child(field_label)
+		match label_text:
+			"City Name":
+				new_city_name_input = LineEdit.new()
+				new_city_name_input.max_length = 30
+				new_city_name_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				new_city_grid.add_child(new_city_name_input)
+			"Mayor Name":
+				new_city_mayor_input = LineEdit.new()
+				new_city_mayor_input.max_length = 23
+				new_city_mayor_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				new_city_grid.add_child(new_city_mayor_input)
+			"Difficulty":
+				new_city_difficulty = OptionButton.new()
+				new_city_difficulty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				new_city_difficulty.add_item("Easy — $20,000", 1)
+				new_city_difficulty.add_item("Medium — $10,000", 2)
+				new_city_difficulty.add_item("Hard — $10,000 bond at 3%", 3)
+				new_city_grid.add_child(new_city_difficulty)
+			"Starting Year":
+				new_city_year = OptionButton.new()
+				new_city_year.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+				for starting_year in NewCity.STARTING_YEARS:
+					new_city_year.add_item(str(starting_year), starting_year)
+				new_city_grid.add_child(new_city_year)
+	add_child(new_city_dialog)
 
 	sign_dialog = ConfirmationDialog.new()
 	sign_dialog.title = "City Sign"
@@ -1695,11 +1754,12 @@ func _on_map_selection_changed(
 
 func _on_file_menu(id: int) -> void:
 	match id:
-		0: _open_city_dialog()
-		1: _open_save_dialog()
-		2: _open_tile_set_dialog()
-		3: _restore_original_tile_set()
-		4: get_tree().quit()
+		0: _open_new_city_dialog()
+		1: _open_city_dialog()
+		2: _open_save_dialog()
+		3: _open_tile_set_dialog()
+		4: _restore_original_tile_set()
+		5: get_tree().quit()
 
 
 func _on_speed_menu(id: int) -> void:
@@ -1819,6 +1879,61 @@ func _on_help_menu(_id: int) -> void:
 	status_label.text = "Select a tool, then use the city view. Use the wheel to zoom. Use the right or middle mouse button to pan."
 
 
+func _open_new_city_dialog() -> void:
+	if new_city_dialog == null:
+		return
+	new_city_name_input.text = "New City"
+	new_city_mayor_input.text = (
+		city.mayor_name() if city != null and not city.mayor_name().is_empty() else "Mayor"
+	)
+	new_city_difficulty.select(0)
+	new_city_year.select(0)
+	new_city_dialog.popup_centered(Vector2i(520, 390))
+	new_city_name_input.grab_focus()
+	new_city_name_input.select_all()
+
+
+func _create_new_city() -> void:
+	var template_path := reference_root.path_join("DEFAULT.SC2")
+	var template := Sc2Document.load_path(template_path)
+	if not template.is_valid():
+		_show_error("Cannot load the default city: %s" % template.parse_error)
+		return
+	var difficulty := new_city_difficulty.get_selected_id()
+	var starting_year := new_city_year.get_selected_id()
+	var result := NewCity.create(
+		template,
+		new_city_name_input.text,
+		new_city_mayor_input.text,
+		difficulty,
+		starting_year,
+		tool_random,
+	)
+	if not result.ok:
+		_show_error("Cannot create a new city: %s" % result.error)
+		return
+	var document: Sc2File = result.document
+	_activate_document(
+		document,
+		null,
+		"Created %s in %d on %s difficulty. Map view: %s."
+		% [document.city_name(), starting_year, _difficulty_name(difficulty), overlay_mode.capitalize()]
+		+ " Flat default terrain is in use.",
+	)
+
+
+func _difficulty_name(difficulty: int) -> String:
+	match difficulty:
+		1:
+			return "Easy"
+		2:
+			return "Medium"
+		3:
+			return "Hard"
+		_:
+			return "Unknown"
+
+
 func _open_city_dialog() -> void:
 	var city_directory := ProjectSettings.globalize_path("res://../references/CITIES")
 	if DirAccess.dir_exists_absolute(city_directory):
@@ -1832,7 +1947,12 @@ func _open_save_dialog() -> void:
 	var save_directory := ProjectSettings.globalize_path("user://cities")
 	DirAccess.make_dir_recursive_absolute(save_directory)
 	save_dialog.current_dir = save_directory
-	save_dialog.current_file = current_document.source_path.get_file().get_basename() + ".SC2"
+	var save_name := current_document.source_path.get_file().get_basename()
+	if save_name.is_empty() and city != null:
+		save_name = city.city_name().validate_filename()
+	if save_name.is_empty():
+		save_name = "New City"
+	save_dialog.current_file = save_name + ".SC2"
 	save_dialog.popup_centered_ratio(0.8)
 
 
@@ -2158,17 +2278,27 @@ func _load_city(path: String) -> void:
 	if not document.is_valid():
 		_show_error(document.parse_error)
 		return
-
-	var loaded_city := CityModel.from_document(document)
-	if not loaded_city.is_valid():
-		_show_error(loaded_city.load_error)
-		return
 	var loaded_scenario: ScenarioState
 	if document.find_chunk("SCEN") != null:
 		loaded_scenario = ScenarioModel.from_document(document)
 		if not loaded_scenario.is_valid():
 			_show_error(loaded_scenario.load_error)
 			return
+	_activate_document(
+		document,
+		loaded_scenario,
+		"Loaded %s. Map view: %s."
+		% [path.get_file(), overlay_mode.capitalize()],
+	)
+
+
+func _activate_document(
+	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := ""
+) -> bool:
+	var loaded_city := CityModel.from_document(document)
+	if not loaded_city.is_valid():
+		_show_error(loaded_city.load_error)
+		return false
 
 	if budget_dialog.visible:
 		budget_dialog.hide()
@@ -2200,6 +2330,8 @@ func _load_city(path: String) -> void:
 	pending_tunnel_request.clear()
 	if tunnel_dialog.visible:
 		tunnel_dialog.hide()
+	if new_city_dialog != null and new_city_dialog.visible:
+		new_city_dialog.hide()
 	annual_budget_pending = false
 	game_over_active = false
 	city = loaded_city
@@ -2244,16 +2376,20 @@ func _load_city(path: String) -> void:
 	save_button.disabled = false
 	budget_button.disabled = false
 	_update_zoom_controls(map_view.zoom_percent())
-	city_label.text = "OpenSC2K — %s" % (
-		city.city_name() if not city.city_name().is_empty() else path.get_file().get_basename()
-	)
+	var display_name := city.city_name()
+	if display_name.is_empty():
+		display_name = document.source_path.get_file().get_basename()
+	if display_name.is_empty():
+		display_name = "New City"
+	city_label.text = "OpenSC2K — %s" % display_name
 	_refresh_details()
 	status_label.remove_theme_color_override("font_color")
-	status_label.text = "Loaded %s. Map view: %s." % [path.get_file(), overlay_mode.capitalize()]
+	status_label.text = status_text if not status_text.is_empty() else "City ready."
 	_refresh_map()
 	_update_edit_state()
 	if loaded_scenario != null:
 		_open_scenario_intro(loaded_scenario)
+	return true
 
 
 func _save_copy(path: String) -> void:
