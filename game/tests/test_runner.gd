@@ -72,6 +72,7 @@ const TerrainTools = preload("res://src/tools/terrain_command.gd")
 const Dispatch = preload("res://src/tools/dispatch_command.gd")
 const CityRotation = preload("res://src/tools/city_rotation_command.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
+const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
 
 var failures := 0
 var checks := 0
@@ -241,6 +242,7 @@ func _init() -> void:
 	_test_simulation_engine(reference_root)
 	_test_game_speed_controller(reference_root)
 	_test_modified_save(reference_root)
+	_test_new_city_terrain(reference_root)
 	_test_new_city_setup(reference_root)
 	_test_map_edits(reference_root)
 	_test_tool_catalog()
@@ -9296,6 +9298,144 @@ func _test_modified_save(reference_root: String) -> void:
 				modified_chunk.stored_payload == original_chunk.stored_payload,
 				"%s stored bytes stay unchanged after MISC edit" % original_chunk.chunk_id
 			)
+
+
+func _test_new_city_terrain(reference_root: String) -> void:
+	var source_path := reference_root.path_join("DEFAULT.SC2")
+	var template := Sc2Document.load_path(source_path)
+	var original_altitude := template.find_chunk("ALTM").decoded_payload.duplicate()
+	var options := {
+		"ocean": NewCityTerrain.DEFAULT_OCEAN,
+		"river": NewCityTerrain.DEFAULT_RIVER,
+		"hills": NewCityTerrain.DEFAULT_HILLS,
+		"water": NewCityTerrain.DEFAULT_WATER,
+		"trees": NewCityTerrain.DEFAULT_TREES,
+	}
+	var process_random := Random.new(1)
+	var game_random := GameRandom.new(1)
+	var generated := NewCity.create(
+		template, "Terrain City", "Terrain Mayor", 1, 1900,
+		process_random, game_random, options
+	)
+	_check(generated.ok, "Default new-city terrain generates: %s" % generated.error)
+	if generated.ok:
+		var document: Sc2File = generated.document
+		var city := CityModel.from_document(document)
+		var terrain_result: Dictionary = generated.terrain
+		_check(
+			terrain_result.water_level == 4
+			and document.misc_u32(NewCityTerrain.MISC_WATER_LEVEL) == 4
+			and document.misc_u32(NewCityTerrain.MISC_HAS_OCEAN) == 0
+			and document.misc_u32(NewCityTerrain.MISC_HAS_RIVER) == 1,
+			"Default terrain stores its recovered water, ocean, and river values",
+		)
+		var water_tiles := 0
+		var tree_tiles := 0
+		var cardinal_grade_is_valid := true
+		for x in CityState.MAP_SIZE:
+			for y in CityState.MAP_SIZE:
+				var building := city.building_id(x, y)
+				if city.is_water(x, y):
+					water_tiles += 1
+				if building >= 0x06 and building <= 0x0c:
+					tree_tiles += 1
+				if x < CityState.MAP_SIZE - 1:
+					cardinal_grade_is_valid = cardinal_grade_is_valid and (
+						absi(city.land_altitude(x, y) - city.land_altitude(x + 1, y)) <= 1
+					)
+				if y < CityState.MAP_SIZE - 1:
+					cardinal_grade_is_valid = cardinal_grade_is_valid and (
+						absi(city.land_altitude(x, y) - city.land_altitude(x, y + 1)) <= 1
+					)
+		var saved_count_total := 0
+		for building_id in 256:
+			saved_count_total += document.misc_u32(
+				NewCityTerrain.MISC_TILE_COUNTS + building_id * 4
+			)
+		_check(
+			water_tiles == terrain_result.water_tiles and water_tiles > 0,
+			"Default terrain makes the recovered river and water paths",
+		)
+		_check(
+			tree_tiles == terrain_result.tree_tiles and tree_tiles > 0,
+			"Default terrain grows trees only on its dry tiles",
+		)
+		_check(
+			cardinal_grade_is_valid,
+			"Generated terrain keeps each cardinal height change to one level",
+		)
+		_check(
+			saved_count_total == CityState.TILE_COUNT,
+			"Generated terrain rebuilds all saved XBLD tile counts",
+		)
+		_check(
+			terrain_result.water_tiles == 1456
+			and terrain_result.tree_tiles == 2009
+			and terrain_result.minimum_altitude == 2
+			and terrain_result.maximum_altitude == 11
+			and process_random.state == 3611152639
+			and game_random.state == 1692766423,
+			"Seed one preserves the recovered terrain pass and random-call order",
+		)
+		var serialized := document.serialize()
+		var reparsed := Sc2Document.new()
+		_check(
+			serialized.ok and reparsed.parse(serialized.data),
+			"Generated terrain serializes and reparses: %s" % reparsed.parse_error,
+		)
+
+	var repeated_process := Random.new(1)
+	var repeated_game := GameRandom.new(1)
+	var repeated := NewCity.create(
+		template, "Terrain City", "Terrain Mayor", 1, 1900,
+		repeated_process, repeated_game, options
+	)
+	_check(repeated.ok, "Repeated terrain generation succeeds: %s" % repeated.error)
+	if generated.ok and repeated.ok:
+		var same_maps := true
+		for chunk_id in ["ALTM", "XTER", "XBLD", "XBIT"]:
+			same_maps = same_maps and (
+				generated.document.find_chunk(chunk_id).decoded_payload
+				== repeated.document.find_chunk(chunk_id).decoded_payload
+			)
+		_check(
+			same_maps
+			and repeated_process.state == process_random.state
+			and repeated_game.state == game_random.state,
+			"Terrain generation is deterministic for both recovered random states",
+		)
+
+	var ocean := NewCity.create(
+		template, "Ocean City", "Ocean Mayor", 1, 1900,
+		Random.new(1), GameRandom.new(1),
+		{"ocean": true, "river": false, "hills": 12, "water": 5, "trees": 0}
+	)
+	_check(ocean.ok, "Ocean-only terrain generates: %s" % ocean.error)
+	if ocean.ok:
+		var ocean_city := CityModel.from_document(ocean.document)
+		var wet_east_edge := 0
+		for y in CityState.MAP_SIZE:
+			if ocean_city.is_water(CityState.MAP_SIZE - 1, y):
+				wet_east_edge += 1
+		_check(
+			ocean.terrain.salt_water_tiles > 0
+			and wet_east_edge > (CityState.MAP_SIZE >> 1),
+			"Ocean terrain makes a salt-water edge",
+		)
+
+	var rejected_process := Random.new(123)
+	var rejected_game := GameRandom.new(456)
+	var rejected := NewCityTerrain.generate(
+		template.duplicate_document(), false, true, 48, 5, 15,
+		rejected_process, rejected_game
+	)
+	_check(
+		not rejected.ok
+		and rejected_process.state == 123
+		and rejected_game.state == 456
+		and template.find_chunk("ALTM").decoded_payload == original_altitude,
+		"Invalid terrain settings preserve both random states and the template",
+	)
 
 
 func _test_new_city_setup(reference_root: String) -> void:

@@ -3,7 +3,9 @@ extends RefCounted
 
 const CityModel = preload("res://src/model/city_state.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
+const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
+const Terrain = preload("res://src/model/new_city_terrain.gd")
 
 const MISC_SIZE := 4800
 const GRAPH_SIZE := 16 * 52 * 4
@@ -55,6 +57,8 @@ static func create(
 	difficulty: int,
 	starting_year: int,
 	random: SimRandom,
+	game_random: GameLcgRandom = null,
+	terrain_options: Dictionary = {},
 ) -> Dictionary:
 	if template == null or not template.is_valid():
 		return _failure("default city template is invalid")
@@ -64,6 +68,8 @@ static func create(
 		return _failure("starting year must be 1900, 1950, 2000, or 2050")
 	if random == null:
 		return _failure("random state is missing")
+	if not terrain_options.is_empty() and game_random == null:
+		return _failure("terrain game-random state is missing")
 	var source_misc := template.find_chunk("MISC")
 	var source_graph := template.find_chunk("XGRP")
 	if source_misc == null or source_misc.decoded_payload.size() != MISC_SIZE:
@@ -88,6 +94,23 @@ static func create(
 		return _failure("cannot store the mayor name")
 
 	var staged_random := Random.new(random.state)
+	var staged_game_random = (
+		GameRandom.new(game_random.state) if game_random != null else null
+	)
+	var terrain_result := {}
+	if not terrain_options.is_empty():
+		terrain_result = Terrain.generate(
+			document,
+			bool(terrain_options.get("ocean", Terrain.DEFAULT_OCEAN)),
+			bool(terrain_options.get("river", Terrain.DEFAULT_RIVER)),
+			int(terrain_options.get("hills", Terrain.DEFAULT_HILLS)),
+			int(terrain_options.get("water", Terrain.DEFAULT_WATER)),
+			int(terrain_options.get("trees", Terrain.DEFAULT_TREES)),
+			staged_random,
+			staged_game_random,
+		)
+		if not terrain_result.ok:
+			return _failure("cannot generate terrain: %s" % terrain_result.error)
 	var misc_chunk := document.find_chunk("MISC")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var national_population := int(NATIONAL_POPULATIONS[starting_year])
@@ -143,6 +166,8 @@ static func create(
 		return _failure("cannot initialize graph history")
 
 	random.state = staged_random.state
+	if game_random != null:
+		game_random.state = staged_game_random.state
 	return {
 		"ok": true,
 		"document": document,
@@ -151,6 +176,7 @@ static func create(
 		"difficulty": difficulty,
 		"starting_year": starting_year,
 		"invention_years": invention_years,
+		"terrain": terrain_result,
 		"error": "",
 	}
 
