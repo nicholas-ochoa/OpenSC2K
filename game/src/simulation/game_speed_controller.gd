@@ -192,6 +192,9 @@ func _consume_day_result(result: Dictionary, day: Dictionary) -> void:
 	var phase_results: Dictionary = day.get("phase_results", {})
 	for phase_name in phase_results:
 		var phase_result: Dictionary = phase_results[phase_name]
+		for refresh_request in phase_result.get("refresh_requests", []):
+			if not result.refresh_requests.has(refresh_request):
+				result.refresh_requests.append(refresh_request)
 		result.effect_events.append_array(phase_result.get("effect_events", []))
 		result.game_over_events.append_array(phase_result.get("game_over_events", []))
 		if phase_name == "growth":
@@ -222,6 +225,7 @@ func _empty_result() -> Dictionary:
 		"effect_events": [],
 		"sound_events": [],
 		"view_center_requests": [],
+		"refresh_requests": [],
 		"interaction_requests": [],
 		"game_over_events": [],
 		"pending_actions": PackedStringArray(),

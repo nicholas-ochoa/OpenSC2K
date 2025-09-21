@@ -6,6 +6,7 @@ const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 const SimNation = preload("res://src/simulation/simnation_phase.gd")
 const Industries = preload("res://src/simulation/industry_phase.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
+const WeatherDisaster = preload("res://src/simulation/weather_disaster_phase.gd")
 
 var city: CityState
 var clock: SimulationClock
@@ -445,6 +446,45 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				applied.append(action)
 				if not bankruptcy.game_over_events.is_empty():
 					terminal_state = true
+			"statistics_windows":
+				phase_results[action] = {
+					"ok": true,
+					"refresh_requests": ["population", "industries", "graphs"],
+				}
+				applied.append(action)
+			"map":
+				phase_results[action] = {
+					"ok": true,
+					"refresh_requests": ["toolbar", "map"],
+				}
+				applied.append(action)
+			"simnation":
+				phase_results[action] = {
+					"ok": true,
+					"refresh_requests": ["simnation"],
+				}
+				applied.append(action)
+			"weather_disaster":
+				var weather_disaster := WeatherDisaster.run(
+					city,
+					random,
+					lfsr_random,
+					power_usage_percent,
+					water_usage_percent,
+					commerce_connections,
+					industry_connections,
+					pending_disaster_point
+				)
+				if not weather_disaster.ok:
+					return {"ok": false, "error": weather_disaster.error}
+				var weather_news := _persist_news_result(weather_disaster)
+				if not weather_news.ok:
+					return weather_news
+				phase_results[action] = weather_disaster
+				if int(weather_disaster.disaster_type) != 0:
+					pending_disaster_type = int(weather_disaster.disaster_type)
+					pending_disaster_point = weather_disaster.disaster_point
+				applied.append(action)
 			_:
 				pending.append(action)
 	return {

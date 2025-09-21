@@ -27,6 +27,7 @@ const Pollution = preload("res://src/simulation/pollution_phase.gd")
 const Graphs = preload("res://src/simulation/graph_history.gd")
 const RciDemand = preload("res://src/simulation/rci_demand_phase.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
+const WeatherDisaster = preload("res://src/simulation/weather_disaster_phase.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const NewspaperTextGenerator = preload("res://src/simulation/newspaper_text.gd")
 const SimNation = preload("res://src/simulation/simnation_phase.gd")
@@ -220,6 +221,7 @@ func _init() -> void:
 	_test_news_queue(reference_root)
 	_test_newspaper_text(reference_root)
 	_test_rci_aftermath(reference_root)
+	_test_weather_disaster_phase(reference_root)
 	_test_simnation(reference_root)
 	_test_industries(reference_root)
 	_test_education_health(reference_root)
@@ -2502,6 +2504,8 @@ func _test_simulation_engine(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
 	_check(city.set_age_in_days(0), "Simulation engine test resets the city day")
+	_check(document.set_misc_u32(0x001c, 1), "Simulation engine fixture selects Easy")
+	_check(document.set_misc_u32(0x1000, 1), "Simulation engine fixture disables random disasters")
 	var engine := Simulation.new(city, 1, 7)
 	_check(engine.lfsr_random.state == 7, "Simulation engine accepts an explicit LFSR seed")
 	var day_one := engine.advance_day()
@@ -2562,8 +2566,25 @@ func _test_simulation_engine(reference_root: String) -> void:
 		and latest.pending.is_empty(),
 		"Simulation engine applies all normal day-22 checks",
 	)
-	while latest.day < 25:
-		latest = engine.advance_day()
+	latest = engine.advance_day()
+	_check(
+		latest.day == 23
+		and latest.applied == PackedStringArray(["statistics_windows"])
+		and latest.pending.is_empty()
+		and latest.phase_results.statistics_windows.refresh_requests
+		== ["population", "industries", "graphs"],
+		"Simulation engine completes the day-23 statistics refresh",
+	)
+	latest = engine.advance_day()
+	_check(
+		latest.day == 24
+		and latest.applied == PackedStringArray(["map", "simnation", "weather_disaster"])
+		and latest.pending.is_empty()
+		and latest.phase_results.weather_disaster.has("status_index")
+		and latest.phase_results.weather_disaster.disaster_type == WeatherDisaster.DISASTER_NONE,
+		"Simulation engine completes the map, SimNation, status, and disaster work on day 24",
+	)
+	latest = engine.advance_day()
 	_check(
 		latest.applied == PackedStringArray(["budget", "month_start"]),
 		"Simulation engine applies budget before month start on day 25",
@@ -2846,6 +2867,25 @@ func _test_game_speed_controller(reference_root: String) -> void:
 	_check(
 		island_ticks_ok and island_city.age_in_days() >= island_start_day + 25,
 		"Island runs 25 Cheetah ticks after unpause without a script or simulation error",
+	)
+
+	var refresh_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
+	_check(refresh_city.set_age_in_days(22), "Controller refresh fixture selects day 22")
+	_check(refresh_city.set_simulation_speed(4), "Controller refresh fixture stores Cheetah speed")
+	_check(refresh_city.document.set_misc_u32(0x001c, 1), "Controller refresh fixture selects Easy")
+	_check(refresh_city.document.set_misc_u32(0x1000, 1), "Controller refresh fixture disables disasters")
+	var refresh_controller := GameSpeed.new(Simulation.new(refresh_city, 1, 7, 13))
+	var statistics_refresh := refresh_controller.advance_time(200.0, 200)
+	_check(
+		statistics_refresh.ok
+		and statistics_refresh.refresh_requests == ["population", "industries", "graphs"],
+		"Controller forwards the day-23 statistics refresh requests",
+	)
+	var map_refresh := refresh_controller.advance_time(200.0, 400)
+	_check(
+		map_refresh.ok
+		and map_refresh.refresh_requests == ["toolbar", "map", "simnation", "weather_disaster"],
+		"Controller deduplicates and forwards the day-24 refresh requests",
 	)
 
 	var budget_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))
@@ -8599,6 +8639,251 @@ func _test_rci_aftermath(reference_root: String) -> void:
 			and radioactive_document.find_chunk("XBLD").decoded_payload[radioactive_neighbor_index] == 6,
 			"Radioactivity can decay before the independent tree-spread gate",
 		)
+
+
+func _test_weather_disaster_phase(reference_root: String) -> void:
+	var power_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x001c, 1],
+		[0x006c, 1],
+		[0x1000, 1],
+	]:
+		_check(
+			power_document.set_misc_u32(setting[0], setting[1]),
+			"City-status fixture sets MISC 0x%x" % setting[0],
+		)
+	var power_random := SequenceRandom.new([])
+	var power_result := WeatherDisaster.run(
+		CityModel.from_document(power_document),
+		power_random,
+		ZeroLfsrRandom.new(),
+		99,
+		0,
+		0,
+		0,
+	)
+	_check(power_result.ok, "City-status phase completes: %s" % power_result.error)
+	if power_result.ok:
+		_check(
+			power_result.status_index == WeatherDisaster.STATUS_POWER
+			and power_result.status_news_type == 46
+			and power_result.news_items == [{"type": 46, "argument": 0}],
+			"A fully used power system requests more power with story type 46",
+		)
+		_check(
+			power_result.disaster_type == WeatherDisaster.DISASTER_NONE
+			and power_random.position == 0,
+			"No Disasters suppresses the natural-disaster roll",
+		)
+
+	var stable_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x001c, 1],
+		[0x006c, 1],
+		[0x1000, 1],
+		[0x1020, 0],
+		[0x102c, 1000],
+		[0x01f0 + WeatherDisaster.TILE_POLICE * 4, 9],
+		[0x01f0 + WeatherDisaster.TILE_PRISON * 4, 0],
+		[0x01f0 + WeatherDisaster.TILE_FIRE * 4, 9],
+		[0x077c + WeatherDisaster.BUDGET_ROAD * 0x006c, 11],
+	]:
+		_check(
+			stable_document.set_misc_u32(setting[0], setting[1]),
+			"Stable city fixture sets MISC 0x%x" % setting[0],
+		)
+	var stable_result := WeatherDisaster.run(
+		CityModel.from_document(stable_document),
+		SequenceRandom.new([]),
+		ZeroLfsrRandom.new(),
+		0,
+		0,
+		0,
+		0,
+	)
+	_check(
+		stable_result.ok
+		and stable_result.status_index == WeatherDisaster.STATUS_NONE
+		and stable_result.news_items.is_empty(),
+		"A supplied small city does not request an unnecessary service",
+	)
+
+	var hospital_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x001c, 1],
+		[0x006c, 1],
+		[0x1000, 1],
+		[0x1020, 0],
+		[0x102c, 25000],
+		[0x01f0 + WeatherDisaster.TILE_POLICE * 4, 18],
+		[0x01f0 + WeatherDisaster.TILE_PRISON * 4, 0],
+		[0x01f0 + WeatherDisaster.TILE_FIRE * 4, 18],
+		[0x01f0 + WeatherDisaster.TILE_HOSPITAL * 4, 0],
+		[0x077c + WeatherDisaster.BUDGET_ROAD * 0x006c, 251],
+	]:
+		_check(
+			hospital_document.set_misc_u32(setting[0], setting[1]),
+			"Hospital-demand fixture sets MISC 0x%x" % setting[0],
+		)
+	var hospital_result := WeatherDisaster.run(
+		CityModel.from_document(hospital_document),
+		SequenceRandom.new([]),
+		ZeroLfsrRandom.new(),
+		0,
+		0,
+		0,
+		0,
+	)
+	_check(
+		hospital_result.ok
+		and hospital_result.status_index == WeatherDisaster.STATUS_HOSPITAL
+		and hospital_result.status_news_type == 51,
+		"The recovered hierarchy requests a hospital after power, transit, police, fire, and water",
+	)
+
+	var wait_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(wait_document.set_misc_u32(0x001c, 1), "Disaster wait fixture selects Easy")
+	_check(wait_document.set_misc_u32(0x006c, 9), "Disaster wait fixture selects severe weather text")
+	_check(wait_document.set_misc_u32(0x1000, 0), "Disaster wait fixture enables disasters")
+	var wait_city := CityModel.from_document(wait_document)
+	_check(wait_city.set_age_in_days(99 * 25), "Disaster wait fixture selects month 99")
+	var wait_random := SequenceRandom.new([])
+	var wait_result := WeatherDisaster.run(
+		wait_city, wait_random, ZeroLfsrRandom.new(), 0, 0, 0, 0
+	)
+	_check(
+		wait_result.ok
+		and wait_result.wait_months == 100
+		and wait_result.disaster_type == WeatherDisaster.DISASTER_NONE
+		and wait_random.position == 0,
+		"Easy cities cannot receive a natural disaster before month 100",
+	)
+
+	var hurricane_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x001c, 3],
+		[0x006c, 10],
+		[0x0e44, 1],
+		[0x1000, 0],
+	]:
+		_check(
+			hurricane_document.set_misc_u32(setting[0], setting[1]),
+			"Hurricane fixture sets MISC 0x%x" % setting[0],
+		)
+	var hurricane_city := CityModel.from_document(hurricane_document)
+	_check(hurricane_city.set_age_in_days(30 * 25), "Hurricane fixture reaches Hard wait age")
+	var hurricane_random := SequenceRandom.new([14])
+	var hurricane_result := WeatherDisaster.run(
+		hurricane_city, hurricane_random, ZeroLfsrRandom.new(), 0, 0, 0, 0
+	)
+	_check(
+		hurricane_result.ok
+		and hurricane_result.disaster_type == WeatherDisaster.DISASTER_HURRICANE
+		and hurricane_result.disaster_roll == 14
+		and hurricane_random.position == 1,
+		"Ocean weather type 10 schedules a Hurricane on rolls below 15",
+	)
+
+	var tornado_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x001c, 3],
+		[0x006c, 11],
+		[0x1000, 0],
+	]:
+		_check(
+			tornado_document.set_misc_u32(setting[0], setting[1]),
+			"Tornado fixture sets MISC 0x%x" % setting[0],
+		)
+	var tornado_city := CityModel.from_document(tornado_document)
+	_check(tornado_city.set_age_in_days(30 * 25), "Tornado fixture reaches Hard wait age")
+	var tornado_random := SequenceRandom.new([14, 5, 7])
+	var tornado_result := WeatherDisaster.run(
+		tornado_city, tornado_random, ZeroLfsrRandom.new(), 0, 0, 0, 0
+	)
+	_check(
+		tornado_result.ok
+		and tornado_result.disaster_type == WeatherDisaster.DISASTER_TORNADO
+		and tornado_result.disaster_point == Vector2i(8, 6)
+		and tornado_random.position == 3,
+		"Weather type 11 schedules a Tornado and keeps the original Y-then-X random order",
+	)
+
+	var fire_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x001c, 3],
+		[0x0060, 255],
+		[0x006c, 9],
+		[0x1000, 0],
+	]:
+		_check(
+			fire_document.set_misc_u32(setting[0], setting[1]),
+			"Fire selector fixture sets MISC 0x%x" % setting[0],
+		)
+	var fire_city := CityModel.from_document(fire_document)
+	_check(fire_city.set_age_in_days(30 * 25), "Fire selector fixture reaches Hard wait age")
+	var fire_random := SequenceRandom.new([0, 1, 0, 4, 6])
+	var fire_result := WeatherDisaster.run(
+		fire_city, fire_random, ZeroLfsrRandom.new(), 0, 0, 0, 0
+	)
+	_check(
+		fire_result.ok
+		and fire_result.candidate_type == WeatherDisaster.DISASTER_FIRE
+		and fire_result.disaster_type == WeatherDisaster.DISASTER_FIRE
+		and fire_result.disaster_point == Vector2i(7, 5)
+		and fire_random.position == 5,
+		"A zero monthly roll can pass the Fire heat gate and select a map point",
+	)
+
+	var toxic_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for setting in [
+		[0x001c, 3],
+		[0x006c, 9],
+		[0x1000, 0],
+	]:
+		_check(
+			toxic_document.set_misc_u32(setting[0], setting[1]),
+			"Toxic selector fixture sets MISC 0x%x" % setting[0],
+		)
+	var pollution := PackedByteArray()
+	pollution.resize(64 * 64)
+	pollution.fill(0)
+	pollution[10 * 64 + 20] = 200
+	_check(
+		toxic_document.find_chunk("XPLT").set_decoded_payload(pollution),
+		"Toxic selector fixture stores one polluted coarse tile",
+	)
+	var toxic_city := CityModel.from_document(toxic_document)
+	_check(toxic_city.set_age_in_days(30 * 25), "Toxic selector fixture reaches Hard wait age")
+	var toxic_random := SequenceRandom.new([0, 4])
+	var toxic_lfsr := SequenceLfsrRandom.new([0, 2, 3])
+	var toxic_result := WeatherDisaster.run(
+		toxic_city, toxic_random, toxic_lfsr, 0, 0, 0, 0
+	)
+	_check(
+		toxic_result.ok
+		and toxic_result.candidate_type == WeatherDisaster.DISASTER_TOXIC_SPILL
+		and toxic_result.disaster_type == WeatherDisaster.DISASTER_TOXIC_SPILL
+		and toxic_result.disaster_point == Vector2i(17, 38)
+		and toxic_random.position == 2
+		and toxic_lfsr.position == 3,
+		"Toxic Spill selects a record-high polluted tile with the LFSR gates and jitter",
+	)
+
+	var invalid_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(invalid_document.set_misc_u32(0x001c, 0), "Invalid disaster fixture clears difficulty")
+	var invalid_result := WeatherDisaster.run(
+		CityModel.from_document(invalid_document),
+		SequenceRandom.new([]),
+		ZeroLfsrRandom.new(),
+		0,
+		0,
+		0,
+		0,
+	)
+	_check(
+		not invalid_result.ok and invalid_result.error.contains("difficulty"),
+		"The natural-disaster selector rejects an invalid saved difficulty",
+	)
 
 
 func _test_simnation(reference_root: String) -> void:
