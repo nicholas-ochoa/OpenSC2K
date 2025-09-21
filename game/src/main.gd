@@ -118,6 +118,7 @@ const LIBRARY_TEXT_IDS := [3000, 3001, 3002, 3003]
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const FOREST_PROTEST_BITMAP_ID := 403
 const FOREST_PROTEST_STRING_ID := 236
+const BUILDING_OBJECTION_STRING_ID := 106
 
 var city: CityState
 var current_document: Sc2File
@@ -134,6 +135,7 @@ var overlay_mode := "city"
 var reference_root := ""
 var original_query_strings: Dictionary = {}
 var forest_protest_text := "Citizens are protesting forest demolition."
+var building_objection_text := "Residents objected to this facility site."
 var forest_protest_image: Image
 var library_texts: Dictionary = {}
 var newspaper_data: DataUsaResource
@@ -261,6 +263,8 @@ var newspaper_article_heading: Label
 var newspaper_article_view: TextEdit
 var forest_protest_dialog: AcceptDialog
 var forest_protest_message: Label
+var building_objection_dialog: AcceptDialog
+var building_objection_message: Label
 var library_windows: Array[PanelContainer] = []
 var library_text_views: Array[TextEdit] = []
 var graph_window: Window
@@ -294,6 +298,7 @@ func _ready() -> void:
 	)
 	var string_resource_ids := Queries.resource_string_ids()
 	string_resource_ids.append(FOREST_PROTEST_STRING_ID)
+	string_resource_ids.append(BUILDING_OBJECTION_STRING_ID)
 	var string_resources := PeString.load_ids(
 		reference_root.path_join("SIMCITY.EXE"), string_resource_ids
 	)
@@ -301,6 +306,9 @@ func _ready() -> void:
 		original_query_strings = string_resources.strings
 		forest_protest_text = string_resources.strings.get(
 			FOREST_PROTEST_STRING_ID, forest_protest_text
+		)
+		building_objection_text = string_resources.strings.get(
+			BUILDING_OBJECTION_STRING_ID, building_objection_text
 		)
 	var library_resources := TextUsa.load_ids(
 		reference_root.path_join("DATA/TEXT_USA.DAT"),
@@ -372,6 +380,7 @@ func _process(delta: float) -> void:
 		or highway_connection_dialog.visible
 		or tunnel_dialog.visible
 		or (forest_protest_dialog != null and forest_protest_dialog.visible)
+		or (building_objection_dialog != null and building_objection_dialog.visible)
 		or (query_overlay != null and query_overlay.visible)
 		or (new_city_dialog != null and new_city_dialog.visible)
 		or bond_dialog.visible
@@ -1236,44 +1245,24 @@ func _build_interface(toolbar_art: Image) -> void:
 	newspaper_content.add_child(newspaper_layout)
 	newspaper_content.move_child(newspaper_layout, 0)
 	add_child(newspaper_dialog)
-	forest_protest_dialog = AcceptDialog.new()
-	forest_protest_dialog.name = "ForestProtestDialog"
-	forest_protest_dialog.title = "Forest Protest"
-	forest_protest_dialog.min_size = Vector2i(520, 230)
-	forest_protest_dialog.exclusive = true
-	forest_protest_dialog.get_ok_button().text = "OK"
-	forest_protest_dialog.get_label().visible = false
-	var protest_layout := HBoxContainer.new()
-	protest_layout.custom_minimum_size = Vector2(470, 130)
-	protest_layout.add_theme_constant_override("separation", 14)
-	var protest_picture_frame := PanelContainer.new()
-	protest_picture_frame.custom_minimum_size = Vector2(171, 116)
-	protest_picture_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	protest_picture_frame.add_theme_stylebox_override(
-		"panel", _classic_box(Color("ffffff"), Color("808080"), 2)
+	var forest_notice := _create_picture_notice(
+		"ForestProtestDialog",
+		"Forest Protest",
+		"ForestProtestImage",
+		"ForestProtestMessage",
+		forest_protest_text,
 	)
-	protest_layout.add_child(protest_picture_frame)
-	var protest_picture := TextureRect.new()
-	protest_picture.name = "ForestProtestImage"
-	protest_picture.custom_minimum_size = Vector2(155, 100)
-	protest_picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	protest_picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	protest_picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	if forest_protest_image != null:
-		protest_picture.texture = ImageTexture.create_from_image(forest_protest_image)
-	protest_picture_frame.add_child(protest_picture)
-	forest_protest_message = Label.new()
-	forest_protest_message.name = "ForestProtestMessage"
-	forest_protest_message.text = forest_protest_text
-	forest_protest_message.custom_minimum_size = Vector2(280, 100)
-	forest_protest_message.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	forest_protest_message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	forest_protest_message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	protest_layout.add_child(forest_protest_message)
-	var protest_content := forest_protest_dialog.get_label().get_parent()
-	protest_content.add_child(protest_layout)
-	protest_content.move_child(protest_layout, 0)
-	add_child(forest_protest_dialog)
+	forest_protest_dialog = forest_notice.dialog
+	forest_protest_message = forest_notice.message
+	var objection_notice := _create_picture_notice(
+		"BuildingObjectionDialog",
+		"Citizen Objection",
+		"BuildingObjectionImage",
+		"BuildingObjectionMessage",
+		building_objection_text,
+	)
+	building_objection_dialog = objection_notice.dialog
+	building_objection_message = objection_notice.message
 	for index in LIBRARY_TEXT_IDS.size():
 		var library_window := PanelContainer.new()
 		library_window.name = "LibraryText%d" % LIBRARY_TEXT_IDS[index]
@@ -1456,6 +1445,54 @@ func _build_interface(toolbar_art: Image) -> void:
 	group_selector.select(selected_group)
 	_select_tool_group(selected_group)
 	_update_zoom_controls(map_view.zoom_percent())
+
+
+func _create_picture_notice(
+	dialog_name: String,
+	dialog_title: String,
+	image_name: String,
+	message_name: String,
+	message_text: String
+) -> Dictionary:
+	var dialog := AcceptDialog.new()
+	dialog.name = dialog_name
+	dialog.title = dialog_title
+	dialog.min_size = Vector2i(520, 230)
+	dialog.exclusive = true
+	dialog.get_ok_button().text = "OK"
+	dialog.get_label().visible = false
+	var layout := HBoxContainer.new()
+	layout.custom_minimum_size = Vector2(470, 130)
+	layout.add_theme_constant_override("separation", 14)
+	var picture_frame := PanelContainer.new()
+	picture_frame.custom_minimum_size = Vector2(171, 116)
+	picture_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	picture_frame.add_theme_stylebox_override(
+		"panel", _classic_box(Color("ffffff"), Color("808080"), 2)
+	)
+	layout.add_child(picture_frame)
+	var picture := TextureRect.new()
+	picture.name = image_name
+	picture.custom_minimum_size = Vector2(155, 100)
+	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	if forest_protest_image != null:
+		picture.texture = ImageTexture.create_from_image(forest_protest_image)
+	picture_frame.add_child(picture)
+	var message := Label.new()
+	message.name = message_name
+	message.text = message_text.replace("\r\n", "\n").replace("\r", "\n")
+	message.custom_minimum_size = Vector2(280, 100)
+	message.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	layout.add_child(message)
+	var content := dialog.get_label().get_parent()
+	content.add_child(layout)
+	content.move_child(layout, 0)
+	add_child(dialog)
+	return {"dialog": dialog, "message": message}
 
 
 func _create_classic_theme() -> Theme:
@@ -2633,6 +2670,10 @@ func _activate_document(
 	pending_tunnel_request.clear()
 	if tunnel_dialog.visible:
 		tunnel_dialog.hide()
+	if forest_protest_dialog != null and forest_protest_dialog.visible:
+		forest_protest_dialog.hide()
+	if building_objection_dialog != null and building_objection_dialog.visible:
+		building_objection_dialog.hide()
 	if new_city_dialog != null and new_city_dialog.visible:
 		new_city_dialog.hide()
 	annual_budget_pending = false
@@ -3464,6 +3505,15 @@ func _show_forest_protest() -> void:
 	forest_protest_dialog.popup_centered()
 
 
+func _show_building_objection() -> void:
+	if building_objection_dialog == null:
+		return
+	building_objection_message.text = building_objection_text.replace(
+		"\r\n", "\n"
+	).replace("\r", "\n")
+	building_objection_dialog.popup_centered()
+
+
 func _refresh_saved_news_summary() -> void:
 	if city == null or current_document == null:
 		news_label.text = "Latest Reports\nNo reports."
@@ -4008,6 +4058,16 @@ func _apply_map_selection(
 			tool_random
 		)
 		if not building.ok:
+			# A failed placement can still advance the LFSR. Clear undo in that case.
+			if building.get("lfsr_advanced", false):
+				last_edit_command = {}
+				undo_button.disabled = true
+			if building.get("resident_objection", false):
+				_play_sound_events(building.get("sound_events", []))
+				_show_building_objection()
+				status_label.remove_theme_color_override("font_color")
+				status_label.text = "%s placement was rejected by nearby residents." % building_name
+				return
 			_show_error(
 				"Cannot build %s: %s"
 				% [building_name, building.error]

@@ -55,6 +55,10 @@ const DEFAULT_STADIUM_TEAM_NAMES := [
 	"Dromedaries",
 	"Army Ants",
 ]
+const SOUND_NUISANCE_FIRST := 0x1fc
+const SOUND_NUISANCE_SECOND := 0x200
+const NUISANCE_BITMAP_ID := 403
+const NUISANCE_STRING_ID := 106
 
 const MICROSIM_TYPE_BY_TILE := {
 	0xc6: 21,
@@ -300,12 +304,27 @@ static func apply(
 				"error": "residents rejected this site",
 				"cost": cost,
 				"residential_tiles": residential_tiles,
+				"resident_objection": true,
+				"lfsr_advanced": lfsr_random.state != lfsr_state_before,
+				"sound_events": [SOUND_NUISANCE_FIRST, SOUND_NUISANCE_SECOND],
+				"notice_bitmap_id": NUISANCE_BITMAP_ID,
+				"notice_string_id": NUISANCE_STRING_ID,
 			}
 	if not _footprint_is_in_bounds(site, area):
-		return {"ok": false, "error": "building does not fit inside the map", "cost": cost}
+		return {
+			"ok": false,
+			"error": "building does not fit inside the map",
+			"cost": cost,
+			"lfsr_advanced": lfsr_random.state != lfsr_state_before,
+		}
 	var site_check := _check_site(buildings, terrain, zones, flags, site, tile_id)
 	if not site_check.ok:
-		return {"ok": false, "error": site_check.error, "cost": cost}
+		return {
+			"ok": false,
+			"error": site_check.error,
+			"cost": cost,
+			"lfsr_advanced": lfsr_random.state != lfsr_state_before,
+		}
 
 	var overlay_id := _provision_microsim(
 		microsims,

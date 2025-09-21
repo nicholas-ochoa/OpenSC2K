@@ -461,7 +461,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		not PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 0xffff).ok,
 		"Windows bitmap loader rejects a missing numeric resource",
 	)
-	var string_ids := PackedInt32Array([236, 786, 790, 910, 982])
+	var string_ids := PackedInt32Array([106, 236, 786, 790, 910, 982])
 	var strings := PeString.load_ids(reference_root.path_join("SIMCITY.EXE"), string_ids)
 	_check(strings.ok, "Windows string resources load: %s" % strings.error)
 	if strings.ok:
@@ -470,6 +470,11 @@ func _test_sprite_archives(reference_root: String) -> void:
 			strings.strings[236].begins_with("Citizens")
 			and strings.strings[236].contains("forest"),
 			"Windows string loader reads the forest protest notice",
+		)
+		_check(
+			strings.strings[106].begins_with("Your citizens")
+			and strings.strings[106].contains("facility"),
+			"Windows string loader reads the building-objection notice",
 		)
 		_check(strings.strings[910] == "#T", "Windows string loader decodes UTF-16 placeholders")
 	_check(
@@ -11013,9 +11018,14 @@ func _test_building_command(reference_root: String) -> void:
 		not rejected_nuisance.ok
 		and rejected_nuisance.error == "residents rejected this site"
 		and rejected_nuisance.residential_tiles == 3
+		and rejected_nuisance.resident_objection
+		and rejected_nuisance.lfsr_advanced
+		and rejected_nuisance.sound_events == [508, 512]
+		and rejected_nuisance.notice_bitmap_id == 403
+		and rejected_nuisance.notice_string_id == 106
 		and nuisance_lfsr.state == 2
 		and contrasting_lcg.next_mod(200) == 38,
-		"Building nuisance rejection uses the game LFSR instead of the New City LCG",
+		"Building nuisance rejection exposes the original notice, sounds, and LFSR result",
 	)
 	_check(
 		nuisance_city.funds() == 5000
@@ -11041,6 +11051,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(
 		not nuisance_blocked.ok
 		and nuisance_blocked.error.contains("protected")
+		and nuisance_blocked.lfsr_advanced
 		and blocked_lfsr.state == 2,
 		"A nuisance building consumes its LFSR value before the site test",
 	)
@@ -11057,6 +11068,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(
 		not nuisance_edge.ok
 		and nuisance_edge.error.contains("fit")
+		and nuisance_edge.lfsr_advanced
 		and edge_lfsr.state == 2,
 		"A nuisance building consumes its LFSR value before the footprint limit",
 	)
@@ -11067,6 +11079,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(
 		not unaffordable.ok
 		and unaffordable.error == "insufficient funds"
+		and not unaffordable.get("lfsr_advanced", false)
 		and random.state == insufficient_lfsr_before,
 		"Insufficient building funds stop before the nuisance LFSR call",
 	)
