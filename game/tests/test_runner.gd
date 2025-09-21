@@ -8871,6 +8871,22 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 
 	var invalid_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	_check(invalid_document.set_misc_u32(0x001c, 0), "Invalid disaster fixture clears difficulty")
+	_check(invalid_document.set_misc_u32(0x1000, 1), "Invalid disaster fixture first disables disasters")
+	var invalid_suppressed := WeatherDisaster.run(
+		CityModel.from_document(invalid_document),
+		SequenceRandom.new([]),
+		ZeroLfsrRandom.new(),
+		0,
+		0,
+		0,
+		0,
+	)
+	_check(
+		invalid_suppressed.ok
+		and invalid_suppressed.disaster_type == WeatherDisaster.DISASTER_NONE,
+		"No Disasters returns before the original difficulty-table access",
+	)
+	_check(invalid_document.set_misc_u32(0x1000, 0), "Invalid disaster fixture enables disasters")
 	var invalid_result := WeatherDisaster.run(
 		CityModel.from_document(invalid_document),
 		SequenceRandom.new([]),

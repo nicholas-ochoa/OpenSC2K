@@ -217,9 +217,8 @@ static func _select_disaster(
 	current_point: Vector2i
 ) -> Dictionary:
 	var difficulty := _read_u32(misc, MISC_DIFFICULTY) & 0xffff
-	if difficulty <= 0 or difficulty >= DISASTER_WAIT_MONTHS.size():
-		return {"ok": false, "error": "city difficulty is out of range"}
-	var wait_months := int(DISASTER_WAIT_MONTHS[difficulty])
+	var difficulty_is_valid := difficulty > 0 and difficulty < DISASTER_WAIT_MONTHS.size()
+	var wait_months := int(DISASTER_WAIT_MONTHS[difficulty]) if difficulty_is_valid else -1
 	var result := {
 		"ok": true,
 		"error": "",
@@ -231,6 +230,8 @@ static func _select_disaster(
 	}
 	if _read_u32(misc, MISC_NO_DISASTERS) != 0:
 		return result
+	if not difficulty_is_valid:
+		return {"ok": false, "error": "city difficulty is out of range"}
 	var city_months := int(_read_u32(misc, MISC_CITY_DAYS) / 25)
 	if city_months < wait_months:
 		return result
