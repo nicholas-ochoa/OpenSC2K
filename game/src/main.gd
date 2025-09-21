@@ -116,6 +116,11 @@ const BUDGET_NAMES := [
 const MAP_DISPLAY_MODES := ["city", "underground", "structures", "zones", "power", "water"]
 const LIBRARY_TEXT_IDS := [3000, 3001, 3002, 3003]
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
+const MENU_AUTO_BUDGET := 0x8004
+const MENU_AUTO_GOTO := 0x8005
+const MENU_SOUND_EFFECTS := 0x8006
+const MENU_MUSIC := 0x8007
+const MENU_NO_DISASTERS := 0x800e
 const FOREST_PROTEST_BITMAP_ID := 403
 const FOREST_PROTEST_STRING_ID := 236
 const BUILDING_OBJECTION_STRING_ID := 106
@@ -211,6 +216,8 @@ var new_city_preview_process_cursor := 1
 var new_city_preview_game_cursor := 1
 var save_button: Button
 var budget_button: Button
+var options_menu: MenuButton
+var disasters_menu: MenuButton
 var group_selector: OptionButton
 var tool_selector: OptionButton
 var undo_button: Button
@@ -501,17 +508,27 @@ func _build_interface(toolbar_art: Image) -> void:
 		["Pause", 0], ["Turtle", 1], ["Llama", 2], ["Cheetah", 3],
 		["African Swallow", 4],
 	], _on_speed_menu)
-	_add_menu(menu_row, "Options", [
+	options_menu = _add_menu(menu_row, "Options", [
+		["Auto-Budget", MENU_AUTO_BUDGET], ["Auto-Goto", MENU_AUTO_GOTO],
+		["Sound Effects", MENU_SOUND_EFFECTS], ["Music", MENU_MUSIC],
+	], _on_options_menu)
+	for option_id in [MENU_AUTO_BUDGET, MENU_AUTO_GOTO, MENU_SOUND_EFFECTS, MENU_MUSIC]:
+		var option_index := options_menu.get_popup().get_item_index(option_id)
+		options_menu.get_popup().set_item_as_checkable(option_index, true)
+	options_menu.disabled = true
+	_add_menu(menu_row, "View", [
 		["City View", 0], ["Underground View", 1], ["Structures Map", 2],
 		["Zones Map", 3], ["Power Map", 4], ["Water Map", 5],
-	], _on_options_menu)
-	var disasters_menu := _add_menu(menu_row, "Disasters", [
+	], _on_view_menu)
+	disasters_menu = _add_menu(menu_row, "Disasters", [
 		["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],
 		["Air Crash", 5], ["Earthquake", 6], ["Tornado", 7], ["Monster", 8],
 		["Meltdown", 9], ["Microwave", 10], ["Volcano", 11], ["Firestorm", 12],
 		["Mass Riots", 13], ["Mass Floods", 14], ["Pollution", 15],
 		["Hurricane", 16], ["Helicopter Crash", 17], ["Plane Crash", 18],
 	], _on_disaster_menu)
+	disasters_menu.get_popup().add_separator()
+	disasters_menu.get_popup().add_check_item("No Disasters", MENU_NO_DISASTERS)
 	var implemented_disasters := {
 		1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true,
 		9: true, 10: true, 11: true, 12: true, 13: true, 14: true, 15: true,
@@ -519,9 +536,10 @@ func _build_interface(toolbar_art: Image) -> void:
 	}
 	for item_index in disasters_menu.get_popup().item_count:
 		var disaster_id := disasters_menu.get_popup().get_item_id(item_index)
-		disasters_menu.get_popup().set_item_disabled(
-			item_index, not implemented_disasters.has(disaster_id)
-		)
+		if disaster_id > 0 and disaster_id != MENU_NO_DISASTERS:
+			disasters_menu.get_popup().set_item_disabled(
+				item_index, not implemented_disasters.has(disaster_id)
+			)
 	disasters_menu.tooltip_text = (
 		"Air Crash and Helicopter Crash do nothing when selected, as in the original Windows game."
 	)
@@ -1986,13 +2004,81 @@ func _on_speed_menu(id: int) -> void:
 
 
 func _on_options_menu(id: int) -> void:
+	if city == null:
+		_show_error("Load a city before you change its options.")
+		return
+	var enabled := false
+	var stored := false
+	var option_name := ""
+	match id:
+		MENU_AUTO_BUDGET:
+			enabled = not city.auto_budget_enabled()
+			stored = city.set_auto_budget_enabled(enabled)
+			option_name = "Auto-Budget"
+		MENU_AUTO_GOTO:
+			enabled = not city.auto_goto_enabled()
+			stored = city.set_auto_goto_enabled(enabled)
+			option_name = "Auto-Goto"
+		MENU_SOUND_EFFECTS:
+			enabled = not city.sound_enabled()
+			stored = city.set_sound_enabled(enabled)
+			option_name = "Sound Effects"
+		MENU_MUSIC:
+			enabled = not city.music_enabled()
+			stored = city.set_music_enabled(enabled)
+			option_name = "Music"
+		_:
+			return
+	if not stored:
+		_show_error("Cannot update the %s option." % option_name)
+		return
+	_sync_city_option_menus()
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "%s %s." % [option_name, "enabled" if enabled else "disabled"]
+
+
+func _on_view_menu(id: int) -> void:
 	if id >= 0 and id < MAP_DISPLAY_MODES.size():
 		_set_overlay(MAP_DISPLAY_MODES[id])
+
+
+func _sync_city_option_menus() -> void:
+	if options_menu == null or disasters_menu == null:
+		return
+	var has_city := city != null
+	options_menu.disabled = not has_city
+	var option_states := {
+		MENU_AUTO_BUDGET: has_city and city.auto_budget_enabled(),
+		MENU_AUTO_GOTO: has_city and city.auto_goto_enabled(),
+		MENU_SOUND_EFFECTS: has_city and city.sound_enabled(),
+		MENU_MUSIC: has_city and city.music_enabled(),
+	}
+	for option_id in option_states:
+		var option_index := options_menu.get_popup().get_item_index(option_id)
+		if option_index >= 0:
+			options_menu.get_popup().set_item_checked(
+				option_index, bool(option_states[option_id])
+			)
+	var no_disasters_index := disasters_menu.get_popup().get_item_index(MENU_NO_DISASTERS)
+	if no_disasters_index >= 0:
+		disasters_menu.get_popup().set_item_disabled(no_disasters_index, not has_city)
+		disasters_menu.get_popup().set_item_checked(
+			no_disasters_index, has_city and city.no_disasters_enabled()
+		)
 
 
 func _on_disaster_menu(id: int) -> void:
 	if city == null or simulation_engine == null:
 		_show_error("Load a city before you start a disaster.")
+		return
+	if id == MENU_NO_DISASTERS:
+		var enabled := not city.no_disasters_enabled()
+		if not city.set_no_disasters_enabled(enabled):
+			_show_error("Cannot update the No Disasters option.")
+			return
+		_sync_city_option_menus()
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "No Disasters %s." % ("enabled" if enabled else "disabled")
 		return
 	var point := map_view.center_tile()
 	if point.x < 0:
@@ -3471,6 +3557,8 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 
 
 func _play_sound_events(sound_events: Array) -> void:
+	if city == null or not city.sound_enabled():
+		return
 	for sound_event in sound_events:
 		var sound_path := reference_root.path_join(
 			"SOUNDS/%d.WAV" % int(sound_event)
@@ -4883,6 +4971,7 @@ func _bring_library_window_to_front(window: PanelContainer) -> void:
 func _refresh_details() -> void:
 	if city == null:
 		return
+	_sync_city_option_menus()
 	if graph_control != null and graph_window != null and graph_window.visible:
 		graph_control.set_city(city)
 	var demand := city.rci_demand()

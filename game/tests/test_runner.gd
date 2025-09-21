@@ -210,6 +210,7 @@ func _init() -> void:
 	_test_sprite_archives(reference_root)
 	_test_scurk_mif(reference_root)
 	_test_reference_corpus(reference_root)
+	_test_city_options(reference_root)
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
 	_test_random_and_power(reference_root)
@@ -372,6 +373,66 @@ func _test_reference_corpus(reference_root: String) -> void:
 		_check(default_model.land_altitude(0, 0) == 4, "Default origin land altitude is 4")
 		_check(default_model.water_altitude(0, 0) == 4, "Default origin water level is 4")
 		_check(default_model.tunnel_levels(0, 0) == 0, "Default origin tunnel depth is 0")
+
+
+func _test_city_options(reference_root: String) -> void:
+	var starter_document := Sc2Document.load_path(
+		reference_root.path_join("CITIES/STARTER.SC2")
+	).duplicate_document()
+	var starter := CityModel.from_document(starter_document)
+	_check(starter.is_valid(), "Starter city loads for saved-option tests")
+	if not starter.is_valid():
+		return
+	_check(
+		starter.auto_budget_enabled()
+		and starter.auto_goto_enabled()
+		and starter.sound_enabled()
+		and starter.music_enabled()
+		and starter.no_disasters_enabled(),
+		"Starter city exposes all five enabled saved options",
+	)
+	_check(
+		starter.set_auto_budget_enabled(false)
+		and starter.set_auto_goto_enabled(false)
+		and starter.set_sound_enabled(false)
+		and starter.set_music_enabled(false)
+		and starter.set_no_disasters_enabled(false),
+		"Saved city options can be disabled",
+	)
+	_check(
+		starter_document.misc_u32(CityState.MISC_AUTO_BUDGET_OPTION) == 0
+		and starter_document.misc_u32(CityState.MISC_AUTO_GOTO_OPTION) == 0
+		and starter_document.misc_u32(CityState.MISC_SOUND_OPTION) == 0
+		and starter_document.misc_u32(CityState.MISC_MUSIC_OPTION) == 0
+		and starter_document.misc_u32(CityState.MISC_NO_DISASTERS_OPTION) == 0,
+		"Disabled options write zero to their original MISC fields",
+	)
+	_check(
+		starter.set_auto_budget_enabled(true)
+		and starter.set_auto_goto_enabled(true)
+		and starter.set_sound_enabled(true)
+		and starter.set_music_enabled(true)
+		and starter.set_no_disasters_enabled(true),
+		"Saved city options can be enabled",
+	)
+	_check(
+		starter_document.misc_u32(CityState.MISC_AUTO_BUDGET_OPTION) == 1
+		and starter_document.misc_u32(CityState.MISC_AUTO_GOTO_OPTION) == 1
+		and starter_document.misc_u32(CityState.MISC_SOUND_OPTION) == 1
+		and starter_document.misc_u32(CityState.MISC_MUSIC_OPTION) == 1
+		and starter_document.misc_u32(CityState.MISC_NO_DISASTERS_OPTION) == 1,
+		"Enabled options write one to their original MISC fields",
+	)
+	var scenario_document := Sc2Document.load_path(
+		reference_root.path_join("SCENARIO/CHARLEST.SCN")
+	)
+	var scenario_city := CityModel.from_document(scenario_document)
+	_check(
+		scenario_city.is_valid()
+		and scenario_document.misc_u32(CityState.MISC_AUTO_GOTO_OPTION) == 0xff
+		and scenario_city.auto_goto_enabled(),
+		"Saved option readers treat a nonzero legacy value as enabled",
+	)
 
 
 func _test_palette_and_minimap(reference_root: String) -> void:

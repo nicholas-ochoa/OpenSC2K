@@ -12,6 +12,11 @@ const THING_COUNT := 40
 const THING_RECORD_SIZE := 12
 const GRAPH_COUNT := 16
 const GRAPH_VALUE_COUNT := 52
+const MISC_AUTO_BUDGET_OPTION := 0x0ff0
+const MISC_AUTO_GOTO_OPTION := 0x0ff4
+const MISC_SOUND_OPTION := 0x0ff8
+const MISC_MUSIC_OPTION := 0x0ffc
+const MISC_NO_DISASTERS_OPTION := 0x1000
 
 var document: Sc2File
 var load_error := ""
@@ -453,6 +458,46 @@ func set_simulation_speed(value: int) -> bool:
 	if value < 1 or value > 5:
 		return false
 	return document.set_misc_u32(0x0fec, value)
+
+
+func auto_budget_enabled() -> bool:
+	return document.misc_u32(MISC_AUTO_BUDGET_OPTION) != 0
+
+
+func set_auto_budget_enabled(enabled: bool) -> bool:
+	return document.set_misc_u32(MISC_AUTO_BUDGET_OPTION, 1 if enabled else 0)
+
+
+func auto_goto_enabled() -> bool:
+	return document.misc_u32(MISC_AUTO_GOTO_OPTION) != 0
+
+
+func set_auto_goto_enabled(enabled: bool) -> bool:
+	return document.set_misc_u32(MISC_AUTO_GOTO_OPTION, 1 if enabled else 0)
+
+
+func sound_enabled() -> bool:
+	return document.misc_u32(MISC_SOUND_OPTION) != 0
+
+
+func set_sound_enabled(enabled: bool) -> bool:
+	return document.set_misc_u32(MISC_SOUND_OPTION, 1 if enabled else 0)
+
+
+func music_enabled() -> bool:
+	return document.misc_u32(MISC_MUSIC_OPTION) != 0
+
+
+func set_music_enabled(enabled: bool) -> bool:
+	return document.set_misc_u32(MISC_MUSIC_OPTION, 1 if enabled else 0)
+
+
+func no_disasters_enabled() -> bool:
+	return document.misc_u32(MISC_NO_DISASTERS_OPTION) != 0
+
+
+func set_no_disasters_enabled(enabled: bool) -> bool:
+	return document.set_misc_u32(MISC_NO_DISASTERS_OPTION, 1 if enabled else 0)
 
 
 func current_year() -> int:
