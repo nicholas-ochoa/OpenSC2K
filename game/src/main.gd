@@ -4000,7 +4000,12 @@ func _apply_map_selection(
 			building_group, building_subtool
 		).name
 		var building := Buildings.apply(
-			city, building_group, building_subtool, finish, nuisance_random, tool_random
+			city,
+			building_group,
+			building_subtool,
+			finish,
+			simulation_engine.lfsr_random,
+			tool_random
 		)
 		if not building.ok:
 			_show_error(
@@ -4563,7 +4568,9 @@ func _undo_last_edit() -> void:
 	elif command_type == "landscape":
 		result = Landscapes.undo(city, last_edit_command, tool_random)
 	elif command_type == "building":
-		result = Buildings.undo(city, last_edit_command, nuisance_random, tool_random)
+		result = Buildings.undo(
+			city, last_edit_command, simulation_engine.lfsr_random, tool_random
+		)
 	elif command_type == "network":
 		result = Networks.undo(city, last_edit_command)
 	elif command_type == "hydro":

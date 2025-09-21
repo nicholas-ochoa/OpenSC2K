@@ -4036,7 +4036,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		3,
 		6,
 		Vector2i(64, 64),
-		GameRandom.new(1),
+		LfsrRandom.new(1),
 		Random.new(1),
 	)
 	_check(
@@ -5938,7 +5938,7 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	)
 	var expiry_city := CityModel.from_document(expiry_document)
 	var gas := Buildings.apply(
-		expiry_city, 3, 5, Vector2i(20, 20), GameRandom.new(1), Random.new(1)
+		expiry_city, 3, 5, Vector2i(20, 20), LfsrRandom.new(1), Random.new(1)
 	)
 	_check(gas.ok and gas.overlay_id == 61, "Annual expiry fixture builds a gas plant")
 	var old_power: PackedByteArray = expiry_document.find_chunk("XMIC").decoded_payload.duplicate()
@@ -6079,7 +6079,7 @@ func _test_arcology_launch_phase(reference_root: String) -> void:
 		)
 	var city := CityModel.from_document(document)
 	var launch := Buildings.apply(
-		city, 5, 8, Vector2i(20, 20), GameRandom.new(1), Random.new(1)
+		city, 5, 8, Vector2i(20, 20), LfsrRandom.new(1), Random.new(1)
 	)
 	_check(launch.ok and launch.site == Rect2i(19, 19, 4, 4), "Arcology launch fixture builds a launch arcology")
 	var text_overlays: PackedByteArray = document.find_chunk("XTXT").decoded_payload.duplicate()
@@ -10643,7 +10643,7 @@ func _test_building_command(reference_root: String) -> void:
 			"Building fixture unlocks invention %d" % invention_index,
 		)
 	var city := CityModel.from_document(document)
-	var random := GameRandom.new(1)
+	var random := LfsrRandom.new(1)
 	var process_random := Random.new(1)
 
 	var utility_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
@@ -10677,7 +10677,7 @@ func _test_building_command(reference_root: String) -> void:
 		and utility_city.set_tile_flag(10, 10, 0x10, true),
 		"Immediate utility fixture stores stale utility flags",
 	)
-	var utility_random := GameRandom.new(0x2211)
+	var utility_random := LfsrRandom.new(0x2211)
 	var utility_process_random := Random.new(0x3344)
 	var low_population_station := Buildings.apply(
 		utility_city,
@@ -10973,9 +10973,103 @@ func _test_building_command(reference_root: String) -> void:
 	var dry_marina := Buildings.apply(city, 14, 4, Vector2i(51, 51), random, process_random)
 	_check(not dry_marina.ok and dry_marina.error.contains("land and water"), "Marina rejects an all-dry site")
 
+	var nuisance_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			nuisance_document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT, 0)
+			),
+			"Nuisance fixture clears %s" % chunk_id,
+		)
+	_check(
+		nuisance_document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0))
+		and nuisance_document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)),
+		"Nuisance fixture clears labels and microsimulations",
+	)
+	_check(nuisance_document.set_misc_i32(0x14, 5000), "Nuisance fixture sets funds")
+	_check(
+		nuisance_document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 50000),
+		"Nuisance fixture prevents an immediate utility refresh",
+	)
+	var nuisance_city := CityModel.from_document(nuisance_document)
+	for residential_point in [Vector2i(12, 12), Vector2i(12, 13), Vector2i(12, 14)]:
+		_check(
+			nuisance_city.set_zone_id(residential_point.x, residential_point.y, 1),
+			"Nuisance fixture stores one nearby residential tile",
+		)
+	var nuisance_lfsr := LfsrRandom.new(1)
+	var nuisance_process := Random.new(123)
+	var nuisance_process_before := nuisance_process.state
+	var rejected_nuisance := Buildings.apply(
+		nuisance_city,
+		3,
+		2,
+		Vector2i(20, 20),
+		nuisance_lfsr,
+		nuisance_process,
+	)
+	var contrasting_lcg := GameRandom.new(1)
+	_check(
+		not rejected_nuisance.ok
+		and rejected_nuisance.error == "residents rejected this site"
+		and rejected_nuisance.residential_tiles == 3
+		and nuisance_lfsr.state == 2
+		and contrasting_lcg.next_mod(200) == 38,
+		"Building nuisance rejection uses the game LFSR instead of the New City LCG",
+	)
+	_check(
+		nuisance_city.funds() == 5000
+		and nuisance_process.state == nuisance_process_before
+		and nuisance_city.building_id(19, 19) == 0,
+		"Nuisance rejection changes only the original LFSR state",
+	)
+	for residential_point in [Vector2i(12, 12), Vector2i(12, 13), Vector2i(12, 14)]:
+		_check(
+			nuisance_city.set_zone_id(residential_point.x, residential_point.y, 0),
+			"Nuisance fixture clears one nearby residential tile",
+		)
+	_check(nuisance_city.set_building_id(20, 20, 0x1d), "Nuisance fixture blocks a Coal plant site")
+	var blocked_lfsr := LfsrRandom.new(1)
+	var nuisance_blocked := Buildings.apply(
+		nuisance_city,
+		3,
+		2,
+		Vector2i(20, 20),
+		blocked_lfsr,
+		Random.new(123),
+	)
+	_check(
+		not nuisance_blocked.ok
+		and nuisance_blocked.error.contains("protected")
+		and blocked_lfsr.state == 2,
+		"A nuisance building consumes its LFSR value before the site test",
+	)
+	_check(nuisance_city.set_building_id(20, 20, 0), "Nuisance fixture clears the blocked site")
+	var edge_lfsr := LfsrRandom.new(1)
+	var nuisance_edge := Buildings.apply(
+		nuisance_city,
+		3,
+		2,
+		Vector2i(1, 1),
+		edge_lfsr,
+		Random.new(123),
+	)
+	_check(
+		not nuisance_edge.ok
+		and nuisance_edge.error.contains("fit")
+		and edge_lfsr.state == 2,
+		"A nuisance building consumes its LFSR value before the footprint limit",
+	)
+
 	_check(city.set_funds(3999), "Building funds fixture sets insufficient funds")
+	var insufficient_lfsr_before := random.state
 	var unaffordable := Buildings.apply(city, 3, 2, Vector2i(60, 60), random, process_random)
-	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "Building command reports insufficient funds")
+	_check(
+		not unaffordable.ok
+		and unaffordable.error == "insufficient funds"
+		and random.state == insufficient_lfsr_before,
+		"Insufficient building funds stop before the nuisance LFSR call",
+	)
 
 
 func _test_network_command(reference_root: String) -> void:
@@ -12216,7 +12310,7 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(document.set_misc_i32(0x14, 1000), "Demolish fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16384), "Demolish fixture counts clear tiles")
 	var city := CityModel.from_document(document)
-	var placement_random := GameRandom.new(11)
+	var placement_random := LfsrRandom.new(11)
 	var process_random := Random.new(17)
 	var hospital := Buildings.apply(city, 13, 2, Vector2i(20, 20), placement_random, process_random)
 	_check(hospital.ok and hospital.overlay_id == 61, "Demolish fixture places a dynamic hospital")
@@ -12476,7 +12570,7 @@ func _test_demolish_command(reference_root: String) -> void:
 		and underground_city.is_piped(30, 30),
 		"Underground pipe demolition can be undone",
 	)
-	var station_random := GameRandom.new(111)
+	var station_random := LfsrRandom.new(111)
 	var station_process_random := Random.new(113)
 	var placed_station := Buildings.apply(
 		underground_city,

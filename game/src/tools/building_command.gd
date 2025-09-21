@@ -253,7 +253,7 @@ static func apply(
 	group_index: int,
 	subtool_index: int,
 	selected: Vector2i,
-	nuisance_random: GameLcgRandom,
+	lfsr_random: SimLfsrRandom,
 	process_random: SimRandom,
 	australian_locale := false
 ) -> Dictionary:
@@ -263,8 +263,8 @@ static func apply(
 		return {"ok": false, "error": "tool does not place a shared building"}
 	if not Availability.is_available(city, group_index, subtool_index):
 		return {"ok": false, "error": "tool is not available in this city"}
-	if nuisance_random == null:
-		return {"ok": false, "error": "nuisance random state is required"}
+	if lfsr_random == null:
+		return {"ok": false, "error": "LFSR random state is required"}
 	if process_random == null:
 		return {"ok": false, "error": "process random state is required"}
 
@@ -274,8 +274,6 @@ static func apply(
 		return {"ok": false, "error": "insufficient funds", "cost": cost}
 	var area := int(tool.area)
 	var site := footprint(selected, area)
-	if not _footprint_is_in_bounds(site, area):
-		return {"ok": false, "error": "building does not fit inside the map", "cost": cost}
 
 	var old_payloads := _city_payloads(city)
 	if old_payloads.is_empty():
@@ -292,21 +290,22 @@ static func apply(
 	var misc: PackedByteArray = changed_payloads.MISC
 	var tile_id := tile_for_tool(group_index, subtool_index)
 
-	var site_check := _check_site(buildings, terrain, zones, flags, site, tile_id)
-	if not site_check.ok:
-		return {"ok": false, "error": site_check.error, "cost": cost}
-
-	var random_state_before := nuisance_random.state
+	var lfsr_state_before := lfsr_random.state
 	var process_random_state_before := process_random.state
 	if NUISANCE_TILES.has(tile_id):
 		var residential_tiles := _count_nearby_residential(zones, selected, area)
-		if nuisance_random.next_mod(200) < residential_tiles:
+		if lfsr_random.next_mod(200) < residential_tiles:
 			return {
 				"ok": false,
 				"error": "residents rejected this site",
 				"cost": cost,
 				"residential_tiles": residential_tiles,
 			}
+	if not _footprint_is_in_bounds(site, area):
+		return {"ok": false, "error": "building does not fit inside the map", "cost": cost}
+	var site_check := _check_site(buildings, terrain, zones, flags, site, tile_id)
+	if not site_check.ok:
+		return {"ok": false, "error": site_check.error, "cost": cost}
 
 	var overlay_id := _provision_microsim(
 		microsims,
@@ -355,7 +354,7 @@ static func apply(
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not _apply_payloads(city, changed_ids, changed_payloads, old_payloads):
-		nuisance_random.state = random_state_before
+		lfsr_random.state = lfsr_state_before
 		process_random.state = process_random_state_before
 		return {"ok": false, "error": "cannot store building changes"}
 
@@ -367,7 +366,7 @@ static func apply(
 			var power_result := Power.run(city, process_random)
 			if not power_result.ok:
 				_restore_payloads(city, old_payloads)
-				nuisance_random.state = random_state_before
+				lfsr_random.state = lfsr_state_before
 				process_random.state = process_random_state_before
 				return {"ok": false, "error": "cannot refresh power after placement"}
 			immediate_power_refresh = true
@@ -375,7 +374,7 @@ static func apply(
 			var water_result := Water.run(city)
 			if not water_result.ok:
 				_restore_payloads(city, old_payloads)
-				nuisance_random.state = random_state_before
+				lfsr_random.state = lfsr_state_before
 				process_random.state = process_random_state_before
 				return {"ok": false, "error": "cannot refresh water after placement"}
 			immediate_water_refresh = true
@@ -383,7 +382,7 @@ static func apply(
 		changed_payloads = _city_payloads(city)
 		if changed_payloads.is_empty():
 			_restore_payloads(city, old_payloads)
-			nuisance_random.state = random_state_before
+			lfsr_random.state = lfsr_state_before
 			process_random.state = process_random_state_before
 			return {"ok": false, "error": "cannot capture utility changes"}
 		changed_ids.clear()
@@ -404,8 +403,8 @@ static func apply(
 		"changed_ids": changed_ids,
 		"old_payloads": old_payloads,
 		"new_payloads": changed_payloads,
-		"random_state_before": random_state_before,
-		"random_state_after": nuisance_random.state,
+		"lfsr_state_before": lfsr_state_before,
+		"lfsr_state_after": lfsr_random.state,
 		"process_random_state_before": process_random_state_before,
 		"process_random_state_after": process_random.state,
 		"immediate_power_refresh": immediate_power_refresh,
@@ -527,19 +526,19 @@ static func assign_stadium_team(
 static func undo(
 	city: CityState,
 	command: Dictionary,
-	nuisance_random: GameLcgRandom,
+	lfsr_random: SimLfsrRandom,
 	process_random: SimRandom
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not command.get("ok", false) or command.get("command_type", "") != "building":
 		return {"ok": false, "error": "building command is invalid"}
-	if nuisance_random == null:
-		return {"ok": false, "error": "nuisance random state is required"}
+	if lfsr_random == null:
+		return {"ok": false, "error": "LFSR random state is required"}
 	if process_random == null:
 		return {"ok": false, "error": "process random state is required"}
-	if nuisance_random.state != int(command.get("random_state_after", -1)):
-		return {"ok": false, "error": "random state changed after this building command"}
+	if lfsr_random.state != int(command.get("lfsr_state_after", -1)):
+		return {"ok": false, "error": "LFSR state changed after this building command"}
 	if process_random.state != int(command.get("process_random_state_after", -1)):
 		return {"ok": false, "error": "process random state changed after this building command"}
 	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
@@ -551,7 +550,7 @@ static func undo(
 			return {"ok": false, "error": "city changed after this building command"}
 	if not _apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore building changes"}
-	nuisance_random.state = int(command.random_state_before)
+	lfsr_random.state = int(command.lfsr_state_before)
 	process_random.state = int(command.process_random_state_before)
 	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
 	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
