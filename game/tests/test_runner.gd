@@ -74,6 +74,7 @@ const Dispatch = preload("res://src/tools/dispatch_command.gd")
 const CityRotation = preload("res://src/tools/city_rotation_command.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
+const Music = preload("res://src/audio/music_director.gd")
 
 var failures := 0
 var checks := 0
@@ -211,6 +212,7 @@ func _init() -> void:
 	_test_scurk_mif(reference_root)
 	_test_reference_corpus(reference_root)
 	_test_city_options(reference_root)
+	_test_music_director()
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
 	_test_random_and_power(reference_root)
@@ -432,6 +434,49 @@ func _test_city_options(reference_root: String) -> void:
 		and scenario_document.misc_u32(CityState.MISC_AUTO_GOTO_OPTION) == 0xff
 		and scenario_city.auto_goto_enabled(),
 		"Saved option readers treat a nonzero legacy value as enabled",
+	)
+
+
+func _test_music_director() -> void:
+	var director := Music.new()
+	var general_tracks := PackedInt32Array()
+	for index in 7:
+		general_tracks.append(director.next_general_track())
+	_check(
+		general_tracks == PackedInt32Array([
+			10001, 10004, 10008, 10012, 10018, 10001, 10004,
+		]),
+		"General music follows the executable's five-track cycle",
+	)
+	var monthly_random := SequenceRandom.new([0, 18])
+	_check(
+		Music.monthly_track(1, false, monthly_random) == 10018
+		and monthly_random.position == 2,
+		"Paused monthly music uses the Turtle divisor and selects one of all 19 tracks",
+	)
+	monthly_random = SequenceRandom.new([25])
+	_check(
+		Music.monthly_track(2, false, monthly_random) == -1
+		and monthly_random.position == 1,
+		"Turtle monthly music rejects a nonzero modulo-24 gate",
+	)
+	monthly_random = SequenceRandom.new([0, 0])
+	_check(
+		Music.monthly_track(5, true, monthly_random) == -1
+		and monthly_random.position == 0,
+		"Active music prevents a monthly selection without consuming random state",
+	)
+	var indexed_random := SequenceModuloRandom.new([0, 1, 2, 3, 4])
+	_check(
+		Music.budget_track(indexed_random) == 10016
+		and Music.budget_track(indexed_random) == 10005
+		and Music.budget_track(indexed_random) == 10002
+		and Music.budget_track(indexed_random) == 10010,
+		"Budget music follows the executable's four-track table",
+	)
+	_check(
+		Music.newspaper_track(indexed_random) == 10002,
+		"Newspaper music uses its five-track table",
 	)
 
 
