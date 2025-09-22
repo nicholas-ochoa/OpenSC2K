@@ -75,6 +75,7 @@ const CityRotation = preload("res://src/tools/city_rotation_command.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
 const Music = preload("res://src/audio/music_director.gd")
+const MidiFile = preload("res://src/audio/standard_midi_file.gd")
 
 var failures := 0
 var checks := 0
@@ -213,6 +214,7 @@ func _init() -> void:
 	_test_reference_corpus(reference_root)
 	_test_city_options(reference_root)
 	_test_music_director()
+	_test_midi_files(reference_root)
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
 	_test_random_and_power(reference_root)
@@ -477,6 +479,56 @@ func _test_music_director() -> void:
 	_check(
 		Music.newspaper_track(indexed_random) == 10002,
 		"Newspaper music uses its five-track table",
+	)
+
+
+func _test_midi_files(reference_root: String) -> void:
+	var expected_tracks := [10, 10, 8, 8, 22, 5, 14, 16, 11, 10, 16, 18, 16, 11, 5, 8, 6, 7, 18]
+	var expected_divisions := [
+		192, 192, 192, 192, 192, 480, 192, 192, 480, 192,
+		192, 192, 192, 192, 480, 192, 480, 480, 120,
+	]
+	for track_offset in Music.TRACK_COUNT:
+		var track_id := Music.FIRST_TRACK_ID + track_offset
+		var midi := MidiFile.load_path(
+			reference_root.path_join("SOUNDS/%d.MID" % track_id)
+		)
+		_check(midi.is_valid(), "MIDI %d parses: %s" % [track_id, midi.parse_error])
+		if not midi.is_valid():
+			continue
+		_check(
+			midi.format_type == 1
+			and midi.track_count == expected_tracks[track_offset]
+			and midi.ticks_per_quarter == expected_divisions[track_offset],
+			"MIDI %d header matches the supplied file" % track_id,
+		)
+		var note_on_count := 0
+		var note_off_count := 0
+		var previous_time := -1.0
+		var ordered := true
+		for event in midi.events:
+			var event_time := float(event.time_seconds)
+			if event_time < previous_time:
+				ordered = false
+			previous_time = event_time
+			if event.type == "note_on":
+				note_on_count += 1
+			elif event.type == "note_off":
+				note_off_count += 1
+		_check(
+			note_on_count > 0 and note_off_count > 0,
+			"MIDI %d contains playable note events" % track_id,
+		)
+		_check(
+			ordered and midi.duration_seconds > 0.0,
+			"MIDI %d has ordered event times and a positive duration" % track_id,
+		)
+	var missing := MidiFile.load_path(reference_root.path_join("SOUNDS/MISSING.MID"))
+	_check(not missing.is_valid(), "MIDI loader rejects a missing file")
+	var invalid := MidiFile.new()
+	_check(
+		not invalid.parse(PackedByteArray([0x4d, 0x54, 0x68, 0x64])),
+		"MIDI parser rejects a truncated header",
 	)
 
 
