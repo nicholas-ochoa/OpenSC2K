@@ -482,6 +482,10 @@ func _test_music_director() -> void:
 		Music.newspaper_track(indexed_random) == 10002,
 		"Newspaper music uses its five-track table",
 	)
+	_check(
+		Music.DISASTER_TRACK == 10004 and Music.RECREATION_TRACK == 10010,
+		"Mode and Recreation music use the executable's fixed tracks",
+	)
 
 
 func _test_midi_files(reference_root: String) -> void:
@@ -2692,6 +2696,7 @@ func _test_simulation_engine(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x001c, 1), "Simulation engine fixture selects Easy")
 	_check(document.set_misc_u32(0x1000, 1), "Simulation engine fixture disables random disasters")
 	var engine := Simulation.new(city, 1, 7)
+	engine.midi_playback_active = true
 	_check(engine.lfsr_random.state == 7, "Simulation engine accepts an explicit LFSR seed")
 	var day_one := engine.advance_day()
 	_check(day_one.ok, "Simulation engine advances day one")
@@ -2732,6 +2737,13 @@ func _test_simulation_engine(reference_root: String) -> void:
 		latest.phase_results.has("rci_aftermath")
 		and latest.phase_results.rci_aftermath.has("weather_trend"),
 		"Simulation engine runs monthly ecology, news, inventions, and weather after demand",
+	)
+	_check(
+		latest.phase_results.has("music")
+		and latest.phase_results.music.playback_was_active
+		and not latest.phase_results.music.selection_attempted
+		and latest.phase_results.music.music_track_requests.is_empty(),
+		"Active MIDI skips the monthly random gate without a track request",
 	)
 	_check(
 		latest.phase_results.has("simnation")
@@ -2776,6 +2788,26 @@ func _test_simulation_engine(reference_root: String) -> void:
 	)
 	_check(latest.pending.is_empty(), "Normal month-start budget work is complete")
 	_check(latest.phase_results.has("budget"), "Simulation engine exposes the budget result")
+
+	var silent_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var silent_city := CityModel.from_document(silent_document)
+	_check(
+		silent_city.set_age_in_days(20)
+		and silent_city.set_simulation_speed(GameSpeed.Speed.TURTLE)
+		and silent_city.set_music_enabled(false),
+		"Monthly MIDI fixture selects day 21 with music disabled",
+	)
+	var silent_engine := Simulation.new(silent_city, 3, 7, 13)
+	var silent_day := silent_engine.advance_day()
+	_check(
+		silent_day.ok
+		and silent_day.phase_results.music.selection_attempted
+		and not silent_day.phase_results.music.playback_was_active
+		and silent_day.phase_results.music.music_track_requests
+		== PackedInt32Array([10014])
+		and not silent_engine.midi_playback_active,
+		"Inactive monthly MIDI consumes the process RNG and requests the selected track",
+	)
 
 	var annual_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var annual_city := CityModel.from_document(annual_document)
@@ -3071,6 +3103,25 @@ func _test_game_speed_controller(reference_root: String) -> void:
 		map_refresh.ok
 		and map_refresh.refresh_requests == ["toolbar", "map", "simnation", "weather_disaster"],
 		"Controller deduplicates and forwards the day-24 refresh requests",
+	)
+
+	var music_city := CityModel.from_document(
+		Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	)
+	_check(
+		music_city.set_age_in_days(20)
+		and music_city.set_simulation_speed(GameSpeed.Speed.TURTLE)
+		and music_city.set_music_enabled(false),
+		"Controller MIDI fixture selects an inactive day-21 gate",
+	)
+	var music_controller := GameSpeed.new(Simulation.new(music_city, 3, 7, 13))
+	music_controller.simulation_ready = true
+	var music_tick := music_controller.advance_time(0.0, 0)
+	_check(
+		music_tick.ok
+		and music_tick.day_results.size() == 1
+		and music_tick.music_track_requests == PackedInt32Array([10014]),
+		"Controller forwards a monthly MIDI track request",
 	)
 
 	var budget_city := CityModel.from_document(Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2")))

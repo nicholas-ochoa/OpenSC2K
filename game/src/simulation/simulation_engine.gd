@@ -7,6 +7,7 @@ const SimNation = preload("res://src/simulation/simnation_phase.gd")
 const Industries = preload("res://src/simulation/industry_phase.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const WeatherDisaster = preload("res://src/simulation/weather_disaster_phase.gd")
+const Music = preload("res://src/audio/music_director.gd")
 
 var city: CityState
 var clock: SimulationClock
@@ -34,6 +35,7 @@ var active_disaster_type := 0
 var unsupported_disaster_type := 0
 var disaster_map_counter := 0
 var disaster_hurricane_counter := 0
+var midi_playback_active := false
 
 
 func _init(
@@ -45,6 +47,7 @@ func _init(
 	lfsr_random = SimLfsrRandom.new(lfsr_seed)
 	game_random = GameLcgRandom.new(game_random_seed)
 	if initial_city != null and initial_city.is_valid():
+		midi_playback_active = initial_city.music_enabled()
 		pending_disaster_type = initial_city.disaster_type() & 0xffff
 		if initial_city.document.find_chunk("SCEN") != null:
 			var loaded_scenario := ScenarioState.from_document(initial_city.document)
@@ -355,6 +358,21 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				phase_results[action] = traffic
 				applied.append(action)
 			"rci_demand":
+				var playback_was_active := midi_playback_active
+				var selected_music := Music.monthly_track(
+					city.simulation_speed(), playback_was_active, random
+				)
+				var music_requests := PackedInt32Array()
+				if selected_music >= Music.FIRST_TRACK_ID:
+					music_requests.append(selected_music)
+					if city.music_enabled():
+						midi_playback_active = true
+				phase_results["music"] = {
+					"ok": true,
+					"playback_was_active": playback_was_active,
+					"selection_attempted": not playback_was_active,
+					"music_track_requests": music_requests,
+				}
 				var demand := RciDemandPhase.run(city)
 				if not demand.ok:
 					return {"ok": false, "error": demand.error}

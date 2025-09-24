@@ -201,6 +201,9 @@ func _consume_day_result(result: Dictionary, day: Dictionary) -> void:
 			result.effect_events.append_array(phase_result.get("bridge_effects", []))
 		result.news_items.append_array(phase_result.get("news_items", []))
 		result.sound_events.append_array(phase_result.get("sound_events", []))
+		result.music_track_requests.append_array(
+			phase_result.get("music_track_requests", PackedInt32Array())
+		)
 		result.view_center_requests.append_array(phase_result.get("view_center_requests", []))
 	if not result.game_over_events.is_empty():
 		terminal_blocked = true
@@ -224,6 +227,7 @@ func _empty_result() -> Dictionary:
 		"news_items": [],
 		"effect_events": [],
 		"sound_events": [],
+		"music_track_requests": PackedInt32Array(),
 		"view_center_requests": [],
 		"refresh_requests": [],
 		"interaction_requests": [],

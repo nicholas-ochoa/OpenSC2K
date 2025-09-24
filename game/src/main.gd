@@ -384,6 +384,7 @@ func _process(delta: float) -> void:
 	_start_pending_static_render()
 	if speed_controller == null or city == null:
 		return
+	simulation_engine.midi_playback_active = _music_playback_is_active()
 	var interaction_suspended := (
 		(map_view != null and map_view.is_left_drag_active())
 		or budget_dialog.visible
@@ -477,6 +478,9 @@ func _consume_simulation_result(result: Dictionary) -> void:
 		map_view.center_on_tile(point)
 	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
 		_show_effect_events(result.effect_events, result.sound_events)
+	for track_id in result.get("music_track_requests", PackedInt32Array()):
+		if city.music_enabled():
+			_play_music_track(int(track_id))
 	if not result.news_items.is_empty():
 		_show_news_items(result.news_items)
 	if not result.game_over_events.is_empty():
@@ -2045,6 +2049,7 @@ func _on_options_menu(id: int) -> void:
 			_play_music_track(music_director.next_general_track())
 		else:
 			music_player.stop()
+			simulation_engine.midi_playback_active = false
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "%s %s." % [option_name, "enabled" if enabled else "disabled"]
 
@@ -2102,6 +2107,8 @@ func _on_disaster_menu(id: int) -> void:
 	if not result.get("started", false):
 		_show_error("The selected disaster could not start.")
 		return
+	if city.music_enabled():
+		_play_music_track(Music.DISASTER_TRACK)
 	last_edit_command = {}
 	undo_button.disabled = true
 	simulation_map_dirty = false
@@ -2843,22 +2850,40 @@ func _activate_document(
 
 
 func _play_music_track(track_id: int) -> bool:
-	if music_player == null or track_id < Music.FIRST_TRACK_ID:
+	if (
+		music_player == null
+		or track_id < Music.FIRST_TRACK_ID
+		or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT
+	):
 		return false
 	if AudioServer.get_driver_name() == "Dummy":
+		if simulation_engine != null:
+			simulation_engine.midi_playback_active = true
 		return true
 	var result := music_player.play_path(
 		reference_root.path_join("SOUNDS/%d.MID" % track_id), track_id
 	)
 	if not result.ok:
+		if simulation_engine != null:
+			simulation_engine.midi_playback_active = false
 		push_warning("Cannot play MIDI track %d: %s" % [track_id, result.error])
 		return false
+	if simulation_engine != null:
+		simulation_engine.midi_playback_active = true
 	return true
 
 
 func _on_music_track_finished(_track_id: int) -> void:
-	if city != null and city.music_enabled():
-		_play_music_track(music_director.next_general_track())
+	if simulation_engine != null:
+		simulation_engine.midi_playback_active = false
+
+
+func _music_playback_is_active() -> bool:
+	if city == null or not city.music_enabled():
+		return false
+	if AudioServer.get_driver_name() == "Dummy":
+		return true
+	return music_player != null and music_player.is_track_active()
 
 
 func _save_copy(path: String) -> void:
@@ -4206,6 +4231,8 @@ func _apply_map_selection(
 		_refresh_map(false)
 		if building_group == 5 and building_subtool < 4:
 			_choose_tool_group(17)
+		if building_group == 14 and city.music_enabled():
+			_play_music_track(Music.RECREATION_TRACK)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built %s for $%s." % [
 			building_name,
