@@ -48,6 +48,8 @@ const Bonds = preload("res://src/simulation/bond_command.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const NewspaperTextGenerator = preload("res://src/simulation/newspaper_text.gd")
+const Music = preload("res://src/audio/music_director.gd")
+const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 
 const NEWS_NAMES := {
 	1: "Local news",
@@ -152,6 +154,8 @@ var last_edit_command: Dictionary = {}
 var pending_sign_tile := Vector2i(-1, -1)
 var tool_random := Random.new(1)
 var nuisance_random := GameRandom.new(Time.get_ticks_msec() | 1)
+var music_director := Music.new()
+var music_player: MidiSynthPlayer
 var dispatch_cycles := PackedInt32Array([0, 0, 0])
 var dispatch_initialized := false
 var simulation_engine: SimulationEngine
@@ -296,6 +300,9 @@ var fps_update_seconds := 0.0
 
 func _ready() -> void:
 	reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
+	music_player = MidiSynth.new()
+	music_player.track_finished.connect(_on_music_track_finished)
+	add_child(music_player)
 	newspaper_session_seed = Time.get_ticks_msec() & 0xffff
 	if newspaper_session_seed & 0x8000:
 		newspaper_session_seed -= 0x10000
@@ -2033,6 +2040,11 @@ func _on_options_menu(id: int) -> void:
 		_show_error("Cannot update the %s option." % option_name)
 		return
 	_sync_city_option_menus()
+	if id == MENU_MUSIC:
+		if enabled:
+			_play_music_track(music_director.next_general_track())
+		else:
+			music_player.stop()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "%s %s." % [option_name, "enabled" if enabled else "disabled"]
 
@@ -2170,6 +2182,8 @@ func _set_sidebar_expanded(expanded: bool) -> void:
 func _on_newspaper_menu(_id: int) -> void:
 	if city == null or current_document == null:
 		return
+	if city.music_enabled() and simulation_engine != null:
+		_play_music_track(Music.newspaper_track(simulation_engine.lfsr_random))
 	_populate_newspaper_table()
 	newspaper_dialog.title = "The %s Newspaper" % (
 		city.city_name() if not city.city_name().is_empty() else "City"
@@ -2459,6 +2473,8 @@ func _open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 	if city == null or values.size() != Budget.BUDGET_COUNT:
 		_show_error("Cannot open the budget because its saved values are invalid.")
 		return
+	if city.music_enabled() and simulation_engine != null:
+		_play_music_track(Music.budget_track(simulation_engine.lfsr_random))
 	annual_budget_pending = annual
 	budget_dialog.title = "Annual Budget" if annual else "Budget"
 	budget_notice_label.text = (
@@ -2725,6 +2741,8 @@ func _activate_document(
 	if not loaded_city.is_valid():
 		_show_error(loaded_city.load_error)
 		return false
+	if music_player != null:
+		music_player.stop()
 
 	if budget_dialog.visible:
 		budget_dialog.hide()
@@ -2817,9 +2835,30 @@ func _activate_document(
 	status_label.text = status_text if not status_text.is_empty() else "City ready."
 	_refresh_map()
 	_update_edit_state()
+	if city.music_enabled():
+		_play_music_track(music_director.next_general_track())
 	if loaded_scenario != null:
 		_open_scenario_intro(loaded_scenario)
 	return true
+
+
+func _play_music_track(track_id: int) -> bool:
+	if music_player == null or track_id < Music.FIRST_TRACK_ID:
+		return false
+	if AudioServer.get_driver_name() == "Dummy":
+		return true
+	var result := music_player.play_path(
+		reference_root.path_join("SOUNDS/%d.MID" % track_id), track_id
+	)
+	if not result.ok:
+		push_warning("Cannot play MIDI track %d: %s" % [track_id, result.error])
+		return false
+	return true
+
+
+func _on_music_track_finished(_track_id: int) -> void:
+	if city != null and city.music_enabled():
+		_play_music_track(music_director.next_general_track())
 
 
 func _save_copy(path: String) -> void:

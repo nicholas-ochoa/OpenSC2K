@@ -76,6 +76,7 @@ const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
 const Music = preload("res://src/audio/music_director.gd")
 const MidiFile = preload("res://src/audio/standard_midi_file.gd")
+const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 
 var failures := 0
 var checks := 0
@@ -215,6 +216,7 @@ func _init() -> void:
 	_test_city_options(reference_root)
 	_test_music_director()
 	_test_midi_files(reference_root)
+	_test_midi_synth_helpers()
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
 	_test_random_and_power(reference_root)
@@ -529,6 +531,26 @@ func _test_midi_files(reference_root: String) -> void:
 	_check(
 		not invalid.parse(PackedByteArray([0x4d, 0x54, 0x68, 0x64])),
 		"MIDI parser rejects a truncated header",
+	)
+
+
+func _test_midi_synth_helpers() -> void:
+	_check(
+		is_equal_approx(MidiSynth.note_frequency(69), 440.0)
+		and is_equal_approx(MidiSynth.note_frequency(81), 880.0),
+		"MIDI synthesizer maps A4 and A5 to their standard frequencies",
+	)
+	_check(
+		absf(MidiSynth.note_frequency(69, 16383) - 493.88) < 0.02
+		and absf(MidiSynth.note_frequency(69, 0) - 391.99) < 0.02,
+		"MIDI synthesizer applies the default two-semitone pitch-bend range",
+	)
+	var families := PackedInt32Array()
+	for program in [0, 8, 16, 24, 32, 40, 56, 72, 80, 104, 127]:
+		families.append(MidiSynth.waveform_family(program))
+	_check(
+		families == PackedInt32Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9]),
+		"MIDI synthesizer assigns every General MIDI program range",
 	)
 
 
