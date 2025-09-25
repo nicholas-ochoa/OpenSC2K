@@ -2748,8 +2748,7 @@ func _activate_document(
 	if not loaded_city.is_valid():
 		_show_error(loaded_city.load_error)
 		return false
-	if music_player != null:
-		music_player.stop()
+	var music_was_active := _music_playback_is_active()
 
 	if budget_dialog.visible:
 		budget_dialog.hide()
@@ -2842,7 +2841,12 @@ func _activate_document(
 	status_label.text = status_text if not status_text.is_empty() else "City ready."
 	_refresh_map()
 	_update_edit_state()
-	if city.music_enabled():
+	if not city.music_enabled():
+		music_player.stop()
+		simulation_engine.midi_playback_active = false
+	elif music_was_active:
+		simulation_engine.midi_playback_active = true
+	else:
 		_play_music_track(music_director.next_general_track())
 	if loaded_scenario != null:
 		_open_scenario_intro(loaded_scenario)
