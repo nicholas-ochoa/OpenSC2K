@@ -9,6 +9,7 @@ const SAMPLE_RATE := 22050.0
 const BUFFER_LENGTH_SECONDS := 0.25
 const MAX_VOICES := 32
 const MAX_TAIL_SECONDS := 2.0
+const MAX_FRAMES_PER_FILL := 1024
 const PITCH_BEND_RANGE := 2.0
 const TAU_VALUE := PI * 2.0
 
@@ -130,7 +131,7 @@ func is_track_active() -> bool:
 func _process(_delta: float) -> void:
 	if not _active or _playback == null or _sequence == null:
 		return
-	var available := _playback.get_frames_available()
+	var available := mini(_playback.get_frames_available(), MAX_FRAMES_PER_FILL)
 	if available <= 0:
 		return
 	var output := PackedVector2Array()
