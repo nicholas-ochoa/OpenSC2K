@@ -59,6 +59,7 @@ const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
 const QueryPresentation = preload("res://src/view/query_presentation.gd")
 const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
+const NewspaperPage = preload("res://src/ui/newspaper_page.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -8381,6 +8382,27 @@ func _test_news_queue(reference_root: String) -> void:
 	_check(
 		source_decays == PackedInt32Array(NewsQueue.STORY_DECAYS),
 		"Newspaper decays match DATA_USA resource 1005",
+	)
+
+	var paper_misc := _filled_bytes(NewsQueue.MISC_SIZE, 0)
+	for field in NewsQueue.PAPER_FIELD_COUNT:
+		_write_u32_be(paper_misc, NewsQueue.PAPER_OFFSET + field * 4, 0x100 + field)
+	var paper := NewsQueue.paper_record(paper_misc, 0)
+	_check(
+		paper == {"name": 0, "layout": 1, "price": 2, "opinion": 3, "weather": 4},
+		"Newspaper paper records narrow all five saved fields",
+	)
+	_check(
+		NewsQueue.paper_record(paper_misc, -1).is_empty()
+		and NewsQueue.paper_record(paper_misc, NewsQueue.PAPER_COUNT).is_empty(),
+		"Newspaper paper reader rejects invalid indices",
+	)
+	_check(
+		NewspaperPage.PAGE_SIZE == Vector2i(640, 400)
+		and NewspaperPage.section_rect(0, 3) == Rect2i(243, 76, 213, 100)
+		and NewspaperPage.story_rect(1, 4) == Rect2i(384, 186, 128, 214)
+		and NewspaperPage.story_rect(2, 0) == Rect2i(0, 30, 128, 370),
+		"Newspaper page exposes the executable's three fixed layouts",
 	)
 
 	var misc := _filled_bytes(NewsQueue.MISC_SIZE, 0)

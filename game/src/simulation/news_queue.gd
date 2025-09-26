@@ -17,6 +17,12 @@ const PRIORITY_FIELD := 1
 const ARGUMENT_FIELD := 2
 const FIRST_AUXILIARY_FIELD := 3
 
+const PAPER_NAME_FIELD := 0
+const PAPER_LAYOUT_FIELD := 1
+const PAPER_PRICE_FIELD := 2
+const PAPER_OPINION_FIELD := 3
+const PAPER_WEATHER_FIELD := 4
+
 # data_usa resources 1004 and 1005 are big-endian unsigned 16-bit tables
 # the supplied executable byte-swaps them after loading
 const STORY_PRIORITIES := [
@@ -123,6 +129,19 @@ static func story_record(misc: PackedByteArray, slot: int) -> Dictionary:
 			_read_u32(misc, offset + 16) & 0xff,
 			_read_u32(misc, offset + 20) & 0xff,
 		]),
+	}
+
+
+static func paper_record(misc: PackedByteArray, paper: int) -> Dictionary:
+	if not _validate_misc(misc).ok or paper < 0 or paper >= PAPER_COUNT:
+		return {}
+	var offset := PAPER_OFFSET + paper * PAPER_RECORD_SIZE
+	return {
+		"name": _read_u32(misc, offset + PAPER_NAME_FIELD * 4) & 0xff,
+		"layout": _read_u32(misc, offset + PAPER_LAYOUT_FIELD * 4) & 0xff,
+		"price": _read_u32(misc, offset + PAPER_PRICE_FIELD * 4) & 0xff,
+		"opinion": _read_u32(misc, offset + PAPER_OPINION_FIELD * 4) & 0xff,
+		"weather": _read_u32(misc, offset + PAPER_WEATHER_FIELD * 4) & 0xff,
 	}
 
 
