@@ -26,6 +26,7 @@ const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
 const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
+const NewspaperPageView = preload("res://src/ui/newspaper_page.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -117,6 +118,12 @@ const BUDGET_NAMES := [
 ]
 const MAP_DISPLAY_MODES := ["city", "underground", "structures", "zones", "power", "water"]
 const LIBRARY_TEXT_IDS := [3000, 3001, 3002, 3003]
+const NEWSPAPER_STRING_FIRST := 347
+const NEWSPAPER_STRING_LAST := 391
+const MONTH_NAMES := [
+	"January", "February", "March", "April", "May", "June",
+	"July", "August", "September", "October", "November", "December",
+]
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
@@ -269,9 +276,11 @@ var active_query_result: Dictionary = {}
 var city_analysis_dialog: AcceptDialog
 var city_analysis_table: Tree
 var newspaper_dialog: AcceptDialog
-var newspaper_table: Tree
+var newspaper_page: NewspaperPage
+var newspaper_paper_selector: OptionButton
 var newspaper_article_heading: Label
 var newspaper_article_view: TextEdit
+var selected_newspaper := 0
 var forest_protest_dialog: AcceptDialog
 var forest_protest_message: Label
 var building_objection_dialog: AcceptDialog
@@ -313,6 +322,8 @@ func _ready() -> void:
 	var string_resource_ids := Queries.resource_string_ids()
 	string_resource_ids.append(FOREST_PROTEST_STRING_ID)
 	string_resource_ids.append(BUILDING_OBJECTION_STRING_ID)
+	for resource_id in range(NEWSPAPER_STRING_FIRST, NEWSPAPER_STRING_LAST + 1):
+		string_resource_ids.append(resource_id)
 	var string_resources := PeString.load_ids(
 		reference_root.path_join("SIMCITY.EXE"), string_resource_ids
 	)
@@ -1229,37 +1240,31 @@ func _build_interface(toolbar_art: Image) -> void:
 	add_child(city_analysis_dialog)
 	newspaper_dialog = AcceptDialog.new()
 	newspaper_dialog.title = "Newspaper"
-	newspaper_dialog.min_size = Vector2i(700, 620)
+	newspaper_dialog.min_size = Vector2i(700, 650)
 	newspaper_dialog.get_ok_button().text = "Close"
 	newspaper_dialog.get_label().visible = false
-	newspaper_table = Tree.new()
-	newspaper_table.name = "SavedNewspaperReports"
-	newspaper_table.custom_minimum_size = Vector2i(640, 280)
-	newspaper_table.columns = 3
-	newspaper_table.column_titles_visible = true
-	newspaper_table.hide_root = true
-	newspaper_table.set_column_title(0, "LATEST REPORTS")
-	newspaper_table.set_column_title(1, "TYPE")
-	newspaper_table.set_column_title(2, "STATUS")
-	newspaper_table.set_column_expand(0, true)
-	newspaper_table.set_column_expand(1, false)
-	newspaper_table.set_column_expand(2, false)
-	newspaper_table.set_column_custom_minimum_width(1, 80)
-	newspaper_table.set_column_custom_minimum_width(2, 100)
-	newspaper_table.add_theme_color_override("font_color", Color("101010"))
-	newspaper_table.add_theme_color_override("font_hovered_color", Color("101010"))
-	newspaper_table.add_theme_color_override("font_hovered_selected_color", Color("101010"))
-	newspaper_table.add_theme_color_override("title_button_color", Color("101010"))
-	newspaper_table.add_theme_stylebox_override(
-		"panel", _classic_box(Color("fff9df"), Color("808080"), 1)
-	)
-	newspaper_table.item_selected.connect(_on_newspaper_story_selected)
+	var paper_selector_row := HBoxContainer.new()
+	paper_selector_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	paper_selector_row.add_theme_constant_override("separation", 8)
+	var paper_selector_label := Label.new()
+	paper_selector_label.text = "PAPER"
+	paper_selector_label.add_theme_color_override("font_color", Color("f0f0f0"))
+	paper_selector_row.add_child(paper_selector_label)
+	newspaper_paper_selector = OptionButton.new()
+	newspaper_paper_selector.name = "NewspaperPaperSelector"
+	newspaper_paper_selector.custom_minimum_size = Vector2i(260, 28)
+	newspaper_paper_selector.item_selected.connect(_on_newspaper_paper_selected)
+	paper_selector_row.add_child(newspaper_paper_selector)
+	newspaper_page = NewspaperPageView.new()
+	newspaper_page.name = "NewspaperPage"
+	newspaper_page.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	newspaper_page.story_selected.connect(_on_newspaper_story_selected)
 	newspaper_article_heading = Label.new()
 	newspaper_article_heading.text = "SELECTED ARTICLE"
 	newspaper_article_heading.add_theme_color_override("font_color", Color("f0f0f0"))
 	newspaper_article_view = TextEdit.new()
 	newspaper_article_view.name = "NewspaperArticle"
-	newspaper_article_view.custom_minimum_size = Vector2i(640, 190)
+	newspaper_article_view.custom_minimum_size = Vector2i(640, 140)
 	newspaper_article_view.editable = false
 	newspaper_article_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	newspaper_article_view.add_theme_color_override("font_color", Color("101010"))
@@ -1268,7 +1273,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	var newspaper_content := newspaper_dialog.get_label().get_parent()
 	var newspaper_layout := VBoxContainer.new()
 	newspaper_layout.add_theme_constant_override("separation", 6)
-	newspaper_layout.add_child(newspaper_table)
+	newspaper_layout.add_child(paper_selector_row)
+	newspaper_layout.add_child(newspaper_page)
 	newspaper_layout.add_child(newspaper_article_heading)
 	newspaper_layout.add_child(newspaper_article_view)
 	newspaper_content.add_child(newspaper_layout)
@@ -2191,10 +2197,7 @@ func _on_newspaper_menu(_id: int) -> void:
 		return
 	if city.music_enabled() and simulation_engine != null:
 		_play_music_track(Music.newspaper_track(simulation_engine.lfsr_random))
-	_populate_newspaper_table()
-	newspaper_dialog.title = "The %s Newspaper" % (
-		city.city_name() if not city.city_name().is_empty() else "City"
-	)
+	_populate_newspaper_page()
 	newspaper_dialog.popup_centered()
 
 
@@ -3692,26 +3695,47 @@ func _refresh_saved_news_summary() -> void:
 	)
 
 
-func _populate_newspaper_table() -> void:
-	newspaper_table.clear()
+func _populate_newspaper_page() -> void:
 	newspaper_article_heading.text = "SELECTED ARTICLE"
-	newspaper_article_view.text = "Select a published report to read its article."
-	var root := newspaper_table.create_item()
+	newspaper_article_view.text = "Select a headline on the newspaper page to read its article."
+	newspaper_paper_selector.clear()
 	var misc_chunk := current_document.find_chunk("MISC")
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
-		var unavailable := newspaper_table.create_item(root)
-		unavailable.set_text(0, "Saved reports are unavailable.")
+		newspaper_paper_selector.add_item("Unavailable")
+		newspaper_paper_selector.disabled = true
+		newspaper_page.set_page(
+			0,
+			"NEWSPAPER",
+			"",
+			"",
+			"Saved reports are unavailable.",
+			"",
+			PackedStringArray(),
+		)
+		newspaper_dialog.title = "Newspaper"
 		return
 	var old_misc: PackedByteArray = misc_chunk.decoded_payload
 	var misc := old_misc.duplicate()
+	selected_newspaper = clampi(selected_newspaper, 0, NewsQueue.PAPER_COUNT - 1)
+	for paper_index in NewsQueue.PAPER_COUNT:
+		var selector_record := NewsQueue.paper_record(misc, paper_index)
+		newspaper_paper_selector.add_item(
+			_newspaper_paper_title(paper_index, selector_record), paper_index
+		)
+	newspaper_paper_selector.disabled = false
+	newspaper_paper_selector.select(selected_newspaper)
+	var paper := NewsQueue.paper_record(misc, selected_newspaper)
 	var teams := _newspaper_team_names()
-	for slot in NewsQueue.QUEUE_COUNT:
+	var headlines := PackedStringArray()
+	for slot in NewspaperTextGenerator.PUBLISHED_SEED_OFFSETS.size():
+		if slot == 5 or slot == 6:
+			continue
 		var record := NewsQueue.story_record(misc, slot)
 		if record.is_empty():
 			continue
 		var story_type := int(record.type)
 		var seed := NewspaperTextGenerator.published_seed(
-			newspaper_session_seed, city.age_in_days(), 0, slot
+			newspaper_session_seed, city.age_in_days(), selected_newspaper, slot
 		)
 		var headline: String = NEWS_NAMES.get(story_type, "City report")
 		if seed >= 0 and newspaper_data != null and newspaper_data.is_valid():
@@ -3728,36 +3752,41 @@ func _populate_newspaper_table() -> void:
 				NewsQueue.update_story_substitutions(
 					misc, slot, rendered.argument, rendered.auxiliary
 				)
-		var item := newspaper_table.create_item(root)
-		item.set_text(0, headline)
-		item.set_text(1, "0x%02X" % story_type)
-		item.set_text(2, "Published" if seed >= 0 else "Queued")
-		item.set_metadata(0, {"slot": slot, "seed": seed})
-		if int(record.priority) <= 0:
-			item.set_custom_color(0, Color("707070"))
-			item.set_custom_color(1, Color("707070"))
-			item.set_custom_color(2, Color("707070"))
+		if slot < 5:
+			headlines.append(headline)
+		elif slot == 7:
+			paper["weather_headline"] = headline
+		elif slot == 8:
+			paper["opinion_headline"] = headline
+	var paper_title := _newspaper_paper_title(selected_newspaper, paper)
+	newspaper_page.set_page(
+		clampi(int(paper.get("layout", 0)), 0, 2),
+		paper_title,
+		_newspaper_date_text(),
+		_newspaper_price_text(paper),
+		_newspaper_opinion_text(paper),
+		_newspaper_weather_text(paper),
+		headlines,
+	)
+	newspaper_dialog.title = paper_title
 	if misc != old_misc:
 		misc_chunk.set_decoded_payload(misc)
 
 
-func _on_newspaper_story_selected() -> void:
-	var item := newspaper_table.get_selected()
-	if item == null or city == null or current_document == null:
+func _on_newspaper_paper_selected(paper_index: int) -> void:
+	if city == null or current_document == null:
 		return
-	var metadata_value = item.get_metadata(0)
-	if not metadata_value is Dictionary:
+	selected_newspaper = clampi(paper_index, 0, NewsQueue.PAPER_COUNT - 1)
+	_populate_newspaper_page()
+
+
+func _on_newspaper_story_selected(slot: int) -> void:
+	if city == null or current_document == null or slot < 0 or slot >= 5:
 		return
-	var metadata: Dictionary = metadata_value
-	newspaper_article_heading.text = item.get_text(0).to_upper()
-	item.deselect(0)
-	var slot := int(metadata.get("slot", -1))
-	var seed := int(metadata.get("seed", -1))
-	if seed < 0:
-		newspaper_article_view.text = (
-			"This report is still in the saved queue. It has no published article section."
-		)
-		return
+	newspaper_article_heading.text = newspaper_page.headline_for_slot(slot).to_upper()
+	var seed := NewspaperTextGenerator.published_seed(
+		newspaper_session_seed, city.age_in_days(), selected_newspaper, slot
+	)
 	if newspaper_data == null or not newspaper_data.is_valid():
 		newspaper_article_view.text = "The local DATA_USA newspaper text is unavailable."
 		return
@@ -3784,6 +3813,49 @@ func _on_newspaper_story_selected() -> void:
 	)
 	if updated.ok and misc != misc_chunk.decoded_payload:
 		misc_chunk.set_decoded_payload(misc)
+
+
+func _newspaper_paper_title(paper_index: int, paper: Dictionary) -> String:
+	var name_style := clampi(int(paper.get("name", 0)), 0, 5)
+	var paper_name: String = original_query_strings.get(360 + name_style, "Newspaper")
+	if paper_index < int(NewsQueue.PAPER_COUNT / 2):
+		return "%s%s" % [original_query_strings.get(376, "The "), paper_name]
+	var city_name := city.city_name() if city != null and not city.city_name().is_empty() else "City"
+	return "%s %s" % [city_name, paper_name]
+
+
+func _newspaper_date_text() -> String:
+	var month_index := clampi(city.current_month() - 1, 0, MONTH_NAMES.size() - 1)
+	return "%s%s %d, %d" % [
+		original_query_strings.get(375, "Sunday "),
+		MONTH_NAMES[month_index],
+		city.current_day(),
+		city.current_year(),
+	]
+
+
+func _newspaper_price_text(paper: Dictionary) -> String:
+	var price_style := clampi(int(paper.get("price", 0)), 0, 2)
+	var era := clampi(floori(float(city.current_year() - 1900) / 50.0), 0, 4)
+	return original_query_strings.get(377 + price_style * 5 + era, "Price")
+
+
+func _newspaper_opinion_text(paper: Dictionary) -> String:
+	var opinion_style := clampi(int(paper.get("opinion", 0)), 0, 5)
+	var heading: String = original_query_strings.get(354 + opinion_style, "Opinion")
+	var headline := str(paper.get("opinion_headline", ""))
+	if headline.is_empty():
+		return heading
+	return "%s\n%s" % [heading, headline]
+
+
+func _newspaper_weather_text(paper: Dictionary) -> String:
+	var weather_style := clampi(int(paper.get("weather", 0)), 0, 5)
+	var heading: String = original_query_strings.get(347 + weather_style, "Weather")
+	var headline := str(paper.get("weather_headline", ""))
+	if headline.is_empty():
+		return heading
+	return "%s\n%s" % [heading, headline]
 
 
 func _newspaper_team_names() -> PackedStringArray:

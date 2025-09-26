@@ -347,6 +347,21 @@ func _test_reference_corpus(reference_root: String) -> void:
 			_check(graph.year.size() == 12, "%s graph has 12 monthly values" % path.get_file())
 			_check(graph.decade.size() == 20, "%s graph has 20 decade values" % path.get_file())
 			_check(graph.century.size() == 20, "%s graph has 20 century values" % path.get_file())
+			var paper_records_valid := true
+			var misc_chunk := document.find_chunk("MISC")
+			for paper_index in NewsQueue.PAPER_COUNT:
+				var paper := NewsQueue.paper_record(misc_chunk.decoded_payload, paper_index)
+				paper_records_valid = paper_records_valid and (
+					int(paper.get("name", -1)) in range(6)
+					and int(paper.get("layout", -1)) in range(3)
+					and int(paper.get("price", -1)) in range(3)
+					and int(paper.get("opinion", -1)) in range(6)
+					and int(paper.get("weather", -1)) in range(6)
+				)
+			_check(
+				paper_records_valid,
+				"%s newspaper configurations stay in their recovered ranges" % path.get_file(),
+			)
 
 		for chunk in document.chunks:
 			if not chunk.is_compressed:
@@ -667,6 +682,23 @@ func _test_sprite_archives(reference_root: String) -> void:
 			reference_root.path_join("SIMCITY.EXE"), PackedInt32Array([0xffff])
 		).ok,
 		"Windows string loader rejects a missing resource block",
+	)
+	var newspaper_ids := PackedInt32Array()
+	for resource_id in range(347, 392):
+		newspaper_ids.append(resource_id)
+	var newspaper_strings := PeString.load_ids(
+		reference_root.path_join("SIMCITY.EXE"), newspaper_ids
+	)
+	var newspaper_strings_complete: bool = newspaper_strings.ok
+	if newspaper_strings.ok:
+		for resource_id in newspaper_ids:
+			newspaper_strings_complete = (
+				newspaper_strings_complete
+				and not str(newspaper_strings.strings.get(resource_id, "")).is_empty()
+			)
+	_check(
+		newspaper_strings_complete,
+		"Windows resources provide all newspaper headings, names, and prices",
 	)
 	var library_text := TextUsa.load_ids(
 		reference_root.path_join("DATA/TEXT_USA.DAT"),
@@ -8400,7 +8432,7 @@ func _test_news_queue(reference_root: String) -> void:
 	_check(
 		NewspaperPage.PAGE_SIZE == Vector2i(640, 400)
 		and NewspaperPage.section_rect(0, 3) == Rect2i(243, 76, 213, 100)
-		and NewspaperPage.story_rect(1, 4) == Rect2i(384, 186, 128, 214)
+		and NewspaperPage.story_rect(1, 4) == Rect2i(512, 186, 128, 214)
 		and NewspaperPage.story_rect(2, 0) == Rect2i(0, 30, 128, 370),
 		"Newspaper page exposes the executable's three fixed layouts",
 	)
