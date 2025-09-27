@@ -59,6 +59,7 @@ static func create(
 	random: SimRandom,
 	game_random: GameLcgRandom = null,
 	terrain_options: Dictionary = {},
+	newspaper_session_state: PackedByteArray = PackedByteArray(),
 ) -> Dictionary:
 	if template == null or not template.is_valid():
 		return _failure("default city template is invalid")
@@ -70,6 +71,11 @@ static func create(
 		return _failure("random state is missing")
 	if not terrain_options.is_empty() and game_random == null:
 		return _failure("terrain game-random state is missing")
+	if (
+		not newspaper_session_state.is_empty()
+		and newspaper_session_state.size() != NewsQueue.MISC_SIZE
+	):
+		return _failure("newspaper session state has the wrong size")
 	var source_misc := template.find_chunk("MISC")
 	var source_graph := template.find_chunk("XGRP")
 	if source_misc == null or source_misc.decoded_payload.size() != MISC_SIZE:
@@ -135,6 +141,19 @@ static func create(
 		_write_u32(misc, bond_budget + BUDGET_YEAR_TO_DATE, 30000)
 		_write_u32(misc, bond_budget + BUDGET_COUNT_MONTH_0, 1)
 		_write_u32(misc, bond_budget + BUDGET_FUND_MONTH_0, 30000)
+	if not newspaper_session_state.is_empty():
+		_copy_range(
+			newspaper_session_state,
+			misc,
+			NewsQueue.PAPER_OFFSET,
+			NewsQueue.PAPER_COUNT * NewsQueue.PAPER_RECORD_SIZE,
+		)
+		_copy_range(
+			newspaper_session_state,
+			misc,
+			NewsQueue.STORY_OFFSET,
+			NewsQueue.STORY_RECORD_COUNT * NewsQueue.STORY_RECORD_SIZE,
+		)
 
 	var invention_years := PackedInt32Array()
 	for invention_index in INVENTION_BASE_YEARS.size():
@@ -185,6 +204,13 @@ static func _write_graph_value(
 	data: PackedByteArray, series: int, index: int, value: int
 ) -> void:
 	_write_u32(data, (series * GRAPH_VALUE_COUNT + index) * 4, value)
+
+
+static func _copy_range(
+	source: PackedByteArray, target: PackedByteArray, offset: int, length: int
+) -> void:
+	for index in length:
+		target[offset + index] = source[offset + index]
 
 
 static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:

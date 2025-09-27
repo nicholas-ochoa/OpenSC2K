@@ -8429,6 +8429,46 @@ func _test_news_queue(reference_root: String) -> void:
 		and NewsQueue.paper_record(paper_misc, NewsQueue.PAPER_COUNT).is_empty(),
 		"Newspaper paper reader rejects invalid indices",
 	)
+	var session_misc := _filled_bytes(NewsQueue.MISC_SIZE, 0)
+	var session_random := Random.new(1)
+	var session_init := NewsQueue.initialize_session(session_misc, session_random)
+	var paper_rows: Array[Array] = []
+	for paper_index in NewsQueue.PAPER_COUNT:
+		var session_paper := NewsQueue.paper_record(session_misc, paper_index)
+		paper_rows.append([
+			session_paper.name,
+			session_paper.layout,
+			session_paper.price,
+			session_paper.opinion,
+			session_paper.weather,
+		])
+	_check(
+		session_init.ok
+		and session_init.random_calls == 122
+		and session_random.state == 3018468955
+		and paper_rows == [
+			[4, 1, 0, 4, 2],
+			[1, 0, 1, 3, 1],
+			[2, 0, 0, 5, 3],
+			[5, 2, 2, 2, 0],
+			[3, 1, 1, 0, 4],
+			[0, 2, 2, 1, 5],
+		],
+		"Newspaper session initialization reproduces all 122 seed-one random calls",
+	)
+	var initial_story_records_valid := true
+	for slot in NewsQueue.STORY_RECORD_COUNT:
+		var initial_story := NewsQueue.story_record(session_misc, slot)
+		initial_story_records_valid = initial_story_records_valid and (
+			initial_story.type == 11 + slot
+			and initial_story.priority == 0
+			and initial_story.argument == 0
+			and initial_story.auxiliary == PackedByteArray([0xff, 0xff, 0xff])
+		)
+	_check(
+		initial_story_records_valid,
+		"Newspaper session initialization resets all nine story records",
+	)
 	_check(
 		NewspaperPage.PAGE_SIZE == Vector2i(640, 400)
 		and NewspaperPage.section_rect(0, 3) == Rect2i(243, 76, 213, 100)
@@ -10034,9 +10074,23 @@ func _test_new_city_setup(reference_root: String) -> void:
 	var template := Sc2Document.load_path(source_path)
 	var original_name := template.city_name()
 	var original_misc := template.find_chunk("MISC").decoded_payload.duplicate()
+	var newspaper_session := _filled_bytes(NewsQueue.MISC_SIZE, 0)
+	var newspaper_random := Random.new(1)
+	_check(
+		NewsQueue.initialize_session(newspaper_session, newspaper_random).ok,
+		"New city fixture prepares the recovered newspaper session",
+	)
 	var easy_random := Random.new(1)
 	var easy := NewCity.create(
-		template, "  Test City  ", "  Test Mayor  ", 1, 1900, easy_random
+		template,
+		"  Test City  ",
+		"  Test Mayor  ",
+		1,
+		1900,
+		easy_random,
+		null,
+		{},
+		newspaper_session,
 	)
 	_check(easy.ok, "Easy new city initializes: %s" % easy.error)
 	if easy.ok:
@@ -10082,6 +10136,24 @@ func _test_new_city_setup(reference_root: String) -> void:
 			founding_story.type == NewCity.FOUNDING_STORY_TYPE
 			and founding_story.priority == 1000,
 			"New city inserts the founding newspaper story",
+		)
+		var new_city_paper_state_valid := true
+		for paper_index in NewsQueue.PAPER_COUNT:
+			new_city_paper_state_valid = new_city_paper_state_valid and (
+				NewsQueue.paper_record(
+					document.find_chunk("MISC").decoded_payload, paper_index
+				) == NewsQueue.paper_record(newspaper_session, paper_index)
+			)
+		var expected_story_types := PackedInt32Array([2, 11, 12, 13, 14, 15, 16, 18, 19])
+		for slot in NewsQueue.STORY_RECORD_COUNT:
+			new_city_paper_state_valid = new_city_paper_state_valid and (
+				NewsQueue.story_record(
+					document.find_chunk("MISC").decoded_payload, slot
+				).type == expected_story_types[slot]
+			)
+		_check(
+			new_city_paper_state_valid,
+			"New city copies the session papers before it inserts the founding story",
 		)
 		var serialized := document.serialize()
 		var reparsed := Sc2Document.new()

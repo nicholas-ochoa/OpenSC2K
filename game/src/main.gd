@@ -154,6 +154,7 @@ var forest_protest_image: Image
 var library_texts: Dictionary = {}
 var newspaper_data: DataUsaResource
 var newspaper_session_seed := 0
+var newspaper_session_state := PackedByteArray()
 var selected_group := 9
 var selected_subtool := 0
 var selected_tool_available := false
@@ -315,6 +316,10 @@ func _ready() -> void:
 	newspaper_session_seed = Time.get_ticks_msec() & 0xffff
 	if newspaper_session_seed & 0x8000:
 		newspaper_session_seed -= 0x10000
+	tool_random = Random.new(newspaper_session_seed)
+	newspaper_session_state.resize(NewsQueue.MISC_SIZE)
+	newspaper_session_state.fill(0)
+	NewsQueue.initialize_session(newspaper_session_state, tool_random)
 	newspaper_data = DataUsa.load_path(
 		reference_root.path_join("DATA/DATA_USA.DAT"),
 		reference_root.path_join("DATA/DATA_USA.IDX"),
@@ -2352,6 +2357,7 @@ func _create_new_city() -> void:
 		new_process_random,
 		new_game_random,
 		terrain_options,
+		newspaper_session_state,
 	)
 	if not result.ok:
 		_show_error("Cannot create a new city: %s" % result.error)

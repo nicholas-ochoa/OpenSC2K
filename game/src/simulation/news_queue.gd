@@ -52,6 +52,44 @@ static func is_story_type(story_type: int) -> bool:
 	return story_type >= 0 and story_type < STORY_PRIORITIES.size()
 
 
+static func initialize_session(misc: PackedByteArray, random: RefCounted) -> Dictionary:
+	var validation := _validate_misc(misc)
+	if not validation.ok:
+		return validation
+	if random == null or not random.has_method("next_u15"):
+		return _failure("newspaper process-random state is missing")
+	for paper in PAPER_COUNT:
+		_write_paper_field(misc, paper, PAPER_NAME_FIELD, paper)
+		_write_paper_field(misc, paper, PAPER_LAYOUT_FIELD, paper % 3)
+		_write_paper_field(misc, paper, PAPER_PRICE_FIELD, paper % 3)
+		_write_paper_field(misc, paper, PAPER_OPINION_FIELD, paper)
+		_write_paper_field(misc, paper, PAPER_WEATHER_FIELD, paper)
+
+	_swap_paper_field(
+		misc,
+		0,
+		3 + (int(random.next_u15()) & 1),
+		PAPER_OPINION_FIELD,
+	)
+	if int(random.next_u15()) & 1:
+		_swap_paper_field(misc, 0, 1, PAPER_LAYOUT_FIELD)
+	for _pass in 12:
+		_swap_random_paper_field(misc, random, PAPER_NAME_FIELD, 0, 6)
+		_swap_random_paper_field(misc, random, PAPER_LAYOUT_FIELD, 1, 5)
+		_swap_random_paper_field(misc, random, PAPER_PRICE_FIELD, 0, 6)
+		_swap_random_paper_field(misc, random, PAPER_OPINION_FIELD, 1, 5)
+		_swap_random_paper_field(misc, random, PAPER_WEATHER_FIELD, 0, 6)
+
+	for slot in STORY_RECORD_COUNT:
+		var offset := _story_offset(slot)
+		_write_u32(misc, offset, 11 + slot)
+		_write_u32(misc, offset + 4, 0)
+		_write_u32(misc, offset + 8, 0)
+		for field in range(FIRST_AUXILIARY_FIELD, STORY_FIELD_COUNT):
+			_write_u32(misc, offset + field * 4, 0xff)
+	return {"ok": true, "error": "", "random_calls": 122}
+
+
 static func decay_and_sort(misc: PackedByteArray) -> Dictionary:
 	var validation := _validate_misc(misc)
 	if not validation.ok:
@@ -174,6 +212,38 @@ static func _validate_misc(misc: PackedByteArray) -> Dictionary:
 
 static func _story_offset(slot: int) -> int:
 	return STORY_OFFSET + slot * STORY_RECORD_SIZE
+
+
+static func _paper_field_offset(paper: int, field: int) -> int:
+	return PAPER_OFFSET + paper * PAPER_RECORD_SIZE + field * 4
+
+
+static func _write_paper_field(
+	misc: PackedByteArray, paper: int, field: int, value: int
+) -> void:
+	_write_u32(misc, _paper_field_offset(paper, field), value)
+
+
+static func _swap_paper_field(
+	misc: PackedByteArray, first_paper: int, second_paper: int, field: int
+) -> void:
+	var first_offset := _paper_field_offset(first_paper, field)
+	var second_offset := _paper_field_offset(second_paper, field)
+	var first_value := _read_u32(misc, first_offset)
+	_write_u32(misc, first_offset, _read_u32(misc, second_offset))
+	_write_u32(misc, second_offset, first_value)
+
+
+static func _swap_random_paper_field(
+	misc: PackedByteArray,
+	random: RefCounted,
+	field: int,
+	first_paper: int,
+	paper_count: int
+) -> void:
+	var source := first_paper + int(random.next_u15()) % paper_count
+	var target := first_paper + int(random.next_u15()) % paper_count
+	_swap_paper_field(misc, source, target, field)
 
 
 static func _story_priority(misc: PackedByteArray, slot: int) -> int:
