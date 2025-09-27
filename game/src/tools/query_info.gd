@@ -160,7 +160,7 @@ const ZONE_DENSITIES := [
 ]
 
 const UNDERGROUND_NAMES := [
-	"Bedrock Outline",
+	"None",
 	"Subway (LR)", "Subway (TB)", "Subway (HTB)", "Subway (LHR)",
 	"Subway (THB)", "Subway (HLR)", "Subway (BR)", "Subway (BL)",
 	"Subway (TL)", "Subway (TR)", "Subway (RTB)", "Subway (LBR)",
@@ -170,13 +170,13 @@ const UNDERGROUND_NAMES := [
 	"Pipes (TL)", "Pipes (TR)", "Pipes (RTB)", "Pipes (LBR)",
 	"Pipes (TLB)", "Pipes (LTR)", "Pipes (LTBR)",
 	"Crossover (PIPESTB_SUBWAYLR)", "Crossover (PIPESLR_SUBWAYTB)",
-	"Unwatered Base Piping", "Missile Silo", "Subway Entrance",
+	"Unknown", "Missile Silo", "Subway Entrance",
 ]
 
 const FLAG_LABELS := [
 	[0x80, "powerable"], [0x40, "powered"], [0x20, "piped"],
-	[0x10, "watered"], [0x08, "mark"], [0x04, "water"],
-	[0x02, "flipped"], [0x01, "saltwater"],
+	[0x10, "watered"], [0x08, "xvalmask"], [0x04, "water"],
+	[0x02, "rotated"], [0x01, "saltwater"],
 ]
 
 
@@ -341,6 +341,13 @@ static func _advanced_details(
 ) -> Dictionary:
 	var index := city.index_of(point.x, point.y)
 	var detail_index := int(point.x / 2) * DETAIL_MAP_SIZE + int(point.y / 2)
+	var overlay_id := city.text_overlay_id(point.x, point.y)
+	if (
+		microsim_id < 0
+		and overlay_id >= FIRST_MICROSIM_LABEL
+		and overlay_id <= LAST_MICROSIM_LABEL
+	):
+		microsim_id = overlay_id - FIRST_MICROSIM_LABEL
 	var flags := int(city.tile_flags[index])
 	var flag_names := PackedStringArray()
 	for entry in FLAG_LABELS:
@@ -351,7 +358,7 @@ static func _advanced_details(
 	if underground_id >= 0 and underground_id < UNDERGROUND_NAMES.size():
 		underground_name = UNDERGROUND_NAMES[underground_id]
 	var zone_raw := int(city.zones[index])
-	return {
+	var result := {
 		"tile_id": city.building_id(point.x, point.y),
 		"zone_id": zone_raw & 0x0f,
 		"altitude_raw": int(city.altitude_words[index]),
@@ -366,6 +373,10 @@ static func _advanced_details(
 		"underground_name": underground_name,
 		"microsim_id": microsim_id,
 	}
+	if microsim_id >= 0:
+		result["microsim"] = city.microsim(microsim_id)
+		result["microsim_label"] = city.label(overlay_id)
+	return result
 
 
 static func _advanced_lines(info: Dictionary) -> PackedStringArray:
@@ -393,7 +404,13 @@ static func _advanced_lines(info: Dictionary) -> PackedStringArray:
 		result.append("Microsim ID: None")
 		return result
 	var microsim: Dictionary = info.get("microsim", {})
+	var microsim_label := str(info.get("microsim_label", ""))
+	if not microsim_label.is_empty():
+		result.append("Microsim name: %s" % microsim_label)
 	result.append("Microsim ID: %d / 0x%02X" % [microsim_id, microsim_id])
+	if microsim.is_empty():
+		result.append("XMIC data: unavailable")
+		return result
 	result.append("Data 0: %d / 0x%02X" % [microsim.stat_0, microsim.stat_0])
 	for data_index in range(1, 4):
 		var value := int(microsim["stat_%d" % data_index])

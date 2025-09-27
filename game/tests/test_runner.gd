@@ -10616,6 +10616,14 @@ func _test_query_info(reference_root: String) -> void:
 		and info.underground_name == "Crossover (PIPESTB_SUBWAYLR)",
 		"Advanced query decodes XBIT and XUND values",
 	)
+	_check(city.set_tile_flag(40, 41, 0x08, true), "Advanced Query fixture sets XBIT xvalmask")
+	_check(city.set_tile_flag(40, 41, 0x02, true), "Advanced Query fixture sets XBIT rotated")
+	var flag_info := Queries.inspect(city, Vector2i(40, 41))
+	_check(
+		flag_info.flag_names == PackedStringArray(["xvalmask", "rotated"])
+		and flag_info.underground_name == "None",
+		"Advanced Query uses the SC2KFix XBIT and empty-XUND names",
+	)
 	var advanced_general_text := Queries.format_text(info)
 	_check(
 		advanced_general_text.contains("Tile ID: 29 / 0x1D")
@@ -10681,7 +10689,27 @@ func _test_query_info(reference_root: String) -> void:
 	microsim_data[5] = 0x04
 	microsim_data[6] = 0x05
 	microsim_data[7] = 0x06
+	microsim_data[8] = 0
+	microsim_data[9] = 9
+	microsim_data[10] = 0x12
+	microsim_data[11] = 0x34
+	microsim_data[12] = 0x56
+	microsim_data[13] = 0x78
+	microsim_data[14] = 0x9a
+	microsim_data[15] = 0xbc
 	_check(document.find_chunk("XMIC").set_decoded_payload(microsim_data), "Query fixture sets microsim data")
+	_check(city.set_label(52, "Dormant Link"), "Query fixture names a dormant microsim")
+	_check(city.set_text_overlay_id(11, 10, 52), "Query fixture attaches a dormant microsim")
+	var dormant := Queries.inspect(city, Vector2i(11, 10))
+	var dormant_text := Queries.format_text(dormant)
+	_check(
+		dormant.kind == "general"
+		and dormant.microsim_id == 1
+		and dormant.microsim.stat_3 == 0x9abc
+		and dormant_text.contains("Microsim name: Dormant Link")
+		and dormant_text.contains("Data 3: 39612 / 0x9ABC"),
+		"Advanced Query keeps XMIC details after the normal dialog falls back",
+	)
 	_check(city.set_label(51, "Civic Center"), "Query fixture names a microsim")
 	_check(city.set_text_overlay_id(10, 10, 51), "Query fixture attaches a microsim")
 	var specific := Queries.inspect(city, Vector2i(10, 10), original_strings)
