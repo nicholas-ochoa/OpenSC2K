@@ -21,6 +21,7 @@ const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.g
 const GraphView = preload("res://src/view/city_graph_control.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
+const SimNationView = preload("res://src/view/simnation_window_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -99,6 +100,10 @@ const NEWS_NAMES := {
 	0x211: "Arcology launch",
 	0x212: "Arcology launch complete",
 }
+
+const SIMNATION_FORMAT_STRING_ID := 421
+const NEIGHBOR_NAME_STRING_FIRST := 548
+const NEIGHBOR_NAME_STRING_LAST := 583
 
 const BUDGET_NAMES := [
 	"Residential Tax",
@@ -301,6 +306,8 @@ var population_mode_buttons: Array[CheckBox] = []
 var industry_window: Window
 var industry_control: Control
 var industry_mode_buttons: Array[CheckBox] = []
+var simnation_window: Window
+var simnation_control: Control
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
@@ -338,6 +345,9 @@ func _ready() -> void:
 	string_resource_ids.append(FOREST_PROTEST_STRING_ID)
 	string_resource_ids.append(BUILDING_OBJECTION_STRING_ID)
 	for resource_id in range(INDUSTRY_STRING_FIRST, INDUSTRY_STRING_LAST + 1):
+		string_resource_ids.append(resource_id)
+	string_resource_ids.append(SIMNATION_FORMAT_STRING_ID)
+	for resource_id in range(NEIGHBOR_NAME_STRING_FIRST, NEIGHBOR_NAME_STRING_LAST + 1):
 		string_resource_ids.append(resource_id)
 	for resource_id in range(NEWSPAPER_STRING_FIRST, NEWSPAPER_STRING_LAST + 1):
 		string_resource_ids.append(resource_id)
@@ -584,7 +594,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	)
 	_add_menu(menu_row, "Windows", [
 		["Budget", 0], ["Population", 1], ["City Industry", 2],
-		["Graphs", 3], ["City Information", 4],
+		["Graphs", 3], ["Neighbors", 4], ["City Information", 5],
 	], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
@@ -1237,6 +1247,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	_build_graph_window()
 	_build_population_window()
 	_build_industry_window()
+	_build_simnation_window()
 	city_analysis_dialog = AcceptDialog.new()
 	city_analysis_dialog.title = "City Analysis"
 	city_analysis_dialog.min_size = Vector2i(600, 480)
@@ -1787,6 +1798,30 @@ func _build_industry_window() -> void:
 		industry_mode_buttons.append(radio)
 
 
+func _build_simnation_window() -> void:
+	simnation_window = Window.new()
+	simnation_window.name = "SimNationWindow"
+	simnation_window.title = "SimNation"
+	simnation_window.size = Vector2i(612, 480)
+	simnation_window.min_size = Vector2i(408, 320)
+	simnation_window.transient = true
+	simnation_window.exclusive = false
+	simnation_window.visible = false
+	simnation_window.close_requested.connect(simnation_window.hide)
+	add_child(simnation_window)
+
+	simnation_control = SimNationView.new()
+	simnation_control.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	simnation_window.add_child(simnation_control)
+	var sprite_sheet := Image.load_from_file(
+		reference_root.path_join("BITMAPS/NEIGHBOR.BMP")
+	)
+	simnation_control.set_sprite_sheet(sprite_sheet)
+	simnation_control.set_national_format(str(original_query_strings.get(
+		SIMNATION_FORMAT_STRING_ID, SimNationView.DEFAULT_NATIONAL_FORMAT
+	)))
+
+
 func _build_query_dialog() -> void:
 	query_overlay = ColorRect.new()
 	query_overlay.name = "QueryOverlay"
@@ -2305,6 +2340,8 @@ func _on_windows_menu(id: int) -> void:
 	elif id == 3:
 		_open_graph_window()
 	elif id == 4:
+		_open_simnation_window()
+	elif id == 5:
 		_set_sidebar_expanded(not sidebar_panel.visible)
 
 
@@ -2362,6 +2399,28 @@ func _on_industry_tax_rates_changed() -> void:
 	_refresh_details()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Industry tax rates saved."
+
+
+func _open_simnation_window() -> void:
+	if city == null or simnation_window == null or simnation_control == null:
+		return
+	var data := SimNationView.snapshot(city)
+	var names := {}
+	if data.get("ok", false):
+		for neighbor in data.neighbors:
+			var name_index := int(neighbor.name_index)
+			if name_index <= 0:
+				continue
+			var resource_id := SimNationView.NEIGHBOR_NAME_STRING_BASE + name_index
+			names[name_index] = str(original_query_strings.get(
+				resource_id, "City %d" % name_index
+			))
+	simnation_control.set_neighbor_names(names)
+	simnation_control.set_city(city)
+	if simnation_window.visible:
+		simnation_window.move_to_foreground()
+	else:
+		simnation_window.popup_centered(Vector2i(612, 480))
 
 
 func _toggle_sidebar() -> void:
@@ -5311,6 +5370,8 @@ func _refresh_details() -> void:
 		population_control.set_city(city)
 	if industry_control != null and industry_window != null and industry_window.visible:
 		industry_control.set_city(city)
+	if simnation_control != null and simnation_window != null and simnation_window.visible:
+		simnation_control.set_city(city)
 	var demand := city.rci_demand()
 	var weather_trend := city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff
 	var weather_name: String = (

@@ -19,6 +19,7 @@ const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const GraphView = preload("res://src/view/city_graph_control.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
+const SimNationView = preload("res://src/view/simnation_window_control.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
@@ -237,6 +238,7 @@ func _init() -> void:
 	_test_education_health(reference_root)
 	_test_population_window(reference_root)
 	_test_industry_window(reference_root)
+	_test_simnation_window(reference_root)
 	_test_month_start(reference_root)
 	_test_city_value_phase(reference_root)
 	_test_bond_command(reference_root)
@@ -3398,6 +3400,92 @@ func _test_industry_window(reference_root: String) -> void:
 	_check(
 		icons.get("ok", false) and icon_image != null and not icon_image.is_empty(),
 		"Supplied executable contains the industry icon strip",
+	)
+
+
+func _test_simnation_window(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(document.set_misc_u32(0x0008, 2), "SimNation fixture sets compass")
+	_check(document.set_misc_u32(0x0050, 123456), "SimNation fixture sets national population")
+	_check(document.set_misc_u32(0x1020, 200), "SimNation fixture sets arcology population")
+	_check(document.set_misc_u32(0x102c, 1000), "SimNation fixture sets normal population")
+	for tile_id in range(0xfb, 0xff):
+		_check(
+			document.set_misc_i32(0x01f0 + tile_id * 4, 0),
+			"SimNation fixture clears arcology count %d" % tile_id,
+		)
+	_check(
+		document.set_misc_i32(0x01f0 + 0xfb * 4, 141 * 16),
+		"SimNation fixture sets large arcology count",
+	)
+	var name_indices := PackedInt32Array([1, 2, 0, 36])
+	var populations := PackedInt32Array([1999, 2000, 50000, 100000])
+	for index in 4:
+		var offset := 0x06d8 + index * 0x10
+		_check(document.set_misc_i32(offset, name_indices[index]), "SimNation fixture sets name %d" % index)
+		_check(document.set_misc_u32(offset + 4, populations[index]), "SimNation fixture sets population %d" % index)
+		_check(document.set_misc_u32(offset + 8, 3000 + index), "SimNation fixture sets value %d" % index)
+		_check(document.set_misc_u32(offset + 12, 4000 + index), "SimNation fixture sets fame %d" % index)
+	var city := CityModel.from_document(document)
+	var data := SimNationView.snapshot(city)
+	_check(
+		data.ok
+		and data.compass == 2
+		and data.neighbors.size() == 4
+		and data.neighbors[0].name_resource_id == 548
+		and data.neighbors[2].name_resource_id == 0
+		and data.neighbors[3].name_resource_id == 583,
+		"SimNation window reads saved records and maps name resources",
+	)
+	_check(
+		data.arcology_count == 141
+		and data.arcology_adjustment == 20000
+		and data.display_population == 21200,
+		"SimNation window applies the recovered display population adjustment",
+	)
+	_check(
+		SimNationView.display_neighbor_indices(0) == PackedInt32Array([2, 3, 0, 1])
+		and SimNationView.display_neighbor_indices(2) == PackedInt32Array([0, 1, 2, 3]),
+		"SimNation window rotates neighbors with the saved compass",
+	)
+	_check(
+		SimNationView.sprite_index(0, true) == 0
+		and SimNationView.sprite_index(0, false) == 1
+		and SimNationView.sprite_index(1999, false) == 1
+		and SimNationView.sprite_index(2000, false) == 2
+		and SimNationView.sprite_index(9999, false) == 2
+		and SimNationView.sprite_index(10000, false) == 3
+		and SimNationView.sprite_index(49999, false) == 3
+		and SimNationView.sprite_index(50000, false) == 4
+		and SimNationView.sprite_index(99999, false) == 4
+		and SimNationView.sprite_index(100000, false) == 5,
+		"SimNation window selects all recovered population sprites",
+	)
+	var strings := PeString.load_ids(
+		reference_root.path_join("SIMCITY.EXE"),
+		PackedInt32Array([421, 548, 583]),
+	)
+	_check(
+		strings.get("ok", false)
+		and str(strings.strings.get(421, "")).contains("%lu000")
+		and not str(strings.strings.get(548, "")).is_empty()
+		and not str(strings.strings.get(583, "")).is_empty(),
+		"Supplied executable contains the SimNation caption and neighbor names",
+	)
+	_check(
+		SimNationView.national_population_text("Nat. Pop: %lu000", 123456)
+		== "Nat. Pop: 123456000",
+		"SimNation window expands the original national-population format",
+	)
+	var source := Image.load_from_file(reference_root.path_join("BITMAPS/NEIGHBOR.BMP"))
+	var prepared: Image = SimNationView.prepare_sprite_sheet(source)
+	_check(
+		source != null
+		and source.get_size() == Vector2i(128, 448)
+		and prepared != null
+		and prepared.get_size() == Vector2i(128, 448)
+		and prepared.get_pixel(0, 0).a == 0.0,
+		"SimNation window loads the original sheet and makes index zero transparent",
 	)
 
 
