@@ -20,6 +20,7 @@ const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const GraphView = preload("res://src/view/city_graph_control.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
+const IndustryView = preload("res://src/view/industry_window_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -134,6 +135,8 @@ const MENU_NO_DISASTERS := 0x800e
 const FOREST_PROTEST_BITMAP_ID := 403
 const FOREST_PROTEST_STRING_ID := 236
 const BUILDING_OBJECTION_STRING_ID := 106
+const INDUSTRY_STRING_FIRST := 422
+const INDUSTRY_STRING_LAST := 432
 
 var city: CityState
 var current_document: Sc2File
@@ -295,6 +298,9 @@ var graph_series_buttons: Array[CheckBox] = []
 var population_window: Window
 var population_control: PopulationWindowControl
 var population_mode_buttons: Array[CheckBox] = []
+var industry_window: Window
+var industry_control: Control
+var industry_mode_buttons: Array[CheckBox] = []
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
@@ -331,6 +337,8 @@ func _ready() -> void:
 	var string_resource_ids := Queries.resource_string_ids()
 	string_resource_ids.append(FOREST_PROTEST_STRING_ID)
 	string_resource_ids.append(BUILDING_OBJECTION_STRING_ID)
+	for resource_id in range(INDUSTRY_STRING_FIRST, INDUSTRY_STRING_LAST + 1):
+		string_resource_ids.append(resource_id)
 	for resource_id in range(NEWSPAPER_STRING_FIRST, NEWSPAPER_STRING_LAST + 1):
 		string_resource_ids.append(resource_id)
 	var string_resources := PeString.load_ids(
@@ -575,8 +583,8 @@ func _build_interface(toolbar_art: Image) -> void:
 		"Air Crash and Helicopter Crash do nothing when selected, as in the original Windows game."
 	)
 	_add_menu(menu_row, "Windows", [
-		["Budget", 0], ["Population", 1], ["Graphs", 2],
-		["City Information", 3],
+		["Budget", 0], ["Population", 1], ["City Industry", 2],
+		["Graphs", 3], ["City Information", 4],
 	], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
@@ -1228,6 +1236,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	_build_query_dialog()
 	_build_graph_window()
 	_build_population_window()
+	_build_industry_window()
 	city_analysis_dialog = AcceptDialog.new()
 	city_analysis_dialog.title = "City Analysis"
 	city_analysis_dialog.min_size = Vector2i(600, 480)
@@ -1708,6 +1717,74 @@ func _build_population_window() -> void:
 		radio.pressed.connect(_on_population_mode_selected.bind(entry[1]))
 		mode_row.add_child(radio)
 		population_mode_buttons.append(radio)
+
+
+func _build_industry_window() -> void:
+	industry_window = Window.new()
+	industry_window.name = "IndustryWindow"
+	industry_window.title = "City Industry"
+	industry_window.size = Vector2i(700, 450)
+	industry_window.min_size = Vector2i(600, 390)
+	industry_window.transient = true
+	industry_window.exclusive = false
+	industry_window.visible = false
+	industry_window.close_requested.connect(industry_window.hide)
+	add_child(industry_window)
+
+	var background := PanelContainer.new()
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	background.add_theme_stylebox_override(
+		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
+	)
+	industry_window.add_child(background)
+	var margin := MarginContainer.new()
+	for side in ["left", "top", "right", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 10)
+	background.add_child(margin)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	margin.add_child(column)
+
+	var chart_frame := PanelContainer.new()
+	chart_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chart_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	chart_frame.add_theme_stylebox_override(
+		"panel", _classic_box(Color("c0c0c0"), Color("404040"), 1)
+	)
+	column.add_child(chart_frame)
+	industry_control = IndustryView.new()
+	industry_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	industry_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	industry_control.tax_rates_changed.connect(_on_industry_tax_rates_changed)
+	chart_frame.add_child(industry_control)
+
+	var names := PackedStringArray()
+	for index in IndustryView.INDUSTRY_COUNT:
+		var fallback: String = IndustryView.DEFAULT_NAMES[index]
+		names.append(str(original_query_strings.get(INDUSTRY_STRING_FIRST + index, fallback)))
+	industry_control.set_industry_names(names)
+	var icons := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 178)
+	if icons.get("ok", false):
+		industry_control.set_icon_strip(icons.image)
+
+	var mode_row := HBoxContainer.new()
+	mode_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	mode_row.add_theme_constant_override("separation", 0)
+	column.add_child(mode_row)
+	var mode_group := ButtonGroup.new()
+	for entry in [
+		["Ratios", IndustryView.Mode.RATIOS],
+		["Tax Rates", IndustryView.Mode.TAX_RATES],
+		["Demand", IndustryView.Mode.DEMAND],
+	]:
+		var radio := CheckBox.new()
+		radio.text = entry[0]
+		radio.button_group = mode_group
+		radio.button_pressed = entry[1] == IndustryView.Mode.RATIOS
+		radio.custom_minimum_size = Vector2(120, 28)
+		radio.pressed.connect(_on_industry_mode_selected.bind(entry[1]))
+		mode_row.add_child(radio)
+		industry_mode_buttons.append(radio)
 
 
 func _build_query_dialog() -> void:
@@ -2224,8 +2301,10 @@ func _on_windows_menu(id: int) -> void:
 	elif id == 1:
 		_open_population_window()
 	elif id == 2:
-		_open_graph_window()
+		_open_industry_window()
 	elif id == 3:
+		_open_graph_window()
+	elif id == 4:
 		_set_sidebar_expanded(not sidebar_panel.visible)
 
 
@@ -2262,6 +2341,27 @@ func _open_population_window() -> void:
 func _on_population_mode_selected(mode: int) -> void:
 	if population_control != null:
 		population_control.set_mode(mode)
+
+
+func _open_industry_window() -> void:
+	if city == null or industry_window == null or industry_control == null:
+		return
+	industry_control.set_city(city)
+	if industry_window.visible:
+		industry_window.move_to_foreground()
+	else:
+		industry_window.popup_centered(Vector2i(700, 450))
+
+
+func _on_industry_mode_selected(mode: int) -> void:
+	if industry_control != null:
+		industry_control.set_mode(mode)
+
+
+func _on_industry_tax_rates_changed() -> void:
+	_refresh_details()
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Industry tax rates saved."
 
 
 func _toggle_sidebar() -> void:
@@ -5209,6 +5309,8 @@ func _refresh_details() -> void:
 		and population_window.visible
 	):
 		population_control.set_city(city)
+	if industry_control != null and industry_window != null and industry_window.visible:
+		industry_control.set_city(city)
 	var demand := city.rci_demand()
 	var weather_trend := city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff
 	var weather_name: String = (

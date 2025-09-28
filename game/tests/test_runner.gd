@@ -18,6 +18,7 @@ const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.g
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const GraphView = preload("res://src/view/city_graph_control.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
+const IndustryView = preload("res://src/view/industry_window_control.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
@@ -235,6 +236,7 @@ func _init() -> void:
 	_test_industries(reference_root)
 	_test_education_health(reference_root)
 	_test_population_window(reference_root)
+	_test_industry_window(reference_root)
 	_test_month_start(reference_root)
 	_test_city_value_phase(reference_root)
 	_test_bond_command(reference_root)
@@ -3315,6 +3317,87 @@ func _test_population_window(reference_root: String) -> void:
 		and PopulationView.y_axis_label(PopulationWindowControl.Mode.HEALTH, 6) == "90 yrs"
 		and PopulationView.y_axis_label(PopulationWindowControl.Mode.EDUCATION, 6) == "150 eq",
 		"Population window exposes the recovered axis ranges",
+	)
+
+
+func _test_industry_window(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for industry in IndustryView.INDUSTRY_COUNT:
+		var offset := 0x016c + industry * 0x0c
+		_check(
+			document.set_misc_i32(offset, industry * 10),
+			"Industry-window fixture sets demand %d" % industry,
+		)
+		_check(
+			document.set_misc_i32(offset + 4, industry),
+			"Industry-window fixture sets tax %d" % industry,
+		)
+		_check(
+			document.set_misc_u32(offset + 8, (industry + 1) * 100),
+			"Industry-window fixture sets ratio %d" % industry,
+		)
+	_check(
+		document.set_misc_i32(0x077c + 2 * 0x006c + 4, 7),
+		"Industry-window fixture sets city tax",
+	)
+	var city := CityModel.from_document(document)
+	var data := IndustryView.snapshot(city)
+	_check(
+		data.ok
+		and data.ratios.size() == 11
+		and data.tax_rates.size() == 11
+		and data.demands.size() == 11
+		and data.industrial_tax == 7,
+		"Industry window reads all three saved series and city tax",
+	)
+	_check(
+		IndustryView.values_for_mode(data, IndustryView.Mode.RATIOS)[10] == 1100
+		and IndustryView.values_for_mode(data, IndustryView.Mode.TAX_RATES)[10] == 10
+		and IndustryView.values_for_mode(data, IndustryView.Mode.DEMAND)[10] == 100,
+		"Industry window selects the recovered series",
+	)
+	_check(
+		IndustryView.maximum_for_mode(data, IndustryView.Mode.RATIOS) == 1100
+		and IndustryView.maximum_for_mode(data, IndustryView.Mode.TAX_RATES) == 30
+		and IndustryView.maximum_for_mode(data, IndustryView.Mode.DEMAND) == 100,
+		"Industry window uses the recovered dynamic maxima",
+	)
+	var changed := IndustryView.set_tax_rate(city, 3, 19)
+	_check(
+		changed.ok
+		and changed.changed
+		and document.misc_i32(0x016c + 3 * 0x0c + 4) == 19,
+		"Industry window changes one saved tax rate",
+	)
+	var changed_all := IndustryView.set_tax_rate(city, 0, 99, true)
+	var all_clamped: bool = changed_all.ok and changed_all.value == 20
+	for industry in IndustryView.INDUSTRY_COUNT:
+		all_clamped = (
+			all_clamped
+			and document.misc_i32(0x016c + industry * 0x0c + 4) == 20
+		)
+	_check(all_clamped, "Industry window clamps and changes all tax rates")
+	_check(
+		not IndustryView.set_tax_rate(city, 11, 5).ok,
+		"Industry window rejects an invalid industry",
+	)
+	var names := PeString.load_ids(
+		reference_root.path_join("SIMCITY.EXE"),
+		PackedInt32Array(range(422, 433)),
+	)
+	var all_names: bool = names.get("ok", false) and names.strings.size() == 11
+	if all_names:
+		for resource_id in range(422, 433):
+			all_names = (
+				all_names
+				and not str(names.strings.get(resource_id, "")).is_empty()
+			)
+	_check(all_names, "Supplied executable contains all eleven industry labels")
+	var icons := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 178)
+	var icon_image: Image = icons.get("image") as Image
+	_check(
+		icons.get("ok", false) and icon_image != null and not icon_image.is_empty(),
+		"Supplied executable contains the industry icon strip",
 	)
 
 
