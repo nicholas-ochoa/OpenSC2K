@@ -19,6 +19,7 @@ const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const GraphView = preload("res://src/view/city_graph_control.gd")
+const PopulationView = preload("res://src/view/population_window_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -291,6 +292,9 @@ var library_text_views: Array[TextEdit] = []
 var graph_window: Window
 var graph_control: CityGraphControl
 var graph_series_buttons: Array[CheckBox] = []
+var population_window: Window
+var population_control: PopulationWindowControl
+var population_mode_buttons: Array[CheckBox] = []
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
@@ -571,7 +575,8 @@ func _build_interface(toolbar_art: Image) -> void:
 		"Air Crash and Helicopter Crash do nothing when selected, as in the original Windows game."
 	)
 	_add_menu(menu_row, "Windows", [
-		["Graphs", 0], ["Budget", 1], ["City Information", 2],
+		["Budget", 0], ["Population", 1], ["Graphs", 2],
+		["City Information", 3],
 	], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
@@ -1222,6 +1227,7 @@ func _build_interface(toolbar_art: Image) -> void:
 
 	_build_query_dialog()
 	_build_graph_window()
+	_build_population_window()
 	city_analysis_dialog = AcceptDialog.new()
 	city_analysis_dialog.title = "City Analysis"
 	city_analysis_dialog.min_size = Vector2i(600, 480)
@@ -1644,6 +1650,64 @@ func _build_graph_window() -> void:
 		radio.button_pressed = entry[1] == 0
 		radio.pressed.connect(_on_graph_time_scale.bind(entry[1]))
 		scale_column.add_child(radio)
+
+
+func _build_population_window() -> void:
+	population_window = Window.new()
+	population_window.name = "PopulationWindow"
+	population_window.title = "Population"
+	population_window.size = Vector2i(700, 450)
+	population_window.min_size = Vector2i(560, 380)
+	population_window.transient = true
+	population_window.exclusive = false
+	population_window.visible = false
+	population_window.close_requested.connect(population_window.hide)
+	add_child(population_window)
+
+	var background := PanelContainer.new()
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	background.add_theme_stylebox_override(
+		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
+	)
+	population_window.add_child(background)
+	var margin := MarginContainer.new()
+	for side in ["left", "top", "right", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 10)
+	background.add_child(margin)
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 8)
+	margin.add_child(column)
+
+	var chart_frame := PanelContainer.new()
+	chart_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	chart_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	chart_frame.add_theme_stylebox_override(
+		"panel", _classic_box(Color("ffffff"), Color("404040"), 1)
+	)
+	column.add_child(chart_frame)
+	population_control = PopulationView.new()
+	population_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	population_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	chart_frame.add_child(population_control)
+
+	var mode_row := HBoxContainer.new()
+	mode_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	mode_row.add_theme_constant_override("separation", 0)
+	column.add_child(mode_row)
+	var mode_group := ButtonGroup.new()
+	for entry in [
+		["Population", PopulationWindowControl.Mode.POPULATION],
+		["Health", PopulationWindowControl.Mode.HEALTH],
+		["Education", PopulationWindowControl.Mode.EDUCATION],
+	]:
+		var radio := CheckBox.new()
+		radio.text = entry[0]
+		radio.button_group = mode_group
+		radio.button_pressed = entry[1] == PopulationWindowControl.Mode.POPULATION
+		radio.custom_minimum_size = Vector2(120, 28)
+		radio.pressed.connect(_on_population_mode_selected.bind(entry[1]))
+		mode_row.add_child(radio)
+		population_mode_buttons.append(radio)
 
 
 func _build_query_dialog() -> void:
@@ -2156,10 +2220,12 @@ func _on_disaster_menu(id: int) -> void:
 
 func _on_windows_menu(id: int) -> void:
 	if id == 0:
-		_open_graph_window()
-	elif id == 1:
 		_open_manual_budget()
+	elif id == 1:
+		_open_population_window()
 	elif id == 2:
+		_open_graph_window()
+	elif id == 3:
 		_set_sidebar_expanded(not sidebar_panel.visible)
 
 
@@ -2181,6 +2247,21 @@ func _on_graph_series_toggled(enabled: bool, series: int) -> void:
 func _on_graph_time_scale(scale: int) -> void:
 	if graph_control != null:
 		graph_control.set_time_scale(scale)
+
+
+func _open_population_window() -> void:
+	if city == null or population_window == null or population_control == null:
+		return
+	population_control.set_city(city)
+	if population_window.visible:
+		population_window.move_to_foreground()
+	else:
+		population_window.popup_centered(Vector2i(700, 450))
+
+
+func _on_population_mode_selected(mode: int) -> void:
+	if population_control != null:
+		population_control.set_mode(mode)
 
 
 func _toggle_sidebar() -> void:
@@ -5122,6 +5203,12 @@ func _refresh_details() -> void:
 	_sync_city_option_menus()
 	if graph_control != null and graph_window != null and graph_window.visible:
 		graph_control.set_city(city)
+	if (
+		population_control != null
+		and population_window != null
+		and population_window.visible
+	):
+		population_control.set_city(city)
 	var demand := city.rci_demand()
 	var weather_trend := city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff
 	var weather_name: String = (

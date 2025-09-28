@@ -17,6 +17,7 @@ const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const GraphView = preload("res://src/view/city_graph_control.gd")
+const PopulationView = preload("res://src/view/population_window_control.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
@@ -233,6 +234,7 @@ func _init() -> void:
 	_test_simnation(reference_root)
 	_test_industries(reference_root)
 	_test_education_health(reference_root)
+	_test_population_window(reference_root)
 	_test_month_start(reference_root)
 	_test_city_value_phase(reference_root)
 	_test_bond_command(reference_root)
@@ -3269,6 +3271,50 @@ func _test_game_speed_controller(reference_root: String) -> void:
 		and terminal_wait.day_results.is_empty()
 		and terminal_wait.moving_results.is_empty(),
 		"Terminal state keeps timer phase and stops simulation work",
+	)
+
+
+func _test_population_window(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	_check(document.set_misc_u32(0x102c, 1000), "Population-window fixture sets total population")
+	_check(document.set_misc_u32(0x0044, 50), "Population-window fixture sets workforce percentage")
+	_check(document.set_misc_u32(0x0048, 75), "Population-window fixture sets workforce health")
+	_check(document.set_misc_u32(0x004c, 100), "Population-window fixture sets workforce education")
+	_check(document.set_misc_u32(0x007c, 100), "Population-window fixture sets cohort population")
+	_check(document.set_misc_u32(0x0080, 12000), "Population-window fixture sets cohort education")
+	_check(document.set_misc_u32(0x0084, 8000), "Population-window fixture sets cohort health")
+	var city := CityModel.from_document(document)
+	var data := PopulationView.snapshot(city)
+	_check(
+		data.ok
+		and data.total_population == 1000
+		and data.cohorts.size() == 20
+		and data.cohorts[0].age_start == 0
+		and data.cohorts[19].age_start == 95,
+		"Population window reads all twenty five-year cohorts",
+	)
+	_check(
+		data.cohorts[0].education_quotient == 120
+		and data.cohorts[0].life_expectancy == 80,
+		"Population window calculates readable cohort averages",
+	)
+	_check(
+		PopulationView.chart_values(data, PopulationWindowControl.Mode.POPULATION)[0] == 60
+		and PopulationView.chart_values(data, PopulationWindowControl.Mode.HEALTH)[0] == 80
+		and PopulationView.chart_values(data, PopulationWindowControl.Mode.EDUCATION)[0] == 72,
+		"Population window uses the recovered chart transforms",
+	)
+	_check(
+		PopulationView.indicator_value(data, PopulationWindowControl.Mode.POPULATION) == 50
+		and PopulationView.indicator_value(data, PopulationWindowControl.Mode.HEALTH) == 75
+		and PopulationView.indicator_value(data, PopulationWindowControl.Mode.EDUCATION) == 60,
+		"Population window scales each saved workforce indicator",
+	)
+	_check(
+		PopulationView.y_axis_label(PopulationWindowControl.Mode.POPULATION, 6) == "15%"
+		and PopulationView.y_axis_label(PopulationWindowControl.Mode.HEALTH, 6) == "90 yrs"
+		and PopulationView.y_axis_label(PopulationWindowControl.Mode.EDUCATION, 6) == "150 eq",
+		"Population window exposes the recovered axis ranges",
 	)
 
 
