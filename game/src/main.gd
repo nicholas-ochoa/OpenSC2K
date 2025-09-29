@@ -16,6 +16,7 @@ const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
+const ViewFilter = preload("res://src/view/city_view_filter.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const GraphView = preload("res://src/view/city_graph_control.gd")
@@ -23,6 +24,7 @@ const PopulationView = preload("res://src/view/population_window_control.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
 const OrdinanceView = preload("res://src/view/ordinance_window_control.gd")
+const CityMapView = preload("res://src/view/city_map_window_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -105,6 +107,8 @@ const NEWS_NAMES := {
 const SIMNATION_FORMAT_STRING_ID := 421
 const NEIGHBOR_NAME_STRING_FIRST := 548
 const NEIGHBOR_NAME_STRING_LAST := 583
+const CITY_MAP_STRING_FIRST := 327
+const CITY_MAP_STRING_LAST := 344
 
 const BUDGET_NAMES := [
 	"Residential Tax",
@@ -124,7 +128,7 @@ const BUDGET_NAMES := [
 	"Subway",
 	"Tunnel",
 ]
-const MAP_DISPLAY_MODES := ["city", "underground", "structures", "zones", "power", "water"]
+const MAP_DISPLAY_MODES := ["city", "underground"]
 const LIBRARY_TEXT_IDS := [3000, 3001, 3002, 3003]
 const NEWSPAPER_STRING_FIRST := 347
 const NEWSPAPER_STRING_LAST := 391
@@ -138,6 +142,14 @@ const MENU_AUTO_GOTO := 0x8005
 const MENU_SOUND_EFFECTS := 0x8006
 const MENU_MUSIC := 0x8007
 const MENU_NO_DISASTERS := 0x800e
+const MENU_VIEW_CITY_MAP := 0x8100
+const MENU_VIEW_BUILDINGS := 0x8101
+const MENU_VIEW_NETWORKS := 0x8102
+const MENU_VIEW_WATER := 0x8103
+const MENU_VIEW_TREES := 0x8104
+const MENU_VIEW_ZONES := 0x8105
+const MENU_VIEW_SIGNS := 0x8106
+const MENU_VIEW_PIPES := 0x8107
 const FOREST_PROTEST_BITMAP_ID := 403
 const FOREST_PROTEST_STRING_ID := 236
 const BUILDING_OBJECTION_STRING_ID := 106
@@ -156,6 +168,15 @@ var base_small_medium_sprites: Sc2SpriteArchive
 var active_scurk_tile_set: ScurkMif
 var active_scurk_name := ""
 var overlay_mode := "city"
+var surface_visibility := {
+	"buildings": true,
+	"networks": true,
+	"water": true,
+	"trees": true,
+	"zones": true,
+	"signs": true,
+}
+var show_underground_pipes := true
 var reference_root := ""
 var original_query_strings: Dictionary = {}
 var forest_protest_text := "Citizens are protesting forest demolition."
@@ -239,7 +260,9 @@ var new_city_preview_game_cursor := 1
 var save_button: Button
 var budget_button: Button
 var options_menu: MenuButton
+var view_menu: MenuButton
 var disasters_menu: MenuButton
+var view_visibility_checks: Dictionary = {}
 var group_selector: OptionButton
 var tool_selector: OptionButton
 var undo_button: Button
@@ -311,6 +334,8 @@ var simnation_window: Window
 var simnation_control: Control
 var ordinance_window: Window
 var ordinance_control: OrdinanceWindowControl
+var city_map_window: Window
+var city_map_control: CityMapWindowControl
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
@@ -348,6 +373,8 @@ func _ready() -> void:
 	string_resource_ids.append(FOREST_PROTEST_STRING_ID)
 	string_resource_ids.append(BUILDING_OBJECTION_STRING_ID)
 	for resource_id in range(INDUSTRY_STRING_FIRST, INDUSTRY_STRING_LAST + 1):
+		string_resource_ids.append(resource_id)
+	for resource_id in range(CITY_MAP_STRING_FIRST, CITY_MAP_STRING_LAST + 1):
 		string_resource_ids.append(resource_id)
 	string_resource_ids.append(SIMNATION_FORMAT_STRING_ID)
 	for resource_id in range(NEIGHBOR_NAME_STRING_FIRST, NEIGHBOR_NAME_STRING_LAST + 1):
@@ -569,10 +596,21 @@ func _build_interface(toolbar_art: Image) -> void:
 		var option_index := options_menu.get_popup().get_item_index(option_id)
 		options_menu.get_popup().set_item_as_checkable(option_index, true)
 	options_menu.disabled = true
-	_add_menu(menu_row, "View", [
-		["City View", 0], ["Underground View", 1], ["Structures Map", 2],
-		["Zones Map", 3], ["Power Map", 4], ["Water Map", 5],
+	view_menu = _add_menu(menu_row, "View", [
+		["City View", 0], ["Underground View", 1],
+		["City Map...", MENU_VIEW_CITY_MAP],
 	], _on_view_menu)
+	view_menu.get_popup().add_separator()
+	for view_item in [
+		["Show Buildings", MENU_VIEW_BUILDINGS],
+		["Show Networks", MENU_VIEW_NETWORKS],
+		["Show Water", MENU_VIEW_WATER],
+		["Show Trees", MENU_VIEW_TREES],
+		["Show Zones", MENU_VIEW_ZONES],
+		["Show Signs", MENU_VIEW_SIGNS],
+		["Show Underground Pipes", MENU_VIEW_PIPES],
+	]:
+		view_menu.get_popup().add_check_item(view_item[0], view_item[1])
 	disasters_menu = _add_menu(menu_row, "Disasters", [
 		["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],
 		["Air Crash", 5], ["Earthquake", 6], ["Tornado", 7], ["Monster", 8],
@@ -599,7 +637,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	_add_menu(menu_row, "Windows", [
 		["Budget", 0], ["Ordinances", 1], ["Population", 2],
 		["City Industry", 3], ["Graphs", 4], ["Neighbors", 5],
-		["City Information", 6],
+		["City Map", 6], ["City Information", 7],
 	], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
@@ -747,6 +785,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.query_requested.connect(_open_query)
 	map_view.zoom_changed.connect(_on_city_zoom_changed)
 	map_view.viewport_changed.connect(_sync_map_scrollbars)
+	map_view.viewport_changed.connect(_refresh_city_map_viewport)
 	map_grid.add_child(map_view)
 
 	var vertical_scroll_column := VBoxContainer.new()
@@ -842,7 +881,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	sidebar.add_child(news_label)
 
 	var view_heading := Label.new()
-	view_heading.text = "Map Display"
+	view_heading.text = "City View"
 	view_heading.add_theme_color_override("font_color", Color("000080"))
 	sidebar.add_child(view_heading)
 	var view_grid := GridContainer.new()
@@ -855,6 +894,37 @@ func _build_interface(toolbar_art: Image) -> void:
 		button.text = mode.capitalize()
 		button.pressed.connect(_set_overlay.bind(mode))
 		view_grid.add_child(button)
+	var city_map_button := Button.new()
+	city_map_button.text = "City Map..."
+	city_map_button.pressed.connect(_open_city_map_window)
+	view_grid.add_child(city_map_button)
+
+	var layers_heading := Label.new()
+	layers_heading.text = "Visible Layers"
+	layers_heading.add_theme_color_override("font_color", Color("000080"))
+	sidebar.add_child(layers_heading)
+	var layers_grid := GridContainer.new()
+	layers_grid.columns = 2
+	layers_grid.add_theme_constant_override("h_separation", 4)
+	layers_grid.add_theme_constant_override("v_separation", 2)
+	sidebar.add_child(layers_grid)
+	for layer in [
+		["Buildings", "buildings"], ["Networks", "networks"],
+		["Water", "water"], ["Trees", "trees"],
+		["Zones", "zones"], ["Signs", "signs"],
+	]:
+		var check := CheckBox.new()
+		check.text = layer[0]
+		check.button_pressed = true
+		check.toggled.connect(_set_surface_visibility.bind(layer[1]))
+		view_visibility_checks[layer[1]] = check
+		layers_grid.add_child(check)
+	var pipes_check := CheckBox.new()
+	pipes_check.text = "Pipes (Underground)"
+	pipes_check.button_pressed = true
+	pipes_check.toggled.connect(_set_underground_pipes_visible)
+	view_visibility_checks["pipes"] = pipes_check
+	layers_grid.add_child(pipes_check)
 
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1253,6 +1323,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	_build_population_window()
 	_build_industry_window()
 	_build_simnation_window()
+	_build_city_map_window()
 	_build_ordinance_window()
 	city_analysis_dialog = AcceptDialog.new()
 	city_analysis_dialog.title = "City Analysis"
@@ -1828,6 +1899,41 @@ func _build_simnation_window() -> void:
 	)))
 
 
+func _build_city_map_window() -> void:
+	city_map_window = Window.new()
+	city_map_window.name = "CityMapWindow"
+	city_map_window.title = "City Map"
+	city_map_window.size = Vector2i(480, 680)
+	city_map_window.min_size = Vector2i(420, 620)
+	city_map_window.transient = true
+	city_map_window.exclusive = false
+	city_map_window.visible = false
+	city_map_window.close_requested.connect(_close_city_map_window)
+	add_child(city_map_window)
+
+	var background := PanelContainer.new()
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	background.add_theme_stylebox_override(
+		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
+	)
+	city_map_window.add_child(background)
+	var margin := MarginContainer.new()
+	for side in ["left", "top", "right", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 10)
+	background.add_child(margin)
+	city_map_control = CityMapView.new()
+	city_map_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	city_map_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	city_map_control.mode_changed.connect(_on_city_map_mode_changed)
+	city_map_control.center_requested.connect(_on_city_map_center_requested)
+	margin.add_child(city_map_control)
+	var icons := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 247)
+	city_map_control.set_resources(
+		icons.image if icons.get("ok", false) else null,
+		original_query_strings,
+	)
+
+
 func _build_ordinance_window() -> void:
 	ordinance_window = Window.new()
 	ordinance_window.name = "OrdinanceWindow"
@@ -2281,6 +2387,24 @@ func _on_options_menu(id: int) -> void:
 func _on_view_menu(id: int) -> void:
 	if id >= 0 and id < MAP_DISPLAY_MODES.size():
 		_set_overlay(MAP_DISPLAY_MODES[id])
+		return
+	match id:
+		MENU_VIEW_CITY_MAP:
+			_open_city_map_window()
+		MENU_VIEW_BUILDINGS:
+			_set_surface_visibility(not bool(surface_visibility.buildings), "buildings")
+		MENU_VIEW_NETWORKS:
+			_set_surface_visibility(not bool(surface_visibility.networks), "networks")
+		MENU_VIEW_WATER:
+			_set_surface_visibility(not bool(surface_visibility.water), "water")
+		MENU_VIEW_TREES:
+			_set_surface_visibility(not bool(surface_visibility.trees), "trees")
+		MENU_VIEW_ZONES:
+			_set_surface_visibility(not bool(surface_visibility.zones), "zones")
+		MENU_VIEW_SIGNS:
+			_set_surface_visibility(not bool(surface_visibility.signs), "signs")
+		MENU_VIEW_PIPES:
+			_set_underground_pipes_visible(not show_underground_pipes)
 
 
 func _sync_city_option_menus() -> void:
@@ -2288,6 +2412,8 @@ func _sync_city_option_menus() -> void:
 		return
 	var has_city := city != null
 	options_menu.disabled = not has_city
+	if view_menu != null:
+		view_menu.disabled = not has_city
 	var option_states := {
 		MENU_AUTO_BUDGET: has_city and city.auto_budget_enabled(),
 		MENU_AUTO_GOTO: has_city and city.auto_goto_enabled(),
@@ -2306,6 +2432,32 @@ func _sync_city_option_menus() -> void:
 		disasters_menu.get_popup().set_item_checked(
 			no_disasters_index, has_city and city.no_disasters_enabled()
 		)
+	_sync_view_controls()
+
+
+func _sync_view_controls() -> void:
+	var states := {
+		MENU_VIEW_BUILDINGS: bool(surface_visibility.buildings),
+		MENU_VIEW_NETWORKS: bool(surface_visibility.networks),
+		MENU_VIEW_WATER: bool(surface_visibility.water),
+		MENU_VIEW_TREES: bool(surface_visibility.trees),
+		MENU_VIEW_ZONES: bool(surface_visibility.zones),
+		MENU_VIEW_SIGNS: bool(surface_visibility.signs),
+		MENU_VIEW_PIPES: show_underground_pipes,
+	}
+	if view_menu != null:
+		for menu_id in states:
+			var item_index := view_menu.get_popup().get_item_index(menu_id)
+			if item_index >= 0:
+				view_menu.get_popup().set_item_checked(item_index, bool(states[menu_id]))
+	for key in view_visibility_checks:
+		var check: CheckBox = view_visibility_checks[key]
+		var enabled := (
+			show_underground_pipes
+			if key == "pipes"
+			else bool(surface_visibility.get(key, true))
+		)
+		check.set_pressed_no_signal(enabled)
 
 
 func _on_disaster_menu(id: int) -> void:
@@ -2381,6 +2533,8 @@ func _on_windows_menu(id: int) -> void:
 	elif id == 5:
 		_open_simnation_window()
 	elif id == 6:
+		_open_city_map_window()
+	elif id == 7:
 		_set_sidebar_expanded(not sidebar_panel.visible)
 
 
@@ -2476,6 +2630,44 @@ func _open_simnation_window() -> void:
 		simnation_window.move_to_foreground()
 	else:
 		simnation_window.popup_centered(Vector2i(612, 480))
+
+
+func _open_city_map_window() -> void:
+	if city == null or city_map_window == null or city_map_control == null:
+		return
+	if city_map_window.visible:
+		_close_city_map_window()
+		return
+	city_map_control.set_city(city, palette)
+	city_map_control.refresh_viewport(_city_map_viewport_outline())
+	city_map_window.popup_centered(Vector2i(480, 680))
+
+
+func _close_city_map_window() -> void:
+	if city_map_window != null:
+		city_map_window.hide()
+
+
+func _on_city_map_mode_changed(mode: String) -> void:
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "City Map: %s" % CityMapView.MODE_NAMES.get(mode, mode)
+
+
+func _on_city_map_center_requested(point: Vector2i) -> void:
+	map_view.center_on_tile(point)
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "City view centered at %d, %d." % [point.x, point.y]
+
+
+func _city_map_viewport_outline() -> PackedVector2Array:
+	if map_view == null or overlay_mode not in ["city", "underground"]:
+		return PackedVector2Array()
+	return map_view.visible_tile_outline()
+
+
+func _refresh_city_map_viewport() -> void:
+	if city_map_control != null and city_map_window != null and city_map_window.visible:
+		city_map_control.refresh_viewport(_city_map_viewport_outline())
 
 
 func _toggle_sidebar() -> void:
@@ -3229,10 +3421,47 @@ func _set_overlay(mode: String) -> void:
 	if not MAP_DISPLAY_MODES.has(mode):
 		return
 	overlay_mode = mode
+	_sync_view_controls()
 	_update_edit_state()
 	if city != null:
 		status_label.text = "Map view: %s" % overlay_mode.capitalize()
 		_refresh_map(false)
+
+
+func _set_surface_visibility(enabled: bool, layer: String) -> void:
+	if not surface_visibility.has(layer) or bool(surface_visibility[layer]) == enabled:
+		return
+	surface_visibility[layer] = enabled
+	_invalidate_view_render()
+	_sync_view_controls()
+	if city != null and overlay_mode == "city":
+		_refresh_map(false)
+	status_label.text = "%s %s." % [
+		layer.capitalize(), "shown" if enabled else "hidden",
+	]
+
+
+func _set_underground_pipes_visible(enabled: bool) -> void:
+	if show_underground_pipes == enabled:
+		return
+	show_underground_pipes = enabled
+	_invalidate_view_render()
+	_sync_view_controls()
+	if city != null and overlay_mode == "underground":
+		_refresh_map(false)
+	status_label.text = "Underground pipes %s." % ("shown" if enabled else "hidden")
+
+
+func _invalidate_view_render() -> void:
+	static_render_epoch += 1
+	static_visual_signature.clear()
+	static_render_mode = ""
+	static_view_cache.clear()
+	static_occlusion_commands.clear()
+	static_occlusion_grid.clear()
+	dynamic_occluder_cache.clear()
+	dynamic_sign_occluders.clear()
+	dynamic_sign_occlusion_grid.clear()
 
 
 func _select_speed(index: int) -> void:
@@ -3249,7 +3478,9 @@ func _select_speed(index: int) -> void:
 func _refresh_map(force := true) -> void:
 	if city == null or palette == null:
 		return
-	map_view.set_signs_visible(overlay_mode == "city")
+	map_view.set_signs_visible(
+		overlay_mode == "city" and bool(surface_visibility.signs)
+	)
 	var image: Image
 	if overlay_mode == "city" or overlay_mode == "underground":
 		if force:
@@ -3307,11 +3538,16 @@ func _refresh_map(force := true) -> void:
 				_refresh_sign_occlusion(view_size)
 			return
 		static_render_epoch += 1
-		var display_city := city
+		var display_city := (
+			city
+			if overlay_mode == "underground"
+			else ViewFilter.surface_copy(city, surface_visibility)
+		)
 		var indexed: Dictionary
 		if overlay_mode == "underground":
 			indexed = UndergroundView.create_image(
-				display_city, palette_index_encoding, sprite_archive, view_size, true
+				display_city, palette_index_encoding, sprite_archive, view_size, true,
+				show_underground_pipes
 			)
 		else:
 			indexed = IsometricRenderer.create_image(
@@ -3397,6 +3633,8 @@ func _request_static_render(
 	static_render_job.signature = signature.duplicate()
 	static_render_job.epoch = static_render_epoch
 	static_render_job.render_mode = render_mode
+	static_render_job.surface_visibility = surface_visibility.duplicate()
+	static_render_job.show_underground_pipes = show_underground_pipes
 	static_render_thread = Thread.new()
 	var start_error := static_render_thread.start(
 		static_render_job.run, Thread.PRIORITY_LOW
@@ -3481,8 +3719,18 @@ func _poll_static_render() -> void:
 
 func _static_signature_for_mode(mode: String, view_size: int) -> Array:
 	if mode == "underground":
-		return UndergroundView.visual_signature(city, view_size)
-	return IsometricRenderer.static_visual_signature(city, view_size)
+		return UndergroundView.visual_signature(
+			city, view_size, show_underground_pipes
+		)
+	var result := IsometricRenderer.static_visual_signature(city, view_size)
+	result.append_array([
+		bool(surface_visibility.buildings),
+		bool(surface_visibility.networks),
+		bool(surface_visibility.water),
+		bool(surface_visibility.trees),
+		bool(surface_visibility.zones),
+	])
+	return result
 
 
 func _exit_tree() -> void:
@@ -3598,6 +3846,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 func _refresh_sign_occlusion(view_size: int) -> void:
 	if (
 		overlay_mode != "city"
+		or not bool(surface_visibility.signs)
 		or city == null
 		or map_view == null
 		or static_city_image == null
@@ -5429,6 +5678,9 @@ func _refresh_details() -> void:
 		simnation_control.set_city(city)
 	if ordinance_control != null and ordinance_window != null and ordinance_window.visible:
 		ordinance_control.refresh()
+	if city_map_control != null and city_map_window != null and city_map_window.visible:
+		city_map_control.set_city(city, palette)
+		city_map_control.refresh_viewport(_city_map_viewport_outline())
 	var demand := city.rci_demand()
 	var weather_trend := city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff
 	var weather_name: String = (

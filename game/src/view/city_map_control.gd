@@ -287,6 +287,30 @@ func center_tile() -> Vector2i:
 	return Renderer.screen_to_tile(city, source_center + Vector2(0, -0.5))
 
 
+func visible_tile_outline() -> PackedVector2Array:
+	var result := PackedVector2Array()
+	if city == null or city_texture == null:
+		return result
+	var half_visible := size / (_view_scale() * 2.0)
+	var source_points := PackedVector2Array([
+		source_center + Vector2(-half_visible.x, -half_visible.y),
+		source_center + Vector2(half_visible.x, -half_visible.y),
+		source_center + Vector2(half_visible.x, half_visible.y),
+		source_center + Vector2(-half_visible.x, half_visible.y),
+	])
+	var origin_x := Renderer.SIDE_MARGIN + CityState.MAP_SIZE * Renderer.HALF_WIDTH
+	for point in source_points:
+		var difference := (
+			(point.x - origin_x - Renderer.HALF_WIDTH) / float(Renderer.HALF_WIDTH)
+		)
+		var sum := (
+			(point.y - Renderer.TOP_MARGIN - Renderer.HALF_HEIGHT)
+			/ float(Renderer.HALF_HEIGHT)
+		)
+		result.append(Vector2((sum + difference) * 0.5, (sum - difference) * 0.5))
+	return result
+
+
 func scroll_state() -> Dictionary:
 	if city_texture == null:
 		return {}

@@ -16,11 +16,13 @@ const DataUsa = preload("res://src/assets/data_usa_resource.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
+const ViewFilter = preload("res://src/view/city_view_filter.gd")
 const GraphView = preload("res://src/view/city_graph_control.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
 const Ordinances = preload("res://src/simulation/ordinance_command.gd")
+const CityMapWindow = preload("res://src/view/city_map_window_control.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
@@ -639,10 +641,135 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 	_check(loaded_city.is_valid(), "Starter city loads for minimap test")
 	if not loaded_city.is_valid():
 		return
-	for mode in ["structures", "zones", "power", "water"]:
+	for mode in Minimap.MODES:
 		var image := Minimap.create_image(loaded_city, loaded_palette, mode)
 		_check(image.get_width() == 128, "%s minimap width is 128" % mode)
 		_check(image.get_height() == 128, "%s minimap height is 128" % mode)
+
+	var recovered_modes: Array[String] = []
+	for group in CityMapWindow.TAB_MODES:
+		for mode in group:
+			recovered_modes.append(str(mode))
+	_check(
+		recovered_modes == Array(Minimap.MODES, TYPE_STRING, "", null),
+		"City Map exposes all 18 modes in the recovered nine-tab order",
+	)
+	_check(
+		CityMapWindow.MODE_STRING_IDS.structures == 327
+		and CityMapWindow.MODE_STRING_IDS.colleges == 344,
+		"City Map mode labels use the recovered executable string range",
+	)
+
+	var point := Vector2i(0, 0)
+	_check(loaded_city.set_building_id(point.x, point.y, 0), "City Map fixture clears a tile")
+	_check(loaded_city.set_zone_id(point.x, point.y, 0), "City Map fixture clears a zone")
+	_check(loaded_city.set_underground_id(point.x, point.y, 0), "City Map fixture clears underground")
+	_check(loaded_city.set_land_altitude(point.x, point.y, 0), "City Map fixture clears altitude")
+	for mask in [0x04, 0x10, 0x20, 0x40, 0x80]:
+		_check(
+			loaded_city.set_tile_flag(point.x, point.y, mask, false),
+			"City Map fixture clears tile flag %02x" % mask,
+		)
+	_check(
+		Minimap.color_index(loaded_city, point.x, point.y, "structures") == 0x80,
+		"City Map uses the recovered level-zero ground color",
+	)
+	_check(loaded_city.set_building_id(point.x, point.y, 1), "City Map fixture sets trees")
+	_check(
+		Minimap.color_index(loaded_city, point.x, point.y, "structures") == 0x35,
+		"City Map uses the recovered tree color",
+	)
+	_check(loaded_city.set_building_id(point.x, point.y, 0), "City Map fixture clears trees")
+	_check(loaded_city.set_tile_flag(point.x, point.y, 0x04, true), "City Map fixture sets water")
+	_check(
+		Minimap.color_index(loaded_city, point.x, point.y, "structures") == 0x62,
+		"City Map uses the recovered water color",
+	)
+	_check(loaded_city.set_tile_flag(point.x, point.y, 0x04, false), "City Map fixture clears water")
+
+	for zone_test in [[1, 0x3b], [3, 0x5c], [5, 0x32], [7, 0x00]]:
+		_check(loaded_city.set_zone_id(point.x, point.y, zone_test[0]), "City Map fixture sets zone")
+		_check(
+			Minimap.color_index(loaded_city, point.x, point.y, "zones") == zone_test[1],
+			"City Map uses the recovered zone %d color" % zone_test[0],
+		)
+	_check(loaded_city.set_zone_id(point.x, point.y, 0), "City Map fixture clears final zone")
+
+	for network_test in [
+		["roads", 0x1d], ["roads", 0x55], ["rail", 0x2c],
+		["rail", 0x5a], ["traffic", 0x2c], ["power", 0x43],
+	]:
+		_check(
+			loaded_city.set_building_id(point.x, point.y, network_test[1]),
+			"City Map fixture sets a network tile",
+		)
+		_check(
+			Minimap.color_index(
+				loaded_city, point.x, point.y, network_test[0]
+			) == 0xff,
+			"City Map highlights %s tile %02x" % network_test,
+		)
+	_check(loaded_city.set_building_id(point.x, point.y, 0), "City Map fixture clears networks")
+	_check(loaded_city.set_tile_flag(point.x, point.y, 0x40, true), "City Map fixture sets power")
+	_check(
+		Minimap.color_index(loaded_city, point.x, point.y, "power") == 0x32,
+		"City Map uses the recovered powered color",
+	)
+	_check(loaded_city.set_tile_flag(point.x, point.y, 0x40, false), "City Map fixture clears power")
+	_check(loaded_city.set_tile_flag(point.x, point.y, 0x80, true), "City Map fixture sets powerable")
+	_check(
+		Minimap.color_index(loaded_city, point.x, point.y, "power") == 0x1d,
+		"City Map uses the recovered unpowered color",
+	)
+	_check(loaded_city.set_tile_flag(point.x, point.y, 0x80, false), "City Map fixture clears powerable")
+	_check(loaded_city.set_underground_id(point.x, point.y, 0x10), "City Map fixture sets pipe")
+	_check(
+		Minimap.color_index(loaded_city, point.x, point.y, "water") == 0xff,
+		"City Map highlights the recovered pipe range",
+	)
+	_check(loaded_city.set_underground_id(point.x, point.y, 0), "City Map fixture clears pipe")
+
+	for gradient_test in [
+		["XTRF", "traffic", 64, 0xf0, 0xaa],
+		["XPOP", "density", 32, 0x80, 0xa3],
+		["XCRM", "crime", 64, 0x30, 0x9e],
+		["XPLC", "police_power", 32, 0x40, 0x9f],
+		["XPLT", "pollution", 64, 0x50, 0xa0],
+		["XVAL", "land_value", 64, 0x60, 0xa1],
+		["XFIR", "fire_power", 32, 0x70, 0xa2],
+	]:
+		var chunk = loaded_city.document.find_chunk(gradient_test[0])
+		var values: PackedByteArray = chunk.decoded_payload.duplicate()
+		values[0] = gradient_test[3]
+		_check(chunk.set_decoded_payload(values), "City Map fixture sets %s" % gradient_test[0])
+		_check(
+			Minimap.color_index(
+				loaded_city, point.x, point.y, gradient_test[1]
+			) == gradient_test[4],
+			"City Map expands %s with the recovered gradient" % gradient_test[0],
+		)
+
+	var growth_chunk = loaded_city.document.find_chunk("XROG")
+	var growth_values: PackedByteArray = growth_chunk.decoded_payload.duplicate()
+	for growth_test in [[0x7c, 0x1d], [0x80, 0x80], [0x83, 0x43]]:
+		growth_values[0] = growth_test[0]
+		_check(growth_chunk.set_decoded_payload(growth_values), "City Map fixture sets growth")
+		_check(
+			Minimap.color_index(loaded_city, point.x, point.y, "growth") == growth_test[1],
+			"City Map uses the recovered growth threshold %02x" % growth_test[0],
+		)
+
+	for facility_test in [
+		["police_stations", 0xd2], ["fire_stations", 0xd3],
+		["schools", 0xd6], ["colleges", 0xd9],
+	]:
+		_check(loaded_city.set_building_id(point.x, point.y, facility_test[1]), "City Map fixture sets facility")
+		_check(
+			Minimap.color_index(
+				loaded_city, point.x, point.y, facility_test[0]
+			) == 0xff,
+			"City Map highlights %s" % facility_test[0],
+		)
 
 
 func _test_sprite_archives(reference_root: String) -> void:
@@ -1945,6 +2072,20 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"A piped subway adds the recovered underground service overlay",
 	)
 	_check(
+		UndergroundView.tile_sprite_ids(
+			underground_city, wet_pipe.x, wet_pipe.y,
+			IsometricRenderer.VIEW_LARGE, false
+		) == PackedInt32Array([1305]),
+		"Hidden pipes leave the terrain wireframe visible",
+	)
+	_check(
+		UndergroundView.tile_sprite_ids(
+			underground_city, piped_subway.x, piped_subway.y,
+			IsometricRenderer.VIEW_LARGE, false
+		) == PackedInt32Array([1319]),
+		"Hidden pipes keep a subway and remove its pipe overlay",
+	)
+	_check(
 		underground_city.set_building_id(20, 20, 0xff),
 		"Underground fixture adds a surface building",
 	)
@@ -1974,6 +2115,38 @@ func _test_sprite_archives(reference_root: String) -> void:
 			== Color8(255, 255, 255, 255).to_rgba32(),
 			"Underground view uses the recovered white background",
 		)
+	var filtered_source := CityModel.from_document(starter.document.duplicate_document())
+	_check(filtered_source.set_building_id(10, 10, 0x80), "View filter adds a building")
+	_check(filtered_source.set_building_id(11, 10, 0x2e), "View filter adds a network")
+	_check(filtered_source.set_building_id(12, 10, 0x06), "View filter adds a tree")
+	_check(filtered_source.set_zone_id(13, 10, 2), "View filter adds a zone")
+	_check(filtered_source.set_terrain_id(14, 10, 0x10), "View filter adds water terrain")
+	_check(filtered_source.set_tile_flag(14, 10, 0x04, true), "View filter marks water")
+	var filtered := ViewFilter.surface_copy(filtered_source, {
+		"buildings": false,
+		"networks": false,
+		"water": false,
+		"trees": false,
+		"zones": false,
+	})
+	_check(
+		filtered.building_id(10, 10) == 0
+		and filtered.building_id(11, 10) == 0
+		and filtered.building_id(12, 10) == 0
+		and filtered.zone_id(13, 10) == 0
+		and filtered.terrain_id(14, 10) == 0
+		and not filtered.is_water(14, 10),
+		"Surface visibility filters each requested display layer",
+	)
+	_check(
+		filtered_source.building_id(10, 10) == 0x80
+		and filtered_source.building_id(11, 10) == 0x2e
+		and filtered_source.building_id(12, 10) == 0x06
+		and filtered_source.zone_id(13, 10) == 2
+		and filtered_source.terrain_id(14, 10) == 0x10
+		and filtered_source.is_water(14, 10),
+		"Surface visibility filtering does not change saved city state",
+	)
 	_check(starter.set_building_id(64, 64, 0x2e), "Train drawing fixture adds a rail tile")
 	var straight_train := IsometricRenderer.train_sprite(starter, 64, 64, {
 		"type": 10, "dx": 0,

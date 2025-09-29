@@ -17,7 +17,8 @@ static func create_image(
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	view_size := Renderer.VIEW_LARGE,
-	validate_required_assets := true
+	validate_required_assets := true,
+	show_pipes := true
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
@@ -29,7 +30,7 @@ static func create_image(
 	if configuration.is_empty():
 		return _failure("underground view size is invalid")
 	if validate_required_assets:
-		var asset_errors := validate_assets(city, sprites, view_size)
+		var asset_errors := validate_assets(city, sprites, view_size, show_pipes)
 		if not asset_errors.is_empty():
 			return _failure(asset_errors[0])
 
@@ -52,13 +53,17 @@ static func create_image(
 			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
 				continue
 			_draw_tile(
-				output, city, palette, sprites, cache, configuration, origin_x, x, y
+				output, city, palette, sprites, cache, configuration, origin_x, x, y,
+				show_pipes
 			)
 	return {"ok": true, "image": output, "error": ""}
 
 
 static func validate_assets(
-	city: CityState, sprites: Sc2SpriteArchive, view_size := Renderer.VIEW_LARGE
+	city: CityState,
+	sprites: Sc2SpriteArchive,
+	view_size := Renderer.VIEW_LARGE,
+	show_pipes := true
 ) -> PackedStringArray:
 	var errors := PackedStringArray()
 	if city == null or not city.is_valid():
@@ -74,7 +79,7 @@ static func validate_assets(
 	var missing: Dictionary = {}
 	for x in CityState.MAP_SIZE:
 		for y in CityState.MAP_SIZE:
-			for sprite_id in tile_sprite_ids(city, x, y, view_size):
+			for sprite_id in tile_sprite_ids(city, x, y, view_size, show_pipes):
 				if sprites.find_sprite(sprite_id) == null:
 					missing[sprite_id] = true
 			var tunnel_sprite := tunnel_sprite_id(city, x, y, view_size)
@@ -88,7 +93,11 @@ static func validate_assets(
 
 
 static func tile_sprite_ids(
-	city: CityState, x: int, y: int, view_size := Renderer.VIEW_LARGE
+	city: CityState,
+	x: int,
+	y: int,
+	view_size := Renderer.VIEW_LARGE,
+	show_pipes := true
 ) -> PackedInt32Array:
 	var result := PackedInt32Array()
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
@@ -104,13 +113,18 @@ static func tile_sprite_ids(
 		or underground == 0x20
 	)
 	if is_pipe:
+		if not show_pipes:
+			result.append(
+				sprite_base + terrain_wireframe_offset(city.terrain_id(x, y))
+			)
+			return result
 		if city.is_piped(x, y) and city.is_watered(x, y):
 			underground += WATERED_PIPE_OFFSET
 		result.append(sprite_base + SUBWAY_AND_PIPE_FIRST + underground)
 		return result
 
 	if underground == 0:
-		if not city.is_piped(x, y):
+		if not show_pipes or not city.is_piped(x, y):
 			result.append(
 				sprite_base + terrain_wireframe_offset(city.terrain_id(x, y))
 			)
@@ -121,7 +135,7 @@ static func tile_sprite_ids(
 		return result
 
 	result.append(sprite_base + SUBWAY_AND_PIPE_FIRST + underground)
-	if city.is_piped(x, y):
+	if show_pipes and city.is_piped(x, y):
 		result.append(
 			sprite_base + (WATERED_TERRAIN if city.is_watered(x, y) else PIPED_TERRAIN)
 		)
@@ -154,12 +168,13 @@ static func tunnel_sprite_id(
 	return int(configuration.sprite_base) + DEEP_TUNNEL
 
 
-static func visual_signature(city: CityState, view_size: int) -> Array:
+static func visual_signature(city: CityState, view_size: int, show_pipes := true) -> Array:
 	if city == null or not city.is_valid():
 		return []
 	return [
 		"underground",
 		view_size,
+		show_pipes,
 		city.compass_rotation(),
 		hash(city.altitude_words),
 		hash(city.terrain),
@@ -177,7 +192,8 @@ static func _draw_tile(
 	configuration: Dictionary,
 	origin_x: int,
 	x: int,
-	y: int
+	y: int,
+	show_pipes: bool
 ) -> void:
 	var screen_x := origin_x + (x - y) * int(configuration.half_width)
 	var base_y := (
@@ -202,7 +218,9 @@ static func _draw_tile(
 			tunnel_y += (levels - 1) * int(configuration.altitude_step)
 		_blend(output, tunnel_image, Vector2i(screen_x, tunnel_y))
 
-	for sprite_id in tile_sprite_ids(city, x, y, int(configuration.view_size)):
+	for sprite_id in tile_sprite_ids(
+		city, x, y, int(configuration.view_size), show_pipes
+	):
 		var image := _sprite_image(sprites, palette, cache, sprite_id)
 		_blend(output, image, Vector2i(screen_x, terrain_top))
 
