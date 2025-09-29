@@ -1,6 +1,8 @@
 class_name BudgetPhase
 extends RefCounted
 
+const Ordinances = preload("res://src/simulation/ordinance_command.gd")
+
 const MISC_SIZE := 4800
 const MISC_FUNDS := 0x0014
 const MISC_BONDS := 0x0018
@@ -164,7 +166,11 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 		BUDGET_ROAD,
 		_divide_toward_zero(_tile_count(misc, 0xec), 4) * 250
 	)
-	_write_i32(misc, _budget_offset(BUDGET_ORDINANCES), _ordinance_cost(misc))
+	_write_i32(
+		misc,
+		_budget_offset(BUDGET_ORDINANCES),
+		Ordinances.current_cost_for_misc(misc),
+	)
 
 	var news_items: Array[Dictionary] = []
 	if (
@@ -238,44 +244,6 @@ static func set_funding(
 	if not misc_chunk.set_decoded_payload(misc):
 		return {"ok": false, "error": "cannot store budget funding values"}
 	return {"ok": true, "error": ""}
-
-
-static func _ordinance_cost(misc: PackedByteArray) -> int:
-	var residential := _read_i32(misc, _budget_offset(BUDGET_RESIDENTIAL))
-	var commercial := _read_i32(misc, _budget_offset(BUDGET_COMMERCIAL))
-	var industrial := _read_i32(misc, _budget_offset(BUDGET_INDUSTRIAL))
-	var population := (
-		_read_u32(misc, MISC_ARCOLOGY_POPULATION)
-		+ _read_u32(misc, MISC_NORMAL_POPULATION)
-	)
-	var costs := PackedInt64Array([
-		residential,
-		commercial,
-		residential * 2,
-		_divide_toward_zero(commercial, 2),
-		_divide_toward_zero(residential, -3),
-		_divide_toward_zero(commercial, -6),
-		-_divide_toward_zero(residential, 2),
-		-_divide_toward_zero(residential, 4),
-		_divide_toward_zero(residential, -6),
-		_divide_toward_zero(residential, -5),
-		_divide_toward_zero(residential, -6),
-		_divide_toward_zero(residential, -3),
-		-commercial,
-		-industrial,
-		-_divide_toward_zero(residential, 4),
-		_divide_toward_zero(commercial, -3),
-		-population,
-		0,
-		-_divide_toward_zero(residential, 2),
-		-industrial,
-	])
-	var total := 0
-	var flags := _read_u32(misc, MISC_ORDINANCES)
-	for ordinance_id in 20:
-		if flags & (1 << ordinance_id):
-			total = _to_i32(total + costs[ordinance_id])
-	return total
 
 
 static func _budget_offset(budget_id: int) -> int:

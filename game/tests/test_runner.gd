@@ -20,6 +20,7 @@ const GraphView = preload("res://src/view/city_graph_control.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
+const Ordinances = preload("res://src/simulation/ordinance_command.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
@@ -239,6 +240,7 @@ func _init() -> void:
 	_test_population_window(reference_root)
 	_test_industry_window(reference_root)
 	_test_simnation_window(reference_root)
+	_test_ordinance_window(reference_root)
 	_test_month_start(reference_root)
 	_test_city_value_phase(reference_root)
 	_test_bond_command(reference_root)
@@ -3486,6 +3488,93 @@ func _test_simnation_window(reference_root: String) -> void:
 		and prepared.get_size() == Vector2i(128, 448)
 		and prepared.get_pixel(0, 0).a == 0.0,
 		"SimNation window loads the original sheet and makes index zero transparent",
+	)
+
+
+func _test_ordinance_window(reference_root: String) -> void:
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	var residential_offset := Ordinances.MISC_BUDGETS
+	var commercial_offset := residential_offset + Ordinances.BUDGET_RECORD_SIZE
+	var industrial_offset := commercial_offset + Ordinances.BUDGET_RECORD_SIZE
+	var ordinance_offset := (
+		Ordinances.MISC_BUDGETS
+		+ Ordinances.BUDGET_ORDINANCES * Ordinances.BUDGET_RECORD_SIZE
+	)
+	_check(document.set_misc_i32(residential_offset, 7500), "Ordinance fixture sets residents")
+	_check(document.set_misc_i32(commercial_offset, 15000), "Ordinance fixture sets commerce")
+	_check(document.set_misc_i32(industrial_offset, 22500), "Ordinance fixture sets industry")
+	_check(document.set_misc_u32(Ordinances.MISC_NORMAL_POPULATION, 30000), "Ordinance fixture sets population")
+	_check(document.set_misc_u32(Ordinances.MISC_ARCOLOGY_POPULATION, 1500), "Ordinance fixture sets arcology population")
+	_check(document.set_misc_u32(Ordinances.MISC_CITY_DAYS, 75), "Ordinance fixture selects April")
+	_check(document.set_misc_i32(ordinance_offset + Ordinances.BUDGET_YEAR_TO_DATE, -9000), "Ordinance fixture sets year-to-date cost")
+	var flags := 0xa0000000 | (1 << 0) | (1 << 4) | (1 << 8) | (1 << 12) | (1 << 16)
+	_check(document.set_misc_u32(Ordinances.MISC_ORDINANCES, flags), "Ordinance fixture sets five categories")
+	_check(document.set_misc_i32(ordinance_offset, 123456), "Ordinance fixture sets a stale total")
+	var city := CityModel.from_document(document)
+	var data := Ordinances.snapshot(city)
+	_check(
+		data.ok
+		and data.raw_costs.size() == 20
+		and data.raw_costs[0] == 7500
+		and data.raw_costs[4] == -2500
+		and data.raw_costs[8] == -1250
+		and data.raw_costs[12] == -15000
+		and data.raw_costs[16] == -31500
+		and data.raw_costs[17] == 0
+		and data.raw_costs[19] == -22500,
+		"Ordinance window uses the recovered bit order and formulas",
+	)
+	_check(
+		data.current_raw == -42750
+		and data.item_amounts == PackedInt32Array([100, 0, 0, 0, -33, 0, 0, 0, -16, 0, 0, 0, -200, 0, 0, 0, -420, 0, 0, 0])
+		and data.category_amounts == PackedInt32Array([100, -33, -16, -200, -420]),
+		"Ordinance window calculates item and category display amounts",
+	)
+	_check(
+		data.year_to_date_amount == -10
+		and data.estimated_amount == -390
+		and data.month == 3,
+		"Ordinance window calculates the in-year totals",
+	)
+	var synchronized := Ordinances.synchronize_current(city)
+	_check(
+		synchronized.ok
+		and synchronized.changed
+		and document.misc_i32(ordinance_offset) == -42750,
+		"Opening Ordinances synchronizes its saved budget total",
+	)
+	var enabled := Ordinances.set_enabled(city, 17, true)
+	_check(
+		enabled.ok
+		and enabled.changed
+		and document.misc_u32(Ordinances.MISC_ORDINANCES) == (flags | (1 << 17))
+		and document.misc_i32(ordinance_offset) == -42750,
+		"Ordinance selection preserves high bits and updates its total",
+	)
+	var disabled := Ordinances.set_enabled(city, 0, false)
+	_check(
+		disabled.ok
+		and disabled.changed
+		and document.misc_u32(Ordinances.MISC_ORDINANCES) == ((flags | (1 << 17)) & ~(1 << 0))
+		and document.misc_i32(ordinance_offset) == -50250,
+		"Ordinance selection clears one saved bit",
+	)
+	_check(document.set_misc_u32(Ordinances.MISC_YEAR_END, 1), "Ordinance fixture sets year end")
+	var year_end := Ordinances.snapshot(city)
+	_check(
+		year_end.estimated_amount == -670,
+		"Year-end Ordinances estimates twelve months from the active selection",
+	)
+	_check(
+		not Ordinances.set_enabled(city, 20, true).ok,
+		"Ordinance selection rejects an invalid bit",
+	)
+	_check(
+		Ordinances.compact_amount(9998) == "9998"
+		and Ordinances.compact_amount(9999) == "10k"
+		and Ordinances.compact_amount(-9999) == "-9k"
+		and Ordinances.compact_amount(9999999) == "10m",
+		"Ordinance amounts use the recovered compact-number boundaries",
 	)
 
 

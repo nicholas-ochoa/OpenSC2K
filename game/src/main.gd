@@ -22,6 +22,7 @@ const GraphView = preload("res://src/view/city_graph_control.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
+const OrdinanceView = preload("res://src/view/ordinance_window_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -308,6 +309,8 @@ var industry_control: Control
 var industry_mode_buttons: Array[CheckBox] = []
 var simnation_window: Window
 var simnation_control: Control
+var ordinance_window: Window
+var ordinance_control: OrdinanceWindowControl
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
@@ -435,6 +438,7 @@ func _process(delta: float) -> void:
 		or (forest_protest_dialog != null and forest_protest_dialog.visible)
 		or (building_objection_dialog != null and building_objection_dialog.visible)
 		or (query_overlay != null and query_overlay.visible)
+		or (ordinance_window != null and ordinance_window.visible)
 		or (new_city_dialog != null and new_city_dialog.visible)
 		or bond_dialog.visible
 		or military_dialog.visible
@@ -593,8 +597,9 @@ func _build_interface(toolbar_art: Image) -> void:
 		"Air Crash and Helicopter Crash do nothing when selected, as in the original Windows game."
 	)
 	_add_menu(menu_row, "Windows", [
-		["Budget", 0], ["Population", 1], ["City Industry", 2],
-		["Graphs", 3], ["Neighbors", 4], ["City Information", 5],
+		["Budget", 0], ["Ordinances", 1], ["Population", 2],
+		["City Industry", 3], ["Graphs", 4], ["Neighbors", 5],
+		["City Information", 6],
 	], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
@@ -1248,6 +1253,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	_build_population_window()
 	_build_industry_window()
 	_build_simnation_window()
+	_build_ordinance_window()
 	city_analysis_dialog = AcceptDialog.new()
 	city_analysis_dialog.title = "City Analysis"
 	city_analysis_dialog.min_size = Vector2i(600, 480)
@@ -1822,6 +1828,37 @@ func _build_simnation_window() -> void:
 	)))
 
 
+func _build_ordinance_window() -> void:
+	ordinance_window = Window.new()
+	ordinance_window.name = "OrdinanceWindow"
+	ordinance_window.title = "Ordinances"
+	ordinance_window.size = Vector2i(800, 640)
+	ordinance_window.min_size = Vector2i(720, 580)
+	ordinance_window.transient = true
+	ordinance_window.exclusive = true
+	ordinance_window.visible = false
+	ordinance_window.close_requested.connect(ordinance_window.hide)
+	add_child(ordinance_window)
+
+	var background := PanelContainer.new()
+	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	background.add_theme_stylebox_override(
+		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
+	)
+	ordinance_window.add_child(background)
+	var margin := MarginContainer.new()
+	for side in ["left", "top", "right", "bottom"]:
+		margin.add_theme_constant_override("margin_" + side, 10)
+	background.add_child(margin)
+	ordinance_control = OrdinanceView.new()
+	ordinance_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	ordinance_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ordinance_control.ordinances_changed.connect(_on_ordinances_changed)
+	ordinance_control.update_failed.connect(_show_error)
+	ordinance_control.close_requested.connect(ordinance_window.hide)
+	margin.add_child(ordinance_control)
+
+
 func _build_query_dialog() -> void:
 	query_overlay = ColorRect.new()
 	query_overlay.name = "QueryOverlay"
@@ -2334,15 +2371,33 @@ func _on_windows_menu(id: int) -> void:
 	if id == 0:
 		_open_manual_budget()
 	elif id == 1:
-		_open_population_window()
+		_open_ordinance_window()
 	elif id == 2:
-		_open_industry_window()
+		_open_population_window()
 	elif id == 3:
-		_open_graph_window()
+		_open_industry_window()
 	elif id == 4:
-		_open_simnation_window()
+		_open_graph_window()
 	elif id == 5:
+		_open_simnation_window()
+	elif id == 6:
 		_set_sidebar_expanded(not sidebar_panel.visible)
+
+
+func _open_ordinance_window() -> void:
+	if city == null or ordinance_window == null or ordinance_control == null:
+		return
+	var result := ordinance_control.set_city(city)
+	if not result.get("ok", false):
+		_show_error("Cannot open ordinances: %s" % result.get("error", "invalid data"))
+		return
+	ordinance_window.popup_centered(Vector2i(800, 640))
+
+
+func _on_ordinances_changed() -> void:
+	_refresh_details()
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "Ordinance selection saved."
 
 
 func _open_graph_window() -> void:
@@ -5372,6 +5427,8 @@ func _refresh_details() -> void:
 		industry_control.set_city(city)
 	if simnation_control != null and simnation_window != null and simnation_window.visible:
 		simnation_control.set_city(city)
+	if ordinance_control != null and ordinance_window != null and ordinance_window.visible:
+		ordinance_control.refresh()
 	var demand := city.rci_demand()
 	var weather_trend := city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff
 	var weather_name: String = (
