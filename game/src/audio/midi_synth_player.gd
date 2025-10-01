@@ -6,7 +6,8 @@ signal track_finished(track_id: int)
 const MidiFile = preload("res://src/audio/standard_midi_file.gd")
 
 const SAMPLE_RATE := 22050.0
-const BUFFER_LENGTH_SECONDS := 0.25
+const BUFFER_LENGTH_SECONDS := 1.0
+const PREFILL_SECONDS := 0.20
 const MAX_VOICES := 32
 const MAX_TAIL_SECONDS := 2.0
 const MAX_FRAMES_PER_FILL := 1024
@@ -24,6 +25,7 @@ class Voice:
 	var velocity := 0.0
 	var frequency := 440.0
 	var phase := 0.0
+	var secondary_phase := 0.0
 	var age_seconds := 0.0
 	var envelope := 0.0
 	var release_rate := 4.0
@@ -98,6 +100,9 @@ func play_sequence(sequence: StandardMidiFile, track_id: int) -> Dictionary:
 	if _playback == null:
 		stop()
 		return {"ok": false, "error": "Godot did not create MIDI audio playback"}
+	_fill_audio(mini(
+		_playback.get_frames_available(), int(PREFILL_SECONDS * SAMPLE_RATE)
+	))
 	set_process(true)
 	return {
 		"ok": true,
@@ -134,9 +139,15 @@ func _process(_delta: float) -> void:
 	var available := mini(_playback.get_frames_available(), MAX_FRAMES_PER_FILL)
 	if available <= 0:
 		return
+	_fill_audio(available)
+
+
+func _fill_audio(frame_count: int) -> void:
+	if frame_count <= 0 or not _active or _playback == null or _sequence == null:
+		return
 	var output := PackedVector2Array()
-	output.resize(available)
-	for frame_index in available:
+	output.resize(frame_count)
+	for frame_index in frame_count:
 		_apply_due_events()
 		var mixed := _mix_frame()
 		output[frame_index] = mixed
@@ -274,7 +285,9 @@ func _advance_envelope(voice: Voice) -> void:
 
 
 func _voice_sample(voice: Voice) -> float:
-	voice.phase = fmod(voice.phase + voice.frequency / SAMPLE_RATE, 1.0)
+	var phase_step := minf(voice.frequency / SAMPLE_RATE, 0.49)
+	voice.phase = fmod(voice.phase + phase_step, 1.0)
+	voice.secondary_phase = fmod(voice.secondary_phase + phase_step * 1.006, 1.0)
 	if voice.percussion:
 		return _percussion_sample(voice)
 	var phase := voice.phase
@@ -286,17 +299,23 @@ func _voice_sample(voice: Voice) -> float:
 		2:
 			return sin(TAU_VALUE * phase) * 0.65 + sin(TAU_VALUE * phase * 2.0) * 0.25 + sin(TAU_VALUE * phase * 4.0) * 0.10
 		3:
-			return _triangle(phase) * 0.70 + _saw(phase) * 0.30
+			return _triangle(phase) * 0.70 + band_limited_saw(phase, phase_step) * 0.30
 		4:
-			return _triangle(phase) * 0.80 + (1.0 if phase < 0.5 else -1.0) * 0.20
+			return _triangle(phase) * 0.80 + band_limited_square(phase, phase_step) * 0.20
 		5:
-			return _saw(phase) * 0.52 + _saw(fmod(phase * 1.006, 1.0)) * 0.48
+			return (
+				band_limited_saw(phase, phase_step) * 0.52
+				+ band_limited_saw(voice.secondary_phase, phase_step * 1.006) * 0.48
+			)
 		6:
-			return _saw(phase) * 0.45 + sin(TAU_VALUE * phase) * 0.55
+			return band_limited_saw(phase, phase_step) * 0.45 + sin(TAU_VALUE * phase) * 0.55
 		7:
 			return sin(TAU_VALUE * phase) * 0.88 + sin(TAU_VALUE * phase * 2.0) * 0.12
 		8:
-			return (1.0 if phase < 0.5 else -1.0) * 0.55 + _saw(phase) * 0.45
+			return (
+				band_limited_square(phase, phase_step) * 0.55
+				+ band_limited_saw(phase, phase_step) * 0.45
+			)
 		_:
 			return _triangle(phase) * 0.55 + sin(TAU_VALUE * phase * 2.0) * 0.45
 
@@ -308,7 +327,12 @@ func _percussion_sample(voice: Voice) -> float:
 		var drop := maxf(0.35, 1.0 - voice.age_seconds * 2.5)
 		return sin(TAU_VALUE * voice.phase * drop) * 0.85 + noise * 0.15
 	if voice.note >= 42 and voice.note <= 46:
-		return noise * 0.82 + _square(voice.phase) * 0.18
+		return (
+			noise * 0.82
+			+ band_limited_square(
+				voice.phase, minf(voice.frequency / SAMPLE_RATE, 0.49)
+			) * 0.18
+		)
 	if voice.note == 38 or voice.note == 40:
 		return noise * 0.72 + sin(TAU_VALUE * voice.phase) * 0.28
 	return noise * 0.55 + sin(TAU_VALUE * voice.phase) * 0.45
@@ -458,13 +482,27 @@ static func _release_rate(program: int, percussion: bool) -> float:
 	return 4.0
 
 
-static func _saw(phase: float) -> float:
-	return phase * 2.0 - 1.0
+static func band_limited_saw(phase: float, phase_step: float) -> float:
+	return phase * 2.0 - 1.0 - _poly_blep(phase, phase_step)
+
+
+static func band_limited_square(phase: float, phase_step: float) -> float:
+	var value := 1.0 if phase < 0.5 else -1.0
+	value += _poly_blep(phase, phase_step)
+	value -= _poly_blep(fmod(phase + 0.5, 1.0), phase_step)
+	return value
 
 
 static func _triangle(phase: float) -> float:
 	return 1.0 - 4.0 * absf(phase - 0.5)
 
 
-static func _square(phase: float) -> float:
-	return 1.0 if phase < 0.5 else -1.0
+static func _poly_blep(phase: float, phase_step: float) -> float:
+	var step := clampf(phase_step, 0.000001, 0.49)
+	if phase < step:
+		var position := phase / step
+		return position + position - position * position - 1.0
+	if phase > 1.0 - step:
+		var position := (phase - 1.0) / step
+		return position * position + position + position + 1.0
+	return 0.0

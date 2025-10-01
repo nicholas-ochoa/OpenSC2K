@@ -582,6 +582,21 @@ func _test_midi_synth_helpers() -> void:
 		families == PackedInt32Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9]),
 		"MIDI synthesizer assigns every General MIDI program range",
 	)
+	_check(
+		MidiSynth.BUFFER_LENGTH_SECONDS >= 0.75
+		and MidiSynth.PREFILL_SECONDS >= 0.15
+		and MidiSynth.PREFILL_SECONDS < MidiSynth.BUFFER_LENGTH_SECONDS,
+		"MIDI playback keeps a primed safety buffer",
+	)
+	var saw_start := MidiSynth.band_limited_saw(0.0, 0.01)
+	var saw_end := MidiSynth.band_limited_saw(0.999999, 0.01)
+	var square_start := MidiSynth.band_limited_square(0.0, 0.01)
+	var square_end := MidiSynth.band_limited_square(0.999999, 0.01)
+	_check(
+		absf(saw_start - saw_end) < 0.01
+		and absf(square_start - square_end) < 0.01,
+		"Band-limited MIDI oscillators smooth their wrap edges",
+	)
 
 
 func _test_palette_and_minimap(reference_root: String) -> void:
