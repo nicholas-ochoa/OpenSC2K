@@ -133,6 +133,11 @@ func is_track_active() -> bool:
 	return _active
 
 
+func set_volume_linear(value: float) -> void:
+	if _audio_player != null:
+		_audio_player.volume_linear = clampf(value, 0.0, 1.0)
+
+
 func _process(_delta: float) -> void:
 	if not _active or _playback == null or _sequence == null:
 		return

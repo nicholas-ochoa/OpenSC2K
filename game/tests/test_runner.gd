@@ -66,6 +66,7 @@ const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
 const QueryPresentation = preload("res://src/view/query_presentation.gd")
 const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperPage = preload("res://src/ui/newspaper_page.gd")
+const MainMenu = preload("res://src/ui/main_menu_control.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -224,6 +225,7 @@ func _init() -> void:
 	_test_music_director()
 	_test_midi_files(reference_root)
 	_test_midi_synth_helpers()
+	_test_main_menu()
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
 	_test_random_and_power(reference_root)
@@ -597,6 +599,29 @@ func _test_midi_synth_helpers() -> void:
 		and absf(square_start - square_end) < 0.01,
 		"Band-limited MIDI oscillators smooth their wrap edges",
 	)
+
+
+func _test_main_menu() -> void:
+	_check(
+		MainMenu.BUTTON_LABELS == [
+			"Continue City",
+			"Start New City",
+			"Open City...",
+			"Play Scenario...",
+			"SCURK Tile Editor",
+			"Settings...",
+			"About OpenSC2K...",
+			"Exit",
+		],
+		"Main menu exposes every startup workflow",
+	)
+	var menu := MainMenu.new()
+	menu._ready()
+	_check(
+		menu.continue_button != null and menu.new_city_button != null,
+		"Main menu builds its initial and continuing city actions",
+	)
+	menu.free()
 
 
 func _test_palette_and_minimap(reference_root: String) -> void:

@@ -33,6 +33,7 @@ const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
 const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperPageView = preload("res://src/ui/newspaper_page.gd")
+const MainMenuView = preload("res://src/ui/main_menu_control.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -177,6 +178,9 @@ var surface_visibility := {
 	"signs": true,
 }
 var show_underground_pipes := true
+var app_music_volume := 0.8
+var app_effects_volume := 0.8
+var app_fullscreen := false
 var reference_root := ""
 var original_query_strings: Dictionary = {}
 var forest_protest_text := "Citizens are protesting forest demolition."
@@ -336,6 +340,13 @@ var ordinance_window: Window
 var ordinance_control: OrdinanceWindowControl
 var city_map_window: Window
 var city_map_control: CityMapWindowControl
+var main_menu: MainMenuControl
+var settings_dialog: ConfirmationDialog
+var settings_music_slider: HSlider
+var settings_effects_slider: HSlider
+var settings_fullscreen_check: CheckBox
+var scurk_dialog: AcceptDialog
+var about_dialog: AcceptDialog
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
@@ -355,9 +366,11 @@ var fps_update_seconds := 0.0
 
 func _ready() -> void:
 	reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
+	_load_app_settings()
 	music_player = MidiSynth.new()
 	music_player.track_finished.connect(_on_music_track_finished)
 	add_child(music_player)
+	music_player.set_volume_linear(app_music_volume)
 	newspaper_session_seed = Time.get_ticks_msec() & 0xffff
 	if newspaper_session_seed & 0x8000:
 		newspaper_session_seed -= 0x10000
@@ -439,11 +452,7 @@ func _ready() -> void:
 	large_sprites = base_large_sprites
 	small_medium_sprites = base_small_medium_sprites
 
-	var initial_city := reference_root.path_join("CITIES/STARTER.SC2")
-	if FileAccess.file_exists(initial_city):
-		_load_city(initial_city)
-	else:
-		_show_error("Choose an original SC2 or SCN file to start.")
+	_show_main_menu()
 
 
 func _process(delta: float) -> void:
@@ -467,6 +476,7 @@ func _process(delta: float) -> void:
 		or (query_overlay != null and query_overlay.visible)
 		or (ordinance_window != null and ordinance_window.visible)
 		or (new_city_dialog != null and new_city_dialog.visible)
+		or (main_menu != null and main_menu.visible)
 		or bond_dialog.visible
 		or military_dialog.visible
 		or scenario_dialog.visible
@@ -495,6 +505,11 @@ func _process(delta: float) -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo or map_view == null:
+		return
+	if main_menu != null and main_menu.visible:
+		if event.keycode == KEY_ESCAPE and city != null:
+			_hide_main_menu()
+		get_viewport().set_input_as_handled()
 		return
 	if event.keycode == KEY_ESCAPE and query_overlay != null and query_overlay.visible:
 		_close_query(false)
@@ -582,7 +597,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	menu_bar.add_child(menu_row)
 	_add_menu(menu_row, "File", [
 		["New City...", 0], ["Open City...", 1], ["Save City As...", 2],
-		["Load Tile Set...", 3], ["Restore Original Tile Set", 4], ["Exit", 5],
+		["Load Tile Set...", 3], ["Restore Original Tile Set", 4],
+		["Main Menu", 5], ["Exit", 6],
 	], _on_file_menu)
 	_add_menu(menu_row, "Speed", [
 		["Pause", 0], ["Turtle", 1], ["Llama", 2], ["Cheetah", 3],
@@ -994,7 +1010,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	new_city_dialog.add_child(new_city_center)
 	var new_city_panel := PanelContainer.new()
 	new_city_panel.name = "NewCityDialog"
-	new_city_panel.custom_minimum_size = Vector2(740, 540)
+	new_city_panel.custom_minimum_size = Vector2(820, 600)
 	new_city_panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	new_city_panel.add_theme_stylebox_override(
 		"panel", _classic_box(Color("c0c0c0"), Color("404040"), 2)
@@ -1013,7 +1029,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	new_city_title_row.offset_right = -4
 	new_city_title_bar.add_child(new_city_title_row)
 	var new_city_title_label := Label.new()
-	new_city_title_label.text = "New City"
+	new_city_title_label.text = "New City Terrain Editor"
 	new_city_title_label.add_theme_color_override("font_color", Color.WHITE)
 	new_city_title_label.add_theme_font_size_override("font_size", 15)
 	new_city_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -1182,8 +1198,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	new_city_cancel_button.pressed.connect(_cancel_new_city)
 	new_city_button_row.add_child(new_city_cancel_button)
 	var new_city_start_button := Button.new()
-	new_city_start_button.text = "Start New City"
-	new_city_start_button.custom_minimum_size = Vector2(130, 30)
+	new_city_start_button.text = "Build City on This Terrain"
+	new_city_start_button.custom_minimum_size = Vector2(210, 30)
 	new_city_start_button.pressed.connect(_create_new_city)
 	new_city_button_row.add_child(new_city_start_button)
 
@@ -1588,6 +1604,149 @@ func _build_interface(toolbar_art: Image) -> void:
 	group_selector.select(selected_group)
 	_select_tool_group(selected_group)
 	_update_zoom_controls(map_view.zoom_percent())
+	_build_main_menu()
+
+
+func _build_main_menu() -> void:
+	main_menu = MainMenuView.new()
+	main_menu.z_index = 850
+	main_menu.visible = false
+	main_menu.continue_requested.connect(_hide_main_menu)
+	main_menu.new_city_requested.connect(_open_new_city_dialog)
+	main_menu.open_city_requested.connect(_open_city_dialog)
+	main_menu.scenario_requested.connect(_open_scenario_dialog)
+	main_menu.settings_requested.connect(_open_settings_dialog)
+	main_menu.scurk_requested.connect(_open_scurk_dialog)
+	main_menu.about_requested.connect(_open_about_dialog)
+	main_menu.exit_requested.connect(get_tree().quit)
+	add_child(main_menu)
+
+	settings_dialog = ConfirmationDialog.new()
+	settings_dialog.title = "OpenSC2K Settings"
+	settings_dialog.min_size = Vector2i(520, 330)
+	settings_dialog.exclusive = true
+	settings_dialog.get_ok_button().text = "Apply"
+	settings_dialog.confirmed.connect(_apply_settings)
+	settings_dialog.get_label().visible = false
+	var settings_grid := GridContainer.new()
+	settings_grid.columns = 2
+	settings_grid.custom_minimum_size = Vector2(460, 210)
+	settings_grid.add_theme_constant_override("h_separation", 14)
+	settings_grid.add_theme_constant_override("v_separation", 14)
+	for label_text in ["Music Volume", "Sound Effects Volume"]:
+		var label := Label.new()
+		label.text = label_text
+		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		settings_grid.add_child(label)
+		var slider := HSlider.new()
+		slider.min_value = 0
+		slider.max_value = 100
+		slider.step = 1
+		slider.custom_minimum_size = Vector2(250, 32)
+		settings_grid.add_child(slider)
+		if label_text == "Music Volume":
+			settings_music_slider = slider
+		else:
+			settings_effects_slider = slider
+	var display_label := Label.new()
+	display_label.text = "Display"
+	display_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	settings_grid.add_child(display_label)
+	settings_fullscreen_check = CheckBox.new()
+	settings_fullscreen_check.text = "Fullscreen"
+	settings_grid.add_child(settings_fullscreen_check)
+	var settings_parent := settings_dialog.get_label().get_parent()
+	settings_parent.add_child(settings_grid)
+	settings_parent.move_child(settings_grid, 0)
+	add_child(settings_dialog)
+
+	scurk_dialog = AcceptDialog.new()
+	scurk_dialog.title = "SCURK Tile Editor"
+	scurk_dialog.dialog_text = (
+		"The SCURK editor shell is available, but pixel editing and MIF writing are not implemented yet.\n\n"
+		+ "The current build can load original MIF tile sets from File > Load Tile Set. "
+		+ "It preserves INFO, SHAP, and NAME data and applies the artwork to a city view."
+	)
+	scurk_dialog.min_size = Vector2i(580, 260)
+	scurk_dialog.exclusive = true
+	add_child(scurk_dialog)
+
+	about_dialog = AcceptDialog.new()
+	about_dialog.title = "About OpenSC2K"
+	about_dialog.dialog_text = (
+		"OpenSC2K is an open-source reimplementation of SimCity 2000 for Windows 95.\n\n"
+		+ "It reads the original SC2 and SCN city formats. Original game data stays external to this project."
+	)
+	about_dialog.min_size = Vector2i(560, 250)
+	about_dialog.exclusive = true
+	add_child(about_dialog)
+
+
+func _show_main_menu() -> void:
+	if main_menu == null:
+		return
+	main_menu.show_menu(city != null)
+	status_label.text = "Main menu."
+
+
+func _hide_main_menu() -> void:
+	if main_menu != null:
+		main_menu.hide()
+	if city != null:
+		status_label.text = "City ready."
+
+
+func _open_settings_dialog() -> void:
+	settings_music_slider.value = app_music_volume * 100.0
+	settings_effects_slider.value = app_effects_volume * 100.0
+	settings_fullscreen_check.button_pressed = app_fullscreen
+	settings_dialog.popup_centered()
+
+
+func _apply_settings() -> void:
+	app_music_volume = float(settings_music_slider.value) / 100.0
+	app_effects_volume = float(settings_effects_slider.value) / 100.0
+	app_fullscreen = settings_fullscreen_check.button_pressed
+	if music_player != null:
+		music_player.set_volume_linear(app_music_volume)
+	DisplayServer.window_set_mode(
+		DisplayServer.WINDOW_MODE_FULLSCREEN
+		if app_fullscreen
+		else DisplayServer.WINDOW_MODE_WINDOWED
+	)
+	var config := ConfigFile.new()
+	config.set_value("audio", "music_volume", app_music_volume)
+	config.set_value("audio", "effects_volume", app_effects_volume)
+	config.set_value("display", "fullscreen", app_fullscreen)
+	var error := config.save("user://settings.cfg")
+	status_label.text = (
+		"Settings saved."
+		if error == OK
+		else "Settings applied, but the settings file could not be saved."
+	)
+
+
+func _load_app_settings() -> void:
+	var config := ConfigFile.new()
+	if config.load("user://settings.cfg") == OK:
+		app_music_volume = clampf(
+			float(config.get_value("audio", "music_volume", app_music_volume)), 0.0, 1.0
+		)
+		app_effects_volume = clampf(
+			float(config.get_value("audio", "effects_volume", app_effects_volume)), 0.0, 1.0
+		)
+		app_fullscreen = bool(config.get_value("display", "fullscreen", app_fullscreen))
+	if app_fullscreen:
+		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
+
+
+func _open_scurk_dialog() -> void:
+	scurk_dialog.popup_centered()
+
+
+func _open_about_dialog() -> void:
+	about_dialog.popup_centered()
 
 
 func _create_picture_notice(
@@ -2334,7 +2493,8 @@ func _on_file_menu(id: int) -> void:
 		2: _open_save_dialog()
 		3: _open_tile_set_dialog()
 		4: _restore_original_tile_set()
-		5: get_tree().quit()
+		5: _show_main_menu()
+		6: get_tree().quit()
 
 
 func _on_speed_menu(id: int) -> void:
@@ -2884,6 +3044,13 @@ func _open_city_dialog() -> void:
 	file_dialog.popup_centered_ratio(0.8)
 
 
+func _open_scenario_dialog() -> void:
+	var scenario_directory := ProjectSettings.globalize_path("res://../references/SCENARIO")
+	if DirAccess.dir_exists_absolute(scenario_directory):
+		file_dialog.current_dir = scenario_directory
+	file_dialog.popup_centered_ratio(0.8)
+
+
 func _open_save_dialog() -> void:
 	if current_document == null:
 		return
@@ -3286,6 +3453,7 @@ func _activate_document(
 	game_over_active = false
 	city = loaded_city
 	current_document = document
+	_hide_main_menu()
 	static_render_epoch += 1
 	static_city_image = null
 	static_occlusion_commands.clear()
@@ -4191,6 +4359,7 @@ func _play_sound_events(sound_events: Array) -> void:
 			continue
 		var player := AudioStreamPlayer.new()
 		player.stream = stream
+		player.volume_linear = app_effects_volume
 		player.finished.connect(player.queue_free)
 		add_child(player)
 		player.play()

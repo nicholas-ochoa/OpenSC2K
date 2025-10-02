@@ -1,0 +1,108 @@
+class_name MainMenuControl
+extends ColorRect
+
+signal continue_requested
+signal new_city_requested
+signal open_city_requested
+signal scenario_requested
+signal settings_requested
+signal scurk_requested
+signal about_requested
+signal exit_requested
+
+const BUTTON_LABELS := [
+	"Continue City",
+	"Start New City",
+	"Open City...",
+	"Play Scenario...",
+	"SCURK Tile Editor",
+	"Settings...",
+	"About OpenSC2K...",
+	"Exit",
+]
+
+var continue_button: Button
+var new_city_button: Button
+
+
+func _ready() -> void:
+	name = "MainMenu"
+	color = Color("102832")
+	mouse_filter = Control.MOUSE_FILTER_STOP
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(center)
+	var panel := PanelContainer.new()
+	panel.custom_minimum_size = Vector2(460, 650)
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color("c0c0c0")
+	box.border_color = Color("ffffff")
+	box.set_border_width_all(2)
+	box.shadow_color = Color(0.0, 0.0, 0.0, 0.55)
+	box.shadow_size = 12
+	box.content_margin_left = 44
+	box.content_margin_top = 34
+	box.content_margin_right = 44
+	box.content_margin_bottom = 34
+	panel.add_theme_stylebox_override("panel", box)
+	center.add_child(panel)
+
+	var column := VBoxContainer.new()
+	column.add_theme_constant_override("separation", 12)
+	panel.add_child(column)
+	var title := Label.new()
+	title.text = "OpenSC2K"
+	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title.add_theme_color_override("font_color", Color("000080"))
+	title.add_theme_font_size_override("font_size", 42)
+	column.add_child(title)
+	var subtitle := Label.new()
+	subtitle.text = "An open-source SimCity 2000 remake"
+	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	subtitle.add_theme_color_override("font_color", Color("303030"))
+	subtitle.add_theme_font_size_override("font_size", 16)
+	column.add_child(subtitle)
+	column.add_child(HSeparator.new())
+
+	for index in BUTTON_LABELS.size():
+		var button := Button.new()
+		button.name = BUTTON_LABELS[index].trim_suffix("...").replace(" ", "")
+		button.text = BUTTON_LABELS[index]
+		button.custom_minimum_size = Vector2(0, 42)
+		button.add_theme_font_size_override("font_size", 16)
+		button.pressed.connect(_emit_action.bind(index))
+		column.add_child(button)
+		if index == 0:
+			continue_button = button
+		elif index == 1:
+			new_city_button = button
+	var note := Label.new()
+	note.text = "Cities use the original SC2 and SCN file formats."
+	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	note.add_theme_color_override("font_color", Color("505050"))
+	column.add_child(note)
+
+
+func show_menu(can_continue: bool) -> void:
+	if continue_button != null:
+		continue_button.visible = can_continue
+	show()
+	if can_continue and continue_button != null:
+		continue_button.grab_focus()
+	elif new_city_button != null:
+		new_city_button.grab_focus()
+
+
+func _emit_action(index: int) -> void:
+	match index:
+		0: continue_requested.emit()
+		1: new_city_requested.emit()
+		2: open_city_requested.emit()
+		3: scenario_requested.emit()
+		4: scurk_requested.emit()
+		5: settings_requested.emit()
+		6: about_requested.emit()
+		7: exit_requested.emit()
