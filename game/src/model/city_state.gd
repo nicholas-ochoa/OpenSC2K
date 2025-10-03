@@ -28,6 +28,9 @@ var zones := PackedByteArray()
 var underground := PackedByteArray()
 var text_overlays := PackedByteArray()
 var tile_flags := PackedByteArray()
+# display-only copies can keep objects at the former water surface while they
+# draw the terrain as dry land. this array is never written to an sc2 chunk
+var object_altitude_overrides := PackedInt32Array()
 
 
 static func from_document(source: Sc2File) -> CityState:
@@ -78,6 +81,18 @@ func land_altitude(x: int, y: int) -> int:
 func water_altitude(x: int, y: int) -> int:
 	var index := index_of(x, y)
 	return 0 if index < 0 else (altitude_words[index] >> 5) & 0x1f
+
+
+func object_altitude(x: int, y: int) -> int:
+	var index := index_of(x, y)
+	if index < 0:
+		return 0
+	if (
+		object_altitude_overrides.size() == TILE_COUNT
+		and object_altitude_overrides[index] >= 0
+	):
+		return object_altitude_overrides[index]
+	return water_altitude(x, y) if is_water(x, y) else land_altitude(x, y)
 
 
 func tunnel_levels(x: int, y: int) -> int:

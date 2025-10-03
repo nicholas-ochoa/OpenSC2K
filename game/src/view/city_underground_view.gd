@@ -114,9 +114,14 @@ static func tile_sprite_ids(
 	)
 	if is_pipe:
 		if not show_pipes:
-			result.append(
-				sprite_base + terrain_wireframe_offset(city.terrain_id(x, y))
-			)
+			if underground == 0x1f:
+				result.append(sprite_base + SUBWAY_AND_PIPE_FIRST + 0x01)
+			elif underground == 0x20:
+				result.append(sprite_base + SUBWAY_AND_PIPE_FIRST + 0x02)
+			else:
+				result.append(
+					sprite_base + terrain_wireframe_offset(city.terrain_id(x, y))
+				)
 			return result
 		if city.is_piped(x, y) and city.is_watered(x, y):
 			underground += WATERED_PIPE_OFFSET

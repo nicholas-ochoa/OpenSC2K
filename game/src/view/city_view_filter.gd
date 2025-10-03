@@ -22,12 +22,16 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 	result.underground = source.underground.duplicate()
 	result.text_overlays = source.text_overlays.duplicate()
 	result.tile_flags = source.tile_flags.duplicate()
+	result.object_altitude_overrides = source.object_altitude_overrides.duplicate()
 
 	var show_buildings := bool(visibility.get("buildings", true))
 	var show_networks := bool(visibility.get("networks", true))
 	var show_water := bool(visibility.get("water", true))
 	var show_trees := bool(visibility.get("trees", true))
 	var show_zones := bool(visibility.get("zones", true))
+	if not show_water:
+		result.object_altitude_overrides.resize(CityState.TILE_COUNT)
+		result.object_altitude_overrides.fill(-1)
 	for index in CityState.TILE_COUNT:
 		var building := int(result.buildings[index])
 		if not show_buildings and building >= 0x70:
@@ -39,10 +43,14 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 		if not show_zones:
 			result.zones[index] &= 0xf0
 		if not show_water:
+			if result.tile_flags[index] & 0x04:
+				result.object_altitude_overrides[index] = (
+					int(result.altitude_words[index]) >> 5
+				) & 0x1f
 			result.tile_flags[index] &= 0xfb
 			var terrain := int(result.terrain[index])
-			if terrain >= 0x10 and terrain <= 0x1e:
-				result.terrain[index] = terrain - 0x10
+			if terrain >= 0x10 and terrain <= 0x4f:
+				result.terrain[index] = mini(terrain & 0x0f, 0x0e)
 	return result
 
 

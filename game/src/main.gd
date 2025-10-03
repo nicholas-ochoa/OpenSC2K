@@ -267,6 +267,7 @@ var options_menu: MenuButton
 var view_menu: MenuButton
 var disasters_menu: MenuButton
 var view_visibility_checks: Dictionary = {}
+var view_layers_heading: Label
 var group_selector: OptionButton
 var tool_selector: OptionButton
 var undo_button: Button
@@ -918,10 +919,10 @@ func _build_interface(toolbar_art: Image) -> void:
 	city_map_button.pressed.connect(_open_city_map_window)
 	view_grid.add_child(city_map_button)
 
-	var layers_heading := Label.new()
-	layers_heading.text = "Visible Layers"
-	layers_heading.add_theme_color_override("font_color", Color("000080"))
-	sidebar.add_child(layers_heading)
+	view_layers_heading = Label.new()
+	view_layers_heading.text = "Visible Layers"
+	view_layers_heading.add_theme_color_override("font_color", Color("000080"))
+	sidebar.add_child(view_layers_heading)
 	var layers_grid := GridContainer.new()
 	layers_grid.columns = 2
 	layers_grid.add_theme_constant_override("h_separation", 4)
@@ -2615,6 +2616,7 @@ func _sync_city_option_menus() -> void:
 
 
 func _sync_view_controls() -> void:
+	var underground_active := overlay_mode == "underground"
 	var states := {
 		MENU_VIEW_BUILDINGS: bool(surface_visibility.buildings),
 		MENU_VIEW_NETWORKS: bool(surface_visibility.networks),
@@ -2629,8 +2631,17 @@ func _sync_view_controls() -> void:
 			var item_index := view_menu.get_popup().get_item_index(menu_id)
 			if item_index >= 0:
 				view_menu.get_popup().set_item_checked(item_index, bool(states[menu_id]))
+				view_menu.get_popup().set_item_hidden(
+					item_index,
+					(not underground_active if menu_id == MENU_VIEW_PIPES else underground_active),
+				)
+	if view_layers_heading != null:
+		view_layers_heading.text = (
+			"Underground Layer" if underground_active else "Visible Layers"
+		)
 	for key in view_visibility_checks:
 		var check: CheckBox = view_visibility_checks[key]
+		check.visible = underground_active if key == "pipes" else not underground_active
 		var enabled := (
 			show_underground_pipes
 			if key == "pipes"

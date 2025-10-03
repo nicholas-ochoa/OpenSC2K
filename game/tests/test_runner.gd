@@ -2120,6 +2120,18 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	_check(
 		UndergroundView.tile_sprite_ids(
+			underground_city, 24, 20, IsometricRenderer.VIEW_LARGE, false
+		) == PackedInt32Array([1319]),
+		"Hidden pipes replace the first pipe-subway crossover with subway LR",
+	)
+	_check(
+		UndergroundView.tile_sprite_ids(
+			underground_city, 25, 20, IsometricRenderer.VIEW_LARGE, false
+		) == PackedInt32Array([1320]),
+		"Hidden pipes replace the second pipe-subway crossover with subway TB",
+	)
+	_check(
+		UndergroundView.tile_sprite_ids(
 			underground_city, piped_subway.x, piped_subway.y,
 			IsometricRenderer.VIEW_LARGE, false
 		) == PackedInt32Array([1319]),
@@ -2162,6 +2174,11 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(filtered_source.set_zone_id(13, 10, 2), "View filter adds a zone")
 	_check(filtered_source.set_terrain_id(14, 10, 0x10), "View filter adds water terrain")
 	_check(filtered_source.set_tile_flag(14, 10, 0x04, true), "View filter marks water")
+	_check(filtered_source.set_terrain_id(15, 10, 0x2d), "View filter adds shoreline terrain")
+	_check(filtered_source.set_tile_flag(15, 10, 0x04, true), "View filter marks shoreline water")
+	_check(filtered_source.set_land_altitude(15, 10, 2), "View filter sets shoreline land altitude")
+	_check(filtered_source.set_water_altitude(15, 10, 7), "View filter sets shoreline water altitude")
+	_check(filtered_source.set_building_id(15, 10, 0xf8), "View filter adds a partial-water structure")
 	var filtered := ViewFilter.surface_copy(filtered_source, {
 		"buildings": false,
 		"networks": false,
@@ -2175,8 +2192,14 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and filtered.building_id(12, 10) == 0
 		and filtered.zone_id(13, 10) == 0
 		and filtered.terrain_id(14, 10) == 0
+		and filtered.terrain_id(15, 10) == 0x0d
 		and not filtered.is_water(14, 10),
 		"Surface visibility filters each requested display layer",
+	)
+	_check(
+		filtered.land_altitude(15, 10) == 2
+		and filtered.object_altitude(15, 10) == 7,
+		"Hidden shoreline water draws dry slope terrain but keeps structure altitude",
 	)
 	_check(
 		filtered_source.building_id(10, 10) == 0x80

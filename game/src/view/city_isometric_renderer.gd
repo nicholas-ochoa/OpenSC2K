@@ -406,7 +406,10 @@ static func _draw_tile(
 
 	var building_image: Image
 	if building_id > 0 and _should_draw_building(city, x, y, building_id):
-		var building_base_y := base_y
+		var building_base_y := (
+			flat_base_y
+			- city.object_altitude(x, y) * int(configuration.altitude_step)
+		)
 		if is_highway_composite:
 			_draw_highway_ground(
 				output, city, palette, sprites, cache, configuration,
@@ -448,7 +451,7 @@ static func _draw_tile(
 				- int(marker_image.get_width() / 2)
 			)
 			_blend_on_base(
-				output, marker_image, marker_x, base_y, configuration.tile_height
+				output, marker_image, marker_x, building_base_y, configuration.tile_height
 			)
 	var dispatch_sprite := dispatch_sprite_id(city, x, y, configuration.view_size)
 	if dispatch_sprite > 0:
@@ -486,9 +489,7 @@ static func _draw_tile(
 				screen_x + int(configuration.half_width)
 				- int(special_image.get_width() / 2)
 			)
-			var special_altitude := city.land_altitude(x, y)
-			if city.is_water(x, y):
-				special_altitude = city.water_altitude(x, y)
+			var special_altitude := city.object_altitude(x, y)
 			var special_base_y := (
 				int(configuration.top_margin)
 				+ (x + y) * int(configuration.half_height)
@@ -899,9 +900,7 @@ static func tornado_sprite(
 	var phase := (
 		int(thing.get("px", 0)) + int(thing.get("py", 0)) + x + y + record
 	)
-	var altitude := city.land_altitude(x, y)
-	if city.is_water(x, y):
-		altitude = city.water_altitude(x, y)
+	var altitude := city.object_altitude(x, y)
 	return {
 		"sprite_id": (
 			THING_SPRITES[15] + (view_size - VIEW_LARGE) * 500 + phase % 3
@@ -928,9 +927,7 @@ static func monster_layers(
 		return layers
 	if view_configuration(view_size).is_empty():
 		return layers
-	var altitude := city.land_altitude(x, y)
-	if city.is_water(x, y):
-		altitude = city.water_altitude(x, y)
+	var altitude := city.object_altitude(x, y)
 	var z := int(thing.get("z", 0))
 	var dx := int(thing.get("dx", 0))
 	var dy := int(thing.get("dy", 0))
@@ -1179,9 +1176,7 @@ static func special_overlay_draw_command(
 	var entry := sprites.find_sprite(int(visual.sprite_id))
 	if entry == null:
 		return {}
-	var altitude := city.land_altitude(point.x, point.y)
-	if city.is_water(point.x, point.y):
-		altitude = city.water_altitude(point.x, point.y)
+	var altitude := city.object_altitude(point.x, point.y)
 	var screen_x := (
 		int(configuration.side_margin)
 		+ CityState.MAP_SIZE * int(configuration.half_width)
@@ -1270,9 +1265,7 @@ static func moving_thing_draw_commands_for_visual(
 				- visual.elevation - entry.height
 		)
 	else:
-		var altitude := city.land_altitude(visual.x, visual.y)
-		if city.is_water(visual.x, visual.y):
-			altitude = city.water_altitude(visual.x, visual.y)
+		var altitude := city.object_altitude(visual.x, visual.y)
 		var view_size := int(configuration.view_size)
 		var center_x: int = (
 			int(configuration.side_margin)
@@ -1402,7 +1395,10 @@ static func _tile_occlusion_commands(
 		var building_sprite_id := int(configuration.sprite_base) + building_id
 		var building_entry = sprites.find_sprite(building_sprite_id)
 		if building_entry != null:
-			var building_base_y := base_y + building_baseline_offset(
+			var building_base_y := (
+				flat_base_y
+				- city.object_altitude(x, y) * int(configuration.altitude_step)
+			) + building_baseline_offset(
 				building_id, terrain_id, building_entry.width, configuration.view_size
 			)
 			_append_occluder(
@@ -1422,7 +1418,7 @@ static func _tile_occlusion_commands(
 						Vector2i(
 							screen_x + int(building_entry.width / 2)
 								- int(marker_entry.width / 2),
-							base_y + int(configuration.tile_height)
+							building_base_y + int(configuration.tile_height)
 						),
 						draw_order
 					)
