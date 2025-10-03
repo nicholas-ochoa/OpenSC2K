@@ -2536,8 +2536,15 @@ func _test_scurk_mif(reference_root: String) -> void:
 	mif_files.sort()
 	_check(mif_files.size() == 31, "All 31 supplied SCURK tile sets are present")
 	for filename in mif_files:
-		var tile_set := ScurkTileSet.load_path(scurk_directory.path_join(filename))
+		var mif_path := scurk_directory.path_join(filename)
+		var tile_set := ScurkTileSet.load_path(mif_path)
 		_check(tile_set.is_valid(), "%s parses: %s" % [filename, tile_set.parse_error])
+		if tile_set.is_valid():
+			var serialized := tile_set.to_bytes()
+			_check(
+				serialized.ok and serialized.bytes == FileAccess.get_file_as_bytes(mif_path),
+				"%s has a byte-identical no-change write" % filename,
+			)
 
 	var original := ScurkTileSet.load_path(scurk_directory.path_join("ORIGINAL.MIF"))
 	_check(original.is_valid(), "ORIGINAL.MIF parses: %s" % original.parse_error)
@@ -2590,6 +2597,33 @@ func _test_scurk_mif(reference_root: String) -> void:
 			tile_set_one.names.get(0xb5, "") == "Theater",
 			"SCURK NAME records decode their full ID and terminal-null text",
 		)
+		var original_info := tile_set_one.info_payload.duplicate()
+		var edited_pixels := PackedInt32Array([
+			-1, 7, -1,
+			8, 9, 10,
+		])
+		var edited_shape := tile_set_one.set_shape_indices(1208, 3, 2, edited_pixels)
+		var edited_name := tile_set_one.set_name(0xb5, "Edited Theater")
+		var edited_bytes := tile_set_one.to_bytes()
+		var reparsed := ScurkTileSet.new()
+		_check(
+			edited_shape.ok and edited_name.ok and edited_bytes.ok
+			and reparsed.parse(edited_bytes.bytes),
+			"SCURK writes edited SHAP and NAME records",
+		)
+		if reparsed.is_valid():
+			var edited_entry := reparsed.archive.find_sprite(1208)
+			var edited_decode := edited_entry.decode_indices() if edited_entry != null else {}
+			_check(
+				reparsed.info_payload == original_info
+				and reparsed.names.get(0xb5, "") == "Edited Theater"
+				and edited_entry != null
+				and edited_entry.width == 3
+				and edited_entry.height == 2
+				and edited_decode.get("ok", false)
+				and edited_decode.pixels == edited_pixels,
+				"SCURK edit writes preserve INFO and decode to the edited values",
+			)
 
 	var unpadded := Sc2SpriteArchive.SpriteEntry.new()
 	unpadded.sprite_id = 7

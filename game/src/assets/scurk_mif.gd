@@ -9,6 +9,7 @@ const FILE_HEADER_LENGTH := 12
 var info_payload := PackedByteArray()
 var shapes: Array[Sc2SpriteArchive.SpriteEntry] = []
 var names: Dictionary = {}
+var piece_records: Array[Dictionary] = []
 var archive: Sc2SpriteArchive = Sc2SpriteArchive.new()
 var overrides: Sc2SpriteArchive = Sc2SpriteArchive.new()
 var piece_count := 0
@@ -83,6 +84,142 @@ func is_valid() -> bool:
 	return parse_error.is_empty()
 
 
+func to_bytes() -> Dictionary:
+	if not is_valid():
+		return {"ok": false, "bytes": PackedByteArray(), "error": parse_error}
+	if info_payload.size() != INFO_LENGTH:
+		return {
+			"ok": false,
+			"bytes": PackedByteArray(),
+			"error": "INFO payload length is not 0x72",
+		}
+	if piece_records.size() > 0xffff:
+		return {
+			"ok": false,
+			"bytes": PackedByteArray(),
+			"error": "TILE piece count is too large",
+		}
+
+	var tile_payload := PackedByteArray()
+	_append_u16_be(tile_payload, piece_records.size())
+	for piece in piece_records:
+		var tag := str(piece.get("tag", ""))
+		var payload: PackedByteArray = piece.get("raw_payload", PackedByteArray())
+		if tag.length() != 4:
+			return {
+				"ok": false,
+				"bytes": PackedByteArray(),
+				"error": "TILE piece has an invalid tag",
+			}
+		tile_payload.append_array(tag.to_ascii_buffer())
+		_append_u32_be(tile_payload, payload.size())
+		tile_payload.append_array(payload)
+
+	var bytes := PackedByteArray()
+	bytes.append_array("MIFF".to_ascii_buffer())
+	_append_u32_be(bytes, 0)
+	bytes.append_array("SC2K".to_ascii_buffer())
+	bytes.append_array("INFO".to_ascii_buffer())
+	_append_u32_be(bytes, info_payload.size())
+	bytes.append_array(info_payload)
+	bytes.append_array("TILE".to_ascii_buffer())
+	_append_u32_be(bytes, tile_payload.size())
+	bytes.append_array(tile_payload)
+	_write_u32_be(bytes, 4, bytes.size() - 8)
+	return {"ok": true, "bytes": bytes, "error": ""}
+
+
+func save_path(path: String) -> Dictionary:
+	var encoded := to_bytes()
+	if not encoded.ok:
+		return {"ok": false, "error": encoded.error}
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return {
+			"ok": false,
+			"error": "cannot open SCURK tile set for writing: %s" % path,
+		}
+	file.store_buffer(encoded.bytes)
+	var error := file.get_error()
+	file.close()
+	if error != OK:
+		return {"ok": false, "error": "cannot write SCURK tile set: %s" % error_string(error)}
+	return {"ok": true, "error": ""}
+
+
+func set_name(sprite_id: int, value: String) -> Dictionary:
+	if sprite_id < 0 or sprite_id > 0xffff:
+		return {"ok": false, "error": "NAME sprite ID is outside the 16-bit range"}
+	var name_bytes := value.to_ascii_buffer()
+	if name_bytes.size() + 1 > 0xffff:
+		return {"ok": false, "error": "NAME text is too long"}
+	name_bytes.append(0)
+	var payload := PackedByteArray()
+	_append_u16_be(payload, sprite_id)
+	_append_u16_be(payload, name_bytes.size())
+	payload.append_array(name_bytes)
+	var record_index := _last_piece_index("NAME", sprite_id)
+	if record_index < 0:
+		piece_records.append({
+			"tag": "NAME",
+			"sprite_id": sprite_id,
+			"raw_payload": payload,
+		})
+	else:
+		piece_records[record_index].raw_payload = payload
+	names[sprite_id] = value
+	piece_count = piece_records.size()
+	return {"ok": true, "error": ""}
+
+
+func set_shape_indices(
+	sprite_id: int, width: int, height: int, pixels: PackedInt32Array
+) -> Dictionary:
+	if sprite_id < 0 or sprite_id > 0xffff:
+		return {"ok": false, "error": "SHAP sprite ID is outside the 16-bit range"}
+	if width <= 0 or height <= 0 or width > 255 or height > 0xffff:
+		return {"ok": false, "error": "SHAP dimensions are invalid"}
+	if pixels.size() != width * height:
+		return {"ok": false, "error": "SHAP pixel count does not match its dimensions"}
+	for pixel in pixels:
+		if pixel < -1 or pixel > 0xff:
+			return {"ok": false, "error": "SHAP palette index is invalid"}
+	var pixel_data := _encode_pixels(width, height, pixels)
+	if pixel_data.is_empty():
+		return {"ok": false, "error": "SHAP pixels cannot be encoded"}
+	var payload := PackedByteArray()
+	_append_u16_be(payload, sprite_id)
+	_append_u16_be(payload, width)
+	_append_u16_be(payload, height)
+	_append_u32_be(payload, pixel_data.size())
+	payload.append_array(pixel_data)
+
+	var record_index := _last_piece_index("SHAP", sprite_id)
+	var entry: Sc2SpriteArchive.SpriteEntry
+	if record_index < 0:
+		entry = Sc2SpriteArchive.SpriteEntry.new()
+		entry.sprite_id = sprite_id
+		entry.duplicate_index = 0
+		shapes.append(entry)
+		piece_records.append({
+			"tag": "SHAP",
+			"sprite_id": sprite_id,
+			"entry": entry,
+			"raw_payload": payload,
+		})
+	else:
+		entry = piece_records[record_index].entry as Sc2SpriteArchive.SpriteEntry
+		piece_records[record_index].raw_payload = payload
+	entry.width = width
+	entry.height = height
+	entry.encoded_pixels = _normalize_pixel_end(pixel_data)
+	entry.allow_unpadded_odd_runs = true
+	entry._index_image = null
+	_rebuild_archives()
+	piece_count = piece_records.size()
+	return {"ok": true, "error": ""}
+
+
 func _parse_shape(
 	bytes: PackedByteArray,
 	payload_start: int,
@@ -120,6 +257,12 @@ func _parse_shape(
 			overrides.entries.append(entry)
 			overrides.entries_by_id[entry.sprite_id] = entry
 			break
+	piece_records.append({
+		"tag": "SHAP",
+		"sprite_id": entry.sprite_id,
+		"entry": entry,
+		"raw_payload": bytes.slice(payload_start, payload_end),
+	})
 	return true
 
 
@@ -134,6 +277,11 @@ func _parse_name(bytes: PackedByteArray, payload_start: int, payload_end: int) -
 	while not name_bytes.is_empty() and name_bytes[name_bytes.size() - 1] == 0:
 		name_bytes.resize(name_bytes.size() - 1)
 	names[sprite_id] = name_bytes.get_string_from_ascii()
+	piece_records.append({
+		"tag": "NAME",
+		"sprite_id": sprite_id,
+		"raw_payload": bytes.slice(payload_start, payload_end),
+	})
 	return true
 
 
@@ -141,6 +289,7 @@ func _clear() -> void:
 	info_payload.clear()
 	shapes.clear()
 	names.clear()
+	piece_records.clear()
 	archive = Sc2SpriteArchive.new()
 	overrides = Sc2SpriteArchive.new()
 	piece_count = 0
@@ -184,3 +333,78 @@ static func _read_u32_be(bytes: PackedByteArray, offset: int) -> int:
 		| (bytes[offset + 2] << 8)
 		| bytes[offset + 3]
 	)
+
+
+func _last_piece_index(tag: String, sprite_id: int) -> int:
+	for index in range(piece_records.size() - 1, -1, -1):
+		var piece: Dictionary = piece_records[index]
+		if piece.get("tag", "") == tag and int(piece.get("sprite_id", -1)) == sprite_id:
+			return index
+	return -1
+
+
+func _rebuild_archives() -> void:
+	archive = Sc2SpriteArchive.new()
+	overrides = Sc2SpriteArchive.new()
+	for entry in shapes:
+		archive.entries.append(entry)
+		archive.entries_by_id[entry.sprite_id] = entry
+		var decoded := entry.decode_indices()
+		if not decoded.get("ok", false):
+			continue
+		for pixel in decoded.pixels:
+			if pixel >= 0:
+				overrides.entries.append(entry)
+				overrides.entries_by_id[entry.sprite_id] = entry
+				break
+
+
+static func _encode_pixels(
+	width: int, height: int, pixels: PackedInt32Array
+) -> PackedByteArray:
+	var encoded := PackedByteArray()
+	for y in height:
+		var row := PackedByteArray()
+		var x := 0
+		while x < width:
+			var transparent := pixels[y * width + x] < 0
+			var run_start := x
+			while x < width and (pixels[y * width + x] < 0) == transparent and x - run_start < 255:
+				x += 1
+			var count := x - run_start
+			if transparent:
+				row.append(count)
+				row.append(3)
+			else:
+				row.append(count)
+				row.append(4)
+				for pixel_x in range(run_start, x):
+					row.append(pixels[y * width + pixel_x])
+				if count % 2 == 1:
+					row.append(0)
+		if row.size() > 255:
+			return PackedByteArray()
+		encoded.append(row.size())
+		encoded.append(1)
+		encoded.append_array(row)
+	encoded.append_array(PackedByteArray([2, 1, 2, 2]))
+	return encoded
+
+
+static func _append_u16_be(bytes: PackedByteArray, value: int) -> void:
+	bytes.append((value >> 8) & 0xff)
+	bytes.append(value & 0xff)
+
+
+static func _append_u32_be(bytes: PackedByteArray, value: int) -> void:
+	bytes.append((value >> 24) & 0xff)
+	bytes.append((value >> 16) & 0xff)
+	bytes.append((value >> 8) & 0xff)
+	bytes.append(value & 0xff)
+
+
+static func _write_u32_be(bytes: PackedByteArray, offset: int, value: int) -> void:
+	bytes[offset] = (value >> 24) & 0xff
+	bytes[offset + 1] = (value >> 16) & 0xff
+	bytes[offset + 2] = (value >> 8) & 0xff
+	bytes[offset + 3] = value & 0xff
