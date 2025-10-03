@@ -179,6 +179,18 @@ const FLAG_LABELS := [
 	[0x02, "rotated"], [0x01, "saltwater"],
 ]
 
+const THING_NAMES := [
+	"None", "Airplane", "Helicopter", "Cargo ship", "Bulldozer",
+	"Monster", "Explosion", "Police", "Fire", "Sailboat",
+	"Train engine", "Train car", "Subway engine", "Subway car",
+	"Military", "Tornado", "Maxis Man",
+]
+
+const DIRECTION_NAMES := [
+	"North", "Northeast", "East", "Southeast",
+	"South", "Southwest", "West", "Northwest",
+]
+
 
 static func inspect(
 	city: CityState, point: Vector2i, resource_strings: Dictionary = {}
@@ -372,6 +384,7 @@ static func _advanced_details(
 		"underground_id": underground_id,
 		"underground_name": underground_name,
 		"microsim_id": microsim_id,
+		"things": _things_at(city, point),
 	}
 	if microsim_id >= 0:
 		result["microsim"] = city.microsim(microsim_id)
@@ -402,19 +415,70 @@ static func _advanced_lines(info: Dictionary) -> PackedStringArray:
 	var microsim_id := int(info.get("microsim_id", -1))
 	if microsim_id < 0:
 		result.append("Microsim ID: None")
-		return result
-	var microsim: Dictionary = info.get("microsim", {})
-	var microsim_label := str(info.get("microsim_label", ""))
-	if not microsim_label.is_empty():
-		result.append("Microsim name: %s" % microsim_label)
-	result.append("Microsim ID: %d / 0x%02X" % [microsim_id, microsim_id])
-	if microsim.is_empty():
-		result.append("XMIC data: unavailable")
-		return result
-	result.append("Data 0: %d / 0x%02X" % [microsim.stat_0, microsim.stat_0])
-	for data_index in range(1, 4):
-		var value := int(microsim["stat_%d" % data_index])
-		result.append("Data %d: %d / 0x%04X" % [data_index, value, value])
+	else:
+		var microsim: Dictionary = info.get("microsim", {})
+		var microsim_label := str(info.get("microsim_label", ""))
+		if not microsim_label.is_empty():
+			result.append("Microsim name: %s" % microsim_label)
+		result.append("Microsim ID: %d / 0x%02X" % [microsim_id, microsim_id])
+		if microsim.is_empty():
+			result.append("XMIC data: unavailable")
+		else:
+			result.append("Data 0: %d / 0x%02X" % [microsim.stat_0, microsim.stat_0])
+			for data_index in range(1, 4):
+				var value := int(microsim["stat_%d" % data_index])
+				result.append("Data %d: %d / 0x%04X" % [data_index, value, value])
+	var things: Array = info.get("things", [])
+	if not things.is_empty():
+		result.append("")
+		result.append("XTHG moving objects")
+		for thing in things:
+			result.append(
+				"Record %d: %s (type %d / 0x%02X)"
+				% [thing.record, thing.type_name, thing.type, thing.type]
+			)
+			result.append(
+				"Direction: %s (%d)  State: %d / 0x%02X"
+				% [thing.direction_name, thing.direction, thing.state, thing.state]
+			)
+			result.append(
+				"Position: X=%d Y=%d Z=%d  PX=%d PY=%d"
+				% [thing.x, thing.y, thing.z, thing.px, thing.py]
+			)
+			result.append(
+				"Target/data: DX=%d DY=%d  Label=%d  Goal=%d"
+				% [thing.dx, thing.dy, thing.label, thing.goal]
+			)
+	return result
+
+
+static func _things_at(city: CityState, point: Vector2i) -> Array[Dictionary]:
+	var result: Array[Dictionary] = []
+	for record in range(1, CityState.THING_COUNT):
+		var thing := city.thing(record)
+		var thing_type := int(thing.get("type", 0))
+		if (
+			thing_type == 0
+			or int(thing.get("x", -1)) != point.x
+			or int(thing.get("y", -1)) != point.y
+		):
+			continue
+		var direction := int(thing.get("direction", 0))
+		thing["record"] = record
+		thing["type_name"] = (
+			THING_NAMES[thing_type]
+			if thing_type >= 0 and thing_type < THING_NAMES.size()
+			else "Unknown"
+		)
+		thing["direction_name"] = (
+			DIRECTION_NAMES[direction]
+			if direction >= 0 and direction < DIRECTION_NAMES.size()
+			else "Unknown"
+		)
+		var visual := Presentation.thing_sprite(city, point, thing, record)
+		thing["sprite_id"] = int(visual.get("sprite_id", -1))
+		thing["sprite_flip"] = bool(visual.get("flip", false))
+		result.append(thing)
 	return result
 
 

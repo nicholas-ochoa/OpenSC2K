@@ -7,6 +7,7 @@ const LAST_THING_OVERLAY := 240
 const SAILBOAT_TYPE := 9
 const LARGE_SPRITE_BASE := 1000
 const LARGE_SAILBOAT_NORTHEAST := 1380
+const LARGE_VIEW := Renderer.VIEW_LARGE
 
 
 static func sprite_id(city: CityState, info: Dictionary) -> int:
@@ -34,3 +35,35 @@ static func sprite_id(city: CityState, info: Dictionary) -> int:
 		if int(thing.get("type", 0)) == SAILBOAT_TYPE:
 			result = LARGE_SAILBOAT_NORTHEAST
 	return result
+
+
+static func thing_sprite(
+	city: CityState, point: Vector2i, thing: Dictionary, record := -1
+) -> Dictionary:
+	if city == null or not city.is_valid() or thing.is_empty():
+		return {}
+	var thing_type := int(thing.get("type", 0))
+	if thing_type < 1 or thing_type >= Renderer.THING_SPRITES.size():
+		return {}
+	match thing_type:
+		5:
+			return {"sprite_id": Renderer.THING_SPRITES[5], "flip": false}
+		7, 8, 14:
+			var offset := int(Renderer.DISPATCH_SPRITE_OFFSETS.get(thing_type, 0))
+			return {
+				"sprite_id": LARGE_SPRITE_BASE + offset,
+				"flip": false,
+			}
+		10, 11:
+			return Renderer.train_sprite(city, point.x, point.y, thing)
+		12, 13:
+			return {
+				"sprite_id": Renderer.THING_SPRITES[thing_type],
+				"flip": false,
+			}
+		15:
+			return Renderer.tornado_sprite(
+				city, point.x, point.y, thing, max(record, 0), LARGE_VIEW
+			)
+		_:
+			return Renderer.moving_thing_sprite(thing, LARGE_VIEW)

@@ -11118,6 +11118,12 @@ func _test_query_info(reference_root: String) -> void:
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Query fixture clears %s" % chunk_id,
 		)
+	_check(
+		document.find_chunk("XTHG").set_decoded_payload(
+			_filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)
+		),
+		"Query fixture clears XTHG",
+	)
 	var traffic := _filled_bytes(64 * 64, 0)
 	traffic[4 * 64 + 5] = 8
 	traffic[5 * 64 + 4] = 8
@@ -11138,6 +11144,38 @@ func _test_query_info(reference_root: String) -> void:
 	_check(info.ok and info.kind == "general", "General query succeeds: %s" % info.error)
 	_check(info.title == "Road", "General query classifies the tile")
 	_check(info.sound_events.is_empty(), "General query does not request a sound")
+	_check(
+		info.things.is_empty()
+		and not Queries.format_text(info).contains("XTHG moving objects"),
+		"Query hides XTHG fields when no moving object occupies the tile",
+	)
+	var things_data := document.find_chunk("XTHG").decoded_payload.duplicate()
+	var thing_offset := CityState.THING_RECORD_SIZE
+	var thing_values := [2, 5, 3, 42, 42, 6, 7, 8, 50, 51, 12, 13]
+	for field in CityState.THING_RECORD_SIZE:
+		things_data[thing_offset + field] = thing_values[field]
+	_check(
+		document.find_chunk("XTHG").set_decoded_payload(things_data),
+		"Query fixture stores an XTHG helicopter",
+	)
+	var thing_info := Queries.inspect(city, Vector2i(42, 42))
+	var thing_text := Queries.format_text(thing_info)
+	_check(
+		thing_info.things.size() == 1
+		and thing_info.things[0].record == 1
+		and thing_info.things[0].type_name == "Helicopter"
+		and thing_info.things[0].direction_name == "Southwest"
+		and thing_info.things[0].sprite_id == 1366
+		and thing_info.things[0].sprite_flip,
+		"Query exposes the matching XTHG record and its native sprite",
+	)
+	_check(
+		thing_text.contains("XTHG moving objects")
+		and thing_text.contains("Record 1: Helicopter")
+		and thing_text.contains("Position: X=42 Y=42 Z=6  PX=7 PY=8")
+		and thing_text.contains("Target/data: DX=50 DY=51  Label=12  Goal=13"),
+		"Query formats all saved XTHG fields only when a record is present",
+	)
 	var named_info := Queries.inspect(city, Vector2i(10, 10), original_strings)
 	_check(
 		named_info.title

@@ -307,6 +307,9 @@ var query_name_input: LineEdit
 var query_text_view: TextEdit
 var query_sprite_view: TextureRect
 var query_sprite_caption: Label
+var query_thing_panel: VBoxContainer
+var query_thing_sprite_view: TextureRect
+var query_thing_caption: Label
 var query_rename_button: Button
 var query_action_button: Button
 var query_ok_button: Button
@@ -2139,7 +2142,7 @@ func _build_query_dialog() -> void:
 	query_overlay.add_child(query_center)
 	query_dialog = PanelContainer.new()
 	query_dialog.name = "QueryDialog"
-	query_dialog.custom_minimum_size = Vector2(820, 620)
+	query_dialog.custom_minimum_size = Vector2(900, 660)
 	query_dialog.mouse_filter = Control.MOUSE_FILTER_STOP
 	query_dialog.add_theme_stylebox_override(
 		"panel", _classic_box(Color("c0c0c0"), Color("404040"), 2)
@@ -2176,7 +2179,7 @@ func _build_query_dialog() -> void:
 	query_body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	query_column.add_child(query_body)
 	var query_text_column := VBoxContainer.new()
-	query_text_column.custom_minimum_size = Vector2(555, 0)
+	query_text_column.custom_minimum_size = Vector2(585, 0)
 	query_text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	query_text_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	query_body.add_child(query_text_column)
@@ -2203,7 +2206,7 @@ func _build_query_dialog() -> void:
 	query_text_column.add_child(query_text_view)
 
 	var query_image_panel := PanelContainer.new()
-	query_image_panel.custom_minimum_size = Vector2(235, 0)
+	query_image_panel.custom_minimum_size = Vector2(285, 0)
 	query_image_panel.add_theme_stylebox_override(
 		"panel", _classic_box(Color("ffffff"), Color("808080"), 1)
 	)
@@ -2221,6 +2224,22 @@ func _build_query_dialog() -> void:
 	query_sprite_view.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 	query_sprite_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	query_image_column.add_child(query_sprite_view)
+	query_thing_panel = VBoxContainer.new()
+	query_thing_panel.add_theme_constant_override("separation", 4)
+	query_thing_panel.visible = false
+	query_image_column.add_child(query_thing_panel)
+	var query_thing_separator := HSeparator.new()
+	query_thing_panel.add_child(query_thing_separator)
+	query_thing_caption = Label.new()
+	query_thing_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	query_thing_caption.add_theme_color_override("font_color", Color("101010"))
+	query_thing_panel.add_child(query_thing_caption)
+	query_thing_sprite_view = TextureRect.new()
+	query_thing_sprite_view.custom_minimum_size = Vector2(260, 190)
+	query_thing_sprite_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	query_thing_sprite_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+	query_thing_sprite_view.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	query_thing_panel.add_child(query_thing_sprite_view)
 
 	var query_button_row := HBoxContainer.new()
 	query_button_row.add_theme_constant_override("separation", 8)
@@ -5710,17 +5729,32 @@ func _open_query(point: Vector2i) -> void:
 	query_text_view.text = Queries.format_text(result)
 	query_text_view.scroll_vertical = 0
 	var sprite_id := int(result.get("sprite_id", -1))
-	query_sprite_view.texture = _query_sprite_texture(sprite_id)
+	query_sprite_view.texture = _query_sprite_texture(sprite_id, false, 2)
 	query_sprite_caption.text = (
 		"Tile %d  •  Sprite %d" % [result.tile_id, sprite_id]
 		if sprite_id >= 0 else "Image unavailable"
 	)
+	var things: Array = result.get("things", [])
+	query_thing_panel.visible = not things.is_empty()
+	if things.is_empty():
+		query_thing_sprite_view.texture = null
+		query_thing_caption.text = ""
+	else:
+		var thing: Dictionary = things[0]
+		var thing_sprite_id := int(thing.get("sprite_id", -1))
+		query_thing_sprite_view.texture = _query_sprite_texture(
+			thing_sprite_id, bool(thing.get("sprite_flip", false)), 2
+		)
+		query_thing_caption.text = (
+			"XTHG %d  •  %s  •  Sprite %d"
+			% [thing.record, thing.type_name, thing_sprite_id]
+		)
 	query_overlay.show()
 	_play_sound_events(result.get("sound_events", []))
 	query_ok_button.grab_focus()
 
 
-func _query_sprite_texture(sprite_id: int) -> Texture2D:
+func _query_sprite_texture(sprite_id: int, flip := false, scale := 2) -> Texture2D:
 	if sprite_id < 0 or palette == null:
 		return null
 	var archive: Sc2SpriteArchive = (
@@ -5734,7 +5768,12 @@ func _query_sprite_texture(sprite_id: int) -> Texture2D:
 	var image_result := entry.create_image(palette)
 	if not image_result.get("ok", false):
 		return null
-	return ImageTexture.create_from_image(image_result.image)
+	var image: Image = image_result.image.duplicate()
+	if flip:
+		image.flip_x()
+	if scale > 1:
+		image.resize(image.get_width() * scale, image.get_height() * scale, Image.INTERPOLATE_NEAREST)
+	return ImageTexture.create_from_image(image)
 
 
 func _enable_query_rename() -> void:
@@ -5766,6 +5805,7 @@ func _close_query(commit_rename := false) -> bool:
 		active_query_result["title"] = renamed.new_value
 	query_overlay.hide()
 	query_sprite_view.texture = null
+	query_thing_sprite_view.texture = null
 	return true
 
 
