@@ -38,6 +38,7 @@ const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
+const MovingThingAudio = preload("res://src/audio/moving_thing_audio.gd")
 const Networks = preload("res://src/tools/network_command.gd")
 const Hydro = preload("res://src/tools/hydro_command.gd")
 const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
@@ -4379,8 +4380,13 @@ func _play_sound_events(sound_events: Array) -> void:
 	if city == null or not city.sound_enabled():
 		return
 	for sound_event in sound_events:
+		var sound_id := MovingThingAudio.event_sound_id(
+			sound_event, overlay_mode, _city_view_size()
+		)
+		if sound_id < 0:
+			continue
 		var sound_path := reference_root.path_join(
-			"SOUNDS/%d.WAV" % int(sound_event)
+			"SOUNDS/%d.WAV" % sound_id
 		)
 		if not FileAccess.file_exists(sound_path):
 			continue

@@ -16,6 +16,7 @@ const MISC_SUBWAY_COUNT := 0x0fe8
 const MISC_NORMAL_POPULATION := 0x102c
 const NEWSPAPER_BRIDGE_COLLAPSE := 39
 const SOUND_EXPLODE := 504
+const SOUND_SHIP := 517
 const POPULATION_BY_DENSITY := [0, 1, 8, 12, 36]
 const BUILDING_BASE := [
 	0, 0x70, 0x8c, 0x90, 0xae,
@@ -527,7 +528,12 @@ static func _seaport_growth_selection(
 			if ship.spawned:
 				counters.spawned_ships += 1
 				counters["ship_home"] = ship.point
-				counters.news_items.append({"type": 0x205, "argument": 0})
+				counters.sound_events.append({
+					"sound_id": SOUND_SHIP,
+					"thing_type": 3,
+					"record": int(ship.record),
+					"point": ship.point,
+				})
 		return -1
 	var crane_count := _special_tile_count(misc, 0xe0, military)
 	if int(_special_tile_count(misc, 0xf2, military) / 4) >= crane_count:

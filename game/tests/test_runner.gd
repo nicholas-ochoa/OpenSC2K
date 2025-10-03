@@ -85,6 +85,7 @@ const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
 const Music = preload("res://src/audio/music_director.gd")
 const MidiFile = preload("res://src/audio/standard_midi_file.gd")
 const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
+const ThingAudio = preload("res://src/audio/moving_thing_audio.gd")
 
 var failures := 0
 var checks := 0
@@ -1738,6 +1739,21 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(not map_control.zoom_in(), "City view rejects zoom above the largest fixed level")
 	_check(map_control.zoom_out(), "City view accepts a fixed zoom-out step")
 	_check(map_control.zoom_percent() == 100, "City view zoom-out restores native scale")
+	_check(
+		map_control.wheel_zoom(1, Vector2.INF, 1000)
+		and map_control.zoom_percent() == 200,
+		"Mouse wheel accepts one zoom level at the start of its debounce interval",
+	)
+	_check(
+		not map_control.wheel_zoom(-1, Vector2.INF, 1249)
+		and map_control.zoom_percent() == 200,
+		"Mouse wheel rejects another zoom level before 250 milliseconds",
+	)
+	_check(
+		map_control.wheel_zoom(-1, Vector2.INF, 1250)
+		and map_control.zoom_percent() == 100,
+		"Mouse wheel accepts the next zoom level after 250 milliseconds",
+	)
 	var center_tile := Vector2i(64, 64)
 	var center_polygon := IsometricRenderer.tile_polygon(starter, center_tile.x, center_tile.y)
 	var expected_center := (
@@ -7282,8 +7298,11 @@ func _test_special_zone_growth(reference_root: String) -> void:
 		ship_result.ok
 		and ship_result.spawned_ships == 1
 		and ship_result.ship_home == Vector2i(2, 10)
-		and ship_result.news_items == [{"type": 0x205, "argument": 0}],
-		"Seaport crane spawns a cargo ship and reports its home and immediate news",
+		and ship_result.news_items.is_empty()
+		and ship_result.sound_events.size() == 1
+		and ship_result.sound_events[0].sound_id == 517
+		and ship_result.sound_events[0].thing_type == 3,
+		"Seaport crane spawns a cargo ship and requests its immediate sound",
 	)
 	var ship: Dictionary = ship_fixture.city.thing(1)
 	_check(
@@ -7425,11 +7444,12 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(
 		first_explosion_frame.ok
 		and first_explosion_frame.complete
-		and first_explosion_frame.news_items.size() == 1
-		and first_explosion_frame.news_items[0].type == 0x1f8
+		and first_explosion_frame.news_items.is_empty()
+		and first_explosion_frame.sound_events[0].sound_id == 0x1f8
+		and first_explosion_frame.sound_events[0].thing_type == 6
 		and second_explosion_frame.ok
 		and final_explosion_frame.ok,
-		"Explosion record requests news and advances through two animation frames",
+		"Explosion record requests sound and advances through two animation frames",
 	)
 	_check(
 		explosion.city.thing(1).type == 0
@@ -7667,8 +7687,9 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		attack_result.ok
 		and attack_result.maxis_man_destroyed_targets == 1
 		and attack_result.maxis_man_explosions == 1
-		and attack_result.news_items.size() == 1
-		and attack_result.news_items[0].type == 0x1f8
+		and attack_result.news_items.is_empty()
+		and attack_result.sound_events[0].sound_id == 0x1f8
+		and attack_result.sound_events[0].thing_type == 16
 		and attacking_maxis.city.thing(39).state == 2,
 		"Maxis Man destroys its exact XTHG target on the recovered random gate",
 	)
@@ -7710,8 +7731,9 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		radioactive_result.ok
 		and radioactive_result.monster_damage_hits == 1
 		and radioactive_result.moved_monsters == 1
-		and radioactive_result.news_items.size() == 1
-		and radioactive_result.news_items[0].type == 0x202,
+		and radioactive_result.news_items.is_empty()
+		and radioactive_result.sound_events[0].sound_id == 0x202
+		and radioactive_result.sound_events[0].thing_type == 5,
 		"Goal-one monster demolishes its diagonal target and marks a damage effect",
 	)
 	_check(
@@ -7772,11 +7794,12 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		takeoff_plane_result.ok
 		and takeoff_plane_result.active_airplanes == 1
 		and takeoff_plane_result.moved_airplanes == 1
-		and takeoff_plane_result.news_items.size() == 1
-		and takeoff_plane_result.news_items[0].type == 0x206
+		and takeoff_plane_result.news_items.is_empty()
+		and takeoff_plane_result.sound_events[0].sound_id == 0x206
+		and takeoff_plane_result.sound_events[0].thing_type == 1
 		and airplane.city.thing(1).x == 21
 		and airplane.city.thing(1).z == 1,
-		"Airplane takeoff moves at sixteen sub-tiles, gains height, and requests news",
+		"Airplane takeoff moves at sixteen sub-tiles, gains height, and requests sound",
 	)
 
 	var cruising_plane := _special_growth_fixture(reference_root)
@@ -7825,8 +7848,9 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(
 		landing_plane_result.ok
 		and landing_plane_result.landed_airplanes == 1
-		and landing_plane_result.news_items.size() == 1
-		and landing_plane_result.news_items[0].type == 0x207
+		and landing_plane_result.news_items.is_empty()
+		and landing_plane_result.sound_events[0].sound_id == 0x207
+		and landing_plane_result.sound_events[0].thing_type == 1
 		and landing_plane.city.thing(1).type == 0
 		and landing_plane.city.text_overlay_id(21, 20) == 0,
 		"Airplane completes descent and releases its record on a runway",
@@ -7881,8 +7905,9 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 	_check(
 		falling_result.ok
-		and falling_result.news_items.size() == 1
-		and falling_result.news_items[0].type == 0x203
+		and falling_result.news_items.is_empty()
+		and falling_result.sound_events[0].sound_id == 0x203
+		and falling_result.sound_events[0].thing_type == 1
 		and falling_plane.city.thing(1).z == 8
 		and falling_plane.city.thing(1).direction == 3
 		and falling_plane.city.thing(1).x == 21
@@ -7941,8 +7966,9 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(
 		depart_result.ok
 		and depart_result.departing_ships == 1
-		and depart_result.news_items.size() == 1
-		and depart_result.news_items[0].type == 0x205
+		and depart_result.news_items.is_empty()
+		and depart_result.sound_events[0].sound_id == 0x205
+		and depart_result.sound_events[0].thing_type == 3
 		and docking_ship.city.thing(1).state == 4
 		and docking_ship.city.thing(1).dx == 2
 		and docking_ship.city.thing(1).dy == 10,
@@ -8066,12 +8092,25 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 	_check(
 		first_traffic_news.ok
-		and first_traffic_news.news_items.size() == 1
-		and first_traffic_news.news_items[0].type == 0x1fe
+		and first_traffic_news.news_items.is_empty()
+		and first_traffic_news.sound_events[0].sound_id == 0x1fe
+		and first_traffic_news.sound_events[0].thing_type == 2
 		and first_traffic_news.traffic_news_deadline_msec == 6000
-		and throttled_traffic_news.news_items.is_empty()
-		and resumed_traffic_news.news_items.size() == 1,
-		"Helicopter traffic news uses the recovered strict five-second deadline",
+		and throttled_traffic_news.sound_events.is_empty()
+		and resumed_traffic_news.sound_events.size() == 1,
+		"Helicopter sound uses the recovered strict five-second deadline",
+	)
+	_check(
+		ThingAudio.event_sound_id(
+			first_traffic_news.sound_events[0], "city", IsometricRenderer.VIEW_MEDIUM
+		) == -1
+		and ThingAudio.event_sound_id(
+			first_traffic_news.sound_events[0], "underground", IsometricRenderer.VIEW_LARGE
+		) == -1
+		and ThingAudio.event_sound_id(
+			first_traffic_news.sound_events[0], "city", IsometricRenderer.VIEW_LARGE
+		) == 510,
+		"Moving-object sound follows the object's minimum zoom and surface view",
 	)
 
 	var avoiding := _special_growth_fixture(reference_root)
@@ -8181,9 +8220,10 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(
 		distress_result.ok
 		and distress_result.distressed_sailboats == 1
-		and distress_result.news_items.size() == 1
-		and distress_result.news_items[0].type == 0x20f,
-		"Sailboat distress sets its state and returns news item 0x20f",
+		and distress_result.news_items.is_empty()
+		and distress_result.sound_events[0].sound_id == 0x20f
+		and distress_result.sound_events[0].thing_type == 9,
+		"Sailboat distress sets its state and requests sound 0x20f",
 	)
 	_check(distress.city.thing(1).state == 1, "Distressed sailboat stores state one")
 	var removal_result := MovingThingTick.run(
@@ -8259,9 +8299,10 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(
 		train_turn_result.ok
 		and train_turn_result.turned_trains == 1
-		and train_turn_result.news_items.size() == 1
-		and train_turn_result.news_items[0].type == 0x20c,
-		"Train side turn returns the recovered random news item",
+		and train_turn_result.news_items.is_empty()
+		and train_turn_result.sound_events[0].sound_id == 0x20c
+		and train_turn_result.sound_events[0].thing_type == 10,
+		"Train side turn returns the recovered random sound",
 	)
 	_check(
 		turning_train.city.thing(1).x == 21

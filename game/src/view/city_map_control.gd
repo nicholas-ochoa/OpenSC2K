@@ -17,6 +17,7 @@ const BuildingTool = preload("res://src/tools/building_command.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const ZOOM_LEVELS := [0.25, 0.5, 1.0, 2.0]
 const DEFAULT_ZOOM_INDEX := 2
+const WHEEL_ZOOM_DEBOUNCE_MSEC := 250
 const SIGN_FONT_HEIGHTS := [12, 14, 16]
 const SIGN_PANEL_FILL := Color("9f9f9f")
 const SIGN_POST_FILL := Color("bbbbbb")
@@ -78,6 +79,7 @@ var _panning := false
 var _effect_generation := 0
 var _shake_generation := 0
 var _shake_offset := Vector2.ZERO
+var _next_wheel_zoom_msec := 0
 var _base_layer: TextureRect
 var _base_material: ShaderMaterial
 var _dynamic_canvas: CityDynamicSpriteCanvas
@@ -204,6 +206,21 @@ func zoom_in(local_point := Vector2.INF) -> bool:
 
 func zoom_out(local_point := Vector2.INF) -> bool:
 	return _change_zoom(-1, local_point)
+
+
+func wheel_zoom(
+	direction: int, local_point := Vector2.INF, current_time_msec := -1
+) -> bool:
+	if direction == 0:
+		return false
+	if current_time_msec < 0:
+		current_time_msec = Time.get_ticks_msec()
+	if current_time_msec < _next_wheel_zoom_msec:
+		return false
+	var changed := _change_zoom(1 if direction > 0 else -1, local_point)
+	if changed:
+		_next_wheel_zoom_msec = current_time_msec + WHEEL_ZOOM_DEBOUNCE_MSEC
+	return changed
 
 
 func can_zoom_in() -> bool:
@@ -703,11 +720,11 @@ func _gui_input(event: InputEvent) -> void:
 
 func _handle_mouse_button(event: InputEventMouseButton) -> void:
 	if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-		zoom_in(event.position)
+		wheel_zoom(1, event.position)
 		accept_event()
 		return
 	if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-		zoom_out(event.position)
+		wheel_zoom(-1, event.position)
 		accept_event()
 		return
 	if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed and cancel_active_selection():
