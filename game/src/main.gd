@@ -231,12 +231,13 @@ var palette_cycle_ticks := 0
 var palette_cycle_texture: ImageTexture
 
 var map_view: CityMapControl
-var map_horizontal_scroll: HScrollBar
-var map_vertical_scroll: VScrollBar
-var syncing_map_scrollbars := false
 var city_label: Label
-var details_label: Label
 var status_label: Label
+var status_population_label: Label
+var status_weather_label: Label
+var status_tool_label: Label
+var status_rci_label: Label
+var status_reports_label: Label
 var file_dialog: FileDialog
 var save_dialog: FileDialog
 var tile_set_dialog: FileDialog
@@ -262,18 +263,17 @@ var new_city_preview_process_start := 1
 var new_city_preview_game_start := 1
 var new_city_preview_process_cursor := 1
 var new_city_preview_game_cursor := 1
-var save_button: Button
-var budget_button: Button
 var options_menu: MenuButton
 var view_menu: MenuButton
 var disasters_menu: MenuButton
 var view_visibility_checks: Dictionary = {}
 var view_layers_heading: Label
-var group_selector: OptionButton
-var tool_selector: OptionButton
+var active_tool_group_label: Label
+var child_tool_scroll: ScrollContainer
+var child_tool_grid: GridContainer
+var child_tool_buttons: Dictionary = {}
+var toolbar_art_source: Image
 var undo_button: Button
-var speed_selector: OptionButton
-var news_label: Label
 var title_stats_label: Label
 var fps_label: Label
 var zoom_label: Label
@@ -282,8 +282,6 @@ var zoom_out_button: Button
 var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
 var toolbar_buttons: Array[Button] = []
-var sidebar_panel: PanelContainer
-var sidebar_toggle_button: Button
 var sign_dialog: ConfirmationDialog
 var sign_input: LineEdit
 var bridge_dialog: ConfirmationDialog
@@ -456,6 +454,7 @@ func _ready() -> void:
 	base_small_medium_sprites = SpriteArchive.combine([base_small_medium, special_sprites])
 	large_sprites = base_large_sprites
 	small_medium_sprites = base_small_medium_sprites
+	_refresh_child_tool_icons()
 
 	_show_main_menu()
 
@@ -494,7 +493,6 @@ func _process(delta: float) -> void:
 	)
 	if not result.ok:
 		speed_controller.set_speed(GameSpeed.Speed.PAUSED)
-		speed_selector.select(0)
 		_show_error("Simulation stopped: %s" % result.error)
 		return
 	if (
@@ -582,6 +580,7 @@ func _consume_simulation_result(result: Dictionary) -> void:
 
 
 func _build_interface(toolbar_art: Image) -> void:
+	toolbar_art_source = toolbar_art
 	theme = _create_classic_theme()
 	var background := ColorRect.new()
 	background.color = Color("c0c0c0")
@@ -658,7 +657,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	_add_menu(menu_row, "Windows", [
 		["Budget", 0], ["Ordinances", 1], ["Population", 2],
 		["City Industry", 3], ["Graphs", 4], ["Neighbors", 5],
-		["City Map", 6], ["City Information", 7],
+		["City Map", 6],
 	], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
@@ -695,7 +694,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	page.add_child(content)
 
 	var toolbar_panel := PanelContainer.new()
-	toolbar_panel.custom_minimum_size = Vector2(190, 0)
+	toolbar_panel.custom_minimum_size = Vector2(205, 0)
+	toolbar_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	toolbar_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
 	content.add_child(toolbar_panel)
 	var toolbar_margin := MarginContainer.new()
@@ -703,7 +703,7 @@ func _build_interface(toolbar_art: Image) -> void:
 		toolbar_margin.add_theme_constant_override("margin_" + side, 7)
 	toolbar_panel.add_child(toolbar_margin)
 	var toolbar := VBoxContainer.new()
-	toolbar.add_theme_constant_override("separation", 5)
+	toolbar.add_theme_constant_override("separation", 4)
 	toolbar_margin.add_child(toolbar)
 	var toolbar_title := Label.new()
 	toolbar_title.text = "City Toolbar"
@@ -719,24 +719,34 @@ func _build_interface(toolbar_art: Image) -> void:
 	tool_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	toolbar.add_child(tool_grid)
 	var tool_button_group := ButtonGroup.new()
-	for group_index in Tools.GROUPS.size():
-		var button := Button.new()
-		button.custom_minimum_size = Vector2(48, 38)
-		button.toggle_mode = true
-		button.button_group = tool_button_group
-		button.tooltip_text = Tools.GROUPS[group_index].name
-		button.icon = _toolbar_group_icon(toolbar_art, group_index)
-		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-		button.text = str(group_index + 1) if button.icon == null else ""
-		button.pressed.connect(_choose_tool_group.bind(group_index))
-		tool_grid.add_child(button)
-		toolbar_buttons.append(button)
+	for group_index in range(15):
+		_add_toolbar_group_button(
+			tool_grid, tool_button_group, toolbar_art, group_index
+		)
+
+	var special_separator := HSeparator.new()
+	toolbar.add_child(special_separator)
+	var special_tool_grid := GridContainer.new()
+	special_tool_grid.columns = 3
+	special_tool_grid.add_theme_constant_override("h_separation", 3)
+	special_tool_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	toolbar.add_child(special_tool_grid)
+	for group_index in range(15, Tools.GROUPS.size()):
+		_add_toolbar_group_button(
+			special_tool_grid, tool_button_group, toolbar_art, group_index
+		)
+
+	var camera_separator := HSeparator.new()
+	toolbar.add_child(camera_separator)
 
 	var camera_row := HBoxContainer.new()
 	camera_row.alignment = BoxContainer.ALIGNMENT_CENTER
 	camera_row.add_theme_constant_override("separation", 3)
 	toolbar.add_child(camera_row)
+	var rotate_label := Label.new()
+	rotate_label.text = "Rotate"
+	rotate_label.custom_minimum_size = Vector2(52, 0)
+	camera_row.add_child(rotate_label)
 	rotate_counter_clockwise_button = _icon_button(
 		toolbar_art, Rect2i(405, 0, 27, 23), "Rotate Counter-Clockwise (Q)"
 	)
@@ -749,37 +759,104 @@ func _build_interface(toolbar_art: Image) -> void:
 	rotate_clockwise_button.disabled = true
 	rotate_clockwise_button.pressed.connect(_rotate_city.bind(false))
 	camera_row.add_child(rotate_clockwise_button)
+
+	var zoom_row := HBoxContainer.new()
+	zoom_row.alignment = BoxContainer.ALIGNMENT_CENTER
+	zoom_row.add_theme_constant_override("separation", 3)
+	toolbar.add_child(zoom_row)
+	var zoom_heading := Label.new()
+	zoom_heading.text = "Zoom"
+	zoom_heading.custom_minimum_size = Vector2(52, 0)
+	zoom_row.add_child(zoom_heading)
 	zoom_out_button = _icon_button(toolbar_art, Rect2i(462, 0, 23, 23), "Zoom Out")
 	zoom_out_button.pressed.connect(_zoom_out)
-	camera_row.add_child(zoom_out_button)
+	zoom_row.add_child(zoom_out_button)
 	zoom_in_button = _icon_button(toolbar_art, Rect2i(486, 0, 23, 23), "Zoom In")
 	zoom_in_button.pressed.connect(_zoom_in)
-	camera_row.add_child(zoom_in_button)
+	zoom_row.add_child(zoom_in_button)
 	zoom_label = Label.new()
 	zoom_label.text = "100%"
-	zoom_label.custom_minimum_size = Vector2(48, 0)
+	zoom_label.custom_minimum_size = Vector2(42, 0)
 	zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	camera_row.add_child(zoom_label)
+	zoom_row.add_child(zoom_label)
 
-	var category_label := Label.new()
-	category_label.text = "Tool Category"
-	toolbar.add_child(category_label)
-	group_selector = OptionButton.new()
-	for group_index in Tools.GROUPS.size():
-		group_selector.add_item(Tools.GROUPS[group_index].name, group_index)
-	group_selector.item_selected.connect(_select_tool_group)
-	toolbar.add_child(group_selector)
-	var tool_label := Label.new()
-	tool_label.text = "Active Tool"
-	toolbar.add_child(tool_label)
-	tool_selector = OptionButton.new()
-	tool_selector.item_selected.connect(_select_subtool)
-	toolbar.add_child(tool_selector)
+	active_tool_group_label = Label.new()
+	active_tool_group_label.text = "Selected Group"
+	active_tool_group_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	active_tool_group_label.add_theme_color_override("font_color", Color("000080"))
+	active_tool_group_label.add_theme_font_size_override("font_size", 14)
+	toolbar.add_child(active_tool_group_label)
+	child_tool_scroll = ScrollContainer.new()
+	child_tool_scroll.custom_minimum_size = Vector2(0, 96)
+	child_tool_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	child_tool_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	child_tool_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	toolbar.add_child(child_tool_scroll)
+	child_tool_grid = GridContainer.new()
+	child_tool_grid.columns = 1
+	child_tool_grid.add_theme_constant_override("h_separation", 3)
+	child_tool_grid.add_theme_constant_override("v_separation", 3)
+	child_tool_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	child_tool_scroll.add_child(child_tool_grid)
 	undo_button = Button.new()
 	undo_button.text = "Undo Last Edit"
 	undo_button.disabled = true
 	undo_button.pressed.connect(_undo_last_edit)
 	toolbar.add_child(undo_button)
+
+	var view_separator := HSeparator.new()
+	toolbar.add_child(view_separator)
+	var view_heading := Label.new()
+	view_heading.text = "City View"
+	view_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	view_heading.add_theme_color_override("font_color", Color("000080"))
+	toolbar.add_child(view_heading)
+	var view_grid := GridContainer.new()
+	view_grid.columns = 2
+	view_grid.add_theme_constant_override("h_separation", 4)
+	view_grid.add_theme_constant_override("v_separation", 4)
+	toolbar.add_child(view_grid)
+	for mode in MAP_DISPLAY_MODES:
+		var button := Button.new()
+		button.text = mode.capitalize()
+		button.tooltip_text = "Show the %s isometric view." % mode
+		button.pressed.connect(_set_overlay.bind(mode))
+		view_grid.add_child(button)
+	var city_map_button := Button.new()
+	city_map_button.text = "City Map..."
+	city_map_button.tooltip_text = "Open the tabbed two-dimensional city maps."
+	city_map_button.pressed.connect(_open_city_map_window)
+	view_grid.add_child(city_map_button)
+
+	view_layers_heading = Label.new()
+	view_layers_heading.text = "Visible Layers"
+	view_layers_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	view_layers_heading.add_theme_color_override("font_color", Color("000080"))
+	toolbar.add_child(view_layers_heading)
+	var layers_grid := GridContainer.new()
+	layers_grid.columns = 2
+	layers_grid.add_theme_constant_override("h_separation", 4)
+	layers_grid.add_theme_constant_override("v_separation", 2)
+	toolbar.add_child(layers_grid)
+	for layer in [
+		["Buildings", "buildings"], ["Networks", "networks"],
+		["Water", "water"], ["Trees", "trees"],
+		["Zones", "zones"], ["Signs", "signs"],
+	]:
+		var check := CheckBox.new()
+		check.text = layer[0]
+		check.tooltip_text = "Show or hide %s in the city view." % str(layer[0]).to_lower()
+		check.button_pressed = true
+		check.toggled.connect(_set_surface_visibility.bind(layer[1]))
+		view_visibility_checks[layer[1]] = check
+		layers_grid.add_child(check)
+	var pipes_check := CheckBox.new()
+	pipes_check.text = "Pipes"
+	pipes_check.tooltip_text = "Show or hide pipes in the underground view."
+	pipes_check.button_pressed = true
+	pipes_check.toggled.connect(_set_underground_pipes_visible)
+	view_visibility_checks["pipes"] = pipes_check
+	layers_grid.add_child(pipes_check)
 
 	var map_panel := PanelContainer.new()
 	map_panel.custom_minimum_size = Vector2(560, 480)
@@ -789,13 +866,6 @@ func _build_interface(toolbar_art: Image) -> void:
 		"panel", _classic_box(Color("18242c"), Color("404040"), 2)
 	)
 	content.add_child(map_panel)
-	var map_grid := GridContainer.new()
-	map_grid.columns = 2
-	map_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_grid.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_grid.add_theme_constant_override("h_separation", 0)
-	map_grid.add_theme_constant_override("v_separation", 0)
-	map_panel.add_child(map_grid)
 
 	map_view = MapControl.new()
 	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -805,180 +875,34 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.selection_canceled.connect(_on_map_selection_canceled)
 	map_view.query_requested.connect(_open_query)
 	map_view.zoom_changed.connect(_on_city_zoom_changed)
-	map_view.viewport_changed.connect(_sync_map_scrollbars)
 	map_view.viewport_changed.connect(_refresh_city_map_viewport)
-	map_grid.add_child(map_view)
-
-	var vertical_scroll_column := VBoxContainer.new()
-	vertical_scroll_column.custom_minimum_size = Vector2(18, 0)
-	vertical_scroll_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	vertical_scroll_column.add_theme_constant_override("separation", 0)
-	vertical_scroll_column.add_child(
-		_map_scroll_button("▲", "Scroll Up", 1, -1)
-	)
-	map_vertical_scroll = VScrollBar.new()
-	map_vertical_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_vertical_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_vertical_scroll.step = 1.0
-	_style_map_scrollbar(map_vertical_scroll)
-	map_vertical_scroll.value_changed.connect(_on_map_vertical_scroll)
-	vertical_scroll_column.add_child(map_vertical_scroll)
-	vertical_scroll_column.add_child(
-		_map_scroll_button("▼", "Scroll Down", 1, 1)
-	)
-	map_grid.add_child(vertical_scroll_column)
-
-	var horizontal_scroll_row := HBoxContainer.new()
-	horizontal_scroll_row.custom_minimum_size = Vector2(0, 18)
-	horizontal_scroll_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	horizontal_scroll_row.add_theme_constant_override("separation", 0)
-	horizontal_scroll_row.add_child(
-		_map_scroll_button("◀", "Scroll Left", 0, -1)
-	)
-	map_horizontal_scroll = HScrollBar.new()
-	map_horizontal_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_horizontal_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_horizontal_scroll.step = 1.0
-	_style_map_scrollbar(map_horizontal_scroll)
-	map_horizontal_scroll.value_changed.connect(_on_map_horizontal_scroll)
-	horizontal_scroll_row.add_child(map_horizontal_scroll)
-	horizontal_scroll_row.add_child(
-		_map_scroll_button("▶", "Scroll Right", 0, 1)
-	)
-	map_grid.add_child(horizontal_scroll_row)
-
-	var map_scroll_corner := Panel.new()
-	map_scroll_corner.custom_minimum_size = Vector2(18, 18)
-	map_scroll_corner.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 1)
-	)
-	map_grid.add_child(map_scroll_corner)
-
-	sidebar_toggle_button = Button.new()
-	sidebar_toggle_button.text = ">"
-	sidebar_toggle_button.tooltip_text = "Hide City Information"
-	sidebar_toggle_button.custom_minimum_size = Vector2(24, 0)
-	sidebar_toggle_button.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	sidebar_toggle_button.pressed.connect(_toggle_sidebar)
-	content.add_child(sidebar_toggle_button)
-
-	sidebar_panel = PanelContainer.new()
-	sidebar_panel.custom_minimum_size = Vector2(245, 0)
-	sidebar_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
-	content.add_child(sidebar_panel)
-	var sidebar_margin := MarginContainer.new()
-	for side in ["left", "top", "right", "bottom"]:
-		sidebar_margin.add_theme_constant_override("margin_" + side, 8)
-	sidebar_panel.add_child(sidebar_margin)
-	var sidebar := VBoxContainer.new()
-	sidebar.add_theme_constant_override("separation", 7)
-	sidebar_margin.add_child(sidebar)
-	var city_information_heading := Label.new()
-	city_information_heading.text = "City Information"
-	city_information_heading.add_theme_color_override("font_color", Color("000080"))
-	city_information_heading.add_theme_font_size_override("font_size", 16)
-	sidebar.add_child(city_information_heading)
-
-	details_label = Label.new()
-	details_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	sidebar.add_child(details_label)
-
-	var simulation_heading := Label.new()
-	simulation_heading.text = "Simulation Speed"
-	simulation_heading.add_theme_color_override("font_color", Color("000080"))
-	sidebar.add_child(simulation_heading)
-
-	speed_selector = OptionButton.new()
-	for speed_value in range(GameSpeed.Speed.PAUSED, GameSpeed.Speed.AFRICAN_SWALLOW + 1):
-		speed_selector.add_item(GameSpeed.SPEED_NAMES[speed_value], speed_value)
-	speed_selector.disabled = true
-	speed_selector.item_selected.connect(_select_speed)
-	sidebar.add_child(speed_selector)
-
-	news_label = Label.new()
-	news_label.text = "Latest Reports\nNo new reports."
-	news_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	news_label.add_theme_color_override("font_color", Color("202020"))
-	sidebar.add_child(news_label)
-
-	var view_heading := Label.new()
-	view_heading.text = "City View"
-	view_heading.add_theme_color_override("font_color", Color("000080"))
-	sidebar.add_child(view_heading)
-	var view_grid := GridContainer.new()
-	view_grid.columns = 2
-	view_grid.add_theme_constant_override("h_separation", 4)
-	view_grid.add_theme_constant_override("v_separation", 4)
-	sidebar.add_child(view_grid)
-	for mode in MAP_DISPLAY_MODES:
-		var button := Button.new()
-		button.text = mode.capitalize()
-		button.pressed.connect(_set_overlay.bind(mode))
-		view_grid.add_child(button)
-	var city_map_button := Button.new()
-	city_map_button.text = "City Map..."
-	city_map_button.pressed.connect(_open_city_map_window)
-	view_grid.add_child(city_map_button)
-
-	view_layers_heading = Label.new()
-	view_layers_heading.text = "Visible Layers"
-	view_layers_heading.add_theme_color_override("font_color", Color("000080"))
-	sidebar.add_child(view_layers_heading)
-	var layers_grid := GridContainer.new()
-	layers_grid.columns = 2
-	layers_grid.add_theme_constant_override("h_separation", 4)
-	layers_grid.add_theme_constant_override("v_separation", 2)
-	sidebar.add_child(layers_grid)
-	for layer in [
-		["Buildings", "buildings"], ["Networks", "networks"],
-		["Water", "water"], ["Trees", "trees"],
-		["Zones", "zones"], ["Signs", "signs"],
-	]:
-		var check := CheckBox.new()
-		check.text = layer[0]
-		check.button_pressed = true
-		check.toggled.connect(_set_surface_visibility.bind(layer[1]))
-		view_visibility_checks[layer[1]] = check
-		layers_grid.add_child(check)
-	var pipes_check := CheckBox.new()
-	pipes_check.text = "Pipes (Underground)"
-	pipes_check.button_pressed = true
-	pipes_check.toggled.connect(_set_underground_pipes_visible)
-	view_visibility_checks["pipes"] = pipes_check
-	layers_grid.add_child(pipes_check)
-
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sidebar.add_child(spacer)
-	var new_city_button := Button.new()
-	new_city_button.text = "New City..."
-	new_city_button.pressed.connect(_open_new_city_dialog)
-	sidebar.add_child(new_city_button)
-	var open_button := Button.new()
-	open_button.text = "Open City..."
-	open_button.pressed.connect(_open_city_dialog)
-	sidebar.add_child(open_button)
-	budget_button = Button.new()
-	budget_button.text = "Budget..."
-	budget_button.disabled = true
-	budget_button.pressed.connect(_open_manual_budget)
-	sidebar.add_child(budget_button)
-	save_button = Button.new()
-	save_button.text = "Save City As..."
-	save_button.disabled = true
-	save_button.pressed.connect(_open_save_dialog)
-	sidebar.add_child(save_button)
+	map_panel.add_child(map_view)
 
 	var status_panel := PanelContainer.new()
 	status_panel.custom_minimum_size = Vector2(0, 34)
 	status_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
 	page.add_child(status_panel)
+	var status_metrics := HBoxContainer.new()
+	status_metrics.add_theme_constant_override("separation", 8)
+	status_panel.add_child(status_metrics)
 	status_label = Label.new()
 	status_label.text = "Ready."
+	status_label.custom_minimum_size = Vector2(150, 24)
+	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	status_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	status_label.add_theme_color_override("font_color", Color("202020"))
-	status_panel.add_child(status_label)
+	status_metrics.add_child(status_label)
+	status_population_label = _status_metric_label("Population: --", 125)
+	status_metrics.add_child(status_population_label)
+	status_weather_label = _status_metric_label("Weather: --", 90)
+	status_metrics.add_child(status_weather_label)
+	status_tool_label = _status_metric_label("Tool: --", 160)
+	status_metrics.add_child(status_tool_label)
+	status_rci_label = _status_metric_label("RCI: -- / -- / --", 155)
+	status_metrics.add_child(status_rci_label)
+	status_reports_label = _status_metric_label("Reports: None", 180, true)
+	status_metrics.add_child(status_reports_label)
 
 	file_dialog = FileDialog.new()
 	file_dialog.access = FileDialog.ACCESS_FILESYSTEM
@@ -1606,7 +1530,6 @@ func _build_interface(toolbar_art: Image) -> void:
 	bond_dialog.canceled.connect(_cancel_bond_action)
 	add_child(bond_dialog)
 
-	group_selector.select(selected_group)
 	_select_tool_group(selected_group)
 	_update_zoom_controls(map_view.zoom_percent())
 	_build_main_menu()
@@ -1819,6 +1742,13 @@ func _create_classic_theme() -> Theme:
 	result.set_stylebox("hover", "OptionButton", _classic_box(Color("ffffff"), Color("000080"), 2))
 	result.set_stylebox("pressed", "OptionButton", _classic_box(Color("e0e0e0"), Color("404040"), 2))
 	result.set_stylebox("normal", "PanelContainer", _classic_box(Color("c0c0c0"), Color("808080"), 1))
+	var tooltip_box := _classic_box(Color(0.0, 0.0, 0.0, 0.82), Color(1.0, 1.0, 1.0, 0.45), 1)
+	tooltip_box.content_margin_left = 7
+	tooltip_box.content_margin_top = 5
+	tooltip_box.content_margin_right = 7
+	tooltip_box.content_margin_bottom = 5
+	result.set_stylebox("panel", "TooltipPanel", tooltip_box)
+	result.set_color("font_color", "TooltipLabel", Color.WHITE)
 	return result
 
 
@@ -1832,6 +1762,17 @@ func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
 	box.content_margin_right = 5
 	box.content_margin_bottom = 3
 	return box
+
+
+func _status_metric_label(text_value: String, minimum_width: int, expand := false) -> Label:
+	var label := Label.new()
+	label.text = text_value
+	label.custom_minimum_size = Vector2(minimum_width, 22)
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	if expand:
+		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	return label
 
 
 func _build_graph_window() -> void:
@@ -2291,6 +2232,26 @@ func _toolbar_group_icon(toolbar_art: Image, group_index: int) -> Texture2D:
 	return _toolbar_icon(toolbar_art, REGIONS[group_index])
 
 
+func _add_toolbar_group_button(
+	parent: Control,
+	button_group: ButtonGroup,
+	toolbar_art: Image,
+	group_index: int
+) -> void:
+	var button := Button.new()
+	button.custom_minimum_size = Vector2(48, 32)
+	button.toggle_mode = true
+	button.button_group = button_group
+	button.tooltip_text = Tools.GROUPS[group_index].name
+	button.icon = _toolbar_group_icon(toolbar_art, group_index)
+	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+	button.text = str(group_index + 1) if button.icon == null else ""
+	button.pressed.connect(_choose_tool_group.bind(group_index))
+	parent.add_child(button)
+	toolbar_buttons.append(button)
+
+
 func _toolbar_icon(toolbar_art: Image, region: Rect2i) -> Texture2D:
 	if toolbar_art == null or not Rect2i(Vector2i.ZERO, toolbar_art.get_size()).encloses(region):
 		return null
@@ -2327,8 +2288,49 @@ func _icon_button(toolbar_art: Image, region: Rect2i, tooltip: String) -> Button
 
 
 func _choose_tool_group(group_index: int) -> void:
-	group_selector.select(group_index)
 	_select_tool_group(group_index)
+
+
+func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
+	if palette == null or large_sprites == null or not large_sprites.is_valid():
+		return _toolbar_group_icon(toolbar_art_source, group_index)
+	var tile_id := Buildings.tile_for_tool(group_index, subtool_index)
+	var sprite_id := 1000 + tile_id if tile_id > 0 else -1
+	if sprite_id < 0:
+		var table_index := group_index * Tools.MAX_SLOTS_PER_GROUP + subtool_index
+		const REPRESENTATIVE_SPRITES := {
+			12: 1006, 13: 1270, 36: 1014, 39: 1198, 48: 1334,
+			72: 1029, 73: 1093, 74: 1073, 75: 1107,
+			84: 1044, 85: 1319,
+			96: 1299, 97: 1298,
+			108: 1291, 109: 1292,
+			120: 1293, 121: 1294,
+			132: 1295, 133: 1296,
+		}
+		sprite_id = int(REPRESENTATIVE_SPRITES.get(table_index, -1))
+	if sprite_id < 0:
+		return _toolbar_group_icon(toolbar_art_source, group_index)
+	var entry := large_sprites.find_sprite(sprite_id)
+	if entry == null:
+		return _toolbar_group_icon(toolbar_art_source, group_index)
+	var rendered := entry.create_image(palette)
+	if not rendered.get("ok", false):
+		return _toolbar_group_icon(toolbar_art_source, group_index)
+	var image: Image = rendered.image.duplicate()
+	var scale := minf(1.0, minf(30.0 / image.get_width(), 28.0 / image.get_height()))
+	if scale < 1.0:
+		image.resize(
+			maxi(1, roundi(image.get_width() * scale)),
+			maxi(1, roundi(image.get_height() * scale)),
+			Image.INTERPOLATE_NEAREST,
+		)
+	return ImageTexture.create_from_image(image)
+
+
+func _refresh_child_tool_icons() -> void:
+	for subtool_index in child_tool_buttons:
+		var button: Button = child_tool_buttons[subtool_index]
+		button.icon = _tool_button_icon(selected_group, int(subtool_index))
 
 
 func _zoom_in() -> void:
@@ -2337,79 +2339,6 @@ func _zoom_in() -> void:
 
 func _zoom_out() -> void:
 	map_view.zoom_out()
-
-
-func _sync_map_scrollbars() -> void:
-	if (
-		map_view == null
-		or map_horizontal_scroll == null
-		or map_vertical_scroll == null
-	):
-		return
-	syncing_map_scrollbars = true
-	var state := map_view.scroll_state()
-	if state.is_empty():
-		_set_map_scrollbar_state(map_horizontal_scroll, 1.0, 1.0, 0.0)
-		_set_map_scrollbar_state(map_vertical_scroll, 1.0, 1.0, 0.0)
-	else:
-		var content: Vector2 = state.content
-		var page: Vector2 = state.page
-		var value: Vector2 = state.value
-		_set_map_scrollbar_state(map_horizontal_scroll, content.x, page.x, value.x)
-		_set_map_scrollbar_state(map_vertical_scroll, content.y, page.y, value.y)
-	syncing_map_scrollbars = false
-
-
-func _set_map_scrollbar_state(
-	scrollbar: ScrollBar, maximum: float, page: float, value: float
-) -> void:
-	scrollbar.min_value = 0.0
-	scrollbar.max_value = maxf(1.0, maximum)
-	scrollbar.page = clampf(page, 0.0, scrollbar.max_value)
-	scrollbar.value = clampf(value, 0.0, scrollbar.max_value - scrollbar.page)
-
-
-func _map_scroll_button(text: String, tooltip: String, axis: int, direction: int) -> Button:
-	var button := Button.new()
-	button.text = text
-	button.tooltip_text = tooltip
-	button.custom_minimum_size = Vector2(18, 18)
-	button.focus_mode = Control.FOCUS_NONE
-	button.add_theme_font_size_override("font_size", 9)
-	button.pressed.connect(_nudge_map_scroll.bind(axis, direction))
-	return button
-
-
-func _style_map_scrollbar(scrollbar: ScrollBar) -> void:
-	var track := _classic_box(Color("d4d0c8"), Color("808080"), 1)
-	track.set_content_margin_all(0.0)
-	var grabber := _classic_box(Color("c0c0c0"), Color("ffffff"), 1)
-	grabber.set_content_margin_all(4.0)
-	var pressed_grabber := _classic_box(Color("a0a0a0"), Color("404040"), 1)
-	pressed_grabber.set_content_margin_all(4.0)
-	for style_name in ["scroll", "scroll_focus"]:
-		scrollbar.add_theme_stylebox_override(style_name, track)
-	for style_name in ["grabber", "grabber_highlight"]:
-		scrollbar.add_theme_stylebox_override(style_name, grabber)
-	scrollbar.add_theme_stylebox_override("grabber_pressed", pressed_grabber)
-
-
-func _nudge_map_scroll(axis: int, direction: int) -> void:
-	var scrollbar: ScrollBar = (
-		map_horizontal_scroll if axis == 0 else map_vertical_scroll
-	)
-	if scrollbar != null:
-		scrollbar.value += 32.0 * direction
-
-
-func _on_map_horizontal_scroll(value: float) -> void:
-	if not syncing_map_scrollbars and map_view != null:
-		map_view.set_scroll_value(0, value)
-
-
-func _on_map_vertical_scroll(value: float) -> void:
-	if not syncing_map_scrollbars and map_view != null:
-		map_view.set_scroll_value(1, value)
 
 
 func _rotate_city(counter_clockwise: bool) -> void:
@@ -2521,7 +2450,6 @@ func _on_file_menu(id: int) -> void:
 func _on_speed_menu(id: int) -> void:
 	if speed_controller == null:
 		return
-	speed_selector.select(id)
 	_select_speed(id)
 
 
@@ -2725,8 +2653,6 @@ func _on_windows_menu(id: int) -> void:
 		_open_simnation_window()
 	elif id == 6:
 		_open_city_map_window()
-	elif id == 7:
-		_set_sidebar_expanded(not sidebar_panel.visible)
 
 
 func _open_ordinance_window() -> void:
@@ -2859,20 +2785,6 @@ func _city_map_viewport_outline() -> PackedVector2Array:
 func _refresh_city_map_viewport() -> void:
 	if city_map_control != null and city_map_window != null and city_map_window.visible:
 		city_map_control.refresh_viewport(_city_map_viewport_outline())
-
-
-func _toggle_sidebar() -> void:
-	_set_sidebar_expanded(not sidebar_panel.visible)
-
-
-func _set_sidebar_expanded(expanded: bool) -> void:
-	if sidebar_panel == null or sidebar_toggle_button == null:
-		return
-	sidebar_panel.visible = expanded
-	sidebar_toggle_button.text = ">" if expanded else "<"
-	sidebar_toggle_button.tooltip_text = (
-		"Hide City Information" if expanded else "Show City Information"
-	)
 
 
 func _on_newspaper_menu(_id: int) -> void:
@@ -3513,8 +3425,6 @@ func _activate_document(
 	speed_controller = GameSpeed.new(simulation_engine)
 	tool_random = simulation_engine.random
 	nuisance_random = simulation_engine.game_random
-	speed_selector.select(speed_controller.speed - GameSpeed.Speed.PAUSED)
-	speed_selector.disabled = false
 	simulation_map_dirty = false
 	recent_news.clear()
 	_refresh_saved_news_summary()
@@ -3522,8 +3432,6 @@ func _activate_document(
 	dispatch_cycles = PackedInt32Array([0, 0, 0])
 	dispatch_initialized = false
 	undo_button.disabled = true
-	save_button.disabled = false
-	budget_button.disabled = false
 	_update_zoom_controls(map_view.zoom_percent())
 	var display_name := city.city_name()
 	if display_name.is_empty():
@@ -3663,11 +3571,10 @@ func _invalidate_view_render() -> void:
 	dynamic_sign_occlusion_grid.clear()
 
 
-func _select_speed(index: int) -> void:
+func _select_speed(speed_value: int) -> void:
 	if speed_controller == null:
 		return
-	var selected_speed := speed_selector.get_item_id(index)
-	if not speed_controller.set_speed(selected_speed):
+	if not speed_controller.set_speed(speed_value):
 		_show_error("Cannot change the simulation speed.")
 		return
 	status_label.remove_theme_color_override("font_color")
@@ -4408,8 +4315,7 @@ func _show_news_items(news_items: Array) -> void:
 		recent_news.insert(0, "%s (0x%X)" % [name, news_type])
 	while recent_news.size() > 3:
 		recent_news.remove_at(recent_news.size() - 1)
-	if not recent_news.is_empty():
-		news_label.text = "Latest Reports\n" + "\n".join(recent_news)
+	_refresh_status_summary()
 
 
 func _show_forest_protest() -> void:
@@ -4430,11 +4336,13 @@ func _show_building_objection() -> void:
 
 func _refresh_saved_news_summary() -> void:
 	if city == null or current_document == null:
-		news_label.text = "Latest Reports\nNo reports."
+		recent_news.clear()
+		_refresh_status_summary()
 		return
 	var misc_chunk := current_document.find_chunk("MISC")
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
-		news_label.text = "Latest Reports\nUnavailable."
+		recent_news = PackedStringArray(["Unavailable"])
+		_refresh_status_summary()
 		return
 	var reports := PackedStringArray()
 	for slot in NewsQueue.QUEUE_COUNT:
@@ -4445,9 +4353,8 @@ func _refresh_saved_news_summary() -> void:
 		reports.append("%s (0x%02X)" % [NEWS_NAMES.get(story_type, "City report"), story_type])
 		if reports.size() == 3:
 			break
-	news_label.text = "Latest Reports\n" + (
-		"\n".join(reports) if not reports.is_empty() else "No reports."
-	)
+	recent_news = reports
+	_refresh_status_summary()
 
 
 func _populate_newspaper_page() -> void:
@@ -4663,75 +4570,129 @@ func _moving_things_are_active(results: Array) -> bool:
 
 
 func _select_tool_group(index: int) -> void:
-	selected_group = group_selector.get_item_id(index)
+	if index < 0 or index >= Tools.GROUPS.size():
+		return
+	selected_group = index
 	for button_index in toolbar_buttons.size():
 		toolbar_buttons[button_index].button_pressed = button_index == selected_group
 	if selected_group == Dispatch.GROUP_DISPATCH:
 		dispatch_cycles = PackedInt32Array([0, 0, 0])
 		dispatch_initialized = false
-	tool_selector.clear()
 	var group := Tools.group(selected_group)
-	var first_available_index := -1
+	for child in child_tool_grid.get_children():
+		child_tool_grid.remove_child(child)
+		child.queue_free()
+	child_tool_buttons.clear()
+	var show_child_palette := selected_group < 15
+	active_tool_group_label.visible = show_child_palette
+	child_tool_scroll.visible = show_child_palette
+	if not show_child_palette:
+		selected_subtool = 0
+		_update_edit_state()
+		return
+	active_tool_group_label.text = str(group.name)
+	var child_button_group := ButtonGroup.new()
+	var first_available_subtool := -1
 	for subtool_index in group.tools.size():
+		if selected_group == 3 and subtool_index == 1:
+			continue
 		if _is_tool_variant(selected_group, subtool_index):
 			continue
 		var tool := Tools.tool(selected_group, subtool_index)
 		var price := "Free" if tool.cost == 0 else "$%s" % _format_number(tool.cost)
-		tool_selector.add_item("%s — %s" % [tool.name, price], subtool_index)
-		var item_index := tool_selector.item_count - 1
+		var button := Button.new()
+		button.custom_minimum_size = Vector2(185, 40)
+		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		button.toggle_mode = true
+		button.button_group = child_button_group
+		button.text = "%s\n%s" % [tool.name, price]
+		button.clip_text = true
+		button.icon = _tool_button_icon(selected_group, subtool_index)
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+		button.pressed.connect(_select_subtool.bind(subtool_index))
 		var available := city == null or ToolAvailability.is_available(
 			city, selected_group, subtool_index
 		)
-		tool_selector.set_item_disabled(item_index, not available)
-		if available and first_available_index < 0:
-			first_available_index = item_index
-	tool_selector.disabled = first_available_index < 0
-	var selected_item := first_available_index if first_available_index >= 0 else 0
-	tool_selector.select(selected_item)
-	selected_subtool = tool_selector.get_item_id(selected_item)
+		button.disabled = not available
+		button.tooltip_text = _tool_button_tooltip(
+			selected_group, subtool_index, available
+		)
+		child_tool_grid.add_child(button)
+		child_tool_buttons[subtool_index] = button
+		if available and first_available_subtool < 0:
+			first_available_subtool = subtool_index
+	selected_subtool = maxi(0, first_available_subtool)
+	_sync_child_tool_selection()
 	_update_edit_state()
 
 
 func _select_subtool(index: int) -> void:
-	selected_subtool = tool_selector.get_item_id(index)
+	selected_subtool = index
+	_sync_child_tool_selection()
 	_update_edit_state()
 	if selected_tool_available and _is_tool_chooser(selected_group, selected_subtool):
 		_open_tool_choice_dialog(selected_group)
 
 
 func _is_tool_chooser(group_index: int, subtool_index: int) -> bool:
-	return (
-		(group_index == 3 and subtool_index == 1)
-		or (group_index == 5 and subtool_index == 4)
-	)
+	return group_index == 5 and subtool_index == 4
 
 
 func _is_tool_variant(group_index: int, subtool_index: int) -> bool:
-	return (
-		(group_index == 3 and subtool_index >= 2)
-		or (group_index == 5 and subtool_index >= 5)
-	)
+	return group_index == 5 and subtool_index >= 5
+
+
+func _sync_child_tool_selection() -> void:
+	var displayed_subtool := selected_subtool
+	if selected_group == 5 and selected_subtool >= 5:
+		displayed_subtool = 4
+	for subtool_index in child_tool_buttons:
+		var button: Button = child_tool_buttons[subtool_index]
+		button.button_pressed = int(subtool_index) == displayed_subtool
+
+
+func _tool_button_tooltip(
+	group_index: int, subtool_index: int, available: bool
+) -> String:
+	var tool := Tools.tool(group_index, subtool_index)
+	if tool.is_empty():
+		return ""
+	var price := "Free" if int(tool.cost) == 0 else "$%s" % _format_number(tool.cost)
+	var lines := PackedStringArray([
+		str(tool.name),
+		"Cost: %s" % price,
+	])
+	if int(tool.area) > 0:
+		lines.append("Footprint: %d x %d tiles" % [tool.area, tool.area])
+	if group_index == 3 and subtool_index >= 2:
+		var details := Tools.power_plant_details(subtool_index)
+		if not details.is_empty():
+			lines.append("Nominal output: %d MW" % details.output_mw)
+			lines.append("Grid capacity: %s" % details.grid_capacity)
+			lines.append("Pollution factor: %d" % details.pollution)
+			lines.append("Service life: %s" % details.service_life)
+			lines.append(str(details.note))
+	if not available:
+		lines.append("Status: Not available in this city.")
+	return "\n".join(lines)
 
 
 func _refresh_tool_availability() -> bool:
-	if city == null or tool_selector == null:
+	if city == null or child_tool_grid == null:
 		return false
 	var changed := false
-	var available_count := 0
-	for item_index in tool_selector.item_count:
-		var subtool_index := tool_selector.get_item_id(item_index)
+	for subtool_index in child_tool_buttons:
 		var available := ToolAvailability.is_available(
-			city, selected_group, subtool_index
+			city, selected_group, int(subtool_index)
 		)
-		if tool_selector.is_item_disabled(item_index) == available:
-			tool_selector.set_item_disabled(item_index, not available)
+		var button: Button = child_tool_buttons[subtool_index]
+		if button.disabled == available:
+			button.disabled = not available
 			changed = true
-		if available:
-			available_count += 1
-	var selector_disabled := available_count == 0
-	if tool_selector.disabled != selector_disabled:
-		tool_selector.disabled = selector_disabled
-		changed = true
+		button.tooltip_text = _tool_button_tooltip(
+			selected_group, int(subtool_index), available
+		)
 	var current_available := ToolAvailability.is_available(
 		city, selected_group, selected_subtool
 	)
@@ -4806,6 +4767,7 @@ func _update_edit_state() -> void:
 		point_footprint_area,
 		is_landscape_tool,
 	)
+	_refresh_status_summary()
 	if city == null or status_label == null:
 		return
 	var tool := Tools.tool(selected_group, selected_subtool)
@@ -4868,6 +4830,7 @@ func _apply_map_selection(
 		return
 	if selected_group == 17:
 		if map_view.center_on_tile(finish):
+			_play_sound_events([505])
 			status_label.remove_theme_color_override("font_color")
 			status_label.text = "Centered the map on tile %d, %d." % [finish.x, finish.y]
 		return
@@ -5920,19 +5883,54 @@ func _refresh_details() -> void:
 		city.current_day(),
 		_format_number(city.funds()),
 	]
-	details_label.text = (
-		"Mayor: %s\nPopulation: %s\nWeather: %s\n\nDemand\nResidential: %+d\nCommercial: %+d\nIndustrial: %+d"
-		% [
-			city.mayor_name() if not city.mayor_name().is_empty() else "Unknown",
-			_format_number(city.population()),
-			weather_name,
-			demand.x,
-			demand.y,
-			demand.z,
-		]
-	)
+	_refresh_status_summary(demand, weather_name)
 	if _refresh_tool_availability():
 		_update_edit_state()
+
+
+func _refresh_status_summary(
+	demand := Vector3i(0, 0, 0), weather_name := ""
+) -> void:
+	if (
+		status_population_label == null
+		or status_weather_label == null
+		or status_tool_label == null
+		or status_rci_label == null
+		or status_reports_label == null
+	):
+		return
+	var tool := Tools.tool(selected_group, selected_subtool)
+	status_tool_label.text = "Tool: %s" % str(tool.get("name", "--"))
+	status_tool_label.tooltip_text = status_tool_label.text
+	if city == null:
+		status_population_label.text = "Population: --"
+		status_weather_label.text = "Weather: --"
+		status_rci_label.text = "RCI: -- / -- / --"
+	else:
+		if weather_name.is_empty():
+			var weather_trend := city.document.misc_u32(
+				RciAftermath.MISC_WEATHER_TREND
+			) & 0xff
+			weather_name = (
+				RciAftermath.WEATHER_NAMES[weather_trend]
+				if weather_trend < RciAftermath.WEATHER_NAMES.size()
+				else "Unknown"
+			)
+			demand = city.rci_demand()
+		status_population_label.text = "Population: %s" % _format_number(city.population())
+		status_weather_label.text = "Weather: %s" % weather_name
+		status_rci_label.text = "RCI: R%+d C%+d I%+d" % [demand.x, demand.y, demand.z]
+	status_population_label.tooltip_text = status_population_label.text
+	status_weather_label.tooltip_text = status_weather_label.text
+	status_rci_label.tooltip_text = (
+		"Residential / Commercial / Industrial demand\n%s"
+		% status_rci_label.text
+	)
+	var reports := "None" if recent_news.is_empty() else " | ".join(recent_news)
+	status_reports_label.text = "Reports: %s" % reports
+	status_reports_label.tooltip_text = (
+		"Latest reports\n%s" % ("No reports." if recent_news.is_empty() else "\n".join(recent_news))
+	)
 
 
 func _show_error(message: String) -> void:

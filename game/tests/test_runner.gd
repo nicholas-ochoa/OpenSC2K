@@ -10907,6 +10907,32 @@ func _test_tool_catalog() -> void:
 	var coal := Tools.tool(3, 2)
 	_check(coal.name == "Coal Power Plant", "Tool catalog preserves the coal plant position")
 	_check(coal.cost == 4000 and coal.area == 4, "Coal plant uses the executable cost and area")
+	var coal_details := Tools.power_plant_details(2)
+	_check(
+		coal_details.output_mw == 200
+		and coal_details.grid_capacity == "44 demand tiles"
+		and coal_details.pollution == 50
+		and coal_details.service_life == "50 years",
+		"Coal plant details expose output, grid capacity, pollution, and service life",
+	)
+	var hydro_details := Tools.power_plant_details(3)
+	_check(
+		hydro_details.output_mw == 20
+		and hydro_details.grid_capacity == "40 demand tiles"
+		and hydro_details.note.contains("waterfall"),
+		"Hydroelectric details expose its distinct output and placement rule",
+	)
+	var wind_details := Tools.power_plant_details(7)
+	_check(
+		wind_details.output_mw == 4
+		and wind_details.grid_capacity.contains("altitude")
+		and wind_details.service_life == "No age limit",
+		"Wind details explain its variable capacity and unlimited life",
+	)
+	_check(
+		Tools.power_plant_details(1).is_empty(),
+		"Power-plant details reject the retired chooser entry",
+	)
 	var road := Tools.tool(6, 0)
 	_check(road.cost == 10 and road.area == 1, "Road uses the executable cost and area")
 	var college := Tools.tool(12, 1)

@@ -3,6 +3,75 @@ extends RefCounted
 
 const MAX_SLOTS_PER_GROUP := 12
 
+# power-plant output values are the nominal megawatt values stored in xmic
+# grid capacity and pollution values are from the monthly power and pollution
+# phases. the power group uses subtool indices 2 through 10
+const POWER_PLANT_DETAILS := {
+	2: {
+		"output_mw": 200,
+		"grid_capacity": "44 demand tiles",
+		"pollution": 50,
+		"service_life": "50 years",
+		"note": "Can be blocked by nearby residential zones.",
+	},
+	3: {
+		"output_mw": 20,
+		"grid_capacity": "40 demand tiles",
+		"pollution": 0,
+		"service_life": "No age limit",
+		"note": "Must be built on an unused waterfall tile.",
+	},
+	4: {
+		"output_mw": 220,
+		"grid_capacity": "48 demand tiles",
+		"pollution": 25,
+		"service_life": "50 years",
+		"note": "Can be blocked by nearby residential zones.",
+	},
+	5: {
+		"output_mw": 50,
+		"grid_capacity": "11 demand tiles",
+		"pollution": 10,
+		"service_life": "50 years",
+		"note": "Can be blocked by nearby residential zones.",
+	},
+	6: {
+		"output_mw": 500,
+		"grid_capacity": "111 demand tiles",
+		"pollution": 2,
+		"service_life": "50 years",
+		"note": "The Nuclear-Free ordinance disables this plant.",
+	},
+	7: {
+		"output_mw": 4,
+		"grid_capacity": "Varies with altitude and wind",
+		"pollution": 0,
+		"service_life": "No age limit",
+		"note": "Higher land and stronger wind increase grid capacity.",
+	},
+	8: {
+		"output_mw": 50,
+		"grid_capacity": "5 to 14 demand tiles; varies with rain",
+		"pollution": 0,
+		"service_life": "50 years",
+		"note": "Drier weather increases grid capacity.",
+	},
+	9: {
+		"output_mw": 1600,
+		"grid_capacity": "355 demand tiles",
+		"pollution": 0,
+		"service_life": "50 years",
+		"note": "A microwave disaster can start at this plant.",
+	},
+	10: {
+		"output_mw": 2500,
+		"grid_capacity": "555 demand tiles",
+		"pollution": 2,
+		"service_life": "50 years",
+		"note": "This plant becomes available after its invention.",
+	},
+}
+
 # costs and square cursor areas are confirmed from the supplied executable
 # tables at 0x004dc140 and 0x004dc068. a zero area is a chooser or camera tool
 const GROUPS := [
@@ -144,3 +213,7 @@ static func all_tools() -> Array[Dictionary]:
 		for subtool_index in GROUPS[group_index].tools.size():
 			result.append(tool(group_index, subtool_index))
 	return result
+
+
+static func power_plant_details(subtool_index: int) -> Dictionary:
+	return POWER_PLANT_DETAILS.get(subtool_index, {}).duplicate()
