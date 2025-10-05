@@ -2666,7 +2666,9 @@ func _test_scurk_mif(reference_root: String) -> void:
 			scurk_editor.tool_buttons.size() == 10
 			and scurk_editor.texture_selector.item_count
 				== ScurkPixelEditor.TEXTURE_NAMES.size()
-			and scurk_editor.brush_size_selector.item_count == 6,
+			and scurk_editor.brush_size_selector.item_count == 6
+			and scurk_editor.revert_button != null
+			and scurk_editor.revert_name_button != null,
 			"SCURK editor exposes the recovered paint and brush controls",
 		)
 		var original_editor_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
@@ -2694,6 +2696,40 @@ func _test_scurk_mif(reference_root: String) -> void:
 			"SCURK Redo restores the edited MIF document",
 		)
 		scurk_editor.undo()
+		var object_edit_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
+		object_edit_pixels[0] = 3 if object_edit_pixels[0] != 3 else 4
+		scurk_editor._capture_edit_start()
+		scurk_editor._commit_pixels(object_edit_pixels)
+		var object_edit_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+		scurk_editor.revert_object()
+		_check(
+			scurk_editor.tile_set.to_bytes().bytes == original_editor_bytes,
+			"SCURK Revert restores the exact object-selection document state",
+		)
+		scurk_editor.undo()
+		_check(
+			scurk_editor.tile_set.to_bytes().bytes == object_edit_bytes,
+			"SCURK Revert enters exact-byte Undo history",
+		)
+		scurk_editor.redo()
+		var current_tile_id := ScurkEditor.object_tile_id(scurk_editor.current_large_id)
+		scurk_editor.name_edit.text = "Temporary Query Name"
+		scurk_editor._commit_name()
+		_check(
+			scurk_editor.tile_set.names.get(current_tile_id, "") == "Temporary Query Name",
+			"SCURK Rename writes a custom query name",
+		)
+		scurk_editor.revert_name()
+		_check(
+			not scurk_editor.tile_set.names.has(current_tile_id),
+			"SCURK Revert Name removes the custom NAME piece",
+		)
+		scurk_editor.undo()
+		_check(
+			scurk_editor.tile_set.names.get(current_tile_id, "") == "Temporary Query Name",
+			"SCURK Revert Name enters Undo history",
+		)
+		scurk_editor.redo()
 		var reference_save := scurk_editor.save_path(
 			scurk_directory.path_join("DO_NOT_WRITE.MIF")
 		)
@@ -2866,6 +2902,17 @@ func _test_scurk_mif(reference_root: String) -> void:
 				and edited_decode.pixels == edited_pixels,
 				"SCURK edit writes preserve INFO and decode to the edited values",
 			)
+		var removed_name := tile_set_one.remove_name(0xb5)
+		var removed_bytes := tile_set_one.to_bytes()
+		var reparsed_removed := ScurkTileSet.new()
+		_check(
+			removed_name.ok
+			and removed_bytes.ok
+			and reparsed_removed.parse(removed_bytes.bytes)
+			and not reparsed_removed.names.has(0xb5)
+			and reparsed_removed.piece_count == 571,
+			"SCURK can remove a custom NAME piece without changing other pieces",
+		)
 
 	var unpadded := Sc2SpriteArchive.SpriteEntry.new()
 	unpadded.sprite_id = 7

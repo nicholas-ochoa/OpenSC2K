@@ -28,6 +28,8 @@ var background_palette_index := 255
 var undo_stack: Array[Dictionary] = []
 var redo_stack: Array[Dictionary] = []
 var pending_edit_before := PackedByteArray()
+var object_start_bytes := PackedByteArray()
+var object_start_large_id := -1
 var pending_discard_action := ""
 var dirty := false
 
@@ -37,10 +39,12 @@ var object_search: LineEdit
 var object_list: ItemList
 var name_edit: LineEdit
 var name_button: Button
+var revert_name_button: Button
 var view_buttons: Array[Button] = []
 var tool_buttons: Array[Button] = []
 var undo_button: Button
 var redo_button: Button
+var revert_button: Button
 var save_button: Button
 var pixel_canvas: ScurkPixelCanvas
 var palette_control: ScurkPaletteControl
@@ -123,6 +127,7 @@ func load_path(path: String) -> Dictionary:
 	current_large_id = ids[0] if not ids.is_empty() else -1
 	current_view = VIEW_LARGE
 	_refresh_object_list()
+	_capture_object_start()
 	_refresh_sprite()
 	_update_history_buttons()
 	_update_title()
@@ -222,6 +227,41 @@ func redo() -> void:
 	_update_after_history()
 
 
+func revert_object() -> void:
+	if (
+		object_start_bytes.is_empty()
+		or current_large_id < 0
+		or object_start_large_id != current_large_id
+	):
+		return
+	var encoded := tile_set.to_bytes() if tile_set != null else {}
+	if not encoded.get("ok", false) or encoded.bytes == object_start_bytes:
+		return
+	var before: PackedByteArray = encoded.bytes.duplicate()
+	if not _replace_document_bytes(object_start_bytes):
+		return
+	_record_edit(before)
+	_update_after_history()
+	_set_status("Reverted the current object to its state when selected.")
+
+
+func revert_name() -> void:
+	if tile_set == null or current_large_id < 0:
+		return
+	var tile_id := object_tile_id(current_large_id)
+	if not tile_set.names.has(tile_id):
+		return
+	_capture_edit_start()
+	var result := tile_set.remove_name(tile_id)
+	if not result.ok:
+		_show_error(result.error)
+		return
+	_record_edit(pending_edit_before)
+	_refresh_object_list()
+	_refresh_sprite()
+	_set_status("Restored the original query name for object %d." % tile_id)
+
+
 func handle_shortcut(event: InputEventKey) -> bool:
 	if not visible or not event.pressed or event.echo:
 		return false
@@ -311,6 +351,11 @@ func _build_interface() -> void:
 	toolbar.add_child(undo_button)
 	redo_button = _toolbar_button("Redo", redo, "Redo the last undone edit.")
 	toolbar.add_child(redo_button)
+	revert_button = _toolbar_button(
+		"Revert", revert_object,
+		"Restore this object to its state when it entered the drawing area."
+	)
+	toolbar.add_child(revert_button)
 	toolbar.add_child(VSeparator.new())
 	toolbar.add_child(_toolbar_button("Apply to City", _apply_tile_set, "Use this tile set in the city view."))
 	var toolbar_spacer := Control.new()
@@ -365,6 +410,11 @@ func _build_interface() -> void:
 	name_button.text = "Set Name"
 	name_button.pressed.connect(_commit_name)
 	left.add_child(name_button)
+	revert_name_button = Button.new()
+	revert_name_button.text = "Revert Name"
+	revert_name_button.tooltip_text = "Remove the custom name and restore the original query name."
+	revert_name_button.pressed.connect(revert_name)
+	left.add_child(revert_name_button)
 
 	var right_split := HSplitContainer.new()
 	right_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -589,11 +639,17 @@ func _refresh_object_list() -> void:
 			object_list.select(list_index)
 	if object_list.get_selected_items().is_empty() and object_list.item_count > 0:
 		object_list.select(0)
-		current_large_id = int(object_list.get_item_metadata(0))
+		var replacement_id := int(object_list.get_item_metadata(0))
+		if replacement_id != current_large_id:
+			current_large_id = replacement_id
+			_capture_object_start()
 
 
 func _on_object_selected(index: int) -> void:
-	current_large_id = int(object_list.get_item_metadata(index))
+	var selected_id := int(object_list.get_item_metadata(index))
+	if selected_id != current_large_id:
+		current_large_id = selected_id
+		_capture_object_start()
 	_refresh_sprite()
 
 
@@ -689,6 +745,7 @@ func _refresh_sprite() -> void:
 		name_edit.text = ""
 		name_edit.editable = false
 		name_button.disabled = true
+		revert_name_button.disabled = true
 		return
 	var sprite_id := view_sprite_id(current_large_id, current_view)
 	var entry := tile_set.overrides.find_sprite(sprite_id)
@@ -725,6 +782,7 @@ func _refresh_sprite() -> void:
 	name_edit.editable = true
 	name_button.disabled = false
 	name_edit.text = String(tile_set.names.get(tile_id, ""))
+	revert_name_button.disabled = not tile_set.names.has(tile_id)
 	sprite_status_label.text = "Sprite %d: %d x %d pixels, %s." % [
 		sprite_id, entry.width, entry.height, source,
 	]
@@ -735,6 +793,17 @@ func _capture_edit_start() -> void:
 		return
 	var encoded := tile_set.to_bytes()
 	pending_edit_before = encoded.bytes.duplicate() if encoded.ok else PackedByteArray()
+
+
+func _capture_object_start() -> void:
+	object_start_bytes.clear()
+	object_start_large_id = current_large_id
+	if tile_set == null or current_large_id < 0:
+		return
+	var encoded := tile_set.to_bytes()
+	if encoded.ok:
+		object_start_bytes = encoded.bytes.duplicate()
+	_update_history_buttons()
 
 
 func _commit_pixels(value_pixels: PackedInt32Array) -> void:
@@ -817,6 +886,14 @@ func _update_history_buttons() -> void:
 		undo_button.disabled = undo_stack.is_empty()
 	if redo_button != null:
 		redo_button.disabled = redo_stack.is_empty()
+	if revert_button != null:
+		var encoded := tile_set.to_bytes() if tile_set != null else {}
+		revert_button.disabled = (
+			object_start_bytes.is_empty()
+			or object_start_large_id != current_large_id
+			or not encoded.get("ok", false)
+			or encoded.bytes == object_start_bytes
+		)
 	if save_button != null:
 		save_button.disabled = tile_set == null
 

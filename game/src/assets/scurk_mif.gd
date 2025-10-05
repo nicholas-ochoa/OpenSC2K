@@ -172,6 +172,23 @@ func set_name(sprite_id: int, value: String) -> Dictionary:
 	return {"ok": true, "error": ""}
 
 
+func remove_name(sprite_id: int) -> Dictionary:
+	if sprite_id < 0 or sprite_id > 0xffff:
+		return {"ok": false, "error": "NAME sprite ID is outside the 16-bit range"}
+	var kept_records: Array[Dictionary] = []
+	for piece in piece_records:
+		if (
+			piece.get("tag", "") == "NAME"
+			and int(piece.get("sprite_id", -1)) == sprite_id
+		):
+			continue
+		kept_records.append(piece)
+	piece_records = kept_records
+	names.erase(sprite_id)
+	piece_count = piece_records.size()
+	return {"ok": true, "error": ""}
+
+
 func set_shape_indices(
 	sprite_id: int, width: int, height: int, pixels: PackedInt32Array
 ) -> Dictionary:
