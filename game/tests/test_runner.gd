@@ -7,6 +7,9 @@ const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
+const ScurkEditor = preload("res://src/ui/scurk_editor_control.gd")
+const ScurkPixelEditor = preload("res://src/view/scurk_pixel_canvas.gd")
+const ScurkPalette = preload("res://src/view/scurk_palette_control.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
@@ -2617,6 +2620,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 	var original := ScurkTileSet.load_path(scurk_directory.path_join("ORIGINAL.MIF"))
 	_check(original.is_valid(), "ORIGINAL.MIF parses: %s" % original.parse_error)
 	if original.is_valid():
+		var editable_ids := ScurkEditor.editable_large_sprite_ids(original)
 		_check(
 			original.piece_count == 558
 			and original.shapes.size() == 558
@@ -2624,6 +2628,176 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and original.names.is_empty(),
 			"ORIGINAL.MIF contains 558 visible SHAP records",
 		)
+		_check(
+			editable_ids.size() == 186
+			and ScurkEditor.view_sprite_id(editable_ids[0], ScurkEditor.VIEW_LARGE)
+				== editable_ids[0]
+			and ScurkEditor.view_sprite_id(editable_ids[0], ScurkEditor.VIEW_MEDIUM)
+				== editable_ids[0] - 500
+			and ScurkEditor.view_sprite_id(editable_ids[0], ScurkEditor.VIEW_SMALL)
+				== editable_ids[0] - 1000,
+			"SCURK editor exposes 186 objects with direct three-view sprite IDs",
+		)
+		var editor_palette := Palette.load_bmp(
+			reference_root.path_join("BITMAPS/PAL_MSTR.BMP")
+		)
+		var editor_large := SpriteArchive.load_path(
+			reference_root.path_join("DATA/LARGE.DAT")
+		)
+		var editor_small_medium := SpriteArchive.load_path(
+			reference_root.path_join("DATA/SMALLMED.DAT")
+		)
+		var scurk_editor := ScurkEditor.new()
+		scurk_editor._ready()
+		scurk_editor.configure(
+			editor_palette, editor_large, editor_small_medium, reference_root
+		)
+		var editor_load := scurk_editor.load_path(
+			scurk_directory.path_join("ORIGINAL.MIF")
+		)
+		_check(
+			editor_load.ok
+			and scurk_editor.object_list.item_count == 186
+			and scurk_editor.pixel_canvas.sprite_width > 0
+			and scurk_editor.pixel_canvas.sprite_height > 0,
+			"SCURK editor loads its object list and editable large sprite",
+		)
+		_check(
+			scurk_editor.tool_buttons.size() == 10
+			and scurk_editor.texture_selector.item_count
+				== ScurkPixelEditor.TEXTURE_NAMES.size()
+			and scurk_editor.brush_size_selector.item_count == 6,
+			"SCURK editor exposes the recovered paint and brush controls",
+		)
+		var original_editor_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+		var edited_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
+		edited_pixels[0] = 1 if edited_pixels[0] != 1 else 2
+		scurk_editor._capture_edit_start()
+		scurk_editor._commit_pixels(edited_pixels)
+		var changed_editor_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+		_check(
+			scurk_editor.dirty
+			and changed_editor_bytes != original_editor_bytes
+			and scurk_editor.undo_stack.size() == 1,
+			"SCURK pixel edits update the MIF document and enter undo history",
+		)
+		scurk_editor.undo()
+		_check(
+			not scurk_editor.dirty
+			and scurk_editor.tile_set.to_bytes().bytes == original_editor_bytes,
+			"SCURK Undo restores the byte-identical loaded MIF document",
+		)
+		scurk_editor.redo()
+		_check(
+			scurk_editor.dirty
+			and scurk_editor.tile_set.to_bytes().bytes == changed_editor_bytes,
+			"SCURK Redo restores the edited MIF document",
+		)
+		scurk_editor.undo()
+		var reference_save := scurk_editor.save_path(
+			scurk_directory.path_join("DO_NOT_WRITE.MIF")
+		)
+		_check(
+			not reference_save.ok and reference_save.error.contains("read-only"),
+			"SCURK editor refuses to write inside the reference directory",
+		)
+		var scratch_path := ProjectSettings.globalize_path(
+			"user://test-scurk-editor-output.MIF"
+		)
+		var editor_save := scurk_editor.save_path(scratch_path)
+		_check(
+			editor_save.ok
+			and FileAccess.get_file_as_bytes(scratch_path)
+				== FileAccess.get_file_as_bytes(scurk_directory.path_join("ORIGINAL.MIF")),
+			"SCURK editor saves an unchanged MIF byte-identically",
+		)
+		if FileAccess.file_exists(scratch_path):
+			DirAccess.remove_absolute(scratch_path)
+		scurk_editor.free()
+
+	var fill_source := PackedInt32Array([
+		1, 1, -1,
+		1, 2, -1,
+	])
+	var filled := ScurkPixelEditor.flood_fill(fill_source, 3, 2, Vector2i(0, 0), 9)
+	_check(
+		filled == PackedInt32Array([9, 9, -1, 9, 2, -1])
+		and fill_source == PackedInt32Array([1, 1, -1, 1, 2, -1]),
+		"SCURK fill edits only the connected palette region",
+	)
+	var checker_fill := ScurkPixelEditor.flood_fill_pattern(
+		PackedInt32Array([1, 1, 1, 2, 2, 2]), 3, 2, Vector2i(0, 0),
+		7, 8, ScurkPixelEditor.TEXTURE_ROWS[1]
+	)
+	_check(
+		checker_fill == PackedInt32Array([7, 8, 7, 2, 2, 2]),
+		"SCURK texture fill uses foreground and background colors",
+	)
+	var hollow_box := ScurkPixelEditor.shape_points(
+		ScurkPixelEditor.TOOL_RECTANGLE, Vector2i(1, 2), Vector2i(4, 4), false
+	)
+	var filled_box := ScurkPixelEditor.shape_points(
+		ScurkPixelEditor.TOOL_RECTANGLE, Vector2i(1, 2), Vector2i(4, 4), true
+	)
+	_check(
+		hollow_box.size() == 10
+		and filled_box.size() == 12
+		and hollow_box.has(Vector2i(1, 2))
+		and not hollow_box.has(Vector2i(2, 3))
+		and filled_box.has(Vector2i(2, 3)),
+		"SCURK box tool supports hollow and filled previews",
+	)
+	_check(
+		ScurkPixelEditor.line_points(Vector2i(0, 0), Vector2i(4, 2))
+			== [
+				Vector2i(0, 0), Vector2i(1, 1), Vector2i(2, 1),
+				Vector2i(3, 2), Vector2i(4, 2),
+			]
+		and not ScurkPixelEditor.shape_points(
+			ScurkPixelEditor.TOOL_DIAMOND, Vector2i(0, 0), Vector2i(6, 4), false
+		).is_empty()
+		and not ScurkPixelEditor.shape_points(
+			ScurkPixelEditor.TOOL_LEFT_WALL, Vector2i(0, 0), Vector2i(6, 8), true
+		).is_empty()
+		and not ScurkPixelEditor.shape_points(
+			ScurkPixelEditor.TOOL_ELLIPSE, Vector2i(0, 0), Vector2i(6, 4), false
+		).is_empty(),
+		"SCURK line, diamond, wall, and ellipse tools produce pixel paths",
+	)
+	var stroke_canvas := ScurkPixelEditor.new()
+	stroke_canvas.set_sprite_data(
+		5, 1, PackedInt32Array([-1, -1, -1, -1, -1]), Palette.index_encoding()
+	)
+	stroke_canvas.set_paint_indices(7, 0)
+	var stroke_press := InputEventMouseButton.new()
+	stroke_press.button_index = MOUSE_BUTTON_LEFT
+	stroke_press.pressed = true
+	stroke_press.position = Vector2(1, 1)
+	stroke_canvas._gui_input(stroke_press)
+	var stroke_motion := InputEventMouseMotion.new()
+	stroke_motion.button_mask = MOUSE_BUTTON_MASK_LEFT
+	stroke_motion.position = Vector2(17, 1)
+	stroke_canvas._gui_input(stroke_motion)
+	var stroke_release := InputEventMouseButton.new()
+	stroke_release.button_index = MOUSE_BUTTON_LEFT
+	stroke_release.pressed = false
+	stroke_release.position = Vector2(17, 1)
+	stroke_canvas._gui_input(stroke_release)
+	_check(
+		stroke_canvas.pixels == PackedInt32Array([7, 7, 7, 7, 7]),
+		"SCURK pencil strokes fill every crossed pixel without gaps",
+	)
+	stroke_canvas.free()
+	var palette_grid := ScurkPalette.new()
+	_check(
+		palette_grid.index_at(Vector2(0, 0)) == 0
+		and palette_grid.index_at(Vector2(17, 17)) == 0
+		and palette_grid.index_at(Vector2(18, 0)) == 1
+		and palette_grid.index_at(Vector2(287, 287)) == 255
+		and palette_grid.index_at(Vector2(288, 0)) == -1,
+		"SCURK palette maps all 256 visible color cells",
+	)
+	palette_grid.free()
 
 	var city_hall := ScurkTileSet.load_path(scurk_directory.path_join("CITYHAL.MIF"))
 	_check(city_hall.is_valid(), "CITYHAL.MIF parses: %s" % city_hall.parse_error)

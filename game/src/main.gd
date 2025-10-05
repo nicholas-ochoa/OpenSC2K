@@ -34,6 +34,7 @@ const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
 const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperPageView = preload("res://src/ui/newspaper_page.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
+const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -169,6 +170,7 @@ var base_large_sprites: Sc2SpriteArchive
 var base_small_medium_sprites: Sc2SpriteArchive
 var active_scurk_tile_set: ScurkMif
 var active_scurk_name := ""
+var active_scurk_path := ""
 var overlay_mode := "city"
 var surface_visibility := {
 	"buildings": true,
@@ -349,7 +351,7 @@ var settings_dialog: ConfirmationDialog
 var settings_music_slider: HSlider
 var settings_effects_slider: HSlider
 var settings_fullscreen_check: CheckBox
-var scurk_dialog: AcceptDialog
+var scurk_editor: ScurkEditorControl
 var about_dialog: AcceptDialog
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
@@ -481,6 +483,7 @@ func _process(delta: float) -> void:
 		or (query_overlay != null and query_overlay.visible)
 		or (ordinance_window != null and ordinance_window.visible)
 		or (new_city_dialog != null and new_city_dialog.visible)
+		or (scurk_editor != null and scurk_editor.visible)
 		or (main_menu != null and main_menu.visible)
 		or bond_dialog.visible
 		or military_dialog.visible
@@ -509,6 +512,10 @@ func _process(delta: float) -> void:
 
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo or map_view == null:
+		return
+	if scurk_editor != null and scurk_editor.visible:
+		if scurk_editor.handle_shortcut(event):
+			get_viewport().set_input_as_handled()
 		return
 	if main_menu != null and main_menu.visible:
 		if event.keycode == KEY_ESCAPE and city != null:
@@ -1590,16 +1597,10 @@ func _build_main_menu() -> void:
 	settings_parent.move_child(settings_grid, 0)
 	add_child(settings_dialog)
 
-	scurk_dialog = AcceptDialog.new()
-	scurk_dialog.title = "SCURK Tile Editor"
-	scurk_dialog.dialog_text = (
-		"The SCURK editor shell is available, but pixel editing and MIF writing are not implemented yet.\n\n"
-		+ "The current build can load original MIF tile sets from File > Load Tile Set. "
-		+ "It preserves INFO, SHAP, and NAME data and applies the artwork to a city view."
-	)
-	scurk_dialog.min_size = Vector2i(580, 260)
-	scurk_dialog.exclusive = true
-	add_child(scurk_dialog)
+	scurk_editor = ScurkEditorView.new()
+	scurk_editor.z_index = 940
+	scurk_editor.tile_set_applied.connect(_apply_scurk_tile_set)
+	add_child(scurk_editor)
 
 	about_dialog = AcceptDialog.new()
 	about_dialog.title = "About OpenSC2K"
@@ -1671,7 +1672,35 @@ func _load_app_settings() -> void:
 
 
 func _open_scurk_dialog() -> void:
-	scurk_dialog.popup_centered()
+	if (
+		palette == null
+		or not palette.is_valid()
+		or base_large_sprites == null
+		or base_small_medium_sprites == null
+	):
+		_show_error("The original SCURK graphics are not loaded.")
+		return
+	scurk_editor.configure(
+		palette, base_large_sprites, base_small_medium_sprites, reference_root
+	)
+	var initial_path := (
+		active_scurk_path
+		if not active_scurk_path.is_empty()
+		else reference_root.path_join("SCURKART/ORIGINAL.MIF")
+	)
+	if (
+		scurk_editor.tile_set != null
+		and not scurk_editor.dirty
+		and not active_scurk_path.is_empty()
+		and scurk_editor.source_path != active_scurk_path
+	):
+		var switched := scurk_editor.load_path(active_scurk_path)
+		if not switched.ok:
+			_show_error(switched.error)
+			return
+	var opened := scurk_editor.show_editor(initial_path)
+	if not opened.ok:
+		_show_error(opened.error)
 
 
 func _open_about_dialog() -> void:
@@ -3025,6 +3054,18 @@ func _load_tile_set(path: String) -> void:
 	if not tile_set.is_valid():
 		_show_error("Cannot load tile set: %s" % tile_set.parse_error)
 		return
+	_apply_scurk_tile_set(tile_set, path.get_file(), path)
+
+
+func _apply_scurk_tile_set(
+	tile_set: ScurkMif, display_name: String, path: String
+) -> void:
+	if base_large_sprites == null or base_small_medium_sprites == null:
+		_show_error("Original sprite data is not loaded.")
+		return
+	if tile_set == null or not tile_set.is_valid():
+		_show_error("Cannot apply an invalid SCURK tile set.")
+		return
 	var new_large := SpriteArchive.combine([base_large_sprites, tile_set.overrides])
 	var new_small_medium := SpriteArchive.combine([
 		base_small_medium_sprites, tile_set.overrides,
@@ -3033,7 +3074,8 @@ func _load_tile_set(path: String) -> void:
 		_show_error("Cannot combine the tile set with the original sprite data.")
 		return
 	active_scurk_tile_set = tile_set
-	active_scurk_name = path.get_file()
+	active_scurk_name = display_name
+	active_scurk_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
 	large_sprites = new_large
 	small_medium_sprites = new_small_medium
 	_invalidate_sprite_art()
@@ -3050,6 +3092,7 @@ func _restore_original_tile_set() -> void:
 		return
 	active_scurk_tile_set = null
 	active_scurk_name = ""
+	active_scurk_path = ""
 	large_sprites = base_large_sprites
 	small_medium_sprites = base_small_medium_sprites
 	_invalidate_sprite_art()
