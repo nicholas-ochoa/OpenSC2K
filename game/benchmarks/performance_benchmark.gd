@@ -44,6 +44,17 @@ func _init() -> void:
 		printerr(initial.error)
 		quit(1)
 		return
+	started = Time.get_ticks_usec()
+	var initial_texture := ImageTexture.create_from_image(initial.image)
+	print(
+		"static_texture_upload: %d us; format=%d; bytes=%d"
+		% [
+			Time.get_ticks_usec() - started,
+			initial.image.get_format(),
+			initial.image.get_data_size(),
+		]
+	)
+	initial_texture = null
 
 	var job := RenderJob.new()
 	job.city_snapshot = city
@@ -74,6 +85,10 @@ func _init() -> void:
 		Renderer.static_visual_signature(city)
 	print("static_signature_40: %d us" % (Time.get_ticks_usec() - started))
 	started = Time.get_ticks_usec()
+	for _snapshot_index in 40:
+		CityModel.from_document(city.document.duplicate_document())
+	print("render_snapshot_40: %d us" % (Time.get_ticks_usec() - started))
+	started = Time.get_ticks_usec()
 	for dynamic_index in 40:
 		Renderer.dynamic_draw_commands(city, sprites, Renderer.VIEW_LARGE, dynamic_index)
 	print("dynamic_layer_40: %d us" % (Time.get_ticks_usec() - started))
@@ -90,6 +105,52 @@ func _init() -> void:
 			return
 	var hurricane_commands := Renderer.dynamic_draw_commands(
 		scenario_city, sprites, Renderer.VIEW_LARGE, 30
+	)
+	var hurricane_visuals: Array[Dictionary] = []
+	var hurricane_images := {}
+	for command in hurricane_commands:
+		if not command.has("overlay"):
+			continue
+		var image_key := "%d:%d" % [command.sprite_id, int(command.flip)]
+		var marker_image: Image = hurricane_images.get(image_key) as Image
+		if marker_image == null:
+			var marker := sprites.find_sprite(command.sprite_id)
+			if marker == null:
+				continue
+			var marker_result := marker.create_image(index_palette)
+			if not marker_result.ok:
+				continue
+			marker_image = marker_result.image
+			if command.flip:
+				marker_image = marker_image.duplicate()
+				marker_image.flip_x()
+			hurricane_images[image_key] = marker_image
+		hurricane_visuals.append({
+			"image": marker_image,
+			"position": Vector2(command.position),
+			"size": Vector2(marker_image.get_size()),
+			"special_overlay": true,
+			"batch_cache_key": image_key + ":" + str(command.position),
+		})
+	started = Time.get_ticks_usec()
+	var hurricane_batch_cache := {}
+	var hurricane_batches := DynamicSpriteCanvas.batch_special_visuals(
+		hurricane_visuals, hurricane_batch_cache
+	)
+	var hurricane_cold_batch_usec := Time.get_ticks_usec() - started
+	started = Time.get_ticks_usec()
+	for _batch_index in 40:
+		hurricane_batches = DynamicSpriteCanvas.batch_special_visuals(
+			hurricane_visuals, hurricane_batch_cache
+		)
+	print(
+		"hurricane_batch: cold=%d us; warm_40=%d us; visuals=%d; batches=%d"
+		% [
+			hurricane_cold_batch_usec,
+			Time.get_ticks_usec() - started,
+			hurricane_visuals.size(),
+			hurricane_batches.size(),
+		]
 	)
 	var dynamic_canvas := DynamicSpriteCanvas.new()
 	started = Time.get_ticks_usec()

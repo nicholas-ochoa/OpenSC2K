@@ -1024,6 +1024,19 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Indexed city rendering keeps its outer canvas transparent",
 	)
 	_check(
+		indexed_city.ok and indexed_city.image.get_format() == Image.FORMAT_LA8,
+		"Transparent indexed city rendering uses two bytes per pixel",
+	)
+	var opaque_indexed_city := IsometricRenderer.create_image(
+		starter, Palette.index_encoding(), small_medium,
+		IsometricRenderer.VIEW_SMALL, 0, false, false, false, false
+	)
+	_check(
+		opaque_indexed_city.ok
+		and opaque_indexed_city.image.get_format() == Image.FORMAT_L8,
+		"Opaque indexed city rendering uses one byte per pixel",
+	)
+	_check(
 		indexed_city.ok and indexed_city.image.get_used_rect().has_area(),
 		"Indexed city rendering draws nontransparent map pixels",
 	)
@@ -2060,6 +2073,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 			"position": Vector2(index % 100, int(index / 100)),
 			"size": Vector2(4, 4),
 			"special_overlay": true,
+			"batch_cache_key": "marker:%d" % index,
 		})
 	var separator := {
 		"texture": marker_texture,
@@ -2068,12 +2082,23 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"size": Vector2(4, 4),
 	}
 	batch_input.insert(750, separator)
-	var batches := DynamicSpriteCanvas.batch_special_visuals(batch_input)
+	var marker_batch_cache := {}
+	var batches := DynamicSpriteCanvas.batch_special_visuals(
+		batch_input, marker_batch_cache
+	)
 	_check(
 		batches.size() < 10
 		and batches[3] == separator
 		and batches[0].get("special_batch", false),
 		"Dynamic marker batching keeps moving-object order and reduces 1,500 markers",
+	)
+	var cached_batches := DynamicSpriteCanvas.batch_special_visuals(
+		batch_input, marker_batch_cache
+	)
+	_check(
+		not marker_batch_cache.is_empty()
+		and cached_batches[0].texture == batches[0].texture,
+		"Dynamic marker batching reuses unchanged batch textures",
 	)
 	map_control.free()
 	var underground_city := CityModel.from_document(starter.document.duplicate_document())
@@ -2182,6 +2207,10 @@ func _test_sprite_archives(reference_root: String) -> void:
 			underground_image.image.get_pixel(0, 0).to_rgba32()
 			== Color8(255, 255, 255, 255).to_rgba32(),
 			"Underground view uses the recovered white background",
+		)
+		_check(
+			underground_image.image.get_format() == Image.FORMAT_L8,
+			"Opaque indexed underground rendering uses one byte per pixel",
 		)
 	var filtered_source := CityModel.from_document(starter.document.duplicate_document())
 	_check(filtered_source.set_building_id(10, 10, 0x80), "View filter adds a building")

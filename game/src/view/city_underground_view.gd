@@ -56,6 +56,8 @@ static func create_image(
 				output, city, palette, sprites, cache, configuration, origin_x, x, y,
 				show_pipes
 			)
+	if palette.is_index_encoding:
+		output.convert(Image.FORMAT_L8)
 	return {"ok": true, "image": output, "error": ""}
 
 

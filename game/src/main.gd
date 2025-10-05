@@ -220,6 +220,7 @@ var dynamic_sprite_cache: Dictionary = {}
 var dynamic_foreground_cache: Dictionary = {}
 var dynamic_occluder_cache: Dictionary = {}
 var dynamic_visual_cache: Dictionary = {}
+var dynamic_special_batch_cache: Dictionary = {}
 var dynamic_sign_occluders: Array[Dictionary] = []
 var dynamic_sign_occlusion_grid: Dictionary = {}
 var static_render_thread: Thread
@@ -3072,6 +3073,7 @@ func _invalidate_sprite_art() -> void:
 	dynamic_foreground_cache.clear()
 	dynamic_occluder_cache.clear()
 	dynamic_visual_cache.clear()
+	dynamic_special_batch_cache.clear()
 	dynamic_sign_occluders.clear()
 	dynamic_sign_occlusion_grid.clear()
 
@@ -3412,6 +3414,7 @@ func _activate_document(
 	dynamic_foreground_cache.clear()
 	dynamic_occluder_cache.clear()
 	dynamic_visual_cache.clear()
+	dynamic_special_batch_cache.clear()
 	dynamic_sign_occluders.clear()
 	dynamic_sign_occlusion_grid.clear()
 	var process_seed := tool_random.state
@@ -3934,6 +3937,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 			"size": Vector2(resource.image.get_size()),
 			"image": visual_image,
 			"special_overlay": command.has("overlay"),
+			"batch_cache_key": visual_cache_key,
 			"depth_order": int(command.get("depth_order", -1)),
 			"shadow": bool(command.get("shadow", false)),
 		}
@@ -3944,7 +3948,11 @@ func _refresh_moving_things(view_size := -1) -> void:
 	dynamic_sign_occlusion_grid = IsometricRenderer.build_occlusion_grid(
 		dynamic_sign_occluders, 1
 	)
-	var batched_visuals := DynamicSpriteCanvas.batch_special_visuals(visuals)
+	if dynamic_special_batch_cache.size() > 128:
+		dynamic_special_batch_cache.clear()
+	var batched_visuals := DynamicSpriteCanvas.batch_special_visuals(
+		visuals, dynamic_special_batch_cache
+	)
 	map_view.set_dynamic_sprites(batched_visuals)
 	_refresh_sign_occlusion(view_size)
 
@@ -4131,6 +4139,7 @@ func _set_static_occlusion_commands(commands: Array, view_size: int) -> void:
 	static_occlusion_commands.assign(commands)
 	dynamic_occluder_cache.clear()
 	dynamic_visual_cache.clear()
+	dynamic_special_batch_cache.clear()
 	var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
 	static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
 		static_occlusion_commands, divisor

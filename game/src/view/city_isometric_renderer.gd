@@ -128,6 +128,8 @@ static func create_image(
 				include_special_overlays
 			)
 
+	if palette.is_index_encoding:
+		output.convert(Image.FORMAT_LA8 if transparent_background else Image.FORMAT_L8)
 	return {"ok": true, "image": output, "error": ""}
 
 

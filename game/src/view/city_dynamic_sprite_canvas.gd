@@ -23,13 +23,15 @@ func visual_count() -> int:
 	return visuals.size()
 
 
-static func batch_special_visuals(value: Array[Dictionary]) -> Array[Dictionary]:
+static func batch_special_visuals(
+	value: Array[Dictionary], batch_cache: Dictionary = {}
+) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
 	var pending: Array[Dictionary] = []
 	var pending_bounds := Rect2i()
 	for visual in value:
 		if not visual.get("special_overlay", false):
-			_append_special_batch(result, pending)
+			_append_special_batch(result, pending, batch_cache)
 			pending.clear()
 			pending_bounds = Rect2i()
 			result.append(visual)
@@ -43,23 +45,27 @@ static func batch_special_visuals(value: Array[Dictionary]) -> Array[Dictionary]
 				or merged.get_area() > MAX_SPECIAL_BATCH_AREA
 			)
 		):
-			_append_special_batch(result, pending)
+			_append_special_batch(result, pending, batch_cache)
 			pending.clear()
 			pending_bounds = bounds
 		else:
 			pending_bounds = merged
 		pending.append(visual)
-	_append_special_batch(result, pending)
+	_append_special_batch(result, pending, batch_cache)
 	return result
 
 
 static func _append_special_batch(
-	result: Array[Dictionary], pending: Array[Dictionary]
+	result: Array[Dictionary], pending: Array[Dictionary], batch_cache: Dictionary
 ) -> void:
 	if pending.is_empty():
 		return
 	if pending.size() == 1:
 		result.append(pending[0])
+		return
+	var cache_key := _special_batch_cache_key(pending)
+	if not cache_key.is_empty() and batch_cache.has(cache_key):
+		result.append(batch_cache[cache_key])
 		return
 	var bounds := _visual_bounds(pending[0])
 	for index in range(1, pending.size()):
@@ -79,7 +85,7 @@ static func _append_special_batch(
 			position - bounds.position,
 		)
 	var texture := ImageTexture.create_from_image(image)
-	result.append({
+	var batch := {
 		"texture": texture,
 		"index_texture": texture,
 		"palette_lookup_all": true,
@@ -87,7 +93,21 @@ static func _append_special_batch(
 		"size": Vector2(bounds.size),
 		"image": image,
 		"special_batch": true,
-	})
+	}
+	result.append(batch)
+	if not cache_key.is_empty():
+		batch_cache[cache_key] = batch
+
+
+static func _special_batch_cache_key(pending: Array[Dictionary]) -> String:
+	var parts := PackedStringArray()
+	parts.resize(pending.size())
+	for index in pending.size():
+		var key := String(pending[index].get("batch_cache_key", ""))
+		if key.is_empty():
+			return ""
+		parts[index] = key
+	return "|".join(parts)
 
 
 static func _visual_bounds(visual: Dictionary) -> Rect2i:
