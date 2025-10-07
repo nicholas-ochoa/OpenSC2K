@@ -42,6 +42,8 @@ var name_button: Button
 var revert_name_button: Button
 var view_buttons: Array[Button] = []
 var tool_buttons: Array[Button] = []
+var paste_tool_button: Button
+var clipboard_action_buttons: Array[Button] = []
 var undo_button: Button
 var redo_button: Button
 var revert_button: Button
@@ -464,6 +466,8 @@ func _build_interface() -> void:
 		["Box", ScurkPixelCanvas.TOOL_RECTANGLE],
 		["Fill", ScurkPixelCanvas.TOOL_FILL],
 		["Pick", ScurkPixelCanvas.TOOL_EYEDROPPER],
+		["Copy", ScurkPixelCanvas.TOOL_COPY],
+		["Paste", ScurkPixelCanvas.TOOL_PASTE],
 	]:
 		var button := Button.new()
 		button.text = tool_data[0]
@@ -473,7 +477,27 @@ func _build_interface() -> void:
 		button.pressed.connect(_select_tool.bind(tool_data[1]))
 		tool_row.add_child(button)
 		tool_buttons.append(button)
+		if tool_data[1] == ScurkPixelCanvas.TOOL_PASTE:
+			paste_tool_button = button
+			paste_tool_button.disabled = true
 	tool_buttons[0].button_pressed = true
+	var clipboard_row := HBoxContainer.new()
+	clipboard_row.add_theme_constant_override("separation", 5)
+	editor_column.add_child(clipboard_row)
+	var clipboard_label := Label.new()
+	clipboard_label.text = "SCURK Clipboard"
+	clipboard_row.add_child(clipboard_label)
+	for action_data in [
+		["Rotate CCW", _rotate_clipboard, "Rotate the copied pixels 90 degrees counter-clockwise."],
+		["Flip Horizontal", _flip_clipboard_horizontal, "Flip the copied pixels from left to right."],
+		["Flip Vertical", _flip_clipboard_vertical, "Flip the copied pixels from top to bottom."],
+	]:
+		var action_button := _toolbar_button(
+			action_data[0], action_data[1], action_data[2]
+		)
+		action_button.disabled = true
+		clipboard_row.add_child(action_button)
+		clipboard_action_buttons.append(action_button)
 	var brush_row := HBoxContainer.new()
 	brush_row.add_theme_constant_override("separation", 5)
 	editor_column.add_child(brush_row)
@@ -517,6 +541,7 @@ func _build_interface() -> void:
 	pixel_canvas.pixels_committed.connect(_commit_pixels)
 	pixel_canvas.palette_index_picked.connect(_select_palette_index)
 	pixel_canvas.pointer_changed.connect(_update_pointer_status)
+	pixel_canvas.clipboard_changed.connect(_on_clipboard_changed)
 	canvas_center.add_child(pixel_canvas)
 	sprite_status_label = Label.new()
 	sprite_status_label.text = "No sprite is selected."
@@ -735,6 +760,31 @@ func _set_grid_visible(enabled: bool) -> void:
 func _select_texture(index: int) -> void:
 	if pixel_canvas != null:
 		pixel_canvas.set_texture(index)
+
+
+func _rotate_clipboard() -> void:
+	if pixel_canvas != null:
+		pixel_canvas.rotate_clipboard_counterclockwise()
+
+
+func _flip_clipboard_horizontal() -> void:
+	if pixel_canvas != null:
+		pixel_canvas.flip_clipboard_horizontal()
+
+
+func _flip_clipboard_vertical() -> void:
+	if pixel_canvas != null:
+		pixel_canvas.flip_clipboard_vertical()
+
+
+func _on_clipboard_changed(width: int, height: int) -> void:
+	var available := width > 0 and height > 0
+	if paste_tool_button != null:
+		paste_tool_button.disabled = not available
+	for button in clipboard_action_buttons:
+		button.disabled = not available
+	if available:
+		_set_status("SCURK clipboard: %d x %d pixels." % [width, height])
 
 
 func _refresh_sprite() -> void:

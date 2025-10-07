@@ -2663,14 +2663,33 @@ func _test_scurk_mif(reference_root: String) -> void:
 			"SCURK editor loads its object list and editable large sprite",
 		)
 		_check(
-			scurk_editor.tool_buttons.size() == 10
+			scurk_editor.tool_buttons.size() == 12
 			and scurk_editor.texture_selector.item_count
 				== ScurkPixelEditor.TEXTURE_NAMES.size()
 			and scurk_editor.brush_size_selector.item_count == 6
 			and scurk_editor.revert_button != null
-			and scurk_editor.revert_name_button != null,
+			and scurk_editor.revert_name_button != null
+			and scurk_editor.paste_tool_button.disabled
+			and scurk_editor.clipboard_action_buttons.size() == 3,
 			"SCURK editor exposes the recovered paint and brush controls",
 		)
+		scurk_editor._select_tool(ScurkPixelEditor.TOOL_COPY)
+		var editor_copy_press := InputEventMouseButton.new()
+		editor_copy_press.button_index = MOUSE_BUTTON_LEFT
+		editor_copy_press.pressed = true
+		editor_copy_press.position = Vector2(1, 1)
+		scurk_editor.pixel_canvas._gui_input(editor_copy_press)
+		var editor_copy_release := InputEventMouseButton.new()
+		editor_copy_release.button_index = MOUSE_BUTTON_LEFT
+		editor_copy_release.pressed = false
+		editor_copy_release.position = Vector2(1, 1)
+		scurk_editor.pixel_canvas._gui_input(editor_copy_release)
+		_check(
+			not scurk_editor.paste_tool_button.disabled
+			and not scurk_editor.clipboard_action_buttons[0].disabled,
+			"SCURK Copy enables Paste and clipboard transforms",
+		)
+		scurk_editor._select_tool(ScurkPixelEditor.TOOL_PENCIL)
 		var original_editor_bytes: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
 		var edited_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
 		edited_pixels[0] = 1 if edited_pixels[0] != 1 else 2
@@ -2824,6 +2843,58 @@ func _test_scurk_mif(reference_root: String) -> void:
 		"SCURK pencil strokes fill every crossed pixel without gaps",
 	)
 	stroke_canvas.free()
+	var clipboard_source := PackedInt32Array([1, 2, 3, 4, 5, 6])
+	var copied_region := ScurkPixelEditor.copy_region(
+		clipboard_source, 3, 2, Vector2i(1, 0), Vector2i(2, 1)
+	)
+	_check(
+		copied_region.width == 2
+		and copied_region.height == 2
+		and copied_region.pixels == PackedInt32Array([2, 3, 5, 6]),
+		"SCURK Copy extracts an inclusive rectangular pixel region",
+	)
+	_check(
+		ScurkPixelEditor.rotate_counterclockwise(clipboard_source, 3, 2)
+			== PackedInt32Array([3, 6, 2, 5, 1, 4])
+		and ScurkPixelEditor.flip_horizontal(clipboard_source, 3, 2)
+			== PackedInt32Array([3, 2, 1, 6, 5, 4])
+		and ScurkPixelEditor.flip_vertical(clipboard_source, 3, 2)
+			== PackedInt32Array([4, 5, 6, 1, 2, 3]),
+		"SCURK clipboard rotate and flip operations preserve palette indices",
+	)
+	var paste_target := PackedInt32Array()
+	paste_target.resize(12)
+	paste_target.fill(0)
+	_check(
+		ScurkPixelEditor.paste_region(
+			paste_target, 4, 3, Vector2i(2, 2),
+			clipboard_source, 3, 2
+		) == PackedInt32Array([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 2]),
+		"SCURK Paste clips copied pixels at the object boundary",
+	)
+	var clipboard_canvas := ScurkPixelEditor.new()
+	clipboard_canvas.set_sprite_data(
+		3, 2, clipboard_source, Palette.index_encoding()
+	)
+	clipboard_canvas.set_zoom(4)
+	clipboard_canvas.set_tool(ScurkPixelEditor.TOOL_COPY)
+	var copy_press := InputEventMouseButton.new()
+	copy_press.button_index = MOUSE_BUTTON_LEFT
+	copy_press.pressed = true
+	copy_press.position = Vector2(5, 1)
+	clipboard_canvas._gui_input(copy_press)
+	var copy_release := InputEventMouseButton.new()
+	copy_release.button_index = MOUSE_BUTTON_LEFT
+	copy_release.pressed = false
+	copy_release.position = Vector2(9, 5)
+	clipboard_canvas._gui_input(copy_release)
+	_check(
+		clipboard_canvas.clipboard_width == 2
+		and clipboard_canvas.clipboard_height == 2
+		and clipboard_canvas.clipboard_pixels == PackedInt32Array([2, 3, 5, 6]),
+		"SCURK Copy drag stores pixels in its private clipboard",
+	)
+	clipboard_canvas.free()
 	var palette_grid := ScurkPalette.new()
 	_check(
 		palette_grid.index_at(Vector2(0, 0)) == 0

@@ -5,6 +5,7 @@ signal edit_started
 signal pixels_committed(pixels: PackedInt32Array)
 signal palette_index_picked(index: int, background: bool)
 signal pointer_changed(point: Vector2i, index: int)
+signal clipboard_changed(width: int, height: int)
 
 const TOOL_PENCIL := 0
 const TOOL_ERASER := 1
@@ -16,6 +17,8 @@ const TOOL_ELLIPSE := 6
 const TOOL_RECTANGLE := 7
 const TOOL_FILL := 8
 const TOOL_EYEDROPPER := 9
+const TOOL_COPY := 10
+const TOOL_PASTE := 11
 
 const TEXTURE_NAMES := [
 	"Solid Foreground",
@@ -60,6 +63,12 @@ var stroke_button := MOUSE_BUTTON_NONE
 var last_stroke_point := Vector2i(-1, -1)
 var shape_start := Vector2i(-1, -1)
 var stroke_base_pixels := PackedInt32Array()
+var copy_active := false
+var copy_start := Vector2i(-1, -1)
+var copy_finish := Vector2i(-1, -1)
+var clipboard_width := 0
+var clipboard_height := 0
+var clipboard_pixels := PackedInt32Array()
 
 
 func _init() -> void:
@@ -78,6 +87,9 @@ func set_sprite_data(
 	stroke_active = false
 	stroke_changed = false
 	stroke_base_pixels.clear()
+	copy_active = false
+	copy_start = Vector2i(-1, -1)
+	copy_finish = Vector2i(-1, -1)
 	hover_point = Vector2i(-1, -1)
 	_update_minimum_size()
 	queue_redraw()
@@ -94,7 +106,11 @@ func set_zoom(value: int) -> void:
 
 
 func set_tool(value: int) -> void:
-	tool = clampi(value, TOOL_PENCIL, TOOL_EYEDROPPER)
+	tool = clampi(value, TOOL_PENCIL, TOOL_PASTE)
+	copy_active = false
+	copy_start = Vector2i(-1, -1)
+	copy_finish = Vector2i(-1, -1)
+	queue_redraw()
 
 
 func set_paint_indices(foreground: int, background: int) -> void:
@@ -123,6 +139,152 @@ func pixel_at(point: Vector2i) -> int:
 	if not _point_is_valid(point):
 		return -2
 	return pixels[point.y * sprite_width + point.x]
+
+
+func has_clipboard() -> bool:
+	return (
+		clipboard_width > 0
+		and clipboard_height > 0
+		and clipboard_pixels.size() == clipboard_width * clipboard_height
+	)
+
+
+func rotate_clipboard_counterclockwise() -> void:
+	if not has_clipboard():
+		return
+	var rotated := rotate_counterclockwise(
+		clipboard_pixels, clipboard_width, clipboard_height
+	)
+	var old_width := clipboard_width
+	clipboard_width = clipboard_height
+	clipboard_height = old_width
+	clipboard_pixels = rotated
+	clipboard_changed.emit(clipboard_width, clipboard_height)
+	queue_redraw()
+
+
+func flip_clipboard_horizontal() -> void:
+	if not has_clipboard():
+		return
+	clipboard_pixels = flip_horizontal(
+		clipboard_pixels, clipboard_width, clipboard_height
+	)
+	clipboard_changed.emit(clipboard_width, clipboard_height)
+	queue_redraw()
+
+
+func flip_clipboard_vertical() -> void:
+	if not has_clipboard():
+		return
+	clipboard_pixels = flip_vertical(
+		clipboard_pixels, clipboard_width, clipboard_height
+	)
+	clipboard_changed.emit(clipboard_width, clipboard_height)
+	queue_redraw()
+
+
+static func copy_region(
+	value_pixels: PackedInt32Array,
+	width: int,
+	height: int,
+	start: Vector2i,
+	finish: Vector2i
+) -> Dictionary:
+	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
+		return {"width": 0, "height": 0, "pixels": PackedInt32Array()}
+	var minimum := Vector2i(
+		clampi(mini(start.x, finish.x), 0, width - 1),
+		clampi(mini(start.y, finish.y), 0, height - 1)
+	)
+	var maximum := Vector2i(
+		clampi(maxi(start.x, finish.x), 0, width - 1),
+		clampi(maxi(start.y, finish.y), 0, height - 1)
+	)
+	var copied_width := maximum.x - minimum.x + 1
+	var copied_height := maximum.y - minimum.y + 1
+	var copied := PackedInt32Array()
+	copied.resize(copied_width * copied_height)
+	for y in copied_height:
+		for x in copied_width:
+			copied[y * copied_width + x] = value_pixels[
+				(minimum.y + y) * width + minimum.x + x
+			]
+	return {"width": copied_width, "height": copied_height, "pixels": copied}
+
+
+static func paste_region(
+	target_pixels: PackedInt32Array,
+	target_width: int,
+	target_height: int,
+	target: Vector2i,
+	source_pixels: PackedInt32Array,
+	source_width: int,
+	source_height: int
+) -> PackedInt32Array:
+	var result := target_pixels.duplicate()
+	if (
+		target_width <= 0
+		or target_height <= 0
+		or result.size() != target_width * target_height
+		or source_width <= 0
+		or source_height <= 0
+		or source_pixels.size() != source_width * source_height
+	):
+		return result
+	for source_y in source_height:
+		var target_y := target.y + source_y
+		if target_y < 0 or target_y >= target_height:
+			continue
+		for source_x in source_width:
+			var target_x := target.x + source_x
+			if target_x < 0 or target_x >= target_width:
+				continue
+			result[target_y * target_width + target_x] = (
+				source_pixels[source_y * source_width + source_x]
+			)
+	return result
+
+
+static func rotate_counterclockwise(
+	value_pixels: PackedInt32Array, width: int, height: int
+) -> PackedInt32Array:
+	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
+		return PackedInt32Array()
+	var result := PackedInt32Array()
+	result.resize(width * height)
+	var result_width := height
+	for y in height:
+		for x in width:
+			var result_x := y
+			var result_y := width - 1 - x
+			result[result_y * result_width + result_x] = value_pixels[y * width + x]
+	return result
+
+
+static func flip_horizontal(
+	value_pixels: PackedInt32Array, width: int, height: int
+) -> PackedInt32Array:
+	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
+		return PackedInt32Array()
+	var result := PackedInt32Array()
+	result.resize(width * height)
+	for y in height:
+		for x in width:
+			result[y * width + width - 1 - x] = value_pixels[y * width + x]
+	return result
+
+
+static func flip_vertical(
+	value_pixels: PackedInt32Array, width: int, height: int
+) -> PackedInt32Array:
+	if width <= 0 or height <= 0 or value_pixels.size() != width * height:
+		return PackedInt32Array()
+	var result := PackedInt32Array()
+	result.resize(width * height)
+	for y in height:
+		for x in width:
+			result[(height - 1 - y) * width + x] = value_pixels[y * width + x]
+	return result
 
 
 static func flood_fill(
@@ -303,6 +465,15 @@ func _gui_input(event: InputEvent) -> void:
 			hover_point = point
 			pointer_changed.emit(point, pixel_at(point))
 			queue_redraw()
+		if copy_active:
+			if event.button_mask & MOUSE_BUTTON_MASK_LEFT:
+				if _point_is_valid(point):
+					copy_finish = point
+					queue_redraw()
+			else:
+				_finish_copy(copy_finish)
+			accept_event()
+			return
 		if stroke_active:
 			var expected_mask := (
 				MOUSE_BUTTON_MASK_RIGHT
@@ -319,6 +490,27 @@ func _gui_input(event: InputEvent) -> void:
 			accept_event()
 		return
 	if not event is InputEventMouseButton:
+		return
+	if tool == TOOL_COPY:
+		if event.button_index != MOUSE_BUTTON_LEFT:
+			return
+		var copy_point := _point_from_position(event.position)
+		if event.pressed:
+			if _point_is_valid(copy_point):
+				copy_active = true
+				copy_start = copy_point
+				copy_finish = copy_point
+				queue_redraw()
+		else:
+			_finish_copy(copy_point if _point_is_valid(copy_point) else copy_finish)
+		accept_event()
+		return
+	if tool == TOOL_PASTE:
+		if event.button_index == MOUSE_BUTTON_LEFT and event.pressed:
+			var paste_point := _point_from_position(event.position)
+			if _point_is_valid(paste_point):
+				_apply_clipboard(paste_point)
+			accept_event()
 		return
 	if event.button_index not in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
 		return
@@ -342,6 +534,39 @@ func _gui_input(event: InputEvent) -> void:
 			_preview_shape(point)
 		_finish_stroke()
 	accept_event()
+
+
+func _finish_copy(point: Vector2i) -> void:
+	if not copy_active:
+		return
+	copy_active = false
+	if _point_is_valid(point):
+		copy_finish = point
+	var copied := copy_region(
+		pixels, sprite_width, sprite_height, copy_start, copy_finish
+	)
+	clipboard_width = copied.width
+	clipboard_height = copied.height
+	clipboard_pixels = copied.pixels
+	copy_start = Vector2i(-1, -1)
+	copy_finish = Vector2i(-1, -1)
+	clipboard_changed.emit(clipboard_width, clipboard_height)
+	queue_redraw()
+
+
+func _apply_clipboard(point: Vector2i) -> void:
+	if not has_clipboard():
+		return
+	var changed := paste_region(
+		pixels, sprite_width, sprite_height, point,
+		clipboard_pixels, clipboard_width, clipboard_height
+	)
+	if changed == pixels:
+		return
+	edit_started.emit()
+	pixels = changed
+	pixels_committed.emit(pixels.duplicate())
+	queue_redraw()
 
 
 func _begin_stroke(point: Vector2i, button: int) -> void:
@@ -513,6 +738,52 @@ func _draw() -> void:
 			draw_line(
 				Vector2(0, y * zoom), Vector2(sprite_width * zoom, y * zoom),
 				grid_color, 1.0
+			)
+	if copy_active and _point_is_valid(copy_start) and _point_is_valid(copy_finish):
+		var minimum := Vector2i(
+			mini(copy_start.x, copy_finish.x), mini(copy_start.y, copy_finish.y)
+		)
+		var maximum := Vector2i(
+			maxi(copy_start.x, copy_finish.x), maxi(copy_start.y, copy_finish.y)
+		)
+		var selection := Rect2(
+			Vector2(minimum * zoom), Vector2((maximum - minimum + Vector2i.ONE) * zoom)
+		)
+		draw_rect(selection, Color.WHITE, false, 2.0)
+		draw_rect(selection.grow(-1.0), Color.BLACK, false, 1.0)
+	elif tool == TOOL_PASTE and has_clipboard() and _point_is_valid(hover_point):
+		for source_y in clipboard_height:
+			for source_x in clipboard_width:
+				var target := hover_point + Vector2i(source_x, source_y)
+				if not _point_is_valid(target):
+					continue
+				var index := clipboard_pixels[source_y * clipboard_width + source_x]
+				var preview_color := (
+					palette.color(index)
+					if index >= 0 and palette != null and palette.is_valid()
+					else Color.WHITE
+				)
+				preview_color.a = 0.62 if index >= 0 else 0.32
+				draw_rect(
+					Rect2(target.x * zoom, target.y * zoom, zoom, zoom),
+					preview_color, true
+				)
+		var visible_width := mini(clipboard_width, sprite_width - hover_point.x)
+		var visible_height := mini(clipboard_height, sprite_height - hover_point.y)
+		draw_rect(
+			Rect2(
+				hover_point.x * zoom, hover_point.y * zoom,
+				visible_width * zoom, visible_height * zoom
+			),
+			Color.WHITE, false, 2.0
+		)
+		if visible_width * zoom > 2 and visible_height * zoom > 2:
+			draw_rect(
+				Rect2(
+					hover_point.x * zoom + 1, hover_point.y * zoom + 1,
+					visible_width * zoom - 2, visible_height * zoom - 2
+				),
+				Color.BLACK, false, 1.0
 			)
 	if _point_is_valid(hover_point):
 		draw_rect(
