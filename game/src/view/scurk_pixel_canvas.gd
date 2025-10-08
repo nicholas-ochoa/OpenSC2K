@@ -1,6 +1,8 @@
 class_name ScurkPixelCanvas
 extends Control
 
+const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
+
 signal edit_started
 signal pixels_committed(pixels: PackedInt32Array)
 signal palette_index_picked(index: int, background: bool)
@@ -22,14 +24,23 @@ const TOOL_PASTE := 11
 
 const TEXTURE_NAMES := [
 	"Solid Foreground",
-	"Checker",
-	"Dense Checker",
-	"Diagonal",
-	"Crosshatch",
-	"Dots",
-	"Vertical Stripes",
-	"Horizontal Stripes",
+	"Foreground and Background",
 	"Solid Background",
+	"Texture 01", "Texture 02", "Texture 03", "Texture 04", "Texture 05",
+	"Texture 06", "Texture 07", "Texture 08", "Texture 09", "Texture 10",
+	"Texture 11", "Texture 12", "Texture 13", "Texture 14", "Texture 15",
+	"Texture 16", "Texture 17", "Texture 18", "Texture 19", "Texture 20",
+	"Texture 21", "Texture 22", "Texture 23", "Texture 24", "Texture 25",
+	"Texture 26", "Texture 27", "Texture 28", "Texture 29", "Texture 30",
+	"Texture 31", "Texture 32", "Texture 33", "Texture 34", "Texture 35",
+	"Texture 36", "Texture 37", "Texture 38", "Texture 39",
+]
+const ORIGINAL_TEXTURE_RESOURCE_IDS := [
+	25039, 25040, 25041,
+	25000, 25001, 25002, 25003, 25004, 25005, 25006, 25007, 25008, 25009,
+	25010, 25011, 25012, 25013, 25014, 25015, 25016, 25017, 25018, 25019,
+	25020, 25021, 25022, 25023, 25024, 25025, 25026, 25027, 25028, 25029,
+	25030, 25031, 25032, 25033, 25034, 25035, 25036, 25037, 25038,
 ]
 const TEXTURE_ROWS := [
 	[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
@@ -69,12 +80,15 @@ var copy_finish := Vector2i(-1, -1)
 var clipboard_width := 0
 var clipboard_height := 0
 var clipboard_pixels := PackedInt32Array()
+var texture_patterns: Array[PackedInt32Array] = []
+var original_textures_loaded := false
 
 
 func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	mouse_exited.connect(_on_mouse_exited)
+	texture_patterns = _fallback_texture_patterns()
 
 
 func set_sprite_data(
@@ -124,7 +138,48 @@ func set_brush(value_size: int, rounded: bool) -> void:
 
 
 func set_texture(value: int) -> void:
-	texture_index = clampi(value, 0, TEXTURE_ROWS.size() - 1)
+	texture_index = clampi(value, 0, maxi(0, texture_patterns.size() - 1))
+
+
+func load_original_textures(executable_path: String) -> Dictionary:
+	var loaded_patterns: Array[PackedInt32Array] = []
+	var loaded_set := PeBitmap.load_numeric_indexed8_many(
+		executable_path, ORIGINAL_TEXTURE_RESOURCE_IDS
+	)
+	if not loaded_set.ok:
+		return {"ok": false, "error": "Cannot load SCURK textures: " + loaded_set.error}
+	for index in ORIGINAL_TEXTURE_RESOURCE_IDS.size():
+		var resource_id: int = ORIGINAL_TEXTURE_RESOURCE_IDS[index]
+		var loaded: Dictionary = loaded_set.entries[index]
+		if loaded.width != 8 or loaded.height != 8 or loaded.pixels.size() != 64:
+			return {
+				"ok": false,
+				"error": "SCURK texture %d is not 8 by 8 pixels." % resource_id,
+			}
+		loaded_patterns.append(loaded.pixels)
+	if loaded_patterns.size() != TEXTURE_NAMES.size():
+		return {"ok": false, "error": "The SCURK texture set is incomplete."}
+	texture_patterns = loaded_patterns
+	original_textures_loaded = true
+	texture_index = clampi(texture_index, 0, texture_patterns.size() - 1)
+	queue_redraw()
+	return {"ok": true, "error": ""}
+
+
+static func _fallback_texture_patterns() -> Array[PackedInt32Array]:
+	var result: Array[PackedInt32Array] = []
+	for source_index in [0, 1, 8, 2, 3, 4, 5, 6, 7]:
+		var rows: Array = TEXTURE_ROWS[source_index]
+		var pattern := PackedInt32Array()
+		pattern.resize(64)
+		for y in 8:
+			var row_mask := int(rows[y])
+			for x in 8:
+				pattern[y * 8 + x] = 0xff if row_mask & (0x80 >> x) else 0
+		result.append(pattern)
+	while result.size() < TEXTURE_NAMES.size():
+		result.append(result[3 + posmod(result.size() - 3, 6)].duplicate())
+	return result
 
 
 func replace_pixels(value_pixels: PackedInt32Array) -> bool:
@@ -309,6 +364,30 @@ static func flood_fill_pattern(
 	background: int,
 	pattern_rows: Array
 ) -> PackedInt32Array:
+	if pattern_rows.size() != 8:
+		return value_pixels.duplicate()
+	var pattern := PackedInt32Array()
+	pattern.resize(64)
+	for y in 8:
+		var row_mask := int(pattern_rows[y])
+		for x in 8:
+			pattern[y * 8 + x] = 0xff if row_mask & (0x80 >> x) else 0
+	return flood_fill_texture(
+		value_pixels, width, height, start, foreground, background, pattern, 8, 8
+	)
+
+
+static func flood_fill_texture(
+	value_pixels: PackedInt32Array,
+	width: int,
+	height: int,
+	start: Vector2i,
+	foreground: int,
+	background: int,
+	pattern_pixels: PackedInt32Array,
+	pattern_width: int,
+	pattern_height: int
+) -> PackedInt32Array:
 	var result := value_pixels.duplicate()
 	if (
 		width <= 0
@@ -322,7 +401,9 @@ static func flood_fill_pattern(
 		or foreground > 255
 		or background < -1
 		or background > 255
-		or pattern_rows.size() != 8
+		or pattern_width <= 0
+		or pattern_height <= 0
+		or pattern_pixels.size() != pattern_width * pattern_height
 	):
 		return result
 	var target := result[start.y * width + start.x]
@@ -335,8 +416,9 @@ static func flood_fill_pattern(
 		if visited[point_index] != 0 or result[point_index] != target:
 			continue
 		visited[point_index] = 1
-		result[point_index] = pattern_color(
-			point, foreground, background, pattern_rows
+		result[point_index] = texture_color(
+			point, foreground, background,
+			pattern_pixels, pattern_width, pattern_height
 		)
 		var neighbors: Array[Vector2i] = [
 			Vector2i(point.x - 1, point.y),
@@ -363,6 +445,35 @@ static func pattern_color(
 	var row_mask := int(pattern_rows[posmod(point.y, 8)])
 	var mask := 0x80 >> posmod(point.x, 8)
 	return foreground if row_mask & mask else background
+
+
+static func texture_color(
+	point: Vector2i,
+	foreground: int,
+	background: int,
+	pattern_pixels: PackedInt32Array,
+	pattern_width: int,
+	pattern_height: int
+) -> int:
+	if (
+		pattern_width <= 0
+		or pattern_height <= 0
+		or pattern_pixels.size() != pattern_width * pattern_height
+	):
+		return foreground
+	var source := pattern_pixels[
+		posmod(point.y, pattern_height) * pattern_width
+		+ posmod(point.x, pattern_width)
+	]
+	return resolve_texture_value(source, foreground, background)
+
+
+static func resolve_texture_value(source: int, foreground: int, background: int) -> int:
+	if source == 0xff:
+		return foreground
+	if source == 0xf5 or source == 0:
+		return background
+	return clampi(source, 0, 255)
 
 
 static func line_points(start: Vector2i, finish: Vector2i) -> Array[Vector2i]:
@@ -630,9 +741,9 @@ func _apply_brush(point: Vector2i) -> void:
 				else (
 					background_index
 					if force_background
-					else pattern_color(
+					else texture_color(
 						target, foreground_index, background_index,
-						TEXTURE_ROWS[texture_index]
+						texture_patterns[texture_index], 8, 8
 					)
 				)
 			)
@@ -664,11 +775,14 @@ func _finish_stroke() -> void:
 
 
 func _apply_fill(point: Vector2i, force_background: bool) -> void:
-	var foreground := background_index if force_background else foreground_index
-	var background := background_index
-	var rows: Array = TEXTURE_ROWS[0] if force_background else TEXTURE_ROWS[texture_index]
-	var changed := flood_fill_pattern(
-		pixels, sprite_width, sprite_height, point, foreground, background, rows
+	var changed := (
+		flood_fill(pixels, sprite_width, sprite_height, point, background_index)
+		if force_background
+		else flood_fill_texture(
+			pixels, sprite_width, sprite_height, point,
+			foreground_index, background_index,
+			texture_patterns[texture_index], 8, 8
+		)
 	)
 	if changed == pixels:
 		return

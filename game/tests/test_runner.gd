@@ -824,6 +824,33 @@ func _test_sprite_archives(reference_root: String) -> void:
 			toolbar.image.get_size() == Vector2i(865, 23),
 			"Windows toolbar bitmap resource has its confirmed size",
 		)
+	var scurk_executable := reference_root.path_join("WINSCURK.EXE")
+	var scurk_bitmap_ids := PeBitmap.list_numeric_bitmap_ids(scurk_executable)
+	_check(
+		scurk_bitmap_ids.ok
+		and scurk_bitmap_ids.ids.has(25000)
+		and scurk_bitmap_ids.ids.has(25041),
+		"Windows PE bitmap loader enumerates the complete SCURK texture range",
+	)
+	var scurk_foreground_texture := PeBitmap.load_numeric_indexed8(
+		scurk_executable, 25039
+	)
+	var scurk_material_texture := PeBitmap.load_numeric_indexed8(
+		scurk_executable, 25000
+	)
+	_check(
+		scurk_foreground_texture.ok
+		and scurk_foreground_texture.width == 8
+		and scurk_foreground_texture.height == 8
+		and scurk_foreground_texture.pixels.size() == 64
+		and scurk_foreground_texture.pixels[0] == 0xff
+		and scurk_foreground_texture.pixels[63] == 0xff
+		and scurk_material_texture.ok
+		and scurk_material_texture.pixels[0] == 0xff
+		and scurk_material_texture.pixels[1] == 0xf5
+		and scurk_material_texture.pixels[2] == 0x9b,
+		"Windows PE bitmap loader preserves original SCURK texture indices",
+	)
 	var protest_bitmap := Image.load_from_file(
 		reference_root.path_join("BITMAPS/403.BMP")
 	)
@@ -2664,13 +2691,15 @@ func _test_scurk_mif(reference_root: String) -> void:
 		)
 		_check(
 			scurk_editor.tool_buttons.size() == 12
-			and scurk_editor.texture_selector.item_count
+			and scurk_editor.texture_control.patterns.size()
 				== ScurkPixelEditor.TEXTURE_NAMES.size()
 			and scurk_editor.brush_size_selector.item_count == 6
 			and scurk_editor.revert_button != null
 			and scurk_editor.revert_name_button != null
 			and scurk_editor.paste_tool_button.disabled
-			and scurk_editor.clipboard_action_buttons.size() == 3,
+			and scurk_editor.clipboard_action_buttons.size() == 3
+			and scurk_editor.pixel_canvas.original_textures_loaded
+			and scurk_editor.pixel_canvas.texture_patterns.size() == 42,
 			"SCURK editor exposes the recovered paint and brush controls",
 		)
 		scurk_editor._select_tool(ScurkPixelEditor.TOOL_COPY)
@@ -2787,6 +2816,13 @@ func _test_scurk_mif(reference_root: String) -> void:
 	_check(
 		checker_fill == PackedInt32Array([7, 8, 7, 2, 2, 2]),
 		"SCURK texture fill uses foreground and background colors",
+	)
+	_check(
+		ScurkPixelEditor.resolve_texture_value(0xff, 7, 8) == 7
+		and ScurkPixelEditor.resolve_texture_value(0xf5, 7, 8) == 8
+		and ScurkPixelEditor.resolve_texture_value(0x00, 7, 8) == 8
+		and ScurkPixelEditor.resolve_texture_value(0x9b, 7, 8) == 0x9b,
+		"SCURK textures map sentinels and keep literal palette indices",
 	)
 	var hollow_box := ScurkPixelEditor.shape_points(
 		ScurkPixelEditor.TOOL_RECTANGLE, Vector2i(1, 2), Vector2i(4, 4), false

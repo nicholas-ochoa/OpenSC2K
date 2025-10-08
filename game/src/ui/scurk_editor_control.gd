@@ -7,6 +7,7 @@ signal tile_set_applied(tile_set: ScurkMif, display_name: String, source_path: S
 const Mif = preload("res://src/assets/scurk_mif.gd")
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const PaletteControl = preload("res://src/view/scurk_palette_control.gd")
+const TextureControl = preload("res://src/view/scurk_texture_control.gd")
 
 const VIEW_LARGE := 0
 const VIEW_MEDIUM := 1
@@ -55,7 +56,7 @@ var foreground_color_label: Label
 var background_color: ColorRect
 var background_color_label: Label
 var brush_size_selector: OptionButton
-var texture_selector: OptionButton
+var texture_control: ScurkTextureControl
 var filled_shapes_check: CheckBox
 var round_brush_check: CheckBox
 var grid_check: CheckBox
@@ -88,6 +89,18 @@ func configure(
 	base_large_sprites = value_large_sprites
 	base_small_medium_sprites = value_small_medium_sprites
 	reference_directory = value_reference_directory.simplify_path()
+	if pixel_canvas != null:
+		var textures := pixel_canvas.load_original_textures(
+			reference_directory.path_join("WINSCURK.EXE")
+		)
+		if not textures.ok:
+			_set_status(textures.error + " Using fallback texture patterns.")
+	if texture_control != null and pixel_canvas != null:
+		texture_control.set_palette(palette)
+		texture_control.set_patterns(pixel_canvas.texture_patterns)
+		texture_control.set_colors(
+			foreground_palette_index, background_palette_index
+		)
 	if palette_control != null:
 		palette_control.set_palette(palette)
 		_select_palette_index(foreground_palette_index, false)
@@ -579,11 +592,16 @@ func _build_interface() -> void:
 	var texture_label := Label.new()
 	texture_label.text = "Brush Texture"
 	palette_column.add_child(texture_label)
-	texture_selector = OptionButton.new()
-	for texture_name in ScurkPixelCanvas.TEXTURE_NAMES:
-		texture_selector.add_item(texture_name)
-	texture_selector.item_selected.connect(_select_texture)
-	palette_column.add_child(texture_selector)
+	var texture_scroll := ScrollContainer.new()
+	texture_scroll.custom_minimum_size = Vector2(80, 160)
+	texture_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	texture_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
+	palette_column.add_child(texture_scroll)
+	texture_control = TextureControl.new()
+	texture_control.name = "TexturePalette"
+	texture_control.set_patterns(pixel_canvas.texture_patterns)
+	texture_control.texture_selected.connect(_select_texture)
+	texture_scroll.add_child(texture_control)
 	var transparent_button := Button.new()
 	transparent_button.text = "Transparent Eraser"
 	transparent_button.tooltip_text = "Erase pixels to transparent with the selected brush size."
@@ -711,6 +729,10 @@ func _select_palette_index(index: int, background := false) -> void:
 		pixel_canvas.set_paint_indices(
 			foreground_palette_index, background_palette_index
 		)
+	if texture_control != null:
+		texture_control.set_colors(
+			foreground_palette_index, background_palette_index
+		)
 	if foreground_color != null:
 		foreground_color.color = (
 			palette.color(foreground_palette_index)
@@ -760,6 +782,8 @@ func _set_grid_visible(enabled: bool) -> void:
 func _select_texture(index: int) -> void:
 	if pixel_canvas != null:
 		pixel_canvas.set_texture(index)
+	if texture_control != null:
+		texture_control.set_selected(index)
 
 
 func _rotate_clipboard() -> void:
@@ -825,7 +849,7 @@ func _refresh_sprite() -> void:
 		brush_size_selector.get_item_id(brush_size_selector.selected),
 		round_brush_check.button_pressed
 	)
-	pixel_canvas.set_texture(texture_selector.selected)
+	pixel_canvas.set_texture(texture_control.selected_index)
 	pixel_canvas.filled_shapes = filled_shapes_check.button_pressed
 	pixel_canvas.show_grid = grid_check.button_pressed
 	var tile_id := object_tile_id(current_large_id)
