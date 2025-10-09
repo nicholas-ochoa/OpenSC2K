@@ -5,6 +5,7 @@ const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
+const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkEditor = preload("res://src/ui/scurk_editor_control.gd")
@@ -2626,6 +2627,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 
 
 func _test_scurk_mif(reference_root: String) -> void:
+	_test_indexed_bmp()
 	var scurk_directory := reference_root.path_join("SCURKART")
 	var mif_files := PackedStringArray()
 	for filename in DirAccess.get_files_at(scurk_directory):
@@ -2701,7 +2703,9 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.pixel_canvas.original_textures_loaded
 			and scurk_editor.pixel_canvas.texture_patterns.size() == 42
 			and scurk_editor.cycle_colors_check.button_pressed
-			and scurk_editor.increment_cycle_button.disabled,
+			and scurk_editor.increment_cycle_button.disabled
+			and scurk_editor.import_bmp_dialog != null
+			and scurk_editor.export_bmp_dialog != null,
 			"SCURK editor exposes the recovered paint and brush controls",
 		)
 		scurk_editor._set_cycle_colors(false)
@@ -2808,8 +2812,43 @@ func _test_scurk_mif(reference_root: String) -> void:
 				== FileAccess.get_file_as_bytes(scurk_directory.path_join("ORIGINAL.MIF")),
 			"SCURK editor saves an unchanged MIF byte-identically",
 		)
+		var scratch_bmp_path := ProjectSettings.globalize_path(
+			"user://test-scurk-editor-output.BMP"
+		)
+		var editor_export := scurk_editor.export_bmp_path(scratch_bmp_path)
+		var exported_bitmap := IndexedBitmap.decode(
+			FileAccess.get_file_as_bytes(scratch_bmp_path)
+		)
+		var expected_export_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
+		for pixel_index in expected_export_pixels.size():
+			if expected_export_pixels[pixel_index] < 0:
+				expected_export_pixels[pixel_index] = 0
+		_check(
+			editor_export.ok
+			and exported_bitmap.ok
+			and exported_bitmap.width == scurk_editor.pixel_canvas.sprite_width
+			and exported_bitmap.height == scurk_editor.pixel_canvas.sprite_height
+			and exported_bitmap.pixels == expected_export_pixels,
+			"SCURK editor exports its current view as an indexed BMP",
+		)
+		var imported_pixels := PackedInt32Array([-1, 1, 2, 3, 4, 5])
+		var import_fixture := IndexedBitmap.save_path(
+			scratch_bmp_path, 3, 2, imported_pixels, editor_palette
+		)
+		var editor_import := scurk_editor.import_bmp_path(scratch_bmp_path)
+		_check(
+			import_fixture.ok
+			and editor_import.ok
+			and scurk_editor.pixel_canvas.sprite_width == 3
+			and scurk_editor.pixel_canvas.sprite_height == 2
+			and scurk_editor.pixel_canvas.pixels == imported_pixels
+			and scurk_editor.dirty,
+			"SCURK editor imports an indexed BMP into the current view",
+		)
 		if FileAccess.file_exists(scratch_path):
 			DirAccess.remove_absolute(scratch_path)
+		if FileAccess.file_exists(scratch_bmp_path):
+			DirAccess.remove_absolute(scratch_bmp_path)
 		scurk_editor.free()
 
 	var fill_source := PackedInt32Array([
@@ -3068,6 +3107,64 @@ func _test_scurk_mif(reference_root: String) -> void:
 		not bad_pixel_result.parse(bad_pixel_length)
 		and bad_pixel_result.parse_error.contains("pixel length"),
 		"SCURK parser rejects a SHAP pixel-length mismatch",
+	)
+
+
+func _test_indexed_bmp() -> void:
+	var index_palette := Palette.index_encoding()
+	var source_pixels := PackedInt32Array([
+		-1, 1, 2,
+		3, 4, 5,
+	])
+	var encoded := IndexedBitmap.encode(3, 2, source_pixels, index_palette)
+	_check(encoded.ok, "SCURK indexed BMP encoder accepts valid pixels")
+	if not encoded.ok:
+		return
+	var bytes: PackedByteArray = encoded.bytes
+	_check(
+		bytes.size() == 1086
+		and bytes[0] == 0x42
+		and bytes[1] == 0x4d
+		and bytes[10] == 0x36
+		and bytes[11] == 0x04
+		and bytes[1078] == 3
+		and bytes[1079] == 4
+		and bytes[1080] == 5
+		and bytes[1081] == 0
+		and bytes[1082] == 0
+		and bytes[1083] == 1
+		and bytes[1084] == 2
+		and bytes[1085] == 0,
+		"SCURK BMP output has a 256-color header and padded bottom-up rows",
+	)
+	var decoded := IndexedBitmap.decode(bytes)
+	_check(
+		decoded.ok
+		and decoded.width == 3
+		and decoded.height == 2
+		and not decoded.top_down
+		and decoded.pixels == PackedInt32Array([0, 1, 2, 3, 4, 5]),
+		"SCURK BMP decoder restores indexed rows in display order",
+	)
+	var mapped := IndexedBitmap.map_to_palette(decoded, index_palette)
+	_check(
+		mapped.ok
+		and mapped.remapped_color_count == 0
+		and mapped.pixels == source_pixels,
+		"SCURK BMP import maps palette index zero to transparent pixels",
+	)
+	var compressed := bytes.duplicate()
+	compressed[30] = 1
+	_check(
+		not IndexedBitmap.decode(compressed).ok,
+		"SCURK BMP import rejects compressed indexed data",
+	)
+	var short_palette := bytes.duplicate()
+	short_palette[46] = 16
+	short_palette[47] = 0
+	_check(
+		not IndexedBitmap.decode(short_palette).ok,
+		"SCURK BMP import rejects a palette with fewer than 256 colors",
 	)
 
 

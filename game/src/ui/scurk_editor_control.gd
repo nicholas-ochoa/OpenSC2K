@@ -5,6 +5,7 @@ signal close_requested
 signal tile_set_applied(tile_set: ScurkMif, display_name: String, source_path: String)
 
 const Mif = preload("res://src/assets/scurk_mif.gd")
+const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const PaletteControl = preload("res://src/view/scurk_palette_control.gd")
 const TextureControl = preload("res://src/view/scurk_texture_control.gd")
@@ -68,6 +69,8 @@ var pointer_status_label: Label
 var status_label: Label
 var open_dialog: FileDialog
 var save_dialog: FileDialog
+var import_bmp_dialog: FileDialog
+var export_bmp_dialog: FileDialog
 var discard_dialog: ConfirmationDialog
 var error_dialog: AcceptDialog
 
@@ -226,6 +229,94 @@ func request_save_as() -> void:
 	save_dialog.popup_centered_ratio(0.75)
 
 
+func request_import_bmp() -> void:
+	if tile_set == null or current_large_id < 0:
+		return
+	var start_directory := source_path.get_base_dir()
+	if not DirAccess.dir_exists_absolute(start_directory):
+		start_directory = reference_directory.path_join("SCURKART")
+	if DirAccess.dir_exists_absolute(start_directory):
+		import_bmp_dialog.current_dir = start_directory
+	import_bmp_dialog.popup_centered_ratio(0.75)
+
+
+func request_export_bmp() -> void:
+	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
+		return
+	var output_directory := ProjectSettings.globalize_path("user://scurk_exports")
+	DirAccess.make_dir_recursive_absolute(output_directory)
+	export_bmp_dialog.current_dir = output_directory
+	var view_name: String = ["LARGE", "MEDIUM", "SMALL"][current_view]
+	export_bmp_dialog.current_file = "OBJECT_%03d_%s.BMP" % [
+		object_tile_id(current_large_id), view_name,
+	]
+	export_bmp_dialog.popup_centered_ratio(0.75)
+
+
+func import_bmp_path(path: String) -> Dictionary:
+	if tile_set == null or current_large_id < 0:
+		return {"ok": false, "error": "No SCURK object is selected."}
+	var imported := IndexedBitmap.load_path(path, palette)
+	if not imported.ok:
+		return imported
+	if imported.width > 128 or imported.height > 256:
+		return {
+			"ok": false,
+			"error": "SCURK graphics cannot be larger than 128 by 256 pixels.",
+		}
+	_capture_edit_start()
+	var sprite_id := view_sprite_id(current_large_id, current_view)
+	var changed := tile_set.set_shape_indices(
+		sprite_id, imported.width, imported.height, imported.pixels
+	)
+	if not changed.ok:
+		pending_edit_before.clear()
+		return changed
+	_record_edit(pending_edit_before)
+	_refresh_sprite()
+	var remap_note := (
+		" Remapped %d palette entries." % imported.remapped_color_count
+		if imported.remapped_color_count > 0
+		else ""
+	)
+	_set_status(
+		"Imported %s into sprite %d.%s" % [path.get_file(), sprite_id, remap_note]
+	)
+	return {"ok": true, "error": ""}
+
+
+func export_bmp_path(path: String) -> Dictionary:
+	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
+		return {"ok": false, "error": "No SCURK sprite is available to export."}
+	var output_path := ProjectSettings.globalize_path(path).simplify_path()
+	if output_path.get_extension().to_lower() != "bmp":
+		output_path += ".BMP"
+	if path_is_within(output_path, reference_directory):
+		return {
+			"ok": false,
+			"error": "The original game data folder is read-only. Use another folder.",
+		}
+	var directory_error := DirAccess.make_dir_recursive_absolute(output_path.get_base_dir())
+	if directory_error != OK:
+		return {
+			"ok": false,
+			"error": "Cannot create the output directory: %s" % error_string(directory_error),
+		}
+	var result := IndexedBitmap.save_path(
+		output_path,
+		pixel_canvas.sprite_width,
+		pixel_canvas.sprite_height,
+		pixel_canvas.pixels,
+		palette
+	)
+	if not result.ok:
+		return result
+	_set_status("Exported sprite %d to %s." % [
+		view_sprite_id(current_large_id, current_view), output_path.get_file(),
+	])
+	return {"ok": true, "error": "", "path": output_path}
+
+
 func undo() -> void:
 	if undo_stack.is_empty():
 		return
@@ -363,6 +454,15 @@ func _build_interface() -> void:
 	save_button = _toolbar_button("Save", request_save, "Save this tile set.")
 	toolbar.add_child(save_button)
 	toolbar.add_child(_toolbar_button("Save As...", request_save_as, "Save to a new MIF file."))
+	toolbar.add_child(VSeparator.new())
+	toolbar.add_child(_toolbar_button(
+		"Import BMP...", request_import_bmp,
+		"Replace the current view with a 256-color indexed BMP."
+	))
+	toolbar.add_child(_toolbar_button(
+		"Export BMP...", request_export_bmp,
+		"Export the current view as a 256-color indexed BMP."
+	))
 	toolbar.add_child(VSeparator.new())
 	undo_button = _toolbar_button("Undo", undo, "Undo the last pixel or name edit.")
 	toolbar.add_child(undo_button)
@@ -657,6 +757,18 @@ func _build_interface() -> void:
 	save_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
 	save_dialog.file_selected.connect(_save_selected_path)
 	add_child(save_dialog)
+	import_bmp_dialog = FileDialog.new()
+	import_bmp_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	import_bmp_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	import_bmp_dialog.add_filter("*.BMP, *.bmp", "Windows indexed bitmaps")
+	import_bmp_dialog.file_selected.connect(_import_selected_bmp)
+	add_child(import_bmp_dialog)
+	export_bmp_dialog = FileDialog.new()
+	export_bmp_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	export_bmp_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	export_bmp_dialog.add_filter("*.BMP, *.bmp", "Windows indexed bitmaps")
+	export_bmp_dialog.file_selected.connect(_export_selected_bmp)
+	add_child(export_bmp_dialog)
 	discard_dialog = ConfirmationDialog.new()
 	discard_dialog.title = "Unsaved SCURK Changes"
 	discard_dialog.get_ok_button().text = "Discard"
@@ -1063,6 +1175,18 @@ func _load_selected_path(path: String) -> void:
 
 func _save_selected_path(path: String) -> void:
 	var result := save_path(path)
+	if not result.ok:
+		_show_error(result.error)
+
+
+func _import_selected_bmp(path: String) -> void:
+	var result := import_bmp_path(path)
+	if not result.ok:
+		_show_error(result.error)
+
+
+func _export_selected_bmp(path: String) -> void:
+	var result := export_bmp_path(path)
 	if not result.ok:
 		_show_error(result.error)
 
