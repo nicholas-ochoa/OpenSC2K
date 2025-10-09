@@ -2699,9 +2699,22 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.paste_tool_button.disabled
 			and scurk_editor.clipboard_action_buttons.size() == 3
 			and scurk_editor.pixel_canvas.original_textures_loaded
-			and scurk_editor.pixel_canvas.texture_patterns.size() == 42,
+			and scurk_editor.pixel_canvas.texture_patterns.size() == 42
+			and scurk_editor.cycle_colors_check.button_pressed
+			and scurk_editor.increment_cycle_button.disabled,
 			"SCURK editor exposes the recovered paint and brush controls",
 		)
+		scurk_editor._set_cycle_colors(false)
+		var cycle_before := scurk_editor.pixel_canvas.palette_cycle_ticks
+		scurk_editor._increment_cycle()
+		_check(
+			not scurk_editor.increment_cycle_button.disabled
+			and scurk_editor.pixel_canvas.palette_cycle_ticks == cycle_before + 1
+			and scurk_editor.pixel_canvas.display_palette_index(Palette.FAST_CYCLE_START)
+				== editor_palette.animation_index_map(cycle_before + 1)[Palette.FAST_CYCLE_START],
+			"SCURK Increment Cycle works only while automatic cycling is off",
+		)
+		scurk_editor._set_cycle_colors(true)
 		scurk_editor._select_tool(ScurkPixelEditor.TOOL_COPY)
 		var editor_copy_press := InputEventMouseButton.new()
 		editor_copy_press.button_index = MOUSE_BUTTON_LEFT

@@ -21,6 +21,7 @@ const TOOL_FILL := 8
 const TOOL_EYEDROPPER := 9
 const TOOL_COPY := 10
 const TOOL_PASTE := 11
+const CYCLE_INTERVAL_SECONDS := 0.125
 
 const TEXTURE_NAMES := [
 	"Solid Foreground",
@@ -82,6 +83,9 @@ var clipboard_height := 0
 var clipboard_pixels := PackedInt32Array()
 var texture_patterns: Array[PackedInt32Array] = []
 var original_textures_loaded := false
+var palette_cycle_ticks := 0
+var palette_cycle_enabled := true
+var palette_cycle_accumulator := 0.0
 
 
 func _init() -> void:
@@ -89,6 +93,17 @@ func _init() -> void:
 	clip_contents = true
 	mouse_exited.connect(_on_mouse_exited)
 	texture_patterns = _fallback_texture_patterns()
+	set_process(true)
+
+
+func _process(delta: float) -> void:
+	if not palette_cycle_enabled or not is_visible_in_tree():
+		return
+	palette_cycle_accumulator += delta
+	while palette_cycle_accumulator >= CYCLE_INTERVAL_SECONDS:
+		palette_cycle_accumulator -= CYCLE_INTERVAL_SECONDS
+		palette_cycle_ticks += 1
+		queue_redraw()
 
 
 func set_sprite_data(
@@ -139,6 +154,25 @@ func set_brush(value_size: int, rounded: bool) -> void:
 
 func set_texture(value: int) -> void:
 	texture_index = clampi(value, 0, maxi(0, texture_patterns.size() - 1))
+
+
+func set_palette_cycle_enabled(enabled: bool) -> void:
+	palette_cycle_enabled = enabled
+	palette_cycle_accumulator = 0.0
+	queue_redraw()
+
+
+func increment_palette_cycle() -> void:
+	if palette_cycle_enabled:
+		return
+	palette_cycle_ticks += 1
+	queue_redraw()
+
+
+func display_palette_index(index: int) -> int:
+	if index < 0 or index > 255 or palette == null or not palette.is_valid():
+		return index
+	return palette.animation_index_map(palette_cycle_ticks)[index]
 
 
 func load_original_textures(executable_path: String) -> Dictionary:
@@ -832,11 +866,17 @@ func _draw() -> void:
 	if sprite_width <= 0 or sprite_height <= 0:
 		draw_rect(Rect2(Vector2.ZERO, size), Color("ffffff"), true)
 		return
+	var display_indices := (
+		palette.animation_index_map(palette_cycle_ticks)
+		if palette != null and palette.is_valid()
+		else PackedInt32Array()
+	)
 	for y in sprite_height:
 		for x in sprite_width:
 			var index := pixels[y * sprite_width + x]
+			var display_index := display_indices[index] if index >= 0 else index
 			var color := (
-				palette.color(index)
+				palette.color(display_index)
 				if index >= 0 and palette != null and palette.is_valid()
 				else (Color("d8d8d8") if (x + y) % 2 == 0 else Color("ffffff"))
 			)
@@ -873,7 +913,7 @@ func _draw() -> void:
 					continue
 				var index := clipboard_pixels[source_y * clipboard_width + source_x]
 				var preview_color := (
-					palette.color(index)
+					palette.color(display_indices[index])
 					if index >= 0 and palette != null and palette.is_valid()
 					else Color.WHITE
 				)
