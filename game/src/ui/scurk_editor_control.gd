@@ -672,6 +672,7 @@ func _build_interface() -> void:
 	pixel_canvas.palette_index_picked.connect(_select_palette_index)
 	pixel_canvas.pointer_changed.connect(_update_pointer_status)
 	pixel_canvas.clipboard_changed.connect(_on_clipboard_changed)
+	pixel_canvas.clipboard_copy_rejected.connect(_on_clipboard_copy_rejected)
 	canvas_center.add_child(pixel_canvas)
 	sprite_status_label = Label.new()
 	sprite_status_label.text = "No sprite is selected."
@@ -951,6 +952,13 @@ func _on_clipboard_changed(width: int, height: int) -> void:
 		button.disabled = not available
 	if available:
 		_set_status("SCURK clipboard: %d x %d pixels." % [width, height])
+
+
+func _on_clipboard_copy_rejected(minimum_span: int) -> void:
+	_set_status(
+		"Copy requires at least a %d-pixel endpoint span on each axis."
+		% minimum_span
+	)
 
 
 func _refresh_sprite() -> void:

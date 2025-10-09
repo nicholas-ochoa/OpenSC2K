@@ -2728,7 +2728,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 		var editor_copy_release := InputEventMouseButton.new()
 		editor_copy_release.button_index = MOUSE_BUTTON_LEFT
 		editor_copy_release.pressed = false
-		editor_copy_release.position = Vector2(1, 1)
+		editor_copy_release.position = Vector2(17, 17)
 		scurk_editor.pixel_canvas._gui_input(editor_copy_release)
 		_check(
 			not scurk_editor.paste_tool_button.disabled
@@ -2962,25 +2962,41 @@ func _test_scurk_mif(reference_root: String) -> void:
 	)
 	var clipboard_canvas := ScurkPixelEditor.new()
 	clipboard_canvas.set_sprite_data(
-		3, 2, clipboard_source, Palette.index_encoding()
+		5, 5, PackedInt32Array([
+			1, 2, 3, 4, 5,
+			6, 7, 8, 9, 10,
+			11, 12, 13, 14, 15,
+			16, 17, 18, 19, 20,
+			21, 22, 23, 24, 25,
+		]), Palette.index_encoding()
 	)
 	clipboard_canvas.set_zoom(4)
 	clipboard_canvas.set_tool(ScurkPixelEditor.TOOL_COPY)
 	var copy_press := InputEventMouseButton.new()
 	copy_press.button_index = MOUSE_BUTTON_LEFT
 	copy_press.pressed = true
-	copy_press.position = Vector2(5, 1)
+	copy_press.position = Vector2(1, 1)
 	clipboard_canvas._gui_input(copy_press)
 	var copy_release := InputEventMouseButton.new()
 	copy_release.button_index = MOUSE_BUTTON_LEFT
 	copy_release.pressed = false
-	copy_release.position = Vector2(9, 5)
+	copy_release.position = Vector2(17, 17)
 	clipboard_canvas._gui_input(copy_release)
 	_check(
-		clipboard_canvas.clipboard_width == 2
-		and clipboard_canvas.clipboard_height == 2
-		and clipboard_canvas.clipboard_pixels == PackedInt32Array([2, 3, 5, 6]),
-		"SCURK Copy drag stores pixels in its private clipboard",
+		clipboard_canvas.clipboard_width == 5
+		and clipboard_canvas.clipboard_height == 5
+		and clipboard_canvas.clipboard_pixels[0] == 1
+		and clipboard_canvas.clipboard_pixels[24] == 25,
+		"SCURK Copy drag stores a source-sized region in its private clipboard",
+	)
+	var accepted_clipboard := clipboard_canvas.clipboard_pixels.duplicate()
+	copy_press.position = Vector2(1, 1)
+	clipboard_canvas._gui_input(copy_press)
+	copy_release.position = Vector2(13, 13)
+	clipboard_canvas._gui_input(copy_release)
+	_check(
+		clipboard_canvas.clipboard_pixels == accepted_clipboard,
+		"SCURK Copy rejects endpoint spans shorter than four pixels",
 	)
 	clipboard_canvas.free()
 	var palette_grid := ScurkPalette.new()

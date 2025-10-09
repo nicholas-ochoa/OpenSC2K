@@ -8,6 +8,7 @@ signal pixels_committed(pixels: PackedInt32Array)
 signal palette_index_picked(index: int, background: bool)
 signal pointer_changed(point: Vector2i, index: int)
 signal clipboard_changed(width: int, height: int)
+signal clipboard_copy_rejected(minimum_span: int)
 
 const TOOL_PENCIL := 0
 const TOOL_ERASER := 1
@@ -22,6 +23,7 @@ const TOOL_EYEDROPPER := 9
 const TOOL_COPY := 10
 const TOOL_PASTE := 11
 const CYCLE_INTERVAL_SECONDS := 0.125
+const MINIMUM_COPY_SPAN := 4
 
 const TEXTURE_NAMES := [
 	"Solid Foreground",
@@ -687,6 +689,15 @@ func _finish_copy(point: Vector2i) -> void:
 	copy_active = false
 	if _point_is_valid(point):
 		copy_finish = point
+	if (
+		absi(copy_finish.x - copy_start.x) < MINIMUM_COPY_SPAN
+		or absi(copy_finish.y - copy_start.y) < MINIMUM_COPY_SPAN
+	):
+		copy_start = Vector2i(-1, -1)
+		copy_finish = Vector2i(-1, -1)
+		clipboard_copy_rejected.emit(MINIMUM_COPY_SPAN)
+		queue_redraw()
+		return
 	var copied := copy_region(
 		pixels, sprite_width, sprite_height, copy_start, copy_finish
 	)
