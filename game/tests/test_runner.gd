@@ -6,6 +6,7 @@ const CityModel = preload("res://src/model/city_state.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
+const ClipboardImage = preload("res://src/platform/image_clipboard.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkEditor = preload("res://src/ui/scurk_editor_control.gd")
@@ -2705,7 +2706,9 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.cycle_colors_check.button_pressed
 			and scurk_editor.increment_cycle_button.disabled
 			and scurk_editor.import_bmp_dialog != null
-			and scurk_editor.export_bmp_dialog != null,
+			and scurk_editor.export_bmp_dialog != null
+			and scurk_editor.copy_object_button != null
+			and scurk_editor.paste_image_button != null,
 			"SCURK editor exposes the recovered paint and brush controls",
 		)
 		scurk_editor._set_cycle_colors(false)
@@ -3181,6 +3184,34 @@ func _test_indexed_bmp() -> void:
 	_check(
 		not IndexedBitmap.decode(short_palette).ok,
 		"SCURK BMP import rejects a palette with fewer than 256 colors",
+	)
+	var clipboard_pixels := PackedInt32Array([-1, 0, 1, 255])
+	var clipboard_image := ClipboardImage.indexed_to_image(
+		2, 2, clipboard_pixels, index_palette
+	)
+	_check(
+		clipboard_image.ok
+		and clipboard_image.image.get_pixel(0, 0).a == 0.0
+		and clipboard_image.image.get_pixel(1, 0).a == 1.0,
+		"SCURK system clipboard image keeps transparent and visible black pixels distinct",
+	)
+	var clipboard_round_trip := ClipboardImage.image_to_indexed(
+		clipboard_image.image, index_palette
+	)
+	_check(
+		clipboard_round_trip.ok
+		and clipboard_round_trip.pixels == clipboard_pixels
+		and clipboard_round_trip.remapped_color_count == 0,
+		"SCURK system clipboard image preserves master-palette pixels",
+	)
+	var off_palette_image := Image.create(1, 1, false, Image.FORMAT_RGBA8)
+	off_palette_image.set_pixel(0, 0, Color8(17, 18, 19, 255))
+	var mapped_clipboard := ClipboardImage.image_to_indexed(
+		off_palette_image, index_palette
+	)
+	_check(
+		mapped_clipboard.ok and mapped_clipboard.remapped_color_count == 1,
+		"SCURK system clipboard image maps colors outside the master palette",
 	)
 
 

@@ -6,6 +6,7 @@ signal tile_set_applied(tile_set: ScurkMif, display_name: String, source_path: S
 
 const Mif = preload("res://src/assets/scurk_mif.gd")
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
+const SystemImageClipboard = preload("res://src/platform/image_clipboard.gd")
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const PaletteControl = preload("res://src/view/scurk_palette_control.gd")
 const TextureControl = preload("res://src/view/scurk_texture_control.gd")
@@ -46,6 +47,8 @@ var view_buttons: Array[Button] = []
 var tool_buttons: Array[Button] = []
 var paste_tool_button: Button
 var clipboard_action_buttons: Array[Button] = []
+var copy_object_button: Button
+var paste_image_button: Button
 var undo_button: Button
 var redo_button: Button
 var revert_button: Button
@@ -264,25 +267,13 @@ func import_bmp_path(path: String) -> Dictionary:
 			"ok": false,
 			"error": "SCURK graphics cannot be larger than 128 by 256 pixels.",
 		}
-	_capture_edit_start()
-	var sprite_id := view_sprite_id(current_large_id, current_view)
-	var changed := tile_set.set_shape_indices(
-		sprite_id, imported.width, imported.height, imported.pixels
+	return _replace_active_view(
+		imported.width,
+		imported.height,
+		imported.pixels,
+		"Imported %s" % path.get_file(),
+		imported.remapped_color_count
 	)
-	if not changed.ok:
-		pending_edit_before.clear()
-		return changed
-	_record_edit(pending_edit_before)
-	_refresh_sprite()
-	var remap_note := (
-		" Remapped %d palette entries." % imported.remapped_color_count
-		if imported.remapped_color_count > 0
-		else ""
-	)
-	_set_status(
-		"Imported %s into sprite %d.%s" % [path.get_file(), sprite_id, remap_note]
-	)
-	return {"ok": true, "error": ""}
 
 
 func export_bmp_path(path: String) -> Dictionary:
@@ -315,6 +306,69 @@ func export_bmp_path(path: String) -> Dictionary:
 		view_sprite_id(current_large_id, current_view), output_path.get_file(),
 	])
 	return {"ok": true, "error": "", "path": output_path}
+
+
+func copy_object_to_system_clipboard() -> void:
+	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
+		return
+	var result := SystemImageClipboard.copy_indexed(
+		pixel_canvas.sprite_width,
+		pixel_canvas.sprite_height,
+		pixel_canvas.pixels,
+		palette
+	)
+	if not result.ok:
+		_show_error(result.error)
+		return
+	_set_status(
+		"Copied sprite %d to the system clipboard."
+		% view_sprite_id(current_large_id, current_view)
+	)
+
+
+func paste_image_from_system_clipboard() -> void:
+	if tile_set == null or current_large_id < 0:
+		return
+	var imported := SystemImageClipboard.paste_indexed(palette)
+	if not imported.ok:
+		_show_error(imported.error)
+		return
+	if imported.width > 128 or imported.height > 256:
+		_show_error("SCURK graphics cannot be larger than 128 by 256 pixels.")
+		return
+	var result := _replace_active_view(
+		imported.width,
+		imported.height,
+		imported.pixels,
+		"Pasted the system clipboard image",
+		imported.remapped_color_count
+	)
+	if not result.ok:
+		_show_error(result.error)
+
+
+func _replace_active_view(
+	width: int,
+	height: int,
+	pixels: PackedInt32Array,
+	description: String,
+	remapped_color_count: int
+) -> Dictionary:
+	_capture_edit_start()
+	var sprite_id := view_sprite_id(current_large_id, current_view)
+	var changed := tile_set.set_shape_indices(sprite_id, width, height, pixels)
+	if not changed.ok:
+		pending_edit_before.clear()
+		return changed
+	_record_edit(pending_edit_before)
+	_refresh_sprite()
+	var remap_note := (
+		" Remapped %d colors." % remapped_color_count
+		if remapped_color_count > 0
+		else ""
+	)
+	_set_status("%s into sprite %d.%s" % [description, sprite_id, remap_note])
+	return {"ok": true, "error": ""}
 
 
 func undo() -> void:
@@ -613,6 +667,22 @@ func _build_interface() -> void:
 		action_button.disabled = true
 		clipboard_row.add_child(action_button)
 		clipboard_action_buttons.append(action_button)
+	var system_clipboard_row := HBoxContainer.new()
+	system_clipboard_row.add_theme_constant_override("separation", 5)
+	editor_column.add_child(system_clipboard_row)
+	var system_clipboard_label := Label.new()
+	system_clipboard_label.text = "System Clipboard"
+	system_clipboard_row.add_child(system_clipboard_label)
+	copy_object_button = _toolbar_button(
+		"Copy Object", copy_object_to_system_clipboard,
+		"Copy the complete active object view for use in another graphics program."
+	)
+	system_clipboard_row.add_child(copy_object_button)
+	paste_image_button = _toolbar_button(
+		"Paste Image", paste_image_from_system_clipboard,
+		"Replace the active object view with the system clipboard image."
+	)
+	system_clipboard_row.add_child(paste_image_button)
 	var brush_row := HBoxContainer.new()
 	brush_row.add_theme_constant_override("separation", 5)
 	editor_column.add_child(brush_row)
