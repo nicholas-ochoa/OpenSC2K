@@ -10,6 +10,7 @@ const ClipboardImage = preload("res://src/platform/image_clipboard.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkEditor = preload("res://src/ui/scurk_editor_control.gd")
+const ScurkPickCopy = preload("res://src/tools/scurk_pick_copy.gd")
 const ScurkPixelEditor = preload("res://src/view/scurk_pixel_canvas.gd")
 const ScurkPalette = preload("res://src/view/scurk_palette_control.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
@@ -2651,6 +2652,10 @@ func _test_scurk_mif(reference_root: String) -> void:
 	_check(original.is_valid(), "ORIGINAL.MIF parses: %s" % original.parse_error)
 	if original.is_valid():
 		var editable_ids := ScurkEditor.editable_large_sprite_ids(original)
+		var grouped_ids := ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_ALL)
+		var grouped_unique := {}
+		for grouped_id in grouped_ids:
+			grouped_unique[grouped_id] = true
 		_check(
 			original.piece_count == 558
 			and original.shapes.size() == 558
@@ -2668,6 +2673,22 @@ func _test_scurk_mif(reference_root: String) -> void:
 				== editable_ids[0] - 1000,
 			"SCURK editor exposes 186 objects with direct three-view sprite IDs",
 		)
+		_check(
+			ScurkPickCopy.GROUP_NAMES.size() == 11
+			and ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_RESIDENTIAL).size() == 24
+			and ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_COMMERCIAL).size() == 28
+			and ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_INDUSTRIAL).size() == 18
+			and ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_SPECIAL).size() == 26
+			and ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_POWER).size() == 10
+			and ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_TRANSPORTATION).size() == 22
+			and ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_MISC).size() == 12
+			and ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_ANIMATING_I).size() == 15
+			and ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_ANIMATING_II).size() == 15
+			and ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_CONSTRUCTION).size() == 16
+			and grouped_ids.size() == 186
+			and grouped_unique.size() == 186,
+			"SCURK Pick & Copy catalog contains all eleven original object groups",
+		)
 		var editor_palette := Palette.load_bmp(
 			reference_root.path_join("BITMAPS/PAL_MSTR.BMP")
 		)
@@ -2676,6 +2697,62 @@ func _test_scurk_mif(reference_root: String) -> void:
 		)
 		var editor_small_medium := SpriteArchive.load_path(
 			reference_root.path_join("DATA/SMALLMED.DAT")
+		)
+		var editor_special := SpriteArchive.load_path(
+			reference_root.path_join("DATA/SPECIAL.DAT")
+		)
+		editor_small_medium = SpriteArchive.combine([
+			editor_small_medium, editor_special,
+		])
+		var pick_working := ScurkTileSet.load_path(
+			scurk_directory.path_join("ORIGINAL.MIF")
+		)
+		var pick_source := ScurkTileSet.load_path(
+			scurk_directory.path_join("FUTURE.MIF")
+		)
+		var pick_target := ScurkPickCopy.group_large_ids(
+			ScurkPickCopy.GROUP_RESIDENTIAL
+		)[0]
+		var pick_result := ScurkPickCopy.copy_objects(
+			pick_working,
+			pick_source,
+			PackedInt32Array([pick_target]),
+			editor_large,
+			editor_small_medium
+		)
+		var copied_views_match := true
+		for pick_view in 3:
+			var pick_sprite_id := pick_target - pick_view * 500
+			var source_entry := ScurkPickCopy.resolved_entry(
+				pick_source, pick_sprite_id, editor_large, editor_small_medium
+			)
+			var working_entry := pick_working.overrides.find_sprite(pick_sprite_id)
+			copied_views_match = (
+				copied_views_match
+				and source_entry != null
+				and working_entry != null
+				and source_entry.decode_indices().pixels
+					== working_entry.decode_indices().pixels
+			)
+		_check(
+			pick_result.ok
+			and pick_result.object_count == 1
+			and pick_result.shape_count == 3
+			and copied_views_match,
+			"SCURK Pick & Copy replaces all three equivalent object views",
+		)
+		var invalid_pick_bytes: PackedByteArray = pick_working.to_bytes().bytes
+		var invalid_pick := ScurkPickCopy.copy_objects(
+			pick_working,
+			pick_source,
+			PackedInt32Array([999]),
+			editor_large,
+			editor_small_medium
+		)
+		_check(
+			not invalid_pick.ok
+			and pick_working.to_bytes().bytes == invalid_pick_bytes,
+			"SCURK Pick & Copy rejects an invalid object without another edit",
 		)
 		var scurk_editor := ScurkEditor.new()
 		scurk_editor._ready()
