@@ -669,32 +669,34 @@ func _build_interface(toolbar_art: Image) -> void:
 	], _on_windows_menu)
 	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
 	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
-
-	var title_bar := ColorRect.new()
-	title_bar.color = Color("000080")
-	title_bar.custom_minimum_size = Vector2(0, 28)
-	page.add_child(title_bar)
-	var title_row := HBoxContainer.new()
-	title_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	title_row.offset_left = 6
-	title_row.offset_right = -6
-	title_bar.add_child(title_row)
+	var menu_spacer := Control.new()
+	menu_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	menu_row.add_child(menu_spacer)
+	menu_row.add_child(VSeparator.new())
 	city_label = Label.new()
-	city_label.text = "OpenSC2K — No city loaded"
-	city_label.add_theme_color_override("font_color", Color.WHITE)
-	city_label.add_theme_font_size_override("font_size", 15)
-	city_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_row.add_child(city_label)
+	city_label.text = "No city loaded"
+	city_label.custom_minimum_size = Vector2(150, 0)
+	city_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	city_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	city_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	city_label.tooltip_text = "Current city"
+	menu_row.add_child(city_label)
+	menu_row.add_child(VSeparator.new())
 	title_stats_label = Label.new()
-	title_stats_label.text = "Paused"
-	title_stats_label.add_theme_color_override("font_color", Color.WHITE)
-	title_row.add_child(title_stats_label)
+	title_stats_label.text = "---- -- --   $--"
+	title_stats_label.custom_minimum_size = Vector2(180, 0)
+	title_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	title_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_stats_label.tooltip_text = "Current date and city funds"
+	menu_row.add_child(title_stats_label)
+	menu_row.add_child(VSeparator.new())
 	fps_label = Label.new()
 	fps_label.text = "FPS: --"
-	fps_label.custom_minimum_size = Vector2(76, 0)
-	fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	fps_label.add_theme_color_override("font_color", Color.WHITE)
-	title_row.add_child(fps_label)
+	fps_label.custom_minimum_size = Vector2(72, 0)
+	fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	fps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	fps_label.tooltip_text = "Current rendered frames per second"
+	menu_row.add_child(fps_label)
 
 	var content := HBoxContainer.new()
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -3484,7 +3486,7 @@ func _activate_document(
 		display_name = document.source_path.get_file().get_basename()
 	if display_name.is_empty():
 		display_name = "New City"
-	city_label.text = "OpenSC2K — %s" % display_name
+	city_label.text = display_name
 	_refresh_details()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = status_text if not status_text.is_empty() else "City ready."
