@@ -632,7 +632,8 @@ static func _provision_microsim(
 	current_year: int,
 	process_random,
 	misc := PackedByteArray(),
-	australian_locale := false
+	australian_locale := false,
+	scurk_place_mode := false
 ) -> int:
 	var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(tile_id, 0))
 	if microsim_type == 0:
@@ -669,7 +670,8 @@ static func _provision_microsim(
 		tile_id,
 		current_year,
 		process_random,
-		australian_locale
+		australian_locale,
+		scurk_place_mode
 	)
 
 	var label_id := record_id + MICROSIM_LABEL_BASE
@@ -686,7 +688,8 @@ static func _initialize_microsim(
 	tile_id: int,
 	current_year: int,
 	process_random,
-	australian_locale: bool
+	australian_locale: bool,
+	scurk_place_mode: bool
 ) -> void:
 	var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 	match tile_id:
@@ -709,27 +712,45 @@ static func _initialize_microsim(
 		0xcf:
 			_write_u16_be(microsims, offset + 2, 200)
 		0xd0:
-			_write_u16_be(microsims, offset + 2, _population_cap(misc, 200, 900))
+			_write_u16_be(
+				microsims,
+				offset + 2,
+				0 if scurk_place_mode else _population_cap(misc, 200, 900)
+			)
 			_write_u16_be(microsims, offset + 4, current_year)
 		0xd1, 0xd6, 0xd9:
 			microsims[offset + 1] = 6
 		0xd2:
-			var police_funding := _read_i32_be(
-				misc, MISC_BUDGETS + 5 * BUDGET_RECORD_SIZE + 4
+			var police_funding := (
+				0
+				if scurk_place_mode
+				else _read_i32_be(misc, MISC_BUDGETS + 5 * BUDGET_RECORD_SIZE + 4)
 			)
 			_write_u16_be(
 				microsims,
 				offset + 2,
-				_population_cap(misc, _to_i16(police_funding * 2), 90)
+				(
+					0
+					if scurk_place_mode
+					else _population_cap(misc, _to_i16(police_funding * 2), 90)
+				)
 			)
 		0xd3:
-			var fire_funding := _read_i32_be(
-				misc, MISC_BUDGETS + 6 * BUDGET_RECORD_SIZE + 4
+			var fire_funding := (
+				0
+				if scurk_place_mode
+				else _read_i32_be(misc, MISC_BUDGETS + 6 * BUDGET_RECORD_SIZE + 4)
 			)
 			_write_u16_be(
 				microsims,
 				offset + 2,
-				_population_cap(misc, _to_i16(_divide_toward_zero(fire_funding, 2)), 70)
+				(
+					0
+					if scurk_place_mode
+					else _population_cap(
+						misc, _to_i16(_divide_toward_zero(fire_funding, 2)), 70
+					)
+				)
 			)
 			_write_u16_be(microsims, offset + 4, 4)
 		0xd4:
@@ -823,14 +844,19 @@ static func _write_u16_be(data: PackedByteArray, offset: int, value: int) -> voi
 # The zone and building corner flags share one byte.
 static func _set_corners(zones: PackedByteArray, site: Rect2i, area: int, rotation: int) -> void:
 	if area == 1:
-		zones[site.position.x * CityState.MAP_SIZE + site.position.y] = 0xf0
+		var index := site.position.x * CityState.MAP_SIZE + site.position.y
+		zones[index] = (zones[index] & 0x0f) | 0xf0
 		return
 	var far := site.end - Vector2i.ONE
 	var view := rotation & 3
-	zones[site.position.x * CityState.MAP_SIZE + site.position.y] = CORNER_BOTTOM_LEFT[view]
-	zones[far.x * CityState.MAP_SIZE + site.position.y] = CORNER_BOTTOM_RIGHT[view]
-	zones[far.x * CityState.MAP_SIZE + far.y] = CORNER_TOP_LEFT[view]
-	zones[site.position.x * CityState.MAP_SIZE + far.y] = CORNER_TOP_RIGHT[view]
+	var bottom_left := site.position.x * CityState.MAP_SIZE + site.position.y
+	var bottom_right := far.x * CityState.MAP_SIZE + site.position.y
+	var top_left := far.x * CityState.MAP_SIZE + far.y
+	var top_right := site.position.x * CityState.MAP_SIZE + far.y
+	zones[bottom_left] = (zones[bottom_left] & 0x0f) | CORNER_BOTTOM_LEFT[view]
+	zones[bottom_right] = (zones[bottom_right] & 0x0f) | CORNER_BOTTOM_RIGHT[view]
+	zones[top_left] = (zones[top_left] & 0x0f) | CORNER_TOP_LEFT[view]
+	zones[top_right] = (zones[top_right] & 0x0f) | CORNER_TOP_RIGHT[view]
 
 
 static func _place_pipe(

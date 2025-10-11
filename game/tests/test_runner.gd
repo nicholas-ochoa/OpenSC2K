@@ -11,6 +11,7 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkEditor = preload("res://src/ui/scurk_editor_control.gd")
 const ScurkPickCopy = preload("res://src/tools/scurk_pick_copy.gd")
+const ScurkPlace = preload("res://src/tools/scurk_place_command.gd")
 const ScurkPixelEditor = preload("res://src/view/scurk_pixel_canvas.gd")
 const ScurkPalette = preload("res://src/view/scurk_palette_control.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
@@ -2630,6 +2631,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 
 func _test_scurk_mif(reference_root: String) -> void:
 	_test_indexed_bmp()
+	_test_scurk_place_command(reference_root)
 	var scurk_directory := reference_root.path_join("SCURKART")
 	var mif_files := PackedStringArray()
 	for filename in DirAccess.get_files_at(scurk_directory):
@@ -3268,6 +3270,190 @@ func _test_scurk_mif(reference_root: String) -> void:
 		not bad_pixel_result.parse(bad_pixel_length)
 		and bad_pixel_result.parse_error.contains("pixel length"),
 		"SCURK parser rejects a SHAP pixel-length mismatch",
+	)
+
+
+func _test_scurk_place_command(reference_root: String) -> void:
+	_check(
+		ScurkPlace.placeable_large_ids(ScurkPickCopy.GROUP_ALL).size() == 156
+		and ScurkPlace.placeable_large_ids(
+			ScurkPickCopy.GROUP_ANIMATING_I
+		).is_empty()
+		and ScurkPlace.placeable_large_ids(
+			ScurkPickCopy.GROUP_ANIMATING_II
+		).is_empty()
+		and ScurkPlace.is_placeable_tile(0xcf)
+		and not ScurkPlace.is_placeable_tile(0x1d)
+		and not ScurkPlace.is_placeable_tile(0x167),
+		"SCURK Place & Print exposes 156 non-animated object-selector entries",
+	)
+	_check(
+		ScurkPlace.footprint(0x70, Vector2i(20, 20))
+			== Rect2i(20, 20, 1, 1)
+		and ScurkPlace.footprint(0xae, Vector2i(20, 20))
+			== Rect2i(19, 19, 3, 3)
+		and ScurkPlace.footprint(0xcf, Vector2i(20, 20))
+			== Rect2i(19, 19, 4, 4),
+		"SCURK Place & Print uses the native object base and anchor rules",
+	)
+
+	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
+		_check(
+			document.find_chunk(chunk_id).set_decoded_payload(
+				_filled_bytes(CityState.TILE_COUNT, 0)
+			),
+			"SCURK Place & Print fixture clears %s" % chunk_id,
+		)
+	_check(
+		document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0))
+		and document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)),
+		"SCURK Place & Print fixture clears labels and microsimulations",
+	)
+	_check(
+		document.set_misc_i32(Buildings.MISC_FUNDS, 0)
+		and document.set_misc_u32(Buildings.MISC_TILE_COUNTS, CityState.TILE_COUNT)
+		and document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0)
+		and document.set_misc_u32(Buildings.MISC_SUBWAY_COUNT, 0),
+		"SCURK Place & Print fixture removes game placement privileges",
+	)
+	var city := CityModel.from_document(document)
+	var process_random := Random.new(0x2345)
+	var initial_random_state := process_random.state
+	var coal := ScurkPlace.apply(
+		city, 0xcf, Vector2i(20, 20), process_random
+	)
+	_check(
+		coal.ok
+		and coal.site == Rect2i(19, 19, 4, 4)
+		and city.funds() == 0
+		and city.building_id(19, 19) == 0xcf
+		and city.building_id(22, 22) == 0xcf
+		and city.zones[19 * 128 + 19] == 0x10
+		and city.tile_flags[19 * 128 + 19] & 0xe0 == 0xe0,
+		"SCURK places a locked four-tile object without funds or development gates",
+	)
+	_check(
+		coal.overlay_id == 61
+		and city.microsim(10).tile_id == 0xcf
+		and city.microsim(10).stat_1 == 200
+		and city.label(61) == "Coal Power"
+		and document.misc_u32(Buildings.MISC_TILE_COUNTS) == 16368
+		and document.misc_u32(Buildings.MISC_TILE_COUNTS + 0xcf * 4) == 16,
+		"SCURK object placement writes compatible counts, labels, and XMIC data",
+	)
+	_check(
+		ScurkPlace.undo(city, coal, process_random).ok
+		and city.building_id(19, 19) == 0
+		and city.text_overlay_id(19, 19) == 0
+		and city.microsim(10).tile_id == 0
+		and process_random.state == initial_random_state,
+		"SCURK object placement has an exact Undo transaction",
+	)
+	_check(
+		ScurkPlace.redo(city, coal, process_random).ok
+		and city.building_id(22, 22) == 0xcf
+		and city.microsim(10).stat_1 == 200,
+		"SCURK object placement has an exact Redo transaction",
+	)
+	_check(
+		ScurkPlace.undo(city, coal, process_random).ok,
+		"SCURK Place & Print fixture removes the coal plant",
+	)
+
+	var city_hall := ScurkPlace.apply(
+		city, 0xd0, Vector2i(30, 30), process_random
+	)
+	_check(
+		city_hall.ok
+		and city.microsim(10).stat_1 == 0
+		and city.microsim(10).stat_2 == city.current_year()
+		and document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0,
+		"SCURK City Hall uses its separate zero-population initializer and keeps rewards",
+	)
+	_check(
+		ScurkPlace.undo(city, city_hall, process_random).ok,
+		"SCURK Place & Print fixture removes the City Hall",
+	)
+
+	var variable_zone := ScurkPlace.apply(
+		city, 0xc2, Vector2i(40, 40), process_random, 5
+	)
+	_check(
+		variable_zone.ok
+		and variable_zone.zone_id == 5
+		and city.zones[39 * 128 + 39] & 0x0f == 5,
+		"SCURK transitional objects use the selected zone without a zoning restriction",
+	)
+	_check(
+		ScurkPlace.undo(city, variable_zone, process_random).ok,
+		"SCURK Place & Print fixture removes the transitional object",
+	)
+
+	_check(
+		city.set_building_id(50, 50, 0x1d),
+		"SCURK protected-site fixture places a road",
+	)
+	var blocked_random_state := process_random.state
+	var blocked := ScurkPlace.apply(
+		city, 0x70, Vector2i(50, 50), process_random
+	)
+	_check(
+		not blocked.ok
+		and blocked.error.contains("protected")
+		and city.building_id(50, 50) == 0x1d
+		and process_random.state == blocked_random_state,
+		"SCURK object placement keeps native road and random-state protection",
+	)
+	_check(
+		city.set_building_id(50, 50, 0),
+		"SCURK protected-site fixture removes the road",
+	)
+
+	_check(
+		city.set_terrain_id(60, 60, 1)
+		and city.set_tile_flag(60, 60, 0x04, true),
+		"SCURK hydro fixture installs water terrain",
+	)
+	var hydro := ScurkPlace.apply(
+		city, 0xc6, Vector2i(60, 60), process_random
+	)
+	_check(
+		hydro.ok
+		and city.building_id(60, 60) == 0xc6
+		and city.tile_flags[60 * 128 + 60] & 0xe4 == 0xe4
+		and city.microsim(5).tile_id == 0xc6
+		and city.microsim(5).stat_1 == 1
+		and city.microsim(5).stat_2 == 20,
+		"SCURK hydro object requires water and updates its fixed XMIC record",
+	)
+	_check(
+		ScurkPlace.undo(city, hydro, process_random).ok,
+		"SCURK Place & Print fixture removes the hydro object",
+	)
+	var dry_hydro := ScurkPlace.apply(
+		city, 0xc6, Vector2i(61, 60), process_random
+	)
+	_check(
+		not dry_hydro.ok and dry_hydro.error.contains("water"),
+		"SCURK hydro object rejects clear land",
+	)
+
+	for y in range(70, 73):
+		_check(
+			city.set_tile_flag(70, y, 0x04, true),
+			"SCURK marina fixture stores one shoreline water tile",
+		)
+	var marina := ScurkPlace.apply(
+		city, 0xf8, Vector2i(71, 71), process_random
+	)
+	_check(
+		marina.ok and marina.site == Rect2i(70, 70, 3, 3),
+		"SCURK marina accepts a mixed three-by-three land and water site",
+	)
+	_check(
+		ScurkPlace.undo(city, marina, process_random).ok,
+		"SCURK Place & Print fixture removes the marina",
 	)
 
 
