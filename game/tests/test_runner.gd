@@ -2759,6 +2759,9 @@ func _test_scurk_mif(reference_root: String) -> void:
 		scurk_editor.configure(
 			editor_palette, editor_large, editor_small_medium, reference_root
 		)
+		# This control is built manually outside a SceneTree in this test.
+		if scurk_editor.pick_copy_control.source_list == null:
+			scurk_editor.pick_copy_control._ready()
 		var editor_load := scurk_editor.load_path(
 			scurk_directory.path_join("ORIGINAL.MIF")
 		)
@@ -2785,9 +2788,71 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.import_bmp_dialog != null
 			and scurk_editor.export_bmp_dialog != null
 			and scurk_editor.copy_object_button != null
-			and scurk_editor.paste_image_button != null,
+			and scurk_editor.paste_image_button != null
+			and scurk_editor.pick_copy_control != null,
 			"SCURK editor exposes the recovered paint and brush controls",
 		)
+		scurk_editor.request_pick_copy()
+		var same_source := scurk_editor.pick_copy_control.load_source_path(
+			scurk_directory.path_join("ORIGINAL.MIF")
+		)
+		var future_source := scurk_editor.pick_copy_control.load_source_path(
+			scurk_directory.path_join("FUTURE.MIF")
+		)
+		_check(
+			scurk_editor.pick_copy_control.visible
+			and not same_source.ok
+			and same_source.error.contains("different")
+			and future_source.ok
+			and scurk_editor.pick_copy_control.source_list.item_count == 24
+			and scurk_editor.pick_copy_control.working_list.item_count == 24,
+			"SCURK Pick & Copy keeps distinct source and working object sets",
+		)
+		scurk_editor.pick_copy_control._select_group(
+			ScurkPickCopy.GROUP_COMMERCIAL
+		)
+		_check(
+			scurk_editor.pick_copy_control.source_list.item_count == 28
+			and scurk_editor.pick_copy_control.working_list.item_count == 28,
+			"SCURK Pick & Copy filters both object sets by group",
+		)
+		var pick_editor_before: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+		var pick_editor_id := ScurkPickCopy.group_large_ids(
+			ScurkPickCopy.GROUP_COMMERCIAL
+		)[0]
+		scurk_editor._copy_pick_objects(
+			scurk_editor.pick_copy_control.source_set,
+			PackedInt32Array([pick_editor_id]),
+			"Test copy"
+		)
+		var pick_editor_views_match := true
+		for pick_editor_view in 3:
+			var pick_editor_sprite := pick_editor_id - pick_editor_view * 500
+			var pick_editor_source_entry := ScurkPickCopy.resolved_entry(
+				scurk_editor.pick_copy_control.source_set,
+				pick_editor_sprite,
+				editor_large,
+				editor_small_medium
+			)
+			pick_editor_views_match = (
+				pick_editor_views_match
+				and pick_editor_source_entry.decode_indices().pixels
+					== scurk_editor.tile_set.overrides.find_sprite(
+						pick_editor_sprite
+					).decode_indices().pixels
+			)
+		_check(
+			scurk_editor.dirty
+			and scurk_editor.undo_stack.size() == 1
+			and pick_editor_views_match,
+			"SCURK Pick & Copy is one three-view editor transaction",
+		)
+		scurk_editor.undo()
+		_check(
+			scurk_editor.tile_set.to_bytes().bytes == pick_editor_before,
+			"SCURK Undo restores a Pick & Copy transaction",
+		)
+		scurk_editor.pick_copy_control.request_close()
 		scurk_editor._set_cycle_colors(false)
 		var cycle_before := scurk_editor.pixel_canvas.palette_cycle_ticks
 		scurk_editor._increment_cycle()

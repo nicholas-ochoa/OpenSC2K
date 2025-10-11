@@ -7,6 +7,8 @@ signal tile_set_applied(tile_set: ScurkMif, display_name: String, source_path: S
 const Mif = preload("res://src/assets/scurk_mif.gd")
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
 const SystemImageClipboard = preload("res://src/platform/image_clipboard.gd")
+const PickCopy = preload("res://src/tools/scurk_pick_copy.gd")
+const PickCopyControl = preload("res://src/ui/scurk_pick_copy_control.gd")
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const PaletteControl = preload("res://src/view/scurk_palette_control.gd")
 const TextureControl = preload("res://src/view/scurk_texture_control.gd")
@@ -76,6 +78,7 @@ var import_bmp_dialog: FileDialog
 var export_bmp_dialog: FileDialog
 var discard_dialog: ConfirmationDialog
 var error_dialog: AcceptDialog
+var pick_copy_control: ScurkPickCopyControl
 
 
 func _ready() -> void:
@@ -113,6 +116,10 @@ func configure(
 		palette_control.set_palette(palette)
 		_select_palette_index(foreground_palette_index, false)
 		_select_palette_index(background_palette_index, true)
+	if pick_copy_control != null:
+		pick_copy_control.configure(
+			palette, base_large_sprites, base_small_medium_sprites, reference_directory
+		)
 	if tile_set != null:
 		_refresh_sprite()
 
@@ -158,6 +165,8 @@ func load_path(path: String) -> Dictionary:
 		"Loaded %s: %d objects and %d names."
 		% [source_path.get_file(), ids.size(), tile_set.names.size()]
 	)
+	if pick_copy_control != null and pick_copy_control.visible:
+		pick_copy_control.open_with_working(tile_set, source_path)
 	return {"ok": true, "error": ""}
 
 
@@ -189,6 +198,8 @@ func save_path(path: String) -> Dictionary:
 	saved_bytes = encoded.bytes.duplicate()
 	_update_dirty()
 	_update_title()
+	if pick_copy_control != null and pick_copy_control.visible:
+		pick_copy_control.open_with_working(tile_set, source_path)
 	_set_status("Saved %s." % source_path.get_file())
 	return {"ok": true, "error": "", "path": source_path}
 
@@ -347,6 +358,47 @@ func paste_image_from_system_clipboard() -> void:
 		_show_error(result.error)
 
 
+func request_pick_copy() -> void:
+	if tile_set == null or not tile_set.is_valid():
+		_show_error("No valid SCURK working object set is loaded.")
+		return
+	pick_copy_control.open_with_working(tile_set, source_path)
+
+
+func _copy_pick_objects(
+	source: ScurkMif, large_ids: PackedInt32Array, description: String
+) -> void:
+	if tile_set == null:
+		return
+	var encoded := tile_set.to_bytes()
+	if not encoded.ok:
+		pick_copy_control.copy_completed(encoded)
+		return
+	var result := PickCopy.copy_objects(
+		tile_set,
+		source,
+		large_ids,
+		base_large_sprites,
+		base_small_medium_sprites
+	)
+	if not result.ok:
+		pick_copy_control.copy_completed(result)
+		_show_error(result.error)
+		return
+	_record_edit(encoded.bytes)
+	_refresh_object_list()
+	_refresh_sprite()
+	pick_copy_control.copy_completed(result)
+	_set_status(
+		"%s copied %d objects and %d sprite views."
+		% [description, result.object_count, result.shape_count]
+	)
+
+
+func _change_pick_working() -> void:
+	request_open()
+
+
 func _replace_active_view(
 	width: int,
 	height: int,
@@ -447,6 +499,9 @@ func handle_shortcut(event: InputEventKey) -> bool:
 		redo()
 		return true
 	if event.keycode == KEY_ESCAPE:
+		if pick_copy_control != null and pick_copy_control.visible:
+			pick_copy_control.request_close()
+			return true
 		request_close()
 		return true
 	return false
@@ -516,6 +571,10 @@ func _build_interface() -> void:
 	toolbar.add_child(_toolbar_button(
 		"Export BMP...", request_export_bmp,
 		"Export the current view as a 256-color indexed BMP."
+	))
+	toolbar.add_child(_toolbar_button(
+		"Pick & Copy...", request_pick_copy,
+		"Copy equivalent objects from another SCURK tile set."
 	))
 	toolbar.add_child(VSeparator.new())
 	undo_button = _toolbar_button("Undo", undo, "Undo the last pixel or name edit.")
@@ -848,9 +907,19 @@ func _build_interface() -> void:
 	error_dialog = AcceptDialog.new()
 	error_dialog.title = "SCURK Error"
 	add_child(error_dialog)
+	pick_copy_control = PickCopyControl.new()
+	pick_copy_control.close_requested.connect(_pick_copy_closed)
+	pick_copy_control.change_working_requested.connect(_change_pick_working)
+	pick_copy_control.copy_requested.connect(_copy_pick_objects)
+	add_child(pick_copy_control)
 	_select_palette_index(0, false)
 	_select_palette_index(255, true)
 	_update_history_buttons()
+
+
+func _pick_copy_closed() -> void:
+	if is_inside_tree() and object_list != null:
+		object_list.grab_focus()
 
 
 func _toolbar_button(label: String, callable: Callable, tooltip: String) -> Button:
@@ -1165,6 +1234,8 @@ func _update_after_history() -> void:
 	_update_dirty()
 	_update_history_buttons()
 	_update_title()
+	if pick_copy_control != null and pick_copy_control.visible:
+		pick_copy_control.open_with_working(tile_set, source_path)
 
 
 func _update_dirty() -> void:
