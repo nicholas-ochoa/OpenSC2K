@@ -83,7 +83,7 @@ var pick_copy_control: ScurkPickCopyControl
 
 func _ready() -> void:
 	name = "SCURKEditor"
-	color = Color(0.0, 0.0, 0.0, 0.38)
+	color = Color("c0c0c0")
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	_build_interface()
