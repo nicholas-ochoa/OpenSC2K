@@ -238,7 +238,6 @@ var city_label: Label
 var status_label: Label
 var status_population_label: Label
 var status_weather_label: Label
-var status_tool_label: Label
 var status_rci_label: Label
 var status_reports_label: Label
 var file_dialog: FileDialog
@@ -268,6 +267,7 @@ var new_city_preview_process_cursor := 1
 var new_city_preview_game_cursor := 1
 var options_menu: MenuButton
 var view_menu: MenuButton
+var view_menu_underground_items := false
 var disasters_menu: MenuButton
 var view_visibility_checks: Dictionary = {}
 var view_layers_heading: Label
@@ -636,7 +636,6 @@ func _build_interface(toolbar_art: Image) -> void:
 		["Show Trees", MENU_VIEW_TREES],
 		["Show Zones", MENU_VIEW_ZONES],
 		["Show Signs", MENU_VIEW_SIGNS],
-		["Show Underground Pipes", MENU_VIEW_PIPES],
 	]:
 		view_menu.get_popup().add_check_item(view_item[0], view_item[1])
 	disasters_menu = _add_menu(menu_row, "Disasters", [
@@ -905,10 +904,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	status_metrics.add_child(status_label)
 	status_population_label = _status_metric_label("Population: --", 125)
 	status_metrics.add_child(status_population_label)
-	status_weather_label = _status_metric_label("Weather: --", 90)
+	status_weather_label = _status_metric_label("Weather: --", 130)
 	status_metrics.add_child(status_weather_label)
-	status_tool_label = _status_metric_label("Tool: --", 160)
-	status_metrics.add_child(status_tool_label)
 	status_rci_label = _status_metric_label("RCI: -- / -- / --", 155)
 	status_metrics.add_child(status_rci_label)
 	status_reports_label = _status_metric_label("Reports: None", 180, true)
@@ -2578,6 +2575,8 @@ func _sync_city_option_menus() -> void:
 
 func _sync_view_controls() -> void:
 	var underground_active := overlay_mode == "underground"
+	if view_menu != null and view_menu_underground_items != underground_active:
+		_rebuild_view_layer_menu(underground_active)
 	var states := {
 		MENU_VIEW_BUILDINGS: bool(surface_visibility.buildings),
 		MENU_VIEW_NETWORKS: bool(surface_visibility.networks),
@@ -2592,10 +2591,6 @@ func _sync_view_controls() -> void:
 			var item_index := view_menu.get_popup().get_item_index(menu_id)
 			if item_index >= 0:
 				view_menu.get_popup().set_item_checked(item_index, bool(states[menu_id]))
-				view_menu.get_popup().set_item_hidden(
-					item_index,
-					(not underground_active if menu_id == MENU_VIEW_PIPES else underground_active),
-				)
 	if view_layers_heading != null:
 		view_layers_heading.text = (
 			"Underground Layer" if underground_active else "Visible Layers"
@@ -2609,6 +2604,25 @@ func _sync_view_controls() -> void:
 			else bool(surface_visibility.get(key, true))
 		)
 		check.set_pressed_no_signal(enabled)
+
+
+func _rebuild_view_layer_menu(underground_active: bool) -> void:
+	var popup := view_menu.get_popup()
+	while popup.item_count > 4:
+		popup.remove_item(popup.item_count - 1)
+	if underground_active:
+		popup.add_check_item("Show Underground Pipes", MENU_VIEW_PIPES)
+	else:
+		for view_item in [
+			["Show Buildings", MENU_VIEW_BUILDINGS],
+			["Show Networks", MENU_VIEW_NETWORKS],
+			["Show Water", MENU_VIEW_WATER],
+			["Show Trees", MENU_VIEW_TREES],
+			["Show Zones", MENU_VIEW_ZONES],
+			["Show Signs", MENU_VIEW_SIGNS],
+		]:
+			popup.add_check_item(view_item[0], view_item[1])
+	view_menu_underground_items = underground_active
 
 
 func _on_disaster_menu(id: int) -> void:
@@ -4366,7 +4380,7 @@ func _show_news_items(news_items: Array) -> void:
 	for item in news_items:
 		var news_type := int(item.get("type", 0))
 		var name: String = NEWS_NAMES.get(news_type, "City report")
-		recent_news.insert(0, "%s (0x%X)" % [name, news_type])
+		recent_news.insert(0, name)
 	while recent_news.size() > 3:
 		recent_news.remove_at(recent_news.size() - 1)
 	_refresh_status_summary()
@@ -4404,7 +4418,7 @@ func _refresh_saved_news_summary() -> void:
 		if record.is_empty() or int(record.priority) <= 0:
 			continue
 		var story_type := int(record.type)
-		reports.append("%s (0x%02X)" % [NEWS_NAMES.get(story_type, "City report"), story_type])
+		reports.append(str(NEWS_NAMES.get(story_type, "City report")))
 		if reports.size() == 3:
 			break
 	recent_news = reports
@@ -5948,14 +5962,10 @@ func _refresh_status_summary(
 	if (
 		status_population_label == null
 		or status_weather_label == null
-		or status_tool_label == null
 		or status_rci_label == null
 		or status_reports_label == null
 	):
 		return
-	var tool := Tools.tool(selected_group, selected_subtool)
-	status_tool_label.text = "Tool: %s" % str(tool.get("name", "--"))
-	status_tool_label.tooltip_text = status_tool_label.text
 	if city == null:
 		status_population_label.text = "Population: --"
 		status_weather_label.text = "Weather: --"
