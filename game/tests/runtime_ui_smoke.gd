@@ -43,6 +43,29 @@ func _run() -> void:
 			quit(2)
 			return
 		var loaded_city: CityState = main.get("city")
+		var date_label := main.get("title_stats_label") as Label
+		var money_label := main.get("title_money_label") as Label
+		var city_label := main.get("city_label") as Label
+		var rci_graph: RciStatusControl = main.get("status_rci_graph")
+		var expected_date := "%02d/%02d/%04d" % [
+			loaded_city.current_month(),
+			loaded_city.current_day(),
+			loaded_city.current_year(),
+		]
+		var expected_money := "$%s" % main.call(
+			"_format_number", loaded_city.funds()
+		)
+		if (
+			date_label.text != expected_date
+			or money_label.text != expected_money
+			or city_label.horizontal_alignment != HORIZONTAL_ALIGNMENT_LEFT
+			or rci_graph.demand != loaded_city.rci_demand()
+			or not rci_graph.demand_available
+		):
+			push_error("Menu or status metrics are not synchronized for %s" % relative_path)
+			main.queue_free()
+			quit(2)
+			return
 		loaded_city.set_music_enabled(false)
 		loaded_city.set_sound_enabled(false)
 		var scenario_dialog := main.get("scenario_dialog") as Window
@@ -109,6 +132,25 @@ func _run() -> void:
 	for group in range(18):
 		main.call("_select_tool_group", group)
 		await process_frame
+
+	var overflow_text := "Overflow tooltip validation ".repeat(40)
+	for property in [
+		"status_label",
+		"status_population_label",
+		"status_weather_label",
+		"status_reports_label",
+	]:
+		var section := main.get(property) as Label
+		var original_text := section.text
+		section.text = overflow_text
+		main.call("_sync_overflow_tooltip", section)
+		if section.tooltip_text.is_empty():
+			push_error("Status section %s does not expose overflow text" % property)
+			main.queue_free()
+			quit(2)
+			return
+		section.text = original_text
+	main.call("_refresh_status_tooltips")
 
 	main.call("_open_scurk_dialog")
 	await process_frame

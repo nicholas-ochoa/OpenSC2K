@@ -30,6 +30,7 @@ const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
 const Ordinances = preload("res://src/simulation/ordinance_command.gd")
 const CityMapWindow = preload("res://src/view/city_map_window_control.gd")
+const RciStatus = preload("res://src/view/rci_status_control.gd")
 const Clock = preload("res://src/simulation/simulation_clock.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
@@ -234,6 +235,7 @@ func _init() -> void:
 	_test_midi_files(reference_root)
 	_test_midi_synth_helpers()
 	_test_main_menu()
+	_test_rci_status_control()
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
 	_test_random_and_power(reference_root)
@@ -326,6 +328,42 @@ func _test_invalid_rle() -> void:
 		not RleCodec.decode(PackedByteArray([0x82, 4]), 2).ok,
 		"RLE rejects output overflow"
 	)
+
+
+func _test_rci_status_control() -> void:
+	var graph_rect := Rect2(27, 2, 83, 20)
+	var bars := RciStatus.bar_rects(Vector3i(2000, -1000, 0), graph_rect)
+	_check(
+		bars == [
+			Rect2(33, 4, 14, 8),
+			Rect2(61, 13, 14, 4),
+			Rect2(89, 12, 14, 0),
+		],
+		"RCI status bars use one shared zero line and signed demand heights",
+	)
+	_check(
+		RciStatus.demand_tooltip(Vector3i(-90, -265, 510))
+		== (
+			"Residential (green): -90\n"
+			+ "Commercial (blue): -265\n"
+			+ "Industrial (yellow): +510"
+		),
+		"RCI status tooltip identifies each zone color and exact demand",
+	)
+	var control := RciStatus.new()
+	control.set_demand(Vector3i(3000, -3000, 50))
+	_check(
+		control.demand == Vector3i(2000, -2000, 50)
+		and control.demand_available,
+		"RCI status control clamps values to the saved demand range",
+	)
+	control.clear_demand()
+	_check(
+		not control.demand_available
+		and control.tooltip_text == "RCI demand is not available.",
+		"RCI status control has an explicit no-city state",
+	)
+	control.free()
 
 
 func _test_reference_corpus(reference_root: String) -> void:

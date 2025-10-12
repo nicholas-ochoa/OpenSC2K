@@ -25,6 +25,7 @@ const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
 const OrdinanceView = preload("res://src/view/ordinance_window_control.gd")
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
+const RciStatusView = preload("res://src/view/rci_status_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -238,7 +239,7 @@ var city_label: Label
 var status_label: Label
 var status_population_label: Label
 var status_weather_label: Label
-var status_rci_label: Label
+var status_rci_graph: RciStatusControl
 var status_reports_label: Label
 var file_dialog: FileDialog
 var save_dialog: FileDialog
@@ -278,6 +279,7 @@ var child_tool_buttons: Dictionary = {}
 var toolbar_art_source: Image
 var undo_button: Button
 var title_stats_label: Label
+var title_money_label: Label
 var fps_label: Label
 var zoom_label: Label
 var zoom_in_button: Button
@@ -674,20 +676,28 @@ func _build_interface(toolbar_art: Image) -> void:
 	menu_row.add_child(VSeparator.new())
 	city_label = Label.new()
 	city_label.text = "No city loaded"
-	city_label.custom_minimum_size = Vector2(150, 0)
-	city_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	city_label.custom_minimum_size = Vector2(165, 0)
+	city_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	city_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	city_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	city_label.tooltip_text = "Current city"
+	city_label.tooltip_text = city_label.text
 	menu_row.add_child(city_label)
 	menu_row.add_child(VSeparator.new())
 	title_stats_label = Label.new()
-	title_stats_label.text = "---- -- --   $--"
-	title_stats_label.custom_minimum_size = Vector2(180, 0)
+	title_stats_label.text = "--/--/----"
+	title_stats_label.custom_minimum_size = Vector2(92, 0)
 	title_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title_stats_label.tooltip_text = "Current date and city funds"
+	title_stats_label.tooltip_text = "Current city date"
 	menu_row.add_child(title_stats_label)
+	menu_row.add_child(VSeparator.new())
+	title_money_label = Label.new()
+	title_money_label.text = "$--"
+	title_money_label.custom_minimum_size = Vector2(92, 0)
+	title_money_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	title_money_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	title_money_label.tooltip_text = "Current city funds"
+	menu_row.add_child(title_money_label)
 	menu_row.add_child(VSeparator.new())
 	fps_label = Label.new()
 	fps_label.text = "FPS: --"
@@ -902,13 +912,17 @@ func _build_interface(toolbar_art: Image) -> void:
 	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	status_label.add_theme_color_override("font_color", Color("202020"))
 	status_metrics.add_child(status_label)
+	status_metrics.add_child(VSeparator.new())
 	status_population_label = _status_metric_label("Population: --", 125)
 	status_metrics.add_child(status_population_label)
+	status_metrics.add_child(VSeparator.new())
 	status_weather_label = _status_metric_label("Weather: --", 130)
 	status_weather_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	status_metrics.add_child(status_weather_label)
-	status_rci_label = _status_metric_label("RCI: -- / -- / --", 155)
-	status_metrics.add_child(status_rci_label)
+	status_metrics.add_child(VSeparator.new())
+	status_rci_graph = RciStatusView.new()
+	status_metrics.add_child(status_rci_graph)
+	status_metrics.add_child(VSeparator.new())
 	status_reports_label = _status_metric_label("Reports: None", 180, true)
 	status_metrics.add_child(status_reports_label)
 
@@ -2419,6 +2433,7 @@ func _update_fps(delta: float) -> void:
 		return
 	fps_update_seconds = fmod(fps_update_seconds, 0.25)
 	fps_label.text = "FPS: %d" % Engine.get_frames_per_second()
+	_refresh_status_tooltips()
 
 
 func _on_city_zoom_changed(percent: int) -> void:
@@ -3504,6 +3519,7 @@ func _activate_document(
 	if display_name.is_empty():
 		display_name = "New City"
 	city_label.text = display_name
+	city_label.tooltip_text = display_name
 	_refresh_details()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = status_text if not status_text.is_empty() else "City ready."
@@ -5948,12 +5964,14 @@ func _refresh_details() -> void:
 		if weather_trend < RciAftermath.WEATHER_NAMES.size()
 		else "Unknown"
 	)
-	title_stats_label.text = "%04d-%02d-%02d   $%s" % [
-		city.current_year(),
+	title_stats_label.text = "%02d/%02d/%04d" % [
 		city.current_month(),
 		city.current_day(),
-		_format_number(city.funds()),
+		city.current_year(),
 	]
+	title_money_label.text = "$%s" % _format_number(city.funds())
+	title_stats_label.tooltip_text = "Current city date: %s" % title_stats_label.text
+	title_money_label.tooltip_text = "Current city funds: %s" % title_money_label.text
 	_refresh_status_summary(demand, weather_name)
 	if _refresh_tool_availability():
 		_update_edit_state()
@@ -5965,14 +5983,14 @@ func _refresh_status_summary(
 	if (
 		status_population_label == null
 		or status_weather_label == null
-		or status_rci_label == null
+		or status_rci_graph == null
 		or status_reports_label == null
 	):
 		return
 	if city == null:
 		status_population_label.text = "Population: --"
 		status_weather_label.text = "Weather: --"
-		status_rci_label.text = "RCI: -- / -- / --"
+		status_rci_graph.clear_demand()
 	else:
 		if weather_name.is_empty():
 			var weather_trend := city.document.misc_u32(
@@ -5986,18 +6004,34 @@ func _refresh_status_summary(
 			demand = city.rci_demand()
 		status_population_label.text = "Population: %s" % _format_number(city.population())
 		status_weather_label.text = "Weather: %s" % weather_name
-		status_rci_label.text = "RCI: R%+d C%+d I%+d" % [demand.x, demand.y, demand.z]
-	status_population_label.tooltip_text = status_population_label.text
-	status_weather_label.tooltip_text = status_weather_label.text
-	status_rci_label.tooltip_text = (
-		"Residential / Commercial / Industrial demand\n%s"
-		% status_rci_label.text
-	)
+		status_rci_graph.set_demand(demand)
 	var reports := "None" if recent_news.is_empty() else " | ".join(recent_news)
 	status_reports_label.text = "Reports: %s" % reports
-	status_reports_label.tooltip_text = (
+	status_reports_label.set_meta("status_tooltip_text", (
 		"Latest reports\n%s" % ("No reports." if recent_news.is_empty() else "\n".join(recent_news))
-	)
+	))
+	_refresh_status_tooltips()
+
+
+func _refresh_status_tooltips() -> void:
+	_sync_overflow_tooltip(status_label)
+	_sync_overflow_tooltip(status_population_label)
+	_sync_overflow_tooltip(status_weather_label)
+	_sync_overflow_tooltip(status_reports_label)
+
+
+func _sync_overflow_tooltip(label: Label) -> void:
+	if label == null:
+		return
+	var font := label.get_theme_font("font")
+	var font_size := label.get_theme_font_size("font_size")
+	var text_width := font.get_string_size(
+		label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+	).x
+	if text_width > maxf(0.0, label.size.x - 4.0):
+		label.tooltip_text = str(label.get_meta("status_tooltip_text", label.text))
+	else:
+		label.tooltip_text = ""
 
 
 func _show_error(message: String) -> void:
