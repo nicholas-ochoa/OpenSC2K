@@ -2706,6 +2706,15 @@ func _test_scurk_mif(reference_root: String) -> void:
 		editor_small_medium = SpriteArchive.combine([
 			editor_small_medium, editor_special,
 		])
+		var complete_editor_ids := ScurkEditor.editable_large_sprite_ids(
+			original, editor_large
+		)
+		_check(
+			complete_editor_ids.size() == 499
+			and complete_editor_ids[0] == 1001
+			and complete_editor_ids[complete_editor_ids.size() - 1] == 1499,
+			"SCURK editor catalog exposes every original large sprite family",
+		)
 		var pick_working := ScurkTileSet.load_path(
 			scurk_directory.path_join("ORIGINAL.MIF")
 		)
@@ -2769,10 +2778,10 @@ func _test_scurk_mif(reference_root: String) -> void:
 		)
 		_check(
 			editor_load.ok
-			and scurk_editor.object_list.item_count == 186
+			and scurk_editor.object_list.item_count == 499
 			and scurk_editor.pixel_canvas.sprite_width > 0
 			and scurk_editor.pixel_canvas.sprite_height > 0,
-			"SCURK editor loads its object list and editable large sprite",
+			"SCURK editor loads all tile, terrain, network, and support sprites",
 		)
 		_check(
 			scurk_editor.tool_buttons.size() == 12
@@ -2958,6 +2967,26 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and FileAccess.get_file_as_bytes(scratch_path)
 				== FileAccess.get_file_as_bytes(scurk_directory.path_join("ORIGINAL.MIF")),
 			"SCURK editor saves an unchanged MIF byte-identically",
+		)
+		var added_sprite_id := 1256
+		var added_before: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
+		scurk_editor.current_large_id = added_sprite_id
+		scurk_editor.current_view = ScurkEditor.VIEW_LARGE
+		scurk_editor._capture_object_start()
+		scurk_editor._refresh_sprite()
+		var added_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
+		added_pixels[0] = 7 if added_pixels[0] != 7 else 8
+		scurk_editor._capture_edit_start()
+		scurk_editor._commit_pixels(added_pixels)
+		_check(
+			scurk_editor.tile_set.overrides.find_sprite(added_sprite_id) != null,
+			"SCURK editor appends a previously absent terrain sprite to MIF",
+		)
+		scurk_editor.undo()
+		_check(
+			scurk_editor.tile_set.to_bytes().bytes == added_before
+			and scurk_editor.tile_set.overrides.find_sprite(added_sprite_id) == null,
+			"SCURK Undo removes an appended full-catalog sprite exactly",
 		)
 		var scratch_bmp_path := ProjectSettings.globalize_path(
 			"user://test-scurk-editor-output.BMP"

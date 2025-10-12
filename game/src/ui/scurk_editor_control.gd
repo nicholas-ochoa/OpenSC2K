@@ -121,6 +121,7 @@ func configure(
 			palette, base_large_sprites, base_small_medium_sprites, reference_directory
 		)
 	if tile_set != null:
+		_refresh_object_list()
 		_refresh_sprite()
 
 
@@ -153,7 +154,7 @@ func load_path(path: String) -> Dictionary:
 	redo_stack.clear()
 	pending_edit_before.clear()
 	dirty = false
-	var ids := editable_large_sprite_ids(tile_set)
+	var ids := editable_large_sprite_ids(tile_set, base_large_sprites)
 	current_large_id = ids[0] if not ids.is_empty() else -1
 	current_view = VIEW_LARGE
 	_refresh_object_list()
@@ -507,11 +508,19 @@ func handle_shortcut(event: InputEventKey) -> bool:
 	return false
 
 
-static func editable_large_sprite_ids(value: ScurkMif) -> PackedInt32Array:
+static func editable_large_sprite_ids(
+	value: ScurkMif, base_large: Sc2SpriteArchive = null
+) -> PackedInt32Array:
 	var ids := PackedInt32Array()
 	if value == null or not value.is_valid():
 		return ids
 	var seen := {}
+	if base_large != null and base_large.is_valid():
+		for entry in base_large.entries:
+			if entry.sprite_id < 1000 or entry.sprite_id > 1499 or seen.has(entry.sprite_id):
+				continue
+			seen[entry.sprite_id] = true
+			ids.append(entry.sprite_id)
 	for entry in value.shapes:
 		if entry.sprite_id < 1000 or entry.sprite_id > 1499 or seen.has(entry.sprite_id):
 			continue
@@ -939,14 +948,20 @@ func _refresh_object_list() -> void:
 	object_list.clear()
 	if tile_set == null:
 		return
-	for large_id in editable_large_sprite_ids(tile_set):
+	for large_id in editable_large_sprite_ids(tile_set, base_large_sprites):
 		var tile_id := object_tile_id(large_id)
 		var tile_name := String(tile_set.names.get(tile_id, ""))
-		var label := "%03d  %s" % [tile_id, tile_name if not tile_name.is_empty() else "Unnamed"]
+		var description := tile_name if not tile_name.is_empty() else sprite_role(tile_id)
+		var label := "%03d  %s" % [tile_id, description]
 		if not filter.is_empty() and not label.to_lower().contains(filter):
 			continue
 		var list_index := object_list.add_item(label)
 		object_list.set_item_metadata(list_index, large_id)
+		object_list.set_item_tooltip(
+			list_index,
+			"Sprite family %d: Small %d, Medium %d, Large %d"
+			% [tile_id, tile_id, tile_id + 500, tile_id + 1000]
+		)
 		if large_id == selected_id:
 			object_list.select(list_index)
 	if object_list.get_selected_items().is_empty() and object_list.item_count > 0:
@@ -971,6 +986,8 @@ func _on_search_changed(_value: String) -> void:
 
 
 func _select_view(view: int) -> void:
+	if not _view_is_available(view):
+		return
 	current_view = view
 	for index in view_buttons.size():
 		view_buttons[index].button_pressed = index == view
@@ -1110,6 +1127,7 @@ func _refresh_sprite() -> void:
 		name_button.disabled = true
 		revert_name_button.disabled = true
 		return
+	_update_view_buttons()
 	var sprite_id := view_sprite_id(current_large_id, current_view)
 	var entry := tile_set.overrides.find_sprite(sprite_id)
 	var source := "MIF override"
@@ -1142,13 +1160,61 @@ func _refresh_sprite() -> void:
 	pixel_canvas.filled_shapes = filled_shapes_check.button_pressed
 	pixel_canvas.show_grid = grid_check.button_pressed
 	var tile_id := object_tile_id(current_large_id)
-	name_edit.editable = true
-	name_button.disabled = false
+	var can_name := tile_id >= 0
+	name_edit.editable = can_name
+	name_button.disabled = not can_name
 	name_edit.text = String(tile_set.names.get(tile_id, ""))
-	revert_name_button.disabled = not tile_set.names.has(tile_id)
+	revert_name_button.disabled = not can_name or not tile_set.names.has(tile_id)
 	sprite_status_label.text = "Sprite %d: %d x %d pixels, %s." % [
 		sprite_id, entry.width, entry.height, source,
 	]
+
+
+func _update_view_buttons() -> void:
+	if current_large_id < 0:
+		return
+	if not _view_is_available(current_view):
+		for candidate in [VIEW_LARGE, VIEW_MEDIUM, VIEW_SMALL]:
+			if _view_is_available(candidate):
+				current_view = candidate
+				break
+	for index in view_buttons.size():
+		view_buttons[index].disabled = not _view_is_available(index)
+		view_buttons[index].button_pressed = index == current_view
+
+
+func _view_is_available(view: int) -> bool:
+	if tile_set == null or current_large_id < 0:
+		return false
+	var sprite_id := view_sprite_id(current_large_id, view)
+	return PickCopy.resolved_entry(
+		tile_set, sprite_id, base_large_sprites, base_small_medium_sprites
+	) != null
+
+
+static func sprite_role(tile_id: int) -> String:
+	if tile_id >= 0x0e and tile_id <= 0x1c:
+		return "Power-line tile"
+	if tile_id >= 0x1d and tile_id <= 0x2b:
+		return "Road tile"
+	if tile_id >= 0x2c and tile_id <= 0x3e:
+		return "Rail tile"
+	if tile_id >= 0x3f and tile_id <= 0x6f:
+		return "Network crossing or bridge tile"
+	if tile_id >= 1 and tile_id <= 0x0d:
+		return "Landscape tile"
+	if tile_id >= 0x70 and tile_id <= 0xff:
+		return "Building or zone tile"
+	if tile_id >= 0x100 and tile_id <= 0x122:
+		return "Terrain sprite"
+	if (
+		(tile_id >= 0x131 and tile_id <= 0x190)
+		or (tile_id >= 0x1c2 and tile_id <= 0x1d3)
+	):
+		return "Underground pipe or subway sprite"
+	if tile_id >= 0x167 and tile_id <= 0x1f3:
+		return "Traffic, moving-object, or effect sprite"
+	return "City support sprite"
 
 
 func _capture_edit_start() -> void:
