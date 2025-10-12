@@ -905,6 +905,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	status_population_label = _status_metric_label("Population: --", 125)
 	status_metrics.add_child(status_population_label)
 	status_weather_label = _status_metric_label("Weather: --", 130)
+	status_weather_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	status_metrics.add_child(status_weather_label)
 	status_rci_label = _status_metric_label("RCI: -- / -- / --", 155)
 	status_metrics.add_child(status_rci_label)
