@@ -2480,7 +2480,9 @@ func _on_file_menu(id: int) -> void:
 func _on_speed_menu(id: int) -> void:
 	if speed_controller == null:
 		return
-	_select_speed(id)
+	if id < 0 or id > 4:
+		return
+	_select_speed(id + GameSpeed.Speed.PAUSED)
 
 
 func _on_options_menu(id: int) -> void:

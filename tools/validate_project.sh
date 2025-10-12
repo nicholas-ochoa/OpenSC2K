@@ -27,4 +27,8 @@ if [ -f "$repo_dir/game/tests/test_runner.gd" ]; then
 	run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/test_runner.gd -- "$repo_dir/references"
 fi
 
+if [ -f "$repo_dir/game/tests/runtime_ui_smoke.gd" ]; then
+	run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/runtime_ui_smoke.gd -- "$repo_dir/references"
+fi
+
 git -C "$repo_dir" diff --check
