@@ -24,6 +24,7 @@ const TOOL_COPY := 10
 const TOOL_PASTE := 11
 const CYCLE_INTERVAL_SECONDS := 0.125
 const MINIMUM_COPY_SPAN := 4
+const CLEAR_BACKGROUND_RESOURCE_IDS := [20015, 20018, 20019, 20020, 20021]
 
 const TEXTURE_NAMES := [
 	"Solid Foreground",
@@ -88,6 +89,11 @@ var original_textures_loaded := false
 var palette_cycle_ticks := 0
 var palette_cycle_enabled := true
 var palette_cycle_accumulator := 0.0
+var edit_mask := PackedByteArray()
+var clip_base_size := -1
+var show_clip_region := false
+var clear_background_pixels := PackedInt32Array()
+var clip_background_pixels: Array[PackedInt32Array] = []
 
 
 func _init() -> void:
@@ -115,6 +121,7 @@ func set_sprite_data(
 	sprite_width = maxi(0, width)
 	sprite_height = maxi(0, height)
 	pixels = value_pixels.duplicate()
+	_enforce_edit_mask()
 	stroke_active = false
 	stroke_changed = false
 	stroke_base_pixels.clear()
@@ -141,6 +148,29 @@ func set_tool(value: int) -> void:
 	copy_active = false
 	copy_start = Vector2i(-1, -1)
 	copy_finish = Vector2i(-1, -1)
+	queue_redraw()
+
+
+func set_edit_region(mask: PackedByteArray, base_size: int) -> void:
+	if mask.size() != sprite_width * sprite_height:
+		edit_mask.clear()
+		clip_base_size = -1
+	else:
+		edit_mask = mask.duplicate()
+		clip_base_size = clampi(base_size, 1, 4)
+	_enforce_edit_mask()
+	queue_redraw()
+
+
+func clear_edit_region() -> void:
+	edit_mask.clear()
+	clip_base_size = -1
+	show_clip_region = false
+	queue_redraw()
+
+
+func set_clip_region_visible(enabled: bool) -> void:
+	show_clip_region = enabled
 	queue_redraw()
 
 
@@ -202,6 +232,38 @@ func load_original_textures(executable_path: String) -> Dictionary:
 	return {"ok": true, "error": ""}
 
 
+func load_original_clear_backgrounds(executable_path: String) -> Dictionary:
+	var loaded_set := PeBitmap.load_numeric_indexed8_many(
+		executable_path, CLEAR_BACKGROUND_RESOURCE_IDS
+	)
+	if not loaded_set.ok:
+		return {
+			"ok": false,
+			"error": "Cannot load SCURK drawing backgrounds: " + loaded_set.error,
+		}
+	var loaded_backgrounds: Array[PackedInt32Array] = []
+	for index in CLEAR_BACKGROUND_RESOURCE_IDS.size():
+		var resource_id: int = CLEAR_BACKGROUND_RESOURCE_IDS[index]
+		var loaded: Dictionary = loaded_set.entries[index]
+		if (
+			loaded.width != 128
+			or loaded.height != 256
+			or loaded.pixels.size() != 128 * 256
+		):
+			return {
+				"ok": false,
+				"error": "SCURK drawing background %d is not 128 by 256 pixels."
+					% resource_id,
+			}
+		loaded_backgrounds.append(loaded.pixels)
+	clear_background_pixels = loaded_backgrounds[0]
+	clip_background_pixels.clear()
+	for index in range(1, loaded_backgrounds.size()):
+		clip_background_pixels.append(loaded_backgrounds[index])
+	queue_redraw()
+	return {"ok": true, "error": ""}
+
+
 static func _fallback_texture_patterns() -> Array[PackedInt32Array]:
 	var result: Array[PackedInt32Array] = []
 	for source_index in [0, 1, 8, 2, 3, 4, 5, 6, 7]:
@@ -222,6 +284,7 @@ func replace_pixels(value_pixels: PackedInt32Array) -> bool:
 	if value_pixels.size() != sprite_width * sprite_height:
 		return false
 	pixels = value_pixels.duplicate()
+	_enforce_edit_mask()
 	queue_redraw()
 	return true
 
@@ -717,6 +780,10 @@ func _apply_clipboard(point: Vector2i) -> void:
 		pixels, sprite_width, sprite_height, point,
 		clipboard_pixels, clipboard_width, clipboard_height
 	)
+	if edit_mask.size() == changed.size():
+		for index in changed.size():
+			if edit_mask[index] == 0:
+				changed[index] = -1
 	if changed == pixels:
 		return
 	edit_started.emit()
@@ -796,7 +863,7 @@ func _apply_brush(point: Vector2i) -> void:
 
 
 func _apply_pixel(point: Vector2i, value: int) -> void:
-	if not _point_is_valid(point):
+	if not _point_is_editable(point):
 		return
 	var index := point.y * sprite_width + point.x
 	if pixels[index] == value:
@@ -820,15 +887,26 @@ func _finish_stroke() -> void:
 
 
 func _apply_fill(point: Vector2i, force_background: bool) -> void:
+	if not _point_is_editable(point):
+		return
+	var fill_source := pixels.duplicate()
+	if edit_mask.size() == fill_source.size():
+		for index in fill_source.size():
+			if edit_mask[index] == 0:
+				fill_source[index] = -2
 	var changed := (
-		flood_fill(pixels, sprite_width, sprite_height, point, background_index)
+		flood_fill(fill_source, sprite_width, sprite_height, point, background_index)
 		if force_background
 		else flood_fill_texture(
-			pixels, sprite_width, sprite_height, point,
+			fill_source, sprite_width, sprite_height, point,
 			foreground_index, background_index,
 			texture_patterns[texture_index], 8, 8
 		)
 	)
+	if edit_mask.size() == changed.size():
+		for index in changed.size():
+			if edit_mask[index] == 0:
+				changed[index] = -1
 	if changed == pixels:
 		return
 	edit_started.emit()
@@ -860,6 +938,20 @@ func _point_is_valid(point: Vector2i) -> bool:
 	)
 
 
+func _point_is_editable(point: Vector2i) -> bool:
+	if not _point_is_valid(point):
+		return false
+	return edit_mask.is_empty() or edit_mask[point.y * sprite_width + point.x] != 0
+
+
+func _enforce_edit_mask() -> void:
+	if edit_mask.size() != pixels.size():
+		return
+	for index in pixels.size():
+		if edit_mask[index] == 0:
+			pixels[index] = -1
+
+
 func _update_minimum_size() -> void:
 	custom_minimum_size = Vector2(
 		maxi(1, sprite_width * zoom), maxi(1, sprite_height * zoom)
@@ -884,7 +976,17 @@ func _draw() -> void:
 	)
 	for y in sprite_height:
 		for x in sprite_width:
-			var index := pixels[y * sprite_width + x]
+			var pixel_offset := y * sprite_width + x
+			var index := pixels[pixel_offset]
+			if index < 0 and clear_background_pixels.size() == pixels.size():
+				var background := clear_background_pixels
+				if (
+					show_clip_region
+					and clip_base_size >= 1
+					and clip_base_size <= clip_background_pixels.size()
+				):
+					background = clip_background_pixels[clip_base_size - 1]
+				index = background[pixel_offset]
 			var display_index := display_indices[index] if index >= 0 else index
 			var color := (
 				palette.color(display_index)

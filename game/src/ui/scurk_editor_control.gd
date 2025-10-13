@@ -8,6 +8,7 @@ const Mif = preload("res://src/assets/scurk_mif.gd")
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
 const SystemImageClipboard = preload("res://src/platform/image_clipboard.gd")
 const PickCopy = preload("res://src/tools/scurk_pick_copy.gd")
+const DrawingWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
 const PickCopyControl = preload("res://src/ui/scurk_pick_copy_control.gd")
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const PaletteControl = preload("res://src/view/scurk_palette_control.gd")
@@ -33,10 +34,15 @@ var background_palette_index := 255
 var undo_stack: Array[Dictionary] = []
 var redo_stack: Array[Dictionary] = []
 var pending_edit_before := PackedByteArray()
+var pending_blank_shape_ids: Dictionary = {}
 var object_start_bytes := PackedByteArray()
 var object_start_large_id := -1
+var object_start_blank_shape_ids: Dictionary = {}
 var pending_discard_action := ""
 var dirty := false
+var active_workspace := false
+var active_base_width := 0
+var blank_shape_ids: Dictionary = {}
 
 var title_label: Label
 var source_label: Label
@@ -54,6 +60,7 @@ var paste_image_button: Button
 var undo_button: Button
 var redo_button: Button
 var revert_button: Button
+var clear_object_button: Button
 var save_button: Button
 var pixel_canvas: ScurkPixelCanvas
 var palette_control: ScurkPaletteControl
@@ -66,6 +73,7 @@ var texture_control: ScurkTextureControl
 var filled_shapes_check: CheckBox
 var round_brush_check: CheckBox
 var grid_check: CheckBox
+var clip_region_check: CheckBox
 var cycle_colors_check: CheckBox
 var increment_cycle_button: Button
 var zoom_label: Label
@@ -106,6 +114,11 @@ func configure(
 		)
 		if not textures.ok:
 			_set_status(textures.error + " Using fallback texture patterns.")
+		var backgrounds := pixel_canvas.load_original_clear_backgrounds(
+			reference_directory.path_join("WINSCURK.EXE")
+		)
+		if not backgrounds.ok:
+			_set_status(backgrounds.error + " Using a transparent drawing background.")
 	if texture_control != null and pixel_canvas != null:
 		texture_control.set_palette(palette)
 		texture_control.set_patterns(pixel_canvas.texture_patterns)
@@ -153,6 +166,8 @@ func load_path(path: String) -> Dictionary:
 	undo_stack.clear()
 	redo_stack.clear()
 	pending_edit_before.clear()
+	pending_blank_shape_ids.clear()
+	blank_shape_ids.clear()
 	dirty = false
 	var ids := editable_large_sprite_ids(tile_set, base_large_sprites)
 	current_large_id = ids[0] if not ids.is_empty() else -1
@@ -305,11 +320,14 @@ func export_bmp_path(path: String) -> Dictionary:
 			"ok": false,
 			"error": "Cannot create the output directory: %s" % error_string(directory_error),
 		}
+	var active_shape := _active_output_shape()
+	if not active_shape.ok:
+		return active_shape
 	var result := IndexedBitmap.save_path(
 		output_path,
-		pixel_canvas.sprite_width,
-		pixel_canvas.sprite_height,
-		pixel_canvas.pixels,
+		active_shape.width,
+		active_shape.height,
+		active_shape.pixels,
 		palette
 	)
 	if not result.ok:
@@ -323,10 +341,14 @@ func export_bmp_path(path: String) -> Dictionary:
 func copy_object_to_system_clipboard() -> void:
 	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
 		return
+	var active_shape := _active_output_shape()
+	if not active_shape.ok:
+		_show_error(active_shape.error)
+		return
 	var result := SystemImageClipboard.copy_indexed(
-		pixel_canvas.sprite_width,
-		pixel_canvas.sprite_height,
-		pixel_canvas.pixels,
+		active_shape.width,
+		active_shape.height,
+		active_shape.pixels,
 		palette
 	)
 	if not result.ok:
@@ -375,6 +397,7 @@ func _copy_pick_objects(
 	if not encoded.ok:
 		pick_copy_control.copy_completed(encoded)
 		return
+	pending_blank_shape_ids = blank_shape_ids.duplicate()
 	var result := PickCopy.copy_objects(
 		tile_set,
 		source,
@@ -409,10 +432,29 @@ func _replace_active_view(
 ) -> Dictionary:
 	_capture_edit_start()
 	var sprite_id := view_sprite_id(current_large_id, current_view)
-	var changed := tile_set.set_shape_indices(sprite_id, width, height, pixels)
+	var output_width := width
+	var output_height := height
+	var output_pixels := pixels
+	if active_workspace:
+		var workspace := DrawingWorkspace.from_shape(
+			width, height, pixels, current_view, active_base_width
+		)
+		var active_shape := DrawingWorkspace.shape_from_workspace(
+			workspace, active_base_width, current_view
+		)
+		if not active_shape.ok:
+			pending_edit_before.clear()
+			return active_shape
+		output_width = active_shape.width
+		output_height = active_shape.height
+		output_pixels = active_shape.pixels
+	var changed := tile_set.set_shape_indices(
+		sprite_id, output_width, output_height, output_pixels
+	)
 	if not changed.ok:
 		pending_edit_before.clear()
 		return changed
+	_mark_shape_blank_state(sprite_id, output_pixels)
 	_record_edit(pending_edit_before)
 	_refresh_sprite()
 	var remap_note := (
@@ -429,6 +471,7 @@ func undo() -> void:
 		return
 	var action: Dictionary = undo_stack.pop_back()
 	if _replace_document_bytes(action.before):
+		blank_shape_ids = action.get("blank_before", {}).duplicate()
 		redo_stack.append(action)
 	_update_after_history()
 
@@ -438,6 +481,7 @@ func redo() -> void:
 		return
 	var action: Dictionary = redo_stack.pop_back()
 	if _replace_document_bytes(action.after):
+		blank_shape_ids = action.get("blank_after", {}).duplicate()
 		undo_stack.append(action)
 	_update_after_history()
 
@@ -453,8 +497,11 @@ func revert_object() -> void:
 	if not encoded.get("ok", false) or encoded.bytes == object_start_bytes:
 		return
 	var before: PackedByteArray = encoded.bytes.duplicate()
+	var blank_before := blank_shape_ids.duplicate()
 	if not _replace_document_bytes(object_start_bytes):
 		return
+	blank_shape_ids = object_start_blank_shape_ids.duplicate()
+	pending_blank_shape_ids = blank_before
 	_record_edit(before)
 	_update_after_history()
 	_set_status("Reverted the current object to its state when selected.")
@@ -475,6 +522,39 @@ func revert_name() -> void:
 	_refresh_object_list()
 	_refresh_sprite()
 	_set_status("Restored the original query name for object %d." % tile_id)
+
+
+func clear_object() -> void:
+	if tile_set == null or current_large_id < 0:
+		return
+	_capture_edit_start()
+	var changed_views := 0
+	for view in range(3) if active_workspace else [current_view]:
+		if not _view_is_available(view):
+			continue
+		var width := (
+			int(active_base_width / DrawingWorkspace.view_divisor(view))
+			if active_workspace
+			else pixel_canvas.sprite_width
+		)
+		var blank := PackedInt32Array()
+		blank.resize(maxi(1, width))
+		blank.fill(-1)
+		var result := tile_set.set_shape_indices(
+			view_sprite_id(current_large_id, view), maxi(1, width), 1, blank
+		)
+		if not result.ok:
+			pending_edit_before.clear()
+			_show_error(result.error)
+			_refresh_sprite()
+			return
+		blank_shape_ids[view_sprite_id(current_large_id, view)] = true
+		changed_views += 1
+	_record_edit(pending_edit_before)
+	_refresh_sprite()
+	_set_status("Cleared %d object view%s to clean ground and sky." % [
+		changed_views, "" if changed_views == 1 else "s",
+	])
 
 
 func handle_shortcut(event: InputEventKey) -> bool:
@@ -595,6 +675,11 @@ func _build_interface() -> void:
 		"Restore this object to its state when it entered the drawing area."
 	)
 	toolbar.add_child(revert_button)
+	clear_object_button = _toolbar_button(
+		"Clear Object", clear_object,
+		"Erase the object and leave clean ground and sky."
+	)
+	toolbar.add_child(clear_object_button)
 	toolbar.add_child(VSeparator.new())
 	toolbar.add_child(_toolbar_button("Apply to City", _apply_tile_set, "Use this tile set in the city view."))
 	var toolbar_spacer := Control.new()
@@ -776,6 +861,13 @@ func _build_interface() -> void:
 	grid_check.button_pressed = true
 	grid_check.toggled.connect(_set_grid_visible)
 	brush_row.add_child(grid_check)
+	clip_region_check = CheckBox.new()
+	clip_region_check.text = "Clip Region"
+	clip_region_check.tooltip_text = (
+		"Show the original object base and height limit. Clipping is always active."
+	)
+	clip_region_check.toggled.connect(_set_clip_region_visible)
+	brush_row.add_child(clip_region_check)
 	var cycle_row := HBoxContainer.new()
 	cycle_row.add_theme_constant_override("separation", 5)
 	editor_column.add_child(cycle_row)
@@ -1065,6 +1157,11 @@ func _set_grid_visible(enabled: bool) -> void:
 		pixel_canvas.queue_redraw()
 
 
+func _set_clip_region_visible(enabled: bool) -> void:
+	if pixel_canvas != null:
+		pixel_canvas.set_clip_region_visible(enabled)
+
+
 func _set_cycle_colors(enabled: bool) -> void:
 	if pixel_canvas != null:
 		pixel_canvas.set_palette_cycle_enabled(enabled)
@@ -1131,6 +1228,9 @@ func _refresh_sprite() -> void:
 	var sprite_id := view_sprite_id(current_large_id, current_view)
 	var entry := tile_set.overrides.find_sprite(sprite_id)
 	var source := "MIF override"
+	if entry == null and blank_shape_ids.has(sprite_id):
+		entry = tile_set.archive.find_sprite(sprite_id)
+		source = "cleared object"
 	if entry == null:
 		var base_archive := base_large_sprites if current_view == VIEW_LARGE else base_small_medium_sprites
 		entry = base_archive.find_sprite(sprite_id) if base_archive != null else null
@@ -1147,7 +1247,26 @@ func _refresh_sprite() -> void:
 		pixel_canvas.clear_sprite()
 		sprite_status_label.text = decoded.error
 		return
-	pixel_canvas.set_sprite_data(entry.width, entry.height, decoded.pixels, palette)
+	var large_entry := PickCopy.resolved_entry(
+		tile_set, current_large_id, base_large_sprites, base_small_medium_sprites
+	)
+	active_base_width = large_entry.width if large_entry != null else 0
+	active_workspace = DrawingWorkspace.is_standard_base_width(active_base_width)
+	pixel_canvas.clear_edit_region()
+	if active_workspace:
+		var workspace := DrawingWorkspace.from_shape(
+			entry.width, entry.height, decoded.pixels, current_view, active_base_width
+		)
+		pixel_canvas.set_sprite_data(
+			DrawingWorkspace.WIDTH, DrawingWorkspace.HEIGHT, workspace, palette
+		)
+		pixel_canvas.set_edit_region(
+			DrawingWorkspace.clip_mask(active_base_width),
+			DrawingWorkspace.base_size(active_base_width)
+		)
+		pixel_canvas.set_clip_region_visible(clip_region_check.button_pressed)
+	else:
+		pixel_canvas.set_sprite_data(entry.width, entry.height, decoded.pixels, palette)
 	pixel_canvas.set_tool(current_tool)
 	pixel_canvas.set_paint_indices(
 		foreground_palette_index, background_palette_index
@@ -1165,9 +1284,18 @@ func _refresh_sprite() -> void:
 	name_button.disabled = not can_name
 	name_edit.text = String(tile_set.names.get(tile_id, ""))
 	revert_name_button.disabled = not can_name or not tile_set.names.has(tile_id)
-	sprite_status_label.text = "Sprite %d: %d x %d pixels, %s." % [
-		sprite_id, entry.width, entry.height, source,
-	]
+	sprite_status_label.text = (
+		"Sprite %d: %d x %d output, %d x %d tile base, %s."
+		% [
+			sprite_id, entry.width, entry.height,
+			DrawingWorkspace.base_size(active_base_width),
+			DrawingWorkspace.base_size(active_base_width), source,
+		]
+		if active_workspace
+		else "Sprite %d: %d x %d pixels, %s." % [
+			sprite_id, entry.width, entry.height, source,
+		]
+	)
 
 
 func _update_view_buttons() -> void:
@@ -1222,11 +1350,13 @@ func _capture_edit_start() -> void:
 		return
 	var encoded := tile_set.to_bytes()
 	pending_edit_before = encoded.bytes.duplicate() if encoded.ok else PackedByteArray()
+	pending_blank_shape_ids = blank_shape_ids.duplicate()
 
 
 func _capture_object_start() -> void:
 	object_start_bytes.clear()
 	object_start_large_id = current_large_id
+	object_start_blank_shape_ids = blank_shape_ids.duplicate()
 	if tile_set == null or current_large_id < 0:
 		return
 	var encoded := tile_set.to_bytes()
@@ -1239,8 +1369,24 @@ func _commit_pixels(value_pixels: PackedInt32Array) -> void:
 	if tile_set == null or current_large_id < 0:
 		return
 	var sprite_id := view_sprite_id(current_large_id, current_view)
+	var output_width := pixel_canvas.sprite_width
+	var output_height := pixel_canvas.sprite_height
+	var output_pixels := value_pixels
+	if active_workspace:
+		var active_shape := DrawingWorkspace.shape_from_workspace(
+			value_pixels, active_base_width, current_view
+		)
+		if not active_shape.ok:
+			_show_error(active_shape.error)
+			if not pending_edit_before.is_empty():
+				_replace_document_bytes(pending_edit_before)
+			_refresh_sprite()
+			return
+		output_width = active_shape.width
+		output_height = active_shape.height
+		output_pixels = active_shape.pixels
 	var result := tile_set.set_shape_indices(
-		sprite_id, pixel_canvas.sprite_width, pixel_canvas.sprite_height, value_pixels
+		sprite_id, output_width, output_height, output_pixels
 	)
 	if not result.ok:
 		_show_error(result.error)
@@ -1248,8 +1394,25 @@ func _commit_pixels(value_pixels: PackedInt32Array) -> void:
 			_replace_document_bytes(pending_edit_before)
 		_refresh_sprite()
 		return
+	_mark_shape_blank_state(sprite_id, output_pixels)
 	_record_edit(pending_edit_before)
 	_refresh_sprite()
+
+
+func _active_output_shape() -> Dictionary:
+	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
+		return {"ok": false, "error": "No SCURK sprite is available."}
+	if active_workspace:
+		return DrawingWorkspace.shape_from_workspace(
+			pixel_canvas.pixels, active_base_width, current_view
+		)
+	return {
+		"ok": true,
+		"width": pixel_canvas.sprite_width,
+		"height": pixel_canvas.sprite_height,
+		"pixels": pixel_canvas.pixels.duplicate(),
+		"error": "",
+	}
 
 
 func _commit_name() -> void:
@@ -1275,14 +1438,28 @@ func _record_edit(before: PackedByteArray) -> void:
 	var encoded := tile_set.to_bytes()
 	if not encoded.ok or encoded.bytes == before:
 		return
-	undo_stack.append({"before": before.duplicate(), "after": encoded.bytes.duplicate()})
+	undo_stack.append({
+		"before": before.duplicate(),
+		"after": encoded.bytes.duplicate(),
+		"blank_before": pending_blank_shape_ids.duplicate(),
+		"blank_after": blank_shape_ids.duplicate(),
+	})
 	if undo_stack.size() > HISTORY_LIMIT:
 		undo_stack.pop_front()
 	redo_stack.clear()
 	pending_edit_before.clear()
+	pending_blank_shape_ids.clear()
 	_update_dirty()
 	_update_history_buttons()
 	_update_title()
+
+
+func _mark_shape_blank_state(sprite_id: int, value_pixels: PackedInt32Array) -> void:
+	for pixel in value_pixels:
+		if pixel >= 0:
+			blank_shape_ids.erase(sprite_id)
+			return
+	blank_shape_ids[sprite_id] = true
 
 
 func _replace_document_bytes(bytes: PackedByteArray) -> bool:
