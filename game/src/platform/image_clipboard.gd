@@ -1,8 +1,12 @@
 class_name ImageClipboard
 extends RefCounted
 
+const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
+
 const TEMP_DIRECTORY := "user://clipboard"
-const TEMP_FILENAME := "scurk-copy.png"
+const TEMP_PNG_FILENAME := "scurk-copy.png"
+const TEMP_BMP_FILENAME := "scurk-copy.bmp"
+const TEMP_DIB_FILENAME := "scurk-copy.dib"
 
 
 static func copy_indexed(
@@ -11,22 +15,42 @@ static func copy_indexed(
 	pixels: PackedInt32Array,
 	palette: Sc2Palette
 ) -> Dictionary:
-	var converted := indexed_to_image(width, height, pixels, palette)
-	if not converted.ok:
-		return converted
 	if DisplayServer.get_name() == "headless":
 		return _failure("Image clipboard output is not available in headless mode.")
+	var platform := OS.get_name()
 	var directory := ProjectSettings.globalize_path(TEMP_DIRECTORY)
 	var directory_error := DirAccess.make_dir_recursive_absolute(directory)
 	if directory_error != OK:
 		return _failure(
 			"Cannot create the clipboard directory: %s" % error_string(directory_error)
 		)
-	var path := directory.path_join(TEMP_FILENAME)
-	var save_error: Error = converted.image.save_png(path)
-	if save_error != OK:
-		return _failure("Cannot create the clipboard image: %s" % error_string(save_error))
-	var copied := _copy_png_path(path)
+	var path := ""
+	if platform == "macOS":
+		var converted := indexed_to_image(width, height, pixels, palette)
+		if not converted.ok:
+			return converted
+		path = directory.path_join(TEMP_PNG_FILENAME)
+		var save_error: Error = converted.image.save_png(path)
+		if save_error != OK:
+			return _failure(
+				"Cannot create the clipboard image: %s" % error_string(save_error)
+			)
+	else:
+		var encoded := IndexedBitmap.encode(width, height, pixels, palette)
+		if not encoded.ok:
+			return encoded
+		var payload: PackedByteArray = encoded.bytes
+		path = directory.path_join(TEMP_BMP_FILENAME)
+		if platform == "Windows":
+			var dib := IndexedBitmap.bmp_to_dib(payload)
+			if not dib.ok:
+				return dib
+			payload = dib.bytes
+			path = directory.path_join(TEMP_DIB_FILENAME)
+		var write_result := _write_bytes(path, payload)
+		if not write_result.ok:
+			return write_result
+	var copied := _copy_path(platform, path)
 	DirAccess.remove_absolute(path)
 	return copied
 
@@ -34,6 +58,11 @@ static func copy_indexed(
 static func paste_indexed(palette: Sc2Palette) -> Dictionary:
 	if DisplayServer.get_name() == "headless":
 		return _failure("Image clipboard input is not available in headless mode.")
+	var platform := OS.get_name()
+	if platform == "Windows" or platform == "Linux":
+		var native := _paste_native_indexed(platform, palette)
+		if native.ok:
+			return native
 	if not DisplayServer.clipboard_has_image():
 		return _failure("The system clipboard does not contain an image.")
 	var image := DisplayServer.clipboard_get_image()
@@ -106,8 +135,8 @@ static func image_to_indexed(image: Image, palette: Sc2Palette) -> Dictionary:
 	}
 
 
-static func _copy_png_path(path: String) -> Dictionary:
-	var command := _copy_command(OS.get_name(), path)
+static func _copy_path(platform: String, path: String) -> Dictionary:
+	var command := _copy_command(platform, path)
 	if not command.ok:
 		return command
 	var output: Array = []
@@ -123,7 +152,9 @@ static func _copy_png_path(path: String) -> Dictionary:
 	return {"ok": true, "error": ""}
 
 
-static func _copy_command(platform: String, path: String) -> Dictionary:
+static func _copy_command(
+	platform: String, path: String, linux_executable := ""
+) -> Dictionary:
 	if platform == "macOS":
 		var executable := "/usr/bin/osascript"
 		if not FileAccess.file_exists(executable):
@@ -149,10 +180,12 @@ static func _copy_command(platform: String, path: String) -> Dictionary:
 		var escaped_path := path.replace("'", "''")
 		var script := (
 			"Add-Type -AssemblyName System.Windows.Forms; "
-			+ "Add-Type -AssemblyName System.Drawing; "
-			+ "$image=[System.Drawing.Image]::FromFile('%s'); " % escaped_path
-			+ "try {[System.Windows.Forms.Clipboard]::SetImage($image)} "
-			+ "finally {$image.Dispose()}"
+			+ "$bytes=[System.IO.File]::ReadAllBytes('%s'); " % escaped_path
+			+ "$stream=[System.IO.MemoryStream]::new($bytes,$false); "
+			+ "$data=[System.Windows.Forms.DataObject]::new(); "
+			+ "$data.SetData([System.Windows.Forms.DataFormats]::Dib,$stream); "
+			+ "try {[System.Windows.Forms.Clipboard]::SetDataObject($data,$true)} "
+			+ "finally {$stream.Dispose()}"
 		)
 		return {
 			"ok": true,
@@ -163,7 +196,9 @@ static func _copy_command(platform: String, path: String) -> Dictionary:
 			]),
 		}
 	if platform == "Linux":
-		var executable := _find_executable("xclip")
+		var executable: String = linux_executable
+		if executable.is_empty():
+			executable = _find_executable("xclip")
 		if executable.is_empty():
 			return _failure("Image clipboard output requires xclip on Linux.")
 		return {
@@ -171,10 +206,122 @@ static func _copy_command(platform: String, path: String) -> Dictionary:
 			"error": "",
 			"executable": executable,
 			"arguments": PackedStringArray([
-				"-selection", "clipboard", "-target", "image/png", "-i", path,
+				"-selection", "clipboard", "-target", "image/bmp", "-i", path,
 			]),
 		}
 	return _failure("Image clipboard output is not supported on %s." % platform)
+
+
+static func _paste_native_indexed(platform: String, palette: Sc2Palette) -> Dictionary:
+	var directory := ProjectSettings.globalize_path(TEMP_DIRECTORY)
+	var directory_error := DirAccess.make_dir_recursive_absolute(directory)
+	if directory_error != OK:
+		return _failure(
+			"Cannot create the clipboard directory: %s" % error_string(directory_error)
+		)
+	var path := directory.path_join(
+		TEMP_DIB_FILENAME if platform == "Windows" else TEMP_BMP_FILENAME
+	)
+	var command := _paste_command(platform, path)
+	if not command.ok:
+		return command
+	DirAccess.remove_absolute(path)
+	var output: Array = []
+	var exit_code := OS.execute(command.executable, command.arguments, output, true)
+	if exit_code != 0 or not FileAccess.file_exists(path):
+		DirAccess.remove_absolute(path)
+		return _failure("The system clipboard does not contain indexed image data.")
+	var bytes := FileAccess.get_file_as_bytes(path)
+	var read_error := FileAccess.get_open_error()
+	DirAccess.remove_absolute(path)
+	if read_error != OK:
+		return _failure("Cannot read the indexed clipboard data.")
+	var decoded := (
+		IndexedBitmap.decode_dib(bytes)
+		if platform == "Windows"
+		else IndexedBitmap.decode(bytes)
+	)
+	if not decoded.ok:
+		return decoded
+	var mapped := IndexedBitmap.map_to_palette(decoded, palette)
+	if not mapped.ok:
+		return mapped
+	return {
+		"ok": true,
+		"error": "",
+		"width": decoded.width,
+		"height": decoded.height,
+		"pixels": mapped.pixels,
+		"remapped_color_count": mapped.remapped_color_count,
+	}
+
+
+static func _paste_command(
+	platform: String, path: String, linux_executable := ""
+) -> Dictionary:
+	if platform == "Windows":
+		var windows_root := OS.get_environment("SystemRoot")
+		var executable := (
+			windows_root.path_join("System32/WindowsPowerShell/v1.0/powershell.exe")
+			if not windows_root.is_empty()
+			else "powershell.exe"
+		)
+		var escaped_path := path.replace("'", "''")
+		var script := (
+			"Add-Type -AssemblyName System.Windows.Forms; "
+			+ "$value=[System.Windows.Forms.Clipboard]::GetData("
+			+ "[System.Windows.Forms.DataFormats]::Dib); "
+			+ "if ($null -eq $value) {exit 3}; "
+			+ "if ($value -is [System.IO.MemoryStream]) {$bytes=$value.ToArray()} "
+			+ "elseif ($value -is [byte[]]) {$bytes=$value} else {exit 4}; "
+			+ "[System.IO.File]::WriteAllBytes('%s',$bytes)" % escaped_path
+		)
+		return {
+			"ok": true,
+			"error": "",
+			"executable": executable,
+			"arguments": PackedStringArray([
+				"-NoProfile", "-NonInteractive", "-STA", "-Command", script,
+			]),
+		}
+	if platform == "Linux":
+		var executable: String = linux_executable
+		if executable.is_empty():
+			executable = _find_executable("xclip")
+		if executable.is_empty():
+			return _failure("Indexed clipboard input requires xclip on Linux.")
+		return {
+			"ok": true,
+			"error": "",
+			"executable": "/bin/sh",
+			"arguments": PackedStringArray([
+				"-c",
+				"%s -selection clipboard -target image/bmp -o > %s"
+				% [_shell_quote(executable), _shell_quote(path)],
+			]),
+		}
+	return _failure("Indexed clipboard input is not supported on %s." % platform)
+
+
+static func _write_bytes(path: String, bytes: PackedByteArray) -> Dictionary:
+	var file := FileAccess.open(path, FileAccess.WRITE)
+	if file == null:
+		return _failure(
+			"Cannot create the clipboard image: %s"
+			% error_string(FileAccess.get_open_error())
+		)
+	file.store_buffer(bytes)
+	var write_error := file.get_error()
+	file.close()
+	if write_error != OK:
+		return _failure(
+			"Cannot write the clipboard image: %s" % error_string(write_error)
+		)
+	return {"ok": true, "error": ""}
+
+
+static func _shell_quote(value: String) -> String:
+	return "'" + value.replace("'", "'\"'\"'") + "'"
 
 
 static func _find_executable(filename: String) -> String:

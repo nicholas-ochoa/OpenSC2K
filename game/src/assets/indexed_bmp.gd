@@ -58,6 +58,72 @@ static func save_path(
 	return {"ok": true, "error": "", "path": path}
 
 
+static func encode_dib(
+	width: int,
+	height: int,
+	pixels: PackedInt32Array,
+	palette: Sc2Palette,
+	transparent_index := 0
+) -> Dictionary:
+	var encoded := encode(width, height, pixels, palette, transparent_index)
+	if not encoded.ok:
+		return encoded
+	return bmp_to_dib(encoded.bytes)
+
+
+static func decode_dib(bytes: PackedByteArray) -> Dictionary:
+	var wrapped := dib_to_bmp(bytes)
+	if not wrapped.ok:
+		return wrapped
+	return decode(wrapped.bytes)
+
+
+static func bmp_to_dib(bytes: PackedByteArray) -> Dictionary:
+	var decoded := decode(bytes)
+	if not decoded.ok:
+		return decoded
+	return {
+		"ok": true,
+		"error": "",
+		"bytes": bytes.slice(FILE_HEADER_SIZE),
+	}
+
+
+static func dib_to_bmp(bytes: PackedByteArray) -> Dictionary:
+	if bytes.size() < INFO_HEADER_SIZE:
+		return _failure("DIB data is shorter than its information header.")
+	var header_size := _read_u32(bytes, 0)
+	if header_size < INFO_HEADER_SIZE or header_size > bytes.size():
+		return _failure("DIB information header is invalid.")
+	if _read_u16(bytes, 12) != 1:
+		return _failure("DIB plane count is not one.")
+	if _read_u16(bytes, 14) != 8:
+		return _failure("SCURK clipboard input requires an 8-bit indexed DIB.")
+	if _read_u32(bytes, 16) != 0:
+		return _failure("SCURK clipboard input requires an uncompressed DIB.")
+	var color_count := _read_u32(bytes, 32)
+	if color_count == 0:
+		color_count = PALETTE_COLOR_COUNT
+	if color_count != PALETTE_COLOR_COUNT:
+		return _failure("SCURK clipboard input requires exactly 256 palette colors.")
+	var dib_pixel_offset := header_size + color_count * 4
+	if dib_pixel_offset > bytes.size():
+		return _failure("DIB palette extends past the clipboard data.")
+	var file_size := FILE_HEADER_SIZE + bytes.size()
+	var wrapped := PackedByteArray()
+	wrapped.resize(FILE_HEADER_SIZE)
+	wrapped.fill(0)
+	wrapped[0] = 0x42
+	wrapped[1] = 0x4d
+	_write_u32(wrapped, 2, file_size)
+	_write_u32(wrapped, 10, FILE_HEADER_SIZE + dib_pixel_offset)
+	wrapped.append_array(bytes)
+	var decoded := decode(wrapped)
+	if not decoded.ok:
+		return decoded
+	return {"ok": true, "error": "", "bytes": wrapped}
+
+
 static func decode(bytes: PackedByteArray) -> Dictionary:
 	if bytes.size() < PIXEL_OFFSET:
 		return _failure("BMP file is shorter than an 8-bit indexed header.")

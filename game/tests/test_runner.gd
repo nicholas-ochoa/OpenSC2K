@@ -3699,6 +3699,76 @@ func _test_indexed_bmp() -> void:
 		not IndexedBitmap.decode(short_palette).ok,
 		"SCURK BMP import rejects a palette with fewer than 256 colors",
 	)
+	var encoded_dib := IndexedBitmap.encode_dib(
+		3, 2, source_pixels, index_palette
+	)
+	_check(
+		encoded_dib.ok
+		and encoded_dib.bytes.size() == bytes.size() - 14
+		and encoded_dib.bytes[0] == 40
+		and encoded_dib.bytes[14] == 8,
+		"SCURK clipboard encoder produces a headerless 8-bit CF_DIB payload",
+	)
+	var decoded_dib := IndexedBitmap.decode_dib(encoded_dib.bytes)
+	_check(
+		decoded_dib.ok
+		and decoded_dib.width == 3
+		and decoded_dib.height == 2
+		and decoded_dib.pixels == PackedInt32Array([0, 1, 2, 3, 4, 5]),
+		"SCURK clipboard decoder restores native CF_DIB indexed rows",
+	)
+	var wrapped_dib := IndexedBitmap.dib_to_bmp(encoded_dib.bytes)
+	_check(
+		wrapped_dib.ok and wrapped_dib.bytes == bytes,
+		"SCURK CF_DIB wrapper restores the exact indexed BMP bytes",
+	)
+	var true_color_dib: PackedByteArray = encoded_dib.bytes.duplicate()
+	true_color_dib[14] = 24
+	_check(
+		not IndexedBitmap.decode_dib(true_color_dib).ok,
+		"SCURK native clipboard rejects a non-indexed DIB",
+	)
+	var windows_copy_command := ClipboardImage._copy_command(
+		"Windows", "C:\\Temp\\scurk's tile.dib"
+	)
+	var windows_copy_script: String = windows_copy_command.arguments[4]
+	_check(
+		windows_copy_command.ok
+		and windows_copy_command.arguments.has("-STA")
+		and windows_copy_script.contains("DataFormats]::Dib")
+		and windows_copy_script.contains("scurk''s tile.dib")
+		and not windows_copy_script.contains("SetImage"),
+		"SCURK Windows copy publishes the indexed CF_DIB payload on an STA thread",
+	)
+	var windows_paste_command := ClipboardImage._paste_command(
+		"Windows", "C:\\Temp\\scurk-paste.dib"
+	)
+	var windows_paste_script: String = windows_paste_command.arguments[4]
+	_check(
+		windows_paste_command.ok
+		and windows_paste_script.contains("DataFormats]::Dib")
+		and windows_paste_script.contains("WriteAllBytes"),
+		"SCURK Windows paste retrieves native indexed CF_DIB bytes",
+	)
+	var linux_copy_command := ClipboardImage._copy_command(
+		"Linux", "/tmp/scurk-copy.bmp", "/usr/bin/xclip"
+	)
+	_check(
+		linux_copy_command.ok
+		and linux_copy_command.arguments.has("image/bmp")
+		and not linux_copy_command.arguments.has("image/png"),
+		"SCURK Linux copy offers the indexed BMP clipboard target",
+	)
+	var linux_paste_command := ClipboardImage._paste_command(
+		"Linux", "/tmp/scurk paste.bmp", "/usr/bin/xclip"
+	)
+	_check(
+		linux_paste_command.ok
+		and linux_paste_command.executable == "/bin/sh"
+		and String(linux_paste_command.arguments[1]).contains("image/bmp")
+		and String(linux_paste_command.arguments[1]).contains("'/tmp/scurk paste.bmp'"),
+		"SCURK Linux paste retrieves the indexed BMP clipboard target safely",
+	)
 	var clipboard_pixels := PackedInt32Array([-1, 0, 1, 255])
 	var clipboard_image := ClipboardImage.indexed_to_image(
 		2, 2, clipboard_pixels, index_palette
