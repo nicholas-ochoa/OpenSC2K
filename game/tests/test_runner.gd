@@ -96,6 +96,7 @@ const Music = preload("res://src/audio/music_director.gd")
 const MidiFile = preload("res://src/audio/standard_midi_file.gd")
 const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 const ThingAudio = preload("res://src/audio/moving_thing_audio.gd")
+const MainControl = preload("res://src/main.gd")
 
 var failures := 0
 var checks := 0
@@ -670,6 +671,30 @@ func _test_main_menu() -> void:
 		"Main menu builds its initial and continuing city actions",
 	)
 	menu.free()
+	var old_buildings := PackedByteArray()
+	old_buildings.resize(CityModel.TILE_COUNT)
+	var new_buildings := old_buildings.duplicate()
+	new_buildings[129] = 0x0d
+	var old_altitude := PackedByteArray()
+	old_altitude.resize(CityModel.TILE_COUNT * 2)
+	var new_altitude := old_altitude.duplicate()
+	new_altitude[513 * 2 + 1] = 1
+	var old_text := PackedByteArray()
+	old_text.resize(CityModel.TILE_COUNT)
+	var new_text := old_text.duplicate()
+	new_text[777] = 202
+	var dirty_indices := MainControl._edit_dirty_indices({
+		"old_payloads": {"XBLD": old_buildings, "ALTM": old_altitude},
+		"new_payloads": {"XBLD": new_buildings, "ALTM": new_altitude},
+		"old_text": old_text,
+		"new_text": new_text,
+		"tile_indices": PackedInt32Array([42]),
+		"points": [Vector2i(3, 4)],
+	})
+	_check(
+		dirty_indices == PackedInt32Array([42, 129, 388, 513, 777]),
+		"Edit refresh finds changed static tiles and explicit command points",
+	)
 
 
 func _test_palette_and_minimap(reference_root: String) -> void:
@@ -1178,6 +1203,25 @@ func _test_sprite_archives(reference_root: String) -> void:
 		scaled_patch.ok
 		and scaled_patch.image.get_data() == scaled_full.get_data(),
 		"A scaled regional edit is byte-identical to the complete display image",
+	)
+	var base_patch_occlusion := IsometricRenderer.static_occlusion_commands(
+		starter, small_medium, IsometricRenderer.VIEW_SMALL
+	)
+	var regional_patch_occlusion := (
+		IsometricRenderer.patch_static_occlusion_commands(
+			base_patch_occlusion,
+			patch_city,
+			small_medium,
+			PackedInt32Array([patch_index]),
+			IsometricRenderer.VIEW_SMALL
+		)
+	)
+	var full_patch_occlusion := IsometricRenderer.static_occlusion_commands(
+		patch_city, small_medium, IsometricRenderer.VIEW_SMALL
+	)
+	_check(
+		regional_patch_occlusion == full_patch_occlusion,
+		"A regional edit keeps the complete static occlusion command order",
 	)
 	_check(IsometricRenderer.terrain_sprite_id(0x00, false) == 1256, "Flat land uses sprite 1256")
 	_check(IsometricRenderer.terrain_sprite_id(0x10, true) == 1270, "Submerged land uses sprite 1270")

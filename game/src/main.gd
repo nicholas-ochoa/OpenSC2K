@@ -141,6 +141,7 @@ const MONTH_NAMES := [
 	"July", "August", "September", "October", "November", "December",
 ]
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
+const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
 const MENU_SOUND_EFFECTS := 0x8006
@@ -3662,6 +3663,149 @@ func _select_speed(speed_value: int) -> void:
 	status_label.text = "%s speed selected." % speed_controller.speed_name()
 
 
+func _refresh_after_city_edit(command: Dictionary) -> void:
+	if not _apply_static_edit_patch(command):
+		_refresh_map(false)
+
+
+func _apply_static_edit_patch(command: Dictionary) -> bool:
+	if (
+		overlay_mode != "city"
+		or city == null
+		or palette_index_encoding == null
+		or static_city_image == null
+		or static_city_image.is_empty()
+		or static_render_mode != "city"
+		or static_display_city == null
+		or static_render_thread != null
+	):
+		return false
+	var dirty_indices := _edit_dirty_indices(command)
+	if dirty_indices.is_empty():
+		return false
+	var view_size := _city_view_size()
+	var sprite_archive := _sprite_archive_for_view(view_size)
+	var dirty_rect := IsometricRenderer.dirty_screen_rect(
+		dirty_indices, sprite_archive, view_size
+	)
+	var full_area := IsometricRenderer.output_size_for_view(view_size).x * (
+		IsometricRenderer.output_size_for_view(view_size).y
+	)
+	if (
+		dirty_rect.get_area() <= 0
+		or float(dirty_rect.get_area()) / float(full_area)
+			> STATIC_EDIT_PATCH_MAX_AREA_RATIO
+	):
+		return false
+	var display_city := ViewFilter.surface_copy(city, surface_visibility)
+	if display_city == null or not display_city.is_valid():
+		return false
+	var patched := IsometricRenderer.patch_static_image(
+		static_city_image,
+		display_city,
+		palette_index_encoding,
+		sprite_archive,
+		dirty_indices,
+		view_size,
+		int(Time.get_ticks_msec() / 100)
+	)
+	if not patched.get("ok", false):
+		return false
+	static_render_epoch += 1
+	static_city_image = patched.image
+	static_display_city = display_city
+	static_visual_signature = _static_signature_for_mode("city", view_size)
+	static_render_mode = "city"
+	pending_static_render = false
+	_set_static_occlusion_commands(
+		IsometricRenderer.patch_static_occlusion_commands(
+			static_occlusion_commands,
+			display_city,
+			sprite_archive,
+			dirty_indices,
+			view_size
+		),
+		view_size
+	)
+	static_view_cache["city"] = {
+		"image": static_city_image,
+		"occlusion_commands": static_occlusion_commands,
+		"signature": static_visual_signature,
+		"display_city": static_display_city,
+		"view_size": view_size,
+	}
+	var texture := ImageTexture.create_from_image(static_city_image)
+	map_view.set_city_view(static_display_city, texture, texture, true)
+	_refresh_moving_things(view_size)
+	return true
+
+
+static func _edit_dirty_indices(command: Dictionary) -> PackedInt32Array:
+	var seen := {}
+	var old_payloads: Dictionary = command.get("old_payloads", {})
+	var new_payloads: Dictionary = command.get("new_payloads", {})
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT"]:
+		if not old_payloads.has(chunk_id) or not new_payloads.has(chunk_id):
+			continue
+		var old_bytes: PackedByteArray = old_payloads[chunk_id]
+		var new_bytes: PackedByteArray = new_payloads[chunk_id]
+		var stride := 2 if chunk_id == "ALTM" else 1
+		if (
+			old_bytes.size() != CityState.TILE_COUNT * stride
+			or new_bytes.size() != old_bytes.size()
+		):
+			continue
+		for index in CityState.TILE_COUNT:
+			var offset := index * stride
+			var changed := old_bytes[offset] != new_bytes[offset]
+			if stride == 2:
+				changed = changed or old_bytes[offset + 1] != new_bytes[offset + 1]
+			if changed:
+				seen[index] = true
+	if command.has("old_text") and command.has("new_text"):
+		var old_text: PackedByteArray = command.old_text
+		var new_text: PackedByteArray = command.new_text
+		if (
+			old_text.size() == CityState.TILE_COUNT
+			and new_text.size() == CityState.TILE_COUNT
+		):
+			for index in CityState.TILE_COUNT:
+				if old_text[index] != new_text[index]:
+					seen[index] = true
+	var tile_indices: PackedInt32Array = command.get(
+		"tile_indices", PackedInt32Array()
+	)
+	for index in tile_indices:
+		if index >= 0 and index < CityState.TILE_COUNT:
+			seen[index] = true
+	for point_value in command.get("points", []):
+		var point: Vector2i = point_value
+		var index := point.x * CityState.MAP_SIZE + point.y
+		if point.x >= 0 and point.x < CityState.MAP_SIZE and point.y >= 0 and point.y < CityState.MAP_SIZE:
+			seen[index] = true
+	for point_key in ["point", "target"]:
+		if command.has(point_key):
+			var point: Vector2i = command[point_key]
+			if point.x >= 0 and point.x < CityState.MAP_SIZE and point.y >= 0 and point.y < CityState.MAP_SIZE:
+				seen[point.x * CityState.MAP_SIZE + point.y] = true
+	if command.has("tile_index"):
+		var tile_index := int(command.tile_index)
+		if tile_index >= 0 and tile_index < CityState.TILE_COUNT:
+			seen[tile_index] = true
+	if command.has("site"):
+		var site: Rect2i = command.site
+		for x in range(site.position.x, site.end.x):
+			for y in range(site.position.y, site.end.y):
+				if x >= 0 and x < CityState.MAP_SIZE and y >= 0 and y < CityState.MAP_SIZE:
+					seen[x * CityState.MAP_SIZE + y] = true
+	var sorted_indices: Array = seen.keys()
+	sorted_indices.sort()
+	var result := PackedInt32Array()
+	for index in sorted_indices:
+		result.append(int(index))
+	return result
+
+
 func _refresh_map(force := true) -> void:
 	if city == null or palette == null:
 		return
@@ -4948,7 +5092,7 @@ func _apply_map_selection(
 		dispatch["dispatch_cycles_after"] = dispatch_cycles.duplicate()
 		last_edit_command = dispatch
 		undo_button.disabled = false
-		_refresh_map(false)
+		_refresh_after_city_edit(dispatch)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Deployed %s unit %d of %d." % [
 			Tools.tool(selected_group, selected_subtool).name,
@@ -4969,7 +5113,7 @@ func _apply_map_selection(
 		last_edit_command = landscape
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map(false)
+		_refresh_after_city_edit(landscape)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "%s changed %d path tiles for $%s." % [
 			Tools.tool(selected_group, selected_subtool).name,
@@ -4994,7 +5138,7 @@ func _apply_map_selection(
 		last_edit_command = demolition
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map(false)
+		_refresh_after_city_edit(demolition)
 		_show_effect_events(demolition.effect_events, demolition.sound_events)
 		if demolition.easter_events > 0:
 			_refresh_saved_news_summary()
@@ -5021,7 +5165,7 @@ func _apply_map_selection(
 		last_edit_command = terrain_change
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map(false)
+		_refresh_after_city_edit(terrain_change)
 		_show_effect_events(terrain_change.effect_events, terrain_change.sound_events)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "%s applied %d actions for $%s." % [
@@ -5043,7 +5187,7 @@ func _apply_map_selection(
 		last_edit_command = hydro
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map(false)
+		_refresh_after_city_edit(hydro)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built hydroelectric power for $%s." % _format_number(hydro.cost)
 		return
@@ -5054,7 +5198,7 @@ func _apply_map_selection(
 			return
 		last_edit_command = connection
 		undo_button.disabled = false
-		_refresh_map(false)
+		_refresh_after_city_edit(connection)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built a subway-to-rail connection at no charge. Listed cost: $%s." % _format_number(connection.listed_cost)
 		return
@@ -5066,7 +5210,7 @@ func _apply_map_selection(
 		last_edit_command = onramp
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map(false)
+		_refresh_after_city_edit(onramp)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built an on-ramp for $%s." % _format_number(onramp.cost)
 		return
@@ -5109,7 +5253,7 @@ func _apply_map_selection(
 		last_edit_command = building
 		undo_button.disabled = false
 		_refresh_details()
-		_refresh_map(false)
+		_refresh_after_city_edit(building)
 		if building_group == 5 and building_subtool < 4:
 			_choose_tool_group(17)
 		if building_group == 14 and city.music_enabled():
@@ -5133,7 +5277,7 @@ func _apply_map_selection(
 	last_edit_command = command
 	undo_button.disabled = false
 	_refresh_details()
-	_refresh_map(false)
+	_refresh_after_city_edit(command)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "%s changed %d tiles for $%s." % [
 		Tools.tool(selected_group, selected_subtool).name,
@@ -5200,7 +5344,7 @@ func _apply_network_selection(
 	last_edit_command = network
 	undo_button.disabled = false
 	_refresh_details()
-	_refresh_map(false)
+	_refresh_after_city_edit(network)
 	status_label.remove_theme_color_override("font_color")
 	var dry_count := int(network.get("dry_points", []).size())
 	if network.get("bridge_built", false):
@@ -5516,7 +5660,7 @@ func _apply_tunnel_selection(
 	last_edit_command = tunnel
 	undo_button.disabled = false
 	_refresh_details()
-	_refresh_map(false)
+	_refresh_after_city_edit(tunnel)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Built a %d-tile tunnel for $%s." % [
 		tunnel.points.size(), _format_number(tunnel.cost)
@@ -5594,7 +5738,7 @@ func _apply_highway_selection(
 	last_edit_command = highway
 	undo_button.disabled = false
 	_refresh_details()
-	_refresh_map(false)
+	_refresh_after_city_edit(highway)
 	status_label.remove_theme_color_override("font_color")
 	if highway.get("bridge_built", false):
 		if highway.sections.is_empty():
@@ -5652,6 +5796,7 @@ func _apply_pending_highway_connection(connection_choice: int) -> void:
 func _undo_last_edit() -> void:
 	if city == null or last_edit_command.is_empty():
 		return
+	var undone_command := last_edit_command
 	var command_type: String = last_edit_command.get("command_type", "")
 	var undo_forest_protest := (
 		command_type == "demolish"
@@ -5697,7 +5842,7 @@ func _undo_last_edit() -> void:
 	last_edit_command = {}
 	undo_button.disabled = true
 	_refresh_details()
-	_refresh_map(false)
+	_refresh_after_city_edit(undone_command)
 	if undo_forest_protest:
 		_refresh_saved_news_summary()
 	status_label.remove_theme_color_override("font_color")
@@ -5751,7 +5896,7 @@ func _commit_sign() -> void:
 		return
 	last_edit_command = result
 	undo_button.disabled = false
-	_refresh_map(false)
+	_refresh_after_city_edit(result)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
 

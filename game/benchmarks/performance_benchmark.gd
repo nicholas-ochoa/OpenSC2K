@@ -63,6 +63,89 @@ func _init() -> void:
 	started = Time.get_ticks_usec()
 	var rebuilt := job.run()
 	_print_measurement("warm_worker_render", started, rebuilt.ok)
+	var edit_city := CityModel.from_document(city.document.duplicate_document())
+	var edit_point := Vector2i(-1, -1)
+	for x in range(8, CityModel.MAP_SIZE - 8):
+		if edit_point.x >= 0:
+			break
+		for y in range(8, CityModel.MAP_SIZE - 8):
+			if (
+				edit_city.building_id(x, y) == 0
+				and edit_city.terrain_id(x, y) == 0
+				and not edit_city.is_water(x, y)
+			):
+				edit_point = Vector2i(x, y)
+				break
+	if edit_point.x < 0 or not edit_city.set_building_id(
+		edit_point.x, edit_point.y, 0x0d
+	):
+		printerr("Cannot prepare the regional-render benchmark edit.")
+		quit(1)
+		return
+	started = Time.get_ticks_usec()
+	var patched := Renderer.patch_static_image(
+		initial.image,
+		edit_city,
+		index_palette,
+		sprites,
+		PackedInt32Array([edit_city.index_of(edit_point.x, edit_point.y)]),
+		Renderer.VIEW_LARGE,
+		0
+	)
+	var patch_usec := Time.get_ticks_usec() - started
+	started = Time.get_ticks_usec()
+	var edit_full := Renderer.create_image(
+		edit_city, index_palette, sprites, Renderer.VIEW_LARGE, 0,
+		false, true, false, false
+	)
+	var edit_full_usec := Time.get_ticks_usec() - started
+	print(
+		"regional_edit_render: %d us; full=%d us; area=%d; tiles=%d; exact=%s"
+		% [
+			patch_usec,
+			edit_full_usec,
+			patched.output_rect.get_area() if patched.ok else 0,
+			patched.tiles_drawn if patched.ok else 0,
+			patched.ok and edit_full.ok
+				and patched.image.get_data() == edit_full.image.get_data(),
+		]
+	)
+	if not patched.ok or not edit_full.ok or patched.image.get_data() != edit_full.image.get_data():
+		printerr("Regional render does not match the complete city image.")
+		quit(1)
+		return
+	started = Time.get_ticks_usec()
+	var edit_occlusion := Renderer.patch_static_occlusion_commands(
+		rebuilt.occlusion_commands,
+		edit_city,
+		sprites,
+		PackedInt32Array([edit_city.index_of(edit_point.x, edit_point.y)]),
+		Renderer.VIEW_LARGE
+	)
+	var edit_occlusion_patch_usec := Time.get_ticks_usec() - started
+	started = Time.get_ticks_usec()
+	var edit_full_occlusion := Renderer.static_occlusion_commands(
+		edit_city, sprites, Renderer.VIEW_LARGE
+	)
+	print(
+		"regional_edit_occlusion: %d us; full=%d us; commands=%d; exact=%s"
+		% [
+			edit_occlusion_patch_usec,
+			Time.get_ticks_usec() - started,
+			edit_occlusion.size(),
+			edit_occlusion == edit_full_occlusion,
+		]
+	)
+	if edit_occlusion != edit_full_occlusion:
+		printerr("Regional occlusion commands do not match the complete list.")
+		quit(1)
+		return
+	started = Time.get_ticks_usec()
+	var edit_occlusion_grid := Renderer.build_occlusion_grid(edit_occlusion, 1)
+	print(
+		"regional_edit_occlusion_grid: %d us; cells=%d"
+		% [Time.get_ticks_usec() - started, edit_occlusion_grid.size()]
+	)
 
 	var points := PackedVector2Array()
 	for x in range(0, CityModel.MAP_SIZE, 8):

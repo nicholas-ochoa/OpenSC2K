@@ -1504,6 +1504,58 @@ static func static_occlusion_commands(
 	return commands
 
 
+static func patch_static_occlusion_commands(
+	base_commands: Array[Dictionary],
+	city: CityState,
+	sprites: Sc2SpriteArchive,
+	dirty_indices: PackedInt32Array,
+	view_size := VIEW_LARGE
+) -> Array[Dictionary]:
+	if (
+		base_commands.is_empty()
+		or city == null
+		or not city.is_valid()
+		or sprites == null
+		or not sprites.is_valid()
+	):
+		return static_occlusion_commands(city, sprites, view_size)
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return []
+	var origin_x: int = (
+		int(configuration.side_margin)
+		+ CityState.MAP_SIZE * int(configuration.half_width)
+	)
+	var replacements := {}
+	for value in dirty_indices:
+		var index := int(value)
+		if index < 0 or index >= CityState.TILE_COUNT:
+			continue
+		var x := int(index / CityState.MAP_SIZE)
+		var y := index % CityState.MAP_SIZE
+		var order := (x + y) * CityState.MAP_SIZE + y
+		replacements[order] = _tile_occlusion_commands(
+			city, sprites, configuration, origin_x, x, y, order
+		)
+	if replacements.is_empty():
+		return base_commands.duplicate()
+	var commands: Array[Dictionary] = []
+	var inserted := {}
+	for command in base_commands:
+		var order := int(command.get("depth_order", -1))
+		if not replacements.has(order):
+			commands.append(command)
+			continue
+		if not inserted.has(order):
+			commands.append_array(replacements[order])
+			inserted[order] = true
+	if inserted.size() != replacements.size():
+		# every valid surface tile has an occluder. rebuild if the supplied base
+		# list is incomplete instead of risking a bad command order
+		return static_occlusion_commands(city, sprites, view_size)
+	return commands
+
+
 static func _tile_occlusion_commands(
 	city: CityState,
 	sprites: Sc2SpriteArchive,

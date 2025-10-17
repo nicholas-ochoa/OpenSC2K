@@ -66,6 +66,58 @@ func _run() -> void:
 			main.queue_free()
 			quit(2)
 			return
+		if relative_path == "CITIES/ISLAND.SC2":
+			var patch_point := Vector2i(-1, -1)
+			for x in range(8, CityState.MAP_SIZE - 8):
+				if patch_point.x >= 0:
+					break
+				for y in range(8, CityState.MAP_SIZE - 8):
+					if (
+						loaded_city.building_id(x, y) == 0
+						and loaded_city.terrain_id(x, y) == 0
+						and not loaded_city.is_water(x, y)
+						and loaded_city.zone_id(x, y) == 0
+					):
+						patch_point = Vector2i(x, y)
+						break
+			if patch_point.x < 0:
+				push_error("Cannot find clear terrain for the regional edit smoke test")
+				main.queue_free()
+				quit(2)
+				return
+			main.set("selected_group", 9)
+			main.set("selected_subtool", 0)
+			var patch_path: Array[Vector2i] = [patch_point]
+			main.call(
+				"_apply_map_selection",
+				patch_point,
+				patch_point,
+				patch_path,
+				false
+			)
+			var patch_command: Dictionary = main.get("last_edit_command")
+			var view_size := int(main.call("_city_view_size"))
+			var expected_signature: Array = main.call(
+				"_static_signature_for_mode", "city", view_size
+			)
+			if (
+				patch_command.get("command_type", "") != "zone"
+				or main.get("static_render_thread") != null
+				or main.get("static_visual_signature") != expected_signature
+			):
+				push_error("A bounded city edit did not use the exact regional refresh")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_undo_last_edit")
+			if (
+				main.get("static_render_thread") != null
+				or loaded_city.zone_id(patch_point.x, patch_point.y) != 0
+			):
+				push_error("Regional city-edit Undo did not restore the prior view")
+				main.queue_free()
+				quit(2)
+				return
 		loaded_city.set_music_enabled(false)
 		loaded_city.set_sound_enabled(false)
 		var scenario_dialog := main.get("scenario_dialog") as Window
