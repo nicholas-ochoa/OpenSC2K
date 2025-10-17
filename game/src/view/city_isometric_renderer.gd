@@ -133,6 +133,172 @@ static func create_image(
 	return {"ok": true, "image": output, "error": ""}
 
 
+static func patch_static_image(
+	base_image: Image,
+	city: CityState,
+	palette: Sc2Palette,
+	sprites: Sc2SpriteArchive,
+	dirty_indices: PackedInt32Array,
+	view_size := VIEW_LARGE,
+	animation_phase := 0
+) -> Dictionary:
+	if base_image == null or base_image.is_empty():
+		return _failure("base city image is invalid")
+	if city == null or not city.is_valid():
+		return _failure("city is invalid")
+	if palette == null or not palette.is_valid() or not palette.is_index_encoding:
+		return _failure("indexed palette is invalid")
+	if sprites == null or not sprites.is_valid():
+		return _failure("sprite archive is invalid")
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty():
+		return _failure("city view size is invalid")
+	var native_size := output_size_for_view(view_size)
+	var output_scale := 1
+	if base_image.get_size() == IMAGE_SIZE_LARGE:
+		output_scale = int(configuration.divisor)
+	elif base_image.get_size() != native_size:
+		return _failure("base city image has the wrong size")
+	var sprite_limit := _maximum_sprite_size(sprites)
+	var native_rect := dirty_screen_rect(
+		dirty_indices, sprites, view_size, sprite_limit
+	)
+	if native_rect.get_area() <= 0:
+		return _failure("dirty city region is empty")
+
+	var local_configuration := configuration.duplicate()
+	local_configuration.top_margin = (
+		int(configuration.top_margin) - native_rect.position.y
+	)
+	var origin_x := (
+		int(configuration.side_margin)
+		+ CityState.MAP_SIZE * int(configuration.half_width)
+		- native_rect.position.x
+	)
+	var region := Image.create(
+		native_rect.size.x, native_rect.size.y, false, Image.FORMAT_RGBA8
+	)
+	region.fill(Color.TRANSPARENT)
+	var cache: Dictionary = {}
+	var tiles_drawn := 0
+	for diagonal in CityState.MAP_SIZE * 2 - 1:
+		for y in diagonal + 1:
+			var x := diagonal - y
+			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+				continue
+			if not _potential_tile_bounds(
+				configuration, sprite_limit, x, y
+			).intersects(native_rect):
+				continue
+			_draw_tile(
+				region, city, palette, sprites, cache, local_configuration,
+				origin_x, x, y, animation_phase, false, false
+			)
+			tiles_drawn += 1
+	region.convert(Image.FORMAT_LA8)
+	var output_rect := native_rect
+	if output_scale > 1:
+		region.resize(
+			region.get_width() * output_scale,
+			region.get_height() * output_scale,
+			Image.INTERPOLATE_NEAREST
+		)
+		output_rect = Rect2i(
+			native_rect.position * output_scale,
+			native_rect.size * output_scale
+		)
+	var patched := base_image.duplicate()
+	if patched.get_format() != region.get_format():
+		region.convert(patched.get_format())
+	patched.blit_rect(
+		region, Rect2i(Vector2i.ZERO, region.get_size()), output_rect.position
+	)
+	return {
+		"ok": true,
+		"image": patched,
+		"native_rect": native_rect,
+		"output_rect": output_rect,
+		"tiles_drawn": tiles_drawn,
+		"error": "",
+	}
+
+
+static func dirty_screen_rect(
+	dirty_indices: PackedInt32Array,
+	sprites: Sc2SpriteArchive,
+	view_size := VIEW_LARGE,
+	sprite_limit := Vector2i.ZERO
+) -> Rect2i:
+	var configuration := view_configuration(view_size)
+	if configuration.is_empty() or sprites == null or not sprites.is_valid():
+		return Rect2i()
+	if sprite_limit.x <= 0 or sprite_limit.y <= 0:
+		sprite_limit = _maximum_sprite_size(sprites)
+	if sprite_limit.x <= 0 or sprite_limit.y <= 0:
+		return Rect2i()
+	var result := Rect2i()
+	var has_result := false
+	var seen := {}
+	for value in dirty_indices:
+		var index := int(value)
+		if index < 0 or index >= CityState.TILE_COUNT or seen.has(index):
+			continue
+		seen[index] = true
+		var x := int(index / CityState.MAP_SIZE)
+		var y := index % CityState.MAP_SIZE
+		var bounds := _potential_tile_bounds(
+			configuration, sprite_limit, x, y
+		)
+		result = result.merge(bounds) if has_result else bounds
+		has_result = true
+	if not has_result:
+		return Rect2i()
+	return result.intersection(Rect2i(Vector2i.ZERO, output_size_for_view(view_size)))
+
+
+static func _maximum_sprite_size(sprites: Sc2SpriteArchive) -> Vector2i:
+	var result := Vector2i.ZERO
+	if sprites == null:
+		return result
+	for entry in sprites.entries:
+		result.x = maxi(result.x, entry.width)
+		result.y = maxi(result.y, entry.height)
+	return result
+
+
+static func _potential_tile_bounds(
+	configuration: Dictionary, sprite_limit: Vector2i, x: int, y: int
+) -> Rect2i:
+	var origin_x := (
+		int(configuration.side_margin)
+		+ CityState.MAP_SIZE * int(configuration.half_width)
+	)
+	var screen_x := origin_x + (x - y) * int(configuration.half_width)
+	var flat_base_y := (
+		int(configuration.top_margin)
+		+ (x + y) * int(configuration.half_height)
+	)
+	var top := (
+		flat_base_y
+		- 31 * int(configuration.altitude_step)
+		- int(configuration.altitude_step)
+		- sprite_limit.y
+	)
+	var bottom := (
+		flat_base_y
+		+ int(configuration.tile_height)
+		+ int(sprite_limit.x / 4)
+		+ 1
+	)
+	return Rect2i(
+		Vector2i(screen_x - sprite_limit.x, top),
+		Vector2i(
+			int(configuration.tile_width) + sprite_limit.x * 2 + 1,
+			bottom - top
+		)
+	)
+
+
 static func validate_assets(
 	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
 ) -> PackedStringArray:

@@ -1114,6 +1114,71 @@ func _test_sprite_archives(reference_root: String) -> void:
 		indexed_city.ok and indexed_city.image.get_used_rect().has_area(),
 		"Indexed city rendering draws nontransparent map pixels",
 	)
+	var patch_document := starter_document.duplicate_document()
+	var patch_city := CityModel.from_document(patch_document)
+	var patch_point := Vector2i(-1, -1)
+	for x in range(8, CityModel.MAP_SIZE - 8):
+		if patch_point.x >= 0:
+			break
+		for y in range(8, CityModel.MAP_SIZE - 8):
+			if (
+				patch_city.building_id(x, y) == 0
+				and patch_city.terrain_id(x, y) == 0
+				and not patch_city.is_water(x, y)
+			):
+				patch_point = Vector2i(x, y)
+				break
+	_check(patch_point.x >= 0, "Static region fixture finds clear terrain")
+	var patch_index := patch_city.index_of(patch_point.x, patch_point.y)
+	_check(
+		patch_city.set_building_id(patch_point.x, patch_point.y, 0x0d),
+		"Static region fixture places a small park",
+	)
+	var patch_result := IsometricRenderer.patch_static_image(
+		indexed_city.image,
+		patch_city,
+		Palette.index_encoding(),
+		small_medium,
+		PackedInt32Array([patch_index]),
+		IsometricRenderer.VIEW_SMALL,
+		0
+	)
+	var patch_full := IsometricRenderer.create_image(
+		patch_city, Palette.index_encoding(), small_medium,
+		IsometricRenderer.VIEW_SMALL, 0, false, true, false, false
+	)
+	_check(
+		patch_result.ok
+		and patch_full.ok
+		and patch_result.image.get_data() == patch_full.image.get_data(),
+		"A regional static edit is byte-identical to a complete small-view render",
+	)
+	var scaled_before: Image = indexed_city.image.duplicate()
+	scaled_before.resize(
+		IsometricRenderer.IMAGE_SIZE_LARGE.x,
+		IsometricRenderer.IMAGE_SIZE_LARGE.y,
+		Image.INTERPOLATE_NEAREST
+	)
+	var scaled_patch := IsometricRenderer.patch_static_image(
+		scaled_before,
+		patch_city,
+		Palette.index_encoding(),
+		small_medium,
+		PackedInt32Array([patch_index]),
+		IsometricRenderer.VIEW_SMALL,
+		0
+	)
+	var scaled_full: Image = patch_full.image.duplicate()
+	scaled_full.resize(
+		IsometricRenderer.IMAGE_SIZE_LARGE.x,
+		IsometricRenderer.IMAGE_SIZE_LARGE.y,
+		Image.INTERPOLATE_NEAREST
+	)
+	_check(
+		scaled_patch.ok
+		and scaled_patch.image.get_data() == scaled_full.get_data(),
+		"A scaled regional edit is byte-identical to the complete display image",
+	)
 	_check(IsometricRenderer.terrain_sprite_id(0x00, false) == 1256, "Flat land uses sprite 1256")
 	_check(IsometricRenderer.terrain_sprite_id(0x10, true) == 1270, "Submerged land uses sprite 1270")
 	_check(IsometricRenderer.terrain_sprite_id(0x45, true) == 1290, "Last water tile uses sprite 1290")
