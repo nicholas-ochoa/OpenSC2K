@@ -14,6 +14,7 @@ const ScurkPickCopy = preload("res://src/tools/scurk_pick_copy.gd")
 const ScurkPlace = preload("res://src/tools/scurk_place_command.gd")
 const ScurkWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
 const ScurkPixelEditor = preload("res://src/view/scurk_pixel_canvas.gd")
+const ScurkViewWindow = preload("res://src/view/scurk_view_preview.gd")
 const ScurkPalette = preload("res://src/view/scurk_palette_control.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
@@ -2894,6 +2895,13 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.grid_width_selector.max_value == 65
 			and scurk_editor.grid_height_selector.min_value == 1
 			and scurk_editor.grid_height_selector.max_value == 65
+			and scurk_editor.view_previews.size() == 3
+			and scurk_editor.view_previews[0].preview_width == 128
+			and scurk_editor.view_previews[0].preview_height == 256
+			and scurk_editor.view_previews[1].preview_width == 64
+			and scurk_editor.view_previews[1].preview_height == 128
+			and scurk_editor.view_previews[2].preview_width == 32
+			and scurk_editor.view_previews[2].preview_height == 64
 			and scurk_editor.pixel_canvas.clear_background_pixels.size()
 			== ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT
 			and scurk_editor.pixel_canvas.clip_background_pixels.size() == 4
@@ -3254,6 +3262,23 @@ func _test_scurk_mif(reference_root: String) -> void:
 		) == Vector2i(6, 9),
 		"SCURK shape snapping rounds half steps forward on each grid axis",
 	)
+	var view_window := ScurkViewWindow.new()
+	var preview_background := PackedInt32Array()
+	preview_background.resize(ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT)
+	preview_background.fill(5)
+	view_window.set_preview(
+		2, 1, 1, PackedInt32Array([7]), 32,
+		Palette.index_encoding(), preview_background
+	)
+	_check(
+		view_window.preview_width == 32
+		and view_window.preview_height == 64
+		and view_window.preview_indices[63 * 32 + 15] == 7
+		and view_window.preview_indices[0] == 5
+		and view_window.mouse_filter == Control.MOUSE_FILTER_IGNORE,
+		"SCURK Small View Window shows the complete sampled Drawing Area and is read-only",
+	)
+	view_window.free()
 	var snap_canvas := ScurkPixelEditor.new()
 	var snap_pixels := PackedInt32Array()
 	snap_pixels.resize(16 * 16)

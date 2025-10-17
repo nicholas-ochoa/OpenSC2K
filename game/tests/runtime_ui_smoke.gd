@@ -161,11 +161,13 @@ func _run() -> void:
 		main.queue_free()
 		quit(2)
 		return
+	# Hide the editor during the catalog loop to avoid rebuilding 1,497 preview
+	# sets. Separate preview tests cover the View Windows.
+	scurk_editor.hide()
 	for item_index in range(object_list.item_count):
 		scurk_editor.call("_on_object_selected", item_index)
 		for view in range(3):
 			scurk_editor.call("_select_view", view)
-	scurk_editor.hide()
 	main.queue_free()
 	await process_frame
 	print("PASS: runtime UI smoke")

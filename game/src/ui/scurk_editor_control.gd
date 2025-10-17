@@ -11,6 +11,7 @@ const PickCopy = preload("res://src/tools/scurk_pick_copy.gd")
 const DrawingWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
 const PickCopyControl = preload("res://src/ui/scurk_pick_copy_control.gd")
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
+const ViewPreview = preload("res://src/view/scurk_view_preview.gd")
 const PaletteControl = preload("res://src/view/scurk_palette_control.gd")
 const TextureControl = preload("res://src/view/scurk_texture_control.gd")
 
@@ -43,6 +44,7 @@ var dirty := false
 var active_workspace := false
 var active_base_width := 0
 var blank_shape_ids: Dictionary = {}
+var view_preview_signatures := PackedStringArray(["", "", ""])
 
 var title_label: Label
 var source_label: Label
@@ -63,6 +65,8 @@ var revert_button: Button
 var clear_object_button: Button
 var save_button: Button
 var pixel_canvas: ScurkPixelCanvas
+var view_previews: Array[ScurkViewPreview] = []
+var view_preview_panels: Array[Control] = []
 var palette_control: ScurkPaletteControl
 var foreground_color: ColorRect
 var foreground_color_label: Label
@@ -151,6 +155,7 @@ func show_editor(initial_path := "") -> Dictionary:
 			return loaded
 	show()
 	move_to_front()
+	_refresh_sprite()
 	if object_list != null:
 		object_list.grab_focus()
 	return {"ok": true, "error": ""}
@@ -912,13 +917,18 @@ func _build_interface() -> void:
 	increment_cycle_button.disabled = true
 	cycle_row.add_child(increment_cycle_button)
 
+	var canvas_row := HBoxContainer.new()
+	canvas_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	canvas_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	canvas_row.add_theme_constant_override("separation", 6)
+	editor_column.add_child(canvas_row)
 	var scroll := ScrollContainer.new()
 	scroll.name = "PixelScroll"
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
 	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	editor_column.add_child(scroll)
+	canvas_row.add_child(scroll)
 	var canvas_center := CenterContainer.new()
 	canvas_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	canvas_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -932,6 +942,35 @@ func _build_interface() -> void:
 	pixel_canvas.clipboard_changed.connect(_on_clipboard_changed)
 	pixel_canvas.clipboard_copy_rejected.connect(_on_clipboard_copy_rejected)
 	canvas_center.add_child(pixel_canvas)
+	var previews_panel := PanelContainer.new()
+	previews_panel.custom_minimum_size = Vector2(218, 0)
+	previews_panel.tooltip_text = (
+		"Display-only previews of the complete Drawing Area at all three city views."
+	)
+	canvas_row.add_child(previews_panel)
+	var previews_page := VBoxContainer.new()
+	previews_page.add_theme_constant_override("separation", 4)
+	previews_panel.add_child(previews_page)
+	var previews_heading := Label.new()
+	previews_heading.text = "View Windows"
+	previews_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	previews_heading.add_theme_color_override("font_color", Color("000080"))
+	previews_page.add_child(previews_heading)
+	var previews_layout := HBoxContainer.new()
+	previews_layout.alignment = BoxContainer.ALIGNMENT_CENTER
+	previews_layout.add_theme_constant_override("separation", 6)
+	previews_page.add_child(previews_layout)
+	_add_view_preview(previews_layout, "Large", VIEW_LARGE)
+	var smaller_previews := VBoxContainer.new()
+	smaller_previews.add_theme_constant_override("separation", 6)
+	previews_layout.add_child(smaller_previews)
+	_add_view_preview(smaller_previews, "Medium", VIEW_MEDIUM)
+	_add_view_preview(smaller_previews, "Small", VIEW_SMALL)
+	var preview_note := Label.new()
+	preview_note.text = "Display only"
+	preview_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	preview_note.add_theme_color_override("font_color", Color("606060"))
+	previews_page.add_child(preview_note)
 	sprite_status_label = Label.new()
 	sprite_status_label.text = "No sprite is selected."
 	sprite_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
@@ -1070,6 +1109,22 @@ func _grid_size_selector() -> SpinBox:
 	selector.allow_lesser = false
 	selector.custom_minimum_size = Vector2(66, 0)
 	return selector
+
+
+func _add_view_preview(parent: Control, label_text: String, view: int) -> void:
+	var preview_column := VBoxContainer.new()
+	preview_column.add_theme_constant_override("separation", 2)
+	parent.add_child(preview_column)
+	var label := Label.new()
+	label.text = label_text
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	preview_column.add_child(label)
+	var preview := ViewPreview.new()
+	preview.name = "%sViewPreview" % label_text
+	preview.clear_preview(view)
+	preview_column.add_child(preview)
+	view_previews.append(preview)
+	view_preview_panels.append(preview_column)
 
 
 func _refresh_object_list() -> void:
@@ -1232,6 +1287,8 @@ func _set_clip_region_visible(enabled: bool) -> void:
 func _set_cycle_colors(enabled: bool) -> void:
 	if pixel_canvas != null:
 		pixel_canvas.set_palette_cycle_enabled(enabled)
+	for preview in view_previews:
+		preview.set_palette_cycle_enabled(enabled)
 	if increment_cycle_button != null:
 		increment_cycle_button.disabled = enabled
 
@@ -1239,7 +1296,9 @@ func _set_cycle_colors(enabled: bool) -> void:
 func _increment_cycle() -> void:
 	if pixel_canvas != null:
 		pixel_canvas.increment_palette_cycle()
-		_set_status("Advanced the Paint the Town color cycle by one step.")
+	for preview in view_previews:
+		preview.increment_palette_cycle()
+	_set_status("Advanced the Paint the Town color cycle by one step.")
 
 
 func _select_texture(index: int) -> void:
@@ -1286,6 +1345,7 @@ func _refresh_sprite() -> void:
 		return
 	if tile_set == null or current_large_id < 0:
 		pixel_canvas.clear_sprite()
+		_refresh_view_previews()
 		name_edit.text = ""
 		name_edit.editable = false
 		name_button.disabled = true
@@ -1307,11 +1367,13 @@ func _refresh_sprite() -> void:
 		source = "blank MIF shape"
 	if entry == null:
 		pixel_canvas.clear_sprite()
+		_refresh_view_previews()
 		sprite_status_label.text = "Sprite %d is missing." % sprite_id
 		return
 	var decoded := entry.decode_indices()
 	if not decoded.ok:
 		pixel_canvas.clear_sprite()
+		_refresh_view_previews()
 		sprite_status_label.text = decoded.error
 		return
 	var large_entry := PickCopy.resolved_entry(
@@ -1346,6 +1408,7 @@ func _refresh_sprite() -> void:
 	pixel_canvas.filled_shapes = filled_shapes_check.button_pressed
 	pixel_canvas.show_grid = grid_check.button_pressed
 	_apply_grid_settings()
+	_refresh_view_previews()
 	var tile_id := object_tile_id(current_large_id)
 	var can_name := tile_id >= 0
 	name_edit.editable = can_name
@@ -1465,6 +1528,69 @@ func _commit_pixels(value_pixels: PackedInt32Array) -> void:
 	_mark_shape_blank_state(sprite_id, output_pixels)
 	_record_edit(pending_edit_before)
 	_refresh_sprite()
+
+
+func _refresh_view_previews() -> void:
+	if view_previews.size() != 3 or view_preview_panels.size() != 3:
+		return
+	if is_inside_tree() and not is_visible_in_tree():
+		return
+	if tile_set == null or current_large_id < 0:
+		for view in 3:
+			view_previews[view].clear_preview(view)
+			view_preview_panels[view].visible = false
+			view_preview_signatures[view] = ""
+		return
+	for view in 3:
+		var entry: Variant = _resolved_view_entry(view)
+		if entry == null:
+			view_previews[view].clear_preview(view)
+			view_preview_panels[view].visible = false
+			view_preview_signatures[view] = ""
+			continue
+		var signature := "%d:%d:%d:%d" % [
+			active_base_width, entry.width, entry.height, hash(entry.encoded_pixels),
+		]
+		if view_preview_signatures[view] == signature:
+			view_preview_panels[view].visible = true
+			continue
+		var decoded: Dictionary = entry.decode_indices()
+		if not decoded.ok:
+			view_previews[view].clear_preview(view)
+			view_preview_panels[view].visible = false
+			view_preview_signatures[view] = ""
+			continue
+		view_previews[view].set_preview(
+			view,
+			entry.width,
+			entry.height,
+			decoded.pixels,
+			active_base_width,
+			palette,
+			pixel_canvas.clear_background_pixels
+		)
+		view_previews[view].set_palette_cycle_enabled(
+			cycle_colors_check.button_pressed
+		)
+		view_preview_panels[view].visible = true
+		view_preview_signatures[view] = signature
+
+
+func _resolved_view_entry(view: int):
+	if tile_set == null or current_large_id < 0:
+		return null
+	var sprite_id := view_sprite_id(current_large_id, view)
+	var entry: Variant = tile_set.overrides.find_sprite(sprite_id)
+	if entry == null and blank_shape_ids.has(sprite_id):
+		entry = tile_set.archive.find_sprite(sprite_id)
+	if entry == null:
+		var base_archive := (
+			base_large_sprites if view == VIEW_LARGE else base_small_medium_sprites
+		)
+		entry = base_archive.find_sprite(sprite_id) if base_archive != null else null
+	if entry == null:
+		entry = tile_set.archive.find_sprite(sprite_id)
+	return entry
 
 
 func _active_output_shape() -> Dictionary:
