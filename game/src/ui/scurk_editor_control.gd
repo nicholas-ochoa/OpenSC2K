@@ -73,6 +73,9 @@ var texture_control: ScurkTextureControl
 var filled_shapes_check: CheckBox
 var round_brush_check: CheckBox
 var grid_check: CheckBox
+var snap_to_grid_check: CheckBox
+var grid_width_selector: SpinBox
+var grid_height_selector: SpinBox
 var clip_region_check: CheckBox
 var cycle_colors_check: CheckBox
 var increment_cycle_button: Button
@@ -856,18 +859,43 @@ func _build_interface() -> void:
 	filled_shapes_check.text = "Filled shapes"
 	filled_shapes_check.toggled.connect(_set_filled_shapes)
 	brush_row.add_child(filled_shapes_check)
+	var grid_row := HBoxContainer.new()
+	grid_row.add_theme_constant_override("separation", 5)
+	editor_column.add_child(grid_row)
+	var grid_label := Label.new()
+	grid_label.text = "Drawing Grid"
+	grid_row.add_child(grid_label)
 	grid_check = CheckBox.new()
-	grid_check.text = "Grid"
+	grid_check.text = "Show"
 	grid_check.button_pressed = true
 	grid_check.toggled.connect(_set_grid_visible)
-	brush_row.add_child(grid_check)
+	grid_row.add_child(grid_check)
+	snap_to_grid_check = CheckBox.new()
+	snap_to_grid_check.text = "Snap shapes"
+	snap_to_grid_check.tooltip_text = (
+		"Snap shape start and end points to the nearest drawing-grid line."
+	)
+	snap_to_grid_check.toggled.connect(_set_snap_to_grid)
+	grid_row.add_child(snap_to_grid_check)
+	var width_label := Label.new()
+	width_label.text = "Width"
+	grid_row.add_child(width_label)
+	grid_width_selector = _grid_size_selector()
+	grid_width_selector.value_changed.connect(_set_grid_width)
+	grid_row.add_child(grid_width_selector)
+	var height_label := Label.new()
+	height_label.text = "Height"
+	grid_row.add_child(height_label)
+	grid_height_selector = _grid_size_selector()
+	grid_height_selector.value_changed.connect(_set_grid_height)
+	grid_row.add_child(grid_height_selector)
 	clip_region_check = CheckBox.new()
 	clip_region_check.text = "Clip Region"
 	clip_region_check.tooltip_text = (
 		"Show the original object base and height limit. Clipping is always active."
 	)
 	clip_region_check.toggled.connect(_set_clip_region_visible)
-	brush_row.add_child(clip_region_check)
+	grid_row.add_child(clip_region_check)
 	var cycle_row := HBoxContainer.new()
 	cycle_row.add_theme_constant_override("separation", 5)
 	editor_column.add_child(cycle_row)
@@ -1032,6 +1060,18 @@ func _toolbar_button(label: String, callable: Callable, tooltip: String) -> Butt
 	return button
 
 
+func _grid_size_selector() -> SpinBox:
+	var selector := SpinBox.new()
+	selector.min_value = 1
+	selector.max_value = 65
+	selector.step = 1
+	selector.value = 1
+	selector.allow_greater = false
+	selector.allow_lesser = false
+	selector.custom_minimum_size = Vector2(66, 0)
+	return selector
+
+
 func _refresh_object_list() -> void:
 	if object_list == null:
 		return
@@ -1157,6 +1197,33 @@ func _set_grid_visible(enabled: bool) -> void:
 		pixel_canvas.queue_redraw()
 
 
+func _set_snap_to_grid(_enabled: bool) -> void:
+	_apply_grid_settings()
+
+
+func _set_grid_width(_value: float) -> void:
+	_apply_grid_settings()
+
+
+func _set_grid_height(_value: float) -> void:
+	_apply_grid_settings()
+
+
+func _apply_grid_settings() -> void:
+	if (
+		pixel_canvas == null
+		or snap_to_grid_check == null
+		or grid_width_selector == null
+		or grid_height_selector == null
+	):
+		return
+	pixel_canvas.set_grid_settings(
+		roundi(grid_width_selector.value),
+		roundi(grid_height_selector.value),
+		snap_to_grid_check.button_pressed
+	)
+
+
 func _set_clip_region_visible(enabled: bool) -> void:
 	if pixel_canvas != null:
 		pixel_canvas.set_clip_region_visible(enabled)
@@ -1278,6 +1345,7 @@ func _refresh_sprite() -> void:
 	pixel_canvas.set_texture(texture_control.selected_index)
 	pixel_canvas.filled_shapes = filled_shapes_check.button_pressed
 	pixel_canvas.show_grid = grid_check.button_pressed
+	_apply_grid_settings()
 	var tile_id := object_tile_id(current_large_id)
 	var can_name := tile_id >= 0
 	name_edit.editable = can_name

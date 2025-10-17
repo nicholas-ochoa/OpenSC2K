@@ -71,6 +71,9 @@ var brush_size := 1
 var round_brush := false
 var filled_shapes := false
 var show_grid := true
+var grid_width := 1
+var grid_height := 1
+var snap_to_grid := false
 var hover_point := Vector2i(-1, -1)
 var stroke_active := false
 var stroke_changed := false
@@ -182,6 +185,13 @@ func set_paint_indices(foreground: int, background: int) -> void:
 func set_brush(value_size: int, rounded: bool) -> void:
 	brush_size = clampi(value_size, 1, 6)
 	round_brush = rounded
+
+
+func set_grid_settings(width: int, height: int, snap: bool) -> void:
+	grid_width = clampi(width, 1, 65)
+	grid_height = clampi(height, 1, 65)
+	snap_to_grid = snap
+	queue_redraw()
 
 
 func set_texture(value: int) -> void:
@@ -668,6 +678,23 @@ static func shape_points(
 	return result
 
 
+static func snapped_shape_point(
+	point: Vector2i, width: int, height: int, enabled: bool
+) -> Vector2i:
+	if not enabled:
+		return point
+	return Vector2i(
+		_snap_coordinate(point.x, clampi(width, 1, 65)),
+		_snap_coordinate(point.y, clampi(height, 1, 65))
+	)
+
+
+static func _snap_coordinate(value: int, spacing: int) -> int:
+	if value < 0:
+		return value
+	return int((value * 2 + spacing) / (spacing * 2)) * spacing
+
+
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseMotion:
 		var point := _point_from_position(event.position)
@@ -805,7 +832,9 @@ func _begin_shape(point: Vector2i, button: int) -> void:
 	stroke_active = true
 	stroke_changed = false
 	stroke_button = button
-	shape_start = point
+	shape_start = snapped_shape_point(
+		point, grid_width, grid_height, snap_to_grid
+	)
 	stroke_base_pixels = pixels.duplicate()
 	edit_started.emit()
 	_preview_shape(point)
@@ -826,7 +855,10 @@ func _preview_shape(point: Vector2i) -> void:
 		return
 	pixels = stroke_base_pixels.duplicate()
 	stroke_changed = false
-	for shape_point in shape_points(tool, shape_start, point, filled_shapes):
+	var finish := snapped_shape_point(
+		point, grid_width, grid_height, snap_to_grid
+	)
+	for shape_point in shape_points(tool, shape_start, finish, filled_shapes):
 		_apply_brush(shape_point)
 	queue_redraw()
 
@@ -994,18 +1026,22 @@ func _draw() -> void:
 				else (Color("d8d8d8") if (x + y) % 2 == 0 else Color("ffffff"))
 			)
 			draw_rect(Rect2(x * zoom, y * zoom, zoom, zoom), color, true)
-	if show_grid and zoom >= 6:
+	if show_grid:
 		var grid_color := Color(0.0, 0.0, 0.0, 0.18)
-		for x in range(sprite_width + 1):
-			draw_line(
-				Vector2(x * zoom, 0), Vector2(x * zoom, sprite_height * zoom),
-				grid_color, 1.0
-			)
-		for y in range(sprite_height + 1):
-			draw_line(
-				Vector2(0, y * zoom), Vector2(sprite_width * zoom, y * zoom),
-				grid_color, 1.0
-			)
+		if grid_width * zoom >= 4:
+			for x in range(0, sprite_width + 1, grid_width):
+				draw_line(
+					Vector2(x * zoom, 0),
+					Vector2(x * zoom, sprite_height * zoom),
+					grid_color, 1.0
+				)
+		if grid_height * zoom >= 4:
+			for y in range(0, sprite_height + 1, grid_height):
+				draw_line(
+					Vector2(0, y * zoom),
+					Vector2(sprite_width * zoom, y * zoom),
+					grid_color, 1.0
+				)
 	if copy_active and _point_is_valid(copy_start) and _point_is_valid(copy_finish):
 		var minimum := Vector2i(
 			mini(copy_start.x, copy_finish.x), mini(copy_start.y, copy_finish.y)

@@ -2889,11 +2889,26 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and scurk_editor.paste_image_button != null
 			and scurk_editor.clear_object_button != null
 			and scurk_editor.clip_region_check != null
+			and scurk_editor.snap_to_grid_check != null
+			and scurk_editor.grid_width_selector.min_value == 1
+			and scurk_editor.grid_width_selector.max_value == 65
+			and scurk_editor.grid_height_selector.min_value == 1
+			and scurk_editor.grid_height_selector.max_value == 65
 			and scurk_editor.pixel_canvas.clear_background_pixels.size()
-				== ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT
+			== ScurkWorkspace.WIDTH * ScurkWorkspace.HEIGHT
 			and scurk_editor.pixel_canvas.clip_background_pixels.size() == 4
 			and scurk_editor.pick_copy_control != null,
 			"SCURK editor exposes the recovered paint, clip, and brush controls",
+		)
+		scurk_editor.grid_width_selector.value = 8
+		scurk_editor.grid_height_selector.value = 6
+		scurk_editor.snap_to_grid_check.button_pressed = true
+		scurk_editor._apply_grid_settings()
+		_check(
+			scurk_editor.pixel_canvas.grid_width == 8
+			and scurk_editor.pixel_canvas.grid_height == 6
+			and scurk_editor.pixel_canvas.snap_to_grid,
+			"SCURK Grid Settings apply independent 1-through-65 dimensions",
 		)
 		scurk_editor.request_pick_copy()
 		var same_source := scurk_editor.pick_copy_control.load_source_path(
@@ -3224,6 +3239,47 @@ func _test_scurk_mif(reference_root: String) -> void:
 		).is_empty(),
 		"SCURK line, diamond, wall, and ellipse tools produce pixel paths",
 	)
+	_check(
+		ScurkPixelEditor.snapped_shape_point(
+			Vector2i(1, 2), 4, 6, true
+		) == Vector2i(0, 0)
+		and ScurkPixelEditor.snapped_shape_point(
+			Vector2i(2, 3), 4, 6, true
+		) == Vector2i(4, 6)
+		and ScurkPixelEditor.snapped_shape_point(
+			Vector2i(6, 9), 4, 6, true
+		) == Vector2i(8, 12)
+		and ScurkPixelEditor.snapped_shape_point(
+			Vector2i(6, 9), 4, 6, false
+		) == Vector2i(6, 9),
+		"SCURK shape snapping rounds half steps forward on each grid axis",
+	)
+	var snap_canvas := ScurkPixelEditor.new()
+	var snap_pixels := PackedInt32Array()
+	snap_pixels.resize(16 * 16)
+	snap_pixels.fill(-1)
+	snap_canvas.set_sprite_data(16, 16, snap_pixels, Palette.index_encoding())
+	snap_canvas.set_zoom(1)
+	snap_canvas.set_tool(ScurkPixelEditor.TOOL_LINE)
+	snap_canvas.set_paint_indices(7, 0)
+	snap_canvas.set_grid_settings(4, 6, true)
+	var snap_press := InputEventMouseButton.new()
+	snap_press.button_index = MOUSE_BUTTON_LEFT
+	snap_press.pressed = true
+	snap_press.position = Vector2(3.2, 4.2)
+	snap_canvas._gui_input(snap_press)
+	var snap_release := InputEventMouseButton.new()
+	snap_release.button_index = MOUSE_BUTTON_LEFT
+	snap_release.pressed = false
+	snap_release.position = Vector2(9.2, 10.2)
+	snap_canvas._gui_input(snap_release)
+	_check(
+		snap_canvas.pixel_at(Vector2i(4, 6)) == 7
+		and snap_canvas.pixel_at(Vector2i(8, 12)) == 7
+		and snap_canvas.pixel_at(Vector2i(3, 4)) == -1,
+		"SCURK shape tools use snapped grid endpoints during the committed preview",
+	)
+	snap_canvas.free()
 	var stroke_canvas := ScurkPixelEditor.new()
 	stroke_canvas.set_sprite_data(
 		5, 1, PackedInt32Array([-1, -1, -1, -1, -1]), Palette.index_encoding()
