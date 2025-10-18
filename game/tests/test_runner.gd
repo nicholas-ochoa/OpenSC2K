@@ -10,6 +10,7 @@ const ClipboardImage = preload("res://src/platform/image_clipboard.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkEditor = preload("res://src/ui/scurk_editor_control.gd")
+const ScurkPlaceControl = preload("res://src/ui/scurk_place_print_control.gd")
 const ScurkPickCopy = preload("res://src/tools/scurk_pick_copy.gd")
 const ScurkPlace = preload("res://src/tools/scurk_place_command.gd")
 const ScurkWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
@@ -657,7 +658,8 @@ func _test_main_menu() -> void:
 			"Start New City",
 			"Open City...",
 			"Play Scenario...",
-			"SCURK Tile Editor",
+			"SCURK Paint the Town",
+			"SCURK Place & Print",
 			"Settings...",
 			"About OpenSC2K...",
 			"Exit",
@@ -667,8 +669,15 @@ func _test_main_menu() -> void:
 	var menu := MainMenu.new()
 	menu._ready()
 	_check(
-		menu.continue_button != null and menu.new_city_button != null,
+		menu.continue_button != null
+		and menu.new_city_button != null
+		and menu.scurk_place_button != null,
 		"Main menu builds its initial and continuing city actions",
+	)
+	_check(
+		ScurkPlaceControl.placeable_groups()
+		== PackedInt32Array([0, 1, 2, 3, 4, 5, 6, 9, 10]),
+		"SCURK Place & Print omits both non-placeable animation groups",
 	)
 	menu.free()
 	var old_buildings := PackedByteArray()

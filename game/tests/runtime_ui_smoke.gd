@@ -118,6 +118,61 @@ func _run() -> void:
 				main.queue_free()
 				quit(2)
 				return
+			var funds_before_scurk := loaded_city.funds()
+			main.call("_open_scurk_place_print")
+			await process_frame
+			var place_print: ScurkPlacePrintControl = main.get("scurk_place_print")
+			if place_print == null:
+				push_error("SCURK Place & Print control is missing")
+				main.queue_free()
+				quit(2)
+				return
+			var place_list: ItemList = place_print.object_list
+			if (
+				not place_print.visible
+				or place_list == null
+				or place_list.item_count != 24
+				or not place_print.select_tile(0x0d)
+			):
+				push_error("Cannot open the SCURK Place & Print object selector")
+				main.queue_free()
+				quit(2)
+				return
+			var place_preview: Array[Vector2i] = main.get("map_view").point_preview_tiles(
+				patch_point
+			)
+			main.call(
+				"_apply_map_selection",
+				patch_point,
+				patch_point,
+				patch_path,
+				false
+			)
+			var scurk_command: Dictionary = main.get("last_edit_command")
+			if (
+				place_preview != [patch_point]
+				or scurk_command.get("command_type", "") != "scurk_place_object"
+				or loaded_city.building_id(patch_point.x, patch_point.y) != 0x0d
+				or loaded_city.funds() != funds_before_scurk
+			):
+				push_error("SCURK Place & Print did not place the previewed object")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_undo_scurk_place")
+			if loaded_city.building_id(patch_point.x, patch_point.y) != 0:
+				push_error("SCURK Place & Print Undo did not restore the city")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_redo_scurk_place")
+			if loaded_city.building_id(patch_point.x, patch_point.y) != 0x0d:
+				push_error("SCURK Place & Print Redo did not restore the object")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_undo_scurk_place")
+			main.call("_close_scurk_place_print")
 		loaded_city.set_music_enabled(false)
 		loaded_city.set_sound_enabled(false)
 		var scenario_dialog := main.get("scenario_dialog") as Window

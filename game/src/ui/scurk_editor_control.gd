@@ -3,6 +3,7 @@ extends ColorRect
 
 signal close_requested
 signal tile_set_applied(tile_set: ScurkMif, display_name: String, source_path: String)
+signal place_print_requested
 
 const Mif = preload("res://src/assets/scurk_mif.gd")
 const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
@@ -690,6 +691,10 @@ func _build_interface() -> void:
 	toolbar.add_child(clear_object_button)
 	toolbar.add_child(VSeparator.new())
 	toolbar.add_child(_toolbar_button("Apply to City", _apply_tile_set, "Use this tile set in the city view."))
+	toolbar.add_child(_toolbar_button(
+		"Place & Print", request_place_print,
+		"Apply this tile set and open the unrestricted city work area."
+	))
 	var toolbar_spacer := Control.new()
 	toolbar_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	toolbar.add_child(toolbar_spacer)
@@ -1744,6 +1749,14 @@ func _apply_tile_set() -> void:
 		display_name = "Unsaved tile set"
 	tile_set_applied.emit(tile_set, display_name, source_path)
 	_set_status("Applied %s to the city artwork." % display_name)
+
+
+func request_place_print() -> void:
+	if tile_set == null or not tile_set.is_valid():
+		return
+	_apply_tile_set()
+	hide()
+	place_print_requested.emit()
 
 
 func _popup_open_dialog() -> void:

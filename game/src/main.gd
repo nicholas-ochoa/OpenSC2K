@@ -36,6 +36,7 @@ const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperPageView = preload("res://src/ui/newspaper_page.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
+const ScurkPlacePrintView = preload("res://src/ui/scurk_place_print_control.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -50,6 +51,7 @@ const Highways = preload("res://src/tools/highway_command.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
 const TerrainTools = preload("res://src/tools/terrain_command.gd")
 const Dispatch = preload("res://src/tools/dispatch_command.gd")
+const ScurkPlace = preload("res://src/tools/scurk_place_command.gd")
 const CityRotation = preload("res://src/tools/city_rotation_command.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
@@ -155,6 +157,7 @@ const MENU_VIEW_TREES := 0x8104
 const MENU_VIEW_ZONES := 0x8105
 const MENU_VIEW_SIGNS := 0x8106
 const MENU_VIEW_PIPES := 0x8107
+const MENU_SCURK_PLACE_PRINT := 0x8200
 const FOREST_PROTEST_BITMAP_ID := 403
 const FOREST_PROTEST_STRING_ID := 236
 const BUILDING_OBJECTION_STRING_ID := 106
@@ -355,6 +358,9 @@ var settings_music_slider: HSlider
 var settings_effects_slider: HSlider
 var settings_fullscreen_check: CheckBox
 var scurk_editor: ScurkEditorControl
+var scurk_place_print: ScurkPlacePrintControl
+var scurk_place_undo_stack: Array[Dictionary] = []
+var scurk_place_redo_stack: Array[Dictionary] = []
 var about_dialog: AcceptDialog
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
@@ -487,6 +493,7 @@ func _process(delta: float) -> void:
 		or (ordinance_window != null and ordinance_window.visible)
 		or (new_city_dialog != null and new_city_dialog.visible)
 		or (scurk_editor != null and scurk_editor.visible)
+		or (scurk_place_print != null and scurk_place_print.visible)
 		or (main_menu != null and main_menu.visible)
 		or bond_dialog.visible
 		or military_dialog.visible
@@ -518,6 +525,11 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		return
 	if scurk_editor != null and scurk_editor.visible:
 		if scurk_editor.handle_shortcut(event):
+			get_viewport().set_input_as_handled()
+		return
+	if scurk_place_print != null and scurk_place_print.visible:
+		if event.keycode == KEY_ESCAPE:
+			_close_scurk_place_print()
 			get_viewport().set_input_as_handled()
 		return
 	if main_menu != null and main_menu.visible:
@@ -555,6 +567,8 @@ func _consume_simulation_result(result: Dictionary) -> void:
 	var moved_things := _moving_things_are_active(result.moving_results)
 	if ran_days or moved_things or changed_disaster_map:
 		last_edit_command = {}
+		scurk_place_undo_stack.clear()
+		scurk_place_redo_stack.clear()
 		undo_button.disabled = true
 		simulation_map_dirty = true
 	if ran_days:
@@ -613,6 +627,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	_add_menu(menu_row, "File", [
 		["New City...", 0], ["Open City...", 1], ["Save City As...", 2],
 		["Load Tile Set...", 3], ["Restore Original Tile Set", 4],
+		["SCURK Place & Print...", MENU_SCURK_PLACE_PRINT],
 		["Main Menu", 5], ["Exit", 6],
 	], _on_file_menu)
 	_add_menu(menu_row, "Speed", [
@@ -1568,6 +1583,7 @@ func _build_main_menu() -> void:
 	main_menu.scenario_requested.connect(_open_scenario_dialog)
 	main_menu.settings_requested.connect(_open_settings_dialog)
 	main_menu.scurk_requested.connect(_open_scurk_dialog)
+	main_menu.scurk_place_requested.connect(_open_scurk_place_print)
 	main_menu.about_requested.connect(_open_about_dialog)
 	main_menu.exit_requested.connect(get_tree().quit)
 	add_child(main_menu)
@@ -1615,7 +1631,15 @@ func _build_main_menu() -> void:
 	scurk_editor = ScurkEditorView.new()
 	scurk_editor.z_index = 940
 	scurk_editor.tile_set_applied.connect(_apply_scurk_tile_set)
+	scurk_editor.place_print_requested.connect(_open_scurk_place_print)
 	add_child(scurk_editor)
+
+	scurk_place_print = ScurkPlacePrintView.new()
+	scurk_place_print.tile_selected.connect(_select_scurk_place_tile)
+	scurk_place_print.undo_requested.connect(_undo_scurk_place)
+	scurk_place_print.redo_requested.connect(_redo_scurk_place)
+	scurk_place_print.close_requested.connect(_close_scurk_place_print)
+	add_child(scurk_place_print)
 
 	about_dialog = AcceptDialog.new()
 	about_dialog.title = "About OpenSC2K"
@@ -1631,6 +1655,9 @@ func _build_main_menu() -> void:
 func _show_main_menu() -> void:
 	if main_menu == null:
 		return
+	if scurk_place_print != null and scurk_place_print.visible:
+		scurk_place_print.hide()
+		_update_edit_state()
 	main_menu.show_menu(city != null)
 	status_label.text = "Main menu."
 
@@ -1716,6 +1743,145 @@ func _open_scurk_dialog() -> void:
 	var opened := scurk_editor.show_editor(initial_path)
 	if not opened.ok:
 		_show_error(opened.error)
+
+
+func _open_scurk_place_print() -> void:
+	if city == null:
+		_show_error("Load or create a city before you open SCURK Place & Print.")
+		return
+	if (
+		palette == null
+		or not palette.is_valid()
+		or large_sprites == null
+		or not large_sprites.is_valid()
+		or scurk_place_print == null
+	):
+		_show_error("The SCURK Place & Print graphics are not available.")
+		return
+	_hide_main_menu()
+	if scurk_editor != null and scurk_editor.visible:
+		scurk_editor.hide()
+	if overlay_mode != "city":
+		_set_overlay("city")
+	var names := (
+		active_scurk_tile_set.names
+		if active_scurk_tile_set != null
+		else {}
+	)
+	scurk_place_print.configure(palette, large_sprites, names)
+	if last_edit_command.get("command_type", "") != "scurk_place_object":
+		scurk_place_undo_stack.clear()
+		scurk_place_redo_stack.clear()
+	scurk_place_print.set_history_enabled(
+		not scurk_place_undo_stack.is_empty(), not scurk_place_redo_stack.is_empty()
+	)
+	if not scurk_place_print.show_workspace():
+		_show_error("Cannot open SCURK Place & Print.")
+		return
+	_select_scurk_place_tile(scurk_place_print.selected_tile_id)
+
+
+func _close_scurk_place_print() -> void:
+	if scurk_place_print != null:
+		scurk_place_print.hide()
+	_update_edit_state()
+	if city != null:
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Closed SCURK Place & Print."
+
+
+func _select_scurk_place_tile(tile_id: int) -> void:
+	if scurk_place_print == null or not scurk_place_print.visible:
+		return
+	if not ScurkPlace.is_placeable_tile(tile_id):
+		map_view.set_edit_enabled(false)
+		return
+	_update_edit_state()
+
+
+func _apply_scurk_place_selection(point: Vector2i) -> void:
+	if city == null or scurk_place_print == null:
+		return
+	var tile_id := scurk_place_print.selected_tile_id
+	var result := ScurkPlace.apply(
+		city,
+		tile_id,
+		point,
+		tool_random,
+		scurk_place_print.selected_zone_id()
+	)
+	if not result.get("ok", false):
+		_show_error("Cannot place the SCURK object: %s" % result.error)
+		return
+	scurk_place_undo_stack.append(result)
+	scurk_place_redo_stack.clear()
+	last_edit_command = result
+	undo_button.disabled = false
+	scurk_place_print.set_history_enabled(true, false)
+	_refresh_details()
+	_refresh_after_city_edit(result)
+	var area := int(result.get("area", 1))
+	var message := "Placed SCURK tile %d at %d, %d (%d by %d)." % [
+		tile_id, point.x, point.y, area, area,
+	]
+	scurk_place_print.set_status(message)
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = message
+
+
+func _undo_scurk_place() -> void:
+	if city == null or scurk_place_undo_stack.is_empty():
+		return
+	var command: Dictionary = scurk_place_undo_stack[-1]
+	var result := ScurkPlace.undo(city, command, tool_random)
+	if not result.get("ok", false):
+		_show_error("Cannot undo SCURK placement: %s" % result.error)
+		return
+	scurk_place_undo_stack.pop_back()
+	scurk_place_redo_stack.append(command)
+	last_edit_command = (
+		scurk_place_undo_stack[-1]
+		if not scurk_place_undo_stack.is_empty()
+		else {}
+	)
+	undo_button.disabled = last_edit_command.is_empty()
+	scurk_place_print.set_history_enabled(
+		not scurk_place_undo_stack.is_empty(), not scurk_place_redo_stack.is_empty()
+	)
+	_refresh_details()
+	_refresh_after_city_edit(command)
+	var message := "Removed the last SCURK object and restored %d tiles." % (
+		result.restored_tiles
+	)
+	scurk_place_print.set_status(message)
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = message
+
+
+func _redo_scurk_place() -> void:
+	if city == null or scurk_place_redo_stack.is_empty():
+		return
+	var command: Dictionary = scurk_place_redo_stack[-1]
+	var result := ScurkPlace.redo(city, command, tool_random)
+	if not result.get("ok", false):
+		_show_error("Cannot redo SCURK placement: %s" % result.error)
+		return
+	scurk_place_redo_stack.pop_back()
+	scurk_place_undo_stack.append(command)
+	last_edit_command = command
+	undo_button.disabled = false
+	scurk_place_print.set_history_enabled(
+		not scurk_place_undo_stack.is_empty(), not scurk_place_redo_stack.is_empty()
+	)
+	_refresh_details()
+	_refresh_after_city_edit(command)
+	var site: Rect2i = command.site
+	var message := "Restored SCURK tile %d at %d, %d." % [
+		int(command.tile_id), site.end.x - 1, site.end.y - 1,
+	]
+	scurk_place_print.set_status(message)
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = message
 
 
 func _open_about_dialog() -> void:
@@ -2456,6 +2622,9 @@ func _on_map_selection_changed(
 	_path: Array[Vector2i],
 	dragged: bool
 ) -> void:
+	if scurk_place_print != null and scurk_place_print.visible:
+		map_view.clear_selection_price()
+		return
 	if city == null or not Zones.supports_tool(selected_group, selected_subtool):
 		map_view.clear_selection_price()
 		return
@@ -2489,6 +2658,7 @@ func _on_file_menu(id: int) -> void:
 		2: _open_save_dialog()
 		3: _open_tile_set_dialog()
 		4: _restore_original_tile_set()
+		MENU_SCURK_PLACE_PRINT: _open_scurk_place_print()
 		5: _show_main_menu()
 		6: get_tree().quit()
 
@@ -3113,6 +3283,8 @@ func _apply_scurk_tile_set(
 	active_scurk_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
 	large_sprites = new_large
 	small_medium_sprites = new_small_medium
+	if scurk_place_print != null and scurk_place_print.visible:
+		scurk_place_print.configure(palette, large_sprites, tile_set.names)
 	_invalidate_sprite_art()
 	if city != null:
 		_refresh_map()
@@ -3130,6 +3302,8 @@ func _restore_original_tile_set() -> void:
 	active_scurk_path = ""
 	large_sprites = base_large_sprites
 	small_medium_sprites = base_small_medium_sprites
+	if scurk_place_print != null and scurk_place_print.visible:
+		scurk_place_print.configure(palette, large_sprites)
 	_invalidate_sprite_art()
 	if city != null:
 		_refresh_map()
@@ -3472,6 +3646,10 @@ func _activate_document(
 		building_objection_dialog.hide()
 	if new_city_dialog != null and new_city_dialog.visible:
 		new_city_dialog.hide()
+	if scurk_place_print != null and scurk_place_print.visible:
+		scurk_place_print.hide()
+	scurk_place_undo_stack.clear()
+	scurk_place_redo_stack.clear()
 	annual_budget_pending = false
 	game_over_active = false
 	city = loaded_city
@@ -4933,6 +5111,25 @@ func _refresh_tool_availability() -> bool:
 func _update_edit_state() -> void:
 	if map_view == null:
 		return
+	if scurk_place_print != null and scurk_place_print.visible:
+		var tile_id := scurk_place_print.selected_tile_id
+		var area := Demolish.structure_area(tile_id)
+		var can_place := (
+			city != null
+			and overlay_mode == "city"
+			and ScurkPlace.is_placeable_tile(tile_id)
+		)
+		map_view.set_edit_enabled(can_place, "point", area, false)
+		_refresh_status_summary()
+		if status_label != null:
+			status_label.remove_theme_color_override("font_color")
+			status_label.text = (
+				"SCURK tile %d selected. Click its anchor tile to place a %d by %d object."
+				% [tile_id, area, area]
+				if can_place
+				else "Select a SCURK object to place."
+			)
+		return
 	var tool_available := city != null and ToolAvailability.is_available(
 		city, selected_group, selected_subtool
 	)
@@ -5052,6 +5249,9 @@ func _apply_map_selection(
 	dragged: bool
 ) -> void:
 	if city == null:
+		return
+	if scurk_place_print != null and scurk_place_print.visible:
+		_apply_scurk_place_selection(finish)
 		return
 	if not ToolAvailability.is_available(city, selected_group, selected_subtool):
 		_show_error(
@@ -5798,6 +5998,9 @@ func _undo_last_edit() -> void:
 		return
 	var undone_command := last_edit_command
 	var command_type: String = last_edit_command.get("command_type", "")
+	if command_type == "scurk_place_object":
+		_undo_scurk_place()
+		return
 	var undo_forest_protest := (
 		command_type == "demolish"
 		and int(last_edit_command.get("easter_events", 0)) > 0

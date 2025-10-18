@@ -7,6 +7,7 @@ signal open_city_requested
 signal scenario_requested
 signal settings_requested
 signal scurk_requested
+signal scurk_place_requested
 signal about_requested
 signal exit_requested
 
@@ -15,7 +16,8 @@ const BUTTON_LABELS := [
 	"Start New City",
 	"Open City...",
 	"Play Scenario...",
-	"SCURK Tile Editor",
+	"SCURK Paint the Town",
+	"SCURK Place & Print",
 	"Settings...",
 	"About OpenSC2K...",
 	"Exit",
@@ -23,6 +25,7 @@ const BUTTON_LABELS := [
 
 var continue_button: Button
 var new_city_button: Button
+var scurk_place_button: Button
 
 
 func _ready() -> void:
@@ -35,7 +38,7 @@ func _ready() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(460, 650)
+	panel.custom_minimum_size = Vector2(460, 700)
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color("c0c0c0")
 	box.border_color = Color("ffffff")
@@ -78,6 +81,8 @@ func _ready() -> void:
 			continue_button = button
 		elif index == 1:
 			new_city_button = button
+		elif index == 5:
+			scurk_place_button = button
 	var note := Label.new()
 	note.text = "Cities use the original SC2 and SCN file formats."
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
@@ -89,6 +94,8 @@ func _ready() -> void:
 func show_menu(can_continue: bool) -> void:
 	if continue_button != null:
 		continue_button.visible = can_continue
+	if scurk_place_button != null:
+		scurk_place_button.disabled = not can_continue
 	show()
 	if can_continue and continue_button != null:
 		continue_button.grab_focus()
@@ -103,6 +110,7 @@ func _emit_action(index: int) -> void:
 		2: open_city_requested.emit()
 		3: scenario_requested.emit()
 		4: scurk_requested.emit()
-		5: settings_requested.emit()
-		6: about_requested.emit()
-		7: exit_requested.emit()
+		5: scurk_place_requested.emit()
+		6: settings_requested.emit()
+		7: about_requested.emit()
+		8: exit_requested.emit()
