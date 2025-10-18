@@ -27,7 +27,12 @@ static func supports_tool(group_index: int, subtool_index: int) -> bool:
 
 
 static func apply_path(
-	city: CityState, group_index: int, subtool_index: int, points: Array[Vector2i], random: SimRandom
+	city: CityState,
+	group_index: int,
+	subtool_index: int,
+	points: Array[Vector2i],
+	random: SimRandom,
+	free_mode := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -49,7 +54,10 @@ static func apply_path(
 	var altitude: PackedByteArray = changed_payloads.ALTM
 	var misc: PackedByteArray = changed_payloads.MISC
 	var text_overlays := city.text_overlays
-	var cost_per_tile := int(ToolCatalog.tool(group_index, subtool_index).cost)
+	var listed_cost_per_tile := int(
+		ToolCatalog.tool(group_index, subtool_index).cost
+	)
+	var cost_per_tile := 0 if free_mode else listed_cost_per_tile
 	var old_funds := city.funds()
 	var total_cost := 0
 	var applied_indices := PackedInt32Array()
@@ -97,6 +105,8 @@ static func apply_path(
 		"subtool_index": subtool_index,
 		"tile_indices": applied_indices,
 		"cost": total_cost,
+		"listed_cost": applied_indices.size() * listed_cost_per_tile,
+		"free_mode": free_mode,
 		"skipped_insufficient": skipped_insufficient,
 		"changed_ids": changed_ids,
 		"old_payloads": old_payloads,

@@ -24,7 +24,8 @@ static func apply(
 	group_index: int,
 	subtool_index: int,
 	start: Vector2i,
-	confirmation_choice := CONFIRMATION_UNSELECTED
+	confirmation_choice := CONFIRMATION_UNSELECTED,
+	free_mode := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -76,7 +77,10 @@ static func apply(
 		if current == finish:
 			break
 		current += direction
-	var cost := points.size() * int(ToolCatalog.tool(group_index, subtool_index).cost)
+	var listed_cost := (
+		points.size() * int(ToolCatalog.tool(group_index, subtool_index).cost)
+	)
+	var cost := 0 if free_mode else listed_cost
 	if confirmation_choice == CONFIRMATION_UNSELECTED:
 		return {
 			"ok": false,
@@ -85,6 +89,8 @@ static func apply(
 			"finish": finish,
 			"points": points,
 			"cost": cost,
+			"listed_cost": listed_cost,
+			"free_mode": free_mode,
 			"error": "tunnel construction confirmation is required",
 		}
 	if confirmation_choice == CONFIRMATION_CANCELLED:
@@ -95,6 +101,8 @@ static func apply(
 			"finish": finish,
 			"points": points,
 			"cost": cost,
+			"listed_cost": listed_cost,
+			"free_mode": free_mode,
 			"error": "tunnel construction canceled",
 		}
 	if confirmation_choice != CONFIRMATION_CONFIRMED:
@@ -149,6 +157,8 @@ static func apply(
 		"start_tile": start_tile,
 		"finish_tile": finish_tile,
 		"cost": cost,
+		"listed_cost": listed_cost,
+		"free_mode": free_mode,
 		"changed_ids": changed_ids,
 		"old_payloads": old_payloads,
 		"new_payloads": changed_payloads,

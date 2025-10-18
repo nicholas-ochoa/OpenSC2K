@@ -32,10 +32,19 @@ static func apply_rectangle(
 	subtool_index: int,
 	start: Vector2i,
 	finish: Vector2i,
-	dragged := true
+	dragged := true,
+	free_mode := false,
+	zone_type_override := -1
 ) -> Dictionary:
 	var preview := preview_rectangle(
-		city, group_index, subtool_index, start, finish, dragged
+		city,
+		group_index,
+		subtool_index,
+		start,
+		finish,
+		dragged,
+		free_mode,
+		zone_type_override
 	)
 	if not preview.get("ok", false):
 		return preview
@@ -61,7 +70,7 @@ static func apply_rectangle(
 			if zone_type == 0 and changed_buildings[index] > 0 and changed_buildings[index] < 5:
 				changed_buildings[index] = 0
 	var cost := int(preview.cost)
-	if cost == 0:
+	if int(preview.changed_tiles) == 0 and cost == 0:
 		return {"ok": false, "error": "no eligible tiles would change"}
 	var previous_funds := city.funds()
 	if previous_funds < cost:
@@ -71,14 +80,32 @@ static func apply_rectangle(
 	if not city.replace_buildings(changed_buildings):
 		city.replace_zones(_restore_values(changed, tile_indices, previous_values))
 		return {"ok": false, "error": "cannot store updated XBLD data"}
-	if not city.set_funds(previous_funds - cost):
+	if cost > 0 and not city.set_funds(previous_funds - cost):
 		city.replace_zones(_restore_values(changed, tile_indices, previous_values))
 		city.replace_buildings(
 			_restore_values(changed_buildings, tile_indices, previous_buildings)
 		)
 		return {"ok": false, "error": "cannot store the updated city funds"}
+	var old_payloads := {
+		"XZON": _restore_values(changed, tile_indices, previous_values),
+		"XBLD": _restore_values(changed_buildings, tile_indices, previous_buildings),
+		"MISC": city.document.find_chunk("MISC").decoded_payload.duplicate(),
+	}
+	if cost > 0:
+		old_payloads.MISC = old_payloads.MISC.duplicate()
+		_write_i32_be(old_payloads.MISC, 0x14, previous_funds)
+	var new_payloads := {
+		"XZON": city.document.find_chunk("XZON").decoded_payload.duplicate(),
+		"XBLD": city.document.find_chunk("XBLD").decoded_payload.duplicate(),
+		"MISC": city.document.find_chunk("MISC").decoded_payload.duplicate(),
+	}
+	var changed_ids := PackedStringArray()
+	for chunk_id in ["XZON", "XBLD", "MISC"]:
+		if old_payloads[chunk_id] != new_payloads[chunk_id]:
+			changed_ids.append(chunk_id)
 	return {
 		"ok": true,
+		"command_type": "zone",
 		"group_index": group_index,
 		"subtool_index": subtool_index,
 		"zone_type": zone_type,
@@ -92,6 +119,11 @@ static func apply_rectangle(
 		"new_buildings": _values_at(changed_buildings, tile_indices),
 		"previous_funds": previous_funds,
 		"cost": cost,
+		"listed_cost": int(preview.listed_cost),
+		"free_mode": free_mode,
+		"changed_ids": changed_ids,
+		"old_payloads": old_payloads,
+		"new_payloads": new_payloads,
 		"error": "",
 	}
 
@@ -102,15 +134,24 @@ static func preview_rectangle(
 	subtool_index: int,
 	start: Vector2i,
 	finish: Vector2i,
-	dragged := true
+	dragged := true,
+	free_mode := false,
+	zone_type_override := -1
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not _point_is_valid(start) or not _point_is_valid(finish):
 		return {"ok": false, "error": "zone rectangle is outside the city"}
 	var tool := ToolCatalog.tool(group_index, subtool_index)
-	var zone_type := _zone_type_for_tool(group_index, subtool_index)
-	if tool.is_empty() or zone_type < 0:
+	var has_override := (
+		free_mode and zone_type_override >= 1 and zone_type_override <= 9
+	)
+	var zone_type := (
+		zone_type_override
+		if has_override
+		else _zone_type_for_tool(group_index, subtool_index)
+	)
+	if (tool.is_empty() and not has_override) or zone_type < 0:
 		return {"ok": false, "error": "tool is not a zoning tool"}
 	var start_index := city.index_of(start.x, start.y)
 	if city.tile_flags[start_index] & FLAG_WATER:
@@ -148,7 +189,10 @@ static func preview_rectangle(
 				charged_tiles += 1
 				if _tile_is_eligible(city, index):
 					changed_tiles += 1
-	var cost := charged_tiles * int(tool.cost) + terrain_surcharges * 25
+	var listed_cost := (
+		charged_tiles * int(tool.get("cost", 0)) + terrain_surcharges * 25
+	)
+	var cost := 0 if free_mode else listed_cost
 	return {
 		"ok": true,
 		"zone_type": zone_type,
@@ -157,7 +201,9 @@ static func preview_rectangle(
 		"changed_tiles": changed_tiles,
 		"terrain_surcharges": terrain_surcharges,
 		"cost": cost,
-		"affordable": city.funds() >= cost,
+		"listed_cost": listed_cost,
+		"affordable": free_mode or city.funds() >= cost,
+		"free_mode": free_mode,
 		"error": "",
 	}
 
@@ -249,6 +295,14 @@ static func _tile_is_drag_price_eligible(
 
 static func _point_is_valid(point: Vector2i) -> bool:
 	return point.x >= 0 and point.x < CityState.MAP_SIZE and point.y >= 0 and point.y < CityState.MAP_SIZE
+
+
+static func _write_i32_be(data: PackedByteArray, offset: int, value: int) -> void:
+	var encoded := value & 0xffffffff
+	data[offset] = (encoded >> 24) & 0xff
+	data[offset + 1] = (encoded >> 16) & 0xff
+	data[offset + 2] = (encoded >> 8) & 0xff
+	data[offset + 3] = encoded & 0xff
 
 
 static func _restore_values(

@@ -24,7 +24,11 @@ static func supports_tool(group_index: int, subtool_index: int) -> bool:
 
 
 static func apply(
-	city: CityState, group_index: int, subtool_index: int, point: Vector2i
+	city: CityState,
+	group_index: int,
+	subtool_index: int,
+	point: Vector2i,
+	free_mode := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -54,7 +58,8 @@ static func apply(
 	if road_mask == 0:
 		return {"ok": false, "error": "on-ramp requires perpendicular highway and road neighbors"}
 
-	var cost := int(ToolCatalog.tool(group_index, subtool_index).cost)
+	var listed_cost := int(ToolCatalog.tool(group_index, subtool_index).cost)
+	var cost := 0 if free_mode else listed_cost
 	if city.funds() < cost:
 		return {"ok": false, "error": "insufficient funds", "cost": cost}
 
@@ -95,6 +100,8 @@ static func apply(
 		"road_direction": road_direction,
 		"road_point": road_point,
 		"cost": cost,
+		"listed_cost": listed_cost,
+		"free_mode": free_mode,
 		"changed_ids": changed_ids,
 		"old_payloads": old_payloads,
 		"new_payloads": changed_payloads,

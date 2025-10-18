@@ -140,7 +140,8 @@ static func apply(
 	start: Vector2i,
 	finish: Vector2i,
 	bridge_type := BRIDGE_UNSELECTED,
-	connection_choice := CONNECTION_UNSELECTED
+	connection_choice := CONNECTION_UNSELECTED,
+	free_mode := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -193,7 +194,8 @@ static func apply(
 			var terrain_id := int(terrain[point.x * CityState.MAP_SIZE + point.y])
 			if terrain_id < 0x30 and TERRAIN_REQUIRES_GRADING[terrain_id & 0x0f]:
 				graded_tiles += 1
-	var dry_cost := planned.size() * int(tool.cost) + graded_tiles * 25
+	var listed_dry_cost := planned.size() * int(tool.cost) + graded_tiles * 25
+	var dry_cost := 0 if free_mode else listed_dry_cost
 	if city.funds() < dry_cost:
 		return {"ok": false, "error": "insufficient funds", "cost": dry_cost}
 
@@ -208,6 +210,8 @@ static func apply(
 				"bridge_choices": bridge_choices,
 				"bridge_span_length": bridge_plan.span_length,
 				"dry_cost": dry_cost,
+				"listed_dry_cost": listed_dry_cost,
+				"free_mode": free_mode,
 				"dry_points": planned,
 				"error": "bridge type selection is required",
 			}
@@ -227,14 +231,16 @@ static func apply(
 	):
 		return {"ok": false, "cancelled": true, "error": "bridge selection canceled"}
 
+	var listed_bridge_cost := 0
 	var bridge_cost := 0
 	var bridge_built := false
 	var bridge_error := ""
 	if bridge_plan.get("ok", false) and selected_bridge >= 0:
-		bridge_cost = (
+		listed_bridge_cost = (
 			int(bridge_plan.span_length) * int(BRIDGE_COSTS[selected_bridge])
 		)
-		if city.funds() - dry_cost < bridge_cost:
+		bridge_cost = 0 if free_mode else listed_bridge_cost
+		if not free_mode and city.funds() - dry_cost < bridge_cost:
 			bridge_error = "insufficient funds for the bridge"
 			if planned.is_empty():
 				return {
@@ -246,17 +252,20 @@ static func apply(
 			bridge_built = true
 	var cost := dry_cost + (bridge_cost if bridge_built else 0)
 	var connection_anchor: Vector2i = planned[-1] if not planned.is_empty() else start
-	var connection_cost := _connection_cost(mode)
+	var listed_connection_cost := _connection_cost(mode)
+	var connection_cost := 0 if free_mode else listed_connection_cost
 	var connection_available: bool = (
 		not bridge_plan.get("ok", false)
 		and not planned.is_empty()
-		and connection_cost > 0
+		and listed_connection_cost > 0
 		and _is_connection_exit(planned, start, finish)
 		and text_overlays[
 			connection_anchor.x * CityState.MAP_SIZE + connection_anchor.y
 		] != CONNECTION_LABEL
 	)
-	var connection_affordable: bool = city.funds() - dry_cost >= connection_cost
+	var connection_affordable: bool = (
+		free_mode or city.funds() - dry_cost >= connection_cost
+	)
 	if (
 		connection_available
 		and connection_affordable
@@ -267,7 +276,10 @@ static func apply(
 			"connection_selection_required": true,
 			"connection_anchor": connection_anchor,
 			"connection_cost": connection_cost,
+			"listed_connection_cost": listed_connection_cost,
 			"dry_cost": dry_cost,
+			"listed_dry_cost": listed_dry_cost,
+			"free_mode": free_mode,
 			"dry_points": planned,
 			"error": "neighbor connection confirmation is required",
 		}
@@ -366,6 +378,7 @@ static func apply(
 		),
 		"bridge_span_length": bridge_plan.get("span_length", 0),
 		"bridge_cost": bridge_cost if bridge_built else 0,
+		"listed_bridge_cost": listed_bridge_cost if bridge_built else 0,
 		"bridge_error": bridge_error,
 		"connection_anchor": connection_anchor,
 		"connection_built": connection_built,
@@ -373,9 +386,19 @@ static func apply(
 			connection_available and connection_choice == CONNECTION_CANCELLED
 		),
 		"connection_cost": connection_cost if connection_built else 0,
+		"listed_connection_cost": (
+			listed_connection_cost if connection_built else 0
+		),
 		"connection_error": connection_error,
 		"cost": cost,
 		"dry_cost": dry_cost,
+		"listed_cost": (
+			listed_dry_cost
+			+ (listed_bridge_cost if bridge_built else 0)
+			+ (listed_connection_cost if connection_built else 0)
+		),
+		"listed_dry_cost": listed_dry_cost,
+		"free_mode": free_mode,
 		"graded_tiles": graded_tiles,
 		"stopped_early": not bridge_built and planned[-1] != finish,
 		"changed_ids": changed_ids,

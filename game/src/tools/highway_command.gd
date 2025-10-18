@@ -59,7 +59,8 @@ static func apply(
 	selected_start: Vector2i,
 	selected_finish: Vector2i,
 	connection_choice := CONNECTION_UNSELECTED,
-	bridge_type := BRIDGE_UNSELECTED
+	bridge_type := BRIDGE_UNSELECTED,
+	free_mode := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -107,7 +108,10 @@ static func apply(
 				"error": bridge_plan.get("error", "highway bridge is invalid"),
 			}
 		return {"ok": false, "error": "highway cannot start on this section"}
-	var route_cost := sections.size() * int(ToolCatalog.tool(group_index, subtool_index).cost)
+	var listed_route_cost := (
+		sections.size() * int(ToolCatalog.tool(group_index, subtool_index).cost)
+	)
+	var route_cost := 0 if free_mode else listed_route_cost
 	if city.funds() < route_cost:
 		return {"ok": false, "error": "insufficient funds", "cost": route_cost}
 
@@ -122,6 +126,8 @@ static func apply(
 				"bridge_choices": bridge_choices,
 				"bridge_span_length": int(bridge_plan.span_length),
 				"route_cost": route_cost,
+				"listed_route_cost": listed_route_cost,
+				"free_mode": free_mode,
 				"dry_sections": sections,
 				"error": "highway bridge type selection is required",
 			}
@@ -138,14 +144,16 @@ static func apply(
 	):
 		return {"ok": false, "cancelled": true, "error": "bridge selection canceled"}
 
+	var listed_bridge_cost := 0
 	var bridge_cost := 0
 	var bridge_built := false
 	var bridge_error := ""
 	if bridge_plan.get("ok", false) and selected_bridge >= 0:
-		bridge_cost = (
+		listed_bridge_cost = (
 			int(bridge_plan.span_length) * int(BRIDGE_COSTS[selected_bridge])
 		)
-		if city.funds() - route_cost < bridge_cost:
+		bridge_cost = 0 if free_mode else listed_bridge_cost
+		if not free_mode and city.funds() - route_cost < bridge_cost:
 			bridge_error = "insufficient funds for the highway bridge"
 			if sections.is_empty():
 				return {"ok": false, "error": "insufficient funds", "cost": bridge_cost}
@@ -159,7 +167,10 @@ static func apply(
 		and _is_connection_exit(sections, finish)
 		and text_overlays[start.x * CityState.MAP_SIZE + start.y] != CONNECTION_LABEL
 	)
-	var connection_affordable := city.funds() - route_cost >= CONNECTION_COST
+	var connection_affordable := (
+		free_mode or city.funds() - route_cost >= CONNECTION_COST
+	)
+	var connection_cost := 0 if free_mode else CONNECTION_COST
 	if (
 		connection_available
 		and connection_affordable
@@ -169,8 +180,11 @@ static func apply(
 			"ok": false,
 			"connection_selection_required": true,
 			"connection_anchor": connection_anchor,
-			"connection_cost": CONNECTION_COST,
+			"connection_cost": connection_cost,
+			"listed_connection_cost": CONNECTION_COST,
 			"route_cost": route_cost,
+			"listed_route_cost": listed_route_cost,
+			"free_mode": free_mode,
 			"sections": sections,
 			"error": "neighbor connection confirmation is required",
 		}
@@ -187,7 +201,7 @@ static func apply(
 	var cost := (
 		route_cost
 		+ (bridge_cost if bridge_built else 0)
-		+ (CONNECTION_COST if connection_built else 0)
+		+ (connection_cost if connection_built else 0)
 	)
 
 	var changed_payloads := NetworkCommand._duplicate_payloads(old_payloads)
@@ -280,6 +294,13 @@ static func apply(
 		"tile_indices": tile_indices,
 		"cost": cost,
 		"route_cost": route_cost,
+		"listed_cost": (
+			listed_route_cost
+			+ (listed_bridge_cost if bridge_built else 0)
+			+ (CONNECTION_COST if connection_built else 0)
+		),
+		"listed_route_cost": listed_route_cost,
+		"free_mode": free_mode,
 		"bridge_built": bridge_built,
 		"bridge_cancelled": (
 			bridge_plan.get("ok", false) and selected_bridge == BRIDGE_CANCELLED
@@ -290,13 +311,15 @@ static func apply(
 		"bridge_endpoint_sections": bridge_endpoint_sections,
 		"bridge_span_length": int(bridge_plan.get("span_length", 0)),
 		"bridge_cost": bridge_cost if bridge_built else 0,
+		"listed_bridge_cost": listed_bridge_cost if bridge_built else 0,
 		"bridge_error": bridge_error if bridge_attempted else "",
 		"connection_built": connection_built,
 		"connection_cancelled": (
 			connection_available and connection_choice == CONNECTION_CANCELLED
 		),
 		"connection_anchor": connection_anchor,
-		"connection_cost": CONNECTION_COST if connection_built else 0,
+		"connection_cost": connection_cost if connection_built else 0,
+		"listed_connection_cost": CONNECTION_COST if connection_built else 0,
 		"graded_sections": graded_sections,
 		"connection_error": (
 			"insufficient funds for the neighbor connection"

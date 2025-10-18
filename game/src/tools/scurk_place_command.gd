@@ -174,6 +174,7 @@ static func apply(
 		"ok": true,
 		"error": "",
 		"command_type": "scurk_place_object",
+		"scurk_place_history": true,
 		"tile_id": tile_id,
 		"area": area,
 		"site": site,
@@ -208,18 +209,28 @@ static func _apply_history(
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
-	if (
-		not command.get("ok", false)
-		or command.get("command_type", "") != "scurk_place_object"
+	if not command.get("ok", false) or not command.get(
+		"scurk_place_history", false
 	):
 		return _failure("Place & Print command is invalid")
-	if process_random == null:
-		return _failure("process random state is required")
-	var expected_state := int(command.get(
-		"process_random_state_before" if forward else "process_random_state_after", -1
-	))
-	if process_random.state != expected_state:
-		return _failure("process random state changed after this Place & Print command")
+	var before_random_key := ""
+	var after_random_key := ""
+	if command.has("process_random_state_before"):
+		before_random_key = "process_random_state_before"
+		after_random_key = "process_random_state_after"
+	elif command.has("random_state_before"):
+		before_random_key = "random_state_before"
+		after_random_key = "random_state_after"
+	if not before_random_key.is_empty():
+		if process_random == null:
+			return _failure("process random state is required")
+		var expected_state := int(command.get(
+			before_random_key if forward else after_random_key, -1
+		))
+		if process_random.state != expected_state:
+			return _failure(
+				"process random state changed after this Place & Print command"
+			)
 	var changed_ids: PackedStringArray = command.get(
 		"changed_ids", PackedStringArray()
 	)
@@ -241,13 +252,23 @@ static func _apply_history(
 		city, changed_ids, destination_payloads, source_payloads
 	):
 		return _failure("cannot restore Place & Print changes")
-	process_random.state = int(command.get(
-		"process_random_state_after" if forward else "process_random_state_before", -1
-	))
+	if changed_ids.has("ALTM"):
+		var altitude: PackedByteArray = destination_payloads.ALTM
+		for index in CityState.TILE_COUNT:
+			city.altitude_words[index] = (
+				(altitude[index * 2] << 8) | altitude[index * 2 + 1]
+			)
+	if not before_random_key.is_empty():
+		process_random.state = int(command.get(
+			after_random_key if forward else before_random_key, -1
+		))
 	return {
 		"ok": true,
 		"error": "",
-		"restored_tiles": command.get("tile_indices", PackedInt32Array()).size(),
+		"restored_tiles": maxi(
+			command.get("tile_indices", PackedInt32Array()).size(),
+			command.get("points", []).size()
+		),
 	}
 
 

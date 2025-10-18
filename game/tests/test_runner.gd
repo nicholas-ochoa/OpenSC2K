@@ -3872,6 +3872,176 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		"SCURK Place & Print fixture removes the marina",
 	)
 
+	var free_zone := Zones.apply_rectangle(
+		city,
+		8,
+		0,
+		Vector2i(80, 80),
+		Vector2i(81, 81),
+		true,
+		true,
+		7
+	)
+	free_zone["scurk_place_history"] = true
+	_check(
+		free_zone.ok
+		and free_zone.cost == 0
+		and city.funds() == 0
+		and city.zone_id(80, 80) == 7
+		and city.zone_id(81, 81) == 7,
+		"SCURK zones include the free military zone without city funds",
+	)
+	_check(
+		ScurkPlace.undo(city, free_zone, process_random).ok
+		and city.zone_id(80, 80) == 0,
+		"SCURK free zoning uses the shared exact Undo history",
+	)
+	_check(
+		ScurkPlace.redo(city, free_zone, process_random).ok
+		and city.zone_id(81, 81) == 7
+		and ScurkPlace.undo(city, free_zone, process_random).ok,
+		"SCURK free zoning uses the shared exact Redo history",
+	)
+
+	var free_road := Networks.apply(
+		city,
+		6,
+		0,
+		Vector2i(90, 90),
+		Vector2i(92, 90),
+		Networks.BRIDGE_UNSELECTED,
+		Networks.CONNECTION_UNSELECTED,
+		true
+	)
+	free_road["scurk_place_history"] = true
+	_check(
+		free_road.ok
+		and free_road.cost == 0
+		and free_road.listed_cost == 30
+		and city.funds() == 0
+		and city.building_id(91, 90) == 0x1e,
+		"SCURK builds a connected road without changing city funds",
+	)
+	_check(
+		ScurkPlace.undo(city, free_road, process_random).ok
+		and city.building_id(91, 90) == 0
+		and ScurkPlace.redo(city, free_road, process_random).ok
+		and city.building_id(91, 90) == 0x1e
+		and ScurkPlace.undo(city, free_road, process_random).ok,
+		"SCURK free networks use exact shared Undo and Redo",
+	)
+
+	var free_water := Landscapes.apply_path(
+		city, 1, 1, [Vector2i(100, 100)], process_random, true
+	)
+	free_water["scurk_place_history"] = true
+	_check(
+		free_water.ok
+		and free_water.cost == 0
+		and free_water.listed_cost == 100
+		and city.funds() == 0
+		and city.is_water(100, 100),
+		"SCURK places surface water without changing city funds",
+	)
+	_check(
+		ScurkPlace.undo(city, free_water, process_random).ok
+		and not city.is_water(100, 100),
+		"SCURK free landscape changes use exact shared Undo",
+	)
+
+	var free_raise_before := city.land_altitude(104, 104)
+	var free_raise := TerrainTools.apply_path(
+		city,
+		0,
+		2,
+		Vector2i(104, 104),
+		[Vector2i(104, 104)],
+		process_random,
+		true
+	)
+	free_raise["scurk_place_history"] = true
+	_check(
+		free_raise.ok
+		and free_raise.cost == 0
+		and free_raise.listed_cost == 25
+		and city.funds() == 0
+		and city.land_altitude(104, 104) == free_raise_before + 1,
+		"SCURK raises terrain without changing city funds",
+	)
+	var free_raise_undo := ScurkPlace.undo(city, free_raise, process_random)
+	_check(
+		free_raise_undo.ok
+		and city.land_altitude(104, 104) == free_raise_before,
+		"SCURK free terrain changes use exact shared Undo: ok=%s before=%s current=%s error=%s"
+		% [
+			free_raise_undo.get("ok", false),
+			free_raise_before,
+			city.land_altitude(104, 104),
+			free_raise_undo.get("error", ""),
+		],
+	)
+
+	var placed_for_bulldozer := ScurkPlace.apply(
+		city, 0x70, Vector2i(108, 108), process_random
+	)
+	_check(placed_for_bulldozer.ok, "SCURK Bulldozer fixture places an object")
+	var bulldozer_random_state := process_random.state
+	var free_bulldozer := Demolish.apply_path(
+		city,
+		0,
+		0,
+		[Vector2i(108, 108)],
+		process_random,
+		false,
+		true
+	)
+	free_bulldozer["scurk_place_history"] = true
+	_check(
+		free_bulldozer.ok
+		and free_bulldozer.cost == 0
+		and city.funds() == 0
+		and city.building_id(108, 108) == 0
+		and city.zone_id(108, 108) == 1
+		and free_bulldozer.effect_events.is_empty()
+		and free_bulldozer.sound_events.is_empty()
+		and process_random.state == bulldozer_random_state,
+		"SCURK Bulldozer removes an object without rubble, zoning loss, cost, or effects",
+	)
+	_check(
+		ScurkPlace.undo(city, free_bulldozer, process_random).ok
+		and city.building_id(108, 108) == 0x70,
+		"SCURK Bulldozer uses exact shared Undo",
+	)
+	_check(
+		ScurkPlace.undo(city, placed_for_bulldozer, process_random).ok,
+		"SCURK Bulldozer fixture removes its restored object",
+	)
+
+	var free_highway := Highways.apply(
+		city,
+		6,
+		1,
+		Vector2i(116, 116),
+		Vector2i(118, 116),
+		Highways.CONNECTION_UNSELECTED,
+		Highways.BRIDGE_UNSELECTED,
+		true
+	)
+	free_highway["scurk_place_history"] = true
+	_check(
+		free_highway.ok
+		and free_highway.cost == 0
+		and free_highway.listed_cost == 200
+		and city.funds() == 0
+		and city.building_id(116, 116) >= 0x49,
+		"SCURK builds a highway without changing city funds",
+	)
+	_check(
+		ScurkPlace.undo(city, free_highway, process_random).ok
+		and city.building_id(116, 116) == 0,
+		"SCURK free highways use exact shared Undo",
+	)
+
 
 func _test_indexed_bmp() -> void:
 	var index_palette := Palette.index_encoding()
@@ -14128,6 +14298,21 @@ func _test_onramp_command(reference_root: String) -> void:
 	_check(city.set_building_id(20, 19, 0x1d), "On-ramp funds fixture places north road")
 	var unaffordable := Onramps.apply(city, 6, 3, Vector2i(20, 20))
 	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "On-ramp command reports insufficient funds")
+	_check(city.set_funds(0), "SCURK on-ramp fixture clears funds")
+	var free_onramp := Onramps.apply(
+		city, 6, 3, Vector2i(20, 20), true
+	)
+	_check(
+		free_onramp.ok
+		and free_onramp.cost == 0
+		and free_onramp.listed_cost == 25
+		and city.funds() == 0,
+		"SCURK builds an on-ramp without changing city funds",
+	)
+	_check(
+		Onramps.undo(city, free_onramp).ok and city.funds() == 0,
+		"SCURK free on-ramp Undo preserves city funds",
+	)
 
 
 func _test_tunnel_command(reference_root: String) -> void:
@@ -14215,6 +14400,26 @@ func _test_tunnel_command(reference_root: String) -> void:
 		city, 6, 2, Vector2i(20, 20), Tunnels.CONFIRMATION_CONFIRMED
 	)
 	_check(not unaffordable.ok and unaffordable.error == "insufficient funds", "Tunnel command reports insufficient funds")
+	_check(city.set_funds(0), "SCURK tunnel fixture clears funds")
+	var free_tunnel := Tunnels.apply(
+		city,
+		6,
+		2,
+		Vector2i(20, 20),
+		Tunnels.CONFIRMATION_CONFIRMED,
+		true
+	)
+	_check(
+		free_tunnel.ok
+		and free_tunnel.cost == 0
+		and free_tunnel.listed_cost == 450
+		and city.funds() == 0,
+		"SCURK builds a tunnel without changing city funds",
+	)
+	_check(
+		Tunnels.undo(city, free_tunnel).ok and city.funds() == 0,
+		"SCURK free tunnel Undo preserves city funds",
+	)
 
 
 func _test_highway_command(reference_root: String) -> void:

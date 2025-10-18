@@ -48,7 +48,8 @@ static func apply_path(
 	subtool_index: int,
 	start: Vector2i,
 	points: Array[Vector2i],
-	random: SimRandom = null
+	random: SimRandom = null,
+	free_mode := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -75,10 +76,12 @@ static func apply_path(
 	var labels: PackedByteArray = changed_payloads.XLAB
 	var microsims: PackedByteArray = changed_payloads.XMIC
 	var misc: PackedByteArray = changed_payloads.MISC
-	var funds := city.funds()
+	var old_funds := city.funds()
+	var funds := 0x7fffffff if free_mode else old_funds
 	var target_altitude := _land_altitude(altitude, city.index_of(start.x, start.y))
 	var action_count := 0
 	var total_cost := 0
+	var listed_cost := 0
 	var changed_indices := PackedInt32Array()
 	var skipped_conflicts := 0
 	var skipped_insufficient := 0
@@ -142,7 +145,9 @@ static func apply_path(
 			continue
 		random_used = random_used or bool(cleared.random_used)
 		funds = int(trial.funds)
-		total_cost += int(trial.cost)
+		listed_cost += int(trial.cost)
+		if not free_mode:
+			total_cost += int(trial.cost)
 		action_count += 1
 		_retile_region(
 			altitude, buildings, terrain, zones, flags, misc, retile_indices,
@@ -171,7 +176,9 @@ static func apply_path(
 		if skipped_conflicts > 0:
 			return {"ok": false, "error": "terrain conflict demolition needs random state"}
 		return {"ok": false, "error": "no terrain height changed"}
-	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, funds)
+	BuildingCommand._write_u32_be(
+		misc, BuildingCommand.MISC_FUNDS, old_funds if free_mode else funds
+	)
 
 	var changed_ids := PackedStringArray()
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
@@ -190,6 +197,8 @@ static func apply_path(
 		"tile_indices": changed_indices,
 		"action_count": action_count,
 		"cost": total_cost,
+		"listed_cost": listed_cost,
+		"free_mode": free_mode,
 		"skipped_conflicts": skipped_conflicts,
 		"skipped_insufficient": skipped_insufficient,
 		"effect_events": effect_events,
