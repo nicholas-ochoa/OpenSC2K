@@ -34,6 +34,7 @@ const BRIDGE_DEBRIS_SPRITE := 1392
 const SOUND_EXPLODE := 504
 const SOUND_FOREST_PROTEST := 512
 const NEWS_FOREST_PROTEST := 0x28
+const MAX_PARALLEL_EFFECT_OFFSET_FRAMES := 2
 const MISC_GRANTED_REWARDS := 0x0078
 const REWARD_BIT_BY_TILE := {
 	0xf3: 0,
@@ -101,6 +102,21 @@ static func append_effect_sequence(
 	return first_frame + frame_count
 
 
+static func parallel_effect_offset(
+	point: Vector2i, action_index: int, random_seed: int
+) -> int:
+	if action_index <= 0:
+		return 0
+	var mixed := (
+		point.x * 0x45d9f3b
+		+ point.y * 0x119de1f3
+		+ action_index * 0x27d4eb2d
+		+ random_seed
+	)
+	mixed = mixed ^ (mixed >> 16)
+	return 1 + absi(mixed) % MAX_PARALLEL_EFFECT_OFFSET_FRAMES
+
+
 static func apply_path(
 	city: CityState,
 	group_index: int,
@@ -146,7 +162,6 @@ static func apply_path(
 	var news_items: Array[Dictionary] = []
 	var effect_events: Array[Dictionary] = []
 	var sound_events: Array[int] = []
-	var next_effect_frame := 0
 	var random_state_before := random.state
 
 	for point in points:
@@ -204,10 +219,11 @@ static func apply_path(
 			news_items.append({"type": NEWS_FOREST_PROTEST, "argument": 0})
 			sound_events.append(SOUND_FOREST_PROTEST)
 		var result_effects: Array = result.get("effect_events", [])
-		next_effect_frame = append_effect_sequence(
-			effect_events, result_effects, next_effect_frame
+		var effect_offset := parallel_effect_offset(
+			point, action_count - 1, random_state_before
 		)
-		if not result_effects.is_empty():
+		append_effect_sequence(effect_events, result_effects, effect_offset)
+		if not result_effects.is_empty() and not sound_events.has(SOUND_EXPLODE):
 			sound_events.append(SOUND_EXPLODE)
 		for index in result.get("indices", PackedInt32Array()):
 			if not changed_indices.has(index):

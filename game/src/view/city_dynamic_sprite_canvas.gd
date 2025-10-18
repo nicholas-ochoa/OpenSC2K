@@ -7,16 +7,24 @@ const MAX_SPECIAL_BATCH_AREA := 1500000
 var visuals: Array[Dictionary] = []
 var view_scale := 1.0
 var view_offset := Vector2.ZERO
+var visual_revision := 0
 
 
 func set_visuals(
 	value: Array[Dictionary], scale_value: float, offset_value: Vector2
 ) -> void:
 	visuals = value.duplicate()
-	view_scale = scale_value
-	view_offset = offset_value
+	visual_revision += 1
+	set_view_transform(scale_value, offset_value)
 	visible = not visuals.is_empty()
 	queue_redraw()
+
+
+func set_view_transform(scale_value: float, offset_value: Vector2) -> void:
+	view_scale = scale_value
+	view_offset = offset_value
+	position = view_offset
+	scale = Vector2(view_scale, view_scale)
 
 
 func visual_count() -> int:
@@ -126,9 +134,6 @@ func _draw() -> void:
 		var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
 		draw_texture_rect(
 			texture,
-			Rect2(
-				view_offset + source_position * view_scale,
-				source_size * view_scale,
-			),
+			Rect2(source_position, source_size),
 			false,
 		)

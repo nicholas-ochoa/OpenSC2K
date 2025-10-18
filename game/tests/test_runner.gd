@@ -335,13 +335,17 @@ func _test_invalid_rle() -> void:
 
 
 func _test_rci_status_control() -> void:
-	var graph_rect := Rect2(27, 2, 83, 20)
+	_check(
+		RciStatus.GRAPH_BACKGROUND.get_luminance() > 0.8,
+		"RCI status bars use a light graph background",
+	)
+	var graph_rect := Rect2(27, 2, 71, 20)
 	var bars := RciStatus.bar_rects(Vector3i(2000, -1000, 0), graph_rect)
 	_check(
 		bars == [
-			Rect2(33, 4, 14, 8),
-			Rect2(61, 13, 14, 4),
-			Rect2(89, 12, 14, 0),
+			Rect2(32, 4, 12, 8),
+			Rect2(56, 13, 12, 4),
+			Rect2(80, 12, 12, 0),
 		],
 		"RCI status bars use one shared zero line and signed demand heights",
 	)
@@ -358,7 +362,8 @@ func _test_rci_status_control() -> void:
 	control.set_demand(Vector3i(3000, -3000, 50))
 	_check(
 		control.demand == Vector3i(2000, -2000, 50)
-		and control.demand_available,
+		and control.demand_available
+		and control.custom_minimum_size.x == 100,
 		"RCI status control clamps values to the saved demand range",
 	)
 	control.clear_demand()
@@ -2061,6 +2066,12 @@ func _test_sprite_archives(reference_root: String) -> void:
 			and sign_entries[0].draw_order == 16448,
 			"Sign source bounds match zoom %.2f" % zoom_fixture[0],
 		)
+	var sign_cache_builds := map_control._sign_cache_build_count
+	map_control.sign_source_entries()
+	_check(
+		map_control._sign_cache_build_count == sign_cache_builds,
+		"Repeated sign drawing reuses the zoom-specific city-sign scan",
+	)
 	map_control.set_sign_occlusion_visuals({sign_city.index_of(64, 64): {"test": true}})
 	_check(
 		map_control.sign_occlusion_visuals.size() == 1,
@@ -2251,6 +2262,26 @@ func _test_sprite_archives(reference_root: String) -> void:
 		map_control.dynamic_sprites.size() == 1500
 		and map_control.dynamic_render_node_count() == 1,
 		"Map control batches 1,500 dynamic sprites in one render node",
+	)
+	var visual_revision := map_control._dynamic_canvas.visual_revision
+	var middle_press := InputEventMouseButton.new()
+	middle_press.button_index = MOUSE_BUTTON_MIDDLE
+	middle_press.pressed = true
+	map_control._handle_mouse_button(middle_press)
+	var pan_motion := InputEventMouseMotion.new()
+	pan_motion.relative = Vector2(12, 8)
+	pan_motion.button_mask = MOUSE_BUTTON_MASK_MIDDLE
+	map_control._handle_mouse_motion(pan_motion)
+	_check(
+		map_control.is_panning()
+		and map_control._dynamic_canvas.visual_revision == visual_revision,
+		"Middle-button panning moves the cached dynamic canvas without rebuilding it",
+	)
+	pan_motion.button_mask = 0
+	map_control._handle_mouse_motion(pan_motion)
+	_check(
+		not map_control.is_panning(),
+		"Map panning stops if the pointer no longer reports a pressed pan button",
 	)
 	map_control.set_dynamic_sprites([])
 	_check(map_control.dynamic_sprites.is_empty(), "Map control clears its dynamic sprite layer")
@@ -8576,6 +8607,42 @@ func _test_special_zone_growth(reference_root: String) -> void:
 		and edge_text[127 * 128 + 17] == 202,
 		"Map-edge airplane stores its runway target and attached XTXT record",
 	)
+	var maxis_things := _filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)
+	var maxis_text := _filled_bytes(CityState.TILE_COUNT, 0)
+	maxis_text[30 * CityState.MAP_SIZE + 20] = 0xff
+	var spawned_maxis := MovingThings.spawn_maxis_man(
+		maxis_things,
+		maxis_text,
+		Vector2i(18, 20),
+		Vector2i(30, 20),
+		241,
+		7,
+	)
+	_check(
+		spawned_maxis.spawned
+		and spawned_maxis.record == 1
+		and maxis_things[12] == MovingThings.TYPE_MAXIS_MAN
+		and maxis_things[12 + 1] == 2
+		and maxis_things[12 + 3] == 18
+		and maxis_things[12 + 4] == 20
+		and maxis_things[12 + 5] == 7
+		and maxis_things[12 + 8] == 30
+		and maxis_things[12 + 9] == 20
+		and maxis_things[12 + 11] == 241
+		and maxis_text[18 * CityState.MAP_SIZE + 20] == 202,
+		"Debug Maxis Man dispatch stores a linked moving-object record and target",
+	)
+	_check(
+		not MovingThings.spawn_maxis_man(
+			maxis_things,
+			maxis_text,
+			Vector2i(17, 20),
+			Vector2i(30, 20),
+			241,
+			7,
+		).spawned,
+		"Maxis Man dispatch keeps one active hero",
+	)
 
 	var ship_fixture := _special_growth_fixture(reference_root)
 	_check(ship_fixture.city.set_zone_id(20, 20, 9), "Ship fixture sets a seaport zone")
@@ -14764,6 +14831,50 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(rubble.ok and simple_city.building_id(10, 10) == 0, "Demolish clears rubble")
 	_check(rubble.cost == 1 and simple_city.funds() == 9, "Rubble demolition charges one dollar")
 	_check(Demolish.undo(simple_city, rubble, demolition_random).ok, "Rubble demolition can be undone")
+	_check(simple_city.set_building_id(12, 10, 0x1d), "Parallel demolish fixture places its first road")
+	_check(simple_city.set_building_id(13, 10, 0x1d), "Parallel demolish fixture places its second road")
+	_check(
+		simple_document.set_misc_u32(0x01f0 + 0x1d * 4, 2),
+		"Parallel demolish fixture counts both road tiles",
+	)
+	var parallel_demolition := Demolish.apply_path(
+		simple_city,
+		0,
+		0,
+		[Vector2i(12, 10), Vector2i(13, 10)],
+		demolition_random,
+	)
+	var parallel_effects := true
+	var first_effect_frames := PackedInt32Array()
+	for effect in parallel_demolition.get("effect_events", []):
+		var frame := int(effect.get("frame", -1))
+		parallel_effects = (
+			parallel_effects
+			and frame >= 0
+			and frame <= Demolish.MAX_PARALLEL_EFFECT_OFFSET_FRAMES
+		)
+		first_effect_frames.append(frame)
+	_check(
+		parallel_demolition.ok
+		and parallel_demolition.action_count == 2
+		and parallel_demolition.sound_events == [Demolish.SOUND_EXPLODE]
+		and parallel_effects
+		and first_effect_frames.has(0)
+		and (first_effect_frames.has(1) or first_effect_frames.has(2)),
+		"A bulldozer rectangle starts all tile effects with small parallel offsets",
+	)
+	_check(
+		Demolish.undo(simple_city, parallel_demolition, demolition_random).ok
+		and simple_city.building_id(12, 10) == 0x1d
+		and simple_city.building_id(13, 10) == 0x1d,
+		"One Undo restores the complete parallel bulldozer rectangle",
+	)
+	_check(simple_city.set_building_id(12, 10, 0), "Parallel demolish fixture clears its first road")
+	_check(simple_city.set_building_id(13, 10, 0), "Parallel demolish fixture clears its second road")
+	_check(
+		simple_document.set_misc_u32(0x01f0 + 0x1d * 4, 0),
+		"Parallel demolish fixture clears its road count",
+	)
 	for story_slot in NewsQueue.QUEUE_COUNT:
 		for story_field in NewsQueue.STORY_FIELD_COUNT:
 			_check(

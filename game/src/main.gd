@@ -42,6 +42,7 @@ const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const MovingThingAudio = preload("res://src/audio/moving_thing_audio.gd")
+const MovingThingSpawner = preload("res://src/simulation/moving_thing_spawner.gd")
 const Networks = preload("res://src/tools/network_command.gd")
 const Hydro = preload("res://src/tools/hydro_command.gd")
 const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
@@ -143,6 +144,7 @@ const MONTH_NAMES := [
 	"July", "August", "September", "October", "November", "December",
 ]
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
+const STATUS_REPORT_ROTATION_SECONDS := 7.0
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
@@ -166,6 +168,9 @@ const INDUSTRY_STRING_LAST := 432
 
 var city: CityState
 var current_document: Sc2File
+var saved_city_snapshot := PackedByteArray()
+var current_save_path := ""
+var current_city_saved_once := false
 var palette: Sc2Palette
 var scenario_palette: Sc2Palette
 var palette_index_encoding: Sc2Palette
@@ -245,6 +250,7 @@ var status_population_label: Label
 var status_weather_label: Label
 var status_rci_graph: RciStatusControl
 var status_reports_label: Label
+var status_speed_label: Label
 var file_dialog: FileDialog
 var save_dialog: FileDialog
 var tile_set_dialog: FileDialog
@@ -271,6 +277,7 @@ var new_city_preview_game_start := 1
 var new_city_preview_process_cursor := 1
 var new_city_preview_game_cursor := 1
 var options_menu: MenuButton
+var speed_menu: MenuButton
 var view_menu: MenuButton
 var view_menu_underground_items := false
 var disasters_menu: MenuButton
@@ -362,6 +369,10 @@ var scurk_place_print: ScurkPlacePrintControl
 var scurk_place_undo_stack: Array[Dictionary] = []
 var scurk_place_redo_stack: Array[Dictionary] = []
 var about_dialog: AcceptDialog
+var save_changes_dialog: ConfirmationDialog
+var pending_city_exit_action := ""
+var pending_city_exit_path := ""
+var pending_city_exit_waiting_for_save := false
 var budget_dialog: ConfirmationDialog
 var budget_notice_label: Label
 var budget_controls: Array[SpinBox] = []
@@ -377,9 +388,12 @@ var scenario_dialog: AcceptDialog
 var scenario_picture_view: TextureRect
 var scenario_text_view: TextEdit
 var fps_update_seconds := 0.0
+var status_report_index := 0
+var status_report_elapsed_seconds := 0.0
 
 
 func _ready() -> void:
+	get_tree().auto_accept_quit = false
 	reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
 	_load_app_settings()
 	music_player = MidiSynth.new()
@@ -471,15 +485,21 @@ func _ready() -> void:
 	_show_main_menu()
 
 
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_inside_tree():
+		_request_city_exit("quit")
+
+
 func _process(delta: float) -> void:
 	_update_fps(delta)
+	_update_status_report_rotation(delta)
 	_poll_static_render()
 	_start_pending_static_render()
 	if speed_controller == null or city == null:
 		return
 	simulation_engine.midi_playback_active = _music_playback_is_active()
 	var interaction_suspended := (
-		(map_view != null and map_view.is_left_drag_active())
+		(map_view != null and (map_view.is_left_drag_active() or map_view.is_panning()))
 		or budget_dialog.visible
 		or bridge_dialog.visible
 		or tool_choice_dialog.visible
@@ -495,6 +515,8 @@ func _process(delta: float) -> void:
 		or (scurk_editor != null and scurk_editor.visible)
 		or (scurk_place_print != null and scurk_place_print.visible)
 		or (main_menu != null and main_menu.visible)
+		or (save_dialog != null and save_dialog.visible)
+		or (save_changes_dialog != null and save_changes_dialog.visible)
 		or bond_dialog.visible
 		or military_dialog.visible
 		or scenario_dialog.visible
@@ -507,6 +529,7 @@ func _process(delta: float) -> void:
 	)
 	if not result.ok:
 		speed_controller.set_speed(GameSpeed.Speed.PAUSED)
+		_sync_speed_ui()
 		_show_error("Simulation stopped: %s" % result.error)
 		return
 	if (
@@ -618,7 +641,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	add_child(page)
 
 	var menu_bar := PanelContainer.new()
-	menu_bar.custom_minimum_size = Vector2(0, 27)
+	menu_bar.custom_minimum_size = Vector2(0, 25)
 	menu_bar.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("ffffff"), 0))
 	page.add_child(menu_bar)
 	var menu_row := HBoxContainer.new()
@@ -630,10 +653,13 @@ func _build_interface(toolbar_art: Image) -> void:
 		["SCURK Place & Print...", MENU_SCURK_PLACE_PRINT],
 		["Main Menu", 5], ["Exit", 6],
 	], _on_file_menu)
-	_add_menu(menu_row, "Speed", [
+	speed_menu = _add_menu(menu_row, "Speed", [
 		["Pause", 0], ["Turtle", 1], ["Llama", 2], ["Cheetah", 3],
 		["African Swallow", 4],
 	], _on_speed_menu)
+	for speed_id in range(5):
+		var speed_index := speed_menu.get_popup().get_item_index(speed_id)
+		speed_menu.get_popup().set_item_as_checkable(speed_index, true)
 	options_menu = _add_menu(menu_row, "Options", [
 		["Auto-Budget", MENU_AUTO_BUDGET], ["Auto-Goto", MENU_AUTO_GOTO],
 		["Sound Effects", MENU_SOUND_EFFECTS], ["Music", MENU_MUSIC],
@@ -690,14 +716,24 @@ func _build_interface(toolbar_art: Image) -> void:
 	menu_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	menu_row.add_child(menu_spacer)
 	menu_row.add_child(VSeparator.new())
+	var city_field := MarginContainer.new()
+	city_field.name = "CityNameField"
+	city_field.custom_minimum_size = Vector2(174, 0)
+	city_field.add_theme_constant_override("margin_left", 9)
+	city_field.add_theme_constant_override("margin_right", 4)
+	menu_row.add_child(city_field)
 	city_label = Label.new()
 	city_label.text = "No city loaded"
-	city_label.custom_minimum_size = Vector2(165, 0)
+	city_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	city_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	city_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	city_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	city_label.tooltip_text = city_label.text
-	menu_row.add_child(city_label)
+	city_field.add_child(city_label)
+	menu_row.add_child(VSeparator.new())
+	status_population_label = _status_metric_label("Population: --", 148)
+	status_population_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	menu_row.add_child(status_population_label)
 	menu_row.add_child(VSeparator.new())
 	title_stats_label = Label.new()
 	title_stats_label.text = "--/--/----"
@@ -729,13 +765,13 @@ func _build_interface(toolbar_art: Image) -> void:
 	page.add_child(content)
 
 	var toolbar_panel := PanelContainer.new()
-	toolbar_panel.custom_minimum_size = Vector2(205, 0)
+	toolbar_panel.custom_minimum_size = Vector2(195, 0)
 	toolbar_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	toolbar_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
 	content.add_child(toolbar_panel)
 	var toolbar_margin := MarginContainer.new()
 	for side in ["left", "top", "right", "bottom"]:
-		toolbar_margin.add_theme_constant_override("margin_" + side, 7)
+		toolbar_margin.add_theme_constant_override("margin_" + side, 6)
 	toolbar_panel.add_child(toolbar_margin)
 	var toolbar := VBoxContainer.new()
 	toolbar.add_theme_constant_override("separation", 4)
@@ -744,7 +780,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	toolbar_title.text = "City Toolbar"
 	toolbar_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	toolbar_title.add_theme_color_override("font_color", Color("000080"))
-	toolbar_title.add_theme_font_size_override("font_size", 15)
+	toolbar_title.add_theme_font_size_override("font_size", 14)
 	toolbar.add_child(toolbar_title)
 
 	var tool_grid := GridContainer.new()
@@ -780,7 +816,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	toolbar.add_child(camera_row)
 	var rotate_label := Label.new()
 	rotate_label.text = "Rotate"
-	rotate_label.custom_minimum_size = Vector2(52, 0)
+	rotate_label.custom_minimum_size = Vector2(48, 0)
 	camera_row.add_child(rotate_label)
 	rotate_counter_clockwise_button = _icon_button(
 		toolbar_art, Rect2i(405, 0, 27, 23), "Rotate Counter-Clockwise (Q)"
@@ -801,7 +837,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	toolbar.add_child(zoom_row)
 	var zoom_heading := Label.new()
 	zoom_heading.text = "Zoom"
-	zoom_heading.custom_minimum_size = Vector2(52, 0)
+	zoom_heading.custom_minimum_size = Vector2(48, 0)
 	zoom_row.add_child(zoom_heading)
 	zoom_out_button = _icon_button(toolbar_art, Rect2i(462, 0, 23, 23), "Zoom Out")
 	zoom_out_button.pressed.connect(_zoom_out)
@@ -811,7 +847,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	zoom_row.add_child(zoom_in_button)
 	zoom_label = Label.new()
 	zoom_label.text = "100%"
-	zoom_label.custom_minimum_size = Vector2(42, 0)
+	zoom_label.custom_minimum_size = Vector2(38, 0)
 	zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	zoom_row.add_child(zoom_label)
 
@@ -819,7 +855,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	active_tool_group_label.text = "Selected Group"
 	active_tool_group_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	active_tool_group_label.add_theme_color_override("font_color", Color("000080"))
-	active_tool_group_label.add_theme_font_size_override("font_size", 14)
+	active_tool_group_label.add_theme_font_size_override("font_size", 13)
 	toolbar.add_child(active_tool_group_label)
 	child_tool_scroll = ScrollContainer.new()
 	child_tool_scroll.custom_minimum_size = Vector2(0, 96)
@@ -914,7 +950,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_panel.add_child(map_view)
 
 	var status_panel := PanelContainer.new()
-	status_panel.custom_minimum_size = Vector2(0, 34)
+	status_panel.custom_minimum_size = Vector2(0, 31)
 	status_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
 	page.add_child(status_panel)
 	var status_metrics := HBoxContainer.new()
@@ -922,25 +958,28 @@ func _build_interface(toolbar_art: Image) -> void:
 	status_panel.add_child(status_metrics)
 	status_label = Label.new()
 	status_label.text = "Ready."
-	status_label.custom_minimum_size = Vector2(150, 24)
+	status_label.custom_minimum_size = Vector2(150, 22)
 	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	status_label.add_theme_color_override("font_color", Color("202020"))
+	status_label.set_meta("always_status_tooltip", true)
 	status_metrics.add_child(status_label)
 	status_metrics.add_child(VSeparator.new())
-	status_population_label = _status_metric_label("Population: --", 125)
-	status_metrics.add_child(status_population_label)
-	status_metrics.add_child(VSeparator.new())
-	status_weather_label = _status_metric_label("Weather: --", 130)
+	status_weather_label = _status_metric_label("Weather: --", 120)
 	status_weather_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
 	status_metrics.add_child(status_weather_label)
 	status_metrics.add_child(VSeparator.new())
 	status_rci_graph = RciStatusView.new()
 	status_metrics.add_child(status_rci_graph)
 	status_metrics.add_child(VSeparator.new())
-	status_reports_label = _status_metric_label("Reports: None", 180, true)
+	status_reports_label = _status_metric_label("News: None", 180, true)
+	status_reports_label.set_meta("always_status_tooltip", true)
 	status_metrics.add_child(status_reports_label)
+	status_metrics.add_child(VSeparator.new())
+	status_speed_label = _status_metric_label("Speed: --", 122)
+	status_metrics.add_child(status_speed_label)
+	_sync_speed_ui()
 
 	file_dialog = FileDialog.new()
 	file_dialog.access = FileDialog.ACCESS_FILESYSTEM
@@ -954,7 +993,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	save_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	save_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 	save_dialog.add_filter("*.SC2, *.sc2", "SimCity 2000 cities")
-	save_dialog.file_selected.connect(_save_copy)
+	save_dialog.file_selected.connect(_on_save_path_selected)
+	save_dialog.canceled.connect(_on_save_dialog_canceled)
 	add_child(save_dialog)
 
 	tile_set_dialog = FileDialog.new()
@@ -1585,7 +1625,7 @@ func _build_main_menu() -> void:
 	main_menu.scurk_requested.connect(_open_scurk_dialog)
 	main_menu.scurk_place_requested.connect(_open_scurk_place_print)
 	main_menu.about_requested.connect(_open_about_dialog)
-	main_menu.exit_requested.connect(get_tree().quit)
+	main_menu.exit_requested.connect(_request_city_exit.bind("quit"))
 	add_child(main_menu)
 
 	settings_dialog = ConfirmationDialog.new()
@@ -1650,6 +1690,18 @@ func _build_main_menu() -> void:
 	about_dialog.min_size = Vector2i(560, 250)
 	about_dialog.exclusive = true
 	add_child(about_dialog)
+
+	save_changes_dialog = ConfirmationDialog.new()
+	save_changes_dialog.title = "Save Changes"
+	save_changes_dialog.min_size = Vector2i(480, 190)
+	save_changes_dialog.exclusive = true
+	save_changes_dialog.get_ok_button().text = "Save"
+	save_changes_dialog.get_cancel_button().text = "Cancel"
+	save_changes_dialog.add_button("Don't Save", true, "discard")
+	save_changes_dialog.confirmed.connect(_save_pending_city_exit)
+	save_changes_dialog.canceled.connect(_cancel_pending_city_exit)
+	save_changes_dialog.custom_action.connect(_on_save_changes_action)
+	add_child(save_changes_dialog)
 
 
 func _show_main_menu() -> void:
@@ -1938,7 +1990,7 @@ func _create_picture_notice(
 
 func _create_classic_theme() -> Theme:
 	var result := Theme.new()
-	result.default_font_size = 14
+	result.default_font_size = 13
 	result.set_color("font_color", "Label", Color("101010"))
 	result.set_color("font_color", "Button", Color("101010"))
 	result.set_color("font_hover_color", "Button", Color("101010"))
@@ -1978,7 +2030,7 @@ func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
 func _status_metric_label(text_value: String, minimum_width: int, expand := false) -> Label:
 	var label := Label.new()
 	label.text = text_value
-	label.custom_minimum_size = Vector2(minimum_width, 22)
+	label.custom_minimum_size = Vector2(minimum_width, 20)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	if expand:
@@ -2420,7 +2472,7 @@ func _add_menu(parent: Control, label: String, items: Array, callback: Callable)
 	var menu := MenuButton.new()
 	menu.text = label
 	menu.flat = true
-	menu.custom_minimum_size = Vector2(0, 25)
+	menu.custom_minimum_size = Vector2(0, 23)
 	parent.add_child(menu)
 	for item in items:
 		menu.get_popup().add_item(item[0], item[1])
@@ -2450,7 +2502,7 @@ func _add_toolbar_group_button(
 	group_index: int
 ) -> void:
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(48, 32)
+	button.custom_minimum_size = Vector2(46, 30)
 	button.toggle_mode = true
 	button.button_group = button_group
 	button.tooltip_text = Tools.GROUPS[group_index].name
@@ -2489,7 +2541,7 @@ func _toolbar_icon(toolbar_art: Image, region: Rect2i) -> Texture2D:
 
 func _icon_button(toolbar_art: Image, region: Rect2i, tooltip: String) -> Button:
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(40, 34)
+	button.custom_minimum_size = Vector2(36, 30)
 	button.icon = _toolbar_icon(toolbar_art, region)
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -2660,7 +2712,7 @@ func _on_file_menu(id: int) -> void:
 		4: _restore_original_tile_set()
 		MENU_SCURK_PLACE_PRINT: _open_scurk_place_print()
 		5: _show_main_menu()
-		6: get_tree().quit()
+		6: _request_city_exit("quit")
 
 
 func _on_speed_menu(id: int) -> void:
@@ -3155,6 +3207,10 @@ func _cancel_new_city() -> void:
 
 
 func _create_new_city() -> void:
+	_request_city_exit("create_new_city")
+
+
+func _create_new_city_unchecked() -> void:
 	new_city_preview_timer.stop()
 	var terrain_options := _new_city_terrain_options()
 	if (
@@ -3582,7 +3638,75 @@ func _begin_scenario() -> void:
 	status_label.text = "Scenario started."
 
 
+func _city_has_unsaved_changes() -> bool:
+	if current_document == null or city == null:
+		return false
+	if not current_city_saved_once:
+		return true
+	var serialized := current_document.serialize()
+	return not serialized.ok or serialized.data != saved_city_snapshot
+
+
+func _request_city_exit(action: String, path := "") -> void:
+	if not _city_has_unsaved_changes():
+		_perform_city_exit(action, path)
+		return
+	pending_city_exit_action = action
+	pending_city_exit_path = path
+	pending_city_exit_waiting_for_save = false
+	var display_name := city.city_name()
+	if display_name.is_empty():
+		display_name = "this city"
+	save_changes_dialog.dialog_text = "Save changes to %s before you continue?" % display_name
+	save_changes_dialog.popup_centered()
+
+
+func _perform_city_exit(action: String, path := "") -> void:
+	match action:
+		"create_new_city":
+			_create_new_city_unchecked()
+		"load_city":
+			_load_city_unchecked(path)
+		"quit":
+			get_tree().quit()
+
+
+func _save_pending_city_exit() -> void:
+	if pending_city_exit_action.is_empty():
+		return
+	if current_save_path.is_empty():
+		pending_city_exit_waiting_for_save = true
+		_open_save_dialog()
+		return
+	if _save_copy(current_save_path):
+		_continue_pending_city_exit()
+
+
+func _on_save_changes_action(action: StringName) -> void:
+	if action != &"discard":
+		return
+	save_changes_dialog.hide()
+	_continue_pending_city_exit()
+
+
+func _cancel_pending_city_exit() -> void:
+	pending_city_exit_action = ""
+	pending_city_exit_path = ""
+	pending_city_exit_waiting_for_save = false
+
+
+func _continue_pending_city_exit() -> void:
+	var action := pending_city_exit_action
+	var path := pending_city_exit_path
+	_cancel_pending_city_exit()
+	_perform_city_exit(action, path)
+
+
 func _load_city(path: String) -> void:
+	_request_city_exit("load_city", path)
+
+
+func _load_city_unchecked(path: String) -> void:
 	var document := Sc2Document.load_path(path)
 	if not document.is_valid():
 		_show_error(document.parse_error)
@@ -3654,6 +3778,21 @@ func _activate_document(
 	game_over_active = false
 	city = loaded_city
 	current_document = document
+	var initial_serialized := current_document.serialize()
+	saved_city_snapshot = (
+		initial_serialized.data.duplicate() if initial_serialized.ok else PackedByteArray()
+	)
+	current_city_saved_once = not current_document.source_path.is_empty()
+	var source_path := current_document.source_path.simplify_path()
+	current_save_path = (
+		source_path
+		if (
+			not source_path.is_empty()
+			and source_path != reference_root
+			and not source_path.begins_with(reference_root + "/")
+		)
+		else ""
+	)
 	_hide_main_menu()
 	static_render_epoch += 1
 	static_city_image = null
@@ -3682,6 +3821,7 @@ func _activate_document(
 	)
 	simulation_engine = Simulation.new(city, process_seed, lfsr_seed, game_seed)
 	speed_controller = GameSpeed.new(simulation_engine)
+	_sync_speed_ui()
 	tool_random = simulation_engine.random
 	nuisance_random = simulation_engine.game_random
 	simulation_map_dirty = false
@@ -3753,35 +3893,51 @@ func _music_playback_is_active() -> bool:
 	return music_player != null and music_player.is_track_active()
 
 
-func _save_copy(path: String) -> void:
+func _on_save_path_selected(path: String) -> void:
+	var saved := _save_copy(path)
+	if saved and pending_city_exit_waiting_for_save:
+		_continue_pending_city_exit()
+
+
+func _on_save_dialog_canceled() -> void:
+	if pending_city_exit_waiting_for_save:
+		_cancel_pending_city_exit()
+
+
+func _save_copy(path: String) -> bool:
 	if current_document == null:
 		_show_error("No city is loaded.")
-		return
+		return false
 	var output_path := path
 	if output_path.get_extension().is_empty():
 		output_path += ".SC2"
 	output_path = output_path.simplify_path()
 	if output_path == reference_root or output_path.begins_with(reference_root + "/"):
 		_show_error("Choose a location outside the read-only references directory.")
-		return
+		return false
 
 	var serialized := current_document.serialize()
 	if not serialized.ok:
 		_show_error(serialized.error)
-		return
+		return false
 	var output := FileAccess.open(output_path, FileAccess.WRITE)
 	if output == null:
 		_show_error("Cannot open save output: %s" % error_string(FileAccess.get_open_error()))
-		return
+		return false
 	output.store_buffer(serialized.data)
 	output.flush()
 	var write_error := output.get_error()
 	output.close()
 	if write_error != OK:
 		_show_error("Cannot write save output: %s" % error_string(write_error))
-		return
+		return false
+	current_document.source_path = output_path
+	current_save_path = output_path
+	current_city_saved_once = true
+	saved_city_snapshot = serialized.data.duplicate()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Saved city copy: %s" % output_path
+	return true
 
 
 func _set_overlay(mode: String) -> void:
@@ -3837,8 +3993,29 @@ func _select_speed(speed_value: int) -> void:
 	if not speed_controller.set_speed(speed_value):
 		_show_error("Cannot change the simulation speed.")
 		return
+	_sync_speed_ui()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "%s speed selected." % speed_controller.speed_name()
+
+
+func _sync_speed_ui() -> void:
+	var selected_speed := (
+		speed_controller.speed if speed_controller != null else GameSpeed.Speed.PAUSED
+	)
+	if speed_menu != null:
+		var popup := speed_menu.get_popup()
+		for speed_id in range(5):
+			var item_index := popup.get_item_index(speed_id)
+			popup.set_item_checked(
+				item_index, speed_controller != null and speed_id + 1 == selected_speed
+			)
+	if status_speed_label != null:
+		var speed_name := speed_controller.speed_name() if speed_controller != null else "--"
+		status_speed_label.text = "Speed: %s" % speed_name
+		status_speed_label.set_meta(
+			"status_tooltip_text", "Current simulation speed: %s." % speed_name
+		)
+		_sync_overflow_tooltip(status_speed_label)
 
 
 func _refresh_after_city_edit(command: Dictionary) -> void:
@@ -4724,6 +4901,8 @@ func _show_news_items(news_items: Array) -> void:
 		recent_news.insert(0, name)
 	while recent_news.size() > 3:
 		recent_news.remove_at(recent_news.size() - 1)
+	status_report_index = 0
+	status_report_elapsed_seconds = 0.0
 	_refresh_status_summary()
 
 
@@ -4746,11 +4925,15 @@ func _show_building_objection() -> void:
 func _refresh_saved_news_summary() -> void:
 	if city == null or current_document == null:
 		recent_news.clear()
+		status_report_index = 0
+		status_report_elapsed_seconds = 0.0
 		_refresh_status_summary()
 		return
 	var misc_chunk := current_document.find_chunk("MISC")
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
 		recent_news = PackedStringArray(["Unavailable"])
+		status_report_index = 0
+		status_report_elapsed_seconds = 0.0
 		_refresh_status_summary()
 		return
 	var reports := PackedStringArray()
@@ -4763,6 +4946,8 @@ func _refresh_saved_news_summary() -> void:
 		if reports.size() == 3:
 			break
 	recent_news = reports
+	status_report_index = 0
+	status_report_elapsed_seconds = 0.0
 	_refresh_status_summary()
 
 
@@ -5010,7 +5195,7 @@ func _select_tool_group(index: int) -> void:
 		var tool := Tools.tool(selected_group, subtool_index)
 		var price := "Free" if tool.cost == 0 else "$%s" % _format_number(tool.cost)
 		var button := Button.new()
-		button.custom_minimum_size = Vector2(185, 40)
+		button.custom_minimum_size = Vector2(175, 36)
 		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		button.toggle_mode = true
 		button.button_group = child_button_group
@@ -5123,12 +5308,15 @@ func _update_edit_state() -> void:
 		_refresh_status_summary()
 		if status_label != null:
 			status_label.remove_theme_color_override("font_color")
-			status_label.text = (
+			var scurk_detail := (
 				"SCURK tile %d selected. Click its anchor tile to place a %d by %d object."
 				% [tile_id, area, area]
 				if can_place
 				else "Select a SCURK object to place."
 			)
+			status_label.text = "SCURK Tile %d" % tile_id if can_place else "SCURK Place"
+			status_label.set_meta("status_tooltip_text", scurk_detail)
+			_sync_overflow_tooltip(status_label)
 		return
 	var tool_available := city != null and ToolAvailability.is_available(
 		city, selected_group, selected_subtool
@@ -5200,46 +5388,50 @@ func _update_edit_state() -> void:
 		return
 	var tool := Tools.tool(selected_group, selected_subtool)
 	status_label.remove_theme_color_override("font_color")
+	var tool_status_detail := ""
 	if not tool_available:
-		status_label.text = "%s is not available in this city." % tool.name
+		tool_status_detail = "%s is not available in this city." % tool.name
 	elif _is_tool_chooser(selected_group, selected_subtool):
-		status_label.text = "%s selected. Select an available type from the choice window." % tool.name
+		tool_status_detail = "%s selected. Select an available type from the choice window." % tool.name
 	elif is_zone_tool:
-		status_label.text = "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool.name
+		tool_status_detail = "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool.name
 	elif is_landscape_tool:
-		status_label.text = "%s selected. Click or drag across eligible city tiles. Hold Shift to Query." % tool.name
+		tool_status_detail = "%s selected. Click or drag across eligible city tiles. Hold Shift to Query." % tool.name
 	elif is_building_tool:
-		status_label.text = "%s selected. Click a clear city site to build it." % tool.name
+		tool_status_detail = "%s selected. Click a clear city site to build it." % tool.name
 	elif is_network_tool:
-		status_label.text = "%s selected. Drag between city tiles to build a route." % tool.name
+		tool_status_detail = "%s selected. Drag between city tiles to build a route." % tool.name
 	elif is_hydro_tool:
-		status_label.text = "Hydroelectric Power Plant selected. Click an unused waterfall tile."
+		tool_status_detail = "Hydroelectric Power Plant selected. Click an unused waterfall tile."
 	elif is_subway_to_rail_tool:
-		status_label.text = "Subway-to-Rail Connection selected. Click beside a rail or subway."
+		tool_status_detail = "Subway-to-Rail Connection selected. Click beside a rail or subway."
 	elif is_onramp_tool:
-		status_label.text = "On-ramp selected. Click on clear terrain between a highway and a perpendicular road."
+		tool_status_detail = "On-ramp selected. Click on clear terrain between a highway and a perpendicular road."
 	elif is_tunnel_tool:
-		status_label.text = "Tunnel selected. Click a cardinal slope that faces through a hill."
+		tool_status_detail = "Tunnel selected. Click a cardinal slope that faces through a hill."
 	elif is_highway_tool:
-		status_label.text = "Highway selected. Drag between city tiles to build a two-tile-wide route."
+		tool_status_detail = "Highway selected. Drag between city tiles to build a two-tile-wide route."
 	elif is_demolish_tool:
-		status_label.text = "Demolish selected. Drag a rectangle across eligible city tiles."
+		tool_status_detail = "Demolish selected. Drag a rectangle across eligible city tiles."
 	elif is_terrain_tool:
-		status_label.text = "%s selected. Click or drag across terrain." % tool.name
+		tool_status_detail = "%s selected. Click or drag across terrain." % tool.name
 	elif is_dispatch_tool:
 		var available := Dispatch.availability(city)
 		var count := 0
 		if available.ok:
 			count = [available.police, available.fire, available.military][selected_subtool]
-		status_label.text = "%s selected. Click dry, unlabeled terrain to deploy one of %d available units." % [tool.name, count]
+		tool_status_detail = "%s selected. Click dry, unlabeled terrain to deploy one of %d available units." % [tool.name, count]
 	elif is_sign_tool:
-		status_label.text = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
+		tool_status_detail = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 	elif is_query_tool:
-		status_label.text = "Query selected. Click a city tile to inspect it."
+		tool_status_detail = "Query selected. Click a city tile to inspect it."
 	elif is_center_tool:
-		status_label.text = "Center View selected. Click a city tile to center the map on it."
+		tool_status_detail = "Center View selected. Click a city tile to center the map on it."
 	else:
-		status_label.text = "%s is in the original tool catalog. Its command is not implemented yet." % tool.name
+		tool_status_detail = "%s is in the original tool catalog. Its command is not implemented yet." % tool.name
+	status_label.text = str(tool.name)
+	status_label.set_meta("status_tooltip_text", tool_status_detail)
+	_sync_overflow_tooltip(status_label)
 
 
 func _apply_map_selection(
@@ -6333,10 +6525,14 @@ func _refresh_status_summary(
 		or status_weather_label == null
 		or status_rci_graph == null
 		or status_reports_label == null
+		or status_speed_label == null
 	):
 		return
 	if city == null:
 		status_population_label.text = "Population: --"
+		status_population_label.set_meta(
+			"status_tooltip_text", "Current city population is not available."
+		)
 		status_weather_label.text = "Weather: --"
 		status_rci_graph.clear_demand()
 	else:
@@ -6351,14 +6547,52 @@ func _refresh_status_summary(
 			)
 			demand = city.rci_demand()
 		status_population_label.text = "Population: %s" % _format_number(city.population())
+		status_population_label.set_meta(
+			"status_tooltip_text",
+			"Current city population: %s" % _format_number(city.population()),
+		)
 		status_weather_label.text = "Weather: %s" % weather_name
 		status_rci_graph.set_demand(demand)
-	var reports := "None" if recent_news.is_empty() else " | ".join(recent_news)
-	status_reports_label.text = "Reports: %s" % reports
-	status_reports_label.set_meta("status_tooltip_text", (
-		"Latest reports\n%s" % ("No reports." if recent_news.is_empty() else "\n".join(recent_news))
-	))
+	_refresh_status_report_text()
+	_sync_speed_ui()
 	_refresh_status_tooltips()
+
+
+func _update_status_report_rotation(delta: float) -> void:
+	if status_reports_label == null or delta <= 0.0 or recent_news.size() < 2:
+		return
+	status_report_elapsed_seconds += delta
+	if status_report_elapsed_seconds < STATUS_REPORT_ROTATION_SECONDS:
+		return
+	var steps := floori(
+		status_report_elapsed_seconds / STATUS_REPORT_ROTATION_SECONDS
+	)
+	status_report_elapsed_seconds = fmod(
+		status_report_elapsed_seconds, STATUS_REPORT_ROTATION_SECONDS
+	)
+	status_report_index = posmod(status_report_index + steps, recent_news.size())
+	_refresh_status_report_text()
+	_sync_overflow_tooltip(status_reports_label)
+
+
+func _refresh_status_report_text() -> void:
+	if status_reports_label == null:
+		return
+	var current_report := "None"
+	if not recent_news.is_empty():
+		status_report_index = posmod(status_report_index, recent_news.size())
+		current_report = recent_news[status_report_index]
+	else:
+		status_report_index = 0
+		status_report_elapsed_seconds = 0.0
+	status_reports_label.text = "News: %s" % current_report
+	status_reports_label.set_meta(
+		"status_tooltip_text",
+		(
+			"Recent city reports. These are the newest saved newspaper records.\n%s"
+			% ("No reports." if recent_news.is_empty() else "\n".join(recent_news))
+		),
+	)
 
 
 func _refresh_status_tooltips() -> void:
@@ -6366,6 +6600,7 @@ func _refresh_status_tooltips() -> void:
 	_sync_overflow_tooltip(status_population_label)
 	_sync_overflow_tooltip(status_weather_label)
 	_sync_overflow_tooltip(status_reports_label)
+	_sync_overflow_tooltip(status_speed_label)
 
 
 func _sync_overflow_tooltip(label: Label) -> void:
@@ -6376,7 +6611,10 @@ func _sync_overflow_tooltip(label: Label) -> void:
 	var text_width := font.get_string_size(
 		label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 	).x
-	if text_width > maxf(0.0, label.size.x - 4.0):
+	if (
+		bool(label.get_meta("always_status_tooltip", false))
+		or text_width > maxf(0.0, label.size.x - 4.0)
+	):
 		label.tooltip_text = str(label.get_meta("status_tooltip_text", label.text))
 	else:
 		label.tooltip_text = ""
@@ -6385,6 +6623,194 @@ func _sync_overflow_tooltip(label: Label) -> void:
 func _show_error(message: String) -> void:
 	status_label.text = message
 	status_label.add_theme_color_override("font_color", Color("ff877d"))
+
+
+func _debug_metrics() -> Dictionary:
+	var result := {
+		"city_name": "None",
+		"date": "--",
+		"population": "--",
+		"funds": "--",
+		"speed": speed_controller.speed_name() if speed_controller != null else "--",
+		"speed_id": speed_controller.speed if speed_controller != null else 1,
+		"speed_accumulator_msec": (
+			speed_controller.accumulator_msec if speed_controller != null else 0.0
+		),
+		"tool": "--",
+		"view": overlay_mode,
+		"unsaved": _city_has_unsaved_changes(),
+		"static_render": "running" if static_render_thread != null else "idle",
+		"render_pending": pending_static_render,
+		"static_cache": static_view_cache.size(),
+		"dynamic_cache": dynamic_visual_cache.size(),
+		"foreground_cache": dynamic_foreground_cache.size(),
+	}
+	if map_view != null:
+		result.merge(map_view.debug_metrics(), true)
+	if city != null:
+		result.city_name = city.city_name()
+		result.date = "%02d/%02d/%04d" % [
+			city.current_month(), city.current_day(), city.current_year(),
+		]
+		result.population = _format_number(city.population())
+		result.funds = "$%s" % _format_number(city.funds())
+		result.tool = str(Tools.tool(selected_group, selected_subtool).name)
+	return result
+
+
+func _debug_center_map() -> void:
+	if map_view != null and city != null:
+		map_view.center_on_tile(Vector2i(CityState.MAP_SIZE / 2, CityState.MAP_SIZE / 2))
+
+
+func _debug_full_redraw() -> void:
+	if city == null:
+		return
+	_invalidate_view_render()
+	_refresh_map(true)
+
+
+func _debug_clear_render_caches() -> void:
+	static_view_cache.clear()
+	dynamic_sprite_cache.clear()
+	dynamic_foreground_cache.clear()
+	dynamic_occluder_cache.clear()
+	dynamic_visual_cache.clear()
+	dynamic_special_batch_cache.clear()
+	_debug_full_redraw()
+
+
+func _debug_add_funds(amount: int) -> Dictionary:
+	if city == null or amount <= 0:
+		return {"ok": false, "message": "No city is loaded."}
+	var new_funds := mini(0x7fffffff, city.funds() + amount)
+	if not city.set_funds(new_funds):
+		return {"ok": false, "message": "Funds could not be changed."}
+	_refresh_details()
+	return {
+		"ok": true,
+		"message": "Added $%s. Funds are now $%s."
+		% [_format_number(amount), _format_number(new_funds)],
+	}
+
+
+func _debug_unlock_everything() -> Dictionary:
+	if city == null:
+		return {"ok": false, "message": "No city is loaded."}
+	var misc_chunk := current_document.find_chunk("MISC")
+	if misc_chunk == null or misc_chunk.decoded_payload.size() != 4800:
+		return {"ok": false, "message": "The city MISC data is not valid."}
+	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+	ToolAvailability._write_u32_be(misc, ToolAvailability.MISC_PROGRESSION, 6)
+	ToolAvailability._write_u32_be(
+		misc, ToolAvailability.MISC_GRANTED_REWARDS, 0xffff
+	)
+	for invention_index in ToolAvailability.INVENTION_COUNT:
+		ToolAvailability._write_u32_be(
+			misc,
+			ToolAvailability.MISC_INVENTION_YEARS + invention_index * 4,
+			0,
+		)
+	var ordinances := ToolAvailability._read_u32_be(
+		misc, ToolAvailability.MISC_ORDINANCES
+	)
+	ToolAvailability._write_u32_be(
+		misc,
+		ToolAvailability.MISC_ORDINANCES,
+		ordinances & ~ToolAvailability.ORDINANCE_NUCLEAR_FREE,
+	)
+	if not misc_chunk.set_decoded_payload(misc):
+		return {"ok": false, "message": "The unlock state could not be stored."}
+	_refresh_child_tool_icons()
+	_refresh_tool_availability()
+	_update_edit_state()
+	_refresh_details()
+	return {
+		"ok": true,
+		"message": "Unlocked all inventions, rewards, arcologies, and power plants.",
+	}
+
+
+func _debug_dispatch_maxis_man() -> Dictionary:
+	if city == null or current_document == null:
+		return {"ok": false, "message": "No city is loaded."}
+	var target := _debug_disaster_target()
+	if target.is_empty():
+		return {"ok": false, "message": "No active disaster target was found."}
+	var start := _debug_maxis_man_start(target.point)
+	if start.x < 0:
+		return {"ok": false, "message": "No clear launch tile was found."}
+	var thing_chunk := current_document.find_chunk("XTHG")
+	var text_chunk := current_document.find_chunk("XTXT")
+	if thing_chunk == null or text_chunk == null:
+		return {"ok": false, "message": "The moving-object data is missing."}
+	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
+	var things: PackedByteArray = old_things.duplicate()
+	var text: PackedByteArray = city.text_overlays.duplicate()
+	var spawned := MovingThingSpawner.spawn_maxis_man(
+		things,
+		text,
+		start,
+		target.point,
+		int(target.goal),
+		city.object_altitude(start.x, start.y) + 4,
+	)
+	if not spawned.spawned:
+		return {"ok": false, "message": "Maxis Man is already active or no record is free."}
+	if not thing_chunk.set_decoded_payload(things):
+		return {"ok": false, "message": "The Maxis Man record could not be stored."}
+	if not text_chunk.set_decoded_payload(text):
+		thing_chunk.set_decoded_payload(old_things)
+		return {"ok": false, "message": "The Maxis Man map link could not be stored."}
+	city.text_overlays = text
+	_refresh_moving_things()
+	return {
+		"ok": true,
+		"message": "Maxis Man was dispatched from %s toward %s."
+		% [str(start), str(target.point)],
+	}
+
+
+func _debug_disaster_target() -> Dictionary:
+	var thing_chunk := current_document.find_chunk("XTHG")
+	if thing_chunk != null:
+		var things: PackedByteArray = thing_chunk.decoded_payload
+		for record in range(1, CityState.THING_COUNT):
+			var offset := record * CityState.THING_RECORD_SIZE
+			if int(things[offset]) in [5, 15]:
+				return {
+					"point": Vector2i(things[offset + 3], things[offset + 4]),
+					"goal": record,
+				}
+	var center := map_view.center_tile() if map_view != null else Vector2i(64, 64)
+	var nearest := Vector2i(-1, -1)
+	var nearest_distance := 0x7fffffff
+	for x in CityState.MAP_SIZE:
+		for y in CityState.MAP_SIZE:
+			if city.text_overlay_id(x, y) < 241:
+				continue
+			var point := Vector2i(x, y)
+			var distance := absi(point.x - center.x) + absi(point.y - center.y)
+			if distance < nearest_distance:
+				nearest = point
+				nearest_distance = distance
+	return {} if nearest.x < 0 else {"point": nearest, "goal": 241}
+
+
+func _debug_maxis_man_start(target: Vector2i) -> Vector2i:
+	const DIRECTIONS := [
+		Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1),
+		Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1),
+	]
+	for radius in range(12, 0, -1):
+		for direction in DIRECTIONS:
+			var point: Vector2i = target + Vector2i(direction) * radius
+			if (
+				city.index_of(point.x, point.y) >= 0
+				and city.text_overlay_id(point.x, point.y) < 201
+			):
+				return point
+	return Vector2i(-1, -1)
 
 
 func _format_number(value: int) -> String:

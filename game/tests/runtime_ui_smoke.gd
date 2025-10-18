@@ -1,6 +1,7 @@
 extends SceneTree
 
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
+const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 
 
 func _initialize() -> void:
@@ -29,7 +30,7 @@ func _run() -> void:
 		"SCENARIO/CHARLEST.SCN",
 	]:
 		var city_path := reference_root.path_join(relative_path).simplify_path()
-		main.call("_load_city", city_path)
+		main.call("_load_city_unchecked", city_path)
 		await process_frame
 		await process_frame
 		var document: Sc2File = main.get("current_document")
@@ -46,6 +47,11 @@ func _run() -> void:
 		var date_label := main.get("title_stats_label") as Label
 		var money_label := main.get("title_money_label") as Label
 		var city_label := main.get("city_label") as Label
+		var population_label := main.get("status_population_label") as Label
+		var weather_label := main.get("status_weather_label") as Label
+		var speed_label := main.get("status_speed_label") as Label
+		var speed_menu := main.get("speed_menu") as MenuButton
+		var city_field := main.find_child("CityNameField", true, false) as MarginContainer
 		var rci_graph: RciStatusControl = main.get("status_rci_graph")
 		var expected_date := "%02d/%02d/%04d" % [
 			loaded_city.current_month(),
@@ -59,14 +65,73 @@ func _run() -> void:
 			date_label.text != expected_date
 			or money_label.text != expected_money
 			or city_label.horizontal_alignment != HORIZONTAL_ALIGNMENT_LEFT
+			or city_field == null
+			or city_field.get_theme_constant("margin_left") != 9
+			or population_label.custom_minimum_size.x != 148
+			or population_label.get_parent() == weather_label.get_parent()
+			or population_label.text
+			!= "Population: %s" % main.call("_format_number", loaded_city.population())
+			or main.theme.default_font_size != 13
+			or rci_graph.custom_minimum_size.x != 100
 			or rci_graph.demand != loaded_city.rci_demand()
 			or not rci_graph.demand_available
+			or speed_label.text
+			!= "Speed: %s" % (main.get("speed_controller") as GameSpeedController).speed_name()
+			or speed_menu == null
 		):
 			push_error("Menu or status metrics are not synchronized for %s" % relative_path)
 			main.queue_free()
 			quit(2)
 			return
 		if relative_path == "CITIES/ISLAND.SC2":
+			if main.call("_city_has_unsaved_changes"):
+				push_error("A newly loaded city is incorrectly marked as changed")
+				main.queue_free()
+				quit(2)
+				return
+			var original_funds := loaded_city.funds()
+			loaded_city.set_funds(original_funds + 1)
+			main.call("_request_city_exit", "quit")
+			var save_changes_dialog := main.get("save_changes_dialog") as ConfirmationDialog
+			if (
+				not main.call("_city_has_unsaved_changes")
+				or save_changes_dialog == null
+				or not save_changes_dialog.visible
+				or main.get("pending_city_exit_action") != "quit"
+			):
+				push_error("A changed city does not show the save-changes gate")
+				main.queue_free()
+				quit(2)
+				return
+			save_changes_dialog.hide()
+			main.call("_cancel_pending_city_exit")
+			loaded_city.set_funds(original_funds)
+			if main.call("_city_has_unsaved_changes"):
+				push_error("Restoring a city to its loaded bytes does not clear the changed state")
+				main.queue_free()
+				quit(2)
+				return
+			main.set("recent_news", PackedStringArray([
+				"Good health", "Good employment", "Low crime",
+			]))
+			main.set("status_report_index", 0)
+			main.set("status_report_elapsed_seconds", 0.0)
+			main.call("_refresh_status_summary")
+			var report_label := main.get("status_reports_label") as Label
+			main.call("_update_status_report_rotation", 6.0)
+			var first_report_stable := report_label.text == "News: Good health"
+			main.call("_update_status_report_rotation", 1.1)
+			if (
+				not first_report_stable
+				or report_label.text != "News: Good employment"
+				or not report_label.tooltip_text.contains("newest saved newspaper")
+				or not report_label.tooltip_text.contains("Low crime")
+			):
+				push_error("Status news does not rotate one saved report every seven seconds")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_refresh_saved_news_summary")
 			var patch_point := Vector2i(-1, -1)
 			for x in range(8, CityState.MAP_SIZE - 8):
 				if patch_point.x >= 0:
@@ -181,7 +246,16 @@ func _run() -> void:
 		for menu_id in range(5):
 			main.call("_on_speed_menu", menu_id)
 			var controller: GameSpeedController = main.get("speed_controller")
-			if controller.speed != menu_id + GameSpeed.Speed.PAUSED:
+			var checked_speed_items := 0
+			for item_index in speed_menu.get_popup().item_count:
+				if speed_menu.get_popup().is_item_checked(item_index):
+					checked_speed_items += 1
+			if (
+				controller.speed != menu_id + GameSpeed.Speed.PAUSED
+				or checked_speed_items != 1
+				or not speed_menu.get_popup().is_item_checked(menu_id)
+				or speed_label.text != "Speed: %s" % controller.speed_name()
+			):
 				push_error("Speed menu item %d selected the wrong speed" % menu_id)
 				main.queue_free()
 				quit(2)
@@ -239,6 +313,69 @@ func _run() -> void:
 	for group in range(18):
 		main.call("_select_tool_group", group)
 		await process_frame
+	main.call("_select_tool_group", 0)
+	var tool_status := main.get("status_label") as Label
+	if tool_status.text != "Demolish" or not tool_status.tooltip_text.contains("Drag a rectangle"):
+		push_error("The status bar does not separate the tool name from its help text")
+		main.queue_free()
+		quit(2)
+		return
+
+	var debug_metrics: Dictionary = main.call("_debug_metrics")
+	if (
+		not debug_metrics.has("dynamic_revisions")
+		or not debug_metrics.has("sign_scans")
+		or debug_metrics.get("tool", "") != "Demolish"
+	):
+		push_error("The debug metrics do not expose city renderer state")
+		main.queue_free()
+		quit(2)
+		return
+	var debug_city: CityState = main.get("city")
+	var debug_misc_chunk := debug_city.document.find_chunk("MISC")
+	var debug_old_misc: PackedByteArray = debug_misc_chunk.decoded_payload.duplicate()
+	var debug_old_funds := debug_city.funds()
+	var money_result: Dictionary = main.call("_debug_add_funds", 10000)
+	var unlock_result: Dictionary = main.call("_debug_unlock_everything")
+	var unlocked := ToolAvailability.inspect(debug_city)
+	if (
+		not money_result.ok
+		or debug_city.funds() != debug_old_funds + 10000
+		or not unlock_result.ok
+		or not unlocked.ok
+		or int(unlocked.power_plant_mask) != 0x1ff
+		or int(unlocked.group_masks[5]) & 0x10 == 0
+	):
+		push_error("The debug money or unlock action did not update the city")
+		main.queue_free()
+		quit(2)
+		return
+	debug_misc_chunk.set_decoded_payload(debug_old_misc)
+	var debug_thing_chunk := debug_city.document.find_chunk("XTHG")
+	var debug_text_chunk := debug_city.document.find_chunk("XTXT")
+	var debug_old_things: PackedByteArray = debug_thing_chunk.decoded_payload.duplicate()
+	var debug_old_text: PackedByteArray = debug_text_chunk.decoded_payload.duplicate()
+	var empty_things := PackedByteArray()
+	empty_things.resize(CityState.THING_COUNT * CityState.THING_RECORD_SIZE)
+	empty_things.fill(0)
+	var empty_text := PackedByteArray()
+	empty_text.resize(CityState.TILE_COUNT)
+	empty_text.fill(0)
+	debug_thing_chunk.set_decoded_payload(empty_things)
+	debug_text_chunk.set_decoded_payload(empty_text)
+	debug_city.text_overlays = empty_text.duplicate()
+	debug_city.set_text_overlay_id(64, 64, 0xff)
+	var maxis_result: Dictionary = main.call("_debug_dispatch_maxis_man")
+	if not maxis_result.ok or debug_city.thing(1).type != 16:
+		push_error("The debug Maxis Man action did not dispatch a saved moving object")
+		main.queue_free()
+		quit(2)
+		return
+	debug_thing_chunk.set_decoded_payload(debug_old_things)
+	debug_text_chunk.set_decoded_payload(debug_old_text)
+	debug_city.text_overlays = debug_old_text
+	main.call("_refresh_details")
+	main.call("_refresh_moving_things")
 
 	var overflow_text := "Overflow tooltip validation ".repeat(40)
 	for property in [
@@ -246,6 +383,7 @@ func _run() -> void:
 		"status_population_label",
 		"status_weather_label",
 		"status_reports_label",
+		"status_speed_label",
 	]:
 		var section := main.get(property) as Label
 		var original_text := section.text

@@ -53,7 +53,10 @@ void fragment() {
 }
 """
 
-var city: CityState
+var city: CityState:
+	set(value):
+		city = value
+		_invalidate_sign_entries()
 var city_texture: Texture2D
 var palette_index_texture: Texture2D
 var animated_palette_texture: Texture2D
@@ -86,6 +89,10 @@ var _dynamic_canvas: CityDynamicSpriteCanvas
 var _dynamic_material: ShaderMaterial
 var _palette_shader: Shader
 var _sign_font: SystemFont
+var _sign_entries: Array[Dictionary] = []
+var _sign_entries_city: CityState
+var _sign_entries_zoom := -1.0
+var _sign_cache_build_count := 0
 
 
 func _ready() -> void:
@@ -108,6 +115,7 @@ func set_city_view(
 	city_texture = texture
 	palette_index_texture = index_texture
 	base_palette_lookup_all = palette_lookup_all
+	_invalidate_sign_entries()
 	if reset_center and city_texture != null:
 		source_center = Vector2(city_texture.get_size()) * 0.5
 	_clamp_source_center()
@@ -134,9 +142,28 @@ func set_sign_occlusion_visuals(value: Dictionary) -> void:
 
 
 func sign_source_entries() -> Array[Dictionary]:
-	var entries: Array[Dictionary] = []
 	if not signs_visible or city == null:
-		return entries
+		return []
+	_ensure_sign_entries()
+	var entries: Array[Dictionary] = []
+	for entry in _sign_entries:
+		entries.append({
+			"key": int(entry.key),
+			"bounds": entry.bounds,
+			"draw_order": int(entry.draw_order),
+		})
+	return entries
+
+
+func _ensure_sign_entries() -> void:
+	if _sign_entries_city == city and is_equal_approx(_sign_entries_zoom, zoom_factor):
+		return
+	_sign_entries.clear()
+	_sign_entries_city = city
+	_sign_entries_zoom = zoom_factor
+	_sign_cache_build_count += 1
+	if city == null:
+		return
 	var view_index := sign_view_index(zoom_factor)
 	var divisor := int(Renderer.view_configuration(view_index).divisor)
 	var font := _get_sign_font()
@@ -163,15 +190,23 @@ func sign_source_entries() -> Array[Dictionary]:
 				view_index, divisor,
 			)
 			var bounds: Rect2 = layout.panel.merge(layout.post)
-			entries.append({
+			_sign_entries.append({
 				"key": city.index_of(x, y),
+				"anchor": polygon[0] + Vector2(0, -8),
+				"label": label_text,
+				"text_width": native_width,
 				"bounds": Rect2i(
 					Vector2i(floori(bounds.position.x), floori(bounds.position.y)),
 					Vector2i(ceili(bounds.size.x), ceili(bounds.size.y)),
 				),
 				"draw_order": (x + y) * CityState.MAP_SIZE + y,
 			})
-	return entries
+
+
+func _invalidate_sign_entries() -> void:
+	_sign_entries.clear()
+	_sign_entries_city = null
+	_sign_entries_zoom = -1.0
 
 
 func set_edit_enabled(
@@ -233,6 +268,10 @@ func can_zoom_out() -> bool:
 
 func is_left_drag_active() -> bool:
 	return selection_start.x >= 0
+
+
+func is_panning() -> bool:
+	return _panning
 
 
 func selection_tiles() -> Array[Vector2i]:
@@ -397,12 +436,33 @@ func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
 
 func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
 	dynamic_sprites = sprites.duplicate()
-	_sync_dynamic_canvas()
+	if _dynamic_canvas != null:
+		_dynamic_canvas.set_visuals(
+			dynamic_sprites, _view_scale(), _draw_offset(_view_scale())
+		)
 	queue_redraw()
 
 
 func dynamic_render_node_count() -> int:
 	return int(_dynamic_canvas != null)
+
+
+func debug_metrics() -> Dictionary:
+	return {
+		"zoom": "%d%%" % zoom_percent(),
+		"center_tile": str(center_tile()),
+		"panning": _panning,
+		"selection_drag": is_left_drag_active(),
+		"sign_entries": _sign_entries.size(),
+		"sign_scans": _sign_cache_build_count,
+		"dynamic_visuals": (
+			_dynamic_canvas.visual_count() if _dynamic_canvas != null else 0
+		),
+		"dynamic_revisions": (
+			_dynamic_canvas.visual_revision if _dynamic_canvas != null else 0
+		),
+		"transient_effects": transient_effects.size(),
+	}
 
 
 func _expire_transient_effects(generation: int) -> void:
@@ -552,52 +612,37 @@ func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
 func _draw_signs(scale: float, offset: Vector2) -> void:
 	if not signs_visible or city == null or city_texture.get_width() <= CityState.MAP_SIZE:
 		return
+	_ensure_sign_entries()
 	var view_index := sign_view_index(zoom_factor)
 	var display_multiplier := sign_display_multiplier(zoom_factor)
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
-	for diagonal in CityState.MAP_SIZE * 2 - 1:
-		for y in diagonal + 1:
-			var x := diagonal - y
-			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
-				continue
-			var label_id := city.text_overlay_id(x, y)
-			if label_id < 1 or label_id > 50:
-				continue
-			var label_text := city.label(label_id)
-			if label_text.is_empty():
-				continue
-			var polygon := Renderer.tile_polygon(city, x, y)
-			if polygon.size() != 4:
-				continue
-			# every native painter moves from the tile's top point by the
-			# equivalent of 16 pixels right and 8 pixels up in large space
-			var anchor := offset + (polygon[0] + Vector2(0, -8)) * scale
-			var text_width := font.get_string_size(
-				label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-			).x
-			var drawing_anchor := anchor
-			if display_multiplier > 1.0:
-				drawing_anchor = Vector2.ZERO
-				draw_set_transform(
-					anchor, 0.0, Vector2(display_multiplier, display_multiplier)
-				)
-			var layout := sign_layout(drawing_anchor, text_width, view_index)
-			_draw_raised_sign_part(layout.panel, SIGN_PANEL_FILL, 1.0)
-			var text_position := Vector2(
-				layout.panel.position.x + 4.0,
-				layout.panel.position.y + 2.0 + font.get_ascent(font_size),
+	for entry in _sign_entries:
+		# every native painter moves from the tile's top point by the
+		# equivalent of 16 pixels right and 8 pixels up in large space
+		var anchor := offset + Vector2(entry.anchor) * scale
+		var drawing_anchor := anchor
+		if display_multiplier > 1.0:
+			drawing_anchor = Vector2.ZERO
+			draw_set_transform(
+				anchor, 0.0, Vector2(display_multiplier, display_multiplier)
 			)
-			draw_string(
-				font, text_position, label_text, HORIZONTAL_ALIGNMENT_LEFT, -1,
-				font_size, SIGN_TEXT_COLOR,
-			)
-			_draw_raised_sign_part(layout.post, SIGN_POST_FILL, 1.0)
-			if display_multiplier > 1.0:
-				draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-			_draw_sign_occlusion(
-				city.index_of(x, y), scale, offset
-			)
+		var layout := sign_layout(
+			drawing_anchor, float(entry.text_width), view_index
+		)
+		_draw_raised_sign_part(layout.panel, SIGN_PANEL_FILL, 1.0)
+		var text_position := Vector2(
+			layout.panel.position.x + 4.0,
+			layout.panel.position.y + 2.0 + font.get_ascent(font_size),
+		)
+		draw_string(
+			font, text_position, String(entry.label), HORIZONTAL_ALIGNMENT_LEFT, -1,
+			font_size, SIGN_TEXT_COLOR,
+		)
+		_draw_raised_sign_part(layout.post, SIGN_POST_FILL, 1.0)
+		if display_multiplier > 1.0:
+			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+		_draw_sign_occlusion(int(entry.key), scale, offset)
 
 
 func _draw_sign_occlusion(key: int, scale: float, offset: Vector2) -> void:
@@ -773,6 +818,14 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 
 
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
+	if (
+		_panning
+		and (
+			event.button_mask
+			& (MOUSE_BUTTON_MASK_MIDDLE | MOUSE_BUTTON_MASK_RIGHT)
+		) == 0
+	):
+		_panning = false
 	if _panning:
 		source_center -= event.relative / _view_scale()
 		_clamp_source_center()
@@ -874,6 +927,7 @@ func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	if old_scale > 0.0:
 		source_point = (anchor - _draw_offset(old_scale)) / old_scale
 	zoom_factor = ZOOM_LEVELS[new_index]
+	_invalidate_sign_entries()
 	var new_scale := _view_scale()
 	source_center = source_point + (size * 0.5 - anchor) / new_scale
 	_clamp_source_center()
@@ -947,7 +1001,9 @@ func _ensure_base_layer() -> void:
 	_dynamic_material = _new_palette_material()
 	_dynamic_canvas.material = _dynamic_material
 	add_child(_dynamic_canvas)
-	_dynamic_canvas.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_dynamic_canvas.set_visuals(
+		dynamic_sprites, _view_scale(), _draw_offset(_view_scale())
+	)
 	_sync_base_layer()
 
 
@@ -994,7 +1050,7 @@ func _sync_dynamic_canvas() -> void:
 		return
 	var scale := _view_scale()
 	var offset := _draw_offset(scale)
-	_dynamic_canvas.set_visuals(dynamic_sprites, scale, offset)
+	_dynamic_canvas.set_view_transform(scale, offset)
 
 
 func _new_palette_material() -> ShaderMaterial:

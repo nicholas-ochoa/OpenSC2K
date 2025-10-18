@@ -13,6 +13,7 @@ const TYPE_MONSTER := 5
 const TYPE_SAILBOAT := 9
 const TYPE_TRAIN_ENGINE := 10
 const TYPE_TRAIN_CAR := 11
+const TYPE_MAXIS_MAN := 16
 const CARDINAL_DIRECTIONS := [
 	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0),
 ]
@@ -207,6 +208,50 @@ static func spawn_sailboats(
 		text[index] = record + TEXT_LABEL_BASE
 		spawned += 1
 	return spawned
+
+
+static func spawn_maxis_man(
+	things: PackedByteArray,
+	text: PackedByteArray,
+	point: Vector2i,
+	target: Vector2i,
+	goal: int,
+	height: int
+) -> Dictionary:
+	var index := _index(point)
+	var target_index := _index(target)
+	if (
+		index < 0
+		or target_index < 0
+		or text[index] >= TEXT_LABEL_BASE
+		or count_type(things, TYPE_MAXIS_MAN) >= 1
+		or (goal < 241 and (goal < FIRST_RECORD or goal > LAST_RECORD))
+	):
+		return {"spawned": false}
+	var record := _first_free_record(things)
+	if record == 0:
+		return {"spawned": false}
+	var offset := record * RECORD_SIZE
+	things[offset] = TYPE_MAXIS_MAN
+	things[offset + 1] = _direction_between(point, target)
+	things[offset + 2] = 0
+	things[offset + 3] = point.x
+	things[offset + 4] = point.y
+	things[offset + 5] = clampi(height, 0, 0xff)
+	things[offset + 6] = 8
+	things[offset + 7] = 8
+	things[offset + 8] = target.x
+	things[offset + 9] = target.y
+	things[offset + 10] = text[index]
+	things[offset + 11] = goal
+	text[index] = record + TEXT_LABEL_BASE
+	return {
+		"spawned": true,
+		"record": record,
+		"point": point,
+		"target": target,
+		"goal": goal,
+	}
 
 
 static func spawn_train(

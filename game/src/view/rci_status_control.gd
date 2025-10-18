@@ -3,6 +3,7 @@ extends Control
 
 const MAX_DEMAND := 2000
 const GRAPH_LEFT := 27.0
+const GRAPH_BACKGROUND := Color("eeeeee")
 const ZONE_COLORS := [
 	Color("20b050"),
 	Color("2878d0"),
@@ -14,7 +15,7 @@ var demand_available := false
 
 
 func _init() -> void:
-	custom_minimum_size = Vector2(112, 24)
+	custom_minimum_size = Vector2(100, 24)
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_update_tooltip()
 
@@ -92,11 +93,11 @@ func _draw() -> void:
 		maxf(1.0, size.x - GRAPH_LEFT - 2.0),
 		maxf(1.0, size.y - 4.0),
 	)
-	draw_rect(graph_rect, Color("181818"), true)
+	draw_rect(graph_rect, GRAPH_BACKGROUND, true)
 	draw_line(
 		Vector2(graph_rect.position.x, floorf(graph_rect.get_center().y)),
 		Vector2(graph_rect.end.x, floorf(graph_rect.get_center().y)),
-		Color("808080"),
+		Color("909090"),
 		1.0,
 	)
 	var bars: Array[Rect2] = []
@@ -105,5 +106,5 @@ func _draw() -> void:
 	for index in bars.size():
 		if bars[index].size.y > 0.0:
 			draw_rect(bars[index], ZONE_COLORS[index], true)
-	draw_rect(graph_rect, Color("ffffff"), false, 1.0)
-	draw_rect(graph_rect.grow(-1.0), Color("505050"), false, 1.0)
+	draw_rect(graph_rect, Color("505050"), false, 1.0)
+	draw_rect(graph_rect.grow(-1.0), Color("ffffff"), false, 1.0)
