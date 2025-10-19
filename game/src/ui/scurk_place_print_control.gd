@@ -2,11 +2,42 @@ class_name ScurkPlacePrintControl
 extends Window
 
 signal tile_selected(tile_id: int)
+signal edit_tool_selected(group_index: int, subtool_index: int, zone_type: int)
 signal undo_requested
 signal redo_requested
 
 const Place = preload("res://src/tools/scurk_place_command.gd")
 const PickCopy = preload("res://src/tools/scurk_pick_copy.gd")
+
+const MODE_OBJECTS := 0
+const MODE_EDIT_TOOLS := 1
+const EDIT_TOOLS := [
+	{"name": "Bulldozer", "group": 0, "subtool": 0, "zone": -1, "view": "either"},
+	{"name": "Level Terrain", "group": 0, "subtool": 1, "zone": -1, "view": "city"},
+	{"name": "Raise Terrain", "group": 0, "subtool": 2, "zone": -1, "view": "city"},
+	{"name": "Lower Terrain", "group": 0, "subtool": 3, "zone": -1, "view": "city"},
+	{"name": "De-zone", "group": 0, "subtool": 4, "zone": 0, "view": "city"},
+	{"name": "Pond, Lake, or River", "group": 1, "subtool": 1, "zone": -1, "view": "city"},
+	{"name": "Water Pipes", "group": 4, "subtool": 0, "zone": -1, "view": "underground"},
+	{"name": "Light Residential", "group": 9, "subtool": 0, "zone": 1, "view": "city"},
+	{"name": "Dense Residential", "group": 9, "subtool": 1, "zone": 2, "view": "city"},
+	{"name": "Light Commercial", "group": 10, "subtool": 0, "zone": 3, "view": "city"},
+	{"name": "Dense Commercial", "group": 10, "subtool": 1, "zone": 4, "view": "city"},
+	{"name": "Light Industrial", "group": 11, "subtool": 0, "zone": 5, "view": "city"},
+	{"name": "Dense Industrial", "group": 11, "subtool": 1, "zone": 6, "view": "city"},
+	{"name": "Seaport Zone", "group": 8, "subtool": 0, "zone": 9, "view": "city"},
+	{"name": "Airport Zone", "group": 8, "subtool": 1, "zone": 8, "view": "city"},
+	{"name": "Military Zone", "group": 8, "subtool": 0, "zone": 7, "view": "city"},
+	{"name": "Road", "group": 6, "subtool": 0, "zone": -1, "view": "city"},
+	{"name": "Highway", "group": 6, "subtool": 1, "zone": -1, "view": "city"},
+	{"name": "Tunnel", "group": 6, "subtool": 2, "zone": -1, "view": "city"},
+	{"name": "On-ramp", "group": 6, "subtool": 3, "zone": -1, "view": "city"},
+	{"name": "Power Line", "group": 3, "subtool": 0, "zone": -1, "view": "city"},
+	{"name": "Rail", "group": 7, "subtool": 0, "zone": -1, "view": "city"},
+	{"name": "Subway", "group": 7, "subtool": 1, "zone": -1, "view": "underground"},
+	{"name": "Subway-to-Rail Connector", "group": 7, "subtool": 4, "zone": -1, "view": "underground"},
+	{"name": "Center", "group": 17, "subtool": 0, "zone": -1, "view": "either"},
+]
 
 const THUMBNAIL_SIZE := 64
 const PANEL_SIZE := Vector2i(440, 680)
@@ -28,11 +59,17 @@ var sprites: Sc2SpriteArchive
 var custom_names: Dictionary = {}
 var current_group := PickCopy.GROUP_RESIDENTIAL
 var selected_tile_id := -1
+var selected_edit_index := 0
 var icon_cache: Dictionary = {}
 
+var instructions: Label
+var mode_selector: OptionButton
+var group_row: HBoxContainer
 var group_selector: OptionButton
+var zone_row: HBoxContainer
 var zone_selector: OptionButton
 var object_list: ItemList
+var tool_list: ItemList
 var selection_label: Label
 var undo_button: Button
 var redo_button: Button
@@ -69,8 +106,36 @@ func show_workspace() -> bool:
 	):
 		return false
 	popup_centered(PANEL_SIZE)
-	if object_list != null:
+	if is_object_mode() and object_list != null:
 		object_list.grab_focus()
+	elif tool_list != null:
+		tool_list.grab_focus()
+	return true
+
+
+func is_object_mode() -> bool:
+	return mode_selector == null or mode_selector.selected == MODE_OBJECTS
+
+
+func selected_edit_tool() -> Dictionary:
+	if is_object_mode() or selected_edit_index < 0 or selected_edit_index >= EDIT_TOOLS.size():
+		return {}
+	return EDIT_TOOLS[selected_edit_index].duplicate()
+
+
+func select_edit_tool(index: int, notify := true) -> bool:
+	if index < 0 or index >= EDIT_TOOLS.size():
+		return false
+	selected_edit_index = index
+	if mode_selector != null:
+		mode_selector.select(MODE_EDIT_TOOLS)
+	_sync_mode_controls()
+	if tool_list != null:
+		tool_list.select(index)
+		tool_list.ensure_current_is_visible()
+	_update_selection_label()
+	if notify:
+		_emit_edit_tool()
 	return true
 
 
@@ -88,6 +153,9 @@ func select_tile(tile_id: int, notify := true) -> bool:
 		return false
 	current_group = group
 	selected_tile_id = tile_id
+	if mode_selector != null:
+		mode_selector.select(MODE_OBJECTS)
+	_sync_mode_controls()
 	_select_group_button(group)
 	_refresh_objects()
 	if notify:
@@ -132,7 +200,7 @@ func _build_interface() -> void:
 	heading.add_theme_font_size_override("font_size", 20)
 	page.add_child(heading)
 
-	var instructions := Label.new()
+	instructions = Label.new()
 	instructions.text = (
 		"Select an object. Then click its anchor tile in the city. "
 		+ "SCURK placement does not use city funds or normal development gates."
@@ -141,7 +209,21 @@ func _build_interface() -> void:
 	instructions.custom_minimum_size = Vector2(0, 48)
 	page.add_child(instructions)
 
-	var group_row := HBoxContainer.new()
+	var mode_row := HBoxContainer.new()
+	mode_row.add_theme_constant_override("separation", 8)
+	page.add_child(mode_row)
+	var mode_label := Label.new()
+	mode_label.text = "Workspace"
+	mode_label.custom_minimum_size = Vector2(110, 0)
+	mode_row.add_child(mode_label)
+	mode_selector = OptionButton.new()
+	mode_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	mode_selector.add_item("Object Selector", MODE_OBJECTS)
+	mode_selector.add_item("Edit Tools", MODE_EDIT_TOOLS)
+	mode_selector.item_selected.connect(_on_mode_selected)
+	mode_row.add_child(mode_selector)
+
+	group_row = HBoxContainer.new()
 	group_row.add_theme_constant_override("separation", 8)
 	page.add_child(group_row)
 	var group_label := Label.new()
@@ -155,7 +237,7 @@ func _build_interface() -> void:
 	group_selector.item_selected.connect(_on_group_selected)
 	group_row.add_child(group_selector)
 
-	var zone_row := HBoxContainer.new()
+	zone_row = HBoxContainer.new()
 	zone_row.add_theme_constant_override("separation", 8)
 	page.add_child(zone_row)
 	var zone_label := Label.new()
@@ -186,6 +268,25 @@ func _build_interface() -> void:
 	object_list.item_activated.connect(_on_object_selected)
 	page.add_child(object_list)
 
+	tool_list = ItemList.new()
+	tool_list.name = "PlaceEditToolList"
+	tool_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tool_list.select_mode = ItemList.SELECT_SINGLE
+	tool_list.allow_reselect = true
+	tool_list.item_selected.connect(_on_edit_tool_selected)
+	tool_list.item_activated.connect(_on_edit_tool_selected)
+	for tool_index in EDIT_TOOLS.size():
+		var tool: Dictionary = EDIT_TOOLS[tool_index]
+		var item := tool_list.add_item(String(tool.name))
+		tool_list.set_item_metadata(item, tool_index)
+		tool_list.set_item_tooltip(
+			item,
+			"%s is free in Place & Print. Normal terrain and map-edge rules still apply."
+			% tool.name
+		)
+	tool_list.select(selected_edit_index)
+	page.add_child(tool_list)
+
 	selection_label = Label.new()
 	selection_label.text = "Select an object."
 	selection_label.custom_minimum_size = Vector2(0, 36)
@@ -198,12 +299,12 @@ func _build_interface() -> void:
 	buttons.add_theme_constant_override("separation", 8)
 	page.add_child(buttons)
 	undo_button = Button.new()
-	undo_button.text = "Undo Place"
+	undo_button.text = "Undo"
 	undo_button.disabled = true
 	undo_button.pressed.connect(undo_requested.emit)
 	buttons.add_child(undo_button)
 	redo_button = Button.new()
-	redo_button.text = "Redo Place"
+	redo_button.text = "Redo"
 	redo_button.disabled = true
 	redo_button.pressed.connect(redo_requested.emit)
 	buttons.add_child(redo_button)
@@ -211,6 +312,19 @@ func _build_interface() -> void:
 	close_button.text = "Close"
 	close_button.pressed.connect(close_requested.emit)
 	buttons.add_child(close_button)
+	_sync_mode_controls()
+
+
+func _on_mode_selected(index: int) -> void:
+	if index < MODE_OBJECTS or index > MODE_EDIT_TOOLS:
+		return
+	_sync_mode_controls()
+	_update_selection_label()
+	if is_object_mode():
+		if selected_tile_id >= 0:
+			tile_selected.emit(selected_tile_id)
+	else:
+		_emit_edit_tool()
 
 
 func _on_group_selected(index: int) -> void:
@@ -227,6 +341,14 @@ func _on_object_selected(index: int) -> void:
 	selected_tile_id = int(object_list.get_item_metadata(index))
 	_update_selection_label()
 	tile_selected.emit(selected_tile_id)
+
+
+func _on_edit_tool_selected(index: int) -> void:
+	if index < 0 or index >= tool_list.item_count:
+		return
+	selected_edit_index = int(tool_list.get_item_metadata(index))
+	_update_selection_label()
+	_emit_edit_tool()
 
 
 func _refresh_objects() -> void:
@@ -256,11 +378,20 @@ func _refresh_objects() -> void:
 		object_list.select(selected_index)
 		object_list.ensure_current_is_visible()
 	_update_selection_label()
-	if selected_tile_id >= 0:
+	if selected_tile_id >= 0 and is_object_mode():
 		tile_selected.emit(selected_tile_id)
 
 
 func _update_selection_label() -> void:
+	if not is_object_mode():
+		var tool := selected_edit_tool()
+		if tool.is_empty():
+			set_status("Select an edit tool.")
+			return
+		set_status(
+			"Selected: %s. This tool does not change city funds." % tool.name
+		)
+		return
 	if selected_tile_id < 0:
 		set_status("No object is available in this group.")
 		return
@@ -268,6 +399,37 @@ func _update_selection_label() -> void:
 	set_status(
 		"Selected: %s (tile %d, %d by %d footprint)."
 		% [_object_name(selected_tile_id), selected_tile_id, area, area]
+	)
+
+
+func _sync_mode_controls() -> void:
+	var objects_visible := is_object_mode()
+	if group_row != null:
+		group_row.visible = objects_visible
+	if zone_row != null:
+		zone_row.visible = objects_visible
+	if object_list != null:
+		object_list.visible = objects_visible
+	if tool_list != null:
+		tool_list.visible = not objects_visible
+	if instructions != null:
+		instructions.text = (
+			"Select an object. Then click its anchor tile in the city. "
+			+ "SCURK placement does not use city funds or normal development gates."
+			if objects_visible
+			else (
+				"Select an edit tool. Then click or drag in the city. "
+				+ "Money, time, population, and development limits do not apply."
+			)
+		)
+
+
+func _emit_edit_tool() -> void:
+	var tool := selected_edit_tool()
+	if tool.is_empty():
+		return
+	edit_tool_selected.emit(
+		int(tool.group), int(tool.subtool), int(tool.zone)
 	)
 
 

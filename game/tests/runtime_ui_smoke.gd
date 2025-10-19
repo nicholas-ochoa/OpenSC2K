@@ -237,6 +237,78 @@ func _run() -> void:
 				quit(2)
 				return
 			main.call("_undo_scurk_place")
+			if (
+				not place_print.select_edit_tool(16)
+				or place_print.tool_list == null
+				or place_print.tool_list.item_count != 25
+				or place_print.is_object_mode()
+				or place_print.selected_edit_tool().name != "Road"
+				or main.get("map_view").selection_mode != "path"
+			):
+				push_error("SCURK Place & Print edit toolbox is not available")
+				main.queue_free()
+				quit(2)
+				return
+			main.call(
+				"_apply_map_selection",
+				patch_point,
+				patch_point,
+				patch_path,
+				false
+			)
+			var scurk_road: Dictionary = main.get("last_edit_command")
+			if (
+				scurk_road.get("command_type", "") != "network"
+				or not scurk_road.get("scurk_place_history", false)
+				or scurk_road.get("cost", -1) != 0
+				or loaded_city.funds() != funds_before_scurk
+				or loaded_city.building_id(patch_point.x, patch_point.y) < 0x1d
+			):
+				push_error("SCURK Place & Print did not build its free road")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_undo_scurk_place")
+			if loaded_city.building_id(patch_point.x, patch_point.y) != 0:
+				push_error("SCURK free road Undo did not restore the city")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_redo_scurk_place")
+			if loaded_city.building_id(patch_point.x, patch_point.y) < 0x1d:
+				push_error("SCURK free road Redo did not restore the route")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_undo_scurk_place")
+			if not place_print.select_edit_tool(15):
+				push_error("SCURK Military Zone tool is not selectable")
+				main.queue_free()
+				quit(2)
+				return
+			main.call(
+				"_apply_map_selection",
+				patch_point,
+				patch_point,
+				patch_path,
+				true
+			)
+			var scurk_military_zone: Dictionary = main.get("last_edit_command")
+			if (
+				scurk_military_zone.get("command_type", "") != "zone"
+				or loaded_city.zone_id(patch_point.x, patch_point.y) != 7
+				or loaded_city.funds() != funds_before_scurk
+			):
+				push_error("SCURK Place & Print did not apply its free Military Zone")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_undo_scurk_place")
+			if loaded_city.zone_id(patch_point.x, patch_point.y) != 0:
+				push_error("SCURK Military Zone Undo did not restore the city")
+				main.queue_free()
+				quit(2)
+				return
 			main.call("_close_scurk_place_print")
 		loaded_city.set_music_enabled(false)
 		loaded_city.set_sound_enabled(false)

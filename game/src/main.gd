@@ -1676,6 +1676,7 @@ func _build_main_menu() -> void:
 
 	scurk_place_print = ScurkPlacePrintView.new()
 	scurk_place_print.tile_selected.connect(_select_scurk_place_tile)
+	scurk_place_print.edit_tool_selected.connect(_select_scurk_edit_tool)
 	scurk_place_print.undo_requested.connect(_undo_scurk_place)
 	scurk_place_print.redo_requested.connect(_redo_scurk_place)
 	scurk_place_print.close_requested.connect(_close_scurk_place_print)
@@ -1821,7 +1822,7 @@ func _open_scurk_place_print() -> void:
 		else {}
 	)
 	scurk_place_print.configure(palette, large_sprites, names)
-	if last_edit_command.get("command_type", "") != "scurk_place_object":
+	if not last_edit_command.get("scurk_place_history", false):
 		scurk_place_undo_stack.clear()
 		scurk_place_redo_stack.clear()
 	scurk_place_print.set_history_enabled(
@@ -1851,6 +1852,36 @@ func _select_scurk_place_tile(tile_id: int) -> void:
 	_update_edit_state()
 
 
+func _select_scurk_edit_tool(
+	group_index: int, subtool_index: int, _zone_type: int
+) -> void:
+	if scurk_place_print == null or not scurk_place_print.visible:
+		return
+	selected_group = group_index
+	selected_subtool = subtool_index
+	var tool := scurk_place_print.selected_edit_tool()
+	var required_view := String(tool.get("view", "either"))
+	if required_view == "city" and overlay_mode != "city":
+		_set_overlay("city")
+	elif required_view == "underground" and overlay_mode != "underground":
+		_set_overlay("underground")
+	_update_edit_state()
+
+
+func _record_edit_command(
+	command: Dictionary, scurk_history := false, scurk_name := ""
+) -> void:
+	if scurk_history:
+		command["scurk_place_history"] = true
+		command["scurk_tool_name"] = scurk_name
+		scurk_place_undo_stack.append(command)
+		scurk_place_redo_stack.clear()
+		if scurk_place_print != null:
+			scurk_place_print.set_history_enabled(true, false)
+	last_edit_command = command
+	undo_button.disabled = false
+
+
 func _apply_scurk_place_selection(point: Vector2i) -> void:
 	if city == null or scurk_place_print == null:
 		return
@@ -1865,11 +1896,7 @@ func _apply_scurk_place_selection(point: Vector2i) -> void:
 	if not result.get("ok", false):
 		_show_error("Cannot place the SCURK object: %s" % result.error)
 		return
-	scurk_place_undo_stack.append(result)
-	scurk_place_redo_stack.clear()
-	last_edit_command = result
-	undo_button.disabled = false
-	scurk_place_print.set_history_enabled(true, false)
+	_record_edit_command(result, true, "Object Placement")
 	_refresh_details()
 	_refresh_after_city_edit(result)
 	var area := int(result.get("area", 1))
@@ -1902,9 +1929,10 @@ func _undo_scurk_place() -> void:
 	)
 	_refresh_details()
 	_refresh_after_city_edit(command)
-	var message := "Removed the last SCURK object and restored %d tiles." % (
-		result.restored_tiles
-	)
+	var command_name := String(command.get("scurk_tool_name", "edit"))
+	var message := "Undid SCURK %s across %d tiles." % [
+		command_name, result.restored_tiles,
+	]
 	scurk_place_print.set_status(message)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = message
@@ -1927,9 +1955,9 @@ func _redo_scurk_place() -> void:
 	)
 	_refresh_details()
 	_refresh_after_city_edit(command)
-	var site: Rect2i = command.site
-	var message := "Restored SCURK tile %d at %d, %d." % [
-		int(command.tile_id), site.end.x - 1, site.end.y - 1,
+	var command_name := String(command.get("scurk_tool_name", "edit"))
+	var message := "Redid SCURK %s across %d tiles." % [
+		command_name, result.restored_tiles,
 	]
 	scurk_place_print.set_status(message)
 	status_label.remove_theme_color_override("font_color")
@@ -2675,7 +2703,32 @@ func _on_map_selection_changed(
 	dragged: bool
 ) -> void:
 	if scurk_place_print != null and scurk_place_print.visible:
-		map_view.clear_selection_price()
+		if scurk_place_print.is_object_mode():
+			map_view.clear_selection_price()
+			return
+		var scurk_tool := scurk_place_print.selected_edit_tool()
+		var zone_type := int(scurk_tool.get("zone", -1))
+		if zone_type < 0:
+			map_view.clear_selection_price()
+			return
+		var scurk_preview := Zones.preview_rectangle(
+			city,
+			int(scurk_tool.group),
+			int(scurk_tool.subtool),
+			start,
+			finish,
+			dragged,
+			true,
+			zone_type
+		)
+		if not scurk_preview.get("ok", false):
+			map_view.clear_selection_price()
+			return
+		map_view.set_selection_price(0, true)
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "%s preview: %d tiles; free in SCURK." % [
+			scurk_tool.name, int(scurk_preview.changed_tiles),
+		]
 		return
 	if city == null or not Zones.supports_tool(selected_group, selected_subtool):
 		map_view.clear_selection_price()
@@ -5297,25 +5350,67 @@ func _update_edit_state() -> void:
 	if map_view == null:
 		return
 	if scurk_place_print != null and scurk_place_print.visible:
-		var tile_id := scurk_place_print.selected_tile_id
-		var area := Demolish.structure_area(tile_id)
-		var can_place := (
-			city != null
-			and overlay_mode == "city"
-			and ScurkPlace.is_placeable_tile(tile_id)
+		if scurk_place_print.is_object_mode():
+			var tile_id := scurk_place_print.selected_tile_id
+			var area := Demolish.structure_area(tile_id)
+			var can_place := (
+				city != null
+				and overlay_mode == "city"
+				and ScurkPlace.is_placeable_tile(tile_id)
+			)
+			map_view.set_edit_enabled(can_place, "point", area, false)
+			_refresh_status_summary()
+			if status_label != null:
+				status_label.remove_theme_color_override("font_color")
+				var scurk_detail := (
+					"SCURK tile %d selected. Click its anchor tile to place a %d by %d object."
+					% [tile_id, area, area]
+					if can_place
+					else "Select a SCURK object to place."
+				)
+				status_label.text = (
+					"SCURK Tile %d" % tile_id if can_place else "SCURK Place"
+				)
+				status_label.set_meta("status_tooltip_text", scurk_detail)
+				_sync_overflow_tooltip(status_label)
+			return
+		var scurk_tool := scurk_place_print.selected_edit_tool()
+		var can_edit := city != null and not scurk_tool.is_empty()
+		var scurk_group := int(scurk_tool.get("group", -1))
+		var scurk_subtool := int(scurk_tool.get("subtool", -1))
+		var scurk_zone := int(scurk_tool.get("zone", -1))
+		var is_scurk_zone := scurk_zone >= 0
+		var is_scurk_demolish := Demolish.supports_tool(
+			scurk_group, scurk_subtool
 		)
-		map_view.set_edit_enabled(can_place, "point", area, false)
+		var is_scurk_landscape := Landscapes.supports_tool(
+			scurk_group, scurk_subtool
+		)
+		var is_scurk_network := Networks.supports_tool(
+			scurk_group, scurk_subtool
+		)
+		var is_scurk_highway := Highways.supports_tool(
+			scurk_group, scurk_subtool
+		)
+		var is_scurk_terrain := TerrainTools.supports_tool(
+			scurk_group, scurk_subtool
+		)
+		var selection := "point"
+		if is_scurk_zone or is_scurk_demolish:
+			selection = "rectangle"
+		elif is_scurk_landscape or is_scurk_network or is_scurk_highway or is_scurk_terrain:
+			selection = "path"
+		map_view.set_edit_enabled(can_edit, selection, 1, is_scurk_landscape)
 		_refresh_status_summary()
 		if status_label != null:
 			status_label.remove_theme_color_override("font_color")
-			var scurk_detail := (
-				"SCURK tile %d selected. Click its anchor tile to place a %d by %d object."
-				% [tile_id, area, area]
-				if can_place
-				else "Select a SCURK object to place."
+			var tool_name := String(scurk_tool.get("name", "Edit Tool"))
+			status_label.text = "SCURK %s" % tool_name
+			status_label.set_meta(
+				"status_tooltip_text",
+				"%s is active in Place & Print. Click or drag on the city. City funds and development gates do not apply."
+				% tool_name
 			)
-			status_label.text = "SCURK Tile %d" % tile_id if can_place else "SCURK Place"
-			status_label.set_meta("status_tooltip_text", scurk_detail)
 			_sync_overflow_tooltip(status_label)
 		return
 	var tool_available := city != null and ToolAvailability.is_available(
@@ -5442,10 +5537,25 @@ func _apply_map_selection(
 ) -> void:
 	if city == null:
 		return
+	var scurk_tool_mode := (
+		scurk_place_print != null
+		and scurk_place_print.visible
+		and not scurk_place_print.is_object_mode()
+	)
+	var scurk_tool := (
+		scurk_place_print.selected_edit_tool() if scurk_tool_mode else {}
+	)
 	if scurk_place_print != null and scurk_place_print.visible:
-		_apply_scurk_place_selection(finish)
-		return
-	if not ToolAvailability.is_available(city, selected_group, selected_subtool):
+		if scurk_place_print.is_object_mode():
+			_apply_scurk_place_selection(finish)
+			return
+		if scurk_tool.is_empty():
+			return
+		selected_group = int(scurk_tool.group)
+		selected_subtool = int(scurk_tool.subtool)
+	if not scurk_tool_mode and not ToolAvailability.is_available(
+		city, selected_group, selected_subtool
+	):
 		_show_error(
 			"%s is not available in this city."
 			% Tools.tool(selected_group, selected_subtool).name
@@ -5494,7 +5604,12 @@ func _apply_map_selection(
 		return
 	if Landscapes.supports_tool(selected_group, selected_subtool):
 		var landscape := Landscapes.apply_path(
-			city, selected_group, selected_subtool, path, tool_random
+			city,
+			selected_group,
+			selected_subtool,
+			path,
+			tool_random,
+			scurk_tool_mode
 		)
 		if not landscape.ok:
 			_show_error(
@@ -5502,8 +5617,9 @@ func _apply_map_selection(
 				% [Tools.tool(selected_group, selected_subtool).name, landscape.error]
 			)
 			return
-		last_edit_command = landscape
-		undo_button.disabled = false
+		_record_edit_command(
+			landscape, scurk_tool_mode, String(scurk_tool.get("name", ""))
+		)
 		_refresh_details()
 		_refresh_after_city_edit(landscape)
 		status_label.remove_theme_color_override("font_color")
@@ -5522,16 +5638,19 @@ func _apply_map_selection(
 			selected_subtool,
 			path,
 			tool_random,
-			overlay_mode == "underground"
+			overlay_mode == "underground",
+			scurk_tool_mode
 		)
 		if not demolition.ok:
 			_show_error("Cannot demolish: %s" % demolition.error)
 			return
-		last_edit_command = demolition
-		undo_button.disabled = false
+		_record_edit_command(
+			demolition, scurk_tool_mode, String(scurk_tool.get("name", ""))
+		)
 		_refresh_details()
 		_refresh_after_city_edit(demolition)
-		_show_effect_events(demolition.effect_events, demolition.sound_events)
+		if not scurk_tool_mode:
+			_show_effect_events(demolition.effect_events, demolition.sound_events)
 		if demolition.easter_events > 0:
 			_refresh_saved_news_summary()
 			_show_forest_protest()
@@ -5549,13 +5668,20 @@ func _apply_map_selection(
 		return
 	if TerrainTools.supports_tool(selected_group, selected_subtool):
 		var terrain_change := TerrainTools.apply_path(
-			city, selected_group, selected_subtool, start, path, tool_random
+			city,
+			selected_group,
+			selected_subtool,
+			start,
+			path,
+			tool_random,
+			scurk_tool_mode
 		)
 		if not terrain_change.ok:
 			_show_error("Cannot change terrain: %s" % terrain_change.error)
 			return
-		last_edit_command = terrain_change
-		undo_button.disabled = false
+		_record_edit_command(
+			terrain_change, scurk_tool_mode, String(scurk_tool.get("name", ""))
+		)
 		_refresh_details()
 		_refresh_after_city_edit(terrain_change)
 		_show_effect_events(terrain_change.effect_events, terrain_change.sound_events)
@@ -5569,7 +5695,15 @@ func _apply_map_selection(
 			status_label.text += " %d structure conflicts were not changed." % terrain_change.skipped_conflicts
 		return
 	if Networks.supports_tool(selected_group, selected_subtool):
-		_apply_network_selection(start, finish)
+		_apply_network_selection(
+			start,
+			finish,
+			Networks.BRIDGE_UNSELECTED,
+			selected_group,
+			selected_subtool,
+			Networks.CONNECTION_UNSELECTED,
+			scurk_tool_mode
+		)
 		return
 	if Hydro.supports_tool(selected_group, selected_subtool):
 		var hydro := Hydro.apply(city, selected_group, selected_subtool, finish, tool_random)
@@ -5588,29 +5722,39 @@ func _apply_map_selection(
 		if not connection.ok:
 			_show_error("Cannot build subway-to-rail connection: %s" % connection.error)
 			return
-		last_edit_command = connection
-		undo_button.disabled = false
+		_record_edit_command(
+			connection, scurk_tool_mode, String(scurk_tool.get("name", ""))
+		)
 		_refresh_after_city_edit(connection)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built a subway-to-rail connection at no charge. Listed cost: $%s." % _format_number(connection.listed_cost)
 		return
 	if Onramps.supports_tool(selected_group, selected_subtool):
-		var onramp := Onramps.apply(city, selected_group, selected_subtool, finish)
+		var onramp := Onramps.apply(
+			city, selected_group, selected_subtool, finish, scurk_tool_mode
+		)
 		if not onramp.ok:
 			_show_error("Cannot build on-ramp: %s" % onramp.error)
 			return
-		last_edit_command = onramp
-		undo_button.disabled = false
+		_record_edit_command(
+			onramp, scurk_tool_mode, String(scurk_tool.get("name", ""))
+		)
 		_refresh_details()
 		_refresh_after_city_edit(onramp)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built an on-ramp for $%s." % _format_number(onramp.cost)
 		return
 	if Tunnels.supports_tool(selected_group, selected_subtool):
-		_apply_tunnel_selection(finish)
+		_apply_tunnel_selection(finish, Tunnels.CONFIRMATION_UNSELECTED, scurk_tool_mode)
 		return
 	if Highways.supports_tool(selected_group, selected_subtool):
-		_apply_highway_selection(start, finish)
+		_apply_highway_selection(
+			start,
+			finish,
+			Highways.CONNECTION_UNSELECTED,
+			Highways.BRIDGE_UNSELECTED,
+			scurk_tool_mode
+		)
 		return
 	if Buildings.supports_tool(selected_group, selected_subtool):
 		var building_group := selected_group
@@ -5660,14 +5804,21 @@ func _apply_map_selection(
 			status_label.text += " Select a stadium team."
 		return
 	var command := Zones.apply_rectangle(
-		city, selected_group, selected_subtool, start, finish, dragged
+		city,
+		selected_group,
+		selected_subtool,
+		start,
+		finish,
+		dragged,
+		scurk_tool_mode,
+		int(scurk_tool.get("zone", -1))
 	)
 	if not command.ok:
 		_show_error("Cannot apply %s: %s" % [Tools.tool(selected_group, selected_subtool).name, command.error])
 		return
-	command["command_type"] = "zone"
-	last_edit_command = command
-	undo_button.disabled = false
+	_record_edit_command(
+		command, scurk_tool_mode, String(scurk_tool.get("name", ""))
+	)
 	_refresh_details()
 	_refresh_after_city_edit(command)
 	status_label.remove_theme_color_override("font_color")
@@ -5684,7 +5835,8 @@ func _apply_network_selection(
 	bridge_type := Networks.BRIDGE_UNSELECTED,
 	group_index := -1,
 	subtool_index := -1,
-	connection_choice := Networks.CONNECTION_UNSELECTED
+	connection_choice := Networks.CONNECTION_UNSELECTED,
+	free_mode := false
 ) -> void:
 	if group_index < 0:
 		group_index = selected_group
@@ -5698,10 +5850,19 @@ func _apply_network_selection(
 		start,
 		finish,
 		bridge_type,
-		connection_choice
+		connection_choice,
+		free_mode
 	)
 	if network.get("bridge_selection_required", false):
-		_open_bridge_dialog(start, finish, group_index, subtool_index, network)
+		_open_bridge_dialog(
+			start,
+			finish,
+			group_index,
+			subtool_index,
+			network,
+			"network",
+			free_mode
+		)
 		return
 	if network.get("cancelled", false):
 		status_label.remove_theme_color_override("font_color")
@@ -5714,16 +5875,24 @@ func _apply_network_selection(
 			"group_index": group_index,
 			"subtool_index": subtool_index,
 			"bridge_type": bridge_type,
+			"free_mode": free_mode,
 		}
 		network_connection_dialog.dialog_text = (
-			"Build a %s connection to a neighboring city for $%s?\n"
-			+ "The %d-tile route costs $%s and remains if you cancel."
-		) % [
-			tool_name.to_lower(),
-			_format_number(int(network.get("connection_cost", 0))),
-			network.get("dry_points", []).size(),
-			_format_number(int(network.get("dry_cost", 0))),
-		]
+			(
+				"Build a %s connection to a neighboring city?\n"
+				+ "The route and connection are free in Place & Print."
+			) % tool_name.to_lower()
+			if free_mode
+			else (
+				"Build a %s connection to a neighboring city for $%s?\n"
+				+ "The %d-tile route costs $%s and remains if you cancel."
+			) % [
+				tool_name.to_lower(),
+				_format_number(int(network.get("connection_cost", 0))),
+				network.get("dry_points", []).size(),
+				_format_number(int(network.get("dry_cost", 0))),
+			]
+		)
 		network_connection_dialog.get_cancel_button().text = "Keep %s" % tool_name
 		network_connection_dialog.popup_centered()
 		return
@@ -5733,8 +5902,7 @@ func _apply_network_selection(
 			% [tool_name, network.get("error", "unknown error")]
 		)
 		return
-	last_edit_command = network
-	undo_button.disabled = false
+	_record_edit_command(network, free_mode, tool_name)
 	_refresh_details()
 	_refresh_after_city_edit(network)
 	status_label.remove_theme_color_override("font_color")
@@ -5798,7 +5966,8 @@ func _apply_pending_network_connection(connection_choice: int) -> void:
 		int(request.bridge_type),
 		int(request.group_index),
 		int(request.subtool_index),
-		connection_choice
+		connection_choice,
+		bool(request.get("free_mode", false))
 	)
 
 
@@ -5927,7 +6096,8 @@ func _open_bridge_dialog(
 	group_index: int,
 	subtool_index: int,
 	result: Dictionary,
-	request_type := "network"
+	request_type := "network",
+	free_mode := false
 ) -> void:
 	pending_bridge_request = {
 		"start": start,
@@ -5935,6 +6105,7 @@ func _open_bridge_dialog(
 		"group_index": group_index,
 		"subtool_index": subtool_index,
 		"request_type": request_type,
+		"free_mode": free_mode,
 		"choices": result.get("bridge_choices", []),
 		"dry_points": result.get(
 			"dry_points", result.get("dry_sections", [])
@@ -5956,12 +6127,16 @@ func _open_bridge_dialog(
 		var cost_unit := (
 			"2 by 2 water section" if request_type == "highway" else "water tile"
 		)
-		choice_button.text = "%s\n$%s total\n$%s for each %s" % [
-			choice.get("name", "Bridge"),
-			_format_number(int(choice.get("cost", 0))),
-			_format_number(int(choice.get("cost_per_tile", 0))),
-			cost_unit,
-		]
+		choice_button.text = (
+			"%s\nFree in Place & Print" % choice.get("name", "Bridge")
+			if free_mode
+			else "%s\n$%s total\n$%s for each %s" % [
+				choice.get("name", "Bridge"),
+				_format_number(int(choice.get("cost", 0))),
+				_format_number(int(choice.get("cost_per_tile", 0))),
+				cost_unit,
+			]
+		)
 		choice_button.tooltip_text = "Build %s" % choice.get("name", "bridge")
 	bridge_dialog.popup_centered()
 
@@ -5983,7 +6158,8 @@ func _choose_bridge(choice_index: int) -> void:
 			request.start,
 			request.finish,
 			Highways.CONNECTION_UNSELECTED,
-			int(choice.get("type", Highways.BRIDGE_UNSELECTED))
+			int(choice.get("type", Highways.BRIDGE_UNSELECTED)),
+			bool(request.get("free_mode", false))
 		)
 		return
 	_apply_network_selection(
@@ -5991,7 +6167,9 @@ func _choose_bridge(choice_index: int) -> void:
 		request.finish,
 		int(choice.get("type", Networks.BRIDGE_UNSELECTED)),
 		int(request.group_index),
-		int(request.subtool_index)
+		int(request.subtool_index),
+		Networks.CONNECTION_UNSELECTED,
+		bool(request.get("free_mode", false))
 	)
 
 
@@ -6011,7 +6189,8 @@ func _cancel_bridge() -> void:
 			request.start,
 			request.finish,
 			Highways.CONNECTION_UNSELECTED,
-			Highways.BRIDGE_CANCELLED
+			Highways.BRIDGE_CANCELLED,
+			bool(request.get("free_mode", false))
 		)
 		return
 	_apply_network_selection(
@@ -6019,18 +6198,31 @@ func _cancel_bridge() -> void:
 		request.finish,
 		Networks.BRIDGE_CANCELLED,
 		int(request.group_index),
-		int(request.subtool_index)
+		int(request.subtool_index),
+		Networks.CONNECTION_UNSELECTED,
+		bool(request.get("free_mode", false))
 	)
 
 
 func _apply_tunnel_selection(
 	start: Vector2i,
-	confirmation_choice := Tunnels.CONFIRMATION_UNSELECTED
+	confirmation_choice := Tunnels.CONFIRMATION_UNSELECTED,
+	free_mode := false
 ) -> void:
 	var tunnel := Tunnels.apply(
-		city, selected_group, selected_subtool, start, confirmation_choice
+		city,
+		selected_group,
+		selected_subtool,
+		start,
+		confirmation_choice,
+		free_mode
 	)
 	if tunnel.get("confirmation_required", false):
+		if free_mode:
+			_apply_tunnel_selection(
+				start, Tunnels.CONFIRMATION_CONFIRMED, true
+			)
+			return
 		pending_tunnel_request = {
 			"start": start,
 			"group_index": selected_group,
@@ -6049,8 +6241,15 @@ func _apply_tunnel_selection(
 	if not tunnel.get("ok", false):
 		_show_error("Cannot build tunnel: %s" % tunnel.get("error", "unknown error"))
 		return
-	last_edit_command = tunnel
-	undo_button.disabled = false
+	_record_edit_command(
+		tunnel,
+		free_mode,
+		String(
+			scurk_place_print.selected_edit_tool().get("name", "Tunnel")
+			if free_mode and scurk_place_print != null
+			else "Tunnel"
+		)
+	)
 	_refresh_details()
 	_refresh_after_city_edit(tunnel)
 	status_label.remove_theme_color_override("font_color")
@@ -6082,7 +6281,8 @@ func _apply_highway_selection(
 	start: Vector2i,
 	finish: Vector2i,
 	connection_choice := Highways.CONNECTION_UNSELECTED,
-	bridge_type := Highways.BRIDGE_UNSELECTED
+	bridge_type := Highways.BRIDGE_UNSELECTED,
+	free_mode := false
 ) -> void:
 	var highway := Highways.apply(
 		city,
@@ -6091,7 +6291,8 @@ func _apply_highway_selection(
 		start,
 		finish,
 		connection_choice,
-		bridge_type
+		bridge_type,
+		free_mode
 	)
 	if highway.get("bridge_selection_required", false):
 		_open_bridge_dialog(
@@ -6100,7 +6301,8 @@ func _apply_highway_selection(
 			selected_group,
 			selected_subtool,
 			highway,
-			"highway"
+			"highway",
+			free_mode
 		)
 		return
 	if highway.get("cancelled", false):
@@ -6113,22 +6315,29 @@ func _apply_highway_selection(
 			"finish": finish,
 			"group_index": selected_group,
 			"subtool_index": selected_subtool,
+			"free_mode": free_mode,
 		}
 		highway_connection_dialog.dialog_text = (
-			"Build a highway connection to a neighboring city for $%s?\n"
-			+ "The %d-section highway costs $%s and remains if you cancel."
-		) % [
-			_format_number(int(highway.get("connection_cost", 0))),
-			highway.get("sections", []).size(),
-			_format_number(int(highway.get("route_cost", 0))),
-		]
+			(
+				"Build a highway connection to a neighboring city?\n"
+				+ "The highway and connection are free in Place & Print."
+			)
+			if free_mode
+			else (
+				"Build a highway connection to a neighboring city for $%s?\n"
+				+ "The %d-section highway costs $%s and remains if you cancel."
+			) % [
+				_format_number(int(highway.get("connection_cost", 0))),
+				highway.get("sections", []).size(),
+				_format_number(int(highway.get("route_cost", 0))),
+			]
+		)
 		highway_connection_dialog.popup_centered()
 		return
 	if not highway.get("ok", false):
 		_show_error("Cannot build highway: %s" % highway.get("error", "unknown error"))
 		return
-	last_edit_command = highway
-	undo_button.disabled = false
+	_record_edit_command(highway, free_mode, "Highway")
 	_refresh_details()
 	_refresh_after_city_edit(highway)
 	status_label.remove_theme_color_override("font_color")
@@ -6182,7 +6391,13 @@ func _apply_pending_highway_connection(connection_choice: int) -> void:
 	highway_connection_dialog.hide()
 	selected_group = int(request.group_index)
 	selected_subtool = int(request.subtool_index)
-	_apply_highway_selection(request.start, request.finish, connection_choice)
+	_apply_highway_selection(
+		request.start,
+		request.finish,
+		connection_choice,
+		Highways.BRIDGE_UNSELECTED,
+		bool(request.get("free_mode", false))
+	)
 
 
 func _undo_last_edit() -> void:
@@ -6190,7 +6405,7 @@ func _undo_last_edit() -> void:
 		return
 	var undone_command := last_edit_command
 	var command_type: String = last_edit_command.get("command_type", "")
-	if command_type == "scurk_place_object":
+	if last_edit_command.get("scurk_place_history", false):
 		_undo_scurk_place()
 		return
 	var undo_forest_protest := (
