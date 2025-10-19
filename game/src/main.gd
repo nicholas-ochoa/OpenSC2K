@@ -8,6 +8,7 @@ const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
+const ScurkCityOutput = preload("res://src/assets/scurk_city_output.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const PeString = preload("res://src/assets/pe_string_resource.gd")
 const TextUsa = preload("res://src/assets/text_usa_resource.gd")
@@ -37,6 +38,7 @@ const NewspaperPageView = preload("res://src/ui/newspaper_page.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
 const ScurkPlacePrintView = preload("res://src/ui/scurk_place_print_control.gd")
+const ScurkPrintView = preload("res://src/ui/scurk_print_control.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -254,6 +256,8 @@ var status_speed_label: Label
 var file_dialog: FileDialog
 var save_dialog: FileDialog
 var tile_set_dialog: FileDialog
+var scurk_city_export_dialog: FileDialog
+var scurk_print_pdf_dialog: FileDialog
 var new_city_dialog: ColorRect
 var new_city_name_input: LineEdit
 var new_city_mayor_input: LineEdit
@@ -366,6 +370,8 @@ var settings_effects_slider: HSlider
 var settings_fullscreen_check: CheckBox
 var scurk_editor: ScurkEditorControl
 var scurk_place_print: ScurkPlacePrintControl
+var scurk_print: ScurkPrintControl
+var pending_scurk_print_options: Dictionary = {}
 var scurk_place_undo_stack: Array[Dictionary] = []
 var scurk_place_redo_stack: Array[Dictionary] = []
 var about_dialog: AcceptDialog
@@ -514,8 +520,11 @@ func _process(delta: float) -> void:
 		or (new_city_dialog != null and new_city_dialog.visible)
 		or (scurk_editor != null and scurk_editor.visible)
 		or (scurk_place_print != null and scurk_place_print.visible)
+		or (scurk_print != null and scurk_print.visible)
 		or (main_menu != null and main_menu.visible)
 		or (save_dialog != null and save_dialog.visible)
+		or (scurk_city_export_dialog != null and scurk_city_export_dialog.visible)
+		or (scurk_print_pdf_dialog != null and scurk_print_pdf_dialog.visible)
 		or (save_changes_dialog != null and save_changes_dialog.visible)
 		or bond_dialog.visible
 		or military_dialog.visible
@@ -1003,6 +1012,20 @@ func _build_interface(toolbar_art: Image) -> void:
 	tile_set_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
 	tile_set_dialog.file_selected.connect(_load_tile_set)
 	add_child(tile_set_dialog)
+
+	scurk_city_export_dialog = FileDialog.new()
+	scurk_city_export_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	scurk_city_export_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	scurk_city_export_dialog.add_filter("*.BMP, *.bmp", "Windows indexed bitmap")
+	scurk_city_export_dialog.file_selected.connect(_export_scurk_city_bmp)
+	add_child(scurk_city_export_dialog)
+
+	scurk_print_pdf_dialog = FileDialog.new()
+	scurk_print_pdf_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	scurk_print_pdf_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
+	scurk_print_pdf_dialog.add_filter("*.PDF, *.pdf", "Printable PDF")
+	scurk_print_pdf_dialog.file_selected.connect(_save_scurk_city_pdf)
+	add_child(scurk_print_pdf_dialog)
 
 	new_city_dialog = ColorRect.new()
 	new_city_dialog.name = "NewCityOverlay"
@@ -1677,10 +1700,17 @@ func _build_main_menu() -> void:
 	scurk_place_print = ScurkPlacePrintView.new()
 	scurk_place_print.tile_selected.connect(_select_scurk_place_tile)
 	scurk_place_print.edit_tool_selected.connect(_select_scurk_edit_tool)
+	scurk_place_print.export_bmp_requested.connect(_open_scurk_city_export)
+	scurk_place_print.print_city_requested.connect(_open_scurk_print_dialog)
 	scurk_place_print.undo_requested.connect(_undo_scurk_place)
 	scurk_place_print.redo_requested.connect(_redo_scurk_place)
 	scurk_place_print.close_requested.connect(_close_scurk_place_print)
 	add_child(scurk_place_print)
+
+	scurk_print = ScurkPrintView.new()
+	scurk_print.preview_options_changed.connect(_refresh_scurk_print_preview)
+	scurk_print.save_pdf_requested.connect(_open_scurk_print_pdf_dialog)
+	add_child(scurk_print)
 
 	about_dialog = AcceptDialog.new()
 	about_dialog.title = "About OpenSC2K"
@@ -1711,6 +1741,8 @@ func _show_main_menu() -> void:
 	if scurk_place_print != null and scurk_place_print.visible:
 		scurk_place_print.hide()
 		_update_edit_state()
+	if scurk_print != null:
+		scurk_print.hide()
 	main_menu.show_menu(city != null)
 	status_label.text = "Main menu."
 
@@ -1828,6 +1860,7 @@ func _open_scurk_place_print() -> void:
 	scurk_place_print.set_history_enabled(
 		not scurk_place_undo_stack.is_empty(), not scurk_place_redo_stack.is_empty()
 	)
+	scurk_place_print.set_export_enabled(map_view.zoom_percent() <= 25)
 	if not scurk_place_print.show_workspace():
 		_show_error("Cannot open SCURK Place & Print.")
 		return
@@ -1837,10 +1870,140 @@ func _open_scurk_place_print() -> void:
 func _close_scurk_place_print() -> void:
 	if scurk_place_print != null:
 		scurk_place_print.hide()
+	if scurk_print != null:
+		scurk_print.hide()
 	_update_edit_state()
 	if city != null:
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Closed SCURK Place & Print."
+
+
+func _open_scurk_city_export() -> void:
+	if city == null or scurk_place_print == null or not scurk_place_print.visible:
+		return
+	if map_view.zoom_percent() > 25:
+		_show_error("Zoom out to 25% before you export a Place & Print city.")
+		return
+	var output_directory := ProjectSettings.globalize_path("user://scurk_exports")
+	DirAccess.make_dir_recursive_absolute(output_directory)
+	scurk_city_export_dialog.current_dir = output_directory
+	var output_name := city.city_name().validate_filename()
+	if output_name.is_empty():
+		output_name = "CITY"
+	scurk_city_export_dialog.current_file = output_name + "_SMALL.BMP"
+	scurk_city_export_dialog.popup_centered_ratio(0.75)
+
+
+func _export_scurk_city_bmp(path: String) -> void:
+	if city == null:
+		return
+	var output_path := ProjectSettings.globalize_path(path).simplify_path()
+	if output_path.get_extension().to_lower() != "bmp":
+		output_path += ".BMP"
+	if output_path == reference_root or output_path.begins_with(reference_root + "/"):
+		_show_error("Choose a location outside the read-only references directory.")
+		return
+	var options := _current_scurk_output_options()
+	options["color"] = true
+	var result := ScurkCityOutput.save_small_bmp(
+		output_path,
+		city,
+		palette_index_encoding,
+		palette,
+		_sprite_archive_for_view(IsometricRenderer.VIEW_SMALL),
+		options
+	)
+	if not result.ok:
+		_show_error("Cannot export the Place & Print city: %s" % result.error)
+		return
+	var message := "Exported the small Place & Print city to %s." % output_path
+	scurk_place_print.set_status(message)
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = message
+
+
+func _open_scurk_print_dialog() -> void:
+	if city == null or scurk_print == null:
+		return
+	scurk_print.configure(
+		city.city_name(), overlay_mode, surface_visibility, show_underground_pipes
+	)
+	scurk_print.show_workspace()
+
+
+func _refresh_scurk_print_preview(options: Dictionary) -> void:
+	if city == null or scurk_print == null:
+		return
+	var result := ScurkCityOutput.render(
+		city,
+		palette,
+		_sprite_archive_for_view(IsometricRenderer.VIEW_SMALL),
+		IsometricRenderer.VIEW_SMALL,
+		options
+	)
+	if not result.ok:
+		scurk_print.set_status("Cannot prepare the print preview: %s" % result.error)
+		return
+	scurk_print.set_preview_image(result.image)
+
+
+func _open_scurk_print_pdf_dialog(options: Dictionary) -> void:
+	if city == null:
+		return
+	pending_scurk_print_options = options.duplicate(true)
+	var output_directory := ProjectSettings.globalize_path("user://scurk_prints")
+	DirAccess.make_dir_recursive_absolute(output_directory)
+	scurk_print_pdf_dialog.current_dir = output_directory
+	var output_name := city.city_name().validate_filename()
+	if output_name.is_empty():
+		output_name = "CITY"
+	scurk_print_pdf_dialog.current_file = "%s_%dx.PDF" % [
+		output_name, int(options.get("magnification", 1)),
+	]
+	scurk_print_pdf_dialog.popup_centered_ratio(0.75)
+
+
+func _save_scurk_city_pdf(path: String) -> void:
+	if city == null or pending_scurk_print_options.is_empty():
+		return
+	var output_path := ProjectSettings.globalize_path(path).simplify_path()
+	if output_path.get_extension().to_lower() != "pdf":
+		output_path += ".PDF"
+	if output_path == reference_root or output_path.begins_with(reference_root + "/"):
+		_show_error("Choose a location outside the read-only references directory.")
+		return
+	var magnification := int(pending_scurk_print_options.get("magnification", 1))
+	var grid := ScurkCityOutput.page_grid(magnification)
+	if grid.is_empty():
+		_show_error("The selected print magnification is invalid.")
+		return
+	var result := ScurkCityOutput.save_pdf(
+		output_path,
+		city,
+		palette,
+		_sprite_archive_for_view(int(grid.view_size)),
+		pending_scurk_print_options
+	)
+	if not result.ok:
+		_show_error("Cannot write the printable city: %s" % result.error)
+		return
+	var message := "Wrote %d printable city pages to %s." % [
+		int(result.page_count), output_path,
+	]
+	scurk_print.set_status(message)
+	scurk_place_print.set_status(message)
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = message
+	pending_scurk_print_options.clear()
+
+
+func _current_scurk_output_options() -> Dictionary:
+	return {
+		"view": overlay_mode,
+		"color": true,
+		"surface_visibility": surface_visibility.duplicate(),
+		"show_pipes": show_underground_pipes,
+	}
 
 
 func _select_scurk_place_tile(tile_id: int) -> void:
@@ -2672,6 +2835,8 @@ func _update_zoom_controls(percent: int) -> void:
 		rotate_counter_clockwise_button.disabled = city == null
 	if rotate_clockwise_button != null:
 		rotate_clockwise_button.disabled = city == null
+	if scurk_place_print != null:
+		scurk_place_print.set_export_enabled(percent <= 25)
 
 
 func _update_fps(delta: float) -> void:
@@ -3825,6 +3990,9 @@ func _activate_document(
 		new_city_dialog.hide()
 	if scurk_place_print != null and scurk_place_print.visible:
 		scurk_place_print.hide()
+	if scurk_print != null:
+		scurk_print.hide()
+	pending_scurk_print_options.clear()
 	scurk_place_undo_stack.clear()
 	scurk_place_redo_stack.clear()
 	annual_budget_pending = false

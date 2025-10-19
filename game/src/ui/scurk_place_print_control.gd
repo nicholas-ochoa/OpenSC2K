@@ -3,6 +3,8 @@ extends Window
 
 signal tile_selected(tile_id: int)
 signal edit_tool_selected(group_index: int, subtool_index: int, zone_type: int)
+signal export_bmp_requested
+signal print_city_requested
 signal undo_requested
 signal redo_requested
 
@@ -71,6 +73,7 @@ var zone_selector: OptionButton
 var object_list: ItemList
 var tool_list: ItemList
 var selection_label: Label
+var export_bmp_button: Button
 var undo_button: Button
 var redo_button: Button
 
@@ -168,6 +171,17 @@ func set_history_enabled(can_undo: bool, can_redo: bool) -> void:
 		undo_button.disabled = not can_undo
 	if redo_button != null:
 		redo_button.disabled = not can_redo
+
+
+func set_export_enabled(enabled: bool) -> void:
+	if export_bmp_button == null:
+		return
+	export_bmp_button.disabled = not enabled
+	export_bmp_button.tooltip_text = (
+		"Export the current work area as a small-view indexed BMP."
+		if enabled
+		else "Zoom out to 25% before you export the Place & Print city."
+	)
 
 
 func set_status(message: String) -> void:
@@ -293,6 +307,22 @@ func _build_interface() -> void:
 	selection_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	selection_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	page.add_child(selection_label)
+
+	var output_buttons := HBoxContainer.new()
+	output_buttons.alignment = BoxContainer.ALIGNMENT_END
+	output_buttons.add_theme_constant_override("separation", 8)
+	page.add_child(output_buttons)
+	export_bmp_button = Button.new()
+	export_bmp_button.text = "Export BMP..."
+	export_bmp_button.pressed.connect(export_bmp_requested.emit)
+	output_buttons.add_child(export_bmp_button)
+	var print_button := Button.new()
+	print_button.text = "Print City..."
+	print_button.tooltip_text = (
+		"Choose the city pages, detail, view, layers, and output color."
+	)
+	print_button.pressed.connect(print_city_requested.emit)
+	output_buttons.add_child(print_button)
 
 	var buttons := HBoxContainer.new()
 	buttons.alignment = BoxContainer.ALIGNMENT_END

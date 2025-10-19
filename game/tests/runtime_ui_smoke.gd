@@ -203,6 +203,43 @@ func _run() -> void:
 				main.queue_free()
 				quit(2)
 				return
+			if (
+				place_print.export_bmp_button == null
+				or not place_print.export_bmp_button.disabled
+			):
+				push_error("SCURK city BMP export is not gated to the small view")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_open_scurk_print_dialog")
+			await process_frame
+			var print_control: ScurkPrintControl = main.get("scurk_print")
+			if (
+				print_control == null
+				or not print_control.visible
+				or print_control.preview.preview_texture == null
+				or print_control.preview.selected_pages.size() != 2
+				or print_control.preview.selected_page_count() != 2
+			):
+				push_error("SCURK printable city dialog did not prepare its 1x preview")
+				main.queue_free()
+				quit(2)
+				return
+			print_control.magnification_selector.select(1)
+			print_control.call("_on_magnification_changed", 1)
+			print_control.view_selector.select(1)
+			print_control.call("_on_view_changed", 1)
+			if (
+				print_control.preview.selected_pages.size() != 8
+				or not print_control.pipes_check.visible
+				or print_control.buildings_check.visible
+				or print_control.preview.preview_texture == null
+			):
+				push_error("SCURK printable city options do not match the 2x underground view")
+				main.queue_free()
+				quit(2)
+				return
+			print_control.hide()
 			var place_preview: Array[Vector2i] = main.get("map_view").point_preview_tiles(
 				patch_point
 			)

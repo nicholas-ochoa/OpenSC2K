@@ -9,6 +9,7 @@ const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
 const ClipboardImage = preload("res://src/platform/image_clipboard.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
+const ScurkOutput = preload("res://src/assets/scurk_city_output.gd")
 const ScurkEditor = preload("res://src/ui/scurk_editor_control.gd")
 const ScurkPlaceControl = preload("res://src/ui/scurk_place_print_control.gd")
 const ScurkPickCopy = preload("res://src/tools/scurk_pick_copy.gd")
@@ -3691,6 +3692,16 @@ func _test_scurk_mif(reference_root: String) -> void:
 
 func _test_scurk_place_command(reference_root: String) -> void:
 	_check(
+		ScurkOutput.page_grid(1).count == 2
+		and ScurkOutput.page_grid(1).columns == 2
+		and ScurkOutput.page_grid(2).count == 8
+		and ScurkOutput.page_grid(2).columns == 4
+		and ScurkOutput.page_grid(4).count == 28
+		and ScurkOutput.page_grid(4).columns == 7
+		and ScurkOutput.page_grid(3).is_empty(),
+		"SCURK printing uses the executable's 2, 8, and 28-page grids",
+	)
+	_check(
 		ScurkPlace.placeable_large_ids(ScurkPickCopy.GROUP_ALL).size() == 156
 		and ScurkPlace.placeable_large_ids(
 			ScurkPickCopy.GROUP_ANIMATING_I
@@ -4041,6 +4052,106 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		and city.building_id(116, 116) == 0,
 		"SCURK free highways use exact shared Undo",
 	)
+
+	var output_palette := Palette.load_bmp(
+		reference_root.path_join("BITMAPS/PAL_MSTR.BMP")
+	)
+	var output_sprites := SpriteArchive.load_path(
+		reference_root.path_join("DATA/SMALLMED.DAT")
+	)
+	var output_options := {
+		"view": "city",
+		"color": true,
+		"entire_city": false,
+		"selected_pages": PackedByteArray([1, 0]),
+		"surface_visibility": ViewFilter.DEFAULT_VISIBILITY.duplicate(),
+		"show_pipes": true,
+		"magnification": 1,
+	}
+	var print_sign := Signs.set_sign(city, Vector2i(100, 100), "PRINT TEST")
+	var output_with_sign := ScurkOutput.render(
+		city,
+		Palette.index_encoding(),
+		output_sprites,
+		IsometricRenderer.VIEW_SMALL,
+		output_options
+	)
+	var no_sign_options: Dictionary = output_options.duplicate(true)
+	no_sign_options.surface_visibility.signs = false
+	var output_without_sign := ScurkOutput.render(
+		city,
+		Palette.index_encoding(),
+		output_sprites,
+		IsometricRenderer.VIEW_SMALL,
+		no_sign_options
+	)
+	_check(
+		print_sign.ok
+		and output_with_sign.ok
+		and output_without_sign.ok
+		and hash(output_with_sign.image.get_data())
+			!= hash(output_without_sign.image.get_data()),
+		"SCURK printable city output includes signs only when their layer is enabled",
+	)
+	if print_sign.ok:
+		Signs.undo(city, print_sign)
+	var monochrome_options: Dictionary = output_options.duplicate(true)
+	monochrome_options.color = false
+	var monochrome_output := ScurkOutput.render(
+		city,
+		output_palette,
+		output_sprites,
+		IsometricRenderer.VIEW_SMALL,
+		monochrome_options
+	)
+	var monochrome_sample: Color = (
+		monochrome_output.image.get_pixel(520, 368)
+		if monochrome_output.ok
+		else Color.RED
+	)
+	_check(
+		monochrome_output.ok
+		and is_equal_approx(monochrome_sample.r, monochrome_sample.g)
+		and is_equal_approx(monochrome_sample.g, monochrome_sample.b),
+		"SCURK printable city output supports black-and-white pages",
+	)
+	var city_bmp_path := "/tmp/open-sc2k-test-scurk-place-print-city.BMP"
+	var city_bmp := ScurkOutput.save_small_bmp(
+		city_bmp_path,
+		city,
+		Palette.index_encoding(),
+		output_palette,
+		output_sprites,
+		output_options
+	)
+	var decoded_city_bmp := IndexedBitmap.decode(
+		FileAccess.get_file_as_bytes(city_bmp_path)
+	)
+	_check(
+		city_bmp.ok
+		and decoded_city_bmp.ok
+		and decoded_city_bmp.width
+			== IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_SMALL).x
+		and decoded_city_bmp.height
+			== IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_SMALL).y,
+		"SCURK Place & Print exports the complete small city as an indexed BMP",
+	)
+	var city_pdf_path := "/tmp/open-sc2k-test-scurk-place-print-city.PDF"
+	var city_pdf := ScurkOutput.save_pdf(
+		city_pdf_path, city, output_palette, output_sprites, output_options
+	)
+	var pdf_bytes := FileAccess.get_file_as_bytes(city_pdf_path)
+	_check(
+		city_pdf.ok
+		and city_pdf.page_count == 1
+		and city_pdf.available_page_count == 2
+		and pdf_bytes.size() > 100
+		and pdf_bytes.slice(0, 8).get_string_from_ascii() == "%PDF-1.4",
+		"SCURK Place & Print writes selected city pages to a printable PDF",
+	)
+	if OS.get_environment("OPENSC2K_KEEP_TEST_OUTPUT") != "1":
+		DirAccess.remove_absolute(city_bmp_path)
+		DirAccess.remove_absolute(city_pdf_path)
 
 
 func _test_indexed_bmp() -> void:
