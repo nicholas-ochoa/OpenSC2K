@@ -3097,16 +3097,22 @@ func _on_disaster_menu(id: int) -> void:
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "No Disasters %s." % ("enabled" if enabled else "disabled")
 		return
-	var point := map_view.center_tile()
+	var result := _start_disaster_at_view_center(id)
+	if not result.get("ok", false):
+		_show_error("Cannot start the disaster: %s" % result.get("error", "unknown error"))
+
+
+func _start_disaster_at_view_center(id: int) -> Dictionary:
+	if city == null or simulation_engine == null:
+		return {"ok": false, "error": "no city is loaded"}
+	var point := map_view.center_tile() if map_view != null else Vector2i(64, 64)
 	if point.x < 0:
 		point = Vector2i(64, 64)
 	var result := simulation_engine.start_disaster(id, point)
 	if not result.get("ok", false):
-		_show_error("Cannot start the disaster: %s" % result.get("error", "unknown error"))
-		return
+		return result
 	if not result.get("started", false):
-		_show_error("The selected disaster could not start.")
-		return
+		return {"ok": false, "error": "the selected disaster could not start"}
 	if city.music_enabled():
 		_play_music_track(Music.DISASTER_TRACK)
 	last_edit_command = {}
@@ -3119,7 +3125,15 @@ func _on_disaster_menu(id: int) -> void:
 		result.get("effect_events", []), result.get("sound_events", [])
 	)
 	_show_news_items(result.get("news_items", []))
-	var disaster_name: String = {
+	var disaster_name := _disaster_name(id)
+	status_label.remove_theme_color_override("font_color")
+	status_label.text = "%s started." % disaster_name
+	result["name"] = disaster_name
+	return result
+
+
+func _disaster_name(id: int) -> String:
+	return str({
 		DisasterStart.DISASTER_FIRE: "Fire",
 		DisasterStart.DISASTER_FLOOD: "Flood",
 		DisasterStart.DISASTER_RIOT: "Riot",
@@ -3138,9 +3152,7 @@ func _on_disaster_menu(id: int) -> void:
 		DisasterStart.DISASTER_HURRICANE: "Hurricane",
 		DisasterStart.DISASTER_HELICOPTER_CRASH: "Helicopter Crash",
 		DisasterStart.DISASTER_PLANE_CRASH: "Plane Crash",
-	}.get(id, "Disaster")
-	status_label.remove_theme_color_override("font_color")
-	status_label.text = "%s started." % disaster_name
+	}.get(id, "None" if id == DisasterStart.DISASTER_NONE else "Disaster"))
 
 
 func _on_windows_menu(id: int) -> void:
@@ -7027,6 +7039,15 @@ func _debug_metrics() -> Dictionary:
 		"static_cache": static_view_cache.size(),
 		"dynamic_cache": dynamic_visual_cache.size(),
 		"foreground_cache": dynamic_foreground_cache.size(),
+		"active_disaster": (
+			_disaster_name(simulation_engine.active_disaster_type)
+			if simulation_engine != null
+			else "None"
+		),
+		"active_disaster_id": (
+			simulation_engine.active_disaster_type if simulation_engine != null else 0
+		),
+		"no_disasters": city != null and city.no_disasters_enabled(),
 	}
 	if map_view != null:
 		result.merge(map_view.debug_metrics(), true)
@@ -7111,6 +7132,137 @@ func _debug_unlock_everything() -> Dictionary:
 	return {
 		"ok": true,
 		"message": "Unlocked all inventions, rewards, arcologies, and power plants.",
+	}
+
+
+func _debug_set_no_disasters(enabled: bool) -> Dictionary:
+	if city == null:
+		return {"ok": false, "message": "No city is loaded."}
+	if not city.set_no_disasters_enabled(enabled):
+		return {"ok": false, "message": "The random-disaster option could not be stored."}
+	_sync_city_option_menus()
+	_refresh_details()
+	return {
+		"ok": true,
+		"message": "Random disasters are %s." % ("disabled" if enabled else "enabled"),
+	}
+
+
+func _debug_start_disaster(disaster_type: int) -> Dictionary:
+	if disaster_type < DisasterStart.DISASTER_FIRE or disaster_type > DisasterStart.DISASTER_PLANE_CRASH:
+		return {"ok": false, "message": "The disaster selection is not valid."}
+	var result := _start_disaster_at_view_center(disaster_type)
+	if not result.get("ok", false):
+		return {
+			"ok": false,
+			"message": "The %s could not start: %s"
+			% [_disaster_name(disaster_type), result.get("error", "unknown error")],
+		}
+	return {
+		"ok": true,
+		"message": "%s started at the current view center." % _disaster_name(disaster_type),
+	}
+
+
+func _debug_end_disaster() -> Dictionary:
+	if city == null or simulation_engine == null or current_document == null:
+		return {"ok": false, "message": "No city is loaded."}
+	var thing_chunk := current_document.find_chunk("XTHG")
+	var text_chunk := current_document.find_chunk("XTXT")
+	var misc_chunk := current_document.find_chunk("MISC")
+	if (
+		thing_chunk == null
+		or thing_chunk.decoded_payload.size()
+		!= CityState.THING_COUNT * CityState.THING_RECORD_SIZE
+		or text_chunk == null
+		or text_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or misc_chunk == null
+		or misc_chunk.decoded_payload.size() != 4800
+	):
+		return {"ok": false, "message": "The city disaster data is not valid."}
+	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
+	var old_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
+	var old_misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+	var things := old_things.duplicate()
+	var text := old_text.duplicate()
+	var misc := old_misc.duplicate()
+	var disaster_records := {}
+	for record in range(1, CityState.THING_COUNT):
+		var offset := record * CityState.THING_RECORD_SIZE
+		var thing_type := int(things[offset])
+		var is_disaster_object := thing_type in [
+			DisasterStart.TYPE_MONSTER,
+			DisasterStart.TYPE_EXPLOSION,
+			DisasterStart.TYPE_TORNADO,
+		]
+		var is_crashing_airplane := (
+			thing_type == DisasterStart.TYPE_AIRPLANE and things[offset + 2] == 7
+		)
+		if is_disaster_object or is_crashing_airplane:
+			disaster_records[record] = true
+	var cleared_markers := 0
+	for index in CityState.TILE_COUNT:
+		var overlay := int(text[index])
+		if overlay >= 0xfb:
+			text[index] = 0
+			cleared_markers += 1
+			continue
+		var record := overlay - DisasterStart.TEXT_THING_BASE
+		if not disaster_records.has(record):
+			continue
+		var offset := record * CityState.THING_RECORD_SIZE
+		var point_index := int(things[offset + 3]) * CityState.MAP_SIZE + int(things[offset + 4])
+		var prior_overlay := int(things[offset + 10])
+		text[index] = (
+			prior_overlay
+			if index == point_index and prior_overlay < DisasterStart.TEXT_THING_BASE
+			else 0
+		)
+	for record in disaster_records:
+		var offset := int(record) * CityState.THING_RECORD_SIZE
+		for byte_index in CityState.THING_RECORD_SIZE:
+			things[offset + byte_index] = 0
+	ToolAvailability._write_u32_be(misc, 0x0004, 1)
+	ToolAvailability._write_u32_be(misc, 0x0070, 0)
+	var active_type := simulation_engine.active_disaster_type
+	var had_disaster := (
+		active_type != 0
+		or simulation_engine.pending_disaster_type != 0
+		or not disaster_records.is_empty()
+		or cleared_markers > 0
+	)
+	if not had_disaster:
+		return {"ok": false, "message": "No active disaster was found."}
+	if not thing_chunk.set_decoded_payload(things):
+		return {"ok": false, "message": "The disaster objects could not be cleared."}
+	if not text_chunk.set_decoded_payload(text):
+		thing_chunk.set_decoded_payload(old_things)
+		return {"ok": false, "message": "The disaster markers could not be cleared."}
+	if not misc_chunk.set_decoded_payload(misc):
+		thing_chunk.set_decoded_payload(old_things)
+		text_chunk.set_decoded_payload(old_text)
+		return {"ok": false, "message": "The disaster mode could not be cleared."}
+	city.text_overlays = text.duplicate()
+	simulation_engine.pending_disaster_type = 0
+	simulation_engine.pending_disaster_point = Vector2i.ZERO
+	simulation_engine.active_disaster_type = 0
+	simulation_engine.unsupported_disaster_type = 0
+	simulation_engine.disaster_map_counter = 0
+	simulation_engine.disaster_hurricane_counter = 0
+	last_edit_command = {}
+	undo_button.disabled = true
+	simulation_map_dirty = false
+	_refresh_map(false)
+	_refresh_moving_things()
+	_refresh_details()
+	return {
+		"ok": true,
+		"message": "Ended %s and cleared %d marker(s) and %d object(s)."
+		% [
+			_disaster_name(active_type) if active_type != 0 else "the disaster",
+			cleared_markers,
+			disaster_records.size(),
+		],
 	}
 
 

@@ -2,6 +2,7 @@ extends SceneTree
 
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
+const DisasterStart = preload("res://src/simulation/disaster_start_phase.gd")
 
 
 func _initialize() -> void:
@@ -464,6 +465,12 @@ func _run() -> void:
 	var debug_text_chunk := debug_city.document.find_chunk("XTXT")
 	var debug_old_things: PackedByteArray = debug_thing_chunk.decoded_payload.duplicate()
 	var debug_old_text: PackedByteArray = debug_text_chunk.decoded_payload.duplicate()
+	var debug_engine: SimulationEngine = main.get("simulation_engine")
+	var debug_old_active_disaster := debug_engine.active_disaster_type
+	var debug_old_pending_disaster := debug_engine.pending_disaster_type
+	var debug_old_pending_point := debug_engine.pending_disaster_point
+	var debug_old_map_counter := debug_engine.disaster_map_counter
+	var debug_old_hurricane_counter := debug_engine.disaster_hurricane_counter
 	var empty_things := PackedByteArray()
 	empty_things.resize(CityState.THING_COUNT * CityState.THING_RECORD_SIZE)
 	empty_things.fill(0)
@@ -480,9 +487,48 @@ func _run() -> void:
 		main.queue_free()
 		quit(2)
 		return
+	debug_thing_chunk.set_decoded_payload(empty_things)
+	debug_text_chunk.set_decoded_payload(empty_text)
+	debug_city.text_overlays = empty_text.duplicate()
+	var start_disaster: Dictionary = main.call(
+		"_debug_start_disaster", DisasterStart.DISASTER_TORNADO
+	)
+	var active_disaster_metrics: Dictionary = main.call("_debug_metrics")
+	if (
+		not start_disaster.ok
+		or debug_engine.active_disaster_type != DisasterStart.DISASTER_TORNADO
+		or debug_city.city_mode() != 2
+		or active_disaster_metrics.get("active_disaster", "") != "Tornado"
+	):
+		push_error("The debug disaster starter did not enter normal disaster mode")
+		main.queue_free()
+		quit(2)
+		return
+	debug_city.set_text_overlay_id(65, 64, 0xff)
+	var end_disaster: Dictionary = main.call("_debug_end_disaster")
+	var disable_disasters: Dictionary = main.call("_debug_set_no_disasters", true)
+	if (
+		not end_disaster.ok
+		or debug_engine.active_disaster_type != 0
+		or debug_city.city_mode() != 1
+		or debug_city.thing(1).type != 0
+		or debug_city.text_overlay_id(65, 64) != 0
+		or not disable_disasters.ok
+		or not debug_city.no_disasters_enabled()
+	):
+		push_error("The debug disaster controls did not update and clear normal city state")
+		main.queue_free()
+		quit(2)
+		return
 	debug_thing_chunk.set_decoded_payload(debug_old_things)
 	debug_text_chunk.set_decoded_payload(debug_old_text)
+	debug_misc_chunk.set_decoded_payload(debug_old_misc)
 	debug_city.text_overlays = debug_old_text
+	debug_engine.active_disaster_type = debug_old_active_disaster
+	debug_engine.pending_disaster_type = debug_old_pending_disaster
+	debug_engine.pending_disaster_point = debug_old_pending_point
+	debug_engine.disaster_map_counter = debug_old_map_counter
+	debug_engine.disaster_hurricane_counter = debug_old_hurricane_counter
 	main.call("_refresh_details")
 	main.call("_refresh_moving_things")
 
