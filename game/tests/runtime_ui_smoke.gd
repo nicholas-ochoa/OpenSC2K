@@ -3,6 +3,7 @@ extends SceneTree
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const DisasterStart = preload("res://src/simulation/disaster_start_phase.gd")
+const Music = preload("res://src/audio/music_director.gd")
 
 
 func _initialize() -> void:
@@ -348,6 +349,43 @@ func _run() -> void:
 				quit(2)
 				return
 			main.call("_close_scurk_place_print")
+		var focus_engine: SimulationEngine = main.get("simulation_engine")
+		var focus_director: MusicDirector = main.get("music_director")
+		loaded_city.set_music_enabled(true)
+		main.set("dummy_music_active", true)
+		main.set("application_has_focus", true)
+		focus_engine.midi_playback_active = true
+		var focus_general_index := focus_director.general_track_index
+		var effect_probe := AudioStreamPlayer.new()
+		main.add_child(effect_probe)
+		effect_probe.add_to_group(&"open_sc2k_sound_effects")
+		main.call("_handle_application_focus_out")
+		var focus_out_ok: bool = (
+			not main.get("application_has_focus")
+			and not main.get("dummy_music_active")
+			and not focus_engine.midi_playback_active
+			and effect_probe.is_queued_for_deletion()
+		)
+		main.call("_handle_application_focus_in")
+		var expected_general_index := (
+			focus_general_index % Music.GENERAL_TRACKS.size() + 1
+		)
+		var focus_in_ok: bool = (
+			main.get("application_has_focus")
+			and main.get("dummy_music_active")
+			and focus_engine.midi_playback_active
+			and focus_director.general_track_index == expected_general_index
+		)
+		main.call("_handle_application_focus_in")
+		if (
+			not focus_out_ok
+			or not focus_in_ok
+			or focus_director.general_track_index != expected_general_index
+		):
+			push_error("Application focus does not stop and restart original music state")
+			main.queue_free()
+			quit(2)
+			return
 		loaded_city.set_music_enabled(false)
 		loaded_city.set_sound_enabled(false)
 		var scenario_dialog := main.get("scenario_dialog") as Window

@@ -148,6 +148,7 @@ const MONTH_NAMES := [
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const STATUS_REPORT_ROTATION_SECONDS := 7.0
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
+const SOUND_EFFECT_GROUP := &"open_sc2k_sound_effects"
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
 const MENU_SOUND_EFFECTS := 0x8006
@@ -214,6 +215,8 @@ var tool_random := Random.new(1)
 var nuisance_random := GameRandom.new(Time.get_ticks_msec() | 1)
 var music_director := Music.new()
 var music_player: MidiSynthPlayer
+var dummy_music_active := false
+var application_has_focus := true
 var dispatch_cycles := PackedInt32Array([0, 0, 0])
 var dispatch_initialized := false
 var simulation_engine: SimulationEngine
@@ -494,6 +497,10 @@ func _ready() -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_inside_tree():
 		_request_city_exit("quit")
+	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		_handle_application_focus_out()
+	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
+		_handle_application_focus_in()
 
 
 func _process(delta: float) -> void:
@@ -2975,8 +2982,7 @@ func _on_options_menu(id: int) -> void:
 		if enabled:
 			_play_music_track(music_director.next_general_track())
 		else:
-			music_player.stop()
-			simulation_engine.midi_playback_active = false
+			_stop_music()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "%s %s." % [option_name, "enabled" if enabled else "disabled"]
 
@@ -4078,8 +4084,7 @@ func _activate_document(
 	_refresh_map()
 	_update_edit_state()
 	if not city.music_enabled():
-		music_player.stop()
-		simulation_engine.midi_playback_active = false
+		_stop_music()
 	elif music_was_active:
 		simulation_engine.midi_playback_active = true
 	else:
@@ -4097,9 +4102,11 @@ func _play_music_track(track_id: int) -> bool:
 	):
 		return false
 	if AudioServer.get_driver_name() == "Dummy":
+		dummy_music_active = true
 		if simulation_engine != null:
 			simulation_engine.midi_playback_active = true
 		return true
+	dummy_music_active = false
 	var result := music_player.play_path(
 		reference_root.path_join("SOUNDS/%d.MID" % track_id), track_id
 	)
@@ -4114,6 +4121,7 @@ func _play_music_track(track_id: int) -> bool:
 
 
 func _on_music_track_finished(_track_id: int) -> void:
+	dummy_music_active = false
 	if simulation_engine != null:
 		simulation_engine.midi_playback_active = false
 
@@ -4122,8 +4130,42 @@ func _music_playback_is_active() -> bool:
 	if city == null or not city.music_enabled():
 		return false
 	if AudioServer.get_driver_name() == "Dummy":
-		return true
+		return dummy_music_active
 	return music_player != null and music_player.is_track_active()
+
+
+func _handle_application_focus_out() -> void:
+	application_has_focus = false
+	_stop_music()
+	_stop_sound_effects()
+
+
+func _handle_application_focus_in() -> void:
+	var regained_focus := not application_has_focus
+	application_has_focus = true
+	if not regained_focus or city == null or not city.music_enabled():
+		return
+	if not _music_playback_is_active():
+		_play_music_track(music_director.next_general_track())
+
+
+func _stop_music() -> void:
+	dummy_music_active = false
+	if music_player != null:
+		music_player.stop()
+	if simulation_engine != null:
+		simulation_engine.midi_playback_active = false
+
+
+func _stop_sound_effects() -> void:
+	if not is_inside_tree():
+		return
+	for node in get_tree().get_nodes_in_group(SOUND_EFFECT_GROUP):
+		var player := node as AudioStreamPlayer
+		if player == null:
+			continue
+		player.stop()
+		player.queue_free()
 
 
 func _on_save_path_selected(path: String) -> void:
@@ -5124,6 +5166,7 @@ func _play_sound_events(sound_events: Array) -> void:
 		player.volume_linear = app_effects_volume
 		player.finished.connect(player.queue_free)
 		add_child(player)
+		player.add_to_group(SOUND_EFFECT_GROUP)
 		player.play()
 
 
