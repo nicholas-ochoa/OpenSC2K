@@ -98,6 +98,7 @@ const Music = preload("res://src/audio/music_director.gd")
 const MidiFile = preload("res://src/audio/standard_midi_file.gd")
 const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 const ThingAudio = preload("res://src/audio/moving_thing_audio.gd")
+const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const MainControl = preload("res://src/main.gd")
 
 var failures := 0
@@ -283,6 +284,7 @@ func _init() -> void:
 	_test_new_city_setup(reference_root)
 	_test_map_edits(reference_root)
 	_test_tool_catalog()
+	_test_tool_sound_rules()
 	_test_tool_availability(reference_root)
 	_test_zone_command(reference_root)
 	_test_sign_command(reference_root)
@@ -2153,6 +2155,8 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	var selection_cancel_signals := [0]
 	var selection_complete_signals := [0]
+	var selection_start_signals := [0]
+	var selection_finish_signals := [0]
 	var selection_complete_drags: Array[bool] = []
 	var query_signal_points: Array[Vector2i] = []
 	map_control.selection_canceled.connect(func() -> void:
@@ -2166,6 +2170,12 @@ func _test_sprite_archives(reference_root: String) -> void:
 	) -> void:
 		selection_complete_signals[0] += 1
 		selection_complete_drags.append(dragged)
+	)
+	map_control.selection_started.connect(func() -> void:
+		selection_start_signals[0] += 1
+	)
+	map_control.selection_finished.connect(func() -> void:
+		selection_finish_signals[0] += 1
 	)
 	map_control.query_requested.connect(func(point: Vector2i) -> void:
 		query_signal_points.append(point)
@@ -2185,8 +2195,8 @@ func _test_sprite_archives(reference_root: String) -> void:
 	cancel_event.pressed = true
 	map_control._handle_mouse_button(cancel_event)
 	_check(
-		selection_cancel_signals[0] == 1,
-		"Mouse button 2 emits one selection-canceled signal",
+		selection_cancel_signals[0] == 1 and selection_finish_signals[0] == 1,
+		"Mouse button 2 emits canceled and finished selection signals",
 	)
 	_check(
 		not map_control.is_left_drag_active()
@@ -2209,6 +2219,10 @@ func _test_sprite_archives(reference_root: String) -> void:
 	drag_start_event.pressed = true
 	drag_start_event.position = map_control.size * 0.5
 	map_control._handle_mouse_button(drag_start_event)
+	_check(
+		selection_start_signals[0] == 1 and selection_finish_signals[0] == 1,
+		"A valid left press emits one selection-started signal",
+	)
 	var drag_target := center_tile + Vector2i(2, 0)
 	var drag_target_polygon := IsometricRenderer.tile_polygon(
 		starter, drag_target.x, drag_target.y
@@ -2233,8 +2247,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control._handle_mouse_button(drag_release_event)
 	_check(
 		selection_complete_signals[0] == 1
-		and selection_complete_drags == [true],
-		"Map selection reports that its completed action moved",
+		and selection_complete_drags == [true]
+		and selection_finish_signals[0] == 2,
+		"Map selection reports its moved action and finished state",
 	)
 	map_control.shift_query_enabled = true
 	var shift_query_event := InputEventMouseButton.new()
@@ -12590,6 +12605,59 @@ func _test_tool_catalog() -> void:
 	_check(Tools.tool(0, 12).is_empty(), "Tool catalog rejects an invalid subtool")
 
 
+func _test_tool_sound_rules() -> void:
+	_check(
+		ToolSounds.success_events(1, 0) == [503]
+		and ToolSounds.success_events(1, 1) == [511],
+		"Landscape tools use the recovered tree and water sounds",
+	)
+	_check(
+		ToolSounds.success_events(3, 0) == [514]
+		and ToolSounds.success_events(3, 2) == [500],
+		"Power lines and power plants use their recovered success sounds",
+	)
+	_check(
+		ToolSounds.success_events(6, 4) == [521]
+		and ToolSounds.success_events(7, 2) == [524, 500],
+		"Bus and rail depots keep their special dispatcher sounds",
+	)
+	_check(
+		ToolSounds.success_events(9, 0) == [500]
+		and ToolSounds.success_events(10, 0) == [503]
+		and ToolSounds.success_events(11, 0) == [503],
+		"Residential and business zones use their distinct sounds",
+	)
+	_check(
+		ToolSounds.success_events(12, 0) == [523]
+		and ToolSounds.success_events(13, 0) == [506]
+		and ToolSounds.success_events(13, 1) == [509]
+		and ToolSounds.success_events(13, 3) == [522],
+		"Education and city-service buildings use their dispatcher sounds",
+	)
+	_check(
+		ToolSounds.success_events(14, 0) == [513]
+		and ToolSounds.success_events(14, 2) == [527]
+		and ToolSounds.success_events(17, 0) == [505],
+		"Recreation, Zoo, and Center use their recovered sounds",
+	)
+	_check(
+		ToolSounds.success_events(0, 0).is_empty()
+		and ToolSounds.success_events(2, 0).is_empty()
+		and ToolSounds.success_events(3, 1).is_empty()
+		and ToolSounds.success_events(5, 4).is_empty()
+		and ToolSounds.success_events(16, 0).is_empty(),
+		"Looping, dispatch, chooser, and Query paths do not invent a success sound",
+	)
+	_check(
+		ToolSounds.failure_events(3, 0) == [501]
+		and ToolSounds.failure_events(14, 4) == [501]
+		and ToolSounds.failure_events(1, 0, "insufficient funds") == [501]
+		and ToolSounds.failure_events(1, 0, "no landscape tile changed").is_empty()
+		and ToolSounds.failure_events(0, 0).is_empty(),
+		"Failure sound rules preserve the dispatcher and Landscape exceptions",
+	)
+
+
 func _test_tool_availability(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 0), "Tool availability fixture clears progression")
@@ -13731,12 +13799,12 @@ func _test_building_command(reference_root: String) -> void:
 		and rejected_nuisance.residential_tiles == 3
 		and rejected_nuisance.resident_objection
 		and rejected_nuisance.lfsr_advanced
-		and rejected_nuisance.sound_events == [508, 512]
+		and rejected_nuisance.sound_events == [512]
 		and rejected_nuisance.notice_bitmap_id == 403
 		and rejected_nuisance.notice_string_id == 106
 		and nuisance_lfsr.state == 2
 		and contrasting_lcg.next_mod(200) == 38,
-		"Building nuisance rejection exposes the original notice, sounds, and LFSR result",
+		"Building nuisance rejection exposes the original notice, sound, and LFSR result",
 	)
 	_check(
 		nuisance_city.funds() == 5000

@@ -55,8 +55,7 @@ const DEFAULT_STADIUM_TEAM_NAMES := [
 	"Dromedaries",
 	"Army Ants",
 ]
-const SOUND_NUISANCE_FIRST := 0x1fc
-const SOUND_NUISANCE_SECOND := 0x200
+const SOUND_NUISANCE := 0x200
 const NUISANCE_BITMAP_ID := 403
 const NUISANCE_STRING_ID := 106
 
@@ -306,7 +305,7 @@ static func apply(
 				"residential_tiles": residential_tiles,
 				"resident_objection": true,
 				"lfsr_advanced": lfsr_random.state != lfsr_state_before,
-				"sound_events": [SOUND_NUISANCE_FIRST, SOUND_NUISANCE_SECOND],
+				"sound_events": [SOUND_NUISANCE],
 				"notice_bitmap_id": NUISANCE_BITMAP_ID,
 				"notice_string_id": NUISANCE_STRING_ID,
 			}

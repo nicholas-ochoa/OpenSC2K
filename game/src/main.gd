@@ -43,6 +43,7 @@ const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
+const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const MovingThingAudio = preload("res://src/audio/moving_thing_audio.gd")
 const MovingThingSpawner = preload("res://src/simulation/moving_thing_spawner.gd")
 const Networks = preload("res://src/tools/network_command.gd")
@@ -217,6 +218,7 @@ var music_director := Music.new()
 var music_player: MidiSynthPlayer
 var dummy_music_active := false
 var application_has_focus := true
+var tool_loop_player: AudioStreamPlayer
 var dispatch_cycles := PackedInt32Array([0, 0, 0])
 var dispatch_initialized := false
 var simulation_engine: SimulationEngine
@@ -349,6 +351,8 @@ var forest_protest_dialog: AcceptDialog
 var forest_protest_message: Label
 var building_objection_dialog: AcceptDialog
 var building_objection_message: Label
+var pending_building_objection_group := -1
+var pending_building_objection_subtool := -1
 var library_windows: Array[PanelContainer] = []
 var library_text_views: Array[TextEdit] = []
 var graph_window: Window
@@ -959,6 +963,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	map_view.selection_completed.connect(_apply_map_selection)
 	map_view.selection_changed.connect(_on_map_selection_changed)
+	map_view.selection_started.connect(_on_map_selection_started)
+	map_view.selection_finished.connect(_on_map_selection_finished)
 	map_view.selection_canceled.connect(_on_map_selection_canceled)
 	map_view.query_requested.connect(_open_query)
 	map_view.zoom_changed.connect(_on_city_zoom_changed)
@@ -1459,6 +1465,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	)
 	building_objection_dialog = objection_notice.dialog
 	building_objection_message = objection_notice.message
+	building_objection_dialog.confirmed.connect(_on_building_objection_closed)
+	building_objection_dialog.canceled.connect(_on_building_objection_closed)
 	for index in LIBRARY_TEXT_IDS.size():
 		var library_window := PanelContainer.new()
 		library_window.name = "LibraryText%d" % LIBRARY_TEXT_IDS[index]
@@ -2868,6 +2876,18 @@ func _on_map_selection_canceled() -> void:
 	status_label.text = "Selection canceled. No action was taken."
 
 
+func _on_map_selection_started() -> void:
+	if selected_group != 0:
+		return
+	if scurk_place_print != null and scurk_place_print.visible:
+		return
+	_start_tool_loop_sound(508)
+
+
+func _on_map_selection_finished() -> void:
+	_stop_tool_loop_sound()
+
+
 func _on_map_selection_changed(
 	start: Vector2i,
 	finish: Vector2i,
@@ -2978,6 +2998,8 @@ func _on_options_menu(id: int) -> void:
 		_show_error("Cannot update the %s option." % option_name)
 		return
 	_sync_city_option_menus()
+	if id == MENU_SOUND_EFFECTS and not enabled:
+		_stop_sound_effects()
 	if id == MENU_MUSIC:
 		if enabled:
 			_play_music_track(music_director.next_general_track())
@@ -4004,6 +4026,8 @@ func _activate_document(
 		forest_protest_dialog.hide()
 	if building_objection_dialog != null and building_objection_dialog.visible:
 		building_objection_dialog.hide()
+	pending_building_objection_group = -1
+	pending_building_objection_subtool = -1
 	if new_city_dialog != null and new_city_dialog.visible:
 		new_city_dialog.hide()
 	if scurk_place_print != null and scurk_place_print.visible:
@@ -4166,6 +4190,7 @@ func _stop_sound_effects() -> void:
 			continue
 		player.stop()
 		player.queue_free()
+	tool_loop_player = null
 
 
 func _on_save_path_selected(path: String) -> void:
@@ -5170,6 +5195,57 @@ func _play_sound_events(sound_events: Array) -> void:
 		player.play()
 
 
+func _play_tool_success_sound(
+	group_index: int, subtool_index: int, free_mode := false
+) -> void:
+	if free_mode:
+		return
+	_play_sound_events(ToolSounds.success_events(group_index, subtool_index))
+
+
+func _play_tool_failure_sound(
+	group_index: int,
+	subtool_index: int,
+	error := "",
+	free_mode := false
+) -> void:
+	if free_mode:
+		return
+	_play_sound_events(
+		ToolSounds.failure_events(group_index, subtool_index, str(error))
+	)
+
+
+func _start_tool_loop_sound(sound_id: int) -> void:
+	_stop_tool_loop_sound()
+	if city == null or not city.sound_enabled():
+		return
+	var sound_path := reference_root.path_join("SOUNDS/%d.WAV" % sound_id)
+	if not FileAccess.file_exists(sound_path):
+		return
+	var stream := AudioStreamWAV.load_from_file(sound_path)
+	if stream == null:
+		return
+	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	stream.loop_begin = 0
+	stream.loop_end = maxi(1, roundi(stream.get_length() * stream.mix_rate))
+	tool_loop_player = AudioStreamPlayer.new()
+	tool_loop_player.stream = stream
+	tool_loop_player.volume_linear = app_effects_volume
+	add_child(tool_loop_player)
+	tool_loop_player.add_to_group(SOUND_EFFECT_GROUP)
+	tool_loop_player.play()
+
+
+func _stop_tool_loop_sound() -> void:
+	if not is_instance_valid(tool_loop_player):
+		tool_loop_player = null
+		return
+	tool_loop_player.stop()
+	tool_loop_player.queue_free()
+	tool_loop_player = null
+
+
 func _show_news_items(news_items: Array) -> void:
 	for item in news_items:
 		var news_type := int(item.get("type", 0))
@@ -5196,6 +5272,17 @@ func _show_building_objection() -> void:
 		"\r\n", "\n"
 	).replace("\r", "\n")
 	building_objection_dialog.popup_centered()
+
+
+func _on_building_objection_closed() -> void:
+	if pending_building_objection_group < 0:
+		return
+	_play_tool_failure_sound(
+		pending_building_objection_group,
+		pending_building_objection_subtool,
+	)
+	pending_building_objection_group = -1
+	pending_building_objection_subtool = -1
 
 
 func _refresh_saved_news_summary() -> void:
@@ -5786,7 +5873,7 @@ func _apply_map_selection(
 		return
 	if selected_group == 17:
 		if map_view.center_on_tile(finish):
-			_play_sound_events([505])
+			_play_tool_success_sound(17, 0)
 			status_label.remove_theme_color_override("font_color")
 			status_label.text = "Centered the map on tile %d, %d." % [finish.x, finish.y]
 		return
@@ -5835,6 +5922,9 @@ func _apply_map_selection(
 			scurk_tool_mode
 		)
 		if not landscape.ok:
+			_play_tool_failure_sound(
+				selected_group, selected_subtool, str(landscape.error), scurk_tool_mode
+			)
 			_show_error(
 				"Cannot apply %s: %s"
 				% [Tools.tool(selected_group, selected_subtool).name, landscape.error]
@@ -5845,6 +5935,7 @@ func _apply_map_selection(
 		)
 		_refresh_details()
 		_refresh_after_city_edit(landscape)
+		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "%s changed %d path tiles for $%s." % [
 			Tools.tool(selected_group, selected_subtool).name,
@@ -5931,24 +6022,32 @@ func _apply_map_selection(
 	if Hydro.supports_tool(selected_group, selected_subtool):
 		var hydro := Hydro.apply(city, selected_group, selected_subtool, finish, tool_random)
 		if not hydro.ok:
+			_play_tool_failure_sound(
+				selected_group, selected_subtool, str(hydro.error), scurk_tool_mode
+			)
 			_show_error("Cannot build hydroelectric power: %s" % hydro.error)
 			return
 		last_edit_command = hydro
 		undo_button.disabled = false
 		_refresh_details()
 		_refresh_after_city_edit(hydro)
+		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built hydroelectric power for $%s." % _format_number(hydro.cost)
 		return
 	if SubwayToRail.supports_tool(selected_group, selected_subtool):
 		var connection := SubwayToRail.apply(city, selected_group, selected_subtool, finish)
 		if not connection.ok:
+			_play_tool_failure_sound(
+				selected_group, selected_subtool, str(connection.error), scurk_tool_mode
+			)
 			_show_error("Cannot build subway-to-rail connection: %s" % connection.error)
 			return
 		_record_edit_command(
 			connection, scurk_tool_mode, String(scurk_tool.get("name", ""))
 		)
 		_refresh_after_city_edit(connection)
+		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built a subway-to-rail connection at no charge. Listed cost: $%s." % _format_number(connection.listed_cost)
 		return
@@ -5957,6 +6056,9 @@ func _apply_map_selection(
 			city, selected_group, selected_subtool, finish, scurk_tool_mode
 		)
 		if not onramp.ok:
+			_play_tool_failure_sound(
+				selected_group, selected_subtool, str(onramp.error), scurk_tool_mode
+			)
 			_show_error("Cannot build on-ramp: %s" % onramp.error)
 			return
 		_record_edit_command(
@@ -5964,6 +6066,7 @@ func _apply_map_selection(
 		)
 		_refresh_details()
 		_refresh_after_city_edit(onramp)
+		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built an on-ramp for $%s." % _format_number(onramp.cost)
 		return
@@ -6000,6 +6103,8 @@ func _apply_map_selection(
 				undo_button.disabled = true
 			if building.get("resident_objection", false):
 				_play_sound_events(building.get("sound_events", []))
+				pending_building_objection_group = building_group
+				pending_building_objection_subtool = building_subtool
 				_show_building_objection()
 				status_label.remove_theme_color_override("font_color")
 				status_label.text = "%s placement was rejected by nearby residents." % building_name
@@ -6008,6 +6113,9 @@ func _apply_map_selection(
 				"Cannot build %s: %s"
 				% [building_name, building.error]
 			)
+			_play_tool_failure_sound(
+				building_group, building_subtool, str(building.error), scurk_tool_mode
+			)
 			return
 		last_edit_command = building
 		undo_button.disabled = false
@@ -6015,14 +6123,21 @@ func _apply_map_selection(
 		_refresh_after_city_edit(building)
 		if building_group == 5 and building_subtool < 4:
 			_choose_tool_group(17)
-		if building_group == 14 and city.music_enabled():
+		var stadium_team_pending := bool(
+			building.get("stadium_team_selection_required", false)
+		)
+		if building_group == 14 and city.music_enabled() and not stadium_team_pending:
 			_play_music_track(Music.RECREATION_TRACK)
+		if not stadium_team_pending:
+			_play_tool_success_sound(
+				building_group, building_subtool, scurk_tool_mode
+			)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built %s for $%s." % [
 			building_name,
 			_format_number(building.cost),
 		]
-		if building.get("stadium_team_selection_required", false):
+		if stadium_team_pending:
 			_open_stadium_dialog(building)
 			status_label.text += " Select a stadium team."
 		return
@@ -6037,6 +6152,9 @@ func _apply_map_selection(
 		int(scurk_tool.get("zone", -1))
 	)
 	if not command.ok:
+		_play_tool_failure_sound(
+			selected_group, selected_subtool, str(command.error), scurk_tool_mode
+		)
 		_show_error("Cannot apply %s: %s" % [Tools.tool(selected_group, selected_subtool).name, command.error])
 		return
 	_record_edit_command(
@@ -6044,6 +6162,7 @@ func _apply_map_selection(
 	)
 	_refresh_details()
 	_refresh_after_city_edit(command)
+	_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "%s changed %d tiles for $%s." % [
 		Tools.tool(selected_group, selected_subtool).name,
@@ -6088,6 +6207,7 @@ func _apply_network_selection(
 		)
 		return
 	if network.get("cancelled", false):
+		_play_tool_failure_sound(group_index, subtool_index, "cancelled", free_mode)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Bridge selection canceled. No action was taken."
 		return
@@ -6120,6 +6240,12 @@ func _apply_network_selection(
 		network_connection_dialog.popup_centered()
 		return
 	if not network.get("ok", false):
+		_play_tool_failure_sound(
+			group_index,
+			subtool_index,
+			str(network.get("error", "unknown error")),
+			free_mode,
+		)
 		_show_error(
 			"Cannot build %s: %s"
 			% [tool_name, network.get("error", "unknown error")]
@@ -6128,6 +6254,7 @@ func _apply_network_selection(
 	_record_edit_command(network, free_mode, tool_name)
 	_refresh_details()
 	_refresh_after_city_edit(network)
+	_play_tool_success_sound(group_index, subtool_index, free_mode)
 	status_label.remove_theme_color_override("font_color")
 	var dry_count := int(network.get("dry_points", []).size())
 	if network.get("bridge_built", false):
@@ -6298,12 +6425,18 @@ func _confirm_stadium_team() -> void:
 	last_edit_command = result.command
 	pending_stadium_command.clear()
 	_refresh_details()
+	_play_tool_success_sound(14, 3)
+	if city.music_enabled():
+		_play_music_track(Music.RECREATION_TRACK)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Assigned %s to the new stadium." % result.team_name
 
 
 func _cancel_stadium_team() -> void:
 	pending_stadium_command.clear()
+	_play_tool_success_sound(14, 3)
+	if city != null and city.music_enabled():
+		_play_music_track(Music.RECREATION_TRACK)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "The stadium was built without a team."
 
@@ -6402,6 +6535,12 @@ func _cancel_bridge() -> void:
 	var request := pending_bridge_request.duplicate(true)
 	pending_bridge_request.clear()
 	if request.get("dry_points", []).is_empty():
+		_play_tool_failure_sound(
+			int(request.group_index),
+			int(request.subtool_index),
+			"cancelled",
+			bool(request.get("free_mode", false)),
+		)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Bridge selection canceled. No action was taken."
 		return
@@ -6458,10 +6597,19 @@ func _apply_tunnel_selection(
 		tunnel_dialog.popup_centered()
 		return
 	if tunnel.get("cancelled", false):
+		_play_tool_failure_sound(
+			selected_group, selected_subtool, "cancelled", free_mode
+		)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Tunnel construction canceled. No action was taken."
 		return
 	if not tunnel.get("ok", false):
+		_play_tool_failure_sound(
+			selected_group,
+			selected_subtool,
+			str(tunnel.get("error", "unknown error")),
+			free_mode,
+		)
 		_show_error("Cannot build tunnel: %s" % tunnel.get("error", "unknown error"))
 		return
 	_record_edit_command(
@@ -6475,6 +6623,7 @@ func _apply_tunnel_selection(
 	)
 	_refresh_details()
 	_refresh_after_city_edit(tunnel)
+	_play_tool_success_sound(selected_group, selected_subtool, free_mode)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Built a %d-tile tunnel for $%s." % [
 		tunnel.points.size(), _format_number(tunnel.cost)
@@ -6529,6 +6678,9 @@ func _apply_highway_selection(
 		)
 		return
 	if highway.get("cancelled", false):
+		_play_tool_failure_sound(
+			selected_group, selected_subtool, "cancelled", free_mode
+		)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Bridge selection canceled. No action was taken."
 		return
@@ -6558,11 +6710,18 @@ func _apply_highway_selection(
 		highway_connection_dialog.popup_centered()
 		return
 	if not highway.get("ok", false):
+		_play_tool_failure_sound(
+			selected_group,
+			selected_subtool,
+			str(highway.get("error", "unknown error")),
+			free_mode,
+		)
 		_show_error("Cannot build highway: %s" % highway.get("error", "unknown error"))
 		return
 	_record_edit_command(highway, free_mode, "Highway")
 	_refresh_details()
 	_refresh_after_city_edit(highway)
+	_play_tool_success_sound(selected_group, selected_subtool, free_mode)
 	status_label.remove_theme_color_override("font_color")
 	if highway.get("bridge_built", false):
 		if highway.sections.is_empty():

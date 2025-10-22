@@ -386,6 +386,30 @@ func _run() -> void:
 			main.queue_free()
 			quit(2)
 			return
+		loaded_city.set_sound_enabled(true)
+		main.call("_start_tool_loop_sound", 508)
+		var bulldozer_loop := main.get("tool_loop_player") as AudioStreamPlayer
+		var bulldozer_stream := (
+			bulldozer_loop.stream as AudioStreamWAV
+			if bulldozer_loop != null
+			else null
+		)
+		var bulldozer_loop_ok := (
+			bulldozer_loop != null
+			and bulldozer_loop.is_playing()
+			and bulldozer_stream != null
+			and bulldozer_stream.loop_mode == AudioStreamWAV.LOOP_FORWARD
+		)
+		main.call("_stop_tool_loop_sound")
+		if (
+			not bulldozer_loop_ok
+			or main.get("tool_loop_player") != null
+			or not bulldozer_loop.is_queued_for_deletion()
+		):
+			push_error("Bulldozer feedback does not start and stop its held sound")
+			main.queue_free()
+			quit(2)
+			return
 		loaded_city.set_music_enabled(false)
 		loaded_city.set_sound_enabled(false)
 		var scenario_dialog := main.get("scenario_dialog") as Window

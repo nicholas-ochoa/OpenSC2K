@@ -7,6 +7,8 @@ signal selection_completed(
 signal selection_changed(
 	start: Vector2i, finish: Vector2i, path: Array[Vector2i], dragged: bool
 )
+signal selection_started()
+signal selection_finished()
 signal selection_canceled()
 signal query_requested(point: Vector2i)
 signal zoom_changed(percent: int)
@@ -320,6 +322,7 @@ func cancel_active_selection() -> bool:
 	_clear_selection()
 	queue_redraw()
 	selection_canceled.emit()
+	selection_finished.emit()
 	return true
 
 
@@ -796,6 +799,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			selection_end = tile
 			selection_moved = false
 			_rebuild_selection_path()
+			selection_started.emit()
 			selection_changed.emit(
 				selection_start, selection_end, selection_path.duplicate(), false
 			)
@@ -814,6 +818,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			)
 			_clear_selection()
 			queue_redraw()
+			selection_finished.emit()
 	accept_event()
 
 
