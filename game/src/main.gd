@@ -44,6 +44,7 @@ const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
+const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
 const MovingThingAudio = preload("res://src/audio/moving_thing_audio.gd")
 const MovingThingSpawner = preload("res://src/simulation/moving_thing_spawner.gd")
 const Networks = preload("res://src/tools/network_command.gd")
@@ -219,6 +220,8 @@ var music_player: MidiSynthPlayer
 var dummy_music_active := false
 var application_has_focus := true
 var tool_loop_player: AudioStreamPlayer
+var wave_sound_gate := WaveSounds.new()
+var wave_stream_cache: Dictionary = {}
 var dispatch_cycles := PackedInt32Array([0, 0, 0])
 var dispatch_initialized := false
 var simulation_engine: SimulationEngine
@@ -409,6 +412,7 @@ func _ready() -> void:
 	get_tree().auto_accept_quit = false
 	reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
 	_load_app_settings()
+	_load_wave_sound_cache()
 	music_player = MidiSynth.new()
 	music_player.track_finished.connect(_on_music_track_finished)
 	add_child(music_player)
@@ -508,6 +512,7 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
+	wave_sound_gate.advance(delta * 1000.0)
 	_update_fps(delta)
 	_update_status_report_rotation(delta)
 	_poll_static_render()
@@ -4182,6 +4187,7 @@ func _stop_music() -> void:
 
 
 func _stop_sound_effects() -> void:
+	wave_sound_gate.stop()
 	if not is_inside_tree():
 		return
 	for node in get_tree().get_nodes_in_group(SOUND_EFFECT_GROUP):
@@ -4191,6 +4197,17 @@ func _stop_sound_effects() -> void:
 		player.stop()
 		player.queue_free()
 	tool_loop_player = null
+
+
+func _load_wave_sound_cache() -> void:
+	wave_stream_cache.clear()
+	for sound_id in range(WaveSounds.SOUND_FIRST, WaveSounds.SOUND_LAST + 1):
+		var sound_path := reference_root.path_join("SOUNDS/%d.WAV" % sound_id)
+		if not FileAccess.file_exists(sound_path):
+			continue
+		var stream := AudioStreamWAV.load_from_file(sound_path)
+		if stream != null:
+			wave_stream_cache[sound_id] = stream
 
 
 func _on_save_path_selected(path: String) -> void:
@@ -5178,13 +5195,10 @@ func _play_sound_events(sound_events: Array) -> void:
 		)
 		if sound_id < 0:
 			continue
-		var sound_path := reference_root.path_join(
-			"SOUNDS/%d.WAV" % sound_id
-		)
-		if not FileAccess.file_exists(sound_path):
-			continue
-		var stream := AudioStreamWAV.load_from_file(sound_path)
+		var stream := wave_stream_cache.get(sound_id) as AudioStreamWAV
 		if stream == null:
+			continue
+		if not wave_sound_gate.request(sound_id):
 			continue
 		var player := AudioStreamPlayer.new()
 		player.stream = stream
@@ -5220,10 +5234,10 @@ func _start_tool_loop_sound(sound_id: int) -> void:
 	_stop_tool_loop_sound()
 	if city == null or not city.sound_enabled():
 		return
-	var sound_path := reference_root.path_join("SOUNDS/%d.WAV" % sound_id)
-	if not FileAccess.file_exists(sound_path):
+	var cached_stream := wave_stream_cache.get(sound_id) as AudioStreamWAV
+	if cached_stream == null:
 		return
-	var stream := AudioStreamWAV.load_from_file(sound_path)
+	var stream := cached_stream.duplicate() as AudioStreamWAV
 	if stream == null:
 		return
 	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
@@ -7250,6 +7264,11 @@ func _debug_metrics() -> Dictionary:
 			simulation_engine.active_disaster_type if simulation_engine != null else 0
 		),
 		"no_disasters": city != null and city.no_disasters_enabled(),
+		"wave_sound_id": wave_sound_gate.current_sound_id,
+		"wave_sound_ticks": wave_sound_gate.remaining_ticks,
+		"wave_sound_accepted": wave_sound_gate.accepted_count,
+		"wave_sound_suppressed": wave_sound_gate.suppressed_count,
+		"wave_stream_cache": wave_stream_cache.size(),
 	}
 	if map_view != null:
 		result.merge(map_view.debug_metrics(), true)

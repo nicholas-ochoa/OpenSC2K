@@ -387,6 +387,22 @@ func _run() -> void:
 			quit(2)
 			return
 		loaded_city.set_sound_enabled(true)
+		var wave_gate = main.get("wave_sound_gate")
+		var wave_cache: Dictionary = main.get("wave_stream_cache")
+		var wave_accepted_before := int(wave_gate.accepted_count)
+		var wave_suppressed_before := int(wave_gate.suppressed_count)
+		main.call("_play_sound_events", [504, 504, 504])
+		if (
+			wave_cache.size() != 30
+			or wave_gate.current_sound_id != 504
+			or wave_gate.accepted_count != wave_accepted_before + 1
+			or wave_gate.suppressed_count != wave_suppressed_before + 2
+		):
+			push_error("The cached run-time WAVE gate does not suppress an immediate repeat burst")
+			main.queue_free()
+			quit(2)
+			return
+		main.call("_stop_sound_effects")
 		main.call("_start_tool_loop_sound", 508)
 		var bulldozer_loop := main.get("tool_loop_player") as AudioStreamPlayer
 		var bulldozer_stream := (

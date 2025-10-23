@@ -99,6 +99,7 @@ const MidiFile = preload("res://src/audio/standard_midi_file.gd")
 const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 const ThingAudio = preload("res://src/audio/moving_thing_audio.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
+const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
 const MainControl = preload("res://src/main.gd")
 
 var failures := 0
@@ -285,6 +286,7 @@ func _init() -> void:
 	_test_map_edits(reference_root)
 	_test_tool_catalog()
 	_test_tool_sound_rules()
+	_test_wave_sound_gate()
 	_test_tool_availability(reference_root)
 	_test_zone_command(reference_root)
 	_test_sign_command(reference_root)
@@ -12655,6 +12657,54 @@ func _test_tool_sound_rules() -> void:
 		and ToolSounds.failure_events(1, 0, "no landscape tile changed").is_empty()
 		and ToolSounds.failure_events(0, 0).is_empty(),
 		"Failure sound rules preserve the dispatcher and Landscape exceptions",
+	)
+
+
+func _test_wave_sound_gate() -> void:
+	_check(
+		WaveSounds.duration_ticks(500) == 3
+		and WaveSounds.duration_ticks(501) == 1
+		and WaveSounds.duration_ticks(512) == 14
+		and WaveSounds.duration_ticks(529) == 9
+		and WaveSounds.duration_ticks(499) == 0
+		and WaveSounds.duration_ticks(530) == 0,
+		"WAVE durations use the supplied table and 200 ms conversion",
+	)
+	var gate := WaveSounds.new()
+	_check(
+		gate.request(504)
+		and not gate.request(504)
+		and gate.accepted_count == 1
+		and gate.suppressed_count == 1,
+		"An immediate repeated WAVE request is suppressed",
+	)
+	gate.advance(599.0)
+	_check(
+		not gate.request(504) and gate.remaining_ticks == 4,
+		"A repeated WAVE request stays suppressed before three base ticks",
+	)
+	gate.advance(1.0)
+	_check(
+		gate.request(504) and gate.remaining_ticks == 6,
+		"A repeated WAVE request can restart after three base ticks",
+	)
+	_check(
+		gate.request(501) and gate.current_sound_id == 501,
+		"A different WAVE request replaces the active gate state",
+	)
+	gate.advance(200.0)
+	_check(
+		gate.current_sound_id == -1 and gate.remaining_ticks == 0,
+		"The WAVE gate clears after the recovered duration",
+	)
+	gate.request(512)
+	gate.stop()
+	_check(
+		gate.current_sound_id == -1
+		and gate.remaining_ticks == 0
+		and gate.accepted_count == 4
+		and gate.suppressed_count == 2,
+		"Stopping WAVE playback clears state and preserves debug counters",
 	)
 
 
