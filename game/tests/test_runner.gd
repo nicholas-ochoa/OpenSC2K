@@ -756,6 +756,24 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 		and second_slow_cycle[0xef] == 0xe1,
 		"Slow palette buffer retains the executable's final-entry behavior",
 	)
+	var scurk_before_fast := loaded_palette.scurk_animation_index_map(5)
+	var scurk_first_fast := loaded_palette.scurk_animation_index_map(6)
+	var scurk_second_fast := loaded_palette.scurk_animation_index_map(11)
+	_check(
+		scurk_before_fast[0xab] == 0xab
+		and scurk_first_fast[0xab] == 0xac
+		and scurk_second_fast[0xab] == 0xad,
+		"SCURK fast palette counter steps first at tick six and then every five ticks",
+	)
+	var scurk_before_slow := loaded_palette.scurk_animation_index_map(30)
+	var scurk_first_slow := loaded_palette.scurk_animation_index_map(31)
+	var scurk_second_slow := loaded_palette.scurk_animation_index_map(61)
+	_check(
+		scurk_before_slow[0xe0] == 0xe0
+		and scurk_first_slow[0xe0] == 0xe1
+		and scurk_second_slow[0xe0] == 0xe0,
+		"SCURK slow palette counter steps first at tick 31 and then every 30 ticks",
+	)
 	var animation_image := loaded_palette.animation_image(1)
 	_check(
 		animation_image.get_size() == Vector2i(256, 1)
@@ -3151,9 +3169,12 @@ func _test_scurk_mif(reference_root: String) -> void:
 		scurk_editor._increment_cycle()
 		_check(
 			not scurk_editor.increment_cycle_button.disabled
-			and scurk_editor.pixel_canvas.palette_cycle_ticks == cycle_before + 1
+			and scurk_editor.pixel_canvas.palette_cycle_ticks
+				== cycle_before + Palette.SCURK_INCREMENT_TIMER_TICKS
 			and scurk_editor.pixel_canvas.display_palette_index(Palette.FAST_CYCLE_START)
-				== editor_palette.animation_index_map(cycle_before + 1)[Palette.FAST_CYCLE_START],
+				== editor_palette.scurk_animation_index_map(
+					cycle_before + Palette.SCURK_INCREMENT_TIMER_TICKS
+				)[Palette.FAST_CYCLE_START],
 			"SCURK Increment Cycle works only while automatic cycling is off",
 		)
 		scurk_editor._set_cycle_colors(true)

@@ -3,7 +3,7 @@ extends Control
 
 const DrawingWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
 
-const CYCLE_INTERVAL_SECONDS := 0.125
+const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
 
 var palette: Sc2Palette
 var view := 0
@@ -83,7 +83,7 @@ func set_palette_cycle_enabled(enabled: bool) -> void:
 func increment_palette_cycle() -> void:
 	if palette_cycle_enabled:
 		return
-	palette_cycle_ticks += 1
+	palette_cycle_ticks += Sc2Palette.SCURK_INCREMENT_TIMER_TICKS
 	_rebuild_texture()
 	queue_redraw()
 
@@ -111,7 +111,7 @@ func _rebuild_texture() -> void:
 		preview_texture = null
 		return
 	var animation_map := (
-		palette.animation_index_map(palette_cycle_ticks)
+		palette.scurk_animation_index_map(palette_cycle_ticks)
 		if palette != null and palette.is_valid()
 		else PackedInt32Array()
 	)

@@ -22,7 +22,7 @@ const TOOL_FILL := 8
 const TOOL_EYEDROPPER := 9
 const TOOL_COPY := 10
 const TOOL_PASTE := 11
-const CYCLE_INTERVAL_SECONDS := 0.125
+const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
 const MINIMUM_COPY_SPAN := 4
 const CLEAR_BACKGROUND_RESOURCE_IDS := [20015, 20018, 20019, 20020, 20021]
 
@@ -207,14 +207,14 @@ func set_palette_cycle_enabled(enabled: bool) -> void:
 func increment_palette_cycle() -> void:
 	if palette_cycle_enabled:
 		return
-	palette_cycle_ticks += 1
+	palette_cycle_ticks += Sc2Palette.SCURK_INCREMENT_TIMER_TICKS
 	queue_redraw()
 
 
 func display_palette_index(index: int) -> int:
 	if index < 0 or index > 255 or palette == null or not palette.is_valid():
 		return index
-	return palette.animation_index_map(palette_cycle_ticks)[index]
+	return palette.scurk_animation_index_map(palette_cycle_ticks)[index]
 
 
 func load_original_textures(executable_path: String) -> Dictionary:
@@ -1002,7 +1002,7 @@ func _draw() -> void:
 		draw_rect(Rect2(Vector2.ZERO, size), Color("ffffff"), true)
 		return
 	var display_indices := (
-		palette.animation_index_map(palette_cycle_ticks)
+		palette.scurk_animation_index_map(palette_cycle_ticks)
 		if palette != null and palette.is_valid()
 		else PackedInt32Array()
 	)

@@ -17,6 +17,8 @@ const SLOW_CYCLE_TABLE := [
 	1, 0, 3, 2, 5, 4, 7, 6,
 	9, 8, 11, 10, 13, 12, 14, 0,
 ]
+const SCURK_TIMER_INTERVAL_SECONDS := 0.055
+const SCURK_INCREMENT_TIMER_TICKS := 5
 
 var colors: Array[Color] = []
 var load_error := ""
@@ -81,20 +83,35 @@ static func index_encoding() -> Sc2Palette:
 
 
 func animation_index_map(base_ticks: int) -> PackedInt32Array:
+	var safe_ticks := maxi(0, base_ticks)
+	var fast_steps := posmod(safe_ticks, 8)
+	var slow_ticks := int(safe_ticks / 8)
+	var slow_steps := 0 if slow_ticks == 0 else 1 + posmod(slow_ticks - 1, 2)
+	return animation_index_map_steps(fast_steps, slow_steps)
+
+
+# scurk has its own palette clock, including the startup delay
+func scurk_animation_index_map(timer_ticks: int) -> PackedInt32Array:
+	var safe_ticks := maxi(0, timer_ticks)
+	var fast_steps := 0 if safe_ticks < 6 else 1 + int((safe_ticks - 6) / 5)
+	var slow_steps := 0 if safe_ticks < 31 else 1 + int((safe_ticks - 31) / 30)
+	return animation_index_map_steps(fast_steps, slow_steps)
+
+
+func animation_index_map_steps(fast_steps: int, slow_steps: int) -> PackedInt32Array:
 	var indices := PackedInt32Array()
 	indices.resize(256)
 	for index in 256:
 		indices[index] = index
 
-	var fast_steps := posmod(maxi(0, base_ticks), 8)
-	for _step in fast_steps:
+	for _step in posmod(maxi(0, fast_steps), 8):
 		_apply_cycle(indices, FAST_CYCLE_START, FAST_CYCLE_TABLE)
 
-	var slow_ticks := maxi(0, base_ticks) / 8
-	if slow_ticks > 0:
-		var slow_steps := 1 + posmod(slow_ticks - 1, 2)
-		for _step in slow_steps:
-			_apply_cycle(indices, SLOW_CYCLE_START, SLOW_CYCLE_TABLE)
+	var applied_slow_steps := (
+		0 if slow_steps <= 0 else 1 + posmod(slow_steps - 1, 2)
+	)
+	for _step in applied_slow_steps:
+		_apply_cycle(indices, SLOW_CYCLE_START, SLOW_CYCLE_TABLE)
 	return indices
 
 
