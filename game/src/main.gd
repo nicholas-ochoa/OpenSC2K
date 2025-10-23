@@ -36,6 +36,7 @@ const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
 const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperPageView = preload("res://src/ui/newspaper_page.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
+const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
 const ScurkPlacePrintView = preload("res://src/ui/scurk_place_print_control.gd")
 const ScurkPrintView = preload("res://src/ui/scurk_print_control.gd")
@@ -266,22 +267,7 @@ var save_dialog: FileDialog
 var tile_set_dialog: FileDialog
 var scurk_city_export_dialog: FileDialog
 var scurk_print_pdf_dialog: FileDialog
-var new_city_dialog: ColorRect
-var new_city_name_input: LineEdit
-var new_city_mayor_input: LineEdit
-var new_city_difficulty: OptionButton
-var new_city_year: OptionButton
-var new_city_ocean_input: CheckBox
-var new_city_river_input: CheckBox
-var new_city_hills_input: HSlider
-var new_city_water_input: HSlider
-var new_city_trees_input: HSlider
-var new_city_hills_value: Label
-var new_city_water_value: Label
-var new_city_trees_value: Label
-var new_city_preview_view: TextureRect
-var new_city_preview_status: Label
-var new_city_preview_timer: Timer
+var new_city_dialog: NewCityTerrainDialog
 var new_city_preview_document: Sc2File
 var new_city_preview_options: Dictionary = {}
 var new_city_preview_process_start := 1
@@ -1045,211 +1031,12 @@ func _build_interface(toolbar_art: Image) -> void:
 	scurk_print_pdf_dialog.file_selected.connect(_save_scurk_city_pdf)
 	add_child(scurk_print_pdf_dialog)
 
-	new_city_dialog = ColorRect.new()
-	new_city_dialog.name = "NewCityOverlay"
-	new_city_dialog.color = Color(0.0, 0.0, 0.0, 0.22)
-	new_city_dialog.mouse_filter = Control.MOUSE_FILTER_STOP
-	new_city_dialog.z_index = 910
-	new_city_dialog.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	new_city_dialog.visible = false
+	new_city_dialog = NewCityTerrainDialogView.new()
+	new_city_dialog.cancel_requested.connect(_cancel_new_city)
+	new_city_dialog.build_requested.connect(_create_new_city)
+	new_city_dialog.preview_requested.connect(_schedule_new_city_preview)
+	new_city_dialog.terrain_regeneration_requested.connect(_make_new_city_preview)
 	add_child(new_city_dialog)
-	var new_city_center := CenterContainer.new()
-	new_city_center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	new_city_dialog.add_child(new_city_center)
-	var new_city_panel := PanelContainer.new()
-	new_city_panel.name = "NewCityDialog"
-	new_city_panel.custom_minimum_size = Vector2(820, 600)
-	new_city_panel.mouse_filter = Control.MOUSE_FILTER_STOP
-	new_city_panel.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("404040"), 2)
-	)
-	new_city_center.add_child(new_city_panel)
-	var new_city_column := VBoxContainer.new()
-	new_city_column.add_theme_constant_override("separation", 8)
-	new_city_panel.add_child(new_city_column)
-	var new_city_title_bar := ColorRect.new()
-	new_city_title_bar.color = Color("000080")
-	new_city_title_bar.custom_minimum_size = Vector2(0, 30)
-	new_city_column.add_child(new_city_title_bar)
-	var new_city_title_row := HBoxContainer.new()
-	new_city_title_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	new_city_title_row.offset_left = 8
-	new_city_title_row.offset_right = -4
-	new_city_title_bar.add_child(new_city_title_row)
-	var new_city_title_label := Label.new()
-	new_city_title_label.text = "New City Terrain Editor"
-	new_city_title_label.add_theme_color_override("font_color", Color.WHITE)
-	new_city_title_label.add_theme_font_size_override("font_size", 15)
-	new_city_title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	new_city_title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	new_city_title_row.add_child(new_city_title_label)
-	var new_city_close_button := Button.new()
-	new_city_close_button.text = "X"
-	new_city_close_button.custom_minimum_size = Vector2(28, 24)
-	new_city_close_button.pressed.connect(_cancel_new_city)
-	new_city_title_row.add_child(new_city_close_button)
-	var new_city_content := HBoxContainer.new()
-	new_city_content.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	new_city_content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	new_city_content.add_theme_constant_override("separation", 18)
-	new_city_column.add_child(new_city_content)
-	var new_city_left := VBoxContainer.new()
-	new_city_left.custom_minimum_size = Vector2(340, 0)
-	new_city_left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	new_city_left.add_theme_constant_override("separation", 10)
-	new_city_content.add_child(new_city_left)
-	var details_heading := Label.new()
-	details_heading.text = "City Details"
-	details_heading.add_theme_font_size_override("font_size", 16)
-	new_city_left.add_child(details_heading)
-	var new_city_grid := GridContainer.new()
-	new_city_grid.columns = 2
-	new_city_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	new_city_grid.add_theme_constant_override("h_separation", 12)
-	new_city_grid.add_theme_constant_override("v_separation", 8)
-	new_city_left.add_child(new_city_grid)
-	for label_text in ["City Name", "Mayor Name", "Difficulty", "Starting Year"]:
-		var field_label := Label.new()
-		field_label.text = label_text
-		field_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		field_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		new_city_grid.add_child(field_label)
-		match label_text:
-			"City Name":
-				new_city_name_input = LineEdit.new()
-				new_city_name_input.max_length = 30
-				new_city_name_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				new_city_grid.add_child(new_city_name_input)
-			"Mayor Name":
-				new_city_mayor_input = LineEdit.new()
-				new_city_mayor_input.max_length = 23
-				new_city_mayor_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				new_city_grid.add_child(new_city_mayor_input)
-			"Difficulty":
-				new_city_difficulty = OptionButton.new()
-				new_city_difficulty.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				new_city_difficulty.add_item("Easy — $20,000", 1)
-				new_city_difficulty.add_item("Medium — $10,000", 2)
-				new_city_difficulty.add_item("Hard — $10,000 bond at 3%", 3)
-				new_city_grid.add_child(new_city_difficulty)
-			"Starting Year":
-				new_city_year = OptionButton.new()
-				new_city_year.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-				for starting_year in NewCity.STARTING_YEARS:
-					new_city_year.add_item(str(starting_year), starting_year)
-				new_city_grid.add_child(new_city_year)
-	var terrain_separator := HSeparator.new()
-	new_city_left.add_child(terrain_separator)
-	var terrain_heading := Label.new()
-	terrain_heading.text = "Terrain"
-	terrain_heading.add_theme_font_size_override("font_size", 16)
-	new_city_left.add_child(terrain_heading)
-	var terrain_grid := GridContainer.new()
-	terrain_grid.columns = 2
-	terrain_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	terrain_grid.add_theme_constant_override("h_separation", 12)
-	terrain_grid.add_theme_constant_override("v_separation", 8)
-	new_city_left.add_child(terrain_grid)
-	var features_label := Label.new()
-	features_label.text = "Features"
-	features_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	terrain_grid.add_child(features_label)
-	var terrain_features := HBoxContainer.new()
-	terrain_features.add_theme_constant_override("separation", 16)
-	new_city_ocean_input = CheckBox.new()
-	new_city_ocean_input.text = "Ocean"
-	new_city_ocean_input.toggled.connect(_schedule_new_city_preview)
-	terrain_features.add_child(new_city_ocean_input)
-	new_city_river_input = CheckBox.new()
-	new_city_river_input.text = "River"
-	new_city_river_input.toggled.connect(_schedule_new_city_preview)
-	terrain_features.add_child(new_city_river_input)
-	terrain_grid.add_child(terrain_features)
-	for terrain_label_text in ["Hills", "Water", "Trees"]:
-		var terrain_label := Label.new()
-		terrain_label.text = terrain_label_text
-		terrain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		terrain_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		terrain_grid.add_child(terrain_label)
-		var slider_row := HBoxContainer.new()
-		slider_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		slider_row.add_theme_constant_override("separation", 8)
-		var slider := HSlider.new()
-		slider.min_value = NewTerrain.MIN_SLIDER
-		slider.max_value = NewTerrain.MAX_SLIDER
-		slider.step = 1
-		slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		slider.value_changed.connect(_schedule_new_city_preview)
-		slider_row.add_child(slider)
-		var value_label := Label.new()
-		value_label.custom_minimum_size = Vector2(30, 0)
-		value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		slider_row.add_child(value_label)
-		match terrain_label_text:
-			"Hills":
-				new_city_hills_input = slider
-				new_city_hills_value = value_label
-			"Water":
-				new_city_water_input = slider
-				new_city_water_value = value_label
-			"Trees":
-				new_city_trees_input = slider
-				new_city_trees_value = value_label
-		terrain_grid.add_child(slider_row)
-	var terrain_note := Label.new()
-	terrain_note.text = "Values use the original 0–47 range."
-	terrain_note.modulate = Color(0.72, 0.72, 0.72)
-	new_city_left.add_child(terrain_note)
-
-	var new_city_right := VBoxContainer.new()
-	new_city_right.custom_minimum_size = Vector2(320, 0)
-	new_city_right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	new_city_right.add_theme_constant_override("separation", 8)
-	new_city_content.add_child(new_city_right)
-	var preview_heading := Label.new()
-	preview_heading.text = "Terrain Preview"
-	preview_heading.add_theme_font_size_override("font_size", 16)
-	preview_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	new_city_right.add_child(preview_heading)
-	var preview_panel := PanelContainer.new()
-	preview_panel.custom_minimum_size = Vector2(320, 320)
-	preview_panel.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	new_city_right.add_child(preview_panel)
-	new_city_preview_view = TextureRect.new()
-	new_city_preview_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	new_city_preview_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	new_city_preview_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	preview_panel.add_child(new_city_preview_view)
-	new_city_preview_status = Label.new()
-	new_city_preview_status.text = "Generating terrain..."
-	new_city_preview_status.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	new_city_preview_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	new_city_right.add_child(new_city_preview_status)
-	var make_terrain_button := Button.new()
-	make_terrain_button.text = "Make New Terrain"
-	make_terrain_button.pressed.connect(_make_new_city_preview)
-	new_city_right.add_child(make_terrain_button)
-	new_city_preview_timer = Timer.new()
-	new_city_preview_timer.one_shot = true
-	new_city_preview_timer.wait_time = 0.12
-	new_city_preview_timer.timeout.connect(_refresh_new_city_preview)
-	new_city_dialog.add_child(new_city_preview_timer)
-	var new_city_button_row := HBoxContainer.new()
-	new_city_button_row.add_theme_constant_override("separation", 8)
-	new_city_column.add_child(new_city_button_row)
-	var new_city_button_spacer := Control.new()
-	new_city_button_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	new_city_button_row.add_child(new_city_button_spacer)
-	var new_city_cancel_button := Button.new()
-	new_city_cancel_button.text = "Cancel"
-	new_city_cancel_button.custom_minimum_size = Vector2(80, 30)
-	new_city_cancel_button.pressed.connect(_cancel_new_city)
-	new_city_button_row.add_child(new_city_cancel_button)
-	var new_city_start_button := Button.new()
-	new_city_start_button.text = "Build City on This Terrain"
-	new_city_start_button.custom_minimum_size = Vector2(210, 30)
-	new_city_start_button.pressed.connect(_create_new_city)
-	new_city_button_row.add_child(new_city_start_button)
 
 	sign_dialog = ConfirmationDialog.new()
 	sign_dialog.title = "City Sign"
@@ -3353,52 +3140,52 @@ func _on_help_menu(_id: int) -> void:
 func _open_new_city_dialog() -> void:
 	if new_city_dialog == null:
 		return
-	new_city_preview_timer.stop()
+	new_city_dialog.preview_timer.stop()
 	new_city_preview_document = null
 	new_city_preview_options.clear()
 	new_city_preview_process_cursor = tool_random.state
 	new_city_preview_game_cursor = nuisance_random.state
 	new_city_preview_process_start = new_city_preview_process_cursor
 	new_city_preview_game_start = new_city_preview_game_cursor
-	new_city_name_input.text = "New City"
-	new_city_mayor_input.text = (
+	new_city_dialog.city_name_input.text = "New City"
+	new_city_dialog.mayor_name_input.text = (
 		city.mayor_name() if city != null and not city.mayor_name().is_empty() else "Mayor"
 	)
-	new_city_difficulty.select(0)
-	new_city_year.select(0)
-	new_city_ocean_input.button_pressed = NewTerrain.DEFAULT_OCEAN
-	new_city_river_input.button_pressed = NewTerrain.DEFAULT_RIVER
-	new_city_hills_input.value = NewTerrain.DEFAULT_HILLS
-	new_city_water_input.value = NewTerrain.DEFAULT_WATER
-	new_city_trees_input.value = NewTerrain.DEFAULT_TREES
+	new_city_dialog.difficulty_input.select(0)
+	new_city_dialog.year_input.select(0)
+	new_city_dialog.ocean_input.button_pressed = NewTerrain.DEFAULT_OCEAN
+	new_city_dialog.river_input.button_pressed = NewTerrain.DEFAULT_RIVER
+	new_city_dialog.hills_input.value = NewTerrain.DEFAULT_HILLS
+	new_city_dialog.water_input.value = NewTerrain.DEFAULT_WATER
+	new_city_dialog.trees_input.value = NewTerrain.DEFAULT_TREES
 	_update_new_city_slider_labels()
 	new_city_dialog.show()
 	_generate_new_city_preview(false)
-	new_city_name_input.grab_focus()
-	new_city_name_input.select_all()
+	new_city_dialog.city_name_input.grab_focus()
+	new_city_dialog.city_name_input.select_all()
 
 
 func _schedule_new_city_preview(_value: Variant = null) -> void:
 	_update_new_city_slider_labels()
 	if new_city_dialog != null and new_city_dialog.visible:
-		new_city_preview_timer.start()
+		new_city_dialog.preview_timer.start()
 
 
 func _update_new_city_slider_labels() -> void:
-	if new_city_hills_input == null:
+	if new_city_dialog == null or new_city_dialog.hills_input == null:
 		return
-	new_city_hills_value.text = str(roundi(new_city_hills_input.value))
-	new_city_water_value.text = str(roundi(new_city_water_input.value))
-	new_city_trees_value.text = str(roundi(new_city_trees_input.value))
+	new_city_dialog.hills_value.text = str(roundi(new_city_dialog.hills_input.value))
+	new_city_dialog.water_value.text = str(roundi(new_city_dialog.water_input.value))
+	new_city_dialog.trees_value.text = str(roundi(new_city_dialog.trees_input.value))
 
 
 func _new_city_terrain_options() -> Dictionary:
 	return {
-		"ocean": new_city_ocean_input.button_pressed,
-		"river": new_city_river_input.button_pressed,
-		"hills": roundi(new_city_hills_input.value),
-		"water": roundi(new_city_water_input.value),
-		"trees": roundi(new_city_trees_input.value),
+		"ocean": new_city_dialog.ocean_input.button_pressed,
+		"river": new_city_dialog.river_input.button_pressed,
+		"hills": roundi(new_city_dialog.hills_input.value),
+		"water": roundi(new_city_dialog.water_input.value),
+		"trees": roundi(new_city_dialog.trees_input.value),
 	}
 
 
@@ -3407,18 +3194,18 @@ func _refresh_new_city_preview() -> void:
 
 
 func _make_new_city_preview() -> void:
-	new_city_preview_timer.stop()
+	new_city_dialog.preview_timer.stop()
 	_generate_new_city_preview(true)
 
 
 func _generate_new_city_preview(advance_seed: bool) -> bool:
 	if palette == null or not palette.is_valid():
-		new_city_preview_status.text = "Terrain preview is not available."
+		new_city_dialog.preview_status.text = "Terrain preview is not available."
 		return false
 	var template_path := reference_root.path_join("DEFAULT.SC2")
 	var document := Sc2Document.load_path(template_path)
 	if not document.is_valid():
-		new_city_preview_status.text = "Cannot load the default city."
+		new_city_dialog.preview_status.text = "Cannot load the default city."
 		return false
 	if advance_seed or new_city_preview_document == null:
 		new_city_preview_process_start = new_city_preview_process_cursor
@@ -3437,19 +3224,19 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 		preview_game,
 	)
 	if not generated.ok:
-		new_city_preview_status.text = "Cannot generate terrain: %s" % generated.error
+		new_city_dialog.preview_status.text = "Cannot generate terrain: %s" % generated.error
 		return false
 	var preview_city := CityModel.from_document(document)
 	if not preview_city.is_valid():
-		new_city_preview_status.text = "Cannot display the generated terrain."
+		new_city_dialog.preview_status.text = "Cannot display the generated terrain."
 		return false
 	new_city_preview_document = document
 	new_city_preview_options = options.duplicate(true)
 	new_city_preview_process_cursor = preview_process.state
 	new_city_preview_game_cursor = preview_game.state
 	var image := Minimap.create_image(preview_city, palette, "structures")
-	new_city_preview_view.texture = ImageTexture.create_from_image(image)
-	new_city_preview_status.text = (
+	new_city_dialog.preview_view.texture = ImageTexture.create_from_image(image)
+	new_city_dialog.preview_status.text = (
 		"Water: %s tiles   Trees: %s tiles   Height: %s–%s"
 		% [
 			_format_number(int(generated.water_tiles)),
@@ -3462,11 +3249,11 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 
 
 func _cancel_new_city() -> void:
-	new_city_preview_timer.stop()
+	new_city_dialog.preview_timer.stop()
 	new_city_dialog.hide()
 	new_city_preview_document = null
 	new_city_preview_options.clear()
-	new_city_preview_view.texture = null
+	new_city_dialog.preview_view.texture = null
 
 
 func _create_new_city() -> void:
@@ -3474,7 +3261,7 @@ func _create_new_city() -> void:
 
 
 func _create_new_city_unchecked() -> void:
-	new_city_preview_timer.stop()
+	new_city_dialog.preview_timer.stop()
 	var terrain_options := _new_city_terrain_options()
 	if (
 		new_city_preview_document == null
@@ -3488,14 +3275,14 @@ func _create_new_city_unchecked() -> void:
 	if not template.is_valid():
 		_show_error("Cannot load the default city: %s" % template.parse_error)
 		return
-	var difficulty := new_city_difficulty.get_selected_id()
-	var starting_year := new_city_year.get_selected_id()
+	var difficulty := new_city_dialog.difficulty_input.get_selected_id()
+	var starting_year := new_city_dialog.year_input.get_selected_id()
 	var new_process_random := Random.new(new_city_preview_process_start)
 	var new_game_random := GameRandom.new(new_city_preview_game_start)
 	var result := NewCity.create(
 		template,
-		new_city_name_input.text,
-		new_city_mayor_input.text,
+		new_city_dialog.city_name_input.text,
+		new_city_dialog.mayor_name_input.text,
 		difficulty,
 		starting_year,
 		new_process_random,

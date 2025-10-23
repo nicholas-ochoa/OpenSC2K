@@ -79,6 +79,7 @@ const QueryPresentation = preload("res://src/view/query_presentation.gd")
 const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperPage = preload("res://src/ui/newspaper_page.gd")
 const MainMenu = preload("res://src/ui/main_menu_control.gd")
+const NewCityTerrainDialogUi = preload("res://src/ui/new_city_terrain_dialog.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -690,6 +691,20 @@ func _test_main_menu() -> void:
 		"SCURK Place & Print omits both non-placeable animation groups",
 	)
 	menu.free()
+	var new_city_dialog := NewCityTerrainDialogUi.new()
+	new_city_dialog._ready()
+	_check(
+		new_city_dialog.city_name_input != null
+		and new_city_dialog.mayor_name_input != null
+		and new_city_dialog.difficulty_input.item_count == 3
+		and new_city_dialog.year_input.item_count == NewCity.STARTING_YEARS.size()
+		and new_city_dialog.hills_input.min_value == NewCityTerrain.MIN_SLIDER
+		and new_city_dialog.hills_input.max_value == NewCityTerrain.MAX_SLIDER
+		and new_city_dialog.preview_view.texture_filter
+		== CanvasItem.TEXTURE_FILTER_NEAREST,
+		"New City terrain dialog owns its input and preview controls",
+	)
+	new_city_dialog.free()
 	var old_buildings := PackedByteArray()
 	old_buildings.resize(CityModel.TILE_COUNT)
 	var new_buildings := old_buildings.duplicate()
