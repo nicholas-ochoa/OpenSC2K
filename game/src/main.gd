@@ -47,7 +47,6 @@ const Buildings = preload("res://src/tools/building_command.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
 const MovingThingAudio = preload("res://src/audio/moving_thing_audio.gd")
-const MovingThingSpawner = preload("res://src/simulation/moving_thing_spawner.gd")
 const Networks = preload("res://src/tools/network_command.gd")
 const Hydro = preload("res://src/tools/hydro_command.gd")
 const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
@@ -69,6 +68,7 @@ const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const NewspaperTextGenerator = preload("res://src/simulation/newspaper_text.gd")
 const Music = preload("res://src/audio/music_director.gd")
 const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
+const DebugActions = preload("res://src/debug/city_debug_actions.gd")
 
 const NEWS_NAMES := {
 	1: "Local news",
@@ -7093,46 +7093,21 @@ func _debug_clear_render_caches() -> void:
 
 
 func _debug_add_funds(amount: int) -> Dictionary:
-	if city == null or amount <= 0:
-		return {"ok": false, "message": "No city is loaded."}
-	var new_funds := mini(0x7fffffff, city.funds() + amount)
-	if not city.set_funds(new_funds):
-		return {"ok": false, "message": "Funds could not be changed."}
+	var result := DebugActions.add_funds(city, amount)
+	if not result.ok:
+		return {"ok": false, "message": result.error}
 	_refresh_details()
 	return {
 		"ok": true,
 		"message": "Added $%s. Funds are now $%s."
-		% [_format_number(amount), _format_number(new_funds)],
+		% [_format_number(amount), _format_number(int(result.new_funds))],
 	}
 
 
 func _debug_unlock_everything() -> Dictionary:
-	if city == null:
-		return {"ok": false, "message": "No city is loaded."}
-	var misc_chunk := current_document.find_chunk("MISC")
-	if misc_chunk == null or misc_chunk.decoded_payload.size() != 4800:
-		return {"ok": false, "message": "The city MISC data is not valid."}
-	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	ToolAvailability._write_u32_be(misc, ToolAvailability.MISC_PROGRESSION, 6)
-	ToolAvailability._write_u32_be(
-		misc, ToolAvailability.MISC_GRANTED_REWARDS, 0xffff
-	)
-	for invention_index in ToolAvailability.INVENTION_COUNT:
-		ToolAvailability._write_u32_be(
-			misc,
-			ToolAvailability.MISC_INVENTION_YEARS + invention_index * 4,
-			0,
-		)
-	var ordinances := ToolAvailability._read_u32_be(
-		misc, ToolAvailability.MISC_ORDINANCES
-	)
-	ToolAvailability._write_u32_be(
-		misc,
-		ToolAvailability.MISC_ORDINANCES,
-		ordinances & ~ToolAvailability.ORDINANCE_NUCLEAR_FREE,
-	)
-	if not misc_chunk.set_decoded_payload(misc):
-		return {"ok": false, "message": "The unlock state could not be stored."}
+	var result := DebugActions.unlock_everything(city, current_document)
+	if not result.ok:
+		return {"ok": false, "message": result.error}
 	_refresh_child_tool_icons()
 	_refresh_tool_availability()
 	_update_edit_state()
@@ -7144,10 +7119,9 @@ func _debug_unlock_everything() -> Dictionary:
 
 
 func _debug_set_no_disasters(enabled: bool) -> Dictionary:
-	if city == null:
-		return {"ok": false, "message": "No city is loaded."}
-	if not city.set_no_disasters_enabled(enabled):
-		return {"ok": false, "message": "The random-disaster option could not be stored."}
+	var result := DebugActions.set_no_disasters(city, enabled)
+	if not result.ok:
+		return {"ok": false, "message": result.error}
 	_sync_city_option_menus()
 	_refresh_details()
 	return {
@@ -7173,90 +7147,9 @@ func _debug_start_disaster(disaster_type: int) -> Dictionary:
 
 
 func _debug_end_disaster() -> Dictionary:
-	if city == null or simulation_engine == null or current_document == null:
-		return {"ok": false, "message": "No city is loaded."}
-	var thing_chunk := current_document.find_chunk("XTHG")
-	var text_chunk := current_document.find_chunk("XTXT")
-	var misc_chunk := current_document.find_chunk("MISC")
-	if (
-		thing_chunk == null
-		or thing_chunk.decoded_payload.size()
-		!= CityState.THING_COUNT * CityState.THING_RECORD_SIZE
-		or text_chunk == null
-		or text_chunk.decoded_payload.size() != CityState.TILE_COUNT
-		or misc_chunk == null
-		or misc_chunk.decoded_payload.size() != 4800
-	):
-		return {"ok": false, "message": "The city disaster data is not valid."}
-	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
-	var old_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
-	var old_misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	var things := old_things.duplicate()
-	var text := old_text.duplicate()
-	var misc := old_misc.duplicate()
-	var disaster_records := {}
-	for record in range(1, CityState.THING_COUNT):
-		var offset := record * CityState.THING_RECORD_SIZE
-		var thing_type := int(things[offset])
-		var is_disaster_object := thing_type in [
-			DisasterStart.TYPE_MONSTER,
-			DisasterStart.TYPE_EXPLOSION,
-			DisasterStart.TYPE_TORNADO,
-		]
-		var is_crashing_airplane := (
-			thing_type == DisasterStart.TYPE_AIRPLANE and things[offset + 2] == 7
-		)
-		if is_disaster_object or is_crashing_airplane:
-			disaster_records[record] = true
-	var cleared_markers := 0
-	for index in CityState.TILE_COUNT:
-		var overlay := int(text[index])
-		if overlay >= 0xfb:
-			text[index] = 0
-			cleared_markers += 1
-			continue
-		var record := overlay - DisasterStart.TEXT_THING_BASE
-		if not disaster_records.has(record):
-			continue
-		var offset := record * CityState.THING_RECORD_SIZE
-		var point_index := int(things[offset + 3]) * CityState.MAP_SIZE + int(things[offset + 4])
-		var prior_overlay := int(things[offset + 10])
-		text[index] = (
-			prior_overlay
-			if index == point_index and prior_overlay < DisasterStart.TEXT_THING_BASE
-			else 0
-		)
-	for record in disaster_records:
-		var offset := int(record) * CityState.THING_RECORD_SIZE
-		for byte_index in CityState.THING_RECORD_SIZE:
-			things[offset + byte_index] = 0
-	ToolAvailability._write_u32_be(misc, 0x0004, 1)
-	ToolAvailability._write_u32_be(misc, 0x0070, 0)
-	var active_type := simulation_engine.active_disaster_type
-	var had_disaster := (
-		active_type != 0
-		or simulation_engine.pending_disaster_type != 0
-		or not disaster_records.is_empty()
-		or cleared_markers > 0
-	)
-	if not had_disaster:
-		return {"ok": false, "message": "No active disaster was found."}
-	if not thing_chunk.set_decoded_payload(things):
-		return {"ok": false, "message": "The disaster objects could not be cleared."}
-	if not text_chunk.set_decoded_payload(text):
-		thing_chunk.set_decoded_payload(old_things)
-		return {"ok": false, "message": "The disaster markers could not be cleared."}
-	if not misc_chunk.set_decoded_payload(misc):
-		thing_chunk.set_decoded_payload(old_things)
-		text_chunk.set_decoded_payload(old_text)
-		return {"ok": false, "message": "The disaster mode could not be cleared."}
-	city.text_overlays = text.duplicate()
-	simulation_engine.pending_disaster_type = 0
-	simulation_engine.pending_disaster_point = Vector2i.ZERO
-	simulation_engine.active_disaster_type = 0
-	simulation_engine.unsupported_disaster_type = 0
-	simulation_engine.disaster_map_counter = 0
-	simulation_engine.disaster_hurricane_counter = 0
+	var result := DebugActions.end_disaster(city, current_document, simulation_engine)
+	if not result.ok:
+		return {"ok": false, "message": result.error}
 	last_edit_command = {}
 	undo_button.disabled = true
 	simulation_map_dirty = false
@@ -7267,93 +7160,28 @@ func _debug_end_disaster() -> Dictionary:
 		"ok": true,
 		"message": "Ended %s and cleared %d marker(s) and %d object(s)."
 		% [
-			_disaster_name(active_type) if active_type != 0 else "the disaster",
-			cleared_markers,
-			disaster_records.size(),
+			(
+				_disaster_name(int(result.active_type))
+				if int(result.active_type) != 0
+				else "the disaster"
+			),
+			int(result.cleared_markers),
+			int(result.cleared_objects),
 		],
 	}
 
 
 func _debug_dispatch_maxis_man() -> Dictionary:
-	if city == null or current_document == null:
-		return {"ok": false, "message": "No city is loaded."}
-	var target := _debug_disaster_target()
-	if target.is_empty():
-		return {"ok": false, "message": "No active disaster target was found."}
-	var start := _debug_maxis_man_start(target.point)
-	if start.x < 0:
-		return {"ok": false, "message": "No clear launch tile was found."}
-	var thing_chunk := current_document.find_chunk("XTHG")
-	var text_chunk := current_document.find_chunk("XTXT")
-	if thing_chunk == null or text_chunk == null:
-		return {"ok": false, "message": "The moving-object data is missing."}
-	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
-	var things: PackedByteArray = old_things.duplicate()
-	var text: PackedByteArray = city.text_overlays.duplicate()
-	var spawned := MovingThingSpawner.spawn_maxis_man(
-		things,
-		text,
-		start,
-		target.point,
-		int(target.goal),
-		city.object_altitude(start.x, start.y) + 4,
-	)
-	if not spawned.spawned:
-		return {"ok": false, "message": "Maxis Man is already active or no record is free."}
-	if not thing_chunk.set_decoded_payload(things):
-		return {"ok": false, "message": "The Maxis Man record could not be stored."}
-	if not text_chunk.set_decoded_payload(text):
-		thing_chunk.set_decoded_payload(old_things)
-		return {"ok": false, "message": "The Maxis Man map link could not be stored."}
-	city.text_overlays = text
+	var center := map_view.center_tile() if map_view != null else Vector2i(64, 64)
+	var result := DebugActions.dispatch_maxis_man(city, current_document, center)
+	if not result.ok:
+		return {"ok": false, "message": result.error}
 	_refresh_moving_things()
 	return {
 		"ok": true,
 		"message": "Maxis Man was dispatched from %s toward %s."
-		% [str(start), str(target.point)],
+		% [str(result.start), str(result.target)],
 	}
-
-
-func _debug_disaster_target() -> Dictionary:
-	var thing_chunk := current_document.find_chunk("XTHG")
-	if thing_chunk != null:
-		var things: PackedByteArray = thing_chunk.decoded_payload
-		for record in range(1, CityState.THING_COUNT):
-			var offset := record * CityState.THING_RECORD_SIZE
-			if int(things[offset]) in [5, 15]:
-				return {
-					"point": Vector2i(things[offset + 3], things[offset + 4]),
-					"goal": record,
-				}
-	var center := map_view.center_tile() if map_view != null else Vector2i(64, 64)
-	var nearest := Vector2i(-1, -1)
-	var nearest_distance := 0x7fffffff
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
-			if city.text_overlay_id(x, y) < 241:
-				continue
-			var point := Vector2i(x, y)
-			var distance := absi(point.x - center.x) + absi(point.y - center.y)
-			if distance < nearest_distance:
-				nearest = point
-				nearest_distance = distance
-	return {} if nearest.x < 0 else {"point": nearest, "goal": 241}
-
-
-func _debug_maxis_man_start(target: Vector2i) -> Vector2i:
-	const DIRECTIONS := [
-		Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -1), Vector2i(0, 1),
-		Vector2i(-1, -1), Vector2i(1, -1), Vector2i(-1, 1), Vector2i(1, 1),
-	]
-	for radius in range(12, 0, -1):
-		for direction in DIRECTIONS:
-			var point: Vector2i = target + Vector2i(direction) * radius
-			if (
-				city.index_of(point.x, point.y) >= 0
-				and city.text_overlay_id(point.x, point.y) < 201
-			):
-				return point
-	return Vector2i(-1, -1)
 
 
 func _format_number(value: int) -> String:
