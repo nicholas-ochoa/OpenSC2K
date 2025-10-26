@@ -47,8 +47,7 @@ const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
-const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
-const MovingThingAudio = preload("res://src/audio/moving_thing_audio.gd")
+const CityAudio = preload("res://src/audio/city_audio_controller.gd")
 const Networks = preload("res://src/tools/network_command.gd")
 const Hydro = preload("res://src/tools/hydro_command.gd")
 const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
@@ -68,7 +67,6 @@ const Bonds = preload("res://src/simulation/bond_command.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
-const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 const DebugActions = preload("res://src/debug/city_debug_actions.gd")
 
 const NEWS_NAMES := {
@@ -130,7 +128,6 @@ const NEWSPAPER_STRING_LAST := 391
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const STATUS_REPORT_ROTATION_SECONDS := 7.0
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
-const SOUND_EFFECT_GROUP := &"open_sc2k_sound_effects"
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
 const MENU_SOUND_EFFECTS := 0x8006
@@ -195,13 +192,7 @@ var last_edit_command: Dictionary = {}
 var pending_sign_tile := Vector2i(-1, -1)
 var tool_random := Random.new(1)
 var nuisance_random := GameRandom.new(Time.get_ticks_msec() | 1)
-var music_director := Music.new()
-var music_player: MidiSynthPlayer
-var dummy_music_active := false
-var application_has_focus := true
-var tool_loop_player: AudioStreamPlayer
-var wave_sound_gate := WaveSounds.new()
-var wave_stream_cache: Dictionary = {}
+var audio_controller: Node
 var dispatch_cycles := PackedInt32Array([0, 0, 0])
 var dispatch_initialized := false
 var simulation_engine: SimulationEngine
@@ -352,11 +343,10 @@ func _ready() -> void:
 	get_tree().auto_accept_quit = false
 	reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
 	_load_app_settings()
-	_load_wave_sound_cache()
-	music_player = MidiSynth.new()
-	music_player.track_finished.connect(_on_music_track_finished)
-	add_child(music_player)
-	music_player.set_volume_linear(app_music_volume)
+	audio_controller = CityAudio.new()
+	audio_controller.music_activity_changed.connect(_on_music_activity_changed)
+	add_child(audio_controller)
+	audio_controller.setup(reference_root, app_music_volume, app_effects_volume)
 	newspaper_session_seed = Time.get_ticks_msec() & 0xffff
 	if newspaper_session_seed & 0x8000:
 		newspaper_session_seed -= 0x10000
@@ -452,7 +442,7 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
-	wave_sound_gate.advance(delta * 1000.0)
+	audio_controller.advance(delta * 1000.0)
 	_update_fps(delta)
 	_update_status_report_rotation(delta)
 	_poll_static_render()
@@ -1418,8 +1408,8 @@ func _apply_settings() -> void:
 	app_music_volume = float(settings_music_slider.value) / 100.0
 	app_effects_volume = float(settings_effects_slider.value) / 100.0
 	app_fullscreen = settings_fullscreen_check.button_pressed
-	if music_player != null:
-		music_player.set_volume_linear(app_music_volume)
+	if audio_controller != null:
+		audio_controller.set_volumes(app_music_volume, app_effects_volume)
 	DisplayServer.window_set_mode(
 		DisplayServer.WINDOW_MODE_FULLSCREEN
 		if app_fullscreen
@@ -2505,7 +2495,7 @@ func _on_options_menu(id: int) -> void:
 		_stop_sound_effects()
 	if id == MENU_MUSIC:
 		if enabled:
-			_play_music_track(music_director.next_general_track())
+			_play_music_track(audio_controller.music_director.next_general_track())
 		else:
 			_stop_music()
 	status_label.remove_theme_color_override("font_color")
@@ -3580,97 +3570,50 @@ func _activate_document(
 	elif music_was_active:
 		simulation_engine.midi_playback_active = true
 	else:
-		_play_music_track(music_director.next_general_track())
+		_play_music_track(audio_controller.music_director.next_general_track())
 	if loaded_scenario != null:
 		_open_scenario_intro(loaded_scenario)
 	return true
 
 
 func _play_music_track(track_id: int) -> bool:
-	if (
-		music_player == null
-		or track_id < Music.FIRST_TRACK_ID
-		or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT
-	):
-		return false
-	if AudioServer.get_driver_name() == "Dummy":
-		dummy_music_active = true
-		if simulation_engine != null:
-			simulation_engine.midi_playback_active = true
-		return true
-	dummy_music_active = false
-	var result := music_player.play_path(
-		reference_root.path_join("SOUNDS/%d.MID" % track_id), track_id
-	)
-	if not result.ok:
-		if simulation_engine != null:
-			simulation_engine.midi_playback_active = false
-		push_warning("Cannot play MIDI track %d: %s" % [track_id, result.error])
-		return false
-	if simulation_engine != null:
-		simulation_engine.midi_playback_active = true
-	return true
+	return audio_controller != null and audio_controller.play_music_track(track_id)
 
 
-func _on_music_track_finished(_track_id: int) -> void:
-	dummy_music_active = false
+func _on_music_activity_changed(active: bool) -> void:
 	if simulation_engine != null:
-		simulation_engine.midi_playback_active = false
+		simulation_engine.midi_playback_active = active
 
 
 func _music_playback_is_active() -> bool:
-	if city == null or not city.music_enabled():
-		return false
-	if AudioServer.get_driver_name() == "Dummy":
-		return dummy_music_active
-	return music_player != null and music_player.is_track_active()
+	return (
+		city != null
+		and city.music_enabled()
+		and audio_controller != null
+		and audio_controller.music_playback_is_active()
+	)
 
 
 func _handle_application_focus_out() -> void:
-	application_has_focus = false
-	_stop_music()
-	_stop_sound_effects()
+	if audio_controller != null:
+		audio_controller.handle_application_focus_out()
 
 
 func _handle_application_focus_in() -> void:
-	var regained_focus := not application_has_focus
-	application_has_focus = true
-	if not regained_focus or city == null or not city.music_enabled():
-		return
-	if not _music_playback_is_active():
-		_play_music_track(music_director.next_general_track())
+	if audio_controller != null:
+		audio_controller.handle_application_focus_in(
+			city != null and city.music_enabled()
+		)
 
 
 func _stop_music() -> void:
-	dummy_music_active = false
-	if music_player != null:
-		music_player.stop()
-	if simulation_engine != null:
-		simulation_engine.midi_playback_active = false
+	if audio_controller != null:
+		audio_controller.stop_music()
 
 
 func _stop_sound_effects() -> void:
-	wave_sound_gate.stop()
-	if not is_inside_tree():
-		return
-	for node in get_tree().get_nodes_in_group(SOUND_EFFECT_GROUP):
-		var player := node as AudioStreamPlayer
-		if player == null:
-			continue
-		player.stop()
-		player.queue_free()
-	tool_loop_player = null
-
-
-func _load_wave_sound_cache() -> void:
-	wave_stream_cache.clear()
-	for sound_id in range(WaveSounds.SOUND_FIRST, WaveSounds.SOUND_LAST + 1):
-		var sound_path := reference_root.path_join("SOUNDS/%d.WAV" % sound_id)
-		if not FileAccess.file_exists(sound_path):
-			continue
-		var stream := AudioStreamWAV.load_from_file(sound_path)
-		if stream != null:
-			wave_stream_cache[sound_id] = stream
+	if audio_controller != null:
+		audio_controller.stop_sound_effects()
 
 
 func _on_save_path_selected(path: String) -> void:
@@ -4650,26 +4593,11 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 
 
 func _play_sound_events(sound_events: Array) -> void:
-	if city == null or not city.sound_enabled():
+	if city == null or audio_controller == null:
 		return
-	for sound_event in sound_events:
-		var sound_id := MovingThingAudio.event_sound_id(
-			sound_event, overlay_mode, _city_view_size()
-		)
-		if sound_id < 0:
-			continue
-		var stream := wave_stream_cache.get(sound_id) as AudioStreamWAV
-		if stream == null:
-			continue
-		if not wave_sound_gate.request(sound_id):
-			continue
-		var player := AudioStreamPlayer.new()
-		player.stream = stream
-		player.volume_linear = app_effects_volume
-		player.finished.connect(player.queue_free)
-		add_child(player)
-		player.add_to_group(SOUND_EFFECT_GROUP)
-		player.play()
+	audio_controller.play_sound_events(
+		sound_events, city.sound_enabled(), overlay_mode, _city_view_size()
+	)
 
 
 func _play_tool_success_sound(
@@ -4694,33 +4622,15 @@ func _play_tool_failure_sound(
 
 
 func _start_tool_loop_sound(sound_id: int) -> void:
-	_stop_tool_loop_sound()
-	if city == null or not city.sound_enabled():
-		return
-	var cached_stream := wave_stream_cache.get(sound_id) as AudioStreamWAV
-	if cached_stream == null:
-		return
-	var stream := cached_stream.duplicate() as AudioStreamWAV
-	if stream == null:
-		return
-	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	stream.loop_begin = 0
-	stream.loop_end = maxi(1, roundi(stream.get_length() * stream.mix_rate))
-	tool_loop_player = AudioStreamPlayer.new()
-	tool_loop_player.stream = stream
-	tool_loop_player.volume_linear = app_effects_volume
-	add_child(tool_loop_player)
-	tool_loop_player.add_to_group(SOUND_EFFECT_GROUP)
-	tool_loop_player.play()
+	if audio_controller != null:
+		audio_controller.start_tool_loop_sound(
+			sound_id, city != null and city.sound_enabled()
+		)
 
 
 func _stop_tool_loop_sound() -> void:
-	if not is_instance_valid(tool_loop_player):
-		tool_loop_player = null
-		return
-	tool_loop_player.stop()
-	tool_loop_player.queue_free()
-	tool_loop_player = null
+	if audio_controller != null:
+		audio_controller.stop_tool_loop_sound()
 
 
 func _show_news_items(news_items: Array) -> void:
@@ -6538,12 +6448,9 @@ func _debug_metrics() -> Dictionary:
 			simulation_engine.active_disaster_type if simulation_engine != null else 0
 		),
 		"no_disasters": city != null and city.no_disasters_enabled(),
-		"wave_sound_id": wave_sound_gate.current_sound_id,
-		"wave_sound_ticks": wave_sound_gate.remaining_ticks,
-		"wave_sound_accepted": wave_sound_gate.accepted_count,
-		"wave_sound_suppressed": wave_sound_gate.suppressed_count,
-		"wave_stream_cache": wave_stream_cache.size(),
 	}
+	if audio_controller != null:
+		result.merge(audio_controller.debug_metrics(), true)
 	if map_view != null:
 		result.merge(map_view.debug_metrics(), true)
 	if city != null:

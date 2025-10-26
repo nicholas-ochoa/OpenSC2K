@@ -350,10 +350,11 @@ func _run() -> void:
 				return
 			main.call("_close_scurk_place_print")
 		var focus_engine: SimulationEngine = main.get("simulation_engine")
-		var focus_director: MusicDirector = main.get("music_director")
+		var audio_controller = main.get("audio_controller")
+		var focus_director: MusicDirector = audio_controller.music_director
 		loaded_city.set_music_enabled(true)
-		main.set("dummy_music_active", true)
-		main.set("application_has_focus", true)
+		audio_controller.dummy_music_active = true
+		audio_controller.application_has_focus = true
 		focus_engine.midi_playback_active = true
 		var focus_general_index := focus_director.general_track_index
 		var effect_probe := AudioStreamPlayer.new()
@@ -361,8 +362,8 @@ func _run() -> void:
 		effect_probe.add_to_group(&"open_sc2k_sound_effects")
 		main.call("_handle_application_focus_out")
 		var focus_out_ok: bool = (
-			not main.get("application_has_focus")
-			and not main.get("dummy_music_active")
+			not audio_controller.application_has_focus
+			and not audio_controller.dummy_music_active
 			and not focus_engine.midi_playback_active
 			and effect_probe.is_queued_for_deletion()
 		)
@@ -371,8 +372,8 @@ func _run() -> void:
 			focus_general_index % Music.GENERAL_TRACKS.size() + 1
 		)
 		var focus_in_ok: bool = (
-			main.get("application_has_focus")
-			and main.get("dummy_music_active")
+			audio_controller.application_has_focus
+			and audio_controller.dummy_music_active
 			and focus_engine.midi_playback_active
 			and focus_director.general_track_index == expected_general_index
 		)
@@ -387,8 +388,8 @@ func _run() -> void:
 			quit(2)
 			return
 		loaded_city.set_sound_enabled(true)
-		var wave_gate = main.get("wave_sound_gate")
-		var wave_cache: Dictionary = main.get("wave_stream_cache")
+		var wave_gate = audio_controller.wave_sound_gate
+		var wave_cache: Dictionary = audio_controller.wave_stream_cache
 		var wave_accepted_before := int(wave_gate.accepted_count)
 		var wave_suppressed_before := int(wave_gate.suppressed_count)
 		main.call("_play_sound_events", [504, 504, 504])
@@ -404,7 +405,7 @@ func _run() -> void:
 			return
 		main.call("_stop_sound_effects")
 		main.call("_start_tool_loop_sound", 508)
-		var bulldozer_loop := main.get("tool_loop_player") as AudioStreamPlayer
+		var bulldozer_loop := audio_controller.tool_loop_player as AudioStreamPlayer
 		var bulldozer_stream := (
 			bulldozer_loop.stream as AudioStreamWAV
 			if bulldozer_loop != null
@@ -419,7 +420,7 @@ func _run() -> void:
 		main.call("_stop_tool_loop_sound")
 		if (
 			not bulldozer_loop_ok
-			or main.get("tool_loop_player") != null
+			or audio_controller.tool_loop_player != null
 			or not bulldozer_loop.is_queued_for_deletion()
 		):
 			push_error("Bulldozer feedback does not start and stop its held sound")
