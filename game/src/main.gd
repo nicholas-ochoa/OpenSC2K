@@ -37,6 +37,7 @@ const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperDialogView = preload("res://src/ui/newspaper_dialog.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
+const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
 const ScurkPlacePrintView = preload("res://src/ui/scurk_place_print_control.gd")
 const ScurkPrintView = preload("res://src/ui/scurk_print_control.gd")
@@ -121,24 +122,6 @@ const NEIGHBOR_NAME_STRING_LAST := 583
 const CITY_MAP_STRING_FIRST := 327
 const CITY_MAP_STRING_LAST := 344
 
-const BUDGET_NAMES := [
-	"Residential Tax",
-	"Commercial Tax",
-	"Industrial Tax",
-	"Ordinances",
-	"Bonds",
-	"Police",
-	"Fire",
-	"Health",
-	"School",
-	"College",
-	"Road",
-	"Highway",
-	"Bridge",
-	"Rail",
-	"Subway",
-	"Tunnel",
-]
 const MAP_DISPLAY_MODES := ["city", "underground"]
 const LIBRARY_TEXT_IDS := [3000, 3001, 3002, 3003]
 const NEWSPAPER_STRING_FIRST := 347
@@ -365,15 +348,7 @@ var save_changes_dialog: ConfirmationDialog
 var pending_city_exit_action := ""
 var pending_city_exit_path := ""
 var pending_city_exit_waiting_for_save := false
-var budget_dialog: ConfirmationDialog
-var budget_notice_label: Label
-var budget_controls: Array[SpinBox] = []
-var auto_budget_check: CheckBox
-var bond_summary_label: Label
-var issue_bond_button: Button
-var repay_bond_button: Button
-var bond_dialog: ConfirmationDialog
-var pending_bond_action := ""
+var budget_dialog: BudgetDialog
 var game_over_dialog: AcceptDialog
 var military_dialog: ConfirmationDialog
 var scenario_dialog: AcceptDialog
@@ -518,7 +493,7 @@ func _process(delta: float) -> void:
 		or (scurk_city_export_dialog != null and scurk_city_export_dialog.visible)
 		or (scurk_print_pdf_dialog != null and scurk_print_pdf_dialog.visible)
 		or (save_changes_dialog != null and save_changes_dialog.visible)
-		or bond_dialog.visible
+		or budget_dialog.bond_confirmation_visible()
 		or military_dialog.visible
 		or scenario_dialog.visible
 		or game_over_active
@@ -1309,84 +1284,13 @@ func _build_interface(toolbar_art: Image) -> void:
 	military_dialog.canceled.connect(_decline_military_proposal)
 	add_child(military_dialog)
 
-	budget_dialog = ConfirmationDialog.new()
-	budget_dialog.title = "Budget"
-	budget_dialog.min_size = Vector2i(680, 720)
-	budget_dialog.get_ok_button().text = "Apply"
-	budget_dialog.confirmed.connect(_commit_budget)
-	budget_dialog.canceled.connect(_cancel_budget)
-	var budget_scroll := ScrollContainer.new()
-	budget_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	budget_scroll.offset_left = 16
-	budget_scroll.offset_top = 48
-	budget_scroll.offset_right = -16
-	budget_scroll.offset_bottom = -58
-	budget_dialog.add_child(budget_scroll)
-	var budget_rows := VBoxContainer.new()
-	budget_rows.custom_minimum_size = Vector2(620, 0)
-	budget_rows.add_theme_constant_override("separation", 6)
-	budget_scroll.add_child(budget_rows)
-	budget_notice_label = Label.new()
-	budget_notice_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	budget_notice_label.custom_minimum_size = Vector2(600, 48)
-	budget_rows.add_child(budget_notice_label)
-	auto_budget_check = CheckBox.new()
-	auto_budget_check.text = "Use the same funding automatically next year"
-	budget_rows.add_child(auto_budget_check)
-	for budget_id in BUDGET_NAMES.size():
-		var row := HBoxContainer.new()
-		var row_label := Label.new()
-		row_label.text = BUDGET_NAMES[budget_id]
-		row_label.custom_minimum_size = Vector2(360, 0)
-		row_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		row.add_child(row_label)
-		var control := SpinBox.new()
-		control.custom_minimum_size = Vector2(180, 32)
-		control.rounded = true
-		control.step = 1
-		control.min_value = -2147483648
-		control.max_value = 2147483647
-		if budget_id <= Budget.BUDGET_INDUSTRIAL:
-			control.min_value = 0
-			control.max_value = 22
-			control.suffix = "% tax"
-		elif budget_id >= Budget.BUDGET_POLICE:
-			control.min_value = 0
-			control.max_value = 100
-			control.suffix = "% funded"
-		else:
-			control.editable = false
-		if budget_id == Budget.BUDGET_BONDS:
-			control.visible = false
-		row.add_child(control)
-		budget_controls.append(control)
-		budget_rows.add_child(row)
-		if budget_id == Budget.BUDGET_BONDS:
-			var bond_controls := HBoxContainer.new()
-			bond_controls.add_theme_constant_override("separation", 8)
-			bond_summary_label = Label.new()
-			bond_summary_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-			bond_controls.add_child(bond_summary_label)
-			issue_bond_button = Button.new()
-			issue_bond_button.text = "Issue $10K Bond"
-			issue_bond_button.pressed.connect(_request_issue_bond)
-			bond_controls.add_child(issue_bond_button)
-			repay_bond_button = Button.new()
-			repay_bond_button.text = "Repay $10K Bond"
-			repay_bond_button.pressed.connect(_request_repay_bond)
-			bond_controls.add_child(repay_bond_button)
-			budget_rows.add_child(bond_controls)
+	budget_dialog = BudgetDialogView.new()
+	budget_dialog.apply_requested.connect(_commit_budget)
+	budget_dialog.cancel_requested.connect(_cancel_budget)
+	budget_dialog.issue_bond_requested.connect(_request_issue_bond)
+	budget_dialog.repay_bond_requested.connect(_request_repay_bond)
+	budget_dialog.bond_confirmation_resolved.connect(_resolve_bond_action)
 	add_child(budget_dialog)
-
-	bond_dialog = ConfirmationDialog.new()
-	bond_dialog.title = "Bond"
-	bond_dialog.min_size = Vector2i(500, 210)
-	bond_dialog.exclusive = true
-	bond_dialog.get_ok_button().text = "Yes"
-	bond_dialog.get_cancel_button().text = "No"
-	bond_dialog.confirmed.connect(_confirm_bond_action)
-	bond_dialog.canceled.connect(_cancel_bond_action)
-	add_child(bond_dialog)
 
 	_select_tool_group(selected_group)
 	_update_zoom_controls(map_view.zoom_percent())
@@ -3405,19 +3309,12 @@ func _open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 	if city.music_enabled() and simulation_engine != null:
 		_play_music_track(Music.budget_track(simulation_engine.lfsr_random))
 	annual_budget_pending = annual
-	budget_dialog.title = "Annual Budget" if annual else "Budget"
-	budget_notice_label.text = (
-		"Set the tax rates and service funding. Apply this budget to finish the annual settlement."
-		if annual
-		else "Set the tax rates and service funding. Ordinance and bond values are calculated by the simulation."
+	budget_dialog.open_budget(
+		values,
+		annual,
+		city.document.misc_u32(Budget.MISC_AUTO_BUDGET) != 0,
 	)
-	auto_budget_check.button_pressed = city.document.misc_u32(Budget.MISC_AUTO_BUDGET) != 0
-	budget_dialog.get_cancel_button().disabled = annual
-	budget_dialog.exclusive = annual
-	for budget_id in Budget.BUDGET_COUNT:
-		budget_controls[budget_id].value = values[budget_id]
 	_update_bond_controls()
-	budget_dialog.popup_centered()
 
 
 func _request_issue_bond() -> void:
@@ -3430,12 +3327,7 @@ func _request_issue_bond() -> void:
 	_update_bond_controls()
 	match result.status:
 		"confirmation_required":
-			pending_bond_action = "issue"
-			bond_dialog.title = "Issue Bond"
-			bond_dialog.dialog_text = (
-				"Current Rates are %d%%.\nDo You Want to Issue the Bond?" % int(result.rate)
-			)
-			bond_dialog.popup_centered()
+			budget_dialog.open_bond_confirmation("issue", int(result.rate))
 		"credit_denied":
 			_show_error(
 				"Sorry, your city may not issue more bonds\nuntil your credit rating improves."
@@ -3455,12 +3347,7 @@ func _request_repay_bond() -> void:
 		return
 	match result.status:
 		"confirmation_required":
-			pending_bond_action = "repay"
-			bond_dialog.title = "Repay Bond"
-			bond_dialog.dialog_text = (
-				"Oldest Bond Rate is %d%%\nDo You Want to Repay the Bond?" % int(result.rate)
-			)
-			bond_dialog.popup_centered()
+			budget_dialog.open_bond_confirmation("repay", int(result.rate))
 		"insufficient_funds":
 			_show_error("You Need $10,000 Cash\nto Repay an Outstanding Bond.")
 		"no_bonds":
@@ -3469,19 +3356,14 @@ func _request_repay_bond() -> void:
 			_show_error("The bond could not be repaid.")
 
 
-func _confirm_bond_action() -> void:
-	_resolve_bond_action(Bonds.CONFIRMATION_CONFIRMED)
-
-
-func _cancel_bond_action() -> void:
-	_resolve_bond_action(Bonds.CONFIRMATION_CANCELLED)
-
-
-func _resolve_bond_action(confirmation: int) -> void:
-	if city == null or pending_bond_action.is_empty():
+func _resolve_bond_action(action: String, confirmed: bool) -> void:
+	if city == null or action.is_empty():
 		return
-	var action := pending_bond_action
-	pending_bond_action = ""
+	var confirmation := (
+		Bonds.CONFIRMATION_CONFIRMED
+		if confirmed
+		else Bonds.CONFIRMATION_CANCELLED
+	)
 	var result := (
 		Bonds.issue(city, confirmation)
 		if action == "issue"
@@ -3511,7 +3393,7 @@ func _resolve_bond_action(confirmation: int) -> void:
 
 
 func _update_bond_controls() -> void:
-	if city == null or bond_summary_label == null:
+	if city == null or budget_dialog == null:
 		return
 	var bond_count := city.document.misc_u32(Bonds.MISC_BONDS)
 	var funds := city.funds()
@@ -3520,30 +3402,15 @@ func _update_bond_controls() -> void:
 		+ Budget.BUDGET_BONDS * Budget.BUDGET_RECORD_SIZE
 		+ Budget.BUDGET_FUNDING
 	)
-	budget_controls[Budget.BUDGET_BONDS].value = average_fixed
-	if bond_count == 0:
-		bond_summary_label.text = "No outstanding bonds"
-	else:
-		var oldest := city.document.misc_u32(Bonds.MISC_BOND_RATES) & 0xffff
-		bond_summary_label.text = "%d outstanding; oldest %d%%; average %.2f%%" % [
-			bond_count, oldest, float(average_fixed) / 10000.0,
-		]
-	issue_bond_button.disabled = bond_count > Bonds.MAX_BONDS
-	repay_bond_button.disabled = bond_count == 0 or funds < Bonds.BOND_VALUE
-
-
-func _budget_values() -> PackedInt32Array:
-	var values := PackedInt32Array()
-	for control in budget_controls:
-		values.append(roundi(control.value))
-	return values
+	var oldest := city.document.misc_u32(Bonds.MISC_BOND_RATES) & 0xffff
+	budget_dialog.set_bond_state(bond_count, funds, average_fixed, oldest)
 
 
 func _commit_budget() -> void:
 	if city == null:
 		return
-	var values := _budget_values()
-	var auto_budget := auto_budget_check.button_pressed
+	var values := budget_dialog.funding_values()
+	var auto_budget := budget_dialog.auto_budget_enabled()
 	if annual_budget_pending:
 		var result := speed_controller.resolve_annual_budget(values, auto_budget)
 		if not result.ok:
@@ -3740,11 +3607,7 @@ func _activate_document(
 		return false
 	var music_was_active := _music_playback_is_active()
 
-	if budget_dialog.visible:
-		budget_dialog.hide()
-	pending_bond_action = ""
-	if bond_dialog.visible:
-		bond_dialog.hide()
+	budget_dialog.reset_dialogs()
 	if game_over_dialog.visible:
 		game_over_dialog.hide()
 	if scenario_dialog.visible:

@@ -80,6 +80,7 @@ const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperPage = preload("res://src/ui/newspaper_page.gd")
 const MainMenu = preload("res://src/ui/main_menu_control.gd")
 const NewCityTerrainDialogUi = preload("res://src/ui/new_city_terrain_dialog.gd")
+const BudgetDialogUi = preload("res://src/ui/budget_dialog.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -243,6 +244,7 @@ func _init() -> void:
 	_test_midi_files(reference_root)
 	_test_midi_synth_helpers()
 	_test_main_menu()
+	_test_budget_dialog()
 	_test_rci_status_control()
 	_test_scenarios(reference_root)
 	_test_simulation_clock()
@@ -729,6 +731,23 @@ func _test_main_menu() -> void:
 		dirty_indices == PackedInt32Array([42, 129, 388, 513, 777]),
 		"Edit refresh finds changed static tiles and explicit command points",
 	)
+
+
+func _test_budget_dialog() -> void:
+	var dialog := BudgetDialogUi.new()
+	dialog._ready()
+	dialog.set_bond_state(2, 15000, 27500, 3)
+	_check(
+		dialog.controls.size() == Budget.BUDGET_COUNT
+		and dialog.controls[Budget.BUDGET_RESIDENTIAL].max_value == 22
+		and dialog.controls[Budget.BUDGET_POLICE].max_value == 100
+		and dialog.bond_summary_label.text
+		== "2 outstanding; oldest 3%; average 2.75%"
+		and not dialog.issue_bond_button.disabled
+		and not dialog.repay_bond_button.disabled,
+		"Budget dialog owns funding and bond controls",
+	)
+	dialog.free()
 
 
 func _test_palette_and_minimap(reference_root: String) -> void:
