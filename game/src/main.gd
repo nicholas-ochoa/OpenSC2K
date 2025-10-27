@@ -20,7 +20,7 @@ const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const ViewFilter = preload("res://src/view/city_view_filter.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
-const GraphView = preload("res://src/view/city_graph_control.gd")
+const GraphWindowView = preload("res://src/ui/city_graph_window.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
@@ -297,9 +297,7 @@ var pending_building_objection_group := -1
 var pending_building_objection_subtool := -1
 var library_windows: Array[PanelContainer] = []
 var library_text_views: Array[TextEdit] = []
-var graph_window: Window
-var graph_control: CityGraphControl
-var graph_series_buttons: Array[CheckBox] = []
+var graph_window
 var population_window: Window
 var population_control: PopulationWindowControl
 var population_mode_buttons: Array[CheckBox] = []
@@ -1117,7 +1115,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	query_dialog.close_requested.connect(_close_query)
 	query_dialog.action_requested.connect(_run_query_action)
 	add_child(query_dialog)
-	_build_graph_window()
+	graph_window = GraphWindowView.new()
+	add_child(graph_window)
 	_build_population_window()
 	_build_industry_window()
 	_build_simnation_window()
@@ -1870,85 +1869,6 @@ func _status_metric_label(text_value: String, minimum_width: int, expand := fals
 	if expand:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return label
-
-
-func _build_graph_window() -> void:
-	graph_window = Window.new()
-	graph_window.name = "GraphWindow"
-	graph_window.title = "Graph Window"
-	graph_window.size = Vector2i(860, 560)
-	graph_window.min_size = Vector2i(700, 480)
-	graph_window.transient = true
-	graph_window.exclusive = false
-	graph_window.visible = false
-	graph_window.close_requested.connect(graph_window.hide)
-	add_child(graph_window)
-
-	var background := PanelContainer.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
-	)
-	graph_window.add_child(background)
-	var margin := MarginContainer.new()
-	for side in ["left", "top", "right", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-	background.add_child(margin)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
-	margin.add_child(column)
-
-	var graph_frame := PanelContainer.new()
-	graph_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	graph_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	graph_frame.add_theme_stylebox_override(
-		"panel", _classic_box(Color("ffffff"), Color("404040"), 1)
-	)
-	column.add_child(graph_frame)
-	graph_control = GraphView.new()
-	graph_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	graph_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	graph_frame.add_child(graph_control)
-
-	var controls := HBoxContainer.new()
-	controls.add_theme_constant_override("separation", 16)
-	column.add_child(controls)
-	var series_grid := GridContainer.new()
-	series_grid.columns = 4
-	series_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	series_grid.add_theme_constant_override("h_separation", 8)
-	series_grid.add_theme_constant_override("v_separation", 2)
-	controls.add_child(series_grid)
-	for series in CityGraphControl.SERIES_COUNT:
-		var check := CheckBox.new()
-		check.text = CityGraphControl.SERIES_NAMES[series]
-		check.tooltip_text = "%s graph (%s)" % [
-			CityGraphControl.SERIES_NAMES[series],
-			CityGraphControl.SERIES_MARKERS[series],
-		]
-		check.custom_minimum_size = Vector2(132, 24)
-		check.button_pressed = bool(
-			CityGraphControl.DEFAULT_SELECTED_MASK & (1 << series)
-		)
-		check.toggled.connect(_on_graph_series_toggled.bind(series))
-		series_grid.add_child(check)
-		graph_series_buttons.append(check)
-
-	var scale_column := VBoxContainer.new()
-	scale_column.custom_minimum_size = Vector2(110, 0)
-	controls.add_child(scale_column)
-	var scale_heading := Label.new()
-	scale_heading.text = "Time Scale"
-	scale_heading.add_theme_color_override("font_color", Color("000080"))
-	scale_column.add_child(scale_heading)
-	var scale_group := ButtonGroup.new()
-	for entry in [["1 Year", 0], ["10 Years", 1], ["100 Yrs", 2]]:
-		var radio := CheckBox.new()
-		radio.text = entry[0]
-		radio.button_group = scale_group
-		radio.button_pressed = entry[1] == 0
-		radio.pressed.connect(_on_graph_time_scale.bind(entry[1]))
-		scale_column.add_child(radio)
 
 
 func _build_population_window() -> void:
@@ -2710,23 +2630,9 @@ func _on_ordinances_changed() -> void:
 
 
 func _open_graph_window() -> void:
-	if city == null or graph_window == null or graph_control == null:
+	if city == null or graph_window == null:
 		return
-	graph_control.set_city(city)
-	if graph_window.visible:
-		graph_window.move_to_foreground()
-	else:
-		graph_window.popup_centered(Vector2i(860, 560))
-
-
-func _on_graph_series_toggled(enabled: bool, series: int) -> void:
-	if graph_control != null:
-		graph_control.set_series_enabled(series, enabled)
-
-
-func _on_graph_time_scale(scale: int) -> void:
-	if graph_control != null:
-		graph_control.set_time_scale(scale)
+	graph_window.show_city(city)
 
 
 func _open_population_window() -> void:
@@ -6275,8 +6181,8 @@ func _refresh_details() -> void:
 	if city == null:
 		return
 	_sync_city_option_menus()
-	if graph_control != null and graph_window != null and graph_window.visible:
-		graph_control.set_city(city)
+	if graph_window != null:
+		graph_window.refresh_city(city)
 	if (
 		population_control != null
 		and population_window != null
