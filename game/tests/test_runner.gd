@@ -80,6 +80,7 @@ const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperPage = preload("res://src/ui/newspaper_page.gd")
 const MainMenu = preload("res://src/ui/main_menu_control.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
+const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const NewCityTerrainDialogUi = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogUi = preload("res://src/ui/budget_dialog.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
@@ -716,6 +717,14 @@ func _test_main_menu() -> void:
 		"Graph Window owns its graph and series controls",
 	)
 	graph_window.free()
+	var population_window := PopulationWindowUi.new()
+	population_window._ready()
+	_check(
+		population_window.population_control != null
+		and population_window.mode_buttons.size() == 3,
+		"Population window owns its chart and mode controls",
+	)
+	population_window.free()
 	var old_buildings := PackedByteArray()
 	old_buildings.resize(CityModel.TILE_COUNT)
 	var new_buildings := old_buildings.duplicate()

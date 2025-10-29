@@ -21,7 +21,7 @@ const ViewFilter = preload("res://src/view/city_view_filter.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const GraphWindowView = preload("res://src/ui/city_graph_window.gd")
-const PopulationView = preload("res://src/view/population_window_control.gd")
+const PopulationWindowView = preload("res://src/ui/city_population_window.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
 const OrdinanceView = preload("res://src/view/ordinance_window_control.gd")
@@ -298,9 +298,7 @@ var pending_building_objection_subtool := -1
 var library_windows: Array[PanelContainer] = []
 var library_text_views: Array[TextEdit] = []
 var graph_window
-var population_window: Window
-var population_control: PopulationWindowControl
-var population_mode_buttons: Array[CheckBox] = []
+var population_window
 var industry_window: Window
 var industry_control: Control
 var industry_mode_buttons: Array[CheckBox] = []
@@ -1117,7 +1115,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	add_child(query_dialog)
 	graph_window = GraphWindowView.new()
 	add_child(graph_window)
-	_build_population_window()
+	population_window = PopulationWindowView.new()
+	add_child(population_window)
 	_build_industry_window()
 	_build_simnation_window()
 	_build_city_map_window()
@@ -1871,64 +1870,6 @@ func _status_metric_label(text_value: String, minimum_width: int, expand := fals
 	return label
 
 
-func _build_population_window() -> void:
-	population_window = Window.new()
-	population_window.name = "PopulationWindow"
-	population_window.title = "Population"
-	population_window.size = Vector2i(700, 450)
-	population_window.min_size = Vector2i(560, 380)
-	population_window.transient = true
-	population_window.exclusive = false
-	population_window.visible = false
-	population_window.close_requested.connect(population_window.hide)
-	add_child(population_window)
-
-	var background := PanelContainer.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
-	)
-	population_window.add_child(background)
-	var margin := MarginContainer.new()
-	for side in ["left", "top", "right", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-	background.add_child(margin)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
-	margin.add_child(column)
-
-	var chart_frame := PanelContainer.new()
-	chart_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chart_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	chart_frame.add_theme_stylebox_override(
-		"panel", _classic_box(Color("ffffff"), Color("404040"), 1)
-	)
-	column.add_child(chart_frame)
-	population_control = PopulationView.new()
-	population_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	population_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	chart_frame.add_child(population_control)
-
-	var mode_row := HBoxContainer.new()
-	mode_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	mode_row.add_theme_constant_override("separation", 0)
-	column.add_child(mode_row)
-	var mode_group := ButtonGroup.new()
-	for entry in [
-		["Population", PopulationWindowControl.Mode.POPULATION],
-		["Health", PopulationWindowControl.Mode.HEALTH],
-		["Education", PopulationWindowControl.Mode.EDUCATION],
-	]:
-		var radio := CheckBox.new()
-		radio.text = entry[0]
-		radio.button_group = mode_group
-		radio.button_pressed = entry[1] == PopulationWindowControl.Mode.POPULATION
-		radio.custom_minimum_size = Vector2(120, 28)
-		radio.pressed.connect(_on_population_mode_selected.bind(entry[1]))
-		mode_row.add_child(radio)
-		population_mode_buttons.append(radio)
-
-
 func _build_industry_window() -> void:
 	industry_window = Window.new()
 	industry_window.name = "IndustryWindow"
@@ -2636,18 +2577,9 @@ func _open_graph_window() -> void:
 
 
 func _open_population_window() -> void:
-	if city == null or population_window == null or population_control == null:
+	if city == null or population_window == null:
 		return
-	population_control.set_city(city)
-	if population_window.visible:
-		population_window.move_to_foreground()
-	else:
-		population_window.popup_centered(Vector2i(700, 450))
-
-
-func _on_population_mode_selected(mode: int) -> void:
-	if population_control != null:
-		population_control.set_mode(mode)
+	population_window.show_city(city)
 
 
 func _open_industry_window() -> void:
@@ -6183,12 +6115,8 @@ func _refresh_details() -> void:
 	_sync_city_option_menus()
 	if graph_window != null:
 		graph_window.refresh_city(city)
-	if (
-		population_control != null
-		and population_window != null
-		and population_window.visible
-	):
-		population_control.set_city(city)
+	if population_window != null:
+		population_window.refresh_city(city)
 	if industry_control != null and industry_window != null and industry_window.visible:
 		industry_control.set_city(city)
 	if simnation_control != null and simnation_window != null and simnation_window.visible:
