@@ -100,135 +100,22 @@ const Dispatch = preload("res://src/tools/dispatch_command.gd")
 const CityRotation = preload("res://src/tools/city_rotation_command.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
-const Music = preload("res://src/audio/music_director.gd")
-const MidiFile = preload("res://src/audio/standard_midi_file.gd")
-const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 const ThingAudio = preload("res://src/audio/moving_thing_audio.gd")
-const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
-const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
+const AudioTests = preload("res://tests/suites/audio_test_suite.gd")
+const TestRandoms = preload("res://tests/support/test_randoms.gd")
+const ZeroRandom = TestRandoms.ZeroRandom
+const ZeroLfsrRandom = TestRandoms.ZeroLfsrRandom
+const NonzeroLfsrRandom = TestRandoms.NonzeroLfsrRandom
+const MicrosimLfsrRandom = TestRandoms.MicrosimLfsrRandom
+const SequenceLfsrRandom = TestRandoms.SequenceLfsrRandom
+const SequenceRandom = TestRandoms.SequenceRandom
+const SparseRandom = TestRandoms.SparseRandom
+const CountingRandom = TestRandoms.CountingRandom
+const SequenceModuloRandom = TestRandoms.SequenceModuloRandom
 const MainControl = preload("res://src/main.gd")
 
 var failures := 0
 var checks := 0
-
-
-class ZeroRandom:
-	extends RefCounted
-
-	func next_u15() -> int:
-		return 0
-
-
-class ZeroLfsrRandom:
-	extends RefCounted
-
-	func next_mask(_mask: int) -> int:
-		return 0
-
-	func next_mod(_divisor: int) -> int:
-		return 0
-
-
-class NonzeroLfsrRandom:
-	extends RefCounted
-
-	func next_mask(_mask: int) -> int:
-		return 1
-
-	func next_mod(divisor: int) -> int:
-		return 1 % divisor
-
-
-class MicrosimLfsrRandom:
-	extends RefCounted
-
-	func next_mask(mask: int) -> int:
-		return 0 if mask == 3 else 1
-
-	func next_mod(_divisor: int) -> int:
-		return 0
-
-
-class SequenceLfsrRandom:
-	extends RefCounted
-
-	var values := PackedInt32Array()
-	var position := 0
-
-	func _init(initial_values: Array[int]) -> void:
-		values = PackedInt32Array(initial_values)
-
-	func next_mask(mask: int) -> int:
-		return _next() & mask
-
-	func next_mod(divisor: int) -> int:
-		return _next() % divisor
-
-	func _next() -> int:
-		if position >= values.size():
-			return 1
-		var value := int(values[position])
-		position += 1
-		return value
-
-
-class SequenceRandom:
-	extends RefCounted
-
-	var values := PackedInt32Array()
-	var position := 0
-
-	func _init(initial_values: Array[int]) -> void:
-		values = PackedInt32Array(initial_values)
-
-	func next_u15() -> int:
-		if position >= values.size():
-			return 1
-		var value := int(values[position])
-		position += 1
-		return value
-
-
-class SparseRandom:
-	extends RefCounted
-
-	var values := {}
-	var default_value := 1
-	var position := 0
-
-	func _init(initial_values: Dictionary, fallback := 1) -> void:
-		values = initial_values.duplicate()
-		default_value = fallback
-
-	func next_u15() -> int:
-		var value := int(values.get(position, default_value))
-		position += 1
-		return value
-
-
-class CountingRandom:
-	extends RefCounted
-
-	var position := 0
-
-	func next_u15() -> int:
-		position += 1
-		return position & 0x7fff
-
-
-class SequenceModuloRandom:
-	extends RefCounted
-
-	var values := PackedInt32Array()
-	var position := 0
-
-	func _init(initial_values: Array[int]) -> void:
-		values = PackedInt32Array(initial_values)
-
-	func next_mod(divisor: int) -> int:
-		var value := int(values[position]) if position < values.size() else 0
-		position += 1
-		return value % divisor
 
 
 func _init() -> void:
@@ -236,6 +123,7 @@ func _init() -> void:
 	var reference_root := ProjectSettings.globalize_path("res://../references")
 	if not arguments.is_empty():
 		reference_root = arguments[0]
+	var audio_tests := AudioTests.new(Callable(self, "_check"))
 
 	_test_rle()
 	_test_invalid_rle()
@@ -244,9 +132,7 @@ func _init() -> void:
 	_test_scurk_mif(reference_root)
 	_test_reference_corpus(reference_root)
 	_test_city_options(reference_root)
-	_test_music_director()
-	_test_midi_files(reference_root)
-	_test_midi_synth_helpers()
+	audio_tests.test_music(reference_root)
 	_test_main_menu()
 	_test_budget_dialog()
 	_test_rci_status_control()
@@ -292,8 +178,7 @@ func _init() -> void:
 	_test_new_city_setup(reference_root)
 	_test_map_edits(reference_root)
 	_test_tool_catalog()
-	_test_tool_sound_rules()
-	_test_wave_sound_gate()
+	audio_tests.test_sound_rules()
 	_test_tool_availability(reference_root)
 	_test_zone_command(reference_root)
 	_test_sign_command(reference_root)
@@ -533,138 +418,6 @@ func _test_city_options(reference_root: String) -> void:
 		and scenario_document.misc_u32(CityState.MISC_AUTO_GOTO_OPTION) == 0xff
 		and scenario_city.auto_goto_enabled(),
 		"Saved option readers treat a nonzero legacy value as enabled",
-	)
-
-
-func _test_music_director() -> void:
-	var director := Music.new()
-	var general_tracks := PackedInt32Array()
-	for index in 7:
-		general_tracks.append(director.next_general_track())
-	_check(
-		general_tracks == PackedInt32Array([
-			10001, 10004, 10008, 10012, 10018, 10001, 10004,
-		]),
-		"General music follows the executable's five-track cycle",
-	)
-	var monthly_random := SequenceRandom.new([0, 18])
-	_check(
-		Music.monthly_track(1, false, monthly_random) == 10018
-		and monthly_random.position == 2,
-		"Paused monthly music uses the Turtle divisor and selects one of all 19 tracks",
-	)
-	monthly_random = SequenceRandom.new([25])
-	_check(
-		Music.monthly_track(2, false, monthly_random) == -1
-		and monthly_random.position == 1,
-		"Turtle monthly music rejects a nonzero modulo-24 gate",
-	)
-	monthly_random = SequenceRandom.new([0, 0])
-	_check(
-		Music.monthly_track(5, true, monthly_random) == -1
-		and monthly_random.position == 0,
-		"Active music prevents a monthly selection without consuming random state",
-	)
-	var indexed_random := SequenceModuloRandom.new([0, 1, 2, 3, 4])
-	_check(
-		Music.budget_track(indexed_random) == 10016
-		and Music.budget_track(indexed_random) == 10005
-		and Music.budget_track(indexed_random) == 10002
-		and Music.budget_track(indexed_random) == 10010,
-		"Budget music follows the executable's four-track table",
-	)
-	_check(
-		Music.newspaper_track(indexed_random) == 10002,
-		"Newspaper music uses its five-track table",
-	)
-	_check(
-		Music.DISASTER_TRACK == 10004 and Music.RECREATION_TRACK == 10010,
-		"Mode and Recreation music use the executable's fixed tracks",
-	)
-
-
-func _test_midi_files(reference_root: String) -> void:
-	var expected_tracks := [10, 10, 8, 8, 22, 5, 14, 16, 11, 10, 16, 18, 16, 11, 5, 8, 6, 7, 18]
-	var expected_divisions := [
-		192, 192, 192, 192, 192, 480, 192, 192, 480, 192,
-		192, 192, 192, 192, 480, 192, 480, 480, 120,
-	]
-	for track_offset in Music.TRACK_COUNT:
-		var track_id := Music.FIRST_TRACK_ID + track_offset
-		var midi := MidiFile.load_path(
-			reference_root.path_join("SOUNDS/%d.MID" % track_id)
-		)
-		_check(midi.is_valid(), "MIDI %d parses: %s" % [track_id, midi.parse_error])
-		if not midi.is_valid():
-			continue
-		_check(
-			midi.format_type == 1
-			and midi.track_count == expected_tracks[track_offset]
-			and midi.ticks_per_quarter == expected_divisions[track_offset],
-			"MIDI %d header matches the supplied file" % track_id,
-		)
-		var note_on_count := 0
-		var note_off_count := 0
-		var previous_time := -1.0
-		var ordered := true
-		for event in midi.events:
-			var event_time := float(event.time_seconds)
-			if event_time < previous_time:
-				ordered = false
-			previous_time = event_time
-			if event.type == "note_on":
-				note_on_count += 1
-			elif event.type == "note_off":
-				note_off_count += 1
-		_check(
-			note_on_count > 0 and note_off_count > 0,
-			"MIDI %d contains playable note events" % track_id,
-		)
-		_check(
-			ordered and midi.duration_seconds > 0.0,
-			"MIDI %d has ordered event times and a positive duration" % track_id,
-		)
-	var missing := MidiFile.load_path(reference_root.path_join("SOUNDS/MISSING.MID"))
-	_check(not missing.is_valid(), "MIDI loader rejects a missing file")
-	var invalid := MidiFile.new()
-	_check(
-		not invalid.parse(PackedByteArray([0x4d, 0x54, 0x68, 0x64])),
-		"MIDI parser rejects a truncated header",
-	)
-
-
-func _test_midi_synth_helpers() -> void:
-	_check(
-		is_equal_approx(MidiSynth.note_frequency(69), 440.0)
-		and is_equal_approx(MidiSynth.note_frequency(81), 880.0),
-		"MIDI synthesizer maps A4 and A5 to their standard frequencies",
-	)
-	_check(
-		absf(MidiSynth.note_frequency(69, 16383) - 493.88) < 0.02
-		and absf(MidiSynth.note_frequency(69, 0) - 391.99) < 0.02,
-		"MIDI synthesizer applies the default two-semitone pitch-bend range",
-	)
-	var families := PackedInt32Array()
-	for program in [0, 8, 16, 24, 32, 40, 56, 72, 80, 104, 127]:
-		families.append(MidiSynth.waveform_family(program))
-	_check(
-		families == PackedInt32Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9]),
-		"MIDI synthesizer assigns every General MIDI program range",
-	)
-	_check(
-		MidiSynth.BUFFER_LENGTH_SECONDS >= 0.75
-		and MidiSynth.PREFILL_SECONDS >= 0.15
-		and MidiSynth.PREFILL_SECONDS < MidiSynth.BUFFER_LENGTH_SECONDS,
-		"MIDI playback keeps a primed safety buffer",
-	)
-	var saw_start := MidiSynth.band_limited_saw(0.0, 0.01)
-	var saw_end := MidiSynth.band_limited_saw(0.999999, 0.01)
-	var square_start := MidiSynth.band_limited_square(0.0, 0.01)
-	var square_end := MidiSynth.band_limited_square(0.999999, 0.01)
-	_check(
-		absf(saw_start - saw_end) < 0.01
-		and absf(square_start - square_end) < 0.01,
-		"Band-limited MIDI oscillators smooth their wrap edges",
 	)
 
 
@@ -12695,107 +12448,6 @@ func _test_tool_catalog() -> void:
 	_check(marina.cost == 1000 and marina.area == 3, "Marina uses the executable cost and area")
 	_check(Tools.tool(-1, 0).is_empty(), "Tool catalog rejects an invalid group")
 	_check(Tools.tool(0, 12).is_empty(), "Tool catalog rejects an invalid subtool")
-
-
-func _test_tool_sound_rules() -> void:
-	_check(
-		ToolSounds.success_events(1, 0) == [503]
-		and ToolSounds.success_events(1, 1) == [511],
-		"Landscape tools use the recovered tree and water sounds",
-	)
-	_check(
-		ToolSounds.success_events(3, 0) == [514]
-		and ToolSounds.success_events(3, 2) == [500],
-		"Power lines and power plants use their recovered success sounds",
-	)
-	_check(
-		ToolSounds.success_events(6, 4) == [521]
-		and ToolSounds.success_events(7, 2) == [524, 500],
-		"Bus and rail depots keep their special dispatcher sounds",
-	)
-	_check(
-		ToolSounds.success_events(9, 0) == [500]
-		and ToolSounds.success_events(10, 0) == [503]
-		and ToolSounds.success_events(11, 0) == [503],
-		"Residential and business zones use their distinct sounds",
-	)
-	_check(
-		ToolSounds.success_events(12, 0) == [523]
-		and ToolSounds.success_events(13, 0) == [506]
-		and ToolSounds.success_events(13, 1) == [509]
-		and ToolSounds.success_events(13, 3) == [522],
-		"Education and city-service buildings use their dispatcher sounds",
-	)
-	_check(
-		ToolSounds.success_events(14, 0) == [513]
-		and ToolSounds.success_events(14, 2) == [527]
-		and ToolSounds.success_events(17, 0) == [505],
-		"Recreation, Zoo, and Center use their recovered sounds",
-	)
-	_check(
-		ToolSounds.success_events(0, 0).is_empty()
-		and ToolSounds.success_events(2, 0).is_empty()
-		and ToolSounds.success_events(3, 1).is_empty()
-		and ToolSounds.success_events(5, 4).is_empty()
-		and ToolSounds.success_events(16, 0).is_empty(),
-		"Looping, dispatch, chooser, and Query paths do not invent a success sound",
-	)
-	_check(
-		ToolSounds.failure_events(3, 0) == [501]
-		and ToolSounds.failure_events(14, 4) == [501]
-		and ToolSounds.failure_events(1, 0, "insufficient funds") == [501]
-		and ToolSounds.failure_events(1, 0, "no landscape tile changed").is_empty()
-		and ToolSounds.failure_events(0, 0).is_empty(),
-		"Failure sound rules preserve the dispatcher and Landscape exceptions",
-	)
-
-
-func _test_wave_sound_gate() -> void:
-	_check(
-		WaveSounds.duration_ticks(500) == 3
-		and WaveSounds.duration_ticks(501) == 1
-		and WaveSounds.duration_ticks(512) == 14
-		and WaveSounds.duration_ticks(529) == 9
-		and WaveSounds.duration_ticks(499) == 0
-		and WaveSounds.duration_ticks(530) == 0,
-		"WAVE durations use the supplied table and 200 ms conversion",
-	)
-	var gate := WaveSounds.new()
-	_check(
-		gate.request(504)
-		and not gate.request(504)
-		and gate.accepted_count == 1
-		and gate.suppressed_count == 1,
-		"An immediate repeated WAVE request is suppressed",
-	)
-	gate.advance(599.0)
-	_check(
-		not gate.request(504) and gate.remaining_ticks == 4,
-		"A repeated WAVE request stays suppressed before three base ticks",
-	)
-	gate.advance(1.0)
-	_check(
-		gate.request(504) and gate.remaining_ticks == 6,
-		"A repeated WAVE request can restart after three base ticks",
-	)
-	_check(
-		gate.request(501) and gate.current_sound_id == 501,
-		"A different WAVE request replaces the active gate state",
-	)
-	gate.advance(200.0)
-	_check(
-		gate.current_sound_id == -1 and gate.remaining_ticks == 0,
-		"The WAVE gate clears after the recovered duration",
-	)
-	gate.request(512)
-	gate.stop()
-	_check(
-		gate.current_sound_id == -1
-		and gate.remaining_ticks == 0
-		and gate.accepted_count == 4
-		and gate.suppressed_count == 2,
-		"Stopping WAVE playback clears state and preserves debug counters",
-	)
 
 
 func _test_tool_availability(reference_root: String) -> void:
