@@ -82,6 +82,7 @@ const MainMenu = preload("res://src/ui/main_menu_control.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
+const SimNationWindowUi = preload("res://src/ui/city_simnation_window.gd")
 const NewCityTerrainDialogUi = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogUi = preload("res://src/ui/budget_dialog.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
@@ -734,6 +735,13 @@ func _test_main_menu() -> void:
 		"City Industry window owns its chart and mode controls",
 	)
 	industry_window.free()
+	var simnation_window := SimNationWindowUi.new()
+	simnation_window._ready()
+	_check(
+		simnation_window.simnation_control != null,
+		"SimNation window owns its neighbor view",
+	)
+	simnation_window.free()
 	var old_buildings := PackedByteArray()
 	old_buildings.resize(CityModel.TILE_COUNT)
 	var new_buildings := old_buildings.duplicate()

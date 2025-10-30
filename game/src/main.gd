@@ -23,7 +23,7 @@ const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.g
 const GraphWindowView = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowView = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowView = preload("res://src/ui/city_industry_window.gd")
-const SimNationView = preload("res://src/view/simnation_window_control.gd")
+const SimNationWindowView = preload("res://src/ui/city_simnation_window.gd")
 const OrdinanceView = preload("res://src/view/ordinance_window_control.gd")
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
 const RciStatusView = preload("res://src/view/rci_status_control.gd")
@@ -300,8 +300,7 @@ var library_text_views: Array[TextEdit] = []
 var graph_window
 var population_window
 var industry_window
-var simnation_window: Window
-var simnation_control: Control
+var simnation_window
 var ordinance_window: Window
 var ordinance_control: OrdinanceWindowControl
 var city_map_window: Window
@@ -1131,7 +1130,19 @@ func _build_interface(toolbar_art: Image) -> void:
 		industry_names,
 		industry_icons.image if industry_icons.get("ok", false) else null,
 	)
-	_build_simnation_window()
+	simnation_window = SimNationWindowView.new()
+	add_child(simnation_window)
+	var simnation_sprite_sheet := Image.load_from_file(
+		reference_root.path_join("BITMAPS/NEIGHBOR.BMP")
+	)
+	simnation_window.set_resources(
+		simnation_sprite_sheet,
+		str(original_query_strings.get(
+			SIMNATION_FORMAT_STRING_ID,
+			SimNationWindowControl.DEFAULT_NATIONAL_FORMAT,
+		)),
+		original_query_strings,
+	)
 	_build_city_map_window()
 	_build_ordinance_window()
 	city_analysis_dialog = AcceptDialog.new()
@@ -1883,30 +1894,6 @@ func _status_metric_label(text_value: String, minimum_width: int, expand := fals
 	return label
 
 
-func _build_simnation_window() -> void:
-	simnation_window = Window.new()
-	simnation_window.name = "SimNationWindow"
-	simnation_window.title = "SimNation"
-	simnation_window.size = Vector2i(612, 480)
-	simnation_window.min_size = Vector2i(408, 320)
-	simnation_window.transient = true
-	simnation_window.exclusive = false
-	simnation_window.visible = false
-	simnation_window.close_requested.connect(simnation_window.hide)
-	add_child(simnation_window)
-
-	simnation_control = SimNationView.new()
-	simnation_control.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	simnation_window.add_child(simnation_control)
-	var sprite_sheet := Image.load_from_file(
-		reference_root.path_join("BITMAPS/NEIGHBOR.BMP")
-	)
-	simnation_control.set_sprite_sheet(sprite_sheet)
-	simnation_control.set_national_format(str(original_query_strings.get(
-		SIMNATION_FORMAT_STRING_ID, SimNationView.DEFAULT_NATIONAL_FORMAT
-	)))
-
-
 func _build_city_map_window() -> void:
 	city_map_window = Window.new()
 	city_map_window.name = "CityMapWindow"
@@ -2540,25 +2527,9 @@ func _on_industry_tax_rates_changed() -> void:
 
 
 func _open_simnation_window() -> void:
-	if city == null or simnation_window == null or simnation_control == null:
+	if city == null or simnation_window == null:
 		return
-	var data := SimNationView.snapshot(city)
-	var names := {}
-	if data.get("ok", false):
-		for neighbor in data.neighbors:
-			var name_index := int(neighbor.name_index)
-			if name_index <= 0:
-				continue
-			var resource_id := SimNationView.NEIGHBOR_NAME_STRING_BASE + name_index
-			names[name_index] = str(original_query_strings.get(
-				resource_id, "City %d" % name_index
-			))
-	simnation_control.set_neighbor_names(names)
-	simnation_control.set_city(city)
-	if simnation_window.visible:
-		simnation_window.move_to_foreground()
-	else:
-		simnation_window.popup_centered(Vector2i(612, 480))
+	simnation_window.show_city(city)
 
 
 func _open_city_map_window() -> void:
@@ -6055,8 +6026,8 @@ func _refresh_details() -> void:
 		population_window.refresh_city(city)
 	if industry_window != null:
 		industry_window.refresh_city(city)
-	if simnation_control != null and simnation_window != null and simnation_window.visible:
-		simnation_control.set_city(city)
+	if simnation_window != null:
+		simnation_window.refresh_city(city)
 	if ordinance_control != null and ordinance_window != null and ordinance_window.visible:
 		ordinance_control.refresh()
 	if city_map_control != null and city_map_window != null and city_map_window.visible:
