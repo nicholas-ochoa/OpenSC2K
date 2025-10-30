@@ -12,6 +12,7 @@ const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
 const SimNationWindowUi = preload("res://src/ui/city_simnation_window.gd")
+const CityMapWindowUi = preload("res://src/ui/city_map_window.gd")
 const NewCityTerrainDialogUi = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogUi = preload("res://src/ui/budget_dialog.gd")
 const MainControl = preload("res://src/main.gd")
@@ -147,6 +148,13 @@ func _test_main_menu() -> void:
 		"SimNation window owns its neighbor view",
 	)
 	simnation_window.free()
+	var city_map_window := CityMapWindowUi.new()
+	city_map_window._ready()
+	_check(
+		city_map_window.map_control != null,
+		"City Map window owns its map control",
+	)
+	city_map_window.free()
 	var old_buildings := PackedByteArray()
 	old_buildings.resize(CityModel.TILE_COUNT)
 	var new_buildings := old_buildings.duplicate()
@@ -191,4 +199,3 @@ func _test_budget_dialog() -> void:
 
 func _check(condition: bool, message: String) -> void:
 	check_callback.call(condition, message)
-

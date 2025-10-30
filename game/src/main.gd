@@ -26,6 +26,7 @@ const IndustryWindowView = preload("res://src/ui/city_industry_window.gd")
 const SimNationWindowView = preload("res://src/ui/city_simnation_window.gd")
 const OrdinanceView = preload("res://src/view/ordinance_window_control.gd")
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
+const CityMapWindowView = preload("res://src/ui/city_map_window.gd")
 const RciStatusView = preload("res://src/view/rci_status_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
@@ -303,8 +304,7 @@ var industry_window
 var simnation_window
 var ordinance_window: Window
 var ordinance_control: OrdinanceWindowControl
-var city_map_window: Window
-var city_map_control: CityMapWindowControl
+var city_map_window
 var main_menu: MainMenuControl
 var settings_dialog: ConfirmationDialog
 var settings_music_slider: HSlider
@@ -1143,7 +1143,17 @@ func _build_interface(toolbar_art: Image) -> void:
 		)),
 		original_query_strings,
 	)
-	_build_city_map_window()
+	city_map_window = CityMapWindowView.new()
+	city_map_window.mode_changed.connect(_on_city_map_mode_changed)
+	city_map_window.center_requested.connect(_on_city_map_center_requested)
+	add_child(city_map_window)
+	var city_map_icons := PeBitmap.load_numeric(
+		reference_root.path_join("SIMCITY.EXE"), 247
+	)
+	city_map_window.set_resources(
+		city_map_icons.image if city_map_icons.get("ok", false) else null,
+		original_query_strings,
+	)
 	_build_ordinance_window()
 	city_analysis_dialog = AcceptDialog.new()
 	city_analysis_dialog.title = "City Analysis"
@@ -1894,41 +1904,6 @@ func _status_metric_label(text_value: String, minimum_width: int, expand := fals
 	return label
 
 
-func _build_city_map_window() -> void:
-	city_map_window = Window.new()
-	city_map_window.name = "CityMapWindow"
-	city_map_window.title = "City Map"
-	city_map_window.size = Vector2i(480, 680)
-	city_map_window.min_size = Vector2i(420, 620)
-	city_map_window.transient = true
-	city_map_window.exclusive = false
-	city_map_window.visible = false
-	city_map_window.close_requested.connect(_close_city_map_window)
-	add_child(city_map_window)
-
-	var background := PanelContainer.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
-	)
-	city_map_window.add_child(background)
-	var margin := MarginContainer.new()
-	for side in ["left", "top", "right", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-	background.add_child(margin)
-	city_map_control = CityMapView.new()
-	city_map_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	city_map_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	city_map_control.mode_changed.connect(_on_city_map_mode_changed)
-	city_map_control.center_requested.connect(_on_city_map_center_requested)
-	margin.add_child(city_map_control)
-	var icons := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 247)
-	city_map_control.set_resources(
-		icons.image if icons.get("ok", false) else null,
-		original_query_strings,
-	)
-
-
 func _build_ordinance_window() -> void:
 	ordinance_window = Window.new()
 	ordinance_window.name = "OrdinanceWindow"
@@ -2533,19 +2508,9 @@ func _open_simnation_window() -> void:
 
 
 func _open_city_map_window() -> void:
-	if city == null or city_map_window == null or city_map_control == null:
+	if city == null or city_map_window == null:
 		return
-	if city_map_window.visible:
-		_close_city_map_window()
-		return
-	city_map_control.set_city(city, palette)
-	city_map_control.refresh_viewport(_city_map_viewport_outline())
-	city_map_window.popup_centered(Vector2i(480, 680))
-
-
-func _close_city_map_window() -> void:
-	if city_map_window != null:
-		city_map_window.hide()
+	city_map_window.toggle_city(city, palette, _city_map_viewport_outline())
 
 
 func _on_city_map_mode_changed(mode: String) -> void:
@@ -2566,8 +2531,8 @@ func _city_map_viewport_outline() -> PackedVector2Array:
 
 
 func _refresh_city_map_viewport() -> void:
-	if city_map_control != null and city_map_window != null and city_map_window.visible:
-		city_map_control.refresh_viewport(_city_map_viewport_outline())
+	if city_map_window != null:
+		city_map_window.refresh_viewport(_city_map_viewport_outline())
 
 
 func _on_newspaper_menu(_id: int) -> void:
@@ -6030,9 +5995,8 @@ func _refresh_details() -> void:
 		simnation_window.refresh_city(city)
 	if ordinance_control != null and ordinance_window != null and ordinance_window.visible:
 		ordinance_control.refresh()
-	if city_map_control != null and city_map_window != null and city_map_window.visible:
-		city_map_control.set_city(city, palette)
-		city_map_control.refresh_viewport(_city_map_viewport_outline())
+	if city_map_window != null:
+		city_map_window.refresh_city(city, palette, _city_map_viewport_outline())
 	var demand := city.rci_demand()
 	var weather_trend := city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff
 	var weather_name: String = (
