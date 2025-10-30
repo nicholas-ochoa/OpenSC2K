@@ -22,7 +22,7 @@ const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const GraphWindowView = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowView = preload("res://src/ui/city_population_window.gd")
-const IndustryView = preload("res://src/view/industry_window_control.gd")
+const IndustryWindowView = preload("res://src/ui/city_industry_window.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
 const OrdinanceView = preload("res://src/view/ordinance_window_control.gd")
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
@@ -299,9 +299,7 @@ var library_windows: Array[PanelContainer] = []
 var library_text_views: Array[TextEdit] = []
 var graph_window
 var population_window
-var industry_window: Window
-var industry_control: Control
-var industry_mode_buttons: Array[CheckBox] = []
+var industry_window
 var simnation_window: Window
 var simnation_control: Control
 var ordinance_window: Window
@@ -1117,7 +1115,22 @@ func _build_interface(toolbar_art: Image) -> void:
 	add_child(graph_window)
 	population_window = PopulationWindowView.new()
 	add_child(population_window)
-	_build_industry_window()
+	industry_window = IndustryWindowView.new()
+	industry_window.tax_rates_changed.connect(_on_industry_tax_rates_changed)
+	add_child(industry_window)
+	var industry_names := PackedStringArray()
+	for index in IndustryWindowControl.INDUSTRY_COUNT:
+		var fallback: String = IndustryWindowControl.DEFAULT_NAMES[index]
+		industry_names.append(str(
+			original_query_strings.get(INDUSTRY_STRING_FIRST + index, fallback)
+		))
+	var industry_icons := PeBitmap.load_numeric(
+		reference_root.path_join("SIMCITY.EXE"), 178
+	)
+	industry_window.set_resources(
+		industry_names,
+		industry_icons.image if industry_icons.get("ok", false) else null,
+	)
 	_build_simnation_window()
 	_build_city_map_window()
 	_build_ordinance_window()
@@ -1870,74 +1883,6 @@ func _status_metric_label(text_value: String, minimum_width: int, expand := fals
 	return label
 
 
-func _build_industry_window() -> void:
-	industry_window = Window.new()
-	industry_window.name = "IndustryWindow"
-	industry_window.title = "City Industry"
-	industry_window.size = Vector2i(700, 450)
-	industry_window.min_size = Vector2i(600, 390)
-	industry_window.transient = true
-	industry_window.exclusive = false
-	industry_window.visible = false
-	industry_window.close_requested.connect(industry_window.hide)
-	add_child(industry_window)
-
-	var background := PanelContainer.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
-	)
-	industry_window.add_child(background)
-	var margin := MarginContainer.new()
-	for side in ["left", "top", "right", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-	background.add_child(margin)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 8)
-	margin.add_child(column)
-
-	var chart_frame := PanelContainer.new()
-	chart_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	chart_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	chart_frame.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("404040"), 1)
-	)
-	column.add_child(chart_frame)
-	industry_control = IndustryView.new()
-	industry_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	industry_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	industry_control.tax_rates_changed.connect(_on_industry_tax_rates_changed)
-	chart_frame.add_child(industry_control)
-
-	var names := PackedStringArray()
-	for index in IndustryView.INDUSTRY_COUNT:
-		var fallback: String = IndustryView.DEFAULT_NAMES[index]
-		names.append(str(original_query_strings.get(INDUSTRY_STRING_FIRST + index, fallback)))
-	industry_control.set_industry_names(names)
-	var icons := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 178)
-	if icons.get("ok", false):
-		industry_control.set_icon_strip(icons.image)
-
-	var mode_row := HBoxContainer.new()
-	mode_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	mode_row.add_theme_constant_override("separation", 0)
-	column.add_child(mode_row)
-	var mode_group := ButtonGroup.new()
-	for entry in [
-		["Ratios", IndustryView.Mode.RATIOS],
-		["Tax Rates", IndustryView.Mode.TAX_RATES],
-		["Demand", IndustryView.Mode.DEMAND],
-	]:
-		var radio := CheckBox.new()
-		radio.text = entry[0]
-		radio.button_group = mode_group
-		radio.button_pressed = entry[1] == IndustryView.Mode.RATIOS
-		radio.custom_minimum_size = Vector2(120, 28)
-		radio.pressed.connect(_on_industry_mode_selected.bind(entry[1]))
-		mode_row.add_child(radio)
-		industry_mode_buttons.append(radio)
-
-
 func _build_simnation_window() -> void:
 	simnation_window = Window.new()
 	simnation_window.name = "SimNationWindow"
@@ -2583,18 +2528,9 @@ func _open_population_window() -> void:
 
 
 func _open_industry_window() -> void:
-	if city == null or industry_window == null or industry_control == null:
+	if city == null or industry_window == null:
 		return
-	industry_control.set_city(city)
-	if industry_window.visible:
-		industry_window.move_to_foreground()
-	else:
-		industry_window.popup_centered(Vector2i(700, 450))
-
-
-func _on_industry_mode_selected(mode: int) -> void:
-	if industry_control != null:
-		industry_control.set_mode(mode)
+	industry_window.show_city(city)
 
 
 func _on_industry_tax_rates_changed() -> void:
@@ -6117,8 +6053,8 @@ func _refresh_details() -> void:
 		graph_window.refresh_city(city)
 	if population_window != null:
 		population_window.refresh_city(city)
-	if industry_control != null and industry_window != null and industry_window.visible:
-		industry_control.set_city(city)
+	if industry_window != null:
+		industry_window.refresh_city(city)
 	if simnation_control != null and simnation_window != null and simnation_window.visible:
 		simnation_control.set_city(city)
 	if ordinance_control != null and ordinance_window != null and ordinance_window.visible:
