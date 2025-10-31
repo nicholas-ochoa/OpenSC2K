@@ -13,6 +13,7 @@ const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
 const SimNationWindowUi = preload("res://src/ui/city_simnation_window.gd")
 const CityMapWindowUi = preload("res://src/ui/city_map_window.gd")
+const OrdinanceWindowUi = preload("res://src/ui/city_ordinance_window.gd")
 const NewCityTerrainDialogUi = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogUi = preload("res://src/ui/budget_dialog.gd")
 const MainControl = preload("res://src/main.gd")
@@ -155,6 +156,13 @@ func _test_main_menu() -> void:
 		"City Map window owns its map control",
 	)
 	city_map_window.free()
+	var ordinance_window := OrdinanceWindowUi.new()
+	ordinance_window._ready()
+	_check(
+		ordinance_window.ordinance_control != null,
+		"Ordinance window owns its saved-option control",
+	)
+	ordinance_window.free()
 	var old_buildings := PackedByteArray()
 	old_buildings.resize(CityModel.TILE_COUNT)
 	var new_buildings := old_buildings.duplicate()

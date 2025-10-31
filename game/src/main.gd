@@ -24,7 +24,7 @@ const GraphWindowView = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowView = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowView = preload("res://src/ui/city_industry_window.gd")
 const SimNationWindowView = preload("res://src/ui/city_simnation_window.gd")
-const OrdinanceView = preload("res://src/view/ordinance_window_control.gd")
+const OrdinanceWindowView = preload("res://src/ui/city_ordinance_window.gd")
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
 const CityMapWindowView = preload("res://src/ui/city_map_window.gd")
 const RciStatusView = preload("res://src/view/rci_status_control.gd")
@@ -302,8 +302,7 @@ var graph_window
 var population_window
 var industry_window
 var simnation_window
-var ordinance_window: Window
-var ordinance_control: OrdinanceWindowControl
+var ordinance_window
 var city_map_window
 var main_menu: MainMenuControl
 var settings_dialog: ConfirmationDialog
@@ -443,7 +442,7 @@ func _process(delta: float) -> void:
 	if speed_controller == null or city == null:
 		return
 	simulation_engine.midi_playback_active = _music_playback_is_active()
-	var interaction_suspended := (
+	var interaction_suspended: bool = (
 		(map_view != null and (map_view.is_left_drag_active() or map_view.is_panning()))
 		or budget_dialog.visible
 		or bridge_dialog.visible
@@ -1154,7 +1153,10 @@ func _build_interface(toolbar_art: Image) -> void:
 		city_map_icons.image if city_map_icons.get("ok", false) else null,
 		original_query_strings,
 	)
-	_build_ordinance_window()
+	ordinance_window = OrdinanceWindowView.new()
+	ordinance_window.ordinances_changed.connect(_on_ordinances_changed)
+	ordinance_window.update_failed.connect(_show_error)
+	add_child(ordinance_window)
 	city_analysis_dialog = AcceptDialog.new()
 	city_analysis_dialog.title = "City Analysis"
 	city_analysis_dialog.min_size = Vector2i(600, 480)
@@ -1904,37 +1906,6 @@ func _status_metric_label(text_value: String, minimum_width: int, expand := fals
 	return label
 
 
-func _build_ordinance_window() -> void:
-	ordinance_window = Window.new()
-	ordinance_window.name = "OrdinanceWindow"
-	ordinance_window.title = "Ordinances"
-	ordinance_window.size = Vector2i(800, 640)
-	ordinance_window.min_size = Vector2i(720, 580)
-	ordinance_window.transient = true
-	ordinance_window.exclusive = true
-	ordinance_window.visible = false
-	ordinance_window.close_requested.connect(ordinance_window.hide)
-	add_child(ordinance_window)
-
-	var background := PanelContainer.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
-	)
-	ordinance_window.add_child(background)
-	var margin := MarginContainer.new()
-	for side in ["left", "top", "right", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-	background.add_child(margin)
-	ordinance_control = OrdinanceView.new()
-	ordinance_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ordinance_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	ordinance_control.ordinances_changed.connect(_on_ordinances_changed)
-	ordinance_control.update_failed.connect(_show_error)
-	ordinance_control.close_requested.connect(ordinance_window.hide)
-	margin.add_child(ordinance_control)
-
-
 func _add_menu(parent: Control, label: String, items: Array, callback: Callable) -> MenuButton:
 	var menu := MenuButton.new()
 	menu.text = label
@@ -2462,13 +2433,11 @@ func _on_windows_menu(id: int) -> void:
 
 
 func _open_ordinance_window() -> void:
-	if city == null or ordinance_window == null or ordinance_control == null:
+	if city == null or ordinance_window == null:
 		return
-	var result := ordinance_control.set_city(city)
+	var result: Dictionary = ordinance_window.open_city(city)
 	if not result.get("ok", false):
 		_show_error("Cannot open ordinances: %s" % result.get("error", "invalid data"))
-		return
-	ordinance_window.popup_centered(Vector2i(800, 640))
 
 
 func _on_ordinances_changed() -> void:
@@ -5993,8 +5962,8 @@ func _refresh_details() -> void:
 		industry_window.refresh_city(city)
 	if simnation_window != null:
 		simnation_window.refresh_city(city)
-	if ordinance_control != null and ordinance_window != null and ordinance_window.visible:
-		ordinance_control.refresh()
+	if ordinance_window != null:
+		ordinance_window.refresh_city()
 	if city_map_window != null:
 		city_map_window.refresh_city(city, palette, _city_map_viewport_outline())
 	var demand := city.rci_demand()
