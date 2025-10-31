@@ -38,6 +38,7 @@ const CityQueryDialogView = preload("res://src/ui/city_query_dialog.gd")
 const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperDialogView = preload("res://src/ui/newspaper_dialog.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
+const SettingsDialogView = preload("res://src/ui/app_settings_dialog.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -305,10 +306,7 @@ var simnation_window
 var ordinance_window
 var city_map_window
 var main_menu: MainMenuControl
-var settings_dialog: ConfirmationDialog
-var settings_music_slider: HSlider
-var settings_effects_slider: HSlider
-var settings_fullscreen_check: CheckBox
+var settings_dialog
 var scurk_editor: ScurkEditorControl
 var scurk_place_print: ScurkPlacePrintControl
 var scurk_print: ScurkPrintControl
@@ -1328,44 +1326,8 @@ func _build_main_menu() -> void:
 	main_menu.exit_requested.connect(_request_city_exit.bind("quit"))
 	add_child(main_menu)
 
-	settings_dialog = ConfirmationDialog.new()
-	settings_dialog.title = "OpenSC2K Settings"
-	settings_dialog.min_size = Vector2i(520, 330)
-	settings_dialog.exclusive = true
-	settings_dialog.get_ok_button().text = "Apply"
+	settings_dialog = SettingsDialogView.new()
 	settings_dialog.confirmed.connect(_apply_settings)
-	settings_dialog.get_label().visible = false
-	var settings_grid := GridContainer.new()
-	settings_grid.columns = 2
-	settings_grid.custom_minimum_size = Vector2(460, 210)
-	settings_grid.add_theme_constant_override("h_separation", 14)
-	settings_grid.add_theme_constant_override("v_separation", 14)
-	for label_text in ["Music Volume", "Sound Effects Volume"]:
-		var label := Label.new()
-		label.text = label_text
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		settings_grid.add_child(label)
-		var slider := HSlider.new()
-		slider.min_value = 0
-		slider.max_value = 100
-		slider.step = 1
-		slider.custom_minimum_size = Vector2(250, 32)
-		settings_grid.add_child(slider)
-		if label_text == "Music Volume":
-			settings_music_slider = slider
-		else:
-			settings_effects_slider = slider
-	var display_label := Label.new()
-	display_label.text = "Display"
-	display_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	settings_grid.add_child(display_label)
-	settings_fullscreen_check = CheckBox.new()
-	settings_fullscreen_check.text = "Fullscreen"
-	settings_grid.add_child(settings_fullscreen_check)
-	var settings_parent := settings_dialog.get_label().get_parent()
-	settings_parent.add_child(settings_grid)
-	settings_parent.move_child(settings_grid, 0)
 	add_child(settings_dialog)
 
 	scurk_editor = ScurkEditorView.new()
@@ -1432,16 +1394,14 @@ func _hide_main_menu() -> void:
 
 
 func _open_settings_dialog() -> void:
-	settings_music_slider.value = app_music_volume * 100.0
-	settings_effects_slider.value = app_effects_volume * 100.0
-	settings_fullscreen_check.button_pressed = app_fullscreen
-	settings_dialog.popup_centered()
+	settings_dialog.show_values(app_music_volume, app_effects_volume, app_fullscreen)
 
 
 func _apply_settings() -> void:
-	app_music_volume = float(settings_music_slider.value) / 100.0
-	app_effects_volume = float(settings_effects_slider.value) / 100.0
-	app_fullscreen = settings_fullscreen_check.button_pressed
+	var values: Dictionary = settings_dialog.selected_values()
+	app_music_volume = float(values.music_volume)
+	app_effects_volume = float(values.effects_volume)
+	app_fullscreen = bool(values.fullscreen)
 	if audio_controller != null:
 		audio_controller.set_volumes(app_music_volume, app_effects_volume)
 	DisplayServer.window_set_mode(

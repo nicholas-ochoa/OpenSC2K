@@ -8,6 +8,7 @@ const ScurkPlaceControl = preload("res://src/ui/scurk_place_print_control.gd")
 const RciStatus = preload("res://src/view/rci_status_control.gd")
 const GraphControl = preload("res://src/view/city_graph_control.gd")
 const MainMenu = preload("res://src/ui/main_menu_control.gd")
+const SettingsDialogUi = preload("res://src/ui/app_settings_dialog.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -104,6 +105,19 @@ func _test_main_menu() -> void:
 		"SCURK Place & Print omits both non-placeable animation groups",
 	)
 	menu.free()
+	var settings_dialog := SettingsDialogUi.new()
+	settings_dialog._ready()
+	settings_dialog.music_slider.value = 25
+	settings_dialog.effects_slider.value = 75
+	settings_dialog.fullscreen_check.button_pressed = true
+	var selected_settings := settings_dialog.selected_values()
+	_check(
+		selected_settings.music_volume == 0.25
+		and selected_settings.effects_volume == 0.75
+		and selected_settings.fullscreen,
+		"Settings dialog owns its audio and display values",
+	)
+	settings_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(
