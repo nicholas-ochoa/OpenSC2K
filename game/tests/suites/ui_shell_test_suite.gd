@@ -13,6 +13,7 @@ const ScenarioIntroDialogUi = preload("res://src/ui/scenario_intro_dialog.gd")
 const CityAnalysisDialogUi = preload("res://src/ui/city_analysis_dialog.gd")
 const LibraryRuminateWindowsUi = preload("res://src/ui/library_ruminate_windows.gd")
 const CitySignDialogUi = preload("res://src/ui/city_sign_dialog.gd")
+const BridgeSelectionDialogUi = preload("res://src/ui/bridge_selection_dialog.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -182,6 +183,21 @@ func _test_main_menu() -> void:
 		"City Sign dialog owns its bounded text input",
 	)
 	sign_dialog.free()
+	var bridge_dialog := BridgeSelectionDialogUi.new()
+	bridge_dialog._ready()
+	bridge_dialog.set_choices(4, "network", [
+		{"name": "Standard", "cost": 12345, "cost_per_tile": 678},
+		{"name": "Reinforced", "cost": 23456, "cost_per_tile": 789},
+	], false)
+	_check(
+		bridge_dialog.choice_buttons.size() == 3
+		and bridge_dialog.dialog_text == "Select a bridge for 4 water tiles."
+		and bridge_dialog.choice_buttons[0].text
+		== "Standard\n$12,345 total\n$678 for each water tile"
+		and not bridge_dialog.choice_buttons[2].visible,
+		"Bridge dialog owns its choice layout and price formatting",
+	)
+	bridge_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

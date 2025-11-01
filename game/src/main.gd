@@ -42,6 +42,8 @@ const ScenarioIntroDialogView = preload("res://src/ui/scenario_intro_dialog.gd")
 const CityAnalysisDialogView = preload("res://src/ui/city_analysis_dialog.gd")
 const LibraryRuminateWindowsView = preload("res://src/ui/library_ruminate_windows.gd")
 const CitySignDialogView = preload("res://src/ui/city_sign_dialog.gd")
+const BridgeSelectionDialogView = preload("res://src/ui/bridge_selection_dialog.gd")
+const DisplayNumbers = preload("res://src/ui/display_number_format.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -271,8 +273,7 @@ var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
 var toolbar_buttons: Array[Button] = []
 var sign_dialog: CitySignDialog
-var bridge_dialog: ConfirmationDialog
-var bridge_choice_buttons: Array[Button] = []
+var bridge_dialog: BridgeSelectionDialog
 var pending_bridge_request: Dictionary = {}
 var tool_choice_dialog: ConfirmationDialog
 var tool_choice_buttons: Array[Button] = []
@@ -974,29 +975,9 @@ func _build_interface(toolbar_art: Image) -> void:
 	sign_dialog.canceled.connect(_cancel_sign)
 	add_child(sign_dialog)
 
-	bridge_dialog = ConfirmationDialog.new()
-	bridge_dialog.title = "Select Bridge"
-	bridge_dialog.dialog_text = "Select a bridge type."
-	bridge_dialog.min_size = Vector2i(660, 250)
-	bridge_dialog.exclusive = true
-	bridge_dialog.get_ok_button().visible = false
-	bridge_dialog.get_cancel_button().text = "Cancel"
+	bridge_dialog = BridgeSelectionDialogView.new()
+	bridge_dialog.choice_requested.connect(_choose_bridge)
 	bridge_dialog.canceled.connect(_cancel_bridge)
-	var bridge_choices := HBoxContainer.new()
-	bridge_choices.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	bridge_choices.offset_left = 16
-	bridge_choices.offset_top = 72
-	bridge_choices.offset_right = -16
-	bridge_choices.offset_bottom = 180
-	bridge_choices.add_theme_constant_override("separation", 8)
-	bridge_dialog.add_child(bridge_choices)
-	for choice_index in 3:
-		var choice_button := Button.new()
-		choice_button.custom_minimum_size = Vector2(200, 104)
-		choice_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		choice_button.pressed.connect(_choose_bridge.bind(choice_index))
-		bridge_choices.add_child(choice_button)
-		bridge_choice_buttons.append(choice_button)
 	add_child(bridge_dialog)
 
 	tool_choice_dialog = ConfirmationDialog.new()
@@ -5202,34 +5183,13 @@ func _open_bridge_dialog(
 			"dry_points", result.get("dry_sections", [])
 		),
 	}
-	var span_units := (
-		"2 by 2 water sections" if request_type == "highway" else "water tiles"
-	)
-	bridge_dialog.dialog_text = "Select a bridge for %d %s." % [
-		int(result.get("bridge_span_length", 0)), span_units,
-	]
 	var choices: Array = pending_bridge_request.choices
-	for choice_index in bridge_choice_buttons.size():
-		var choice_button := bridge_choice_buttons[choice_index]
-		choice_button.visible = choice_index < choices.size()
-		if not choice_button.visible:
-			continue
-		var choice: Dictionary = choices[choice_index]
-		var cost_unit := (
-			"2 by 2 water section" if request_type == "highway" else "water tile"
-		)
-		choice_button.text = (
-			"%s\nFree in Place & Print" % choice.get("name", "Bridge")
-			if free_mode
-			else "%s\n$%s total\n$%s for each %s" % [
-				choice.get("name", "Bridge"),
-				_format_number(int(choice.get("cost", 0))),
-				_format_number(int(choice.get("cost_per_tile", 0))),
-				cost_unit,
-			]
-		)
-		choice_button.tooltip_text = "Build %s" % choice.get("name", "bridge")
-	bridge_dialog.popup_centered()
+	bridge_dialog.show_choices(
+		int(result.get("bridge_span_length", 0)),
+		request_type,
+		choices,
+		free_mode,
+	)
 
 
 func _choose_bridge(choice_index: int) -> void:
@@ -6057,11 +6017,4 @@ func _debug_dispatch_maxis_man() -> Dictionary:
 
 
 func _format_number(value: int) -> String:
-	var negative := value < 0
-	var digits := str(absi(value))
-	var output := ""
-	while digits.length() > 3:
-		output = "," + digits.right(3) + output
-		digits = digits.left(digits.length() - 3)
-	output = digits + output
-	return "-" + output if negative else output
+	return DisplayNumbers.format(value)
