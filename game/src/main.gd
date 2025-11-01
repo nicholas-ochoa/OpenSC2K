@@ -35,12 +35,12 @@ const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
 const CityQueryDialogView = preload("res://src/ui/city_query_dialog.gd")
-const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperDialogView = preload("res://src/ui/newspaper_dialog.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
 const SettingsDialogView = preload("res://src/ui/app_settings_dialog.gd")
 const ScenarioIntroDialogView = preload("res://src/ui/scenario_intro_dialog.gd")
 const CityAnalysisDialogView = preload("res://src/ui/city_analysis_dialog.gd")
+const LibraryRuminateWindowsView = preload("res://src/ui/library_ruminate_windows.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -126,7 +126,6 @@ const CITY_MAP_STRING_FIRST := 327
 const CITY_MAP_STRING_LAST := 344
 
 const MAP_DISPLAY_MODES := ["city", "underground"]
-const LIBRARY_TEXT_IDS := [3000, 3001, 3002, 3003]
 const NEWSPAPER_STRING_FIRST := 347
 const NEWSPAPER_STRING_LAST := 391
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
@@ -298,8 +297,7 @@ var building_objection_dialog: AcceptDialog
 var building_objection_message: Label
 var pending_building_objection_group := -1
 var pending_building_objection_subtool := -1
-var library_windows: Array[PanelContainer] = []
-var library_text_views: Array[TextEdit] = []
+var library_ruminate_windows: LibraryRuminateWindows
 var graph_window
 var population_window
 var industry_window
@@ -373,7 +371,7 @@ func _ready() -> void:
 	var library_resources := TextUsa.load_ids(
 		reference_root.path_join("DATA/TEXT_USA.DAT"),
 		reference_root.path_join("DATA/TEXT_USA.IDX"),
-		PackedInt32Array(LIBRARY_TEXT_IDS),
+		PackedInt32Array(LibraryRuminateWindowsView.TEXT_RESOURCE_IDS),
 	)
 	if library_resources.ok:
 		library_texts = library_resources.strings
@@ -1178,50 +1176,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	building_objection_message = objection_notice.message
 	building_objection_dialog.confirmed.connect(_on_building_objection_closed)
 	building_objection_dialog.canceled.connect(_on_building_objection_closed)
-	for index in LIBRARY_TEXT_IDS.size():
-		var library_window := PanelContainer.new()
-		library_window.name = "LibraryText%d" % LIBRARY_TEXT_IDS[index]
-		library_window.visible = false
-		library_window.mouse_filter = Control.MOUSE_FILTER_STOP
-		library_window.add_theme_stylebox_override(
-			"panel", _classic_box(Color("c0c0c0"), Color("404040"), 2)
-		)
-		library_window.gui_input.connect(
-			_on_library_window_input.bind(library_window)
-		)
-		var library_margin := MarginContainer.new()
-		for side in ["left", "top", "right", "bottom"]:
-			library_margin.add_theme_constant_override("margin_" + side, 8)
-		library_window.add_child(library_margin)
-		var library_column := VBoxContainer.new()
-		library_column.add_theme_constant_override("separation", 8)
-		library_margin.add_child(library_column)
-		var library_text_view := TextEdit.new()
-		library_text_view.editable = false
-		library_text_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-		library_text_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		library_text_view.add_theme_color_override("font_color", Color("101010"))
-		library_text_view.add_theme_color_override(
-			"font_readonly_color", Color("101010")
-		)
-		for state in ["normal", "focus", "read_only"]:
-			library_text_view.add_theme_stylebox_override(
-				state, _classic_box(Color("ffffff"), Color("808080"), 1)
-			)
-		library_text_view.gui_input.connect(
-			_on_library_window_input.bind(library_window)
-		)
-		library_column.add_child(library_text_view)
-		var library_button_row := HBoxContainer.new()
-		library_button_row.alignment = BoxContainer.ALIGNMENT_CENTER
-		library_column.add_child(library_button_row)
-		var library_ok_button := Button.new()
-		library_ok_button.text = "OK"
-		library_ok_button.pressed.connect(library_window.hide)
-		library_button_row.add_child(library_ok_button)
-		add_child(library_window)
-		library_windows.append(library_window)
-		library_text_views.append(library_text_view)
+	library_ruminate_windows = LibraryRuminateWindowsView.new()
+	add_child(library_ruminate_windows)
 	game_over_dialog = AcceptDialog.new()
 	game_over_dialog.min_size = Vector2i(460, 220)
 	add_child(game_over_dialog)
@@ -5801,40 +5757,15 @@ func _run_query_action() -> void:
 				return
 			city_analysis_dialog.show_categories(analysis.categories)
 		"library_ruminate":
-			if library_texts.size() != LIBRARY_TEXT_IDS.size():
+			if (
+				library_texts.size()
+				!= LibraryRuminateWindowsView.TEXT_RESOURCE_IDS.size()
+			):
 				_show_error("The Library text resources are missing or invalid.")
 				return
-			var window_rects := LibraryWindowLayout.rects(
-				Vector2i(get_viewport_rect().size), LIBRARY_TEXT_IDS.size()
+			library_ruminate_windows.show_texts(
+				library_texts, Vector2i(get_viewport_rect().size)
 			)
-			for index in LIBRARY_TEXT_IDS.size():
-				var resource_id: int = LIBRARY_TEXT_IDS[index]
-				library_text_views[index].text = (
-					str(library_texts[resource_id])
-					.replace("\r\n", "\n")
-					.replace("\r", "\n")
-				)
-				library_text_views[index].scroll_vertical = 0
-				library_windows[index].position = window_rects[index].position
-				library_windows[index].size = window_rects[index].size
-				_bring_library_window_to_front(library_windows[index])
-				library_windows[index].show()
-
-
-func _on_library_window_input(event: InputEvent, window: PanelContainer) -> void:
-	if (
-		event is InputEventMouseButton
-		and event.button_index == MOUSE_BUTTON_LEFT
-		and event.pressed
-	):
-		_bring_library_window_to_front(window)
-
-
-func _bring_library_window_to_front(window: PanelContainer) -> void:
-	for other in library_windows:
-		if other != window and other.z_index > 1000:
-			other.z_index -= 1
-	window.z_index = 1000 + library_windows.size()
 
 
 func _refresh_details() -> void:

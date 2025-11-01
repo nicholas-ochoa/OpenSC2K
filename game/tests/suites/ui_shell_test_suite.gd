@@ -11,6 +11,7 @@ const MainMenu = preload("res://src/ui/main_menu_control.gd")
 const SettingsDialogUi = preload("res://src/ui/app_settings_dialog.gd")
 const ScenarioIntroDialogUi = preload("res://src/ui/scenario_intro_dialog.gd")
 const CityAnalysisDialogUi = preload("res://src/ui/city_analysis_dialog.gd")
+const LibraryRuminateWindowsUi = preload("res://src/ui/library_ruminate_windows.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -152,6 +153,25 @@ func _test_main_menu() -> void:
 		"City Analysis dialog owns its aligned table rows",
 	)
 	analysis_dialog.free()
+	var library_windows := LibraryRuminateWindowsUi.new()
+	library_windows._ready()
+	library_windows.show_texts({
+		3000: "First\r\nPage",
+		3001: "Second",
+		3002: "Third",
+		3003: "Fourth",
+	}, Vector2i(1280, 800))
+	_check(
+		library_windows.windows.size() == 4
+		and library_windows.text_views.size() == 4
+		and library_windows.text_views[0].text == "First\nPage"
+		and library_windows.windows[1].position
+		- library_windows.windows[0].position == Vector2(28, 28)
+		and library_windows.windows[3].z_index
+		> library_windows.windows[0].z_index,
+		"Library Ruminate container owns its modeless text windows",
+	)
+	library_windows.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(
