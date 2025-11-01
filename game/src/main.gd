@@ -40,6 +40,7 @@ const NewspaperDialogView = preload("res://src/ui/newspaper_dialog.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
 const SettingsDialogView = preload("res://src/ui/app_settings_dialog.gd")
 const ScenarioIntroDialogView = preload("res://src/ui/scenario_intro_dialog.gd")
+const CityAnalysisDialogView = preload("res://src/ui/city_analysis_dialog.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -289,8 +290,7 @@ var tunnel_dialog: ConfirmationDialog
 var pending_tunnel_request: Dictionary = {}
 var query_dialog: CityQueryDialog
 var active_query_result: Dictionary = {}
-var city_analysis_dialog: AcceptDialog
-var city_analysis_table: Tree
+var city_analysis_dialog: CityAnalysisDialog
 var newspaper_dialog: NewspaperDialog
 var forest_protest_dialog: AcceptDialog
 var forest_protest_message: Label
@@ -1154,26 +1154,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	ordinance_window.ordinances_changed.connect(_on_ordinances_changed)
 	ordinance_window.update_failed.connect(_show_error)
 	add_child(ordinance_window)
-	city_analysis_dialog = AcceptDialog.new()
-	city_analysis_dialog.title = "City Analysis"
-	city_analysis_dialog.min_size = Vector2i(600, 480)
-	city_analysis_table = Tree.new()
-	city_analysis_table.custom_minimum_size = Vector2i(540, 360)
-	city_analysis_table.columns = 3
-	city_analysis_table.column_titles_visible = true
-	city_analysis_table.hide_root = true
-	city_analysis_table.set_column_title(0, "LAND USE")
-	city_analysis_table.set_column_title(1, "ACRES")
-	city_analysis_table.set_column_title(2, "% of CITY")
-	city_analysis_table.set_column_expand(0, true)
-	city_analysis_table.set_column_expand(1, false)
-	city_analysis_table.set_column_expand(2, false)
-	city_analysis_table.set_column_custom_minimum_width(1, 100)
-	city_analysis_table.set_column_custom_minimum_width(2, 100)
-	city_analysis_dialog.get_label().visible = false
-	var analysis_content := city_analysis_dialog.get_label().get_parent()
-	analysis_content.add_child(city_analysis_table)
-	analysis_content.move_child(city_analysis_table, 0)
+	city_analysis_dialog = CityAnalysisDialogView.new()
 	add_child(city_analysis_dialog)
 	newspaper_dialog = NewspaperDialogView.new()
 	add_child(newspaper_dialog)
@@ -5818,16 +5799,7 @@ func _run_query_action() -> void:
 			if not analysis.ok:
 				_show_error("Cannot analyze city: %s" % analysis.error)
 				return
-			city_analysis_table.clear()
-			var root := city_analysis_table.create_item()
-			for category in analysis.categories:
-				var item := city_analysis_table.create_item(root)
-				item.set_text(0, str(category.name))
-				item.set_text(1, str(category.acres))
-				item.set_text(2, "%d%%" % category.percent)
-				item.set_text_alignment(1, HORIZONTAL_ALIGNMENT_RIGHT)
-				item.set_text_alignment(2, HORIZONTAL_ALIGNMENT_RIGHT)
-			city_analysis_dialog.popup_centered()
+			city_analysis_dialog.show_categories(analysis.categories)
 		"library_ruminate":
 			if library_texts.size() != LIBRARY_TEXT_IDS.size():
 				_show_error("The Library text resources are missing or invalid.")

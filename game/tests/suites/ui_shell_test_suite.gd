@@ -10,6 +10,7 @@ const GraphControl = preload("res://src/view/city_graph_control.gd")
 const MainMenu = preload("res://src/ui/main_menu_control.gd")
 const SettingsDialogUi = preload("res://src/ui/app_settings_dialog.gd")
 const ScenarioIntroDialogUi = preload("res://src/ui/scenario_intro_dialog.gd")
+const CityAnalysisDialogUi = preload("res://src/ui/city_analysis_dialog.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -135,6 +136,22 @@ func _test_main_menu() -> void:
 		"Scenario dialog owns its picture and normalized briefing text",
 	)
 	scenario_dialog.free()
+	var analysis_dialog := CityAnalysisDialogUi.new()
+	analysis_dialog._ready()
+	analysis_dialog.set_categories([
+		{"name": "Roads", "acres": 12, "percent": 34},
+	])
+	var analysis_root := analysis_dialog.table.get_root()
+	var analysis_item := analysis_root.get_first_child()
+	_check(
+		analysis_dialog.table.columns == 3
+		and analysis_item.get_text(0) == "Roads"
+		and analysis_item.get_text(1) == "12"
+		and analysis_item.get_text(2) == "34%"
+		and analysis_item.get_text_alignment(1) == HORIZONTAL_ALIGNMENT_RIGHT,
+		"City Analysis dialog owns its aligned table rows",
+	)
+	analysis_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(
