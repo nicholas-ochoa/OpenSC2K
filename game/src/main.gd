@@ -41,6 +41,7 @@ const SettingsDialogView = preload("res://src/ui/app_settings_dialog.gd")
 const ScenarioIntroDialogView = preload("res://src/ui/scenario_intro_dialog.gd")
 const CityAnalysisDialogView = preload("res://src/ui/city_analysis_dialog.gd")
 const LibraryRuminateWindowsView = preload("res://src/ui/library_ruminate_windows.gd")
+const CitySignDialogView = preload("res://src/ui/city_sign_dialog.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -269,8 +270,7 @@ var zoom_out_button: Button
 var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
 var toolbar_buttons: Array[Button] = []
-var sign_dialog: ConfirmationDialog
-var sign_input: LineEdit
+var sign_dialog: CitySignDialog
 var bridge_dialog: ConfirmationDialog
 var bridge_choice_buttons: Array[Button] = []
 var pending_bridge_request: Dictionary = {}
@@ -969,20 +969,9 @@ func _build_interface(toolbar_art: Image) -> void:
 	new_city_dialog.terrain_regeneration_requested.connect(_make_new_city_preview)
 	add_child(new_city_dialog)
 
-	sign_dialog = ConfirmationDialog.new()
-	sign_dialog.title = "City Sign"
-	sign_dialog.dialog_text = "Enter sign text. An empty value removes the sign."
-	sign_dialog.min_size = Vector2i(440, 170)
+	sign_dialog = CitySignDialogView.new()
 	sign_dialog.confirmed.connect(_commit_sign)
 	sign_dialog.canceled.connect(_cancel_sign)
-	sign_input = LineEdit.new()
-	sign_input.max_length = 23
-	sign_input.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	sign_input.offset_left = 14
-	sign_input.offset_top = 58
-	sign_input.offset_right = -14
-	sign_input.offset_bottom = 92
-	sign_dialog.add_child(sign_input)
 	add_child(sign_dialog)
 
 	bridge_dialog = ConfirmationDialog.new()
@@ -5618,16 +5607,13 @@ func _open_sign_dialog(point: Vector2i) -> void:
 		_show_error("This tile has a protected simulation label.")
 		return
 	pending_sign_tile = point
-	sign_input.text = city.label(overlay) if overlay > 0 else ""
-	sign_dialog.popup_centered()
-	sign_input.grab_focus()
-	sign_input.select_all()
+	sign_dialog.show_text(city.label(overlay) if overlay > 0 else "")
 
 
 func _commit_sign() -> void:
 	if city == null or pending_sign_tile.x < 0:
 		return
-	var result := Signs.set_sign(city, pending_sign_tile, sign_input.text)
+	var result := Signs.set_sign(city, pending_sign_tile, sign_dialog.entered_text())
 	pending_sign_tile = Vector2i(-1, -1)
 	if not result.ok:
 		_show_error("Cannot change sign: %s" % result.error)

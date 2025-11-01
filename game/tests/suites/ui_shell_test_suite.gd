@@ -12,6 +12,7 @@ const SettingsDialogUi = preload("res://src/ui/app_settings_dialog.gd")
 const ScenarioIntroDialogUi = preload("res://src/ui/scenario_intro_dialog.gd")
 const CityAnalysisDialogUi = preload("res://src/ui/city_analysis_dialog.gd")
 const LibraryRuminateWindowsUi = preload("res://src/ui/library_ruminate_windows.gd")
+const CitySignDialogUi = preload("res://src/ui/city_sign_dialog.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -172,6 +173,15 @@ func _test_main_menu() -> void:
 		"Library Ruminate container owns its modeless text windows",
 	)
 	library_windows.free()
+	var sign_dialog := CitySignDialogUi.new()
+	sign_dialog._ready()
+	sign_dialog.text_input.text = "Waterfront"
+	_check(
+		sign_dialog.text_input.max_length == 23
+		and sign_dialog.entered_text() == "Waterfront",
+		"City Sign dialog owns its bounded text input",
+	)
+	sign_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(
