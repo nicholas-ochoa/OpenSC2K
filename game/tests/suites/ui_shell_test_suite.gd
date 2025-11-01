@@ -9,6 +9,7 @@ const RciStatus = preload("res://src/view/rci_status_control.gd")
 const GraphControl = preload("res://src/view/city_graph_control.gd")
 const MainMenu = preload("res://src/ui/main_menu_control.gd")
 const SettingsDialogUi = preload("res://src/ui/app_settings_dialog.gd")
+const ScenarioIntroDialogUi = preload("res://src/ui/scenario_intro_dialog.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -118,6 +119,22 @@ func _test_main_menu() -> void:
 		"Settings dialog owns its audio and display values",
 	)
 	settings_dialog.free()
+	var scenario_dialog := ScenarioIntroDialogUi.new()
+	scenario_dialog._ready()
+	var scenario_picture := Image.create(2, 2, false, Image.FORMAT_RGBA8)
+	scenario_picture.fill(Color("123456"))
+	scenario_dialog.set_briefing(
+		"Test City", scenario_picture, "First line\r\nSecond line"
+	)
+	_check(
+		scenario_dialog.title == "Scenario: Test City"
+		and scenario_dialog.picture_view.texture != null
+		and scenario_dialog.picture_view.texture_filter
+		== CanvasItem.TEXTURE_FILTER_NEAREST
+		and scenario_dialog.text_view.text == "First line\nSecond line",
+		"Scenario dialog owns its picture and normalized briefing text",
+	)
+	scenario_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

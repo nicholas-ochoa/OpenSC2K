@@ -39,6 +39,7 @@ const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
 const NewspaperDialogView = preload("res://src/ui/newspaper_dialog.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
 const SettingsDialogView = preload("res://src/ui/app_settings_dialog.gd")
+const ScenarioIntroDialogView = preload("res://src/ui/scenario_intro_dialog.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -321,9 +322,7 @@ var pending_city_exit_waiting_for_save := false
 var budget_dialog: BudgetDialog
 var game_over_dialog: AcceptDialog
 var military_dialog: ConfirmationDialog
-var scenario_dialog: AcceptDialog
-var scenario_picture_view: TextureRect
-var scenario_text_view: TextEdit
+var scenario_dialog: ScenarioIntroDialog
 var fps_update_seconds := 0.0
 var status_report_index := 0
 var status_report_elapsed_seconds := 0.0
@@ -1245,44 +1244,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	game_over_dialog = AcceptDialog.new()
 	game_over_dialog.min_size = Vector2i(460, 220)
 	add_child(game_over_dialog)
-	scenario_dialog = AcceptDialog.new()
-	scenario_dialog.title = "Scenario"
-	scenario_dialog.min_size = Vector2i(760, 520)
-	scenario_dialog.exclusive = true
-	scenario_dialog.get_ok_button().text = "Begin Scenario"
+	scenario_dialog = ScenarioIntroDialogView.new()
 	scenario_dialog.confirmed.connect(_begin_scenario)
-	scenario_dialog.get_label().visible = false
-	var scenario_content := HBoxContainer.new()
-	scenario_content.custom_minimum_size = Vector2(700, 400)
-	scenario_content.add_theme_constant_override("separation", 16)
-	var picture_frame := PanelContainer.new()
-	picture_frame.custom_minimum_size = Vector2(276, 276)
-	picture_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	picture_frame.add_theme_stylebox_override(
-		"panel", _classic_box(Color("ffffff"), Color("808080"), 2)
-	)
-	scenario_content.add_child(picture_frame)
-	scenario_picture_view = TextureRect.new()
-	scenario_picture_view.custom_minimum_size = Vector2(260, 260)
-	scenario_picture_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	scenario_picture_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	scenario_picture_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	picture_frame.add_child(scenario_picture_view)
-	scenario_text_view = TextEdit.new()
-	scenario_text_view.editable = false
-	scenario_text_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	scenario_text_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scenario_text_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scenario_text_view.add_theme_color_override("font_color", Color("101010"))
-	scenario_text_view.add_theme_color_override("font_readonly_color", Color("101010"))
-	for state in ["normal", "focus", "read_only"]:
-		scenario_text_view.add_theme_stylebox_override(
-			state, _classic_box(Color("ffffff"), Color("808080"), 1)
-		)
-	scenario_content.add_child(scenario_text_view)
-	var scenario_content_parent := scenario_dialog.get_label().get_parent()
-	scenario_content_parent.add_child(scenario_content)
-	scenario_content_parent.move_child(scenario_content, 0)
 	add_child(scenario_dialog)
 	military_dialog = ConfirmationDialog.new()
 	military_dialog.title = "Military Base Proposal"
@@ -2975,21 +2938,13 @@ func _restore_military_proposal_dialog() -> void:
 
 func _open_scenario_intro(scenario: ScenarioState) -> void:
 	var rendered_picture := scenario.picture_image(scenario_palette)
-	if rendered_picture.ok:
-		scenario_picture_view.texture = ImageTexture.create_from_image(rendered_picture.image)
-	else:
-		scenario_picture_view.texture = null
-	var description := scenario.opening_description()
-	description = description.replace("\r\n", "\n").replace("\r", "\n")
-	scenario_text_view.text = description
-	scenario_text_view.scroll_vertical = 0
+	var picture: Image = rendered_picture.image if rendered_picture.ok else null
 	var name := city.city_name()
 	if name.is_empty():
 		name = current_document.source_path.get_file().get_basename()
-	scenario_dialog.title = "Scenario: %s" % name
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Review the scenario briefing before the simulation starts."
-	scenario_dialog.popup_centered()
+	scenario_dialog.show_briefing(name, picture, scenario.opening_description())
 
 
 func _begin_scenario() -> void:
