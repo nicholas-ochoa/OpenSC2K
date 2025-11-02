@@ -46,6 +46,7 @@ const BridgeSelectionDialogView = preload("res://src/ui/bridge_selection_dialog.
 const DisplayNumbers = preload("res://src/ui/display_number_format.gd")
 const ToolChoiceDialogView = preload("res://src/ui/tool_choice_dialog.gd")
 const StadiumTeamDialogView = preload("res://src/ui/stadium_team_dialog.gd")
+const RouteConfirmationDialogView = preload("res://src/ui/route_confirmation_dialog.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -281,11 +282,11 @@ var tool_choice_dialog: ToolChoiceDialog
 var pending_tool_choices: Dictionary = {}
 var stadium_dialog: StadiumTeamDialog
 var pending_stadium_command: Dictionary = {}
-var network_connection_dialog: ConfirmationDialog
+var network_connection_dialog: RouteConfirmationDialog
 var pending_network_connection: Dictionary = {}
-var highway_connection_dialog: ConfirmationDialog
+var highway_connection_dialog: RouteConfirmationDialog
 var pending_highway_connection: Dictionary = {}
-var tunnel_dialog: ConfirmationDialog
+var tunnel_dialog: RouteConfirmationDialog
 var pending_tunnel_request: Dictionary = {}
 var query_dialog: CityQueryDialog
 var active_query_result: Dictionary = {}
@@ -989,39 +990,36 @@ func _build_interface(toolbar_art: Image) -> void:
 	stadium_dialog.canceled.connect(_cancel_stadium_team)
 	add_child(stadium_dialog)
 
-	network_connection_dialog = ConfirmationDialog.new()
-	network_connection_dialog.title = "Neighbor Connection"
-	network_connection_dialog.dialog_text = (
-		"Build a road connection to a neighboring city for $1,000?"
+	network_connection_dialog = RouteConfirmationDialogView.new()
+	network_connection_dialog.configure(
+		"Neighbor Connection",
+		"Build a road connection to a neighboring city for $1,000?",
+		"Build Connection",
+		"Keep Route",
 	)
-	network_connection_dialog.min_size = Vector2i(520, 210)
-	network_connection_dialog.exclusive = true
-	network_connection_dialog.get_ok_button().text = "Build Connection"
-	network_connection_dialog.get_cancel_button().text = "Keep Route"
 	network_connection_dialog.confirmed.connect(_confirm_network_connection)
 	network_connection_dialog.canceled.connect(_cancel_network_connection)
 	add_child(network_connection_dialog)
 
-	highway_connection_dialog = ConfirmationDialog.new()
-	highway_connection_dialog.title = "Neighbor Connection"
-	highway_connection_dialog.dialog_text = (
-		"Build a highway connection to a neighboring city for $1,500?"
+	highway_connection_dialog = RouteConfirmationDialogView.new()
+	highway_connection_dialog.configure(
+		"Neighbor Connection",
+		"Build a highway connection to a neighboring city for $1,500?",
+		"Build Connection",
+		"Keep Highway",
 	)
-	highway_connection_dialog.min_size = Vector2i(520, 210)
-	highway_connection_dialog.exclusive = true
-	highway_connection_dialog.get_ok_button().text = "Build Connection"
-	highway_connection_dialog.get_cancel_button().text = "Keep Highway"
 	highway_connection_dialog.confirmed.connect(_confirm_highway_connection)
 	highway_connection_dialog.canceled.connect(_cancel_highway_connection)
 	add_child(highway_connection_dialog)
 
-	tunnel_dialog = ConfirmationDialog.new()
-	tunnel_dialog.title = "Construct Tunnel"
-	tunnel_dialog.dialog_text = "Do you wish to construct the tunnel?"
-	tunnel_dialog.min_size = Vector2i(500, 200)
-	tunnel_dialog.exclusive = true
-	tunnel_dialog.get_ok_button().text = "Yes"
-	tunnel_dialog.get_cancel_button().text = "No"
+	tunnel_dialog = RouteConfirmationDialogView.new()
+	tunnel_dialog.configure(
+		"Construct Tunnel",
+		"Do you wish to construct the tunnel?",
+		"Yes",
+		"No",
+		Vector2i(500, 200),
+	)
 	tunnel_dialog.confirmed.connect(_confirm_tunnel)
 	tunnel_dialog.canceled.connect(_cancel_tunnel)
 	add_child(tunnel_dialog)
@@ -4892,7 +4890,7 @@ func _apply_network_selection(
 			"bridge_type": bridge_type,
 			"free_mode": free_mode,
 		}
-		network_connection_dialog.dialog_text = (
+		var message := (
 			(
 				"Build a %s connection to a neighboring city?\n"
 				+ "The route and connection are free in Place & Print."
@@ -4908,8 +4906,7 @@ func _apply_network_selection(
 				_format_number(int(network.get("dry_cost", 0))),
 			]
 		)
-		network_connection_dialog.get_cancel_button().text = "Keep %s" % tool_name
-		network_connection_dialog.popup_centered()
+		network_connection_dialog.show_message(message, "Keep %s" % tool_name)
 		return
 	if not network.get("ok", false):
 		_play_tool_failure_sound(
@@ -5221,11 +5218,11 @@ func _apply_tunnel_selection(
 			"group_index": selected_group,
 			"subtool_index": selected_subtool,
 		}
-		tunnel_dialog.dialog_text = (
+		var message := (
 			"Engineers report that tunnel construction costs will be $%s.\n"
 			+ "Do you wish to construct the tunnel?"
 		) % _format_number(int(tunnel.cost))
-		tunnel_dialog.popup_centered()
+		tunnel_dialog.show_message(message)
 		return
 	if tunnel.get("cancelled", false):
 		_play_tool_failure_sound(
@@ -5323,7 +5320,7 @@ func _apply_highway_selection(
 			"subtool_index": selected_subtool,
 			"free_mode": free_mode,
 		}
-		highway_connection_dialog.dialog_text = (
+		var message := (
 			(
 				"Build a highway connection to a neighboring city?\n"
 				+ "The highway and connection are free in Place & Print."
@@ -5338,7 +5335,7 @@ func _apply_highway_selection(
 				_format_number(int(highway.get("route_cost", 0))),
 			]
 		)
-		highway_connection_dialog.popup_centered()
+		highway_connection_dialog.show_message(message)
 		return
 	if not highway.get("ok", false):
 		_play_tool_failure_sound(

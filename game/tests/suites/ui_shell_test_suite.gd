@@ -16,6 +16,7 @@ const CitySignDialogUi = preload("res://src/ui/city_sign_dialog.gd")
 const BridgeSelectionDialogUi = preload("res://src/ui/bridge_selection_dialog.gd")
 const ToolChoiceDialogUi = preload("res://src/ui/tool_choice_dialog.gd")
 const StadiumTeamDialogUi = preload("res://src/ui/stadium_team_dialog.gd")
+const RouteConfirmationDialogUi = preload("res://src/ui/route_confirmation_dialog.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -231,6 +232,24 @@ func _test_main_menu() -> void:
 		"Stadium team dialog owns its selector and editable name",
 	)
 	stadium_dialog.free()
+	var route_dialog := RouteConfirmationDialogUi.new()
+	route_dialog.configure(
+		"Neighbor Connection",
+		"Build a road connection?",
+		"Build Connection",
+		"Keep Road",
+	)
+	route_dialog.set_message("Build a rail connection?", "Keep Rail")
+	_check(
+		route_dialog.title == "Neighbor Connection"
+		and route_dialog.dialog_text == "Build a rail connection?"
+		and route_dialog.min_size == Vector2i(520, 210)
+		and route_dialog.exclusive
+		and route_dialog.get_ok_button().text == "Build Connection"
+		and route_dialog.get_cancel_button().text == "Keep Rail",
+		"Route confirmation dialog owns its prompt and button labels",
+	)
+	route_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(
