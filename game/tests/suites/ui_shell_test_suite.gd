@@ -17,6 +17,7 @@ const BridgeSelectionDialogUi = preload("res://src/ui/bridge_selection_dialog.gd
 const ToolChoiceDialogUi = preload("res://src/ui/tool_choice_dialog.gd")
 const StadiumTeamDialogUi = preload("res://src/ui/stadium_team_dialog.gd")
 const RouteConfirmationDialogUi = preload("res://src/ui/route_confirmation_dialog.gd")
+const PictureNoticeDialogUi = preload("res://src/ui/picture_notice_dialog.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -250,6 +251,27 @@ func _test_main_menu() -> void:
 		"Route confirmation dialog owns its prompt and button labels",
 	)
 	route_dialog.free()
+	var notice_dialog := PictureNoticeDialogUi.new()
+	notice_dialog._ready()
+	notice_dialog.configure(
+		"TestNoticeDialog",
+		"Test Notice",
+		"TestNoticeImage",
+		"TestNoticeMessage",
+		null,
+		"First line\r\nSecond line",
+	)
+	_check(
+		notice_dialog.name == "TestNoticeDialog"
+		and notice_dialog.title == "Test Notice"
+		and notice_dialog.picture_view.name == "TestNoticeImage"
+		and notice_dialog.picture_view.texture_filter
+		== CanvasItem.TEXTURE_FILTER_NEAREST
+		and notice_dialog.message_label.name == "TestNoticeMessage"
+		and notice_dialog.message_label.text == "First line\nSecond line",
+		"Picture notice dialog owns its image and message layout",
+	)
+	notice_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

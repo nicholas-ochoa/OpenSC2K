@@ -47,6 +47,7 @@ const DisplayNumbers = preload("res://src/ui/display_number_format.gd")
 const ToolChoiceDialogView = preload("res://src/ui/tool_choice_dialog.gd")
 const StadiumTeamDialogView = preload("res://src/ui/stadium_team_dialog.gd")
 const RouteConfirmationDialogView = preload("res://src/ui/route_confirmation_dialog.gd")
+const PictureNoticeDialogView = preload("res://src/ui/picture_notice_dialog.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -292,10 +293,8 @@ var query_dialog: CityQueryDialog
 var active_query_result: Dictionary = {}
 var city_analysis_dialog: CityAnalysisDialog
 var newspaper_dialog: NewspaperDialog
-var forest_protest_dialog: AcceptDialog
-var forest_protest_message: Label
-var building_objection_dialog: AcceptDialog
-var building_objection_message: Label
+var forest_protest_dialog: PictureNoticeDialog
+var building_objection_dialog: PictureNoticeDialog
 var pending_building_objection_group := -1
 var pending_building_objection_subtool := -1
 var library_ruminate_windows: LibraryRuminateWindows
@@ -1080,24 +1079,26 @@ func _build_interface(toolbar_art: Image) -> void:
 	add_child(city_analysis_dialog)
 	newspaper_dialog = NewspaperDialogView.new()
 	add_child(newspaper_dialog)
-	var forest_notice := _create_picture_notice(
+	forest_protest_dialog = PictureNoticeDialogView.new()
+	add_child(forest_protest_dialog)
+	forest_protest_dialog.configure(
 		"ForestProtestDialog",
 		"Forest Protest",
 		"ForestProtestImage",
 		"ForestProtestMessage",
+		forest_protest_image,
 		forest_protest_text,
 	)
-	forest_protest_dialog = forest_notice.dialog
-	forest_protest_message = forest_notice.message
-	var objection_notice := _create_picture_notice(
+	building_objection_dialog = PictureNoticeDialogView.new()
+	add_child(building_objection_dialog)
+	building_objection_dialog.configure(
 		"BuildingObjectionDialog",
 		"Citizen Objection",
 		"BuildingObjectionImage",
 		"BuildingObjectionMessage",
+		forest_protest_image,
 		building_objection_text,
 	)
-	building_objection_dialog = objection_notice.dialog
-	building_objection_message = objection_notice.message
 	building_objection_dialog.confirmed.connect(_on_building_objection_closed)
 	building_objection_dialog.canceled.connect(_on_building_objection_closed)
 	library_ruminate_windows = LibraryRuminateWindowsView.new()
@@ -1590,54 +1591,6 @@ func _redo_scurk_place() -> void:
 
 func _open_about_dialog() -> void:
 	about_dialog.popup_centered()
-
-
-func _create_picture_notice(
-	dialog_name: String,
-	dialog_title: String,
-	image_name: String,
-	message_name: String,
-	message_text: String
-) -> Dictionary:
-	var dialog := AcceptDialog.new()
-	dialog.name = dialog_name
-	dialog.title = dialog_title
-	dialog.min_size = Vector2i(520, 230)
-	dialog.exclusive = true
-	dialog.get_ok_button().text = "OK"
-	dialog.get_label().visible = false
-	var layout := HBoxContainer.new()
-	layout.custom_minimum_size = Vector2(470, 130)
-	layout.add_theme_constant_override("separation", 14)
-	var picture_frame := PanelContainer.new()
-	picture_frame.custom_minimum_size = Vector2(171, 116)
-	picture_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	picture_frame.add_theme_stylebox_override(
-		"panel", _classic_box(Color("ffffff"), Color("808080"), 2)
-	)
-	layout.add_child(picture_frame)
-	var picture := TextureRect.new()
-	picture.name = image_name
-	picture.custom_minimum_size = Vector2(155, 100)
-	picture.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	picture.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	picture.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	if forest_protest_image != null:
-		picture.texture = ImageTexture.create_from_image(forest_protest_image)
-	picture_frame.add_child(picture)
-	var message := Label.new()
-	message.name = message_name
-	message.text = message_text.replace("\r\n", "\n").replace("\r", "\n")
-	message.custom_minimum_size = Vector2(280, 100)
-	message.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	message.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	message.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	layout.add_child(message)
-	var content := dialog.get_label().get_parent()
-	content.add_child(layout)
-	content.move_child(layout, 0)
-	add_child(dialog)
-	return {"dialog": dialog, "message": message}
 
 
 func _create_classic_theme() -> Theme:
@@ -4103,17 +4056,13 @@ func _show_news_items(news_items: Array) -> void:
 func _show_forest_protest() -> void:
 	if forest_protest_dialog == null:
 		return
-	forest_protest_message.text = forest_protest_text
-	forest_protest_dialog.popup_centered()
+	forest_protest_dialog.show_message(forest_protest_text)
 
 
 func _show_building_objection() -> void:
 	if building_objection_dialog == null:
 		return
-	building_objection_message.text = building_objection_text.replace(
-		"\r\n", "\n"
-	).replace("\r", "\n")
-	building_objection_dialog.popup_centered()
+	building_objection_dialog.show_message(building_objection_text, true)
 
 
 func _on_building_objection_closed() -> void:
