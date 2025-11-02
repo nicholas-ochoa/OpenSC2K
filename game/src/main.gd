@@ -48,6 +48,8 @@ const ToolChoiceDialogView = preload("res://src/ui/tool_choice_dialog.gd")
 const StadiumTeamDialogView = preload("res://src/ui/stadium_team_dialog.gd")
 const RouteConfirmationDialogView = preload("res://src/ui/route_confirmation_dialog.gd")
 const PictureNoticeDialogView = preload("res://src/ui/picture_notice_dialog.gd")
+const AboutDialogView = preload("res://src/ui/about_dialog.gd")
+const SaveChangesDialogView = preload("res://src/ui/save_changes_dialog.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -312,8 +314,8 @@ var scurk_print: ScurkPrintControl
 var pending_scurk_print_options: Dictionary = {}
 var scurk_place_undo_stack: Array[Dictionary] = []
 var scurk_place_redo_stack: Array[Dictionary] = []
-var about_dialog: AcceptDialog
-var save_changes_dialog: ConfirmationDialog
+var about_dialog: AboutDialog
+var save_changes_dialog: SaveChangesDialog
 var pending_city_exit_action := ""
 var pending_city_exit_path := ""
 var pending_city_exit_waiting_for_save := false
@@ -1176,23 +1178,10 @@ func _build_main_menu() -> void:
 	scurk_print.save_pdf_requested.connect(_open_scurk_print_pdf_dialog)
 	add_child(scurk_print)
 
-	about_dialog = AcceptDialog.new()
-	about_dialog.title = "About OpenSC2K"
-	about_dialog.dialog_text = (
-		"OpenSC2K is an open-source reimplementation of SimCity 2000 for Windows 95.\n\n"
-		+ "It reads the original SC2 and SCN city formats. Original game data stays external to this project."
-	)
-	about_dialog.min_size = Vector2i(560, 250)
-	about_dialog.exclusive = true
+	about_dialog = AboutDialogView.new()
 	add_child(about_dialog)
 
-	save_changes_dialog = ConfirmationDialog.new()
-	save_changes_dialog.title = "Save Changes"
-	save_changes_dialog.min_size = Vector2i(480, 190)
-	save_changes_dialog.exclusive = true
-	save_changes_dialog.get_ok_button().text = "Save"
-	save_changes_dialog.get_cancel_button().text = "Cancel"
-	save_changes_dialog.add_button("Don't Save", true, "discard")
+	save_changes_dialog = SaveChangesDialogView.new()
 	save_changes_dialog.confirmed.connect(_save_pending_city_exit)
 	save_changes_dialog.canceled.connect(_cancel_pending_city_exit)
 	save_changes_dialog.custom_action.connect(_on_save_changes_action)
@@ -2785,8 +2774,7 @@ func _request_city_exit(action: String, path := "") -> void:
 	var display_name := city.city_name()
 	if display_name.is_empty():
 		display_name = "this city"
-	save_changes_dialog.dialog_text = "Save changes to %s before you continue?" % display_name
-	save_changes_dialog.popup_centered()
+	save_changes_dialog.show_city(display_name)
 
 
 func _perform_city_exit(action: String, path := "") -> void:

@@ -18,6 +18,8 @@ const ToolChoiceDialogUi = preload("res://src/ui/tool_choice_dialog.gd")
 const StadiumTeamDialogUi = preload("res://src/ui/stadium_team_dialog.gd")
 const RouteConfirmationDialogUi = preload("res://src/ui/route_confirmation_dialog.gd")
 const PictureNoticeDialogUi = preload("res://src/ui/picture_notice_dialog.gd")
+const AboutDialogUi = preload("res://src/ui/about_dialog.gd")
+const SaveChangesDialogUi = preload("res://src/ui/save_changes_dialog.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -272,6 +274,36 @@ func _test_main_menu() -> void:
 		"Picture notice dialog owns its image and message layout",
 	)
 	notice_dialog.free()
+	var about_dialog := AboutDialogUi.new()
+	about_dialog._ready()
+	_check(
+		about_dialog.title == "About OpenSC2K"
+		and about_dialog.dialog_text.contains("SimCity 2000 for Windows 95")
+		and about_dialog.min_size == Vector2i(560, 250)
+		and about_dialog.exclusive,
+		"About dialog owns its fixed product text and layout",
+	)
+	about_dialog.free()
+	var save_changes_dialog := SaveChangesDialogUi.new()
+	save_changes_dialog._ready()
+	save_changes_dialog.set_city("Starter City")
+	var has_discard_button := false
+	for child in save_changes_dialog.find_children("*", "Button", true, false):
+		var button := child as Button
+		if button != null and button.text == "Don't Save":
+			has_discard_button = true
+	_check(
+		save_changes_dialog.title == "Save Changes"
+		and save_changes_dialog.dialog_text
+		== "Save changes to Starter City before you continue?"
+		and save_changes_dialog.min_size == Vector2i(480, 190)
+		and save_changes_dialog.exclusive
+		and save_changes_dialog.get_ok_button().text == "Save"
+		and save_changes_dialog.get_cancel_button().text == "Cancel"
+		and has_discard_button,
+		"Save Changes dialog owns its prompt and standard actions",
+	)
+	save_changes_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(
