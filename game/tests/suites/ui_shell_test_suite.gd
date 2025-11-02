@@ -15,6 +15,7 @@ const LibraryRuminateWindowsUi = preload("res://src/ui/library_ruminate_windows.
 const CitySignDialogUi = preload("res://src/ui/city_sign_dialog.gd")
 const BridgeSelectionDialogUi = preload("res://src/ui/bridge_selection_dialog.gd")
 const ToolChoiceDialogUi = preload("res://src/ui/tool_choice_dialog.gd")
+const StadiumTeamDialogUi = preload("res://src/ui/stadium_team_dialog.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -214,6 +215,22 @@ func _test_main_menu() -> void:
 		"Tool choice dialog owns its building grid and price formatting",
 	)
 	tool_choice_dialog.free()
+	var stadium_dialog := StadiumTeamDialogUi.new()
+	stadium_dialog._ready()
+	stadium_dialog.set_teams([
+		{"id": 2, "name": "Llamas"},
+		{"id": 5, "name": "Reticulators"},
+	])
+	stadium_dialog.team_selector.select(1)
+	stadium_dialog._select_team(1)
+	_check(
+		stadium_dialog.team_selector.item_count == 2
+		and stadium_dialog.name_input.max_length == 23
+		and stadium_dialog.selected_team_id() == 5
+		and stadium_dialog.entered_name() == "Reticulators",
+		"Stadium team dialog owns its selector and editable name",
+	)
+	stadium_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(
