@@ -14,6 +14,7 @@ const CityAnalysisDialogUi = preload("res://src/ui/city_analysis_dialog.gd")
 const LibraryRuminateWindowsUi = preload("res://src/ui/library_ruminate_windows.gd")
 const CitySignDialogUi = preload("res://src/ui/city_sign_dialog.gd")
 const BridgeSelectionDialogUi = preload("res://src/ui/bridge_selection_dialog.gd")
+const ToolChoiceDialogUi = preload("res://src/ui/tool_choice_dialog.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -198,6 +199,21 @@ func _test_main_menu() -> void:
 		"Bridge dialog owns its choice layout and price formatting",
 	)
 	bridge_dialog.free()
+	var tool_choice_dialog := ToolChoiceDialogUi.new()
+	tool_choice_dialog._ready()
+	tool_choice_dialog.set_tools("Select Arcology", "Select one.", [
+		{"name": "Plymouth Arcology", "cost": 100000},
+		{"name": "Forest Arcology", "cost": 120000},
+	])
+	_check(
+		tool_choice_dialog.choice_buttons.size() == 9
+		and tool_choice_dialog.title == "Select Arcology"
+		and tool_choice_dialog.choice_buttons[0].text
+		== "Plymouth Arcology\n$100,000"
+		and not tool_choice_dialog.choice_buttons[2].visible,
+		"Tool choice dialog owns its building grid and price formatting",
+	)
+	tool_choice_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

@@ -44,6 +44,7 @@ const LibraryRuminateWindowsView = preload("res://src/ui/library_ruminate_window
 const CitySignDialogView = preload("res://src/ui/city_sign_dialog.gd")
 const BridgeSelectionDialogView = preload("res://src/ui/bridge_selection_dialog.gd")
 const DisplayNumbers = preload("res://src/ui/display_number_format.gd")
+const ToolChoiceDialogView = preload("res://src/ui/tool_choice_dialog.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -275,8 +276,7 @@ var toolbar_buttons: Array[Button] = []
 var sign_dialog: CitySignDialog
 var bridge_dialog: BridgeSelectionDialog
 var pending_bridge_request: Dictionary = {}
-var tool_choice_dialog: ConfirmationDialog
-var tool_choice_buttons: Array[Button] = []
+var tool_choice_dialog: ToolChoiceDialog
 var pending_tool_choices: Dictionary = {}
 var stadium_dialog: ConfirmationDialog
 var stadium_team_selector: OptionButton
@@ -980,31 +980,9 @@ func _build_interface(toolbar_art: Image) -> void:
 	bridge_dialog.canceled.connect(_cancel_bridge)
 	add_child(bridge_dialog)
 
-	tool_choice_dialog = ConfirmationDialog.new()
-	tool_choice_dialog.title = "Select Building"
-	tool_choice_dialog.dialog_text = "Select a building type."
-	tool_choice_dialog.min_size = Vector2i(680, 390)
-	tool_choice_dialog.exclusive = true
-	tool_choice_dialog.get_ok_button().visible = false
-	tool_choice_dialog.get_cancel_button().text = "Cancel"
+	tool_choice_dialog = ToolChoiceDialogView.new()
+	tool_choice_dialog.choice_requested.connect(_choose_tool_variant)
 	tool_choice_dialog.canceled.connect(_cancel_tool_choice)
-	var tool_choices := GridContainer.new()
-	tool_choices.columns = 3
-	tool_choices.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	tool_choices.offset_left = 16
-	tool_choices.offset_top = 72
-	tool_choices.offset_right = -16
-	tool_choices.offset_bottom = 320
-	tool_choices.add_theme_constant_override("h_separation", 8)
-	tool_choices.add_theme_constant_override("v_separation", 8)
-	tool_choice_dialog.add_child(tool_choices)
-	for choice_index in 9:
-		var choice_button := Button.new()
-		choice_button.custom_minimum_size = Vector2(205, 72)
-		choice_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		choice_button.pressed.connect(_choose_tool_variant.bind(choice_index))
-		tool_choices.add_child(choice_button)
-		tool_choice_buttons.append(choice_button)
 	add_child(tool_choice_dialog)
 
 	stadium_dialog = ConfirmationDialog.new()
@@ -5053,26 +5031,18 @@ func _open_tool_choice_dialog(group_index: int) -> void:
 		"group_index": group_index,
 		"subtools": choices,
 	}
-	tool_choice_dialog.title = (
+	var title_text := (
 		"Select Power Plant" if group_index == 3 else "Select Arcology"
 	)
-	tool_choice_dialog.dialog_text = (
+	var prompt_text := (
 		"Select an available power plant."
 		if group_index == 3
 		else "Select an available arcology."
 	)
-	for choice_index in tool_choice_buttons.size():
-		var choice_button := tool_choice_buttons[choice_index]
-		choice_button.visible = choice_index < choices.size()
-		if not choice_button.visible:
-			continue
-		var tool := Tools.tool(group_index, choices[choice_index])
-		choice_button.text = "%s\n$%s" % [
-			tool.name,
-			_format_number(int(tool.cost)),
-		]
-		choice_button.tooltip_text = "Select %s" % tool.name
-	tool_choice_dialog.popup_centered()
+	var available_tools: Array[Dictionary] = []
+	for subtool_index in choices:
+		available_tools.append(Tools.tool(group_index, subtool_index))
+	tool_choice_dialog.show_tools(title_text, prompt_text, available_tools)
 
 
 func _choose_tool_variant(choice_index: int) -> void:
