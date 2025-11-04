@@ -20,6 +20,7 @@ const RouteConfirmationDialogUi = preload("res://src/ui/route_confirmation_dialo
 const PictureNoticeDialogUi = preload("res://src/ui/picture_notice_dialog.gd")
 const AboutDialogUi = preload("res://src/ui/about_dialog.gd")
 const SaveChangesDialogUi = preload("res://src/ui/save_changes_dialog.gd")
+const CityStatusBarUi = preload("res://src/ui/city_status_bar.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -304,6 +305,19 @@ func _test_main_menu() -> void:
 		"Save Changes dialog owns its prompt and standard actions",
 	)
 	save_changes_dialog.free()
+	var status_bar := CityStatusBarUi.new()
+	status_bar._ready()
+	_check(
+		status_bar.message_label.text == "Ready."
+		and status_bar.message_label.size_flags_horizontal
+		== Control.SIZE_EXPAND_FILL
+		and status_bar.weather_label.text == "Weather: --"
+		and status_bar.rci_graph != null
+		and status_bar.reports_label.text == "News: None"
+		and status_bar.speed_label.text == "Speed: --",
+		"City status bar owns its metrics and RCI layout",
+	)
+	status_bar.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

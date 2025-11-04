@@ -27,7 +27,6 @@ const SimNationWindowView = preload("res://src/ui/city_simnation_window.gd")
 const OrdinanceWindowView = preload("res://src/ui/city_ordinance_window.gd")
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
 const CityMapWindowView = preload("res://src/ui/city_map_window.gd")
-const RciStatusView = preload("res://src/view/rci_status_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
@@ -50,6 +49,7 @@ const RouteConfirmationDialogView = preload("res://src/ui/route_confirmation_dia
 const PictureNoticeDialogView = preload("res://src/ui/picture_notice_dialog.gd")
 const AboutDialogView = preload("res://src/ui/about_dialog.gd")
 const SaveChangesDialogView = preload("res://src/ui/save_changes_dialog.gd")
+const CityStatusBarView = preload("res://src/ui/city_status_bar.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -244,6 +244,7 @@ var status_weather_label: Label
 var status_rci_graph: RciStatusControl
 var status_reports_label: Label
 var status_speed_label: Label
+var city_status_bar: CityStatusBar
 var file_dialog: FileDialog
 var save_dialog: FileDialog
 var tile_set_dialog: FileDialog
@@ -895,36 +896,13 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.viewport_changed.connect(_refresh_city_map_viewport)
 	map_panel.add_child(map_view)
 
-	var status_panel := PanelContainer.new()
-	status_panel.custom_minimum_size = Vector2(0, 31)
-	status_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
-	page.add_child(status_panel)
-	var status_metrics := HBoxContainer.new()
-	status_metrics.add_theme_constant_override("separation", 8)
-	status_panel.add_child(status_metrics)
-	status_label = Label.new()
-	status_label.text = "Ready."
-	status_label.custom_minimum_size = Vector2(150, 22)
-	status_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	status_label.add_theme_color_override("font_color", Color("202020"))
-	status_label.set_meta("always_status_tooltip", true)
-	status_metrics.add_child(status_label)
-	status_metrics.add_child(VSeparator.new())
-	status_weather_label = _status_metric_label("Weather: --", 120)
-	status_weather_label.text_overrun_behavior = TextServer.OVERRUN_NO_TRIMMING
-	status_metrics.add_child(status_weather_label)
-	status_metrics.add_child(VSeparator.new())
-	status_rci_graph = RciStatusView.new()
-	status_metrics.add_child(status_rci_graph)
-	status_metrics.add_child(VSeparator.new())
-	status_reports_label = _status_metric_label("News: None", 180, true)
-	status_reports_label.set_meta("always_status_tooltip", true)
-	status_metrics.add_child(status_reports_label)
-	status_metrics.add_child(VSeparator.new())
-	status_speed_label = _status_metric_label("Speed: --", 122)
-	status_metrics.add_child(status_speed_label)
+	city_status_bar = CityStatusBarView.new()
+	page.add_child(city_status_bar)
+	status_label = city_status_bar.message_label
+	status_weather_label = city_status_bar.weather_label
+	status_rci_graph = city_status_bar.rci_graph
+	status_reports_label = city_status_bar.reports_label
+	status_speed_label = city_status_bar.speed_label
 	_sync_speed_ui()
 
 	file_dialog = FileDialog.new()
