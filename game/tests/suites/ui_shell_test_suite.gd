@@ -21,6 +21,7 @@ const PictureNoticeDialogUi = preload("res://src/ui/picture_notice_dialog.gd")
 const AboutDialogUi = preload("res://src/ui/about_dialog.gd")
 const SaveChangesDialogUi = preload("res://src/ui/save_changes_dialog.gd")
 const CityStatusBarUi = preload("res://src/ui/city_status_bar.gd")
+const FileDialogsUi = preload("res://src/ui/file_dialog_factory.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -318,6 +319,28 @@ func _test_main_menu() -> void:
 		"City status bar owns its metrics and RCI layout",
 	)
 	status_bar.free()
+	var city_open_dialog := FileDialogsUi.city_open()
+	var city_save_dialog := FileDialogsUi.city_save()
+	var tile_set_dialog := FileDialogsUi.tile_set_open()
+	var bitmap_dialog := FileDialogsUi.city_bitmap_save()
+	var pdf_dialog := FileDialogsUi.city_pdf_save()
+	_check(
+		city_open_dialog.access == FileDialog.ACCESS_FILESYSTEM
+		and city_open_dialog.file_mode == FileDialog.FILE_MODE_OPEN_FILE
+		and city_open_dialog.filters.size() == 2
+		and city_open_dialog.filters[0].contains("*.SC2")
+		and city_open_dialog.filters[1].contains("*.SCN")
+		and city_save_dialog.file_mode == FileDialog.FILE_MODE_SAVE_FILE
+		and tile_set_dialog.filters[0].contains("*.MIF")
+		and bitmap_dialog.filters[0].contains("*.BMP")
+		and pdf_dialog.filters[0].contains("*.PDF"),
+		"File dialog factory owns modes and file filters",
+	)
+	city_open_dialog.free()
+	city_save_dialog.free()
+	tile_set_dialog.free()
+	bitmap_dialog.free()
+	pdf_dialog.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

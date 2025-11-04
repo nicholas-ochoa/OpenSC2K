@@ -50,6 +50,7 @@ const PictureNoticeDialogView = preload("res://src/ui/picture_notice_dialog.gd")
 const AboutDialogView = preload("res://src/ui/about_dialog.gd")
 const SaveChangesDialogView = preload("res://src/ui/save_changes_dialog.gd")
 const CityStatusBarView = preload("res://src/ui/city_status_bar.gd")
+const FileDialogs = preload("res://src/ui/file_dialog_factory.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -905,40 +906,24 @@ func _build_interface(toolbar_art: Image) -> void:
 	status_speed_label = city_status_bar.speed_label
 	_sync_speed_ui()
 
-	file_dialog = FileDialog.new()
-	file_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	file_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	file_dialog.add_filter("*.SC2, *.sc2", "SimCity 2000 cities")
-	file_dialog.add_filter("*.SCN, *.scn", "SimCity 2000 scenarios")
+	file_dialog = FileDialogs.city_open()
 	file_dialog.file_selected.connect(_load_city)
 	add_child(file_dialog)
 
-	save_dialog = FileDialog.new()
-	save_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	save_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	save_dialog.add_filter("*.SC2, *.sc2", "SimCity 2000 cities")
+	save_dialog = FileDialogs.city_save()
 	save_dialog.file_selected.connect(_on_save_path_selected)
 	save_dialog.canceled.connect(_on_save_dialog_canceled)
 	add_child(save_dialog)
 
-	tile_set_dialog = FileDialog.new()
-	tile_set_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	tile_set_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	tile_set_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
+	tile_set_dialog = FileDialogs.tile_set_open()
 	tile_set_dialog.file_selected.connect(_load_tile_set)
 	add_child(tile_set_dialog)
 
-	scurk_city_export_dialog = FileDialog.new()
-	scurk_city_export_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	scurk_city_export_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	scurk_city_export_dialog.add_filter("*.BMP, *.bmp", "Windows indexed bitmap")
+	scurk_city_export_dialog = FileDialogs.city_bitmap_save()
 	scurk_city_export_dialog.file_selected.connect(_export_scurk_city_bmp)
 	add_child(scurk_city_export_dialog)
 
-	scurk_print_pdf_dialog = FileDialog.new()
-	scurk_print_pdf_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	scurk_print_pdf_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	scurk_print_pdf_dialog.add_filter("*.PDF, *.pdf", "Printable PDF")
+	scurk_print_pdf_dialog = FileDialogs.city_pdf_save()
 	scurk_print_pdf_dialog.file_selected.connect(_save_scurk_city_pdf)
 	add_child(scurk_print_pdf_dialog)
 
