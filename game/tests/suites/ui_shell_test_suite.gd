@@ -22,6 +22,7 @@ const AboutDialogUi = preload("res://src/ui/about_dialog.gd")
 const SaveChangesDialogUi = preload("res://src/ui/save_changes_dialog.gd")
 const CityStatusBarUi = preload("res://src/ui/city_status_bar.gd")
 const FileDialogsUi = preload("res://src/ui/file_dialog_factory.gd")
+const CityMenuBarUi = preload("res://src/ui/city_menu_bar.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -341,6 +342,28 @@ func _test_main_menu() -> void:
 	tile_set_dialog.free()
 	bitmap_dialog.free()
 	pdf_dialog.free()
+	var menu_bar := CityMenuBarUi.new()
+	menu_bar._ready()
+	var pause_index := menu_bar.speed_menu.get_popup().get_item_index(0)
+	_check(
+		menu_bar.file_menu.get_popup().item_count == 8
+		and menu_bar.speed_menu.get_popup().item_count == 5
+		and menu_bar.speed_menu.get_popup().is_item_checkable(pause_index)
+		and menu_bar.options_menu.disabled
+		and menu_bar.view_menu.get_popup().get_item_index(
+			CityMenuBarUi.MENU_VIEW_CITY_MAP
+		) >= 0
+		and menu_bar.disasters_menu.get_popup().get_item_index(
+			CityMenuBarUi.MENU_NO_DISASTERS
+		) >= 0
+		and menu_bar.city_label.text == "No city loaded"
+		and menu_bar.population_label.text == "Population: --"
+		and menu_bar.date_label.text == "--/--/----"
+		and menu_bar.money_label.text == "$--"
+		and menu_bar.fps_label.text == "FPS: --",
+		"City menu bar owns menus and city metrics",
+	)
+	menu_bar.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

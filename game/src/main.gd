@@ -51,6 +51,7 @@ const AboutDialogView = preload("res://src/ui/about_dialog.gd")
 const SaveChangesDialogView = preload("res://src/ui/save_changes_dialog.gd")
 const CityStatusBarView = preload("res://src/ui/city_status_bar.gd")
 const FileDialogs = preload("res://src/ui/file_dialog_factory.gd")
+const CityMenuBarView = preload("res://src/ui/city_menu_bar.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -141,20 +142,20 @@ const NEWSPAPER_STRING_LAST := 391
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const STATUS_REPORT_ROTATION_SECONDS := 7.0
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
-const MENU_AUTO_BUDGET := 0x8004
-const MENU_AUTO_GOTO := 0x8005
-const MENU_SOUND_EFFECTS := 0x8006
-const MENU_MUSIC := 0x8007
-const MENU_NO_DISASTERS := 0x800e
-const MENU_VIEW_CITY_MAP := 0x8100
-const MENU_VIEW_BUILDINGS := 0x8101
-const MENU_VIEW_NETWORKS := 0x8102
-const MENU_VIEW_WATER := 0x8103
-const MENU_VIEW_TREES := 0x8104
-const MENU_VIEW_ZONES := 0x8105
-const MENU_VIEW_SIGNS := 0x8106
-const MENU_VIEW_PIPES := 0x8107
-const MENU_SCURK_PLACE_PRINT := 0x8200
+const MENU_AUTO_BUDGET := CityMenuBarView.MENU_AUTO_BUDGET
+const MENU_AUTO_GOTO := CityMenuBarView.MENU_AUTO_GOTO
+const MENU_SOUND_EFFECTS := CityMenuBarView.MENU_SOUND_EFFECTS
+const MENU_MUSIC := CityMenuBarView.MENU_MUSIC
+const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
+const MENU_VIEW_CITY_MAP := CityMenuBarView.MENU_VIEW_CITY_MAP
+const MENU_VIEW_BUILDINGS := CityMenuBarView.MENU_VIEW_BUILDINGS
+const MENU_VIEW_NETWORKS := CityMenuBarView.MENU_VIEW_NETWORKS
+const MENU_VIEW_WATER := CityMenuBarView.MENU_VIEW_WATER
+const MENU_VIEW_TREES := CityMenuBarView.MENU_VIEW_TREES
+const MENU_VIEW_ZONES := CityMenuBarView.MENU_VIEW_ZONES
+const MENU_VIEW_SIGNS := CityMenuBarView.MENU_VIEW_SIGNS
+const MENU_VIEW_PIPES := CityMenuBarView.MENU_VIEW_PIPES
+const MENU_SCURK_PLACE_PRINT := CityMenuBarView.MENU_SCURK_PLACE_PRINT
 const FOREST_PROTEST_BITMAP_ID := 403
 const FOREST_PROTEST_STRING_ID := 236
 const BUILDING_OBJECTION_STRING_ID := 106
@@ -239,6 +240,7 @@ var palette_cycle_texture: ImageTexture
 
 var map_view: CityMapControl
 var city_label: Label
+var city_menu_bar: CityMenuBar
 var status_label: Label
 var status_population_label: Label
 var status_weather_label: Label
@@ -586,124 +588,25 @@ func _build_interface(toolbar_art: Image) -> void:
 	page.add_theme_constant_override("separation", 0)
 	add_child(page)
 
-	var menu_bar := PanelContainer.new()
-	menu_bar.custom_minimum_size = Vector2(0, 25)
-	menu_bar.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("ffffff"), 0))
-	page.add_child(menu_bar)
-	var menu_row := HBoxContainer.new()
-	menu_row.add_theme_constant_override("separation", 0)
-	menu_bar.add_child(menu_row)
-	_add_menu(menu_row, "File", [
-		["New City...", 0], ["Open City...", 1], ["Save City As...", 2],
-		["Load Tile Set...", 3], ["Restore Original Tile Set", 4],
-		["SCURK Place & Print...", MENU_SCURK_PLACE_PRINT],
-		["Main Menu", 5], ["Exit", 6],
-	], _on_file_menu)
-	speed_menu = _add_menu(menu_row, "Speed", [
-		["Pause", 0], ["Turtle", 1], ["Llama", 2], ["Cheetah", 3],
-		["African Swallow", 4],
-	], _on_speed_menu)
-	for speed_id in range(5):
-		var speed_index := speed_menu.get_popup().get_item_index(speed_id)
-		speed_menu.get_popup().set_item_as_checkable(speed_index, true)
-	options_menu = _add_menu(menu_row, "Options", [
-		["Auto-Budget", MENU_AUTO_BUDGET], ["Auto-Goto", MENU_AUTO_GOTO],
-		["Sound Effects", MENU_SOUND_EFFECTS], ["Music", MENU_MUSIC],
-	], _on_options_menu)
-	for option_id in [MENU_AUTO_BUDGET, MENU_AUTO_GOTO, MENU_SOUND_EFFECTS, MENU_MUSIC]:
-		var option_index := options_menu.get_popup().get_item_index(option_id)
-		options_menu.get_popup().set_item_as_checkable(option_index, true)
-	options_menu.disabled = true
-	view_menu = _add_menu(menu_row, "View", [
-		["City View", 0], ["Underground View", 1],
-		["City Map...", MENU_VIEW_CITY_MAP],
-	], _on_view_menu)
-	view_menu.get_popup().add_separator()
-	for view_item in [
-		["Show Buildings", MENU_VIEW_BUILDINGS],
-		["Show Networks", MENU_VIEW_NETWORKS],
-		["Show Water", MENU_VIEW_WATER],
-		["Show Trees", MENU_VIEW_TREES],
-		["Show Zones", MENU_VIEW_ZONES],
-		["Show Signs", MENU_VIEW_SIGNS],
-	]:
-		view_menu.get_popup().add_check_item(view_item[0], view_item[1])
-	disasters_menu = _add_menu(menu_row, "Disasters", [
-		["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],
-		["Air Crash", 5], ["Earthquake", 6], ["Tornado", 7], ["Monster", 8],
-		["Meltdown", 9], ["Microwave", 10], ["Volcano", 11], ["Firestorm", 12],
-		["Mass Riots", 13], ["Mass Floods", 14], ["Pollution", 15],
-		["Hurricane", 16], ["Helicopter Crash", 17], ["Plane Crash", 18],
-	], _on_disaster_menu)
-	disasters_menu.get_popup().add_separator()
-	disasters_menu.get_popup().add_check_item("No Disasters", MENU_NO_DISASTERS)
-	var implemented_disasters := {
-		1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true,
-		9: true, 10: true, 11: true, 12: true, 13: true, 14: true, 15: true,
-		16: true, 17: true, 18: true,
-	}
-	for item_index in disasters_menu.get_popup().item_count:
-		var disaster_id := disasters_menu.get_popup().get_item_id(item_index)
-		if disaster_id > 0 and disaster_id != MENU_NO_DISASTERS:
-			disasters_menu.get_popup().set_item_disabled(
-				item_index, not implemented_disasters.has(disaster_id)
-			)
-	disasters_menu.tooltip_text = (
-		"Air Crash and Helicopter Crash do nothing when selected, as in the original Windows game."
-	)
-	_add_menu(menu_row, "Windows", [
-		["Budget", 0], ["Ordinances", 1], ["Population", 2],
-		["City Industry", 3], ["Graphs", 4], ["Neighbors", 5],
-		["City Map", 6],
-	], _on_windows_menu)
-	_add_menu(menu_row, "Newspaper", [["Show Latest Reports", 0]], _on_newspaper_menu)
-	_add_menu(menu_row, "Help", [["City Window Help", 0]], _on_help_menu)
-	var menu_spacer := Control.new()
-	menu_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	menu_row.add_child(menu_spacer)
-	menu_row.add_child(VSeparator.new())
-	var city_field := MarginContainer.new()
-	city_field.name = "CityNameField"
-	city_field.custom_minimum_size = Vector2(174, 0)
-	city_field.add_theme_constant_override("margin_left", 9)
-	city_field.add_theme_constant_override("margin_right", 4)
-	menu_row.add_child(city_field)
-	city_label = Label.new()
-	city_label.text = "No city loaded"
-	city_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	city_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	city_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	city_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	city_label.tooltip_text = city_label.text
-	city_field.add_child(city_label)
-	menu_row.add_child(VSeparator.new())
-	status_population_label = _status_metric_label("Population: --", 148)
-	status_population_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	menu_row.add_child(status_population_label)
-	menu_row.add_child(VSeparator.new())
-	title_stats_label = Label.new()
-	title_stats_label.text = "--/--/----"
-	title_stats_label.custom_minimum_size = Vector2(92, 0)
-	title_stats_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title_stats_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title_stats_label.tooltip_text = "Current city date"
-	menu_row.add_child(title_stats_label)
-	menu_row.add_child(VSeparator.new())
-	title_money_label = Label.new()
-	title_money_label.text = "$--"
-	title_money_label.custom_minimum_size = Vector2(92, 0)
-	title_money_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	title_money_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title_money_label.tooltip_text = "Current city funds"
-	menu_row.add_child(title_money_label)
-	menu_row.add_child(VSeparator.new())
-	fps_label = Label.new()
-	fps_label.text = "FPS: --"
-	fps_label.custom_minimum_size = Vector2(72, 0)
-	fps_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	fps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	fps_label.tooltip_text = "Current rendered frames per second"
-	menu_row.add_child(fps_label)
+	city_menu_bar = CityMenuBarView.new()
+	city_menu_bar.file_menu_requested.connect(_on_file_menu)
+	city_menu_bar.speed_menu_requested.connect(_on_speed_menu)
+	city_menu_bar.options_menu_requested.connect(_on_options_menu)
+	city_menu_bar.view_menu_requested.connect(_on_view_menu)
+	city_menu_bar.disaster_menu_requested.connect(_on_disaster_menu)
+	city_menu_bar.windows_menu_requested.connect(_on_windows_menu)
+	city_menu_bar.newspaper_menu_requested.connect(_on_newspaper_menu)
+	city_menu_bar.help_menu_requested.connect(_on_help_menu)
+	page.add_child(city_menu_bar)
+	speed_menu = city_menu_bar.speed_menu
+	options_menu = city_menu_bar.options_menu
+	view_menu = city_menu_bar.view_menu
+	disasters_menu = city_menu_bar.disasters_menu
+	city_label = city_menu_bar.city_label
+	status_population_label = city_menu_bar.population_label
+	title_stats_label = city_menu_bar.date_label
+	title_money_label = city_menu_bar.money_label
+	fps_label = city_menu_bar.fps_label
 
 	var content := HBoxContainer.new()
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -1582,30 +1485,6 @@ func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
 	box.content_margin_right = 5
 	box.content_margin_bottom = 3
 	return box
-
-
-func _status_metric_label(text_value: String, minimum_width: int, expand := false) -> Label:
-	var label := Label.new()
-	label.text = text_value
-	label.custom_minimum_size = Vector2(minimum_width, 20)
-	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	if expand:
-		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	return label
-
-
-func _add_menu(parent: Control, label: String, items: Array, callback: Callable) -> MenuButton:
-	var menu := MenuButton.new()
-	menu.text = label
-	menu.flat = true
-	menu.custom_minimum_size = Vector2(0, 23)
-	parent.add_child(menu)
-	for item in items:
-		menu.get_popup().add_item(item[0], item[1])
-	if callback.is_valid():
-		menu.get_popup().id_pressed.connect(callback)
-	return menu
 
 
 func _toolbar_group_icon(toolbar_art: Image, group_index: int) -> Texture2D:
