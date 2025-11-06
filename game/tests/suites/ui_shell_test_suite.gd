@@ -23,6 +23,7 @@ const SaveChangesDialogUi = preload("res://src/ui/save_changes_dialog.gd")
 const CityStatusBarUi = preload("res://src/ui/city_status_bar.gd")
 const FileDialogsUi = preload("res://src/ui/file_dialog_factory.gd")
 const CityMenuBarUi = preload("res://src/ui/city_menu_bar.gd")
+const CityToolbarUi = preload("res://src/ui/city_toolbar.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -364,6 +365,21 @@ func _test_main_menu() -> void:
 		"City menu bar owns menus and city metrics",
 	)
 	menu_bar.free()
+	var toolbar := CityToolbarUi.new(null)
+	toolbar._ready()
+	_check(
+		toolbar.toolbar_buttons.size() == 18
+		and toolbar.rotate_counter_clockwise_button.disabled
+		and toolbar.rotate_clockwise_button.disabled
+		and toolbar.zoom_label.text == "100%"
+		and toolbar.child_tool_grid.columns == 1
+		and toolbar.undo_button.disabled
+		and toolbar.view_visibility_checks.size() == 7
+		and toolbar.view_visibility_checks["buildings"].button_pressed
+		and toolbar.view_visibility_checks["pipes"].button_pressed,
+		"City toolbar owns tool, view, and layer controls",
+	)
+	toolbar.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

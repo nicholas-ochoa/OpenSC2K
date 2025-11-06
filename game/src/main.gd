@@ -52,6 +52,7 @@ const SaveChangesDialogView = preload("res://src/ui/save_changes_dialog.gd")
 const CityStatusBarView = preload("res://src/ui/city_status_bar.gd")
 const FileDialogs = preload("res://src/ui/file_dialog_factory.gd")
 const CityMenuBarView = preload("res://src/ui/city_menu_bar.gd")
+const CityToolbarView = preload("res://src/ui/city_toolbar.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -271,7 +272,7 @@ var active_tool_group_label: Label
 var child_tool_scroll: ScrollContainer
 var child_tool_grid: GridContainer
 var child_tool_buttons: Dictionary = {}
-var toolbar_art_source: Image
+var city_toolbar: CityToolbar
 var undo_button: Button
 var title_stats_label: Label
 var title_money_label: Label
@@ -576,7 +577,6 @@ func _consume_simulation_result(result: Dictionary) -> void:
 
 
 func _build_interface(toolbar_art: Image) -> void:
-	toolbar_art_source = toolbar_art
 	theme = _create_classic_theme()
 	var background := ColorRect.new()
 	background.color = Color("c0c0c0")
@@ -613,170 +613,31 @@ func _build_interface(toolbar_art: Image) -> void:
 	content.add_theme_constant_override("separation", 4)
 	page.add_child(content)
 
-	var toolbar_panel := PanelContainer.new()
-	toolbar_panel.custom_minimum_size = Vector2(195, 0)
-	toolbar_panel.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	toolbar_panel.add_theme_stylebox_override("panel", _classic_box(Color("c0c0c0"), Color("808080"), 2))
-	content.add_child(toolbar_panel)
-	var toolbar_margin := MarginContainer.new()
-	for side in ["left", "top", "right", "bottom"]:
-		toolbar_margin.add_theme_constant_override("margin_" + side, 6)
-	toolbar_panel.add_child(toolbar_margin)
-	var toolbar := VBoxContainer.new()
-	toolbar.add_theme_constant_override("separation", 4)
-	toolbar_margin.add_child(toolbar)
-	var toolbar_title := Label.new()
-	toolbar_title.text = "City Toolbar"
-	toolbar_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	toolbar_title.add_theme_color_override("font_color", Color("000080"))
-	toolbar_title.add_theme_font_size_override("font_size", 14)
-	toolbar.add_child(toolbar_title)
-
-	var tool_grid := GridContainer.new()
-	tool_grid.columns = 3
-	tool_grid.add_theme_constant_override("h_separation", 3)
-	tool_grid.add_theme_constant_override("v_separation", 3)
-	tool_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	toolbar.add_child(tool_grid)
-	var tool_button_group := ButtonGroup.new()
-	for group_index in range(15):
-		_add_toolbar_group_button(
-			tool_grid, tool_button_group, toolbar_art, group_index
-		)
-
-	var special_separator := HSeparator.new()
-	toolbar.add_child(special_separator)
-	var special_tool_grid := GridContainer.new()
-	special_tool_grid.columns = 3
-	special_tool_grid.add_theme_constant_override("h_separation", 3)
-	special_tool_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	toolbar.add_child(special_tool_grid)
-	for group_index in range(15, Tools.GROUPS.size()):
-		_add_toolbar_group_button(
-			special_tool_grid, tool_button_group, toolbar_art, group_index
-		)
-
-	var camera_separator := HSeparator.new()
-	toolbar.add_child(camera_separator)
-
-	var camera_row := HBoxContainer.new()
-	camera_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	camera_row.add_theme_constant_override("separation", 3)
-	toolbar.add_child(camera_row)
-	var rotate_label := Label.new()
-	rotate_label.text = "Rotate"
-	rotate_label.custom_minimum_size = Vector2(48, 0)
-	camera_row.add_child(rotate_label)
-	rotate_counter_clockwise_button = _icon_button(
-		toolbar_art, Rect2i(405, 0, 27, 23), "Rotate Counter-Clockwise (Q)"
+	city_toolbar = CityToolbarView.new(toolbar_art)
+	city_toolbar.group_requested.connect(_choose_tool_group)
+	city_toolbar.rotate_requested.connect(_rotate_city)
+	city_toolbar.zoom_out_requested.connect(_zoom_out)
+	city_toolbar.zoom_in_requested.connect(_zoom_in)
+	city_toolbar.undo_requested.connect(_undo_last_edit)
+	city_toolbar.overlay_requested.connect(_set_overlay)
+	city_toolbar.city_map_requested.connect(_open_city_map_window)
+	city_toolbar.surface_visibility_requested.connect(_set_surface_visibility)
+	city_toolbar.underground_pipes_visibility_requested.connect(
+		_set_underground_pipes_visible
 	)
-	rotate_counter_clockwise_button.disabled = true
-	rotate_counter_clockwise_button.pressed.connect(_rotate_city.bind(true))
-	camera_row.add_child(rotate_counter_clockwise_button)
-	rotate_clockwise_button = _icon_button(
-		toolbar_art, Rect2i(433, 0, 27, 23), "Rotate Clockwise (W)"
-	)
-	rotate_clockwise_button.disabled = true
-	rotate_clockwise_button.pressed.connect(_rotate_city.bind(false))
-	camera_row.add_child(rotate_clockwise_button)
-
-	var zoom_row := HBoxContainer.new()
-	zoom_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	zoom_row.add_theme_constant_override("separation", 3)
-	toolbar.add_child(zoom_row)
-	var zoom_heading := Label.new()
-	zoom_heading.text = "Zoom"
-	zoom_heading.custom_minimum_size = Vector2(48, 0)
-	zoom_row.add_child(zoom_heading)
-	zoom_out_button = _icon_button(toolbar_art, Rect2i(462, 0, 23, 23), "Zoom Out")
-	zoom_out_button.pressed.connect(_zoom_out)
-	zoom_row.add_child(zoom_out_button)
-	zoom_in_button = _icon_button(toolbar_art, Rect2i(486, 0, 23, 23), "Zoom In")
-	zoom_in_button.pressed.connect(_zoom_in)
-	zoom_row.add_child(zoom_in_button)
-	zoom_label = Label.new()
-	zoom_label.text = "100%"
-	zoom_label.custom_minimum_size = Vector2(38, 0)
-	zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	zoom_row.add_child(zoom_label)
-
-	active_tool_group_label = Label.new()
-	active_tool_group_label.text = "Selected Group"
-	active_tool_group_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	active_tool_group_label.add_theme_color_override("font_color", Color("000080"))
-	active_tool_group_label.add_theme_font_size_override("font_size", 13)
-	toolbar.add_child(active_tool_group_label)
-	child_tool_scroll = ScrollContainer.new()
-	child_tool_scroll.custom_minimum_size = Vector2(0, 96)
-	child_tool_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	child_tool_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	child_tool_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	toolbar.add_child(child_tool_scroll)
-	child_tool_grid = GridContainer.new()
-	child_tool_grid.columns = 1
-	child_tool_grid.add_theme_constant_override("h_separation", 3)
-	child_tool_grid.add_theme_constant_override("v_separation", 3)
-	child_tool_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	child_tool_scroll.add_child(child_tool_grid)
-	undo_button = Button.new()
-	undo_button.text = "Undo Last Edit"
-	undo_button.disabled = true
-	undo_button.pressed.connect(_undo_last_edit)
-	toolbar.add_child(undo_button)
-
-	var view_separator := HSeparator.new()
-	toolbar.add_child(view_separator)
-	var view_heading := Label.new()
-	view_heading.text = "City View"
-	view_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	view_heading.add_theme_color_override("font_color", Color("000080"))
-	toolbar.add_child(view_heading)
-	var view_grid := GridContainer.new()
-	view_grid.columns = 2
-	view_grid.add_theme_constant_override("h_separation", 4)
-	view_grid.add_theme_constant_override("v_separation", 4)
-	toolbar.add_child(view_grid)
-	for mode in MAP_DISPLAY_MODES:
-		var button := Button.new()
-		button.text = mode.capitalize()
-		button.tooltip_text = "Show the %s isometric view." % mode
-		button.pressed.connect(_set_overlay.bind(mode))
-		view_grid.add_child(button)
-	var city_map_button := Button.new()
-	city_map_button.text = "City Map..."
-	city_map_button.tooltip_text = "Open the tabbed two-dimensional city maps."
-	city_map_button.pressed.connect(_open_city_map_window)
-	view_grid.add_child(city_map_button)
-
-	view_layers_heading = Label.new()
-	view_layers_heading.text = "Visible Layers"
-	view_layers_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	view_layers_heading.add_theme_color_override("font_color", Color("000080"))
-	toolbar.add_child(view_layers_heading)
-	var layers_grid := GridContainer.new()
-	layers_grid.columns = 2
-	layers_grid.add_theme_constant_override("h_separation", 4)
-	layers_grid.add_theme_constant_override("v_separation", 2)
-	toolbar.add_child(layers_grid)
-	for layer in [
-		["Buildings", "buildings"], ["Networks", "networks"],
-		["Water", "water"], ["Trees", "trees"],
-		["Zones", "zones"], ["Signs", "signs"],
-	]:
-		var check := CheckBox.new()
-		check.text = layer[0]
-		check.tooltip_text = "Show or hide %s in the city view." % str(layer[0]).to_lower()
-		check.button_pressed = true
-		check.toggled.connect(_set_surface_visibility.bind(layer[1]))
-		view_visibility_checks[layer[1]] = check
-		layers_grid.add_child(check)
-	var pipes_check := CheckBox.new()
-	pipes_check.text = "Pipes"
-	pipes_check.tooltip_text = "Show or hide pipes in the underground view."
-	pipes_check.button_pressed = true
-	pipes_check.toggled.connect(_set_underground_pipes_visible)
-	view_visibility_checks["pipes"] = pipes_check
-	layers_grid.add_child(pipes_check)
+	content.add_child(city_toolbar)
+	toolbar_buttons = city_toolbar.toolbar_buttons
+	rotate_counter_clockwise_button = city_toolbar.rotate_counter_clockwise_button
+	rotate_clockwise_button = city_toolbar.rotate_clockwise_button
+	zoom_out_button = city_toolbar.zoom_out_button
+	zoom_in_button = city_toolbar.zoom_in_button
+	zoom_label = city_toolbar.zoom_label
+	active_tool_group_label = city_toolbar.active_tool_group_label
+	child_tool_scroll = city_toolbar.child_tool_scroll
+	child_tool_grid = city_toolbar.child_tool_grid
+	undo_button = city_toolbar.undo_button
+	view_layers_heading = city_toolbar.view_layers_heading
+	view_visibility_checks = city_toolbar.view_visibility_checks
 
 	var map_panel := PanelContainer.new()
 	map_panel.custom_minimum_size = Vector2(560, 480)
@@ -1487,82 +1348,13 @@ func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
 	return box
 
 
-func _toolbar_group_icon(toolbar_art: Image, group_index: int) -> Texture2D:
-	const REGIONS := [
-		Rect2i(0, 0, 23, 23), Rect2i(24, 0, 26, 23), Rect2i(50, 0, 20, 23),
-		Rect2i(70, 0, 25, 23), Rect2i(95, 0, 21, 23), Rect2i(116, 0, 24, 23),
-		Rect2i(140, 0, 23, 23), Rect2i(163, 0, 23, 23), Rect2i(186, 0, 23, 23),
-		Rect2i(209, 0, 23, 23), Rect2i(232, 0, 23, 23), Rect2i(255, 0, 23, 23),
-		Rect2i(278, 0, 23, 23), Rect2i(302, 0, 23, 23), Rect2i(325, 0, 23, 23),
-		Rect2i(348, 0, 29, 23), Rect2i(377, 0, 26, 23), Rect2i(510, 0, 23, 23),
-	]
-	if group_index < 0 or group_index >= REGIONS.size():
-		return null
-	return _toolbar_icon(toolbar_art, REGIONS[group_index])
-
-
-func _add_toolbar_group_button(
-	parent: Control,
-	button_group: ButtonGroup,
-	toolbar_art: Image,
-	group_index: int
-) -> void:
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(46, 30)
-	button.toggle_mode = true
-	button.button_group = button_group
-	button.tooltip_text = Tools.GROUPS[group_index].name
-	button.icon = _toolbar_group_icon(toolbar_art, group_index)
-	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-	button.text = str(group_index + 1) if button.icon == null else ""
-	button.pressed.connect(_choose_tool_group.bind(group_index))
-	parent.add_child(button)
-	toolbar_buttons.append(button)
-
-
-func _toolbar_icon(toolbar_art: Image, region: Rect2i) -> Texture2D:
-	if toolbar_art == null or not Rect2i(Vector2i.ZERO, toolbar_art.get_size()).encloses(region):
-		return null
-	var image := toolbar_art.get_region(region)
-	image.convert(Image.FORMAT_RGBA8)
-	var background := image.get_pixel(0, 0)
-	var minimum := Vector2i(image.get_width(), image.get_height())
-	var maximum := Vector2i(-1, -1)
-	for y in image.get_height():
-		for x in image.get_width():
-			var color := image.get_pixel(x, y)
-			if color.is_equal_approx(background):
-				image.set_pixel(x, y, Color(color.r, color.g, color.b, 0.0))
-			else:
-				minimum.x = mini(minimum.x, x)
-				minimum.y = mini(minimum.y, y)
-				maximum.x = maxi(maximum.x, x)
-				maximum.y = maxi(maximum.y, y)
-	if maximum.x < minimum.x:
-		return null
-	var bounds := Rect2i(minimum, maximum - minimum + Vector2i.ONE)
-	return ImageTexture.create_from_image(image.get_region(bounds))
-
-
-func _icon_button(toolbar_art: Image, region: Rect2i, tooltip: String) -> Button:
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(36, 30)
-	button.icon = _toolbar_icon(toolbar_art, region)
-	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-	button.text = tooltip.left(1) if button.icon == null else ""
-	button.tooltip_text = tooltip
-	return button
-
-
 func _choose_tool_group(group_index: int) -> void:
 	_select_tool_group(group_index)
 
 
 func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if palette == null or large_sprites == null or not large_sprites.is_valid():
-		return _toolbar_group_icon(toolbar_art_source, group_index)
+		return city_toolbar.group_icon(group_index) if city_toolbar != null else null
 	var tile_id := Buildings.tile_for_tool(group_index, subtool_index)
 	var sprite_id := 1000 + tile_id if tile_id > 0 else -1
 	if sprite_id < 0:
@@ -1578,13 +1370,13 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 		}
 		sprite_id = int(REPRESENTATIVE_SPRITES.get(table_index, -1))
 	if sprite_id < 0:
-		return _toolbar_group_icon(toolbar_art_source, group_index)
+		return city_toolbar.group_icon(group_index) if city_toolbar != null else null
 	var entry := large_sprites.find_sprite(sprite_id)
 	if entry == null:
-		return _toolbar_group_icon(toolbar_art_source, group_index)
+		return city_toolbar.group_icon(group_index) if city_toolbar != null else null
 	var rendered := entry.create_image(palette)
 	if not rendered.get("ok", false):
-		return _toolbar_group_icon(toolbar_art_source, group_index)
+		return city_toolbar.group_icon(group_index) if city_toolbar != null else null
 	var image: Image = rendered.image.duplicate()
 	var scale := minf(1.0, minf(30.0 / image.get_width(), 28.0 / image.get_height()))
 	if scale < 1.0:
