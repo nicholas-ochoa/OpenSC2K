@@ -141,7 +141,6 @@ const MAP_DISPLAY_MODES := ["city", "underground"]
 const NEWSPAPER_STRING_FIRST := 347
 const NEWSPAPER_STRING_LAST := 391
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
-const STATUS_REPORT_ROTATION_SECONDS := 7.0
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
 const MENU_AUTO_BUDGET := CityMenuBarView.MENU_AUTO_BUDGET
 const MENU_AUTO_GOTO := CityMenuBarView.MENU_AUTO_GOTO
@@ -213,7 +212,6 @@ var dispatch_initialized := false
 var simulation_engine: SimulationEngine
 var speed_controller: GameSpeedController
 var simulation_map_dirty := false
-var recent_news := PackedStringArray()
 var annual_budget_pending := false
 var military_proposal_pending := false
 var game_over_active := false
@@ -240,14 +238,8 @@ var palette_cycle_ticks := 0
 var palette_cycle_texture: ImageTexture
 
 var map_view: CityMapControl
-var city_label: Label
 var city_menu_bar: CityMenuBar
 var status_label: Label
-var status_population_label: Label
-var status_weather_label: Label
-var status_rci_graph: RciStatusControl
-var status_reports_label: Label
-var status_speed_label: Label
 var city_status_bar: CityStatusBar
 var file_dialog: FileDialog
 var save_dialog: FileDialog
@@ -274,9 +266,6 @@ var child_tool_grid: GridContainer
 var child_tool_buttons: Dictionary = {}
 var city_toolbar: CityToolbar
 var undo_button: Button
-var title_stats_label: Label
-var title_money_label: Label
-var fps_label: Label
 var zoom_label: Label
 var zoom_in_button: Button
 var zoom_out_button: Button
@@ -329,8 +318,6 @@ var game_over_dialog: AcceptDialog
 var military_dialog: ConfirmationDialog
 var scenario_dialog: ScenarioIntroDialog
 var fps_update_seconds := 0.0
-var status_report_index := 0
-var status_report_elapsed_seconds := 0.0
 
 
 func _ready() -> void:
@@ -438,7 +425,8 @@ func _notification(what: int) -> void:
 func _process(delta: float) -> void:
 	audio_controller.advance(delta * 1000.0)
 	_update_fps(delta)
-	_update_status_report_rotation(delta)
+	if city_status_bar != null:
+		city_status_bar.update_report_rotation(delta)
 	_poll_static_render()
 	_start_pending_static_render()
 	if speed_controller == null or city == null:
@@ -602,11 +590,6 @@ func _build_interface(toolbar_art: Image) -> void:
 	options_menu = city_menu_bar.options_menu
 	view_menu = city_menu_bar.view_menu
 	disasters_menu = city_menu_bar.disasters_menu
-	city_label = city_menu_bar.city_label
-	status_population_label = city_menu_bar.population_label
-	title_stats_label = city_menu_bar.date_label
-	title_money_label = city_menu_bar.money_label
-	fps_label = city_menu_bar.fps_label
 
 	var content := HBoxContainer.new()
 	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -664,10 +647,6 @@ func _build_interface(toolbar_art: Image) -> void:
 	city_status_bar = CityStatusBarView.new()
 	page.add_child(city_status_bar)
 	status_label = city_status_bar.message_label
-	status_weather_label = city_status_bar.weather_label
-	status_rci_graph = city_status_bar.rci_graph
-	status_reports_label = city_status_bar.reports_label
-	status_speed_label = city_status_bar.speed_label
 	_sync_speed_ui()
 
 	file_dialog = FileDialogs.city_open()
@@ -1448,11 +1427,12 @@ func _update_zoom_controls(percent: int) -> void:
 
 func _update_fps(delta: float) -> void:
 	fps_update_seconds += delta
-	if fps_label == null or fps_update_seconds < 0.25:
+	if city_menu_bar == null or fps_update_seconds < 0.25:
 		return
 	fps_update_seconds = fmod(fps_update_seconds, 0.25)
-	fps_label.text = "FPS: %d" % Engine.get_frames_per_second()
-	_refresh_status_tooltips()
+	city_menu_bar.set_fps(Engine.get_frames_per_second())
+	if city_status_bar != null:
+		city_status_bar.refresh_tooltips()
 
 
 func _on_city_zoom_changed(percent: int) -> void:
@@ -2576,7 +2556,6 @@ func _activate_document(
 	tool_random = simulation_engine.random
 	nuisance_random = simulation_engine.game_random
 	simulation_map_dirty = false
-	recent_news.clear()
 	_refresh_saved_news_summary()
 	last_edit_command = {}
 	dispatch_cycles = PackedInt32Array([0, 0, 0])
@@ -2588,8 +2567,7 @@ func _activate_document(
 		display_name = document.source_path.get_file().get_basename()
 	if display_name.is_empty():
 		display_name = "New City"
-	city_label.text = display_name
-	city_label.tooltip_text = display_name
+	city_menu_bar.set_city_name(display_name)
 	_refresh_details()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = status_text if not status_text.is_empty() else "City ready."
@@ -2762,13 +2740,9 @@ func _sync_speed_ui() -> void:
 			popup.set_item_checked(
 				item_index, speed_controller != null and speed_id + 1 == selected_speed
 			)
-	if status_speed_label != null:
+	if city_status_bar != null:
 		var speed_name := speed_controller.speed_name() if speed_controller != null else "--"
-		status_speed_label.text = "Speed: %s" % speed_name
-		status_speed_label.set_meta(
-			"status_tooltip_text", "Current simulation speed: %s." % speed_name
-		)
-		_sync_overflow_tooltip(status_speed_label)
+		city_status_bar.set_speed(speed_name)
 
 
 func _refresh_after_city_edit(command: Dictionary) -> void:
@@ -3664,14 +3638,13 @@ func _stop_tool_loop_sound() -> void:
 
 
 func _show_news_items(news_items: Array) -> void:
+	var reports := PackedStringArray()
 	for item in news_items:
 		var news_type := int(item.get("type", 0))
 		var name: String = NEWS_NAMES.get(news_type, "City report")
-		recent_news.insert(0, name)
-	while recent_news.size() > 3:
-		recent_news.remove_at(recent_news.size() - 1)
-	status_report_index = 0
-	status_report_elapsed_seconds = 0.0
+		reports.append(name)
+	if city_status_bar != null:
+		city_status_bar.prepend_reports(reports)
 	_refresh_status_summary()
 
 
@@ -3700,16 +3673,14 @@ func _on_building_objection_closed() -> void:
 
 func _refresh_saved_news_summary() -> void:
 	if city == null or current_document == null:
-		recent_news.clear()
-		status_report_index = 0
-		status_report_elapsed_seconds = 0.0
+		if city_status_bar != null:
+			city_status_bar.set_reports(PackedStringArray())
 		_refresh_status_summary()
 		return
 	var misc_chunk := current_document.find_chunk("MISC")
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
-		recent_news = PackedStringArray(["Unavailable"])
-		status_report_index = 0
-		status_report_elapsed_seconds = 0.0
+		if city_status_bar != null:
+			city_status_bar.set_reports(PackedStringArray(["Unavailable"]))
 		_refresh_status_summary()
 		return
 	var reports := PackedStringArray()
@@ -3721,9 +3692,8 @@ func _refresh_saved_news_summary() -> void:
 		reports.append(str(NEWS_NAMES.get(story_type, "City report")))
 		if reports.size() == 3:
 			break
-	recent_news = reports
-	status_report_index = 0
-	status_report_elapsed_seconds = 0.0
+	if city_status_bar != null:
+		city_status_bar.set_reports(reports)
 	_refresh_status_summary()
 
 
@@ -3923,7 +3893,7 @@ func _update_edit_state() -> void:
 					"SCURK Tile %d" % tile_id if can_place else "SCURK Place"
 				)
 				status_label.set_meta("status_tooltip_text", scurk_detail)
-				_sync_overflow_tooltip(status_label)
+				city_status_bar.refresh_message_tooltip()
 			return
 		var scurk_tool := scurk_place_print.selected_edit_tool()
 		var can_edit := city != null and not scurk_tool.is_empty()
@@ -3962,7 +3932,7 @@ func _update_edit_state() -> void:
 				"%s is active in Place & Print. Click or drag on the city. City funds and development gates do not apply."
 				% tool_name
 			)
-			_sync_overflow_tooltip(status_label)
+			city_status_bar.refresh_message_tooltip()
 		return
 	var tool_available := city != null and ToolAvailability.is_available(
 		city, selected_group, selected_subtool
@@ -4077,7 +4047,7 @@ func _update_edit_state() -> void:
 		tool_status_detail = "%s is in the original tool catalog. Its command is not implemented yet." % tool.name
 	status_label.text = str(tool.name)
 	status_label.set_meta("status_tooltip_text", tool_status_detail)
-	_sync_overflow_tooltip(status_label)
+	city_status_bar.refresh_message_tooltip()
 
 
 func _apply_map_selection(
@@ -5241,14 +5211,13 @@ func _refresh_details() -> void:
 		if weather_trend < RciAftermath.WEATHER_NAMES.size()
 		else "Unknown"
 	)
-	title_stats_label.text = "%02d/%02d/%04d" % [
+	var display_date := "%02d/%02d/%04d" % [
 		city.current_month(),
 		city.current_day(),
 		city.current_year(),
 	]
-	title_money_label.text = "$%s" % _format_number(city.funds())
-	title_stats_label.tooltip_text = "Current city date: %s" % title_stats_label.text
-	title_money_label.tooltip_text = "Current city funds: %s" % title_money_label.text
+	city_menu_bar.set_date(display_date)
+	city_menu_bar.set_money("$%s" % _format_number(city.funds()))
 	_refresh_status_summary(demand, weather_name)
 	if _refresh_tool_availability():
 		_update_edit_state()
@@ -5257,21 +5226,11 @@ func _refresh_details() -> void:
 func _refresh_status_summary(
 	demand := Vector3i(0, 0, 0), weather_name := ""
 ) -> void:
-	if (
-		status_population_label == null
-		or status_weather_label == null
-		or status_rci_graph == null
-		or status_reports_label == null
-		or status_speed_label == null
-	):
+	if city_menu_bar == null or city_status_bar == null:
 		return
 	if city == null:
-		status_population_label.text = "Population: --"
-		status_population_label.set_meta(
-			"status_tooltip_text", "Current city population is not available."
-		)
-		status_weather_label.text = "Weather: --"
-		status_rci_graph.clear_demand()
+		city_menu_bar.set_population("--", false)
+		city_status_bar.clear_environment()
 	else:
 		if weather_name.is_empty():
 			var weather_trend := city.document.misc_u32(
@@ -5283,78 +5242,10 @@ func _refresh_status_summary(
 				else "Unknown"
 			)
 			demand = city.rci_demand()
-		status_population_label.text = "Population: %s" % _format_number(city.population())
-		status_population_label.set_meta(
-			"status_tooltip_text",
-			"Current city population: %s" % _format_number(city.population()),
-		)
-		status_weather_label.text = "Weather: %s" % weather_name
-		status_rci_graph.set_demand(demand)
-	_refresh_status_report_text()
+		city_menu_bar.set_population(_format_number(city.population()))
+		city_status_bar.set_environment(demand, weather_name)
 	_sync_speed_ui()
-	_refresh_status_tooltips()
-
-
-func _update_status_report_rotation(delta: float) -> void:
-	if status_reports_label == null or delta <= 0.0 or recent_news.size() < 2:
-		return
-	status_report_elapsed_seconds += delta
-	if status_report_elapsed_seconds < STATUS_REPORT_ROTATION_SECONDS:
-		return
-	var steps := floori(
-		status_report_elapsed_seconds / STATUS_REPORT_ROTATION_SECONDS
-	)
-	status_report_elapsed_seconds = fmod(
-		status_report_elapsed_seconds, STATUS_REPORT_ROTATION_SECONDS
-	)
-	status_report_index = posmod(status_report_index + steps, recent_news.size())
-	_refresh_status_report_text()
-	_sync_overflow_tooltip(status_reports_label)
-
-
-func _refresh_status_report_text() -> void:
-	if status_reports_label == null:
-		return
-	var current_report := "None"
-	if not recent_news.is_empty():
-		status_report_index = posmod(status_report_index, recent_news.size())
-		current_report = recent_news[status_report_index]
-	else:
-		status_report_index = 0
-		status_report_elapsed_seconds = 0.0
-	status_reports_label.text = "News: %s" % current_report
-	status_reports_label.set_meta(
-		"status_tooltip_text",
-		(
-			"Recent city reports. These are the newest saved newspaper records.\n%s"
-			% ("No reports." if recent_news.is_empty() else "\n".join(recent_news))
-		),
-	)
-
-
-func _refresh_status_tooltips() -> void:
-	_sync_overflow_tooltip(status_label)
-	_sync_overflow_tooltip(status_population_label)
-	_sync_overflow_tooltip(status_weather_label)
-	_sync_overflow_tooltip(status_reports_label)
-	_sync_overflow_tooltip(status_speed_label)
-
-
-func _sync_overflow_tooltip(label: Label) -> void:
-	if label == null:
-		return
-	var font := label.get_theme_font("font")
-	var font_size := label.get_theme_font_size("font_size")
-	var text_width := font.get_string_size(
-		label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-	).x
-	if (
-		bool(label.get_meta("always_status_tooltip", false))
-		or text_width > maxf(0.0, label.size.x - 4.0)
-	):
-		label.tooltip_text = str(label.get_meta("status_tooltip_text", label.text))
-	else:
-		label.tooltip_text = ""
+	city_status_bar.refresh_tooltips()
 
 
 func _show_error(message: String) -> void:

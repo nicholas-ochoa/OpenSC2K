@@ -46,15 +46,17 @@ func _run() -> void:
 			quit(2)
 			return
 		var loaded_city: CityState = main.get("city")
-		var date_label := main.get("title_stats_label") as Label
-		var money_label := main.get("title_money_label") as Label
-		var city_label := main.get("city_label") as Label
-		var population_label := main.get("status_population_label") as Label
-		var weather_label := main.get("status_weather_label") as Label
-		var speed_label := main.get("status_speed_label") as Label
+		var menu_bar := main.get("city_menu_bar") as CityMenuBar
+		var status_bar := main.get("city_status_bar") as CityStatusBar
+		var date_label := menu_bar.date_label
+		var money_label := menu_bar.money_label
+		var city_label := menu_bar.city_label
+		var population_label := menu_bar.population_label
+		var weather_label := status_bar.weather_label
+		var speed_label := status_bar.speed_label
 		var speed_menu := main.get("speed_menu") as MenuButton
 		var city_field := main.find_child("CityNameField", true, false) as MarginContainer
-		var rci_graph: RciStatusControl = main.get("status_rci_graph")
+		var rci_graph := status_bar.rci_graph
 		var expected_date := "%02d/%02d/%04d" % [
 			loaded_city.current_month(),
 			loaded_city.current_day(),
@@ -113,16 +115,14 @@ func _run() -> void:
 				main.queue_free()
 				quit(2)
 				return
-			main.set("recent_news", PackedStringArray([
+			status_bar.set_reports(PackedStringArray([
 				"Good health", "Good employment", "Low crime",
 			]))
-			main.set("status_report_index", 0)
-			main.set("status_report_elapsed_seconds", 0.0)
 			main.call("_refresh_status_summary")
-			var report_label := main.get("status_reports_label") as Label
-			main.call("_update_status_report_rotation", 6.0)
+			var report_label := status_bar.reports_label
+			status_bar.update_report_rotation(6.0)
 			var first_report_stable := report_label.text == "News: Good health"
-			main.call("_update_status_report_rotation", 1.1)
+			status_bar.update_report_rotation(1.1)
 			if (
 				not first_report_stable
 				or report_label.text != "News: Good employment"
@@ -611,25 +611,32 @@ func _run() -> void:
 	main.call("_refresh_details")
 	main.call("_refresh_moving_things")
 
+	var menu_bar := main.get("city_menu_bar") as CityMenuBar
+	var status_bar := main.get("city_status_bar") as CityStatusBar
 	var overflow_text := "Overflow tooltip validation ".repeat(40)
-	for property in [
-		"status_label",
-		"status_population_label",
-		"status_weather_label",
-		"status_reports_label",
-		"status_speed_label",
+	for section_data in [
+		["message", status_bar.message_label],
+		["population", menu_bar.population_label],
+		["weather", status_bar.weather_label],
+		["reports", status_bar.reports_label],
+		["speed", status_bar.speed_label],
 	]:
-		var section := main.get(property) as Label
+		var section_name := str(section_data[0])
+		var section := section_data[1] as Label
 		var original_text := section.text
 		section.text = overflow_text
-		main.call("_sync_overflow_tooltip", section)
+		if section == menu_bar.population_label:
+			menu_bar.refresh_population_tooltip()
+		else:
+			status_bar.refresh_tooltips()
 		if section.tooltip_text.is_empty():
-			push_error("Status section %s does not expose overflow text" % property)
+			push_error("Status section %s does not expose overflow text" % section_name)
 			main.queue_free()
 			quit(2)
 			return
 		section.text = original_text
-	main.call("_refresh_status_tooltips")
+	menu_bar.refresh_population_tooltip()
+	status_bar.refresh_tooltips()
 
 	main.call("_open_scurk_dialog")
 	await process_frame

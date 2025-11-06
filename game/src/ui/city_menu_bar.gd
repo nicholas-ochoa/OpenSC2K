@@ -197,6 +197,55 @@ func _metric_label(text_value: String, minimum_width: int) -> Label:
 	return label
 
 
+func set_city_name(display_name: String) -> void:
+	city_label.text = display_name
+	city_label.tooltip_text = display_name
+
+
+func set_population(display_value: String, available := true) -> void:
+	population_label.text = "Population: %s" % display_value
+	population_label.set_meta(
+		"status_tooltip_text",
+		(
+			"Current city population: %s" % display_value
+			if available
+			else "Current city population is not available."
+		),
+	)
+	_sync_overflow_tooltip(population_label)
+
+
+func set_date(display_date: String) -> void:
+	date_label.text = display_date
+	date_label.tooltip_text = "Current city date: %s" % display_date
+
+
+func set_money(display_money: String) -> void:
+	money_label.text = display_money
+	money_label.tooltip_text = "Current city funds: %s" % display_money
+
+
+func set_fps(frames_per_second: int) -> void:
+	fps_label.text = "FPS: %d" % frames_per_second
+
+
+func refresh_population_tooltip() -> void:
+	_sync_overflow_tooltip(population_label)
+
+
+func _sync_overflow_tooltip(label: Label) -> void:
+	var font := label.get_theme_font("font")
+	var font_size := label.get_theme_font_size("font_size")
+	var text_width := font.get_string_size(
+		label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+	).x
+	label.tooltip_text = (
+		str(label.get_meta("status_tooltip_text", label.text))
+		if text_width > maxf(0.0, label.size.x - 4.0)
+		else ""
+	)
+
+
 func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	box.bg_color = color

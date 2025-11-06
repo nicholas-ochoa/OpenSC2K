@@ -320,6 +320,26 @@ func _test_main_menu() -> void:
 		and status_bar.speed_label.text == "Speed: --",
 		"City status bar owns its metrics and RCI layout",
 	)
+	status_bar.set_environment(Vector3i(300, -200, 100), "Sunny")
+	status_bar.set_speed("Cheetah")
+	status_bar.set_reports(PackedStringArray(["First", "Second"]))
+	status_bar.update_report_rotation(CityStatusBarUi.REPORT_ROTATION_SECONDS)
+	_check(
+		status_bar.weather_label.text == "Weather: Sunny"
+		and status_bar.rci_graph.demand == Vector3i(300, -200, 100)
+		and status_bar.speed_label.text == "Speed: Cheetah"
+		and status_bar.reports_label.text == "News: Second",
+		"City status bar owns live values and report rotation",
+	)
+	status_bar.prepend_reports(PackedStringArray(["Latest"]))
+	status_bar.clear_environment()
+	_check(
+		status_bar.reports_label.text == "News: Latest"
+		and status_bar.recent_reports.size() == 3
+		and status_bar.weather_label.text == "Weather: --"
+		and not status_bar.rci_graph.demand_available,
+		"City status bar replaces reports and clears city values",
+	)
 	status_bar.free()
 	var city_open_dialog := FileDialogsUi.city_open()
 	var city_save_dialog := FileDialogsUi.city_save()
@@ -363,6 +383,20 @@ func _test_main_menu() -> void:
 		and menu_bar.money_label.text == "$--"
 		and menu_bar.fps_label.text == "FPS: --",
 		"City menu bar owns menus and city metrics",
+	)
+	menu_bar.set_city_name("Test City")
+	menu_bar.set_population("12,345")
+	menu_bar.set_date("01/02/2003")
+	menu_bar.set_money("$45,678")
+	menu_bar.set_fps(120)
+	_check(
+		menu_bar.city_label.text == "Test City"
+		and menu_bar.city_label.tooltip_text == "Test City"
+		and menu_bar.population_label.text == "Population: 12,345"
+		and menu_bar.date_label.text == "01/02/2003"
+		and menu_bar.money_label.text == "$45,678"
+		and menu_bar.fps_label.text == "FPS: 120",
+		"City menu bar owns live metric formatting",
 	)
 	menu_bar.free()
 	var toolbar := CityToolbarUi.new(null)
