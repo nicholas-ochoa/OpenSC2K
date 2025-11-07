@@ -2,6 +2,7 @@ class_name CityPopulationWindow
 extends Window
 
 const PopulationView = preload("res://src/view/population_window_control.gd")
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 
 var population_control: PopulationWindowControl
 var mode_buttons: Array[CheckBox] = []
@@ -20,7 +21,7 @@ func _ready() -> void:
 	var background := PanelContainer.new()
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	background.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
+		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("808080"), 2)
 	)
 	add_child(background)
 	var margin := MarginContainer.new()
@@ -35,7 +36,7 @@ func _ready() -> void:
 	chart_frame.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	chart_frame.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	chart_frame.add_theme_stylebox_override(
-		"panel", _classic_box(Color("ffffff"), Color("404040"), 1)
+		"panel", ClassicStyle.create_box(Color("ffffff"), Color("404040"), 1)
 	)
 	column.add_child(chart_frame)
 	population_control = PopulationView.new()
@@ -80,15 +81,3 @@ func refresh_city(value: CityState) -> void:
 
 func _on_mode_selected(mode: int) -> void:
 	population_control.set_mode(mode)
-
-
-func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = color
-	box.border_color = border
-	box.set_border_width_all(width)
-	box.content_margin_left = 5
-	box.content_margin_top = 3
-	box.content_margin_right = 5
-	box.content_margin_bottom = 3
-	return box

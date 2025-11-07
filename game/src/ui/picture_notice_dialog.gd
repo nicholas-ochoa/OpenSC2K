@@ -1,6 +1,8 @@
 class_name PictureNoticeDialog
 extends AcceptDialog
 
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+
 var picture_view: TextureRect
 var message_label: Label
 
@@ -19,7 +21,7 @@ func _ready() -> void:
 	picture_frame.custom_minimum_size = Vector2(171, 116)
 	picture_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	picture_frame.add_theme_stylebox_override(
-		"panel", _classic_box(Color("ffffff"), Color("808080"), 2)
+		"panel", ClassicStyle.create_box(Color("ffffff"), Color("808080"), 2)
 	)
 	layout.add_child(picture_frame)
 
@@ -68,15 +70,3 @@ func show_message(message_text: String, normalize_newlines := false) -> void:
 
 func _normalized_text(value: String) -> String:
 	return value.replace("\r\n", "\n").replace("\r", "\n")
-
-
-func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = color
-	box.border_color = border
-	box.set_border_width_all(width)
-	box.content_margin_left = 5
-	box.content_margin_top = 3
-	box.content_margin_right = 5
-	box.content_margin_bottom = 3
-	return box

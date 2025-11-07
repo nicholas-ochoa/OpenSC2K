@@ -24,6 +24,7 @@ const CityStatusBarUi = preload("res://src/ui/city_status_bar.gd")
 const FileDialogsUi = preload("res://src/ui/file_dialog_factory.gd")
 const CityMenuBarUi = preload("res://src/ui/city_menu_bar.gd")
 const CityToolbarUi = preload("res://src/ui/city_toolbar.gd")
+const ClassicStyleUi = preload("res://src/ui/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
 const IndustryWindowUi = preload("res://src/ui/city_industry_window.gd")
@@ -92,6 +93,20 @@ func _test_rci_status_control() -> void:
 
 
 func _test_main_menu() -> void:
+	var classic_box := ClassicStyleUi.create_box(
+		Color("c0c0c0"), Color("808080"), 2, 8, 6
+	)
+	var classic_theme := ClassicStyleUi.create_theme()
+	_check(
+		classic_box.bg_color == Color("c0c0c0")
+		and classic_box.border_color == Color("808080")
+		and classic_box.get_border_width(SIDE_LEFT) == 2
+		and classic_box.content_margin_left == 8
+		and classic_box.content_margin_top == 6
+		and classic_theme.default_font_size == 13
+		and classic_theme.get_color("font_color", "TooltipLabel") == Color.WHITE,
+		"Classic UI style owns shared boxes and theme defaults",
+	)
 	_check(
 		MainMenu.BUTTON_LABELS == [
 			"Continue City",

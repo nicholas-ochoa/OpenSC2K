@@ -1,6 +1,8 @@
 class_name ScenarioIntroDialog
 extends AcceptDialog
 
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+
 var picture_view: TextureRect
 var text_view: TextEdit
 
@@ -19,7 +21,7 @@ func _ready() -> void:
 	picture_frame.custom_minimum_size = Vector2(276, 276)
 	picture_frame.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	picture_frame.add_theme_stylebox_override(
-		"panel", _classic_box(Color("ffffff"), Color("808080"), 2)
+		"panel", ClassicStyle.create_box(Color("ffffff"), Color("808080"), 2)
 	)
 	content.add_child(picture_frame)
 	picture_view = TextureRect.new()
@@ -38,7 +40,7 @@ func _ready() -> void:
 	text_view.add_theme_color_override("font_readonly_color", Color("101010"))
 	for state in ["normal", "focus", "read_only"]:
 		text_view.add_theme_stylebox_override(
-			state, _classic_box(Color("ffffff"), Color("808080"), 1)
+			state, ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1)
 		)
 	content.add_child(text_view)
 
@@ -59,15 +61,3 @@ func set_briefing(scenario_name: String, picture: Image, description: String) ->
 func show_briefing(scenario_name: String, picture: Image, description: String) -> void:
 	set_briefing(scenario_name, picture, description)
 	popup_centered()
-
-
-func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = color
-	box.border_color = border
-	box.set_border_width_all(width)
-	box.content_margin_left = 5
-	box.content_margin_top = 3
-	box.content_margin_right = 5
-	box.content_margin_bottom = 3
-	return box

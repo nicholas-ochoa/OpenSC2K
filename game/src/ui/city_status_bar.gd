@@ -2,6 +2,7 @@ class_name CityStatusBar
 extends PanelContainer
 
 const RciStatusView = preload("res://src/view/rci_status_control.gd")
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 const REPORT_ROTATION_SECONDS := 7.0
 
 var message_label: Label
@@ -17,7 +18,7 @@ var report_elapsed_seconds := 0.0
 func _ready() -> void:
 	custom_minimum_size = Vector2(0, 31)
 	add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
+		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("808080"), 2)
 	)
 
 	var metrics := HBoxContainer.new()
@@ -167,15 +168,3 @@ func _metric_label(text_value: String, minimum_width: int, expand := false) -> L
 	if expand:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return label
-
-
-func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = color
-	box.border_color = border
-	box.set_border_width_all(width)
-	box.content_margin_left = 5
-	box.content_margin_top = 3
-	box.content_margin_right = 5
-	box.content_margin_bottom = 3
-	return box

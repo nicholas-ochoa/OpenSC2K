@@ -1,6 +1,8 @@
 class_name MainMenuControl
 extends ColorRect
 
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+
 signal continue_requested
 signal new_city_requested
 signal open_city_requested
@@ -39,16 +41,11 @@ func _ready() -> void:
 	add_child(center)
 	var panel := PanelContainer.new()
 	panel.custom_minimum_size = Vector2(460, 700)
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("c0c0c0")
-	box.border_color = Color("ffffff")
-	box.set_border_width_all(2)
+	var box := ClassicStyle.create_box(
+		Color("c0c0c0"), Color("ffffff"), 2, 44, 34
+	)
 	box.shadow_color = Color(0.0, 0.0, 0.0, 0.55)
 	box.shadow_size = 12
-	box.content_margin_left = 44
-	box.content_margin_top = 34
-	box.content_margin_right = 44
-	box.content_margin_bottom = 34
 	panel.add_theme_stylebox_override("panel", box)
 	center.add_child(panel)
 

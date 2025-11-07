@@ -1,6 +1,8 @@
 class_name CityQueryDialog
 extends ColorRect
 
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+
 signal close_requested(commit_rename: bool)
 signal action_requested
 
@@ -32,7 +34,8 @@ func _ready() -> void:
 	panel.custom_minimum_size = Vector2(900, 660)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("404040"), 2)
+		"panel",
+		ClassicStyle.create_box(Color("c0c0c0"), Color("404040"), 2, 8, 8)
 	)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
@@ -127,7 +130,8 @@ func _add_body(column: VBoxContainer) -> void:
 	name_input.add_theme_color_override("font_uneditable_color", Color("303030"))
 	for state in ["normal", "focus", "read_only"]:
 		name_input.add_theme_stylebox_override(
-			state, _classic_box(Color("ffffff"), Color("808080"), 1)
+			state,
+			ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1, 8, 8)
 		)
 	text_column.add_child(name_input)
 	text_view = TextEdit.new()
@@ -138,7 +142,8 @@ func _add_body(column: VBoxContainer) -> void:
 	text_view.add_theme_color_override("font_readonly_color", Color("101010"))
 	for state in ["normal", "focus", "read_only"]:
 		text_view.add_theme_stylebox_override(
-			state, _classic_box(Color("ffffff"), Color("808080"), 1)
+			state,
+			ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1, 8, 8)
 		)
 	text_column.add_child(text_view)
 	_add_image_column(body)
@@ -148,7 +153,8 @@ func _add_image_column(body: HBoxContainer) -> void:
 	var image_panel := PanelContainer.new()
 	image_panel.custom_minimum_size = Vector2(285, 0)
 	image_panel.add_theme_stylebox_override(
-		"panel", _classic_box(Color("ffffff"), Color("808080"), 1)
+		"panel",
+		ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1, 8, 8)
 	)
 	body.add_child(image_panel)
 	var image_column := VBoxContainer.new()
@@ -207,15 +213,3 @@ func _enable_rename() -> void:
 	name_input.editable = true
 	name_input.grab_focus()
 	name_input.select_all()
-
-
-static func _classic_box(background: Color, border: Color, width: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = background
-	box.border_color = border
-	box.set_border_width_all(width)
-	box.content_margin_left = 8
-	box.content_margin_top = 8
-	box.content_margin_right = 8
-	box.content_margin_bottom = 8
-	return box

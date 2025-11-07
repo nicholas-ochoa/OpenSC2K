@@ -2,6 +2,7 @@ class_name LibraryRuminateWindows
 extends Control
 
 const WindowLayout = preload("res://src/ui/library_window_layout.gd")
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 
 const TEXT_RESOURCE_IDS := [3000, 3001, 3002, 3003]
 const BASE_Z_INDEX := 1000
@@ -37,7 +38,7 @@ func _add_text_window(resource_id: int) -> void:
 	window.visible = false
 	window.mouse_filter = Control.MOUSE_FILTER_STOP
 	window.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("404040"), 2)
+		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("404040"), 2)
 	)
 	window.gui_input.connect(_on_window_input.bind(window))
 
@@ -57,7 +58,7 @@ func _add_text_window(resource_id: int) -> void:
 	text_view.add_theme_color_override("font_readonly_color", Color("101010"))
 	for state in ["normal", "focus", "read_only"]:
 		text_view.add_theme_stylebox_override(
-			state, _classic_box(Color("ffffff"), Color("808080"), 1)
+			state, ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1)
 		)
 	text_view.gui_input.connect(_on_window_input.bind(window))
 	column.add_child(text_view)
@@ -89,15 +90,3 @@ func _bring_to_front(window: PanelContainer) -> void:
 		if other != window and other.z_index > BASE_Z_INDEX:
 			other.z_index -= 1
 	window.z_index = BASE_Z_INDEX + windows.size()
-
-
-func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = color
-	box.border_color = border
-	box.set_border_width_all(width)
-	box.content_margin_left = 5
-	box.content_margin_top = 3
-	box.content_margin_right = 5
-	box.content_margin_bottom = 3
-	return box

@@ -1,6 +1,8 @@
 class_name CityMenuBar
 extends PanelContainer
 
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+
 signal file_menu_requested(id: int)
 signal speed_menu_requested(id: int)
 signal options_menu_requested(id: int)
@@ -40,7 +42,7 @@ var fps_label: Label
 func _ready() -> void:
 	custom_minimum_size = Vector2(0, 25)
 	add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("ffffff"), 0)
+		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("ffffff"), 0)
 	)
 	var menu_row := HBoxContainer.new()
 	menu_row.add_theme_constant_override("separation", 0)
@@ -244,18 +246,6 @@ func _sync_overflow_tooltip(label: Label) -> void:
 		if text_width > maxf(0.0, label.size.x - 4.0)
 		else ""
 	)
-
-
-func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = color
-	box.border_color = border
-	box.set_border_width_all(width)
-	box.content_margin_left = 5
-	box.content_margin_top = 3
-	box.content_margin_right = 5
-	box.content_margin_bottom = 3
-	return box
 
 
 func _on_file_menu(id: int) -> void:

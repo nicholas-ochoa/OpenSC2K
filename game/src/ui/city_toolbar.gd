@@ -12,6 +12,7 @@ signal surface_visibility_requested(visible: bool, layer: String)
 signal underground_pipes_visibility_requested(visible: bool)
 
 const Tools = preload("res://src/tools/tool_catalog.gd")
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 const MAP_DISPLAY_MODES := ["city", "underground"]
 const GROUP_ICON_REGIONS := [
 	Rect2i(0, 0, 23, 23), Rect2i(24, 0, 26, 23), Rect2i(50, 0, 20, 23),
@@ -45,7 +46,7 @@ func _ready() -> void:
 	custom_minimum_size = Vector2(195, 0)
 	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
+		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("808080"), 2)
 	)
 	var toolbar_margin := MarginContainer.new()
 	for side in ["left", "top", "right", "bottom"]:
@@ -268,15 +269,3 @@ func _icon_button(region: Rect2i, tooltip: String) -> Button:
 
 func _on_surface_visibility_toggled(visible: bool, layer: String) -> void:
 	surface_visibility_requested.emit(visible, layer)
-
-
-func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = color
-	box.border_color = border
-	box.set_border_width_all(width)
-	box.content_margin_left = 5
-	box.content_margin_top = 3
-	box.content_margin_right = 5
-	box.content_margin_bottom = 3
-	return box

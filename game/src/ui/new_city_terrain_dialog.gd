@@ -8,6 +8,7 @@ signal terrain_regeneration_requested
 
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewTerrain = preload("res://src/model/new_city_terrain.gd")
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 
 var city_name_input: LineEdit
 var mayor_name_input: LineEdit
@@ -42,7 +43,8 @@ func _ready() -> void:
 	panel.custom_minimum_size = Vector2(820, 600)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("404040"), 2)
+		"panel",
+		ClassicStyle.create_box(Color("c0c0c0"), Color("404040"), 2, 8, 8)
 	)
 	center.add_child(panel)
 	var column := VBoxContainer.new()
@@ -264,15 +266,3 @@ func _add_action_buttons(column: VBoxContainer) -> void:
 	build_button.custom_minimum_size = Vector2(210, 30)
 	build_button.pressed.connect(func() -> void: build_requested.emit())
 	button_row.add_child(build_button)
-
-
-static func _classic_box(background: Color, border: Color, width: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = background
-	box.border_color = border
-	box.set_border_width_all(width)
-	box.content_margin_left = 8
-	box.content_margin_top = 8
-	box.content_margin_right = 8
-	box.content_margin_bottom = 8
-	return box

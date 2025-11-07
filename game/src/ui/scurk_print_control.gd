@@ -5,6 +5,7 @@ signal preview_options_changed(options: Dictionary)
 signal save_pdf_requested(options: Dictionary)
 
 const PreviewView = preload("res://src/ui/scurk_print_preview.gd")
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 
 const PANEL_SIZE := Vector2i(760, 680)
 const MAGNIFICATIONS := [1, 2, 4]
@@ -99,10 +100,9 @@ func request_preview() -> void:
 func _build_interface() -> void:
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var panel_box := StyleBoxFlat.new()
-	panel_box.bg_color = Color("c0c0c0")
-	panel_box.border_color = Color("ffffff")
-	panel_box.set_border_width_all(1)
+	var panel_box := ClassicStyle.create_box(
+		Color("c0c0c0"), Color("ffffff"), 1, 0, 0
+	)
 	panel.add_theme_stylebox_override("panel", panel_box)
 	add_child(panel)
 	var margin := MarginContainer.new()

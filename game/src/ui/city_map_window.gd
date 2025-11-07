@@ -5,6 +5,7 @@ signal mode_changed(mode: String)
 signal center_requested(point: Vector2i)
 
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
+const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 
 var map_control: CityMapWindowControl
 
@@ -22,7 +23,7 @@ func _ready() -> void:
 	var background := PanelContainer.new()
 	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	background.add_theme_stylebox_override(
-		"panel", _classic_box(Color("c0c0c0"), Color("808080"), 2)
+		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("808080"), 2)
 	)
 	add_child(background)
 	var margin := MarginContainer.new()
@@ -66,15 +67,3 @@ func refresh_city(
 func refresh_viewport(viewport_outline: PackedVector2Array) -> void:
 	if visible and map_control != null:
 		map_control.refresh_viewport(viewport_outline)
-
-
-func _classic_box(color: Color, border: Color, width: int) -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = color
-	box.border_color = border
-	box.set_border_width_all(width)
-	box.content_margin_left = 5
-	box.content_margin_top = 3
-	box.content_margin_right = 5
-	box.content_margin_bottom = 3
-	return box
