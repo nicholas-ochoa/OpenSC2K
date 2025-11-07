@@ -7,12 +7,9 @@ const NewTerrain = preload("res://src/model/new_city_terrain.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
+const OriginalAssets = preload("res://src/assets/original_game_assets.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkCityOutput = preload("res://src/assets/scurk_city_output.gd")
-const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
-const PeString = preload("res://src/assets/pe_string_resource.gd")
-const TextUsa = preload("res://src/assets/text_usa_resource.gd")
-const DataUsa = preload("res://src/assets/data_usa_resource.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
@@ -131,15 +128,7 @@ const NEWS_NAMES := {
 	0x212: "Arcology launch complete",
 }
 
-const SIMNATION_FORMAT_STRING_ID := 421
-const NEIGHBOR_NAME_STRING_FIRST := 548
-const NEIGHBOR_NAME_STRING_LAST := 583
-const CITY_MAP_STRING_FIRST := 327
-const CITY_MAP_STRING_LAST := 344
-
 const MAP_DISPLAY_MODES := ["city", "underground"]
-const NEWSPAPER_STRING_FIRST := 347
-const NEWSPAPER_STRING_LAST := 391
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
 const MENU_AUTO_BUDGET := CityMenuBarView.MENU_AUTO_BUDGET
@@ -156,11 +145,6 @@ const MENU_VIEW_ZONES := CityMenuBarView.MENU_VIEW_ZONES
 const MENU_VIEW_SIGNS := CityMenuBarView.MENU_VIEW_SIGNS
 const MENU_VIEW_PIPES := CityMenuBarView.MENU_VIEW_PIPES
 const MENU_SCURK_PLACE_PRINT := CityMenuBarView.MENU_SCURK_PLACE_PRINT
-const FOREST_PROTEST_BITMAP_ID := 403
-const FOREST_PROTEST_STRING_ID := 236
-const BUILDING_OBJECTION_STRING_ID := 106
-const INDUSTRY_STRING_FIRST := 422
-const INDUSTRY_STRING_LAST := 432
 
 var city: CityState
 var current_document: Sc2File
@@ -336,77 +320,25 @@ func _ready() -> void:
 	newspaper_session_state.resize(NewsQueue.MISC_SIZE)
 	newspaper_session_state.fill(0)
 	NewsQueue.initialize_session(newspaper_session_state, tool_random)
-	newspaper_data = DataUsa.load_path(
-		reference_root.path_join("DATA/DATA_USA.DAT"),
-		reference_root.path_join("DATA/DATA_USA.IDX"),
-	)
-	var string_resource_ids := Queries.resource_string_ids()
-	string_resource_ids.append(FOREST_PROTEST_STRING_ID)
-	string_resource_ids.append(BUILDING_OBJECTION_STRING_ID)
-	for resource_id in range(INDUSTRY_STRING_FIRST, INDUSTRY_STRING_LAST + 1):
-		string_resource_ids.append(resource_id)
-	for resource_id in range(CITY_MAP_STRING_FIRST, CITY_MAP_STRING_LAST + 1):
-		string_resource_ids.append(resource_id)
-	string_resource_ids.append(SIMNATION_FORMAT_STRING_ID)
-	for resource_id in range(NEIGHBOR_NAME_STRING_FIRST, NEIGHBOR_NAME_STRING_LAST + 1):
-		string_resource_ids.append(resource_id)
-	for resource_id in range(NEWSPAPER_STRING_FIRST, NEWSPAPER_STRING_LAST + 1):
-		string_resource_ids.append(resource_id)
-	var string_resources := PeString.load_ids(
-		reference_root.path_join("SIMCITY.EXE"), string_resource_ids
-	)
-	if string_resources.ok:
-		original_query_strings = string_resources.strings
-		forest_protest_text = string_resources.strings.get(
-			FOREST_PROTEST_STRING_ID, forest_protest_text
-		)
-		building_objection_text = string_resources.strings.get(
-			BUILDING_OBJECTION_STRING_ID, building_objection_text
-		)
-	var library_resources := TextUsa.load_ids(
-		reference_root.path_join("DATA/TEXT_USA.DAT"),
-		reference_root.path_join("DATA/TEXT_USA.IDX"),
-		PackedInt32Array(LibraryRuminateWindowsView.TEXT_RESOURCE_IDS),
-	)
-	if library_resources.ok:
-		library_texts = library_resources.strings
-	var toolbar_resource := PeBitmap.load_numeric(
-		reference_root.path_join("SIMCITY.EXE"), 2
-	)
-	var loaded_forest_protest := Image.load_from_file(
-		reference_root.path_join("BITMAPS/%d.BMP" % FOREST_PROTEST_BITMAP_ID)
-	)
-	if loaded_forest_protest != null and not loaded_forest_protest.is_empty():
-		forest_protest_image = loaded_forest_protest
-	var toolbar_art: Image = toolbar_resource.get("image") as Image if toolbar_resource.ok else null
-	_build_interface(toolbar_art)
-	palette = Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
-	if not palette.is_valid():
-		_show_error(palette.load_error)
+	var original_assets := OriginalAssets.new()
+	original_assets.load_ui(reference_root)
+	newspaper_data = original_assets.newspaper_data
+	original_query_strings = original_assets.strings
+	forest_protest_text = original_assets.forest_protest_text
+	building_objection_text = original_assets.building_objection_text
+	forest_protest_image = original_assets.forest_protest_image
+	library_texts = original_assets.library_texts
+	_build_interface(original_assets)
+	original_assets.load_city_graphics(reference_root)
+	if not original_assets.error.is_empty():
+		_show_error(original_assets.error)
 		return
-	scenario_palette = Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MAC.BMP"))
-	if not scenario_palette.is_valid():
-		_show_error(scenario_palette.load_error)
-		return
+	palette = original_assets.palette
+	scenario_palette = original_assets.scenario_palette
 	palette_index_encoding = Palette.index_encoding()
 	_update_palette_cycle_texture()
-	base_large_sprites = SpriteArchive.load_path(reference_root.path_join("DATA/LARGE.DAT"))
-	if not base_large_sprites.is_valid():
-		_show_error(base_large_sprites.parse_error)
-		return
-	var base_small_medium := SpriteArchive.load_path(
-		reference_root.path_join("DATA/SMALLMED.DAT")
-	)
-	if not base_small_medium.is_valid():
-		_show_error(base_small_medium.parse_error)
-		return
-	var special_sprites := SpriteArchive.load_path(
-		reference_root.path_join("DATA/SPECIAL.DAT")
-	)
-	if not special_sprites.is_valid():
-		_show_error(special_sprites.parse_error)
-		return
-	base_small_medium_sprites = SpriteArchive.combine([base_small_medium, special_sprites])
+	base_large_sprites = original_assets.large_sprites
+	base_small_medium_sprites = original_assets.small_medium_sprites
 	large_sprites = base_large_sprites
 	small_medium_sprites = base_small_medium_sprites
 	_refresh_child_tool_icons()
@@ -565,9 +497,9 @@ func _consume_simulation_result(result: Dictionary) -> void:
 			_open_military_proposal()
 
 
-func _build_interface(toolbar_art: Image) -> void:
+func _build_interface(original_assets: OriginalGameAssets) -> void:
 	theme = ClassicStyle.create_theme()
-	city_workspace = CityWorkspaceView.new(toolbar_art)
+	city_workspace = CityWorkspaceView.new(original_assets.toolbar_art)
 	add_child(city_workspace)
 
 	city_menu_bar = city_workspace.menu_bar
@@ -719,24 +651,20 @@ func _build_interface(toolbar_art: Image) -> void:
 	for index in IndustryWindowControl.INDUSTRY_COUNT:
 		var fallback: String = IndustryWindowControl.DEFAULT_NAMES[index]
 		industry_names.append(str(
-			original_query_strings.get(INDUSTRY_STRING_FIRST + index, fallback)
+			original_query_strings.get(
+				OriginalAssets.INDUSTRY_STRING_FIRST + index, fallback
+			)
 		))
-	var industry_icons := PeBitmap.load_numeric(
-		reference_root.path_join("SIMCITY.EXE"), 178
-	)
 	industry_window.set_resources(
 		industry_names,
-		industry_icons.image if industry_icons.get("ok", false) else null,
+		original_assets.industry_icons,
 	)
 	simnation_window = SimNationWindowView.new()
 	add_child(simnation_window)
-	var simnation_sprite_sheet := Image.load_from_file(
-		reference_root.path_join("BITMAPS/NEIGHBOR.BMP")
-	)
 	simnation_window.set_resources(
-		simnation_sprite_sheet,
+		original_assets.simnation_sprites,
 		str(original_query_strings.get(
-			SIMNATION_FORMAT_STRING_ID,
+			OriginalAssets.SIMNATION_FORMAT_STRING_ID,
 			SimNationWindowControl.DEFAULT_NATIONAL_FORMAT,
 		)),
 		original_query_strings,
@@ -745,11 +673,8 @@ func _build_interface(toolbar_art: Image) -> void:
 	city_map_window.mode_changed.connect(_on_city_map_mode_changed)
 	city_map_window.center_requested.connect(_on_city_map_center_requested)
 	add_child(city_map_window)
-	var city_map_icons := PeBitmap.load_numeric(
-		reference_root.path_join("SIMCITY.EXE"), 247
-	)
 	city_map_window.set_resources(
-		city_map_icons.image if city_map_icons.get("ok", false) else null,
+		original_assets.city_map_icons,
 		original_query_strings,
 	)
 	ordinance_window = OrdinanceWindowView.new()

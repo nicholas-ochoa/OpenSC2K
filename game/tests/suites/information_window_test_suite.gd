@@ -4,6 +4,7 @@ const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 const PeString = preload("res://src/assets/pe_string_resource.gd")
+const OriginalAssets = preload("res://src/assets/original_game_assets.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
@@ -17,10 +18,53 @@ func _init(callback: Callable) -> void:
 
 
 func run(reference_root: String) -> void:
+	_test_original_assets(reference_root)
 	_test_population_window(reference_root)
 	_test_industry_window(reference_root)
 	_test_simnation_window(reference_root)
 	_test_ordinance_window(reference_root)
+
+
+func _test_original_assets(reference_root: String) -> void:
+	var resource_ids := OriginalAssets.required_string_ids()
+	_check(
+		resource_ids.has(OriginalAssets.FOREST_PROTEST_STRING_ID)
+		and resource_ids.has(OriginalAssets.BUILDING_OBJECTION_STRING_ID)
+		and resource_ids.has(OriginalAssets.INDUSTRY_STRING_FIRST)
+		and resource_ids.has(OriginalAssets.INDUSTRY_STRING_LAST)
+		and resource_ids.has(OriginalAssets.CITY_MAP_STRING_FIRST)
+		and resource_ids.has(OriginalAssets.CITY_MAP_STRING_LAST)
+		and resource_ids.has(OriginalAssets.SIMNATION_FORMAT_STRING_ID)
+		and resource_ids.has(OriginalAssets.NEIGHBOR_NAME_STRING_FIRST)
+		and resource_ids.has(OriginalAssets.NEIGHBOR_NAME_STRING_LAST)
+		and resource_ids.has(OriginalAssets.NEWSPAPER_STRING_FIRST)
+		and resource_ids.has(OriginalAssets.NEWSPAPER_STRING_LAST),
+		"Original asset loader owns every shared string-resource range",
+	)
+	var assets := OriginalAssets.load_root(reference_root)
+	_check(
+		assets.error.is_empty()
+		and assets.palette != null
+		and assets.palette.is_valid()
+		and assets.scenario_palette != null
+		and assets.scenario_palette.is_valid()
+		and assets.large_sprites != null
+		and assets.large_sprites.is_valid()
+		and assets.small_medium_sprites != null
+		and assets.small_medium_sprites.is_valid(),
+		"Original asset loader validates required palettes and sprite archives",
+	)
+	_check(
+		assets.newspaper_data != null
+		and assets.newspaper_data.is_valid()
+		and assets.toolbar_art != null
+		and assets.industry_icons != null
+		and assets.city_map_icons != null
+		and assets.simnation_sprites != null
+		and assets.forest_protest_image != null
+		and not assets.library_texts.is_empty(),
+		"Original asset loader provides shared interface resources",
+	)
 
 
 func _test_population_window(reference_root: String) -> void:
@@ -322,4 +366,3 @@ func _test_ordinance_window(reference_root: String) -> void:
 
 func _check(condition: bool, message: String) -> void:
 	check_callback.call(condition, message)
-
