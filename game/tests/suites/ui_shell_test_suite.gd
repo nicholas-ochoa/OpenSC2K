@@ -24,6 +24,7 @@ const CityStatusBarUi = preload("res://src/ui/city_status_bar.gd")
 const FileDialogsUi = preload("res://src/ui/file_dialog_factory.gd")
 const CityMenuBarUi = preload("res://src/ui/city_menu_bar.gd")
 const CityToolbarUi = preload("res://src/ui/city_toolbar.gd")
+const CityWorkspaceUi = preload("res://src/ui/city_workspace.gd")
 const ClassicStyleUi = preload("res://src/ui/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
@@ -429,6 +430,19 @@ func _test_main_menu() -> void:
 		"City toolbar owns tool, view, and layer controls",
 	)
 	toolbar.free()
+	var workspace := CityWorkspaceUi.new(null)
+	workspace._ready()
+	_check(
+		workspace.menu_bar != null
+		and workspace.toolbar != null
+		and workspace.map_view != null
+		and workspace.status_bar != null
+		and workspace.toolbar.get_parent() == workspace.map_view.get_parent().get_parent()
+		and workspace.map_view.get_parent().custom_minimum_size == Vector2(560, 480)
+		and workspace.status_bar.get_parent() == workspace.menu_bar.get_parent(),
+		"City workspace owns the main shell layout",
+	)
+	workspace.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

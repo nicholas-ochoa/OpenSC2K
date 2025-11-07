@@ -50,10 +50,9 @@ const RouteConfirmationDialogView = preload("res://src/ui/route_confirmation_dia
 const PictureNoticeDialogView = preload("res://src/ui/picture_notice_dialog.gd")
 const AboutDialogView = preload("res://src/ui/about_dialog.gd")
 const SaveChangesDialogView = preload("res://src/ui/save_changes_dialog.gd")
-const CityStatusBarView = preload("res://src/ui/city_status_bar.gd")
 const FileDialogs = preload("res://src/ui/file_dialog_factory.gd")
 const CityMenuBarView = preload("res://src/ui/city_menu_bar.gd")
-const CityToolbarView = preload("res://src/ui/city_toolbar.gd")
+const CityWorkspaceView = preload("res://src/ui/city_workspace.gd")
 const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
@@ -239,6 +238,7 @@ var palette_cycle_ticks := 0
 var palette_cycle_texture: ImageTexture
 
 var map_view: CityMapControl
+var city_workspace: CityWorkspace
 var city_menu_bar: CityMenuBar
 var status_label: Label
 var city_status_bar: CityStatusBar
@@ -567,17 +567,10 @@ func _consume_simulation_result(result: Dictionary) -> void:
 
 func _build_interface(toolbar_art: Image) -> void:
 	theme = ClassicStyle.create_theme()
-	var background := ColorRect.new()
-	background.color = Color("c0c0c0")
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(background)
+	city_workspace = CityWorkspaceView.new(toolbar_art)
+	add_child(city_workspace)
 
-	var page := VBoxContainer.new()
-	page.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	page.add_theme_constant_override("separation", 0)
-	add_child(page)
-
-	city_menu_bar = CityMenuBarView.new()
+	city_menu_bar = city_workspace.menu_bar
 	city_menu_bar.file_menu_requested.connect(_on_file_menu)
 	city_menu_bar.speed_menu_requested.connect(_on_speed_menu)
 	city_menu_bar.options_menu_requested.connect(_on_options_menu)
@@ -586,18 +579,12 @@ func _build_interface(toolbar_art: Image) -> void:
 	city_menu_bar.windows_menu_requested.connect(_on_windows_menu)
 	city_menu_bar.newspaper_menu_requested.connect(_on_newspaper_menu)
 	city_menu_bar.help_menu_requested.connect(_on_help_menu)
-	page.add_child(city_menu_bar)
 	speed_menu = city_menu_bar.speed_menu
 	options_menu = city_menu_bar.options_menu
 	view_menu = city_menu_bar.view_menu
 	disasters_menu = city_menu_bar.disasters_menu
 
-	var content := HBoxContainer.new()
-	content.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	content.add_theme_constant_override("separation", 4)
-	page.add_child(content)
-
-	city_toolbar = CityToolbarView.new(toolbar_art)
+	city_toolbar = city_workspace.toolbar
 	city_toolbar.group_requested.connect(_choose_tool_group)
 	city_toolbar.rotate_requested.connect(_rotate_city)
 	city_toolbar.zoom_out_requested.connect(_zoom_out)
@@ -609,7 +596,6 @@ func _build_interface(toolbar_art: Image) -> void:
 	city_toolbar.underground_pipes_visibility_requested.connect(
 		_set_underground_pipes_visible
 	)
-	content.add_child(city_toolbar)
 	toolbar_buttons = city_toolbar.toolbar_buttons
 	rotate_counter_clockwise_button = city_toolbar.rotate_counter_clockwise_button
 	rotate_clockwise_button = city_toolbar.rotate_clockwise_button
@@ -623,18 +609,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	view_layers_heading = city_toolbar.view_layers_heading
 	view_visibility_checks = city_toolbar.view_visibility_checks
 
-	var map_panel := PanelContainer.new()
-	map_panel.custom_minimum_size = Vector2(560, 480)
-	map_panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_panel.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	map_panel.add_theme_stylebox_override(
-		"panel", ClassicStyle.create_box(Color("18242c"), Color("404040"), 2)
-	)
-	content.add_child(map_panel)
-
-	map_view = MapControl.new()
-	map_view.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_view = city_workspace.map_view
 	map_view.selection_completed.connect(_apply_map_selection)
 	map_view.selection_changed.connect(_on_map_selection_changed)
 	map_view.selection_started.connect(_on_map_selection_started)
@@ -643,10 +618,7 @@ func _build_interface(toolbar_art: Image) -> void:
 	map_view.query_requested.connect(_open_query)
 	map_view.zoom_changed.connect(_on_city_zoom_changed)
 	map_view.viewport_changed.connect(_refresh_city_map_viewport)
-	map_panel.add_child(map_view)
-
-	city_status_bar = CityStatusBarView.new()
-	page.add_child(city_status_bar)
+	city_status_bar = city_workspace.status_bar
 	status_label = city_status_bar.message_label
 	_sync_speed_ui()
 
