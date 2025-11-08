@@ -9,6 +9,7 @@ const RciStatus = preload("res://src/view/rci_status_control.gd")
 const GraphControl = preload("res://src/view/city_graph_control.gd")
 const MainMenu = preload("res://src/ui/main_menu_control.gd")
 const SettingsDialogUi = preload("res://src/ui/app_settings_dialog.gd")
+const SettingsStoreUi = preload("res://src/ui/app_settings_store.gd")
 const ScenarioIntroDialogUi = preload("res://src/ui/scenario_intro_dialog.gd")
 const CityAnalysisDialogUi = preload("res://src/ui/city_analysis_dialog.gd")
 const LibraryRuminateWindowsUi = preload("res://src/ui/library_ruminate_windows.gd")
@@ -94,6 +95,26 @@ func _test_rci_status_control() -> void:
 
 
 func _test_main_menu() -> void:
+	var settings_path := "user://test_app_settings_%d.cfg" % OS.get_process_id()
+	var settings_error := SettingsStoreUi.save_values(-0.5, 1.5, true, settings_path)
+	var saved_settings := SettingsStoreUi.load_values(settings_path)
+	_check(
+		settings_error == OK
+		and saved_settings.music_volume == 0.0
+		and saved_settings.effects_volume == 1.0
+		and saved_settings.fullscreen,
+		"Application settings store saves clamped values",
+	)
+	DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
+	var default_settings := SettingsStoreUi.load_values(
+		settings_path, 0.25, 0.75, false
+	)
+	_check(
+		default_settings.music_volume == 0.25
+		and default_settings.effects_volume == 0.75
+		and not default_settings.fullscreen,
+		"Application settings store uses defaults when no file exists",
+	)
 	var classic_box := ClassicStyleUi.create_box(
 		Color("c0c0c0"), Color("808080"), 2, 8, 6
 	)

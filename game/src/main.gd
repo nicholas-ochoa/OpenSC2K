@@ -34,6 +34,7 @@ const CityQueryDialogView = preload("res://src/ui/city_query_dialog.gd")
 const NewspaperDialogView = preload("res://src/ui/newspaper_dialog.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
 const SettingsDialogView = preload("res://src/ui/app_settings_dialog.gd")
+const SettingsStore = preload("res://src/ui/app_settings_store.gd")
 const ScenarioIntroDialogView = preload("res://src/ui/scenario_intro_dialog.gd")
 const CityAnalysisDialogView = preload("res://src/ui/city_analysis_dialog.gd")
 const LibraryRuminateWindowsView = preload("res://src/ui/library_ruminate_windows.gd")
@@ -827,11 +828,9 @@ func _apply_settings() -> void:
 		if app_fullscreen
 		else DisplayServer.WINDOW_MODE_WINDOWED
 	)
-	var config := ConfigFile.new()
-	config.set_value("audio", "music_volume", app_music_volume)
-	config.set_value("audio", "effects_volume", app_effects_volume)
-	config.set_value("display", "fullscreen", app_fullscreen)
-	var error := config.save("user://settings.cfg")
+	var error := SettingsStore.save_values(
+		app_music_volume, app_effects_volume, app_fullscreen
+	)
 	status_label.text = (
 		"Settings saved."
 		if error == OK
@@ -840,15 +839,15 @@ func _apply_settings() -> void:
 
 
 func _load_app_settings() -> void:
-	var config := ConfigFile.new()
-	if config.load("user://settings.cfg") == OK:
-		app_music_volume = clampf(
-			float(config.get_value("audio", "music_volume", app_music_volume)), 0.0, 1.0
-		)
-		app_effects_volume = clampf(
-			float(config.get_value("audio", "effects_volume", app_effects_volume)), 0.0, 1.0
-		)
-		app_fullscreen = bool(config.get_value("display", "fullscreen", app_fullscreen))
+	var values := SettingsStore.load_values(
+		SettingsStore.SETTINGS_PATH,
+		app_music_volume,
+		app_effects_volume,
+		app_fullscreen,
+	)
+	app_music_volume = values.music_volume
+	app_effects_volume = values.effects_volume
+	app_fullscreen = values.fullscreen
 	if app_fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
