@@ -17,42 +17,24 @@ const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const ViewFilter = preload("res://src/view/city_view_filter.gd")
 const MapControl = preload("res://src/view/city_map_control.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
-const GraphWindowView = preload("res://src/ui/city_graph_window.gd")
-const PopulationWindowView = preload("res://src/ui/city_population_window.gd")
-const IndustryWindowView = preload("res://src/ui/city_industry_window.gd")
-const SimNationWindowView = preload("res://src/ui/city_simnation_window.gd")
-const OrdinanceWindowView = preload("res://src/ui/city_ordinance_window.gd")
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
-const CityMapWindowView = preload("res://src/ui/city_map_window.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
-const CityQueryDialogView = preload("res://src/ui/city_query_dialog.gd")
-const NewspaperDialogView = preload("res://src/ui/newspaper_dialog.gd")
 const MainMenuView = preload("res://src/ui/main_menu_control.gd")
 const SettingsDialogView = preload("res://src/ui/app_settings_dialog.gd")
 const SettingsStore = preload("res://src/ui/app_settings_store.gd")
-const ScenarioIntroDialogView = preload("res://src/ui/scenario_intro_dialog.gd")
-const CityAnalysisDialogView = preload("res://src/ui/city_analysis_dialog.gd")
 const LibraryRuminateWindowsView = preload("res://src/ui/library_ruminate_windows.gd")
-const CitySignDialogView = preload("res://src/ui/city_sign_dialog.gd")
-const BridgeSelectionDialogView = preload("res://src/ui/bridge_selection_dialog.gd")
 const DisplayNumbers = preload("res://src/ui/display_number_format.gd")
 const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
-const ToolChoiceDialogView = preload("res://src/ui/tool_choice_dialog.gd")
-const StadiumTeamDialogView = preload("res://src/ui/stadium_team_dialog.gd")
-const RouteConfirmationDialogView = preload("res://src/ui/route_confirmation_dialog.gd")
-const PictureNoticeDialogView = preload("res://src/ui/picture_notice_dialog.gd")
 const AboutDialogView = preload("res://src/ui/about_dialog.gd")
 const SaveChangesDialogView = preload("res://src/ui/save_changes_dialog.gd")
-const FileDialogs = preload("res://src/ui/file_dialog_factory.gd")
 const CityMenuBarView = preload("res://src/ui/city_menu_bar.gd")
 const CityWorkspaceView = preload("res://src/ui/city_workspace.gd")
-const NewCityTerrainDialogView = preload("res://src/ui/new_city_terrain_dialog.gd")
-const BudgetDialogView = preload("res://src/ui/budget_dialog.gd")
+const CityDialogsView = preload("res://src/ui/city_dialog_registry.gd")
 const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
 const ScurkPlacePrintView = preload("res://src/ui/scurk_place_print_control.gd")
 const ScurkPrintView = preload("res://src/ui/scurk_print_control.gd")
@@ -179,7 +161,6 @@ var reference_root := ""
 var original_query_strings: Dictionary = {}
 var forest_protest_text := "Citizens are protesting forest demolition."
 var building_objection_text := "Residents objected to this facility site."
-var forest_protest_image: Image
 var library_texts: Dictionary = {}
 var newspaper_data: DataUsaResource
 var newspaper_session_seed := 0
@@ -227,6 +208,7 @@ var city_workspace: CityWorkspace
 var city_menu_bar: CityMenuBar
 var status_label: Label
 var city_status_bar: CityStatusBar
+var city_dialogs: CityDialogRegistry
 var file_dialog: FileDialog
 var save_dialog: FileDialog
 var tile_set_dialog: FileDialog
@@ -327,7 +309,6 @@ func _ready() -> void:
 	original_query_strings = original_assets.strings
 	forest_protest_text = original_assets.forest_protest_text
 	building_objection_text = original_assets.building_objection_text
-	forest_protest_image = original_assets.forest_protest_image
 	library_texts = original_assets.library_texts
 	_build_interface(original_assets)
 	original_assets.load_city_graphics(reference_root)
@@ -555,188 +536,80 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	status_label = city_status_bar.message_label
 	_sync_speed_ui()
 
-	file_dialog = FileDialogs.city_open()
-	file_dialog.file_selected.connect(_load_city)
-	add_child(file_dialog)
+	city_dialogs = CityDialogsView.new(original_assets)
+	add_child(city_dialogs)
 
-	save_dialog = FileDialogs.city_save()
+	file_dialog = city_dialogs.city_open_dialog
+	file_dialog.file_selected.connect(_load_city)
+	save_dialog = city_dialogs.city_save_dialog
 	save_dialog.file_selected.connect(_on_save_path_selected)
 	save_dialog.canceled.connect(_on_save_dialog_canceled)
-	add_child(save_dialog)
-
-	tile_set_dialog = FileDialogs.tile_set_open()
+	tile_set_dialog = city_dialogs.tile_set_dialog
 	tile_set_dialog.file_selected.connect(_load_tile_set)
-	add_child(tile_set_dialog)
-
-	scurk_city_export_dialog = FileDialogs.city_bitmap_save()
+	scurk_city_export_dialog = city_dialogs.city_bitmap_dialog
 	scurk_city_export_dialog.file_selected.connect(_export_scurk_city_bmp)
-	add_child(scurk_city_export_dialog)
-
-	scurk_print_pdf_dialog = FileDialogs.city_pdf_save()
+	scurk_print_pdf_dialog = city_dialogs.city_pdf_dialog
 	scurk_print_pdf_dialog.file_selected.connect(_save_scurk_city_pdf)
-	add_child(scurk_print_pdf_dialog)
 
-	new_city_dialog = NewCityTerrainDialogView.new()
+	new_city_dialog = city_dialogs.new_city_dialog
 	new_city_dialog.cancel_requested.connect(_cancel_new_city)
 	new_city_dialog.build_requested.connect(_create_new_city)
 	new_city_dialog.preview_requested.connect(_schedule_new_city_preview)
 	new_city_dialog.terrain_regeneration_requested.connect(_make_new_city_preview)
-	add_child(new_city_dialog)
-
-	sign_dialog = CitySignDialogView.new()
+	sign_dialog = city_dialogs.sign_dialog
 	sign_dialog.confirmed.connect(_commit_sign)
 	sign_dialog.canceled.connect(_cancel_sign)
-	add_child(sign_dialog)
-
-	bridge_dialog = BridgeSelectionDialogView.new()
+	bridge_dialog = city_dialogs.bridge_dialog
 	bridge_dialog.choice_requested.connect(_choose_bridge)
 	bridge_dialog.canceled.connect(_cancel_bridge)
-	add_child(bridge_dialog)
-
-	tool_choice_dialog = ToolChoiceDialogView.new()
+	tool_choice_dialog = city_dialogs.tool_choice_dialog
 	tool_choice_dialog.choice_requested.connect(_choose_tool_variant)
 	tool_choice_dialog.canceled.connect(_cancel_tool_choice)
-	add_child(tool_choice_dialog)
-
-	stadium_dialog = StadiumTeamDialogView.new()
+	stadium_dialog = city_dialogs.stadium_dialog
 	stadium_dialog.confirmed.connect(_confirm_stadium_team)
 	stadium_dialog.canceled.connect(_cancel_stadium_team)
-	add_child(stadium_dialog)
-
-	network_connection_dialog = RouteConfirmationDialogView.new()
-	network_connection_dialog.configure(
-		"Neighbor Connection",
-		"Build a road connection to a neighboring city for $1,000?",
-		"Build Connection",
-		"Keep Route",
-	)
+	network_connection_dialog = city_dialogs.network_connection_dialog
 	network_connection_dialog.confirmed.connect(_confirm_network_connection)
 	network_connection_dialog.canceled.connect(_cancel_network_connection)
-	add_child(network_connection_dialog)
-
-	highway_connection_dialog = RouteConfirmationDialogView.new()
-	highway_connection_dialog.configure(
-		"Neighbor Connection",
-		"Build a highway connection to a neighboring city for $1,500?",
-		"Build Connection",
-		"Keep Highway",
-	)
+	highway_connection_dialog = city_dialogs.highway_connection_dialog
 	highway_connection_dialog.confirmed.connect(_confirm_highway_connection)
 	highway_connection_dialog.canceled.connect(_cancel_highway_connection)
-	add_child(highway_connection_dialog)
-
-	tunnel_dialog = RouteConfirmationDialogView.new()
-	tunnel_dialog.configure(
-		"Construct Tunnel",
-		"Do you wish to construct the tunnel?",
-		"Yes",
-		"No",
-		Vector2i(500, 200),
-	)
+	tunnel_dialog = city_dialogs.tunnel_dialog
 	tunnel_dialog.confirmed.connect(_confirm_tunnel)
 	tunnel_dialog.canceled.connect(_cancel_tunnel)
-	add_child(tunnel_dialog)
-
-	query_dialog = CityQueryDialogView.new()
+	query_dialog = city_dialogs.query_dialog
 	query_dialog.close_requested.connect(_close_query)
 	query_dialog.action_requested.connect(_run_query_action)
-	add_child(query_dialog)
-	graph_window = GraphWindowView.new()
-	add_child(graph_window)
-	population_window = PopulationWindowView.new()
-	add_child(population_window)
-	industry_window = IndustryWindowView.new()
+	graph_window = city_dialogs.graph_window
+	population_window = city_dialogs.population_window
+	industry_window = city_dialogs.industry_window
 	industry_window.tax_rates_changed.connect(_on_industry_tax_rates_changed)
-	add_child(industry_window)
-	var industry_names := PackedStringArray()
-	for index in IndustryWindowControl.INDUSTRY_COUNT:
-		var fallback: String = IndustryWindowControl.DEFAULT_NAMES[index]
-		industry_names.append(str(
-			original_query_strings.get(
-				OriginalAssets.INDUSTRY_STRING_FIRST + index, fallback
-			)
-		))
-	industry_window.set_resources(
-		industry_names,
-		original_assets.industry_icons,
-	)
-	simnation_window = SimNationWindowView.new()
-	add_child(simnation_window)
-	simnation_window.set_resources(
-		original_assets.simnation_sprites,
-		str(original_query_strings.get(
-			OriginalAssets.SIMNATION_FORMAT_STRING_ID,
-			SimNationWindowControl.DEFAULT_NATIONAL_FORMAT,
-		)),
-		original_query_strings,
-	)
-	city_map_window = CityMapWindowView.new()
+	simnation_window = city_dialogs.simnation_window
+	city_map_window = city_dialogs.city_map_window
 	city_map_window.mode_changed.connect(_on_city_map_mode_changed)
 	city_map_window.center_requested.connect(_on_city_map_center_requested)
-	add_child(city_map_window)
-	city_map_window.set_resources(
-		original_assets.city_map_icons,
-		original_query_strings,
-	)
-	ordinance_window = OrdinanceWindowView.new()
+	ordinance_window = city_dialogs.ordinance_window
 	ordinance_window.ordinances_changed.connect(_on_ordinances_changed)
 	ordinance_window.update_failed.connect(_show_error)
-	add_child(ordinance_window)
-	city_analysis_dialog = CityAnalysisDialogView.new()
-	add_child(city_analysis_dialog)
-	newspaper_dialog = NewspaperDialogView.new()
-	add_child(newspaper_dialog)
-	forest_protest_dialog = PictureNoticeDialogView.new()
-	add_child(forest_protest_dialog)
-	forest_protest_dialog.configure(
-		"ForestProtestDialog",
-		"Forest Protest",
-		"ForestProtestImage",
-		"ForestProtestMessage",
-		forest_protest_image,
-		forest_protest_text,
-	)
-	building_objection_dialog = PictureNoticeDialogView.new()
-	add_child(building_objection_dialog)
-	building_objection_dialog.configure(
-		"BuildingObjectionDialog",
-		"Citizen Objection",
-		"BuildingObjectionImage",
-		"BuildingObjectionMessage",
-		forest_protest_image,
-		building_objection_text,
-	)
+	city_analysis_dialog = city_dialogs.analysis_dialog
+	newspaper_dialog = city_dialogs.newspaper_dialog
+	forest_protest_dialog = city_dialogs.forest_protest_dialog
+	building_objection_dialog = city_dialogs.building_objection_dialog
 	building_objection_dialog.confirmed.connect(_on_building_objection_closed)
 	building_objection_dialog.canceled.connect(_on_building_objection_closed)
-	library_ruminate_windows = LibraryRuminateWindowsView.new()
-	add_child(library_ruminate_windows)
-	game_over_dialog = AcceptDialog.new()
-	game_over_dialog.min_size = Vector2i(460, 220)
-	add_child(game_over_dialog)
-	scenario_dialog = ScenarioIntroDialogView.new()
+	library_ruminate_windows = city_dialogs.library_windows
+	game_over_dialog = city_dialogs.game_over_dialog
+	scenario_dialog = city_dialogs.scenario_dialog
 	scenario_dialog.confirmed.connect(_begin_scenario)
-	add_child(scenario_dialog)
-	military_dialog = ConfirmationDialog.new()
-	military_dialog.title = "Military Base Proposal"
-	military_dialog.dialog_text = (
-		"The military wants to build a base in the city. "
-		+ "The base does not cost city funds. Do you accept the proposal?"
-	)
-	military_dialog.min_size = Vector2i(500, 210)
-	military_dialog.get_ok_button().text = "Accept"
-	military_dialog.get_cancel_button().text = "Decline"
-	military_dialog.exclusive = true
+	military_dialog = city_dialogs.military_dialog
 	military_dialog.confirmed.connect(_accept_military_proposal)
 	military_dialog.canceled.connect(_decline_military_proposal)
-	add_child(military_dialog)
-
-	budget_dialog = BudgetDialogView.new()
+	budget_dialog = city_dialogs.budget_dialog
 	budget_dialog.apply_requested.connect(_commit_budget)
 	budget_dialog.cancel_requested.connect(_cancel_budget)
 	budget_dialog.issue_bond_requested.connect(_request_issue_bond)
 	budget_dialog.repay_bond_requested.connect(_request_repay_bond)
 	budget_dialog.bond_confirmation_resolved.connect(_resolve_bond_action)
-	add_child(budget_dialog)
 
 	_select_tool_group(selected_group)
 	_update_zoom_controls(map_view.zoom_percent())

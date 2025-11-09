@@ -26,6 +26,8 @@ const FileDialogsUi = preload("res://src/ui/file_dialog_factory.gd")
 const CityMenuBarUi = preload("res://src/ui/city_menu_bar.gd")
 const CityToolbarUi = preload("res://src/ui/city_toolbar.gd")
 const CityWorkspaceUi = preload("res://src/ui/city_workspace.gd")
+const CityDialogsUi = preload("res://src/ui/city_dialog_registry.gd")
+const OriginalAssetsUi = preload("res://src/assets/original_game_assets.gd")
 const ClassicStyleUi = preload("res://src/ui/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
 const PopulationWindowUi = preload("res://src/ui/city_population_window.gd")
@@ -464,6 +466,27 @@ func _test_main_menu() -> void:
 		"City workspace owns the main shell layout",
 	)
 	workspace.free()
+	var dialog_registry := CityDialogsUi.new(OriginalAssetsUi.new())
+	dialog_registry._create_file_dialogs()
+	dialog_registry._create_tool_dialogs()
+	_check(
+		dialog_registry.city_open_dialog != null
+		and dialog_registry.city_save_dialog != null
+		and dialog_registry.new_city_dialog != null
+		and dialog_registry.sign_dialog != null
+		and dialog_registry.bridge_dialog != null
+		and dialog_registry.tool_choice_dialog != null
+		and dialog_registry.stadium_dialog != null
+		and dialog_registry.query_dialog != null,
+		"City dialog registry owns file and tool dialogs",
+	)
+	_check(
+		dialog_registry.network_connection_dialog.dialog_text.contains("$1,000")
+		and dialog_registry.highway_connection_dialog.dialog_text.contains("$1,500")
+		and dialog_registry.tunnel_dialog.min_size == Vector2i(500, 200),
+		"City dialog registry owns fixed route prompts",
+	)
+	dialog_registry.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(
