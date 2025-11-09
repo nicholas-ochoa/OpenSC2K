@@ -2,8 +2,8 @@ extends Control
 
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
-const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewTerrain = preload("res://src/model/new_city_terrain.gd")
+const NewCitySession = preload("res://src/model/new_city_terrain_session.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
@@ -164,12 +164,7 @@ var tile_set_dialog: FileDialog
 var scurk_city_export_dialog: FileDialog
 var scurk_print_pdf_dialog: FileDialog
 var new_city_dialog: NewCityTerrainDialog
-var new_city_preview_document: Sc2File
-var new_city_preview_options: Dictionary = {}
-var new_city_preview_process_start := 1
-var new_city_preview_game_start := 1
-var new_city_preview_process_cursor := 1
-var new_city_preview_game_cursor := 1
+var new_city_session := NewCitySession.new()
 var options_menu: MenuButton
 var speed_menu: MenuButton
 var view_menu: MenuButton
@@ -1539,12 +1534,7 @@ func _open_new_city_dialog() -> void:
 	if new_city_dialog == null:
 		return
 	new_city_dialog.preview_timer.stop()
-	new_city_preview_document = null
-	new_city_preview_options.clear()
-	new_city_preview_process_cursor = tool_random.state
-	new_city_preview_game_cursor = nuisance_random.state
-	new_city_preview_process_start = new_city_preview_process_cursor
-	new_city_preview_game_start = new_city_preview_game_cursor
+	new_city_session.begin(tool_random.state, nuisance_random.state)
 	new_city_dialog.city_name_input.text = "New City"
 	new_city_dialog.mayor_name_input.text = (
 		city.mayor_name() if city != null and not city.mayor_name().is_empty() else "Mayor"
@@ -1601,37 +1591,21 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 		new_city_dialog.preview_status.text = "Terrain preview is not available."
 		return false
 	var template_path := reference_root.path_join("DEFAULT.SC2")
-	var document := Sc2Document.load_path(template_path)
-	if not document.is_valid():
-		new_city_dialog.preview_status.text = "Cannot load the default city."
-		return false
-	if advance_seed or new_city_preview_document == null:
-		new_city_preview_process_start = new_city_preview_process_cursor
-		new_city_preview_game_start = new_city_preview_game_cursor
-	var preview_process := Random.new(new_city_preview_process_start)
-	var preview_game := GameRandom.new(new_city_preview_game_start)
 	var options := _new_city_terrain_options()
-	var generated := NewTerrain.generate(
-		document,
-		bool(options.ocean),
-		bool(options.river),
-		int(options.hills),
-		int(options.water),
-		int(options.trees),
-		preview_process,
-		preview_game,
+	var generated := new_city_session.generate_preview(
+		template_path, options, advance_seed
 	)
 	if not generated.ok:
-		new_city_dialog.preview_status.text = "Cannot generate terrain: %s" % generated.error
+		if generated.stage == "template":
+			new_city_dialog.preview_status.text = "Cannot load the default city."
+		elif generated.stage == "city":
+			new_city_dialog.preview_status.text = "Cannot display the generated terrain."
+		else:
+			new_city_dialog.preview_status.text = (
+				"Cannot generate terrain: %s" % generated.error
+			)
 		return false
-	var preview_city := CityModel.from_document(document)
-	if not preview_city.is_valid():
-		new_city_dialog.preview_status.text = "Cannot display the generated terrain."
-		return false
-	new_city_preview_document = document
-	new_city_preview_options = options.duplicate(true)
-	new_city_preview_process_cursor = preview_process.state
-	new_city_preview_game_cursor = preview_game.state
+	var preview_city: CityState = generated.city
 	var image := Minimap.create_image(preview_city, palette, "structures")
 	new_city_dialog.preview_view.texture = ImageTexture.create_from_image(image)
 	new_city_dialog.preview_status.text = (
@@ -1649,8 +1623,7 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 func _cancel_new_city() -> void:
 	new_city_dialog.preview_timer.stop()
 	new_city_dialog.hide()
-	new_city_preview_document = null
-	new_city_preview_options.clear()
+	new_city_session.clear()
 	new_city_dialog.preview_view.texture = null
 
 
@@ -1661,38 +1634,30 @@ func _create_new_city() -> void:
 func _create_new_city_unchecked() -> void:
 	new_city_dialog.preview_timer.stop()
 	var terrain_options := _new_city_terrain_options()
-	if (
-		new_city_preview_document == null
-		or new_city_preview_options != terrain_options
-	):
+	if not new_city_session.matches(terrain_options):
 		if not _generate_new_city_preview(false):
 			_show_error("Cannot prepare the selected terrain.")
 			return
 	var template_path := reference_root.path_join("DEFAULT.SC2")
-	var template := Sc2Document.load_path(template_path)
-	if not template.is_valid():
-		_show_error("Cannot load the default city: %s" % template.parse_error)
-		return
 	var difficulty := new_city_dialog.difficulty_input.get_selected_id()
 	var starting_year := new_city_dialog.year_input.get_selected_id()
-	var new_process_random := Random.new(new_city_preview_process_start)
-	var new_game_random := GameRandom.new(new_city_preview_game_start)
-	var result := NewCity.create(
-		template,
+	var result := new_city_session.create_city(
+		template_path,
 		new_city_dialog.city_name_input.text,
 		new_city_dialog.mayor_name_input.text,
 		difficulty,
 		starting_year,
-		new_process_random,
-		new_game_random,
 		terrain_options,
 		newspaper_session_state,
 	)
 	if not result.ok:
-		_show_error("Cannot create a new city: %s" % result.error)
+		if result.stage == "template":
+			_show_error("Cannot load the default city: %s" % result.error)
+		else:
+			_show_error("Cannot create a new city: %s" % result.error)
 		return
-	tool_random.state = new_process_random.state
-	nuisance_random.state = new_game_random.state
+	tool_random.state = int(result.process_state)
+	nuisance_random.state = int(result.game_state)
 	var document: Sc2File = result.document
 	_activate_document(
 		document,

@@ -88,6 +88,7 @@ const Dispatch = preload("res://src/tools/dispatch_command.gd")
 const CityRotation = preload("res://src/tools/city_rotation_command.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
+const NewCityTerrainSession = preload("res://src/model/new_city_terrain_session.gd")
 const ThingAudio = preload("res://src/audio/moving_thing_audio.gd")
 const AudioTests = preload("res://tests/suites/audio_test_suite.gd")
 const InformationWindowTests = preload("res://tests/suites/information_window_test_suite.gd")
@@ -11696,6 +11697,59 @@ func _test_new_city_terrain(reference_root: String) -> void:
 			and repeated_game.state == game_random.state,
 			"Terrain generation is deterministic for both recovered random states",
 		)
+
+	var terrain_session := NewCityTerrainSession.new()
+	terrain_session.begin(1, 1)
+	var session_preview := terrain_session.generate_preview(
+		source_path, options, false
+	)
+	_check(
+		session_preview.ok
+		and terrain_session.matches(options)
+		and terrain_session.preview_process_start == 1
+		and terrain_session.preview_game_start == 1
+		and terrain_session.preview_process_cursor == 981240924
+		and terrain_session.preview_game_cursor == 1692766423,
+		"New City terrain session owns the preview seeds and current options (%d, %d)"
+		% [
+			terrain_session.preview_process_cursor,
+			terrain_session.preview_game_cursor,
+		],
+	)
+	var repeated_preview := terrain_session.generate_preview(
+		source_path, options, false
+	)
+	var repeated_preview_matches: bool = (
+		bool(session_preview.ok) and bool(repeated_preview.ok)
+	)
+	if repeated_preview_matches:
+		for chunk_id in ["ALTM", "XTER", "XBLD", "XBIT"]:
+			repeated_preview_matches = repeated_preview_matches and (
+				session_preview.document.find_chunk(chunk_id).decoded_payload
+				== repeated_preview.document.find_chunk(chunk_id).decoded_payload
+			)
+	_check(
+		repeated_preview_matches
+		and terrain_session.preview_process_start == 1
+		and terrain_session.preview_game_start == 1,
+		"New City option previews reuse their initial random states",
+	)
+	var previous_process_cursor := terrain_session.preview_process_cursor
+	var previous_game_cursor := terrain_session.preview_game_cursor
+	var advanced_preview := terrain_session.generate_preview(
+		source_path, options, true
+	)
+	_check(
+		advanced_preview.ok
+		and terrain_session.preview_process_start == previous_process_cursor
+		and terrain_session.preview_game_start == previous_game_cursor,
+		"Make New Terrain advances both preview random states",
+	)
+	terrain_session.clear()
+	_check(
+		not terrain_session.matches(options),
+		"Closing New City clears its preview document",
+	)
 
 	var ocean := NewCity.create(
 		template, "Ocean City", "Ocean Mayor", 1, 1900,
