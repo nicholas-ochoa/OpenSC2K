@@ -24,20 +24,14 @@ const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
-const MainMenuView = preload("res://src/ui/main_menu_control.gd")
-const SettingsDialogView = preload("res://src/ui/app_settings_dialog.gd")
 const SettingsStore = preload("res://src/ui/app_settings_store.gd")
 const LibraryRuminateWindowsView = preload("res://src/ui/library_ruminate_windows.gd")
 const DisplayNumbers = preload("res://src/ui/display_number_format.gd")
 const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
-const AboutDialogView = preload("res://src/ui/about_dialog.gd")
-const SaveChangesDialogView = preload("res://src/ui/save_changes_dialog.gd")
 const CityMenuBarView = preload("res://src/ui/city_menu_bar.gd")
 const CityWorkspaceView = preload("res://src/ui/city_workspace.gd")
 const CityDialogsView = preload("res://src/ui/city_dialog_registry.gd")
-const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
-const ScurkPlacePrintView = preload("res://src/ui/scurk_place_print_control.gd")
-const ScurkPrintView = preload("res://src/ui/scurk_print_control.gd")
+const MainOverlaysView = preload("res://src/ui/main_overlay_registry.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -209,6 +203,7 @@ var city_menu_bar: CityMenuBar
 var status_label: Label
 var city_status_bar: CityStatusBar
 var city_dialogs: CityDialogRegistry
+var main_overlays: MainOverlayRegistry
 var file_dialog: FileDialog
 var save_dialog: FileDialog
 var tile_set_dialog: FileDialog
@@ -617,9 +612,9 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 
 
 func _build_main_menu() -> void:
-	main_menu = MainMenuView.new()
-	main_menu.z_index = 850
-	main_menu.visible = false
+	main_overlays = MainOverlaysView.new()
+	add_child(main_overlays)
+	main_menu = main_overlays.main_menu
 	main_menu.continue_requested.connect(_hide_main_menu)
 	main_menu.new_city_requested.connect(_open_new_city_dialog)
 	main_menu.open_city_requested.connect(_open_city_dialog)
@@ -629,19 +624,15 @@ func _build_main_menu() -> void:
 	main_menu.scurk_place_requested.connect(_open_scurk_place_print)
 	main_menu.about_requested.connect(_open_about_dialog)
 	main_menu.exit_requested.connect(_request_city_exit.bind("quit"))
-	add_child(main_menu)
 
-	settings_dialog = SettingsDialogView.new()
+	settings_dialog = main_overlays.settings_dialog
 	settings_dialog.confirmed.connect(_apply_settings)
-	add_child(settings_dialog)
 
-	scurk_editor = ScurkEditorView.new()
-	scurk_editor.z_index = 940
+	scurk_editor = main_overlays.scurk_editor
 	scurk_editor.tile_set_applied.connect(_apply_scurk_tile_set)
 	scurk_editor.place_print_requested.connect(_open_scurk_place_print)
-	add_child(scurk_editor)
 
-	scurk_place_print = ScurkPlacePrintView.new()
+	scurk_place_print = main_overlays.scurk_place_print
 	scurk_place_print.tile_selected.connect(_select_scurk_place_tile)
 	scurk_place_print.edit_tool_selected.connect(_select_scurk_edit_tool)
 	scurk_place_print.export_bmp_requested.connect(_open_scurk_city_export)
@@ -649,21 +640,17 @@ func _build_main_menu() -> void:
 	scurk_place_print.undo_requested.connect(_undo_scurk_place)
 	scurk_place_print.redo_requested.connect(_redo_scurk_place)
 	scurk_place_print.close_requested.connect(_close_scurk_place_print)
-	add_child(scurk_place_print)
 
-	scurk_print = ScurkPrintView.new()
+	scurk_print = main_overlays.scurk_print
 	scurk_print.preview_options_changed.connect(_refresh_scurk_print_preview)
 	scurk_print.save_pdf_requested.connect(_open_scurk_print_pdf_dialog)
-	add_child(scurk_print)
 
-	about_dialog = AboutDialogView.new()
-	add_child(about_dialog)
+	about_dialog = main_overlays.about_dialog
 
-	save_changes_dialog = SaveChangesDialogView.new()
+	save_changes_dialog = main_overlays.save_changes_dialog
 	save_changes_dialog.confirmed.connect(_save_pending_city_exit)
 	save_changes_dialog.canceled.connect(_cancel_pending_city_exit)
 	save_changes_dialog.custom_action.connect(_on_save_changes_action)
-	add_child(save_changes_dialog)
 
 
 func _show_main_menu() -> void:

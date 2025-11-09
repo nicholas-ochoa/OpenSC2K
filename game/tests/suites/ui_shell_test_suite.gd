@@ -27,6 +27,7 @@ const CityMenuBarUi = preload("res://src/ui/city_menu_bar.gd")
 const CityToolbarUi = preload("res://src/ui/city_toolbar.gd")
 const CityWorkspaceUi = preload("res://src/ui/city_workspace.gd")
 const CityDialogsUi = preload("res://src/ui/city_dialog_registry.gd")
+const MainOverlaysUi = preload("res://src/ui/main_overlay_registry.gd")
 const OriginalAssetsUi = preload("res://src/assets/original_game_assets.gd")
 const ClassicStyleUi = preload("res://src/ui/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
@@ -487,6 +488,22 @@ func _test_main_menu() -> void:
 		"City dialog registry owns fixed route prompts",
 	)
 	dialog_registry.free()
+	var main_overlays := MainOverlaysUi.new()
+	main_overlays._create_overlays()
+	_check(
+		main_overlays.main_menu != null
+		and not main_overlays.main_menu.visible
+		and main_overlays.main_menu.z_index == 850
+		and main_overlays.settings_dialog != null
+		and main_overlays.scurk_editor != null
+		and main_overlays.scurk_editor.z_index == 940
+		and main_overlays.scurk_place_print != null
+		and main_overlays.scurk_print != null
+		and main_overlays.about_dialog != null
+		and main_overlays.save_changes_dialog != null,
+		"Main overlay registry owns menu, SCURK, and application overlays",
+	)
+	main_overlays.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(
