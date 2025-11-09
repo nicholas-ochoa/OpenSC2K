@@ -1,6 +1,7 @@
 extends Control
 
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
+const CityFiles = preload("res://src/formats/city_file_store.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const NewTerrain = preload("res://src/model/new_city_terrain.gd")
 const NewCitySession = preload("res://src/model/new_city_terrain_session.gd")
@@ -2273,36 +2274,15 @@ func _on_save_dialog_canceled() -> void:
 
 
 func _save_copy(path: String) -> bool:
-	if current_document == null:
-		_show_error("No city is loaded.")
+	var result := CityFiles.save_copy(current_document, path, reference_root)
+	if not result.ok:
+		_show_error(result.error)
 		return false
-	var output_path := path
-	if output_path.get_extension().is_empty():
-		output_path += ".SC2"
-	output_path = output_path.simplify_path()
-	if output_path == reference_root or output_path.begins_with(reference_root + "/"):
-		_show_error("Choose a location outside the read-only references directory.")
-		return false
-
-	var serialized := current_document.serialize()
-	if not serialized.ok:
-		_show_error(serialized.error)
-		return false
-	var output := FileAccess.open(output_path, FileAccess.WRITE)
-	if output == null:
-		_show_error("Cannot open save output: %s" % error_string(FileAccess.get_open_error()))
-		return false
-	output.store_buffer(serialized.data)
-	output.flush()
-	var write_error := output.get_error()
-	output.close()
-	if write_error != OK:
-		_show_error("Cannot write save output: %s" % error_string(write_error))
-		return false
+	var output_path: String = result.path
 	current_document.source_path = output_path
 	current_save_path = output_path
 	current_city_saved_once = true
-	saved_city_snapshot = serialized.data.duplicate()
+	saved_city_snapshot = result.data.duplicate()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Saved city copy: %s" % output_path
 	return true

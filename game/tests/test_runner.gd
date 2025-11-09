@@ -2,6 +2,7 @@ extends SceneTree
 
 const RleCodec = preload("res://src/formats/maxis_rle.gd")
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
+const CityFileStore = preload("res://src/formats/city_file_store.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
@@ -11591,6 +11592,30 @@ func _test_modified_save(reference_root: String) -> void:
 				modified_chunk.stored_payload == original_chunk.stored_payload,
 				"%s stored bytes stay unchanged after MISC edit" % original_chunk.chunk_id
 			)
+
+	var save_base := ProjectSettings.globalize_path(
+		"user://test_city_file_store_%d" % OS.get_process_id()
+	)
+	var saved_copy := CityFileStore.save_copy(document, save_base, reference_root)
+	_check(
+		saved_copy.ok
+		and saved_copy.path == save_base + ".SC2"
+		and FileAccess.get_file_as_bytes(saved_copy.path) == serialized.data,
+		"City file store adds the SC2 extension and writes exact serialized bytes",
+	)
+	if saved_copy.ok and FileAccess.file_exists(saved_copy.path):
+		DirAccess.remove_absolute(saved_copy.path)
+	var protected_copy := CityFileStore.save_copy(
+		document, reference_root.path_join("DO_NOT_WRITE.SC2"), reference_root
+	)
+	_check(
+		not protected_copy.ok and protected_copy.error.contains("read-only references"),
+		"City file store rejects every path inside the reference directory",
+	)
+	_check(
+		not CityFileStore.save_copy(null, save_base, reference_root).ok,
+		"City file store rejects a missing city document",
+	)
 
 
 func _test_new_city_terrain(reference_root: String) -> void:
