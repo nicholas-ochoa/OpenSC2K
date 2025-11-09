@@ -4,6 +4,51 @@ extends PanelContainer
 const RciStatusView = preload("res://src/view/rci_status_control.gd")
 const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 const REPORT_ROTATION_SECONDS := 7.0
+const NEWS_NAMES := {
+	1: "Local news",
+	4: "New invention",
+	5: "New innovation",
+	6: "War report",
+	7: "Market report",
+	8: "Sports report",
+	9: "Federal rate increase",
+	10: "Federal rate decrease",
+	0x0b: "Political report",
+	0x0c: "Diplomatic report",
+	0x0d: "Disaster report",
+	0x0e: "Medical report",
+	0x0f: "Upbeat report",
+	0x10: "High crime",
+	0x11: "High traffic",
+	0x12: "High pollution",
+	0x13: "Poor education",
+	0x14: "Poor health",
+	0x15: "Poor employment",
+	3: "City milestone",
+	0x24: "Power plant report",
+	0x26: "Education report",
+	39: "Bridge collapse",
+	0x28: "Forest protest",
+	0x29: "New ordinance",
+	0x3d: "Low crime",
+	0x3e: "Low traffic",
+	0x3f: "Low pollution",
+	0x40: "Good education",
+	0x41: "Good health",
+	0x42: "Good employment",
+	0x1f8: "Explosion",
+	0x1fe: "Traffic report",
+	0x201: "High mayor approval",
+	0x202: "Monster attack",
+	0x203: "Air disaster",
+	0x205: "Cargo ship report",
+	0x206: "Airplane takeoff",
+	0x207: "Airplane landing",
+	0x20c: "Train report",
+	0x20f: "Sailboat distress",
+	0x211: "Arcology launch",
+	0x212: "Arcology launch complete",
+}
 
 var message_label: Label
 var weather_label: Label
@@ -92,6 +137,17 @@ func prepend_reports(reports: PackedStringArray, maximum := 3) -> void:
 	report_elapsed_seconds = 0.0
 	_refresh_report_text()
 	_sync_overflow_tooltip(reports_label)
+
+
+func prepend_news_items(news_items: Array, maximum := 3) -> void:
+	var reports := PackedStringArray()
+	for item in news_items:
+		reports.append(report_name(int(item.get("type", 0))))
+	prepend_reports(reports, maximum)
+
+
+static func report_name(news_type: int) -> String:
+	return str(NEWS_NAMES.get(news_type, "City report"))
 
 
 func update_report_rotation(delta: float) -> void:

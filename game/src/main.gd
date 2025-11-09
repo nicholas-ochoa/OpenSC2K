@@ -59,52 +59,6 @@ const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
 const DebugActions = preload("res://src/debug/city_debug_actions.gd")
 
-const NEWS_NAMES := {
-	1: "Local news",
-	4: "New invention",
-	5: "New innovation",
-	6: "War report",
-	7: "Market report",
-	8: "Sports report",
-	9: "Federal rate increase",
-	10: "Federal rate decrease",
-	0x0b: "Political report",
-	0x0c: "Diplomatic report",
-	0x0d: "Disaster report",
-	0x0e: "Medical report",
-	0x0f: "Upbeat report",
-	0x10: "High crime",
-	0x11: "High traffic",
-	0x12: "High pollution",
-	0x13: "Poor education",
-	0x14: "Poor health",
-	0x15: "Poor employment",
-	3: "City milestone",
-	0x24: "Power plant report",
-	0x26: "Education report",
-	39: "Bridge collapse",
-	0x28: "Forest protest",
-	0x29: "New ordinance",
-	0x3d: "Low crime",
-	0x3e: "Low traffic",
-	0x3f: "Low pollution",
-	0x40: "Good education",
-	0x41: "Good health",
-	0x42: "Good employment",
-	0x1f8: "Explosion",
-	0x1fe: "Traffic report",
-	0x201: "High mayor approval",
-	0x202: "Monster attack",
-	0x203: "Air disaster",
-	0x205: "Cargo ship report",
-	0x206: "Airplane takeoff",
-	0x207: "Airplane landing",
-	0x20c: "Train report",
-	0x20f: "Sailboat distress",
-	0x211: "Arcology launch",
-	0x212: "Arcology launch complete",
-}
-
 const MAP_DISPLAY_MODES := ["city", "underground"]
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
@@ -1572,7 +1526,7 @@ func _on_newspaper_menu(_id: int) -> void:
 		current_document,
 		newspaper_data,
 		original_query_strings,
-		NEWS_NAMES,
+		CityStatusBar.NEWS_NAMES,
 		newspaper_session_seed,
 	)
 
@@ -3356,13 +3310,8 @@ func _stop_tool_loop_sound() -> void:
 
 
 func _show_news_items(news_items: Array) -> void:
-	var reports := PackedStringArray()
-	for item in news_items:
-		var news_type := int(item.get("type", 0))
-		var name: String = NEWS_NAMES.get(news_type, "City report")
-		reports.append(name)
 	if city_status_bar != null:
-		city_status_bar.prepend_reports(reports)
+		city_status_bar.prepend_news_items(news_items)
 	_refresh_status_summary()
 
 
@@ -3407,7 +3356,7 @@ func _refresh_saved_news_summary() -> void:
 		if record.is_empty() or int(record.priority) <= 0:
 			continue
 		var story_type := int(record.type)
-		reports.append(str(NEWS_NAMES.get(story_type, "City report")))
+		reports.append(CityStatusBar.report_name(story_type))
 		if reports.size() == 3:
 			break
 	if city_status_bar != null:

@@ -372,13 +372,18 @@ func _test_main_menu() -> void:
 		"City status bar owns live values and report rotation",
 	)
 	status_bar.prepend_reports(PackedStringArray(["Latest"]))
+	status_bar.prepend_news_items([
+		{"type": 0x211},
+		{"type": -1},
+	])
 	status_bar.clear_environment()
 	_check(
-		status_bar.reports_label.text == "News: Latest"
+		status_bar.reports_label.text == "News: City report"
 		and status_bar.recent_reports.size() == 3
+		and status_bar.recent_reports[1] == "Arcology launch"
 		and status_bar.weather_label.text == "Weather: --"
 		and not status_bar.rci_graph.demand_available,
-		"City status bar replaces reports and clears city values",
+		"City status bar maps news, replaces reports, and clears city values",
 	)
 	status_bar.free()
 	var city_open_dialog := FileDialogsUi.city_open()
