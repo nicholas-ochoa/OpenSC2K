@@ -1393,35 +1393,11 @@ func _start_disaster_at_view_center(id: int) -> Dictionary:
 		result.get("effect_events", []), result.get("sound_events", [])
 	)
 	_show_news_items(result.get("news_items", []))
-	var disaster_name := _disaster_name(id)
+	var disaster_name := CityMenuBar.disaster_name(id)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "%s started." % disaster_name
 	result["name"] = disaster_name
 	return result
-
-
-func _disaster_name(id: int) -> String:
-	return str({
-		DisasterStart.DISASTER_FIRE: "Fire",
-		DisasterStart.DISASTER_FLOOD: "Flood",
-		DisasterStart.DISASTER_RIOT: "Riot",
-		DisasterStart.DISASTER_TOXIC_SPILL: "Toxic Spill",
-		DisasterStart.DISASTER_AIR_CRASH: "Air Crash",
-		DisasterStart.DISASTER_EARTHQUAKE: "Earthquake",
-		DisasterStart.DISASTER_TORNADO: "Tornado",
-		DisasterStart.DISASTER_MONSTER: "Monster",
-		DisasterStart.DISASTER_MELTDOWN: "Meltdown",
-		DisasterStart.DISASTER_MICROWAVE: "Microwave",
-		DisasterStart.DISASTER_VOLCANO: "Volcano",
-		DisasterStart.DISASTER_FIRESTORM: "Firestorm",
-		DisasterStart.DISASTER_MASS_RIOTS: "Mass Riots",
-		DisasterStart.DISASTER_MASS_FLOODS: "Mass Floods",
-		DisasterStart.DISASTER_POLLUTION: "Pollution",
-		DisasterStart.DISASTER_HURRICANE: "Hurricane",
-		DisasterStart.DISASTER_HELICOPTER_CRASH: "Helicopter Crash",
-		DisasterStart.DISASTER_PLANE_CRASH: "Plane Crash",
-	}.get(id, "None" if id == DisasterStart.DISASTER_NONE else "Disaster"))
-
 
 func _on_windows_menu(id: int) -> void:
 	if id == 0:
@@ -4885,7 +4861,7 @@ func _debug_metrics() -> Dictionary:
 		"dynamic_cache": dynamic_visual_cache.size(),
 		"foreground_cache": dynamic_foreground_cache.size(),
 		"active_disaster": (
-			_disaster_name(simulation_engine.active_disaster_type)
+			CityMenuBar.disaster_name(simulation_engine.active_disaster_type)
 			if simulation_engine != null
 			else "None"
 		),
@@ -4977,11 +4953,12 @@ func _debug_start_disaster(disaster_type: int) -> Dictionary:
 		return {
 			"ok": false,
 			"message": "The %s could not start: %s"
-			% [_disaster_name(disaster_type), result.get("error", "unknown error")],
+			% [CityMenuBar.disaster_name(disaster_type), result.get("error", "unknown error")],
 		}
 	return {
 		"ok": true,
-		"message": "%s started at the current view center." % _disaster_name(disaster_type),
+		"message": "%s started at the current view center."
+		% CityMenuBar.disaster_name(disaster_type),
 	}
 
 
@@ -5000,7 +4977,7 @@ func _debug_end_disaster() -> Dictionary:
 		"message": "Ended %s and cleared %d marker(s) and %d object(s)."
 		% [
 			(
-				_disaster_name(int(result.active_type))
+				CityMenuBar.disaster_name(int(result.active_type))
 				if int(result.active_type) != 0
 				else "the disaster"
 			),

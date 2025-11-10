@@ -26,6 +26,13 @@ const MENU_VIEW_ZONES := 0x8105
 const MENU_VIEW_SIGNS := 0x8106
 const MENU_VIEW_PIPES := 0x8107
 const MENU_SCURK_PLACE_PRINT := 0x8200
+const DISASTER_ITEMS := [
+	["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],
+	["Air Crash", 5], ["Earthquake", 6], ["Tornado", 7], ["Monster", 8],
+	["Meltdown", 9], ["Microwave", 10], ["Volcano", 11], ["Firestorm", 12],
+	["Mass Riots", 13], ["Mass Floods", 14], ["Pollution", 15],
+	["Hurricane", 16], ["Helicopter Crash", 17], ["Plane Crash", 18],
+]
 
 var file_menu: MenuButton
 var speed_menu: MenuButton
@@ -86,13 +93,9 @@ func _ready() -> void:
 	]:
 		view_menu.get_popup().add_check_item(view_item[0], view_item[1])
 
-	disasters_menu = _add_menu(menu_row, "Disasters", [
-		["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],
-		["Air Crash", 5], ["Earthquake", 6], ["Tornado", 7], ["Monster", 8],
-		["Meltdown", 9], ["Microwave", 10], ["Volcano", 11], ["Firestorm", 12],
-		["Mass Riots", 13], ["Mass Floods", 14], ["Pollution", 15],
-		["Hurricane", 16], ["Helicopter Crash", 17], ["Plane Crash", 18],
-	], _on_disaster_menu)
+	disasters_menu = _add_menu(
+		menu_row, "Disasters", DISASTER_ITEMS, _on_disaster_menu
+	)
 	disasters_menu.get_popup().add_separator()
 	disasters_menu.get_popup().add_check_item("No Disasters", MENU_NO_DISASTERS)
 	var implemented_disasters := {
@@ -229,6 +232,13 @@ func set_money(display_money: String) -> void:
 
 func set_fps(frames_per_second: int) -> void:
 	fps_label.text = "FPS: %d" % frames_per_second
+
+
+static func disaster_name(disaster_id: int) -> String:
+	for item in DISASTER_ITEMS:
+		if int(item[1]) == disaster_id:
+			return str(item[0])
+	return "None" if disaster_id == 0 else "Disaster"
 
 
 func refresh_population_tooltip() -> void:

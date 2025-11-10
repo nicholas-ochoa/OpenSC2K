@@ -429,6 +429,13 @@ func _test_main_menu() -> void:
 		and menu_bar.fps_label.text == "FPS: --",
 		"City menu bar owns menus and city metrics",
 	)
+	_check(
+		CityMenuBarUi.disaster_name(1) == "Fire"
+		and CityMenuBarUi.disaster_name(18) == "Plane Crash"
+		and CityMenuBarUi.disaster_name(0) == "None"
+		and CityMenuBarUi.disaster_name(99) == "Disaster",
+		"City menu bar owns disaster display names",
+	)
 	menu_bar.set_city_name("Test City")
 	menu_bar.set_population("12,345")
 	menu_bar.set_date("01/02/2003")
