@@ -21,6 +21,7 @@ const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.g
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
+const ToolState = preload("res://src/tools/tool_edit_state.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
@@ -3352,7 +3353,7 @@ func _select_tool_group(index: int) -> void:
 	for subtool_index in group.tools.size():
 		if selected_group == 3 and subtool_index == 1:
 			continue
-		if _is_tool_variant(selected_group, subtool_index):
+		if ToolState.is_tool_variant(selected_group, subtool_index):
 			continue
 		var tool := Tools.tool(selected_group, subtool_index)
 		var price := "Free" if tool.cost == 0 else "$%s" % _format_number(tool.cost)
@@ -3387,16 +3388,8 @@ func _select_subtool(index: int) -> void:
 	selected_subtool = index
 	_sync_child_tool_selection()
 	_update_edit_state()
-	if selected_tool_available and _is_tool_chooser(selected_group, selected_subtool):
+	if selected_tool_available and ToolState.is_tool_chooser(selected_group, selected_subtool):
 		_open_tool_choice_dialog(selected_group)
-
-
-func _is_tool_chooser(group_index: int, subtool_index: int) -> bool:
-	return group_index == 5 and subtool_index == 4
-
-
-func _is_tool_variant(group_index: int, subtool_index: int) -> bool:
-	return group_index == 5 and subtool_index >= 5
 
 
 func _sync_child_tool_selection() -> void:
@@ -3458,183 +3451,33 @@ func _refresh_tool_availability() -> bool:
 func _update_edit_state() -> void:
 	if map_view == null:
 		return
+	var state: Dictionary
 	if scurk_place_print != null and scurk_place_print.visible:
 		if scurk_place_print.is_object_mode():
-			var tile_id := scurk_place_print.selected_tile_id
-			var area := Demolish.structure_area(tile_id)
-			var can_place := (
-				city != null
-				and overlay_mode == "city"
-				and ScurkPlace.is_placeable_tile(tile_id)
+			state = ToolState.scurk_object(
+				city, overlay_mode, scurk_place_print.selected_tile_id
 			)
-			map_view.set_edit_enabled(can_place, "point", area, false)
-			_refresh_status_summary()
-			if status_label != null:
-				status_label.remove_theme_color_override("font_color")
-				var scurk_detail := (
-					"SCURK tile %d selected. Click its anchor tile to place a %d by %d object."
-					% [tile_id, area, area]
-					if can_place
-					else "Select a SCURK object to place."
-				)
-				status_label.text = (
-					"SCURK Tile %d" % tile_id if can_place else "SCURK Place"
-				)
-				status_label.set_meta("status_tooltip_text", scurk_detail)
-				city_status_bar.refresh_message_tooltip()
-			return
-		var scurk_tool := scurk_place_print.selected_edit_tool()
-		var can_edit := city != null and not scurk_tool.is_empty()
-		var scurk_group := int(scurk_tool.get("group", -1))
-		var scurk_subtool := int(scurk_tool.get("subtool", -1))
-		var scurk_zone := int(scurk_tool.get("zone", -1))
-		var is_scurk_zone := scurk_zone >= 0
-		var is_scurk_demolish := Demolish.supports_tool(
-			scurk_group, scurk_subtool
-		)
-		var is_scurk_landscape := Landscapes.supports_tool(
-			scurk_group, scurk_subtool
-		)
-		var is_scurk_network := Networks.supports_tool(
-			scurk_group, scurk_subtool
-		)
-		var is_scurk_highway := Highways.supports_tool(
-			scurk_group, scurk_subtool
-		)
-		var is_scurk_terrain := TerrainTools.supports_tool(
-			scurk_group, scurk_subtool
-		)
-		var selection := "point"
-		if is_scurk_zone or is_scurk_demolish:
-			selection = "rectangle"
-		elif is_scurk_landscape or is_scurk_network or is_scurk_highway or is_scurk_terrain:
-			selection = "path"
-		map_view.set_edit_enabled(can_edit, selection, 1, is_scurk_landscape)
-		_refresh_status_summary()
-		if status_label != null:
-			status_label.remove_theme_color_override("font_color")
-			var tool_name := String(scurk_tool.get("name", "Edit Tool"))
-			status_label.text = "SCURK %s" % tool_name
-			status_label.set_meta(
-				"status_tooltip_text",
-				"%s is active in Place & Print. Click or drag on the city. City funds and development gates do not apply."
-				% tool_name
+		else:
+			state = ToolState.scurk_tool(
+				city, scurk_place_print.selected_edit_tool()
 			)
-			city_status_bar.refresh_message_tooltip()
-		return
-	var tool_available := city != null and ToolAvailability.is_available(
-		city, selected_group, selected_subtool
-	)
-	selected_tool_available = tool_available
-	var is_zone_tool := Zones.supports_tool(selected_group, selected_subtool)
-	var is_landscape_tool := Landscapes.supports_tool(selected_group, selected_subtool)
-	var is_building_tool := Buildings.supports_tool(selected_group, selected_subtool)
-	var is_network_tool := Networks.supports_tool(selected_group, selected_subtool)
-	var is_hydro_tool := Hydro.supports_tool(selected_group, selected_subtool)
-	var is_subway_to_rail_tool := SubwayToRail.supports_tool(selected_group, selected_subtool)
-	var is_onramp_tool := Onramps.supports_tool(selected_group, selected_subtool)
-	var is_tunnel_tool := Tunnels.supports_tool(selected_group, selected_subtool)
-	var is_highway_tool := Highways.supports_tool(selected_group, selected_subtool)
-	var is_demolish_tool := Demolish.supports_tool(selected_group, selected_subtool)
-	var is_terrain_tool := TerrainTools.supports_tool(selected_group, selected_subtool)
-	var is_dispatch_tool := Dispatch.supports_tool(selected_group, selected_subtool)
-	var is_sign_tool := selected_group == 15
-	var is_query_tool := selected_group == 16
-	var is_center_tool := selected_group == 17
-	var point_footprint_area := (
-		int(Tools.tool(selected_group, selected_subtool).get("area", 1))
-		if is_building_tool else 1
-	)
-	var is_underground_network_tool := (
-		(selected_group == 4 and selected_subtool == 0)
-		or (selected_group == 7 and selected_subtool == 1)
-	)
+	else:
+		state = ToolState.normal(
+			city, overlay_mode, selected_group, selected_subtool
+		)
+		selected_tool_available = bool(state.available)
 	map_view.set_edit_enabled(
-		tool_available
-			and (
-				overlay_mode == "city"
-				or (
-					overlay_mode == "underground"
-					and (is_underground_network_tool or is_demolish_tool)
-				)
-			)
-		and (
-			is_zone_tool
-			or is_landscape_tool
-			or is_building_tool
-			or is_network_tool
-			or is_hydro_tool
-			or is_subway_to_rail_tool
-			or is_onramp_tool
-			or is_tunnel_tool
-			or is_highway_tool
-			or is_demolish_tool
-			or is_terrain_tool
-			or is_dispatch_tool
-			or is_sign_tool
-			or is_query_tool
-			or is_center_tool
-		),
-		(
-			"rectangle"
-			if is_zone_tool or is_demolish_tool
-			else (
-				"path"
-				if is_landscape_tool or is_network_tool or is_highway_tool or is_terrain_tool
-				else "point"
-			)
-		),
-		point_footprint_area,
-		is_landscape_tool,
+		bool(state.enabled),
+		str(state.selection),
+		int(state.area),
+		bool(state.landscape),
 	)
 	_refresh_status_summary()
-	if city == null or status_label == null:
+	if status_label == null or not bool(state.show_status):
 		return
-	var tool := Tools.tool(selected_group, selected_subtool)
 	status_label.remove_theme_color_override("font_color")
-	var tool_status_detail := ""
-	if not tool_available:
-		tool_status_detail = "%s is not available in this city." % tool.name
-	elif _is_tool_chooser(selected_group, selected_subtool):
-		tool_status_detail = "%s selected. Select an available type from the choice window." % tool.name
-	elif is_zone_tool:
-		tool_status_detail = "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool.name
-	elif is_landscape_tool:
-		tool_status_detail = "%s selected. Click or drag across eligible city tiles. Hold Shift to Query." % tool.name
-	elif is_building_tool:
-		tool_status_detail = "%s selected. Click a clear city site to build it." % tool.name
-	elif is_network_tool:
-		tool_status_detail = "%s selected. Drag between city tiles to build a route." % tool.name
-	elif is_hydro_tool:
-		tool_status_detail = "Hydroelectric Power Plant selected. Click an unused waterfall tile."
-	elif is_subway_to_rail_tool:
-		tool_status_detail = "Subway-to-Rail Connection selected. Click beside a rail or subway."
-	elif is_onramp_tool:
-		tool_status_detail = "On-ramp selected. Click on clear terrain between a highway and a perpendicular road."
-	elif is_tunnel_tool:
-		tool_status_detail = "Tunnel selected. Click a cardinal slope that faces through a hill."
-	elif is_highway_tool:
-		tool_status_detail = "Highway selected. Drag between city tiles to build a two-tile-wide route."
-	elif is_demolish_tool:
-		tool_status_detail = "Demolish selected. Drag a rectangle across eligible city tiles."
-	elif is_terrain_tool:
-		tool_status_detail = "%s selected. Click or drag across terrain." % tool.name
-	elif is_dispatch_tool:
-		var available := Dispatch.availability(city)
-		var count := 0
-		if available.ok:
-			count = [available.police, available.fire, available.military][selected_subtool]
-		tool_status_detail = "%s selected. Click dry, unlabeled terrain to deploy one of %d available units." % [tool.name, count]
-	elif is_sign_tool:
-		tool_status_detail = "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
-	elif is_query_tool:
-		tool_status_detail = "Query selected. Click a city tile to inspect it."
-	elif is_center_tool:
-		tool_status_detail = "Center View selected. Click a city tile to center the map on it."
-	else:
-		tool_status_detail = "%s is in the original tool catalog. Its command is not implemented yet." % tool.name
-	status_label.text = str(tool.name)
-	status_label.set_meta("status_tooltip_text", tool_status_detail)
+	status_label.text = str(state.status_text)
+	status_label.set_meta("status_tooltip_text", str(state.status_detail))
 	city_status_bar.refresh_message_tooltip()
 
 

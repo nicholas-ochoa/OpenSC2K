@@ -67,6 +67,7 @@ const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
+const ToolEditState = preload("res://src/tools/tool_edit_state.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
@@ -12112,6 +12113,50 @@ func _test_tool_availability(reference_root: String) -> void:
 	_check(
 		ToolAvailability.is_available(city, 2, 2),
 		"Dispatch selection stays available because live capacity controls dispatch",
+	)
+	var zone_edit_state := ToolEditState.normal(city, "city", 9, 0)
+	var road_edit_state := ToolEditState.normal(city, "city", 6, 0)
+	var building_edit_state := ToolEditState.normal(city, "city", 13, 3)
+	_check(
+		zone_edit_state.enabled
+		and zone_edit_state.selection == "rectangle"
+		and zone_edit_state.status_text == "Light Residential"
+		and road_edit_state.enabled
+		and road_edit_state.selection == "path"
+		and building_edit_state.enabled
+		and building_edit_state.selection == "point"
+		and building_edit_state.area == 4,
+		"Tool edit state classifies zone, route, and building input",
+	)
+	var underground_pipe_state := ToolEditState.normal(city, "underground", 4, 0)
+	var underground_zone_state := ToolEditState.normal(city, "underground", 9, 0)
+	_check(
+		underground_pipe_state.enabled
+		and underground_pipe_state.selection == "path"
+		and not underground_zone_state.enabled,
+		"Tool edit state limits underground input to supported tools",
+	)
+	var scurk_object_state := ToolEditState.scurk_object(city, "city", 0xcf)
+	var scurk_zone_state := ToolEditState.scurk_tool(city, {
+		"group": 9,
+		"subtool": 0,
+		"zone": 1,
+		"name": "Light Residential",
+	})
+	_check(
+		scurk_object_state.enabled
+		and scurk_object_state.area == 4
+		and scurk_object_state.status_text == "SCURK Tile 207"
+		and scurk_zone_state.enabled
+		and scurk_zone_state.selection == "rectangle"
+		and scurk_zone_state.status_text == "SCURK Light Residential",
+		"Tool edit state classifies SCURK object and edit modes",
+	)
+	_check(
+		ToolEditState.is_tool_chooser(5, 4)
+		and ToolEditState.is_tool_variant(5, 5)
+		and not ToolEditState.is_tool_variant(5, 4),
+		"Tool edit state owns reward chooser and variant rules",
 	)
 
 	for invention_index in range(12):
