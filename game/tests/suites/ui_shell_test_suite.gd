@@ -31,6 +31,7 @@ const MainOverlaysUi = preload("res://src/ui/main_overlay_registry.gd")
 const ScurkEditorToolbarUi = preload("res://src/ui/scurk_editor_toolbar.gd")
 const ScurkEditorDialogsUi = preload("res://src/ui/scurk_editor_dialogs.gd")
 const ScurkEditorPalettePanelUi = preload("res://src/ui/scurk_editor_palette_panel.gd")
+const ScurkEditorObjectPanelUi = preload("res://src/ui/scurk_editor_object_panel.gd")
 const OriginalAssetsUi = preload("res://src/assets/original_game_assets.gd")
 const ClassicStyleUi = preload("res://src/ui/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
@@ -565,6 +566,22 @@ func _test_main_menu() -> void:
 		"SCURK palette panel owns colors, textures, and pointer text",
 	)
 	scurk_palette_panel.free()
+	var scurk_object_panel := ScurkEditorObjectPanelUi.new()
+	scurk_object_panel.build()
+	_check(
+		scurk_object_panel.custom_minimum_size.x == 220
+		and scurk_object_panel.object_search.placeholder_text
+		== "Filter by ID or name"
+		and scurk_object_panel.object_list.name == "TileObjectList"
+		and scurk_object_panel.object_list.size_flags_vertical
+		== Control.SIZE_EXPAND_FILL
+		and scurk_object_panel.name_edit.placeholder_text
+		== "Optional tile name"
+		and scurk_object_panel.name_button.text == "Set Name"
+		and scurk_object_panel.revert_name_button.text == "Revert Name",
+		"SCURK object panel owns filter, list, and query-name controls",
+	)
+	scurk_object_panel.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

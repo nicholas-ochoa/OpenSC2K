@@ -12,6 +12,7 @@ const PickCopy = preload("res://src/tools/scurk_pick_copy.gd")
 const DrawingWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
 const ToolbarView = preload("res://src/ui/scurk_editor_toolbar.gd")
 const DialogsView = preload("res://src/ui/scurk_editor_dialogs.gd")
+const ObjectPanelView = preload("res://src/ui/scurk_editor_object_panel.gd")
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const ViewPreview = preload("res://src/view/scurk_view_preview.gd")
 const PalettePanelView = preload("res://src/ui/scurk_editor_palette_panel.gd")
@@ -54,6 +55,7 @@ var object_list: ItemList
 var name_edit: LineEdit
 var name_button: Button
 var revert_name_button: Button
+var object_panel: ScurkEditorObjectPanel
 var view_buttons: Array[Button] = []
 var tool_buttons: Array[Button] = []
 var paste_tool_button: Button
@@ -687,39 +689,19 @@ func _build_interface() -> void:
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.split_offset = 230
 	page.add_child(body)
-	var left := VBoxContainer.new()
-	left.custom_minimum_size = Vector2(220, 0)
-	left.add_theme_constant_override("separation", 5)
-	body.add_child(left)
-	var objects_heading := Label.new()
-	objects_heading.text = "Tile Objects"
-	objects_heading.add_theme_color_override("font_color", Color("000080"))
-	left.add_child(objects_heading)
-	object_search = LineEdit.new()
-	object_search.placeholder_text = "Filter by ID or name"
-	object_search.text_changed.connect(_on_search_changed)
-	left.add_child(object_search)
-	object_list = ItemList.new()
-	object_list.name = "TileObjectList"
-	object_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	object_list.item_selected.connect(_on_object_selected)
-	left.add_child(object_list)
-	var name_heading := Label.new()
-	name_heading.text = "Query Name"
-	left.add_child(name_heading)
-	name_edit = LineEdit.new()
-	name_edit.placeholder_text = "Optional tile name"
-	name_edit.text_submitted.connect(_commit_name.unbind(1))
-	left.add_child(name_edit)
-	name_button = Button.new()
-	name_button.text = "Set Name"
-	name_button.pressed.connect(_commit_name)
-	left.add_child(name_button)
-	revert_name_button = Button.new()
-	revert_name_button.text = "Revert Name"
-	revert_name_button.tooltip_text = "Remove the custom name and restore the original query name."
-	revert_name_button.pressed.connect(revert_name)
-	left.add_child(revert_name_button)
+	object_panel = ObjectPanelView.new()
+	object_panel.build()
+	object_panel.search_changed.connect(_on_search_changed)
+	object_panel.object_selected.connect(_on_object_selected)
+	object_panel.name_submitted.connect(_commit_name)
+	object_panel.set_name_requested.connect(_commit_name)
+	object_panel.revert_name_requested.connect(revert_name)
+	body.add_child(object_panel)
+	object_search = object_panel.object_search
+	object_list = object_panel.object_list
+	name_edit = object_panel.name_edit
+	name_button = object_panel.name_button
+	revert_name_button = object_panel.revert_name_button
 
 	var right_split := HSplitContainer.new()
 	right_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
