@@ -28,6 +28,8 @@ const CityToolbarUi = preload("res://src/ui/city_toolbar.gd")
 const CityWorkspaceUi = preload("res://src/ui/city_workspace.gd")
 const CityDialogsUi = preload("res://src/ui/city_dialog_registry.gd")
 const MainOverlaysUi = preload("res://src/ui/main_overlay_registry.gd")
+const ScurkEditorToolbarUi = preload("res://src/ui/scurk_editor_toolbar.gd")
+const ScurkEditorDialogsUi = preload("res://src/ui/scurk_editor_dialogs.gd")
 const OriginalAssetsUi = preload("res://src/assets/original_game_assets.gd")
 const ClassicStyleUi = preload("res://src/ui/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
@@ -516,6 +518,35 @@ func _test_main_menu() -> void:
 		"Main overlay registry owns menu, SCURK, and application overlays",
 	)
 	main_overlays.free()
+	var scurk_toolbar := ScurkEditorToolbarUi.new()
+	scurk_toolbar._ready()
+	_check(
+		scurk_toolbar.get_child_count() == 17
+		and scurk_toolbar.get_child(0).text == "Open..."
+		and scurk_toolbar.save_button.text == "Save"
+		and scurk_toolbar.undo_button.text == "Undo"
+		and scurk_toolbar.redo_button.text == "Redo"
+		and scurk_toolbar.revert_button.text == "Revert"
+		and scurk_toolbar.clear_button.text == "Clear Object"
+		and scurk_toolbar.get_child(16).text == "Close",
+		"SCURK editor toolbar owns its command controls",
+	)
+	scurk_toolbar.free()
+	var scurk_dialogs := ScurkEditorDialogsUi.new()
+	scurk_dialogs._create_dialogs()
+	_check(
+		scurk_dialogs.open_dialog.file_mode == FileDialog.FILE_MODE_OPEN_FILE
+		and scurk_dialogs.open_dialog.filters[0].contains("*.MIF")
+		and scurk_dialogs.save_dialog.file_mode == FileDialog.FILE_MODE_SAVE_FILE
+		and scurk_dialogs.import_bmp_dialog.filters[0].contains("*.BMP")
+		and scurk_dialogs.export_bmp_dialog.file_mode
+		== FileDialog.FILE_MODE_SAVE_FILE
+		and scurk_dialogs.discard_dialog.title == "Unsaved SCURK Changes"
+		and scurk_dialogs.error_dialog.title == "SCURK Error"
+		and scurk_dialogs.pick_copy_control != null,
+		"SCURK editor dialog registry owns its fixed windows",
+	)
+	scurk_dialogs.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

@@ -10,7 +10,8 @@ const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
 const SystemImageClipboard = preload("res://src/platform/image_clipboard.gd")
 const PickCopy = preload("res://src/tools/scurk_pick_copy.gd")
 const DrawingWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
-const PickCopyControl = preload("res://src/ui/scurk_pick_copy_control.gd")
+const ToolbarView = preload("res://src/ui/scurk_editor_toolbar.gd")
+const DialogsView = preload("res://src/ui/scurk_editor_dialogs.gd")
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const ViewPreview = preload("res://src/view/scurk_view_preview.gd")
 const PaletteControl = preload("res://src/view/scurk_palette_control.gd")
@@ -95,6 +96,7 @@ var export_bmp_dialog: FileDialog
 var discard_dialog: ConfirmationDialog
 var error_dialog: AcceptDialog
 var pick_copy_control: ScurkPickCopyControl
+var dialog_registry: ScurkEditorDialogs
 
 
 func _ready() -> void:
@@ -653,52 +655,27 @@ func _build_interface() -> void:
 	page.add_theme_constant_override("separation", 6)
 	panel.add_child(page)
 
-	var toolbar := HBoxContainer.new()
-	toolbar.custom_minimum_size = Vector2(0, 38)
-	toolbar.add_theme_constant_override("separation", 5)
+	var toolbar := ToolbarView.new()
+	toolbar.build()
 	page.add_child(toolbar)
-	toolbar.add_child(_toolbar_button("Open...", request_open, "Open a SCURK MIF tile set."))
-	save_button = _toolbar_button("Save", request_save, "Save this tile set.")
-	toolbar.add_child(save_button)
-	toolbar.add_child(_toolbar_button("Save As...", request_save_as, "Save to a new MIF file."))
-	toolbar.add_child(VSeparator.new())
-	toolbar.add_child(_toolbar_button(
-		"Import BMP...", request_import_bmp,
-		"Replace the current view with a 256-color indexed BMP."
-	))
-	toolbar.add_child(_toolbar_button(
-		"Export BMP...", request_export_bmp,
-		"Export the current view as a 256-color indexed BMP."
-	))
-	toolbar.add_child(_toolbar_button(
-		"Pick & Copy...", request_pick_copy,
-		"Copy equivalent objects from another SCURK tile set."
-	))
-	toolbar.add_child(VSeparator.new())
-	undo_button = _toolbar_button("Undo", undo, "Undo the last pixel or name edit.")
-	toolbar.add_child(undo_button)
-	redo_button = _toolbar_button("Redo", redo, "Redo the last undone edit.")
-	toolbar.add_child(redo_button)
-	revert_button = _toolbar_button(
-		"Revert", revert_object,
-		"Restore this object to its state when it entered the drawing area."
-	)
-	toolbar.add_child(revert_button)
-	clear_object_button = _toolbar_button(
-		"Clear Object", clear_object,
-		"Erase the object and leave clean ground and sky."
-	)
-	toolbar.add_child(clear_object_button)
-	toolbar.add_child(VSeparator.new())
-	toolbar.add_child(_toolbar_button("Apply to City", _apply_tile_set, "Use this tile set in the city view."))
-	toolbar.add_child(_toolbar_button(
-		"Place & Print", request_place_print,
-		"Apply this tile set and open the unrestricted city work area."
-	))
-	var toolbar_spacer := Control.new()
-	toolbar_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	toolbar.add_child(toolbar_spacer)
-	toolbar.add_child(_toolbar_button("Close", request_close, "Close the SCURK editor."))
+	toolbar.open_requested.connect(request_open)
+	toolbar.save_requested.connect(request_save)
+	toolbar.save_as_requested.connect(request_save_as)
+	toolbar.import_bmp_requested.connect(request_import_bmp)
+	toolbar.export_bmp_requested.connect(request_export_bmp)
+	toolbar.pick_copy_requested.connect(request_pick_copy)
+	toolbar.undo_requested.connect(undo)
+	toolbar.redo_requested.connect(redo)
+	toolbar.revert_requested.connect(revert_object)
+	toolbar.clear_requested.connect(clear_object)
+	toolbar.apply_requested.connect(_apply_tile_set)
+	toolbar.place_print_requested.connect(request_place_print)
+	toolbar.close_requested.connect(request_close)
+	save_button = toolbar.save_button
+	undo_button = toolbar.undo_button
+	redo_button = toolbar.redo_button
+	revert_button = toolbar.revert_button
+	clear_object_button = toolbar.clear_button
 
 	var header := HBoxContainer.new()
 	page.add_child(header)
@@ -1048,43 +1025,23 @@ func _build_interface() -> void:
 	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	page.add_child(status_label)
 
-	open_dialog = FileDialog.new()
-	open_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	open_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	open_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
+	dialog_registry = DialogsView.new()
+	dialog_registry._create_dialogs()
+	add_child(dialog_registry)
+	open_dialog = dialog_registry.open_dialog
 	open_dialog.file_selected.connect(_load_selected_path)
-	add_child(open_dialog)
-	save_dialog = FileDialog.new()
-	save_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	save_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	save_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
+	save_dialog = dialog_registry.save_dialog
 	save_dialog.file_selected.connect(_save_selected_path)
-	add_child(save_dialog)
-	import_bmp_dialog = FileDialog.new()
-	import_bmp_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	import_bmp_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	import_bmp_dialog.add_filter("*.BMP, *.bmp", "Windows indexed bitmaps")
+	import_bmp_dialog = dialog_registry.import_bmp_dialog
 	import_bmp_dialog.file_selected.connect(_import_selected_bmp)
-	add_child(import_bmp_dialog)
-	export_bmp_dialog = FileDialog.new()
-	export_bmp_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	export_bmp_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	export_bmp_dialog.add_filter("*.BMP, *.bmp", "Windows indexed bitmaps")
+	export_bmp_dialog = dialog_registry.export_bmp_dialog
 	export_bmp_dialog.file_selected.connect(_export_selected_bmp)
-	add_child(export_bmp_dialog)
-	discard_dialog = ConfirmationDialog.new()
-	discard_dialog.title = "Unsaved SCURK Changes"
-	discard_dialog.get_ok_button().text = "Discard"
+	discard_dialog = dialog_registry.discard_dialog
 	discard_dialog.confirmed.connect(_confirm_discard)
-	add_child(discard_dialog)
-	error_dialog = AcceptDialog.new()
-	error_dialog.title = "SCURK Error"
-	add_child(error_dialog)
-	pick_copy_control = PickCopyControl.new()
+	pick_copy_control = dialog_registry.pick_copy_control
 	pick_copy_control.close_requested.connect(_pick_copy_closed)
 	pick_copy_control.change_working_requested.connect(_change_pick_working)
 	pick_copy_control.copy_requested.connect(_copy_pick_objects)
-	add_child(pick_copy_control)
 	_select_palette_index(0, false)
 	_select_palette_index(255, true)
 	_update_history_buttons()
