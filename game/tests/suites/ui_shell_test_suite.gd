@@ -32,6 +32,7 @@ const ScurkEditorToolbarUi = preload("res://src/ui/scurk_editor_toolbar.gd")
 const ScurkEditorDialogsUi = preload("res://src/ui/scurk_editor_dialogs.gd")
 const ScurkEditorPalettePanelUi = preload("res://src/ui/scurk_editor_palette_panel.gd")
 const ScurkEditorObjectPanelUi = preload("res://src/ui/scurk_editor_object_panel.gd")
+const ScurkEditorDrawingControlsUi = preload("res://src/ui/scurk_editor_drawing_controls.gd")
 const OriginalAssetsUi = preload("res://src/assets/original_game_assets.gd")
 const ClassicStyleUi = preload("res://src/ui/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
@@ -582,6 +583,27 @@ func _test_main_menu() -> void:
 		"SCURK object panel owns filter, list, and query-name controls",
 	)
 	scurk_object_panel.free()
+	var scurk_drawing_controls := ScurkEditorDrawingControlsUi.new()
+	scurk_drawing_controls.build()
+	_check(
+		scurk_drawing_controls.view_buttons.size() == 3
+		and scurk_drawing_controls.view_buttons[0].button_pressed
+		and scurk_drawing_controls.zoom_label.text == "4x"
+		and scurk_drawing_controls.tool_buttons.size() == 12
+		and scurk_drawing_controls.tool_buttons[0].button_pressed
+		and scurk_drawing_controls.paste_tool_button.disabled
+		and scurk_drawing_controls.clipboard_action_buttons.size() == 3
+		and scurk_drawing_controls.brush_size_selector.item_count == 6
+		and scurk_drawing_controls.grid_check.button_pressed
+		and scurk_drawing_controls.grid_width_selector.min_value == 1
+		and scurk_drawing_controls.grid_width_selector.max_value == 65
+		and scurk_drawing_controls.grid_height_selector.min_value == 1
+		and scurk_drawing_controls.grid_height_selector.max_value == 65
+		and scurk_drawing_controls.cycle_colors_check.button_pressed
+		and scurk_drawing_controls.increment_cycle_button.disabled,
+		"SCURK drawing controls own view, tool, clipboard, brush, grid, and cycle rows",
+	)
+	scurk_drawing_controls.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

@@ -13,6 +13,7 @@ const DrawingWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
 const ToolbarView = preload("res://src/ui/scurk_editor_toolbar.gd")
 const DialogsView = preload("res://src/ui/scurk_editor_dialogs.gd")
 const ObjectPanelView = preload("res://src/ui/scurk_editor_object_panel.gd")
+const DrawingControlsView = preload("res://src/ui/scurk_editor_drawing_controls.gd")
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const ViewPreview = preload("res://src/view/scurk_view_preview.gd")
 const PalettePanelView = preload("res://src/ui/scurk_editor_palette_panel.gd")
@@ -81,6 +82,7 @@ var grid_height_selector: SpinBox
 var clip_region_check: CheckBox
 var cycle_colors_check: CheckBox
 var increment_cycle_button: Button
+var drawing_controls: ScurkEditorDrawingControls
 var zoom_label: Label
 var sprite_status_label: Label
 var status_label: Label
@@ -711,166 +713,49 @@ func _build_interface() -> void:
 	editor_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	editor_column.add_theme_constant_override("separation", 5)
 	right_split.add_child(editor_column)
-	var view_row := HBoxContainer.new()
-	view_row.add_theme_constant_override("separation", 4)
-	editor_column.add_child(view_row)
-	var view_group := ButtonGroup.new()
-	for view_data in [["Large", VIEW_LARGE], ["Medium", VIEW_MEDIUM], ["Small", VIEW_SMALL]]:
-		var button := Button.new()
-		button.text = view_data[0]
-		button.toggle_mode = true
-		button.button_group = view_group
-		button.pressed.connect(_select_view.bind(view_data[1]))
-		view_row.add_child(button)
-		view_buttons.append(button)
-	view_buttons[0].button_pressed = true
-	var view_spacer := Control.new()
-	view_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	view_row.add_child(view_spacer)
-	view_row.add_child(_toolbar_button("-", _zoom_out, "Reduce the pixel zoom."))
-	zoom_label = Label.new()
-	zoom_label.text = "4x"
-	zoom_label.custom_minimum_size = Vector2(34, 0)
-	zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	view_row.add_child(zoom_label)
-	view_row.add_child(_toolbar_button("+", _zoom_in, "Increase the pixel zoom."))
-	var tool_row := HFlowContainer.new()
-	tool_row.custom_minimum_size = Vector2(0, 62)
-	tool_row.add_theme_constant_override("h_separation", 4)
-	tool_row.add_theme_constant_override("v_separation", 4)
-	editor_column.add_child(tool_row)
-	var tool_group := ButtonGroup.new()
-	for tool_data in [
-		["Pencil", ScurkPixelCanvas.TOOL_PENCIL],
-		["Eraser", ScurkPixelCanvas.TOOL_ERASER],
-		["Line", ScurkPixelCanvas.TOOL_LINE],
-		["Diamond", ScurkPixelCanvas.TOOL_DIAMOND],
-		["Left Wall", ScurkPixelCanvas.TOOL_LEFT_WALL],
-		["Right Wall", ScurkPixelCanvas.TOOL_RIGHT_WALL],
-		["Ellipse", ScurkPixelCanvas.TOOL_ELLIPSE],
-		["Box", ScurkPixelCanvas.TOOL_RECTANGLE],
-		["Fill", ScurkPixelCanvas.TOOL_FILL],
-		["Pick", ScurkPixelCanvas.TOOL_EYEDROPPER],
-		["Copy", ScurkPixelCanvas.TOOL_COPY],
-		["Paste", ScurkPixelCanvas.TOOL_PASTE],
-	]:
-		var button := Button.new()
-		button.text = tool_data[0]
-		button.toggle_mode = true
-		button.button_group = tool_group
-		button.custom_minimum_size = Vector2(0, 28)
-		button.pressed.connect(_select_tool.bind(tool_data[1]))
-		tool_row.add_child(button)
-		tool_buttons.append(button)
-		if tool_data[1] == ScurkPixelCanvas.TOOL_PASTE:
-			paste_tool_button = button
-			paste_tool_button.disabled = true
-	tool_buttons[0].button_pressed = true
-	var clipboard_row := HBoxContainer.new()
-	clipboard_row.add_theme_constant_override("separation", 5)
-	editor_column.add_child(clipboard_row)
-	var clipboard_label := Label.new()
-	clipboard_label.text = "SCURK Clipboard"
-	clipboard_row.add_child(clipboard_label)
-	for action_data in [
-		["Rotate CCW", _rotate_clipboard, "Rotate the copied pixels 90 degrees counter-clockwise."],
-		["Flip Horizontal", _flip_clipboard_horizontal, "Flip the copied pixels from left to right."],
-		["Flip Vertical", _flip_clipboard_vertical, "Flip the copied pixels from top to bottom."],
-	]:
-		var action_button := _toolbar_button(
-			action_data[0], action_data[1], action_data[2]
-		)
-		action_button.disabled = true
-		clipboard_row.add_child(action_button)
-		clipboard_action_buttons.append(action_button)
-	var system_clipboard_row := HBoxContainer.new()
-	system_clipboard_row.add_theme_constant_override("separation", 5)
-	editor_column.add_child(system_clipboard_row)
-	var system_clipboard_label := Label.new()
-	system_clipboard_label.text = "System Clipboard"
-	system_clipboard_row.add_child(system_clipboard_label)
-	copy_object_button = _toolbar_button(
-		"Copy Object", copy_object_to_system_clipboard,
-		"Copy the complete active object view for use in another graphics program."
+	drawing_controls = DrawingControlsView.new()
+	drawing_controls.build()
+	drawing_controls.view_selected.connect(_select_view)
+	drawing_controls.zoom_out_requested.connect(_zoom_out)
+	drawing_controls.zoom_in_requested.connect(_zoom_in)
+	drawing_controls.tool_selected.connect(_select_tool)
+	drawing_controls.rotate_clipboard_requested.connect(_rotate_clipboard)
+	drawing_controls.flip_clipboard_horizontal_requested.connect(
+		_flip_clipboard_horizontal
 	)
-	system_clipboard_row.add_child(copy_object_button)
-	paste_image_button = _toolbar_button(
-		"Paste Image", paste_image_from_system_clipboard,
-		"Replace the active object view with the system clipboard image."
+	drawing_controls.flip_clipboard_vertical_requested.connect(
+		_flip_clipboard_vertical
 	)
-	system_clipboard_row.add_child(paste_image_button)
-	var brush_row := HBoxContainer.new()
-	brush_row.add_theme_constant_override("separation", 5)
-	editor_column.add_child(brush_row)
-	var brush_label := Label.new()
-	brush_label.text = "Brush"
-	brush_row.add_child(brush_label)
-	brush_size_selector = OptionButton.new()
-	for size_value in range(1, 7):
-		brush_size_selector.add_item("%d px" % size_value, size_value)
-	brush_size_selector.item_selected.connect(_select_brush_size)
-	brush_row.add_child(brush_size_selector)
-	round_brush_check = CheckBox.new()
-	round_brush_check.text = "Round 5–6 px"
-	round_brush_check.tooltip_text = "Soften the corners of the five- and six-pixel brushes."
-	round_brush_check.toggled.connect(_set_round_brush)
-	brush_row.add_child(round_brush_check)
-	filled_shapes_check = CheckBox.new()
-	filled_shapes_check.text = "Filled shapes"
-	filled_shapes_check.toggled.connect(_set_filled_shapes)
-	brush_row.add_child(filled_shapes_check)
-	var grid_row := HBoxContainer.new()
-	grid_row.add_theme_constant_override("separation", 5)
-	editor_column.add_child(grid_row)
-	var grid_label := Label.new()
-	grid_label.text = "Drawing Grid"
-	grid_row.add_child(grid_label)
-	grid_check = CheckBox.new()
-	grid_check.text = "Show"
-	grid_check.button_pressed = true
-	grid_check.toggled.connect(_set_grid_visible)
-	grid_row.add_child(grid_check)
-	snap_to_grid_check = CheckBox.new()
-	snap_to_grid_check.text = "Snap shapes"
-	snap_to_grid_check.tooltip_text = (
-		"Snap shape start and end points to the nearest drawing-grid line."
-	)
-	snap_to_grid_check.toggled.connect(_set_snap_to_grid)
-	grid_row.add_child(snap_to_grid_check)
-	var width_label := Label.new()
-	width_label.text = "Width"
-	grid_row.add_child(width_label)
-	grid_width_selector = _grid_size_selector()
-	grid_width_selector.value_changed.connect(_set_grid_width)
-	grid_row.add_child(grid_width_selector)
-	var height_label := Label.new()
-	height_label.text = "Height"
-	grid_row.add_child(height_label)
-	grid_height_selector = _grid_size_selector()
-	grid_height_selector.value_changed.connect(_set_grid_height)
-	grid_row.add_child(grid_height_selector)
-	clip_region_check = CheckBox.new()
-	clip_region_check.text = "Clip Region"
-	clip_region_check.tooltip_text = (
-		"Show the original object base and height limit. Clipping is always active."
-	)
-	clip_region_check.toggled.connect(_set_clip_region_visible)
-	grid_row.add_child(clip_region_check)
-	var cycle_row := HBoxContainer.new()
-	cycle_row.add_theme_constant_override("separation", 5)
-	editor_column.add_child(cycle_row)
-	cycle_colors_check = CheckBox.new()
-	cycle_colors_check.text = "Cycle Colors"
-	cycle_colors_check.button_pressed = true
-	cycle_colors_check.tooltip_text = "Animate cycling palette indices in Paint the Town."
-	cycle_colors_check.toggled.connect(_set_cycle_colors)
-	cycle_row.add_child(cycle_colors_check)
-	increment_cycle_button = _toolbar_button(
-		"Increment Cycle", _increment_cycle,
-		"Advance the Paint the Town color cycle by one step."
-	)
-	increment_cycle_button.disabled = true
-	cycle_row.add_child(increment_cycle_button)
+	drawing_controls.copy_object_requested.connect(copy_object_to_system_clipboard)
+	drawing_controls.paste_image_requested.connect(paste_image_from_system_clipboard)
+	drawing_controls.brush_size_selected.connect(_select_brush_size)
+	drawing_controls.round_brush_changed.connect(_set_round_brush)
+	drawing_controls.filled_shapes_changed.connect(_set_filled_shapes)
+	drawing_controls.grid_visibility_changed.connect(_set_grid_visible)
+	drawing_controls.grid_snap_changed.connect(_set_snap_to_grid)
+	drawing_controls.grid_width_changed.connect(_set_grid_width)
+	drawing_controls.grid_height_changed.connect(_set_grid_height)
+	drawing_controls.clip_region_changed.connect(_set_clip_region_visible)
+	drawing_controls.cycle_colors_changed.connect(_set_cycle_colors)
+	drawing_controls.increment_cycle_requested.connect(_increment_cycle)
+	editor_column.add_child(drawing_controls)
+	view_buttons = drawing_controls.view_buttons
+	zoom_label = drawing_controls.zoom_label
+	tool_buttons = drawing_controls.tool_buttons
+	paste_tool_button = drawing_controls.paste_tool_button
+	clipboard_action_buttons = drawing_controls.clipboard_action_buttons
+	copy_object_button = drawing_controls.copy_object_button
+	paste_image_button = drawing_controls.paste_image_button
+	brush_size_selector = drawing_controls.brush_size_selector
+	round_brush_check = drawing_controls.round_brush_check
+	filled_shapes_check = drawing_controls.filled_shapes_check
+	grid_check = drawing_controls.grid_check
+	snap_to_grid_check = drawing_controls.snap_to_grid_check
+	grid_width_selector = drawing_controls.grid_width_selector
+	grid_height_selector = drawing_controls.grid_height_selector
+	clip_region_check = drawing_controls.clip_region_check
+	cycle_colors_check = drawing_controls.cycle_colors_check
+	increment_cycle_button = drawing_controls.increment_cycle_button
 
 	var canvas_row := HBoxContainer.new()
 	canvas_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -972,27 +857,6 @@ func _build_interface() -> void:
 func _pick_copy_closed() -> void:
 	if is_inside_tree() and object_list != null:
 		object_list.grab_focus()
-
-
-func _toolbar_button(label: String, callable: Callable, tooltip: String) -> Button:
-	var button := Button.new()
-	button.text = label
-	button.tooltip_text = tooltip
-	button.custom_minimum_size = Vector2(0, 30)
-	button.pressed.connect(callable)
-	return button
-
-
-func _grid_size_selector() -> SpinBox:
-	var selector := SpinBox.new()
-	selector.min_value = 1
-	selector.max_value = 65
-	selector.step = 1
-	selector.value = 1
-	selector.allow_greater = false
-	selector.allow_lesser = false
-	selector.custom_minimum_size = Vector2(66, 0)
-	return selector
 
 
 func _add_view_preview(parent: Control, label_text: String, view: int) -> void:
