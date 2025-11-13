@@ -30,6 +30,7 @@ const CityDialogsUi = preload("res://src/ui/city_dialog_registry.gd")
 const MainOverlaysUi = preload("res://src/ui/main_overlay_registry.gd")
 const ScurkEditorToolbarUi = preload("res://src/ui/scurk_editor_toolbar.gd")
 const ScurkEditorDialogsUi = preload("res://src/ui/scurk_editor_dialogs.gd")
+const ScurkEditorPalettePanelUi = preload("res://src/ui/scurk_editor_palette_panel.gd")
 const OriginalAssetsUi = preload("res://src/assets/original_game_assets.gd")
 const ClassicStyleUi = preload("res://src/ui/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
@@ -547,6 +548,23 @@ func _test_main_menu() -> void:
 		"SCURK editor dialog registry owns its fixed windows",
 	)
 	scurk_dialogs.free()
+	var scurk_palette_panel := ScurkEditorPalettePanelUi.new()
+	scurk_palette_panel.build()
+	scurk_palette_panel.set_colors(4, 255)
+	scurk_palette_panel.set_pointer(Vector2i(3, 7), 12)
+	_check(
+		scurk_palette_panel.custom_minimum_size.x == 300
+		and scurk_palette_panel.palette_control != null
+		and scurk_palette_panel.texture_control != null
+		and scurk_palette_panel.foreground_color_label.text
+		== "Foreground: 4 (0x04)"
+		and scurk_palette_panel.background_color_label.text
+		== "Background: 255 (0xFF)"
+		and scurk_palette_panel.pointer_status_label.text
+		== "Pointer: 3, 7 — index 12",
+		"SCURK palette panel owns colors, textures, and pointer text",
+	)
+	scurk_palette_panel.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

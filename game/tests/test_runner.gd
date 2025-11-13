@@ -2718,7 +2718,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 		)
 		_check(
 			scurk_editor.tool_buttons.size() == 12
-			and scurk_editor.texture_control.patterns.size()
+			and scurk_editor.palette_panel.texture_control.patterns.size()
 				== ScurkPixelEditor.TEXTURE_NAMES.size()
 			and scurk_editor.brush_size_selector.item_count == 6
 			and scurk_editor.revert_button != null

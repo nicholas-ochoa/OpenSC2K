@@ -14,8 +14,7 @@ const ToolbarView = preload("res://src/ui/scurk_editor_toolbar.gd")
 const DialogsView = preload("res://src/ui/scurk_editor_dialogs.gd")
 const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
 const ViewPreview = preload("res://src/view/scurk_view_preview.gd")
-const PaletteControl = preload("res://src/view/scurk_palette_control.gd")
-const TextureControl = preload("res://src/view/scurk_texture_control.gd")
+const PalettePanelView = preload("res://src/ui/scurk_editor_palette_panel.gd")
 
 const VIEW_LARGE := 0
 const VIEW_MEDIUM := 1
@@ -69,13 +68,8 @@ var save_button: Button
 var pixel_canvas: ScurkPixelCanvas
 var view_previews: Array[ScurkViewPreview] = []
 var view_preview_panels: Array[Control] = []
-var palette_control: ScurkPaletteControl
-var foreground_color: ColorRect
-var foreground_color_label: Label
-var background_color: ColorRect
-var background_color_label: Label
+var palette_panel: ScurkEditorPalettePanel
 var brush_size_selector: OptionButton
-var texture_control: ScurkTextureControl
 var filled_shapes_check: CheckBox
 var round_brush_check: CheckBox
 var grid_check: CheckBox
@@ -87,7 +81,6 @@ var cycle_colors_check: CheckBox
 var increment_cycle_button: Button
 var zoom_label: Label
 var sprite_status_label: Label
-var pointer_status_label: Label
 var status_label: Label
 var open_dialog: FileDialog
 var save_dialog: FileDialog
@@ -129,14 +122,12 @@ func configure(
 		)
 		if not backgrounds.ok:
 			_set_status(backgrounds.error + " Using a transparent drawing background.")
-	if texture_control != null and pixel_canvas != null:
-		texture_control.set_palette(palette)
-		texture_control.set_patterns(pixel_canvas.texture_patterns)
-		texture_control.set_colors(
+	if palette_panel != null and pixel_canvas != null:
+		palette_panel.configure(
+			palette,
+			pixel_canvas.texture_patterns,
 			foreground_palette_index, background_palette_index
 		)
-	if palette_control != null:
-		palette_control.set_palette(palette)
 		_select_palette_index(foreground_palette_index, false)
 		_select_palette_index(background_palette_index, true)
 	if pick_copy_control != null:
@@ -958,66 +949,15 @@ func _build_interface() -> void:
 	sprite_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	editor_column.add_child(sprite_status_label)
 
-	var palette_column := VBoxContainer.new()
-	palette_column.custom_minimum_size = Vector2(300, 0)
-	palette_column.add_theme_constant_override("separation", 6)
-	right_split.add_child(palette_column)
-	var palette_heading := Label.new()
-	palette_heading.text = "Original 256-Color Palette"
-	palette_heading.add_theme_color_override("font_color", Color("000080"))
-	palette_column.add_child(palette_heading)
-	palette_control = PaletteControl.new()
-	palette_control.name = "Palette"
-	palette_control.index_selected.connect(_select_palette_index)
-	palette_column.add_child(palette_control)
-	var foreground_row := HBoxContainer.new()
-	foreground_row.add_theme_constant_override("separation", 8)
-	palette_column.add_child(foreground_row)
-	foreground_color = ColorRect.new()
-	foreground_color.custom_minimum_size = Vector2(38, 26)
-	foreground_row.add_child(foreground_color)
-	foreground_color_label = Label.new()
-	foreground_row.add_child(foreground_color_label)
-	var background_row := HBoxContainer.new()
-	background_row.add_theme_constant_override("separation", 8)
-	palette_column.add_child(background_row)
-	background_color = ColorRect.new()
-	background_color.custom_minimum_size = Vector2(38, 26)
-	background_row.add_child(background_color)
-	background_color_label = Label.new()
-	background_row.add_child(background_color_label)
-	var texture_label := Label.new()
-	texture_label.text = "Brush Texture"
-	palette_column.add_child(texture_label)
-	var texture_scroll := ScrollContainer.new()
-	texture_scroll.custom_minimum_size = Vector2(80, 160)
-	texture_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	texture_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	palette_column.add_child(texture_scroll)
-	texture_control = TextureControl.new()
-	texture_control.name = "TexturePalette"
-	texture_control.set_patterns(pixel_canvas.texture_patterns)
-	texture_control.texture_selected.connect(_select_texture)
-	texture_scroll.add_child(texture_control)
-	var transparent_button := Button.new()
-	transparent_button.text = "Transparent Eraser"
-	transparent_button.tooltip_text = "Erase pixels to transparent with the selected brush size."
-	transparent_button.pressed.connect(_select_tool.bind(ScurkPixelCanvas.TOOL_ERASER))
-	palette_column.add_child(transparent_button)
-	var help := Label.new()
-	help.text = (
-		"Left mouse uses the foreground color or texture. Right mouse uses the "
-		+ "background color. Edit Large, Medium, and Small separately."
+	palette_panel = PalettePanelView.new()
+	palette_panel.build()
+	palette_panel.set_patterns(pixel_canvas.texture_patterns)
+	palette_panel.palette_index_selected.connect(_select_palette_index)
+	palette_panel.texture_selected.connect(_select_texture)
+	palette_panel.eraser_requested.connect(
+		_select_tool.bind(ScurkPixelCanvas.TOOL_ERASER)
 	)
-	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	help.add_theme_color_override("font_color", Color("404040"))
-	palette_column.add_child(help)
-	var palette_spacer := Control.new()
-	palette_spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	palette_column.add_child(palette_spacer)
-	pointer_status_label = Label.new()
-	pointer_status_label.text = "Pointer: --"
-	palette_column.add_child(pointer_status_label)
+	right_split.add_child(palette_panel)
 
 	status_label = Label.new()
 	status_label.custom_minimum_size = Vector2(0, 26)
@@ -1156,38 +1096,14 @@ func _select_palette_index(index: int, background := false) -> void:
 		background_palette_index = clampi(index, 0, 255)
 	else:
 		foreground_palette_index = clampi(index, 0, 255)
-	if palette_control != null:
-		palette_control.set_selected_indices(
-			foreground_palette_index, background_palette_index
-		)
 	if pixel_canvas != null:
 		pixel_canvas.set_paint_indices(
 			foreground_palette_index, background_palette_index
 		)
-	if texture_control != null:
-		texture_control.set_colors(
+	if palette_panel != null:
+		palette_panel.set_colors(
 			foreground_palette_index, background_palette_index
 		)
-	if foreground_color != null:
-		foreground_color.color = (
-			palette.color(foreground_palette_index)
-			if palette != null and palette.is_valid()
-			else Color.MAGENTA
-		)
-	if foreground_color_label != null:
-		foreground_color_label.text = "Foreground: %d (0x%02X)" % [
-			foreground_palette_index, foreground_palette_index,
-		]
-	if background_color != null:
-		background_color.color = (
-			palette.color(background_palette_index)
-			if palette != null and palette.is_valid()
-			else Color.MAGENTA
-		)
-	if background_color_label != null:
-		background_color_label.text = "Background: %d (0x%02X)" % [
-			background_palette_index, background_palette_index,
-		]
 
 
 func _select_brush_size(index: int) -> void:
@@ -1266,8 +1182,8 @@ func _increment_cycle() -> void:
 func _select_texture(index: int) -> void:
 	if pixel_canvas != null:
 		pixel_canvas.set_texture(index)
-	if texture_control != null:
-		texture_control.set_selected(index)
+	if palette_panel != null:
+		palette_panel.set_selected_texture(index)
 
 
 func _rotate_clipboard() -> void:
@@ -1366,7 +1282,7 @@ func _refresh_sprite() -> void:
 		brush_size_selector.get_item_id(brush_size_selector.selected),
 		round_brush_check.button_pressed
 	)
-	pixel_canvas.set_texture(texture_control.selected_index)
+	pixel_canvas.set_texture(palette_panel.selected_texture_index())
 	pixel_canvas.filled_shapes = filled_shapes_check.button_pressed
 	pixel_canvas.show_grid = grid_check.button_pressed
 	_apply_grid_settings()
@@ -1686,16 +1602,8 @@ func _zoom_out() -> void:
 
 
 func _update_pointer_status(point: Vector2i, index: int) -> void:
-	if pointer_status_label == null:
-		return
-	pointer_status_label.text = (
-		"Pointer: --"
-		if point.x < 0
-		else "Pointer: %d, %d — %s" % [
-			point.x, point.y,
-			"transparent" if index < 0 else "index %d" % index,
-		]
-	)
+	if palette_panel != null:
+		palette_panel.set_pointer(point, index)
 
 
 func _apply_tile_set() -> void:
