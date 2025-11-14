@@ -33,6 +33,7 @@ const ScurkEditorDialogsUi = preload("res://src/ui/scurk_editor_dialogs.gd")
 const ScurkEditorPalettePanelUi = preload("res://src/ui/scurk_editor_palette_panel.gd")
 const ScurkEditorObjectPanelUi = preload("res://src/ui/scurk_editor_object_panel.gd")
 const ScurkEditorDrawingControlsUi = preload("res://src/ui/scurk_editor_drawing_controls.gd")
+const ScurkEditorCanvasPanelUi = preload("res://src/ui/scurk_editor_canvas_panel.gd")
 const OriginalAssetsUi = preload("res://src/assets/original_game_assets.gd")
 const ClassicStyleUi = preload("res://src/ui/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_graph_window.gd")
@@ -604,6 +605,20 @@ func _test_main_menu() -> void:
 		"SCURK drawing controls own view, tool, clipboard, brush, grid, and cycle rows",
 	)
 	scurk_drawing_controls.free()
+	var scurk_canvas_panel := ScurkEditorCanvasPanelUi.new()
+	scurk_canvas_panel.build()
+	_check(
+		scurk_canvas_panel.pixel_canvas.name == "PixelCanvas"
+		and scurk_canvas_panel.view_previews.size() == 3
+		and scurk_canvas_panel.view_preview_panels.size() == 3
+		and scurk_canvas_panel.view_previews[0].name == "LargeViewPreview"
+		and scurk_canvas_panel.view_previews[1].name == "MediumViewPreview"
+		and scurk_canvas_panel.view_previews[2].name == "SmallViewPreview"
+		and scurk_canvas_panel.sprite_status_label.text
+		== "No sprite is selected.",
+		"SCURK canvas panel owns the pixel canvas, view windows, and sprite status",
+	)
+	scurk_canvas_panel.free()
 	var new_city_dialog := NewCityTerrainDialogUi.new()
 	new_city_dialog._ready()
 	_check(

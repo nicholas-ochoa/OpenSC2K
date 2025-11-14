@@ -14,8 +14,7 @@ const ToolbarView = preload("res://src/ui/scurk_editor_toolbar.gd")
 const DialogsView = preload("res://src/ui/scurk_editor_dialogs.gd")
 const ObjectPanelView = preload("res://src/ui/scurk_editor_object_panel.gd")
 const DrawingControlsView = preload("res://src/ui/scurk_editor_drawing_controls.gd")
-const PixelCanvas = preload("res://src/view/scurk_pixel_canvas.gd")
-const ViewPreview = preload("res://src/view/scurk_view_preview.gd")
+const CanvasPanelView = preload("res://src/ui/scurk_editor_canvas_panel.gd")
 const PalettePanelView = preload("res://src/ui/scurk_editor_palette_panel.gd")
 
 const VIEW_LARGE := 0
@@ -83,6 +82,7 @@ var clip_region_check: CheckBox
 var cycle_colors_check: CheckBox
 var increment_cycle_button: Button
 var drawing_controls: ScurkEditorDrawingControls
+var canvas_panel: ScurkEditorCanvasPanel
 var zoom_label: Label
 var sprite_status_label: Label
 var status_label: Label
@@ -757,64 +757,19 @@ func _build_interface() -> void:
 	cycle_colors_check = drawing_controls.cycle_colors_check
 	increment_cycle_button = drawing_controls.increment_cycle_button
 
-	var canvas_row := HBoxContainer.new()
-	canvas_row.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	canvas_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	canvas_row.add_theme_constant_override("separation", 6)
-	editor_column.add_child(canvas_row)
-	var scroll := ScrollContainer.new()
-	scroll.name = "PixelScroll"
-	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
-	canvas_row.add_child(scroll)
-	var canvas_center := CenterContainer.new()
-	canvas_center.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	canvas_center.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	scroll.add_child(canvas_center)
-	pixel_canvas = PixelCanvas.new()
-	pixel_canvas.name = "PixelCanvas"
+	canvas_panel = CanvasPanelView.new()
+	canvas_panel.build()
+	editor_column.add_child(canvas_panel)
+	pixel_canvas = canvas_panel.pixel_canvas
+	view_previews = canvas_panel.view_previews
+	view_preview_panels = canvas_panel.view_preview_panels
+	sprite_status_label = canvas_panel.sprite_status_label
 	pixel_canvas.edit_started.connect(_capture_edit_start)
 	pixel_canvas.pixels_committed.connect(_commit_pixels)
 	pixel_canvas.palette_index_picked.connect(_select_palette_index)
 	pixel_canvas.pointer_changed.connect(_update_pointer_status)
 	pixel_canvas.clipboard_changed.connect(_on_clipboard_changed)
 	pixel_canvas.clipboard_copy_rejected.connect(_on_clipboard_copy_rejected)
-	canvas_center.add_child(pixel_canvas)
-	var previews_panel := PanelContainer.new()
-	previews_panel.custom_minimum_size = Vector2(218, 0)
-	previews_panel.tooltip_text = (
-		"Display-only previews of the complete Drawing Area at all three city views."
-	)
-	canvas_row.add_child(previews_panel)
-	var previews_page := VBoxContainer.new()
-	previews_page.add_theme_constant_override("separation", 4)
-	previews_panel.add_child(previews_page)
-	var previews_heading := Label.new()
-	previews_heading.text = "View Windows"
-	previews_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	previews_heading.add_theme_color_override("font_color", Color("000080"))
-	previews_page.add_child(previews_heading)
-	var previews_layout := HBoxContainer.new()
-	previews_layout.alignment = BoxContainer.ALIGNMENT_CENTER
-	previews_layout.add_theme_constant_override("separation", 6)
-	previews_page.add_child(previews_layout)
-	_add_view_preview(previews_layout, "Large", VIEW_LARGE)
-	var smaller_previews := VBoxContainer.new()
-	smaller_previews.add_theme_constant_override("separation", 6)
-	previews_layout.add_child(smaller_previews)
-	_add_view_preview(smaller_previews, "Medium", VIEW_MEDIUM)
-	_add_view_preview(smaller_previews, "Small", VIEW_SMALL)
-	var preview_note := Label.new()
-	preview_note.text = "Display only"
-	preview_note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	preview_note.add_theme_color_override("font_color", Color("606060"))
-	previews_page.add_child(preview_note)
-	sprite_status_label = Label.new()
-	sprite_status_label.text = "No sprite is selected."
-	sprite_status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	editor_column.add_child(sprite_status_label)
 
 	palette_panel = PalettePanelView.new()
 	palette_panel.build()
@@ -857,22 +812,6 @@ func _build_interface() -> void:
 func _pick_copy_closed() -> void:
 	if is_inside_tree() and object_list != null:
 		object_list.grab_focus()
-
-
-func _add_view_preview(parent: Control, label_text: String, view: int) -> void:
-	var preview_column := VBoxContainer.new()
-	preview_column.add_theme_constant_override("separation", 2)
-	parent.add_child(preview_column)
-	var label := Label.new()
-	label.text = label_text
-	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	preview_column.add_child(label)
-	var preview := ViewPreview.new()
-	preview.name = "%sViewPreview" % label_text
-	preview.clear_preview(view)
-	preview_column.add_child(preview)
-	view_previews.append(preview)
-	view_preview_panels.append(preview_column)
 
 
 func _refresh_object_list() -> void:
