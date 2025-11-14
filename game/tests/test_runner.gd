@@ -15,6 +15,7 @@ const ScurkEditor = preload("res://src/ui/scurk_editor_control.gd")
 const ScurkPlaceControl = preload("res://src/ui/scurk_place_print_control.gd")
 const ScurkPickCopy = preload("res://src/tools/scurk_pick_copy.gd")
 const ScurkPlace = preload("res://src/tools/scurk_place_command.gd")
+const ScurkHistory = preload("res://src/tools/scurk_edit_history.gd")
 const ScurkWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
 const ScurkPixelEditor = preload("res://src/view/scurk_pixel_canvas.gd")
 const ScurkViewWindow = preload("res://src/view/scurk_view_preview.gd")
@@ -3467,22 +3468,30 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		and document.misc_u32(Buildings.MISC_TILE_COUNTS + 0xcf * 4) == 16,
 		"SCURK object placement writes compatible counts, labels, and XMIC data",
 	)
+	var edit_history := ScurkHistory.new()
+	edit_history.record(coal, "Object Placement")
 	_check(
-		ScurkPlace.undo(city, coal, process_random).ok
+		edit_history.undo(city, process_random).ok
 		and city.building_id(19, 19) == 0
 		and city.text_overlay_id(19, 19) == 0
 		and city.microsim(10).tile_id == 0
-		and process_random.state == initial_random_state,
-		"SCURK object placement has an exact Undo transaction",
+		and process_random.state == initial_random_state
+		and not edit_history.can_undo()
+		and edit_history.can_redo()
+		and coal.scurk_tool_name == "Object Placement",
+		"SCURK edit history records and applies the exact Undo transaction",
 	)
 	_check(
-		ScurkPlace.redo(city, coal, process_random).ok
+		edit_history.redo(city, process_random).ok
 		and city.building_id(22, 22) == 0xcf
-		and city.microsim(10).stat_1 == 200,
-		"SCURK object placement has an exact Redo transaction",
+		and city.microsim(10).stat_1 == 200
+		and edit_history.can_undo()
+		and not edit_history.can_redo()
+		and edit_history.current_command() == coal,
+		"SCURK edit history applies the exact Redo transaction",
 	)
 	_check(
-		ScurkPlace.undo(city, coal, process_random).ok,
+		edit_history.undo(city, process_random).ok,
 		"SCURK Place & Print fixture removes the coal plant",
 	)
 

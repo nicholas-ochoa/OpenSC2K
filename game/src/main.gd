@@ -50,6 +50,7 @@ const Demolish = preload("res://src/tools/demolish_command.gd")
 const TerrainTools = preload("res://src/tools/terrain_command.gd")
 const Dispatch = preload("res://src/tools/dispatch_command.gd")
 const ScurkPlace = preload("res://src/tools/scurk_place_command.gd")
+const ScurkHistory = preload("res://src/tools/scurk_edit_history.gd")
 const CityRotation = preload("res://src/tools/city_rotation_command.gd")
 const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
@@ -220,8 +221,7 @@ var scurk_editor: ScurkEditorControl
 var scurk_place_print: ScurkPlacePrintControl
 var scurk_print: ScurkPrintControl
 var pending_scurk_print_options: Dictionary = {}
-var scurk_place_undo_stack: Array[Dictionary] = []
-var scurk_place_redo_stack: Array[Dictionary] = []
+var scurk_edit_history := ScurkHistory.new()
 var about_dialog: AboutDialog
 var save_changes_dialog: SaveChangesDialog
 var pending_city_exit_action := ""
@@ -388,8 +388,7 @@ func _consume_simulation_result(result: Dictionary) -> void:
 	var moved_things := _moving_things_are_active(result.moving_results)
 	if ran_days or moved_things or changed_disaster_map:
 		last_edit_command = {}
-		scurk_place_undo_stack.clear()
-		scurk_place_redo_stack.clear()
+		scurk_edit_history.clear()
 		undo_button.disabled = true
 		simulation_map_dirty = true
 	if ran_days:
@@ -720,10 +719,9 @@ func _open_scurk_place_print() -> void:
 	)
 	scurk_place_print.configure(palette, large_sprites, names)
 	if not last_edit_command.get("scurk_place_history", false):
-		scurk_place_undo_stack.clear()
-		scurk_place_redo_stack.clear()
+		scurk_edit_history.clear()
 	scurk_place_print.set_history_enabled(
-		not scurk_place_undo_stack.is_empty(), not scurk_place_redo_stack.is_empty()
+		scurk_edit_history.can_undo(), scurk_edit_history.can_redo()
 	)
 	scurk_place_print.set_export_enabled(map_view.zoom_percent() <= 25)
 	if not scurk_place_print.show_workspace():
@@ -900,10 +898,7 @@ func _record_edit_command(
 	command: Dictionary, scurk_history := false, scurk_name := ""
 ) -> void:
 	if scurk_history:
-		command["scurk_place_history"] = true
-		command["scurk_tool_name"] = scurk_name
-		scurk_place_undo_stack.append(command)
-		scurk_place_redo_stack.clear()
+		scurk_edit_history.record(command, scurk_name)
 		if scurk_place_print != null:
 			scurk_place_print.set_history_enabled(true, false)
 	last_edit_command = command
@@ -937,23 +932,17 @@ func _apply_scurk_place_selection(point: Vector2i) -> void:
 
 
 func _undo_scurk_place() -> void:
-	if city == null or scurk_place_undo_stack.is_empty():
+	if city == null or not scurk_edit_history.can_undo():
 		return
-	var command: Dictionary = scurk_place_undo_stack[-1]
-	var result := ScurkPlace.undo(city, command, tool_random)
+	var result := scurk_edit_history.undo(city, tool_random)
 	if not result.get("ok", false):
 		_show_error("Cannot undo SCURK placement: %s" % result.error)
 		return
-	scurk_place_undo_stack.pop_back()
-	scurk_place_redo_stack.append(command)
-	last_edit_command = (
-		scurk_place_undo_stack[-1]
-		if not scurk_place_undo_stack.is_empty()
-		else {}
-	)
+	var command: Dictionary = result.command
+	last_edit_command = result.current_command
 	undo_button.disabled = last_edit_command.is_empty()
 	scurk_place_print.set_history_enabled(
-		not scurk_place_undo_stack.is_empty(), not scurk_place_redo_stack.is_empty()
+		scurk_edit_history.can_undo(), scurk_edit_history.can_redo()
 	)
 	_refresh_details()
 	_refresh_after_city_edit(command)
@@ -967,19 +956,17 @@ func _undo_scurk_place() -> void:
 
 
 func _redo_scurk_place() -> void:
-	if city == null or scurk_place_redo_stack.is_empty():
+	if city == null or not scurk_edit_history.can_redo():
 		return
-	var command: Dictionary = scurk_place_redo_stack[-1]
-	var result := ScurkPlace.redo(city, command, tool_random)
+	var result := scurk_edit_history.redo(city, tool_random)
 	if not result.get("ok", false):
 		_show_error("Cannot redo SCURK placement: %s" % result.error)
 		return
-	scurk_place_redo_stack.pop_back()
-	scurk_place_undo_stack.append(command)
+	var command: Dictionary = result.command
 	last_edit_command = command
 	undo_button.disabled = false
 	scurk_place_print.set_history_enabled(
-		not scurk_place_undo_stack.is_empty(), not scurk_place_redo_stack.is_empty()
+		scurk_edit_history.can_undo(), scurk_edit_history.can_redo()
 	)
 	_refresh_details()
 	_refresh_after_city_edit(command)
@@ -2118,8 +2105,7 @@ func _activate_document(
 	if scurk_print != null:
 		scurk_print.hide()
 	pending_scurk_print_options.clear()
-	scurk_place_undo_stack.clear()
-	scurk_place_redo_stack.clear()
+	scurk_edit_history.clear()
 	annual_budget_pending = false
 	game_over_active = false
 	city = loaded_city
