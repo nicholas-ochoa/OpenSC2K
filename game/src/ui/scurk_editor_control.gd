@@ -10,6 +10,7 @@ const IndexedBitmap = preload("res://src/assets/indexed_bmp.gd")
 const SystemImageClipboard = preload("res://src/platform/image_clipboard.gd")
 const PickCopy = preload("res://src/tools/scurk_pick_copy.gd")
 const DrawingWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
+const EditorHistory = preload("res://src/tools/scurk_editor_history.gd")
 const ToolbarView = preload("res://src/ui/scurk_editor_toolbar.gd")
 const DialogsView = preload("res://src/ui/scurk_editor_dialogs.gd")
 const ObjectPanelView = preload("res://src/ui/scurk_editor_object_panel.gd")
@@ -20,7 +21,6 @@ const PalettePanelView = preload("res://src/ui/scurk_editor_palette_panel.gd")
 const VIEW_LARGE := 0
 const VIEW_MEDIUM := 1
 const VIEW_SMALL := 2
-const HISTORY_LIMIT := 24
 
 var palette: Sc2Palette
 var base_large_sprites: Sc2SpriteArchive
@@ -28,24 +28,21 @@ var base_small_medium_sprites: Sc2SpriteArchive
 var reference_directory := ""
 var tile_set: ScurkMif
 var source_path := ""
-var saved_bytes := PackedByteArray()
 var current_large_id := -1
 var current_view := VIEW_LARGE
 var current_tool := ScurkPixelCanvas.TOOL_PENCIL
 var foreground_palette_index := 0
 var background_palette_index := 255
-var undo_stack: Array[Dictionary] = []
-var redo_stack: Array[Dictionary] = []
-var pending_edit_before := PackedByteArray()
-var pending_blank_shape_ids: Dictionary = {}
-var object_start_bytes := PackedByteArray()
-var object_start_large_id := -1
-var object_start_blank_shape_ids: Dictionary = {}
 var pending_discard_action := ""
-var dirty := false
+var edit_history: ScurkEditorHistory = EditorHistory.new()
+var undo_stack: Array[Dictionary]:
+	get: return edit_history.undo_stack
+var redo_stack: Array[Dictionary]:
+	get: return edit_history.redo_stack
+var dirty: bool:
+	get: return edit_history.dirty
 var active_workspace := false
 var active_base_width := 0
-var blank_shape_ids: Dictionary = {}
 var view_preview_signatures := PackedStringArray(["", "", ""])
 
 var title_label: Label
@@ -168,13 +165,7 @@ func load_path(path: String) -> Dictionary:
 	var encoded := tile_set.to_bytes()
 	if not encoded.ok:
 		return {"ok": false, "error": encoded.error}
-	saved_bytes = encoded.bytes.duplicate()
-	undo_stack.clear()
-	redo_stack.clear()
-	pending_edit_before.clear()
-	pending_blank_shape_ids.clear()
-	blank_shape_ids.clear()
-	dirty = false
+	edit_history.reset(encoded.bytes)
 	var ids := editable_large_sprite_ids(tile_set, base_large_sprites)
 	current_large_id = ids[0] if not ids.is_empty() else -1
 	current_view = VIEW_LARGE
@@ -217,8 +208,7 @@ func save_path(path: String) -> Dictionary:
 	if not encoded.ok:
 		return {"ok": false, "error": encoded.error}
 	source_path = output_path
-	saved_bytes = encoded.bytes.duplicate()
-	_update_dirty()
+	edit_history.mark_saved(encoded.bytes)
 	_update_title()
 	if pick_copy_control != null and pick_copy_control.visible:
 		pick_copy_control.open_with_working(tile_set, source_path)
@@ -403,7 +393,7 @@ func _copy_pick_objects(
 	if not encoded.ok:
 		pick_copy_control.copy_completed(encoded)
 		return
-	pending_blank_shape_ids = blank_shape_ids.duplicate()
+	edit_history.capture_blank_state()
 	var result := PickCopy.copy_objects(
 		tile_set,
 		source,
@@ -449,7 +439,7 @@ func _replace_active_view(
 			workspace, active_base_width, current_view
 		)
 		if not active_shape.ok:
-			pending_edit_before.clear()
+			edit_history.cancel_pending_edit()
 			return active_shape
 		output_width = active_shape.width
 		output_height = active_shape.height
@@ -458,10 +448,10 @@ func _replace_active_view(
 		sprite_id, output_width, output_height, output_pixels
 	)
 	if not changed.ok:
-		pending_edit_before.clear()
+		edit_history.cancel_pending_edit()
 		return changed
-	_mark_shape_blank_state(sprite_id, output_pixels)
-	_record_edit(pending_edit_before)
+	edit_history.mark_shape_blank_state(sprite_id, output_pixels)
+	_record_edit(edit_history.pending_edit_before)
 	_refresh_sprite()
 	var remap_note := (
 		" Remapped %d colors." % remapped_color_count
@@ -473,42 +463,35 @@ func _replace_active_view(
 
 
 func undo() -> void:
-	if undo_stack.is_empty():
+	if not edit_history.can_undo():
 		return
-	var action: Dictionary = undo_stack.pop_back()
-	if _replace_document_bytes(action.before):
-		blank_shape_ids = action.get("blank_before", {}).duplicate()
-		redo_stack.append(action)
+	var result := edit_history.undo()
+	if result.ok:
+		tile_set = result.document
+	else:
+		_show_error(result.error)
 	_update_after_history()
 
 
 func redo() -> void:
-	if redo_stack.is_empty():
+	if not edit_history.can_redo():
 		return
-	var action: Dictionary = redo_stack.pop_back()
-	if _replace_document_bytes(action.after):
-		blank_shape_ids = action.get("blank_after", {}).duplicate()
-		undo_stack.append(action)
+	var result := edit_history.redo()
+	if result.ok:
+		tile_set = result.document
+	else:
+		_show_error(result.error)
 	_update_after_history()
 
 
 func revert_object() -> void:
-	if (
-		object_start_bytes.is_empty()
-		or current_large_id < 0
-		or object_start_large_id != current_large_id
-	):
+	var result := edit_history.revert_object(tile_set, current_large_id)
+	if result.get("no_action", false):
 		return
-	var encoded := tile_set.to_bytes() if tile_set != null else {}
-	if not encoded.get("ok", false) or encoded.bytes == object_start_bytes:
+	if not result.ok:
+		_show_error(result.error)
 		return
-	var before: PackedByteArray = encoded.bytes.duplicate()
-	var blank_before := blank_shape_ids.duplicate()
-	if not _replace_document_bytes(object_start_bytes):
-		return
-	blank_shape_ids = object_start_blank_shape_ids.duplicate()
-	pending_blank_shape_ids = blank_before
-	_record_edit(before)
+	tile_set = result.document
 	_update_after_history()
 	_set_status("Reverted the current object to its state when selected.")
 
@@ -524,7 +507,7 @@ func revert_name() -> void:
 	if not result.ok:
 		_show_error(result.error)
 		return
-	_record_edit(pending_edit_before)
+	_record_edit(edit_history.pending_edit_before)
 	_refresh_object_list()
 	_refresh_sprite()
 	_set_status("Restored the original query name for object %d." % tile_id)
@@ -550,13 +533,13 @@ func clear_object() -> void:
 			view_sprite_id(current_large_id, view), maxi(1, width), 1, blank
 		)
 		if not result.ok:
-			pending_edit_before.clear()
+			edit_history.cancel_pending_edit()
 			_show_error(result.error)
 			_refresh_sprite()
 			return
-		blank_shape_ids[view_sprite_id(current_large_id, view)] = true
+		edit_history.blank_shape_ids[view_sprite_id(current_large_id, view)] = true
 		changed_views += 1
-	_record_edit(pending_edit_before)
+	_record_edit(edit_history.pending_edit_before)
 	_refresh_sprite()
 	_set_status("Cleared %d object view%s to clean ground and sky." % [
 		changed_views, "" if changed_views == 1 else "s",
@@ -1018,7 +1001,7 @@ func _refresh_sprite() -> void:
 	var sprite_id := view_sprite_id(current_large_id, current_view)
 	var entry := tile_set.overrides.find_sprite(sprite_id)
 	var source := "MIF override"
-	if entry == null and blank_shape_ids.has(sprite_id):
+	if entry == null and edit_history.blank_shape_ids.has(sprite_id):
 		entry = tile_set.archive.find_sprite(sprite_id)
 		source = "cleared object"
 	if entry == null:
@@ -1140,22 +1123,11 @@ static func sprite_role(tile_id: int) -> String:
 
 
 func _capture_edit_start() -> void:
-	if tile_set == null:
-		return
-	var encoded := tile_set.to_bytes()
-	pending_edit_before = encoded.bytes.duplicate() if encoded.ok else PackedByteArray()
-	pending_blank_shape_ids = blank_shape_ids.duplicate()
+	edit_history.capture_edit(tile_set)
 
 
 func _capture_object_start() -> void:
-	object_start_bytes.clear()
-	object_start_large_id = current_large_id
-	object_start_blank_shape_ids = blank_shape_ids.duplicate()
-	if tile_set == null or current_large_id < 0:
-		return
-	var encoded := tile_set.to_bytes()
-	if encoded.ok:
-		object_start_bytes = encoded.bytes.duplicate()
+	edit_history.capture_object(tile_set, current_large_id)
 	_update_history_buttons()
 
 
@@ -1172,8 +1144,8 @@ func _commit_pixels(value_pixels: PackedInt32Array) -> void:
 		)
 		if not active_shape.ok:
 			_show_error(active_shape.error)
-			if not pending_edit_before.is_empty():
-				_replace_document_bytes(pending_edit_before)
+			if not edit_history.pending_edit_before.is_empty():
+				_replace_document_bytes(edit_history.pending_edit_before)
 			_refresh_sprite()
 			return
 		output_width = active_shape.width
@@ -1184,12 +1156,12 @@ func _commit_pixels(value_pixels: PackedInt32Array) -> void:
 	)
 	if not result.ok:
 		_show_error(result.error)
-		if not pending_edit_before.is_empty():
-			_replace_document_bytes(pending_edit_before)
+		if not edit_history.pending_edit_before.is_empty():
+			_replace_document_bytes(edit_history.pending_edit_before)
 		_refresh_sprite()
 		return
-	_mark_shape_blank_state(sprite_id, output_pixels)
-	_record_edit(pending_edit_before)
+	edit_history.mark_shape_blank_state(sprite_id, output_pixels)
+	_record_edit(edit_history.pending_edit_before)
 	_refresh_sprite()
 
 
@@ -1244,7 +1216,7 @@ func _resolved_view_entry(view: int):
 		return null
 	var sprite_id := view_sprite_id(current_large_id, view)
 	var entry: Variant = tile_set.overrides.find_sprite(sprite_id)
-	if entry == null and blank_shape_ids.has(sprite_id):
+	if entry == null and edit_history.blank_shape_ids.has(sprite_id):
 		entry = tile_set.archive.find_sprite(sprite_id)
 	if entry == null:
 		var base_archive := (
@@ -1284,39 +1256,16 @@ func _commit_name() -> void:
 	if not result.ok:
 		_show_error(result.error)
 		return
-	_record_edit(pending_edit_before)
+	_record_edit(edit_history.pending_edit_before)
 	_refresh_object_list()
 	_refresh_sprite()
 
 
 func _record_edit(before: PackedByteArray) -> void:
-	if before.is_empty() or tile_set == null:
+	if not edit_history.record(before, tile_set):
 		return
-	var encoded := tile_set.to_bytes()
-	if not encoded.ok or encoded.bytes == before:
-		return
-	undo_stack.append({
-		"before": before.duplicate(),
-		"after": encoded.bytes.duplicate(),
-		"blank_before": pending_blank_shape_ids.duplicate(),
-		"blank_after": blank_shape_ids.duplicate(),
-	})
-	if undo_stack.size() > HISTORY_LIMIT:
-		undo_stack.pop_front()
-	redo_stack.clear()
-	pending_edit_before.clear()
-	pending_blank_shape_ids.clear()
-	_update_dirty()
 	_update_history_buttons()
 	_update_title()
-
-
-func _mark_shape_blank_state(sprite_id: int, value_pixels: PackedInt32Array) -> void:
-	for pixel in value_pixels:
-		if pixel >= 0:
-			blank_shape_ids.erase(sprite_id)
-			return
-	blank_shape_ids[sprite_id] = true
 
 
 func _replace_document_bytes(bytes: PackedByteArray) -> bool:
@@ -1339,25 +1288,17 @@ func _update_after_history() -> void:
 
 
 func _update_dirty() -> void:
-	if tile_set == null:
-		dirty = false
-		return
-	var encoded := tile_set.to_bytes()
-	dirty = encoded.ok and encoded.bytes != saved_bytes
+	edit_history.update_dirty(tile_set)
 
 
 func _update_history_buttons() -> void:
 	if undo_button != null:
-		undo_button.disabled = undo_stack.is_empty()
+		undo_button.disabled = not edit_history.can_undo()
 	if redo_button != null:
-		redo_button.disabled = redo_stack.is_empty()
+		redo_button.disabled = not edit_history.can_redo()
 	if revert_button != null:
-		var encoded := tile_set.to_bytes() if tile_set != null else {}
-		revert_button.disabled = (
-			object_start_bytes.is_empty()
-			or object_start_large_id != current_large_id
-			or not encoded.get("ok", false)
-			or encoded.bytes == object_start_bytes
+		revert_button.disabled = not edit_history.can_revert_object(
+			tile_set, current_large_id
 		)
 	if save_button != null:
 		save_button.disabled = tile_set == null
