@@ -2,6 +2,7 @@ class_name CityToolbar
 extends PanelContainer
 
 signal group_requested(index: int)
+signal subtool_requested(index: int)
 signal rotate_requested(counter_clockwise: bool)
 signal zoom_out_requested
 signal zoom_in_requested
@@ -13,6 +14,7 @@ signal underground_pipes_visibility_requested(visible: bool)
 
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const ChildToolPalette = preload("res://src/ui/city_child_tool_palette.gd")
 const MAP_DISPLAY_MODES := ["city", "underground"]
 const GROUP_ICON_REGIONS := [
 	Rect2i(0, 0, 23, 23), Rect2i(24, 0, 26, 23), Rect2i(50, 0, 20, 23),
@@ -33,6 +35,8 @@ var zoom_label: Label
 var active_tool_group_label: Label
 var child_tool_scroll: ScrollContainer
 var child_tool_grid: GridContainer
+var child_tool_buttons: Dictionary = {}
+var child_palette: CityChildToolPalette
 var undo_button: Button
 var view_layers_heading: Label
 var view_visibility_checks: Dictionary = {}
@@ -126,24 +130,14 @@ func _ready() -> void:
 	zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	zoom_row.add_child(zoom_label)
 
-	active_tool_group_label = Label.new()
-	active_tool_group_label.text = "Selected Group"
-	active_tool_group_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	active_tool_group_label.add_theme_color_override("font_color", Color("000080"))
-	active_tool_group_label.add_theme_font_size_override("font_size", 13)
-	toolbar.add_child(active_tool_group_label)
-	child_tool_scroll = ScrollContainer.new()
-	child_tool_scroll.custom_minimum_size = Vector2(0, 96)
-	child_tool_scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	child_tool_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	child_tool_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-	toolbar.add_child(child_tool_scroll)
-	child_tool_grid = GridContainer.new()
-	child_tool_grid.columns = 1
-	child_tool_grid.add_theme_constant_override("h_separation", 3)
-	child_tool_grid.add_theme_constant_override("v_separation", 3)
-	child_tool_grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	child_tool_scroll.add_child(child_tool_grid)
+	child_palette = ChildToolPalette.new()
+	child_palette.build()
+	child_palette.subtool_requested.connect(subtool_requested.emit)
+	toolbar.add_child(child_palette)
+	active_tool_group_label = child_palette.heading
+	child_tool_scroll = child_palette.scroll
+	child_tool_grid = child_palette.grid
+	child_tool_buttons = child_palette.buttons
 	undo_button = Button.new()
 	undo_button.text = "Undo Last Edit"
 	undo_button.disabled = true
@@ -210,6 +204,47 @@ func group_icon(group_index: int) -> Texture2D:
 	if group_index < 0 or group_index >= GROUP_ICON_REGIONS.size():
 		return null
 	return _toolbar_icon(GROUP_ICON_REGIONS[group_index])
+
+
+func show_tool_group(
+	group_index: int,
+	city: CityState,
+	icon_provider: Callable = Callable(),
+) -> int:
+	if group_index < 0 or group_index >= Tools.GROUPS.size():
+		return 0
+	for button_index in toolbar_buttons.size():
+		toolbar_buttons[button_index].button_pressed = button_index == group_index
+	return child_palette.show_tool_group(group_index, city, icon_provider)
+
+
+func sync_child_tool_selection(group_index: int, subtool_index: int) -> void:
+	child_palette.sync_selection(group_index, subtool_index)
+
+
+func refresh_child_tool_icons(
+	group_index: int, icon_provider: Callable
+) -> void:
+	child_palette.refresh_icons(group_index, icon_provider)
+
+
+func refresh_tool_availability(
+	city: CityState,
+	group_index: int,
+	selected_subtool: int,
+	selected_was_available: bool,
+) -> bool:
+	return child_palette.refresh_availability(
+		city, group_index, selected_subtool, selected_was_available
+	)
+
+
+func tool_button_tooltip(
+	group_index: int, subtool_index: int, available: bool
+) -> String:
+	return child_palette.tool_button_tooltip(
+		group_index, subtool_index, available
+	)
 
 
 func _add_group_button(

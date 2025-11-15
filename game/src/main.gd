@@ -175,10 +175,6 @@ var view_menu_underground_items := false
 var disasters_menu: MenuButton
 var view_visibility_checks: Dictionary = {}
 var view_layers_heading: Label
-var active_tool_group_label: Label
-var child_tool_scroll: ScrollContainer
-var child_tool_grid: GridContainer
-var child_tool_buttons: Dictionary = {}
 var city_toolbar: CityToolbar
 var undo_button: Button
 var zoom_label: Label
@@ -186,7 +182,6 @@ var zoom_in_button: Button
 var zoom_out_button: Button
 var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
-var toolbar_buttons: Array[Button] = []
 var sign_dialog: CitySignDialog
 var bridge_dialog: BridgeSelectionDialog
 var pending_bridge_request: Dictionary = {}
@@ -445,6 +440,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 
 	city_toolbar = city_workspace.toolbar
 	city_toolbar.group_requested.connect(_choose_tool_group)
+	city_toolbar.subtool_requested.connect(_select_subtool)
 	city_toolbar.rotate_requested.connect(_rotate_city)
 	city_toolbar.zoom_out_requested.connect(_zoom_out)
 	city_toolbar.zoom_in_requested.connect(_zoom_in)
@@ -455,15 +451,11 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	city_toolbar.underground_pipes_visibility_requested.connect(
 		_set_underground_pipes_visible
 	)
-	toolbar_buttons = city_toolbar.toolbar_buttons
 	rotate_counter_clockwise_button = city_toolbar.rotate_counter_clockwise_button
 	rotate_clockwise_button = city_toolbar.rotate_clockwise_button
 	zoom_out_button = city_toolbar.zoom_out_button
 	zoom_in_button = city_toolbar.zoom_in_button
 	zoom_label = city_toolbar.zoom_label
-	active_tool_group_label = city_toolbar.active_tool_group_label
-	child_tool_scroll = city_toolbar.child_tool_scroll
-	child_tool_grid = city_toolbar.child_tool_grid
 	undo_button = city_toolbar.undo_button
 	view_layers_heading = city_toolbar.view_layers_heading
 	view_visibility_checks = city_toolbar.view_visibility_checks
@@ -1024,9 +1016,8 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 
 
 func _refresh_child_tool_icons() -> void:
-	for subtool_index in child_tool_buttons:
-		var button: Button = child_tool_buttons[subtool_index]
-		button.icon = _tool_button_icon(selected_group, int(subtool_index))
+	if city_toolbar != null:
+		city_toolbar.refresh_child_tool_icons(selected_group, _tool_button_icon)
 
 
 func _zoom_in() -> void:
@@ -3316,56 +3307,12 @@ func _select_tool_group(index: int) -> void:
 	if index < 0 or index >= Tools.GROUPS.size():
 		return
 	selected_group = index
-	for button_index in toolbar_buttons.size():
-		toolbar_buttons[button_index].button_pressed = button_index == selected_group
 	if selected_group == Dispatch.GROUP_DISPATCH:
 		dispatch_cycles = PackedInt32Array([0, 0, 0])
 		dispatch_initialized = false
-	var group := Tools.group(selected_group)
-	for child in child_tool_grid.get_children():
-		child_tool_grid.remove_child(child)
-		child.queue_free()
-	child_tool_buttons.clear()
-	var show_child_palette := selected_group < 15
-	active_tool_group_label.visible = show_child_palette
-	child_tool_scroll.visible = show_child_palette
-	if not show_child_palette:
-		selected_subtool = 0
-		_update_edit_state()
-		return
-	active_tool_group_label.text = str(group.name)
-	var child_button_group := ButtonGroup.new()
-	var first_available_subtool := -1
-	for subtool_index in group.tools.size():
-		if selected_group == 3 and subtool_index == 1:
-			continue
-		if ToolState.is_tool_variant(selected_group, subtool_index):
-			continue
-		var tool := Tools.tool(selected_group, subtool_index)
-		var price := "Free" if tool.cost == 0 else "$%s" % _format_number(tool.cost)
-		var button := Button.new()
-		button.custom_minimum_size = Vector2(175, 36)
-		button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		button.toggle_mode = true
-		button.button_group = child_button_group
-		button.text = "%s\n%s" % [tool.name, price]
-		button.clip_text = true
-		button.icon = _tool_button_icon(selected_group, subtool_index)
-		button.icon_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-		button.pressed.connect(_select_subtool.bind(subtool_index))
-		var available := city == null or ToolAvailability.is_available(
-			city, selected_group, subtool_index
-		)
-		button.disabled = not available
-		button.tooltip_text = _tool_button_tooltip(
-			selected_group, subtool_index, available
-		)
-		child_tool_grid.add_child(button)
-		child_tool_buttons[subtool_index] = button
-		if available and first_available_subtool < 0:
-			first_available_subtool = subtool_index
-	selected_subtool = maxi(0, first_available_subtool)
+	selected_subtool = city_toolbar.show_tool_group(
+		selected_group, city, _tool_button_icon
+	)
 	_sync_child_tool_selection()
 	_update_edit_state()
 
@@ -3379,59 +3326,16 @@ func _select_subtool(index: int) -> void:
 
 
 func _sync_child_tool_selection() -> void:
-	var displayed_subtool := selected_subtool
-	if selected_group == 5 and selected_subtool >= 5:
-		displayed_subtool = 4
-	for subtool_index in child_tool_buttons:
-		var button: Button = child_tool_buttons[subtool_index]
-		button.button_pressed = int(subtool_index) == displayed_subtool
-
-
-func _tool_button_tooltip(
-	group_index: int, subtool_index: int, available: bool
-) -> String:
-	var tool := Tools.tool(group_index, subtool_index)
-	if tool.is_empty():
-		return ""
-	var price := "Free" if int(tool.cost) == 0 else "$%s" % _format_number(tool.cost)
-	var lines := PackedStringArray([
-		str(tool.name),
-		"Cost: %s" % price,
-	])
-	if int(tool.area) > 0:
-		lines.append("Footprint: %d x %d tiles" % [tool.area, tool.area])
-	if group_index == 3 and subtool_index >= 2:
-		var details := Tools.power_plant_details(subtool_index)
-		if not details.is_empty():
-			lines.append("Nominal output: %d MW" % details.output_mw)
-			lines.append("Grid capacity: %s" % details.grid_capacity)
-			lines.append("Pollution factor: %d" % details.pollution)
-			lines.append("Service life: %s" % details.service_life)
-			lines.append(str(details.note))
-	if not available:
-		lines.append("Status: Not available in this city.")
-	return "\n".join(lines)
+	if city_toolbar != null:
+		city_toolbar.sync_child_tool_selection(selected_group, selected_subtool)
 
 
 func _refresh_tool_availability() -> bool:
-	if city == null or child_tool_grid == null:
+	if city == null or city_toolbar == null:
 		return false
-	var changed := false
-	for subtool_index in child_tool_buttons:
-		var available := ToolAvailability.is_available(
-			city, selected_group, int(subtool_index)
-		)
-		var button: Button = child_tool_buttons[subtool_index]
-		if button.disabled == available:
-			button.disabled = not available
-			changed = true
-		button.tooltip_text = _tool_button_tooltip(
-			selected_group, int(subtool_index), available
-		)
-	var current_available := ToolAvailability.is_available(
-		city, selected_group, selected_subtool
+	return city_toolbar.refresh_tool_availability(
+		city, selected_group, selected_subtool, selected_tool_available
 	)
-	return changed or current_available != selected_tool_available
 
 
 func _update_edit_state() -> void:

@@ -459,17 +459,23 @@ func _test_main_menu() -> void:
 	menu_bar.free()
 	var toolbar := CityToolbarUi.new(null)
 	toolbar._ready()
+	var first_residential := toolbar.show_tool_group(9, null)
 	_check(
 		toolbar.toolbar_buttons.size() == 18
 		and toolbar.rotate_counter_clockwise_button.disabled
 		and toolbar.rotate_clockwise_button.disabled
 		and toolbar.zoom_label.text == "100%"
 		and toolbar.child_tool_grid.columns == 1
+		and toolbar.child_tool_buttons.size() == 2
+		and first_residential == 0
+		and toolbar.active_tool_group_label.text == "Residential"
+		and toolbar.child_tool_buttons[0].text == "Light Residential\n$5"
+		and toolbar.child_tool_buttons[1].text == "Dense Residential\n$10"
 		and toolbar.undo_button.disabled
 		and toolbar.view_visibility_checks.size() == 7
 		and toolbar.view_visibility_checks["buildings"].button_pressed
 		and toolbar.view_visibility_checks["pipes"].button_pressed,
-		"City toolbar owns tool, view, and layer controls",
+		"City toolbar owns tool groups, child tools, views, and layer controls",
 	)
 	toolbar.free()
 	var workspace := CityWorkspaceUi.new(null)
