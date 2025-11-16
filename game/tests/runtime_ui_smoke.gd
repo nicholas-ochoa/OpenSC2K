@@ -152,9 +152,37 @@ func _run() -> void:
 				main.queue_free()
 				quit(2)
 				return
-			main.set("selected_group", 9)
+			var funds_before_tree := loaded_city.funds()
+			main.set("selected_group", 1)
 			main.set("selected_subtool", 0)
 			var patch_path: Array[Vector2i] = [patch_point]
+			main.call(
+				"_apply_map_selection",
+				patch_point,
+				patch_point,
+				patch_path,
+				false
+			)
+			var landscape_command: Dictionary = main.get("last_edit_command")
+			if (
+				landscape_command.get("command_type", "") != "landscape"
+				or loaded_city.building_id(patch_point.x, patch_point.y) < 0x06
+			):
+				push_error("The simple edit flow did not apply the landscape command")
+				main.queue_free()
+				quit(2)
+				return
+			main.call("_undo_last_edit")
+			if (
+				loaded_city.building_id(patch_point.x, patch_point.y) != 0
+				or loaded_city.funds() != funds_before_tree
+			):
+				push_error("Landscape Undo did not restore the city")
+				main.queue_free()
+				quit(2)
+				return
+			main.set("selected_group", 9)
+			main.set("selected_subtool", 0)
 			main.call(
 				"_apply_map_selection",
 				patch_point,

@@ -22,6 +22,7 @@ const CityMapView = preload("res://src/view/city_map_window_control.gd")
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const ToolState = preload("res://src/tools/tool_edit_state.gd")
+const SimpleEdits = preload("res://src/tools/simple_edit_flow.gd")
 const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
@@ -3444,101 +3445,19 @@ func _apply_map_selection(
 			dispatch.available,
 		]
 		return
-	if Landscapes.supports_tool(selected_group, selected_subtool):
-		var landscape := Landscapes.apply_path(
-			city,
-			selected_group,
-			selected_subtool,
-			path,
-			tool_random,
-			scurk_tool_mode
-		)
-		if not landscape.ok:
-			_play_tool_failure_sound(
-				selected_group, selected_subtool, str(landscape.error), scurk_tool_mode
-			)
-			_show_error(
-				"Cannot apply %s: %s"
-				% [Tools.tool(selected_group, selected_subtool).name, landscape.error]
-			)
-			return
-		_record_edit_command(
-			landscape, scurk_tool_mode, String(scurk_tool.get("name", ""))
-		)
-		_refresh_details()
-		_refresh_after_city_edit(landscape)
-		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
-		status_label.remove_theme_color_override("font_color")
-		status_label.text = "%s changed %d path tiles for $%s." % [
-			Tools.tool(selected_group, selected_subtool).name,
-			landscape.tile_indices.size(),
-			_format_number(landscape.cost),
-		]
-		if landscape.skipped_insufficient > 0:
-			status_label.text += " Funds were not sufficient for %d later path tiles." % landscape.skipped_insufficient
-		return
-	if Demolish.supports_tool(selected_group, selected_subtool):
-		var demolition := Demolish.apply_path(
-			city,
-			selected_group,
-			selected_subtool,
-			path,
-			tool_random,
-			overlay_mode == "underground",
-			scurk_tool_mode
-		)
-		if not demolition.ok:
-			_show_error("Cannot demolish: %s" % demolition.error)
-			return
-		_record_edit_command(
-			demolition, scurk_tool_mode, String(scurk_tool.get("name", ""))
-		)
-		_refresh_details()
-		_refresh_after_city_edit(demolition)
-		if not scurk_tool_mode:
-			_show_effect_events(demolition.effect_events, demolition.sound_events)
-		if demolition.easter_events > 0:
-			_refresh_saved_news_summary()
-			_show_forest_protest()
-		status_label.remove_theme_color_override("font_color")
-		status_label.text = "Applied %d demolition actions for $%s." % [
-			demolition.action_count, _format_number(demolition.cost)
-		]
-		if demolition.skipped_specialized > 0:
-			status_label.text += " %d specialized structures were not changed." % demolition.skipped_specialized
-		if demolition.easter_events > 0:
-			status_label.text += " A forest protest kept %d %s." % [
-				demolition.easter_events,
-				"tree" if demolition.easter_events == 1 else "trees",
-			]
-		return
-	if TerrainTools.supports_tool(selected_group, selected_subtool):
-		var terrain_change := TerrainTools.apply_path(
-			city,
-			selected_group,
-			selected_subtool,
-			start,
-			path,
-			tool_random,
-			scurk_tool_mode
-		)
-		if not terrain_change.ok:
-			_show_error("Cannot change terrain: %s" % terrain_change.error)
-			return
-		_record_edit_command(
-			terrain_change, scurk_tool_mode, String(scurk_tool.get("name", ""))
-		)
-		_refresh_details()
-		_refresh_after_city_edit(terrain_change)
-		_show_effect_events(terrain_change.effect_events, terrain_change.sound_events)
-		status_label.remove_theme_color_override("font_color")
-		status_label.text = "%s applied %d actions for $%s." % [
-			Tools.tool(selected_group, selected_subtool).name,
-			terrain_change.action_count,
-			_format_number(terrain_change.cost),
-		]
-		if terrain_change.skipped_conflicts > 0:
-			status_label.text += " %d structure conflicts were not changed." % terrain_change.skipped_conflicts
+	var simple_edit := SimpleEdits.apply_supported(
+		city,
+		selected_group,
+		selected_subtool,
+		start,
+		finish,
+		path,
+		tool_random,
+		overlay_mode == "underground",
+		scurk_tool_mode
+	)
+	if simple_edit.handled:
+		_finish_simple_edit(simple_edit, scurk_tool_mode, scurk_tool)
 		return
 	if Networks.supports_tool(selected_group, selected_subtool):
 		_apply_network_selection(
@@ -3550,57 +3469,6 @@ func _apply_map_selection(
 			Networks.CONNECTION_UNSELECTED,
 			scurk_tool_mode
 		)
-		return
-	if Hydro.supports_tool(selected_group, selected_subtool):
-		var hydro := Hydro.apply(city, selected_group, selected_subtool, finish, tool_random)
-		if not hydro.ok:
-			_play_tool_failure_sound(
-				selected_group, selected_subtool, str(hydro.error), scurk_tool_mode
-			)
-			_show_error("Cannot build hydroelectric power: %s" % hydro.error)
-			return
-		last_edit_command = hydro
-		undo_button.disabled = false
-		_refresh_details()
-		_refresh_after_city_edit(hydro)
-		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
-		status_label.remove_theme_color_override("font_color")
-		status_label.text = "Built hydroelectric power for $%s." % _format_number(hydro.cost)
-		return
-	if SubwayToRail.supports_tool(selected_group, selected_subtool):
-		var connection := SubwayToRail.apply(city, selected_group, selected_subtool, finish)
-		if not connection.ok:
-			_play_tool_failure_sound(
-				selected_group, selected_subtool, str(connection.error), scurk_tool_mode
-			)
-			_show_error("Cannot build subway-to-rail connection: %s" % connection.error)
-			return
-		_record_edit_command(
-			connection, scurk_tool_mode, String(scurk_tool.get("name", ""))
-		)
-		_refresh_after_city_edit(connection)
-		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
-		status_label.remove_theme_color_override("font_color")
-		status_label.text = "Built a subway-to-rail connection at no charge. Listed cost: $%s." % _format_number(connection.listed_cost)
-		return
-	if Onramps.supports_tool(selected_group, selected_subtool):
-		var onramp := Onramps.apply(
-			city, selected_group, selected_subtool, finish, scurk_tool_mode
-		)
-		if not onramp.ok:
-			_play_tool_failure_sound(
-				selected_group, selected_subtool, str(onramp.error), scurk_tool_mode
-			)
-			_show_error("Cannot build on-ramp: %s" % onramp.error)
-			return
-		_record_edit_command(
-			onramp, scurk_tool_mode, String(scurk_tool.get("name", ""))
-		)
-		_refresh_details()
-		_refresh_after_city_edit(onramp)
-		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
-		status_label.remove_theme_color_override("font_color")
-		status_label.text = "Built an on-ramp for $%s." % _format_number(onramp.cost)
 		return
 	if Tunnels.supports_tool(selected_group, selected_subtool):
 		_apply_tunnel_selection(finish, Tunnels.CONFIRMATION_UNSELECTED, scurk_tool_mode)
@@ -3673,7 +3541,7 @@ func _apply_map_selection(
 			_open_stadium_dialog(building)
 			status_label.text += " Select a stadium team."
 		return
-	var command := Zones.apply_rectangle(
+	var zone_edit := SimpleEdits.apply_zone(
 		city,
 		selected_group,
 		selected_subtool,
@@ -3683,24 +3551,41 @@ func _apply_map_selection(
 		scurk_tool_mode,
 		int(scurk_tool.get("zone", -1))
 	)
+	_finish_simple_edit(zone_edit, scurk_tool_mode, scurk_tool)
+
+
+func _finish_simple_edit(
+	edit: Dictionary, scurk_tool_mode: bool, scurk_tool: Dictionary
+) -> void:
+	var command: Dictionary = edit.command
 	if not command.ok:
-		_play_tool_failure_sound(
-			selected_group, selected_subtool, str(command.error), scurk_tool_mode
-		)
-		_show_error("Cannot apply %s: %s" % [Tools.tool(selected_group, selected_subtool).name, command.error])
+		if edit.play_failure_sound:
+			_play_tool_failure_sound(
+				selected_group, selected_subtool, str(command.error), scurk_tool_mode
+			)
+		_show_error(str(edit.message))
 		return
-	_record_edit_command(
-		command, scurk_tool_mode, String(scurk_tool.get("name", ""))
-	)
-	_refresh_details()
+	if edit.record_command:
+		_record_edit_command(
+			command, scurk_tool_mode, String(scurk_tool.get("name", ""))
+		)
+	else:
+		last_edit_command = command
+		undo_button.disabled = false
+	if edit.refresh_details:
+		_refresh_details()
 	_refresh_after_city_edit(command)
-	_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
+	if edit.show_effects:
+		_show_effect_events(
+			command.get("effect_events", []), command.get("sound_events", [])
+		)
+	if edit.show_forest_protest:
+		_refresh_saved_news_summary()
+		_show_forest_protest()
+	if edit.play_success_sound:
+		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
 	status_label.remove_theme_color_override("font_color")
-	status_label.text = "%s changed %d tiles for $%s." % [
-		Tools.tool(selected_group, selected_subtool).name,
-		command.tile_indices.size(),
-		_format_number(command.cost),
-	]
+	status_label.text = str(edit.message)
 
 
 func _apply_network_selection(
