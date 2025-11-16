@@ -7,6 +7,7 @@ const Landscape = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
 const TrainTick = preload("res://src/simulation/train_thing_tick.gd")
+const SailboatTick = preload("res://src/simulation/sailboat_thing_tick.gd")
 const MAP_SIZE := 128
 const RECORD_SIZE := 12
 const FIRST_RECORD := 1
@@ -35,13 +36,7 @@ const SOUND_AIR_DISASTER := 0x203
 const SOUND_SHIP := 0x205
 const SOUND_AIRPLANE_TAKEOFF := 0x206
 const SOUND_AIRPLANE_LANDING := 0x207
-const SOUND_SAILBOAT_DISTRESS := 0x20f
 const HELICOPTER_SOUND_DELAY_MSEC := 5000
-const SAIL_SUBTILE_X := [0, 16, 0, -16]
-const SAIL_SUBTILE_Y := [-16, 0, 16, 0]
-const CARDINAL_DIRECTIONS := [
-	Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0),
-]
 const EIGHT_DIRECTIONS := [
 	Vector2i(0, -1), Vector2i(1, -1), Vector2i(1, 0), Vector2i(1, 1),
 	Vector2i(0, 1), Vector2i(-1, 1), Vector2i(-1, 0), Vector2i(-1, -1),
@@ -277,7 +272,7 @@ static func run(
 				)
 			TYPE_SAILBOAT:
 				counters.active_sailboats += 1
-				_update_sailboat(
+				SailboatTick.update(
 					buildings, flags, text, things, record, random, lfsr_random, counters
 				)
 			TYPE_TRAIN_ENGINE, TYPE_SUBWAY_ENGINE:
@@ -1219,115 +1214,6 @@ static func _move_ship(
 	return true
 
 
-static func _update_sailboat(
-	buildings: PackedByteArray,
-	flags: PackedByteArray,
-	text: PackedByteArray,
-	things: PackedByteArray,
-	record: int,
-	random,
-	lfsr_random,
-	counters: Dictionary
-) -> void:
-	var offset := record * RECORD_SIZE
-	if counters.active_sailboats > 4:
-		_remove_thing(text, things, record)
-		counters.removed_sailboats += 1
-		return
-	var direction := int(things[offset + 1])
-	if direction < 0 or direction >= CARDINAL_DIRECTIONS.size():
-		_remove_thing(text, things, record)
-		counters.removed_sailboats += 1
-		counters.malformed_records += 1
-		return
-	if things[offset + 2] != 0:
-		if lfsr_random.next_mod(5) == 0:
-			_remove_thing(text, things, record)
-			counters.removed_sailboats += 1
-		return
-	if lfsr_random.next_mod(4) == 0:
-		var current := Vector2i(things[offset + 3], things[offset + 4])
-		var current_index := _index(current)
-		if current_index < 0 or flags[current_index] & 0x04 == 0:
-			_remove_thing(text, things, record)
-			counters.removed_sailboats += 1
-			return
-		if lfsr_random.next_mod(4000) == 0:
-			things[offset + 2] = 1
-			counters.distressed_sailboats += 1
-			_queue_thing_sound(counters, SOUND_SAILBOAT_DISTRESS, things, record)
-		things[offset + 1] = (direction + random.next_u15() % 3 - 1) & 3
-		counters.turned_sailboats += 1
-		return
-	var route_state := _sailboat_route_state(buildings, flags, text, things, record, direction)
-	if route_state < 0:
-		counters.removed_sailboats += 1
-	elif route_state > 0:
-		_move_sailboat(text, things, record, direction, counters)
-
-
-static func _sailboat_route_state(
-	buildings: PackedByteArray,
-	flags: PackedByteArray,
-	text: PackedByteArray,
-	things: PackedByteArray,
-	record: int,
-	direction: int
-) -> int:
-	var offset := record * RECORD_SIZE
-	var next: Vector2i = (
-		Vector2i(things[offset + 3], things[offset + 4]) + CARDINAL_DIRECTIONS[direction]
-	)
-	var next_index := _index(next)
-	if next_index < 0:
-		return 1
-	if buildings[next_index] == TILE_MARINA:
-		_remove_thing(text, things, record)
-		return -1
-	if buildings[next_index] == TILE_PIER or text[next_index] != 0:
-		return 0
-	return 1 if flags[next_index] & 0x04 != 0 else 0
-
-
-static func _move_sailboat(
-	text: PackedByteArray,
-	things: PackedByteArray,
-	record: int,
-	direction: int,
-	counters: Dictionary
-) -> void:
-	var offset := record * RECORD_SIZE
-	var subtile_x: int = int(things[offset + 6]) + SAIL_SUBTILE_X[direction]
-	var subtile_y: int = int(things[offset + 7]) + SAIL_SUBTILE_Y[direction]
-	var tile_delta := Vector2i.ZERO
-	if subtile_x > SUBTILE_LIMIT:
-		subtile_x -= SUBTILE_LIMIT
-		tile_delta.x = 1
-	elif subtile_x < 0:
-		subtile_x += SUBTILE_LIMIT
-		tile_delta.x = -1
-	if subtile_y > SUBTILE_LIMIT:
-		subtile_y -= SUBTILE_LIMIT
-		tile_delta.y = 1
-	elif subtile_y < 0:
-		subtile_y += SUBTILE_LIMIT
-		tile_delta.y = -1
-	things[offset + 6] = subtile_x
-	things[offset + 7] = subtile_y
-	if tile_delta != Vector2i.ZERO:
-		var old_point := Vector2i(things[offset + 3], things[offset + 4])
-		var old_index := _index(old_point)
-		if old_index >= 0:
-			text[old_index] = 0
-		var next := old_point + tile_delta
-		if next.x < 0 or next.x > 126 or next.y < 0 or next.y > 126:
-			_remove_thing(text, things, record)
-			counters.removed_sailboats += 1
-			return
-		things[offset + 3] = next.x
-		things[offset + 4] = next.y
-		text[_index(next)] = record + TEXT_LABEL_BASE
-	counters.moved_sailboats += 1
 
 
 
