@@ -10,6 +10,7 @@ const TrainTick = preload("res://src/simulation/train_thing_tick.gd")
 const SailboatTick = preload("res://src/simulation/sailboat_thing_tick.gd")
 const ShipTick = preload("res://src/simulation/ship_thing_tick.gd")
 const AirTick = preload("res://src/simulation/air_thing_tick.gd")
+const MaxisManTick = preload("res://src/simulation/maxis_man_thing_tick.gd")
 const MAP_SIZE := 128
 const RECORD_SIZE := 12
 const FIRST_RECORD := 1
@@ -38,7 +39,6 @@ const EIGHT_DIRECTIONS := [
 const THING_SPEEDS := {
 	TYPE_MONSTER: 8,
 	TYPE_TORNADO: 8,
-	TYPE_MAXIS_MAN: 16,
 }
 
 
@@ -253,7 +253,7 @@ static func run(
 				)
 			TYPE_MAXIS_MAN:
 				counters.active_maxis_men += 1
-				_update_maxis_man(
+				MaxisManTick.update(
 					altitude, flags, text, things, record, random, counters
 				)
 
@@ -617,153 +617,6 @@ static func _update_tornado(
 		counters.removed_tornadoes += 1
 
 
-static func _update_maxis_man(
-	altitude: PackedByteArray,
-	flags: PackedByteArray,
-	text: PackedByteArray,
-	things: PackedByteArray,
-	record: int,
-	random,
-	counters: Dictionary
-) -> void:
-	var offset := record * RECORD_SIZE
-	var current := Vector2i(things[offset + 3], things[offset + 4])
-	var current_index := _index(current)
-	var state := int(things[offset + 2])
-	var goal := int(things[offset + 11])
-	if current_index < 0 or state > 2:
-		_remove_thing(text, things, record)
-		counters.removed_maxis_men += 1
-		counters.malformed_records += 1
-		return
-	match state:
-		0:
-			var target_result := _maxis_man_target(text, things, offset, current, goal)
-			if not target_result.ok:
-				if target_result.get("malformed", false):
-					counters.malformed_records += 1
-				_update_maxis_man_height(altitude, flags, things, offset)
-				return
-			var target: Vector2i = target_result.point
-			var direction := _direction_quadrant(current, target)
-			things[offset + 1] = direction
-			var next: Vector2i = current + EIGHT_DIRECTIONS[direction]
-			var next_index := _index(next)
-			var overlay := int(text[next_index]) if next_index >= 0 else 0
-			if overlay > 250:
-				if random.next_u15() & 1:
-					text[next_index] = 0
-					counters.maxis_man_extinguished_fires += 1
-					_move_maxis_man(text, things, record, direction, counters)
-			elif overlay >= TEXT_LABEL_BASE:
-				if overlay == goal + TEXT_LABEL_BASE and random.next_u15() & 3 == 0:
-					_remove_thing(text, things, goal)
-					counters.maxis_man_destroyed_targets += 1
-					_queue_thing_sound(counters, SOUND_EXPLOSION, things, record)
-					if _spawn_explosion(text, things, next, things[offset + 5], 0, 1):
-						counters.maxis_man_explosions += 1
-					things[offset + 2] = 2
-				else:
-					things[offset + 2] = 1
-			else:
-				if not _move_maxis_man(text, things, record, direction, counters):
-					return
-				current = Vector2i(things[offset + 3], things[offset + 4])
-				var ahead_index := _index(current + EIGHT_DIRECTIONS[direction])
-				if ahead_index < 0 or text[ahead_index] < TEXT_LABEL_BASE:
-					if not _move_maxis_man(text, things, record, direction, counters):
-						return
-		1:
-			if random.next_u15() & 3 == 0:
-				things[offset + 2] = 0
-			else:
-				var direction: int = random.next_u15() & 7
-				var bugged_check := Vector2i(
-					current.x + EIGHT_DIRECTIONS[direction].x,
-					current.x + EIGHT_DIRECTIONS[direction].y
-				)
-				var check_index := _index(bugged_check)
-				if check_index >= 0 and text[check_index] < TEXT_LABEL_BASE:
-					if _move_maxis_man(text, things, record, direction, counters):
-						things[offset + 1] = direction
-		2:
-			var direction := int(things[offset + 1])
-			if direction < 0 or direction >= EIGHT_DIRECTIONS.size():
-				_remove_thing(text, things, record)
-				counters.malformed_records += 1
-				return
-			if not _move_maxis_man(text, things, record, direction, counters):
-				return
-			if not _move_maxis_man(text, things, record, direction, counters):
-				return
-	if things[offset] == TYPE_MAXIS_MAN:
-		_update_maxis_man_height(altitude, flags, things, offset)
-
-
-static func _maxis_man_target(
-	text: PackedByteArray,
-	things: PackedByteArray,
-	offset: int,
-	current: Vector2i,
-	goal: int
-) -> Dictionary:
-	if goal < 241:
-		if goal < 0 or goal >= CityState.THING_COUNT:
-			return {"ok": false, "malformed": true}
-		var target_offset := goal * RECORD_SIZE
-		return {
-			"ok": true,
-			"point": Vector2i(things[target_offset + 3], things[target_offset + 4]),
-		}
-	var target := Vector2i(things[offset + 8], things[offset + 9])
-	var target_index := _index(target)
-	if target_index >= 0 and text[target_index] >= 241:
-		return {"ok": true, "point": target}
-	things[offset + 2] = 2
-	for x in range(current.x - 32, current.x + 33):
-		for y in range(current.y - 32, current.y + 33):
-			var index := _index(Vector2i(x, y))
-			if index >= 0 and text[index] >= 241:
-				things[offset + 8] = x
-				things[offset + 9] = y
-				things[offset + 2] = 0
-				return {"ok": true, "point": Vector2i(x, y)}
-	return {"ok": false}
-
-
-static func _move_maxis_man(
-	text: PackedByteArray,
-	things: PackedByteArray,
-	record: int,
-	direction: int,
-	counters: Dictionary
-) -> bool:
-	if _move_thing_eight_way(TYPE_MAXIS_MAN, text, things, record, direction) < 0:
-		counters.removed_maxis_men += 1
-		return false
-	counters.moved_maxis_men += 1
-	return true
-
-
-static func _update_maxis_man_height(
-	altitude: PackedByteArray,
-	flags: PackedByteArray,
-	things: PackedByteArray,
-	offset: int
-) -> void:
-	var goal := int(things[offset + 11])
-	if goal < 241 and goal >= 0 and goal < CityState.THING_COUNT:
-		things[offset + 5] = things[goal * RECORD_SIZE + 5]
-		return
-	var point := Vector2i(things[offset + 3], things[offset + 4])
-	var index := _index(point)
-	if index < 0:
-		return
-	var word := (altitude[index * 2] << 8) | altitude[index * 2 + 1]
-	var ground := word & 0x1f
-	if flags[index] & 0x04:
-		ground = (word >> 5) & 0x1f
-	things[offset + 5] = (ground + int(things[offset + 2])) & 0xff
 
 
 
@@ -774,37 +627,6 @@ static func _update_maxis_man_height(
 
 
 
-static func _spawn_explosion(
-	text: PackedByteArray,
-	things: PackedByteArray,
-	point: Vector2i,
-	height: int,
-	state: int,
-	goal: int
-) -> bool:
-	var index := _index(point)
-	if index < 0 or text[index] >= TEXT_LABEL_BASE:
-		return false
-	var record := 0
-	for checked_record in range(FIRST_RECORD, LAST_RECORD + 1):
-		if things[checked_record * RECORD_SIZE] == 0:
-			record = checked_record
-			break
-	if record == 0:
-		return false
-	var offset := record * RECORD_SIZE
-	things[offset] = TYPE_EXPLOSION
-	things[offset + 1] = 0
-	things[offset + 2] = state
-	things[offset + 3] = point.x
-	things[offset + 4] = point.y
-	things[offset + 5] = height
-	things[offset + 6] = 8
-	things[offset + 7] = 8
-	things[offset + 10] = text[index]
-	things[offset + 11] = goal
-	text[index] = record + TEXT_LABEL_BASE
-	return true
 
 
 static func _remove_thing(
@@ -818,14 +640,6 @@ static func _remove_thing(
 		text[index] = 0
 
 
-static func _convert_to_explosion(
-	things: PackedByteArray, record: int, state: int, goal: int
-) -> void:
-	var offset := record * RECORD_SIZE
-	things[offset] = TYPE_EXPLOSION
-	things[offset + 1] = 0
-	things[offset + 2] = state
-	things[offset + 11] = goal
 
 
 static func _move_thing_eight_way(
@@ -884,10 +698,6 @@ static func _move_thing_eight_way(
 
 
 
-static func _turn_one_step(direction: int, target: int) -> int:
-	if direction <= target:
-		return (direction - 1) & 7 if target - direction > 4 else (direction + 1) & 7
-	return (direction + 1) & 7 if direction - target > 4 else (direction - 1) & 7
 
 
 static func _random_direction_step(direction: int, divisor: int, random) -> int:
@@ -909,26 +719,6 @@ static func _direction_quadrant(start: Vector2i, target: Vector2i) -> int:
 	return 2 if difference.y == 0 else 3
 
 
-static func _direction_between(start: Vector2i, target: Vector2i) -> int:
-	var difference := target - start
-	var absolute_x := absi(difference.x)
-	var absolute_y := absi(difference.y)
-	if absolute_x < int((absolute_y + 1) / 2):
-		return 0 if difference.y < 0 else 4
-	if absolute_y < int((absolute_x + 1) / 2):
-		return 6 if difference.x < 0 else 2
-	if difference.x < 0:
-		return 7 if difference.y < 0 else 5
-	return 1 if difference.y < 0 else 3
-
-
-static func _steer_direction(direction: int, start: Vector2i, target: Vector2i) -> int:
-	var desired := _direction_between(start, target)
-	return direction if desired == direction else _turn_one_step(direction, desired)
-
-
-static func _thing_distance(start: Vector2i, target: Vector2i) -> int:
-	return absi(target.x - start.x) + absi(target.y - start.y)
 
 
 static func _queue_thing_sound(
