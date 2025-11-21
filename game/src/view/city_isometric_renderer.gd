@@ -7,6 +7,11 @@ const TILE_HEIGHT := 17
 const HALF_WIDTH := 16
 const HALF_HEIGHT := 8
 const ALTITUDE_STEP := 12
+# each bit raises one dry-terrain corner in top, right, bottom, left order
+const TERRAIN_SURFACE_CORNER_MASKS := [
+	0x0, 0x9, 0x3, 0x6, 0xc, 0xb, 0x7, 0xe,
+	0xd, 0x1, 0x2, 0x4, 0x8, 0xf, 0x0,
+]
 const TOP_MARGIN := 512
 const SIDE_MARGIN := 32
 const VIEW_SMALL := 0
@@ -432,6 +437,26 @@ static func tile_polygon(city: CityState, x: int, y: int) -> PackedVector2Array:
 		left + Vector2(HALF_WIDTH, TILE_HEIGHT - 1),
 		left + Vector2(0, HALF_HEIGHT),
 	])
+
+
+static func terrain_surface_polygon(
+	city: CityState, x: int, y: int
+) -> PackedVector2Array:
+	var polygon := tile_polygon(city, x, y)
+	if polygon.size() != 4:
+		return polygon
+	var terrain := city.terrain_id(x, y)
+	# shoreline art can show the seabed, but its selectable surface is flat water
+	if terrain < 0 or terrain >= 0x10:
+		return polygon
+	var shape := terrain & 0x0f
+	if shape >= TERRAIN_SURFACE_CORNER_MASKS.size():
+		return polygon
+	var raised_corners: int = TERRAIN_SURFACE_CORNER_MASKS[shape]
+	for corner in 4:
+		if (raised_corners & (1 << corner)) != 0:
+			polygon[corner].y -= ALTITUDE_STEP
+	return polygon
 
 
 # try the heights and keep the front tile; one inverse transform isn't enough

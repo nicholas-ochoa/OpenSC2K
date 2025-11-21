@@ -533,26 +533,7 @@ func _draw() -> void:
 	_draw_signs(scale, offset)
 	if city == null:
 		return
-	var highlighted: Array[Vector2i] = []
-	if selection_mode == "point":
-		var preview_point := selection_end if selection_end.x >= 0 else hover_tile
-		highlighted = point_preview_tiles(preview_point)
-	elif selection_start.x < 0 or selection_end.x < 0:
-		return
-	elif selection_mode == "path":
-		highlighted = selection_path
-	else:
-		var minimum := Vector2i(
-			mini(selection_start.x, selection_end.x), mini(selection_start.y, selection_end.y)
-		)
-		var maximum := Vector2i(
-			maxi(selection_start.x, selection_end.x), maxi(selection_start.y, selection_end.y)
-		)
-		for x in range(minimum.x, maximum.x + 1):
-			for y in range(minimum.y, maximum.y + 1):
-				highlighted.append(Vector2i(x, y))
-	for tile in highlighted:
-		var source_polygon := Renderer.tile_polygon(city, tile.x, tile.y)
+	for source_polygon in _selection_source_polygons():
 		var local_polygon := PackedVector2Array()
 		for point in source_polygon:
 			local_polygon.append(offset + point * scale)
@@ -560,6 +541,21 @@ func _draw() -> void:
 		local_polygon.append(local_polygon[0])
 		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9), 1.0)
 	_draw_selection_price(scale, offset)
+
+
+func _selection_source_polygons() -> Array[PackedVector2Array]:
+	var tiles: Array[Vector2i]
+	if selection_mode == "point":
+		var preview_point := selection_end if selection_end.x >= 0 else hover_tile
+		tiles = point_preview_tiles(preview_point)
+	elif selection_start.x >= 0 and selection_end.x >= 0:
+		tiles = selection_path
+	var polygons: Array[PackedVector2Array] = []
+	for tile in tiles:
+		var polygon := Renderer.terrain_surface_polygon(city, tile.x, tile.y)
+		if polygon.size() == 4:
+			polygons.append(polygon)
+	return polygons
 
 
 func _draw_selection_price(scale: float, offset: Vector2) -> void:

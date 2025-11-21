@@ -1606,6 +1606,41 @@ func _test_sprite_archives(reference_root: String) -> void:
 			IsometricRenderer.screen_to_tile(starter, center) == expected,
 			"Isometric screen lookup finds tile %s" % expected,
 		)
+	var surface_city := CityModel.from_document(starter.document.duplicate_document())
+	var surface_point := Vector2i(64, 64)
+	_check(
+		surface_city.set_terrain_id(surface_point.x, surface_point.y, 0x09),
+		"Selection surface fixture installs a one-corner slope",
+	)
+	var flat_polygon := IsometricRenderer.tile_polygon(
+		surface_city, surface_point.x, surface_point.y
+	)
+	var slope_polygon := IsometricRenderer.terrain_surface_polygon(
+		surface_city, surface_point.x, surface_point.y
+	)
+	_check(
+		slope_polygon[0] == flat_polygon[0] + Vector2(0, -12)
+		and slope_polygon[1] == flat_polygon[1]
+		and slope_polygon[2] == flat_polygon[2]
+		and slope_polygon[3] == flat_polygon[3],
+		"Selection surface follows the raised corner of a terrain slope",
+	)
+	_check(
+		surface_city.set_terrain_id(surface_point.x, surface_point.y, 0x0d),
+		"Selection surface fixture installs a raised flat shape",
+	)
+	var raised_polygon := IsometricRenderer.terrain_surface_polygon(
+		surface_city, surface_point.x, surface_point.y
+	)
+	var raised_surface_matches := true
+	for corner in 4:
+		if raised_polygon[corner] != flat_polygon[corner] + Vector2(0, -12):
+			raised_surface_matches = false
+			break
+	_check(
+		raised_surface_matches,
+		"Selection surface follows all corners of a raised flat terrain shape",
+	)
 	var capeques := CityModel.from_document(
 		Sc2Document.load_path(reference_root.path_join("CITIES/CAPEQUES.SC2"))
 	)
@@ -1806,6 +1841,23 @@ func _test_sprite_archives(reference_root: String) -> void:
 		map_control.selection_tiles().size() == 6,
 		"Rectangle selection contains every tile while it grows",
 	)
+	map_control.city = surface_city
+	map_control.selection_start = surface_point
+	map_control.selection_end = surface_point + Vector2i(1, 0)
+	map_control._rebuild_selection_path()
+	var terrain_selection_polygons := map_control._selection_source_polygons()
+	_check(
+		terrain_selection_polygons.size() == 2
+		and terrain_selection_polygons[0] == raised_polygon
+		and terrain_selection_polygons[1] == IsometricRenderer.terrain_surface_polygon(
+			surface_city, surface_point.x + 1, surface_point.y
+		),
+		"A multi-tile mouse selection follows each tile surface",
+	)
+	map_control.city = starter
+	map_control.selection_start = center_tile
+	map_control.selection_end = center_tile + Vector2i(2, 1)
+	map_control._rebuild_selection_path()
 	map_control.selection_end = center_tile + Vector2i(1, 0)
 	map_control._rebuild_selection_path()
 	_check(
