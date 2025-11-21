@@ -3,7 +3,7 @@ extends RefCounted
 
 const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
-const GrowthPhase = preload("res://src/simulation/growth_phase.gd")
+const SpecialZoneGrowth = preload("res://src/simulation/special_zone_growth.gd")
 const TerrainCommand = preload("res://src/tools/terrain_command.gd")
 const DISASTER_NONE := 0
 const DISASTER_FIRE := 1
@@ -726,7 +726,7 @@ static func _write_radioactivity(payloads: Dictionary, point: Vector2i) -> bool:
 	if index < 0:
 		return false
 	var old_tile := int(payloads.XBLD[index])
-	GrowthPhase._replace_special_building(
+	SpecialZoneGrowth.replace_building(
 		payloads.XBLD, payloads.XZON, payloads.MISC, index, RADIOACTIVITY_TILE
 	)
 	return old_tile != RADIOACTIVITY_TILE
