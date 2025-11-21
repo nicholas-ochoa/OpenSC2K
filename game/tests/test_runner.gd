@@ -1237,6 +1237,17 @@ func _test_sprite_archives(reference_root: String) -> void:
 		fire_visual.sprite_id == 1399 and not fire_visual.flip,
 		"Fire view selects the recovered large frame from its visual phase",
 	)
+	var fire_command := IsometricRenderer.special_overlay_draw_command(
+		overlay_city,
+		large,
+		overlay_point,
+		fire_visual,
+		IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE),
+	)
+	_check(
+		not fire_command.static_occlusion,
+		"The dynamic fire marker stays above the static city at close zoom levels",
+	)
 	var flipped_fire := IsometricRenderer.fire_overlay_visual(
 		overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_LARGE, 4
 	)
@@ -1957,10 +1968,12 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.set_dynamic_sprites(many_dynamic_sprites)
 	_check(
 		map_control.dynamic_sprites.size() == 1500
-		and map_control.dynamic_render_node_count() == 1,
+		and map_control.dynamic_render_node_count() == 1
+		and map_control._dynamic_canvas is Node2D,
 		"Map control batches 1,500 dynamic sprites in one render node",
 	)
 	var visual_revision := map_control._dynamic_canvas.visual_revision
+	var dynamic_position := map_control._dynamic_canvas.position
 	var middle_press := InputEventMouseButton.new()
 	middle_press.button_index = MOUSE_BUTTON_MIDDLE
 	middle_press.pressed = true
@@ -1971,7 +1984,8 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control._handle_mouse_motion(pan_motion)
 	_check(
 		map_control.is_panning()
-		and map_control._dynamic_canvas.visual_revision == visual_revision,
+		and map_control._dynamic_canvas.visual_revision == visual_revision
+		and map_control._dynamic_canvas.position != dynamic_position,
 		"Middle-button panning moves the cached dynamic canvas without rebuilding it",
 	)
 	pan_motion.button_mask = 0
@@ -15069,6 +15083,29 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(water_tile.ok and special_city.terrain_id(60, 60) == 0, "Demolish removes surface water terrain")
 	_check((special_city.tile_flags[60 * 128 + 60] & 0x04) == 0, "Water demolition clears the water flag")
 	_check(Demolish.undo(special_city, water_tile, demolition_random).ok, "Water demolition can be undone")
+
+	var deep_water_point := Vector2i(61, 60)
+	_check(
+		special_city.set_terrain_id(deep_water_point.x, deep_water_point.y, 0x10)
+		and special_city.set_tile_flag(
+			deep_water_point.x, deep_water_point.y, 0x04, true
+		),
+		"Deep-water demolition fixture sets submerged terrain",
+	)
+	var deep_water_funds := special_city.funds()
+	var deep_water_random_state := demolition_random.state
+	var deep_water := Demolish.apply_path(
+		special_city, 0, 0, [deep_water_point], demolition_random
+	)
+	_check(
+		not deep_water.ok
+		and deep_water.error.contains("eligible")
+		and special_city.terrain_id(deep_water_point.x, deep_water_point.y) == 0x10
+		and special_city.is_water(deep_water_point.x, deep_water_point.y)
+		and special_city.funds() == deep_water_funds
+		and demolition_random.state == deep_water_random_state,
+		"Demolish protects deep water without charging funds or changing random state",
+	)
 
 
 func _test_terrain_command(reference_root: String) -> void:

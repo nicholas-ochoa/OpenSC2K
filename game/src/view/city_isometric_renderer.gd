@@ -1364,6 +1364,7 @@ static func special_overlay_draw_command(
 		),
 		"shadow": false,
 		"overlay": int(visual.overlay),
+		"static_occlusion": int(visual.overlay) != 0xff,
 	}
 
 

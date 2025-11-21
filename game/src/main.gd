@@ -2785,10 +2785,12 @@ func _refresh_moving_things(view_size := -1) -> void:
 		var texture: Texture2D = resource.texture
 		var index_texture: Texture2D = resource.index_texture
 		var visual_image: Image = resource.image
-		var occluder_mask := _dynamic_occluder_image(
-			sprite_archive, divisor, position, resource.image.get_size(),
-			int(command.get("depth_order", -1)), bool(command.get("train", false))
-		)
+		var occluder_mask: Image
+		if bool(command.get("static_occlusion", true)):
+			occluder_mask = _dynamic_occluder_image(
+				sprite_archive, divisor, position, resource.image.get_size(),
+				int(command.get("depth_order", -1)), bool(command.get("train", false))
+			)
 		if command.shadow:
 			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask)
 			if shadow_image == null:

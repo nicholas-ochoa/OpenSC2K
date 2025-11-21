@@ -1000,7 +1000,6 @@ func _ensure_base_layer() -> void:
 	add_child(_base_layer)
 	_dynamic_canvas = DynamicSpriteCanvas.new()
 	_dynamic_canvas.name = "DynamicSpriteCanvas"
-	_dynamic_canvas.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	_dynamic_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_dynamic_canvas.show_behind_parent = true
 	_dynamic_material = _new_palette_material()

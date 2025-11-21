@@ -386,12 +386,11 @@ static func _demolish_point(
 			emit_effects,
 			scurk_mode
 		)
-	var had_structure := tile_id >= 0x0d
 	var was_water := (flags[index] & FLAG_WATER) != 0
 	if tile_id == 0:
 		if scurk_mode:
 			return {"changed": false}
-		if terrain[index] < 0x30 and not was_water:
+		if terrain[index] < 0x30:
 			return {"changed": false}
 		_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
 		return {"changed": true, "indices": PackedInt32Array([index])}
@@ -405,7 +404,7 @@ static func _demolish_point(
 				point, _effect_altitude(altitude, flags, index), random, 0, Vector2i.ZERO
 			))
 		NetworkCommand._replace_building(buildings, zones, misc, index, 0)
-		if terrain[index] >= 0x30 or was_water:
+		if terrain[index] >= 0x30:
 			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
 		_retile_after_demolition(
 			buildings, terrain, zones, underground, flags, misc, [point], text_overlays
@@ -459,8 +458,8 @@ static func _demolish_point(
 			changed_points,
 			text_overlays
 		)
-	if terrain[index] >= 0x30 or was_water:
-		if had_structure and was_water:
+	if terrain[index] >= 0x30:
+		if was_water:
 			_retile_surface_water(terrain, flags, point, true)
 		else:
 			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)

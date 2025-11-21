@@ -1,5 +1,5 @@
 class_name CityDynamicSpriteCanvas
-extends Control
+extends Node2D
 
 const MAX_SPECIAL_VISUALS_PER_BATCH := 256
 const MAX_SPECIAL_BATCH_AREA := 1500000
