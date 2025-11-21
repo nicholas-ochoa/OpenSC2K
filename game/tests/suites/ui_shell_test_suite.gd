@@ -348,6 +348,7 @@ func _test_main_menu() -> void:
 		== "Save changes to Starter City before you continue?"
 		and save_changes_dialog.min_size == Vector2i(480, 190)
 		and save_changes_dialog.exclusive
+		and save_changes_dialog.get_label().get_theme_color("font_color") == Color.WHITE
 		and save_changes_dialog.get_ok_button().text == "Save"
 		and save_changes_dialog.get_cancel_button().text == "Cancel"
 		and has_discard_button,
