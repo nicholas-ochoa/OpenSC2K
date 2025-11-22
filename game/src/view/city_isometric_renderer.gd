@@ -1866,7 +1866,7 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 		hash(city.terrain),
 		hash(city.buildings),
 		hash(city.zones),
-		hash(city.tile_flags),
+		city.masked_tile_flag_signature(0xc6),
 		hash(traffic.decoded_payload) if traffic != null else 0,
 		_static_text_overlay_signature(city),
 	]

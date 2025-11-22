@@ -18,6 +18,9 @@ const RAIL_STATION_MODE := 10
 const SUBWAY_STATION_MODE := 11
 const RAIL_MODE := 12
 const SUBWAY_MODE := 13
+const ADVANCE_BLOCKED := -1
+const ADVANCE_SUCCESS := -2
+const POINT_INDEX_MASK := 0x3fff
 
 const TRANSPORT_OFFSETS := [
 	Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0),
@@ -103,56 +106,59 @@ static func trace(
 		return {"ok": false, "error": "traffic weight cannot be negative"}
 
 	var start := _find_transport(buildings, origin)
-	if start.is_empty():
+	if start < 0:
 		return _result(false, 0, 0, false, false, false)
 	var limit := maxi(maximum_cost, 0)
 	if traffic_weight == 1:
 		limit -= int(limit / 4)
 	var turn_direction := 1 if random.next_u15() & 1 else 3
-	var states: Array[Dictionary] = [{
-		"point": start.point,
-		"mode": start.mode,
-		"cost": 0,
-		"directions": 0x0f,
-	}]
+	var start_index := start & POINT_INDEX_MASK
+	var state_points: Array[Vector2i] = [
+		Vector2i(int(start_index / CityState.MAP_SIZE), start_index % CityState.MAP_SIZE)
+	]
+	var state_modes := PackedInt32Array([start >> 14])
+	var state_costs := PackedInt32Array([0])
+	var state_directions := PackedInt32Array([0x0f])
 	var reached_destination := false
 	var used_bus := false
 	var used_rail := false
 	var used_subway := false
 	var final_cost := 0
 
-	while not states.is_empty() and int(states.back().cost) < limit:
-		var state: Dictionary = states.back()
+	while not state_points.is_empty() and state_costs[-1] < limit:
+		var state_index := state_points.size() - 1
+		var point := state_points[state_index]
+		var mode := state_modes[state_index]
+		var cost := state_costs[state_index]
 		var direction: int = random.next_u15() & 3
 		var moved := false
 		for unused in 4:
 			direction = (direction + turn_direction) & 3
 			var bit: int = 1 << direction
-			if int(state.directions) & bit == 0:
+			if state_directions[state_index] & bit == 0:
 				continue
-			state.directions = int(state.directions) & ~bit
-			states[states.size() - 1] = state
-			var next_point: Vector2i = state.point + DIRECTIONS[direction]
+			state_directions[state_index] &= ~bit
+			var next_point: Vector2i = point + DIRECTIONS[direction]
 			var advance := _advance(
 				buildings,
 				zones,
 				underground,
 				text_overlays,
 				altitudes,
-				state.point,
+				point,
 				next_point,
-				int(state.mode),
+				mode,
 				zone,
 			)
-			if advance.success:
+			if advance == ADVANCE_SUCCESS:
 				reached_destination = true
-				final_cost = int(state.cost)
+				final_cost = cost
 				moved = true
 				break
-			if not advance.move:
+			if advance == ADVANCE_BLOCKED:
 				continue
-			var next_cost := int(state.cost) + int(advance.cost)
-			var next_mode := int(advance.mode)
+			var next_cost := cost + (advance & 0xff)
+			var next_mode := advance >> 8
 			var next_directions: int
 			if next_mode == ROAD_BRIDGE_MODE or next_mode == BUS_BRIDGE_MODE:
 				next_directions = bit
@@ -160,12 +166,10 @@ static func trace(
 				next_directions = 0x0f
 			else:
 				next_directions = FORWARD_DIRECTION_MASKS[direction]
-			states.append({
-				"point": next_point,
-				"mode": next_mode,
-				"cost": next_cost,
-				"directions": next_directions,
-			})
+			state_points.append(next_point)
+			state_modes.append(next_mode)
+			state_costs.append(next_cost)
+			state_directions.append(next_directions)
 			final_cost = next_cost
 			moved = true
 			break
@@ -173,13 +177,19 @@ static func trace(
 			break
 		if moved:
 			continue
-		states.pop_back()
-		while not states.is_empty() and int(states.back().directions) == 0:
-			states.pop_back()
+		state_points.pop_back()
+		state_modes.resize(state_modes.size() - 1)
+		state_costs.resize(state_costs.size() - 1)
+		state_directions.resize(state_directions.size() - 1)
+		while not state_points.is_empty() and state_directions[-1] == 0:
+			state_points.pop_back()
+			state_modes.resize(state_modes.size() - 1)
+			state_costs.resize(state_costs.size() - 1)
+			state_directions.resize(state_directions.size() - 1)
 
 	if reached_destination and traffic_weight > 0:
-		for state in states:
-			var mode := int(state.mode)
+		for index in state_points.size():
+			var mode := state_modes[index]
 			if mode == SUBWAY_STATION_MODE:
 				used_subway = true
 			elif mode == RAIL_STATION_MODE:
@@ -187,13 +197,13 @@ static func trace(
 			elif mode == BUS_STOP_MODE:
 				used_bus = true
 			if mode == ROAD_MODE or mode == HIGHWAY_MODE or mode == ROAD_BRIDGE_MODE:
-				var point: Vector2i = state.point
+				var point := state_points[index]
 				var traffic_index := int(point.x / 2) * TRAFFIC_MAP_SIZE + int(point.y / 2)
 				traffic[traffic_index] = mini(int(traffic[traffic_index]) + traffic_weight, 0xff)
 	return _result(
 		reached_destination,
 		final_cost,
-		states.size() if reached_destination else 0,
+		state_points.size() if reached_destination else 0,
 		used_bus,
 		used_rail,
 		used_subway,
@@ -201,12 +211,12 @@ static func trace(
 
 
 static func has_nearby_transport(buildings: PackedByteArray, origin: Vector2i) -> bool:
-	return not _find_transport(buildings, origin).is_empty()
+	return _find_transport(buildings, origin) >= 0
 
 
-static func _find_transport(buildings: PackedByteArray, origin: Vector2i) -> Dictionary:
+static func _find_transport(buildings: PackedByteArray, origin: Vector2i) -> int:
 	if buildings.size() != CityState.TILE_COUNT:
-		return {}
+		return -1
 	for offset in TRANSPORT_OFFSETS:
 		var point: Vector2i = origin + offset
 		var index := _index(point)
@@ -214,14 +224,14 @@ static func _find_transport(buildings: PackedByteArray, origin: Vector2i) -> Dic
 			continue
 		var tile := int(buildings[index])
 		if _is_surface_road(tile):
-			return {"point": point, "mode": ROAD_MODE}
+			return (ROAD_MODE << 14) | index
 		if tile == 0xec:
-			return {"point": point, "mode": BUS_STOP_MODE}
+			return (BUS_STOP_MODE << 14) | index
 		if tile == 0xed:
-			return {"point": point, "mode": RAIL_STATION_MODE}
+			return (RAIL_STATION_MODE << 14) | index
 		if tile == 0xe9:
-			return {"point": point, "mode": SUBWAY_STATION_MODE}
-	return {}
+			return (SUBWAY_STATION_MODE << 14) | index
+	return -1
 
 
 static func _advance(
@@ -234,11 +244,13 @@ static func _advance(
 	next_point: Vector2i,
 	mode: int,
 	origin_zone: int
-) -> Dictionary:
+) -> int:
 	var index := _index(next_point)
 	if index < 0:
 		var current_index := _index(current)
-		return {"success": current_index >= 0 and text_overlays[current_index] == CONNECTION_LABEL, "move": false}
+		if current_index >= 0 and text_overlays[current_index] == CONNECTION_LABEL:
+			return ADVANCE_SUCCESS
+		return ADVANCE_BLOCKED
 	var tile := int(buildings[index])
 	var destination: bool = (
 		DESTINATION_ZONE_MASKS[origin_zone] & (1 << (zones[index] & 0x0f))
@@ -247,7 +259,7 @@ static func _advance(
 	match mode:
 		ROAD_MODE:
 			if destination:
-				return {"success": true, "move": false}
+				return ADVANCE_SUCCESS
 			if tile >= 0x3f and tile <= 0x42:
 				return _move(HIGHWAY_MODE, 3)
 			if _is_road_bridge(tile):
@@ -279,7 +291,7 @@ static func _advance(
 				return _move(ROAD_MODE, 3)
 		BUS_ROAD_MODE:
 			if destination:
-				return {"success": true, "move": false}
+				return ADVANCE_SUCCESS
 			if tile >= 0x3f and tile <= 0x42:
 				return _move(BUS_TUNNEL_MODE, 2)
 			if _is_road_bridge(tile):
@@ -311,14 +323,14 @@ static func _advance(
 				return _move(BUS_ROAD_MODE, 2)
 		BUS_STOP_MODE:
 			if destination:
-				return {"success": true, "move": false}
+				return ADVANCE_SUCCESS
 			if tile == 0xec:
 				return _move(BUS_STOP_MODE, 4)
 			if _is_surface_road(tile):
 				return _move(BUS_ROAD_MODE, 2)
 		BUS_RAIL_MODE:
 			if destination:
-				return {"success": true, "move": false}
+				return ADVANCE_SUCCESS
 			if tile == 0xec or tile == 0xed:
 				return _move(BUS_RAIL_MODE, 4)
 			if _is_surface_road(tile):
@@ -337,17 +349,17 @@ static func _advance(
 			if _is_rail(tile):
 				return _move(RAIL_MODE, 1)
 			if tile > 0xfa:
-				return {"success": true, "move": false}
+				return ADVANCE_SUCCESS
 		SUBWAY_MODE:
 			if tile == 0xe9:
 				return _move(BUS_RAIL_MODE, 4)
 			if _is_subway(int(underground[index])):
 				return _move(SUBWAY_MODE, 1)
-	return {"success": false, "move": false}
+	return ADVANCE_BLOCKED
 
 
-static func _move(mode: int, cost: int) -> Dictionary:
-	return {"success": false, "move": true, "mode": mode, "cost": cost}
+static func _move(mode: int, cost: int) -> int:
+	return (mode << 8) | cost
 
 
 static func _result(

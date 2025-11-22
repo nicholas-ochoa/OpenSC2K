@@ -186,7 +186,7 @@ static func visual_signature(city: CityState, view_size: int, show_pipes := true
 		hash(city.altitude_words),
 		hash(city.terrain),
 		hash(city.underground),
-		hash(city.tile_flags),
+		city.masked_tile_flag_signature(0x30),
 	]
 
 

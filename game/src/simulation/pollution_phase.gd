@@ -88,21 +88,29 @@ static func run(city: CityState) -> Dictionary:
 		if checked[0] == null or checked[0].decoded_payload.size() != checked[2]:
 			return {"ok": false, "error": "%s is missing or has the wrong size" % checked[1]}
 
+	var buildings := city.buildings
+	var zones := city.zones
+	var terrain_map := city.terrain
+	var old_pollution: PackedByteArray = pollution_chunk.decoded_payload
+	var old_traffic: PackedByteArray = traffic_chunk.decoded_payload
 	var temporary := PackedInt32Array()
 	temporary.resize(FULL_MAP_SIZE * FULL_MAP_SIZE)
 	for x in MAP_SIZE:
+		var coarse_row := x * MAP_SIZE
+		var temporary_row := x * FULL_MAP_SIZE
 		for y in MAP_SIZE:
-			var map_index := x * MAP_SIZE + y
-			var value := int(traffic_chunk.decoded_payload[map_index] / 5)
-			value += pollution_chunk.decoded_payload[map_index]
+			var map_index := coarse_row + y
+			var value := int(old_traffic[map_index] / 5)
+			value += old_pollution[map_index]
 			for full_x in range(x * 2, x * 2 + 2):
+				var full_row := full_x * FULL_MAP_SIZE
 				for full_y in range(y * 2, y * 2 + 2):
-					var building := city.building_id(full_x, full_y)
+					var building := buildings[full_row + full_y]
 					if building >= FIRST_POLLUTING_BUILDING:
 						value += BUILDING_POLLUTION.get(building, 0)
 					if building == RADIOACTIVITY:
 						value += 200
-			temporary[_full_index(x, y)] = value
+			temporary[temporary_row + y] = value
 
 	var base_divisor := (
 		city.document.misc_i32(MISC_TREATMENT_SUFFICIENT)
@@ -117,21 +125,24 @@ static func run(city: CityState) -> Dictionary:
 	pollution.resize(VALUE_COUNT)
 	var total := 0
 	for x in MAP_SIZE:
+		var map_row := x * MAP_SIZE
+		var temporary_row := x * FULL_MAP_SIZE
 		for y in MAP_SIZE:
-			var index := x * MAP_SIZE + y
-			var numerator := temporary[_full_index(x, y)] * 2
+			var index := map_row + y
+			var temporary_index := temporary_row + y
+			var numerator := temporary[temporary_index] * 2
 			var divisor := base_divisor
 			if x > 0:
-				numerator += temporary[_full_index(x - 1, y)]
+				numerator += temporary[temporary_index - FULL_MAP_SIZE]
 				divisor += 1
 			if x < MAP_SIZE - 1:
-				numerator += temporary[_full_index(x + 1, y)]
+				numerator += temporary[temporary_index + FULL_MAP_SIZE]
 				divisor += 1
 			if y > 0:
-				numerator += temporary[_full_index(x, y - 1)]
+				numerator += temporary[temporary_index - 1]
 				divisor += 1
 			if y < MAP_SIZE - 1:
-				numerator += temporary[_full_index(x, y + 1)]
+				numerator += temporary[temporary_index + 1]
 				divisor += 1
 			var value := mini(int(numerator / divisor), 0xff)
 			pollution[index] = value
@@ -143,9 +154,10 @@ static func run(city: CityState) -> Dictionary:
 	var coordinate_sum_y := 0
 	var center_divisor := 1
 	for x in FULL_MAP_SIZE:
+		var row := x * FULL_MAP_SIZE
 		for y in FULL_MAP_SIZE:
-			var index := _full_index(x, y)
-			if city.buildings[index] > 0x6f:
+			var index := row + y
+			if buildings[index] > 0x6f:
 				coordinate_sum_x += x
 				coordinate_sum_y += y
 				center_divisor += 1
@@ -156,15 +168,19 @@ static func run(city: CityState) -> Dictionary:
 
 	var developed_tiles := 0
 	for x in FULL_MAP_SIZE:
+		var row := x * FULL_MAP_SIZE
+		var quarter_x := x >> 2
+		var residential_row := quarter_x * FULL_MAP_SIZE
+		var industrial_row := (quarter_x + SERVICE_MAP_SIZE) * FULL_MAP_SIZE
+		var marked_row := (x >> 1) * FULL_MAP_SIZE
 		for y in FULL_MAP_SIZE:
-			var index := _full_index(x, y)
-			var quarter_x := int(x / 4)
-			var quarter_y := int(y / 4)
-			var residential_index := _full_index(quarter_x, quarter_y)
-			var industrial_index := _full_index(quarter_x + SERVICE_MAP_SIZE, quarter_y)
+			var index := row + y
+			var quarter_y := y >> 2
+			var residential_index := residential_row + quarter_y
+			var industrial_index := industrial_row + quarter_y
 			var residential_value := temporary[residential_index]
 			var industrial_value := temporary[industrial_index]
-			var building := city.buildings[index]
+			var building := buildings[index]
 			if building == 0:
 				if flags[index] & FLAG_WATER:
 					residential_value += 12
@@ -177,13 +193,13 @@ static func run(city: CityState) -> Dictionary:
 				residential_value += 20
 			elif building < FIRST_TREE:
 				residential_value -= 20
-			if building >= FIRST_ROAD or city.zone_id(x, y) != 0:
-				flags[_full_index(int(x / 2), int(y / 2))] |= FLAG_MARK
+			if building >= FIRST_ROAD or zones[index] & 0x0f:
+				flags[marked_row + (y >> 1)] |= FLAG_MARK
 				developed_tiles += 1
 			if flags[index] & FLAG_WATERED:
 				residential_value += 4
 				industrial_value += 4
-			var terrain := city.terrain[index]
+			var terrain := terrain_map[index]
 			if terrain != 0 and terrain < 0x10:
 				residential_value += 12
 			temporary[residential_index] = residential_value
@@ -196,17 +212,21 @@ static func run(city: CityState) -> Dictionary:
 	land_value.resize(VALUE_COUNT)
 	var land_value_total := 0
 	for x in MAP_SIZE:
+		var map_row := x * MAP_SIZE
+		var flag_row := x * FULL_MAP_SIZE
+		var full_x := x * 2
+		var building_row := full_x * FULL_MAP_SIZE
 		for y in MAP_SIZE:
-			var map_index := x * MAP_SIZE + y
-			if not flags[_full_index(x, y)] & FLAG_MARK:
+			var map_index := map_row + y
+			if not flags[flag_row + y] & FLAG_MARK:
 				continue
-			var full_x := x * 2
 			var full_y := y * 2
-			var zone := city.zone_id(full_x, full_y)
+			var full_index := building_row + full_y
+			var zone := zones[full_index] & 0x0f
 			if zone == 0:
-				zone = city.zone_id(full_x + 1, full_y + 1)
-			var service_x := int(x / 2)
-			var service_y := int(y / 2)
+				zone = zones[full_index + FULL_MAP_SIZE + 1] & 0x0f
+			var service_x := x >> 1
+			var service_y := y >> 1
 			var distance_value := 64 - absi(center_x - x) - absi(center_y - y)
 			var value := 0
 			match zone:
@@ -232,7 +252,7 @@ static func run(city: CityState) -> Dictionary:
 					value += maxi(_divide_toward_zero(distance_value, 2), 0)
 					value -= int(pollution[map_index] / 5)
 					value -= int(old_crime[map_index] / 3)
-			var building := city.building_id(full_x, full_y)
+			var building := buildings[full_index]
 			if building >= FIRST_POLLUTING_BUILDING and LAND_VALUE_HALVED.has(building):
 				value -= _divide_toward_zero(value, 2)
 			value = clampi(value, 0, 0xff)
@@ -240,28 +260,31 @@ static func run(city: CityState) -> Dictionary:
 			land_value_total += value
 
 	for x in SERVICE_MAP_SIZE:
+		var row := x * FULL_MAP_SIZE
 		for y in SERVICE_MAP_SIZE:
-			temporary[_full_index(x, y)] = 0
+			temporary[row + y] = 0
 	var police := PackedByteArray()
 	police.resize(SERVICE_MAP_SIZE * SERVICE_MAP_SIZE)
 	var fire := PackedByteArray()
 	fire.resize(SERVICE_MAP_SIZE * SERVICE_MAP_SIZE)
 	var ordinances := city.document.misc_u32(MISC_ORDINANCES)
 	for x in range(1, FULL_MAP_SIZE - 1):
+		var row := x * FULL_MAP_SIZE
+		var service_x := x >> 2
+		var temporary_row := service_x * FULL_MAP_SIZE
 		for y in range(1, FULL_MAP_SIZE - 1):
-			var index := _full_index(x, y)
-			var building := city.buildings[index]
-			var service_x := int(x / 4)
-			var service_y := int(y / 4)
+			var index := row + y
+			var building := buildings[index]
+			var service_y := y >> 2
 			var service_index := service_x * SERVICE_MAP_SIZE + service_y
 			if building >= FIRST_POLLUTING_BUILDING and building < FIRST_POWER_PLANT:
-				temporary[_full_index(service_x, service_y)] += _population_weight(building)
+				temporary[temporary_row + service_y] += _population_weight(building)
 				if ordinances & POLICE_COVERAGE_ORDINANCE and police[service_index] < 0xfe:
 					police[service_index] += 2
 				if ordinances & FIRE_COVERAGE_ORDINANCE and fire[service_index] < 0xfe:
 					fire[service_index] += 2
 			elif building >= FIRST_POWER_PLANT:
-				temporary[_full_index(service_x, service_y)] += (
+				temporary[temporary_row + service_y] += (
 					12 if building >= FIRST_ARCOLOGY and building <= LAST_ARCOLOGY else 2
 				)
 				if not city.zones[index] & ZONE_BUILDING_ORIGIN:
@@ -286,9 +309,11 @@ static func run(city: CityState) -> Dictionary:
 	var growth := PackedByteArray()
 	growth.resize(SERVICE_MAP_SIZE * SERVICE_MAP_SIZE)
 	for x in SERVICE_MAP_SIZE:
+		var row := x * SERVICE_MAP_SIZE
+		var temporary_row := x * FULL_MAP_SIZE
 		for y in SERVICE_MAP_SIZE:
-			var index := x * SERVICE_MAP_SIZE + y
-			var population_value := mini(temporary[_full_index(x, y)] * 4, 0xff)
+			var index := row + y
+			var population_value := mini(temporary[temporary_row + y] * 4, 0xff)
 			population[index] = population_value
 			var growth_numerator := (
 				int(old_growth[index]) * 7
@@ -298,40 +323,47 @@ static func run(city: CityState) -> Dictionary:
 			growth[index] = clampi(_divide_toward_zero(growth_numerator, 8), 0, 0xff)
 
 	for x in MAP_SIZE:
+		var map_row := x * MAP_SIZE
+		var temporary_row := x * FULL_MAP_SIZE
+		var service_row := (x >> 1) * SERVICE_MAP_SIZE
 		for y in MAP_SIZE:
-			var index := x * MAP_SIZE + y
-			if not flags[_full_index(x, y)] & FLAG_MARK:
-				temporary[_full_index(x, y)] = 0
+			var index := map_row + y
+			var temporary_index := temporary_row + y
+			if not flags[temporary_index] & FLAG_MARK:
+				temporary[temporary_index] = 0
 				continue
-			var service_index := int(x / 2) * SERVICE_MAP_SIZE + int(y / 2)
+			var service_index := service_row + (y >> 1)
 			var value := int(population[service_index])
 			value -= int(land_value[index] / 4)
 			value -= int(police[service_index] / 2)
 			if ordinances & CRIME_REDUCTION_ORDINANCE:
 				value += 16
-			temporary[_full_index(x, y)] = value
+			temporary[temporary_index] = value
 
 	var crime := PackedByteArray()
 	crime.resize(VALUE_COUNT)
 	var crime_total := 0
 	for x in MAP_SIZE:
+		var map_row := x * MAP_SIZE
+		var temporary_row := x * FULL_MAP_SIZE
 		for y in MAP_SIZE:
-			var numerator := temporary[_full_index(x, y)]
+			var temporary_index := temporary_row + y
+			var numerator := temporary[temporary_index]
 			var divisor := 1
 			if x > 0:
-				numerator += temporary[_full_index(x - 1, y)]
+				numerator += temporary[temporary_index - FULL_MAP_SIZE]
 				divisor += 1
 			if x < MAP_SIZE - 1:
-				numerator += temporary[_full_index(x + 1, y)]
+				numerator += temporary[temporary_index + FULL_MAP_SIZE]
 				divisor += 1
 			if y > 0:
-				numerator += temporary[_full_index(x, y - 1)]
+				numerator += temporary[temporary_index - 1]
 				divisor += 1
 			if y < MAP_SIZE - 1:
-				numerator += temporary[_full_index(x, y + 1)]
+				numerator += temporary[temporary_index + 1]
 				divisor += 1
 			var value := clampi(_divide_toward_zero(numerator, divisor), 0, 0xff)
-			crime[x * MAP_SIZE + y] = value
+			crime[map_row + y] = value
 			crime_total += value
 
 	for update in [
@@ -374,19 +406,20 @@ static func _full_index(x: int, y: int) -> int:
 static func _average_service_grid(
 	values: PackedInt32Array, x: int, y: int, x_offset: int
 ) -> int:
-	var total := values[_full_index(x + x_offset, y)]
+	var center_index := (x + x_offset) * FULL_MAP_SIZE + y
+	var total := values[center_index]
 	var divisor := 1
 	if x > 0:
-		total += values[_full_index(x - 1 + x_offset, y)]
+		total += values[center_index - FULL_MAP_SIZE]
 		divisor += 1
 	if x < SERVICE_MAP_SIZE - 1:
-		total += values[_full_index(x + 1 + x_offset, y)]
+		total += values[center_index + FULL_MAP_SIZE]
 		divisor += 1
 	if y > 0:
-		total += values[_full_index(x + x_offset, y - 1)]
+		total += values[center_index - 1]
 		divisor += 1
 	if y < SERVICE_MAP_SIZE - 1:
-		total += values[_full_index(x + x_offset, y + 1)]
+		total += values[center_index + 1]
 		divisor += 1
 	return _divide_toward_zero(total, divisor)
 

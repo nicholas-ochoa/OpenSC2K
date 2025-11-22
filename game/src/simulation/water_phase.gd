@@ -30,13 +30,15 @@ static func run(city: CityState) -> Dictionary:
 	var total_supply := 0
 	var total_consumers := 0
 	var watered_consumers := 0
+	var pump_base_supply := int((city.document.misc_u32(0x68) & 0xff) / 2)
+	pump_base_supply += city.document.misc_u32(0x0e40) * 5
 	for index in _source_scan_order(city.compass_rotation()):
 		var building := city.buildings[index]
 		if building != WATER_PUMP and building != DESALINIZATION:
 			continue
 		if flags[index] & FLAG_WATERED or not flags[index] & FLAG_POWERED:
 			continue
-		var component := _trace_component(city, flags, index)
+		var component := _trace_component(city.buildings, flags, index, pump_base_supply)
 		var supply: int = component.supply
 		var consumers: int = component.consumers
 		var served := mini(supply, consumers)
@@ -90,28 +92,38 @@ static func run(city: CityState) -> Dictionary:
 	}
 
 
-static func _trace_component(city: CityState, flags: PackedByteArray, start: int) -> Dictionary:
+static func _trace_component(
+	buildings: PackedByteArray,
+	flags: PackedByteArray,
+	start: int,
+	pump_base_supply: int
+) -> Dictionary:
 	var queue := PackedInt32Array([start])
 	var queue_position := 0
 	var tiles := PackedInt32Array()
 	var supply := 0
 	var consumers := 0
 	var tower_capacity := 0
+	if not flags[start] & FLAG_PIPED:
+		return {
+			"tiles": tiles,
+			"supply": supply,
+			"consumers": consumers,
+			"tower_capacity": tower_capacity,
+		}
+	flags[start] |= FLAG_MARK
 	while queue_position < queue.size():
 		var index := queue[queue_position]
 		queue_position += 1
-		if flags[index] & FLAG_MARK or not flags[index] & FLAG_PIPED:
-			continue
-		flags[index] |= FLAG_MARK
 		tiles.append(index)
 		var x := int(index / MAP_SIZE)
 		var y := index % MAP_SIZE
-		var building := city.buildings[index]
+		var building := buildings[index]
 		if building >= FIRST_CONSUMER:
 			match building:
 				WATER_PUMP:
 					if flags[index] & FLAG_POWERED:
-						supply += _pump_supply(city, flags, x, y)
+						supply += _pump_supply(flags, x, y, pump_base_supply)
 				WATER_TOWER:
 					tower_capacity += 100
 					if flags[index] & FLAG_WATERED:
@@ -126,13 +138,13 @@ static func _trace_component(city: CityState, flags: PackedByteArray, start: int
 					consumers += 1
 
 		if y > 0:
-			queue.append(city.index_of(x, y - 1))
+			_queue_piped_tile(queue, flags, index - 1)
 		if x > 0:
-			queue.append(city.index_of(x - 1, y))
+			_queue_piped_tile(queue, flags, index - MAP_SIZE)
 		if y < MAP_SIZE - 1:
-			queue.append(city.index_of(x, y + 1))
+			_queue_piped_tile(queue, flags, index + 1)
 		if x < MAP_SIZE - 1:
-			queue.append(city.index_of(x + 1, y))
+			_queue_piped_tile(queue, flags, index + MAP_SIZE)
 	return {
 		"tiles": tiles,
 		"supply": supply,
@@ -141,14 +153,22 @@ static func _trace_component(city: CityState, flags: PackedByteArray, start: int
 	}
 
 
+static func _queue_piped_tile(
+	queue: PackedInt32Array, flags: PackedByteArray, index: int
+) -> void:
+	if flags[index] & (FLAG_MARK | FLAG_PIPED) != FLAG_PIPED:
+		return
+	flags[index] |= FLAG_MARK
+	queue.append(index)
+
+
 static func _pump_supply(
-	city: CityState, flags: PackedByteArray, x: int, y: int
+	flags: PackedByteArray, x: int, y: int, base_supply: int
 ) -> int:
-	var rain := city.document.misc_u32(0x68) & 0xff
-	var supply := int(rain / 2) + city.document.misc_u32(0x0e40) * 5
+	var supply := base_supply
 	for near_x in range(maxi(x - 1, 0), mini(x + 2, MAP_SIZE)):
 		for near_y in range(maxi(y - 1, 0), mini(y + 2, MAP_SIZE)):
-			var water_bits := flags[city.index_of(near_x, near_y)] & (
+			var water_bits := flags[near_x * MAP_SIZE + near_y] & (
 				FLAG_SALT_WATER | FLAG_WATER
 			)
 			if water_bits == FLAG_WATER:

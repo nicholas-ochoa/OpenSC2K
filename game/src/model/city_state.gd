@@ -31,6 +31,7 @@ var tile_flags := PackedByteArray()
 # display-only copies can keep objects at the former water surface while they
 # draw the terrain as dry land. this array is never written to an sc2 chunk
 var object_altitude_overrides := PackedInt32Array()
+var _masked_tile_flag_signatures: Dictionary = {}
 
 
 static func from_document(source: Sc2File) -> CityState:
@@ -293,6 +294,28 @@ func replace_tile_flags(value: PackedByteArray) -> bool:
 		return false
 	tile_flags = value.duplicate()
 	return true
+
+
+func masked_tile_flag_signature(mask: int) -> int:
+	var byte_mask := mask & 0xff
+	var source_signature := hash(tile_flags)
+	var cached: Dictionary = _masked_tile_flag_signatures.get(byte_mask, {})
+	if (
+		cached.get("source") == source_signature
+		and cached.get("size") == tile_flags.size()
+	):
+		return int(cached.get("value", 0))
+	var visible_flags := PackedByteArray()
+	visible_flags.resize(tile_flags.size())
+	for index in tile_flags.size():
+		visible_flags[index] = tile_flags[index] & byte_mask
+	var value := hash(visible_flags)
+	_masked_tile_flag_signatures[byte_mask] = {
+		"source": source_signature,
+		"size": tile_flags.size(),
+		"value": value,
+	}
+	return value
 
 
 func set_land_altitude(x: int, y: int, value: int) -> bool:

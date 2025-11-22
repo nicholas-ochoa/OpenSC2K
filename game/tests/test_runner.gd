@@ -1589,6 +1589,35 @@ func _test_sprite_archives(reference_root: String) -> void:
 		IsometricRenderer.static_visual_signature(starter) == static_signature,
 		"A dynamic special marker does not invalidate the static city image",
 	)
+	var signature_flag_index := starter.index_of(64, 64)
+	var original_signature_flags := starter.tile_flags[signature_flag_index]
+	starter.tile_flags[signature_flag_index] ^= 0x08
+	_check(
+		IsometricRenderer.static_visual_signature(starter) == static_signature,
+		"A simulation-only tile flag does not invalidate the static city image",
+	)
+	var underground_signature := UndergroundView.visual_signature(
+		starter, IsometricRenderer.VIEW_LARGE
+	)
+	starter.tile_flags[signature_flag_index] ^= 0x08
+	_check(
+		UndergroundView.visual_signature(starter, IsometricRenderer.VIEW_LARGE)
+		== underground_signature,
+		"A simulation-only tile flag does not invalidate the underground image",
+	)
+	starter.tile_flags[signature_flag_index] ^= 0x10
+	_check(
+		UndergroundView.visual_signature(starter, IsometricRenderer.VIEW_LARGE)
+		!= underground_signature,
+		"A water-network tile flag invalidates the underground image",
+	)
+	starter.tile_flags[signature_flag_index] = original_signature_flags
+	starter.tile_flags[signature_flag_index] ^= 0x04
+	_check(
+		IsometricRenderer.static_visual_signature(starter) != static_signature,
+		"A visible water tile flag invalidates the static city image",
+	)
+	starter.tile_flags[signature_flag_index] = original_signature_flags
 	var dynamic_specials := IsometricRenderer.dynamic_draw_commands(
 		starter, large, IsometricRenderer.VIEW_LARGE, 0
 	)
