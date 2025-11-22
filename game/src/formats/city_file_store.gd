@@ -11,7 +11,8 @@ static func save_copy(
 	if output_path.get_extension().is_empty():
 		output_path += ".SC2"
 	output_path = output_path.simplify_path()
-	if output_path == reference_root or output_path.begins_with(reference_root + "/"):
+	var protected_root := reference_root.simplify_path()
+	if output_path == protected_root or output_path.begins_with(protected_root + "/"):
 		return {
 			"ok": false,
 			"error": "Choose a location outside the read-only references directory.",
