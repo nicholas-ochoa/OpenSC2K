@@ -11,19 +11,25 @@ const Simulation = preload("res://src/simulation/simulation_engine.gd")
 const DisasterMap = preload("res://src/simulation/disaster_map_phase.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
+const DEFAULT_CITY_FILE := "SYDNEY.SC2"
 
 
 func _init() -> void:
 	var reference_root := ProjectSettings.globalize_path("res://../references")
+	var city_file := DEFAULT_CITY_FILE
+	var arguments := OS.get_cmdline_user_args()
+	if not arguments.is_empty():
+		city_file = arguments[0].get_file()
+	print("benchmark_city: %s" % city_file)
 	var city := CityModel.from_document(
-		Sc2Document.load_path(reference_root.path_join("CITIES/CAPEQUES.SC2"))
+		Sc2Document.load_path(reference_root.path_join("CITIES").path_join(city_file))
 	)
 	var index_palette := Palette.index_encoding()
 	var sprites := SpriteArchive.load_path(
 		reference_root.path_join("DATA/LARGE.DAT")
 	)
 	if not city.is_valid() or not index_palette.is_valid() or not sprites.is_valid():
-		printerr("Cannot load the Capeques benchmark input.")
+		printerr("Cannot load the %s benchmark input." % city_file)
 		quit(1)
 		return
 
@@ -291,7 +297,7 @@ func _init() -> void:
 		var day := simulation.advance_day()
 		var day_usec := Time.get_ticks_usec() - started
 		if not day.ok:
-			printerr("Capeques simulation benchmark failed: %s" % day.error)
+			printerr("%s simulation benchmark failed: %s" % [city_file, day.error])
 			quit(1)
 			return
 		if day_usec > slowest_day_usec:
