@@ -169,6 +169,7 @@ var scurk_city_export_dialog: FileDialog
 var scurk_print_pdf_dialog: FileDialog
 var new_city_dialog: NewCityTerrainDialog
 var new_city_session := NewCitySession.new()
+var new_city_return_to_main_menu := false
 var options_menu: MenuButton
 var speed_menu: MenuButton
 var view_menu: MenuButton
@@ -1490,6 +1491,9 @@ func _on_help_menu(_id: int) -> void:
 func _open_new_city_dialog() -> void:
 	if new_city_dialog == null:
 		return
+	new_city_return_to_main_menu = main_menu != null and main_menu.visible
+	if new_city_return_to_main_menu:
+		main_menu.hide()
 	new_city_dialog.preview_timer.stop()
 	new_city_session.begin(tool_random.state, nuisance_random.state)
 	new_city_dialog.city_name_input.text = "New City"
@@ -1582,6 +1586,10 @@ func _cancel_new_city() -> void:
 	new_city_dialog.hide()
 	new_city_session.clear()
 	new_city_dialog.preview_view.texture = null
+	var return_to_main_menu := new_city_return_to_main_menu
+	new_city_return_to_main_menu = false
+	if return_to_main_menu:
+		_show_main_menu()
 
 
 func _create_new_city() -> void:
@@ -2092,6 +2100,7 @@ func _activate_document(
 	pending_building_objection_subtool = -1
 	if new_city_dialog != null and new_city_dialog.visible:
 		new_city_dialog.hide()
+	new_city_return_to_main_menu = false
 	if scurk_place_print != null and scurk_place_print.visible:
 		scurk_place_print.hide()
 	if scurk_print != null:

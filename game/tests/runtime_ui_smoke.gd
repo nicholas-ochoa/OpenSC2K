@@ -26,6 +26,22 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	await process_frame
+	main.call("_open_new_city_dialog")
+	await process_frame
+	var main_menu := main.get("main_menu") as MainMenuControl
+	var new_city_dialog := main.get("new_city_dialog") as NewCityTerrainDialog
+	if main_menu == null or new_city_dialog == null or main_menu.visible or not new_city_dialog.visible:
+		push_error("New City does not take input ownership from the main menu")
+		main.queue_free()
+		quit(2)
+		return
+	main.call("_cancel_new_city")
+	await process_frame
+	if not main_menu.visible or new_city_dialog.visible:
+		push_error("Canceling New City does not restore the main menu")
+		main.queue_free()
+		quit(2)
+		return
 	for relative_path in [
 		"CITIES/ISLAND.SC2",
 		"CITIES/CAPEQUES.SC2",
