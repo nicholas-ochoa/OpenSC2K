@@ -9,6 +9,7 @@ const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const OriginalAssets = preload("res://src/assets/original_game_assets.gd")
+const OriginalInstaller = preload("res://src/assets/original_game_installer.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkCityOutput = preload("res://src/assets/scurk_city_output.gd")
 const Minimap = preload("res://src/view/city_minimap.gd")
@@ -110,6 +111,9 @@ var app_music_volume := 0.8
 var app_effects_volume := 0.8
 var app_fullscreen := false
 var reference_root := ""
+var runtime_initialized := false
+var reference_import_dialog: FileDialog
+var reference_import_error_dialog: AcceptDialog
 var original_query_strings: Dictionary = {}
 var forest_protest_text := "Citizens are protesting forest demolition."
 var building_objection_text := "Residents objected to this facility site."
@@ -233,7 +237,23 @@ var fps_update_seconds := 0.0
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
-	reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
+	if OS.has_feature("editor"):
+		reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
+		_initialize_runtime()
+		return
+	reference_root = ProjectSettings.globalize_path("user://original_game").simplify_path()
+	var installed_result := OriginalInstaller.validate_install_root(reference_root)
+	if installed_result.ok:
+		_initialize_runtime()
+		return
+	_build_reference_import_dialogs()
+	call_deferred("_show_reference_import_dialog")
+
+
+func _initialize_runtime() -> void:
+	if runtime_initialized:
+		return
+	runtime_initialized = true
 	_load_app_settings()
 	audio_controller = CityAudio.new()
 	audio_controller.music_activity_changed.connect(_on_music_activity_changed)
@@ -271,6 +291,63 @@ func _ready() -> void:
 	_show_main_menu()
 
 
+func _build_reference_import_dialogs() -> void:
+	reference_import_dialog = FileDialog.new()
+	reference_import_dialog.title = "Select the original SimCity 2000 SIMCITY.EXE"
+	reference_import_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	reference_import_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	reference_import_dialog.filters = PackedStringArray([
+		"*.EXE,*.exe ; SimCity 2000 executable",
+	])
+	reference_import_dialog.exclusive = true
+	reference_import_dialog.file_selected.connect(_import_original_game)
+	reference_import_dialog.canceled.connect(_on_reference_import_canceled)
+	add_child(reference_import_dialog)
+
+	reference_import_error_dialog = AcceptDialog.new()
+	reference_import_error_dialog.title = "Original SimCity 2000 data required"
+	reference_import_error_dialog.exclusive = true
+	reference_import_error_dialog.confirmed.connect(_show_reference_import_dialog)
+	add_child(reference_import_error_dialog)
+
+
+func _show_reference_import_dialog() -> void:
+	if runtime_initialized or reference_import_dialog == null:
+		return
+	reference_import_dialog.popup_centered_ratio(0.8)
+
+
+func _on_reference_import_canceled() -> void:
+	_show_reference_import_error(
+		"OpenSC2K needs the original game data. Select SIMCITY.EXE to continue."
+	)
+
+
+func _show_reference_import_error(message: String) -> void:
+	if reference_import_error_dialog == null:
+		return
+	reference_import_error_dialog.dialog_text = message
+	reference_import_error_dialog.popup_centered(Vector2i(640, 260))
+
+
+func _import_original_game(executable_path: String) -> void:
+	var destination := ProjectSettings.globalize_path("user://original_game").simplify_path()
+	var install_result := OriginalInstaller.install_from_executable(
+		executable_path, destination
+	)
+	if not install_result.ok:
+		_show_reference_import_error(install_result.error)
+		return
+	reference_root = install_result.root
+	reference_import_dialog.hide()
+	reference_import_error_dialog.hide()
+	_initialize_runtime()
+	reference_import_dialog.queue_free()
+	reference_import_error_dialog.queue_free()
+	reference_import_dialog = null
+	reference_import_error_dialog = null
+
+
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_inside_tree():
 		_request_city_exit("quit")
@@ -281,7 +358,8 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
-	audio_controller.advance(delta * 1000.0)
+	if audio_controller != null:
+		audio_controller.advance(delta * 1000.0)
 	_update_fps(delta)
 	if city_status_bar != null:
 		city_status_bar.update_report_rotation(delta)
@@ -1650,14 +1728,14 @@ func _difficulty_name(difficulty: int) -> String:
 
 
 func _open_city_dialog() -> void:
-	var city_directory := ProjectSettings.globalize_path("res://../references/CITIES")
+	var city_directory := reference_root.path_join("CITIES")
 	if DirAccess.dir_exists_absolute(city_directory):
 		file_dialog.current_dir = city_directory
 	file_dialog.popup_centered_ratio(0.8)
 
 
 func _open_scenario_dialog() -> void:
-	var scenario_directory := ProjectSettings.globalize_path("res://../references/SCENARIO")
+	var scenario_directory := reference_root.path_join("SCENARIO")
 	if DirAccess.dir_exists_absolute(scenario_directory):
 		file_dialog.current_dir = scenario_directory
 	file_dialog.popup_centered_ratio(0.8)
@@ -1679,7 +1757,7 @@ func _open_save_dialog() -> void:
 
 
 func _open_tile_set_dialog() -> void:
-	var tile_set_directory := ProjectSettings.globalize_path("res://../references/SCURKART")
+	var tile_set_directory := reference_root.path_join("SCURKART")
 	if DirAccess.dir_exists_absolute(tile_set_directory):
 		tile_set_dialog.current_dir = tile_set_directory
 	tile_set_dialog.popup_centered_ratio(0.8)
