@@ -1,5 +1,10 @@
 ; Engine configuration file.
-; Edit through the Godot editor when practical.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
 
 config_version=5
 
@@ -7,6 +12,7 @@ config_version=5
 
 config/name="OpenSC2K Godot"
 run/main_scene="res://main.tscn"
+config/features=PackedStringArray("4.6")
 config/icon="res://assets/icons/OpenSC2K.png"
 
 [display]
@@ -15,7 +21,6 @@ window/size/viewport_width=1280
 window/size/viewport_height=800
 window/size/window_width_override=1280
 window/size/window_height_override=800
-window/size/mode=2
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
 
@@ -23,5 +28,5 @@ window/stretch/aspect="expand"
 
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.035, 0.047, 0.059, 1)
-textures/default_filters/use_nearest_mipmap_filter=false

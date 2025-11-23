@@ -15,3 +15,6 @@ ghidra-project/
 
 # Platform files
 .DS_Store
+
+# Local writable reference VM
+/local/
