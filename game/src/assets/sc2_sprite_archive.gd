@@ -147,6 +147,8 @@ class SpriteEntry extends RefCounted:
 var entries: Array[SpriteEntry] = []
 var entries_by_id: Dictionary = {}
 var parse_error := ""
+# alternate art can leave the ground visible below its small highway pieces
+var redraw_small_highway_ground := false
 
 
 static func load_path(path: String) -> Sc2SpriteArchive:
@@ -182,6 +184,7 @@ static func combine(archives: Array[Sc2SpriteArchive]) -> Sc2SpriteArchive:
 			result.entries.clear()
 			result.entries_by_id.clear()
 			return result
+		result.redraw_small_highway_ground = result.redraw_small_highway_ground or archive.redraw_small_highway_ground
 		for entry in archive.entries:
 			result.entries.append(entry)
 			result.entries_by_id[entry.sprite_id] = entry
@@ -192,6 +195,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	entries.clear()
 	entries_by_id.clear()
 	parse_error = ""
+	redraw_small_highway_ground = false
 	if bytes.size() < 2:
 		return _fail("archive is shorter than its count field")
 

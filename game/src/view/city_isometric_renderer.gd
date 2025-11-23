@@ -755,7 +755,7 @@ static func _draw_highway_ground(
 	x: int,
 	y: int
 ) -> void:
-	for visual in highway_ground_visuals(city, x, y, configuration.view_size):
+	for visual in highway_ground_visuals(city, x, y, configuration.view_size, sprites.redraw_small_highway_ground):
 		var terrain := _sprite_image(
 			sprites, palette, cache, visual.sprite_id, false
 		)
@@ -767,7 +767,8 @@ static func _draw_highway_ground(
 
 
 static func highway_ground_visuals(
-	city: CityState, x: int, y: int, view_size := VIEW_LARGE
+	city: CityState, x: int, y: int, view_size := VIEW_LARGE,
+	redraw_small := false
 ) -> Array[Dictionary]:
 	var visuals: Array[Dictionary] = []
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
@@ -776,7 +777,7 @@ static func highway_ground_visuals(
 	if configuration.is_empty():
 		return visuals
 	# The small highway composite already includes the ground.
-	if view_size == VIEW_SMALL:
+	if view_size == VIEW_SMALL and not redraw_small:
 		return visuals
 	var screen_offsets := [
 		Vector2i(0, 0),
@@ -1628,7 +1629,7 @@ static func _tile_occlusion_commands(
 	if building_id > 0 and _should_draw_building(city, x, y, building_id):
 		if is_highway_composite:
 			for visual in highway_ground_visuals(
-				city, x, y, configuration.view_size
+				city, x, y, configuration.view_size, sprites.redraw_small_highway_ground
 			):
 				_append_occluder(
 					commands, sprites, visual.sprite_id,

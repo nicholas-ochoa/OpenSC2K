@@ -50,6 +50,12 @@ func _load() -> void:
 		_fail("Graphics pack name is required")
 		return
 	pack_name = manifest.name
+	var redraw: Variant = manifest.get("redraw_small_highway_ground", false)
+	if not redraw is bool:
+		_fail("redraw_small_highway_ground must be a boolean")
+		return
+	large_sprites.redraw_small_highway_ground = redraw
+	small_medium_sprites.redraw_small_highway_ground = redraw
 	var palette_image := _read_png(manifest.get("palette"))
 	if not error.is_empty():
 		return

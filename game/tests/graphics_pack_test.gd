@@ -22,6 +22,20 @@ func _initialize() -> void:
 	var loaded := Pack.load_root(root)
 	assert(loaded.error.is_empty(), loaded.error)
 	assert(loaded.large_sprites.entries.size() == 2)
+	assert(not loaded.small_medium_sprites.redraw_small_highway_ground)
+	manifest.redraw_small_highway_ground = true
+	_write_manifest(root, manifest)
+	var with_ground := Pack.load_root(root)
+	assert(with_ground.error.is_empty() and with_ground.small_medium_sprites.redraw_small_highway_ground)
+	assert(Sc2SpriteArchive.combine([loaded.large_sprites, with_ground.small_medium_sprites]).redraw_small_highway_ground)
+	var parsed := Sc2SpriteArchive.new()
+	parsed.redraw_small_highway_ground = true
+	assert(parsed.parse(PackedByteArray([0, 0])))
+	assert(not parsed.redraw_small_highway_ground)
+	manifest.redraw_small_highway_ground = 1
+	_write_manifest(root, manifest)
+	assert(not Pack.load_root(root).error.is_empty())
+	manifest.erase("redraw_small_highway_ground")
 	var sprite: Sc2SpriteArchive.SpriteEntry = loaded.large_sprites.find_sprite(1001)
 	assert(sprite.duplicate_index == 1)
 	assert(sprite.decode_indices().pixels == PackedInt32Array([-1, 1, 171, 172]))

@@ -33,6 +33,7 @@ class GraphicsToolsTest(unittest.TestCase):
                 pad_palette(broken)
 
 
+
     def test_supplied_inventory_matches_recorded_metadata(self):
         expected = json.loads((ROOT / 'data/formats/graphics-inventory.json').read_text())
         actual = build_inventory(ROOT / 'references')
