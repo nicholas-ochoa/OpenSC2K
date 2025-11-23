@@ -23,6 +23,8 @@ run_godot() {
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --editor --quit
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --quit-after 2
 
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/indexed_png_test.gd
+
 if [ -f "$repo_dir/game/tests/test_runner.gd" ]; then
 	run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/test_runner.gd -- "$repo_dir/references"
 fi
