@@ -108,6 +108,55 @@ static func decode(bytes: PackedByteArray) -> Dictionary:
 		"pixels": pixels, "palette": palette}
 
 
+static func encode(
+	width: int, height: int, pixels: PackedInt32Array, palette: Sc2Palette
+) -> Dictionary:
+	if width < 1 or height < 1 or width > MAX_DIMENSION or height > MAX_DIMENSION:
+		return _failure("PNG dimensions must be 1 through 4096")
+	if pixels.size() != width * height or palette == null or not palette.is_valid():
+		return _failure("Invalid PNG pixels or palette")
+	var used := PackedByteArray()
+	used.resize(256)
+	used.fill(0)
+	var has_transparency := false
+	for pixel in pixels:
+		if pixel < -1 or pixel > 255:
+			return _failure("PNG palette index must be -1 through 255")
+		if pixel == -1:
+			has_transparency = true
+		else:
+			used[pixel] = 1
+	var transparent_index := used.find(0) if has_transparency else -1
+	if has_transparency and transparent_index < 0:
+		return _failure("Indexed PNG needs an unused palette index for transparency")
+	var header := PackedByteArray()
+	_append_u32(header, width)
+	_append_u32(header, height)
+	header.append_array(PackedByteArray([8, 3, 0, 0, 0]))
+	var colors := PackedByteArray()
+	for color in palette.colors:
+		colors.append_array(PackedByteArray([color.r8, color.g8, color.b8]))
+	var raw := PackedByteArray()
+	raw.resize(height * (width + 1))
+	for y in height:
+		raw[y * (width + 1)] = 0 # png filter none
+		for x in width:
+			var pixel := pixels[y * width + x]
+			raw[y * (width + 1) + x + 1] = transparent_index if pixel == -1 else pixel
+	var output := PackedByteArray(SIGNATURE)
+	output.append_array(_chunk("IHDR", header))
+	output.append_array(_chunk("PLTE", colors))
+	if has_transparency:
+		var alpha := PackedByteArray()
+		alpha.resize(transparent_index + 1)
+		alpha.fill(255)
+		alpha[transparent_index] = 0
+		output.append_array(_chunk("tRNS", alpha))
+	output.append_array(_chunk("IDAT", raw.compress(FileAccess.COMPRESSION_DEFLATE)))
+	output.append_array(_chunk("IEND", PackedByteArray()))
+	return {"ok": true, "error": "", "bytes": output}
+
+
 static func _chunk(kind: String, payload: PackedByteArray) -> PackedByteArray:
 	var result := PackedByteArray()
 	_append_u32(result, payload.size())
