@@ -1138,7 +1138,7 @@ func _refresh_view_previews() -> void:
 			view_preview_signatures[view] = ""
 			continue
 		var signature := "%d:%d:%d:%d" % [
-			active_base_width, entry.width, entry.height, hash(entry.encoded_pixels),
+			active_base_width, entry.width, entry.height, entry.pixel_hash(),
 		]
 		if view_preview_signatures[view] == signature:
 			view_preview_panels[view].visible = true

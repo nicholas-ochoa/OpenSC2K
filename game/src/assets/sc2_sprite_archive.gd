@@ -10,11 +10,14 @@ class SpriteEntry extends RefCounted:
 	var duplicate_index := 0
 	var encoded_pixels := PackedByteArray()
 	var allow_unpadded_odd_runs := false
+	var _direct_indices := PackedInt32Array()
 	var _index_image: Image
 	var _index_image_mutex := Mutex.new()
 
 
 	func decode_indices() -> Dictionary:
+		if not _direct_indices.is_empty():
+			return {"ok": true, "pixels": _direct_indices.duplicate(), "rows": height, "error": ""}
 		var pixels := PackedInt32Array()
 		pixels.resize(width * height)
 		# -1 is transparent, zero is a perfectly good pixel
@@ -84,6 +87,10 @@ class SpriteEntry extends RefCounted:
 		return {"ok": true, "pixels": pixels, "rows": row, "error": ""}
 
 
+	func pixel_hash() -> int:
+		return hash(_direct_indices) if not _direct_indices.is_empty() else hash(encoded_pixels)
+
+
 	func create_image(palette: Sc2Palette) -> Dictionary:
 		if not palette.is_valid():
 			return _failure("palette is invalid")
@@ -149,6 +156,22 @@ static func load_path(path: String) -> Sc2SpriteArchive:
 		return archive
 	archive.parse(FileAccess.get_file_as_bytes(path))
 	return archive
+
+
+static func entry_from_indices(
+	sprite_id: int, width: int, height: int, pixels: PackedInt32Array
+) -> SpriteEntry:
+	if width < 1 or height < 1 or pixels.size() != width * height:
+		return null
+	for pixel in pixels:
+		if pixel < -1 or pixel > 255:
+			return null
+	var entry := SpriteEntry.new()
+	entry.sprite_id = sprite_id
+	entry.width = width
+	entry.height = height
+	entry._direct_indices = pixels.duplicate()
+	return entry
 
 
 static func combine(archives: Array[Sc2SpriteArchive]) -> Sc2SpriteArchive:

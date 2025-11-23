@@ -268,13 +268,18 @@ func _initialize_runtime() -> void:
 	NewsQueue.initialize_session(newspaper_session_state, tool_random)
 	var original_assets := OriginalAssets.new()
 	original_assets.load_ui(reference_root)
+	original_assets.load_city_graphics(reference_root)
+	var graphics_pack_root := OS.get_environment("OPENSC2K_GRAPHICS_PACK")
+	if not graphics_pack_root.is_empty():
+		var pack := GraphicsPack.load_root(graphics_pack_root)
+		if not pack.apply_to(original_assets):
+			original_assets.error = "Cannot load graphics pack: %s" % pack.error
 	newspaper_data = original_assets.newspaper_data
 	original_query_strings = original_assets.strings
 	forest_protest_text = original_assets.forest_protest_text
 	building_objection_text = original_assets.building_objection_text
 	library_texts = original_assets.library_texts
 	_build_interface(original_assets)
-	original_assets.load_city_graphics(reference_root)
 	if not original_assets.error.is_empty():
 		_show_error(original_assets.error)
 		return

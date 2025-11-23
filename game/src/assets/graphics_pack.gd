@@ -1,0 +1,131 @@
+class_name GraphicsPack
+extends RefCounted
+
+const Png = preload("res://src/assets/indexed_png.gd")
+const UI_FIELDS := ["toolbar_art", "industry_icons", "city_map_icons", "simnation_sprites", "forest_protest_image"]
+
+var error := ""
+var pack_name := ""
+var palette: Sc2Palette
+var scenario_palette: Sc2Palette
+var large_sprites := Sc2SpriteArchive.new()
+var small_medium_sprites := Sc2SpriteArchive.new()
+var ui_images: Dictionary = {}
+var _root := ""
+
+
+static func load_root(root: String) -> GraphicsPack:
+	var pack := GraphicsPack.new()
+	pack._root = root.simplify_path()
+	pack._load()
+	return pack
+
+
+func apply_to(assets: OriginalGameAssets) -> bool:
+	if not error.is_empty():
+		return false
+	assets.palette = palette
+	assets.scenario_palette = scenario_palette
+	assets.large_sprites = large_sprites
+	assets.small_medium_sprites = small_medium_sprites
+	for field in ui_images:
+		assets.set(field, ui_images[field])
+	return true
+
+
+func _load() -> void:
+	var manifest_path := _root.path_join("pack.json")
+	if not FileAccess.file_exists(manifest_path):
+		_fail("Missing pack.json")
+		return
+	var json := JSON.new()
+	if json.parse(FileAccess.get_file_as_string(manifest_path)) != OK or not json.data is Dictionary:
+		_fail("pack.json must contain a JSON object")
+		return
+	var manifest: Dictionary = json.data
+	if manifest.get("format") != "opensc2k-graphics" or manifest.get("version") != 1:
+		_fail("Unsupported graphics pack format or version")
+		return
+	if not manifest.get("name") is String or str(manifest.name).strip_edges().is_empty():
+		_fail("Graphics pack name is required")
+		return
+	pack_name = manifest.name
+	var palette_image := _read_png(manifest.get("palette"))
+	if not error.is_empty():
+		return
+	palette = palette_image.palette
+	var scenario_image := _read_png(manifest.get("scenario_palette"))
+	if not error.is_empty():
+		return
+	scenario_palette = scenario_image.palette
+	if not _load_sprites(manifest.get("large_sprites"), large_sprites):
+		return
+	if not _load_sprites(manifest.get("small_medium_sprites"), small_medium_sprites):
+		return
+	var ui: Variant = manifest.get("ui")
+	if not ui is Dictionary:
+		_fail("ui must be an object")
+		return
+	for field in ui:
+		if not field in UI_FIELDS:
+			_fail("Unknown UI image: %s" % field)
+			return
+	for field in UI_FIELDS:
+		var decoded := _read_png(ui.get(field))
+		if not error.is_empty():
+			return
+		var entry := Sc2SpriteArchive.entry_from_indices(0, decoded.width, decoded.height, decoded.pixels)
+		var rendered := entry.create_image(decoded.palette)
+		ui_images[field] = rendered.image
+
+
+func _load_sprites(records: Variant, archive: Sc2SpriteArchive) -> bool:
+	if not records is Array or records.is_empty():
+		return _fail("Sprite lists must be nonempty arrays")
+	var duplicate_counts: Dictionary = {}
+	for record in records:
+		if not record is Dictionary:
+			return _fail("Sprite record must be an object")
+		var identifier: Variant = record.get("id")
+		if not (identifier is int or identifier is float):
+			return _fail("Sprite id must be an integer")
+		if identifier != int(identifier) or identifier < 0 or identifier > 65535:
+			return _fail("Sprite id must be 0 through 65535")
+		var decoded := _read_png(record.get("png"))
+		if not error.is_empty():
+			return false
+		if decoded.palette.colors != palette.colors:
+			return _fail("Sprite palette differs from the pack palette: %s" % record.png)
+		var entry := Sc2SpriteArchive.entry_from_indices(int(identifier), decoded.width, decoded.height, decoded.pixels)
+		entry.duplicate_index = int(duplicate_counts.get(entry.sprite_id, 0))
+		duplicate_counts[entry.sprite_id] = entry.duplicate_index + 1
+		archive.entries.append(entry)
+		archive.entries_by_id[entry.sprite_id] = entry
+	return true
+
+
+func _read_png(relative_path: Variant) -> Dictionary:
+	if not relative_path is String or relative_path.is_empty():
+		_fail("PNG path must be a nonempty string")
+		return {}
+	var path: String = relative_path
+	if path.is_absolute_path() or path.contains(":") or path.contains("\\"):
+		_fail("PNG paths must be relative and use forward slashes")
+		return {}
+	for component in path.split("/"):
+		if component in ["", ".", ".."]:
+			_fail("PNG paths must not contain empty, dot, or parent components")
+			return {}
+	if path.get_extension().to_lower() != "png":
+		_fail("Graphics files must be PNG")
+		return {}
+	var decoded := Png.load_path(_root.path_join(path))
+	if not decoded.ok:
+		_fail("%s: %s" % [path, decoded.error])
+		return {}
+	return decoded
+
+
+func _fail(message: String) -> bool:
+	error = message
+	return false
