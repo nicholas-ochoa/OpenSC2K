@@ -25,6 +25,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --quit-a
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/indexed_png_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/graphics_pack_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_overlays.gd
 
 if [ -f "$repo_dir/game/tests/test_runner.gd" ]; then
 	run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/test_runner.gd -- "$repo_dir/references"
