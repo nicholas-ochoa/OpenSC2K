@@ -107,13 +107,16 @@ func configure(
 	value_palette: Sc2Palette,
 	value_large_sprites: Sc2SpriteArchive,
 	value_small_medium_sprites: Sc2SpriteArchive,
-	value_reference_directory: String
+	value_reference_directory: String,
+	value_scurk_graphics: ScurkGraphics = null,
 ) -> void:
 	palette = value_palette
 	base_large_sprites = value_large_sprites
 	base_small_medium_sprites = value_small_medium_sprites
 	reference_directory = value_reference_directory.simplify_path()
-	if pixel_canvas != null:
+	if pixel_canvas != null and value_scurk_graphics != null:
+		pixel_canvas.set_drawing_graphics(value_scurk_graphics)
+	elif pixel_canvas != null:
 		var textures := pixel_canvas.load_original_textures(
 			reference_directory.path_join("WINSCURK.EXE")
 		)
@@ -128,7 +131,8 @@ func configure(
 		palette_panel.configure(
 			palette,
 			pixel_canvas.texture_patterns,
-			foreground_palette_index, background_palette_index
+			foreground_palette_index, background_palette_index,
+			value_scurk_graphics.pattern_names if value_scurk_graphics != null else PackedStringArray(),
 		)
 		_select_palette_index(foreground_palette_index, false)
 		_select_palette_index(background_palette_index, true)

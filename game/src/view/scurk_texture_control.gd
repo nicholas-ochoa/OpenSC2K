@@ -10,6 +10,7 @@ const SWATCH_OFFSET := 2
 
 var palette: Sc2Palette
 var patterns: Array[PackedInt32Array] = []
+var pattern_names := PackedStringArray()
 var foreground_index := 0
 var background_index := 255
 var selected_index := 0
@@ -80,6 +81,8 @@ func _get_tooltip(at_position: Vector2) -> String:
 	var index := index_at(at_position)
 	if index < 0:
 		return ""
+	if index < pattern_names.size():
+		return pattern_names[index]
 	if index == 0:
 		return "Solid foreground"
 	if index == 1:

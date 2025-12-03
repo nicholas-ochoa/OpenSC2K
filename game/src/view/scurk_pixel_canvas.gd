@@ -24,7 +24,7 @@ const TOOL_COPY := 10
 const TOOL_PASTE := 11
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
 const MINIMUM_COPY_SPAN := 4
-const CLEAR_BACKGROUND_RESOURCE_IDS := [20015, 20018, 20019, 20020, 20021]
+const CLEAR_BACKGROUND_RESOURCE_IDS := ScurkGraphics.BACKGROUND_IDS
 
 const TEXTURE_NAMES := [
 	"Solid Foreground",
@@ -39,13 +39,7 @@ const TEXTURE_NAMES := [
 	"Texture 31", "Texture 32", "Texture 33", "Texture 34", "Texture 35",
 	"Texture 36", "Texture 37", "Texture 38", "Texture 39",
 ]
-const ORIGINAL_TEXTURE_RESOURCE_IDS := [
-	25039, 25040, 25041,
-	25000, 25001, 25002, 25003, 25004, 25005, 25006, 25007, 25008, 25009,
-	25010, 25011, 25012, 25013, 25014, 25015, 25016, 25017, 25018, 25019,
-	25020, 25021, 25022, 25023, 25024, 25025, 25026, 25027, 25028, 25029,
-	25030, 25031, 25032, 25033, 25034, 25035, 25036, 25037, 25038,
-]
+const ORIGINAL_TEXTURE_RESOURCE_IDS := ScurkGraphics.TEXTURE_IDS
 const TEXTURE_ROWS := [
 	[0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff],
 	[0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55, 0xaa, 0x55],
@@ -215,6 +209,19 @@ func display_palette_index(index: int) -> int:
 	if index < 0 or index > 255 or palette == null or not palette.is_valid():
 		return index
 	return palette.scurk_animation_index_map(palette_cycle_ticks)[index]
+
+
+func set_drawing_graphics(graphics: ScurkGraphics) -> void:
+	texture_patterns.clear()
+	for pattern in graphics.patterns:
+		texture_patterns.append(pattern.duplicate())
+	original_textures_loaded = false
+	texture_index = clampi(texture_index, 0, texture_patterns.size() - 1)
+	clear_background_pixels = graphics.backgrounds[0].duplicate()
+	clip_background_pixels.clear()
+	for background in graphics.backgrounds.slice(1):
+		clip_background_pixels.append(background.duplicate())
+	queue_redraw()
 
 
 func load_original_textures(executable_path: String) -> Dictionary:

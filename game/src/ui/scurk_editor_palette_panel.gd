@@ -29,7 +29,7 @@ func build() -> void:
 	add_theme_constant_override("separation", 6)
 
 	var heading := Label.new()
-	heading.text = "Original 256-Color Palette"
+	heading.text = "256-Color Palette"
 	heading.add_theme_color_override("font_color", Color("000080"))
 	add_child(heading)
 
@@ -98,11 +98,13 @@ func configure(
 	patterns: Array[PackedInt32Array],
 	foreground_index: int,
 	background_index: int,
+	pattern_names := PackedStringArray(),
 ) -> void:
 	palette = value_palette
 	palette_control.set_palette(palette)
 	texture_control.set_palette(palette)
 	texture_control.set_patterns(patterns)
+	texture_control.pattern_names = pattern_names.duplicate()
 	set_colors(foreground_index, background_index)
 
 

@@ -40,6 +40,7 @@ var palette: Sc2Palette
 var scenario_palette: Sc2Palette
 var large_sprites: Sc2SpriteArchive
 var small_medium_sprites: Sc2SpriteArchive
+var scurk_graphics: ScurkGraphics
 var error := ""
 
 

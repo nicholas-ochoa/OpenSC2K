@@ -89,6 +89,7 @@ var current_save_path := ""
 var current_city_saved_once := false
 var palette: Sc2Palette
 var scenario_palette: Sc2Palette
+var scurk_graphics: ScurkGraphics
 var palette_index_encoding: Sc2Palette
 var large_sprites: Sc2SpriteArchive
 var small_medium_sprites: Sc2SpriteArchive
@@ -279,6 +280,7 @@ func _initialize_runtime() -> void:
 	forest_protest_text = original_assets.forest_protest_text
 	building_objection_text = original_assets.building_objection_text
 	library_texts = original_assets.library_texts
+	scurk_graphics = original_assets.scurk_graphics
 	_build_interface(original_assets)
 	if not original_assets.error.is_empty():
 		_show_error(original_assets.error)
@@ -749,7 +751,7 @@ func _open_scurk_dialog() -> void:
 		_show_error("The original SCURK graphics are not loaded.")
 		return
 	scurk_editor.configure(
-		palette, base_large_sprites, base_small_medium_sprites, reference_root
+		palette, base_large_sprites, base_small_medium_sprites, reference_root, scurk_graphics
 	)
 	var initial_path := (
 		active_scurk_path
