@@ -1,6 +1,6 @@
 class_name ScurkGraphics
 extends RefCounted
-# indexed paint instructions and display-only drawing backgrounds
+
 
 const TEXTURE_IDS := [
 	25039, 25040, 25041,
@@ -29,6 +29,7 @@ const WORKSPACE_SIZES := {
 	22107: Vector2i(48, 8), 22108: Vector2i(48, 300), 22109: Vector2i(48, 8), 22110: Vector2i(64, 64),
 	23000: Vector2i(400, 200),
 }
+const PRESENTATION_SIZES := {123: Vector2i(128, 256), 124: Vector2i(128, 256), 125: Vector2i(640, 480)}
 
 var error := ""
 var patterns: Array[PackedInt32Array] = []
@@ -37,6 +38,8 @@ var backgrounds: Array[PackedInt32Array] = []
 var control_images: Dictionary = {}
 var workspace_images: Dictionary = {}
 var workspace_pixels: Dictionary = {}
+var presentation_images: Dictionary = {}
+var presentation_pixels: Dictionary = {}
 
 
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> ScurkGraphics:
@@ -50,14 +53,14 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 		error = "scurk must contain textures and backgrounds"
 		return
 	for key in value:
-		if key not in ["textures", "backgrounds", "controls", "workspace"]:
+		if key not in ["textures", "backgrounds", "controls", "workspace", "presentation"]:
 			error = "Unknown SCURK graphics field: %s" % key
 			return
-	for group in ["textures", "backgrounds", "controls", "workspace"]:
-		if group in ["controls", "workspace"] and not value.has(group):
+	for group in ["textures", "backgrounds", "controls", "workspace", "presentation"]:
+		if group in ["controls", "workspace", "presentation"] and not value.has(group):
 			continue
 		var records: Variant = value[group]
-		var ids: Array = {"textures": TEXTURE_IDS, "backgrounds": BACKGROUND_IDS, "controls": CONTROL_IDS, "workspace": WORKSPACE_SIZES.keys()}[group]
+		var ids: Array = {"textures": TEXTURE_IDS, "backgrounds": BACKGROUND_IDS, "controls": CONTROL_IDS, "workspace": WORKSPACE_SIZES.keys(), "presentation": PRESENTATION_SIZES.keys()}[group]
 		if not records is Array or records.size() != ids.size():
 			error = "scurk.%s must contain %d records in resource order" % [group, ids.size()]
 			return
@@ -73,9 +76,13 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 			if png.is_empty() or not png.get("ok", false):
 				error = "Cannot read SCURK bitmap %d" % ids[i]
 				return
-			var size: Vector2i = {"textures": Vector2i(8, 8), "backgrounds": Vector2i(128, 256), "controls": Vector2i(20, 20), "workspace": WORKSPACE_SIZES.get(ids[i], Vector2i.ZERO)}[group]
-			if Vector2i(png.width, png.height) != size or png.pixels.has(-1):
-				error = "SCURK bitmap %d must be opaque and %d by %d" % [ids[i], size.x, size.y]
+			var size: Vector2i = {"textures": Vector2i(8, 8), "backgrounds": Vector2i(128, 256), "controls": Vector2i(20, 20), "workspace": WORKSPACE_SIZES.get(ids[i], Vector2i.ZERO), "presentation": PRESENTATION_SIZES.get(ids[i], Vector2i.ZERO)}[group]
+			var allows_alpha: bool = group == "presentation" and ids[i] in [123, 124]
+			if Vector2i(png.width, png.height) != size:
+				error = "SCURK bitmap %d must be %d by %d" % [ids[i], size.x, size.y]
+				return
+			if not allows_alpha and png.pixels.has(-1):
+				error = "SCURK bitmap %d must be opaque" % ids[i]
 				return
 			if png.palette.colors != palette.colors:
 				error = "SCURK bitmap palette differs from the pack palette: %s" % record.png
@@ -93,6 +100,9 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 				backgrounds.append(png.pixels)
 			elif group == "controls":
 				control_images[ids[i]] = Sc2SpriteArchive.entry_from_indices(ids[i], 20, 20, png.pixels).create_image(palette).image
-			else:
+			elif group == "workspace":
 				workspace_images[ids[i]] = Sc2SpriteArchive.entry_from_indices(ids[i], size.x, size.y, png.pixels).create_image(palette).image
 				workspace_pixels[ids[i]] = png.pixels
+			else:
+				presentation_images[ids[i]] = Sc2SpriteArchive.entry_from_indices(ids[i], size.x, size.y, png.pixels).create_image(palette).image
+				presentation_pixels[ids[i]] = png.pixels

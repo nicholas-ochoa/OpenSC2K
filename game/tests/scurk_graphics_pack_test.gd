@@ -13,6 +13,8 @@ func _initialize() -> void:
 	var files := {"tile.png": Vector2i(8, 8), "background.png": Vector2i(128, 256), "control.png": Vector2i(20, 20), "other-palette.png": Vector2i(8, 8)}
 	for id in ScurkGraphics.WORKSPACE_SIZES:
 		files["workspace-%d.png" % id] = ScurkGraphics.WORKSPACE_SIZES[id]
+	for id in ScurkGraphics.PRESENTATION_SIZES:
+		files["presentation-%d.png" % id] = ScurkGraphics.PRESENTATION_SIZES[id]
 	for name in files:
 		var size: Vector2i = files[name]
 		var pixels := PackedInt32Array()
@@ -52,9 +54,15 @@ func _initialize() -> void:
 		manifest.scurk.workspace.append({"id": id, "png": "workspace-%d.png" % id})
 	valid = _load(manifest)
 	assert(valid.error.is_empty() and valid.scurk_graphics.workspace_images.size() == 36)
+	assert(valid.scurk_graphics.presentation_images.is_empty())
+	manifest.scurk.presentation = []
+	for id in ScurkGraphics.PRESENTATION_SIZES:
+		manifest.scurk.presentation.append({"id": id, "png": "presentation-%d.png" % id})
+	valid = _load(manifest)
+	assert(valid.error.is_empty() and valid.scurk_graphics.presentation_images.size() == 3)
 	var assets := OriginalGameAssets.new()
 	assert(valid.apply_to(assets) and assets.scurk_graphics == valid.scurk_graphics)
-	for change in ["section_type", "missing_backgrounds", "extra_field", "short_textures", "duplicate_id", "fractional_id", "empty_name", "bad_path", "wrong_size", "transparent", "palette", "controls_type", "short_controls", "duplicate_control", "control_size", "control_path", "workspace_type", "short_workspace", "workspace_id", "workspace_size", "workspace_path", "palette_cell"]:
+	for change in ["section_type", "missing_backgrounds", "extra_field", "short_textures", "duplicate_id", "fractional_id", "empty_name", "bad_path", "wrong_size", "transparent", "palette", "controls_type", "short_controls", "duplicate_control", "control_size", "control_path", "workspace_type", "short_workspace", "workspace_id", "workspace_size", "workspace_path", "palette_cell", "presentation_type", "short_presentation", "presentation_id", "presentation_size", "presentation_path", "title_alpha", "presentation_palette"]:
 		var bad: Dictionary = manifest.duplicate(true)
 		match change:
 			"section_type": bad.scurk = []
@@ -76,6 +84,21 @@ func _initialize() -> void:
 			"workspace_id": bad.scurk.workspace[0].id = 1200.5
 			"workspace_size": bad.scurk.workspace[0].png = "control.png"
 			"workspace_path": bad.scurk.workspace[0].png = "../control.png"
+			"presentation_type": bad.scurk.presentation = {}
+			"short_presentation": bad.scurk.presentation.pop_back()
+			"presentation_id": bad.scurk.presentation[1].id = 123
+			"presentation_size": bad.scurk.presentation[2].png = "presentation-123.png"
+			"presentation_path": bad.scurk.presentation[0].png = "../presentation-123.png"
+			"title_alpha":
+				var png := IndexedPng.load_path(directory.path_join("presentation-125.png"))
+				png.pixels[0] = -1
+				_write_png("invalid.png", png.pixels, png.palette, 640, 480)
+				bad.scurk.presentation[2].png = "invalid.png"
+			"presentation_palette":
+				var png := IndexedPng.load_path(directory.path_join("presentation-123.png"))
+				png.palette.colors[1] = Color.MAGENTA
+				_write_png("invalid.png", png.pixels, png.palette, 128, 256)
+				bad.scurk.presentation[0].png = "invalid.png"
 			"palette_cell":
 				var png := IndexedPng.load_path(directory.path_join("workspace-22005.png"))
 				# Compare palette indices too; duplicate RGB colors can hide a wrong index.
