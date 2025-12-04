@@ -114,6 +114,8 @@ func configure(
 	base_large_sprites = value_large_sprites
 	base_small_medium_sprites = value_small_medium_sprites
 	reference_directory = value_reference_directory.simplify_path()
+	if drawing_controls != null:
+		drawing_controls.set_control_images(value_scurk_graphics.control_images if value_scurk_graphics != null else {})
 	if pixel_canvas != null and value_scurk_graphics != null:
 		pixel_canvas.set_drawing_graphics(value_scurk_graphics)
 	elif pixel_canvas != null:

@@ -7,7 +7,10 @@ var directory := ""
 func _initialize() -> void:
 	directory = "user://scurk-graphics-pack-test-%d" % Time.get_ticks_usec()
 	assert(DirAccess.make_dir_recursive_absolute(directory) == OK)
-	var files := {"tile.png": "scurk/textures/25000.png", "background.png": "scurk/backgrounds/20015.png", "other-palette.png": "palettes/scenario.png"}
+	# Synthetic indexed fixtures test the format without bundled artwork.
+	var palette := Sc2Palette.index_encoding()
+	palette.colors[11] = palette.colors[10]
+	var files := {"tile.png": Vector2i(8, 8), "background.png": Vector2i(128, 256), "control.png": Vector2i(20, 20), "other-palette.png": Vector2i(8, 8)}
 	for name in files:
 		var size: Vector2i = files[name]
 		var pixels := PackedInt32Array()
@@ -35,9 +38,15 @@ func _initialize() -> void:
 		manifest.scurk.backgrounds.append({"id": id, "png": "background.png"})
 	var valid := _load(manifest)
 	assert(valid.error.is_empty() and valid.scurk_graphics.patterns.size() == 42)
+	assert(valid.scurk_graphics.control_images.is_empty(), "older SCURK sections remain supported")
+	manifest.scurk.controls = []
+	for id in ScurkGraphics.CONTROL_IDS:
+		manifest.scurk.controls.append({"id": id, "png": "control.png"})
+	valid = _load(manifest)
+	assert(valid.error.is_empty() and valid.scurk_graphics.control_images.size() == 27)
 	var assets := OriginalGameAssets.new()
 	assert(valid.apply_to(assets) and assets.scurk_graphics == valid.scurk_graphics)
-	for change in ["section_type", "missing_backgrounds", "extra_field", "short_textures", "duplicate_id", "fractional_id", "empty_name", "bad_path", "wrong_size", "transparent", "palette"]:
+	for change in ["section_type", "missing_backgrounds", "extra_field", "short_textures", "duplicate_id", "fractional_id", "empty_name", "bad_path", "wrong_size", "transparent", "palette", "controls_type", "short_controls", "duplicate_control", "control_size", "control_path"]:
 		var bad: Dictionary = manifest.duplicate(true)
 		match change:
 			"section_type": bad.scurk = []
@@ -49,6 +58,11 @@ func _initialize() -> void:
 			"empty_name": bad.scurk.textures[0].name = " "
 			"bad_path": bad.scurk.textures[0].png = "../tile.png"
 			"wrong_size": bad.scurk.backgrounds[0].png = "tile.png"
+			"controls_type": bad.scurk.controls = {}
+			"short_controls": bad.scurk.controls.pop_back()
+			"duplicate_control": bad.scurk.controls[1].id = 20000
+			"control_size": bad.scurk.controls[0].png = "tile.png"
+			"control_path": bad.scurk.controls[0].png = "../control.png"
 			"palette":
 				var png := IndexedPng.load_path(directory.path_join("tile.png"))
 				png.palette.colors[1] = Color.MAGENTA

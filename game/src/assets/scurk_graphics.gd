@@ -10,11 +10,18 @@ const TEXTURE_IDS := [
 	25030, 25031, 25032, 25033, 25034, 25035, 25036, 25037, 25038,
 ]
 const BACKGROUND_IDS := [20015, 20018, 20019, 20020, 20021]
+const CONTROL_IDS := [
+	20000, 20001, 20002, 20003, 20004, 20005, 20006, 20007,
+	20008, 20009, 20010, 20011, 20012, 20013, 20016, 20017,
+	21000, 21001, 21002, 21003, 21004, 21005, 21006, 21007,
+	21018, 21019, 21020,
+]
 
 var error := ""
 var patterns: Array[PackedInt32Array] = []
 var pattern_names := PackedStringArray()
 var backgrounds: Array[PackedInt32Array] = []
+var control_images: Dictionary = {}
 
 
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> ScurkGraphics:
@@ -24,12 +31,18 @@ static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palett
 
 
 func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
-	if not value is Dictionary or value.size() != 2 or not value.has_all(["textures", "backgrounds"]):
+	if not value is Dictionary or not value.has_all(["textures", "backgrounds"]):
 		error = "scurk must contain textures and backgrounds"
 		return
-	for group in ["textures", "backgrounds"]:
+	for key in value:
+		if key not in ["textures", "backgrounds", "controls"]:
+			error = "Unknown SCURK graphics field: %s" % key
+			return
+	for group in ["textures", "backgrounds", "controls"]:
+		if group == "controls" and not value.has(group):
+			continue
 		var records: Variant = value[group]
-		var ids: Array = TEXTURE_IDS if group == "textures" else BACKGROUND_IDS
+		var ids: Array = {"textures": TEXTURE_IDS, "backgrounds": BACKGROUND_IDS, "controls": CONTROL_IDS}[group]
 		if not records is Array or records.size() != ids.size():
 			error = "scurk.%s must contain %d records in resource order" % [group, ids.size()]
 			return
@@ -45,7 +58,7 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 			if png.is_empty() or not png.get("ok", false):
 				error = "Cannot read SCURK bitmap %d" % ids[i]
 				return
-			var size := Vector2i(8, 8) if group == "textures" else Vector2i(128, 256)
+			var size: Vector2i = {"textures": Vector2i(8, 8), "backgrounds": Vector2i(128, 256), "controls": Vector2i(20, 20)}[group]
 			if Vector2i(png.width, png.height) != size or png.pixels.has(-1):
 				error = "SCURK bitmap %d must be opaque and %d by %d" % [ids[i], size.x, size.y]
 				return
@@ -55,5 +68,7 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 			if group == "textures":
 				patterns.append(png.pixels)
 				pattern_names.append(record.name)
-			else:
+			elif group == "backgrounds":
 				backgrounds.append(png.pixels)
+			else:
+				control_images[ids[i]] = Sc2SpriteArchive.entry_from_indices(ids[i], 20, 20, png.pixels).create_image(palette).image

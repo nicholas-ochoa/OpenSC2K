@@ -42,6 +42,12 @@ var grid_height_selector: SpinBox
 var clip_region_check: CheckBox
 var cycle_colors_check: CheckBox
 var increment_cycle_button: Button
+var zoom_out_button: Button
+var zoom_in_button: Button
+var control_icons: Dictionary = {}
+
+const TOOL_ICON_IDS := [20000, 20001, 20002, 20003, 20004, 20005, 20006, 20007, 20008, 20009, 20012, 20013]
+const FILLED_ICON_IDS := [20016, 20017, 21018, 21019, 21020]
 
 
 func _ready() -> void:
@@ -58,6 +64,32 @@ func build() -> void:
 	_build_brush_row()
 	_build_grid_row()
 	_build_cycle_row()
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	round_brush_check.toggled.connect(func(_enabled: bool) -> void: _refresh_icons())
+	filled_shapes_check.toggled.connect(func(_enabled: bool) -> void: _refresh_icons())
+
+
+func set_control_images(images: Dictionary) -> void:
+	build()
+	control_icons.clear()
+	for id in images:
+		control_icons[id] = ImageTexture.create_from_image(images[id])
+	_refresh_icons()
+
+
+func _refresh_icons() -> void:
+	for i in tool_buttons.size():
+		var id: int = TOOL_ICON_IDS[i]
+		if i >= 3 and i <= 7 and filled_shapes_check.button_pressed:
+			id = FILLED_ICON_IDS[i - 3]
+		tool_buttons[i].icon = control_icons.get(id)
+	zoom_out_button.icon = control_icons.get(20010)
+	zoom_in_button.icon = control_icons.get(20011)
+	for i in 6:
+		var id := 21000 + i
+		if i >= 4 and round_brush_check.button_pressed:
+			id += 2
+		brush_size_selector.set_item_icon(i, control_icons.get(id))
 
 
 func _build_view_row() -> void:
@@ -83,17 +115,19 @@ func _build_view_row() -> void:
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(spacer)
-	row.add_child(_button(
+	zoom_out_button = _button(
 		"-", &"zoom_out_requested", "Reduce the pixel zoom."
-	))
+	)
+	row.add_child(zoom_out_button)
 	zoom_label = Label.new()
 	zoom_label.text = "4x"
 	zoom_label.custom_minimum_size = Vector2(34, 0)
 	zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	row.add_child(zoom_label)
-	row.add_child(_button(
+	zoom_in_button = _button(
 		"+", &"zoom_in_requested", "Increase the pixel zoom."
-	))
+	)
+	row.add_child(zoom_in_button)
 
 
 func _build_tool_row() -> void:
@@ -119,6 +153,7 @@ func _build_tool_row() -> void:
 	]:
 		var button := Button.new()
 		button.text = tool_data[0]
+		button.tooltip_text = tool_data[0]
 		button.toggle_mode = true
 		button.button_group = group
 		button.custom_minimum_size = Vector2(0, 28)
