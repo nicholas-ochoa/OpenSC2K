@@ -43,6 +43,21 @@ static func load_numeric(path: String, resource_id: int) -> Dictionary:
 	if not loaded_dib.ok:
 		return loaded_dib
 	var dib: PackedByteArray = loaded_dib.bytes
+	if loaded_dib.compression == 1:
+		var decoded := _decode_indexed8_dib(loaded_dib, resource_id)
+		if not decoded.ok:
+			return decoded
+		# Godot cannot read RLE-compressed BMPs. Expand the index rows and keep the DIB palette.
+		var color_count: int = loaded_dib.color_count if loaded_dib.color_count > 0 else 256
+		var pixel_offset := _read_u32(dib, 0) + color_count * 4
+		var row_stride := (int(decoded.width) + 3) & ~3
+		dib = dib.slice(0, pixel_offset)
+		_write_u32(dib, 16, 0)
+		_write_u32(dib, 20, row_stride * int(decoded.height))
+		dib.resize(pixel_offset + row_stride * int(decoded.height))
+		for y in int(decoded.height):
+			for x in int(decoded.width):
+				dib[pixel_offset + (int(decoded.height) - 1 - y) * row_stride + x] = decoded.pixels[y * int(decoded.width) + x]
 	var wrapped := _wrap_dib(dib)
 	if not wrapped.ok:
 		return wrapped
@@ -133,9 +148,9 @@ static func load_numeric_indexed8_many(
 static func _decode_indexed8_dib(loaded: Dictionary, resource_id: int) -> Dictionary:
 	if not loaded.ok:
 		return loaded
-	if loaded.bits_per_pixel != 8 or loaded.compression != 0:
+	if loaded.bits_per_pixel != 8 or loaded.compression not in [0, 1]:
 		return _failure(
-			"PE bitmap resource %d is not an uncompressed 8-bit image" % resource_id
+			"PE bitmap resource %d is not an uncompressed or RLE8 indexed image" % resource_id
 		)
 	var dib: PackedByteArray = loaded.bytes
 	var header_size := _read_u32(dib, 0)
@@ -145,10 +160,26 @@ static func _decode_indexed8_dib(loaded: Dictionary, resource_id: int) -> Dictio
 	var height := (
 		int((~stored_height + 1) & 0xffffffff) if top_down else stored_height
 	)
-	if width <= 0 or height <= 0:
+	if width <= 0 or height <= 0 or width > 4096 or height > 4096:
 		return _failure("PE bitmap resource %d has invalid dimensions" % resource_id)
 	var color_count: int = loaded.color_count if loaded.color_count > 0 else 256
 	var pixel_offset := header_size + color_count * 4
+	if header_size < 40 or color_count < 1 or color_count > 256 or not _has_range(dib, 0, pixel_offset) or _read_u16(dib, 12) != 1:
+		return _failure("PE bitmap resource %d has an invalid header or palette" % resource_id)
+	if loaded.compression == 1:
+		if top_down:
+			return _failure("RLE8 bitmap height must be positive")
+		var data_size := _read_u32(dib, 20)
+		if data_size <= 0 or not _has_range(dib, pixel_offset, data_size):
+			return _failure("RLE8 bitmap data size is invalid")
+		var decoded := WindowsBitmapRle8.decode(dib.slice(pixel_offset, pixel_offset + data_size), width, height)
+		if decoded.ok:
+			for index in decoded.pixels:
+				if index >= color_count:
+					return _failure("RLE8 pixel index exceeds its palette")
+			decoded.width = width
+			decoded.height = height
+		return decoded
 	var row_stride := int((width + 3) / 4) * 4
 	if not _has_range(dib, pixel_offset, row_stride * height):
 		return _failure("PE bitmap resource %d pixel data is truncated" % resource_id)
