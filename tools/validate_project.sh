@@ -31,6 +31,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_neighbors.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/scurk_graphics_pack_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_scurk_controls.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_scurk_workspace.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_scurk_drawing.gd
 
 if [ -f "$repo_dir/game/tests/test_runner.gd" ]; then

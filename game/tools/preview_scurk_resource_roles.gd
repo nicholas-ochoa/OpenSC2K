@@ -17,11 +17,12 @@ func _build() -> void:
 	root.content_scale_size = Vector2i(1200, 900)
 	var inventory: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://../data/formats/graphics-inventory.json"))
 	for record in inventory.entries:
-		if record.source != "WINSCURK.EXE" or record.kind != "bitmap":
-			continue
-		var id := int(record.id)
-		if (id >= 1200 and id <= 1215) or (id >= 20000 and id <= 20017 and id != 20015) or (id >= 21000 and id <= 21020) or (id >= 22001 and id <= 22004) or (id >= 22100 and id <= 22110):
+		if record.source == "WINSCURK.EXE" and record.kind == "bitmap":
 			records.append(record)
+	if records.is_empty():
+		print("No remaining SCURK bitmap records in the current coverage inventory.")
+		quit()
+		return
 	var backdrop := ColorRect.new()
 	backdrop.color = Color("c0c0c0")
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)

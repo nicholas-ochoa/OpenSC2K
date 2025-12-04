@@ -92,13 +92,35 @@ func _ready() -> void:
 func configure(
 	value_palette: Sc2Palette,
 	value_sprites: Sc2SpriteArchive,
-	value_names: Dictionary = {}
+	value_names: Dictionary = {},
+	value_graphics: ScurkGraphics = null,
 ) -> void:
 	palette = value_palette
 	sprites = value_sprites
 	custom_names = value_names.duplicate()
+	set_workspace_images(value_graphics.workspace_images if value_graphics != null else {})
 	icon_cache.clear()
 	_refresh_objects()
+
+
+func set_workspace_images(images: Dictionary) -> void:
+	if tool_list == null:
+		return
+	var textures := {}
+	for id in images:
+		if id >= 1200 and id <= 1215:
+			textures[id] = ImageTexture.create_from_image(images[id])
+	tool_list.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	for i in EDIT_TOOLS.size():
+		var tool: Dictionary = EDIT_TOOLS[i]
+		var id := 1200
+		if int(tool.zone) >= 0:
+			id = 1202
+		else:
+			id = {0: 1200, 1: 1201, 3: 1205, 4: 1201, 6: 1203, 7: 1204, 17: 1210}.get(int(tool.group), 1200)
+		tool_list.set_item_icon(i, textures.get(id))
+	mode_selector.set_item_icon(MODE_OBJECTS, textures.get(1212))
+	mode_selector.set_item_icon(MODE_EDIT_TOOLS, textures.get(1200))
 
 
 func show_workspace() -> bool:

@@ -796,7 +796,7 @@ func _open_scurk_place_print() -> void:
 		if active_scurk_tile_set != null
 		else {}
 	)
-	scurk_place_print.configure(palette, large_sprites, names)
+	scurk_place_print.configure(palette, large_sprites, names, scurk_graphics)
 	if not last_edit_command.get("scurk_place_history", false):
 		scurk_edit_history.clear()
 	scurk_place_print.set_history_enabled(
@@ -1803,7 +1803,7 @@ func _apply_scurk_tile_set(
 	large_sprites = new_large
 	small_medium_sprites = new_small_medium
 	if scurk_place_print != null and scurk_place_print.visible:
-		scurk_place_print.configure(palette, large_sprites, tile_set.names)
+		scurk_place_print.configure(palette, large_sprites, tile_set.names, scurk_graphics)
 	_invalidate_sprite_art()
 	if city != null:
 		_refresh_map()
@@ -1822,7 +1822,7 @@ func _restore_original_tile_set() -> void:
 	large_sprites = base_large_sprites
 	small_medium_sprites = base_small_medium_sprites
 	if scurk_place_print != null and scurk_place_print.visible:
-		scurk_place_print.configure(palette, large_sprites)
+		scurk_place_print.configure(palette, large_sprites, {}, scurk_graphics)
 	_invalidate_sprite_art()
 	if city != null:
 		_refresh_map()

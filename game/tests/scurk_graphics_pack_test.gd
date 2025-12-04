@@ -11,6 +11,8 @@ func _initialize() -> void:
 	var palette := Sc2Palette.index_encoding()
 	palette.colors[11] = palette.colors[10]
 	var files := {"tile.png": Vector2i(8, 8), "background.png": Vector2i(128, 256), "control.png": Vector2i(20, 20), "other-palette.png": Vector2i(8, 8)}
+	for id in ScurkGraphics.WORKSPACE_SIZES:
+		files["workspace-%d.png" % id] = ScurkGraphics.WORKSPACE_SIZES[id]
 	for name in files:
 		var size: Vector2i = files[name]
 		var pixels := PackedInt32Array()
@@ -44,9 +46,15 @@ func _initialize() -> void:
 		manifest.scurk.controls.append({"id": id, "png": "control.png"})
 	valid = _load(manifest)
 	assert(valid.error.is_empty() and valid.scurk_graphics.control_images.size() == 27)
+	assert(valid.scurk_graphics.workspace_images.is_empty())
+	manifest.scurk.workspace = []
+	for id in ScurkGraphics.WORKSPACE_SIZES:
+		manifest.scurk.workspace.append({"id": id, "png": "workspace-%d.png" % id})
+	valid = _load(manifest)
+	assert(valid.error.is_empty() and valid.scurk_graphics.workspace_images.size() == 36)
 	var assets := OriginalGameAssets.new()
 	assert(valid.apply_to(assets) and assets.scurk_graphics == valid.scurk_graphics)
-	for change in ["section_type", "missing_backgrounds", "extra_field", "short_textures", "duplicate_id", "fractional_id", "empty_name", "bad_path", "wrong_size", "transparent", "palette", "controls_type", "short_controls", "duplicate_control", "control_size", "control_path"]:
+	for change in ["section_type", "missing_backgrounds", "extra_field", "short_textures", "duplicate_id", "fractional_id", "empty_name", "bad_path", "wrong_size", "transparent", "palette", "controls_type", "short_controls", "duplicate_control", "control_size", "control_path", "workspace_type", "short_workspace", "workspace_id", "workspace_size", "workspace_path", "palette_cell"]:
 		var bad: Dictionary = manifest.duplicate(true)
 		match change:
 			"section_type": bad.scurk = []
@@ -63,6 +71,20 @@ func _initialize() -> void:
 			"duplicate_control": bad.scurk.controls[1].id = 20000
 			"control_size": bad.scurk.controls[0].png = "tile.png"
 			"control_path": bad.scurk.controls[0].png = "../control.png"
+			"workspace_type": bad.scurk.workspace = {}
+			"short_workspace": bad.scurk.workspace.pop_back()
+			"workspace_id": bad.scurk.workspace[0].id = 1200.5
+			"workspace_size": bad.scurk.workspace[0].png = "control.png"
+			"workspace_path": bad.scurk.workspace[0].png = "../control.png"
+			"palette_cell":
+				var png := IndexedPng.load_path(directory.path_join("workspace-22005.png"))
+				# Compare palette indices too; duplicate RGB colors can hide a wrong index.
+				png.pixels[8 * 256 + 10 * 16 + 8] = 11
+				assert(png.palette.color(10) == png.palette.color(11))
+				_write_png("invalid.png", png.pixels, png.palette, 256, 256)
+				for record in bad.scurk.workspace:
+					if record.id == 22005:
+						record.png = "invalid.png"
 			"palette":
 				var png := IndexedPng.load_path(directory.path_join("tile.png"))
 				png.palette.colors[1] = Color.MAGENTA
@@ -93,8 +115,8 @@ func _load(manifest: Dictionary) -> GraphicsPack:
 	return GraphicsPack.load_root(directory)
 
 
-func _write_png(name: String, pixels: PackedInt32Array, palette: Sc2Palette) -> void:
-	var encoded := IndexedPng.encode(8, 8, pixels, palette)
+func _write_png(name: String, pixels: PackedInt32Array, palette: Sc2Palette, width := 8, height := 8) -> void:
+	var encoded := IndexedPng.encode(width, height, pixels, palette)
 	assert(encoded.ok)
 	var file := FileAccess.open(directory.path_join(name), FileAccess.WRITE)
 	assert(file != null)

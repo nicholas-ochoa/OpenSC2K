@@ -136,6 +136,7 @@ func configure(
 			foreground_palette_index, background_palette_index,
 			value_scurk_graphics.pattern_names if value_scurk_graphics != null else PackedStringArray(),
 		)
+		palette_panel.set_workspace_images(value_scurk_graphics.workspace_images if value_scurk_graphics != null else {})
 		_select_palette_index(foreground_palette_index, false)
 		_select_palette_index(background_palette_index, true)
 	if pick_copy_control != null:

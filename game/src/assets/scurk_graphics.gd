@@ -16,12 +16,27 @@ const CONTROL_IDS := [
 	21000, 21001, 21002, 21003, 21004, 21005, 21006, 21007,
 	21018, 21019, 21020,
 ]
+const WORKSPACE_SIZES := {
+	1200: Vector2i(33, 25), 1201: Vector2i(32, 24), 1202: Vector2i(33, 25),
+	1203: Vector2i(33, 25), 1204: Vector2i(33, 25), 1205: Vector2i(32, 24),
+	1206: Vector2i(32, 24), 1207: Vector2i(32, 24), 1208: Vector2i(32, 24),
+	1209: Vector2i(32, 24), 1210: Vector2i(32, 24), 1211: Vector2i(32, 24),
+	1212: Vector2i(32, 24), 1213: Vector2i(32, 24), 1214: Vector2i(32, 24), 1215: Vector2i(32, 24),
+	20014: Vector2i(64, 64), 21008: Vector2i(8, 8), 21009: Vector2i(8, 8), 21021: Vector2i(48, 208),
+	22001: Vector2i(10, 10), 22002: Vector2i(10, 10), 22003: Vector2i(16, 16), 22004: Vector2i(16, 16),
+	22005: Vector2i(256, 256), 22100: Vector2i(26, 26), 22101: Vector2i(26, 26),
+	22103: Vector2i(24, 24), 22104: Vector2i(24, 24), 22105: Vector2i(100, 24), 22106: Vector2i(8, 8),
+	22107: Vector2i(48, 8), 22108: Vector2i(48, 300), 22109: Vector2i(48, 8), 22110: Vector2i(64, 64),
+	23000: Vector2i(400, 200),
+}
 
 var error := ""
 var patterns: Array[PackedInt32Array] = []
 var pattern_names := PackedStringArray()
 var backgrounds: Array[PackedInt32Array] = []
 var control_images: Dictionary = {}
+var workspace_images: Dictionary = {}
+var workspace_pixels: Dictionary = {}
 
 
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> ScurkGraphics:
@@ -35,14 +50,14 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 		error = "scurk must contain textures and backgrounds"
 		return
 	for key in value:
-		if key not in ["textures", "backgrounds", "controls"]:
+		if key not in ["textures", "backgrounds", "controls", "workspace"]:
 			error = "Unknown SCURK graphics field: %s" % key
 			return
-	for group in ["textures", "backgrounds", "controls"]:
-		if group == "controls" and not value.has(group):
+	for group in ["textures", "backgrounds", "controls", "workspace"]:
+		if group in ["controls", "workspace"] and not value.has(group):
 			continue
 		var records: Variant = value[group]
-		var ids: Array = {"textures": TEXTURE_IDS, "backgrounds": BACKGROUND_IDS, "controls": CONTROL_IDS}[group]
+		var ids: Array = {"textures": TEXTURE_IDS, "backgrounds": BACKGROUND_IDS, "controls": CONTROL_IDS, "workspace": WORKSPACE_SIZES.keys()}[group]
 		if not records is Array or records.size() != ids.size():
 			error = "scurk.%s must contain %d records in resource order" % [group, ids.size()]
 			return
@@ -58,17 +73,26 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 			if png.is_empty() or not png.get("ok", false):
 				error = "Cannot read SCURK bitmap %d" % ids[i]
 				return
-			var size: Vector2i = {"textures": Vector2i(8, 8), "backgrounds": Vector2i(128, 256), "controls": Vector2i(20, 20)}[group]
+			var size: Vector2i = {"textures": Vector2i(8, 8), "backgrounds": Vector2i(128, 256), "controls": Vector2i(20, 20), "workspace": WORKSPACE_SIZES.get(ids[i], Vector2i.ZERO)}[group]
 			if Vector2i(png.width, png.height) != size or png.pixels.has(-1):
 				error = "SCURK bitmap %d must be opaque and %d by %d" % [ids[i], size.x, size.y]
 				return
 			if png.palette.colors != palette.colors:
 				error = "SCURK bitmap palette differs from the pack palette: %s" % record.png
 				return
+			if group == "workspace" and ids[i] == 22005:
+				for index in 256:
+					var center := ((index / 16) * 16 + 8) * 256 + (index % 16) * 16 + 8
+					if png.pixels[center] != index:
+						error = "SCURK palette-sheet cell center must use index %d" % index
+						return
 			if group == "textures":
 				patterns.append(png.pixels)
 				pattern_names.append(record.name)
 			elif group == "backgrounds":
 				backgrounds.append(png.pixels)
-			else:
+			elif group == "controls":
 				control_images[ids[i]] = Sc2SpriteArchive.entry_from_indices(ids[i], 20, 20, png.pixels).create_image(palette).image
+			else:
+				workspace_images[ids[i]] = Sc2SpriteArchive.entry_from_indices(ids[i], size.x, size.y, png.pixels).create_image(palette).image
+				workspace_pixels[ids[i]] = png.pixels

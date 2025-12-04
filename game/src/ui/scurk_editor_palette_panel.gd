@@ -16,6 +16,9 @@ var background_color: ColorRect
 var background_color_label: Label
 var texture_control: ScurkTextureControl
 var pointer_status_label: Label
+var foreground_marker: TextureRect
+var background_marker: TextureRect
+var texture_scroll: ScrollContainer
 
 
 func _ready() -> void:
@@ -41,6 +44,10 @@ func build() -> void:
 	var foreground_row := HBoxContainer.new()
 	foreground_row.add_theme_constant_override("separation", 8)
 	add_child(foreground_row)
+	foreground_marker = TextureRect.new()
+	foreground_marker.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	foreground_marker.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	foreground_row.add_child(foreground_marker)
 	foreground_color = ColorRect.new()
 	foreground_color.custom_minimum_size = Vector2(38, 26)
 	foreground_row.add_child(foreground_color)
@@ -50,6 +57,10 @@ func build() -> void:
 	var background_row := HBoxContainer.new()
 	background_row.add_theme_constant_override("separation", 8)
 	add_child(background_row)
+	background_marker = TextureRect.new()
+	background_marker.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	background_marker.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	background_row.add_child(background_marker)
 	background_color = ColorRect.new()
 	background_color.custom_minimum_size = Vector2(38, 26)
 	background_row.add_child(background_color)
@@ -59,7 +70,7 @@ func build() -> void:
 	var texture_label := Label.new()
 	texture_label.text = "Brush Texture"
 	add_child(texture_label)
-	var texture_scroll := ScrollContainer.new()
+	texture_scroll = ScrollContainer.new()
 	texture_scroll.custom_minimum_size = Vector2(80, 160)
 	texture_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
 	texture_scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_AUTO
@@ -110,6 +121,21 @@ func configure(
 
 func set_patterns(patterns: Array[PackedInt32Array]) -> void:
 	texture_control.set_patterns(patterns)
+
+
+func set_workspace_images(images: Dictionary) -> void:
+	build()
+	foreground_marker.texture = ImageTexture.create_from_image(images[22001]) if images.has(22001) else null
+	background_marker.texture = ImageTexture.create_from_image(images[22002]) if images.has(22002) else null
+	foreground_marker.visible = foreground_marker.texture != null
+	background_marker.visible = background_marker.texture != null
+	palette_control.set_palette_image(images.get(22005))
+	var scrollbar := texture_scroll.get_v_scroll_bar()
+	for item in [["increment", 22003], ["decrement", 22004]]:
+		if images.has(item[1]):
+			scrollbar.add_theme_icon_override(item[0], ImageTexture.create_from_image(images[item[1]]))
+		else:
+			scrollbar.remove_theme_icon_override(item[0])
 
 
 func set_colors(foreground_index: int, background_index: int) -> void:
