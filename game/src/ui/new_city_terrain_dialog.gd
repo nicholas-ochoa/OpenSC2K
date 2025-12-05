@@ -25,6 +25,8 @@ var trees_value: Label
 var preview_view: TextureRect
 var preview_status: Label
 var preview_timer: Timer
+var terrain_icons: Dictionary = {}
+var control_graphics: CityUiGraphics
 
 
 func _ready() -> void:
@@ -66,6 +68,7 @@ func _ready() -> void:
 	preview_timer.wait_time = 0.12
 	preview_timer.timeout.connect(func() -> void: preview_requested.emit())
 	add_child(preview_timer)
+	set_control_graphics(control_graphics)
 
 
 func _add_title_bar(column: VBoxContainer) -> void:
@@ -184,11 +187,20 @@ func _add_feature_fields(grid: GridContainer) -> void:
 
 
 func _add_terrain_slider(grid: GridContainer, label_text: String) -> void:
+	var heading := HBoxContainer.new()
+	heading.alignment = BoxContainer.ALIGNMENT_END
+	grid.add_child(heading)
+	var icon := TextureRect.new()
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	icon.custom_minimum_size = Vector2(18, 19)
+	heading.add_child(icon)
+	terrain_icons[label_text] = icon
 	var terrain_label := Label.new()
 	terrain_label.text = label_text
 	terrain_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	terrain_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	grid.add_child(terrain_label)
+	heading.add_child(terrain_label)
 	var slider_row := HBoxContainer.new()
 	slider_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	slider_row.add_theme_constant_override("separation", 8)
@@ -214,6 +226,24 @@ func _add_terrain_slider(grid: GridContainer, label_text: String) -> void:
 			trees_input = slider
 			trees_value = value_label
 	grid.add_child(slider_row)
+
+
+func set_control_graphics(graphics: CityUiGraphics) -> void:
+	control_graphics = graphics
+	for label in terrain_icons:
+		var role: String = {"Hills": "hills", "Water": "water_amount", "Trees": "trees_amount"}[label]
+		var image: Image = null if graphics == null else graphics.terrain_icon(role)
+		var view: TextureRect = terrain_icons[label]
+		view.texture = null
+		view.visible = image != null
+		if image != null:
+			image.convert(Image.FORMAT_RGBA8)
+			var background := image.get_pixel(0, 0)
+			for y in image.get_height():
+				for x in image.get_width():
+					if image.get_pixel(x, y).is_equal_approx(background):
+						image.set_pixel(x, y, Color.TRANSPARENT)
+			view.texture = ImageTexture.create_from_image(image)
 
 
 func _build_preview(content: HBoxContainer) -> void:

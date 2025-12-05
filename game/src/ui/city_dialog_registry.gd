@@ -85,6 +85,8 @@ func _create_file_dialogs() -> void:
 func _create_tool_dialogs() -> void:
 	new_city_dialog = NewCityDialogView.new()
 	add_child(new_city_dialog)
+	if original_assets != null:
+		new_city_dialog.set_control_graphics(original_assets.city_ui_graphics)
 	sign_dialog = SignDialogView.new()
 	add_child(sign_dialog)
 	bridge_dialog = BridgeDialogView.new()
