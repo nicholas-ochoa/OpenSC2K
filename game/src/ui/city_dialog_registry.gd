@@ -151,6 +151,7 @@ func _create_information_windows() -> void:
 	add_child(analysis_dialog)
 	newspaper_dialog = NewspaperDialogView.new()
 	add_child(newspaper_dialog)
+	newspaper_dialog.set_control_graphics(original_assets.city_ui_graphics)
 	library_windows = LibraryWindowsView.new()
 	add_child(library_windows)
 

@@ -26,6 +26,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --quit-a
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/indexed_png_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/graphics_pack_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/windows_bitmap_rle8_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/pe_named_bitmap_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_overlays.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_ui_strips.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_neighbors.gd

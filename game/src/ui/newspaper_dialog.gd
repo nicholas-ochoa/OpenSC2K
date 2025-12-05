@@ -22,12 +22,17 @@ var page: NewspaperPage
 var paper_selector: OptionButton
 var article_heading: Label
 var article_view: TextEdit
+var close_normal: Texture2D
+var close_pressed: Texture2D
 
 
 func _ready() -> void:
 	title = "Newspaper"
 	min_size = Vector2i(700, 650)
 	get_ok_button().text = "Close"
+	get_ok_button().button_down.connect(func() -> void: get_ok_button().icon = close_pressed)
+	get_ok_button().button_up.connect(func() -> void: get_ok_button().icon = close_normal)
+	get_ok_button().texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	get_label().visible = false
 	var paper_selector_row := HBoxContainer.new()
 	paper_selector_row.alignment = BoxContainer.ALIGNMENT_CENTER
@@ -65,6 +70,17 @@ func _ready() -> void:
 	layout.add_child(article_view)
 	content.add_child(layout)
 	content.move_child(layout, 0)
+
+
+func set_control_graphics(graphics: CityUiGraphics) -> void:
+	close_normal = null
+	close_pressed = null
+	if graphics != null:
+		if graphics.controls.has("PAPERCLOSEU"):
+			close_normal = ImageTexture.create_from_image(graphics.controls.PAPERCLOSEU)
+		if graphics.controls.has("PAPERCLOSED"):
+			close_pressed = ImageTexture.create_from_image(graphics.controls.PAPERCLOSED)
+	get_ok_button().icon = close_normal
 
 
 func open_reports(

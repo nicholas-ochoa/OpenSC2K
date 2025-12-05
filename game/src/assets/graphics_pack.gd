@@ -12,6 +12,7 @@ var large_sprites := Sc2SpriteArchive.new()
 var small_medium_sprites := Sc2SpriteArchive.new()
 var ui_images: Dictionary = {}
 var scurk_graphics: ScurkGraphics
+var city_ui_graphics: CityUiGraphics
 var _root := ""
 
 
@@ -30,6 +31,7 @@ func apply_to(assets: OriginalGameAssets) -> bool:
 	assets.large_sprites = large_sprites
 	assets.small_medium_sprites = small_medium_sprites
 	assets.scurk_graphics = scurk_graphics
+	assets.city_ui_graphics = city_ui_graphics
 	for field in ui_images:
 		assets.set(field, ui_images[field])
 	return true
@@ -89,6 +91,10 @@ func _load() -> void:
 		scurk_graphics = ScurkGraphics.load_manifest(manifest.scurk, _read_png, palette)
 		if error.is_empty() and not scurk_graphics.error.is_empty():
 			_fail(scurk_graphics.error)
+	if error.is_empty() and manifest.has("city_ui"):
+		city_ui_graphics = CityUiGraphics.load_manifest(manifest.city_ui, _read_png, palette)
+		if error.is_empty() and not city_ui_graphics.error.is_empty():
+			_fail(city_ui_graphics.error)
 
 
 func _load_sprites(records: Variant, archive: Sc2SpriteArchive) -> bool:

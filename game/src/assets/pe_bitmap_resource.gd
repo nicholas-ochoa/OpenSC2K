@@ -39,7 +39,14 @@ static func list_numeric_bitmap_ids(path: String) -> Dictionary:
 
 
 static func load_numeric(path: String, resource_id: int) -> Dictionary:
-	var loaded_dib := load_numeric_dib(path, resource_id)
+	return _image_from_dib(load_numeric_dib(path, resource_id), resource_id)
+
+
+static func load_named(path: String, resource_name: String) -> Dictionary:
+	return _image_from_dib(load_named_dib(path, resource_name), resource_name)
+
+
+static func _image_from_dib(loaded_dib: Dictionary, resource_id: Variant) -> Dictionary:
 	if not loaded_dib.ok:
 		return loaded_dib
 	var dib: PackedByteArray = loaded_dib.bytes
@@ -65,7 +72,7 @@ static func load_numeric(path: String, resource_id: int) -> Dictionary:
 	var load_error := image.load_bmp_from_buffer(wrapped.bytes)
 	if load_error != OK:
 		return _failure(
-			"cannot decode PE bitmap resource %d: %s"
+			"cannot decode PE bitmap resource %s: %s"
 			% [resource_id, error_string(load_error)]
 		)
 	return {"ok": true, "image": image, "error": ""}
@@ -77,11 +84,20 @@ static func load_numeric_dib(path: String, resource_id: int) -> Dictionary:
 	var directory := _load_resource_directory(path)
 	if not directory.ok:
 		return directory
-	return _load_numeric_dib_from_directory(directory, resource_id)
+	return _load_dib_from_directory(directory, resource_id)
 
 
-static func _load_numeric_dib_from_directory(
-	directory: Dictionary, resource_id: int
+static func load_named_dib(path: String, resource_name: String) -> Dictionary:
+	if resource_name.is_empty():
+		return _failure("bitmap resource name is empty")
+	var directory := _load_resource_directory(path)
+	if not directory.ok:
+		return directory
+	return _load_dib_from_directory(directory, resource_name)
+
+
+static func _load_dib_from_directory(
+	directory: Dictionary, resource_id: Variant
 ) -> Dictionary:
 	var bytes: PackedByteArray = directory.bytes
 	var root_offset: int = directory.root_offset
@@ -92,23 +108,21 @@ static func _load_numeric_dib_from_directory(
 	)
 	if type_directory < 0:
 		return _failure("PE file does not contain bitmap resources")
-	var language_directory := _numeric_child_directory(
-		bytes, root_offset, type_directory, resource_id
-	)
+	var language_directory := _named_child_directory(bytes, root_offset, type_directory, resource_id) if resource_id is String else _numeric_child_directory(bytes, root_offset, type_directory, resource_id)
 	if language_directory < 0:
-		return _failure("PE bitmap resource %d is missing" % resource_id)
+		return _failure("PE bitmap resource %s is missing" % resource_id)
 	var data_entry := _first_child_data(bytes, root_offset, language_directory)
 	if data_entry < 0 or not _has_range(bytes, data_entry, 16):
-		return _failure("PE bitmap resource %d has no language data" % resource_id)
+		return _failure("PE bitmap resource %s has no language data" % resource_id)
 
 	var data_rva := _read_u32(bytes, data_entry)
 	var data_size := _read_u32(bytes, data_entry + 4)
 	var data_offset := _rva_to_offset(bytes, data_rva, section_offset, section_count)
 	if data_offset < 0 or not _has_range(bytes, data_offset, data_size):
-		return _failure("PE bitmap resource %d data is truncated" % resource_id)
+		return _failure("PE bitmap resource %s data is truncated" % resource_id)
 	var dib := bytes.slice(data_offset, data_offset + data_size)
 	if dib.size() < 40:
-		return _failure("PE bitmap resource %d has a short DIB header" % resource_id)
+		return _failure("PE bitmap resource %s has a short DIB header" % resource_id)
 	return {
 		"ok": true,
 		"bytes": dib,
@@ -137,7 +151,7 @@ static func load_numeric_indexed8_many(
 		var resource_id := int(resource_id_value)
 		if resource_id < 0 or resource_id > 0xffff:
 			return _failure("bitmap resource ID is outside the valid range")
-		var loaded := _load_numeric_dib_from_directory(directory, resource_id)
+		var loaded := _load_dib_from_directory(directory, resource_id)
 		var decoded := _decode_indexed8_dib(loaded, resource_id)
 		if not decoded.ok:
 			return decoded
@@ -145,12 +159,12 @@ static func load_numeric_indexed8_many(
 	return {"ok": true, "entries": entries, "error": ""}
 
 
-static func _decode_indexed8_dib(loaded: Dictionary, resource_id: int) -> Dictionary:
+static func _decode_indexed8_dib(loaded: Dictionary, resource_id: Variant) -> Dictionary:
 	if not loaded.ok:
 		return loaded
 	if loaded.bits_per_pixel != 8 or loaded.compression not in [0, 1]:
 		return _failure(
-			"PE bitmap resource %d is not an uncompressed or RLE8 indexed image" % resource_id
+			"PE bitmap resource %s is not an uncompressed or RLE8 indexed image" % resource_id
 		)
 	var dib: PackedByteArray = loaded.bytes
 	var header_size := _read_u32(dib, 0)
@@ -161,11 +175,11 @@ static func _decode_indexed8_dib(loaded: Dictionary, resource_id: int) -> Dictio
 		int((~stored_height + 1) & 0xffffffff) if top_down else stored_height
 	)
 	if width <= 0 or height <= 0 or width > 4096 or height > 4096:
-		return _failure("PE bitmap resource %d has invalid dimensions" % resource_id)
+		return _failure("PE bitmap resource %s has invalid dimensions" % resource_id)
 	var color_count: int = loaded.color_count if loaded.color_count > 0 else 256
 	var pixel_offset := header_size + color_count * 4
 	if header_size < 40 or color_count < 1 or color_count > 256 or not _has_range(dib, 0, pixel_offset) or _read_u16(dib, 12) != 1:
-		return _failure("PE bitmap resource %d has an invalid header or palette" % resource_id)
+		return _failure("PE bitmap resource %s has an invalid header or palette" % resource_id)
 	if loaded.compression == 1:
 		if top_down:
 			return _failure("RLE8 bitmap height must be positive")
@@ -182,7 +196,7 @@ static func _decode_indexed8_dib(loaded: Dictionary, resource_id: int) -> Dictio
 		return decoded
 	var row_stride := int((width + 3) / 4) * 4
 	if not _has_range(dib, pixel_offset, row_stride * height):
-		return _failure("PE bitmap resource %d pixel data is truncated" % resource_id)
+		return _failure("PE bitmap resource %s pixel data is truncated" % resource_id)
 	var pixels := PackedInt32Array()
 	pixels.resize(width * height)
 	for y in height:
@@ -258,6 +272,36 @@ static func _numeric_child_directory(
 		if not target & 0x80000000:
 			return -1
 		return root_offset + int(target & 0x7fffffff)
+	return -1
+
+
+static func _named_child_directory(
+	bytes: PackedByteArray, root_offset: int, directory_offset: int, wanted_name: String
+) -> int:
+	if not _has_range(bytes, directory_offset, 16):
+		return -1
+	var entry_count := _read_u16(bytes, directory_offset + 12) + _read_u16(bytes, directory_offset + 14)
+	var entry_offset := directory_offset + 16
+	if not _has_range(bytes, entry_offset, entry_count * 8):
+		return -1
+	var wanted := wanted_name.to_utf16_buffer()
+	for index in entry_count:
+		var name := _read_u32(bytes, entry_offset + index * 8)
+		if not name & 0x80000000:
+			continue
+		var name_offset := root_offset + int(name & 0x7fffffff)
+		if not _has_range(bytes, name_offset, 2):
+			return -1
+		var byte_count := _read_u16(bytes, name_offset) * 2
+		if not _has_range(bytes, name_offset + 2, byte_count):
+			return -1
+		if bytes.slice(name_offset + 2, name_offset + 2 + byte_count) != wanted:
+			continue
+		var target := _read_u32(bytes, entry_offset + index * 8 + 4)
+		if not target & 0x80000000:
+			return -1
+		var result := root_offset + int(target & 0x7fffffff)
+		return result if _has_range(bytes, result, 16) else -1
 	return -1
 
 
