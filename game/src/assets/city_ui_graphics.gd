@@ -19,6 +19,7 @@ const TERRAIN_LOOSE_ROLES := ["raise", "lower", "stretch", "level", "sea_raise",
 const TERRAIN_WIDTHS := [19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 16, 13, 8]
 const MEDIA_IDS := [261, 262, 263, 264, 265, 266, 267, 268, 269, 270, "WILL0D.BMP", "WILL0U.BMP", "WILL1D.BMP", "WILL1U.BMP", "WILL2D.BMP", "WILL2U.BMP", "WILL3D.BMP", "WILL3U.BMP", "WILL4D.BMP", "WILL4U.BMP"]
 const NOTICE_IDS := [400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411]
+const PRESENTATION_SIZES := {"128.BMP": Vector2i(106, 53), "2000WIN.BMP": Vector2i(371, 331), "ABOUT.BMP": Vector2i(480, 299), "PRESNTS.BMP": Vector2i(238, 198), "TITLESCR.BMP": Vector2i(644, 484), "PAL_LOAD.BMP": Vector2i(101, 101), "PAL_MSTR.BMP": Vector2i(101, 101), "PAL_STTC.BMP": Vector2i(101, 101)}
 var error := ""
 var controls: Dictionary = {}
 var hourglass: Array[Image] = []
@@ -26,6 +27,8 @@ var portraits: Dictionary = {}
 var terrain: Dictionary = {}
 var media: Dictionary = {}
 var notices: Dictionary = {}
+var presentation: Dictionary = {}
+var presentation_palettes: Dictionary = {}
 
 
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> CityUiGraphics:
@@ -67,6 +70,11 @@ static func load_original(reference_root: String) -> CityUiGraphics:
 		var image := _original_image(reference_root, "%d.BMP" % id)
 		if image != null:
 			graphics.notices[id] = image
+	for id in PRESENTATION_SIZES:
+		var image := _original_image(reference_root, id)
+		if image != null:
+			graphics.presentation[id] = image
+			graphics.presentation_palettes[id] = Sc2Palette.load_bmp(reference_root.path_join("BITMAPS/" + id))
 	return graphics
 
 
@@ -79,13 +87,13 @@ static func _original_image(reference_root: String, id: Variant) -> Image:
 
 func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 	if not value is Dictionary or value.is_empty():
-		error = "city_ui must contain controls, hourglass, portraits, terrain, media or notices"
+		error = "city_ui must contain controls, hourglass, portraits, terrain, media, notices or presentation"
 		return
 	for group in value:
-		if group not in ["controls", "hourglass", "portraits", "terrain", "media", "notices"]:
+		if group not in ["controls", "hourglass", "portraits", "terrain", "media", "notices", "presentation"]:
 			error = "Unknown city_ui field: %s" % group
 			return
-		var ids: Array = {"controls": CONTROL_SIZES.keys(), "hourglass": HOURGLASS_IDS, "portraits": PORTRAIT_IDS, "terrain": TERRAIN_SIZES.keys(), "media": MEDIA_IDS, "notices": NOTICE_IDS}[group]
+		var ids: Array = {"controls": CONTROL_SIZES.keys(), "hourglass": HOURGLASS_IDS, "portraits": PORTRAIT_IDS, "terrain": TERRAIN_SIZES.keys(), "media": MEDIA_IDS, "notices": NOTICE_IDS, "presentation": PRESENTATION_SIZES.keys()}[group]
 		var records: Variant = value[group]
 		if not records is Array or records.size() != ids.size():
 			error = "city_ui.%s requires %d records in resource order" % [group, ids.size()]
@@ -110,10 +118,12 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 				size = media_size(ids[i])
 			elif group == "notices":
 				size = Vector2i(154 if ids[i] == 411 else 155, 100)
+			elif group == "presentation":
+				size = PRESENTATION_SIZES[ids[i]]
 			if Vector2i(png.width, png.height) != size or png.pixels.has(-1):
 				error = "city_ui image %s must be opaque and %d by %d" % [str(ids[i]), size.x, size.y]
 				return
-			if group != "notices" and png.palette.colors != palette.colors:
+			if group not in ["notices", "presentation"] and png.palette.colors != palette.colors:
 				error = "city_ui image %s must use the pack palette" % str(ids[i])
 				return
 			var image: Image = Sc2SpriteArchive.entry_from_indices(0, size.x, size.y, png.pixels).create_image(png.palette).image
@@ -127,6 +137,9 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 				terrain[ids[i]] = image
 			elif group == "notices":
 				notices[ids[i]] = image
+			elif group == "presentation":
+				presentation[ids[i]] = image
+				presentation_palettes[ids[i]] = png.palette
 			else:
 				media[ids[i]] = image
 

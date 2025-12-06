@@ -36,6 +36,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_advisor_portraits.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_terrain_media_ui.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_notices.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_city_presentation.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_scurk_presentation.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_scurk_drawing.gd
 

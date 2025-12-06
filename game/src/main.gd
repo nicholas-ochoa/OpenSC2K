@@ -638,6 +638,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	_select_tool_group(selected_group)
 	_update_zoom_controls(map_view.zoom_percent())
 	_build_main_menu()
+	about_dialog.set_control_graphics(original_assets.city_ui_graphics)
 
 
 func _build_main_menu() -> void:

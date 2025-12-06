@@ -17,6 +17,22 @@ def chunk(kind, payload):
 
 
 class GraphicsToolsTest(unittest.TestCase):
+    def test_palette_padding_preserves_encoded_indices(self):
+        header = struct.pack('>IIBBBBB', 2, 1, 8, 3, 0, 0, 0)
+        pixels = zlib.compress(bytes([0, 1, 0]))
+        original = (b'\x89PNG\r\n\x1a\n' + chunk(b'IHDR', header)
+                    + chunk(b'PLTE', bytes([20, 30, 40]) * 2)
+                    + chunk(b'tRNS', b'\0') + chunk(b'IDAT', pixels) + chunk(b'IEND', b''))
+        padded = pad_palette(original)
+        self.assertEqual(pad_palette(padded), padded)
+        self.assertIn(chunk(b'PLTE', bytes([20, 30, 40]) * 2 + bytes(762)), padded)
+        self.assertIn(chunk(b'IDAT', pixels), padded)
+        self.assertIn(chunk(b'tRNS', b'\0'), padded)
+        for broken in [original[:-1], original + b'\0', original[:50] + b'\xff' + original[51:]]:
+            with self.assertRaises(ValueError):
+                pad_palette(broken)
+
+
 
 
     def test_supplied_inventory_matches_recorded_metadata(self):
