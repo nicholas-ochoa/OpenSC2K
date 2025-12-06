@@ -24,6 +24,7 @@ var article_heading: Label
 var article_view: TextEdit
 var close_normal: Texture2D
 var close_pressed: Texture2D
+var control_graphics: CityUiGraphics
 
 
 func _ready() -> void:
@@ -73,6 +74,7 @@ func _ready() -> void:
 
 
 func set_control_graphics(graphics: CityUiGraphics) -> void:
+	control_graphics = graphics
 	close_normal = null
 	close_pressed = null
 	if graphics != null:
@@ -81,6 +83,7 @@ func set_control_graphics(graphics: CityUiGraphics) -> void:
 		if graphics.controls.has("PAPERCLOSED"):
 			close_pressed = ImageTexture.create_from_image(graphics.controls.PAPERCLOSED)
 	get_ok_button().icon = close_normal
+	_refresh_picture()
 
 
 func open_reports(
@@ -118,6 +121,7 @@ func _populate_page() -> void:
 			"",
 			PackedStringArray(),
 		)
+		page.set_picture(0, null)
 		title = "Newspaper"
 		return
 	var old_misc: PackedByteArray = misc_chunk.decoded_payload
@@ -175,8 +179,23 @@ func _populate_page() -> void:
 		headlines,
 	)
 	title = paper_title
+	_refresh_picture()
 	if misc != old_misc:
 		misc_chunk.set_decoded_payload(misc)
+
+
+func _refresh_picture() -> void:
+	if page == null:
+		return
+	var resource_id := 0
+	if city != null and document != null:
+		var misc := document.find_chunk("MISC")
+		if misc != null and misc.decoded_payload.size() == NewsQueue.MISC_SIZE:
+			var story := NewsQueue.story_record(misc.decoded_payload, 0)
+			if not story.is_empty():
+				resource_id = NewspaperPicture.select(int(story.type), session_seed, city.age_in_days(), selected_newspaper)
+	var image: Image = null if control_graphics == null else control_graphics.notices.get(resource_id)
+	page.set_picture(resource_id, image)
 
 
 func _on_paper_selected(paper_index: int) -> void:

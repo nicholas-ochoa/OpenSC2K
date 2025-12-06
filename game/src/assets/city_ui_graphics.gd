@@ -18,12 +18,14 @@ const TERRAIN_ROLES := ["raise", "lower", "stretch", "level", "sea_raise", "sea_
 const TERRAIN_LOOSE_ROLES := ["raise", "lower", "stretch", "level", "sea_raise", "sea_lower", "water", "stream", "tree", "forest", "zoom_out", "zoom_in", "rotate_left", "rotate_right", "center", "help", "hills", "water_amount", "trees_amount"]
 const TERRAIN_WIDTHS := [19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 19, 16, 13, 8]
 const MEDIA_IDS := [261, 262, 263, 264, 265, 266, 267, 268, 269, 270, "WILL0D.BMP", "WILL0U.BMP", "WILL1D.BMP", "WILL1U.BMP", "WILL2D.BMP", "WILL2U.BMP", "WILL3D.BMP", "WILL3U.BMP", "WILL4D.BMP", "WILL4U.BMP"]
+const NOTICE_IDS := [400, 401, 402, 403, 404, 405, 406, 407, 408, 409, 410, 411]
 var error := ""
 var controls: Dictionary = {}
 var hourglass: Array[Image] = []
 var portraits: Dictionary = {}
 var terrain: Dictionary = {}
 var media: Dictionary = {}
+var notices: Dictionary = {}
 
 
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> CityUiGraphics:
@@ -61,6 +63,10 @@ static func load_original(reference_root: String) -> CityUiGraphics:
 		var image := _original_image(reference_root, id)
 		if image != null:
 			graphics.media[id] = image
+	for id in NOTICE_IDS:
+		var image := _original_image(reference_root, "%d.BMP" % id)
+		if image != null:
+			graphics.notices[id] = image
 	return graphics
 
 
@@ -73,13 +79,13 @@ static func _original_image(reference_root: String, id: Variant) -> Image:
 
 func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 	if not value is Dictionary or value.is_empty():
-		error = "city_ui must contain controls, hourglass, portraits, terrain or media"
+		error = "city_ui must contain controls, hourglass, portraits, terrain, media or notices"
 		return
 	for group in value:
-		if group not in ["controls", "hourglass", "portraits", "terrain", "media"]:
+		if group not in ["controls", "hourglass", "portraits", "terrain", "media", "notices"]:
 			error = "Unknown city_ui field: %s" % group
 			return
-		var ids: Array = {"controls": CONTROL_SIZES.keys(), "hourglass": HOURGLASS_IDS, "portraits": PORTRAIT_IDS, "terrain": TERRAIN_SIZES.keys(), "media": MEDIA_IDS}[group]
+		var ids: Array = {"controls": CONTROL_SIZES.keys(), "hourglass": HOURGLASS_IDS, "portraits": PORTRAIT_IDS, "terrain": TERRAIN_SIZES.keys(), "media": MEDIA_IDS, "notices": NOTICE_IDS}[group]
 		var records: Variant = value[group]
 		if not records is Array or records.size() != ids.size():
 			error = "city_ui.%s requires %d records in resource order" % [group, ids.size()]
@@ -102,10 +108,15 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 				size = TERRAIN_SIZES[ids[i]]
 			elif group == "media":
 				size = media_size(ids[i])
-			if Vector2i(png.width, png.height) != size or png.pixels.has(-1) or png.palette.colors != palette.colors:
-				error = "city_ui image %s must be opaque, %d by %d, with the pack palette" % [str(ids[i]), size.x, size.y]
+			elif group == "notices":
+				size = Vector2i(154 if ids[i] == 411 else 155, 100)
+			if Vector2i(png.width, png.height) != size or png.pixels.has(-1):
+				error = "city_ui image %s must be opaque and %d by %d" % [str(ids[i]), size.x, size.y]
 				return
-			var image: Image = Sc2SpriteArchive.entry_from_indices(0, size.x, size.y, png.pixels).create_image(palette).image
+			if group != "notices" and png.palette.colors != palette.colors:
+				error = "city_ui image %s must use the pack palette" % str(ids[i])
+				return
+			var image: Image = Sc2SpriteArchive.entry_from_indices(0, size.x, size.y, png.pixels).create_image(png.palette).image
 			if group == "controls":
 				controls[ids[i]] = image
 			elif group == "hourglass":
@@ -114,6 +125,8 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 				portraits[ids[i]] = image
 			elif group == "terrain":
 				terrain[ids[i]] = image
+			elif group == "notices":
+				notices[ids[i]] = image
 			else:
 				media[ids[i]] = image
 

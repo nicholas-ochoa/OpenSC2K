@@ -56,9 +56,12 @@ func configure(
 	title = dialog_title
 	picture_view.name = image_name
 	message_label.name = message_name
-	if picture != null:
-		picture_view.texture = ImageTexture.create_from_image(picture)
+	set_picture(picture)
 	message_label.text = _normalized_text(message_text)
+
+
+func set_picture(picture: Image) -> void:
+	picture_view.texture = null if picture == null else ImageTexture.create_from_image(picture)
 
 
 func show_message(message_text: String, normalize_newlines := false) -> void:

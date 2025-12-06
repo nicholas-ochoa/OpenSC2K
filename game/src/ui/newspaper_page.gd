@@ -21,8 +21,8 @@ const LAYOUT_RECTS := [
 		Rect2i(426, 300, 214, 100),
 		Rect2i(0, 76, 213, 224),
 		Rect2i(426, 76, 214, 224),
-		Rect2i(213, 76, 107, 100),
-		Rect2i(320, 76, 106, 100),
+		Rect2i(213, 176, 107, 224),
+		Rect2i(320, 176, 106, 224),
 	],
 	[
 		Rect2i(0, 37, 640, 36),
@@ -74,12 +74,15 @@ var price_label: Label
 var opinion_label: Label
 var weather_label: Label
 var story_labels: Array[Label] = []
+var picture_id := 0
+var picture_texture: Texture2D
 
 
 func _ready() -> void:
 	custom_minimum_size = PAGE_SIZE
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	title_label = _new_label("PaperTitle")
 	date_label = _new_label("PaperDate")
 	price_label = _new_label("PaperPrice")
@@ -118,6 +121,16 @@ func headline_for_slot(slot: int) -> String:
 	return story_labels[slot].text
 
 
+func set_picture(resource_id: int, image: Image) -> void:
+	picture_id = resource_id
+	picture_texture = null if image == null else ImageTexture.create_from_image(image)
+	queue_redraw()
+
+
+func shows_picture() -> bool:
+	return FONT_SIZES[layout_index][3] == 0 and picture_texture != null
+
+
 static func section_rect(layout: int, section: int) -> Rect2i:
 	if layout < 0 or layout >= LAYOUT_RECTS.size():
 		return Rect2i()
@@ -135,19 +148,17 @@ static func story_rect(layout: int, slot: int) -> Rect2i:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, Vector2(PAGE_SIZE)), Color("fffdf2"), true)
 	draw_rect(Rect2(Vector2.ZERO, Vector2(PAGE_SIZE)), Color("181818"), false, 1.0)
-	for section in range(3, SECTION_COUNT):
+	# the picture slot is wider than its native bitmap. its bounds overlap a
+	# story column in layout 2, so do not outline that empty allocation
+	for section in range(4, SECTION_COUNT):
 		var rect := Rect2(section_rect(layout_index, section))
 		if rect.size.x > 0.0 and rect.size.y > 0.0:
 			draw_rect(rect.grow(-1.0), Color("696969"), false, 1.0)
-	var picture := Rect2(section_rect(layout_index, 3)).grow(-3.0)
-	draw_rect(picture, Color("d8d8d0"), true)
-	draw_line(picture.position, picture.end, Color("a0a098"), 1.0)
-	draw_line(
-		Vector2(picture.end.x, picture.position.y),
-		Vector2(picture.position.x, picture.end.y),
-		Color("a0a098"),
-		1.0,
-	)
+	if shows_picture():
+		draw_texture(picture_texture, Vector2(section_rect(layout_index, 3).position))
+	elif FONT_SIZES[layout_index][3] > 0:
+		for line in NewspaperPicture.filler_lines(section_rect(layout_index, 3), picture_id):
+			draw_rect(Rect2(line), Color("151515"), true)
 	if hovered_story >= 0:
 		draw_rect(Rect2(story_rect(layout_index, hovered_story)).grow(-2.0), Color("0066cc"), false, 2.0)
 
@@ -197,7 +208,13 @@ func _configure_label(label: Label, section: int) -> void:
 	var inset := 4 if section >= 4 else 2
 	label.position = Vector2(rect.position + Vector2i(inset, inset))
 	label.size = Vector2(rect.size - Vector2i(inset * 2, inset * 2))
-	label.add_theme_font_size_override("font_size", maxi(9, FONT_SIZES[layout_index][section]))
+	var font_size := maxi(9, FONT_SIZES[layout_index][section])
+	label.add_theme_font_size_override("font_size", font_size)
+	# godot font metrics can exceed the original windows section height
+	# keep at least one complete line visible inside each fixed source rect
+	while font_size > 1 and label.get_line_height() > label.size.y:
+		font_size -= 1
+		label.add_theme_font_size_override("font_size", font_size)
 	match ALIGNMENTS[layout_index][section]:
 		1:
 			label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
