@@ -42,6 +42,7 @@ var large_sprites: Sc2SpriteArchive
 var small_medium_sprites: Sc2SpriteArchive
 var scurk_graphics: ScurkGraphics
 var city_ui_graphics: CityUiGraphics
+var desktop_graphics: DesktopGraphics
 var error := ""
 
 
@@ -72,6 +73,7 @@ static func required_string_ids() -> PackedInt32Array:
 
 func load_ui(reference_root: String) -> void:
 	city_ui_graphics = CityUiGraphics.load_original(reference_root)
+	desktop_graphics = DesktopGraphics.load_original(reference_root)
 	newspaper_data = NewspaperLoader.load_path(
 		reference_root.path_join("DATA/DATA_USA.DAT"),
 		reference_root.path_join("DATA/DATA_USA.IDX"),

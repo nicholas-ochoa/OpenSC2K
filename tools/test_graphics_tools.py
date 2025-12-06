@@ -7,6 +7,7 @@ import zlib
 from pathlib import Path
 
 from inventory_graphics import build_inventory
+from audit_pointer_resources import build_audit
 from pad_png_palette import pad_palette
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -17,6 +18,12 @@ def chunk(kind, payload):
 
 
 class GraphicsToolsTest(unittest.TestCase):
+    def test_desktop_resource_audit_and_pack_coverage(self):
+        expected = json.loads((ROOT / 'data/formats/desktop-resource-audit.json').read_text())
+        self.assertEqual(build_audit(ROOT / 'references'), expected)
+        self.assertEqual(len(expected['images']), 153)
+        self.assertEqual(len(expected['groups']), 144)
+
     def test_palette_padding_preserves_encoded_indices(self):
         header = struct.pack('>IIBBBBB', 2, 1, 8, 3, 0, 0, 0)
         pixels = zlib.compress(bytes([0, 1, 0]))

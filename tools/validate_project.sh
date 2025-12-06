@@ -27,6 +27,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/graphics_pack_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/windows_bitmap_rle8_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/pe_named_bitmap_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/pe_icon_cursor_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_overlays.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_ui_strips.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_neighbors.gd
@@ -37,6 +38,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_terrain_media_ui.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_notices.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_city_presentation.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_desktop.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_scurk_presentation.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_scurk_drawing.gd
 
