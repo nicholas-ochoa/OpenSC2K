@@ -126,7 +126,9 @@ func play_sound_events(
 		if sound_id < 0:
 			continue
 		var stream := wave_stream_cache.get(sound_id) as AudioStreamWAV
-		if stream == null or not wave_sound_gate.request(sound_id):
+		if stream == null or not wave_sound_gate.request(
+			sound_id, sound_event is Dictionary and sound_event.has("thing_type")
+		):
 			continue
 		var player := AudioStreamPlayer.new()
 		player.stream = stream

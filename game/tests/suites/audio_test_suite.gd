@@ -25,6 +25,7 @@ func test_music(reference_root: String) -> void:
 func test_sound_rules() -> void:
 	_test_tool_sound_rules()
 	_test_wave_sound_gate()
+	_test_ambient_sound_gate()
 
 
 func _test_music_director() -> void:
@@ -258,6 +259,23 @@ func _test_wave_sound_gate() -> void:
 		and gate.suppressed_count == 2,
 		"Stopping WAVE playback clears state and preserves debug counters",
 	)
+
+
+func _test_ambient_sound_gate() -> void:
+	var gate := WaveSounds.new()
+	_check(gate.request(510, true) and gate.request(517, true),
+		"Helicopter and ship ambient sounds can each start immediately")
+	gate.request(500)
+	_check(not gate.request(510, true) and not gate.request(517, true),
+		"Other sounds cannot bypass per-sound ambient debounce")
+	gate.advance(14999.0)
+	_check(not gate.request(510, true), "Ambient sound waits for the full 15 seconds")
+	gate.advance(1.0)
+	_check(gate.request(510, true), "Ambient sound can repeat at exactly 15 seconds")
+	gate.advance(600.0)
+	_check(gate.request(510), "Player feedback bypasses the ambient delay")
+	gate.stop()
+	_check(gate.request(510, true), "Stopping effects clears ambient replay state")
 
 
 func _check(condition: bool, message: String) -> void:

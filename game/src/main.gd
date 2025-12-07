@@ -587,6 +587,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	map_view.selection_finished.connect(_on_map_selection_finished)
 	map_view.selection_canceled.connect(_on_map_selection_canceled)
 	map_view.query_requested.connect(_open_query)
+	map_view.center_requested.connect(_center_map_on_tile)
 	map_view.zoom_changed.connect(_on_city_zoom_changed)
 	map_view.viewport_changed.connect(_refresh_city_map_viewport)
 	city_status_bar = city_workspace.status_bar
@@ -3563,10 +3564,7 @@ func _apply_map_selection(
 		)
 		return
 	if selected_group == 17:
-		if map_view.center_on_tile(finish):
-			_play_tool_success_sound(17, 0)
-			status_label.remove_theme_color_override("font_color")
-			status_label.text = "Centered the map on tile %d, %d." % [finish.x, finish.y]
+		_center_map_on_tile(finish)
 		return
 	if selected_group == 16:
 		_open_query(finish)
@@ -4612,9 +4610,16 @@ func _refresh_status_summary(
 	city_status_bar.refresh_tooltips()
 
 
+func _center_map_on_tile(point: Vector2i) -> void:
+	if map_view.center_on_tile(point):
+		_play_tool_success_sound(17, 0)
+		status_label.remove_theme_color_override("font_color")
+		status_label.text = "Centered the map on tile %d, %d." % [point.x, point.y]
+
+
 func _show_error(message: String) -> void:
 	status_label.text = message
-	status_label.add_theme_color_override("font_color", Color("ff877d"))
+	status_label.add_theme_color_override("font_color", Color("800000"))
 
 
 func _debug_metrics() -> Dictionary:

@@ -11,6 +11,7 @@ signal selection_started()
 signal selection_finished()
 signal selection_canceled()
 signal query_requested(point: Vector2i)
+signal center_requested(point: Vector2i)
 signal zoom_changed(percent: int)
 signal viewport_changed()
 
@@ -83,6 +84,8 @@ var transient_effects: Array[Dictionary] = []
 var dynamic_sprites: Array[Dictionary] = []
 var sign_occlusion_visuals: Dictionary = {}
 var _panning := false
+var _middle_click_pending := false
+var _middle_press_position := Vector2.ZERO
 var _effect_generation := 0
 var _shake_generation := 0
 var _shake_offset := Vector2.ZERO
@@ -778,6 +781,17 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 		accept_event()
 		return
 	if event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:
+		if event.button_index == MOUSE_BUTTON_MIDDLE:
+			if event.pressed:
+				_middle_click_pending = true
+				_middle_press_position = event.position
+			elif _middle_click_pending:
+				var tile := _tile_at(event.position)
+				if tile.x >= 0 and event.position.distance_to(_middle_press_position) <= 4.0:
+					center_requested.emit(tile)
+				_middle_click_pending = false
+		else:
+			_middle_click_pending = false
 		_panning = event.pressed
 		accept_event()
 		return
@@ -829,7 +843,10 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		) == 0
 	):
 		_panning = false
+		_middle_click_pending = false
 	if _panning:
+		if event.position.distance_to(_middle_press_position) > 4.0:
+			_middle_click_pending = false
 		source_center -= event.relative / _view_scale()
 		_clamp_source_center()
 		_sync_base_layer()

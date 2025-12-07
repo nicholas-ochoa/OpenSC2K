@@ -189,12 +189,17 @@ static func apply(
 		}
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 	var graded_tiles := 0
+	var new_tiles := planned.size()
 	if surface_mode:
 		for point in planned:
-			var terrain_id := int(terrain[point.x * CityState.MAP_SIZE + point.y])
+			var index := point.x * CityState.MAP_SIZE + point.y
+			if _reuses_surface(buildings[index], mode):
+				new_tiles -= 1
+				continue
+			var terrain_id := int(terrain[index])
 			if terrain_id < 0x30 and TERRAIN_REQUIRES_GRADING[terrain_id & 0x0f]:
 				graded_tiles += 1
-	var listed_dry_cost := planned.size() * int(tool.cost) + graded_tiles * 25
+	var listed_dry_cost := new_tiles * int(tool.cost) + graded_tiles * 25
 	var dry_cost := 0 if free_mode else listed_dry_cost
 	if city.funds() < dry_cost:
 		return {"ok": false, "error": "insufficient funds", "cost": dry_cost}
@@ -821,12 +826,20 @@ static func _tile_is_eligible(
 	if terrain_id < 0x40 and TERRAIN_BLOCKS_DIRECTION[(terrain_id & 0x0f) * 4 + direction]:
 		return false
 	var building := int(buildings[index])
+	if _reuses_surface(building, mode):
+		return true
 	if building == 0x05 or building == 0x0d or building > 0x50:
 		return false
 	if building <= 0x0c:
 		return true
 	var directional_id := building + (direction & 1)
 	return directional_id == 0x0f or directional_id == 0x1e or directional_id == 0x2d or directional_id == 0x4a
+
+
+static func _reuses_surface(tile_id: int, mode: int) -> bool:
+	return (mode == MODE_ROAD and _road_connects(tile_id)) or (
+		mode == MODE_RAIL and _rail_connects(tile_id)
+	)
 
 
 static func _place_surface(
@@ -841,6 +854,8 @@ static func _place_surface(
 	text_overlays := PackedByteArray()
 ) -> void:
 	var index := point.x * CityState.MAP_SIZE + point.y
+	if _reuses_surface(buildings[index], mode):
+		return
 	_grade_surface_terrain(terrain, flags, point, direction)
 	var old_tile := int(buildings[index])
 	var new_tile := _surface_replacement(old_tile, mode)

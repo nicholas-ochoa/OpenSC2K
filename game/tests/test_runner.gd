@@ -2128,6 +2128,18 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and map_control._dynamic_canvas is Node2D,
 		"Map control batches 1,500 dynamic sprites in one render node",
 	)
+	var center_requests: Array[Vector2i] = []
+	map_control.center_requested.connect(func(point: Vector2i) -> void: center_requests.append(point))
+	var center_click := InputEventMouseButton.new()
+	center_click.button_index = MOUSE_BUTTON_MIDDLE
+	center_click.position = map_control.size * 0.5
+	center_click.pressed = true
+	map_control._handle_mouse_button(center_click)
+	_check(center_requests.is_empty(), "Middle-button press waits for release before Center")
+	center_click.pressed = false
+	map_control._handle_mouse_button(center_click)
+	_check(center_requests == [center_tile] and selection_complete_signals[0] == 1,
+		"Middle click requests Center without applying the selected build tool")
 	var visual_revision := map_control._dynamic_canvas.visual_revision
 	var dynamic_position := map_control._dynamic_canvas.position
 	var middle_press := InputEventMouseButton.new()
@@ -2136,6 +2148,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control._handle_mouse_button(middle_press)
 	var pan_motion := InputEventMouseMotion.new()
 	pan_motion.relative = Vector2(12, 8)
+	pan_motion.position = Vector2(12, 8)
 	pan_motion.button_mask = MOUSE_BUTTON_MASK_MIDDLE
 	map_control._handle_mouse_motion(pan_motion)
 	_check(
@@ -2144,6 +2157,12 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and map_control._dynamic_canvas.position != dynamic_position,
 		"Middle-button panning moves the cached dynamic canvas without rebuilding it",
 	)
+	var middle_release := InputEventMouseButton.new()
+	middle_release.button_index = MOUSE_BUTTON_MIDDLE
+	middle_release.position = pan_motion.position
+	map_control._handle_mouse_button(middle_release)
+	_check(center_requests.size() == 1, "Middle drag release does not invoke Center")
+	map_control._handle_mouse_button(middle_press)
 	pan_motion.button_mask = 0
 	map_control._handle_mouse_motion(pan_motion)
 	_check(
@@ -13526,6 +13545,31 @@ func _test_network_command(reference_root: String) -> void:
 		_check(city.building_id(x, 10) == 0x1e, "Road drag stores a connected road shape")
 	_check(Networks.undo(city, road).ok, "Road drag can be undone")
 	_check(city.funds() == 10000 and city.building_id(12, 10) == 0, "Road undo restores funds and tiles")
+
+	for group in [6, 7]:
+		var tile_cost := 10 if group == 6 else 25
+		var base := Networks.apply(city, group, 0, Vector2i(50, 48), Vector2i(50, 52))
+		_check(base.ok, "Reuse fixture builds its existing network")
+		var before: PackedByteArray = document.serialize().data
+		for endpoints in [
+			[Vector2i(50, 50), Vector2i(53, 50)],
+			[Vector2i(47, 50), Vector2i(50, 50)],
+			[Vector2i(48, 50), Vector2i(52, 50)],
+			[Vector2i(50, 48), Vector2i(50, 52)],
+			[Vector2i(50, 50), Vector2i(50, 50)],
+		]:
+			var command := Networks.apply(city, group, 0, endpoints[0], endpoints[1])
+			var new_count := 0 if endpoints[0].x == endpoints[1].x else absi(endpoints[1].x - endpoints[0].x)
+			_check(command.ok and not command.get("stopped_early", true),
+				"Road and rail routes start, end, cross, retrace and click existing networks")
+			_check(command.get("cost", -1) == new_count * tile_cost,
+				"Existing network tiles have no repeat construction charge")
+			if endpoints[0].x == 48:
+				_check(city.building_id(50, 50) == (0x2b if group == 6 else 0x3a),
+					"Crossing the same network forms a four-way junction")
+			_check(Networks.undo(city, command).ok and document.serialize().data == before,
+				"Reused network route Undo restores exact bytes")
+		_check(Networks.undo(city, base).ok, "Reuse fixture restores the original map")
 
 	var road_connection_request := Networks.apply(
 		city, 6, 0, Vector2i(124, 40), Vector2i(127, 40)
