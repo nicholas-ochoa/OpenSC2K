@@ -220,6 +220,7 @@ var city_map_window
 var main_menu: MainMenuControl
 var settings_dialog
 var scurk_editor: ScurkEditorControl
+var desktop_presentation: CityDesktopPresentation
 var scurk_place_print: ScurkPlacePrintControl
 var scurk_print: ScurkPrintControl
 var pending_scurk_print_options: Dictionary = {}
@@ -282,6 +283,13 @@ func _initialize_runtime() -> void:
 	library_texts = original_assets.library_texts
 	scurk_graphics = original_assets.scurk_graphics
 	_build_interface(original_assets)
+	desktop_presentation = CityDesktopPresentation.new()
+	desktop_presentation.map_view = map_view
+	desktop_presentation.editor = scurk_editor
+	desktop_presentation.place_print = scurk_place_print
+	desktop_presentation.print_dialog = scurk_print
+	add_child(desktop_presentation)
+	desktop_presentation.set_graphics(original_assets.desktop_graphics)
 	if not original_assets.error.is_empty():
 		_show_error(original_assets.error)
 		return
@@ -3440,12 +3448,18 @@ func _update_edit_state() -> void:
 	if map_view == null:
 		return
 	var state: Dictionary
+	map_view.desktop_cursor_app = "city"
+	map_view.desktop_cursor_role = DesktopCursorRules.city_tool(selected_group, selected_subtool)
 	if scurk_place_print != null and scurk_place_print.visible:
+		map_view.desktop_cursor_app = "scurk"
 		if scurk_place_print.is_object_mode():
+			map_view.desktop_cursor_role = 9
 			state = ToolState.scurk_object(
 				city, overlay_mode, scurk_place_print.selected_tile_id
 			)
 		else:
+			var cursor_tool := scurk_place_print.selected_edit_tool()
+			map_view.desktop_cursor_role = DesktopCursorRules.city_tool(cursor_tool.group, cursor_tool.subtool)
 			state = ToolState.scurk_tool(
 				city, scurk_place_print.selected_edit_tool()
 			)
