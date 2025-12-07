@@ -1986,7 +1986,21 @@ func _test_sprite_archives(reference_root: String) -> void:
 		== [center_tile, Vector2i(64, 65), Vector2i(65, 64), Vector2i(65, 65)],
 		"Point preview starts a two-tile building footprint at the pointer",
 	)
-	map_control.selection_mode = "path"
+	map_control.set_edit_enabled(true, "path")
+	map_control.selection_start = Vector2i(-1, -1)
+	map_control.selection_end = Vector2i(-1, -1)
+	map_control.hover_tile = center_tile
+	_check(
+		map_control._selection_source_polygons() == [
+			IsometricRenderer.terrain_surface_polygon(starter, center_tile.x, center_tile.y)
+		],
+		"An idle network tool highlights the exact hovered terrain tile",
+	)
+	map_control.set_edit_enabled(false)
+	_check(map_control._selection_source_polygons().is_empty(),
+		"Disabling network input clears its hover highlight")
+	map_control.set_edit_enabled(true, "path")
+	map_control.selection_start = center_tile
 	map_control.selection_end = center_tile + Vector2i(3, 2)
 	map_control._rebuild_selection_path()
 	var preview_path := map_control.selection_tiles()

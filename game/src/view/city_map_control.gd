@@ -555,6 +555,8 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 		tiles = point_preview_tiles(preview_point)
 	elif selection_start.x >= 0 and selection_end.x >= 0:
 		tiles = selection_path
+	elif edit_enabled and selection_mode == "path" and hover_tile.x >= 0:
+		tiles = [hover_tile]
 	var polygons: Array[PackedVector2Array] = []
 	for tile in tiles:
 		var polygon := Renderer.terrain_surface_polygon(city, tile.x, tile.y)
