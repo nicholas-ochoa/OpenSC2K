@@ -4258,17 +4258,17 @@ func _test_scenarios(reference_root: String) -> void:
 					"%s rendered picture keeps its dimensions" % path.get_file(),
 				)
 				_check(
-					image.get_pixel(0, picture.height - 1).is_equal_approx(
+					image.get_pixel(0, 0).is_equal_approx(
 						scenario_palette.color(picture.pixels[0])
 					),
-					"%s first stored picture row renders at the bottom" % path.get_file(),
+					"%s first stored picture row renders at the top" % path.get_file(),
 				)
 				var last_index: int = picture.pixels.size() - 1
 				_check(
-					image.get_pixel(picture.width - 1, 0).is_equal_approx(
+					image.get_pixel(picture.width - 1, picture.height - 1).is_equal_approx(
 						scenario_palette.color(picture.pixels[last_index])
 					),
-					"%s last stored picture row renders at the top" % path.get_file(),
+					"%s last stored picture row renders at the bottom" % path.get_file(),
 				)
 		var template := scenario.template_fields()
 		_check(template.ok, "%s template parses: %s" % [path.get_file(), template.error])

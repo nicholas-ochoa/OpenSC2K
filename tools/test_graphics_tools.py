@@ -9,6 +9,7 @@ from pathlib import Path
 from inventory_graphics import build_inventory
 from audit_pointer_resources import build_audit
 from audit_check_controls import build_audit as build_check_audit
+from audit_scenario_pictures import build_audit as build_scenario_audit
 from pad_png_palette import pad_palette
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -19,6 +20,10 @@ def chunk(kind, payload):
 
 
 class GraphicsToolsTest(unittest.TestCase):
+    def test_scenario_picture_audit_and_coverage(self):
+        expected = json.loads((ROOT / 'data/formats/scenario-picture-audit.json').read_text())
+        self.assertEqual(build_scenario_audit(ROOT / 'references'), expected)
+
     def test_check_sheet_audit_and_complete_bitmap_coverage(self):
         expected = json.loads((ROOT / 'data/formats/check-control-audit.json').read_text())
         self.assertEqual(json.loads(json.dumps(build_check_audit(ROOT / 'references'))), expected)

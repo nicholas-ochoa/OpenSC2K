@@ -88,6 +88,7 @@ var current_save_path := ""
 var current_city_saved_once := false
 var palette: Sc2Palette
 var scenario_palette: Sc2Palette
+var scenario_graphics: ScenarioGraphics
 var scurk_graphics: ScurkGraphics
 var palette_index_encoding: Sc2Palette
 var large_sprites: Sc2SpriteArchive
@@ -299,6 +300,7 @@ func _initialize_runtime() -> void:
 		return
 	palette = original_assets.palette
 	scenario_palette = original_assets.scenario_palette
+	scenario_graphics = original_assets.scenario_graphics
 	palette_index_encoding = Palette.index_encoding()
 	_update_palette_cycle_texture()
 	base_large_sprites = original_assets.large_sprites
@@ -2095,7 +2097,7 @@ func _restore_military_proposal_dialog() -> void:
 
 
 func _open_scenario_intro(scenario: ScenarioState) -> void:
-	var rendered_picture := scenario.picture_image(scenario_palette)
+	var rendered_picture := ScenarioGraphics.render(scenario, scenario_palette, scenario_graphics)
 	var picture: Image = rendered_picture.image if rendered_picture.ok else null
 	var name := city.city_name()
 	if name.is_empty():

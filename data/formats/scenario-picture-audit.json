@@ -1,0 +1,203 @@
+{
+  "evidence": "confirmed: supplied payloads, dimensions, terminators and hashes; no raster or text export",
+  "records": [
+    {
+      "source": "SCENARIO/ATLANTA.SCN",
+      "source_sha256": "7b5360aa129ba442b009f313c672de68cd85d5af1028ba24112886092b8362bb",
+      "id": "ATLANTA",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "4f1229d7b69f7a6ee77558df18ec9913494c440b840fe5e3439ce8d6671175a6",
+      "top_down_indices_sha256": "4eed26e2e8d4cc2b046619d4459f284b53ced344ea5705b56d71473e43203436",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/BARCELON.SCN",
+      "source_sha256": "1fb7ad5ef36f8508c7899fddc0889b6603dfe2a7fff6b8b51975644159549e35",
+      "id": "BARCELON",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "eff357c78270bf03f66dee71f6ff498fe04b6e52de0b3685026e7a8e0e37fe26",
+      "top_down_indices_sha256": "7f328115441a897805d00f7042ef1e64f1025790a5a7e3ceabcad01ef1db5e6b",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/CHARLEST.SCN",
+      "source_sha256": "5e0a2a240fe09c717076aac9e8ea33f70fc8770c3213bd75879afd70e9aa3345",
+      "id": "CHARLEST",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "c0f206924b147d01138b34ac6395d18a56741925c7d8b16d154bf36c01f4aad6",
+      "top_down_indices_sha256": "1a11459b99fa5f651c6aa92048e33d8e4602730fac10db577858253882da16ae",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/CHICAGO.SCN",
+      "source_sha256": "eb739217397ded2347bc4fbcc0be551df792a5ea551b7b7432dd3429148aa1fe",
+      "id": "CHICAGO",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "10ea151e78e950b8b2dfe15dcf600f24f657fcb22ba78bd737ba621695d30507",
+      "top_down_indices_sha256": "ec24b976ac9764418e43c45bc5687b848348fb095b07a9375e63955e15ee8571",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/DAVENPOR.SCN",
+      "source_sha256": "a545e0ed789df221837c7eb334177ab285c186e17b5a4a388fcf24c1ceab8fb5",
+      "id": "DAVENPOR",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "2e4492293e39e24ef88bb6a56d2919732df61da3f6533c82d7166c3c64dceb55",
+      "top_down_indices_sha256": "bb151ea16e01e21507ae4c1b10578fc039b696984d08eee46cf7a741309ae481",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/DULLSVIL.SCN",
+      "source_sha256": "2ee0f118ad0f3ee60a6cb1dcc86819baac38f428d8dba8c25bf043ae6efe7acb",
+      "id": "DULLSVIL",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "b6ca4fdeea5a0d49f3adcaababf8e31ca9dce61946a752d805d61b300dbd7ede",
+      "top_down_indices_sha256": "7db83f413cf33cef0edcb386c253c8d770cb674bb67d904e27bd6e2e9453943b",
+      "zero_terminators": 0,
+      "ff_terminators": 65
+    },
+    {
+      "source": "SCENARIO/FLINT.SCN",
+      "source_sha256": "3a9f034898de0570f9229fd52030afa866f172304fc519254e522b8fcd3c656d",
+      "id": "FLINT",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "6e7b58c4e91ae9f0b6358c9b5e28d44a6e0f1ad21313501fe8122680bc46a95a",
+      "top_down_indices_sha256": "df1f0c977670631b3d6d91b7387d081bae4843fa32b4aded20577ace7078e3ad",
+      "zero_terminators": 0,
+      "ff_terminators": 65
+    },
+    {
+      "source": "SCENARIO/HOLLYWOO.SCN",
+      "source_sha256": "f033b674f333a30c35abae82a84354be1b738b5ac125f74a11788e89feae5600",
+      "id": "HOLLYWOO",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "e7a0c957080e3c64b8aff7ddcacddc5d5d3a15e1e72fde4f7fced9c20da71608",
+      "top_down_indices_sha256": "814bd384477b899561fcd374be063b6ff241b9e6d6932d1f0209ec743132afb6",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/HOMESTEA.SCN",
+      "source_sha256": "afc22cba7be24ddff9eb828c4a05624fb51cd24765cb1708a3348c2d8d46b28b",
+      "id": "HOMESTEA",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "e0a9c99d08bf0679ed68ce025c86f37124c133ae502ce0266c43cb633c24252f",
+      "top_down_indices_sha256": "cf955365e6e5caf5f607041188717a97e6a45fb4eaf0e4ad92c7768017046b94",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/LASVEGAS.SCN",
+      "source_sha256": "4809e56b5c69f9a79f2b052507af74fc6378f34d0b99fb413972ff3497479398",
+      "id": "LASVEGAS",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "1548ee40b4c65c3a6fe67fb703aaf9122a1f6dba45d769d1b77b19af666d5dc6",
+      "top_down_indices_sha256": "d0b5712ec060bc4f6a8636f48f77a6f82f2a09f8ccc4bc0b47b18bd2f8176fd2",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/MALIBU.SCN",
+      "source_sha256": "cf126adde51368e70a8b18b4d578a6ba6ae063793e634ad0248ce4d139ca1b05",
+      "id": "MALIBU",
+      "width": 65,
+      "height": 66,
+      "pict_sha256": "9d85ca10ad72b877f8073a01bce2c060d8a636db6b8af78c0318dd55f21d381e",
+      "top_down_indices_sha256": "b0e96b0b992134bdce5453cad789065e834d8e24b1c7a7773fea7eec5afebe48",
+      "zero_terminators": 66,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/MANHATTA.SCN",
+      "source_sha256": "7a2d71103e9e7bc1343797c8e38ea62835e5b003405359287a7ed5dc6b804e33",
+      "id": "MANHATTA",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "a2b6622d4cf32e7605aa443dc63ee7ae96e8eb689cd66cb94b67df4fad0c2038",
+      "top_down_indices_sha256": "e38c2061cc46d711169198a7ab88bde7e400d757eb9a415218628454877028aa",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/OAKLAND.SCN",
+      "source_sha256": "75664666ab97f1c754dd416287e133dba0219adb1c4dbccc50f82d10b6c94e33",
+      "id": "OAKLAND",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "067c0b4b69ac6640974282ac03064e5d2361f7dd921ba7f3846c7126ac6874c1",
+      "top_down_indices_sha256": "83f5b490a79234e14e6576909d37b12de0f5c5e5f731339e3dbfb8b52b28f6dd",
+      "zero_terminators": 0,
+      "ff_terminators": 65
+    },
+    {
+      "source": "SCENARIO/PARIS.SCN",
+      "source_sha256": "afe5a2a618b32e58c9f01e4cc979760e885969dd98b8a9255f42f38cca98e823",
+      "id": "PARIS",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "ebffe59991d69c30e6e47077e08227af87cdb3feaa0b2e6b4e592dba8ab531c3",
+      "top_down_indices_sha256": "c40e625336e350c1cad08f408f1b7db6197ead29f22edcc16a31d59b50978d5f",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/PORTLAND.SCN",
+      "source_sha256": "fc381cffad5406012bb22969cc74de477d218ad0fafa6e25d4c926aca3f9b575",
+      "id": "PORTLAND",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "597cf5fbae7dce18abae1bf866c05ad6315ca346d785a8a3f936ecedbee01a6e",
+      "top_down_indices_sha256": "fd4acc3e0300802092ea3c271766330d798a6f68460fa357b8698a13814a6110",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/SANFRANC.SCN",
+      "source_sha256": "e65f96816c35ca9dd449b0b5be27be0261e6ee23f6351c0b544ba7ea2b9e4de7",
+      "id": "SANFRANC",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "435178bae3c07bc0b825ae797ac7bb782e5b360037c478108d5fff0742e0415a",
+      "top_down_indices_sha256": "e13ed8ce7eaf89e9fb5aad0484c63bb982c0af4b30423a29ef4434c43919e271",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/SILICONV.SCN",
+      "source_sha256": "07899d11a514c74e4bda89307e8570b9133c21aad6c9d0d1db8028819b2cb9d9",
+      "id": "SILICONV",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "40092dbe80824bc5be35a33ba116d632676295e3664325fa2addaf029b11c0d6",
+      "top_down_indices_sha256": "ee0c61db29a0291a98204e306295b87f3f54977f608af2222bc9553b6a8eaabd",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    },
+    {
+      "source": "SCENARIO/WASHINGT.SCN",
+      "source_sha256": "b391d6b6ddccef916449192aed7cc3cb6ee54cd927823df3802baefc3b4144dc",
+      "id": "WASHINGT",
+      "width": 65,
+      "height": 65,
+      "pict_sha256": "7626b72c89273e9128ebf6135b8925113a132704aa7a23f56c14e2fa018501aa",
+      "top_down_indices_sha256": "53cc18421ce4e8c97d183e30a13c45dcb0e41c8e482046e1f56451c71f764c36",
+      "zero_terminators": 65,
+      "ff_terminators": 0
+    }
+  ]
+}

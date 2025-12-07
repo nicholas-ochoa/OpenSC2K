@@ -43,6 +43,7 @@ var small_medium_sprites: Sc2SpriteArchive
 var scurk_graphics: ScurkGraphics
 var city_ui_graphics: CityUiGraphics
 var desktop_graphics: DesktopGraphics
+var scenario_graphics: ScenarioGraphics
 var error := ""
 
 

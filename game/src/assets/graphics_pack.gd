@@ -14,6 +14,7 @@ var ui_images: Dictionary = {}
 var scurk_graphics: ScurkGraphics
 var city_ui_graphics: CityUiGraphics
 var desktop_graphics: DesktopGraphics
+var scenario_graphics: ScenarioGraphics
 var _root := ""
 
 
@@ -34,6 +35,7 @@ func apply_to(assets: OriginalGameAssets) -> bool:
 	assets.scurk_graphics = scurk_graphics
 	assets.city_ui_graphics = city_ui_graphics
 	assets.desktop_graphics = desktop_graphics
+	assets.scenario_graphics = scenario_graphics
 	for field in ui_images:
 		assets.set(field, ui_images[field])
 	return true
@@ -101,6 +103,10 @@ func _load() -> void:
 		desktop_graphics = DesktopGraphics.load_manifest(manifest.desktop, _read_png, palette)
 		if error.is_empty() and not desktop_graphics.error.is_empty():
 			_fail(desktop_graphics.error)
+	if error.is_empty() and manifest.has("scenario_pictures"):
+		scenario_graphics = ScenarioGraphics.load_manifest(manifest.scenario_pictures, _read_png, scenario_palette)
+		if error.is_empty() and not scenario_graphics.error.is_empty():
+			_fail(scenario_graphics.error)
 
 
 func _load_sprites(records: Variant, archive: Sc2SpriteArchive) -> bool:

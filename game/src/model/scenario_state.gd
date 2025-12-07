@@ -137,12 +137,11 @@ func picture_image(palette: Sc2Palette) -> Dictionary:
 	var height: int = picture.height
 	var pixels: PackedByteArray = picture.pixels
 	var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
-	# the windows loader copies the first stored row to the base of a
-	# positive-height dib. gdi displays that row at the bottom
+	# 004745d0 sets the dib orientation to -1. 00474bc0 multiplies the
+	# height by that sign before createdibsection, so stored rows are top-down
 	for source_y in height:
-		var destination_y := height - source_y - 1
 		for x in width:
-			image.set_pixel(x, destination_y, palette.color(pixels[source_y * width + x]))
+			image.set_pixel(x, source_y, palette.color(pixels[source_y * width + x]))
 	return {
 		"ok": true,
 		"width": width,
