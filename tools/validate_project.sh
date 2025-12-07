@@ -36,6 +36,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/scurk_graphics_pack_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_scurk_controls.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_scurk_workspace.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_check_controls.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_advisor_portraits.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_terrain_media_ui.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/audit_reference_notices.gd

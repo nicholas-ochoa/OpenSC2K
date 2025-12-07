@@ -538,6 +538,7 @@ func _consume_simulation_result(result: Dictionary) -> void:
 
 func _build_interface(original_assets: OriginalGameAssets) -> void:
 	theme = ClassicStyle.create_theme()
+	CheckControlGraphics.apply_theme(theme, original_assets.city_ui_graphics)
 	city_workspace = CityWorkspaceView.new(original_assets.toolbar_art)
 	add_child(city_workspace)
 
@@ -669,6 +670,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	_update_zoom_controls(map_view.zoom_percent())
 	_build_main_menu()
 	about_dialog.set_control_graphics(original_assets.city_ui_graphics)
+	CheckControlGraphics.apply_theme(settings_dialog.theme, original_assets.city_ui_graphics)
 
 
 func _build_main_menu() -> void:

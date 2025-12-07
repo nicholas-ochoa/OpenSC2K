@@ -29,6 +29,8 @@ var media: Dictionary = {}
 var notices: Dictionary = {}
 var presentation: Dictionary = {}
 var presentation_palettes: Dictionary = {}
+var check_sheet: Image
+var check_system_colors := false
 
 
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> CityUiGraphics:
@@ -39,6 +41,8 @@ static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palett
 
 static func load_original(reference_root: String) -> CityUiGraphics:
 	var graphics := CityUiGraphics.new()
+	graphics.check_sheet = PeBitmapResource.load_named(reference_root.path_join("SIMCITY.EXE"), CheckControlGraphics.RESOURCE_ID).get("image")
+	graphics.check_system_colors = true
 	for id in CONTROL_SIZES:
 		var image: Image
 		if id.ends_with(".BMP"):
@@ -87,13 +91,13 @@ static func _original_image(reference_root: String, id: Variant) -> Image:
 
 func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 	if not value is Dictionary or value.is_empty():
-		error = "city_ui must contain controls, hourglass, portraits, terrain, media, notices or presentation"
+		error = "city_ui must contain controls, hourglass, portraits, terrain, media, notices, presentation or checks"
 		return
 	for group in value:
-		if group not in ["controls", "hourglass", "portraits", "terrain", "media", "notices", "presentation"]:
+		if group not in ["controls", "hourglass", "portraits", "terrain", "media", "notices", "presentation", "checks"]:
 			error = "Unknown city_ui field: %s" % group
 			return
-		var ids: Array = {"controls": CONTROL_SIZES.keys(), "hourglass": HOURGLASS_IDS, "portraits": PORTRAIT_IDS, "terrain": TERRAIN_SIZES.keys(), "media": MEDIA_IDS, "notices": NOTICE_IDS, "presentation": PRESENTATION_SIZES.keys()}[group]
+		var ids: Array = {"controls": CONTROL_SIZES.keys(), "hourglass": HOURGLASS_IDS, "portraits": PORTRAIT_IDS, "terrain": TERRAIN_SIZES.keys(), "media": MEDIA_IDS, "notices": NOTICE_IDS, "presentation": PRESENTATION_SIZES.keys(), "checks": [CheckControlGraphics.RESOURCE_ID]}[group]
 		var records: Variant = value[group]
 		if not records is Array or records.size() != ids.size():
 			error = "city_ui.%s requires %d records in resource order" % [group, ids.size()]
@@ -108,6 +112,8 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 				error = "Cannot read city_ui image %s" % str(ids[i])
 				return
 			var size := PORTRAIT_SIZE
+			if group == "checks":
+				size = CheckControlGraphics.SHEET_SIZE
 			if group == "controls":
 				size = CONTROL_SIZES[ids[i]]
 			elif group == "hourglass":
@@ -127,7 +133,9 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 				error = "city_ui image %s must use the pack palette" % str(ids[i])
 				return
 			var image: Image = Sc2SpriteArchive.entry_from_indices(0, size.x, size.y, png.pixels).create_image(png.palette).image
-			if group == "controls":
+			if group == "checks":
+				check_sheet = image
+			elif group == "controls":
 				controls[ids[i]] = image
 			elif group == "hourglass":
 				hourglass.append(image)
