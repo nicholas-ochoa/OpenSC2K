@@ -14,6 +14,8 @@ static func load_values(
 		"music_volume": clampf(default_music_volume, 0.0, 1.0),
 		"effects_volume": clampf(default_effects_volume, 0.0, 1.0),
 		"fullscreen": default_fullscreen,
+		"graphics_source": "auto",
+		"graphics_folder": "",
 	}
 	var config := ConfigFile.new()
 	if config.load(path) != OK:
@@ -31,6 +33,8 @@ static func load_values(
 	result.fullscreen = bool(
 		config.get_value("display", "fullscreen", result.fullscreen)
 	)
+	result.graphics_source = str(config.get_value("graphics", "source", "auto"))
+	result.graphics_folder = str(config.get_value("graphics", "folder", ""))
 	return result
 
 
@@ -38,9 +42,16 @@ static func save_values(
 	music_volume: float,
 	effects_volume: float,
 	fullscreen: bool,
-	path := SETTINGS_PATH
+	path := SETTINGS_PATH,
+	graphics_source := "",
+	graphics_folder := "",
 ) -> Error:
 	var config := ConfigFile.new()
+	if FileAccess.file_exists(path):
+		config.load(path)
+	if not graphics_source.is_empty():
+		config.set_value("graphics", "source", graphics_source)
+		config.set_value("graphics", "folder", graphics_folder)
 	config.set_value("audio", "music_volume", clampf(music_volume, 0.0, 1.0))
 	config.set_value("audio", "effects_volume", clampf(effects_volume, 0.0, 1.0))
 	config.set_value("display", "fullscreen", fullscreen)

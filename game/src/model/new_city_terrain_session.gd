@@ -9,6 +9,7 @@ const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
 
 var preview_document: Sc2File
+var independent_template := false
 var preview_options: Dictionary = {}
 var preview_process_start := 1
 var preview_game_start := 1
@@ -36,7 +37,7 @@ func matches(options: Dictionary) -> bool:
 func generate_preview(
 	template_path: String, options: Dictionary, advance_seed: bool
 ) -> Dictionary:
-	var document := Sc2Document.load_path(template_path)
+	var document := _load_template(template_path)
 	if not document.is_valid():
 		return {
 			"ok": false,
@@ -90,7 +91,7 @@ func create_city(
 	terrain_options: Dictionary,
 	newspaper_session_state: PackedByteArray,
 ) -> Dictionary:
-	var template := Sc2Document.load_path(template_path)
+	var template := _load_template(template_path)
 	if not template.is_valid():
 		return {
 			"ok": false,
@@ -120,3 +121,7 @@ func create_city(
 	result["process_state"] = process_random.state
 	result["game_state"] = game_random.state
 	return result
+
+
+func _load_template(path: String) -> Sc2File:
+	return EmptyCityTemplate.create() if independent_template else Sc2Document.load_path(path)

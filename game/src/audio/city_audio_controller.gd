@@ -11,6 +11,7 @@ const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
 const SOUND_EFFECT_GROUP := &"open_sc2k_sound_effects"
 
 var reference_root := ""
+var original_media_enabled := true
 var music_volume := 0.8
 var effects_volume := 0.8
 var music_director := Music.new()
@@ -22,8 +23,12 @@ var wave_sound_gate := WaveSounds.new()
 var wave_stream_cache: Dictionary = {}
 
 
-func setup(root_path: String, initial_music_volume: float, initial_effects_volume: float) -> void:
+func setup(
+	root_path: String, initial_music_volume: float, initial_effects_volume: float,
+	use_original_media := true,
+) -> void:
 	reference_root = root_path
+	original_media_enabled = use_original_media
 	music_volume = initial_music_volume
 	effects_volume = initial_effects_volume
 	_load_wave_sound_cache()
@@ -46,7 +51,8 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 
 func play_music_track(track_id: int) -> bool:
 	if (
-		music_player == null
+		not original_media_enabled
+		or music_player == null
 		or track_id < Music.FIRST_TRACK_ID
 		or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT
 	):
@@ -178,6 +184,8 @@ func _on_music_track_finished(_track_id: int) -> void:
 
 func _load_wave_sound_cache() -> void:
 	wave_stream_cache.clear()
+	if not original_media_enabled:
+		return
 	for sound_id in range(WaveSounds.SOUND_FIRST, WaveSounds.SOUND_LAST + 1):
 		var sound_path := reference_root.path_join("SOUNDS/%d.WAV" % sound_id)
 		if not FileAccess.file_exists(sound_path):

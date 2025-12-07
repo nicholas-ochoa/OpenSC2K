@@ -62,3 +62,9 @@ static func create_theme() -> Theme:
 	)
 	result.set_color("font_color", "TooltipLabel", Color.WHITE)
 	return result
+
+
+static func create_dialog_theme() -> Theme:
+	var result := create_theme()
+	result.set_stylebox("panel", "AcceptDialog", create_box(Color("c0c0c0"), Color("808080"), 2, 12, 12))
+	return result

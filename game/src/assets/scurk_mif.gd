@@ -25,6 +25,32 @@ static func load_path(path: String) -> ScurkMif:
 	return result
 
 
+static func from_archives(archives: Array[Sc2SpriteArchive]) -> ScurkMif:
+	# independent document. opaque info bytes have no inferred native values
+	var result := ScurkMif.new()
+	result.info_payload.resize(INFO_LENGTH)
+	result.info_payload.fill(0)
+	var entries: Dictionary = {}
+	for source in archives:
+		if source == null or not source.is_valid():
+			result._fail("Cannot create a tile set from an invalid sprite archive")
+			return result
+		for entry in source.entries:
+			entries[entry.sprite_id] = entry
+	for sprite_id in entries:
+		var entry := entries[sprite_id] as Sc2SpriteArchive.SpriteEntry
+		var decoded := entry.decode_indices()
+		if not decoded.ok:
+			result._fail(decoded.error)
+			return result
+		var changed := result._set_shape_indices(sprite_id, entry.width, entry.height, decoded.pixels, false)
+		if not changed.ok:
+			result._fail(changed.error)
+			return result
+	result._rebuild_archives()
+	return result
+
+
 func parse(bytes: PackedByteArray) -> bool:
 	_clear()
 	if bytes.size() < FILE_HEADER_LENGTH:
@@ -192,6 +218,12 @@ func remove_name(sprite_id: int) -> Dictionary:
 func set_shape_indices(
 	sprite_id: int, width: int, height: int, pixels: PackedInt32Array
 ) -> Dictionary:
+	return _set_shape_indices(sprite_id, width, height, pixels, true)
+
+
+func _set_shape_indices(
+	sprite_id: int, width: int, height: int, pixels: PackedInt32Array, rebuild_archives: bool
+) -> Dictionary:
 	if sprite_id < 0 or sprite_id > 0xffff:
 		return {"ok": false, "error": "SHAP sprite ID is outside the 16-bit range"}
 	if width <= 0 or height <= 0 or width > 255 or height > 0xffff:
@@ -232,7 +264,8 @@ func set_shape_indices(
 	entry.encoded_pixels = _normalize_pixel_end(pixel_data)
 	entry.allow_unpadded_odd_runs = true
 	entry._index_image = null
-	_rebuild_archives()
+	if rebuild_archives:
+		_rebuild_archives()
 	piece_count = piece_records.size()
 	return {"ok": true, "error": ""}
 

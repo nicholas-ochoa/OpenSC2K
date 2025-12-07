@@ -168,11 +168,17 @@ func load_path(path: String) -> Dictionary:
 	var loaded := Mif.load_path(path)
 	if not loaded.is_valid():
 		return {"ok": false, "error": loaded.parse_error}
-	tile_set = loaded
-	source_path = ProjectSettings.globalize_path(path).simplify_path()
-	var encoded := tile_set.to_bytes()
+	return load_tile_set(loaded, path)
+
+
+func load_tile_set(loaded: ScurkMif, path := "") -> Dictionary:
+	if loaded == null or not loaded.is_valid():
+		return {"ok": false, "error": "The SCURK tile set is invalid."}
+	var encoded := loaded.to_bytes()
 	if not encoded.ok:
 		return {"ok": false, "error": encoded.error}
+	tile_set = loaded
+	source_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
 	edit_history.reset(encoded.bytes)
 	var ids := editable_large_sprite_ids(tile_set, base_large_sprites)
 	current_large_id = ids[0] if not ids.is_empty() else -1
@@ -184,7 +190,7 @@ func load_path(path: String) -> Dictionary:
 	_update_title()
 	_set_status(
 		"Loaded %s: %d objects and %d names."
-		% [source_path.get_file(), ids.size(), tile_set.names.size()]
+		% [source_path.get_file() if not source_path.is_empty() else "the active graphics set", ids.size(), tile_set.names.size()]
 	)
 	if pick_copy_control != null and pick_copy_control.visible:
 		pick_copy_control.open_with_working(tile_set, source_path)

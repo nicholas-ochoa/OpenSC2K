@@ -8,7 +8,6 @@ const NewCitySession = preload("res://src/model/new_city_terrain_session.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
 const Palette = preload("res://src/assets/sc2_palette.gd")
 const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
-const OriginalAssets = preload("res://src/assets/original_game_assets.gd")
 const OriginalInstaller = preload("res://src/assets/original_game_installer.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkCityOutput = preload("res://src/assets/scurk_city_output.gd")
@@ -111,10 +110,14 @@ var show_underground_pipes := true
 var app_music_volume := 0.8
 var app_effects_volume := 0.8
 var app_fullscreen := false
+var app_graphics_source := "auto"
+var app_graphics_folder := ""
+var asset_source: GameAssetSource
 var reference_root := ""
 var runtime_initialized := false
 var reference_import_dialog: FileDialog
 var reference_import_error_dialog: AcceptDialog
+var graphics_source_error_dialog: AcceptDialog
 var original_query_strings: Dictionary = {}
 var forest_protest_text := "Citizens are protesting forest demolition."
 var building_objection_text := "Residents objected to this facility site."
@@ -239,28 +242,36 @@ var fps_update_seconds := 0.0
 
 func _ready() -> void:
 	get_tree().auto_accept_quit = false
-	if OS.has_feature("editor"):
-		reference_root = ProjectSettings.globalize_path("res://../references").simplify_path()
-		_initialize_runtime()
-		return
-	reference_root = ProjectSettings.globalize_path("user://original_game").simplify_path()
-	var installed_result := OriginalInstaller.validate_install_root(reference_root)
-	if installed_result.ok:
-		_initialize_runtime()
-		return
+	if reference_root.is_empty():
+		reference_root = GameAssetSource.default_reference_root()
+	_load_app_settings()
 	_build_reference_import_dialogs()
-	call_deferred("_show_reference_import_dialog")
+	_initialize_runtime()
 
 
 func _initialize_runtime() -> void:
 	if runtime_initialized:
 		return
+	var mode := OS.get_environment("OPENSC2K_ASSET_SOURCE")
+	if mode.is_empty():
+		mode = app_graphics_source
+	asset_source = GameAssetSource.load_source(
+		reference_root, mode, app_graphics_folder, OS.get_environment("OPENSC2K_GRAPHICS_PACK")
+	)
+	var source_error := asset_source.error
+	if not source_error.is_empty():
+		asset_source = GameAssetSource.load_source(reference_root, "original")
+	if not asset_source.error.is_empty():
+		_show_reference_import_error(asset_source.error)
+		return
 	runtime_initialized = true
-	_load_app_settings()
+	new_city_session.independent_template = not asset_source.use_original_data
 	audio_controller = CityAudio.new()
 	audio_controller.music_activity_changed.connect(_on_music_activity_changed)
 	add_child(audio_controller)
-	audio_controller.setup(reference_root, app_music_volume, app_effects_volume)
+	audio_controller.setup(
+		reference_root, app_music_volume, app_effects_volume, asset_source.use_original_data
+	)
 	newspaper_session_seed = Time.get_ticks_msec() & 0xffff
 	if newspaper_session_seed & 0x8000:
 		newspaper_session_seed -= 0x10000
@@ -268,14 +279,7 @@ func _initialize_runtime() -> void:
 	newspaper_session_state.resize(NewsQueue.MISC_SIZE)
 	newspaper_session_state.fill(0)
 	NewsQueue.initialize_session(newspaper_session_state, tool_random)
-	var original_assets := OriginalAssets.new()
-	original_assets.load_ui(reference_root)
-	original_assets.load_city_graphics(reference_root)
-	var graphics_pack_root := OS.get_environment("OPENSC2K_GRAPHICS_PACK")
-	if not graphics_pack_root.is_empty():
-		var pack := GraphicsPack.load_root(graphics_pack_root)
-		if not pack.apply_to(original_assets):
-			original_assets.error = "Cannot load graphics pack: %s" % pack.error
+	var original_assets := asset_source.assets
 	newspaper_data = original_assets.newspaper_data
 	original_query_strings = original_assets.strings
 	forest_protest_text = original_assets.forest_protest_text
@@ -304,9 +308,15 @@ func _initialize_runtime() -> void:
 	_refresh_child_tool_icons()
 
 	_show_main_menu()
+	if not source_error.is_empty():
+		_show_graphics_source_error(source_error + "\n\nSimCity 2000 graphics are active. Choose a source in Settings.")
 
 
 func _build_reference_import_dialogs() -> void:
+	graphics_source_error_dialog = AcceptDialog.new()
+	graphics_source_error_dialog.title = "Graphics source"
+	graphics_source_error_dialog.exclusive = true
+	add_child(graphics_source_error_dialog)
 	reference_import_dialog = FileDialog.new()
 	reference_import_dialog.title = "Select the original SimCity 2000 SIMCITY.EXE"
 	reference_import_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
@@ -320,22 +330,28 @@ func _build_reference_import_dialogs() -> void:
 	add_child(reference_import_dialog)
 
 	reference_import_error_dialog = AcceptDialog.new()
-	reference_import_error_dialog.title = "Original SimCity 2000 data required"
+	reference_import_error_dialog.title = "Cannot import SimCity 2000"
 	reference_import_error_dialog.exclusive = true
 	reference_import_error_dialog.confirmed.connect(_show_reference_import_dialog)
 	add_child(reference_import_error_dialog)
+	for dialog in [graphics_source_error_dialog, reference_import_dialog, reference_import_error_dialog]:
+		dialog.theme = ClassicUiStyle.create_dialog_theme()
+
+
+func _show_graphics_source_error(message: String) -> void:
+	graphics_source_error_dialog.dialog_text = message
+	graphics_source_error_dialog.call_deferred("popup_centered", Vector2i(620, 220))
 
 
 func _show_reference_import_dialog() -> void:
-	if runtime_initialized or reference_import_dialog == null:
+	if reference_import_dialog == null:
 		return
 	reference_import_dialog.popup_centered_ratio(0.8)
 
 
 func _on_reference_import_canceled() -> void:
-	_show_reference_import_error(
-		"OpenSC2K needs the original game data. Select SIMCITY.EXE to continue."
-	)
+	if settings_dialog != null:
+		_open_settings_dialog()
 
 
 func _show_reference_import_error(message: String) -> void:
@@ -353,14 +369,20 @@ func _import_original_game(executable_path: String) -> void:
 	if not install_result.ok:
 		_show_reference_import_error(install_result.error)
 		return
-	reference_root = install_result.root
 	reference_import_dialog.hide()
 	reference_import_error_dialog.hide()
-	_initialize_runtime()
-	reference_import_dialog.queue_free()
-	reference_import_error_dialog.queue_free()
-	reference_import_dialog = null
-	reference_import_error_dialog = null
+	app_graphics_source = "original"
+	var saved := SettingsStore.save_values(
+		app_music_volume, app_effects_volume, app_fullscreen,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder,
+	)
+	if not runtime_initialized:
+		reference_root = install_result.root
+		_initialize_runtime()
+	if status_label != null:
+		status_label.text = "Original data imported. Restart OpenSC2K to use it."
+	if saved != OK:
+		_show_error("Original data imported, but the graphics preference could not be saved.")
 
 
 func _notification(what: int) -> void:
@@ -665,6 +687,7 @@ func _build_main_menu() -> void:
 
 	settings_dialog = main_overlays.settings_dialog
 	settings_dialog.confirmed.connect(_apply_settings)
+	settings_dialog.import_original_requested.connect(_show_reference_import_dialog)
 
 	scurk_editor = main_overlays.scurk_editor
 	scurk_editor.tile_set_applied.connect(_apply_scurk_tile_set)
@@ -711,11 +734,22 @@ func _hide_main_menu() -> void:
 
 
 func _open_settings_dialog() -> void:
-	settings_dialog.show_values(app_music_volume, app_effects_volume, app_fullscreen)
+	settings_dialog.show_values(
+		app_music_volume, app_effects_volume, app_fullscreen,
+		app_graphics_source, app_graphics_folder, asset_source.graphics_name,
+	)
 
 
 func _apply_settings() -> void:
 	var values: Dictionary = settings_dialog.selected_values()
+	var changed_source: bool = values.graphics_source != app_graphics_source or values.graphics_folder != app_graphics_folder
+	if changed_source:
+		var selected := GameAssetSource.load_source(reference_root, values.graphics_source, values.graphics_folder)
+		if not selected.error.is_empty():
+			_show_graphics_source_error(selected.error)
+			return
+	app_graphics_source = values.graphics_source
+	app_graphics_folder = values.graphics_folder
 	app_music_volume = float(values.music_volume)
 	app_effects_volume = float(values.effects_volume)
 	app_fullscreen = bool(values.fullscreen)
@@ -727,10 +761,11 @@ func _apply_settings() -> void:
 		else DisplayServer.WINDOW_MODE_WINDOWED
 	)
 	var error := SettingsStore.save_values(
-		app_music_volume, app_effects_volume, app_fullscreen
+		app_music_volume, app_effects_volume, app_fullscreen,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder,
 	)
 	status_label.text = (
-		"Settings saved."
+		("Settings saved. Restart OpenSC2K to use the selected graphics." if changed_source else "Settings saved.")
 		if error == OK
 		else "Settings applied, but the settings file could not be saved."
 	)
@@ -746,6 +781,8 @@ func _load_app_settings() -> void:
 	app_music_volume = values.music_volume
 	app_effects_volume = values.effects_volume
 	app_fullscreen = values.fullscreen
+	app_graphics_source = values.graphics_source
+	app_graphics_folder = values.graphics_folder
 	if app_fullscreen:
 		DisplayServer.window_set_mode(DisplayServer.WINDOW_MODE_FULLSCREEN)
 
@@ -757,7 +794,7 @@ func _open_scurk_dialog() -> void:
 		or base_large_sprites == null
 		or base_small_medium_sprites == null
 	):
-		_show_error("The original SCURK graphics are not loaded.")
+		_show_error("The SCURK graphics are not loaded.")
 		return
 	scurk_editor.configure(
 		palette, base_large_sprites, base_small_medium_sprites, reference_root, scurk_graphics
@@ -776,6 +813,12 @@ func _open_scurk_dialog() -> void:
 		var switched := scurk_editor.load_path(active_scurk_path)
 		if not switched.ok:
 			_show_error(switched.error)
+			return
+	if scurk_editor.tile_set == null and active_scurk_path.is_empty() and asset_source.uses_graphics_pack:
+		var created := ScurkMif.from_archives([base_large_sprites, base_small_medium_sprites])
+		var loaded := scurk_editor.load_tile_set(created)
+		if not loaded.ok:
+			_show_error(loaded.error)
 			return
 	var opened := scurk_editor.show_editor(initial_path)
 	if not opened.ok:
