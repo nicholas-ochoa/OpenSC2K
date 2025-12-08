@@ -11,8 +11,7 @@ static func save_copy(
 	if output_path.get_extension().is_empty():
 		output_path += ".SC2"
 	output_path = output_path.simplify_path()
-	var protected_root := reference_root.simplify_path()
-	if output_path == protected_root or output_path.begins_with(protected_root + "/"):
+	if is_reference_path(output_path, reference_root):
 		return {
 			"ok": false,
 			"error": "Choose a location outside the read-only references directory.",
@@ -41,3 +40,12 @@ static func save_copy(
 		"path": output_path,
 		"data": serialized.data,
 	}
+
+
+static func is_reference_path(path: String, reference_root: String) -> bool:
+	var normalized := ProjectSettings.globalize_path(path).simplify_path()
+	for root_path in [reference_root, ProjectSettings.globalize_path("res://../references")]:
+		var protected_root := ProjectSettings.globalize_path(root_path).simplify_path()
+		if normalized == protected_root or normalized.begins_with(protected_root + "/"):
+			return true
+	return false

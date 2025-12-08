@@ -12,6 +12,7 @@ signal windows_menu_requested(id: int)
 signal newspaper_menu_requested(id: int)
 signal help_menu_requested(id: int)
 
+const MENU_SAVE_CITY := 7
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
 const MENU_SOUND_EFFECTS := 0x8006
@@ -56,7 +57,8 @@ func _ready() -> void:
 	add_child(menu_row)
 
 	file_menu = _add_menu(menu_row, "File", [
-		["New City...", 0], ["Open City...", 1], ["Save City As...", 2],
+		["New City...", 0], ["Open City...", 1],
+		["Save City", MENU_SAVE_CITY], ["Save City As...", 2],
 		["Load Tile Set...", 3], ["Restore Original Tile Set", 4],
 		["SCURK Place & Print...", MENU_SCURK_PLACE_PRINT],
 		["Main Menu", 5], ["Exit", 6],

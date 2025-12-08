@@ -1316,6 +1316,7 @@ func _on_file_menu(id: int) -> void:
 		0: _open_new_city_dialog()
 		1: _open_city_dialog()
 		2: _open_save_dialog()
+		CityMenuBar.MENU_SAVE_CITY: _save_city()
 		3: _open_tile_set_dialog()
 		4: _restore_original_tile_set()
 		MENU_SCURK_PLACE_PRINT: _open_scurk_place_print()
@@ -1805,6 +1806,15 @@ func _open_scenario_dialog() -> void:
 	file_dialog.popup_centered_ratio(0.8)
 
 
+func _save_city() -> void:
+	if current_document == null:
+		return
+	if current_save_path.is_empty():
+		_open_save_dialog()
+	else:
+		_save_copy(current_save_path)
+
+
 func _open_save_dialog() -> void:
 	if current_document == null:
 		return
@@ -2263,8 +2273,7 @@ func _activate_document(
 		source_path
 		if (
 			not source_path.is_empty()
-			and source_path != reference_root
-			and not source_path.begins_with(reference_root + "/")
+			and not CityFiles.is_reference_path(source_path, reference_root)
 		)
 		else ""
 	)
@@ -2390,7 +2399,7 @@ func _save_copy(path: String) -> bool:
 	current_city_saved_once = true
 	saved_city_snapshot = result.data.duplicate()
 	status_label.remove_theme_color_override("font_color")
-	status_label.text = "Saved city copy: %s" % output_path
+	status_label.text = "Saved city: %s" % output_path
 	return true
 
 

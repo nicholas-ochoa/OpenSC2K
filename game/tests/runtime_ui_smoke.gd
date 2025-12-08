@@ -109,6 +109,10 @@ func _run() -> void:
 				main.queue_free()
 				quit(2)
 				return
+			if not _test_save_city(main):
+				main.queue_free()
+				quit(2)
+				return
 			var original_funds := loaded_city.funds()
 			loaded_city.set_funds(original_funds + 1)
 			main.call("_request_city_exit", "quit")
@@ -702,3 +706,37 @@ func _run() -> void:
 	await process_frame
 	print("PASS: runtime UI smoke")
 	quit()
+
+
+func _test_save_city(main: Node) -> bool:
+	var dialog := main.get("save_dialog") as FileDialog
+	main.call("_on_file_menu", CityMenuBar.MENU_SAVE_CITY)
+	if not dialog.visible:
+		push_error("Save City must use Save As for a protected reference city")
+		return false
+	dialog.hide()
+	var path := "user://save-city-smoke-%d.SC2" % OS.get_process_id()
+	var absolute_path := ProjectSettings.globalize_path(path)
+	var document := main.get("current_document") as Sc2File
+	var source_path := document.source_path
+	var funds := document.misc_i32(0x14)
+	main.call("_on_save_path_selected", absolute_path)
+	var first_save := FileAccess.get_file_as_bytes(path)
+	document.set_misc_i32(0x14, funds + 123)
+	main.call("_on_file_menu", CityMenuBar.MENU_SAVE_CITY)
+	var saved := FileAccess.get_file_as_bytes(path)
+	var expected := document.serialize()
+	var passed: bool = (
+		not first_save.is_empty() and saved != first_save
+		and expected.ok and saved == expected.data
+		and not dialog.visible and not main.call("_city_has_unsaved_changes")
+		and main.get("current_save_path") == absolute_path
+	)
+	DirAccess.remove_absolute(absolute_path)
+	document.set_misc_i32(0x14, funds)
+	document.source_path = source_path
+	main.set("current_save_path", "")
+	main.set("saved_city_snapshot", document.serialize().data)
+	if not passed:
+		push_error("Save City did not overwrite the selected copy and update saved state")
+	return passed
