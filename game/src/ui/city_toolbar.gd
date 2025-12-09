@@ -6,7 +6,6 @@ signal subtool_requested(index: int)
 signal rotate_requested(counter_clockwise: bool)
 signal zoom_out_requested
 signal zoom_in_requested
-signal undo_requested
 signal overlay_requested(mode: String)
 signal city_map_requested
 signal surface_visibility_requested(visible: bool, layer: String)
@@ -37,7 +36,6 @@ var child_tool_scroll: ScrollContainer
 var child_tool_grid: GridContainer
 var child_tool_buttons: Dictionary = {}
 var child_palette: CityChildToolPalette
-var undo_button: Button
 var view_layers_heading: Label
 var view_visibility_checks: Dictionary = {}
 
@@ -138,11 +136,6 @@ func _ready() -> void:
 	child_tool_scroll = child_palette.scroll
 	child_tool_grid = child_palette.grid
 	child_tool_buttons = child_palette.buttons
-	undo_button = Button.new()
-	undo_button.text = "Undo Last Edit"
-	undo_button.disabled = true
-	undo_button.pressed.connect(undo_requested.emit)
-	toolbar.add_child(undo_button)
 
 	toolbar.add_child(HSeparator.new())
 	var view_heading := Label.new()

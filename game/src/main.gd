@@ -187,7 +187,6 @@ var disasters_menu: MenuButton
 var view_visibility_checks: Dictionary = {}
 var view_layers_heading: Label
 var city_toolbar: CityToolbar
-var undo_button: Button
 var zoom_label: Label
 var zoom_in_button: Button
 var zoom_out_button: Button
@@ -478,6 +477,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_ESCAPE and new_city_dialog != null and new_city_dialog.visible:
 		_cancel_new_city()
 		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_Z and event.is_command_or_control_pressed():
+		_undo_last_edit()
+		get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL:
 		if map_view.zoom_in():
 			get_viewport().set_input_as_handled()
@@ -503,7 +505,6 @@ func _consume_simulation_result(result: Dictionary) -> void:
 	if ran_days or moved_things or changed_disaster_map:
 		last_edit_command = {}
 		scurk_edit_history.clear()
-		undo_button.disabled = true
 		simulation_map_dirty = true
 	if ran_days:
 		_refresh_details()
@@ -564,7 +565,6 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	city_toolbar.rotate_requested.connect(_rotate_city)
 	city_toolbar.zoom_out_requested.connect(_zoom_out)
 	city_toolbar.zoom_in_requested.connect(_zoom_in)
-	city_toolbar.undo_requested.connect(_undo_last_edit)
 	city_toolbar.overlay_requested.connect(_set_overlay)
 	city_toolbar.city_map_requested.connect(_open_city_map_window)
 	city_toolbar.surface_visibility_requested.connect(_set_surface_visibility)
@@ -576,7 +576,6 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	zoom_out_button = city_toolbar.zoom_out_button
 	zoom_in_button = city_toolbar.zoom_in_button
 	zoom_label = city_toolbar.zoom_label
-	undo_button = city_toolbar.undo_button
 	view_layers_heading = city_toolbar.view_layers_heading
 	view_visibility_checks = city_toolbar.view_visibility_checks
 
@@ -1038,7 +1037,6 @@ func _record_edit_command(
 		if scurk_place_print != null:
 			scurk_place_print.set_history_enabled(true, false)
 	last_edit_command = command
-	undo_button.disabled = false
 
 
 func _apply_scurk_place_selection(point: Vector2i) -> void:
@@ -1076,7 +1074,6 @@ func _undo_scurk_place() -> void:
 		return
 	var command: Dictionary = result.command
 	last_edit_command = result.current_command
-	undo_button.disabled = last_edit_command.is_empty()
 	scurk_place_print.set_history_enabled(
 		scurk_edit_history.can_undo(), scurk_edit_history.can_redo()
 	)
@@ -1100,7 +1097,6 @@ func _redo_scurk_place() -> void:
 		return
 	var command: Dictionary = result.command
 	last_edit_command = command
-	undo_button.disabled = false
 	scurk_place_print.set_history_enabled(
 		scurk_edit_history.can_undo(), scurk_edit_history.can_redo()
 	)
@@ -1189,7 +1185,6 @@ func _rotate_city(counter_clockwise: bool) -> void:
 	if simulation_engine != null:
 		simulation_engine.rotate_runtime_coordinates(counter_clockwise)
 	last_edit_command = {}
-	undo_button.disabled = true
 	map_view.show_transient_effects([])
 	_refresh_map()
 	if new_center.x >= 0:
@@ -1508,7 +1503,6 @@ func _start_disaster_at_view_center(id: int) -> Dictionary:
 	if city.music_enabled():
 		_play_music_track(Music.DISASTER_TRACK)
 	last_edit_command = {}
-	undo_button.disabled = true
 	simulation_map_dirty = false
 	_refresh_map(false)
 	for requested_point in result.get("view_center_requests", []):
@@ -2313,7 +2307,6 @@ func _activate_document(
 	last_edit_command = {}
 	dispatch_cycles = PackedInt32Array([0, 0, 0])
 	dispatch_initialized = false
-	undo_button.disabled = true
 	_update_zoom_controls(map_view.zoom_percent())
 	var display_name := city.city_name()
 	if display_name.is_empty():
@@ -3601,7 +3594,6 @@ func _apply_map_selection(
 		dispatch_cycles[selected_subtool] = int(dispatch.slot_index)
 		dispatch["dispatch_cycles_after"] = dispatch_cycles.duplicate()
 		last_edit_command = dispatch
-		undo_button.disabled = false
 		_refresh_after_city_edit(dispatch)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Deployed %s unit %d of %d." % [
@@ -3665,7 +3657,6 @@ func _apply_map_selection(
 			# A failed placement can still advance the LFSR. Clear undo in that case.
 			if building.get("lfsr_advanced", false):
 				last_edit_command = {}
-				undo_button.disabled = true
 			if building.get("resident_objection", false):
 				_play_sound_events(building.get("sound_events", []))
 				pending_building_objection_group = building_group
@@ -3683,7 +3674,6 @@ func _apply_map_selection(
 			)
 			return
 		last_edit_command = building
-		undo_button.disabled = false
 		_refresh_details()
 		_refresh_after_city_edit(building)
 		if building_group == 5 and building_subtool < 4:
@@ -3736,7 +3726,6 @@ func _finish_simple_edit(
 		)
 	else:
 		last_edit_command = command
-		undo_button.disabled = false
 	if edit.refresh_details:
 		_refresh_details()
 	_refresh_after_city_edit(command)
@@ -4372,7 +4361,6 @@ func _undo_last_edit() -> void:
 			last_edit_command.get("dispatch_initialized_before", dispatch_initialized)
 		)
 	last_edit_command = {}
-	undo_button.disabled = true
 	_refresh_details()
 	_refresh_after_city_edit(undone_command)
 	if undo_forest_protest:
@@ -4424,7 +4412,6 @@ func _commit_sign() -> void:
 		_show_error("Cannot change sign: %s" % result.error)
 		return
 	last_edit_command = result
-	undo_button.disabled = false
 	_refresh_after_city_edit(result)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
@@ -4757,7 +4744,6 @@ func _debug_end_disaster() -> Dictionary:
 	if not result.ok:
 		return {"ok": false, "message": result.error}
 	last_edit_command = {}
-	undo_button.disabled = true
 	simulation_map_dirty = false
 	_refresh_map(false)
 	_refresh_moving_things()

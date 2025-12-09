@@ -473,7 +473,6 @@ func _test_main_menu() -> void:
 		and toolbar.active_tool_group_label.text == "Residential"
 		and toolbar.child_tool_buttons[0].text == "Light Residential\n$5"
 		and toolbar.child_tool_buttons[1].text == "Dense Residential\n$10"
-		and toolbar.undo_button.disabled
 		and toolbar.view_visibility_checks.size() == 7
 		and toolbar.view_visibility_checks["buildings"].button_pressed
 		and toolbar.view_visibility_checks["pipes"].button_pressed,
