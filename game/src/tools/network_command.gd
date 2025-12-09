@@ -839,7 +839,12 @@ static func _tile_is_eligible(
 static func _reuses_surface(tile_id: int, mode: int) -> bool:
 	return (mode == MODE_ROAD and _road_connects(tile_id)) or (
 		mode == MODE_RAIL and _rail_connects(tile_id)
-	)
+	) or (mode == MODE_POWER and (
+		(tile_id >= 0x0e and tile_id <= 0x1c)
+		or (tile_id >= 0x43 and tile_id <= 0x44)
+		or (tile_id >= 0x47 and tile_id <= 0x48)
+		or (tile_id >= 0x4f and tile_id <= 0x50)
+	))
 
 
 static func _place_surface(

@@ -13567,8 +13567,8 @@ func _test_network_command(reference_root: String) -> void:
 	_check(Networks.undo(city, road).ok, "Road drag can be undone")
 	_check(city.funds() == 10000 and city.building_id(12, 10) == 0, "Road undo restores funds and tiles")
 
-	for group in [6, 7]:
-		var tile_cost := 10 if group == 6 else 25
+	for group in [6, 7, 3]:
+		var tile_cost := 2 if group == 3 else (10 if group == 6 else 25)
 		var base := Networks.apply(city, group, 0, Vector2i(50, 48), Vector2i(50, 52))
 		_check(base.ok, "Reuse fixture builds its existing network")
 		var before: PackedByteArray = document.serialize().data
@@ -13582,11 +13582,11 @@ func _test_network_command(reference_root: String) -> void:
 			var command := Networks.apply(city, group, 0, endpoints[0], endpoints[1])
 			var new_count := 0 if endpoints[0].x == endpoints[1].x else absi(endpoints[1].x - endpoints[0].x)
 			_check(command.ok and not command.get("stopped_early", true),
-				"Road and rail routes start, end, cross, retrace and click existing networks")
+				"Road, rail and power routes start, end, cross, retrace and click existing networks")
 			_check(command.get("cost", -1) == new_count * tile_cost,
 				"Existing network tiles have no repeat construction charge")
 			if endpoints[0].x == 48:
-				_check(city.building_id(50, 50) == (0x2b if group == 6 else 0x3a),
+				_check(city.building_id(50, 50) == (0x1c if group == 3 else (0x2b if group == 6 else 0x3a)),
 					"Crossing the same network forms a four-way junction")
 			_check(Networks.undo(city, command).ok and document.serialize().data == before,
 				"Reused network route Undo restores exact bytes")
