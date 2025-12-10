@@ -50,6 +50,8 @@ func show_tool_group(
 	if group_index < 0 or group_index >= Tools.GROUPS.size():
 		return 0
 	_clear_buttons()
+	scroll.scroll_vertical = 0
+	scroll.set_deferred("scroll_vertical", 0)
 	var visible_group := group_index < 15
 	heading.visible = visible_group
 	scroll.visible = visible_group
