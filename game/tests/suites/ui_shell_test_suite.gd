@@ -466,7 +466,6 @@ func _test_main_menu() -> void:
 		toolbar.toolbar_buttons.size() == 18
 		and toolbar.rotate_counter_clockwise_button.disabled
 		and toolbar.rotate_clockwise_button.disabled
-		and toolbar.zoom_label.text == "100%"
 		and toolbar.child_tool_grid.columns == 1
 		and toolbar.child_tool_buttons.size() == 2
 		and first_residential == 0

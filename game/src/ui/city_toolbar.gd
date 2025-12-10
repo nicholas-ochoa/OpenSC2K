@@ -29,7 +29,6 @@ var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
 var zoom_out_button: Button
 var zoom_in_button: Button
-var zoom_label: Label
 var active_tool_group_label: Label
 var child_tool_scroll: ScrollContainer
 var child_tool_grid: GridContainer
@@ -122,11 +121,6 @@ func _ready() -> void:
 	zoom_in_button = _icon_button(Rect2i(486, 0, 23, 23), "Zoom In")
 	zoom_in_button.pressed.connect(zoom_in_requested.emit)
 	zoom_row.add_child(zoom_in_button)
-	zoom_label = Label.new()
-	zoom_label.text = "100%"
-	zoom_label.custom_minimum_size = Vector2(38, 0)
-	zoom_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	zoom_row.add_child(zoom_label)
 
 	child_palette = ChildToolPalette.new()
 	child_palette.build()

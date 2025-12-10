@@ -55,6 +55,7 @@ var weather_label: Label
 var rci_graph: RciStatusControl
 var reports_label: Label
 var speed_label: Label
+var zoom_label: Label
 var recent_reports := PackedStringArray()
 var report_index := 0
 var report_elapsed_seconds := 0.0
@@ -97,6 +98,9 @@ func _ready() -> void:
 
 	speed_label = _metric_label("Speed: --", 122)
 	metrics.add_child(speed_label)
+	metrics.add_child(VSeparator.new())
+	zoom_label = _metric_label("Zoom: 100%", 85)
+	metrics.add_child(zoom_label)
 	refresh_tooltips()
 
 
@@ -110,6 +114,11 @@ func clear_environment() -> void:
 	weather_label.text = "Weather: --"
 	rci_graph.clear_demand()
 	refresh_tooltips()
+
+
+func set_zoom(percent: int) -> void:
+	zoom_label.text = "Zoom: %d%%" % percent
+	_sync_overflow_tooltip(zoom_label)
 
 
 func set_speed(speed_name: String) -> void:
@@ -170,6 +179,7 @@ func refresh_tooltips() -> void:
 	_sync_overflow_tooltip(weather_label)
 	_sync_overflow_tooltip(reports_label)
 	_sync_overflow_tooltip(speed_label)
+	_sync_overflow_tooltip(zoom_label)
 
 
 func refresh_message_tooltip() -> void:

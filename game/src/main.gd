@@ -187,7 +187,6 @@ var disasters_menu: MenuButton
 var view_visibility_checks: Dictionary = {}
 var view_layers_heading: Label
 var city_toolbar: CityToolbar
-var zoom_label: Label
 var zoom_in_button: Button
 var zoom_out_button: Button
 var rotate_counter_clockwise_button: Button
@@ -574,7 +573,6 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	rotate_clockwise_button = city_toolbar.rotate_clockwise_button
 	zoom_out_button = city_toolbar.zoom_out_button
 	zoom_in_button = city_toolbar.zoom_in_button
-	zoom_label = city_toolbar.zoom_label
 	view_layers_heading = city_toolbar.view_layers_heading
 	view_visibility_checks = city_toolbar.view_visibility_checks
 
@@ -1196,8 +1194,8 @@ func _rotate_city(counter_clockwise: bool) -> void:
 
 
 func _update_zoom_controls(percent: int) -> void:
-	if zoom_label != null:
-		zoom_label.text = "%d%%" % percent
+	if city_workspace != null and city_workspace.status_bar != null:
+		city_workspace.status_bar.set_zoom(percent)
 	if zoom_in_button != null:
 		zoom_in_button.disabled = not map_view.can_zoom_in()
 	if zoom_out_button != null:
