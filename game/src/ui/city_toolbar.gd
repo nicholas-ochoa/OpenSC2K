@@ -37,6 +37,7 @@ var child_tool_buttons: Dictionary = {}
 var child_palette: CityChildToolPalette
 var view_layers_heading: Label
 var view_visibility_checks: Dictionary = {}
+var view_mode_buttons: Dictionary = {}
 
 
 func _init(source_art: Image = null) -> void:
@@ -129,6 +130,7 @@ func _ready() -> void:
 
 	child_palette = ChildToolPalette.new()
 	child_palette.build()
+	child_palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	child_palette.subtool_requested.connect(subtool_requested.emit)
 	toolbar.add_child(child_palette)
 	active_tool_group_label = child_palette.heading
@@ -137,28 +139,25 @@ func _ready() -> void:
 	child_tool_buttons = child_palette.buttons
 
 	toolbar.add_child(HSeparator.new())
-	var view_heading := Label.new()
-	view_heading.text = "City View"
-	view_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	view_heading.add_theme_color_override("font_color", Color("000080"))
-	toolbar.add_child(view_heading)
-	var view_grid := GridContainer.new()
-	view_grid.columns = 2
-	view_grid.add_theme_constant_override("h_separation", 4)
-	view_grid.add_theme_constant_override("v_separation", 4)
-	toolbar.add_child(view_grid)
-	for mode in MAP_DISPLAY_MODES:
-		var button := Button.new()
-		button.text = mode.capitalize()
-		button.tooltip_text = "Show the %s isometric view." % mode
-		button.pressed.connect(overlay_requested.emit.bind(mode))
-		view_grid.add_child(button)
-
 	view_layers_heading = Label.new()
 	view_layers_heading.text = "Visible Layers"
 	view_layers_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	view_layers_heading.add_theme_color_override("font_color", Color("000080"))
 	toolbar.add_child(view_layers_heading)
+	var view_grid := VBoxContainer.new()
+	view_grid.add_theme_constant_override("separation", 0)
+	toolbar.add_child(view_grid)
+	var view_group := ButtonGroup.new()
+	for mode in MAP_DISPLAY_MODES:
+		var button := CheckBox.new()
+		button.text = mode.capitalize()
+		button.button_group = view_group
+		button.button_pressed = mode == "city"
+		button.tooltip_text = "Show the %s isometric view." % mode
+		button.pressed.connect(overlay_requested.emit.bind(mode))
+		view_grid.add_child(button)
+		view_mode_buttons[mode] = button
+
 	var layers_grid := GridContainer.new()
 	layers_grid.columns = 2
 	layers_grid.add_theme_constant_override("h_separation", 4)
@@ -291,3 +290,8 @@ func _icon_button(region: Rect2i, tooltip: String) -> Button:
 
 func _on_surface_visibility_toggled(visible: bool, layer: String) -> void:
 	surface_visibility_requested.emit(visible, layer)
+
+
+func sync_view_mode(mode: String) -> void:
+	for key in view_mode_buttons:
+		(view_mode_buttons[key] as CheckBox).set_pressed_no_signal(key == mode)

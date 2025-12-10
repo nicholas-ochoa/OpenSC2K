@@ -1436,10 +1436,8 @@ func _sync_view_controls() -> void:
 			var item_index := view_menu.get_popup().get_item_index(menu_id)
 			if item_index >= 0:
 				view_menu.get_popup().set_item_checked(item_index, bool(states[menu_id]))
-	if view_layers_heading != null:
-		view_layers_heading.text = (
-			"Underground Layer" if underground_active else "Visible Layers"
-		)
+	if city_toolbar != null:
+		city_toolbar.sync_view_mode(overlay_mode)
 	for key in view_visibility_checks:
 		var check: CheckBox = view_visibility_checks[key]
 		check.visible = underground_active if key == "pipes" else not underground_active
