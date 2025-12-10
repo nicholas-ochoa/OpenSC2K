@@ -7,7 +7,6 @@ signal rotate_requested(counter_clockwise: bool)
 signal zoom_out_requested
 signal zoom_in_requested
 signal overlay_requested(mode: String)
-signal city_map_requested
 signal surface_visibility_requested(visible: bool, layer: String)
 signal underground_pipes_visibility_requested(visible: bool)
 
@@ -154,11 +153,6 @@ func _ready() -> void:
 		button.tooltip_text = "Show the %s isometric view." % mode
 		button.pressed.connect(overlay_requested.emit.bind(mode))
 		view_grid.add_child(button)
-	var city_map_button := Button.new()
-	city_map_button.text = "City Map..."
-	city_map_button.tooltip_text = "Open the tabbed two-dimensional city maps."
-	city_map_button.pressed.connect(city_map_requested.emit)
-	view_grid.add_child(city_map_button)
 
 	view_layers_heading = Label.new()
 	view_layers_heading.text = "Visible Layers"

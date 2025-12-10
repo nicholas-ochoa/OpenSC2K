@@ -566,7 +566,6 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	city_toolbar.zoom_out_requested.connect(_zoom_out)
 	city_toolbar.zoom_in_requested.connect(_zoom_in)
 	city_toolbar.overlay_requested.connect(_set_overlay)
-	city_toolbar.city_map_requested.connect(_open_city_map_window)
 	city_toolbar.surface_visibility_requested.connect(_set_surface_visibility)
 	city_toolbar.underground_pipes_visibility_requested.connect(
 		_set_underground_pipes_visible
