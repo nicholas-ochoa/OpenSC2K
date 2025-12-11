@@ -78,14 +78,7 @@ func _ready() -> void:
 		_add_group_button(special_tool_grid, tool_button_group, group_index)
 
 	toolbar.add_child(HSeparator.new())
-	var camera_row := HBoxContainer.new()
-	camera_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	camera_row.add_theme_constant_override("separation", 3)
-	toolbar.add_child(camera_row)
-	var rotate_label := Label.new()
-	rotate_label.text = "Rotate"
-	rotate_label.custom_minimum_size = Vector2(48, 0)
-	camera_row.add_child(rotate_label)
+	var camera_row := _camera_row(toolbar, "Rotate")
 	rotate_counter_clockwise_button = _icon_button(
 		Rect2i(405, 0, 27, 23), "Rotate Counter-Clockwise (Q)"
 	)
@@ -101,14 +94,7 @@ func _ready() -> void:
 	rotate_clockwise_button.pressed.connect(rotate_requested.emit.bind(false))
 	camera_row.add_child(rotate_clockwise_button)
 
-	var zoom_row := HBoxContainer.new()
-	zoom_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	zoom_row.add_theme_constant_override("separation", 3)
-	toolbar.add_child(zoom_row)
-	var zoom_heading := Label.new()
-	zoom_heading.text = "Zoom"
-	zoom_heading.custom_minimum_size = Vector2(48, 0)
-	zoom_row.add_child(zoom_heading)
+	var zoom_row := _camera_row(toolbar, "Zoom")
 	zoom_out_button = _icon_button(Rect2i(462, 0, 23, 23), "Zoom Out")
 	zoom_out_button.pressed.connect(zoom_out_requested.emit)
 	zoom_row.add_child(zoom_out_button)
@@ -283,3 +269,23 @@ func _on_surface_visibility_toggled(visible: bool, layer: String) -> void:
 func sync_view_mode(mode: String) -> void:
 	for key in view_mode_buttons:
 		(view_mode_buttons[key] as CheckBox).set_pressed_no_signal(key == mode)
+
+
+func _camera_row(parent: VBoxContainer, title: String) -> HBoxContainer:
+	# equal side columns center the buttons independently of the left label
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 0)
+	parent.add_child(row)
+	var label := Label.new()
+	label.text = title
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.custom_minimum_size.x = 45
+	row.add_child(label)
+	var buttons := HBoxContainer.new()
+	buttons.add_theme_constant_override("separation", 3)
+	row.add_child(buttons)
+	var spacer := Control.new()
+	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	spacer.custom_minimum_size.x = 45
+	row.add_child(spacer)
+	return buttons
