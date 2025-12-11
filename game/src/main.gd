@@ -3464,12 +3464,14 @@ func _select_tool_group(index: int) -> void:
 	selected_subtool = city_toolbar.show_tool_group(
 		selected_group, city, _tool_button_icon
 	)
+	_auto_select_underground()
 	_sync_child_tool_selection()
 	_update_edit_state()
 
 
 func _select_subtool(index: int) -> void:
 	selected_subtool = index
+	_auto_select_underground()
 	_sync_child_tool_selection()
 	_update_edit_state()
 	if selected_tool_available and ToolState.is_tool_chooser(selected_group, selected_subtool):
@@ -4773,3 +4775,10 @@ func _debug_dispatch_maxis_man() -> Dictionary:
 
 func _format_number(value: int) -> String:
 	return DisplayNumbers.format(value)
+
+
+func _auto_select_underground() -> void:
+	if city != null and ((selected_group == 4 and selected_subtool == 0) or (
+		selected_group == 7 and selected_subtool == 1
+	)) and overlay_mode != "underground":
+		_set_overlay("underground")
