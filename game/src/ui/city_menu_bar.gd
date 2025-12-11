@@ -165,7 +165,7 @@ func _ready() -> void:
 
 	money_label = Label.new()
 	money_label.text = "$--"
-	money_label.custom_minimum_size = Vector2(92, 0)
+	money_label.custom_minimum_size = Vector2(115, 0)
 	money_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	money_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	money_label.tooltip_text = "Current city funds"
