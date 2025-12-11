@@ -57,12 +57,6 @@ func _ready() -> void:
 	var toolbar := VBoxContainer.new()
 	toolbar.add_theme_constant_override("separation", 4)
 	toolbar_margin.add_child(toolbar)
-	var toolbar_title := Label.new()
-	toolbar_title.text = "City Toolbar"
-	toolbar_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	toolbar_title.add_theme_color_override("font_color", Color("000080"))
-	toolbar_title.add_theme_font_size_override("font_size", 14)
-	toolbar.add_child(toolbar_title)
 
 	var tool_grid := GridContainer.new()
 	tool_grid.columns = 3
