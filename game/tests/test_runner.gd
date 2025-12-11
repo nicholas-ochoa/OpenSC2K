@@ -13812,6 +13812,15 @@ func _test_network_command(reference_root: String) -> void:
 	for x in range(10, 13):
 		_check(city.underground_id(x, 30) == 0x11, "Pipe drag stores connected pipe shapes")
 		_check(city.is_piped(x, 30), "Pipe drag sets the piped flag")
+	var pipes_before: PackedByteArray = document.serialize().data
+	var subway_over_pipe := Networks.apply(city, 7, 1, Vector2i(10, 30), Vector2i(12, 30))
+	_check(subway_over_pipe.ok and subway_over_pipe.cost == 300 and not subway_over_pipe.stopped_early,
+		"Subway can run under parallel pipe tiles")
+	for x in range(10, 13):
+		_check(city.is_piped(x, 30) and city.underground_id(x, 30) in [0x1f, 0x20],
+			"Subway under a pipe keeps the dual-network cell and piped flag")
+	_check(Networks.undo(city, subway_over_pipe).ok and document.serialize().data == pipes_before,
+		"Subway under pipes has exact Undo")
 	_check(Networks.undo(city, pipes).ok, "Pipe drag can be undone")
 
 	var subway := Networks.apply(city, 7, 1, Vector2i(30, 30), Vector2i(30, 32))

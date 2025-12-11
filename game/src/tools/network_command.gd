@@ -324,11 +324,11 @@ static func apply(
 				)
 			MODE_SUBWAY:
 				_place_underground(
-					underground, terrain, zones, flags, misc, point, false
+					underground, terrain, zones, flags, misc, point, false, direction
 				)
 			MODE_PIPE:
 				_place_underground(
-					underground, terrain, zones, flags, misc, point, true
+					underground, terrain, zones, flags, misc, point, true, direction
 				)
 	var bridge_points: Array[Vector2i] = []
 	if bridge_built:
@@ -816,7 +816,7 @@ static func _tile_is_eligible(
 			return true
 		if mode == MODE_PIPE:
 			return under_tile + (direction & 1) == 0x11
-		return under_tile + (direction & 1) == 0x02
+		return under_tile >= 0x10 and under_tile <= 0x1e
 
 	var terrain_id := int(terrain[index])
 	if flags[index] & FLAG_WATER and terrain_id < 0x40:
@@ -1015,7 +1015,8 @@ static func _place_underground(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	pipes: bool
+	pipes: bool,
+	direction := 0
 ) -> void:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	var old_tile := int(underground[index])
@@ -1033,10 +1034,8 @@ static func _place_underground(
 	else:
 		if old_tile == 0:
 			new_tile = 0x01
-		elif old_tile == 0x10:
-			new_tile = 0x20
-		elif old_tile == 0x11:
-			new_tile = 0x1f
+		elif old_tile >= 0x10 and old_tile <= 0x1e:
+			new_tile = 0x1f if (direction & 1) == 0 else 0x20
 		else:
 			return
 	BuildingCommand._replace_underground(underground, zones, misc, index, new_tile)
