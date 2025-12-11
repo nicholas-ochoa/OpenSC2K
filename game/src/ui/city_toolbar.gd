@@ -13,6 +13,8 @@ signal underground_pipes_visibility_requested(visible: bool)
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 const ChildToolPalette = preload("res://src/ui/city_child_tool_palette.gd")
+const HoldMenu = preload("res://src/ui/city_tool_hold_menu.gd")
+const HOLD_SECONDS := 0.45
 const MAP_DISPLAY_MODES := ["city", "underground"]
 const GROUP_ICON_REGIONS := [
 	Rect2i(0, 0, 23, 23), Rect2i(24, 0, 26, 23), Rect2i(50, 0, 20, 23),
@@ -22,6 +24,14 @@ const GROUP_ICON_REGIONS := [
 	Rect2i(278, 0, 23, 23), Rect2i(302, 0, 23, 23), Rect2i(325, 0, 23, 23),
 	Rect2i(348, 0, 29, 23), Rect2i(377, 0, 26, 23), Rect2i(510, 0, 21, 23),
 ]
+
+var hold_menu: CityToolHoldMenu
+var _hold_generation := 0
+var _held_group := -1
+var _hold_opened := false
+var _current_city: CityState
+var _icon_provider := Callable()
+var _selected_subtool := 0
 
 var toolbar_art: Image
 var toolbar_buttons: Array[Button] = []
@@ -49,6 +59,9 @@ func _ready() -> void:
 	add_theme_stylebox_override(
 		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("808080"), 2)
 	)
+	hold_menu = HoldMenu.new()
+	hold_menu.subtool_requested.connect(subtool_requested.emit)
+	add_child(hold_menu)
 	var toolbar_margin := MarginContainer.new()
 	for side in ["left", "top", "right", "bottom"]:
 		toolbar_margin.add_theme_constant_override("margin_" + side, 6)
@@ -173,12 +186,15 @@ func show_tool_group(
 ) -> int:
 	if group_index < 0 or group_index >= Tools.GROUPS.size():
 		return 0
+	_current_city = city
+	_icon_provider = icon_provider
 	for button_index in toolbar_buttons.size():
 		toolbar_buttons[button_index].button_pressed = button_index == group_index
 	return child_palette.show_tool_group(group_index, city, icon_provider)
 
 
 func sync_child_tool_selection(group_index: int, subtool_index: int) -> void:
+	_selected_subtool = subtool_index
 	child_palette.sync_selection(group_index, subtool_index)
 
 
@@ -219,7 +235,10 @@ func _add_group_button(
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	button.text = str(group_index + 1) if button.icon == null else ""
-	button.pressed.connect(group_requested.emit.bind(group_index))
+	button.button_down.connect(_begin_group_hold.bind(group_index))
+	button.button_up.connect(_end_group_hold)
+	button.mouse_exited.connect(_cancel_group_hold)
+	button.pressed.connect(_activate_group.bind(group_index))
 	parent.add_child(button)
 	toolbar_buttons.append(button)
 
@@ -289,3 +308,43 @@ func _camera_row(parent: VBoxContainer, title: String) -> HBoxContainer:
 	spacer.custom_minimum_size.x = 45
 	row.add_child(spacer)
 	return buttons
+
+
+func _begin_group_hold(group_index: int) -> void:
+	_hold_generation += 1
+	_held_group = group_index
+	_hold_opened = false
+	if group_index >= 15 or not is_inside_tree():
+		return
+	get_tree().create_timer(HOLD_SECONDS).timeout.connect(
+		_show_held_group.bind(group_index, _hold_generation)
+	)
+
+
+func _end_group_hold() -> void:
+	_hold_generation += 1
+	_held_group = -1
+
+
+func _cancel_group_hold() -> void:
+	if not _hold_opened:
+		_end_group_hold()
+
+
+func _activate_group(group_index: int) -> void:
+	if _hold_opened:
+		_hold_opened = false
+		return
+	hold_menu.hide()
+	group_requested.emit(group_index)
+
+
+func _show_held_group(group_index: int, generation: int) -> void:
+	if generation != _hold_generation or _held_group != group_index:
+		return
+	_hold_opened = true
+	group_requested.emit(group_index)
+	hold_menu.show_tools(
+		group_index, _current_city, _icon_provider, _selected_subtool,
+		toolbar_buttons[group_index].get_global_rect()
+	)
