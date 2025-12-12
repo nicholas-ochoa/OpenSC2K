@@ -13813,6 +13813,11 @@ func _test_network_command(reference_root: String) -> void:
 		_check(city.underground_id(x, 30) == 0x11, "Pipe drag stores connected pipe shapes")
 		_check(city.is_piped(x, 30), "Pipe drag sets the piped flag")
 	var pipes_before: PackedByteArray = document.serialize().data
+	var pipe_extension := Networks.apply(city, 4, 0, Vector2i(11, 30), Vector2i(11, 33))
+	_check(pipe_extension.ok and pipe_extension.cost == 9 and not pipe_extension.stopped_early,
+		"Pipes can start on an existing pipe without charging it again")
+	_check(Networks.undo(city, pipe_extension).ok and document.serialize().data == pipes_before,
+		"Pipe extension Undo preserves exact bytes")
 	var subway_over_pipe := Networks.apply(city, 7, 1, Vector2i(10, 30), Vector2i(12, 30))
 	_check(subway_over_pipe.ok and subway_over_pipe.cost == 300 and not subway_over_pipe.stopped_early,
 		"Subway can run under parallel pipe tiles")

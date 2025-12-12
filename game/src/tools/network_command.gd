@@ -199,6 +199,10 @@ static func apply(
 			var terrain_id := int(terrain[index])
 			if terrain_id < 0x30 and TERRAIN_REQUIRES_GRADING[terrain_id & 0x0f]:
 				graded_tiles += 1
+	else:
+		for point in planned:
+			if _reuses_underground(underground[point.x * CityState.MAP_SIZE + point.y], mode):
+				new_tiles -= 1
 	var listed_dry_cost := new_tiles * int(tool.cost) + graded_tiles * 25
 	var dry_cost := 0 if free_mode else listed_dry_cost
 	if city.funds() < dry_cost:
@@ -812,6 +816,8 @@ static func _tile_is_eligible(
 		if tunnel_level == 1 or tunnel_level == 2:
 			return false
 		var under_tile := int(underground[index])
+		if _reuses_underground(under_tile, mode):
+			return true
 		if under_tile == 0:
 			return true
 		if mode == MODE_PIPE:
@@ -1008,6 +1014,12 @@ static func _rail_connects(tile_id: int) -> bool:
 	)
 
 
+static func _reuses_underground(tile_id: int, mode: int) -> bool:
+	return (mode == MODE_PIPE or mode == MODE_SUBWAY) and BuildingCommand._underground_connects(
+		tile_id, mode == MODE_PIPE
+	)
+
+
 static func _place_underground(
 	underground: PackedByteArray,
 	terrain: PackedByteArray,
@@ -1020,6 +1032,8 @@ static func _place_underground(
 ) -> void:
 	var index := point.x * CityState.MAP_SIZE + point.y
 	var old_tile := int(underground[index])
+	if _reuses_underground(old_tile, MODE_PIPE if pipes else MODE_SUBWAY):
+		return
 	var new_tile := -1
 	if pipes:
 		if old_tile == 0:
