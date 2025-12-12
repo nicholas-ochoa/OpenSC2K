@@ -186,11 +186,23 @@ static func patch_static_image(
 	region.fill(Color.TRANSPARENT)
 	var cache: Dictionary = {}
 	var tiles_drawn := 0
-	for diagonal in CityState.MAP_SIZE * 2 - 1:
-		for y in diagonal + 1:
+	# bound both x+y and x-y before walking the painter order. keep the exact
+	# rectangle test below, including the full altitude and sprite allowance
+	var half_width := int(configuration.half_width)
+	var half_height := int(configuration.half_height)
+	var full_origin_x := int(configuration.side_margin) + CityState.MAP_SIZE * half_width
+	var top_margin := int(configuration.top_margin)
+	var bottom_extra := int(configuration.tile_height) + int(sprite_limit.x / 4) + 1
+	var top_extra := 32 * int(configuration.altitude_step) + sprite_limit.y
+	var first_diagonal := maxi(0, floori(float(native_rect.position.y - top_margin - bottom_extra) / half_height))
+	var last_diagonal := mini(254, ceili(float(native_rect.end.y - top_margin + top_extra) / half_height))
+	var first_difference := floori(float(native_rect.position.x - full_origin_x - sprite_limit.x - int(configuration.tile_width) - 1) / half_width)
+	var last_difference := ceili(float(native_rect.end.x - full_origin_x + sprite_limit.x) / half_width)
+	for diagonal in range(first_diagonal, last_diagonal + 1):
+		var first_y := maxi(maxi(0, diagonal - 127), ceili(float(diagonal - last_difference) / 2.0))
+		var last_y := mini(mini(127, diagonal), floori(float(diagonal - first_difference) / 2.0))
+		for y in range(first_y, last_y + 1):
 			var x := diagonal - y
-			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
-				continue
 			if not _potential_tile_bounds(
 				configuration, sprite_limit, x, y
 			).intersects(native_rect):

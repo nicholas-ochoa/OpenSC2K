@@ -142,6 +142,7 @@ var simulation_map_dirty := false
 var annual_budget_pending := false
 var military_proposal_pending := false
 var game_over_active := false
+var edit_display_timings := {}
 var static_city_image: Image
 var static_occlusion_commands: Array[Dictionary] = []
 var static_occlusion_grid: Dictionary = {}
@@ -2482,6 +2483,7 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 		or static_render_thread != null
 	):
 		return false
+	var profile_start := Time.get_ticks_usec()
 	var dirty_indices := _edit_dirty_indices(command)
 	if dirty_indices.is_empty():
 		return false
@@ -2499,9 +2501,13 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 			> STATIC_EDIT_PATCH_MAX_AREA_RATIO
 	):
 		return false
+	edit_display_timings = {"dirty_ms": (Time.get_ticks_usec() - profile_start) / 1000.0}
+	profile_start = Time.get_ticks_usec()
 	var display_city := ViewFilter.surface_copy(city, surface_visibility)
 	if display_city == null or not display_city.is_valid():
 		return false
+	edit_display_timings.copy_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+	profile_start = Time.get_ticks_usec()
 	var patched := IsometricRenderer.patch_static_image(
 		static_city_image,
 		display_city,
@@ -2513,6 +2519,8 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	)
 	if not patched.get("ok", false):
 		return false
+	edit_display_timings.patch_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+	profile_start = Time.get_ticks_usec()
 	static_render_epoch += 1
 	static_city_image = patched.image
 	static_display_city = display_city
@@ -2536,9 +2544,12 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 		"display_city": static_display_city,
 		"view_size": view_size,
 	}
+	edit_display_timings.occlusion_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+	profile_start = Time.get_ticks_usec()
 	var texture := ImageTexture.create_from_image(static_city_image)
 	map_view.set_city_view(static_display_city, texture, texture, true)
 	_refresh_moving_things(view_size)
+	edit_display_timings.upload_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	return true
 
 
@@ -3671,19 +3682,17 @@ func _apply_map_selection(
 			)
 			return
 		last_edit_command = building
+		var stadium_team_pending := bool(
+			building.get("stadium_team_selection_required", false)
+		)
+		if not stadium_team_pending:
+			_play_tool_success_sound(building_group, building_subtool, scurk_tool_mode)
 		_refresh_details()
 		_refresh_after_city_edit(building)
 		if building_group == 5 and building_subtool < 4:
 			_choose_tool_group(17)
-		var stadium_team_pending := bool(
-			building.get("stadium_team_selection_required", false)
-		)
 		if building_group == 14 and city.music_enabled() and not stadium_team_pending:
 			_play_music_track(Music.RECREATION_TRACK)
-		if not stadium_team_pending:
-			_play_tool_success_sound(
-				building_group, building_subtool, scurk_tool_mode
-			)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Built %s for $%s." % [
 			building_name,
