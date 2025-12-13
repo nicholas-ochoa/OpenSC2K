@@ -3527,6 +3527,8 @@ func _update_edit_state() -> void:
 		)
 		selected_tool_available = bool(state.available)
 	map_view.highway_preview = selected_group == 6 and selected_subtool == 1
+	map_view.query_footprint_preview = selected_group == 16
+	map_view.query_city = city
 	map_view.set_edit_enabled(
 		bool(state.enabled),
 		str(state.selection),

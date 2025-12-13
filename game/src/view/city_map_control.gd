@@ -17,6 +17,7 @@ signal viewport_changed()
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const HighwayTool = preload("res://src/tools/highway_command.gd")
+const DemolishTool = preload("res://src/tools/demolish_command.gd")
 const BuildingTool = preload("res://src/tools/building_command.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const ZOOM_LEVELS := [0.25, 0.5, 1.0, 2.0]
@@ -81,6 +82,9 @@ var selection_moved := false
 var selection_price := -1
 var selection_price_affordable := true
 var highway_preview := false
+var query_footprint_preview := false
+var query_city: CityState
+var _shift_pressed := false
 var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[Dictionary] = []
 var dynamic_sprites: Array[Dictionary] = []
@@ -552,7 +556,9 @@ func _draw() -> void:
 
 func _selection_source_polygons() -> Array[PackedVector2Array]:
 	var tiles: Array[Vector2i]
-	if selection_mode == "point":
+	if query_footprint_preview and _shift_pressed:
+		tiles = _query_footprint_tiles(hover_tile)
+	elif selection_mode == "point":
 		var preview_point := selection_end if selection_end.x >= 0 else hover_tile
 		tiles = point_preview_tiles(preview_point)
 	elif selection_start.x >= 0 and selection_end.x >= 0:
@@ -851,6 +857,9 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 
 
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
+	if _shift_pressed != event.shift_pressed:
+		_shift_pressed = event.shift_pressed
+		queue_redraw()
 	if (
 		_panning
 		and (
@@ -1092,3 +1101,30 @@ func _new_palette_material() -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = _palette_shader
 	return material
+
+
+func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.keycode == KEY_SHIFT:
+		_shift_pressed = event.pressed
+		if query_footprint_preview:
+			queue_redraw()
+
+
+func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	var source := query_city if query_city != null else city
+	if source == null or source.index_of(point.x, point.y) < 0:
+		return result
+	var tile_id := source.building_id(point.x, point.y)
+	var area := DemolishTool._building_area(tile_id)
+	var site := Rect2i(point, Vector2i.ONE)
+	if area > 1:
+		var found := DemolishTool._find_building_site(
+			source.buildings, source.zones, point, tile_id, area, source.compass_rotation()
+		)
+		if found.has_area():
+			site = found
+	for x in range(site.position.x, site.end.x):
+		for y in range(site.position.y, site.end.y):
+			result.append(Vector2i(x, y))
+	return result
