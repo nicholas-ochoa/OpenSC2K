@@ -16,6 +16,7 @@ signal zoom_changed(percent: int)
 signal viewport_changed()
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
+const HighwayTool = preload("res://src/tools/highway_command.gd")
 const BuildingTool = preload("res://src/tools/building_command.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const ZOOM_LEVELS := [0.25, 0.5, 1.0, 2.0]
@@ -79,6 +80,7 @@ var selection_path: Array[Vector2i] = []
 var selection_moved := false
 var selection_price := -1
 var selection_price_affordable := true
+var highway_preview := false
 var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[Dictionary] = []
 var dynamic_sprites: Array[Dictionary] = []
@@ -557,6 +559,18 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 		tiles = selection_path
 	elif edit_enabled and selection_mode == "path" and hover_tile.x >= 0:
 		tiles = [hover_tile]
+	if highway_preview:
+		var expanded: Array[Vector2i] = []
+		var seen := {}
+		for tile in tiles:
+			var anchor := HighwayTool.snap_anchor(tile)
+			for x in range(anchor.x, anchor.x + 2):
+				for y in range(anchor.y, anchor.y + 2):
+					var point := Vector2i(x, y)
+					if not seen.has(point) and city.index_of(x, y) >= 0:
+						seen[point] = true
+						expanded.append(point)
+		tiles = expanded
 	var polygons: Array[PackedVector2Array] = []
 	for tile in tiles:
 		var polygon := Renderer.terrain_surface_polygon(city, tile.x, tile.y)

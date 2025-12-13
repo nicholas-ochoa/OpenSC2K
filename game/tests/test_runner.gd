@@ -1996,6 +1996,11 @@ func _test_sprite_archives(reference_root: String) -> void:
 		],
 		"An idle network tool highlights the exact hovered terrain tile",
 	)
+	map_control.highway_preview = true
+	map_control.hover_tile = center_tile + Vector2i.ONE
+	_check(map_control._selection_source_polygons().size() == 4,
+		"Highway hover highlights its snapped two-by-two section")
+	map_control.highway_preview = false
 	map_control.set_edit_enabled(false)
 	_check(map_control._selection_source_polygons().is_empty(),
 		"Disabling network input clears its hover highlight")
