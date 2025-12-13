@@ -108,8 +108,12 @@ static func apply(
 				"error": bridge_plan.get("error", "highway bridge is invalid"),
 			}
 		return {"ok": false, "error": "highway cannot start on this section"}
+	var new_sections := 0
+	for section in sections:
+		if not _section_is_existing_highway(buildings, section):
+			new_sections += 1
 	var listed_route_cost := (
-		sections.size() * int(ToolCatalog.tool(group_index, subtool_index).cost)
+		new_sections * int(ToolCatalog.tool(group_index, subtool_index).cost)
 	)
 	var route_cost := 0 if free_mode else listed_route_cost
 	if city.funds() < route_cost:
@@ -218,6 +222,8 @@ static func apply(
 		var direction := _section_direction(sections, section_index, finish)
 		var section := sections[section_index]
 		route_directions[section] = direction
+		if _section_is_existing_highway(buildings, section):
+			continue
 		var placement := _place_section(
 			buildings,
 			terrain,
@@ -779,7 +785,7 @@ static func _section_is_flat_eligible(
 		var tile_id := int(buildings[index])
 		if not _building_is_allowed(tile_id):
 			return false
-		if tile_id > 0x0e and not _network_can_cross(tile_id, direction):
+		if tile_id > 0x0e and not _is_highway_tile(tile_id) and not _network_can_cross(tile_id, direction):
 			return false
 	return (
 		_terrain_section_shape(buildings, terrain, altitude, anchor)
@@ -1548,3 +1554,13 @@ static func _section_has_water(flags: PackedByteArray, anchor: Vector2i) -> bool
 		if (flags[point.x * CityState.MAP_SIZE + point.y] & FLAG_WATER) != 0:
 			return true
 	return false
+
+
+static func _section_is_existing_highway(buildings: PackedByteArray, anchor: Vector2i) -> bool:
+	if not _anchor_is_in_bounds(anchor):
+		return false
+	for x in range(anchor.x, anchor.x + 2):
+		for y in range(anchor.y, anchor.y + 2):
+			if not _is_highway_tile(buildings[x * CityState.MAP_SIZE + y]):
+				return false
+	return true

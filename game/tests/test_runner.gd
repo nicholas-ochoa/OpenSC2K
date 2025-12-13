@@ -14340,6 +14340,19 @@ func _test_highway_command(reference_root: String) -> void:
 		for y in range(10, 12):
 			_check(city.building_id(x, y) == 0x4a, "Horizontal highway stores straight tile 0x4a")
 			_check(city.zones[x * 128 + y] == 0xf0, "Straight highway sets all XZON corner bits")
+	var highway_before: PackedByteArray = document.serialize().data
+	for endpoints in [
+		[Vector2i(14, 10), Vector2i(18, 10)],
+		[Vector2i(6, 10), Vector2i(10, 10)],
+		[Vector2i(10, 10), Vector2i(14, 10)],
+	]:
+		var reuse := Highways.apply(city, 6, 1, endpoints[0], endpoints[1])
+		_check(reuse.ok and not reuse.get("stopped_early", true),
+			"Highway routes can start, end and retrace existing highway sections")
+		_check(reuse.get("cost", -1) == (0 if endpoints[0].x == 10 else 200),
+			"Highway reuse charges only new sections")
+		_check(Highways.undo(city, reuse).ok and document.serialize().data == highway_before,
+			"Highway reuse Undo restores exact bytes")
 	_check(Highways.undo(city, straight).ok, "Straight highway can be undone")
 	_check(city.funds() == 1000 and city.building_id(12, 10) == 0, "Highway undo restores funds and tiles")
 
