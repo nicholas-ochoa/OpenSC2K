@@ -81,6 +81,7 @@ var selection_path: Array[Vector2i] = []
 var selection_moved := false
 var selection_price := -1
 var selection_price_affordable := true
+var placement_validator := Callable()
 var show_selection_preview := true
 var highway_preview := false
 var query_footprint_preview := false
@@ -545,13 +546,14 @@ func _draw() -> void:
 	_draw_signs(scale, offset)
 	if city == null:
 		return
+	var valid := not placement_validator.is_valid() or bool(placement_validator.call(selection_end if selection_end.x >= 0 else hover_tile))
 	for source_polygon in _selection_source_polygons():
 		var local_polygon := PackedVector2Array()
 		for point in source_polygon:
 			local_polygon.append(offset + point * scale)
-		draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28))
+		draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28) if valid else Color(1.0, 0.15, 0.12, 0.35))
 		local_polygon.append(local_polygon[0])
-		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9), 1.0)
+		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95), 1.0)
 	_draw_selection_price(scale, offset)
 
 

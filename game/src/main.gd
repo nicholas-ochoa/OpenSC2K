@@ -3533,6 +3533,7 @@ func _update_edit_state() -> void:
 			city, overlay_mode, selected_group, selected_subtool
 		)
 		selected_tool_available = bool(state.available)
+	map_view.placement_validator = _placement_preview_valid
 	map_view.show_selection_preview = selected_group != 17
 	map_view.highway_preview = selected_group == 6 and selected_subtool == 1
 	map_view.query_footprint_preview = selected_group == 16
@@ -4795,3 +4796,14 @@ func _debug_dispatch_maxis_man() -> Dictionary:
 
 func _format_number(value: int) -> String:
 	return DisplayNumbers.format(value)
+
+
+func _placement_preview_valid(point: Vector2i) -> bool:
+	if city == null or point.x < 0:
+		return false
+	if Buildings.supports_tool(selected_group, selected_subtool):
+		return Buildings.preview_valid(city, selected_group, selected_subtool, point)
+	if Hydro.supports_tool(selected_group, selected_subtool):
+		var index := city.index_of(point.x, point.y)
+		return index >= 0 and city.terrain[index] in [0x2e, 0x3e] and city.buildings[index] == 0 and city.funds() >= int(Tools.tool(selected_group, selected_subtool).cost)
+	return true

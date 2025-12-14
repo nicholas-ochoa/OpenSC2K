@@ -251,6 +251,15 @@ static func footprint(selected: Vector2i, area: int) -> Rect2i:
 	return Rect2i(origin, Vector2i(area, area))
 
 
+# checks the site without changing the city or consuming random state
+static func preview_valid(city: CityState, group: int, subtool: int, point: Vector2i) -> bool:
+	if city == null or not supports_tool(group, subtool):
+		return false
+	var tool := ToolCatalog.tool(group, subtool)
+	var site := footprint(point, int(tool.area))
+	return Availability.is_available(city, group, subtool) and city.funds() >= int(tool.cost) and _footprint_is_in_bounds(site, int(tool.area)) and bool(_check_site(city.buildings, city.terrain, city.zones, city.tile_flags, site, tile_for_tool(group, subtool)).ok)
+
+
 static func apply(
 	city: CityState,
 	group_index: int,
