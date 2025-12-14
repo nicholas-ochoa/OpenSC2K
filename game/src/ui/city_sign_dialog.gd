@@ -5,8 +5,10 @@ var text_input: LineEdit
 
 
 func _ready() -> void:
-	title = "City Sign"
-	dialog_text = "Enter sign text. An empty value removes the sign."
+	title = "Enter sign text..."
+	dialog_text = "An empty value removes the sign."
+	theme = ThemeDB.get_default_theme().duplicate() as Theme
+	theme.set_color("font_color", "Label", Color.WHITE)
 	min_size = Vector2i(440, 170)
 
 	text_input = LineEdit.new()
