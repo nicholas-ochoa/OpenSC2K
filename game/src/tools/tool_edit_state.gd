@@ -19,11 +19,11 @@ const ScurkPlace = preload("res://src/tools/scurk_place_command.gd")
 
 
 static func is_tool_chooser(group_index: int, subtool_index: int) -> bool:
-	return group_index == 5 and subtool_index == 4
+	return false
 
 
 static func is_tool_variant(group_index: int, subtool_index: int) -> bool:
-	return group_index == 5 and subtool_index >= 5
+	return false
 
 
 static func scurk_object(

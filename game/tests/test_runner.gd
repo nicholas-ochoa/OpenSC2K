@@ -12382,8 +12382,8 @@ func _test_tool_availability(reference_root: String) -> void:
 		"Tool edit state classifies SCURK object and edit modes",
 	)
 	_check(
-		ToolEditState.is_tool_chooser(5, 4)
-		and ToolEditState.is_tool_variant(5, 5)
+		not ToolEditState.is_tool_chooser(5, 4)
+		and not ToolEditState.is_tool_variant(5, 5)
 		and not ToolEditState.is_tool_variant(5, 4),
 		"Tool edit state owns reward chooser and variant rules",
 	)

@@ -62,7 +62,7 @@ func show_tool_group(
 	var button_group := ButtonGroup.new()
 	var first_available_subtool := -1
 	for subtool_index in group.tools.size():
-		if group_index == 3 and subtool_index == 1:
+		if (group_index == 3 and subtool_index == 1) or (group_index == 5 and subtool_index == 4):
 			continue
 		if ToolState.is_tool_variant(group_index, subtool_index):
 			continue
@@ -85,8 +85,6 @@ func show_tool_group(
 
 func sync_selection(group_index: int, subtool_index: int) -> void:
 	var displayed_subtool := subtool_index
-	if group_index == 5 and subtool_index >= 5:
-		displayed_subtool = 4
 	for button_subtool in buttons:
 		var button: Button = buttons[button_subtool]
 		button.button_pressed = int(button_subtool) == displayed_subtool
