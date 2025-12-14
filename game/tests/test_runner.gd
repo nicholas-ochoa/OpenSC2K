@@ -1939,6 +1939,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.selection_start = center_tile
 	_check(map_control.is_left_drag_active(), "Map control reports an active left drag")
 	map_control.selection_end = center_tile + Vector2i(2, 1)
+	map_control.edit_enabled = true
 	map_control.selection_mode = "rectangle"
 	map_control._rebuild_selection_path()
 	_check(
@@ -2001,6 +2002,10 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(map_control._selection_source_polygons().size() == 4,
 		"Highway hover highlights its snapped two-by-two section")
 	map_control.highway_preview = false
+	map_control.show_selection_preview = false
+	_check(map_control._selection_source_polygons().is_empty(),
+		"Center can suppress all tile previews")
+	map_control.show_selection_preview = true
 	map_control.set_edit_enabled(false)
 	_check(map_control._selection_source_polygons().is_empty(),
 		"Disabling network input clears its hover highlight")

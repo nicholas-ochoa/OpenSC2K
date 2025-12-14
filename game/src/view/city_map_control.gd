@@ -81,6 +81,7 @@ var selection_path: Array[Vector2i] = []
 var selection_moved := false
 var selection_price := -1
 var selection_price_affordable := true
+var show_selection_preview := true
 var highway_preview := false
 var query_footprint_preview := false
 var query_city: CityState
@@ -556,6 +557,8 @@ func _draw() -> void:
 
 func _selection_source_polygons() -> Array[PackedVector2Array]:
 	var tiles: Array[Vector2i]
+	if not show_selection_preview or not edit_enabled:
+		return []
 	if query_footprint_preview and _shift_pressed:
 		tiles = _query_footprint_tiles(hover_tile)
 	elif selection_mode == "point":

@@ -3480,6 +3480,13 @@ func _select_tool_group(index: int) -> void:
 	_update_edit_state()
 
 
+func _auto_select_underground() -> void:
+	if city != null and ((selected_group == 4 and selected_subtool == 0) or (
+		selected_group == 7 and selected_subtool == 1
+	)) and overlay_mode != "underground":
+		_set_overlay("underground")
+
+
 func _select_subtool(index: int) -> void:
 	selected_subtool = index
 	_auto_select_underground()
@@ -3526,6 +3533,7 @@ func _update_edit_state() -> void:
 			city, overlay_mode, selected_group, selected_subtool
 		)
 		selected_tool_available = bool(state.available)
+	map_view.show_selection_preview = selected_group != 17
 	map_view.highway_preview = selected_group == 6 and selected_subtool == 1
 	map_view.query_footprint_preview = selected_group == 16
 	map_view.query_city = city
@@ -4787,10 +4795,3 @@ func _debug_dispatch_maxis_man() -> Dictionary:
 
 func _format_number(value: int) -> String:
 	return DisplayNumbers.format(value)
-
-
-func _auto_select_underground() -> void:
-	if city != null and ((selected_group == 4 and selected_subtool == 0) or (
-		selected_group == 7 and selected_subtool == 1
-	)) and overlay_mode != "underground":
-		_set_overlay("underground")
