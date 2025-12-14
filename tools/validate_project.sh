@@ -54,6 +54,8 @@ if [ -f "$repo_dir/game/tests/runtime_ui_smoke.gd" ]; then
 	run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/runtime_ui_smoke.gd -- "$repo_dir/references"
 fi
 
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/toolbar_interaction_test.gd
+
 python3 "$repo_dir/tools/test_graphics_tools.py"
 
 git -C "$repo_dir" diff --check
