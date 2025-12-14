@@ -21,6 +21,8 @@ const SPEED_NAMES := {
 var engine: SimulationEngine
 var speed := Speed.PAUSED
 var accumulator_msec := 0.0
+var fire_elapsed_msec := 0.0
+const FIRE_TICK_MSEC := 1000.0
 var subtick_counter := 0
 var simulation_ready := false
 var interaction_blocked := false
@@ -70,6 +72,8 @@ func advance_time(
 		result.base_ticks += 1
 		subtick_counter = (subtick_counter + 1) & 7
 		simulation_ready = simulation_ready or _is_day_due()
+		if speed > Speed.PAUSED and not simulation_suspended and not interaction_blocked and not terminal_blocked:
+			fire_elapsed_msec = minf(FIRE_TICK_MSEC, fire_elapsed_msec + BASE_TICK_MSEC) if engine.active_disaster_type in [1, 12] else 0.0
 		var pulse_time := current_time_msec - int(accumulator_msec)
 
 		if (
@@ -167,6 +171,10 @@ func _is_day_due() -> bool:
 
 func _run_day(result: Dictionary) -> String:
 	if engine.active_disaster_type != 0:
+		if engine.active_disaster_type in [1, 12]:
+			if fire_elapsed_msec < FIRE_TICK_MSEC:
+				return ""
+			fire_elapsed_msec = 0.0
 		var disaster := engine.advance_disaster_tick()
 		if not disaster.get("ok", false):
 			return disaster.get("error", "disaster update failed")
