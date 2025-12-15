@@ -68,6 +68,7 @@ var animated_palette_texture: Texture2D
 var base_palette_lookup_all := false
 var signs_visible := true
 var edit_enabled := false
+var shift_rectangle_enabled := false
 var selection_mode := "rectangle"
 var point_footprint_area := 1
 var shift_query_enabled := false
@@ -826,7 +827,8 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 		return
 	var tile := _tile_at(event.position)
 	if event.pressed:
-		if shift_query_enabled and event.shift_pressed:
+		_shift_pressed = event.shift_pressed
+		if shift_query_enabled and not shift_rectangle_enabled and event.shift_pressed:
 			if tile.x >= 0:
 				hover_tile = tile
 				query_requested.emit(tile)
@@ -864,6 +866,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	if _shift_pressed != event.shift_pressed:
 		_shift_pressed = event.shift_pressed
+		_rebuild_selection_path()
 		queue_redraw()
 	if (
 		_panning
@@ -910,7 +913,7 @@ func _rebuild_selection_path() -> void:
 	if selection_mode == "point":
 		selection_path.append(selection_end)
 		return
-	if selection_mode == "rectangle":
+	if selection_mode == "rectangle" or (shift_rectangle_enabled and _shift_pressed):
 		var minimum := Vector2i(
 			mini(selection_start.x, selection_end.x),
 			mini(selection_start.y, selection_end.y),
@@ -1111,8 +1114,10 @@ func _new_palette_material() -> ShaderMaterial:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.keycode == KEY_SHIFT:
 		_shift_pressed = event.pressed
-		if query_footprint_preview:
-			queue_redraw()
+		if shift_rectangle_enabled and selection_start.x >= 0:
+			_rebuild_selection_path()
+			selection_changed.emit(selection_start, selection_end, selection_path.duplicate(), selection_moved)
+		queue_redraw()
 
 
 func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:

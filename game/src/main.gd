@@ -3545,6 +3545,7 @@ func _update_edit_state() -> void:
 			city, overlay_mode, selected_group, selected_subtool
 		)
 		selected_tool_available = bool(state.available)
+	map_view.shift_rectangle_enabled = bool(state.landscape)
 	map_view.placement_validator = _placement_preview_valid
 	map_view.show_selection_preview = selected_group != 17
 	map_view.highway_preview = selected_group == 6 and selected_subtool == 1
