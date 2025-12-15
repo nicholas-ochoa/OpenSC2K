@@ -952,7 +952,7 @@ static func _retile_surface(
 			return
 		base = 0x1d
 	elif mode == MODE_RAIL:
-		if current < 0x2c or current > 0x3a:
+		if current < 0x2c or current > 0x3e:
 			return
 		base = 0x2c
 	else:
@@ -969,6 +969,18 @@ static func _retile_surface(
 				base + NETWORK_SLOPE_SHAPES[terrain_shape]
 			)
 			return
+
+	# flat rail at the low end of a slope uses the native transition tile
+	if mode == MODE_RAIL and terrain_id == 0:
+		const LOW_SIDE := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
+		for shape in range(1, 5):
+			var slope: Vector2i = point - LOW_SIDE[shape - 1]
+			if slope.x < 0 or slope.y < 0 or slope.x >= 128 or slope.y >= 128:
+				continue
+			var slope_index := slope.x * CityState.MAP_SIZE + slope.y
+			if terrain[slope_index] == shape and buildings[slope_index] == 0x2d + shape:
+				_replace_building(buildings, zones, misc, index, 0x3a + shape)
+				return
 
 	var connections := 0
 	var has_connection_label := (
