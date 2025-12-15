@@ -90,6 +90,7 @@ const GROUPS := [
 		["police", "Police", 0, 1],
 		["fire", "Fire", 0, 1],
 		["military", "Military", 0, 1],
+		["recall", "Recall All", 0, 0],
 	]},
 	{"id": "power", "name": "Power", "tools": [
 		["wires", "Power Lines", 2, 1],

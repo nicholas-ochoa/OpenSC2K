@@ -3488,6 +3488,18 @@ func _auto_select_underground() -> void:
 
 
 func _select_subtool(index: int) -> void:
+	if selected_group == 2 and index == 3:
+		var recalled := Dispatch.recall_all(city)
+		if recalled.ok:
+			recalled["dispatch_cycles_before"] = dispatch_cycles.duplicate()
+			recalled["dispatch_initialized_before"] = dispatch_initialized
+			last_edit_command = recalled
+			dispatch_cycles = PackedInt32Array([0, 0, 0])
+			dispatch_initialized = false
+			_refresh_after_city_edit(recalled)
+			status_label.text = "All emergency services recalled."
+		_sync_child_tool_selection()
+		return
 	selected_subtool = index
 	_auto_select_underground()
 	_sync_child_tool_selection()

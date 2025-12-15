@@ -208,3 +208,20 @@ static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
 		| (data[offset + 2] << 8)
 		| data[offset + 3]
 	)
+
+
+static func recall_all(city: CityState) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {"ok": false, "error": "city is invalid"}
+	var things_chunk := city.document.find_chunk("XTHG")
+	var text_chunk := city.document.find_chunk("XTXT")
+	var old_things: PackedByteArray = things_chunk.decoded_payload.duplicate()
+	var old_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
+	var things := old_things.duplicate()
+	var text := old_text.duplicate()
+	_clear_existing_dispatch(things, text)
+	things_chunk.set_decoded_payload(things)
+	text_chunk.set_decoded_payload(text)
+	city.text_overlays = text.duplicate()
+	return {"ok": true, "command_type": "dispatch", "thing_index": -1,
+		"old_things": old_things, "new_things": things, "old_text": old_text, "new_text": text}
