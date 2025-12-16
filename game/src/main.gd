@@ -107,6 +107,7 @@ var surface_visibility := {
 	"zones": true,
 	"signs": true,
 }
+var full_size_graphics := false
 var show_underground_pipes := true
 var app_music_volume := 0.8
 var app_effects_volume := 0.8
@@ -1326,6 +1327,11 @@ func _on_speed_menu(id: int) -> void:
 
 
 func _on_options_menu(id: int) -> void:
+	if id == CityMenuBar.MENU_FULL_SIZE_GRAPHICS:
+		full_size_graphics = not full_size_graphics
+		_sync_city_option_menus()
+		_refresh_map()
+		return
 	if city == null:
 		_show_error("Load a city before you change its options.")
 		return
@@ -1397,6 +1403,7 @@ func _sync_city_option_menus() -> void:
 	if view_menu != null:
 		view_menu.disabled = not has_city
 	var option_states := {
+		CityMenuBar.MENU_FULL_SIZE_GRAPHICS: full_size_graphics,
 		MENU_AUTO_BUDGET: has_city and city.auto_budget_enabled(),
 		MENU_AUTO_GOTO: has_city and city.auto_goto_enabled(),
 		MENU_SOUND_EFFECTS: has_city and city.sound_enabled(),
@@ -2897,6 +2904,8 @@ func _update_palette_cycle_texture() -> void:
 
 
 func _city_view_size() -> int:
+	if full_size_graphics:
+		return IsometricRenderer.VIEW_LARGE
 	if map_view.zoom_percent() <= 25:
 		return IsometricRenderer.VIEW_SMALL
 	if map_view.zoom_percent() <= 50:

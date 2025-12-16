@@ -12,6 +12,7 @@ signal windows_menu_requested(id: int)
 signal newspaper_menu_requested(id: int)
 signal help_menu_requested(id: int)
 
+const MENU_FULL_SIZE_GRAPHICS := 0x8008
 const MENU_SAVE_CITY := 7
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
@@ -74,8 +75,9 @@ func _ready() -> void:
 	options_menu = _add_menu(menu_row, "Options", [
 		["Auto-Budget", MENU_AUTO_BUDGET], ["Auto-Goto", MENU_AUTO_GOTO],
 		["Sound Effects", MENU_SOUND_EFFECTS], ["Music", MENU_MUSIC],
+		["Full-size Graphics at All Zoom Levels", MENU_FULL_SIZE_GRAPHICS],
 	], _on_options_menu)
-	for option_id in [MENU_AUTO_BUDGET, MENU_AUTO_GOTO, MENU_SOUND_EFFECTS, MENU_MUSIC]:
+	for option_id in [MENU_AUTO_BUDGET, MENU_AUTO_GOTO, MENU_SOUND_EFFECTS, MENU_MUSIC, MENU_FULL_SIZE_GRAPHICS]:
 		var option_index := options_menu.get_popup().get_item_index(option_id)
 		options_menu.get_popup().set_item_as_checkable(option_index, true)
 	options_menu.disabled = true
