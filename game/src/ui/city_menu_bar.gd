@@ -59,10 +59,10 @@ func _ready() -> void:
 
 	file_menu = _add_menu(menu_row, "File", [
 		["New City...", 0], ["Open City...", 1],
-		["Save City", MENU_SAVE_CITY], ["Save City As...", 2],
-		["Load Tile Set...", 3], ["Restore Original Tile Set", 4],
+		["", -1], ["Save City", MENU_SAVE_CITY], ["Save City As...", 2],
+		["", -1], ["Load Tile Set...", 3], ["Restore Original Tile Set", 4],
 		["SCURK Place & Print...", MENU_SCURK_PLACE_PRINT],
-		["Main Menu", 5], ["Exit", 6],
+		["", -1], ["Main Menu", 5], ["Exit", 6],
 	], _on_file_menu)
 	speed_menu = _add_menu(menu_row, "Speed", [
 		["Pause", 0], ["Turtle", 1], ["Llama", 2], ["Cheetah", 3],
@@ -192,7 +192,10 @@ func _add_menu(
 	menu.custom_minimum_size = Vector2(0, 23)
 	parent.add_child(menu)
 	for item in items:
-		menu.get_popup().add_item(item[0], item[1])
+		if str(item[0]).is_empty():
+			menu.get_popup().add_separator()
+		else:
+			menu.get_popup().add_item(item[0], item[1])
 	menu.get_popup().id_pressed.connect(callback)
 	return menu
 
