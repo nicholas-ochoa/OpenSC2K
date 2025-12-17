@@ -63,6 +63,10 @@ func _ready() -> void:
 	notice_label.custom_minimum_size = Vector2(600, 48)
 	budget_rows.add_child(notice_label)
 	auto_budget_check = CheckBox.new()
+	auto_budget_check.theme = ThemeDB.get_default_theme().duplicate()
+	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
+		auto_budget_check.add_theme_stylebox_override(state, StyleBoxEmpty.new())
+		auto_budget_check.add_theme_color_override("font_" + ("color" if state == "normal" else state + "_color"), Color.WHITE)
 	auto_budget_check.text = "Use the same funding automatically next year"
 	budget_rows.add_child(auto_budget_check)
 	for budget_id in BUDGET_NAMES.size():
