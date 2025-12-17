@@ -7,6 +7,30 @@ signal close_requested
 
 const Ordinances = preload("res://src/simulation/ordinance_command.gd")
 
+# describes the implemented simulation, not real-world policy effects
+const EFFECTS := [
+  "Raises revenue. Adds one point to the commercial tax rate used by demand, which reduces commercial demand.",
+  "Raises revenue. Adds one point to the residential tax rate used by demand, which reduces residential demand.",
+  "Raises revenue. Adds 16 to the local crime calculation before smoothing.",
+  "Raises revenue. No additional traffic or demand effect is implemented.",
+  "Costs money. Adds fire coverage around developed residential, commercial and industrial tiles.",
+  "Costs money. Adds five years to the newborn life-expectancy input.",
+  "Costs money. Adds health capacity based on the residential budget base.",
+  "Costs money. No additional health or education effect is implemented.",
+  "Costs money. Prevents the education loss applied when population moves between age groups.",
+  "Costs money. Adds five years to the newborn life-expectancy input.",
+  "Costs money. Adds five years to the newborn life-expectancy input.",
+  "Costs money. Adds police coverage around developed residential, commercial and industrial tiles, reducing crime.",
+  "Costs money. Reduces the effective commercial tax rate by one point, increasing commercial demand.",
+  "Costs money. Reduces the effective industrial tax rate by one point, increasing industrial demand.",
+  "Costs money. Reduces the effective residential tax rate by one point, increasing residential demand.",
+  "Costs money. Reduces the effective commercial tax rate by one point, increasing commercial demand.",
+  "Costs money. Adds one twelfth to available power-grid capacity, allowing more consumers to be supplied.",
+  "Costs money. Prevents new nuclear power plants from being selected.",
+  "Costs money. Reduces the effective commercial tax rate by one point, increasing commercial demand.",
+  "Costs money. Reduces pollution and demand from polluting industries. Adds one point to the effective industrial tax rate, reducing industrial demand."
+]
+
 const LEFT_CATEGORIES := [0, 2, 4]
 const RIGHT_CATEGORIES := [1, 3]
 
@@ -113,6 +137,7 @@ func _add_group(parent: VBoxContainer, category: int) -> void:
 		var check := CheckBox.new()
 		check.name = "Ordinance%d" % ordinance_id
 		check.text = Ordinances.NAMES[ordinance_id]
+		check.tooltip_text = EFFECTS[ordinance_id] + "\nThe adjacent amount shows the estimated annual budget effect."
 		check.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		check.custom_minimum_size = Vector2(0, 27)
 		check.toggled.connect(_on_ordinance_toggled.bind(ordinance_id))
