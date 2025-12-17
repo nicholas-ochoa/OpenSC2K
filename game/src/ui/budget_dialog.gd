@@ -40,6 +40,8 @@ var pending_bond_action := ""
 
 
 func _ready() -> void:
+	theme = theme.duplicate() if theme != null else ThemeDB.get_default_theme().duplicate()
+	theme.set_color("font_color", "Label", Color.WHITE)
 	title = "Budget"
 	min_size = Vector2i(680, 720)
 	get_ok_button().text = "Apply"
