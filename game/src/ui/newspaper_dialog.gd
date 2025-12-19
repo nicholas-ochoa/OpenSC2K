@@ -17,6 +17,7 @@ var original_strings: Dictionary = {}
 var news_names: Dictionary = {}
 var session_seed := 0
 var selected_newspaper := 0
+var published_articles := PackedStringArray()
 
 var page: NewspaperPage
 var paper_selector: OptionButton
@@ -137,6 +138,7 @@ func _populate_page() -> void:
 	var paper := NewsQueue.paper_record(misc, selected_newspaper)
 	var teams := _team_names()
 	var headlines := PackedStringArray()
+	published_articles.clear()
 	for slot in NewspaperTextGenerator.PUBLISHED_SEED_OFFSETS.size():
 		if slot == 5 or slot == 6:
 			continue
@@ -163,7 +165,15 @@ func _populate_page() -> void:
 					misc, slot, rendered.argument, rendered.auxiliary
 				)
 		if slot < 5:
+			var report := _local_report(slot)
+			if newspaper_data != null and newspaper_data.is_valid():
+				var article := NewspaperTextGenerator.render_story(newspaper_data, record, seed, city.city_name(), city.mayor_name(), teams)
+				if article.ok:
+					report.article = article.article
+			else:
+				headline = report.headline
 			headlines.append(headline)
+			published_articles.append(str(report.article))
 		elif slot == 7:
 			paper["weather_headline"] = headline
 		elif slot == 8:
@@ -178,6 +188,10 @@ func _populate_page() -> void:
 		_weather_text(paper),
 		headlines,
 	)
+	page.set_articles(published_articles)
+	if not published_articles.is_empty():
+		article_heading.text = headlines[0].to_upper()
+		article_view.text = published_articles[0]
 	title = paper_title
 	_refresh_picture()
 	if misc != old_misc:
@@ -209,6 +223,9 @@ func _on_story_selected(slot: int) -> void:
 	if city == null or document == null or slot < 0 or slot >= 5:
 		return
 	article_heading.text = page.headline_for_slot(slot).to_upper()
+	if slot < published_articles.size():
+		article_view.text = published_articles[slot]
+		return
 	var seed := NewspaperTextGenerator.published_seed(
 		session_seed, city.age_in_days(), selected_newspaper, slot
 	)
@@ -242,7 +259,7 @@ func _on_story_selected(slot: int) -> void:
 
 func _paper_title(paper_index: int, paper: Dictionary) -> String:
 	var name_style := clampi(int(paper.get("name", 0)), 0, 5)
-	var paper_name: String = original_strings.get(360 + name_style, "Newspaper")
+	var paper_name: String = original_strings.get(360 + name_style, ["Gazette", "Herald", "Chronicle", "Times", "Journal", "Dispatch"][name_style])
 	if paper_index < int(NewsQueue.PAPER_COUNT / 2):
 		return "%s%s" % [original_strings.get(376, "The "), paper_name]
 	var city_name := city.city_name() if not city.city_name().is_empty() else "City"
@@ -262,7 +279,7 @@ func _date_text() -> String:
 func _price_text(paper: Dictionary) -> String:
 	var price_style := clampi(int(paper.get("price", 0)), 0, 2)
 	var era := clampi(floori(float(city.current_year() - 1900) / 50.0), 0, 4)
-	return original_strings.get(377 + price_style * 5 + era, "Price")
+	return original_strings.get(377 + price_style * 5 + era, "25 cents")
 
 
 func _opinion_text(paper: Dictionary) -> String:
@@ -290,3 +307,17 @@ func _team_names() -> PackedStringArray:
 	for label_id in range(251, 256):
 		result.append(city.label(label_id))
 	return result
+
+
+func _local_report(slot: int) -> Dictionary:
+	var name_text := city.city_name()
+	var demand := city.rci_demand()
+	var reports := [
+		["%s counts %d residents" % [name_text, city.population()], "%s has a recorded population of %d. City services and transport must keep pace as new neighborhoods develop. Residents need connections to employment, electricity and water. This edition records conditions on %s." % [name_text, city.population(), _date_text()]],
+		["Treasury reports $%d" % city.funds(), "The city treasury holds $%d. Construction draws from this balance, while taxes and service spending affect the annual budget. The Budget window contains current funding levels and projected totals." % city.funds()],
+		["Development demand in focus", "Current demand readings are %d for homes, %d for commerce and %d for industry. Positive readings indicate room for growth. Tax rates, transport access and city conditions affect development. Zoned land still needs suitable services before it can grow." % [demand.x, demand.y, demand.z]],
+		["Connections keep the city moving", "Roads, rail and subway routes connect neighborhoods with jobs. Gaps and disconnected stations can prevent trips. The City Map transport views show where the network is busy and where better connections may help."],
+		["A closer look at city services", "Police, fire protection, schools and health services depend on facilities and their funding. The city maps show local coverage. The Budget window lets the mayor review service spending, while Query provides details for individual facilities."]
+	]
+	var report: Array = reports[clampi(slot, 0, reports.size() - 1)]
+	return {"headline": report[0], "article": report[1]}

@@ -74,6 +74,7 @@ var price_label: Label
 var opinion_label: Label
 var weather_label: Label
 var story_labels: Array[Label] = []
+var article_labels: Array[Label] = []
 var picture_id := 0
 var picture_texture: Texture2D
 
@@ -90,6 +91,7 @@ func _ready() -> void:
 	weather_label = _new_label("WeatherColumn")
 	for slot in STORY_RECT_INDICES.size():
 		story_labels.append(_new_label("Story%d" % slot))
+		article_labels.append(_new_label("Article%d" % slot))
 	_apply_layout()
 
 
@@ -156,9 +158,6 @@ func _draw() -> void:
 			draw_rect(rect.grow(-1.0), Color("696969"), false, 1.0)
 	if shows_picture():
 		draw_texture(picture_texture, Vector2(section_rect(layout_index, 3).position))
-	elif FONT_SIZES[layout_index][3] > 0:
-		for line in NewspaperPicture.filler_lines(section_rect(layout_index, 3), picture_id):
-			draw_rect(Rect2(line), Color("151515"), true)
 	if hovered_story >= 0:
 		draw_rect(Rect2(story_rect(layout_index, hovered_story)).grow(-2.0), Color("0066cc"), false, 2.0)
 
@@ -242,3 +241,22 @@ func _set_hovered_story(slot: int) -> void:
 		"Open this report" if slot >= 0 and not story_labels[slot].text.is_empty() else ""
 	)
 	queue_redraw()
+
+
+func set_articles(articles: PackedStringArray) -> void:
+	for slot in article_labels.size():
+		var headline := story_labels[slot]
+		var body := article_labels[slot]
+		var rect := story_rect(layout_index, slot)
+		body.visible = rect.size.y > 70
+		if not body.visible:
+			continue
+		headline.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		headline.size.y = minf(48.0, rect.size.y * 0.3)
+		headline.add_theme_font_size_override("font_size", 13)
+		body.position = Vector2(rect.position) + Vector2(5, headline.size.y + 6)
+		body.size = Vector2(rect.size) - Vector2(10, headline.size.y + 12)
+		body.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		body.add_theme_font_size_override("font_size", 11)
+		body.text = articles[slot] if slot < articles.size() else ""
