@@ -166,7 +166,7 @@ func _create_button(
 ) -> Button:
 	var tool := Tools.tool(group_index, subtool_index)
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(175, 36)
+	button.custom_minimum_size = Vector2(175, 52)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.toggle_mode = true
 	button.button_group = button_group

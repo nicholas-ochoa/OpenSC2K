@@ -1150,7 +1150,7 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 		for offset in [Vector2i(16, 0), Vector2i(0, 8), Vector2i(32, 8), Vector2i(16, 16)]:
 			section.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), offset)
 		image = section
-	var scale := minf(1.0, minf(30.0 / image.get_width(), 28.0 / image.get_height()))
+	var scale := minf(1.0, minf(48.0 / image.get_width(), 44.0 / image.get_height()))
 	if scale < 1.0:
 		image.resize(
 			maxi(1, roundi(image.get_width() * scale)),
