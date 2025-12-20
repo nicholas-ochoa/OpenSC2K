@@ -1144,6 +1144,12 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if not rendered.get("ok", false):
 		return city_toolbar.group_icon(group_index) if city_toolbar != null else null
 	var image: Image = rendered.image.duplicate()
+	if group_index == 6 and subtool_index == 1:
+		var section := Image.create(image.get_width() + 32, image.get_height() + 16, false, Image.FORMAT_RGBA8)
+		section.fill(Color.TRANSPARENT)
+		for offset in [Vector2i(16, 0), Vector2i(0, 8), Vector2i(32, 8), Vector2i(16, 16)]:
+			section.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), offset)
+		image = section
 	var scale := minf(1.0, minf(30.0 / image.get_width(), 28.0 / image.get_height()))
 	if scale < 1.0:
 		image.resize(
