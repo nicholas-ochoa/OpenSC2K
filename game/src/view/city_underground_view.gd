@@ -18,7 +18,8 @@ static func create_image(
 	sprites: Sc2SpriteArchive,
 	view_size := Renderer.VIEW_LARGE,
 	validate_required_assets := true,
-	show_pipes := true
+	show_pipes := true,
+	show_subways := true
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
@@ -30,7 +31,7 @@ static func create_image(
 	if configuration.is_empty():
 		return _failure("underground view size is invalid")
 	if validate_required_assets:
-		var asset_errors := validate_assets(city, sprites, view_size, show_pipes)
+		var asset_errors := validate_assets(city, sprites, view_size, show_pipes, show_subways)
 		if not asset_errors.is_empty():
 			return _failure(asset_errors[0])
 
@@ -54,7 +55,7 @@ static func create_image(
 				continue
 			_draw_tile(
 				output, city, palette, sprites, cache, configuration, origin_x, x, y,
-				show_pipes
+				show_pipes, show_subways
 			)
 	if palette.is_index_encoding:
 		output.convert(Image.FORMAT_L8)
@@ -65,7 +66,8 @@ static func validate_assets(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
 	view_size := Renderer.VIEW_LARGE,
-	show_pipes := true
+	show_pipes := true,
+	show_subways := true
 ) -> PackedStringArray:
 	var errors := PackedStringArray()
 	if city == null or not city.is_valid():
@@ -81,7 +83,7 @@ static func validate_assets(
 	var missing: Dictionary = {}
 	for x in CityState.MAP_SIZE:
 		for y in CityState.MAP_SIZE:
-			for sprite_id in tile_sprite_ids(city, x, y, view_size, show_pipes):
+			for sprite_id in tile_sprite_ids(city, x, y, view_size, show_pipes, show_subways):
 				if sprites.find_sprite(sprite_id) == null:
 					missing[sprite_id] = true
 			var tunnel_sprite := tunnel_sprite_id(city, x, y, view_size)
@@ -99,7 +101,8 @@ static func tile_sprite_ids(
 	x: int,
 	y: int,
 	view_size := Renderer.VIEW_LARGE,
-	show_pipes := true
+	show_pipes := true,
+	show_subways := true
 ) -> PackedInt32Array:
 	var result := PackedInt32Array()
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
@@ -109,6 +112,13 @@ static func tile_sprite_ids(
 		return result
 	var sprite_base := int(configuration.sprite_base)
 	var underground := city.underground_id(x, y)
+	if not show_subways:
+		if underground == 0x1f:
+			underground = 0x11
+		elif underground == 0x20:
+			underground = 0x10
+		elif underground in range(1, 0x10) or underground == 0x23:
+			underground = 0
 	var is_pipe := (
 		(underground >= 0x10 and underground <= 0x1e)
 		or underground == 0x1f
@@ -175,13 +185,14 @@ static func tunnel_sprite_id(
 	return int(configuration.sprite_base) + DEEP_TUNNEL
 
 
-static func visual_signature(city: CityState, view_size: int, show_pipes := true) -> Array:
+static func visual_signature(city: CityState, view_size: int, show_pipes := true, show_subways := true) -> Array:
 	if city == null or not city.is_valid():
 		return []
 	return [
 		"underground",
 		view_size,
 		show_pipes,
+		show_subways,
 		city.compass_rotation(),
 		hash(city.altitude_words),
 		hash(city.terrain),
@@ -200,7 +211,8 @@ static func _draw_tile(
 	origin_x: int,
 	x: int,
 	y: int,
-	show_pipes: bool
+	show_pipes: bool,
+	show_subways: bool
 ) -> void:
 	var screen_x := origin_x + (x - y) * int(configuration.half_width)
 	var base_y := (
@@ -226,7 +238,7 @@ static func _draw_tile(
 		_blend(output, tunnel_image, Vector2i(screen_x, tunnel_y))
 
 	for sprite_id in tile_sprite_ids(
-		city, x, y, int(configuration.view_size), show_pipes
+		city, x, y, int(configuration.view_size), show_pipes, show_subways
 	):
 		var image := _sprite_image(sprites, palette, cache, sprite_id)
 		_blend(output, image, Vector2i(screen_x, terrain_top))

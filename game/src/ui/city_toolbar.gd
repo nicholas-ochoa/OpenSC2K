@@ -9,6 +9,7 @@ signal zoom_in_requested
 signal overlay_requested(mode: String)
 signal surface_visibility_requested(visible: bool, layer: String)
 signal underground_pipes_visibility_requested(visible: bool)
+signal underground_subways_visibility_requested(visible: bool)
 
 const Tools = preload("res://src/tools/tool_catalog.gd")
 const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
@@ -171,6 +172,13 @@ func _ready() -> void:
 	pipes_check.toggled.connect(underground_pipes_visibility_requested.emit)
 	view_visibility_checks["pipes"] = pipes_check
 	layers_grid.add_child(pipes_check)
+	var subway_check := CheckBox.new()
+	subway_check.text = "Subways"
+	subway_check.tooltip_text = "Show or hide subways in the underground view."
+	subway_check.button_pressed = true
+	subway_check.toggled.connect(underground_subways_visibility_requested.emit)
+	view_visibility_checks["subways"] = subway_check
+	layers_grid.add_child(subway_check)
 
 
 func group_icon(group_index: int) -> Texture2D:

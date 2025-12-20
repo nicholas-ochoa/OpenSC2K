@@ -475,7 +475,7 @@ func _test_main_menu() -> void:
 		and toolbar.child_palette.size_flags_vertical == Control.SIZE_EXPAND_FILL
 		and toolbar.view_mode_buttons.size() == 2
 		and toolbar.view_mode_buttons.city.button_pressed
-		and toolbar.view_visibility_checks.size() == 7
+		and toolbar.view_visibility_checks.size() == 8
 		and toolbar.view_visibility_checks["buildings"].button_pressed
 		and toolbar.view_visibility_checks["pipes"].button_pressed,
 		"City toolbar owns tool groups, child tools, views, and layer controls",

@@ -109,6 +109,7 @@ var surface_visibility := {
 }
 var full_size_graphics := false
 var show_underground_pipes := true
+var show_underground_subways := true
 var app_music_volume := 0.8
 var app_effects_volume := 0.8
 var app_fullscreen := false
@@ -572,6 +573,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	city_toolbar.underground_pipes_visibility_requested.connect(
 		_set_underground_pipes_visible
 	)
+	city_toolbar.underground_subways_visibility_requested.connect(_set_underground_subways_visible)
 	rotate_counter_clockwise_button = city_toolbar.rotate_counter_clockwise_button
 	rotate_clockwise_button = city_toolbar.rotate_clockwise_button
 	zoom_out_button = city_toolbar.zoom_out_button
@@ -1453,11 +1455,11 @@ func _sync_view_controls() -> void:
 		city_toolbar.sync_view_mode(overlay_mode)
 	for key in view_visibility_checks:
 		var check: CheckBox = view_visibility_checks[key]
-		check.visible = underground_active if key == "pipes" else not underground_active
+		check.visible = underground_active if key in ["pipes", "subways"] else not underground_active
 		var enabled := (
 			show_underground_pipes
 			if key == "pipes"
-			else bool(surface_visibility.get(key, true))
+			else (show_underground_subways if key == "subways" else bool(surface_visibility.get(key, true)))
 		)
 		check.set_pressed_no_signal(enabled)
 
@@ -2705,7 +2707,7 @@ func _refresh_map(force := true) -> void:
 		if overlay_mode == "underground":
 			indexed = UndergroundView.create_image(
 				display_city, palette_index_encoding, sprite_archive, view_size, true,
-				show_underground_pipes
+				show_underground_pipes, show_underground_subways
 			)
 		else:
 			indexed = IsometricRenderer.create_image(
@@ -2792,6 +2794,7 @@ func _request_static_render(
 	static_render_job.epoch = static_render_epoch
 	static_render_job.render_mode = render_mode
 	static_render_job.surface_visibility = surface_visibility.duplicate()
+	static_render_job.show_underground_subways = show_underground_subways
 	static_render_job.show_underground_pipes = show_underground_pipes
 	static_render_thread = Thread.new()
 	var start_error := static_render_thread.start(
@@ -2878,7 +2881,7 @@ func _poll_static_render() -> void:
 func _static_signature_for_mode(mode: String, view_size: int) -> Array:
 	if mode == "underground":
 		return UndergroundView.visual_signature(
-			city, view_size, show_underground_pipes
+			city, view_size, show_underground_pipes, show_underground_subways
 		)
 	var result := IsometricRenderer.static_visual_signature(city, view_size)
 	result.append_array([
@@ -4840,3 +4843,13 @@ func _placement_preview_valid(point: Vector2i) -> bool:
 		var index := city.index_of(point.x, point.y)
 		return index >= 0 and city.terrain[index] in [0x2e, 0x3e] and city.buildings[index] == 0 and city.funds() >= int(Tools.tool(selected_group, selected_subtool).cost)
 	return true
+
+
+func _set_underground_subways_visible(enabled: bool) -> void:
+	if show_underground_subways == enabled:
+		return
+	show_underground_subways = enabled
+	_invalidate_view_render()
+	_sync_view_controls()
+	if city != null and overlay_mode == "underground":
+		_refresh_map(false)
