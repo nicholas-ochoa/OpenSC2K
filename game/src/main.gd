@@ -163,6 +163,7 @@ var static_render_job: CityRenderJob
 var static_render_epoch := 0
 var last_static_render_started_msec := -ACTIVE_DISASTER_RENDER_INTERVAL_MSEC
 var pending_static_render := false
+var toolbar_animation_palette: Sc2Palette
 var palette_cycle_ticks := 0
 var palette_cycle_texture: ImageTexture
 
@@ -1140,7 +1141,7 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	var entry := large_sprites.find_sprite(sprite_id)
 	if entry == null:
 		return city_toolbar.group_icon(group_index) if city_toolbar != null else null
-	var rendered := entry.create_image(palette)
+	var rendered := entry.create_image(toolbar_animation_palette if toolbar_animation_palette != null else palette)
 	if not rendered.get("ok", false):
 		return city_toolbar.group_icon(group_index) if city_toolbar != null else null
 	var image: Image = rendered.image.duplicate()
@@ -2900,6 +2901,10 @@ func _exit_tree() -> void:
 func _update_palette_cycle_texture() -> void:
 	if palette == null or not palette.is_valid():
 		return
+	toolbar_animation_palette = Sc2Palette.new()
+	for color_index in palette.animation_index_map(palette_cycle_ticks):
+		toolbar_animation_palette.colors.append(palette.colors[color_index])
+	_refresh_child_tool_icons()
 	var image := palette.animation_image(palette_cycle_ticks)
 	if palette_cycle_texture == null:
 		palette_cycle_texture = ImageTexture.create_from_image(image)
