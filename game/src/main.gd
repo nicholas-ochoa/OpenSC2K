@@ -1625,7 +1625,7 @@ func _on_newspaper_menu(_id: int) -> void:
 
 
 func _on_help_menu(_id: int) -> void:
-	status_label.text = "Select a tool, then use the city view. Use the wheel to zoom. Use the right or middle mouse button to pan."
+	_open_about_dialog()
 
 
 func _open_new_city_dialog() -> void:
