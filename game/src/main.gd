@@ -4844,6 +4844,15 @@ func _placement_preview_valid(point: Vector2i) -> bool:
 	if Hydro.supports_tool(selected_group, selected_subtool):
 		var index := city.index_of(point.x, point.y)
 		return index >= 0 and city.terrain[index] in [0x2e, 0x3e] and city.buildings[index] == 0 and city.funds() >= int(Tools.tool(selected_group, selected_subtool).cost)
+	if Onramps.supports_tool(selected_group, selected_subtool):
+		return bool(Onramps.apply(city, selected_group, selected_subtool, point, false, true).ok)
+	if SubwayToRail.supports_tool(selected_group, selected_subtool):
+		return bool(SubwayToRail.apply(city, selected_group, selected_subtool, point, true).ok)
+	if Tunnels.supports_tool(selected_group, selected_subtool):
+		var proposal := Tunnels.apply(city, selected_group, selected_subtool, point)
+		return proposal.get("confirmation_required", false) and city.funds() >= int(proposal.get("cost", 0))
+	if Highways.supports_tool(selected_group, selected_subtool):
+		return Highways.preview_valid(city, point)
 	return true
 
 

@@ -28,7 +28,8 @@ static func apply(
 	group_index: int,
 	subtool_index: int,
 	point: Vector2i,
-	free_mode := false
+	free_mode := false,
+	preview_only := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -70,6 +71,8 @@ static func apply(
 	var road_point: Vector2i = point + DIRECTIONS[road_direction]
 	var road_index := city.index_of(road_point.x, road_point.y)
 
+	if preview_only:
+		return {"ok": true}
 	var old_payloads := BuildingCommand._city_payloads(city)
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}

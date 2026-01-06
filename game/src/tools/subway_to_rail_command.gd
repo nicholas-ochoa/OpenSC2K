@@ -15,7 +15,7 @@ static func supports_tool(group_index: int, subtool_index: int) -> bool:
 
 
 static func apply(
-	city: CityState, group_index: int, subtool_index: int, point: Vector2i
+	city: CityState, group_index: int, subtool_index: int, point: Vector2i, preview_only := false
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -47,6 +47,8 @@ static func apply(
 	if orientation < 0:
 		return {"ok": false, "error": "connection requires an adjacent rail or subway"}
 
+	if preview_only:
+		return {"ok": true}
 	var old_payloads := BuildingCommand._city_payloads(city)
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}

@@ -1564,3 +1564,20 @@ static func _section_is_existing_highway(buildings: PackedByteArray, anchor: Vec
 			if not _is_highway_tile(buildings[x * CityState.MAP_SIZE + y]):
 				return false
 	return true
+
+
+static func preview_valid(city: CityState, selected: Vector2i) -> bool:
+	var anchor := snap_anchor(selected)
+	if city == null or not _anchor_is_in_bounds(anchor):
+		return false
+	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
+	var sections := _plan_flat_route(city.buildings, city.terrain, city.tile_flags, altitude, anchor, anchor)
+	if not sections.is_empty():
+		return _section_is_existing_highway(city.buildings, anchor) or city.funds() >= 100
+	if _section_has_water(city.tile_flags, anchor):
+		var bridge := _plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation())
+		if bridge.get("ok", false):
+			for choice in _bridge_choices(bridge):
+				if city.funds() >= int(choice.get("cost", 0)):
+					return true
+	return false
