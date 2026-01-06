@@ -3305,6 +3305,7 @@ func _dynamic_shadow_image(
 func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 	if city == null:
 		return
+	effect_events = _parallel_dust_events(effect_events)
 	var visuals: Array[Dictionary] = []
 	for effect in effect_events:
 		if effect.get("type", "") == "earthquake":
@@ -4864,3 +4865,31 @@ func _set_underground_subways_visible(enabled: bool) -> void:
 	_sync_view_controls()
 	if city != null and overlay_mode == "underground":
 		_refresh_map(false)
+
+
+static func _parallel_dust_events(events: Array) -> Array:
+	var groups := {}
+	for event in events:
+		if event.has("point") and event.get("type", "") != "earthquake":
+			var key: Vector2i = event.point
+			if not groups.has(key):
+				groups[key] = []
+			groups[key].append(event)
+	if groups.size() < 2:
+		return events
+	var order := groups.keys()
+	order.shuffle() # presentation randomness does not consume simulation random state
+	var starts := {}
+	for index in order.size():
+		var first := 2147483647
+		for event in groups[order[index]]:
+			first = mini(first, int(event.get("frame", 0)))
+		starts[order[index]] = {"first": first, "start": index % 5}
+	var result: Array = []
+	for source in events:
+		var event: Dictionary = source.duplicate()
+		if event.has("point") and starts.has(event.point):
+			var timing: Dictionary = starts[event.point]
+			event.frame = int(event.get("frame", 0)) - int(timing.first) + int(timing.start)
+		result.append(event)
+	return result
