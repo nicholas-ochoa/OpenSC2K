@@ -75,7 +75,106 @@ func _run() -> void:
 	var sign_dialog := main.get("sign_dialog") as CitySignDialog
 	assert(sign_dialog.title == "Enter sign text...")
 	assert(sign_dialog.get_label().get_theme_color("font_color") == Color.WHITE)
+	# Check city and random state after an invalid preview.
+	var before: PackedByteArray = city.document.serialize().data
+	assert(BuildingCommand.preview_valid(city, 3, 2, Vector2i(75, 75)))
+	assert(not BuildingCommand.preview_valid(city, 3, 2, Vector2i(60, 60)))
+	assert(not BuildingCommand.preview_valid(city, 3, 2, Vector2i(0, 0)))
+	assert(city.document.serialize().data == before)
+	main.call("_select_tool_group", 5)
+	assert(toolbar.child_tool_buttons.size() == 8 and not toolbar.child_tool_buttons.has(4))
+	for arcology in range(5, 9):
+		assert(toolbar.child_tool_buttons.has(arcology))
+	main.call("_select_tool_group", 4)
+	assert(main.get("overlay_mode") == "underground")
+	main.call("_select_subtool", 1)
+	assert(main.get("overlay_mode") == "city")
+	assert(toolbar.child_tool_buttons[1].icon.get_width() <= 48)
+	main.call("_on_options_menu", CityMenuBar.MENU_FULL_SIZE_GRAPHICS)
+	map.zoom_factor = CityMapControl.ZOOM_LEVELS[0]
+	assert(main.call("_city_view_size") == CityIsometricRenderer.VIEW_LARGE)
+	main.call("_on_options_menu", CityMenuBar.MENU_FULL_SIZE_GRAPHICS)
+	assert(main.call("_city_view_size") == CityIsometricRenderer.VIEW_SMALL)
+	# Shift changes the same in-progress path in either direction.
+	map.set_edit_enabled(true, "path", 1, true)
+	map.shift_rectangle_enabled = true
+	map.selection_start = Vector2i(80, 80)
+	map.selection_end = Vector2i(83, 82)
+	map._rebuild_selection_path()
+	assert(map.selection_path.size() == 6)
+	shift.pressed = true
+	map._input(shift)
+	assert(map.selection_path.size() == 12)
+	shift.pressed = false
+	map._input(shift)
+	assert(map.selection_path.size() == 6)
+	map._clear_selection()
+	# Dual underground cells can display either or both networks without edits.
+	city.set_underground_id(90, 90, 0x1f)
+	var pipe_only := CityUndergroundView.tile_sprite_ids(city, 90, 90, 2, true, false)
+	var subway_only := CityUndergroundView.tile_sprite_ids(city, 90, 90, 2, false, true)
+	assert(pipe_only != subway_only and city.underground_id(90, 90) == 0x1f)
+	assert(toolbar.view_visibility_checks.has("subways"))
+	main.call("_set_underground_subways_visible", false)
+	assert(not toolbar.view_visibility_checks.subways.button_pressed)
+	# Recall removes only emergency records and supports exact Undo.
+	var dispatched := DispatchCommand.apply(city, 2, 2, Vector2i(85, 85))
+	assert(dispatched.ok)
+	var dispatched_bytes: PackedByteArray = city.document.serialize().data
+	var recalled := DispatchCommand.recall_all(city)
+	assert(recalled.ok and city.text_overlays[city.index_of(85, 85)] == 0)
+	assert(DispatchCommand.undo(city, recalled).ok)
+	assert(city.document.serialize().data == dispatched_bytes)
+	assert(DispatchCommand.undo(city, dispatched).ok)
+	# All four slopes receive a low-side rail transition, with exact Undo.
+	var low_sides := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
+	for shape in range(1, 5):
+		var slope := Vector2i(30 + shape * 5, 30)
+		city.set_terrain_id(slope.x, slope.y, shape)
+		var rail_before: PackedByteArray = city.document.serialize().data
+		var foot: Vector2i = slope + low_sides[shape - 1]
+		var rail := NetworkCommand.apply(city, 7, 0, slope, foot)
+		assert(rail.ok)
+		assert(city.building_id(foot.x, foot.y) == 0x3a + shape)
+		assert(NetworkCommand.undo(city, rail).ok)
+		assert(city.document.serialize().data == rail_before)
+	var tunnel := main.get("tunnel_dialog") as RouteConfirmationDialog
+	assert(tunnel.get_label().get_theme_color("font_color") == Color.WHITE)
+	var paper := main.get("newspaper_dialog") as NewspaperDialog
+	paper.open_reports(city, city.document, null, {}, {}, 123)
+	assert(paper.published_articles.size() == 5)
+	assert(paper.article_view.text.contains(str(city.population())))
+	for layout in range(3):
+		paper.page.set_page(layout, "Test Gazette", "September 8", "25 cents", "Opinion", "Weather", PackedStringArray(["A", "B", "C", "D", "E"]))
+		paper.page.set_articles(paper.published_articles)
+		assert(not paper.page.article_labels[1].text.is_empty())
+	paper.hide()
+	_test_fire_clock(city)
 	main.queue_free()
 	await process_frame
-	print("PASS: toolbar selection, scroll reset, hold menu, underground switching, zoom and Query footprint")
+	print("PASS: toolbar interactions, placement validity, rail transitions, dispatch recall, landscape rectangles, fire timing, newspaper articles and display options")
 	quit()
+
+
+class CountingEngine extends SimulationEngine:
+	var fire_ticks := 0
+	func advance_moving_things(_current_time_msec := -1) -> Dictionary:
+		return {"ok": true}
+	func advance_disaster_tick() -> Dictionary:
+		fire_ticks += 1
+		return {"ok": true}
+
+
+func _test_fire_clock(city: CityState) -> void:
+	var engine := CountingEngine.new(city)
+	engine.active_disaster_type = 1
+	var controller := GameSpeedController.new(engine)
+	controller.set_speed(GameSpeedController.Speed.AFRICAN_SWALLOW)
+	for frame in range(120):
+		assert(controller.advance_time(1000.0 / 120.0).ok)
+	assert(engine.fire_ticks <= 1)
+	controller.advance_time(1000.0)
+	assert(engine.fire_ticks == 2)
+	controller.set_speed(GameSpeedController.Speed.PAUSED)
+	controller.advance_time(5000.0)
+	assert(engine.fire_ticks == 2)
