@@ -114,6 +114,8 @@ func _create_tool_dialogs() -> void:
 		"No",
 		Vector2i(500, 200),
 	)
+	tunnel_dialog.theme = ThemeDB.get_default_theme().duplicate()
+	tunnel_dialog.get_label().add_theme_color_override("font_color", Color.WHITE)
 	query_dialog = QueryDialogView.new()
 	add_child(query_dialog)
 
