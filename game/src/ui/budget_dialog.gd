@@ -126,6 +126,7 @@ func open_bond_confirmation(action: String, rate: int) -> void:
 			"Current Rates are %d%%.\nDo You Want to Issue the Bond?" % rate
 		)
 	else:
+		_style_bond_confirmation()
 		bond_dialog.title = "Repay Bond"
 		bond_dialog.dialog_text = (
 			"Oldest Bond Rate is %d%%\nDo You Want to Repay the Bond?" % rate
