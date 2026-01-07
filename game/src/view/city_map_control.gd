@@ -84,6 +84,7 @@ var selection_price := -1
 var selection_price_affordable := true
 var placement_validator := Callable()
 var show_selection_preview := true
+var terrain_diamond_preview := false
 var highway_preview := false
 var query_footprint_preview := false
 var query_city: CityState
@@ -585,7 +586,7 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 		tiles = expanded
 	var polygons: Array[PackedVector2Array] = []
 	for tile in tiles:
-		var polygon := Renderer.terrain_surface_polygon(city, tile.x, tile.y)
+		var polygon := Renderer.tile_polygon(city, tile.x, tile.y) if terrain_diamond_preview else Renderer.terrain_surface_polygon(city, tile.x, tile.y)
 		if polygon.size() == 4:
 			polygons.append(polygon)
 	return polygons

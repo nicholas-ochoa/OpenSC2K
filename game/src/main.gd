@@ -3574,6 +3574,7 @@ func _update_edit_state() -> void:
 	map_view.shift_rectangle_enabled = bool(state.landscape)
 	map_view.placement_validator = _placement_preview_valid
 	map_view.show_selection_preview = selected_group != 17
+	map_view.terrain_diamond_preview = selected_group == 0 and selected_subtool in [2, 3]
 	map_view.highway_preview = selected_group == 6 and selected_subtool == 1
 	map_view.query_footprint_preview = selected_group == 16
 	map_view.query_city = city
