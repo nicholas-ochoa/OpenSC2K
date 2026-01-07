@@ -120,6 +120,7 @@ func set_bond_state(
 func open_bond_confirmation(action: String, rate: int) -> void:
 	pending_bond_action = action
 	if action == "issue":
+		_style_bond_confirmation()
 		bond_dialog.title = "Issue Bond"
 		bond_dialog.dialog_text = (
 			"Current Rates are %d%%.\nDo You Want to Issue the Bond?" % rate
@@ -210,3 +211,14 @@ func _resolve_bond_confirmation(confirmed_value: bool) -> void:
 	pending_bond_action = ""
 	if not action.is_empty():
 		bond_confirmation_resolved.emit(action, confirmed_value)
+
+
+func _style_bond_confirmation() -> void:
+	bond_dialog.theme = ThemeDB.get_default_theme().duplicate()
+	bond_dialog.get_label().add_theme_color_override("font_color", Color.WHITE)
+	var panel := StyleBoxFlat.new()
+	panel.bg_color = Color("303030")
+	panel.border_color = Color("b0b0b0")
+	panel.set_border_width_all(2)
+	panel.set_content_margin_all(12)
+	bond_dialog.add_theme_stylebox_override("panel", panel)
