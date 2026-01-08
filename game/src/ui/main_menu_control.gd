@@ -80,12 +80,6 @@ func _ready() -> void:
 			new_city_button = button
 		elif index == 5:
 			scurk_place_button = button
-	var note := Label.new()
-	note.text = "Cities use the original SC2 and SCN file formats."
-	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	note.add_theme_color_override("font_color", Color("505050"))
-	column.add_child(note)
 
 
 func show_menu(can_continue: bool) -> void:
