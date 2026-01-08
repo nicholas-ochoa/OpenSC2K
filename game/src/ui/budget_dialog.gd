@@ -43,11 +43,11 @@ func _ready() -> void:
 	theme = theme.duplicate() if theme != null else ThemeDB.get_default_theme().duplicate()
 	theme.set_color("font_color", "Label", Color.WHITE)
 	title = "Budget"
-	min_size = Vector2i(680, 720)
+	min_size = Vector2i(720, 560)
 	get_ok_button().text = "Apply"
 	confirmed.connect(func() -> void: apply_requested.emit())
 	canceled.connect(func() -> void: cancel_requested.emit())
-	var budget_scroll := ScrollContainer.new()
+	var budget_scroll := MarginContainer.new()
 	budget_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	budget_scroll.offset_left = 16
 	budget_scroll.offset_top = 48
@@ -55,12 +55,12 @@ func _ready() -> void:
 	budget_scroll.offset_bottom = -58
 	add_child(budget_scroll)
 	var budget_rows := VBoxContainer.new()
-	budget_rows.custom_minimum_size = Vector2(620, 0)
+	budget_rows.custom_minimum_size = Vector2(660, 0)
 	budget_rows.add_theme_constant_override("separation", 6)
 	budget_scroll.add_child(budget_rows)
 	notice_label = Label.new()
 	notice_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	notice_label.custom_minimum_size = Vector2(600, 48)
+	notice_label.custom_minimum_size = Vector2(640, 42)
 	budget_rows.add_child(notice_label)
 	auto_budget_check = CheckBox.new()
 	auto_budget_check.theme = ThemeDB.get_default_theme().duplicate()
@@ -69,8 +69,18 @@ func _ready() -> void:
 		auto_budget_check.add_theme_color_override("font_" + ("color" if state == "normal" else state + "_color"), Color.WHITE)
 	auto_budget_check.text = "Use the same funding automatically next year"
 	budget_rows.add_child(auto_budget_check)
+	var columns := HBoxContainer.new()
+	columns.add_theme_constant_override("separation", 24)
+	budget_rows.add_child(columns)
+	var left := VBoxContainer.new()
+	var right := VBoxContainer.new()
+	for column in [left, right]:
+		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		column.add_theme_constant_override("separation", 5)
+		columns.add_child(column)
 	for budget_id in BUDGET_NAMES.size():
-		_add_budget_row(budget_rows, budget_id)
+		_add_budget_row(left if budget_id < 8 else right, budget_id)
+	_add_bond_controls(budget_rows)
 	_build_bond_dialog()
 
 
@@ -150,11 +160,11 @@ func _add_budget_row(rows: VBoxContainer, budget_id: int) -> void:
 	var row := HBoxContainer.new()
 	var row_label := Label.new()
 	row_label.text = BUDGET_NAMES[budget_id]
-	row_label.custom_minimum_size = Vector2(360, 0)
+	row_label.custom_minimum_size = Vector2(150, 0)
 	row_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	row.add_child(row_label)
 	var control := SpinBox.new()
-	control.custom_minimum_size = Vector2(180, 32)
+	control.custom_minimum_size = Vector2(145, 30)
 	control.rounded = true
 	control.step = 1
 	control.min_value = -2147483648
@@ -179,8 +189,6 @@ func _add_budget_row(rows: VBoxContainer, budget_id: int) -> void:
 	row.add_child(control)
 	controls.append(control)
 	rows.add_child(row)
-	if budget_id == Budget.BUDGET_BONDS:
-		_add_bond_controls(rows)
 
 
 func _add_bond_controls(rows: VBoxContainer) -> void:
