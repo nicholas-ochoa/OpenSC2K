@@ -10,8 +10,7 @@ func _ready() -> void:
 	title = "About OpenSC2K"
 	get_label().autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	dialog_text = (
-		"OpenSC2K is an open-source reimplementation of SimCity 2000 for Windows 95.\n\n"
-		+ "It reads the original SC2 and SCN city formats. Original game data stays external to this project."
+		"OpenSC2K is an open-source reimplementation of SimCity 2000 for Windows 95."
 	)
 	min_size = Vector2i(560, 250)
 	exclusive = true
