@@ -75,7 +75,7 @@ func _ready() -> void:
 	options_menu = _add_menu(menu_row, "Options", [
 		["Auto-Budget", MENU_AUTO_BUDGET], ["Auto-Goto", MENU_AUTO_GOTO],
 		["Sound Effects", MENU_SOUND_EFFECTS], ["Music", MENU_MUSIC],
-		["Full-size Graphics at All Zoom Levels", MENU_FULL_SIZE_GRAPHICS],
+		["Always Use Hi-Res Graphics", MENU_FULL_SIZE_GRAPHICS],
 	], _on_options_menu)
 	for option_id in [MENU_AUTO_BUDGET, MENU_AUTO_GOTO, MENU_SOUND_EFFECTS, MENU_MUSIC, MENU_FULL_SIZE_GRAPHICS]:
 		var option_index := options_menu.get_popup().get_item_index(option_id)
