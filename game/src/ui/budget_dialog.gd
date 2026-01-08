@@ -167,6 +167,11 @@ func _add_budget_row(rows: VBoxContainer, budget_id: int) -> void:
 		control.min_value = 0
 		control.max_value = 100
 		control.suffix = "% funded"
+		var effect := "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution."
+		if budget_id >= Budget.BUDGET_ROAD:
+			effect = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded."
+		control.tooltip_text = effect + " Lower funding reduces annual spending."
+		control.get_line_edit().tooltip_text = control.tooltip_text
 	else:
 		control.editable = false
 	if budget_id == Budget.BUDGET_BONDS:
