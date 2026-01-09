@@ -148,14 +148,8 @@ static func story_rect(layout: int, slot: int) -> Rect2i:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, Vector2(PAGE_SIZE)), Color("fffdf2"), true)
+	draw_rect(Rect2(Vector2.ZERO, Vector2(PAGE_SIZE)), Color("dddddd"), true)
 	draw_rect(Rect2(Vector2.ZERO, Vector2(PAGE_SIZE)), Color("181818"), false, 1.0)
-	# the picture slot is wider than its native bitmap. its bounds overlap a
-	# story column in layout 2, so do not outline that empty allocation
-	for section in range(4, SECTION_COUNT):
-		var rect := Rect2(section_rect(layout_index, section))
-		if rect.size.x > 0.0 and rect.size.y > 0.0:
-			draw_rect(rect.grow(-1.0), Color("696969"), false, 1.0)
 	if shows_picture():
 		draw_texture(picture_texture, Vector2(section_rect(layout_index, 3).position))
 	if hovered_story >= 0:

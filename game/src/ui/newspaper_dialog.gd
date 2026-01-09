@@ -62,7 +62,7 @@ func _ready() -> void:
 	article_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	article_view.add_theme_color_override("font_color", Color("101010"))
 	article_view.add_theme_color_override("font_readonly_color", Color("101010"))
-	article_view.add_theme_color_override("background_color", Color("fff9df"))
+	article_view.add_theme_color_override("background_color", Color("dddddd"))
 	var content := get_label().get_parent()
 	var layout := VBoxContainer.new()
 	layout.add_theme_constant_override("separation", 6)
