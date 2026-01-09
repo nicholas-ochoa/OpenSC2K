@@ -1323,7 +1323,7 @@ func _on_file_menu(id: int) -> void:
 		3: _open_tile_set_dialog()
 		4: _restore_original_tile_set()
 		MENU_SCURK_PLACE_PRINT: _open_scurk_place_print()
-		5: _show_main_menu()
+		5: _request_main_menu()
 		6: _request_city_exit("quit")
 
 
@@ -4894,3 +4894,17 @@ static func _parallel_dust_events(events: Array) -> Array:
 			event.frame = int(event.get("frame", 0)) - int(timing.first) + int(timing.start)
 		result.append(event)
 	return result
+
+
+func _request_main_menu() -> void:
+	var prompt := ConfirmationDialog.new()
+	prompt.title = "Return to Main Menu"
+	prompt.dialog_text = "Return to the main menu? You can use Continue City to resume this city."
+	prompt.theme = ThemeDB.get_default_theme().duplicate()
+	prompt.min_size = Vector2i(480, 180)
+	add_child(prompt)
+	prompt.confirmed.connect(func() -> void:
+		_show_main_menu()
+		prompt.queue_free())
+	prompt.canceled.connect(prompt.queue_free)
+	prompt.popup_centered()
