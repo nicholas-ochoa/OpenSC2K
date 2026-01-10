@@ -534,14 +534,14 @@ func _test_main_menu() -> void:
 	var scurk_toolbar := ScurkEditorToolbarUi.new()
 	scurk_toolbar._ready()
 	_check(
-		scurk_toolbar.get_child_count() == 17
+		scurk_toolbar.get_child_count() == 16
 		and scurk_toolbar.get_child(0).text == "Open..."
 		and scurk_toolbar.save_button.text == "Save"
 		and scurk_toolbar.undo_button.text == "Undo"
 		and scurk_toolbar.redo_button.text == "Redo"
-		and scurk_toolbar.revert_button.text == "Revert"
+		and scurk_toolbar.revert_button.text == "Revert Object"
 		and scurk_toolbar.clear_button.text == "Clear Object"
-		and scurk_toolbar.get_child(16).text == "Close",
+		and scurk_toolbar.get_child(15).text == "City",
 		"SCURK editor toolbar owns its command controls",
 	)
 	scurk_toolbar.free()

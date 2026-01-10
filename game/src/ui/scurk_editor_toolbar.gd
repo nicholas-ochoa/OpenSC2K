@@ -29,68 +29,47 @@ func _ready() -> void:
 func build() -> void:
 	if save_button != null:
 		return
-	custom_minimum_size = Vector2(0, 38)
-	add_theme_constant_override("separation", 5)
-	add_child(_button(
-		"Open...", &"open_requested", "Open a SCURK MIF tile set."
-	))
-	save_button = _button("Save", &"save_requested", "Save this tile set.")
-	add_child(save_button)
-	add_child(_button(
-		"Save As...", &"save_as_requested", "Save to a new MIF file."
-	))
-	add_child(VSeparator.new())
-	add_child(_button(
-		"Import BMP...",
-		&"import_bmp_requested",
-		"Replace the current view with a 256-color indexed BMP.",
-	))
-	add_child(_button(
-		"Export BMP...",
-		&"export_bmp_requested",
-		"Export the current view as a 256-color indexed BMP.",
-	))
-	add_child(_button(
-		"Pick & Copy...",
-		&"pick_copy_requested",
-		"Copy equivalent objects from another SCURK tile set.",
-	))
-	add_child(VSeparator.new())
-	undo_button = _button(
-		"Undo", &"undo_requested", "Undo the last pixel or name edit."
-	)
-	add_child(undo_button)
-	redo_button = _button(
-		"Redo", &"redo_requested", "Redo the last undone edit."
-	)
-	add_child(redo_button)
-	revert_button = _button(
-		"Revert",
-		&"revert_requested",
-		"Restore this object to its state when it entered the drawing area.",
-	)
-	add_child(revert_button)
-	clear_button = _button(
-		"Clear Object",
-		&"clear_requested",
-		"Erase the object and leave clean ground and sky.",
-	)
-	add_child(clear_button)
-	add_child(VSeparator.new())
-	add_child(_button(
-		"Apply to City", &"apply_requested", "Use this tile set in the city view."
-	))
-	add_child(_button(
-		"Place & Print",
-		&"place_print_requested",
-		"Apply this tile set and open the unrestricted city work area.",
-	))
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	add_child(spacer)
-	add_child(_button(
-		"Close", &"close_requested", "Close the SCURK editor."
-	))
+	custom_minimum_size = Vector2(0, 30)
+	var actions := {}
+	for entry in [
+		["Open...", "open"], ["Save", "save"], ["Save As...", "save_as"],
+		["Import BMP...", "import_bmp"], ["Export BMP...", "export_bmp"],
+		["Pick & Copy...", "pick_copy"], ["Undo", "undo"], ["Redo", "redo"],
+		["Revert Object", "revert"], ["Clear Object", "clear"],
+		["Apply to City", "apply"], ["Place & Print", "place_print"], ["Close", "close"],
+	]:
+		var action := _button(entry[0], StringName(entry[1] + "_requested"), entry[0])
+		action.hide()
+		add_child(action)
+		actions[entry[1]] = action
+	save_button = actions.save
+	undo_button = actions.undo
+	redo_button = actions.redo
+	revert_button = actions.revert
+	clear_button = actions.clear
+	for group in [
+		["File", ["open", "save", "save_as", "", "import_bmp", "export_bmp", "", "close"]],
+		["Edit", ["undo", "redo", "", "revert", "clear", "", "pick_copy"]],
+		["City", ["apply", "place_print"]],
+	]:
+		var menu := MenuButton.new()
+		menu.text = group[0]
+		add_child(menu)
+		var popup := menu.get_popup()
+		var entries: Array = group[1]
+		for index in entries.size():
+			if str(entries[index]).is_empty():
+				popup.add_separator()
+			else:
+				popup.add_item((actions[entries[index]] as Button).text, index)
+		popup.about_to_popup.connect(func() -> void:
+			for index in entries.size():
+				if actions.has(entries[index]):
+					popup.set_item_disabled(index, (actions[entries[index]] as Button).disabled))
+		popup.id_pressed.connect(func(index: int) -> void:
+			var action: Button = actions[entries[index]]
+			if not action.disabled:
+				action.pressed.emit())
 
 
 func _button(label: String, signal_name: StringName, tooltip: String) -> Button:

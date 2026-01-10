@@ -64,6 +64,7 @@ func build() -> void:
 	_build_brush_row()
 	_build_grid_row()
 	_build_cycle_row()
+	_organize_settings_tabs()
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	round_brush_check.toggled.connect(func(_enabled: bool) -> void: _refresh_icons())
 	filled_shapes_check.toggled.connect(func(_enabled: bool) -> void: _refresh_icons())
@@ -324,3 +325,17 @@ func _grid_size_selector() -> SpinBox:
 	selector.allow_lesser = false
 	selector.custom_minimum_size = Vector2(66, 0)
 	return selector
+
+
+func _organize_settings_tabs() -> void:
+	var rows := get_children()
+	var tabs := TabContainer.new()
+	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	add_child(tabs)
+	for group in [["Brush", [4]], ["Grid", [5]], ["Clipboard", [2, 3]], ["Animation", [6]]]:
+		var page := VBoxContainer.new()
+		page.name = group[0]
+		page.add_theme_constant_override("separation", 5)
+		tabs.add_child(page)
+		for index in group[1]:
+			(rows[index] as Node).reparent(page)

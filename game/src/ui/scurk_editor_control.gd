@@ -646,7 +646,7 @@ func _build_interface() -> void:
 	var header := HBoxContainer.new()
 	page.add_child(header)
 	title_label = Label.new()
-	title_label.text = "SCURK Tile Editor"
+	title_label.text = "Paint the Town"
 	title_label.add_theme_color_override("font_color", Color("000080"))
 	title_label.add_theme_font_size_override("font_size", 20)
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -660,7 +660,7 @@ func _build_interface() -> void:
 
 	var body := HSplitContainer.new()
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.split_offset = 230
+	body.split_offset = 250
 	page.add_child(body)
 	object_panel = ObjectPanelView.new()
 	object_panel.build()
@@ -678,7 +678,7 @@ func _build_interface() -> void:
 
 	var right_split := HSplitContainer.new()
 	right_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_split.split_offset = 620
+	right_split.split_offset = 680
 	body.add_child(right_split)
 	var editor_column := VBoxContainer.new()
 	editor_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
