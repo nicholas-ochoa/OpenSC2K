@@ -87,6 +87,7 @@ var show_selection_preview := true
 var terrain_diamond_preview := false
 var highway_preview := false
 var query_footprint_preview := false
+var scurk_stamp_visuals: Array[Dictionary] = []
 var query_city: CityState
 var _shift_pressed := false
 var hover_tile := Vector2i(-1, -1)
@@ -546,6 +547,8 @@ func _draw() -> void:
 		_draw_dynamic_sprites(scale, offset)
 	_draw_transient_effects(scale, offset)
 	_draw_signs(scale, offset)
+	for stamp in scurk_stamp_visuals:
+		draw_texture_rect(stamp.texture, Rect2(offset + stamp.position * scale, stamp.texture.get_size() * scale), false)
 	if city == null:
 		return
 	var valid := not placement_validator.is_valid() or bool(placement_validator.call(selection_end if selection_end.x >= 0 else hover_tile))

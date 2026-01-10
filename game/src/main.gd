@@ -1012,6 +1012,8 @@ func _select_scurk_place_tile(tile_id: int) -> void:
 	if not ScurkPlace.is_placeable_tile(tile_id):
 		map_view.set_edit_enabled(false)
 		return
+	if overlay_mode != "city":
+		_set_overlay("city")
 	_update_edit_state()
 
 
@@ -2483,6 +2485,9 @@ func _sync_speed_ui() -> void:
 
 
 func _refresh_after_city_edit(command: Dictionary) -> void:
+	_refresh_scurk_artwork()
+	if command.get("command_type", "") == "scurk_artwork":
+		return
 	if not _apply_static_edit_patch(command):
 		_refresh_map(false)
 
@@ -3551,6 +3556,7 @@ func _update_edit_state() -> void:
 	if map_view == null:
 		return
 	var state: Dictionary
+	_refresh_scurk_artwork()
 	map_view.desktop_cursor_app = "city"
 	map_view.desktop_cursor_role = DesktopCursorRules.city_tool(selected_group, selected_subtool)
 	if scurk_place_print != null and scurk_place_print.visible:
@@ -4908,3 +4914,21 @@ func _request_main_menu() -> void:
 		prompt.queue_free())
 	prompt.canceled.connect(prompt.queue_free)
 	prompt.popup_centered()
+
+
+func _refresh_scurk_artwork() -> void:
+	if map_view == null:
+		return
+	map_view.scurk_stamp_visuals.clear()
+	if city != null and scurk_place_print != null and scurk_place_print.visible and overlay_mode == "city":
+		for stamp in city.scurk_artwork_stamps:
+			var entry = large_sprites.find_sprite(1000 + int(stamp.tile_id))
+			if entry == null:
+				continue
+			var rendered: Dictionary = entry.create_image(palette)
+			if not rendered.ok:
+				continue
+			var texture := ImageTexture.create_from_image(rendered.image)
+			var anchor: Vector2 = CityIsometricRenderer.tile_polygon(city, stamp.point.x, stamp.point.y)[2]
+			map_view.scurk_stamp_visuals.append({"texture": texture, "position": anchor - Vector2(texture.get_width() / 2.0, texture.get_height() - 1)})
+	map_view.queue_redraw()

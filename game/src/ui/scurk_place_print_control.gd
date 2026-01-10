@@ -411,6 +411,8 @@ func _refresh_objects() -> void:
 		return
 	var selected_index := -1
 	for large_id in Place.placeable_large_ids(current_group):
+		if sprites.find_sprite(large_id) == null:
+			continue
 		var tile_id := large_id - 1000
 		var label := "%03d\n%s" % [tile_id, _object_name(tile_id)]
 		var item_index := object_list.add_item(label, _object_icon(tile_id))
@@ -446,6 +448,9 @@ func _update_selection_label() -> void:
 		return
 	if selected_tile_id < 0:
 		set_status("No object is available in this group.")
+		return
+	if selected_tile_id > 255:
+		set_status("Artwork stamp: kept in this workspace session. Undo and Redo are available.")
 		return
 	var area := Place.footprint(selected_tile_id, Vector2i(8, 8)).size.x
 	set_status(
@@ -499,7 +504,7 @@ func _object_name(tile_id: int) -> String:
 		return "City Infrastructure"
 	if tile_id <= 0x0d:
 		return "Landscape Object"
-	return "City Object"
+	return ScurkEditorRules.sprite_role(tile_id)
 
 
 func _object_icon(tile_id: int) -> Texture2D:

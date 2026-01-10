@@ -3614,17 +3614,11 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		"SCURK printing uses the executable's 2, 8, and 28-page grids",
 	)
 	_check(
-		ScurkPlace.placeable_large_ids(ScurkPickCopy.GROUP_ALL).size() == 156
-		and ScurkPlace.placeable_large_ids(
-			ScurkPickCopy.GROUP_ANIMATING_I
-		).is_empty()
-		and ScurkPlace.placeable_large_ids(
-			ScurkPickCopy.GROUP_ANIMATING_II
-		).is_empty()
-		and ScurkPlace.is_placeable_tile(0xcf)
-		and not ScurkPlace.is_placeable_tile(0x1d)
-		and not ScurkPlace.is_placeable_tile(0x167),
-		"SCURK Place & Print exposes 156 non-animated object-selector entries",
+		ScurkPlace.placeable_large_ids(ScurkPickCopy.GROUP_ALL).size() == 500
+		and ScurkPlace.is_placeable_tile(0x1d)
+		and ScurkPlace.is_placeable_tile(0x167)
+		and not ScurkPlace.is_placeable_tile(500),
+		"SCURK Place & Print exposes every sprite family, including networks and artwork",
 	)
 	_check(
 		ScurkPlace.footprint(0x70, Vector2i(20, 20))

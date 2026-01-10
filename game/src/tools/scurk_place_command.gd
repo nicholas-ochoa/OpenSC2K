@@ -53,30 +53,24 @@ const VARIABLE_ZONE_TILES := {
 static func placeable_large_ids(group: int) -> PackedInt32Array:
 	var result := PackedInt32Array()
 	if group == PickCopy.GROUP_ALL:
-		for group_index in PickCopy.GROUP_TILE_IDS.size():
-			if _group_is_placeable(group_index):
-				result.append_array(PickCopy.group_large_ids(group_index))
+		for tile_id in 500:
+			result.append(1000 + tile_id)
 		return result
-	if not _group_is_placeable(group):
-		return result
-	return PickCopy.group_large_ids(group)
+	result = PickCopy.group_large_ids(group)
+	if group == 5:
+		for tile_id in range(0x0e, 0x70):
+			result.append(1000 + tile_id)
+	return result
 
 
 static func is_placeable_tile(tile_id: int) -> bool:
-	if tile_id < 0 or tile_id > 0xff:
-		return false
-	for group_index in PickCopy.GROUP_TILE_IDS.size():
-		if not _group_is_placeable(group_index):
-			continue
-		if PickCopy.GROUP_TILE_IDS[group_index].has(tile_id):
-			return true
-	return false
+	return tile_id >= 0 and tile_id < 500
 
 
 static func footprint(tile_id: int, selected: Vector2i) -> Rect2i:
 	if not is_placeable_tile(tile_id):
 		return Rect2i()
-	return Buildings.footprint(selected, Demolish.structure_area(tile_id))
+	return Buildings.footprint(selected, Demolish.structure_area(tile_id) if tile_id <= 255 else 1)
 
 
 static func apply(
@@ -94,6 +88,14 @@ static func apply(
 	if process_random == null:
 		return _failure("process random state is required")
 
+	if tile_id > 255:
+		if selected.x < 0 or selected.y < 0 or selected.x >= 128 or selected.y >= 128:
+			return _failure("object does not fit inside the map")
+		var before := city.scurk_artwork_stamps.duplicate(true)
+		city.scurk_artwork_stamps.append({"tile_id": tile_id, "point": selected})
+		return {"ok": true, "error": "", "command_type": "scurk_artwork",
+			"scurk_place_history": true, "area": 1, "old_stamps": before,
+			"new_stamps": city.scurk_artwork_stamps.duplicate(true)}
 	var area := Demolish.structure_area(tile_id)
 	var site := Buildings.footprint(selected, area)
 	if not Buildings._footprint_is_in_bounds(site, area):
@@ -133,6 +135,8 @@ static func apply(
 	var placed_flags := (
 		FLAG_PIPED if tile_id == SMALL_PARK or tile_id == BIG_PARK else STRUCTURE_FLAGS
 	)
+	if tile_id < 0x70:
+		placed_flags = FLAG_POWERABLE if tile_id >= 0x0e else 0
 	var tile_indices := PackedInt32Array()
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
@@ -213,6 +217,12 @@ static func _apply_history(
 		"scurk_place_history", false
 	):
 		return _failure("Place & Print command is invalid")
+	if command.get("command_type", "") == "scurk_artwork":
+		var expected: Array = command.old_stamps if forward else command.new_stamps
+		if city.scurk_artwork_stamps != expected:
+			return _failure("artwork changed after this command")
+		city.scurk_artwork_stamps.assign((command.new_stamps if forward else command.old_stamps).duplicate(true))
+		return {"ok": true, "error": "", "restored_tiles": 1}
 	var before_random_key := ""
 	var after_random_key := ""
 	if command.has("process_random_state_before"):
@@ -299,7 +309,7 @@ static func _check_site(
 			elif tile_id >= HYDRO_DAM_FIRST and tile_id <= HYDRO_DAM_LAST:
 				if terrain[index] == 0 or not is_water:
 					return _failure("hydroelectric dam requires water terrain")
-			elif terrain[index] != 0 or is_water:
+			elif tile_id >= 0x70 and (terrain[index] != 0 or is_water):
 				return _failure("site is not flat clear land")
 	if tile_id == MARINA and (
 		marina_water_tiles == 0
