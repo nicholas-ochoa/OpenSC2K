@@ -26,7 +26,7 @@ func build() -> void:
 
 	var objects_heading := Label.new()
 	objects_heading.text = "Tile Objects"
-	objects_heading.add_theme_color_override("font_color", Color("000080"))
+	objects_heading.add_theme_color_override("font_color", Color("dce8ff"))
 	add_child(objects_heading)
 
 	object_search = LineEdit.new()

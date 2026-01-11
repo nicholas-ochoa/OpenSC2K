@@ -90,7 +90,7 @@ func _run() -> void:
 	main.call("_select_subtool", 1)
 	assert(main.get("overlay_mode") == "city")
 	assert(toolbar.child_tool_buttons[1].icon.get_width() <= 48)
-	main.call("_on_options_menu", CityMenuBar.MENU_FULL_SIZE_GRAPHICS)
+	assert(main.get("full_size_graphics"))
 	map.zoom_factor = CityMapControl.ZOOM_LEVELS[0]
 	assert(main.call("_city_view_size") == CityIsometricRenderer.VIEW_LARGE)
 	main.call("_on_options_menu", CityMenuBar.MENU_FULL_SIZE_GRAPHICS)
