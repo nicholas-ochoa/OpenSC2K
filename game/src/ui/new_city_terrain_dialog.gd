@@ -82,7 +82,7 @@ func _add_title_bar(column: VBoxContainer) -> void:
 	title_row.offset_right = -4
 	title_bar.add_child(title_row)
 	var title_label := Label.new()
-	title_label.text = "New City Terrain Editor"
+	title_label.text = "New City"
 	title_label.add_theme_color_override("font_color", Color.WHITE)
 	title_label.add_theme_font_size_override("font_size", 15)
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -131,7 +131,7 @@ func _build_city_and_terrain_fields(content: HBoxContainer) -> void:
 	_add_terrain_slider(terrain_grid, "Water")
 	_add_terrain_slider(terrain_grid, "Trees")
 	var terrain_note := Label.new()
-	terrain_note.text = "Values use the original 0–47 range."
+	terrain_note.hide()
 	terrain_note.modulate = Color(0.72, 0.72, 0.72)
 	left.add_child(terrain_note)
 
@@ -214,6 +214,7 @@ func _add_terrain_slider(grid: GridContainer, label_text: String) -> void:
 	var value_label := Label.new()
 	value_label.custom_minimum_size = Vector2(30, 0)
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	value_label.hide()
 	slider_row.add_child(value_label)
 	match label_text:
 		"Hills":
@@ -272,7 +273,7 @@ func _build_preview(content: HBoxContainer) -> void:
 	preview_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	right.add_child(preview_status)
 	var make_terrain_button := Button.new()
-	make_terrain_button.text = "Make New Terrain"
+	make_terrain_button.text = "Regenerate Terrain"
 	make_terrain_button.pressed.connect(
 		func() -> void: terrain_regeneration_requested.emit()
 	)
