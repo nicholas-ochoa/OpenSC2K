@@ -107,7 +107,7 @@ var surface_visibility := {
 	"zones": true,
 	"signs": true,
 }
-var full_size_graphics := false
+var full_size_graphics := true
 var show_underground_pipes := true
 var show_underground_subways := true
 var app_music_volume := 0.8
