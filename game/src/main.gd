@@ -4848,6 +4848,12 @@ func _format_number(value: int) -> String:
 func _placement_preview_valid(point: Vector2i) -> bool:
 	if city == null or point.x < 0:
 		return false
+	if scurk_place_print != null and scurk_place_print.visible and scurk_place_print.is_object_mode():
+		var tile_id := scurk_place_print.selected_tile_id
+		var site := ScurkPlace.footprint(tile_id, point)
+		if site.size.x == 0 or not Rect2i(0, 0, 128, 128).encloses(site):
+			return false
+		return tile_id > 255 or bool(ScurkPlace._check_site(city.buildings, city.terrain, city.tile_flags, site, tile_id).ok)
 	if Buildings.supports_tool(selected_group, selected_subtool):
 		return Buildings.preview_valid(city, selected_group, selected_subtool, point)
 	if Hydro.supports_tool(selected_group, selected_subtool):

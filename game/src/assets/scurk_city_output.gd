@@ -121,6 +121,8 @@ static func render(
 	var image: Image = result.get("image") as Image
 	if image == null or image.is_empty():
 		return _failure("city output is empty")
+	if view == "city":
+		_draw_artwork_stamps(image, city, render_palette, sprites, view_size)
 	if not bool(options.get("color", true)):
 		image = _monochrome_copy(image)
 	return {"ok": true, "error": "", "image": image}
@@ -434,3 +436,26 @@ static func _fill_clipped(image: Image, rectangle: Rect2i, color: Color) -> void
 
 static func _failure(message: String) -> Dictionary:
 	return {"ok": false, "error": message}
+
+
+static func _draw_artwork_stamps(output: Image, city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, view_size: int) -> void:
+	var configuration := Renderer.view_configuration(view_size)
+	for stamp in city.scurk_artwork_stamps:
+		var entry = sprites.find_sprite(int(configuration.sprite_base) + int(stamp.tile_id))
+		if entry == null:
+			continue
+		var rendered: Dictionary = entry.create_image(palette)
+		if not rendered.ok:
+			continue
+		var image: Image = rendered.image
+		var anchor := Renderer.tile_polygon(city, stamp.point.x, stamp.point.y)[2] / float(configuration.divisor)
+		var origin := Vector2i(anchor) - Vector2i(image.get_width() / 2, image.get_height() - 1)
+		for y in image.get_height():
+			for x in image.get_width():
+				var pixel := image.get_pixel(x, y)
+				var target := origin + Vector2i(x, y)
+				if pixel.a <= 0.0 or target.x < 0 or target.y < 0 or target.x >= output.get_width() or target.y >= output.get_height():
+					continue
+				if palette.is_index_encoding:
+					pixel = Color(pixel.r, pixel.r, pixel.r, 1.0)
+				output.set_pixelv(target, pixel)
