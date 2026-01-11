@@ -29,7 +29,7 @@ static func is_tool_variant(group_index: int, subtool_index: int) -> bool:
 static func scurk_object(
 	city: CityState, overlay_mode: String, tile_id: int
 ) -> Dictionary:
-	var area := Demolish.structure_area(tile_id)
+	var area := ScurkPlace.footprint(tile_id, Vector2i(8, 8)).size.x
 	var can_place := (
 		city != null
 		and overlay_mode == "city"
