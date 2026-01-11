@@ -610,6 +610,7 @@ static func path_is_within(path: String, directory: String) -> bool:
 
 
 func _build_interface() -> void:
+	theme = ThemeDB.get_default_theme().duplicate()
 	var panel := PanelContainer.new()
 	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	panel.offset_left = 10
@@ -647,7 +648,7 @@ func _build_interface() -> void:
 	page.add_child(header)
 	title_label = Label.new()
 	title_label.text = "Paint the Town"
-	title_label.add_theme_color_override("font_color", Color("000080"))
+	title_label.add_theme_color_override("font_color", Color("dce8ff"))
 	title_label.add_theme_font_size_override("font_size", 20)
 	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	header.add_child(title_label)
@@ -655,7 +656,7 @@ func _build_interface() -> void:
 	source_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	source_label.custom_minimum_size = Vector2(180, 0)
 	source_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	source_label.add_theme_color_override("font_color", Color("404040"))
+	source_label.add_theme_color_override("font_color", Color("c8c8c8"))
 	header.add_child(source_label)
 
 	var body := HSplitContainer.new()

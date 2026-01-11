@@ -62,7 +62,7 @@ func _build_canvas_row() -> void:
 	var heading := Label.new()
 	heading.text = "View Windows"
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_color_override("font_color", Color("000080"))
+	heading.add_theme_color_override("font_color", Color("dce8ff"))
 	previews_page.add_child(heading)
 	var previews_layout := HBoxContainer.new()
 	previews_layout.alignment = BoxContainer.ALIGNMENT_CENTER

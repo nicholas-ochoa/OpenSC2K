@@ -33,7 +33,7 @@ func build() -> void:
 
 	var heading := Label.new()
 	heading.text = "256-Color Palette"
-	heading.add_theme_color_override("font_color", Color("000080"))
+	heading.add_theme_color_override("font_color", Color("dce8ff"))
 	add_child(heading)
 
 	palette_control = PaletteControl.new()
@@ -94,7 +94,7 @@ func build() -> void:
 		+ "background color. Edit Large, Medium, and Small separately."
 	)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	help.add_theme_color_override("font_color", Color("404040"))
+	help.add_theme_color_override("font_color", Color("c8c8c8"))
 	add_child(help)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
