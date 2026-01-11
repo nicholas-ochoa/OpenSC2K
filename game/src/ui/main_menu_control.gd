@@ -25,6 +25,7 @@ const BUTTON_LABELS := [
 	"Exit",
 ]
 
+var city_background: MainMenuCityBackground
 var continue_button: Button
 var new_city_button: Button
 var scurk_place_button: Button
@@ -36,6 +37,8 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 
+	city_background = MainMenuCityBackground.new()
+	add_child(city_background)
 	var center := CenterContainer.new()
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)

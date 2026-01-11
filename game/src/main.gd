@@ -728,6 +728,7 @@ func _show_main_menu() -> void:
 		_update_edit_state()
 	if scurk_print != null:
 		scurk_print.hide()
+	main_menu.city_background.configure(reference_root, palette, large_sprites)
 	main_menu.show_menu(city != null)
 	status_label.text = "Main menu."
 
