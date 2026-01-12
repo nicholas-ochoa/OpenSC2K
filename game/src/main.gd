@@ -4105,6 +4105,8 @@ func _open_bridge_dialog(
 		),
 	}
 	var choices: Array = pending_bridge_request.choices
+	bridge_dialog.preview_palette = palette
+	bridge_dialog.preview_sprites = large_sprites
 	bridge_dialog.show_choices(
 		int(result.get("bridge_span_length", 0)),
 		request_type,
