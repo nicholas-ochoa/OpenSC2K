@@ -1,6 +1,11 @@
 class_name CityToolbar
 extends PanelContainer
 
+signal start_city_requested
+
+var start_city_button: Button
+var landscape_editor := false
+
 signal group_requested(index: int)
 signal subtool_requested(index: int)
 signal rotate_requested(counter_clockwise: bool)
@@ -71,6 +76,13 @@ func _ready() -> void:
 	var toolbar := VBoxContainer.new()
 	toolbar.add_theme_constant_override("separation", 4)
 	toolbar_margin.add_child(toolbar)
+
+	start_city_button = Button.new()
+	start_city_button.text = "Start City"
+	start_city_button.custom_minimum_size.y = 36
+	start_city_button.hide()
+	start_city_button.pressed.connect(start_city_requested.emit)
+	toolbar.add_child(start_city_button)
 
 	var tool_grid := GridContainer.new()
 	tool_grid.columns = 3
@@ -356,3 +368,13 @@ func _show_held_group(group_index: int, generation: int) -> void:
 		group_index, _current_city, _icon_provider, _selected_subtool,
 		toolbar_buttons[group_index].get_global_rect()
 	)
+
+
+func set_landscape_editor(enabled: bool) -> void:
+	landscape_editor = enabled
+	start_city_button.visible = enabled
+	child_palette.free_landscape = enabled
+	hold_menu.palette.free_landscape = enabled
+	for index in toolbar_buttons.size():
+		toolbar_buttons[index].visible = not enabled or index in [0, 1, 16, 17]
+	view_mode_buttons.underground.disabled = enabled

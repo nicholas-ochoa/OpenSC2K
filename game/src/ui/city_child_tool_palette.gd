@@ -8,6 +8,7 @@ const ToolAvailability = preload("res://src/tools/tool_availability.gd")
 const ToolState = preload("res://src/tools/tool_edit_state.gd")
 const DisplayNumbers = preload("res://src/ui/display_number_format.gd")
 
+var free_landscape := false
 var heading: Label
 var scroll: ScrollContainer
 var grid: GridContainer
@@ -62,6 +63,8 @@ func show_tool_group(
 	var button_group := ButtonGroup.new()
 	var first_available_subtool := -1
 	for subtool_index in group.tools.size():
+		if free_landscape and group_index == 0 and subtool_index == 4:
+			continue
 		if (group_index == 3 and subtool_index == 1) or (group_index == 5 and subtool_index == 4):
 			continue
 		if ToolState.is_tool_variant(group_index, subtool_index):
@@ -192,6 +195,8 @@ func _create_button(
 
 
 func _tool_price(tool: Dictionary) -> String:
+	if free_landscape:
+		return "Free"
 	return (
 		"Free"
 		if int(tool.cost) == 0

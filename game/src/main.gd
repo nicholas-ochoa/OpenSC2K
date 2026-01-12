@@ -183,6 +183,7 @@ var scurk_print_pdf_dialog: FileDialog
 var new_city_dialog: NewCityTerrainDialog
 var new_city_session := NewCitySession.new()
 var new_city_return_to_main_menu := false
+var landscape_editor := false
 var options_menu: MenuButton
 var speed_menu: MenuButton
 var view_menu: MenuButton
@@ -435,6 +436,7 @@ func _process(delta: float) -> void:
 		or military_dialog.visible
 		or scenario_dialog.visible
 		or game_over_active
+		or landscape_editor
 	)
 	var result := speed_controller.advance_time(
 		delta * 1000.0,
@@ -610,6 +612,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	scurk_print_pdf_dialog = city_dialogs.city_pdf_dialog
 	scurk_print_pdf_dialog.file_selected.connect(_save_scurk_city_pdf)
 
+	city_toolbar.start_city_requested.connect(_start_city)
 	new_city_dialog = city_dialogs.new_city_dialog
 	new_city_dialog.cancel_requested.connect(_cancel_new_city)
 	new_city_dialog.build_requested.connect(_create_new_city)
@@ -833,6 +836,8 @@ func _open_scurk_dialog() -> void:
 
 
 func _open_scurk_place_print() -> void:
+	if landscape_editor:
+		return
 	if city == null:
 		_show_error("Load or create a city before you open SCURK Place & Print.")
 		return
@@ -1487,6 +1492,8 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 
 
 func _on_disaster_menu(id: int) -> void:
+	if landscape_editor:
+		return
 	if city == null or simulation_engine == null:
 		_show_error("Load a city before you start a disaster.")
 		return
@@ -1788,6 +1795,8 @@ func _create_new_city_unchecked() -> void:
 		],
 	)
 
+	_enter_landscape_editor()
+
 
 func _difficulty_name(difficulty: int) -> String:
 	match difficulty:
@@ -1926,6 +1935,8 @@ func _invalidate_sprite_art() -> void:
 
 
 func _open_manual_budget() -> void:
+	if landscape_editor:
+		return
 	if city == null:
 		return
 	_open_budget_dialog(Budget.funding_values(city), false)
@@ -2225,6 +2236,9 @@ func _activate_document(
 	if not loaded_city.is_valid():
 		_show_error(loaded_city.load_error)
 		return false
+	landscape_editor = false
+	city_toolbar.set_landscape_editor(false)
+	city_menu_bar.disasters_menu.disabled = false
 	var music_was_active := _music_playback_is_active()
 
 	budget_dialog.reset_dialogs()
@@ -3496,6 +3510,8 @@ func _moving_things_are_active(results: Array) -> bool:
 
 
 func _select_tool_group(index: int) -> void:
+	if landscape_editor and index not in [0, 1, 16, 17]:
+		return
 	if index < 0 or index >= Tools.GROUPS.size():
 		return
 	selected_group = index
@@ -3520,6 +3536,8 @@ func _auto_select_underground() -> void:
 
 
 func _select_subtool(index: int) -> void:
+	if landscape_editor and (selected_group not in [0, 1, 16, 17] or (selected_group == 0 and index == 4)):
+		return
 	if selected_group == 2 and index == 3:
 		var recalled := Dispatch.recall_all(city)
 		if recalled.ok:
@@ -3608,6 +3626,10 @@ func _apply_map_selection(
 ) -> void:
 	if city == null:
 		return
+	if landscape_editor and (selected_group not in [0, 1, 16, 17] or (selected_group == 0 and selected_subtool == 4)):
+		_show_error("Select Start City before building structures.")
+		return
+
 	var scurk_tool_mode := (
 		scurk_place_print != null
 		and scurk_place_print.visible
@@ -3678,7 +3700,7 @@ func _apply_map_selection(
 		path,
 		tool_random,
 		overlay_mode == "underground",
-		scurk_tool_mode
+		scurk_tool_mode or landscape_editor
 	)
 	if simple_edit.handled:
 		_finish_simple_edit(simple_edit, scurk_tool_mode, scurk_tool)
@@ -4940,3 +4962,25 @@ func _refresh_scurk_artwork() -> void:
 			var anchor: Vector2 = CityIsometricRenderer.tile_polygon(city, stamp.point.x, stamp.point.y)[2]
 			map_view.scurk_stamp_visuals.append({"texture": texture, "position": anchor - Vector2(texture.get_width() / 2.0, texture.get_height() - 1)})
 	map_view.queue_redraw()
+
+
+func _enter_landscape_editor() -> void:
+	landscape_editor = true
+	city_toolbar.set_landscape_editor(true)
+	city_menu_bar.disasters_menu.disabled = true
+	_set_overlay("city")
+	_select_tool_group(0)
+	_select_subtool(2)
+	status_label.text = "Landscape editor: terrain changes are free. Select Start City when ready."
+
+
+func _start_city() -> void:
+	if not landscape_editor or city == null:
+		return
+	landscape_editor = false
+	city_toolbar.set_landscape_editor(false)
+	city_menu_bar.disasters_menu.disabled = false
+	last_edit_command.clear()
+	_select_tool_group(9)
+	_select_speed(GameSpeed.Speed.TURTLE)
+	status_label.text = "City started. Build zones, roads, and services."
