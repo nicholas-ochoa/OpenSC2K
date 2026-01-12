@@ -4879,6 +4879,7 @@ func _set_underground_subways_visible(enabled: bool) -> void:
 	_sync_view_controls()
 	if city != null and overlay_mode == "underground":
 		_refresh_map(false)
+	status_label.text = "Underground subways %s." % ("shown" if enabled else "hidden")
 
 
 static func _parallel_dust_events(events: Array) -> Array:
