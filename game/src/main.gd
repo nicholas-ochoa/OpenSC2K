@@ -1132,7 +1132,7 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if sprite_id < 0:
 		var table_index := group_index * Tools.MAX_SLOTS_PER_GROUP + subtool_index
 		const REPRESENTATIVE_SPRITES := {
-			12: 1006, 13: 1270, 36: 1014, 39: 1198, 48: 1334,
+			12: 1012, 13: 1270, 36: 1014, 39: 1198, 48: 1334,
 			72: 1029, 73: 1073, 74: 1063, 75: 1093,
 			84: 1044, 85: 1319, 88: 1108,
 			96: 1299, 97: 1298,
