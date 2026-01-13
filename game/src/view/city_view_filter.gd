@@ -15,6 +15,7 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 		return source
 	var result := CityState.new()
 	result.document = source.document
+	result.visible_altitude_levels = source.visible_altitude_levels
 	result.altitude_words = source.altitude_words.duplicate()
 	result.terrain = source.terrain.duplicate()
 	result.buildings = source.buildings.duplicate()

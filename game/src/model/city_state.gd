@@ -32,6 +32,7 @@ var text_overlays := PackedByteArray()
 var tile_flags := PackedByteArray()
 # display-only copies can keep objects at the former water surface while they
 # draw the terrain as dry land. this array is never written to an sc2 chunk
+var visible_altitude_levels := 32 # display only; never serialized
 var object_altitude_overrides := PackedInt32Array()
 var _masked_tile_flag_signatures: Dictionary = {}
 
@@ -604,3 +605,12 @@ static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
 		| (data[offset + 2] << 8)
 		| data[offset + 3]
 	)
+
+
+func tile_is_visible(x: int, y: int) -> bool:
+	if index_of(x, y) < 0:
+		return false
+	if visible_altitude_levels >= 32:
+		return true
+	var height := water_altitude(x, y) if is_water(x, y) else land_altitude(x, y)
+	return height < visible_altitude_levels

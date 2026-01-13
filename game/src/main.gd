@@ -2804,6 +2804,7 @@ func _request_static_render(
 	if not snapshot.is_valid():
 		_show_error("Cannot prepare the city for drawing: %s" % snapshot.load_error)
 		return
+	snapshot.visible_altitude_levels = city.visible_altitude_levels
 	static_render_job = RenderJob.new()
 	static_render_job.city_snapshot = snapshot
 	static_render_job.index_palette = palette_index_encoding
@@ -4710,6 +4711,7 @@ func _show_error(message: String) -> void:
 
 func _debug_metrics() -> Dictionary:
 	var result := {
+		"visible_altitude_levels": city.visible_altitude_levels if city != null else 32,
 		"city_name": "None",
 		"date": "--",
 		"population": "--",
@@ -5004,3 +5006,17 @@ func _start_city() -> void:
 	_select_tool_group(9)
 	_select_speed(GameSpeed.Speed.TURTLE)
 	status_label.text = "City started. Build zones, roads, and services."
+
+
+func _debug_set_visible_altitude_levels(levels: int) -> void:
+	if city == null:
+		return
+	levels = clampi(levels, 1, 32)
+	if city.visible_altitude_levels == levels:
+		return
+	city.visible_altitude_levels = levels
+	if map_view.city != null:
+		map_view.city.visible_altitude_levels = levels
+	map_view._invalidate_sign_entries()
+	_invalidate_view_render()
+	_refresh_map(false)

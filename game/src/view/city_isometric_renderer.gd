@@ -502,7 +502,7 @@ static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
 		var x: int = int(index) / CityState.MAP_SIZE
 		var y: int = int(index) % CityState.MAP_SIZE
 		var order := (x + y) * CityState.MAP_SIZE + y
-		if order <= result_order:
+		if not city.tile_is_visible(x, y) or order <= result_order:
 			continue
 		var polygon := tile_polygon(city, x, y)
 		if Geometry2D.is_point_in_polygon(point, polygon):
@@ -574,6 +574,8 @@ static func _draw_tile(
 	include_moving_things: bool,
 	include_special_overlays: bool
 ) -> void:
+	if not city.tile_is_visible(x, y):
+		return
 	var terrain_id := city.terrain_id(x, y)
 	var building_id := city.building_id(x, y)
 	var terrain_altitude := city.land_altitude(x, y)
@@ -1347,6 +1349,8 @@ static func dynamic_draw_commands(
 	)
 	for entry in entries:
 		var point: Vector2i = entry.point
+		if not city.tile_is_visible(point.x, point.y):
+			continue
 		var entry_commands: Array[Dictionary] = []
 		if entry.special:
 			var special_visual := special_overlay_visual(
@@ -1605,6 +1609,8 @@ static func _tile_occlusion_commands(
 	draw_order: int
 ) -> Array[Dictionary]:
 	var commands: Array[Dictionary] = []
+	if not city.tile_is_visible(x, y):
+		return commands
 	var terrain_id := city.terrain_id(x, y)
 	var building_id := city.building_id(x, y)
 	var terrain_altitude := city.land_altitude(x, y)
@@ -1874,6 +1880,7 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 	var traffic := city.document.find_chunk("XTRF")
 	return [
 		view_size,
+		city.visible_altitude_levels,
 		city.compass_rotation(),
 		hash(city.altitude_words),
 		hash(city.terrain),

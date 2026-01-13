@@ -190,6 +190,7 @@ static func visual_signature(city: CityState, view_size: int, show_pipes := true
 		return []
 	return [
 		"underground",
+		city.visible_altitude_levels,
 		view_size,
 		show_pipes,
 		show_subways,
@@ -214,6 +215,8 @@ static func _draw_tile(
 	show_pipes: bool,
 	show_subways: bool
 ) -> void:
+	if not city.tile_is_visible(x, y):
+		return
 	var screen_x := origin_x + (x - y) * int(configuration.half_width)
 	var base_y := (
 		int(configuration.top_margin)

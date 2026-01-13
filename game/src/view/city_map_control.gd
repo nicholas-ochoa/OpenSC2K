@@ -192,6 +192,8 @@ func _ensure_sign_entries() -> void:
 			var x := diagonal - y
 			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
 				continue
+			if not city.tile_is_visible(x, y):
+				continue
 			var label_id := city.text_overlay_id(x, y)
 			if label_id < 1 or label_id > 50:
 				continue
