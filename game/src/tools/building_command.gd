@@ -253,11 +253,22 @@ static func footprint(selected: Vector2i, area: int) -> Rect2i:
 
 # checks the site without changing the city or consuming random state
 static func preview_valid(city: CityState, group: int, subtool: int, point: Vector2i) -> bool:
+	return preview_error(city, group, subtool, point).is_empty()
+
+
+static func preview_error(city: CityState, group: int, subtool: int, point: Vector2i) -> String:
 	if city == null or not supports_tool(group, subtool):
-		return false
+		return "No building tool is selected."
+	if not Availability.is_available(city, group, subtool):
+		return "This building is not available in this city."
 	var tool := ToolCatalog.tool(group, subtool)
+	if city.funds() < int(tool.cost):
+		return "Insufficient funds."
 	var site := footprint(point, int(tool.area))
-	return Availability.is_available(city, group, subtool) and city.funds() >= int(tool.cost) and _footprint_is_in_bounds(site, int(tool.area)) and bool(_check_site(city.buildings, city.terrain, city.zones, city.tile_flags, site, tile_for_tool(group, subtool)).ok)
+	if not _footprint_is_in_bounds(site, int(tool.area)):
+		return "The building footprint extends outside the map."
+	var check := _check_site(city.buildings, city.terrain, city.zones, city.tile_flags, site, tile_for_tool(group, subtool))
+	return String(check.get("error", ""))
 
 
 static func apply(

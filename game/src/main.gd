@@ -3598,6 +3598,7 @@ func _update_edit_state() -> void:
 		selected_tool_available = bool(state.available)
 	map_view.shift_rectangle_enabled = bool(state.landscape)
 	map_view.placement_validator = _placement_preview_valid
+	map_view.placement_error_provider = _placement_preview_error
 	map_view.show_selection_preview = selected_group != 17
 	map_view.terrain_diamond_preview = selected_group == 0 and selected_subtool in [2, 3]
 	map_view.highway_preview = selected_group == 6 and selected_subtool == 1
@@ -4870,29 +4871,46 @@ func _format_number(value: int) -> String:
 
 
 func _placement_preview_valid(point: Vector2i) -> bool:
-	if city == null or point.x < 0:
-		return false
+	return _placement_preview_error(point).is_empty()
+
+
+func _placement_preview_error(point: Vector2i) -> String:
+	if city == null or city.index_of(point.x, point.y) < 0:
+		return "Select a tile inside the map."
 	if scurk_place_print != null and scurk_place_print.visible and scurk_place_print.is_object_mode():
 		var tile_id := scurk_place_print.selected_tile_id
 		var site := ScurkPlace.footprint(tile_id, point)
 		if site.size.x == 0 or not Rect2i(0, 0, 128, 128).encloses(site):
-			return false
-		return tile_id > 255 or bool(ScurkPlace._check_site(city.buildings, city.terrain, city.tile_flags, site, tile_id).ok)
+			return "The object footprint extends outside the map."
+		return "" if tile_id > 255 else String(ScurkPlace._check_site(city.buildings, city.terrain, city.tile_flags, site, tile_id).get("error", ""))
 	if Buildings.supports_tool(selected_group, selected_subtool):
-		return Buildings.preview_valid(city, selected_group, selected_subtool, point)
+		return Buildings.preview_error(city, selected_group, selected_subtool, point)
 	if Hydro.supports_tool(selected_group, selected_subtool):
 		var index := city.index_of(point.x, point.y)
-		return index >= 0 and city.terrain[index] in [0x2e, 0x3e] and city.buildings[index] == 0 and city.funds() >= int(Tools.tool(selected_group, selected_subtool).cost)
+		if city.funds() < int(Tools.tool(selected_group, selected_subtool).cost):
+			return "Insufficient funds."
+		if city.buildings[index] != 0:
+			return "Clear the existing structure first."
+		return "" if city.terrain[index] in [0x2e, 0x3e] else "Hydroelectric power requires a waterfall tile."
 	if Onramps.supports_tool(selected_group, selected_subtool):
-		return bool(Onramps.apply(city, selected_group, selected_subtool, point, false, true).ok)
+		return String(Onramps.apply(city, selected_group, selected_subtool, point, false, true).get("error", ""))
 	if SubwayToRail.supports_tool(selected_group, selected_subtool):
-		return bool(SubwayToRail.apply(city, selected_group, selected_subtool, point, true).ok)
+		return String(SubwayToRail.apply(city, selected_group, selected_subtool, point, true).get("error", ""))
 	if Tunnels.supports_tool(selected_group, selected_subtool):
 		var proposal := Tunnels.apply(city, selected_group, selected_subtool, point)
-		return proposal.get("confirmation_required", false) and city.funds() >= int(proposal.get("cost", 0))
+		if not proposal.get("confirmation_required", false):
+			return String(proposal.get("error", "A tunnel requires a suitable hillside and exit."))
+		return "" if city.funds() >= int(proposal.get("cost", 0)) else "Insufficient funds for this tunnel."
 	if Highways.supports_tool(selected_group, selected_subtool):
-		return Highways.preview_valid(city, point)
-	return true
+		if Highways.preview_valid(city, point):
+			return ""
+		var anchor := Highways.snap_anchor(point)
+		if not Highways._anchor_is_in_bounds(anchor):
+			return "The 2 by 2 highway section extends outside the map."
+		if city.funds() < 100:
+			return "Insufficient funds for this highway section."
+		return "The 2 by 2 section is obstructed, has incompatible terrain, or cannot connect to a bridge."
+	return ""
 
 
 func _set_underground_subways_visible(enabled: bool) -> void:

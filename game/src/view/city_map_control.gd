@@ -82,6 +82,7 @@ var selection_path: Array[Vector2i] = []
 var selection_moved := false
 var selection_price := -1
 var selection_price_affordable := true
+var placement_error_provider := Callable()
 var placement_validator := Callable()
 var show_selection_preview := true
 var terrain_diamond_preview := false
@@ -1142,3 +1143,13 @@ func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
 		for y in range(site.position.y, site.end.y):
 			result.append(Vector2i(x, y))
 	return result
+
+
+func _get_tooltip(at_position: Vector2) -> String:
+	if not edit_enabled or not show_selection_preview or is_panning() or selection_start.x >= 0 or not placement_error_provider.is_valid():
+		return ""
+	var tile := _tile_at(at_position)
+	if tile.x < 0:
+		return ""
+	var reason := String(placement_error_provider.call(tile))
+	return "Cannot build here: " + reason if not reason.is_empty() else ""
