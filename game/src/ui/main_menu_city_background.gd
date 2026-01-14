@@ -131,7 +131,7 @@ func _start_render() -> void:
 
 
 static func _render(snapshot: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> Dictionary:
-	var result := Renderer.create_image(snapshot, Sc2Palette.index_encoding(), sprites, Renderer.VIEW_LARGE, 0, false, false, false, false)
+	var result := Renderer.create_image(snapshot, Sc2Palette.index_encoding(), sprites, Renderer.VIEW_LARGE, 0, false, true, false, false)
 	result["occlusion_commands"] = Renderer.static_occlusion_commands(snapshot, sprites)
 	return result
 
