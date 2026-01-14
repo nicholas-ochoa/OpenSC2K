@@ -2,6 +2,7 @@ class_name ScurkEditorDrawingControls
 extends VBoxContainer
 
 signal view_selected(view: int)
+signal zoom_fit_requested
 signal zoom_out_requested
 signal zoom_in_requested
 signal tool_selected(tool: int)
@@ -129,11 +130,12 @@ func _build_view_row() -> void:
 		"+", &"zoom_in_requested", "Increase the pixel zoom."
 	)
 	row.add_child(zoom_in_button)
+	row.add_child(_button("Fit", &"zoom_fit_requested", "Fit the complete drawing area in the canvas."))
 
 
 func _build_tool_row() -> void:
 	var row := HFlowContainer.new()
-	row.custom_minimum_size = Vector2(0, 62)
+	row.custom_minimum_size = Vector2(0, 0)
 	row.add_theme_constant_override("h_separation", 4)
 	row.add_theme_constant_override("v_separation", 4)
 	add_child(row)

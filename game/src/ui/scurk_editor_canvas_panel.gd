@@ -8,6 +8,8 @@ const VIEW_LARGE := 0
 const VIEW_MEDIUM := 1
 const VIEW_SMALL := 2
 
+var pixel_scroll: ScrollContainer
+var previews_panel: PanelContainer
 var pixel_canvas: ScurkPixelCanvas
 var view_previews: Array[ScurkViewPreview] = []
 var view_preview_panels: Array[Control] = []
@@ -36,6 +38,7 @@ func _build_canvas_row() -> void:
 	add_child(row)
 
 	var scroll := ScrollContainer.new()
+	pixel_scroll = scroll
 	scroll.name = "PixelScroll"
 	scroll.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -50,7 +53,7 @@ func _build_canvas_row() -> void:
 	pixel_canvas.name = "PixelCanvas"
 	canvas_center.add_child(pixel_canvas)
 
-	var previews_panel := PanelContainer.new()
+	previews_panel = PanelContainer.new()
 	previews_panel.custom_minimum_size = Vector2(218, 0)
 	previews_panel.tooltip_text = (
 		"Display-only previews of the complete Drawing Area at all three city views."
@@ -77,7 +80,7 @@ func _build_canvas_row() -> void:
 	var note := Label.new()
 	note.text = "Display only"
 	note.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	note.add_theme_color_override("font_color", Color("606060"))
+	note.add_theme_color_override("font_color", Color("c8c8c8"))
 	previews_page.add_child(note)
 
 

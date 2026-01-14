@@ -159,6 +159,7 @@ func show_editor(initial_path := "") -> Dictionary:
 	show()
 	move_to_front()
 	_refresh_sprite()
+	call_deferred("_fit_canvas")
 	if object_list != null:
 		object_list.grab_focus()
 	return {"ok": true, "error": ""}
@@ -688,6 +689,7 @@ func _build_interface() -> void:
 	drawing_controls = DrawingControlsView.new()
 	drawing_controls.build()
 	drawing_controls.view_selected.connect(_select_view)
+	drawing_controls.zoom_fit_requested.connect(_fit_canvas)
 	drawing_controls.zoom_out_requested.connect(_zoom_out)
 	drawing_controls.zoom_in_requested.connect(_zoom_in)
 	drawing_controls.tool_selected.connect(_select_tool)
@@ -752,6 +754,7 @@ func _build_interface() -> void:
 		_select_tool.bind(ScurkPixelCanvas.TOOL_ERASER)
 	)
 	right_split.add_child(palette_panel)
+	palette_panel.add_view_panel(canvas_panel.previews_panel)
 
 	status_label = Label.new()
 	status_label.custom_minimum_size = Vector2(0, 26)
@@ -1276,7 +1279,7 @@ func _update_title() -> void:
 	if title_label == null:
 		return
 	var filename := source_path.get_file() if not source_path.is_empty() else "Untitled.MIF"
-	title_label.text = "SCURK Tile Editor — %s%s" % [filename, " *" if dirty else ""]
+	title_label.text = "Paint the Town — %s%s" % [filename, " *" if dirty else ""]
 	if source_label != null:
 		source_label.text = "Reference source: read-only" if path_is_within(source_path, reference_directory) else source_path
 
@@ -1373,3 +1376,14 @@ func _show_error(message: String) -> void:
 	if error_dialog != null:
 		error_dialog.dialog_text = message
 		error_dialog.popup_centered()
+
+
+func _fit_canvas() -> void:
+	if pixel_canvas == null or canvas_panel == null:
+		return
+	var available := canvas_panel.pixel_scroll.size - Vector2(20, 20)
+	var factor := mini(floori(available.x / maxi(1, pixel_canvas.sprite_width)), floori(available.y / maxi(1, pixel_canvas.sprite_height)))
+	pixel_canvas.set_zoom(maxi(1, factor))
+	zoom_label.text = "%dx" % pixel_canvas.zoom
+	canvas_panel.pixel_scroll.scroll_horizontal = 0
+	canvas_panel.pixel_scroll.scroll_vertical = 0

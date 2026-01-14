@@ -8,6 +8,7 @@ signal eraser_requested
 const PaletteControl = preload("res://src/view/scurk_palette_control.gd")
 const TextureControl = preload("res://src/view/scurk_texture_control.gd")
 
+var tabs: TabContainer
 var palette: Sc2Palette
 var palette_control: ScurkPaletteControl
 var foreground_color: ColorRect
@@ -102,6 +103,7 @@ func build() -> void:
 	pointer_status_label = Label.new()
 	pointer_status_label.text = "Pointer: --"
 	add_child(pointer_status_label)
+	_organize_tabs()
 
 
 func configure(
@@ -179,3 +181,28 @@ func set_pointer(point: Vector2i, index: int) -> void:
 			"transparent" if index < 0 else "index %d" % index,
 		]
 	)
+
+
+func _organize_tabs() -> void:
+	var rows := get_children()
+	tabs = TabContainer.new()
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tabs.use_hidden_tabs_for_min_size = false
+	add_child(tabs)
+	move_child(tabs, 0)
+	for definition in [["Colors", [0, 1, 2, 3, 6]], ["Textures", [4, 5]]]:
+		var page := VBoxContainer.new()
+		page.name = definition[0]
+		page.add_theme_constant_override("separation", 8)
+		tabs.add_child(page)
+		for index in definition[1]:
+			rows[index].reparent(page)
+	rows[7].hide()
+	tooltip_text = rows[7].text
+	rows[8].queue_free()
+	texture_scroll.size_flags_vertical = Control.SIZE_EXPAND_FILL
+
+
+func add_view_panel(panel: Control) -> void:
+	panel.reparent(tabs)
+	panel.name = "Views"
