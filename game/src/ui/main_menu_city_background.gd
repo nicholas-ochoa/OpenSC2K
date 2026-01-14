@@ -14,12 +14,32 @@ var refresh_elapsed := 0.0
 var render_thread: Thread
 var demo_palette: Sc2Palette
 var demo_sprites: Sc2SpriteArchive
+var static_layer: Sprite2D
+var cycle_texture: ImageTexture
+var static_image: Image
+var occlusion_commands: Array[Dictionary] = []
+var occlusion_grid := {}
+var sprite_cache := {}
+var dynamic_visuals: Array[Dictionary] = []
+var animation_elapsed := 0.0
+var animation_revision := 0
 
 
 func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	static_layer = Sprite2D.new()
+	static_layer.centered = false
+	static_layer.show_behind_parent = true
+	var shader := Shader.new()
+	shader.code = CityMapControl.PALETTE_CYCLE_SHADER
+	var shader_material := ShaderMaterial.new()
+	shader_material.shader = shader
+	shader_material.set_shader_parameter("palette_lookup_all", true)
+	shader_material.set_shader_parameter("palette_cycle_enabled", true)
+	static_layer.material = shader_material
+	add_child(static_layer)
 
 
 func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
@@ -75,10 +95,16 @@ func _process(delta: float) -> void:
 		var result: Dictionary = render_thread.wait_to_finish()
 		render_thread = null
 		if result.get("ok", false):
-			demo_texture = ImageTexture.create_from_image(result.image)
+			static_image = result.image
+			demo_texture = ImageTexture.create_from_image(static_image)
+			static_layer.texture = demo_texture
+			occlusion_commands.assign(result.occlusion_commands)
+			occlusion_grid = Renderer.build_occlusion_grid(occlusion_commands, 1)
+			_refresh_animation()
 	if not is_visible_in_tree() or demo_city == null:
 		return
 	elapsed += delta
+	animation_elapsed += delta
 	refresh_elapsed += delta
 	# Discard this private city's UI and sound events. A blocking event can still stop its clock.
 	controller.advance_time(minf(delta, 0.2) * 1000.0)
@@ -87,6 +113,12 @@ func _process(delta: float) -> void:
 	if refresh_elapsed >= 10.0 and render_thread == null:
 		refresh_elapsed = 0.0
 		_start_render()
+	if animation_elapsed >= 0.1:
+		animation_elapsed = fmod(animation_elapsed, 0.1)
+		_refresh_animation()
+	var camera := _camera()
+	static_layer.position = camera.offset
+	static_layer.scale = Vector2.ONE * float(camera.scale)
 	queue_redraw()
 
 
@@ -99,17 +131,94 @@ func _start_render() -> void:
 
 
 static func _render(snapshot: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> Dictionary:
-	return Renderer.create_image(snapshot, palette, sprites, Renderer.VIEW_LARGE, 0, true, false, false)
+	var result := Renderer.create_image(snapshot, Sc2Palette.index_encoding(), sprites, Renderer.VIEW_LARGE, 0, false, false, false, false)
+	result["occlusion_commands"] = Renderer.static_occlusion_commands(snapshot, sprites)
+	return result
+
+
+func _camera() -> Dictionary:
+	var center := Renderer.tile_polygon(demo_city, 64, 64)[2]
+	center += Vector2(sin(elapsed / 50.0) * 460.0, cos(elapsed / 67.0) * 160.0)
+	var scale := maxf(size.x / 2400.0, size.y / 1250.0) * (1.05 + 0.08 * sin(elapsed / 83.0))
+	return {"offset": size / 2.0 - center * scale, "scale": scale}
 
 
 func _draw() -> void:
 	if demo_texture == null or demo_city == null:
 		return
-	var center := Renderer.tile_polygon(demo_city, 64, 64)[2]
-	center += Vector2(sin(elapsed / 50.0) * 460.0, cos(elapsed / 67.0) * 160.0)
-	var scale := maxf(size.x / 2400.0, size.y / 1250.0) * (1.05 + 0.08 * sin(elapsed / 83.0))
-	draw_texture_rect(demo_texture, Rect2(size / 2.0 - center * scale, demo_texture.get_size() * scale), false)
+	var camera := _camera()
+	for visual in dynamic_visuals:
+		draw_texture_rect(visual.texture, Rect2(camera.offset + visual.position * float(camera.scale), visual.texture.get_size() * float(camera.scale)), false)
 	draw_rect(Rect2(Vector2.ZERO, size), Color(0.0, 0.0, 0.0, 0.14))
+
+
+func _refresh_animation() -> void:
+	if demo_city == null or static_image == null:
+		return
+	animation_revision += 1
+	var ticks := int(elapsed * 5.0)
+	var colors := Sc2Palette.new()
+	for index in demo_palette.animation_index_map(ticks):
+		colors.colors.append(demo_palette.colors[index])
+	var cycle_image := demo_palette.animation_image(ticks)
+	if cycle_texture == null:
+		cycle_texture = ImageTexture.create_from_image(cycle_image)
+	else:
+		cycle_texture.update(cycle_image)
+	static_layer.material.set_shader_parameter("animated_palette", cycle_texture)
+	dynamic_visuals.clear()
+	for command in Renderer.dynamic_draw_commands(demo_city, demo_sprites, Renderer.VIEW_LARGE, int(elapsed * 10.0)):
+		var sprite = demo_sprites.find_sprite(int(command.sprite_id))
+		if sprite == null:
+			continue
+		var rendered: Dictionary = sprite.create_image(colors)
+		if not rendered.ok:
+			continue
+		var image: Image = rendered.image
+		if command.flip:
+			image.flip_x()
+		var position := Vector2i(command.position)
+		if command.shadow:
+			for y in image.get_height():
+				for x in image.get_width():
+					var point := position + Vector2i(x, y)
+					if image.get_pixel(x, y).a == 0.0 or point.x < 0 or point.y < 0 or point.x >= static_image.get_width() or point.y >= static_image.get_height():
+						continue
+					var index := roundi(static_image.get_pixelv(point).r * 255.0)
+					image.set_pixel(x, y, colors.colors[Renderer.shadow_palette_index(index)])
+		if command.get("static_occlusion", true):
+			image = _occlude(image, position, int(command.depth_order))
+		dynamic_visuals.append({"texture": ImageTexture.create_from_image(image), "position": Vector2(position)})
+
+
+func _occlude(image: Image, position: Vector2i, order: int) -> Image:
+	var bounds := Rect2i(position, image.get_size())
+	for index in Renderer.occlusion_candidate_indices(occlusion_grid, bounds):
+		var command := occlusion_commands[index]
+		if int(command.depth_order) <= order:
+			continue
+		var origin := Vector2i(command.position)
+		var overlap := bounds.intersection(Rect2i(origin, command.size))
+		if overlap.get_area() == 0:
+			continue
+		var key := Vector2i(int(command.sprite_id), int(command.flip))
+		if not sprite_cache.has(key):
+			var sprite = demo_sprites.find_sprite(key.x)
+			if sprite == null:
+				continue
+			var rendered: Dictionary = sprite.create_image(demo_palette)
+			if not rendered.ok:
+				continue
+			var mask: Image = rendered.image
+			if command.flip:
+				mask.flip_x()
+			sprite_cache[key] = mask
+		var mask: Image = sprite_cache[key]
+		for y in range(overlap.position.y, overlap.end.y):
+			for x in range(overlap.position.x, overlap.end.x):
+				if mask.get_pixel(x - origin.x, y - origin.y).a > 0.0:
+					image.set_pixel(x - position.x, y - position.y, Color.TRANSPARENT)
+	return image
 
 
 func _exit_tree() -> void:
