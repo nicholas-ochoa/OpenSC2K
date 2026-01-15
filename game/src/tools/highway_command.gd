@@ -1581,3 +1581,28 @@ static func preview_valid(city: CityState, selected: Vector2i) -> bool:
 				if city.funds() >= int(choice.get("cost", 0)):
 					return true
 	return false
+
+
+static func preview_error(city: CityState, selected: Vector2i) -> String:
+	if preview_valid(city, selected):
+		return ""
+	var anchor := snap_anchor(selected)
+	if city == null or not _anchor_is_in_bounds(anchor):
+		return "The 2 by 2 highway section extends outside the map."
+	if _section_has_water(city.tile_flags, anchor):
+		var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
+		var bridge := _plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation())
+		if not bridge.get("ok", false):
+			return String(bridge.get("error", "This shore cannot start a highway bridge."))
+		return "Insufficient funds for this highway bridge."
+	if city.funds() < 100:
+		return "Insufficient funds for this highway section."
+	var direction := _primary_direction(anchor, anchor)
+	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+		var point: Vector2i = anchor + offset
+		var tile_id := city.building_id(point.x, point.y)
+		if not _building_is_allowed(tile_id):
+			return "Clear the structure in the highway footprint first."
+		if tile_id > 0x0e and not _is_highway_tile(tile_id) and not _network_can_cross(tile_id, direction):
+			return "The existing network cannot cross a highway in this direction."
+	return "The 2 by 2 highway section has incompatible elevations or slopes."

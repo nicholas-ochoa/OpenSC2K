@@ -4904,14 +4904,7 @@ func _placement_preview_error(point: Vector2i) -> String:
 			return String(proposal.get("error", "A tunnel requires a suitable hillside and exit."))
 		return "" if city.funds() >= int(proposal.get("cost", 0)) else "Insufficient funds for this tunnel."
 	if Highways.supports_tool(selected_group, selected_subtool):
-		if Highways.preview_valid(city, point):
-			return ""
-		var anchor := Highways.snap_anchor(point)
-		if not Highways._anchor_is_in_bounds(anchor):
-			return "The 2 by 2 highway section extends outside the map."
-		if city.funds() < 100:
-			return "Insufficient funds for this highway section."
-		return "The 2 by 2 section is obstructed, has incompatible terrain, or cannot connect to a bridge."
+		return Highways.preview_error(city, point)
 	return ""
 
 
