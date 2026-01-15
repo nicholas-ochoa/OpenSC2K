@@ -61,3 +61,5 @@ python3 "$repo_dir/tools/test_graphics_tools.py"
 git -C "$repo_dir" diff --check
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/usability_polish_test.gd
+
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/terrain_workflow_test.gd
