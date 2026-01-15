@@ -137,10 +137,17 @@ static func _render(snapshot: CityState, palette: Sc2Palette, sprites: Sc2Sprite
 
 
 func _camera() -> Dictionary:
-	var center := Renderer.tile_polygon(demo_city, 64, 64)[2]
-	center += Vector2(sin(elapsed / 50.0) * 460.0, cos(elapsed / 67.0) * 160.0)
-	var scale := maxf(size.x / 2400.0, size.y / 1250.0) * (1.05 + 0.08 * sin(elapsed / 83.0))
-	return {"offset": size / 2.0 - center * scale, "scale": scale}
+	# hold each framing for 24 seconds. integral scales preserve source pixels;
+	# fractional continuous zoom makes nearest-neighbor artwork shimmer
+	var shot := int(elapsed / 24.0) % 4
+	var centers := [Vector2i(64, 64), Vector2i(48, 56), Vector2i(76, 64), Vector2i(62, 80)]
+	var point: Vector2i = centers[shot]
+	var center := Renderer.tile_polygon(demo_city, point.x, point.y)[2]
+	var travel := fmod(elapsed, 24.0) - 12.0
+	center += Vector2(travel * 2.0, travel)
+	var scale := float([1, 2, 1, 3][shot])
+	return {"offset": (size / 2.0 - center * scale).round(), "scale": scale}
+
 
 
 func _draw() -> void:
