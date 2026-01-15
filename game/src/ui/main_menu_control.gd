@@ -43,7 +43,7 @@ func _ready() -> void:
 	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	add_child(center)
 	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(460, 700)
+	panel.custom_minimum_size = Vector2(460, 0)
 	var box := ClassicStyle.create_box(
 		Color("c0c0c0"), Color("ffffff"), 2, 44, 34
 	)
@@ -90,6 +90,9 @@ func show_menu(can_continue: bool) -> void:
 		continue_button.visible = can_continue
 	if scurk_place_button != null:
 		scurk_place_button.disabled = not can_continue
+	# let the panel shrink when continue city is hidden
+	var panel := new_city_button.get_parent().get_parent() as PanelContainer
+	panel.reset_size()
 	show()
 	if can_continue and continue_button != null:
 		continue_button.grab_focus()
