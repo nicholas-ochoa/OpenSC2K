@@ -4988,6 +4988,7 @@ func _refresh_scurk_artwork() -> void:
 
 func _enter_landscape_editor() -> void:
 	landscape_editor = true
+	_select_speed(GameSpeed.Speed.PAUSED)
 	city_toolbar.set_landscape_editor(true)
 	city_menu_bar.disasters_menu.disabled = true
 	_set_overlay("city")

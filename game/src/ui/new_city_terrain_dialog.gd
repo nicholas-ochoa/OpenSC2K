@@ -293,7 +293,7 @@ func _add_action_buttons(column: VBoxContainer) -> void:
 	cancel_button.pressed.connect(func() -> void: cancel_requested.emit())
 	button_row.add_child(cancel_button)
 	var build_button := Button.new()
-	build_button.text = "Build City on This Terrain"
+	build_button.text = "Edit This Landscape"
 	build_button.custom_minimum_size = Vector2(210, 30)
 	build_button.pressed.connect(func() -> void: build_requested.emit())
 	button_row.add_child(build_button)

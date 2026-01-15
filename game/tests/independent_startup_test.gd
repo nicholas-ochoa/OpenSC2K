@@ -133,7 +133,9 @@ func _test_main() -> void:
 	main._create_new_city_unchecked()
 	await process_frame
 	assert(main.city != null and main.city.city_name() == "Original Startup")
-	main.speed_controller.set_speed(0)
+	assert(main.landscape_editor and main.city_toolbar.start_city_button.visible)
+	main._start_city()
+	main.speed_controller.set_speed(GameSpeedController.Speed.PAUSED)
 	_round_trip_city(main.current_document)
 	main._open_scurk_dialog()
 	assert(main.scurk_editor.visible and main.scurk_editor.tile_set != null)
