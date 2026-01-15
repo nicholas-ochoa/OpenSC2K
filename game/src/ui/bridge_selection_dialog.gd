@@ -84,29 +84,41 @@ func show_choices(
 func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	if preview_palette == null or preview_sprites == null:
 		return null
-	var output := Image.create(240, 140, false, Image.FORMAT_RGBA8)
-	output.fill(Color.TRANSPARENT)
+	var tiles: Array[Dictionary] = []
 	var highway := request_type == "highway"
 	var count := 8 if highway else 11
 	for x in count:
 		for y in (2 if highway else 1):
-			_blend_preview_tile(output, 1270, Vector2i(20 + (x - y) * 16, 44 + (x + y) * 8))
+			_append_preview_tile(tiles, 1270, Vector2i(20 + (x - y) * 16, 44 + (x + y) * 8))
 	if highway and bridge_type == HighwayCommand.BRIDGE_REINFORCED:
 		for section in 4:
-			_blend_preview_tile(output, 1000 + 0x5d + (14 if section % 2 == 0 else 13), Vector2i(36 + section * 32, 40 + section * 16))
+			_append_preview_tile(tiles, 1000 + 0x5d + (14 if section % 2 == 0 else 13), Vector2i(36 + section * 32, 40 + section * 16))
 	else:
 		for x in count:
 			for y in (2 if highway else 1):
 				var tile := 0x49 if highway else NetworkCommand._bridge_tile(bridge_type, count, x, 1)
-				_blend_preview_tile(output, 1000 + tile, Vector2i(20 + (x - y) * 16, 30 + (x + y) * 8))
+				_append_preview_tile(tiles, 1000 + tile, Vector2i(20 + (x - y) * 16, 30 + (x + y) * 8))
+	var bounds := Rect2i()
+	for tile in tiles:
+		bounds = bounds.merge(Rect2i(tile.position, tile.image.get_size()))
+	var assembled := Image.create(maxi(1, bounds.size.x), maxi(1, bounds.size.y), false, Image.FORMAT_RGBA8)
+	assembled.fill(Color.TRANSPARENT)
+	for tile in tiles:
+		assembled.blend_rect(tile.image, Rect2i(Vector2i.ZERO, tile.image.get_size()), tile.position - bounds.position)
+	var factor := minf(1.0, minf(228.0 / assembled.get_width(), 128.0 / assembled.get_height()))
+	if factor < 1.0:
+		assembled.resize(maxi(1, roundi(assembled.get_width() * factor)), maxi(1, roundi(assembled.get_height() * factor)), Image.INTERPOLATE_NEAREST)
+	var output := Image.create(240, 140, false, Image.FORMAT_RGBA8)
+	output.fill(Color.TRANSPARENT)
+	output.blend_rect(assembled, Rect2i(Vector2i.ZERO, assembled.get_size()), (output.get_size() - assembled.get_size()) / 2)
 	return ImageTexture.create_from_image(output)
 
 
-func _blend_preview_tile(output: Image, sprite_id: int, baseline: Vector2i) -> void:
+func _append_preview_tile(tiles: Array[Dictionary], sprite_id: int, baseline: Vector2i) -> void:
 	var sprite = preview_sprites.find_sprite(sprite_id)
 	if sprite == null:
 		return
 	var rendered: Dictionary = sprite.create_image(preview_palette)
 	if rendered.get("ok", false):
 		var image: Image = rendered.image
-		output.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), baseline - Vector2i(image.get_width() / 2, image.get_height() - 1))
+		tiles.append({"image": image, "position": baseline - Vector2i(image.get_width() / 2, image.get_height() - 1)})
