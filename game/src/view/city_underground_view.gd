@@ -215,8 +215,7 @@ static func _draw_tile(
 	show_pipes: bool,
 	show_subways: bool
 ) -> void:
-	if not city.tile_is_visible(x, y):
-		return
+	var surface_visible := city.tile_is_visible(x, y)
 	var screen_x := origin_x + (x - y) * int(configuration.half_width)
 	var base_y := (
 		int(configuration.top_margin)
@@ -232,7 +231,7 @@ static func _draw_tile(
 	var terrain_top := base_y + int(configuration.tile_height) - terrain_image.get_height()
 
 	var tunnel_sprite := tunnel_sprite_id(city, x, y, int(configuration.view_size))
-	if tunnel_sprite > 0:
+	if tunnel_sprite > 0 and city.underground_level_is_visible(x, y, maxi(0, (city.tunnel_levels(x, y) & 0x1f) - 1)):
 		var tunnel_image := _sprite_image(sprites, palette, cache, tunnel_sprite)
 		var tunnel_y := base_y + int(configuration.tile_height) - tunnel_image.get_height()
 		var levels := city.tunnel_levels(x, y) & 0x1f
@@ -240,8 +239,15 @@ static func _draw_tile(
 			tunnel_y += (levels - 1) * int(configuration.altitude_step)
 		_blend(output, tunnel_image, Vector2i(screen_x, tunnel_y))
 
+	# pipes and the wireframe follow the terrain. subways sit one level below it
+	if not surface_visible:
+		var underground := city.underground_id(x, y)
+		if not show_subways or not city.underground_level_is_visible(x, y, 1):
+			return
+		if not (underground in range(1, 0x10) or underground in [0x1f, 0x20, 0x23]):
+			return
 	for sprite_id in tile_sprite_ids(
-		city, x, y, int(configuration.view_size), show_pipes, show_subways
+		city, x, y, int(configuration.view_size), show_pipes and surface_visible, show_subways
 	):
 		var image := _sprite_image(sprites, palette, cache, sprite_id)
 		_blend(output, image, Vector2i(screen_x, terrain_top))

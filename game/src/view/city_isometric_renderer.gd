@@ -575,6 +575,10 @@ static func _draw_tile(
 	include_special_overlays: bool
 ) -> void:
 	if not city.tile_is_visible(x, y):
+		CityUndergroundView._draw_tile(
+			output, city, palette, sprites, cache, configuration, origin_x,
+			x, y, false, true
+		)
 		return
 	var terrain_id := city.terrain_id(x, y)
 	var building_id := city.building_id(x, y)

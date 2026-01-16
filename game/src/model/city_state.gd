@@ -614,3 +614,9 @@ func tile_is_visible(x: int, y: int) -> bool:
 		return true
 	var height := water_altitude(x, y) if is_water(x, y) else land_altitude(x, y)
 	return height < visible_altitude_levels
+
+
+func underground_level_is_visible(x: int, y: int, depth: int) -> bool:
+	if index_of(x, y) < 0:
+		return false
+	return visible_altitude_levels >= 32 or land_altitude(x, y) - depth < visible_altitude_levels
