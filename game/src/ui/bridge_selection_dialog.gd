@@ -6,6 +6,8 @@ const Numbers = preload("res://src/ui/display_number_format.gd")
 signal choice_requested(index: int)
 
 var choice_buttons: Array[Button] = []
+var preview_controls: Array[TextureRect] = []
+var choice_labels: Array[Label] = []
 var preview_palette: Sc2Palette
 var preview_sprites: Sc2SpriteArchive
 
@@ -33,6 +35,32 @@ func _ready() -> void:
 		choice_button.pressed.connect(choice_requested.emit.bind(choice_index))
 		choices.add_child(choice_button)
 		choice_buttons.append(choice_button)
+		# use a centered column; button icon placement also reserves text width
+		choice_button.add_theme_color_override("font_color", Color.TRANSPARENT)
+		choice_button.add_theme_color_override("font_hover_color", Color.TRANSPARENT)
+		choice_button.add_theme_color_override("font_pressed_color", Color.TRANSPARENT)
+		choice_button.add_theme_color_override("font_focus_color", Color.TRANSPARENT)
+		var column := VBoxContainer.new()
+		column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		column.offset_top = 8
+		column.offset_bottom = -8
+		column.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		choice_button.add_child(column)
+		var preview := TextureRect.new()
+		preview.custom_minimum_size = Vector2(0, 140)
+		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+		preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		column.add_child(preview)
+		preview_controls.append(preview)
+		var caption := Label.new()
+		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		caption.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		caption.add_theme_color_override("font_color", Color("151515"))
+		caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		column.add_child(caption)
+		choice_labels.append(caption)
 
 
 func set_choices(
@@ -65,9 +93,8 @@ func set_choices(
 			]
 		)
 		choice_button.tooltip_text = "Build %s" % choice.get("name", "bridge")
-		choice_button.icon = preview_image(request_type, int(choice.get("type", 2)))
-		choice_button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		choice_button.vertical_icon_alignment = VERTICAL_ALIGNMENT_TOP
+		preview_controls[choice_index].texture = preview_image(request_type, int(choice.get("type", 2)))
+		choice_labels[choice_index].text = choice_button.text
 
 
 
@@ -87,17 +114,18 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	var tiles: Array[Dictionary] = []
 	var highway := request_type == "highway"
 	var count := 8 if highway else 11
-	for x in count:
-		for y in (2 if highway else 1):
-			_append_preview_tile(tiles, 1270, Vector2i(20 + (x - y) * 16, 44 + (x + y) * 8))
+	# large native tiles use a 64 by 32 diamond. include a water apron
+	for x in range(-2, count + 2):
+		for y in range(-2, 4 if highway else 3):
+			_append_preview_tile(tiles, 1270, Vector2i((x - y) * 32, (x + y) * 16))
 	if highway and bridge_type == HighwayCommand.BRIDGE_REINFORCED:
 		for section in 4:
-			_append_preview_tile(tiles, 1000 + 0x5d + (14 if section % 2 == 0 else 13), Vector2i(36 + section * 32, 40 + section * 16))
+			_append_preview_tile(tiles, 1000 + 0x5d + (14 if section % 2 == 0 else 13), Vector2i(section * 64, section * 32 + 16), true)
 	else:
 		for x in count:
 			for y in (2 if highway else 1):
-				var tile := 0x49 if highway else NetworkCommand._bridge_tile(bridge_type, count, x, 1)
-				_append_preview_tile(tiles, 1000 + tile, Vector2i(20 + (x - y) * 16, 30 + (x + y) * 8))
+				var tile := 0x4a if highway else NetworkCommand._bridge_tile(bridge_type, count, x, 1)
+				_append_preview_tile(tiles, 1000 + tile, Vector2i((x - y) * 32, (x + y) * 16), not highway)
 	var bounds := Rect2i()
 	for tile in tiles:
 		bounds = bounds.merge(Rect2i(tile.position, tile.image.get_size()))
@@ -114,11 +142,13 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	return ImageTexture.create_from_image(output)
 
 
-func _append_preview_tile(tiles: Array[Dictionary], sprite_id: int, baseline: Vector2i) -> void:
+func _append_preview_tile(tiles: Array[Dictionary], sprite_id: int, baseline: Vector2i, flip := false) -> void:
 	var sprite = preview_sprites.find_sprite(sprite_id)
 	if sprite == null:
 		return
 	var rendered: Dictionary = sprite.create_image(preview_palette)
 	if rendered.get("ok", false):
 		var image: Image = rendered.image
+		if flip:
+			image.flip_x()
 		tiles.append({"image": image, "position": baseline - Vector2i(image.get_width() / 2, image.get_height() - 1)})
