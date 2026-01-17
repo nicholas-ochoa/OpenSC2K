@@ -113,7 +113,7 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 		return null
 	var tiles: Array[Dictionary] = []
 	var highway := request_type == "highway"
-	var count := 8 if highway else 11
+	var count := 8 if highway else 12
 	# large native tiles use a 64 by 32 diamond. include a water apron
 	for x in range(-2, count + 2):
 		for y in range(-2, 4 if highway else 3):
@@ -124,8 +124,15 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	else:
 		for x in count:
 			for y in (2 if highway else 1):
-				var tile := 0x4a if highway else NetworkCommand._bridge_tile(bridge_type, count, x, 1)
+				var tile := 0x4a if highway else NetworkCommand._bridge_tile(bridge_type, count + 2, x + 1, 1)
 				_append_preview_tile(tiles, 1000 + tile, Vector2i((x - y) * 32, (x + y) * 16), not highway)
+	if not highway:
+		# these are the two graded road banks written for an eastward span
+		for bank in [Vector2i(-1, 3), Vector2i(count, 1)]:
+			var baseline := Vector2i(bank.x * 32, bank.x * 16)
+			var terrain_sprite := CityIsometricRenderer.terrain_sprite_id(bank.y, false)
+			_append_preview_tile(tiles, terrain_sprite, baseline)
+			_append_preview_tile(tiles, 1000 + 0x1d + int(NetworkCommand.NETWORK_SLOPE_SHAPES[bank.y]), baseline)
 	var bounds := Rect2i()
 	for tile in tiles:
 		bounds = bounds.merge(Rect2i(tile.position, tile.image.get_size()))
