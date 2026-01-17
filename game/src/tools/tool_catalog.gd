@@ -81,10 +81,15 @@ const GROUPS := [
 		["raise", "Raise Terrain", 25, 1],
 		["lower", "Lower Terrain", 25, 1],
 		["dezone", "De-zone", 1, 1],
+		["stretch", "Stretch Terrain", 0, 1],
+		["raise_sea", "Raise Sea Level", 0, 0],
+		["lower_sea", "Lower Sea Level", 0, 0],
 	]},
 	{"id": "nature", "name": "Landscape", "tools": [
 		["trees", "Trees", 3, 1],
 		["water", "Water", 100, 1],
+		["stream", "Place Stream", 0, 1],
+		["forest", "Place Forest", 0, 7],
 	]},
 	{"id": "dispatch", "name": "Dispatch", "tools": [
 		["police", "Police", 0, 1],

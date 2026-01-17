@@ -3537,6 +3537,8 @@ func _auto_select_underground() -> void:
 
 
 func _select_subtool(index: int) -> void:
+	if not landscape_editor and LandscapeEditorCommand.supports_tool(selected_group, index):
+		return
 	if landscape_editor and (selected_group not in [0, 1, 16, 17] or (selected_group == 0 and index == 4)):
 		return
 	if selected_group == 2 and index == 3:
@@ -3555,6 +3557,8 @@ func _select_subtool(index: int) -> void:
 	_auto_select_underground()
 	_sync_child_tool_selection()
 	_update_edit_state()
+	if landscape_editor and selected_group == 0 and index in [6, 7]:
+		_apply_map_selection(Vector2i.ZERO, Vector2i.ZERO, [Vector2i.ZERO], false)
 	if selected_tool_available and ToolState.is_tool_chooser(selected_group, selected_subtool):
 		_open_tool_choice_dialog(selected_group)
 
@@ -3599,6 +3603,15 @@ func _update_edit_state() -> void:
 		selected_tool_available = bool(state.available)
 	map_view.shift_rectangle_enabled = bool(state.landscape)
 	map_view.placement_validator = _placement_preview_valid
+	if landscape_editor and LandscapeEditorCommand.supports_tool(selected_group, selected_subtool):
+		state.enabled = true
+		state.available = true
+		selected_tool_available = true
+		state.selection = "point"
+		state.area = 7 if selected_group == 1 and selected_subtool == 3 else 1
+		state.status_text = str(Tools.tool(selected_group, selected_subtool).name) + " — Free"
+		state.status_detail = "Drag up to raise or down to lower terrain." if selected_group == 0 and selected_subtool == 5 else "Free landscape editor tool."
+	map_view.stretch_terrain = landscape_editor and selected_group == 0 and selected_subtool == 5
 	map_view.placement_error_provider = _placement_preview_error
 	map_view.show_selection_preview = selected_group != 17
 	map_view.terrain_diamond_preview = selected_group == 0 and selected_subtool in [2, 3]
@@ -3648,7 +3661,7 @@ func _apply_map_selection(
 			return
 		selected_group = int(scurk_tool.group)
 		selected_subtool = int(scurk_tool.subtool)
-	if not scurk_tool_mode and not ToolAvailability.is_available(
+	if not scurk_tool_mode and not landscape_editor and not ToolAvailability.is_available(
 		city, selected_group, selected_subtool
 	):
 		_show_error(
@@ -3692,6 +3705,13 @@ func _apply_map_selection(
 			dispatch.slot_index,
 			dispatch.available,
 		]
+		return
+	if LandscapeEditorCommand.supports_tool(selected_group, selected_subtool):
+		if not landscape_editor:
+			return
+		var levels := map_view.stretch_height_delta if dragged else 1
+		var command := LandscapeEditorCommand.apply(city, selected_group, selected_subtool, start, tool_random, levels)
+		_finish_simple_edit(SimpleEdits._result("terrain", command, selected_group, selected_subtool, true), false, {})
 		return
 	var simple_edit := SimpleEdits.apply_supported(
 		city,

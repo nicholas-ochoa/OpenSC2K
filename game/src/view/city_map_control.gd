@@ -86,6 +86,9 @@ var placement_error_provider := Callable()
 var placement_validator := Callable()
 var show_selection_preview := true
 var terrain_diamond_preview := false
+var stretch_terrain := false
+var stretch_height_delta := 0
+var _stretch_press_y := 0.0
 var highway_preview := false
 var query_footprint_preview := false
 var scurk_stamp_visuals: Array[Dictionary] = []
@@ -843,6 +846,8 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			return
 		if tile.x >= 0:
 			hover_tile = tile
+			_stretch_press_y = event.position.y
+			stretch_height_delta = 0
 			selection_start = tile
 			selection_end = tile
 			selection_moved = false
@@ -858,6 +863,9 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 				selection_end = tile
 				selection_moved = true
 				_rebuild_selection_path()
+			if stretch_terrain:
+				stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
+				selection_moved = absf(_stretch_press_y - event.position.y) >= 6.0
 			selection_completed.emit(
 				selection_start,
 				selection_end,

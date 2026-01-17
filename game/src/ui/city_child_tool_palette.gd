@@ -63,13 +63,15 @@ func show_tool_group(
 	var button_group := ButtonGroup.new()
 	var first_available_subtool := -1
 	for subtool_index in group.tools.size():
+		if not free_landscape and LandscapeEditorCommand.supports_tool(group_index, subtool_index):
+			continue
 		if free_landscape and group_index == 0 and subtool_index == 4:
 			continue
 		if (group_index == 3 and subtool_index == 1) or (group_index == 5 and subtool_index == 4):
 			continue
 		if ToolState.is_tool_variant(group_index, subtool_index):
 			continue
-		var available := city == null or ToolAvailability.is_available(
+		var available := free_landscape or city == null or ToolAvailability.is_available(
 			city, group_index, subtool_index
 		)
 		var button := _create_button(
@@ -111,7 +113,7 @@ func refresh_availability(
 		return false
 	var changed := false
 	for subtool_index in buttons:
-		var available := ToolAvailability.is_available(
+		var available := free_landscape or ToolAvailability.is_available(
 			city, group_index, int(subtool_index)
 		)
 		var button: Button = buttons[subtool_index]
@@ -121,7 +123,7 @@ func refresh_availability(
 		button.tooltip_text = tool_button_tooltip(
 			group_index, int(subtool_index), available
 		)
-	var selected_available := ToolAvailability.is_available(
+	var selected_available := free_landscape or ToolAvailability.is_available(
 		city, group_index, selected_subtool
 	)
 	return changed or selected_available != selected_was_available
