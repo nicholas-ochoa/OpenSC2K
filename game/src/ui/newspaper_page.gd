@@ -208,6 +208,8 @@ func _apply_layout() -> void:
 	_configure_label(title_label, 0)
 	_configure_label(date_label, 1)
 	_configure_label(price_label, 2)
+	date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	_configure_label(opinion_label, 5)
 	_configure_label(weather_label, 6)
 	for slot in story_labels.size():
@@ -273,6 +275,7 @@ func set_articles(articles: PackedStringArray) -> void:
 		headline.size.y = minf(68.0, rect.size.y * 0.4)
 		headline.add_theme_font_override("font", headline_font)
 		headline.add_theme_font_size_override("font_size", 17 if rect.size.x > 150 else 14)
+		headline.size.y = minf(headline.size.y, headline.get_line_count() * headline.get_line_height() + 2.0)
 		body.position = Vector2(rect.position) + Vector2(5, headline.size.y + 6)
 		body.size = Vector2(rect.size) - Vector2(10, headline.size.y + 12)
 		body.vertical_alignment = VERTICAL_ALIGNMENT_TOP
