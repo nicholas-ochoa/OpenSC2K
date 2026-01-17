@@ -184,6 +184,7 @@ var new_city_dialog: NewCityTerrainDialog
 var new_city_session := NewCitySession.new()
 var new_city_return_to_main_menu := false
 var landscape_editor := false
+var founding_newspaper_pending := false
 var options_menu: MenuButton
 var speed_menu: MenuButton
 var view_menu: MenuButton
@@ -437,6 +438,7 @@ func _process(delta: float) -> void:
 		or scenario_dialog.visible
 		or game_over_active
 		or landscape_editor
+		or founding_newspaper_pending
 	)
 	var result := speed_controller.advance_time(
 		delta * 1000.0,
@@ -655,6 +657,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	ordinance_window.update_failed.connect(_show_error)
 	city_analysis_dialog = city_dialogs.analysis_dialog
 	newspaper_dialog = city_dialogs.newspaper_dialog
+	newspaper_dialog.visibility_changed.connect(_on_founding_newspaper_visibility_changed)
 	forest_protest_dialog = city_dialogs.forest_protest_dialog
 	building_objection_dialog = city_dialogs.building_objection_dialog
 	building_objection_dialog.confirmed.connect(_on_building_objection_closed)
@@ -2236,6 +2239,7 @@ func _activate_document(
 	if not loaded_city.is_valid():
 		_show_error(loaded_city.load_error)
 		return false
+	founding_newspaper_pending = false
 	landscape_editor = false
 	city_toolbar.set_landscape_editor(false)
 	city_menu_bar.disasters_menu.disabled = false
@@ -5020,6 +5024,19 @@ func _start_city() -> void:
 	_select_tool_group(9)
 	_select_speed(GameSpeed.Speed.TURTLE)
 	status_label.text = "City started. Build zones, roads, and services."
+	_play_sound_events([513])
+	founding_newspaper_pending = true
+	_on_newspaper_menu(0)
+
+
+func _on_founding_newspaper_visibility_changed() -> void:
+	if not founding_newspaper_pending or newspaper_dialog.visible:
+		return
+	founding_newspaper_pending = false
+	if city != null and city.music_enabled():
+		audio_controller.music_director.general_track_index = 0
+		_play_music_track(audio_controller.music_director.next_general_track())
+
 
 
 func _debug_set_visible_altitude_levels(levels: int) -> void:

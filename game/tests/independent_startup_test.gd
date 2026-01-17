@@ -135,6 +135,7 @@ func _test_main() -> void:
 	assert(main.city != null and main.city.city_name() == "Original Startup")
 	assert(main.landscape_editor and main.city_toolbar.start_city_button.visible)
 	main._start_city()
+	main.newspaper_dialog.hide()
 	main.speed_controller.set_speed(GameSpeedController.Speed.PAUSED)
 	_round_trip_city(main.current_document)
 	main._open_scurk_dialog()
