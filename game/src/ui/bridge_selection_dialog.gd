@@ -114,22 +114,22 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	var tiles: Array[Dictionary] = []
 	var highway := request_type == "highway"
 	var count := 8 if highway else 12
-	# large native tiles use a 64 by 32 diamond. include a water apron
+	# use the same native grid as the city renderer. include a water apron
 	for x in range(-2, count + 2):
 		for y in range(-2, 4 if highway else 3):
-			_append_preview_tile(tiles, 1270, Vector2i((x - y) * 32, (x + y) * 16))
+			_append_preview_tile(tiles, 1270, _preview_baseline(x, y))
 	if highway and bridge_type == HighwayCommand.BRIDGE_REINFORCED:
 		for section in 4:
-			_append_preview_tile(tiles, 1000 + 0x5d + (14 if section % 2 == 0 else 13), Vector2i(section * 64, section * 32 + 16), true)
+			_append_preview_tile(tiles, 1000 + 0x5d + (14 if section % 2 == 0 else 13), _preview_baseline(section * 2, 0) + Vector2i(0, CityIsometricRenderer.HALF_HEIGHT * 2), true)
 	else:
 		for x in count:
 			for y in (2 if highway else 1):
 				var tile := 0x4a if highway else NetworkCommand._bridge_tile(bridge_type, count + 2, x + 1, 1)
-				_append_preview_tile(tiles, 1000 + tile, Vector2i((x - y) * 32, (x + y) * 16), not highway)
+				_append_preview_tile(tiles, 1000 + tile, _preview_baseline(x, y), not highway)
 	if not highway:
 		# these are the two graded road banks written for an eastward span
 		for bank in [Vector2i(-1, 3), Vector2i(count, 1)]:
-			var baseline := Vector2i(bank.x * 32, bank.x * 16)
+			var baseline := _preview_baseline(bank.x, 0)
 			var terrain_sprite := CityIsometricRenderer.terrain_sprite_id(bank.y, false)
 			_append_preview_tile(tiles, terrain_sprite, baseline)
 			_append_preview_tile(tiles, 1000 + 0x1d + int(NetworkCommand.NETWORK_SLOPE_SHAPES[bank.y]), baseline)
@@ -159,3 +159,7 @@ func _append_preview_tile(tiles: Array[Dictionary], sprite_id: int, baseline: Ve
 		if flip:
 			image.flip_x()
 		tiles.append({"image": image, "position": baseline - Vector2i(image.get_width() / 2, image.get_height() - 1)})
+
+
+static func _preview_baseline(x: int, y: int) -> Vector2i:
+	return Vector2i((x - y) * CityIsometricRenderer.HALF_WIDTH, (x + y) * CityIsometricRenderer.HALF_HEIGHT)
