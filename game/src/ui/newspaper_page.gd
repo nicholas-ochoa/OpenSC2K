@@ -4,6 +4,16 @@ extends Control
 signal story_selected(slot: int)
 
 const PAGE_SIZE := Vector2i(640, 400)
+const PRESENTATION_SIZE := Vector2i(800, 560)
+# retain the source rect tables below for evidence; this larger reading layout
+# leaves room for modern font metrics and full article columns
+const READING_RECTS := [
+	Rect2i(14, 4, 772, 54), Rect2i(14, 61, 380, 22), Rect2i(406, 61, 380, 22),
+	Rect2i(278, 164, 244, 136), Rect2i(14, 94, 772, 60),
+	Rect2i(14, 492, 508, 54), Rect2i(542, 492, 244, 54),
+	Rect2i(14, 164, 244, 310), Rect2i(542, 164, 244, 310),
+	Rect2i(278, 314, 116, 160), Rect2i(406, 314, 116, 160),
+]
 const SECTION_COUNT := 11
 const STORY_RECT_INDICES := [4, 7, 8, 9, 10]
 
@@ -75,12 +85,14 @@ var opinion_label: Label
 var weather_label: Label
 var story_labels: Array[Label] = []
 var article_labels: Array[Label] = []
+var serif_font := newspaper_font()
+var headline_font := newspaper_font(true)
 var picture_id := 0
 var picture_texture: Texture2D
 
 
 func _ready() -> void:
-	custom_minimum_size = PAGE_SIZE
+	custom_minimum_size = PRESENTATION_SIZE
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -130,7 +142,7 @@ func set_picture(resource_id: int, image: Image) -> void:
 
 
 func shows_picture() -> bool:
-	return FONT_SIZES[layout_index][3] == 0 and picture_texture != null
+	return picture_texture != null
 
 
 static func section_rect(layout: int, section: int) -> Rect2i:
@@ -148,12 +160,17 @@ static func story_rect(layout: int, slot: int) -> Rect2i:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, Vector2(PAGE_SIZE)), Color("dddddd"), true)
-	draw_rect(Rect2(Vector2.ZERO, Vector2(PAGE_SIZE)), Color("181818"), false, 1.0)
+	draw_rect(Rect2(Vector2.ZERO, Vector2(PRESENTATION_SIZE)), Color("dddddd"), true)
+	draw_rect(Rect2(Vector2.ZERO, Vector2(PRESENTATION_SIZE)), Color("181818"), false, 1.0)
+	draw_line(Vector2(14, 58), Vector2(786, 58), Color("303030"), 2.0)
+	draw_line(Vector2(14, 87), Vector2(786, 87), Color("303030"), 1.0)
 	if shows_picture():
-		draw_texture(picture_texture, Vector2(section_rect(layout_index, 3).position))
+		var bounds := Rect2(READING_RECTS[3])
+		var factor := minf(bounds.size.x / picture_texture.get_width(), bounds.size.y / picture_texture.get_height())
+		var extent := picture_texture.get_size() * factor
+		draw_texture_rect(picture_texture, Rect2(bounds.get_center() - extent / 2.0, extent), false)
 	if hovered_story >= 0:
-		draw_rect(Rect2(story_rect(layout_index, hovered_story)).grow(-2.0), Color("0066cc"), false, 2.0)
+		draw_rect(Rect2(READING_RECTS[STORY_RECT_INDICES[hovered_story]]).grow(-2.0), Color("0066cc"), false, 2.0)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -175,6 +192,7 @@ func _notification(what: int) -> void:
 func _new_label(label_name: String) -> Label:
 	var label := Label.new()
 	label.name = label_name
+	label.add_theme_font_override("font", serif_font)
 	label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	label.clip_text = true
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
@@ -197,11 +215,17 @@ func _apply_layout() -> void:
 
 
 func _configure_label(label: Label, section: int) -> void:
-	var rect := section_rect(layout_index, section)
+	var rect: Rect2i = READING_RECTS[section]
 	var inset := 4 if section >= 4 else 2
 	label.position = Vector2(rect.position + Vector2i(inset, inset))
 	label.size = Vector2(rect.size - Vector2i(inset * 2, inset * 2))
-	var font_size := maxi(9, FONT_SIZES[layout_index][section])
+	var font_size := 14
+	if section == 0:
+		font_size = 40
+	elif section == 4:
+		font_size = 26
+	if section == 0 or section == 4:
+		label.add_theme_font_override("font", headline_font)
 	label.add_theme_font_size_override("font_size", font_size)
 	# godot font metrics can exceed the original windows section height
 	# keep at least one complete line visible inside each fixed source rect
@@ -219,7 +243,7 @@ func _configure_label(label: Label, section: int) -> void:
 
 func _story_at(position: Vector2) -> int:
 	for slot in STORY_RECT_INDICES.size():
-		if Rect2(story_rect(layout_index, slot)).has_point(position):
+		if Rect2(READING_RECTS[STORY_RECT_INDICES[slot]]).has_point(position):
 			return slot
 	return -1
 
@@ -241,16 +265,24 @@ func set_articles(articles: PackedStringArray) -> void:
 	for slot in article_labels.size():
 		var headline := story_labels[slot]
 		var body := article_labels[slot]
-		var rect := story_rect(layout_index, slot)
+		var rect: Rect2i = READING_RECTS[STORY_RECT_INDICES[slot]]
 		body.visible = rect.size.y > 70
 		if not body.visible:
 			continue
 		headline.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		headline.size.y = minf(48.0, rect.size.y * 0.3)
-		headline.add_theme_font_size_override("font_size", 13)
+		headline.size.y = minf(68.0, rect.size.y * 0.4)
+		headline.add_theme_font_override("font", headline_font)
+		headline.add_theme_font_size_override("font_size", 17 if rect.size.x > 150 else 14)
 		body.position = Vector2(rect.position) + Vector2(5, headline.size.y + 6)
 		body.size = Vector2(rect.size) - Vector2(10, headline.size.y + 12)
 		body.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 		body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		body.add_theme_font_size_override("font_size", 11)
+		body.add_theme_font_size_override("font_size", 14 if rect.size.x > 150 else 12)
 		body.text = articles[slot] if slot < articles.size() else ""
+
+
+static func newspaper_font(bold := false) -> SystemFont:
+	var font := SystemFont.new()
+	font.font_names = PackedStringArray(["Georgia", "Times New Roman", "Liberation Serif", "Noto Serif", "serif"])
+	font.font_weight = 700 if bold else 400
+	return font

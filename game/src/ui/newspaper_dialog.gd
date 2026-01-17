@@ -30,7 +30,7 @@ var control_graphics: CityUiGraphics
 
 func _ready() -> void:
 	title = "Newspaper"
-	min_size = Vector2i(700, 650)
+	min_size = Vector2i(840, 760)
 	get_ok_button().text = "Close"
 	get_ok_button().button_down.connect(func() -> void: get_ok_button().icon = close_pressed)
 	get_ok_button().button_up.connect(func() -> void: get_ok_button().icon = close_normal)
@@ -57,8 +57,10 @@ func _ready() -> void:
 	article_heading.add_theme_color_override("font_color", Color("f0f0f0"))
 	article_view = TextEdit.new()
 	article_view.name = "NewspaperArticle"
-	article_view.custom_minimum_size = Vector2i(640, 140)
+	article_view.custom_minimum_size = Vector2i(800, 110)
 	article_view.editable = false
+	article_view.add_theme_font_override("font", NewspaperPage.newspaper_font())
+	article_view.add_theme_font_size_override("font_size", 16)
 	article_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	article_view.add_theme_color_override("font_color", Color("101010"))
 	article_view.add_theme_color_override("font_readonly_color", Color("101010"))
