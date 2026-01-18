@@ -145,8 +145,10 @@ func _camera() -> Dictionary:
 	var center := Renderer.tile_polygon(demo_city, point.x, point.y)[2]
 	var travel := fmod(elapsed, 24.0) - 12.0
 	center += Vector2(travel * 2.0, travel)
-	var scale := float([1, 2, 1, 3][shot])
-	return {"offset": (size / 2.0 - center * scale).round(), "scale": scale}
+	var pixel_scale := maxf(0.001, get_viewport_transform().get_scale().x)
+	var scale := float([1, 2, 1, 3][shot]) / pixel_scale
+	var offset := ((size / 2.0 - center * scale) * pixel_scale).round() / pixel_scale
+	return {"offset": offset, "scale": scale}
 
 
 
