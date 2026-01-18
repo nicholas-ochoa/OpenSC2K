@@ -4,15 +4,15 @@ extends Control
 signal story_selected(slot: int)
 
 const PAGE_SIZE := Vector2i(640, 400)
-const PRESENTATION_SIZE := Vector2i(800, 560)
+const PRESENTATION_SIZE := Vector2i(800, 500)
 # retain the source rect tables below for evidence; this larger reading layout
 # leaves room for modern font metrics and full article columns
 const READING_RECTS := [
 	Rect2i(14, 4, 772, 54), Rect2i(14, 61, 380, 22), Rect2i(406, 61, 380, 22),
 	Rect2i(278, 164, 244, 136), Rect2i(14, 94, 772, 60),
-	Rect2i(14, 492, 508, 54), Rect2i(542, 492, 244, 54),
-	Rect2i(14, 164, 244, 310), Rect2i(542, 164, 244, 310),
-	Rect2i(278, 314, 116, 160), Rect2i(406, 314, 116, 160),
+	Rect2i(14, 440, 508, 54), Rect2i(542, 440, 244, 54),
+	Rect2i(14, 164, 244, 258), Rect2i(542, 164, 244, 258),
+	Rect2i(278, 314, 116, 108), Rect2i(406, 314, 116, 108),
 ]
 const SECTION_COUNT := 11
 const STORY_RECT_INDICES := [4, 7, 8, 9, 10]
