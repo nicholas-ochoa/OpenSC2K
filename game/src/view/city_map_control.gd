@@ -864,6 +864,8 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 				selection_moved = true
 				_rebuild_selection_path()
 			if stretch_terrain:
+				selection_end = selection_start
+				selection_path.assign([selection_start])
 				stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
 				selection_moved = absf(_stretch_press_y - event.position.y) >= 6.0
 			selection_completed.emit(
@@ -900,6 +902,12 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		_sync_base_layer()
 		queue_redraw()
 		viewport_changed.emit()
+		accept_event()
+		return
+	if stretch_terrain and selection_start.x >= 0:
+		stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
+		hover_tile = selection_start
+		queue_redraw()
 		accept_event()
 		return
 	var tile := _tile_at(event.position)
