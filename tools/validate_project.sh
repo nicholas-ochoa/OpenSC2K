@@ -66,3 +66,5 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/landscape_editor_tools_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/presentation_refinements_test.gd
+
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/live_terrain_stretch_test.gd

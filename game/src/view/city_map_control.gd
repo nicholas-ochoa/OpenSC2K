@@ -7,6 +7,7 @@ signal selection_completed(
 signal selection_changed(
 	start: Vector2i, finish: Vector2i, path: Array[Vector2i], dragged: bool
 )
+signal stretch_changed(levels: int, deferred: bool)
 signal selection_started()
 signal selection_finished()
 signal selection_canceled()
@@ -836,6 +837,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 	if event.button_index != MOUSE_BUTTON_LEFT or not edit_enabled:
 		return
 	var tile := _tile_at(event.position)
+	_shift_pressed = event.shift_pressed
 	if event.pressed:
 		_shift_pressed = event.shift_pressed
 		if shift_query_enabled and not shift_rectangle_enabled and event.shift_pressed:
@@ -867,7 +869,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 				selection_end = selection_start
 				selection_path.assign([selection_start])
 				stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
-				selection_moved = absf(_stretch_press_y - event.position.y) >= 6.0
+				selection_moved = selection_moved or absf(_stretch_press_y - event.position.y) >= 6.0
 			selection_completed.emit(
 				selection_start,
 				selection_end,
@@ -907,6 +909,8 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	if stretch_terrain and selection_start.x >= 0:
 		stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
 		hover_tile = selection_start
+		selection_moved = selection_moved or stretch_height_delta != 0
+		stretch_changed.emit(stretch_height_delta, event.shift_pressed)
 		queue_redraw()
 		accept_event()
 		return
@@ -1137,6 +1141,8 @@ func _new_palette_material() -> ShaderMaterial:
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.keycode == KEY_SHIFT:
 		_shift_pressed = event.pressed
+		if stretch_terrain and selection_start.x >= 0:
+			stretch_changed.emit(stretch_height_delta, event.pressed)
 		if shift_rectangle_enabled and selection_start.x >= 0:
 			_rebuild_selection_path()
 			selection_changed.emit(selection_start, selection_end, selection_path.duplicate(), selection_moved)

@@ -184,6 +184,7 @@ var new_city_dialog: NewCityTerrainDialog
 var new_city_session := NewCitySession.new()
 var new_city_return_to_main_menu := false
 var landscape_editor := false
+var terrain_stretch := TerrainStretchSession.new()
 var founding_newspaper_pending := false
 var options_menu: MenuButton
 var speed_menu: MenuButton
@@ -589,6 +590,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	map_view.selection_completed.connect(_apply_map_selection)
 	map_view.selection_changed.connect(_on_map_selection_changed)
 	map_view.selection_started.connect(_on_map_selection_started)
+	map_view.stretch_changed.connect(_on_terrain_stretch_changed)
 	map_view.selection_finished.connect(_on_map_selection_finished)
 	map_view.selection_canceled.connect(_on_map_selection_canceled)
 	map_view.query_requested.connect(_open_query)
@@ -1248,6 +1250,9 @@ func _on_city_zoom_changed(percent: int) -> void:
 
 
 func _on_map_selection_canceled() -> void:
+	if terrain_stretch.active:
+		_refresh_terrain_stretch(0)
+		terrain_stretch.finish()
 	if status_label == null:
 		return
 	status_label.remove_theme_color_override("font_color")
@@ -1255,6 +1260,8 @@ func _on_map_selection_canceled() -> void:
 
 
 func _on_map_selection_started() -> void:
+	if landscape_editor and selected_group == 0 and selected_subtool == 5:
+		terrain_stretch.begin(map_view.selection_start)
 	if selected_group != 0:
 		return
 	if scurk_place_print != null and scurk_place_print.visible:
@@ -1263,7 +1270,21 @@ func _on_map_selection_started() -> void:
 
 
 func _on_map_selection_finished() -> void:
+	if terrain_stretch.active:
+		_refresh_terrain_stretch(0)
+		terrain_stretch.finish()
 	_stop_tool_loop_sound()
+
+
+func _on_terrain_stretch_changed(levels: int, deferred: bool) -> void:
+	if terrain_stretch.active:
+		_refresh_terrain_stretch(0 if deferred else levels)
+
+
+func _refresh_terrain_stretch(levels: int) -> void:
+	var update := terrain_stretch.update(city, tool_random, levels)
+	if update.get("ok", false):
+		_refresh_after_city_edit(update)
 
 
 func _on_map_selection_changed(
@@ -3516,6 +3537,8 @@ func _moving_things_are_active(results: Array) -> bool:
 
 
 func _select_tool_group(index: int) -> void:
+	if terrain_stretch.active:
+		map_view.cancel_active_selection()
 	if landscape_editor and index not in [0, 1, 16, 17]:
 		return
 	if index < 0 or index >= Tools.GROUPS.size():
@@ -3542,6 +3565,8 @@ func _auto_select_underground() -> void:
 
 
 func _select_subtool(index: int) -> void:
+	if terrain_stretch.active:
+		map_view.cancel_active_selection()
 	if not landscape_editor and LandscapeEditorCommand.supports_tool(selected_group, index):
 		return
 	if landscape_editor and (selected_group not in [0, 1, 16, 17] or (selected_group == 0 and index == 4)):
@@ -3615,7 +3640,7 @@ func _update_edit_state() -> void:
 		state.selection = "point"
 		state.area = 7 if selected_group == 1 and selected_subtool == 3 else 1
 		state.status_text = str(Tools.tool(selected_group, selected_subtool).name) + " — Free"
-		state.status_detail = "Drag up to raise or down to lower terrain." if selected_group == 0 and selected_subtool == 5 else "Free landscape editor tool."
+		state.status_detail = "Drag up or down to stretch terrain live. Hold Shift to apply on release." if selected_group == 0 and selected_subtool == 5 else "Free landscape editor tool."
 	map_view.stretch_terrain = landscape_editor and selected_group == 0 and selected_subtool == 5
 	map_view.placement_error_provider = _placement_preview_error
 	map_view.show_selection_preview = selected_group != 17
@@ -3715,6 +3740,14 @@ func _apply_map_selection(
 		if not landscape_editor:
 			return
 		var levels := map_view.stretch_height_delta if dragged else 1
+		if terrain_stretch.active:
+			_refresh_terrain_stretch(levels)
+			var committed := terrain_stretch.finish()
+			if not committed.is_empty():
+				_record_edit_command(committed)
+				_refresh_details()
+			status_label.text = "Stretch Terrain applied for $0."
+			return
 		var command := LandscapeEditorCommand.apply(city, selected_group, selected_subtool, start, tool_random, levels)
 		_finish_simple_edit(SimpleEdits._result("terrain", command, selected_group, selected_subtool, true), false, {})
 		return
