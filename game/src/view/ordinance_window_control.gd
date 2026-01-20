@@ -125,7 +125,7 @@ func _add_group(parent: VBoxContainer, category: int) -> void:
 	panel.add_child(column)
 	var heading := Label.new()
 	heading.text = Ordinances.CATEGORY_NAMES[category]
-	heading.add_theme_color_override("font_color", Color("000080"))
+	heading.add_theme_color_override("font_color", Color.WHITE)
 	heading.add_theme_font_size_override("font_size", 14)
 	column.add_child(heading)
 	var rows := GridContainer.new()
@@ -158,7 +158,7 @@ func _add_summary(parent: VBoxContainer) -> void:
 	panel.add_child(column)
 	var heading := Label.new()
 	heading.text = "Estimated Annual Cost"
-	heading.add_theme_color_override("font_color", Color("000080"))
+	heading.add_theme_color_override("font_color", Color.WHITE)
 	heading.add_theme_font_size_override("font_size", 14)
 	column.add_child(heading)
 	var rows := GridContainer.new()
@@ -189,7 +189,7 @@ func _amount_field(node_name: String, minimum_width: float) -> LineEdit:
 
 func _group_box() -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
-	box.bg_color = Color("c0c0c0")
+	box.bg_color = Color("303030")
 	box.border_color = Color("808080")
 	box.set_border_width_all(1)
 	box.set_content_margin_all(7)
