@@ -2,6 +2,8 @@ class_name MainMenuCityBackground
 extends Control
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
+const MINIMUM_ZOOM := 0.5
+const SHOT_MAGNIFICATIONS := [1, 2, 1, 3]
 const Cleanup = preload("res://src/debug/city_debug_actions.gd")
 
 # this city has no connection to the player's document, save path, or ui events
@@ -146,7 +148,7 @@ func _camera() -> Dictionary:
 	var travel := fmod(elapsed, 24.0) - 12.0
 	center += Vector2(travel * 2.0, travel)
 	var pixel_scale := maxf(0.001, get_viewport_transform().get_scale().x)
-	var scale := float([1, 2, 1, 3][shot]) / pixel_scale
+	var scale := camera_zoom(shot, pixel_scale)
 	var offset := ((size / 2.0 - center * scale) * pixel_scale).round() / pixel_scale
 	return {"offset": offset, "scale": scale}
 
@@ -234,3 +236,10 @@ func _exit_tree() -> void:
 	if render_thread != null:
 		render_thread.wait_to_finish()
 		render_thread = null
+
+
+static func camera_zoom(shot: int, pixel_scale: float) -> float:
+	pixel_scale = maxf(0.001, pixel_scale)
+	# round the minimum up to a whole output pixel to keep camera motion crisp
+	var magnification := maxf(float(SHOT_MAGNIFICATIONS[shot % SHOT_MAGNIFICATIONS.size()]), ceilf(MINIMUM_ZOOM * pixel_scale))
+	return magnification / pixel_scale

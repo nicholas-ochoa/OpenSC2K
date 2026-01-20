@@ -13,6 +13,11 @@ func _run() -> void:
 	var panel: PanelContainer = main.main_menu.new_city_button.get_parent().get_parent()
 	assert(is_equal_approx(panel.size.y, panel.get_combined_minimum_size().y))
 	var background: MainMenuCityBackground = main.main_menu.city_background
+	for stretch in [0.5, 1.0, 2.0, 2.5, 3.0, 4.0, 6.0, 8.0]:
+		for shot in 4:
+			var zoom := MainMenuCityBackground.camera_zoom(shot, stretch)
+			assert(zoom >= 0.5, "Menu city zoom must stay at or above 50%")
+			assert(is_equal_approx(zoom * stretch, roundf(zoom * stretch)))
 	var magnifications := {}
 	for time in [0.0, 0.017, 24.0, 48.0, 72.0]:
 		background.elapsed = time
