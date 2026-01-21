@@ -66,7 +66,9 @@ static func update(
 			if _route_is_valid(
 				buildings, underground, flags, text, current, direction
 			):
-				_move(text, things, record, direction)
+				if not _move(text, things, record, direction):
+					counters.removed_ships += 1
+					return
 				counters.moved_ships += 1
 			else:
 				things[offset + 2] = 1
@@ -123,7 +125,9 @@ static func update(
 			if _route_is_valid(
 				buildings, underground, flags, text, current, direction
 			):
-				_move(text, things, record, direction)
+				if not _move(text, things, record, direction):
+					counters.removed_ships += 1
+					return
 				counters.moved_ships += 1
 				return
 			var start_offset: int = lfsr_random.next_mod(2)
@@ -206,6 +210,7 @@ static func _move(
 	var next := current + tile_delta
 	var next_index := _index(next)
 	if next_index < 0:
+		things[offset] = 0
 		return false
 	things[offset + 3] = next.x
 	things[offset + 4] = next.y
