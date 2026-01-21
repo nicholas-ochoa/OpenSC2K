@@ -84,6 +84,8 @@ var selection_moved := false
 var selection_price := -1
 var selection_price_affordable := true
 var placement_error_provider := Callable()
+var placement_error_popup: PanelContainer
+var placement_error_label: Label
 var placement_validator := Callable()
 var show_selection_preview := true
 var terrain_diamond_preview := false
@@ -240,6 +242,7 @@ func set_edit_enabled(
 	footprint_area := 1,
 	shift_queries := false
 ) -> void:
+	_hide_placement_error()
 	edit_enabled = value
 	selection_mode = mode
 	point_footprint_area = clampi(footprint_area, 1, 4)
@@ -846,6 +849,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 				query_requested.emit(tile)
 			accept_event()
 			return
+		_show_placement_error(event.position)
 		if tile.x >= 0:
 			hover_tile = tile
 			_stretch_press_y = event.position.y
@@ -883,6 +887,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 
 
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
+	_hide_placement_error()
 	if _shift_pressed != event.shift_pressed:
 		_shift_pressed = event.shift_pressed
 		_rebuild_selection_path()
@@ -982,6 +987,7 @@ static func _format_price(value: int) -> String:
 
 
 func _clear_hover() -> void:
+	_hide_placement_error()
 	if hover_tile.x < 0:
 		return
 	hover_tile = Vector2i(-1, -1)
@@ -1177,3 +1183,37 @@ func _get_tooltip(at_position: Vector2) -> String:
 		return ""
 	var reason := String(placement_error_provider.call(tile))
 	return "Cannot build here: " + reason if not reason.is_empty() else ""
+
+
+func _show_placement_error(at_position: Vector2) -> void:
+	_hide_placement_error()
+	var message := _get_tooltip(at_position)
+	if message.is_empty():
+		return
+	if placement_error_popup == null:
+		placement_error_popup = PanelContainer.new()
+		placement_error_popup.name = "PlacementErrorTooltip"
+		placement_error_popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		placement_error_popup.theme = ThemeDB.get_default_theme()
+		placement_error_popup.add_theme_stylebox_override(
+			"panel", placement_error_popup.theme.get_stylebox("panel", "TooltipPanel")
+		)
+		placement_error_popup.z_index = 100
+		placement_error_label = Label.new()
+		placement_error_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		placement_error_label.add_theme_color_override("font_color", Color.WHITE)
+		placement_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+		placement_error_label.custom_minimum_size.x = 300
+		placement_error_popup.add_child(placement_error_label)
+		add_child(placement_error_popup)
+	placement_error_label.text = message
+	placement_error_popup.reset_size()
+	placement_error_popup.position = (at_position + Vector2(16, 20)).clamp(
+		Vector2.ZERO, (size - placement_error_popup.size).max(Vector2.ZERO)
+	)
+	placement_error_popup.show()
+
+
+func _hide_placement_error() -> void:
+	if is_instance_valid(placement_error_popup):
+		placement_error_popup.hide()
