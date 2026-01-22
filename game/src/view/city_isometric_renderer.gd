@@ -383,6 +383,20 @@ static func validate_assets(
 	return errors
 
 
+# some generated cities store a flat stream on a height transition. supply the
+# missing waterfall face for display without changing their saved xter bytes
+static func surface_terrain_id(city: CityState, x: int, y: int) -> int:
+	var terrain := city.terrain_id(x, y)
+	if terrain < 0x40 or terrain > 0x45:
+		return terrain
+	var height := city.land_altitude(x, y)
+	for delta in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
+		var near: Vector2i = Vector2i(x, y) + delta
+		if city.index_of(near.x, near.y) >= 0 and city.land_altitude(near.x, near.y) > height:
+			return 0x3e
+	return terrain
+
+
 static func terrain_sprite_id(terrain: int, water_flag: bool, sprite_base := 1000) -> int:
 	var tile_id := 256
 	if terrain >= 0x00 and terrain <= 0x0e:
@@ -580,7 +594,7 @@ static func _draw_tile(
 			x, y, false, true
 		)
 		return
-	var terrain_id := city.terrain_id(x, y)
+	var terrain_id := surface_terrain_id(city, x, y)
 	var building_id := city.building_id(x, y)
 	var terrain_altitude := city.land_altitude(x, y)
 	if terrain_id >= 0x10:
@@ -1615,7 +1629,7 @@ static func _tile_occlusion_commands(
 	var commands: Array[Dictionary] = []
 	if not city.tile_is_visible(x, y):
 		return commands
-	var terrain_id := city.terrain_id(x, y)
+	var terrain_id := surface_terrain_id(city, x, y)
 	var building_id := city.building_id(x, y)
 	var terrain_altitude := city.land_altitude(x, y)
 	if terrain_id >= 0x10:
