@@ -403,6 +403,10 @@ func _notification(what: int) -> void:
 
 func _process(delta: float) -> void:
 	if audio_controller != null:
+		audio_controller.set_menu_music(
+			main_menu != null and main_menu.visible and app_music_volume > 0.0
+			and (city == null or city.music_enabled())
+		)
 		audio_controller.advance(delta * 1000.0)
 	_update_fps(delta)
 	if city_status_bar != null:
@@ -742,6 +746,10 @@ func _show_main_menu() -> void:
 
 
 func _hide_main_menu() -> void:
+	if audio_controller != null and audio_controller.menu_music:
+		audio_controller.set_menu_music(false)
+		if city != null and city.music_enabled():
+			_play_music_track(audio_controller.music_director.next_general_track())
 	if main_menu != null:
 		main_menu.hide()
 	if city != null:
@@ -2417,7 +2425,9 @@ func _handle_application_focus_out() -> void:
 func _handle_application_focus_in() -> void:
 	if audio_controller != null:
 		audio_controller.handle_application_focus_in(
-			city != null and city.music_enabled()
+			(main_menu != null and main_menu.visible and app_music_volume > 0.0
+			and (city == null or city.music_enabled()))
+			or (city != null and city.music_enabled())
 		)
 
 

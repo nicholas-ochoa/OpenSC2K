@@ -17,6 +17,8 @@ var effects_volume := 0.8
 var music_director := Music.new()
 var music_player: MidiSynthPlayer
 var dummy_music_active := false
+var menu_music := false
+var current_track_id := -1
 var application_has_focus := true
 var tool_loop_player: AudioStreamPlayer
 var wave_sound_gate := WaveSounds.new()
@@ -40,6 +42,8 @@ func setup(
 
 func advance(delta_msec: float) -> void:
 	wave_sound_gate.advance(delta_msec)
+	if menu_music and application_has_focus and music_volume > 0.0 and not music_playback_is_active():
+		play_music_track(Music.MAIN_THEME_TRACK)
 
 
 func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
@@ -57,6 +61,7 @@ func play_music_track(track_id: int) -> bool:
 		or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT
 	):
 		return false
+	current_track_id = track_id
 	if AudioServer.get_driver_name() == "Dummy":
 		dummy_music_active = true
 		music_activity_changed.emit(true)
@@ -91,10 +96,11 @@ func handle_application_focus_in(music_enabled: bool) -> void:
 	if not regained_focus or not music_enabled:
 		return
 	if not music_playback_is_active():
-		play_music_track(music_director.next_general_track())
+		play_music_track(Music.MAIN_THEME_TRACK if menu_music else music_director.next_general_track())
 
 
 func stop_music() -> void:
+	current_track_id = -1
 	dummy_music_active = false
 	if music_player != null:
 		music_player.stop()
@@ -195,3 +201,12 @@ func _load_wave_sound_cache() -> void:
 		var stream := AudioStreamWAV.load_from_file(sound_path)
 		if stream != null:
 			wave_stream_cache[sound_id] = stream
+
+
+func set_menu_music(enabled: bool) -> void:
+	if menu_music == enabled:
+		return
+	menu_music = enabled
+	stop_music()
+	if enabled and application_has_focus and music_volume > 0.0:
+		play_music_track(Music.MAIN_THEME_TRACK)

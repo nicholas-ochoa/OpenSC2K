@@ -1,6 +1,7 @@
 class_name MusicDirector
 extends RefCounted
 
+const MAIN_THEME_TRACK := 10001
 const FIRST_TRACK_ID := 10000
 const TRACK_COUNT := 19
 const GENERAL_TRACKS := [10001, 10004, 10008, 10012, 10018]
