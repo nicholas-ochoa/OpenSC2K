@@ -30,7 +30,7 @@ var control_graphics: CityUiGraphics
 
 func _ready() -> void:
 	title = "Newspaper"
-	min_size = Vector2i(840, 760)
+	min_size = Vector2i(840, 600)
 	get_ok_button().text = "Close"
 	get_ok_button().button_down.connect(func() -> void: get_ok_button().icon = close_pressed)
 	get_ok_button().button_up.connect(func() -> void: get_ok_button().icon = close_normal)
@@ -108,6 +108,9 @@ func open_reports(
 
 
 func _populate_page() -> void:
+	article_heading.hide()
+	article_view.hide()
+	size = min_size
 	article_heading.text = "SELECTED ARTICLE"
 	article_view.text = "Select a headline on the newspaper page to read its article."
 	paper_selector.clear()
@@ -224,6 +227,8 @@ func _on_paper_selected(paper_index: int) -> void:
 func _on_story_selected(slot: int) -> void:
 	if city == null or document == null or slot < 0 or slot >= 5:
 		return
+	article_heading.show()
+	article_view.show()
 	article_heading.text = page.headline_for_slot(slot).to_upper()
 	if slot < published_articles.size():
 		article_view.text = published_articles[slot]

@@ -7,13 +7,29 @@ const PAGE_SIZE := Vector2i(640, 400)
 const PRESENTATION_SIZE := Vector2i(800, 500)
 # retain the source rect tables below for evidence; this larger reading layout
 # leaves room for modern font metrics and full article columns
-const READING_RECTS := [
+const MASTHEAD_LAYOUT := [
 	Rect2i(14, 4, 772, 54), Rect2i(14, 61, 380, 22), Rect2i(406, 61, 380, 22),
 	Rect2i(278, 164, 244, 136), Rect2i(14, 94, 772, 60),
 	Rect2i(14, 440, 508, 54), Rect2i(542, 440, 244, 54),
 	Rect2i(14, 164, 244, 258), Rect2i(542, 164, 244, 258),
 	Rect2i(278, 314, 116, 108), Rect2i(406, 314, 116, 108),
 ]
+# headline-first edition, matching the original new city journal arrangement
+const READING_RECTS := [
+	Rect2i(180, 46, 360, 44), Rect2i(545, 68, 245, 22), Rect2i(8, 68, 165, 22),
+	Rect2i(218, 234, 256, 124), Rect2i(20, 0, 760, 45),
+	Rect2i(8, 376, 144, 116), Rect2i(8, 94, 144, 278),
+	Rect2i(160, 94, 632, 136), Rect2i(160, 360, 314, 132),
+	Rect2i(480, 234, 154, 258), Rect2i(640, 234, 152, 258),
+]
+const COLUMN_LAYOUT := [
+	Rect2i(8, 0, 464, 52), Rect2i(480, 4, 312, 22), Rect2i(480, 28, 312, 22),
+	Rect2i(166, 60, 150, 240), Rect2i(8, 60, 150, 432),
+	Rect2i(324, 60, 150, 120), Rect2i(640, 60, 152, 300),
+	Rect2i(480, 60, 154, 432), Rect2i(166, 306, 150, 186),
+	Rect2i(324, 186, 150, 306), Rect2i(640, 366, 152, 126),
+]
+const READING_LAYOUTS := [MASTHEAD_LAYOUT, READING_RECTS, COLUMN_LAYOUT]
 const SECTION_COUNT := 11
 const STORY_RECT_INDICES := [4, 7, 8, 9, 10]
 
@@ -85,6 +101,7 @@ var opinion_label: Label
 var weather_label: Label
 var story_labels: Array[Label] = []
 var article_labels: Array[Label] = []
+var extra_columns: Array[Label] = []
 var serif_font := newspaper_font()
 var headline_font := newspaper_font(true)
 var picture_id := 0
@@ -160,17 +177,19 @@ static func story_rect(layout: int, slot: int) -> Rect2i:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, Vector2(PRESENTATION_SIZE)), Color("dddddd"), true)
+	draw_rect(Rect2(Vector2.ZERO, Vector2(PRESENTATION_SIZE)), Color("c0c0c0"), true)
 	draw_rect(Rect2(Vector2.ZERO, Vector2(PRESENTATION_SIZE)), Color("181818"), false, 1.0)
-	draw_line(Vector2(14, 58), Vector2(786, 58), Color("303030"), 2.0)
-	draw_line(Vector2(14, 87), Vector2(786, 87), Color("303030"), 1.0)
+	var rule_y := 45 if layout_index == 1 else 54
+	draw_line(Vector2(8, rule_y), Vector2(792, rule_y), Color("303030"), 1.0)
+	if layout_index != 2:
+		draw_line(Vector2(8, 91 if layout_index == 1 else 87), Vector2(792, 91 if layout_index == 1 else 87), Color("303030"), 1.0)
 	if shows_picture():
-		var bounds := Rect2(READING_RECTS[3])
+		var bounds := Rect2(READING_LAYOUTS[layout_index][3])
 		var factor := minf(bounds.size.x / picture_texture.get_width(), bounds.size.y / picture_texture.get_height())
 		var extent := picture_texture.get_size() * factor
 		draw_texture_rect(picture_texture, Rect2(bounds.get_center() - extent / 2.0, extent), false)
 	if hovered_story >= 0:
-		draw_rect(Rect2(READING_RECTS[STORY_RECT_INDICES[hovered_story]]).grow(-2.0), Color("0066cc"), false, 2.0)
+		draw_rect(Rect2(READING_LAYOUTS[layout_index][STORY_RECT_INDICES[hovered_story]]).grow(-2.0), Color("0066cc"), false, 2.0)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -208,8 +227,10 @@ func _apply_layout() -> void:
 	_configure_label(title_label, 0)
 	_configure_label(date_label, 1)
 	_configure_label(price_label, 2)
-	date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-	price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	date_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT if layout_index == 1 else HORIZONTAL_ALIGNMENT_LEFT
+	price_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT if layout_index == 1 else HORIZONTAL_ALIGNMENT_RIGHT
+	opinion_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+	weather_label.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	_configure_label(opinion_label, 5)
 	_configure_label(weather_label, 6)
 	for slot in story_labels.size():
@@ -217,15 +238,15 @@ func _apply_layout() -> void:
 
 
 func _configure_label(label: Label, section: int) -> void:
-	var rect: Rect2i = READING_RECTS[section]
+	var rect: Rect2i = READING_LAYOUTS[layout_index][section]
 	var inset := 4 if section >= 4 else 2
 	label.position = Vector2(rect.position + Vector2i(inset, inset))
 	label.size = Vector2(rect.size - Vector2i(inset * 2, inset * 2))
 	var font_size := 14
 	if section == 0:
-		font_size = 40
+		font_size = 30 if layout_index == 1 else 36
 	elif section == 4:
-		font_size = 26
+		font_size = 32 if layout_index == 1 else 16 if layout_index == 2 else 26
 	if section == 0 or section == 4:
 		label.add_theme_font_override("font", headline_font)
 	label.add_theme_font_size_override("font_size", font_size)
@@ -245,7 +266,7 @@ func _configure_label(label: Label, section: int) -> void:
 
 func _story_at(position: Vector2) -> int:
 	for slot in STORY_RECT_INDICES.size():
-		if Rect2(READING_RECTS[STORY_RECT_INDICES[slot]]).has_point(position):
+		if Rect2(READING_LAYOUTS[layout_index][STORY_RECT_INDICES[slot]]).has_point(position):
 			return slot
 	return -1
 
@@ -264,24 +285,52 @@ func _set_hovered_story(slot: int) -> void:
 
 
 func set_articles(articles: PackedStringArray) -> void:
+	for column in extra_columns:
+		column.free()
+	extra_columns.clear()
 	for slot in article_labels.size():
 		var headline := story_labels[slot]
 		var body := article_labels[slot]
-		var rect: Rect2i = READING_RECTS[STORY_RECT_INDICES[slot]]
+		var rect: Rect2i = READING_LAYOUTS[layout_index][STORY_RECT_INDICES[slot]]
 		body.visible = rect.size.y > 70
+		body.text = ""
 		if not body.visible:
 			continue
 		headline.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		headline.size.y = minf(68.0, rect.size.y * 0.4)
 		headline.add_theme_font_override("font", headline_font)
-		headline.add_theme_font_size_override("font_size", 17 if rect.size.x > 150 else 14)
-		headline.size.y = minf(headline.size.y, headline.get_line_count() * headline.get_line_height() + 2.0)
-		body.position = Vector2(rect.position) + Vector2(5, headline.size.y + 6)
-		body.size = Vector2(rect.size) - Vector2(10, headline.size.y + 12)
-		body.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-		body.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-		body.add_theme_font_size_override("font_size", 14 if rect.size.x > 150 else 12)
-		body.text = articles[slot] if slot < articles.size() else ""
+		headline.add_theme_font_size_override("font_size", 15)
+		var heading_size := 15
+		var heading_extent := headline_font.get_multiline_string_size(headline.text, HORIZONTAL_ALIGNMENT_LEFT, headline.size.x, heading_size)
+		while heading_size > 11 and heading_extent.y > 56:
+			heading_size -= 1
+			heading_extent = headline_font.get_multiline_string_size(headline.text, HORIZONTAL_ALIGNMENT_LEFT, headline.size.x, heading_size)
+		headline.add_theme_font_size_override("font_size", heading_size)
+		headline.size.y = minf(56.0, heading_extent.y + 2.0)
+		var count := maxi(1, roundi(rect.size.x / 158.0))
+		var width := float(rect.size.x) / count
+		var remaining := articles[slot].strip_edges() if slot < articles.size() else ""
+		for index in count:
+			var column := body if index == 0 else _new_label("Article%dColumn%d" % [slot, index])
+			if index > 0:
+				extra_columns.append(column)
+			column.position = Vector2(rect.position) + Vector2(index * width + 4, headline.size.y + 6)
+			column.size = Vector2(width - 8, rect.size.y - headline.size.y - 10)
+			column.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+			column.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+			column.add_theme_font_size_override("font_size", 13)
+			var words := remaining.split(" ", false)
+			var low := 0
+			var high := words.size()
+			while low < high:
+				var middle := (low + high + 1) / 2
+				var candidate := " ".join(words.slice(0, middle))
+				var extent := serif_font.get_multiline_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, column.size.x, 13)
+				if extent.y <= column.size.y:
+					low = middle
+				else:
+					high = middle - 1
+			column.text = " ".join(words.slice(0, low))
+			remaining = " ".join(words.slice(low)).strip_edges()
 
 
 static func newspaper_font(bold := false) -> SystemFont:
