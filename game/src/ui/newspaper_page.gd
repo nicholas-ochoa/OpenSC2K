@@ -316,15 +316,15 @@ func set_articles(articles: PackedStringArray) -> void:
 			column.position = Vector2(rect.position) + Vector2(index * width + 4, headline.size.y + 6)
 			column.size = Vector2(width - 8, rect.size.y - headline.size.y - 10)
 			column.vertical_alignment = VERTICAL_ALIGNMENT_TOP
-			column.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
-			column.add_theme_font_size_override("font_size", 13)
+			column.horizontal_alignment = HORIZONTAL_ALIGNMENT_FILL
+			column.add_theme_font_size_override("font_size", 12)
 			var words := remaining.split(" ", false)
 			var low := 0
 			var high := words.size()
 			while low < high:
 				var middle := (low + high + 1) / 2
 				var candidate := " ".join(words.slice(0, middle))
-				var extent := serif_font.get_multiline_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, column.size.x, 13)
+				var extent := serif_font.get_multiline_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, column.size.x, 12)
 				if extent.y <= column.size.y:
 					low = middle
 				else:
