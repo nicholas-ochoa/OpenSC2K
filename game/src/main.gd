@@ -1883,7 +1883,7 @@ func _open_save_dialog() -> void:
 		save_name = city.city_name().validate_filename()
 	if save_name.is_empty():
 		save_name = "New City"
-	save_dialog.current_file = save_name + ".SC2"
+	save_dialog.current_file = save_name + ".sc2"
 	save_dialog.popup_centered_ratio(0.8)
 
 

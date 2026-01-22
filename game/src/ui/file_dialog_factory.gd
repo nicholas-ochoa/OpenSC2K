@@ -15,7 +15,7 @@ static func city_open() -> FileDialog:
 static func city_save() -> FileDialog:
 	return _create(
 		FileDialog.FILE_MODE_SAVE_FILE,
-		[["*.SC2, *.sc2", "SimCity 2000 cities"]],
+		[["*.sc2, *.SC2", "SimCity 2000 cities"]],
 	)
 
 
