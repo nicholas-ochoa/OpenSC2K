@@ -229,6 +229,7 @@ func _on_story_selected(slot: int) -> void:
 		return
 	article_heading.show()
 	article_view.show()
+	call_deferred("popup_centered")
 	article_heading.text = page.headline_for_slot(slot).to_upper()
 	if slot < published_articles.size():
 		article_view.text = published_articles[slot]
