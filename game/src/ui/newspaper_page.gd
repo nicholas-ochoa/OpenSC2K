@@ -17,10 +17,10 @@ const MASTHEAD_LAYOUT := [
 # headline-first edition, matching the original new city journal arrangement
 const READING_RECTS := [
 	Rect2i(180, 46, 360, 44), Rect2i(545, 68, 245, 22), Rect2i(8, 68, 165, 22),
-	Rect2i(218, 234, 256, 124), Rect2i(20, 0, 760, 45),
-	Rect2i(8, 376, 144, 116), Rect2i(8, 94, 144, 278),
-	Rect2i(160, 94, 632, 136), Rect2i(160, 360, 314, 132),
-	Rect2i(480, 234, 154, 258), Rect2i(640, 234, 152, 258),
+	Rect2i(218, 290, 256, 202), Rect2i(20, 0, 760, 45),
+	Rect2i(408, 94, 384, 48), Rect2i(8, 94, 384, 48),
+	Rect2i(8, 146, 784, 140), Rect2i(8, 290, 202, 202),
+	Rect2i(480, 290, 154, 202), Rect2i(640, 290, 152, 202),
 ]
 const COLUMN_LAYOUT := [
 	Rect2i(8, 0, 464, 52), Rect2i(480, 4, 312, 22), Rect2i(480, 28, 312, 22),

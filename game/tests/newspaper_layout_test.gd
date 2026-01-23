@@ -18,6 +18,7 @@ func _run() -> void:
 		assert(page.article_labels[1].get_theme_font_size("font_size") == 10)
 		if layout == 1:
 			assert(page.extra_columns.size() == 4)
+			assert(page.weather_label.size.y < 50 and page.opinion_label.size.y < 50)
 			assert(page.story_labels[0].position.y < page.title_label.position.y)
 		var all_columns: Array[Label] = page.article_labels + page.extra_columns
 		var notices := 0
