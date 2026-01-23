@@ -102,6 +102,9 @@ var weather_label: Label
 var story_labels: Array[Label] = []
 var article_labels: Array[Label] = []
 var extra_columns: Array[Label] = []
+var continuation_pages: Array[int] = []
+var continuation_random := RandomNumberGenerator.new()
+const BODY_FONT_SIZE := 10
 var serif_font := newspaper_font()
 var headline_font := newspaper_font(true)
 var picture_id := 0
@@ -109,6 +112,7 @@ var picture_texture: Texture2D
 
 
 func _ready() -> void:
+	continuation_random.randomize()
 	custom_minimum_size = PRESENTATION_SIZE
 	clip_contents = true
 	mouse_filter = Control.MOUSE_FILTER_STOP
@@ -133,6 +137,9 @@ func set_page(
 	weather_text: String,
 	headlines: PackedStringArray
 ) -> void:
+	continuation_pages.clear()
+	for slot in STORY_RECT_INDICES.size():
+		continuation_pages.append(continuation_random.randi_range(2, 30))
 	layout_index = clampi(new_layout, 0, LAYOUT_RECTS.size() - 1)
 	title_label.text = paper_title
 	date_label.text = date_text
@@ -317,20 +324,30 @@ func set_articles(articles: PackedStringArray) -> void:
 			column.size = Vector2(width - 8, rect.size.y - headline.size.y - 10)
 			column.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 			column.horizontal_alignment = HORIZONTAL_ALIGNMENT_FILL
-			column.add_theme_font_size_override("font_size", 12)
+			column.add_theme_font_size_override("font_size", BODY_FONT_SIZE)
 			var words := remaining.split(" ", false)
-			var low := 0
-			var high := words.size()
-			while low < high:
-				var middle := (low + high + 1) / 2
-				var candidate := " ".join(words.slice(0, middle))
-				var extent := serif_font.get_multiline_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, column.size.x, 12)
-				if extent.y <= column.size.y:
-					low = middle
-				else:
-					high = middle - 1
-			column.text = " ".join(words.slice(0, low))
-			remaining = " ".join(words.slice(low)).strip_edges()
+			var taken := _fitting_words(words, column.size)
+			var notice := ""
+			if index == count - 1 and taken < words.size():
+				notice = "\n... (continued on pg %d)" % continuation_pages[slot]
+				taken = _fitting_words(words, column.size, notice)
+			column.text = " ".join(words.slice(0, taken)) + notice
+			remaining = " ".join(words.slice(taken)).strip_edges()
+
+
+func _fitting_words(words: PackedStringArray, bounds: Vector2, suffix := "") -> int:
+	var low := 0
+	var high := words.size()
+	while low < high:
+		var middle := (low + high + 1) / 2
+		var candidate := " ".join(words.slice(0, middle)) + suffix
+		var extent := serif_font.get_multiline_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, bounds.x, BODY_FONT_SIZE)
+		if extent.y <= bounds.y:
+			low = middle
+		else:
+			high = middle - 1
+	return low
+
 
 
 static func newspaper_font(bold := false) -> SystemFont:

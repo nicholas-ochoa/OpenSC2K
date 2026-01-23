@@ -15,10 +15,22 @@ func _run() -> void:
 		page.set_articles(['The new city is ready. '.repeat(100),'Residents celebrate their new city. '.repeat(150),'The city needs transport. '.repeat(100),'More electricity is needed. '.repeat(100),'Power reaches more homes. '.repeat(100)])
 		assert(not page.article_labels[1].text.is_empty())
 		assert(page.article_labels[1].horizontal_alignment == HORIZONTAL_ALIGNMENT_FILL)
-		assert(page.article_labels[1].get_theme_font_size("font_size") == 12)
+		assert(page.article_labels[1].get_theme_font_size("font_size") == 10)
 		if layout == 1:
 			assert(page.extra_columns.size() == 4)
 			assert(page.story_labels[0].position.y < page.title_label.position.y)
+		var all_columns: Array[Label] = page.article_labels + page.extra_columns
+		var notices := 0
+		for column in all_columns:
+			if column.text.contains("... (continued on pg "):
+				notices += 1
+				assert(page.serif_font.get_multiline_string_size(column.text, HORIZONTAL_ALIGNMENT_LEFT, column.size.x, NewspaperPage.BODY_FONT_SIZE).y <= column.size.y)
+		assert(notices >= 4)
+		for number in page.continuation_pages:
+			assert(number >= 2 and number <= 30)
+		page.set_articles(['Brief.', 'Brief.', 'Brief.', 'Brief.', 'Brief.'])
+		for column in page.article_labels + page.extra_columns:
+			assert(not column.text.contains("continued on pg"))
 	page.free()
 	print('PASS: three newspaper layouts, bounds, column flow and headline-first edition')
 	quit()
