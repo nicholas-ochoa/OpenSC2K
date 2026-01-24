@@ -328,6 +328,7 @@ func set_articles(articles: PackedStringArray) -> void:
 			column.size = Vector2(width - 8, rect.size.y - headline.size.y - 10)
 			column.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 			column.horizontal_alignment = HORIZONTAL_ALIGNMENT_FILL
+			column.justification_flags = TextServer.JUSTIFICATION_WORD_BOUND | TextServer.JUSTIFICATION_SKIP_LAST_LINE
 			column.add_theme_font_size_override("font_size", BODY_FONT_SIZE)
 			column.add_theme_constant_override("line_spacing", BODY_LINE_SPACING)
 			var words := remaining.split(" ", false)

@@ -15,6 +15,7 @@ func _run() -> void:
 		page.set_articles(['The new city is ready. '.repeat(100),'Residents celebrate their new city. '.repeat(150),'The city needs transport. '.repeat(100),'More electricity is needed. '.repeat(100),'Power reaches more homes. '.repeat(100)])
 		assert(not page.article_labels[1].text.is_empty())
 		assert(page.article_labels[1].horizontal_alignment == HORIZONTAL_ALIGNMENT_FILL)
+		assert(not page.article_labels[1].justification_flags & TextServer.JUSTIFICATION_DO_NOT_SKIP_SINGLE_LINE)
 		assert(page.article_labels[1].get_theme_font_size("font_size") == 8)
 		assert(page.article_labels[1].get_theme_constant("line_spacing") == -2)
 		if layout == 1:
