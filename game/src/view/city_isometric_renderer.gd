@@ -387,9 +387,11 @@ static func validate_assets(
 # missing waterfall face for display without changing their saved xter bytes
 static func surface_terrain_id(city: CityState, x: int, y: int) -> int:
 	var terrain := city.terrain_id(x, y)
-	if terrain < 0x40 or terrain > 0x45:
+	if terrain < 0x30 or terrain > 0x45 or terrain == 0x3e:
 		return terrain
 	var height := city.land_altitude(x, y)
+	if city.water_altitude(x, y) != height:
+		return terrain
 	for delta in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
 		var near: Vector2i = Vector2i(x, y) + delta
 		if city.index_of(near.x, near.y) >= 0 and city.land_altitude(near.x, near.y) > height:
