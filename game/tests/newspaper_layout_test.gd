@@ -31,6 +31,9 @@ func _run() -> void:
 		for number in page.continuation_pages:
 			assert(number >= 2 and number <= 30)
 		page.set_articles(['Brief.', 'Brief.', 'Brief.', 'Brief.', 'Brief.'])
+		if layout == 1:
+			assert(page._reading_rects[7].size.y < 140)
+			assert(page._reading_rects[3].position.y == page._reading_rects[7].end.y + 4)
 		for column in page.article_labels + page.extra_columns:
 			assert(not column.text.contains("continued on pg"))
 	page.free()

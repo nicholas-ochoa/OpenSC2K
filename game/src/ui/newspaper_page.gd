@@ -93,6 +93,7 @@ const ALIGNMENTS := [
 ]
 
 var layout_index := 0
+var _reading_rects: Array = MASTHEAD_LAYOUT.duplicate()
 var hovered_story := -1
 var title_label: Label
 var date_label: Label
@@ -142,6 +143,7 @@ func set_page(
 	for slot in STORY_RECT_INDICES.size():
 		continuation_pages.append(continuation_random.randi_range(2, 30))
 	layout_index = clampi(new_layout, 0, LAYOUT_RECTS.size() - 1)
+	_reading_rects = READING_LAYOUTS[layout_index].duplicate()
 	title_label.text = paper_title
 	date_label.text = date_text
 	price_label.text = price_text
@@ -192,12 +194,12 @@ func _draw() -> void:
 	if layout_index != 2:
 		draw_line(Vector2(8, 91 if layout_index == 1 else 87), Vector2(792, 91 if layout_index == 1 else 87), Color("303030"), 1.0)
 	if shows_picture():
-		var bounds := Rect2(READING_LAYOUTS[layout_index][3])
+		var bounds := Rect2(_reading_rects[3])
 		var factor := minf(bounds.size.x / picture_texture.get_width(), bounds.size.y / picture_texture.get_height())
 		var extent := picture_texture.get_size() * factor
 		draw_texture_rect(picture_texture, Rect2(bounds.get_center() - extent / 2.0, extent), false)
 	if hovered_story >= 0:
-		draw_rect(Rect2(READING_LAYOUTS[layout_index][STORY_RECT_INDICES[hovered_story]]).grow(-2.0), Color("0066cc"), false, 2.0)
+		draw_rect(Rect2(_reading_rects[STORY_RECT_INDICES[hovered_story]]).grow(-2.0), Color("0066cc"), false, 2.0)
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -246,7 +248,7 @@ func _apply_layout() -> void:
 
 
 func _configure_label(label: Label, section: int) -> void:
-	var rect: Rect2i = READING_LAYOUTS[layout_index][section]
+	var rect: Rect2i = _reading_rects[section]
 	var inset := 4 if section >= 4 else 2
 	label.position = Vector2(rect.position + Vector2i(inset, inset))
 	label.size = Vector2(rect.size - Vector2i(inset * 2, inset * 2))
@@ -274,7 +276,7 @@ func _configure_label(label: Label, section: int) -> void:
 
 func _story_at(position: Vector2) -> int:
 	for slot in STORY_RECT_INDICES.size():
-		if Rect2(READING_LAYOUTS[layout_index][STORY_RECT_INDICES[slot]]).has_point(position):
+		if Rect2(_reading_rects[STORY_RECT_INDICES[slot]]).has_point(position):
 			return slot
 	return -1
 
@@ -293,13 +295,14 @@ func _set_hovered_story(slot: int) -> void:
 
 
 func set_articles(articles: PackedStringArray) -> void:
+	_fit_story_row(articles)
 	for column in extra_columns:
 		column.free()
 	extra_columns.clear()
 	for slot in article_labels.size():
 		var headline := story_labels[slot]
 		var body := article_labels[slot]
-		var rect: Rect2i = READING_LAYOUTS[layout_index][STORY_RECT_INDICES[slot]]
+		var rect: Rect2i = _reading_rects[STORY_RECT_INDICES[slot]]
 		body.visible = rect.size.y > 70
 		body.text = ""
 		if not body.visible:
@@ -335,6 +338,24 @@ func set_articles(articles: PackedStringArray) -> void:
 				taken = _fitting_words(words, column.size, notice)
 			column.text = " ".join(words.slice(0, taken)) + notice
 			remaining = " ".join(words.slice(taken)).strip_edges()
+
+
+func _fit_story_row(articles: PackedStringArray) -> void:
+	if layout_index != 1 or articles.size() < 2:
+		return
+	var top_rect: Rect2i = READING_RECTS[7]
+	var line_height := serif_font.get_height(BODY_FONT_SIZE) + BODY_LINE_SPACING
+	var rows := ceili(_body_text_height(articles[1], top_rect.size.x / 5.0 - 8) / (line_height * 5))
+	var heading_height := headline_font.get_multiline_string_size(story_labels[1].text, HORIZONTAL_ALIGNMENT_LEFT, top_rect.size.x - 8, 15).y
+	top_rect.size.y = clampi(ceili(heading_height + rows * line_height + 16), 48, READING_RECTS[7].size.y)
+	_reading_rects[7] = top_rect
+	for section in [3, 8, 9, 10]:
+		var rect: Rect2i = READING_RECTS[section]
+		rect.position.y = top_rect.end.y + 4
+		rect.size.y = 492 - rect.position.y
+		_reading_rects[section] = rect
+	_apply_layout()
+	queue_redraw()
 
 
 func _fitting_words(words: PackedStringArray, bounds: Vector2, suffix := "") -> int:
