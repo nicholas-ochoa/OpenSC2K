@@ -104,7 +104,8 @@ var article_labels: Array[Label] = []
 var extra_columns: Array[Label] = []
 var continuation_pages: Array[int] = []
 var continuation_random := RandomNumberGenerator.new()
-const BODY_FONT_SIZE := 10
+const BODY_FONT_SIZE := 8
+const BODY_LINE_SPACING := -2
 var serif_font := newspaper_font()
 var headline_font := newspaper_font(true)
 var picture_id := 0
@@ -325,6 +326,7 @@ func set_articles(articles: PackedStringArray) -> void:
 			column.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 			column.horizontal_alignment = HORIZONTAL_ALIGNMENT_FILL
 			column.add_theme_font_size_override("font_size", BODY_FONT_SIZE)
+			column.add_theme_constant_override("line_spacing", BODY_LINE_SPACING)
 			var words := remaining.split(" ", false)
 			var taken := _fitting_words(words, column.size)
 			var notice := ""
@@ -341,13 +343,18 @@ func _fitting_words(words: PackedStringArray, bounds: Vector2, suffix := "") -> 
 	while low < high:
 		var middle := (low + high + 1) / 2
 		var candidate := " ".join(words.slice(0, middle)) + suffix
-		var extent := serif_font.get_multiline_string_size(candidate, HORIZONTAL_ALIGNMENT_LEFT, bounds.x, BODY_FONT_SIZE)
-		if extent.y <= bounds.y:
+		if _body_text_height(candidate, bounds.x) <= bounds.y:
 			low = middle
 		else:
 			high = middle - 1
 	return low
 
+
+
+func _body_text_height(text: String, width: float) -> float:
+	var height := serif_font.get_multiline_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, width, BODY_FONT_SIZE).y
+	var lines := maxi(1, roundi(height / serif_font.get_height(BODY_FONT_SIZE)))
+	return height + (lines - 1) * BODY_LINE_SPACING
 
 
 static func newspaper_font(bold := false) -> SystemFont:

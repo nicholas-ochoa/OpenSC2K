@@ -15,7 +15,8 @@ func _run() -> void:
 		page.set_articles(['The new city is ready. '.repeat(100),'Residents celebrate their new city. '.repeat(150),'The city needs transport. '.repeat(100),'More electricity is needed. '.repeat(100),'Power reaches more homes. '.repeat(100)])
 		assert(not page.article_labels[1].text.is_empty())
 		assert(page.article_labels[1].horizontal_alignment == HORIZONTAL_ALIGNMENT_FILL)
-		assert(page.article_labels[1].get_theme_font_size("font_size") == 10)
+		assert(page.article_labels[1].get_theme_font_size("font_size") == 8)
+		assert(page.article_labels[1].get_theme_constant("line_spacing") == -2)
 		if layout == 1:
 			assert(page.extra_columns.size() == 4)
 			assert(page.weather_label.size.y < 50 and page.opinion_label.size.y < 50)
@@ -25,7 +26,7 @@ func _run() -> void:
 		for column in all_columns:
 			if column.text.contains("... (continued on pg "):
 				notices += 1
-				assert(page.serif_font.get_multiline_string_size(column.text, HORIZONTAL_ALIGNMENT_LEFT, column.size.x, NewspaperPage.BODY_FONT_SIZE).y <= column.size.y)
+				assert(page._body_text_height(column.text, column.size.x) <= column.size.y)
 		assert(notices >= 4)
 		for number in page.continuation_pages:
 			assert(number >= 2 and number <= 30)
