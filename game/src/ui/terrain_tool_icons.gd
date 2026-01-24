@@ -37,7 +37,7 @@ static func terrain_action(graphics: CityUiGraphics, role: String) -> ImageTextu
 		var ink := Color("fff4b0")
 		if role == "level":
 			image.fill_rect(Rect2i(9, 6, 30, 3), ink)
-		else:
+		elif role in ["raise", "lower"]:
 			image.fill_rect(Rect2i(22, 5, 4, 15), ink)
 			var arrow := PackedVector2Array([Vector2(17, 9), Vector2(24, 1), Vector2(31, 9)])
 			if role == "lower":

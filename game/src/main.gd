@@ -1148,7 +1148,7 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 			asset_source.assets.city_ui_graphics, ["", "level", "raise", "lower"][subtool_index]
 		)
 	if group_index == 0 and subtool_index == 5:
-		return TerrainToolIcons.stretch()
+		return TerrainToolIcons.terrain_action(asset_source.assets.city_ui_graphics, "stretch")
 	if palette == null or large_sprites == null or not large_sprites.is_valid():
 		return city_toolbar.group_icon(group_index) if city_toolbar != null else null
 	var tile_id := Buildings.tile_for_tool(group_index, subtool_index)
