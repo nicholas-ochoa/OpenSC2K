@@ -26,6 +26,7 @@ var article_view: TextEdit
 var close_normal: Texture2D
 var close_pressed: Texture2D
 var control_graphics: CityUiGraphics
+var web_paper: NewspaperWebView
 
 
 func _ready() -> void:
@@ -48,6 +49,18 @@ func _ready() -> void:
 	paper_selector.custom_minimum_size = Vector2i(260, 28)
 	paper_selector.item_selected.connect(_on_paper_selected)
 	paper_selector_row.add_child(paper_selector)
+	var html_button := Button.new()
+	html_button.text = "HTML view"
+	html_button.disabled = not NewspaperWebView.supported()
+	html_button.pressed.connect(_open_web_newspaper)
+	paper_selector_row.add_child(html_button)
+	web_paper = NewspaperWebView.new()
+	add_child(web_paper)
+	web_paper.action_requested.connect(_on_web_action)
+	visibility_changed.connect(func() -> void:
+		if not visible:
+			web_paper.close()
+	)
 	page = NewspaperPageView.new()
 	page.name = "NewspaperPage"
 	page.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
@@ -105,6 +118,7 @@ func open_reports(
 	session_seed = session_seed_value
 	_populate_page()
 	popup_centered()
+	call_deferred("_open_web_newspaper")
 
 
 func _populate_page() -> void:
@@ -329,3 +343,39 @@ func _local_report(slot: int) -> Dictionary:
 	]
 	var report: Array = reports[clampi(slot, 0, reports.size() - 1)]
 	return {"headline": report[0], "article": report[1]}
+
+
+func _web_payload() -> Dictionary:
+	var headlines: Array[String] = []
+	var papers: Array[String] = []
+	for slot in 5:
+		headlines.append(page.headline_for_slot(slot))
+	for index in paper_selector.item_count:
+		papers.append(paper_selector.get_item_text(index))
+	var picture := ""
+	if page.picture_texture != null:
+		picture = "data:image/png;base64," + Marshalls.raw_to_base64(page.picture_texture.get_image().save_png_to_buffer())
+	return {
+		"title": page.title_label.text, "headline": headlines[0],
+		"date": page.date_label.text, "price": page.price_label.text,
+		"weather": page.weather_label.text, "opinion": page.opinion_label.text,
+		"headlines": headlines, "articles": published_articles,
+		"pages": page.continuation_pages, "picture": picture,
+		"papers": papers, "selected": selected_newspaper,
+	}
+
+
+func _open_web_newspaper() -> void:
+	if visible and web_paper != null:
+		web_paper.open(_web_payload())
+
+
+func _on_web_action(action: Dictionary) -> void:
+	match str(action.get("action", "")):
+		"close":
+			hide()
+		"native":
+			web_paper.close()
+		"paper":
+			_on_paper_selected(clampi(int(action.get("index", 0)), 0, 5))
+			_open_web_newspaper()

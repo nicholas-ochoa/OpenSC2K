@@ -19,6 +19,7 @@ config/icon="res://assets/icons/OpenSC2K.png"
 
 window/size/viewport_width=1280
 window/size/viewport_height=800
+window/size/mode=2
 window/size/window_width_override=1280
 window/size/window_height_override=800
 window/stretch/mode="canvas_items"
