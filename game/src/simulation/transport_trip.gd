@@ -43,6 +43,7 @@ static func run(
 	random,
 	maximum_cost := 100
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -52,7 +53,7 @@ static func run(
 	if traffic_weight < 0:
 		return {"ok": false, "error": "traffic weight cannot be negative"}
 	var traffic_chunk := city.document.find_chunk("XTRF")
-	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != TRAFFIC_VALUE_COUNT:
+	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
 		return {"ok": false, "error": "XTRF is missing or has the wrong size"}
 
 	var traffic: PackedByteArray = traffic_chunk.decoded_payload.duplicate()
@@ -67,7 +68,7 @@ static func run(
 		zone,
 		traffic_weight,
 		random,
-		maximum_cost,
+		maximum_cost, map_edge,
 	)
 	if not result.ok:
 		return result
@@ -87,15 +88,16 @@ static func trace(
 	zone: int,
 	traffic_weight: int,
 	random,
-	maximum_cost := 100
+	maximum_cost := 100,
+	map_edge: int = 128,
 ) -> Dictionary:
 	if (
-		buildings.size() != CityState.TILE_COUNT
-		or zones.size() != CityState.TILE_COUNT
-		or underground.size() != CityState.TILE_COUNT
-		or text_overlays.size() != CityState.TILE_COUNT
-		or altitudes.size() != CityState.TILE_COUNT
-		or traffic.size() != TRAFFIC_VALUE_COUNT
+		buildings.size() != (map_edge * map_edge)
+		or zones.size() != (map_edge * map_edge)
+		or underground.size() != (map_edge * map_edge)
+		or text_overlays.size() != (map_edge * map_edge)
+		or altitudes.size() != (map_edge * map_edge)
+		or traffic.size() != ((map_edge / 2) * (map_edge / 2))
 	):
 		return {"ok": false, "error": "transport input maps have the wrong size"}
 	if random == null or not random.has_method("next_u15"):
@@ -105,18 +107,18 @@ static func trace(
 	if traffic_weight < 0:
 		return {"ok": false, "error": "traffic weight cannot be negative"}
 
-	var start := _find_transport(buildings, origin)
+	var start := _find_transport(buildings, origin, map_edge)
 	if start < 0:
 		return _result(false, 0, 0, false, false, false)
 	var limit := maxi(maximum_cost, 0)
 	if traffic_weight == 1:
 		limit -= int(limit / 4)
 	var turn_direction := 1 if random.next_u15() & 1 else 3
-	var start_index := start & POINT_INDEX_MASK
+	var start_index := start & (POINT_INDEX_MASK if map_edge == 128 else 0x3ffff)
 	var state_points: Array[Vector2i] = [
-		Vector2i(int(start_index / CityState.MAP_SIZE), start_index % CityState.MAP_SIZE)
+		Vector2i(int(start_index / map_edge), start_index % map_edge)
 	]
-	var state_modes := PackedInt32Array([start >> 14])
+	var state_modes := PackedInt32Array([start >> (14 if map_edge == 128 else 18)])
 	var state_costs := PackedInt32Array([0])
 	var state_directions := PackedInt32Array([0x0f])
 	var reached_destination := false
@@ -148,7 +150,7 @@ static func trace(
 				point,
 				next_point,
 				mode,
-				zone,
+				zone, map_edge,
 			)
 			if advance == ADVANCE_SUCCESS:
 				reached_destination = true
@@ -198,7 +200,7 @@ static func trace(
 				used_bus = true
 			if mode == ROAD_MODE or mode == HIGHWAY_MODE or mode == ROAD_BRIDGE_MODE:
 				var point := state_points[index]
-				var traffic_index := int(point.x / 2) * TRAFFIC_MAP_SIZE + int(point.y / 2)
+				var traffic_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
 				traffic[traffic_index] = mini(int(traffic[traffic_index]) + traffic_weight, 0xff)
 	return _result(
 		reached_destination,
@@ -210,27 +212,27 @@ static func trace(
 	)
 
 
-static func has_nearby_transport(buildings: PackedByteArray, origin: Vector2i) -> bool:
-	return _find_transport(buildings, origin) >= 0
+static func has_nearby_transport(buildings: PackedByteArray, origin: Vector2i, map_edge: int = 128) -> bool:
+	return _find_transport(buildings, origin, map_edge) >= 0
 
 
-static func _find_transport(buildings: PackedByteArray, origin: Vector2i) -> int:
-	if buildings.size() != CityState.TILE_COUNT:
+static func _find_transport(buildings: PackedByteArray, origin: Vector2i, map_edge: int = 128) -> int:
+	if buildings.size() != (map_edge * map_edge):
 		return -1
 	for offset in TRANSPORT_OFFSETS:
 		var point: Vector2i = origin + offset
-		var index := _index(point)
+		var index := _index(point, map_edge)
 		if index < 0:
 			continue
 		var tile := int(buildings[index])
 		if _is_surface_road(tile):
-			return (ROAD_MODE << 14) | index
+			return (ROAD_MODE << (14 if map_edge == 128 else 18)) | index
 		if tile == 0xec:
-			return (BUS_STOP_MODE << 14) | index
+			return (BUS_STOP_MODE << (14 if map_edge == 128 else 18)) | index
 		if tile == 0xed:
-			return (RAIL_STATION_MODE << 14) | index
+			return (RAIL_STATION_MODE << (14 if map_edge == 128 else 18)) | index
 		if tile == 0xe9:
-			return (SUBWAY_STATION_MODE << 14) | index
+			return (SUBWAY_STATION_MODE << (14 if map_edge == 128 else 18)) | index
 	return -1
 
 
@@ -243,11 +245,12 @@ static func _advance(
 	current: Vector2i,
 	next_point: Vector2i,
 	mode: int,
-	origin_zone: int
+	origin_zone: int,
+	map_edge: int = 128,
 ) -> int:
-	var index := _index(next_point)
+	var index := _index(next_point, map_edge)
 	if index < 0:
-		var current_index := _index(current)
+		var current_index := _index(current, map_edge)
 		if current_index >= 0 and text_overlays[current_index] == CONNECTION_LABEL:
 			return ADVANCE_SUCCESS
 		return ADVANCE_BLOCKED
@@ -420,7 +423,7 @@ static func _is_subway(tile: int) -> bool:
 	)
 
 
-static func _index(point: Vector2i) -> int:
-	if point.x < 0 or point.x >= CityState.MAP_SIZE or point.y < 0 or point.y >= CityState.MAP_SIZE:
+static func _index(point: Vector2i, map_edge: int = 128) -> int:
+	if point.x < 0 or point.x >= map_edge or point.y < 0 or point.y >= map_edge:
 		return -1
-	return point.x * CityState.MAP_SIZE + point.y
+	return point.x * map_edge + point.y

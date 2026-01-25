@@ -57,13 +57,14 @@ static func set_sign(city: CityState, point: Vector2i, text: String) -> Dictiona
 
 
 static func undo(city: CityState, command: Dictionary) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not command.get("ok", false) or command.get("command_type", "") != "sign":
 		return {"ok": false, "error": "sign command is invalid"}
 	var tile_index: int = command.get("tile_index", -1)
 	var label_id: int = command.get("label_id", 0)
-	if tile_index < 0 or tile_index >= CityState.TILE_COUNT:
+	if tile_index < 0 or tile_index >= (map_edge * map_edge):
 		return {"ok": false, "error": "sign undo tile is invalid"}
 	if label_id < FIRST_USER_LABEL or label_id > LAST_USER_LABEL:
 		return {"ok": false, "error": "sign undo label is invalid"}

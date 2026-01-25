@@ -21,6 +21,7 @@ static func create_image(
 	show_pipes := true,
 	show_subways := true
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
 	if palette == null or not palette.is_valid():
@@ -35,7 +36,7 @@ static func create_image(
 		if not asset_errors.is_empty():
 			return _failure(asset_errors[0])
 
-	var output_size := Renderer.output_size_for_view(view_size)
+	var output_size := Renderer.output_size_for_view(view_size, map_edge)
 	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
 	output.fill(Color8(
 		WHITE_PALETTE_INDEX,
@@ -45,13 +46,13 @@ static func create_image(
 	))
 	var origin_x: int = (
 		int(configuration.side_margin)
-		+ CityState.MAP_SIZE * int(configuration.half_width)
+		+ map_edge * int(configuration.half_width)
 	)
 	var cache: Dictionary = {}
-	for diagonal in CityState.MAP_SIZE * 2 - 1:
+	for diagonal in map_edge * 2 - 1:
 		for y in diagonal + 1:
 			var x := diagonal - y
-			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+			if x >= map_edge or y >= map_edge:
 				continue
 			_draw_tile(
 				output, city, palette, sprites, cache, configuration, origin_x, x, y,
@@ -69,6 +70,7 @@ static func validate_assets(
 	show_pipes := true,
 	show_subways := true
 ) -> PackedStringArray:
+	var map_edge: int = city.map_size if city != null else 128
 	var errors := PackedStringArray()
 	if city == null or not city.is_valid():
 		errors.append("city is invalid")
@@ -81,8 +83,8 @@ static func validate_assets(
 		errors.append("underground view size is invalid")
 		return errors
 	var missing: Dictionary = {}
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
+	for x in map_edge:
+		for y in map_edge:
 			for sprite_id in tile_sprite_ids(city, x, y, view_size, show_pipes, show_subways):
 				if sprites.find_sprite(sprite_id) == null:
 					missing[sprite_id] = true

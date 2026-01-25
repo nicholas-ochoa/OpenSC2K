@@ -51,6 +51,7 @@ static func apply_path(
 	random: SimRandom = null,
 	free_mode := false
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not supports_tool(group_index, subtool_index):
@@ -62,7 +63,7 @@ static func apply_path(
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
 	var altitude_chunk := city.document.find_chunk("ALTM")
-	if altitude_chunk == null or altitude_chunk.decoded_payload.size() != CityState.TILE_COUNT * 2:
+	if altitude_chunk == null or altitude_chunk.decoded_payload.size() != (map_edge * map_edge) * 2:
 		return {"ok": false, "error": "required altitude data is missing or invalid"}
 	old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
 	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
@@ -104,18 +105,18 @@ static func apply_path(
 				operation = SUBTOOL_LOWER
 			else:
 				continue
-		var heights := _decode_heights(altitude)
+		var heights := _decode_heights(altitude, map_edge)
 		var trial := {}
 		if operation == SUBTOOL_RAISE:
-			trial = _plan_raise(heights, zones, buildings, point, funds)
+			trial = _plan_raise(heights, zones, buildings, point, funds, map_edge)
 		else:
-			trial = _plan_lower(heights, point, funds)
+			trial = _plan_lower(heights, point, funds, map_edge)
 		if not trial.get("valid", false):
 			if trial.get("insufficient", false):
 				skipped_insufficient += 1
 			continue
 		var modified: PackedInt32Array = trial.modified
-		var retile_indices := _expanded_indices(modified)
+		var retile_indices := _expanded_indices(modified, map_edge)
 		if random == null and _terrain_conflict_needs_random(buildings, retile_indices):
 			skipped_conflicts += 1
 			continue
@@ -151,7 +152,7 @@ static func apply_path(
 		action_count += 1
 		_retile_region(
 			altitude, buildings, terrain, zones, flags, misc, retile_indices,
-			city.document.misc_u32(0x0e40)
+			city.document.misc_u32(0x0e40), map_edge
 		)
 		for changed_index in modified:
 			if not changed_indices.has(changed_index):
@@ -243,12 +244,13 @@ static func _plan_raise(
 	zones: PackedByteArray,
 	buildings: PackedByteArray,
 	start: Vector2i,
-	funds: int
+	funds: int,
+	map_edge: int = 128,
 ) -> Dictionary:
 	var visiting := {}
 	var visited := {}
 	var postorder: Array[Vector2i] = []
-	if not _collect_raise_dependencies(heights, zones, start, visiting, visited, postorder):
+	if not _collect_raise_dependencies(heights, zones, start, visiting, visited, postorder, map_edge):
 		return {"valid": false}
 	var trial := heights.duplicate()
 	var modified := PackedInt32Array()
@@ -258,14 +260,14 @@ static func _plan_raise(
 	for point in postorder:
 		if remaining < 25:
 			continue
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		trial[index] += 1
 		remaining -= 25
 		cost += 25
 		zone_indices.append(index)
 		if not modified.has(index):
 			modified.append(index)
-		_normalize_cardinal_slopes(trial, buildings, point, modified)
+		_normalize_cardinal_slopes(trial, buildings, point, modified, map_edge)
 	if cost == 0:
 		return {"valid": false, "insufficient": true}
 	return {
@@ -284,9 +286,10 @@ static func _collect_raise_dependencies(
 	point: Vector2i,
 	visiting: Dictionary,
 	visited: Dictionary,
-	postorder: Array[Vector2i]
+	postorder: Array[Vector2i],
+	map_edge: int = 128,
 ) -> bool:
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	if visited.has(index):
 		return true
 	if visiting.has(index):
@@ -295,19 +298,19 @@ static func _collect_raise_dependencies(
 		return false
 	for offset in NEIGHBOR_OFFSETS:
 		var neighbor: Vector2i = point + offset
-		if _point_is_in_bounds(neighbor):
-			var neighbor_index := neighbor.x * CityState.MAP_SIZE + neighbor.y
+		if _point_is_in_bounds(neighbor, map_edge):
+			var neighbor_index := neighbor.x * map_edge + neighbor.y
 			if (zones[neighbor_index] & 0x0f) == MILITARY_ZONE:
 				return false
 	visiting[index] = true
 	for offset in RAISE_DEPENDENCY_OFFSETS:
 		var neighbor: Vector2i = point + offset
-		if not _point_is_in_bounds(neighbor):
+		if not _point_is_in_bounds(neighbor, map_edge):
 			continue
-		var neighbor_index := neighbor.x * CityState.MAP_SIZE + neighbor.y
+		var neighbor_index := neighbor.x * map_edge + neighbor.y
 		if heights[neighbor_index] < heights[index]:
 			if not _collect_raise_dependencies(
-				heights, zones, neighbor, visiting, visited, postorder
+				heights, zones, neighbor, visiting, visited, postorder, map_edge
 			):
 				return false
 	visiting.erase(index)
@@ -320,14 +323,15 @@ static func _normalize_cardinal_slopes(
 	heights: PackedInt32Array,
 	buildings: PackedByteArray,
 	point: Vector2i,
-	modified: PackedInt32Array
+	modified: PackedInt32Array,
+	map_edge: int = 128,
 ) -> void:
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	for offset in CARDINAL_OFFSETS:
 		var neighbor: Vector2i = point + offset
-		if not _point_is_in_bounds(neighbor):
+		if not _point_is_in_bounds(neighbor, map_edge):
 			continue
-		var neighbor_index := neighbor.x * CityState.MAP_SIZE + neighbor.y
+		var neighbor_index := neighbor.x * map_edge + neighbor.y
 		if buildings[neighbor_index] >= 0x0d:
 			continue
 		var difference := heights[index] - heights[neighbor_index]
@@ -339,15 +343,16 @@ static func _normalize_cardinal_slopes(
 			continue
 		if not modified.has(neighbor_index):
 			modified.append(neighbor_index)
-		_normalize_cardinal_slopes(heights, buildings, neighbor, modified)
+		_normalize_cardinal_slopes(heights, buildings, neighbor, modified, map_edge)
 
 
 static func _plan_lower(
-	heights: PackedInt32Array, start: Vector2i, funds: int
+	heights: PackedInt32Array, start: Vector2i, funds: int,
+	map_edge: int = 128,
 ) -> Dictionary:
 	if funds < 25:
 		return {"valid": false, "insufficient": true}
-	var start_index := start.x * CityState.MAP_SIZE + start.y
+	var start_index := start.x * map_edge + start.y
 	if heights[start_index] == 0:
 		return {"valid": false}
 	var trial := heights.duplicate()
@@ -363,21 +368,21 @@ static func _plan_lower(
 	while queue_head != queue_tail:
 		var point := queue[queue_head]
 		queue_head = (queue_head + 1) & 0x1ff
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		if not zone_indices.has(index):
 			zone_indices.append(index)
 		var higher_mask := 0
 		for neighbor_index in 8:
 			var neighbor: Vector2i = point + NEIGHBOR_OFFSETS[neighbor_index]
-			if _point_is_in_bounds(neighbor):
-				var checked_index := neighbor.x * CityState.MAP_SIZE + neighbor.y
+			if _point_is_in_bounds(neighbor, map_edge):
+				var checked_index := neighbor.x * map_edge + neighbor.y
 				if trial[checked_index] > trial[index]:
 					higher_mask |= NEIGHBOR_MASKS[neighbor_index]
 		for neighbor_index in 8:
 			var neighbor: Vector2i = point + NEIGHBOR_OFFSETS[neighbor_index]
-			if not _point_is_in_bounds(neighbor):
+			if not _point_is_in_bounds(neighbor, map_edge):
 				continue
-			var checked_index := neighbor.x * CityState.MAP_SIZE + neighbor.y
+			var checked_index := neighbor.x * map_edge + neighbor.y
 			if (
 				trial[checked_index] > trial[index] + 1
 				or (trial[checked_index] > trial[index] and higher_mask == 15)
@@ -400,13 +405,13 @@ static func _plan_lower(
 	}
 
 
-static func _expanded_indices(indices: PackedInt32Array) -> PackedInt32Array:
+static func _expanded_indices(indices: PackedInt32Array, map_edge: int = 128) -> PackedInt32Array:
 	var result := PackedInt32Array()
 	for index in indices:
-		var point := Vector2i(int(index / CityState.MAP_SIZE), index % CityState.MAP_SIZE)
-		for x in range(maxi(0, point.x - 1), mini(128, point.x + 2)):
-			for y in range(maxi(0, point.y - 1), mini(128, point.y + 2)):
-				var checked_index := x * CityState.MAP_SIZE + y
+		var point := Vector2i(int(index / map_edge), index % map_edge)
+		for x in range(maxi(0, point.x - 1), mini(map_edge, point.x + 2)):
+			for y in range(maxi(0, point.y - 1), mini(map_edge, point.y + 2)):
+				var checked_index := x * map_edge + y
 				if not result.has(checked_index):
 					result.append(checked_index)
 	return result
@@ -427,6 +432,7 @@ static func _clear_terrain_conflicts(
 	indices: PackedInt32Array,
 	random: SimRandom
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var demolition = load("res://src/tools/demolish_command.gd")
 	var changed_indices := PackedInt32Array()
 	var effect_events: Array[Dictionary] = []
@@ -434,7 +440,7 @@ static func _clear_terrain_conflicts(
 	var next_effect_frame := 0
 	var random_used := false
 	for index in indices:
-		var point := Vector2i(int(index / CityState.MAP_SIZE), index % CityState.MAP_SIZE)
+		var point := Vector2i(int(index / map_edge), index % map_edge)
 		var old_building := int(buildings[index])
 		if old_building >= 0x0d:
 			if random == null:
@@ -516,16 +522,17 @@ static func _retile_region(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	indices: PackedInt32Array,
-	sea_level: int
+	sea_level: int,
+	map_edge: int = 128,
 ) -> void:
 	for index in indices:
-		var point := Vector2i(int(index / CityState.MAP_SIZE), index % CityState.MAP_SIZE)
+		var point := Vector2i(int(index / map_edge), index % map_edge)
 		var land := _land_altitude(altitude, index)
 		var higher_mask := 0
 		for neighbor_index in 8:
 			var neighbor: Vector2i = point + NEIGHBOR_OFFSETS[neighbor_index]
-			if _point_is_in_bounds(neighbor):
-				var checked_index := neighbor.x * CityState.MAP_SIZE + neighbor.y
+			if _point_is_in_bounds(neighbor, map_edge):
+				var checked_index := neighbor.x * map_edge + neighbor.y
 				if _land_altitude(altitude, checked_index) > land:
 					higher_mask |= NEIGHBOR_MASKS[neighbor_index]
 		var shape := int(TERRAIN_SHAPES[higher_mask])
@@ -551,10 +558,10 @@ static func _retile_region(
 		)
 
 
-static func _decode_heights(altitude: PackedByteArray) -> PackedInt32Array:
+static func _decode_heights(altitude: PackedByteArray, map_edge: int = 128) -> PackedInt32Array:
 	var result := PackedInt32Array()
-	result.resize(CityState.TILE_COUNT)
-	for index in CityState.TILE_COUNT:
+	result.resize((map_edge * map_edge))
+	for index in (map_edge * map_edge):
 		result[index] = _land_altitude(altitude, index)
 	return result
 
@@ -583,5 +590,5 @@ static func _set_water_altitude(altitude: PackedByteArray, index: int, value: in
 	altitude[offset + 1] = word & 0xff
 
 
-static func _point_is_in_bounds(point: Vector2i) -> bool:
-	return point.x >= 0 and point.x < 128 and point.y >= 0 and point.y < 128
+static func _point_is_in_bounds(point: Vector2i, map_edge: int = 128) -> bool:
+	return point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge

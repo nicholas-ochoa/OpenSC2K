@@ -35,6 +35,7 @@ static func run(
 	traffic_news_time_msec := -1,
 	traffic_news_deadline_msec := 0
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -65,23 +66,23 @@ static func run(
 	var misc_chunk := city.document.find_chunk("MISC")
 	if (
 		building_chunk == null
-		or building_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or building_chunk.decoded_payload.size() != (map_edge * map_edge)
 		or altitude_chunk == null
-		or altitude_chunk.decoded_payload.size() != CityState.TILE_COUNT * 2
+		or altitude_chunk.decoded_payload.size() != (map_edge * map_edge) * 2
 		or terrain_chunk == null
-		or terrain_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or terrain_chunk.decoded_payload.size() != (map_edge * map_edge)
 		or underground_chunk == null
-		or underground_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or underground_chunk.decoded_payload.size() != (map_edge * map_edge)
 		or zone_chunk == null
-		or zone_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or zone_chunk.decoded_payload.size() != (map_edge * map_edge)
 		or traffic_chunk == null
-		or traffic_chunk.decoded_payload.size() != 64 * 64
+		or traffic_chunk.decoded_payload.size() != (map_edge / 2) * (map_edge / 2)
 		or text_chunk == null
-		or text_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or text_chunk.decoded_payload.size() != (map_edge * map_edge)
 		or thing_chunk == null
-		or thing_chunk.decoded_payload.size() != CityState.THING_COUNT * RECORD_SIZE
+		or thing_chunk.decoded_payload.size() != city.document.decoded_size("XTHG")
 		or flag_chunk == null
-		or flag_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or flag_chunk.decoded_payload.size() != (map_edge * map_edge)
 		or label_chunk == null
 		or label_chunk.decoded_payload.size() != CityState.LABEL_COUNT * CityState.LABEL_RECORD_SIZE
 		or microsim_chunk == null
@@ -183,24 +184,24 @@ static func run(
 
 	for record in range(FIRST_RECORD, LAST_RECORD + 1):
 		var offset := record * RECORD_SIZE
-		match int(things[offset]):
+		match int(ThingData.read(things, offset)):
 			TYPE_AIRPLANE:
 				counters.active_airplanes += 1
 				AirTick.update_airplane(
 					buildings, zones, text, things, record,
-					random, lfsr_random, counters
+					random, lfsr_random, counters, map_edge
 				)
 			TYPE_HELICOPTER:
 				counters.active_helicopters += 1
 				AirTick.update_helicopter(
 					buildings, underground, traffic, text, things, record,
-					city_center, random, counters
+					city_center, random, counters, map_edge
 				)
 			TYPE_SHIP:
 				counters.active_ships += 1
 				ShipTick.update(
 					buildings, underground, flags, text, things, record,
-					ship_home, random, lfsr_random, counters
+					ship_home, random, lfsr_random, counters, map_edge
 				)
 			TYPE_MONSTER:
 				counters.active_monsters += 1
@@ -219,13 +220,13 @@ static func run(
 			TYPE_SAILBOAT:
 				counters.active_sailboats += 1
 				SailboatTick.update(
-					buildings, flags, text, things, record, random, lfsr_random, counters
+					buildings, flags, text, things, record, random, lfsr_random, counters, map_edge
 				)
 			TYPE_TRAIN_ENGINE, TYPE_SUBWAY_ENGINE:
 				counters.active_trains += 1
 				TrainTick.update(
 					buildings, underground, text, things, record,
-					random, lfsr_random, game_random, counters
+					random, lfsr_random, game_random, counters, map_edge
 				)
 			TYPE_TORNADO:
 				counters.active_tornadoes += 1
@@ -237,7 +238,7 @@ static func run(
 			TYPE_MAXIS_MAN:
 				counters.active_maxis_men += 1
 				MaxisManTick.update(
-					altitude, flags, text, things, record, random, counters
+					altitude, flags, text, things, record, random, counters, map_edge
 				)
 
 	var applied: Array = []
@@ -268,7 +269,7 @@ static func run(
 	city.underground = underground.duplicate()
 	city.text_overlays = text.duplicate()
 	city.tile_flags = flags.duplicate()
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 	counters["ok"] = true
 	counters["sailboats_complete"] = true

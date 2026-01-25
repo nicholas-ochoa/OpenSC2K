@@ -49,6 +49,7 @@ static func generate(
 	process_random: SimRandom,
 	game_random: GameLcgRandom,
 ) -> Dictionary:
+	var map_edge: int = document.map_size if document != null else 128
 	if document == null or not document.is_valid():
 		return _failure("city document is invalid")
 	for value in [hills, water, trees]:
@@ -58,12 +59,12 @@ static func generate(
 		return _failure("terrain random state is missing")
 
 	var required := {
-		"ALTM": TILE_COUNT * 2,
-		"XTER": TILE_COUNT,
-		"XBLD": TILE_COUNT,
-		"XZON": TILE_COUNT,
-		"XBIT": TILE_COUNT,
-		"XTXT": TILE_COUNT,
+		"ALTM": (map_edge * map_edge) * 2,
+		"XTER": (map_edge * map_edge),
+		"XBLD": (map_edge * map_edge),
+		"XZON": (map_edge * map_edge),
+		"XBIT": (map_edge * map_edge),
+		"XTXT": (map_edge * map_edge),
 		"MISC": MISC_SIZE,
 	}
 	var payloads := {}
@@ -89,8 +90,8 @@ static func generate(
 	flags.fill(0)
 
 	var heights := PackedInt32Array()
-	heights.resize(TILE_COUNT)
-	_seed_hills(heights, hills + 11, staged_process)
+	heights.resize((map_edge * map_edge))
+	_seed_hills(heights, hills + 11, staged_process, map_edge)
 	for pass_values in INTERPOLATION_PASSES:
 		_interpolate(
 			heights,
@@ -98,44 +99,44 @@ static func generate(
 			pass_values.y,
 			hills + 10,
 			has_ocean,
-			staged_process,
+			staged_process, map_edge,
 		)
 
 	var water_level := (water + 4) >> 3
 	if has_ocean or has_river:
 		water_level = maxi(water_level, 4)
 	if has_ocean:
-		_carve_ocean(heights, flags, water_level, staged_game)
+		_carve_ocean(heights, flags, water_level, staged_game, map_edge)
 	if has_river:
-		_carve_river(heights, water_level, staged_game)
-	_smooth(heights)
-	_smooth(heights)
-	_scale_heights(heights)
-	_smooth(heights)
-	_grade_heights(heights)
+		_carve_river(heights, water_level, staged_game, map_edge)
+	_smooth(heights, map_edge)
+	_smooth(heights, map_edge)
+	_scale_heights(heights, map_edge)
+	_smooth(heights, map_edge)
+	_grade_heights(heights, map_edge)
 
-	for index in TILE_COUNT:
+	for index in (map_edge * map_edge):
 		altitude[index * 2 + 1] = heights[index] & 0x1f
 	_write_u32_be(misc, MISC_WATER_LEVEL, water_level)
 	_write_u32_be(misc, MISC_HAS_OCEAN, 1 if has_ocean else 0)
 	_write_u32_be(misc, MISC_HAS_RIVER, 1 if has_river else 0)
 	var all_indices := PackedInt32Array()
-	all_indices.resize(TILE_COUNT)
-	for index in TILE_COUNT:
+	all_indices.resize((map_edge * map_edge))
+	for index in (map_edge * map_edge):
 		all_indices[index] = index
 	TerrainTools._retile_region(
-		altitude, buildings, terrain, zones, flags, misc, all_indices, water_level
+		altitude, buildings, terrain, zones, flags, misc, all_indices, water_level, map_edge
 	)
 
 	_grow_trees(
-		buildings, flags, (trees * trees) >> 1, staged_process
+		buildings, flags, ((trees * trees) >> 1) * (map_edge / 128) * (map_edge / 128), staged_process, map_edge
 	)
 	if has_ocean:
-		_finish_ocean(flags)
+		_finish_ocean(flags, map_edge)
 	for _stream_index in (water >> 2):
 		var start := Vector2i(
-			staged_process.next_u15() & 0x7f,
-			staged_process.next_u15() & 0x7f,
+			staged_process.next_u15() % map_edge,
+			staged_process.next_u15() % map_edge,
 		)
 		var length := (staged_process.next_u15() & 0x7f) + 50
 		_make_stream(
@@ -148,7 +149,7 @@ static func generate(
 			misc,
 			start,
 			length,
-			staged_process,
+			staged_process, map_edge,
 		)
 	_recount_buildings(buildings, misc)
 
@@ -168,18 +169,19 @@ static func generate(
 		"water_tiles": _count_flag(flags, FLAG_WATER),
 		"salt_water_tiles": _count_flag(flags, FLAG_SALT_WATER),
 		"tree_tiles": _count_range(buildings, FIRST_TREE, LAST_TREE),
-		"minimum_altitude": _minimum(altitude),
-		"maximum_altitude": _maximum(altitude),
+		"minimum_altitude": _minimum(altitude, map_edge),
+		"maximum_altitude": _maximum(altitude, map_edge),
 		"error": "",
 	}
 
 
 static func _seed_hills(
-	heights: PackedInt32Array, maximum: int, random: SimRandom
+	heights: PackedInt32Array, maximum: int, random: SimRandom,
+	map_edge: int = 128,
 ) -> void:
-	for x in range(0, MAP_SIZE, 16):
-		for y in range(0, MAP_SIZE, 16):
-			heights[_index(x, y)] = random.next_u15() % maximum + 1
+	for x in range(0, map_edge, 16):
+		for y in range(0, map_edge, 16):
+			heights[_index(x, y, map_edge)] = random.next_u15() % maximum + 1
 
 
 static func _interpolate(
@@ -189,10 +191,11 @@ static func _interpolate(
 	edge_height: int,
 	has_ocean: bool,
 	random: SimRandom,
+	map_edge: int = 128,
 ) -> void:
-	for x in range(0, MAP_SIZE, step):
+	for x in range(0, map_edge, step):
 		var x_is_midpoint := (mask & x) != 0
-		for y in range(0, MAP_SIZE, step):
+		for y in range(0, map_edge, step):
 			var y_is_midpoint := (mask & y) != 0
 			if not x_is_midpoint and not y_is_midpoint:
 				continue
@@ -200,22 +203,22 @@ static func _interpolate(
 			var value := 0
 			if x_is_midpoint and y_is_midpoint:
 				value = (
-					_neighbor_height(heights, x - step, y + step, edge_height, has_ocean)
-					+ _neighbor_height(heights, x + step, y + step, edge_height, has_ocean)
-					+ _neighbor_height(heights, x - step, y - step, edge_height, has_ocean)
-					+ _neighbor_height(heights, x + step, y - step, edge_height, has_ocean)
+					_neighbor_height(heights, x - step, y + step, edge_height, has_ocean, map_edge)
+					+ _neighbor_height(heights, x + step, y + step, edge_height, has_ocean, map_edge)
+					+ _neighbor_height(heights, x - step, y - step, edge_height, has_ocean, map_edge)
+					+ _neighbor_height(heights, x + step, y - step, edge_height, has_ocean, map_edge)
 				) >> 2
 			elif y_is_midpoint:
 				value = (
-					_neighbor_height(heights, x, y + step, edge_height, has_ocean)
-					+ _neighbor_height(heights, x, y - step, edge_height, has_ocean)
+					_neighbor_height(heights, x, y + step, edge_height, has_ocean, map_edge)
+					+ _neighbor_height(heights, x, y - step, edge_height, has_ocean, map_edge)
 				) >> 1
 			else:
 				value = (
-					_neighbor_height(heights, x - step, y, edge_height, has_ocean)
-					+ _neighbor_height(heights, x + step, y, edge_height, has_ocean)
+					_neighbor_height(heights, x - step, y, edge_height, has_ocean, map_edge)
+					+ _neighbor_height(heights, x + step, y, edge_height, has_ocean, map_edge)
 				) >> 1
-			heights[_index(x, y)] = maxi(1, value + variation)
+			heights[_index(x, y, map_edge)] = maxi(1, value + variation)
 
 
 static func _neighbor_height(
@@ -224,12 +227,13 @@ static func _neighbor_height(
 	y: int,
 	edge_height: int,
 	has_ocean: bool,
+	map_edge: int = 128,
 ) -> int:
-	if x < 0 or y < 0 or y >= MAP_SIZE:
+	if x < 0 or y < 0 or y >= map_edge:
 		return edge_height
-	if x >= MAP_SIZE:
+	if x >= map_edge:
 		return 0 if has_ocean else edge_height
-	return heights[_index(x, y)]
+	return heights[_index(x, y, map_edge)]
 
 
 static func _carve_ocean(
@@ -237,14 +241,15 @@ static func _carve_ocean(
 	flags: PackedByteArray,
 	water_level: int,
 	random: GameLcgRandom,
+	map_edge: int = 128,
 ) -> void:
 	var width := random.next_mod(10) + 10
-	for y in MAP_SIZE:
-		var bank_x := MAP_SIZE - width
-		heights[_index(bank_x, y)] = water_level - 2
-		for x in range(bank_x + 1, MAP_SIZE):
-			heights[_index(x, y)] = water_level - 3
-			flags[_index(x, y)] |= FLAG_SALT_WATER
+	for y in map_edge:
+		var bank_x := map_edge - width
+		heights[_index(bank_x, y, map_edge)] = water_level - 2
+		for x in range(bank_x + 1, map_edge):
+			heights[_index(x, y, map_edge)] = water_level - 3
+			flags[_index(x, y, map_edge)] |= FLAG_SALT_WATER
 		var target := random.next_mod(30)
 		if width < target:
 			width += 1
@@ -253,35 +258,36 @@ static func _carve_ocean(
 
 
 static func _carve_river(
-	heights: PackedInt32Array, water_level: int, random: GameLcgRandom
+	heights: PackedInt32Array, water_level: int, random: GameLcgRandom,
+	map_edge: int = 128,
 ) -> void:
-	var center := 64
+	var center := map_edge / 2
 	var bend := random.next_mod(3) - 1
-	for y in range(MAP_SIZE - 1, -1, -1):
+	for y in range(map_edge - 1, -1, -1):
 		for x in range(center - 3, center + 4):
-			heights[_index(x, y)] = water_level - 3
-		heights[_index(center - 4, y)] = water_level - 2
-		heights[_index(center + 4, y)] = water_level - 2
+			heights[_index(x, y, map_edge)] = water_level - 3
+		heights[_index(center - 4, y, map_edge)] = water_level - 2
+		heights[_index(center + 4, y, map_edge)] = water_level - 2
 		if random.next_mod(8) == 0:
 			bend = random.next_mod(3) - 1
 		center += bend + random.next_mod(3) - 1
 		center = clampi(center, 5, 122)
 
 
-static func _smooth(heights: PackedInt32Array) -> void:
+static func _smooth(heights: PackedInt32Array, map_edge: int = 128) -> void:
 	var source := heights.duplicate()
-	for x in MAP_SIZE:
-		for y in MAP_SIZE:
-			var center := source[_index(x, y)]
-			var north := source[_index(x, y - 1)] if y > 0 else center
-			var east := source[_index(x + 1, y)] if x < MAP_SIZE - 1 else center
-			var south := source[_index(x, y + 1)] if y < MAP_SIZE - 1 else center
-			var west := source[_index(x - 1, y)] if x > 0 else center
-			heights[_index(x, y)] = (((north + east + south + west) >> 2) + center) >> 1
+	for x in map_edge:
+		for y in map_edge:
+			var center := source[_index(x, y, map_edge)]
+			var north := source[_index(x, y - 1, map_edge)] if y > 0 else center
+			var east := source[_index(x + 1, y, map_edge)] if x < map_edge - 1 else center
+			var south := source[_index(x, y + 1, map_edge)] if y < map_edge - 1 else center
+			var west := source[_index(x - 1, y, map_edge)] if x > 0 else center
+			heights[_index(x, y, map_edge)] = (((north + east + south + west) >> 2) + center) >> 1
 
 
-static func _scale_heights(heights: PackedInt32Array) -> void:
-	for index in TILE_COUNT:
+static func _scale_heights(heights: PackedInt32Array, map_edge: int = 128) -> void:
+	for index in (map_edge * map_edge):
 		var scaled := (heights[index] + 3) >> 1
 		var shifted := scaled - 4
 		if shifted >= 4:
@@ -292,19 +298,19 @@ static func _scale_heights(heights: PackedInt32Array) -> void:
 			heights[index] = scaled
 
 
-static func _grade_heights(heights: PackedInt32Array) -> void:
-	for x in MAP_SIZE:
-		for y in MAP_SIZE:
-			_grade_cell(heights, x, y)
+static func _grade_heights(heights: PackedInt32Array, map_edge: int = 128) -> void:
+	for x in map_edge:
+		for y in map_edge:
+			_grade_cell(heights, x, y, map_edge)
 
 
-static func _grade_cell(heights: PackedInt32Array, x: int, y: int) -> void:
-	var index := _index(x, y)
+static func _grade_cell(heights: PackedInt32Array, x: int, y: int, map_edge: int = 128) -> void:
+	var index := _index(x, y, map_edge)
 	var current := heights[index]
 	var must_lower := false
 	for offset in CARDINAL_OFFSETS:
 		var near: Vector2i = Vector2i(x, y) + offset
-		if _in_bounds(near) and heights[_index(near.x, near.y)] + 1 < current:
+		if _in_bounds(near, map_edge) and heights[_index(near.x, near.y, map_edge)] + 1 < current:
 			must_lower = true
 			break
 	if not must_lower:
@@ -313,8 +319,8 @@ static func _grade_cell(heights: PackedInt32Array, x: int, y: int) -> void:
 	heights[index] = current
 	for offset in CARDINAL_OFFSETS:
 		var near: Vector2i = Vector2i(x, y) + offset
-		if _in_bounds(near) and current < heights[_index(near.x, near.y)]:
-			_grade_cell(heights, near.x, near.y)
+		if _in_bounds(near, map_edge) and current < heights[_index(near.x, near.y, map_edge)]:
+			_grade_cell(heights, near.x, near.y, map_edge)
 
 
 static func _grow_trees(
@@ -322,10 +328,11 @@ static func _grow_trees(
 	flags: PackedByteArray,
 	cluster_count: int,
 	random: SimRandom,
+	map_edge: int = 128,
 ) -> void:
 	for _cluster in cluster_count:
-		var base_x := random.next_u15() & 0x7f
-		var base_y := random.next_u15() & 0x7f
+		var base_x := random.next_u15() % map_edge
+		var base_y := random.next_u15() % map_edge
 		var attempts := random.next_u15() & 0x3f
 		for _attempt in attempts:
 			var x := (
@@ -333,9 +340,9 @@ static func _grow_trees(
 			)
 			var first_y_random := random.next_u15()
 			var y := base_y + first_y_random % 5 - random.next_u15() % 5
-			if x < 0 or x >= MAP_SIZE or y < 0 or y >= MAP_SIZE:
+			if x < 0 or x >= map_edge or y < 0 or y >= map_edge:
 				continue
-			var index := _index(x, y)
+			var index := _index(x, y, map_edge)
 			if flags[index] & FLAG_WATER:
 				continue
 			var current := int(buildings[index])
@@ -347,17 +354,17 @@ static func _grow_trees(
 				buildings[index] = 0x0b + (random.next_u15() & 1)
 
 
-static func _finish_ocean(flags: PackedByteArray) -> void:
+static func _finish_ocean(flags: PackedByteArray, map_edge: int = 128) -> void:
 	for _pass_index in 4:
-		for y in range(1, MAP_SIZE):
-			for x in range(1, MAP_SIZE):
-				var index := _index(x, y)
+		for y in range(1, map_edge):
+			for x in range(1, map_edge):
+				var index := _index(x, y, map_edge)
 				var water_bits := flags[index] & (FLAG_SALT_WATER | FLAG_WATER)
 				if water_bits == FLAG_SALT_WATER:
 					flags[index] &= ~FLAG_SALT_WATER & 0xff
 				elif water_bits == (FLAG_SALT_WATER | FLAG_WATER):
-					flags[_index(x, y - 1)] |= FLAG_SALT_WATER
-					flags[_index(x - 1, y)] |= FLAG_SALT_WATER
+					flags[_index(x, y - 1, map_edge)] |= FLAG_SALT_WATER
+					flags[_index(x - 1, y, map_edge)] |= FLAG_SALT_WATER
 
 
 static func _make_stream(
@@ -371,15 +378,16 @@ static func _make_stream(
 	start: Vector2i,
 	length: int,
 	random: SimRandom,
+	map_edge: int = 128,
 ) -> void:
 	var point := start
 	var direction := 1
 	_make_water(
-		altitude, buildings, terrain, zones, flags, text_overlays, misc, point
+		altitude, buildings, terrain, zones, flags, text_overlays, misc, point, map_edge
 	)
 	for _step in length:
-		var altitude_limit := _land_altitude(altitude, _index(point.x, point.y))
-		if terrain[_index(point.x, point.y)] == WATERFALL:
+		var altitude_limit := _land_altitude(altitude, _index(point.x, point.y, map_edge))
+		if terrain[_index(point.x, point.y, map_edge)] == WATERFALL:
 			altitude_limit += 1
 		var accepted_attempt := -1
 		var next_point := point
@@ -391,9 +399,9 @@ static func _make_stream(
 				STREAM_X_OFFSETS[candidate_direction],
 				STREAM_Y_OFFSETS[candidate_direction],
 			)
-			if not _in_bounds(candidate):
+			if not _in_bounds(candidate, map_edge):
 				return
-			var candidate_index := _index(candidate.x, candidate.y)
+			var candidate_index := _index(candidate.x, candidate.y, map_edge)
 			var candidate_altitude := _land_altitude(altitude, candidate_index)
 			var candidate_terrain := int(terrain[candidate_index])
 			if candidate_altitude > altitude_limit:
@@ -408,7 +416,7 @@ static func _make_stream(
 			return
 		point = next_point
 		_make_water(
-			altitude, buildings, terrain, zones, flags, text_overlays, misc, point
+			altitude, buildings, terrain, zones, flags, text_overlays, misc, point, map_edge
 		)
 		direction += STREAM_TURN_ORDER[accepted_attempt]
 		if random.next_u15() % 3 != 0:
@@ -424,18 +432,19 @@ static func _make_water(
 	text_overlays: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
+	map_edge: int = 128,
 ) -> void:
-	var index := _index(point.x, point.y)
+	var index := _index(point.x, point.y, map_edge)
 	if terrain[index] == FORBIDDEN_COAST or terrain[index] == WATERFALL:
 		return
 	if flags[index] & FLAG_WATER:
-		var shape := Landscapes._water_shape(flags, point.x, point.y)
+		var shape := Landscapes._water_shape(flags, point.x, point.y, map_edge)
 		var transition := Landscapes._water_transition(terrain[index], shape)
 		if not transition.early_return:
 			terrain[index] = transition.value
 		return
 	Landscapes._place_water(
-		buildings, terrain, zones, flags, altitude, text_overlays, misc, point
+		buildings, terrain, zones, flags, altitude, text_overlays, misc, point, map_edge
 	)
 
 
@@ -468,16 +477,16 @@ static func _count_range(values: PackedByteArray, first: int, last: int) -> int:
 	return count
 
 
-static func _minimum(altitude: PackedByteArray) -> int:
+static func _minimum(altitude: PackedByteArray, map_edge: int = 128) -> int:
 	var result := 31
-	for index in TILE_COUNT:
+	for index in (map_edge * map_edge):
 		result = mini(result, _land_altitude(altitude, index))
 	return result
 
 
-static func _maximum(altitude: PackedByteArray) -> int:
+static func _maximum(altitude: PackedByteArray, map_edge: int = 128) -> int:
 	var result := 0
-	for index in TILE_COUNT:
+	for index in (map_edge * map_edge):
 		result = maxi(result, _land_altitude(altitude, index))
 	return result
 
@@ -486,12 +495,12 @@ static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
 	return altitude[index * 2 + 1] & 0x1f
 
 
-static func _index(x: int, y: int) -> int:
-	return x * MAP_SIZE + y
+static func _index(x: int, y: int, map_edge: int = 128) -> int:
+	return x * map_edge + y
 
 
-static func _in_bounds(point: Vector2i) -> bool:
-	return point.x >= 0 and point.x < MAP_SIZE and point.y >= 0 and point.y < MAP_SIZE
+static func _in_bounds(point: Vector2i, map_edge: int = 128) -> bool:
+	return point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge
 
 
 static func _write_u32_be(

@@ -51,12 +51,13 @@ static func run(
 static func calculate_current_values(
 	city: CityState, developed_tiles: int, power_usage_percent: int, water_usage_percent: int
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	var misc := city.document.find_chunk("MISC")
 	if misc == null or misc.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
-	if developed_tiles < 0 or developed_tiles > CityState.TILE_COUNT:
+	if developed_tiles < 0 or developed_tiles > (map_edge * map_edge):
 		return {"ok": false, "error": "developed tile count is out of range"}
 	if power_usage_percent < 0 or power_usage_percent > 100:
 		return {"ok": false, "error": "power usage percentage is out of range"}

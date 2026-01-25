@@ -195,15 +195,16 @@ const DIRECTION_NAMES := [
 static func inspect(
 	city: CityState, point: Vector2i, resource_strings: Dictionary = {}
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if city.index_of(point.x, point.y) < 0:
 		return {"ok": false, "error": "query position is outside the city"}
 	for checked in [
-		["XTRF", DETAIL_MAP_SIZE * DETAIL_MAP_SIZE],
-		["XPLT", DETAIL_MAP_SIZE * DETAIL_MAP_SIZE],
-		["XVAL", DETAIL_MAP_SIZE * DETAIL_MAP_SIZE],
-		["XCRM", DETAIL_MAP_SIZE * DETAIL_MAP_SIZE],
+		["XTRF", (map_edge / 2) * (map_edge / 2)],
+		["XPLT", (map_edge / 2) * (map_edge / 2)],
+		["XVAL", (map_edge / 2) * (map_edge / 2)],
+		["XCRM", (map_edge / 2) * (map_edge / 2)],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
 		if chunk == null or chunk.decoded_payload.size() != checked[1]:
@@ -265,7 +266,7 @@ static func inspect(
 	else:
 		altitude_feet = 25 * (4 * (land_altitude - water_level) + 4)
 
-	var detail_index := int(point.x / 2) * DETAIL_MAP_SIZE + int(point.y / 2)
+	var detail_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
 	var traffic_chunk := city.document.find_chunk("XTRF")
 	var pollution_chunk := city.document.find_chunk("XPLT")
 	var land_value_chunk := city.document.find_chunk("XVAL")
@@ -351,8 +352,9 @@ static func format_text(info: Dictionary) -> String:
 static func _advanced_details(
 	city: CityState, point: Vector2i, microsim_id := -1
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var index := city.index_of(point.x, point.y)
-	var detail_index := int(point.x / 2) * DETAIL_MAP_SIZE + int(point.y / 2)
+	var detail_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
 	var overlay_id := city.text_overlay_id(point.x, point.y)
 	if (
 		microsim_id < 0
@@ -613,6 +615,7 @@ static func _expand_specific_template(
 static func _traffic(
 	city: CityState, values: PackedByteArray, point: Vector2i, building: int
 ) -> int:
+	var map_edge: int = city.map_size if city != null else 128
 	if not _is_traffic_tile(building):
 		return 0
 	var total := 0
@@ -624,7 +627,7 @@ static func _traffic(
 	]:
 		if city.index_of(neighbor.x, neighbor.y) < 0:
 			continue
-		var index := int(neighbor.x / 2) * DETAIL_MAP_SIZE + int(neighbor.y / 2)
+		var index := int(neighbor.x / 2) * (map_edge / 2) + int(neighbor.y / 2)
 		total += values[index]
 	if _is_highway_traffic_tile(building):
 		total *= 2
@@ -659,13 +662,14 @@ static func _level_name(value: int) -> String:
 
 
 static func _water_detail(city: CityState, point: Vector2i, building: int) -> String:
+	var map_edge: int = city.map_size if city != null else 128
 	if building == WATER_PUMP:
 		var supply := 0
 		if city.is_powered(point.x, point.y):
 			supply = city.document.misc_u32(0x0e40) * 5
 			supply += int((city.document.misc_u32(0x68) & 0xff) / 2)
-			for x in range(maxi(point.x - 1, 0), mini(point.x + 2, FULL_MAP_SIZE)):
-				for y in range(maxi(point.y - 1, 0), mini(point.y + 2, FULL_MAP_SIZE)):
+			for x in range(maxi(point.x - 1, 0), mini(point.x + 2, map_edge)):
+				for y in range(maxi(point.y - 1, 0), mini(point.y + 2, map_edge)):
 					if city.is_water(x, y) and not city.is_salt_water(x, y):
 						supply += 10
 		return "Water: %d gallons per month" % (supply * 720)

@@ -35,8 +35,7 @@ func matches(options: Dictionary) -> bool:
 
 
 func generate_preview(
-	template_path: String, options: Dictionary, advance_seed: bool
-) -> Dictionary:
+	template_path: String, options: Dictionary, advance_seed: bool) -> Dictionary:
 	var document := _load_template(template_path)
 	if not document.is_valid():
 		return {
@@ -44,6 +43,8 @@ func generate_preview(
 			"stage": "template",
 			"error": document.parse_error,
 		}
+	if not document.resize_empty_map(int(options.get("size", 128))):
+		return {"ok": false, "stage": "size", "error": "Unsupported city size"}
 	if advance_seed or preview_document == null:
 		preview_process_start = preview_process_cursor
 		preview_game_start = preview_game_cursor
@@ -89,8 +90,7 @@ func create_city(
 	difficulty: int,
 	starting_year: int,
 	terrain_options: Dictionary,
-	newspaper_session_state: PackedByteArray,
-) -> Dictionary:
+	newspaper_session_state: PackedByteArray) -> Dictionary:
 	var template := _load_template(template_path)
 	if not template.is_valid():
 		return {
@@ -98,6 +98,8 @@ func create_city(
 			"stage": "template",
 			"error": template.parse_error,
 		}
+	if not template.resize_empty_map(int(terrain_options.get("size", 128))):
+		return {"ok": false, "stage": "size", "error": "Unsupported city size"}
 	var process_random := Random.new(preview_process_start)
 	var game_random := GameRandom.new(preview_game_start)
 	var created := NewCity.create(

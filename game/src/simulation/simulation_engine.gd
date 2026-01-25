@@ -242,18 +242,19 @@ func recalculate_mayor_house() -> Dictionary:
 
 
 func rotate_runtime_coordinates(counter_clockwise: bool) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	if ship_home.x >= 0 and ship_home.y >= 0:
-		ship_home = _rotate_runtime_point(ship_home, counter_clockwise)
+		ship_home = _rotate_runtime_point(ship_home, counter_clockwise, map_edge)
 	if pending_disaster_type != 0:
 		pending_disaster_point = _rotate_runtime_point(
-			pending_disaster_point, counter_clockwise
+			pending_disaster_point, counter_clockwise, map_edge
 		)
 
 
-static func _rotate_runtime_point(point: Vector2i, counter_clockwise: bool) -> Vector2i:
+static func _rotate_runtime_point(point: Vector2i, counter_clockwise: bool, map_edge: int = 128) -> Vector2i:
 	if counter_clockwise:
-		return Vector2i(point.y, CityState.MAP_SIZE - 1 - point.x)
-	return Vector2i(CityState.MAP_SIZE - 1 - point.y, point.x)
+		return Vector2i(point.y, map_edge - 1 - point.x)
+	return Vector2i(map_edge - 1 - point.y, point.x)
 
 
 func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Dictionary:

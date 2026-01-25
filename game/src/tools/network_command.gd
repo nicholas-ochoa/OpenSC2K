@@ -143,6 +143,7 @@ static func apply(
 	connection_choice := CONNECTION_UNSELECTED,
 	free_mode := false
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not supports_tool(group_index, subtool_index):
@@ -166,21 +167,21 @@ static func apply(
 
 	var planned := _plan_route(
 		buildings, terrain, zones, underground, flags, altitude,
-		start, finish, mode
+		start, finish, mode, map_edge
 	)
 	var bridge_plan := {}
 	var surface_mode := mode == MODE_ROAD or mode == MODE_RAIL or mode == MODE_POWER
 	if surface_mode:
-		if planned.is_empty() and _is_bridge_wrapper_tile(terrain, flags, start):
+		if planned.is_empty() and _is_bridge_wrapper_tile(terrain, flags, start, map_edge):
 			bridge_plan = _plan_bridge_from_start(
-				buildings, terrain, start, city.compass_rotation()
+				buildings, terrain, start, city.compass_rotation(), map_edge
 			)
 		elif not planned.is_empty():
 			var exit_direction := _route_exit_direction(planned, start, finish)
 			var bridge_start: Vector2i = planned[-1] + DIRECTIONS[exit_direction]
-			if _is_bridge_wrapper_tile(terrain, flags, bridge_start):
+			if _is_bridge_wrapper_tile(terrain, flags, bridge_start, map_edge):
 				bridge_plan = _scan_bridge(
-					buildings, terrain, bridge_start, exit_direction, false
+					buildings, terrain, bridge_start, exit_direction, false, map_edge
 				)
 	if planned.is_empty() and not bridge_plan.get("ok", false):
 		return {
@@ -192,7 +193,7 @@ static func apply(
 	var new_tiles := planned.size()
 	if surface_mode:
 		for point in planned:
-			var index := point.x * CityState.MAP_SIZE + point.y
+			var index := point.x * map_edge + point.y
 			if _reuses_surface(buildings[index], mode):
 				new_tiles -= 1
 				continue
@@ -201,7 +202,7 @@ static func apply(
 				graded_tiles += 1
 	else:
 		for point in planned:
-			if _reuses_underground(underground[point.x * CityState.MAP_SIZE + point.y], mode):
+			if _reuses_underground(underground[point.x * map_edge + point.y], mode):
 				new_tiles -= 1
 	var listed_dry_cost := new_tiles * int(tool.cost) + graded_tiles * 25
 	var dry_cost := 0 if free_mode else listed_dry_cost
@@ -267,9 +268,9 @@ static func apply(
 		not bridge_plan.get("ok", false)
 		and not planned.is_empty()
 		and listed_connection_cost > 0
-		and _is_connection_exit(planned, start, finish)
+		and _is_connection_exit(planned, start, finish, map_edge)
 		and text_overlays[
-			connection_anchor.x * CityState.MAP_SIZE + connection_anchor.y
+			connection_anchor.x * map_edge + connection_anchor.y
 		] != CONNECTION_LABEL
 	)
 	var connection_affordable: bool = (
@@ -314,25 +315,25 @@ static func apply(
 			MODE_ROAD:
 				_place_surface(
 					buildings, terrain, zones, flags, misc, point, MODE_ROAD,
-					direction, text_overlays
+					direction, text_overlays, map_edge
 				)
 			MODE_RAIL:
 				_place_surface(
 					buildings, terrain, zones, flags, misc, point, MODE_RAIL,
-					direction, text_overlays
+					direction, text_overlays, map_edge
 				)
 			MODE_POWER:
 				_place_surface(
 					buildings, terrain, zones, flags, misc, point, MODE_POWER,
-					direction, text_overlays
+					direction, text_overlays, map_edge
 				)
 			MODE_SUBWAY:
 				_place_underground(
-					underground, terrain, zones, flags, misc, point, false, direction
+					underground, terrain, zones, flags, misc, point, false, direction, map_edge
 				)
 			MODE_PIPE:
 				_place_underground(
-					underground, terrain, zones, flags, misc, point, true, direction
+					underground, terrain, zones, flags, misc, point, true, direction, map_edge
 				)
 	var bridge_points: Array[Vector2i] = []
 	if bridge_built:
@@ -344,11 +345,11 @@ static func apply(
 			flags,
 			misc,
 			bridge_plan,
-			selected_bridge
+			selected_bridge, map_edge
 		)
 	if connection_built:
 		text_overlays[
-			connection_anchor.x * CityState.MAP_SIZE + connection_anchor.y
+			connection_anchor.x * map_edge + connection_anchor.y
 		] = CONNECTION_LABEL
 		_retile_surface_neighborhood(
 			buildings,
@@ -358,7 +359,7 @@ static func apply(
 			misc,
 			connection_anchor,
 			mode,
-			text_overlays
+			text_overlays, map_edge
 		)
 	_write_u32_be(misc, MISC_FUNDS, city.funds() - cost)
 
@@ -442,11 +443,12 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 
 
 static func _is_bridge_wrapper_tile(
-	terrain: PackedByteArray, flags: PackedByteArray, point: Vector2i
+	terrain: PackedByteArray, flags: PackedByteArray, point: Vector2i,
+	map_edge: int = 128,
 ) -> bool:
-	if point.x < 0 or point.x >= 128 or point.y < 0 or point.y >= 128:
+	if point.x < 0 or point.x >= map_edge or point.y < 0 or point.y >= map_edge:
 		return false
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	return (flags[index] & FLAG_WATER) != 0 and terrain[index] < 0x40
 
 
@@ -454,7 +456,8 @@ static func _plan_bridge_from_start(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	start: Vector2i,
-	view_rotation: int
+	view_rotation: int,
+	map_edge: int = 128,
 ) -> Dictionary:
 	for direction in [
 		view_rotation & 3,
@@ -462,7 +465,7 @@ static func _plan_bridge_from_start(
 		(view_rotation + 1) & 3,
 		(view_rotation - 1) & 3,
 	]:
-		var plan := _scan_bridge(buildings, terrain, start, direction, true)
+		var plan := _scan_bridge(buildings, terrain, start, direction, true, map_edge)
 		if plan.get("direction_allowed", false):
 			return plan
 	return {"ok": false, "error": "bridge does not face open water"}
@@ -473,11 +476,12 @@ static func _scan_bridge(
 	terrain: PackedByteArray,
 	start: Vector2i,
 	direction: int,
-	require_direction: bool
+	require_direction: bool,
+	map_edge: int = 128,
 ) -> Dictionary:
-	if start.x < 0 or start.x >= 128 or start.y < 0 or start.y >= 128:
+	if start.x < 0 or start.x >= map_edge or start.y < 0 or start.y >= map_edge:
 		return {"ok": false, "error": "bridge start is outside the city"}
-	var start_index := start.x * CityState.MAP_SIZE + start.y
+	var start_index := start.x * map_edge + start.y
 	var terrain_id := int(terrain[start_index])
 	if terrain_id < 0x20 or terrain_id >= 0x40:
 		return {"ok": false, "error": "bridge must start on shoreline terrain"}
@@ -492,7 +496,7 @@ static func _scan_bridge(
 	var checked := start
 	while true:
 		if span_length != 0:
-			var checked_index := checked.x * CityState.MAP_SIZE + checked.y
+			var checked_index := checked.x * map_edge + checked.y
 			if buildings[checked_index] != 0:
 				return {
 					"ok": false,
@@ -500,7 +504,7 @@ static func _scan_bridge(
 					"error": "bridge path contains a structure",
 				}
 		checked += DIRECTIONS[direction]
-		if checked.x < 0 or checked.x >= 128 or checked.y < 0 or checked.y >= 128:
+		if checked.x < 0 or checked.x >= map_edge or checked.y < 0 or checked.y >= map_edge:
 			return {
 				"ok": false,
 				"direction_allowed": true,
@@ -508,7 +512,7 @@ static func _scan_bridge(
 			}
 		span_length += 1
 		var checked_terrain := int(
-			terrain[checked.x * CityState.MAP_SIZE + checked.y]
+			terrain[checked.x * map_edge + checked.y]
 		)
 		if checked_terrain <= 0x0f or checked_terrain >= 0x40:
 			break
@@ -538,25 +542,26 @@ static func _connection_cost(mode: int) -> int:
 
 
 static func _is_connection_exit(
-	planned: Array[Vector2i], start: Vector2i, finish: Vector2i
+	planned: Array[Vector2i], start: Vector2i, finish: Vector2i,
+	map_edge: int = 128,
 ) -> bool:
 	if planned.is_empty():
 		return false
 	var endpoint: Vector2i = planned[-1]
-	if not _point_is_edge(endpoint):
+	if not _point_is_edge(endpoint, map_edge):
 		return false
 	if start == endpoint:
 		return true
 	var direction := _route_exit_direction(planned, start, finish)
-	return not _point_is_in_bounds(endpoint + DIRECTIONS[direction])
+	return not _point_is_in_bounds(endpoint + DIRECTIONS[direction], map_edge)
 
 
-static func _point_is_edge(point: Vector2i) -> bool:
-	return point.x == 0 or point.x == 127 or point.y == 0 or point.y == 127
+static func _point_is_edge(point: Vector2i, map_edge: int = 128) -> bool:
+	return point.x == 0 or point.x == (map_edge - 1) or point.y == 0 or point.y == (map_edge - 1)
 
 
-static func _point_is_in_bounds(point: Vector2i) -> bool:
-	return point.x >= 0 and point.x < 128 and point.y >= 0 and point.y < 128
+static func _point_is_in_bounds(point: Vector2i, map_edge: int = 128) -> bool:
+	return point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge
 
 
 static func _direction_index(offset: Vector2i) -> int:
@@ -601,7 +606,8 @@ static func _place_bridge(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	plan: Dictionary,
-	bridge_type: int
+	bridge_type: int,
+	map_edge: int = 128,
 ) -> Array[Vector2i]:
 	var start: Vector2i = plan.start
 	var direction := int(plan.direction)
@@ -610,12 +616,12 @@ static func _place_bridge(
 	var result: Array[Vector2i] = []
 	_place_bridge_bank(
 		altitude, buildings, terrain, zones, flags, misc,
-		start, direction, bridge_type, true
+		start, direction, bridge_type, true, map_edge
 	)
 	result.append(start)
 	for span_index in range(1, span_length - 1):
 		var point := start + offset * span_index
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		if (direction & 1) != 0:
 			flags[index] |= FLAG_FLIPPED
 		_replace_building(
@@ -632,7 +638,7 @@ static func _place_bridge(
 	var finish := start + offset * finish_offset
 	_place_bridge_bank(
 		altitude, buildings, terrain, zones, flags, misc,
-		finish, direction, bridge_type, false
+		finish, direction, bridge_type, false, map_edge
 	)
 	result.append(finish)
 	return result
@@ -648,9 +654,10 @@ static func _place_bridge_bank(
 	point: Vector2i,
 	direction: int,
 	bridge_type: int,
-	first: bool
+	first: bool,
+	map_edge: int = 128,
 ) -> void:
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	if terrain[index] < 0x30:
 		_set_land_altitude(
 			altitude, index, _land_altitude(altitude, index) + 1
@@ -664,7 +671,7 @@ static func _place_bridge_bank(
 		mode = MODE_RAIL
 	elif bridge_type >= BRIDGE_ROAD_CAUSEWAY:
 		mode = MODE_ROAD
-	_place_surface(buildings, terrain, zones, flags, misc, point, mode, direction)
+	_place_surface(buildings, terrain, zones, flags, misc, point, mode, direction, PackedByteArray(), map_edge)
 
 
 static func _bridge_tile(
@@ -725,36 +732,37 @@ static func _plan_route(
 	altitude: PackedByteArray,
 	start: Vector2i,
 	finish: Vector2i,
-	mode: int
+	mode: int,
+	map_edge: int = 128,
 ) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var current := start
 	var direction := _primary_direction(current, finish)
-	if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, current, mode, direction):
+	if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, current, mode, direction, map_edge):
 		if start == finish:
 			for candidate_direction in DIRECTIONS.size():
 				if _tile_is_eligible(
 					buildings, terrain, zones, underground, flags, altitude,
-					current, mode, candidate_direction
+					current, mode, candidate_direction, map_edge
 				):
 					result.append(current)
 					return result
 		var start_alternate := _alternate_direction(current, finish, direction)
 		if start_alternate < 0 or not _tile_is_eligible(
 			buildings, terrain, zones, underground, flags, altitude,
-			current, mode, start_alternate
+			current, mode, start_alternate, map_edge
 		):
 			return result
 	result.append(current)
 	while current != finish:
 		direction = _primary_direction(current, finish)
 		var next: Vector2i = current + DIRECTIONS[direction]
-		if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, next, mode, direction):
+		if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, next, mode, direction, map_edge):
 			var alternate := _alternate_direction(current, finish, direction)
 			if alternate < 0:
 				break
 			next = current + DIRECTIONS[alternate]
-			if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, next, mode, alternate):
+			if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, next, mode, alternate, map_edge):
 				break
 		current = next
 		result.append(current)
@@ -802,11 +810,12 @@ static func _tile_is_eligible(
 	altitude: PackedByteArray,
 	point: Vector2i,
 	mode: int,
-	direction: int
+	direction: int,
+	map_edge: int = 128,
 ) -> bool:
-	if point.x < 0 or point.x >= 128 or point.y < 0 or point.y >= 128:
+	if point.x < 0 or point.x >= map_edge or point.y < 0 or point.y >= map_edge:
 		return false
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	if (zones[index] & 0x0f) == MILITARY_ZONE:
 		return false
 	if mode == MODE_SUBWAY or mode == MODE_PIPE:
@@ -862,12 +871,13 @@ static func _place_surface(
 	point: Vector2i,
 	mode: int,
 	direction: int,
-	text_overlays := PackedByteArray()
+	text_overlays := PackedByteArray(),
+	map_edge: int = 128,
 ) -> void:
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	if _reuses_surface(buildings[index], mode):
 		return
-	_grade_surface_terrain(terrain, flags, point, direction)
+	_grade_surface_terrain(terrain, flags, point, direction, map_edge)
 	var old_tile := int(buildings[index])
 	var new_tile := _surface_replacement(old_tile, mode)
 	if new_tile < 0:
@@ -878,14 +888,15 @@ static func _place_surface(
 	else:
 		zones[index] &= 0xf0
 	_retile_surface_neighborhood(
-		buildings, terrain, zones, flags, misc, point, mode, text_overlays
+		buildings, terrain, zones, flags, misc, point, mode, text_overlays, map_edge
 	)
 
 
 static func _grade_surface_terrain(
-	terrain: PackedByteArray, flags: PackedByteArray, point: Vector2i, direction: int
+	terrain: PackedByteArray, flags: PackedByteArray, point: Vector2i, direction: int,
+	map_edge: int = 128,
 ) -> void:
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	var terrain_id := int(terrain[index])
 	if terrain_id >= 0x30:
 		return
@@ -921,16 +932,17 @@ static func _retile_surface_neighborhood(
 	misc: PackedByteArray,
 	point: Vector2i,
 	mode: int,
-	text_overlays := PackedByteArray()
+	text_overlays := PackedByteArray(),
+	map_edge: int = 128,
 ) -> void:
 	_retile_surface(
-		buildings, terrain, zones, flags, misc, point, mode, text_overlays
+		buildings, terrain, zones, flags, misc, point, mode, text_overlays, map_edge
 	)
 	for offset in DIRECTIONS:
 		var near: Vector2i = point + offset
-		if near.x >= 0 and near.x < 128 and near.y >= 0 and near.y < 128:
+		if near.x >= 0 and near.x < map_edge and near.y >= 0 and near.y < map_edge:
 			_retile_surface(
-				buildings, terrain, zones, flags, misc, near, mode, text_overlays
+				buildings, terrain, zones, flags, misc, near, mode, text_overlays, map_edge
 			)
 
 
@@ -942,9 +954,10 @@ static func _retile_surface(
 	misc: PackedByteArray,
 	point: Vector2i,
 	mode: int,
-	text_overlays := PackedByteArray()
+	text_overlays := PackedByteArray(),
+	map_edge: int = 128,
 ) -> void:
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	var current := int(buildings[index])
 	var base := 0
 	if mode == MODE_ROAD:
@@ -975,25 +988,25 @@ static func _retile_surface(
 		const LOW_SIDE := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
 		for shape in range(1, 5):
 			var slope: Vector2i = point - LOW_SIDE[shape - 1]
-			if slope.x < 0 or slope.y < 0 or slope.x >= 128 or slope.y >= 128:
+			if slope.x < 0 or slope.y < 0 or slope.x >= map_edge or slope.y >= map_edge:
 				continue
-			var slope_index := slope.x * CityState.MAP_SIZE + slope.y
+			var slope_index := slope.x * map_edge + slope.y
 			if terrain[slope_index] == shape and buildings[slope_index] == 0x2d + shape:
 				_replace_building(buildings, zones, misc, index, 0x3a + shape)
 				return
 
 	var connections := 0
 	var has_connection_label := (
-		text_overlays.size() == CityState.TILE_COUNT
+		text_overlays.size() == (map_edge * map_edge)
 		and text_overlays[index] == CONNECTION_LABEL
 	)
 	for direction in 4:
 		var near: Vector2i = point + DIRECTIONS[direction]
-		if near.x < 0 or near.x >= 128 or near.y < 0 or near.y >= 128:
+		if near.x < 0 or near.x >= map_edge or near.y < 0 or near.y >= map_edge:
 			if has_connection_label:
 				connections |= 1 << direction
 			continue
-		var near_index := near.x * CityState.MAP_SIZE + near.y
+		var near_index := near.x * map_edge + near.y
 		var connects := false
 		if mode == MODE_POWER:
 			connects = (flags[near_index] & FLAG_POWERABLE) != 0
@@ -1040,9 +1053,10 @@ static func _place_underground(
 	misc: PackedByteArray,
 	point: Vector2i,
 	pipes: bool,
-	direction := 0
+	direction := 0,
+	map_edge: int = 128,
 ) -> void:
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	var old_tile := int(underground[index])
 	if _reuses_underground(old_tile, MODE_PIPE if pipes else MODE_SUBWAY):
 		return
@@ -1065,13 +1079,14 @@ static func _place_underground(
 		else:
 			return
 	BuildingCommand._replace_underground(underground, zones, misc, index, new_tile)
-	_retile_underground_neighborhood(underground, terrain, point, pipes)
+	_retile_underground_neighborhood(underground, terrain, point, pipes, map_edge)
 
 
 static func _retile_underground_neighborhood(
-	underground: PackedByteArray, terrain: PackedByteArray, point: Vector2i, pipes: bool
+	underground: PackedByteArray, terrain: PackedByteArray, point: Vector2i, pipes: bool,
+	map_edge: int = 128,
 ) -> void:
-	BuildingCommand._retile_neighborhood(underground, terrain, point, pipes)
+	BuildingCommand._retile_neighborhood(underground, terrain, point, pipes, map_edge)
 
 
 static func _replace_building(
@@ -1094,21 +1109,22 @@ static func _replace_building(
 		new_offset = MISC_MILITARY_TILE_COUNTS + int(
 			MILITARY_TILE_COUNT_INDEX.get(new_tile, 0)
 		) * 4
-	_write_u32_be(misc, old_offset, (_read_u32_be(misc, old_offset) - 1) & 0xffff)
-	_write_u32_be(misc, new_offset, (_read_u32_be(misc, new_offset) + 1) & 0xffff)
+	_write_u32_be(misc, old_offset, (_read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+	_write_u32_be(misc, new_offset, (_read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
 	buildings[index] = new_tile
 
 
 static func _city_payloads(city: CityState) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var result := {}
 	for checked in [
-		["ALTM", CityState.TILE_COUNT * 2],
-		["XBLD", CityState.TILE_COUNT],
-		["XTER", CityState.TILE_COUNT],
-		["XZON", CityState.TILE_COUNT],
-		["XUND", CityState.TILE_COUNT],
-		["XBIT", CityState.TILE_COUNT],
-		["XTXT", CityState.TILE_COUNT],
+		["ALTM", (map_edge * map_edge) * 2],
+		["XBLD", (map_edge * map_edge)],
+		["XTER", (map_edge * map_edge)],
+		["XZON", (map_edge * map_edge)],
+		["XUND", (map_edge * map_edge)],
+		["XBIT", (map_edge * map_edge)],
+		["XTXT", (map_edge * map_edge)],
 		["MISC", 4800],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
@@ -1142,8 +1158,9 @@ static func _apply_payloads(
 
 
 static func _refresh_city_arrays(city: CityState) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	var altitude := city.document.find_chunk("ALTM").decoded_payload
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()

@@ -7,6 +7,7 @@ static func supports_tool(group: int, subtool: int) -> bool:
 
 
 static func apply(city: CityState, group: int, subtool: int, point: Vector2i, random: SimRandom, stretch_levels := 1) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not supports_tool(group, subtool) or city.index_of(point.x, point.y) < 0:
 		return {"ok": false, "error": "invalid landscape edit"}
 	var staged := CityState.from_document(city.document.duplicate_document())
@@ -32,15 +33,15 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 		if group == 1:
 			var previous_terrain: PackedByteArray = payloads.XTER.duplicate()
 			var previous_flags: PackedByteArray = payloads.XBIT.duplicate()
-			NewCityTerrain._make_stream(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.XTXT, payloads.MISC, point, 128, staged_random)
-			_finish_stream_slopes(payloads, previous_terrain, previous_flags)
+			NewCityTerrain._make_stream(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.XTXT, payloads.MISC, point, 128, staged_random, map_edge)
+			_finish_stream_slopes(payloads, previous_terrain, previous_flags, map_edge)
 		else:
 			var sea := clampi(staged.document.misc_u32(0x0e40) + (1 if subtool == 6 else -1), 0, 31)
 			BuildingCommand._write_u32_be(payloads.MISC, 0x0e40, sea)
 			var indices := PackedInt32Array()
-			for index in CityState.TILE_COUNT:
+			for index in (map_edge * map_edge):
 				indices.append(index)
-			TerrainCommand._retile_region(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.MISC, indices, sea)
+			TerrainCommand._retile_region(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.MISC, indices, sea, map_edge)
 		for id in payloads:
 			staged.document.find_chunk(id).set_decoded_payload(payloads[id])
 	var old_payloads := {}
@@ -58,25 +59,25 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 		return {"ok": false, "error": "cannot store landscape edit"}
 	random.state = staged_random.state
 	var indices := PackedInt32Array()
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		indices.append(index)
 	return {"ok": true, "command_type": "terrain", "group_index": group, "subtool_index": subtool, "tile_indices": indices, "action_count": 1, "cost": 0, "listed_cost": 0, "skipped_conflicts": 0, "skipped_insufficient": 0, "free_mode": true, "changed_ids": changed, "old_payloads": old_payloads, "new_payloads": new_payloads, "random_used": before != random.state, "random_state_before": before, "random_state_after": random.state, "error": ""}
 
 
-static func _finish_stream_slopes(payloads: Dictionary, previous_terrain: PackedByteArray, previous_flags: PackedByteArray) -> void:
+static func _finish_stream_slopes(payloads: Dictionary, previous_terrain: PackedByteArray, previous_flags: PackedByteArray, map_edge: int = 128) -> void:
 	# editor repair only: preserve the recovered generator's path and rng order
 	var terrain: PackedByteArray = payloads.XTER
 	var flags: PackedByteArray = payloads.XBIT
 	var altitude: PackedByteArray = payloads.ALTM
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		if terrain[index] == previous_terrain[index] and flags[index] == previous_flags[index]:
 			continue
 		if terrain[index] < 0x30 or terrain[index] > 0x45 or not flags[index] & 4:
 			continue
-		var point := Vector2i(index / CityState.MAP_SIZE, index % CityState.MAP_SIZE)
+		var point := Vector2i(index / map_edge, index % map_edge)
 		var height := TerrainCommand._land_altitude(altitude, index)
 		for delta in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
 			var near: Vector2i = point + delta
-			if TerrainCommand._point_is_in_bounds(near) and TerrainCommand._land_altitude(altitude, near.x * CityState.MAP_SIZE + near.y) > height:
+			if TerrainCommand._point_is_in_bounds(near, map_edge) and TerrainCommand._land_altitude(altitude, near.x * map_edge + near.y) > height:
 				terrain[index] = 0x3e
 				break

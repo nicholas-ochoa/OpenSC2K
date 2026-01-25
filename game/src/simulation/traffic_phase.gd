@@ -7,10 +7,11 @@ const MISC_TRAFFIC_COUNT := 0x30
 
 
 static func run(city: CityState) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	var chunk := city.document.find_chunk("XTRF")
-	if chunk == null or chunk.decoded_payload.size() != VALUE_COUNT:
+	if chunk == null or chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
 		return {"ok": false, "error": "XTRF is missing or has the wrong size"}
 	var traffic := chunk.decoded_payload.duplicate()
 	var total := 0

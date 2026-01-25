@@ -330,6 +330,7 @@ static func _draw_signs(
 	render_palette: Sc2Palette,
 	view_size: int
 ) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	if image == null or image.is_empty():
 		return
 	var configuration := Renderer.view_configuration(view_size)
@@ -337,10 +338,10 @@ static func _draw_signs(
 		return
 	var divisor := float(configuration.divisor)
 	var glyph_scale := 2
-	for diagonal in CityState.MAP_SIZE * 2 - 1:
+	for diagonal in map_edge * 2 - 1:
 		for y in diagonal + 1:
 			var x := diagonal - y
-			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+			if x >= map_edge or y >= map_edge:
 				continue
 			var label_id := city.text_overlay_id(x, y)
 			if label_id < 1 or label_id > 50:

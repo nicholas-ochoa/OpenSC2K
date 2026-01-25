@@ -126,6 +126,7 @@ static func apply_path(
 	underground_view := false,
 	scurk_mode := false
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not supports_tool(group_index, subtool_index):
@@ -139,7 +140,7 @@ static func apply_path(
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
 	var altitude_chunk := city.document.find_chunk("ALTM")
-	if altitude_chunk == null or altitude_chunk.decoded_payload.size() != CityState.TILE_COUNT * 2:
+	if altitude_chunk == null or altitude_chunk.decoded_payload.size() != (map_edge * map_edge) * 2:
 		return {"ok": false, "error": "required altitude data is missing or invalid"}
 	old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
 	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
@@ -255,7 +256,7 @@ static func apply_path(
 		var old_zones: PackedByteArray = old_payloads.XZON
 		var scurk_flags: PackedByteArray = changed_payloads.XBIT
 		var old_flags: PackedByteArray = old_payloads.XBIT
-		for index in CityState.TILE_COUNT:
+		for index in (map_edge * map_edge):
 			scurk_zones[index] = (
 				(scurk_zones[index] & 0xf0) | (old_zones[index] & 0x0f)
 			)
@@ -342,7 +343,8 @@ static func _demolish_point(
 	emit_effects := true,
 	scurk_mode := false
 ) -> Dictionary:
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var map_edge: int = city.map_size if city != null else 128
+	var index := point.x * map_edge + point.y
 	var tile_id := int(buildings[index])
 	if not force_damage and ((zones[index] & 0x0f) == MILITARY_ZONE or tile_id == RADIOACTIVITY):
 		return {"changed": false}
@@ -351,22 +353,22 @@ static func _demolish_point(
 	if tile_id >= TUNNEL_FIRST and tile_id <= TUNNEL_LAST:
 		return _demolish_tunnel(
 			altitude, buildings, terrain, zones, flags, misc, point, tile_id,
-			random, emit_effects
+			random, emit_effects, false, map_edge
 		)
 	if tile_id >= BRIDGE_FIRST and tile_id <= BRIDGE_LAST:
 		return _demolish_bridge(
 			altitude, buildings, terrain, zones, underground, flags, misc,
-			point, random, emit_effects
+			point, random, emit_effects, map_edge
 		)
 	if tile_id >= REINFORCED_BRIDGE_FIRST and tile_id <= REINFORCED_BRIDGE_LAST:
 		return _demolish_reinforced_bridge(
 			altitude, buildings, terrain, zones, underground, flags, misc,
-			point, random, emit_effects
+			point, random, emit_effects, map_edge
 		)
 	if tile_id >= RUNWAY_FIRST and tile_id <= PIER_LAST:
 		return _demolish_transport_component(
 			altitude, buildings, terrain, zones, underground, flags, misc,
-			point, tile_id, random, emit_effects, scurk_mode
+			point, tile_id, random, emit_effects, scurk_mode, map_edge
 		)
 	if _is_highway_tile(tile_id):
 		return _demolish_highway_section(
@@ -384,7 +386,7 @@ static func _demolish_point(
 			random,
 			city.compass_rotation(),
 			emit_effects,
-			scurk_mode
+			scurk_mode, map_edge
 		)
 	var was_water := (flags[index] & FLAG_WATER) != 0
 	if tile_id == 0:
@@ -392,7 +394,7 @@ static func _demolish_point(
 			return {"changed": false}
 		if terrain[index] < 0x30:
 			return {"changed": false}
-		_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
+		_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point, map_edge)
 		return {"changed": true, "indices": PackedInt32Array([index])}
 
 	if tile_id < 0x0d:
@@ -405,9 +407,9 @@ static func _demolish_point(
 			))
 		NetworkCommand._replace_building(buildings, zones, misc, index, 0)
 		if terrain[index] >= 0x30:
-			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
+			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point, map_edge)
 		_retile_after_demolition(
-			buildings, terrain, zones, underground, flags, misc, [point], text_overlays
+			buildings, terrain, zones, underground, flags, misc, [point], text_overlays, map_edge
 		)
 		return {
 			"changed": true,
@@ -416,17 +418,17 @@ static func _demolish_point(
 		}
 
 	var area := _building_area(tile_id)
-	var site := _find_building_site(buildings, zones, point, tile_id, area, city.compass_rotation())
+	var site := _find_building_site(buildings, zones, point, tile_id, area, city.compass_rotation(), map_edge)
 	if site.size == Vector2i.ZERO:
 		return {"changed": false}
 	var effect_events: Array[Dictionary] = []
 	if emit_effects:
-		effect_events = _structure_effects(altitude, flags, site, area, random)
+		effect_events = _structure_effects(altitude, flags, site, area, random, map_edge)
 	var indices := PackedInt32Array()
 	var changed_points: Array[Vector2i] = []
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
-			var changed_index := x * CityState.MAP_SIZE + y
+			var changed_index := x * map_edge + y
 			var rubble := 0
 			if not scurk_mode and terrain[changed_index] == 0:
 				rubble = 1 + (random.next_u15() & 3)
@@ -456,13 +458,13 @@ static func _demolish_point(
 			flags,
 			misc,
 			changed_points,
-			text_overlays
+			text_overlays, map_edge
 		)
 	if terrain[index] >= 0x30:
 		if was_water:
-			_retile_surface_water(terrain, flags, point, true)
+			_retile_surface_water(terrain, flags, point, true, map_edge)
 		else:
-			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point)
+			_remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point, map_edge)
 	return {"changed": true, "indices": indices, "effect_events": effect_events}
 
 
@@ -482,7 +484,8 @@ static func _demolish_underground_point(
 	random,
 	scurk_mode := false
 ) -> Dictionary:
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var map_edge: int = city.map_size if city != null else 128
+	var index := point.x * map_edge + point.y
 	if not scurk_mode and (zones[index] & 0x0f) == MILITARY_ZONE:
 		return {"changed": false}
 	if not scurk_mode and text_overlays[index] == PROTECTED_CONNECTION_LABEL:
@@ -530,7 +533,7 @@ static func _demolish_underground_point(
 		effect_events = surface_result.get("effect_events", [])
 	BuildingCommand._replace_underground(underground, zones, misc, index, 0)
 	_retile_after_demolition(
-		buildings, terrain, zones, underground, flags, misc, [point], text_overlays
+		buildings, terrain, zones, underground, flags, misc, [point], text_overlays, map_edge
 	)
 	return {
 		"changed": true,
@@ -557,41 +560,42 @@ static func _demolish_tunnel(
 	tile_id: int,
 	random,
 	emit_effects: bool,
-	scurk_mode := false
+	scurk_mode := false,
+	map_edge: int = 128,
 ) -> Dictionary:
 	var direction: Vector2i = [
 		Vector2i(-1, 0), Vector2i(0, -1), Vector2i(1, 0), Vector2i(0, 1)
 	][tile_id - TUNNEL_FIRST]
 	var points: Array[Vector2i] = [start]
 	var current := start + direction
-	while current.x >= 0 and current.x < 128 and current.y >= 0 and current.y < 128:
+	while current.x >= 0 and current.x < map_edge and current.y >= 0 and current.y < map_edge:
 		points.append(current)
-		var current_id := int(buildings[current.x * CityState.MAP_SIZE + current.y])
+		var current_id := int(buildings[current.x * map_edge + current.y])
 		if current_id >= TUNNEL_FIRST and current_id <= TUNNEL_LAST:
 			break
 		current += direction
-	if points.size() < 2 or current.x < 0 or current.x >= 128 or current.y < 0 or current.y >= 128:
+	if points.size() < 2 or current.x < 0 or current.x >= map_edge or current.y < 0 or current.y >= map_edge:
 		return {"changed": false, "specialized": true}
 	var effect_events: Array[Dictionary] = []
 	if emit_effects:
 		for endpoint in [points[0], points[-1]]:
 			var entrance: Vector2i = endpoint
-			var entrance_index: int = entrance.x * CityState.MAP_SIZE + entrance.y
+			var entrance_index: int = entrance.x * map_edge + entrance.y
 			effect_events.append(_dust_effect(
 				entrance, _land_altitude(altitude, entrance_index), random, 0, Vector2i.ZERO
 			))
 
 	for point in points:
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		_clear_tunnel_level(altitude, index)
 	for entrance in [points[0], points[-1]]:
-		var entrance_index: int = entrance.x * CityState.MAP_SIZE + entrance.y
+		var entrance_index: int = entrance.x * map_edge + entrance.y
 		NetworkCommand._replace_building(buildings, zones, misc, entrance_index, 0)
 		zones[entrance_index] &= 0x0f
-		_retile_adjacent_roads(buildings, terrain, zones, flags, misc, entrance)
+		_retile_adjacent_roads(buildings, terrain, zones, flags, misc, entrance, map_edge)
 	var indices := PackedInt32Array()
 	for point in points:
-		indices.append(point.x * CityState.MAP_SIZE + point.y)
+		indices.append(point.x * map_edge + point.y)
 	return {"changed": true, "indices": indices, "effect_events": effect_events}
 
 
@@ -607,7 +611,8 @@ static func _demolish_transport_component(
 	tile_id: int,
 	random,
 	emit_effects: bool,
-	scurk_mode := false
+	scurk_mode := false,
+	map_edge: int = 128,
 ) -> Dictionary:
 	var first := RUNWAY_FIRST if tile_id <= RUNWAY_LAST else PIER_FIRST
 	var last := RUNWAY_LAST if tile_id <= RUNWAY_LAST else PIER_LAST
@@ -620,20 +625,20 @@ static func _demolish_transport_component(
 		if visited.has(point):
 			continue
 		visited[point] = true
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		var current_id := int(buildings[index])
 		if current_id < first or current_id > last:
 			continue
 		component.append(point)
 		for offset in DIRECTIONS:
 			var neighbor: Vector2i = point + offset
-			if neighbor.x >= 0 and neighbor.x < 128 and neighbor.y >= 0 and neighbor.y < 128:
+			if neighbor.x >= 0 and neighbor.x < map_edge and neighbor.y >= 0 and neighbor.y < map_edge:
 				stack.append(neighbor)
 
 	var indices := PackedInt32Array()
 	var effect_events: Array[Dictionary] = []
 	for point in component:
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		var replacement := 0
 		if make_rubble and not scurk_mode:
 			replacement = 1 + (random.next_u15() & 3)
@@ -650,7 +655,7 @@ static func _demolish_transport_component(
 		zones[index] &= 0x0f
 		flags[index] &= FLAG_CLEAR_AFTER_STRUCTURE
 		indices.append(index)
-	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, component)
+	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, component, PackedByteArray(), map_edge)
 	return {
 		"changed": not component.is_empty(),
 		"indices": indices,
@@ -673,14 +678,15 @@ static func _demolish_highway_section(
 	random,
 	rotation: int,
 	emit_effects: bool,
-	scurk_mode := false
+	scurk_mode := false,
+	map_edge: int = 128,
 ) -> Dictionary:
 	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
 	if not HighwayCommand._anchor_is_in_bounds(anchor):
 		return {"changed": false, "specialized": true}
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		if not _is_highway_tile(buildings[point.x * CityState.MAP_SIZE + point.y]):
+		if not _is_highway_tile(buildings[point.x * map_edge + point.y]):
 			return {"changed": false, "specialized": true}
 
 	var points: Array[Vector2i] = []
@@ -688,11 +694,11 @@ static func _demolish_highway_section(
 	var effect_events: Array[Dictionary] = []
 	if emit_effects:
 		effect_events = _structure_effects(
-			altitude, flags, Rect2i(anchor, Vector2i(2, 2)), 2, random
+			altitude, flags, Rect2i(anchor, Vector2i(2, 2)), 2, random, map_edge
 		)
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		var replacement := 0
 		if not scurk_mode and terrain[index] == 0:
 			replacement = 1 + (random.next_u15() & 3)
@@ -702,14 +708,14 @@ static func _demolish_highway_section(
 		_release_overlay(text_overlays, labels, microsims, index)
 		points.append(point)
 		indices.append(index)
-	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points)
+	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points, PackedByteArray(), map_edge)
 
 	var adjacent_sections: Array[Vector2i] = []
 	for direction in DIRECTIONS:
 		var adjacent: Vector2i = anchor + direction * 2
 		if (
 			HighwayCommand._anchor_is_in_bounds(adjacent)
-			and HighwayCommand._section_kind(buildings, zones, flags, adjacent) > 1
+			and HighwayCommand._section_kind(buildings, zones, flags, adjacent, map_edge) > 1
 		):
 			adjacent_sections.append(adjacent)
 	if not adjacent_sections.is_empty():
@@ -722,7 +728,7 @@ static func _demolish_highway_section(
 			misc,
 			adjacent_sections,
 			rotation,
-			text_overlays
+			text_overlays, {}, map_edge
 		)
 	return {"changed": true, "indices": indices, "effect_events": effect_events}
 
@@ -737,21 +743,22 @@ static func _demolish_bridge(
 	misc: PackedByteArray,
 	selected: Vector2i,
 	random = null,
-	emit_effects := false
+	emit_effects := false,
+	map_edge: int = 128,
 ) -> Dictionary:
-	var selected_index := selected.x * CityState.MAP_SIZE + selected.y
+	var selected_index := selected.x * map_edge + selected.y
 	var direction := Vector2i(1, 0) if (flags[selected_index] & FLAG_FLIPPED) != 0 else Vector2i(0, 1)
 	var first := selected
-	while _point_is_in_bounds(first - direction):
+	while _point_is_in_bounds(first - direction, map_edge):
 		var previous := first - direction
-		var previous_id := int(buildings[previous.x * CityState.MAP_SIZE + previous.y])
+		var previous_id := int(buildings[previous.x * map_edge + previous.y])
 		if previous_id < BRIDGE_FIRST or previous_id > BRIDGE_LAST:
 			break
 		first = previous
 	var finish := selected
-	while _point_is_in_bounds(finish + direction):
+	while _point_is_in_bounds(finish + direction, map_edge):
 		var next := finish + direction
-		var next_id := int(buildings[next.x * CityState.MAP_SIZE + next.y])
+		var next_id := int(buildings[next.x * map_edge + next.y])
 		if next_id < BRIDGE_FIRST or next_id > BRIDGE_LAST:
 			break
 		finish = next
@@ -761,7 +768,7 @@ static func _demolish_bridge(
 	var effect_events: Array[Dictionary] = []
 	var current := first
 	while true:
-		var index := current.x * CityState.MAP_SIZE + current.y
+		var index := current.x * map_edge + current.y
 		if emit_effects and random != null:
 			effect_events.append({
 				"point": current,
@@ -781,9 +788,9 @@ static func _demolish_bridge(
 		current += direction
 
 	for bank in [first - direction, finish + direction]:
-		if not _point_is_in_bounds(bank):
+		if not _point_is_in_bounds(bank, map_edge):
 			continue
-		var bank_index: int = bank.x * CityState.MAP_SIZE + bank.y
+		var bank_index: int = bank.x * map_edge + bank.y
 		if (flags[bank_index] & FLAG_WATER) != 0:
 			continue
 		NetworkCommand._replace_building(buildings, zones, misc, bank_index, 0)
@@ -799,12 +806,12 @@ static func _demolish_bridge(
 			flags,
 			misc,
 			PackedInt32Array([bank_index]),
-			BuildingCommand._read_u32_be(misc, 0x0e40) & 0x1f
+			BuildingCommand._read_u32_be(misc, 0x0e40) & 0x1f, map_edge
 		)
 		points.append(bank)
 		indices.append(bank_index)
-	_retile_surface_water(terrain, flags, selected, true)
-	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points)
+	_retile_surface_water(terrain, flags, selected, true, map_edge)
+	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points, PackedByteArray(), map_edge)
 	return {
 		"changed": true,
 		"indices": indices,
@@ -822,20 +829,21 @@ static func _demolish_reinforced_bridge(
 	misc: PackedByteArray,
 	selected: Vector2i,
 	random = null,
-	emit_effects := false
+	emit_effects := false,
+	map_edge: int = 128,
 ) -> Dictionary:
 	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
-	if not _reinforced_section_is_valid(buildings, anchor):
+	if not _reinforced_section_is_valid(buildings, anchor, map_edge):
 		return {"changed": false, "specialized": true}
-	var anchor_tile := int(buildings[anchor.x * CityState.MAP_SIZE + anchor.y])
+	var anchor_tile := int(buildings[anchor.x * map_edge + anchor.y])
 	# the executable selects the span axis from the section's tile kind
 	# this makes 0x6b advance on x and 0x6a advance on y
 	var direction := Vector2i(2, 0) if anchor_tile == REINFORCED_BRIDGE_LAST else Vector2i(0, 2)
 	var first := anchor
-	while _reinforced_section_is_valid(buildings, first - direction):
+	while _reinforced_section_is_valid(buildings, first - direction, map_edge):
 		first -= direction
 	var finish := anchor
-	while _reinforced_section_is_valid(buildings, finish + direction):
+	while _reinforced_section_is_valid(buildings, finish + direction, map_edge):
 		finish += direction
 
 	var points: Array[Vector2i] = []
@@ -845,7 +853,7 @@ static func _demolish_reinforced_bridge(
 	while true:
 		if emit_effects and random != null:
 			var effect_sprite: int = BRIDGE_DEBRIS_SPRITE + (random.next_u15() & 3)
-			var current_index := current.x * CityState.MAP_SIZE + current.y
+			var current_index := current.x * map_edge + current.y
 			for screen_offset in [
 				Vector2i(0, 0), Vector2i(16, -8),
 				Vector2i(32, 0), Vector2i(32, 8),
@@ -860,7 +868,7 @@ static func _demolish_reinforced_bridge(
 				})
 		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 			var point: Vector2i = current + offset
-			var index := point.x * CityState.MAP_SIZE + point.y
+			var index := point.x * map_edge + point.y
 			NetworkCommand._replace_building(buildings, zones, misc, index, 0)
 			zones[index] &= 0x0f
 			flags[index] &= ~FLAG_FLIPPED & 0xff
@@ -873,8 +881,8 @@ static func _demolish_reinforced_bridge(
 	# The original changes only the origin cell of the forward bank section
 	# on a two-wide bridge. It leaves the bank behind the span alone.
 	var bank := finish + direction
-	if _point_is_in_bounds(bank):
-		var bank_index := bank.x * CityState.MAP_SIZE + bank.y
+	if _point_is_in_bounds(bank, map_edge):
+		var bank_index := bank.x * map_edge + bank.y
 		if (flags[bank_index] & FLAG_WATER) == 0:
 			NetworkCommand._replace_building(buildings, zones, misc, bank_index, 0)
 			var land := _land_altitude(altitude, bank_index)
@@ -889,12 +897,12 @@ static func _demolish_reinforced_bridge(
 				flags,
 				misc,
 				PackedInt32Array([bank_index]),
-				BuildingCommand._read_u32_be(misc, 0x0e40) & 0x1f
+				BuildingCommand._read_u32_be(misc, 0x0e40) & 0x1f, map_edge
 			)
 			points.append(bank)
 			indices.append(bank_index)
-	_retile_surface_water(terrain, flags, selected, true)
-	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points)
+	_retile_surface_water(terrain, flags, selected, true, map_edge)
+	_retile_after_demolition(buildings, terrain, zones, underground, flags, misc, points, PackedByteArray(), map_edge)
 	return {
 		"changed": true,
 		"indices": indices,
@@ -903,16 +911,17 @@ static func _demolish_reinforced_bridge(
 
 
 static func _reinforced_section_is_valid(
-	buildings: PackedByteArray, anchor: Vector2i
+	buildings: PackedByteArray, anchor: Vector2i,
+	map_edge: int = 128,
 ) -> bool:
 	if anchor.x < 0 or anchor.y < 0 or anchor.x > 126 or anchor.y > 126:
 		return false
-	var tile := int(buildings[anchor.x * CityState.MAP_SIZE + anchor.y])
+	var tile := int(buildings[anchor.x * map_edge + anchor.y])
 	if tile < REINFORCED_BRIDGE_FIRST or tile > REINFORCED_BRIDGE_LAST:
 		return false
 	for offset in [Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		if buildings[point.x * CityState.MAP_SIZE + point.y] != tile:
+		if buildings[point.x * map_edge + point.y] != tile:
 			return false
 	return true
 
@@ -924,9 +933,10 @@ static func _remove_surface_water(
 	zones: PackedByteArray,
 	flags: PackedByteArray,
 	misc: PackedByteArray,
-	point: Vector2i
+	point: Vector2i,
+	map_edge: int = 128,
 ) -> void:
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	if terrain[index] == 0x3e:
 		TerrainCommand._retile_region(
 			altitude,
@@ -936,25 +946,26 @@ static func _remove_surface_water(
 			flags,
 			misc,
 			PackedInt32Array([index]),
-			BuildingCommand._read_u32_be(misc, 0x0e40) & 0x1f
+			BuildingCommand._read_u32_be(misc, 0x0e40) & 0x1f, map_edge
 		)
 	else:
 		terrain[index] = 0
 	flags[index] &= ~FLAG_WATER & 0xff
-	_retile_surface_water(terrain, flags, point, false)
+	_retile_surface_water(terrain, flags, point, false, map_edge)
 
 
 static func _retile_surface_water(
-	terrain: PackedByteArray, flags: PackedByteArray, point: Vector2i, include_center: bool
+	terrain: PackedByteArray, flags: PackedByteArray, point: Vector2i, include_center: bool,
+	map_edge: int = 128,
 ) -> void:
-	for x in range(maxi(0, point.x - 1), mini(128, point.x + 2)):
-		for y in range(maxi(0, point.y - 1), mini(128, point.y + 2)):
+	for x in range(maxi(0, point.x - 1), mini(map_edge, point.x + 2)):
+		for y in range(maxi(0, point.y - 1), mini(map_edge, point.y + 2)):
 			if not include_center and x == point.x and y == point.y:
 				continue
-			var index := x * CityState.MAP_SIZE + y
+			var index := x * map_edge + y
 			if (flags[index] & FLAG_WATER) == 0:
 				continue
-			var shape := LandscapeCommand._water_shape(flags, x, y)
+			var shape := LandscapeCommand._water_shape(flags, x, y, map_edge)
 			var transition := LandscapeCommand._water_transition(terrain[index], shape)
 			if not transition.early_return:
 				terrain[index] = transition.value
@@ -966,13 +977,14 @@ static func _retile_adjacent_roads(
 	zones: PackedByteArray,
 	flags: PackedByteArray,
 	misc: PackedByteArray,
-	point: Vector2i
+	point: Vector2i,
+	map_edge: int = 128,
 ) -> void:
 	for offset in DIRECTIONS:
 		var neighbor: Vector2i = point + offset
-		if _point_is_in_bounds(neighbor):
+		if _point_is_in_bounds(neighbor, map_edge):
 			NetworkCommand._retile_surface(
-				buildings, terrain, zones, flags, misc, neighbor, NetworkCommand.MODE_ROAD
+				buildings, terrain, zones, flags, misc, neighbor, NetworkCommand.MODE_ROAD, PackedByteArray(), map_edge
 			)
 
 
@@ -1020,11 +1032,12 @@ static func _structure_effects(
 	flags: PackedByteArray,
 	site: Rect2i,
 	area: int,
-	random
+	random,
+	map_edge: int = 128,
 ) -> Array[Dictionary]:
 	var effects: Array[Dictionary] = []
 	var anchor := Vector2i(site.position.x, site.end.y - 1)
-	var anchor_index := anchor.x * CityState.MAP_SIZE + anchor.y
+	var anchor_index := anchor.x * map_edge + anchor.y
 	var effect_altitude := _effect_altitude(altitude, flags, anchor_index)
 	for frame in area:
 		for x_offset in area:
@@ -1047,12 +1060,13 @@ static func _set_land_altitude(altitude: PackedByteArray, index: int, value: int
 	altitude[offset + 1] = (altitude[offset + 1] & 0xe0) | (value & 0x1f)
 
 
-static func _point_is_in_bounds(point: Vector2i) -> bool:
-	return point.x >= 0 and point.x < 128 and point.y >= 0 and point.y < 128
+static func _point_is_in_bounds(point: Vector2i, map_edge: int = 128) -> bool:
+	return point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge
 
 
 static func _refresh_altitude(city: CityState, altitude: PackedByteArray) -> void:
-	for index in CityState.TILE_COUNT:
+	var map_edge: int = city.map_size if city != null else 128
+	for index in (map_edge * map_edge):
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 
@@ -1088,16 +1102,17 @@ static func _find_building_site(
 	selected: Vector2i,
 	tile_id: int,
 	area: int,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> Rect2i:
 	if area == 1:
 		return Rect2i(selected, Vector2i.ONE)
 	for origin_x in range(selected.x - area + 1, selected.x + 1):
 		for origin_y in range(selected.y - area + 1, selected.y + 1):
 			var site := Rect2i(origin_x, origin_y, area, area)
-			if site.position.x < 0 or site.position.y < 0 or site.end.x > 128 or site.end.y > 128:
+			if site.position.x < 0 or site.position.y < 0 or site.end.x > map_edge or site.end.y > map_edge:
 				continue
-			if _site_matches(buildings, zones, site, tile_id, rotation):
+			if _site_matches(buildings, zones, site, tile_id, rotation, map_edge):
 				return site
 	return Rect2i()
 
@@ -1107,19 +1122,20 @@ static func _site_matches(
 	zones: PackedByteArray,
 	site: Rect2i,
 	tile_id: int,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> bool:
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
-			if buildings[x * CityState.MAP_SIZE + y] != tile_id:
+			if buildings[x * map_edge + y] != tile_id:
 				return false
 	var far := site.end - Vector2i.ONE
 	var view := rotation & 3
 	return (
-		(zones[site.position.x * CityState.MAP_SIZE + site.position.y] & 0xf0) == CORNER_BOTTOM_LEFT[view]
-		and (zones[far.x * CityState.MAP_SIZE + site.position.y] & 0xf0) == CORNER_BOTTOM_RIGHT[view]
-		and (zones[far.x * CityState.MAP_SIZE + far.y] & 0xf0) == CORNER_TOP_LEFT[view]
-		and (zones[site.position.x * CityState.MAP_SIZE + far.y] & 0xf0) == CORNER_TOP_RIGHT[view]
+		(zones[site.position.x * map_edge + site.position.y] & 0xf0) == CORNER_BOTTOM_LEFT[view]
+		and (zones[far.x * map_edge + site.position.y] & 0xf0) == CORNER_BOTTOM_RIGHT[view]
+		and (zones[far.x * map_edge + far.y] & 0xf0) == CORNER_TOP_LEFT[view]
+		and (zones[site.position.x * map_edge + far.y] & 0xf0) == CORNER_TOP_RIGHT[view]
 	)
 
 
@@ -1150,12 +1166,13 @@ static func _retile_after_demolition(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	points: Array[Vector2i],
-	text_overlays := PackedByteArray()
+	text_overlays := PackedByteArray(),
+	map_edge: int = 128,
 ) -> void:
 	for point in points:
 		for offset in DIRECTIONS:
 			var neighbor: Vector2i = point + offset
-			if neighbor.x < 0 or neighbor.x >= 128 or neighbor.y < 0 or neighbor.y >= 128:
+			if neighbor.x < 0 or neighbor.x >= map_edge or neighbor.y < 0 or neighbor.y >= map_edge:
 				continue
 			NetworkCommand._retile_surface(
 				buildings,
@@ -1165,7 +1182,7 @@ static func _retile_after_demolition(
 				misc,
 				neighbor,
 				NetworkCommand.MODE_ROAD,
-				text_overlays
+				text_overlays, map_edge
 			)
 			NetworkCommand._retile_surface(
 				buildings,
@@ -1175,7 +1192,7 @@ static func _retile_after_demolition(
 				misc,
 				neighbor,
 				NetworkCommand.MODE_RAIL,
-				text_overlays
+				text_overlays, map_edge
 			)
 			NetworkCommand._retile_surface(
 				buildings,
@@ -1185,7 +1202,7 @@ static func _retile_after_demolition(
 				misc,
 				neighbor,
 				NetworkCommand.MODE_POWER,
-				text_overlays
+				text_overlays, map_edge
 			)
-		BuildingCommand._retile_neighborhood(underground, terrain, point, false)
-		BuildingCommand._retile_neighborhood(underground, terrain, point, true)
+		BuildingCommand._retile_neighborhood(underground, terrain, point, false, map_edge)
+		BuildingCommand._retile_neighborhood(underground, terrain, point, true, map_edge)

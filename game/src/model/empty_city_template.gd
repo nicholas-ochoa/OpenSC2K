@@ -3,7 +3,7 @@ extends RefCounted
 
 
 
-static func create() -> Sc2File:
+static func create(map_edge: int = 128) -> Sc2File:
 	var document := Sc2File.new()
 	for id in Sc2File.DECODED_SIZES:
 		var chunk := Sc2Chunk.new()
@@ -20,7 +20,7 @@ static func create() -> Sc2File:
 		0x0000: 0x122, 0x0004: 1, 0x000c: 1900, 0x0014: 20000, 0x001c: 1,
 		0x0050: 10000, 0x0054: 3000, 0x0058: 3,
 		0x0060: 150, 0x0064: 10, 0x0068: 15, 0x006c: 4,
-		0x01f0: CityState.TILE_COUNT,
+		0x01f0: (map_edge * map_edge),
 		0x0fec: 2, 0x0ff4: 1, 0x0ff8: 1, 0x0ffc: 1,
 	}
 	for offset in values:
@@ -35,4 +35,5 @@ static func create() -> Sc2File:
 		document.set_misc_u32(0x06dc + neighbor * 16, 1000)
 		document.set_misc_u32(0x06e0 + neighbor * 16, 1000)
 	document.set_city_name("New City")
+	document.resize_empty_map(map_edge)
 	return document

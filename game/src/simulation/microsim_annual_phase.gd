@@ -81,6 +81,7 @@ static func run(
 	australian_locale := false,
 	mayor_approval := 0
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if bus_passengers < 0 or rail_passengers < 0 or subway_passengers < 0:
@@ -100,7 +101,7 @@ static func run(
 	if (
 		old_payloads.is_empty()
 		or altitude_chunk == null
-		or altitude_chunk.decoded_payload.size() != CityState.TILE_COUNT * 2
+		or altitude_chunk.decoded_payload.size() != (map_edge * map_edge) * 2
 	):
 		return {"ok": false, "error": "annual map payloads are missing or invalid"}
 	old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
@@ -181,7 +182,7 @@ static func run(
 				if int(microsims[offset + 1]) > 48:
 					news_items.append({"type": NEWS_POWER_PLANT, "argument": power_tile + 0x37})
 				if int(microsims[offset + 1]) > 50:
-					var location := _find_microsim_location(changed_payloads.XTXT, record_id)
+					var location := _find_microsim_location(changed_payloads.XTXT, record_id, map_edge)
 					if not location.is_empty():
 						var plant_cost: int = POWER_PLANT_COSTS.get(power_tile, 0)
 						var funds := _read_i32(misc, MISC_FUNDS)
@@ -592,9 +593,9 @@ static func run(
 		if arcology_launch_pending and _has_process_random(random):
 			news_items.append({"type": NEWS_ARCOLOGY_LAUNCH_START, "argument": 0})
 			var text_overlays: PackedByteArray = changed_payloads.XTXT
-			for x in CityState.MAP_SIZE:
-				for y in CityState.MAP_SIZE:
-					var map_index := x * CityState.MAP_SIZE + y
+			for x in map_edge:
+				for y in map_edge:
+					var map_index := x * map_edge + y
 					if int(text_overlays[map_index]) != 0xfe:
 						continue
 					var demolition := DemolishCommand.damage_structure_payloads(
@@ -703,13 +704,13 @@ static func _has_game_random(random) -> bool:
 	return random != null and random.has_method("next_mod")
 
 
-static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int) -> Dictionary:
-	if text_overlays.size() != CityState.MAP_SIZE * CityState.MAP_SIZE:
+static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int, map_edge: int = 128) -> Dictionary:
+	if text_overlays.size() != map_edge * map_edge:
 		return {}
 	var text_id := record_id + 51
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
-			if int(text_overlays[x * CityState.MAP_SIZE + y]) == text_id:
+	for x in map_edge:
+		for y in map_edge:
+			if int(text_overlays[x * map_edge + y]) == text_id:
 				if x == 0 and y == 0:
 					return {}
 				return {"x": x, "y": y}

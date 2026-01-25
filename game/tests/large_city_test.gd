@@ -1,0 +1,139 @@
+extends SceneTree
+
+var failures := 0
+
+func _init() -> void:
+	for edge in Sc2File.MAP_SIZES:
+		check_size(edge)
+		check_large_counts(edge)
+	check_format_guards()
+	print("Large city checks: %d failures" % failures)
+	quit(1 if failures else 0)
+
+func check(ok: bool, message: String) -> void:
+	if not ok:
+		failures += 1
+		push_error(message)
+
+func check_size(edge: int) -> void:
+	print("Checking %d" % edge)
+	var session := NewCityTerrainSession.new()
+	session.independent_template = true
+	session.begin(123, 456)
+	var options := {"size": edge, "ocean": false, "river": true, "hills": 12, "water": 5, "trees": 15}
+	var preview := session.generate_preview("", options, false)
+	check(preview.ok and preview.city.map_size == edge, "Preview size")
+	var created := session.create_city("", "Large City", "Mayor", 1, 1900, options, PackedByteArray())
+	check(created.ok and created.document.map_size == edge, "UI creation size")
+	check(preview.document.find_chunk("ALTM").decoded_payload == created.document.find_chunk("ALTM").decoded_payload, "Preview matches created terrain")
+	var document := EmptyCityTemplate.create(edge)
+	var city := CityState.from_document(document)
+	check(city.map_size == edge, "City size")
+	check(city.index_of(edge - 1, edge - 1) == edge * edge - 1, "Far corner index")
+	check(city.index_of(edge, 0) == -1, "Outside map")
+	check(city.set_building_id(edge - 2, edge - 2, 0x1d), "Far road edit")
+	var saved := document.serialize()
+	var loaded := Sc2File.new()
+	check(loaded.parse(saved.data), "Reload: " + loaded.parse_error)
+	check(loaded.map_size == edge, "Reload size")
+	check(loaded.serialize(true).data == saved.data, "Byte round trip")
+	check(CityState.from_document(loaded).building_id(edge - 2, edge - 2) == 0x1d, "Reload far road")
+	var corner := Vector2i(edge - 10, edge - 10)
+	var road := NetworkCommand.apply(city, 6, 0, corner, corner + Vector2i(0, 4))
+	check(road.ok, "Far road tool: " + road.get("error", ""))
+	check(NetworkCommand.undo(city, road).ok, "Far road undo")
+	var sign := SignCommand.set_sign(city, corner, "Far corner")
+	check(sign.ok and SignCommand.undo(city, sign).ok, "Far sign and undo")
+	var points: Array[Vector2i] = [corner]
+	var raised := TerrainCommand.apply_path(city, 0, 2, corner, points, SimRandom.new(1), true)
+	check(raised.ok, "Far terrain edit: " + raised.get("error", ""))
+	check(TerrainCommand.undo(city, raised).ok, "Far terrain undo")
+	var polygon := CityIsometricRenderer.tile_polygon(city, corner.x, corner.y)
+	var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
+	check(CityIsometricRenderer.screen_to_tile(city, center) == corner, "Far pointer hit test")
+	var things := document.find_chunk("XTHG").decoded_payload.duplicate()
+	var text := city.text_overlays.duplicate()
+	var spawned := MovingThingSpawner.spawn_helicopter(things, text, corner, SimRandom.new(5), edge)
+	check(spawned.spawned, "Far helicopter spawn")
+	document.find_chunk("XTHG").set_decoded_payload(things)
+	city.replace_text_overlays(text)
+	var record: int = spawned.get("record", 1)
+	check(city.thing(record).x == corner.x and city.thing(record).y == corner.y, "Wide object coordinates")
+	var moving := MovingThingPhase.run(city, SimRandom.new(1), SimLfsrRandom.new(1), GameLcgRandom.new(1))
+	check(moving.ok, "Moving phase: " + moving.get("error", ""))
+	check(PowerPhase.run(city, SimRandom.new(1)).ok, "Power")
+	check(WaterPhase.run(city).ok, "Water")
+	check(TrafficPhase.run(city).ok, "Traffic")
+	check(PollutionPhase.run(city).ok, "Pollution")
+	var rotated := CityRotationCommand.apply(city, false)
+	check(rotated.ok, "Rotation: " + rotated.get("error", ""))
+	var rotated_thing := city.thing(record)
+	check(rotated_thing.x == edge - 1 - corner.y and rotated_thing.y == corner.x, "Wide object rotation")
+	var wide_reload := Sc2File.new()
+	check(wide_reload.parse(document.serialize().data), "Wide record reload")
+	check(CityState.from_document(wide_reload).thing(record) == city.thing(record), "Wide record preserved")
+	check(CityViewFilter.surface_copy(city, {}).map_size == edge, "Display copy size")
+	var terrain := NewCityTerrain.generate(document, false, true, 12, 5, 15, SimRandom.new(123), GameLcgRandom.new(456))
+	check(terrain.ok, "Terrain: " + terrain.get("error", ""))
+	var generated := CityState.from_document(document)
+	check(generated.altitude_words.size() == edge * edge, "Generated extent")
+	# A clean generated map exercises every monthly dispatch phase.
+	document.find_chunk("XTHG").decoded_payload.fill(0)
+	generated.set_auto_budget_enabled(true)
+	generated.set_no_disasters_enabled(true)
+	var engine := SimulationEngine.new(generated, 123, 456, 789)
+	for day in 30:
+		var result := engine.advance_day()
+		check(result.ok, "Day %d at %d: %s" % [day, edge, result.get("error", "")])
+		if not result.ok:
+			break
+
+
+func check_format_guards() -> void:
+	var document := EmptyCityTemplate.create(512)
+	var bytes: PackedByteArray = document.serialize().data
+	var invalid := bytes.duplicate()
+	invalid[23] = 2
+	check(not Sc2File.new().parse(invalid), "Reject unknown format version")
+	invalid = bytes.duplicate()
+	invalid[27] = 1
+	check(not Sc2File.new().parse(invalid), "Reject unsupported dimension")
+	invalid = bytes.duplicate()
+	invalid[11] = 0x48
+	check(not Sc2File.new().parse(invalid), "Reject large chunks under SCDH")
+	var refused := CityFileStore.save_copy(document, "user://large-city-must-not-write.SC2", "res://../references")
+	check(not refused.ok, "Reject original-game save extension")
+	check(not document.resize_empty_map(129), "Reject unsupported resize")
+	var image := Image.create(16448, 16, false, Image.FORMAT_RGBA8)
+	var texture := CityMapTexture.create(image)
+	check(texture.get_size() == Vector2(16448, 16), "Large texture extent")
+	var tiles: Array = texture.get_meta("map_tiles", [])
+	check(tiles.size() == 5, "Large image uses bounded GPU tiles")
+	for tile in tiles:
+		check(tile.texture.get_width() <= 4096, "GPU tile width")
+
+func check_large_counts(edge: int) -> void:
+	var document := EmptyCityTemplate.create(edge)
+	var city := CityState.from_document(document)
+	var road_offset := 0x01f0 + 0x1d * 4
+	document.set_misc_u32(road_offset, 65535)
+	document.set_misc_u32(0x01f0, 1)
+	var misc := document.find_chunk("MISC").decoded_payload.duplicate()
+	BuildingCommand._update_building_count(misc, 0, 0, 0x1d, edge)
+	document.find_chunk("MISC").set_decoded_payload(misc)
+	check(document.misc_u32(road_offset) == (0 if edge == 128 else 65536), "building count width %d" % edge)
+	document.set_misc_u32(road_offset, 40000)
+	var value := CityValuePhase.calculate(city)
+	check(value.ok and value.city_value == (-255360 if edge == 128 else 400000), "city value count width %d" % edge)
+	var graphs := GraphHistory.calculate_current_values(city, edge * edge, 25, 50)
+	check(graphs.ok and graphs.values.size() == 16, "graph values cover full map %d" % edge)
+
+	for change in [GrowthPhase._replace_building, NetworkCommand._replace_building, CityRotationCommand._replace_building, RciAftermathPhase._replace_building, SpecialZoneGrowth.replace_building]:
+		var buildings := PackedByteArray()
+		buildings.resize(edge * edge)
+		var zones := buildings.duplicate()
+		document.set_misc_u32(road_offset, 65535)
+		misc = document.find_chunk("MISC").decoded_payload.duplicate()
+		change.call(buildings, zones, misc, buildings.size() - 1, 0x1d)
+		document.find_chunk("MISC").set_decoded_payload(misc)
+		check(document.misc_u32(road_offset) == (0 if edge == 128 else 65536), "tile count mutation width %d: %s" % [edge, change])

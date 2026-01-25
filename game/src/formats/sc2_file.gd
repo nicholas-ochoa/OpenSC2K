@@ -37,6 +37,14 @@ const RAW_CHUNKS := {
 	"TMPL": true,
 }
 
+const MAP_SIZES := [128, 256, 384, 512]
+const FULL_MAP_CHUNKS := ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT"]
+# these maps aren't all the same size; traffic uses half, services use a quarter
+const HALF_MAP_CHUNKS := ["XTRF", "XPLT", "XVAL", "XCRM"]
+const QUARTER_MAP_CHUNKS := ["XPLC", "XFIR", "XPOP", "XROG"]
+
+var map_size := 128
+
 var chunks: Array[Sc2Chunk] = []
 var source_bytes := PackedByteArray()
 var source_path := ""
@@ -61,6 +69,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	chunks.clear()
 	source_bytes = PackedByteArray()
 	parse_error = ""
+	map_size = 128
 
 	if bytes.size() < 12:
 		return _fail("File is shorter than the 12-byte FORM header")
@@ -68,10 +77,17 @@ func parse(bytes: PackedByteArray) -> bool:
 		return _fail("File does not start with FORM")
 	if _read_u32_be(bytes, 4) != bytes.size() - 8:
 		return _fail("FORM length does not match the file size")
-	if _ascii(bytes, 8, 4) != "SCDH":
-		return _fail("FORM type is not SCDH")
-
+	var form_type := _ascii(bytes, 8, 4)
+	if form_type not in ["SCDH", "SCLG"]:
+		return _fail("FORM type is not SCDH or experimental SCLG")
 	var offset := 12
+	if form_type == "SCLG":
+		if bytes.size() < 28 or _ascii(bytes, 12, 4) != "SIZE" or _read_u32_be(bytes, 16) != 8:
+			return _fail("Experimental SIZE header is missing")
+		map_size = _read_u32_be(bytes, 24)
+		if _read_u32_be(bytes, 20) != 1 or map_size not in [256, 384, 512]:
+			return _fail("Unsupported experimental city version or size")
+		offset = 28
 	while offset < bytes.size():
 		if offset + 8 > bytes.size():
 			return _fail("Chunk header at 0x%x is truncated" % offset)
@@ -89,7 +105,7 @@ func parse(bytes: PackedByteArray) -> bool:
 		chunk.chunk_id = chunk_id
 		chunk.source_offset = offset
 		chunk.stored_payload = bytes.slice(payload_start, payload_end)
-		chunk.expected_decoded_size = DECODED_SIZES.get(chunk_id, -1)
+		chunk.expected_decoded_size = decoded_size(chunk_id)
 		chunk.is_compressed = (
 			chunk.expected_decoded_size >= 0 and not RAW_CHUNKS.has(chunk_id)
 		)
@@ -128,6 +144,7 @@ func is_valid() -> bool:
 
 func duplicate_document() -> Sc2File:
 	var result := Sc2File.new()
+	result.map_size = map_size
 	result.source_bytes = source_bytes.duplicate()
 	result.source_path = source_path
 	result.parse_error = parse_error
@@ -219,7 +236,12 @@ func serialize(force_rebuild: bool = false) -> Dictionary:
 		return {"ok": true, "data": source_bytes.duplicate(), "error": ""}
 
 	var body := PackedByteArray()
-	body.append_array("SCDH".to_ascii_buffer())
+	body.append_array(("SCDH" if map_size == 128 else "SCLG").to_ascii_buffer())
+	if map_size != 128:
+		body.append_array("SIZE".to_ascii_buffer())
+		body.append_array(_u32_be(8))
+		body.append_array(_u32_be(1))
+		body.append_array(_u32_be(map_size))
 	for chunk in chunks:
 		var payload := chunk.payload_for_write()
 		body.append_array(chunk.chunk_id.to_ascii_buffer())
@@ -270,4 +292,34 @@ static func _is_chunk_id(value: String) -> bool:
 	for byte in bytes:
 		if byte < 0x20 or byte > 0x7e:
 			return false
+	return true
+
+
+func decoded_size(chunk_id: String) -> int:
+	if chunk_id == "XTHG" and map_size > 128:
+		return 960
+	if chunk_id in FULL_MAP_CHUNKS:
+		return map_size * map_size * (2 if chunk_id == "ALTM" else 1)
+	if chunk_id in HALF_MAP_CHUNKS:
+		return (map_size / 2) * (map_size / 2)
+	if chunk_id in QUARTER_MAP_CHUNKS:
+		return (map_size / 4) * (map_size / 4)
+	return DECODED_SIZES.get(chunk_id, -1)
+
+
+func resize_empty_map(edge: int) -> bool:
+	if edge not in MAP_SIZES:
+		return false
+	if edge == map_size:
+		return true
+	map_size = edge
+	source_bytes.clear()
+	for chunk in chunks:
+		if chunk.chunk_id not in FULL_MAP_CHUNKS + HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS + ["XTHG"]:
+			continue
+		chunk.expected_decoded_size = decoded_size(chunk.chunk_id)
+		var data := PackedByteArray()
+		data.resize(chunk.expected_decoded_size)
+		chunk.set_decoded_payload(data)
+	set_misc_u32(0x01f0, map_size * map_size)
 	return true

@@ -29,15 +29,16 @@ const TRAIN_DIRECTION_ORDERS := [
 static func count_type(things: PackedByteArray, thing_type: int) -> int:
 	var count := 0
 	for record in range(FIRST_RECORD, LAST_RECORD + 1):
-		if things[record * RECORD_SIZE] == thing_type:
+		if ThingData.read(things, record * RECORD_SIZE) == thing_type:
 			count += 1
 	return count
 
 
 static func spawn_helicopter(
-	things: PackedByteArray, text: PackedByteArray, point: Vector2i, random
+	things: PackedByteArray, text: PackedByteArray, point: Vector2i, random,
+	map_edge: int = 128,
 ) -> Dictionary:
-	var index := _index(point)
+	var index := _index(point, map_edge)
 	if (
 		index < 0
 		or text[index] >= TEXT_LABEL_BASE
@@ -49,17 +50,17 @@ static func spawn_helicopter(
 	if record == 0:
 		return {"spawned": false}
 	var offset := record * RECORD_SIZE
-	things[offset] = TYPE_HELICOPTER
-	things[offset + 1] = 2
-	things[offset + 2] = 0
-	things[offset + 3] = point.x
-	things[offset + 4] = point.y
-	things[offset + 5] = 0
-	things[offset + 6] = 8
-	things[offset + 7] = 8
-	things[offset + 8] = random.next_u15() & 0x7f
-	things[offset + 9] = random.next_u15() & 0x7f
-	things[offset + 10] = text[index]
+	ThingData.write(things, offset, TYPE_HELICOPTER)
+	ThingData.write(things, offset + 1, 2)
+	ThingData.write(things, offset + 2, 0)
+	ThingData.write(things, offset + 3, point.x)
+	ThingData.write(things, offset + 4, point.y)
+	ThingData.write(things, offset + 5, 0)
+	ThingData.write(things, offset + 6, 8)
+	ThingData.write(things, offset + 7, 8)
+	ThingData.write(things, offset + 8, random.next_u15() % map_edge)
+	ThingData.write(things, offset + 9, random.next_u15() % map_edge)
+	ThingData.write(things, offset + 10, text[index])
 	text[index] = record + TEXT_LABEL_BASE
 	return {"spawned": true, "record": record, "point": point}
 
@@ -69,9 +70,10 @@ static func spawn_airplane(
 	text: PackedByteArray,
 	point: Vector2i,
 	runway_axis: int,
-	random
+	random,
+	map_edge: int = 128,
 ) -> Dictionary:
-	var source_index := _index(point)
+	var source_index := _index(point, map_edge)
 	if (
 		source_index < 0
 		or text[source_index] >= TEXT_LABEL_BASE
@@ -83,42 +85,42 @@ static func spawn_airplane(
 	if record == 0:
 		return {"spawned": false}
 	var offset := record * RECORD_SIZE
-	things[offset] = TYPE_AIRPLANE
-	things[offset + 6] = 8
-	things[offset + 7] = 8
+	ThingData.write(things, offset, TYPE_AIRPLANE)
+	ThingData.write(things, offset + 6, 8)
+	ThingData.write(things, offset + 7, 8)
 	var attached := point
 	if random.next_u15() % 10 < 5:
 		match random.next_u15() & 3:
 			0:
-				attached = Vector2i(0, random.next_u15() % 100 + 10)
-				things[offset + 1] = 3
+				attached = Vector2i(0, random.next_u15() % (map_edge - 28) + 10)
+				ThingData.write(things, offset + 1, 3)
 			1:
-				attached = Vector2i(random.next_u15() % 100 + 10, 0)
-				things[offset + 1] = 5
+				attached = Vector2i(random.next_u15() % (map_edge - 28) + 10, 0)
+				ThingData.write(things, offset + 1, 5)
 			2:
-				attached = Vector2i(127, random.next_u15() % 100 + 10)
-				things[offset + 1] = 7
+				attached = Vector2i((map_edge - 1), random.next_u15() % (map_edge - 28) + 10)
+				ThingData.write(things, offset + 1, 7)
 			3:
-				attached = Vector2i(random.next_u15() % 100 + 10, 127)
-				things[offset + 1] = 1
-		things[offset + 2] = runway_axis * 0x10 + 3
-		things[offset + 5] = 0x10
+				attached = Vector2i(random.next_u15() % (map_edge - 28) + 10, (map_edge - 1))
+				ThingData.write(things, offset + 1, 1)
+		ThingData.write(things, offset + 2, runway_axis * 0x10 + 3)
+		ThingData.write(things, offset + 5, 0x10)
 		if runway_axis == 0:
-			things[offset + 8] = point.x
-			things[offset + 9] = point.y + 0x10
+			ThingData.write(things, offset + 8, point.x)
+			ThingData.write(things, offset + 9, point.y + 0x10)
 		else:
-			things[offset + 8] = (point.x - 0x10) & 0xff
-			things[offset + 9] = point.y
+			ThingData.write(things, offset + 8, (point.x - 0x10))
+			ThingData.write(things, offset + 9, point.y)
 	else:
-		things[offset + 1] = runway_axis
-		things[offset + 2] = 0
-		things[offset + 5] = 0
-		things[offset + 8] = 0x14
-		things[offset + 9] = 0x14
-	things[offset + 3] = attached.x
-	things[offset + 4] = attached.y
-	var attached_index := _index(attached)
-	things[offset + 10] = text[attached_index]
+		ThingData.write(things, offset + 1, runway_axis)
+		ThingData.write(things, offset + 2, 0)
+		ThingData.write(things, offset + 5, 0)
+		ThingData.write(things, offset + 8, 0x14)
+		ThingData.write(things, offset + 9, 0x14)
+	ThingData.write(things, offset + 3, attached.x)
+	ThingData.write(things, offset + 4, attached.y)
+	var attached_index := _index(attached, map_edge)
+	ThingData.write(things, offset + 10, text[attached_index])
 	text[attached_index] = record + TEXT_LABEL_BASE
 	return {"spawned": true, "record": record, "point": attached}
 
@@ -128,46 +130,47 @@ static func spawn_ship(
 	things: PackedByteArray,
 	text: PackedByteArray,
 	target: Vector2i,
-	random
+	random,
+	map_edge: int = 128,
 ) -> Dictionary:
 	if count_type(things, TYPE_SHIP) >= 1:
 		return {"spawned": false}
 	var start := Vector2i(-1, -1)
 	match random.next_u15() & 3:
 		0:
-			for y in MAP_SIZE:
-				if terrain[2 * MAP_SIZE + y] == 0x10:
+			for y in map_edge:
+				if terrain[2 * map_edge + y] == 0x10:
 					start = Vector2i(2, y)
 		1:
-			for y in MAP_SIZE:
-				if terrain[126 * MAP_SIZE + y] == 0x10:
+			for y in map_edge:
+				if terrain[126 * map_edge + y] == 0x10:
 					start = Vector2i(126, y)
 		2:
-			for x in MAP_SIZE:
-				if terrain[x * MAP_SIZE + 2] == 0x10:
+			for x in map_edge:
+				if terrain[x * map_edge + 2] == 0x10:
 					start = Vector2i(x, 2)
 		3:
-			for x in MAP_SIZE:
-				if terrain[x * MAP_SIZE + 126] == 0x10:
+			for x in map_edge:
+				if terrain[x * map_edge + 126] == 0x10:
 					start = Vector2i(x, 126)
 	if start.x < 0:
 		return {"spawned": false}
-	var start_index := _index(start)
+	var start_index := _index(start, map_edge)
 	if text[start_index] >= TEXT_LABEL_BASE:
 		return {"spawned": false}
 	var record := _first_free_record(things)
 	if record == 0:
 		return {"spawned": false}
 	var offset := record * RECORD_SIZE
-	things[offset] = TYPE_SHIP
-	things[offset + 1] = _direction_between(start, target)
-	things[offset + 2] = 0
-	things[offset + 3] = start.x
-	things[offset + 4] = start.y
-	things[offset + 5] = 1
-	things[offset + 6] = 8
-	things[offset + 7] = 8
-	things[offset + 10] = text[start_index]
+	ThingData.write(things, offset, TYPE_SHIP)
+	ThingData.write(things, offset + 1, _direction_between(start, target))
+	ThingData.write(things, offset + 2, 0)
+	ThingData.write(things, offset + 3, start.x)
+	ThingData.write(things, offset + 4, start.y)
+	ThingData.write(things, offset + 5, 1)
+	ThingData.write(things, offset + 6, 8)
+	ThingData.write(things, offset + 7, 8)
+	ThingData.write(things, offset + 10, text[start_index])
 	text[start_index] = record + TEXT_LABEL_BASE
 	return {"spawned": true, "record": record, "point": start, "target": target}
 
@@ -178,14 +181,15 @@ static func spawn_sailboats(
 	things: PackedByteArray,
 	text: PackedByteArray,
 	point: Vector2i,
-	lfsr_random
+	lfsr_random,
+	map_edge: int = 128,
 ) -> int:
 	if count_type(things, TYPE_SAILBOAT) >= 4:
 		return 0
 	var spawned := 0
 	for direction in CARDINAL_DIRECTIONS:
 		var start: Vector2i = point + direction
-		var index := _index(start)
+		var index := _index(start, map_edge)
 		var record := _first_free_record(things)
 		if (
 			record == 0
@@ -196,15 +200,15 @@ static func spawn_sailboats(
 		):
 			continue
 		var offset := record * RECORD_SIZE
-		things[offset] = TYPE_SAILBOAT
-		things[offset + 1] = lfsr_random.next_mod(3)
-		things[offset + 2] = 0
-		things[offset + 3] = start.x
-		things[offset + 4] = start.y
-		things[offset + 5] = 0
-		things[offset + 6] = 4
-		things[offset + 7] = 4
-		things[offset + 10] = 0
+		ThingData.write(things, offset, TYPE_SAILBOAT)
+		ThingData.write(things, offset + 1, lfsr_random.next_mod(3))
+		ThingData.write(things, offset + 2, 0)
+		ThingData.write(things, offset + 3, start.x)
+		ThingData.write(things, offset + 4, start.y)
+		ThingData.write(things, offset + 5, 0)
+		ThingData.write(things, offset + 6, 4)
+		ThingData.write(things, offset + 7, 4)
+		ThingData.write(things, offset + 10, 0)
 		text[index] = record + TEXT_LABEL_BASE
 		spawned += 1
 	return spawned
@@ -216,10 +220,11 @@ static func spawn_maxis_man(
 	point: Vector2i,
 	target: Vector2i,
 	goal: int,
-	height: int
+	height: int,
+	map_edge: int = 128,
 ) -> Dictionary:
-	var index := _index(point)
-	var target_index := _index(target)
+	var index := _index(point, map_edge)
+	var target_index := _index(target, map_edge)
 	if (
 		index < 0
 		or target_index < 0
@@ -232,18 +237,18 @@ static func spawn_maxis_man(
 	if record == 0:
 		return {"spawned": false}
 	var offset := record * RECORD_SIZE
-	things[offset] = TYPE_MAXIS_MAN
-	things[offset + 1] = _direction_between(point, target)
-	things[offset + 2] = 0
-	things[offset + 3] = point.x
-	things[offset + 4] = point.y
-	things[offset + 5] = clampi(height, 0, 0xff)
-	things[offset + 6] = 8
-	things[offset + 7] = 8
-	things[offset + 8] = target.x
-	things[offset + 9] = target.y
-	things[offset + 10] = text[index]
-	things[offset + 11] = goal
+	ThingData.write(things, offset, TYPE_MAXIS_MAN)
+	ThingData.write(things, offset + 1, _direction_between(point, target))
+	ThingData.write(things, offset + 2, 0)
+	ThingData.write(things, offset + 3, point.x)
+	ThingData.write(things, offset + 4, point.y)
+	ThingData.write(things, offset + 5, clampi(height, 0, 0xff))
+	ThingData.write(things, offset + 6, 8)
+	ThingData.write(things, offset + 7, 8)
+	ThingData.write(things, offset + 8, target.x)
+	ThingData.write(things, offset + 9, target.y)
+	ThingData.write(things, offset + 10, text[index])
+	ThingData.write(things, offset + 11, goal)
 	text[index] = record + TEXT_LABEL_BASE
 	return {
 		"spawned": true,
@@ -260,11 +265,12 @@ static func spawn_train(
 	text: PackedByteArray,
 	station: Vector2i,
 	game_random,
-	lfsr_random
+	lfsr_random,
+	map_edge: int = 128,
 ) -> bool:
 	for search_offset in TRAIN_SEARCH_OFFSETS:
 		var start: Vector2i = station + search_offset
-		if _spawn_train_record(buildings, things, text, start, game_random, lfsr_random):
+		if _spawn_train_record(buildings, things, text, start, game_random, lfsr_random, map_edge):
 			return true
 	return false
 
@@ -275,19 +281,20 @@ static func _spawn_train_record(
 	text: PackedByteArray,
 	start: Vector2i,
 	game_random,
-	lfsr_random
+	lfsr_random,
+	map_edge: int = 128,
 ) -> bool:
 	if count_type(things, TYPE_TRAIN_ENGINE) > 4:
 		return false
 	if start.x < 2 or start.x > 124 or start.y < 2 or start.y > 124:
 		return false
-	var index := _index(start)
+	var index := _index(start, map_edge)
 	var tile := int(buildings[index])
 	if tile < 0x2c or tile > 0x35 or text[index] != 0:
 		return false
 	var initial_direction: int = lfsr_random.next_mod(4)
 	var direction := _train_direction(
-		buildings, text, start, initial_direction, game_random.next_mod(2)
+		buildings, text, start, initial_direction, game_random.next_mod(2), map_edge
 	)
 	if direction < 0:
 		return false
@@ -295,32 +302,32 @@ static func _spawn_train_record(
 	# The original skips all three allocation checks. If no slot is free,
 	# it writes the train into reserved record 0.
 	var engine_record := _first_free_record(things)
-	things[engine_record * RECORD_SIZE] = TYPE_TRAIN_ENGINE
+	ThingData.write(things, engine_record * RECORD_SIZE, TYPE_TRAIN_ENGINE)
 	var first_car_record := _first_free_record(things)
-	things[first_car_record * RECORD_SIZE] = TYPE_TRAIN_CAR
+	ThingData.write(things, first_car_record * RECORD_SIZE, TYPE_TRAIN_CAR)
 	var second_car_record := _first_free_record(things)
-	things[second_car_record * RECORD_SIZE] = TYPE_TRAIN_CAR
+	ThingData.write(things, second_car_record * RECORD_SIZE, TYPE_TRAIN_CAR)
 	var records: Array[int] = [engine_record, first_car_record, second_car_record]
 	for record in records:
 		var offset: int = record * RECORD_SIZE
-		things[offset + 1] = direction
-		things[offset + 3] = start.x
-		things[offset + 4] = start.y
-		things[offset + 5] = 0
+		ThingData.write(things, offset + 1, direction)
+		ThingData.write(things, offset + 3, start.x)
+		ThingData.write(things, offset + 4, start.y)
+		ThingData.write(things, offset + 5, 0)
 	var engine_offset := engine_record * RECORD_SIZE
 	var first_car_offset := first_car_record * RECORD_SIZE
 	var second_car_offset := second_car_record * RECORD_SIZE
-	things[engine_offset + 6] = start.x + CARDINAL_DIRECTIONS[direction].x
-	things[engine_offset + 7] = start.y + CARDINAL_DIRECTIONS[direction].y
-	things[first_car_offset + 6] = start.x
-	things[first_car_offset + 7] = start.y
-	things[second_car_offset + 6] = start.x
-	things[second_car_offset + 7] = start.y
-	things[engine_offset + 10] = text[index]
-	things[first_car_offset + 10] = 0
-	things[second_car_offset + 10] = 0
-	things[engine_offset + 2] = first_car_record
-	things[first_car_offset + 2] = second_car_record
+	ThingData.write(things, engine_offset + 6, start.x + CARDINAL_DIRECTIONS[direction].x)
+	ThingData.write(things, engine_offset + 7, start.y + CARDINAL_DIRECTIONS[direction].y)
+	ThingData.write(things, first_car_offset + 6, start.x)
+	ThingData.write(things, first_car_offset + 7, start.y)
+	ThingData.write(things, second_car_offset + 6, start.x)
+	ThingData.write(things, second_car_offset + 7, start.y)
+	ThingData.write(things, engine_offset + 10, text[index])
+	ThingData.write(things, first_car_offset + 10, 0)
+	ThingData.write(things, second_car_offset + 10, 0)
+	ThingData.write(things, engine_offset + 2, first_car_record)
+	ThingData.write(things, first_car_offset + 2, second_car_record)
 	text[index] = engine_record + TEXT_LABEL_BASE
 	return true
 
@@ -330,12 +337,13 @@ static func _train_direction(
 	text: PackedByteArray,
 	point: Vector2i,
 	initial_direction: int,
-	order_index: int
+	order_index: int,
+	map_edge: int = 128,
 ) -> int:
 	for offset in TRAIN_DIRECTION_ORDERS[order_index & 1]:
 		var direction: int = (initial_direction + int(offset)) & 3
 		var neighbor: Vector2i = point + CARDINAL_DIRECTIONS[direction]
-		var index := _index(neighbor)
+		var index := _index(neighbor, map_edge)
 		if index >= 0 and text[index] < TEXT_LABEL_BASE and _train_route_tile(buildings[index]):
 			return direction
 	return -1
@@ -356,7 +364,7 @@ static func _train_route_tile(tile_value: int) -> bool:
 
 static func _first_free_record(things: PackedByteArray) -> int:
 	for record in range(FIRST_RECORD, LAST_RECORD + 1):
-		if things[record * RECORD_SIZE] == 0:
+		if ThingData.read(things, record * RECORD_SIZE) == 0:
 			return record
 	return 0
 
@@ -374,7 +382,7 @@ static func _direction_between(start: Vector2i, target: Vector2i) -> int:
 	return 1 if difference.y < 0 else 3
 
 
-static func _index(point: Vector2i) -> int:
-	if point.x < 0 or point.x >= MAP_SIZE or point.y < 0 or point.y >= MAP_SIZE:
+static func _index(point: Vector2i, map_edge: int = 128) -> int:
+	if point.x < 0 or point.x >= map_edge or point.y < 0 or point.y >= map_edge:
 		return -1
-	return point.x * MAP_SIZE + point.y
+	return point.x * map_edge + point.y

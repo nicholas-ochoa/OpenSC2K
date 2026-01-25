@@ -101,6 +101,7 @@ static func create_image(
 	validate_required_assets := true,
 	include_special_overlays := true
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
 	if palette == null or not palette.is_valid():
@@ -116,16 +117,16 @@ static func create_image(
 		if not asset_errors.is_empty():
 			return _failure(asset_errors[0])
 
-	var output_size := output_size_for_view(view_size)
+	var output_size := output_size_for_view(view_size, map_edge)
 	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
 	output.fill(Color.TRANSPARENT if transparent_background else Color("18242c"))
-	var origin_x: int = configuration.side_margin + CityState.MAP_SIZE * configuration.half_width
+	var origin_x: int = configuration.side_margin + map_edge * configuration.half_width
 	var cache: Dictionary = {}
 
-	for diagonal in CityState.MAP_SIZE * 2 - 1:
+	for diagonal in map_edge * 2 - 1:
 		for y in diagonal + 1:
 			var x := diagonal - y
-			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+			if x >= map_edge or y >= map_edge:
 				continue
 			_draw_tile(
 				output, city, palette, sprites, cache, configuration,
@@ -147,6 +148,7 @@ static func patch_static_image(
 	view_size := VIEW_LARGE,
 	animation_phase := 0
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if base_image == null or base_image.is_empty():
 		return _failure("base city image is invalid")
 	if city == null or not city.is_valid():
@@ -158,15 +160,15 @@ static func patch_static_image(
 	var configuration := view_configuration(view_size)
 	if configuration.is_empty():
 		return _failure("city view size is invalid")
-	var native_size := output_size_for_view(view_size)
+	var native_size := output_size_for_view(view_size, map_edge)
 	var output_scale := 1
-	if base_image.get_size() == IMAGE_SIZE_LARGE:
+	if base_image.get_size() == output_size_for_view(VIEW_LARGE, map_edge):
 		output_scale = int(configuration.divisor)
 	elif base_image.get_size() != native_size:
 		return _failure("base city image has the wrong size")
 	var sprite_limit := _maximum_sprite_size(sprites)
 	var native_rect := dirty_screen_rect(
-		dirty_indices, sprites, view_size, sprite_limit
+		dirty_indices, sprites, view_size, sprite_limit, map_edge
 	)
 	if native_rect.get_area() <= 0:
 		return _failure("dirty city region is empty")
@@ -177,7 +179,7 @@ static func patch_static_image(
 	)
 	var origin_x := (
 		int(configuration.side_margin)
-		+ CityState.MAP_SIZE * int(configuration.half_width)
+		+ map_edge * int(configuration.half_width)
 		- native_rect.position.x
 	)
 	var region := Image.create(
@@ -190,7 +192,7 @@ static func patch_static_image(
 	# rectangle test below, including the full altitude and sprite allowance
 	var half_width := int(configuration.half_width)
 	var half_height := int(configuration.half_height)
-	var full_origin_x := int(configuration.side_margin) + CityState.MAP_SIZE * half_width
+	var full_origin_x := int(configuration.side_margin) + map_edge * half_width
 	var top_margin := int(configuration.top_margin)
 	var bottom_extra := int(configuration.tile_height) + int(sprite_limit.x / 4) + 1
 	var top_extra := 32 * int(configuration.altitude_step) + sprite_limit.y
@@ -199,12 +201,12 @@ static func patch_static_image(
 	var first_difference := floori(float(native_rect.position.x - full_origin_x - sprite_limit.x - int(configuration.tile_width) - 1) / half_width)
 	var last_difference := ceili(float(native_rect.end.x - full_origin_x + sprite_limit.x) / half_width)
 	for diagonal in range(first_diagonal, last_diagonal + 1):
-		var first_y := maxi(maxi(0, diagonal - 127), ceili(float(diagonal - last_difference) / 2.0))
-		var last_y := mini(mini(127, diagonal), floori(float(diagonal - first_difference) / 2.0))
+		var first_y := maxi(maxi(0, diagonal - (map_edge - 1)), ceili(float(diagonal - last_difference) / 2.0))
+		var last_y := mini(mini(map_edge - 1, diagonal), floori(float(diagonal - first_difference) / 2.0))
 		for y in range(first_y, last_y + 1):
 			var x := diagonal - y
 			if not _potential_tile_bounds(
-				configuration, sprite_limit, x, y
+				configuration, sprite_limit, x, y, map_edge
 			).intersects(native_rect):
 				continue
 			_draw_tile(
@@ -244,7 +246,8 @@ static func dirty_screen_rect(
 	dirty_indices: PackedInt32Array,
 	sprites: Sc2SpriteArchive,
 	view_size := VIEW_LARGE,
-	sprite_limit := Vector2i.ZERO
+	sprite_limit := Vector2i.ZERO,
+	map_edge: int = 128,
 ) -> Rect2i:
 	var configuration := view_configuration(view_size)
 	if configuration.is_empty() or sprites == null or not sprites.is_valid():
@@ -258,19 +261,19 @@ static func dirty_screen_rect(
 	var seen := {}
 	for value in dirty_indices:
 		var index := int(value)
-		if index < 0 or index >= CityState.TILE_COUNT or seen.has(index):
+		if index < 0 or index >= (map_edge * map_edge) or seen.has(index):
 			continue
 		seen[index] = true
-		var x := int(index / CityState.MAP_SIZE)
-		var y := index % CityState.MAP_SIZE
+		var x := int(index / map_edge)
+		var y := index % map_edge
 		var bounds := _potential_tile_bounds(
-			configuration, sprite_limit, x, y
+			configuration, sprite_limit, x, y, map_edge
 		)
 		result = result.merge(bounds) if has_result else bounds
 		has_result = true
 	if not has_result:
 		return Rect2i()
-	return result.intersection(Rect2i(Vector2i.ZERO, output_size_for_view(view_size)))
+	return result.intersection(Rect2i(Vector2i.ZERO, output_size_for_view(view_size, map_edge)))
 
 
 static func _maximum_sprite_size(sprites: Sc2SpriteArchive) -> Vector2i:
@@ -284,11 +287,12 @@ static func _maximum_sprite_size(sprites: Sc2SpriteArchive) -> Vector2i:
 
 
 static func _potential_tile_bounds(
-	configuration: Dictionary, sprite_limit: Vector2i, x: int, y: int
+	configuration: Dictionary, sprite_limit: Vector2i, x: int, y: int,
+	map_edge: int = 128,
 ) -> Rect2i:
 	var origin_x := (
 		int(configuration.side_margin)
-		+ CityState.MAP_SIZE * int(configuration.half_width)
+		+ map_edge * int(configuration.half_width)
 	)
 	var screen_x := origin_x + (x - y) * int(configuration.half_width)
 	var flat_base_y := (
@@ -319,20 +323,21 @@ static func _potential_tile_bounds(
 static func validate_assets(
 	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
 ) -> PackedStringArray:
+	var map_edge: int = city.map_size if city != null else 128
 	var errors := PackedStringArray()
 	var configuration := view_configuration(view_size)
 	if configuration.is_empty():
 		errors.append("city view size is invalid")
 		return errors
 	var missing: Dictionary = {}
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
+	for x in map_edge:
+		for y in map_edge:
 			var terrain_sprite := terrain_sprite_id(
 				city.terrain_id(x, y), city.is_water(x, y), configuration.sprite_base
 			)
 			if sprites.find_sprite(terrain_sprite) == null:
 				missing[terrain_sprite] = true
-			if x == CityState.MAP_SIZE - 1 or y == CityState.MAP_SIZE - 1:
+			if x == map_edge - 1 or y == map_edge - 1:
 				if city.land_altitude(x, y) > 0:
 					var land_edge_sprite: int = configuration.sprite_base + 269
 					if sprites.find_sprite(land_edge_sprite) == null:
@@ -441,20 +446,21 @@ static func view_configuration(view_size: int) -> Dictionary:
 	return {}
 
 
-static func output_size_for_view(view_size: int) -> Vector2i:
+static func output_size_for_view(view_size: int, map_edge: int = 128) -> Vector2i:
 	var configuration := view_configuration(view_size)
 	if configuration.is_empty():
 		return Vector2i.ZERO
-	return IMAGE_SIZE_LARGE / int(configuration.divisor)
+	return (IMAGE_SIZE_LARGE + Vector2i((map_edge - 128) * 32, (map_edge - 128) * 16)) / int(configuration.divisor)
 
 
 static func tile_polygon(city: CityState, x: int, y: int) -> PackedVector2Array:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return PackedVector2Array()
 	var altitude := city.land_altitude(x, y)
 	if city.terrain_id(x, y) >= 0x10:
 		altitude = city.water_altitude(x, y)
-	var origin_x := SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+	var origin_x := SIDE_MARGIN + map_edge * HALF_WIDTH
 	var left := Vector2(
 		origin_x + (x - y) * HALF_WIDTH,
 		TOP_MARGIN + (x + y) * HALF_HEIGHT - altitude * ALTITUDE_STEP
@@ -489,12 +495,13 @@ static func terrain_surface_polygon(
 
 # try the heights and keep the front tile; one inverse transform isn't enough
 static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return Vector2i(-1, -1)
 	# a tile can use any saved land or water altitude from 0 through 31. solve
 	# the isometric axes for each possible altitude, then test only nearby map
 	# cells. this keeps the same front-most result as the old full-map scan
-	var origin_x := SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+	var origin_x := SIDE_MARGIN + map_edge * HALF_WIDTH
 	var difference_axis := (point.x - origin_x - HALF_WIDTH) / float(HALF_WIDTH)
 	var candidates: Dictionary = {}
 	for altitude in 32:
@@ -511,13 +518,13 @@ static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
 				var x := center_x + x_offset
 				var y := center_y + y_offset
 				if city.index_of(x, y) >= 0:
-					candidates[x * CityState.MAP_SIZE + y] = true
+					candidates[x * map_edge + y] = true
 	var result := Vector2i(-1, -1)
 	var result_order := -1
 	for index in candidates:
-		var x: int = int(index) / CityState.MAP_SIZE
-		var y: int = int(index) % CityState.MAP_SIZE
-		var order := (x + y) * CityState.MAP_SIZE + y
+		var x: int = int(index) / map_edge
+		var y: int = int(index) % map_edge
+		var order := (x + y) * map_edge + y
 		if not city.tile_is_visible(x, y) or order <= result_order:
 			continue
 		var polygon := tile_polygon(city, x, y)
@@ -533,6 +540,7 @@ static func transient_effect_position(
 	sprite_height: int,
 	view_size := VIEW_LARGE
 ) -> Vector2i:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return Vector2i(-1, -1)
 	var point: Vector2i = effect.get("point", Vector2i(-1, -1))
@@ -551,7 +559,7 @@ static func transient_effect_position(
 	)
 	return Vector2i(
 		int(configuration.side_margin)
-			+ CityState.MAP_SIZE * int(configuration.half_width)
+			+ map_edge * int(configuration.half_width)
 			+ (point.x - point.y) * int(configuration.half_width) + offset.x,
 		int(configuration.top_margin)
 			+ (point.x + point.y) * int(configuration.half_height)
@@ -731,10 +739,11 @@ static func _draw_tile(
 static func edge_stack_visuals(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE
 ) -> Array[Dictionary]:
+	var map_edge: int = city.map_size if city != null else 128
 	var visuals: Array[Dictionary] = []
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return visuals
-	if x != CityState.MAP_SIZE - 1 and y != CityState.MAP_SIZE - 1:
+	if x != map_edge - 1 and y != map_edge - 1:
 		return visuals
 	var configuration := view_configuration(view_size)
 	if configuration.is_empty():
@@ -1295,16 +1304,17 @@ static func moving_thing_draw_commands(
 	view_size := VIEW_LARGE,
 	animation_phase := 0
 ) -> Array[Dictionary]:
+	var map_edge: int = city.map_size if city != null else 128
 	var commands: Array[Dictionary] = []
 	if city == null or not city.is_valid() or sprites == null or not sprites.is_valid():
 		return commands
 	var configuration := view_configuration(view_size)
 	if configuration.is_empty():
 		return commands
-	for diagonal in CityState.MAP_SIZE * 2 - 1:
+	for diagonal in map_edge * 2 - 1:
 		for y in diagonal + 1:
 			var x := diagonal - y
-			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+			if x >= map_edge or y >= map_edge:
 				continue
 			var visual := moving_thing_visual(
 				city, x, y, view_size, animation_phase
@@ -1314,7 +1324,7 @@ static func moving_thing_draw_commands(
 			var visual_commands := moving_thing_draw_commands_for_visual(
 				city, sprites, visual, configuration
 			)
-			var draw_order := (x + y) * CityState.MAP_SIZE + y
+			var draw_order := (x + y) * map_edge + y
 			for command in visual_commands:
 				command.depth_order = draw_order
 				commands.append(command)
@@ -1327,6 +1337,7 @@ static func dynamic_draw_commands(
 	view_size := VIEW_LARGE,
 	animation_phase := 0
 ) -> Array[Dictionary]:
+	var map_edge: int = city.map_size if city != null else 128
 	var commands: Array[Dictionary] = []
 	if city == null or not city.is_valid() or sprites == null or not sprites.is_valid():
 		return commands
@@ -1344,7 +1355,7 @@ static func dynamic_draw_commands(
 		):
 			continue
 		entries.append({
-			"order": (point.x + point.y) * CityState.MAP_SIZE + point.y,
+			"order": (point.x + point.y) * map_edge + point.y,
 			"record": record,
 			"point": point,
 			"special": false,
@@ -1353,10 +1364,10 @@ static func dynamic_draw_commands(
 		var found := city.text_overlays.find(int(overlay))
 		while found >= 0:
 			var point := Vector2i(
-				int(found / CityState.MAP_SIZE), found % CityState.MAP_SIZE
+				int(found / map_edge), found % map_edge
 			)
 			entries.append({
-				"order": (point.x + point.y) * CityState.MAP_SIZE + point.y,
+				"order": (point.x + point.y) * map_edge + point.y,
 				"record": CityState.THING_COUNT,
 				"point": point,
 				"special": true,
@@ -1401,6 +1412,7 @@ static func special_overlay_draw_command(
 	visual: Dictionary,
 	configuration: Dictionary
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if visual.is_empty() or configuration.is_empty():
 		return {}
 	var entry := sprites.find_sprite(int(visual.sprite_id))
@@ -1409,7 +1421,7 @@ static func special_overlay_draw_command(
 	var altitude := city.object_altitude(point.x, point.y)
 	var screen_x := (
 		int(configuration.side_margin)
-		+ CityState.MAP_SIZE * int(configuration.half_width)
+		+ map_edge * int(configuration.half_width)
 		+ (point.x - point.y) * int(configuration.half_width)
 	)
 	var base_y := (
@@ -1436,13 +1448,14 @@ static func moving_thing_draw_commands_for_visual(
 	visual: Dictionary,
 	configuration: Dictionary
 ) -> Array[Dictionary]:
+	var map_edge: int = city.map_size if city != null else 128
 	var commands: Array[Dictionary] = []
 	if visual.is_empty() or configuration.is_empty():
 		return commands
 	if visual.monster:
 		var monster_origin_x := (
 			int(configuration.side_margin)
-			+ CityState.MAP_SIZE * int(configuration.half_width)
+			+ map_edge * int(configuration.half_width)
 		)
 		var monster_origin_y: int = (
 			int(configuration.top_margin) + int(configuration.tile_height)
@@ -1473,7 +1486,7 @@ static func moving_thing_draw_commands_for_visual(
 	if visual.tornado:
 		var right_x: int = (
 			int(configuration.side_margin)
-			+ CityState.MAP_SIZE * int(configuration.half_width)
+			+ map_edge * int(configuration.half_width)
 			+ (visual.x - visual.y) * int(configuration.half_width)
 			+ int(configuration.half_width)
 		)
@@ -1486,7 +1499,7 @@ static func moving_thing_draw_commands_for_visual(
 		)
 	elif visual.train:
 		var center_x: int = (
-			SIDE_MARGIN + CityState.MAP_SIZE * HALF_WIDTH
+			SIDE_MARGIN + map_edge * HALF_WIDTH
 			+ (visual.x - visual.y) * HALF_WIDTH + HALF_WIDTH + visual.screen_x
 		)
 		destination = Vector2i(
@@ -1500,7 +1513,7 @@ static func moving_thing_draw_commands_for_visual(
 		var view_size := int(configuration.view_size)
 		var center_x: int = (
 			int(configuration.side_margin)
-			+ CityState.MAP_SIZE * int(configuration.half_width)
+			+ map_edge * int(configuration.half_width)
 			+ (visual.x - visual.y) * int(configuration.half_width)
 			+ int(configuration.half_width)
 			+ int((visual.px - visual.py) / THING_X_DIVISOR[view_size])
@@ -1545,6 +1558,7 @@ static func _moving_draw_command(
 static func static_occlusion_commands(
 	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
 ) -> Array[Dictionary]:
+	var map_edge: int = city.map_size if city != null else 128
 	var commands: Array[Dictionary] = []
 	if city == null or not city.is_valid() or sprites == null or not sprites.is_valid():
 		return commands
@@ -1553,14 +1567,14 @@ static func static_occlusion_commands(
 		return commands
 	var origin_x: int = (
 		int(configuration.side_margin)
-		+ CityState.MAP_SIZE * int(configuration.half_width)
+		+ map_edge * int(configuration.half_width)
 	)
-	for diagonal in CityState.MAP_SIZE * 2 - 1:
+	for diagonal in map_edge * 2 - 1:
 		for y in diagonal + 1:
 			var x := diagonal - y
-			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+			if x >= map_edge or y >= map_edge:
 				continue
-			var order := (x + y) * CityState.MAP_SIZE + y
+			var order := (x + y) * map_edge + y
 			commands.append_array(_tile_occlusion_commands(
 				city, sprites, configuration, origin_x, x, y, order
 			))
@@ -1574,6 +1588,7 @@ static func patch_static_occlusion_commands(
 	dirty_indices: PackedInt32Array,
 	view_size := VIEW_LARGE
 ) -> Array[Dictionary]:
+	var map_edge: int = city.map_size if city != null else 128
 	if (
 		base_commands.is_empty()
 		or city == null
@@ -1587,16 +1602,16 @@ static func patch_static_occlusion_commands(
 		return []
 	var origin_x: int = (
 		int(configuration.side_margin)
-		+ CityState.MAP_SIZE * int(configuration.half_width)
+		+ map_edge * int(configuration.half_width)
 	)
 	var replacements := {}
 	for value in dirty_indices:
 		var index := int(value)
-		if index < 0 or index >= CityState.TILE_COUNT:
+		if index < 0 or index >= (map_edge * map_edge):
 			continue
-		var x := int(index / CityState.MAP_SIZE)
-		var y := index % CityState.MAP_SIZE
-		var order := (x + y) * CityState.MAP_SIZE + y
+		var x := int(index / map_edge)
+		var y := index % map_edge
+		var order := (x + y) * map_edge + y
 		replacements[order] = _tile_occlusion_commands(
 			city, sprites, configuration, origin_x, x, y, order
 		)
@@ -1628,6 +1643,7 @@ static func _tile_occlusion_commands(
 	y: int,
 	draw_order: int
 ) -> Array[Dictionary]:
+	var map_edge: int = city.map_size if city != null else 128
 	var commands: Array[Dictionary] = []
 	if not city.tile_is_visible(x, y):
 		return commands
@@ -1640,7 +1656,7 @@ static func _tile_occlusion_commands(
 	var flat_base_y := (
 		int(configuration.top_margin) + (x + y) * int(configuration.half_height)
 	)
-	if x == CityState.MAP_SIZE - 1 or y == CityState.MAP_SIZE - 1:
+	if x == map_edge - 1 or y == map_edge - 1:
 		for visual in edge_stack_visuals(city, x, y, configuration.view_size):
 			_append_occluder(
 				commands, sprites, visual.sprite_id, false,

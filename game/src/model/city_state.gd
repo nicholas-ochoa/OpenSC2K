@@ -20,6 +20,7 @@ const MISC_NO_DISASTERS_OPTION := 0x1000
 
 # scurk artwork outside xbld is kept only for this workspace session
 var scurk_artwork_stamps: Array[Dictionary] = []
+var map_size := 128
 var document: Sc2File
 var load_error := ""
 
@@ -40,6 +41,7 @@ var _masked_tile_flag_signatures: Dictionary = {}
 static func from_document(source: Sc2File) -> CityState:
 	var city := CityState.new()
 	city.document = source
+	city.map_size = source.map_size if source != null else 128
 	if source == null or not source.is_valid():
 		city.load_error = "The source document is not valid"
 		return city
@@ -50,9 +52,9 @@ static func from_document(source: Sc2File) -> CityState:
 			city.load_error = "Required chunk %s is missing" % chunk_id
 			return city
 
-	city.altitude_words.resize(TILE_COUNT)
+	city.altitude_words.resize((city.map_size * city.map_size))
 	var altitude_data := source.find_chunk("ALTM").decoded_payload
-	for index in TILE_COUNT:
+	for index in (city.map_size * city.map_size):
 		var byte_offset := index * 2
 		city.altitude_words[index] = (
 			(altitude_data[byte_offset] << 8) | altitude_data[byte_offset + 1]
@@ -72,9 +74,9 @@ func is_valid() -> bool:
 
 
 func index_of(x: int, y: int) -> int:
-	if x < 0 or x >= MAP_SIZE or y < 0 or y >= MAP_SIZE:
+	if x < 0 or x >= map_size or y < 0 or y >= map_size:
 		return -1
-	return x * MAP_SIZE + y
+	return x * map_size + y
 
 
 func land_altitude(x: int, y: int) -> int:
@@ -92,7 +94,7 @@ func object_altitude(x: int, y: int) -> int:
 	if index < 0:
 		return 0
 	if (
-		object_altitude_overrides.size() == TILE_COUNT
+		object_altitude_overrides.size() == (map_size * map_size)
 		and object_altitude_overrides[index] >= 0
 	):
 		return object_altitude_overrides[index]
@@ -137,7 +139,7 @@ func set_building_id(x: int, y: int, value: int) -> bool:
 
 
 func replace_buildings(value: PackedByteArray) -> bool:
-	if value.size() != TILE_COUNT:
+	if value.size() != (map_size * map_size):
 		return false
 	var chunk := document.find_chunk("XBLD")
 	if chunk == null or not chunk.set_decoded_payload(value):
@@ -179,7 +181,7 @@ func set_building_corners(x: int, y: int, value: int) -> bool:
 
 
 func replace_zones(value: PackedByteArray) -> bool:
-	if value.size() != TILE_COUNT:
+	if value.size() != (map_size * map_size):
 		return false
 	var chunk := document.find_chunk("XZON")
 	if chunk == null or not chunk.set_decoded_payload(value):
@@ -225,7 +227,7 @@ func set_text_overlay_id(x: int, y: int, value: int) -> bool:
 
 
 func replace_text_overlays(value: PackedByteArray) -> bool:
-	if value.size() != TILE_COUNT:
+	if value.size() != (map_size * map_size):
 		return false
 	var chunk := document.find_chunk("XTXT")
 	if chunk == null or not chunk.set_decoded_payload(value):
@@ -267,9 +269,9 @@ func traffic_density(x: int, y: int) -> int:
 	if index < 0:
 		return 0
 	var chunk := document.find_chunk("XTRF")
-	if chunk == null or chunk.decoded_payload.size() != COARSE_MAP_SIZE * COARSE_MAP_SIZE:
+	if chunk == null or chunk.decoded_payload.size() != (map_size / 2) * (map_size / 2):
 		return 0
-	return chunk.decoded_payload[(x >> 1) * COARSE_MAP_SIZE + (y >> 1)]
+	return chunk.decoded_payload[(x >> 1) * (map_size / 2) + (y >> 1)]
 
 
 func set_tile_flag(x: int, y: int, mask: int, enabled: bool) -> bool:
@@ -290,7 +292,7 @@ func set_tile_flag(x: int, y: int, mask: int, enabled: bool) -> bool:
 
 
 func replace_tile_flags(value: PackedByteArray) -> bool:
-	if value.size() != TILE_COUNT:
+	if value.size() != (map_size * map_size):
 		return false
 	var chunk := document.find_chunk("XBIT")
 	if chunk == null or not chunk.set_decoded_payload(value):
@@ -416,13 +418,13 @@ func thing(thing_id: int) -> Dictionary:
 		"type": int(chunk.decoded_payload[offset]),
 		"direction": int(chunk.decoded_payload[offset + 1]),
 		"state": int(chunk.decoded_payload[offset + 2]),
-		"x": int(chunk.decoded_payload[offset + 3]),
-		"y": int(chunk.decoded_payload[offset + 4]),
+		"x": ThingData.read(chunk.decoded_payload, offset + 3),
+		"y": ThingData.read(chunk.decoded_payload, offset + 4),
 		"z": int(chunk.decoded_payload[offset + 5]),
 		"px": int(chunk.decoded_payload[offset + 6]),
 		"py": int(chunk.decoded_payload[offset + 7]),
-		"dx": int(chunk.decoded_payload[offset + 8]),
-		"dy": int(chunk.decoded_payload[offset + 9]),
+		"dx": ThingData.read(chunk.decoded_payload, offset + 8),
+		"dy": ThingData.read(chunk.decoded_payload, offset + 9),
 		"label": int(chunk.decoded_payload[offset + 10]),
 		"goal": int(chunk.decoded_payload[offset + 11]),
 	}

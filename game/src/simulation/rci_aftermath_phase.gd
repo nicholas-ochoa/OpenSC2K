@@ -96,6 +96,7 @@ const MILITARY_TILE_COUNT_INDEX := {
 
 
 static func run(city: CityState, random, season: int) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -109,11 +110,11 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 	var graph_chunk := city.document.find_chunk("XGRP")
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
-	if building_chunk == null or building_chunk.decoded_payload.size() != CityState.TILE_COUNT:
+	if building_chunk == null or building_chunk.decoded_payload.size() != (map_edge * map_edge):
 		return {"ok": false, "error": "XBLD is missing or has the wrong size"}
-	if zone_chunk == null or zone_chunk.decoded_payload.size() != CityState.TILE_COUNT:
+	if zone_chunk == null or zone_chunk.decoded_payload.size() != (map_edge * map_edge):
 		return {"ok": false, "error": "XZON is missing or has the wrong size"}
-	if flag_chunk == null or flag_chunk.decoded_payload.size() != CityState.TILE_COUNT:
+	if flag_chunk == null or flag_chunk.decoded_payload.size() != (map_edge * map_edge):
 		return {"ok": false, "error": "XBIT is missing or has the wrong size"}
 	if graph_chunk == null or graph_chunk.decoded_payload.size() != 16 * 52 * 4:
 		return {"ok": false, "error": "XGRP is missing or has the wrong size"}
@@ -198,8 +199,9 @@ static func _update_random_tree(
 	misc: PackedByteArray,
 	map_changes: Array
 ) -> void:
-	var point := Vector2i(random.next_u15() & 0x7f, random.next_u15() & 0x7f)
-	var index := point.x * CityState.MAP_SIZE + point.y
+	var map_edge: int = city.map_size if city != null else 128
+	var point := Vector2i(random.next_u15() % map_edge, random.next_u15() % map_edge)
+	var index := point.x * map_edge + point.y
 	var old_tile := int(buildings[index])
 	if old_tile == RADIOACTIVITY_TILE and (random.next_u15() & 0x0f) == 0:
 		_replace_building(buildings, zones, misc, index, 0)
@@ -215,14 +217,14 @@ static func _update_random_tree(
 
 	match random.next_u15() & 3:
 		0:
-			point.x = mini(point.x + 1, CityState.MAP_SIZE - 1)
+			point.x = mini(point.x + 1, map_edge - 1)
 		1:
 			point.x = maxi(point.x - 1, 0)
 		2:
-			point.y = mini(point.y + 1, CityState.MAP_SIZE - 1)
+			point.y = mini(point.y + 1, map_edge - 1)
 		3:
 			point.y = maxi(point.y - 1, 0)
-	index = point.x * CityState.MAP_SIZE + point.y
+	index = point.x * map_edge + point.y
 	old_tile = int(buildings[index])
 	if flags[index] & 0x04 != 0 or old_tile >= 0x0c or old_tile == RADIOACTIVITY_TILE:
 		return
@@ -333,8 +335,8 @@ static func _replace_building(
 	var military := (zones[index] & 0x0f) == 7
 	var old_offset := _tile_count_offset(old_tile, military)
 	var new_offset := _tile_count_offset(new_tile, military)
-	_write_u32(misc, old_offset, (_read_u32(misc, old_offset) - 1) & 0xffff)
-	_write_u32(misc, new_offset, (_read_u32(misc, new_offset) + 1) & 0xffff)
+	_write_u32(misc, old_offset, (_read_u32(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+	_write_u32(misc, new_offset, (_read_u32(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
 	buildings[index] = new_tile
 
 

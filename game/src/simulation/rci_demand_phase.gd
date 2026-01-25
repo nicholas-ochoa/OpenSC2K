@@ -157,9 +157,10 @@ static func run(city: CityState) -> Dictionary:
 
 
 static func connection_counts(city: CityState) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var commerce := 0
 	var industry := 0
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		if city.text_overlays[index] != CONNECTION_LABEL:
 			continue
 		var tile := city.buildings[index]

@@ -12,6 +12,7 @@ const SOLAR_EFFICIENCY_ORDINANCE := 0x10000
 
 
 static func run(city: CityState, random: SimRandom) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null:
@@ -24,8 +25,8 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 	var total_generation := 0
 	var supplied_consumers := 0
 	var total_consumers := 0
-	for x in MAP_SIZE:
-		for y in MAP_SIZE:
+	for x in map_edge:
+		for y in map_edge:
 			var index := city.index_of(x, y)
 			var building := city.buildings[index]
 			if building < FIRST_PLANT or building > LAST_PLANT:
@@ -66,6 +67,7 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 static func _trace_component(
 	city: CityState, flags: PackedByteArray, start_x: int, start_y: int, random: SimRandom
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var queue := PackedInt32Array([city.index_of(start_x, start_y)])
 	var queue_position := 0
 	var tiles := PackedInt32Array()
@@ -78,8 +80,8 @@ static func _trace_component(
 			continue
 		flags[index] |= FLAG_MARK
 		tiles.append(index)
-		var x := int(index / MAP_SIZE)
-		var y := index % MAP_SIZE
+		var x := int(index / map_edge)
+		var y := index % map_edge
 		var building := city.buildings[index]
 		if building >= FIRST_PLANT and building <= LAST_PLANT:
 			capacity += _plant_capacity(city, building, x, y, random)
@@ -90,9 +92,9 @@ static func _trace_component(
 			queue.append(city.index_of(x, y - 1))
 		if x > 0:
 			queue.append(city.index_of(x - 1, y))
-		if y < MAP_SIZE - 1:
+		if y < map_edge - 1:
 			queue.append(city.index_of(x, y + 1))
-		if x < MAP_SIZE - 1:
+		if x < map_edge - 1:
 			queue.append(city.index_of(x + 1, y))
 	return {"tiles": tiles, "capacity": capacity, "consumers": consumers}
 

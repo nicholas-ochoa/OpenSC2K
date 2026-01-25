@@ -53,6 +53,7 @@ static func run(
 	lfsr_random = null,
 	game_random = null
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -131,26 +132,26 @@ static func run(
 		"spawned_trains": 0,
 	}
 
-	for x in range(step, CityState.MAP_SIZE, 4):
-		for y in range(substep, CityState.MAP_SIZE, 4):
+	for x in range(step, map_edge, 4):
+		for y in range(substep, map_edge, 4):
 			counters.scanned_tiles += 1
-			var index := x * CityState.MAP_SIZE + y
+			var index := x * map_edge + y
 			var zone_byte := int(zones[index])
 			var zone := zone_byte & 0x0f
 			if zone == 0:
 				var maintenance_tile := int(buildings[index])
 				_process_surface_maintenance(
 					altitude, altitudes, terrain, buildings, zones, underground, flags,
-					misc, Vector2i(x, y), random, lfsr_random, counters
+					misc, Vector2i(x, y), random, lfsr_random, counters, map_edge
 				)
 				_process_microsim_growth(
 					buildings, zones, flags, text_overlays, microsims, things,
 					land_value, crime, pollution, misc, Vector2i(x, y), maintenance_tile,
-					game_random, lfsr_random, counters
+					game_random, lfsr_random, counters, map_edge
 				)
 				_process_subway_maintenance(
 					terrain, buildings, zones, flags, text_overlays, underground, misc,
-					Vector2i(x, y), random, lfsr_random, counters
+					Vector2i(x, y), random, lfsr_random, counters, map_edge
 				)
 				continue
 			if zone > 6:
@@ -167,28 +168,28 @@ static func run(
 					Vector2i(x, y),
 					random,
 					rotation,
-					counters,
+					counters, map_edge,
 				)
 				_process_subway_maintenance(
 					terrain, buildings, zones, flags, text_overlays, underground, misc,
-					Vector2i(x, y), random, lfsr_random, counters
+					Vector2i(x, y), random, lfsr_random, counters, map_edge
 				)
 				continue
 			var building := int(buildings[index])
 			var density := 0
 			var status := STATUS_NORMAL
 			if building < 0x70:
-				if building >= 0x1d or not TransportTrip.has_nearby_transport(buildings, Vector2i(x, y)):
+				if building >= 0x1d or not TransportTrip.has_nearby_transport(buildings, Vector2i(x, y), map_edge):
 					_process_subway_maintenance(
 						terrain, buildings, zones, flags, text_overlays, underground, misc,
-						Vector2i(x, y), random, lfsr_random, counters
+						Vector2i(x, y), random, lfsr_random, counters, map_edge
 					)
 					continue
 			else:
 				if building > 0xc5 or zone_byte & anchor_mask == 0:
 					_process_subway_maintenance(
 						terrain, buildings, zones, flags, text_overlays, underground, misc,
-						Vector2i(x, y), random, lfsr_random, counters
+						Vector2i(x, y), random, lfsr_random, counters, map_edge
 					)
 					continue
 				density = _density(building)
@@ -197,7 +198,7 @@ static func run(
 
 			var growth_pressure := 0
 			var decline_pressure := 4000
-			if _has_power(flags, x, y):
+			if _has_power(flags, x, y, map_edge):
 				var trip := TransportTrip.trace(
 					buildings,
 					zones,
@@ -209,7 +210,7 @@ static func run(
 					zone,
 					density,
 					random,
-					100,
+					100, map_edge,
 				)
 				if not trip.ok:
 					return trip
@@ -243,12 +244,12 @@ static func run(
 						random.next_u15() & 1,
 						random,
 						rotation,
-						land_value,
+						land_value, map_edge,
 					)
 					counters.abandoned_buildings += 1
 					_process_subway_maintenance(
 						terrain, buildings, zones, flags, text_overlays, underground, misc,
-						Vector2i(x, y), random, lfsr_random, counters
+						Vector2i(x, y), random, lfsr_random, counters, map_edge
 					)
 					continue
 
@@ -260,7 +261,7 @@ static func run(
 						and (density & 2) != 0
 						and zone < 3
 					):
-						_place_church(buildings, zones, flags, misc, Vector2i(x, y), rotation)
+						_place_church(buildings, zones, flags, misc, Vector2i(x, y), rotation, map_edge)
 						counters.churches_built += 1
 					else:
 						_place_zone(
@@ -273,12 +274,12 @@ static func run(
 							density,
 							int((zone - 1) / 2),
 							random,
-							rotation,
+							rotation, map_edge,
 						)
 					counters.completed_construction += 1
 					_process_subway_maintenance(
 						terrain, buildings, zones, flags, text_overlays, underground, misc,
-						Vector2i(x, y), random, lfsr_random, counters
+						Vector2i(x, y), random, lfsr_random, counters, map_edge
 					)
 					continue
 			elif status == STATUS_ABANDONED:
@@ -296,16 +297,16 @@ static func run(
 						density,
 						int((zone - 1) / 2),
 						random,
-						rotation,
+						rotation, map_edge,
 					)
 					counters.recovered_buildings += 1
 				_process_subway_maintenance(
 					terrain, buildings, zones, flags, text_overlays, underground, misc,
-					Vector2i(x, y), random, lfsr_random, counters
+					Vector2i(x, y), random, lfsr_random, counters, map_edge
 				)
 				continue
 
-			if _can_advance_density(zone_byte, zone, density, land_value, x, y):
+			if _can_advance_density(zone_byte, zone, density, land_value, x, y, map_edge):
 				if random.next_u15() < int(growth_pressure * 3 / (density + 1)):
 					var advanced := _advance_construction(
 						buildings,
@@ -318,7 +319,7 @@ static func run(
 						density,
 						zone,
 						random,
-						rotation,
+						rotation, map_edge,
 					)
 					if advanced:
 						if density == 0:
@@ -327,7 +328,7 @@ static func run(
 							counters.advanced_construction += 1
 			_process_subway_maintenance(
 				terrain, buildings, zones, flags, text_overlays, underground, misc,
-				Vector2i(x, y), random, lfsr_random, counters
+				Vector2i(x, y), random, lfsr_random, counters, map_edge
 			)
 
 	var changed_ids := PackedStringArray()
@@ -360,9 +361,10 @@ static func _process_surface_maintenance(
 	point: Vector2i,
 	random,
 	lfsr_random,
-	counters: Dictionary
+	counters: Dictionary,
+	map_edge: int = 128,
 ) -> void:
-	var index := _index(point)
+	var index := _index(point, map_edge)
 	var tile := int(buildings[index])
 	if tile < 0x1d or lfsr_random.next_mask(0x7f) != 0:
 		return
@@ -385,17 +387,17 @@ static func _process_surface_maintenance(
 			if tile == 0x6a or tile == 0x6b:
 				result = Demolish._demolish_reinforced_bridge(
 					altitude, buildings, terrain, zones, underground, flags, misc,
-					point, random, true
+					point, random, true, map_edge
 				)
 			else:
 				result = Demolish._demolish_bridge(
 					altitude, buildings, terrain, zones, underground, flags, misc,
-					point, random, true
+					point, random, true, map_edge
 				)
 			if not result.get("changed", false):
 				counters.deferred_bridge_collapses += 1
 				return
-			_sync_altitudes(altitude, altitudes)
+			_sync_altitudes(altitude, altitudes, map_edge)
 			counters.collapsed_bridges += 1
 			counters.bridge_effects.append_array(result.get("effect_events", []))
 			counters.view_center_requests.append(point)
@@ -416,7 +418,7 @@ static func _process_surface_maintenance(
 			point + Vector2i(0, 1),
 			point + Vector2i(1, 1),
 		]:
-			var highway_index := _index(highway_point)
+			var highway_index := _index(highway_point, map_edge)
 			var replacement := 0
 			if flags[highway_index] & 0x04 == 0:
 				replacement = 1 + (random.next_u15() & 3)
@@ -439,26 +441,27 @@ static func _process_microsim_growth(
 	tile: int,
 	game_random,
 	lfsr_random,
-	counters: Dictionary
+	counters: Dictionary,
+	map_edge: int = 128,
 ) -> void:
-	var index := _index(point)
+	var index := _index(point, map_edge)
 	if tile == 0xed:
 		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
 			return
-		var train_limit := int(SpecialZoneGrowth.tile_count(misc, 0xed, false) / 4)
+		var train_limit := int(SpecialZoneGrowth.tile_count(misc, 0xed, false, map_edge) / 4)
 		if MovingThings.count_type(things, MovingThings.TYPE_TRAIN_ENGINE) < train_limit:
 			if MovingThings.spawn_train(
-				buildings, things, text_overlays, point, game_random, lfsr_random
+				buildings, things, text_overlays, point, game_random, lfsr_random, map_edge
 			):
 				counters.spawned_trains += 1
 		return
 	if tile == 0xf8:
 		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
 			return
-		var sailboat_limit := int(SpecialZoneGrowth.tile_count(misc, 0xf8, false) / 9)
+		var sailboat_limit := int(SpecialZoneGrowth.tile_count(misc, 0xf8, false, map_edge) / 9)
 		if MovingThings.count_type(things, MovingThings.TYPE_SAILBOAT) < sailboat_limit:
 			counters.spawned_sailboats += MovingThings.spawn_sailboats(
-				buildings, flags, things, text_overlays, point, lfsr_random
+				buildings, flags, things, text_overlays, point, lfsr_random, map_edge
 			)
 		return
 	if tile < 0xfb or tile > 0xfe or zones[index] & 0xf0 != 0x80:
@@ -469,7 +472,7 @@ static func _process_microsim_growth(
 	var record_offset := (label - 51) * CityState.MICROSIM_RECORD_SIZE
 	if microsims[record_offset] < 0xfb or microsims[record_offset] > 0xfe:
 		return
-	var coarse_index := int(point.x / 2) * 64 + int(point.y / 2)
+	var coarse_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
 	var value := (
 		int(land_value[coarse_index] >> 5)
 		- int(crime[coarse_index] >> 5)
@@ -495,11 +498,12 @@ static func _process_subway_maintenance(
 	point: Vector2i,
 	random,
 	lfsr_random,
-	counters: Dictionary
+	counters: Dictionary,
+	map_edge: int = 128,
 ) -> void:
 	if lfsr_random.next_mask(0x7f) != 0:
 		return
-	var index := _index(point)
+	var index := _index(point, map_edge)
 	var old_tile := int(underground[index])
 	if not _is_subway_tile(old_tile):
 		return
@@ -595,9 +599,9 @@ static func _replace_underground(
 	if (zones[index] & 0x0f) != 7:
 		var count := _read_u32(misc, MISC_SUBWAY_COUNT)
 		if _is_subway_tile(old_tile):
-			count = (count - 1) & 0xffff
+			count = (count - 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
 		if _is_subway_tile(new_tile):
-			count = (count + 1) & 0xffff
+			count = (count + 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
 		_write_u32(misc, MISC_SUBWAY_COUNT, count)
 	underground[index] = new_tile
 
@@ -608,7 +612,8 @@ static func _can_advance_density(
 	density: int,
 	land_value: PackedByteArray,
 	x: int,
-	y: int
+	y: int,
+	map_edge: int = 128,
 ) -> bool:
 	if density == 4:
 		return false
@@ -616,7 +621,7 @@ static func _can_advance_density(
 		return false
 	if zone > 4:
 		return true
-	var value := int(land_value[int(x / 2) * 64 + int(y / 2)])
+	var value := int(land_value[int(x / 2) * (map_edge / 2) + int(y / 2)])
 	return (
 		(density != 1 or value > 0x1f)
 		and (density != 2 or value > 0x5f)
@@ -635,69 +640,70 @@ static func _advance_construction(
 	density: int,
 	zone: int,
 	random,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> bool:
 	match density:
 		0:
 			return _place_zone(
 				buildings, zones, flags, misc, land_value, point,
-				1, CLASS_CONSTRUCTION, random, rotation
+				1, CLASS_CONSTRUCTION, random, rotation, map_edge
 			)
 		1:
-			var height := altitudes[_index(point)] & 0x1f
+			var height := altitudes[_index(point, map_edge)] & 0x1f
 			var right := point + Vector2i(1, 0)
 			var down := point + Vector2i(0, 1)
 			var down_right := point + Vector2i(1, 1)
 			if (
-				_can_build_site(buildings, zones, altitudes, right, height, zone, 0x8c)
-				and _can_build_site(buildings, zones, altitudes, down, height, zone, 0x8c)
-				and _can_build_site(buildings, zones, altitudes, down_right, height, zone, 0x8c)
+				_can_build_site(buildings, zones, altitudes, right, height, zone, 0x8c, map_edge)
+				and _can_build_site(buildings, zones, altitudes, down, height, zone, 0x8c, map_edge)
+				and _can_build_site(buildings, zones, altitudes, down_right, height, zone, 0x8c, map_edge)
 			):
 				return _place_zone(
 					buildings, zones, flags, misc, land_value, down,
-					2, CLASS_CONSTRUCTION, random, rotation
+					2, CLASS_CONSTRUCTION, random, rotation, map_edge
 				)
 			var up := point + Vector2i(0, -1)
 			var up_right := point + Vector2i(1, -1)
 			if (
-				_can_build_site(buildings, zones, altitudes, right, height, zone, 0x8c)
-				and _can_build_site(buildings, zones, altitudes, up, height, zone, 0x8c)
-				and _can_build_site(buildings, zones, altitudes, up_right, height, zone, 0x8c)
+				_can_build_site(buildings, zones, altitudes, right, height, zone, 0x8c, map_edge)
+				and _can_build_site(buildings, zones, altitudes, up, height, zone, 0x8c, map_edge)
+				and _can_build_site(buildings, zones, altitudes, up_right, height, zone, 0x8c, map_edge)
 			):
 				return _place_zone(
 					buildings, zones, flags, misc, land_value, point,
-					2, CLASS_CONSTRUCTION, random, rotation
+					2, CLASS_CONSTRUCTION, random, rotation, map_edge
 				)
 			var left := point + Vector2i(-1, 0)
 			var down_left := point + Vector2i(-1, 1)
 			if (
-				_can_build_site(buildings, zones, altitudes, down, height, zone, 0x8c)
-				and _can_build_site(buildings, zones, altitudes, left, height, zone, 0x8c)
-				and _can_build_site(buildings, zones, altitudes, down_left, height, zone, 0x8c)
+				_can_build_site(buildings, zones, altitudes, down, height, zone, 0x8c, map_edge)
+				and _can_build_site(buildings, zones, altitudes, left, height, zone, 0x8c, map_edge)
+				and _can_build_site(buildings, zones, altitudes, down_left, height, zone, 0x8c, map_edge)
 			):
 				return _place_zone(
 					buildings, zones, flags, misc, land_value, down_left,
-					2, CLASS_CONSTRUCTION, random, rotation
+					2, CLASS_CONSTRUCTION, random, rotation, map_edge
 				)
 			var up_left := point + Vector2i(-1, -1)
 			if (
-				_can_build_site(buildings, zones, altitudes, up, height, zone, 0x8c)
-				and _can_build_site(buildings, zones, altitudes, left, height, zone, 0x8c)
-				and _can_build_site(buildings, zones, altitudes, up_left, height, zone, 0x8c)
+				_can_build_site(buildings, zones, altitudes, up, height, zone, 0x8c, map_edge)
+				and _can_build_site(buildings, zones, altitudes, left, height, zone, 0x8c, map_edge)
+				and _can_build_site(buildings, zones, altitudes, up_left, height, zone, 0x8c, map_edge)
 			):
 				return _place_zone(
 					buildings, zones, flags, misc, land_value, left,
-					2, CLASS_CONSTRUCTION, random, rotation
+					2, CLASS_CONSTRUCTION, random, rotation, map_edge
 				)
 		2:
 			return _place_zone(
 				buildings, zones, flags, misc, land_value, point,
-				3, CLASS_CONSTRUCTION, random, rotation
+				3, CLASS_CONSTRUCTION, random, rotation, map_edge
 			)
 		3:
 			return _advance_to_density_four(
 				buildings, zones, flags, misc, land_value, altitudes,
-				point, zone, random, rotation
+				point, zone, random, rotation, map_edge
 			)
 	return false
 
@@ -712,9 +718,10 @@ static func _advance_to_density_four(
 	point: Vector2i,
 	zone: int,
 	random,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> bool:
-	var height := altitudes[_index(point)] & 0x1f
+	var height := altitudes[_index(point, map_edge)] & 0x1f
 	for candidate_index in 4:
 		var anchor := point + Vector2i(-(candidate_index & 1), int(candidate_index / 2))
 		var perimeter := [
@@ -729,26 +736,26 @@ static func _advance_to_density_four(
 		]
 		var valid := true
 		for checked_point in perimeter:
-			if not _can_build_site(buildings, zones, altitudes, checked_point, height, zone, 0xae):
+			if not _can_build_site(buildings, zones, altitudes, checked_point, height, zone, 0xae, map_edge):
 				valid = false
 				break
-		if not valid or not _has_density_four_road(buildings, anchor):
+		if not valid or not _has_density_four_road(buildings, anchor, map_edge):
 			continue
 		for checked_point in perimeter:
-			var index := _index(checked_point)
+			var index := _index(checked_point, map_edge)
 			if index >= 0 and buildings[index] > 0x8b:
 				_clear_growth_building(
 					buildings, zones, flags, misc, land_value,
-					checked_point, random, rotation
+					checked_point, random, rotation, map_edge
 				)
 		return _place_zone(
 			buildings, zones, flags, misc, land_value, anchor,
-			4, CLASS_CONSTRUCTION, random, rotation
+			4, CLASS_CONSTRUCTION, random, rotation, map_edge
 		)
 	return false
 
 
-static func _has_density_four_road(buildings: PackedByteArray, anchor: Vector2i) -> bool:
+static func _has_density_four_road(buildings: PackedByteArray, anchor: Vector2i, map_edge: int = 128) -> bool:
 	var checks := [
 		[anchor + Vector2i(-1, 1), [0x23, 0x27, 0x28, 0x2b]],
 		[anchor + Vector2i(-1, -3), [0x24, 0x28, 0x29, 0x2b]],
@@ -756,7 +763,7 @@ static func _has_density_four_road(buildings: PackedByteArray, anchor: Vector2i)
 		[anchor + Vector2i(3, 1), [0x26, 0x2a, 0x27, 0x2b]],
 	]
 	for check in checks:
-		var index := _index(check[0])
+		var index := _index(check[0], map_edge)
 		if index >= 0 and check[1].has(int(buildings[index])):
 			return true
 	return false
@@ -770,10 +777,11 @@ static func _clear_growth_building(
 	land_value: PackedByteArray,
 	point: Vector2i,
 	random,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> void:
 	var direction: int
-	match zones[_index(point)] & 0xf0:
+	match zones[_index(point, map_edge)] & 0xf0:
 		0x10:
 			direction = -rotation & 3
 		0x20:
@@ -799,7 +807,7 @@ static func _clear_growth_building(
 	]:
 		_place_zone(
 			buildings, zones, flags, misc, land_value, abandoned_point,
-			1, CLASS_ABANDONED, random, rotation
+			1, CLASS_ABANDONED, random, rotation, map_edge
 		)
 
 
@@ -810,9 +818,10 @@ static func _can_build_site(
 	point: Vector2i,
 	height: int,
 	zone: int,
-	maximum_building: int
+	maximum_building: int,
+	map_edge: int = 128,
 ) -> bool:
-	var index := _index(point)
+	var index := _index(point, map_edge)
 	if index < 0:
 		return false
 	if (altitudes[index] & 0x1f) != height or (zones[index] & 0x0f) != zone:
@@ -843,19 +852,20 @@ static func _abandon(
 	pattern: int,
 	random,
 	rotation: int,
-	land_value: PackedByteArray
+	land_value: PackedByteArray,
+	map_edge: int = 128,
 ) -> void:
 	match density:
 		1:
 			_place_zone(
 				buildings, zones, flags, misc, land_value, point,
-				1, CLASS_ABANDONED, random, rotation
+				1, CLASS_ABANDONED, random, rotation, map_edge
 			)
 		2:
 			if pattern == 0:
 				_place_zone(
 					buildings, zones, flags, misc, land_value, point,
-					2, CLASS_ABANDONED, random, rotation
+					2, CLASS_ABANDONED, random, rotation, map_edge
 				)
 			else:
 				for abandoned_point in [
@@ -866,18 +876,18 @@ static func _abandon(
 				]:
 					_place_zone(
 						buildings, zones, flags, misc, land_value, abandoned_point,
-						1, CLASS_ABANDONED, random, rotation
+						1, CLASS_ABANDONED, random, rotation, map_edge
 					)
 		3:
 			_place_zone(
 				buildings, zones, flags, misc, land_value, point,
-				3 if pattern == 0 else 2, CLASS_ABANDONED, random, rotation
+				3 if pattern == 0 else 2, CLASS_ABANDONED, random, rotation, map_edge
 			)
 		4:
 			if pattern == 0:
 				_place_zone(
 					buildings, zones, flags, misc, land_value, point,
-					4, CLASS_ABANDONED, random, rotation
+					4, CLASS_ABANDONED, random, rotation, map_edge
 				)
 			else:
 				for abandoned_point in [
@@ -892,7 +902,7 @@ static func _abandon(
 				]:
 					_place_zone(
 						buildings, zones, flags, misc, land_value, abandoned_point,
-						1, CLASS_ABANDONED, random, rotation
+						1, CLASS_ABANDONED, random, rotation, map_edge
 					)
 				var selection: int = random.next_u15() & 3
 				_place_zone(
@@ -905,7 +915,7 @@ static func _abandon(
 					3,
 					CLASS_ABANDONED,
 					random,
-					rotation,
+					rotation, map_edge,
 				)
 
 
@@ -919,11 +929,12 @@ static func _place_zone(
 	density: int,
 	building_class: int,
 	random,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> bool:
 	var tile: int
 	if density == 1 and building_class == CLASS_RESIDENTIAL:
-		var value_index := int(anchor.x / 2) * 64 + int(anchor.y / 2)
+		var value_index := int(anchor.x / 2) * (map_edge / 2) + int(anchor.y / 2)
 		var value_group := mini(int(land_value[value_index]) >> 6, 2)
 		tile = BUILDING_BASE[1] + value_group * 4 + (random.next_u15() & 3)
 	else:
@@ -931,7 +942,7 @@ static func _place_zone(
 		var tile_range: int = BUILDING_RANGE[table_index]
 		tile = BUILDING_BASE[table_index] + random.next_u15() % tile_range
 	if density == 1:
-		var index := _index(anchor)
+		var index := _index(anchor, map_edge)
 		if index < 0:
 			return false
 		_replace_building(buildings, zones, misc, index, tile)
@@ -950,11 +961,11 @@ static func _place_zone(
 	var site_position := Vector2i(anchor.x, anchor.y - radius)
 	for x in range(site_position.x, site_position.x + radius + 1):
 		for y in range(site_position.y, site_position.y + radius + 1):
-			var index := x * CityState.MAP_SIZE + y
+			var index := x * map_edge + y
 			_replace_building(buildings, zones, misc, index, tile)
 			zones[index] &= 0x0f
 			flags[index] |= 0xe0
-	_set_corners(zones, site_position, radius + 1, rotation)
+	_set_corners(zones, site_position, radius + 1, rotation, map_edge)
 	return true
 
 
@@ -964,48 +975,50 @@ static func _place_church(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	anchor: Vector2i,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> bool:
-	if anchor.x <= 0 or anchor.y <= 0 or anchor.x >= 127 or anchor.y >= 127:
+	if anchor.x <= 0 or anchor.y <= 0 or anchor.x >= (map_edge - 1) or anchor.y >= (map_edge - 1):
 		return false
 	var position := Vector2i(anchor.x, anchor.y - 1)
 	for x in range(position.x, position.x + 2):
 		for y in range(position.y, position.y + 2):
-			var index := x * CityState.MAP_SIZE + y
+			var index := x * map_edge + y
 			_replace_building(buildings, zones, misc, index, CHURCH_TILE)
 			zones[index] = 0
 			flags[index] |= 0xe0
-	_set_corners(zones, position, 2, rotation)
+	_set_corners(zones, position, 2, rotation, map_edge)
 	return true
 
 
 # The zone and building corner flags share one byte.
 static func _set_corners(
-	zones: PackedByteArray, position: Vector2i, area: int, rotation: int
+	zones: PackedByteArray, position: Vector2i, area: int, rotation: int,
+	map_edge: int = 128,
 ) -> void:
 	var far := position + Vector2i(area - 1, area - 1)
 	var view := rotation & 3
-	var bottom_left := position.x * CityState.MAP_SIZE + position.y
-	var bottom_right := far.x * CityState.MAP_SIZE + position.y
-	var top_left := far.x * CityState.MAP_SIZE + far.y
-	var top_right := position.x * CityState.MAP_SIZE + far.y
+	var bottom_left := position.x * map_edge + position.y
+	var bottom_right := far.x * map_edge + position.y
+	var top_left := far.x * map_edge + far.y
+	var top_right := position.x * map_edge + far.y
 	zones[bottom_left] = (zones[bottom_left] & 0x0f) | CORNER_BOTTOM_LEFT[view]
 	zones[bottom_right] = (zones[bottom_right] & 0x0f) | CORNER_BOTTOM_RIGHT[view]
 	zones[top_left] = (zones[top_left] & 0x0f) | CORNER_TOP_LEFT[view]
 	zones[top_right] = (zones[top_right] & 0x0f) | CORNER_TOP_RIGHT[view]
 
 
-static func _has_power(flags: PackedByteArray, x: int, y: int) -> bool:
-	var index := x * CityState.MAP_SIZE + y
+static func _has_power(flags: PackedByteArray, x: int, y: int, map_edge: int = 128) -> bool:
+	var index := x * map_edge + y
 	if flags[index] & 0x40:
 		return true
-	if x > 1 and flags[(x - 1) * CityState.MAP_SIZE + y] & 0x40:
+	if x > 1 and flags[(x - 1) * map_edge + y] & 0x40:
 		return true
-	if y > 1 and flags[x * CityState.MAP_SIZE + y - 1] & 0x40:
+	if y > 1 and flags[x * map_edge + y - 1] & 0x40:
 		return true
-	if x < 127 and flags[(x + 1) * CityState.MAP_SIZE + y] & 0x40:
+	if x < (map_edge - 1) and flags[(x + 1) * map_edge + y] & 0x40:
 		return true
-	return y < 127 and (flags[x * CityState.MAP_SIZE + y + 1] & 0x40) != 0
+	return y < (map_edge - 1) and (flags[x * map_edge + y + 1] & 0x40) != 0
 
 
 static func _density(tile: int) -> int:
@@ -1063,27 +1076,28 @@ static func _replace_building(
 	if (zones[index] & 0x0f) != 7:
 		var old_offset := MISC_TILE_COUNTS + old_tile * 4
 		var new_offset := MISC_TILE_COUNTS + new_tile * 4
-		_write_u32(misc, old_offset, (_read_u32(misc, old_offset) - 1) & 0xffff)
-		_write_u32(misc, new_offset, (_read_u32(misc, new_offset) + 1) & 0xffff)
+		_write_u32(misc, old_offset, (_read_u32(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+		_write_u32(misc, new_offset, (_read_u32(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
 	buildings[index] = new_tile
 
 
 static func _payloads(city: CityState) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var result := {}
 	for checked in [
-		["ALTM", CityState.TILE_COUNT * 2],
-		["XTER", CityState.TILE_COUNT],
-		["XBLD", CityState.TILE_COUNT],
-		["XZON", CityState.TILE_COUNT],
-		["XUND", CityState.TILE_COUNT],
-		["XTXT", CityState.TILE_COUNT],
+		["ALTM", (map_edge * map_edge) * 2],
+		["XTER", (map_edge * map_edge)],
+		["XBLD", (map_edge * map_edge)],
+		["XZON", (map_edge * map_edge)],
+		["XUND", (map_edge * map_edge)],
+		["XTXT", (map_edge * map_edge)],
 		["XMIC", CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE],
-		["XTHG", CityState.THING_COUNT * CityState.THING_RECORD_SIZE],
-		["XBIT", CityState.TILE_COUNT],
-		["XTRF", MAP_VALUE_COUNT],
-		["XPLT", MAP_VALUE_COUNT],
-		["XVAL", MAP_VALUE_COUNT],
-		["XCRM", MAP_VALUE_COUNT],
+		["XTHG", city.document.decoded_size("XTHG")],
+		["XBIT", (map_edge * map_edge)],
+		["XTRF", ((map_edge / 2) * (map_edge / 2))],
+		["XPLT", ((map_edge / 2) * (map_edge / 2))],
+		["XVAL", ((map_edge / 2) * (map_edge / 2))],
+		["XCRM", ((map_edge / 2) * (map_edge / 2))],
 		["MISC", MISC_SIZE],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
@@ -1120,8 +1134,9 @@ static func _apply_payloads(
 
 
 static func _refresh_city(city: CityState) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
@@ -1131,15 +1146,15 @@ static func _refresh_city(city: CityState) -> void:
 	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
 
 
-static func _sync_altitudes(altitude: PackedByteArray, altitudes: PackedInt32Array) -> void:
-	for index in CityState.TILE_COUNT:
+static func _sync_altitudes(altitude: PackedByteArray, altitudes: PackedInt32Array, map_edge: int = 128) -> void:
+	for index in (map_edge * map_edge):
 		altitudes[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 
-static func _index(point: Vector2i) -> int:
-	if point.x < 0 or point.x >= CityState.MAP_SIZE or point.y < 0 or point.y >= CityState.MAP_SIZE:
+static func _index(point: Vector2i, map_edge: int = 128) -> int:
+	if point.x < 0 or point.x >= map_edge or point.y < 0 or point.y >= map_edge:
 		return -1
-	return point.x * CityState.MAP_SIZE + point.y
+	return point.x * map_edge + point.y
 
 
 static func _add_i32(data: PackedByteArray, offset: int, value: int) -> void:

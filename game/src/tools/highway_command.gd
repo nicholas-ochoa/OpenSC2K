@@ -62,6 +62,7 @@ static func apply(
 	bridge_type := BRIDGE_UNSELECTED,
 	free_mode := false
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not supports_tool(group_index, subtool_index):
@@ -75,7 +76,7 @@ static func apply(
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
 	var text_chunk := city.document.find_chunk("XTXT")
-	if text_chunk == null or text_chunk.decoded_payload.size() != CityState.TILE_COUNT:
+	if text_chunk == null or text_chunk.decoded_payload.size() != (map_edge * map_edge):
 		return {"ok": false, "error": "required city data is missing or invalid"}
 	old_payloads["XTXT"] = text_chunk.decoded_payload.duplicate()
 	var buildings: PackedByteArray = old_payloads.XBLD
@@ -84,22 +85,22 @@ static func apply(
 	var altitude: PackedByteArray = old_payloads.ALTM
 	var text_overlays: PackedByteArray = old_payloads.XTXT
 	var sections := _plan_flat_route(
-		buildings, terrain, flags, altitude, start, finish
+		buildings, terrain, flags, altitude, start, finish, map_edge
 	)
 	var bridge_plan := {}
 	var bridge_attempted := false
-	if sections.is_empty() and _section_has_water(flags, start):
+	if sections.is_empty() and _section_has_water(flags, start, map_edge):
 		bridge_attempted = true
 		bridge_plan = _plan_bridge_from_start(
-			buildings, terrain, altitude, start, city.compass_rotation()
+			buildings, terrain, altitude, start, city.compass_rotation(), map_edge
 		)
 	elif not sections.is_empty():
 		var exit_direction := _section_direction(sections, sections.size() - 1, finish)
 		var bridge_start: Vector2i = sections[-1] + DIRECTIONS[exit_direction] * 2
-		if _section_has_water(flags, bridge_start):
+		if _section_has_water(flags, bridge_start, map_edge):
 			bridge_attempted = true
 			bridge_plan = _scan_bridge(
-				buildings, terrain, altitude, bridge_start, exit_direction
+				buildings, terrain, altitude, bridge_start, exit_direction, map_edge
 			)
 	if sections.is_empty() and not bridge_plan.get("ok", false):
 		if bridge_attempted:
@@ -110,7 +111,7 @@ static func apply(
 		return {"ok": false, "error": "highway cannot start on this section"}
 	var new_sections := 0
 	for section in sections:
-		if not _section_is_existing_highway(buildings, section):
+		if not _section_is_existing_highway(buildings, section, map_edge):
 			new_sections += 1
 	var listed_route_cost := (
 		new_sections * int(ToolCatalog.tool(group_index, subtool_index).cost)
@@ -169,7 +170,7 @@ static func apply(
 		not bridge_attempted
 		and not sections.is_empty()
 		and _is_connection_exit(sections, finish)
-		and text_overlays[start.x * CityState.MAP_SIZE + start.y] != CONNECTION_LABEL
+		and text_overlays[start.x * map_edge + start.y] != CONNECTION_LABEL
 	)
 	var connection_affordable := (
 		free_mode or city.funds() - route_cost >= CONNECTION_COST
@@ -222,7 +223,7 @@ static func apply(
 		var direction := _section_direction(sections, section_index, finish)
 		var section := sections[section_index]
 		route_directions[section] = direction
-		if _section_is_existing_highway(buildings, section):
+		if _section_is_existing_highway(buildings, section, map_edge):
 			continue
 		var placement := _place_section(
 			buildings,
@@ -234,7 +235,7 @@ static func apply(
 			misc,
 			section,
 			direction,
-			city.compass_rotation()
+			city.compass_rotation(), map_edge
 		)
 		if not placement.ok:
 			return placement
@@ -242,7 +243,7 @@ static func apply(
 			graded_sections += 1
 	if connection_built:
 		text_overlays[
-			connection_anchor.x * CityState.MAP_SIZE + connection_anchor.y
+			connection_anchor.x * map_edge + connection_anchor.y
 		] = CONNECTION_LABEL
 	_retile_affected_sections(
 		buildings,
@@ -254,7 +255,7 @@ static func apply(
 		sections,
 		city.compass_rotation(),
 		text_overlays,
-		route_directions
+		route_directions, map_edge
 	)
 	var bridge_sections: Array[Vector2i] = []
 	var bridge_endpoint_sections: Array[Vector2i] = []
@@ -268,7 +269,7 @@ static func apply(
 			misc,
 			bridge_plan,
 			selected_bridge,
-			city.compass_rotation()
+			city.compass_rotation(), map_edge
 		)
 		bridge_sections = bridge_result.sections
 		bridge_endpoint_sections = bridge_result.endpoint_sections
@@ -288,7 +289,7 @@ static func apply(
 	for anchor in affected_sections:
 		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 			var point: Vector2i = anchor + offset
-			tile_indices.append(point.x * CityState.MAP_SIZE + point.y)
+			tile_indices.append(point.x * map_edge + point.y)
 	return {
 		"ok": true,
 		"command_type": "highway",
@@ -370,11 +371,12 @@ static func _plan_bridge_from_start(
 	terrain: PackedByteArray,
 	altitude: PackedByteArray,
 	start: Vector2i,
-	view_rotation: int
+	view_rotation: int,
+	map_edge: int = 128,
 ) -> Dictionary:
-	if not _section_is_bridge_clear(buildings, start):
+	if not _section_is_bridge_clear(buildings, start, map_edge):
 		return {"ok": false, "error": "highway bridge start contains a structure"}
-	var terrain_code := _bridge_terrain_code(terrain, start)
+	var terrain_code := _bridge_terrain_code(terrain, start, map_edge)
 	if (terrain_code & 0x0f00) != 0:
 		return {"ok": false, "error": "highway bridge start terrain is invalid"}
 	if ((terrain_code >> 8) & 0xff) != 0:
@@ -389,7 +391,7 @@ static func _plan_bridge_from_start(
 		(view_rotation - 1) & 3,
 	]:
 		if (direction_mask & (1 << direction)) != 0:
-			return _scan_bridge(buildings, terrain, altitude, start, direction)
+			return _scan_bridge(buildings, terrain, altitude, start, direction, map_edge)
 	return {"ok": false, "error": "highway bridge does not face open water"}
 
 
@@ -398,9 +400,10 @@ static func _scan_bridge(
 	terrain: PackedByteArray,
 	altitude: PackedByteArray,
 	start: Vector2i,
-	direction: int
+	direction: int,
+	map_edge: int = 128,
 ) -> Dictionary:
-	if not _section_is_bridge_clear(buildings, start):
+	if not _section_is_bridge_clear(buildings, start, map_edge):
 		return {"ok": false, "error": "highway bridge start contains a structure"}
 	var span_length := 0
 	var checked := start
@@ -409,9 +412,9 @@ static func _scan_bridge(
 		span_length += 1
 		if not _anchor_is_in_bounds(checked):
 			return {"ok": false, "error": "highway bridge does not reach another bank"}
-		if not _section_is_bridge_clear(buildings, checked):
+		if not _section_is_bridge_clear(buildings, checked, map_edge):
 			return {"ok": false, "error": "highway bridge path contains a structure"}
-		var terrain_code := _bridge_terrain_code(terrain, checked)
+		var terrain_code := _bridge_terrain_code(terrain, checked, map_edge)
 		if (terrain_code & 0x0f00) != 0:
 			return {"ok": false, "error": "highway bridge bank terrain is invalid"}
 		if (terrain_code & 0xff) == 0:
@@ -422,7 +425,7 @@ static func _scan_bridge(
 		"direction": direction,
 		"span_length": span_length,
 		"reinforced_allowed": _reinforced_bridge_is_allowed(
-			buildings, terrain, altitude, start, direction, span_length
+			buildings, terrain, altitude, start, direction, span_length, map_edge
 		),
 		"error": "",
 	}
@@ -459,11 +462,12 @@ static func _reinforced_bridge_is_allowed(
 	altitude: PackedByteArray,
 	start: Vector2i,
 	direction: int,
-	span_length: int
+	span_length: int,
+	map_edge: int = 128,
 ) -> bool:
 	if span_length <= 2:
 		return false
-	var current_height := _section_altitude(terrain, altitude, start)
+	var current_height := _section_altitude(terrain, altitude, start, map_edge)
 	var behind: Vector2i = start - DIRECTIONS[direction] * 2
 	var far_bank: Vector2i = start + DIRECTIONS[direction] * span_length * 2
 	return (
@@ -473,7 +477,7 @@ static func _reinforced_bridge_is_allowed(
 			altitude,
 			behind,
 			current_height,
-			direction
+			direction, map_edge
 		)
 		and _bridge_endpoint_is_allowed(
 			buildings,
@@ -481,7 +485,7 @@ static func _reinforced_bridge_is_allowed(
 			altitude,
 			far_bank,
 			current_height,
-			(direction + 2) & 3
+			(direction + 2) & 3, map_edge
 		)
 	)
 
@@ -492,15 +496,16 @@ static func _bridge_endpoint_is_allowed(
 	altitude: PackedByteArray,
 	anchor: Vector2i,
 	bridge_height: int,
-	required_slope_direction: int
+	required_slope_direction: int,
+	map_edge: int = 128,
 ) -> bool:
-	if not _section_is_bridge_clear(buildings, anchor):
+	if not _section_is_bridge_clear(buildings, anchor, map_edge):
 		return false
-	var endpoint_height := _section_altitude(terrain, altitude, anchor)
+	var endpoint_height := _section_altitude(terrain, altitude, anchor, map_edge)
 	if endpoint_height < bridge_height or endpoint_height > bridge_height + 1:
 		return false
 	var terrain_shape := _terrain_section_shape(
-		buildings, terrain, altitude, anchor
+		buildings, terrain, altitude, anchor, map_edge
 	)
 	if terrain_shape == INVALID_TERRAIN_SHAPE:
 		return false
@@ -511,7 +516,8 @@ static func _bridge_endpoint_is_allowed(
 
 
 static func _section_is_bridge_clear(
-	buildings: PackedByteArray, anchor: Vector2i
+	buildings: PackedByteArray, anchor: Vector2i,
+	map_edge: int = 128,
 ) -> bool:
 	if not _anchor_is_in_bounds(anchor):
 		return false
@@ -519,13 +525,14 @@ static func _section_is_bridge_clear(
 		Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1),
 	]:
 		var point: Vector2i = anchor + offset
-		if int(buildings[point.x * CityState.MAP_SIZE + point.y]) > SMALL_PARK:
+		if int(buildings[point.x * map_edge + point.y]) > SMALL_PARK:
 			return false
 	return true
 
 
 static func _bridge_terrain_code(
-	terrain: PackedByteArray, anchor: Vector2i
+	terrain: PackedByteArray, anchor: Vector2i,
+	map_edge: int = 128,
 ) -> int:
 	if not _anchor_is_in_bounds(anchor):
 		return 0x0f00
@@ -534,7 +541,7 @@ static func _bridge_terrain_code(
 		Vector2i(1, 1), Vector2i(1, 0), Vector2i(0, 1), Vector2i.ZERO,
 	]:
 		var point: Vector2i = anchor + offset
-		var terrain_id := int(terrain[point.x * CityState.MAP_SIZE + point.y])
+		var terrain_id := int(terrain[point.x * map_edge + point.y])
 		result = ((result * 2) + _bridge_terrain_weight(terrain_id)) & 0xffff
 	return result
 
@@ -563,18 +570,19 @@ static func _place_bridge(
 	misc: PackedByteArray,
 	plan: Dictionary,
 	bridge_type: int,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> Dictionary:
 	var start: Vector2i = plan.start
 	var direction := int(plan.direction)
 	var span_length := int(plan.span_length)
-	var bridge_height := _section_altitude(terrain, altitude, start)
+	var bridge_height := _section_altitude(terrain, altitude, start, map_edge)
 	var endpoint_sections: Array[Vector2i] = []
 	if bridge_type == BRIDGE_REINFORCED:
 		var behind: Vector2i = start - DIRECTIONS[direction] * 2
 		var behind_kind := (
 			direction & 1
-			if bridge_height - _section_altitude(terrain, altitude, behind) == -1
+			if bridge_height - _section_altitude(terrain, altitude, behind, map_edge) == -1
 			else ((direction + 1) & 3) + 4
 		)
 		_write_bridge_endpoint(
@@ -585,13 +593,13 @@ static func _place_bridge(
 			misc,
 			behind,
 			behind_kind,
-			rotation
+			rotation, map_edge
 		)
 		endpoint_sections.append(behind)
 		var far_bank: Vector2i = start + DIRECTIONS[direction] * span_length * 2
 		var far_kind := (
 			direction & 1
-			if bridge_height - _section_altitude(terrain, altitude, far_bank) == -1
+			if bridge_height - _section_altitude(terrain, altitude, far_bank, map_edge) == -1
 			else ((direction - 1) & 3) + 4
 		)
 		_write_bridge_endpoint(
@@ -602,7 +610,7 @@ static func _place_bridge(
 			misc,
 			far_bank,
 			far_kind,
-			rotation
+			rotation, map_edge
 		)
 		endpoint_sections.append(far_bank)
 
@@ -618,11 +626,11 @@ static func _place_bridge(
 				anchor,
 				14 if (span_index & 1) == 0 else 13,
 				direction,
-				rotation
+				rotation, map_edge
 			)
 		else:
 			_write_normal_bridge_section(
-				buildings, zones, misc, anchor, direction
+				buildings, zones, misc, anchor, direction, map_edge
 			)
 		sections.append(anchor)
 	return {"sections": sections, "endpoint_sections": endpoint_sections}
@@ -636,23 +644,24 @@ static func _write_bridge_endpoint(
 	misc: PackedByteArray,
 	anchor: Vector2i,
 	kind: int,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> void:
 	var zone_types := PackedByteArray()
 	for offset in [
 		Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1),
 	]:
 		var point: Vector2i = anchor + offset
-		zone_types.append(zones[point.x * CityState.MAP_SIZE + point.y] & 0x0f)
+		zone_types.append(zones[point.x * map_edge + point.y] & 0x0f)
 	_write_section_kind(
-		buildings, terrain, zones, altitude, misc, anchor, kind, rotation
+		buildings, terrain, zones, altitude, misc, anchor, kind, rotation, map_edge
 	)
 	for offset_index in zone_types.size():
 		var offset: Vector2i = [
 			Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1),
 		][offset_index]
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		zones[index] = (zones[index] & 0xf0) | zone_types[offset_index]
 
 
@@ -661,14 +670,15 @@ static func _write_normal_bridge_section(
 	zones: PackedByteArray,
 	misc: PackedByteArray,
 	anchor: Vector2i,
-	direction: int
+	direction: int,
+	map_edge: int = 128,
 ) -> void:
 	var tile_id := STRAIGHT_FIRST + (direction & 1)
 	for offset in [
 		Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1),
 	]:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
 		zones[index] |= 0xf0
 
@@ -681,7 +691,8 @@ static func _write_reinforced_bridge_section(
 	anchor: Vector2i,
 	kind: int,
 	direction: int,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> void:
 	var offsets := [
 		Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1),
@@ -689,7 +700,7 @@ static func _write_reinforced_bridge_section(
 	var zone_types := PackedByteArray()
 	for offset in offsets:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		zone_types.append(zones[index] & 0x0f)
 		NetworkCommand._replace_building(
 			buildings, zones, misc, index, 0x5d + kind
@@ -699,11 +710,11 @@ static func _write_reinforced_bridge_section(
 		else:
 			flags[index] |= 0x02
 	BuildingCommand._set_corners(
-		zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation
+		zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge
 	)
 	for offset_index in offsets.size():
 		var point: Vector2i = anchor + offsets[offset_index]
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		zones[index] = (zones[index] & 0xf0) | zone_types[offset_index]
 
 
@@ -713,25 +724,26 @@ static func _plan_flat_route(
 	flags: PackedByteArray,
 	altitude: PackedByteArray,
 	start: Vector2i,
-	finish: Vector2i
+	finish: Vector2i,
+	map_edge: int = 128,
 ) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var current := start
 	var direction := _primary_direction(current, finish)
 	if not _section_is_flat_eligible(
-		buildings, terrain, flags, altitude, current, direction
+		buildings, terrain, flags, altitude, current, direction, map_edge
 	):
 		return result
 	result.append(current)
 	while current != finish:
 		var current_shape := _terrain_section_shape(
-			buildings, terrain, altitude, current
+			buildings, terrain, altitude, current, map_edge
 		)
 		if current_shape == FLAT_TERRAIN_SHAPE:
 			direction = _primary_direction(current, finish)
 		var next: Vector2i = current + DIRECTIONS[direction] * 2
 		if not _section_follows(
-			buildings, terrain, flags, altitude, current, next, direction
+			buildings, terrain, flags, altitude, current, next, direction, map_edge
 		):
 			if current_shape != FLAT_TERRAIN_SHAPE:
 				break
@@ -740,7 +752,7 @@ static func _plan_flat_route(
 				break
 			next = current + DIRECTIONS[alternate] * 2
 			if not _section_follows(
-				buildings, terrain, flags, altitude, current, next, alternate
+				buildings, terrain, flags, altitude, current, next, alternate, map_edge
 			):
 				break
 			direction = alternate
@@ -773,13 +785,14 @@ static func _section_is_flat_eligible(
 	flags: PackedByteArray,
 	altitude: PackedByteArray,
 	anchor: Vector2i,
-	direction: int
+	direction: int,
+	map_edge: int = 128,
 ) -> bool:
 	if not _anchor_is_in_bounds(anchor):
 		return false
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		if (flags[index] & FLAG_WATER) != 0:
 			return false
 		var tile_id := int(buildings[index])
@@ -788,7 +801,7 @@ static func _section_is_flat_eligible(
 		if tile_id > 0x0e and not _is_highway_tile(tile_id) and not _network_can_cross(tile_id, direction):
 			return false
 	return (
-		_terrain_section_shape(buildings, terrain, altitude, anchor)
+		_terrain_section_shape(buildings, terrain, altitude, anchor, map_edge)
 		!= INVALID_TERRAIN_SHAPE
 	)
 
@@ -800,15 +813,16 @@ static func _section_follows(
 	altitude: PackedByteArray,
 	current: Vector2i,
 	candidate: Vector2i,
-	direction: int
+	direction: int,
+	map_edge: int = 128,
 ) -> bool:
 	if not _section_is_flat_eligible(
-		buildings, terrain, flags, altitude, candidate, direction
+		buildings, terrain, flags, altitude, candidate, direction, map_edge
 	):
 		return false
 	return absi(
-		_section_altitude(terrain, altitude, candidate)
-		- _section_altitude(terrain, altitude, current)
+		_section_altitude(terrain, altitude, candidate, map_edge)
+		- _section_altitude(terrain, altitude, current, map_edge)
 	) <= 1
 
 
@@ -816,14 +830,15 @@ static func _terrain_section_shape(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	altitude: PackedByteArray,
-	anchor: Vector2i
+	anchor: Vector2i,
+	map_edge: int = 128,
 ) -> int:
 	if not _anchor_is_in_bounds(anchor):
 		return INVALID_TERRAIN_SHAPE
 	if (
-		buildings.size() != CityState.TILE_COUNT
-		or terrain.size() != CityState.TILE_COUNT
-		or altitude.size() != CityState.TILE_COUNT * 2
+		buildings.size() != (map_edge * map_edge)
+		or terrain.size() != (map_edge * map_edge)
+		or altitude.size() != (map_edge * map_edge) * 2
 	):
 		return INVALID_TERRAIN_SHAPE
 	var offsets := [
@@ -836,7 +851,7 @@ static func _terrain_section_shape(
 	var heights := PackedInt32Array()
 	for offset_index in offsets.size():
 		var point: Vector2i = anchor + offsets[offset_index]
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		if not _building_is_allowed(int(buildings[index])):
 			return INVALID_TERRAIN_SHAPE
 		var terrain_id := int(terrain[index])
@@ -865,7 +880,7 @@ static func _terrain_section_shape(
 			raised_mask |= 1 << height_index
 	if 0x0f - raised_mask == class_masks[4]:
 		return FILLED_FLAT_TERRAIN_SHAPE
-	if raised_mask == 0 and int(terrain[anchor.x * CityState.MAP_SIZE + anchor.y]) == 0x0d:
+	if raised_mask == 0 and int(terrain[anchor.x * map_edge + anchor.y]) == 0x0d:
 		return FILLED_FLAT_TERRAIN_SHAPE
 
 	var result := 0
@@ -932,12 +947,13 @@ static func _terrain_class(terrain_id: int) -> int:
 
 
 static func _section_altitude(
-	terrain: PackedByteArray, altitude: PackedByteArray, anchor: Vector2i
+	terrain: PackedByteArray, altitude: PackedByteArray, anchor: Vector2i,
+	map_edge: int = 128,
 ) -> int:
 	var result := 0
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		var height := _land_altitude(altitude, index)
 		if terrain[index] != 0:
 			height += 1
@@ -971,11 +987,12 @@ static func _place_straight_section(
 	zones: PackedByteArray,
 	misc: PackedByteArray,
 	anchor: Vector2i,
-	orientation: int
+	orientation: int,
+	map_edge: int = 128,
 ) -> void:
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)]:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		zones[index] &= 0xf0
 		var tile_id := _straight_replacement(buildings[index], orientation)
 		NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
@@ -1010,12 +1027,13 @@ static func _place_section(
 	misc: PackedByteArray,
 	anchor: Vector2i,
 	direction: int,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> Dictionary:
-	if _terrain_section_shape(buildings, terrain, altitude, anchor) == INVALID_TERRAIN_SHAPE:
+	if _terrain_section_shape(buildings, terrain, altitude, anchor, map_edge) == INVALID_TERRAIN_SHAPE:
 		return {"ok": false, "error": "highway terrain grade is invalid"}
-	_clear_section_zone_types(zones, anchor)
-	var old_kind := _section_kind(buildings, zones, flags, anchor)
+	_clear_section_zone_types(zones, anchor, map_edge)
+	var old_kind := _section_kind(buildings, zones, flags, anchor, map_edge)
 	var kind := _select_section_kind(
 		buildings,
 		terrain,
@@ -1024,18 +1042,18 @@ static func _place_section(
 		altitude,
 		text_overlays,
 		anchor,
-		direction
+		direction, map_edge
 	)
 	var installed_grade := kind >= 4 and kind <= 7
 	if kind >= 0:
 		_write_section_kind(
-			buildings, terrain, zones, altitude, misc, anchor, kind, rotation
+			buildings, terrain, zones, altitude, misc, anchor, kind, rotation, map_edge
 		)
 	for step in DIRECTIONS:
 		var neighbor: Vector2i = anchor + step * 2
 		if (
 			_anchor_is_in_bounds(neighbor)
-			and _section_kind(buildings, zones, flags, neighbor) > 1
+			and _section_kind(buildings, zones, flags, neighbor, map_edge) > 1
 		):
 			_retile_section(
 				buildings,
@@ -1047,7 +1065,7 @@ static func _place_section(
 				misc,
 				neighbor,
 				direction,
-				rotation
+				rotation, map_edge
 			)
 	_retile_section(
 		buildings,
@@ -1059,7 +1077,7 @@ static func _place_section(
 		misc,
 		anchor,
 		direction,
-		rotation
+		rotation, map_edge
 	)
 	return {
 		"ok": true,
@@ -1069,10 +1087,10 @@ static func _place_section(
 	}
 
 
-static func _clear_section_zone_types(zones: PackedByteArray, anchor: Vector2i) -> void:
+static func _clear_section_zone_types(zones: PackedByteArray, anchor: Vector2i, map_edge: int = 128) -> void:
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		zones[point.x * CityState.MAP_SIZE + point.y] &= 0xf0
+		zones[point.x * map_edge + point.y] &= 0xf0
 
 
 static func _retile_affected_sections(
@@ -1085,7 +1103,8 @@ static func _retile_affected_sections(
 	placed: Array[Vector2i],
 	rotation: int,
 	text_overlays := PackedByteArray(),
-	route_directions := {}
+	route_directions := {},
+	map_edge: int = 128,
 ) -> void:
 	var affected := {}
 	for anchor in placed:
@@ -1094,7 +1113,7 @@ static func _retile_affected_sections(
 			var neighbor: Vector2i = anchor + step * 2
 			if (
 				_anchor_is_in_bounds(neighbor)
-				and _section_kind(buildings, zones, flags, neighbor) > 1
+				and _section_kind(buildings, zones, flags, neighbor, map_edge) > 1
 			):
 				affected[neighbor] = true
 	for anchor: Vector2i in affected:
@@ -1108,7 +1127,7 @@ static func _retile_affected_sections(
 			misc,
 			anchor,
 			int(route_directions.get(anchor, 0)),
-			rotation
+			rotation, map_edge
 		)
 
 
@@ -1122,7 +1141,8 @@ static func _retile_section(
 	misc: PackedByteArray,
 	anchor: Vector2i,
 	direction: int,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> int:
 	var kind := _select_section_kind(
 		buildings,
@@ -1132,11 +1152,11 @@ static func _retile_section(
 		altitude,
 		text_overlays,
 		anchor,
-		direction
+		direction, map_edge
 	)
 	if kind >= 0:
 		_write_section_kind(
-			buildings, terrain, zones, altitude, misc, anchor, kind, rotation
+			buildings, terrain, zones, altitude, misc, anchor, kind, rotation, map_edge
 		)
 	return kind
 
@@ -1149,11 +1169,12 @@ static func _select_section_kind(
 	altitude: PackedByteArray,
 	text_overlays: PackedByteArray,
 	anchor: Vector2i,
-	direction: int
+	direction: int,
+	map_edge: int = 128,
 ) -> int:
 	if not _anchor_is_in_bounds(anchor):
 		return -1
-	var current_kind := _section_kind(buildings, zones, flags, anchor)
+	var current_kind := _section_kind(buildings, zones, flags, anchor, map_edge)
 	if (
 		current_kind == 0
 		or current_kind == 1
@@ -1161,7 +1182,7 @@ static func _select_section_kind(
 		or current_kind > 12
 	):
 		return -1
-	var current_height := _section_altitude(terrain, altitude, anchor)
+	var current_height := _section_altitude(terrain, altitude, anchor, map_edge)
 	var connections := 0
 	for direction_index in 4:
 		connections |= _neighbor_connection_flags(
@@ -1172,11 +1193,11 @@ static func _select_section_kind(
 			altitude,
 			anchor,
 			current_height,
-			direction_index
+			direction_index, map_edge
 		)
 	if (
-		text_overlays.size() == CityState.TILE_COUNT
-		and text_overlays[anchor.x * CityState.MAP_SIZE + anchor.y] == CONNECTION_LABEL
+		text_overlays.size() == (map_edge * map_edge)
+		and text_overlays[anchor.x * map_edge + anchor.y] == CONNECTION_LABEL
 	):
 		if anchor.x < 2:
 			connections |= 8
@@ -1188,7 +1209,7 @@ static func _select_section_kind(
 			connections |= 4
 
 	var terrain_shape := _terrain_section_shape(
-		buildings, terrain, altitude, anchor
+		buildings, terrain, altitude, anchor, map_edge
 	)
 	if terrain_shape == INVALID_TERRAIN_SHAPE:
 		return -1
@@ -1235,17 +1256,18 @@ static func _neighbor_connection_flags(
 	altitude: PackedByteArray,
 	anchor: Vector2i,
 	current_height: int,
-	direction_index: int
+	direction_index: int,
+	map_edge: int = 128,
 ) -> int:
 	var neighbor: Vector2i = anchor + DIRECTIONS[direction_index] * 2
 	if not _anchor_is_in_bounds(neighbor):
 		return 0
-	var neighbor_kind := _section_kind(buildings, zones, flags, neighbor)
+	var neighbor_kind := _section_kind(buildings, zones, flags, neighbor, map_edge)
 	if not _neighbor_kind_connects(
-		buildings, terrain, altitude, neighbor, neighbor_kind, direction_index
+		buildings, terrain, altitude, neighbor, neighbor_kind, direction_index, map_edge
 	):
 		return 0
-	var neighbor_height := _section_altitude(terrain, altitude, neighbor)
+	var neighbor_height := _section_altitude(terrain, altitude, neighbor, map_edge)
 	var result := 1 << direction_index
 	match direction_index:
 		0:
@@ -1285,7 +1307,8 @@ static func _neighbor_kind_connects(
 	altitude: PackedByteArray,
 	neighbor: Vector2i,
 	neighbor_kind: int,
-	direction_index: int
+	direction_index: int,
+	map_edge: int = 128,
 ) -> bool:
 	var north_south := direction_index == 0 or direction_index == 2
 	if north_south:
@@ -1300,7 +1323,7 @@ static func _neighbor_kind_connects(
 			return true
 		return (
 			neighbor_kind == 2
-			and _terrain_section_shape(buildings, terrain, altitude, neighbor)
+			and _terrain_section_shape(buildings, terrain, altitude, neighbor, map_edge)
 			!= FILLED_FLAT_TERRAIN_SHAPE
 		)
 	if neighbor_kind == 0 or neighbor_kind == 2:
@@ -1314,7 +1337,7 @@ static func _neighbor_kind_connects(
 		return true
 	return (
 		neighbor_kind == 3
-		and _terrain_section_shape(buildings, terrain, altitude, neighbor)
+		and _terrain_section_shape(buildings, terrain, altitude, neighbor, map_edge)
 		!= FILLED_FLAT_TERRAIN_SHAPE
 	)
 
@@ -1323,24 +1346,25 @@ static func _section_kind(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
 	flags: PackedByteArray,
-	anchor: Vector2i
+	anchor: Vector2i,
+	map_edge: int = 128,
 ) -> int:
 	if not _anchor_is_in_bounds(anchor):
 		return -1
-	var anchor_index := anchor.x * CityState.MAP_SIZE + anchor.y
+	var anchor_index := anchor.x * map_edge + anchor.y
 	var anchor_tile := int(buildings[anchor_index])
 	if not _is_highway_tile(anchor_tile):
 		return -1
 	if (zones[anchor_index] & 0xf0) != 0xf0:
 		var shaped_kind := anchor_tile - 0x5d
 		if shaped_kind > 12:
-			var south_index := anchor.x * CityState.MAP_SIZE + anchor.y + 1
+			var south_index := anchor.x * map_edge + anchor.y + 1
 			return 16 if (flags[south_index] & 0x02) != 0 else 15
 		return shaped_kind
 	var last_tile := anchor_tile
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		last_tile = int(buildings[index])
 		if last_tile >= 0x4b and last_tile <= 0x50:
 			return last_tile & 1
@@ -1371,23 +1395,25 @@ static func _grade_kind_for_shape(terrain_shape: int) -> int:
 
 
 static func _prepare_flat_terrain(
-	terrain: PackedByteArray, altitude: PackedByteArray, anchor: Vector2i
+	terrain: PackedByteArray, altitude: PackedByteArray, anchor: Vector2i,
+	map_edge: int = 128,
 ) -> void:
-	var target := _section_altitude(terrain, altitude, anchor)
+	var target := _section_altitude(terrain, altitude, anchor, map_edge)
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		if _land_altitude(altitude, index) < target:
 			terrain[index] = 0x0d
 
 
 static func _prepare_shaped_terrain(
-	terrain: PackedByteArray, altitude: PackedByteArray, anchor: Vector2i
+	terrain: PackedByteArray, altitude: PackedByteArray, anchor: Vector2i,
+	map_edge: int = 128,
 ) -> void:
-	var target := _section_altitude(terrain, altitude, anchor)
+	var target := _section_altitude(terrain, altitude, anchor, map_edge)
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		if terrain[index] != 0 or _land_altitude(altitude, index) < target:
 			terrain[index] = 0x0d
 
@@ -1400,28 +1426,29 @@ static func _write_section_kind(
 	misc: PackedByteArray,
 	anchor: Vector2i,
 	kind: int,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> void:
 	if kind < 4:
-		_prepare_flat_terrain(terrain, altitude, anchor)
+		_prepare_flat_terrain(terrain, altitude, anchor, map_edge)
 		var orientation := kind & 1
 		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 			var point: Vector2i = anchor + offset
-			var old_tile := int(buildings[point.x * CityState.MAP_SIZE + point.y])
+			var old_tile := int(buildings[point.x * map_edge + point.y])
 			if old_tile == 0x0e or old_tile == 0x1d or old_tile == 0x2c:
 				orientation = 1
 			elif old_tile == 0x0f or old_tile == 0x1e or old_tile == 0x2d:
 				orientation = 0
-		_place_straight_section(buildings, zones, misc, anchor, orientation)
+		_place_straight_section(buildings, zones, misc, anchor, orientation, map_edge)
 		return
 	if kind >= 4 and kind <= 7:
 		_place_graded_section(
-			altitude, buildings, terrain, zones, misc, anchor, kind, rotation
+			altitude, buildings, terrain, zones, misc, anchor, kind, rotation, map_edge
 		)
 		return
 	if kind >= 8 and kind <= 12:
-		_prepare_shaped_terrain(terrain, altitude, anchor)
-		_write_shape(buildings, zones, misc, anchor, kind, rotation)
+		_prepare_shaped_terrain(terrain, altitude, anchor, map_edge)
+		_write_shape(buildings, zones, misc, anchor, kind, rotation, map_edge)
 
 
 static func _place_graded_section(
@@ -1432,9 +1459,10 @@ static func _place_graded_section(
 	misc: PackedByteArray,
 	anchor: Vector2i,
 	kind: int,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> void:
-	var target := _section_altitude(terrain, altitude, anchor)
+	var target := _section_altitude(terrain, altitude, anchor, map_edge)
 	var offsets := [
 		Vector2i.ZERO,
 		Vector2i(1, 0),
@@ -1444,7 +1472,7 @@ static func _place_graded_section(
 	var all_at_target := true
 	for offset in offsets:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		if _land_altitude(altitude, index) != target:
 			all_at_target = false
 			break
@@ -1452,7 +1480,7 @@ static func _place_graded_section(
 		for offset in offsets:
 			var point: Vector2i = anchor + offset
 			_set_land_altitude(
-				altitude, point.x * CityState.MAP_SIZE + point.y, target - 1
+				altitude, point.x * map_edge + point.y, target - 1
 			)
 	var terrain_pattern: Array[int]
 	match kind:
@@ -1469,11 +1497,11 @@ static func _place_graded_section(
 	var tile_id := 0x5d + kind
 	for offset_index in offsets.size():
 		var point: Vector2i = anchor + offsets[offset_index]
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		terrain[index] = terrain_pattern[offset_index]
 		zones[index] &= 0xf0
 		NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
-	BuildingCommand._set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation)
+	BuildingCommand._set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge)
 
 
 static func _set_land_altitude(
@@ -1492,18 +1520,19 @@ static func _write_shape(
 	misc: PackedByteArray,
 	anchor: Vector2i,
 	kind: int,
-	rotation: int
+	rotation: int,
+	map_edge: int = 128,
 ) -> void:
 	if kind == 2 or kind == 3:
-		_place_straight_section(buildings, zones, misc, anchor, kind - 2)
+		_place_straight_section(buildings, zones, misc, anchor, kind - 2, map_edge)
 		return
 	var tile_id := 0x5d + kind
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		zones[index] = 0
 		NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
-	BuildingCommand._set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation)
+	BuildingCommand._set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge)
 
 
 static func _section_direction(
@@ -1546,36 +1575,37 @@ static func _anchor_is_on_border(anchor: Vector2i) -> bool:
 	return anchor.x == 0 or anchor.x == 126 or anchor.y == 0 or anchor.y == 126
 
 
-static func _section_has_water(flags: PackedByteArray, anchor: Vector2i) -> bool:
+static func _section_has_water(flags: PackedByteArray, anchor: Vector2i, map_edge: int = 128) -> bool:
 	if not _anchor_is_in_bounds(anchor):
 		return false
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
-		if (flags[point.x * CityState.MAP_SIZE + point.y] & FLAG_WATER) != 0:
+		if (flags[point.x * map_edge + point.y] & FLAG_WATER) != 0:
 			return true
 	return false
 
 
-static func _section_is_existing_highway(buildings: PackedByteArray, anchor: Vector2i) -> bool:
+static func _section_is_existing_highway(buildings: PackedByteArray, anchor: Vector2i, map_edge: int = 128) -> bool:
 	if not _anchor_is_in_bounds(anchor):
 		return false
 	for x in range(anchor.x, anchor.x + 2):
 		for y in range(anchor.y, anchor.y + 2):
-			if not _is_highway_tile(buildings[x * CityState.MAP_SIZE + y]):
+			if not _is_highway_tile(buildings[x * map_edge + y]):
 				return false
 	return true
 
 
 static func preview_valid(city: CityState, selected: Vector2i) -> bool:
+	var map_edge: int = city.map_size if city != null else 128
 	var anchor := snap_anchor(selected)
 	if city == null or not _anchor_is_in_bounds(anchor):
 		return false
 	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-	var sections := _plan_flat_route(city.buildings, city.terrain, city.tile_flags, altitude, anchor, anchor)
+	var sections := _plan_flat_route(city.buildings, city.terrain, city.tile_flags, altitude, anchor, anchor, map_edge)
 	if not sections.is_empty():
-		return _section_is_existing_highway(city.buildings, anchor) or city.funds() >= 100
-	if _section_has_water(city.tile_flags, anchor):
-		var bridge := _plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation())
+		return _section_is_existing_highway(city.buildings, anchor, map_edge) or city.funds() >= 100
+	if _section_has_water(city.tile_flags, anchor, map_edge):
+		var bridge := _plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation(), map_edge)
 		if bridge.get("ok", false):
 			for choice in _bridge_choices(bridge):
 				if city.funds() >= int(choice.get("cost", 0)):
@@ -1584,14 +1614,15 @@ static func preview_valid(city: CityState, selected: Vector2i) -> bool:
 
 
 static func preview_error(city: CityState, selected: Vector2i) -> String:
+	var map_edge: int = city.map_size if city != null else 128
 	if preview_valid(city, selected):
 		return ""
 	var anchor := snap_anchor(selected)
 	if city == null or not _anchor_is_in_bounds(anchor):
 		return "The 2 by 2 highway section extends outside the map."
-	if _section_has_water(city.tile_flags, anchor):
+	if _section_has_water(city.tile_flags, anchor, map_edge):
 		var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-		var bridge := _plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation())
+		var bridge := _plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation(), map_edge)
 		if not bridge.get("ok", false):
 			return String(bridge.get("error", "This shore cannot start a highway bridge."))
 		return "Insufficient funds for this highway bridge."

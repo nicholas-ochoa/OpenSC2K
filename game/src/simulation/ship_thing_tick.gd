@@ -36,14 +36,15 @@ static func update(
 	ship_home: Vector2i,
 	random,
 	lfsr_random,
-	counters: Dictionary
+	counters: Dictionary,
+	map_edge: int = 128,
 ) -> void:
 	var offset := record * RECORD_SIZE
 	if random.next_u15() & 0xff == 0:
 		_queue_sound(counters, things, record)
-	var current := Vector2i(things[offset + 3], things[offset + 4])
-	var current_index := _index(current)
-	var direction := int(things[offset + 1])
+	var current := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
+	var current_index := _index(current, map_edge)
+	var direction := int(ThingData.read(things, offset + 1))
 	if current_index < 0 or direction < 0 or direction >= DIRECTIONS.size():
 		_convert_to_explosion(things, record)
 		counters.crashed_ships += 1
@@ -53,42 +54,42 @@ static func update(
 		_convert_to_explosion(things, record)
 		counters.crashed_ships += 1
 		return
-	var target := Vector2i(things[offset + 8], things[offset + 9])
-	match int(things[offset + 2]):
+	var target := Vector2i(ThingData.read(things, offset + 8), ThingData.read(things, offset + 9))
+	match int(ThingData.read(things, offset + 2)):
 		0:
 			if lfsr_random.next_mod(10) == 0:
 				var turned := _steer_direction(direction, current, target)
 				if _route_is_valid(
-					buildings, underground, flags, text, current, turned
+					buildings, underground, flags, text, current, turned, map_edge
 				):
 					direction = turned
-					things[offset + 1] = direction
+					ThingData.write(things, offset + 1, direction)
 			if _route_is_valid(
-				buildings, underground, flags, text, current, direction
+				buildings, underground, flags, text, current, direction, map_edge
 			):
-				if not _move(text, things, record, direction):
+				if not _move(text, things, record, direction, map_edge):
 					counters.removed_ships += 1
 					return
 				counters.moved_ships += 1
 			else:
-				things[offset + 2] = 1
+				ThingData.write(things, offset + 2, 1)
 			for pier_delta in PIER_DELTAS:
-				var pier_index := _index(current + pier_delta)
+				var pier_index := _index(current + pier_delta, map_edge)
 				if pier_index >= 0 and buildings[pier_index] == TILE_PIER:
-					things[offset + 2] = 3
+					ThingData.write(things, offset + 2, 3)
 					counters.docked_ships += 1
 		1:
 			var desired := _direction_between(current, target)
 			direction = _turn_one_step(direction, desired)
-			things[offset + 1] = direction
+			ThingData.write(things, offset + 1, direction)
 			if direction == desired:
-				things[offset + 2] = (
+				ThingData.write(things, offset + 2, (
 					0
 					if _route_is_valid(
-						buildings, underground, flags, text, current, desired
+						buildings, underground, flags, text, current, desired, map_edge
 					)
 					else 2
-				)
+				))
 		2:
 			var offsets = (
 				REVERSE_OFFSETS
@@ -97,35 +98,35 @@ static func update(
 			)
 			var found := false
 			for direction_offset in offsets.slice(0, 8):
-				direction = (int(things[offset + 1]) + int(direction_offset)) & 7
+				direction = (int(ThingData.read(things, offset + 1)) + int(direction_offset)) & 7
 				if _route_is_valid(
-					buildings, underground, flags, text, current, direction
+					buildings, underground, flags, text, current, direction, map_edge
 				):
 					found = true
 					break
 			if not found:
-				_remove(text, things, record)
+				_remove(text, things, record, map_edge)
 				counters.removed_ships += 1
 				direction = (
-					(int(things[offset + 1]) + 2) & 7
+					(int(ThingData.read(things, offset + 1)) + 2) & 7
 					if offsets == REVERSE_OFFSETS
-					else int(things[offset + 1]) & 7
+					else int(ThingData.read(things, offset + 1)) & 7
 				)
-			things[offset + 1] = direction
-			things[offset + 2] = 0
+			ThingData.write(things, offset + 1, direction)
+			ThingData.write(things, offset + 2, 0)
 		3:
 			if lfsr_random.next_mod(30) == 0:
-				things[offset + 2] = 4
+				ThingData.write(things, offset + 2, 4)
 				_queue_sound(counters, things, record)
 				counters.departing_ships += 1
-				var home := ship_home if _index(ship_home) >= 0 else current
-				things[offset + 8] = home.x
-				things[offset + 9] = home.y
+				var home := ship_home if _index(ship_home, map_edge) >= 0 else current
+				ThingData.write(things, offset + 8, home.x)
+				ThingData.write(things, offset + 9, home.y)
 		4:
 			if _route_is_valid(
-				buildings, underground, flags, text, current, direction
+				buildings, underground, flags, text, current, direction, map_edge
 			):
-				if not _move(text, things, record, direction):
+				if not _move(text, things, record, direction, map_edge):
 					counters.removed_ships += 1
 					return
 				counters.moved_ships += 1
@@ -133,13 +134,13 @@ static func update(
 			var start_offset: int = lfsr_random.next_mod(2)
 			for order_index in range(start_offset, DIRECTION_OFFSETS.size()):
 				direction = (
-					int(things[offset + 1]) + DIRECTION_OFFSETS[order_index]
+					int(ThingData.read(things, offset + 1)) + DIRECTION_OFFSETS[order_index]
 				) & 7
 				if _route_is_valid(
-					buildings, underground, flags, text, current, direction
+					buildings, underground, flags, text, current, direction, map_edge
 				):
 					break
-			things[offset + 1] = direction
+			ThingData.write(things, offset + 1, direction)
 
 
 static func _route_is_valid(
@@ -148,10 +149,11 @@ static func _route_is_valid(
 	flags: PackedByteArray,
 	text: PackedByteArray,
 	current: Vector2i,
-	direction: int
+	direction: int,
+	map_edge: int = 128,
 ) -> bool:
 	var route_point: Vector2i = current + ROUTE_DELTAS[direction]
-	var route_index := _index(route_point)
+	var route_index := _index(route_point, map_edge)
 	if route_index < 0:
 		return true
 	return (
@@ -181,11 +183,12 @@ static func _move(
 	text: PackedByteArray,
 	things: PackedByteArray,
 	record: int,
-	direction: int
+	direction: int,
+	map_edge: int = 128,
 ) -> bool:
 	var offset := record * RECORD_SIZE
-	var subtile_x: int = int(things[offset + 6]) + ROUTE_DELTAS[direction].x
-	var subtile_y: int = int(things[offset + 7]) + ROUTE_DELTAS[direction].y
+	var subtile_x: int = int(ThingData.read(things, offset + 6)) + ROUTE_DELTAS[direction].x
+	var subtile_y: int = int(ThingData.read(things, offset + 7)) + ROUTE_DELTAS[direction].y
 	var tile_delta := Vector2i.ZERO
 	if subtile_x > 12:
 		subtile_x -= 12
@@ -199,41 +202,42 @@ static func _move(
 	elif subtile_y < 0:
 		subtile_y += 12
 		tile_delta.y = -1
-	things[offset + 6] = subtile_x
-	things[offset + 7] = subtile_y
+	ThingData.write(things, offset + 6, subtile_x)
+	ThingData.write(things, offset + 7, subtile_y)
 	if tile_delta == Vector2i.ZERO:
 		return true
-	var current := Vector2i(things[offset + 3], things[offset + 4])
-	var current_index := _index(current)
+	var current := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
+	var current_index := _index(current, map_edge)
 	if current_index >= 0:
-		text[current_index] = things[offset + 10]
+		text[current_index] = ThingData.read(things, offset + 10)
 	var next := current + tile_delta
-	var next_index := _index(next)
+	var next_index := _index(next, map_edge)
 	if next_index < 0:
-		things[offset] = 0
+		ThingData.write(things, offset, 0)
 		return false
-	things[offset + 3] = next.x
-	things[offset + 4] = next.y
-	things[offset + 10] = text[next_index]
+	ThingData.write(things, offset + 3, next.x)
+	ThingData.write(things, offset + 4, next.y)
+	ThingData.write(things, offset + 10, text[next_index])
 	text[next_index] = record + TEXT_LABEL_BASE
 	return true
 
 
 static func _convert_to_explosion(things: PackedByteArray, record: int) -> void:
 	var offset := record * RECORD_SIZE
-	things[offset] = TYPE_EXPLOSION
-	things[offset + 1] = 0
-	things[offset + 2] = 0
-	things[offset + 11] = 0
+	ThingData.write(things, offset, TYPE_EXPLOSION)
+	ThingData.write(things, offset + 1, 0)
+	ThingData.write(things, offset + 2, 0)
+	ThingData.write(things, offset + 11, 0)
 
 
 static func _remove(
-	text: PackedByteArray, things: PackedByteArray, record: int
+	text: PackedByteArray, things: PackedByteArray, record: int,
+	map_edge: int = 128,
 ) -> void:
 	var offset := record * RECORD_SIZE
-	things[offset] = 0
-	var point := Vector2i(things[offset + 3], things[offset + 4])
-	var index := _index(point)
+	ThingData.write(things, offset, 0)
+	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
+	var index := _index(point, map_edge)
 	if index >= 0:
 		text[index] = 0
 
@@ -244,9 +248,9 @@ static func _queue_sound(
 	var offset := record * RECORD_SIZE
 	counters.sound_events.append({
 		"sound_id": SOUND_SHIP,
-		"thing_type": int(things[offset]),
+		"thing_type": int(ThingData.read(things, offset)),
 		"record": record,
-		"point": Vector2i(things[offset + 3], things[offset + 4]),
+		"point": Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4)),
 	})
 
 
@@ -278,12 +282,12 @@ static func _direction_between(start: Vector2i, target: Vector2i) -> int:
 	return 1 if difference.y < 0 else 3
 
 
-static func _index(point: Vector2i) -> int:
+static func _index(point: Vector2i, map_edge: int = 128) -> int:
 	if (
 		point.x < 0
-		or point.x >= CityState.MAP_SIZE
+		or point.x >= map_edge
 		or point.y < 0
-		or point.y >= CityState.MAP_SIZE
+		or point.y >= map_edge
 	):
 		return -1
-	return point.x * CityState.MAP_SIZE + point.y
+	return point.x * map_edge + point.y

@@ -20,6 +20,7 @@ const NOTICE_NO_SITE := 0x19b
 
 
 static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if accepted and (game_random == null or not game_random.has_method("next_mod")):
@@ -47,7 +48,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 		var level := 0
 		for x in range(origin.x, origin.x + 8):
 			for y in range(origin.y, origin.y + 8):
-				var index := x * CityState.MAP_SIZE + y
+				var index := x * map_edge + y
 				if _is_clear_land(buildings, terrain, flags, index):
 					valid += 1
 					if city.land_altitude(x, y) == last_altitude:
@@ -57,7 +58,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 		var base_type := BASE_AIR_FORCE if valid == level else BASE_ARMY
 		var notice := NOTICE_AIR_FORCE if base_type == BASE_AIR_FORCE else NOTICE_ARMY
 		var changed := _zone_plot(
-			buildings, terrain, underground, flags, zones, misc, Rect2i(origin, Vector2i(8, 8))
+			buildings, terrain, underground, flags, zones, misc, Rect2i(origin, Vector2i(8, 8)), map_edge
 		)
 		_write_u32(misc, MISC_BASE_TYPE, base_type)
 		if not _store(city, chunks, zones, misc):
@@ -68,10 +69,10 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 	for _attempt in 40:
 		var origin := Vector2i(game_random.next_mod(124), game_random.next_mod(124))
 		var valid := 0
-		var origin_index := origin.x * CityState.MAP_SIZE + origin.y
+		var origin_index := origin.x * map_edge + origin.y
 		for x in range(origin.x, origin.x + 3):
 			for y in range(origin.y, origin.y + 3):
-				var index := x * CityState.MAP_SIZE + y
+				var index := x * map_edge + y
 				if (
 					_is_clear_land(buildings, terrain, flags, index)
 					and city.land_altitude(x, y) == last_altitude
@@ -93,10 +94,10 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 	for site in sites:
 		for x in range(site.position.x, site.end.x):
 			for y in range(site.position.y, site.end.y):
-				var index := x * CityState.MAP_SIZE + y
-				_decrement_tile_count(misc, int(buildings[index]))
+				var index := x * map_edge + y
+				_decrement_tile_count(misc, int(buildings[index]), map_edge)
 				zones[index] = (zones[index] & 0xf7) | ZONE_MILITARY
-				_increment_military_other(misc)
+				_increment_military_other(misc, map_edge)
 				changed_indices.append(index)
 	_write_u32(misc, MISC_BASE_TYPE, BASE_MISSILE_SILOS)
 	if not _store(city, chunks, zones, misc):
@@ -115,21 +116,22 @@ static func _zone_plot(
 	flags: PackedByteArray,
 	zones: PackedByteArray,
 	misc: PackedByteArray,
-	site: Rect2i
+	site: Rect2i,
+	map_edge: int = 128,
 ) -> PackedInt32Array:
 	var changed := PackedInt32Array()
-	var origin_index := site.position.x * CityState.MAP_SIZE + site.position.y
+	var origin_index := site.position.x * map_edge + site.position.y
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
-			var index := x * CityState.MAP_SIZE + y
+			var index := x * map_edge + y
 			if (
 				_is_clear_land(buildings, terrain, flags, index)
 				and (zones[index] & 0x0f) == 0
 				and underground[origin_index] == 0
 			):
-				_decrement_tile_count(misc, int(buildings[index]))
+				_decrement_tile_count(misc, int(buildings[index]), map_edge)
 				zones[index] = (zones[index] & 0xf7) | ZONE_MILITARY
-				_increment_military_other(misc)
+				_increment_military_other(misc, map_edge)
 				changed.append(index)
 	return changed
 
@@ -157,13 +159,14 @@ static func _store(
 
 
 static func _chunks(city: CityState) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var result := {}
 	for checked in [
-		["XBLD", CityState.TILE_COUNT],
-		["XTER", CityState.TILE_COUNT],
-		["XZON", CityState.TILE_COUNT],
-		["XUND", CityState.TILE_COUNT],
-		["XBIT", CityState.TILE_COUNT],
+		["XBLD", (map_edge * map_edge)],
+		["XTER", (map_edge * map_edge)],
+		["XZON", (map_edge * map_edge)],
+		["XUND", (map_edge * map_edge)],
+		["XBIT", (map_edge * map_edge)],
 		["MISC", MISC_SIZE],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
@@ -193,16 +196,16 @@ static func _result(
 	}
 
 
-static func _decrement_tile_count(misc: PackedByteArray, tile_id: int) -> void:
+static func _decrement_tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> void:
 	var offset := MISC_TILE_COUNTS + tile_id * 4
-	_write_u32(misc, offset, (_read_u32(misc, offset) - 1) & 0xffff)
+	_write_u32(misc, offset, (_read_u32(misc, offset) - 1) & (0xffff if map_edge == 128 else 0xffffffff))
 
 
-static func _increment_military_other(misc: PackedByteArray) -> void:
+static func _increment_military_other(misc: PackedByteArray, map_edge: int = 128) -> void:
 	_write_u32(
 		misc,
 		MISC_MILITARY_TILE_COUNTS,
-		(_read_u32(misc, MISC_MILITARY_TILE_COUNTS) + 1) & 0xffff
+		(_read_u32(misc, MISC_MILITARY_TILE_COUNTS) + 1) & (0xffff if map_edge == 128 else 0xffffffff)
 	)
 
 

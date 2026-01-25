@@ -17,6 +17,7 @@ static func supports_tool(group_index: int, subtool_index: int) -> bool:
 static func apply(
 	city: CityState, group_index: int, subtool_index: int, point: Vector2i, preview_only := false
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not supports_tool(group_index, subtool_index):
@@ -61,7 +62,7 @@ static func apply(
 	var misc: PackedByteArray = changed_payloads.MISC
 
 	BuildingCommand._place_subway_station(
-		underground, terrain, zones, flags, misc, point
+		underground, terrain, zones, flags, misc, point, map_edge
 	)
 	var tile_id := CONNECTOR_FIRST + orientation
 	NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
@@ -74,7 +75,7 @@ static func apply(
 		misc,
 		neighbor,
 		NetworkCommand.MODE_RAIL,
-		changed_payloads.XTXT
+		changed_payloads.XTXT, map_edge
 	)
 
 	var changed_ids := PackedStringArray()

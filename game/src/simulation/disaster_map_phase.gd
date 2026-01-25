@@ -45,6 +45,7 @@ const MAP_CHUNK_SIZES := {
 static func run_all(
 	city: CityState, random, lfsr_random, map_counter: int, hurricane_counter := 0
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -107,9 +108,9 @@ static func run_all(
 	var flood_active := false
 	var toxic_active := false
 	var riot_active := false
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
-			var index := x * CityState.MAP_SIZE + y
+	for x in map_edge:
+		for y in map_edge:
+			var index := x * map_edge + y
 			var overlay := int(payloads.XTXT[index])
 			if overlay == FIRE_OVERLAY:
 				fire_active = true
@@ -173,9 +174,9 @@ static func run_all(
 			sound_events.append(SOUND_HURRICANE)
 		if lfsr_random.next_mask(1) == 0:
 			var hurricane_point := Vector2i(
-				lfsr_random.next_mod(128), lfsr_random.next_mod(128)
+				lfsr_random.next_mod(map_edge), lfsr_random.next_mod(map_edge)
 			)
-			var hurricane_index := _index(hurricane_point)
+			var hurricane_index := _index(hurricane_point, map_edge)
 			if payloads.XBLD[hurricane_index] > 0x70:
 				counters.hurricane_damage_attempts += 1
 				var damage := DisasterMapDamage.burn_structure(
@@ -241,6 +242,7 @@ static func run_all(
 
 
 static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -268,9 +270,9 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 	}
 	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var active := false
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
-			var index := x * CityState.MAP_SIZE + y
+	for x in map_edge:
+		for y in map_edge:
+			var index := x * map_edge + y
 			if payloads.XTXT[index] != FIRE_OVERLAY:
 				continue
 			active = true
@@ -302,13 +304,13 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 					_collapse_structure(city, payloads, point, tile, random, lfsr_random)
 					counters.structure_collapses += 1
 					if lfsr_random.next_mask(0x0f) == 0 and _spawn_explosion(
-						payloads.XTXT, payloads.XTHG, point, 0, 0, 1
+						payloads.XTXT, payloads.XTHG, point, 0, 0, 1, map_edge
 					):
 						counters.created_explosions += 1
 					if SPECIAL_TOXIC_BUILDINGS.has(tile):
-						counters.toxic_markers += _seed_special_toxic(payloads, toxic_site, point)
+						counters.toxic_markers += _seed_special_toxic(payloads, toxic_site, point, map_edge)
 			else:
-				var coverage := int(payloads.XFIR[int(x / 4) * 32 + int(y / 4)]) + 8
+				var coverage := int(payloads.XFIR[int(x / 4) * (map_edge / 4) + int(y / 4)]) + 8
 				if (random.next_u15() & 0xff) < coverage:
 					_collapse_structure(
 						city, payloads, point, int(payloads.XBLD[index]), random, lfsr_random
@@ -336,6 +338,7 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 static func run_flood(
 	city: CityState, random, lfsr_random, map_counter: int
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -362,9 +365,9 @@ static func run_flood(
 	}
 	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var active := false
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
-			var index := x * CityState.MAP_SIZE + y
+	for x in map_edge:
+		for y in map_edge:
+			var index := x * map_edge + y
 			if payloads.XTXT[index] != 0xfc:
 				continue
 			active = true
@@ -437,6 +440,7 @@ static func run_flood(
 
 
 static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -457,9 +461,9 @@ static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
 		"abandoned_structures": 0,
 	}
 	var active := false
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
-			var index := x * CityState.MAP_SIZE + y
+	for x in map_edge:
+		for y in map_edge:
+			var index := x * map_edge + y
 			if payloads.XTXT[index] != TOXIC_OVERLAY:
 				continue
 			active = true
@@ -478,12 +482,12 @@ static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
 			var point := Vector2i(x, y)
 			if _abandon_toxic_structure(city, payloads, point, random):
 				counters.abandoned_structures += 1
-			var direction := _lowest_toxic_direction(payloads.ALTM, point)
+			var direction := _lowest_toxic_direction(payloads.ALTM, point, map_edge)
 			if direction < 0:
 				direction = random.next_u15() & 3
 			payloads.XTXT[index] = 0
 			var target: Vector2i = point + CARDINAL_DIRECTIONS[direction]
-			if _place_toxic_marker(payloads.XTXT, target):
+			if _place_toxic_marker(payloads.XTXT, target, map_edge):
 				counters.moved_markers += 1
 			else:
 				counters.blocked_moves += 1
@@ -504,6 +508,7 @@ static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
 
 
 static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -530,9 +535,9 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 	}
 	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var active := false
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
-			var index := x * CityState.MAP_SIZE + y
+	for x in map_edge:
+		for y in map_edge:
+			var index := x * map_edge + y
 			var marker := int(payloads.XTXT[index])
 			if marker != RIOT_OVERLAY_FORWARD and marker != RIOT_OVERLAY_REVERSE:
 				continue
@@ -545,7 +550,7 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 				payloads.XTXT[index] = 0
 				counters.expired_riots += 1
 				continue
-			var traffic_index := int(x / 2) * 64 + int(y / 2)
+			var traffic_index := int(x / 2) * (map_edge / 2) + int(y / 2)
 			if payloads.XTRF[traffic_index] != 0:
 				counters.traffic_cells_cleared += 1
 			payloads.XTRF[traffic_index] = 0
@@ -566,9 +571,9 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 			var first_direction: int = 0 if marker == RIOT_OVERLAY_REVERSE else 2
 			var second_direction: int = 1 if marker == RIOT_OVERLAY_REVERSE else 3
 			var connections := 0
-			if _riot_supports(payloads.XBLD, Vector2i(x, y) + CARDINAL_DIRECTIONS[first_direction]):
+			if _riot_supports(payloads.XBLD, Vector2i(x, y) + CARDINAL_DIRECTIONS[first_direction], map_edge):
 				connections |= 1
-			if _riot_supports(payloads.XBLD, Vector2i(x, y) + CARDINAL_DIRECTIONS[second_direction]):
+			if _riot_supports(payloads.XBLD, Vector2i(x, y) + CARDINAL_DIRECTIONS[second_direction], map_edge):
 				connections |= 2
 			var opposite_marker: int = (
 				RIOT_OVERLAY_FORWARD
@@ -585,7 +590,7 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 			if _place_riot_marker(
 				payloads.XTXT,
 				Vector2i(x, y) + CARDINAL_DIRECTIONS[spread_direction],
-				marker,
+				marker, map_edge,
 			):
 				counters.propagated_riots += 1
 			else:
@@ -613,6 +618,7 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 
 
 static func run_dispatch(city: CityState, random, lfsr_random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -634,9 +640,9 @@ static func run_dispatch(city: CityState, random, lfsr_random) -> Dictionary:
 		"riot_suppression_attempts": 0,
 		"riot_suppressions": 0,
 	}
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
-			var index := x * CityState.MAP_SIZE + y
+	for x in map_edge:
+		for y in map_edge:
+			var index := x * map_edge + y
 			var overlay := int(payloads.XTXT[index])
 			if overlay <= 200 or overlay >= 241:
 				continue
@@ -658,7 +664,7 @@ static func run_dispatch(city: CityState, random, lfsr_random) -> Dictionary:
 				var riot_target: Vector2i = (
 					Vector2i(x, y) + CARDINAL_DIRECTIONS[random.next_u15() & 3]
 				)
-				if _clear_riot_marker(payloads.XTXT, riot_target):
+				if _clear_riot_marker(payloads.XTXT, riot_target, map_edge):
 					counters.riot_suppressions += 1
 	var map_changed := _payloads_changed(original, payloads)
 	if map_changed and not _apply_map_payloads(city, original, payloads):
@@ -685,6 +691,7 @@ static func _process_fire_cell(
 	counters: Dictionary,
 	runtime_events: Dictionary,
 ) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	counters.fire_markers_scanned += 1
 	if random.next_u15() & 3 != 0:
 		return
@@ -710,13 +717,13 @@ static func _process_fire_cell(
 			_collapse_structure(city, payloads, point, tile, random, lfsr_random)
 			counters.structure_collapses += 1
 			if lfsr_random.next_mask(0x0f) == 0 and _spawn_explosion(
-				payloads.XTXT, payloads.XTHG, point, 0, 0, 1
+				payloads.XTXT, payloads.XTHG, point, 0, 0, 1, map_edge
 			):
 				counters.created_explosions += 1
 			if SPECIAL_TOXIC_BUILDINGS.has(tile):
-				counters.toxic_markers += _seed_special_toxic(payloads, toxic_site, point)
+				counters.toxic_markers += _seed_special_toxic(payloads, toxic_site, point, map_edge)
 	else:
-		var coverage := int(payloads.XFIR[int(point.x / 4) * 32 + int(point.y / 4)]) + 8
+		var coverage := int(payloads.XFIR[int(point.x / 4) * (map_edge / 4) + int(point.y / 4)]) + 8
 		if (random.next_u15() & 0xff) < coverage:
 			_collapse_structure(
 				city, payloads, point, int(payloads.XBLD[index]), random, lfsr_random
@@ -793,6 +800,7 @@ static func _process_toxic_cell(
 	lfsr_random,
 	counters: Dictionary
 ) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	counters.toxic_markers_scanned += 1
 	if random.next_u15() & 1 != 0:
 		return
@@ -807,12 +815,12 @@ static func _process_toxic_cell(
 		return
 	if _abandon_toxic_structure(city, payloads, point, random):
 		counters.abandoned_structures += 1
-	var direction := _lowest_toxic_direction(payloads.ALTM, point)
+	var direction := _lowest_toxic_direction(payloads.ALTM, point, map_edge)
 	if direction < 0:
 		direction = random.next_u15() & 3
 	payloads.XTXT[index] = 0
 	var target: Vector2i = point + CARDINAL_DIRECTIONS[direction]
-	if _place_toxic_marker(payloads.XTXT, target):
+	if _place_toxic_marker(payloads.XTXT, target, map_edge):
 		counters.moved_markers += 1
 	else:
 		counters.blocked_moves += 1
@@ -829,6 +837,7 @@ static func _process_riot_cell(
 	counters: Dictionary,
 	runtime_events: Dictionary,
 ) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	counters.riot_markers_scanned += 1
 	if random.next_u15() & 3 != 0:
 		return
@@ -837,7 +846,7 @@ static func _process_riot_cell(
 		payloads.XTXT[index] = 0
 		counters.expired_riots += 1
 		return
-	var traffic_index := int(point.x / 2) * 64 + int(point.y / 2)
+	var traffic_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
 	if payloads.XTRF[traffic_index] != 0:
 		counters.traffic_cells_cleared += 1
 	payloads.XTRF[traffic_index] = 0
@@ -858,9 +867,9 @@ static func _process_riot_cell(
 	var first_direction: int = 0 if marker == RIOT_OVERLAY_REVERSE else 2
 	var second_direction: int = 1 if marker == RIOT_OVERLAY_REVERSE else 3
 	var connections := 0
-	if _riot_supports(payloads.XBLD, point + CARDINAL_DIRECTIONS[first_direction]):
+	if _riot_supports(payloads.XBLD, point + CARDINAL_DIRECTIONS[first_direction], map_edge):
 		connections |= 1
-	if _riot_supports(payloads.XBLD, point + CARDINAL_DIRECTIONS[second_direction]):
+	if _riot_supports(payloads.XBLD, point + CARDINAL_DIRECTIONS[second_direction], map_edge):
 		connections |= 2
 	var opposite_marker: int = (
 		RIOT_OVERLAY_FORWARD if marker == RIOT_OVERLAY_REVERSE else RIOT_OVERLAY_REVERSE
@@ -873,7 +882,7 @@ static func _process_riot_cell(
 		connections = (random.next_u15() & 1) + 1
 	var spread_direction: int = first_direction if connections == 1 else second_direction
 	if _place_riot_marker(
-		payloads.XTXT, point + CARDINAL_DIRECTIONS[spread_direction], marker
+		payloads.XTXT, point + CARDINAL_DIRECTIONS[spread_direction], marker, map_edge
 	):
 		counters.propagated_riots += 1
 	else:
@@ -889,6 +898,7 @@ static func _process_dispatch_cell(
 	lfsr_random,
 	counters: Dictionary
 ) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	var record := overlay - TEXT_THING_BASE
 	var thing_type := int(payloads.XTHG[record * CityState.THING_RECORD_SIZE])
 	counters.dispatch_markers_scanned += 1
@@ -903,7 +913,7 @@ static func _process_dispatch_cell(
 	if thing_type == TYPE_POLICE or thing_type == TYPE_MILITARY:
 		counters.riot_suppression_attempts += 1
 		var riot_target: Vector2i = point + CARDINAL_DIRECTIONS[random.next_u15() & 3]
-		if _clear_riot_marker(payloads.XTXT, riot_target):
+		if _clear_riot_marker(payloads.XTXT, riot_target, map_edge):
 			counters.riot_suppressions += 1
 
 
@@ -999,22 +1009,24 @@ static func _collapse_structure(
 static func _building_site(
 	city: CityState, payloads: Dictionary, point: Vector2i, tile: int
 ) -> Rect2i:
+	var map_edge: int = city.map_size if city != null else 128
 	var area: int = Demolish._building_area(tile)
 	return Demolish._find_building_site(
-		payloads.XBLD, payloads.XZON, point, tile, area, city.compass_rotation()
+		payloads.XBLD, payloads.XZON, point, tile, area, city.compass_rotation(), map_edge
 	)
 
 
 static func _abandon_toxic_structure(
 	city: CityState, payloads: Dictionary, point: Vector2i, random
 ) -> bool:
-	var index := _index(point)
+	var map_edge: int = city.map_size if city != null else 128
+	var index := _index(point, map_edge)
 	var tile := int(payloads.XBLD[index])
 	if tile < 0x70 or tile > 0xc5 or _is_construction_or_abandoned(tile):
 		return false
 	var area: int = Demolish._building_area(tile)
 	var site := Demolish._find_building_site(
-		payloads.XBLD, payloads.XZON, point, tile, area, city.compass_rotation()
+		payloads.XBLD, payloads.XZON, point, tile, area, city.compass_rotation(), map_edge
 	)
 	if site.size == Vector2i.ZERO:
 		return false
@@ -1029,7 +1041,7 @@ static func _abandon_toxic_structure(
 		0,
 		random,
 		city.compass_rotation(),
-		payloads.XVAL,
+		payloads.XVAL, map_edge,
 	)
 	return payloads.XBLD[index] != tile
 
@@ -1042,13 +1054,13 @@ static func _is_construction_or_abandoned(tile: int) -> bool:
 	)
 
 
-static func _lowest_toxic_direction(altitude: PackedByteArray, point: Vector2i) -> int:
-	var point_index := _index(point)
+static func _lowest_toxic_direction(altitude: PackedByteArray, point: Vector2i, map_edge: int = 128) -> int:
+	var point_index := _index(point, map_edge)
 	var lowest := _altitude_word(altitude, point_index) & 0x1f
 	var direction := -1
 	for checked_direction in CARDINAL_DIRECTIONS.size():
 		var target: Vector2i = point + CARDINAL_DIRECTIONS[checked_direction]
-		var target_index := _index(target)
+		var target_index := _index(target, map_edge)
 		if target_index < 0:
 			continue
 		var target_height := _altitude_word(altitude, target_index) & 0x1f
@@ -1058,16 +1070,16 @@ static func _lowest_toxic_direction(altitude: PackedByteArray, point: Vector2i) 
 	return direction
 
 
-static func _place_toxic_marker(text: PackedByteArray, point: Vector2i) -> bool:
-	var index := _index(point)
+static func _place_toxic_marker(text: PackedByteArray, point: Vector2i, map_edge: int = 128) -> bool:
+	var index := _index(point, map_edge)
 	if index < 0 or text[index] >= 51:
 		return false
 	text[index] = TOXIC_OVERLAY
 	return true
 
 
-static func _riot_supports(buildings: PackedByteArray, point: Vector2i) -> bool:
-	var index := _index(point)
+static func _riot_supports(buildings: PackedByteArray, point: Vector2i, map_edge: int = 128) -> bool:
+	var index := _index(point, map_edge)
 	if index < 0:
 		return false
 	var tile := int(buildings[index])
@@ -1082,9 +1094,10 @@ static func _riot_supports(buildings: PackedByteArray, point: Vector2i) -> bool:
 
 
 static func _place_riot_marker(
-	text: PackedByteArray, point: Vector2i, marker: int
+	text: PackedByteArray, point: Vector2i, marker: int,
+	map_edge: int = 128,
 ) -> bool:
-	var index := _index(point)
+	var index := _index(point, map_edge)
 	if index < 0 or text[index] >= 51:
 		return false
 	text[index] = marker
@@ -1094,7 +1107,8 @@ static func _place_riot_marker(
 static func _extinguish_dispatch_fire(
 	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
 ) -> bool:
-	var index := _index(point)
+	var map_edge: int = city.map_size if city != null else 128
+	var index := _index(point, map_edge)
 	if index < 0 or payloads.XTXT[index] != FIRE_OVERLAY:
 		return false
 	payloads.XTXT[index] = 0
@@ -1145,8 +1159,8 @@ static func _extinguish_dispatch_fire(
 	return true
 
 
-static func _clear_riot_marker(text: PackedByteArray, point: Vector2i) -> bool:
-	var index := _index(point)
+static func _clear_riot_marker(text: PackedByteArray, point: Vector2i, map_edge: int = 128) -> bool:
+	var index := _index(point, map_edge)
 	if index < 0:
 		return false
 	var marker := int(text[index])
@@ -1157,14 +1171,15 @@ static func _clear_riot_marker(text: PackedByteArray, point: Vector2i) -> bool:
 
 
 static func _seed_special_toxic(
-	payloads: Dictionary, site: Rect2i, point: Vector2i
+	payloads: Dictionary, site: Rect2i, point: Vector2i,
+	map_edge: int = 128,
 ) -> int:
 	if site.size == Vector2i.ZERO:
 		site = Rect2i(point, Vector2i.ONE)
 	var changed := 0
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
-			var index := x * CityState.MAP_SIZE + y
+			var index := x * map_edge + y
 			if payloads.XTXT[index] < 51:
 				payloads.XTXT[index] = TOXIC_OVERLAY
 				changed += 1
@@ -1177,29 +1192,30 @@ static func _spawn_explosion(
 	point: Vector2i,
 	height: int,
 	state: int,
-	goal: int
+	goal: int,
+	map_edge: int = 128,
 ) -> bool:
-	var index := _index(point)
+	var index := _index(point, map_edge)
 	if index < 0 or text[index] >= TEXT_THING_BASE:
 		return false
 	var record := 0
 	for checked_record in range(1, CityState.THING_COUNT):
-		if things[checked_record * CityState.THING_RECORD_SIZE] == 0:
+		if ThingData.read(things, checked_record * CityState.THING_RECORD_SIZE) == 0:
 			record = checked_record
 			break
 	if record == 0:
 		return false
 	var offset := record * CityState.THING_RECORD_SIZE
-	things[offset] = TYPE_EXPLOSION
-	things[offset + 1] = 0
-	things[offset + 2] = state
-	things[offset + 3] = point.x
-	things[offset + 4] = point.y
-	things[offset + 5] = height
-	things[offset + 6] = 8
-	things[offset + 7] = 8
-	things[offset + 10] = text[index]
-	things[offset + 11] = goal
+	ThingData.write(things, offset, TYPE_EXPLOSION)
+	ThingData.write(things, offset + 1, 0)
+	ThingData.write(things, offset + 2, state)
+	ThingData.write(things, offset + 3, point.x)
+	ThingData.write(things, offset + 4, point.y)
+	ThingData.write(things, offset + 5, height)
+	ThingData.write(things, offset + 6, 8)
+	ThingData.write(things, offset + 7, 8)
+	ThingData.write(things, offset + 10, text[index])
+	ThingData.write(things, offset + 11, goal)
 	text[index] = record + TEXT_THING_BASE
 	return true
 
@@ -1208,7 +1224,7 @@ static func _map_payloads(city: CityState) -> Dictionary:
 	var result := {}
 	for chunk_id in MAP_CHUNK_SIZES:
 		var chunk := city.document.find_chunk(chunk_id)
-		if chunk == null or chunk.decoded_payload.size() != MAP_CHUNK_SIZES[chunk_id]:
+		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(chunk_id):
 			return {}
 		result[chunk_id] = chunk.decoded_payload.duplicate()
 	return result
@@ -1247,6 +1263,7 @@ static func _apply_map_payloads(
 
 
 static func _refresh_city_arrays(city: CityState) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
@@ -1254,14 +1271,14 @@ static func _refresh_city_arrays(city: CityState) -> void:
 	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
 	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
 	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 
-static func _index(point: Vector2i) -> int:
-	if point.x < 0 or point.y < 0 or point.x >= CityState.MAP_SIZE or point.y >= CityState.MAP_SIZE:
+static func _index(point: Vector2i, map_edge: int = 128) -> int:
+	if point.x < 0 or point.y < 0 or point.x >= map_edge or point.y >= map_edge:
 		return -1
-	return point.x * CityState.MAP_SIZE + point.y
+	return point.x * map_edge + point.y
 
 
 static func _altitude_word(altitude: PackedByteArray, index: int) -> int:

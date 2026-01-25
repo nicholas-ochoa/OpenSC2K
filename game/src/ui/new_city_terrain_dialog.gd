@@ -14,6 +14,7 @@ var city_name_input: LineEdit
 var mayor_name_input: LineEdit
 var difficulty_input: OptionButton
 var year_input: OptionButton
+var size_input: OptionButton
 var ocean_input: CheckBox
 var river_input: CheckBox
 var hills_input: HSlider
@@ -66,7 +67,6 @@ func _ready() -> void:
 	preview_timer = Timer.new()
 	preview_timer.one_shot = true
 	preview_timer.wait_time = 0.12
-	preview_timer.timeout.connect(func() -> void: preview_requested.emit())
 	add_child(preview_timer)
 	set_control_graphics(control_graphics)
 
@@ -112,7 +112,7 @@ func _build_city_and_terrain_fields(content: HBoxContainer) -> void:
 	city_grid.add_theme_constant_override("h_separation", 12)
 	city_grid.add_theme_constant_override("v_separation", 8)
 	left.add_child(city_grid)
-	for label_text in ["City Name", "Mayor Name", "Difficulty", "Starting Year"]:
+	for label_text in ["City Name", "Mayor Name", "Difficulty", "Starting Year", "Map Size"]:
 		_add_city_field(city_grid, label_text)
 
 	left.add_child(HSeparator.new())
@@ -160,6 +160,13 @@ func _add_city_field(grid: GridContainer, label_text: String) -> void:
 			difficulty_input.add_item("Medium — $10,000", 2)
 			difficulty_input.add_item("Hard — $10,000 bond at 3%", 3)
 			grid.add_child(difficulty_input)
+		"Map Size":
+			size_input = OptionButton.new()
+			for edge in Sc2File.MAP_SIZES:
+				size_input.add_item("%d × %d%s" % [edge, edge, " (experimental)" if edge > 128 else ""], edge)
+			size_input.tooltip_text = "Larger cities use .sc2x files. They cannot open in the original game."
+			size_input.item_selected.connect(func(_index: int) -> void: preview_requested.emit())
+			grid.add_child(size_input)
 		"Starting Year":
 			year_input = OptionButton.new()
 			year_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL

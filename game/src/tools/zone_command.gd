@@ -138,9 +138,10 @@ static func preview_rectangle(
 	free_mode := false,
 	zone_type_override := -1
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
-	if not _point_is_valid(start) or not _point_is_valid(finish):
+	if not _point_is_valid(start, map_edge) or not _point_is_valid(finish, map_edge):
 		return {"ok": false, "error": "zone rectangle is outside the city"}
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 	var has_override := (
@@ -293,8 +294,8 @@ static func _tile_is_drag_price_eligible(
 	)
 
 
-static func _point_is_valid(point: Vector2i) -> bool:
-	return point.x >= 0 and point.x < CityState.MAP_SIZE and point.y >= 0 and point.y < CityState.MAP_SIZE
+static func _point_is_valid(point: Vector2i, map_edge: int = 128) -> bool:
+	return point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge
 
 
 static func _write_i32_be(data: PackedByteArray, offset: int, value: int) -> void:

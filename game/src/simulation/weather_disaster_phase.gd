@@ -91,6 +91,7 @@ static func run(
 	industry_connections: int,
 	current_disaster_point := Vector2i.ZERO
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if random == null or not random.has_method("next_u15"):
@@ -101,7 +102,7 @@ static func run(
 	var pollution_chunk := city.document.find_chunk("XPLT")
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
-	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != POLLUTION_SIZE:
+	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
 		return {"ok": false, "error": "XPLT is missing or has the wrong size"}
 	var misc: PackedByteArray = misc_chunk.decoded_payload
 	var pollution: PackedByteArray = pollution_chunk.decoded_payload
@@ -120,7 +121,7 @@ static func run(
 		news_items.append({"type": NEWS_DEMAND_BASE + status_index, "argument": 0})
 
 	var selection := _select_disaster(
-		misc, pollution, random, lfsr_random, current_disaster_point
+		misc, pollution, random, lfsr_random, current_disaster_point, map_edge
 	)
 	if not selection.ok:
 		return selection
@@ -214,7 +215,8 @@ static func _select_disaster(
 	pollution: PackedByteArray,
 	random,
 	lfsr_random,
-	current_point: Vector2i
+	current_point: Vector2i,
+	map_edge: int = 128,
 ) -> Dictionary:
 	var difficulty := _read_u32(misc, MISC_DIFFICULTY) & 0xffff
 	var difficulty_is_valid := difficulty > 0 and difficulty < DISASTER_WAIT_MONTHS.size()
@@ -263,7 +265,7 @@ static func _select_disaster(
 				return result
 			result.disaster_point = _random_map_point(random)
 		DISASTER_TOXIC_SPILL:
-			var toxic_point := _toxic_spill_point(pollution, lfsr_random)
+			var toxic_point := _toxic_spill_point(pollution, lfsr_random, map_edge)
 			if toxic_point.x < 0:
 				return result
 			result.disaster_point = toxic_point
@@ -329,13 +331,14 @@ static func _random_center_point(random, center: Vector2i, radius: int) -> Vecto
 
 
 static func _toxic_spill_point(
-	pollution: PackedByteArray, lfsr_random
+	pollution: PackedByteArray, lfsr_random,
+	map_edge: int = 128,
 ) -> Vector2i:
 	var highest := 0
 	var point := Vector2i(-1, -1)
-	for x in 64:
-		for y in 64:
-			var value := int(pollution[x * 64 + y])
+	for x in (map_edge / 2):
+		for y in (map_edge / 2):
+			var value := int(pollution[x * (map_edge / 2) + y])
 			if value <= 0x95 or value <= highest:
 				continue
 			if lfsr_random.next_mod(10) != 0:
@@ -345,7 +348,7 @@ static func _toxic_spill_point(
 				x * 2 + lfsr_random.next_mod(10) - 5,
 				y * 2 + lfsr_random.next_mod(10) - 5
 			)
-	if point.x < 0 or point.x > 127 or point.y < 0 or point.y > 127 or highest == 0:
+	if point.x < 0 or point.x > (map_edge - 1) or point.y < 0 or point.y > (map_edge - 1) or highest == 0:
 		return Vector2i(-1, -1)
 	return point
 

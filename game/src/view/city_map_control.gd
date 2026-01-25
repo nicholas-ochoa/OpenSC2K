@@ -108,6 +108,8 @@ var _effect_generation := 0
 var _shake_generation := 0
 var _shake_offset := Vector2.ZERO
 var _next_wheel_zoom_msec := 0
+var _tile_layers: Array[TextureRect] = []
+var _tiled_source: Texture2D
 var _base_layer: TextureRect
 var _base_material: ShaderMaterial
 var _dynamic_canvas: CityDynamicSpriteCanvas
@@ -181,6 +183,7 @@ func sign_source_entries() -> Array[Dictionary]:
 
 
 func _ensure_sign_entries() -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	if _sign_entries_city == city and is_equal_approx(_sign_entries_zoom, zoom_factor):
 		return
 	_sign_entries.clear()
@@ -193,10 +196,10 @@ func _ensure_sign_entries() -> void:
 	var divisor := int(Renderer.view_configuration(view_index).divisor)
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
-	for diagonal in CityState.MAP_SIZE * 2 - 1:
+	for diagonal in map_edge * 2 - 1:
 		for y in diagonal + 1:
 			var x := diagonal - y
-			if x >= CityState.MAP_SIZE or y >= CityState.MAP_SIZE:
+			if x >= map_edge or y >= map_edge:
 				continue
 			if not city.tile_is_visible(x, y):
 				continue
@@ -226,7 +229,7 @@ func _ensure_sign_entries() -> void:
 					Vector2i(floori(bounds.position.x), floori(bounds.position.y)),
 					Vector2i(ceili(bounds.size.x), ceili(bounds.size.y)),
 				),
-				"draw_order": (x + y) * CityState.MAP_SIZE + y,
+				"draw_order": (x + y) * map_edge + y,
 			})
 
 
@@ -373,6 +376,7 @@ func center_tile() -> Vector2i:
 
 
 func visible_tile_outline() -> PackedVector2Array:
+	var map_edge: int = city.map_size if city != null else 128
 	var result := PackedVector2Array()
 	if city == null or city_texture == null:
 		return result
@@ -383,7 +387,7 @@ func visible_tile_outline() -> PackedVector2Array:
 		source_center + Vector2(half_visible.x, half_visible.y),
 		source_center + Vector2(-half_visible.x, half_visible.y),
 	])
-	var origin_x := Renderer.SIDE_MARGIN + CityState.MAP_SIZE * Renderer.HALF_WIDTH
+	var origin_x := Renderer.SIDE_MARGIN + map_edge * Renderer.HALF_WIDTH
 	for point in source_points:
 		var difference := (
 			(point.x - origin_x - Renderer.HALF_WIDTH) / float(Renderer.HALF_WIDTH)
@@ -656,7 +660,8 @@ func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
 
 
 func _draw_signs(scale: float, offset: Vector2) -> void:
-	if not signs_visible or city == null or city_texture.get_width() <= CityState.MAP_SIZE:
+	var map_edge: int = city.map_size if city != null else 128
+	if not signs_visible or city == null or city_texture.get_width() <= map_edge:
 		return
 	_ensure_sign_entries()
 	var view_index := sign_view_index(zoom_factor)
@@ -1099,7 +1104,25 @@ func _sync_base_layer() -> void:
 		_base_layer.hide()
 		return
 	var scale := _view_scale()
-	_base_layer.texture = city_texture
+	if _tiled_source != city_texture:
+		for tile in _tile_layers:
+			tile.queue_free()
+		_tile_layers.clear()
+		_tiled_source = city_texture
+		for entry in city_texture.get_meta("map_tiles", []):
+			var tile := TextureRect.new()
+			tile.texture = entry.texture
+			tile.set_meta("source_position", entry.position)
+			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
+			tile.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
+			tile.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			tile.material = _base_material
+			_base_layer.add_child(tile)
+			_tile_layers.append(tile)
+	_base_layer.texture = city_texture if _tile_layers.is_empty() else null
+	for tile in _tile_layers:
+		tile.position = Vector2(tile.get_meta("source_position")) * scale
+		tile.size = Vector2(tile.texture.get_size()) * scale
 	_base_layer.position = _draw_offset(scale)
 	_base_layer.size = Vector2(city_texture.get_size()) * scale
 	_base_layer.show()
@@ -1156,6 +1179,7 @@ func _input(event: InputEvent) -> void:
 
 
 func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
+	var map_edge: int = city.map_size if city != null else 128
 	var result: Array[Vector2i] = []
 	var source := query_city if query_city != null else city
 	if source == null or source.index_of(point.x, point.y) < 0:
@@ -1165,7 +1189,7 @@ func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
 	var site := Rect2i(point, Vector2i.ONE)
 	if area > 1:
 		var found := DemolishTool._find_building_site(
-			source.buildings, source.zones, point, tile_id, area, source.compass_rotation()
+			source.buildings, source.zones, point, tile_id, area, source.compass_rotation(), map_edge
 		)
 		if found.has_area():
 			site = found

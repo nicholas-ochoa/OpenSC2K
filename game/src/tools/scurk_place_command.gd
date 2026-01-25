@@ -81,6 +81,7 @@ static func apply(
 	selected_zone := 0,
 	australian_locale := false
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
 	if not is_placeable_tile(tile_id):
@@ -89,7 +90,7 @@ static func apply(
 		return _failure("process random state is required")
 
 	if tile_id > 255:
-		if selected.x < 0 or selected.y < 0 or selected.x >= 128 or selected.y >= 128:
+		if selected.x < 0 or selected.y < 0 or selected.x >= map_edge or selected.y >= map_edge:
 			return _failure("object does not fit inside the map")
 		var before := city.scurk_artwork_stamps.duplicate(true)
 		city.scurk_artwork_stamps.append({"tile_id": tile_id, "point": selected})
@@ -98,7 +99,7 @@ static func apply(
 			"new_stamps": city.scurk_artwork_stamps.duplicate(true)}
 	var area := Demolish.structure_area(tile_id)
 	var site := Buildings.footprint(selected, area)
-	if not Buildings._footprint_is_in_bounds(site, area):
+	if not Buildings._footprint_is_in_bounds(site, area, map_edge):
 		return _failure("object does not fit inside the map")
 
 	var old_payloads := Buildings._city_payloads(city)
@@ -115,7 +116,7 @@ static func apply(
 	var microsims: PackedByteArray = changed_payloads.XMIC
 	var misc: PackedByteArray = changed_payloads.MISC
 
-	var site_check := _check_site(buildings, terrain, flags, site, tile_id)
+	var site_check := _check_site(buildings, terrain, flags, site, tile_id, map_edge)
 	if not site_check.ok:
 		return _failure(site_check.error)
 
@@ -131,7 +132,7 @@ static func apply(
 		australian_locale,
 		true
 	)
-	var zone_id := _zone_for_tile(tile_id, zones, site, selected_zone)
+	var zone_id := _zone_for_tile(tile_id, zones, site, selected_zone, map_edge)
 	var placed_flags := (
 		FLAG_PIPED if tile_id == SMALL_PARK or tile_id == BIG_PARK else STRUCTURE_FLAGS
 	)
@@ -140,21 +141,21 @@ static func apply(
 	var tile_indices := PackedInt32Array()
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
-			var index := x * CityState.MAP_SIZE + y
+			var index := x * map_edge + y
 			Networks._replace_building(buildings, zones, misc, index, tile_id)
 			zones[index] = zone_id
 			flags[index] = (flags[index] & 0x1f) | placed_flags
 			if overlay_id != 0:
 				text_overlays[index] = overlay_id
 			tile_indices.append(index)
-	Buildings._set_corners(zones, site, area, city.compass_rotation())
+	Buildings._set_corners(zones, site, area, city.compass_rotation(), map_edge)
 
 	if tile_id == STATUE:
-		flags[selected.x * CityState.MAP_SIZE + selected.y] &= ~FLAG_POWERABLE & 0xff
+		flags[selected.x * map_edge + selected.y] &= ~FLAG_POWERABLE & 0xff
 	elif tile_id == WATER_PUMP:
-		Buildings._place_pipe(underground, terrain, zones, flags, misc, selected)
+		Buildings._place_pipe(underground, terrain, zones, flags, misc, selected, map_edge)
 	elif tile_id == SUBWAY_STATION:
-		Buildings._place_subway_station(underground, terrain, zones, flags, misc, selected)
+		Buildings._place_subway_station(underground, terrain, zones, flags, misc, selected, map_edge)
 	if BUDGET_CURRENT.has(tile_id):
 		var budget_offset: int = (
 			Buildings.MISC_BUDGETS
@@ -211,6 +212,7 @@ static func _apply_history(
 	process_random: SimRandom,
 	forward: bool
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
 	if not command.get("ok", false) or not command.get(
@@ -264,7 +266,7 @@ static func _apply_history(
 		return _failure("cannot restore Place & Print changes")
 	if changed_ids.has("ALTM"):
 		var altitude: PackedByteArray = destination_payloads.ALTM
-		for index in CityState.TILE_COUNT:
+		for index in (map_edge * map_edge):
 			city.altitude_words[index] = (
 				(altitude[index * 2] << 8) | altitude[index * 2 + 1]
 			)
@@ -287,12 +289,13 @@ static func _check_site(
 	terrain: PackedByteArray,
 	flags: PackedByteArray,
 	site: Rect2i,
-	tile_id: int
+	tile_id: int,
+	map_edge: int = 128,
 ) -> Dictionary:
 	var marina_water_tiles := 0
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
-			var index := x * CityState.MAP_SIZE + y
+			var index := x * map_edge + y
 			var old_building := int(buildings[index])
 			if (
 				old_building >= ROAD_FIRST
@@ -320,7 +323,8 @@ static func _check_site(
 
 
 static func _zone_for_tile(
-	tile_id: int, zones: PackedByteArray, site: Rect2i, selected_zone: int
+	tile_id: int, zones: PackedByteArray, site: Rect2i, selected_zone: int,
+	map_edge: int = 128,
 ) -> int:
 	if VARIABLE_ZONE_TILES.has(tile_id):
 		var result := (
@@ -330,7 +334,7 @@ static func _zone_for_tile(
 		)
 		for x in range(site.position.x, site.end.x):
 			for y in range(site.position.y, site.end.y):
-				var existing_zone := zones[x * CityState.MAP_SIZE + y] & 0x0f
+				var existing_zone := zones[x * map_edge + y] & 0x0f
 				if existing_zone != 0:
 					result = existing_zone
 		return result

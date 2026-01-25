@@ -18,6 +18,7 @@ const DESALINIZATION := 0xfa
 
 
 static func run(city: CityState) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
@@ -32,13 +33,13 @@ static func run(city: CityState) -> Dictionary:
 	var watered_consumers := 0
 	var pump_base_supply := int((city.document.misc_u32(0x68) & 0xff) / 2)
 	pump_base_supply += city.document.misc_u32(0x0e40) * 5
-	for index in _source_scan_order(city.compass_rotation()):
+	for index in _source_scan_order(city.compass_rotation(), map_edge):
 		var building := city.buildings[index]
 		if building != WATER_PUMP and building != DESALINIZATION:
 			continue
 		if flags[index] & FLAG_WATERED or not flags[index] & FLAG_POWERED:
 			continue
-		var component := _trace_component(city.buildings, flags, index, pump_base_supply)
+		var component := _trace_component(city.buildings, flags, index, pump_base_supply, map_edge)
 		var supply: int = component.supply
 		var consumers: int = component.consumers
 		var served := mini(supply, consumers)
@@ -72,7 +73,7 @@ static func run(city: CityState) -> Dictionary:
 	if total_supply != 0:
 		usage_percent = int(watered_consumers * 100 / total_supply)
 	var treatment_tile_count := _to_i16(
-		city.document.misc_u32(MISC_TILE_COUNTS + WATER_TREATMENT * 4) & 0xffff
+		city.document.misc_u32(MISC_TILE_COUNTS + WATER_TREATMENT * 4) & (0xffff if map_edge == 128 else 0xffffffff)
 	)
 	var treatment_capacity := int(treatment_tile_count / 4) * 2000
 	var treatment_sufficient := watered_consumers <= treatment_capacity
@@ -96,7 +97,8 @@ static func _trace_component(
 	buildings: PackedByteArray,
 	flags: PackedByteArray,
 	start: int,
-	pump_base_supply: int
+	pump_base_supply: int,
+	map_edge: int = 128,
 ) -> Dictionary:
 	var queue := PackedInt32Array([start])
 	var queue_position := 0
@@ -116,14 +118,14 @@ static func _trace_component(
 		var index := queue[queue_position]
 		queue_position += 1
 		tiles.append(index)
-		var x := int(index / MAP_SIZE)
-		var y := index % MAP_SIZE
+		var x := int(index / map_edge)
+		var y := index % map_edge
 		var building := buildings[index]
 		if building >= FIRST_CONSUMER:
 			match building:
 				WATER_PUMP:
 					if flags[index] & FLAG_POWERED:
-						supply += _pump_supply(flags, x, y, pump_base_supply)
+						supply += _pump_supply(flags, x, y, pump_base_supply, map_edge)
 				WATER_TOWER:
 					tower_capacity += 100
 					if flags[index] & FLAG_WATERED:
@@ -133,18 +135,18 @@ static func _trace_component(
 					pass
 				DESALINIZATION:
 					if flags[index] & FLAG_POWERED:
-						supply += _desalinization_supply(flags, x, y)
+						supply += _desalinization_supply(flags, x, y, map_edge)
 				_:
 					consumers += 1
 
 		if y > 0:
 			_queue_piped_tile(queue, flags, index - 1)
 		if x > 0:
-			_queue_piped_tile(queue, flags, index - MAP_SIZE)
-		if y < MAP_SIZE - 1:
+			_queue_piped_tile(queue, flags, index - map_edge)
+		if y < map_edge - 1:
 			_queue_piped_tile(queue, flags, index + 1)
-		if x < MAP_SIZE - 1:
-			_queue_piped_tile(queue, flags, index + MAP_SIZE)
+		if x < map_edge - 1:
+			_queue_piped_tile(queue, flags, index + map_edge)
 	return {
 		"tiles": tiles,
 		"supply": supply,
@@ -163,12 +165,13 @@ static func _queue_piped_tile(
 
 
 static func _pump_supply(
-	flags: PackedByteArray, x: int, y: int, base_supply: int
+	flags: PackedByteArray, x: int, y: int, base_supply: int,
+	map_edge: int = 128,
 ) -> int:
 	var supply := base_supply
-	for near_x in range(maxi(x - 1, 0), mini(x + 2, MAP_SIZE)):
-		for near_y in range(maxi(y - 1, 0), mini(y + 2, MAP_SIZE)):
-			var water_bits := flags[near_x * MAP_SIZE + near_y] & (
+	for near_x in range(maxi(x - 1, 0), mini(x + 2, map_edge)):
+		for near_y in range(maxi(y - 1, 0), mini(y + 2, map_edge)):
+			var water_bits := flags[near_x * map_edge + near_y] & (
 				FLAG_SALT_WATER | FLAG_WATER
 			)
 			if water_bits == FLAG_WATER:
@@ -176,11 +179,11 @@ static func _pump_supply(
 	return supply
 
 
-static func _desalinization_supply(flags: PackedByteArray, x: int, y: int) -> int:
+static func _desalinization_supply(flags: PackedByteArray, x: int, y: int, map_edge: int = 128) -> int:
 	var supply := 0
-	for near_x in range(maxi(x - 1, 0), mini(x + 2, MAP_SIZE)):
-		for near_y in range(maxi(y - 1, 0), mini(y + 2, MAP_SIZE)):
-			var water_bits := flags[near_x * MAP_SIZE + near_y] & (
+	for near_x in range(maxi(x - 1, 0), mini(x + 2, map_edge)):
+		for near_y in range(maxi(y - 1, 0), mini(y + 2, map_edge)):
+			var water_bits := flags[near_x * map_edge + near_y] & (
 				FLAG_SALT_WATER | FLAG_WATER
 			)
 			if water_bits == FLAG_SALT_WATER | FLAG_WATER:
@@ -188,25 +191,25 @@ static func _desalinization_supply(flags: PackedByteArray, x: int, y: int) -> in
 	return supply
 
 
-static func _source_scan_order(rotation: int) -> PackedInt32Array:
+static func _source_scan_order(rotation: int, map_edge: int = 128) -> PackedInt32Array:
 	var result := PackedInt32Array()
 	match rotation & 3:
 		0:
-			for y in MAP_SIZE:
-				for x in MAP_SIZE:
-					result.append(x * MAP_SIZE + y)
+			for y in map_edge:
+				for x in map_edge:
+					result.append(x * map_edge + y)
 		1:
-			for x in MAP_SIZE:
-				for y in range(MAP_SIZE - 1, -1, -1):
-					result.append(x * MAP_SIZE + y)
+			for x in map_edge:
+				for y in range(map_edge - 1, -1, -1):
+					result.append(x * map_edge + y)
 		2:
-			for y in range(MAP_SIZE - 1, -1, -1):
-				for x in range(MAP_SIZE - 1, -1, -1):
-					result.append(x * MAP_SIZE + y)
+			for y in range(map_edge - 1, -1, -1):
+				for x in range(map_edge - 1, -1, -1):
+					result.append(x * map_edge + y)
 		3:
-			for x in range(MAP_SIZE - 1, -1, -1):
-				for y in MAP_SIZE:
-					result.append(x * MAP_SIZE + y)
+			for x in range(map_edge - 1, -1, -1):
+				for y in map_edge:
+					result.append(x * map_edge + y)
 	return result
 
 

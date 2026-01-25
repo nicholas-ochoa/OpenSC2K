@@ -34,6 +34,7 @@ static func apply_path(
 	random: SimRandom,
 	free_mode := false
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not supports_tool(group_index, subtool_index):
@@ -76,7 +77,7 @@ static func apply_path(
 			applied = _place_tree(buildings, terrain, zones, flags, misc, index, random)
 		else:
 			applied = _place_water(
-				buildings, terrain, zones, flags, altitude, text_overlays, misc, point
+				buildings, terrain, zones, flags, altitude, text_overlays, misc, point, map_edge
 			)
 		if applied:
 			total_cost += cost_per_tile
@@ -163,7 +164,7 @@ static func _place_tree(
 		new_building = 0x0b + (random.next_u15() & 1)
 	else:
 		return false
-	_update_building_count(misc, zones[index] & 0x0f, old_building, new_building)
+	_update_building_count(misc, zones[index] & 0x0f, old_building, new_building, int(sqrt(buildings.size())))
 	buildings[index] = new_building
 	return true
 
@@ -176,9 +177,10 @@ static func _place_water(
 	altitude: PackedByteArray,
 	text_overlays: PackedByteArray,
 	misc: PackedByteArray,
-	point: Vector2i
+	point: Vector2i,
+	map_edge: int = 128,
 ) -> bool:
-	var index := point.x * FULL_MAP_SIZE + point.y
+	var index := point.x * map_edge + point.y
 	if flags[index] & FLAG_WATER or text_overlays[index] > 0xf9:
 		return false
 	var old_building := int(buildings[index])
@@ -187,11 +189,11 @@ static func _place_water(
 	if terrain[index] == FORBIDDEN_COAST or terrain[index] == WATERFALL:
 		return false
 
-	var shape := _water_shape(flags, point.x, point.y)
+	var shape := _water_shape(flags, point.x, point.y, map_edge)
 	var transition := _water_transition(terrain[index], shape)
 	if not transition.early_return:
 		terrain[index] = transition.value
-		_update_building_count(misc, zones[index] & 0x0f, old_building, 0)
+		_update_building_count(misc, zones[index] & 0x0f, old_building, 0, map_edge)
 		buildings[index] = 0
 		var altitude_offset := index * 2
 		var word := (altitude[altitude_offset] << 8) | altitude[altitude_offset + 1]
@@ -199,14 +201,14 @@ static func _place_water(
 		altitude[altitude_offset] = (word >> 8) & 0xff
 		altitude[altitude_offset + 1] = word & 0xff
 		flags[index] |= FLAG_WATER
-		for near_x in range(maxi(point.x - 1, 0), mini(point.x + 2, FULL_MAP_SIZE)):
-			for near_y in range(maxi(point.y - 1, 0), mini(point.y + 2, FULL_MAP_SIZE)):
+		for near_x in range(maxi(point.x - 1, 0), mini(point.x + 2, map_edge)):
+			for near_y in range(maxi(point.y - 1, 0), mini(point.y + 2, map_edge)):
 				if near_x == point.x and near_y == point.y:
 					continue
-				var near_index := near_x * FULL_MAP_SIZE + near_y
+				var near_index := near_x * map_edge + near_y
 				if not flags[near_index] & FLAG_WATER:
 					continue
-				var near_shape := _water_shape(flags, near_x, near_y)
+				var near_shape := _water_shape(flags, near_x, near_y, map_edge)
 				var near_transition := _water_transition(terrain[near_index], near_shape)
 				if not near_transition.early_return:
 					terrain[near_index] = near_transition.value
@@ -214,26 +216,26 @@ static func _place_water(
 	return true
 
 
-static func _water_shape(flags: PackedByteArray, x: int, y: int) -> int:
+static func _water_shape(flags: PackedByteArray, x: int, y: int, map_edge: int = 128) -> int:
 	var cardinal := 0
-	if y > 0 and flags[x * FULL_MAP_SIZE + y - 1] & FLAG_WATER:
+	if y > 0 and flags[x * map_edge + y - 1] & FLAG_WATER:
 		cardinal |= 1
-	if x < FULL_MAP_SIZE - 1 and flags[(x + 1) * FULL_MAP_SIZE + y] & FLAG_WATER:
+	if x < map_edge - 1 and flags[(x + 1) * map_edge + y] & FLAG_WATER:
 		cardinal |= 2
-	if y < FULL_MAP_SIZE - 1 and flags[x * FULL_MAP_SIZE + y + 1] & FLAG_WATER:
+	if y < map_edge - 1 and flags[x * map_edge + y + 1] & FLAG_WATER:
 		cardinal |= 4
-	if x > 0 and flags[(x - 1) * FULL_MAP_SIZE + y] & FLAG_WATER:
+	if x > 0 and flags[(x - 1) * map_edge + y] & FLAG_WATER:
 		cardinal |= 8
 	if cardinal < 15:
 		return CARDINAL_WATER_SHAPES[cardinal]
 	var missing_diagonal := 0
-	if x > 0 and y > 0 and not flags[(x - 1) * FULL_MAP_SIZE + y - 1] & FLAG_WATER:
+	if x > 0 and y > 0 and not flags[(x - 1) * map_edge + y - 1] & FLAG_WATER:
 		missing_diagonal |= 1
-	if x < FULL_MAP_SIZE - 1 and y > 0 and not flags[(x + 1) * FULL_MAP_SIZE + y - 1] & FLAG_WATER:
+	if x < map_edge - 1 and y > 0 and not flags[(x + 1) * map_edge + y - 1] & FLAG_WATER:
 		missing_diagonal |= 2
-	if x < FULL_MAP_SIZE - 1 and y < FULL_MAP_SIZE - 1 and not flags[(x + 1) * FULL_MAP_SIZE + y + 1] & FLAG_WATER:
+	if x < map_edge - 1 and y < map_edge - 1 and not flags[(x + 1) * map_edge + y + 1] & FLAG_WATER:
 		missing_diagonal |= 4
-	if x > 0 and y < FULL_MAP_SIZE - 1 and not flags[(x - 1) * FULL_MAP_SIZE + y + 1] & FLAG_WATER:
+	if x > 0 and y < map_edge - 1 and not flags[(x - 1) * map_edge + y + 1] & FLAG_WATER:
 		missing_diagonal |= 8
 	return DIAGONAL_WATER_SHAPES[missing_diagonal]
 
@@ -253,26 +255,27 @@ static func _water_transition(current: int, shape: int) -> Dictionary:
 
 
 static func _update_building_count(
-	misc: PackedByteArray, zone: int, old_building: int, new_building: int
+	misc: PackedByteArray, zone: int, old_building: int, new_building: int, map_edge: int = 128
 ) -> void:
 	if zone == MILITARY_ZONE:
 		return
 	var old_offset := MISC_TILE_COUNTS + old_building * 4
 	var new_offset := MISC_TILE_COUNTS + new_building * 4
 	var old_count := _read_u32_be(misc, old_offset)
-	_write_u32_be(misc, old_offset, (old_count - 1) & 0xffff)
+	_write_u32_be(misc, old_offset, (old_count - 1) & (0xffff if map_edge == 128 else 0xffffffff))
 	var new_count := _read_u32_be(misc, new_offset)
-	_write_u32_be(misc, new_offset, (new_count + 1) & 0xffff)
+	_write_u32_be(misc, new_offset, (new_count + 1) & (0xffff if map_edge == 128 else 0xffffffff))
 
 
 static func _city_payloads(city: CityState) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var result := {}
 	for checked in [
-		["XBLD", CityState.TILE_COUNT],
-		["XTER", CityState.TILE_COUNT],
-		["XZON", CityState.TILE_COUNT],
-		["XBIT", CityState.TILE_COUNT],
-		["ALTM", CityState.TILE_COUNT * 2],
+		["XBLD", (map_edge * map_edge)],
+		["XTER", (map_edge * map_edge)],
+		["XZON", (map_edge * map_edge)],
+		["XBIT", (map_edge * map_edge)],
+		["ALTM", (map_edge * map_edge) * 2],
 		["MISC", 4800],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
@@ -306,12 +309,13 @@ static func _apply_payloads(
 
 
 static func _refresh_city_arrays(city: CityState) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
 	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
 	var altitude := city.document.find_chunk("ALTM").decoded_payload
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 

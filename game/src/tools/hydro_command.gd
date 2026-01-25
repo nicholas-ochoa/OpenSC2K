@@ -54,7 +54,7 @@ static func apply(
 	var tile_id := _hydro_tile(city, point)
 	var process_random_state_before := process_random.state
 
-	BuildingCommand._update_building_count(misc, zones[index] & 0x0f, buildings[index], tile_id)
+	BuildingCommand._update_building_count(misc, zones[index] & 0x0f, buildings[index], tile_id, city.map_size)
 	buildings[index] = tile_id
 	flags[index] |= FLAG_POWERABLE
 	zones[index] = 0xf0
@@ -131,13 +131,14 @@ static func undo(city: CityState, command: Dictionary, process_random: SimRandom
 
 
 static func _hydro_tile(city: CityState, point: Vector2i) -> int:
+	var map_edge: int = city.map_size if city != null else 128
 	var altitude := city.land_altitude(point.x, point.y)
 	var higher_neighbors := 0
 	if point.y > 0 and altitude < city.land_altitude(point.x, point.y - 1):
 		higher_neighbors |= 1
-	if point.x < 127 and altitude < city.land_altitude(point.x + 1, point.y):
+	if point.x < (map_edge - 1) and altitude < city.land_altitude(point.x + 1, point.y):
 		higher_neighbors |= 2
-	if point.y < 127 and altitude < city.land_altitude(point.x, point.y + 1):
+	if point.y < (map_edge - 1) and altitude < city.land_altitude(point.x, point.y + 1):
 		higher_neighbors |= 4
 	if point.x > 0 and altitude < city.land_altitude(point.x - 1, point.y):
 		higher_neighbors |= 8

@@ -27,6 +27,7 @@ static func apply(
 	confirmation_choice := CONFIRMATION_UNSELECTED,
 	free_mode := false
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not supports_tool(group_index, subtool_index):
@@ -127,16 +128,16 @@ static func apply(
 	NetworkCommand._replace_building(buildings, zones, misc, start_index, start_tile)
 	_set_tunnel_level(altitude, start_index, 1)
 	_retile_adjacent_roads(
-		buildings, terrain, zones, flags, misc, start, text_overlays
+		buildings, terrain, zones, flags, misc, start, text_overlays, map_edge
 	)
 	for point_index in range(1, points.size() - 1):
 		var point := points[point_index]
-		var index := point.x * CityState.MAP_SIZE + point.y
+		var index := point.x * map_edge + point.y
 		_set_tunnel_level(altitude, index, city.land_altitude(point.x, point.y) - start_altitude + 1)
 	NetworkCommand._replace_building(buildings, zones, misc, finish_index, finish_tile)
 	_set_tunnel_level(altitude, finish_index, 1)
 	_retile_adjacent_roads(
-		buildings, terrain, zones, flags, misc, finish, text_overlays
+		buildings, terrain, zones, flags, misc, finish, text_overlays, map_edge
 	)
 	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
@@ -207,11 +208,12 @@ static func _retile_adjacent_roads(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	text_overlays := PackedByteArray()
+	text_overlays := PackedByteArray(),
+	map_edge: int = 128,
 ) -> void:
 	for offset in DIRECTIONS:
 		var neighbor: Vector2i = point + offset
-		if neighbor.x >= 0 and neighbor.x < 128 and neighbor.y >= 0 and neighbor.y < 128:
+		if neighbor.x >= 0 and neighbor.x < map_edge and neighbor.y >= 0 and neighbor.y < map_edge:
 			NetworkCommand._retile_surface(
 				buildings,
 				terrain,
@@ -220,5 +222,5 @@ static func _retile_adjacent_roads(
 				misc,
 				neighbor,
 				NetworkCommand.MODE_ROAD,
-				text_overlays
+				text_overlays, map_edge
 			)

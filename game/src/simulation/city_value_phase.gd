@@ -64,7 +64,7 @@ static func calculate(city: CityState) -> Dictionary:
 	if not validated.ok:
 		return validated
 	var misc: PackedByteArray = validated.misc
-	var value := _to_i32(-_read_i16_low(misc, MISC_SUBWAY_COUNT))
+	var value := _to_i32(-_read_count(misc, MISC_SUBWAY_COUNT, city.map_size))
 	for tile_id in range(0x0e, 0x70):
 		var cost := 0
 		if tile_id < 0x1d:
@@ -81,10 +81,10 @@ static func calculate(city: CityState) -> Dictionary:
 			cost = 100
 		else:
 			cost = 250
-		value = _add_value(value, _tile_count(misc, tile_id), cost)
+		value = _add_value(value, _tile_count(misc, tile_id, city.map_size), cost)
 	for tile_id in BUILDING_RULES:
 		var rule: Array = BUILDING_RULES[tile_id]
-		var count := _divide_toward_zero(_tile_count(misc, tile_id), int(rule[0]))
+		var count := _divide_toward_zero(_tile_count(misc, tile_id, city.map_size), int(rule[0]))
 		value = _add_value(value, count, int(rule[1]))
 	return {"ok": true, "error": "", "city_value": value}
 
@@ -110,8 +110,12 @@ static func _misc_data(city: CityState) -> Dictionary:
 	return {"ok": true, "error": "", "misc": misc_chunk.decoded_payload}
 
 
-static func _tile_count(misc: PackedByteArray, tile_id: int) -> int:
-	return _read_i16_low(misc, MISC_TILE_COUNTS + tile_id * 4)
+static func _tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> int:
+	return _read_count(misc, MISC_TILE_COUNTS + tile_id * 4, map_edge)
+
+
+static func _read_count(misc: PackedByteArray, offset: int, map_edge: int) -> int:
+	return _read_i16_low(misc, offset) if map_edge == 128 else ((misc[offset] << 24) | (misc[offset + 1] << 16) | (misc[offset + 2] << 8) | misc[offset + 3])
 
 
 static func _add_value(current: int, count: int, cost: int) -> int:

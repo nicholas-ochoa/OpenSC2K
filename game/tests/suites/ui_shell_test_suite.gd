@@ -401,9 +401,10 @@ func _test_main_menu() -> void:
 	_check(
 		city_open_dialog.access == FileDialog.ACCESS_FILESYSTEM
 		and city_open_dialog.file_mode == FileDialog.FILE_MODE_OPEN_FILE
-		and city_open_dialog.filters.size() == 2
+		and city_open_dialog.filters.size() == 3
 		and city_open_dialog.filters[0].contains("*.SC2")
-		and city_open_dialog.filters[1].contains("*.SCN")
+		and city_open_dialog.filters[1].contains("*.sc2x")
+		and city_open_dialog.filters[2].contains("*.SCN")
 		and city_save_dialog.file_mode == FileDialog.FILE_MODE_SAVE_FILE
 		and tile_set_dialog.filters[0].contains("*.MIF")
 		and bitmap_dialog.filters[0].contains("*.BMP")

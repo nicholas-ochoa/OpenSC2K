@@ -34,6 +34,7 @@ func map_rect() -> Rect2:
 
 
 func _draw() -> void:
+	var map_edge: int = map_texture.get_width() if map_texture != null else 128
 	var target := map_rect()
 	draw_rect(target.grow(2), Color("404040"), true)
 	if map_texture != null:
@@ -42,13 +43,14 @@ func _draw() -> void:
 		return
 	var local := PackedVector2Array()
 	for point in viewport_outline:
-		local.append(target.position + point / float(MAP_SIZE) * target.size)
+		local.append(target.position + point / float(map_edge) * target.size)
 	local.append(local[0])
 	draw_polyline(local, Color("202020"), 3.0, false)
 	draw_polyline(local, Color("ffffff"), 1.0, false)
 
 
 func _on_gui_input(event: InputEvent) -> void:
+	var map_edge: int = map_texture.get_width() if map_texture != null else 128
 	if not (event is InputEventMouseButton):
 		return
 	var mouse_event := event as InputEventMouseButton
@@ -59,8 +61,8 @@ func _on_gui_input(event: InputEvent) -> void:
 		return
 	var relative := (mouse_event.position - target.position) / target.size
 	var point := Vector2i(
-		clampi(floori(relative.x * MAP_SIZE), 0, MAP_SIZE - 1),
-		clampi(floori(relative.y * MAP_SIZE), 0, MAP_SIZE - 1),
+		clampi(floori(relative.x * map_edge), 0, map_edge - 1),
+		clampi(floori(relative.y * map_edge), 0, map_edge - 1),
 	)
 	center_requested.emit(point)
 	accept_event()

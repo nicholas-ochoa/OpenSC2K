@@ -625,6 +625,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	new_city_dialog.cancel_requested.connect(_cancel_new_city)
 	new_city_dialog.build_requested.connect(_create_new_city)
 	new_city_dialog.preview_requested.connect(_schedule_new_city_preview)
+	new_city_dialog.preview_timer.timeout.connect(_refresh_new_city_preview)
 	new_city_dialog.terrain_regeneration_requested.connect(_make_new_city_preview)
 	sign_dialog = city_dialogs.sign_dialog
 	sign_dialog.confirmed.connect(_commit_sign)
@@ -1205,6 +1206,7 @@ func _zoom_out() -> void:
 
 
 func _rotate_city(counter_clockwise: bool) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null:
 		_show_error("No city is loaded.")
 		return
@@ -1212,7 +1214,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 	if overlay_mode == "city" or overlay_mode == "underground":
 		old_center = map_view.center_tile()
 	var new_center := CityRotation.rotate_point(
-		old_center, CityState.MAP_SIZE, counter_clockwise
+		old_center, map_edge, counter_clockwise
 	)
 	var result := CityRotation.apply(city, counter_clockwise)
 	if not result.ok:
@@ -1728,6 +1730,7 @@ func _update_new_city_slider_labels() -> void:
 
 func _new_city_terrain_options() -> Dictionary:
 	return {
+		"size": new_city_dialog.size_input.get_selected_id(),
 		"ocean": new_city_dialog.ocean_input.button_pressed,
 		"river": new_city_dialog.river_input.button_pressed,
 		"hills": roundi(new_city_dialog.hills_input.value),
@@ -1883,7 +1886,8 @@ func _open_save_dialog() -> void:
 		save_name = city.city_name().validate_filename()
 	if save_name.is_empty():
 		save_name = "New City"
-	save_dialog.current_file = save_name + ".sc2"
+	save_dialog.filters = PackedStringArray(["*.SC2, *.sc2 ; SimCity 2000 cities"] if city.map_size == 128 else ["*.sc2x ; Experimental large cities"])
+	save_dialog.current_file = save_name + (".SC2" if city.map_size == 128 else ".sc2x")
 	save_dialog.popup_centered_ratio(0.8)
 
 
@@ -2550,6 +2554,7 @@ func _refresh_after_city_edit(command: Dictionary) -> void:
 
 
 func _apply_static_edit_patch(command: Dictionary) -> bool:
+	var map_edge: int = city.map_size if city != null else 128
 	if (
 		overlay_mode != "city"
 		or city == null
@@ -2562,16 +2567,16 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	):
 		return false
 	var profile_start := Time.get_ticks_usec()
-	var dirty_indices := _edit_dirty_indices(command)
+	var dirty_indices := _edit_dirty_indices(command, map_edge)
 	if dirty_indices.is_empty():
 		return false
 	var view_size := _city_view_size()
 	var sprite_archive := _sprite_archive_for_view(view_size)
 	var dirty_rect := IsometricRenderer.dirty_screen_rect(
-		dirty_indices, sprite_archive, view_size
+		dirty_indices, sprite_archive, view_size, Vector2i.ZERO, map_edge
 	)
-	var full_area := IsometricRenderer.output_size_for_view(view_size).x * (
-		IsometricRenderer.output_size_for_view(view_size).y
+	var full_area := IsometricRenderer.output_size_for_view(view_size, map_edge).x * (
+		IsometricRenderer.output_size_for_view(view_size, map_edge).y
 	)
 	if (
 		dirty_rect.get_area() <= 0
@@ -2624,14 +2629,14 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	}
 	edit_display_timings.occlusion_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
-	var texture := ImageTexture.create_from_image(static_city_image)
+	var texture := CityMapTexture.create(static_city_image)
 	map_view.set_city_view(static_display_city, texture, texture, true)
 	_refresh_moving_things(view_size)
 	edit_display_timings.upload_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	return true
 
 
-static func _edit_dirty_indices(command: Dictionary) -> PackedInt32Array:
+static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> PackedInt32Array:
 	var seen := {}
 	var old_payloads: Dictionary = command.get("old_payloads", {})
 	var new_payloads: Dictionary = command.get("new_payloads", {})
@@ -2642,11 +2647,11 @@ static func _edit_dirty_indices(command: Dictionary) -> PackedInt32Array:
 		var new_bytes: PackedByteArray = new_payloads[chunk_id]
 		var stride := 2 if chunk_id == "ALTM" else 1
 		if (
-			old_bytes.size() != CityState.TILE_COUNT * stride
+			old_bytes.size() != (map_edge * map_edge) * stride
 			or new_bytes.size() != old_bytes.size()
 		):
 			continue
-		for index in CityState.TILE_COUNT:
+		for index in (map_edge * map_edge):
 			var offset := index * stride
 			var changed := old_bytes[offset] != new_bytes[offset]
 			if stride == 2:
@@ -2657,38 +2662,38 @@ static func _edit_dirty_indices(command: Dictionary) -> PackedInt32Array:
 		var old_text: PackedByteArray = command.old_text
 		var new_text: PackedByteArray = command.new_text
 		if (
-			old_text.size() == CityState.TILE_COUNT
-			and new_text.size() == CityState.TILE_COUNT
+			old_text.size() == (map_edge * map_edge)
+			and new_text.size() == (map_edge * map_edge)
 		):
-			for index in CityState.TILE_COUNT:
+			for index in (map_edge * map_edge):
 				if old_text[index] != new_text[index]:
 					seen[index] = true
 	var tile_indices: PackedInt32Array = command.get(
 		"tile_indices", PackedInt32Array()
 	)
 	for index in tile_indices:
-		if index >= 0 and index < CityState.TILE_COUNT:
+		if index >= 0 and index < (map_edge * map_edge):
 			seen[index] = true
 	for point_value in command.get("points", []):
 		var point: Vector2i = point_value
-		var index := point.x * CityState.MAP_SIZE + point.y
-		if point.x >= 0 and point.x < CityState.MAP_SIZE and point.y >= 0 and point.y < CityState.MAP_SIZE:
+		var index := point.x * map_edge + point.y
+		if point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge:
 			seen[index] = true
 	for point_key in ["point", "target"]:
 		if command.has(point_key):
 			var point: Vector2i = command[point_key]
-			if point.x >= 0 and point.x < CityState.MAP_SIZE and point.y >= 0 and point.y < CityState.MAP_SIZE:
-				seen[point.x * CityState.MAP_SIZE + point.y] = true
+			if point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge:
+				seen[point.x * map_edge + point.y] = true
 	if command.has("tile_index"):
 		var tile_index := int(command.tile_index)
-		if tile_index >= 0 and tile_index < CityState.TILE_COUNT:
+		if tile_index >= 0 and tile_index < (map_edge * map_edge):
 			seen[tile_index] = true
 	if command.has("site"):
 		var site: Rect2i = command.site
 		for x in range(site.position.x, site.end.x):
 			for y in range(site.position.y, site.end.y):
-				if x >= 0 and x < CityState.MAP_SIZE and y >= 0 and y < CityState.MAP_SIZE:
-					seen[x * CityState.MAP_SIZE + y] = true
+				if x >= 0 and x < map_edge and y >= 0 and y < map_edge:
+					seen[x * map_edge + y] = true
 	var sorted_indices: Array = seen.keys()
 	sorted_indices.sort()
 	var result := PackedInt32Array()
@@ -2723,7 +2728,7 @@ func _refresh_map(force := true) -> void:
 			static_visual_signature = current_signature
 			static_render_mode = overlay_mode
 			static_display_city = cached.display_city
-			var cached_texture := ImageTexture.create_from_image(static_city_image)
+			var cached_texture := CityMapTexture.create(static_city_image)
 			map_view.set_city_view(
 				static_display_city, cached_texture, cached_texture, true
 			)
@@ -2782,16 +2787,16 @@ func _refresh_map(force := true) -> void:
 		image = indexed.image
 		if view_size != IsometricRenderer.VIEW_LARGE:
 			image.resize(
-				IsometricRenderer.IMAGE_SIZE_LARGE.x,
-				IsometricRenderer.IMAGE_SIZE_LARGE.y,
+				IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_LARGE, city.map_size).x,
+				IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_LARGE, city.map_size).y,
 				Image.INTERPOLATE_NEAREST,
 			)
 		static_city_image = image
-		var occlusion_commands: Array[Dictionary] = (
-			IsometricRenderer.static_occlusion_commands(display_city, sprite_archive, view_size)
-			if overlay_mode == "city"
-			else []
-		)
+		var occlusion_commands: Array[Dictionary] = []
+		if overlay_mode == "city":
+			occlusion_commands = IsometricRenderer.static_occlusion_commands(
+				display_city, sprite_archive, view_size
+			)
 		_set_static_occlusion_commands(occlusion_commands, view_size)
 		static_visual_signature = current_signature
 		static_render_mode = overlay_mode
@@ -2814,7 +2819,7 @@ func _refresh_map(force := true) -> void:
 		dynamic_sign_occluders.clear()
 		dynamic_sign_occlusion_grid.clear()
 		map_view.set_dynamic_sprites([])
-	var texture := ImageTexture.create_from_image(image)
+	var texture := CityMapTexture.create(image)
 	map_view.set_city_view(
 		static_display_city if overlay_mode in ["city", "underground"] else city,
 		texture, texture if overlay_mode in ["city", "underground"] else null,
@@ -2918,7 +2923,7 @@ func _poll_static_render() -> void:
 		"display_city": static_display_city,
 		"view_size": int(rendered.view_size),
 	}
-	var texture := ImageTexture.create_from_image(static_city_image)
+	var texture := CityMapTexture.create(static_city_image)
 	map_view.set_city_view(
 		static_display_city, texture, texture, true
 	)
@@ -4829,8 +4834,9 @@ func _debug_metrics() -> Dictionary:
 
 
 func _debug_center_map() -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	if map_view != null and city != null:
-		map_view.center_on_tile(Vector2i(CityState.MAP_SIZE / 2, CityState.MAP_SIZE / 2))
+		map_view.center_on_tile(Vector2i(map_edge / 2, map_edge / 2))
 
 
 func _debug_full_redraw() -> void:
@@ -4951,14 +4957,15 @@ func _placement_preview_valid(point: Vector2i) -> bool:
 
 
 func _placement_preview_error(point: Vector2i) -> String:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or city.index_of(point.x, point.y) < 0:
 		return "Select a tile inside the map."
 	if scurk_place_print != null and scurk_place_print.visible and scurk_place_print.is_object_mode():
 		var tile_id := scurk_place_print.selected_tile_id
 		var site := ScurkPlace.footprint(tile_id, point)
-		if site.size.x == 0 or not Rect2i(0, 0, 128, 128).encloses(site):
+		if site.size.x == 0 or not Rect2i(0, 0, map_edge, map_edge).encloses(site):
 			return "The object footprint extends outside the map."
-		return "" if tile_id > 255 else String(ScurkPlace._check_site(city.buildings, city.terrain, city.tile_flags, site, tile_id).get("error", ""))
+		return "" if tile_id > 255 else String(ScurkPlace._check_site(city.buildings, city.terrain, city.tile_flags, site, tile_id, map_edge).get("error", ""))
 	if Buildings.supports_tool(selected_group, selected_subtool):
 		return Buildings.preview_error(city, selected_group, selected_subtool, point)
 	if Hydro.supports_tool(selected_group, selected_subtool):

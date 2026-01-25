@@ -11,10 +11,12 @@ const DEFAULT_VISIBILITY := {
 
 
 static func surface_copy(source: CityState, visibility: Dictionary) -> CityState:
+	var map_edge: int = source.map_size if source != null else 128
 	if source == null or not source.is_valid():
 		return source
 	var result := CityState.new()
 	result.document = source.document
+	result.map_size = source.map_size
 	result.visible_altitude_levels = source.visible_altitude_levels
 	result.altitude_words = source.altitude_words.duplicate()
 	result.terrain = source.terrain.duplicate()
@@ -31,9 +33,9 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 	var show_trees := bool(visibility.get("trees", true))
 	var show_zones := bool(visibility.get("zones", true))
 	if not show_water:
-		result.object_altitude_overrides.resize(CityState.TILE_COUNT)
+		result.object_altitude_overrides.resize((map_edge * map_edge))
 		result.object_altitude_overrides.fill(-1)
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		var building := int(result.buildings[index])
 		if not show_buildings and building >= 0x70:
 			result.buildings[index] = 0

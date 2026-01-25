@@ -75,6 +75,7 @@ const MAP_CHUNK_SIZES := {
 static func start(
 	city: CityState, disaster_type: int, point: Vector2i, random, lfsr_random = null
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if disaster_type == DISASTER_NONE:
@@ -117,9 +118,9 @@ static func start(
 	var text_chunk := city.document.find_chunk("XTXT")
 	if (
 		thing_chunk == null
-		or thing_chunk.decoded_payload.size() != CityState.THING_COUNT * CityState.THING_RECORD_SIZE
+		or thing_chunk.decoded_payload.size() != city.document.decoded_size("XTHG")
 		or text_chunk == null
-		or text_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or text_chunk.decoded_payload.size() != (map_edge * map_edge)
 	):
 		return {"ok": false, "error": "disaster moving-object data is missing or invalid"}
 	var things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
@@ -127,31 +128,31 @@ static func start(
 	if _count_type(things, TYPE_TORNADO if disaster_type == DISASTER_TORNADO else TYPE_MONSTER) > 0:
 		return _result(disaster_type, point, false, true, 0)
 
-	var clamped := Vector2i(clampi(point.x, 0, 127), clampi(point.y, 0, 127))
-	var index := clamped.x * CityState.MAP_SIZE + clamped.y
+	var clamped := Vector2i(clampi(point.x, 0, (map_edge - 1)), clampi(point.y, 0, (map_edge - 1)))
+	var index := clamped.x * map_edge + clamped.y
 	var overlay := int(text[index])
 	if overlay > TEXT_THING_BASE - 1 and overlay < TEXT_THING_BASE + CityState.THING_COUNT:
-		_remove_thing(things, text, overlay - TEXT_THING_BASE)
+		_remove_thing(things, text, overlay - TEXT_THING_BASE, map_edge)
 	var record := _first_free_record(things)
 	if record == 0:
 		return _result(disaster_type, clamped, false, false, 0)
 
 	var offset := record * CityState.THING_RECORD_SIZE
-	things[offset] = TYPE_TORNADO if disaster_type == DISASTER_TORNADO else TYPE_MONSTER
-	things[offset + 1] = random.next_u15() & 7 if disaster_type == DISASTER_TORNADO else 2
-	things[offset + 2] = 0
-	things[offset + 3] = clamped.x
-	things[offset + 4] = clamped.y
-	things[offset + 5] = city.land_altitude(clamped.x, clamped.y) if disaster_type == DISASTER_TORNADO else 15
-	things[offset + 6] = 8
-	things[offset + 7] = 8
-	things[offset + 8] = random.next_u15() & 0x7f
-	things[offset + 9] = random.next_u15() & 0x7f
-	things[offset + 10] = text[index]
+	ThingData.write(things, offset, TYPE_TORNADO if disaster_type == DISASTER_TORNADO else TYPE_MONSTER)
+	ThingData.write(things, offset + 1, random.next_u15() & 7 if disaster_type == DISASTER_TORNADO else 2)
+	ThingData.write(things, offset + 2, 0)
+	ThingData.write(things, offset + 3, clamped.x)
+	ThingData.write(things, offset + 4, clamped.y)
+	ThingData.write(things, offset + 5, city.land_altitude(clamped.x, clamped.y) if disaster_type == DISASTER_TORNADO else 15)
+	ThingData.write(things, offset + 6, 8)
+	ThingData.write(things, offset + 7, 8)
+	ThingData.write(things, offset + 8, random.next_u15() & 0x7f)
+	ThingData.write(things, offset + 9, random.next_u15() & 0x7f)
+	ThingData.write(things, offset + 10, text[index])
 	if disaster_type == DISASTER_MONSTER:
-		things[offset + 11] = 0
+		ThingData.write(things, offset + 11, 0)
 		if random.next_u15() & 1 == 0:
-			things[offset + 11] = random.next_u15() % 3 + 1
+			ThingData.write(things, offset + 11, random.next_u15() % 3 + 1)
 	text[index] = record + TEXT_THING_BASE
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	if not thing_chunk.set_decoded_payload(things):
@@ -170,6 +171,7 @@ static func _start_crash_wrapper(disaster_type: int, point: Vector2i) -> Diction
 
 
 static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 	var thing_chunk := city.document.find_chunk("XTHG")
@@ -177,9 +179,9 @@ static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
 	if (
 		thing_chunk == null
 		or thing_chunk.decoded_payload.size()
-		!= CityState.THING_COUNT * CityState.THING_RECORD_SIZE
+		!= city.document.decoded_size("XTHG")
 		or text_chunk == null
-		or text_chunk.decoded_payload.size() != CityState.TILE_COUNT
+		or text_chunk.decoded_payload.size() != (map_edge * map_edge)
 	):
 		return {"ok": false, "error": "plane-crash moving-object data is missing or invalid"}
 	var things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
@@ -187,24 +189,24 @@ static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
 	var point := Vector2i.ZERO
 	while true:
 		point = Vector2i(
-			lfsr_random.next_mask(0x3f) + 0x20,
-			lfsr_random.next_mask(0x3f) + 0x20
+			lfsr_random.next_mask(0xffff) % (map_edge / 2) + map_edge / 4,
+			lfsr_random.next_mask(0xffff) % (map_edge / 2) + map_edge / 4
 		)
-		if text[_index(point)] == 0:
+		if text[_index(point, map_edge)] == 0:
 			break
 	var record := _first_free_record(things)
 	if record == 0:
 		return _result(DISASTER_PLANE_CRASH, point, false, true, 0)
 	var offset := record * CityState.THING_RECORD_SIZE
-	things[offset] = TYPE_AIRPLANE
-	things[offset + 2] = 7
-	things[offset + 3] = point.x
-	things[offset + 4] = point.y
-	things[offset + 5] = 16
-	things[offset + 6] = 8
-	things[offset + 7] = 8
-	things[offset + 10] = 0
-	text[_index(point)] = record + TEXT_THING_BASE
+	ThingData.write(things, offset, TYPE_AIRPLANE)
+	ThingData.write(things, offset + 2, 7)
+	ThingData.write(things, offset + 3, point.x)
+	ThingData.write(things, offset + 4, point.y)
+	ThingData.write(things, offset + 5, 16)
+	ThingData.write(things, offset + 6, 8)
+	ThingData.write(things, offset + 7, 8)
+	ThingData.write(things, offset + 10, 0)
+	text[_index(point, map_edge)] = record + TEXT_THING_BASE
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	if not thing_chunk.set_decoded_payload(things):
 		return {"ok": false, "error": "cannot store the crashing plane"}
@@ -216,6 +218,7 @@ static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
 
 
 static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	if (
@@ -239,7 +242,7 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 	while run_length < 64:
 		point.x += FIRE_SPIRAL_X[direction]
 		point.y += FIRE_SPIRAL_Y[direction]
-		var index := _index(point)
+		var index := _index(point, map_edge)
 		if (
 			index >= 0
 			and payloads.XBLD[index] > 0x6f
@@ -257,7 +260,7 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 				run_length += 1
 			direction = (direction + 1) & 3
 	for _attempt in 200:
-		point = Vector2i(lfsr_random.next_mask(0x7f), lfsr_random.next_mask(0x7f))
+		point = Vector2i(lfsr_random.next_mod(map_edge), lfsr_random.next_mod(map_edge))
 		if _starts_fire(
 			_apply_fire_damage(city, payloads, point, random, lfsr_random, runtime_events)
 		):
@@ -268,42 +271,66 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 
 
 static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 	var original := _map_payloads(city)
 	if original.is_empty():
 		return {"ok": false, "error": "flood disaster input chunks are missing or invalid"}
 	var payloads := _duplicate_payloads(original)
-	for radius in CityState.MAP_SIZE:
-		for x_offset in range(-radius, radius + 1):
-			for y_offset in range(-radius, radius + 1):
-				var point := requested_point + Vector2i(x_offset, y_offset)
-				var index := _index(point)
-				if index < 0 or payloads.XTER[index] < 0x20 or payloads.XTER[index] >= 0x30:
-					continue
-				if x_offset > 0:
-					_seed_flood_if_dry(payloads, point + Vector2i(-1, 0))
-				if y_offset > 0:
-					_seed_flood_if_dry(payloads, point + Vector2i(0, -1))
-				if x_offset < 127:
-					_seed_flood_if_dry(payloads, point + Vector2i(1, 0))
-				if y_offset < 127:
-					_seed_flood_if_dry(payloads, point + Vector2i(0, 1))
-				return _store_flood(city, original, payloads, point)
+	var shore := _find_flood_shore(payloads.XTER, requested_point, map_edge)
+	if shore.x >= 0:
+		var offset := shore - requested_point
+		if offset.x > 0:
+			_seed_flood_if_dry(payloads, shore + Vector2i(-1, 0), map_edge)
+		if offset.y > 0:
+			_seed_flood_if_dry(payloads, shore + Vector2i(0, -1), map_edge)
+		if offset.x < map_edge - 1:
+			_seed_flood_if_dry(payloads, shore + Vector2i(1, 0), map_edge)
+		if offset.y < map_edge - 1:
+			_seed_flood_if_dry(payloads, shore + Vector2i(0, 1), map_edge)
+		return _store_flood(city, original, payloads, shore)
 	for _attempt in 200:
-		var point := Vector2i(lfsr_random.next_mask(0x7f), lfsr_random.next_mask(0x7f))
-		if payloads.XTER[_index(point)] == 0:
-			payloads.XTXT[_index(point)] = 0xfc
+		var point := Vector2i(lfsr_random.next_mod(map_edge), lfsr_random.next_mod(map_edge))
+		if payloads.XTER[_index(point, map_edge)] == 0:
+			payloads.XTXT[_index(point, map_edge)] = 0xfc
 			return _store_flood(city, original, payloads, point)
 	return _flood_result(requested_point, false)
 
 
+static func _find_flood_shore(terrain: PackedByteArray, origin: Vector2i, map_edge: int = 128) -> Vector2i:
+	# retain the original search for legacy cities. extended cities select the
+	# same first match: smallest square radius, then increasing x and y
+	if map_edge == 128:
+		for radius in map_edge:
+			for dx in range(-radius, radius + 1):
+				for dy in range(-radius, radius + 1):
+					var point := origin + Vector2i(dx, dy)
+					var index := _index(point, map_edge)
+					if index >= 0 and terrain[index] >= 0x20 and terrain[index] < 0x30:
+						return point
+		return Vector2i(-1, -1)
+	var selected := Vector2i(-1, -1)
+	var nearest_radius := map_edge
+	for x in map_edge:
+		for y in map_edge:
+			var tile := terrain[x * map_edge + y]
+			if tile < 0x20 or tile >= 0x30:
+				continue
+			var radius := maxi(absi(x - origin.x), absi(y - origin.y))
+			if radius < nearest_radius:
+				nearest_radius = radius
+				selected = Vector2i(x, y)
+	return selected
+
+
 static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
-	var index := _index(point)
+	var map_edge: int = city.map_size if city != null else 128
+	var index := _index(point, map_edge)
 	if index < 0:
 		return _result(DISASTER_TOXIC_SPILL, point, false, true, 0)
 	var text_chunk := city.document.find_chunk("XTXT")
-	if text_chunk == null or text_chunk.decoded_payload.size() != CityState.TILE_COUNT:
+	if text_chunk == null or text_chunk.decoded_payload.size() != (map_edge * map_edge):
 		return {"ok": false, "error": "toxic-spill map data is missing or invalid"}
 	var text: PackedByteArray = text_chunk.decoded_payload.duplicate()
 	text[index] = 0xfb
@@ -314,6 +341,7 @@ static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
 
 
 static func _start_riot(city: CityState, point: Vector2i, random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	var riot_maps := _riot_map_payloads(city)
@@ -324,14 +352,14 @@ static func _start_riot(city: CityState, point: Vector2i, random) -> Dictionary:
 	var seed_points: Array[Vector2i] = []
 	for _attempt in 3:
 		var seed_point := _find_riot_seed(
-			current_point, riot_maps.XBLD, riot_maps.XBIT, text
+			current_point, riot_maps.XBLD, riot_maps.XBIT, text, map_edge
 		)
 		if seed_point.x < 0:
 			if seed_points.is_empty():
 				return _riot_result(DISASTER_RIOT, point, seed_points, 3)
 			continue
 		current_point = seed_point
-		text[_index(seed_point)] = RIOT_OVERLAY_FORWARD + (random.next_u15() & 1)
+		text[_index(seed_point, map_edge)] = RIOT_OVERLAY_FORWARD + (random.next_u15() & 1)
 		seed_points.append(seed_point)
 	if not _store_riot_text(city, text):
 		return {"ok": false, "error": "cannot store the riot disaster"}
@@ -339,6 +367,7 @@ static func _start_riot(city: CityState, point: Vector2i, random) -> Dictionary:
 
 
 static func _start_mass_riots(city: CityState, point: Vector2i, random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	var riot_maps := _riot_map_payloads(city)
@@ -358,16 +387,16 @@ static func _start_mass_riots(city: CityState, point: Vector2i, random) -> Dicti
 				(random.next_u15() & 0x1f) - 16,
 				(random.next_u15() & 0x1f) - 16,
 			)
-			if _index(candidate) < 0:
+			if _index(candidate, map_edge) < 0:
 				continue
 			final_point = candidate
 			var seed_point := _find_riot_seed(
-				candidate, riot_maps.XBLD, riot_maps.XBIT, text
+				candidate, riot_maps.XBLD, riot_maps.XBIT, text, map_edge
 			)
 			if seed_point.x < 0:
 				continue
 			final_point = seed_point
-			text[_index(seed_point)] = RIOT_OVERLAY_FORWARD + (random.next_u15() & 1)
+			text[_index(seed_point, map_edge)] = RIOT_OVERLAY_FORWARD + (random.next_u15() & 1)
 			seed_points.append(seed_point)
 	if not seed_points.is_empty() and not _store_riot_text(city, text):
 		return {"ok": false, "error": "cannot store the mass-riot disaster"}
@@ -377,10 +406,11 @@ static func _start_mass_riots(city: CityState, point: Vector2i, random) -> Dicti
 
 
 static func _riot_map_payloads(city: CityState) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var result := {}
 	for chunk_id in ["XBLD", "XBIT", "XTXT"]:
 		var chunk := city.document.find_chunk(chunk_id)
-		if chunk == null or chunk.decoded_payload.size() != CityState.TILE_COUNT:
+		if chunk == null or chunk.decoded_payload.size() != (map_edge * map_edge):
 			return {}
 		result[chunk_id] = chunk.decoded_payload
 	return result
@@ -390,15 +420,16 @@ static func _find_riot_seed(
 	origin: Vector2i,
 	buildings: PackedByteArray,
 	flags: PackedByteArray,
-	text: PackedByteArray
+	text: PackedByteArray,
+	map_edge: int = 128,
 ) -> Vector2i:
 	var point := origin
 	var direction := 0
 	var run_length := 1
 	var step := 0
-	while run_length < CityState.MAP_SIZE:
+	while run_length < map_edge:
 		point += Vector2i(FIRE_SPIRAL_X[direction], FIRE_SPIRAL_Y[direction])
-		var index := _index(point)
+		var index := _index(point, map_edge)
 		if (
 			index >= 0
 			and _riot_start_supports(int(buildings[index]))
@@ -454,10 +485,11 @@ static func _riot_result(
 
 
 static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	var text_chunk := city.document.find_chunk("XTXT")
-	if text_chunk == null or text_chunk.decoded_payload.size() != CityState.TILE_COUNT:
+	if text_chunk == null or text_chunk.decoded_payload.size() != (map_edge * map_edge):
 		return {"ok": false, "error": "pollution-disaster map data is missing or invalid"}
 	var attempt_count := (
 		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
@@ -472,7 +504,7 @@ static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictio
 				(random.next_u15() & 7) - 4,
 				(random.next_u15() & 7) - 4
 			)
-			var index := _index(seed_point)
+			var index := _index(seed_point, map_edge)
 			if index < 0:
 				continue
 			text[index] = 0xfb
@@ -492,6 +524,7 @@ static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictio
 static func _start_earthquake(
 	city: CityState, point: Vector2i, random, lfsr_random
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	if (
@@ -515,7 +548,7 @@ static func _start_earthquake(
 				continue
 			gate_hits += 1
 			var target := point + Vector2i(x_offset, y_offset)
-			var index := _index(target)
+			var index := _index(target, map_edge)
 			if index < 0 or payloads.XBLD[index] <= 0x0d:
 				continue
 			eligible_targets += 1
@@ -574,6 +607,7 @@ static func _start_earthquake(
 static func _start_meltdown(
 	city: CityState, requested_point: Vector2i, random, lfsr_random
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
@@ -583,7 +617,7 @@ static func _start_meltdown(
 		return {"ok": false, "error": "meltdown disaster input chunks are missing or invalid"}
 	var payloads := _duplicate_payloads(original)
 	var runtime_events := DisasterMapDamage.new_runtime_events()
-	var plant_point := _find_nuclear_power_plant(payloads.XBLD, requested_point)
+	var plant_point := _find_nuclear_power_plant(payloads.XBLD, requested_point, map_edge)
 	if plant_point.x < 0:
 		return _result(DISASTER_MELTDOWN, requested_point, false, true, 0)
 
@@ -594,7 +628,7 @@ static func _start_meltdown(
 		plant_point,
 		NUCLEAR_POWER_PLANT,
 		4,
-		city.compass_rotation(),
+		city.compass_rotation(), map_edge,
 	)
 	if site.size != Vector2i.ZERO:
 		center = Vector2i(site.position.x + 1, site.end.y - 2)
@@ -630,7 +664,7 @@ static func _start_meltdown(
 				continue
 			gate_hits += 1
 			var target := center + Vector2i(x_offset, y_offset)
-			var index := _index(target)
+			var index := _index(target, map_edge)
 			if index < 0:
 				continue
 			if random.next_u15() & 3 == 0:
@@ -676,7 +710,7 @@ static func _start_meltdown(
 				)
 				if random.next_u15() & 1 != 0:
 					if payloads.XBIT[index] & 0x04 == 0:
-						if _write_radioactivity(payloads, target):
+						if _write_radioactivity(payloads, target, map_edge):
 							radioactive_writes += 1
 					else:
 						payloads.XTXT[index] = 0xfb
@@ -685,7 +719,7 @@ static func _start_meltdown(
 	for x_offset in range(-1, 3):
 		for y_offset in range(-2, 2):
 			if random.next_u15() & 1 != 0:
-				if _write_radioactivity(payloads, center + Vector2i(x_offset, y_offset)):
+				if _write_radioactivity(payloads, center + Vector2i(x_offset, y_offset), map_edge):
 					radioactive_writes += 1
 
 	var map_changed := _payloads_changed(original, payloads)
@@ -709,20 +743,21 @@ static func _start_meltdown(
 
 
 static func _find_nuclear_power_plant(
-	buildings: PackedByteArray, requested_point: Vector2i
+	buildings: PackedByteArray, requested_point: Vector2i,
+	map_edge: int = 128,
 ) -> Vector2i:
-	var requested_index := _index(requested_point)
+	var requested_index := _index(requested_point, map_edge)
 	if requested_index >= 0 and buildings[requested_index] == NUCLEAR_POWER_PLANT:
 		return requested_point
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
-			if buildings[x * CityState.MAP_SIZE + y] == NUCLEAR_POWER_PLANT:
+	for x in map_edge:
+		for y in map_edge:
+			if buildings[x * map_edge + y] == NUCLEAR_POWER_PLANT:
 				return Vector2i(x, y)
 	return Vector2i(-1, -1)
 
 
-static func _write_radioactivity(payloads: Dictionary, point: Vector2i) -> bool:
-	var index := _index(point)
+static func _write_radioactivity(payloads: Dictionary, point: Vector2i, map_edge: int = 128) -> bool:
+	var index := _index(point, map_edge)
 	if index < 0:
 		return false
 	var old_tile := int(payloads.XBLD[index])
@@ -733,6 +768,7 @@ static func _write_radioactivity(payloads: Dictionary, point: Vector2i) -> bool:
 
 
 static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
@@ -741,7 +777,7 @@ static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary
 	if original.is_empty():
 		return {"ok": false, "error": "microwave disaster input chunks are missing or invalid"}
 	var payloads := _duplicate_payloads(original)
-	var plant_point := _find_first_building(payloads.XBLD, MICROWAVE_POWER_PLANT)
+	var plant_point := _find_first_building(payloads.XBLD, MICROWAVE_POWER_PLANT, map_edge)
 	if plant_point.x < 0:
 		return _result(DISASTER_MICROWAVE, plant_point, false, true, 0)
 
@@ -753,7 +789,7 @@ static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary
 	var view_centers: Array[Vector2i] = [plant_point]
 	var runtime_events := DisasterMapDamage.new_runtime_events()
 	while remaining > 0:
-		var index := _index(point)
+		var index := _index(point, map_edge)
 		if index < 0:
 			break
 		if payloads.XBLD[index] != MICROWAVE_POWER_PLANT:
@@ -806,22 +842,23 @@ static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary
 	return result
 
 
-static func _find_first_building(buildings: PackedByteArray, tile_id: int) -> Vector2i:
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
-			if buildings[x * CityState.MAP_SIZE + y] == tile_id:
+static func _find_first_building(buildings: PackedByteArray, tile_id: int, map_edge: int = 128) -> Vector2i:
+	for x in map_edge:
+		for y in map_edge:
+			if buildings[x * map_edge + y] == tile_id:
 				return Vector2i(x, y)
 	return Vector2i(-1, -1)
 
 
 static func _start_volcano(city: CityState, center: Vector2i, random) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	var original := _map_payloads(city)
 	if original.is_empty():
 		return {"ok": false, "error": "volcano disaster input chunks are missing or invalid"}
 	var payloads := _duplicate_payloads(original)
-	var heights := TerrainCommand._decode_heights(payloads.ALTM)
+	var heights := TerrainCommand._decode_heights(payloads.ALTM, map_edge)
 	var remaining_budget := VOLCANO_BUDGET
 	var iterations := 0
 	var successful_raises := 0
@@ -839,9 +876,9 @@ static func _start_volcano(city: CityState, center: Vector2i, random) -> Diction
 				random.next_u15() % 5 - 2,
 				random.next_u15() % 5 - 2,
 			)
-			if _index(near_point) >= 0:
+			if _index(near_point, map_edge) >= 0:
 				break
-		var near_index := _index(near_point)
+		var near_index := _index(near_point, map_edge)
 		if random.next_u15() & 1 == 0:
 			payloads.XTXT[near_index] = 0xfb
 			near_toxic_writes += 1
@@ -849,9 +886,9 @@ static func _start_volcano(city: CityState, center: Vector2i, random) -> Diction
 			payloads.XTXT[near_index] = 0xff
 			near_fire_writes += 1
 
-		if _volcano_raise_is_valid(heights, payloads.XZON, payloads.XBIT, near_point):
+		if _volcano_raise_is_valid(heights, payloads.XZON, payloads.XBIT, near_point, {}, map_edge):
 			var trial := TerrainCommand._plan_raise(
-				heights, payloads.XZON, payloads.XBLD, near_point, remaining_budget
+				heights, payloads.XZON, payloads.XBLD, near_point, remaining_budget, map_edge
 			)
 			if trial.get("valid", false):
 				heights = trial.heights
@@ -859,7 +896,7 @@ static func _start_volcano(city: CityState, center: Vector2i, random) -> Diction
 				TerrainCommand._write_heights(payloads.ALTM, heights, trial.modified)
 				for index in trial.zone_indices:
 					payloads.XZON[index] &= 0xf0
-				var retile_indices := TerrainCommand._expanded_indices(trial.modified)
+				var retile_indices := TerrainCommand._expanded_indices(trial.modified, map_edge)
 				TerrainCommand._retile_region(
 					payloads.ALTM,
 					payloads.XBLD,
@@ -868,7 +905,7 @@ static func _start_volcano(city: CityState, center: Vector2i, random) -> Diction
 					payloads.XBIT,
 					payloads.MISC,
 					retile_indices,
-					_read_u32_be(payloads.MISC, 0x0e40),
+					_read_u32_be(payloads.MISC, 0x0e40), map_edge,
 				)
 				for index in retile_indices:
 					if not changed_indices.has(index):
@@ -885,7 +922,7 @@ static func _start_volcano(city: CityState, center: Vector2i, random) -> Diction
 			(random.next_u15() & 0x1f) - 16,
 			(random.next_u15() & 0x1f) - 16,
 		)
-		var distant_index := _index(distant_point)
+		var distant_index := _index(distant_point, map_edge)
 		if distant_index >= 0:
 			if payloads.XBIT[distant_index] & 0x04 != 0:
 				payloads.XTXT[distant_index] = 0xfb
@@ -922,8 +959,9 @@ static func _volcano_raise_is_valid(
 	flags: PackedByteArray,
 	point: Vector2i,
 	visited := {},
+	map_edge: int = 128,
 ) -> bool:
-	var index := _index(point)
+	var index := _index(point, map_edge)
 	if index < 0 or visited.has(index):
 		return true
 	if zones[index] & 0x0f == TerrainCommand.MILITARY_ZONE:
@@ -933,7 +971,7 @@ static func _volcano_raise_is_valid(
 	visited[index] = true
 	for offset in TerrainCommand.NEIGHBOR_OFFSETS:
 		var neighbor: Vector2i = point + offset
-		var neighbor_index := _index(neighbor)
+		var neighbor_index := _index(neighbor, map_edge)
 		if neighbor_index < 0:
 			continue
 		if zones[neighbor_index] & 0x0f == TerrainCommand.MILITARY_ZONE:
@@ -942,9 +980,9 @@ static func _volcano_raise_is_valid(
 			return false
 	for offset in TerrainCommand.CARDINAL_OFFSETS:
 		var neighbor: Vector2i = point + offset
-		var neighbor_index := _index(neighbor)
+		var neighbor_index := _index(neighbor, map_edge)
 		if neighbor_index >= 0 and heights[neighbor_index] < heights[index]:
-			if not _volcano_raise_is_valid(heights, zones, flags, neighbor, visited):
+			if not _volcano_raise_is_valid(heights, zones, flags, neighbor, visited, map_edge):
 				return false
 	return true
 
@@ -952,6 +990,7 @@ static func _volcano_raise_is_valid(
 static func _start_firestorm(
 	city: CityState, center: Vector2i, random, lfsr_random
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
@@ -970,10 +1009,10 @@ static func _start_firestorm(
 	var result_codes := PackedInt32Array()
 	var accepted_points: Array[Vector2i] = []
 	var runtime_events := DisasterMapDamage.new_runtime_events()
-	while remaining > 0 and run_length < 128:
+	while remaining > 0 and run_length < map_edge:
 		point += Vector2i(FIRE_SPIRAL_X[direction], FIRE_SPIRAL_Y[direction])
 		scan_steps += 1
-		if _index(point) >= 0:
+		if _index(point, map_edge) >= 0:
 			attempted_in_map += 1
 			var result_code := DisasterMapDamage.apply(
 				city,
@@ -1031,6 +1070,7 @@ static func _start_firestorm(
 static func _start_mass_floods(
 	city: CityState, center: Vector2i, random, lfsr_random
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
@@ -1051,7 +1091,7 @@ static func _start_mass_floods(
 				(random.next_u15() & 0x1f) - 16,
 				(random.next_u15() & 0x1f) - 16,
 			)
-			if _index(candidate) < 0:
+			if _index(candidate, map_edge) < 0:
 				continue
 			candidate_points.append(candidate)
 			var flood := _start_flood(city, candidate, lfsr_random)
@@ -1085,6 +1125,7 @@ static func _start_mass_floods(
 static func _start_hurricane(
 	city: CityState, requested_point: Vector2i, random, lfsr_random
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	if (
@@ -1108,10 +1149,10 @@ static func _start_hurricane(
 	if direction == 0:
 		for _attempt in 20:
 			damage_scans += 1
-			var x: int = lfsr_random.next_mask(0x7f)
-			var y := 127
+			var x: int = lfsr_random.next_mod(map_edge)
+			var y := (map_edge - 1)
 			while y >= 0:
-				if y > 0 and payloads.XBLD[_index(Vector2i(x, y))] > 0x0c:
+				if y > 0 and payloads.XBLD[_index(Vector2i(x, y), map_edge)] > 0x0c:
 					break
 				y -= lfsr_random.next_mod(20)
 			if y > 0:
@@ -1120,14 +1161,14 @@ static func _start_hurricane(
 					damage_points, runtime_events, true
 				)
 		sounds.append(SOUND_HURRICANE)
-		_hurricane_flood_edge(payloads, lfsr_random, direction, 50, flood_points)
+		_hurricane_flood_edge(payloads, lfsr_random, direction, 50, flood_points, map_edge)
 	elif direction == 1:
 		for _attempt in 20:
 			damage_scans += 1
-			var y: int = lfsr_random.next_mask(0x7f)
-			var x := 127
+			var y: int = lfsr_random.next_mod(map_edge)
+			var x := (map_edge - 1)
 			while x >= 0:
-				if x > 0 and payloads.XBLD[_index(Vector2i(x, y))] > 0x0c:
+				if x > 0 and payloads.XBLD[_index(Vector2i(x, y), map_edge)] > 0x0c:
 					break
 				x -= lfsr_random.next_mod(20)
 			if x > 0:
@@ -1136,19 +1177,19 @@ static func _start_hurricane(
 					damage_points, runtime_events, false
 				)
 		sounds.append(SOUND_HURRICANE)
-		_hurricane_flood_edge(payloads, lfsr_random, direction, 100, flood_points)
+		_hurricane_flood_edge(payloads, lfsr_random, direction, 100, flood_points, map_edge)
 	elif direction == 2:
 		var attempt := 0
 		while attempt < 20:
 			damage_scans += 1
 			var next_attempt := attempt + 1
-			var x: int = lfsr_random.next_mask(0x7f)
+			var x: int = lfsr_random.next_mod(map_edge)
 			var y := 0
-			while y < 128:
-				if y < 127 and payloads.XBLD[_index(Vector2i(x, y))] > 0x0c:
+			while y < map_edge:
+				if y < (map_edge - 1) and payloads.XBLD[_index(Vector2i(x, y), map_edge)] > 0x0c:
 					break
 				y += lfsr_random.next_mod(20)
-			if y < 127:
+			if y < (map_edge - 1):
 				next_attempt = attempt + 2
 				_hurricane_damage(
 					city, payloads, Vector2i(x, y), random, lfsr_random,
@@ -1156,23 +1197,23 @@ static func _start_hurricane(
 				)
 			attempt = next_attempt
 		sounds.append(SOUND_HURRICANE)
-		_hurricane_flood_edge(payloads, lfsr_random, direction, 100, flood_points)
+		_hurricane_flood_edge(payloads, lfsr_random, direction, 100, flood_points, map_edge)
 	else:
 		for _attempt in 20:
 			damage_scans += 1
-			var y: int = lfsr_random.next_mask(0x7f)
+			var y: int = lfsr_random.next_mod(map_edge)
 			var x := 0
-			while x < 128:
-				if x < 127 and payloads.XBLD[_index(Vector2i(x, y))] > 0x0c:
+			while x < map_edge:
+				if x < (map_edge - 1) and payloads.XBLD[_index(Vector2i(x, y), map_edge)] > 0x0c:
 					break
 				x += lfsr_random.next_mod(20)
-			if x < 127:
+			if x < (map_edge - 1):
 				_hurricane_damage(
 					city, payloads, Vector2i(x, y), random, lfsr_random,
 					damage_points, runtime_events, true
 				)
 		sounds.append(SOUND_HURRICANE)
-		_hurricane_flood_edge(payloads, lfsr_random, direction, 50, flood_points)
+		_hurricane_flood_edge(payloads, lfsr_random, direction, 50, flood_points, map_edge)
 	sounds.append(SOUND_HURRICANE)
 	var map_changed := _payloads_changed(original, payloads)
 	if map_changed and not _apply_map_payloads(city, original, payloads):
@@ -1234,41 +1275,42 @@ static func _hurricane_flood_edge(
 	lfsr_random,
 	direction: int,
 	attempt_count: int,
-	flood_points: Array[Vector2i]
+	flood_points: Array[Vector2i],
+	map_edge: int = 128,
 ) -> void:
 	for _attempt in attempt_count:
-		var fixed: int = lfsr_random.next_mask(0x7f)
+		var fixed: int = lfsr_random.next_mod(map_edge)
 		var point := Vector2i.ZERO
 		if direction == 0:
-			point = Vector2i(fixed, 127)
-			while point.y >= 0 and payloads.XBLD[_index(point)] <= 5:
+			point = Vector2i(fixed, (map_edge - 1))
+			while point.y >= 0 and payloads.XBLD[_index(point, map_edge)] <= 5:
 				point.y -= 1
 			if point.y <= 0:
 				continue
 		elif direction == 1:
-			point = Vector2i(127, fixed)
-			while point.x >= 0 and payloads.XBLD[_index(point)] <= 5:
+			point = Vector2i((map_edge - 1), fixed)
+			while point.x >= 0 and payloads.XBLD[_index(point, map_edge)] <= 5:
 				point.x -= 1
 			if point.x <= 0:
 				continue
 		elif direction == 2:
 			point = Vector2i(fixed, 0)
-			while point.y < 127 and payloads.XBLD[_index(point)] <= 5:
+			while point.y < (map_edge - 1) and payloads.XBLD[_index(point, map_edge)] <= 5:
 				point.y += 1
-			if point.y >= 127:
+			if point.y >= (map_edge - 1):
 				continue
 		else:
 			point = Vector2i(0, fixed)
-			while point.x < 128 and payloads.XBLD[_index(point)] <= 5:
+			while point.x < map_edge and payloads.XBLD[_index(point, map_edge)] <= 5:
 				point.x += 1
-			if point.x >= 127:
+			if point.x >= (map_edge - 1):
 				continue
-		payloads.XTXT[_index(point)] = 0xfc
+		payloads.XTXT[_index(point, map_edge)] = 0xfc
 		flood_points.append(point)
 
 
-static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i) -> void:
-	var index := _index(point)
+static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i, map_edge: int = 128) -> void:
+	var index := _index(point, map_edge)
 	if index >= 0 and payloads.XBIT[index] & 0x04 == 0:
 		payloads.XTXT[index] = 0xfc
 
@@ -1342,15 +1384,15 @@ static func has_active_object(city: CityState, _disaster_type: int) -> bool:
 	if city == null or not city.is_valid():
 		return false
 	var chunk := city.document.find_chunk("XTHG")
-	if chunk == null or chunk.decoded_payload.size() != CityState.THING_COUNT * CityState.THING_RECORD_SIZE:
+	if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size("XTHG"):
 		return false
 	var things: PackedByteArray = chunk.decoded_payload
 	for record in range(1, CityState.THING_COUNT):
 		var offset := record * CityState.THING_RECORD_SIZE
-		var type := int(things[offset])
+		var type := int(ThingData.read(things, offset))
 		if type == TYPE_MONSTER or type == TYPE_TORNADO or type == TYPE_EXPLOSION:
 			return true
-		if type == TYPE_AIRPLANE and things[offset + 2] == 7:
+		if type == TYPE_AIRPLANE and ThingData.read(things, offset + 2) == 7:
 			return true
 	return false
 
@@ -1378,36 +1420,36 @@ static func _result(
 static func _count_type(things: PackedByteArray, thing_type: int) -> int:
 	var count := 0
 	for record in range(1, CityState.THING_COUNT):
-		if things[record * CityState.THING_RECORD_SIZE] == thing_type:
+		if ThingData.read(things, record * CityState.THING_RECORD_SIZE) == thing_type:
 			count += 1
 	return count
 
 
 static func _first_free_record(things: PackedByteArray) -> int:
 	for record in range(1, CityState.THING_COUNT):
-		if things[record * CityState.THING_RECORD_SIZE] == 0:
+		if ThingData.read(things, record * CityState.THING_RECORD_SIZE) == 0:
 			return record
 	return 0
 
 
-static func _remove_thing(things: PackedByteArray, text: PackedByteArray, record: int) -> void:
+static func _remove_thing(things: PackedByteArray, text: PackedByteArray, record: int, map_edge: int = 128) -> void:
 	if record <= 0 or record >= CityState.THING_COUNT:
 		return
 	var offset := record * CityState.THING_RECORD_SIZE
-	var point := Vector2i(things[offset + 3], things[offset + 4])
-	if point.x < 128 and point.y < 128:
-		var index := point.x * CityState.MAP_SIZE + point.y
+	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
+	if point.x < map_edge and point.y < map_edge:
+		var index := point.x * map_edge + point.y
 		if text[index] == record + TEXT_THING_BASE:
-			text[index] = things[offset + 10]
+			text[index] = ThingData.read(things, offset + 10)
 	for byte_index in CityState.THING_RECORD_SIZE:
-		things[offset + byte_index] = 0
+		ThingData.write(things, offset + byte_index, 0)
 
 
 static func _map_payloads(city: CityState) -> Dictionary:
 	var result := {}
 	for chunk_id in MAP_CHUNK_SIZES:
 		var chunk := city.document.find_chunk(chunk_id)
-		if chunk == null or chunk.decoded_payload.size() != MAP_CHUNK_SIZES[chunk_id]:
+		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(chunk_id):
 			return {}
 		result[chunk_id] = chunk.decoded_payload.duplicate()
 	return result
@@ -1446,6 +1488,7 @@ static func _apply_map_payloads(
 
 
 static func _refresh_city_arrays(city: CityState) -> void:
+	var map_edge: int = city.map_size if city != null else 128
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
@@ -1453,7 +1496,7 @@ static func _refresh_city_arrays(city: CityState) -> void:
 	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
 	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
 	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 
@@ -1466,7 +1509,7 @@ static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
 	)
 
 
-static func _index(point: Vector2i) -> int:
-	if point.x < 0 or point.y < 0 or point.x >= CityState.MAP_SIZE or point.y >= CityState.MAP_SIZE:
+static func _index(point: Vector2i, map_edge: int = 128) -> int:
+	if point.x < 0 or point.y < 0 or point.x >= map_edge or point.y >= map_edge:
 		return -1
-	return point.x * CityState.MAP_SIZE + point.y
+	return point.x * map_edge + point.y

@@ -69,12 +69,13 @@ static func end_disaster(
 	document: Sc2File,
 	engine: SimulationEngine,
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or document == null or engine == null:
 		return {"ok": false, "error": "No city is loaded."}
 	var thing_chunk := document.find_chunk("XTHG")
 	var text_chunk := document.find_chunk("XTXT")
 	var misc_chunk := document.find_chunk("MISC")
-	if not _valid_disaster_chunks(thing_chunk, text_chunk, misc_chunk):
+	if not _valid_disaster_chunks(thing_chunk, text_chunk, misc_chunk, map_edge):
 		return {"ok": false, "error": "The city disaster data is not valid."}
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	var old_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
@@ -82,7 +83,7 @@ static func end_disaster(
 	var text := old_text.duplicate()
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var disaster_records := _disaster_record_indices(things)
-	var cleared_markers := _clear_disaster_markers(text, things, disaster_records)
+	var cleared_markers := _clear_disaster_markers(text, things, disaster_records, map_edge)
 	_clear_thing_records(things, disaster_records)
 	ToolAvailability._write_u32_be(misc, MISC_CITY_MODE, NORMAL_CITY_MODE)
 	ToolAvailability._write_u32_be(misc, MISC_DISASTER_TYPE, 0)
@@ -119,6 +120,7 @@ static func dispatch_maxis_man(
 	document: Sc2File,
 	view_center: Vector2i,
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or document == null:
 		return {"ok": false, "error": "No city is loaded."}
 	var target := _disaster_target(city, document, view_center)
@@ -140,7 +142,7 @@ static func dispatch_maxis_man(
 		start,
 		target.point,
 		int(target.goal),
-		city.object_altitude(start.x, start.y) + 4,
+		city.object_altitude(start.x, start.y) + 4, map_edge,
 	)
 	if not spawned.spawned:
 		return {
@@ -160,13 +162,14 @@ static func _valid_disaster_chunks(
 	thing_chunk: Sc2Chunk,
 	text_chunk: Sc2Chunk,
 	misc_chunk: Sc2Chunk,
+	map_edge: int = 128,
 ) -> bool:
 	return (
 		thing_chunk != null
 		and thing_chunk.decoded_payload.size()
-		== CityState.THING_COUNT * CityState.THING_RECORD_SIZE
+		== ThingData.BASE_SIZE * (1 if map_edge == 128 else 2)
 		and text_chunk != null
-		and text_chunk.decoded_payload.size() == CityState.TILE_COUNT
+		and text_chunk.decoded_payload.size() == (map_edge * map_edge)
 		and misc_chunk != null
 		and misc_chunk.decoded_payload.size() == MISC_SIZE
 	)
@@ -176,14 +179,14 @@ static func _disaster_record_indices(things: PackedByteArray) -> Dictionary:
 	var result := {}
 	for record in range(1, CityState.THING_COUNT):
 		var offset := record * CityState.THING_RECORD_SIZE
-		var thing_type := int(things[offset])
+		var thing_type := int(ThingData.read(things, offset))
 		var is_disaster_object := thing_type in [
 			DisasterStart.TYPE_MONSTER,
 			DisasterStart.TYPE_EXPLOSION,
 			DisasterStart.TYPE_TORNADO,
 		]
 		var is_crashing_airplane := (
-			thing_type == DisasterStart.TYPE_AIRPLANE and things[offset + 2] == 7
+			thing_type == DisasterStart.TYPE_AIRPLANE and ThingData.read(things, offset + 2) == 7
 		)
 		if is_disaster_object or is_crashing_airplane:
 			result[record] = true
@@ -194,9 +197,10 @@ static func _clear_disaster_markers(
 	text: PackedByteArray,
 	things: PackedByteArray,
 	disaster_records: Dictionary,
+	map_edge: int = 128,
 ) -> int:
 	var cleared_markers := 0
-	for index in CityState.TILE_COUNT:
+	for index in (map_edge * map_edge):
 		var overlay := int(text[index])
 		if overlay >= DISASTER_OVERLAY_FIRST:
 			text[index] = 0
@@ -207,9 +211,9 @@ static func _clear_disaster_markers(
 			continue
 		var offset := record * CityState.THING_RECORD_SIZE
 		var point_index := (
-			int(things[offset + 3]) * CityState.MAP_SIZE + int(things[offset + 4])
+			int(ThingData.read(things, offset + 3)) * map_edge + int(ThingData.read(things, offset + 4))
 		)
-		var prior_overlay := int(things[offset + 10])
+		var prior_overlay := int(ThingData.read(things, offset + 10))
 		text[index] = (
 			prior_overlay
 			if index == point_index and prior_overlay < DisasterStart.TEXT_THING_BASE
@@ -225,7 +229,7 @@ static func _clear_thing_records(
 	for record in disaster_records:
 		var offset := int(record) * CityState.THING_RECORD_SIZE
 		for byte_index in CityState.THING_RECORD_SIZE:
-			things[offset + byte_index] = 0
+			ThingData.write(things, offset + byte_index, 0)
 
 
 static func _reset_disaster_engine(engine: SimulationEngine) -> void:
@@ -242,20 +246,21 @@ static func _disaster_target(
 	document: Sc2File,
 	view_center: Vector2i,
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var thing_chunk := document.find_chunk("XTHG")
 	if thing_chunk != null:
 		var things: PackedByteArray = thing_chunk.decoded_payload
 		for record in range(1, CityState.THING_COUNT):
 			var offset := record * CityState.THING_RECORD_SIZE
-			if int(things[offset]) in [5, 15]:
+			if int(ThingData.read(things, offset)) in [5, 15]:
 				return {
-					"point": Vector2i(things[offset + 3], things[offset + 4]),
+					"point": Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4)),
 					"goal": record,
 				}
 	var nearest := Vector2i(-1, -1)
 	var nearest_distance := MAX_FUNDS
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
+	for x in map_edge:
+		for y in map_edge:
 			if city.text_overlay_id(x, y) < MAXIS_TARGET_OVERLAY_FIRST:
 				continue
 			var point := Vector2i(x, y)

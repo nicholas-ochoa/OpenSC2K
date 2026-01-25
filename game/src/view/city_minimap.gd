@@ -32,13 +32,14 @@ const COLLEGE := 0xd9
 
 
 static func create_image(city: CityState, palette: Sc2Palette, mode := "structures") -> Image:
+	var map_edge: int = city.map_size if city != null else 128
 	var image := Image.create(
-		CityState.MAP_SIZE, CityState.MAP_SIZE, false, Image.FORMAT_RGBA8
+		map_edge, map_edge, false, Image.FORMAT_RGBA8
 	)
 	if city == null or not city.is_valid() or palette == null or not palette.is_valid():
 		return image
-	for x in CityState.MAP_SIZE:
-		for y in CityState.MAP_SIZE:
+	for x in map_edge:
+		for y in map_edge:
 			image.set_pixel(x, y, palette.color(color_index(city, x, y, mode)))
 	return image
 
@@ -59,7 +60,7 @@ static func color_index(city: CityState, x: int, y: int, mode := "structures") -
 		"rail":
 			return 0xff if _is_rail_map_tile(building) else base
 		"traffic":
-			var traffic := _coarse_value(city, "XTRF", 64, 2, x, y) >> 4
+			var traffic := _coarse_value(city, "XTRF", city.map_size / 2, 2, x, y) >> 4
 			if traffic != 0:
 				return traffic + 0x9b
 			return 0xff if _is_traffic_network(building) else base
@@ -77,26 +78,26 @@ static func color_index(city: CityState, x: int, y: int, mode := "structures") -
 				return 0x32
 			return 0x1d if city.is_piped(x, y) else base
 		"density":
-			return _gradient_or_base(city, "XPOP", 32, 4, x, y, base)
+			return _gradient_or_base(city, "XPOP", city.map_size / 4, 4, x, y, base)
 		"growth":
-			var growth := _coarse_value(city, "XROG", 32, 4, x, y)
+			var growth := _coarse_value(city, "XROG", city.map_size / 4, 4, x, y)
 			if growth < 0x7d:
 				return 0x1d
 			if growth >= 0x83:
 				return 0x43
 			return base
 		"crime":
-			return _gradient_or_base(city, "XCRM", 64, 2, x, y, base)
+			return _gradient_or_base(city, "XCRM", city.map_size / 2, 2, x, y, base)
 		"police_power":
-			return _gradient_or_base(city, "XPLC", 32, 4, x, y, base)
+			return _gradient_or_base(city, "XPLC", city.map_size / 4, 4, x, y, base)
 		"police_stations":
 			return 0xff if building == POLICE_STATION else base
 		"pollution":
-			return _gradient_or_base(city, "XPLT", 64, 2, x, y, base)
+			return _gradient_or_base(city, "XPLT", city.map_size / 2, 2, x, y, base)
 		"land_value":
-			return _gradient_or_base(city, "XVAL", 64, 2, x, y, base)
+			return _gradient_or_base(city, "XVAL", city.map_size / 2, 2, x, y, base)
 		"fire_power":
-			return _gradient_or_base(city, "XFIR", 32, 4, x, y, base)
+			return _gradient_or_base(city, "XFIR", city.map_size / 4, 4, x, y, base)
 		"fire_stations":
 			return 0xff if building == FIRE_STATION else base
 		"schools":

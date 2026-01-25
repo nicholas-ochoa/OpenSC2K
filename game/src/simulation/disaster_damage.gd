@@ -50,7 +50,8 @@ static func apply(
 	allow_small_tile := false,
 	runtime_events: Dictionary = {},
 ) -> int:
-	var index := _index(point)
+	var map_edge: int = city.map_size if city != null else 128
+	var index := _index(point, map_edge)
 	if index < 0 or flags[index] & 0x04 != 0:
 		return 0
 	if buildings[index] < 6 and not allow_small_tile:
@@ -80,7 +81,7 @@ static func apply(
 		else:
 			result_code = 4
 	text[index] = 0xff
-	traffic[int(point.x / 2) * 64 + int(point.y / 2)] = 0
+	traffic[int(point.x / 2) * (map_edge / 2) + int(point.y / 2)] = 0
 	return result_code
 
 
@@ -103,7 +104,8 @@ static func apply_flood(
 	lfsr_random,
 	runtime_events: Dictionary = {},
 ) -> int:
-	var index := _index(point)
+	var map_edge: int = city.map_size if city != null else 128
+	var index := _index(point, map_edge)
 	if index < 0 or _altitude_word(altitude, index) & 0x1f > maximum_altitude:
 		return 0
 	if terrain[index] >= 0x10 and terrain[index] <= 0x1f:
@@ -129,7 +131,7 @@ static func apply_flood(
 		else:
 			return 0
 	text[index] = 0xfc
-	traffic[int(point.x / 2) * 64 + int(point.y / 2)] = 0
+	traffic[int(point.x / 2) * (map_edge / 2) + int(point.y / 2)] = 0
 	return 1
 
 
@@ -152,6 +154,7 @@ static func burn_structure(
 	clear_current := true,
 	emit_effects := false
 ) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	var result := Demolish._demolish_point(
 		city, altitude, buildings, terrain, zones, underground,
 		flags, text, labels, microsims, misc, point, random, true, true, emit_effects
@@ -159,7 +162,7 @@ static func burn_structure(
 	for index in result.get("indices", PackedInt32Array()):
 		if mark_fire and flags[index] & 0x04 == 0:
 			text[index] = 0xff
-	var point_index := _index(point)
+	var point_index := _index(point, map_edge)
 	if mark_fire and clear_current and point_index >= 0 and text[point_index] == 0xff:
 		text[point_index] = 0
 		var tile := int(buildings[point_index])
@@ -174,7 +177,7 @@ static func _altitude_word(altitude: PackedByteArray, index: int) -> int:
 	return (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 
-static func _index(point: Vector2i) -> int:
-	if point.x < 0 or point.y < 0 or point.x >= CityState.MAP_SIZE or point.y >= CityState.MAP_SIZE:
+static func _index(point: Vector2i, map_edge: int = 128) -> int:
+	if point.x < 0 or point.y < 0 or point.x >= map_edge or point.y >= map_edge:
 		return -1
-	return point.x * CityState.MAP_SIZE + point.y
+	return point.x * map_edge + point.y

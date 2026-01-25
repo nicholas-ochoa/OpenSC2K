@@ -60,6 +60,7 @@ const BUILDING_POLLUTION := {
 
 
 static func run(city: CityState) -> Dictionary:
+	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	var misc_chunk := city.document.find_chunk("MISC")
@@ -73,17 +74,17 @@ static func run(city: CityState) -> Dictionary:
 	var growth_chunk := city.document.find_chunk("XROG")
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != 4800:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
-	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != VALUE_COUNT:
+	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
 		return {"ok": false, "error": "XTRF is missing or has the wrong size"}
-	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != VALUE_COUNT:
+	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
 		return {"ok": false, "error": "XPLT is missing or has the wrong size"}
 	for checked in [
-		[land_value_chunk, "XVAL", VALUE_COUNT],
-		[crime_chunk, "XCRM", VALUE_COUNT],
-		[police_chunk, "XPLC", SERVICE_MAP_SIZE * SERVICE_MAP_SIZE],
-		[fire_chunk, "XFIR", SERVICE_MAP_SIZE * SERVICE_MAP_SIZE],
-		[population_chunk, "XPOP", SERVICE_MAP_SIZE * SERVICE_MAP_SIZE],
-		[growth_chunk, "XROG", SERVICE_MAP_SIZE * SERVICE_MAP_SIZE],
+		[land_value_chunk, "XVAL", ((map_edge / 2) * (map_edge / 2))],
+		[crime_chunk, "XCRM", ((map_edge / 2) * (map_edge / 2))],
+		[police_chunk, "XPLC", (map_edge / 4) * (map_edge / 4)],
+		[fire_chunk, "XFIR", (map_edge / 4) * (map_edge / 4)],
+		[population_chunk, "XPOP", (map_edge / 4) * (map_edge / 4)],
+		[growth_chunk, "XROG", (map_edge / 4) * (map_edge / 4)],
 	]:
 		if checked[0] == null or checked[0].decoded_payload.size() != checked[2]:
 			return {"ok": false, "error": "%s is missing or has the wrong size" % checked[1]}
@@ -94,16 +95,16 @@ static func run(city: CityState) -> Dictionary:
 	var old_pollution: PackedByteArray = pollution_chunk.decoded_payload
 	var old_traffic: PackedByteArray = traffic_chunk.decoded_payload
 	var temporary := PackedInt32Array()
-	temporary.resize(FULL_MAP_SIZE * FULL_MAP_SIZE)
-	for x in MAP_SIZE:
-		var coarse_row := x * MAP_SIZE
-		var temporary_row := x * FULL_MAP_SIZE
-		for y in MAP_SIZE:
+	temporary.resize(map_edge * map_edge)
+	for x in (map_edge / 2):
+		var coarse_row := x * (map_edge / 2)
+		var temporary_row := x * map_edge
+		for y in (map_edge / 2):
 			var map_index := coarse_row + y
 			var value := int(old_traffic[map_index] / 5)
 			value += old_pollution[map_index]
 			for full_x in range(x * 2, x * 2 + 2):
-				var full_row := full_x * FULL_MAP_SIZE
+				var full_row := full_x * map_edge
 				for full_y in range(y * 2, y * 2 + 2):
 					var building := buildings[full_row + full_y]
 					if building >= FIRST_POLLUTING_BUILDING:
@@ -122,26 +123,26 @@ static func run(city: CityState) -> Dictionary:
 	base_divisor = maxi(base_divisor, 1)
 
 	var pollution := PackedByteArray()
-	pollution.resize(VALUE_COUNT)
+	pollution.resize(((map_edge / 2) * (map_edge / 2)))
 	var total := 0
-	for x in MAP_SIZE:
-		var map_row := x * MAP_SIZE
-		var temporary_row := x * FULL_MAP_SIZE
-		for y in MAP_SIZE:
+	for x in (map_edge / 2):
+		var map_row := x * (map_edge / 2)
+		var temporary_row := x * map_edge
+		for y in (map_edge / 2):
 			var index := map_row + y
 			var temporary_index := temporary_row + y
 			var numerator := temporary[temporary_index] * 2
 			var divisor := base_divisor
 			if x > 0:
-				numerator += temporary[temporary_index - FULL_MAP_SIZE]
+				numerator += temporary[temporary_index - map_edge]
 				divisor += 1
-			if x < MAP_SIZE - 1:
-				numerator += temporary[temporary_index + FULL_MAP_SIZE]
+			if x < (map_edge / 2) - 1:
+				numerator += temporary[temporary_index + map_edge]
 				divisor += 1
 			if y > 0:
 				numerator += temporary[temporary_index - 1]
 				divisor += 1
-			if y < MAP_SIZE - 1:
+			if y < (map_edge / 2) - 1:
 				numerator += temporary[temporary_index + 1]
 				divisor += 1
 			var value := mini(int(numerator / divisor), 0xff)
@@ -153,9 +154,9 @@ static func run(city: CityState) -> Dictionary:
 	var coordinate_sum_x := 0
 	var coordinate_sum_y := 0
 	var center_divisor := 1
-	for x in FULL_MAP_SIZE:
-		var row := x * FULL_MAP_SIZE
-		for y in FULL_MAP_SIZE:
+	for x in map_edge:
+		var row := x * map_edge
+		for y in map_edge:
 			var index := row + y
 			if buildings[index] > 0x6f:
 				coordinate_sum_x += x
@@ -167,13 +168,13 @@ static func run(city: CityState) -> Dictionary:
 	var center_y := int(coordinate_sum_y / (center_divisor * 2))
 
 	var developed_tiles := 0
-	for x in FULL_MAP_SIZE:
-		var row := x * FULL_MAP_SIZE
+	for x in map_edge:
+		var row := x * map_edge
 		var quarter_x := x >> 2
-		var residential_row := quarter_x * FULL_MAP_SIZE
-		var industrial_row := (quarter_x + SERVICE_MAP_SIZE) * FULL_MAP_SIZE
-		var marked_row := (x >> 1) * FULL_MAP_SIZE
-		for y in FULL_MAP_SIZE:
+		var residential_row := quarter_x * map_edge
+		var industrial_row := (quarter_x + (map_edge / 4)) * map_edge
+		var marked_row := (x >> 1) * map_edge
+		for y in map_edge:
 			var index := row + y
 			var quarter_y := y >> 2
 			var residential_index := residential_row + quarter_y
@@ -209,14 +210,14 @@ static func run(city: CityState) -> Dictionary:
 	var old_population: PackedByteArray = population_chunk.decoded_payload
 	var old_growth: PackedByteArray = growth_chunk.decoded_payload
 	var land_value := PackedByteArray()
-	land_value.resize(VALUE_COUNT)
+	land_value.resize(((map_edge / 2) * (map_edge / 2)))
 	var land_value_total := 0
-	for x in MAP_SIZE:
-		var map_row := x * MAP_SIZE
-		var flag_row := x * FULL_MAP_SIZE
+	for x in (map_edge / 2):
+		var map_row := x * (map_edge / 2)
+		var flag_row := x * map_edge
 		var full_x := x * 2
-		var building_row := full_x * FULL_MAP_SIZE
-		for y in MAP_SIZE:
+		var building_row := full_x * map_edge
+		for y in (map_edge / 2):
 			var map_index := map_row + y
 			if not flags[flag_row + y] & FLAG_MARK:
 				continue
@@ -224,21 +225,21 @@ static func run(city: CityState) -> Dictionary:
 			var full_index := building_row + full_y
 			var zone := zones[full_index] & 0x0f
 			if zone == 0:
-				zone = zones[full_index + FULL_MAP_SIZE + 1] & 0x0f
+				zone = zones[full_index + map_edge + 1] & 0x0f
 			var service_x := x >> 1
 			var service_y := y >> 1
 			var distance_value := 64 - absi(center_x - x) - absi(center_y - y)
 			var value := 0
 			match zone:
 				3, 4:
-					value = _average_service_grid(temporary, service_x, service_y, 0)
+					value = _average_service_grid(temporary, service_x, service_y, 0, map_edge)
 					value += maxi(distance_value, 0)
 					value -= int(pollution[map_index] / 4)
 					value -= int(old_crime[map_index] / 3)
-					value += int(old_population[service_x * SERVICE_MAP_SIZE + service_y] / 3)
+					value += int(old_population[service_x * (map_edge / 4) + service_y] / 3)
 				5, 6:
 					value = _average_service_grid(
-						temporary, service_x, service_y, SERVICE_MAP_SIZE
+						temporary, service_x, service_y, (map_edge / 4), map_edge
 					)
 					if zone == 6:
 						value += 21
@@ -246,8 +247,8 @@ static func run(city: CityState) -> Dictionary:
 					value -= int(pollution[map_index] / 16)
 					value -= int(old_crime[map_index] / 4)
 				_:
-					value = _average_service_grid(temporary, service_x, service_y, 0)
-					if old_population[service_x * SERVICE_MAP_SIZE + service_y] < 0x40:
+					value = _average_service_grid(temporary, service_x, service_y, 0, map_edge)
+					if old_population[service_x * (map_edge / 4) + service_y] < 0x40:
 						value += 21
 					value += maxi(_divide_toward_zero(distance_value, 2), 0)
 					value -= int(pollution[map_index] / 5)
@@ -259,24 +260,24 @@ static func run(city: CityState) -> Dictionary:
 			land_value[map_index] = value
 			land_value_total += value
 
-	for x in SERVICE_MAP_SIZE:
-		var row := x * FULL_MAP_SIZE
-		for y in SERVICE_MAP_SIZE:
+	for x in (map_edge / 4):
+		var row := x * map_edge
+		for y in (map_edge / 4):
 			temporary[row + y] = 0
 	var police := PackedByteArray()
-	police.resize(SERVICE_MAP_SIZE * SERVICE_MAP_SIZE)
+	police.resize((map_edge / 4) * (map_edge / 4))
 	var fire := PackedByteArray()
-	fire.resize(SERVICE_MAP_SIZE * SERVICE_MAP_SIZE)
+	fire.resize((map_edge / 4) * (map_edge / 4))
 	var ordinances := city.document.misc_u32(MISC_ORDINANCES)
-	for x in range(1, FULL_MAP_SIZE - 1):
-		var row := x * FULL_MAP_SIZE
+	for x in range(1, map_edge - 1):
+		var row := x * map_edge
 		var service_x := x >> 2
-		var temporary_row := service_x * FULL_MAP_SIZE
-		for y in range(1, FULL_MAP_SIZE - 1):
+		var temporary_row := service_x * map_edge
+		for y in range(1, map_edge - 1):
 			var index := row + y
 			var building := buildings[index]
 			var service_y := y >> 2
-			var service_index := service_x * SERVICE_MAP_SIZE + service_y
+			var service_index := service_x * (map_edge / 4) + service_y
 			if building >= FIRST_POLLUTING_BUILDING and building < FIRST_POWER_PLANT:
 				temporary[temporary_row + service_y] += _population_weight(building)
 				if ordinances & POLICE_COVERAGE_ORDINANCE and police[service_index] < 0xfe:
@@ -297,21 +298,21 @@ static func run(city: CityState) -> Dictionary:
 					)
 					if not flags[index] & FLAG_POWERED:
 						strength = _divide_toward_zero(strength, 2)
-					_add_service(police, service_x, service_y, strength)
+					_add_service(police, service_x, service_y, strength, map_edge)
 				elif building == FIRE_STATION:
 					var strength := int(_budget_funding(city, BUDGET_FIRE) * 5 / 2)
 					if not flags[index] & FLAG_POWERED:
 						strength = _divide_toward_zero(strength, 2)
-					_add_service(fire, service_x, service_y, strength)
+					_add_service(fire, service_x, service_y, strength, map_edge)
 
 	var population := PackedByteArray()
-	population.resize(SERVICE_MAP_SIZE * SERVICE_MAP_SIZE)
+	population.resize((map_edge / 4) * (map_edge / 4))
 	var growth := PackedByteArray()
-	growth.resize(SERVICE_MAP_SIZE * SERVICE_MAP_SIZE)
-	for x in SERVICE_MAP_SIZE:
-		var row := x * SERVICE_MAP_SIZE
-		var temporary_row := x * FULL_MAP_SIZE
-		for y in SERVICE_MAP_SIZE:
+	growth.resize((map_edge / 4) * (map_edge / 4))
+	for x in (map_edge / 4):
+		var row := x * (map_edge / 4)
+		var temporary_row := x * map_edge
+		for y in (map_edge / 4):
 			var index := row + y
 			var population_value := mini(temporary[temporary_row + y] * 4, 0xff)
 			population[index] = population_value
@@ -322,11 +323,11 @@ static func run(city: CityState) -> Dictionary:
 			)
 			growth[index] = clampi(_divide_toward_zero(growth_numerator, 8), 0, 0xff)
 
-	for x in MAP_SIZE:
-		var map_row := x * MAP_SIZE
-		var temporary_row := x * FULL_MAP_SIZE
-		var service_row := (x >> 1) * SERVICE_MAP_SIZE
-		for y in MAP_SIZE:
+	for x in (map_edge / 2):
+		var map_row := x * (map_edge / 2)
+		var temporary_row := x * map_edge
+		var service_row := (x >> 1) * (map_edge / 4)
+		for y in (map_edge / 2):
 			var index := map_row + y
 			var temporary_index := temporary_row + y
 			if not flags[temporary_index] & FLAG_MARK:
@@ -341,25 +342,25 @@ static func run(city: CityState) -> Dictionary:
 			temporary[temporary_index] = value
 
 	var crime := PackedByteArray()
-	crime.resize(VALUE_COUNT)
+	crime.resize(((map_edge / 2) * (map_edge / 2)))
 	var crime_total := 0
-	for x in MAP_SIZE:
-		var map_row := x * MAP_SIZE
-		var temporary_row := x * FULL_MAP_SIZE
-		for y in MAP_SIZE:
+	for x in (map_edge / 2):
+		var map_row := x * (map_edge / 2)
+		var temporary_row := x * map_edge
+		for y in (map_edge / 2):
 			var temporary_index := temporary_row + y
 			var numerator := temporary[temporary_index]
 			var divisor := 1
 			if x > 0:
-				numerator += temporary[temporary_index - FULL_MAP_SIZE]
+				numerator += temporary[temporary_index - map_edge]
 				divisor += 1
-			if x < MAP_SIZE - 1:
-				numerator += temporary[temporary_index + FULL_MAP_SIZE]
+			if x < (map_edge / 2) - 1:
+				numerator += temporary[temporary_index + map_edge]
 				divisor += 1
 			if y > 0:
 				numerator += temporary[temporary_index - 1]
 				divisor += 1
-			if y < MAP_SIZE - 1:
+			if y < (map_edge / 2) - 1:
 				numerator += temporary[temporary_index + 1]
 				divisor += 1
 			var value := clampi(_divide_toward_zero(numerator, divisor), 0, 0xff)
@@ -399,26 +400,27 @@ static func run(city: CityState) -> Dictionary:
 	}
 
 
-static func _full_index(x: int, y: int) -> int:
-	return x * FULL_MAP_SIZE + y
+static func _full_index(x: int, y: int, map_edge: int = 128) -> int:
+	return x * map_edge + y
 
 
 static func _average_service_grid(
-	values: PackedInt32Array, x: int, y: int, x_offset: int
+	values: PackedInt32Array, x: int, y: int, x_offset: int,
+	map_edge: int = 128,
 ) -> int:
-	var center_index := (x + x_offset) * FULL_MAP_SIZE + y
+	var center_index := (x + x_offset) * map_edge + y
 	var total := values[center_index]
 	var divisor := 1
 	if x > 0:
-		total += values[center_index - FULL_MAP_SIZE]
+		total += values[center_index - map_edge]
 		divisor += 1
-	if x < SERVICE_MAP_SIZE - 1:
-		total += values[center_index + FULL_MAP_SIZE]
+	if x < (map_edge / 4) - 1:
+		total += values[center_index + map_edge]
 		divisor += 1
 	if y > 0:
 		total += values[center_index - 1]
 		divisor += 1
-	if y < SERVICE_MAP_SIZE - 1:
+	if y < (map_edge / 4) - 1:
 		total += values[center_index + 1]
 		divisor += 1
 	return _divide_toward_zero(total, divisor)
@@ -454,36 +456,37 @@ static func _population_weight(building: int) -> int:
 	return 0
 
 
-static func _add_service(values: PackedByteArray, x: int, y: int, strength: int) -> void:
-	_add_service_cell(values, x, y, strength)
+static func _add_service(values: PackedByteArray, x: int, y: int, strength: int, map_edge: int = 128) -> void:
+	_add_service_cell(values, x, y, strength, map_edge)
 	var cardinal := _divide_toward_zero(strength * 4, 5)
 	for point in [Vector2i(x - 1, y), Vector2i(x + 1, y), Vector2i(x, y - 1), Vector2i(x, y + 1)]:
-		_add_service_cell(values, point.x, point.y, cardinal)
+		_add_service_cell(values, point.x, point.y, cardinal, map_edge)
 	var diagonal := _divide_toward_zero(cardinal * 3, 4)
 	for dx in [-1, 1]:
 		for dy in [-1, 1]:
-			_add_service_cell(values, x + dx, y + dy, diagonal)
+			_add_service_cell(values, x + dx, y + dy, diagonal, map_edge)
 	var outer := _divide_toward_zero(diagonal * 2, 3)
 	for major in [-2, 2]:
 		for minor in [-1, 0, 1]:
-			_add_service_cell(values, x + major, y + minor, outer)
-			_add_service_cell(values, x + minor, y + major, outer)
+			_add_service_cell(values, x + major, y + minor, outer, map_edge)
+			_add_service_cell(values, x + minor, y + major, outer, map_edge)
 	var fringe := _divide_toward_zero(outer, 2)
 	for major in [-3, 3]:
 		for minor in [-1, 0, 1]:
-			_add_service_cell(values, x + major, y + minor, fringe)
-			_add_service_cell(values, x + minor, y + major, fringe)
+			_add_service_cell(values, x + major, y + minor, fringe, map_edge)
+			_add_service_cell(values, x + minor, y + major, fringe, map_edge)
 	for dx in [-2, 2]:
 		for dy in [-2, 2]:
-			_add_service_cell(values, x + dx, y + dy, fringe)
+			_add_service_cell(values, x + dx, y + dy, fringe, map_edge)
 
 
 static func _add_service_cell(
-	values: PackedByteArray, x: int, y: int, strength: int
+	values: PackedByteArray, x: int, y: int, strength: int,
+	map_edge: int = 128,
 ) -> void:
-	if x < 0 or x >= SERVICE_MAP_SIZE or y < 0 or y >= SERVICE_MAP_SIZE:
+	if x < 0 or x >= (map_edge / 4) or y < 0 or y >= (map_edge / 4):
 		return
-	var index := x * SERVICE_MAP_SIZE + y
+	var index := x * (map_edge / 4) + y
 	values[index] = clampi(int(values[index]) + strength, 0, 0xff)
 
 
