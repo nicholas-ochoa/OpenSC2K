@@ -104,9 +104,11 @@ var story_labels: Array[Label] = []
 var article_labels: Array[Label] = []
 var extra_columns: Array[Label] = []
 var continuation_pages: Array[int] = []
+var _articles := PackedStringArray()
+var _flow_regions: Array[Dictionary] = []
 var continuation_random := RandomNumberGenerator.new()
-const BODY_FONT_SIZE := 8
-const BODY_LINE_SPACING := -2
+const BODY_FONT_SIZE := 10
+const BODY_LINE_SPACING := -1
 var serif_font := newspaper_font()
 var headline_font := newspaper_font(true)
 var picture_id := 0
@@ -139,6 +141,14 @@ func set_page(
 	weather_text: String,
 	headlines: PackedStringArray
 ) -> void:
+	_articles.clear()
+	_flow_regions.clear()
+	for column in extra_columns:
+		column.free()
+	extra_columns.clear()
+	for body in article_labels:
+		body.hide()
+		body.text = ""
 	continuation_pages.clear()
 	for slot in STORY_RECT_INDICES.size():
 		continuation_pages.append(continuation_random.randi_range(2, 30))
@@ -165,6 +175,8 @@ func headline_for_slot(slot: int) -> String:
 func set_picture(resource_id: int, image: Image) -> void:
 	picture_id = resource_id
 	picture_texture = null if image == null else ImageTexture.create_from_image(image)
+	if not _articles.is_empty():
+		set_articles(_articles)
 	queue_redraw()
 
 
@@ -194,11 +206,11 @@ func _draw() -> void:
 	if layout_index != 2:
 		draw_line(Vector2(8, 91 if layout_index == 1 else 87), Vector2(792, 91 if layout_index == 1 else 87), Color("303030"), 1.0)
 	if shows_picture():
-		var bounds := Rect2(_reading_rects[3])
-		var factor := minf(bounds.size.x / picture_texture.get_width(), bounds.size.y / picture_texture.get_height())
-		var extent := picture_texture.get_size() * factor
-		draw_texture_rect(picture_texture, Rect2(bounds.get_center() - extent / 2.0, extent), false)
+		draw_texture_rect(picture_texture, _picture_rect(), false)
 	if hovered_story >= 0:
+		for region in _flow_regions:
+			if region.slot == hovered_story:
+				draw_rect(region.rect, Color("0066cc"), false, 2.0)
 		draw_rect(Rect2(_reading_rects[STORY_RECT_INDICES[hovered_story]]).grow(-2.0), Color("0066cc"), false, 2.0)
 
 
@@ -275,6 +287,9 @@ func _configure_label(label: Label, section: int) -> void:
 
 
 func _story_at(position: Vector2) -> int:
+	for region in _flow_regions:
+		if region.rect.has_point(position):
+			return region.slot
 	for slot in STORY_RECT_INDICES.size():
 		if Rect2(_reading_rects[STORY_RECT_INDICES[slot]]).has_point(position):
 			return slot
@@ -295,6 +310,10 @@ func _set_hovered_story(slot: int) -> void:
 
 
 func set_articles(articles: PackedStringArray) -> void:
+	_articles = articles.duplicate()
+	_flow_regions.clear()
+	var spaces: Array[Rect2] = []
+	var pending: Array[Dictionary] = []
 	_fit_story_row(articles)
 	for column in extra_columns:
 		column.free()
@@ -306,8 +325,11 @@ func set_articles(articles: PackedStringArray) -> void:
 		body.visible = rect.size.y > 70
 		body.text = ""
 		if not body.visible:
+			if slot < articles.size() and not articles[slot].is_empty():
+				pending.append({"slot": slot, "text": articles[slot]})
 			continue
 		headline.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+		headline.add_theme_constant_override("line_spacing", 0)
 		headline.add_theme_font_override("font", headline_font)
 		headline.add_theme_font_size_override("font_size", 15)
 		var heading_size := 15
@@ -339,6 +361,29 @@ func set_articles(articles: PackedStringArray) -> void:
 				taken = _fitting_words(words, column.size, notice)
 			column.text = " ".join(words.slice(0, taken)) + notice
 			remaining = " ".join(words.slice(taken)).strip_edges()
+			if remaining.is_empty():
+				var used := _body_text_height(column.text, column.size.x) + 8
+				if column.size.y - used >= 40:
+					spaces.append(Rect2(column.position + Vector2(0, used), Vector2(column.size.x, column.size.y - used)))
+		if not remaining.is_empty():
+			pending.append({"slot": slot, "text": remaining})
+	for summary in [weather_label, opinion_label]:
+		var used := serif_font.get_multiline_string_size(summary.text, HORIZONTAL_ALIGNMENT_LEFT, summary.size.x, summary.get_theme_font_size("font_size")).y + 12
+		if summary.size.y - used >= 40:
+			spaces.append(Rect2(summary.position + Vector2(0, used), Vector2(summary.size.x, summary.size.y - used)))
+	var picture_space := Rect2(_reading_rects[3]).grow(-4)
+	if shows_picture():
+		var picture_bottom := _picture_rect().end.y + 6
+		picture_space.size.y = maxf(0, picture_space.end.y - picture_bottom)
+		picture_space.position.y = picture_bottom
+	if picture_space.size.y >= 40:
+		var count := maxi(1, roundi(picture_space.size.x / 158.0))
+		var width := picture_space.size.x / count
+		for index in count:
+			spaces.append(Rect2(picture_space.position + Vector2(index * width, 0), Vector2(width - 6, picture_space.size.y)))
+	spaces.sort_custom(func(a: Rect2, b: Rect2) -> bool: return a.position.y < b.position.y if a.position.y != b.position.y else a.position.x < b.position.x)
+	_fill_columns(spaces, pending)
+	queue_redraw()
 
 
 func _fit_story_row(articles: PackedStringArray) -> void:
@@ -384,3 +429,57 @@ static func newspaper_font(bold := false) -> SystemFont:
 	font.font_names = PackedStringArray(["Georgia", "Times New Roman", "Liberation Serif", "Noto Serif", "serif"])
 	font.font_weight = 700 if bold else 400
 	return font
+
+
+func _picture_rect() -> Rect2:
+	var bounds := Rect2(_reading_rects[3])
+	if not shows_picture():
+		return Rect2(bounds.position, Vector2.ZERO)
+	var factor := minf(bounds.size.x / picture_texture.get_width(), bounds.size.y / picture_texture.get_height())
+	var extent := picture_texture.get_size() * factor
+	return Rect2(Vector2(bounds.get_center().x - extent.x / 2, bounds.position.y), extent)
+
+
+func _fill_columns(spaces: Array[Rect2], pending: Array[Dictionary]) -> void:
+	for space in spaces:
+		while space.size.y >= 40 and not pending.is_empty():
+			var story: Dictionary = pending[0]
+			var slot := int(story.slot)
+			var caption := story_labels[slot].text
+			var heading_height := headline_font.get_multiline_string_size(caption, HORIZONTAL_ALIGNMENT_LEFT, space.size.x, 12).y
+			if heading_height + 20 > space.size.y:
+				break
+			var bounds := Vector2(space.size.x, space.size.y - heading_height - 4)
+			var words := String(story.text).split(" ", false)
+			var taken := _fitting_words(words, bounds)
+			var notice := ""
+			if taken < words.size():
+				notice = "\n... (continued on pg %d)" % continuation_pages[slot]
+				taken = _fitting_words(words, bounds, notice)
+			if taken == 0:
+				break
+			var heading := _new_label("FlowHeading%d" % extra_columns.size())
+			heading.position = space.position
+			heading.size = Vector2(space.size.x, heading_height)
+			heading.add_theme_font_override("font", headline_font)
+			heading.add_theme_font_size_override("font_size", 12)
+			heading.add_theme_constant_override("line_spacing", 0)
+			heading.text = caption
+			extra_columns.append(heading)
+			var body := _new_label("FlowBody%d" % extra_columns.size())
+			body.position = space.position + Vector2(0, heading_height + 4)
+			body.size = bounds
+			body.vertical_alignment = VERTICAL_ALIGNMENT_TOP
+			body.horizontal_alignment = HORIZONTAL_ALIGNMENT_FILL
+			body.justification_flags = TextServer.JUSTIFICATION_WORD_BOUND | TextServer.JUSTIFICATION_SKIP_LAST_LINE
+			body.add_theme_font_size_override("font_size", BODY_FONT_SIZE)
+			body.add_theme_constant_override("line_spacing", BODY_LINE_SPACING)
+			body.text = " ".join(words.slice(0, taken)) + notice
+			extra_columns.append(body)
+			var used := heading_height + 4 + _body_text_height(body.text, bounds.x)
+			_flow_regions.append({"rect": Rect2(space.position, Vector2(space.size.x, used)), "slot": slot})
+			story.text = " ".join(words.slice(taken))
+			if String(story.text).is_empty():
+				pending.pop_front()
+			space.position.y += used + 8
+			space.size.y -= used + 8

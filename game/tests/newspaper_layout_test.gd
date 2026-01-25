@@ -16,10 +16,10 @@ func _run() -> void:
 		assert(not page.article_labels[1].text.is_empty())
 		assert(page.article_labels[1].horizontal_alignment == HORIZONTAL_ALIGNMENT_FILL)
 		assert(not page.article_labels[1].justification_flags & TextServer.JUSTIFICATION_DO_NOT_SKIP_SINGLE_LINE)
-		assert(page.article_labels[1].get_theme_font_size("font_size") == 8)
-		assert(page.article_labels[1].get_theme_constant("line_spacing") == -2)
+		assert(page.article_labels[1].get_theme_font_size("font_size") == 10)
+		assert(page.article_labels[1].get_theme_constant("line_spacing") == -1)
 		if layout == 1:
-			assert(page.extra_columns.size() == 4)
+			assert(page.extra_columns.size() >= 4)
 			assert(page.weather_label.size.y < 50 and page.opinion_label.size.y < 50)
 			assert(page.story_labels[0].position.y < page.title_label.position.y)
 		var all_columns: Array[Label] = page.article_labels + page.extra_columns
@@ -29,6 +29,15 @@ func _run() -> void:
 				notices += 1
 				assert(page._body_text_height(column.text, column.size.x) <= column.size.y)
 		assert(notices >= 4)
+		assert(not page._flow_regions.is_empty())
+		for region in page._flow_regions:
+			assert(page._story_at(region.rect.get_center()) == region.slot)
+		var picture := Image.create(200, 130, false, Image.FORMAT_RGBA8)
+		picture.fill(Color.GRAY)
+		page.set_picture(1, picture)
+		for region in page._flow_regions:
+			assert(not region.rect.intersects(page._picture_rect()))
+			assert(Rect2(Vector2.ZERO, NewspaperPage.PRESENTATION_SIZE).encloses(region.rect))
 		for number in page.continuation_pages:
 			assert(number >= 2 and number <= 30)
 		page.set_articles(['Brief.', 'Brief.', 'Brief.', 'Brief.', 'Brief.'])
