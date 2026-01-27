@@ -344,7 +344,7 @@ static func _draw_signs(
 			if x >= map_edge or y >= map_edge:
 				continue
 			var label_id := city.text_overlay_id(x, y)
-			if label_id < 1 or label_id > 50:
+			if not OverlayData.is_sign(label_id):
 				continue
 			var text := city.label(label_id).strip_edges().to_upper()
 			if text.is_empty():

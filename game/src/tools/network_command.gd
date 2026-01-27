@@ -269,9 +269,9 @@ static func apply(
 		and not planned.is_empty()
 		and listed_connection_cost > 0
 		and _is_connection_exit(planned, start, finish, map_edge)
-		and text_overlays[
+		and OverlayData.read(text_overlays,
 			connection_anchor.x * map_edge + connection_anchor.y
-		] != CONNECTION_LABEL
+		) != CONNECTION_LABEL
 	)
 	var connection_affordable: bool = (
 		free_mode or city.funds() - dry_cost >= connection_cost
@@ -348,9 +348,9 @@ static func apply(
 			selected_bridge, map_edge
 		)
 	if connection_built:
-		text_overlays[
+		OverlayData.write(text_overlays,
 			connection_anchor.x * map_edge + connection_anchor.y
-		] = CONNECTION_LABEL
+		, CONNECTION_LABEL)
 		_retile_surface_neighborhood(
 			buildings,
 			terrain,
@@ -997,8 +997,8 @@ static func _retile_surface(
 
 	var connections := 0
 	var has_connection_label := (
-		text_overlays.size() == (map_edge * map_edge)
-		and text_overlays[index] == CONNECTION_LABEL
+		OverlayData.count(text_overlays) == (map_edge * map_edge)
+		and OverlayData.read(text_overlays, index) == CONNECTION_LABEL
 	)
 	for direction in 4:
 		var near: Vector2i = point + DIRECTIONS[direction]
@@ -1128,7 +1128,7 @@ static func _city_payloads(city: CityState) -> Dictionary:
 		["MISC", 4800],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
-		if chunk == null or chunk.decoded_payload.size() != checked[1]:
+		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(str(checked[0])):
 			return {}
 		result[checked[0]] = chunk.decoded_payload.duplicate()
 	return result

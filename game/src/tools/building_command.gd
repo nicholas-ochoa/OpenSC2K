@@ -368,7 +368,7 @@ static func apply(
 			zones[index] = 0
 			flags[index] = (flags[index] & 0x1f) | placed_flags
 			if overlay_id != 0:
-				text_overlays[index] = overlay_id
+				OverlayData.write(text_overlays, index, overlay_id)
 			tile_indices.append(index)
 	_set_corners(zones, site, area, city.compass_rotation(), map_edge)
 	if tile_id == STATUE:
@@ -499,8 +499,8 @@ static func assign_stadium_team(
 	if not stadium_team_choices(city).has(team_index):
 		return {"ok": false, "error": "stadium team is not available"}
 	var overlay_id := int(command.get("overlay_id", 0))
-	var record_id := overlay_id - MICROSIM_LABEL_BASE
-	if record_id < MICROSIM_DYNAMIC_FIRST or record_id >= CityState.MICROSIM_COUNT:
+	var record_id := OverlayData.facility_record(overlay_id)
+	if record_id < MICROSIM_DYNAMIC_FIRST or record_id >= city.microsim_count():
 		return {"ok": false, "error": "stadium microsimulation link is invalid"}
 	var current_payloads := _city_payloads(city)
 	if current_payloads.is_empty():
@@ -663,20 +663,20 @@ static func _provision_microsim(
 		return 0
 	var record_id := -1
 	if microsim_type <= 16:
-		for checked_id in range(MICROSIM_DYNAMIC_FIRST, CityState.MICROSIM_COUNT):
+		for checked_id in range(MICROSIM_DYNAMIC_FIRST, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 			if microsims[checked_id * CityState.MICROSIM_RECORD_SIZE] == 0:
 				record_id = checked_id
 				break
 	else:
 		record_id = microsim_type - 16
 	if record_id < 0 and tile_id >= 0xfb:
-		for checked_id in range(MICROSIM_DYNAMIC_FIRST, CityState.MICROSIM_COUNT):
+		for checked_id in range(MICROSIM_DYNAMIC_FIRST, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 			if microsims[checked_id * CityState.MICROSIM_RECORD_SIZE] < 0xfb:
 				record_id = checked_id
-				var old_overlay_id := checked_id + MICROSIM_LABEL_BASE
-				for index in text_overlays.size():
-					if text_overlays[index] == old_overlay_id:
-						text_overlays[index] = 0
+				var old_overlay_id := OverlayData.facility_id(checked_id)
+				for index in OverlayData.count(text_overlays):
+					if OverlayData.read(text_overlays, index) == old_overlay_id:
+						OverlayData.write(text_overlays, index, 0)
 				break
 	if record_id < 0:
 		return 0
@@ -697,7 +697,7 @@ static func _provision_microsim(
 		scurk_place_mode
 	)
 
-	var label_id := record_id + MICROSIM_LABEL_BASE
+	var label_id := OverlayData.facility_id(record_id)
 	var label_offset := label_id * CityState.LABEL_RECORD_SIZE
 	if microsim_type <= 16 or labels[label_offset] == 0:
 		_write_label(labels, label_id, str(DEFAULT_MICROSIM_LABELS.get(tile_id, "")))
@@ -1066,7 +1066,7 @@ static func _city_payloads(city: CityState) -> Dictionary:
 		["MISC", 4800],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
-		if chunk == null or chunk.decoded_payload.size() != checked[1]:
+		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(str(checked[0])):
 			return {}
 		result[checked[0]] = chunk.decoded_payload.duplicate()
 	return result

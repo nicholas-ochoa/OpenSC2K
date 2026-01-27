@@ -2598,7 +2598,8 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 		sprite_archive,
 		dirty_indices,
 		view_size,
-		int(Time.get_ticks_msec() / 100)
+		int(Time.get_ticks_msec() / 100),
+		false
 	)
 	if not patched.get("ok", false):
 		return false
@@ -2629,7 +2630,7 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	}
 	edit_display_timings.occlusion_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
-	var texture := CityMapTexture.create(static_city_image)
+	var texture := CityMapTexture.update_region(map_view.city_texture, static_city_image, patched.output_rect)
 	map_view.set_city_view(static_display_city, texture, texture, true)
 	_refresh_moving_things(view_size)
 	edit_display_timings.upload_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
@@ -2645,7 +2646,7 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 			continue
 		var old_bytes: PackedByteArray = old_payloads[chunk_id]
 		var new_bytes: PackedByteArray = new_payloads[chunk_id]
-		var stride := 2 if chunk_id == "ALTM" else 1
+		var stride := 2 if chunk_id == "ALTM" or (chunk_id == "XTXT" and map_edge > 128) else 1
 		if (
 			old_bytes.size() != (map_edge * map_edge) * stride
 			or new_bytes.size() != old_bytes.size()
@@ -2653,6 +2654,10 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 			continue
 		for index in (map_edge * map_edge):
 			var offset := index * stride
+			if chunk_id == "XTXT":
+				if OverlayData.read(old_bytes, index) != OverlayData.read(new_bytes, index):
+					seen[index] = true
+				continue
 			var changed := old_bytes[offset] != new_bytes[offset]
 			if stride == 2:
 				changed = changed or old_bytes[offset + 1] != new_bytes[offset + 1]
@@ -2662,11 +2667,11 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 		var old_text: PackedByteArray = command.old_text
 		var new_text: PackedByteArray = command.new_text
 		if (
-			old_text.size() == (map_edge * map_edge)
-			and new_text.size() == (map_edge * map_edge)
+			OverlayData.count(old_text) == (map_edge * map_edge)
+			and OverlayData.count(new_text) == (map_edge * map_edge)
 		):
 			for index in (map_edge * map_edge):
-				if old_text[index] != new_text[index]:
+				if OverlayData.read(old_text, index) != OverlayData.read(new_text, index):
 					seen[index] = true
 	var tile_indices: PackedInt32Array = command.get(
 		"tile_indices", PackedInt32Array()
@@ -4566,7 +4571,7 @@ func _undo_last_edit() -> void:
 
 func _open_sign_dialog(point: Vector2i) -> void:
 	var overlay := city.text_overlay_id(point.x, point.y)
-	if overlay > Signs.LAST_USER_LABEL:
+	if overlay != 0 and not OverlayData.is_sign(overlay):
 		_show_error("This tile has a protected simulation label.")
 		return
 	pending_sign_tile = point

@@ -42,14 +42,14 @@ static func update(
 	var offset := record * RECORD_SIZE
 	var engine_type := int(ThingData.read(things, offset))
 	var first_car := int(ThingData.read(things, offset + 2))
-	if first_car < 0 or first_car > LAST_RECORD:
+	if first_car < 0 or first_car >= ThingData.count(things):
 		_remove_thing(text, things, record, map_edge)
 		counters.removed_trains += 1
 		counters.malformed_records += 1
 		return
 	var first_car_offset := first_car * RECORD_SIZE
 	var second_car := int(ThingData.read(things, first_car_offset + 2))
-	if second_car < 0 or second_car > LAST_RECORD:
+	if second_car < 0 or second_car >= ThingData.count(things):
 		_remove_thing(text, things, record, map_edge)
 		_remove_thing(text, things, first_car, map_edge)
 		counters.removed_trains += 1
@@ -87,10 +87,10 @@ static func update(
 		counters.removed_trains += 1
 		counters.malformed_records += 1
 		return
-	var destination_overlay := int(text[destination_index])
+	var destination_overlay := int(OverlayData.read(text, destination_index))
 	if (
-		destination_overlay >= TEXT_LABEL_BASE
-		and destination_overlay != second_car + TEXT_LABEL_BASE
+		OverlayData.blocks_thing(destination_overlay)
+		and destination_overlay != OverlayData.thing_id(second_car)
 	):
 		return
 	if not _record_points_are_valid(things, [record, first_car, second_car], map_edge):
@@ -99,13 +99,13 @@ static func update(
 		counters.malformed_records += 1
 		return
 	if current != destination:
-		text[_record_index(things, record, map_edge)] = first_car + TEXT_LABEL_BASE
-		text[_record_index(things, first_car, map_edge)] = second_car + TEXT_LABEL_BASE
-		text[_record_index(things, second_car, map_edge)] = ThingData.read(things, second_car_offset + 10)
+		OverlayData.write(text, _record_index(things, record, map_edge), OverlayData.thing_id(first_car))
+		OverlayData.write(text, _record_index(things, first_car, map_edge), OverlayData.thing_id(second_car))
+		OverlayData.write(text, _record_index(things, second_car, map_edge), ThingData.read(things, second_car_offset + 10))
 		_copy_record(things, first_car, second_car)
 		_copy_record(things, record, first_car)
-		ThingData.write(things, offset + 10, text[destination_index])
-		text[destination_index] = record + TEXT_LABEL_BASE
+		ThingData.write(things, offset + 10, OverlayData.read(text, destination_index))
+		OverlayData.write(text, destination_index, OverlayData.thing_id(record))
 		counters.moved_trains += 1
 	ThingData.write(things, offset + 3, destination.x)
 	ThingData.write(things, offset + 4, destination.y)
@@ -181,7 +181,7 @@ static func _route_is_valid(
 	map_edge: int = 128,
 ) -> bool:
 	var index := _index(point, map_edge)
-	if index < 0 or text[index] >= TEXT_LABEL_BASE:
+	if index < 0 or OverlayData.blocks_thing(OverlayData.read(text, index)):
 		return false
 	if engine_type == TYPE_TRAIN_ENGINE:
 		return _is_surface_route(buildings[index])
@@ -244,7 +244,7 @@ static func _copy_record(
 ) -> void:
 	var source := source_record * RECORD_SIZE
 	var destination := destination_record * RECORD_SIZE
-	for field in [3, 4, 6, 7, 10, 1, 8, 0]:
+	for field in [0, 3, 4, 6, 7, 10, 1, 8]:
 		ThingData.write(things, destination + field, ThingData.read(things, source + field))
 	if ThingData.read(things, destination) == TYPE_TRAIN_ENGINE:
 		ThingData.write(things, destination, TYPE_TRAIN_CAR)
@@ -305,10 +305,10 @@ static func _spawn_explosion(
 	map_edge: int = 128,
 ) -> bool:
 	var index := _index(point, map_edge)
-	if index < 0 or text[index] >= TEXT_LABEL_BASE:
+	if index < 0 or OverlayData.blocks_thing(OverlayData.read(text, index)):
 		return false
 	var record := 0
-	for checked_record in range(FIRST_RECORD, LAST_RECORD + 1):
+	for checked_record in range(FIRST_RECORD, ThingData.count(things)):
 		if ThingData.read(things, checked_record * RECORD_SIZE) == 0:
 			record = checked_record
 			break
@@ -323,9 +323,9 @@ static func _spawn_explosion(
 	ThingData.write(things, offset + 5, 0)
 	ThingData.write(things, offset + 6, 8)
 	ThingData.write(things, offset + 7, 8)
-	ThingData.write(things, offset + 10, text[index])
+	ThingData.write(things, offset + 10, OverlayData.read(text, index))
 	ThingData.write(things, offset + 11, 0)
-	text[index] = record + TEXT_LABEL_BASE
+	OverlayData.write(text, index, OverlayData.thing_id(record))
 	return true
 
 
@@ -338,7 +338,7 @@ static func _remove_thing(
 	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 	var index := _index(point, map_edge)
 	if index >= 0:
-		text[index] = 0
+		OverlayData.write(text, index, 0)
 
 
 static func _queue_sound(

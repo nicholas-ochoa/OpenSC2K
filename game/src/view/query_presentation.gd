@@ -30,8 +30,8 @@ static func sprite_id(city: CityState, info: Dictionary) -> int:
 		)
 	)
 	var overlay := city.text_overlay_id(point.x, point.y)
-	if overlay >= FIRST_THING_OVERLAY and overlay <= LAST_THING_OVERLAY:
-		var thing := city.thing(overlay - FIRST_THING_OVERLAY)
+	if OverlayData.is_thing(overlay):
+		var thing := city.thing(OverlayData.thing_record(overlay))
 		if int(thing.get("type", 0)) == SAILBOAT_TYPE:
 			result = LARGE_SAILBOAT_NORTHEAST
 	return result

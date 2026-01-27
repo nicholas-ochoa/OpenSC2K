@@ -70,7 +70,7 @@ static func generate(
 	var payloads := {}
 	for chunk_id in required:
 		var chunk := document.find_chunk(chunk_id)
-		if chunk == null or chunk.decoded_payload.size() != required[chunk_id]:
+		if chunk == null or chunk.decoded_payload.size() != document.decoded_size(chunk_id):
 			return _failure("required %s data is missing or invalid" % chunk_id)
 		payloads[chunk_id] = chunk.decoded_payload.duplicate()
 

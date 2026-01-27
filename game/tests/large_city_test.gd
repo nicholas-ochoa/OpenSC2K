@@ -93,7 +93,7 @@ func check_format_guards() -> void:
 	var document := EmptyCityTemplate.create(512)
 	var bytes: PackedByteArray = document.serialize().data
 	var invalid := bytes.duplicate()
-	invalid[23] = 2
+	invalid[23] = 99
 	check(not Sc2File.new().parse(invalid), "Reject unknown format version")
 	invalid = bytes.duplicate()
 	invalid[27] = 1

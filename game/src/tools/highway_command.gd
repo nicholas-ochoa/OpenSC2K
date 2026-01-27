@@ -76,7 +76,7 @@ static func apply(
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
 	var text_chunk := city.document.find_chunk("XTXT")
-	if text_chunk == null or text_chunk.decoded_payload.size() != (map_edge * map_edge):
+	if text_chunk == null or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT"):
 		return {"ok": false, "error": "required city data is missing or invalid"}
 	old_payloads["XTXT"] = text_chunk.decoded_payload.duplicate()
 	var buildings: PackedByteArray = old_payloads.XBLD
@@ -170,7 +170,7 @@ static func apply(
 		not bridge_attempted
 		and not sections.is_empty()
 		and _is_connection_exit(sections, finish)
-		and text_overlays[start.x * map_edge + start.y] != CONNECTION_LABEL
+		and OverlayData.read(text_overlays, start.x * map_edge + start.y) != CONNECTION_LABEL
 	)
 	var connection_affordable := (
 		free_mode or city.funds() - route_cost >= CONNECTION_COST
@@ -242,9 +242,9 @@ static func apply(
 		if placement.graded:
 			graded_sections += 1
 	if connection_built:
-		text_overlays[
+		OverlayData.write(text_overlays,
 			connection_anchor.x * map_edge + connection_anchor.y
-		] = CONNECTION_LABEL
+		, CONNECTION_LABEL)
 	_retile_affected_sections(
 		buildings,
 		terrain,
@@ -1196,8 +1196,8 @@ static func _select_section_kind(
 			direction_index, map_edge
 		)
 	if (
-		text_overlays.size() == (map_edge * map_edge)
-		and text_overlays[anchor.x * map_edge + anchor.y] == CONNECTION_LABEL
+		OverlayData.count(text_overlays) == (map_edge * map_edge)
+		and OverlayData.read(text_overlays, anchor.x * map_edge + anchor.y) == CONNECTION_LABEL
 	):
 		if anchor.x < 2:
 			connections |= 8

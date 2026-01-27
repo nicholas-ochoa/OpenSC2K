@@ -15,3 +15,17 @@ static func create(image: Image) -> Texture2D:
 			tiles.append({"position": Vector2(x, y), "texture": ImageTexture.create_from_image(image.get_region(bounds))})
 	result.set_meta("map_tiles", tiles)
 	return result
+
+static func update_region(texture: Texture2D, image: Image, dirty: Rect2i) -> Texture2D:
+	if texture == null or texture.get_size() != Vector2(image.get_size()):
+		return create(image)
+	if texture.has_meta("map_tiles"):
+		for tile: Dictionary in texture.get_meta("map_tiles"):
+			var bounds := Rect2i(Vector2i(tile.position), Vector2i(tile.texture.get_size()))
+			if bounds.intersects(dirty):
+				(tile.texture as ImageTexture).update(image.get_region(bounds))
+		return texture
+	if texture is ImageTexture:
+		(texture as ImageTexture).update(image)
+		return texture
+	return create(image)

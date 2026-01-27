@@ -161,7 +161,7 @@ static func connection_counts(city: CityState) -> Dictionary:
 	var commerce := 0
 	var industry := 0
 	for index in (map_edge * map_edge):
-		if city.text_overlays[index] != CONNECTION_LABEL:
+		if OverlayData.read(city.text_overlays, index) != CONNECTION_LABEL:
 			continue
 		var tile := city.buildings[index]
 		if _in_ranges(tile, COMMERCE_CONNECTION_RANGES):

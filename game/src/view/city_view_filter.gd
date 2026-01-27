@@ -32,6 +32,8 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 	var show_water := bool(visibility.get("water", true))
 	var show_trees := bool(visibility.get("trees", true))
 	var show_zones := bool(visibility.get("zones", true))
+	if show_buildings and show_networks and show_water and show_trees and show_zones:
+		return result
 	if not show_water:
 		result.object_altitude_overrides.resize((map_edge * map_edge))
 		result.object_altitude_overrides.fill(-1)

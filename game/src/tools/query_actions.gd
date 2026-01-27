@@ -119,7 +119,7 @@ static func rename_facility(
 		return {"ok": false, "error": "query does not select a facility"}
 	var overlay_id := int(info.get("overlay_id", 0))
 	var point: Vector2i = info.get("point", Vector2i(-1, -1))
-	if overlay_id < FIRST_MICROSIM_LABEL or overlay_id > LAST_MICROSIM_LABEL:
+	if not OverlayData.is_facility(overlay_id):
 		return {"ok": false, "error": "facility label is invalid"}
 	if city.text_overlay_id(point.x, point.y) != overlay_id:
 		return {"ok": false, "error": "queried facility has changed"}

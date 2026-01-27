@@ -466,10 +466,10 @@ static func _process_microsim_growth(
 		return
 	if tile < 0xfb or tile > 0xfe or zones[index] & 0xf0 != 0x80:
 		return
-	var label := int(text_overlays[index])
-	if label < 51 or label > 200:
+	var label := int(OverlayData.read(text_overlays, index))
+	if not OverlayData.is_facility(label):
 		return
-	var record_offset := (label - 51) * CityState.MICROSIM_RECORD_SIZE
+	var record_offset := OverlayData.facility_record(label) * CityState.MICROSIM_RECORD_SIZE
 	if microsims[record_offset] < 0xfb or microsims[record_offset] > 0xfe:
 		return
 	var coarse_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
@@ -524,9 +524,9 @@ static func _process_subway_maintenance(
 		_replace_building(buildings, zones, misc, index, surface_replacement)
 		zones[index] &= 0x0f
 		flags[index] &= 0x3d
-		var overlay := int(text_overlays[index])
-		if overlay < 0xc9 or overlay == 0xfa:
-			text_overlays[index] = 0
+		var overlay := int(OverlayData.read(text_overlays, index))
+		if not OverlayData.blocks_thing(overlay) or overlay == 0xfa:
+			OverlayData.write(text_overlays, index, 0)
 		_replace_underground(underground, zones, misc, index, 0)
 		counters.removed_subway_stations += 1
 		counters.decayed_subway_tiles += 1
@@ -1101,7 +1101,7 @@ static func _payloads(city: CityState) -> Dictionary:
 		["MISC", MISC_SIZE],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
-		if chunk == null or chunk.decoded_payload.size() != checked[1]:
+		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(str(checked[0])):
 			return {}
 		result[checked[0]] = chunk.decoded_payload.duplicate()
 	return result

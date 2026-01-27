@@ -181,7 +181,7 @@ static func _place_water(
 	map_edge: int = 128,
 ) -> bool:
 	var index := point.x * map_edge + point.y
-	if flags[index] & FLAG_WATER or text_overlays[index] > 0xf9:
+	if flags[index] & FLAG_WATER or (OverlayData.read(text_overlays, index) > 0xf9 and OverlayData.read(text_overlays, index) <= 255):
 		return false
 	var old_building := int(buildings[index])
 	if old_building >= FIRST_NON_LANDSCAPE_BUILDING or old_building == RADIOACTIVITY:
@@ -279,7 +279,7 @@ static func _city_payloads(city: CityState) -> Dictionary:
 		["MISC", 4800],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
-		if chunk == null or chunk.decoded_payload.size() != checked[1]:
+		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(str(checked[0])):
 			return {}
 		result[checked[0]] = chunk.decoded_payload.duplicate()
 	return result

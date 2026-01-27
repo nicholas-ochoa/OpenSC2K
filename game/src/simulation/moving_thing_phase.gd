@@ -78,15 +78,15 @@ static func run(
 		or traffic_chunk == null
 		or traffic_chunk.decoded_payload.size() != (map_edge / 2) * (map_edge / 2)
 		or text_chunk == null
-		or text_chunk.decoded_payload.size() != (map_edge * map_edge)
+		or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT")
 		or thing_chunk == null
 		or thing_chunk.decoded_payload.size() != city.document.decoded_size("XTHG")
 		or flag_chunk == null
 		or flag_chunk.decoded_payload.size() != (map_edge * map_edge)
 		or label_chunk == null
-		or label_chunk.decoded_payload.size() != CityState.LABEL_COUNT * CityState.LABEL_RECORD_SIZE
+		or label_chunk.decoded_payload.size() != city.document.decoded_size("XLAB")
 		or microsim_chunk == null
-		or microsim_chunk.decoded_payload.size() != CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE
+		or microsim_chunk.decoded_payload.size() != city.document.decoded_size("XMIC")
 		or misc_chunk == null
 		or misc_chunk.decoded_payload.size() != 4800
 	):
@@ -117,7 +117,7 @@ static func run(
 	var text: PackedByteArray = original_text.duplicate()
 	var things: PackedByteArray = original_things.duplicate()
 	var counters := {
-		"scanned_records": LAST_RECORD,
+		"scanned_records": ThingData.count(things) - 1,
 		"active_airplanes": 0,
 		"active_helicopters": 0,
 		"active_ships": 0,
@@ -182,7 +182,7 @@ static func run(
 		city.document.misc_u32(MISC_CITY_CENTER_Y)
 	)
 
-	for record in range(FIRST_RECORD, LAST_RECORD + 1):
+	for record in range(FIRST_RECORD, ThingData.count(things)):
 		var offset := record * RECORD_SIZE
 		match int(ThingData.read(things, offset)):
 			TYPE_AIRPLANE:
@@ -201,7 +201,7 @@ static func run(
 				counters.active_ships += 1
 				ShipTick.update(
 					buildings, underground, flags, text, things, record,
-					ship_home, random, lfsr_random, counters, map_edge
+					ThingData.ship_home(things, record, ship_home), random, lfsr_random, counters, map_edge
 				)
 			TYPE_MONSTER:
 				counters.active_monsters += 1

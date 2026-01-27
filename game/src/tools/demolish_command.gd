@@ -348,7 +348,7 @@ static func _demolish_point(
 	var tile_id := int(buildings[index])
 	if not force_damage and ((zones[index] & 0x0f) == MILITARY_ZONE or tile_id == RADIOACTIVITY):
 		return {"changed": false}
-	if not force_damage and text_overlays[index] == PROTECTED_CONNECTION_LABEL:
+	if not force_damage and OverlayData.read(text_overlays, index) == PROTECTED_CONNECTION_LABEL:
 		return {"changed": false}
 	if tile_id >= TUNNEL_FIRST and tile_id <= TUNNEL_LAST:
 		return _demolish_tunnel(
@@ -488,7 +488,7 @@ static func _demolish_underground_point(
 	var index := point.x * map_edge + point.y
 	if not scurk_mode and (zones[index] & 0x0f) == MILITARY_ZONE:
 		return {"changed": false}
-	if not scurk_mode and text_overlays[index] == PROTECTED_CONNECTION_LABEL:
+	if not scurk_mode and OverlayData.read(text_overlays, index) == PROTECTED_CONNECTION_LABEL:
 		return {"changed": false}
 	var altitude_offset := index * 2
 	var altitude_word := (
@@ -1145,15 +1145,15 @@ static func _release_overlay(
 	microsims: PackedByteArray,
 	index: int
 ) -> void:
-	var label_id := int(text_overlays[index])
+	var label_id := int(OverlayData.read(text_overlays, index))
 	if label_id == 0:
 		return
-	if label_id < 201 or label_id == 250:
-		text_overlays[index] = 0
-	if label_id >= 1 and label_id <= 50:
+	if not OverlayData.blocks_thing(label_id) or label_id == 250:
+		OverlayData.write(text_overlays, index, 0)
+	if OverlayData.is_sign(label_id):
 		labels[label_id * CityState.LABEL_RECORD_SIZE] = 0
-	elif label_id >= DYNAMIC_LABEL_FIRST and label_id <= DYNAMIC_LABEL_LAST:
-		var record_id := label_id - MICROSIM_LABEL_BASE
+	elif OverlayData.is_facility(label_id) and OverlayData.facility_record(label_id) >= BuildingCommand.MICROSIM_DYNAMIC_FIRST:
+		var record_id := OverlayData.facility_record(label_id)
 		microsims[record_id * CityState.MICROSIM_RECORD_SIZE] = 0
 		labels[label_id * CityState.LABEL_RECORD_SIZE] = 0
 

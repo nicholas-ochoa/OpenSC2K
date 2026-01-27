@@ -207,12 +207,12 @@ static func inspect(
 		["XCRM", (map_edge / 2) * (map_edge / 2)],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
-		if chunk == null or chunk.decoded_payload.size() != checked[1]:
+		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(str(checked[0])):
 			return {"ok": false, "error": "%s data is missing or invalid" % checked[0]}
 
 	var overlay := city.text_overlay_id(point.x, point.y)
-	if overlay >= FIRST_MICROSIM_LABEL and overlay <= LAST_MICROSIM_LABEL:
-		var microsim := city.microsim(overlay - FIRST_MICROSIM_LABEL)
+	if OverlayData.is_facility(overlay):
+		var microsim := city.microsim(OverlayData.facility_record(overlay))
 		if not microsim.is_empty() and microsim.tile_id != 0:
 			var microsim_type := int(MICROSIM_TYPE_BY_TILE.get(microsim.tile_id, 0))
 			var action := ""
@@ -229,7 +229,7 @@ static func inspect(
 				"point": point,
 				"title": city.label(overlay),
 				"overlay_id": overlay,
-				"microsim_id": overlay - FIRST_MICROSIM_LABEL,
+				"microsim_id": OverlayData.facility_record(overlay),
 				"microsim": microsim,
 				"microsim_type": microsim_type,
 				"lines": _specific_lines(
@@ -243,7 +243,7 @@ static func inspect(
 				"error": "",
 			}
 			specific.merge(_advanced_details(
-				city, point, overlay - FIRST_MICROSIM_LABEL
+				city, point, OverlayData.facility_record(overlay)
 			))
 			specific["sprite_id"] = Presentation.sprite_id(city, specific)
 			return specific
@@ -358,10 +358,9 @@ static func _advanced_details(
 	var overlay_id := city.text_overlay_id(point.x, point.y)
 	if (
 		microsim_id < 0
-		and overlay_id >= FIRST_MICROSIM_LABEL
-		and overlay_id <= LAST_MICROSIM_LABEL
+		and OverlayData.is_facility(overlay_id)
 	):
-		microsim_id = overlay_id - FIRST_MICROSIM_LABEL
+		microsim_id = OverlayData.facility_record(overlay_id)
 	var flags := int(city.tile_flags[index])
 	var flag_names := PackedStringArray()
 	for entry in FLAG_LABELS:
@@ -456,7 +455,7 @@ static func _advanced_lines(info: Dictionary) -> PackedStringArray:
 
 static func _things_at(city: CityState, point: Vector2i) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
-	for record in range(1, CityState.THING_COUNT):
+	for record in range(1, city.thing_count()):
 		var thing := city.thing(record)
 		var thing_type := int(thing.get("type", 0))
 		if (
@@ -740,8 +739,8 @@ static func general_name_resource_id(
 				else GENERAL_FRESH_WATER_NAME_INDEX
 			)
 			var overlay := city.text_overlay_id(point.x, point.y)
-			if overlay >= 201 and overlay <= 240:
-				var thing := city.thing(overlay - 201)
+			if OverlayData.is_thing(overlay):
+				var thing := city.thing(OverlayData.thing_record(overlay))
 				if int(thing.get("type", 0)) == 9:
 					name_index = GENERAL_SAILBOAT_NAME_INDEX
 	return GENERAL_NAME_RESOURCE_BASE + name_index

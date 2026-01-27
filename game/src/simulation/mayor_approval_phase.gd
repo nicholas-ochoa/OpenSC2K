@@ -35,7 +35,7 @@ static func run(city: CityState, random, previous_approval: int) -> Dictionary:
 		or graph_chunk.decoded_payload.size() != XGRP_SIZE
 		or microsim_chunk == null
 		or microsim_chunk.decoded_payload.size()
-		!= CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE
+		!= city.document.decoded_size("XMIC")
 	):
 		return {"ok": false, "error": "MISC, XGRP, or XMIC has the wrong size"}
 	var misc: PackedByteArray = misc_chunk.decoded_payload
@@ -72,7 +72,7 @@ static func run(city: CityState, random, previous_approval: int) -> Dictionary:
 				survey_counts[category] += 1
 
 	var updated_records := 0
-	for record_id in range(1, CityState.MICROSIM_COUNT):
+	for record_id in range(1, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 		var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 		if int(microsims[offset]) != TILE_MAYOR_HOUSE:
 			continue

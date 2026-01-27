@@ -4,7 +4,7 @@
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
 <title>City Newspaper</title>
 <style>
-*{box-sizing:border-box}html,body{margin:0;height:100%;background:#303330;color:#171713}body{font-family:Georgia,'Times New Roman',serif;display:grid;place-items:center}#shell{position:relative;width:65vw;height:85vh;min-width:min(380px,95vw);min-height:240px;max-width:95vw;max-height:95vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px #0009;border:1px solid #666}nav{flex:none;display:flex;gap:12px;align-items:center;padding:9px 20px;background:#252a2d;color:#eee;font:13px system-ui}nav label{margin-right:auto}button,select{font:inherit;padding:5px 12px;border:1px solid #777;border-radius:3px;background:#444b50;color:white;cursor:pointer}button:hover{background:#606a70}main{overflow:auto;flex:1;padding:18px}#paper{max-width:1280px;margin:auto;background:#d0cfc9;padding:10px 16px 16px;box-shadow:0 2px 12px #0006}#banner{text-align:center;font-weight:bold;font-size:clamp(20px,2.6vw,34px);line-height:1.02;padding-bottom:9px;border-bottom:2px solid #34342e;margin:0}header{display:grid;grid-template-columns:1fr 2fr 1fr;align-items:end;border-bottom:1px solid #34342e;padding:8px 0}#masthead{font-size:clamp(22px,3vw,36px);text-align:center;margin:0;line-height:1.1}#date{text-align:right}.summary{display:flex;justify-content:space-between;gap:20px;padding:7px 0;border-bottom:1px solid #777;font-size:11px;white-space:pre-line}.summary p{margin:0}/* Fixed newspaper regions follow the supplied original-game examples. */
+*{box-sizing:border-box;cursor:inherit;-webkit-user-select:none;user-select:none}html,body{cursor:default}html,body{margin:0;height:100%;background:transparent;color:#171713}body{font-family:Georgia,'Times New Roman',serif;display:grid;place-items:center}#shell{position:relative;width:65vw;height:85vh;min-width:min(380px,95vw);min-height:240px;max-width:95vw;max-height:95vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px #0009;border:1px solid #666}nav{flex:none;display:flex;gap:12px;align-items:center;padding:9px 20px;background:#252a2d;color:#eee;font:13px system-ui}nav label{margin-right:auto}button,select{font:inherit;padding:5px 12px;border:1px solid #777;border-radius:3px;background:#444b50;color:white;cursor:pointer}button:hover{background:#606a70}main{overflow:auto;flex:1;padding:18px}#paper{max-width:1280px;margin:auto;background:#d0cfc9;padding:10px 16px 16px;box-shadow:0 2px 12px #0006}#banner{text-align:center;font-weight:bold;font-size:clamp(20px,2.6vw,34px);line-height:1.02;padding-bottom:9px;border-bottom:2px solid #34342e;margin:0}header{display:grid;grid-template-columns:1fr 2fr 1fr;align-items:end;border-bottom:1px solid #34342e;padding:8px 0}#masthead{font-size:clamp(22px,3vw,36px);text-align:center;margin:0;line-height:1.1}#date{text-align:right}.summary{display:flex;justify-content:space-between;gap:20px;padding:7px 0;border-bottom:1px solid #777;font-size:11px;white-space:pre-line}.summary p{margin:0}/* Fixed newspaper regions follow the supplied original-game examples. */
 main{min-height:0;padding:10px}
 #paper{height:100%;min-height:440px;display:flex;flex-direction:column;container-type:inline-size}
 header{order:0;flex:none;padding:3px 0}
@@ -34,7 +34,7 @@ dialog{color:#171713;background:#d0cfc9;border:1px solid #555;width:min(720px,90
 .resize-corner{right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:repeating-linear-gradient(135deg,transparent 0 3px,#888 3px 4px);clip-path:polygon(100% 0,100% 100%,0 100%)}
 
 </style></head><body>
-<div id="shell"><nav><label>Paper <select id="papers" aria-label="Newspaper"></select></label><output id="dimensions" aria-label="Newspaper size"></output><button id="native">Godot view</button><button id="close">Close</button></nav>
+<div id="shell"><nav><label>Paper <select id="papers" aria-label="Newspaper"></select></label><button id="close">Close</button></nav>
 <main><section id="paper"><h1 id="banner"></h1><header><span id="price"></span><h1 id="masthead"></h1><span id="date"></span></header><div class="summary"><p id="weather"></p><p id="opinion"></p></div><div id="stories"></div></section></main><div class="resize-handle resize-right" data-resize="width"></div><div class="resize-handle resize-bottom" data-resize="height"></div><div class="resize-handle resize-corner" data-resize="both" title="Drag to resize newspaper"></div></div>
 <dialog id="reader"><button id="back" aria-label="Close article" title="Close article">×</button><h2 id="fulltitle"></h2><div id="fulltext"></div></dialog>
 <script>
@@ -43,9 +43,7 @@ const $=id=>document.getElementById(id);
 const send=data=>window.ipc.postMessage(JSON.stringify(data));
 let data={};
 const shell=$('shell');
-function updateDimensions(){const bounds=shell.getBoundingClientRect();$('dimensions').textContent=Math.round(bounds.width/innerWidth*100)+'% W × '+Math.round(bounds.height/innerHeight*100)+'% H'}
-new ResizeObserver(()=>{updateDimensions();scheduleLayout()}).observe(shell);
-window.addEventListener('resize',updateDimensions);
+new ResizeObserver(scheduleLayout).observe(shell);
 document.querySelectorAll('[data-resize]').forEach(handle=>{
 handle.addEventListener('pointerdown',event=>{
 if(event.button!==0)return;
@@ -137,5 +135,5 @@ $('reader').addEventListener('click',event=>{
 const reader=$('reader'),bounds=reader.getBoundingClientRect();
 if(event.target===reader&&(event.clientX<bounds.left||event.clientX>bounds.right||event.clientY<bounds.top||event.clientY>bounds.bottom))reader.close();
 });
-$('close').onclick=()=>send({action:'close'});$('native').onclick=()=>send({action:'native'});$('papers').onchange=()=>send({action:'paper',index:Number($('papers').value)});$('back').onclick=()=>$('reader').close();document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('reader').open)send({action:'close'})});send({action:'ready'});
+$('close').onclick=()=>send({action:'close'});$('papers').onchange=()=>send({action:'paper',index:Number($('papers').value)});$('back').onclick=()=>$('reader').close();document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('reader').open)send({action:'close'})});document.addEventListener('selectstart',event=>event.preventDefault());send({action:'ready'});
 </script></body></html>

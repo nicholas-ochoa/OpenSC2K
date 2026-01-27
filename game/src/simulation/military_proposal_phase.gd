@@ -170,7 +170,7 @@ static func _chunks(city: CityState) -> Dictionary:
 		["MISC", MISC_SIZE],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
-		if chunk == null or chunk.decoded_payload.size() != checked[1]:
+		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(str(checked[0])):
 			return {}
 		result[checked[0]] = chunk
 	return result

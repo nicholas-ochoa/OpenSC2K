@@ -28,7 +28,7 @@ const TRAIN_DIRECTION_ORDERS := [
 
 static func count_type(things: PackedByteArray, thing_type: int) -> int:
 	var count := 0
-	for record in range(FIRST_RECORD, LAST_RECORD + 1):
+	for record in range(FIRST_RECORD, ThingData.count(things)):
 		if ThingData.read(things, record * RECORD_SIZE) == thing_type:
 			count += 1
 	return count
@@ -41,9 +41,9 @@ static func spawn_helicopter(
 	var index := _index(point, map_edge)
 	if (
 		index < 0
-		or text[index] >= TEXT_LABEL_BASE
+		or OverlayData.blocks_thing(OverlayData.read(text, index))
 		or count_type(things, TYPE_MONSTER) != 0
-		or count_type(things, TYPE_HELICOPTER) >= 1
+		or count_type(things, TYPE_HELICOPTER) >= 1 * (map_edge * map_edge / 16384)
 	):
 		return {"spawned": false}
 	var record := _first_free_record(things)
@@ -60,8 +60,8 @@ static func spawn_helicopter(
 	ThingData.write(things, offset + 7, 8)
 	ThingData.write(things, offset + 8, random.next_u15() % map_edge)
 	ThingData.write(things, offset + 9, random.next_u15() % map_edge)
-	ThingData.write(things, offset + 10, text[index])
-	text[index] = record + TEXT_LABEL_BASE
+	ThingData.write(things, offset + 10, OverlayData.read(text, index))
+	OverlayData.write(text, index, OverlayData.thing_id(record))
 	return {"spawned": true, "record": record, "point": point}
 
 
@@ -76,9 +76,9 @@ static func spawn_airplane(
 	var source_index := _index(point, map_edge)
 	if (
 		source_index < 0
-		or text[source_index] >= TEXT_LABEL_BASE
+		or OverlayData.blocks_thing(OverlayData.read(text, source_index))
 		or count_type(things, TYPE_MONSTER) != 0
-		or count_type(things, TYPE_AIRPLANE) >= 2
+		or count_type(things, TYPE_AIRPLANE) >= 2 * (map_edge * map_edge / 16384)
 	):
 		return {"spawned": false}
 	var record := _first_free_record(things)
@@ -120,8 +120,8 @@ static func spawn_airplane(
 	ThingData.write(things, offset + 3, attached.x)
 	ThingData.write(things, offset + 4, attached.y)
 	var attached_index := _index(attached, map_edge)
-	ThingData.write(things, offset + 10, text[attached_index])
-	text[attached_index] = record + TEXT_LABEL_BASE
+	ThingData.write(things, offset + 10, OverlayData.read(text, attached_index))
+	OverlayData.write(text, attached_index, OverlayData.thing_id(record))
 	return {"spawned": true, "record": record, "point": attached}
 
 
@@ -133,7 +133,7 @@ static func spawn_ship(
 	random,
 	map_edge: int = 128,
 ) -> Dictionary:
-	if count_type(things, TYPE_SHIP) >= 1:
+	if count_type(things, TYPE_SHIP) >= 1 * (map_edge * map_edge / 16384):
 		return {"spawned": false}
 	var start := Vector2i(-1, -1)
 	match random.next_u15() & 3:
@@ -143,20 +143,20 @@ static func spawn_ship(
 					start = Vector2i(2, y)
 		1:
 			for y in map_edge:
-				if terrain[126 * map_edge + y] == 0x10:
-					start = Vector2i(126, y)
+				if terrain[(map_edge - 2) * map_edge + y] == 0x10:
+					start = Vector2i((map_edge - 2), y)
 		2:
 			for x in map_edge:
 				if terrain[x * map_edge + 2] == 0x10:
 					start = Vector2i(x, 2)
 		3:
 			for x in map_edge:
-				if terrain[x * map_edge + 126] == 0x10:
-					start = Vector2i(x, 126)
+				if terrain[x * map_edge + (map_edge - 2)] == 0x10:
+					start = Vector2i(x, (map_edge - 2))
 	if start.x < 0:
 		return {"spawned": false}
 	var start_index := _index(start, map_edge)
-	if text[start_index] >= TEXT_LABEL_BASE:
+	if OverlayData.blocks_thing(OverlayData.read(text, start_index)):
 		return {"spawned": false}
 	var record := _first_free_record(things)
 	if record == 0:
@@ -170,8 +170,9 @@ static func spawn_ship(
 	ThingData.write(things, offset + 5, 1)
 	ThingData.write(things, offset + 6, 8)
 	ThingData.write(things, offset + 7, 8)
-	ThingData.write(things, offset + 10, text[start_index])
-	text[start_index] = record + TEXT_LABEL_BASE
+	ThingData.write(things, offset + 10, OverlayData.read(text, start_index))
+	OverlayData.write(text, start_index, OverlayData.thing_id(record))
+	ThingData.set_ship_home(things, record, start)
 	return {"spawned": true, "record": record, "point": start, "target": target}
 
 
@@ -184,7 +185,7 @@ static func spawn_sailboats(
 	lfsr_random,
 	map_edge: int = 128,
 ) -> int:
-	if count_type(things, TYPE_SAILBOAT) >= 4:
+	if count_type(things, TYPE_SAILBOAT) >= 4 * (map_edge * map_edge / 16384):
 		return 0
 	var spawned := 0
 	for direction in CARDINAL_DIRECTIONS:
@@ -196,7 +197,7 @@ static func spawn_sailboats(
 			or index < 0
 			or flags[index] & 0x04 == 0
 			or buildings[index] != 0
-			or text[index] != 0
+			or OverlayData.read(text, index) != 0
 		):
 			continue
 		var offset := record * RECORD_SIZE
@@ -209,7 +210,7 @@ static func spawn_sailboats(
 		ThingData.write(things, offset + 6, 4)
 		ThingData.write(things, offset + 7, 4)
 		ThingData.write(things, offset + 10, 0)
-		text[index] = record + TEXT_LABEL_BASE
+		OverlayData.write(text, index, OverlayData.thing_id(record))
 		spawned += 1
 	return spawned
 
@@ -228,9 +229,9 @@ static func spawn_maxis_man(
 	if (
 		index < 0
 		or target_index < 0
-		or text[index] >= TEXT_LABEL_BASE
+		or OverlayData.blocks_thing(OverlayData.read(text, index))
 		or count_type(things, TYPE_MAXIS_MAN) >= 1
-		or (goal < 241 and (goal < FIRST_RECORD or goal > LAST_RECORD))
+		or (ThingData.is_record_target(goal) and (goal < FIRST_RECORD or ThingData.target_record(goal) >= ThingData.count(things)))
 	):
 		return {"spawned": false}
 	var record := _first_free_record(things)
@@ -247,9 +248,9 @@ static func spawn_maxis_man(
 	ThingData.write(things, offset + 7, 8)
 	ThingData.write(things, offset + 8, target.x)
 	ThingData.write(things, offset + 9, target.y)
-	ThingData.write(things, offset + 10, text[index])
+	ThingData.write(things, offset + 10, OverlayData.read(text, index))
 	ThingData.write(things, offset + 11, goal)
-	text[index] = record + TEXT_LABEL_BASE
+	OverlayData.write(text, index, OverlayData.thing_id(record))
 	return {
 		"spawned": true,
 		"record": record,
@@ -284,13 +285,13 @@ static func _spawn_train_record(
 	lfsr_random,
 	map_edge: int = 128,
 ) -> bool:
-	if count_type(things, TYPE_TRAIN_ENGINE) > 4:
+	if count_type(things, TYPE_TRAIN_ENGINE) >= 5 * (map_edge * map_edge / 16384):
 		return false
 	if start.x < 2 or start.x > 124 or start.y < 2 or start.y > 124:
 		return false
 	var index := _index(start, map_edge)
 	var tile := int(buildings[index])
-	if tile < 0x2c or tile > 0x35 or text[index] != 0:
+	if tile < 0x2c or tile > 0x35 or OverlayData.read(text, index) != 0:
 		return false
 	var initial_direction: int = lfsr_random.next_mod(4)
 	var direction := _train_direction(
@@ -323,12 +324,12 @@ static func _spawn_train_record(
 	ThingData.write(things, first_car_offset + 7, start.y)
 	ThingData.write(things, second_car_offset + 6, start.x)
 	ThingData.write(things, second_car_offset + 7, start.y)
-	ThingData.write(things, engine_offset + 10, text[index])
+	ThingData.write(things, engine_offset + 10, OverlayData.read(text, index))
 	ThingData.write(things, first_car_offset + 10, 0)
 	ThingData.write(things, second_car_offset + 10, 0)
 	ThingData.write(things, engine_offset + 2, first_car_record)
 	ThingData.write(things, first_car_offset + 2, second_car_record)
-	text[index] = engine_record + TEXT_LABEL_BASE
+	OverlayData.write(text, index, OverlayData.thing_id(engine_record))
 	return true
 
 
@@ -344,7 +345,7 @@ static func _train_direction(
 		var direction: int = (initial_direction + int(offset)) & 3
 		var neighbor: Vector2i = point + CARDINAL_DIRECTIONS[direction]
 		var index := _index(neighbor, map_edge)
-		if index >= 0 and text[index] < TEXT_LABEL_BASE and _train_route_tile(buildings[index]):
+		if index >= 0 and not OverlayData.blocks_thing(OverlayData.read(text, index)) and _train_route_tile(buildings[index]):
 			return direction
 	return -1
 
@@ -363,7 +364,7 @@ static func _train_route_tile(tile_value: int) -> bool:
 
 
 static func _first_free_record(things: PackedByteArray) -> int:
-	for record in range(FIRST_RECORD, LAST_RECORD + 1):
+	for record in range(FIRST_RECORD, ThingData.count(things)):
 		if ThingData.read(things, record * RECORD_SIZE) == 0:
 			return record
 	return 0

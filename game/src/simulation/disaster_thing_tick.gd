@@ -133,13 +133,13 @@ static func update_monster(
 		counters.malformed_records += 1
 		return
 	if counters.active_airplanes > 0:
-		for checked_record in range(FIRST_RECORD, LAST_RECORD + 1):
+		for checked_record in range(FIRST_RECORD, ThingData.count(things)):
 			var checked_offset := checked_record * RECORD_SIZE
 			if ThingData.read(things, checked_offset) == TYPE_AIRPLANE:
 				ThingData.write(things, checked_offset + 2, 7)
 				counters.monster_forced_airplanes += 1
 	if counters.active_helicopters > 0:
-		for checked_record in range(FIRST_RECORD, LAST_RECORD + 1):
+		for checked_record in range(FIRST_RECORD, ThingData.count(things)):
 			var checked_offset := checked_record * RECORD_SIZE
 			if ThingData.read(things, checked_offset) == TYPE_HELICOPTER:
 				ThingData.write(things, checked_offset + 2, 5)
@@ -194,9 +194,9 @@ static func update_monster(
 		var military_point: Vector2i = current + EIGHT_DIRECTIONS[move_direction]
 		var military_index := _index(military_point, map_edge)
 		if military_index >= 0:
-			var overlay := int(text[military_index])
-			if overlay >= TEXT_LABEL_BASE and overlay < 241:
-				var target_record := overlay - TEXT_LABEL_BASE
+			var overlay := int(OverlayData.read(text, military_index))
+			if OverlayData.is_thing(overlay):
+				var target_record := OverlayData.thing_record(overlay)
 				if ThingData.read(things, target_record * RECORD_SIZE) == 14:
 					ThingData.write(things, offset + 2, 3)
 					counters.monster_military_collisions += 1
@@ -341,7 +341,7 @@ static func _monster_damage(
 			zones[index] = 0xf0
 			flags[index] = (flags[index] & 0x1f) | 0xe0
 			if overlay_id != 0:
-				text[index] = overlay_id
+				OverlayData.write(text, index, overlay_id)
 		_:
 			pass
 	ThingData.write(things, offset + 8, ThingData.read(things, offset + 8) | (0x80))
@@ -357,7 +357,7 @@ static func _remove_thing(
 	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 	var index := _index(point, map_edge)
 	if index >= 0:
-		text[index] = 0
+		OverlayData.write(text, index, 0)
 
 
 static func _move_thing_eight_way(
@@ -397,10 +397,10 @@ static func _move_thing_eight_way(
 	if current_index < 0:
 		_remove_thing(text, things, record, map_edge)
 		return -1
-	text[current_index] = ThingData.read(things, offset + 10)
+	OverlayData.write(text, current_index, ThingData.read(things, offset + 10))
 	var next := current + tile_delta
 	var next_index := _index(next, map_edge)
-	while next_index >= 0 and text[next_index] >= TEXT_LABEL_BASE:
+	while next_index >= 0 and OverlayData.blocks_thing(OverlayData.read(text, next_index)):
 		ThingData.write(things, offset + 3, next.x)
 		ThingData.write(things, offset + 4, next.y)
 		next += tile_delta
@@ -410,8 +410,8 @@ static func _move_thing_eight_way(
 		return -1
 	ThingData.write(things, offset + 3, next.x)
 	ThingData.write(things, offset + 4, next.y)
-	ThingData.write(things, offset + 10, text[next_index])
-	text[next_index] = record + TEXT_LABEL_BASE
+	ThingData.write(things, offset + 10, OverlayData.read(text, next_index))
+	OverlayData.write(text, next_index, OverlayData.thing_id(record))
 	return 1
 
 

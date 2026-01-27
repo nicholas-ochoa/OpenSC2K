@@ -49,7 +49,11 @@ static func apply(city: CityState, counter_clockwise: bool) -> Dictionary:
 	changed.XUND = _rotate_byte_grid(
 		changed.XUND, map_edge, counter_clockwise, _underground_table(counter_clockwise)
 	)
-	changed.XTXT = _rotate_grid(changed.XTXT, map_edge, 1, counter_clockwise)
+	var overlay_cells := map_edge * map_edge
+	var rotated_text := _rotate_grid(changed.XTXT.slice(0, overlay_cells), map_edge, 1, counter_clockwise)
+	if changed.XTXT.size() > overlay_cells:
+		rotated_text.append_array(_rotate_grid(changed.XTXT.slice(overlay_cells), map_edge, 1, counter_clockwise))
+	changed.XTXT = rotated_text
 	changed.XBIT = _rotate_grid(changed.XBIT, map_edge, 1, counter_clockwise)
 	_rotate_surface_tile_counts(changed.MISC, surface_table)
 	_rotate_special_surface(
@@ -340,11 +344,14 @@ static func _replace_building(
 
 # these bytes are coordinates until the object decides they aren't
 static func _rotate_things(things: PackedByteArray, counter_clockwise: bool, map_edge: int = 128) -> void:
-	for record in range(1, CityState.THING_COUNT):
+	for record in range(1, ThingData.count(things)):
 		var offset := record * CityState.THING_RECORD_SIZE
 		var type := int(ThingData.read(things, offset))
 		if type == 0:
 			continue
+		if type == 3 and map_edge > 128:
+			var home := ThingData.ship_home(things, record, Vector2i(-1, -1))
+			ThingData.set_ship_home(things, record, Vector2i(home.y, map_edge - 1 - home.x) if counter_clockwise else Vector2i(map_edge - 1 - home.y, home.x))
 		var old_x := int(ThingData.read(things, offset + 3))
 		var old_y := int(ThingData.read(things, offset + 4))
 		if counter_clockwise:
@@ -354,7 +361,7 @@ static func _rotate_things(things: PackedByteArray, counter_clockwise: bool, map
 			ThingData.write(things, offset + 3, (map_edge - 1 - old_y))
 			ThingData.write(things, offset + 4, old_x)
 		if type >= 10 and type <= 13:
-			_rotate_train_thing(things, offset, counter_clockwise)
+			_rotate_train_thing(things, offset, counter_clockwise, map_edge)
 		else:
 			ThingData.write(things, offset + 1, (
 				ThingData.read(things, offset + 1) + (-2 if counter_clockwise else 2)
@@ -375,7 +382,7 @@ static func _rotate_things(things: PackedByteArray, counter_clockwise: bool, map
 
 
 static func _rotate_train_thing(
-	things: PackedByteArray, offset: int, counter_clockwise: bool
+	things: PackedByteArray, offset: int, counter_clockwise: bool, map_edge: int = 128
 ) -> void:
 	ThingData.write(things, offset + 1, (
 		ThingData.read(things, offset + 1) + (-1 if counter_clockwise else 1)
@@ -387,9 +394,9 @@ static func _rotate_train_thing(
 	var old_py := int(ThingData.read(things, offset + 7))
 	if counter_clockwise:
 		ThingData.write(things, offset + 6, old_py)
-		ThingData.write(things, offset + 7, (127 - old_px) & 0xff)
+		ThingData.write(things, offset + 7, map_edge - 1 - old_px)
 	else:
-		ThingData.write(things, offset + 6, (127 - old_py) & 0xff)
+		ThingData.write(things, offset + 6, map_edge - 1 - old_py)
 		ThingData.write(things, offset + 7, old_px)
 
 

@@ -40,6 +40,8 @@ var _masked_tile_flag_signatures: Dictionary = {}
 
 static func from_document(source: Sc2File) -> CityState:
 	var city := CityState.new()
+	if source != null and source.is_valid():
+		source.upgrade_large_limits()
 	city.document = source
 	city.map_size = source.map_size if source != null else 128
 	if source == null or not source.is_valid():
@@ -54,7 +56,11 @@ static func from_document(source: Sc2File) -> CityState:
 
 	city.altitude_words.resize((city.map_size * city.map_size))
 	var altitude_data := source.find_chunk("ALTM").decoded_payload
+	var overlay_data := source.find_chunk("XTXT").decoded_payload
 	for index in (city.map_size * city.map_size):
+		if city.map_size > 128 and not OverlayData.valid_id(OverlayData.read(overlay_data, index), city.map_size):
+			city.load_error = "Extended tile link exceeds the city record capacity"
+			return city
 		var byte_offset := index * 2
 		city.altitude_words[index] = (
 			(altitude_data[byte_offset] << 8) | altitude_data[byte_offset + 1]
@@ -211,15 +217,18 @@ func set_underground_id(x: int, y: int, value: int) -> bool:
 
 
 func text_overlay_id(x: int, y: int) -> int:
-	return _byte_at(text_overlays, x, y)
+	var index := index_of(x, y)
+	return 0 if index < 0 else OverlayData.read(text_overlays, index)
 
 
 func set_text_overlay_id(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0xff:
+	if value < 0 or value > (0xff if map_size == 128 else 0xffff):
 		return false
 	var changed := text_overlays.duplicate()
-	if not _set_byte_at(changed, x, y, value):
+	var index := index_of(x, y)
+	if index < 0:
 		return false
+	OverlayData.write(changed, index, value)
 	if not document.find_chunk("XTXT").set_decoded_payload(changed):
 		return false
 	text_overlays = changed
@@ -227,7 +236,7 @@ func set_text_overlay_id(x: int, y: int, value: int) -> bool:
 
 
 func replace_text_overlays(value: PackedByteArray) -> bool:
-	if value.size() != (map_size * map_size):
+	if value.size() != document.decoded_size("XTXT"):
 		return false
 	var chunk := document.find_chunk("XTXT")
 	if chunk == null or not chunk.set_decoded_payload(value):
@@ -359,7 +368,7 @@ func mayor_name() -> String:
 
 
 func label(label_id: int) -> String:
-	if label_id < 0 or label_id >= LABEL_COUNT:
+	if label_id < 0 or label_id >= document.decoded_size("XLAB") / LABEL_RECORD_SIZE:
 		return ""
 	var chunk := document.find_chunk("XLAB")
 	if chunk == null:
@@ -374,7 +383,7 @@ func label(label_id: int) -> String:
 
 
 func set_label(label_id: int, value: String) -> bool:
-	if label_id < 0 or label_id >= LABEL_COUNT:
+	if label_id < 0 or label_id >= document.decoded_size("XLAB") / LABEL_RECORD_SIZE:
 		return false
 	var chunk := document.find_chunk("XLAB")
 	if chunk == null:
@@ -392,7 +401,7 @@ func set_label(label_id: int, value: String) -> bool:
 
 
 func microsim(microsim_id: int) -> Dictionary:
-	if microsim_id < 0 or microsim_id >= MICROSIM_COUNT:
+	if microsim_id < 0 or microsim_id >= document.decoded_size("XMIC") / MICROSIM_RECORD_SIZE:
 		return {}
 	var chunk := document.find_chunk("XMIC")
 	if chunk == null:
@@ -408,7 +417,7 @@ func microsim(microsim_id: int) -> Dictionary:
 
 
 func thing(thing_id: int) -> Dictionary:
-	if thing_id < 0 or thing_id >= THING_COUNT:
+	if thing_id < 0 or thing_id >= document.decoded_size("XTHG") / (24 if map_size > 128 else 12):
 		return {}
 	var chunk := document.find_chunk("XTHG")
 	if chunk == null:
@@ -417,16 +426,16 @@ func thing(thing_id: int) -> Dictionary:
 	return {
 		"type": int(chunk.decoded_payload[offset]),
 		"direction": int(chunk.decoded_payload[offset + 1]),
-		"state": int(chunk.decoded_payload[offset + 2]),
+		"state": ThingData.read(chunk.decoded_payload, offset + 2),
 		"x": ThingData.read(chunk.decoded_payload, offset + 3),
 		"y": ThingData.read(chunk.decoded_payload, offset + 4),
 		"z": int(chunk.decoded_payload[offset + 5]),
-		"px": int(chunk.decoded_payload[offset + 6]),
-		"py": int(chunk.decoded_payload[offset + 7]),
+		"px": ThingData.read(chunk.decoded_payload, offset + 6),
+		"py": ThingData.read(chunk.decoded_payload, offset + 7),
 		"dx": ThingData.read(chunk.decoded_payload, offset + 8),
 		"dy": ThingData.read(chunk.decoded_payload, offset + 9),
-		"label": int(chunk.decoded_payload[offset + 10]),
-		"goal": int(chunk.decoded_payload[offset + 11]),
+		"label": ThingData.read(chunk.decoded_payload, offset + 10),
+		"goal": ThingData.read(chunk.decoded_payload, offset + 11),
 	}
 
 
@@ -622,3 +631,10 @@ func underground_level_is_visible(x: int, y: int, depth: int) -> bool:
 	if index_of(x, y) < 0:
 		return false
 	return visible_altitude_levels >= 32 or land_altitude(x, y) - depth < visible_altitude_levels
+
+
+func thing_count() -> int:
+	return ThingData.count(document.find_chunk("XTHG").decoded_payload)
+
+func microsim_count() -> int:
+	return document.decoded_size("XMIC") / MICROSIM_RECORD_SIZE

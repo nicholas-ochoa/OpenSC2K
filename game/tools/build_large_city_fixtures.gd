@@ -41,7 +41,8 @@ func build_fixture(edge: int) -> void:
 	var misc := document.find_chunk("MISC").decoded_payload.duplicate()
 	var random := SimRandom.new(17)
 	var report := {"size": edge, "blocks": [], "facility_links_without_record": 0, "signs_not_copied": 0, "source_moving_objects_not_copied": 0}
-	var next_sign := 1
+	var next_sign := 0
+	var sign_ids := OverlayData.sign_ids(labels.size())
 	var normal_population := 0
 	var arcology_population := 0
 	for bx in across:
@@ -78,8 +79,8 @@ func build_fixture(edge: int) -> void:
 					if not overlay_map.has(old):
 						var mapped := 0
 						if old <= 50:
-							if next_sign <= 50:
-								mapped = next_sign
+							if next_sign < sign_ids.size():
+								mapped = sign_ids[next_sign]
 								next_sign += 1
 								copy_label(source, old, labels, mapped)
 							else:
@@ -88,7 +89,7 @@ func build_fixture(edge: int) -> void:
 							var tile := int(source.microsim(old - 51).get("tile_id", 0))
 							var kind := int(BuildingCommand.MICROSIM_TYPE_BY_TILE.get(tile, 0))
 							var can_allocate := kind > 16
-							for slot in range(10, CityState.MICROSIM_COUNT):
+							for slot in range(10, city.microsim_count()):
 								can_allocate = can_allocate or microsims[slot * 8] == 0
 							if can_allocate:
 								mapped = BuildingCommand._provision_microsim(microsims, labels, text, tile, 2050, random, misc)
@@ -100,7 +101,7 @@ func build_fixture(edge: int) -> void:
 						elif old <= 240:
 							report.source_moving_objects_not_copied += 1
 						overlay_map[old] = mapped
-					text[target_index] = int(overlay_map[old])
+					OverlayData.write(text, target_index, int(overlay_map[old]))
 	assert(document.find_chunk("XTXT").set_decoded_payload(text))
 	assert(document.find_chunk("XLAB").set_decoded_payload(labels))
 	assert(document.find_chunk("XMIC").set_decoded_payload(microsims))
@@ -121,6 +122,9 @@ func build_fixture(edge: int) -> void:
 	city.set_auto_budget_enabled(true)
 	city.set_no_disasters_enabled(true)
 	var path := output_root.path_join("stitched-%d.sc2x" % edge)
+	if FileAccess.file_exists(path):
+		var previous: Variant = JSON.parse_string(FileAccess.get_file_as_string(path + ".json"))
+		assert(previous is Dictionary and previous.get("output_sha256", "") == FileAccess.get_sha256(path), "Refuse to replace an edited fixture: " + path)
 	var saved := CityFileStore.save_copy(document, path, "res://../references")
 	assert(saved.ok, String(saved.get("error", "")))
 	var reloaded := Sc2File.load_path(path)

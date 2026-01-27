@@ -22,13 +22,23 @@ func _init() -> void:
 		var initial_age := engine.city.age_in_days()
 		var phases := {}
 		var disaster_ticks := 0
+		var controlled_disaster_ends := 0
 		for day in 300:
+			var episode_ticks := 0
 			while engine.active_disaster_type != 0:
 				if not _result(engine.advance_moving_things(disaster_ticks * 200), "disaster objects"):
 					return
 				if not _result(engine.advance_disaster_tick(), "disaster map"):
 					return
 				disaster_ticks += 1
+				episode_ticks += 1
+				# This is a capacity/year soak, not a claim that an unattended fire
+				# must extinguish itself. Exercise damage, then use the existing
+				# player debug cleanup to keep the simulation calendar advancing.
+				if edge > 128 and episode_ticks == 512 and engine.active_disaster_type != 0:
+					if not _result(CityDebugActions.end_disaster(engine.city, document, engine), "controlled disaster cleanup"):
+						return
+					controlled_disaster_ends += 1
 				if disaster_ticks % 100 == 0:
 					print("%d day %d disaster %d tick %d" % [edge, day, engine.active_disaster_type, disaster_ticks])
 				if not _check(disaster_ticks < 10000, "disaster did not finish"):
@@ -66,6 +76,7 @@ func _init() -> void:
 			return
 		if not _check(FileAccess.get_sha256(path) == digest, "fixture unchanged"):
 			return
+		print("Controlled disaster ends: %d" % controlled_disaster_ends)
 		print("PASS: populated %d city, 300 days, %d disaster ticks, reload; %d ms; phases %s" % [edge, disaster_ticks, Time.get_ticks_msec() - start, phases.keys()])
 	quit()
 

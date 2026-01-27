@@ -146,7 +146,8 @@ static func patch_static_image(
 	sprites: Sc2SpriteArchive,
 	dirty_indices: PackedInt32Array,
 	view_size := VIEW_LARGE,
-	animation_phase := 0
+	animation_phase := 0,
+	copy_image := true
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 	if base_image == null or base_image.is_empty():
@@ -197,7 +198,7 @@ static func patch_static_image(
 	var bottom_extra := int(configuration.tile_height) + int(sprite_limit.x / 4) + 1
 	var top_extra := 32 * int(configuration.altitude_step) + sprite_limit.y
 	var first_diagonal := maxi(0, floori(float(native_rect.position.y - top_margin - bottom_extra) / half_height))
-	var last_diagonal := mini(254, ceili(float(native_rect.end.y - top_margin + top_extra) / half_height))
+	var last_diagonal := mini(2 * (map_edge - 1), ceili(float(native_rect.end.y - top_margin + top_extra) / half_height))
 	var first_difference := floori(float(native_rect.position.x - full_origin_x - sprite_limit.x - int(configuration.tile_width) - 1) / half_width)
 	var last_difference := ceili(float(native_rect.end.x - full_origin_x + sprite_limit.x) / half_width)
 	for diagonal in range(first_diagonal, last_diagonal + 1):
@@ -226,7 +227,7 @@ static func patch_static_image(
 			native_rect.position * output_scale,
 			native_rect.size * output_scale
 		)
-	var patched := base_image.duplicate()
+	var patched := base_image.duplicate() if copy_image else base_image
 	if patched.get_format() != region.get_format():
 		region.convert(patched.get_format())
 	patched.blit_rect(
@@ -952,9 +953,9 @@ static func dispatch_sprite_id(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE
 ) -> int:
 	var overlay := city.text_overlay_id(x, y)
-	if overlay < 202 or overlay > 240:
+	if not OverlayData.is_thing(overlay) or OverlayData.thing_record(overlay) == 0:
 		return 0
-	var thing := city.thing(overlay - 201)
+	var thing := city.thing(OverlayData.thing_record(overlay))
 	if thing.is_empty() or thing.x != x or thing.y != y:
 		return 0
 	var configuration := view_configuration(view_size)
@@ -974,9 +975,9 @@ static func moving_thing_visual(
 	animation_phase := 0
 ) -> Dictionary:
 	var overlay := city.text_overlay_id(x, y)
-	if overlay < 201 or overlay > 240:
+	if not OverlayData.is_thing(overlay):
 		return {}
-	var record := overlay - 201
+	var record := OverlayData.thing_record(overlay)
 	var thing := city.thing(record)
 	if thing.is_empty():
 		return {}
@@ -1345,13 +1346,13 @@ static func dynamic_draw_commands(
 	if configuration.is_empty():
 		return commands
 	var entries: Array[Dictionary] = []
-	for record in CityState.THING_COUNT:
+	for record in city.thing_count():
 		var thing := city.thing(record)
 		var point := Vector2i(int(thing.get("x", -1)), int(thing.get("y", -1)))
 		if (
 			int(thing.get("type", 0)) == 0
 			or city.index_of(point.x, point.y) < 0
-			or city.text_overlay_id(point.x, point.y) != TEXT_THING_BASE + record
+			or city.text_overlay_id(point.x, point.y) != OverlayData.thing_id(record)
 		):
 			continue
 		entries.append({
@@ -1361,18 +1362,18 @@ static func dynamic_draw_commands(
 			"special": false,
 		})
 	for overlay in SPECIAL_OVERLAY_SPRITE_OFFSETS:
-		var found := city.text_overlays.find(int(overlay))
+		var found := OverlayData.find(city.text_overlays, int(overlay))
 		while found >= 0:
 			var point := Vector2i(
 				int(found / map_edge), found % map_edge
 			)
 			entries.append({
 				"order": (point.x + point.y) * map_edge + point.y,
-				"record": CityState.THING_COUNT,
+				"record": city.thing_count(),
 				"point": point,
 				"special": true,
 			})
-			found = city.text_overlays.find(int(overlay), found + 1)
+			found = OverlayData.find(city.text_overlays, int(overlay), found + 1)
 	entries.sort_custom(func(left: Dictionary, right: Dictionary) -> bool:
 		if int(left.order) == int(right.order):
 			return int(left.record) < int(right.record)
@@ -1930,13 +1931,13 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 
 static func _static_text_overlay_signature(city: CityState) -> int:
 	var values := PackedInt32Array()
-	for index in city.text_overlays.size():
-		var overlay := int(city.text_overlays[index])
-		if overlay >= 1 and overlay <= 50:
+	for index in OverlayData.count(city.text_overlays):
+		var overlay := int(OverlayData.read(city.text_overlays, index))
+		if OverlayData.is_sign(overlay):
 			values.append(index)
 			values.append(overlay)
-		elif overlay >= 201 and overlay <= 240:
-			var thing := city.thing(overlay - 201)
+		elif OverlayData.is_thing(overlay):
+			var thing := city.thing(OverlayData.thing_record(overlay))
 			if int(thing.get("type", 0)) in DISPATCH_SPRITE_OFFSETS:
 				values.append(index)
 				for key in ["type", "direction", "state", "x", "y", "z", "px", "py"]:

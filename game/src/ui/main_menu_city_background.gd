@@ -3,7 +3,7 @@ extends Control
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const MINIMUM_ZOOM := 0.5
-const SHOT_MAGNIFICATIONS := [1, 2, 1, 3]
+const SHOT_MAGNIFICATIONS := [3, 2, 1, 1]
 const Cleanup = preload("res://src/debug/city_debug_actions.gd")
 
 # this city has no connection to the player's document, save path, or ui events
@@ -25,6 +25,7 @@ var sprite_cache := {}
 var dynamic_visuals: Array[Dictionary] = []
 var animation_elapsed := 0.0
 var animation_revision := 0
+var city_name_label: Label
 
 
 func _ready() -> void:
@@ -42,6 +43,17 @@ func _ready() -> void:
 	shader_material.set_shader_parameter("palette_cycle_enabled", true)
 	static_layer.material = shader_material
 	add_child(static_layer)
+	city_name_label = Label.new()
+	city_name_label.name = "HighlightedCityName"
+	city_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	city_name_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
+	city_name_label.position = Vector2(20, -48)
+	city_name_label.add_theme_color_override("font_color", Color.WHITE)
+	city_name_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.95))
+	city_name_label.add_theme_constant_override("shadow_offset_x", 2)
+	city_name_label.add_theme_constant_override("shadow_offset_y", 2)
+	city_name_label.add_theme_font_size_override("font_size", 20)
+	add_child(city_name_label)
 
 
 func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
@@ -67,6 +79,7 @@ func configure(reference_root: String, palette: Sc2Palette, sprites: Sc2SpriteAr
 		break
 	if demo_city == null:
 		return
+	city_name_label.text = demo_city.city_name()
 	demo_palette = palette
 	demo_sprites = sprites
 	demo_city.set_no_disasters_enabled(true)

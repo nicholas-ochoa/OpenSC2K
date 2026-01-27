@@ -143,11 +143,11 @@ func _run() -> void:
 	var paper := main.get("newspaper_dialog") as NewspaperDialog
 	paper.open_reports(city, city.document, null, {}, {}, 123)
 	assert(paper.published_articles.size() == 5)
-	assert(paper.article_view.text.contains(str(city.population())))
+	assert(" ".join(paper.published_articles).contains(str(city.population())))
 	for layout in range(3):
 		paper.page.set_page(layout, "Test Gazette", "September 8", "25 cents", "Opinion", "Weather", PackedStringArray(["A", "B", "C", "D", "E"]))
 		paper.page.set_articles(paper.published_articles)
-		assert(not paper.page.article_labels[1].text.is_empty())
+		assert(not paper.page.articles[1].is_empty())
 	paper.hide()
 	_test_fire_clock(city)
 	main.queue_free()

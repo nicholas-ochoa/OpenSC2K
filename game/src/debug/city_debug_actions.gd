@@ -167,9 +167,9 @@ static func _valid_disaster_chunks(
 	return (
 		thing_chunk != null
 		and thing_chunk.decoded_payload.size()
-		== ThingData.BASE_SIZE * (1 if map_edge == 128 else 2)
+		== ThingData.BASE_SIZE * (1 if map_edge == 128 else 2 * map_edge * map_edge / 16384)
 		and text_chunk != null
-		and text_chunk.decoded_payload.size() == (map_edge * map_edge)
+		and OverlayData.count(text_chunk.decoded_payload) == (map_edge * map_edge)
 		and misc_chunk != null
 		and misc_chunk.decoded_payload.size() == MISC_SIZE
 	)
@@ -177,7 +177,7 @@ static func _valid_disaster_chunks(
 
 static func _disaster_record_indices(things: PackedByteArray) -> Dictionary:
 	var result := {}
-	for record in range(1, CityState.THING_COUNT):
+	for record in range(1, ThingData.count(things)):
 		var offset := record * CityState.THING_RECORD_SIZE
 		var thing_type := int(ThingData.read(things, offset))
 		var is_disaster_object := thing_type in [
@@ -201,12 +201,14 @@ static func _clear_disaster_markers(
 ) -> int:
 	var cleared_markers := 0
 	for index in (map_edge * map_edge):
-		var overlay := int(text[index])
-		if overlay >= DISASTER_OVERLAY_FIRST:
-			text[index] = 0
+		var overlay := int(OverlayData.read(text, index))
+		if overlay >= DISASTER_OVERLAY_FIRST and overlay <= 255:
+			OverlayData.write(text, index, 0)
 			cleared_markers += 1
 			continue
-		var record := overlay - DisasterStart.TEXT_THING_BASE
+		if not OverlayData.is_thing(overlay):
+			continue
+		var record := OverlayData.thing_record(overlay)
 		if not disaster_records.has(record):
 			continue
 		var offset := record * CityState.THING_RECORD_SIZE
@@ -214,11 +216,11 @@ static func _clear_disaster_markers(
 			int(ThingData.read(things, offset + 3)) * map_edge + int(ThingData.read(things, offset + 4))
 		)
 		var prior_overlay := int(ThingData.read(things, offset + 10))
-		text[index] = (
+		OverlayData.write(text, index, (
 			prior_overlay
-			if index == point_index and prior_overlay < DisasterStart.TEXT_THING_BASE
+			if index == point_index and not OverlayData.blocks_thing(prior_overlay)
 			else 0
-		)
+		))
 	return cleared_markers
 
 
@@ -250,12 +252,12 @@ static func _disaster_target(
 	var thing_chunk := document.find_chunk("XTHG")
 	if thing_chunk != null:
 		var things: PackedByteArray = thing_chunk.decoded_payload
-		for record in range(1, CityState.THING_COUNT):
+		for record in range(1, ThingData.count(things)):
 			var offset := record * CityState.THING_RECORD_SIZE
 			if int(ThingData.read(things, offset)) in [5, 15]:
 				return {
 					"point": Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4)),
-					"goal": record,
+					"goal": ThingData.target_id(record),
 				}
 	var nearest := Vector2i(-1, -1)
 	var nearest_distance := MAX_FUNDS
@@ -281,7 +283,7 @@ static func _maxis_man_start(city: CityState, target: Vector2i) -> Vector2i:
 			var point: Vector2i = target + Vector2i(direction) * radius
 			if (
 				city.index_of(point.x, point.y) >= 0
-				and city.text_overlay_id(point.x, point.y) < 201
+				and not OverlayData.blocks_thing(city.text_overlay_id(point.x, point.y))
 			):
 				return point
 	return Vector2i(-1, -1)

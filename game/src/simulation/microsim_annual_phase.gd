@@ -91,7 +91,7 @@ static func run(
 	if (
 		microsim_chunk == null
 		or microsim_chunk.decoded_payload.size()
-		!= CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE
+		!= city.document.decoded_size("XMIC")
 		or misc_chunk == null
 		or misc_chunk.decoded_payload.size() != MISC_SIZE
 	):
@@ -154,7 +154,7 @@ static func run(
 	var updated_subway := 0
 	var updated_bus := 0
 	var updated_rail := 0
-	for record_id in range(1, CityState.MICROSIM_COUNT):
+	for record_id in range(1, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 		var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 		match int(microsims[offset]):
 			TILE_HYDRO_ONE, TILE_HYDRO_TWO:
@@ -596,7 +596,7 @@ static func run(
 			for x in map_edge:
 				for y in map_edge:
 					var map_index := x * map_edge + y
-					if int(text_overlays[map_index]) != 0xfe:
+					if int(OverlayData.read(text_overlays, map_index)) != 0xfe:
 						continue
 					var demolition := DemolishCommand.damage_structure_payloads(
 						city, changed_payloads, Vector2i(x, y), random, true
@@ -705,12 +705,12 @@ static func _has_game_random(random) -> bool:
 
 
 static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int, map_edge: int = 128) -> Dictionary:
-	if text_overlays.size() != map_edge * map_edge:
+	if OverlayData.count(text_overlays) != map_edge * map_edge:
 		return {}
-	var text_id := record_id + 51
+	var text_id := OverlayData.facility_id(record_id)
 	for x in map_edge:
 		for y in map_edge:
-			if int(text_overlays[x * map_edge + y]) == text_id:
+			if int(OverlayData.read(text_overlays, x * map_edge + y)) == text_id:
 				if x == 0 and y == 0:
 					return {}
 				return {"x": x, "y": y}

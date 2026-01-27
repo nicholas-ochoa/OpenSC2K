@@ -99,7 +99,7 @@ static func update_airplane(
 				current = Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 				current_index = _index(current, map_edge)
 				if current_index >= 0:
-					text[current_index] = ThingData.read(things, offset + 10)
+					OverlayData.write(text, current_index, ThingData.read(things, offset + 10))
 				if current_index < 0 or buildings[current_index] != 0xdd:
 					_convert_to_explosion(things, record, 5, 1)
 					counters.crashed_airplanes += 1
@@ -279,7 +279,7 @@ static func _remove_thing(
 	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 	var index := _index(point, map_edge)
 	if index >= 0:
-		text[index] = 0
+		OverlayData.write(text, index, 0)
 
 static func _convert_to_explosion(
 	things: PackedByteArray, record: int, state: int, goal: int
@@ -327,10 +327,10 @@ static func _move_thing_eight_way(
 	if current_index < 0:
 		_remove_thing(text, things, record, map_edge)
 		return -1
-	text[current_index] = ThingData.read(things, offset + 10)
+	OverlayData.write(text, current_index, ThingData.read(things, offset + 10))
 	var next := current + tile_delta
 	var next_index := _index(next, map_edge)
-	while next_index >= 0 and text[next_index] >= TEXT_LABEL_BASE:
+	while next_index >= 0 and OverlayData.blocks_thing(OverlayData.read(text, next_index)):
 		ThingData.write(things, offset + 3, next.x)
 		ThingData.write(things, offset + 4, next.y)
 		next += tile_delta
@@ -340,8 +340,8 @@ static func _move_thing_eight_way(
 		return -1
 	ThingData.write(things, offset + 3, next.x)
 	ThingData.write(things, offset + 4, next.y)
-	ThingData.write(things, offset + 10, text[next_index])
-	text[next_index] = record + TEXT_LABEL_BASE
+	ThingData.write(things, offset + 10, OverlayData.read(text, next_index))
+	OverlayData.write(text, next_index, OverlayData.thing_id(record))
 	return 1
 
 

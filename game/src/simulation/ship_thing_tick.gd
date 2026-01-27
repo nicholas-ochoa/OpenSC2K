@@ -158,7 +158,7 @@ static func _route_is_valid(
 		return true
 	return (
 		_is_water_route(buildings, underground, flags, route_index)
-		and text[route_index] < TEXT_LABEL_BASE
+		and not OverlayData.blocks_thing(OverlayData.read(text, route_index))
 	)
 
 
@@ -209,7 +209,7 @@ static func _move(
 	var current := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 	var current_index := _index(current, map_edge)
 	if current_index >= 0:
-		text[current_index] = ThingData.read(things, offset + 10)
+		OverlayData.write(text, current_index, ThingData.read(things, offset + 10))
 	var next := current + tile_delta
 	var next_index := _index(next, map_edge)
 	if next_index < 0:
@@ -217,8 +217,8 @@ static func _move(
 		return false
 	ThingData.write(things, offset + 3, next.x)
 	ThingData.write(things, offset + 4, next.y)
-	ThingData.write(things, offset + 10, text[next_index])
-	text[next_index] = record + TEXT_LABEL_BASE
+	ThingData.write(things, offset + 10, OverlayData.read(text, next_index))
+	OverlayData.write(text, next_index, OverlayData.thing_id(record))
 	return true
 
 
@@ -239,7 +239,7 @@ static func _remove(
 	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 	var index := _index(point, map_edge)
 	if index >= 0:
-		text[index] = 0
+		OverlayData.write(text, index, 0)
 
 
 static func _queue_sound(

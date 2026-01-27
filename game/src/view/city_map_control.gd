@@ -204,7 +204,7 @@ func _ensure_sign_entries() -> void:
 			if not city.tile_is_visible(x, y):
 				continue
 			var label_id := city.text_overlay_id(x, y)
-			if label_id < 1 or label_id > 50:
+			if not OverlayData.is_sign(label_id):
 				continue
 			var label_text := city.label(label_id)
 			if label_text.is_empty():

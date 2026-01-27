@@ -111,7 +111,7 @@ static func run_all(
 	for x in map_edge:
 		for y in map_edge:
 			var index := x * map_edge + y
-			var overlay := int(payloads.XTXT[index])
+			var overlay := int(OverlayData.read(payloads.XTXT, index))
 			if overlay == FIRE_OVERLAY:
 				fire_active = true
 				_process_fire_cell(
@@ -149,7 +149,7 @@ static func run_all(
 					counters,
 					runtime_events,
 				)
-			elif overlay > 200 and overlay < 241:
+			elif OverlayData.is_thing(overlay):
 				_process_dispatch_cell(
 					city,
 					payloads,
@@ -213,12 +213,12 @@ static func run_all(
 	counters["flood_active"] = flood_active
 	counters["toxic_active"] = toxic_active
 	counters["riot_active"] = riot_active
-	counters["remaining_fires"] = payloads.XTXT.count(FIRE_OVERLAY)
-	counters["remaining_floods"] = payloads.XTXT.count(0xfc)
-	counters["remaining_toxic"] = payloads.XTXT.count(TOXIC_OVERLAY)
+	counters["remaining_fires"] = OverlayData.occurrences(payloads.XTXT, FIRE_OVERLAY)
+	counters["remaining_floods"] = OverlayData.occurrences(payloads.XTXT, 0xfc)
+	counters["remaining_toxic"] = OverlayData.occurrences(payloads.XTXT, TOXIC_OVERLAY)
 	counters["remaining_riots"] = (
-		payloads.XTXT.count(RIOT_OVERLAY_FORWARD)
-		+ payloads.XTXT.count(RIOT_OVERLAY_REVERSE)
+		OverlayData.occurrences(payloads.XTXT, RIOT_OVERLAY_FORWARD)
+		+ OverlayData.occurrences(payloads.XTXT, RIOT_OVERLAY_REVERSE)
 	)
 	counters["map_counter"] = counter
 	counters["hurricane_counter"] = next_hurricane_counter
@@ -273,7 +273,7 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 	for x in map_edge:
 		for y in map_edge:
 			var index := x * map_edge + y
-			if payloads.XTXT[index] != FIRE_OVERLAY:
+			if OverlayData.read(payloads.XTXT, index) != FIRE_OVERLAY:
 				continue
 			active = true
 			counters.fire_markers_scanned += 1
@@ -281,7 +281,7 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 				continue
 			counters.fire_updates += 1
 			if payloads.XBIT[index] & 0x04 != 0:
-				payloads.XTXT[index] = 0
+				OverlayData.write(payloads.XTXT, index, 0)
 				counters.water_extinctions += 1
 				continue
 			var point := Vector2i(x, y)
@@ -322,7 +322,7 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 	counters["ok"] = true
 	counters["error"] = ""
 	counters["active"] = active
-	counters["remaining_fires"] = payloads.XTXT.count(FIRE_OVERLAY)
+	counters["remaining_fires"] = OverlayData.occurrences(payloads.XTXT, FIRE_OVERLAY)
 	counters["map_changed"] = map_changed
 	counters["news_items"] = []
 	counters["effect_events"] = runtime_events.effect_events
@@ -368,12 +368,12 @@ static func run_flood(
 	for x in map_edge:
 		for y in map_edge:
 			var index := x * map_edge + y
-			if payloads.XTXT[index] != 0xfc:
+			if OverlayData.read(payloads.XTXT, index) != 0xfc:
 				continue
 			active = true
 			counters.flood_markers_scanned += 1
 			if counter == 0 and lfsr_random.next_mask(1) != 0:
-				payloads.XTXT[index] = 0
+				OverlayData.write(payloads.XTXT, index, 0)
 				counters.expired_floods += 1
 				continue
 			var update := counter > 51
@@ -404,7 +404,7 @@ static func run_flood(
 						false
 					)
 					counters.damaged_structures += 1
-				payloads.XTXT[index] = 0
+				OverlayData.write(payloads.XTXT, index, 0)
 				counters.random_extinctions += 1
 			if counter > 0:
 				counters.spread_attempts += 1
@@ -428,7 +428,7 @@ static func run_flood(
 	counters["ok"] = true
 	counters["error"] = ""
 	counters["active"] = active
-	counters["remaining_floods"] = payloads.XTXT.count(0xfc)
+	counters["remaining_floods"] = OverlayData.occurrences(payloads.XTXT, 0xfc)
 	counters["map_counter"] = counter
 	counters["map_changed"] = map_changed
 	counters["news_items"] = []
@@ -464,7 +464,7 @@ static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
 	for x in map_edge:
 		for y in map_edge:
 			var index := x * map_edge + y
-			if payloads.XTXT[index] != TOXIC_OVERLAY:
+			if OverlayData.read(payloads.XTXT, index) != TOXIC_OVERLAY:
 				continue
 			active = true
 			counters.toxic_markers_scanned += 1
@@ -472,11 +472,11 @@ static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
 				continue
 			counters.toxic_updates += 1
 			if lfsr_random.next_mask(0x3f) == 0:
-				payloads.XTXT[index] = 0
+				OverlayData.write(payloads.XTXT, index, 0)
 				counters.lfsr_expirations += 1
 				continue
 			if payloads.XBIT[index] & 0x04 != 0 and random.next_u15() & 0x0f == 0:
-				payloads.XTXT[index] = 0
+				OverlayData.write(payloads.XTXT, index, 0)
 				counters.water_expirations += 1
 				continue
 			var point := Vector2i(x, y)
@@ -485,7 +485,7 @@ static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
 			var direction := _lowest_toxic_direction(payloads.ALTM, point, map_edge)
 			if direction < 0:
 				direction = random.next_u15() & 3
-			payloads.XTXT[index] = 0
+			OverlayData.write(payloads.XTXT, index, 0)
 			var target: Vector2i = point + CARDINAL_DIRECTIONS[direction]
 			if _place_toxic_marker(payloads.XTXT, target, map_edge):
 				counters.moved_markers += 1
@@ -497,7 +497,7 @@ static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
 	counters["ok"] = true
 	counters["error"] = ""
 	counters["active"] = active
-	counters["remaining_toxic"] = payloads.XTXT.count(TOXIC_OVERLAY)
+	counters["remaining_toxic"] = OverlayData.occurrences(payloads.XTXT, TOXIC_OVERLAY)
 	counters["map_changed"] = map_changed
 	counters["news_items"] = []
 	counters["effect_events"] = []
@@ -538,7 +538,7 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 	for x in map_edge:
 		for y in map_edge:
 			var index := x * map_edge + y
-			var marker := int(payloads.XTXT[index])
+			var marker := int(OverlayData.read(payloads.XTXT, index))
 			if marker != RIOT_OVERLAY_FORWARD and marker != RIOT_OVERLAY_REVERSE:
 				continue
 			active = true
@@ -547,7 +547,7 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 				continue
 			counters.riot_updates += 1
 			if random.next_u15() & 0xff == 0 or payloads.XBIT[index] & 0x04 != 0:
-				payloads.XTXT[index] = 0
+				OverlayData.write(payloads.XTXT, index, 0)
 				counters.expired_riots += 1
 				continue
 			var traffic_index := int(x / 2) * (map_edge / 2) + int(y / 2)
@@ -581,9 +581,9 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 				else RIOT_OVERLAY_REVERSE
 			)
 			if connections == 0:
-				payloads.XTXT[index] = opposite_marker
+				OverlayData.write(payloads.XTXT, index, opposite_marker)
 				continue
-			payloads.XTXT[index] = opposite_marker if random.next_u15() & 7 == 0 else 0
+			OverlayData.write(payloads.XTXT, index, opposite_marker if random.next_u15() & 7 == 0 else 0)
 			if connections == 3:
 				connections = (random.next_u15() & 1) + 1
 			var spread_direction: int = first_direction if connections == 1 else second_direction
@@ -605,8 +605,8 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 	counters["error"] = ""
 	counters["active"] = active
 	counters["remaining_riots"] = (
-		payloads.XTXT.count(RIOT_OVERLAY_FORWARD)
-		+ payloads.XTXT.count(RIOT_OVERLAY_REVERSE)
+		OverlayData.occurrences(payloads.XTXT, RIOT_OVERLAY_FORWARD)
+		+ OverlayData.occurrences(payloads.XTXT, RIOT_OVERLAY_REVERSE)
 	)
 	counters["map_changed"] = map_changed
 	counters["news_items"] = []
@@ -643,10 +643,10 @@ static func run_dispatch(city: CityState, random, lfsr_random) -> Dictionary:
 	for x in map_edge:
 		for y in map_edge:
 			var index := x * map_edge + y
-			var overlay := int(payloads.XTXT[index])
-			if overlay <= 200 or overlay >= 241:
+			var overlay := int(OverlayData.read(payloads.XTXT, index))
+			if not OverlayData.is_thing(overlay):
 				continue
-			var record := overlay - TEXT_THING_BASE
+			var record := OverlayData.thing_record(overlay)
 			var thing_type := int(payloads.XTHG[record * CityState.THING_RECORD_SIZE])
 			counters.dispatch_markers_scanned += 1
 			var suppresses_fire := thing_type == TYPE_FIRE_DISPATCH or thing_type == TYPE_MILITARY
@@ -697,7 +697,7 @@ static func _process_fire_cell(
 		return
 	counters.fire_updates += 1
 	if payloads.XBIT[index] & 0x04 != 0:
-		payloads.XTXT[index] = 0
+		OverlayData.write(payloads.XTXT, index, 0)
 		counters.water_extinctions += 1
 		return
 	var choice: int = random.next_u15() & 7
@@ -744,7 +744,7 @@ static func _process_flood_cell(
 ) -> void:
 	counters.flood_markers_scanned += 1
 	if counter == 0 and lfsr_random.next_mask(1) != 0:
-		payloads.XTXT[index] = 0
+		OverlayData.write(payloads.XTXT, index, 0)
 		counters.expired_floods += 1
 		return
 	var update := counter > 51
@@ -774,7 +774,7 @@ static func _process_flood_cell(
 				false
 			)
 			counters.damaged_structures += 1
-		payloads.XTXT[index] = 0
+		OverlayData.write(payloads.XTXT, index, 0)
 		counters.random_extinctions += 1
 	if counter > 0:
 		counters.flood_spread_attempts += 1
@@ -806,11 +806,11 @@ static func _process_toxic_cell(
 		return
 	counters.toxic_updates += 1
 	if lfsr_random.next_mask(0x3f) == 0:
-		payloads.XTXT[index] = 0
+		OverlayData.write(payloads.XTXT, index, 0)
 		counters.lfsr_expirations += 1
 		return
 	if payloads.XBIT[index] & 0x04 != 0 and random.next_u15() & 0x0f == 0:
-		payloads.XTXT[index] = 0
+		OverlayData.write(payloads.XTXT, index, 0)
 		counters.water_expirations += 1
 		return
 	if _abandon_toxic_structure(city, payloads, point, random):
@@ -818,7 +818,7 @@ static func _process_toxic_cell(
 	var direction := _lowest_toxic_direction(payloads.ALTM, point, map_edge)
 	if direction < 0:
 		direction = random.next_u15() & 3
-	payloads.XTXT[index] = 0
+	OverlayData.write(payloads.XTXT, index, 0)
 	var target: Vector2i = point + CARDINAL_DIRECTIONS[direction]
 	if _place_toxic_marker(payloads.XTXT, target, map_edge):
 		counters.moved_markers += 1
@@ -843,7 +843,7 @@ static func _process_riot_cell(
 		return
 	counters.riot_updates += 1
 	if random.next_u15() & 0xff == 0 or payloads.XBIT[index] & 0x04 != 0:
-		payloads.XTXT[index] = 0
+		OverlayData.write(payloads.XTXT, index, 0)
 		counters.expired_riots += 1
 		return
 	var traffic_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
@@ -875,9 +875,9 @@ static func _process_riot_cell(
 		RIOT_OVERLAY_FORWARD if marker == RIOT_OVERLAY_REVERSE else RIOT_OVERLAY_REVERSE
 	)
 	if connections == 0:
-		payloads.XTXT[index] = opposite_marker
+		OverlayData.write(payloads.XTXT, index, opposite_marker)
 		return
-	payloads.XTXT[index] = opposite_marker if random.next_u15() & 7 == 0 else 0
+	OverlayData.write(payloads.XTXT, index, opposite_marker if random.next_u15() & 7 == 0 else 0)
 	if connections == 3:
 		connections = (random.next_u15() & 1) + 1
 	var spread_direction: int = first_direction if connections == 1 else second_direction
@@ -899,7 +899,7 @@ static func _process_dispatch_cell(
 	counters: Dictionary
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
-	var record := overlay - TEXT_THING_BASE
+	var record := OverlayData.thing_record(overlay)
 	var thing_type := int(payloads.XTHG[record * CityState.THING_RECORD_SIZE])
 	counters.dispatch_markers_scanned += 1
 	var suppresses_fire := thing_type == TYPE_FIRE_DISPATCH or thing_type == TYPE_MILITARY
@@ -1072,9 +1072,9 @@ static func _lowest_toxic_direction(altitude: PackedByteArray, point: Vector2i, 
 
 static func _place_toxic_marker(text: PackedByteArray, point: Vector2i, map_edge: int = 128) -> bool:
 	var index := _index(point, map_edge)
-	if index < 0 or text[index] >= 51:
+	if index < 0 or (OverlayData.read(text, index) != 0 and not OverlayData.is_sign(OverlayData.read(text, index))):
 		return false
-	text[index] = TOXIC_OVERLAY
+	OverlayData.write(text, index, TOXIC_OVERLAY)
 	return true
 
 
@@ -1098,9 +1098,9 @@ static func _place_riot_marker(
 	map_edge: int = 128,
 ) -> bool:
 	var index := _index(point, map_edge)
-	if index < 0 or text[index] >= 51:
+	if index < 0 or (OverlayData.read(text, index) != 0 and not OverlayData.is_sign(OverlayData.read(text, index))):
 		return false
-	text[index] = marker
+	OverlayData.write(text, index, marker)
 	return true
 
 
@@ -1109,9 +1109,9 @@ static func _extinguish_dispatch_fire(
 ) -> bool:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := _index(point, map_edge)
-	if index < 0 or payloads.XTXT[index] != FIRE_OVERLAY:
+	if index < 0 or OverlayData.read(payloads.XTXT, index) != FIRE_OVERLAY:
 		return false
-	payloads.XTXT[index] = 0
+	OverlayData.write(payloads.XTXT, index, 0)
 	var tile := int(payloads.XBLD[index])
 	if tile >= 0x3f and tile <= 0x42:
 		return true
@@ -1163,10 +1163,10 @@ static func _clear_riot_marker(text: PackedByteArray, point: Vector2i, map_edge:
 	var index := _index(point, map_edge)
 	if index < 0:
 		return false
-	var marker := int(text[index])
+	var marker := int(OverlayData.read(text, index))
 	if marker != RIOT_OVERLAY_FORWARD and marker != RIOT_OVERLAY_REVERSE:
 		return false
-	text[index] = 0
+	OverlayData.write(text, index, 0)
 	return true
 
 
@@ -1180,8 +1180,8 @@ static func _seed_special_toxic(
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			var index := x * map_edge + y
-			if payloads.XTXT[index] < 51:
-				payloads.XTXT[index] = TOXIC_OVERLAY
+			if OverlayData.read(payloads.XTXT, index) < 51:
+				OverlayData.write(payloads.XTXT, index, TOXIC_OVERLAY)
 				changed += 1
 	return changed
 
@@ -1196,10 +1196,10 @@ static func _spawn_explosion(
 	map_edge: int = 128,
 ) -> bool:
 	var index := _index(point, map_edge)
-	if index < 0 or text[index] >= TEXT_THING_BASE:
+	if index < 0 or OverlayData.blocks_thing(OverlayData.read(text, index)):
 		return false
 	var record := 0
-	for checked_record in range(1, CityState.THING_COUNT):
+	for checked_record in range(1, ThingData.count(things)):
 		if ThingData.read(things, checked_record * CityState.THING_RECORD_SIZE) == 0:
 			record = checked_record
 			break
@@ -1214,9 +1214,9 @@ static func _spawn_explosion(
 	ThingData.write(things, offset + 5, height)
 	ThingData.write(things, offset + 6, 8)
 	ThingData.write(things, offset + 7, 8)
-	ThingData.write(things, offset + 10, text[index])
+	ThingData.write(things, offset + 10, OverlayData.read(text, index))
 	ThingData.write(things, offset + 11, goal)
-	text[index] = record + TEXT_THING_BASE
+	OverlayData.write(text, index, OverlayData.thing_id(record))
 	return true
 
 

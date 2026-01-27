@@ -18,6 +18,12 @@ func _run() -> void:
 			var zoom := MainMenuCityBackground.camera_zoom(shot, stretch)
 			assert(zoom >= 0.5, "Menu city zoom must stay at or above 50%")
 			assert(is_equal_approx(zoom * stretch, roundf(zoom * stretch)))
+	assert(MainMenuCityBackground.SHOT_MAGNIFICATIONS[0] > MainMenuCityBackground.SHOT_MAGNIFICATIONS[1])
+	assert(MainMenuCityBackground.SHOT_MAGNIFICATIONS[1] > MainMenuCityBackground.SHOT_MAGNIFICATIONS[2])
+	assert(background.city_name_label.text == background.demo_city.city_name())
+	assert(background.city_name_label.get_theme_color("font_color") == Color.WHITE)
+	assert(background.city_name_label.get_theme_color("font_shadow_color").a > 0.9)
+	assert(background.city_name_label.anchor_bottom == 1.0 and background.city_name_label.anchor_left == 0.0)
 	var magnifications := {}
 	for time in [0.0, 0.017, 24.0, 48.0, 72.0]:
 		background.elapsed = time
@@ -50,12 +56,8 @@ func _run() -> void:
 	assert(main.audio_controller.music_director.general_track_index == 1)
 	assert(main.audio_controller.music_playback_is_active())
 	main._select_speed(GameSpeedController.Speed.PAUSED)
-	var paper: NewspaperPage = main.newspaper_dialog.page
-	assert(paper.serif_font.font_names.has("Georgia"))
-	for a in NewspaperPage.READING_RECTS.size():
-		assert(Rect2i(Vector2i.ZERO, NewspaperPage.PRESENTATION_SIZE).encloses(NewspaperPage.READING_RECTS[a]))
-		for b in range(a + 1, NewspaperPage.READING_RECTS.size()):
-			assert(not NewspaperPage.READING_RECTS[a].intersects(NewspaperPage.READING_RECTS[b]))
+	assert(main.newspaper_dialog.page is NewspaperContent)
+	assert(main.newspaper_dialog.exclusive)
 	var city := CityState.from_document(main.current_document.duplicate_document())
 	city.set_land_altitude(5, 5, 5)
 	city.set_tile_flag(5, 5, 4, false)
@@ -76,7 +78,7 @@ func _run() -> void:
 	await create_timer(0.1).timeout
 	main.queue_free()
 	await process_frame
-	print("PASS: fitted menu, pixel-aligned wide and close shots, enabled landscape tools, founding sound and paper, paused reading and opening music, serif layout bounds, and separate tunnel/subway cutoff depths")
+	print("PASS: fitted menu, pixel-aligned wide and close shots, enabled landscape tools, founding sound and paper, paused reading and opening music, HTML-only content, and separate tunnel/subway cutoff depths")
 	quit()
 
 func _cutaway(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> Image:

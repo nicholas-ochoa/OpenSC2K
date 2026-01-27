@@ -54,6 +54,8 @@ if [ -f "$repo_dir/game/tests/runtime_ui_smoke.gd" ]; then
 	run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/runtime_ui_smoke.gd -- "$repo_dir/references"
 fi
 
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/expanded_limits_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_render_patch_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_city_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_city_simulation_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_city_ui_test.gd
@@ -77,5 +79,6 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/ship_map_exit_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/menu_music_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/stream_waterfall_render_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/newspaper_web_view_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/newspaper_layout_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/editor_stream_slopes_test.gd

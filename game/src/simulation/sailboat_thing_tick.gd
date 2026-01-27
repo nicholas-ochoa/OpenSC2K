@@ -83,7 +83,7 @@ static func _route_state(
 	if buildings[next_index] == TILE_MARINA:
 		_remove(text, things, record, map_edge)
 		return -1
-	if buildings[next_index] == TILE_PIER or text[next_index] != 0:
+	if buildings[next_index] == TILE_PIER or OverlayData.read(text, next_index) != 0:
 		return 0
 	return 1 if flags[next_index] & 0x04 != 0 else 0
 
@@ -118,7 +118,7 @@ static func _move(
 		var old_point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 		var old_index := _index(old_point, map_edge)
 		if old_index >= 0:
-			text[old_index] = 0
+			OverlayData.write(text, old_index, 0)
 		var next := old_point + tile_delta
 		if next.x < 0 or next.x > 126 or next.y < 0 or next.y > 126:
 			_remove(text, things, record, map_edge)
@@ -126,7 +126,7 @@ static func _move(
 			return
 		ThingData.write(things, offset + 3, next.x)
 		ThingData.write(things, offset + 4, next.y)
-		text[_index(next, map_edge)] = record + TEXT_LABEL_BASE
+		OverlayData.write(text, _index(next, map_edge), OverlayData.thing_id(record))
 	counters.moved_sailboats += 1
 
 
@@ -139,7 +139,7 @@ static func _remove(
 	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 	var index := _index(point, map_edge)
 	if index >= 0:
-		text[index] = 0
+		OverlayData.write(text, index, 0)
 
 
 static func _queue_distress_sound(

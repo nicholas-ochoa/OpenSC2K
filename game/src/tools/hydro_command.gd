@@ -62,7 +62,7 @@ static func apply(
 		microsims, labels, text_overlays, tile_id, city.current_year(), process_random
 	)
 	if overlay_id != 0:
-		text_overlays[index] = overlay_id
+		OverlayData.write(text_overlays, index, overlay_id)
 	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()

@@ -58,7 +58,7 @@ func _init(
 		var connections := RciDemandPhase.connection_counts(initial_city)
 		commerce_connections = connections.commerce
 		industry_connections = connections.industry
-		for record in range(1, CityState.THING_COUNT):
+		for record in range(1, city.thing_count()):
 			var thing := initial_city.thing(record)
 			if thing.get("type", 0) == 3:
 				ship_home = Vector2i(thing.x, thing.y)

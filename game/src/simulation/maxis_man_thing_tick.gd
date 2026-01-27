@@ -52,15 +52,15 @@ static func update(
 			ThingData.write(things, offset + 1, direction)
 			var next: Vector2i = current + EIGHT_DIRECTIONS[direction]
 			var next_index := _index(next, map_edge)
-			var overlay := int(text[next_index]) if next_index >= 0 else 0
-			if overlay > 250:
+			var overlay := int(OverlayData.read(text, next_index)) if next_index >= 0 else 0
+			if (overlay > 250 and overlay <= 255):
 				if random.next_u15() & 1:
-					text[next_index] = 0
+					OverlayData.write(text, next_index, 0)
 					counters.maxis_man_extinguished_fires += 1
 					_move_maxis_man(text, things, record, direction, counters, map_edge)
-			elif overlay >= TEXT_LABEL_BASE:
-				if overlay == goal + TEXT_LABEL_BASE and random.next_u15() & 3 == 0:
-					_remove_thing(text, things, goal, map_edge)
+			elif OverlayData.is_thing(overlay):
+				if overlay == OverlayData.thing_id(ThingData.target_record(goal)) and random.next_u15() & 3 == 0:
+					_remove_thing(text, things, ThingData.target_record(goal), map_edge)
 					counters.maxis_man_destroyed_targets += 1
 					_queue_thing_sound(counters, SOUND_EXPLOSION, things, record)
 					if _spawn_explosion(text, things, next, ThingData.read(things, offset + 5), 0, 1, map_edge):
@@ -73,7 +73,7 @@ static func update(
 					return
 				current = Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 				var ahead_index := _index(current + EIGHT_DIRECTIONS[direction], map_edge)
-				if ahead_index < 0 or text[ahead_index] < TEXT_LABEL_BASE:
+				if ahead_index < 0 or not OverlayData.blocks_thing(OverlayData.read(text, ahead_index)):
 					if not _move_maxis_man(text, things, record, direction, counters, map_edge):
 						return
 		1:
@@ -86,7 +86,7 @@ static func update(
 					current.x + EIGHT_DIRECTIONS[direction].y
 				)
 				var check_index := _index(bugged_check, map_edge)
-				if check_index >= 0 and text[check_index] < TEXT_LABEL_BASE:
+				if check_index >= 0 and not OverlayData.blocks_thing(OverlayData.read(text, check_index)):
 					if _move_maxis_man(text, things, record, direction, counters, map_edge):
 						ThingData.write(things, offset + 1, direction)
 		2:
@@ -111,23 +111,23 @@ static func _maxis_man_target(
 	goal: int,
 	map_edge: int = 128,
 ) -> Dictionary:
-	if goal < 241:
-		if goal < 0 or goal >= CityState.THING_COUNT:
+	if ThingData.is_record_target(goal):
+		if goal < 0 or ThingData.target_record(goal) >= ThingData.count(things):
 			return {"ok": false, "malformed": true}
-		var target_offset := goal * RECORD_SIZE
+		var target_offset := ThingData.target_record(goal) * RECORD_SIZE
 		return {
 			"ok": true,
 			"point": Vector2i(ThingData.read(things, target_offset + 3), ThingData.read(things, target_offset + 4)),
 		}
 	var target := Vector2i(ThingData.read(things, offset + 8), ThingData.read(things, offset + 9))
 	var target_index := _index(target, map_edge)
-	if target_index >= 0 and text[target_index] >= 241:
+	if target_index >= 0 and (OverlayData.read(text, target_index) >= 241 and OverlayData.read(text, target_index) <= 255):
 		return {"ok": true, "point": target}
 	ThingData.write(things, offset + 2, 2)
 	for x in range(current.x - 32, current.x + 33):
 		for y in range(current.y - 32, current.y + 33):
 			var index := _index(Vector2i(x, y), map_edge)
-			if index >= 0 and text[index] >= 241:
+			if index >= 0 and (OverlayData.read(text, index) >= 241 and OverlayData.read(text, index) <= 255):
 				ThingData.write(things, offset + 8, x)
 				ThingData.write(things, offset + 9, y)
 				ThingData.write(things, offset + 2, 0)
@@ -158,8 +158,8 @@ static func _update_maxis_man_height(
 	map_edge: int = 128,
 ) -> void:
 	var goal := int(ThingData.read(things, offset + 11))
-	if goal < 241 and goal >= 0 and goal < CityState.THING_COUNT:
-		ThingData.write(things, offset + 5, ThingData.read(things, goal * RECORD_SIZE + 5))
+	if ThingData.is_record_target(goal) and goal >= 0 and ThingData.target_record(goal) < ThingData.count(things):
+		ThingData.write(things, offset + 5, ThingData.read(things, ThingData.target_record(goal) * RECORD_SIZE + 5))
 		return
 	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 	var index := _index(point, map_edge)
@@ -181,10 +181,10 @@ static func _spawn_explosion(
 	map_edge: int = 128,
 ) -> bool:
 	var index := _index(point, map_edge)
-	if index < 0 or text[index] >= TEXT_LABEL_BASE:
+	if index < 0 or OverlayData.blocks_thing(OverlayData.read(text, index)):
 		return false
 	var record := 0
-	for checked_record in range(FIRST_RECORD, LAST_RECORD + 1):
+	for checked_record in range(FIRST_RECORD, ThingData.count(things)):
 		if ThingData.read(things, checked_record * RECORD_SIZE) == 0:
 			record = checked_record
 			break
@@ -199,9 +199,9 @@ static func _spawn_explosion(
 	ThingData.write(things, offset + 5, height)
 	ThingData.write(things, offset + 6, 8)
 	ThingData.write(things, offset + 7, 8)
-	ThingData.write(things, offset + 10, text[index])
+	ThingData.write(things, offset + 10, OverlayData.read(text, index))
 	ThingData.write(things, offset + 11, goal)
-	text[index] = record + TEXT_LABEL_BASE
+	OverlayData.write(text, index, OverlayData.thing_id(record))
 	return true
 
 static func _remove_thing(
@@ -213,7 +213,7 @@ static func _remove_thing(
 	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 	var index := _index(point, map_edge)
 	if index >= 0:
-		text[index] = 0
+		OverlayData.write(text, index, 0)
 
 static func _move_thing_eight_way(
 	thing_type: int,
@@ -252,10 +252,10 @@ static func _move_thing_eight_way(
 	if current_index < 0:
 		_remove_thing(text, things, record, map_edge)
 		return -1
-	text[current_index] = ThingData.read(things, offset + 10)
+	OverlayData.write(text, current_index, ThingData.read(things, offset + 10))
 	var next := current + tile_delta
 	var next_index := _index(next, map_edge)
-	while next_index >= 0 and text[next_index] >= TEXT_LABEL_BASE:
+	while next_index >= 0 and OverlayData.blocks_thing(OverlayData.read(text, next_index)):
 		ThingData.write(things, offset + 3, next.x)
 		ThingData.write(things, offset + 4, next.y)
 		next += tile_delta
@@ -265,8 +265,8 @@ static func _move_thing_eight_way(
 		return -1
 	ThingData.write(things, offset + 3, next.x)
 	ThingData.write(things, offset + 4, next.y)
-	ThingData.write(things, offset + 10, text[next_index])
-	text[next_index] = record + TEXT_LABEL_BASE
+	ThingData.write(things, offset + 10, OverlayData.read(text, next_index))
+	OverlayData.write(text, next_index, OverlayData.thing_id(record))
 	return 1
 
 static func _direction_quadrant(start: Vector2i, target: Vector2i) -> int:

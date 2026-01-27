@@ -56,12 +56,12 @@ static func apply(
 		return 0
 	if buildings[index] < 6 and not allow_small_tile:
 		return 0
-	var overlay := int(text[index])
+	var overlay := int(OverlayData.read(text, index))
 	var result_code := 1
 	if overlay > 0:
-		if overlay < 51:
+		if (overlay == 0 or OverlayData.is_sign(overlay)):
 			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
-		elif overlay < TEXT_LABEL_BASE:
+		elif OverlayData.is_facility(overlay):
 			var damage := burn_structure(
 				city, altitude, buildings, terrain, zones, underground,
 				flags, text, labels, microsims, misc, point, random, lfsr_random,
@@ -69,7 +69,7 @@ static func apply(
 			)
 			append_damage_events(runtime_events, damage)
 			result_code = 3
-		elif overlay < 241:
+		elif OverlayData.is_thing(overlay):
 			return 0
 		elif overlay < 250:
 			NetworkTiles._replace_building(
@@ -80,7 +80,7 @@ static func apply(
 			return 0
 		else:
 			result_code = 4
-	text[index] = 0xff
+	OverlayData.write(text, index, 0xff)
 	traffic[int(point.x / 2) * (map_edge / 2) + int(point.y / 2)] = 0
 	return result_code
 
@@ -110,18 +110,18 @@ static func apply_flood(
 		return 0
 	if terrain[index] >= 0x10 and terrain[index] <= 0x1f:
 		return 0
-	var overlay := int(text[index])
+	var overlay := int(OverlayData.read(text, index))
 	if overlay > 0:
-		if overlay < 51:
+		if (overlay == 0 or OverlayData.is_sign(overlay)):
 			labels[overlay * CityState.LABEL_RECORD_SIZE] = 0
-		elif overlay < TEXT_LABEL_BASE:
+		elif OverlayData.is_facility(overlay):
 			var damage := burn_structure(
 				city, altitude, buildings, terrain, zones, underground,
 				flags, text, labels, microsims, misc, point, random, lfsr_random,
 				false, false, true
 			)
 			append_damage_events(runtime_events, damage)
-		elif overlay < 241:
+		elif OverlayData.is_thing(overlay):
 			return 0
 		elif overlay < 250:
 			NetworkTiles._replace_building(
@@ -130,7 +130,7 @@ static func apply_flood(
 			return 2
 		else:
 			return 0
-	text[index] = 0xfc
+	OverlayData.write(text, index, 0xfc)
 	traffic[int(point.x / 2) * (map_edge / 2) + int(point.y / 2)] = 0
 	return 1
 
@@ -161,10 +161,10 @@ static func burn_structure(
 	)
 	for index in result.get("indices", PackedInt32Array()):
 		if mark_fire and flags[index] & 0x04 == 0:
-			text[index] = 0xff
+			OverlayData.write(text, index, 0xff)
 	var point_index := _index(point, map_edge)
-	if mark_fire and clear_current and point_index >= 0 and text[point_index] == 0xff:
-		text[point_index] = 0
+	if mark_fire and clear_current and point_index >= 0 and OverlayData.read(text, point_index) == 0xff:
+		OverlayData.write(text, point_index, 0)
 		var tile := int(buildings[point_index])
 		if (tile < 0x3f or tile > 0x42) and tile < 0x61:
 			NetworkTiles._replace_building(

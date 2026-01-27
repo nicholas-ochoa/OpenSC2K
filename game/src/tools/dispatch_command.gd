@@ -77,7 +77,7 @@ static func apply(
 	var text_chunk := city.document.find_chunk("XTXT")
 	if thing_chunk == null or thing_chunk.decoded_payload.size() != city.document.decoded_size("XTHG"):
 		return {"ok": false, "error": "XTHG is missing or has the wrong size"}
-	if text_chunk == null or text_chunk.decoded_payload.size() != (map_edge * map_edge):
+	if text_chunk == null or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT"):
 		return {"ok": false, "error": "XTXT is missing or has the wrong size"}
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	var old_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
@@ -87,7 +87,7 @@ static func apply(
 		_clear_existing_dispatch(things, text, map_edge)
 	if (city.tile_flags[target_index] & FLAG_WATER) != 0:
 		return {"ok": false, "error": "dispatch target is water"}
-	if text[target_index] != 0:
+	if OverlayData.read(text, target_index) != 0:
 		return {"ok": false, "error": "dispatch target has a text overlay"}
 
 	var slot_index := cycle_index + 1
@@ -100,7 +100,7 @@ static func apply(
 
 	var thing_index := _first_free_thing(things)
 	if thing_index < 0 and city.document.misc_u32(MISC_CITY_MODE) == 2:
-		thing_index = LAST_THING
+		thing_index = ThingData.count(things) - 1
 		_delete_thing(things, text, thing_index, map_edge)
 	if thing_index < 0:
 		return {"ok": false, "error": "no moving-thing record is available"}
@@ -110,7 +110,7 @@ static func apply(
 	ThingData.write(things, offset, thing_type)
 	ThingData.write(things, offset + 3, target.x)
 	ThingData.write(things, offset + 4, target.y)
-	text[target_index] = thing_index + THING_LABEL_BASE
+	OverlayData.write(text, target_index, OverlayData.thing_id(thing_index))
 
 	if not thing_chunk.set_decoded_payload(things):
 		return {"ok": false, "error": "cannot store the dispatch unit"}
@@ -161,26 +161,26 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 
 static func _clear_existing_dispatch(things: PackedByteArray, text: PackedByteArray, map_edge: int = 128) -> void:
 	for index in (map_edge * map_edge):
-		var overlay := int(text[index])
-		if overlay <= THING_LABEL_BASE or overlay > THING_LABEL_BASE + LAST_THING:
+		var overlay := int(OverlayData.read(text, index))
+		if not OverlayData.is_thing(overlay) or OverlayData.thing_record(overlay) < FIRST_THING or OverlayData.thing_record(overlay) >= ThingData.count(things):
 			continue
-		var thing_index := overlay - THING_LABEL_BASE
+		var thing_index := OverlayData.thing_record(overlay)
 		var thing_type := int(ThingData.read(things, thing_index * THING_RECORD_SIZE))
 		if TYPE_BY_SUBTOOL.has(thing_type):
-			text[index] = 0
+			OverlayData.write(text, index, 0)
 			ThingData.write(things, thing_index * THING_RECORD_SIZE, 0)
 
 
 static func _records_of_type(things: PackedByteArray, thing_type: int) -> PackedInt32Array:
 	var result := PackedInt32Array()
-	for thing_index in range(FIRST_THING, LAST_THING + 1):
+	for thing_index in range(FIRST_THING, ThingData.count(things)):
 		if ThingData.read(things, thing_index * THING_RECORD_SIZE) == thing_type:
 			result.append(thing_index)
 	return result
 
 
 static func _first_free_thing(things: PackedByteArray) -> int:
-	for thing_index in range(FIRST_THING, LAST_THING + 1):
+	for thing_index in range(FIRST_THING, ThingData.count(things)):
 		if ThingData.read(things, thing_index * THING_RECORD_SIZE) == 0:
 			return thing_index
 	return -1
@@ -190,15 +190,15 @@ static func _delete_thing(
 	things: PackedByteArray, text: PackedByteArray, thing_index: int,
 	map_edge: int = 128,
 ) -> void:
-	if thing_index < FIRST_THING or thing_index > LAST_THING:
+	if thing_index < FIRST_THING or thing_index >= ThingData.count(things):
 		return
 	var offset := thing_index * THING_RECORD_SIZE
 	var x := int(ThingData.read(things, offset + 3))
 	var y := int(ThingData.read(things, offset + 4))
 	if x >= 0 and x < map_edge and y >= 0 and y < map_edge:
 		var map_index := x * map_edge + y
-		if text[map_index] == thing_index + THING_LABEL_BASE:
-			text[map_index] = 0
+		if OverlayData.read(text, map_index) == OverlayData.thing_id(thing_index):
+			OverlayData.write(text, map_index, 0)
 	for byte_index in THING_RECORD_SIZE:
 		ThingData.write(things, offset + byte_index, 0)
 

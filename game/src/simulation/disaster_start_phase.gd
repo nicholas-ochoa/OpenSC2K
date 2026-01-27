@@ -120,7 +120,7 @@ static func start(
 		thing_chunk == null
 		or thing_chunk.decoded_payload.size() != city.document.decoded_size("XTHG")
 		or text_chunk == null
-		or text_chunk.decoded_payload.size() != (map_edge * map_edge)
+		or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT")
 	):
 		return {"ok": false, "error": "disaster moving-object data is missing or invalid"}
 	var things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
@@ -130,9 +130,9 @@ static func start(
 
 	var clamped := Vector2i(clampi(point.x, 0, (map_edge - 1)), clampi(point.y, 0, (map_edge - 1)))
 	var index := clamped.x * map_edge + clamped.y
-	var overlay := int(text[index])
-	if overlay > TEXT_THING_BASE - 1 and overlay < TEXT_THING_BASE + CityState.THING_COUNT:
-		_remove_thing(things, text, overlay - TEXT_THING_BASE, map_edge)
+	var overlay := int(OverlayData.read(text, index))
+	if OverlayData.is_thing(overlay):
+		_remove_thing(things, text, OverlayData.thing_record(overlay), map_edge)
 	var record := _first_free_record(things)
 	if record == 0:
 		return _result(disaster_type, clamped, false, false, 0)
@@ -148,12 +148,12 @@ static func start(
 	ThingData.write(things, offset + 7, 8)
 	ThingData.write(things, offset + 8, random.next_u15() & 0x7f)
 	ThingData.write(things, offset + 9, random.next_u15() & 0x7f)
-	ThingData.write(things, offset + 10, text[index])
+	ThingData.write(things, offset + 10, OverlayData.read(text, index))
 	if disaster_type == DISASTER_MONSTER:
 		ThingData.write(things, offset + 11, 0)
 		if random.next_u15() & 1 == 0:
 			ThingData.write(things, offset + 11, random.next_u15() % 3 + 1)
-	text[index] = record + TEXT_THING_BASE
+	OverlayData.write(text, index, OverlayData.thing_id(record))
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	if not thing_chunk.set_decoded_payload(things):
 		return {"ok": false, "error": "cannot store the disaster moving object"}
@@ -181,7 +181,7 @@ static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
 		or thing_chunk.decoded_payload.size()
 		!= city.document.decoded_size("XTHG")
 		or text_chunk == null
-		or text_chunk.decoded_payload.size() != (map_edge * map_edge)
+		or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT")
 	):
 		return {"ok": false, "error": "plane-crash moving-object data is missing or invalid"}
 	var things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
@@ -192,7 +192,7 @@ static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
 			lfsr_random.next_mask(0xffff) % (map_edge / 2) + map_edge / 4,
 			lfsr_random.next_mask(0xffff) % (map_edge / 2) + map_edge / 4
 		)
-		if text[_index(point, map_edge)] == 0:
+		if OverlayData.read(text, _index(point, map_edge)) == 0:
 			break
 	var record := _first_free_record(things)
 	if record == 0:
@@ -206,7 +206,7 @@ static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
 	ThingData.write(things, offset + 6, 8)
 	ThingData.write(things, offset + 7, 8)
 	ThingData.write(things, offset + 10, 0)
-	text[_index(point, map_edge)] = record + TEXT_THING_BASE
+	OverlayData.write(text, _index(point, map_edge), OverlayData.thing_id(record))
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	if not thing_chunk.set_decoded_payload(things):
 		return {"ok": false, "error": "cannot store the crashing plane"}
@@ -293,7 +293,7 @@ static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random
 	for _attempt in 200:
 		var point := Vector2i(lfsr_random.next_mod(map_edge), lfsr_random.next_mod(map_edge))
 		if payloads.XTER[_index(point, map_edge)] == 0:
-			payloads.XTXT[_index(point, map_edge)] = 0xfc
+			OverlayData.write(payloads.XTXT, _index(point, map_edge), 0xfc)
 			return _store_flood(city, original, payloads, point)
 	return _flood_result(requested_point, false)
 
@@ -330,10 +330,10 @@ static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
 	if index < 0:
 		return _result(DISASTER_TOXIC_SPILL, point, false, true, 0)
 	var text_chunk := city.document.find_chunk("XTXT")
-	if text_chunk == null or text_chunk.decoded_payload.size() != (map_edge * map_edge):
+	if text_chunk == null or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT"):
 		return {"ok": false, "error": "toxic-spill map data is missing or invalid"}
 	var text: PackedByteArray = text_chunk.decoded_payload.duplicate()
-	text[index] = 0xfb
+	OverlayData.write(text, index, 0xfb)
 	if not text_chunk.set_decoded_payload(text):
 		return {"ok": false, "error": "cannot store the toxic spill"}
 	city.text_overlays = text.duplicate()
@@ -359,7 +359,7 @@ static func _start_riot(city: CityState, point: Vector2i, random) -> Dictionary:
 				return _riot_result(DISASTER_RIOT, point, seed_points, 3)
 			continue
 		current_point = seed_point
-		text[_index(seed_point, map_edge)] = RIOT_OVERLAY_FORWARD + (random.next_u15() & 1)
+		OverlayData.write(text, _index(seed_point, map_edge), RIOT_OVERLAY_FORWARD + (random.next_u15() & 1))
 		seed_points.append(seed_point)
 	if not _store_riot_text(city, text):
 		return {"ok": false, "error": "cannot store the riot disaster"}
@@ -396,7 +396,7 @@ static func _start_mass_riots(city: CityState, point: Vector2i, random) -> Dicti
 			if seed_point.x < 0:
 				continue
 			final_point = seed_point
-			text[_index(seed_point, map_edge)] = RIOT_OVERLAY_FORWARD + (random.next_u15() & 1)
+			OverlayData.write(text, _index(seed_point, map_edge), RIOT_OVERLAY_FORWARD + (random.next_u15() & 1))
 			seed_points.append(seed_point)
 	if not seed_points.is_empty() and not _store_riot_text(city, text):
 		return {"ok": false, "error": "cannot store the mass-riot disaster"}
@@ -410,7 +410,7 @@ static func _riot_map_payloads(city: CityState) -> Dictionary:
 	var result := {}
 	for chunk_id in ["XBLD", "XBIT", "XTXT"]:
 		var chunk := city.document.find_chunk(chunk_id)
-		if chunk == null or chunk.decoded_payload.size() != (map_edge * map_edge):
+		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(chunk_id):
 			return {}
 		result[chunk_id] = chunk.decoded_payload
 	return result
@@ -434,7 +434,7 @@ static func _find_riot_seed(
 			index >= 0
 			and _riot_start_supports(int(buildings[index]))
 			and flags[index] & 0x04 == 0
-			and text[index] == 0
+			and OverlayData.read(text, index) == 0
 		):
 			return point
 		step += 1
@@ -489,7 +489,7 @@ static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictio
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
 	var text_chunk := city.document.find_chunk("XTXT")
-	if text_chunk == null or text_chunk.decoded_payload.size() != (map_edge * map_edge):
+	if text_chunk == null or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT"):
 		return {"ok": false, "error": "pollution-disaster map data is missing or invalid"}
 	var attempt_count := (
 		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
@@ -507,7 +507,7 @@ static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictio
 			var index := _index(seed_point, map_edge)
 			if index < 0:
 				continue
-			text[index] = 0xfb
+			OverlayData.write(text, index, 0xfb)
 			seed_writes += 1
 	if seed_writes > 0:
 		if not text_chunk.set_decoded_payload(text):
@@ -713,7 +713,7 @@ static func _start_meltdown(
 						if _write_radioactivity(payloads, target, map_edge):
 							radioactive_writes += 1
 					else:
-						payloads.XTXT[index] = 0xfb
+						OverlayData.write(payloads.XTXT, index, 0xfb)
 						toxic_writes += 1
 
 	for x_offset in range(-1, 3):
@@ -794,7 +794,7 @@ static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary
 			break
 		if payloads.XBLD[index] != MICROWAVE_POWER_PLANT:
 			if payloads.XBIT[index] & 0x04 != 0:
-				payloads.XTXT[index] = 0xfb
+				OverlayData.write(payloads.XTXT, index, 0xfb)
 				toxic_writes += 1
 			if remaining % 10 == 0:
 				view_centers.append(point)
@@ -880,10 +880,10 @@ static func _start_volcano(city: CityState, center: Vector2i, random) -> Diction
 				break
 		var near_index := _index(near_point, map_edge)
 		if random.next_u15() & 1 == 0:
-			payloads.XTXT[near_index] = 0xfb
+			OverlayData.write(payloads.XTXT, near_index, 0xfb)
 			near_toxic_writes += 1
 		else:
-			payloads.XTXT[near_index] = 0xff
+			OverlayData.write(payloads.XTXT, near_index, 0xff)
 			near_fire_writes += 1
 
 		if _volcano_raise_is_valid(heights, payloads.XZON, payloads.XBIT, near_point, {}, map_edge):
@@ -925,10 +925,10 @@ static func _start_volcano(city: CityState, center: Vector2i, random) -> Diction
 		var distant_index := _index(distant_point, map_edge)
 		if distant_index >= 0:
 			if payloads.XBIT[distant_index] & 0x04 != 0:
-				payloads.XTXT[distant_index] = 0xfb
+				OverlayData.write(payloads.XTXT, distant_index, 0xfb)
 				distant_toxic_writes += 1
 			else:
-				payloads.XTXT[distant_index] = 0xff
+				OverlayData.write(payloads.XTXT, distant_index, 0xff)
 				distant_fire_writes += 1
 		iterations += 1
 		if random.next_u15() & 7 != 0:
@@ -1305,14 +1305,14 @@ static func _hurricane_flood_edge(
 				point.x += 1
 			if point.x >= (map_edge - 1):
 				continue
-		payloads.XTXT[_index(point, map_edge)] = 0xfc
+		OverlayData.write(payloads.XTXT, _index(point, map_edge), 0xfc)
 		flood_points.append(point)
 
 
 static func _seed_flood_if_dry(payloads: Dictionary, point: Vector2i, map_edge: int = 128) -> void:
 	var index := _index(point, map_edge)
 	if index >= 0 and payloads.XBIT[index] & 0x04 == 0:
-		payloads.XTXT[index] = 0xfc
+		OverlayData.write(payloads.XTXT, index, 0xfc)
 
 
 static func _store_flood(
@@ -1387,7 +1387,7 @@ static func has_active_object(city: CityState, _disaster_type: int) -> bool:
 	if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size("XTHG"):
 		return false
 	var things: PackedByteArray = chunk.decoded_payload
-	for record in range(1, CityState.THING_COUNT):
+	for record in range(1, ThingData.count(things)):
 		var offset := record * CityState.THING_RECORD_SIZE
 		var type := int(ThingData.read(things, offset))
 		if type == TYPE_MONSTER or type == TYPE_TORNADO or type == TYPE_EXPLOSION:
@@ -1419,28 +1419,28 @@ static func _result(
 
 static func _count_type(things: PackedByteArray, thing_type: int) -> int:
 	var count := 0
-	for record in range(1, CityState.THING_COUNT):
+	for record in range(1, ThingData.count(things)):
 		if ThingData.read(things, record * CityState.THING_RECORD_SIZE) == thing_type:
 			count += 1
 	return count
 
 
 static func _first_free_record(things: PackedByteArray) -> int:
-	for record in range(1, CityState.THING_COUNT):
+	for record in range(1, ThingData.count(things)):
 		if ThingData.read(things, record * CityState.THING_RECORD_SIZE) == 0:
 			return record
 	return 0
 
 
 static func _remove_thing(things: PackedByteArray, text: PackedByteArray, record: int, map_edge: int = 128) -> void:
-	if record <= 0 or record >= CityState.THING_COUNT:
+	if record <= 0 or record >= ThingData.count(things):
 		return
 	var offset := record * CityState.THING_RECORD_SIZE
 	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
 	if point.x < map_edge and point.y < map_edge:
 		var index := point.x * map_edge + point.y
-		if text[index] == record + TEXT_THING_BASE:
-			text[index] = ThingData.read(things, offset + 10)
+		if OverlayData.read(text, index) == OverlayData.thing_id(record):
+			OverlayData.write(text, index, ThingData.read(things, offset + 10))
 	for byte_index in CityState.THING_RECORD_SIZE:
 		ThingData.write(things, offset + byte_index, 0)
 

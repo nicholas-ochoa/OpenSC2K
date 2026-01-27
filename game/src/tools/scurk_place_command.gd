@@ -146,7 +146,7 @@ static func apply(
 			zones[index] = zone_id
 			flags[index] = (flags[index] & 0x1f) | placed_flags
 			if overlay_id != 0:
-				text_overlays[index] = overlay_id
+				OverlayData.write(text_overlays, index, overlay_id)
 			tile_indices.append(index)
 	Buildings._set_corners(zones, site, area, city.compass_rotation(), map_edge)
 

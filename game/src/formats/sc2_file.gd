@@ -44,6 +44,7 @@ const HALF_MAP_CHUNKS := ["XTRF", "XPLT", "XVAL", "XCRM"]
 const QUARTER_MAP_CHUNKS := ["XPLC", "XFIR", "XPOP", "XROG"]
 
 var map_size := 128
+var large_version := 2
 
 var chunks: Array[Sc2Chunk] = []
 var source_bytes := PackedByteArray()
@@ -70,6 +71,7 @@ func parse(bytes: PackedByteArray) -> bool:
 	source_bytes = PackedByteArray()
 	parse_error = ""
 	map_size = 128
+	large_version = 2
 
 	if bytes.size() < 12:
 		return _fail("File is shorter than the 12-byte FORM header")
@@ -85,7 +87,8 @@ func parse(bytes: PackedByteArray) -> bool:
 		if bytes.size() < 28 or _ascii(bytes, 12, 4) != "SIZE" or _read_u32_be(bytes, 16) != 8:
 			return _fail("Experimental SIZE header is missing")
 		map_size = _read_u32_be(bytes, 24)
-		if _read_u32_be(bytes, 20) != 1 or map_size not in [256, 384, 512]:
+		large_version = _read_u32_be(bytes, 20)
+		if large_version not in [1, 2] or map_size not in [256, 384, 512]:
 			return _fail("Unsupported experimental city version or size")
 		offset = 28
 	while offset < bytes.size():
@@ -145,6 +148,7 @@ func is_valid() -> bool:
 func duplicate_document() -> Sc2File:
 	var result := Sc2File.new()
 	result.map_size = map_size
+	result.large_version = large_version
 	result.source_bytes = source_bytes.duplicate()
 	result.source_path = source_path
 	result.parse_error = parse_error
@@ -240,7 +244,7 @@ func serialize(force_rebuild: bool = false) -> Dictionary:
 	if map_size != 128:
 		body.append_array("SIZE".to_ascii_buffer())
 		body.append_array(_u32_be(8))
-		body.append_array(_u32_be(1))
+		body.append_array(_u32_be(large_version))
 		body.append_array(_u32_be(map_size))
 	for chunk in chunks:
 		var payload := chunk.payload_for_write()
@@ -296,6 +300,13 @@ static func _is_chunk_id(value: String) -> bool:
 
 
 func decoded_size(chunk_id: String) -> int:
+	if map_size > 128 and large_version == 2:
+		var factor := map_size * map_size / 16384
+		match chunk_id:
+			"XTXT": return map_size * map_size * 2
+			"XMIC": return 150 * factor * 8
+			"XLAB": return (OverlayData.EXTRA_SIGN + 50 * factor - 50) * 25
+			"XTHG": return 40 * factor * 24
 	if chunk_id == "XTHG" and map_size > 128:
 		return 960
 	if chunk_id in FULL_MAP_CHUNKS:
@@ -313,9 +324,10 @@ func resize_empty_map(edge: int) -> bool:
 	if edge == map_size:
 		return true
 	map_size = edge
+	large_version = 2
 	source_bytes.clear()
 	for chunk in chunks:
-		if chunk.chunk_id not in FULL_MAP_CHUNKS + HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS + ["XTHG"]:
+		if chunk.chunk_id not in FULL_MAP_CHUNKS + HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS + ["XTHG", "XMIC", "XLAB"]:
 			continue
 		chunk.expected_decoded_size = decoded_size(chunk.chunk_id)
 		var data := PackedByteArray()
@@ -323,3 +335,26 @@ func resize_empty_map(edge: int) -> bool:
 		chunk.set_decoded_payload(data)
 	set_misc_u32(0x01f0, map_size * map_size)
 	return true
+
+
+func upgrade_large_limits() -> void:
+	if map_size == 128 or large_version == 2:
+		return
+	large_version = 2
+	source_bytes.clear()
+	for id in ["XTXT", "XMIC", "XLAB", "XTHG"]:
+		var chunk := find_chunk(id)
+		if chunk == null:
+			continue
+		var old := chunk.decoded_payload.duplicate()
+		chunk.expected_decoded_size = decoded_size(id)
+		var expanded := PackedByteArray()
+		expanded.resize(chunk.expected_decoded_size)
+		if id == "XTHG":
+			for index in 480:
+				expanded[index] = old[index]
+				expanded[expanded.size() / 2 + index] = old[480 + index]
+		else:
+			for index in old.size():
+				expanded[index] = old[index]
+		chunk.set_decoded_payload(expanded)

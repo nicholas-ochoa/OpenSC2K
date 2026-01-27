@@ -1,7 +1,6 @@
 class_name NewspaperDialog
 extends AcceptDialog
 
-const NewspaperPageView = preload("res://src/ui/newspaper_page.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const NewspaperTextGenerator = preload("res://src/simulation/newspaper_text.gd")
 
@@ -19,41 +18,25 @@ var session_seed := 0
 var selected_newspaper := 0
 var published_articles := PackedStringArray()
 
-var page: NewspaperPage
-var paper_selector: OptionButton
-var article_heading: Label
-var article_view: TextEdit
-var close_normal: Texture2D
-var close_pressed: Texture2D
+var page := NewspaperContent.new()
+var paper_titles := PackedStringArray()
 var control_graphics: CityUiGraphics
 var web_paper: NewspaperWebView
 
 
 func _ready() -> void:
 	title = "Newspaper"
-	min_size = Vector2i(840, 600)
-	get_ok_button().text = "Close"
-	get_ok_button().button_down.connect(func() -> void: get_ok_button().icon = close_pressed)
-	get_ok_button().button_up.connect(func() -> void: get_ok_button().icon = close_normal)
-	get_ok_button().texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	get_label().visible = false
-	var paper_selector_row := HBoxContainer.new()
-	paper_selector_row.alignment = BoxContainer.ALIGNMENT_CENTER
-	paper_selector_row.add_theme_constant_override("separation", 8)
-	var paper_selector_label := Label.new()
-	paper_selector_label.text = "PAPER"
-	paper_selector_label.add_theme_color_override("font_color", Color("f0f0f0"))
-	paper_selector_row.add_child(paper_selector_label)
-	paper_selector = OptionButton.new()
-	paper_selector.name = "NewspaperPaperSelector"
-	paper_selector.custom_minimum_size = Vector2i(260, 28)
-	paper_selector.item_selected.connect(_on_paper_selected)
-	paper_selector_row.add_child(paper_selector)
-	var html_button := Button.new()
-	html_button.text = "HTML view"
-	html_button.disabled = not NewspaperWebView.supported()
-	html_button.pressed.connect(_open_web_newspaper)
-	paper_selector_row.add_child(html_button)
+	exclusive = true
+	borderless = true
+	min_size = Vector2i.ONE
+	size = Vector2i.ONE
+	if NewspaperWebView.supported():
+		get_ok_button().hide()
+		get_label().hide()
+	else:
+		dialog_text = "The HTML newspaper requires the WebView extension."
+		get_ok_button().text = "Close"
+		min_size = Vector2i(400, 120)
 	web_paper = NewspaperWebView.new()
 	add_child(web_paper)
 	web_paper.action_requested.connect(_on_web_action)
@@ -61,44 +44,10 @@ func _ready() -> void:
 		if not visible:
 			web_paper.close()
 	)
-	page = NewspaperPageView.new()
-	page.name = "NewspaperPage"
-	page.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	page.story_selected.connect(_on_story_selected)
-	article_heading = Label.new()
-	article_heading.text = "SELECTED ARTICLE"
-	article_heading.add_theme_color_override("font_color", Color("f0f0f0"))
-	article_view = TextEdit.new()
-	article_view.name = "NewspaperArticle"
-	article_view.custom_minimum_size = Vector2i(800, 110)
-	article_view.editable = false
-	article_view.add_theme_font_override("font", NewspaperPage.newspaper_font())
-	article_view.add_theme_font_size_override("font_size", 16)
-	article_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	article_view.add_theme_color_override("font_color", Color("101010"))
-	article_view.add_theme_color_override("font_readonly_color", Color("101010"))
-	article_view.add_theme_color_override("background_color", Color("dddddd"))
-	var content := get_label().get_parent()
-	var layout := VBoxContainer.new()
-	layout.add_theme_constant_override("separation", 6)
-	layout.add_child(paper_selector_row)
-	layout.add_child(page)
-	layout.add_child(article_heading)
-	layout.add_child(article_view)
-	content.add_child(layout)
-	content.move_child(layout, 0)
 
 
 func set_control_graphics(graphics: CityUiGraphics) -> void:
 	control_graphics = graphics
-	close_normal = null
-	close_pressed = null
-	if graphics != null:
-		if graphics.controls.has("PAPERCLOSEU"):
-			close_normal = ImageTexture.create_from_image(graphics.controls.PAPERCLOSEU)
-		if graphics.controls.has("PAPERCLOSED"):
-			close_pressed = ImageTexture.create_from_image(graphics.controls.PAPERCLOSED)
-	get_ok_button().icon = close_normal
 	_refresh_picture()
 
 
@@ -122,16 +71,10 @@ func open_reports(
 
 
 func _populate_page() -> void:
-	article_heading.hide()
-	article_view.hide()
-	size = min_size
-	article_heading.text = "SELECTED ARTICLE"
-	article_view.text = "Select a headline on the newspaper page to read its article."
-	paper_selector.clear()
+	paper_titles.clear()
 	var misc_chunk := document.find_chunk("MISC")
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
-		paper_selector.add_item("Unavailable")
-		paper_selector.disabled = true
+		paper_titles.append("Unavailable")
 		page.set_page(
 			0,
 			"NEWSPAPER",
@@ -149,11 +92,7 @@ func _populate_page() -> void:
 	selected_newspaper = clampi(selected_newspaper, 0, NewsQueue.PAPER_COUNT - 1)
 	for paper_index in NewsQueue.PAPER_COUNT:
 		var selector_record := NewsQueue.paper_record(misc, paper_index)
-		paper_selector.add_item(
-			_paper_title(paper_index, selector_record), paper_index
-		)
-	paper_selector.disabled = false
-	paper_selector.select(selected_newspaper)
+		paper_titles.append(_paper_title(paper_index, selector_record))
 	var paper := NewsQueue.paper_record(misc, selected_newspaper)
 	var teams := _team_names()
 	var headlines := PackedStringArray()
@@ -208,9 +147,6 @@ func _populate_page() -> void:
 		headlines,
 	)
 	page.set_articles(published_articles)
-	if not published_articles.is_empty():
-		article_heading.text = headlines[0].to_upper()
-		article_view.text = published_articles[0]
 	title = paper_title
 	_refresh_picture()
 	if misc != old_misc:
@@ -236,47 +172,6 @@ func _on_paper_selected(paper_index: int) -> void:
 		return
 	selected_newspaper = clampi(paper_index, 0, NewsQueue.PAPER_COUNT - 1)
 	_populate_page()
-
-
-func _on_story_selected(slot: int) -> void:
-	if city == null or document == null or slot < 0 or slot >= 5:
-		return
-	article_heading.show()
-	article_view.show()
-	call_deferred("popup_centered")
-	article_heading.text = page.headline_for_slot(slot).to_upper()
-	if slot < published_articles.size():
-		article_view.text = published_articles[slot]
-		return
-	var seed := NewspaperTextGenerator.published_seed(
-		session_seed, city.age_in_days(), selected_newspaper, slot
-	)
-	if newspaper_data == null or not newspaper_data.is_valid():
-		article_view.text = "The local DATA_USA newspaper text is unavailable."
-		return
-	var misc_chunk := document.find_chunk("MISC")
-	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
-		article_view.text = "The saved newspaper record is unavailable."
-		return
-	var record := NewsQueue.story_record(misc_chunk.decoded_payload, slot)
-	var rendered := NewspaperTextGenerator.render_story(
-		newspaper_data,
-		record,
-		seed,
-		city.city_name(),
-		city.mayor_name(),
-		_team_names(),
-	)
-	if not rendered.ok:
-		article_view.text = "The article cannot be generated: %s" % rendered.error
-		return
-	article_view.text = rendered.article
-	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	var updated := NewsQueue.update_story_substitutions(
-		misc, slot, rendered.argument, rendered.auxiliary
-	)
-	if updated.ok and misc != misc_chunk.decoded_payload:
-		misc_chunk.set_decoded_payload(misc)
 
 
 func _paper_title(paper_index: int, paper: Dictionary) -> String:
@@ -346,23 +241,8 @@ func _local_report(slot: int) -> Dictionary:
 
 
 func _web_payload() -> Dictionary:
-	var headlines: Array[String] = []
-	var papers: Array[String] = []
-	for slot in 5:
-		headlines.append(page.headline_for_slot(slot))
-	for index in paper_selector.item_count:
-		papers.append(paper_selector.get_item_text(index))
-	var picture := ""
-	if page.picture_texture != null:
-		picture = "data:image/png;base64," + Marshalls.raw_to_base64(page.picture_texture.get_image().save_png_to_buffer())
-	return {
-		"title": page.title_label.text, "headline": headlines[0],
-		"date": page.date_label.text, "price": page.price_label.text,
-		"weather": page.weather_label.text, "opinion": page.opinion_label.text,
-		"headlines": headlines, "articles": published_articles,
-		"pages": page.continuation_pages, "picture": picture,
-		"papers": papers, "selected": selected_newspaper,
-	}
+	page.set_articles(published_articles)
+	return page.payload(paper_titles, selected_newspaper)
 
 
 func _open_web_newspaper() -> void:
@@ -374,8 +254,6 @@ func _on_web_action(action: Dictionary) -> void:
 	match str(action.get("action", "")):
 		"close":
 			hide()
-		"native":
-			web_paper.close()
 		"paper":
 			_on_paper_selected(clampi(int(action.get("index", 0)), 0, 5))
 			_open_web_newspaper()

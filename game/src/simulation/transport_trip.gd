@@ -95,7 +95,7 @@ static func trace(
 		buildings.size() != (map_edge * map_edge)
 		or zones.size() != (map_edge * map_edge)
 		or underground.size() != (map_edge * map_edge)
-		or text_overlays.size() != (map_edge * map_edge)
+		or OverlayData.count(text_overlays) != (map_edge * map_edge)
 		or altitudes.size() != (map_edge * map_edge)
 		or traffic.size() != ((map_edge / 2) * (map_edge / 2))
 	):
@@ -251,7 +251,7 @@ static func _advance(
 	var index := _index(next_point, map_edge)
 	if index < 0:
 		var current_index := _index(current, map_edge)
-		if current_index >= 0 and text_overlays[current_index] == CONNECTION_LABEL:
+		if current_index >= 0 and OverlayData.read(text_overlays, current_index) == CONNECTION_LABEL:
 			return ADVANCE_SUCCESS
 		return ADVANCE_BLOCKED
 	var tile := int(buildings[index])

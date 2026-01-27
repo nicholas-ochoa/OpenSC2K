@@ -76,7 +76,7 @@ const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
 const QueryPresentation = preload("res://src/view/query_presentation.gd")
 const LibraryWindowLayout = preload("res://src/ui/library_window_layout.gd")
-const NewspaperPage = preload("res://src/ui/newspaper_page.gd")
+const NewspaperTables = preload("res://src/model/newspaper_layout.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Buildings = preload("res://src/tools/building_command.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -10350,10 +10350,10 @@ func _test_news_queue(reference_root: String) -> void:
 		"Newspaper session initialization resets all nine story records",
 	)
 	_check(
-		NewspaperPage.PAGE_SIZE == Vector2i(640, 400)
-		and NewspaperPage.section_rect(0, 3) == Rect2i(243, 76, 213, 100)
-		and NewspaperPage.story_rect(1, 4) == Rect2i(512, 186, 128, 214)
-		and NewspaperPage.story_rect(2, 0) == Rect2i(0, 30, 128, 370),
+		NewspaperTables.PAGE_SIZE == Vector2i(640, 400)
+		and NewspaperTables.section_rect(0, 3) == Rect2i(243, 76, 213, 100)
+		and NewspaperTables.story_rect(1, 4) == Rect2i(512, 186, 128, 214)
+		and NewspaperTables.story_rect(2, 0) == Rect2i(0, 30, 128, 370),
 		"Newspaper page exposes the executable's three fixed layouts",
 	)
 

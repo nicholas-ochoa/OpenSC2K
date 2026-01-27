@@ -19,6 +19,7 @@ func open(data: Dictionary) -> void:
 		view.set("url", "")
 		view.set("html", FileAccess.get_file_as_string("res://assets/newspaper/newspaper.html"))
 		view.set("full_window_size", true)
+		view.set("transparent", true)
 		view.set("forward_input_events", false)
 		view.set("incognito", true)
 		view.set("devtools", false)
