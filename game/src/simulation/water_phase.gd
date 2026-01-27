@@ -24,6 +24,8 @@ static func run(city: CityState) -> Dictionary:
 
 	var flags := city.tile_flags.duplicate()
 	for index in flags.size():
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		flags[index] &= ~FLAG_MARK & 0xff
 		if city.buildings[index] != WATER_TOWER:
 			flags[index] &= ~FLAG_WATERED & 0xff
@@ -33,13 +35,15 @@ static func run(city: CityState) -> Dictionary:
 	var watered_consumers := 0
 	var pump_base_supply := int((city.document.misc_u32(0x68) & 0xff) / 2)
 	pump_base_supply += city.document.misc_u32(0x0e40) * 5
-	for index in _source_scan_order(city.compass_rotation(), map_edge):
+	for index in _source_scan_order(city.compass_rotation(), map_edge, city.simulation_slice):
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		var building := city.buildings[index]
 		if building != WATER_PUMP and building != DESALINIZATION:
 			continue
 		if flags[index] & FLAG_WATERED or not flags[index] & FLAG_POWERED:
 			continue
-		var component := _trace_component(city.buildings, flags, index, pump_base_supply, map_edge)
+		var component := _trace_component(city.buildings, flags, index, pump_base_supply, map_edge, city.simulation_slice)
 		var supply: int = component.supply
 		var consumers: int = component.consumers
 		var served := mini(supply, consumers)
@@ -99,6 +103,7 @@ static func _trace_component(
 	start: int,
 	pump_base_supply: int,
 	map_edge: int = 128,
+	budget: SimulationSliceBudget = null,
 ) -> Dictionary:
 	var queue := PackedInt32Array([start])
 	var queue_position := 0
@@ -115,6 +120,8 @@ static func _trace_component(
 		}
 	flags[start] |= FLAG_MARK
 	while queue_position < queue.size():
+		if budget != null and (queue_position & 127) == 0:
+			budget.checkpoint()
 		var index := queue[queue_position]
 		queue_position += 1
 		tiles.append(index)
@@ -191,23 +198,31 @@ static func _desalinization_supply(flags: PackedByteArray, x: int, y: int, map_e
 	return supply
 
 
-static func _source_scan_order(rotation: int, map_edge: int = 128) -> PackedInt32Array:
+static func _source_scan_order(rotation: int, map_edge: int = 128, budget: SimulationSliceBudget = null) -> PackedInt32Array:
 	var result := PackedInt32Array()
 	match rotation & 3:
 		0:
 			for y in map_edge:
+				if budget != null:
+					budget.checkpoint()
 				for x in map_edge:
 					result.append(x * map_edge + y)
 		1:
 			for x in map_edge:
+				if budget != null:
+					budget.checkpoint()
 				for y in range(map_edge - 1, -1, -1):
 					result.append(x * map_edge + y)
 		2:
 			for y in range(map_edge - 1, -1, -1):
+				if budget != null:
+					budget.checkpoint()
 				for x in range(map_edge - 1, -1, -1):
 					result.append(x * map_edge + y)
 		3:
 			for x in range(map_edge - 1, -1, -1):
+				if budget != null:
+					budget.checkpoint()
 				for y in map_edge:
 					result.append(x * map_edge + y)
 	return result

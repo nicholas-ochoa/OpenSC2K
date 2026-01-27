@@ -161,6 +161,7 @@ func duplicate_document() -> Sc2File:
 		copied.expected_decoded_size = chunk.expected_decoded_size
 		copied.is_compressed = chunk.is_compressed
 		copied.is_dirty = chunk.is_dirty
+		copied.mutation_revision = chunk.mutation_revision
 		result.chunks.append(copied)
 	return result
 

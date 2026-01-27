@@ -24,8 +24,13 @@ func run_check() -> void:
 	for edge in [256, 384, 512, 128]:
 		assert(main._activate_document(EmptyCityTemplate.create(edge)))
 		assert(main.map_view.city.map_size == edge)
+		assert((main.frame_simulation != null) == (edge > 128))
 		assert(main.map_view.city_texture.get_size() == Vector2(CityIsometricRenderer.output_size_for_view(2, edge)))
+		if edge > 128:
+			main.speed_controller.set_speed(GameSpeedController.Speed.CHEETAH)
+			main.frame_simulation.advance_time(200, 200)
+			assert(main.frame_simulation.is_pending())
 	main.queue_free()
 	await process_frame
-	print("PASS: automatic size preview and underground city replacement across map sizes")
+	print("PASS: automatic size preview and underground city replacement with pending simulation across map sizes")
 	quit()

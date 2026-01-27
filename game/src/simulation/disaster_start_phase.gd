@@ -260,6 +260,8 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 				run_length += 1
 			direction = (direction + 1) & 3
 	for _attempt in 200:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		point = Vector2i(lfsr_random.next_mod(map_edge), lfsr_random.next_mod(map_edge))
 		if _starts_fire(
 			_apply_fire_damage(city, payloads, point, random, lfsr_random, runtime_events)
@@ -291,6 +293,8 @@ static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random
 			_seed_flood_if_dry(payloads, shore + Vector2i(0, 1), map_edge)
 		return _store_flood(city, original, payloads, shore)
 	for _attempt in 200:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var point := Vector2i(lfsr_random.next_mod(map_edge), lfsr_random.next_mod(map_edge))
 		if payloads.XTER[_index(point, map_edge)] == 0:
 			OverlayData.write(payloads.XTXT, _index(point, map_edge), 0xfc)
@@ -351,6 +355,8 @@ static func _start_riot(city: CityState, point: Vector2i, random) -> Dictionary:
 	var current_point := point
 	var seed_points: Array[Vector2i] = []
 	for _attempt in 3:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var seed_point := _find_riot_seed(
 			current_point, riot_maps.XBLD, riot_maps.XBIT, text, map_edge
 		)
@@ -409,6 +415,8 @@ static func _riot_map_payloads(city: CityState) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 	var result := {}
 	for chunk_id in ["XBLD", "XBIT", "XTXT"]:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var chunk := city.document.find_chunk(chunk_id)
 		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(chunk_id):
 			return {}
@@ -543,6 +551,8 @@ static func _start_earthquake(
 	var fire_damage_attempts := 0
 	var structure_damage_attempts := 0
 	for x_offset in range(-32, 33):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y_offset in range(-32, 33):
 			if random.next_u15() & 0x3f != 0:
 				continue
@@ -597,6 +607,8 @@ static func _start_earthquake(
 	result["effect_events"] = effect_events
 	var sounds: Array[int] = []
 	for _frame in 24:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		sounds.append(SOUND_EARTHQUAKE)
 	sounds.append_array(runtime_events.sound_events)
 	sounds.append(SOUND_SIREN)
@@ -659,6 +671,8 @@ static func _start_meltdown(
 	var radioactive_writes := 0
 	var toxic_writes := 0
 	for x_offset in range(-32, 33):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y_offset in range(-32, 33):
 			if random.next_u15() & 0x1f != 0:
 				continue
@@ -717,6 +731,8 @@ static func _start_meltdown(
 						toxic_writes += 1
 
 	for x_offset in range(-1, 3):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y_offset in range(-2, 2):
 			if random.next_u15() & 1 != 0:
 				if _write_radioactivity(payloads, center + Vector2i(x_offset, y_offset), map_edge):
@@ -1388,6 +1404,8 @@ static func has_active_object(city: CityState, _disaster_type: int) -> bool:
 		return false
 	var things: PackedByteArray = chunk.decoded_payload
 	for record in range(1, ThingData.count(things)):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var offset := record * CityState.THING_RECORD_SIZE
 		var type := int(ThingData.read(things, offset))
 		if type == TYPE_MONSTER or type == TYPE_TORNADO or type == TYPE_EXPLOSION:
@@ -1448,6 +1466,8 @@ static func _remove_thing(things: PackedByteArray, text: PackedByteArray, record
 static func _map_payloads(city: CityState) -> Dictionary:
 	var result := {}
 	for chunk_id in MAP_CHUNK_SIZES:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var chunk := city.document.find_chunk(chunk_id)
 		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(chunk_id):
 			return {}
@@ -1474,6 +1494,8 @@ static func _apply_map_payloads(
 ) -> bool:
 	var applied := PackedStringArray()
 	for chunk_id in MAP_CHUNK_SIZES:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		if payloads[chunk_id] == original[chunk_id]:
 			continue
 		var chunk := city.document.find_chunk(chunk_id)
@@ -1497,6 +1519,8 @@ static func _refresh_city_arrays(city: CityState) -> void:
 	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
 	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
 	for index in (map_edge * map_edge):
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 

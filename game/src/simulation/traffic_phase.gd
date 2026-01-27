@@ -16,6 +16,8 @@ static func run(city: CityState) -> Dictionary:
 	var traffic := chunk.decoded_payload.duplicate()
 	var total := 0
 	for index in traffic.size():
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		var decayed := int(traffic[index]) - (int(traffic[index]) >> 2)
 		traffic[index] = decayed
 		total += decayed

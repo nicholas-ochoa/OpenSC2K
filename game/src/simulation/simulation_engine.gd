@@ -263,6 +263,8 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 	var pending := PackedStringArray()
 	var phase_results: Dictionary = {}
 	for action in schedule.actions:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		match action:
 			"month_start":
 				var month_start := MonthStartPhase.run(city)

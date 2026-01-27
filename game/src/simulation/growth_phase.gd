@@ -133,7 +133,11 @@ static func run(
 	}
 
 	for x in range(step, map_edge, 4):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y in range(substep, map_edge, 4):
+			if city.simulation_slice != null:
+				city.simulation_slice.checkpoint()
 			counters.scanned_tiles += 1
 			var index := x * map_edge + y
 			var zone_byte := int(zones[index])
@@ -1122,6 +1126,8 @@ static func _apply_payloads(
 ) -> bool:
 	var applied := PackedStringArray()
 	for chunk_id in chunk_ids:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var chunk := city.document.find_chunk(chunk_id)
 		if chunk == null or not chunk.set_decoded_payload(payloads[chunk_id]):
 			for rollback_id in applied:
@@ -1137,6 +1143,8 @@ static func _refresh_city(city: CityState) -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
 	for index in (map_edge * map_edge):
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()

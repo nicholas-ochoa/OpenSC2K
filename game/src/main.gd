@@ -140,6 +140,7 @@ var dispatch_cycles := PackedInt32Array([0, 0, 0])
 var dispatch_initialized := false
 var simulation_engine: SimulationEngine
 var speed_controller: GameSpeedController
+var frame_simulation: FrameSimulationRunner
 var simulation_map_dirty := false
 var annual_budget_pending := false
 var military_proposal_pending := false
@@ -445,11 +446,12 @@ func _process(delta: float) -> void:
 		or landscape_editor
 		or founding_newspaper_pending
 	)
-	var result := speed_controller.advance_time(
-		delta * 1000.0,
-		Time.get_ticks_msec(),
-		interaction_suspended
-	)
+	var result: Dictionary
+	if frame_simulation != null:
+		frame_simulation.budget_usec = FrameSimulationRunner.budget_for_frame(delta)
+		result = frame_simulation.advance_time(delta * 1000.0, Time.get_ticks_msec(), interaction_suspended)
+	else:
+		result = speed_controller.advance_time(delta * 1000.0, Time.get_ticks_msec(), interaction_suspended)
 	if not result.ok:
 		speed_controller.set_speed(GameSpeed.Speed.PAUSED)
 		_sync_speed_ui()
@@ -2370,8 +2372,13 @@ func _activate_document(
 		if simulation_engine != null
 		else (Time.get_ticks_msec() & 0xffff) | 1
 	)
+	if frame_simulation != null:
+		frame_simulation.close()
+	frame_simulation = null
 	simulation_engine = Simulation.new(city, process_seed, lfsr_seed, game_seed)
 	speed_controller = GameSpeed.new(simulation_engine)
+	if city.map_size > 128:
+		frame_simulation = FrameSimulationRunner.new(speed_controller)
 	_sync_speed_ui()
 	tool_random = simulation_engine.random
 	nuisance_random = simulation_engine.game_random
@@ -2968,6 +2975,9 @@ func _static_signature_for_mode(mode: String, view_size: int) -> Array:
 
 
 func _exit_tree() -> void:
+	if frame_simulation != null:
+		frame_simulation.close()
+	frame_simulation = null
 	if static_render_thread != null and static_render_thread.is_started():
 		static_render_thread.wait_to_finish()
 	static_render_thread = null
@@ -4795,6 +4805,7 @@ func _show_error(message: String) -> void:
 
 func _debug_metrics() -> Dictionary:
 	var result := {
+		"simulation_slices": frame_simulation.metrics() if frame_simulation != null else {},
 		"visible_altitude_levels": city.visible_altitude_levels if city != null else 32,
 		"city_name": "None",
 		"date": "--",

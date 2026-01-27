@@ -48,9 +48,13 @@ static func run(city: CityState) -> Dictionary:
 	var zone_population := PackedInt64Array()
 	zone_population.resize(8)
 	for index in 8:
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		zone_population[index] = city.document.misc_i32(ZONE_POPULATION_OFFSET + index * 4)
 	zone_population[0] = 0
 	for index in range(1, 7):
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		zone_population[0] += zone_population[index]
 
 	var tax_population := PackedInt64Array([
@@ -121,6 +125,8 @@ static func run(city: CityState) -> Dictionary:
 	var ordinance_flags := city.document.misc_u32(ORDINANCES_OFFSET)
 	var demands := PackedInt32Array()
 	for index in 3:
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		var tax_rate := city.document.misc_i32(BUDGET_OFFSET + index * BUDGET_RECORD_SIZE + 4)
 		tax_rate = _ordinance_adjusted_tax_rate(index, tax_rate, ordinance_flags)
 		tax_rate = clampi(tax_rate, 0, TAX_EFFECT.size() - 1)
@@ -136,6 +142,8 @@ static func run(city: CityState) -> Dictionary:
 	_write_i32(changed, OLD_RESIDENTIAL_POPULATION_OFFSET, tax_population[0])
 	var arcology_population := city.document.misc_i32(ARCOLOGY_POPULATION_OFFSET)
 	for index in 3:
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		var budget_population := tax_population[index] * 10
 		budget_population += int(arcology_population / (6 if index == 0 else 12))
 		_write_i32(changed, BUDGET_OFFSET + index * BUDGET_RECORD_SIZE, budget_population)
@@ -161,6 +169,8 @@ static func connection_counts(city: CityState) -> Dictionary:
 	var commerce := 0
 	var industry := 0
 	for index in (map_edge * map_edge):
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		if OverlayData.read(city.text_overlays, index) != CONNECTION_LABEL:
 			continue
 		var tile := city.buildings[index]

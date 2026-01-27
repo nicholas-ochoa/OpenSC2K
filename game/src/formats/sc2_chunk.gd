@@ -10,6 +10,7 @@ var decoded_payload := PackedByteArray()
 var expected_decoded_size := -1
 var is_compressed := false
 var is_dirty := false
+var mutation_revision := 0
 
 
 func set_decoded_payload(value: PackedByteArray) -> bool:
@@ -17,6 +18,7 @@ func set_decoded_payload(value: PackedByteArray) -> bool:
 		return false
 	decoded_payload = value.duplicate()
 	is_dirty = true
+	mutation_revision += 1
 	return true
 
 

@@ -97,6 +97,8 @@ static func run(city: CityState) -> Dictionary:
 	var temporary := PackedInt32Array()
 	temporary.resize(map_edge * map_edge)
 	for x in (map_edge / 2):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var coarse_row := x * (map_edge / 2)
 		var temporary_row := x * map_edge
 		for y in (map_edge / 2):
@@ -126,6 +128,8 @@ static func run(city: CityState) -> Dictionary:
 	pollution.resize(((map_edge / 2) * (map_edge / 2)))
 	var total := 0
 	for x in (map_edge / 2):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var map_row := x * (map_edge / 2)
 		var temporary_row := x * map_edge
 		for y in (map_edge / 2):
@@ -155,6 +159,8 @@ static func run(city: CityState) -> Dictionary:
 	var coordinate_sum_y := 0
 	var center_divisor := 1
 	for x in map_edge:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var row := x * map_edge
 		for y in map_edge:
 			var index := row + y
@@ -169,6 +175,8 @@ static func run(city: CityState) -> Dictionary:
 
 	var developed_tiles := 0
 	for x in map_edge:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var row := x * map_edge
 		var quarter_x := x >> 2
 		var residential_row := quarter_x * map_edge
@@ -213,6 +221,8 @@ static func run(city: CityState) -> Dictionary:
 	land_value.resize(((map_edge / 2) * (map_edge / 2)))
 	var land_value_total := 0
 	for x in (map_edge / 2):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var map_row := x * (map_edge / 2)
 		var flag_row := x * map_edge
 		var full_x := x * 2
@@ -261,6 +271,8 @@ static func run(city: CityState) -> Dictionary:
 			land_value_total += value
 
 	for x in (map_edge / 4):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var row := x * map_edge
 		for y in (map_edge / 4):
 			temporary[row + y] = 0
@@ -270,6 +282,8 @@ static func run(city: CityState) -> Dictionary:
 	fire.resize((map_edge / 4) * (map_edge / 4))
 	var ordinances := city.document.misc_u32(MISC_ORDINANCES)
 	for x in range(1, map_edge - 1):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var row := x * map_edge
 		var service_x := x >> 2
 		var temporary_row := service_x * map_edge
@@ -310,6 +324,8 @@ static func run(city: CityState) -> Dictionary:
 	var growth := PackedByteArray()
 	growth.resize((map_edge / 4) * (map_edge / 4))
 	for x in (map_edge / 4):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var row := x * (map_edge / 4)
 		var temporary_row := x * map_edge
 		for y in (map_edge / 4):
@@ -324,6 +340,8 @@ static func run(city: CityState) -> Dictionary:
 			growth[index] = clampi(_divide_toward_zero(growth_numerator, 8), 0, 0xff)
 
 	for x in (map_edge / 2):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var map_row := x * (map_edge / 2)
 		var temporary_row := x * map_edge
 		var service_row := (x >> 1) * (map_edge / 4)
@@ -345,6 +363,8 @@ static func run(city: CityState) -> Dictionary:
 	crime.resize(((map_edge / 2) * (map_edge / 2)))
 	var crime_total := 0
 	for x in (map_edge / 2):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var map_row := x * (map_edge / 2)
 		var temporary_row := x * map_edge
 		for y in (map_edge / 2):

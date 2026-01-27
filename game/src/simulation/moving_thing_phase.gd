@@ -183,6 +183,8 @@ static func run(
 	)
 
 	for record in range(FIRST_RECORD, ThingData.count(things)):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var offset := record * RECORD_SIZE
 		match int(ThingData.read(things, offset)):
 			TYPE_AIRPLANE:
@@ -270,6 +272,8 @@ static func run(
 	city.text_overlays = text.duplicate()
 	city.tile_flags = flags.duplicate()
 	for index in (map_edge * map_edge):
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 	counters["ok"] = true
 	counters["sailboats_complete"] = true

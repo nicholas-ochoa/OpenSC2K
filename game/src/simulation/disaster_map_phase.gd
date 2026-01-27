@@ -109,7 +109,11 @@ static func run_all(
 	var toxic_active := false
 	var riot_active := false
 	for x in map_edge:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y in map_edge:
+			if city.simulation_slice != null and (y & 15) == 0:
+				city.simulation_slice.checkpoint()
 			var index := x * map_edge + y
 			var overlay := int(OverlayData.read(payloads.XTXT, index))
 			if overlay == FIRE_OVERLAY:
@@ -271,7 +275,11 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var active := false
 	for x in map_edge:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y in map_edge:
+			if city.simulation_slice != null and (y & 15) == 0:
+				city.simulation_slice.checkpoint()
 			var index := x * map_edge + y
 			if OverlayData.read(payloads.XTXT, index) != FIRE_OVERLAY:
 				continue
@@ -366,7 +374,11 @@ static func run_flood(
 	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var active := false
 	for x in map_edge:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y in map_edge:
+			if city.simulation_slice != null and (y & 15) == 0:
+				city.simulation_slice.checkpoint()
 			var index := x * map_edge + y
 			if OverlayData.read(payloads.XTXT, index) != 0xfc:
 				continue
@@ -462,7 +474,11 @@ static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
 	}
 	var active := false
 	for x in map_edge:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y in map_edge:
+			if city.simulation_slice != null and (y & 15) == 0:
+				city.simulation_slice.checkpoint()
 			var index := x * map_edge + y
 			if OverlayData.read(payloads.XTXT, index) != TOXIC_OVERLAY:
 				continue
@@ -536,7 +552,11 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 	var runtime_events := DisasterMapDamage.new_runtime_events()
 	var active := false
 	for x in map_edge:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y in map_edge:
+			if city.simulation_slice != null and (y & 15) == 0:
+				city.simulation_slice.checkpoint()
 			var index := x * map_edge + y
 			var marker := int(OverlayData.read(payloads.XTXT, index))
 			if marker != RIOT_OVERLAY_FORWARD and marker != RIOT_OVERLAY_REVERSE:
@@ -641,7 +661,11 @@ static func run_dispatch(city: CityState, random, lfsr_random) -> Dictionary:
 		"riot_suppressions": 0,
 	}
 	for x in map_edge:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y in map_edge:
+			if city.simulation_slice != null and (y & 15) == 0:
+				city.simulation_slice.checkpoint()
 			var index := x * map_edge + y
 			var overlay := int(OverlayData.read(payloads.XTXT, index))
 			if not OverlayData.is_thing(overlay):
@@ -1223,6 +1247,8 @@ static func _spawn_explosion(
 static func _map_payloads(city: CityState) -> Dictionary:
 	var result := {}
 	for chunk_id in MAP_CHUNK_SIZES:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var chunk := city.document.find_chunk(chunk_id)
 		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(chunk_id):
 			return {}
@@ -1249,6 +1275,8 @@ static func _apply_map_payloads(
 ) -> bool:
 	var applied := PackedStringArray()
 	for chunk_id in MAP_CHUNK_SIZES:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		if payloads[chunk_id] == original[chunk_id]:
 			continue
 		var chunk := city.document.find_chunk(chunk_id)
@@ -1272,6 +1300,8 @@ static func _refresh_city_arrays(city: CityState) -> void:
 	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
 	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
 	for index in (map_edge * map_edge):
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 

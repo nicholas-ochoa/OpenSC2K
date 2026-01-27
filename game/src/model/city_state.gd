@@ -21,6 +21,7 @@ const MISC_NO_DISASTERS_OPTION := 0x1000
 # scurk artwork outside xbld is kept only for this workspace session
 var scurk_artwork_stamps: Array[Dictionary] = []
 var map_size := 128
+var simulation_slice: SimulationSliceBudget
 var document: Sc2File
 var load_error := ""
 

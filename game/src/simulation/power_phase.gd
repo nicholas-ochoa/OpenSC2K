@@ -20,12 +20,16 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 
 	var flags := city.tile_flags.duplicate()
 	for index in flags.size():
+		if city.simulation_slice != null and (index & 127) == 0:
+			city.simulation_slice.checkpoint()
 		flags[index] &= 0xb7
 
 	var total_generation := 0
 	var supplied_consumers := 0
 	var total_consumers := 0
 	for x in map_edge:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		for y in map_edge:
 			var index := city.index_of(x, y)
 			var building := city.buildings[index]
@@ -74,6 +78,8 @@ static func _trace_component(
 	var capacity := 0
 	var consumers := 0
 	while queue_position < queue.size():
+		if city.simulation_slice != null and (queue_position & 127) == 0:
+			city.simulation_slice.checkpoint()
 		var index := queue[queue_position]
 		queue_position += 1
 		if flags[index] & FLAG_MARK or not flags[index] & FLAG_POWERABLE:

@@ -59,6 +59,8 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_city_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_city_simulation_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_city_ui_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/build_large_city_fixtures.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/frame_simulation_test.gd
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/toolbar_interaction_test.gd
 

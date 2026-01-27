@@ -155,6 +155,8 @@ static func run(
 	var updated_bus := 0
 	var updated_rail := 0
 	for record_id in range(1, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 		match int(microsims[offset]):
 			TILE_HYDRO_ONE, TILE_HYDRO_TWO:
@@ -182,7 +184,7 @@ static func run(
 				if int(microsims[offset + 1]) > 48:
 					news_items.append({"type": NEWS_POWER_PLANT, "argument": power_tile + 0x37})
 				if int(microsims[offset + 1]) > 50:
-					var location := _find_microsim_location(changed_payloads.XTXT, record_id, map_edge)
+					var location := _find_microsim_location(changed_payloads.XTXT, record_id, map_edge, city.simulation_slice)
 					if not location.is_empty():
 						var plant_cost: int = POWER_PLANT_COSTS.get(power_tile, 0)
 						var funds := _read_i32(misc, MISC_FUNDS)
@@ -619,6 +621,8 @@ static func run(
 			arcology_launch_pending = false
 	var changed_ids := PackedStringArray()
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
+		if city.simulation_slice != null:
+			city.simulation_slice.checkpoint()
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 	if not BuildingCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
@@ -704,11 +708,13 @@ static func _has_game_random(random) -> bool:
 	return random != null and random.has_method("next_mod")
 
 
-static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int, map_edge: int = 128) -> Dictionary:
+static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int, map_edge: int = 128, budget: SimulationSliceBudget = null) -> Dictionary:
 	if OverlayData.count(text_overlays) != map_edge * map_edge:
 		return {}
 	var text_id := OverlayData.facility_id(record_id)
 	for x in map_edge:
+		if budget != null:
+			budget.checkpoint()
 		for y in map_edge:
 			if int(OverlayData.read(text_overlays, x * map_edge + y)) == text_id:
 				if x == 0 and y == 0:
