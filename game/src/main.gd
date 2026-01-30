@@ -160,6 +160,9 @@ var dynamic_sprite_cache: Dictionary = {}
 var dynamic_foreground_cache: Dictionary = {}
 var dynamic_occluder_cache: Dictionary = {}
 var dynamic_visual_cache: Dictionary = {}
+var dynamic_command_cache := CityDynamicCommandCache.new()
+var foreground_view_rect := Rect2()
+var foreground_complete := false
 var sign_foreground_cache: Dictionary = {}
 var dynamic_special_batch_cache: Dictionary = {}
 var dynamic_sign_occluders: Array[Dictionary] = []
@@ -2896,6 +2899,7 @@ func _refresh_map(force := true) -> void:
 
 
 func _close_region_cache() -> void:
+	foreground_complete = false
 	if region_cache != null:
 		region_cache.close()
 	region_cache = null
@@ -2942,16 +2946,18 @@ func _poll_region_cache() -> void:
 		return
 	static_display_city = region_cache.display_city
 	dynamic_occluder_cache.clear()
-	_invalidate_region_foregrounds(region_cache.foreground_changes)
+	var foreground_changed := _invalidate_region_foregrounds(region_cache.foreground_changes)
 	var texture := region_cache.texture()
 	map_view.set_city_view(static_display_city, texture, texture, true, true)
 	if overlay_mode == "city":
-		_refresh_moving_things(region_cache.view_size)
+		if foreground_changed or not foreground_complete or foreground_view_rect != map_view.visible_source_rect():
+			_refresh_moving_things(region_cache.view_size)
 	else:
 		map_view.set_dynamic_sprites([])
 
 
-func _invalidate_region_foregrounds(changes: Array[Rect2i]) -> void:
+func _invalidate_region_foregrounds(changes: Array[Rect2i]) -> bool:
+	var invalidated := false
 	for key in dynamic_visual_cache.keys():
 		var visual: Dictionary = dynamic_visual_cache[key]
 		if visual.is_empty():
@@ -2961,13 +2967,16 @@ func _invalidate_region_foregrounds(changes: Array[Rect2i]) -> void:
 		for changed in changes:
 			if bounds.intersects(changed):
 				dynamic_visual_cache.erase(key)
+				invalidated = true
 				break
 	for key in sign_foreground_cache.keys():
 		var bounds: Rect2i = sign_foreground_cache[key].signature[1]
 		for changed in changes:
 			if bounds.intersects(changed):
 				sign_foreground_cache.erase(key)
+				invalidated = true
 				break
+	return invalidated
 
 
 func _static_image_size() -> Vector2i:
@@ -3159,6 +3168,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 			map_view.set_dynamic_sprites([])
 		return
 	if region_cache != null and region_cache.gpu_enabled and not region_cache.covered():
+		foreground_complete = false
 		map_view.set_dynamic_sprites([])
 		map_view.set_sign_occlusion_visuals({})
 		return
@@ -3169,7 +3179,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 	var sprite_archive := _sprite_archive_for_view(view_size)
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := int(configuration.divisor)
-	var commands := IsometricRenderer.dynamic_draw_commands(
+	var commands := dynamic_command_cache.get_commands(
 		city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
 	)
 	var visuals: Array[Dictionary] = []
@@ -3179,7 +3189,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 		var visual_cache_key := var_to_str([view_size, command])
 		if dynamic_visual_cache.has(visual_cache_key):
 			var cached: Dictionary = dynamic_visual_cache[visual_cache_key]
-			if not cached.is_empty():
+			if not cached.is_empty() and not bool(cached.get("hidden", false)):
 				visuals.append(cached)
 			continue
 		var resource := _dynamic_sprite_resource(
@@ -3200,7 +3210,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 		if command.shadow:
 			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask)
 			if shadow_image == null:
-				dynamic_visual_cache[visual_cache_key] = {}
+				dynamic_visual_cache[visual_cache_key] = {"hidden": true, "position": Vector2(position), "size": Vector2(resource.image.get_size())}
 				continue
 			visual_image = shadow_image
 			texture = ImageTexture.create_from_image(shadow_image)
@@ -3245,6 +3255,8 @@ func _refresh_moving_things(view_size := -1) -> void:
 	)
 	map_view.set_dynamic_sprites(batched_visuals)
 	_refresh_sign_occlusion(view_size)
+	foreground_view_rect = map_view.visible_source_rect()
+	foreground_complete = true
 
 
 func _refresh_sign_occlusion(view_size: int) -> void:
@@ -3271,6 +3283,7 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 			static_occlusion_commands, divisor
 		)
 	var color_indices := palette.animation_index_map(palette_cycle_ticks)
+	var gpu_palette := region_cache != null and region_cache.gpu_enabled
 	var image_bounds := Rect2i(Vector2i.ZERO, _static_image_size())
 	var visuals := {}
 	for entry in entries:
@@ -3288,8 +3301,8 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 		if sign_foreground_cache.has(key) and sign_foreground_cache[key].signature == signature:
 			var cached: Dictionary = sign_foreground_cache[key]
 			if cached.indices != null:
-				var palette_signature := _sign_palette_signature(cached.used_indices, color_indices)
-				if int(cached.palette_signature) != palette_signature:
+				var palette_signature := 0 if gpu_palette else _sign_palette_signature(cached.used_indices, color_indices)
+				if not gpu_palette and int(cached.palette_signature) != palette_signature:
 					cached.visual.texture = ImageTexture.create_from_image(_sign_palette_image(cached.indices, color_indices))
 					cached.palette_signature = palette_signature
 				visuals[key] = cached.visual
@@ -3310,17 +3323,18 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 			var moving_image: Image = visual.get("image") as Image
 			if moving_image != null:
 				CitySignForeground.add_moving(foreground, moving_image, Vector2i(visual.position), bounds)
-		var used_indices := CitySignForeground.used_indices(foreground)
-		if used_indices.is_empty():
+		var used_indices := {} if gpu_palette else CitySignForeground.used_indices(foreground)
+		if foreground.is_invisible() if gpu_palette else used_indices.is_empty():
 			sign_foreground_cache[key] = {"signature": signature, "indices": null}
 			continue
-		var texture := ImageTexture.create_from_image(_sign_palette_image(foreground, color_indices))
+		var texture := ImageTexture.create_from_image(foreground if gpu_palette else _sign_palette_image(foreground, color_indices))
 		visuals[int(entry.key)] = {
+			"indexed": gpu_palette,
 			"texture": texture,
 			"position": Vector2(bounds.position),
 			"size": Vector2(bounds.size),
 		}
-		sign_foreground_cache[key] = {"signature": signature, "indices": foreground, "palette_signature": _sign_palette_signature(used_indices, color_indices), "used_indices": used_indices, "visual": visuals[key]}
+		sign_foreground_cache[key] = {"signature": signature, "indices": foreground, "palette_signature": 0 if gpu_palette else _sign_palette_signature(used_indices, color_indices), "used_indices": used_indices, "visual": visuals[key]}
 	map_view.set_sign_occlusion_visuals(visuals)
 
 

@@ -118,6 +118,7 @@ var _base_material: ShaderMaterial
 var _dynamic_canvas: CityDynamicSpriteCanvas
 var _dynamic_material: ShaderMaterial
 var _palette_shader: Shader
+var _foreground_palette_material: ShaderMaterial
 var _sign_font: SystemFont
 var _sign_entries: Array[Dictionary] = []
 var _sign_entries_city: CityState
@@ -143,6 +144,8 @@ func set_city_view(
 	preserve_sign_cache := false
 ) -> void:
 	var reset_center := city_texture == null or city_texture.get_size() != texture.get_size()
+	var old_center := source_center
+	var old_sign_scans := _sign_cache_build_count
 	if not preserve_sign_cache or city != value:
 		_preserve_sign_layout = preserve_sign_cache
 		city = value
@@ -156,7 +159,10 @@ func set_city_view(
 		source_center = Vector2(city_texture.get_size()) * 0.5
 	_clamp_source_center()
 	_sync_base_layer()
-	queue_redraw()
+	if preserve_sign_cache:
+		_ensure_sign_entries()
+	if not preserve_sign_cache or reset_center or old_center != source_center or old_sign_scans != _sign_cache_build_count or hover_tile.x >= 0 or selection_start.x >= 0:
+		queue_redraw()
 	viewport_changed.emit()
 
 
@@ -510,7 +516,8 @@ func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
 		_dynamic_canvas.set_visuals(
 			dynamic_sprites, _view_scale(), _draw_offset(_view_scale())
 		)
-	queue_redraw()
+	else:
+		queue_redraw()
 
 
 func dynamic_render_node_count() -> int:
@@ -748,6 +755,7 @@ func _draw_sign_occlusion(key: int, scale: float, offset: Vector2) -> void:
 		texture,
 		Rect2(offset + source_position * scale, source_size * scale),
 		false,
+		CityForegroundPalette.INDEXED_DRAW_COLOR if bool(visual.get("indexed", false)) else Color.WHITE,
 	)
 
 
@@ -1118,6 +1126,8 @@ func _ensure_base_layer() -> void:
 	_base_layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_base_layer.stretch_mode = TextureRect.STRETCH_SCALE
 	_base_layer.show_behind_parent = true
+	_foreground_palette_material = CityForegroundPalette.create_material(animated_palette_texture)
+	material = _foreground_palette_material
 	_palette_shader = Shader.new()
 	_palette_shader.code = PALETTE_CYCLE_SHADER
 	_base_material = _new_palette_material()
@@ -1197,6 +1207,8 @@ func _sync_base_layer() -> void:
 
 
 func _sync_base_material() -> void:
+	if _foreground_palette_material != null:
+		_foreground_palette_material.set_shader_parameter("foreground_palette", animated_palette_texture)
 	if _base_material == null:
 		return
 	_base_material.set_shader_parameter("palette_indices", palette_index_texture)

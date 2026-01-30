@@ -333,7 +333,7 @@ func _tick_gpu() -> bool:
 		if key not in wanted or (entries.has(key) and int(entries[key].generation) > int(worker.generation)):
 			discarded_regions += 1
 			continue
-		if int(worker.generation) == generation:
+		if int(worker.generation) == generation and not _prepared:
 			_snapshot = result.display_city
 			display_city = _snapshot
 			_prepared = true

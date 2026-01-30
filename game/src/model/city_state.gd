@@ -322,7 +322,13 @@ func masked_tile_flag_signature(mask: int) -> int:
 		return int(cached.get("value", 0))
 	var visible_flags := PackedByteArray()
 	visible_flags.resize(tile_flags.size())
-	for index in tile_flags.size():
+	var word_mask := 0
+	for lane in 8:
+		word_mask |= byte_mask << (lane * 8)
+	var full_bytes := tile_flags.size() - tile_flags.size() % 8
+	for offset in range(0, full_bytes, 8):
+		visible_flags.encode_u64(offset, tile_flags.decode_u64(offset) & word_mask)
+	for index in range(full_bytes, tile_flags.size()):
 		visible_flags[index] = tile_flags[index] & byte_mask
 	var value := hash(visible_flags)
 	_masked_tile_flag_signatures[byte_mask] = {
