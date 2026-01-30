@@ -1933,8 +1933,9 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 static func _static_text_overlay_signature(city: CityState) -> int:
 	var values := PackedInt32Array()
 	var indices := OverlayData.sign_indices(city.text_overlays)
-	for record in city.thing_count():
-		if int(city.thing(record).get("type", 0)) not in DISPATCH_SPRITE_OFFSETS:
+	var things := city.document.find_chunk("XTHG")
+	for record in city.thing_count() if things != null else 0:
+		if int(things.decoded_payload[record * CityState.THING_RECORD_SIZE]) not in DISPATCH_SPRITE_OFFSETS:
 			continue
 		var overlay_id := OverlayData.thing_id(record)
 		var found := OverlayData.find(city.text_overlays, overlay_id)

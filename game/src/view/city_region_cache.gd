@@ -37,6 +37,8 @@ var _changed := false
 var _viewport_rect := Rect2i()
 var _viewport_valid := false
 var foreground_changes: Array[Rect2i] = []
+var sign_requests: Array[Dictionary] = []
+var sign_layout_token: Array = []
 var _foreground_reset := true
 
 static func gpu_supported(preference := "gpu") -> bool:
@@ -81,6 +83,33 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_show_pipes = show_pipes
 	_show_subways = show_subways
 	_prepared = mode == "underground"
+
+func set_sign_requests(requests: Array[Dictionary]) -> void:
+	var next: Array[Dictionary] = []
+	for request in requests:
+		var bounds: Rect2i = request.bounds.intersection(Rect2i(Vector2i.ZERO, native_size * divisor))
+		if bounds.has_area():
+			next.append({"key": int(request.key), "bounds": bounds, "draw_order": int(request.draw_order)})
+	sign_requests = next
+
+func sign_foreground(key: int, bounds: Rect2i, order: int) -> Image:
+	var result := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
+	result.fill(Color.TRANSPARENT)
+	for region_key in _keys_for_bounds(bounds):
+		if not entries.has(region_key):
+			return null
+		var entry: Dictionary = entries[region_key]
+		var patch: Dictionary = entry.get("sign_foregrounds", {}).get(key, {})
+		if patch.is_empty() or patch.source_bounds != bounds or int(patch.draw_order) != order:
+			return null
+		var image: Image = patch.image
+		if divisor > 1:
+			image = image.duplicate()
+			image.resize(image.get_width() * divisor, image.get_height() * divisor, Image.INTERPOLATE_NEAREST)
+		var world := Rect2i(patch.bounds.position * divisor, patch.bounds.size * divisor)
+		var overlap := bounds.intersection(world)
+		result.blit_rect(image, Rect2i(overlap.position - world.position, overlap.size), overlap.position - bounds.position)
+	return result
 
 func update_viewport(source_rect: Rect2) -> void:
 	var rect := Rect2i(Vector2i((source_rect.position / divisor).floor()), Vector2i((source_rect.size / divisor).ceil()) + Vector2i.ONE)
@@ -287,10 +316,12 @@ func close() -> void:
 	_snapshot = null
 	display_city = null
 
-static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, render_mode: String, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool, gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1) -> Dictionary:
+static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, render_mode: String, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool, gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1, foreground_requests: Array[Dictionary] = []) -> Dictionary:
 	var started := Time.get_ticks_usec()
 	var display := city if prepared else CityViewFilter.surface_copy(city, visibility)
 	var result := CityGpuRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, gpu_context, revision, atlas_revision) if gpu_context != null else CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways)
+	if result.ok and gpu_context != null and render_mode == "city":
+		result.sign_foregrounds = CityGpuSignForegrounds.build(result, foreground_requests, palette, sprites, gpu_context, int(CityIsometricRenderer.view_configuration(view).divisor))
 	result.display_city = display
 	result.usec = Time.get_ticks_usec() - started
 	return result
@@ -381,7 +412,7 @@ func _tick_gpu() -> bool:
 			worker.key = key
 			worker.thread = Thread.new()
 			var bounds := Rect2i(key * region_edge, Vector2i(region_edge, region_edge))
-			var error: Error = worker.thread.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared, _show_pipes, _show_subways, worker.context, generation, worker.atlas_revision), Thread.PRIORITY_LOW)
+			var error: Error = worker.thread.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared, _show_pipes, _show_subways, worker.context, generation, worker.atlas_revision, sign_requests), Thread.PRIORITY_LOW)
 			if error != OK:
 				worker.thread = null
 				_close_gpu_workers()

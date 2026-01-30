@@ -2922,11 +2922,18 @@ func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 		region_cache.signature = []
 	region_cache.configure(city, palette_index_encoding, sprites, signature, view_size,
 		overlay_mode, surface_visibility, show_underground_pipes, show_underground_subways, dirty)
+	if overlay_mode == "city":
+		var labels := city.document.find_chunk("XLAB")
+		# reuse the altitude and sign/dispatch hashes already computed for this snapshot
+		region_cache.sign_layout_token = [city.map_size, signature[1], signature[2], signature[3], signature[9], hash(labels.decoded_payload) if labels != null else 0]
+	else:
+		region_cache.sign_layout_token = []
 	static_visual_signature = signature
 	static_render_mode = overlay_mode
 	static_display_city = region_cache.display_city
 	var texture := region_cache.texture()
-	map_view.set_city_view(static_display_city, texture, texture, true, true)
+	map_view.set_city_view(static_display_city, texture, texture, true, true, region_cache.sign_layout_token)
+	region_cache.set_sign_requests(map_view.sign_source_entries())
 	region_cache.update_viewport(map_view.visible_source_rect())
 	if overlay_mode == "city":
 		_refresh_moving_things(view_size)
@@ -2948,7 +2955,7 @@ func _poll_region_cache() -> void:
 	dynamic_occluder_cache.clear()
 	var foreground_changed := _invalidate_region_foregrounds(region_cache.foreground_changes)
 	var texture := region_cache.texture()
-	map_view.set_city_view(static_display_city, texture, texture, true, true)
+	map_view.set_city_view(static_display_city, texture, texture, true, true, region_cache.sign_layout_token)
 	if overlay_mode == "city":
 		if foreground_changed or not foreground_complete or foreground_view_rect != map_view.visible_source_rect():
 			_refresh_moving_things(region_cache.view_size)
@@ -3307,29 +3314,39 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 					cached.palette_signature = palette_signature
 				visuals[key] = cached.visual
 			continue
-		var masks: Array[Dictionary] = []
-		for command in _static_occlusion_candidates(bounds):
-			if int(command.depth_order) <= int(entry.draw_order):
-				continue
-			var position := Vector2i(command.position) * divisor
-			if not bounds.intersects(Rect2i(position, Vector2i(command.size) * divisor)):
-				continue
-			var resource := _dynamic_sprite_resource(sprite_archive, int(command.sprite_id), bool(command.flip), divisor)
-			if not resource.is_empty():
-				masks.append({"image": resource.image, "position": position})
-		var sampled: Image = region_cache.image_region(bounds) if region_cache != null else static_city_image.get_region(bounds)
-		var foreground := CitySignForeground.static_pixels(sampled, masks, bounds)
+		var foreground: Image = region_cache.sign_foreground(key, bounds, int(entry.draw_order)) if gpu_palette else null
+		if foreground == null:
+			var masks: Array[Dictionary] = []
+			for command in _static_occlusion_candidates(bounds):
+				if int(command.depth_order) <= int(entry.draw_order):
+					continue
+				var position := Vector2i(command.position) * divisor
+				if not bounds.intersects(Rect2i(position, Vector2i(command.size) * divisor)):
+					continue
+				var resource := _dynamic_sprite_resource(sprite_archive, int(command.sprite_id), bool(command.flip), divisor)
+				if not resource.is_empty():
+					masks.append({"image": resource.image, "position": position})
+			var sampled: Image = region_cache.image_region(bounds) if region_cache != null else static_city_image.get_region(bounds)
+			foreground = CitySignForeground.static_pixels(sampled, masks, bounds)
 		for visual in MapControl.later_sign_occluder_visuals(moving_candidates, bounds, int(entry.draw_order)):
 			var moving_image: Image = visual.get("image") as Image
 			if moving_image != null:
 				CitySignForeground.add_moving(foreground, moving_image, Vector2i(visual.position), bounds)
 		var used_indices := {} if gpu_palette else CitySignForeground.used_indices(foreground)
-		if foreground.is_invisible() if gpu_palette else used_indices.is_empty():
+		var empty_foreground := foreground.is_invisible() if gpu_palette else used_indices.is_empty()
+		if empty_foreground:
 			sign_foreground_cache[key] = {"signature": signature, "indices": null}
 			continue
-		var texture := ImageTexture.create_from_image(foreground if gpu_palette else _sign_palette_image(foreground, color_indices))
+		var texture: Texture2D
+		var previous: Dictionary = map_view.sign_occlusion_visuals.get(key, {})
+		if gpu_palette and bool(previous.get("indexed", false)) and previous.has("indices") and previous.indices.get_size() == foreground.get_size() and previous.indices.get_data() == foreground.get_data():
+			foreground = previous.indices
+			texture = previous.texture
+		else:
+			texture = ImageTexture.create_from_image(foreground if gpu_palette else _sign_palette_image(foreground, color_indices))
 		visuals[int(entry.key)] = {
 			"indexed": gpu_palette,
+			"indices": foreground if gpu_palette else null,
 			"texture": texture,
 			"position": Vector2(bounds.position),
 			"size": Vector2(bounds.size),

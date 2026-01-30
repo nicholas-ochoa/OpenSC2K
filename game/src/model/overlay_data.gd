@@ -77,12 +77,15 @@ static func valid_id(id: int, edge: int) -> bool:
 static func sign_indices(data: PackedByteArray) -> PackedInt32Array:
 	var result := PackedInt32Array()
 	var cells := count(data)
-	# packedbytearray.find performs the bulk scan outside the script vm
+	# restrict repeated native searches to the low plane; high-plane bytes are ids,
+	# not extra map cells. check the high byte only for actual low-plane hits
+	var low := data.slice(0, cells) if cells < data.size() else data
 	for id in range(1, 51):
-		var index := find(data, id)
+		var index := low.find(id)
 		while index >= 0:
-			result.append(index)
-			index = find(data, id, index + 1)
+			if cells == data.size() or data[cells + index] == 0:
+				result.append(index)
+			index = low.find(id, index + 1)
 	if cells < data.size():
 		for high in range(EXTRA_SIGN >> 8, EXTRA_THING >> 8):
 			var offset := data.find(high, cells)

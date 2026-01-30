@@ -112,6 +112,7 @@ var _shake_offset := Vector2.ZERO
 var _next_wheel_zoom_msec := 0
 var _tile_layers: Array[TextureRect] = []
 var _mesh_layers: Array[MeshInstance2D] = []
+var _mesh_view_scale := -1.0
 var _tiled_source: Texture2D
 var _base_layer: TextureRect
 var _base_material: ShaderMaterial
@@ -124,6 +125,7 @@ var _sign_entries: Array[Dictionary] = []
 var _sign_entries_city: CityState
 var _sign_entries_zoom := -1.0
 var _sign_layout_signature: Array = []
+var _external_sign_layout_token: Array = []
 var _sign_cache_build_count := 0
 
 
@@ -141,15 +143,22 @@ func set_city_view(
 	texture: Texture2D,
 	index_texture: Texture2D = null,
 	palette_lookup_all := false,
-	preserve_sign_cache := false
+	preserve_sign_cache := false,
+	sign_layout_token: Array = []
 ) -> void:
 	var reset_center := city_texture == null or city_texture.get_size() != texture.get_size()
 	var old_center := source_center
 	var old_sign_scans := _sign_cache_build_count
+	var reuse_layout := preserve_sign_cache and not sign_layout_token.is_empty() and sign_layout_token == _external_sign_layout_token and _sign_entries_city != null and is_equal_approx(_sign_entries_zoom, zoom_factor)
 	if not preserve_sign_cache or city != value:
 		_preserve_sign_layout = preserve_sign_cache
 		city = value
 		_preserve_sign_layout = false
+	if reuse_layout:
+		_sign_entries_city = value
+	elif not sign_layout_token.is_empty() and sign_layout_token != _external_sign_layout_token:
+		_sign_entries_city = null
+	_external_sign_layout_token = sign_layout_token.duplicate()
 	city_texture = texture
 	palette_index_texture = index_texture
 	base_palette_lookup_all = palette_lookup_all
@@ -269,6 +278,7 @@ func _ensure_sign_entries() -> void:
 
 
 func _invalidate_sign_entries() -> void:
+	_external_sign_layout_token.clear()
 	_sign_layout_signature.clear()
 	_sign_entries.clear()
 	_sign_entries_city = null
@@ -1180,6 +1190,11 @@ func _sync_base_layer() -> void:
 				_base_layer.add_child(mesh)
 			else:
 				retained_meshes.erase(entry.position)
+				if mesh.mesh == entry.mesh and mesh.texture == entry.texture and int(mesh.get_meta("divisor")) == int(entry.divisor):
+					_mesh_layers.append(mesh)
+					continue
+			mesh.position = Vector2(entry.position) * scale
+			mesh.scale = Vector2.ONE * scale * int(entry.divisor)
 			if mesh.mesh != entry.mesh:
 				mesh.mesh = entry.mesh
 			if mesh.texture != entry.texture:
@@ -1196,9 +1211,11 @@ func _sync_base_layer() -> void:
 	for tile in _tile_layers:
 		tile.position = Vector2(tile.get_meta("source_position")) * scale
 		tile.size = Vector2(tile.get_meta("source_size")) * scale
-	for mesh in _mesh_layers:
-		mesh.position = Vector2(mesh.get_meta("source_position")) * scale
-		mesh.scale = Vector2.ONE * scale * int(mesh.get_meta("divisor"))
+	if not is_equal_approx(_mesh_view_scale, scale):
+		for mesh in _mesh_layers:
+			mesh.position = Vector2(mesh.get_meta("source_position")) * scale
+			mesh.scale = Vector2.ONE * scale * int(mesh.get_meta("divisor"))
+		_mesh_view_scale = scale
 	_base_layer.position = _draw_offset(scale)
 	_base_layer.size = Vector2(city_texture.get_size()) * scale
 	_base_layer.show()

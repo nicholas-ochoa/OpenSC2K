@@ -22,6 +22,9 @@ func _run() -> void:
 	view._sync_base_layer()
 	assert(view._mesh_layers.size() == 1 and view._mesh_layers[0] == first)
 	assert(first.mesh == mesh_b and first.get_meta("divisor") == 2)
+	view.city_texture = _source([{ "position": Vector2.ZERO, "mesh": mesh_b, "texture": texture, "divisor": 4 }])
+	view._sync_base_layer()
+	assert(first.get_meta("divisor") == 4 and first.scale == Vector2.ONE * view._view_scale() * 4, "Cached geometry used the old divisor")
 	var foreground := {1: {"texture": texture}}
 	view.set_sign_occlusion_visuals(foreground)
 	var replacement := ImageTexture.create_from_image(Image.create(3, 3, false, Image.FORMAT_LA8))
@@ -52,11 +55,28 @@ func _run() -> void:
 	assert(main._sign_palette_signature({17: true}, mapping) == colors)
 	mapping[17] = 18
 	assert(main._sign_palette_signature({17: true}, mapping) != colors)
+	_check_sign_layout_tokens(view)
 	main.free()
 	view.queue_free()
 	await process_frame
 	print("PASS: GPU node retention, changed mesh replacement, eviction and foreground input ownership")
 	quit()
+
+func _check_sign_layout_tokens(view: CityMapControl) -> void:
+	var city := CityState.from_document(Sc2File.load_path("res://../references/CITIES/SYDNEY.SC2"))
+	view.set_city_view(city, view.city_texture, null, false, true, [1])
+	var scans := view._sign_cache_build_count
+	var copy := CityState.from_document(city.document.duplicate_document())
+	view.set_city_view(copy, view.city_texture, null, false, true, [1])
+	assert(view._sign_entries_city == copy and view._sign_cache_build_count == scans)
+	assert(copy.set_label(1, "Updated label"))
+	view.set_city_view(copy, view.city_texture, null, false, true, [2])
+	assert(view._sign_cache_build_count == scans + 1, "Changed labels were not checked on the current city")
+	view.zoom_factor = 0.25
+	view.set_city_view(copy, view.city_texture, null, false, true, [2])
+	assert(view._sign_cache_build_count == scans + 2, "Zoom left stale sign dimensions")
+	view._invalidate_sign_entries()
+	assert(view._external_sign_layout_token.is_empty())
 
 func _source(meshes: Array) -> Texture2D:
 	var result := PlaceholderTexture2D.new()

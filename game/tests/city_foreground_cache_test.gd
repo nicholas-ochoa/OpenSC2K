@@ -27,6 +27,21 @@ func _run() -> void:
 	var saved: Dictionary = main.sign_foreground_cache.duplicate(true)
 	main._refresh_moving_things(main._city_view_size())
 	assert(main.sign_foreground_cache == saved, "Unchanged foreground replaced cached masks or textures")
+	var previous: Dictionary = main.map_view.sign_occlusion_visuals.duplicate(true)
+	assert(not previous.is_empty())
+	main.sign_foreground_cache.clear()
+	main._refresh_sign_occlusion(main._city_view_size())
+	for key in previous:
+		assert(main.map_view.sign_occlusion_visuals[key].texture == previous[key].texture, "Identical pixels caused another texture upload")
+		assert(main.map_view.sign_occlusion_visuals[key].indices == previous[key].indices)
+	var key: int = previous.keys()[0]
+	# Simulate a retained foreground from an earlier region with different pixels.
+	var stale: Image = previous[key].indices.duplicate()
+	stale.fill(Color.TRANSPARENT)
+	main.map_view.sign_occlusion_visuals[key].indices = stale
+	main.sign_foreground_cache.clear()
+	main._refresh_sign_occlusion(main._city_view_size())
+	assert(main.map_view.sign_occlusion_visuals[key].texture != previous[key].texture, "Changed foreground kept the old texture")
 	var indexed := Image.create(2, 1, false, Image.FORMAT_RGBA8)
 	indexed.set_pixel(0, 0, Color8(161, 161, 161, 255))
 	indexed.set_pixel(1, 0, Color.TRANSPARENT)
