@@ -101,3 +101,5 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_gpu_cache_test.gd
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_foreground_cache_test.gd
+
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/renderer_settings_test.gd

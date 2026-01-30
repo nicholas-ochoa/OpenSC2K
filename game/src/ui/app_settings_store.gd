@@ -17,6 +17,7 @@ static func load_values(
 		"graphics_source": "auto",
 		"graphics_folder": "",
 		"soundtrack_folder": "",
+		"city_renderer": "gpu",
 	}
 	var config := ConfigFile.new()
 	if config.load(path) != OK:
@@ -37,7 +38,12 @@ static func load_values(
 	)
 	result.graphics_source = str(config.get_value("graphics", "source", "auto"))
 	result.graphics_folder = str(config.get_value("graphics", "folder", ""))
+	result.city_renderer = normalize_renderer(config.get_value("display", "city_renderer", "gpu"))
 	return result
+
+
+static func normalize_renderer(value: Variant) -> String:
+	return "cpu" if str(value) == "cpu" else "gpu"
 
 
 static func save_values(
@@ -48,6 +54,7 @@ static func save_values(
 	graphics_source := "",
 	graphics_folder := "",
 	soundtrack_folder: Variant = null,
+	city_renderer: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 	if FileAccess.file_exists(path):
@@ -60,4 +67,6 @@ static func save_values(
 	config.set_value("audio", "music_volume", clampf(music_volume, 0.0, 1.0))
 	config.set_value("audio", "effects_volume", clampf(effects_volume, 0.0, 1.0))
 	config.set_value("display", "fullscreen", fullscreen)
+	if city_renderer != null:
+		config.set_value("display", "city_renderer", normalize_renderer(city_renderer))
 	return config.save(path)

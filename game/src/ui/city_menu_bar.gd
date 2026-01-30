@@ -12,6 +12,8 @@ signal windows_menu_requested(id: int)
 signal newspaper_menu_requested(id: int)
 signal help_menu_requested(id: int)
 
+const MENU_RENDERER_GPU := 0x8300
+const MENU_RENDERER_CPU := 0x8301
 const MENU_FULL_SIZE_GRAPHICS := 0x8008
 const MENU_SAVE_CITY := 7
 const MENU_AUTO_BUDGET := 0x8004
@@ -76,10 +78,13 @@ func _ready() -> void:
 		["Auto-Budget", MENU_AUTO_BUDGET], ["Auto-Goto", MENU_AUTO_GOTO],
 		["Sound Effects", MENU_SOUND_EFFECTS], ["Music", MENU_MUSIC],
 		["Always Use Hi-Res Graphics", MENU_FULL_SIZE_GRAPHICS],
+		["Default Renderer: GPU", MENU_RENDERER_GPU], ["Default Renderer: CPU", MENU_RENDERER_CPU],
 	], _on_options_menu)
 	for option_id in [MENU_AUTO_BUDGET, MENU_AUTO_GOTO, MENU_SOUND_EFFECTS, MENU_MUSIC, MENU_FULL_SIZE_GRAPHICS]:
 		var option_index := options_menu.get_popup().get_item_index(option_id)
 		options_menu.get_popup().set_item_as_checkable(option_index, true)
+	for renderer_id in [MENU_RENDERER_GPU, MENU_RENDERER_CPU]:
+		options_menu.get_popup().set_item_as_radio_checkable(options_menu.get_popup().get_item_index(renderer_id), true)
 	options_menu.disabled = true
 
 	view_menu = _add_menu(menu_row, "View", [

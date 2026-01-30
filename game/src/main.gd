@@ -111,6 +111,7 @@ var full_size_graphics := true
 var show_underground_pipes := true
 var show_underground_subways := true
 var app_soundtrack_folder := ""
+var app_city_renderer := "gpu"
 var app_music_volume := 0.8
 var app_effects_volume := 0.8
 var app_fullscreen := false
@@ -386,7 +387,7 @@ func _import_original_game(executable_path: String) -> void:
 	app_graphics_source = "original"
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer,
 	)
 	if not runtime_initialized:
 		reference_root = install_result.root
@@ -763,11 +764,29 @@ func _hide_main_menu() -> void:
 		status_label.text = "City ready."
 
 
+func _set_city_renderer(value: String) -> void:
+	var selected := SettingsStore.normalize_renderer(value)
+	if selected == app_city_renderer:
+		return
+	app_city_renderer = selected
+	_close_region_cache()
+	if static_render_thread != null and static_render_thread.is_started():
+		static_render_thread.wait_to_finish()
+	static_render_thread = null
+	static_render_job = null
+	pending_static_render = false
+	static_view_cache.clear()
+	dynamic_visual_cache.clear()
+	sign_foreground_cache.clear()
+	_sync_city_option_menus()
+	_refresh_map()
+
+
 func _open_settings_dialog() -> void:
 	settings_dialog.show_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
 		app_graphics_source, app_graphics_folder, asset_source.graphics_name,
-		app_soundtrack_folder, audio_controller.resolve_soundtrack_folder(""),
+		app_soundtrack_folder, audio_controller.resolve_soundtrack_folder(""), app_city_renderer,
 	)
 
 
@@ -781,6 +800,7 @@ func _apply_settings() -> void:
 			return
 	app_graphics_source = values.graphics_source
 	app_graphics_folder = values.graphics_folder
+	_set_city_renderer(str(values.city_renderer))
 	app_soundtrack_folder = str(values.soundtrack_folder)
 	app_music_volume = float(values.music_volume)
 	app_effects_volume = float(values.effects_volume)
@@ -795,7 +815,7 @@ func _apply_settings() -> void:
 	)
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer,
 	)
 	status_label.text = (
 		("Settings saved. Restart OpenSC2K to use the selected graphics." if changed_source else "Settings saved.")
@@ -811,6 +831,7 @@ func _load_app_settings() -> void:
 		app_effects_volume,
 		app_fullscreen,
 	)
+	app_city_renderer = values.city_renderer
 	app_soundtrack_folder = values.soundtrack_folder
 	app_music_volume = values.music_volume
 	app_effects_volume = values.effects_volume
@@ -1395,6 +1416,12 @@ func _on_speed_menu(id: int) -> void:
 
 
 func _on_options_menu(id: int) -> void:
+	if id in [CityMenuBar.MENU_RENDERER_GPU, CityMenuBar.MENU_RENDERER_CPU]:
+		_set_city_renderer("cpu" if id == CityMenuBar.MENU_RENDERER_CPU else "gpu")
+		var error := SettingsStore.save_values(app_music_volume, app_effects_volume, app_fullscreen,
+			SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer)
+		status_label.text = "Default renderer: %s%s" % [app_city_renderer.to_upper(), "" if error == OK else " (could not save preference)"]
+		return
 	if id == CityMenuBar.MENU_FULL_SIZE_GRAPHICS:
 		full_size_graphics = not full_size_graphics
 		_sync_city_option_menus()
@@ -1472,6 +1499,8 @@ func _sync_city_option_menus() -> void:
 		view_menu.disabled = not has_city
 	var option_states := {
 		CityMenuBar.MENU_FULL_SIZE_GRAPHICS: full_size_graphics,
+		CityMenuBar.MENU_RENDERER_GPU: app_city_renderer == "gpu",
+		CityMenuBar.MENU_RENDERER_CPU: app_city_renderer == "cpu",
 		MENU_AUTO_BUDGET: has_city and city.auto_budget_enabled(),
 		MENU_AUTO_GOTO: has_city and city.auto_goto_enabled(),
 		MENU_SOUND_EFFECTS: has_city and city.sound_enabled(),
@@ -2739,7 +2768,7 @@ func _refresh_map(force := true) -> void:
 	map_view.set_signs_visible(
 		overlay_mode == "city" and bool(surface_visibility.signs)
 	)
-	if (city.map_size > 128 or CityRegionCache.gpu_supported()) and overlay_mode in ["city", "underground"]:
+	if (city.map_size > 128 or CityRegionCache.gpu_supported(app_city_renderer)) and overlay_mode in ["city", "underground"]:
 		_refresh_region_map(force)
 		return
 	_close_region_cache()
@@ -2875,6 +2904,7 @@ func _close_region_cache() -> void:
 func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	if region_cache == null:
 		region_cache = CityRegionCache.new()
+		region_cache.gpu_enabled = CityRegionCache.gpu_supported(app_city_renderer)
 	static_city_image = null
 	static_view_cache.clear()
 	static_occlusion_commands.clear()

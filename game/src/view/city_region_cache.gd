@@ -35,9 +35,9 @@ var _layout_generation := 0
 var _job_layout := 0
 var _changed := false
 
-static func gpu_supported() -> bool:
+static func gpu_supported(preference := "gpu") -> bool:
 	var requested := OS.get_environment("OPENSC2K_CITY_RENDERER").to_lower()
-	return requested == "gpu" or (DisplayServer.get_name() != "headless" and requested != "cpu")
+	return requested == "gpu" or (DisplayServer.get_name() != "headless" and requested != "cpu" and preference != "cpu")
 
 func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		new_signature: Array, new_view: int, new_mode: String, visibility: Dictionary,
