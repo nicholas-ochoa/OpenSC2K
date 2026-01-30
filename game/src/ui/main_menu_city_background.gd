@@ -48,6 +48,11 @@ func _ready() -> void:
 	city_name_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	city_name_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT)
 	city_name_label.position = Vector2(20, -48)
+	city_name_label.modulate.a = 0.4
+	var name_font := SystemFont.new()
+	name_font.font_names = PackedStringArray(["Helvetica Neue", "Arial", "sans-serif"])
+	name_font.font_weight = 300
+	city_name_label.add_theme_font_override("font", name_font)
 	city_name_label.add_theme_color_override("font_color", Color.WHITE)
 	city_name_label.add_theme_color_override("font_shadow_color", Color(0, 0, 0, 0.95))
 	city_name_label.add_theme_constant_override("shadow_offset_x", 2)

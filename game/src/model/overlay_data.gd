@@ -72,3 +72,21 @@ static func valid_id(id: int, edge: int) -> bool:
 	if edge == 128: return false
 	var factor := edge * edge / 16384
 	return (is_facility(id) and facility_record(id) < 150 * factor) or (is_sign(id) and id < EXTRA_SIGN + 50 * factor - 50) or (is_thing(id) and thing_record(id) < 40 * factor)
+
+
+static func sign_indices(data: PackedByteArray) -> PackedInt32Array:
+	var result := PackedInt32Array()
+	var cells := count(data)
+	# packedbytearray.find performs the bulk scan outside the script vm
+	for id in range(1, 51):
+		var index := find(data, id)
+		while index >= 0:
+			result.append(index)
+			index = find(data, id, index + 1)
+	if cells < data.size():
+		for high in range(EXTRA_SIGN >> 8, EXTRA_THING >> 8):
+			var offset := data.find(high, cells)
+			while offset >= 0:
+				result.append(offset - cells)
+				offset = data.find(high, offset + 1)
+	return result

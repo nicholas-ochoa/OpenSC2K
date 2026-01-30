@@ -1,0 +1,71 @@
+extends SceneTree
+
+func _initialize() -> void:
+	call_deferred("_run")
+
+func _run() -> void:
+	var city := CityState.from_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x"))
+	var sprites := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
+	var palette := Sc2Palette.index_encoding()
+	var cache := CityRegionCache.new()
+	cache.gpu_enabled = true
+	cache.configure(city, palette, sprites, [1], 2, "city", {}, true, true)
+	var bounds := Rect2i(cache.native_size / 2 - Vector2i(600, 350), Vector2i(1200, 700))
+	cache.update_viewport(Rect2(bounds))
+	await _drain(cache)
+	assert(cache.gpu_enabled and cache.ready())
+	assert(cache.texture().get_meta("map_meshes").size() == cache.visible.size())
+	var expected := CityRegionRenderer.render(city, palette, sprites, bounds, 2)
+	assert(expected.ok)
+	var sampled := cache.image_region(bounds)
+	assert(sampled.get_data() == expected.image.get_data(), "GPU sample differs from CPU at a region border")
+	for x in range(bounds.position.x, bounds.end.x, 29):
+		for y in range(bounds.position.y, bounds.end.y, 31):
+			assert(cache.pixel(Vector2i(x, y)) == sampled.get_pixel(x - bounds.position.x, y - bounds.position.y))
+	for offset in [Vector2i(1700, 900), Vector2i(-900, 1200), Vector2i.ZERO]:
+		cache.update_viewport(Rect2(bounds.position + offset, bounds.size))
+		await _drain(cache)
+		assert(cache.entries.size() <= cache.visible.size() + cache.OFFSCREEN_LIMIT)
+		for worker in cache._gpu_workers:
+			assert(worker.context.tiles.size() <= CityGpuBuildContext.TILE_CACHE_LIMIT)
+	# Keep updating while waiting for previously missing regions.
+	cache.entries.clear()
+	var revision := 1
+	var deadline := Time.get_ticks_msec() + 15000
+	while not cache.covered() and Time.get_ticks_msec() < deadline:
+		revision += 1
+		cache.configure(city, palette, sprites, [revision], 2, "city", {}, true, true)
+		cache.tick()
+		await process_frame
+	assert(cache.covered())
+	await _drain(cache)
+	# Replace the layout while old surface jobs are still running.
+	cache.configure(city, palette, sprites, [revision + 1], 2, "city", {}, true, true)
+	cache.tick()
+	cache.configure(city, palette, sprites, [revision + 2], 2, "underground", {}, true, true)
+	cache.update_viewport(Rect2(bounds))
+	await _drain(cache)
+	var underground := CityRegionRenderer.render(city, palette, sprites, bounds, 2, "underground")
+	assert(underground.ok)
+	underground.image.convert(Image.FORMAT_LA8)
+	assert(cache.image_region(bounds).get_data() == underground.image.get_data(), "Surface job overwrote an underground region")
+	revision += 2
+	# Force GPU preparation to fail and check the CPU fallback.
+	for worker in cache._gpu_workers:
+		worker.context.error = "Test atlas failure"
+	cache.configure(city, palette, sprites, [revision + 1], 2, "underground", {}, true, true)
+	await _drain(cache)
+	assert(not cache.gpu_enabled and cache.ready())
+	cache.close()
+	print("PASS: GPU mesh publication, exact local sampling, bounded pans, continuous updates, layout replacement and CPU fallback")
+	quit()
+
+func _drain(cache: CityRegionCache) -> void:
+	var deadline := Time.get_ticks_msec() + 30000
+	while Time.get_ticks_msec() < deadline:
+		cache.tick()
+		assert(cache.last_error.is_empty(), cache.last_error)
+		if cache.ready() and cache.entries.size() == cache.wanted.size() and not cache.metrics().pending:
+			return
+		await process_frame
+	assert(false, "GPU cache did not finish")

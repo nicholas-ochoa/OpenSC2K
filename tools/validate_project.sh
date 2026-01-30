@@ -60,6 +60,9 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_city_simulation_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_city_ui_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tools/build_large_city_fixtures.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_region_renderer_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_region_cache_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_region_occlusion_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/frame_simulation_test.gd
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/toolbar_interaction_test.gd
@@ -84,3 +87,17 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/newspaper_web_view_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/newspaper_layout_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/editor_stream_slopes_test.gd
+
+# Recording decode tests need the optional FLAC converter.
+if command -v "${OPENSC2K_FFMPEG:-ffmpeg}" >/dev/null 2>&1; then
+	run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/recorded_soundtrack_test.gd
+else
+	printf '%s\n' 'SKIP: recorded soundtrack decode checks require FFmpeg'
+fi
+
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/soundtrack_settings_test.gd
+
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_gpu_geometry_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_gpu_cache_test.gd
+
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_foreground_cache_test.gd

@@ -117,9 +117,7 @@ func _test_main() -> void:
 	await process_frame
 	assert(main.runtime_initialized and main.main_menu.visible)
 	assert(not main.reference_import_dialog.visible and main.city == null)
-	assert(not main.audio_controller.original_media_enabled and main.audio_controller.wave_stream_cache.is_empty())
-	assert(not main.audio_controller.play_music_track(MusicDirector.FIRST_TRACK_ID))
-	assert(not main.audio_controller.music_playback_is_active())
+	assert(main.audio_controller.original_media_enabled)
 	main._open_settings_dialog()
 	assert(main.settings_dialog.visible)
 	for mode in GameAssetSource.MODES:

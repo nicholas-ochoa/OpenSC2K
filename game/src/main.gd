@@ -110,6 +110,7 @@ var surface_visibility := {
 var full_size_graphics := true
 var show_underground_pipes := true
 var show_underground_subways := true
+var app_soundtrack_folder := ""
 var app_music_volume := 0.8
 var app_effects_volume := 0.8
 var app_fullscreen := false
@@ -146,6 +147,7 @@ var annual_budget_pending := false
 var military_proposal_pending := false
 var game_over_active := false
 var edit_display_timings := {}
+var region_cache: CityRegionCache
 var static_city_image: Image
 var static_occlusion_commands: Array[Dictionary] = []
 var static_occlusion_grid: Dictionary = {}
@@ -157,6 +159,7 @@ var dynamic_sprite_cache: Dictionary = {}
 var dynamic_foreground_cache: Dictionary = {}
 var dynamic_occluder_cache: Dictionary = {}
 var dynamic_visual_cache: Dictionary = {}
+var sign_foreground_cache: Dictionary = {}
 var dynamic_special_batch_cache: Dictionary = {}
 var dynamic_sign_occluders: Array[Dictionary] = []
 var dynamic_sign_occlusion_grid: Dictionary = {}
@@ -279,6 +282,7 @@ func _initialize_runtime() -> void:
 	audio_controller.setup(
 		reference_root, app_music_volume, app_effects_volume, asset_source.use_original_data
 	)
+	audio_controller.set_soundtrack_folder(app_soundtrack_folder)
 	newspaper_session_seed = Time.get_ticks_msec() & 0xffff
 	if newspaper_session_seed & 0x8000:
 		newspaper_session_seed -= 0x10000
@@ -382,7 +386,7 @@ func _import_original_game(executable_path: String) -> void:
 	app_graphics_source = "original"
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder,
 	)
 	if not runtime_initialized:
 		reference_root = install_result.root
@@ -763,6 +767,7 @@ func _open_settings_dialog() -> void:
 	settings_dialog.show_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
 		app_graphics_source, app_graphics_folder, asset_source.graphics_name,
+		app_soundtrack_folder, audio_controller.resolve_soundtrack_folder(""),
 	)
 
 
@@ -776,11 +781,13 @@ func _apply_settings() -> void:
 			return
 	app_graphics_source = values.graphics_source
 	app_graphics_folder = values.graphics_folder
+	app_soundtrack_folder = str(values.soundtrack_folder)
 	app_music_volume = float(values.music_volume)
 	app_effects_volume = float(values.effects_volume)
 	app_fullscreen = bool(values.fullscreen)
 	if audio_controller != null:
 		audio_controller.set_volumes(app_music_volume, app_effects_volume)
+		audio_controller.set_soundtrack_folder(app_soundtrack_folder, (main_menu != null and main_menu.visible) or (city != null and city.music_enabled()))
 	DisplayServer.window_set_mode(
 		DisplayServer.WINDOW_MODE_FULLSCREEN
 		if app_fullscreen
@@ -788,7 +795,7 @@ func _apply_settings() -> void:
 	)
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder,
 	)
 	status_label.text = (
 		("Settings saved. Restart OpenSC2K to use the selected graphics." if changed_source else "Settings saved.")
@@ -804,6 +811,7 @@ func _load_app_settings() -> void:
 		app_effects_volume,
 		app_fullscreen,
 	)
+	app_soundtrack_folder = values.soundtrack_folder
 	app_music_volume = values.music_volume
 	app_effects_volume = values.effects_volume
 	app_fullscreen = values.fullscreen
@@ -1150,8 +1158,8 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 		return TerrainToolIcons.terrain_action(
 			asset_source.assets.city_ui_graphics, ["", "level", "raise", "lower"][subtool_index]
 		)
-	if group_index == 0 and subtool_index == 5:
-		return TerrainToolIcons.terrain_action(asset_source.assets.city_ui_graphics, "stretch")
+	if group_index == 0 and subtool_index in [5, 6, 7]:
+		return TerrainToolIcons.terrain_action(asset_source.assets.city_ui_graphics, ["stretch", "sea_raise", "sea_lower"][subtool_index - 5])
 	if palette == null or large_sprites == null or not large_sprites.is_valid():
 		return city_toolbar.group_icon(group_index) if city_toolbar != null else null
 	var tile_id := Buildings.tile_for_tool(group_index, subtool_index)
@@ -1961,6 +1969,7 @@ func _restore_original_tile_set() -> void:
 
 
 func _invalidate_sprite_art() -> void:
+	_close_region_cache()
 	static_render_epoch += 1
 	static_city_image = null
 	static_occlusion_commands.clear()
@@ -1974,6 +1983,7 @@ func _invalidate_sprite_art() -> void:
 	dynamic_foreground_cache.clear()
 	dynamic_occluder_cache.clear()
 	dynamic_visual_cache.clear()
+	sign_foreground_cache.clear()
 	dynamic_special_batch_cache.clear()
 	dynamic_sign_occluders.clear()
 	dynamic_sign_occlusion_grid.clear()
@@ -2347,6 +2357,7 @@ func _activate_document(
 		else ""
 	)
 	_hide_main_menu()
+	_close_region_cache()
 	static_render_epoch += 1
 	static_city_image = null
 	static_occlusion_commands.clear()
@@ -2362,6 +2373,7 @@ func _activate_document(
 	dynamic_foreground_cache.clear()
 	dynamic_occluder_cache.clear()
 	dynamic_visual_cache.clear()
+	sign_foreground_cache.clear()
 	dynamic_special_batch_cache.clear()
 	dynamic_sign_occluders.clear()
 	dynamic_sign_occlusion_grid.clear()
@@ -2561,6 +2573,13 @@ func _refresh_after_city_edit(command: Dictionary) -> void:
 
 
 func _apply_static_edit_patch(command: Dictionary) -> bool:
+	if region_cache != null:
+		var indices := _edit_dirty_indices(command, city.map_size)
+		if indices.is_empty():
+			return false
+		var dirty := IsometricRenderer.dirty_screen_rect(indices, _sprite_archive_for_view(_city_view_size()), _city_view_size(), Vector2i.ZERO, city.map_size)
+		_refresh_region_map(false, dirty)
+		return true
 	var map_edge: int = city.map_size if city != null else 128
 	if (
 		overlay_mode != "city"
@@ -2720,6 +2739,10 @@ func _refresh_map(force := true) -> void:
 	map_view.set_signs_visible(
 		overlay_mode == "city" and bool(surface_visibility.signs)
 	)
+	if (city.map_size > 128 or CityRegionCache.gpu_supported()) and overlay_mode in ["city", "underground"]:
+		_refresh_region_map(force)
+		return
+	_close_region_cache()
 	var image: Image
 	if overlay_mode == "city" or overlay_mode == "underground":
 		if force:
@@ -2843,6 +2866,71 @@ func _refresh_map(force := true) -> void:
 		_refresh_sign_occlusion(_city_view_size())
 
 
+func _close_region_cache() -> void:
+	if region_cache != null:
+		region_cache.close()
+	region_cache = null
+
+
+func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
+	if region_cache == null:
+		region_cache = CityRegionCache.new()
+	static_city_image = null
+	static_view_cache.clear()
+	static_occlusion_commands.clear()
+	static_occlusion_grid.clear()
+	pending_static_render = false
+	var view_size := _city_view_size()
+	var sprites := _sprite_archive_for_view(view_size)
+	var signature := _static_signature_for_mode(overlay_mode, view_size)
+	signature.append(sprites.get_instance_id())
+	if force:
+		region_cache.signature = []
+	region_cache.configure(city, palette_index_encoding, sprites, signature, view_size,
+		overlay_mode, surface_visibility, show_underground_pipes, show_underground_subways, dirty)
+	static_visual_signature = signature
+	static_render_mode = overlay_mode
+	static_display_city = region_cache.display_city
+	var texture := region_cache.texture()
+	map_view.set_city_view(static_display_city, texture, texture, true, true)
+	region_cache.update_viewport(map_view.visible_source_rect())
+	if overlay_mode == "city":
+		_refresh_moving_things(view_size)
+	else:
+		map_view.set_dynamic_sprites([])
+		map_view.set_sign_occlusion_visuals({})
+
+
+func _poll_region_cache() -> void:
+	if region_cache == null or city == null:
+		return
+	region_cache.update_viewport(map_view.visible_source_rect())
+	if not region_cache.tick():
+		return
+	if not region_cache.last_error.is_empty():
+		_show_error(region_cache.last_error)
+		return
+	static_display_city = region_cache.display_city
+	dynamic_occluder_cache.clear()
+	dynamic_visual_cache.clear()
+	sign_foreground_cache.clear()
+	dynamic_special_batch_cache.clear()
+	var texture := region_cache.texture()
+	map_view.set_city_view(static_display_city, texture, texture, true, true)
+	if overlay_mode == "city":
+		_refresh_moving_things(region_cache.view_size)
+	else:
+		map_view.set_dynamic_sprites([])
+
+
+func _static_image_size() -> Vector2i:
+	return region_cache.native_size * region_cache.divisor if region_cache != null else (static_city_image.get_size() if static_city_image != null else Vector2i.ZERO)
+
+
+func _static_pixel(x: int, y: int) -> Color:
+	return region_cache.pixel(Vector2i(x, y)) if region_cache != null else static_city_image.get_pixel(x, y)
+
+
 func _request_static_render(
 	signature: Array, view_size: int, sprite_archive: Sc2SpriteArchive, render_mode := "city"
 ) -> void:
@@ -2906,6 +2994,7 @@ func _start_pending_static_render() -> void:
 
 
 func _poll_static_render() -> void:
+	_poll_region_cache()
 	if static_render_thread == null or static_render_thread.is_alive():
 		return
 	var rendered: Dictionary = static_render_thread.wait_to_finish()
@@ -2975,6 +3064,7 @@ func _static_signature_for_mode(mode: String, view_size: int) -> Array:
 
 
 func _exit_tree() -> void:
+	_close_region_cache()
 	if frame_simulation != null:
 		frame_simulation.close()
 	frame_simulation = null
@@ -3021,6 +3111,12 @@ func _refresh_moving_things(view_size := -1) -> void:
 		if map_view != null:
 			map_view.set_dynamic_sprites([])
 		return
+	if region_cache != null and region_cache.gpu_enabled and not region_cache.covered():
+		map_view.set_dynamic_sprites([])
+		map_view.set_sign_occlusion_visuals({})
+		return
+	if dynamic_visual_cache.size() > 4096:
+		dynamic_visual_cache.clear()
 	if view_size < 0:
 		view_size = _city_view_size()
 	var sprite_archive := _sprite_archive_for_view(view_size)
@@ -3031,16 +3127,14 @@ func _refresh_moving_things(view_size := -1) -> void:
 	)
 	var visuals: Array[Dictionary] = []
 	for command in commands:
-		var visual_cache_key := ""
-		if command.has("overlay"):
-			var command_position := Vector2i(command.position) * divisor
-			visual_cache_key = "%d:%d:%d:%d:%d:%d" % [
-				int(command.sprite_id), int(command.flip), command_position.x,
-				command_position.y, int(command.depth_order), view_size,
-			]
-			if dynamic_visual_cache.has(visual_cache_key):
-				visuals.append(dynamic_visual_cache[visual_cache_key])
-				continue
+		if region_cache != null and not Rect2(Vector2(command.position) * divisor, Vector2(command.get("size", Vector2i(256, 256))) * divisor).intersects(map_view.visible_source_rect().grow(256 * divisor)):
+			continue
+		var visual_cache_key := var_to_str([view_size, command])
+		if dynamic_visual_cache.has(visual_cache_key):
+			var cached: Dictionary = dynamic_visual_cache[visual_cache_key]
+			if not cached.is_empty():
+				visuals.append(cached)
+			continue
 		var resource := _dynamic_sprite_resource(
 			sprite_archive, command.sprite_id, command.flip, divisor
 		)
@@ -3059,14 +3153,20 @@ func _refresh_moving_things(view_size := -1) -> void:
 		if command.shadow:
 			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask)
 			if shadow_image == null:
+				dynamic_visual_cache[visual_cache_key] = {}
 				continue
 			visual_image = shadow_image
 			texture = ImageTexture.create_from_image(shadow_image)
 			index_texture = null
 		else:
+			var foreground_indices: PackedInt32Array = command.get("same_tile_foreground_indices", PackedInt32Array())
+			var index_reader := Callable()
+			if region_cache != null and not foreground_indices.is_empty():
+				var sampled := region_cache.image_region(Rect2i(position, resource.image.get_size()))
+				index_reader = func(x: int, y: int) -> Color: return sampled.get_pixel(x - position.x, y - position.y)
 			var occluded := IsometricRenderer.occlude_dynamic_with_mask(
 				resource.image, occluder_mask, position, static_city_image,
-				command.get("same_tile_foreground_indices", PackedInt32Array())
+				foreground_indices, index_reader
 			)
 			if int(occluded.occluded_pixels) > 0:
 				visual_image = occluded.image
@@ -3106,8 +3206,8 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 		or not bool(surface_visibility.signs)
 		or city == null
 		or map_view == null
-		or static_city_image == null
-		or static_occlusion_commands.is_empty()
+		or (static_city_image == null and region_cache == null)
+		or (static_occlusion_commands.is_empty() and region_cache == null)
 	):
 		if map_view != null:
 			map_view.set_sign_occlusion_visuals({})
@@ -3119,28 +3219,41 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 	var sprite_archive := _sprite_archive_for_view(view_size)
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := int(configuration.divisor)
-	if static_occlusion_grid.is_empty():
+	if static_occlusion_grid.is_empty() and region_cache == null:
 		static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
 			static_occlusion_commands, divisor
 		)
 	var color_indices := palette.animation_index_map(palette_cycle_ticks)
-	var image_bounds := Rect2i(Vector2i.ZERO, static_city_image.get_size())
+	var palette_signature := hash(color_indices)
+	var image_bounds := Rect2i(Vector2i.ZERO, _static_image_size())
 	var visuals := {}
 	for entry in entries:
 		var source_bounds: Rect2i = entry.bounds
+		if region_cache != null and not Rect2(source_bounds).intersects(map_view.visible_source_rect().grow(128)):
+			continue
 		var bounds := source_bounds.intersection(image_bounds)
 		if bounds.get_area() <= 0:
+			continue
+		var moving_candidates: Array[Dictionary] = []
+		for moving_index in IsometricRenderer.occlusion_candidate_indices(dynamic_sign_occlusion_grid, bounds):
+			moving_candidates.append(dynamic_sign_occluders[moving_index])
+		var signature := [view_size, bounds, int(entry.draw_order), moving_candidates]
+		var key := int(entry.key)
+		if sign_foreground_cache.has(key) and sign_foreground_cache[key].signature == signature:
+			var cached: Dictionary = sign_foreground_cache[key]
+			if cached.indices != null:
+				if int(cached.palette_signature) != palette_signature:
+					cached.visual.texture = ImageTexture.create_from_image(_sign_palette_image(cached.indices, color_indices))
+					cached.palette_signature = palette_signature
+				visuals[key] = cached.visual
 			continue
 		var foreground := Image.create(
 			bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8
 		)
 		foreground.fill(Color.TRANSPARENT)
 		var copied_pixels := 0
-		var candidate_indices := IsometricRenderer.occlusion_candidate_indices(
-			static_occlusion_grid, bounds
-		)
-		for command_index in candidate_indices:
-			var command := static_occlusion_commands[command_index]
+		var sampled: Image = region_cache.image_region(bounds) if region_cache != null else null
+		for command in _static_occlusion_candidates(bounds):
 			if int(command.depth_order) <= int(entry.draw_order):
 				continue
 			var command_position := Vector2i(command.position) * divisor
@@ -3160,19 +3273,13 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 					var mask_x := map_x - command_position.x
 					if mask.get_pixel(mask_x, mask_y).a == 0.0:
 						continue
-					var encoded := static_city_image.get_pixel(map_x, map_y)
+					var encoded: Color = sampled.get_pixel(map_x - bounds.position.x, map_y - bounds.position.y) if sampled != null else static_city_image.get_pixel(map_x, map_y)
 					var palette_index := roundi(encoded.r * 255.0)
-					var display_index := int(color_indices[palette_index])
 					foreground.set_pixel(
 						map_x - bounds.position.x, map_y - bounds.position.y,
-						palette.color(display_index),
+						Color8(palette_index, palette_index, palette_index, 255),
 					)
 					copied_pixels += 1
-		var moving_candidates: Array[Dictionary] = []
-		for moving_index in IsometricRenderer.occlusion_candidate_indices(
-			dynamic_sign_occlusion_grid, bounds
-		):
-			moving_candidates.append(dynamic_sign_occluders[moving_index])
 		for visual in MapControl.later_sign_occluder_visuals(
 			moving_candidates, bounds, int(entry.draw_order)
 		):
@@ -3191,21 +3298,31 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 					if encoded.a == 0.0:
 						continue
 					var palette_index := roundi(encoded.r * 255.0)
-					var display_index := int(color_indices[palette_index])
 					foreground.set_pixel(
 						map_x - bounds.position.x, map_y - bounds.position.y,
-						palette.color(display_index),
+						Color8(palette_index, palette_index, palette_index, 255),
 					)
 					copied_pixels += 1
 		if copied_pixels == 0:
+			sign_foreground_cache[key] = {"signature": signature, "indices": null}
 			continue
-		var texture := ImageTexture.create_from_image(foreground)
+		var texture := ImageTexture.create_from_image(_sign_palette_image(foreground, color_indices))
 		visuals[int(entry.key)] = {
 			"texture": texture,
 			"position": Vector2(bounds.position),
 			"size": Vector2(bounds.size),
 		}
+		sign_foreground_cache[key] = {"signature": signature, "indices": foreground, "palette_signature": palette_signature, "visual": visuals[key]}
 	map_view.set_sign_occlusion_visuals(visuals)
+
+
+func _static_occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
+	if region_cache != null:
+		return region_cache.occlusion_candidates(bounds)
+	var result: Array[Dictionary] = []
+	for index in IsometricRenderer.occlusion_candidate_indices(static_occlusion_grid, bounds):
+		result.append(static_occlusion_commands[index])
+	return result
 
 
 func _dynamic_occluder_image(
@@ -3216,7 +3333,7 @@ func _dynamic_occluder_image(
 	draw_order: int,
 	is_train := false
 ) -> Image:
-	if draw_order < 0 or static_occlusion_commands.is_empty():
+	if draw_order < 0 or (static_occlusion_commands.is_empty() and region_cache == null):
 		return null
 	var cache_key := "%d:%d:%d:%d:%d:%d:%d" % [
 		position.x, position.y, size.x, size.y, draw_order, int(is_train),
@@ -3225,17 +3342,13 @@ func _dynamic_occluder_image(
 	if dynamic_occluder_cache.has(cache_key):
 		return dynamic_occluder_cache[cache_key] as Image
 	var bounds := Rect2i(position, size)
-	if static_occlusion_grid.is_empty():
+	if static_occlusion_grid.is_empty() and region_cache == null:
 		static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
 			static_occlusion_commands, divisor
 		)
 	var mask: Image
 	var later_occluder_added := false
-	var candidate_indices := IsometricRenderer.occlusion_candidate_indices(
-		static_occlusion_grid, bounds
-	)
-	for command_index in candidate_indices:
-		var command := static_occlusion_commands[command_index]
+	for command in _static_occlusion_candidates(bounds):
 		var later_static := int(command.depth_order) > draw_order
 		var train_foreground := (
 			is_train and command.has("train_foreground_reference_sprite_id")
@@ -3282,6 +3395,7 @@ func _set_static_occlusion_commands(commands: Array, view_size: int) -> void:
 	static_occlusion_commands.assign(commands)
 	dynamic_occluder_cache.clear()
 	dynamic_visual_cache.clear()
+	sign_foreground_cache.clear()
 	dynamic_special_batch_cache.clear()
 	var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
 	static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
@@ -3351,16 +3465,17 @@ func _dynamic_sprite_resource(
 func _dynamic_shadow_image(
 	mask: Image, position: Vector2i, occluder_mask: Image = null
 ) -> Image:
-	if static_city_image == null:
+	if static_city_image == null and region_cache == null:
 		return null
 	var shadow := Image.create(
 		mask.get_width(), mask.get_height(), false, Image.FORMAT_RGBA8
 	)
 	shadow.fill(Color.TRANSPARENT)
 	var changed_pixels := 0
+	var sampled: Image = region_cache.image_region(Rect2i(position, mask.get_size())) if region_cache != null else null
 	for source_y in mask.get_height():
 		var output_y := position.y + source_y
-		if output_y < 0 or output_y >= static_city_image.get_height():
+		if output_y < 0 or output_y >= _static_image_size().y:
 			continue
 		for source_x in mask.get_width():
 			if mask.get_pixel(source_x, source_y).a == 0.0:
@@ -3371,9 +3486,9 @@ func _dynamic_shadow_image(
 			):
 				continue
 			var output_x := position.x + source_x
-			if output_x < 0 or output_x >= static_city_image.get_width():
+			if output_x < 0 or output_x >= _static_image_size().x:
 				continue
-			var current := static_city_image.get_pixel(output_x, output_y)
+			var current: Color = sampled.get_pixel(source_x, source_y) if sampled != null else static_city_image.get_pixel(output_x, output_y)
 			var palette_index := roundi(current.r * 255.0)
 			var changed_index := IsometricRenderer.shadow_palette_index(palette_index)
 			if changed_index != palette_index:
@@ -3667,7 +3782,7 @@ func _update_edit_state() -> void:
 			city, overlay_mode, selected_group, selected_subtool
 		)
 		selected_tool_available = bool(state.available)
-	map_view.shift_rectangle_enabled = bool(state.landscape)
+	map_view.shift_rectangle_enabled = bool(state.landscape) or (landscape_editor and selected_group == 0 and selected_subtool in [1, 2, 3])
 	map_view.placement_validator = _placement_preview_valid
 	if landscape_editor and LandscapeEditorCommand.supports_tool(selected_group, selected_subtool):
 		state.enabled = true
@@ -3675,7 +3790,7 @@ func _update_edit_state() -> void:
 		selected_tool_available = true
 		state.selection = "point"
 		state.area = 7 if selected_group == 1 and selected_subtool == 3 else 1
-		state.status_text = str(Tools.tool(selected_group, selected_subtool).name) + " — Free"
+		state.status_text = str(Tools.tool(selected_group, selected_subtool).name)
 		state.status_detail = "Drag up or down to stretch terrain live. Hold Shift to apply on release." if selected_group == 0 and selected_subtool == 5 else "Free landscape editor tool."
 	map_view.stretch_terrain = landscape_editor and selected_group == 0 and selected_subtool == 5
 	map_view.placement_error_provider = _placement_preview_error
@@ -4806,6 +4921,7 @@ func _show_error(message: String) -> void:
 func _debug_metrics() -> Dictionary:
 	var result := {
 		"simulation_slices": frame_simulation.metrics() if frame_simulation != null else {},
+		"render_regions": region_cache.metrics() if region_cache != null else {},
 		"visible_altitude_levels": city.visible_altitude_levels if city != null else 32,
 		"city_name": "None",
 		"date": "--",
@@ -4868,6 +4984,7 @@ func _debug_clear_render_caches() -> void:
 	dynamic_foreground_cache.clear()
 	dynamic_occluder_cache.clear()
 	dynamic_visual_cache.clear()
+	sign_foreground_cache.clear()
 	dynamic_special_batch_cache.clear()
 	_debug_full_redraw()
 
@@ -5124,3 +5241,15 @@ func _debug_set_visible_altitude_levels(levels: int) -> void:
 	map_view._invalidate_sign_entries()
 	_invalidate_view_render()
 	_refresh_map(false)
+
+
+func _sign_palette_image(indexed: Image, mapping: PackedInt32Array) -> Image:
+	var bytes := indexed.get_data()
+	for offset in range(0, bytes.size(), 4):
+		if bytes[offset + 3] == 0:
+			continue
+		var color := palette.color(mapping[bytes[offset]])
+		bytes[offset] = color.r8
+		bytes[offset + 1] = color.g8
+		bytes[offset + 2] = color.b8
+	return Image.create_from_data(indexed.get_width(), indexed.get_height(), false, Image.FORMAT_RGBA8, bytes)

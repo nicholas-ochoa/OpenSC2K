@@ -16,6 +16,12 @@ var music_volume := 0.8
 var effects_volume := 0.8
 var music_director := Music.new()
 var music_player: MidiSynthPlayer
+var recording_player: AudioStreamPlayer
+var soundtrack_folder := ""
+var recording_thread: Thread
+var music_request := 0
+var recording_request := -1
+var pending_recording: Dictionary = {}
 var dummy_music_active := false
 var menu_music := false
 var current_track_id := -1
@@ -33,6 +39,11 @@ func setup(
 	original_media_enabled = use_original_media
 	music_volume = initial_music_volume
 	effects_volume = initial_effects_volume
+	soundtrack_folder = resolve_soundtrack_folder("")
+	recording_player = AudioStreamPlayer.new()
+	recording_player.finished.connect(func() -> void: _on_music_track_finished(current_track_id))
+	add_child(recording_player)
+	recording_player.volume_linear = music_volume
 	_load_wave_sound_cache()
 	music_player = MidiSynth.new()
 	music_player.track_finished.connect(_on_music_track_finished)
@@ -51,37 +62,72 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 	effects_volume = clampf(new_effects_volume, 0.0, 1.0)
 	if music_player != null:
 		music_player.set_volume_linear(music_volume)
+	if recording_player != null:
+		recording_player.volume_linear = music_volume
 
 
 func play_music_track(track_id: int) -> bool:
-	if (
-		not original_media_enabled
-		or music_player == null
-		or track_id < Music.FIRST_TRACK_ID
-		or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT
-	):
+	if music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
 		return false
+	var recordings := RecordedSoundtrack.find_tracks(soundtrack_folder, track_id)
+	if recordings.is_empty() and not original_media_enabled:
+		return false
+	stop_music()
 	current_track_id = track_id
 	if AudioServer.get_driver_name() == "Dummy":
 		dummy_music_active = true
 		music_activity_changed.emit(true)
 		return true
-	dummy_music_active = false
-	var result := music_player.play_path(
-		reference_root.path_join("SOUNDS/%d.MID" % track_id), track_id
-	)
-	if not result.ok:
+	if not recordings.is_empty():
+		pending_recording = {"paths": recordings, "request": music_request}
+		music_activity_changed.emit(true)
+		return true
+	return _play_midi_fallback()
+
+
+func _play_midi_fallback() -> bool:
+	if not original_media_enabled:
 		music_activity_changed.emit(false)
-		push_warning("Cannot play MIDI track %d: %s" % [track_id, result.error])
 		return false
-	music_activity_changed.emit(true)
-	return true
+	var result := music_player.play_path(reference_root.path_join("SOUNDS/%d.MID" % current_track_id), current_track_id)
+	music_activity_changed.emit(bool(result.ok))
+	return bool(result.ok)
+
+
+func _process(_delta: float) -> void:
+	if recording_thread != null and not recording_thread.is_alive():
+		var result: Dictionary = recording_thread.wait_to_finish()
+		recording_thread = null
+		if recording_request == music_request:
+			recording_player.stream = result.stream
+			if recording_player.stream != null:
+				recording_player.play()
+			else:
+				push_warning("Cannot decode soundtrack recording; trying MIDI. FLAC requires FFmpeg.")
+				_play_midi_fallback()
+	if recording_thread == null and not pending_recording.is_empty():
+		recording_request = int(pending_recording.request)
+		var paths: PackedStringArray = pending_recording.paths
+		pending_recording.clear()
+		recording_thread = Thread.new()
+		if recording_thread.start(RecordedSoundtrack.load_track.bind(paths), Thread.PRIORITY_LOW) != OK:
+			recording_thread = null
+			_play_midi_fallback()
+
+
+func _exit_tree() -> void:
+	if recording_thread != null:
+		recording_thread.wait_to_finish()
+		recording_thread = null
 
 
 func music_playback_is_active() -> bool:
 	if AudioServer.get_driver_name() == "Dummy":
 		return dummy_music_active
-	return music_player != null and music_player.is_track_active()
+	return (not pending_recording.is_empty()
+		or (recording_thread != null and recording_request == music_request)
+		or (recording_player != null and recording_player.playing)
+		or (music_player != null and music_player.is_track_active()))
 
 
 func handle_application_focus_out() -> void:
@@ -100,6 +146,11 @@ func handle_application_focus_in(music_enabled: bool) -> void:
 
 
 func stop_music() -> void:
+	music_request += 1
+	pending_recording.clear()
+	if recording_player != null:
+		recording_player.stop()
+		recording_player.stream = null
 	current_track_id = -1
 	dummy_music_active = false
 	if music_player != null:
@@ -210,3 +261,21 @@ func set_menu_music(enabled: bool) -> void:
 	stop_music()
 	if enabled and application_has_focus and music_volume > 0.0:
 		play_music_track(Music.MAIN_THEME_TRACK)
+
+
+func resolve_soundtrack_folder(selected_folder: String) -> String:
+	if not selected_folder.strip_edges().is_empty():
+		return selected_folder.strip_edges()
+	var environment_folder := OS.get_environment("OPENSC2K_SOUNDTRACK_DIR")
+	return environment_folder if not environment_folder.is_empty() else reference_root.path_join("OST")
+
+
+func set_soundtrack_folder(selected_folder: String, restart_music := false) -> void:
+	var resolved := resolve_soundtrack_folder(selected_folder)
+	if soundtrack_folder == resolved:
+		return
+	var track_id := current_track_id
+	stop_music()
+	soundtrack_folder = resolved
+	if restart_music and application_has_focus and music_volume > 0.0:
+		play_music_track(track_id if track_id >= 0 else Music.MAIN_THEME_TRACK if menu_music else music_director.next_general_track())

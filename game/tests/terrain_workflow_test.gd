@@ -27,7 +27,22 @@ func _run() -> void:
 	assert(main.landscape_editor and main.city_toolbar.start_city_button.visible)
 	assert(not main.city_toolbar.toolbar_buttons[6].visible)
 	assert(not main.city_toolbar.child_tool_buttons.has(4))
-	assert(main.city_toolbar.child_tool_buttons[2].text.contains("Free"))
+	assert(main.city_toolbar.child_tool_buttons[2].text == "Raise Terrain")
+	for subtool in [1, 2, 3]:
+		main._select_subtool(subtool)
+		assert(main.map_view.shift_rectangle_enabled)
+		main.map_view.selection_start = Vector2i(40, 40)
+		main.map_view.selection_end = Vector2i(42, 43)
+		main.map_view._shift_pressed = true
+		main.map_view._rebuild_selection_path()
+		assert(main.map_view.selection_path.size() == 12)
+		main.map_view._shift_pressed = false
+		main.map_view._rebuild_selection_path()
+		assert(main.map_view.selection_path.size() == 6)
+	main.map_view._clear_selection()
+	for subtool in [6, 7]:
+		var expected := TerrainToolIcons.terrain_action(main.asset_source.assets.city_ui_graphics, "sea_raise" if subtool == 6 else "sea_lower")
+		assert(main._tool_button_icon(0, subtool).get_image().get_data() == expected.get_image().get_data())
 	var funds: int = main.city.funds()
 	var day: int = main.city.age_in_days()
 	main._process(0.5)

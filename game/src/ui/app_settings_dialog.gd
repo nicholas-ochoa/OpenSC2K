@@ -9,6 +9,11 @@ var folder_row: HBoxContainer
 var folder_dialog: FileDialog
 var active_source_label: Label
 
+var soundtrack_edit: LineEdit
+var soundtrack_dialog: FileDialog
+var soundtrack_status: Label
+var automatic_soundtrack_folder := ""
+
 var music_slider: HSlider
 var effects_slider: HSlider
 var fullscreen_check: CheckBox
@@ -17,7 +22,7 @@ var fullscreen_check: CheckBox
 func _ready() -> void:
 	title = "OpenSC2K Settings"
 	theme = ClassicUiStyle.create_dialog_theme()
-	min_size = Vector2i(650, 430)
+	min_size = Vector2i(700, 500)
 	exclusive = true
 	get_ok_button().text = "Apply"
 	get_label().visible = false
@@ -43,6 +48,42 @@ func _ready() -> void:
 			music_slider = slider
 		else:
 			effects_slider = slider
+	var soundtrack_label := Label.new()
+	soundtrack_label.text = "Soundtrack folder"
+	settings_grid.add_child(soundtrack_label)
+	var soundtrack_row := HBoxContainer.new()
+	soundtrack_edit = LineEdit.new()
+	soundtrack_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	soundtrack_edit.placeholder_text = "Automatic (OST in original-data folder)"
+	soundtrack_edit.text_changed.connect(func(_text: String) -> void: _update_soundtrack_status())
+	soundtrack_row.add_child(soundtrack_edit)
+	var soundtrack_browse := Button.new()
+	soundtrack_browse.text = "Browse..."
+	soundtrack_browse.pressed.connect(func() -> void:
+		var folder := soundtrack_edit.text.strip_edges()
+		if folder.is_empty():
+			folder = automatic_soundtrack_folder
+		if DirAccess.dir_exists_absolute(folder):
+			soundtrack_dialog.current_dir = folder
+		soundtrack_dialog.popup_centered_ratio(0.8)
+	)
+	soundtrack_row.add_child(soundtrack_browse)
+	settings_grid.add_child(soundtrack_row)
+	settings_grid.add_child(Label.new())
+	soundtrack_status = Label.new()
+	soundtrack_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	soundtrack_status.custom_minimum_size.x = 350
+	settings_grid.add_child(soundtrack_status)
+	soundtrack_dialog = FileDialog.new()
+	soundtrack_dialog.title = "Select soundtrack folder (MP3, FLAC or Ogg Vorbis)"
+	soundtrack_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+	soundtrack_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	soundtrack_dialog.exclusive = true
+	soundtrack_dialog.dir_selected.connect(func(path: String) -> void:
+		soundtrack_edit.text = path
+		_update_soundtrack_status()
+	)
+	add_child(soundtrack_dialog)
 	var display_label := Label.new()
 	display_label.text = "Display"
 	display_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -108,7 +149,11 @@ func _ready() -> void:
 func show_values(
 	music_volume: float, effects_volume: float, fullscreen: bool,
 	source := "auto", folder := "", active_name := "",
+	soundtrack_folder := "", automatic_folder := "",
 ) -> void:
+	automatic_soundtrack_folder = automatic_folder
+	soundtrack_edit.text = soundtrack_folder
+	_update_soundtrack_status()
 	music_slider.value = clampf(music_volume, 0.0, 1.0) * 100.0
 	effects_slider.value = clampf(effects_volume, 0.0, 1.0) * 100.0
 	fullscreen_check.button_pressed = fullscreen
@@ -122,6 +167,7 @@ func show_values(
 
 func selected_values() -> Dictionary:
 	return {
+		"soundtrack_folder": soundtrack_edit.text.strip_edges(),
 		"music_volume": float(music_slider.value) / 100.0,
 		"effects_volume": float(effects_slider.value) / 100.0,
 		"fullscreen": fullscreen_check.button_pressed,
@@ -134,3 +180,16 @@ func _update_folder_visibility() -> void:
 	var show_folder: bool = GameAssetSource.MODES[source_selector.selected] == "folder"
 	folder_row.visible = show_folder
 	(folder_row.get_meta("label") as Label).visible = show_folder
+
+
+func _update_soundtrack_status() -> void:
+	var folder := soundtrack_edit.text.strip_edges()
+	if folder.is_empty():
+		folder = automatic_soundtrack_folder
+	var tracks := 0
+	if DirAccess.dir_exists_absolute(folder):
+		for track_id in range(MusicDirector.FIRST_TRACK_ID, MusicDirector.FIRST_TRACK_ID + MusicDirector.TRACK_COUNT):
+			if not RecordedSoundtrack.find_tracks(folder, track_id).is_empty():
+				tracks += 1
+	soundtrack_status.text = "%d of 19 recordings found. Missing tracks use MIDI.\nChanges take effect when you apply. Leave blank for automatic selection." % tracks
+	soundtrack_status.tooltip_text = "Folder: " + folder

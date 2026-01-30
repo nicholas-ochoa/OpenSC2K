@@ -12,5 +12,8 @@ func _initialize() -> void:
 	var html := FileAccess.get_file_as_string("res://assets/newspaper/newspaper.html")
 	assert(not html.contains('id="dimensions"') and not html.contains('Godot view'))
 	assert(html.contains("user-select:none") and html.contains("cursor:default"))
+	assert(not html.contains("data-resize") and not html.contains("resize-handle"))
+	assert(html.contains('aria-label="Close newspaper"') and html.contains('aria-label="Choose newspaper"'))
+	assert(html.contains('role="menu"') and html.contains('#shell{background:#d0cfc9'))
 	print("PASS: HTML newspaper content and interaction contract")
 	quit()

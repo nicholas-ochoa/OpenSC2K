@@ -27,15 +27,16 @@ article:focus-visible,figure:focus-visible{outline:2px solid #555;outline-offset
 #paper[data-edition="chronicle"] header{order:1}#paper[data-edition="chronicle"] #banner{order:0;border-bottom:1px solid #555}
 dialog{color:#171713;background:#d0cfc9;border:1px solid #555;width:min(720px,90vw);max-height:85vh;padding:24px}dialog::backdrop{background:#0009}dialog h2{font-size:24px;text-align:center;padding:0 30px;margin-bottom:22px}#fulltext{font-size:15px;line-height:1.25;white-space:pre-line;text-align:justify}dialog button{position:absolute;right:10px;top:10px;width:28px;height:28px;padding:0;font:24px/24px system-ui;background:transparent;border:0;color:#222}dialog button:hover{background:#0002}@media(max-width:850px){main{padding:10px}}@media(max-width:580px){header{grid-template-columns:1fr}#date{text-align:center}#price{text-align:center}.summary{font-size:12px}}
 
-#dimensions{font:12px system-ui;color:#ddd;white-space:nowrap;font-variant-numeric:tabular-nums}
-.resize-handle{position:absolute;z-index:5;touch-action:none}
-.resize-right{right:0;top:0;width:6px;height:100%;cursor:ew-resize}
-.resize-bottom{bottom:0;left:0;height:6px;width:100%;cursor:ns-resize}
-.resize-corner{right:0;bottom:0;width:16px;height:16px;cursor:nwse-resize;background:repeating-linear-gradient(135deg,transparent 0 3px,#888 3px 4px);clip-path:polygon(100% 0,100% 100%,0 100%)}
-
+#shell{background:#d0cfc9;width:min(1280px,85vw);height:85vh;min-width:0;min-height:0}
+main{padding:0}#paper{max-width:none;box-shadow:none;padding-top:30px}
+#close{position:absolute;right:5px;top:3px;z-index:8;border:0;background:transparent;color:#171713;font:24px/28px system-ui;width:30px;padding:0}#close:hover{background:#0002}
+.paper-heading{position:relative;display:flex;justify-content:center;align-items:center;gap:5px}
+#paper-menu{font:18px system-ui;padding:0 3px;border:0;background:transparent;color:inherit}#paper-menu:hover{background:#0002}
+#papers{position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:10;background:#d0cfc9;border:1px solid #555;box-shadow:0 3px 8px #0005;min-width:190px;padding:4px}
+#papers[hidden]{display:none}#papers button{display:block;width:100%;text-align:left;white-space:nowrap;color:#171713;background:transparent;border:0;border-radius:0;padding:7px 10px;font:14px system-ui}#papers button:hover,#papers button:focus{background:#b0afa9}#papers button[aria-checked="true"]{font-weight:bold}
 </style></head><body>
-<div id="shell"><nav><label>Paper <select id="papers" aria-label="Newspaper"></select></label><button id="close">Close</button></nav>
-<main><section id="paper"><h1 id="banner"></h1><header><span id="price"></span><h1 id="masthead"></h1><span id="date"></span></header><div class="summary"><p id="weather"></p><p id="opinion"></p></div><div id="stories"></div></section></main><div class="resize-handle resize-right" data-resize="width"></div><div class="resize-handle resize-bottom" data-resize="height"></div><div class="resize-handle resize-corner" data-resize="both" title="Drag to resize newspaper"></div></div>
+<div id="shell" role="dialog" aria-modal="true" aria-labelledby="masthead"><button id="close" aria-label="Close newspaper" title="Close newspaper">×</button>
+<main><section id="paper"><h1 id="banner"></h1><header><span id="price"></span><div class="paper-heading"><h1 id="masthead"></h1><button id="paper-menu" aria-label="Choose newspaper" aria-haspopup="menu" aria-expanded="false" aria-controls="papers">⌄</button><div id="papers" role="menu" hidden></div></div><span id="date"></span></header><div class="summary"><p id="weather"></p><p id="opinion"></p></div><div id="stories"></div></section></main></div>
 <dialog id="reader"><button id="back" aria-label="Close article" title="Close article">×</button><h2 id="fulltitle"></h2><div id="fulltext"></div></dialog>
 <script>
 'use strict';
@@ -44,22 +45,6 @@ const send=data=>window.ipc.postMessage(JSON.stringify(data));
 let data={};
 const shell=$('shell');
 new ResizeObserver(scheduleLayout).observe(shell);
-document.querySelectorAll('[data-resize]').forEach(handle=>{
-handle.addEventListener('pointerdown',event=>{
-if(event.button!==0)return;
-event.preventDefault();
-const start=shell.getBoundingClientRect(),x=event.clientX,y=event.clientY;
-handle.setPointerCapture(event.pointerId);
-const move=e=>{
-// Both edges move because the panel remains centered in the game window.
-if(handle.dataset.resize!=='height')shell.style.width=Math.min(95,Math.max(Math.min(380/innerWidth*100,95),(start.width+2*(e.clientX-x))/innerWidth*100))+'vw';
-if(handle.dataset.resize!=='width')shell.style.height=Math.min(95,Math.max(240/innerHeight*100,(start.height+2*(e.clientY-y))/innerHeight*100))+'vh';
-};
-const end=()=>{handle.removeEventListener('pointermove',move);handle.removeEventListener('pointerup',end);handle.removeEventListener('pointercancel',end);if(handle.hasPointerCapture(event.pointerId))handle.releasePointerCapture(event.pointerId)};
-handle.addEventListener('pointermove',move);handle.addEventListener('pointerup',end);handle.addEventListener('pointercancel',end);
-});
-});
-
 let layoutFrame=0;
 function scheduleLayout(){cancelAnimationFrame(layoutFrame);layoutFrame=requestAnimationFrame(layoutStories)}
 function editionPlan(d){
@@ -118,7 +103,8 @@ continuations:articles.filter(article=>!article.querySelector('.continuation').h
 
 function readStory(i){$('fulltitle').textContent=data.headlines[i];$('fulltext').textContent=data.articles[i];$('reader').showModal()}
 function render(d){data=d;$('reader').close();for(const [id,key] of Object.entries({banner:'headline',masthead:'title',date:'date',price:'price',weather:'weather',opinion:'opinion'}))$(id).textContent=d[key]||'';
-$('papers').replaceChildren(...d.papers.map((name,i)=>{const o=document.createElement('option');o.textContent=name;o.value=i;return o}));$('papers').value=d.selected;
+closePaperMenu();
+$('papers').replaceChildren(...d.papers.map((name,i)=>{const button=document.createElement('button');button.textContent=name;button.setAttribute('role','menuitemradio');button.setAttribute('aria-checked',String(i===Number(d.selected)));button.onclick=()=>{closePaperMenu();send({action:'paper',index:i})};return button}));
 const stories=$('stories');stories.replaceChildren();
 d.articles.forEach((body,i)=>{const a=document.createElement('article');a.className='story-'+i;a.tabIndex=0;a.setAttribute('role','button');a.setAttribute('aria-label','Read '+d.headlines[i]);a.onclick=()=>readStory(i);a.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();readStory(i)}};
 const h=document.createElement('h2');h.textContent=d.headlines[i];a.append(h);
@@ -135,5 +121,11 @@ $('reader').addEventListener('click',event=>{
 const reader=$('reader'),bounds=reader.getBoundingClientRect();
 if(event.target===reader&&(event.clientX<bounds.left||event.clientX>bounds.right||event.clientY<bounds.top||event.clientY>bounds.bottom))reader.close();
 });
-$('close').onclick=()=>send({action:'close'});$('papers').onchange=()=>send({action:'paper',index:Number($('papers').value)});$('back').onclick=()=>$('reader').close();document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('reader').open)send({action:'close'})});document.addEventListener('selectstart',event=>event.preventDefault());send({action:'ready'});
+function closePaperMenu(){ $('papers').hidden=true;$('paper-menu').setAttribute('aria-expanded','false') }
+$('paper-menu').onclick=()=>{const open=$('papers').hidden;$('papers').hidden=!open;$('paper-menu').setAttribute('aria-expanded',String(open));if(open)$('papers').querySelector('[aria-checked="true"]')?.focus()};
+$('papers').onkeydown=e=>{const buttons=[...$('papers').children],index=buttons.indexOf(document.activeElement);if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();buttons[e.key==='Home'?0:e.key==='End'?buttons.length-1:(index+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus()}};
+document.addEventListener('click',e=>{if(!e.target.closest('.paper-heading'))closePaperMenu()});
+$('close').onclick=()=>send({action:'close'});$('back').onclick=()=>$('reader').close();
+document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('reader').open)return;if(!$('papers').hidden){e.preventDefault();closePaperMenu();$('paper-menu').focus()}else send({action:'close'})});
+document.addEventListener('selectstart',event=>event.preventDefault());send({action:'ready'});
 </script></body></html>

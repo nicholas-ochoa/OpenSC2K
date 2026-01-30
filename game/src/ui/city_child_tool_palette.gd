@@ -136,10 +136,9 @@ func tool_button_tooltip(
 	if tool.is_empty():
 		return ""
 	var price := _tool_price(tool)
-	var lines := PackedStringArray([
-		str(tool.name),
-		"Cost: %s" % price,
-	])
+	var lines := PackedStringArray([str(tool.name)])
+	if not free_landscape:
+		lines.append("Cost: %s" % price)
 	if int(tool.area) > 0:
 		lines.append("Footprint: %d x %d tiles" % [tool.area, tool.area])
 	if group_index == 3 and subtool_index >= 2:
@@ -179,7 +178,7 @@ func _create_button(
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.toggle_mode = true
 	button.button_group = button_group
-	button.text = "%s\n%s" % [tool.name, _tool_price(tool)]
+	button.text = str(tool.name) if free_landscape else "%s\n%s" % [tool.name, _tool_price(tool)]
 	button.clip_text = true
 	button.icon = (
 		icon_provider.call(group_index, subtool_index)

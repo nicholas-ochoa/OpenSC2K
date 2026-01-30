@@ -109,6 +109,7 @@ var _shake_generation := 0
 var _shake_offset := Vector2.ZERO
 var _next_wheel_zoom_msec := 0
 var _tile_layers: Array[TextureRect] = []
+var _mesh_layers: Array[MeshInstance2D] = []
 var _tiled_source: Texture2D
 var _base_layer: TextureRect
 var _base_material: ShaderMaterial
@@ -135,14 +136,17 @@ func set_city_view(
 	value: CityState,
 	texture: Texture2D,
 	index_texture: Texture2D = null,
-	palette_lookup_all := false
+	palette_lookup_all := false,
+	preserve_sign_cache := false
 ) -> void:
 	var reset_center := city_texture == null or city_texture.get_size() != texture.get_size()
-	city = value
+	if not preserve_sign_cache or city != value:
+		city = value
 	city_texture = texture
 	palette_index_texture = index_texture
 	base_palette_lookup_all = palette_lookup_all
-	_invalidate_sign_entries()
+	if not preserve_sign_cache:
+		_invalidate_sign_entries()
 	if reset_center and city_texture != null:
 		source_center = Vector2(city_texture.get_size()) * 0.5
 	_clamp_source_center()
@@ -196,41 +200,45 @@ func _ensure_sign_entries() -> void:
 	var divisor := int(Renderer.view_configuration(view_index).divisor)
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
-	for diagonal in map_edge * 2 - 1:
-		for y in diagonal + 1:
-			var x := diagonal - y
-			if x >= map_edge or y >= map_edge:
-				continue
-			if not city.tile_is_visible(x, y):
-				continue
-			var label_id := city.text_overlay_id(x, y)
-			if not OverlayData.is_sign(label_id):
-				continue
-			var label_text := city.label(label_id)
-			if label_text.is_empty():
-				continue
-			var polygon := Renderer.tile_polygon(city, x, y)
-			if polygon.size() != 4:
-				continue
-			var native_width := roundf(font.get_string_size(
-				label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-			).x)
-			var layout := sign_layout(
-				polygon[0] + Vector2(0, -8), native_width * divisor,
-				view_index, divisor,
-			)
-			var bounds: Rect2 = layout.panel.merge(layout.post)
-			_sign_entries.append({
-				"key": city.index_of(x, y),
-				"anchor": polygon[0] + Vector2(0, -8),
-				"label": label_text,
-				"text_width": native_width,
-				"bounds": Rect2i(
-					Vector2i(floori(bounds.position.x), floori(bounds.position.y)),
-					Vector2i(ceili(bounds.size.x), ceili(bounds.size.y)),
-				),
-				"draw_order": (x + y) * map_edge + y,
-			})
+	var positions: Array[Vector2i] = []
+	for index in OverlayData.sign_indices(city.text_overlays):
+		var x := int(index / map_edge)
+		var y := index % map_edge
+		positions.append(Vector2i((x + y) * map_edge + y, index))
+	positions.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x < b.x)
+	for entry in positions:
+		var x := int(entry.y / map_edge)
+		var y := entry.y % map_edge
+		if not city.tile_is_visible(x, y):
+			continue
+		var label_id := city.text_overlay_id(x, y)
+		if not OverlayData.is_sign(label_id):
+			continue
+		var label_text := city.label(label_id)
+		if label_text.is_empty():
+			continue
+		var polygon := Renderer.tile_polygon(city, x, y)
+		if polygon.size() != 4:
+			continue
+		var native_width := roundf(font.get_string_size(
+			label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
+		).x)
+		var layout := sign_layout(
+			polygon[0] + Vector2(0, -8), native_width * divisor,
+			view_index, divisor,
+		)
+		var bounds: Rect2 = layout.panel.merge(layout.post)
+		_sign_entries.append({
+			"key": city.index_of(x, y),
+			"anchor": polygon[0] + Vector2(0, -8),
+			"label": label_text,
+			"text_width": native_width,
+			"bounds": Rect2i(
+				Vector2i(floori(bounds.position.x), floori(bounds.position.y)),
+				Vector2i(ceili(bounds.size.x), ceili(bounds.size.y)),
+			),
+			"draw_order": (x + y) * map_edge + y,
+		})
 
 
 func _invalidate_sign_entries() -> void:
@@ -373,6 +381,11 @@ func center_tile() -> Vector2i:
 	if city == null:
 		return Vector2i(-1, -1)
 	return Renderer.screen_to_tile(city, source_center + Vector2(0, -0.5))
+
+
+func visible_source_rect() -> Rect2:
+	var scale := _view_scale()
+	return Rect2(-_draw_offset(scale) / scale, size / scale)
 
 
 func visible_tile_outline() -> PackedVector2Array:
@@ -669,6 +682,8 @@ func _draw_signs(scale: float, offset: Vector2) -> void:
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
 	for entry in _sign_entries:
+		if not Rect2(entry.bounds).intersects(visible_source_rect()):
+			continue
 		# every native painter moves from the tile's top point by the
 		# equivalent of 16 pixels right and 8 pixels up in large space
 		var anchor := offset + Vector2(entry.anchor) * scale
@@ -1108,21 +1123,38 @@ func _sync_base_layer() -> void:
 		for tile in _tile_layers:
 			tile.queue_free()
 		_tile_layers.clear()
+		for mesh in _mesh_layers:
+			mesh.queue_free()
+		_mesh_layers.clear()
 		_tiled_source = city_texture
 		for entry in city_texture.get_meta("map_tiles", []):
 			var tile := TextureRect.new()
 			tile.texture = entry.texture
 			tile.set_meta("source_position", entry.position)
+			tile.set_meta("source_size", entry.get("size", entry.texture.get_size()))
 			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			tile.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tile.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			tile.material = _base_material
 			_base_layer.add_child(tile)
 			_tile_layers.append(tile)
-	_base_layer.texture = city_texture if _tile_layers.is_empty() else null
+		for entry in city_texture.get_meta("map_meshes", []):
+			var mesh := MeshInstance2D.new()
+			mesh.mesh = entry.mesh
+			mesh.texture = entry.texture
+			mesh.set_meta("source_position", entry.position)
+			mesh.set_meta("divisor", entry.divisor)
+			mesh.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+			mesh.material = _base_material
+			_base_layer.add_child(mesh)
+			_mesh_layers.append(mesh)
+	_base_layer.texture = null if city_texture.has_meta("map_tiles") else city_texture
 	for tile in _tile_layers:
 		tile.position = Vector2(tile.get_meta("source_position")) * scale
-		tile.size = Vector2(tile.texture.get_size()) * scale
+		tile.size = Vector2(tile.get_meta("source_size")) * scale
+	for mesh in _mesh_layers:
+		mesh.position = Vector2(mesh.get_meta("source_position")) * scale
+		mesh.scale = Vector2.ONE * scale * int(mesh.get_meta("divisor"))
 	_base_layer.position = _draw_offset(scale)
 	_base_layer.size = Vector2(city_texture.get_size()) * scale
 	_base_layer.show()

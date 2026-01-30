@@ -586,7 +586,7 @@ static func effect_sprite_id(large_sprite_id: int, view_size := VIEW_LARGE) -> i
 
 
 static func _draw_tile(
-	output: Image,
+	output: Variant,
 	city: CityState,
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
@@ -766,7 +766,7 @@ static func edge_stack_visuals(
 
 
 static func _draw_edge_stacks(
-	output: Image,
+	output: Variant,
 	city: CityState,
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
@@ -788,7 +788,7 @@ static func _draw_edge_stacks(
 
 
 static func _draw_highway_ground(
-	output: Image,
+	output: Variant,
 	city: CityState,
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
@@ -1277,7 +1277,7 @@ static func _monster_layer(
 
 
 static func _draw_moving_thing(
-	output: Image,
+	output: Variant,
 	city: CityState,
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
@@ -1871,7 +1871,8 @@ static func occlude_dynamic_with_mask(
 	occluder_mask: Image,
 	position: Vector2i,
 	index_image: Image = null,
-	same_tile_foreground_indices := PackedInt32Array()
+	same_tile_foreground_indices := PackedInt32Array(),
+	index_reader := Callable()
 ) -> Dictionary:
 	if sprite == null:
 		return {"image": sprite, "occluded_pixels": 0}
@@ -1889,14 +1890,14 @@ static func occlude_dynamic_with_mask(
 			var map_point := position + Vector2i(source_x, source_y)
 			if (
 				not hidden
-				and index_image != null
+				and (index_image != null or index_reader.is_valid())
 				and not same_tile_foreground_indices.is_empty()
 				and map_point.x >= 0
 				and map_point.y >= 0
-				and map_point.x < index_image.get_width()
-				and map_point.y < index_image.get_height()
+				and (index_reader.is_valid() or (map_point.x < index_image.get_width() and map_point.y < index_image.get_height()))
 			):
-				var palette_index := roundi(index_image.get_pixelv(map_point).r * 255.0)
+				var encoded: Color = index_reader.call(map_point.x, map_point.y) if index_reader.is_valid() else index_image.get_pixelv(map_point)
+				var palette_index := roundi(encoded.r * 255.0)
 				hidden = same_tile_foreground_indices.has(palette_index)
 			if not hidden:
 				continue
@@ -2039,7 +2040,7 @@ static func _sprite_image(
 
 
 static func _blend_on_base(
-	output: Image,
+	output: Variant,
 	sprite: Image,
 	x: int,
 	base_y: int,

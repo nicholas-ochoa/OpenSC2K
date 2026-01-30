@@ -205,7 +205,7 @@ static func visual_signature(city: CityState, view_size: int, show_pipes := true
 
 
 static func _draw_tile(
-	output: Image,
+	output: Variant,
 	city: CityState,
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
@@ -270,7 +270,7 @@ static func _sprite_image(
 	return image
 
 
-static func _blend(output: Image, sprite: Image, position: Vector2i) -> void:
+static func _blend(output: Variant, sprite: Image, position: Vector2i) -> void:
 	output.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), position)
 
 
