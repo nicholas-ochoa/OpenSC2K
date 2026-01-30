@@ -1932,7 +1932,17 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 
 static func _static_text_overlay_signature(city: CityState) -> int:
 	var values := PackedInt32Array()
-	for index in OverlayData.count(city.text_overlays):
+	var indices := OverlayData.sign_indices(city.text_overlays)
+	for record in city.thing_count():
+		if int(city.thing(record).get("type", 0)) not in DISPATCH_SPRITE_OFFSETS:
+			continue
+		var overlay_id := OverlayData.thing_id(record)
+		var found := OverlayData.find(city.text_overlays, overlay_id)
+		while found >= 0:
+			indices.append(found)
+			found = OverlayData.find(city.text_overlays, overlay_id, found + 1)
+	indices.sort()
+	for index in indices:
 		var overlay := int(OverlayData.read(city.text_overlays, index))
 		if OverlayData.is_sign(overlay):
 			values.append(index)

@@ -34,6 +34,10 @@ var _job_generation := 0
 var _layout_generation := 0
 var _job_layout := 0
 var _changed := false
+var _viewport_rect := Rect2i()
+var _viewport_valid := false
+var foreground_changes: Array[Rect2i] = []
+var _foreground_reset := true
 
 static func gpu_supported(preference := "gpu") -> bool:
 	var requested := OS.get_environment("OPENSC2K_CITY_RENDERER").to_lower()
@@ -54,6 +58,8 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 			if int(entry.generation) == generation - 1 and not entry.bounds.intersects(dirty):
 				entry.generation = generation
 	if reset:
+		_foreground_reset = true
+		_viewport_valid = false
 		_layout_generation += 1
 		entries.clear()
 		_changed = true
@@ -79,6 +85,10 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 func update_viewport(source_rect: Rect2) -> void:
 	var rect := Rect2i(Vector2i((source_rect.position / divisor).floor()), Vector2i((source_rect.size / divisor).ceil()) + Vector2i.ONE)
 	rect = rect.intersection(Rect2i(Vector2i.ZERO, native_size))
+	if _viewport_valid and rect == _viewport_rect:
+		return
+	_viewport_rect = rect
+	_viewport_valid = true
 	var old_visible := visible.duplicate()
 	visible.clear()
 	wanted.clear()
@@ -110,6 +120,10 @@ func update_viewport(source_rect: Rect2) -> void:
 			_changed = true
 
 func tick() -> bool:
+	foreground_changes.clear()
+	if _foreground_reset:
+		foreground_changes.append(Rect2i(Vector2i.ZERO, native_size * divisor))
+		_foreground_reset = false
 	if gpu_enabled:
 		return _tick_gpu()
 	if _thread != null and not _thread.is_alive():
@@ -127,6 +141,7 @@ func tick() -> bool:
 			result.texture = ImageTexture.create_from_image(result.image)
 			result.generation = _job_generation
 			entries[_job_key] = result
+			foreground_changes.append(Rect2i(result.bounds.position * divisor, result.bounds.size * divisor))
 			completed_regions += 1
 			max_region_usec = maxi(max_region_usec, int(result.usec))
 			_changed = _changed or _job_key in visible
@@ -177,8 +192,8 @@ func occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
 	var found := {}
 	var versions := {}
 	var native := Rect2(Vector2(bounds.position) / divisor, Vector2(bounds.size) / divisor)
-	for key in visible:
-		if not entries.has(key):
+	for key in _keys_for_bounds(bounds):
+		if not entries.has(key) or key not in visible:
 			continue
 		var entry: Dictionary = entries[key]
 		if not Rect2(entry.bounds).intersects(native):
@@ -197,10 +212,25 @@ func occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
 		result.append(found[order])
 	return result
 
+func _keys_for_bounds(bounds: Rect2i) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if not bounds.has_area():
+		return result
+	var edge := float(region_edge * divisor)
+	var first := Vector2i(floori(bounds.position.x / edge), floori(bounds.position.y / edge))
+	var last := Vector2i(floori((bounds.end.x - 1) / edge), floori((bounds.end.y - 1) / edge))
+	for y in range(maxi(0, first.y), mini(ceili(float(native_size.y) / region_edge) - 1, last.y) + 1):
+		for x in range(maxi(0, first.x), mini(ceili(float(native_size.x) / region_edge) - 1, last.x) + 1):
+			result.append(Vector2i(x, y))
+	return result
+
 func image_region(bounds: Rect2i) -> Image:
 	var output := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_LA8)
 	output.fill(Color.TRANSPARENT)
-	for entry: Dictionary in entries.values():
+	for key in _keys_for_bounds(bounds):
+		if not entries.has(key):
+			continue
+		var entry: Dictionary = entries[key]
 		var world := Rect2i(entry.bounds.position * divisor, entry.bounds.size * divisor)
 		var overlap := world.intersection(bounds)
 		if not overlap.has_area():
@@ -294,6 +324,7 @@ func _tick_gpu() -> bool:
 			push_warning("GPU city renderer unavailable; using CPU: " + str(result.error))
 			_close_gpu_workers()
 			gpu_enabled = false
+			_foreground_reset = true
 			entries.clear()
 			_layout_generation += 1
 			_changed = false
@@ -322,6 +353,7 @@ func _tick_gpu() -> bool:
 		result.erase("gpu_arrays")
 		result.erase("atlas_image")
 		entries[key] = result
+		foreground_changes.append(Rect2i(result.bounds.position * divisor, result.bounds.size * divisor))
 		completed_regions += 1
 		max_region_usec = maxi(max_region_usec, int(result.usec))
 		_changed = _changed or key in visible

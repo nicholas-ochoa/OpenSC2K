@@ -59,10 +59,12 @@ void fragment() {
 }
 """
 
+var _preserve_sign_layout := false
 var city: CityState:
 	set(value):
 		city = value
-		_invalidate_sign_entries()
+		if not _preserve_sign_layout:
+			_invalidate_sign_entries()
 var city_texture: Texture2D
 var palette_index_texture: Texture2D
 var animated_palette_texture: Texture2D
@@ -120,6 +122,7 @@ var _sign_font: SystemFont
 var _sign_entries: Array[Dictionary] = []
 var _sign_entries_city: CityState
 var _sign_entries_zoom := -1.0
+var _sign_layout_signature: Array = []
 var _sign_cache_build_count := 0
 
 
@@ -141,7 +144,9 @@ func set_city_view(
 ) -> void:
 	var reset_center := city_texture == null or city_texture.get_size() != texture.get_size()
 	if not preserve_sign_cache or city != value:
+		_preserve_sign_layout = preserve_sign_cache
 		city = value
+		_preserve_sign_layout = false
 	city_texture = texture
 	palette_index_texture = index_texture
 	base_palette_lookup_all = palette_lookup_all
@@ -168,7 +173,9 @@ func set_signs_visible(value: bool) -> void:
 
 
 func set_sign_occlusion_visuals(value: Dictionary) -> void:
-	sign_occlusion_visuals = value.duplicate()
+	if sign_occlusion_visuals == value:
+		return
+	sign_occlusion_visuals = value.duplicate(true)
 	queue_redraw()
 
 
@@ -190,18 +197,32 @@ func _ensure_sign_entries() -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	if _sign_entries_city == city and is_equal_approx(_sign_entries_zoom, zoom_factor):
 		return
+	if city == null:
+		_sign_entries.clear()
+		_sign_entries_city = null
+		return
+	var sign_indices := OverlayData.sign_indices(city.text_overlays)
+	sign_indices.sort()
+	var sign_values := PackedInt32Array()
+	for index in sign_indices:
+		sign_values.append(index)
+		sign_values.append(OverlayData.read(city.text_overlays, index))
+	var labels := city.document.find_chunk("XLAB")
+	var signature := [map_edge, city.visible_altitude_levels, city.compass_rotation(), hash(city.altitude_words), hash(sign_values), hash(labels.decoded_payload) if labels != null else 0]
+	if _sign_layout_signature == signature and is_equal_approx(_sign_entries_zoom, zoom_factor):
+		_sign_entries_city = city
+		return
+	_sign_layout_signature = signature
 	_sign_entries.clear()
 	_sign_entries_city = city
 	_sign_entries_zoom = zoom_factor
 	_sign_cache_build_count += 1
-	if city == null:
-		return
 	var view_index := sign_view_index(zoom_factor)
 	var divisor := int(Renderer.view_configuration(view_index).divisor)
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
 	var positions: Array[Vector2i] = []
-	for index in OverlayData.sign_indices(city.text_overlays):
+	for index in sign_indices:
 		var x := int(index / map_edge)
 		var y := index % map_edge
 		positions.append(Vector2i((x + y) * map_edge + y, index))
@@ -242,6 +263,7 @@ func _ensure_sign_entries() -> void:
 
 
 func _invalidate_sign_entries() -> void:
+	_sign_layout_signature.clear()
 	_sign_entries.clear()
 	_sign_entries_city = null
 	_sign_entries_zoom = -1.0
@@ -481,7 +503,9 @@ func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
 
 
 func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
-	dynamic_sprites = sprites.duplicate()
+	if dynamic_sprites == sprites:
+		return
+	dynamic_sprites = sprites.duplicate(true)
 	if _dynamic_canvas != null:
 		_dynamic_canvas.set_visuals(
 			dynamic_sprites, _view_scale(), _draw_offset(_view_scale())
@@ -1123,8 +1147,9 @@ func _sync_base_layer() -> void:
 		for tile in _tile_layers:
 			tile.queue_free()
 		_tile_layers.clear()
+		var retained_meshes := {}
 		for mesh in _mesh_layers:
-			mesh.queue_free()
+			retained_meshes[mesh.get_meta("source_position")] = mesh
 		_mesh_layers.clear()
 		_tiled_source = city_texture
 		for entry in city_texture.get_meta("map_tiles", []):
@@ -1139,15 +1164,24 @@ func _sync_base_layer() -> void:
 			_base_layer.add_child(tile)
 			_tile_layers.append(tile)
 		for entry in city_texture.get_meta("map_meshes", []):
-			var mesh := MeshInstance2D.new()
-			mesh.mesh = entry.mesh
-			mesh.texture = entry.texture
+			var mesh: MeshInstance2D = retained_meshes.get(entry.position)
+			if mesh == null:
+				mesh = MeshInstance2D.new()
+				_base_layer.add_child(mesh)
+			else:
+				retained_meshes.erase(entry.position)
+			if mesh.mesh != entry.mesh:
+				mesh.mesh = entry.mesh
+			if mesh.texture != entry.texture:
+				mesh.texture = entry.texture
 			mesh.set_meta("source_position", entry.position)
 			mesh.set_meta("divisor", entry.divisor)
 			mesh.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 			mesh.material = _base_material
-			_base_layer.add_child(mesh)
 			_mesh_layers.append(mesh)
+		for mesh: MeshInstance2D in retained_meshes.values():
+			mesh.hide()
+			mesh.queue_free()
 	_base_layer.texture = null if city_texture.has_meta("map_tiles") else city_texture
 	for tile in _tile_layers:
 		tile.position = Vector2(tile.get_meta("source_position")) * scale

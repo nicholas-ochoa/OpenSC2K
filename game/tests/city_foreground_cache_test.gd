@@ -18,6 +18,11 @@ func _run() -> void:
 		await process_frame
 	assert(main.region_cache.ready())
 	main._refresh_moving_things(main._city_view_size())
+	var sign_scans: int = main.map_view.debug_metrics().sign_scans
+	var display_copy := CityState.from_document(main.region_cache.display_city.document.duplicate_document())
+	main.map_view.set_city_view(display_copy, main.map_view.city_texture, main.map_view.palette_index_texture, true, true)
+	main.map_view.sign_source_entries()
+	assert(main.map_view.debug_metrics().sign_scans == sign_scans, "Equivalent snapshot rebuilt the sign layout")
 	assert(not main.sign_foreground_cache.is_empty())
 	var saved: Dictionary = main.sign_foreground_cache.duplicate(true)
 	main._refresh_moving_things(main._city_view_size())
