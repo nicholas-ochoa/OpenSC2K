@@ -33,11 +33,11 @@ func _run() -> void:
 				first_ms = (Time.get_ticks_usec() - started) / 1000.0
 			if cache.ready() and visible_ms < 0:
 				visible_ms = (Time.get_ticks_usec() - started) / 1000.0
-			assert(cache.entries.size() <= cache.visible.size() + cache.OFFSCREEN_LIMIT)
-			if cache.entries.size() == cache.wanted.size() and cache.ready():
+			assert(cache.entries.size() <= cache.visible.size() + cache.offscreen_limit())
+			if cache.prefetch_ready() and cache.ready():
 				break
 			await process_frame
-		assert(cache.ready() and cache.entries.size() == cache.wanted.size())
+		assert(cache.ready() and cache.prefetch_ready())
 		var dynamic_start := Time.get_ticks_usec()
 		main._refresh_moving_things(main._city_view_size())
 		print("WARM dynamic_ms=%.2f zoom=%.2f" % [(Time.get_ticks_usec() - dynamic_start) / 1000.0, main.map_view.zoom_factor])

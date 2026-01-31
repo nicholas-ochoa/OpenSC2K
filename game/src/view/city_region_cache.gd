@@ -3,7 +3,10 @@ extends RefCounted
 
 const REGION_EDGE := 512
 const OFFSCREEN_LIMIT := 12
+const GPU_OFFSCREEN_LIMIT := 384
+const GPU_PREFETCH_LIMIT := 256
 const GPU_REGION_EDGE := 256
+const GPU_WORKERS := 2
 var region_edge := REGION_EDGE
 var gpu_enabled := gpu_supported()
 var _gpu_workers: Array[Dictionary] = []
@@ -40,6 +43,9 @@ var foreground_changes: Array[Rect2i] = []
 var sign_requests: Array[Dictionary] = []
 var sign_layout_token: Array = []
 var _foreground_reset := true
+var _gpu_has_work := true
+var _viewport_serial := 0
+var _gpu_schedule_serial := 0
 
 static func gpu_supported(preference := "gpu") -> bool:
 	var requested := OS.get_environment("OPENSC2K_CITY_RENDERER").to_lower()
@@ -54,6 +60,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		return
 	var reset := _snapshot == null or _snapshot.map_size != city.map_size or view_size != new_view or mode != new_mode or _snapshot.document.source_path != city.document.source_path or _snapshot.compass_rotation() != city.compass_rotation() or _snapshot.visible_altitude_levels != city.visible_altitude_levels or _visibility != visibility or _sprites != sprites or _show_pipes != show_pipes or _show_subways != show_subways
 	generation += 1
+	_gpu_has_work = true
 	last_error = ""
 	if not reset and dirty.has_area():
 		for entry: Dictionary in entries.values():
@@ -116,8 +123,11 @@ func update_viewport(source_rect: Rect2) -> void:
 	rect = rect.intersection(Rect2i(Vector2i.ZERO, native_size))
 	if _viewport_valid and rect == _viewport_rect:
 		return
+	var movement := Vector2(rect.get_center() - _viewport_rect.get_center()) if _viewport_valid else Vector2.ZERO
 	_viewport_rect = rect
 	_viewport_valid = true
+	_gpu_has_work = true
+	_viewport_serial += 1
 	var old_visible := visible.duplicate()
 	visible.clear()
 	wanted.clear()
@@ -127,26 +137,65 @@ func update_viewport(source_rect: Rect2) -> void:
 		return
 	var first := Vector2i(rect.position / region_edge)
 	var last := Vector2i((rect.end - Vector2i.ONE) / region_edge)
+	var margin := clampi(ceili(minf(rect.size.x, rect.size.y) / (3.0 * region_edge)), 1, 4) if gpu_enabled else 1
+	var side_margin := margin
+	var top_margin := maxi(1, ceili(margin / 2.0)) if gpu_enabled else 1
+	var bottom_margin := top_margin
+	if gpu_enabled and absf(movement.y) > absf(movement.x):
+		side_margin = top_margin
+		if movement.y < 0:
+			top_margin = margin
+		else:
+			bottom_margin = margin
 	var nearby: Array[Vector2i] = []
-	for y in range(maxi(0, first.y - 1), mini(ceili(float(native_size.y) / region_edge), last.y + 2)):
-		for x in range(maxi(0, first.x - 1), mini(ceili(float(native_size.x) / region_edge), last.x + 2)):
+	for y in range(maxi(0, first.y - top_margin), mini(ceili(float(native_size.y) / region_edge), last.y + bottom_margin + 1)):
+		for x in range(maxi(0, first.x - side_margin), mini(ceili(float(native_size.x) / region_edge), last.x + side_margin + 1)):
 			var key := Vector2i(x, y)
 			if x >= first.x and x <= last.x and y >= first.y and y <= last.y:
 				visible.append(key)
 			else:
 				nearby.append(key)
 	var center := Vector2(rect.get_center()) / region_edge - Vector2(0.5, 0.5)
-	var closer := func(a: Vector2i, b: Vector2i) -> bool: return Vector2(a).distance_squared_to(center) < Vector2(b).distance_squared_to(center)
-	visible.sort_custom(closer)
-	nearby.sort_custom(closer)
+	_sort_regions(visible, center, first, last, false)
+	var ahead := center + movement.limit_length(region_edge * margin) / region_edge if gpu_enabled else center
+	_sort_regions(nearby, ahead, first, last, gpu_enabled)
 	if old_visible != visible:
 		_changed = true
 	wanted.append_array(visible)
-	wanted.append_array(nearby.slice(0, OFFSCREEN_LIMIT))
-	for key in entries.keys():
+	wanted.append_array(nearby.slice(0, GPU_PREFETCH_LIMIT if gpu_enabled else OFFSCREEN_LIMIT))
+	if gpu_enabled:
+		for key in visible:
+			if entries.has(key):
+				entries[key].last_visible = _viewport_serial
+		_trim_retained_regions()
+	else:
+		for key in entries.keys():
+			if key not in wanted:
+				entries.erase(key)
+				_changed = true
+
+static func _sort_regions(keys: Array[Vector2i], center: Vector2, first: Vector2i, last: Vector2i, rings: bool) -> void:
+	# sort native integer tuples instead of calling gdscript for every comparison
+	var ranked: Array[Vector3i] = []
+	for key in keys:
+		var ring := maxi(maxi(first.x - key.x, key.x - last.x), maxi(first.y - key.y, key.y - last.y)) if rings else 0
+		ranked.append(Vector3i(ring, roundi(Vector2(key).distance_squared_to(center) * 1024), (key.x << 16) | key.y))
+	ranked.sort()
+	keys.clear()
+	for rank in ranked:
+		keys.append(Vector2i(rank.z >> 16, rank.z & 0xffff))
+
+func _trim_retained_regions() -> void:
+	var excess := entries.size() - visible.size() - offscreen_limit()
+	if excess <= 0:
+		return
+	var ranked: Array[Vector3i] = []
+	for key: Vector2i in entries:
 		if key not in wanted:
-			entries.erase(key)
-			_changed = true
+			ranked.append(Vector3i(int(entries[key].get("last_visible", 0)), key.x, key.y))
+	ranked.sort()
+	for index in mini(excess, ranked.size()):
+		entries.erase(Vector2i(ranked[index].y, ranked[index].z))
 
 func tick() -> bool:
 	foreground_changes.clear()
@@ -299,13 +348,22 @@ func ready() -> bool:
 			return false
 	return not visible.is_empty()
 
+func offscreen_limit() -> int:
+	return GPU_OFFSCREEN_LIMIT if gpu_enabled else OFFSCREEN_LIMIT
+
+func prefetch_ready() -> bool:
+	for key in wanted:
+		if not entries.has(key) or entries[key].generation != generation:
+			return false
+	return not wanted.is_empty()
+
 func metrics() -> Dictionary:
 	var bytes := 0
 	for entry: Dictionary in entries.values():
 		if not entry.has("image"):
 			continue
 		bytes += entry.image.get_width() * entry.image.get_height() * (1 if entry.image.get_format() == Image.FORMAT_L8 else 2)
-	return {"gpu": gpu_enabled, "atlas_bytes": _gpu_atlas_bytes(), "resident": entries.size(), "visible": visible.size(), "offscreen_limit": OFFSCREEN_LIMIT, "cpu_image_bytes": bytes, "texture_bytes_estimate": bytes, "completed": completed_regions, "discarded": discarded_regions, "max_region_usec": max_region_usec, "ready": ready(), "covered": covered(), "pending": _thread != null or _gpu_pending()}
+	return {"gpu": gpu_enabled, "atlas_bytes": _gpu_atlas_bytes(), "resident": entries.size(), "visible": visible.size(), "offscreen_limit": offscreen_limit(), "cpu_image_bytes": bytes, "texture_bytes_estimate": bytes, "completed": completed_regions, "discarded": discarded_regions, "max_region_usec": max_region_usec, "ready": ready(), "covered": covered(), "pending": _thread != null or _gpu_pending()}
 
 func close() -> void:
 	_close_gpu_workers()
@@ -341,89 +399,133 @@ func _close_gpu_workers() -> void:
 
 func _tick_gpu() -> bool:
 	if _gpu_workers.is_empty():
-		for index in mini(2, maxi(1, OS.get_processor_count() - 2)):
-			_gpu_workers.append({"thread": null, "context": null, "atlas": null, "atlas_revision": -1, "layout": -1, "generation": -1, "key": Vector2i.ZERO})
+		for index in mini(GPU_WORKERS, maxi(1, OS.get_processor_count() - 2)):
+			_gpu_workers.append({"thread": null, "context": null, "atlas": null, "atlas_revision": -1, "layout": -1, "generation": -1, "keys": []})
 	for worker in _gpu_workers:
 		if worker.thread == null or worker.thread.is_alive():
 			continue
 		var result: Dictionary = worker.thread.wait_to_finish()
 		worker.thread = null
+		_gpu_has_work = true
 		if int(worker.layout) != _layout_generation:
-			discarded_regions += 1
+			discarded_regions += worker.keys.size()
 			continue
 		if not result.ok:
 			push_warning("GPU city renderer unavailable; using CPU: " + str(result.error))
 			_close_gpu_workers()
 			gpu_enabled = false
+			wanted.resize(mini(wanted.size(), visible.size() + OFFSCREEN_LIMIT))
+			_viewport_valid = false
 			_foreground_reset = true
 			entries.clear()
 			_layout_generation += 1
 			_changed = false
 			return true
-		var key: Vector2i = worker.key
-		if key not in wanted or (entries.has(key) and int(entries[key].generation) > int(worker.generation)):
-			discarded_regions += 1
-			continue
 		if int(worker.generation) == generation and not _prepared:
 			_snapshot = result.display_city
 			display_city = _snapshot
 			_prepared = true
-		result.erase("display_city")
 		if result.atlas_image != null:
 			if worker.atlas == null:
 				worker.atlas = ImageTexture.create_from_image(result.atlas_image)
 			else:
 				worker.atlas.update(result.atlas_image)
 			worker.atlas_revision = int(result.atlas_revision)
-		var mesh := ArrayMesh.new()
-		if not result.gpu_arrays[Mesh.ARRAY_VERTEX].is_empty():
-			mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, result.gpu_arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
-		result.mesh = mesh
-		result.atlas_texture = worker.atlas
-		result.generation = int(worker.generation)
-		result.erase("gpu_arrays")
-		result.erase("atlas_image")
-		entries[key] = result
-		foreground_changes.append(Rect2i(result.bounds.position * divisor, result.bounds.size * divisor))
-		completed_regions += 1
-		max_region_usec = maxi(max_region_usec, int(result.usec))
-		_changed = _changed or key in visible
+		for region: Dictionary in result.regions:
+			var key: Vector2i = region.key
+			if key not in wanted or (entries.has(key) and int(entries[key].generation) > int(worker.generation)):
+				discarded_regions += 1
+				continue
+			var mesh := ArrayMesh.new()
+			if not region.gpu_arrays[Mesh.ARRAY_VERTEX].is_empty():
+				mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, region.gpu_arrays, [], {}, Mesh.ARRAY_FLAG_USE_2D_VERTICES)
+			region.mesh = mesh
+			region.atlas_texture = worker.atlas
+			region.generation = int(worker.generation)
+			region.last_visible = _viewport_serial if key in visible else int(entries.get(key, {}).get("last_visible", 0))
+			region.erase("gpu_arrays")
+			region.erase("atlas_image")
+			entries[key] = region
+			foreground_changes.append(Rect2i(region.bounds.position * divisor, region.bounds.size * divisor))
+			completed_regions += 1
+			max_region_usec = maxi(max_region_usec, int(region.usec))
+			_changed = _changed or key in visible
+	_trim_retained_regions()
+	var changed := _changed
+	_changed = false
+	if not _gpu_has_work or _gpu_workers.all(func(worker: Dictionary) -> bool: return worker.thread != null):
+		return changed
 	var active := {}
 	for worker in _gpu_workers:
 		if worker.thread != null and int(worker.layout) == _layout_generation:
-			active[worker.key] = true
+			for key in worker.keys:
+				active[key] = true
 	var queue: Array[Vector2i] = []
-	for key in visible:
-		if not entries.has(key):
-			queue.append(key)
-	queue.append_array(wanted)
+	queue.assign(visible)
+	# fill holes first, then refresh the oldest visible versions. continuous
+	# simulation updates must not repeatedly rebuild only the center regions
+	var ranked: Array[Vector3i] = []
+	for index in queue.size():
+		var key := queue[index]
+		ranked.append(Vector3i(int(entries.get(key, {}).get("generation", -1)), index, (key.x << 16) | key.y))
+	ranked.sort()
+	queue.clear()
+	for rank in ranked:
+		queue.append(Vector2i(rank.z >> 16, rank.z & 0xffff))
+	_gpu_schedule_serial += 1
+	# reserve some work for missing look-ahead regions even when simulation
+	# changes keep the visible regions continuously out of date
+	if covered() and _gpu_schedule_serial % 3 == 0:
+		var missing_prefetch: Array[Vector2i] = []
+		for key in wanted.slice(visible.size()):
+			if not entries.has(key):
+				missing_prefetch.append(key)
+		queue = missing_prefetch + queue
+	queue.append_array(wanted.slice(visible.size()))
+	_gpu_has_work = false
 	for worker in _gpu_workers:
 		if worker.thread != null:
 			continue
+		var keys: Array[Vector2i] = []
+		var worker_index := _gpu_workers.find(worker)
+		# keep the first result quick. warm workers then run bounded batches
+		var limit := CityGpuRegionBatch.MAX_REGIONS if int(worker.layout) == _layout_generation else 1
 		for key in queue:
 			if active.has(key) or (entries.has(key) and int(entries[key].generation) == generation):
 				continue
-			if int(worker.layout) != _layout_generation:
-				worker.context = CityGpuBuildContext.new()
-				worker.atlas = null
-				worker.atlas_revision = -1
-			worker.layout = _layout_generation
-			worker.generation = generation
-			worker.key = key
-			worker.thread = Thread.new()
-			var bounds := Rect2i(key * region_edge, Vector2i(region_edge, region_edge))
-			var error: Error = worker.thread.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared, _show_pipes, _show_subways, worker.context, generation, worker.atlas_revision, sign_requests), Thread.PRIORITY_LOW)
-			if error != OK:
-				worker.thread = null
-				_close_gpu_workers()
-				gpu_enabled = false
-				entries.clear()
-				_layout_generation += 1
-				return true
+			# keep neighboring wide-view regions on the same worker so their tile
+			# geometry and bounds are prepared once. small views use either worker
+			if visible.size() >= 32 and int(key.x / 8) % _gpu_workers.size() != worker_index:
+				continue
+			keys.append(key)
 			active[key] = true
-			break
-	var changed := _changed
-	_changed = false
+			if keys.size() >= limit:
+				break
+		if keys.is_empty():
+			continue
+		_gpu_has_work = true
+		if int(worker.layout) != _layout_generation:
+			worker.context = CityGpuBuildContext.new()
+			worker.atlas = null
+			worker.atlas_revision = -1
+		worker.layout = _layout_generation
+		worker.generation = generation
+		worker.keys = keys
+		worker.thread = Thread.new()
+		var request := {"city": _snapshot, "prepared": _prepared, "visibility": _visibility,
+			"palette": _palette, "sprites": _sprites, "keys": keys, "edge": region_edge,
+			"view": view_size, "mode": mode, "pipes": _show_pipes, "subways": _show_subways,
+			"generation": generation, "signs": sign_requests}
+		var error: Error = worker.thread.start(CityGpuRegionBatch.build.bind(request, worker.context, worker.atlas_revision), Thread.PRIORITY_LOW)
+		if error != OK:
+			worker.thread = null
+			_close_gpu_workers()
+			gpu_enabled = false
+			wanted.resize(mini(wanted.size(), visible.size() + OFFSCREEN_LIMIT))
+			_viewport_valid = false
+			entries.clear()
+			_layout_generation += 1
+			return true
 	return changed
 
 

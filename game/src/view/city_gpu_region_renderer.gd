@@ -4,7 +4,7 @@ const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 
 static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		bounds: Rect2i, view: int, mode: String, pipes: bool, subways: bool,
-		context: CityGpuBuildContext, revision: int, uploaded_atlas_revision: int) -> Dictionary:
+		context: CityGpuBuildContext, revision: int, uploaded_atlas_revision: int, copy_atlas := true) -> Dictionary:
 	if city == null or not city.is_valid() or palette == null or not palette.is_valid() or sprites == null or not sprites.is_valid() or view not in [0, 1, 2] or mode not in ["city", "underground"]:
 		return {"ok": false, "error": "invalid GPU region assets"}
 	context.set_revision(revision)
@@ -66,7 +66,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 		"bounds": bounds, "occlusion_commands": foreground,
 		"occlusion_grid": Renderer.build_occlusion_grid(foreground, int(configuration.divisor)),
 		"atlas_revision": context.atlas_revision,
-		"atlas_image": context.atlas.duplicate() if context.atlas != null and context.atlas_revision != uploaded_atlas_revision else null}
+		"atlas_image": context.atlas.duplicate() if copy_atlas and context.atlas != null and context.atlas_revision != uploaded_atlas_revision else null}
 
 static func _append_quad(rectangle: Rect2, uv: Rect2, vertices: PackedVector2Array,
 		uvs: PackedVector2Array, indices: PackedInt32Array) -> void:

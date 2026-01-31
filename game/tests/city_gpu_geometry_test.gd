@@ -29,6 +29,27 @@ func _run() -> void:
 			var bounds := Rect2i(CityIsometricRenderer.output_size_for_view(2, 128) / 2 - Vector2i(256, 128), Vector2i(517, 263))
 			await _compare(displayed, palette, large, bounds, 2, "city", CityGpuBuildContext.new())
 	print("PASS: GPU rotations, cutaways and layer filtering")
+	for view in 3:
+		for mode in ["city", "underground"]:
+			var sprites := large if view == 2 else small
+			var context := CityGpuBuildContext.new()
+			var center := CityIsometricRenderer.output_size_for_view(view, city.map_size) / 2 / 256
+			var request := {"city": city, "prepared": true, "visibility": {},
+				"palette": palette, "sprites": sprites, "keys": [center, center + Vector2i.ONE, center + Vector2i(2, 0)],
+				"edge": 256, "view": view, "mode": mode, "pipes": true, "subways": true,
+				"generation": 1, "signs": [] as Array[Dictionary]}
+			var batch := CityGpuRegionBatch.build(request, context, -1)
+			assert(batch.ok and batch.regions.size() == 3 and batch.atlas_image != null)
+			for region: Dictionary in batch.regions:
+				var expected := CityRegionRenderer.render(city, palette, sprites, region.bounds, view, mode)
+				expected.image.convert(Image.FORMAT_LA8)
+				assert(region.occlusion_commands == expected.occlusion_commands)
+				assert(CityGpuDrawList.paint(region.gpu_draws, region.bounds, region.background, region.gpu_draw_grid).get_data() == expected.image.get_data())
+				if DisplayServer.get_name() != "headless":
+					region.atlas_image = batch.atlas_image
+					await _check_gpu_pixels(region, expected.image)
+			assert(CityGpuRegionBatch.build(request, context, batch.atlas_revision).atlas_image == null, "Warm batch uploaded an unchanged atlas")
+	print("PASS: batched GPU regions share one exact atlas at every native view")
 	quit()
 
 func _compare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, mode: String, context: CityGpuBuildContext) -> void:

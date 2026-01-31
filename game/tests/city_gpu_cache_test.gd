@@ -25,7 +25,7 @@ func _run() -> void:
 	for offset in [Vector2i(1700, 900), Vector2i(-900, 1200), Vector2i.ZERO]:
 		cache.update_viewport(Rect2(bounds.position + offset, bounds.size))
 		await _drain(cache)
-		assert(cache.entries.size() <= cache.visible.size() + cache.OFFSCREEN_LIMIT)
+		assert(cache.entries.size() <= cache.visible.size() + cache.offscreen_limit())
 		for worker in cache._gpu_workers:
 			assert(worker.context.tiles.size() <= CityGpuBuildContext.TILE_CACHE_LIMIT)
 	# Keep updating while waiting for previously missing regions.
@@ -38,6 +38,19 @@ func _run() -> void:
 		cache.tick()
 		await process_frame
 	assert(cache.covered())
+	var oldest := revision
+	deadline = Time.get_ticks_msec() + 20000
+	var refreshed := false
+	while not refreshed and Time.get_ticks_msec() < deadline:
+		revision += 1
+		cache.configure(city, palette, sprites, [revision], 2, "city", {}, true, true)
+		cache.tick()
+		refreshed = true
+		for key in cache.wanted:
+			if not cache.entries.has(key) or (key in cache.visible and int(cache.entries[key].generation) <= oldest):
+				refreshed = false
+		await process_frame
+	assert(refreshed, "Visible or prefetched region never finished during continuous updates")
 	await _drain(cache)
 	# Replace the layout while old surface jobs are still running.
 	cache.configure(city, palette, sprites, [revision + 1], 2, "city", {}, true, true)
@@ -65,7 +78,7 @@ func _drain(cache: CityRegionCache) -> void:
 	while Time.get_ticks_msec() < deadline:
 		cache.tick()
 		assert(cache.last_error.is_empty(), cache.last_error)
-		if cache.ready() and cache.entries.size() == cache.wanted.size() and not cache.metrics().pending:
+		if cache.ready() and cache.prefetch_ready() and not cache.metrics().pending:
 			return
 		await process_frame
 	assert(false, "GPU cache did not finish")

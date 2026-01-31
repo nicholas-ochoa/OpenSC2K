@@ -93,16 +93,23 @@ func slot(image: Image) -> Rect2i:
 
 func intersects(city: CityState, sprites: Sc2SpriteArchive, config: Dictionary,
 		x: int, y: int, region: Rect2i, mode: String) -> bool:
+	var key := x * city.map_size + y
+	if bounds_cache.has(key):
+		return true if bounds_cache[key] == null else (bounds_cache[key] as Rect2i).intersects(region)
+	if bounds_cache.size() >= TILE_CACHE_LIMIT:
+		var keys := bounds_cache.keys()
+		for index in 1024:
+			bounds_cache.erase(keys[index])
+	# cache conservative special cases too; adjacent regions revisit them often
+	bounds_cache[key] = null
 	if mode != "city" or x == city.map_size - 1 or y == city.map_size - 1 or not city.tile_is_visible(x, y):
 		return true
-	var key := city.index_of(x, y)
 	var building := int(city.buildings[key])
-	if building in range(0x61, 0x6c) or city.text_overlay_id(x, y) != 0:
+	if (building >= 0x61 and building <= 0x6b) or OverlayData.is_thing(city.text_overlay_id(x, y)):
 		return true
 	if building >= 0x70 and (int(city.zones[key]) & [0x80, 0x10, 0x20, 0x40][rotation]) == 0:
+		bounds_cache[key] = Rect2i()
 		return false
-	if bounds_cache.has(key):
-		return (bounds_cache[key] as Rect2i).intersects(region)
 	var terrain := CityIsometricRenderer.surface_terrain_id(city, x, y)
 	var origin := int(config.side_margin) + city.map_size * int(config.half_width)
 	var screen_x := origin + (x - y) * int(config.half_width)
@@ -128,10 +135,6 @@ func intersects(city: CityState, sprites: Sc2SpriteArchive, config: Dictionary,
 		var zone := sprites.find_sprite(int(config.sprite_base) + 290 + city.zone_id(x, y))
 		if zone != null:
 			bounds = bounds.merge(Rect2i(screen_x, base_y - zone.height, zone.width, zone.height))
-	if bounds_cache.size() >= TILE_CACHE_LIMIT:
-		var keys := bounds_cache.keys()
-		for index in 1024:
-			bounds_cache.erase(keys[index])
 	bounds_cache[key] = bounds
 	return bounds.intersects(region)
 
@@ -155,7 +158,7 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 		sprites: Sc2SpriteArchive, config: Dictionary, origin: int, x: int, y: int) -> bool:
 	var key := x * city.map_size + y
 	var building := int(city.buildings[key])
-	if (building >= 0x0e and building < 0x70) or x == city.map_size - 1 or y == city.map_size - 1 or not city.tile_is_visible(x, y) or city.text_overlay_id(x, y) != 0:
+	if (building >= 0x0e and building < 0x70) or x == city.map_size - 1 or y == city.map_size - 1 or not city.tile_is_visible(x, y) or OverlayData.is_thing(city.text_overlay_id(x, y)):
 		return false
 	var flags := int(city.tile_flags[key])
 	var terrain := int(city.terrain[key])
