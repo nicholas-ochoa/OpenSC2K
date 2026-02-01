@@ -32,6 +32,9 @@ enabled=PackedStringArray("res://addons/indexed_pack_export/plugin.cfg")
 [rendering]
 
 renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.macos="mobile"
 renderer/rendering_method.mobile="gl_compatibility"
+rendering_device/driver.macos="metal"
+rendering_device/fallback_to_opengl3=true
 textures/vram_compression/import_etc2_astc=true
 environment/defaults/default_clear_color=Color(0.035, 0.047, 0.059, 1)
