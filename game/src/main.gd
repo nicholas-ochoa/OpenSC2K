@@ -2194,6 +2194,8 @@ func _resolve_military_proposal(accepted: bool) -> void:
 	_refresh_details()
 	status_label.remove_theme_color_override("font_color")
 	var proposal: Dictionary = result.day_results[0].phase_results.military_proposal
+	if int(proposal.base_type) in [2, 3, 5]:
+		_play_sound_events(ToolSounds.zone_success_events(7))
 	match int(proposal.base_type):
 		2:
 			status_label.text = "The Army base site is reserved."
@@ -4073,7 +4075,9 @@ func _finish_simple_edit(
 	if edit.show_forest_protest:
 		_refresh_saved_news_summary()
 		_show_forest_protest()
-	if edit.play_success_sound:
+	if command.get("command_type", "") == "zone":
+		_play_sound_events(ToolSounds.zone_success_events(int(command.zone_type)))
+	elif edit.play_success_sound:
 		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = str(edit.message)

@@ -46,9 +46,7 @@ static func success_events(group_index: int, subtool_index: int) -> Array[int]:
 				return [SOUND_RAIL_DEPOT, SOUND_BUILD]
 			if subtool_index >= 0 and subtool_index <= 4:
 				return [SOUND_BUILD]
-		8, 9:
-			return [SOUND_BUILD]
-		10, 11:
+		8, 9, 10, 11:
 			return [SOUND_ZONE]
 		12:
 			return [SOUND_EDUCATION]
@@ -67,6 +65,12 @@ static func success_events(group_index: int, subtool_index: int) -> Array[int]:
 				return [SOUND_REWARD]
 		17:
 			return [SOUND_CENTER]
+	return []
+
+
+static func zone_success_events(zone_type: int) -> Array[int]:
+	if zone_type >= 1 and zone_type <= 9:
+		return [SOUND_ZONE]
 	return []
 
 

@@ -176,12 +176,14 @@ func _test_tool_sound_rules() -> void:
 		and ToolSounds.success_events(7, 2) == [524, 500],
 		"Bus and rail depots keep their special dispatcher sounds",
 	)
-	_check(
-		ToolSounds.success_events(9, 0) == [500]
-		and ToolSounds.success_events(10, 0) == [503]
-		and ToolSounds.success_events(11, 0) == [503],
-		"Residential and business zones use their distinct sounds",
-	)
+	for zone_type in range(1, 10):
+		_check(ToolSounds.zone_success_events(zone_type) == [503],
+			"RCI, military, airport and seaport zones share sound 503")
+	_check(ToolSounds.zone_success_events(0).is_empty(), "De-zone does not add a placement sound")
+	for group in [8, 9, 10, 11]:
+		for subtool in [0, 1]:
+			_check(ToolSounds.success_events(group, subtool) == [503],
+				"All zone tools use the industrial placement sound")
 	_check(
 		ToolSounds.success_events(12, 0) == [523]
 		and ToolSounds.success_events(13, 0) == [506]
