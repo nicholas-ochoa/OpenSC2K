@@ -255,6 +255,7 @@ var fps_update_seconds := 0.0
 
 
 func _ready() -> void:
+	add_child(preload("res://src/ui/file_dialog_history.gd").new())
 	get_tree().auto_accept_quit = false
 	if reference_root.is_empty():
 		reference_root = GameAssetSource.default_reference_root()
