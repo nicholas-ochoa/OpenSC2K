@@ -46,6 +46,7 @@ var _foreground_reset := true
 var _gpu_has_work := true
 var _viewport_serial := 0
 var _gpu_schedule_serial := 0
+var _edit_priority: Dictionary = {}
 
 static func gpu_supported(preference := "gpu") -> bool:
 	var requested := OS.get_environment("OPENSC2K_CITY_RENDERER").to_lower()
@@ -63,10 +64,15 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_gpu_has_work = true
 	last_error = ""
 	if not reset and dirty.has_area():
+		for key in visible:
+			var bounds := Rect2i(key * region_edge, Vector2i.ONE * region_edge)
+			if bounds.intersects(dirty):
+				_edit_priority[key] = generation
 		for entry: Dictionary in entries.values():
 			if int(entry.generation) == generation - 1 and not entry.bounds.intersects(dirty):
 				entry.generation = generation
 	if reset:
+		_edit_priority.clear()
 		_foreground_reset = true
 		_viewport_valid = false
 		_layout_generation += 1
@@ -161,6 +167,9 @@ func update_viewport(source_rect: Rect2) -> void:
 	_sort_regions(nearby, ahead, first, last, gpu_enabled)
 	if old_visible != visible:
 		_changed = true
+	for key in _edit_priority.keys():
+		if key not in visible:
+			_edit_priority.erase(key)
 	wanted.append_array(visible)
 	wanted.append_array(nearby.slice(0, GPU_PREFETCH_LIMIT if gpu_enabled else OFFSCREEN_LIMIT))
 	if gpu_enabled:
@@ -446,6 +455,8 @@ func _tick_gpu() -> bool:
 			region.erase("gpu_arrays")
 			region.erase("atlas_image")
 			entries[key] = region
+			if _edit_priority.has(key) and int(worker.generation) >= int(_edit_priority[key]):
+				_edit_priority.erase(key)
 			foreground_changes.append(Rect2i(region.bounds.position * divisor, region.bounds.size * divisor))
 			completed_regions += 1
 			max_region_usec = maxi(max_region_usec, int(region.usec))
@@ -482,6 +493,11 @@ func _tick_gpu() -> bool:
 				missing_prefetch.append(key)
 		queue = missing_prefetch + queue
 	queue.append_array(wanted.slice(visible.size()))
+	var urgent: Array[Vector2i] = []
+	for key: Vector2i in _edit_priority:
+		if key in visible:
+			urgent.append(key)
+	queue = urgent + queue
 	_gpu_has_work = false
 	for worker in _gpu_workers:
 		if worker.thread != null:
@@ -495,7 +511,7 @@ func _tick_gpu() -> bool:
 				continue
 			# keep neighboring wide-view regions on the same worker so their tile
 			# geometry and bounds are prepared once. small views use either worker
-			if visible.size() >= 32 and int(key.x / 8) % _gpu_workers.size() != worker_index:
+			if not _edit_priority.has(key) and visible.size() >= 32 and int(key.x / 8) % _gpu_workers.size() != worker_index:
 				continue
 			keys.append(key)
 			active[key] = true

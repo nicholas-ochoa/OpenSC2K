@@ -2697,6 +2697,22 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	return true
 
 
+static func _collect_changed_tiles(before: PackedByteArray, after: PackedByteArray, stride: int, seen: Dictionary, plane_cells := 0) -> void:
+	# skip unchanged byte blocks
+	# changed blocks still need tile checks, including remote power/water changes
+	if before == after:
+		return
+	var block_bytes := 256 * stride
+	for start in range(0, before.size(), block_bytes):
+		var end := mini(start + block_bytes, before.size())
+		if before.slice(start, end) == after.slice(start, end):
+			continue
+		for offset in range(start, end, stride):
+			if before[offset] != after[offset] or (stride == 2 and before[offset + 1] != after[offset + 1]):
+				var index := int(offset / stride)
+				seen[index % plane_cells if plane_cells > 0 else index] = true
+
+
 static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> PackedInt32Array:
 	var seen := {}
 	var old_payloads: Dictionary = command.get("old_payloads", {})
@@ -2712,17 +2728,7 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 			or new_bytes.size() != old_bytes.size()
 		):
 			continue
-		for index in (map_edge * map_edge):
-			var offset := index * stride
-			if chunk_id == "XTXT":
-				if OverlayData.read(old_bytes, index) != OverlayData.read(new_bytes, index):
-					seen[index] = true
-				continue
-			var changed := old_bytes[offset] != new_bytes[offset]
-			if stride == 2:
-				changed = changed or old_bytes[offset + 1] != new_bytes[offset + 1]
-			if changed:
-				seen[index] = true
+		_collect_changed_tiles(old_bytes, new_bytes, 1 if chunk_id == "XTXT" else stride, seen, map_edge * map_edge if chunk_id == "XTXT" else 0)
 	if command.has("old_text") and command.has("new_text"):
 		var old_text: PackedByteArray = command.old_text
 		var new_text: PackedByteArray = command.new_text
@@ -2730,9 +2736,7 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 			OverlayData.count(old_text) == (map_edge * map_edge)
 			and OverlayData.count(new_text) == (map_edge * map_edge)
 		):
-			for index in (map_edge * map_edge):
-				if OverlayData.read(old_text, index) != OverlayData.read(new_text, index):
-					seen[index] = true
+			_collect_changed_tiles(old_text, new_text, 1, seen, map_edge * map_edge)
 	var tile_indices: PackedInt32Array = command.get(
 		"tile_indices", PackedInt32Array()
 	)

@@ -28,9 +28,19 @@ func _run() -> void:
 		assert(cache.entries.size() <= cache.visible.size() + cache.offscreen_limit())
 		for worker in cache._gpu_workers:
 			assert(worker.context.tiles.size() <= CityGpuBuildContext.TILE_CACHE_LIMIT)
+	# Player edits take the next available worker ahead of stale background work.
+	var edited: Vector2i = cache.visible[-1]
+	for entry: Dictionary in cache.entries.values():
+		entry.generation = 0
+	cache.configure(city, palette, sprites, [2], 2, "city", {}, true, true,
+		Rect2i(edited * cache.region_edge, Vector2i.ONE * cache.region_edge))
+	cache.tick()
+	assert(cache._gpu_workers[0].keys[0] == edited, "Background region ran before the player edit")
+	await _drain(cache)
+	assert(cache._edit_priority.is_empty(), "Completed edit still has render priority")
 	# Keep updating while waiting for previously missing regions.
 	cache.entries.clear()
-	var revision := 1
+	var revision := 2
 	var deadline := Time.get_ticks_msec() + 15000
 	while not cache.covered() and Time.get_ticks_msec() < deadline:
 		revision += 1
