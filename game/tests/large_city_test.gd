@@ -4,6 +4,7 @@ var failures := 0
 
 func _init() -> void:
 	for edge in Sc2File.MAP_SIZES:
+		check_highways(edge)
 		check_size(edge)
 		check_large_counts(edge)
 	check_format_guards()
@@ -137,3 +138,33 @@ func check_large_counts(edge: int) -> void:
 		change.call(buildings, zones, misc, buildings.size() - 1, 0x1d)
 		document.find_chunk("MISC").set_decoded_payload(misc)
 		check(document.misc_u32(road_offset) == (0 if edge == 128 else 65536), "tile count mutation width %d: %s" % [edge, change])
+
+func check_highways(edge: int) -> void:
+	var document := EmptyCityTemplate.create(edge)
+	var city := CityState.from_document(document)
+	var before: PackedByteArray = document.serialize().data
+	var far := edge - 10
+	for start in [Vector2i(far, 20), Vector2i(20, far), Vector2i(far, far), Vector2i(124, 20), Vector2i(20, 124)]:
+		if edge == 128 and (start.x == 124 or start.y == 124):
+			continue
+		check(HighwayCommand.preview_valid(city, start), "Highway preview at %s on %d map" % [start, edge])
+		var finish: Vector2i = start + (Vector2i(0, 4) if start.y == 124 else Vector2i(4, 0))
+		var built := HighwayCommand.apply(city, 6, 1, start, finish)
+		check(built.ok and built.get("sections", []).size() == 3, "Highway route across extended coordinates")
+		if not built.ok:
+			continue
+		check(built.cost == 300, "Highway route charges three sections")
+		var random := SimRandom.new(42)
+		var removed := DemolishCommand.apply_path(city, 0, 0, [start + Vector2i.ONE], random)
+		check(removed.ok and removed.get("tile_indices", []).size() == 4, "Extended highway demolition")
+		if removed.ok:
+			check(DemolishCommand.undo(city, removed, random).ok, "Extended demolition undo")
+		check(HighwayCommand.undo(city, built).ok, "Extended highway undo")
+		check(document.serialize().data == before, "Extended highway exact undo bytes")
+	for border in [Vector2i(edge - 2, 20), Vector2i(20, edge - 2)]:
+		var prompt := HighwayCommand.apply(city, 6, 1, border, border)
+		check(prompt.get("connection_selection_required", false), "Highway connection uses actual map border")
+		check(document.serialize().data == before, "Connection prompt does not change city")
+	for outside in [Vector2i(edge, 20), Vector2i(20, edge), Vector2i(-1, 20)]:
+		check(not HighwayCommand.preview_valid(city, outside), "Outside highway preview rejected")
+		check(not HighwayCommand.apply(city, 6, 1, outside, outside).ok, "Outside highway placement rejected")

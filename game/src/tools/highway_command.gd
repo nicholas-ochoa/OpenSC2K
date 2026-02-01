@@ -69,7 +69,7 @@ static func apply(
 		return {"ok": false, "error": "tool is not a highway"}
 	var start := snap_anchor(selected_start)
 	var finish := snap_anchor(selected_finish)
-	if not _anchor_is_in_bounds(start) or not _anchor_is_in_bounds(finish):
+	if not _anchor_is_in_bounds(start, map_edge) or not _anchor_is_in_bounds(finish, map_edge):
 		return {"ok": false, "error": "highway is outside the city"}
 
 	var old_payloads := NetworkCommand._city_payloads(city)
@@ -169,7 +169,7 @@ static func apply(
 	var connection_available := (
 		not bridge_attempted
 		and not sections.is_empty()
-		and _is_connection_exit(sections, finish)
+		and _is_connection_exit(sections, finish, map_edge)
 		and OverlayData.read(text_overlays, start.x * map_edge + start.y) != CONNECTION_LABEL
 	)
 	var connection_affordable := (
@@ -410,7 +410,7 @@ static func _scan_bridge(
 	while true:
 		checked += DIRECTIONS[direction] * 2
 		span_length += 1
-		if not _anchor_is_in_bounds(checked):
+		if not _anchor_is_in_bounds(checked, map_edge):
 			return {"ok": false, "error": "highway bridge does not reach another bank"}
 		if not _section_is_bridge_clear(buildings, checked, map_edge):
 			return {"ok": false, "error": "highway bridge path contains a structure"}
@@ -519,7 +519,7 @@ static func _section_is_bridge_clear(
 	buildings: PackedByteArray, anchor: Vector2i,
 	map_edge: int = 128,
 ) -> bool:
-	if not _anchor_is_in_bounds(anchor):
+	if not _anchor_is_in_bounds(anchor, map_edge):
 		return false
 	for offset in [
 		Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1),
@@ -534,7 +534,7 @@ static func _bridge_terrain_code(
 	terrain: PackedByteArray, anchor: Vector2i,
 	map_edge: int = 128,
 ) -> int:
-	if not _anchor_is_in_bounds(anchor):
+	if not _anchor_is_in_bounds(anchor, map_edge):
 		return 0x0f00
 	var result := 0
 	for offset in [
@@ -788,7 +788,7 @@ static func _section_is_flat_eligible(
 	direction: int,
 	map_edge: int = 128,
 ) -> bool:
-	if not _anchor_is_in_bounds(anchor):
+	if not _anchor_is_in_bounds(anchor, map_edge):
 		return false
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
@@ -833,7 +833,7 @@ static func _terrain_section_shape(
 	anchor: Vector2i,
 	map_edge: int = 128,
 ) -> int:
-	if not _anchor_is_in_bounds(anchor):
+	if not _anchor_is_in_bounds(anchor, map_edge):
 		return INVALID_TERRAIN_SHAPE
 	if (
 		buildings.size() != (map_edge * map_edge)
@@ -1052,7 +1052,7 @@ static func _place_section(
 	for step in DIRECTIONS:
 		var neighbor: Vector2i = anchor + step * 2
 		if (
-			_anchor_is_in_bounds(neighbor)
+			_anchor_is_in_bounds(neighbor, map_edge)
 			and _section_kind(buildings, zones, flags, neighbor, map_edge) > 1
 		):
 			_retile_section(
@@ -1112,7 +1112,7 @@ static func _retile_affected_sections(
 		for step in DIRECTIONS:
 			var neighbor: Vector2i = anchor + step * 2
 			if (
-				_anchor_is_in_bounds(neighbor)
+				_anchor_is_in_bounds(neighbor, map_edge)
 				and _section_kind(buildings, zones, flags, neighbor, map_edge) > 1
 			):
 				affected[neighbor] = true
@@ -1172,7 +1172,7 @@ static func _select_section_kind(
 	direction: int,
 	map_edge: int = 128,
 ) -> int:
-	if not _anchor_is_in_bounds(anchor):
+	if not _anchor_is_in_bounds(anchor, map_edge):
 		return -1
 	var current_kind := _section_kind(buildings, zones, flags, anchor, map_edge)
 	if (
@@ -1260,7 +1260,7 @@ static func _neighbor_connection_flags(
 	map_edge: int = 128,
 ) -> int:
 	var neighbor: Vector2i = anchor + DIRECTIONS[direction_index] * 2
-	if not _anchor_is_in_bounds(neighbor):
+	if not _anchor_is_in_bounds(neighbor, map_edge):
 		return 0
 	var neighbor_kind := _section_kind(buildings, zones, flags, neighbor, map_edge)
 	if not _neighbor_kind_connects(
@@ -1349,7 +1349,7 @@ static func _section_kind(
 	anchor: Vector2i,
 	map_edge: int = 128,
 ) -> int:
-	if not _anchor_is_in_bounds(anchor):
+	if not _anchor_is_in_bounds(anchor, map_edge):
 		return -1
 	var anchor_index := anchor.x * map_edge + anchor.y
 	var anchor_tile := int(buildings[anchor_index])
@@ -1554,29 +1554,29 @@ static func _direction_between(start: Vector2i, finish: Vector2i) -> int:
 	return 2 if difference.y >= 0 else 0
 
 
-static func _anchor_is_in_bounds(anchor: Vector2i) -> bool:
-	return anchor.x >= 0 and anchor.x <= 126 and anchor.y >= 0 and anchor.y <= 126
+static func _anchor_is_in_bounds(anchor: Vector2i, map_edge: int = 128) -> bool:
+	return anchor.x >= 0 and anchor.x <= map_edge - 2 and anchor.y >= 0 and anchor.y <= map_edge - 2
 
 
 static func _is_connection_exit(
-	sections: Array[Vector2i], finish: Vector2i
+	sections: Array[Vector2i], finish: Vector2i, map_edge: int = 128
 ) -> bool:
 	if sections.is_empty():
 		return false
 	var last_index := sections.size() - 1
 	var direction := _section_direction(sections, last_index, finish)
 	var after_exit: Vector2i = sections[last_index] + DIRECTIONS[direction] * 2
-	if not _anchor_is_in_bounds(after_exit):
+	if not _anchor_is_in_bounds(after_exit, map_edge):
 		return true
-	return sections.size() == 1 and _anchor_is_on_border(sections[0])
+	return sections.size() == 1 and _anchor_is_on_border(sections[0], map_edge)
 
 
-static func _anchor_is_on_border(anchor: Vector2i) -> bool:
-	return anchor.x == 0 or anchor.x == 126 or anchor.y == 0 or anchor.y == 126
+static func _anchor_is_on_border(anchor: Vector2i, map_edge: int = 128) -> bool:
+	return anchor.x == 0 or anchor.x == map_edge - 2 or anchor.y == 0 or anchor.y == map_edge - 2
 
 
 static func _section_has_water(flags: PackedByteArray, anchor: Vector2i, map_edge: int = 128) -> bool:
-	if not _anchor_is_in_bounds(anchor):
+	if not _anchor_is_in_bounds(anchor, map_edge):
 		return false
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
@@ -1586,7 +1586,7 @@ static func _section_has_water(flags: PackedByteArray, anchor: Vector2i, map_edg
 
 
 static func _section_is_existing_highway(buildings: PackedByteArray, anchor: Vector2i, map_edge: int = 128) -> bool:
-	if not _anchor_is_in_bounds(anchor):
+	if not _anchor_is_in_bounds(anchor, map_edge):
 		return false
 	for x in range(anchor.x, anchor.x + 2):
 		for y in range(anchor.y, anchor.y + 2):
@@ -1598,7 +1598,7 @@ static func _section_is_existing_highway(buildings: PackedByteArray, anchor: Vec
 static func preview_valid(city: CityState, selected: Vector2i) -> bool:
 	var map_edge: int = city.map_size if city != null else 128
 	var anchor := snap_anchor(selected)
-	if city == null or not _anchor_is_in_bounds(anchor):
+	if city == null or not _anchor_is_in_bounds(anchor, map_edge):
 		return false
 	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
 	var sections := _plan_flat_route(city.buildings, city.terrain, city.tile_flags, altitude, anchor, anchor, map_edge)
@@ -1618,7 +1618,7 @@ static func preview_error(city: CityState, selected: Vector2i) -> String:
 	if preview_valid(city, selected):
 		return ""
 	var anchor := snap_anchor(selected)
-	if city == null or not _anchor_is_in_bounds(anchor):
+	if city == null or not _anchor_is_in_bounds(anchor, map_edge):
 		return "The 2 by 2 highway section extends outside the map."
 	if _section_has_water(city.tile_flags, anchor, map_edge):
 		var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload

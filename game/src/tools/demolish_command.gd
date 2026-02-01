@@ -682,7 +682,7 @@ static func _demolish_highway_section(
 	map_edge: int = 128,
 ) -> Dictionary:
 	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
-	if not HighwayCommand._anchor_is_in_bounds(anchor):
+	if not HighwayCommand._anchor_is_in_bounds(anchor, map_edge):
 		return {"changed": false, "specialized": true}
 	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 		var point: Vector2i = anchor + offset
@@ -714,7 +714,7 @@ static func _demolish_highway_section(
 	for direction in DIRECTIONS:
 		var adjacent: Vector2i = anchor + direction * 2
 		if (
-			HighwayCommand._anchor_is_in_bounds(adjacent)
+			HighwayCommand._anchor_is_in_bounds(adjacent, map_edge)
 			and HighwayCommand._section_kind(buildings, zones, flags, adjacent, map_edge) > 1
 		):
 			adjacent_sections.append(adjacent)
