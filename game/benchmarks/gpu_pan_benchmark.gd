@@ -36,5 +36,29 @@ func _run() -> void:
 		while Time.get_ticks_msec() < warm:
 			cache.tick()
 			await process_frame
+	if OS.get_environment("CITY_BENCH_CONTINUOUS") == "1":
+		var offset := Vector2.ZERO
+		for velocity in [Vector2(1600, 0), Vector2(0, 1600), Vector2(-1600, 0)]:
+			var began := Time.get_ticks_usec()
+			var previous := began
+			var missing_frames := 0
+			var max_missing := 0
+			var frames := 0
+			while Time.get_ticks_usec() - began < 3000000:
+				var now := Time.get_ticks_usec()
+				offset += velocity * ((now - previous) / 1000000.0)
+				previous = now
+				cache.update_viewport(Rect2(start + offset, size))
+				cache.tick()
+				var missing := 0
+				for key in cache.visible:
+					if not cache.entries.has(key):
+						missing += 1
+				if missing > 0:
+					missing_frames += 1
+				max_missing = maxi(max_missing, missing)
+				frames += 1
+				await process_frame
+			print("CONTINUOUS screen_pixels_per_second=%s frames=%d uncovered_frames=%d max_missing_regions=%d" % [velocity * 0.25, frames, missing_frames, max_missing])
 	cache.close()
 	quit()

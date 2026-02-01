@@ -1346,7 +1346,11 @@ static func dynamic_draw_commands(
 	if configuration.is_empty():
 		return commands
 	var entries: Array[Dictionary] = []
+	var things := city.document.find_chunk("XTHG")
 	for record in city.thing_count():
+		var offset := record * CityState.THING_RECORD_SIZE
+		if things == null or offset >= things.decoded_payload.size() or things.decoded_payload[offset] == 0:
+			continue
 		var thing := city.thing(record)
 		var point := Vector2i(int(thing.get("x", -1)), int(thing.get("y", -1)))
 		if (

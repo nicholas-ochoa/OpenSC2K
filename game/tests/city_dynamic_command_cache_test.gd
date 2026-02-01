@@ -22,5 +22,33 @@ func _initialize() -> void:
 	assert(cache.rebuilds > count)
 	city.visible_altitude_levels = 8
 	assert(cache.get_commands(city, sprites, 2, 1) == CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 1))
+	_check_display_clock(city, sprites)
 	print("PASS: unchanged dynamic command reuse, packed state changes, animation and cutaway parity")
 	quit()
+
+func _check_display_clock(city: CityState, sprites: Sc2SpriteArchive) -> void:
+	city.visible_altitude_levels = 32
+	city.text_overlays.fill(0)
+	var things := city.document.find_chunk("XTHG")
+	things.decoded_payload.fill(0)
+	var cache := CommandCache.new()
+	assert(cache.get_commands(city, sprites, 2, 0).is_empty())
+	cache.get_commands(city, sprites, 2, 10)
+	assert(cache.rebuilds == 1, "Display clock rebuilt a city with no animated sprites")
+	assert(city.set_text_overlay_id(20, 20, 0xff))
+	for phase in [0, 4, 7]:
+		var expected := CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, phase)
+		assert(not expected.is_empty())
+		assert(cache.get_commands(city, sprites, 2, phase) == expected)
+	assert(cache.rebuilds == 4, "Special overlays stopped animating")
+	assert(city.set_text_overlay_id(20, 20, OverlayData.thing_id(1)))
+	var offset := CityState.THING_RECORD_SIZE
+	things.decoded_payload[offset] = 6
+	ThingData.write(things.decoded_payload, offset + 3, 20)
+	ThingData.write(things.decoded_payload, offset + 4, 20)
+	for phase in [0, 1]:
+		var expected := CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, phase)
+		assert(not expected.is_empty())
+		assert(cache.get_commands(city, sprites, 2, phase) == expected)
+	assert(cache.rebuilds == 6, "Type 6 sprite stopped mirroring")
+	assert(cache.get_commands(CityState.new(), sprites, 2, 0).is_empty())
