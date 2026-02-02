@@ -106,7 +106,7 @@ func _ready() -> void:
 	toolbar.add_child(HSeparator.new())
 	var camera_row := _camera_row(toolbar, "Rotate")
 	rotate_counter_clockwise_button = _icon_button(
-		Rect2i(405, 0, 27, 23), "Rotate Counter-Clockwise (Q)"
+		Rect2i(405, 0, 27, 23), "Rotate Counter-Clockwise"
 	)
 	rotate_counter_clockwise_button.disabled = true
 	rotate_counter_clockwise_button.pressed.connect(
@@ -114,17 +114,17 @@ func _ready() -> void:
 	)
 	camera_row.add_child(rotate_counter_clockwise_button)
 	rotate_clockwise_button = _icon_button(
-		Rect2i(433, 0, 27, 23), "Rotate Clockwise (W)"
+		Rect2i(433, 0, 27, 23), "Rotate Clockwise"
 	)
 	rotate_clockwise_button.disabled = true
 	rotate_clockwise_button.pressed.connect(rotate_requested.emit.bind(false))
 	camera_row.add_child(rotate_clockwise_button)
 
 	var zoom_row := _camera_row(toolbar, "Zoom")
-	zoom_out_button = _icon_button(Rect2i(462, 0, 23, 23), "Zoom Out")
+	zoom_out_button = _icon_button(Rect2i(462, 0, 23, 23), "Zoom Out (Q / -)")
 	zoom_out_button.pressed.connect(zoom_out_requested.emit)
 	zoom_row.add_child(zoom_out_button)
-	zoom_in_button = _icon_button(Rect2i(486, 0, 23, 23), "Zoom In")
+	zoom_in_button = _icon_button(Rect2i(486, 0, 23, 23), "Zoom In (E / +)")
 	zoom_in_button.pressed.connect(zoom_in_requested.emit)
 	zoom_row.add_child(zoom_in_button)
 

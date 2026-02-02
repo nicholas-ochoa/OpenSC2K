@@ -112,6 +112,7 @@ var show_underground_pipes := true
 var show_underground_subways := true
 var app_soundtrack_folder := ""
 var app_city_renderer := "gpu"
+var app_background_audio := false
 var app_music_volume := 0.8
 var app_effects_volume := 0.8
 var app_fullscreen := false
@@ -219,6 +220,8 @@ var highway_connection_dialog: RouteConfirmationDialog
 var pending_highway_connection: Dictionary = {}
 var tunnel_dialog: RouteConfirmationDialog
 var pending_tunnel_request: Dictionary = {}
+var camera_tap := Vector2.ZERO
+var camera_motion := preload("res://src/view/city_camera_motion.gd").new()
 var query_dialog: CityQueryDialog
 var active_query_result: Dictionary = {}
 var city_analysis_dialog: CityAnalysisDialog
@@ -282,6 +285,7 @@ func _initialize_runtime() -> void:
 	runtime_initialized = true
 	new_city_session.independent_template = not asset_source.use_original_data
 	audio_controller = CityAudio.new()
+	audio_controller.background_audio = app_background_audio
 	audio_controller.music_activity_changed.connect(_on_music_activity_changed)
 	add_child(audio_controller)
 	audio_controller.setup(
@@ -391,7 +395,7 @@ func _import_original_game(executable_path: String) -> void:
 	app_graphics_source = "original"
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio,
 	)
 	if not runtime_initialized:
 		reference_root = install_result.root
@@ -412,6 +416,7 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
+	_update_keyboard_camera(delta)
 	if audio_controller != null:
 		audio_controller.set_menu_music(
 			main_menu != null and main_menu.visible and app_music_volume > 0.0
@@ -437,6 +442,7 @@ func _process(delta: float) -> void:
 		or tunnel_dialog.visible
 		or (forest_protest_dialog != null and forest_protest_dialog.visible)
 		or (building_objection_dialog != null and building_objection_dialog.visible)
+		or (settings_dialog != null and settings_dialog.visible)
 		or (query_dialog != null and query_dialog.visible)
 		or (ordinance_window != null and ordinance_window.visible)
 		or (new_city_dialog != null and new_city_dialog.visible)
@@ -477,9 +483,56 @@ func _process(delta: float) -> void:
 	_consume_simulation_result(result)
 
 
+func _camera_keys_allowed() -> bool:
+	if city == null or map_view == null or not map_view.is_visible_in_tree() or not DisplayServer.window_is_focused():
+		return false
+	var focus := get_viewport().gui_get_focus_owner()
+	if focus is LineEdit or focus is TextEdit:
+		return false
+	for overlay in [main_menu, scurk_editor, scurk_place_print, scurk_print, settings_dialog, save_changes_dialog]:
+		if overlay != null and overlay.visible:
+			return false
+	if city_dialogs != null:
+		for dialog in city_dialogs.get_children():
+			if dialog is Window and dialog.visible:
+				return false
+			if dialog is Control and dialog.visible and dialog.mouse_filter != Control.MOUSE_FILTER_IGNORE:
+				return false
+	for window in get_viewport().get_embedded_subwindows():
+		if window.visible:
+			return false
+	return true
+
+
+func _update_keyboard_camera(delta: float) -> void:
+	var enabled := _camera_keys_allowed()
+	var direction := Vector2.ZERO
+	enabled = enabled and not Input.is_key_pressed(KEY_CTRL) and not Input.is_key_pressed(KEY_META) and not Input.is_key_pressed(KEY_ALT)
+	if enabled:
+		direction = camera_motion.held_direction()
+	if direction.is_zero_approx():
+		direction = camera_tap
+	camera_tap = Vector2.ZERO
+	if map_view != null:
+		map_view.pan_screen(camera_motion.step(direction, delta, enabled and not map_view.is_panning() and not map_view.is_left_drag_active()))
+
+
+func _input(event: InputEvent) -> void:
+	# A focused control can consume the release event. Stop camera movement anyway.
+	if event is InputEventKey and not event.pressed:
+		camera_motion.release(event.physical_keycode)
+
+
 func _unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo or map_view == null:
 		return
+	if _camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed:
+		var directions := {KEY_W: Vector2.UP, KEY_A: Vector2.LEFT, KEY_S: Vector2.DOWN, KEY_D: Vector2.RIGHT}
+		if directions.has(event.physical_keycode):
+			camera_motion.press(event.physical_keycode)
+			camera_tap += directions[event.physical_keycode]
+			get_viewport().set_input_as_handled()
+			return
 	if scurk_editor != null and scurk_editor.visible:
 		if scurk_editor.handle_shortcut(event):
 			get_viewport().set_input_as_handled()
@@ -503,18 +556,12 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_Z and event.is_command_or_control_pressed():
 		_undo_last_edit()
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL:
+	elif _camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed and (event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL or event.physical_keycode == KEY_E):
 		if map_view.zoom_in():
 			get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_MINUS:
+	elif _camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed and (event.keycode == KEY_MINUS or event.physical_keycode == KEY_Q):
 		if map_view.zoom_out():
 			get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_Q:
-		_rotate_city(true)
-		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_W:
-		_rotate_city(false)
-		get_viewport().set_input_as_handled()
 
 
 func _consume_simulation_result(result: Dictionary) -> void:
@@ -790,7 +837,7 @@ func _open_settings_dialog() -> void:
 	settings_dialog.show_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
 		app_graphics_source, app_graphics_folder, asset_source.graphics_name,
-		app_soundtrack_folder, audio_controller.resolve_soundtrack_folder(""), app_city_renderer,
+		app_soundtrack_folder, audio_controller.resolve_soundtrack_folder(""), app_city_renderer, app_background_audio,
 	)
 
 
@@ -805,11 +852,13 @@ func _apply_settings() -> void:
 	app_graphics_source = values.graphics_source
 	app_graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
+	app_background_audio = bool(values.background_audio)
 	app_soundtrack_folder = str(values.soundtrack_folder)
 	app_music_volume = float(values.music_volume)
 	app_effects_volume = float(values.effects_volume)
 	app_fullscreen = bool(values.fullscreen)
 	if audio_controller != null:
+		audio_controller.set_background_audio(app_background_audio)
 		audio_controller.set_volumes(app_music_volume, app_effects_volume)
 		audio_controller.set_soundtrack_folder(app_soundtrack_folder, (main_menu != null and main_menu.visible) or (city != null and city.music_enabled()))
 	DisplayServer.window_set_mode(
@@ -819,7 +868,7 @@ func _apply_settings() -> void:
 	)
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio,
 	)
 	status_label.text = (
 		("Settings saved. Restart OpenSC2K to use the selected graphics." if changed_source else "Settings saved.")
@@ -835,6 +884,7 @@ func _load_app_settings() -> void:
 		app_effects_volume,
 		app_fullscreen,
 	)
+	app_background_audio = values.background_audio
 	app_city_renderer = values.city_renderer
 	app_soundtrack_folder = values.soundtrack_folder
 	app_music_volume = values.music_volume
@@ -1420,6 +1470,9 @@ func _on_speed_menu(id: int) -> void:
 
 
 func _on_options_menu(id: int) -> void:
+	if id == CityMenuBar.MENU_SETTINGS:
+		_open_settings_dialog()
+		return
 	if id in [CityMenuBar.MENU_RENDERER_GPU, CityMenuBar.MENU_RENDERER_CPU]:
 		_set_city_renderer("cpu" if id == CityMenuBar.MENU_RENDERER_CPU else "gpu")
 		var error := SettingsStore.save_values(app_music_volume, app_effects_volume, app_fullscreen,
@@ -1503,8 +1556,6 @@ func _sync_city_option_menus() -> void:
 		view_menu.disabled = not has_city
 	var option_states := {
 		CityMenuBar.MENU_FULL_SIZE_GRAPHICS: full_size_graphics,
-		CityMenuBar.MENU_RENDERER_GPU: app_city_renderer == "gpu",
-		CityMenuBar.MENU_RENDERER_CPU: app_city_renderer == "cpu",
 		MENU_AUTO_BUDGET: has_city and city.auto_budget_enabled(),
 		MENU_AUTO_GOTO: has_city and city.auto_goto_enabled(),
 		MENU_SOUND_EFFECTS: has_city and city.sound_enabled(),
@@ -1516,6 +1567,9 @@ func _sync_city_option_menus() -> void:
 			options_menu.get_popup().set_item_checked(
 				option_index, bool(option_states[option_id])
 			)
+	for renderer_id in [CityMenuBar.MENU_RENDERER_GPU, CityMenuBar.MENU_RENDERER_CPU]:
+		var popup := city_menu_bar.renderer_menu
+		popup.set_item_checked(popup.get_item_index(renderer_id), (app_city_renderer == "gpu") == (renderer_id == CityMenuBar.MENU_RENDERER_GPU))
 	var no_disasters_index := disasters_menu.get_popup().get_item_index(MENU_NO_DISASTERS)
 	if no_disasters_index >= 0:
 		disasters_menu.get_popup().set_item_disabled(no_disasters_index, not has_city)

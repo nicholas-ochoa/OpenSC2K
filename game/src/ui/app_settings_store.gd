@@ -18,6 +18,7 @@ static func load_values(
 		"graphics_folder": "",
 		"soundtrack_folder": "",
 		"city_renderer": "gpu",
+		"background_audio": false,
 	}
 	var config := ConfigFile.new()
 	if config.load(path) != OK:
@@ -32,6 +33,7 @@ static func load_values(
 		0.0,
 		1.0,
 	)
+	result.background_audio = bool(config.get_value("audio", "background_audio", false))
 	result.soundtrack_folder = str(config.get_value("audio", "soundtrack_folder", ""))
 	result.fullscreen = bool(
 		config.get_value("display", "fullscreen", result.fullscreen)
@@ -55,6 +57,7 @@ static func save_values(
 	graphics_folder := "",
 	soundtrack_folder: Variant = null,
 	city_renderer: Variant = null,
+	background_audio: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 	if FileAccess.file_exists(path):
@@ -69,4 +72,6 @@ static func save_values(
 	config.set_value("display", "fullscreen", fullscreen)
 	if city_renderer != null:
 		config.set_value("display", "city_renderer", normalize_renderer(city_renderer))
+	if background_audio != null:
+		config.set_value("audio", "background_audio", bool(background_audio))
 	return config.save(path)

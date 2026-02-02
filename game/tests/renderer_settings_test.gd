@@ -33,7 +33,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "cpu")
 	main._set_city_renderer("gpu")
 	assert(not main.region_cache.gpu_enabled)
-	var popup: PopupMenu = main.options_menu.get_popup()
+	var popup: PopupMenu = main.city_menu_bar.renderer_menu
 	assert(popup.is_item_checked(popup.get_item_index(CityMenuBar.MENU_RENDERER_GPU)))
 	assert(not popup.is_item_checked(popup.get_item_index(CityMenuBar.MENU_RENDERER_CPU)))
 	assert(main.city.document.serialize().data == before, "Changing renderer altered saved data")

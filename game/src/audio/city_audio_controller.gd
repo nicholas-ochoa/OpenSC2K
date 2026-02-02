@@ -26,6 +26,7 @@ var dummy_music_active := false
 var menu_music := false
 var current_track_id := -1
 var application_has_focus := true
+var background_audio := false
 var tool_loop_player: AudioStreamPlayer
 var wave_sound_gate := WaveSounds.new()
 var wave_stream_cache: Dictionary = {}
@@ -53,7 +54,7 @@ func setup(
 
 func advance(delta_msec: float) -> void:
 	wave_sound_gate.advance(delta_msec)
-	if menu_music and application_has_focus and music_volume > 0.0 and not music_playback_is_active():
+	if menu_music and audio_allowed() and music_volume > 0.0 and not music_playback_is_active():
 		play_music_track(Music.MAIN_THEME_TRACK)
 
 
@@ -67,7 +68,7 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 
 
 func play_music_track(track_id: int) -> bool:
-	if music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
+	if not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
 		return false
 	var recordings := RecordedSoundtrack.find_tracks(soundtrack_folder, track_id)
 	if recordings.is_empty() and not original_media_enabled:
@@ -130,16 +131,28 @@ func music_playback_is_active() -> bool:
 		or (music_player != null and music_player.is_track_active()))
 
 
+func audio_allowed() -> bool:
+	return application_has_focus or background_audio
+
+
+func set_background_audio(enabled: bool) -> void:
+	background_audio = enabled
+	if not audio_allowed():
+		stop_music()
+		stop_sound_effects()
+
+
 func handle_application_focus_out() -> void:
 	application_has_focus = false
-	stop_music()
-	stop_sound_effects()
+	if not background_audio:
+		stop_music()
+		stop_sound_effects()
 
 
 func handle_application_focus_in(music_enabled: bool) -> void:
 	var regained_focus := not application_has_focus
 	application_has_focus = true
-	if not regained_focus or not music_enabled:
+	if background_audio or not regained_focus or not music_enabled:
 		return
 	if not music_playback_is_active():
 		play_music_track(Music.MAIN_THEME_TRACK if menu_music else music_director.next_general_track())
@@ -174,7 +187,7 @@ func stop_sound_effects() -> void:
 func play_sound_events(
 	sound_events: Array, sound_enabled: bool, overlay_mode: String, view_size: int
 ) -> void:
-	if not sound_enabled:
+	if not sound_enabled or not audio_allowed():
 		return
 	for sound_event in sound_events:
 		var sound_id := MovingThingAudio.event_sound_id(
@@ -198,7 +211,7 @@ func play_sound_events(
 
 func start_tool_loop_sound(sound_id: int, sound_enabled: bool) -> void:
 	stop_tool_loop_sound()
-	if not sound_enabled:
+	if not sound_enabled or not audio_allowed():
 		return
 	var cached_stream := wave_stream_cache.get(sound_id) as AudioStreamWAV
 	if cached_stream == null:
@@ -259,7 +272,7 @@ func set_menu_music(enabled: bool) -> void:
 		return
 	menu_music = enabled
 	stop_music()
-	if enabled and application_has_focus and music_volume > 0.0:
+	if enabled and audio_allowed() and music_volume > 0.0:
 		play_music_track(Music.MAIN_THEME_TRACK)
 
 
@@ -277,5 +290,5 @@ func set_soundtrack_folder(selected_folder: String, restart_music := false) -> v
 	var track_id := current_track_id
 	stop_music()
 	soundtrack_folder = resolved
-	if restart_music and application_has_focus and music_volume > 0.0:
+	if restart_music and audio_allowed() and music_volume > 0.0:
 		play_music_track(track_id if track_id >= 0 else Music.MAIN_THEME_TRACK if menu_music else music_director.next_general_track())

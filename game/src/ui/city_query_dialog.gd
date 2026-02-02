@@ -8,6 +8,8 @@ signal action_requested
 
 var title_label: Label
 var name_input: LineEdit
+var tabs: TabContainer
+var summary_rows: VBoxContainer
 var text_view: TextEdit
 var sprite_view: TextureRect
 var sprite_caption: Label
@@ -31,7 +33,7 @@ func _ready() -> void:
 	add_child(center)
 	var panel := PanelContainer.new()
 	panel.name = "QueryDialog"
-	panel.custom_minimum_size = Vector2(900, 660)
+	panel.custom_minimum_size = Vector2(860, 600)
 	panel.mouse_filter = Control.MOUSE_FILTER_STOP
 	panel.add_theme_stylebox_override(
 		"panel",
@@ -64,6 +66,8 @@ func show_query(
 	rename_button.visible = is_specific
 	action_button.visible = not action_text.is_empty()
 	action_button.text = action_text
+	_populate_summary(details_text)
+	tabs.current_tab = 0
 	text_view.text = details_text
 	text_view.scroll_vertical = 0
 	sprite_view.texture = tile_texture
@@ -119,7 +123,7 @@ func _add_body(column: VBoxContainer) -> void:
 	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	column.add_child(body)
 	var text_column := VBoxContainer.new()
-	text_column.custom_minimum_size = Vector2(585, 0)
+	text_column.custom_minimum_size = Vector2(580, 0)
 	text_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	text_column.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	body.add_child(text_column)
@@ -134,7 +138,24 @@ func _add_body(column: VBoxContainer) -> void:
 			ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1, 8, 8)
 		)
 	text_column.add_child(name_input)
+	tabs = TabContainer.new()
+	tabs.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("eceeea"), Color("a0a5a0"), 1, 8, 8))
+	tabs.add_theme_stylebox_override("tab_selected", ClassicStyle.create_box(Color("eceeea"), Color("a0a5a0"), 1, 10, 7))
+	tabs.add_theme_stylebox_override("tab_unselected", ClassicStyle.create_box(Color("d2d5d2"), Color("a0a5a0"), 1, 10, 7))
+	tabs.add_theme_color_override("font_selected_color", Color("202830"))
+	tabs.add_theme_color_override("font_unselected_color", Color("505860"))
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	text_column.add_child(tabs)
+	var summary := ScrollContainer.new()
+	summary.name = "Overview"
+	summary.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tabs.add_child(summary)
+	summary_rows = VBoxContainer.new()
+	summary_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	summary_rows.add_theme_constant_override("separation", 6)
+	summary.add_child(summary_rows)
 	text_view = TextEdit.new()
+	text_view.name = "Technical details"
 	text_view.editable = false
 	text_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
 	text_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -145,13 +166,53 @@ func _add_body(column: VBoxContainer) -> void:
 			state,
 			ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1, 8, 8)
 		)
-	text_column.add_child(text_view)
+	tabs.add_child(text_view)
 	_add_image_column(body)
+
+
+func _populate_summary(details: String) -> void:
+	for child in summary_rows.get_children():
+		summary_rows.remove_child(child)
+		child.queue_free()
+	var lines := details.split("\n")
+	for index in range(1, lines.size()):
+		var line := lines[index].strip_edges()
+		if line == "Advanced tile data":
+			break
+		if line.is_empty():
+			continue
+		var card := PanelContainer.new()
+		card.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("f4f4ef"), Color("d3d3cc"), 1, 12, 10))
+		summary_rows.add_child(card)
+		var split := line.find(":")
+		if split > 0:
+			var row := HBoxContainer.new()
+			row.add_theme_constant_override("separation", 14)
+			card.add_child(row)
+			var label := Label.new()
+			label.text = line.left(split)
+			label.custom_minimum_size.x = 145
+			label.add_theme_color_override("font_color", Color("555b62"))
+			row.add_child(label)
+			var value := _summary_label(line.substr(split + 1).strip_edges())
+			value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+			row.add_child(value)
+		else:
+			card.add_child(_summary_label(line))
+
+
+func _summary_label(value: String) -> Label:
+	var label := Label.new()
+	label.text = value
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.add_theme_color_override("font_color", Color("202830"))
+	label.add_theme_font_size_override("font_size", 16)
+	return label
 
 
 func _add_image_column(body: HBoxContainer) -> void:
 	var image_panel := PanelContainer.new()
-	image_panel.custom_minimum_size = Vector2(285, 0)
+	image_panel.custom_minimum_size = Vector2(240, 0)
 	image_panel.add_theme_stylebox_override(
 		"panel",
 		ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1, 8, 8)
@@ -180,7 +241,7 @@ func _add_image_column(body: HBoxContainer) -> void:
 	thing_caption.add_theme_color_override("font_color", Color("101010"))
 	thing_panel.add_child(thing_caption)
 	thing_sprite_view = TextureRect.new()
-	thing_sprite_view.custom_minimum_size = Vector2(260, 190)
+	thing_sprite_view.custom_minimum_size = Vector2(220, 160)
 	thing_sprite_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	thing_sprite_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	thing_sprite_view.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED

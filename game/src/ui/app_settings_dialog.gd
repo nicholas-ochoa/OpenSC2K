@@ -18,6 +18,7 @@ var music_slider: HSlider
 var effects_slider: HSlider
 var fullscreen_check: CheckBox
 var renderer_selector: OptionButton
+var background_audio_check: CheckBox
 
 
 func _ready() -> void:
@@ -49,6 +50,10 @@ func _ready() -> void:
 			music_slider = slider
 		else:
 			effects_slider = slider
+	settings_grid.add_child(Label.new())
+	background_audio_check = CheckBox.new()
+	background_audio_check.text = "Play music and sounds in background"
+	settings_grid.add_child(background_audio_check)
 	var soundtrack_label := Label.new()
 	soundtrack_label.text = "Soundtrack folder"
 	settings_grid.add_child(soundtrack_label)
@@ -158,8 +163,9 @@ func _ready() -> void:
 func show_values(
 	music_volume: float, effects_volume: float, fullscreen: bool,
 	source := "auto", folder := "", active_name := "",
-	soundtrack_folder := "", automatic_folder := "", city_renderer := "gpu",
+	soundtrack_folder := "", automatic_folder := "", city_renderer := "gpu", background_audio := false,
 ) -> void:
+	background_audio_check.button_pressed = background_audio
 	renderer_selector.select(1 if city_renderer == "cpu" else 0)
 	automatic_soundtrack_folder = automatic_folder
 	soundtrack_edit.text = soundtrack_folder
@@ -177,6 +183,7 @@ func show_values(
 
 func selected_values() -> Dictionary:
 	return {
+		"background_audio": background_audio_check.button_pressed,
 		"soundtrack_folder": soundtrack_edit.text.strip_edges(),
 		"city_renderer": "cpu" if renderer_selector.selected == 1 else "gpu",
 		"music_volume": float(music_slider.value) / 100.0,

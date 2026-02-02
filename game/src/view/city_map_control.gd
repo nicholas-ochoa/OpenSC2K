@@ -347,6 +347,19 @@ func is_left_drag_active() -> bool:
 	return selection_start.x >= 0
 
 
+func pan_screen(displacement: Vector2) -> void:
+	if displacement.is_zero_approx():
+		return
+	source_center += displacement / _view_scale()
+	_clamp_source_center()
+	_hide_placement_error()
+	var pointer := get_local_mouse_position()
+	hover_tile = _tile_at(pointer) if Rect2(Vector2.ZERO, size).has_point(pointer) else Vector2i(-1, -1)
+	_sync_base_layer()
+	queue_redraw()
+	viewport_changed.emit()
+
+
 func is_panning() -> bool:
 	return _panning
 
