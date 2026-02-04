@@ -85,10 +85,10 @@ func _run() -> void:
 	assert(main.settings_dialog.selected_values().background_audio)
 	main.settings_dialog.hide()
 	var details := "Police Station\n\nOfficers: 42\nAnnual cost: $100\nFunding: 100%\n\nAdvanced tile data\nTile ID: 211\nXBIT: 0x00"
-	main.query_dialog.show_query("Police Station", "Central Police", true, details, "", main._query_sprite_texture(1211, false, 2), "Police Station", null, "")
+	main.query_dialog.show_query("Police Station", "Central Police", true, details, "", "Police Station", null, "")
 	assert(main.query_dialog.tabs.current_tab == 0)
 	assert(main.query_dialog.summary_rows.get_child_count() == 3)
-	assert(main.query_dialog.text_view.text == details)
+	assert(main.query_dialog.details_grid.columns == 4)
 	assert(not main._camera_keys_allowed())
 	main.query_dialog._enable_rename()
 	main.query_dialog.name_input.text = "North Police"

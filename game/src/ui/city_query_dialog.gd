@@ -3,6 +3,18 @@ extends ColorRect
 
 const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 
+class NeighborhoodPreview extends Control:
+	const ZOOM := 3.0
+	var texture: Texture2D:
+		set(value):
+			texture = value
+			queue_redraw()
+	func _draw() -> void:
+		if texture != null:
+			var target := texture.get_size() * ZOOM
+			draw_texture_rect(texture, Rect2((size - target) * 0.5, target), false)
+
+
 signal close_requested(commit_rename: bool)
 signal action_requested
 
@@ -10,9 +22,9 @@ var title_label: Label
 var name_input: LineEdit
 var tabs: TabContainer
 var summary_rows: VBoxContainer
-var text_view: TextEdit
-var sprite_view: TextureRect
+var details_grid: Tree
 var sprite_caption: Label
+var neighborhood_view: NeighborhoodPreview
 var thing_panel: VBoxContainer
 var thing_sprite_view: TextureRect
 var thing_caption: Label
@@ -54,10 +66,11 @@ func show_query(
 	is_specific: bool,
 	details_text: String,
 	action_text: String,
-	tile_texture: Texture2D,
 	tile_caption: String,
 	thing_texture: Texture2D,
 	thing_caption_text: String,
+	info: Dictionary = {},
+	neighborhood_texture: Texture2D = null,
 ) -> void:
 	title_label.text = "Query — %s" % query_title
 	name_input.visible = is_specific
@@ -66,11 +79,11 @@ func show_query(
 	rename_button.visible = is_specific
 	action_button.visible = not action_text.is_empty()
 	action_button.text = action_text
-	_populate_summary(details_text)
+	_populate_summary(details_text, info)
 	tabs.current_tab = 0
-	text_view.text = details_text
-	text_view.scroll_vertical = 0
-	sprite_view.texture = tile_texture
+	_populate_details(info)
+	neighborhood_view.texture = neighborhood_texture
+	neighborhood_view.visible = neighborhood_texture != null
 	sprite_caption.text = tile_caption
 	thing_panel.visible = not thing_caption_text.is_empty()
 	thing_sprite_view.texture = thing_texture
@@ -89,7 +102,7 @@ func facility_name() -> String:
 
 func close_query() -> void:
 	hide()
-	sprite_view.texture = null
+	neighborhood_view.texture = null
 	thing_sprite_view.texture = null
 
 
@@ -154,32 +167,40 @@ func _add_body(column: VBoxContainer) -> void:
 	summary_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary_rows.add_theme_constant_override("separation", 6)
 	summary.add_child(summary_rows)
-	text_view = TextEdit.new()
-	text_view.name = "Technical details"
-	text_view.editable = false
-	text_view.wrap_mode = TextEdit.LINE_WRAPPING_BOUNDARY
-	text_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	text_view.add_theme_color_override("font_color", Color("101010"))
-	text_view.add_theme_color_override("font_readonly_color", Color("101010"))
-	for state in ["normal", "focus", "read_only"]:
-		text_view.add_theme_stylebox_override(
-			state,
-			ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1, 8, 8)
-		)
-	tabs.add_child(text_view)
+	details_grid = Tree.new()
+	details_grid.name = "Technical details"
+	details_grid.columns = 4
+	details_grid.hide_root = true
+	details_grid.column_titles_visible = true
+	details_grid.select_mode = Tree.SELECT_ROW
+	for index in 4:
+		details_grid.set_column_title(index, ["Field", "Decimal", "Text", "Hex"][index])
+		details_grid.set_column_custom_minimum_width(index, [150, 70, 160, 80][index])
+		details_grid.set_column_expand(index, index == 2)
+	details_grid.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("ffffff"), Color("a0a5a0"), 1, 4, 4))
+	details_grid.add_theme_color_override("font_color", Color("202830"))
+	for color_name in ["font_hovered_color", "font_selected_color", "font_hovered_selected_color"]:
+		details_grid.add_theme_color_override(color_name, Color("202830"))
+	for style_name in ["hovered", "selected", "selected_focus", "hovered_selected", "hovered_dimmed"]:
+		details_grid.add_theme_stylebox_override(style_name, ClassicStyle.create_box(Color("dce7ef"), Color("839aaa"), 1, 2, 2))
+	details_grid.add_theme_constant_override("v_separation", 8)
+	tabs.add_child(details_grid)
 	_add_image_column(body)
 
 
-func _populate_summary(details: String) -> void:
+func _populate_summary(details: String, info: Dictionary) -> void:
 	for child in summary_rows.get_children():
 		summary_rows.remove_child(child)
 		child.queue_free()
 	var lines := details.split("\n")
+	if info.has("point"):
+		var point: Vector2i = info.point
+		lines.insert(1, "Location: X: %d, Y: %d, Z: %d" % [point.x, point.y, int(info.get("altitude_raw", 0)) & 0x1f])
 	for index in range(1, lines.size()):
 		var line := lines[index].strip_edges()
 		if line == "Advanced tile data":
 			break
-		if line.is_empty():
+		if line.is_empty() or (info.has("point") and line.begins_with("Tile: ")):
 			continue
 		var card := PanelContainer.new()
 		card.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("f4f4ef"), Color("d3d3cc"), 1, 12, 10))
@@ -199,6 +220,19 @@ func _populate_summary(details: String) -> void:
 			row.add_child(value)
 		else:
 			card.add_child(_summary_label(line))
+
+
+func _populate_details(info: Dictionary) -> void:
+	details_grid.clear()
+	var root := details_grid.create_item()
+	var row_index := 0
+	for row in QueryPresentation.advanced_rows(info):
+		var item := details_grid.create_item(root)
+		for column in 4:
+			item.set_text(column, row[column])
+			item.set_tooltip_text(column, row[column])
+			item.set_custom_bg_color(column, Color("f0f2ee") if row_index % 2 == 0 else Color.WHITE)
+		row_index += 1
 
 
 func _summary_label(value: String) -> Label:
@@ -225,12 +259,12 @@ func _add_image_column(body: HBoxContainer) -> void:
 	sprite_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	sprite_caption.add_theme_color_override("font_color", Color("101010"))
 	image_column.add_child(sprite_caption)
-	sprite_view = TextureRect.new()
-	sprite_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	sprite_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	sprite_view.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
-	sprite_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	image_column.add_child(sprite_view)
+	neighborhood_view = NeighborhoodPreview.new()
+	neighborhood_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	neighborhood_view.clip_contents = true
+	neighborhood_view.custom_minimum_size.y = 180
+	neighborhood_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	image_column.add_child(neighborhood_view)
 	thing_panel = VBoxContainer.new()
 	thing_panel.add_theme_constant_override("separation", 4)
 	thing_panel.visible = false
@@ -241,10 +275,10 @@ func _add_image_column(body: HBoxContainer) -> void:
 	thing_caption.add_theme_color_override("font_color", Color("101010"))
 	thing_panel.add_child(thing_caption)
 	thing_sprite_view = TextureRect.new()
-	thing_sprite_view.custom_minimum_size = Vector2(220, 160)
+	thing_sprite_view.custom_minimum_size = Vector2(220, 96)
 	thing_sprite_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	thing_sprite_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	thing_sprite_view.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
+	thing_sprite_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	thing_panel.add_child(thing_sprite_view)
 
 

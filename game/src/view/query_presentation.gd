@@ -67,3 +67,44 @@ static func thing_sprite(
 			)
 		_:
 			return Renderer.moving_thing_sprite(thing, LARGE_VIEW)
+
+
+static func advanced_rows(info: Dictionary) -> Array[PackedStringArray]:
+	var rows: Array[PackedStringArray] = []
+	if info.is_empty():
+		return rows
+	var point: Vector2i = info.get("point", Vector2i.ZERO)
+	for entry in [["Tile ID", "tile_id", 2], ["Sprite ID", "sprite_id", 4],
+		["ALTM", "altitude_raw", 4], ["XVAL", "land_value_raw", 2],
+		["XCRM", "crime_raw", 2], ["XPLT", "pollution_raw", 2], ["XTXT", "overlay_id", 2]]:
+		rows.append(_number_row(entry[0], int(info.get(entry[1], 0)), "", entry[2]))
+	rows.append(_number_row("X", point.x))
+	rows.append(_number_row("Y", point.y))
+	rows.append(_number_row("Z", int(info.get("altitude_raw", 0)) & 0x1f))
+	rows.append(_number_row("XZON", int(info.get("zone_raw", 0)), str(info.get("corner_name", ""))))
+	rows.append(_number_row("Zone", int(info.get("zone_id", 0)), str(info.get("zone_name", ""))))
+	rows.append(_number_row("XBIT", int(info.get("flags_raw", 0)), " ".join(info.get("flag_names", PackedStringArray()))))
+	rows.append(_number_row("XUND", int(info.get("underground_id", 0)), str(info.get("underground_name", ""))))
+	var microsim_id := int(info.get("microsim_id", -1))
+	if microsim_id < 0:
+		rows.append(PackedStringArray(["Microsim", "", "None", ""]))
+	else:
+		rows.append(_number_row("Microsim ID", microsim_id, str(info.get("microsim_label", ""))))
+		var microsim: Dictionary = info.get("microsim", {})
+		if microsim.is_empty():
+			rows.append(PackedStringArray(["XMIC", "", "Unavailable", ""]))
+		for index in 4:
+			if microsim.has("stat_%d" % index):
+				rows.append(_number_row("XMIC data %d" % index, int(microsim["stat_%d" % index]), "", 2 if index == 0 else 4))
+	for thing: Dictionary in info.get("things", []):
+		rows.append(_number_row("Moving object record", int(thing.record), str(thing.type_name)))
+		var prefix := "Object %d · " % int(thing.record)
+		rows.append(_number_row(prefix + "type", int(thing.type), str(thing.type_name)))
+		rows.append(_number_row(prefix + "direction", int(thing.direction), str(thing.direction_name)))
+		for field in ["state", "x", "y", "z", "px", "py", "dx", "dy", "label", "goal"]:
+			rows.append(_number_row(prefix + field.to_upper(), int(thing[field])))
+	return rows
+
+
+static func _number_row(field: String, value: int, description := "", digits := 2) -> PackedStringArray:
+	return PackedStringArray([field, str(value), description, ("0x%0*X" % [digits, value]) if value >= 0 else "-0x%X" % -value])

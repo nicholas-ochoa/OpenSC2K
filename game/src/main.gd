@@ -4849,11 +4849,8 @@ func _open_query(point: Vector2i) -> void:
 		var action_resource_id := int(result.get("action_resource_id", -1))
 		var fallback := "Analyze" if action == "city_analysis" else "Ruminate"
 		action_text = str(original_query_strings.get(action_resource_id, fallback))
-	var sprite_id := int(result.get("sprite_id", -1))
-	var tile_caption := (
-		"Tile %d  •  Sprite %d" % [result.tile_id, sprite_id]
-		if sprite_id >= 0 else "Image unavailable"
-	)
+	var tile_caption := str(result.title)
+	var neighborhood := QueryNeighborhood.render(city, point, palette, large_sprites)
 	var things: Array = result.get("things", [])
 	var thing_texture: Texture2D
 	var thing_caption := ""
@@ -4863,20 +4860,18 @@ func _open_query(point: Vector2i) -> void:
 		thing_texture = _query_sprite_texture(
 			thing_sprite_id, bool(thing.get("sprite_flip", false)), 2
 		)
-		thing_caption = (
-			"XTHG %d  •  %s  •  Sprite %d"
-			% [thing.record, thing.type_name, thing_sprite_id]
-		)
+		thing_caption = str(thing.type_name)
 	query_dialog.show_query(
 		str(result.title),
 		str(result.title) if is_specific else "",
 		is_specific,
 		Queries.format_text(result),
 		action_text,
-		_query_sprite_texture(sprite_id, false, 2),
 		tile_caption,
 		thing_texture,
 		thing_caption,
+		result,
+		ImageTexture.create_from_image(neighborhood) if neighborhood != null else null,
 	)
 	_play_sound_events(result.get("sound_events", []))
 
