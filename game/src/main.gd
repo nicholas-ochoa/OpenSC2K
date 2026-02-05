@@ -4849,53 +4849,19 @@ func _open_query(point: Vector2i) -> void:
 		var action_resource_id := int(result.get("action_resource_id", -1))
 		var fallback := "Analyze" if action == "city_analysis" else "Ruminate"
 		action_text = str(original_query_strings.get(action_resource_id, fallback))
-	var tile_caption := str(result.title)
-	var neighborhood := QueryNeighborhood.render(city, point, palette, large_sprites)
-	var things: Array = result.get("things", [])
-	var thing_texture: Texture2D
-	var thing_caption := ""
-	if not things.is_empty():
-		var thing: Dictionary = things[0]
-		var thing_sprite_id := int(thing.get("sprite_id", -1))
-		thing_texture = _query_sprite_texture(
-			thing_sprite_id, bool(thing.get("sprite_flip", false)), 2
-		)
-		thing_caption = str(thing.type_name)
+	var neighborhood := QueryNeighborhood.render(city, point, palette_index_encoding, large_sprites)
 	query_dialog.show_query(
 		str(result.title),
 		str(result.title) if is_specific else "",
 		is_specific,
 		Queries.format_text(result),
 		action_text,
-		tile_caption,
-		thing_texture,
-		thing_caption,
 		result,
 		ImageTexture.create_from_image(neighborhood) if neighborhood != null else null,
+		palette,
+		palette_cycle_ticks,
 	)
 	_play_sound_events(result.get("sound_events", []))
-
-
-func _query_sprite_texture(sprite_id: int, flip := false, scale := 2) -> Texture2D:
-	if sprite_id < 0 or palette == null:
-		return null
-	var archive: Sc2SpriteArchive = (
-		large_sprites if sprite_id >= 1000 else small_medium_sprites
-	)
-	if archive == null or not archive.is_valid():
-		return null
-	var entry := archive.find_sprite(sprite_id)
-	if entry == null:
-		return null
-	var image_result := entry.create_image(palette)
-	if not image_result.get("ok", false):
-		return null
-	var image: Image = image_result.image.duplicate()
-	if flip:
-		image.flip_x()
-	if scale > 1:
-		image.resize(image.get_width() * scale, image.get_height() * scale, Image.INTERPOLATE_NEAREST)
-	return ImageTexture.create_from_image(image)
 
 
 func _close_query(commit_rename := false) -> bool:

@@ -96,13 +96,17 @@ static func advanced_rows(info: Dictionary) -> Array[PackedStringArray]:
 		for index in 4:
 			if microsim.has("stat_%d" % index):
 				rows.append(_number_row("XMIC data %d" % index, int(microsim["stat_%d" % index]), "", 2 if index == 0 else 4))
+	return rows
+
+
+static func thing_rows(info: Dictionary) -> Array[PackedStringArray]:
+	var rows: Array[PackedStringArray] = []
 	for thing: Dictionary in info.get("things", []):
-		rows.append(_number_row("Moving object record", int(thing.record), str(thing.type_name)))
-		var prefix := "Object %d · " % int(thing.record)
-		rows.append(_number_row(prefix + "type", int(thing.type), str(thing.type_name)))
-		rows.append(_number_row(prefix + "direction", int(thing.direction), str(thing.direction_name)))
+		rows.append(_number_row("Record", int(thing.record), str(thing.type_name)))
+		rows.append(_number_row("Type", int(thing.type), str(thing.type_name)))
+		rows.append(_number_row("Direction", int(thing.direction), str(thing.direction_name)))
 		for field in ["state", "x", "y", "z", "px", "py", "dx", "dy", "label", "goal"]:
-			rows.append(_number_row(prefix + field.to_upper(), int(thing[field])))
+			rows.append(_number_row(field.to_upper(), int(thing[field])))
 	return rows
 
 

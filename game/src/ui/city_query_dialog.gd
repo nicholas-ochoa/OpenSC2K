@@ -5,6 +5,41 @@ const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 
 class NeighborhoodPreview extends Control:
 	var zoom := 3.5
+	var palette: Sc2Palette
+	var palette_texture: ImageTexture
+	var ticks := 0
+	var elapsed := 0.0
+
+	func configure_animation(source: Sc2Palette, start_ticks: int) -> void:
+		palette = source
+		ticks = start_ticks
+		elapsed = 0.0
+		material = null
+		palette_texture = null
+		set_process(source != null)
+		if source == null:
+			return
+		palette_texture = ImageTexture.create_from_image(source.animation_image(ticks))
+		var shader := Shader.new()
+		shader.code = CityMapControl.PALETTE_CYCLE_SHADER
+		var lookup := ShaderMaterial.new()
+		lookup.shader = shader
+		lookup.set_shader_parameter("animated_palette", palette_texture)
+		lookup.set_shader_parameter("palette_cycle_enabled", true)
+		lookup.set_shader_parameter("palette_lookup_all", true)
+		material = lookup
+
+	func _process(delta: float) -> void:
+		if not is_visible_in_tree() or palette == null:
+			return
+		elapsed += delta
+		var steps := int(elapsed / 0.2)
+		if steps == 0:
+			return
+		elapsed -= steps * 0.2
+		ticks += steps
+		palette_texture.update(palette.animation_image(ticks))
+
 	var texture: Texture2D:
 		set(value):
 			texture = value
@@ -23,11 +58,8 @@ var name_input: LineEdit
 var tabs: TabContainer
 var summary_rows: VBoxContainer
 var details_grid: Tree
-var sprite_caption: Label
+var things_grid: Tree
 var neighborhood_view: NeighborhoodPreview
-var thing_panel: VBoxContainer
-var thing_sprite_view: TextureRect
-var thing_caption: Label
 var rename_button: Button
 var action_button: Button
 var ok_button: Button
@@ -66,11 +98,10 @@ func show_query(
 	is_specific: bool,
 	details_text: String,
 	action_text: String,
-	tile_caption: String,
-	thing_texture: Texture2D,
-	thing_caption_text: String,
 	info: Dictionary = {},
 	neighborhood_texture: Texture2D = null,
+	animation_palette: Sc2Palette = null,
+	animation_ticks: int = 0,
 ) -> void:
 	title_label.text = "Query — %s" % query_title
 	name_input.visible = is_specific
@@ -80,15 +111,12 @@ func show_query(
 	action_button.visible = not action_text.is_empty()
 	action_button.text = action_text
 	_populate_summary(details_text, info)
-	tabs.current_tab = 0
 	_populate_details(info)
+	tabs.current_tab = 0
+	neighborhood_view.configure_animation(animation_palette, animation_ticks)
 	neighborhood_view.zoom = QueryNeighborhood.zoom_for_tile(int(info.get("tile_id", 0)))
 	neighborhood_view.texture = neighborhood_texture
 	neighborhood_view.visible = neighborhood_texture != null
-	sprite_caption.text = tile_caption
-	thing_panel.visible = not thing_caption_text.is_empty()
-	thing_sprite_view.texture = thing_texture
-	thing_caption.text = thing_caption_text
 	show()
 	ok_button.grab_focus()
 
@@ -103,8 +131,8 @@ func facility_name() -> String:
 
 func close_query() -> void:
 	hide()
+	neighborhood_view.configure_animation(null, 0)
 	neighborhood_view.texture = null
-	thing_sprite_view.texture = null
 
 
 func _add_title_bar(column: VBoxContainer) -> void:
@@ -168,26 +196,31 @@ func _add_body(column: VBoxContainer) -> void:
 	summary_rows.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	summary_rows.add_theme_constant_override("separation", 6)
 	summary.add_child(summary_rows)
-	details_grid = Tree.new()
-	details_grid.name = "Technical details"
-	details_grid.columns = 4
-	details_grid.hide_root = true
-	details_grid.column_titles_visible = true
-	details_grid.select_mode = Tree.SELECT_ROW
-	for index in 4:
-		details_grid.set_column_title(index, ["Field", "Decimal", "Text", "Hex"][index])
-		details_grid.set_column_custom_minimum_width(index, [150, 70, 160, 80][index])
-		details_grid.set_column_expand(index, index == 2)
-	details_grid.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("ffffff"), Color("a0a5a0"), 1, 4, 4))
-	details_grid.add_theme_color_override("font_color", Color("202830"))
-	for color_name in ["font_hovered_color", "font_selected_color", "font_hovered_selected_color"]:
-		details_grid.add_theme_color_override(color_name, Color("202830"))
-	for style_name in ["hovered", "selected", "selected_focus", "hovered_selected", "hovered_dimmed"]:
-		details_grid.add_theme_stylebox_override(style_name, ClassicStyle.create_box(Color("dce7ef"), Color("839aaa"), 1, 2, 2))
-	details_grid.add_theme_constant_override("v_separation", 8)
-	tabs.add_child(details_grid)
+	details_grid = _make_details_grid("Technical details")
+	things_grid = _make_details_grid("Object details")
 	_add_image_column(body)
 
+
+func _make_details_grid(title: String) -> Tree:
+	var grid := Tree.new()
+	grid.name = title
+	grid.columns = 4
+	grid.hide_root = true
+	grid.column_titles_visible = true
+	grid.select_mode = Tree.SELECT_ROW
+	for index in 4:
+		grid.set_column_title(index, ["Field", "Decimal", "Text", "Hex"][index])
+		grid.set_column_custom_minimum_width(index, [150, 70, 160, 80][index])
+		grid.set_column_expand(index, index == 2)
+	grid.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("ffffff"), Color("a0a5a0"), 1, 4, 4))
+	grid.add_theme_color_override("font_color", Color("202830"))
+	for color_name in ["font_hovered_color", "font_selected_color", "font_hovered_selected_color"]:
+		grid.add_theme_color_override(color_name, Color("202830"))
+	for style_name in ["hovered", "selected", "selected_focus", "hovered_selected", "hovered_dimmed"]:
+		grid.add_theme_stylebox_override(style_name, ClassicStyle.create_box(Color("dce7ef"), Color("839aaa"), 1, 2, 2))
+	grid.add_theme_constant_override("v_separation", 8)
+	tabs.add_child(grid)
+	return grid
 
 func _populate_summary(details: String, info: Dictionary) -> void:
 	for child in summary_rows.get_children():
@@ -224,11 +257,18 @@ func _populate_summary(details: String, info: Dictionary) -> void:
 
 
 func _populate_details(info: Dictionary) -> void:
-	details_grid.clear()
-	var root := details_grid.create_item()
+	_populate_grid(details_grid, QueryPresentation.advanced_rows(info))
+	var objects := QueryPresentation.thing_rows(info)
+	_populate_grid(things_grid, objects)
+	tabs.set_tab_hidden(things_grid.get_index(), objects.is_empty())
+
+
+func _populate_grid(grid: Tree, rows: Array[PackedStringArray]) -> void:
+	grid.clear()
+	var root := grid.create_item()
 	var row_index := 0
-	for row in QueryPresentation.advanced_rows(info):
-		var item := details_grid.create_item(root)
+	for row in rows:
+		var item := grid.create_item(root)
 		for column in 4:
 			item.set_text(column, row[column])
 			item.set_tooltip_text(column, row[column])
@@ -256,31 +296,12 @@ func _add_image_column(body: HBoxContainer) -> void:
 	var image_column := VBoxContainer.new()
 	image_column.add_theme_constant_override("separation", 6)
 	image_panel.add_child(image_column)
-	sprite_caption = Label.new()
-	sprite_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sprite_caption.add_theme_color_override("font_color", Color.WHITE)
-	image_column.add_child(sprite_caption)
 	neighborhood_view = NeighborhoodPreview.new()
 	neighborhood_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	neighborhood_view.clip_contents = true
 	neighborhood_view.custom_minimum_size.y = 180
 	neighborhood_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	image_column.add_child(neighborhood_view)
-	thing_panel = VBoxContainer.new()
-	thing_panel.add_theme_constant_override("separation", 4)
-	thing_panel.visible = false
-	image_column.add_child(thing_panel)
-	thing_panel.add_child(HSeparator.new())
-	thing_caption = Label.new()
-	thing_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	thing_caption.add_theme_color_override("font_color", Color.WHITE)
-	thing_panel.add_child(thing_caption)
-	thing_sprite_view = TextureRect.new()
-	thing_sprite_view.custom_minimum_size = Vector2(220, 96)
-	thing_sprite_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	thing_sprite_view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	thing_sprite_view.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-	thing_panel.add_child(thing_sprite_view)
 
 
 func _add_buttons(column: VBoxContainer) -> void:

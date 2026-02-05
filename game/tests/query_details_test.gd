@@ -54,7 +54,7 @@ func _run() -> void:
 		selected_point = Vector2i(255 - selected_point.y, selected_point.x)
 	var dialog := CityQueryDialog.new()
 	root.add_child(dialog)
-	dialog.show_query("Station", "Station", true, "Station\nOfficers: 42\nAdvanced tile data", "", "Station", null, "", values)
+	dialog.show_query("Station", "Station", true, "Station\nOfficers: 42\nAdvanced tile data", "", values)
 	assert(dialog.summary_rows.get_child_count() == 2)
 	assert(dialog.summary_rows.get_child(0).get_child(0).get_child(1).text == "X: 400, Y: 300, Z: 20")
 	assert(dialog.neighborhood_view.zoom == 3.0)
@@ -66,6 +66,36 @@ func _run() -> void:
 	for color_name in ["font_color", "font_hovered_color", "font_selected_color", "font_hovered_selected_color"]:
 		assert(dialog.details_grid.get_theme_color(color_name) == Color("202830"))
 	assert(dialog.details_grid.get_root().get_child_count() == rows.size())
+	assert(dialog.tabs.is_tab_hidden(dialog.things_grid.get_index()))
+	var with_thing := values.duplicate(true)
+	with_thing.things = [{"record": 1, "type": 1, "type_name": "Airplane", "direction": 2, "direction_name": "East", "state": 0, "x": 400, "y": 300, "z": 12, "px": 0, "py": 0, "dx": 1, "dy": 0, "label": 0, "goal": 0}]
+	dialog.show_query("Station", "Station", true, "Station", "", with_thing)
+	assert(not dialog.tabs.is_tab_hidden(dialog.things_grid.get_index()))
+	assert(dialog.things_grid.get_root().get_child_count() == QueryPresentation.thing_rows(with_thing).size())
+	assert(QueryPresentation.advanced_rows(with_thing) == rows)
+	assert(dialog.things_grid.name == "Object details")
+	assert(QueryPresentation.thing_rows(with_thing)[1][0] == "Type")
+	assert(QueryPresentation.thing_rows(with_thing)[2][0] == "Direction")
+	dialog.tabs.current_tab = dialog.things_grid.get_index()
+	dialog.show_query("Station", "Station", true, "Station", "", values)
+	assert(dialog.tabs.current_tab == 0 and dialog.tabs.is_tab_hidden(dialog.things_grid.get_index()))
+	var animated_image := Image.create(2, 1, false, Image.FORMAT_RGBA8)
+	animated_image.set_pixel(0, 0, Color8(171, 171, 171, 255))
+	animated_image.set_pixel(1, 0, Color8(180, 180, 180, 64))
+	var indexed_texture := ImageTexture.create_from_image(animated_image)
+	dialog.neighborhood_view.texture = indexed_texture
+	dialog.neighborhood_view.show()
+	dialog.neighborhood_view.configure_animation(palette, 0)
+	var initial_colors := palette.animation_image(dialog.neighborhood_view.ticks).get_data()
+	dialog.neighborhood_view._process(0.2)
+	assert(dialog.neighborhood_view.ticks == 1)
+	assert(palette.animation_image(dialog.neighborhood_view.ticks).get_data() != initial_colors)
+	assert(indexed_texture.get_image().get_data() == animated_image.get_data(), "Animation changed palette indices or highlight alpha")
+	dialog.hide()
+	dialog.neighborhood_view._process(0.4)
+	assert(dialog.neighborhood_view.ticks == 1, "Hidden preview does not animate")
+	dialog.close_query()
+	assert(not dialog.neighborhood_view.is_processing())
 	dialog.queue_free()
 	await process_frame
 	if "--preview" in OS.get_cmdline_user_args():
@@ -80,6 +110,11 @@ func _run() -> void:
 				var tile: int = main.city.building_id(x, y)
 				if tile >= 0x70 and tile < 0xb0:
 					selected = Vector2i(x, y)
+		if "--thing" in OS.get_cmdline_user_args():
+			for x in main.city.map_size:
+				for y in main.city.map_size:
+					if not CityIsometricRenderer.moving_thing_visual(main.city, x, y).is_empty():
+						selected = Vector2i(x, y)
 		var started := Time.get_ticks_usec()
 		main._open_query(selected)
 		print("QUERY presentation usec=%d" % (Time.get_ticks_usec() - started))

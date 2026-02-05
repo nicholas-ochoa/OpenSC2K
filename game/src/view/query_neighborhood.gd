@@ -38,6 +38,18 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 				image.blend_rect(source, draw.source, draw.position)
 				if selected:
 					selected_image.blend_rect(source, draw.source, draw.position)
+	# include the queried moving object in this same preview, at its map position
+	var visual := Renderer.moving_thing_visual(city, point.x, point.y, Renderer.VIEW_LARGE, 0)
+	if not visual.is_empty():
+		for command in Renderer.moving_thing_draw_commands_for_visual(city, sprites, visual, Renderer.view_configuration(Renderer.VIEW_LARGE)):
+			var sprite := Renderer._sprite_image(sprites, palette, cache, command.sprite_id, command.flip)
+			var position: Vector2i = command.position - bounds.position
+			if command.shadow:
+				Renderer._blend_shadow(image, sprite, palette, position)
+				Renderer._blend_shadow(selected_image, sprite, palette, position)
+			else:
+				image.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), position)
+				selected_image.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), position)
 	return frame_selection(apply_opacity(image, selected_image), selected_image.get_used_rect())
 
 
