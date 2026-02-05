@@ -43,7 +43,7 @@ func _run() -> void:
 	for rotation in 4:
 		var before: PackedByteArray = facility_city.document.serialize().data
 		var preview := QueryNeighborhood.render(facility_city, selected_point, palette, sprites)
-		assert(preview.get_data().size() == 256 * 240 * 4)
+		assert(preview.get_data().size() == QueryNeighborhood.SIZE.x * QueryNeighborhood.SIZE.y * 4)
 		var opaque := 0
 		var pixels := preview.get_data()
 		for offset in range(3, pixels.size(), 4):
@@ -57,7 +57,11 @@ func _run() -> void:
 	dialog.show_query("Station", "Station", true, "Station\nOfficers: 42\nAdvanced tile data", "", "Station", null, "", values)
 	assert(dialog.summary_rows.get_child_count() == 2)
 	assert(dialog.summary_rows.get_child(0).get_child(0).get_child(1).text == "X: 400, Y: 300, Z: 20")
-	assert(dialog.neighborhood_view.ZOOM == 3.0)
+	assert(dialog.neighborhood_view.zoom == 3.0)
+	assert(QueryNeighborhood.zoom_for_tile(0x70) == 3.5)
+	assert(QueryNeighborhood.zoom_for_tile(0x8c) == 3.0)
+	assert(QueryNeighborhood.zoom_for_tile(0xae) == 3.0)
+	assert(QueryNeighborhood.zoom_for_tile(0xc9) == 2.5)
 	assert(dialog.neighborhood_view.tooltip_text.is_empty())
 	for color_name in ["font_color", "font_hovered_color", "font_selected_color", "font_hovered_selected_color"]:
 		assert(dialog.details_grid.get_theme_color(color_name) == Color("202830"))

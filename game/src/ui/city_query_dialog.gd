@@ -4,14 +4,14 @@ extends ColorRect
 const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
 
 class NeighborhoodPreview extends Control:
-	const ZOOM := 3.0
+	var zoom := 3.5
 	var texture: Texture2D:
 		set(value):
 			texture = value
 			queue_redraw()
 	func _draw() -> void:
 		if texture != null:
-			var target := texture.get_size() * ZOOM
+			var target := texture.get_size() * zoom
 			draw_texture_rect(texture, Rect2((size - target) * 0.5, target), false)
 
 
@@ -82,6 +82,7 @@ func show_query(
 	_populate_summary(details_text, info)
 	tabs.current_tab = 0
 	_populate_details(info)
+	neighborhood_view.zoom = QueryNeighborhood.zoom_for_tile(int(info.get("tile_id", 0)))
 	neighborhood_view.texture = neighborhood_texture
 	neighborhood_view.visible = neighborhood_texture != null
 	sprite_caption.text = tile_caption
@@ -249,7 +250,7 @@ func _add_image_column(body: HBoxContainer) -> void:
 	image_panel.custom_minimum_size = Vector2(240, 0)
 	image_panel.add_theme_stylebox_override(
 		"panel",
-		ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1, 8, 8)
+		ClassicStyle.create_box(Color("18242c"), Color("808080"), 1, 8, 8)
 	)
 	body.add_child(image_panel)
 	var image_column := VBoxContainer.new()
@@ -257,7 +258,7 @@ func _add_image_column(body: HBoxContainer) -> void:
 	image_panel.add_child(image_column)
 	sprite_caption = Label.new()
 	sprite_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	sprite_caption.add_theme_color_override("font_color", Color("101010"))
+	sprite_caption.add_theme_color_override("font_color", Color.WHITE)
 	image_column.add_child(sprite_caption)
 	neighborhood_view = NeighborhoodPreview.new()
 	neighborhood_view.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -272,7 +273,7 @@ func _add_image_column(body: HBoxContainer) -> void:
 	thing_panel.add_child(HSeparator.new())
 	thing_caption = Label.new()
 	thing_caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	thing_caption.add_theme_color_override("font_color", Color("101010"))
+	thing_caption.add_theme_color_override("font_color", Color.WHITE)
 	thing_panel.add_child(thing_caption)
 	thing_sprite_view = TextureRect.new()
 	thing_sprite_view.custom_minimum_size = Vector2(220, 96)

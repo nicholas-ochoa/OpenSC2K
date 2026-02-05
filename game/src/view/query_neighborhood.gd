@@ -2,8 +2,8 @@ class_name QueryNeighborhood
 extends RefCounted
 # bounded, display-only snapshot using the same tile painter as the city
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
-const SIZE := Vector2i(256, 240)
-const RADIUS := 6
+const SIZE := Vector2i(384, 384)
+const RADIUS := 16
 
 static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> Image:
 	if city == null or city.index_of(point.x, point.y) < 0 or palette == null or sprites == null or not sprites.is_valid():
@@ -54,7 +54,14 @@ static func apply_opacity(image: Image, selected_image: Image) -> Image:
 static func frame_selection(image: Image, selected: Rect2i) -> Image:
 	if not selected.has_area():
 		return image
-	# center the selected artwork. the ui draws this snapshot at exactly 300%
+	# center the selected artwork. the ui applies the footprint-specific zoom
 	var centered := Image.create(SIZE.x, SIZE.y, false, Image.FORMAT_RGBA8)
 	centered.blit_rect(image, Rect2i(Vector2i.ZERO, SIZE), SIZE / 2 - selected.get_center())
 	return centered
+
+
+static func zoom_for_tile(tile_id: int) -> float:
+	match DemolishCommand._building_area(tile_id):
+		4: return 2.5
+		2, 3: return 3.0
+		_: return 3.5
