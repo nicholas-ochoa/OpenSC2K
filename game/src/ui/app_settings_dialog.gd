@@ -3,6 +3,7 @@ extends ConfirmationDialog
 
 signal import_original_requested
 
+var tabs: TabContainer
 var source_selector: OptionButton
 var folder_edit: LineEdit
 var folder_row: HBoxContainer
@@ -29,11 +30,18 @@ func _ready() -> void:
 	get_ok_button().text = "Apply"
 	get_label().visible = false
 
-	var settings_grid := GridContainer.new()
-	settings_grid.columns = 2
-	settings_grid.custom_minimum_size = Vector2(460, 210)
-	settings_grid.add_theme_constant_override("h_separation", 14)
-	settings_grid.add_theme_constant_override("v_separation", 14)
+	tabs = TabContainer.new()
+	tabs.custom_minimum_size = Vector2(660, 350)
+	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	tabs.add_theme_stylebox_override("panel", ClassicUiStyle.create_box(Color("eceeea"), Color("808080"), 1, 16, 16))
+	for state in ["selected", "unselected", "hovered"]:
+		tabs.add_theme_stylebox_override("tab_" + state, ClassicUiStyle.create_box(Color("eceeea") if state == "selected" else Color("d2d5d2"), Color("808080"), 1, 14, 8))
+		tabs.add_theme_color_override("font_" + state + "_color", Color("202830"))
+	var settings_parent := get_label().get_parent()
+	settings_parent.add_child(tabs)
+	settings_parent.move_child(tabs, 0)
+	var display_grid := _add_settings_tab("Display")
+	var settings_grid := _add_settings_tab("Audio")
 	for label_text in ["Music Volume", "Sound Effects Volume"]:
 		var label := Label.new()
 		label.text = label_text
@@ -90,6 +98,7 @@ func _ready() -> void:
 		_update_soundtrack_status()
 	)
 	add_child(soundtrack_dialog)
+	settings_grid = display_grid
 	var display_label := Label.new()
 	display_label.text = "Display"
 	display_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -105,6 +114,7 @@ func _ready() -> void:
 	renderer_selector.add_item("CPU")
 	renderer_selector.tooltip_text = "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
 	settings_grid.add_child(renderer_selector)
+	settings_grid = _add_settings_tab("Graphics")
 	var source_label := Label.new()
 	source_label.text = "Graphics"
 	settings_grid.add_child(source_label)
@@ -150,14 +160,23 @@ func _ready() -> void:
 	folder_dialog.exclusive = true
 	folder_dialog.dir_selected.connect(func(path: String) -> void: folder_edit.text = path)
 	add_child(folder_dialog)
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 16)
-	column.add_child(settings_grid)
-	column.add_child(active_source_label)
-	column.add_child(note)
-	var settings_parent := get_label().get_parent()
-	settings_parent.add_child(column)
-	settings_parent.move_child(column, 0)
+	var graphics_page := settings_grid.get_parent()
+	graphics_page.add_child(active_source_label)
+	graphics_page.add_child(note)
+
+
+func _add_settings_tab(tab_title: String) -> GridContainer:
+	var page := VBoxContainer.new()
+	page.name = tab_title
+	page.add_theme_constant_override("separation", 16)
+	tabs.add_child(page)
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 14)
+	grid.add_theme_constant_override("v_separation", 14)
+	page.add_child(grid)
+	return grid
 
 
 func show_values(
@@ -178,6 +197,7 @@ func show_values(
 	active_source_label.text = "Active graphics: " + active_name
 	active_source_label.visible = not active_name.is_empty()
 	_update_folder_visibility()
+	tabs.current_tab = 0
 	popup_centered()
 
 
