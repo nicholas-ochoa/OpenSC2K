@@ -197,6 +197,14 @@ func _make_details_grid(title: String) -> Tree:
 		grid.set_column_expand(index, index == 2)
 	grid.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("ffffff"), Color("a0a5a0"), 1, 4, 4))
 	grid.add_theme_color_override("font_color", Color("202830"))
+	grid.add_theme_color_override("title_button_color", Color("202830"))
+	for state in ["normal", "hover", "pressed"]:
+		var fill := Color("d2d5d2")
+		if state == "hover":
+			fill = Color("e0e3e0")
+		elif state == "pressed":
+			fill = Color("bcc2bc")
+		grid.add_theme_stylebox_override("title_button_" + state, ClassicStyle.create_box(fill, Color("a0a5a0"), 1, 8, 6))
 	for color_name in ["font_hovered_color", "font_selected_color", "font_hovered_selected_color"]:
 		grid.add_theme_color_override(color_name, Color("202830"))
 	for style_name in ["hovered", "selected", "selected_focus", "hovered_selected", "hovered_dimmed"]:
