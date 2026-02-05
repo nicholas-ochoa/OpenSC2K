@@ -36,6 +36,7 @@ class Voice:
 
 
 var current_track_id := -1
+var _paused := false
 var _audio_player: AudioStreamPlayer
 var _generator: AudioStreamGenerator
 var _playback: AudioStreamGeneratorPlayback
@@ -113,6 +114,7 @@ func play_sequence(sequence: StandardMidiFile, track_id: int) -> Dictionary:
 
 
 func stop() -> void:
+	_paused = false
 	_active = false
 	set_process(false)
 	_voices.clear()
@@ -139,7 +141,7 @@ func set_volume_linear(value: float) -> void:
 
 
 func _process(_delta: float) -> void:
-	if not _active or _playback == null or _sequence == null:
+	if _paused or not _active or _playback == null or _sequence == null:
 		return
 	var available := mini(_playback.get_frames_available(), MAX_FRAMES_PER_FILL)
 	if available <= 0:
@@ -511,3 +513,9 @@ static func _poly_blep(phase: float, phase_step: float) -> float:
 		var position := (phase - 1.0) / step
 		return position * position + position + position + 1.0
 	return 0.0
+
+
+func set_paused(value: bool) -> void:
+	_paused = value
+	if _audio_player != null:
+		_audio_player.stream_paused = value

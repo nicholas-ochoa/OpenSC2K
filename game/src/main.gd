@@ -287,6 +287,10 @@ func _initialize_runtime() -> void:
 	audio_controller = CityAudio.new()
 	audio_controller.background_audio = app_background_audio
 	audio_controller.music_activity_changed.connect(_on_music_activity_changed)
+	audio_controller.music_notice.connect(func(message: String) -> void:
+		if city_status_bar != null:
+			city_status_bar.show_music_notice(message)
+	)
 	add_child(audio_controller)
 	audio_controller.setup(
 		reference_root, app_music_volume, app_effects_volume, asset_source.use_original_data
@@ -518,6 +522,10 @@ func _update_keyboard_camera(delta: float) -> void:
 
 
 func _input(event: InputEvent) -> void:
+	if event is InputEventKey and event.pressed and not event.echo and audio_controller != null:
+		if audio_controller.handle_media_key(event.keycode):
+			get_viewport().set_input_as_handled()
+			return
 	# A focused control can consume the release event. Stop camera movement anyway.
 	if event is InputEventKey and not event.pressed:
 		camera_motion.release(event.physical_keycode)
@@ -3980,6 +3988,7 @@ func _apply_map_selection(
 		dispatch["dispatch_cycles_after"] = dispatch_cycles.duplicate()
 		last_edit_command = dispatch
 		_refresh_after_city_edit(dispatch)
+		_play_tool_success_sound(selected_group, selected_subtool)
 		status_label.remove_theme_color_override("font_color")
 		status_label.text = "Deployed %s unit %d of %d." % [
 			Tools.tool(selected_group, selected_subtool).name,

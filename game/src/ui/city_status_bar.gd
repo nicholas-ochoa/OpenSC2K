@@ -57,6 +57,8 @@ var reports_label: Label
 var speed_label: Label
 var zoom_label: Label
 var recent_reports := PackedStringArray()
+var music_notice := ""
+var music_notice_seconds := 0.0
 var report_index := 0
 var report_elapsed_seconds := 0.0
 
@@ -160,6 +162,10 @@ static func report_name(news_type: int) -> String:
 
 
 func update_report_rotation(delta: float) -> void:
+	if music_notice_seconds > 0.0:
+		music_notice_seconds = maxf(0.0, music_notice_seconds - delta)
+		if music_notice_seconds == 0.0:
+			_refresh_report_text()
 	if delta <= 0.0 or recent_reports.size() < 2:
 		return
 	report_elapsed_seconds += delta
@@ -187,6 +193,10 @@ func refresh_message_tooltip() -> void:
 
 
 func _refresh_report_text() -> void:
+	if music_notice_seconds > 0.0:
+		reports_label.text = music_notice
+		reports_label.set_meta("status_tooltip_text", music_notice)
+		return
 	var current_report := "None"
 	if not recent_reports.is_empty():
 		report_index = posmod(report_index, recent_reports.size())
@@ -234,3 +244,10 @@ func _metric_label(text_value: String, minimum_width: int, expand := false) -> L
 	if expand:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	return label
+
+
+func show_music_notice(message: String) -> void:
+	music_notice = message
+	music_notice_seconds = 5.0
+	_refresh_report_text()
+	_sync_overflow_tooltip(reports_label)

@@ -25,6 +25,11 @@ static func success_events(group_index: int, subtool_index: int) -> Array[int]:
 				return [SOUND_TREE]
 			if subtool_index == 1:
 				return [SOUND_WATER]
+		2:
+			if subtool_index == 1:
+				return [SOUND_FIRE_STATION]
+			if subtool_index in [0, 2]:
+				return [SOUND_SERVICE]
 		3:
 			if subtool_index == 0:
 				return [SOUND_POWER_LINE]

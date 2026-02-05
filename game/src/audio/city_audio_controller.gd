@@ -2,6 +2,7 @@ class_name CityAudioController
 extends Node
 
 signal music_activity_changed(active: bool)
+signal music_notice(message: String)
 
 const Music = preload("res://src/audio/music_director.gd")
 const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
@@ -25,6 +26,8 @@ var pending_recording: Dictionary = {}
 var dummy_music_active := false
 var menu_music := false
 var current_track_id := -1
+var music_paused := false
+var current_track_name := ""
 var application_has_focus := true
 var background_audio := false
 var tool_loop_player: AudioStreamPlayer
@@ -68,13 +71,17 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 
 
 func play_music_track(track_id: int) -> bool:
-	if not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
+	if music_paused or not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
 		return false
 	var recordings := RecordedSoundtrack.find_tracks(soundtrack_folder, track_id)
 	if recordings.is_empty() and not original_media_enabled:
 		return false
 	stop_music()
 	current_track_id = track_id
+	current_track_name = "Track %d" % track_id
+	if not recordings.is_empty():
+		current_track_name = recordings[0].get_file().get_basename().trim_prefix("%d - " % track_id)
+	music_notice.emit("Playing: " + current_track_name)
 	if AudioServer.get_driver_name() == "Dummy":
 		dummy_music_active = true
 		music_activity_changed.emit(true)
@@ -91,6 +98,7 @@ func _play_midi_fallback() -> bool:
 		music_activity_changed.emit(false)
 		return false
 	var result := music_player.play_path(reference_root.path_join("SOUNDS/%d.MID" % current_track_id), current_track_id)
+	music_player.set_paused(music_paused)
 	music_activity_changed.emit(bool(result.ok))
 	return bool(result.ok)
 
@@ -103,6 +111,7 @@ func _process(_delta: float) -> void:
 			recording_player.stream = result.stream
 			if recording_player.stream != null:
 				recording_player.play()
+				recording_player.stream_paused = music_paused
 			else:
 				push_warning("Cannot decode soundtrack recording; trying MIDI. FLAC requires FFmpeg.")
 				_play_midi_fallback()
@@ -292,3 +301,38 @@ func set_soundtrack_folder(selected_folder: String, restart_music := false) -> v
 	soundtrack_folder = resolved
 	if restart_music and audio_allowed() and music_volume > 0.0:
 		play_music_track(track_id if track_id >= 0 else Music.MAIN_THEME_TRACK if menu_music else music_director.next_general_track())
+
+
+func handle_media_key(key: int) -> bool:
+	match key:
+		KEY_MEDIAPLAY:
+			if music_paused:
+				_set_music_paused(false)
+			elif music_playback_is_active():
+				_set_music_paused(true)
+			else:
+				play_music_track(Music.MAIN_THEME_TRACK)
+		KEY_MEDIANEXT, KEY_MEDIAPREVIOUS:
+			var offset := 1 if key == KEY_MEDIANEXT else -1
+			var track := current_track_id if current_track_id >= Music.FIRST_TRACK_ID else Music.MAIN_THEME_TRACK
+			music_paused = false
+			play_music_track(Music.FIRST_TRACK_ID + posmod(track - Music.FIRST_TRACK_ID + offset, Music.TRACK_COUNT))
+		KEY_MEDIASTOP:
+			stop_music()
+			music_paused = true
+			music_notice.emit("Music stopped")
+		_:
+			return false
+	return true
+
+
+func _set_music_paused(value: bool) -> void:
+	music_paused = value
+	if recording_player != null:
+		recording_player.stream_paused = value
+	if music_player != null:
+		music_player.set_paused(value)
+	if not value and not music_playback_is_active():
+		play_music_track(Music.MAIN_THEME_TRACK)
+	else:
+		music_notice.emit(("Paused: " if value else "Playing: ") + current_track_name)

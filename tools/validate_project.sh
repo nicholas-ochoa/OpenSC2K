@@ -108,6 +108,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/renderer_settings_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/camera_query_settings_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/query_details_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/media_controls_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/slope_hit_test.gd
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_render_retention_test.gd

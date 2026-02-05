@@ -199,11 +199,13 @@ func _test_tool_sound_rules() -> void:
 	)
 	_check(
 		ToolSounds.success_events(0, 0).is_empty()
-		and ToolSounds.success_events(2, 0).is_empty()
+		and ToolSounds.success_events(2, 0) == [506]
+		and ToolSounds.success_events(2, 1) == [509]
+		and ToolSounds.success_events(2, 2) == [506]
 		and ToolSounds.success_events(3, 1).is_empty()
 		and ToolSounds.success_events(5, 4).is_empty()
 		and ToolSounds.success_events(16, 0).is_empty(),
-		"Looping, dispatch, chooser, and Query paths do not invent a success sound",
+		"Dispatch uses service effects while looping, chooser and Query paths stay separate",
 	)
 	_check(
 		ToolSounds.failure_events(3, 0) == [501]
