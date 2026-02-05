@@ -72,27 +72,9 @@ func _ready() -> void:
 
 
 func _add_title_bar(column: VBoxContainer) -> void:
-	var title_bar := ColorRect.new()
-	title_bar.color = Color("000080")
-	title_bar.custom_minimum_size = Vector2(0, 30)
+	var title_bar := DialogTitleBar.new("New City")
+	title_bar.close_requested.connect(func() -> void: cancel_requested.emit())
 	column.add_child(title_bar)
-	var title_row := HBoxContainer.new()
-	title_row.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	title_row.offset_left = 8
-	title_row.offset_right = -4
-	title_bar.add_child(title_row)
-	var title_label := Label.new()
-	title_label.text = "New City"
-	title_label.add_theme_color_override("font_color", Color.WHITE)
-	title_label.add_theme_font_size_override("font_size", 15)
-	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	title_row.add_child(title_label)
-	var close_button := Button.new()
-	close_button.text = "X"
-	close_button.custom_minimum_size = Vector2(28, 24)
-	close_button.pressed.connect(func() -> void: cancel_requested.emit())
-	title_row.add_child(close_button)
 
 
 func _build_city_and_terrain_fields(content: HBoxContainer) -> void:

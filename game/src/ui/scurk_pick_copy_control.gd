@@ -128,19 +128,9 @@ func _build_interface() -> void:
 	page.add_theme_constant_override("separation", 7)
 	add_child(page)
 
-	var title_row := HBoxContainer.new()
-	page.add_child(title_row)
-	var title := Label.new()
-	title.text = "SCURK Pick & Copy"
-	title.add_theme_color_override("font_color", Color("000080"))
-	title.add_theme_font_size_override("font_size", 20)
-	title.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	title_row.add_child(title)
-	var close_button := Button.new()
-	close_button.text = "Close"
-	close_button.tooltip_text = "Return to Paint the Town."
-	close_button.pressed.connect(request_close)
-	title_row.add_child(close_button)
+	var title_bar := DialogTitleBar.new("SCURK Pick & Copy")
+	title_bar.close_requested.connect(request_close)
+	page.add_child(title_bar)
 
 	var controls := HBoxContainer.new()
 	controls.add_theme_constant_override("separation", 6)
