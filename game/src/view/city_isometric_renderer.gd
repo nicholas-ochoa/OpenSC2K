@@ -501,7 +501,7 @@ static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
 		return Vector2i(-1, -1)
 	# a tile can use any saved land or water altitude from 0 through 31. solve
 	# the isometric axes for each possible altitude, then test only nearby map
-	# cells. this keeps the same front-most result as the old full-map scan
+	# cells. test the visible slope surface, retaining front-most painter order
 	var origin_x := SIDE_MARGIN + map_edge * HALF_WIDTH
 	var difference_axis := (point.x - origin_x - HALF_WIDTH) / float(HALF_WIDTH)
 	var candidates: Dictionary = {}
@@ -528,7 +528,7 @@ static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
 		var order := (x + y) * map_edge + y
 		if not city.tile_is_visible(x, y) or order <= result_order:
 			continue
-		var polygon := tile_polygon(city, x, y)
+		var polygon := terrain_surface_polygon(city, x, y)
 		if Geometry2D.is_point_in_polygon(point, polygon):
 			result = Vector2i(x, y)
 			result_order = order

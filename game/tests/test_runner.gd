@@ -15803,7 +15803,7 @@ func _brute_force_screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
 			if x >= CityModel.MAP_SIZE or y >= CityModel.MAP_SIZE:
 				continue
 			if Geometry2D.is_point_in_polygon(
-				point, IsometricRenderer.tile_polygon(city, x, y)
+				point, IsometricRenderer.terrain_surface_polygon(city, x, y)
 			):
 				result = Vector2i(x, y)
 	return result
