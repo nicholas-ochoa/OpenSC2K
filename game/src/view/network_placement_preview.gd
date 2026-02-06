@@ -83,8 +83,7 @@ func _process(_delta: float) -> void:
 		var job := pending.duplicate()
 		pending.clear()
 		# copy on the main thread; the worker never reads live simulation data
-		job.document = job.city.document.duplicate_document()
-		job.erase("city")
+		job.city = snapshot_city(job.city)
 		worker_generation = generation
 		worker = Thread.new()
 		if worker.start(build.bind(job), Thread.PRIORITY_LOW) != OK:
@@ -129,12 +128,12 @@ static func apply_preview(city: CityState, group: int, tool: int, start: Vector2
 	return {"ok": false}
 
 static func build(job: Dictionary) -> Dictionary:
-	var city: CityState = job.city if job.has("city") else CityState.from_document(job.document)
+	var city: CityState = job.city
 	var before_buildings := city.buildings
 	var before_terrain := city.terrain
 	var before_underground := city.underground
 	var before_flags := city.tile_flags
-	var before_altitude := city.altitude_words
+	var before_altitude := city.altitude_words.duplicate()
 	var result := apply_preview(city, job.group, job.tool, job.start, job.finish)
 	if not result.get("ok", false):
 		return {"draws": []}
@@ -174,3 +173,19 @@ static func candidate_indices(command: Dictionary, start: Vector2i, finish: Vect
 			for y in range(maxi(0, point.y - 2), mini(edge, point.y + 3)):
 				candidates[x * edge + y] = true
 	return candidates
+
+static func snapshot_city(source: CityState) -> CityState:
+	# copy the already decoded buffers. do not repeat full-map validation or
+	# altitude decoding for each pointer move
+	var snapshot := CityState.new()
+	snapshot.document = source.document.duplicate_document()
+	snapshot.map_size = source.map_size
+	snapshot.load_error = source.load_error
+	snapshot.altitude_words = source.altitude_words.duplicate()
+	snapshot.buildings = source.buildings.duplicate()
+	snapshot.terrain = source.terrain.duplicate()
+	snapshot.zones = source.zones.duplicate()
+	snapshot.underground = source.underground.duplicate()
+	snapshot.text_overlays = source.text_overlays.duplicate()
+	snapshot.tile_flags = source.tile_flags.duplicate()
+	return snapshot

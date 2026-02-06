@@ -5349,8 +5349,9 @@ func _update_network_preview() -> void:
 	if city == null or not _camera_keys_allowed() or not map_view.edit_enabled or map_view.is_panning() or not NetworkPlacementPreview.supports_tool(selected_group, selected_subtool):
 		network_preview.clear()
 		return
-	var start := map_view.selection_start if map_view.selection_start.x >= 0 else map_view.hover_tile
-	var finish := map_view.selection_end if map_view.selection_end.x >= 0 else map_view.hover_tile
+	# hover highlights the tile; artwork needs a pressed selection
+	var start := map_view.selection_start
+	var finish := map_view.selection_end
 	if start.x < 0 or finish.x < 0:
 		network_preview.clear()
 		return

@@ -10,7 +10,7 @@ func _run() -> void:
 		var finish := start + Vector2i(8, 0)
 		var before: PackedByteArray = city.document.serialize().data
 		for tool in [Vector2i(6, 0), Vector2i(7, 0), Vector2i(3, 0), Vector2i(4, 0), Vector2i(7, 1), Vector2i(6, 1)]:
-			var preview_city := CityState.from_document(city.document.duplicate_document())
+			var preview_city := NetworkPlacementPreview.snapshot_city(city)
 			var result := NetworkPlacementPreview.build({"city": preview_city, "group": tool.x, "tool": tool.y, "start": start, "finish": finish, "view": CityIsometricRenderer.VIEW_LARGE, "palette": palette, "sprites": sprites, "underground": tool == Vector2i(4, 0) or tool == Vector2i(7, 1)})
 			assert(result.candidate_count < 300, "Preview work scales with route length, not map area")
 			assert(not result.draws.is_empty(), "Preview artwork for %s on %d map" % [tool, edge])
@@ -18,6 +18,25 @@ func _run() -> void:
 			assert(NetworkPlacementPreview.apply_preview(placed, tool.x, tool.y, start, finish).ok)
 			assert(preview_city.document.serialize().data == placed.document.serialize().data, "Preview uses the actual placement result")
 			assert(city.document.serialize().data == before, "Preview never changes live city bytes")
+	for edge in [128, 512]:
+		var route_city := CityState.from_document(EmptyCityTemplate.create(edge))
+		var offset := Vector2i(edge - 30, edge - 30)
+		for slope in [false, true]:
+			var copy := NetworkPlacementPreview.snapshot_city(route_city)
+			if slope:
+				assert(copy.set_terrain_id(offset.x + 1, offset.y + 1, 2))
+			else:
+				assert(copy.set_building_id(offset.x + 1, offset.y + 1, 0x2d))
+			var route := NetworkCommand.apply(copy, 6, 0, offset, offset + Vector2i(3, 2))
+			assert(route.ok)
+			assert(route.points.has(offset + Vector2i(1, 2)), "Keep the incoming direction through a slope or crossing")
+			assert(not route.points.has(offset + Vector2i(2, 1)), "Do not turn inside the crossing or slope")
+	var original := CityState.from_document(EmptyCityTemplate.create(128))
+	var snapshot := NetworkPlacementPreview.snapshot_city(original)
+	snapshot.altitude_words[0] += 1
+	snapshot.buildings[0] = 0x1d
+	assert(snapshot.altitude_words[0] != original.altitude_words[0])
+	assert(original.buildings[0] == 0, "Snapshot write changed the live city")
 	var rejected := CityState.from_document(EmptyCityTemplate.create(128))
 	var invalid := NetworkPlacementPreview.build({"city": rejected, "group": 6, "tool": 0, "start": Vector2i(-1, -1), "finish": Vector2i.ZERO, "view": 2, "palette": palette, "sprites": sprites, "underground": false})
 	assert(invalid.draws.is_empty())

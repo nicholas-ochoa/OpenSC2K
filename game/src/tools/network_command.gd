@@ -753,20 +753,40 @@ static func _plan_route(
 			current, mode, start_alternate, map_edge
 		):
 			return result
+		direction = start_alternate
 	result.append(current)
 	while current != finish:
-		direction = _primary_direction(current, finish)
+		var keep_straight := _route_keeps_direction(buildings, terrain, underground, current, mode, direction, map_edge)
+		if not keep_straight:
+			direction = _primary_direction(current, finish)
 		var next: Vector2i = current + DIRECTIONS[direction]
+		if keep_straight and (next.x < mini(start.x, finish.x) or next.x > maxi(start.x, finish.x) or next.y < mini(start.y, finish.y) or next.y > maxi(start.y, finish.y)):
+			break
 		if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, next, mode, direction, map_edge):
 			var alternate := _alternate_direction(current, finish, direction)
-			if alternate < 0:
+			if keep_straight or alternate < 0:
 				break
 			next = current + DIRECTIONS[alternate]
 			if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, next, mode, alternate, map_edge):
 				break
+			direction = alternate
 		current = next
 		result.append(current)
 	return result
+
+
+# some tiles force the incoming direction before we can turn toward the pointer
+static func _route_keeps_direction(buildings: PackedByteArray, terrain: PackedByteArray, underground: PackedByteArray, point: Vector2i, mode: int, direction: int, edge: int) -> bool:
+	# supplied executable 0x00448f50 preserves the incoming direction on
+	# slopes and straight crossing cells before it chooses either target axis
+	var index := point.x * edge + point.y
+	if TERRAIN_IS_NETWORK_SLOPE[terrain[index] & 0x0f]:
+		return true
+	if mode < MODE_SUBWAY:
+		var tile := int(buildings[index])
+		return tile > 0x0d and tile + (direction & 1) in [0x0f, 0x1e, 0x2d, 0x4a]
+	var tile := int(underground[index])
+	return tile != 0 and tile + (direction & 1) in [2, 0x11]
 
 
 static func _primary_direction(current: Vector2i, finish: Vector2i) -> int:
@@ -1153,15 +1173,16 @@ static func _apply_payloads(
 			_refresh_city_arrays(city)
 			return false
 		applied.append(chunk_id)
-	_refresh_city_arrays(city)
+	_refresh_city_arrays(city, chunk_ids.has("ALTM"))
 	return true
 
 
-static func _refresh_city_arrays(city: CityState) -> void:
+static func _refresh_city_arrays(city: CityState, refresh_altitude := true) -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	var altitude := city.document.find_chunk("ALTM").decoded_payload
-	for index in (map_edge * map_edge):
-		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
+	if refresh_altitude:
+		for index in (map_edge * map_edge):
+			city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
