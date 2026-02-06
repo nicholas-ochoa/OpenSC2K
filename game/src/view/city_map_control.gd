@@ -94,6 +94,7 @@ var terrain_diamond_preview := false
 var stretch_terrain := false
 var stretch_height_delta := 0
 var _stretch_press_y := 0.0
+var network_preview_active := false
 var highway_preview := false
 var query_footprint_preview := false
 var scurk_stamp_visuals: Array[Dictionary] = []
@@ -647,7 +648,10 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 	var tiles: Array[Vector2i]
 	if not show_selection_preview or not edit_enabled:
 		return []
-	if query_footprint_preview and _shift_pressed:
+	if network_preview_active:
+		if hover_tile.x >= 0:
+			tiles.append(hover_tile)
+	elif query_footprint_preview and _shift_pressed:
 		tiles = _query_footprint_tiles(hover_tile)
 	elif selection_mode == "point":
 		var preview_point := selection_end if selection_end.x >= 0 else hover_tile
@@ -656,7 +660,7 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 		tiles = selection_path
 	elif edit_enabled and selection_mode == "path" and hover_tile.x >= 0:
 		tiles = [hover_tile]
-	if highway_preview:
+	if highway_preview and not network_preview_active:
 		var expanded: Array[Vector2i] = []
 		var seen := {}
 		for tile in tiles:

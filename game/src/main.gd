@@ -181,6 +181,7 @@ var map_view: CityMapControl
 var city_workspace: CityWorkspace
 var city_menu_bar: CityMenuBar
 var status_label: Label
+var network_preview: NetworkPlacementPreview
 var city_status_bar: CityStatusBar
 var city_dialogs: CityDialogRegistry
 var main_overlays: MainOverlayRegistry
@@ -420,6 +421,7 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
+	_update_network_preview()
 	_update_keyboard_camera(delta)
 	if audio_controller != null:
 		audio_controller.set_menu_music(
@@ -659,6 +661,13 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	map_view = city_workspace.map_view
 	map_view.selection_completed.connect(_apply_map_selection)
 	map_view.selection_changed.connect(_on_map_selection_changed)
+	network_preview = NetworkPlacementPreview.new()
+	network_preview.map_view = map_view
+	network_preview.z_index = 80
+	network_preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	map_view.add_child(network_preview)
+	map_view.selection_finished.connect(network_preview.clear)
+	map_view.selection_canceled.connect(network_preview.clear)
 	map_view.selection_started.connect(_on_map_selection_started)
 	map_view.stretch_changed.connect(_on_terrain_stretch_changed)
 	map_view.selection_finished.connect(_on_map_selection_finished)
@@ -5332,3 +5341,20 @@ func _sign_palette_image(indexed: Image, mapping: PackedInt32Array) -> Image:
 		bytes[offset + 1] = color.g8
 		bytes[offset + 2] = color.b8
 	return Image.create_from_data(indexed.get_width(), indexed.get_height(), false, Image.FORMAT_RGBA8, bytes)
+
+
+func _update_network_preview() -> void:
+	if network_preview == null:
+		return
+	if city == null or not _camera_keys_allowed() or not map_view.edit_enabled or map_view.is_panning() or not NetworkPlacementPreview.supports_tool(selected_group, selected_subtool):
+		network_preview.clear()
+		return
+	var start := map_view.selection_start if map_view.selection_start.x >= 0 else map_view.hover_tile
+	var finish := map_view.selection_end if map_view.selection_end.x >= 0 else map_view.hover_tile
+	if start.x < 0 or finish.x < 0:
+		network_preview.clear()
+		return
+	var view := _city_view_size()
+	var sprites := large_sprites if view == IsometricRenderer.VIEW_LARGE else small_medium_sprites
+	if sprites != null and palette != null:
+		network_preview.request(city, selected_group, selected_subtool, start, finish, view, palette, sprites, overlay_mode == "underground")
