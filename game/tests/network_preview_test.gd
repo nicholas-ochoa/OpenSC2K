@@ -69,5 +69,48 @@ func _run() -> void:
 	controller.map_view = null
 	controller.queue_free()
 	await process_frame
+	await _test_highway_recovery(palette, sprites)
 	print("PASS: network artwork matches placement for roads rail power pipes subway and highways; live city bytes preserved")
 	quit()
+
+func _test_highway_recovery(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
+	var preview := NetworkPlacementPreview.new()
+	root.add_child(preview)
+	for edge in [128, 256, 384, 512]:
+		var city := CityState.from_document(EmptyCityTemplate.create(edge))
+		var start := Vector2i(edge - 24, edge - 24)
+		var finish := start + Vector2i(2, 2)
+		for x in range(start.x, start.x + 2):
+			for y in range(start.y + 2, start.y + 4):
+				assert(city.set_terrain_id(x, y, 13))
+		var before: PackedByteArray = city.document.serialize().data
+		var command := HighwayCommand.apply(NetworkPlacementPreview.snapshot_city(city), 6, 1, start, finish)
+		assert(command.ok)
+		assert(command.sections == [start, start + Vector2i(0, 2)], "Stop a forced grade at the drag boundary; never revisit a section")
+		preview.request(city, 6, 1, start, finish, 2, palette, sprites, false)
+		await _wait_for_preview(preview)
+		assert(not preview.visuals.is_empty())
+		preview.clear()
+		preview.request(city, 6, 0, start - Vector2i(4, 4), start - Vector2i(1, 4), 2, palette, sprites, false)
+		await _wait_for_preview(preview)
+		assert(not preview.visuals.is_empty(), "Road previews still work after the highway that formerly looped")
+		assert(city.document.serialize().data == before)
+		preview.clear()
+		# GDScript worker failures can return null. Simulate that result without
+		# deliberately emitting a script error into the regression log.
+		preview.worker = Thread.new()
+		assert(preview.worker.start(func() -> Variant: return null) == OK)
+		await _wait_for_preview(preview)
+		assert(preview.worker == null, "A failed worker releases its slot")
+		preview.request(city, 7, 0, start - Vector2i(4, 4), start - Vector2i(1, 4), 2, palette, sprites, false)
+		await _wait_for_preview(preview)
+		assert(not preview.visuals.is_empty(), "Rail previews recover after a failed worker")
+		preview.clear()
+	preview.queue_free()
+	await process_frame
+
+func _wait_for_preview(preview: NetworkPlacementPreview) -> void:
+	var deadline := Time.get_ticks_msec() + 5000
+	while not preview.pending.is_empty() or preview.worker != null:
+		assert(Time.get_ticks_msec() < deadline, "Network preview worker timed out")
+		await create_timer(0.01).timeout

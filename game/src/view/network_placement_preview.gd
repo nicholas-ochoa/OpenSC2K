@@ -65,8 +65,12 @@ func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Ve
 
 func _process(_delta: float) -> void:
 	if worker != null and not worker.is_alive():
-		var result: Dictionary = worker.wait_to_finish()
+		# release the slot before checking the return value. a script failure can
+		# return null; a typed assignment here used to leave a joined worker stuck
+		var completed := worker
 		worker = null
+		var value: Variant = completed.wait_to_finish()
+		var result: Dictionary = value if value is Dictionary else {"draws": []}
 		if worker_generation == generation and not request_key.is_empty():
 			visuals.clear()
 			divisor = int(result.get("divisor", 1))

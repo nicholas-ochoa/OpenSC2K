@@ -735,6 +735,8 @@ static func _plan_flat_route(
 	):
 		return result
 	result.append(current)
+	var visited := {current: true}
+	var drag_bounds := Rect2i(start.min(finish), (finish - start).abs() + Vector2i.ONE)
 	while current != finish:
 		var current_shape := _terrain_section_shape(
 			buildings, terrain, altitude, current, map_edge
@@ -742,6 +744,10 @@ static func _plan_flat_route(
 		if current_shape == FLAT_TERRAIN_SHAPE:
 			direction = _primary_direction(current, finish)
 		var next: Vector2i = current + DIRECTIONS[direction] * 2
+		# Reject overshoots and revisited tiles on a forced grade. Otherwise the
+		# preview worker can loop back along the route indefinitely.
+		if not drag_bounds.has_point(next) or visited.has(next):
+			break
 		if not _section_follows(
 			buildings, terrain, flags, altitude, current, next, direction, map_edge
 		):
@@ -751,12 +757,15 @@ static func _plan_flat_route(
 			if alternate < 0:
 				break
 			next = current + DIRECTIONS[alternate] * 2
+			if not drag_bounds.has_point(next) or visited.has(next):
+				break
 			if not _section_follows(
 				buildings, terrain, flags, altitude, current, next, alternate, map_edge
 			):
 				break
 			direction = alternate
 		current = next
+		visited[current] = true
 		result.append(current)
 	return result
 
