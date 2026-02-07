@@ -62,6 +62,19 @@ static func apply(
 	bridge_type := BRIDGE_UNSELECTED,
 	free_mode := false
 ) -> Dictionary:
+	return NetworkDragCommand.apply(city, group_index, subtool_index, selected_start, selected_finish, bridge_type, connection_choice, free_mode, true)
+
+
+static func apply_segment(
+	city: CityState,
+	group_index: int,
+	subtool_index: int,
+	selected_start: Vector2i,
+	selected_finish: Vector2i,
+	connection_choice := CONNECTION_UNSELECTED,
+	bridge_type := BRIDGE_UNSELECTED,
+	free_mode := false
+) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
@@ -309,6 +322,7 @@ static func apply(
 		"listed_route_cost": listed_route_cost,
 		"free_mode": free_mode,
 		"bridge_built": bridge_built,
+		"bridge_exit": bridge_plan.start + DIRECTIONS[int(bridge_plan.direction)] * int(bridge_plan.span_length) * 2 if bridge_built else Vector2i(-1, -1),
 		"bridge_cancelled": (
 			bridge_plan.get("ok", false) and selected_bridge == BRIDGE_CANCELLED
 		),

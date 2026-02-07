@@ -4245,7 +4245,9 @@ func _apply_network_selection(
 	_play_tool_success_sound(group_index, subtool_index, free_mode)
 	status_label.remove_theme_color_override("font_color")
 	var dry_count := int(network.get("dry_points", []).size())
-	if network.get("bridge_built", false):
+	if int(network.get("bridge_count", 0)) > 1:
+		status_label.text = "Built %d %s tiles and %d bridges for $%s." % [dry_count, tool_name, network.bridge_count, _format_number(int(network.cost))]
+	elif network.get("bridge_built", false):
 		if dry_count > 0:
 			status_label.text = "Built %d %s tiles and a %s across %d water tiles for $%s." % [
 				dry_count,
@@ -4280,6 +4282,11 @@ func _apply_network_selection(
 			status_label.text += " The connection was not offered because funds are too low."
 		elif network.get("stopped_early", false):
 			status_label.text += " The route stopped at an obstruction."
+
+	if not String(network.get("continuation_error", "")).is_empty():
+		status_label.text += " Route stopped: %s." % network.continuation_error
+	elif network.get("bridge_built", false) and network.get("stopped_early", false):
+		status_label.text += " The route stopped at an obstruction."
 
 
 func _confirm_network_connection() -> void:
@@ -4640,6 +4647,7 @@ func _apply_highway_selection(
 			"group_index": selected_group,
 			"subtool_index": selected_subtool,
 			"free_mode": free_mode,
+			"bridge_type": bridge_type,
 		}
 		var message := (
 			(
@@ -4672,7 +4680,9 @@ func _apply_highway_selection(
 	_refresh_after_city_edit(highway)
 	_play_tool_success_sound(selected_group, selected_subtool, free_mode)
 	status_label.remove_theme_color_override("font_color")
-	if highway.get("bridge_built", false):
+	if int(highway.get("bridge_count", 0)) > 1:
+		status_label.text = "Built %d highway sections and %d bridges for $%s." % [highway.sections.size(), highway.bridge_count, _format_number(int(highway.cost))]
+	elif highway.get("bridge_built", false):
 		if highway.sections.is_empty():
 			status_label.text = "Built a %s across %d water sections for $%s." % [
 				highway.get("bridge_name", "highway bridge"),
@@ -4705,6 +4715,11 @@ func _apply_highway_selection(
 		elif highway.get("stopped_early", false):
 			status_label.text += " The route stopped at an obstruction."
 
+	if not String(highway.get("continuation_error", "")).is_empty():
+		status_label.text += " Route stopped: %s." % highway.continuation_error
+	elif highway.get("bridge_built", false) and highway.get("stopped_early", false):
+		status_label.text += " The route stopped at an obstruction."
+
 
 func _confirm_highway_connection() -> void:
 	_apply_pending_highway_connection(Highways.CONNECTION_CONFIRMED)
@@ -4726,7 +4741,7 @@ func _apply_pending_highway_connection(connection_choice: int) -> void:
 		request.start,
 		request.finish,
 		connection_choice,
-		Highways.BRIDGE_UNSELECTED,
+		int(request.get("bridge_type", Highways.BRIDGE_UNSELECTED)),
 		bool(request.get("free_mode", false))
 	)
 

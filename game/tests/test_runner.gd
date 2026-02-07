@@ -13927,9 +13927,10 @@ func _test_network_command(reference_root: String) -> void:
 		and causeway.bridge_span_length == 8
 		and causeway.bridge_points.size() == 8
 		and causeway.bridge_cost == 200
-		and causeway.cost == 200
-		and city.funds() == 9800,
-		"Causeway uses the recovered span count and cost",
+		and causeway.cost == 210
+		and city.funds() == 9790
+		and city.building_id(88, 20) != 0,
+		"Causeway keeps its recovered span cost and continues to the dry endpoint",
 	)
 	_check(
 		city.terrain_id(80, 20) == 3

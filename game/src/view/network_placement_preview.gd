@@ -179,17 +179,4 @@ static func candidate_indices(command: Dictionary, start: Vector2i, finish: Vect
 	return candidates
 
 static func snapshot_city(source: CityState) -> CityState:
-	# copy the already decoded buffers. do not repeat full-map validation or
-	# altitude decoding for each pointer move
-	var snapshot := CityState.new()
-	snapshot.document = source.document.duplicate_document()
-	snapshot.map_size = source.map_size
-	snapshot.load_error = source.load_error
-	snapshot.altitude_words = source.altitude_words.duplicate()
-	snapshot.buildings = source.buildings.duplicate()
-	snapshot.terrain = source.terrain.duplicate()
-	snapshot.zones = source.zones.duplicate()
-	snapshot.underground = source.underground.duplicate()
-	snapshot.text_overlays = source.text_overlays.duplicate()
-	snapshot.tile_flags = source.tile_flags.duplicate()
-	return snapshot
+	return CityState.copy_for_edit(source)
