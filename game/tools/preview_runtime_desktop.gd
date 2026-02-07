@@ -11,6 +11,12 @@ var status := ""
 
 
 func _initialize() -> void:
+	var screen := 0
+	for candidate in DisplayServer.get_screen_count():
+		if DisplayServer.screen_get_position(candidate).x < DisplayServer.screen_get_position(screen).x:
+			screen = candidate
+	root.current_screen = screen
+	root.position = DisplayServer.screen_get_position(screen) + Vector2i(40, 40)
 	root.window_input.connect(_handle_input)
 	call_deferred("_run")
 

@@ -139,3 +139,19 @@ func _u32_at(directory: Dictionary, address: int) -> int:
 	var at := PeBitmapResource._rva_to_offset(directory.bytes, address - 0x400000, directory.section_offset, directory.section_count)
 	assert(at >= 0)
 	return directory.bytes.decode_u32(at)
+
+
+func _alternate_graphics() -> DesktopGraphics:
+	# Solid diagnostic images exercise the external cursor presentation route.
+	var result := DesktopGraphics.new()
+	for app in ["city", "scurk"]:
+		for kind in ["icons", "cursors"]:
+			for id in DesktopGraphics.resource_ids(app, kind):
+				var size := DesktopGraphics.native_size(app, kind, id)
+				var image := Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+				image.fill(Color.CYAN)
+				if kind == "icons":
+					result.icons[app][id] = image
+				else:
+					result.cursors[app][id] = {"image": image, "hotspot": Vector2i.ZERO}
+	return result
