@@ -5374,3 +5374,5 @@ func _update_network_preview() -> void:
 	var sprites := large_sprites if view == IsometricRenderer.VIEW_LARGE else small_medium_sprites
 	if sprites != null and palette != null:
 		network_preview.request(city, selected_group, selected_subtool, start, finish, view, palette, sprites, overlay_mode == "underground")
+
+
