@@ -18,6 +18,9 @@ var automatic_soundtrack_folder := ""
 var music_slider: HSlider
 var effects_slider: HSlider
 var fullscreen_check: CheckBox
+var zoom_graphics_selectors: Array[OptionButton] = []
+var zoom_graphics_counts: Array[Label] = []
+var graphics_availability: Dictionary = {}
 var renderer_selector: OptionButton
 var background_audio_check: CheckBox
 
@@ -114,7 +117,26 @@ func _ready() -> void:
 	renderer_selector.add_item("CPU")
 	renderer_selector.tooltip_text = "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
 	settings_grid.add_child(renderer_selector)
-	settings_grid = _add_settings_tab("Graphics")
+	renderer_selector.item_selected.connect(func(_index: int) -> void: _update_graphics_counts())
+	settings_grid = _add_settings_tab("Graphics", true)
+	for zoom_index in AppSettingsStore.GRAPHICS_ZOOMS.size():
+		var zoom_label := Label.new()
+		zoom_label.text = "%d%% zoom" % AppSettingsStore.GRAPHICS_ZOOMS[zoom_index]
+		settings_grid.add_child(zoom_label)
+		var selector := OptionButton.new()
+		for size_name: String in AppSettingsStore.GRAPHICS_SIZES:
+			selector.add_item(size_name)
+		selector.tooltip_text = "Higher zoom levels must use the same graphics size or a larger size. Raising this size also raises later selections when needed."
+		selector.item_selected.connect(func(_size: int) -> void: _update_zoom_graphics_choices())
+		zoom_graphics_selectors.append(selector)
+		var zoom_row := HBoxContainer.new()
+		selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		zoom_row.add_child(selector)
+		var count_label := Label.new()
+		count_label.custom_minimum_size.x = 185
+		zoom_graphics_counts.append(count_label)
+		zoom_row.add_child(count_label)
+		settings_grid.add_child(zoom_row)
 	var source_label := Label.new()
 	source_label.text = "Graphics"
 	settings_grid.add_child(source_label)
@@ -165,11 +187,19 @@ func _ready() -> void:
 	graphics_page.add_child(note)
 
 
-func _add_settings_tab(tab_title: String) -> GridContainer:
+func _add_settings_tab(tab_title: String, scrollable := false) -> GridContainer:
 	var page := VBoxContainer.new()
 	page.name = tab_title
 	page.add_theme_constant_override("separation", 16)
-	tabs.add_child(page)
+	if scrollable:
+		var scroll := ScrollContainer.new()
+		scroll.name = tab_title
+		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+		tabs.add_child(scroll)
+		page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+		scroll.add_child(page)
+	else:
+		tabs.add_child(page)
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -182,8 +212,12 @@ func _add_settings_tab(tab_title: String) -> GridContainer:
 func show_values(
 	music_volume: float, effects_volume: float, fullscreen: bool,
 	source := "auto", folder := "", active_name := "",
-	soundtrack_folder := "", automatic_folder := "", city_renderer := "gpu", background_audio := false,
+	soundtrack_folder := "", automatic_folder := "", city_renderer := "gpu", background_audio := false, zoom_graphics: Array = AppSettingsStore.DEFAULT_ZOOM_GRAPHICS,
 ) -> void:
+	var normalized := AppSettingsStore.normalize_zoom_graphics(zoom_graphics)
+	for index in zoom_graphics_selectors.size():
+		zoom_graphics_selectors[index].select(normalized[index])
+	_update_zoom_graphics_choices()
 	background_audio_check.button_pressed = background_audio
 	renderer_selector.select(1 if city_renderer == "cpu" else 0)
 	automatic_soundtrack_folder = automatic_folder
@@ -197,12 +231,14 @@ func show_values(
 	active_source_label.text = "Active graphics: " + active_name
 	active_source_label.visible = not active_name.is_empty()
 	_update_folder_visibility()
+	_update_graphics_counts()
 	tabs.current_tab = 0
 	popup_centered()
 
 
 func selected_values() -> Dictionary:
 	return {
+		"zoom_graphics": _selected_zoom_graphics(),
 		"background_audio": background_audio_check.button_pressed,
 		"soundtrack_folder": soundtrack_edit.text.strip_edges(),
 		"city_renderer": "cpu" if renderer_selector.selected == 1 else "gpu",
@@ -231,3 +267,32 @@ func _update_soundtrack_status() -> void:
 				tracks += 1
 	soundtrack_status.text = "%d of 19 recordings found. Missing tracks use MIDI.\nChanges take effect when you apply. Leave blank for automatic selection." % tracks
 	soundtrack_status.tooltip_text = "Folder: " + folder
+
+
+func _selected_zoom_graphics() -> Array[int]:
+	var sizes: Array[int] = []
+	for selector in zoom_graphics_selectors:
+		sizes.append(selector.selected)
+	return AppSettingsStore.normalize_zoom_graphics(sizes)
+
+
+func _update_zoom_graphics_choices() -> void:
+	var sizes := _selected_zoom_graphics()
+	for index in zoom_graphics_selectors.size():
+		var selector := zoom_graphics_selectors[index]
+		selector.select(sizes[index])
+		for size_index in AppSettingsStore.GRAPHICS_SIZES.size():
+			selector.set_item_disabled(size_index, index > 0 and size_index < sizes[index - 1])
+
+	_update_graphics_counts()
+
+
+func _update_graphics_counts() -> void:
+	if graphics_availability.is_empty():
+		return
+	for index in zoom_graphics_counts.size():
+		var size_index := zoom_graphics_selectors[index].selected
+		var counts: Dictionary = graphics_availability.sizes[size_index]
+		var label := zoom_graphics_counts[index]
+		label.text = "%d / %d valid" % [counts.valid, counts.total]
+		label.tooltip_text = "Valid images in the selected graphics size. Missing images use original artwork."

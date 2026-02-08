@@ -2,6 +2,9 @@ class_name AppSettingsStore
 extends RefCounted
 
 const SETTINGS_PATH := "user://settings.cfg"
+const GRAPHICS_ZOOMS := [25, 50, 100, 200, 300, 400]
+const GRAPHICS_SIZES := ["Small", "Medium", "Large"]
+const DEFAULT_ZOOM_GRAPHICS := [0, 1, 2, 2, 2, 2]
 
 
 static func load_values(
@@ -18,6 +21,7 @@ static func load_values(
 		"graphics_folder": "",
 		"soundtrack_folder": "",
 		"city_renderer": "gpu",
+		"zoom_graphics": normalize_zoom_graphics(DEFAULT_ZOOM_GRAPHICS),
 		"background_audio": false,
 	}
 	var config := ConfigFile.new()
@@ -40,12 +44,30 @@ static func load_values(
 	)
 	result.graphics_source = str(config.get_value("graphics", "source", "auto"))
 	result.graphics_folder = str(config.get_value("graphics", "folder", ""))
+	result.zoom_graphics = normalize_zoom_graphics(config.get_value("graphics", "zoom_graphics", DEFAULT_ZOOM_GRAPHICS))
 	result.city_renderer = normalize_renderer(config.get_value("display", "city_renderer", "gpu"))
 	return result
 
 
 static func normalize_renderer(value: Variant) -> String:
 	return "cpu" if str(value) == "cpu" else "gpu"
+
+
+static func normalize_zoom_graphics(value: Variant) -> Array[int]:
+	var result: Array[int] = []
+	for index in GRAPHICS_ZOOMS.size():
+		var size_index: int = DEFAULT_ZOOM_GRAPHICS[index]
+		if value is Array and index < value.size() and (value[index] is int or value[index] is float):
+			size_index = clampi(int(value[index]), 0, GRAPHICS_SIZES.size() - 1)
+		result.append(maxi(size_index, result.back() if not result.is_empty() else 0))
+	return result
+
+
+static func graphics_size_at_zoom(sizes: Array[int], zoom_percent: int) -> int:
+	for index in GRAPHICS_ZOOMS.size():
+		if zoom_percent <= GRAPHICS_ZOOMS[index]:
+			return sizes[index]
+	return sizes.back()
 
 
 static func save_values(
@@ -58,6 +80,7 @@ static func save_values(
 	soundtrack_folder: Variant = null,
 	city_renderer: Variant = null,
 	background_audio: Variant = null,
+	zoom_graphics: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 	if FileAccess.file_exists(path):
@@ -74,4 +97,6 @@ static func save_values(
 		config.set_value("display", "city_renderer", normalize_renderer(city_renderer))
 	if background_audio != null:
 		config.set_value("audio", "background_audio", bool(background_audio))
+	if zoom_graphics != null:
+		config.set_value("graphics", "zoom_graphics", normalize_zoom_graphics(zoom_graphics))
 	return config.save(path)

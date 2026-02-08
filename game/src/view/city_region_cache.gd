@@ -438,7 +438,8 @@ func _tick_gpu() -> bool:
 			display_city = _snapshot
 			_prepared = true
 		if result.atlas_image != null:
-			if worker.atlas == null:
+			if worker.atlas == null or worker.atlas.get_size() != Vector2(result.atlas_image.get_size()):
+				# Keep the old atlas texture with meshes whose UVs still use its size.
 				worker.atlas = ImageTexture.create_from_image(result.atlas_image)
 			else:
 				worker.atlas.update(result.atlas_image)
@@ -550,7 +551,14 @@ func _tick_gpu() -> bool:
 
 func _gpu_atlas_bytes() -> int:
 	var bytes := 0
+	var seen := {}
+	for entry: Dictionary in entries.values():
+		var texture: Texture2D = entry.get("atlas_texture")
+		if texture != null and not seen.has(texture.get_instance_id()):
+			seen[texture.get_instance_id()] = true
+			bytes += texture.get_width() * texture.get_height() * 2
 	for worker in _gpu_workers:
-		if worker.atlas != null:
-			bytes += CityGpuBuildContext.ATLAS_EDGE * CityGpuBuildContext.ATLAS_EDGE * 2
+		if worker.atlas != null and not seen.has(worker.atlas.get_instance_id()):
+			seen[worker.atlas.get_instance_id()] = true
+			bytes += worker.atlas.get_width() * worker.atlas.get_height() * 2
 	return bytes

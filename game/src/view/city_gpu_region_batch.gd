@@ -21,6 +21,14 @@ static func build(request: Dictionary, context: CityGpuBuildContext, uploaded_re
 		result.key = key
 		result.usec = Time.get_ticks_usec() - started
 		regions.append(result)
+	# a later region can grow the shared atlas after earlier uvs were built
+	for region in regions:
+		if int(region.atlas_edge) != context.atlas_edge:
+			var uvs: PackedVector2Array = region.gpu_arrays[Mesh.ARRAY_TEX_UV]
+			for index in uvs.size():
+				uvs[index] *= float(region.atlas_edge) / context.atlas_edge
+			region.gpu_arrays[Mesh.ARRAY_TEX_UV] = uvs
+			region.atlas_edge = context.atlas_edge
 	return {"ok": true, "regions": regions, "display_city": display,
 		"atlas_revision": context.atlas_revision,
 		"atlas_image": context.atlas.duplicate() if context.atlas != null and context.atlas_revision != uploaded_revision else null}

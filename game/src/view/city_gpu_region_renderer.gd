@@ -58,6 +58,10 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				if Rect2i(command.position, command.size).intersects(bounds):
 					foreground.append(command)
 	var arrays := []
+	# quads accumulate against the initial edge. growth can occur mid-region
+	if context.atlas_edge != CityGpuBuildContext.ATLAS_EDGE:
+		for index in uvs.size():
+			uvs[index] *= float(CityGpuBuildContext.ATLAS_EDGE) / context.atlas_edge
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_TEX_UV] = uvs
@@ -67,6 +71,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 		"bounds": bounds, "occlusion_commands": foreground,
 		"occlusion_grid": Renderer.build_occlusion_grid(foreground, int(configuration.divisor)),
 		"atlas_revision": context.atlas_revision,
+		"atlas_edge": context.atlas_edge,
 		"atlas_image": context.atlas.duplicate() if copy_atlas and context.atlas != null and context.atlas_revision != uploaded_atlas_revision else null}
 
 static func _append_quad(rectangle: Rect2, uv: Rect2, vertices: PackedVector2Array,

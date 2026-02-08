@@ -18,7 +18,7 @@ func run_check() -> void:
 		assert(main.new_city_session.preview_options.get("size") == edge)
 		assert(main.new_city_dialog.preview_view.texture.get_width() == edge)
 	main._cancel_new_city()
-	main.full_size_graphics = false
+	main.app_zoom_graphics = AppSettingsStore.normalize_zoom_graphics([0, 1, 2, 2, 2, 2])
 	main.map_view.zoom_factor = 0.25
 	main.overlay_mode = "underground"
 	for edge in [256, 384, 512, 128]:

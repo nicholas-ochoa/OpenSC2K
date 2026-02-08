@@ -107,11 +107,11 @@ var surface_visibility := {
 	"zones": true,
 	"signs": true,
 }
-var full_size_graphics := true
 var show_underground_pipes := true
 var show_underground_subways := true
 var app_soundtrack_folder := ""
 var app_city_renderer := "gpu"
+var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
 var app_background_audio := false
 var app_music_volume := 0.8
 var app_effects_volume := 0.8
@@ -400,7 +400,7 @@ func _import_original_game(executable_path: String) -> void:
 	app_graphics_source = "original"
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics,
 	)
 	if not runtime_initialized:
 		reference_root = install_result.root
@@ -851,10 +851,12 @@ func _set_city_renderer(value: String) -> void:
 
 
 func _open_settings_dialog() -> void:
+	settings_dialog.graphics_availability = GraphicsPackAvailability.inspect(
+		small_medium_sprites, large_sprites)
 	settings_dialog.show_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
 		app_graphics_source, app_graphics_folder, asset_source.graphics_name,
-		app_soundtrack_folder, audio_controller.resolve_soundtrack_folder(""), app_city_renderer, app_background_audio,
+		app_soundtrack_folder, audio_controller.resolve_soundtrack_folder(""), app_city_renderer, app_background_audio, app_zoom_graphics,
 	)
 
 
@@ -869,6 +871,7 @@ func _apply_settings() -> void:
 	app_graphics_source = values.graphics_source
 	app_graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
+	_set_graphics_preferences(values.zoom_graphics)
 	app_background_audio = bool(values.background_audio)
 	app_soundtrack_folder = str(values.soundtrack_folder)
 	app_music_volume = float(values.music_volume)
@@ -885,7 +888,7 @@ func _apply_settings() -> void:
 	)
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics,
 	)
 	status_label.text = (
 		("Settings saved. Restart OpenSC2K to use the selected graphics." if changed_source else "Settings saved.")
@@ -901,6 +904,7 @@ func _load_app_settings() -> void:
 		app_effects_volume,
 		app_fullscreen,
 	)
+	app_zoom_graphics = values.zoom_graphics
 	app_background_audio = values.background_audio
 	app_city_renderer = values.city_renderer
 	app_soundtrack_folder = values.soundtrack_folder
@@ -1496,11 +1500,6 @@ func _on_options_menu(id: int) -> void:
 			SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer)
 		status_label.text = "Default renderer: %s%s" % [app_city_renderer.to_upper(), "" if error == OK else " (could not save preference)"]
 		return
-	if id == CityMenuBar.MENU_FULL_SIZE_GRAPHICS:
-		full_size_graphics = not full_size_graphics
-		_sync_city_option_menus()
-		_refresh_map()
-		return
 	if city == null:
 		_show_error("Load a city before you change its options.")
 		return
@@ -1572,7 +1571,6 @@ func _sync_city_option_menus() -> void:
 	if view_menu != null:
 		view_menu.disabled = not has_city
 	var option_states := {
-		CityMenuBar.MENU_FULL_SIZE_GRAPHICS: full_size_graphics,
 		MENU_AUTO_BUDGET: has_city and city.auto_budget_enabled(),
 		MENU_AUTO_GOTO: has_city and city.auto_goto_enabled(),
 		MENU_SOUND_EFFECTS: has_city and city.sound_enabled(),
@@ -3232,14 +3230,12 @@ func _update_palette_cycle_texture() -> void:
 		map_view.set_animated_palette(palette_cycle_texture)
 
 
+func _city_graphics_size() -> int:
+	return SettingsStore.graphics_size_at_zoom(app_zoom_graphics, map_view.zoom_percent())
+
+
 func _city_view_size() -> int:
-	if full_size_graphics:
-		return IsometricRenderer.VIEW_LARGE
-	if map_view.zoom_percent() <= 25:
-		return IsometricRenderer.VIEW_SMALL
-	if map_view.zoom_percent() <= 50:
-		return IsometricRenderer.VIEW_MEDIUM
-	return IsometricRenderer.VIEW_LARGE
+	return mini(_city_graphics_size(), IsometricRenderer.VIEW_LARGE)
 
 
 func _sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
@@ -5389,3 +5385,14 @@ func _clear_dynamic_composition_cache() -> void:
 	dynamic_visual_cache.clear()
 	dynamic_special_batch_cache.clear()
 	sign_foreground_cache.clear()
+
+
+func _set_graphics_preferences(zoom_graphics: Array) -> void:
+	var sizes := SettingsStore.normalize_zoom_graphics(zoom_graphics)
+	if app_zoom_graphics == sizes:
+		return
+	app_zoom_graphics = sizes
+	_close_region_cache()
+	dynamic_visual_cache.clear()
+	sign_foreground_cache.clear()
+	_refresh_map()

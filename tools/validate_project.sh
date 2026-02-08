@@ -24,6 +24,8 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --editor
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --quit-after 2
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/indexed_png_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/gpu_atlas_growth_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/native_graphics_settings_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/graphics_pack_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/independent_startup_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/asset_source_original_test.gd

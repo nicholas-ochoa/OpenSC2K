@@ -90,10 +90,9 @@ func _run() -> void:
 	main.call("_select_subtool", 1)
 	assert(main.get("overlay_mode") == "city")
 	assert(toolbar.child_tool_buttons[1].icon.get_width() <= 48)
-	assert(main.get("full_size_graphics"))
+	main.app_zoom_graphics = AppSettingsStore.normalize_zoom_graphics(AppSettingsStore.DEFAULT_ZOOM_GRAPHICS)
 	map.zoom_factor = CityMapControl.ZOOM_LEVELS[0]
-	assert(main.call("_city_view_size") == CityIsometricRenderer.VIEW_LARGE)
-	main.call("_on_options_menu", CityMenuBar.MENU_FULL_SIZE_GRAPHICS)
+	assert(main.options_menu.get_popup().get_item_index(0x8008) == -1)
 	assert(main.call("_city_view_size") == CityIsometricRenderer.VIEW_SMALL)
 	# Shift changes the same in-progress path in either direction.
 	map.set_edit_enabled(true, "path", 1, true)

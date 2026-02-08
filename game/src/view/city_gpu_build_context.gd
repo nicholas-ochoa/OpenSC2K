@@ -2,6 +2,8 @@ class_name CityGpuBuildContext
 extends RefCounted
 # owned by one geometry worker. main-thread uploads use an immutable atlas copy
 const ATLAS_EDGE := 2048
+const MAX_ATLAS_EDGE := 8192
+var atlas_edge := ATLAS_EDGE
 const TILE_CACHE_LIMIT := 16384
 var images: Dictionary = {}
 var image_roles: Dictionary = {}
@@ -67,18 +69,22 @@ func slot(image: Image) -> Rect2i:
 	if atlas_slots.has(key):
 		return atlas_slots[key]
 	var size := image.get_size()
-	if size.x + 2 > ATLAS_EDGE or size.y + 2 > ATLAS_EDGE:
+	if size.x + 2 > MAX_ATLAS_EDGE or size.y + 2 > MAX_ATLAS_EDGE:
 		error = "Sprite exceeds GPU atlas dimensions"
 		return Rect2i()
-	if atlas_x + size.x + 2 > ATLAS_EDGE:
+	while size.x + 2 > atlas_edge or size.y + 2 > atlas_edge:
+		_grow_atlas()
+	if atlas_x + size.x + 2 > atlas_edge:
 		atlas_x = 0
 		atlas_y += row_height
 		row_height = 0
-	if atlas_y + size.y + 2 > ATLAS_EDGE:
+	while atlas_y + size.y + 2 > atlas_edge and atlas_edge < MAX_ATLAS_EDGE:
+		_grow_atlas()
+	if atlas_y + size.y + 2 > atlas_edge:
 		error = "GPU sprite atlas is full"
 		return Rect2i()
 	if atlas == null:
-		atlas = Image.create(ATLAS_EDGE, ATLAS_EDGE, false, Image.FORMAT_LA8)
+		atlas = Image.create(atlas_edge, atlas_edge, false, Image.FORMAT_LA8)
 		atlas.fill(Color.TRANSPARENT)
 	var rectangle := Rect2i(Vector2i(atlas_x + 1, atlas_y + 1), size)
 	var indexed := image.duplicate()
@@ -89,6 +95,16 @@ func slot(image: Image) -> Rect2i:
 	atlas_slots[key] = rectangle
 	atlas_revision += 1
 	return rectangle
+
+
+func _grow_atlas() -> void:
+	atlas_edge *= 2
+	if atlas != null:
+		var expanded := Image.create(atlas_edge, atlas_edge, false, Image.FORMAT_LA8)
+		expanded.fill(Color.TRANSPARENT)
+		expanded.blit_rect(atlas, Rect2i(Vector2i.ZERO, atlas.get_size()), Vector2i.ZERO)
+		atlas = expanded
+	atlas_revision += 1
 
 
 func intersects(city: CityState, sprites: Sc2SpriteArchive, config: Dictionary,

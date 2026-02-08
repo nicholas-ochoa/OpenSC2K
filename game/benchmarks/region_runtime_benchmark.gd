@@ -9,7 +9,7 @@ func _run() -> void:
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	main.full_size_graphics = false
+	main.app_zoom_graphics = AppSettingsStore.normalize_zoom_graphics([0, 1, 2, 2, 2, 2])
 	main.map_view.zoom_factor = float(OS.get_environment("CITY_BENCH_ZOOM")) if OS.has_environment("CITY_BENCH_ZOOM") else 1.0
 	for edge in [256, 384, 512]:
 		if OS.has_environment("CITY_BENCH_SIZE") and edge != int(OS.get_environment("CITY_BENCH_SIZE")):

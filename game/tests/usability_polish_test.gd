@@ -30,7 +30,7 @@ func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	await process_frame
-	assert(main.full_size_graphics)
+	assert(main._city_view_size() == CityIsometricRenderer.VIEW_LARGE)
 	var background := main.main_menu.city_background as MainMenuCityBackground
 	assert(background.demo_city != null)
 	var source_bytes := FileAccess.get_file_as_bytes(background.source_path)
