@@ -38,11 +38,12 @@ func _run() -> void:
 	assert(main._sprite_archive_for_view(2) == main.large_sprites)
 	var anchor := map.size * Vector2(0.4, 0.6)
 	var source := (anchor - map._draw_offset(map._view_scale())) / map._view_scale()
-	assert(map.zoom_out(anchor) and map.zoom_percent() == 200)
+	assert(map.zoom_out(anchor) and map.zoom_percent() == 300)
 	assert(map.zoom_in(anchor) and map.zoom_percent() == 400)
 	var after := (anchor - map._draw_offset(map._view_scale())) / map._view_scale()
 	assert(source.distance_to(after) <= 0.5, "Zoom moved the map point under the pointer")
 	assert(not map.zoom_in(anchor))
+	assert(CityMapControl.sign_display_multiplier(3.0) == 3.0)
 	assert(CityMapControl.sign_display_multiplier(4.0) == 4.0)
 	for mode in ["underground", "city"]:
 		main._set_overlay(mode)
