@@ -105,8 +105,8 @@ func set_sign_requests(requests: Array[Dictionary]) -> void:
 			next.append({"key": int(request.key), "bounds": bounds, "draw_order": int(request.draw_order)})
 	sign_requests = next
 
-func sign_foreground(key: int, bounds: Rect2i, order: int) -> Image:
-	var result := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8)
+func sign_foreground(key: int, bounds: Rect2i, order: int, texture_factor := 1) -> Image:
+	var result := Image.create(bounds.size.x * texture_factor, bounds.size.y * texture_factor, false, Image.FORMAT_RGBA8)
 	result.fill(Color.TRANSPARENT)
 	for region_key in _keys_for_bounds(bounds):
 		if not entries.has(region_key):
@@ -116,12 +116,12 @@ func sign_foreground(key: int, bounds: Rect2i, order: int) -> Image:
 		if patch.is_empty() or patch.source_bounds != bounds or int(patch.draw_order) != order:
 			return null
 		var image: Image = patch.image
-		if divisor > 1:
+		if int(patch.get("texture_factor", 1)) != divisor * texture_factor:
 			image = image.duplicate()
-			image.resize(image.get_width() * divisor, image.get_height() * divisor, Image.INTERPOLATE_NEAREST)
+			image.resize(patch.bounds.size.x * divisor * texture_factor, patch.bounds.size.y * divisor * texture_factor, Image.INTERPOLATE_NEAREST)
 		var world := Rect2i(patch.bounds.position * divisor, patch.bounds.size * divisor)
 		var overlap := bounds.intersection(world)
-		result.blit_rect(image, Rect2i(overlap.position - world.position, overlap.size), overlap.position - bounds.position)
+		result.blit_rect(image, Rect2i((overlap.position - world.position) * texture_factor, overlap.size * texture_factor), (overlap.position - bounds.position) * texture_factor)
 	return result
 
 func update_viewport(source_rect: Rect2) -> void:

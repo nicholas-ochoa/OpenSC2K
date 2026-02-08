@@ -19,9 +19,9 @@ static func build(region: Dictionary, requests: Array[Dictionary], palette: Sc2P
 				continue
 			var image := CityIsometricRenderer._sprite_image(sprites, palette, context.images, int(command.sprite_id), bool(command.flip))
 			if image != null:
-				masks.append({"image": image, "position": command.position})
+				masks.append({"image": image, "position": Vector2i(command.position)})
 		var sampled := CityGpuDrawList.paint(region.gpu_draws, bounds, region.background, region.gpu_draw_grid)
 		var image := CitySignForeground.static_pixels(sampled, masks, bounds)
 		result[int(request.key)] = {"image": image, "bounds": bounds,
-			"source_bounds": source, "draw_order": int(request.draw_order)}
+			"source_bounds": source, "draw_order": int(request.draw_order), "texture_factor": 1}
 	return result
