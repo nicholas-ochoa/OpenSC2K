@@ -1780,7 +1780,11 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(map_control.zoom_percent() == 100, "City view starts at native large-sprite scale")
 	_check(map_control.zoom_in(), "City view accepts a fixed zoom-in step")
 	_check(map_control.zoom_percent() == 200, "City view zoom-in doubles source pixels")
+	_check(map_control.zoom_in() and map_control.zoom_percent() == 400,
+		"City view supports the additional 400 percent closer zoom")
 	_check(not map_control.zoom_in(), "City view rejects zoom above the largest fixed level")
+	_check(map_control.zoom_out() and map_control.zoom_percent() == 200,
+		"City view zoom-out restores the 200 percent level")
 	_check(map_control.zoom_out(), "City view accepts a fixed zoom-out step")
 	_check(map_control.zoom_percent() == 100, "City view zoom-out restores native scale")
 	_check(
@@ -1882,15 +1886,17 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and MapControl.sign_view_index(0.5) == IsometricRenderer.VIEW_MEDIUM
 		and MapControl.sign_view_index(1.0) == IsometricRenderer.VIEW_LARGE
 		and MapControl.sign_view_index(2.0) == IsometricRenderer.VIEW_LARGE
-		and MapControl.sign_display_multiplier(2.0) == 2.0,
-		"Sign view selection follows all four city zoom levels",
+		and MapControl.sign_view_index(4.0) == IsometricRenderer.VIEW_LARGE
+		and MapControl.sign_display_multiplier(2.0) == 2.0
+		and MapControl.sign_display_multiplier(4.0) == 4.0,
+		"Sign view selection follows all five city zoom levels",
 	)
 	var sign_city := CityModel.from_document(starter.document.duplicate_document())
 	var sign_result := Signs.set_sign(sign_city, center_tile, "Depth Test")
 	_check(sign_result.ok, "Sign bounds fixture creates a user sign")
 	map_control.city = sign_city
 	for zoom_fixture in [
-		[0.25, 148], [0.5, 108], [1.0, 71], [2.0, 71],
+		[0.25, 148], [0.5, 108], [1.0, 71], [2.0, 71], [4.0, 71],
 	]:
 		map_control.zoom_factor = zoom_fixture[0]
 		var sign_entries := map_control.sign_source_entries()

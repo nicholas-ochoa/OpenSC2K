@@ -21,7 +21,7 @@ const HighwayTool = preload("res://src/tools/highway_command.gd")
 const DemolishTool = preload("res://src/tools/demolish_command.gd")
 const BuildingTool = preload("res://src/tools/building_command.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
-const ZOOM_LEVELS := [0.25, 0.5, 1.0, 2.0]
+const ZOOM_LEVELS := [0.25, 0.5, 1.0, 2.0, 4.0]
 const DEFAULT_ZOOM_INDEX := 2
 const WHEEL_ZOOM_DEBOUNCE_MSEC := 250
 const SIGN_FONT_HEIGHTS := [12, 14, 16]
@@ -795,7 +795,7 @@ static func sign_view_index(zoom: float) -> int:
 
 
 static func sign_display_multiplier(zoom: float) -> float:
-	return 2.0 if zoom > 1.0 else 1.0
+	return maxf(1.0, zoom)
 
 
 static func later_sign_occluder_visuals(
