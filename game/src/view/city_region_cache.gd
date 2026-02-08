@@ -311,8 +311,9 @@ func _keys_for_bounds(bounds: Rect2i) -> Array[Vector2i]:
 			result.append(Vector2i(x, y))
 	return result
 
-func image_region(bounds: Rect2i) -> Image:
-	var output := Image.create(bounds.size.x, bounds.size.y, false, Image.FORMAT_LA8)
+func image_region(bounds: Rect2i, texture_factor := 1) -> Image:
+	assert(texture_factor in [1, 2, 4])
+	var output := Image.create(bounds.size.x * texture_factor, bounds.size.y * texture_factor, false, Image.FORMAT_LA8)
 	output.fill(Color.TRANSPARENT)
 	for key in _keys_for_bounds(bounds):
 		if not entries.has(key):
@@ -325,11 +326,13 @@ func image_region(bounds: Rect2i) -> Image:
 		var first := Vector2i((Vector2(overlap.position) / divisor).floor())
 		var last := Vector2i((Vector2(overlap.end) / divisor).ceil())
 		var native := Rect2i(first, last - first)
-		var image: Image = CityGpuDrawList.paint(entry.gpu_draws, native, entry.background, entry.gpu_draw_grid) if entry.has("gpu_draws") else entry.image.get_region(Rect2i(native.position - entry.bounds.position, native.size))
+		var sample_factor := texture_factor if divisor == 1 else 1
+		var image: Image = CityGpuDrawList.paint(entry.gpu_draws, native, entry.background, entry.gpu_draw_grid, sample_factor) if entry.has("gpu_draws") else entry.image.get_region(Rect2i(native.position - entry.bounds.position, native.size))
 		image.convert(Image.FORMAT_LA8)
-		if divisor > 1:
-			image.resize(native.size.x * divisor, native.size.y * divisor, Image.INTERPOLATE_NEAREST)
-		output.blit_rect(image, Rect2i(overlap.position - first * divisor, overlap.size), overlap.position - bounds.position)
+		var target_size := native.size * divisor * texture_factor
+		if image.get_size() != target_size:
+			image.resize(target_size.x, target_size.y, Image.INTERPOLATE_NEAREST)
+		output.blit_rect(image, Rect2i((overlap.position - first * divisor) * texture_factor, overlap.size * texture_factor), (overlap.position - bounds.position) * texture_factor)
 	return output
 
 func pixel(point: Vector2i) -> Color:
