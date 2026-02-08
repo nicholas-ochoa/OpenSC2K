@@ -47,10 +47,11 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				var clipped := rectangle.intersection(bounds)
 				if not clipped.has_area():
 					continue
+				var source := Rect2i(Vector2i(draw.source.position) + clipped.position - rectangle.position, clipped.size)
 				var slot := context.slot(draw.image)
 				if not context.error.is_empty():
 					return {"ok": false, "error": context.error}
-				var uv := Rect2i(slot.position + Vector2i(draw.source.position) + clipped.position - rectangle.position, clipped.size)
+				var uv := Rect2i(slot.position + source.position, source.size)
 				_append_quad(Rect2(clipped.position - bounds.position, clipped.size), Rect2(uv), vertices, uvs, indices)
 				draws.append(draw)
 			for command: Dictionary in tile.foreground:
