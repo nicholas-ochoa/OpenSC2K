@@ -50,7 +50,8 @@ static func batch_special_visuals(
 			not pending.is_empty()
 			and (
 				pending.size() >= MAX_SPECIAL_VISUALS_PER_BATCH
-				or merged.get_area() > MAX_SPECIAL_BATCH_AREA
+				or merged.get_area() * int(visual.get("texture_factor", 1)) * int(visual.get("texture_factor", 1)) > MAX_SPECIAL_BATCH_AREA
+				or int(visual.get("texture_factor", 1)) != int(pending[0].get("texture_factor", 1))
 			)
 		):
 			_append_special_batch(result, pending, batch_cache)
@@ -78,8 +79,9 @@ static func _append_special_batch(
 	var bounds := _visual_bounds(pending[0])
 	for index in range(1, pending.size()):
 		bounds = bounds.merge(_visual_bounds(pending[index]))
+	var factor := int(pending[0].get("texture_factor", 1))
 	var image := Image.create(
-		bounds.size.x, bounds.size.y, false, Image.FORMAT_RGBA8
+		bounds.size.x * factor, bounds.size.y * factor, false, Image.FORMAT_RGBA8
 	)
 	image.fill(Color.TRANSPARENT)
 	for visual in pending:
@@ -90,7 +92,7 @@ static func _append_special_batch(
 		image.blend_rect(
 			source,
 			Rect2i(Vector2i.ZERO, source.get_size()),
-			position - bounds.position,
+			(position - bounds.position) * factor,
 		)
 	var texture := ImageTexture.create_from_image(image)
 	var batch := {

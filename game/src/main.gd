@@ -2977,6 +2977,7 @@ func _refresh_map(force := true) -> void:
 
 
 func _close_region_cache() -> void:
+	_clear_dynamic_composition_cache()
 	foreground_complete = false
 	if region_cache != null:
 		region_cache.close()
@@ -3264,6 +3265,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 	var sprite_archive := _sprite_archive_for_view(view_size)
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := int(configuration.divisor)
+	var factor := 1
 	var commands := dynamic_command_cache.get_commands(
 		city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
 	)
@@ -3271,14 +3273,14 @@ func _refresh_moving_things(view_size := -1) -> void:
 	for command in commands:
 		if region_cache != null and not Rect2(Vector2(command.position) * divisor, Vector2(command.get("size", Vector2i(256, 256))) * divisor).intersects(map_view.visible_source_rect().grow(256 * divisor)):
 			continue
-		var visual_cache_key := var_to_str([view_size, command])
+		var visual_cache_key := var_to_str([view_size, factor, command])
 		if dynamic_visual_cache.has(visual_cache_key):
 			var cached: Dictionary = dynamic_visual_cache[visual_cache_key]
 			if not cached.is_empty() and not bool(cached.get("hidden", false)):
 				visuals.append(cached)
 			continue
 		var resource := _dynamic_sprite_resource(
-			sprite_archive, command.sprite_id, command.flip, divisor
+			sprite_archive, command.sprite_id, command.flip, divisor, factor
 		)
 		if resource.is_empty():
 			continue
@@ -3289,13 +3291,13 @@ func _refresh_moving_things(view_size := -1) -> void:
 		var occluder_mask: Image
 		if bool(command.get("static_occlusion", true)):
 			occluder_mask = _dynamic_occluder_image(
-				sprite_archive, divisor, position, resource.image.get_size(),
-				int(command.get("depth_order", -1)), bool(command.get("train", false))
+				sprite_archive, divisor, position, resource.native_size,
+				int(command.get("depth_order", -1)), bool(command.get("train", false)), factor
 			)
 		if command.shadow:
-			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask)
+			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask, factor)
 			if shadow_image == null:
-				dynamic_visual_cache[visual_cache_key] = {"hidden": true, "position": Vector2(position), "size": Vector2(resource.image.get_size())}
+				dynamic_visual_cache[visual_cache_key] = {"hidden": true, "position": Vector2(position), "size": Vector2(resource.native_size)}
 				continue
 			visual_image = shadow_image
 			texture = ImageTexture.create_from_image(shadow_image)
@@ -3304,10 +3306,10 @@ func _refresh_moving_things(view_size := -1) -> void:
 			var foreground_indices: PackedInt32Array = command.get("same_tile_foreground_indices", PackedInt32Array())
 			var index_reader := Callable()
 			if region_cache != null and not foreground_indices.is_empty():
-				var sampled := region_cache.image_region(Rect2i(position, resource.image.get_size()))
-				index_reader = func(x: int, y: int) -> Color: return sampled.get_pixel(x - position.x, y - position.y)
+				var sampled := region_cache.image_region(Rect2i(position, resource.native_size), factor)
+				index_reader = func(x: int, y: int) -> Color: return sampled.get_pixel(x - position.x * factor, y - position.y * factor)
 			var occluded := IsometricRenderer.occlude_dynamic_with_mask(
-				resource.image, occluder_mask, position, static_city_image,
+				resource.image, occluder_mask, position * factor, static_city_image,
 				foreground_indices, index_reader
 			)
 			if int(occluded.occluded_pixels) > 0:
@@ -3318,8 +3320,9 @@ func _refresh_moving_things(view_size := -1) -> void:
 			"texture": texture,
 			"index_texture": index_texture,
 			"palette_lookup_all": true,
+			"texture_factor": factor,
 			"position": Vector2(position),
-			"size": Vector2(resource.image.get_size()),
+			"size": Vector2(resource.native_size),
 			"image": visual_image,
 			"special_overlay": command.has("overlay"),
 			"batch_cache_key": visual_cache_key,
@@ -3363,6 +3366,7 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 	var sprite_archive := _sprite_archive_for_view(view_size)
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := int(configuration.divisor)
+	var factor := 1
 	if static_occlusion_grid.is_empty() and region_cache == null:
 		static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
 			static_occlusion_commands, divisor
@@ -3392,7 +3396,7 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 					cached.palette_signature = palette_signature
 				visuals[key] = cached.visual
 			continue
-		var foreground: Image = region_cache.sign_foreground(key, bounds, int(entry.draw_order)) if gpu_palette else null
+		var foreground: Image = region_cache.sign_foreground(key, bounds, int(entry.draw_order), factor) if gpu_palette else null
 		if foreground == null:
 			var masks: Array[Dictionary] = []
 			for command in _static_occlusion_candidates(bounds):
@@ -3401,15 +3405,15 @@ func _refresh_sign_occlusion(view_size: int) -> void:
 				var position := Vector2i(command.position) * divisor
 				if not bounds.intersects(Rect2i(position, Vector2i(command.size) * divisor)):
 					continue
-				var resource := _dynamic_sprite_resource(sprite_archive, int(command.sprite_id), bool(command.flip), divisor)
+				var resource := _dynamic_sprite_resource(sprite_archive, int(command.sprite_id), bool(command.flip), divisor, factor)
 				if not resource.is_empty():
-					masks.append({"image": resource.image, "position": position})
-			var sampled: Image = region_cache.image_region(bounds) if region_cache != null else static_city_image.get_region(bounds)
-			foreground = CitySignForeground.static_pixels(sampled, masks, bounds)
+					masks.append({"image": resource.image, "position": position * factor})
+			var sampled: Image = region_cache.image_region(bounds, factor) if region_cache != null else static_city_image.get_region(bounds)
+			foreground = CitySignForeground.static_pixels(sampled, masks, Rect2i(bounds.position * factor, bounds.size * factor))
 		for visual in MapControl.later_sign_occluder_visuals(moving_candidates, bounds, int(entry.draw_order)):
 			var moving_image: Image = visual.get("image") as Image
 			if moving_image != null:
-				CitySignForeground.add_moving(foreground, moving_image, Vector2i(visual.position), bounds)
+				CitySignForeground.add_moving(foreground, moving_image, Vector2i(visual.position) * factor, Rect2i(bounds.position * factor, bounds.size * factor))
 		var used_indices := {} if gpu_palette else CitySignForeground.used_indices(foreground)
 		var empty_foreground := foreground.is_invisible() if gpu_palette else used_indices.is_empty()
 		if empty_foreground:
@@ -3448,13 +3452,13 @@ func _dynamic_occluder_image(
 	position: Vector2i,
 	size: Vector2i,
 	draw_order: int,
-	is_train := false
+	is_train := false, texture_factor := 1
 ) -> Image:
 	if draw_order < 0 or (static_occlusion_commands.is_empty() and region_cache == null):
 		return null
-	var cache_key := "%d:%d:%d:%d:%d:%d:%d" % [
+	var cache_key := "%d:%d:%d:%d:%d:%d:%d:%d" % [
 		position.x, position.y, size.x, size.y, draw_order, int(is_train),
-		static_render_epoch,
+		static_render_epoch, texture_factor,
 	]
 	if dynamic_occluder_cache.has(cache_key):
 		return dynamic_occluder_cache[cache_key] as Image
@@ -3483,22 +3487,22 @@ func _dynamic_occluder_image(
 		if overlap.get_area() <= 0:
 			continue
 		var resource := _dynamic_sprite_resource(
-			sprite_archive, int(command.sprite_id), bool(command.flip), divisor
+			sprite_archive, int(command.sprite_id), bool(command.flip), divisor, texture_factor
 		)
 		if resource.is_empty():
 			continue
 		var occluder_image: Image = resource.image
 		if train_foreground:
 			occluder_image = _dynamic_train_foreground_image(
-				sprite_archive, command, divisor, resource.image
+				sprite_archive, command, divisor, resource.image, texture_factor
 			)
 		if mask == null:
-			mask = Image.create(size.x, size.y, false, Image.FORMAT_RGBA8)
+			mask = Image.create(size.x * texture_factor, size.y * texture_factor, false, Image.FORMAT_RGBA8)
 			mask.fill(Color.TRANSPARENT)
 		mask.blend_rect(
 			occluder_image,
-			Rect2i(overlap.position - occluder_position, overlap.size),
-			overlap.position - position,
+			Rect2i((overlap.position - occluder_position) * texture_factor, overlap.size * texture_factor),
+			(overlap.position - position) * texture_factor,
 		)
 		if use_later_static:
 			later_occluder_added = true
@@ -3524,18 +3528,18 @@ func _dynamic_train_foreground_image(
 	sprite_archive: Sc2SpriteArchive,
 	command: Dictionary,
 	divisor: int,
-	surface: Image
+	surface: Image, texture_factor := 1
 ) -> Image:
 	var reference_sprite_id := int(command.train_foreground_reference_sprite_id)
 	if reference_sprite_id < 0:
 		return surface
-	var key := "%d:%d:%d:%d" % [
-		int(command.sprite_id), int(command.flip), divisor, reference_sprite_id,
+	var key := "%d:%d:%d:%d:%d" % [
+		int(command.sprite_id), int(command.flip), divisor, reference_sprite_id, texture_factor,
 	]
 	if dynamic_foreground_cache.has(key):
 		return dynamic_foreground_cache[key]
 	var reference := _dynamic_sprite_resource(
-		sprite_archive, reference_sprite_id, bool(command.flip), divisor
+		sprite_archive, reference_sprite_id, bool(command.flip), divisor, texture_factor
 	)
 	if reference.is_empty():
 		return surface
@@ -3547,31 +3551,33 @@ func _dynamic_train_foreground_image(
 
 
 func _dynamic_sprite_resource(
-	sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool, divisor: int
+	sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool, divisor: int, texture_factor := 1
 ) -> Dictionary:
-	var key := "%d:%d:%d" % [sprite_id, int(flip), divisor]
+	var key := "%d:%d:%d:%d:%d" % [sprite_id, int(flip), divisor, texture_factor, sprite_archive.get_instance_id()]
 	if dynamic_sprite_cache.has(key):
 		return dynamic_sprite_cache[key]
 	var entry := sprite_archive.find_sprite(sprite_id)
 	if entry == null:
 		return {}
+	var native_size := Vector2i(entry.width, entry.height) * divisor
 	var indexed := entry.create_image(palette_index_encoding)
 	if not indexed.ok:
 		return {}
 	var image: Image = indexed.image
-	if flip or divisor > 1:
+	if flip or divisor > 1 or image.get_size() != native_size * texture_factor:
 		image = image.duplicate()
 	if flip:
 		image.flip_x()
-	if divisor > 1:
+	if image.get_size() != native_size * texture_factor:
 		image.resize(
-			image.get_width() * divisor,
-			image.get_height() * divisor,
+			native_size.x * texture_factor,
+			native_size.y * texture_factor,
 			Image.INTERPOLATE_NEAREST
 		)
 	var texture := ImageTexture.create_from_image(image)
 	var resource := {
 		"image": image,
+		"native_size": native_size,
 		"texture": texture,
 		"index_texture": texture,
 	}
@@ -3580,7 +3586,7 @@ func _dynamic_sprite_resource(
 
 
 func _dynamic_shadow_image(
-	mask: Image, position: Vector2i, occluder_mask: Image = null
+	mask: Image, position: Vector2i, occluder_mask: Image = null, texture_factor := 1
 ) -> Image:
 	if static_city_image == null and region_cache == null:
 		return null
@@ -3589,9 +3595,9 @@ func _dynamic_shadow_image(
 	)
 	shadow.fill(Color.TRANSPARENT)
 	var changed_pixels := 0
-	var sampled: Image = region_cache.image_region(Rect2i(position, mask.get_size())) if region_cache != null else null
+	var sampled: Image = region_cache.image_region(Rect2i(position, mask.get_size() / texture_factor), texture_factor) if region_cache != null else null
 	for source_y in mask.get_height():
-		var output_y := position.y + source_y
+		var output_y := position.y + int(source_y / texture_factor)
 		if output_y < 0 or output_y >= _static_image_size().y:
 			continue
 		for source_x in mask.get_width():
@@ -3602,7 +3608,7 @@ func _dynamic_shadow_image(
 				and occluder_mask.get_pixel(source_x, source_y).a > 0.0
 			):
 				continue
-			var output_x := position.x + source_x
+			var output_x := position.x + int(source_x / texture_factor)
 			if output_x < 0 or output_x >= _static_image_size().x:
 				continue
 			var current: Color = sampled.get_pixel(source_x, source_y) if sampled != null else static_city_image.get_pixel(output_x, output_y)
@@ -5376,3 +5382,10 @@ func _update_network_preview() -> void:
 		network_preview.request(city, selected_group, selected_subtool, start, finish, view, palette, sprites, overlay_mode == "underground")
 
 
+func _clear_dynamic_composition_cache() -> void:
+	dynamic_sprite_cache.clear()
+	dynamic_foreground_cache.clear()
+	dynamic_occluder_cache.clear()
+	dynamic_visual_cache.clear()
+	dynamic_special_batch_cache.clear()
+	sign_foreground_cache.clear()
