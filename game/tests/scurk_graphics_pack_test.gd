@@ -122,7 +122,7 @@ func _initialize() -> void:
 		assert(not rejected.error.is_empty(), change)
 		assert(not rejected.apply_to(assets), change)
 		assert(assets.scurk_graphics == valid.scurk_graphics and assets.large_sprites == valid.large_sprites)
-	assert(no_scurk.apply_to(assets) and assets.scurk_graphics == null)
+	assert(no_scurk.apply_to(assets) and assets.scurk_graphics == valid.scurk_graphics, "Omitted optional sections retain the active original base")
 	for name in files.keys() + ["invalid.png", "pack.json"]:
 		assert(DirAccess.remove_absolute(directory.path_join(name)) == OK)
 	assert(DirAccess.remove_absolute(directory) == OK)

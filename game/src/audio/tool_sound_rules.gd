@@ -1,6 +1,7 @@
 class_name ToolSoundRules
 extends RefCounted
 
+const SOUND_TRACTOR := 508
 const SOUND_BUILD := 500
 const SOUND_ERROR := 501
 const SOUND_ZONE := 503

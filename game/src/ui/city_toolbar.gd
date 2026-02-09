@@ -1,6 +1,7 @@
 class_name CityToolbar
 extends PanelContainer
 
+signal button_clicked
 signal start_city_requested
 
 var start_city_button: Button
@@ -191,6 +192,7 @@ func _ready() -> void:
 	subway_check.toggled.connect(underground_subways_visibility_requested.emit)
 	view_visibility_checks["subways"] = subway_check
 	layers_grid.add_child(subway_check)
+	_watch_buttons(self)
 
 
 func group_icon(group_index: int) -> Texture2D:
@@ -378,3 +380,12 @@ func set_landscape_editor(enabled: bool) -> void:
 	for index in toolbar_buttons.size():
 		toolbar_buttons[index].visible = not enabled or index in [0, 1, 16, 17]
 	view_mode_buttons.underground.disabled = enabled
+
+
+func _watch_buttons(node: Node) -> void:
+	if node is BaseButton and not node.pressed.is_connected(button_clicked.emit):
+		node.pressed.connect(button_clicked.emit)
+	if not node.child_entered_tree.is_connected(_watch_buttons):
+		node.child_entered_tree.connect(_watch_buttons)
+	for child in node.get_children():
+		_watch_buttons(child)

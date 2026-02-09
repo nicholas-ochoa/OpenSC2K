@@ -32,23 +32,29 @@ func apply_to(assets: OriginalGameAssets) -> bool:
 	assets.scenario_palette = scenario_palette
 	assets.large_sprites = large_sprites
 	assets.small_medium_sprites = small_medium_sprites
-	assets.scurk_graphics = scurk_graphics
-	assets.city_ui_graphics = city_ui_graphics
-	assets.desktop_graphics = desktop_graphics
-	assets.scenario_graphics = scenario_graphics
+	if scurk_graphics != null:
+		assets.scurk_graphics = scurk_graphics
+	if city_ui_graphics != null:
+		assets.city_ui_graphics = city_ui_graphics
+	if desktop_graphics != null:
+		assets.desktop_graphics = desktop_graphics
+	if scenario_graphics != null:
+		assets.scenario_graphics = scenario_graphics
 	for field in ui_images:
 		assets.set(field, ui_images[field])
 	return true
 
 
 func _load() -> void:
-	var manifest_path := _root.path_join("pack.json")
+	var manifest_path := _root.path_join("manifest.json")
 	if not FileAccess.file_exists(manifest_path):
-		_fail("Missing pack.json")
+		manifest_path = _root.path_join("pack.json")
+	if not FileAccess.file_exists(manifest_path):
+		_fail("Missing manifest.json")
 		return
 	var json := JSON.new()
 	if json.parse(FileAccess.get_file_as_string(manifest_path)) != OK or not json.data is Dictionary:
-		_fail("pack.json must contain a JSON object")
+		_fail("manifest.json must contain a JSON object")
 		return
 	var manifest: Dictionary = json.data
 	if manifest.get("format") != "opensc2k-graphics" or manifest.get("version") != 1:

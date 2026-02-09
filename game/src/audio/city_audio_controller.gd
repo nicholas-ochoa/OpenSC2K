@@ -11,6 +11,9 @@ const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
 
 const SOUND_EFFECT_GROUP := &"open_sc2k_sound_effects"
 
+var sound_pack := MediaPack.new()
+var music_pack := MediaPack.new()
+
 var reference_root := ""
 var original_media_enabled := true
 var music_volume := 0.8
@@ -73,8 +76,11 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 func play_music_track(track_id: int) -> bool:
 	if music_paused or not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
 		return false
+	var replacement := str(music_pack.files.get(track_id, ""))
 	var recordings := RecordedSoundtrack.find_tracks(soundtrack_folder, track_id)
-	if recordings.is_empty() and not original_media_enabled:
+	if not replacement.is_empty():
+		recordings = PackedStringArray() if replacement.get_extension().to_lower() in ["mid", "midi"] else PackedStringArray([replacement])
+	if recordings.is_empty() and replacement.is_empty() and not original_media_enabled:
 		return false
 	stop_music()
 	current_track_id = track_id
@@ -94,10 +100,13 @@ func play_music_track(track_id: int) -> bool:
 
 
 func _play_midi_fallback() -> bool:
-	if not original_media_enabled:
+	var midi_path := str(music_pack.files.get(current_track_id, ""))
+	if midi_path.get_extension().to_lower() not in ["mid", "midi"]:
+		midi_path = reference_root.path_join("SOUNDS/%d.MID" % current_track_id) if original_media_enabled else ""
+	if midi_path.is_empty():
 		music_activity_changed.emit(false)
 		return false
-	var result := music_player.play_path(reference_root.path_join("SOUNDS/%d.MID" % current_track_id), current_track_id)
+	var result := music_player.play_path(midi_path, current_track_id)
 	music_player.set_paused(music_paused)
 	music_activity_changed.emit(bool(result.ok))
 	return bool(result.ok)
@@ -265,10 +274,8 @@ func _on_music_track_finished(_track_id: int) -> void:
 
 func _load_wave_sound_cache() -> void:
 	wave_stream_cache.clear()
-	if not original_media_enabled:
-		return
 	for sound_id in range(WaveSounds.SOUND_FIRST, WaveSounds.SOUND_LAST + 1):
-		var sound_path := reference_root.path_join("SOUNDS/%d.WAV" % sound_id)
+		var sound_path := str(sound_pack.files.get(sound_id, reference_root.path_join("SOUNDS/%d.WAV" % sound_id) if original_media_enabled else ""))
 		if not FileAccess.file_exists(sound_path):
 			continue
 		var stream := AudioStreamWAV.load_from_file(sound_path)
@@ -336,3 +343,45 @@ func _set_music_paused(value: bool) -> void:
 		play_music_track(Music.MAIN_THEME_TRACK)
 	else:
 		music_notice.emit(("Paused: " if value else "Playing: ") + current_track_name)
+
+
+static func validate_media_packs(sound_folder: String, music_folder: String) -> String:
+	for pair in [[sound_folder, "sound"], [music_folder, "music"]]:
+		var pack := MediaPack.load_folder(pair[0], pair[1])
+		if not pack.error.is_empty():
+			return pack.error
+	return ""
+
+
+func set_media_packs(sound_folder: String, music_folder: String) -> bool:
+	var sounds := MediaPack.load_folder(sound_folder, "sound")
+	var music := MediaPack.load_folder(music_folder, "music")
+	if not sounds.error.is_empty() or not music.error.is_empty():
+		music_notice.emit(sounds.error + music.error)
+		return false
+	var track := current_track_id
+	var restart := music_playback_is_active()
+	stop_sound_effects()
+	stop_music()
+	sound_pack = sounds
+	music_pack = music
+	_load_wave_sound_cache()
+	if restart:
+		play_music_track(track)
+	return true
+
+
+func play_toolbar_click(sound_enabled: bool) -> void:
+	if not sound_enabled or not audio_allowed():
+		return
+	var stream := wave_stream_cache.get(ToolSoundRules.SOUND_CENTER) as AudioStreamWAV
+	if stream == null:
+		return
+	# each button activation gets feedback, including rapid consecutive clicks
+	var player := AudioStreamPlayer.new()
+	player.stream = stream
+	player.volume_linear = effects_volume
+	player.finished.connect(player.queue_free)
+	add_child(player)
+	player.add_to_group(SOUND_EFFECT_GROUP)
+	player.play()

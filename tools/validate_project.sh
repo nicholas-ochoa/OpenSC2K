@@ -129,3 +129,6 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_worker_sign_foreground_test.gd
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/city_gpu_prefetch_test.gd
+
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/media_pack_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/toolbar_audio_test.gd

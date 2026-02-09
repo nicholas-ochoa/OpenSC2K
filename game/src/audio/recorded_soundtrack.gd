@@ -23,6 +23,8 @@ static func load_track(paths: PackedStringArray) -> Dictionary:
 	for path in paths:
 		var stream: AudioStream
 		match path.get_extension().to_lower():
+			"wav":
+				stream = AudioStreamWAV.load_from_file(path)
 			"mp3":
 				stream = AudioStreamMP3.load_from_file(path)
 			"ogg":

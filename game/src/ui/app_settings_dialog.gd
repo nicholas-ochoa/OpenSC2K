@@ -3,6 +3,11 @@ extends ConfirmationDialog
 
 signal import_original_requested
 
+var pack_error_label: Label
+var toolbar_sounds_check: CheckBox
+var sound_pack_edit: LineEdit
+var music_pack_edit: LineEdit
+
 var tabs: TabContainer
 var source_selector: OptionButton
 var folder_edit: LineEdit
@@ -44,7 +49,13 @@ func _ready() -> void:
 	settings_parent.add_child(tabs)
 	settings_parent.move_child(tabs, 0)
 	var display_grid := _add_settings_tab("Display")
-	var settings_grid := _add_settings_tab("Audio")
+	var settings_grid := _add_settings_tab("Audio", true)
+	pack_error_label = Label.new()
+	pack_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	pack_error_label.add_theme_color_override("font_color", Color("800000"))
+	pack_error_label.hide()
+	settings_grid.get_parent().add_child(pack_error_label)
+	settings_grid.get_parent().move_child(pack_error_label, 0)
 	for label_text in ["Music Volume", "Sound Effects Volume"]:
 		var label := Label.new()
 		label.text = label_text
@@ -65,6 +76,13 @@ func _ready() -> void:
 	background_audio_check = CheckBox.new()
 	background_audio_check.text = "Play music and sounds in background"
 	settings_grid.add_child(background_audio_check)
+	settings_grid.add_child(Label.new())
+	toolbar_sounds_check = CheckBox.new()
+	toolbar_sounds_check.text = "Play toolbar click sounds"
+	toolbar_sounds_check.button_pressed = true
+	settings_grid.add_child(toolbar_sounds_check)
+	sound_pack_edit = _pack_folder_row(settings_grid, "Sound pack folder", "sound")
+	music_pack_edit = _pack_folder_row(settings_grid, "Music pack folder", "music")
 	var soundtrack_label := Label.new()
 	soundtrack_label.text = "Soundtrack folder"
 	settings_grid.add_child(soundtrack_label)
@@ -151,7 +169,7 @@ func _ready() -> void:
 	settings_grid.add_child(folder_label)
 	folder_row = HBoxContainer.new()
 	folder_edit = LineEdit.new()
-	folder_edit.placeholder_text = "Folder containing pack.json"
+	folder_edit.placeholder_text = "Folder containing manifest.json"
 	folder_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	folder_row.add_child(folder_edit)
 	var browse_button := Button.new()
@@ -214,6 +232,7 @@ func show_values(
 	source := "auto", folder := "", active_name := "",
 	soundtrack_folder := "", automatic_folder := "", city_renderer := "gpu", background_audio := false, zoom_graphics: Array = AppSettingsStore.DEFAULT_ZOOM_GRAPHICS,
 ) -> void:
+	pack_error_label.hide()
 	var normalized := AppSettingsStore.normalize_zoom_graphics(zoom_graphics)
 	for index in zoom_graphics_selectors.size():
 		zoom_graphics_selectors[index].select(normalized[index])
@@ -238,6 +257,9 @@ func show_values(
 
 func selected_values() -> Dictionary:
 	return {
+		"toolbar_sounds": toolbar_sounds_check.button_pressed,
+		"sound_pack_folder": sound_pack_edit.text.strip_edges(),
+		"music_pack_folder": music_pack_edit.text.strip_edges(),
 		"zoom_graphics": _selected_zoom_graphics(),
 		"background_audio": background_audio_check.button_pressed,
 		"soundtrack_folder": soundtrack_edit.text.strip_edges(),
@@ -296,3 +318,33 @@ func _update_graphics_counts() -> void:
 		var label := zoom_graphics_counts[index]
 		label.text = "%d / %d valid" % [counts.valid, counts.total]
 		label.tooltip_text = "Valid images in the selected graphics size. Missing images use original artwork."
+
+
+func _pack_folder_row(grid: GridContainer, caption: String, kind: String) -> LineEdit:
+	var label := Label.new()
+	label.text = caption
+	grid.add_child(label)
+	var row := HBoxContainer.new()
+	grid.add_child(row)
+	var edit := LineEdit.new()
+	edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	edit.placeholder_text = "Automatic (ext/%s)" % kind
+	row.add_child(edit)
+	var browse := Button.new()
+	browse.text = "Browse..."
+	row.add_child(browse)
+	var picker := FileDialog.new()
+	picker.file_mode = FileDialog.FILE_MODE_OPEN_DIR
+	picker.access = FileDialog.ACCESS_FILESYSTEM
+	add_child(picker)
+	picker.dir_selected.connect(func(path: String) -> void: edit.text = path)
+	browse.pressed.connect(func() -> void: picker.popup_centered_ratio(0.8))
+	return edit
+
+
+func show_pack_error(message: String) -> void:
+	pack_error_label.text = message
+	pack_error_label.show()
+	tabs.current_tab = 1
+	(tabs.get_child(1) as ScrollContainer).scroll_vertical = 0
+	call_deferred("popup_centered")

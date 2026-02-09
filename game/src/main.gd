@@ -110,6 +110,9 @@ var surface_visibility := {
 var show_underground_pipes := true
 var show_underground_subways := true
 var app_soundtrack_folder := ""
+var app_toolbar_sounds := true
+var app_sound_pack_folder := ""
+var app_music_pack_folder := ""
 var app_city_renderer := "gpu"
 var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
 var app_background_audio := false
@@ -296,6 +299,8 @@ func _initialize_runtime() -> void:
 	audio_controller.setup(
 		reference_root, app_music_volume, app_effects_volume, asset_source.use_original_data
 	)
+	if not audio_controller.set_media_packs(app_sound_pack_folder, app_music_pack_folder):
+		settings_dialog.show_pack_error(CityAudioController.validate_media_packs(app_sound_pack_folder, app_music_pack_folder))
 	audio_controller.set_soundtrack_folder(app_soundtrack_folder)
 	newspaper_session_seed = Time.get_ticks_msec() & 0xffff
 	if newspaper_session_seed & 0x8000:
@@ -400,7 +405,7 @@ func _import_original_game(executable_path: String) -> void:
 	app_graphics_source = "original"
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder,
 	)
 	if not runtime_initialized:
 		reference_root = install_result.root
@@ -640,6 +645,10 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	disasters_menu = city_menu_bar.disasters_menu
 
 	city_toolbar = city_workspace.toolbar
+	city_toolbar.button_clicked.connect(func() -> void:
+		if app_toolbar_sounds:
+			audio_controller.play_toolbar_click(city == null or city.sound_enabled())
+	)
 	city_toolbar.group_requested.connect(_choose_tool_group)
 	city_toolbar.subtool_requested.connect(_select_subtool)
 	city_toolbar.rotate_requested.connect(_rotate_city)
@@ -851,6 +860,9 @@ func _set_city_renderer(value: String) -> void:
 
 
 func _open_settings_dialog() -> void:
+	settings_dialog.toolbar_sounds_check.button_pressed = app_toolbar_sounds
+	settings_dialog.sound_pack_edit.text = app_sound_pack_folder
+	settings_dialog.music_pack_edit.text = app_music_pack_folder
 	settings_dialog.graphics_availability = GraphicsPackAvailability.inspect(
 		small_medium_sprites, large_sprites)
 	settings_dialog.show_values(
@@ -862,6 +874,10 @@ func _open_settings_dialog() -> void:
 
 func _apply_settings() -> void:
 	var values: Dictionary = settings_dialog.selected_values()
+	var pack_error: String = CityAudioController.validate_media_packs(values.sound_pack_folder, values.music_pack_folder)
+	if not pack_error.is_empty():
+		settings_dialog.show_pack_error(pack_error)
+		return
 	var changed_source: bool = values.graphics_source != app_graphics_source or values.graphics_folder != app_graphics_folder
 	if changed_source:
 		var selected := GameAssetSource.load_source(reference_root, values.graphics_source, values.graphics_folder)
@@ -872,6 +888,11 @@ func _apply_settings() -> void:
 	app_graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
 	_set_graphics_preferences(values.zoom_graphics)
+	app_toolbar_sounds = bool(values.toolbar_sounds)
+	app_sound_pack_folder = str(values.sound_pack_folder)
+	app_music_pack_folder = str(values.music_pack_folder)
+	if audio_controller != null:
+		audio_controller.set_media_packs(app_sound_pack_folder, app_music_pack_folder)
 	app_background_audio = bool(values.background_audio)
 	app_soundtrack_folder = str(values.soundtrack_folder)
 	app_music_volume = float(values.music_volume)
@@ -888,7 +909,7 @@ func _apply_settings() -> void:
 	)
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics,
+		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder,
 	)
 	status_label.text = (
 		("Settings saved. Restart OpenSC2K to use the selected graphics." if changed_source else "Settings saved.")
@@ -904,6 +925,9 @@ func _load_app_settings() -> void:
 		app_effects_volume,
 		app_fullscreen,
 	)
+	app_toolbar_sounds = bool(values.toolbar_sounds)
+	app_sound_pack_folder = str(values.sound_pack_folder)
+	app_music_pack_folder = str(values.music_pack_folder)
 	app_zoom_graphics = values.zoom_graphics
 	app_background_audio = values.background_audio
 	app_city_renderer = values.city_renderer
@@ -1407,6 +1431,8 @@ func _refresh_terrain_stretch(levels: int) -> void:
 	var update := terrain_stretch.update(city, tool_random, levels)
 	if update.get("ok", false):
 		_refresh_after_city_edit(update)
+		if levels != 0 and not is_instance_valid(audio_controller.tool_loop_player):
+			_play_sound_events([ToolSounds.SOUND_TRACTOR])
 
 
 func _on_map_selection_changed(
@@ -4015,6 +4041,8 @@ func _apply_map_selection(
 			_refresh_terrain_stretch(levels)
 			var committed := terrain_stretch.finish()
 			if not committed.is_empty():
+				_stop_tool_loop_sound()
+				_play_sound_events([ToolSounds.SOUND_TRACTOR])
 				_record_edit_command(committed)
 				_refresh_details()
 			status_label.text = "Stretch Terrain applied for $0."
@@ -4151,6 +4179,9 @@ func _finish_simple_edit(
 		_show_effect_events(
 			command.get("effect_events", []), command.get("sound_events", [])
 		)
+	if selected_group == 0 and selected_subtool in [1, 2, 3, 5, 6, 7] and not command.get("changed_ids", []).is_empty():
+		_stop_tool_loop_sound()
+		_play_sound_events([ToolSounds.SOUND_TRACTOR])
 	if edit.show_forest_protest:
 		_refresh_saved_news_summary()
 		_show_forest_protest()

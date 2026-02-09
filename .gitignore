@@ -18,3 +18,8 @@ ghidra-project/
 
 # Local writable reference VM
 /local/
+
+# Local example packs extracted from copyrighted original media
+/ext/graphics/
+/ext/sound/
+/ext/music/

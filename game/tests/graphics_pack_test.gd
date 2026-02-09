@@ -21,6 +21,14 @@ func _initialize() -> void:
 	_write_manifest(root, manifest)
 	var loaded := Pack.load_root(root)
 	assert(loaded.error.is_empty(), loaded.error)
+	assert(DirAccess.rename_absolute(root.path_join("manifest.json"), root.path_join("pack.json")) == OK)
+	assert(Pack.load_root(root).error.is_empty(), "Legacy filename remains supported")
+	var broken := FileAccess.open(root.path_join("manifest.json"), FileAccess.WRITE)
+	broken.store_string("{}")
+	broken.close()
+	assert(not Pack.load_root(root).error.is_empty(), "New manifest takes priority even when invalid")
+	_write_manifest(root, manifest)
+	DirAccess.remove_absolute(root.path_join("pack.json"))
 	assert(loaded.large_sprites.entries.size() == 2)
 	assert(not loaded.small_medium_sprites.redraw_small_highway_ground)
 	manifest.redraw_small_highway_ground = true
@@ -71,13 +79,13 @@ func _initialize() -> void:
 	_write_manifest(root, manifest)
 	assert(not Pack.load_root(root).error.is_empty())
 	DirAccess.remove_absolute(root.path_join("sprite.png"))
-	DirAccess.remove_absolute(root.path_join("pack.json"))
+	DirAccess.remove_absolute(root.path_join("manifest.json"))
 	DirAccess.remove_absolute(root)
 	print("PASS: graphics pack loading, duplicate IDs, indexed rendering, UI, invalid packs")
 	quit()
 
 
 func _write_manifest(root: String, manifest: Dictionary) -> void:
-	var file := FileAccess.open(root.path_join("pack.json"), FileAccess.WRITE)
+	var file := FileAccess.open(root.path_join("manifest.json"), FileAccess.WRITE)
 	file.store_string(JSON.stringify(manifest))
 	file.close()
