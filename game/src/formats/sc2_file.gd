@@ -88,7 +88,7 @@ func parse(bytes: PackedByteArray) -> bool:
 			return _fail("Experimental SIZE header is missing")
 		map_size = _read_u32_be(bytes, 24)
 		large_version = _read_u32_be(bytes, 20)
-		if large_version not in [1, 2] or map_size not in [256, 384, 512]:
+		if large_version not in [1, 2, 3] or map_size not in MAP_SIZES or (map_size == 128 and large_version != 3):
 			return _fail("Unsupported experimental city version or size")
 		offset = 28
 	while offset < bytes.size():
@@ -241,8 +241,8 @@ func serialize(force_rebuild: bool = false) -> Dictionary:
 		return {"ok": true, "data": source_bytes.duplicate(), "error": ""}
 
 	var body := PackedByteArray()
-	body.append_array(("SCDH" if map_size == 128 else "SCLG").to_ascii_buffer())
-	if map_size != 128:
+	body.append_array(("SCLG" if is_extended() else "SCDH").to_ascii_buffer())
+	if is_extended():
 		body.append_array("SIZE".to_ascii_buffer())
 		body.append_array(_u32_be(8))
 		body.append_array(_u32_be(large_version))
@@ -301,7 +301,9 @@ static func _is_chunk_id(value: String) -> bool:
 
 
 func decoded_size(chunk_id: String) -> int:
-	if map_size > 128 and large_version == 2:
+	if full_resolution_maps() and chunk_id in HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS:
+		return map_size * map_size
+	if map_size > 128 and large_version >= 2:
 		var factor := map_size * map_size / 16384
 		match chunk_id:
 			"XTXT": return map_size * map_size * 2
@@ -324,8 +326,9 @@ func resize_empty_map(edge: int) -> bool:
 		return false
 	if edge == map_size:
 		return true
+	var native_maps := full_resolution_maps()
 	map_size = edge
-	large_version = 2
+	large_version = 3 if native_maps else 2
 	source_bytes.clear()
 	for chunk in chunks:
 		if chunk.chunk_id not in FULL_MAP_CHUNKS + HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS + ["XTHG", "XMIC", "XLAB"]:
@@ -339,7 +342,7 @@ func resize_empty_map(edge: int) -> bool:
 
 
 func upgrade_large_limits() -> void:
-	if map_size == 128 or large_version == 2:
+	if map_size == 128 or large_version >= 2:
 		return
 	large_version = 2
 	source_bytes.clear()
@@ -359,3 +362,30 @@ func upgrade_large_limits() -> void:
 			for index in old.size():
 				expanded[index] = old[index]
 		chunk.set_decoded_payload(expanded)
+
+
+func is_extended() -> bool:
+	return map_size > 128 or full_resolution_maps()
+
+
+func full_resolution_maps() -> bool:
+	return large_version == 3
+
+
+func enable_full_resolution_maps() -> bool:
+	if full_resolution_maps():
+		return true
+	var expanded := {}
+	for id in HALF_MAP_CHUNKS + QUARTER_MAP_CHUNKS:
+		var chunk := find_chunk(id)
+		if chunk == null or chunk.decoded_payload.size() != decoded_size(id):
+			return false
+		expanded[id] = CityDataGrid.expand(chunk.decoded_payload, map_size)
+	upgrade_large_limits()
+	large_version = 3
+	source_bytes.clear()
+	for id in expanded:
+		var chunk := find_chunk(id)
+		chunk.expected_decoded_size = decoded_size(id)
+		chunk.set_decoded_payload(expanded[id])
+	return true

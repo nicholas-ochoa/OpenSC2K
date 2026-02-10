@@ -228,7 +228,7 @@ static func update_helicopter(
 				return
 			counters.moved_helicopters += 1
 			current = Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
-			var traffic_index := int(current.x / 2) * (map_edge / 2) + int(current.y / 2)
+			var traffic_index := CityDataGrid.index(traffic, map_edge, current.x, current.y)
 			if traffic[traffic_index] > 0xa9:
 				counters.traffic_news_checks += 1
 				if counters.traffic_news_deadline_msec < counters.traffic_news_time_msec:

@@ -694,7 +694,8 @@ static func _provision_microsim(
 		current_year,
 		process_random,
 		australian_locale,
-		scurk_place_mode
+		scurk_place_mode,
+		int(sqrt(OverlayData.count(text_overlays)))
 	)
 
 	var label_id := OverlayData.facility_id(record_id)
@@ -712,7 +713,8 @@ static func _initialize_microsim(
 	current_year: int,
 	process_random,
 	australian_locale: bool,
-	scurk_place_mode: bool
+	scurk_place_mode: bool,
+	map_edge: int = 128
 ) -> void:
 	var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 	match tile_id:
@@ -738,7 +740,7 @@ static func _initialize_microsim(
 			_write_u16_be(
 				microsims,
 				offset + 2,
-				0 if scurk_place_mode else _population_cap(misc, 200, 900)
+				0 if scurk_place_mode else _population_cap(misc, 200, 900, map_edge)
 			)
 			_write_u16_be(microsims, offset + 4, current_year)
 		0xd1, 0xd6, 0xd9:
@@ -755,7 +757,7 @@ static func _initialize_microsim(
 				(
 					0
 					if scurk_place_mode
-					else _population_cap(misc, _to_i16(police_funding * 2), 90)
+					else _population_cap(misc, _to_i16(police_funding * 2), 90, map_edge)
 				)
 			)
 		0xd3:
@@ -771,7 +773,7 @@ static func _initialize_microsim(
 					0
 					if scurk_place_mode
 					else _population_cap(
-						misc, _to_i16(_divide_toward_zero(fire_funding, 2)), 70
+						misc, _to_i16(_divide_toward_zero(fire_funding, 2)), 70, map_edge
 					)
 				)
 			)
@@ -812,14 +814,13 @@ static func _initialize_microsim(
 			)
 
 
-static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int) -> int:
+static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int, map_edge: int = 128) -> int:
 	if divisor == 0:
 		divisor = 100
 	var arcology_count := 0
 	for tile_id in range(0xfb, 0xff):
-		arcology_count += _to_i16(
-			_read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
-		)
+		var count := _read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
+		arcology_count += _to_i16(count) if map_edge == 128 else count
 	arcology_count = _divide_toward_zero(arcology_count, 16)
 	var arcology_adjustment := 0
 	if arcology_count >= 141:
@@ -829,7 +830,7 @@ static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int) -
 		+ _read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
 		+ _read_u32_be(misc, MISC_NORMAL_POPULATION)
 	)
-	var available := _divide_toward_zero(total_population, divisor) & 0xffff
+	var available := _divide_toward_zero(total_population, divisor) & (0xffff if map_edge == 128 else 0xffffffff)
 	var signed_maximum := _to_i16(maximum)
 	return signed_maximum if signed_maximum <= available else available
 

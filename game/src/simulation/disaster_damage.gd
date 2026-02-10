@@ -81,7 +81,7 @@ static func apply(
 		else:
 			result_code = 4
 	OverlayData.write(text, index, 0xff)
-	traffic[int(point.x / 2) * (map_edge / 2) + int(point.y / 2)] = 0
+	traffic[CityDataGrid.index(traffic, map_edge, point.x, point.y)] = 0
 	return result_code
 
 
@@ -131,7 +131,7 @@ static func apply_flood(
 		else:
 			return 0
 	OverlayData.write(text, index, 0xfc)
-	traffic[int(point.x / 2) * (map_edge / 2) + int(point.y / 2)] = 0
+	traffic[CityDataGrid.index(traffic, map_edge, point.x, point.y)] = 0
 	return 1
 
 

@@ -279,9 +279,9 @@ func traffic_density(x: int, y: int) -> int:
 	if index < 0:
 		return 0
 	var chunk := document.find_chunk("XTRF")
-	if chunk == null or chunk.decoded_payload.size() != (map_size / 2) * (map_size / 2):
+	if chunk == null or chunk.decoded_payload.size() != document.decoded_size("XTRF"):
 		return 0
-	return chunk.decoded_payload[(x >> 1) * (map_size / 2) + (y >> 1)]
+	return chunk.decoded_payload[CityDataGrid.index(chunk.decoded_payload, map_size, x, y)]
 
 
 func set_tile_flag(x: int, y: int, mask: int, enabled: bool) -> bool:

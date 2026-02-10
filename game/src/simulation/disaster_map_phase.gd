@@ -318,7 +318,7 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 					if SPECIAL_TOXIC_BUILDINGS.has(tile):
 						counters.toxic_markers += _seed_special_toxic(payloads, toxic_site, point, map_edge)
 			else:
-				var coverage := int(payloads.XFIR[int(x / 4) * (map_edge / 4) + int(y / 4)]) + 8
+				var coverage := int(payloads.XFIR[CityDataGrid.index(payloads.XFIR, map_edge, x, y)]) + 8
 				if (random.next_u15() & 0xff) < coverage:
 					_collapse_structure(
 						city, payloads, point, int(payloads.XBLD[index]), random, lfsr_random
@@ -570,7 +570,7 @@ static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
 				OverlayData.write(payloads.XTXT, index, 0)
 				counters.expired_riots += 1
 				continue
-			var traffic_index := int(x / 2) * (map_edge / 2) + int(y / 2)
+			var traffic_index := CityDataGrid.index(payloads.XTRF, map_edge, x, y)
 			if payloads.XTRF[traffic_index] != 0:
 				counters.traffic_cells_cleared += 1
 			payloads.XTRF[traffic_index] = 0
@@ -747,7 +747,7 @@ static func _process_fire_cell(
 			if SPECIAL_TOXIC_BUILDINGS.has(tile):
 				counters.toxic_markers += _seed_special_toxic(payloads, toxic_site, point, map_edge)
 	else:
-		var coverage := int(payloads.XFIR[int(point.x / 4) * (map_edge / 4) + int(point.y / 4)]) + 8
+		var coverage := int(payloads.XFIR[CityDataGrid.index(payloads.XFIR, map_edge, point.x, point.y)]) + 8
 		if (random.next_u15() & 0xff) < coverage:
 			_collapse_structure(
 				city, payloads, point, int(payloads.XBLD[index]), random, lfsr_random
@@ -870,7 +870,7 @@ static func _process_riot_cell(
 		OverlayData.write(payloads.XTXT, index, 0)
 		counters.expired_riots += 1
 		return
-	var traffic_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
+	var traffic_index := CityDataGrid.index(payloads.XTRF, map_edge, point.x, point.y)
 	if payloads.XTRF[traffic_index] != 0:
 		counters.traffic_cells_cleared += 1
 	payloads.XTRF[traffic_index] = 0

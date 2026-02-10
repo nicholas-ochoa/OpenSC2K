@@ -133,7 +133,7 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 	if not queue_decay.ok:
 		return queue_decay
 	var news_items: Array = [{"type": NEWS_JUNK, "argument": 0}]
-	_append_general_news(random, misc, graphs, news_items)
+	_append_general_news(random, misc, graphs, news_items, map_edge)
 	var invention_index := _release_invention(city, random, misc, news_items)
 	if invention_index >= 0:
 		ToolAvailability.rebuild_reward_mask(misc)
@@ -234,7 +234,8 @@ static func _update_random_tree(
 
 
 static func _append_general_news(
-	random, misc: PackedByteArray, graphs: PackedByteArray, news_items: Array
+	random, misc: PackedByteArray, graphs: PackedByteArray, news_items: Array,
+	map_edge: int = 128
 ) -> void:
 	match random.next_u15() % 6:
 		0:
@@ -256,7 +257,8 @@ static func _append_general_news(
 		5:
 			news_items.append({"type": 0x0f, "argument": 0})
 
-	if _to_i16(_read_u32(misc, MISC_TILE_COUNTS + STADIUM_TILE * 4)) > 0:
+	var stadium_tiles := _read_u32(misc, MISC_TILE_COUNTS + STADIUM_TILE * 4)
+	if (_to_i16(stadium_tiles) if map_edge == 128 else stadium_tiles) > 0:
 		var team: int = random.next_u15() % 5
 		if _to_i16(_read_u32(misc, MISC_STADIUM_TEAMS)) & (1 << team):
 			news_items.append({"type": NEWS_SPORTS, "argument": team})

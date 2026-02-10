@@ -63,6 +63,8 @@ static func run(city: CityState) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+	if city.document.full_resolution_maps():
+		return NativeDataMapPhase.run(city)
 	var misc_chunk := city.document.find_chunk("MISC")
 	var traffic_chunk := city.document.find_chunk("XTRF")
 	var pollution_chunk := city.document.find_chunk("XPLT")

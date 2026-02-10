@@ -45,6 +45,8 @@ func generate_preview(
 		}
 	if not document.resize_empty_map(int(options.get("size", 128))):
 		return {"ok": false, "stage": "size", "error": "Unsupported city size"}
+	if options.get("native_maps", false) and not document.enable_full_resolution_maps():
+		return {"ok": false, "stage": "data_maps", "error": "Cannot enable per-tile data maps"}
 	if advance_seed or preview_document == null:
 		preview_process_start = preview_process_cursor
 		preview_game_start = preview_game_cursor
@@ -100,6 +102,8 @@ func create_city(
 		}
 	if not template.resize_empty_map(int(terrain_options.get("size", 128))):
 		return {"ok": false, "stage": "size", "error": "Unsupported city size"}
+	if terrain_options.get("native_maps", false) and not template.enable_full_resolution_maps():
+		return {"ok": false, "stage": "data_maps", "error": "Cannot enable per-tile data maps"}
 	var process_random := Random.new(preview_process_start)
 	var game_random := GameRandom.new(preview_game_start)
 	var created := NewCity.create(

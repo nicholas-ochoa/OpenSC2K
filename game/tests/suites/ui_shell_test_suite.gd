@@ -420,8 +420,9 @@ func _test_main_menu() -> void:
 	menu_bar._ready()
 	var pause_index := menu_bar.speed_menu.get_popup().get_item_index(0)
 	_check(
-		menu_bar.file_menu.get_popup().item_count == 12
+		menu_bar.file_menu.get_popup().item_count == 13
 		and menu_bar.file_menu.get_popup().get_item_index(CityMenuBarUi.MENU_SAVE_CITY) >= 0
+		and menu_bar.file_menu.get_popup().get_item_index(CityMenuBarUi.MENU_NATIVE_DATA_MAPS) >= 0
 		and menu_bar.speed_menu.get_popup().item_count == 5
 		and menu_bar.speed_menu.get_popup().is_item_checkable(pause_index)
 		and menu_bar.options_menu.disabled

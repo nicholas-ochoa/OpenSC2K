@@ -65,9 +65,9 @@ static func apply(city: CityState, counter_clockwise: bool) -> Dictionary:
 		counter_clockwise,
 	)
 	for chunk_id in ["XTRF", "XPLT", "XVAL", "XCRM"]:
-		changed[chunk_id] = _rotate_grid(changed[chunk_id], map_edge / 2, 1, counter_clockwise)
+		changed[chunk_id] = _rotate_grid(changed[chunk_id], CityDataGrid.edge(changed[chunk_id], map_edge), 1, counter_clockwise)
 	for chunk_id in ["XPLC", "XFIR", "XPOP", "XROG"]:
-		changed[chunk_id] = _rotate_grid(changed[chunk_id], map_edge / 4, 1, counter_clockwise)
+		changed[chunk_id] = _rotate_grid(changed[chunk_id], CityDataGrid.edge(changed[chunk_id], map_edge), 1, counter_clockwise)
 	_rotate_things(changed.XTHG, counter_clockwise, map_edge)
 	var old_compass := _read_u32_be(changed.MISC, COMPASS_OFFSET) & 3
 	var new_compass := (old_compass + (1 if counter_clockwise else 3)) & 3

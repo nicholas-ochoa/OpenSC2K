@@ -102,7 +102,7 @@ static func run(
 	var pollution_chunk := city.document.find_chunk("XPLT")
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
-	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
+	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != city.document.decoded_size("XPLT"):
 		return {"ok": false, "error": "XPLT is missing or has the wrong size"}
 	var misc: PackedByteArray = misc_chunk.decoded_payload
 	var pollution: PackedByteArray = pollution_chunk.decoded_payload
@@ -114,7 +114,7 @@ static func run(
 		effective_power,
 		effective_water,
 		commerce_connections & 0xffff,
-		industry_connections & 0xffff
+		industry_connections & 0xffff, map_edge
 	)
 	var news_items: Array[Dictionary] = []
 	if status_index >= 0:
@@ -146,7 +146,7 @@ static func _status_index(
 	power_usage_percent: int,
 	water_usage_percent: int,
 	commerce_connections: int,
-	industry_connections: int
+	industry_connections: int, map_edge: int = 128
 ) -> int:
 	var weather_trend := _read_u32(misc, MISC_WEATHER_TREND) & 0xff
 	if weather_trend >= 9:
@@ -156,8 +156,8 @@ static func _status_index(
 	var population := _read_u32(misc, MISC_NORMAL_POPULATION)
 	var arcology_share := int(_read_u32(misc, MISC_ARCOLOGY_POPULATION) / 12)
 	var transit_capacity := (
-		_tile_count(misc, TILE_SUBWAY_STATION)
-		+ _tile_count(misc, TILE_RAIL_STATION)
+		_tile_count(misc, TILE_SUBWAY_STATION, map_edge)
+		+ _tile_count(misc, TILE_RAIL_STATION, map_edge)
 		+ _budget_current(misc, BUDGET_ROAD)
 	)
 	if int(population / 100) >= transit_capacity:
@@ -165,25 +165,25 @@ static func _status_index(
 	if population < 1000:
 		return STATUS_NONE
 	var large_city_unit := int(population / 20000)
-	if large_city_unit >= int(_tile_count(misc, TILE_POLICE) / 9) + int(
-		_tile_count(misc, TILE_PRISON) / 16
+	if large_city_unit >= int(_tile_count(misc, TILE_POLICE, map_edge) / 9) + int(
+		_tile_count(misc, TILE_PRISON, map_edge) / 16
 	):
 		return STATUS_POLICE
-	if large_city_unit >= int(_tile_count(misc, TILE_FIRE) / 9):
+	if large_city_unit >= int(_tile_count(misc, TILE_FIRE, map_edge) / 9):
 		return STATUS_FIRE
 	if water_usage_percent >= 99:
 		return STATUS_WATER
 	if population < 3000:
 		return STATUS_NONE
-	if int(population / 25000) >= int(_tile_count(misc, TILE_HOSPITAL) / 9):
+	if int(population / 25000) >= int(_tile_count(misc, TILE_HOSPITAL, map_edge) / 9):
 		return STATUS_HOSPITAL
-	if large_city_unit >= int(_tile_count(misc, TILE_SCHOOL) / 9):
+	if large_city_unit >= int(_tile_count(misc, TILE_SCHOOL, map_edge) / 9):
 		return STATUS_SCHOOL
 	if population < 8000:
 		return STATUS_NONE
 	var industrial_population := _budget_current(misc, BUDGET_INDUSTRIAL) - arcology_share
 	if (
-		_tile_count(misc, TILE_PIER) + industry_connections
+		_tile_count(misc, TILE_PIER, map_edge) + industry_connections
 		< int(industrial_population / 10000)
 	):
 		if _read_u32(misc, 0x0e44) == 0 and _read_u32(misc, 0x0e48) == 0:
@@ -191,18 +191,18 @@ static func _status_index(
 		return STATUS_SEAPORT
 	var commercial_population := _budget_current(misc, BUDGET_COMMERCIAL) - arcology_share
 	if (
-		_tile_count(misc, TILE_RUNWAY)
-		+ _tile_count(misc, TILE_RUNWAY_CROSSING)
+		_tile_count(misc, TILE_RUNWAY, map_edge)
+		+ _tile_count(misc, TILE_RUNWAY_CROSSING, map_edge)
 		+ commerce_connections
 		< int(commercial_population / 2000)
 	):
 		var airport_release_year := _read_u32(misc, MISC_INVENTION_YEARS + 6 * 4) & 0xffff
 		return STATUS_AIRPORT if airport_release_year == 0 else STATUS_COMMERCIAL_CONNECTION
 	var recreation_count := (
-		int(_tile_count(misc, TILE_BIG_PARK) / 3)
-		+ _tile_count(misc, TILE_STADIUM)
-		+ _tile_count(misc, TILE_ZOO)
-		+ _tile_count(misc, TILE_MARINA)
+		int(_tile_count(misc, TILE_BIG_PARK, map_edge) / 3)
+		+ _tile_count(misc, TILE_STADIUM, map_edge)
+		+ _tile_count(misc, TILE_ZOO, map_edge)
+		+ _tile_count(misc, TILE_MARINA, map_edge)
 	)
 	var residential_population := _budget_current(misc, BUDGET_RESIDENTIAL) - arcology_share * 2
 	if recreation_count < int(residential_population / 1000):
@@ -280,10 +280,10 @@ static func _select_disaster(
 				return result
 			result.disaster_point = _random_center_point(random, center, 15)
 		DISASTER_MELTDOWN:
-			if _tile_count(misc, TILE_NUCLEAR_PLANT) == 0:
+			if _tile_count(misc, TILE_NUCLEAR_PLANT, map_edge) == 0:
 				return result
 		DISASTER_MICROWAVE:
-			if _tile_count(misc, TILE_MICROWAVE_PLANT) == 0:
+			if _tile_count(misc, TILE_MICROWAVE_PLANT, map_edge) == 0:
 				return result
 		DISASTER_RIOT, DISASTER_MASS_RIOTS:
 			if candidate == DISASTER_MASS_RIOTS and population < 30000:
@@ -309,7 +309,7 @@ static func _select_disaster(
 			if weather_trend < 8 or not has_ocean:
 				return result
 		DISASTER_PLANE_CRASH:
-			if _tile_count(misc, TILE_RUNWAY) == 0:
+			if _tile_count(misc, TILE_RUNWAY, map_edge) == 0:
 				return result
 			result.disaster_point = _random_map_point(random, map_edge)
 		_:
@@ -336,17 +336,21 @@ static func _toxic_spill_point(
 ) -> Vector2i:
 	var highest := 0
 	var point := Vector2i(-1, -1)
-	for x in (map_edge / 2):
-		for y in (map_edge / 2):
-			var value := int(pollution[x * (map_edge / 2) + y])
+	var grid_edge := CityDataGrid.edge(pollution, map_edge)
+	if grid_edge == 0:
+		return point
+	var scale := map_edge / grid_edge
+	for x in grid_edge:
+		for y in grid_edge:
+			var value := int(pollution[x * grid_edge + y])
 			if value <= 0x95 or value <= highest:
 				continue
 			if lfsr_random.next_mod(10) != 0:
 				continue
 			highest = value
 			point = Vector2i(
-				x * 2 + lfsr_random.next_mod(10) - 5,
-				y * 2 + lfsr_random.next_mod(10) - 5
+				x * scale + lfsr_random.next_mod(10) - 5,
+				y * scale + lfsr_random.next_mod(10) - 5
 			)
 	if point.x < 0 or point.x > (map_edge - 1) or point.y < 0 or point.y > (map_edge - 1) or highest == 0:
 		return Vector2i(-1, -1)
@@ -359,8 +363,9 @@ static func _budget_current(misc: PackedByteArray, budget_id: int) -> int:
 	)
 
 
-static func _tile_count(misc: PackedByteArray, tile_id: int) -> int:
-	return _to_i16(_read_u32(misc, MISC_TILE_COUNTS + tile_id * 4))
+static func _tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> int:
+	var value := _read_u32(misc, MISC_TILE_COUNTS + tile_id * 4)
+	return _to_i16(value) if map_edge == 128 else value
 
 
 static func _to_i16(value: int) -> int:

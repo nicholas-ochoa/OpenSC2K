@@ -17,6 +17,7 @@ var renderer_menu: PopupMenu
 const MENU_RENDERER_GPU := 0x8300
 const MENU_RENDERER_CPU := 0x8301
 const MENU_SAVE_CITY := 7
+const MENU_NATIVE_DATA_MAPS := 8
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
 const MENU_SOUND_EFFECTS := 0x8006
@@ -63,6 +64,7 @@ func _ready() -> void:
 	file_menu = _add_menu(menu_row, "File", [
 		["New City...", 0], ["Open City...", 1],
 		["", -1], ["Save City", MENU_SAVE_CITY], ["Save City As...", 2],
+		["Enable Per-Tile Data Maps...", MENU_NATIVE_DATA_MAPS],
 		["", -1], ["Load Tile Set...", 3], ["Restore Original Tile Set", 4],
 		["SCURK Place & Print...", MENU_SCURK_PLACE_PRINT],
 		["", -1], ["Main Menu", 5], ["Exit", 6],

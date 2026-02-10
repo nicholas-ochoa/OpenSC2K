@@ -9,8 +9,8 @@ static func save_copy(
 		return {"ok": false, "error": "No city is loaded."}
 	var output_path := requested_path
 	if output_path.get_extension().is_empty():
-		output_path += ".SC2" if document.map_size == 128 else ".sc2x"
-	if document.map_size != 128 and output_path.get_extension().to_lower() != "sc2x":
+		output_path += ".SC2" if not document.is_extended() else ".sc2x"
+	if document.is_extended() and output_path.get_extension().to_lower() != "sc2x":
 		return {"ok": false, "error": "Experimental cities must use .sc2x. The original game cannot open them."}
 	output_path = output_path.simplify_path()
 	if is_reference_path(output_path, reference_root):

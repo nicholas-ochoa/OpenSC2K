@@ -128,6 +128,8 @@ func _test_main() -> void:
 	main._open_new_city_dialog()
 	assert(main.new_city_dialog.visible and main.new_city_session.preview_document != null)
 	main.new_city_dialog.city_name_input.text = "Original Startup"
+	# This scenario checks original SC2 save compatibility.
+	main.new_city_dialog.native_maps_input.button_pressed = false
 	main._create_new_city_unchecked()
 	await process_frame
 	assert(main.city != null and main.city.city_name() == "Original Startup")

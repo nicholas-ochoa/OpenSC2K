@@ -266,7 +266,7 @@ static func inspect(
 	else:
 		altitude_feet = 25 * (4 * (land_altitude - water_level) + 4)
 
-	var detail_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
+	var detail_index := CityDataGrid.index(city.document.find_chunk("XVAL").decoded_payload, map_edge, point.x, point.y)
 	var traffic_chunk := city.document.find_chunk("XTRF")
 	var pollution_chunk := city.document.find_chunk("XPLT")
 	var land_value_chunk := city.document.find_chunk("XVAL")
@@ -354,7 +354,7 @@ static func _advanced_details(
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := city.index_of(point.x, point.y)
-	var detail_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
+	var detail_index := CityDataGrid.index(city.document.find_chunk("XVAL").decoded_payload, map_edge, point.x, point.y)
 	var overlay_id := city.text_overlay_id(point.x, point.y)
 	if (
 		microsim_id < 0
@@ -617,6 +617,9 @@ static func _traffic(
 	var map_edge: int = city.map_size if city != null else 128
 	if not _is_traffic_tile(building):
 		return 0
+	if values.size() == map_edge * map_edge:
+		var value := int(values[point.x * map_edge + point.y])
+		return value if _is_highway_traffic_tile(building) else value / 2
 	var total := 0
 	for neighbor in [
 		Vector2i(point.x - 1, point.y),
@@ -626,7 +629,7 @@ static func _traffic(
 	]:
 		if city.index_of(neighbor.x, neighbor.y) < 0:
 			continue
-		var index := int(neighbor.x / 2) * (map_edge / 2) + int(neighbor.y / 2)
+		var index := CityDataGrid.index(values, map_edge, neighbor.x, neighbor.y)
 		total += values[index]
 	if _is_highway_traffic_tile(building):
 		total *= 2

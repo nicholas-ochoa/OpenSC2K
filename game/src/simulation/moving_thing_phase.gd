@@ -76,7 +76,7 @@ static func run(
 		or zone_chunk == null
 		or zone_chunk.decoded_payload.size() != (map_edge * map_edge)
 		or traffic_chunk == null
-		or traffic_chunk.decoded_payload.size() != (map_edge / 2) * (map_edge / 2)
+		or traffic_chunk.decoded_payload.size() != city.document.decoded_size("XTRF")
 		or text_chunk == null
 		or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT")
 		or thing_chunk == null

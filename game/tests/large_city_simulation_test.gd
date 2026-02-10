@@ -9,7 +9,7 @@ func _init() -> void:
 		check_far_services_and_year(edge)
 		for disaster in range(1, 19):
 			print("Checking %d disaster %d" % [edge, disaster])
-			var document := EmptyCityTemplate.create(edge)
+			var document := fixture(edge)
 			var city := CityState.from_document(document)
 			var engine := SimulationEngine.new(city, 123, 456, 789)
 			var result := engine.start_disaster(disaster, Vector2i(edge - 16, edge - 16))
@@ -30,7 +30,7 @@ func _init() -> void:
 	quit(1 if failures else 0)
 
 func check_charts(edge: int) -> void:
-	var document := EmptyCityTemplate.create(edge)
+	var document := fixture(edge)
 	var city := CityState.from_document(document)
 	var values := PackedInt64Array()
 	for series in 16:
@@ -74,7 +74,7 @@ func check_flood_order(edge: int) -> void:
 		check(actual == expected + shift, "flood search order %d at %s" % [edge, origin])
 
 func check_far_services_and_year(edge: int) -> void:
-	var document := EmptyCityTemplate.create(edge)
+	var document := fixture(edge)
 	var city := CityState.from_document(document)
 	var origin := Vector2i(edge - 8, edge - 8)
 	for dx in 4:
@@ -97,9 +97,9 @@ func check_far_services_and_year(edge: int) -> void:
 	check(TrafficPhase.run(city).ok and document.find_chunk("XTRF").decoded_payload[-1] == 75,
 		"traffic decays at last coarse cell")
 	check(PollutionPhase.run(city).ok, "far pollution and services phase")
-	var coarse_index := (origin.x / 2) * (edge / 2) + origin.y / 2
+	var coarse_index := CityDataGrid.index(document.find_chunk("XPLT").decoded_payload, edge, origin.x, origin.y)
 	check(document.find_chunk("XPLT").decoded_payload[coarse_index] > 0, "far plant creates pollution")
-	var service_index := ((origin.x + 3) / 4) * (edge / 4) + origin.y / 4
+	var service_index := CityDataGrid.index(document.find_chunk("XPLC").decoded_payload, edge, origin.x + 3, origin.y)
 	check(document.find_chunk("XPLC").decoded_payload[service_index] > 0, "far police station supplies coverage")
 	var record := city.microsim_count() - 1
 	var microsims := document.find_chunk("XMIC").decoded_payload.duplicate()
@@ -129,3 +129,9 @@ func check_far_services_and_year(edge: int) -> void:
 	var encoded: PackedByteArray = document.serialize().data
 	var loaded := Sc2File.new()
 	check(loaded.parse(encoded) and loaded.serialize(true).data == encoded, "simulated city exact round trip")
+
+func fixture(edge: int) -> Sc2File:
+	var document := EmptyCityTemplate.create(edge)
+	if "--native" in OS.get_cmdline_user_args():
+		check(document.enable_full_resolution_maps(), "enable native fixture grids")
+	return document

@@ -134,14 +134,13 @@ static func _gradient_or_base(
 
 
 static func _coarse_value(
-	city: CityState, chunk_id: String, map_size: int, scale: int, x: int, y: int
+	city: CityState, chunk_id: String, _map_size: int, _scale: int, x: int, y: int
 ) -> int:
 	var chunk := city.document.find_chunk(chunk_id)
-	if chunk == null or chunk.decoded_payload.size() != map_size * map_size:
+	if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(chunk_id):
 		return 0
-	var map_x := int(x / scale)
-	var map_y := int(y / scale)
-	return chunk.decoded_payload[map_x * map_size + map_y]
+	var index := CityDataGrid.index(chunk.decoded_payload, city.map_size, x, y)
+	return chunk.decoded_payload[index] if index >= 0 else 0
 
 
 static func _is_road_map_tile(building: int) -> bool:

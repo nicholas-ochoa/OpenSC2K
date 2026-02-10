@@ -53,7 +53,7 @@ static func run(
 	if traffic_weight < 0:
 		return {"ok": false, "error": "traffic weight cannot be negative"}
 	var traffic_chunk := city.document.find_chunk("XTRF")
-	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
+	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != city.document.decoded_size("XTRF"):
 		return {"ok": false, "error": "XTRF is missing or has the wrong size"}
 
 	var traffic: PackedByteArray = traffic_chunk.decoded_payload.duplicate()
@@ -97,7 +97,7 @@ static func trace(
 		or underground.size() != (map_edge * map_edge)
 		or OverlayData.count(text_overlays) != (map_edge * map_edge)
 		or altitudes.size() != (map_edge * map_edge)
-		or traffic.size() != ((map_edge / 2) * (map_edge / 2))
+		or not CityDataGrid.valid(traffic, map_edge)
 	):
 		return {"ok": false, "error": "transport input maps have the wrong size"}
 	if random == null or not random.has_method("next_u15"):
@@ -200,7 +200,7 @@ static func trace(
 				used_bus = true
 			if mode == ROAD_MODE or mode == HIGHWAY_MODE or mode == ROAD_BRIDGE_MODE:
 				var point := state_points[index]
-				var traffic_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
+				var traffic_index := CityDataGrid.index(traffic, map_edge, point.x, point.y)
 				traffic[traffic_index] = mini(int(traffic[traffic_index]) + traffic_weight, 0xff)
 	return _result(
 		reached_destination,

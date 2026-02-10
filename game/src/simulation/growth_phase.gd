@@ -476,7 +476,7 @@ static func _process_microsim_growth(
 	var record_offset := OverlayData.facility_record(label) * CityState.MICROSIM_RECORD_SIZE
 	if microsims[record_offset] < 0xfb or microsims[record_offset] > 0xfe:
 		return
-	var coarse_index := int(point.x / 2) * (map_edge / 2) + int(point.y / 2)
+	var coarse_index := CityDataGrid.index(land_value, map_edge, point.x, point.y)
 	var value := (
 		int(land_value[coarse_index] >> 5)
 		- int(crime[coarse_index] >> 5)
@@ -625,7 +625,7 @@ static func _can_advance_density(
 		return false
 	if zone > 4:
 		return true
-	var value := int(land_value[int(x / 2) * (map_edge / 2) + int(y / 2)])
+	var value := int(land_value[CityDataGrid.index(land_value, map_edge, x, y)])
 	return (
 		(density != 1 or value > 0x1f)
 		and (density != 2 or value > 0x5f)
@@ -938,7 +938,7 @@ static func _place_zone(
 ) -> bool:
 	var tile: int
 	if density == 1 and building_class == CLASS_RESIDENTIAL:
-		var value_index := int(anchor.x / 2) * (map_edge / 2) + int(anchor.y / 2)
+		var value_index := CityDataGrid.index(land_value, map_edge, anchor.x, anchor.y)
 		var value_group := mini(int(land_value[value_index]) >> 6, 2)
 		tile = BUILDING_BASE[1] + value_group * 4 + (random.next_u15() & 3)
 	else:

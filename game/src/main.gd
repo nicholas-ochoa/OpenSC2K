@@ -1501,6 +1501,7 @@ func _on_file_menu(id: int) -> void:
 		1: _open_city_dialog()
 		2: _open_save_dialog()
 		CityMenuBar.MENU_SAVE_CITY: _save_city()
+		CityMenuBar.MENU_NATIVE_DATA_MAPS: _enable_native_data_maps()
 		3: _open_tile_set_dialog()
 		4: _restore_original_tile_set()
 		MENU_SCURK_PLACE_PRINT: _open_scurk_place_print()
@@ -1869,6 +1870,7 @@ func _update_new_city_slider_labels() -> void:
 func _new_city_terrain_options() -> Dictionary:
 	return {
 		"size": new_city_dialog.size_input.get_selected_id(),
+		"native_maps": new_city_dialog.native_maps_input.button_pressed,
 		"ocean": new_city_dialog.ocean_input.button_pressed,
 		"river": new_city_dialog.river_input.button_pressed,
 		"hills": roundi(new_city_dialog.hills_input.value),
@@ -2013,6 +2015,30 @@ func _save_city() -> void:
 		_save_copy(current_save_path)
 
 
+func _enable_native_data_maps() -> void:
+	if city == null or current_document == null:
+		return
+	if current_document.full_resolution_maps():
+		status_label.text = "Per-tile data maps are already enabled."
+		return
+	if frame_simulation != null:
+		frame_simulation.close()
+		frame_simulation = null
+	var enabled := current_document.enable_full_resolution_maps()
+	if speed_controller != null and current_document.is_extended():
+		frame_simulation = FrameSimulationRunner.new(speed_controller)
+	if not enabled:
+		_show_error("Cannot enable per-tile data maps: city data is incomplete.")
+		return
+	last_edit_command.clear()
+	scurk_edit_history.clear()
+	current_save_path = ""
+	_invalidate_view_render()
+	_refresh_map(false)
+	status_label.text = "Per-tile data maps enabled. Save an SC2X copy; the original game cannot open it."
+	_open_save_dialog()
+
+
 func _open_save_dialog() -> void:
 	if current_document == null:
 		return
@@ -2024,8 +2050,8 @@ func _open_save_dialog() -> void:
 		save_name = city.city_name().validate_filename()
 	if save_name.is_empty():
 		save_name = "New City"
-	save_dialog.filters = PackedStringArray(["*.SC2, *.sc2 ; SimCity 2000 cities"] if city.map_size == 128 else ["*.sc2x ; Experimental large cities"])
-	save_dialog.current_file = save_name + (".SC2" if city.map_size == 128 else ".sc2x")
+	save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"] if current_document.is_extended() else ["*.SC2, *.sc2 ; SimCity 2000 cities"])
+	save_dialog.current_file = save_name + (".sc2x" if current_document.is_extended() else ".SC2")
 	save_dialog.popup_centered_ratio(0.8)
 
 
@@ -2519,7 +2545,7 @@ func _activate_document(
 	frame_simulation = null
 	simulation_engine = Simulation.new(city, process_seed, lfsr_seed, game_seed)
 	speed_controller = GameSpeed.new(simulation_engine)
-	if city.map_size > 128:
+	if current_document.is_extended():
 		frame_simulation = FrameSimulationRunner.new(speed_controller)
 	_sync_speed_ui()
 	tool_random = simulation_engine.random

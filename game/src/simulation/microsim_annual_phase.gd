@@ -108,9 +108,9 @@ static func run(
 	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
 	var microsims: PackedByteArray = changed_payloads.XMIC
 	var misc: PackedByteArray = changed_payloads.MISC
-	var subway_count := _tile_count(misc, TILE_SUBWAY_STATION)
-	var bus_count := _tile_count(misc, TILE_BUS_DEPOT)
-	var rail_count := _tile_count(misc, TILE_RAIL_STATION)
+	var subway_count := _tile_count(misc, TILE_SUBWAY_STATION, map_edge)
+	var bus_count := _tile_count(misc, TILE_BUS_DEPOT, map_edge)
+	var rail_count := _tile_count(misc, TILE_RAIL_STATION, map_edge)
 	var counts := {
 		"hydro": 0,
 		"wind": 0,
@@ -136,7 +136,7 @@ static func run(
 	}
 	var old_arrests := 0
 	var prison_population := 0
-	var prison_count := _divide_toward_zero(_tile_count(misc, TILE_PRISON), 16)
+	var prison_count := _divide_toward_zero(_tile_count(misc, TILE_PRISON, map_edge), 16)
 	var news_items := []
 	var random_records_pending := 0
 	var low_school_score := false
@@ -160,12 +160,12 @@ static func run(
 		var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 		match int(microsims[offset]):
 			TILE_HYDRO_ONE, TILE_HYDRO_TWO:
-				var hydro_count := _tile_count(misc, TILE_HYDRO_ONE) + _tile_count(misc, TILE_HYDRO_TWO)
+				var hydro_count := _tile_count(misc, TILE_HYDRO_ONE, map_edge) + _tile_count(misc, TILE_HYDRO_TWO, map_edge)
 				_write_u16_be(microsims, offset + 2, hydro_count)
 				_write_u16_be(microsims, offset + 4, hydro_count * 20)
 				counts.hydro += 1
 			TILE_WIND_POWER:
-				var wind_count := _tile_count(misc, TILE_WIND_POWER)
+				var wind_count := _tile_count(misc, TILE_WIND_POWER, map_edge)
 				_write_u16_be(microsims, offset + 2, wind_count)
 				_write_u16_be(microsims, offset + 4, wind_count * 4)
 				counts.wind += 1
@@ -215,7 +215,7 @@ static func run(
 								expired_power_records.append(expired_record)
 				counts.power += 1
 			TILE_CITY_HALL:
-				_write_u16_be(microsims, offset + 2, _population_cap(misc, 200, 900))
+				_write_u16_be(microsims, offset + 2, _population_cap(misc, 200, 900, map_edge))
 				counts.city_hall += 1
 			TILE_HOSPITAL:
 				if not _has_process_random(random):
@@ -223,7 +223,7 @@ static func run(
 					continue
 				var health_funding := _budget_funding(misc, BUDGET_HEALTH)
 				_write_u16_be(microsims, offset + 6, _divide_toward_zero(health_funding, 2))
-				var hospital_divisor := _divide_toward_zero(_tile_count(misc, TILE_HOSPITAL), 9) * 25
+				var hospital_divisor := _divide_toward_zero(_tile_count(misc, TILE_HOSPITAL, map_edge), 9) * 25
 				hospital_divisor = maxi(hospital_divisor, 1)
 				var hospital_patients: int = (
 					_divide_toward_zero(_read_u32(misc, MISC_NORMAL_POPULATION), hospital_divisor)
@@ -231,7 +231,7 @@ static func run(
 				)
 				if hospital_patients > 1000:
 					hospital_patients = (random.next_u15() & 0x7f) + 1000
-				var hospital_capacity := _population_cap(misc, _to_i16(hospital_patients), 30)
+				var hospital_capacity := _population_cap(misc, _to_i16(hospital_patients), 30, map_edge)
 				_write_u16_be(microsims, offset + 2, hospital_capacity)
 				var hospital_quality: int = (
 					health_funding
@@ -240,7 +240,7 @@ static func run(
 					- 24
 				)
 				hospital_quality = maxi(hospital_quality, 0)
-				var hospital_staff := _population_cap(misc, _to_i16(hospital_quality), 120)
+				var hospital_staff := _population_cap(misc, _to_i16(hospital_quality), 120, map_edge)
 				_write_u16_be(microsims, offset + 4, hospital_staff)
 				microsims[offset + 1] = _service_score(hospital_capacity * 10, hospital_staff, 5)
 				counts.hospital += 1
@@ -253,9 +253,9 @@ static func run(
 				_write_u16_be(
 					microsims,
 					offset + 2,
-					_population_cap(misc, _to_i16(police_funding * 2), 90)
+					_population_cap(misc, _to_i16(police_funding * 2), 90, map_edge)
 				)
-				var police_count := maxi(_tile_count(misc, TILE_POLICE_STATION), 1)
+				var police_count := maxi(_tile_count(misc, TILE_POLICE_STATION, map_edge), 1)
 				var crime_per_station := _divide_toward_zero(
 					_read_u32(misc, MISC_CITY_CRIME), police_count
 				)
@@ -275,19 +275,19 @@ static func run(
 				var fire_funding := _budget_funding(misc, BUDGET_FIRE)
 				microsims[offset + 1] = fire_funding & 0xff
 				var fire_capacity := _population_cap(
-					misc, _to_i16(_divide_toward_zero(fire_funding, 2)), 70
+					misc, _to_i16(_divide_toward_zero(fire_funding, 2)), 70, map_edge
 				)
 				_write_u16_be(microsims, offset + 2, fire_capacity)
 				_write_u16_be(microsims, offset + 4, ((fire_capacity & 0xffff) >> 4) + 1)
 				_write_u16_be(microsims, offset + 6, (random.next_u15() % 20) + 2)
 				counts.fire += 1
 			TILE_MUSEUM:
-				var museum_count := _tile_count(misc, TILE_MUSEUM)
+				var museum_count := _tile_count(misc, TILE_MUSEUM, map_edge)
 				var college_funding := _budget_funding(misc, BUDGET_COLLEGE)
 				_write_u16_be(
 					microsims,
 					offset + 2,
-					_population_cap(misc, _to_i16(museum_count * college_funding * 4), 20)
+					_population_cap(misc, _to_i16(museum_count * college_funding * 4), 20, map_edge)
 				)
 				_write_u16_be(
 					microsims,
@@ -303,12 +303,12 @@ static func run(
 					mini(int(_read_u32(misc, MISC_NORMAL_POPULATION) / 6), 65000)
 				)
 				_write_u16_be(microsims, offset + 2, park_visitors)
-				var park_count := _tile_count(misc, TILE_SMALL_PARK) + _tile_count(misc, TILE_BIG_PARK)
+				var park_count := _tile_count(misc, TILE_SMALL_PARK, map_edge) + _tile_count(misc, TILE_BIG_PARK, map_edge)
 				_write_u16_be(microsims, offset + 4, park_count)
 				_write_u16_be(
 					microsims,
 					offset + 6,
-					_population_cap(misc, int(park_count / 9), 120)
+					_population_cap(misc, int(park_count / 9), 120, map_edge)
 				)
 				counts.park += 1
 			TILE_SCHOOL:
@@ -321,7 +321,7 @@ static func run(
 				if (school_funding_quarter & 0xffff) < 20:
 					news_items.append({"type": NEWS_EDUCATION, "argument": 0})
 				var school_count := maxi(
-					_divide_toward_zero(_tile_count(misc, TILE_SCHOOL), 9), 1
+					_divide_toward_zero(_tile_count(misc, TILE_SCHOOL, map_edge), 9), 1
 				)
 				var school_students: int = (
 					_divide_toward_zero(
@@ -331,7 +331,7 @@ static func run(
 				)
 				if school_students > 1500:
 					school_students = (random.next_u15() & 0xff) + 1500
-				var school_capacity := _population_cap(misc, _to_i16(school_students), 20)
+				var school_capacity := _population_cap(misc, _to_i16(school_students), 20, map_edge)
 				_write_u16_be(microsims, offset + 2, school_capacity)
 				var school_quality: int = (
 					(random.next_u15() & 0x07)
@@ -340,7 +340,7 @@ static func run(
 					- 12
 				)
 				school_quality = maxi(school_quality, 0)
-				var school_staff := _population_cap(misc, _to_i16(school_quality), 100)
+				var school_staff := _population_cap(misc, _to_i16(school_quality), 100, map_edge)
 				_write_u16_be(microsims, offset + 4, school_staff)
 				var school_score := _service_score(school_capacity, school_staff, 3, 15, 52)
 				microsims[offset + 1] = school_score
@@ -350,13 +350,13 @@ static func run(
 				if not _has_process_random(random):
 					random_records_pending += 1
 					continue
-				var stadium_count := maxi(_tile_count(misc, TILE_STADIUM), 1)
+				var stadium_count := maxi(_tile_count(misc, TILE_STADIUM, map_edge), 1)
 				var stadium_visitors := _divide_toward_zero(
-					_adjusted_population(misc), stadium_count
+					_adjusted_population(misc, map_edge), stadium_count
 				)
 				if stadium_visitors > 25000:
 					stadium_visitors = 25000 - (random.next_u15() & 0xff)
-				stadium_visitors = _population_cap(misc, _to_i16(stadium_visitors), 5)
+				stadium_visitors = _population_cap(misc, _to_i16(stadium_visitors), 5, map_edge)
 				_write_u16_be(
 					microsims, offset + 2, stadium_visitors + (random.next_u15() & 0xff)
 				)
@@ -375,13 +375,13 @@ static func run(
 				if prisoners > 10000:
 					prisoners = (random.next_u15() & 0x3ff) + 10000
 				_write_u16_be(
-					microsims, offset + 2, _population_cap(misc, _to_i16(prisoners), 20)
+					microsims, offset + 2, _population_cap(misc, _to_i16(prisoners), 20, map_edge)
 				)
 				var police_funding := _budget_funding(misc, BUDGET_POLICE)
 				_write_u16_be(
 					microsims,
 					offset + 4,
-					_population_cap(misc, _to_i16(police_funding * 3), 120)
+					_population_cap(misc, _to_i16(police_funding * 3), 120, map_edge)
 				)
 				var prison_stat := _divide_toward_zero(prisoners, 100)
 				_write_u16_be(microsims, offset + 6, prison_stat)
@@ -401,7 +401,7 @@ static func run(
 				var college_funding := _budget_funding(misc, BUDGET_COLLEGE)
 				_write_u16_be(microsims, offset + 6, college_funding)
 				var college_count := maxi(
-					_divide_toward_zero(_tile_count(misc, TILE_COLLEGE), 16), 1
+					_divide_toward_zero(_tile_count(misc, TILE_COLLEGE, map_edge), 16), 1
 				)
 				var college_students: int = (
 					_divide_toward_zero(_raw_population(misc, 3), college_count)
@@ -409,7 +409,7 @@ static func run(
 				)
 				if college_students > 5000:
 					college_students = (random.next_u15() & 0x1ff) + 5000
-				var college_capacity := _population_cap(misc, _to_i16(college_students), 30)
+				var college_capacity := _population_cap(misc, _to_i16(college_students), 30, map_edge)
 				_write_u16_be(microsims, offset + 2, college_capacity)
 				var college_quality: int = (
 					(random.next_u15() & 0x0f)
@@ -418,7 +418,7 @@ static func run(
 					- 48
 				)
 				college_quality = maxi(college_quality, 0)
-				var college_staff := _population_cap(misc, _to_i16(college_quality), 100)
+				var college_staff := _population_cap(misc, _to_i16(college_quality), 100, map_edge)
 				_write_u16_be(microsims, offset + 4, college_staff)
 				microsims[offset + 1] = _service_score(college_capacity * 4, college_staff, 5)
 				counts.college += 1
@@ -478,12 +478,12 @@ static func run(
 				)
 				counts.water_facility += 1
 			TILE_LIBRARY:
-				var library_count := _tile_count(misc, TILE_LIBRARY)
+				var library_count := _tile_count(misc, TILE_LIBRARY, map_edge)
 				var school_funding := _budget_funding(misc, BUDGET_SCHOOL)
 				_write_u16_be(
 					microsims,
 					offset + 2,
-					_population_cap(misc, _to_i16(library_count * school_funding * 4), 18)
+					_population_cap(misc, _to_i16(library_count * school_funding * 4), 18, map_edge)
 				)
 				var books := (
 					_read_u16_be(microsims, offset + 4)
@@ -504,8 +504,8 @@ static func run(
 					offset + 2,
 					_population_cap(
 						misc,
-						_to_i16(lfsr_random.next_mod(20) + _tile_count(misc, TILE_MARINA) * 8),
-						150
+						_to_i16(lfsr_random.next_mod(20) + _tile_count(misc, TILE_MARINA, map_edge) * 8),
+						150, map_edge
 					)
 				)
 				counts.marina += 1
@@ -513,11 +513,11 @@ static func run(
 				if not _has_lfsr_random(lfsr_random):
 					random_records_pending += 1
 					continue
-				var arcology_count := maxi(_arcology_count(misc), 1)
+				var arcology_count := maxi(_arcology_count(misc, map_edge), 1)
 				var arcology_capacity := _population_cap(
 					misc,
 					_to_i16(_divide_toward_zero(_read_u16_be(microsims, offset + 2) * 1000, 10)),
-					arcology_count * 20
+					arcology_count * 20, map_edge
 				) & 0xffff
 				var tax_effect := (
 					_divide_toward_zero(
@@ -589,7 +589,7 @@ static func run(
 	if _has_lfsr_random(lfsr_random):
 		_write_u32(misc, MISC_ARCOLOGY_POPULATION, arcology_population)
 		arcology_launch_pending = (
-			_divide_toward_zero(_tile_count(misc, TILE_LAUNCH_ARCOLOGY), 16) > 300
+			_divide_toward_zero(_tile_count(misc, TILE_LAUNCH_ARCOLOGY, map_edge), 16) > 300
 			and arcology_population > 6000000
 		)
 		if arcology_launch_pending and _has_process_random(random):
@@ -682,8 +682,9 @@ static func run_transit(
 	return run(city, bus_passengers, rail_passengers, subway_passengers, null)
 
 
-static func _tile_count(misc: PackedByteArray, tile_id: int) -> int:
-	return _to_i16(_read_u32(misc, MISC_TILE_COUNTS + tile_id * 4))
+static func _tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> int:
+	var value := _read_u32(misc, MISC_TILE_COUNTS + tile_id * 4)
+	return _to_i16(value) if map_edge == 128 else value
 
 
 static func _budget_funding(misc: PackedByteArray, budget_id: int) -> int:
@@ -723,10 +724,10 @@ static func _find_microsim_location(text_overlays: PackedByteArray, record_id: i
 	return {}
 
 
-static func _arcology_count(misc: PackedByteArray) -> int:
+static func _arcology_count(misc: PackedByteArray, map_edge: int = 128) -> int:
 	var count := 0
 	for tile_id in range(TILE_ARCOLOGY_FIRST, TILE_ARCOLOGY_LAST + 1):
-		count += _tile_count(misc, tile_id)
+		count += _tile_count(misc, tile_id, map_edge)
 	return _divide_toward_zero(count, 16)
 
 
@@ -744,10 +745,10 @@ static func _service_score(
 	return 0
 
 
-static func _adjusted_population(misc: PackedByteArray) -> int:
+static func _adjusted_population(misc: PackedByteArray, map_edge: int = 128) -> int:
 	var arcology_count := 0
 	for tile_id in range(0xfb, 0xff):
-		arcology_count += _tile_count(misc, tile_id)
+		arcology_count += _tile_count(misc, tile_id, map_edge)
 	arcology_count = _divide_toward_zero(arcology_count, 16)
 	var adjustment := 0
 	if arcology_count > 140:
@@ -759,12 +760,12 @@ static func _adjusted_population(misc: PackedByteArray) -> int:
 	)
 
 
-static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int) -> int:
+static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int, map_edge: int = 128) -> int:
 	if divisor == 0:
 		divisor = 100
 	var arcology_count := 0
 	for tile_id in range(0xfb, 0xff):
-		arcology_count += _tile_count(misc, tile_id)
+		arcology_count += _tile_count(misc, tile_id, map_edge)
 	arcology_count = _divide_toward_zero(arcology_count, 16)
 	var arcology_adjustment := 0
 	if arcology_count >= 141:
@@ -774,7 +775,7 @@ static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int) -
 		+ _read_u32(misc, MISC_ARCOLOGY_POPULATION)
 		+ _read_u32(misc, MISC_NORMAL_POPULATION)
 	)
-	var available := int(total_population / divisor) & 0xffff
+	var available := int(total_population / divisor) & (0xffff if map_edge == 128 else 0xffffffff)
 	var signed_maximum := _to_i16(maximum)
 	return signed_maximum if signed_maximum <= available else available
 

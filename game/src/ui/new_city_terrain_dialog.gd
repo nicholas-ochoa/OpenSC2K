@@ -15,6 +15,7 @@ var mayor_name_input: LineEdit
 var difficulty_input: OptionButton
 var year_input: OptionButton
 var size_input: OptionButton
+var native_maps_input: CheckBox
 var ocean_input: CheckBox
 var river_input: CheckBox
 var hills_input: HSlider
@@ -96,6 +97,12 @@ func _build_city_and_terrain_fields(content: HBoxContainer) -> void:
 	left.add_child(city_grid)
 	for label_text in ["City Name", "Mayor Name", "Difficulty", "Starting Year", "Map Size"]:
 		_add_city_field(city_grid, label_text)
+	native_maps_input = CheckBox.new()
+	native_maps_input.text = "Per-tile data maps"
+	native_maps_input.button_pressed = true
+	native_maps_input.tooltip_text = "Calculate land value, pollution, crime, traffic and services for each tile. Uses SC2X saves, which the original game cannot open."
+	native_maps_input.toggled.connect(func(_enabled: bool) -> void: preview_requested.emit())
+	left.add_child(native_maps_input)
 
 	left.add_child(HSeparator.new())
 	var terrain_heading := Label.new()
