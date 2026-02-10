@@ -138,4 +138,4 @@ static func _ramp_tile(highway_mask: int, road_direction: int) -> int:
 		2:
 			return 0x60 if (highway_mask & 2) else RAMP_FIRST
 		_:
-			return 0x5f if (highway_mask & 1) else 0x5e
+			return 0x5e if (highway_mask & 1) else 0x5f
