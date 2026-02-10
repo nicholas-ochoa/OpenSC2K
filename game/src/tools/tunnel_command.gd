@@ -49,7 +49,7 @@ static func apply(
 	var current := start
 
 	while true:
-		if current.x < 0 or current.x > 126 or current.y < 0 or current.y > 126:
+		if current.x < 0 or current.x > map_edge - 2 or current.y < 0 or current.y > map_edge - 2:
 			return {"ok": false, "error": "tunnel cannot reach an opposite slope"}
 		var current_index := city.index_of(current.x, current.y)
 		var altitude_word := int(city.altitude_words[current_index])

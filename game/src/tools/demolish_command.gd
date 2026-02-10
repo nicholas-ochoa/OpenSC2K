@@ -914,7 +914,7 @@ static func _reinforced_section_is_valid(
 	buildings: PackedByteArray, anchor: Vector2i,
 	map_edge: int = 128,
 ) -> bool:
-	if anchor.x < 0 or anchor.y < 0 or anchor.x > 126 or anchor.y > 126:
+	if anchor.x < 0 or anchor.y < 0 or anchor.x > map_edge - 2 or anchor.y > map_edge - 2:
 		return false
 	var tile := int(buildings[anchor.x * map_edge + anchor.y])
 	if tile < REINFORCED_BRIDGE_FIRST or tile > REINFORCED_BRIDGE_LAST:

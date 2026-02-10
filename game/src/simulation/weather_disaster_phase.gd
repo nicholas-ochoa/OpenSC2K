@@ -247,7 +247,7 @@ static func _select_disaster(
 		return result
 	if weather_trend == 11 and disaster_roll < 15:
 		result.disaster_type = DISASTER_TORNADO
-		result.disaster_point = _random_map_point(random)
+		result.disaster_point = _random_map_point(random, map_edge)
 		return result
 	if disaster_roll != 0:
 		return result
@@ -263,18 +263,18 @@ static func _select_disaster(
 		DISASTER_FIRE:
 			if (_read_u32(misc, MISC_WEATHER_HEAT) & 0xff) < ((random.next_u15() & 0x7f) + 0x7f):
 				return result
-			result.disaster_point = _random_map_point(random)
+			result.disaster_point = _random_map_point(random, map_edge)
 		DISASTER_TOXIC_SPILL:
 			var toxic_point := _toxic_spill_point(pollution, lfsr_random, map_edge)
 			if toxic_point.x < 0:
 				return result
 			result.disaster_point = toxic_point
 		DISASTER_EARTHQUAKE:
-			result.disaster_point = _random_map_point(random)
+			result.disaster_point = _random_map_point(random, map_edge)
 		DISASTER_TORNADO:
 			if weather_trend < 8:
 				return result
-			result.disaster_point = _random_map_point(random)
+			result.disaster_point = _random_map_point(random, map_edge)
 		DISASTER_MONSTER:
 			if population < 45000:
 				return result
@@ -300,7 +300,7 @@ static func _select_disaster(
 				return result
 			if weather_trend < 3:
 				return result
-			result.disaster_point = _random_map_point(random)
+			result.disaster_point = _random_map_point(random, map_edge)
 		DISASTER_POLLUTION:
 			if _budget_current(misc, BUDGET_INDUSTRIAL) < 10000:
 				return result
@@ -311,16 +311,16 @@ static func _select_disaster(
 		DISASTER_PLANE_CRASH:
 			if _tile_count(misc, TILE_RUNWAY) == 0:
 				return result
-			result.disaster_point = _random_map_point(random)
+			result.disaster_point = _random_map_point(random, map_edge)
 		_:
 			return result
 	result.disaster_type = candidate
 	return result
 
 
-static func _random_map_point(random) -> Vector2i:
-	var y: int = random.next_u15() % 126 + 1
-	var x: int = random.next_u15() % 126 + 1
+static func _random_map_point(random, map_edge: int = 128) -> Vector2i:
+	var y: int = random.next_u15() % (map_edge - 2) + 1
+	var x: int = random.next_u15() % (map_edge - 2) + 1
 	return Vector2i(x, y)
 
 

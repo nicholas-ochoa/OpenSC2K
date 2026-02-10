@@ -6,6 +6,7 @@ func _init() -> void:
 	for edge in Sc2File.MAP_SIZES:
 		check_charts(edge)
 		check_flood_order(edge)
+		check_far_services_and_year(edge)
 		for disaster in range(1, 19):
 			print("Checking %d disaster %d" % [edge, disaster])
 			var document := EmptyCityTemplate.create(edge)
@@ -71,3 +72,60 @@ func check_flood_order(edge: int) -> void:
 		var expected := DisasterStartPhase._find_flood_shore(legacy, origin)
 		var actual := DisasterStartPhase._find_flood_shore(enlarged, origin + shift, edge)
 		check(actual == expected + shift, "flood search order %d at %s" % [edge, origin])
+
+func check_far_services_and_year(edge: int) -> void:
+	var document := EmptyCityTemplate.create(edge)
+	var city := CityState.from_document(document)
+	var origin := Vector2i(edge - 8, edge - 8)
+	for dx in 4:
+		city.set_tile_flag(origin.x + dx, origin.y, 0xa0, true)
+	city.set_building_id(origin.x, origin.y, 0xc9)
+	city.set_building_id(origin.x + 1, origin.y, 0x70)
+	city.set_building_id(origin.x + 2, origin.y, 0xdc)
+	city.set_building_id(origin.x + 3, origin.y, 0xd2)
+	city.set_zone_id(origin.x + 1, origin.y, 2)
+	city.zones[(origin.x + 3) * edge + origin.y] |= 0x80
+	document.find_chunk("XZON").set_decoded_payload(city.zones)
+	document.set_misc_u32(0x68, 100)
+	check(PowerPhase.run(city, SimRandom.new(123)).ok, "far power phase")
+	check(city.tile_flags[(origin.x + 1) * edge + origin.y] & 0x40 != 0, "far consumer receives power")
+	check(WaterPhase.run(city).ok, "far water phase")
+	check(city.tile_flags[(origin.x + 1) * edge + origin.y] & 0x10 != 0, "far consumer receives water")
+	var traffic := document.find_chunk("XTRF").decoded_payload.duplicate()
+	traffic[-1] = 100
+	document.find_chunk("XTRF").set_decoded_payload(traffic)
+	check(TrafficPhase.run(city).ok and document.find_chunk("XTRF").decoded_payload[-1] == 75,
+		"traffic decays at last coarse cell")
+	check(PollutionPhase.run(city).ok, "far pollution and services phase")
+	var coarse_index := (origin.x / 2) * (edge / 2) + origin.y / 2
+	check(document.find_chunk("XPLT").decoded_payload[coarse_index] > 0, "far plant creates pollution")
+	var service_index := ((origin.x + 3) / 4) * (edge / 4) + origin.y / 4
+	check(document.find_chunk("XPLC").decoded_payload[service_index] > 0, "far police station supplies coverage")
+	var record := city.microsim_count() - 1
+	var microsims := document.find_chunk("XMIC").decoded_payload.duplicate()
+	microsims[record * CityState.MICROSIM_RECORD_SIZE] = 0xc8
+	microsims[record * CityState.MICROSIM_RECORD_SIZE + 2] = 255
+	document.find_chunk("XMIC").set_decoded_payload(microsims)
+	city.set_text_overlay_id(origin.x, origin.y, OverlayData.facility_id(record))
+	check(MicrosimAnnualPhase._find_microsim_location(city.text_overlays, record, edge)
+		== {"x": origin.x, "y": origin.y}, "annual facility lookup finds far extended record")
+	city.set_auto_budget_enabled(true)
+	city.set_no_disasters_enabled(true)
+	city.set_age_in_days(274)
+	var engine := SimulationEngine.new(city, 123, 456, 789)
+	var phases_seen := {}
+	for day in 31:
+		var result := engine.advance_day()
+		check(result.ok, "populated year transition at %d, day %d" % [edge, day])
+		if not result.ok:
+			break
+		phases_seen.merge(result.get("phase_results", {}), true)
+	for phase in ["budget", "month_start", "annual_microsim", "power", "water", "traffic",
+		"pollution_terrain_land_value", "growth", "rci_demand", "rci_aftermath", "education_health",
+		"industries", "simnation", "graphs", "milestones", "scenario", "bankruptcy", "weather_disaster"]:
+		check(phases_seen.has(phase), "populated transition executes " + phase)
+	check(document.find_chunk("XMIC").decoded_payload[record * CityState.MICROSIM_RECORD_SIZE + 2] == 0,
+		"annual phase updates the last facility record")
+	var encoded: PackedByteArray = document.serialize().data
+	var loaded := Sc2File.new()
+	check(loaded.parse(encoded) and loaded.serialize(true).data == encoded, "simulated city exact round trip")

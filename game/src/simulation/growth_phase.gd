@@ -958,8 +958,8 @@ static func _place_zone(
 	if (
 		anchor.x <= 1
 		or anchor.y <= 1
-		or anchor.x > 126 - radius
-		or anchor.y > 126 - radius
+		or anchor.x > map_edge - 2 - radius
+		or anchor.y > map_edge - 2 - radius
 	):
 		return false
 	var site_position := Vector2i(anchor.x, anchor.y - radius)

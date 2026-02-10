@@ -42,7 +42,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 	var flags: PackedByteArray = chunks.XBIT.decoded_payload
 	var last_altitude := 0
 	for _attempt in 24:
-		var origin := Vector2i(game_random.next_mod(119), game_random.next_mod(119))
+		var origin := Vector2i(game_random.next_mod(map_edge - 9), game_random.next_mod(map_edge - 9))
 		last_altitude = city.land_altitude(origin.x, origin.y)
 		var valid := 0
 		var level := 0
@@ -67,7 +67,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 
 	var sites: Array[Rect2i] = []
 	for _attempt in 40:
-		var origin := Vector2i(game_random.next_mod(124), game_random.next_mod(124))
+		var origin := Vector2i(game_random.next_mod(map_edge - 4), game_random.next_mod(map_edge - 4))
 		var valid := 0
 		var origin_index := origin.x * map_edge + origin.y
 		for x in range(origin.x, origin.x + 3):

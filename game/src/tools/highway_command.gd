@@ -1224,11 +1224,11 @@ static func _select_section_kind(
 	):
 		if anchor.x < 2:
 			connections |= 8
-		if anchor.x > 125:
+		if anchor.x > map_edge - 3:
 			connections |= 2
 		if anchor.y < 2:
 			connections |= 1
-		if anchor.y > 125:
+		if anchor.y > map_edge - 3:
 			connections |= 4
 
 	var terrain_shape := _terrain_section_shape(

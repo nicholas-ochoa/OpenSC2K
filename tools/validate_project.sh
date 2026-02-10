@@ -57,6 +57,7 @@ if [ -f "$repo_dir/game/tests/runtime_ui_smoke.gd" ]; then
 fi
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/expanded_limits_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/map_edge_limits_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_render_patch_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/large_city_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/edit_dirty_indices_test.gd

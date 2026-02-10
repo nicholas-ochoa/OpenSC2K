@@ -26,7 +26,7 @@ static func update(
 	map_edge: int = 128,
 ) -> void:
 	var offset := record * RECORD_SIZE
-	if counters.active_sailboats > 4:
+	if counters.active_sailboats > 4 * (map_edge * map_edge / 16384):
 		_remove(text, things, record, map_edge)
 		counters.removed_sailboats += 1
 		return
@@ -120,7 +120,7 @@ static func _move(
 		if old_index >= 0:
 			OverlayData.write(text, old_index, 0)
 		var next := old_point + tile_delta
-		if next.x < 0 or next.x > 126 or next.y < 0 or next.y > 126:
+		if next.x < 0 or next.x > map_edge - 2 or next.y < 0 or next.y > map_edge - 2:
 			_remove(text, things, record, map_edge)
 			counters.removed_sailboats += 1
 			return

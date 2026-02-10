@@ -453,7 +453,7 @@ static func _place_special_item(
 		for y in range(origin.y, origin.y + area):
 			var point := Vector2i(x, y)
 			var index := _index(point, map_edge)
-			if index < 0 or (area > 1 and (x < 1 or y < 1 or x > 126 or y > 126)):
+			if index < 0 or (area > 1 and (x < 1 or y < 1 or x > map_edge - 2 or y > map_edge - 2)):
 				return false
 			if buildings[index] >= 0x1d or buildings[index] == 0x05 or buildings[index] == 0x0d:
 				return false
@@ -495,7 +495,7 @@ static func _place_missile_silo(
 		var upper := origin + Vector2i(0, -1)
 		if _index(upper, map_edge) >= 0 and (zones[_index(upper, map_edge)] & 0x0f) == zone:
 			origin = upper
-	if origin.x < 0 or origin.y < 0 or origin.x > 125 or origin.y > 125:
+	if origin.x < 0 or origin.y < 0 or origin.x > map_edge - 3 or origin.y > map_edge - 3:
 		return {"ok": false, "changed_tiles": 0}
 	var changed_tiles := 0
 	for x in range(origin.x, origin.x + 3):
@@ -607,9 +607,9 @@ static func _replace_underground(
 	if (zones[index] & 0x0f) != 7:
 		var count := _read_u32(misc, MISC_SUBWAY_COUNT)
 		if _is_subway_tile(old_tile):
-			count = (count - 1) & 0xffff
+			count = (count - 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
 		if _is_subway_tile(new_tile):
-			count = (count + 1) & 0xffff
+			count = (count + 1) & (0xffff if underground.size() == 16384 else 0xffffffff)
 		_write_u32(misc, MISC_SUBWAY_COUNT, count)
 	underground[index] = new_tile
 

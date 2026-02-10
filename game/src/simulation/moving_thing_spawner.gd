@@ -287,7 +287,7 @@ static func _spawn_train_record(
 ) -> bool:
 	if count_type(things, TYPE_TRAIN_ENGINE) >= 5 * (map_edge * map_edge / 16384):
 		return false
-	if start.x < 2 or start.x > 124 or start.y < 2 or start.y > 124:
+	if start.x < 2 or start.x > map_edge - 4 or start.y < 2 or start.y > map_edge - 4:
 		return false
 	var index := _index(start, map_edge)
 	var tile := int(buildings[index])
