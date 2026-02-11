@@ -135,7 +135,7 @@ static func normal(
 			overlay_mode == "city"
 			or (
 				overlay_mode == "underground"
-				and (is_underground_network or is_demolish)
+				and (is_underground_network or is_demolish or is_query or is_center)
 			)
 		)
 		and supported

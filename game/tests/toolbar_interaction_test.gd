@@ -13,6 +13,25 @@ func _run() -> void:
 	var toolbar := main.get("city_toolbar") as CityToolbar
 	var map := main.get("map_view") as CityMapControl
 	var status := main.get("city_status_bar") as CityStatusBar
+	# Shared tools retain the selected layer and remain usable in either view.
+	for mode in ["city", "underground"]:
+		main.call("_set_overlay", mode)
+		for group in [16, 17, 0]:
+			toolbar.toolbar_buttons[group].pressed.emit()
+			assert(main.get("overlay_mode") == mode and toolbar.view_mode_buttons[mode].button_pressed)
+			assert(map.edit_enabled)
+			main.call("_select_subtool", 0)
+			assert(main.get("overlay_mode") == mode and map.edit_enabled)
+			if group == 16:
+				main.call("_open_query", Vector2i(20, 20))
+				assert(main.query_dialog.visible and main.get("overlay_mode") == mode)
+				main.call("_close_query")
+			elif group == 17:
+				main.call("_center_map_on_tile", Vector2i(20, 20))
+				assert(main.get("overlay_mode") == mode)
+	# Surface-only terrain tools still change back to the surface.
+	main.call("_select_subtool", 2)
+	assert(main.get("overlay_mode") == "city")
 	main.call("_select_tool_group", 4)
 	assert(main.get("overlay_mode") == "underground" and toolbar.view_mode_buttons.underground.button_pressed)
 	main.call("_set_overlay", "city")

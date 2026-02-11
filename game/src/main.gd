@@ -3878,6 +3878,9 @@ func _select_tool_group(index: int) -> void:
 
 
 func _auto_select_underground() -> void:
+	# query, camera and bulldozer work in both views
+	if selected_group in [16, 17] or Demolish.supports_tool(selected_group, selected_subtool):
+		return
 	if city == null:
 		return
 	var underground_tool := (selected_group == 4 and selected_subtool == 0) or (selected_group == 7 and selected_subtool == 1)
