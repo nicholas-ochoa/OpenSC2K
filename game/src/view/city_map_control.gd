@@ -100,6 +100,11 @@ var query_footprint_preview := false
 var scurk_stamp_visuals: Array[Dictionary] = []
 var query_city: CityState
 var _shift_pressed := false
+var data_view_mode := ""
+var data_view_mesh: ArrayMesh
+var data_view_layer: MeshInstance2D
+var data_view_signature: Array = []
+
 var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[Dictionary] = []
 var dynamic_sprites: Array[Dictionary] = []
@@ -137,6 +142,66 @@ func _ready() -> void:
 	_ensure_base_layer()
 	resized.connect(_on_resized)
 	mouse_exited.connect(_clear_hover)
+
+
+func set_data_view(value: CityState, mode: String) -> void:
+	var signature := CityDataView.signature(value, mode)
+	if data_view_signature != signature:
+		data_view_mesh = CityDataView.create_mesh(value, mode)
+		data_view_signature = signature
+	data_view_mode = mode
+	if data_view_layer == null:
+		data_view_layer = MeshInstance2D.new()
+		data_view_layer.name = "TileDataLayer"
+		data_view_layer.show_behind_parent = true
+		var shader := Shader.new()
+		shader.code = CityDataView.GRID_SHADER
+		var grid_material := ShaderMaterial.new()
+		grid_material.shader = shader
+		data_view_layer.material = grid_material
+		add_child(data_view_layer)
+	data_view_layer.mesh = data_view_mesh
+	var placeholder := PlaceholderTexture2D.new()
+	placeholder.size = Renderer.output_size_for_view(Renderer.VIEW_LARGE, value.map_size)
+	set_city_view(value, placeholder)
+	queue_redraw()
+
+func clear_data_view() -> void:
+	if data_view_mode.is_empty():
+		return
+	data_view_mode = ""
+	data_view_mesh = null
+	if data_view_layer != null:
+		data_view_layer.hide()
+		data_view_layer.mesh = null
+	data_view_signature.clear()
+	if _dynamic_canvas != null:
+		_dynamic_canvas.show()
+	_sync_base_layer()
+	queue_redraw()
+
+func _draw_data_view(scale: float, offset: Vector2) -> void:
+	if hover_tile.x >= 0:
+		var outline := Renderer.terrain_surface_polygon(city, hover_tile.x, hover_tile.y)
+		for index in outline.size():
+			outline[index] = offset + outline[index] * scale
+		if not outline.is_empty():
+			outline.append(outline[0])
+			draw_polyline(outline, Color.WHITE, 1.0)
+	var title: String = CityDataView.TITLES[CityDataView.MODES.find(data_view_mode)]
+	var lines := [title, CityDataView.legend(data_view_mode), CityDataView.tile_text(city, data_view_mode, hover_tile)]
+	var font := ThemeDB.fallback_font
+	var width := 0.0
+	for line in lines:
+		width = maxf(width, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x)
+	draw_style_box(_data_legend_box(), Rect2(Vector2(12, 12), Vector2(width + 24, 80)))
+	for index in lines.size():
+		draw_string(font, Vector2(24, 34 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+
+func _data_legend_box() -> StyleBoxFlat:
+	var box := StyleBoxFlat.new()
+	box.bg_color = Color(0.04, 0.06, 0.09, 0.94)
+	return box
 
 
 func set_city_view(
@@ -619,6 +684,9 @@ func _draw() -> void:
 		return
 	var scale := _view_scale()
 	var offset := _draw_offset(scale)
+	if data_view_mesh != null:
+		_draw_data_view(scale, offset)
+		return
 	if _base_layer == null:
 		draw_texture_rect(
 			city_texture,
@@ -1174,6 +1242,17 @@ func _ensure_base_layer() -> void:
 
 
 func _sync_base_layer() -> void:
+	if not data_view_mode.is_empty():
+		if data_view_layer != null:
+			var data_scale := _view_scale()
+			data_view_layer.position = _draw_offset(data_scale)
+			data_view_layer.scale = Vector2.ONE * data_scale
+			data_view_layer.show()
+		if _base_layer != null:
+			_base_layer.hide()
+		if _dynamic_canvas != null:
+			_dynamic_canvas.hide()
+		return
 	if _base_layer == null:
 		return
 	if city_texture == null:

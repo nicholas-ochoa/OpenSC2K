@@ -133,6 +133,7 @@ static func normal(
 		available
 		and (
 			overlay_mode == "city"
+			or (CityDataView.MODES.has(overlay_mode) and (is_query or is_center))
 			or (
 				overlay_mode == "underground"
 				and (is_underground_network or is_demolish or is_query or is_center)

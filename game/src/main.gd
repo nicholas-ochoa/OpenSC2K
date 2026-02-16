@@ -63,7 +63,7 @@ const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
 const DebugActions = preload("res://src/debug/city_debug_actions.gd")
 
-const MAP_DISPLAY_MODES := ["city", "underground"]
+const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "crime", "water", "power"]
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
 const MENU_AUTO_BUDGET := CityMenuBarView.MENU_AUTO_BUDGET
@@ -1341,7 +1341,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 		_show_error("No city is loaded.")
 		return
 	var old_center := Vector2i(-1, -1)
-	if overlay_mode == "city" or overlay_mode == "underground":
+	if overlay_mode in MAP_DISPLAY_MODES:
 		old_center = map_view.center_tile()
 	var new_center := CityRotation.rotate_point(
 		old_center, map_edge, counter_clockwise
@@ -1622,6 +1622,9 @@ func _sync_city_option_menus() -> void:
 
 
 func _sync_view_controls() -> void:
+	if view_menu != null:
+		for index in MAP_DISPLAY_MODES.size():
+			view_menu.get_popup().set_item_checked(index, MAP_DISPLAY_MODES[index] == overlay_mode)
 	var underground_active := overlay_mode == "underground"
 	if view_menu != null and view_menu_underground_items != underground_active:
 		_rebuild_view_layer_menu(underground_active)
@@ -1639,11 +1642,12 @@ func _sync_view_controls() -> void:
 			var item_index := view_menu.get_popup().get_item_index(menu_id)
 			if item_index >= 0:
 				view_menu.get_popup().set_item_checked(item_index, bool(states[menu_id]))
+				view_menu.get_popup().set_item_disabled(item_index, CityDataView.MODES.has(overlay_mode))
 	if city_toolbar != null:
 		city_toolbar.sync_view_mode(overlay_mode)
 	for key in view_visibility_checks:
 		var check: CheckBox = view_visibility_checks[key]
-		check.visible = underground_active if key in ["pipes", "subways"] else not underground_active
+		check.visible = (underground_active if key in ["pipes", "subways"] else not underground_active) and not CityDataView.MODES.has(overlay_mode)
 		var enabled := (
 			show_underground_pipes
 			if key == "pipes"
@@ -1654,7 +1658,7 @@ func _sync_view_controls() -> void:
 
 func _rebuild_view_layer_menu(underground_active: bool) -> void:
 	var popup := view_menu.get_popup()
-	while popup.item_count > 4:
+	while popup.item_count > MAP_DISPLAY_MODES.size() + 2:
 		popup.remove_item(popup.item_count - 1)
 	if underground_active:
 		popup.add_check_item("Show Underground Pipes", MENU_VIEW_PIPES)
@@ -1798,7 +1802,7 @@ func _on_city_map_center_requested(point: Vector2i) -> void:
 
 
 func _city_map_viewport_outline() -> PackedVector2Array:
-	if map_view == null or overlay_mode not in ["city", "underground"]:
+	if map_view == null or overlay_mode not in MAP_DISPLAY_MODES:
 		return PackedVector2Array()
 	return map_view.visible_tile_outline()
 
@@ -2899,6 +2903,14 @@ func _refresh_map(force := true) -> void:
 	map_view.set_signs_visible(
 		overlay_mode == "city" and bool(surface_visibility.signs)
 	)
+	if CityDataView.MODES.has(overlay_mode):
+		_close_region_cache()
+		pending_static_render = false
+		map_view.set_dynamic_sprites([])
+		map_view.show_transient_effects([])
+		map_view.set_data_view(city, overlay_mode)
+		return
+	map_view.clear_data_view()
 	if (city.map_size > 128 or CityRegionCache.gpu_supported(app_city_renderer)) and overlay_mode in ["city", "underground"]:
 		_refresh_region_map(force)
 		return
@@ -3879,7 +3891,7 @@ func _select_tool_group(index: int) -> void:
 
 func _auto_select_underground() -> void:
 	# query, camera and bulldozer work in both views
-	if selected_group in [16, 17] or Demolish.supports_tool(selected_group, selected_subtool):
+	if selected_group in [16, 17] or (overlay_mode in ["city", "underground"] and Demolish.supports_tool(selected_group, selected_subtool)):
 		return
 	if city == null:
 		return

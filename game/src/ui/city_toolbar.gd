@@ -23,6 +23,7 @@ const ChildToolPalette = preload("res://src/ui/city_child_tool_palette.gd")
 const HoldMenu = preload("res://src/ui/city_tool_hold_menu.gd")
 const HOLD_SECONDS := 0.45
 const MAP_DISPLAY_MODES := ["city", "underground"]
+var data_view_input: OptionButton
 const GROUP_ICON_REGIONS := [
 	Rect2i(0, 0, 23, 23), Rect2i(24, 0, 26, 23), Rect2i(50, 0, 20, 23),
 	Rect2i(70, 0, 25, 23), Rect2i(95, 0, 21, 23), Rect2i(116, 0, 24, 23),
@@ -158,6 +159,15 @@ func _ready() -> void:
 		button.pressed.connect(overlay_requested.emit.bind(mode))
 		view_grid.add_child(button)
 		view_mode_buttons[mode] = button
+
+	data_view_input = OptionButton.new()
+	data_view_input.add_item("Data view: off")
+	for title in CityDataView.TITLES:
+		data_view_input.add_item(title)
+	data_view_input.tooltip_text = "Replace structures with current tile values."
+	data_view_input.item_selected.connect(func(index: int) -> void:
+		overlay_requested.emit("city" if index == 0 else CityDataView.MODES[index - 1]))
+	toolbar.add_child(data_view_input)
 
 	var layers_grid := GridContainer.new()
 	layers_grid.columns = 2
@@ -308,6 +318,8 @@ func _on_surface_visibility_toggled(visible: bool, layer: String) -> void:
 
 
 func sync_view_mode(mode: String) -> void:
+	if data_view_input != null:
+		data_view_input.select(CityDataView.MODES.find(mode) + 1)
 	for key in view_mode_buttons:
 		(view_mode_buttons[key] as CheckBox).set_pressed_no_signal(key == mode)
 
