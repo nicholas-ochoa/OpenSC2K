@@ -100,6 +100,9 @@ var query_footprint_preview := false
 var scurk_stamp_visuals: Array[Dictionary] = []
 var query_city: CityState
 var _shift_pressed := false
+var shift_line_enabled := false
+var continuous_placement := false
+var _brush_elapsed := 0.0
 var data_view_mode := ""
 var data_view_mesh: ArrayMesh
 var data_view_layer: MeshInstance2D
@@ -360,7 +363,7 @@ func set_edit_enabled(
 	_hide_placement_error()
 	edit_enabled = value
 	selection_mode = mode
-	point_footprint_area = clampi(footprint_area, 1, 4)
+	point_footprint_area = clampi(footprint_area, 1, 7)
 	shift_query_enabled = shift_queries
 	clear_selection_price()
 	mouse_default_cursor_shape = (
@@ -461,6 +464,13 @@ func selection_price_text() -> String:
 func point_preview_tiles(point: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	if city == null or city.index_of(point.x, point.y) < 0:
+		return result
+	if point_footprint_area == 7:
+		for x in range(-3, 4):
+			for y in range(-3, 4):
+				var tile := point + Vector2i(x + 3, y + 3)
+				if x * x + y * y <= 10 and city.index_of(tile.x, tile.y) >= 0:
+					result.append(tile)
 		return result
 	var site := BuildingTool.footprint(point, point_footprint_area)
 	for x in range(site.position.x, site.end.x):
@@ -990,7 +1000,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 	_shift_pressed = event.shift_pressed
 	if event.pressed:
 		_shift_pressed = event.shift_pressed
-		if shift_query_enabled and not shift_rectangle_enabled and event.shift_pressed:
+		if shift_query_enabled and not shift_rectangle_enabled and not shift_line_enabled and event.shift_pressed:
 			if tile.x >= 0:
 				hover_tile = tile
 				query_requested.emit(tile)
@@ -1006,6 +1016,9 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			selection_moved = false
 			_rebuild_selection_path()
 			selection_started.emit()
+			_brush_elapsed = 0.0
+			if continuous_placement:
+				_emit_brush_dab(tile, false)
 			selection_changed.emit(
 				selection_start, selection_end, selection_path.duplicate(), false
 			)
@@ -1021,12 +1034,13 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 				selection_path.assign([selection_start])
 				stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
 				selection_moved = selection_moved or absf(_stretch_press_y - event.position.y) >= 6.0
-			selection_completed.emit(
-				selection_start,
-				selection_end,
-				selection_path.duplicate(),
-				selection_moved,
-			)
+			if not continuous_placement:
+				selection_completed.emit(
+					selection_start,
+					selection_end,
+					selection_path.duplicate(),
+					selection_moved,
+				)
 			_clear_selection()
 			queue_redraw()
 			selection_finished.emit()
@@ -1092,7 +1106,7 @@ func _rebuild_selection_path() -> void:
 	if selection_mode == "point":
 		selection_path.append(selection_end)
 		return
-	if selection_mode == "rectangle" or (shift_rectangle_enabled and _shift_pressed):
+	if (selection_mode == "rectangle" and not (shift_line_enabled and _shift_pressed)) or (shift_rectangle_enabled and _shift_pressed):
 		var minimum := Vector2i(
 			mini(selection_start.x, selection_end.x),
 			mini(selection_start.y, selection_end.y),
@@ -1363,7 +1377,7 @@ func _input(event: InputEvent) -> void:
 		_shift_pressed = event.pressed
 		if stretch_terrain and selection_start.x >= 0:
 			stretch_changed.emit(stretch_height_delta, event.pressed)
-		if shift_rectangle_enabled and selection_start.x >= 0:
+		if (shift_rectangle_enabled or shift_line_enabled) and selection_start.x >= 0:
 			_rebuild_selection_path()
 			selection_changed.emit(selection_start, selection_end, selection_path.duplicate(), selection_moved)
 		queue_redraw()
@@ -1432,3 +1446,20 @@ func _show_placement_error(at_position: Vector2) -> void:
 func _hide_placement_error() -> void:
 	if is_instance_valid(placement_error_popup):
 		placement_error_popup.hide()
+
+
+func _process(delta: float) -> void:
+	if not continuous_placement or not edit_enabled or selection_start.x < 0:
+		_brush_elapsed = 0.0
+		return
+	_brush_elapsed += delta
+	if _brush_elapsed < 0.3:
+		return
+	_brush_elapsed = 0.0
+	if hover_tile.x >= 0:
+		_emit_brush_dab(hover_tile, true)
+
+
+func _emit_brush_dab(tile: Vector2i, dragged: bool) -> void:
+	var points: Array[Vector2i] = [tile]
+	selection_completed.emit(tile, tile, points, dragged)

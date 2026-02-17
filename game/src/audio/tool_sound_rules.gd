@@ -22,7 +22,7 @@ const SOUND_ZOO := 527
 static func success_events(group_index: int, subtool_index: int) -> Array[int]:
 	match group_index:
 		1:
-			if subtool_index == 0:
+			if subtool_index in [0, 3]:
 				return [SOUND_TREE]
 			if subtool_index == 1:
 				return [SOUND_WATER]

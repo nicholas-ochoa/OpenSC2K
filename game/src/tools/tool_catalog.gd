@@ -89,7 +89,7 @@ const GROUPS := [
 		["trees", "Trees", 3, 1],
 		["water", "Water", 100, 1],
 		["stream", "Place Stream", 0, 1],
-		["forest", "Place Forest", 0, 7],
+		["forest", "Place Forest", 3, 7],
 	]},
 	{"id": "dispatch", "name": "Dispatch", "tools": [
 		["police", "Police", 0, 1],

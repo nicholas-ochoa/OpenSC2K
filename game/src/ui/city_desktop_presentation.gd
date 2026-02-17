@@ -57,7 +57,7 @@ func cursor_selection(hovered: Control, display_width: int) -> Dictionary:
 		var role := map_view.desktop_cursor_role if map_view.edit_enabled else 0
 		if map_view.is_panning():
 			role = 10 # godot middle-button panning uses the supplied hand artwork
-		elif map_view.shift_query_enabled and Input.is_key_pressed(KEY_SHIFT):
+		elif map_view.shift_query_enabled and not map_view.shift_line_enabled and not map_view.shift_rectangle_enabled and Input.is_key_pressed(KEY_SHIFT):
 			role = 23
 		if role == 0:
 			return {}

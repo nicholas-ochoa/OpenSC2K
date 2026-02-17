@@ -113,6 +113,47 @@ func _run() -> void:
 	map.zoom_factor = CityMapControl.ZOOM_LEVELS[0]
 	assert(main.options_menu.get_popup().get_item_index(0x8008) == -1)
 	assert(main.call("_city_view_size") == CityIsometricRenderer.VIEW_SMALL)
+	# City forest is selectable; Trees and Water use area then Shift-line.
+	main.call("_select_tool_group", 1)
+	assert(toolbar.child_tool_buttons.has(3))
+	main.call("_select_subtool", 3)
+	assert(main.selected_subtool == 3 and map.edit_enabled and map.point_footprint_area == 7)
+	assert(map.point_preview_tiles(Vector2i(80, 80)).size() == 37)
+	assert(map.point_preview_tiles(Vector2i(127, 127)).is_empty())
+	for subtool in [0, 1]:
+		main.call("_select_subtool", subtool)
+		assert(map.selection_mode == "rectangle" and map.shift_line_enabled)
+		map.selection_start = Vector2i(80, 80)
+		map.selection_end = Vector2i(83, 82)
+		map._rebuild_selection_path()
+		assert(map.selection_path.size() == 12)
+		shift.pressed = true
+		map._input(shift)
+		assert(map.selection_path.size() == 6)
+		shift.pressed = false
+		map._input(shift)
+		assert(map.selection_path.size() == 12)
+		map._clear_selection()
+	map.shift_line_enabled = false
+	# Held brush emits on its cadence and stops after the selection clears.
+	var brush := CityMapControl.new()
+	brush.edit_enabled = true
+	brush.continuous_placement = true
+	brush.selection_start = Vector2i(40, 40)
+	brush.hover_tile = Vector2i(40, 40)
+	var dabs: Array[Vector2i] = []
+	brush.selection_completed.connect(func(_start, finish, _path, _dragged): dabs.append(finish))
+	brush._process(0.29)
+	assert(dabs.is_empty())
+	brush._process(0.02)
+	assert(dabs == [Vector2i(40, 40)])
+	brush.hover_tile = Vector2i(42, 42)
+	brush._process(0.3)
+	assert(dabs.back() == Vector2i(42, 42) and dabs.size() == 2)
+	brush._clear_selection()
+	brush._process(1.0)
+	assert(dabs.size() == 2)
+	brush.free()
 	# Shift changes the same in-progress path in either direction.
 	map.set_edit_enabled(true, "path", 1, true)
 	map.shift_rectangle_enabled = true

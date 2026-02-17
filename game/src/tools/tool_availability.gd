@@ -96,7 +96,7 @@ static func is_available(city: CityState, group_index: int, subtool_index: int) 
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 	if tool.is_empty():
 		return false
-	if group_index >= 15:
+	if group_index >= 15 or (group_index == 1 and subtool_index == 3):
 		return true
 	var result := inspect(city)
 	if not result.ok:

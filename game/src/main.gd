@@ -1402,7 +1402,7 @@ func _on_map_selection_canceled() -> void:
 	if status_label == null:
 		return
 	status_label.remove_theme_color_override("font_color")
-	status_label.text = "Selection canceled. No action was taken."
+	status_label.text = "Forest brush stopped. Use Undo to remove its last placement." if map_view.continuous_placement else "Selection canceled. No action was taken."
 
 
 func _on_map_selection_started() -> void:
@@ -3904,7 +3904,7 @@ func _auto_select_underground() -> void:
 func _select_subtool(index: int) -> void:
 	if terrain_stretch.active:
 		map_view.cancel_active_selection()
-	if not landscape_editor and LandscapeEditorCommand.supports_tool(selected_group, index):
+	if not landscape_editor and LandscapeEditorCommand.supports_tool(selected_group, index) and not (selected_group == 1 and index == 3):
 		return
 	if landscape_editor and (selected_group not in [0, 1, 16, 17] or (selected_group == 0 and index == 4)):
 		return
@@ -3968,7 +3968,12 @@ func _update_edit_state() -> void:
 			city, overlay_mode, selected_group, selected_subtool
 		)
 		selected_tool_available = bool(state.available)
-	map_view.shift_rectangle_enabled = bool(state.landscape) or (landscape_editor and selected_group == 0 and selected_subtool in [1, 2, 3])
+	map_view.shift_rectangle_enabled = (bool(state.landscape) and selected_subtool != 3) or (landscape_editor and selected_group == 0 and selected_subtool in [1, 2, 3])
+	map_view.continuous_placement = selected_group == 1 and selected_subtool == 3
+	map_view.shift_line_enabled = selected_group == 1 and selected_subtool in [0, 1]
+	if map_view.shift_line_enabled:
+		state.selection = "rectangle"
+		map_view.shift_rectangle_enabled = false
 	map_view.placement_validator = _placement_preview_valid
 	if landscape_editor and LandscapeEditorCommand.supports_tool(selected_group, selected_subtool):
 		state.enabled = true
@@ -4074,9 +4079,7 @@ func _apply_map_selection(
 			dispatch.available,
 		]
 		return
-	if LandscapeEditorCommand.supports_tool(selected_group, selected_subtool):
-		if not landscape_editor:
-			return
+	if LandscapeEditorCommand.supports_tool(selected_group, selected_subtool) and landscape_editor and not (selected_group == 1 and selected_subtool == 3):
 		var levels := map_view.stretch_height_delta if dragged else 1
 		if terrain_stretch.active:
 			_refresh_terrain_stretch(levels)

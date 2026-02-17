@@ -63,7 +63,7 @@ func show_tool_group(
 	var button_group := ButtonGroup.new()
 	var first_available_subtool := -1
 	for subtool_index in group.tools.size():
-		if not free_landscape and LandscapeEditorCommand.supports_tool(group_index, subtool_index):
+		if not free_landscape and LandscapeEditorCommand.supports_tool(group_index, subtool_index) and not (group_index == 1 and subtool_index == 3):
 			continue
 		if free_landscape and group_index == 0 and subtool_index == 4:
 			continue

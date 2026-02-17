@@ -146,6 +146,9 @@ static func normal(
 		selection = "rectangle"
 	elif is_landscape or is_network or is_highway or is_terrain:
 		selection = "path"
+	if group_index == 1 and subtool_index == 3:
+		selection = "point"
+		point_area = 7
 	var tool := Tools.tool(group_index, subtool_index)
 	return {
 		"available": available,
@@ -211,8 +214,10 @@ static func _normal_status_detail(
 		return "%s selected. Select an available type from the choice window." % tool_name
 	if is_zone:
 		return "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool_name
+	if group_index == 1 and subtool_index == 3:
+		return "Place Forest selected. Hold to scatter trees in a seven-tile brush. Each tree placement costs $3. Hold Shift to Query."
 	if is_landscape:
-		return "%s selected. Click or drag across eligible city tiles. Hold Shift to Query." % tool_name
+		return "%s selected. Drag to fill an area. Hold Shift to draw a line." % tool_name
 	if is_building:
 		return "%s selected. Click a clear city site to build it." % tool_name
 	if is_network:

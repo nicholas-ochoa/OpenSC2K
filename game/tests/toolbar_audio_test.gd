@@ -27,7 +27,25 @@ func _run() -> void:
 		main._apply_map_selection(point, point, path, false)
 		assert(_has_sound(main, 508), "Missing tractor sound for terrain tool %d" % tool)
 		await _clear(main)
+	for x in range(70, 77):
+		for y in range(70, 77):
+			main.city.set_terrain_id(x, y, 0)
+			main.city.set_building_id(x, y, 0)
+			main.city.set_tile_flag(x, y, 4, false)
+	# Both tree tools use the original tree plop in free landscape mode.
+	for subtool in [0, 3]:
+		main._select_tool_group(1)
+		main._select_subtool(subtool)
+		var point := Vector2i(70, 70)
+		var tree_path: Array[Vector2i] = [point]
+		if subtool == 3:
+			main.map_view._emit_brush_dab(point, false)
+		else:
+			main._apply_map_selection(point, point, tree_path, false)
+		assert(_has_sound(main, ToolSoundRules.SOUND_TREE))
+		await _clear(main)
 	main.city.set_sound_enabled(false)
+	main._select_tool_group(0)
 	main._select_subtool(2)
 	var muted_path: Array[Vector2i] = [Vector2i(60, 60)]
 	main._apply_map_selection(muted_path[0], muted_path[0], muted_path, false)

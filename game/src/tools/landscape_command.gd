@@ -22,7 +22,7 @@ const DIAGONAL_WATER_SHAPES := [0, 9, 10, 0, 11, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
 	return group_index == GROUP_NATURE and (
-		subtool_index == SUBTOOL_TREES or subtool_index == SUBTOOL_WATER
+		subtool_index in [SUBTOOL_TREES, SUBTOOL_WATER, 3]
 	)
 
 
@@ -65,7 +65,19 @@ static func apply_path(
 	var skipped_insufficient := 0
 	var random_state_before := random.state
 
-	for point in points:
+	var placement_points: Array[Vector2i] = points
+	if subtool_index == 3:
+		placement_points = []
+		var candidates: Array[Vector2i] = []
+		for x in range(-3, 4):
+			for y in range(-3, 4):
+				if x * x + y * y <= 10:
+					candidates.append(points[0] + Vector2i(x + 3, y + 3))
+		for attempt in 8 + random.next_u15() % 13:
+			var choice := random.next_u15() % candidates.size()
+			placement_points.append(candidates[choice])
+			candidates.remove_at(choice)
+	for point in placement_points:
 		var index := city.index_of(point.x, point.y)
 		if index < 0:
 			continue
@@ -73,7 +85,7 @@ static func apply_path(
 			skipped_insufficient += 1
 			continue
 		var applied := false
-		if subtool_index == SUBTOOL_TREES:
+		if subtool_index in [SUBTOOL_TREES, 3]:
 			applied = _place_tree(buildings, terrain, zones, flags, misc, index, random)
 		else:
 			applied = _place_water(
@@ -84,6 +96,7 @@ static func apply_path(
 			applied_indices.append(index)
 
 	if applied_indices.is_empty():
+		random.state = random_state_before
 		return {
 			"ok": false,
 			"error": "insufficient funds" if skipped_insufficient > 0 else "no eligible tiles changed",
