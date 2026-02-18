@@ -20,7 +20,7 @@ var _root := ""
 
 static func load_root(root: String) -> GraphicsPack:
 	var pack := GraphicsPack.new()
-	pack._root = root.simplify_path()
+	pack._root = (root.get_base_dir() if root.get_file() == "pack.json" else root).simplify_path()
 	pack._load()
 	return pack
 
@@ -46,15 +46,13 @@ func apply_to(assets: OriginalGameAssets) -> bool:
 
 
 func _load() -> void:
-	var manifest_path := _root.path_join("manifest.json")
+	var manifest_path := _root.path_join("pack.json")
 	if not FileAccess.file_exists(manifest_path):
-		manifest_path = _root.path_join("pack.json")
-	if not FileAccess.file_exists(manifest_path):
-		_fail("Missing manifest.json")
+		_fail("Missing pack.json")
 		return
 	var json := JSON.new()
 	if json.parse(FileAccess.get_file_as_string(manifest_path)) != OK or not json.data is Dictionary:
-		_fail("manifest.json must contain a JSON object")
+		_fail("pack.json must contain a JSON object")
 		return
 	var manifest: Dictionary = json.data
 	if manifest.get("format") != "opensc2k-graphics" or manifest.get("version") != 1:

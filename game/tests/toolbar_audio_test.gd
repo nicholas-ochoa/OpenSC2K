@@ -56,7 +56,7 @@ func _run() -> void:
 	main._apply_settings()
 	await process_frame
 	assert(main.settings_dialog.pack_error_label.visible)
-	assert(main.settings_dialog.pack_error_label.text.contains("manifest.json"))
+	assert(main.settings_dialog.pack_error_label.text.contains("pack.json"))
 	assert(main.app_sound_pack_folder == old_sound_folder)
 	main.queue_free()
 	await process_frame

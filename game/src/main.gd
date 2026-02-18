@@ -116,6 +116,7 @@ var app_music_pack_folder := ""
 var app_city_renderer := "gpu"
 var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
 var app_background_audio := false
+var app_settings_path := SettingsStore.SETTINGS_PATH
 var app_music_volume := 0.8
 var app_effects_volume := 0.8
 var app_fullscreen := false
@@ -405,7 +406,7 @@ func _import_original_game(executable_path: String) -> void:
 	app_graphics_source = "original"
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder,
 	)
 	if not runtime_initialized:
 		reference_root = install_result.root
@@ -861,14 +862,13 @@ func _set_city_renderer(value: String) -> void:
 
 func _open_settings_dialog() -> void:
 	settings_dialog.toolbar_sounds_check.button_pressed = app_toolbar_sounds
-	settings_dialog.sound_pack_edit.text = app_sound_pack_folder
-	settings_dialog.music_pack_edit.text = app_music_pack_folder
+	settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(app_sound_pack_folder)
+	settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(app_music_pack_folder)
 	settings_dialog.graphics_availability = GraphicsPackAvailability.inspect(
 		small_medium_sprites, large_sprites)
 	settings_dialog.show_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_graphics_source, app_graphics_folder, asset_source.graphics_name,
-		app_soundtrack_folder, audio_controller.resolve_soundtrack_folder(""), app_city_renderer, app_background_audio, app_zoom_graphics,
+		app_graphics_source, app_graphics_folder, app_city_renderer, app_background_audio, app_zoom_graphics,
 	)
 
 
@@ -879,11 +879,14 @@ func _apply_settings() -> void:
 		settings_dialog.show_pack_error(pack_error)
 		return
 	var changed_source: bool = values.graphics_source != app_graphics_source or values.graphics_folder != app_graphics_folder
+	var selected: GameAssetSource
 	if changed_source:
-		var selected := GameAssetSource.load_source(reference_root, values.graphics_source, values.graphics_folder)
+		selected = GameAssetSource.load_source(reference_root, values.graphics_source, values.graphics_folder)
 		if not selected.error.is_empty():
 			_show_graphics_source_error(selected.error)
 			return
+	if changed_source:
+		_apply_graphics_source(selected)
 	app_graphics_source = values.graphics_source
 	app_graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
@@ -894,7 +897,7 @@ func _apply_settings() -> void:
 	if audio_controller != null:
 		audio_controller.set_media_packs(app_sound_pack_folder, app_music_pack_folder)
 	app_background_audio = bool(values.background_audio)
-	app_soundtrack_folder = str(values.soundtrack_folder)
+	app_soundtrack_folder = ""
 	app_music_volume = float(values.music_volume)
 	app_effects_volume = float(values.effects_volume)
 	app_fullscreen = bool(values.fullscreen)
@@ -909,18 +912,63 @@ func _apply_settings() -> void:
 	)
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder,
 	)
 	status_label.text = (
-		("Settings saved. Restart OpenSC2K to use the selected graphics." if changed_source else "Settings saved.")
+		"Settings saved."
 		if error == OK
 		else "Settings applied, but the settings file could not be saved."
 	)
 
 
+func _apply_graphics_source(selected: GameAssetSource) -> void:
+	# wait for workers using the old archives
+	_close_region_cache()
+	if static_render_thread != null and static_render_thread.is_started():
+		static_render_thread.wait_to_finish()
+	static_render_thread = null
+	static_render_job = null
+	asset_source = selected
+	var assets := selected.assets
+	palette = assets.palette
+	scenario_palette = assets.scenario_palette
+	scenario_graphics = assets.scenario_graphics
+	scurk_graphics = assets.scurk_graphics
+	base_large_sprites = assets.large_sprites
+	base_small_medium_sprites = assets.small_medium_sprites
+	large_sprites = base_large_sprites
+	small_medium_sprites = base_small_medium_sprites
+	if active_scurk_tile_set != null:
+		large_sprites = SpriteArchive.combine([base_large_sprites, active_scurk_tile_set.overrides])
+		small_medium_sprites = SpriteArchive.combine([base_small_medium_sprites, active_scurk_tile_set.overrides])
+	_invalidate_sprite_art()
+	_update_palette_cycle_texture()
+	city_toolbar.replace_artwork(assets.toolbar_art)
+	_refresh_child_tool_icons()
+	CheckControlGraphics.apply_theme(theme, assets.city_ui_graphics)
+	CheckControlGraphics.apply_theme(settings_dialog.theme, assets.city_ui_graphics)
+	about_dialog.set_control_graphics(assets.city_ui_graphics)
+	new_city_dialog.set_control_graphics(assets.city_ui_graphics)
+	newspaper_dialog.set_control_graphics(assets.city_ui_graphics)
+	desktop_presentation.set_graphics(assets.desktop_graphics)
+	city_dialogs.original_assets = assets
+	industry_window.industry_control.set_icon_strip(assets.industry_icons)
+	simnation_window.simnation_control.set_sprite_sheet(assets.simnation_sprites)
+	city_map_window.set_resources(assets.city_map_icons, assets.strings)
+	forest_protest_dialog.set_picture(assets.forest_protest_image)
+	building_objection_dialog.set_picture(assets.forest_protest_image)
+	scurk_editor.configure(palette, base_large_sprites, base_small_medium_sprites, reference_root, scurk_graphics)
+	if scurk_place_print != null and scurk_place_print.visible:
+		scurk_place_print.configure(palette, large_sprites, active_scurk_tile_set.names if active_scurk_tile_set != null else {}, scurk_graphics)
+	main_menu.city_background.replace_graphics(palette, large_sprites)
+	settings_dialog.graphics_availability = GraphicsPackAvailability.inspect(small_medium_sprites, large_sprites)
+	settings_dialog._update_graphics_counts()
+	_refresh_map(false)
+
+
 func _load_app_settings() -> void:
 	var values := SettingsStore.load_values(
-		SettingsStore.SETTINGS_PATH,
+		app_settings_path,
 		app_music_volume,
 		app_effects_volume,
 		app_fullscreen,
@@ -1524,7 +1572,7 @@ func _on_options_menu(id: int) -> void:
 	if id in [CityMenuBar.MENU_RENDERER_GPU, CityMenuBar.MENU_RENDERER_CPU]:
 		_set_city_renderer("cpu" if id == CityMenuBar.MENU_RENDERER_CPU else "gpu")
 		var error := SettingsStore.save_values(app_music_volume, app_effects_volume, app_fullscreen,
-			SettingsStore.SETTINGS_PATH, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer)
+			app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer)
 		status_label.text = "Default renderer: %s%s" % [app_city_renderer.to_upper(), "" if error == OK else " (could not save preference)"]
 		return
 	if city == null:

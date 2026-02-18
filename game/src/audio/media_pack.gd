@@ -14,12 +14,14 @@ static func load_folder(folder: String, kind: String) -> MediaPack:
 	var pack := MediaPack.new()
 	var automatic := folder.strip_edges().is_empty()
 	var root := default_folder(kind) if automatic else folder.strip_edges()
-	var path := root.path_join("manifest.json")
+	if root.get_file() == "pack.json":
+		root = root.get_base_dir()
+	var path := root.path_join("pack.json")
 	if automatic and not FileAccess.file_exists(path):
 		return pack
 	var json := JSON.new()
 	if not FileAccess.file_exists(path) or json.parse(FileAccess.get_file_as_string(path)) != OK or not json.data is Dictionary:
-		pack.error = "Cannot read %s manifest.json: %s" % [kind, root]
+		pack.error = "Cannot read %s pack.json: %s" % [kind, root]
 		return pack
 	var data: Dictionary = json.data
 	if data.get("format") != "opensc2k-" + kind or data.get("version") != 1 or not data.get("name") is String or str(data.name).strip_edges().is_empty() or not data.get("files") is Dictionary:

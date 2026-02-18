@@ -13,12 +13,6 @@ var source_selector: OptionButton
 var folder_edit: LineEdit
 var folder_row: HBoxContainer
 var folder_dialog: FileDialog
-var active_source_label: Label
-
-var soundtrack_edit: LineEdit
-var soundtrack_dialog: FileDialog
-var soundtrack_status: Label
-var automatic_soundtrack_folder := ""
 
 var music_slider: HSlider
 var effects_slider: HSlider
@@ -78,47 +72,11 @@ func _ready() -> void:
 	settings_grid.add_child(background_audio_check)
 	settings_grid.add_child(Label.new())
 	toolbar_sounds_check = CheckBox.new()
-	toolbar_sounds_check.text = "Play toolbar click sounds"
+	toolbar_sounds_check.text = "Play toolbar sounds"
 	toolbar_sounds_check.button_pressed = true
 	settings_grid.add_child(toolbar_sounds_check)
-	sound_pack_edit = _pack_folder_row(settings_grid, "Sound pack folder", "sound")
-	music_pack_edit = _pack_folder_row(settings_grid, "Music pack folder", "music")
-	var soundtrack_label := Label.new()
-	soundtrack_label.text = "Soundtrack folder"
-	settings_grid.add_child(soundtrack_label)
-	var soundtrack_row := HBoxContainer.new()
-	soundtrack_edit = LineEdit.new()
-	soundtrack_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	soundtrack_edit.placeholder_text = "Automatic (OST in original-data folder)"
-	soundtrack_edit.text_changed.connect(func(_text: String) -> void: _update_soundtrack_status())
-	soundtrack_row.add_child(soundtrack_edit)
-	var soundtrack_browse := Button.new()
-	soundtrack_browse.text = "Browse..."
-	soundtrack_browse.pressed.connect(func() -> void:
-		var folder := soundtrack_edit.text.strip_edges()
-		if folder.is_empty():
-			folder = automatic_soundtrack_folder
-		if DirAccess.dir_exists_absolute(folder):
-			soundtrack_dialog.current_dir = folder
-		soundtrack_dialog.popup_centered_ratio(0.8)
-	)
-	soundtrack_row.add_child(soundtrack_browse)
-	settings_grid.add_child(soundtrack_row)
-	settings_grid.add_child(Label.new())
-	soundtrack_status = Label.new()
-	soundtrack_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	soundtrack_status.custom_minimum_size.x = 350
-	settings_grid.add_child(soundtrack_status)
-	soundtrack_dialog = FileDialog.new()
-	soundtrack_dialog.title = "Select soundtrack folder (MP3, FLAC or Ogg Vorbis)"
-	soundtrack_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
-	soundtrack_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	soundtrack_dialog.exclusive = true
-	soundtrack_dialog.dir_selected.connect(func(path: String) -> void:
-		soundtrack_edit.text = path
-		_update_soundtrack_status()
-	)
-	add_child(soundtrack_dialog)
+	sound_pack_edit = _pack_folder_row(settings_grid, "Sound Pack", "sound")
+	music_pack_edit = _pack_folder_row(settings_grid, "Music Pack", "music")
 	settings_grid = display_grid
 	var display_label := Label.new()
 	display_label.text = "Display"
@@ -128,7 +86,7 @@ func _ready() -> void:
 	fullscreen_check.text = "Fullscreen"
 	settings_grid.add_child(fullscreen_check)
 	var renderer_label := Label.new()
-	renderer_label.text = "Default city renderer"
+	renderer_label.text = "Renderer"
 	settings_grid.add_child(renderer_label)
 	renderer_selector = OptionButton.new()
 	renderer_selector.add_item("GPU (recommended)")
@@ -137,39 +95,48 @@ func _ready() -> void:
 	settings_grid.add_child(renderer_selector)
 	renderer_selector.item_selected.connect(func(_index: int) -> void: _update_graphics_counts())
 	settings_grid = _add_settings_tab("Graphics", true)
-	for zoom_index in AppSettingsStore.GRAPHICS_ZOOMS.size():
+	var zoom_grid := GridContainer.new()
+	zoom_grid.columns = 4
+	zoom_grid.add_theme_constant_override("h_separation", 12)
+	zoom_grid.add_theme_constant_override("v_separation", 14)
+	settings_grid.get_parent().add_child(zoom_grid)
+	settings_grid.get_parent().move_child(zoom_grid, 0)
+	zoom_graphics_selectors.resize(6)
+	zoom_graphics_counts.resize(6)
+	for zoom_index in [0, 3, 1, 4, 2, 5]:
 		var zoom_label := Label.new()
 		zoom_label.text = "%d%% zoom" % AppSettingsStore.GRAPHICS_ZOOMS[zoom_index]
-		settings_grid.add_child(zoom_label)
+		zoom_grid.add_child(zoom_label)
 		var selector := OptionButton.new()
 		for size_name: String in AppSettingsStore.GRAPHICS_SIZES:
 			selector.add_item(size_name)
-		selector.tooltip_text = "Higher zoom levels must use the same graphics size or a larger size. Raising this size also raises later selections when needed."
+		selector.tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
 		selector.item_selected.connect(func(_size: int) -> void: _update_zoom_graphics_choices())
-		zoom_graphics_selectors.append(selector)
+		zoom_graphics_selectors[zoom_index] = selector
 		var zoom_row := HBoxContainer.new()
+		zoom_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		zoom_row.add_child(selector)
 		var count_label := Label.new()
-		count_label.custom_minimum_size.x = 185
-		zoom_graphics_counts.append(count_label)
+		count_label.add_theme_color_override("font_color", Color("606060"))
+		zoom_graphics_counts[zoom_index] = count_label
 		zoom_row.add_child(count_label)
-		settings_grid.add_child(zoom_row)
+		zoom_grid.add_child(zoom_row)
 	var source_label := Label.new()
 	source_label.text = "Graphics"
 	settings_grid.add_child(source_label)
 	source_selector = OptionButton.new()
 	source_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for text in ["Automatic", "SimCity 2000", "Graphics pack folder"]:
+	for text in ["Automatic", "SimCity 2000", "Graphics pack"]:
 		source_selector.add_item(text)
 	source_selector.item_selected.connect(func(_index: int) -> void: _update_folder_visibility())
 	settings_grid.add_child(source_selector)
 	var folder_label := Label.new()
-	folder_label.text = "Pack folder"
+	folder_label.text = "Graphics pack"
 	settings_grid.add_child(folder_label)
 	folder_row = HBoxContainer.new()
 	folder_edit = LineEdit.new()
-	folder_edit.placeholder_text = "Folder containing manifest.json"
+	folder_edit.placeholder_text = "Select pack.json"
 	folder_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	folder_row.add_child(folder_edit)
 	var browse_button := Button.new()
@@ -178,8 +145,10 @@ func _ready() -> void:
 	folder_row.add_child(browse_button)
 	settings_grid.add_child(folder_row)
 	folder_row.set_meta("label", folder_label)
+	folder_dialog = _pack_picker("graphics", folder_edit)
+	settings_grid = _add_settings_tab("Import Data")
 	var import_label := Label.new()
-	import_label.text = "Original data"
+	import_label.text = "Original Data"
 	settings_grid.add_child(import_label)
 	var import_button := Button.new()
 	import_button.text = "Import SimCity 2000..."
@@ -188,21 +157,6 @@ func _ready() -> void:
 		import_original_requested.emit()
 	)
 	settings_grid.add_child(import_button)
-	active_source_label = Label.new()
-	active_source_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	active_source_label.custom_minimum_size.x = 590
-	var note := Label.new()
-	note.text = "Restart OpenSC2K to use a different graphics source."
-	folder_dialog = FileDialog.new()
-	folder_dialog.title = "Select a graphics pack folder"
-	folder_dialog.file_mode = FileDialog.FILE_MODE_OPEN_DIR
-	folder_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	folder_dialog.exclusive = true
-	folder_dialog.dir_selected.connect(func(path: String) -> void: folder_edit.text = path)
-	add_child(folder_dialog)
-	var graphics_page := settings_grid.get_parent()
-	graphics_page.add_child(active_source_label)
-	graphics_page.add_child(note)
 
 
 func _add_settings_tab(tab_title: String, scrollable := false) -> GridContainer:
@@ -229,8 +183,7 @@ func _add_settings_tab(tab_title: String, scrollable := false) -> GridContainer:
 
 func show_values(
 	music_volume: float, effects_volume: float, fullscreen: bool,
-	source := "auto", folder := "", active_name := "",
-	soundtrack_folder := "", automatic_folder := "", city_renderer := "gpu", background_audio := false, zoom_graphics: Array = AppSettingsStore.DEFAULT_ZOOM_GRAPHICS,
+	source := "auto", folder := "", city_renderer := "gpu", background_audio := false, zoom_graphics: Array = AppSettingsStore.DEFAULT_ZOOM_GRAPHICS,
 ) -> void:
 	pack_error_label.hide()
 	var normalized := AppSettingsStore.normalize_zoom_graphics(zoom_graphics)
@@ -239,16 +192,11 @@ func show_values(
 	_update_zoom_graphics_choices()
 	background_audio_check.button_pressed = background_audio
 	renderer_selector.select(1 if city_renderer == "cpu" else 0)
-	automatic_soundtrack_folder = automatic_folder
-	soundtrack_edit.text = soundtrack_folder
-	_update_soundtrack_status()
 	music_slider.value = clampf(music_volume, 0.0, 1.0) * 100.0
 	effects_slider.value = clampf(effects_volume, 0.0, 1.0) * 100.0
 	fullscreen_check.button_pressed = fullscreen
 	source_selector.select(maxi(0, GameAssetSource.MODES.find(source)))
-	folder_edit.text = folder
-	active_source_label.text = "Active graphics: " + active_name
-	active_source_label.visible = not active_name.is_empty()
+	folder_edit.text = pack_file_path(folder)
 	_update_folder_visibility()
 	_update_graphics_counts()
 	tabs.current_tab = 0
@@ -262,7 +210,6 @@ func selected_values() -> Dictionary:
 		"music_pack_folder": music_pack_edit.text.strip_edges(),
 		"zoom_graphics": _selected_zoom_graphics(),
 		"background_audio": background_audio_check.button_pressed,
-		"soundtrack_folder": soundtrack_edit.text.strip_edges(),
 		"city_renderer": "cpu" if renderer_selector.selected == 1 else "gpu",
 		"music_volume": float(music_slider.value) / 100.0,
 		"effects_volume": float(effects_slider.value) / 100.0,
@@ -276,19 +223,6 @@ func _update_folder_visibility() -> void:
 	var show_folder: bool = GameAssetSource.MODES[source_selector.selected] == "folder"
 	folder_row.visible = show_folder
 	(folder_row.get_meta("label") as Label).visible = show_folder
-
-
-func _update_soundtrack_status() -> void:
-	var folder := soundtrack_edit.text.strip_edges()
-	if folder.is_empty():
-		folder = automatic_soundtrack_folder
-	var tracks := 0
-	if DirAccess.dir_exists_absolute(folder):
-		for track_id in range(MusicDirector.FIRST_TRACK_ID, MusicDirector.FIRST_TRACK_ID + MusicDirector.TRACK_COUNT):
-			if not RecordedSoundtrack.find_tracks(folder, track_id).is_empty():
-				tracks += 1
-	soundtrack_status.text = "%d of 19 recordings found. Missing tracks use MIDI.\nChanges take effect when you apply. Leave blank for automatic selection." % tracks
-	soundtrack_status.tooltip_text = "Folder: " + folder
 
 
 func _selected_zoom_graphics() -> Array[int]:
@@ -328,16 +262,12 @@ func _pack_folder_row(grid: GridContainer, caption: String, kind: String) -> Lin
 	grid.add_child(row)
 	var edit := LineEdit.new()
 	edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	edit.placeholder_text = "Automatic (ext/%s)" % kind
+	edit.placeholder_text = "Automatic (ext/%s/pack.json)" % kind
 	row.add_child(edit)
 	var browse := Button.new()
 	browse.text = "Browse..."
 	row.add_child(browse)
-	var picker := FileDialog.new()
-	picker.file_mode = FileDialog.FILE_MODE_OPEN_DIR
-	picker.access = FileDialog.ACCESS_FILESYSTEM
-	add_child(picker)
-	picker.dir_selected.connect(func(path: String) -> void: edit.text = path)
+	var picker := _pack_picker(kind, edit)
 	browse.pressed.connect(func() -> void: picker.popup_centered_ratio(0.8))
 	return edit
 
@@ -348,3 +278,21 @@ func show_pack_error(message: String) -> void:
 	tabs.current_tab = 1
 	(tabs.get_child(1) as ScrollContainer).scroll_vertical = 0
 	call_deferred("popup_centered")
+
+
+static func pack_file_path(value: String) -> String:
+	if value.is_empty() or value.get_file() == "pack.json":
+		return value
+	return value.path_join("pack.json")
+
+
+func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
+	var picker := FileDialog.new()
+	picker.title = "Select %s pack.json" % kind
+	picker.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	picker.filters = PackedStringArray(["pack.json ; OpenSC2K pack"])
+	picker.access = FileDialog.ACCESS_FILESYSTEM
+	picker.exclusive = true
+	add_child(picker)
+	picker.file_selected.connect(func(path: String) -> void: edit.text = path)
+	return picker

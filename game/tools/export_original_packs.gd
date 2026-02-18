@@ -69,7 +69,7 @@ func _initialize() -> void:
 		var relative := "ui/%s.png" % pair[0]
 		_write_png("graphics/" + relative, decoded.width, decoded.height, decoded.pixels, palette)
 		manifest.ui[pair[0]] = relative
-	_write("graphics/manifest.json", JSON.stringify(manifest, "\t").to_utf8_buffer())
+	_write("graphics/pack.json", JSON.stringify(manifest, "\t").to_utf8_buffer())
 	var loaded := GraphicsPack.load_root(destination.path_join("graphics"))
 	assert(loaded.error.is_empty(), loaded.error)
 	for kind in ["sound", "music"]:
@@ -81,7 +81,7 @@ func _initialize() -> void:
 			var file := "%d.%s" % [id, extension]
 			_write(kind + "/" + file, FileAccess.get_file_as_bytes(source.path_join("SOUNDS/" + file)))
 			media.files[str(id)] = file
-		_write(kind + "/manifest.json", JSON.stringify(media, "\t").to_utf8_buffer())
+		_write(kind + "/pack.json", JSON.stringify(media, "\t").to_utf8_buffer())
 		assert(MediaPack.load_folder(destination.path_join(kind), kind).error.is_empty())
 	print("PASS: original graphics, 30 WAV sounds, and 19 MIDI tracks exported to " + destination)
 	quit()

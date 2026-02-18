@@ -5,7 +5,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var base := ProjectSettings.globalize_path("res://../ext")
-	if not FileAccess.file_exists(base.path_join("graphics/manifest.json")):
+	if not FileAccess.file_exists(base.path_join("graphics/pack.json")):
 		print("SKIP: export local examples with res://tools/export_original_packs.gd first")
 		quit()
 		return
@@ -30,6 +30,7 @@ func _run() -> void:
 	for kind in ["sound", "music"]:
 		var pack := MediaPack.load_folder(base.path_join(kind), kind)
 		assert(pack.error.is_empty(), pack.error)
+		assert(MediaPack.load_folder(base.path_join(kind + "/pack.json"), kind).error.is_empty())
 		assert(pack.files.size() == (30 if kind == "sound" else 19))
 		for path in pack.files.values():
 			assert(FileAccess.get_sha256(path) == FileAccess.get_sha256(ProjectSettings.globalize_path("res://../references/SOUNDS").path_join(path.get_file())))
@@ -79,7 +80,7 @@ func _run() -> void:
 	audio.stop_sound_effects()
 	await process_frame
 	audio.free()
-	for name in ["settings.cfg", "manifest.json"]:
+	for name in ["settings.cfg", "pack.json"]:
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary.path_join(name)))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(temporary))
 	await process_frame
@@ -87,5 +88,5 @@ func _run() -> void:
 	call_deferred("quit")
 
 func _write_manifest(folder: String, value: Dictionary) -> void:
-	var file := FileAccess.open(folder.path_join("manifest.json"), FileAccess.WRITE)
+	var file := FileAccess.open(folder.path_join("pack.json"), FileAccess.WRITE)
 	file.store_string(JSON.stringify(value))

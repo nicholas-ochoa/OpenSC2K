@@ -121,7 +121,7 @@ func _test_main() -> void:
 	main._open_settings_dialog()
 	assert(main.settings_dialog.visible)
 	for mode in GameAssetSource.MODES:
-		main.settings_dialog.show_values(0.2, 0.4, false, mode, "user://example-pack", main.asset_source.graphics_name)
+		main.settings_dialog.show_values(0.2, 0.4, false, mode, "user://example-pack")
 		assert(main.settings_dialog.selected_values().graphics_source == mode)
 		assert(main.settings_dialog.folder_row.visible == (mode == "folder"))
 	main.settings_dialog.hide()

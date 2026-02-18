@@ -37,7 +37,7 @@ static func load_source(reference_root: String, mode: String, folder := "", over
 		if mode == "folder":
 			pack_root = folder
 			if pack_root.is_empty():
-				result.error = "Choose a graphics pack folder."
+				result.error = "Choose a graphics pack.json file."
 				return result
 	if not pack_root.is_empty():
 		var pack := GraphicsPack.load_root(pack_root)

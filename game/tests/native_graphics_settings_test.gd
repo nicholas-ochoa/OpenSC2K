@@ -18,7 +18,7 @@ func _run() -> void:
 	assert(AppSettingsStore.load_values(path).zoom_graphics == values.zoom_graphics)
 	var dialog := AppSettingsDialog.new()
 	root.add_child(dialog)
-	dialog.show_values(0.5, 0.5, false, "folder", values.graphics_folder, "", "", "", "gpu", false, values.zoom_graphics)
+	dialog.show_values(0.5, 0.5, false, "folder", values.graphics_folder, "gpu", false, values.zoom_graphics)
 	for selector in dialog.zoom_graphics_selectors:
 		assert(selector.item_count == 3)
 	assert(dialog.selected_values().graphics_source == "folder")

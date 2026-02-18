@@ -261,3 +261,19 @@ static func camera_zoom(shot: int, pixel_scale: float) -> float:
 	# round the minimum up to a whole output pixel to keep camera motion crisp
 	var magnification := maxf(float(SHOT_MAGNIFICATIONS[shot % SHOT_MAGNIFICATIONS.size()]), ceilf(MINIMUM_ZOOM * pixel_scale))
 	return magnification / pixel_scale
+
+
+func replace_graphics(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
+	if render_thread != null:
+		render_thread.wait_to_finish()
+		render_thread = null
+	demo_palette = palette
+	demo_sprites = sprites
+	sprite_cache.clear()
+	dynamic_visuals.clear()
+	occlusion_commands.clear()
+	occlusion_grid.clear()
+	static_image = null
+	static_layer.texture = null
+	if demo_city != null:
+		_start_render()

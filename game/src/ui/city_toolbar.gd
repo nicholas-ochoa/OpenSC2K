@@ -306,6 +306,7 @@ func _icon_button(region: Rect2i, tooltip: String) -> Button:
 	var button := Button.new()
 	button.custom_minimum_size = Vector2(36, 30)
 	button.icon = _toolbar_icon(region)
+	button.set_meta("toolbar_region", region)
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	button.text = tooltip.left(1) if button.icon == null else ""
@@ -401,3 +402,19 @@ func _watch_buttons(node: Node) -> void:
 		node.child_entered_tree.connect(_watch_buttons)
 	for child in node.get_children():
 		_watch_buttons(child)
+
+
+func replace_artwork(value: Image) -> void:
+	toolbar_art = value
+	for index in toolbar_buttons.size():
+		toolbar_buttons[index].icon = group_icon(index)
+		toolbar_buttons[index].text = str(index + 1) if toolbar_buttons[index].icon == null else ""
+	_refresh_artwork_buttons(self)
+
+
+func _refresh_artwork_buttons(node: Node) -> void:
+	if node is Button and node.has_meta("toolbar_region"):
+		node.icon = _toolbar_icon(node.get_meta("toolbar_region"))
+		node.text = node.tooltip_text.left(1) if node.icon == null else ""
+	for child in node.get_children():
+		_refresh_artwork_buttons(child)
