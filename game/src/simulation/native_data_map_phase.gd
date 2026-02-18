@@ -62,9 +62,7 @@ static func run(city: CityState) -> Dictionary:
 				weights[index] = 12 if building >= 0xfb and building <= 0xfe else 2
 	var center := Vector2i(edge / 2, edge / 2) if center_count == 0 else Vector2i(center_sum.x / center_count, center_sum.y / center_count)
 	var ordinances := doc.misc_u32(PollutionPhase.MISC_ORDINANCES)
-	var divisor := doc.misc_i32(PollutionPhase.MISC_TREATMENT_SUFFICIENT) - doc.misc_i32(PollutionPhase.MISC_POLLUTION_BONUS) + 4
-	if ordinances & PollutionPhase.CLEAN_INDUSTRY_ORDINANCE:
-		divisor += 1
+	var divisor := PollutionPhase.pollution_divisor(doc)
 	var pollution := NativeGridMath.bytes(NativeGridMath.smooth(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice), city.simulation_slice)
 	residential = NativeGridMath.neighborhood(residential, edge, 2, 16, city.simulation_slice)
 	industrial = NativeGridMath.neighborhood(industrial, edge, 2, 16, city.simulation_slice)

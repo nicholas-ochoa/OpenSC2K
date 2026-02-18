@@ -117,14 +117,7 @@ static func run(city: CityState) -> Dictionary:
 						value += 200
 			temporary[temporary_row + y] = value
 
-	var base_divisor := (
-		city.document.misc_i32(MISC_TREATMENT_SUFFICIENT)
-		- city.document.misc_i32(MISC_POLLUTION_BONUS)
-		+ 4
-	)
-	if city.document.misc_u32(MISC_ORDINANCES) & CLEAN_INDUSTRY_ORDINANCE:
-		base_divisor += 1
-	base_divisor = maxi(base_divisor, 1)
+	var base_divisor := pollution_divisor(city.document)
 
 	var pollution := PackedByteArray()
 	pollution.resize(((map_edge / 2) * (map_edge / 2)))
@@ -426,6 +419,19 @@ static func _full_index(x: int, y: int, map_edge: int = 128) -> int:
 	return x * map_edge + y
 
 
+# sign-extend the low word, 0x0000ffff means -1 here
+static func pollution_divisor(document: Sc2File) -> int:
+	# 0x0046a9a3..0x0046aa02 calculates and compares a signed 16-bit word
+	# industryphase saves the low-word -1 as 0x0000ffff, not 0xffffffff
+	var value := document.misc_u32(MISC_TREATMENT_SUFFICIENT) - document.misc_u32(MISC_POLLUTION_BONUS) + 4
+	if document.misc_u32(MISC_ORDINANCES) & CLEAN_INDUSTRY_ORDINANCE:
+		value += 1
+	value &= 0xffff
+	if value >= 0x8000:
+		value -= 0x10000
+	return maxi(value, 1)
+
+
 static func _average_service_grid(
 	values: PackedInt32Array, x: int, y: int, x_offset: int,
 	map_edge: int = 128,
@@ -433,11 +439,14 @@ static func _average_service_grid(
 	var center_index := (x + x_offset) * map_edge + y
 	var total := values[center_index]
 	var divisor := 1
+	# the original industrial branch uses residential x-neighbors, but keeps
+	# the industrial center and y-neighbors (0x0046aff1..0x0046b051)
+	var neighbor_row := x * map_edge + y
 	if x > 0:
-		total += values[center_index - map_edge]
+		total += values[neighbor_row - map_edge]
 		divisor += 1
 	if x < (map_edge / 4) - 1:
-		total += values[center_index + map_edge]
+		total += values[neighbor_row + map_edge]
 		divisor += 1
 	if y > 0:
 		total += values[center_index - 1]
