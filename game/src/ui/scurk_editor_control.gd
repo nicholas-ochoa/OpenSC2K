@@ -295,9 +295,13 @@ func request_export_bmp() -> void:
 
 
 func import_bmp_path(path: String) -> Dictionary:
+	return import_image_path(path)
+
+
+func import_image_path(path: String) -> Dictionary:
 	if tile_set == null or current_large_id < 0:
 		return {"ok": false, "error": "No SCURK object is selected."}
-	var imported := IndexedBitmap.load_path(path, palette)
+	var imported := ScurkImageImport.load_path(path, palette)
 	if not imported.ok:
 		return imported
 	if imported.width > 128 or imported.height > 256:

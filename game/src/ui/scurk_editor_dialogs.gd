@@ -36,7 +36,8 @@ func _create_dialogs() -> void:
 	import_bmp_dialog = FileDialog.new()
 	import_bmp_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	import_bmp_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	import_bmp_dialog.add_filter("*.BMP, *.bmp", "Windows indexed bitmaps")
+	import_bmp_dialog.title = "Import indexed PNG or BMP"
+	import_bmp_dialog.add_filter("*.BMP, *.bmp, *.PNG, *.png", "Indexed images (BMP, PNG)")
 	add_child(import_bmp_dialog)
 
 	export_bmp_dialog = FileDialog.new()

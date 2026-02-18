@@ -33,7 +33,7 @@ func build() -> void:
 	var actions := {}
 	for entry in [
 		["Open...", "open"], ["Save", "save"], ["Save As...", "save_as"],
-		["Import BMP...", "import_bmp"], ["Export BMP...", "export_bmp"],
+		["Import Image...", "import_bmp"], ["Export BMP...", "export_bmp"],
 		["Pick & Copy...", "pick_copy"], ["Undo", "undo"], ["Redo", "redo"],
 		["Revert Object", "revert"], ["Clear Object", "clear"],
 		["Apply to City", "apply"], ["Place & Print", "place_print"], ["Close", "close"],

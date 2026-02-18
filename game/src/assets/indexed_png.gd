@@ -6,13 +6,13 @@ const SIGNATURE := [137, 80, 78, 71, 13, 10, 26, 10]
 const MAX_DIMENSION := 4096
 
 
-static func load_path(path: String) -> Dictionary:
+static func load_path(path: String, strict_palette := true) -> Dictionary:
 	if not FileAccess.file_exists(path):
 		return _failure("PNG file does not exist: %s" % path)
-	return decode(FileAccess.get_file_as_bytes(path))
+	return decode(FileAccess.get_file_as_bytes(path), strict_palette)
 
 
-static func decode(bytes: PackedByteArray) -> Dictionary:
+static func decode(bytes: PackedByteArray, strict_palette := true) -> Dictionary:
 	if bytes.size() < 8 or bytes.slice(0, 8) != PackedByteArray(SIGNATURE):
 		return _failure("Invalid PNG signature")
 	var rewritten := bytes.slice(0, 8)
@@ -21,6 +21,8 @@ static func decode(bytes: PackedByteArray) -> Dictionary:
 	alpha.resize(256)
 	alpha.fill(255)
 	var position := 8
+	var palette_count := 0
+	var bit_depth := 8
 	var width := 0
 	var height := 0
 	var has_data := false
@@ -48,22 +50,26 @@ static func decode(bytes: PackedByteArray) -> Dictionary:
 				height = _u32(payload, 4)
 				if width < 1 or height < 1 or width > MAX_DIMENSION or height > MAX_DIMENSION:
 					return _failure("PNG dimensions must be 1 through 4096")
-				if payload[8] != 8 or payload[9] != 3:
-					return _failure("PNG must use 8-bit indexed color")
+				bit_depth = payload[8]
+				if payload[9] != 3 or bit_depth not in [1, 2, 4, 8] or (strict_palette and bit_depth != 8):
+					return _failure("PNG must use 8-bit indexed color" if strict_palette else "PNG must use 1-, 2-, 4-, or 8-bit indexed color")
 				if payload[10] != 0 or payload[11] != 0 or payload[12] > 1:
 					return _failure("Unsupported PNG encoding")
 			"PLTE":
-				if not palette.colors.is_empty() or has_data or has_alpha or length != 768:
-					return _failure("PNG must have one 256-color palette before pixel data")
-				for index in 256:
+				if not palette.colors.is_empty() or has_data or has_alpha or length == 0 or length % 3 != 0 or length / 3 > (1 << bit_depth) or (strict_palette and length != 768):
+					return _failure("PNG must have one 256-color palette before pixel data" if strict_palette else "PNG must have one valid indexed palette before pixel data")
+				palette_count = length / 3
+				for index in palette_count:
 					palette.colors.append(Color8(payload[index * 3], payload[index * 3 + 1], payload[index * 3 + 2]))
 					# decode the palette index as gray so equal rgb colors don't merge
 					# decode the index itself as gray, rather than map rgb back to a color
 					payload[index * 3] = index
 					payload[index * 3 + 1] = index
 					payload[index * 3 + 2] = index
+				while palette.colors.size() < 256:
+					palette.colors.append(Color.BLACK)
 			"tRNS":
-				if has_alpha or has_data or not palette.is_valid() or length < 1 or length > 256:
+				if has_alpha or has_data or not palette.is_valid() or length < 1 or length > palette_count:
 					return _failure("Invalid PNG transparency table")
 				has_alpha = true
 				for index in length:
@@ -103,6 +109,8 @@ static func decode(bytes: PackedByteArray) -> Dictionary:
 	pixels.resize(width * height)
 	for index in pixels.size():
 		var value := int(rgba[index * 4])
+		if value >= palette_count:
+			return _failure("PNG pixel is outside its palette")
 		pixels[index] = value if alpha[value] == 255 else -1
 	return {"ok": true, "error": "", "width": width, "height": height,
 		"pixels": pixels, "palette": palette}
