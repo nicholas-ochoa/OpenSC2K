@@ -43,7 +43,9 @@ func _create_dialogs() -> void:
 	export_bmp_dialog = FileDialog.new()
 	export_bmp_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	export_bmp_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
-	export_bmp_dialog.add_filter("*.BMP, *.bmp", "Windows indexed bitmaps")
+	export_bmp_dialog.title = "Export Image"
+	export_bmp_dialog.add_filter("*.png", "256-color indexed PNG")
+	export_bmp_dialog.add_filter("*.gif", "Animated GIF (palette cycling)")
 	add_child(export_bmp_dialog)
 
 	discard_dialog = ConfirmationDialog.new()

@@ -39,6 +39,13 @@ func _run() -> void:
 		editor._refresh_sprite()
 		var before: PackedByteArray = editor.tile_set.to_bytes().bytes
 		assert(editor.import_image_path(path).ok)
+		var png_export := folder.path_join("view-%d.png" % view)
+		var gif_export := folder.path_join("view-%d.gif" % view)
+		assert(editor.export_image_path(png_export).ok)
+		assert(editor.export_image_path(gif_export).ok)
+		assert(IndexedPng.load_path(png_export).pixels == editor._active_output_shape().pixels)
+		DirAccess.remove_absolute(png_export)
+		DirAccess.remove_absolute(gif_export)
 		var after: PackedByteArray = editor.tile_set.to_bytes().bytes
 		assert(after != before and editor.dirty)
 		assert(editor._active_output_shape().pixels.has(171))

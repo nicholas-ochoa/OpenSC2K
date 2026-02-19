@@ -288,7 +288,7 @@ func request_export_bmp() -> void:
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	export_bmp_dialog.current_dir = output_directory
 	var view_name: String = ["LARGE", "MEDIUM", "SMALL"][current_view]
-	export_bmp_dialog.current_file = "OBJECT_%03d_%s.BMP" % [
+	export_bmp_dialog.current_file = "OBJECT_%03d_%s.png" % [
 		object_tile_id(current_large_id), view_name,
 	]
 	export_bmp_dialog.popup_centered_ratio(0.75)
@@ -316,6 +316,39 @@ func import_image_path(path: String) -> Dictionary:
 		"Imported %s" % path.get_file(),
 		imported.remapped_color_count
 	)
+
+
+func export_image_path(path: String) -> Dictionary:
+	if pixel_canvas == null or pixel_canvas.sprite_width <= 0:
+		return {"ok": false, "error": "No SCURK sprite is available to export."}
+	var output_path := ProjectSettings.globalize_path(path).simplify_path()
+	if output_path.get_extension().is_empty():
+		output_path += ".gif" if export_bmp_dialog.current_filter == 1 else ".png"
+	if path_is_within(output_path, reference_directory):
+		return {"ok": false, "error": "The original game data folder is read-only. Use another folder."}
+	var shape := _active_output_shape()
+	if not shape.ok:
+		return shape
+	var encoded: Dictionary
+	match output_path.get_extension().to_lower():
+		"png": encoded = IndexedPng.encode(shape.width, shape.height, shape.pixels, palette)
+		"gif": encoded = IndexedGif.encode_cycle(shape.width, shape.height, shape.pixels, palette)
+		_: return {"ok": false, "error": "Choose PNG or GIF as the image format."}
+	if not encoded.ok:
+		return encoded
+	var error := DirAccess.make_dir_recursive_absolute(output_path.get_base_dir())
+	if error != OK:
+		return {"ok": false, "error": "Cannot create the export folder."}
+	var file := FileAccess.open(output_path, FileAccess.WRITE)
+	if file == null:
+		return {"ok": false, "error": "Cannot open the export file."}
+	file.store_buffer(encoded.bytes)
+	error = file.get_error()
+	file.close()
+	if error != OK:
+		return {"ok": false, "error": "Cannot write the export file."}
+	_set_status("Exported image to %s." % output_path.get_file())
+	return {"ok": true, "error": "", "path": output_path}
 
 
 func export_bmp_path(path: String) -> Dictionary:
@@ -1351,7 +1384,7 @@ func _import_selected_bmp(path: String) -> void:
 
 
 func _export_selected_bmp(path: String) -> void:
-	var result := export_bmp_path(path)
+	var result := export_image_path(path)
 	if not result.ok:
 		_show_error(result.error)
 
