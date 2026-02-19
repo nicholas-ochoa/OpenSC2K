@@ -63,7 +63,7 @@ const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
 const DebugActions = preload("res://src/debug/city_debug_actions.gd")
 
-const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "crime", "water", "power"]
+const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "crime", "water", "power", "height"]
 const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
 const MENU_AUTO_BUDGET := CityMenuBarView.MENU_AUTO_BUDGET

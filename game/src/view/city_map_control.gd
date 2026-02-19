@@ -108,6 +108,8 @@ var data_view_mode := ""
 var data_view_mesh: ArrayMesh
 var data_view_layer: MeshInstance2D
 var data_view_signature: Array = []
+var data_geometry_signature: Array = []
+var data_value_texture: ImageTexture
 
 var hover_tile := Vector2i(-1, -1)
 var transient_effects: Array[Dictionary] = []
@@ -149,11 +151,12 @@ func _ready() -> void:
 
 
 func set_data_view(value: CityState, mode: String) -> void:
+	var mode_changed := data_view_mode != mode
 	var signature := CityDataView.signature(value, mode)
-	if data_view_signature != signature:
-		data_view_mesh = CityDataView.create_mesh(value, mode)
-		data_view_signature = signature
-	data_view_mode = mode
+	var geometry_signature := CityDataView.geometry_signature(value, mode)
+	if data_geometry_signature != geometry_signature:
+		data_view_mesh = CityDataView.create_mesh(value, mode, true)
+		data_geometry_signature = geometry_signature
 	if data_view_layer == null:
 		data_view_layer = MeshInstance2D.new()
 		data_view_layer.name = "TileDataLayer"
@@ -164,10 +167,25 @@ func set_data_view(value: CityState, mode: String) -> void:
 		grid_material.shader = shader
 		data_view_layer.material = grid_material
 		add_child(data_view_layer)
+	var material := data_view_layer.material as ShaderMaterial
+	material.set_shader_parameter("map_edge", float(value.map_size))
+	if data_view_signature != signature:
+		var image := CityDataView.value_image(value, mode)
+		if data_value_texture != null and Vector2i(data_value_texture.get_size()) == image.get_size():
+			data_value_texture.update(image)
+		else:
+			data_value_texture = ImageTexture.create_from_image(image)
+		material.set_shader_parameter("tile_values", data_value_texture)
+		data_view_signature = signature
+	if data_view_mode != mode:
+		material.set_shader_parameter("value_colors", ImageTexture.create_from_image(CityDataView.color_image(mode)))
+	data_view_mode = mode
 	data_view_layer.mesh = data_view_mesh
 	var placeholder := PlaceholderTexture2D.new()
 	placeholder.size = Renderer.output_size_for_view(Renderer.VIEW_LARGE, value.map_size)
 	set_city_view(value, placeholder)
+	if mode_changed and hover_tile.x >= 0:
+		hover_tile = _tile_at(get_local_mouse_position())
 	queue_redraw()
 
 func clear_data_view() -> void:
@@ -179,6 +197,8 @@ func clear_data_view() -> void:
 		data_view_layer.hide()
 		data_view_layer.mesh = null
 	data_view_signature.clear()
+	data_geometry_signature.clear()
+	data_value_texture = null
 	if _dynamic_canvas != null:
 		_dynamic_canvas.show()
 	_sync_base_layer()
@@ -186,21 +206,51 @@ func clear_data_view() -> void:
 
 func _draw_data_view(scale: float, offset: Vector2) -> void:
 	if hover_tile.x >= 0:
-		var outline := Renderer.terrain_surface_polygon(city, hover_tile.x, hover_tile.y)
+		var outline := CityDataView.surface_polygon(city, hover_tile.x, hover_tile.y, data_view_mode == "height")
 		for index in outline.size():
 			outline[index] = offset + outline[index] * scale
 		if not outline.is_empty():
 			outline.append(outline[0])
 			draw_polyline(outline, Color.WHITE, 1.0)
-	var title: String = CityDataView.TITLES[CityDataView.MODES.find(data_view_mode)]
-	var lines := [title, CityDataView.legend(data_view_mode), CityDataView.tile_text(city, data_view_mode, hover_tile)]
+	_draw_data_key()
+	if hover_tile.x >= 0:
+		var text := CityDataView.tile_text(city, data_view_mode, hover_tile, _shift_pressed)
+		var font := ThemeDB.fallback_font
+		var lines := text.split("\n")
+		var width := 0.0
+		for line in lines:
+			width = maxf(width, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x)
+		var extent := Vector2(width + 20, lines.size() * 24 + 8)
+		var position := get_local_mouse_position() + Vector2(18, 24)
+		position.x = clampf(position.x, 4, maxf(4, size.x - extent.x - 4))
+		position.y = clampf(position.y, 4, maxf(4, size.y - extent.y - 4))
+		draw_style_box(_data_legend_box(), Rect2(position, extent))
+		for index in lines.size():
+			draw_string(font, position + Vector2(10, 22 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+
+func _draw_data_key() -> void:
 	var font := ThemeDB.fallback_font
-	var width := 0.0
-	for line in lines:
-		width = maxf(width, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x)
-	draw_style_box(_data_legend_box(), Rect2(Vector2(12, 12), Vector2(width + 24, 80)))
-	for index in lines.size():
-		draw_string(font, Vector2(24, 34 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+	var origin := Vector2(maxf(8, size.x - 332), maxf(8, size.y - (128 if data_view_mode == "height" else 108)))
+	draw_style_box(_data_legend_box(), Rect2(origin, Vector2(320, 116 if data_view_mode == "height" else 96)))
+	var title: String = CityDataView.TITLES[CityDataView.MODES.find(data_view_mode)]
+	draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+	if data_view_mode in ["water", "power"]:
+		for index in 3:
+			var position := origin + Vector2(12 + index * 100, 38)
+			draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(index, data_view_mode))
+			draw_string(font, position + Vector2(0, 38), ["No link", "No supply", "Supplied"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+	else:
+		for index in 32:
+			var number := index if data_view_mode == "height" else roundi(index * 255.0 / 31)
+			draw_rect(Rect2(origin + Vector2(12 + index * 9.25, 38), Vector2(9.25, 20)), CityDataView.color(number, data_view_mode))
+		if data_view_mode == "height":
+			draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
+			draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+		var low := "Level 1" if data_view_mode == "height" else "Very low"
+		var high := "Level 32" if data_view_mode == "height" else "Very high"
+		draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
+		draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 
 func _data_legend_box() -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
@@ -962,6 +1012,8 @@ func _draw_raised_sign_part(rect: Rect2, fill: Color, multiplier: float) -> void
 
 
 func _gui_input(event: InputEvent) -> void:
+	if not data_view_mode.is_empty() and event is InputEventMouseMotion:
+		queue_redraw()
 	if city_texture == null:
 		return
 	if event is InputEventMouseButton:
@@ -1162,7 +1214,7 @@ func _clear_hover() -> void:
 func _tile_at(local_point: Vector2) -> Vector2i:
 	var scale := _view_scale()
 	var source_point := (local_point - _draw_offset(scale)) / scale
-	return Renderer.screen_to_tile(city, source_point)
+	return Renderer.screen_to_tile(city, source_point, data_view_mode == "height")
 
 
 func _change_zoom(direction: int, local_point: Vector2) -> bool:
@@ -1184,6 +1236,8 @@ func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	_clamp_source_center()
 	_sync_base_layer()
 	zoom_changed.emit(zoom_percent())
+	if not data_view_mode.is_empty() and hover_tile.x >= 0:
+		hover_tile = _tile_at(get_local_mouse_position())
 	queue_redraw()
 	viewport_changed.emit()
 	return true

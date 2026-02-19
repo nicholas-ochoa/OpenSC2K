@@ -99,7 +99,7 @@ func _ready() -> void:
 	view_menu = _add_menu(menu_row, "View", [
 		["City View", 0], ["Underground View", 1],
 		["Land Value", 2], ["Pollution", 3], ["Crime", 4],
-		["Water Supply", 5], ["Power Supply", 6],
+		["Water Supply", 5], ["Power Supply", 6], ["Height", 7],
 		["City Map...", MENU_VIEW_CITY_MAP],
 	], _on_view_menu)
 	for index in 7:

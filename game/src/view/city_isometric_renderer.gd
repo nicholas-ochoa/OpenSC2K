@@ -454,12 +454,12 @@ static func output_size_for_view(view_size: int, map_edge: int = 128) -> Vector2
 	return (IMAGE_SIZE_LARGE + Vector2i((map_edge - 128) * 32, (map_edge - 128) * 16)) / int(configuration.divisor)
 
 
-static func tile_polygon(city: CityState, x: int, y: int) -> PackedVector2Array:
+static func tile_polygon(city: CityState, x: int, y: int, land_surface := false) -> PackedVector2Array:
 	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return PackedVector2Array()
 	var altitude := city.land_altitude(x, y)
-	if city.terrain_id(x, y) >= 0x10:
+	if not land_surface and city.terrain_id(x, y) >= 0x10:
 		altitude = city.water_altitude(x, y)
 	var origin_x := SIDE_MARGIN + map_edge * HALF_WIDTH
 	var left := Vector2(
@@ -475,14 +475,14 @@ static func tile_polygon(city: CityState, x: int, y: int) -> PackedVector2Array:
 
 
 static func terrain_surface_polygon(
-	city: CityState, x: int, y: int
+	city: CityState, x: int, y: int, land_surface := false
 ) -> PackedVector2Array:
-	var polygon := tile_polygon(city, x, y)
+	var polygon := tile_polygon(city, x, y, land_surface)
 	if polygon.size() != 4:
 		return polygon
 	var terrain := city.terrain_id(x, y)
 	# shoreline art can show the seabed, but its selectable surface is flat water
-	if terrain < 0 or terrain >= 0x10:
+	if terrain < 0 or (not land_surface and terrain >= 0x10):
 		return polygon
 	var shape := terrain & 0x0f
 	if shape >= TERRAIN_SURFACE_CORNER_MASKS.size():
@@ -495,7 +495,7 @@ static func terrain_surface_polygon(
 
 
 # try the heights and keep the front tile; one inverse transform isn't enough
-static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
+static func screen_to_tile(city: CityState, point: Vector2, land_surface := false) -> Vector2i:
 	var map_edge: int = city.map_size if city != null else 128
 	if city == null or not city.is_valid():
 		return Vector2i(-1, -1)
@@ -526,9 +526,10 @@ static func screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
 		var x: int = int(index) / map_edge
 		var y: int = int(index) % map_edge
 		var order := (x + y) * map_edge + y
-		if not city.tile_is_visible(x, y) or order <= result_order:
+		var visible := city.land_altitude(x, y) < city.visible_altitude_levels if land_surface else city.tile_is_visible(x, y)
+		if not visible or order <= result_order:
 			continue
-		var polygon := terrain_surface_polygon(city, x, y)
+		var polygon := terrain_surface_polygon(city, x, y, land_surface)
 		if Geometry2D.is_point_in_polygon(point, polygon):
 			result = Vector2i(x, y)
 			result_order = order
