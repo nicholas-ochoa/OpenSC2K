@@ -76,9 +76,9 @@ static func run(city: CityState) -> Dictionary:
 	var usage_percent := 100
 	if total_supply != 0:
 		usage_percent = int(watered_consumers * 100 / total_supply)
-	var treatment_tile_count := _to_i16(
-		city.document.misc_u32(MISC_TILE_COUNTS + WATER_TREATMENT * 4) & (0xffff if map_edge == 128 else 0xffffffff)
-	)
+	var treatment_tile_count := city.document.misc_u32(MISC_TILE_COUNTS + WATER_TREATMENT * 4)
+	if not city.document.is_extended():
+		treatment_tile_count = _to_i16(treatment_tile_count)
 	var treatment_capacity := int(treatment_tile_count / 4) * 2000
 	var treatment_sufficient := watered_consumers <= treatment_capacity
 	if not city.document.set_misc_u32(

@@ -385,7 +385,9 @@ static func run(
 				)
 				var prison_stat := _divide_toward_zero(prisoners, 100)
 				_write_u16_be(microsims, offset + 6, prison_stat)
-				prison_population = (prison_population + _to_i16(prison_stat)) & 0xffff
+				prison_population += _to_i16(prison_stat)
+				if not city.document.is_extended():
+					prison_population &= 0xffff
 				if prison_stat < 91:
 					microsims[offset + 1] = 0
 				else:

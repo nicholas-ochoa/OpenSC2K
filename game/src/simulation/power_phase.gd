@@ -77,6 +77,7 @@ static func _trace_component(
 	var tiles := PackedInt32Array()
 	var capacity := 0
 	var consumers := 0
+	var extended_consumers := city.document.is_extended()
 	while queue_position < queue.size():
 		if city.simulation_slice != null and (queue_position & 127) == 0:
 			city.simulation_slice.checkpoint()
@@ -91,7 +92,7 @@ static func _trace_component(
 		var building := city.buildings[index]
 		if building >= FIRST_PLANT and building <= LAST_PLANT:
 			capacity += _plant_capacity(city, building, x, y, random)
-		elif building >= FIRST_CONSUMER:
+		elif building >= FIRST_CONSUMER and (extended_consumers or building < FIRST_PLANT):
 			consumers += 1
 
 		if y > 0:
