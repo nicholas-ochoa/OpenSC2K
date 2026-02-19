@@ -116,6 +116,7 @@ var app_music_pack_folder := ""
 var app_city_renderer := "gpu"
 var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
 var app_background_audio := false
+var app_shuffle_music := false
 var app_settings_path := SettingsStore.SETTINGS_PATH
 var app_music_volume := 0.8
 var app_effects_volume := 0.8
@@ -125,6 +126,7 @@ var app_graphics_folder := ""
 var asset_source: GameAssetSource
 var reference_root := ""
 var runtime_initialized := false
+var assets_ready := false
 var reference_import_dialog: FileDialog
 var reference_import_error_dialog: AcceptDialog
 var graphics_source_error_dialog: AcceptDialog
@@ -281,16 +283,17 @@ func _initialize_runtime() -> void:
 	asset_source = GameAssetSource.load_source(
 		reference_root, mode, app_graphics_folder, OS.get_environment("OPENSC2K_GRAPHICS_PACK")
 	)
-	var source_error := asset_source.error
-	if not source_error.is_empty():
-		asset_source = GameAssetSource.load_source(reference_root, "original")
-	if not asset_source.error.is_empty():
-		_show_reference_import_error(asset_source.error)
-		return
+	assets_ready = asset_source.error.is_empty()
+	if assets_ready:
+		reference_root = asset_source.reference_root
+	else:
+		asset_source.assets = OriginalGameAssets.new()
+		asset_source.use_original_data = false
 	runtime_initialized = true
 	new_city_session.independent_template = not asset_source.use_original_data
 	audio_controller = CityAudio.new()
 	audio_controller.background_audio = app_background_audio
+	audio_controller.set_shuffle_music(app_shuffle_music)
 	audio_controller.music_activity_changed.connect(_on_music_activity_changed)
 	audio_controller.music_notice.connect(func(message: String) -> void:
 		if city_status_bar != null:
@@ -300,9 +303,9 @@ func _initialize_runtime() -> void:
 	audio_controller.setup(
 		reference_root, app_music_volume, app_effects_volume, asset_source.use_original_data
 	)
-	if not audio_controller.set_media_packs(app_sound_pack_folder, app_music_pack_folder):
-		settings_dialog.show_pack_error(CityAudioController.validate_media_packs(app_sound_pack_folder, app_music_pack_folder))
-	audio_controller.set_soundtrack_folder(app_soundtrack_folder)
+	if assets_ready:
+		audio_controller.set_media_packs(app_sound_pack_folder, app_music_pack_folder)
+		audio_controller.set_soundtrack_folder(app_soundtrack_folder)
 	newspaper_session_seed = Time.get_ticks_msec() & 0xffff
 	if newspaper_session_seed & 0x8000:
 		newspaper_session_seed -= 0x10000
@@ -340,8 +343,7 @@ func _initialize_runtime() -> void:
 	_refresh_child_tool_icons()
 
 	_show_main_menu()
-	if not source_error.is_empty():
-		_show_graphics_source_error(source_error + "\n\nSimCity 2000 graphics are active. Choose a source in Settings.")
+
 
 
 func _build_reference_import_dialogs() -> void:
@@ -383,7 +385,7 @@ func _show_reference_import_dialog() -> void:
 
 func _on_reference_import_canceled() -> void:
 	if settings_dialog != null:
-		_open_settings_dialog()
+		_open_import_settings()
 
 
 func _show_reference_import_error(message: String) -> void:
@@ -394,27 +396,34 @@ func _show_reference_import_error(message: String) -> void:
 
 
 func _import_original_game(executable_path: String) -> void:
-	var destination := ProjectSettings.globalize_path("user://original_game").simplify_path()
-	var install_result := OriginalInstaller.install_from_executable(
-		executable_path, destination
+	var install_result := OriginalPackImporter.import_executable(
+		executable_path, ProjectSettings.globalize_path("user://packs"), ProjectSettings.globalize_path("user://")
 	)
 	if not install_result.ok:
 		_show_reference_import_error(install_result.error)
 		return
+	var selected := GameAssetSource.load_source(install_result.root, "folder", install_result.graphics)
+	if not selected.error.is_empty():
+		_show_reference_import_error(selected.error)
+		return
 	reference_import_dialog.hide()
 	reference_import_error_dialog.hide()
-	app_graphics_source = "original"
+	app_graphics_source = "folder"
+	app_graphics_folder = install_result.graphics
+	app_sound_pack_folder = install_result.sound
+	app_music_pack_folder = install_result.music
+	app_soundtrack_folder = ""
+	_apply_graphics_source(selected)
+	audio_controller.set_media_packs(app_sound_pack_folder, app_music_pack_folder)
+	audio_controller.set_soundtrack_folder("")
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music,
 	)
-	if not runtime_initialized:
-		reference_root = install_result.root
-		_initialize_runtime()
-	if status_label != null:
-		status_label.text = "Original data imported. Restart OpenSC2K to use it."
+	_open_import_settings()
+	status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
 	if saved != OK:
-		_show_error("Original data imported, but the graphics preference could not be saved.")
+		_show_error("Packs imported, but their preferences could not be saved.")
 
 
 func _notification(what: int) -> void:
@@ -431,7 +440,7 @@ func _process(delta: float) -> void:
 	_update_keyboard_camera(delta)
 	if audio_controller != null:
 		audio_controller.set_menu_music(
-			main_menu != null and main_menu.visible and app_music_volume > 0.0
+			assets_ready and main_menu != null and main_menu.visible and app_music_volume > 0.0
 			and (city == null or city.music_enabled())
 		)
 		audio_controller.advance(delta * 1000.0)
@@ -784,6 +793,7 @@ func _build_main_menu() -> void:
 	main_menu.open_city_requested.connect(_open_city_dialog)
 	main_menu.scenario_requested.connect(_open_scenario_dialog)
 	main_menu.settings_requested.connect(_open_settings_dialog)
+	main_menu.import_assets_requested.connect(_open_import_settings)
 	main_menu.scurk_requested.connect(_open_scurk_dialog)
 	main_menu.scurk_place_requested.connect(_open_scurk_place_print)
 	main_menu.about_requested.connect(_open_about_dialog)
@@ -818,6 +828,13 @@ func _build_main_menu() -> void:
 	save_changes_dialog.custom_action.connect(_on_save_changes_action)
 
 
+func _sync_asset_menu_actions() -> void:
+	var popup := city_menu_bar.file_menu.get_popup()
+	for index in popup.item_count:
+		if popup.get_item_id(index) not in [5, 6] and not popup.is_item_separator(index):
+			popup.set_item_disabled(index, not assets_ready)
+
+
 func _show_main_menu() -> void:
 	if main_menu == null:
 		return
@@ -826,7 +843,10 @@ func _show_main_menu() -> void:
 		_update_edit_state()
 	if scurk_print != null:
 		scurk_print.hide()
-	main_menu.city_background.configure(reference_root, palette, large_sprites)
+	_sync_asset_menu_actions()
+	main_menu.set_assets_ready(assets_ready)
+	if assets_ready:
+		main_menu.city_background.configure(reference_root, palette, large_sprites)
 	main_menu.show_menu(city != null)
 	status_label.text = "Main menu."
 
@@ -860,7 +880,13 @@ func _set_city_renderer(value: String) -> void:
 	_refresh_map()
 
 
+func _open_import_settings() -> void:
+	_open_settings_dialog()
+	settings_dialog.tabs.current_tab = 3
+
+
 func _open_settings_dialog() -> void:
+	settings_dialog.shuffle_music_check.button_pressed = app_shuffle_music
 	settings_dialog.toolbar_sounds_check.button_pressed = app_toolbar_sounds
 	settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(app_sound_pack_folder)
 	settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(app_music_pack_folder)
@@ -894,8 +920,10 @@ func _apply_settings() -> void:
 	app_toolbar_sounds = bool(values.toolbar_sounds)
 	app_sound_pack_folder = str(values.sound_pack_folder)
 	app_music_pack_folder = str(values.music_pack_folder)
-	if audio_controller != null:
+	if assets_ready and audio_controller != null:
 		audio_controller.set_media_packs(app_sound_pack_folder, app_music_pack_folder)
+	app_shuffle_music = bool(values.shuffle_music)
+	audio_controller.set_shuffle_music(app_shuffle_music)
 	app_background_audio = bool(values.background_audio)
 	app_soundtrack_folder = ""
 	app_music_volume = float(values.music_volume)
@@ -912,7 +940,7 @@ func _apply_settings() -> void:
 	)
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music,
 	)
 	status_label.text = (
 		"Settings saved."
@@ -929,7 +957,17 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	static_render_thread = null
 	static_render_job = null
 	asset_source = selected
+	assets_ready = true
+	reference_root = selected.reference_root
+	new_city_session.independent_template = false
+	audio_controller.reference_root = reference_root
+	audio_controller.original_media_enabled = true
 	var assets := selected.assets
+	newspaper_data = assets.newspaper_data
+	original_query_strings = assets.strings
+	forest_protest_text = assets.forest_protest_text
+	building_objection_text = assets.building_objection_text
+	library_texts = assets.library_texts
 	palette = assets.palette
 	scenario_palette = assets.scenario_palette
 	scenario_graphics = assets.scenario_graphics
@@ -960,7 +998,11 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	scurk_editor.configure(palette, base_large_sprites, base_small_medium_sprites, reference_root, scurk_graphics)
 	if scurk_place_print != null and scurk_place_print.visible:
 		scurk_place_print.configure(palette, large_sprites, active_scurk_tile_set.names if active_scurk_tile_set != null else {}, scurk_graphics)
+	_sync_asset_menu_actions()
+	main_menu.set_assets_ready(true)
 	main_menu.city_background.replace_graphics(palette, large_sprites)
+	if main_menu.visible:
+		main_menu.city_background.configure(reference_root, palette, large_sprites)
 	settings_dialog.graphics_availability = GraphicsPackAvailability.inspect(small_medium_sprites, large_sprites)
 	settings_dialog._update_graphics_counts()
 	_refresh_map(false)
@@ -978,6 +1020,7 @@ func _load_app_settings() -> void:
 	app_music_pack_folder = str(values.music_pack_folder)
 	app_zoom_graphics = values.zoom_graphics
 	app_background_audio = values.background_audio
+	app_shuffle_music = values.shuffle_music
 	app_city_renderer = values.city_renderer
 	app_soundtrack_folder = values.soundtrack_folder
 	app_music_volume = values.music_volume
@@ -990,6 +1033,8 @@ func _load_app_settings() -> void:
 
 
 func _open_scurk_dialog() -> void:
+	if not assets_ready:
+		return
 	if (
 		palette == null
 		or not palette.is_valid()
@@ -1028,6 +1073,8 @@ func _open_scurk_dialog() -> void:
 
 
 func _open_scurk_place_print() -> void:
+	if not assets_ready:
+		return
 	if landscape_editor:
 		return
 	if city == null:
@@ -1544,6 +1591,8 @@ func _on_map_selection_changed(
 
 
 func _on_file_menu(id: int) -> void:
+	if not assets_ready and id not in [5, 6]:
+		return
 	match id:
 		0: _open_new_city_dialog()
 		1: _open_city_dialog()
@@ -1880,6 +1929,8 @@ func _on_help_menu(_id: int) -> void:
 
 
 func _open_new_city_dialog() -> void:
+	if not assets_ready:
+		return
 	if new_city_dialog == null:
 		return
 	new_city_return_to_main_menu = main_menu != null and main_menu.visible
@@ -2045,14 +2096,18 @@ func _difficulty_name(difficulty: int) -> String:
 
 
 func _open_city_dialog() -> void:
-	var city_directory := reference_root.path_join("CITIES")
+	if not assets_ready:
+		return
+	var city_directory := ProjectSettings.globalize_path("user://cities")
 	if DirAccess.dir_exists_absolute(city_directory):
 		file_dialog.current_dir = city_directory
 	file_dialog.popup_centered_ratio(0.8)
 
 
 func _open_scenario_dialog() -> void:
-	var scenario_directory := reference_root.path_join("SCENARIO")
+	if not assets_ready:
+		return
+	var scenario_directory := ProjectSettings.globalize_path("user://scenarios")
 	if DirAccess.dir_exists_absolute(scenario_directory):
 		file_dialog.current_dir = scenario_directory
 	file_dialog.popup_centered_ratio(0.8)
@@ -2474,6 +2529,8 @@ func _load_city(path: String) -> void:
 
 
 func _load_city_unchecked(path: String) -> void:
+	if not assets_ready:
+		return
 	var document := Sc2Document.load_path(path)
 	if not document.is_valid():
 		_show_error(document.parse_error)
@@ -2549,6 +2606,11 @@ func _activate_document(
 	annual_budget_pending = false
 	game_over_active = false
 	city = loaded_city
+	map_view.pending_loaded_center = Vector2i(-1, -1)
+	if not document.source_path.is_empty():
+		map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(0x1018), 0, city.map_size - 1), clampi(document.misc_u32(0x101c), 0, city.map_size - 1))
+	_select_tool_group(17)
+	overlay_mode = "city"
 	current_document = document
 	var initial_serialized := current_document.serialize()
 	saved_city_snapshot = (
@@ -2656,7 +2718,7 @@ func _handle_application_focus_out() -> void:
 func _handle_application_focus_in() -> void:
 	if audio_controller != null:
 		audio_controller.handle_application_focus_in(
-			(main_menu != null and main_menu.visible and app_music_volume > 0.0
+			(assets_ready and main_menu != null and main_menu.visible and app_music_volume > 0.0
 			and (city == null or city.music_enabled()))
 			or (city != null and city.music_enabled())
 		)

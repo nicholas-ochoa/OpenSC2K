@@ -23,6 +23,7 @@ static func load_values(
 		"city_renderer": "gpu",
 		"zoom_graphics": normalize_zoom_graphics(DEFAULT_ZOOM_GRAPHICS),
 		"background_audio": false,
+		"shuffle_music": false,
 		"toolbar_sounds": true,
 		"sound_pack_folder": "",
 		"music_pack_folder": "",
@@ -42,6 +43,7 @@ static func load_values(
 	)
 	for key in ["toolbar_sounds", "sound_pack_folder", "music_pack_folder"]:
 		result[key] = config.get_value("audio", key, result[key])
+	result.shuffle_music = bool(config.get_value("audio", "shuffle_music", false))
 	result.background_audio = bool(config.get_value("audio", "background_audio", false))
 	result.soundtrack_folder = str(config.get_value("audio", "soundtrack_folder", ""))
 	result.fullscreen = bool(
@@ -89,6 +91,7 @@ static func save_values(
 	toolbar_sounds: Variant = null,
 	sound_pack_folder: Variant = null,
 	music_pack_folder: Variant = null,
+	shuffle_music: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 	if FileAccess.file_exists(path):
@@ -103,6 +106,8 @@ static func save_values(
 	config.set_value("display", "fullscreen", fullscreen)
 	if city_renderer != null:
 		config.set_value("display", "city_renderer", normalize_renderer(city_renderer))
+	if shuffle_music != null:
+		config.set_value("audio", "shuffle_music", bool(shuffle_music))
 	if background_audio != null:
 		config.set_value("audio", "background_audio", bool(background_audio))
 	if zoom_graphics != null:

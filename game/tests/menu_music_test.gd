@@ -10,7 +10,7 @@ func _initialize() -> void:
 	assert(audio.music_playback_is_active())
 	audio.handle_application_focus_out()
 	audio.advance(1)
-	assert(not audio.music_playback_is_active())
+	assert(audio.music_playback_is_active() and audio.focus_paused)
 	audio.handle_application_focus_in(true)
 	assert(audio.current_track_id == MusicDirector.MAIN_THEME_TRACK)
 	audio.set_menu_music(false)

@@ -140,7 +140,7 @@ func _test_main() -> void:
 	_round_trip_city(main.current_document)
 	main._open_scurk_dialog()
 	assert(main.scurk_editor.visible and main.scurk_editor.tile_set != null)
-	assert(main.scurk_editor.source_path.ends_with("SCURKART/ORIGINAL.MIF") and not main.scurk_editor.dirty)
+	assert(main.scurk_editor.source_path.is_empty() and main.asset_source.uses_graphics_pack)
 	assert(main.scurk_editor.current_large_id >= 1000)
 	main.scurk_editor.hide()
 	main._open_scurk_place_print()
@@ -161,10 +161,10 @@ func _test_invalid_startup() -> void:
 	root.add_child(main)
 	await process_frame
 	await process_frame
-	assert(not main.runtime_initialized)
-	assert(main.reference_import_error_dialog.visible)
-	assert(main.reference_import_error_dialog.dialog_text.contains("Import the original"))
-	assert(main.map_view == null and main.audio_controller == null)
+	assert(main.runtime_initialized and not main.assets_ready)
+	assert(not main.reference_import_error_dialog.visible and main.main_menu.import_button.visible)
+	assert(main.city == null and main.palette == null)
+	assert(main.map_view != null and main.audio_controller != null and not main.audio_controller.original_media_enabled)
 	main.queue_free()
 	await process_frame
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")

@@ -47,7 +47,7 @@ func _run() -> void:
 	controller.set_volumes(0.1, 0.0)
 	assert(is_equal_approx(controller.recording_player.volume_linear, 0.1))
 	controller.handle_application_focus_out()
-	assert(not controller.recording_player.playing and controller.pending_recording.is_empty())
+	assert(controller.recording_player.stream != null and controller.recording_player.stream_paused and controller.pending_recording.is_empty())
 	# Stop the request before its worker finishes; check that playback stays stopped.
 	controller.pending_recording = {"paths": matches, "request": controller.music_request}
 	controller._process(0)

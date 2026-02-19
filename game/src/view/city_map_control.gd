@@ -79,6 +79,7 @@ var desktop_cursor_app := "city"
 var desktop_cursor_role := 0
 var zoom_factor: float = ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]
 var source_center := Vector2.ZERO
+var pending_loaded_center := Vector2i(-1, -1)
 var selection_start := Vector2i(-1, -1)
 var selection_end := Vector2i(-1, -1)
 var selection_path: Array[Vector2i] = []
@@ -235,6 +236,9 @@ func set_city_view(
 		_invalidate_sign_entries()
 	if reset_center and city_texture != null:
 		source_center = Vector2(city_texture.get_size()) * 0.5
+	if pending_loaded_center.x >= 0:
+		center_on_tile(pending_loaded_center)
+		pending_loaded_center = Vector2i(-1, -1)
 	_clamp_source_center()
 	_sync_base_layer()
 	if preserve_sign_cache:

@@ -30,6 +30,9 @@ var dummy_music_active := false
 var menu_music := false
 var current_track_id := -1
 var music_paused := false
+var focus_paused := false
+var shuffle_music := false
+var shuffle_order := MusicShuffle.new()
 var current_track_name := ""
 var application_has_focus := true
 var background_audio := false
@@ -73,7 +76,11 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 		recording_player.volume_linear = music_volume
 
 
-func play_music_track(track_id: int) -> bool:
+func play_music_track(track_id: int, choose_shuffle := true) -> bool:
+	if shuffle_music and choose_shuffle and not music_paused and audio_allowed():
+		if music_playback_is_active():
+			return true
+		track_id = shuffle_order.next_track()
 	if music_paused or not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
 		return false
 	var replacement := str(music_pack.files.get(track_id, ""))
@@ -107,7 +114,7 @@ func _play_midi_fallback() -> bool:
 		music_activity_changed.emit(false)
 		return false
 	var result := music_player.play_path(midi_path, current_track_id)
-	music_player.set_paused(music_paused)
+	music_player.set_paused(music_paused or focus_paused)
 	music_activity_changed.emit(bool(result.ok))
 	return bool(result.ok)
 
@@ -120,7 +127,7 @@ func _process(_delta: float) -> void:
 			recording_player.stream = result.stream
 			if recording_player.stream != null:
 				recording_player.play()
-				recording_player.stream_paused = music_paused
+				recording_player.stream_paused = music_paused or focus_paused
 			else:
 				push_warning("Cannot decode soundtrack recording; trying MIDI. FLAC requires FFmpeg.")
 				_play_midi_fallback()
@@ -142,10 +149,10 @@ func _exit_tree() -> void:
 
 func music_playback_is_active() -> bool:
 	if AudioServer.get_driver_name() == "Dummy":
-		return dummy_music_active
+		return dummy_music_active or (recording_player != null and recording_player.stream != null and (recording_player.playing or recording_player.stream_paused))
 	return (not pending_recording.is_empty()
 		or (recording_thread != null and recording_request == music_request)
-		or (recording_player != null and recording_player.playing)
+		or (recording_player != null and recording_player.stream != null and (recording_player.playing or recording_player.stream_paused))
 		or (music_player != null and music_player.is_track_active()))
 
 
@@ -155,28 +162,51 @@ func audio_allowed() -> bool:
 
 func set_background_audio(enabled: bool) -> void:
 	background_audio = enabled
+	focus_paused = not audio_allowed() and music_playback_is_active()
+	_sync_music_pause()
 	if not audio_allowed():
-		stop_music()
 		stop_sound_effects()
 
 
 func handle_application_focus_out() -> void:
 	application_has_focus = false
 	if not background_audio:
-		stop_music()
+		focus_paused = music_playback_is_active()
+		_sync_music_pause()
 		stop_sound_effects()
 
 
 func handle_application_focus_in(music_enabled: bool) -> void:
 	var regained_focus := not application_has_focus
 	application_has_focus = true
-	if background_audio or not regained_focus or not music_enabled:
+	focus_paused = false
+	if not music_enabled:
+		stop_music()
+		return
+	_sync_music_pause()
+	if background_audio or not regained_focus or music_paused:
 		return
 	if not music_playback_is_active():
 		play_music_track(Music.MAIN_THEME_TRACK if menu_music else music_director.next_general_track())
 
 
+func _sync_music_pause() -> void:
+	var paused := music_paused or focus_paused or not audio_allowed()
+	if recording_player != null:
+		recording_player.stream_paused = paused
+	if music_player != null:
+		music_player.set_paused(paused)
+
+
+func set_shuffle_music(enabled: bool) -> void:
+	if shuffle_music != enabled:
+		shuffle_order.remaining.clear()
+		shuffle_order.last_track = current_track_id
+	shuffle_music = enabled
+
+
 func stop_music() -> void:
+	focus_paused = false
 	music_request += 1
 	pending_recording.clear()
 	if recording_player != null:
@@ -270,6 +300,8 @@ func debug_metrics() -> Dictionary:
 func _on_music_track_finished(_track_id: int) -> void:
 	dummy_music_active = false
 	music_activity_changed.emit(false)
+	if shuffle_music and audio_allowed() and not music_paused and music_volume > 0.0:
+		play_music_track(Music.MAIN_THEME_TRACK)
 
 
 func _load_wave_sound_cache() -> void:
@@ -287,6 +319,8 @@ func set_menu_music(enabled: bool) -> void:
 	if menu_music == enabled:
 		return
 	menu_music = enabled
+	if shuffle_music and music_playback_is_active():
+		return
 	stop_music()
 	if enabled and audio_allowed() and music_volume > 0.0:
 		play_music_track(Music.MAIN_THEME_TRACK)
@@ -323,7 +357,11 @@ func handle_media_key(key: int) -> bool:
 			var offset := 1 if key == KEY_MEDIANEXT else -1
 			var track := current_track_id if current_track_id >= Music.FIRST_TRACK_ID else Music.MAIN_THEME_TRACK
 			music_paused = false
-			play_music_track(Music.FIRST_TRACK_ID + posmod(track - Music.FIRST_TRACK_ID + offset, Music.TRACK_COUNT))
+			if shuffle_music:
+				stop_music()
+				play_music_track(Music.MAIN_THEME_TRACK)
+			else:
+				play_music_track(Music.FIRST_TRACK_ID + posmod(track - Music.FIRST_TRACK_ID + offset, Music.TRACK_COUNT))
 		KEY_MEDIASTOP:
 			stop_music()
 			music_paused = true
@@ -335,10 +373,7 @@ func handle_media_key(key: int) -> bool:
 
 func _set_music_paused(value: bool) -> void:
 	music_paused = value
-	if recording_player != null:
-		recording_player.stream_paused = value
-	if music_player != null:
-		music_player.set_paused(value)
+	_sync_music_pause()
 	if not value and not music_playback_is_active():
 		play_music_track(Music.MAIN_THEME_TRACK)
 	else:
@@ -367,7 +402,7 @@ func set_media_packs(sound_folder: String, music_folder: String) -> bool:
 	music_pack = music
 	_load_wave_sound_cache()
 	if restart:
-		play_music_track(track)
+		play_music_track(track, false)
 	return true
 
 

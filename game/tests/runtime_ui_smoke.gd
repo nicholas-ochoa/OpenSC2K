@@ -411,13 +411,14 @@ func _run() -> void:
 		main.call("_handle_application_focus_out")
 		var focus_out_ok: bool = (
 			not audio_controller.application_has_focus
-			and not audio_controller.dummy_music_active
-			and not focus_engine.midi_playback_active
+			and audio_controller.dummy_music_active
+			and audio_controller.focus_paused
+			and focus_engine.midi_playback_active
 			and effect_probe.is_queued_for_deletion()
 		)
 		main.call("_handle_application_focus_in")
 		var expected_general_index := (
-			focus_general_index % Music.GENERAL_TRACKS.size() + 1
+			focus_general_index
 		)
 		var focus_in_ok: bool = (
 			audio_controller.application_has_focus
@@ -431,7 +432,7 @@ func _run() -> void:
 			or not focus_in_ok
 			or focus_director.general_track_index != expected_general_index
 		):
-			push_error("Application focus does not stop and restart original music state")
+			push_error("Application focus does not preserve paused music state")
 			main.queue_free()
 			quit(2)
 			return

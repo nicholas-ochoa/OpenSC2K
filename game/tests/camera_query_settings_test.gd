@@ -57,7 +57,7 @@ func _run() -> void:
 	assert(audio.current_track_id == track, "Returning focus changed the music track")
 	audio.handle_application_focus_out()
 	audio.set_background_audio(false)
-	assert(not audio.music_playback_is_active() and not audio.audio_allowed())
+	assert(audio.music_playback_is_active() and audio.focus_paused and not audio.audio_allowed())
 	assert(not audio.play_music_track(10001))
 	audio.play_sound_events([503], true, "city", 2)
 	assert(audio.wave_sound_gate.accepted_count == 1)

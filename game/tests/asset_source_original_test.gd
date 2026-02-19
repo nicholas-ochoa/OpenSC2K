@@ -6,7 +6,7 @@ func _initialize() -> void:
 	var reference := ProjectSettings.globalize_path("res://../references")
 	var original := GameAssetSource.load_source(reference, "original")
 	assert(original.error.is_empty(), original.error)
-	assert(original.use_original_data and not original.uses_graphics_pack)
+	assert(original.use_original_data and original.uses_graphics_pack)
 	assert(original.assets.newspaper_data.is_valid() and not original.assets.strings.is_empty())
 	var automatic := GameAssetSource.load_source(reference, "auto")
 	assert(automatic.error.is_empty() and automatic.use_original_data)

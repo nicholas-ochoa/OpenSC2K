@@ -4,6 +4,7 @@ extends ConfirmationDialog
 signal import_original_requested
 
 var pack_error_label: Label
+var shuffle_music_check: CheckBox
 var toolbar_sounds_check: CheckBox
 var sound_pack_edit: LineEdit
 var music_pack_edit: LineEdit
@@ -75,6 +76,11 @@ func _ready() -> void:
 	toolbar_sounds_check.text = "Play toolbar sounds"
 	toolbar_sounds_check.button_pressed = true
 	settings_grid.add_child(toolbar_sounds_check)
+	settings_grid.add_child(Label.new())
+	shuffle_music_check = CheckBox.new()
+	shuffle_music_check.text = "Shuffle all music"
+	shuffle_music_check.tooltip_text = "Play all 19 tracks, including menu and special music, once per shuffle cycle."
+	settings_grid.add_child(shuffle_music_check)
 	sound_pack_edit = _pack_folder_row(settings_grid, "Sound Pack", "sound")
 	music_pack_edit = _pack_folder_row(settings_grid, "Music Pack", "music")
 	settings_grid = display_grid
@@ -206,6 +212,7 @@ func show_values(
 func selected_values() -> Dictionary:
 	return {
 		"toolbar_sounds": toolbar_sounds_check.button_pressed,
+		"shuffle_music": shuffle_music_check.button_pressed,
 		"sound_pack_folder": sound_pack_edit.text.strip_edges(),
 		"music_pack_folder": music_pack_edit.text.strip_edges(),
 		"zoom_graphics": _selected_zoom_graphics(),

@@ -62,7 +62,7 @@ func _run() -> void:
 	assert(not main.status_label.text.contains("Restart"))
 	dialog.source_selector.select(1)
 	main._apply_settings()
-	assert(main.asset_source.graphics_name == "SimCity 2000")
+	assert(main.asset_source.graphics_name == "Original SimCity 2000")
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels != sprite.pixels)
 	assert(main.city.document.serialize().data == before)
 	main.settings_dialog.hide()

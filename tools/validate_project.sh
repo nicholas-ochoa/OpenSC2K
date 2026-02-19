@@ -143,3 +143,11 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/pack_settings_test.gd
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/scurk_png_import_test.gd
+
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/music_preferences_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/scurk_gif_export_test.gd
+
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/no_assets_startup_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/original_pack_import_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/import_packs_runtime_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/saved_camera_test.gd
