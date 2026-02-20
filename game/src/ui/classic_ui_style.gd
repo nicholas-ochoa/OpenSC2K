@@ -27,6 +27,7 @@ static func create_theme() -> Theme:
 	result.set_color("font_color", "Button", Color("101010"))
 	result.set_color("font_hover_color", "Button", Color("101010"))
 	result.set_color("font_pressed_color", "Button", Color("101010"))
+	result.set_color("font_hover_pressed_color", "Button", Color("101010"))
 	result.set_color("font_focus_color", "Button", Color("101010"))
 	result.set_color("font_color", "OptionButton", Color("101010"))
 	result.set_stylebox(
@@ -37,6 +38,9 @@ static func create_theme() -> Theme:
 	)
 	result.set_stylebox(
 		"pressed", "Button", create_box(Color("a0a0a0"), Color("404040"), 2)
+	)
+	result.set_stylebox(
+		"hover_pressed", "Button", create_box(Color("b8b8b8"), Color("404040"), 2)
 	)
 	result.set_stylebox(
 		"focus", "Button", create_box(Color("c0c0c0"), Color("000000"), 1)
