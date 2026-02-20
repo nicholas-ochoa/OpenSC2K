@@ -42,6 +42,7 @@ func _run() -> void:
 			check(arrays[Mesh.ARRAY_TEX_UV].size() == edge * edge * 4, "Every tile has border coordinates")
 			check(doc.serialize().data == before, "Rendering does not change city bytes")
 			print("PASS: data mesh %d native=%s" % [edge, native])
+	check_land_value_amounts()
 	check_height_and_walls()
 	await check_ui()
 	await check_shader()
@@ -197,3 +198,17 @@ func check_shader() -> void:
 		check(output.get_pixel(0, 32).get_luminance() < actual.get_luminance() * 0.8, "GPU tile borders remain visible: " + mode)
 	viewport.queue_free()
 	await process_frame
+
+func check_land_value_amounts() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create())
+	var cases := {0: "Land Value: $1,000 (Very low)", 63: "Land Value: $64,000 (Low)",
+		124: "Land Value: $125,000 (Medium)", 255: "Land Value: $256,000 (Very high)"}
+	for raw in cases:
+		var chunk := city.document.find_chunk("XVAL")
+		var data := chunk.decoded_payload.duplicate()
+		data[0] = raw
+		chunk.set_decoded_payload(data)
+		var query := QueryInfo.inspect(city, Vector2i.ZERO)
+		check(QueryInfo.format_text(query).contains("$%d,000/acre" % (raw + 1)), "Tooltip dollar scale agrees with Query")
+		check(CityDataView.tile_text(city, "land_value", Vector2i.ZERO) == cases[raw], "Land Value shows Query dollars and friendly band")
+		check(CityDataView.tile_text(city, "land_value", Vector2i.ZERO, true) == cases[raw] + "  (%d / 0x%02X)" % [raw, raw], "Shift retains dollars and adds raw value")

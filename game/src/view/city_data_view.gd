@@ -65,6 +65,10 @@ static func tile_text(city: CityState, mode: String, point: Vector2i, exact := f
 		description = ["Very low", "Low", "Moderate", "High", "Very high"][mini(number * 5 / 256, 4)]
 	var title: String = TITLES[MODES.find(mode)]
 	var result := "%s: %s" % [title, description]
+	if mode == "land_value":
+		description = "Medium" if description == "Moderate" else description
+		# query reports (xval + 1) thousands of dollars per acre
+		result = "Land Value: $%d,000 (%s)" % [number + 1, description]
 	if exact:
 		var raw := city.tile_flags[city.index_of(point.x, point.y)] if mode in ["water", "power"] else number
 		result += "  (%s%d / 0x%02X)" % ["XBIT " if mode in ["water", "power"] else "", raw, raw]
