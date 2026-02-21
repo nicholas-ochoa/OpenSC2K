@@ -3,10 +3,13 @@ extends RefCounted
 
 
 static func save_copy(
-	document: Sc2File, requested_path: String, reference_root: String
+	document: Sc2File, requested_path: String, reference_root: String, original_compatibility := false
 ) -> Dictionary:
 	if document == null:
 		return {"ok": false, "error": "No city is loaded."}
+	var compatibility_error := OriginalCompatibility.save_error(document, requested_path, original_compatibility)
+	if not compatibility_error.is_empty():
+		return {"ok": false, "error": compatibility_error}
 	var output_path := requested_path
 	if output_path.get_extension().is_empty():
 		output_path += ".SC2" if not document.is_extended() else ".sc2x"

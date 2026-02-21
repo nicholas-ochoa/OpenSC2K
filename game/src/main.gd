@@ -117,6 +117,10 @@ var app_city_renderer := "gpu"
 var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
 var app_background_audio := false
 var app_shuffle_music := false
+var app_original_compatibility := false
+var app_warn_sc2x_conversion := true
+var sc2x_conversion_dialog: ConfirmationDialog
+var pending_sc2x_document: Sc2File
 var app_settings_path := SettingsStore.SETTINGS_PATH
 var app_music_volume := 0.8
 var app_effects_volume := 0.8
@@ -321,6 +325,7 @@ func _initialize_runtime() -> void:
 	library_texts = original_assets.library_texts
 	scurk_graphics = original_assets.scurk_graphics
 	_build_interface(original_assets)
+	_apply_compatibility_controls()
 	desktop_presentation = CityDesktopPresentation.new()
 	desktop_presentation.map_view = map_view
 	desktop_presentation.editor = scurk_editor
@@ -418,7 +423,7 @@ func _import_original_game(executable_path: String) -> void:
 	audio_controller.set_soundtrack_folder("")
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion,
 	)
 	_open_import_settings()
 	status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
@@ -463,6 +468,7 @@ func _process(delta: float) -> void:
 		or tunnel_dialog.visible
 		or (forest_protest_dialog != null and forest_protest_dialog.visible)
 		or (building_objection_dialog != null and building_objection_dialog.visible)
+		or (sc2x_conversion_dialog != null and sc2x_conversion_dialog.visible)
 		or (settings_dialog != null and settings_dialog.visible)
 		or (query_dialog != null and query_dialog.visible)
 		or (ordinance_window != null and ordinance_window.visible)
@@ -832,7 +838,7 @@ func _sync_asset_menu_actions() -> void:
 	var popup := city_menu_bar.file_menu.get_popup()
 	for index in popup.item_count:
 		if popup.get_item_id(index) not in [5, 6] and not popup.is_item_separator(index):
-			popup.set_item_disabled(index, not assets_ready)
+			popup.set_item_disabled(index, not assets_ready or (app_original_compatibility and popup.get_item_id(index) == CityMenuBar.MENU_NATIVE_DATA_MAPS))
 
 
 func _show_main_menu() -> void:
@@ -886,6 +892,10 @@ func _open_import_settings() -> void:
 
 
 func _open_settings_dialog() -> void:
+	settings_dialog.original_compatibility_check.button_pressed = app_original_compatibility
+	settings_dialog.original_compatibility_check.disabled = current_document != null and current_document.is_extended()
+	settings_dialog.original_compatibility_check.tooltip_text = "SC2X cities cannot return to original compatibility." if settings_dialog.original_compatibility_check.disabled else ""
+	settings_dialog.warn_sc2x_conversion_check.button_pressed = app_warn_sc2x_conversion
 	settings_dialog.shuffle_music_check.button_pressed = app_shuffle_music
 	settings_dialog.toolbar_sounds_check.button_pressed = app_toolbar_sounds
 	settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(app_sound_pack_folder)
@@ -900,6 +910,9 @@ func _open_settings_dialog() -> void:
 
 func _apply_settings() -> void:
 	var values: Dictionary = settings_dialog.selected_values()
+	if bool(values.original_compatibility) and current_document != null and current_document.is_extended():
+		settings_dialog.show_compatibility_error("This city is SC2X and cannot return to original compatibility. Save it, then open a different original SC2 city or restart the app before enabling compatibility.")
+		return
 	var pack_error: String = CityAudioController.validate_media_packs(values.sound_pack_folder, values.music_pack_folder)
 	if not pack_error.is_empty():
 		settings_dialog.show_pack_error(pack_error)
@@ -913,6 +926,9 @@ func _apply_settings() -> void:
 			return
 	if changed_source:
 		_apply_graphics_source(selected)
+	app_original_compatibility = bool(values.original_compatibility)
+	app_warn_sc2x_conversion = bool(values.warn_sc2x_conversion)
+	_apply_compatibility_controls()
 	app_graphics_source = values.graphics_source
 	app_graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
@@ -940,7 +956,7 @@ func _apply_settings() -> void:
 	)
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion,
 	)
 	status_label.text = (
 		"Settings saved."
@@ -1020,6 +1036,8 @@ func _load_app_settings() -> void:
 	app_music_pack_folder = str(values.music_pack_folder)
 	app_zoom_graphics = values.zoom_graphics
 	app_background_audio = values.background_audio
+	app_original_compatibility = bool(values.original_compatibility)
+	app_warn_sc2x_conversion = bool(values.warn_sc2x_conversion)
 	app_shuffle_music = values.shuffle_music
 	app_city_renderer = values.city_renderer
 	app_soundtrack_folder = values.soundtrack_folder
@@ -1971,7 +1989,7 @@ func _update_new_city_slider_labels() -> void:
 
 
 func _new_city_terrain_options() -> Dictionary:
-	return {
+	return OriginalCompatibility.terrain_options({
 		"size": new_city_dialog.size_input.get_selected_id(),
 		"native_maps": new_city_dialog.native_maps_input.button_pressed,
 		"ocean": new_city_dialog.ocean_input.button_pressed,
@@ -1979,7 +1997,7 @@ func _new_city_terrain_options() -> Dictionary:
 		"hills": roundi(new_city_dialog.hills_input.value),
 		"water": roundi(new_city_dialog.water_input.value),
 		"trees": roundi(new_city_dialog.trees_input.value),
-	}
+	}, app_original_compatibility)
 
 
 func _refresh_new_city_preview() -> void:
@@ -2122,11 +2140,28 @@ func _save_city() -> void:
 		_save_copy(current_save_path)
 
 
-func _enable_native_data_maps() -> void:
+func _enable_native_data_maps(confirmed := false) -> void:
+	if app_original_compatibility:
+		_show_error("Per-tile data maps require SC2X. Turn off original compatibility in Settings to enable them.")
+		return
 	if city == null or current_document == null:
 		return
 	if current_document.full_resolution_maps():
 		status_label.text = "Per-tile data maps are already enabled."
+		return
+	if not current_document.is_extended() and app_warn_sc2x_conversion and not confirmed:
+		if sc2x_conversion_dialog == null:
+			sc2x_conversion_dialog = ConfirmationDialog.new()
+			sc2x_conversion_dialog.title = "Convert city to SC2X?"
+			sc2x_conversion_dialog.dialog_text = "This permanently converts this city to SC2X.\nIt cannot return to SC2 or use original compatibility.\nThe original SimCity 2000 cannot open SC2X files.\n\nSave a separate SC2X copy. Your existing SC2 file stays unchanged."
+			sc2x_conversion_dialog.get_ok_button().text = "Convert to SC2X"
+			sc2x_conversion_dialog.exclusive = true
+			sc2x_conversion_dialog.theme = ClassicUiStyle.create_dialog_theme()
+			add_child(sc2x_conversion_dialog)
+			sc2x_conversion_dialog.confirmed.connect(_confirm_sc2x_conversion)
+			sc2x_conversion_dialog.canceled.connect(func() -> void: pending_sc2x_document = null)
+		pending_sc2x_document = current_document
+		sc2x_conversion_dialog.popup_centered()
 		return
 	if frame_simulation != null:
 		frame_simulation.close()
@@ -2144,6 +2179,13 @@ func _enable_native_data_maps() -> void:
 	_refresh_map(false)
 	status_label.text = "Per-tile data maps enabled. Save an SC2X copy; the original game cannot open it."
 	_open_save_dialog()
+
+
+func _confirm_sc2x_conversion() -> void:
+	var expected := pending_sc2x_document
+	pending_sc2x_document = null
+	if expected != null and current_document == expected:
+		_enable_native_data_maps(true)
 
 
 func _open_save_dialog() -> void:
@@ -2552,10 +2594,22 @@ func _load_city_unchecked(path: String) -> void:
 func _activate_document(
 	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := ""
 ) -> bool:
+	var disable_compatibility := app_original_compatibility and document != null and document.is_extended()
+	var compatibility_error := OriginalCompatibility.document_error(document, app_original_compatibility and not disable_compatibility)
+	if not compatibility_error.is_empty():
+		_show_error(compatibility_error)
+		return false
 	var loaded_city := CityModel.from_document(document)
 	if not loaded_city.is_valid():
 		_show_error(loaded_city.load_error)
 		return false
+	if disable_compatibility:
+		app_original_compatibility = false
+		_apply_compatibility_controls()
+		var settings_error := SettingsStore.save_original_compatibility(false, app_settings_path)
+		status_text += " Original compatibility turned off to open this SC2X city."
+		if settings_error != OK:
+			status_text += " The preference could not be saved."
 	founding_newspaper_pending = false
 	landscape_editor = false
 	city_toolbar.set_landscape_editor(false)
@@ -2659,6 +2713,7 @@ func _activate_document(
 	frame_simulation = null
 	simulation_engine = Simulation.new(city, process_seed, lfsr_seed, game_seed)
 	speed_controller = GameSpeed.new(simulation_engine)
+	speed_controller.original_compatibility = app_original_compatibility
 	if current_document.is_extended():
 		frame_simulation = FrameSimulationRunner.new(speed_controller)
 	_sync_speed_ui()
@@ -2689,6 +2744,8 @@ func _activate_document(
 		_play_music_track(audio_controller.music_director.next_general_track())
 	if loaded_scenario != null:
 		_open_scenario_intro(loaded_scenario)
+	if disable_compatibility:
+		status_label.text = status_text
 	return true
 
 
@@ -2746,7 +2803,7 @@ func _on_save_dialog_canceled() -> void:
 
 
 func _save_copy(path: String) -> bool:
-	var result := CityFiles.save_copy(current_document, path, reference_root)
+	var result := CityFiles.save_copy(current_document, path, reference_root, app_original_compatibility)
 	if not result.ok:
 		_show_error(result.error)
 		return false
@@ -5581,3 +5638,19 @@ func _set_graphics_preferences(zoom_graphics: Array) -> void:
 	dynamic_visual_cache.clear()
 	sign_foreground_cache.clear()
 	_refresh_map()
+
+
+func _apply_compatibility_controls() -> void:
+	if speed_controller != null:
+		speed_controller.original_compatibility = app_original_compatibility
+		speed_controller.fire_elapsed_msec = 0.0
+	if new_city_dialog != null:
+		for index in new_city_dialog.size_input.item_count:
+			new_city_dialog.size_input.set_item_disabled(index, app_original_compatibility and new_city_dialog.size_input.get_item_id(index) != 128)
+		new_city_dialog.native_maps_input.disabled = app_original_compatibility
+		if app_original_compatibility:
+			new_city_dialog.size_input.select(0)
+			new_city_dialog.native_maps_input.set_pressed_no_signal(false)
+	if city_menu_bar != null:
+		var popup := city_menu_bar.file_menu.get_popup()
+		popup.set_item_disabled(popup.get_item_index(CityMenuBar.MENU_NATIVE_DATA_MAPS), not assets_ready or app_original_compatibility)

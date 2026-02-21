@@ -4,6 +4,9 @@ extends ConfirmationDialog
 signal import_original_requested
 
 var pack_error_label: Label
+var original_compatibility_check: CheckBox
+var warn_sc2x_conversion_check: CheckBox
+var compatibility_error_label: Label
 var shuffle_music_check: CheckBox
 var toolbar_sounds_check: CheckBox
 var sound_pack_edit: LineEdit
@@ -163,6 +166,27 @@ func _ready() -> void:
 		import_original_requested.emit()
 	)
 	settings_grid.add_child(import_button)
+	var compatibility_grid := _add_settings_tab("Compatibility")
+	compatibility_grid.columns = 1
+	original_compatibility_check = CheckBox.new()
+	original_compatibility_check.text = "Original SimCity 2000 compatibility"
+	compatibility_grid.add_child(original_compatibility_check)
+	var explanation := Label.new()
+	explanation.text = "• Use original SC2 cities and SCN scenarios.\n• New cities use the original 128 × 128 map and data grids.\n• Larger maps and per-tile data maps are disabled.\n• Fire uses the original update timing.\n• Opening an SC2X city turns this option off automatically.\n• SC2X cities cannot return to original compatibility.\n• Graphics, audio, and interface improvements remain available."
+	explanation.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	explanation.custom_minimum_size.x = 560
+	compatibility_grid.add_child(explanation)
+	warn_sc2x_conversion_check = CheckBox.new()
+	warn_sc2x_conversion_check.text = "Warn before converting an SC2 city to SC2X"
+	warn_sc2x_conversion_check.button_pressed = true
+	compatibility_grid.add_child(warn_sc2x_conversion_check)
+	compatibility_error_label = Label.new()
+	compatibility_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	compatibility_error_label.custom_minimum_size.x = 560
+	compatibility_error_label.add_theme_color_override("font_color", Color("800000"))
+	compatibility_error_label.hide()
+	compatibility_grid.add_child(compatibility_error_label)
+
 
 
 func _add_settings_tab(tab_title: String, scrollable := false) -> GridContainer:
@@ -192,6 +216,7 @@ func show_values(
 	source := "auto", folder := "", city_renderer := "gpu", background_audio := false, zoom_graphics: Array = AppSettingsStore.DEFAULT_ZOOM_GRAPHICS,
 ) -> void:
 	pack_error_label.hide()
+	compatibility_error_label.hide()
 	var normalized := AppSettingsStore.normalize_zoom_graphics(zoom_graphics)
 	for index in zoom_graphics_selectors.size():
 		zoom_graphics_selectors[index].select(normalized[index])
@@ -211,6 +236,8 @@ func show_values(
 
 func selected_values() -> Dictionary:
 	return {
+		"original_compatibility": original_compatibility_check.button_pressed,
+		"warn_sc2x_conversion": warn_sc2x_conversion_check.button_pressed,
 		"toolbar_sounds": toolbar_sounds_check.button_pressed,
 		"shuffle_music": shuffle_music_check.button_pressed,
 		"sound_pack_folder": sound_pack_edit.text.strip_edges(),
@@ -303,3 +330,10 @@ func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 	add_child(picker)
 	picker.file_selected.connect(func(path: String) -> void: edit.text = path)
 	return picker
+
+
+func show_compatibility_error(message: String) -> void:
+	compatibility_error_label.text = message
+	compatibility_error_label.show()
+	tabs.current_tab = 4
+	call_deferred("popup_centered")

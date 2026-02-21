@@ -37,7 +37,7 @@ func _run() -> void:
 	var before: PackedByteArray = main.city.document.serialize().data
 	main._open_settings_dialog()
 	var dialog: AppSettingsDialog = main.settings_dialog
-	assert(dialog.tabs.get_tab_count() == 4 and dialog.tabs.get_tab_title(3) == "Import Data")
+	assert(dialog.tabs.get_tab_count() == 5 and dialog.tabs.get_tab_title(3) == "Import Data")
 	assert(dialog.toolbar_sounds_check.text == "Play toolbar sounds")
 	assert(not dialog.selected_values().has("soundtrack_folder"))
 	var pickers := 0

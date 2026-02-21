@@ -10,7 +10,7 @@ const ENGINE_FIELDS := [
 	"disaster_map_counter", "disaster_hurricane_counter", "midi_playback_active",
 ]
 const CONTROLLER_FIELDS := [
-	"speed", "accumulator_msec", "fire_elapsed_msec", "subtick_counter",
+	"speed", "accumulator_msec", "fire_elapsed_msec", "subtick_counter", "original_compatibility",
 	"simulation_ready", "interaction_blocked", "terminal_blocked",
 ]
 const CITY_ARRAYS := ["altitude_words", "terrain", "buildings", "zones", "underground", "text_overlays", "tile_flags"]

@@ -24,6 +24,8 @@ static func load_values(
 		"zoom_graphics": normalize_zoom_graphics(DEFAULT_ZOOM_GRAPHICS),
 		"background_audio": false,
 		"shuffle_music": false,
+		"original_compatibility": false,
+		"warn_sc2x_conversion": true,
 		"toolbar_sounds": true,
 		"sound_pack_folder": "",
 		"music_pack_folder": "",
@@ -43,6 +45,8 @@ static func load_values(
 	)
 	for key in ["toolbar_sounds", "sound_pack_folder", "music_pack_folder"]:
 		result[key] = config.get_value("audio", key, result[key])
+	result.warn_sc2x_conversion = bool(config.get_value("simulation", "warn_sc2x_conversion", true))
+	result.original_compatibility = bool(config.get_value("simulation", "original_compatibility", false))
 	result.shuffle_music = bool(config.get_value("audio", "shuffle_music", false))
 	result.background_audio = bool(config.get_value("audio", "background_audio", false))
 	result.soundtrack_folder = str(config.get_value("audio", "soundtrack_folder", ""))
@@ -92,6 +96,8 @@ static func save_values(
 	sound_pack_folder: Variant = null,
 	music_pack_folder: Variant = null,
 	shuffle_music: Variant = null,
+	original_compatibility: Variant = null,
+	warn_sc2x_conversion: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 	if FileAccess.file_exists(path):
@@ -106,6 +112,10 @@ static func save_values(
 	config.set_value("display", "fullscreen", fullscreen)
 	if city_renderer != null:
 		config.set_value("display", "city_renderer", normalize_renderer(city_renderer))
+	if warn_sc2x_conversion != null:
+		config.set_value("simulation", "warn_sc2x_conversion", bool(warn_sc2x_conversion))
+	if original_compatibility != null:
+		config.set_value("simulation", "original_compatibility", bool(original_compatibility))
 	if shuffle_music != null:
 		config.set_value("audio", "shuffle_music", bool(shuffle_music))
 	if background_audio != null:
@@ -115,4 +125,12 @@ static func save_values(
 	for pair in [["toolbar_sounds", toolbar_sounds], ["sound_pack_folder", sound_pack_folder], ["music_pack_folder", music_pack_folder]]:
 		if pair[1] != null:
 			config.set_value("audio", pair[0], pair[1])
+	return config.save(path)
+
+
+static func save_original_compatibility(enabled: bool, path := SETTINGS_PATH) -> Error:
+	var config := ConfigFile.new()
+	if FileAccess.file_exists(path):
+		config.load(path)
+	config.set_value("simulation", "original_compatibility", enabled)
 	return config.save(path)
