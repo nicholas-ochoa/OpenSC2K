@@ -1,4 +1,5 @@
 extends SceneTree
+const TimingResults = preload("res://tests/support/timing_results.gd")
 
 class FixedRandom extends RefCounted:
 	func next_u15() -> int:
@@ -140,7 +141,7 @@ func check_values(edge: int) -> void:
 	print("Native map phase %d: %d us" % [edge, Time.get_ticks_usec() - started])
 	check(result.ok, "Native map phase")
 	var duplicate_result := PollutionPhase.run(CityState.from_document(before))
-	check(duplicate_result == result and before.serialize().data == doc.serialize().data, "Deterministic native calculation")
+	check(TimingResults.without_timings(duplicate_result) == TimingResults.without_timings(result) and before.serialize().data == doc.serialize().data, "Deterministic native calculation")
 	var pollution := doc.find_chunk("XPLT").decoded_payload
 	check(pollution[index] > pollution[index + 1] and pollution[index + 1] > 0, "Pollution source and neighbor differ")
 	land = doc.find_chunk("XVAL").decoded_payload
@@ -231,7 +232,7 @@ func check_sliced(edge: int) -> void:
 	while runner.is_pending() and Time.get_ticks_msec() < deadline:
 		await process_frame
 		actual = runner.advance_time(0, 200)
-	check(not runner.is_pending() and actual == expected, "Native sliced events match synchronous events")
+	check(not runner.is_pending() and TimingResults.without_timings(actual) == TimingResults.without_timings(expected), "Native sliced events match synchronous events")
 	check(other.document.serialize().data == doc.serialize().data, "Native sliced bytes match synchronous bytes")
 	runner.close()
 	# Complete the rest of the monthly schedule with native grids.

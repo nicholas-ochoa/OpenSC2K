@@ -21,6 +21,7 @@ const RouteConfirmationDialogUi = preload("res://src/ui/route_confirmation_dialo
 const PictureNoticeDialogUi = preload("res://src/ui/picture_notice_dialog.gd")
 const AboutDialogUi = preload("res://src/ui/about_dialog.gd")
 const SaveChangesDialogUi = preload("res://src/ui/save_changes_dialog.gd")
+const DebugOverlayUi = preload("res://src/debug/debug_overlay.gd")
 const CityStatusBarUi = preload("res://src/ui/city_status_bar.gd")
 const FileDialogsUi = preload("res://src/ui/file_dialog_factory.gd")
 const CityMenuBarUi = preload("res://src/ui/city_menu_bar.gd")
@@ -47,6 +48,16 @@ const BudgetDialogUi = preload("res://src/ui/budget_dialog.gd")
 const MainControl = preload("res://src/main.gd")
 
 var check_callback: Callable
+
+
+class DebugMetricsControl:
+	extends Control
+
+	var query_count := 0
+
+	func _debug_metrics() -> Dictionary:
+		query_count += 1
+		return {"speed": "Paused"}
 
 
 func _init(callback: Callable) -> void:
@@ -166,6 +177,24 @@ func _test_main_menu() -> void:
 		"SCURK Place & Print omits both non-placeable animation groups",
 	)
 	menu.free()
+	var debug_metrics_control := DebugMetricsControl.new()
+	var debug_overlay := DebugOverlayUi.new()
+	debug_overlay.setup(debug_metrics_control)
+	debug_overlay.toggle()
+	debug_overlay._process(0.1)
+	debug_overlay._process(0.15)
+	_check(
+		debug_metrics_control.query_count == 2,
+		"Debug UI reuses one metrics snapshot between timed refreshes",
+	)
+	debug_overlay.toggle()
+	debug_overlay._process(0.25)
+	_check(
+		debug_metrics_control.query_count == 2,
+		"Hidden debug UI does not collect city metrics",
+	)
+	debug_overlay.free()
+	debug_metrics_control.free()
 	var settings_dialog := SettingsDialogUi.new()
 	settings_dialog._ready()
 	settings_dialog.music_slider.value = 25

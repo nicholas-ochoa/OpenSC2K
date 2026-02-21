@@ -145,18 +145,19 @@ func is_valid() -> bool:
 	return parse_error.is_empty()
 
 
-func duplicate_document() -> Sc2File:
+# simulation may share immutable file bytes; decoded payloads always remain private
+func duplicate_document(share_source_bytes := false) -> Sc2File:
 	var result := Sc2File.new()
 	result.map_size = map_size
 	result.large_version = large_version
-	result.source_bytes = source_bytes.duplicate()
+	result.source_bytes = source_bytes if share_source_bytes else source_bytes.duplicate()
 	result.source_path = source_path
 	result.parse_error = parse_error
 	for chunk in chunks:
 		var copied := Sc2Chunk.new()
 		copied.chunk_id = chunk.chunk_id
 		copied.source_offset = chunk.source_offset
-		copied.stored_payload = chunk.stored_payload.duplicate()
+		copied.stored_payload = chunk.stored_payload if share_source_bytes else chunk.stored_payload.duplicate()
 		copied.decoded_payload = chunk.decoded_payload.duplicate()
 		copied.expected_decoded_size = chunk.expected_decoded_size
 		copied.is_compressed = chunk.is_compressed

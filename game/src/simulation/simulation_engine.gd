@@ -66,6 +66,13 @@ func _init(
 
 
 func advance_moving_things(current_time_msec := -1) -> Dictionary:
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	var result := _timed_advance_moving_things(current_time_msec)
+	result["timing"] = span.finish()
+	return result
+
+
+func _timed_advance_moving_things(current_time_msec := -1) -> Dictionary:
 	if terminal_state:
 		return {"ok": false, "error": "the game has ended"}
 	if current_time_msec < 0:
@@ -98,6 +105,18 @@ func advance_moving_things(current_time_msec := -1) -> Dictionary:
 
 
 func advance_day() -> Dictionary:
+	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
+	var result := _timed_advance_day()
+	if result.get("ok", false):
+		var measured := span.finish()
+		var scheduled: Dictionary = result.get("timing", {"work_usec": 0, "steps": {}})
+		measured.steps = scheduled.steps
+		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
+		result["timing"] = measured
+	return result
+
+
+func _timed_advance_day() -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 	if not pending_interaction.is_empty():
@@ -131,6 +150,18 @@ func advance_day() -> Dictionary:
 
 
 func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> Dictionary:
+	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
+	var result := _timed_resolve_annual_budget(funding_values, auto_budget)
+	if result.get("ok", false):
+		var measured := span.finish()
+		var scheduled: Dictionary = result.get("timing", {"work_usec": 0, "steps": {}})
+		measured.steps = scheduled.steps
+		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
+		result["timing"] = measured
+	return result
+
+
+func _timed_resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) -> Dictionary:
 	if pending_interaction != "annual_budget" or pending_day_schedule.is_empty():
 		return {"ok": false, "error": "no annual budget interaction is pending"}
 	var stored := BudgetPhase.set_funding(city, funding_values, auto_budget)
@@ -144,6 +175,18 @@ func resolve_annual_budget(funding_values: PackedInt32Array, auto_budget: bool) 
 
 
 func resolve_military_proposal(accepted: bool) -> Dictionary:
+	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
+	var result := _timed_resolve_military_proposal(accepted)
+	if result.get("ok", false):
+		var measured := span.finish()
+		var scheduled: Dictionary = result.get("timing", {"work_usec": 0, "steps": {}})
+		measured.steps = scheduled.steps
+		measured.steps["day setup and events"] = maxi(0, int(measured.work_usec) - int(scheduled.work_usec))
+		result["timing"] = measured
+	return result
+
+
+func _timed_resolve_military_proposal(accepted: bool) -> Dictionary:
 	if pending_interaction != "military_proposal" or pending_day_schedule.is_empty():
 		return {"ok": false, "error": "no military proposal interaction is pending"}
 	var proposal := MilitaryProposalPhase.resolve(city, accepted, game_random)
@@ -168,6 +211,13 @@ func resolve_military_proposal(accepted: bool) -> Dictionary:
 
 
 func advance_disaster_tick() -> Dictionary:
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	var result := _timed_advance_disaster_tick()
+	result["timing"] = span.finish()
+	return result
+
+
+func _timed_advance_disaster_tick() -> Dictionary:
 	if active_disaster_type == 0:
 		return {"ok": false, "error": "no disaster is active"}
 	var phase_result := DisasterMap.run_all(
@@ -258,11 +308,19 @@ static func _rotate_runtime_point(point: Vector2i, counter_clockwise: bool, map_
 
 
 func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Dictionary:
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	var result := _execute_day_schedule(schedule, annual_budget_approved, span)
+	result["timing"] = span.finish()
+	return result
+
+
+func _execute_day_schedule(schedule: Dictionary, annual_budget_approved: bool, span: SimulationTimingSpan) -> Dictionary:
 
 	var applied := PackedStringArray()
 	var pending := PackedStringArray()
 	var phase_results: Dictionary = {}
 	for action in schedule.actions:
+		span.mark(action)
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
 		match action:
@@ -282,6 +340,7 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				phase_results[action] = budget
 				var annual_complete := true
 				if budget.settled_year:
+					span.mark("annual_microsim")
 					var annual_microsim := MicrosimAnnualPhase.run(
 						city,
 						bus_passengers,
@@ -380,6 +439,7 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				if not demand.ok:
 					return {"ok": false, "error": demand.error}
 				phase_results[action] = demand
+				span.mark("rci_aftermath")
 				var aftermath := RciAftermath.run(city, random, int(schedule.season))
 				if not aftermath.ok:
 					return {"ok": false, "error": aftermath.error}
@@ -389,6 +449,7 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 				phase_results["rci_aftermath"] = aftermath
 				applied.append(action)
 			"education_health":
+				span.mark("simnation calculation")
 				var simnation := SimNation.run(city, random)
 				if not simnation.ok:
 					return {"ok": false, "error": simnation.error}
@@ -402,10 +463,12 @@ func _run_day_schedule(schedule: Dictionary, annual_budget_approved: bool) -> Di
 					- int(demand_result.get("previous_population", 0)),
 					0
 				)
+				span.mark("industries")
 				var industries := Industries.run(city, random, lfsr_random, population_growth)
 				if not industries.ok:
 					return {"ok": false, "error": industries.error}
 				phase_results["industries"] = industries
+				span.mark("education_health")
 				var demographics := EducationHealthPhase.run(city, random)
 				if not demographics.ok:
 					return {"ok": false, "error": demographics.error}

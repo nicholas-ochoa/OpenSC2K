@@ -1,4 +1,5 @@
 extends SceneTree
+const TimingResults = preload("res://tests/support/timing_results.gd")
 var failures := 0
 func _initialize() -> void:
 	call_deferred("_run")
@@ -40,7 +41,7 @@ func check_parity(edge: int) -> void:
 			await process_frame
 			actual = runner.advance_time(0, day * 200)
 		check(not runner.is_pending(), "tick completes without blocking frames")
-		check(actual == expected, "identical tick events and results at %d day %d" % [edge, day])
+		check(TimingResults.without_timings(actual) == TimingResults.without_timings(expected), "identical tick events and results at %d day %d" % [edge, day])
 		check(sliced.engine.city.document.serialize().data == sync.engine.city.document.serialize().data, "identical saved bytes at %d day %d" % [edge, day])
 		check(sliced.engine.random.state == sync.engine.random.state and sliced.engine.lfsr_random.state == sync.engine.lfsr_random.state and sliced.engine.game_random.state == sync.engine.game_random.state, "identical random states")
 		slices += int(runner.last_work_metrics.get("slices", 0))
@@ -63,7 +64,7 @@ func check_cancellation() -> void:
 		await process_frame
 		result = runner.advance_time(0, 200)
 	check(runner.cancelled_ticks == 1 and runner.completed_ticks == 1, "stale work discarded and retried")
-	check(result == expected and sliced.engine.city.document.serialize().data == sync.engine.city.document.serialize().data, "edit survives pending work")
+	check(TimingResults.without_timings(result) == TimingResults.without_timings(expected) and sliced.engine.city.document.serialize().data == sync.engine.city.document.serialize().data, "edit survives pending work")
 	runner.advance_time(200, 400)
 	sliced.set_speed(GameSpeedController.Speed.PAUSED)
 	var age := sliced.engine.city.age_in_days()
@@ -86,7 +87,7 @@ func check_special_ticks() -> void:
 	check(sliced.engine.city.age_in_days() == 300, "annual update completed")
 	var expected := sync.engine.start_disaster(DisasterStartPhase.DISASTER_FIRE, Vector2i(64, 64))
 	var actual := sliced.engine.start_disaster(DisasterStartPhase.DISASTER_FIRE, Vector2i(64, 64))
-	check(actual == expected and actual.ok, "identical fire start")
+	check(TimingResults.without_timings(actual) == TimingResults.without_timings(expected) and actual.ok, "identical fire start")
 	for tick in 10:
 		await compare_tick(sync, sliced, runner, 400 + tick * 200, "fire tick")
 	var before: PackedByteArray = sliced.engine.city.document.serialize().data
@@ -105,7 +106,7 @@ func compare_tick(sync: GameSpeedController, sliced: GameSpeedController, runner
 	while runner.is_pending() and Time.get_ticks_msec() < deadline:
 		await process_frame
 		actual = runner.advance_time(0, now)
-	check(not runner.is_pending() and expected.ok and actual == expected, context + " results")
+	check(not runner.is_pending() and expected.ok and TimingResults.without_timings(actual) == TimingResults.without_timings(expected), context + " results")
 	check(sync.engine.city.document.serialize().data == sliced.engine.city.document.serialize().data, context + " bytes")
 	check(SimulationSnapshot.stamp(sync).slice(-SimulationSnapshot.ENGINE_FIELDS.size() - SimulationSnapshot.CONTROLLER_FIELDS.size()) == SimulationSnapshot.stamp(sliced).slice(-SimulationSnapshot.ENGINE_FIELDS.size() - SimulationSnapshot.CONTROLLER_FIELDS.size()), context + " runtime fields")
 	check(sync.engine.random.state == sliced.engine.random.state and sync.engine.lfsr_random.state == sliced.engine.lfsr_random.state and sync.engine.game_random.state == sliced.engine.game_random.state, context + " random states")

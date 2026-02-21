@@ -43,6 +43,7 @@ func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Dicti
 					var started := Time.get_ticks_usec()
 					SimulationSnapshot.publish(_working, controller)
 					publish_usec = Time.get_ticks_usec() - started
+					result["job_timings"] = {"Main thread / snapshot": snapshot_usec, "Main thread / publish": publish_usec}
 					completed_ticks += 1
 				_working = null
 				_budget = null

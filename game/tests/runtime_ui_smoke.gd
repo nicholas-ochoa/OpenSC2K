@@ -559,13 +559,22 @@ func _run() -> void:
 		quit(2)
 		return
 
+	var debug_overlay := main.get("debug_overlay") as CityDebugOverlay
+	if debug_overlay == null or debug_overlay.get("_window") == null or debug_overlay.is_open:
+		push_error("The native debug window is not initialized and hidden")
+		main.queue_free()
+		quit(2)
+		return
+	debug_overlay.toggle()
+	await process_frame
 	var debug_metrics: Dictionary = main.call("_debug_metrics")
 	if (
-		not debug_metrics.has("dynamic_revisions")
+		not debug_overlay.is_open
+		or not debug_metrics.has("dynamic_revisions")
 		or not debug_metrics.has("sign_scans")
 		or debug_metrics.get("tool", "") != "Demolish"
 	):
-		push_error("The debug metrics do not expose city renderer state")
+		push_error("The F12 debug overlay does not expose city renderer metrics")
 		main.queue_free()
 		quit(2)
 		return
@@ -659,6 +668,7 @@ func _run() -> void:
 	debug_engine.disaster_hurricane_counter = debug_old_hurricane_counter
 	main.call("_refresh_details")
 	main.call("_refresh_moving_things")
+	debug_overlay.toggle()
 
 	var menu_bar := main.get("city_menu_bar") as CityMenuBar
 	var status_bar := main.get("city_status_bar") as CityStatusBar

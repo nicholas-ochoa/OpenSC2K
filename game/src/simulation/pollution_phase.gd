@@ -65,6 +65,8 @@ static func run(city: CityState) -> Dictionary:
 		return {"ok": false, "error": "city is invalid"}
 	if city.document.full_resolution_maps():
 		return NativeDataMapPhase.run(city)
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("pollution sources")
 	var misc_chunk := city.document.find_chunk("MISC")
 	var traffic_chunk := city.document.find_chunk("XTRF")
 	var pollution_chunk := city.document.find_chunk("XPLT")
@@ -117,6 +119,7 @@ static func run(city: CityState) -> Dictionary:
 						value += 200
 			temporary[temporary_row + y] = value
 
+	span.mark("pollution smoothing")
 	var base_divisor := pollution_divisor(city.document)
 
 	var pollution := PackedByteArray()
@@ -149,6 +152,7 @@ static func run(city: CityState) -> Dictionary:
 			total += value
 
 
+	span.mark("city center")
 	var flags := city.tile_flags.duplicate()
 	var coordinate_sum_x := 0
 	var coordinate_sum_y := 0
@@ -168,6 +172,7 @@ static func run(city: CityState) -> Dictionary:
 	var center_x := int(coordinate_sum_x / (center_divisor * 2))
 	var center_y := int(coordinate_sum_y / (center_divisor * 2))
 
+	span.mark("terrain desirability")
 	var developed_tiles := 0
 	for x in map_edge:
 		if city.simulation_slice != null:
@@ -209,6 +214,7 @@ static func run(city: CityState) -> Dictionary:
 			temporary[residential_index] = residential_value
 			temporary[industrial_index] = industrial_value
 
+	span.mark("land value")
 	var old_crime: PackedByteArray = crime_chunk.decoded_payload
 	var old_population: PackedByteArray = population_chunk.decoded_payload
 	var old_growth: PackedByteArray = growth_chunk.decoded_payload
@@ -271,6 +277,7 @@ static func run(city: CityState) -> Dictionary:
 		var row := x * map_edge
 		for y in (map_edge / 4):
 			temporary[row + y] = 0
+	span.mark("services and population sources")
 	var police := PackedByteArray()
 	police.resize((map_edge / 4) * (map_edge / 4))
 	var fire := PackedByteArray()
@@ -314,6 +321,7 @@ static func run(city: CityState) -> Dictionary:
 						strength = _divide_toward_zero(strength, 2)
 					_add_service(fire, service_x, service_y, strength, map_edge)
 
+	span.mark("population and growth")
 	var population := PackedByteArray()
 	population.resize((map_edge / 4) * (map_edge / 4))
 	var growth := PackedByteArray()
@@ -354,6 +362,7 @@ static func run(city: CityState) -> Dictionary:
 				value += 16
 			temporary[temporary_index] = value
 
+	span.mark("crime smoothing")
 	var crime := PackedByteArray()
 	crime.resize(((map_edge / 2) * (map_edge / 2)))
 	var crime_total := 0
@@ -382,6 +391,7 @@ static func run(city: CityState) -> Dictionary:
 			crime[map_row + y] = value
 			crime_total += value
 
+	span.mark("store maps and totals")
 	for update in [
 		[pollution_chunk, pollution, "XPLT"],
 		[land_value_chunk, land_value, "XVAL"],
@@ -411,6 +421,7 @@ static func run(city: CityState) -> Dictionary:
 		"crime_total": crime_total,
 		"developed_tiles": developed_tiles,
 		"city_center": Vector2i(center_x * 2, center_y * 2),
+		"timing": span.finish(),
 		"error": "",
 	}
 

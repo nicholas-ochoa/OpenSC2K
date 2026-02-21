@@ -1,6 +1,6 @@
-class_name NativeGridMath
+# Frozen pre-optimization oracle from e5f6abd9; used only by regression tests.
 extends RefCounted
-# integer spatial filters for the independent sc2x per-tile simulation
+## Integer spatial filters for the independent SC2X per-tile simulation.
 
 static func neighborhood(values: PackedInt32Array, edge: int, radius: int, scale: int,
 	budget: SimulationSliceBudget = null) -> PackedInt32Array:
@@ -27,33 +27,6 @@ static func neighborhood(values: PackedInt32Array, edge: int, radius: int, scale
 			var total := integral[right * stride + bottom] - integral[left * stride + bottom]
 			total -= integral[right * stride + top] - integral[left * stride + top]
 			result[x * edge + y] = int(total * scale / ((right - left) * (bottom - top)))
-	return result
-
-static func neighborhood_bytes(values: PackedInt32Array, edge: int, radius: int, scale: int,
-	budget: SimulationSliceBudget = null) -> PackedByteArray:
-	var stride := edge + 1
-	var integral := PackedInt64Array()
-	integral.resize(stride * stride)
-	for x in edge:
-		if budget != null:
-			budget.checkpoint()
-		var row_sum := 0
-		for y in edge:
-			row_sum += values[x * edge + y]
-			integral[(x + 1) * stride + y + 1] = integral[x * stride + y + 1] + row_sum
-	var result := PackedByteArray()
-	result.resize(values.size())
-	for x in edge:
-		if budget != null:
-			budget.checkpoint()
-		var left := maxi(x - radius, 0)
-		var right := mini(x + radius + 1, edge)
-		for y in edge:
-			var top := maxi(y - radius, 0)
-			var bottom := mini(y + radius + 1, edge)
-			var total := integral[right * stride + bottom] - integral[left * stride + bottom]
-			total -= integral[right * stride + top] - integral[left * stride + top]
-			result[x * edge + y] = clampi(int(total * scale / ((right - left) * (bottom - top))), 0, 255)
 	return result
 
 static func smooth(values: PackedInt32Array, edge: int, center_weight: int, base_divisor: int,
@@ -84,36 +57,6 @@ static func smooth(values: PackedInt32Array, edge: int, center_weight: int, base
 			result[index] = int(total / divisor)
 	return result
 
-static func smooth_bytes(values: PackedInt32Array, edge: int, center_weight: int, base_divisor: int,
-	step: int = 1, rings: int = 2, budget: SimulationSliceBudget = null) -> Dictionary:
-	var result := PackedByteArray()
-	var sum := 0
-	result.resize(values.size())
-	for x in edge:
-		if budget != null:
-			budget.checkpoint()
-		for y in edge:
-			var index := x * edge + y
-			var total := values[index] * center_weight
-			var divisor := base_divisor
-			for ring in range(1, rings + 1):
-				var distance := ring * step
-				if x >= distance:
-					total += values[index - distance * edge]
-					divisor += 1
-				if x + distance < edge:
-					total += values[index + distance * edge]
-					divisor += 1
-				if y >= distance:
-					total += values[index - distance]
-					divisor += 1
-				if y + distance < edge:
-					total += values[index + distance]
-					divisor += 1
-			result[index] = clampi(int(total / divisor), 0, 255)
-			sum += result[index]
-	return {"values": result, "total": sum}
-
 static func bytes(values: PackedInt32Array, budget: SimulationSliceBudget = null) -> PackedByteArray:
 	var result := PackedByteArray()
 	result.resize(values.size())
@@ -123,36 +66,30 @@ static func bytes(values: PackedInt32Array, budget: SimulationSliceBudget = null
 		result[index] = clampi(values[index], 0, 255)
 	return result
 
-static func service_pattern(strength: int) -> PackedInt32Array:
+static func add_service(values: PackedByteArray, edge: int, origin: Vector2i, strength: int) -> void:
+	# Sample the original service kernel at quarter-cell offsets around the
+	# actual station tile. Four tiles still equal one original service cell.
 	var kernel := PackedByteArray()
 	kernel.resize(49)
 	PollutionPhase._add_service(kernel, 3, 3, strength, 28)
-	var pattern := PackedInt32Array()
-	pattern.resize(31 * 31)
 	for dx in range(-15, 16):
+		var x := origin.x + dx
+		if x < 0 or x >= edge:
+			continue
 		var kx := floori(float(dx) / 4.0) + 3
 		var fx := posmod(dx, 4)
 		for dy in range(-15, 16):
+			var y := origin.y + dy
+			if y < 0 or y >= edge:
+				continue
 			var ky := floori(float(dy) / 4.0) + 3
 			var fy := posmod(dy, 4)
 			var weighted := _sample(kernel, kx, ky) * (4 - fx) * (4 - fy)
 			weighted += _sample(kernel, kx + 1, ky) * fx * (4 - fy)
 			weighted += _sample(kernel, kx, ky + 1) * (4 - fx) * fy
 			weighted += _sample(kernel, kx + 1, ky + 1) * fx * fy
-			pattern[(dx + 15) * 31 + dy + 15] = weighted / 16
-	return pattern
-
-static func add_service(values: PackedByteArray, edge: int, origin: Vector2i, strength: int) -> void:
-	apply_service_pattern(values, edge, origin, service_pattern(strength))
-
-static func apply_service_pattern(values: PackedByteArray, edge: int, origin: Vector2i,
-	pattern: PackedInt32Array) -> void:
-	for dx in range(maxi(-15, -origin.x), mini(16, edge - origin.x)):
-		var row := (origin.x + dx) * edge
-		var source_row := (dx + 15) * 31
-		for dy in range(maxi(-15, -origin.y), mini(16, edge - origin.y)):
-			var index := row + origin.y + dy
-			values[index] = clampi(int(values[index]) + pattern[source_row + dy + 15], 0, 255)
+			var index := x * edge + y
+			values[index] = clampi(int(values[index]) + weighted / 16, 0, 255)
 
 static func _sample(kernel: PackedByteArray, x: int, y: int) -> int:
 	return kernel[x * 7 + y] if x >= 0 and x < 7 and y >= 0 and y < 7 else 0

@@ -2,6 +2,8 @@ class_name SimulationSliceBudget
 extends RefCounted
 # a worker parks at checkpoints until the next rendered frame grants time
 # only the worker calls checkpoint/finish. the main thread grants/cancels
+var parked_usec := 0
+
 var _mutex := Mutex.new()
 var _resume := Semaphore.new()
 var _waiting := false
@@ -24,7 +26,9 @@ func checkpoint() -> void:
 		return
 	_waiting = true
 	_mutex.unlock()
+	var wait_started := Time.get_ticks_usec()
 	_resume.wait()
+	parked_usec += Time.get_ticks_usec() - wait_started
 	_mutex.lock()
 	if _cancelled:
 		_stopped = true

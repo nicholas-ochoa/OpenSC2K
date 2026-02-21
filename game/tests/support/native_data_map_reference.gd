@@ -1,10 +1,9 @@
-class_name NativeDataMapPhase
+# Frozen pre-optimization oracle from e5f6abd9; used only by regression tests.
 extends RefCounted
-# SC2X v3 per-tile rules. These differ from the original executable's coarse-grid rules.
+const NativeGridMath = preload("res://tests/support/native_grid_reference.gd")
+## SC2X v3 rules. These are independent per-tile rules, not executable parity.
 
 static func run(city: CityState) -> Dictionary:
-	var span := SimulationTimingSpan.new(city.simulation_slice)
-	span.mark("sources and terrain")
 	var edge := city.map_size
 	var count := edge * edge
 	var doc := city.document
@@ -14,15 +13,6 @@ static func run(city: CityState) -> Dictionary:
 		if chunk == null or chunk.decoded_payload.size() != count:
 			return {"ok": false, "error": "Native data map %s is missing or invalid" % id}
 		old[id] = chunk.decoded_payload
-	var old_pollution: PackedByteArray = old.XPLT
-	var old_traffic: PackedByteArray = old.XTRF
-	var old_growth: PackedByteArray = old.XROG
-	var old_population: PackedByteArray = old.XPOP
-	var old_crime: PackedByteArray = old.XCRM
-	var buildings := city.buildings
-	var flags := city.tile_flags
-	var zones := city.zones
-	var terrain := city.terrain
 	var misc := doc.find_chunk("MISC")
 	if misc == null or misc.decoded_payload.size() != 4800:
 		return {"ok": false, "error": "MISC is missing or invalid"}
@@ -40,10 +30,10 @@ static func run(city: CityState) -> Dictionary:
 		_checkpoint(city)
 		for y in edge:
 			var index := x * edge + y
-			var building := int(buildings[index])
-			var tile_flags := int(flags[index])
-			var zone := int(zones[index]) & 15
-			sources[index] = int(old_pollution[index]) + int(old_traffic[index]) / 5
+			var building := int(city.buildings[index])
+			var flags := int(city.tile_flags[index])
+			var zone := int(city.zones[index]) & 15
+			sources[index] = int(old.XPLT[index]) + int(old.XTRF[index]) / 5
 			sources[index] += int(PollutionPhase.BUILDING_POLLUTION.get(building, 0)) * 4
 			if building == PollutionPhase.RADIOACTIVITY:
 				sources[index] += 800
@@ -53,18 +43,18 @@ static func run(city: CityState) -> Dictionary:
 			if building >= PollutionPhase.FIRST_ROAD or zone != 0:
 				developed += 1
 			if building == 0:
-				residential[index] = 12 if tile_flags & PollutionPhase.FLAG_WATER else 4
-				industrial[index] = 12 if tile_flags & PollutionPhase.FLAG_WATER else 0
+				residential[index] = 12 if flags & PollutionPhase.FLAG_WATER else 4
+				industrial[index] = 12 if flags & PollutionPhase.FLAG_WATER else 0
 			elif building == PollutionPhase.BIG_PARK:
 				residential[index] = 40
 			elif building >= PollutionPhase.FIRST_TREE and building <= PollutionPhase.SMALL_PARK:
 				residential[index] = 20
 			elif building < PollutionPhase.FIRST_TREE:
 				residential[index] = -20
-			if tile_flags & PollutionPhase.FLAG_WATERED:
+			if flags & PollutionPhase.FLAG_WATERED:
 				residential[index] += 4
 				industrial[index] += 4
-			if terrain[index] > 0 and terrain[index] < 0x10:
+			if city.terrain[index] > 0 and city.terrain[index] < 0x10:
 				residential[index] += 12
 			if building >= 0x70 and building < 0xc6:
 				weights[index] = PollutionPhase._population_weight(building)
@@ -74,20 +64,13 @@ static func run(city: CityState) -> Dictionary:
 	var center := Vector2i(edge / 2, edge / 2) if center_count == 0 else Vector2i(center_sum.x / center_count, center_sum.y / center_count)
 	var ordinances := doc.misc_u32(PollutionPhase.MISC_ORDINANCES)
 	var divisor := PollutionPhase.pollution_divisor(doc)
-	span.mark("pollution smoothing")
-	var pollution_result := NativeGridMath.smooth_bytes(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice)
-	var pollution: PackedByteArray = pollution_result.values
-	span.mark("land desirability filters")
+	var pollution := NativeGridMath.bytes(NativeGridMath.smooth(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice), city.simulation_slice)
 	residential = NativeGridMath.neighborhood(residential, edge, 2, 16, city.simulation_slice)
 	industrial = NativeGridMath.neighborhood(industrial, edge, 2, 16, city.simulation_slice)
 	residential = NativeGridMath.smooth(residential, edge, 1, 1, 4, 1, city.simulation_slice)
 	industrial = NativeGridMath.smooth(industrial, edge, 1, 1, 4, 1, city.simulation_slice)
-	span.mark("population density")
-	var population := NativeGridMath.neighborhood_bytes(weights, edge, 2, 64, city.simulation_slice)
-	span.mark("ordinance coverage")
-	var ordinance_coverage := PackedByteArray()
-	if ordinances & (PollutionPhase.POLICE_COVERAGE_ORDINANCE | PollutionPhase.FIRE_COVERAGE_ORDINANCE):
-		ordinance_coverage = NativeGridMath.neighborhood_bytes(occupied, edge, 2, 32, city.simulation_slice)
+	var population := NativeGridMath.bytes(NativeGridMath.neighborhood(weights, edge, 2, 64, city.simulation_slice), city.simulation_slice)
+	var ordinance_coverage := NativeGridMath.bytes(NativeGridMath.neighborhood(occupied, edge, 2, 32, city.simulation_slice), city.simulation_slice)
 	var police := PackedByteArray()
 	var fire := PackedByteArray()
 	police.resize(count)
@@ -96,10 +79,7 @@ static func run(city: CityState) -> Dictionary:
 		police = ordinance_coverage.duplicate()
 	if ordinances & PollutionPhase.FIRE_COVERAGE_ORDINANCE:
 		fire = ordinance_coverage.duplicate()
-	span.mark("station coverage")
 	_add_stations(city, police, fire)
-	span.mark("land value, growth and crime sources")
-	var land_sum := 0
 	var land := PackedByteArray()
 	var growth := PackedByteArray()
 	land.resize(count)
@@ -108,53 +88,51 @@ static func run(city: CityState) -> Dictionary:
 		_checkpoint(city)
 		for y in edge:
 			var index := x * edge + y
-			growth[index] = clampi((int(old_growth[index]) * 7 + (int(population[index]) - int(old_population[index])) * 8 + 128) / 8, 0, 255)
-			var zone := int(zones[index]) & 15
-			sources[index] = 0
-			if buildings[index] < PollutionPhase.FIRST_ROAD and zone == 0:
+			growth[index] = clampi((int(old.XROG[index]) * 7 + (int(population[index]) - int(old.XPOP[index])) * 8 + 128) / 8, 0, 255)
+			var zone := int(city.zones[index]) & 15
+			if city.buildings[index] < PollutionPhase.FIRST_ROAD and zone == 0:
 				continue
 			var distance_value := 64 - (absi(center.x - x) + absi(center.y - y)) / 2
 			var value := residential[index]
 			match zone:
 				3, 4:
-					value += maxi(distance_value, 0) - int(pollution[index]) / 4 - int(old_crime[index]) / 3 + int(old_population[index]) / 3
+					value += maxi(distance_value, 0) - int(pollution[index]) / 4 - int(old.XCRM[index]) / 3 + int(old.XPOP[index]) / 3
 				5, 6:
 					value = industrial[index] + (21 if zone == 6 else 0)
-					value += maxi(distance_value / 4, 0) - int(pollution[index]) / 16 - int(old_crime[index]) / 4
+					value += maxi(distance_value / 4, 0) - int(pollution[index]) / 16 - int(old.XCRM[index]) / 4
 				_:
-					value += 21 if old_population[index] < 64 else 0
-					value += maxi(distance_value / 2, 0) - int(pollution[index]) / 5 - int(old_crime[index]) / 3
-			if PollutionPhase.LAND_VALUE_HALVED.has(int(buildings[index])):
+					value += 21 if old.XPOP[index] < 64 else 0
+					value += maxi(distance_value / 2, 0) - int(pollution[index]) / 5 - int(old.XCRM[index]) / 3
+			if PollutionPhase.LAND_VALUE_HALVED.has(int(city.buildings[index])):
 				value -= value / 2
 			land[index] = clampi(value, 0, 255)
-			land_sum += land[index]
-			# all crime inputs are available here. preserve the same per-tile math
-			sources[index] = int(population[index]) - int(land[index]) / 4 - int(police[index]) / 2
-			if ordinances & PollutionPhase.CRIME_REDUCTION_ORDINANCE:
-				sources[index] += 16
-	span.mark("crime smoothing")
-	var crime_result := NativeGridMath.smooth_bytes(sources, edge, 2, 2, 1, 2, city.simulation_slice)
-	var crime: PackedByteArray = crime_result.values
-	span.mark("store maps and totals")
+	# Reuse the temporary source array only after pollution has been published locally.
+	for x in edge:
+		_checkpoint(city)
+		for y in edge:
+			var index := x * edge + y
+			sources[index] = 0
+			if city.buildings[index] >= PollutionPhase.FIRST_ROAD or city.zones[index] & 15:
+				sources[index] = int(population[index]) - int(land[index]) / 4 - int(police[index]) / 2
+				if ordinances & PollutionPhase.CRIME_REDUCTION_ORDINANCE:
+					sources[index] += 16
+	var crime := NativeGridMath.bytes(NativeGridMath.smooth(sources, edge, 2, 2, 1, 2, city.simulation_slice), city.simulation_slice)
 	var updates := {"XPLT": pollution, "XVAL": land, "XCRM": crime, "XPLC": police, "XFIR": fire, "XPOP": population, "XROG": growth}
 	for id in updates:
 		doc.find_chunk(id).set_decoded_payload(updates[id])
-	# misc totals retain the original half-resolution area unit for economic consumers
-	var pollution_total := int(pollution_result.total) / 4
-	var land_total := land_sum / 4
-	var crime_total := int(crime_result.total) / 4
+	# MISC totals retain the original half-resolution area unit for economic consumers.
+	var pollution_total := _sum(pollution, city) / 4
+	var land_total := _sum(land, city) / 4
+	var crime_total := _sum(crime, city) / 4
 	for update in [[PollutionPhase.MISC_CITY_POLLUTION, pollution_total],
 		[PollutionPhase.MISC_CITY_LAND_VALUE, land_total], [PollutionPhase.MISC_CITY_CRIME, crime_total],
 		[PollutionPhase.MISC_CITY_CENTER_X, center.x], [PollutionPhase.MISC_CITY_CENTER_Y, center.y]]:
 		doc.set_misc_u32(update[0], update[1])
 	return {"ok": true, "error": "", "pollution_total": pollution_total, "land_value_total": land_total,
-		"crime_total": crime_total, "developed_tiles": developed, "city_center": center, "timing": span.finish()}
+		"crime_total": crime_total, "developed_tiles": developed, "city_center": center}
 
 static func _add_stations(city: CityState, police: PackedByteArray, fire: PackedByteArray) -> void:
 	var edge := city.map_size
-	var patterns: Dictionary = {}
-	var police_strength := (city.document.misc_i32(PollutionPhase.MISC_PRISON_BONUS) + 5) * PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_POLICE) / 2
-	var fire_strength := PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_FIRE) * 5 / 2
 	for x in edge:
 		_checkpoint(city)
 		for y in edge:
@@ -164,17 +142,23 @@ static func _add_stations(city: CityState, police: PackedByteArray, fire: Packed
 			var building := int(city.buildings[index])
 			var strength := 0
 			if building == PollutionPhase.POLICE_STATION:
-				strength = police_strength
+				strength = (city.document.misc_i32(PollutionPhase.MISC_PRISON_BONUS) + 5) * PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_POLICE) / 2
 			elif building == PollutionPhase.FIRE_STATION:
-				strength = fire_strength
+				strength = PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_FIRE) * 5 / 2
 			else:
 				continue
 			if not city.tile_flags[index] & PollutionPhase.FLAG_POWERED:
 				strength /= 2
 			_checkpoint(city)
-			if not patterns.has(strength):
-				patterns[strength] = NativeGridMath.service_pattern(strength)
-			NativeGridMath.apply_service_pattern(police if building == PollutionPhase.POLICE_STATION else fire, edge, Vector2i(x, y), patterns[strength])
+			NativeGridMath.add_service(police if building == PollutionPhase.POLICE_STATION else fire, edge, Vector2i(x, y), strength)
+
+static func _sum(values: PackedByteArray, city: CityState) -> int:
+	var result := 0
+	for index in values.size():
+		if (index & 1023) == 0:
+			_checkpoint(city)
+		result += values[index]
+	return result
 
 static func _checkpoint(city: CityState) -> void:
 	if city.simulation_slice != null:

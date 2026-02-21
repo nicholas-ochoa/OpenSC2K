@@ -23,6 +23,8 @@ run_godot() {
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --editor --quit
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --quit-after 2
 
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/simulation_timing_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/native_data_map_optimization_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/indexed_png_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/gpu_atlas_growth_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/native_graphics_settings_test.gd

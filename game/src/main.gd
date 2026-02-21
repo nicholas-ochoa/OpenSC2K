@@ -61,6 +61,7 @@ const Bonds = preload("res://src/simulation/bond_command.gd")
 const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
+const DebugOverlayView = preload("res://src/debug/debug_overlay.gd")
 const DebugActions = preload("res://src/debug/city_debug_actions.gd")
 
 const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "crime", "water", "power", "height"]
@@ -266,6 +267,8 @@ var game_over_dialog: AcceptDialog
 var military_dialog: ConfirmationDialog
 var scenario_dialog: ScenarioIntroDialog
 var fps_update_seconds := 0.0
+var simulation_timings := SimulationTimingHistory.new()
+var debug_overlay: CityDebugOverlay
 
 
 func _ready() -> void:
@@ -333,6 +336,9 @@ func _initialize_runtime() -> void:
 	desktop_presentation.print_dialog = scurk_print
 	add_child(desktop_presentation)
 	desktop_presentation.set_graphics(original_assets.desktop_graphics)
+	debug_overlay = DebugOverlayView.new()
+	debug_overlay.setup(self)
+	add_child(debug_overlay)
 	if not original_assets.error.is_empty():
 		_show_error(original_assets.error)
 		return
@@ -596,6 +602,8 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _consume_simulation_result(result: Dictionary) -> void:
+	simulation_timings.consume(result)
+	var refresh_started := Time.get_ticks_usec()
 	var ran_days: bool = not result.day_results.is_empty()
 	var changed_disaster_map := false
 	for disaster in result.disaster_results:
@@ -606,7 +614,14 @@ func _consume_simulation_result(result: Dictionary) -> void:
 	if ran_days or moved_things or changed_disaster_map:
 		last_edit_command = {}
 		scurk_edit_history.clear()
-		simulation_map_dirty = true
+		# sc2x data-map updates do not change the surface or underground artwork
+		var data_maps_only := (city.document.full_resolution_maps() and result.day_results.size() == 1
+			and int(result.day_results[0].get("day", -1)) % 25 == 2
+			and result.day_results[0].get("phase_results", {}).keys() == ["pollution_terrain_land_value"]
+			and result.effect_events.is_empty() and result.view_center_requests.is_empty()
+			and overlay_mode in ["city", "underground"])
+		if moved_things or changed_disaster_map or not data_maps_only:
+			simulation_map_dirty = true
 	if ran_days:
 		_refresh_details()
 
@@ -622,6 +637,8 @@ func _consume_simulation_result(result: Dictionary) -> void:
 		simulation_map_dirty = false
 	elif result.base_ticks > 0:
 		_refresh_moving_things()
+	if ran_days or map_refresh_requested:
+		simulation_timings.record_step("Main thread / simulation display refresh", Time.get_ticks_usec() - refresh_started)
 	for point in result.view_center_requests:
 		map_view.center_on_tile(point)
 	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
@@ -1951,7 +1968,10 @@ func _on_newspaper_menu(_id: int) -> void:
 	)
 
 
-func _on_help_menu(_id: int) -> void:
+func _on_help_menu(id: int) -> void:
+	if id == 1:
+		debug_overlay.toggle()
+		return
 	_open_about_dialog()
 
 
@@ -2196,6 +2216,7 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 	if not enabled:
 		_show_error("Cannot enable per-tile data maps: city data is incomplete.")
 		return
+	simulation_timings.clear()
 	last_edit_command.clear()
 	scurk_edit_history.clear()
 	current_save_path = ""
@@ -2736,6 +2757,7 @@ func _activate_document(
 	if frame_simulation != null:
 		frame_simulation.close()
 	frame_simulation = null
+	simulation_timings.clear()
 	simulation_engine = Simulation.new(city, process_seed, lfsr_seed, game_seed)
 	speed_controller = GameSpeed.new(simulation_engine)
 	speed_controller.original_compatibility = app_original_compatibility
@@ -5300,7 +5322,6 @@ func _debug_metrics() -> Dictionary:
 		),
 		"tool": "--",
 		"view": overlay_mode,
-		"unsaved": _city_has_unsaved_changes(),
 		"static_render": "running" if static_render_thread != null else "idle",
 		"render_pending": pending_static_render,
 		"static_cache": static_view_cache.size(),

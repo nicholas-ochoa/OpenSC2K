@@ -135,7 +135,7 @@ func _ready() -> void:
 		[["Show Latest Reports", 0]],
 		_on_newspaper_menu,
 	)
-	_add_menu(menu_row, "Help", [["About", 0]], _on_help_menu)
+	_add_menu(menu_row, "Help", [["Simulation timings / Debug (F12)", 1], ["About", 0]], _on_help_menu)
 
 	var menu_spacer := Control.new()
 	menu_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL

@@ -18,7 +18,7 @@ const CITY_ARRAYS := ["altitude_words", "terrain", "buildings", "zones", "underg
 static func capture(source: GameSpeedController, budget: SimulationSliceBudget) -> GameSpeedController:
 	var original := source.engine.city
 	var city := CityState.new()
-	city.document = original.document.duplicate_document()
+	city.document = original.document.duplicate_document(true)
 	city.map_size = original.map_size
 	city.load_error = original.load_error
 	for field in CITY_ARRAYS:
