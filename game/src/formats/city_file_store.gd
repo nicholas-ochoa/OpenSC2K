@@ -19,7 +19,7 @@ static func save_copy(
 	if is_reference_path(output_path, reference_root):
 		return {
 			"ok": false,
-			"error": "Choose a location outside the read-only references directory.",
+			"error": "Choose a location outside the read-only original support-data directory.",
 		}
 
 	var serialized := document.serialize()
@@ -48,9 +48,8 @@ static func save_copy(
 
 
 static func is_reference_path(path: String, reference_root: String) -> bool:
+	if reference_root.is_empty():
+		return false
 	var normalized := ProjectSettings.globalize_path(path).simplify_path()
-	for root_path in [reference_root, ProjectSettings.globalize_path("res://../references")]:
-		var protected_root := ProjectSettings.globalize_path(root_path).simplify_path()
-		if normalized == protected_root or normalized.begins_with(protected_root + "/"):
-			return true
-	return false
+	var protected_root := ProjectSettings.globalize_path(reference_root).simplify_path()
+	return normalized == protected_root or normalized.begins_with(protected_root + "/")

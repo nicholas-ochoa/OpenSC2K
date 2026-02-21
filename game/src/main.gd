@@ -1164,7 +1164,7 @@ func _export_scurk_city_bmp(path: String) -> void:
 	if output_path.get_extension().to_lower() != "bmp":
 		output_path += ".BMP"
 	if output_path == reference_root or output_path.begins_with(reference_root + "/"):
-		_show_error("Choose a location outside the read-only references directory.")
+		_show_error("Choose a location outside the read-only original support-data directory.")
 		return
 	var options := _current_scurk_output_options()
 	options["color"] = true
@@ -1233,7 +1233,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 	if output_path.get_extension().to_lower() != "pdf":
 		output_path += ".PDF"
 	if output_path == reference_root or output_path.begins_with(reference_root + "/"):
-		_show_error("Choose a location outside the read-only references directory.")
+		_show_error("Choose a location outside the read-only original support-data directory.")
 		return
 	var magnification := int(pending_scurk_print_options.get("magnification", 1))
 	var grid := ScurkCityOutput.page_grid(magnification)

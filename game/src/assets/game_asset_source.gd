@@ -12,10 +12,7 @@ var reference_root := ""
 
 
 static func default_reference_root() -> String:
-	var imported := ProjectSettings.globalize_path("user://original_game").simplify_path()
-	if FileAccess.file_exists(imported.path_join("SIMCITY.EXE")) or not OS.has_feature("editor"):
-		return imported
-	return ProjectSettings.globalize_path("res://../references").simplify_path()
+	return ProjectSettings.globalize_path("user://original_game").simplify_path()
 
 
 static func load_source(base_root: String, mode: String, folder := "", override_folder := "") -> GameAssetSource:

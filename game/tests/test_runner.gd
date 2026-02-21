@@ -11834,16 +11834,16 @@ func _test_modified_save(reference_root: String) -> void:
 		DirAccess.remove_absolute(saved_copy.path)
 	_check(
 		CityFileStore.is_reference_path(
-			ProjectSettings.globalize_path("res://../references/DEFAULT.SC2"),
+			ProjectSettings.globalize_path("user://original_game/DEFAULT.SC2"),
 			ProjectSettings.globalize_path("user://original_game")
 		),
-		"Local reference cities stay protected when imported media is active",
+		"The selected original support-data directory stays protected",
 	)
 	var protected_copy := CityFileStore.save_copy(
 		document, reference_root.path_join("DO_NOT_WRITE.SC2"), reference_root
 	)
 	_check(
-		not protected_copy.ok and protected_copy.error.contains("read-only references"),
+		not protected_copy.ok and protected_copy.error.contains("read-only original support-data"),
 		"City file store rejects every path inside the reference directory",
 	)
 	_check(

@@ -296,7 +296,7 @@ func _pack_folder_row(grid: GridContainer, caption: String, kind: String) -> Lin
 	grid.add_child(row)
 	var edit := LineEdit.new()
 	edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	edit.placeholder_text = "Automatic (ext/%s/pack.json)" % kind
+	edit.placeholder_text = "Automatic (user://packs/%s/pack.json)" % kind
 	row.add_child(edit)
 	var browse := Button.new()
 	browse.text = "Browse..."

@@ -2,6 +2,9 @@ extends SceneTree
 func _initialize() -> void:
 	call_deferred("run")
 func run() -> void:
+	assert(GameAssetSource.default_reference_root() == ProjectSettings.globalize_path("user://original_game").simplify_path())
+	for kind in ["graphics", "sound", "music"]:
+		assert(MediaPack.default_folder(kind) == ProjectSettings.globalize_path("user://packs").path_join(kind))
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", "/tmp/no-city-assets")
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
 	main.app_settings_path = "user://no-assets-test.cfg"

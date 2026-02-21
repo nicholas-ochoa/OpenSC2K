@@ -7,8 +7,7 @@ var pack_name := ""
 var files: Dictionary = {}
 
 static func default_folder(kind: String) -> String:
-	var base := ProjectSettings.globalize_path("res://..").simplify_path() if OS.has_feature("editor") else OS.get_executable_path().get_base_dir()
-	return base.path_join("ext/" + kind)
+	return ProjectSettings.globalize_path("user://packs").path_join(kind)
 
 static func load_folder(folder: String, kind: String) -> MediaPack:
 	var pack := MediaPack.new()
