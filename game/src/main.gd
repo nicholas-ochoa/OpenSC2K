@@ -944,16 +944,18 @@ func _apply_settings() -> void:
 	app_soundtrack_folder = ""
 	app_music_volume = float(values.music_volume)
 	app_effects_volume = float(values.effects_volume)
+	var fullscreen_changed := app_fullscreen != bool(values.fullscreen)
 	app_fullscreen = bool(values.fullscreen)
 	if audio_controller != null:
 		audio_controller.set_background_audio(app_background_audio)
 		audio_controller.set_volumes(app_music_volume, app_effects_volume)
 		audio_controller.set_soundtrack_folder(app_soundtrack_folder, (main_menu != null and main_menu.visible) or (city != null and city.music_enabled()))
-	DisplayServer.window_set_mode(
-		DisplayServer.WINDOW_MODE_FULLSCREEN
-		if app_fullscreen
-		else DisplayServer.WINDOW_MODE_WINDOWED
-	)
+	if fullscreen_changed:
+		DisplayServer.window_set_mode(
+			DisplayServer.WINDOW_MODE_FULLSCREEN
+			if app_fullscreen
+			else DisplayServer.WINDOW_MODE_WINDOWED
+		)
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
 		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion,
