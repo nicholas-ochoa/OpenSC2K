@@ -838,7 +838,7 @@ func _sync_asset_menu_actions() -> void:
 	var popup := city_menu_bar.file_menu.get_popup()
 	for index in popup.item_count:
 		if popup.get_item_id(index) not in [5, 6] and not popup.is_item_separator(index):
-			popup.set_item_disabled(index, not assets_ready or (app_original_compatibility and popup.get_item_id(index) == CityMenuBar.MENU_NATIVE_DATA_MAPS))
+			popup.set_item_disabled(index, not assets_ready)
 
 
 func _show_main_menu() -> void:
@@ -906,6 +906,17 @@ func _open_settings_dialog() -> void:
 		app_music_volume, app_effects_volume, app_fullscreen,
 		app_graphics_source, app_graphics_folder, app_city_renderer, app_background_audio, app_zoom_graphics,
 	)
+	_refresh_settings_pack_names()
+
+
+func _refresh_settings_pack_names() -> void:
+	if settings_dialog == null:
+		return
+	settings_dialog.set_loaded_pack("graphics", asset_source.graphics_name if assets_ready else "",
+		app_graphics_folder if app_graphics_source == "folder" else "")
+	if audio_controller != null:
+		settings_dialog.set_loaded_pack("sound", audio_controller.sound_pack.pack_name, app_sound_pack_folder)
+		settings_dialog.set_loaded_pack("music", audio_controller.music_pack.pack_name, app_music_pack_folder)
 
 
 func _apply_settings() -> void:
@@ -918,6 +929,7 @@ func _apply_settings() -> void:
 		settings_dialog.show_pack_error(pack_error)
 		return
 	var changed_source: bool = values.graphics_source != app_graphics_source or values.graphics_folder != app_graphics_folder
+	var media_packs_changed: bool = values.sound_pack_folder != app_sound_pack_folder or values.music_pack_folder != app_music_pack_folder or (not assets_ready and changed_source)
 	var selected: GameAssetSource
 	if changed_source:
 		selected = GameAssetSource.load_source(reference_root, values.graphics_source, values.graphics_folder)
@@ -936,7 +948,7 @@ func _apply_settings() -> void:
 	app_toolbar_sounds = bool(values.toolbar_sounds)
 	app_sound_pack_folder = str(values.sound_pack_folder)
 	app_music_pack_folder = str(values.music_pack_folder)
-	if assets_ready and audio_controller != null:
+	if assets_ready and audio_controller != null and media_packs_changed:
 		audio_controller.set_media_packs(app_sound_pack_folder, app_music_pack_folder)
 	app_shuffle_music = bool(values.shuffle_music)
 	audio_controller.set_shuffle_music(app_shuffle_music)
@@ -965,6 +977,7 @@ func _apply_settings() -> void:
 		if error == OK
 		else "Settings applied, but the settings file could not be saved."
 	)
+	_refresh_settings_pack_names()
 
 
 func _apply_graphics_source(selected: GameAssetSource) -> void:
@@ -1618,7 +1631,6 @@ func _on_file_menu(id: int) -> void:
 		1: _open_city_dialog()
 		2: _open_save_dialog()
 		CityMenuBar.MENU_SAVE_CITY: _save_city()
-		CityMenuBar.MENU_NATIVE_DATA_MAPS: _enable_native_data_maps()
 		3: _open_tile_set_dialog()
 		4: _restore_original_tile_set()
 		MENU_SCURK_PLACE_PRINT: _open_scurk_place_print()
@@ -1635,14 +1647,11 @@ func _on_speed_menu(id: int) -> void:
 
 
 func _on_options_menu(id: int) -> void:
+	if id == CityMenuBar.MENU_UPGRADE_SC2X:
+		_upgrade_city_to_sc2x()
+		return
 	if id == CityMenuBar.MENU_SETTINGS:
 		_open_settings_dialog()
-		return
-	if id in [CityMenuBar.MENU_RENDERER_GPU, CityMenuBar.MENU_RENDERER_CPU]:
-		_set_city_renderer("cpu" if id == CityMenuBar.MENU_RENDERER_CPU else "gpu")
-		var error := SettingsStore.save_values(app_music_volume, app_effects_volume, app_fullscreen,
-			app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer)
-		status_label.text = "Default renderer: %s%s" % [app_city_renderer.to_upper(), "" if error == OK else " (could not save preference)"]
 		return
 	if city == null:
 		_show_error("Load a city before you change its options.")
@@ -1710,6 +1719,7 @@ func _on_view_menu(id: int) -> void:
 func _sync_city_option_menus() -> void:
 	if options_menu == null or disasters_menu == null:
 		return
+	_sync_upgrade_city_option()
 	var has_city := city != null
 	options_menu.disabled = not has_city
 	if view_menu != null:
@@ -1726,9 +1736,6 @@ func _sync_city_option_menus() -> void:
 			options_menu.get_popup().set_item_checked(
 				option_index, bool(option_states[option_id])
 			)
-	for renderer_id in [CityMenuBar.MENU_RENDERER_GPU, CityMenuBar.MENU_RENDERER_CPU]:
-		var popup := city_menu_bar.renderer_menu
-		popup.set_item_checked(popup.get_item_index(renderer_id), (app_city_renderer == "gpu") == (renderer_id == CityMenuBar.MENU_RENDERER_GPU))
 	var no_disasters_index := disasters_menu.get_popup().get_item_index(MENU_NO_DISASTERS)
 	if no_disasters_index >= 0:
 		disasters_menu.get_popup().set_item_disabled(no_disasters_index, not has_city)
@@ -2142,21 +2149,36 @@ func _save_city() -> void:
 		_save_copy(current_save_path)
 
 
-func _enable_native_data_maps(confirmed := false) -> void:
-	if app_original_compatibility:
-		_show_error("Per-tile data maps require SC2X. Turn off original compatibility in Settings to enable them.")
+func _can_upgrade_city_to_sc2x() -> bool:
+	if app_original_compatibility or landscape_editor or city == null or current_document == null or simulation_engine == null:
+		return false
+	if current_document.is_extended() or current_document.full_resolution_maps():
+		return false
+	var path := current_save_path if not current_save_path.is_empty() else current_document.source_path
+	return path.get_extension().to_lower() == "sc2"
+
+
+func _sync_upgrade_city_option() -> void:
+	if options_menu == null:
 		return
-	if city == null or current_document == null:
-		return
-	if current_document.full_resolution_maps():
-		status_label.text = "Per-tile data maps are already enabled."
+	var popup := options_menu.get_popup()
+	var index := popup.get_item_index(CityMenuBar.MENU_UPGRADE_SC2X)
+	var available := _can_upgrade_city_to_sc2x()
+	if available and index < 0:
+		popup.add_item("Upgrade City to SC2X...", CityMenuBar.MENU_UPGRADE_SC2X)
+	elif not available and index >= 0:
+		popup.remove_item(index)
+
+
+func _upgrade_city_to_sc2x(confirmed := false) -> void:
+	if not _can_upgrade_city_to_sc2x():
 		return
 	if not current_document.is_extended() and app_warn_sc2x_conversion and not confirmed:
 		if sc2x_conversion_dialog == null:
 			sc2x_conversion_dialog = ConfirmationDialog.new()
-			sc2x_conversion_dialog.title = "Convert city to SC2X?"
+			sc2x_conversion_dialog.title = "Upgrade city to SC2X?"
 			sc2x_conversion_dialog.dialog_text = "This permanently converts this city to SC2X.\nIt cannot return to SC2 or use original compatibility.\nThe original SimCity 2000 cannot open SC2X files.\n\nSave a separate SC2X copy. Your existing SC2 file stays unchanged."
-			sc2x_conversion_dialog.get_ok_button().text = "Convert to SC2X"
+			sc2x_conversion_dialog.get_ok_button().text = "Upgrade to SC2X"
 			sc2x_conversion_dialog.exclusive = true
 			sc2x_conversion_dialog.theme = ClassicUiStyle.create_dialog_theme()
 			add_child(sc2x_conversion_dialog)
@@ -2179,7 +2201,8 @@ func _enable_native_data_maps(confirmed := false) -> void:
 	current_save_path = ""
 	_invalidate_view_render()
 	_refresh_map(false)
-	status_label.text = "Per-tile data maps enabled. Save an SC2X copy; the original game cannot open it."
+	_sync_upgrade_city_option()
+	status_label.text = "City upgraded to SC2X. Save a separate copy; the original game cannot open it."
 	_open_save_dialog()
 
 
@@ -2187,7 +2210,7 @@ func _confirm_sc2x_conversion() -> void:
 	var expected := pending_sc2x_document
 	pending_sc2x_document = null
 	if expected != null and current_document == expected:
-		_enable_native_data_maps(true)
+		_upgrade_city_to_sc2x(true)
 
 
 func _open_save_dialog() -> void:
@@ -2816,6 +2839,7 @@ func _save_copy(path: String) -> bool:
 	saved_city_snapshot = result.data.duplicate()
 	status_label.remove_theme_color_override("font_color")
 	status_label.text = "Saved city: %s" % output_path
+	_sync_upgrade_city_option()
 	return true
 
 
@@ -5653,6 +5677,4 @@ func _apply_compatibility_controls() -> void:
 		if app_original_compatibility:
 			new_city_dialog.size_input.select(0)
 			new_city_dialog.native_maps_input.set_pressed_no_signal(false)
-	if city_menu_bar != null:
-		var popup := city_menu_bar.file_menu.get_popup()
-		popup.set_item_disabled(popup.get_item_index(CityMenuBar.MENU_NATIVE_DATA_MAPS), not assets_ready or app_original_compatibility)
+	_sync_upgrade_city_option()

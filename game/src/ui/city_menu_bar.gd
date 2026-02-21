@@ -13,11 +13,8 @@ signal newspaper_menu_requested(id: int)
 signal help_menu_requested(id: int)
 
 const MENU_SETTINGS := 0x8302
-var renderer_menu: PopupMenu
-const MENU_RENDERER_GPU := 0x8300
-const MENU_RENDERER_CPU := 0x8301
 const MENU_SAVE_CITY := 7
-const MENU_NATIVE_DATA_MAPS := 8
+const MENU_UPGRADE_SC2X := 0x8303
 const MENU_AUTO_BUDGET := 0x8004
 const MENU_AUTO_GOTO := 0x8005
 const MENU_SOUND_EFFECTS := 0x8006
@@ -64,7 +61,6 @@ func _ready() -> void:
 	file_menu = _add_menu(menu_row, "File", [
 		["New City...", 0], ["Open City...", 1],
 		["", -1], ["Save City", MENU_SAVE_CITY], ["Save City As...", 2],
-		["Enable Per-Tile Data Maps...", MENU_NATIVE_DATA_MAPS],
 		["", -1], ["Load Tile Set...", 3], ["Restore Original Tile Set", 4],
 		["SCURK Place & Print...", MENU_SCURK_PLACE_PRINT],
 		["", -1], ["Main Menu", 5], ["Exit", 6],
@@ -85,13 +81,6 @@ func _ready() -> void:
 	for option_id in [MENU_AUTO_BUDGET, MENU_AUTO_GOTO, MENU_SOUND_EFFECTS, MENU_MUSIC]:
 		var option_index := options_menu.get_popup().get_item_index(option_id)
 		options_menu.get_popup().set_item_as_checkable(option_index, true)
-	renderer_menu = PopupMenu.new()
-	renderer_menu.name = "Renderer"
-	options_menu.get_popup().add_child(renderer_menu)
-	renderer_menu.add_radio_check_item("GPU", MENU_RENDERER_GPU)
-	renderer_menu.add_radio_check_item("CPU", MENU_RENDERER_CPU)
-	renderer_menu.id_pressed.connect(_on_options_menu)
-	options_menu.get_popup().add_submenu_item("Renderer", "Renderer")
 	options_menu.get_popup().add_separator()
 	options_menu.get_popup().add_item("Settings...", MENU_SETTINGS)
 	options_menu.disabled = true

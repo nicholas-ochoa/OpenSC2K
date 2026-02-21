@@ -32,7 +32,25 @@ func _run() -> void:
 	assert(audio.music_paused and audio.music_player._paused)
 	audio._set_music_paused(false)
 	audio._on_music_track_finished(first)
-	assert(audio.current_track_id != first)
+	assert(audio.music_gap_remaining_msec == 5000.0 and not audio.dummy_music_active)
+	audio.handle_application_focus_out()
+	audio.advance(6000.0)
+	assert(audio.music_gap_remaining_msec == 5000.0)
+	audio.handle_application_focus_in(true)
+	audio.advance(4999.0)
+	assert(not audio.dummy_music_active and audio.music_gap_remaining_msec == 1.0)
+	audio.advance(1.0)
+	assert(audio.dummy_music_active and audio.current_track_id != first)
+	# Background focus notifications cannot cancel or replace the track,
+	# even when the caller has no active city, for example during New City.
+	audio.set_background_audio(true)
+	var retained_track := audio.current_track_id
+	var retained_request := audio.music_request
+	audio.handle_application_focus_out()
+	audio.handle_application_focus_in(false)
+	assert(audio.current_track_id == retained_track and audio.music_request == retained_request)
+	assert(not audio.focus_paused and not audio.music_player._paused)
+	audio.set_background_audio(false)
 	# Exercise a real recording stream with Dummy output, including its cursor.
 	audio.set_shuffle_music(false)
 	var wav := AudioStreamWAV.new()

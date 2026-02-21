@@ -122,8 +122,8 @@ func _test_main() -> void:
 	assert(main.settings_dialog.visible)
 	for mode in GameAssetSource.MODES:
 		main.settings_dialog.show_values(0.2, 0.4, false, mode, "user://example-pack")
-		assert(main.settings_dialog.selected_values().graphics_source == mode)
-		assert(main.settings_dialog.folder_row.visible == (mode == "folder"))
+		assert(main.settings_dialog.selected_values().graphics_source == ("folder" if mode == "folder" else "auto"))
+		assert(main.settings_dialog.folder_row.visible)
 	main.settings_dialog.hide()
 	main._open_new_city_dialog()
 	assert(main.new_city_dialog.visible and main.new_city_session.preview_document != null)

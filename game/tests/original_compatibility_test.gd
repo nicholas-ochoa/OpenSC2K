@@ -105,11 +105,12 @@ func check_ui() -> void:
 	check(main._activate_document(doc), "Compatible city activates")
 	check(main.speed_controller.original_compatibility, "Active simulation receives compatibility")
 	var bytes: PackedByteArray = doc.serialize().data
-	main._enable_native_data_maps()
+	main.current_save_path = "user://compatible-city.SC2"
+	main._upgrade_city_to_sc2x()
 	check(doc.serialize().data == bytes and not doc.is_extended(), "Conversion handler cannot bypass mode")
 	main._show_main_menu()
-	var popup: PopupMenu = main.city_menu_bar.file_menu.get_popup()
-	check(popup.is_item_disabled(popup.get_item_index(CityMenuBar.MENU_NATIVE_DATA_MAPS)), "Main menu refresh retains conversion restriction")
+	var popup: PopupMenu = main.options_menu.get_popup()
+	check(popup.get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) < 0, "Main menu refresh retains conversion restriction")
 	var extended := EmptyCityTemplate.create(256)
 	var extended_file := FileAccess.open(save_path, FileAccess.WRITE)
 	extended_file.store_buffer(extended.serialize().data)

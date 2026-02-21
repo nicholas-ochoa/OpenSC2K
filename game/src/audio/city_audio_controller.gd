@@ -9,6 +9,8 @@ const MidiSynth = preload("res://src/audio/midi_synth_player.gd")
 const MovingThingAudio = preload("res://src/audio/moving_thing_audio.gd")
 const WaveSounds = preload("res://src/audio/wave_sound_gate.gd")
 
+const MUSIC_GAP_MSEC := 5000.0
+
 const SOUND_EFFECT_GROUP := &"open_sc2k_sound_effects"
 
 var sound_pack := MediaPack.new()
@@ -30,6 +32,9 @@ var dummy_music_active := false
 var menu_music := false
 var current_track_id := -1
 var music_paused := false
+var music_gap_remaining_msec := 0.0
+var queued_music_track := -1
+var queued_choose_shuffle := true
 var focus_paused := false
 var shuffle_music := false
 var shuffle_order := MusicShuffle.new()
@@ -63,6 +68,19 @@ func setup(
 
 func advance(delta_msec: float) -> void:
 	wave_sound_gate.advance(delta_msec)
+	if music_gap_remaining_msec > 0.0:
+		if not audio_allowed() or music_paused or music_volume <= 0.0:
+			return
+		music_gap_remaining_msec = maxf(0.0, music_gap_remaining_msec - maxf(0.0, delta_msec))
+		if music_gap_remaining_msec > 0.0:
+			return
+		var next_track := queued_music_track
+		var choose_shuffle := queued_choose_shuffle
+		queued_music_track = -1
+		if next_track >= 0:
+			play_music_track(next_track, choose_shuffle)
+		else:
+			music_activity_changed.emit(false)
 	if menu_music and audio_allowed() and music_volume > 0.0 and not music_playback_is_active():
 		play_music_track(Music.MAIN_THEME_TRACK)
 
@@ -77,12 +95,17 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 
 
 func play_music_track(track_id: int, choose_shuffle := true) -> bool:
-	if shuffle_music and choose_shuffle and not music_paused and audio_allowed():
+	if music_paused or not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
+		return false
+	if music_gap_remaining_msec > 0.0:
+		queued_music_track = track_id
+		queued_choose_shuffle = choose_shuffle
+		music_activity_changed.emit(true)
+		return true
+	if shuffle_music and choose_shuffle:
 		if music_playback_is_active():
 			return true
 		track_id = shuffle_order.next_track()
-	if music_paused or not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
-		return false
 	var replacement := str(music_pack.files.get(track_id, ""))
 	var recordings := RecordedSoundtrack.find_tracks(soundtrack_folder, track_id)
 	if not replacement.is_empty():
@@ -148,6 +171,8 @@ func _exit_tree() -> void:
 
 
 func music_playback_is_active() -> bool:
+	if music_gap_remaining_msec > 0.0 or queued_music_track >= 0:
+		return true
 	if AudioServer.get_driver_name() == "Dummy":
 		return dummy_music_active or (recording_player != null and recording_player.stream != null and (recording_player.playing or recording_player.stream_paused))
 	return (not pending_recording.is_empty()
@@ -179,12 +204,14 @@ func handle_application_focus_out() -> void:
 func handle_application_focus_in(music_enabled: bool) -> void:
 	var regained_focus := not application_has_focus
 	application_has_focus = true
+	if background_audio:
+		return
 	focus_paused = false
 	if not music_enabled:
 		stop_music()
 		return
 	_sync_music_pause()
-	if background_audio or not regained_focus or music_paused:
+	if not regained_focus or music_paused:
 		return
 	if not music_playback_is_active():
 		play_music_track(Music.MAIN_THEME_TRACK if menu_music else music_director.next_general_track())
@@ -205,7 +232,11 @@ func set_shuffle_music(enabled: bool) -> void:
 	shuffle_music = enabled
 
 
-func stop_music() -> void:
+func stop_music(clear_gap := true) -> void:
+	if clear_gap:
+		music_gap_remaining_msec = 0.0
+	queued_music_track = -1
+	queued_choose_shuffle = true
 	focus_paused = false
 	music_request += 1
 	pending_recording.clear()
@@ -297,11 +328,15 @@ func debug_metrics() -> Dictionary:
 	}
 
 
-func _on_music_track_finished(_track_id: int) -> void:
-	dummy_music_active = false
-	music_activity_changed.emit(false)
-	if shuffle_music and audio_allowed() and not music_paused and music_volume > 0.0:
-		play_music_track(Music.MAIN_THEME_TRACK)
+func _on_music_track_finished(track_id: int) -> void:
+	if track_id != current_track_id:
+		return
+	stop_music()
+	music_gap_remaining_msec = MUSIC_GAP_MSEC
+	if shuffle_music or menu_music:
+		queued_music_track = Music.MAIN_THEME_TRACK
+	# Reserve the gap between tracks so simulation music requests cannot skip it.
+	music_activity_changed.emit(true)
 
 
 func _load_wave_sound_cache() -> void:
@@ -321,7 +356,9 @@ func set_menu_music(enabled: bool) -> void:
 	menu_music = enabled
 	if shuffle_music and music_playback_is_active():
 		return
-	stop_music()
+	stop_music(false)
+	if music_gap_remaining_msec > 0.0:
+		music_activity_changed.emit(true)
 	if enabled and audio_allowed() and music_volume > 0.0:
 		play_music_track(Music.MAIN_THEME_TRACK)
 
@@ -338,7 +375,7 @@ func set_soundtrack_folder(selected_folder: String, restart_music := false) -> v
 	if soundtrack_folder == resolved:
 		return
 	var track_id := current_track_id
-	stop_music()
+	stop_music(false)
 	soundtrack_folder = resolved
 	if restart_music and audio_allowed() and music_volume > 0.0:
 		play_music_track(track_id if track_id >= 0 else Music.MAIN_THEME_TRACK if menu_music else music_director.next_general_track())
@@ -358,7 +395,7 @@ func handle_media_key(key: int) -> bool:
 			var track := current_track_id if current_track_id >= Music.FIRST_TRACK_ID else Music.MAIN_THEME_TRACK
 			music_paused = false
 			if shuffle_music:
-				stop_music()
+				stop_music(false)
 				play_music_track(Music.MAIN_THEME_TRACK)
 			else:
 				play_music_track(Music.FIRST_TRACK_ID + posmod(track - Music.FIRST_TRACK_ID + offset, Music.TRACK_COUNT))
@@ -395,14 +432,21 @@ func set_media_packs(sound_folder: String, music_folder: String) -> bool:
 		music_notice.emit(sounds.error + music.error)
 		return false
 	var track := current_track_id
+	var queued_track := queued_music_track
+	var choose_shuffle := queued_choose_shuffle
 	var restart := music_playback_is_active()
 	stop_sound_effects()
-	stop_music()
+	stop_music(false)
 	sound_pack = sounds
 	music_pack = music
 	_load_wave_sound_cache()
 	if restart:
-		play_music_track(track, false)
+		if queued_track >= 0:
+			play_music_track(queued_track, choose_shuffle)
+		elif track >= 0:
+			play_music_track(track, false)
+		elif music_gap_remaining_msec > 0.0:
+			music_activity_changed.emit(true)
 	return true
 
 

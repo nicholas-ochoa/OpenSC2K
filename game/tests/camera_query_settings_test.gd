@@ -76,10 +76,10 @@ func _run() -> void:
 	main.map_view.pan_screen(Vector2(-10, 10))
 	assert(main.city.document.serialize().data == saved, "Panning changed saved data")
 	assert(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_SETTINGS) >= 0)
-	assert(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_RENDERER_GPU) < 0)
-	assert(main.city_menu_bar.renderer_menu.get_item_index(CityMenuBar.MENU_RENDERER_GPU) >= 0)
 	main._on_options_menu(CityMenuBar.MENU_SETTINGS)
 	assert(main.settings_dialog.visible)
+	for menu_index in main.options_menu.get_popup().item_count:
+		assert(main.options_menu.get_popup().get_item_text(menu_index) != "Renderer")
 	assert(not main._camera_keys_allowed())
 	main.settings_dialog.background_audio_check.button_pressed = true
 	assert(main.settings_dialog.selected_values().background_audio)
@@ -102,5 +102,5 @@ func _run() -> void:
 	main.query_dialog.close_query()
 	main.queue_free()
 	await process_frame
-	print("PASS: camera momentum, query overview, settings access, renderer submenu and background audio")
+	print("PASS: camera momentum, query overview, settings access, Settings renderer and background audio")
 	quit()

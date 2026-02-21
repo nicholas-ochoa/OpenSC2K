@@ -11,9 +11,12 @@ var shuffle_music_check: CheckBox
 var toolbar_sounds_check: CheckBox
 var sound_pack_edit: LineEdit
 var music_pack_edit: LineEdit
+var pack_name_labels: Dictionary = {}
+var pack_edits: Dictionary = {}
+var loaded_pack_names: Dictionary = {}
+var loaded_pack_paths: Dictionary = {}
 
 var tabs: TabContainer
-var source_selector: OptionButton
 var folder_edit: LineEdit
 var folder_row: HBoxContainer
 var folder_dialog: FileDialog
@@ -131,30 +134,8 @@ func _ready() -> void:
 		zoom_graphics_counts[zoom_index] = count_label
 		zoom_row.add_child(count_label)
 		zoom_grid.add_child(zoom_row)
-	var source_label := Label.new()
-	source_label.text = "Graphics"
-	settings_grid.add_child(source_label)
-	source_selector = OptionButton.new()
-	source_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	for text in ["Automatic", "SimCity 2000", "Graphics pack"]:
-		source_selector.add_item(text)
-	source_selector.item_selected.connect(func(_index: int) -> void: _update_folder_visibility())
-	settings_grid.add_child(source_selector)
-	var folder_label := Label.new()
-	folder_label.text = "Graphics pack"
-	settings_grid.add_child(folder_label)
-	folder_row = HBoxContainer.new()
-	folder_edit = LineEdit.new()
-	folder_edit.placeholder_text = "Select pack.json"
-	folder_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	folder_row.add_child(folder_edit)
-	var browse_button := Button.new()
-	browse_button.text = "Browse..."
-	browse_button.pressed.connect(func() -> void: folder_dialog.popup_centered_ratio(0.8))
-	folder_row.add_child(browse_button)
-	settings_grid.add_child(folder_row)
-	folder_row.set_meta("label", folder_label)
-	folder_dialog = _pack_picker("graphics", folder_edit)
+	folder_edit = _pack_folder_row(settings_grid, "Graphics pack", "graphics")
+	folder_row = folder_edit.get_parent() as HBoxContainer
 	settings_grid = _add_settings_tab("Import Data")
 	var import_label := Label.new()
 	import_label.text = "Original Data"
@@ -226,9 +207,7 @@ func show_values(
 	music_slider.value = clampf(music_volume, 0.0, 1.0) * 100.0
 	effects_slider.value = clampf(effects_volume, 0.0, 1.0) * 100.0
 	fullscreen_check.button_pressed = fullscreen
-	source_selector.select(maxi(0, GameAssetSource.MODES.find(source)))
-	folder_edit.text = pack_file_path(folder)
-	_update_folder_visibility()
+	folder_edit.text = pack_file_path(folder) if source == "folder" else ""
 	_update_graphics_counts()
 	tabs.current_tab = 0
 	popup_centered()
@@ -248,15 +227,9 @@ func selected_values() -> Dictionary:
 		"music_volume": float(music_slider.value) / 100.0,
 		"effects_volume": float(effects_slider.value) / 100.0,
 		"fullscreen": fullscreen_check.button_pressed,
-		"graphics_source": GameAssetSource.MODES[source_selector.selected],
+		"graphics_source": "auto" if folder_edit.text.strip_edges().is_empty() else "folder",
 		"graphics_folder": folder_edit.text.strip_edges(),
 	}
-
-
-func _update_folder_visibility() -> void:
-	var show_folder: bool = GameAssetSource.MODES[source_selector.selected] == "folder"
-	folder_row.visible = show_folder
-	(folder_row.get_meta("label") as Label).visible = show_folder
 
 
 func _selected_zoom_graphics() -> Array[int]:
@@ -302,8 +275,33 @@ func _pack_folder_row(grid: GridContainer, caption: String, kind: String) -> Lin
 	browse.text = "Browse..."
 	row.add_child(browse)
 	var picker := _pack_picker(kind, edit)
+	if kind == "graphics":
+		folder_dialog = picker
 	browse.pressed.connect(func() -> void: picker.popup_centered_ratio(0.8))
+	var pack_name := Label.new()
+	pack_name.custom_minimum_size.x = 150
+	pack_name.clip_text = true
+	pack_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	pack_name.add_theme_color_override("font_color", Color("606060"))
+	row.add_child(pack_name)
+	pack_name_labels[kind] = pack_name
+	pack_edits[kind] = edit
+	edit.text_changed.connect(func(_text: String) -> void: _refresh_pack_name(kind))
 	return edit
+
+
+func set_loaded_pack(kind: String, pack_name: String, path: String) -> void:
+	loaded_pack_names[kind] = pack_name
+	loaded_pack_paths[kind] = pack_file_path(path.strip_edges())
+	_refresh_pack_name(kind)
+
+
+func _refresh_pack_name(kind: String) -> void:
+	var edit: LineEdit = pack_edits[kind]
+	var label: Label = pack_name_labels[kind]
+	var matches_loaded := pack_file_path(edit.text.strip_edges()) == str(loaded_pack_paths.get(kind, ""))
+	label.text = str(loaded_pack_names.get(kind, "")) if matches_loaded else ""
+	label.tooltip_text = label.text
 
 
 func show_pack_error(message: String) -> void:

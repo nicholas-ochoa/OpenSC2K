@@ -33,12 +33,11 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "cpu")
 	main._set_city_renderer("gpu")
 	assert(not main.region_cache.gpu_enabled)
-	var popup: PopupMenu = main.city_menu_bar.renderer_menu
-	assert(popup.is_item_checked(popup.get_item_index(CityMenuBar.MENU_RENDERER_GPU)))
-	assert(not popup.is_item_checked(popup.get_item_index(CityMenuBar.MENU_RENDERER_CPU)))
 	assert(main.city.document.serialize().data == before, "Changing renderer altered saved data")
+	for menu_index in main.options_menu.get_popup().item_count:
+		assert(main.options_menu.get_popup().get_item_text(menu_index) != "Renderer")
 	main.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
-	print("PASS: renderer preference persistence, preservation, settings selection, live replacement, menu checks and save state")
+	print("PASS: renderer preference persistence, preservation, settings selection, live replacement, removed renderer menu and save state")
 	quit()

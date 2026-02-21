@@ -39,6 +39,16 @@ func _run() -> void:
 	var dialog: AppSettingsDialog = main.settings_dialog
 	assert(dialog.tabs.get_tab_count() == 5 and dialog.tabs.get_tab_title(3) == "Import Data")
 	assert(dialog.toolbar_sounds_check.text == "Play toolbar sounds")
+	assert(dialog.folder_row.visible)
+	for kind in ["sound", "music"]:
+		var active_name: String = main.audio_controller.sound_pack.pack_name if kind == "sound" else main.audio_controller.music_pack.pack_name
+		assert(dialog.pack_name_labels[kind].text == active_name)
+		var edit: LineEdit = dialog.pack_edits[kind]
+		var old_path := edit.text
+		edit.text = "user://pending-%s/pack.json" % kind
+		assert(dialog.pack_name_labels[kind].text.is_empty())
+		edit.text = old_path
+		assert(dialog.pack_name_labels[kind].text == active_name)
 	assert(not dialog.selected_values().has("soundtrack_folder"))
 	var pickers := 0
 	for child in dialog.get_children():
@@ -52,17 +62,18 @@ func _run() -> void:
 		var cell := dialog.zoom_graphics_selectors[index].get_parent()
 		assert(cell.get_index() == (index % 3) * 4 + (1 if index < 3 else 3))
 		assert(dialog.zoom_graphics_counts[index].get_theme_color("font_color") == Color("606060"))
-	dialog.source_selector.select(2)
 	dialog.folder_dialog.file_selected.emit(folder.path_join("pack.json"))
 	main._apply_settings()
 	assert(main.asset_source.graphics_name == "Runtime test")
+	assert(dialog.pack_name_labels.graphics.text == "Runtime test")
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels == sprite.pixels)
 	assert(main.main_menu.city_background.demo_sprites == main.large_sprites)
 	assert(main.city.document.serialize().data == before)
 	assert(not main.status_label.text.contains("Restart"))
-	dialog.source_selector.select(1)
+	dialog.folder_edit.text = source.path_join("pack.json")
 	main._apply_settings()
 	assert(main.asset_source.graphics_name == "Original SimCity 2000")
+	assert(dialog.pack_name_labels.graphics.text == "Original SimCity 2000")
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels != sprite.pixels)
 	assert(main.city.document.serialize().data == before)
 	main.settings_dialog.hide()
