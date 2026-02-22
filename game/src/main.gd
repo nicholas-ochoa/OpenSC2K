@@ -615,7 +615,7 @@ func _consume_simulation_result(result: Dictionary) -> void:
 		last_edit_command = {}
 		scurk_edit_history.clear()
 		# sc2x data-map updates do not change the surface or underground artwork
-		var data_maps_only := (city.document.full_resolution_maps() and result.day_results.size() == 1
+		var data_maps_only: bool = (city.document.full_resolution_maps() and result.day_results.size() == 1
 			and int(result.day_results[0].get("day", -1)) % 25 == 2
 			and result.day_results[0].get("phase_results", {}).keys() == ["pollution_terrain_land_value"]
 			and result.effect_events.is_empty() and result.view_center_requests.is_empty()
