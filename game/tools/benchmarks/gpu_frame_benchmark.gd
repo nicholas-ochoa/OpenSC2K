@@ -9,7 +9,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
 	root.size = Vector2i(1920, 1080)
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.set_script(load("res://benchmarks/profiled_city.gd"))
+	main.set_script(load("res://tools/benchmarks/profiled_city.gd"))
 	root.add_child(main)
 	await process_frame
 	main.main_menu.city_background.set_process(false)
