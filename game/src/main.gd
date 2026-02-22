@@ -3751,14 +3751,17 @@ func _dynamic_occluder_image(
 			static_occlusion_commands, divisor
 		)
 	var mask: Image
-	var later_occluder_added := false
+	# Bounding boxes include transparent pixels. Combine all later silhouettes
+	# to find the foreground that actually covers the sprite.
 	for command in _static_occlusion_candidates(bounds):
 		var later_static := int(command.depth_order) > draw_order
 		var train_foreground := (
 			is_train and command.has("train_foreground_reference_sprite_id")
+			and (not bool(command.get("train_foreground_requires_depth", false))
+				or int(command.depth_order) >= draw_order)
 		)
 		var use_later_static := (
-			later_static and not later_occluder_added and not train_foreground
+			later_static and not train_foreground
 		)
 		if not use_later_static and not train_foreground:
 			continue
@@ -3787,10 +3790,6 @@ func _dynamic_occluder_image(
 			Rect2i((overlap.position - occluder_position) * texture_factor, overlap.size * texture_factor),
 			(overlap.position - position) * texture_factor,
 		)
-		if use_later_static:
-			later_occluder_added = true
-			if not is_train:
-				break
 	dynamic_occluder_cache[cache_key] = mask
 	return mask
 

@@ -11,6 +11,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --quit-a
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/simulation_timing_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/simulation_animation_clock_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/moving_foreground_union_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/simulation_debug_window_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/native_data_map_optimization_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/indexed_png_test.gd

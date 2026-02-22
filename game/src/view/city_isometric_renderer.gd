@@ -1716,6 +1716,8 @@ static func _tile_occlusion_commands(
 					building_id, int(configuration.sprite_base)
 				)
 			)
+			if building_id in [0x4d, 0x4e] and not commands.is_empty():
+				commands[-1].train_foreground_requires_depth = true
 			var power_marker := power_marker_visual(city, x, y, configuration.view_size)
 			if not power_marker.is_empty():
 				var marker_entry = sprites.find_sprite(power_marker.sprite_id)
@@ -1773,11 +1775,18 @@ static func _append_occluder(
 	commands.append(command)
 
 
+# subtract the ground rail, keep the raised deck in front of the train
 static func train_power_foreground_reference_sprite_id(
 	building_id: int, sprite_base := 1000
 ) -> int:
 	if building_id >= 0x0e and building_id <= 0x1c:
 		return -1
+	# rail/highway crossings need their raised deck in front of a train on
+	# the same tile. subtract only the ground-level rail sprite
+	if building_id == 0x4d:
+		return sprite_base + 0x2d
+	if building_id == 0x4e:
+		return sprite_base + 0x2c
 	var reference_tile := int(POWER_CROSSING_BASE_TILE.get(building_id, -1))
 	return 0 if reference_tile < 0 else sprite_base + reference_tile
 
