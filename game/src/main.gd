@@ -3754,10 +3754,12 @@ func _dynamic_occluder_image(
 	# Bounding boxes include transparent pixels. Combine all later silhouettes
 	# to find the foreground that actually covers the sprite.
 	for command in _static_occlusion_candidates(bounds):
+		if is_train and bool(command.get("train_ignore", false)):
+			continue
 		var later_static := int(command.depth_order) > draw_order
 		var train_foreground := (
-			is_train and command.has("train_foreground_reference_sprite_id")
-			and (not bool(command.get("train_foreground_requires_depth", false))
+			is_train and (command.has("train_foreground_reference_sprite_id") or command.has("train_deck_thickness"))
+			and (not (bool(command.get("train_foreground_requires_depth", false)) or command.has("train_deck_thickness"))
 				or int(command.depth_order) >= draw_order)
 		)
 		var use_later_static := (
@@ -3812,6 +3814,20 @@ func _dynamic_train_foreground_image(
 	divisor: int,
 	surface: Image, texture_factor := 1
 ) -> Image:
+	if command.has("train_deck_thickness"):
+		var deck_key := "deck:%d:%d:%d:%d" % [int(command.sprite_id), int(command.flip), divisor, texture_factor]
+		if dynamic_foreground_cache.has(deck_key):
+			return dynamic_foreground_cache[deck_key]
+		var deck_surface := surface
+		# a highway/power crossing uses the wire-free highway as its mask
+		if command.has("train_deck_reference_sprite_id"):
+			var background := _dynamic_sprite_resource(sprite_archive, int(command.train_deck_reference_sprite_id), bool(command.flip), divisor, texture_factor)
+			if not background.is_empty():
+				deck_surface = Image.create(surface.get_width(), surface.get_height(), false, Image.FORMAT_RGBA8)
+				deck_surface.blit_rect(background.image, Rect2i(Vector2i.ZERO, background.image.get_size()), Vector2i(0, surface.get_height() - background.image.get_height()))
+		var deck := IsometricRenderer.highway_train_deck_mask(deck_surface, int(command.train_deck_thickness) * divisor * texture_factor)
+		dynamic_foreground_cache[deck_key] = deck
+		return deck
 	var reference_sprite_id := int(command.train_foreground_reference_sprite_id)
 	if reference_sprite_id < 0:
 		return surface

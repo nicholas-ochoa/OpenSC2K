@@ -55,6 +55,33 @@ func _initialize() -> void:
 	host.dynamic_occluder_cache.clear()
 	var behind_mask := host._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
 	assert(behind_mask.get_pixel(4, 1).a == 0.0, "Crossing behind train cannot hide it")
+	# A later power line leaves the train pixels visible.
+	host.static_occlusion_commands[1].train_ignore = true
+	host.dynamic_occluder_cache.clear()
+	var wire_mask := host._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
+	assert(wire_mask.get_pixel(1, 1).a == 0.0, "Power line cannot cover train")
+	var road := Image.create(8, 8, false, Image.FORMAT_RGBA8)
+	road.fill(Color.TRANSPARENT)
+	road.set_pixel(3, 1, Color(161.0 / 255.0, 0, 0, 1))
+	for y in range(2, 8):
+		road.set_pixel(3, y, Color.WHITE)
+	var only_deck := CityIsometricRenderer.highway_train_deck_mask(road, 2)
+	assert(only_deck.get_pixel(3, 1).a > 0.0 and only_deck.get_pixel(3, 3).a > 0.0)
+	assert(only_deck.get_pixel(3, 4).a == 0.0 and only_deck.get_pixel(3, 7).a == 0.0, "Pillar below deck cannot cover train")
+	var two_decks := Image.create(1, 16, false, Image.FORMAT_RGBA8)
+	two_decks.fill(Color.WHITE)
+	two_decks.set_pixel(0, 1, Color(161.0 / 255.0, 0, 0, 1))
+	two_decks.set_pixel(0, 12, Color(161.0 / 255.0, 0, 0, 1))
+	var bands := CityIsometricRenderer.highway_train_deck_mask(two_decks, 2)
+	assert(bands.get_pixel(0, 6).a == 0.0, "Pillars between composite highway decks cannot cover train")
+	assert(bands.get_pixel(0, 12).a > 0.0, "Second highway deck remains in foreground")
+	for tile in [0x0e, 0x1c, 0x43, 0x44, 0x47, 0x48, 0x4f, 0x50]:
+		var command := {}
+		CityIsometricRenderer.configure_train_foreground(command, tile, CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE))
+		if tile in [0x4f, 0x50]:
+			assert(command.train_deck_reference_sprite_id == 1000 + (0x49 if tile == 0x4f else 0x4a))
+		else:
+			assert(command.train_ignore, "Power-line artwork is excluded from train masks")
 	# Verify that real crossing artwork emits the same-tile mask at each native view.
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
 	var small := Sc2SpriteArchive.combine([
@@ -74,10 +101,19 @@ func _initialize() -> void:
 				found = true
 				assert(command.train_foreground_requires_depth)
 				var surface: Image = archive.find_sprite(command.sprite_id).create_image(Sc2Palette.index_encoding()).image
-				var rail: Image = archive.find_sprite(command.train_foreground_reference_sprite_id).create_image(Sc2Palette.index_encoding()).image
-				var deck := CityIsometricRenderer.foreground_difference_mask(surface, rail)
+				var deck := CityIsometricRenderer.highway_train_deck_mask(surface, int(command.train_deck_thickness))
 				assert(not deck.is_invisible(), "Crossing retains raised foreground artwork")
+				if view == CityIsometricRenderer.VIEW_LARGE and tile == 0x4d:
+					assert(surface.get_pixel(21, 19).a > 0.0 and deck.get_pixel(21, 19).a == 0.0, "Original crossing pillar is omitted")
 			assert(found, "Each native view includes crossing foreground")
+			var context := CityGpuBuildContext.new()
+			var gpu := context.tile(city, Sc2Palette.index_encoding(), archive, config, 64, 64, "city", true, true)
+			var gpu_found := false
+			for command in gpu.foreground:
+				if int(command.sprite_id) == int(config.sprite_base) + tile:
+					gpu_found = true
+					assert(command.train_foreground_requires_depth and command.train_deck_thickness == view + 1)
+			assert(gpu_found, "GPU path includes the same deck-only train mask")
 	host.free()
 	print("PASS: all overlapping foreground silhouettes hide trains and other moving sprites")
 	quit()

@@ -1716,8 +1716,8 @@ static func _tile_occlusion_commands(
 					building_id, int(configuration.sprite_base)
 				)
 			)
-			if building_id in [0x4d, 0x4e] and not commands.is_empty():
-				commands[-1].train_foreground_requires_depth = true
+			if not commands.is_empty():
+				configure_train_foreground(commands[-1], building_id, configuration)
 			var power_marker := power_marker_visual(city, x, y, configuration.view_size)
 			if not power_marker.is_empty():
 				var marker_entry = sprites.find_sprite(power_marker.sprite_id)
@@ -1773,6 +1773,18 @@ static func _append_occluder(
 			train_foreground_reference_sprite_id
 		)
 	commands.append(command)
+
+
+static func configure_train_foreground(command: Dictionary, building_id: int, configuration: Dictionary) -> void:
+	var reference := train_power_foreground_reference_sprite_id(building_id, int(configuration.sprite_base))
+	if reference != 0:
+		command.train_foreground_reference_sprite_id = reference
+	command.train_ignore = (building_id >= 0x0e and building_id <= 0x1c) or building_id in [0x43, 0x44, 0x47, 0x48]
+	if (building_id >= 0x49 and building_id <= 0x50) or (building_id >= 0x61 and building_id <= 0x6b):
+		command.train_deck_thickness = int(configuration.view_size) + 1
+		if building_id in [0x4f, 0x50]:
+			command.train_deck_reference_sprite_id = reference
+		command.train_foreground_requires_depth = true
 
 
 # subtract the ground rail, keep the raised deck in front of the train
@@ -2106,3 +2118,21 @@ static func _traffic_masked_image(
 	return masked
 static func _failure(message: String) -> Dictionary:
 	return {"ok": false, "error": message}
+
+
+static func highway_train_deck_mask(surface: Image, thickness: int) -> Image:
+	# keep separate bands around each indexed road surface (0xa1). a single
+	# cutoff would retain pillars in the gap between a composite's two decks
+	var mask := surface.duplicate()
+	for x in surface.get_width():
+		var near_deck := PackedByteArray()
+		near_deck.resize(surface.get_height())
+		for y in surface.get_height():
+			var pixel := surface.get_pixel(x, y)
+			if pixel.a > 0.0 and roundi(pixel.r * 255.0) == 0xa1:
+				for row in range(maxi(0, y - thickness), mini(surface.get_height(), y + thickness + 1)):
+					near_deck[row] = 1
+		for y in surface.get_height():
+			if near_deck[y] == 0:
+				mask.set_pixel(x, y, Color.TRANSPARENT)
+	return mask

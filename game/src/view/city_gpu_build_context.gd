@@ -51,9 +51,7 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 					"position": draw.position, "size": draw.source.size, "depth_order": order,
 					"region_order": (order << 16) | foreground.size()}
 				if building > 0 and int(role.sprite_id) == int(configuration.sprite_base) + building:
-					var reference := CityIsometricRenderer.train_power_foreground_reference_sprite_id(building, int(configuration.sprite_base))
-					if reference != 0:
-						command.train_foreground_reference_sprite_id = reference
+					CityIsometricRenderer.configure_train_foreground(command, building, configuration)
 				foreground.append(command)
 	var result := {"draws": recorder.draws, "foreground": foreground}
 	if tiles.size() >= TILE_CACHE_LIMIT:
