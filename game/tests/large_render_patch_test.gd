@@ -4,7 +4,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await check_texture_patch()
-	var sprites := Sc2SpriteArchive.load_path("res://../references/DATA/SMALLMED.DAT")
+	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT")
 	assert(sprites.is_valid())
 	var palette := Sc2Palette.index_encoding()
 	for edge in [128, 256, 384, 512]:

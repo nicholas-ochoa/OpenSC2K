@@ -3,7 +3,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var path := "res://../references/SIMCITY.EXE"
+	var path := "res://../references/SIMCITY2000/SIMCITY.EXE"
 	var directory := PeBitmapResource._load_resource_directory(path)
 	assert(directory.ok)
 	var bytes: PackedByteArray = directory.bytes
@@ -22,7 +22,7 @@ func _initialize() -> void:
 			if table == 0xeaac0:
 				expected = [5, 1, 2, 3, 4][i]
 			assert(bytes.decode_u32(offset + i * 4) == expected)
-	var original := CityUiGraphics.load_original("res://../references")
+	var original := CityUiGraphics.load_original("res://../references/SIMCITY2000")
 	assert(original.terrain.size() == 3 and original.media.size() == 20)
 	for id in CityUiGraphics.TERRAIN_SIZES:
 		assert(original.terrain[id].get_size() == CityUiGraphics.TERRAIN_SIZES[id])

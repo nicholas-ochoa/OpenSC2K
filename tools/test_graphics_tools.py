@@ -22,15 +22,15 @@ def chunk(kind, payload):
 class GraphicsToolsTest(unittest.TestCase):
     def test_scenario_picture_audit_and_coverage(self):
         expected = json.loads((ROOT / 'data/formats/scenario-picture-audit.json').read_text())
-        self.assertEqual(build_scenario_audit(ROOT / 'references'), expected)
+        self.assertEqual(build_scenario_audit(ROOT / 'references' / 'SIMCITY2000'), expected)
 
     def test_check_sheet_audit_and_complete_bitmap_coverage(self):
         expected = json.loads((ROOT / 'data/formats/check-control-audit.json').read_text())
-        self.assertEqual(json.loads(json.dumps(build_check_audit(ROOT / 'references'))), expected)
+        self.assertEqual(json.loads(json.dumps(build_check_audit(ROOT / 'references' / 'SIMCITY2000'))), expected)
 
     def test_desktop_resource_audit_and_pack_coverage(self):
         expected = json.loads((ROOT / 'data/formats/desktop-resource-audit.json').read_text())
-        self.assertEqual(build_audit(ROOT / 'references'), expected)
+        self.assertEqual(build_audit(ROOT / 'references' / 'SIMCITY2000'), expected)
         self.assertEqual(len(expected['images']), 153)
         self.assertEqual(len(expected['groups']), 144)
 
@@ -54,7 +54,7 @@ class GraphicsToolsTest(unittest.TestCase):
 
     def test_supplied_inventory_matches_recorded_metadata(self):
         expected = json.loads((ROOT / 'data/formats/graphics-inventory.json').read_text())
-        actual = build_inventory(ROOT / 'references')
+        actual = build_inventory(ROOT / 'references' / 'SIMCITY2000')
         self.assertEqual(actual, expected)
         self.assertEqual(actual['counts']['sprite'], 1455)
         self.assertEqual(actual['counts']['scenario_picture'], 18)

@@ -2,7 +2,7 @@ extends SceneTree
 func _initialize() -> void:
 	var audio := CityAudioController.new()
 	root.add_child(audio)
-	audio.setup(ProjectSettings.globalize_path('res://../references'), 0.8, 0.0)
+	audio.setup(ProjectSettings.globalize_path('res://../references/SIMCITY2000'), 0.8, 0.0)
 	audio.set_menu_music(true)
 	assert(audio.current_track_id == MusicDirector.MAIN_THEME_TRACK)
 	audio._on_music_track_finished(MusicDirector.MAIN_THEME_TRACK)

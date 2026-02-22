@@ -5,7 +5,7 @@ const ZONE_CLASSES := [3, 0, 0, 1, 1, 2, 2, 4, 4, 4, 4, 4, 4, 4, 4, 4]
 
 
 func _initialize() -> void:
-	var loaded := PeBitmapResource._load_resource_directory("res://../references/SIMCITY.EXE")
+	var loaded := PeBitmapResource._load_resource_directory("res://../references/SIMCITY2000/SIMCITY.EXE")
 	assert(loaded.ok, str(loaded.error))
 	var bytes: PackedByteArray = loaded.bytes
 	var hashing := HashingContext.new()
@@ -19,7 +19,7 @@ func _initialize() -> void:
 	print("Confirmed supplied zone classes at 0x004e77b8: ", table)
 	var count := 0
 	for archive_name in ["LARGE.DAT", "SMALLMED.DAT", "SPECIAL.DAT"]:
-		var archive := Sc2SpriteArchive.load_path("res://../references/DATA/" + archive_name)
+		var archive := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/" + archive_name)
 		assert(archive.is_valid(), archive.parse_error)
 		for entry in archive.entries:
 			if entry.sprite_id % 500 not in range(300, 305) and entry.sprite_id % 500 not in range(354, 359) and entry.sprite_id % 500 not in range(468, 478):

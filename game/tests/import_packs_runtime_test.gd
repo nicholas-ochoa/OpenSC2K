@@ -10,7 +10,7 @@ func run() -> void:
 	assert(not main.assets_ready)
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", "")
 	var folder := ProjectSettings.globalize_path("user://runtime-import-test-%d" % OS.get_process_id())
-	var result := OriginalPackImporter.import_executable(ProjectSettings.globalize_path("res://../references/SIMCITY.EXE"), folder)
+	var result := OriginalPackImporter.import_executable(ProjectSettings.globalize_path("res://../references/SIMCITY2000/SIMCITY.EXE"), folder)
 	assert(result.ok)
 	var selected := GameAssetSource.load_source("", "folder", result.graphics)
 	main._apply_graphics_source(selected)

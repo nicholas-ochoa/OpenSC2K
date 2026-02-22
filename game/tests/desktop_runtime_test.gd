@@ -6,7 +6,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var directory := PeBitmapResource._load_resource_directory("res://../references/SIMCITY.EXE")
+	var directory := PeBitmapResource._load_resource_directory("res://../references/SIMCITY2000/SIMCITY.EXE")
 	assert(directory.ok)
 	var table := PeBitmapResource._rva_to_offset(directory.bytes, 0x000ea7f8, directory.section_offset, directory.section_count)
 	for i in 18:
@@ -14,7 +14,7 @@ func _run() -> void:
 	for pair in [[640, 3000], [799, 3000], [800, 2000], [1023, 2000], [1024, 1000], [3840, 1000]]:
 		assert(DesktopCursorRules.city_family(pair[0]) == pair[1])
 	assert(DesktopCursorRules.city_tool(1, 0) == 3 and DesktopCursorRules.city_tool(1, 1) == 16)
-	var scurk := PeBitmapResource._load_resource_directory("res://../references/WINSCURK.EXE")
+	var scurk := PeBitmapResource._load_resource_directory("res://../references/SIMCITY2000/WINSCURK.EXE")
 	# Command and cursor immediates in the supplied drawing command handlers.
 	for binding in [[0x43e154, 20000, 0x43e167, 30000], [0x43e11c, 20001, 0x43e12f, 30001],
 		[0x43e0e4, 20002, 0x43e0f7, 30002], [0x43de58, 20008, 0x43de6b, 30002],
@@ -27,7 +27,7 @@ func _run() -> void:
 	desktop.set_process(false)
 	var original := desktop.graphics
 	var alternate := _alternate_graphics()
-	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/CITIES/ISLAND.SC2"))
+	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
 	var map: CityMapControl = main.map_view
 	var saved: PackedByteArray = main.current_document.serialize().data
 	for tool in ToolCatalog.all_tools():

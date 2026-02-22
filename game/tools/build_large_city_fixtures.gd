@@ -12,7 +12,7 @@ var source_hashes: Array[String] = []
 
 func _init() -> void:
 	for source_name in SOURCES:
-		var path := "res://../references/CITIES/%s.SC2" % source_name
+		var path := "res://../references/SIMCITY2000/CITIES/%s.SC2" % source_name
 		var document := Sc2File.load_path(path)
 		assert(document.is_valid(), document.parse_error)
 		source_hashes.append(FileAccess.get_sha256(path))
@@ -24,7 +24,7 @@ func _init() -> void:
 	for edge in [256, 384, 512]:
 		build_fixture(edge)
 	for i in SOURCES.size():
-		assert(FileAccess.get_sha256("res://../references/CITIES/%s.SC2" % SOURCES[i]) == source_hashes[i])
+		assert(FileAccess.get_sha256("res://../references/SIMCITY2000/CITIES/%s.SC2" % SOURCES[i]) == source_hashes[i])
 	print("PASS: stitched 256, 384, and 512 cities; source hashes unchanged")
 	quit()
 
@@ -125,7 +125,7 @@ func build_fixture(edge: int) -> void:
 	if FileAccess.file_exists(path):
 		var previous: Variant = JSON.parse_string(FileAccess.get_file_as_string(path + ".json"))
 		assert(previous is Dictionary and previous.get("output_sha256", "") == FileAccess.get_sha256(path), "Refuse to replace an edited fixture: " + path)
-	var saved := CityFileStore.save_copy(document, path, "res://../references")
+	var saved := CityFileStore.save_copy(document, path, "res://../references/SIMCITY2000")
 	assert(saved.ok, String(saved.get("error", "")))
 	var reloaded := Sc2File.load_path(path)
 	assert(reloaded.is_valid() and reloaded.map_size == edge)

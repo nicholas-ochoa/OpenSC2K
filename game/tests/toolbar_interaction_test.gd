@@ -8,7 +8,7 @@ func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	await process_frame
-	main.call("_load_city_unchecked", ProjectSettings.globalize_path("res://../references/DEFAULT.SC2"))
+	main.call("_load_city_unchecked", ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
 	main.call("_select_speed", GameSpeedController.Speed.PAUSED)
 	var toolbar := main.get("city_toolbar") as CityToolbar
 	var map := main.get("map_view") as CityMapControl

@@ -4,11 +4,11 @@ func _initialize() -> void:
 	call_deferred("_run")
 
 func _run() -> void:
-	var large := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
-	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/DATA/SPECIAL.DAT")])
+	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
+	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
 	var palette := Sc2Palette.index_encoding()
 	for edge in [128, 512]:
-		var path := "res://../references/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-512.sc2x"
+		var path := "res://../references/SIMCITY2000/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-512.sc2x"
 		var city := CityState.from_document(Sc2File.load_path(path))
 		for view in [0, 1, 2]:
 			var sprites := large if view == 2 else small

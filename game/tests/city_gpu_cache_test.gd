@@ -5,7 +5,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var city := CityState.from_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x"))
-	var sprites := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
+	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
 	var palette := Sc2Palette.index_encoding()
 	var cache := CityRegionCache.new()
 	cache.gpu_enabled = true

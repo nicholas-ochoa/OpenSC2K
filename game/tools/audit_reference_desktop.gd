@@ -5,7 +5,7 @@ func _initialize() -> void:
 	var expected: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://../data/formats/desktop-resource-audit.json"))
 	var directories := {}
 	for source in expected.sources:
-		var directory := PeBitmapResource._load_resource_directory("res://../references/" + str(source.path))
+		var directory := PeBitmapResource._load_resource_directory("res://../references/SIMCITY2000/" + str(source.path))
 		assert(directory.ok and _sha256(directory.bytes) == source.sha256)
 		directories[source.path] = directory
 	for record in expected.images:
@@ -41,7 +41,7 @@ func _initialize() -> void:
 				assert(DesktopGraphics.cursor_id(app, int(record.id)) == entry.id)
 			else:
 				assert(DesktopGraphics.ICON_GROUPS[app][int(record.id)][i] == entry.id)
-	var original := DesktopGraphics.load_original("res://../references")
+	var original := DesktopGraphics.load_original("res://../references/SIMCITY2000")
 	assert(original.error.is_empty(), original.error)
 	assert(original.icons.city.size() == 10 and original.icons.scurk.size() == 8)
 	assert(original.cursors.city.size() == 101 and original.cursors.scurk.size() == 34)

@@ -3,7 +3,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var path := "res://../references/WINSCURK.EXE"
+	var path := "res://../references/SIMCITY2000/WINSCURK.EXE"
 	var bytes := FileAccess.get_file_as_bytes(path)
 	var hashing := HashingContext.new()
 	assert(hashing.start(HashingContext.HASH_SHA256) == OK and hashing.update(bytes) == OK)

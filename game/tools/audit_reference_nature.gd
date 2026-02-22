@@ -3,7 +3,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var names := PeStringResource.load_ids("res://../references/SIMCITY.EXE", QueryInfo.resource_string_ids())
+	var names := PeStringResource.load_ids("res://../references/SIMCITY2000/SIMCITY.EXE", QueryInfo.resource_string_ids())
 	assert(names.ok, str(names.error))
 	var city := CityState.new()
 	city.document = Sc2File.new()
@@ -15,7 +15,7 @@ func _initialize() -> void:
 		var resource := QueryInfo.general_name_resource_id(city, Vector2i.ZERO, id)
 		print("Role %d: %s" % [id, str(names.strings.get(resource, "missing"))])
 	for archive_name in ["LARGE.DAT", "SMALLMED.DAT", "SPECIAL.DAT"]:
-		var archive := Sc2SpriteArchive.load_path("res://../references/DATA/" + archive_name)
+		var archive := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/" + archive_name)
 		assert(archive.is_valid(), archive.parse_error)
 		for entry in archive.entries:
 			var base := entry.sprite_id % 500

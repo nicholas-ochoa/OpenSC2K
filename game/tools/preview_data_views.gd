@@ -8,7 +8,7 @@ func _run() -> void:
 	root.add_child(main)
 	root.title = "Data Views Preview"
 	await process_frame
-	var doc := Sc2File.load_path(ProjectSettings.globalize_path("res://../references/CITIES/CAPEQUES.SC2"))
+	var doc := Sc2File.load_path(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/CAPEQUES.SC2"))
 	main._activate_document(doc)
 	main._select_speed(GameSpeedController.Speed.PAUSED)
 	main._select_tool_group(16)

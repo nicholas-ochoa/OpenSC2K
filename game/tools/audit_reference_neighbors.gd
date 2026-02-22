@@ -3,7 +3,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var bytes := FileAccess.get_file_as_bytes("res://../references/BITMAPS/NEIGHBOR.BMP")
+	var bytes := FileAccess.get_file_as_bytes("res://../references/SIMCITY2000/BITMAPS/NEIGHBOR.BMP")
 	assert(bytes.decode_u16(0) == 0x4d42 and bytes.decode_u32(14) == 40)
 	assert(bytes.decode_s32(18) == 128 and bytes.decode_s32(22) == 448)
 	assert(bytes.decode_u16(28) == 8 and bytes.decode_u32(30) == 0)

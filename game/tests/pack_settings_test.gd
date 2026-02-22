@@ -26,13 +26,16 @@ func _run() -> void:
 	file = FileAccess.open(folder.path_join("pack.json"), FileAccess.WRITE)
 	file.store_string(JSON.stringify(manifest))
 	file.close()
+	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	main.app_settings_path = folder.path_join("settings.cfg")
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/DEFAULT.SC2"))
+	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
 	main._select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = main.city.document.serialize().data
 	main._open_settings_dialog()

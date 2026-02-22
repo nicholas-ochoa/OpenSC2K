@@ -48,7 +48,7 @@ func _initialize() -> void:
 		"PAPERCLOSED": "cb872c55f2783e812fd39922c224cafe3c6344f25bfef19faf5f839157259630",
 		"PAPERCLOSEU": "8c180ef106f593993430dfb47cbb2bcb888cafd6c1d52b796e7080bd3d1e8f14",
 	}
-	var path := "res://../references/SIMCITY.EXE"
+	var path := "res://../references/SIMCITY2000/SIMCITY.EXE"
 	for name in expected:
 		var result := PeBitmapResource.load_named(path, name)
 		assert(result.ok, str(result.error))

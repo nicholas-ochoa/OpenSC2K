@@ -23,7 +23,7 @@ func _run() -> void:
 	var matches := RecordedSoundtrack.find_tracks(folder, 10001)
 	assert(matches.size() == 3 and matches[0].ends_with("flac"))
 	assert(RecordedSoundtrack.find_tracks(folder, 10000).is_empty())
-	var reference := ProjectSettings.globalize_path("res://../references/OST")
+	var reference := ProjectSettings.globalize_path("res://../references/SIMCITY2000/OST")
 	if DirAccess.dir_exists_absolute(reference):
 		for track_id in range(10000, 10019):
 			var files := RecordedSoundtrack.find_tracks(reference, track_id)

@@ -2,13 +2,16 @@ extends SceneTree
 func _initialize() -> void:
 	call_deferred("_run")
 func _run() -> void:
+	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
+	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	main.app_settings_path = "user://saved-camera-test.cfg"
 	root.add_child(main)
 	await process_frame
 	main.app_city_renderer = "cpu"
 	for target in [Vector2i(25, 91), Vector2i(101, 40)]:
-		var document := Sc2File.load_path(ProjectSettings.globalize_path("res://../references/CITIES/ISLAND.SC2"))
+		var document := Sc2File.load_path(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
 		assert(document.set_misc_u32(0x1018, target.x))
 		assert(document.set_misc_u32(0x101c, target.y))
 		assert(main._activate_document(document))

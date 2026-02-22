@@ -5,10 +5,10 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var palette := Sc2Palette.index_encoding()
-	var large := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
-	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/DATA/SPECIAL.DAT")])
+	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
+	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
 	for edge in [128, 256, 384, 512]:
-		var path := "res://../references/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-%d.sc2x" % edge
+		var path := "res://../references/SIMCITY2000/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-%d.sc2x" % edge
 		var city := CityState.from_document(Sc2File.load_path(path))
 		for view in 3:
 			var sprites := large if view == 2 else small
@@ -20,7 +20,7 @@ func _run() -> void:
 					await _compare(city, palette, sprites, bounds, view, mode, context)
 				print("PASS: GPU pixels and foreground %d view %d %s" % [edge, view, mode])
 	# All anchor orientations, cutaway terrain, and hidden water/buildings.
-	var city := CityState.from_document(Sc2File.load_path("res://../references/CITIES/SYDNEY.SC2"))
+	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
 	for rotation in 4:
 		city.document.set_misc_u32(0x08, rotation)
 		for visibility in [{}, {"water": false}, {"buildings": false, "networks": false, "trees": false, "zones": false}]:

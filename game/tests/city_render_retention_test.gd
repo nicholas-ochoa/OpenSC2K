@@ -63,7 +63,7 @@ func _run() -> void:
 	quit()
 
 func _check_sign_layout_tokens(view: CityMapControl) -> void:
-	var city := CityState.from_document(Sc2File.load_path("res://../references/CITIES/SYDNEY.SC2"))
+	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
 	view.set_city_view(city, view.city_texture, null, false, true, [1])
 	var scans := view._sign_cache_build_count
 	var copy := CityState.from_document(city.document.duplicate_document())

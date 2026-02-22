@@ -17,6 +17,9 @@ var _metrics_label: Label
 var _action_label: Label
 var _status: Label
 var _resume_speed := 2
+var _terrain_slider: HSlider
+var _terrain_value: Label
+var _no_disasters_check: CheckBox
 
 func setup(value: Control) -> void:
 	main_control = value
@@ -27,15 +30,17 @@ func _ready() -> void:
 	_window.size = Vector2i(1040, 740)
 	_window.min_size = Vector2i(640, 420)
 	_window.visible = false
-	_window.theme = ClassicUiStyle.create_dialog_theme()
+	_window.theme = _create_debug_theme()
 	add_child(_window)
 	_window.close_requested.connect(toggle)
 	_window.window_input.connect(_input)
+	var panel := PanelContainer.new()
+	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_window.add_child(panel)
 	var margin := MarginContainer.new()
-	margin.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	for side in ["left", "top", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 12)
-	_window.add_child(margin)
+	panel.add_child(margin)
 	var box := VBoxContainer.new()
 	margin.add_child(box)
 	_status = Label.new()
@@ -85,46 +90,84 @@ func _build_actions(tabs: TabContainer) -> void:
 	tabs.add_child(scroll)
 	var box := VBoxContainer.new()
 	box.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	box.add_theme_constant_override("separation", 16)
 	scroll.add_child(box)
-	_button(box, "Pause / Resume", func() -> void:
+	var simulation := _action_section(box, "Simulation and view", 3)
+	_button(simulation, "Pause / Resume", func() -> void:
 		if str(_metrics.get("speed", "Paused")) == "Paused":
 			main_control.call("_select_speed", _resume_speed)
 		else:
 			_resume_speed = int(_metrics.get("speed_id", 2))
 			main_control.call("_select_speed", 1))
 	for action in [["Center map", "_debug_center_map"], ["Full redraw", "_debug_full_redraw"],
-		["Clear render caches", "_debug_clear_render_caches"],
-		["Unlock everything", "_debug_unlock_everything"], ["Call Maxis Man", "_debug_dispatch_maxis_man"],
-		["End active disaster", "_debug_end_disaster"]]:
+		["Clear render caches", "_debug_clear_render_caches"]]:
 		var method := str(action[1])
-		_button(box, action[0], func() -> void: _invoke(method))
-	for amount in [10000, 100000, 1000000]:
-		_button(box, "+$%d" % amount, func() -> void: _record_action(main_control.call("_debug_add_funds", amount)))
+		_button(simulation, action[0], func() -> void: _invoke(method))
 	for mode in ["city", "underground"]:
-		_button(box, mode.capitalize() + " view", func() -> void: main_control.call("_set_overlay", mode))
-	_button(box, "Toggle random disasters", func() -> void:
-		_record_action(main_control.call("_debug_set_no_disasters", not bool(_metrics.get("no_disasters", false)))))
+		_button(simulation, mode.capitalize() + " view", func() -> void: main_control.call("_set_overlay", mode))
+	_button(simulation, "Print metrics", func() -> void: print(_metrics))
+	var cheats := _action_section(box, "City cheats", 3)
+	for amount in [10000, 100000, 1000000]:
+		_button(cheats, "+$%d" % amount, func() -> void: _record_action(main_control.call("_debug_add_funds", amount)))
+	_button(cheats, "Unlock everything", func() -> void: _invoke("_debug_unlock_everything"))
+	_button(cheats, "Call Maxis Man", func() -> void: _invoke("_debug_dispatch_maxis_man"))
+	var disasters := _action_section(box, "Disasters", 3)
 	var disaster := OptionButton.new()
+	disaster.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	for caption in DISASTER_NAMES:
 		disaster.add_item(caption)
-	box.add_child(disaster)
-	_button(box, "Start disaster at view center", func() -> void:
+	disasters.add_child(disaster)
+	_button(disasters, "Start at view center", func() -> void:
 		_record_action(main_control.call("_debug_start_disaster", disaster.selected + 1)))
-	var altitude := SpinBox.new()
-	altitude.min_value = 1
-	altitude.max_value = 32
-	altitude.value = 32
-	altitude.prefix = "Visible terrain levels: "
-	box.add_child(altitude)
-	altitude.value_changed.connect(func(value: float) -> void: main_control.call("_debug_set_visible_altitude_levels", int(value)))
-	_button(box, "Print metrics", func() -> void: print(_metrics))
+	_button(disasters, "End active disaster", func() -> void: _invoke("_debug_end_disaster"))
+	_no_disasters_check = CheckBox.new()
+	_no_disasters_check.text = "Disable random disasters"
+	_no_disasters_check.toggled.connect(func(enabled: bool) -> void:
+		_record_action(main_control.call("_debug_set_no_disasters", enabled)))
+	disasters.add_child(_no_disasters_check)
+	var terrain := _action_section(box, "Terrain visibility", 3)
+	var label := Label.new()
+	label.text = "Visible terrain levels"
+	terrain.add_child(label)
+	_terrain_slider = HSlider.new()
+	_terrain_slider.min_value = 1
+	_terrain_slider.max_value = 32
+	_terrain_slider.step = 1
+	_terrain_slider.value = 32
+	_terrain_slider.custom_minimum_size.x = 200
+	_terrain_slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_terrain_slider.tooltip_text = "32 shows all terrain levels. Lower values hide higher terrain."
+	terrain.add_child(_terrain_slider)
+	_terrain_value = Label.new()
+	_terrain_value.text = "32"
+	_terrain_value.custom_minimum_size.x = 30
+	terrain.add_child(_terrain_value)
+	_terrain_slider.value_changed.connect(func(value: float) -> void:
+		_terrain_value.text = str(int(value))
+		main_control.call("_debug_set_visible_altitude_levels", int(value)))
 	_action_label = Label.new()
 	_action_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_action_label)
 
+func _action_section(parent: VBoxContainer, caption: String, columns: int) -> GridContainer:
+	var section := VBoxContainer.new()
+	section.add_theme_constant_override("separation", 6)
+	parent.add_child(section)
+	var label := Label.new()
+	label.text = caption
+	label.add_theme_font_size_override("font_size", 15)
+	section.add_child(label)
+	var grid := GridContainer.new()
+	grid.columns = columns
+	grid.add_theme_constant_override("h_separation", 8)
+	grid.add_theme_constant_override("v_separation", 6)
+	section.add_child(grid)
+	return grid
+
 func _button(parent: Control, caption: String, action: Callable) -> void:
 	var button := Button.new()
 	button.text = caption
+	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.pressed.connect(action)
 	parent.add_child(button)
 
@@ -139,7 +182,9 @@ func _record_action(result: Dictionary) -> void:
 	_refresh_metrics()
 
 func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.keycode == KEY_F12 and event.pressed and not event.echo:
+	if not event is InputEventKey or not event.pressed or event.echo:
+		return
+	if event.keycode == KEY_F12 or (event.keycode == KEY_ESCAPE and is_open):
 		toggle()
 		get_viewport().set_input_as_handled()
 
@@ -173,6 +218,10 @@ func _refresh_metrics() -> void:
 	if _days == null:
 		return
 	_status.text = "%s — %s — %s — FPS %d" % [_metrics.get("city_name", "No city"), _metrics.get("date", "—"), _metrics.get("speed", "—"), Engine.get_frames_per_second()]
+	var levels := int(_metrics.get("visible_altitude_levels", 32))
+	_terrain_slider.set_value_no_signal(levels)
+	_terrain_value.text = str(levels)
+	_no_disasters_check.set_pressed_no_signal(bool(_metrics.get("no_disasters", false)))
 	var history := _history()
 	_days.clear()
 	var root := _days.create_item()
@@ -206,3 +255,46 @@ func _stats(item: TreeItem, column: int, row: Dictionary) -> void:
 	item.set_text(column + 1, "%.3f" % (float(row.last_usec) / 1000.0))
 	item.set_text(column + 2, "%.3f" % (float(row.max_usec) / 1000.0))
 	item.set_text(column + 3, str(row.count))
+
+static func _create_debug_theme() -> Theme:
+	var theme := ClassicUiStyle.create_dialog_theme()
+	var ink := Color("f0f3f6")
+	var paper := Color("161b22")
+	var face := Color("252a30")
+	var border := Color("4a5664")
+	var selection := Color("1f5c99")
+	theme.set_stylebox("panel", "PanelContainer", ClassicUiStyle.create_box(face, border, 1))
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+		theme.set_color(state, "CheckBox", ink)
+	theme.set_color("font_color", "Label", ink)
+	for control in ["Button", "OptionButton"]:
+		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
+			theme.set_color(state, control, ink)
+		for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+			var fill := Color("354252") if state in ["hover", "focus"] else selection if state in ["pressed", "hover_pressed"] else face
+			theme.set_stylebox(state, control, ClassicUiStyle.create_box(fill, border, 1, 8, 5))
+	# define every content surface and its text together. do not inherit
+	# black classic-shell text on the debug window's dark backgrounds
+	theme.set_stylebox("panel", "TabContainer", ClassicUiStyle.create_box(face, border, 1, 8, 8))
+	for state in ["selected", "unselected", "hovered", "disabled"]:
+		theme.set_stylebox("tab_" + state, "TabContainer", ClassicUiStyle.create_box(Color("354252") if state == "selected" else face, border, 1, 12, 6))
+		theme.set_color("font_" + state + "_color", "TabContainer", ink if state != "disabled" else Color("86909e"))
+	theme.set_stylebox("panel", "Tree", ClassicUiStyle.create_box(paper, border, 1))
+	theme.set_color("font_color", "Tree", ink)
+	theme.set_color("font_hovered_color", "Tree", ink)
+	theme.set_color("font_selected_color", "Tree", Color.WHITE)
+	theme.set_color("title_button_color", "Tree", ink)
+	for state in ["normal", "hover", "pressed"]:
+		theme.set_stylebox("title_button_" + state, "Tree", ClassicUiStyle.create_box(face, border, 1, 6, 5))
+	for state in ["selected", "selected_focus"]:
+		theme.set_stylebox(state, "Tree", ClassicUiStyle.create_box(selection, selection, 0))
+	theme.set_stylebox("hover", "Tree", ClassicUiStyle.create_box(Color("2f3b49"), border, 0))
+	theme.set_stylebox("normal", "LineEdit", ClassicUiStyle.create_box(paper, border, 1))
+	theme.set_color("font_color", "LineEdit", ink)
+	theme.set_color("font_selected_color", "LineEdit", Color.WHITE)
+	theme.set_color("selection_color", "LineEdit", selection)
+	theme.set_stylebox("panel", "PopupMenu", ClassicUiStyle.create_box(paper, border, 1))
+	theme.set_stylebox("hover", "PopupMenu", ClassicUiStyle.create_box(selection, selection, 0))
+	theme.set_color("font_color", "PopupMenu", ink)
+	theme.set_color("font_hover_color", "PopupMenu", Color.WHITE)
+	return theme

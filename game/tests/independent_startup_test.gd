@@ -16,7 +16,7 @@ func _run() -> void:
 	assert(not source.error.is_empty() and source.assets == null)
 	for mode in ["original", "invalid", "folder"]:
 		assert(not GameAssetSource.load_source(MISSING_ROOT, mode).error.is_empty())
-	var original := GameAssetSource.load_source(ProjectSettings.globalize_path("res://../references"), "original")
+	var original := GameAssetSource.load_source(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), "original", "", "res://../ext/graphics")
 	assert(original.error.is_empty(), original.error)
 	_test_generated_mif(original.assets)
 	await _test_main()
@@ -110,9 +110,9 @@ func _test_generated_mif(assets: OriginalGameAssets) -> void:
 
 func _test_main() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
-	OS.unset_environment("OPENSC2K_GRAPHICS_PACK")
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.reference_root = ProjectSettings.globalize_path("res://../references")
+	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame
 	assert(main.runtime_initialized and main.main_menu.visible)

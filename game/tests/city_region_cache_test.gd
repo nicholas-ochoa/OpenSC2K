@@ -8,8 +8,8 @@ func _initialize() -> void:
 	call_deferred("_run")
 func _run() -> void:
 	city = CityState.from_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x"))
-	sprites = Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
-	medium = Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/DATA/SPECIAL.DAT")])
+	sprites = Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
+	medium = Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
 	cache = CityRegionCache.new()
 	configure([1])
 	var viewport := Rect2(7300, 4000, 1600, 900)

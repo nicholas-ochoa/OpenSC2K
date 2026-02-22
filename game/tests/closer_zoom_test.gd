@@ -17,7 +17,7 @@ func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	await process_frame
-	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/CITIES/SYDNEY.SC2"))
+	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
 	main._select_speed(GameSpeedController.Speed.PAUSED)
 	var map: CityMapControl = main.map_view
 	var city: CityState = main.city

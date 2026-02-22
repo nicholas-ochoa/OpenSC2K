@@ -3,7 +3,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var path := "res://../references/SIMCITY.EXE"
+	var path := "res://../references/SIMCITY2000/SIMCITY.EXE"
 	var bytes := FileAccess.get_file_as_bytes(path)
 	var hashing := HashingContext.new()
 	assert(hashing.start(HashingContext.HASH_SHA256) == OK)
@@ -15,7 +15,7 @@ func _initialize() -> void:
 	# The 33 advice strings are IDs 294 through 326, indexed separately.
 	for i in 33:
 		assert(bytes.decode_u32(0xd9db8 + i * 4) == 294 + i)
-	var original := CityUiGraphics.load_original("res://../references")
+	var original := CityUiGraphics.load_original("res://../references/SIMCITY2000")
 	assert(original.portraits.keys() == CityUiGraphics.PORTRAIT_IDS)
 	for id in CityUiGraphics.PORTRAIT_IDS:
 		var dib := PeBitmapResource.load_numeric_dib(path, id)

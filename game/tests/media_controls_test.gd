@@ -4,7 +4,7 @@ func _initialize() -> void:
 func _run() -> void:
 	var audio := CityAudioController.new()
 	root.add_child(audio)
-	audio.setup(ProjectSettings.globalize_path("res://../references"), 0.5, 0.5)
+	audio.setup(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), 0.5, 0.5)
 	assert(audio.play_music_track(10018))
 	assert(audio.handle_media_key(KEY_MEDIANEXT) and audio.current_track_id == 10000)
 	assert(audio.handle_media_key(KEY_MEDIAPREVIOUS) and audio.current_track_id == 10018)

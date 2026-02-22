@@ -5,7 +5,7 @@ extends SceneTree
 func _initialize() -> void:
 	var roles := {385: "monster attack", 478: "monster part 0", 479: "monster part 1", 480: "monster part 2", 481: "monster part 3", 482: "monster part 4", 483: "monster part 5", 484: "monster part 6", 485: "monster part 7", 486: "monster part 8", 487: "monster part 9", 488: "monster part 10", 489: "monster part 11", 490: "monster part 12", 491: "monster part 13", 495: "superhero", 497: "tornado 0", 498: "tornado 1", 499: "tornado 2"}
 	for archive_name in ["LARGE.DAT", "SMALLMED.DAT", "SPECIAL.DAT"]:
-		var archive := Sc2SpriteArchive.load_path("res://../references/DATA/" + archive_name)
+		var archive := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/" + archive_name)
 		assert(archive.is_valid(), archive.parse_error)
 		for entry in archive.entries:
 			var base := entry.sprite_id % 500

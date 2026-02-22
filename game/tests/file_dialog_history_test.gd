@@ -9,7 +9,7 @@ func _run() -> void:
 	history = History.new()
 	history.storage_path = PATH
 	root.add_child(history)
-	var favorites := PackedStringArray([ProjectSettings.globalize_path("res://../references/"), "/Volumes/Offline Cities/"])
+	var favorites := PackedStringArray([ProjectSettings.globalize_path("res://../references/SIMCITY2000/"), "/Volumes/Offline Cities/"])
 	var recents := PackedStringArray([ProjectSettings.globalize_path("res://../local/large-cities/")])
 	if mode == "write":
 		FileDialog.set_favorite_list(favorites)

@@ -87,7 +87,7 @@ func _detail(record: Dictionary) -> void:
 
 
 func _load_image(record: Dictionary) -> Image:
-	var path := "res://../references/" + str(record.source)
+	var path := "res://../references/SIMCITY2000/" + str(record.source)
 	if record.kind == "bitmap_file":
 		var image := Image.load_from_file(path)
 		assert(image != null)

@@ -114,7 +114,7 @@ var checks := 0
 
 func _init() -> void:
 	var arguments := OS.get_cmdline_user_args()
-	var reference_root := ProjectSettings.globalize_path("res://../references")
+	var reference_root := ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	if not arguments.is_empty():
 		reference_root = arguments[0]
 	var audio_tests := AudioTests.new(Callable(self, "_check"))

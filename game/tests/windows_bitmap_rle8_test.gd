@@ -27,7 +27,7 @@ func _initialize() -> void:
 		assert(not WindowsBitmapRle8.decode(PackedByteArray(bad), 8, 1).ok, str(bad))
 	for size in [Vector2i(0, 1), Vector2i(1, -1), Vector2i(4097, 1), Vector2i(1, 4097)]:
 		assert(not WindowsBitmapRle8.decode(PackedByteArray([0, 1]), size.x, size.y).ok)
-	var path := "res://../references/WINSCURK.EXE"
+	var path := "res://../references/SIMCITY2000/WINSCURK.EXE"
 	# Independent ImageMagick BMP decoding produced these RGBA hashes.
 	var expected := {
 		1202: "3fab3792f632fd2a747bc75136cb5ad5dc8cd8a7ac741f8a5977b36a21b44f6d",

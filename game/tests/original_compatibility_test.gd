@@ -28,7 +28,7 @@ func _run() -> void:
 	AppSettingsStore.save_values(0.4, 0.5, false, settings_path)
 	check(AppSettingsStore.load_values(settings_path).original_compatibility, "Unrelated preference writes preserve compatibility")
 	check_formats()
-	check_reference_files(ProjectSettings.globalize_path("res://../references").simplify_path())
+	check_reference_files(ProjectSettings.globalize_path("res://../references/SIMCITY2000").simplify_path())
 	check_fire_clock()
 	await check_ui()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
@@ -49,12 +49,12 @@ func check_formats() -> void:
 				var file := FileAccess.open(save_path, FileAccess.WRITE)
 				file.store_string("keep existing file")
 				file.close()
-				check(not CityFileStore.save_copy(doc, save_path, "res://../references", true).ok, "Save rejects extended contents even with SC2 filename")
+				check(not CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000", true).ok, "Save rejects extended contents even with SC2 filename")
 				check(FileAccess.get_file_as_string(save_path) == "keep existing file", "Rejected save does not truncate target")
 			else:
-				check(CityFileStore.save_copy(doc, save_path, "res://../references", true).ok, "Save original city")
+				check(CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000", true).ok, "Save original city")
 				check(FileAccess.get_file_as_bytes(save_path) == original, "Original save stays byte-identical")
-				check(not CityFileStore.save_copy(doc, save_path + "x", "res://../references", true).ok, "Strict mode rejects SC2X output extension")
+				check(not CityFileStore.save_copy(doc, save_path + "x", "res://../references/SIMCITY2000", true).ok, "Strict mode rejects SC2X output extension")
 			check(doc.serialize().data == original, "Policy does not convert or mutate city")
 	var options := {"size": 512, "native_maps": true, "hills": 10}
 	check(OriginalCompatibility.terrain_options(options, true) == {"size": 128, "native_maps": false, "hills": 10}, "Creation options force original format")
@@ -65,7 +65,7 @@ func check_formats() -> void:
 	chunk.chunk_id = "TEST"
 	chunk.set_decoded_payload(PackedByteArray([1, 2, 3]))
 	doc.chunks.append(chunk)
-	check(CityFileStore.save_copy(doc, save_path, "res://../references", true).ok, "Original unknown chunks remain supported")
+	check(CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000", true).ok, "Original unknown chunks remain supported")
 	check(Sc2File.load_path(ProjectSettings.globalize_path(save_path)).find_chunk("TEST").decoded_payload == chunk.decoded_payload, "Unknown original bytes survive")
 
 func check_fire_clock() -> void:
@@ -82,7 +82,10 @@ func check_fire_clock() -> void:
 			check(captured.original_compatibility == original, "Simulation snapshot retains compatibility")
 
 func check_ui() -> void:
+	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	main.app_settings_path = settings_path
 	root.add_child(main)
 	await process_frame

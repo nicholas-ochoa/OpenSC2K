@@ -3,7 +3,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var archive := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
+	var archive := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
 	assert(archive.is_valid(), archive.parse_error)
 	for base in [29, 30, 73, 74, 81, 87, 88, 93, 94, 95, 96, 97, 98, 99, 100, 101, 105, 106, 107]:
 		var entry := archive.find_sprite(base + 1000)

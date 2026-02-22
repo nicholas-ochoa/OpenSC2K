@@ -3,7 +3,7 @@ func _initialize() -> void:
 	call_deferred("_run")
 func _run() -> void:
 	var palette := Sc2Palette.index_encoding()
-	var sprites := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
+	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
 	assert(sprites.is_valid())
 	var values := {"point": Vector2i(400, 300), "tile_id": 211, "sprite_id": 1211,
 		"altitude_raw": 4660, "flags_raw": 128, "flag_names": PackedStringArray(["Powered"]),
@@ -102,7 +102,7 @@ func _run() -> void:
 		var main := (load("res://main.tscn") as PackedScene).instantiate()
 		root.add_child(main)
 		await process_frame
-		main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/CITIES/SYDNEY.SC2"))
+		main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
 		main._select_speed(GameSpeedController.Speed.PAUSED)
 		var selected := Vector2i(64, 64)
 		for x in range(50, 80):

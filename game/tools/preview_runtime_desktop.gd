@@ -25,7 +25,7 @@ func _run() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	await process_frame
-	original = DesktopGraphics.load_original("res://../references")
+	original = DesktopGraphics.load_original("res://../references/SIMCITY2000")
 	assert(original.error.is_empty(), original.error)
 	var folder := OS.get_environment("OPENSC2K_GRAPHICS_PACK")
 	if not folder.is_empty():
@@ -33,7 +33,7 @@ func _run() -> void:
 		assert(pack.error.is_empty(), pack.error)
 		replacement = pack.desktop_graphics
 	main.desktop_presentation.set_graphics(original)
-	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/CITIES/ISLAND.SC2"))
+	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
 	main.speed_controller.set_speed(0)
 	main._sync_speed_ui()
 	var layer := CanvasLayer.new()

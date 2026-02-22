@@ -3,7 +3,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var resource := PeBitmapResource._load_resource_directory("res://../references/SIMCITY.EXE")
+	var resource := PeBitmapResource._load_resource_directory("res://../references/SIMCITY2000/SIMCITY.EXE")
 	assert(resource.ok)
 	var bytes: PackedByteArray = resource.bytes
 	assert(_sha256(bytes) == "4f560f7a19586670a8ccb3e0ae69889679699ebf4de706a7a46b2098dd838e69")
@@ -14,10 +14,10 @@ func _initialize() -> void:
 		assert(table.decode_u16(i * 2) == NewspaperPicture.STORY_PICTURES[i])
 	# The next DWORD is a paper-name string ID, not another picture entry.
 	assert(bytes.decode_u32(offset + 136) == 360)
-	var original := CityUiGraphics.load_original("res://../references")
+	var original := CityUiGraphics.load_original("res://../references/SIMCITY2000")
 	assert(original.notices.size() == 12)
 	for id in CityUiGraphics.NOTICE_IDS:
-		var bmp := FileAccess.get_file_as_bytes("res://../references/BITMAPS/%d.BMP" % id)
+		var bmp := FileAccess.get_file_as_bytes("res://../references/SIMCITY2000/BITMAPS/%d.BMP" % id)
 		assert(bmp.slice(0, 2).get_string_from_ascii() == "BM")
 		assert(bmp.decode_u16(28) == 8)
 		assert(bmp.decode_u32(18) == (154 if id == 411 else 155) and bmp.decode_u32(22) == 100)

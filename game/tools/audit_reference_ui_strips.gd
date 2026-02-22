@@ -8,7 +8,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	var directory := PeBitmapResource._load_resource_directory("res://../references/SIMCITY.EXE")
+	var directory := PeBitmapResource._load_resource_directory("res://../references/SIMCITY2000/SIMCITY.EXE")
 	assert(directory.ok, str(directory.error))
 	var bytes: PackedByteArray = directory.bytes
 	var hashing := HashingContext.new()
@@ -21,7 +21,7 @@ func _run() -> void:
 		assert(bytes.decode_u32(offset + i * 4) == expected[i])
 	print("Confirmed 34 toolbar command IDs at 0x004e62d8: ", expected)
 	for id in [2, 178, 247]:
-		var result := PeBitmapResource.load_numeric("res://../references/SIMCITY.EXE", id)
+		var result := PeBitmapResource.load_numeric("res://../references/SIMCITY2000/SIMCITY.EXE", id)
 		assert(result.ok, str(result.error))
 		var size: Vector2i = {2: Vector2i(865, 23), 178: Vector2i(14, 154), 247: Vector2i(234, 20)}[id]
 		var image: Image = result.image

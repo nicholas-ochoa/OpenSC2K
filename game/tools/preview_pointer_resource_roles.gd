@@ -88,7 +88,7 @@ func _detail() -> void:
 
 
 func _load(record: Dictionary) -> Dictionary:
-	var decoded := PeIconCursorResource.load_image("res://../references/" + str(record.source), int(record.id), record.kind == "cursor")
+	var decoded := PeIconCursorResource.load_image("res://../references/SIMCITY2000/" + str(record.source), int(record.id), record.kind == "cursor")
 	assert(decoded.ok, str(decoded.error))
 	return decoded
 

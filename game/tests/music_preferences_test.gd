@@ -14,7 +14,7 @@ func _run() -> void:
 			previous = id
 	var audio := CityAudioController.new()
 	root.add_child(audio)
-	audio.setup(ProjectSettings.globalize_path("res://../references"), 0.5, 0.0)
+	audio.setup(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), 0.5, 0.0)
 	audio.set_shuffle_music(true)
 	assert(audio.play_music_track(10001))
 	var first := audio.current_track_id
@@ -76,7 +76,7 @@ func _run() -> void:
 	assert(not audio.recording_player.stream_paused and audio.recording_player.stream == wav)
 	audio.stop_music()
 	# MIDI keeps its synthesized position and sequence during focus pause.
-	assert(audio.music_player.play_path(ProjectSettings.globalize_path("res://../references/SOUNDS/10001.MID"), 10001).ok)
+	assert(audio.music_player.play_path(ProjectSettings.globalize_path("res://../references/SIMCITY2000/SOUNDS/10001.MID"), 10001).ok)
 	audio.dummy_music_active = true
 	audio.current_track_id = 10001
 	audio.handle_application_focus_out()

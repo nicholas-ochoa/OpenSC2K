@@ -14,7 +14,7 @@ func _run() -> void:
 	quit(1 if failures else 0)
 
 func make_controller(edge: int) -> GameSpeedController:
-	var path := "res://../references/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-%d.sc2x" % edge
+	var path := "res://../references/SIMCITY2000/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-%d.sc2x" % edge
 	var city := CityState.from_document(Sc2File.load_path(path))
 	check(city.is_valid(), "fixture loads")
 	var controller := GameSpeedController.new(SimulationEngine.new(city, 123, 456, 789))

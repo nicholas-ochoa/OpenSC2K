@@ -62,7 +62,7 @@ func _refresh() -> void:
 		if index >= records.size():
 			break
 		var record := records[index]
-		var loaded := PeBitmapResource.load_numeric("res://../references/WINSCURK.EXE", int(record.id))
+		var loaded := PeBitmapResource.load_numeric("res://../references/SIMCITY2000/WINSCURK.EXE", int(record.id))
 		assert(loaded.ok, str(loaded.error))
 		var image: Image = loaded.image
 		var p := Vector2((slot % 4) * 294, (slot / 4) * 195)

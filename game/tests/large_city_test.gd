@@ -102,7 +102,7 @@ func check_format_guards() -> void:
 	invalid = bytes.duplicate()
 	invalid[11] = 0x48
 	check(not Sc2File.new().parse(invalid), "Reject large chunks under SCDH")
-	var refused := CityFileStore.save_copy(document, "user://large-city-must-not-write.SC2", "res://../references")
+	var refused := CityFileStore.save_copy(document, "user://large-city-must-not-write.SC2", "res://../references/SIMCITY2000")
 	check(not refused.ok, "Reject original-game save extension")
 	check(not document.resize_empty_map(129), "Reject unsupported resize")
 	var image := Image.create(16448, 16, false, Image.FORMAT_RGBA8)

@@ -1,6 +1,6 @@
 extends SceneTree
 func _initialize() -> void:
-	var sprites := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
+	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
 	var palette := Sc2Palette.index_encoding()
 	for edge: int in [128, 256, 384, 512]:
 		for group in [6, 7, 3]:

@@ -14,8 +14,8 @@ func _initialize() -> void:
 	for index in images.size():
 		assert(context.slot(images[index]) == slots[index], "Atlas growth moved an existing slot")
 		assert(context.atlas.get_region(slots[index]).get_data() == images[index].get_data())
-	var city := CityState.from_document(Sc2File.load_path("res://../references/CITIES/SYDNEY.SC2"))
-	var sprites := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
+	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
+	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
 	var center := CityIsometricRenderer.output_size_for_view(2, city.map_size) / 2 / 256
 	context = CityGpuBuildContext.new()
 	context.atlas_edge = 64

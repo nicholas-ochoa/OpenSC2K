@@ -23,6 +23,9 @@ func _run() -> void:
 		quit(2)
 		return
 	var main := packed_scene.instantiate()
+	main.set("reference_root", reference_root)
+	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	root.add_child(main)
 	await process_frame
 	await process_frame
@@ -404,6 +407,7 @@ func _run() -> void:
 		audio_controller.dummy_music_active = true
 		audio_controller.application_has_focus = true
 		focus_engine.midi_playback_active = true
+		audio_controller.set_background_audio(false)
 		var focus_general_index := focus_director.general_track_index
 		var effect_probe := AudioStreamPlayer.new()
 		main.add_child(effect_probe)

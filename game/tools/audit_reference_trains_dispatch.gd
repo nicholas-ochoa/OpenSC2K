@@ -8,7 +8,7 @@ func _initialize() -> void:
 		quit()
 		return
 	for archive_name in ["LARGE.DAT", "SMALLMED.DAT", "SPECIAL.DAT"]:
-		var archive := Sc2SpriteArchive.load_path("res://../references/DATA/" + archive_name)
+		var archive := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/" + archive_name)
 		assert(archive.is_valid(), archive.parse_error)
 		for entry in archive.entries:
 			var base := entry.sprite_id % 500
@@ -39,7 +39,7 @@ func _initialize() -> void:
 func _scan_cities() -> void:
 	var counts := {}
 	for folder in ["", "CITIES", "SCENARIO", "test-cities"]:
-		var root := "res://../references/" + str(folder)
+		var root := "res://../references/SIMCITY2000/" + str(folder)
 		if not DirAccess.dir_exists_absolute(root):
 			continue
 		for name in DirAccess.get_files_at(root):

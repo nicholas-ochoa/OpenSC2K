@@ -1,7 +1,7 @@
 extends SceneTree
 
 func _initialize() -> void:
-	for path in ["res://../references/CITIES/SYDNEY.SC2", "res://../local/large-cities/stitched-512.sc2x"]:
+	for path in ["res://../references/SIMCITY2000/CITIES/SYDNEY.SC2", "res://../local/large-cities/stitched-512.sc2x"]:
 		var city := CityState.from_document(Sc2File.load_path(path))
 		assert(CityIsometricRenderer._static_text_overlay_signature(city) == _reference(city))
 		var things := city.document.find_chunk("XTHG")

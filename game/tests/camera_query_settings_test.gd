@@ -45,7 +45,7 @@ func _run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	var audio := CityAudioController.new()
 	root.add_child(audio)
-	audio.setup(ProjectSettings.globalize_path("res://../references"), 0.5, 0.5)
+	audio.setup(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), 0.5, 0.5)
 	audio.set_background_audio(true)
 	assert(audio.play_music_track(10000))
 	audio.handle_application_focus_out()

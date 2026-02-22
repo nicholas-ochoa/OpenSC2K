@@ -9,7 +9,7 @@ func _run() -> void:
 		print("SKIP: export local examples with res://tools/export_original_packs.gd first")
 		quit()
 		return
-	var original := OriginalGameAssets.load_root(ProjectSettings.globalize_path("res://../references"))
+	var original := OriginalGameAssets.load_root(ProjectSettings.globalize_path("res://../references/SIMCITY2000"))
 	var graphics := GraphicsPack.load_root(base.path_join("graphics"))
 	assert(graphics.error.is_empty(), graphics.error)
 	for pair in [[graphics.large_sprites, original.large_sprites], [graphics.small_medium_sprites, original.small_medium_sprites]]:
@@ -33,7 +33,7 @@ func _run() -> void:
 		assert(MediaPack.load_folder(base.path_join(kind + "/pack.json"), kind).error.is_empty())
 		assert(pack.files.size() == (30 if kind == "sound" else 19))
 		for path in pack.files.values():
-			assert(FileAccess.get_sha256(path) == FileAccess.get_sha256(ProjectSettings.globalize_path("res://../references/SOUNDS").path_join(path.get_file())))
+			assert(FileAccess.get_sha256(path) == FileAccess.get_sha256(ProjectSettings.globalize_path("res://../references/SIMCITY2000/SOUNDS").path_join(path.get_file())))
 	var temporary := "user://media-pack-test-%d" % OS.get_process_id()
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(temporary))
 	var manifest := {"format": "opensc2k-sound", "version": 1, "name": "Test", "files": {}}

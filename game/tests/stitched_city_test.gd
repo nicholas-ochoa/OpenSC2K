@@ -12,7 +12,7 @@ func _init() -> void:
 	for edge in [128, 256, 384, 512]:
 		if not selected.is_empty() and str(edge) not in selected:
 			continue
-		var path := "res://../references/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-%d.sc2x" % edge
+		var path := "res://../references/SIMCITY2000/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-%d.sc2x" % edge
 		var digest := FileAccess.get_sha256(path)
 		var document := Sc2File.load_path(path)
 		if not _check(document.is_valid() and document.map_size == edge, "load %d" % edge):

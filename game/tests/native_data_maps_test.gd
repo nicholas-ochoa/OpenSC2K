@@ -74,10 +74,10 @@ func check_format(edge: int) -> void:
 	for turn in 4:
 		check(CityRotationCommand.apply(city, false).ok, "Rotate every native grid")
 	check(loaded.serialize().data == bytes, "Four rotations retain all grid bytes")
-	var blocked := CityFileStore.save_copy(loaded, "user://native-maps-blocked.SC2", "res://../references")
+	var blocked := CityFileStore.save_copy(loaded, "user://native-maps-blocked.SC2", "res://../references/SIMCITY2000")
 	check(not blocked.ok and not FileAccess.file_exists("user://native-maps-blocked.SC2"), "Reject lossy SC2 save")
 	var path := "user://native-maps-test-%d-%d" % [OS.get_process_id(), edge]
-	var saved := CityFileStore.save_copy(loaded, path, "res://../references")
+	var saved := CityFileStore.save_copy(loaded, path, "res://../references/SIMCITY2000")
 	check(saved.ok and saved.path.ends_with(".sc2x"), "Native save extension")
 	if saved.ok:
 		check(Sc2File.load_path(saved.path).serialize().data == bytes, "Disk round trip")
