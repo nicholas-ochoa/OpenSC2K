@@ -186,6 +186,7 @@ var last_static_render_started_msec := -ACTIVE_DISASTER_RENDER_INTERVAL_MSEC
 var pending_static_render := false
 var toolbar_animation_palette: Sc2Palette
 var palette_cycle_ticks := 0
+var palette_elapsed_msec := 0.0
 var palette_cycle_texture: ImageTexture
 
 var map_view: CityMapControl
@@ -505,15 +506,21 @@ func _process(delta: float) -> void:
 		_sync_speed_ui()
 		_show_error("Simulation stopped: %s" % result.error)
 		return
-	if (
-		result.base_ticks > 0
-		and speed_controller.speed != GameSpeed.Speed.PAUSED
-		and not interaction_suspended
-	):
-		palette_cycle_ticks += int(result.base_ticks)
-		_update_palette_cycle_texture()
+	_advance_palette_animation(delta, interaction_suspended)
 
 	_consume_simulation_result(result)
+
+
+func _advance_palette_animation(delta: float, suspended: bool) -> void:
+	# Keep palette animation running while the simulation worker is busy.
+	if suspended or speed_controller.speed == GameSpeed.Speed.PAUSED:
+		return
+	palette_elapsed_msec += maxf(delta, 0.0) * 1000.0
+	var ticks := int(palette_elapsed_msec / GameSpeedController.BASE_TICK_MSEC)
+	if ticks > 0:
+		palette_elapsed_msec -= ticks * GameSpeedController.BASE_TICK_MSEC
+		palette_cycle_ticks += ticks
+		_update_palette_cycle_texture()
 
 
 func _camera_keys_allowed() -> bool:
@@ -2738,6 +2745,7 @@ func _activate_document(
 	static_view_cache.clear()
 	pending_static_render = false
 	palette_cycle_ticks = 0
+	palette_elapsed_msec = 0.0
 	_update_palette_cycle_texture()
 	dynamic_sprite_cache.clear()
 	dynamic_foreground_cache.clear()

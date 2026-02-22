@@ -41,6 +41,8 @@ func check_parity(edge: int) -> void:
 			await process_frame
 			actual = runner.advance_time(0, day * 200)
 		check(not runner.is_pending(), "tick completes without blocking frames")
+		check(int(runner.last_work_metrics.elapsed_usec) >= int(runner.last_work_metrics.parked_usec), "elapsed job time includes frame waits")
+		check(actual.job_timings.has("Worker / frame waits"), "accepted jobs publish wait timings")
 		check(TimingResults.without_timings(actual) == TimingResults.without_timings(expected), "identical tick events and results at %d day %d" % [edge, day])
 		check(sliced.engine.city.document.serialize().data == sync.engine.city.document.serialize().data, "identical saved bytes at %d day %d" % [edge, day])
 		check(sliced.engine.random.state == sync.engine.random.state and sliced.engine.lfsr_random.state == sync.engine.lfsr_random.state and sliced.engine.game_random.state == sync.engine.game_random.state, "identical random states")

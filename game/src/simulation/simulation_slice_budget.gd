@@ -4,6 +4,8 @@ extends RefCounted
 # only the worker calls checkpoint/finish. the main thread grants/cancels
 var parked_usec := 0
 
+var _created_usec := Time.get_ticks_usec()
+var _elapsed_usec := 0
 var _mutex := Mutex.new()
 var _resume := Semaphore.new()
 var _waiting := false
@@ -28,8 +30,9 @@ func checkpoint() -> void:
 	_mutex.unlock()
 	var wait_started := Time.get_ticks_usec()
 	_resume.wait()
-	parked_usec += Time.get_ticks_usec() - wait_started
+	var waited_usec := Time.get_ticks_usec() - wait_started
 	_mutex.lock()
+	parked_usec += waited_usec
 	if _cancelled:
 		_stopped = true
 	else:
@@ -59,11 +62,12 @@ func cancel() -> void:
 func finish() -> void:
 	_mutex.lock()
 	_record_slice()
+	_elapsed_usec = Time.get_ticks_usec() - _created_usec
 	_mutex.unlock()
 
 func metrics() -> Dictionary:
 	_mutex.lock()
-	var result := {"slices": _slices, "max_slice_usec": _max_slice_usec, "waiting": _waiting, "cancelled": _cancelled}
+	var result := {"slices": _slices, "max_slice_usec": _max_slice_usec, "waiting": _waiting, "cancelled": _cancelled, "elapsed_usec": _elapsed_usec, "parked_usec": parked_usec}
 	_mutex.unlock()
 	return result
 
