@@ -70,6 +70,7 @@ static func page_grid(magnification: int) -> Dictionary:
 			return {"columns": 4, "rows": 2, "count": 8, "view_size": Renderer.VIEW_MEDIUM}
 		4:
 			return {"columns": 7, "rows": 4, "count": 28, "view_size": Renderer.VIEW_LARGE}
+
 	return {}
 
 
@@ -82,8 +83,10 @@ static func render(
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
+
 	var view := String(options.get("view", "city"))
 	var result: Dictionary
+
 	if view == "underground":
 		result = UndergroundView.create_image(
 			city,
@@ -112,19 +115,26 @@ static func render(
 			true,
 			false
 		)
+
 		if result.get("ok", false) and show_signs:
 			_draw_signs(result.image, display_city, render_palette, view_size)
 	else:
 		return _failure("print view must be city or underground")
+
 	if not result.get("ok", false):
 		return _failure(String(result.get("error", "city output failed")))
+
 	var image: Image = result.get("image") as Image
+
 	if image == null or image.is_empty():
 		return _failure("city output is empty")
+
 	if view == "city":
 		_draw_artwork_stamps(image, city, render_palette, sprites, view_size)
+
 	if not bool(options.get("color", true)):
 		image = _monochrome_copy(image)
+
 	return {"ok": true, "error": "", "image": image}
 
 
@@ -139,16 +149,22 @@ static func save_small_bmp(
 	var rendered := render(
 		city, index_palette, sprites, Renderer.VIEW_SMALL, options
 	)
+
 	if not rendered.ok:
 		return rendered
+
 	var image: Image = rendered.image
+
 	if image.get_format() != Image.FORMAT_L8:
 		return _failure("indexed city output has the wrong image format")
+
 	var bytes := image.get_data()
 	var pixels := PackedInt32Array()
 	pixels.resize(bytes.size())
+
 	for index in bytes.size():
 		pixels[index] = bytes[index]
+
 	return IndexedBitmap.save_path(
 		path, image.get_width(), image.get_height(), pixels, output_palette
 	)
@@ -163,32 +179,46 @@ static func save_pdf(
 ) -> Dictionary:
 	var magnification := int(options.get("magnification", 1))
 	var grid := page_grid(magnification)
+
 	if grid.is_empty():
 		return _failure("print magnification must be 1x, 2x, or 4x")
+
 	var rendered := render(
 		city, output_palette, sprites, int(grid.view_size), options
 	)
+
 	if not rendered.ok:
 		return rendered
+
 	var image: Image = rendered.image
+
 	if image.get_format() != Image.FORMAT_RGBA8:
 		image.convert(Image.FORMAT_RGBA8)
+
 	var selected := _selected_page_indices(options, int(grid.count))
+
 	if selected.is_empty():
 		return _failure("select at least one page to print")
+
 	var pdf := _encode_pdf(image, grid, selected)
+
 	if not pdf.ok:
 		return pdf
+
 	var file := FileAccess.open(path, FileAccess.WRITE)
+
 	if file == null:
 		return _failure(
 			"cannot open PDF output: %s" % error_string(FileAccess.get_open_error())
 		)
+
 	file.store_buffer(pdf.bytes)
 	var write_error := file.get_error()
 	file.close()
+
 	if write_error != OK:
 		return _failure("cannot write PDF output: %s" % error_string(write_error))
+
 	return {
 		"ok": true,
 		"error": "",
@@ -200,14 +230,19 @@ static func save_pdf(
 
 static func _selected_page_indices(options: Dictionary, page_count: int) -> PackedInt32Array:
 	var result := PackedInt32Array()
+
 	if bool(options.get("entire_city", true)):
 		for index in page_count:
 			result.append(index)
+
 		return result
+
 	var selected: PackedByteArray = options.get("selected_pages", PackedByteArray())
+
 	for index in mini(selected.size(), page_count):
 		if selected[index] != 0:
 			result.append(index)
+
 	return result
 
 
@@ -221,11 +256,15 @@ static func _encode_pdf(
 	bodies.resize(object_count + 1)
 	bodies[1] = "<< /Type /Catalog /Pages 2 0 R >>\n".to_ascii_buffer()
 	var page_ids := PackedInt32Array()
+
 	for output_index in selected.size():
 		page_ids.append(3 + output_index * 3)
+
 	var kids := ""
+
 	for page_id in page_ids:
 		kids += "%d 0 R " % page_id
+
 	bodies[2] = (
 		"<< /Type /Pages /Count %d /Kids [%s] >>\n" % [page_ids.size(), kids]
 	).to_ascii_buffer()
@@ -234,8 +273,10 @@ static func _encode_pdf(
 		var page_index := int(selected[output_index])
 		var column := page_index / rows
 		var row := page_index % rows
+
 		if column < 0 or column >= columns:
 			return _failure("selected print page is outside the page grid")
+
 		var left := floori(float(image.get_width()) * float(column) / float(columns))
 		var right := floori(float(image.get_width()) * float(column + 1) / float(columns))
 		var top := floori(float(image.get_height()) * float(row) / float(rows))
@@ -245,6 +286,7 @@ static func _encode_pdf(
 		)
 		page_image.convert(Image.FORMAT_RGB8)
 		var jpeg := page_image.save_jpg_to_buffer(0.96)
+
 		if jpeg.is_empty():
 			return _failure("cannot encode a printable city page")
 
@@ -288,28 +330,36 @@ static func _encode_pdf(
 	var output := "%PDF-1.4\n% OpenSC2K printable city\n".to_ascii_buffer()
 	var offsets := PackedInt32Array()
 	offsets.resize(object_count + 1)
+
 	for object_id in range(1, object_count + 1):
 		offsets[object_id] = output.size()
 		output.append_array(("%d 0 obj\n" % object_id).to_ascii_buffer())
 		output.append_array(bodies[object_id])
 		output.append_array("endobj\n".to_ascii_buffer())
+
 	var xref_offset := output.size()
 	output.append_array(("xref\n0 %d\n" % (object_count + 1)).to_ascii_buffer())
 	output.append_array("0000000000 65535 f \n".to_ascii_buffer())
+
 	for object_id in range(1, object_count + 1):
 		output.append_array(("%010d 00000 n \n" % offsets[object_id]).to_ascii_buffer())
+
 	output.append_array((
 		"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n"
 		% [object_count + 1, xref_offset]
 	).to_ascii_buffer())
+
 	return {"ok": true, "error": "", "bytes": output}
 
 
 static func _monochrome_copy(source: Image) -> Image:
 	var result: Image = source.duplicate()
+
 	if result.get_format() != Image.FORMAT_RGBA8:
 		result.convert(Image.FORMAT_RGBA8)
+
 	var data := result.get_data()
+
 	for offset in range(0, data.size(), 4):
 		var luminance := clampi(roundi(
 			float(data[offset]) * 0.299
@@ -319,6 +369,7 @@ static func _monochrome_copy(source: Image) -> Image:
 		data[offset] = luminance
 		data[offset + 1] = luminance
 		data[offset + 2] = luminance
+
 	return Image.create_from_data(
 		result.get_width(), result.get_height(), false, Image.FORMAT_RGBA8, data
 	)
@@ -331,28 +382,41 @@ static func _draw_signs(
 	view_size: int
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if image == null or image.is_empty():
 		return
+
 	var configuration := Renderer.view_configuration(view_size)
+
 	if configuration.is_empty():
 		return
+
 	var divisor := float(configuration.divisor)
 	var glyph_scale := 2
+
 	for diagonal in map_edge * 2 - 1:
 		for y in diagonal + 1:
 			var x := diagonal - y
+
 			if x >= map_edge or y >= map_edge:
 				continue
+
 			var label_id := city.text_overlay_id(x, y)
+
 			if not OverlayData.is_sign(label_id):
 				continue
+
 			var text := city.label(label_id).strip_edges().to_upper()
+
 			if text.is_empty():
 				continue
+
 			text = text.left(30)
 			var polygon := Renderer.tile_polygon(city, x, y)
+
 			if polygon.size() != 4:
 				continue
+
 			var anchor := polygon[0] / divisor + Vector2(0.0, -8.0 / divisor)
 			var text_width := text.length() * 6 * glyph_scale - glyph_scale
 			var panel_bottom := anchor.y - float(15 * view_size + 20)
@@ -412,11 +476,14 @@ static func _draw_text_5x7(
 		var character := String.chr(text.unicode_at(character_index))
 		var rows: Array = FONT_5X7.get(character, FONT_5X7["?"])
 		var character_x := origin.x + character_index * 6 * scale
+
 		for row in 7:
 			var bits := int(rows[row])
+
 			for column in 5:
 				if bits & (1 << (4 - column)) == 0:
 					continue
+
 				_fill_clipped(
 					image,
 					Rect2i(
@@ -431,6 +498,7 @@ static func _draw_text_5x7(
 
 static func _fill_clipped(image: Image, rectangle: Rect2i, color: Color) -> void:
 	var clipped := rectangle.intersection(Rect2i(Vector2i.ZERO, image.get_size()))
+
 	if clipped.get_area() > 0:
 		image.fill_rect(clipped, color)
 
@@ -441,22 +509,31 @@ static func _failure(message: String) -> Dictionary:
 
 static func _draw_artwork_stamps(output: Image, city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, view_size: int) -> void:
 	var configuration := Renderer.view_configuration(view_size)
+
 	for stamp in city.scurk_artwork_stamps:
 		var entry = sprites.find_sprite(int(configuration.sprite_base) + int(stamp.tile_id))
+
 		if entry == null:
 			continue
+
 		var rendered: Dictionary = entry.create_image(palette)
+
 		if not rendered.ok:
 			continue
+
 		var image: Image = rendered.image
 		var anchor := Renderer.tile_polygon(city, stamp.point.x, stamp.point.y)[2] / float(configuration.divisor)
 		var origin := Vector2i(anchor) - Vector2i(image.get_width() / 2, image.get_height() - 1)
+
 		for y in image.get_height():
 			for x in image.get_width():
 				var pixel := image.get_pixel(x, y)
 				var target := origin + Vector2i(x, y)
+
 				if pixel.a <= 0.0 or target.x < 0 or target.y < 0 or target.x >= output.get_width() or target.y >= output.get_height():
 					continue
+
 				if palette.is_index_encoding:
 					pixel = Color(pixel.r, pixel.r, pixel.r, 1.0)
+
 				output.set_pixelv(target, pixel)

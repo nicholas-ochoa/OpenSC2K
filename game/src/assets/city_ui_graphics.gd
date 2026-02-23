@@ -36,6 +36,7 @@ var check_system_colors := false
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> CityUiGraphics:
 	var graphics := CityUiGraphics.new()
 	graphics._load(value, read_png, palette)
+
 	return graphics
 
 
@@ -43,77 +44,111 @@ static func load_original(reference_root: String) -> CityUiGraphics:
 	var graphics := CityUiGraphics.new()
 	graphics.check_sheet = PeBitmapResource.load_named(reference_root.path_join("SIMCITY.EXE"), CheckControlGraphics.RESOURCE_ID).get("image")
 	graphics.check_system_colors = true
+
 	for id in CONTROL_SIZES:
 		var image: Image
+
 		if id.ends_with(".BMP"):
 			var path := reference_root.path_join("BITMAPS/" + id)
+
 			if FileAccess.file_exists(path):
 				image = Image.load_from_file(path)
 		else:
 			var loaded := PeBitmapResource.load_named(reference_root.path_join("SIMCITY.EXE"), id)
 			image = loaded.get("image")
+
 		if image != null:
 			graphics.controls[id] = image
+
 	for id in HOURGLASS_IDS:
 		var loaded := PeBitmapResource.load_numeric(reference_root.path_join("SIMCITY.EXE"), id)
+
 		if loaded.ok:
 			graphics.hourglass.append(loaded.image)
+
 	for id in PORTRAIT_IDS:
 		var loaded := PeBitmapResource.load_numeric(reference_root.path_join("SIMCITY.EXE"), id)
+
 		if loaded.ok:
 			graphics.portraits[id] = loaded.image
+
 	for id in TERRAIN_SIZES:
 		var image := _original_image(reference_root, id)
+
 		if image != null:
 			graphics.terrain[id] = image
+
 	for id in MEDIA_IDS:
 		var image := _original_image(reference_root, id)
+
 		if image != null:
 			graphics.media[id] = image
+
 	for id in NOTICE_IDS:
 		var image := _original_image(reference_root, "%d.BMP" % id)
+
 		if image != null:
 			graphics.notices[id] = image
+
 	for id in PRESENTATION_SIZES:
 		var image := _original_image(reference_root, id)
+
 		if image != null:
 			graphics.presentation[id] = image
 			graphics.presentation_palettes[id] = Sc2Palette.load_bmp(reference_root.path_join("BITMAPS/" + id))
+
 	return graphics
 
 
 static func _original_image(reference_root: String, id: Variant) -> Image:
 	if id is String:
 		var path := reference_root.path_join("BITMAPS/" + id)
+
 		return Image.load_from_file(path) if FileAccess.file_exists(path) else null
+
 	return PeBitmapResource.load_numeric(reference_root.path_join("SIMCITY.EXE"), id).get("image")
 
 
 func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 	if not value is Dictionary or value.is_empty():
 		error = "city_ui must contain controls, hourglass, portraits, terrain, media, notices, presentation or checks"
+
 		return
+
 	for group in value:
 		if group not in ["controls", "hourglass", "portraits", "terrain", "media", "notices", "presentation", "checks"]:
 			error = "Unknown city_ui field: %s" % group
+
 			return
+
 		var ids: Array = {"controls": CONTROL_SIZES.keys(), "hourglass": HOURGLASS_IDS, "portraits": PORTRAIT_IDS, "terrain": TERRAIN_SIZES.keys(), "media": MEDIA_IDS, "notices": NOTICE_IDS, "presentation": PRESENTATION_SIZES.keys(), "checks": [CheckControlGraphics.RESOURCE_ID]}[group]
 		var records: Variant = value[group]
+
 		if not records is Array or records.size() != ids.size():
 			error = "city_ui.%s requires %d records in resource order" % [group, ids.size()]
+
 			return
+
 		for i in ids.size():
 			var record: Variant = records[i]
+
 			if not record is Dictionary or not _matches_id(record.get("id"), ids[i]):
 				error = "city_ui.%s record %d must have id %s" % [group, i, str(ids[i])]
+
 				return
+
 			var png: Dictionary = read_png.call(record.get("png"))
+
 			if png.is_empty() or not png.get("ok", false):
 				error = "Cannot read city_ui image %s" % str(ids[i])
+
 				return
+
 			var size := PORTRAIT_SIZE
+
 			if group == "checks":
 				size = CheckControlGraphics.SHEET_SIZE
+
 			if group == "controls":
 				size = CONTROL_SIZES[ids[i]]
 			elif group == "hourglass":
@@ -126,13 +161,19 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 				size = Vector2i(154 if ids[i] == 411 else 155, 100)
 			elif group == "presentation":
 				size = PRESENTATION_SIZES[ids[i]]
+
 			if Vector2i(png.width, png.height) != size or png.pixels.has(-1):
 				error = "city_ui image %s must be opaque and %d by %d" % [str(ids[i]), size.x, size.y]
+
 				return
+
 			if group not in ["notices", "presentation"] and png.palette.colors != palette.colors:
 				error = "city_ui image %s must use the pack palette" % str(ids[i])
+
 				return
+
 			var image: Image = Sc2SpriteArchive.entry_from_indices(0, size.x, size.y, png.pixels).create_image(png.palette).image
+
 			if group == "checks":
 				check_sheet = image
 			elif group == "controls":
@@ -155,31 +196,39 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 static func _matches_id(value: Variant, expected: Variant) -> bool:
 	if expected is String:
 		return value is String and value == expected
+
 	return (value is int or value is float) and value == expected
 
 
 static func media_size(id: Variant) -> Vector2i:
 	var wide := _matches_id(id, 261) or _matches_id(id, 262) or _matches_id(id, "WILL0D.BMP") or _matches_id(id, "WILL0U.BMP")
+
 	return Vector2i(140 if wide else 70, 70)
 
 
 static func terrain_region(index: int) -> Rect2i:
 	assert(index >= 0 and index < TERRAIN_ROLES.size())
 	var x := 0
+
 	for i in index:
 		x += TERRAIN_WIDTHS[i]
+
 	var height: int = [7, 7, 10][index - 16] if index >= 16 else 19
+
 	return Rect2i(x, 0, TERRAIN_WIDTHS[index], height)
 
 
 func terrain_icon(role: String, loose := false) -> Image:
 	var id: Variant = "TERRAIN.BMP" if loose else 207
 	var index := (TERRAIN_LOOSE_ROLES if loose else TERRAIN_ROLES).find(role)
+
 	if not terrain.has(id) or index < 0:
 		return null
+
 	return terrain[id].get_region(terrain_region(index))
 
 
 func media_image(index: int, pressed: bool) -> Image:
 	assert(index >= 0 and index < 5)
+
 	return media.get(262 + index * 2 - int(pressed))
