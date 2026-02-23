@@ -18,21 +18,28 @@ func _initialize() -> void:
 	assert(table == PackedByteArray(ZONE_CLASSES))
 	print("Confirmed supplied zone classes at 0x004e77b8: ", table)
 	var count := 0
+
 	for archive_name in ["LARGE.DAT", "SMALLMED.DAT", "SPECIAL.DAT"]:
 		var archive := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/" + archive_name)
 		assert(archive.is_valid(), archive.parse_error)
+
 		for entry in archive.entries:
 			if entry.sprite_id % 500 not in range(300, 305) and entry.sprite_id % 500 not in range(354, 359) and entry.sprite_id % 500 not in range(468, 478):
 				continue
+
 			var colors := {}
 			var pixels: PackedInt32Array = entry.decode_indices().pixels
+
 			for index in pixels:
 				if index < 0:
 					continue
+
 				assert(index < 171 or index >= 239, "these archive overlays must stay static")
 				colors[index] = int(colors.get(index, 0)) + 1
+
 			print("%d: %dx%d, %d opaque, colors %s" % [entry.sprite_id, entry.width, entry.height, pixels.size() - pixels.count(-1), str(colors)])
 			count += 1
+
 	assert(count == 60)
 	print("PASS: 60 static overlay records and supplied zone-class table")
 	quit()

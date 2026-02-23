@@ -1,7 +1,11 @@
 extends SceneTree
 var main: Node
+
+
 func _initialize() -> void:
 	call_deferred("_run")
+
+
 func _run() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	main = (load("res://main.tscn") as PackedScene).instantiate()

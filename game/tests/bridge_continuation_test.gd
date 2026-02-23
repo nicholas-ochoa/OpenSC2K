@@ -1,4 +1,6 @@
 extends SceneTree
+
+
 func _initialize() -> void:
 	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
 	var palette := Sc2Palette.index_encoding()
@@ -11,22 +13,27 @@ func _initialize() -> void:
 			var command := NetworkCommand.apply(city, group, 0, Vector2i(base, 20), Vector2i(base + 12, 20), NetworkCommand.BRIDGE_ROAD_CAUSEWAY if group == 6 else -1)
 			assert(command.ok and command.bridge_built)
 			assert(command.dry_points.size() == 9)
+
 			for x in range(base, base + 13):
 				assert(city.building_id(x, 20) != 0, "Network continues across the bridge to the endpoint")
+
 			assert(city.funds() == 20000 - command.cost)
 			var artwork := NetworkPlacementPreview.build({"city": preview_city, "group": group, "tool": 0, "start": Vector2i(base, 20), "finish": Vector2i(base + 12, 20), "view": 2, "palette": palette, "sprites": sprites, "underground": false})
 			assert(not artwork.draws.is_empty() and preview_city.building_id(base + 12, 20) != 0)
 			assert(preview_city.document.serialize().data == city.document.serialize().data, "Bridge preview matches the complete placed route")
 			assert(NetworkCommand.undo(city, command).ok)
 			assert(city.document.serialize().data == before, "One Undo restores both banks and the bridge")
+
 		for bridge in [HighwayCommand.BRIDGE_HIGHWAY, HighwayCommand.BRIDGE_REINFORCED]:
 			var city := _fixture(edge, true)
 			var base := edge - 24
 			var before: PackedByteArray = city.document.serialize().data
 			var command := HighwayCommand.apply(city, 6, 1, Vector2i(base, 20), Vector2i(base + 14, 20), -1, bridge)
 			assert(command.ok and command.bridge_built)
+
 			for x in range(base, base + 16):
 				assert(city.building_id(x, 20) != 0, "Highway continues from the far bank")
+
 			assert(city.funds() == 20000 - command.cost)
 			assert(HighwayCommand.undo(city, command).ok)
 			assert(city.document.serialize().data == before)
@@ -37,12 +44,15 @@ func _initialize() -> void:
 			assert(connected.ok and connected.connection_built)
 			assert(HighwayCommand.undo(city, connected).ok)
 			assert(city.document.serialize().data == before)
+
 		var city := _fixture(edge, false)
 		var base := edge - 24
+
 		for x in range(base + 12, base + 16):
 			assert(city.set_land_altitude(x, 20, 4))
 			assert(city.set_tile_flag(x, 20, 4, true))
 			assert(city.set_terrain_id(x, 20, 0x21 if x == base + 12 else 0x10))
+
 		var before: PackedByteArray = city.document.serialize().data
 		var multi := NetworkCommand.apply(city, 6, 0, Vector2i(base, 20), Vector2i(base + 20, 20), NetworkCommand.BRIDGE_ROAD_CAUSEWAY)
 		assert(multi.ok and multi.bridge_count == 2 and city.building_id(base + 20, 20) != 0)
@@ -59,11 +69,13 @@ func _initialize() -> void:
 	print("PASS: bridge continuation, costs, deferred connections and one-step Undo at all map sizes")
 	quit()
 
+
 func _fixture(edge: int, highway: bool) -> CityState:
 	var city := CityState.from_document(EmptyCityTemplate.create(edge))
 	assert(city.set_funds(20000))
 	var base := edge - 24
 	var far_bank := base + (10 if highway else 8)
+
 	for x in range(base, edge):
 		for y in range(20, 22 if highway else 21):
 			var water := x >= base + 4 and x < far_bank
@@ -71,4 +83,5 @@ func _fixture(edge: int, highway: bool) -> CityState:
 			assert(city.set_water_altitude(x, y, 5))
 			assert(city.set_tile_flag(x, y, 4, water))
 			assert(city.set_terrain_id(x, y, (0x10 if highway or x != base + 4 else 0x21) if water else 0))
+
 	return city

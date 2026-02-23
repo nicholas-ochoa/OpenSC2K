@@ -1,6 +1,7 @@
 extends SceneTree
 const CommandCache = preload("res://src/view/city_dynamic_command_cache.gd")
 
+
 func _initialize() -> void:
 	var city := CityState.from_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x"))
 	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
@@ -9,6 +10,7 @@ func _initialize() -> void:
 	var count: int = cache.rebuilds
 	cache.get_commands(city, sprites, 2, 0)
 	assert(cache.rebuilds == count)
+
 	for field in ["altitude_words", "terrain", "buildings", "zones", "text_overlays", "tile_flags"]:
 		var original: int = city.get(field)[100]
 		city.get(field)[100] = original ^ 1
@@ -16,6 +18,7 @@ func _initialize() -> void:
 		assert(cache.rebuilds > count)
 		count = cache.rebuilds
 		city.get(field)[100] = original
+
 	var things := city.document.find_chunk("XTHG")
 	things.decoded_payload[1] ^= 1
 	assert(cache.get_commands(city, sprites, 2, 1) == CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, 1))
@@ -25,6 +28,7 @@ func _initialize() -> void:
 	_check_display_clock(city, sprites)
 	print("PASS: unchanged dynamic command reuse, packed state changes, animation and cutaway parity")
 	quit()
+
 
 func _check_display_clock(city: CityState, sprites: Sc2SpriteArchive) -> void:
 	city.visible_altitude_levels = 32
@@ -36,19 +40,23 @@ func _check_display_clock(city: CityState, sprites: Sc2SpriteArchive) -> void:
 	cache.get_commands(city, sprites, 2, 10)
 	assert(cache.rebuilds == 1, "Display clock rebuilt a city with no animated sprites")
 	assert(city.set_text_overlay_id(20, 20, 0xff))
+
 	for phase in [0, 4, 7]:
 		var expected := CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, phase)
 		assert(not expected.is_empty())
 		assert(cache.get_commands(city, sprites, 2, phase) == expected)
+
 	assert(cache.rebuilds == 4, "Special overlays stopped animating")
 	assert(city.set_text_overlay_id(20, 20, OverlayData.thing_id(1)))
 	var offset := CityState.THING_RECORD_SIZE
 	things.decoded_payload[offset] = 6
 	ThingData.write(things.decoded_payload, offset + 3, 20)
 	ThingData.write(things.decoded_payload, offset + 4, 20)
+
 	for phase in [0, 1]:
 		var expected := CityIsometricRenderer.dynamic_draw_commands(city, sprites, 2, phase)
 		assert(not expected.is_empty())
 		assert(cache.get_commands(city, sprites, 2, phase) == expected)
+
 	assert(cache.rebuilds == 6, "Type 6 sprite stopped mirroring")
 	assert(cache.get_commands(CityState.new(), sprites, 2, 0).is_empty())

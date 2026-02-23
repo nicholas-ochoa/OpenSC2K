@@ -1,10 +1,13 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	var history := SimulationTimingHistory.new()
+
 	for sample in [[2, 4000], [27, 8000], [27, 2000]]:
 		history.consume({"day_results": [{"ok": true, "day": sample[0],
 			"timing": {"work_usec": sample[1], "steps": {"pollution": sample[1]}}}]})
+
 	assert(history.days[2].count == 2)
 	assert(history.days[2].total_usec == 14000 and history.days[2].last_usec == 10000)
 	assert(history.days[2].max_usec == 10000)

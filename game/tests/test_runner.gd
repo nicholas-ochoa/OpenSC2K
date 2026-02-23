@@ -115,8 +115,10 @@ var checks := 0
 func _init() -> void:
 	var arguments := OS.get_cmdline_user_args()
 	var reference_root := ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+
 	if not arguments.is_empty():
 		reference_root = arguments[0]
+
 	var audio_tests := AudioTests.new(Callable(self, "_check"))
 	var information_window_tests := InformationWindowTests.new(
 		Callable(self, "_check")
@@ -208,10 +210,12 @@ func _test_rle() -> void:
 		_filled_bytes(128, 0xaa),
 		_filled_bytes(300, 0x00),
 	]
+
 	for original in cases:
 		var encoded := RleCodec.encode(original)
 		var result := RleCodec.decode(encoded, original.size())
 		_check(result.ok, "RLE round trip decodes")
+
 		if result.ok:
 			_check(result.data == original, "RLE round trip preserves bytes")
 
@@ -239,22 +243,30 @@ func _test_original_game_installer(reference_root: String) -> void:
 	var destination_root := scratch_root.path_join("installed")
 	var make_error := DirAccess.make_dir_recursive_absolute(source_data)
 	_check(make_error == OK, "Original game installer test directory is created")
+
 	if make_error != OK:
 		return
+
 	var executable_path := source_root.path_join("simcity.exe")
 	var executable_file := FileAccess.open(executable_path, FileAccess.WRITE)
 	_check(executable_file != null, "Original game installer test executable opens")
+
 	if executable_file == null:
 		OriginalInstaller.remove_tree(scratch_root)
+
 		return
+
 	executable_file.store_buffer(PackedByteArray([0x53, 0x43, 0x32, 0x4b]))
 	executable_file.close()
 	var data_path := source_data.path_join("EXTRA.DAT")
 	var data_file := FileAccess.open(data_path, FileAccess.WRITE)
 	_check(data_file != null, "Original game installer test data opens")
+
 	if data_file == null:
 		OriginalInstaller.remove_tree(scratch_root)
+
 		return
+
 	data_file.store_buffer(PackedByteArray([1, 2, 3, 4]))
 	data_file.close()
 	var expected_hash := FileAccess.get_sha256(executable_path)
@@ -264,9 +276,11 @@ func _test_original_game_installer(reference_root: String) -> void:
 	_check(not wrong_hash_result.ok, "Original game installer rejects a wrong hash")
 	DirAccess.make_dir_recursive_absolute(destination_root)
 	var old_file := FileAccess.open(destination_root.path_join("OLD.DAT"), FileAccess.WRITE)
+
 	if old_file != null:
 		old_file.store_8(0x7f)
 		old_file.close()
+
 	var install_result := OriginalInstaller.install_from_executable(
 		executable_path,
 		destination_root,
@@ -274,6 +288,7 @@ func _test_original_game_installer(reference_root: String) -> void:
 		["DATA/EXTRA.DAT"],
 	)
 	_check(install_result.ok, "Original game installer copies a complete test install")
+
 	if install_result.ok:
 		_check(
 			not str(install_result.previous_root).is_empty()
@@ -295,6 +310,7 @@ func _test_original_game_installer(reference_root: String) -> void:
 			destination_root, expected_hash, ["DATA/EXTRA.DAT"]
 		)
 		_check(installed_result.ok, "Original game installer validates its installed copy")
+
 	var cleanup_error := OriginalInstaller.remove_tree(scratch_root)
 	_check(cleanup_error == OK, "Original game installer test data is removed")
 
@@ -310,11 +326,13 @@ func _test_reference_corpus(reference_root: String) -> void:
 	for path in paths:
 		var document := Sc2Document.load_path(path)
 		_check(document.is_valid(), "%s parses: %s" % [path.get_file(), document.parse_error])
+
 		if not document.is_valid():
 			continue
 
 		var rebuilt := document.serialize(true)
 		_check(rebuilt.ok, "%s rebuilds" % path.get_file())
+
 		if rebuilt.ok:
 			_check(
 				rebuilt.data == FileAccess.get_file_as_bytes(path),
@@ -323,6 +341,7 @@ func _test_reference_corpus(reference_root: String) -> void:
 
 		var city := CityModel.from_document(document)
 		_check(city.is_valid(), "%s creates a city model: %s" % [path.get_file(), city.load_error])
+
 		if city.is_valid():
 			_check(city.index_of(0, 0) == 0, "%s map origin is stable" % path.get_file())
 			_check(
@@ -342,6 +361,7 @@ func _test_reference_corpus(reference_root: String) -> void:
 			_check(graph.century.size() == 20, "%s graph has 20 century values" % path.get_file())
 			var paper_records_valid := true
 			var misc_chunk := document.find_chunk("MISC")
+
 			for paper_index in NewsQueue.PAPER_COUNT:
 				var paper := NewsQueue.paper_record(misc_chunk.decoded_payload, paper_index)
 				paper_records_valid = paper_records_valid and (
@@ -351,6 +371,7 @@ func _test_reference_corpus(reference_root: String) -> void:
 					and int(paper.get("opinion", -1)) in range(6)
 					and int(paper.get("weather", -1)) in range(6)
 				)
+
 			_check(
 				paper_records_valid,
 				"%s newspaper configurations stay in their recovered ranges" % path.get_file(),
@@ -359,9 +380,11 @@ func _test_reference_corpus(reference_root: String) -> void:
 		for chunk in document.chunks:
 			if not chunk.is_compressed:
 				continue
+
 			var reencoded := RleCodec.encode(chunk.decoded_payload)
 			var decoded := RleCodec.decode(reencoded, chunk.expected_decoded_size)
 			_check(decoded.ok, "%s %s re-encodes" % [path.get_file(), chunk.chunk_id])
+
 			if decoded.ok:
 				_check(
 					decoded.data == chunk.decoded_payload,
@@ -370,6 +393,7 @@ func _test_reference_corpus(reference_root: String) -> void:
 
 	var default_city := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	_check(default_city.is_valid(), "Default city parses")
+
 	if default_city.is_valid():
 		_check(default_city.city_name() == "New City", "Default city name is New City")
 		_check(default_city.misc_u32(0) == 0x122, "Default MISC marker is 0x122")
@@ -396,8 +420,10 @@ func _test_city_options(reference_root: String) -> void:
 	).duplicate_document()
 	var starter := CityModel.from_document(starter_document)
 	_check(starter.is_valid(), "Starter city loads for saved-option tests")
+
 	if not starter.is_valid():
 		return
+
 	_check(
 		starter.auto_budget_enabled()
 		and starter.auto_goto_enabled()
@@ -455,8 +481,10 @@ func _test_city_options(reference_root: String) -> void:
 func _test_palette_and_minimap(reference_root: String) -> void:
 	var loaded_palette := Palette.load_bmp(reference_root.path_join("BITMAPS/PAL_MSTR.BMP"))
 	_check(loaded_palette.is_valid(), "Master Windows palette loads")
+
 	if not loaded_palette.is_valid():
 		return
+
 	var encoded := Palette.index_encoding()
 	_check(
 		encoded.is_valid()
@@ -525,17 +553,21 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("CITIES/STARTER.SC2"))
 	var loaded_city := CityModel.from_document(document)
 	_check(loaded_city.is_valid(), "Starter city loads for minimap test")
+
 	if not loaded_city.is_valid():
 		return
+
 	for mode in Minimap.MODES:
 		var image := Minimap.create_image(loaded_city, loaded_palette, mode)
 		_check(image.get_width() == 128, "%s minimap width is 128" % mode)
 		_check(image.get_height() == 128, "%s minimap height is 128" % mode)
 
 	var recovered_modes: Array[String] = []
+
 	for group in CityMapWindow.TAB_MODES:
 		for mode in group:
 			recovered_modes.append(str(mode))
+
 	_check(
 		recovered_modes == Array(Minimap.MODES, TYPE_STRING, "", null),
 		"City Map exposes all 18 modes in the recovered nine-tab order",
@@ -551,11 +583,13 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 	_check(loaded_city.set_zone_id(point.x, point.y, 0), "City Map fixture clears a zone")
 	_check(loaded_city.set_underground_id(point.x, point.y, 0), "City Map fixture clears underground")
 	_check(loaded_city.set_land_altitude(point.x, point.y, 0), "City Map fixture clears altitude")
+
 	for mask in [0x04, 0x10, 0x20, 0x40, 0x80]:
 		_check(
 			loaded_city.set_tile_flag(point.x, point.y, mask, false),
 			"City Map fixture clears tile flag %02x" % mask,
 		)
+
 	_check(
 		Minimap.color_index(loaded_city, point.x, point.y, "structures") == 0x80,
 		"City Map uses the recovered level-zero ground color",
@@ -579,6 +613,7 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 			Minimap.color_index(loaded_city, point.x, point.y, "zones") == zone_test[1],
 			"City Map uses the recovered zone %d color" % zone_test[0],
 		)
+
 	_check(loaded_city.set_zone_id(point.x, point.y, 0), "City Map fixture clears final zone")
 
 	for network_test in [
@@ -595,6 +630,7 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 			) == 0xff,
 			"City Map highlights %s tile %02x" % network_test,
 		)
+
 	_check(loaded_city.set_building_id(point.x, point.y, 0), "City Map fixture clears networks")
 	_check(loaded_city.set_tile_flag(point.x, point.y, 0x40, true), "City Map fixture sets power")
 	_check(
@@ -637,6 +673,7 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 
 	var growth_chunk = loaded_city.document.find_chunk("XROG")
 	var growth_values: PackedByteArray = growth_chunk.decoded_payload.duplicate()
+
 	for growth_test in [[0x7c, 0x1d], [0x80, 0x80], [0x83, 0x43]]:
 		growth_values[0] = growth_test[0]
 		_check(growth_chunk.set_decoded_payload(growth_values), "City Map fixture sets growth")
@@ -661,11 +698,13 @@ func _test_palette_and_minimap(reference_root: String) -> void:
 func _test_sprite_archives(reference_root: String) -> void:
 	var toolbar := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 2)
 	_check(toolbar.ok, "Windows toolbar bitmap resource loads: %s" % toolbar.error)
+
 	if toolbar.ok:
 		_check(
 			toolbar.image.get_size() == Vector2i(865, 23),
 			"Windows toolbar bitmap resource has its confirmed size",
 		)
+
 	var scurk_executable := reference_root.path_join("WINSCURK.EXE")
 	var scurk_bitmap_ids := PeBitmap.list_numeric_bitmap_ids(scurk_executable)
 	_check(
@@ -700,11 +739,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 		protest_bitmap != null and not protest_bitmap.is_empty(),
 		"Forest protest bitmap loads",
 	)
+
 	if protest_bitmap != null and not protest_bitmap.is_empty():
 		_check(
 			protest_bitmap.get_size() == Vector2i(155, 100),
 			"Forest protest bitmap has its executable size",
 		)
+
 	_check(
 		not PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 0xffff).ok,
 		"Windows bitmap loader rejects a missing numeric resource",
@@ -712,6 +753,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var string_ids := PackedInt32Array([106, 236, 786, 790, 910, 982])
 	var strings := PeString.load_ids(reference_root.path_join("SIMCITY.EXE"), string_ids)
 	_check(strings.ok, "Windows string resources load: %s" % strings.error)
+
 	if strings.ok:
 		_check(strings.strings.size() == string_ids.size(), "Windows string loader returns each requested ID")
 		_check(
@@ -725,6 +767,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 			"Windows string loader reads the building-objection notice",
 		)
 		_check(strings.strings[910] == "#T", "Windows string loader decodes UTF-16 placeholders")
+
 	_check(
 		not PeString.load_ids(
 			reference_root.path_join("SIMCITY.EXE"), PackedInt32Array([0xffff])
@@ -732,18 +775,22 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Windows string loader rejects a missing resource block",
 	)
 	var newspaper_ids := PackedInt32Array()
+
 	for resource_id in range(347, 392):
 		newspaper_ids.append(resource_id)
+
 	var newspaper_strings := PeString.load_ids(
 		reference_root.path_join("SIMCITY.EXE"), newspaper_ids
 	)
 	var newspaper_strings_complete: bool = newspaper_strings.ok
+
 	if newspaper_strings.ok:
 		for resource_id in newspaper_ids:
 			newspaper_strings_complete = (
 				newspaper_strings_complete
 				and not str(newspaper_strings.strings.get(resource_id, "")).is_empty()
 			)
+
 	_check(
 		newspaper_strings_complete,
 		"Windows resources provide all newspaper headings, names, and prices",
@@ -754,12 +801,16 @@ func _test_sprite_archives(reference_root: String) -> void:
 		PackedInt32Array([3000, 3001, 3002, 3003]),
 	)
 	_check(library_text.ok, "Indexed Library text loads: %s" % library_text.error)
+
 	if library_text.ok:
 		_check(library_text.strings.size() == 4, "Indexed Library text returns all four requested entries")
+
 		for resource_id in range(3000, 3004):
 			_check(not str(library_text.strings[resource_id]).is_empty(), "Library text entry %d is not empty" % resource_id)
+
 	var library_rects := LibraryWindowLayout.rects(Vector2i(1280, 800))
 	_check(library_rects.size() == 4, "Library presentation creates four windows")
+
 	if library_rects.size() == 4:
 		_check(
 			library_rects[0].size == LibraryWindowLayout.WINDOW_SIZE,
@@ -776,6 +827,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 			<= 1280 - LibraryWindowLayout.VIEWPORT_MARGIN,
 			"Library cascade stays inside the viewport",
 		)
+
 	_check(
 		not TextUsa.load_ids(
 			reference_root.path_join("DATA/TEXT_USA.DAT"),
@@ -789,12 +841,16 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"SMALLMED.DAT": 904,
 		"SPECIAL.DAT": 50,
 	}
+
 	for filename in expected_counts:
 		var archive := SpriteArchive.load_path(reference_root.path_join("DATA").path_join(filename))
 		_check(archive.is_valid(), "%s parses: %s" % [filename, archive.parse_error])
+
 		if not archive.is_valid():
 			continue
+
 		_check(archive.entries.size() == expected_counts[filename], "%s entry count matches" % filename)
+
 		for entry in archive.entries:
 			var decoded := entry.decode_indices()
 			_check(decoded.ok, "%s sprite %d decodes: %s" % [filename, entry.sprite_id, decoded.error])
@@ -829,9 +885,11 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	var sign_palette_indices := PackedInt32Array([0x9b, 0x9e, 0xa0, 0xa2, 0xa5, 0x6a])
 	var sign_colors_ignore_shadow := true
+
 	for palette_index in sign_palette_indices:
 		if IsometricRenderer.shadow_palette_index(palette_index) != palette_index:
 			sign_colors_ignore_shadow = false
+
 	_check(
 		sign_colors_ignore_shadow,
 		"Aircraft shadows do not remap the recovered city-sign palette entries",
@@ -846,13 +904,16 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	var terrain := large.find_sprite(1256)
 	_check(terrain != null, "Large terrain sprite 1256 is present")
+
 	if terrain != null:
 		_check(terrain.width == 32 and terrain.height == 17, "Large terrain sprite is 32 by 17")
 		var rendered := terrain.create_image(palette)
 		_check(rendered.ok, "Large terrain sprite renders: %s" % rendered.error)
+
 		if rendered.ok:
 			_check(rendered.image.get_width() == 32, "Rendered terrain sprite width is 32")
 			_check(rendered.image.get_height() == 17, "Rendered terrain sprite height is 17")
+
 	var power_marker := large.find_sprite(1386)
 	_check(
 		power_marker != null and power_marker.width == 32 and power_marker.height == 16,
@@ -915,9 +976,11 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var patch_document := starter_document.duplicate_document()
 	var patch_city := CityModel.from_document(patch_document)
 	var patch_point := Vector2i(-1, -1)
+
 	for x in range(8, CityModel.MAP_SIZE - 8):
 		if patch_point.x >= 0:
 			break
+
 		for y in range(8, CityModel.MAP_SIZE - 8):
 			if (
 				patch_city.building_id(x, y) == 0
@@ -926,6 +989,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 			):
 				patch_point = Vector2i(x, y)
 				break
+
 	_check(patch_point.x >= 0, "Static region fixture finds clear terrain")
 	var patch_index := patch_city.index_of(patch_point.x, patch_point.y)
 	_check(
@@ -1445,10 +1509,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	var city_paths := _files_with_extension(reference_root.path_join("CITIES"), "SC2")
 	city_paths.append_array(_files_with_extension(reference_root.path_join("SCENARIO"), "SCN"))
+
 	for path in city_paths:
 		var view_city := CityModel.from_document(Sc2Document.load_path(path))
+
 		if not view_city.is_valid():
 			continue
+
 		for view_size in [IsometricRenderer.VIEW_SMALL, IsometricRenderer.VIEW_MEDIUM]:
 			var view_errors := IsometricRenderer.validate_assets(
 				view_city, small_medium, view_size
@@ -1458,6 +1525,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 				"%s has all required view-%d sprites: %s"
 				% [path.get_file(), view_size, view_errors],
 			)
+
 	var plane_visual := IsometricRenderer.moving_thing_sprite({
 		"type": 1, "direction": 4, "state": 2,
 	})
@@ -1630,17 +1698,20 @@ func _test_sprite_archives(reference_root: String) -> void:
 		occlusion_grid, occlusion_target_bounds
 	)
 	var occlusion_candidates_complete := true
+
 	for occluder_index in static_occluders.size():
 		var candidate: Dictionary = static_occluders[occluder_index]
 		var candidate_bounds := Rect2i(
 			Vector2i(candidate.position), Vector2i(candidate.size)
 		)
+
 		if (
 			occlusion_target_bounds.intersects(candidate_bounds)
 			and not occlusion_candidates.has(occluder_index)
 		):
 			occlusion_candidates_complete = false
 			break
+
 	_check(
 		occlusion_candidates_complete
 		and occlusion_candidates.has(occlusion_target_index)
@@ -1697,12 +1768,15 @@ func _test_sprite_archives(reference_root: String) -> void:
 		starter, large, IsometricRenderer.VIEW_LARGE, 0
 	)
 	var found_dynamic_special := false
+
 	for command in dynamic_specials:
 		if int(command.get("overlay", 0)) == 0xfb:
 			found_dynamic_special = true
 			break
+
 	_check(found_dynamic_special, "The dynamic city layer draws a special map marker")
 	_check(starter.set_text_overlay_id(64, 64, 0), "Static-signature fixture clears its marker")
+
 	for expected in [Vector2i.ZERO, Vector2i(24, 93), Vector2i(64, 64), Vector2i(127, 127)]:
 		var polygon := IsometricRenderer.tile_polygon(starter, expected.x, expected.y)
 		var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
@@ -1710,6 +1784,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 			IsometricRenderer.screen_to_tile(starter, center) == expected,
 			"Isometric screen lookup finds tile %s" % expected,
 		)
+
 	var surface_city := CityModel.from_document(starter.document.duplicate_document())
 	var surface_point := Vector2i(64, 64)
 	_check(
@@ -1737,10 +1812,12 @@ func _test_sprite_archives(reference_root: String) -> void:
 		surface_city, surface_point.x, surface_point.y
 	)
 	var raised_surface_matches := true
+
 	for corner in 4:
 		if raised_polygon[corner] != flat_polygon[corner] + Vector2(0, -12):
 			raised_surface_matches = false
 			break
+
 	_check(
 		raised_surface_matches,
 		"Selection surface follows all corners of a raised flat terrain shape",
@@ -1752,20 +1829,24 @@ func _test_sprite_archives(reference_root: String) -> void:
 		capeques, large, IsometricRenderer.VIEW_LARGE, 0
 	)
 	var capeques_dynamic_moving: Array[Dictionary] = []
+
 	for command in capeques_dynamic:
 		if not command.has("overlay"):
 			capeques_dynamic_moving.append(command)
+
 	_check(
 		capeques_dynamic_moving == IsometricRenderer.moving_thing_draw_commands(
 			capeques, large, IsometricRenderer.VIEW_LARGE, 0
 		),
 		"Indexed dynamic lookup preserves Capeques moving-object draw order",
 	)
+
 	for expected in [
 		Vector2i(0, 0), Vector2i(18, 44), Vector2i(47, 93),
 		Vector2i(64, 64), Vector2i(96, 31), Vector2i(127, 127),
 	]:
 		var polygon := IsometricRenderer.tile_polygon(capeques, expected.x, expected.y)
+
 		for offset in [Vector2.ZERO, Vector2(5, 2), Vector2(-5, -2)]:
 			var screen_point: Vector2 = (
 				(polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25 + offset
@@ -1775,6 +1856,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 				== _brute_force_screen_to_tile(capeques, screen_point),
 				"Fast isometric lookup matches the full Capeques scan at %s" % screen_point,
 			)
+
 	var map_control := MapControl.new()
 	map_control.city = starter
 	_check(map_control.zoom_percent() == 100, "City view starts at native large-sprite scale")
@@ -1899,6 +1981,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var sign_result := Signs.set_sign(sign_city, center_tile, "Depth Test")
 	_check(sign_result.ok, "Sign bounds fixture creates a user sign")
 	map_control.city = sign_city
+
 	for zoom_fixture in [
 		[0.25, 148], [0.5, 108], [1.0, 71], [2.0, 71], [3.0, 71], [4.0, 71],
 	]:
@@ -1910,6 +1993,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 			and sign_entries[0].draw_order == 16448,
 			"Sign source bounds match zoom %.2f" % zoom_fixture[0],
 		)
+
 	var sign_cache_builds := map_control._sign_cache_build_count
 	map_control.sign_source_entries()
 	_check(
@@ -2153,8 +2237,10 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")
 	map_control._ensure_base_layer()
 	var many_dynamic_sprites: Array[Dictionary] = []
+
 	for index in 1500:
 		many_dynamic_sprites.append({"position": Vector2(index, index)})
+
 	map_control.set_dynamic_sprites(many_dynamic_sprites)
 	_check(
 		map_control.dynamic_sprites.size() == 1500
@@ -2163,7 +2249,8 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Map control batches 1,500 dynamic sprites in one render node",
 	)
 	var center_requests: Array[Vector2i] = []
-	map_control.center_requested.connect(func(point: Vector2i) -> void: center_requests.append(point))
+	map_control.center_requested.connect(func(point: Vector2i) -> void:
+		center_requests.append(point))
 	var center_click := InputEventMouseButton.new()
 	center_click.button_index = MOUSE_BUTTON_MIDDLE
 	center_click.position = map_control.size * 0.5
@@ -2209,6 +2296,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	marker_image.fill(Color8(10, 10, 10, 255))
 	var marker_texture := ImageTexture.create_from_image(marker_image)
 	var batch_input: Array[Dictionary] = []
+
 	for index in 1500:
 		batch_input.append({
 			"texture": marker_texture,
@@ -2218,6 +2306,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 			"special_overlay": true,
 			"batch_cache_key": "marker:%d" % index,
 		})
+
 	var separator := {
 		"texture": marker_texture,
 		"image": marker_image,
@@ -2253,6 +2342,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and UndergroundView.terrain_wireframe_offset(0x45) == 0x131,
 		"Underground terrain uses the recovered wireframe lookup table",
 	)
+
 	for fixture in [
 		[Vector2i(20, 20), 0x01, 1319],
 		[Vector2i(21, 20), 0x0f, 1333],
@@ -2273,6 +2363,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 			== fixture[2],
 			"Underground tile 0x%02X selects native sprite %d" % [fixture[1], fixture[2]],
 		)
+
 	var wet_pipe := Vector2i(22, 20)
 	_check(
 		underground_city.set_tile_flag(wet_pipe.x, wet_pipe.y, 0x20, true)
@@ -2345,6 +2436,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		true,
 	)
 	_check(underground_image.ok, "Underground view renders: %s" % underground_image.error)
+
 	if underground_image.ok:
 		_check(
 			underground_image.image.get_pixel(0, 0).to_rgba32()
@@ -2355,6 +2447,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 			underground_image.image.get_format() == Image.FORMAT_L8,
 			"Opaque indexed underground rendering uses one byte per pixel",
 		)
+
 	var filtered_source := CityModel.from_document(starter.document.duplicate_document())
 	_check(filtered_source.set_building_id(10, 10, 0x80), "View filter adds a building")
 	_check(filtered_source.set_building_id(11, 10, 0x2e), "View filter adds a network")
@@ -2474,10 +2567,12 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	var crossing_foreground_command: Dictionary = {}
 	var crossing_depth := (64 + 64) * CityState.MAP_SIZE + 64
+
 	for command in IsometricRenderer.static_occlusion_commands(starter, large):
 		if int(command.sprite_id) == 1072 and int(command.depth_order) == crossing_depth:
 			crossing_foreground_command = command
 			break
+
 	_check(
 		int(crossing_foreground_command.get("train_foreground_reference_sprite_id", 0))
 			== 1045,
@@ -2493,8 +2588,10 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var crossing_train_image: Image = (
 		large.find_sprite(crossing_train.sprite_id).create_image(index_palette).image.duplicate()
 	)
+
 	if crossing_train.flip:
 		crossing_train_image.flip_x()
+
 	var crossing_height := maxi(
 		crossing_terrain.get_height(),
 		maxi(crossing_surface.get_height(), crossing_train_image.get_height()),
@@ -2544,16 +2641,22 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var foreground_overlap := 0
 	var foreground_preserved := 0
 	var rail_deck_replaced := 0
+
 	for train_y in crossing_train_image.get_height():
 		for train_x in crossing_train_image.get_width():
 			if crossing_train_image.get_pixel(train_x, train_y).a == 0.0:
 				continue
+
 			var map_point := crossing_train_position + Vector2i(train_x, train_y)
+
 			if not Rect2i(Vector2i.ZERO, crossing_fixture.get_size()).has_point(map_point):
 				continue
+
 			var static_index := roundi(crossing_fixture.get_pixelv(map_point).r * 255.0)
+
 			if crossing_train_foreground.get_pixel(train_x, train_y).a > 0.0:
 				foreground_overlap += 1
+
 				if (
 					crossing_composite.get_pixelv(map_point).to_rgba32()
 					== crossing_fixture.get_pixelv(map_point).to_rgba32()
@@ -2565,6 +2668,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 				!= crossing_fixture.get_pixelv(map_point).to_rgba32()
 			):
 				rail_deck_replaced += 1
+
 	_check(
 		foreground_overlap > 0
 		and foreground_preserved == foreground_overlap
@@ -2743,15 +2847,19 @@ func _test_scurk_mif(reference_root: String) -> void:
 	_test_scurk_place_command(reference_root)
 	var scurk_directory := reference_root.path_join("SCURKART")
 	var mif_files := PackedStringArray()
+
 	for filename in DirAccess.get_files_at(scurk_directory):
 		if filename.get_extension().to_lower() == "mif":
 			mif_files.append(filename)
+
 	mif_files.sort()
 	_check(mif_files.size() == 31, "All 31 supplied SCURK tile sets are present")
+
 	for filename in mif_files:
 		var mif_path := scurk_directory.path_join(filename)
 		var tile_set := ScurkTileSet.load_path(mif_path)
 		_check(tile_set.is_valid(), "%s parses: %s" % [filename, tile_set.parse_error])
+
 		if tile_set.is_valid():
 			var serialized := tile_set.to_bytes()
 			_check(
@@ -2761,12 +2869,15 @@ func _test_scurk_mif(reference_root: String) -> void:
 
 	var original := ScurkTileSet.load_path(scurk_directory.path_join("ORIGINAL.MIF"))
 	_check(original.is_valid(), "ORIGINAL.MIF parses: %s" % original.parse_error)
+
 	if original.is_valid():
 		var editable_ids := ScurkEditor.editable_large_sprite_ids(original)
 		var grouped_ids := ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_ALL)
 		var grouped_unique := {}
+
 		for grouped_id in grouped_ids:
 			grouped_unique[grouped_id] = true
+
 		_check(
 			original.piece_count == 558
 			and original.shapes.size() == 558
@@ -2888,6 +2999,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 			editor_small_medium
 		)
 		var copied_views_match := true
+
 		for pick_view in 3:
 			var pick_sprite_id := pick_target - pick_view * 500
 			var source_entry := ScurkPickCopy.resolved_entry(
@@ -2901,6 +3013,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 				and source_entry.decode_indices().pixels
 					== working_entry.decode_indices().pixels
 			)
+
 		_check(
 			pick_result.ok
 			and pick_result.object_count == 1
@@ -2926,9 +3039,11 @@ func _test_scurk_mif(reference_root: String) -> void:
 		scurk_editor.configure(
 			editor_palette, editor_large, editor_small_medium, reference_root
 		)
+
 		# This control is built manually outside a SceneTree in this test.
 		if scurk_editor.pick_copy_control.source_list == null:
 			scurk_editor.pick_copy_control._ready()
+
 		var editor_load := scurk_editor.load_path(
 			scurk_directory.path_join("ORIGINAL.MIF")
 		)
@@ -3021,6 +3136,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 			"Test copy"
 		)
 		var pick_editor_views_match := true
+
 		for pick_editor_view in 3:
 			var pick_editor_sprite := pick_editor_id - pick_editor_view * 500
 			var pick_editor_source_entry := ScurkPickCopy.resolved_entry(
@@ -3036,6 +3152,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 						pick_editor_sprite
 					).decode_indices().pixels
 			)
+
 		_check(
 			scurk_editor.dirty
 			and scurk_editor.undo_stack.size() == 1
@@ -3192,9 +3309,11 @@ func _test_scurk_mif(reference_root: String) -> void:
 		)
 		var expected_export := scurk_editor._active_output_shape()
 		var expected_export_pixels: PackedInt32Array = expected_export.pixels.duplicate()
+
 		for pixel_index in expected_export_pixels.size():
 			if expected_export_pixels[pixel_index] < 0:
 				expected_export_pixels[pixel_index] = 0
+
 		_check(
 			editor_export.ok
 			and exported_bitmap.ok
@@ -3231,6 +3350,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 		scurk_editor.clear_object()
 		var cleared_views_are_blank := true
 		var clear_mismatch := ""
+
 		for clear_view in range(3):
 			var clear_entry := scurk_editor.tile_set.archive.find_sprite(
 				editable_ids[0] - clear_view * 500
@@ -3244,9 +3364,12 @@ func _test_scurk_mif(reference_root: String) -> void:
 				and clear_decoded.get("ok", false)
 				and not clear_decoded.pixels.has(0)
 			)
+
 			if not clear_view_is_blank and clear_mismatch.is_empty():
 				clear_mismatch = "view %d: %s" % [clear_view, str(clear_decoded)]
+
 			cleared_views_are_blank = cleared_views_are_blank and clear_view_is_blank
+
 		_check(
 			cleared_views_are_blank and scurk_editor.undo_stack.size() > 0,
 			"SCURK Clear Object clears all three views with their fixed base widths: %s"
@@ -3257,10 +3380,13 @@ func _test_scurk_mif(reference_root: String) -> void:
 			scurk_editor.tile_set.to_bytes().bytes == before_clear,
 			"SCURK Clear Object has exact-byte Undo",
 		)
+
 		if FileAccess.file_exists(scratch_path):
 			DirAccess.remove_absolute(scratch_path)
+
 		if FileAccess.file_exists(scratch_bmp_path):
 			DirAccess.remove_absolute(scratch_bmp_path)
+
 		scurk_editor.free()
 
 	var fill_source := PackedInt32Array([
@@ -3498,6 +3624,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 
 	var city_hall := ScurkTileSet.load_path(scurk_directory.path_join("CITYHAL.MIF"))
 	_check(city_hall.is_valid(), "CITYHAL.MIF parses: %s" % city_hall.parse_error)
+
 	if city_hall.is_valid():
 		_check(
 			city_hall.piece_count == 552
@@ -3505,12 +3632,14 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and city_hall.overrides.entries.size() == 3,
 			"CITYHAL.MIF keeps only its three visible overrides",
 		)
+
 		for expected in [[1208, 96, 85], [708, 48, 43], [208, 24, 22]]:
 			var entry := city_hall.overrides.find_sprite(expected[0])
 			_check(
 				entry != null and entry.width == expected[1] and entry.height == expected[2],
 				"CITYHAL.MIF sprite %d has its native dimensions" % expected[0],
 			)
+
 		var base_large := SpriteArchive.load_path(
 			reference_root.path_join("DATA/LARGE.DAT")
 		)
@@ -3525,6 +3654,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 
 	var tile_set_one := ScurkTileSet.load_path(scurk_directory.path_join("TILESET1.MIF"))
 	_check(tile_set_one.is_valid(), "TILESET1.MIF parses: %s" % tile_set_one.parse_error)
+
 	if tile_set_one.is_valid():
 		_check(
 			tile_set_one.piece_count == 572
@@ -3550,6 +3680,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and reparsed.parse(edited_bytes.bytes),
 			"SCURK writes edited SHAP and NAME records",
 		)
+
 		if reparsed.is_valid():
 			var edited_entry := reparsed.archive.find_sprite(1208)
 			var edited_decode := edited_entry.decode_indices() if edited_entry != null else {}
@@ -3563,6 +3694,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 				and edited_decode.pixels == edited_pixels,
 				"SCURK edit writes preserve INFO and decode to the edited values",
 			)
+
 		var removed_name := tile_set_one.remove_name(0xb5)
 		var removed_bytes := tile_set_one.to_bytes()
 		var reparsed_removed := ScurkTileSet.new()
@@ -3641,6 +3773,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 	)
 
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(
@@ -3648,6 +3781,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 			),
 			"SCURK Place & Print fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0))
 		and document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)),
@@ -3795,6 +3929,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 			city.set_tile_flag(70, y, 0x04, true),
 			"SCURK marina fixture stores one shoreline water tile",
 		)
+
 	var marina := ScurkPlace.apply(
 		city, 0xf8, Vector2i(71, 71), process_random
 	)
@@ -4017,8 +4152,10 @@ func _test_scurk_place_command(reference_root: String) -> void:
 			!= hash(output_without_sign.image.get_data()),
 		"SCURK printable city output includes signs only when their layer is enabled",
 	)
+
 	if print_sign.ok:
 		Signs.undo(city, print_sign)
+
 	var monochrome_options: Dictionary = output_options.duplicate(true)
 	monochrome_options.color = false
 	var monochrome_output := ScurkOutput.render(
@@ -4073,6 +4210,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		and pdf_bytes.slice(0, 8).get_string_from_ascii() == "%PDF-1.4",
 		"SCURK Place & Print writes selected city pages to a printable PDF",
 	)
+
 	if OS.get_environment("OPENSC2K_KEEP_TEST_OUTPUT") != "1":
 		DirAccess.remove_absolute(city_bmp_path)
 		DirAccess.remove_absolute(city_pdf_path)
@@ -4086,8 +4224,10 @@ func _test_indexed_bmp() -> void:
 	])
 	var encoded := IndexedBitmap.encode(3, 2, source_pixels, index_palette)
 	_check(encoded.ok, "SCURK indexed BMP encoder accepts valid pixels")
+
 	if not encoded.ok:
 		return
+
 	var bytes: PackedByteArray = encoded.bytes
 	_check(
 		bytes.size() == 1086
@@ -4237,10 +4377,13 @@ func _test_indexed_bmp() -> void:
 func _test_simulation_clock() -> void:
 	var clock := Clock.new(0)
 	var phases: Array[Dictionary] = []
+
 	for unused in 25:
 		phases.append(clock.advance_day())
+
 	_check(phases[0].month_day == 1, "First simulation tick advances to day 1")
 	_check(phases[0].actions == PackedStringArray(["power"]), "Day 1 schedules power")
+
 	for month_day in range(3, 19):
 		var phase := phases[month_day - 1]
 		_check(phase.actions == PackedStringArray(["growth"]), "Day %d schedules growth" % month_day)
@@ -4252,6 +4395,7 @@ func _test_simulation_clock() -> void:
 			phase.growth_substep == (month_day + 1) % 4,
 			"Day %d has the correct growth substep" % month_day
 		)
+
 	_check(phases[18].actions == PackedStringArray(["traffic"]), "Day 19 schedules traffic")
 	_check(phases[19].actions == PackedStringArray(["water"]), "Day 20 schedules water")
 	_check(phases[24].month_day == 0, "The 25th tick starts the next month")
@@ -4271,21 +4415,26 @@ func _test_scenarios(reference_root: String) -> void:
 	var template_count := 0
 	var template_without_chunk_count := 0
 	var first_template_fields: Array = []
+
 	for path in paths:
 		var document := Sc2Document.load_path(path)
 		var scenario := ScenarioModel.from_document(document)
 		_check(scenario.is_valid(), "%s scenario model loads: %s" % [path.get_file(), scenario.load_error])
+
 		if not scenario.is_valid():
 			continue
+
 		if scenario.format_size == ScenarioModel.LEGACY_SIZE:
 			legacy_count += 1
 		else:
 			extended_count += 1
+
 		_check(scenario.time_limit_months > 0, "%s has a positive time limit" % path.get_file())
 		_check(not scenario.selection_description().is_empty(), "%s has selection text" % path.get_file())
 		_check(not scenario.opening_description().is_empty(), "%s has opening text" % path.get_file())
 		var picture := scenario.picture_indices()
 		_check(picture.ok, "%s picture parses: %s" % [path.get_file(), picture.error])
+
 		if picture.ok:
 			_check(picture.width == 65, "%s picture width is 65" % path.get_file())
 			_check(picture.height == 65 or picture.height == 66, "%s picture height is 65 or 66" % path.get_file())
@@ -4298,6 +4447,7 @@ func _test_scenarios(reference_root: String) -> void:
 				rendered_picture.ok,
 				"%s picture renders with PAL_MAC: %s" % [path.get_file(), rendered_picture.error],
 			)
+
 			if rendered_picture.ok:
 				var image: Image = rendered_picture.image
 				_check(
@@ -4317,8 +4467,10 @@ func _test_scenarios(reference_root: String) -> void:
 					),
 					"%s last stored picture row renders at the bottom" % path.get_file(),
 				)
+
 		var template := scenario.template_fields()
 		_check(template.ok, "%s template parses: %s" % [path.get_file(), template.error])
+
 		if template.ok and template.present:
 			template_count += 1
 			_check(template.fields.size() == 17, "%s template has 17 fields" % path.get_file())
@@ -4344,6 +4496,7 @@ func _test_scenarios(reference_root: String) -> void:
 				},
 				"%s template ends with the second tile count" % path.get_file(),
 			)
+
 			if first_template_fields.is_empty():
 				first_template_fields = template.fields
 			else:
@@ -4353,6 +4506,7 @@ func _test_scenarios(reference_root: String) -> void:
 				)
 		elif template.ok:
 			template_without_chunk_count += 1
+
 	_check(legacy_count == 15, "Fifteen supplied scenarios use the 52-byte SCEN layout")
 	_check(extended_count == 3, "Three supplied scenarios use the 56-byte SCEN layout")
 	_check(template_count == 5, "Five supplied scenarios contain a TMPL chunk")
@@ -4377,8 +4531,10 @@ func _test_scenarios(reference_root: String) -> void:
 	).duplicate_document()
 	var unknown_template_chunk := unknown_template_document.find_chunk("TMPL")
 	var unknown_template_data := unknown_template_chunk.decoded_payload.duplicate()
+
 	for index in range(18, 22):
 		unknown_template_data[index] = 0x58
+
 	_check(
 		unknown_template_chunk.set_decoded_payload(unknown_template_data),
 		"Scenario fixture changes a TMPL type",
@@ -4399,6 +4555,7 @@ func _test_scenarios(reference_root: String) -> void:
 	_check(cash_failure.unmet == PackedStringArray(["cash"]), "Cash goal reports its exact failure")
 	goals.cash_goal = 0
 	goals.pollution_limit = maxi(city_document.misc_u32(0x34) - 1, 1)
+
 	if city_document.misc_u32(0x34) > goals.pollution_limit:
 		_check(
 			goals.evaluate_goals(city).unmet.has("pollution"),
@@ -4464,16 +4621,20 @@ func _test_scenarios(reference_root: String) -> void:
 func _test_random_and_power(reference_root: String) -> void:
 	var random := Random.new(1)
 	var sequence := PackedInt32Array()
+
 	for unused in 5:
 		sequence.append(random.next_u15())
+
 	_check(
 		sequence == PackedInt32Array([41, 18467, 6334, 26500, 19169]),
 		"Simulation random sequence matches the executable runtime"
 	)
 	var lfsr := LfsrRandom.new(1)
 	var lfsr_sequence := PackedInt32Array()
+
 	for unused in 16:
 		lfsr_sequence.append(lfsr.next_word())
+
 	_check(
 		lfsr_sequence == PackedInt32Array([
 			2, 4, 8, 16, 32, 64, 128, 256,
@@ -4489,10 +4650,13 @@ func _test_random_and_power(reference_root: String) -> void:
 	_check(city.set_building_id(10, 11, 0x0e), "Power test places a power line")
 	_check(city.set_building_id(10, 12, 0x70), "Power test places a consumer")
 	_check(city.set_building_id(20, 20, 0x70), "Power test places a disconnected consumer")
+
 	for point in [Vector2i(10, 10), Vector2i(10, 11), Vector2i(10, 12), Vector2i(20, 20)]:
 		_check(city.set_tile_flag(point.x, point.y, 0x80, true), "Power test tile is powerable")
+
 	var result := Power.run(city, Random.new(1))
 	_check(result.ok, "Power phase completes: %s" % result.error)
+
 	if result.ok:
 		_check(result.generation == 40, "Hydro plant generates 40 power units")
 		_check(result.consumers == 1, "Connected component has one consumer")
@@ -4511,8 +4675,10 @@ func _test_water(reference_root: String) -> void:
 	_check(city.set_building_id(30, 31, 0x00), "Water test clears a pipe tile")
 	_check(city.set_building_id(30, 32, 0x70), "Water test places a consumer")
 	_check(city.set_building_id(40, 40, 0x70), "Water test places a disconnected consumer")
+
 	for point in [Vector2i(30, 30), Vector2i(30, 31), Vector2i(30, 32), Vector2i(40, 40)]:
 		_check(city.set_tile_flag(point.x, point.y, 0x20, true), "Water test tile is piped")
+
 	_check(city.set_tile_flag(30, 30, 0x40, true), "Water pump is powered")
 	_check(city.set_tile_flag(29, 30, 0x04, true), "Fresh water is next to the pump")
 	_check(city.set_tile_flag(29, 30, 0x01, false), "Pump water is not salt water")
@@ -4521,6 +4687,7 @@ func _test_water(reference_root: String) -> void:
 	) + 10
 	var result := Water.run(city)
 	_check(result.ok, "Water phase completes: %s" % result.error)
+
 	if result.ok:
 		_check(result.supply == expected_supply, "Pump supply uses rain, water level, and fresh water")
 		_check(result.consumers == 1, "Water component has one consumer")
@@ -4581,8 +4748,10 @@ func _test_simulation_engine(reference_root: String) -> void:
 	)
 	_check(engine.lfsr_random.state != 7, "Growth continues the engine LFSR sequence")
 	var latest := day_three
+
 	while latest.day < 19:
 		latest = engine.advance_day()
+
 	_check(latest.applied == PackedStringArray(["traffic"]), "Simulation engine applies traffic on day 19")
 	_check(latest.pending.is_empty(), "Day 19 has no unimplemented scheduled phase")
 	latest = engine.advance_day()
@@ -4936,11 +5105,14 @@ func _test_game_speed_controller(reference_root: String) -> void:
 	_check(island_city.set_simulation_speed(4), "Island unpause fixture selects Cheetah")
 	var island_controller := GameSpeed.new(Simulation.new(island_city, 1, 7, 13))
 	var island_ticks_ok := true
+
 	for tick in 25:
 		var island_tick := island_controller.advance_time(200.0, (tick + 1) * 200)
+
 		if not island_tick.ok:
 			island_ticks_ok = false
 			break
+
 	_check(
 		island_ticks_ok and island_city.age_in_days() >= island_start_day + 25,
 		"Island runs 25 Cheetah ticks after unpause without a script or simulation error",
@@ -5104,6 +5276,7 @@ func _test_game_speed_controller(reference_root: String) -> void:
 func _test_month_start(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var original_values := PackedInt32Array()
+
 	for index in 8:
 		var value := (index + 1) * 13
 		original_values.append(value)
@@ -5111,14 +5284,17 @@ func _test_month_start(reference_root: String) -> void:
 			document.set_misc_i32(0x05f0 + index * 4, value),
 			"Month-start fixture sets zone population %d" % index,
 		)
+
 	_check(document.set_misc_i32(0x05ec, 0x12345678), "Month-start fixture sets preceding data")
 	_check(document.set_misc_i32(0x0610, 0x23456789), "Month-start fixture sets following data")
 	var city := CityModel.from_document(document)
 	var result := MonthStart.run(city)
 	_check(result.ok, "Month-start phase completes: %s" % result.error)
 	_check(result.cleared_population_fields == 8, "Month-start phase reports eight cleared fields")
+
 	for index in 8:
 		_check(document.misc_i32(0x05f0 + index * 4) == 0, "Month-start clears zone population %d" % index)
+
 	_check(document.misc_i32(0x05ec) == 0x12345678, "Month-start preserves preceding MISC data")
 	_check(document.misc_i32(0x0610) == 0x23456789, "Month-start preserves following MISC data")
 
@@ -5126,12 +5302,15 @@ func _test_month_start(reference_root: String) -> void:
 func _test_city_value_phase(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
+
 	for tile_id in 256:
 		_check(
 			document.set_misc_i32(0x01f0 + tile_id * 4, 0),
 			"City-value fixture clears tile count 0x%02X" % tile_id,
 		)
+
 	_check(document.set_misc_u32(0x0fe8, 3), "City-value fixture sets subway count")
+
 	for entry in [
 		[0x0e, 2], [0x1d, 3], [0x2c, 4], [0x3f, 5], [0x51, 6],
 		[0x61, 7], [0x6c, 8], [0xc6, 2], [0xc9, 32], [0xd1, 18],
@@ -5143,6 +5322,7 @@ func _test_city_value_phase(reference_root: String) -> void:
 			document.set_misc_u32(0x01f0 + int(entry[0]) * 4, int(entry[1])),
 			"City-value fixture sets tile count 0x%02X" % int(entry[0]),
 		)
+
 	_check(document.set_misc_u32(0x01f0 + 0x0d * 4, 99), "City-value fixture sets small parks")
 	_check(document.set_misc_u32(0x01f0 + 0xd0 * 4, 99), "City-value fixture sets city halls")
 	var before := document.misc_i32(0x0024)
@@ -5165,21 +5345,25 @@ func _test_city_value_phase(reference_root: String) -> void:
 func _test_bond_command(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var city := CityModel.from_document(document)
+
 	for tile_id in 256:
 		_check(
 			document.set_misc_i32(0x01f0 + tile_id * 4, 0),
 			"Bond fixture clears tile count 0x%02X" % tile_id,
 		)
+
 	_check(document.set_misc_u32(0x0fe8, 0), "Bond fixture clears subway count")
 	_check(city.set_funds(2000), "Bond fixture sets funds")
 	_check(document.set_misc_u32(0x0018, 0), "Bond fixture clears bond count")
 	_check(document.set_misc_i32(0x0024, 12345), "Bond fixture sets stale city value")
 	_check(document.set_misc_u32(0x0058, 3), "Bond fixture sets federal rate")
+
 	for rate_index in 50:
 		_check(
 			document.set_misc_u32(0x0610 + rate_index * 4, 0x77770000),
 			"Bond fixture clears rate %d" % rate_index,
 		)
+
 	var invalid_before: PackedByteArray = document.find_chunk("MISC").decoded_payload.duplicate()
 	var invalid := Bonds.issue(city, 2)
 	_check(not invalid.ok, "Bond issue rejects an invalid confirmation choice")
@@ -5254,8 +5438,10 @@ func _test_bond_command(reference_root: String) -> void:
 
 	var denied_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var denied_city := CityModel.from_document(denied_document)
+
 	for tile_id in 256:
 		denied_document.set_misc_i32(0x01f0 + tile_id * 4, 0)
+
 	_check(denied_document.set_misc_u32(0x01f0 + 0x1d * 4, 10), "Credit fixture sets roads")
 	_check(denied_document.set_misc_u32(0x0018, 1), "Credit fixture sets one bond")
 	_check(denied_document.set_misc_u32(0x0610, 4), "Credit fixture sets its rate")
@@ -5274,8 +5460,10 @@ func _test_bond_command(reference_root: String) -> void:
 
 	var maximum_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var maximum_city := CityModel.from_document(maximum_document)
+
 	for tile_id in 256:
 		maximum_document.set_misc_i32(0x01f0 + tile_id * 4, 0)
+
 	_check(maximum_document.set_misc_u32(0x0018, 50), "Maximum fixture sets fifty bonds")
 	var maximum := Bonds.issue(maximum_city)
 	_check(maximum.ok and maximum.status == "maximum_bonds", "Bond count is limited to fifty")
@@ -5286,13 +5474,16 @@ func _test_budget_phase(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 	_check(city.set_age_in_days(0), "Budget fixture selects January")
 	var cleared_counts := true
+
 	for tile_id in 256:
 		cleared_counts = (
 			document.set_misc_i32(0x01f0 + tile_id * 4, 0)
 			and cleared_counts
 		)
+
 	_check(cleared_counts, "Budget fixture clears all tile counts")
 	_check(document.set_misc_u32(0x0fe8, 4), "Budget fixture sets the subway count")
+
 	for budget_id in 16:
 		_check(
 			document.set_misc_i32(0x077c + budget_id * 0x6c, 0)
@@ -5300,11 +5491,13 @@ func _test_budget_phase(reference_root: String) -> void:
 			and document.set_misc_i32(0x077c + budget_id * 0x6c + 8, 0),
 			"Budget fixture clears record %d" % budget_id,
 		)
+
 	_check(document.set_misc_i32(0x077c, 900), "Budget fixture sets residential population")
 	_check(document.set_misc_i32(0x0780, 7), "Budget fixture sets residential tax")
 	_check(document.set_misc_i32(0x0bb4, 123), "Budget fixture sets prior road costs")
 	_check(document.set_misc_i32(0x0bb8, 80), "Budget fixture sets road funding")
 	_check(document.set_misc_u32(0x0fa0, (1 << 0) | (1 << 4)), "Budget fixture enables ordinances")
+
 	for entry in [
 		[0x1d, 2], [0x3f, 3], [0x45, 5], [0x51, 7], [0x61, 11], [0x6a, 13],
 		[0x6c, 17], [0xd1, 18], [0xd2, 27], [0xd3, 36], [0xd6, 45], [0xd9, 32],
@@ -5314,6 +5507,7 @@ func _test_budget_phase(reference_root: String) -> void:
 			document.set_misc_i32(0x01f0 + int(entry[0]) * 4, int(entry[1])),
 			"Budget fixture sets tile count 0x%02X" % int(entry[0]),
 		)
+
 	var result := Budget.run(city, SequenceRandom.new([1]))
 	_check(result.ok, "Budget phase completes: %s" % result.error)
 	_check(document.misc_i32(0x0788) == 900, "Budget stores January residential count")
@@ -5348,6 +5542,7 @@ func _test_budget_phase(reference_root: String) -> void:
 	_check(annual_city.set_funds(0), "Annual budget fixture clears funds")
 	_check(annual_document.set_misc_u32(0x0e3c, 1), "Annual budget fixture sets year end")
 	_check(annual_document.set_misc_u32(0x0ff0, 1), "Annual budget fixture enables auto budget")
+
 	for budget_id in 16:
 		_check(
 			annual_document.set_misc_i32(0x077c + budget_id * 0x6c, 0)
@@ -5355,11 +5550,13 @@ func _test_budget_phase(reference_root: String) -> void:
 			and annual_document.set_misc_i32(0x077c + budget_id * 0x6c + 8, 0),
 			"Annual budget fixture clears record %d" % budget_id,
 		)
+
 	for entry in [[0, 900], [3, 900], [4, 1200], [5, 12], [10, 12000]]:
 		_check(
 			annual_document.set_misc_i32(0x077c + int(entry[0]) * 0x6c + 8, int(entry[1])),
 			"Annual budget fixture sets year-to-date record %d" % int(entry[0]),
 		)
+
 	var annual := Budget.run(annual_city, SequenceRandom.new([1]))
 	_check(annual.ok and annual.settled_year, "Budget settles the prior year in January")
 	_check(annual_city.funds() == -1, "Budget applies the recovered annual divisors")
@@ -5508,11 +5705,13 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 	_check(declined.changed_indices.is_empty(), "A declined proposal does not change map zones")
 
 	var air_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			air_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)),
 			"Air Force fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		air_document.find_chunk("ALTM").set_decoded_payload(_filled_bytes(CityState.TILE_COUNT * 2, 0)),
 		"Air Force fixture levels the map",
@@ -5554,11 +5753,13 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 	)
 
 	var army_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT"]:
 		_check(
 			army_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)),
 			"Army fixture clears %s" % chunk_id,
 		)
+
 	var army_altitude := _filled_bytes(CityState.TILE_COUNT * 2, 0)
 	army_altitude[(10 * CityState.MAP_SIZE + 21) * 2 + 1] = 1
 	_check(
@@ -5577,20 +5778,25 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 	var missile_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var missile_buildings := _filled_bytes(CityState.TILE_COUNT, 0x0d)
 	var expected_sites: Array[Rect2i] = []
+
 	for origin in [Vector2i(5, 5), Vector2i(15, 15), Vector2i(25, 25), Vector2i(35, 35), Vector2i(45, 45), Vector2i(55, 55)]:
 		expected_sites.append(Rect2i(origin, Vector2i(3, 3)))
+
 		for x in range(origin.x, origin.x + 3):
 			for y in range(origin.y, origin.y + 3):
 				missile_buildings[x * CityState.MAP_SIZE + y] = 0
+
 	_check(
 		missile_document.find_chunk("XBLD").set_decoded_payload(missile_buildings),
 		"Missile fixture installs six clear sites",
 	)
+
 	for chunk_id in ["XTER", "XZON", "XUND", "XBIT"]:
 		_check(
 			missile_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(CityState.TILE_COUNT, 0)),
 			"Missile fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		missile_document.find_chunk("ALTM").set_decoded_payload(_filled_bytes(CityState.TILE_COUNT * 2, 0)),
 		"Missile fixture levels the map",
@@ -5601,10 +5807,13 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 		"Missile fixture initializes tile counts",
 	)
 	var missile_values: Array[int] = []
+
 	for _attempt in 24:
 		missile_values.append_array([100, 100])
+
 	for site in expected_sites:
 		missile_values.append_array([site.position.x, site.position.y])
+
 	var missile_random := SequenceModuloRandom.new(missile_values)
 	var missile_city := CityModel.from_document(missile_document)
 	var missile := MilitaryProposal.resolve(missile_city, true, missile_random)
@@ -5857,8 +6066,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 
 	var riot_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var riot_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
+
 	for y in [19, 18, 17]:
 		riot_buildings[20 * CityState.MAP_SIZE + y] = 0x1d
+
 	_check(
 		riot_document.find_chunk("XBLD").set_decoded_payload(riot_buildings)
 		and riot_document.find_chunk("XBIT").set_decoded_payload(
@@ -5949,8 +6160,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Mass-riot fixture installs a dry road map and normal population",
 	)
 	var mass_riot_values: Array[int] = []
+
 	for x_value in [16, 20, 24, 28, 0, 4, 8]:
 		mass_riot_values.append_array([x_value, 16, x_value & 1])
+
 	var mass_riot_random := SequenceRandom.new(mass_riot_values)
 	var mass_riot_city := CityModel.from_document(mass_riot_document)
 	var mass_riot_start := DisasterStart.start(
@@ -5990,8 +6203,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Earthquake fixture installs one eligible tile at its first offset",
 	)
 	var earthquake_values: Array[int] = [0, 0]
+
 	for _gate in 4224:
 		earthquake_values.append(1)
+
 	var earthquake_random := SequenceRandom.new(earthquake_values)
 	var earthquake_start := DisasterStart.start(
 		earthquake_fixture.city,
@@ -6039,8 +6254,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		"Empty earthquake fixture clears its inherited fire marker",
 	)
 	var empty_earthquake_values: Array[int] = [0]
+
 	for _gate in 4224:
 		empty_earthquake_values.append(1)
+
 	var empty_earthquake_random := SequenceRandom.new(empty_earthquake_values)
 	var empty_earthquake := DisasterStart.start(
 		empty_earthquake_fixture.city,
@@ -6060,6 +6277,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var meltdown_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			meltdown_document.find_chunk(chunk_id).set_decoded_payload(
@@ -6067,6 +6285,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			),
 			"Meltdown fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		meltdown_document.find_chunk("ALTM").set_decoded_payload(
 			_filled_bytes(CityState.TILE_COUNT * 2, 0)
@@ -6107,14 +6326,17 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	var meltdown_misc: PackedByteArray = (
 		meltdown_document.find_chunk("MISC").decoded_payload.duplicate()
 	)
+
 	for tile_id in 256:
 		_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS + tile_id * 4, 0)
+
 	for military_index in 16:
 		_write_u32_be(
 			meltdown_misc,
 			Growth.MISC_MILITARY_TILE_COUNTS + military_index * 4,
 			0,
 		)
+
 	_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS, CityState.TILE_COUNT - 2)
 	_write_u32_be(meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x0d * 4, 1)
 	_write_u32_be(meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4, 1)
@@ -6240,12 +6462,14 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			),
 		],
 	)
+
 	for x in range(63, 67):
 		for y in range(63, 67):
 			_check(
 				meltdown_city.building_id(x, y) == DisasterStart.RADIOACTIVITY_TILE,
 				"Meltdown radiation core covers plant tile %d,%d" % [x, y],
 			)
+
 	var no_plant_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	_check(
 		no_plant_document.find_chunk("XBLD").set_decoded_payload(
@@ -6271,6 +6495,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var microwave_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			microwave_document.find_chunk(chunk_id).set_decoded_payload(
@@ -6278,6 +6503,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			),
 			"Microwave fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		microwave_document.find_chunk("ALTM").set_decoded_payload(
 			_filled_bytes(CityState.TILE_COUNT * 2, 0)
@@ -6306,8 +6532,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 	var microwave_city := CityModel.from_document(microwave_document)
 	var microwave_values: Array[int] = []
+
 	for _step in 40:
 		microwave_values.append(2)
+
 	var microwave_random := SequenceRandom.new(microwave_values)
 	var microwave_start := DisasterStart.start(
 		microwave_city,
@@ -6410,6 +6638,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var volcano_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			volcano_document.find_chunk(chunk_id).set_decoded_payload(
@@ -6417,6 +6646,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			),
 			"Volcano fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		volcano_document.find_chunk("ALTM").set_decoded_payload(
 			_filled_bytes(CityState.TILE_COUNT * 2, 0)
@@ -6466,6 +6696,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	var wet_volcano_document := Sc2Document.load_path(
 		reference_root.path_join("DEFAULT.SC2")
 	)
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XTXT"]:
 		_check(
 			wet_volcano_document.find_chunk(chunk_id).set_decoded_payload(
@@ -6473,6 +6704,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			),
 			"Wet Volcano fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		wet_volcano_document.find_chunk("ALTM").set_decoded_payload(
 			_filled_bytes(CityState.TILE_COUNT * 2, 0)
@@ -6504,6 +6736,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var firestorm_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			firestorm_document.find_chunk(chunk_id).set_decoded_payload(
@@ -6511,6 +6744,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			),
 			"Firestorm fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		firestorm_document.find_chunk("ALTM").set_decoded_payload(
 			_filled_bytes(CityState.TILE_COUNT * 2, 0)
@@ -6591,6 +6825,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	)
 
 	var mass_flood_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			mass_flood_document.find_chunk(chunk_id).set_decoded_payload(
@@ -6598,6 +6833,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			),
 			"Mass Floods fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		mass_flood_document.find_chunk("ALTM").set_decoded_payload(
 			_filled_bytes(CityState.TILE_COUNT * 2, 0)
@@ -6695,10 +6931,12 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		{"rotation": 1, "direction": 2, "damage": 10, "flood": 100, "lfsr": 110},
 		{"rotation": 2, "direction": 3, "damage": 20, "flood": 50, "lfsr": 70},
 	]
+
 	for hurricane_case in hurricane_cases:
 		var hurricane_document := Sc2Document.load_path(
 			reference_root.path_join("DEFAULT.SC2")
 		)
+
 		for chunk_id in ["XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 			_check(
 				hurricane_document.find_chunk(chunk_id).set_decoded_payload(
@@ -6706,6 +6944,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 				),
 				"Hurricane direction %d clears %s" % [hurricane_case.direction, chunk_id],
 			)
+
 		_check(
 			hurricane_document.find_chunk("XBLD").set_decoded_payload(
 				_filled_bytes(CityState.TILE_COUNT, 0x1d)
@@ -6721,8 +6960,10 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 			% hurricane_case.direction,
 		)
 		var hurricane_values: Array[int] = []
+
 		for value in hurricane_case.lfsr:
 			hurricane_values.append(value)
+
 		var hurricane_lfsr := SequenceLfsrRandom.new(hurricane_values)
 		var hurricane_random := SequenceRandom.new([])
 		var hurricane_city := CityModel.from_document(hurricane_document)
@@ -7673,11 +7914,14 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		DisasterStart.DISASTER_POLLUTION, Vector2i(24, 25)
 	)
 	var pollution_ticks: Array[Dictionary] = []
+
 	while pollution_engine.active_disaster_type != 0 and pollution_ticks.size() < 128:
 		var pollution_result := pollution_engine.advance_disaster_tick()
 		pollution_ticks.append(pollution_result)
+
 		if not pollution_result.get("ok", false):
 			break
+
 	var pollution_tick: Dictionary = pollution_ticks[0] if not pollution_ticks.is_empty() else {}
 	var pollution_end: Dictionary = pollution_ticks[-1] if not pollution_ticks.is_empty() else {}
 	_check(
@@ -7844,8 +8088,10 @@ func _test_annual_service_microsim_phase(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
 	var service_tiles := [0xd1, 0xd2, 0xd3, 0xd6, 0xd7, 0xd8, 0xd9]
+
 	for index in service_tiles.size():
 		microsims[(index + 1) * 8] = service_tiles[index]
+
 	microsims[1 * 8 + 1] = 10
 	microsims[4 * 8 + 1] = 8
 	microsims[6 * 8 + 2] = 0x1f
@@ -7932,8 +8178,10 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
 	var special_tiles := [0xc9, 0xda, 0xdb, 0xf3, 0xf4, 0xf8, 0xfb, 0xfe, 0xff]
+
 	for index in special_tiles.size():
 		microsims[(index + 1) * 8] = special_tiles[index]
+
 	microsims[1 * 8 + 1] = 10
 	microsims[4 * 8 + 1] = 3
 	microsims[4 * 8 + 4] = 0x12
@@ -8019,11 +8267,13 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	_check(renewal.expired_power_records.is_empty(), "A paid annual power renewal does not request demolition")
 
 	var expiry_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			expiry_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Annual expiry fixture clears %s" % chunk_id,
 		)
+
 	_check(expiry_document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Annual expiry fixture clears XLAB")
 	_check(expiry_document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Annual expiry fixture clears XMIC")
 	_check(expiry_document.set_misc_i32(0x14, 10000), "Annual expiry fixture sets funds")
@@ -8118,8 +8368,10 @@ func _test_mayor_approval_phase(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x077c + 4, 7), "Mayor approval fixture sets residential tax")
 	_check(document.set_misc_u32(0x102c, 1000), "Mayor approval fixture sets city population")
 	var favorable_values: Array[int] = []
+
 	for _index in 100:
 		favorable_values.append(190)
+
 	var favorable_random := SequenceRandom.new(favorable_values)
 	var favorable := MayorApproval.run(city, favorable_random, 79)
 	_check(favorable.ok, "Mayor approval calculation completes: %s" % favorable.error)
@@ -8139,8 +8391,10 @@ func _test_mayor_approval_phase(reference_root: String) -> void:
 		"Mayor approval updates all mayor-house annual fields",
 	)
 	var complaint_values: Array[int] = []
+
 	for _index in 100:
 		complaint_values.append(0)
+
 	var complaint_random := SequenceRandom.new(complaint_values)
 	var complaints := MayorApproval.run(city, complaint_random, favorable.approval)
 	_check(complaints.ok, "Mayor complaint calculation completes: %s" % complaints.error)
@@ -8156,17 +8410,20 @@ func _test_mayor_approval_phase(reference_root: String) -> void:
 
 func _test_arcology_launch_phase(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Arcology launch fixture clears %s" % chunk_id,
 		)
+
 	_check(document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Arcology launch fixture clears XLAB")
 	_check(document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Arcology launch fixture clears XMIC")
 	_check(document.set_misc_i32(0x14, 20000000), "Arcology launch fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16384), "Arcology launch fixture counts clear tiles")
 	_check(document.set_misc_u32(0x01f0 + 0xfe * 4, 0), "Arcology launch fixture clears launch count")
 	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 6), "Arcology launch fixture sets metropolis progression")
+
 	for invention_index in range(12, 16):
 		_check(
 			document.set_misc_u32(
@@ -8175,16 +8432,20 @@ func _test_arcology_launch_phase(reference_root: String) -> void:
 			),
 			"Arcology launch fixture unlocks arcology %d" % invention_index,
 		)
+
 	var city := CityModel.from_document(document)
 	var launch := Buildings.apply(
 		city, 5, 8, Vector2i(20, 20), LfsrRandom.new(1), Random.new(1)
 	)
 	_check(launch.ok and launch.site == Rect2i(19, 19, 4, 4), "Arcology launch fixture builds a launch arcology")
 	var text_overlays: PackedByteArray = document.find_chunk("XTXT").decoded_payload.duplicate()
+
 	for index in launch.tile_indices:
 		text_overlays[index] = 0xfe
+
 	_check(document.find_chunk("XTXT").set_decoded_payload(text_overlays), "Arcology launch fixture installs launch markers")
 	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
+
 	for record_id in range(1, 101):
 		var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 		microsims[offset] = 0xfe
@@ -8193,15 +8454,20 @@ func _test_arcology_launch_phase(reference_root: String) -> void:
 		microsims[offset + 3] = 65
 		microsims[offset + 4] = 0xea
 		microsims[offset + 5] = 0x60
+
 	_check(document.find_chunk("XMIC").set_decoded_payload(microsims), "Arcology launch fixture installs one hundred records")
 	_check(document.set_misc_u32(0x01f0 + 0xfe * 4, 4816), "Arcology launch fixture crosses the tile threshold")
 	_check(document.set_misc_u32(0x1020, 6000000), "Arcology launch fixture sets old arcology population")
 	_check(document.set_misc_u32(0x102c, 20000000), "Arcology launch fixture sets normal population")
+
 	for budget_id in 3:
 		_check(document.set_misc_u32(0x077c + budget_id * 0x006c + 4, 0), "Arcology launch fixture clears tax %d" % budget_id)
+
 	var lfsr_values: Array[int] = []
+
 	for _index in 100:
 		lfsr_values.append(0)
+
 	var lfsr := SequenceLfsrRandom.new(lfsr_values)
 	var process_random := CountingRandom.new()
 	var result := AnnualMicrosims.run(city, 0, 0, 0, process_random, lfsr)
@@ -8245,18 +8511,22 @@ func _test_arcology_launch_phase(reference_root: String) -> void:
 
 func _test_transport_trip(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XZON", "XUND", "XTXT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Transport fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		document.find_chunk("XTRF").set_decoded_payload(_filled_bytes(64 * 64, 0)),
 		"Transport fixture clears XTRF",
 	)
 	var city := CityModel.from_document(document)
+
 	for point in [Vector2i(20, 21), Vector2i(20, 22), Vector2i(20, 23)]:
 		_check(city.set_building_id(point.x, point.y, 0x1d), "Transport fixture places a road")
+
 	_check(city.set_zone_id(20, 20, 1), "Transport fixture sets the origin zone")
 	_check(city.set_zone_id(20, 24, 3), "Transport fixture sets a job destination")
 	var result := Transport.run(city, Vector2i(20, 20), 1, 2, Random.new(1))
@@ -8326,15 +8596,18 @@ func _test_growth_phase(reference_root: String) -> void:
 	_check(construction.city.building_id(20, 20) == 0x70, "Residential construction becomes occupied")
 
 	var church := _growth_fixture(reference_root, 0xa6, 1, 2000)
+
 	for point in [Vector2i(20, 19), Vector2i(21, 19), Vector2i(21, 20)]:
 		_check(church.city.set_building_id(point.x, point.y, 0xa6), "Church fixture fills construction footprint")
 		_check(church.city.set_zone_id(point.x, point.y, 1), "Church fixture zones construction footprint")
+
 	_check(church.document.set_misc_u32(0x01f0 + 0xa6 * 4, 4), "Church fixture counts construction tiles")
 	_check(church.document.set_misc_u32(0x01f0 + 0xf7 * 4, 0), "Church fixture clears church count")
 	_check(church.document.set_misc_u32(0x102c, 1000), "Church fixture sets city population")
 	var church_result := Growth.run(church.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(church_result.ok, "Church growth scan completes: %s" % church_result.error)
 	_check(church_result.churches_built == 1, "Residential density construction can make a church")
+
 	for point in [Vector2i(20, 19), Vector2i(21, 19), Vector2i(20, 20), Vector2i(21, 20)]:
 		_check(church.city.building_id(point.x, point.y) == 0xf7, "Church fills its two-by-two footprint")
 		_check(church.city.zone_id(point.x, point.y) == 0, "Church clears the RCI zone nibble")
@@ -8345,14 +8618,17 @@ func _test_growth_phase(reference_root: String) -> void:
 
 func _test_special_zone_growth(reference_root: String) -> void:
 	var airport := _special_growth_fixture(reference_root)
+
 	for x in range(20, 25):
 		_check(airport.city.set_zone_id(x, 21, 8), "Airport fixture zones its runway strip")
+
 	_check(airport.city.set_tile_flag(20, 21, 0x40, true), "Airport fixture powers its origin")
 	var airport_result := Growth.run(
 		airport.city, ZeroRandom.new(), 0, 1, NonzeroLfsrRandom.new()
 	)
 	_check(airport_result.ok, "Airport growth scan completes: %s" % airport_result.error)
 	_check(airport_result.special_tiles_placed == 5, "Airport growth places a five-tile runway")
+
 	for x in range(20, 25):
 		_check(airport.city.building_id(x, 21) == 0xdd, "Airport runway uses tile 0xdd")
 		_check(airport.city.building_corners(x, 21) == 0xf0, "Airport runway sets all corner bits")
@@ -8360,13 +8636,16 @@ func _test_special_zone_growth(reference_root: String) -> void:
 			airport.city.tile_flags[x * 128 + 21] & 0xc0 == 0xc0,
 			"Civilian runway tiles are powered and powerable",
 		)
+
 	_check(airport.document.misc_u32(0x01f0 + 0xdd * 4) == 5, "Airport growth counts runway tiles")
 
 	var seaport := _special_growth_fixture(reference_root)
 	_check(seaport.city.set_zone_id(20, 20, 9), "Seaport fixture zones its crane origin")
 	_check(seaport.city.set_tile_flag(20, 20, 0x40, true), "Seaport fixture powers its origin")
+
 	for y in range(21, 26):
 		_check(seaport.city.set_tile_flag(20, y, 0x04, true), "Seaport fixture marks pier water")
+
 	_check(seaport.city.set_land_altitude(20, 25, 0), "Seaport fixture lowers the last water tile")
 	_check(seaport.city.set_water_altitude(20, 25, 2), "Seaport fixture makes the last tile deep")
 	var seaport_result := Growth.run(
@@ -8376,36 +8655,44 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	_check(seaport_result.special_tiles_placed == 5, "Seaport growth places one crane and four piers")
 	_check(seaport.city.building_id(20, 20) == 0xe0, "Seaport growth places its crane")
 	_check(seaport.city.zone_id(20, 20) == 9, "Seaport crane stays in the seaport zone")
+
 	for y in range(21, 25):
 		_check(seaport.city.building_id(20, y) == 0xdf, "Seaport growth places a pier tile")
 		_check(seaport.city.building_corners(20, y) == 0xf0, "Seaport pier sets all corner bits")
+
 	_check(seaport.city.building_id(20, 25) == 0, "Seaport growth keeps the depth-check tile clear")
 	_check(seaport.document.misc_u32(0x01f0 + 0xe0 * 4) == 1, "Seaport growth counts its crane")
 	_check(seaport.document.misc_u32(0x01f0 + 0xdf * 4) == 4, "Seaport growth counts its piers")
 
 	var silos := _special_growth_fixture(reference_root)
+
 	for x in range(18, 21):
 		for y in range(18, 21):
 			_check(silos.city.set_zone_id(x, y, 7), "Missile fixture zones its military plot")
+
 	_check(silos.document.set_misc_u32(0x0e4c, 5), "Missile fixture selects a missile base")
 	_check(silos.document.set_misc_u32(0x01f0, 16375), "Missile fixture excludes military tiles from the normal count")
 	_check(silos.document.set_misc_u32(0x0fa8, 9), "Missile fixture counts military other tiles")
 	var silo_result := Growth.run(silos.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(silo_result.ok, "Missile growth scan completes: %s" % silo_result.error)
 	_check(silo_result.special_tiles_placed == 9, "Missile growth places a three-by-three silo")
+
 	for x in range(18, 21):
 		for y in range(18, 21):
 			_check(silos.city.building_id(x, y) == 0xf9, "Missile growth fills the surface plot")
 			_check(silos.city.underground_id(x, y) == 0x22, "Missile growth fills the underground plot")
+
 	_check(silos.document.misc_u32(0x0fa8) == 0, "Missile growth consumes military other tiles")
 	_check(silos.document.misc_u32(0x0fa8 + 15 * 4) == 9, "Missile growth counts silo tiles")
 	_check(silos.document.misc_u32(0x0fe8) == 0, "Military silo subway tiles do not change the city subway count")
 
 	var army := _special_growth_fixture(reference_root)
+
 	for x in range(20, 22):
 		for y in range(20, 22):
 			_check(army.city.set_zone_id(x, y, 7), "Army fixture zones its building plot")
 			_check(army.city.set_tile_flag(x, y, 0xe0, true), "Army fixture sets utility flags")
+
 	_check(army.document.set_misc_u32(0x0e4c, 2), "Army fixture selects an army base")
 	_check(army.document.set_misc_u32(0x01f0, 16380), "Army fixture excludes military tiles from the normal count")
 	_check(army.document.set_misc_u32(0x0fa8, 4), "Army fixture counts military other tiles")
@@ -8413,14 +8700,17 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	_check(army_result.ok, "Army growth scan completes: %s" % army_result.error)
 	_check(army_result.special_growth_attempts == 1, "Army growth attempts one controlled building")
 	_check(army_result.special_tiles_placed == 0, "Win95 military item placement rejects its own zone")
+
 	for x in range(20, 22):
 		for y in range(20, 22):
 			_check(army.city.building_id(x, y) == 0, "Win95 military placement leaves the plot clear")
 			_check(army.city.tile_flags[x * 128 + y] & 0xf0 == 0, "Win95 military placement clears utility flags")
 
 	var air_force := _special_growth_fixture(reference_root)
+
 	for x in range(21, 26):
 		_check(air_force.city.set_zone_id(x, 21, 7), "Air Force fixture zones its runway strip")
+
 	_check(air_force.city.set_building_id(10, 10, 0xdd), "Air Force fixture places one civilian runway")
 	_check(air_force.city.set_building_id(23, 21, 0x1d), "Air Force fixture places a military road")
 	_check(air_force.city.set_terrain_id(23, 21, 1), "Air Force fixture sets terrain under the road")
@@ -8434,8 +8724,10 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	)
 	_check(air_force_result.ok, "Air Force growth scan completes: %s" % air_force_result.error)
 	_check(air_force_result.special_tiles_placed == 5, "Air Force growth places a five-tile runway")
+
 	for x in range(21, 26):
 		_check(air_force.city.building_id(x, 21) == 0xdd, "Air Force growth follows normal-runway parity")
+
 	_check(air_force.city.terrain_id(23, 21) == 1, "Win95 military runway growth preserves underlying terrain")
 	_check(air_force.city.underground_id(23, 21) == 1, "Win95 military runway growth preserves its subway")
 	_check(air_force.document.misc_u32(0x01f0 + 0xdd * 4) == 1, "Military runways do not change the normal runway count")
@@ -8637,8 +8929,10 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	var full_text := _filled_bytes(128 * 128, 0)
 	full_buildings[20 * 128 + 18] = 0x2c
 	full_buildings[20 * 128 + 17] = 0x2c
+
 	for record in range(1, 40):
 		full_things[record * 12] = 7
+
 	_check(
 		MovingThings.spawn_train(
 			full_buildings, full_things, full_text, Vector2i(20, 20),
@@ -8734,11 +9028,13 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	var spreading_explosion := _special_growth_fixture(reference_root)
 	_set_explosion(spreading_explosion, 1, Vector2i(20, 20), 5, 1, 2)
+
 	for point in [Vector2i(21, 20), Vector2i(20, 21), Vector2i(19, 20)]:
 		_check(
 			spreading_explosion.city.set_building_id(point.x, point.y, 6),
 			"Spreading explosion fixture makes the target combustible",
 		)
+
 	var spreading_traffic: PackedByteArray = spreading_explosion.document.find_chunk("XTRF").decoded_payload.duplicate()
 	spreading_traffic[10 * 64 + 10] = 200
 	_check(
@@ -9517,8 +9813,10 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(marina.city.text_overlay_id(20, 20) == 0, "Marina arrival clears the sailboat link")
 
 	var train := _special_growth_fixture(reference_root)
+
 	for x in range(20, 23):
 		_check(train.city.set_building_id(x, 20, 0x2c), "Moving train fixture places surface rail")
+
 	_set_train(train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
 	var train_result := MovingThingTick.run(
 		train.city, ZeroRandom.new(), SequenceLfsrRandom.new([0, 1]), ZeroLfsrRandom.new()
@@ -9868,6 +10166,7 @@ func _set_train(
 	engine_type: int
 ) -> void:
 	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
+
 	for record in range(1, 4):
 		var offset := record * 12
 		things[offset] = engine_type if record == 1 else engine_type + 1
@@ -9877,6 +10176,7 @@ func _set_train(
 		things[offset + 4] = current.y
 		things[offset + 6] = destination.x if record == 1 else current.x
 		things[offset + 7] = destination.y if record == 1 else current.y
+
 	_check(fixture.document.find_chunk("XTHG").set_decoded_payload(things), "Train fixture stores its linked XTHG records")
 	_check(fixture.city.set_text_overlay_id(current.x, current.y, 202), "Train fixture links its engine XTXT record")
 
@@ -9899,14 +10199,17 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(rail.city.tile_flags[20 * 128 + 20] & 0x80 == 0, "Rail decay clears powerable")
 
 	var highway := _maintenance_fixture(reference_root, 0x49, 0)
+
 	for point in [Vector2i(21, 20), Vector2i(20, 21), Vector2i(21, 21)]:
 		_check(highway.city.set_building_id(point.x, point.y, 0x49), "Highway decay fixture fills its section")
+
 	_check(highway.city.set_tile_flag(21, 20, 0x04, true), "Highway decay fixture sets one water tile")
 	_check(highway.document.set_misc_u32(0x01f0 + 0x49 * 4, 4), "Highway decay fixture counts its tiles")
 	_check(highway.document.set_misc_i32(0x077c + 11 * 0x6c + 4, 0), "Highway decay fixture removes funding")
 	var highway_result := Growth.run(highway.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(highway_result.ok and highway_result.decayed_highway_tiles == 4, "Unfunded highway decays as one section")
 	_check(highway.city.building_id(21, 20) == 0, "Highway decay clears a water tile")
+
 	for point in [Vector2i(20, 20), Vector2i(20, 21), Vector2i(21, 21)]:
 		_check(highway.city.building_id(point.x, point.y) == 1, "Highway decay makes rubble on dry land")
 
@@ -9941,16 +10244,20 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(station.document.misc_u32(0x0fe8) == 0, "Station decay decrements the subway count")
 
 	var bridge := _maintenance_fixture(reference_root, 0x51, 0)
+
 	for x in range(18, 25):
 		for y in range(19, 22):
 			_check(bridge.city.set_land_altitude(x, y, 0), "Bridge decay fixture levels the waterbed")
+
 	for x in range(20, 23):
 		_check(bridge.city.set_building_id(x, 20, 0x51), "Bridge decay fixture places a span tile")
 		_check(bridge.city.set_terrain_id(x, 20, 0x30), "Bridge decay fixture places water terrain")
 		_check(bridge.city.set_tile_flag(x, 20, 0x06, true), "Bridge decay fixture marks horizontal water")
+
 	for x in [19, 23]:
 		_check(bridge.city.set_building_id(x, 20, 0x1d), "Bridge decay fixture places a bank road")
 		_check(bridge.city.set_land_altitude(x, 20, 1), "Bridge decay fixture raises a bank")
+
 	_check(bridge.document.set_misc_u32(0x01f0, 16379), "Bridge decay fixture counts clear tiles")
 	_check(bridge.document.set_misc_u32(0x01f0 + 0x51 * 4, 3), "Bridge decay fixture counts span tiles")
 	_check(bridge.document.set_misc_u32(0x01f0 + 0x1d * 4, 2), "Bridge decay fixture counts bank roads")
@@ -9982,8 +10289,10 @@ func _test_transport_maintenance(reference_root: String) -> void:
 		and bridge_result.news_items[0].argument == 0,
 		"Bridge collapse requests view centering, sound, and newspaper type 39",
 	)
+
 	for x in range(20, 23):
 		_check(bridge.city.building_id(x, 20) == 0, "Bridge collapse clears each span tile")
+
 	for x in [19, 23]:
 		_check(bridge.city.building_id(x, 20) == 0, "Bridge collapse clears a bank road")
 		_check(
@@ -9994,6 +10303,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 			bridge.city.tile_flags[x * 128 + 20] & 0x04 != 0,
 			"Bridge collapse restores bank water: 0x%02x" % bridge.city.tile_flags[x * 128 + 20],
 		)
+
 	_check(bridge.document.misc_u32(0x01f0 + 0x51 * 4) == 0, "Bridge collapse clears its tile count")
 
 	var reinforced := _maintenance_fixture(reference_root, 0x6a, 0)
@@ -10005,14 +10315,17 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(reinforced.city.building_id(20, 20) == 0x6a, "Malformed reinforced bridge stays unchanged")
 
 	var reinforced_span := _maintenance_fixture(reference_root, 0, 0)
+
 	for x in range(18, 29):
 		for y in range(19, 23):
 			_check(
 				reinforced_span.city.set_land_altitude(x, y, 0),
 				"Reinforced collapse fixture levels the waterbed",
 			)
+
 	for section in 3:
 		var section_tile := 0x6b if section != 1 else 0x6a
+
 		for x_offset in 2:
 			for y_offset in 2:
 				var point := Vector2i(20 + section * 2 + x_offset, 20 + y_offset)
@@ -10028,6 +10341,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 					reinforced_span.city.set_tile_flag(point.x, point.y, 0x04, true),
 					"Reinforced collapse fixture marks span water",
 				)
+
 	_check(reinforced_span.city.set_building_id(26, 20, 0x49), "Reinforced collapse fixture places its forward bank")
 	_check(reinforced_span.city.set_land_altitude(26, 20, 1), "Reinforced collapse fixture raises its forward bank")
 	_check(reinforced_span.document.set_misc_u32(0x01f0, 16371), "Reinforced collapse fixture counts clear tiles")
@@ -10064,12 +10378,14 @@ func _test_transport_maintenance(reference_root: String) -> void:
 		and reinforced_span_result.bridge_effects[3].screen_offset == Vector2i(32, 8),
 		"Reinforced collapse shares one sprite across each recovered four-part layout",
 	)
+
 	for x in range(20, 26):
 		for y in range(20, 22):
 			_check(
 				reinforced_span.city.building_id(x, y) == 0,
 				"Reinforced collapse clears each two-wide span tile",
 			)
+
 	_check(reinforced_span.city.building_id(26, 20) == 0, "Reinforced collapse clears the original forward-bank cell")
 	_check(reinforced_span.city.land_altitude(26, 20) == 0, "Reinforced collapse lowers the forward-bank cell")
 	_check(
@@ -10094,6 +10410,7 @@ func _maintenance_fixture(reference_root: String, surface_tile: int, underground
 	var index := 20 * 128 + 20
 	buildings[index] = surface_tile
 	underground[index] = underground_tile
+
 	for entry in [
 		["XBLD", buildings],
 		["XZON", zones],
@@ -10103,15 +10420,20 @@ func _maintenance_fixture(reference_root: String, surface_tile: int, underground
 		["XVAL", _filled_bytes(64 * 64, 0)],
 	]:
 		_check(document.find_chunk(entry[0]).set_decoded_payload(entry[1]), "Maintenance fixture sets %s" % entry[0])
+
 	for budget_index in range(10, 16):
 		_check(
 			document.set_misc_i32(0x077c + budget_index * 0x6c + 4, 100),
 			"Maintenance fixture fully funds budget %d" % budget_index,
 		)
+
 	_check(document.set_misc_u32(0x01f0, 16384 - int(surface_tile != 0)), "Maintenance fixture counts clear tiles")
+
 	if surface_tile != 0:
 		_check(document.set_misc_u32(0x01f0 + surface_tile * 4, 1), "Maintenance fixture counts its surface tile")
+
 	_check(document.set_misc_u32(0x0fe8, int(underground_tile != 0)), "Maintenance fixture counts its subway tile")
+
 	return {"document": document, "city": CityModel.from_document(document)}
 
 
@@ -10126,6 +10448,7 @@ func _fire_map_fixture(
 	buildings[index] = tile
 	flags[index] = 0x04 if water else 0
 	text[index] = DisasterMap.FIRE_OVERLAY
+
 	for entry in [
 		["XBLD", buildings],
 		["XZON", _filled_bytes(CityState.TILE_COUNT, 0)],
@@ -10139,9 +10462,12 @@ func _fire_map_fixture(
 	]:
 		if not document.find_chunk(entry[0]).set_decoded_payload(entry[1]):
 			return {"document": document, "city": null}
+
 	document.set_misc_u32(0x01f0, CityState.TILE_COUNT - int(tile != 0))
+
 	if tile != 0:
 		document.set_misc_u32(0x01f0 + tile * 4, 1)
+
 	return {"document": document, "city": CityModel.from_document(document)}
 
 
@@ -10149,23 +10475,28 @@ func _dispatch_map_fixture(
 	reference_root: String, thing_type: int, point: Vector2i
 ) -> Dictionary:
 	var fixture := _fire_map_fixture(reference_root, point, 0)
+
 	if fixture.city == null:
 		return fixture
+
 	var things: PackedByteArray = fixture.document.find_chunk("XTHG").decoded_payload.duplicate()
 	var offset := CityState.THING_RECORD_SIZE
 	things[offset] = thing_type
 	things[offset + 3] = point.x
 	things[offset + 4] = point.y
+
 	if (
 		not fixture.document.find_chunk("XTHG").set_decoded_payload(things)
 		or not fixture.city.set_text_overlay_id(point.x, point.y, 202)
 	):
 		fixture.city = null
+
 	return fixture
 
 
 func _special_growth_fixture(reference_root: String) -> Dictionary:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for entry in [
 		["XBLD", _filled_bytes(128 * 128, 0)],
 		["XZON", _filled_bytes(128 * 128, 0)],
@@ -10184,22 +10515,28 @@ func _special_growth_fixture(reference_root: String) -> Dictionary:
 			document.find_chunk(entry[0]).set_decoded_payload(entry[1]),
 			"Special growth fixture sets %s" % entry[0],
 		)
+
 	for tile in 256:
 		_check(document.set_misc_u32(0x01f0 + tile * 4, 0), "Special growth fixture clears tile count")
+
 	_check(document.set_misc_u32(0x01f0, 16384), "Special growth fixture counts clear tiles")
+
 	for military_index in 16:
 		_check(
 			document.set_misc_u32(0x0fa8 + military_index * 4, 0),
 			"Special growth fixture clears military tile count",
 		)
+
 	for budget_index in range(10, 16):
 		_check(
 			document.set_misc_i32(0x077c + budget_index * 0x6c + 4, 100),
 			"Special growth fixture fully funds transport",
 		)
+
 	_check(document.set_misc_u32(0x0008, 0), "Special growth fixture sets compass rotation")
 	_check(document.set_misc_u32(0x0e4c, 0), "Special growth fixture clears military base type")
 	_check(document.set_misc_u32(0x0fe8, 0), "Special growth fixture clears the subway count")
+
 	return {"document": document, "city": CityModel.from_document(document)}
 
 
@@ -10208,14 +10545,17 @@ func _growth_fixture(
 ) -> Dictionary:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
 	var buildings := _filled_bytes(128 * 128, 0)
+
 	for point in [Vector2i(20, 21), Vector2i(20, 22), Vector2i(20, 23), Vector2i(20, 24)]:
 		buildings[point.x * 128 + point.y] = 0x1d
+
 	buildings[20 * 128 + 20] = origin_building
 	var zones := _filled_bytes(128 * 128, 0)
 	zones[20 * 128 + 20] = 0x80 | origin_zone
 	zones[20 * 128 + 25] = 3
 	var flags := _filled_bytes(128 * 128, 0)
 	flags[20 * 128 + 20] = 0x40
+
 	for entry in [
 		["XBLD", buildings],
 		["XZON", zones],
@@ -10229,8 +10569,10 @@ func _growth_fixture(
 			document.find_chunk(entry[0]).set_decoded_payload(entry[1]),
 			"Growth fixture sets %s" % entry[0],
 		)
+
 	for index in 8:
 		_check(document.set_misc_u32(0x05f0 + index * 4, 0), "Growth fixture clears population %d" % index)
+
 	_check(document.set_misc_i32(0x0718, demand), "Growth fixture sets residential demand")
 	_check(document.set_misc_i32(0x071c, 0), "Growth fixture clears commercial demand")
 	_check(document.set_misc_i32(0x0720, 0), "Growth fixture clears industrial demand")
@@ -10238,27 +10580,34 @@ func _growth_fixture(
 	_check(document.set_misc_u32(0x102c, 0), "Growth fixture clears normal population")
 	_check(document.set_misc_u32(0x01f0, 16379), "Growth fixture counts clear tiles")
 	_check(document.set_misc_u32(0x01f0 + origin_building * 4, 1), "Growth fixture counts origin tile")
+
 	return {"document": document, "city": CityModel.from_document(document)}
 
 
 func _test_rci_demand(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for index in 8:
 		_check(document.set_misc_i32(0x05f0 + index * 4, 0), "RCI fixture clears zone population")
+
 	for entry in [[1, 100], [2, 50], [3, 40], [4, 10], [5, 20], [6, 5]]:
 		_check(
 			document.set_misc_i32(0x05f0 + entry[0] * 4, entry[1]),
 			"RCI fixture sets zone population %d" % entry[0],
 		)
+
 	for offset in [0x0718, 0x071c, 0x0720, 0x0fa0, 0x1030]:
 		_check(document.set_misc_i32(offset, 0), "RCI fixture clears MISC 0x%x" % offset)
+
 	for tile_id in [0xd5, 0xd7, 0xda, 0xdd, 0xde, 0xe0, 0xf8]:
 		_check(
 			document.set_misc_i32(0x01f0 + tile_id * 4, 0),
 			"RCI fixture clears tile count %d" % tile_id,
 		)
+
 	for category in 3:
 		_check(document.set_misc_i32(0x077c + category * 0x6c + 4, 0), "RCI fixture clears tax rate")
+
 	_check(document.set_misc_i32(0x0074, 100), "RCI fixture sets old residential population")
 	_check(document.set_misc_i32(0x0040, 10), "RCI fixture sets garbage")
 	_check(document.set_misc_i32(0x1020, 120), "RCI fixture sets arcology population")
@@ -10275,8 +10624,10 @@ func _test_rci_demand(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 	var result := RciDemand.run(city)
 	_check(result.ok, "RCI demand phase completes: %s" % result.error)
+
 	if not result.ok:
 		return
+
 	_check(result.tax_population == PackedInt64Array([150, 50, 25]), "RCI phase combines light and dense populations")
 	_check(result.normal_population == 2250, "RCI phase calculates normal population")
 	_check(result.commerce_connections == 1, "RCI phase counts road neighbor connections")
@@ -10307,8 +10658,10 @@ func _test_news_queue(reference_root: String) -> void:
 	)
 
 	var paper_misc := _filled_bytes(NewsQueue.MISC_SIZE, 0)
+
 	for field in NewsQueue.PAPER_FIELD_COUNT:
 		_write_u32_be(paper_misc, NewsQueue.PAPER_OFFSET + field * 4, 0x100 + field)
+
 	var paper := NewsQueue.paper_record(paper_misc, 0)
 	_check(
 		paper == {"name": 0, "layout": 1, "price": 2, "opinion": 3, "weather": 4},
@@ -10323,6 +10676,7 @@ func _test_news_queue(reference_root: String) -> void:
 	var session_random := Random.new(1)
 	var session_init := NewsQueue.initialize_session(session_misc, session_random)
 	var paper_rows: Array[Array] = []
+
 	for paper_index in NewsQueue.PAPER_COUNT:
 		var session_paper := NewsQueue.paper_record(session_misc, paper_index)
 		paper_rows.append([
@@ -10332,6 +10686,7 @@ func _test_news_queue(reference_root: String) -> void:
 			session_paper.opinion,
 			session_paper.weather,
 		])
+
 	_check(
 		session_init.ok
 		and session_init.random_calls == 122
@@ -10347,6 +10702,7 @@ func _test_news_queue(reference_root: String) -> void:
 		"Newspaper session initialization reproduces all 122 seed-one random calls",
 	)
 	var initial_story_records_valid := true
+
 	for slot in NewsQueue.STORY_RECORD_COUNT:
 		var initial_story := NewsQueue.story_record(session_misc, slot)
 		initial_story_records_valid = initial_story_records_valid and (
@@ -10355,6 +10711,7 @@ func _test_news_queue(reference_root: String) -> void:
 			and initial_story.argument == 0
 			and initial_story.auxiliary == PackedByteArray([0xff, 0xff, 0xff])
 		)
+
 	_check(
 		initial_story_records_valid,
 		"Newspaper session initialization resets all nine story records",
@@ -10370,6 +10727,7 @@ func _test_news_queue(reference_root: String) -> void:
 	var misc := _filled_bytes(NewsQueue.MISC_SIZE, 0)
 	var decay_types := PackedInt32Array([2, 6, 7, 46, 39, 42, 61])
 	var decay_priorities := PackedInt32Array([900, 100, 40, 500, 250, 150, 100])
+
 	for slot in NewsQueue.STORY_RECORD_COUNT:
 		var offset := NewsQueue.STORY_OFFSET + slot * NewsQueue.STORY_RECORD_SIZE
 		var story_type := decay_types[slot] if slot < NewsQueue.QUEUE_COUNT else 11 + slot
@@ -10385,10 +10743,12 @@ func _test_news_queue(reference_root: String) -> void:
 	_check(decay.ok, "Newspaper queue decays and sorts: %s" % decay.error)
 	var decayed_types := PackedInt32Array()
 	var decayed_priorities := PackedInt32Array()
+
 	for slot in NewsQueue.QUEUE_COUNT:
 		var record := NewsQueue.story_record(misc, slot)
 		decayed_types.append(record.type)
 		decayed_priorities.append(record.priority)
+
 	_check(
 		decayed_types == PackedInt32Array([2, 39, 42, 6, 61, 46, 7]),
 		"Newspaper decay sorts complete records by descending priority",
@@ -10410,6 +10770,7 @@ func _test_news_queue(reference_root: String) -> void:
 
 	var insert_types := PackedInt32Array([2, 46, 8, 7, 61, 6, 42])
 	var insert_priorities := PackedInt32Array([1000, 500, 200, 200, 150, 100, 50])
+
 	for slot in NewsQueue.QUEUE_COUNT:
 		var offset := NewsQueue.STORY_OFFSET + slot * NewsQueue.STORY_RECORD_SIZE
 		_write_u32_be(misc, offset, insert_types[slot])
@@ -10418,14 +10779,17 @@ func _test_news_queue(reference_root: String) -> void:
 		_write_u32_be(misc, offset + 12, 0x80 + slot)
 		_write_u32_be(misc, offset + 16, 0x90 + slot)
 		_write_u32_be(misc, offset + 20, 0xa0 + slot)
+
 	var inserted := NewsQueue.insert(misc, 17, 0x102)
 	_check(
 		inserted.ok and inserted.slot == 2 and inserted.priority == 200,
 		"Newspaper inserts before older stories with equal priority",
 	)
 	var inserted_types := PackedInt32Array()
+
 	for slot in NewsQueue.QUEUE_COUNT:
 		inserted_types.append(NewsQueue.story_record(misc, slot).type)
+
 	_check(
 		inserted_types == PackedInt32Array([2, 46, 17, 8, 7, 61, 6]),
 		"Newspaper insertion displaces the seventh story",
@@ -10509,8 +10873,10 @@ func _test_newspaper_text(reference_root: String) -> void:
 		reference_root.path_join("DATA/DATA_USA.IDX"),
 	)
 	_check(data.is_valid(), "DATA_USA newspaper grammar loads: %s" % data.load_error)
+
 	if not data.is_valid():
 		return
+
 	_check(
 		data.bases.size() == 250 and data.counts.size() == 250,
 		"Newspaper grammar has both 250-entry phrase tables",
@@ -10529,10 +10895,12 @@ func _test_newspaper_text(reference_root: String) -> void:
 		reference_root.path_join("SIMCITY.EXE"), 0x000ea228, 512
 	)
 	var implemented_tokens := PackedByteArray()
+
 	for token in 256:
 		var phrase_id := NewspaperTextGenerator.token_phrase_id(token)
 		implemented_tokens.append(phrase_id & 0xff)
 		implemented_tokens.append((phrase_id >> 8) & 0xff)
+
 	_check(
 		implemented_tokens == executable_tokens,
 		"Newspaper token map matches executable table 0x004ea228",
@@ -10553,8 +10921,10 @@ func _test_newspaper_text(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 	var misc: PackedByteArray = document.find_chunk("MISC").decoded_payload
 	var teams := PackedStringArray()
+
 	for label_id in range(251, 256):
 		teams.append(city.label(label_id))
+
 	for slot in [0, 1, 2, 3, 4, 7, 8]:
 		var record := NewsQueue.story_record(misc, slot)
 		var seed := NewspaperTextGenerator.published_seed(
@@ -10564,8 +10934,10 @@ func _test_newspaper_text(reference_root: String) -> void:
 			data, record, seed, city.city_name(), city.mayor_name(), teams
 		)
 		_check(rendered.ok, "Newspaper story slot %d renders: %s" % [slot, rendered.error])
+
 		if not rendered.ok:
 			continue
+
 		_check(not rendered.headline.is_empty(), "Newspaper story slot %d has a headline" % slot)
 		_check(not rendered.article.is_empty(), "Newspaper story slot %d has article text" % slot)
 		_check(
@@ -10590,6 +10962,7 @@ func _test_newspaper_text(reference_root: String) -> void:
 			headline_only.ok and headline_only.headline == rendered.headline,
 			"Newspaper story slot %d has the same standalone headline" % slot,
 		)
+
 	for story_type in 80:
 		var rendered := NewspaperTextGenerator.render_story(
 			data,
@@ -10604,6 +10977,7 @@ func _test_newspaper_text(reference_root: String) -> void:
 			teams,
 		)
 		_check(rendered.ok, "Newspaper grammar type %d renders: %s" % [story_type, rendered.error])
+
 		if rendered.ok:
 			_check(not rendered.headline.is_empty(), "Newspaper grammar type %d has a headline" % story_type)
 			_check(
@@ -10638,6 +11012,7 @@ func _test_rci_aftermath(reference_root: String) -> void:
 	_check(document.find_chunk("XBLD").set_decoded_payload(buildings), "RCI aftermath fixture stores a young tree")
 	_check(document.find_chunk("XZON").set_decoded_payload(zones), "RCI aftermath fixture clears military zones")
 	_check(document.find_chunk("XBIT").set_decoded_payload(flags), "RCI aftermath fixture clears water flags")
+
 	for setting in [
 		[0x01f0 + 0 * 4, 100],
 		[0x01f0 + 6 * 4, 1],
@@ -10652,9 +11027,12 @@ func _test_rci_aftermath(reference_root: String) -> void:
 		[0x0fa4, 0],
 	]:
 		_check(document.set_misc_u32(setting[0], setting[1]), "RCI aftermath fixture sets MISC 0x%x" % setting[0])
+
 	var graphs: PackedByteArray = document.find_chunk("XGRP").decoded_payload.duplicate()
+
 	for series in [4, 5, 7]:
 		_write_u32_be(graphs, series * CityModel.GRAPH_VALUE_COUNT * 4, 0)
+
 	_check(document.find_chunk("XGRP").set_decoded_payload(graphs), "RCI aftermath fixture stores quiet graph values")
 	var tree_random := SequenceRandom.new([
 		10, 20, 0,
@@ -10668,6 +11046,7 @@ func _test_rci_aftermath(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 	var result := RciAftermath.run(city, tree_random, 0)
 	_check(result.ok, "RCI aftermath phase completes: %s" % result.error)
+
 	if result.ok:
 		_check(
 			city.building_id(source.x, source.y) == 7
@@ -10721,17 +11100,22 @@ func _test_rci_aftermath(reference_root: String) -> void:
 	news_flags[news_point.x * CityModel.MAP_SIZE + news_point.y] |= 0x04
 	_check(news_document.find_chunk("XBIT").set_decoded_payload(news_flags), "News fixture makes the ecology point water")
 	var news_graphs: PackedByteArray = news_document.find_chunk("XGRP").decoded_payload.duplicate()
+
 	for series in [4, 5, 7]:
 		_write_u32_be(news_graphs, series * CityModel.GRAPH_VALUE_COUNT * 4, 20)
+
 	_check(news_document.find_chunk("XGRP").set_decoded_payload(news_graphs), "News fixture stores high graph values")
 	var news_misc: PackedByteArray = news_document.find_chunk("MISC").decoded_payload.duplicate()
+
 	for slot in NewsQueue.STORY_RECORD_COUNT:
 		var offset := NewsQueue.STORY_OFFSET + slot * NewsQueue.STORY_RECORD_SIZE
 		_write_u32_be(news_misc, offset, 11 + slot)
 		_write_u32_be(news_misc, offset + 4, 0)
 		_write_u32_be(news_misc, offset + 8, 0)
+
 		for field in range(3, NewsQueue.STORY_FIELD_COUNT):
 			_write_u32_be(news_misc, offset + field * 4, 0xff)
+
 	_check(
 		news_document.find_chunk("MISC").set_decoded_payload(news_misc),
 		"News fixture clears the saved priority queue",
@@ -10750,10 +11134,13 @@ func _test_rci_aftermath(reference_root: String) -> void:
 	])
 	var news_result := RciAftermath.run(news_city, news_random, 2)
 	_check(news_result.ok, "Controlled RCI news phase completes: %s" % news_result.error)
+
 	if news_result.ok:
 		var news_types := PackedInt32Array()
+
 		for item in news_result.news_items:
 			news_types.append(int(item.type))
+
 		_check(
 			news_types == PackedInt32Array([1, 6, 7, 8, 17, 18, 16, 21, 19, 20, 5]),
 			"RCI news checks emit the recovered ordered story types: %s" % news_types,
@@ -10769,10 +11156,12 @@ func _test_rci_aftermath(reference_root: String) -> void:
 		var queued_types := PackedInt32Array()
 		var queued_priorities := PackedInt32Array()
 		var saved_misc: PackedByteArray = news_document.find_chunk("MISC").decoded_payload
+
 		for slot in NewsQueue.QUEUE_COUNT:
 			var record := NewsQueue.story_record(saved_misc, slot)
 			queued_types.append(record.type)
 			queued_priorities.append(record.priority)
+
 		_check(
 			news_result.news_queue_updated
 			and queued_types == PackedInt32Array([5, 6, 20, 19, 21, 16, 18]),
@@ -10789,6 +11178,7 @@ func _test_rci_aftermath(reference_root: String) -> void:
 	_check(arcology_document.set_misc_u32(0x000c, 1900), "Arcology release fixture sets the founding year")
 	_check(arcology_document.set_misc_u32(0x006c, 1), "Arcology release fixture sets valid weather")
 	_check(arcology_document.set_misc_u32(0x01f0 + 0xd7 * 4, 0), "Arcology release fixture clears stadiums")
+
 	for invention_index in ToolAvailability.INVENTION_COUNT:
 		_check(
 			arcology_document.set_misc_u32(
@@ -10797,6 +11187,7 @@ func _test_rci_aftermath(reference_root: String) -> void:
 			),
 			"Arcology release fixture schedules invention %d" % invention_index,
 		)
+
 	_check(
 		arcology_document.set_misc_u32(
 			ToolAvailability.MISC_INVENTION_YEARS + 12 * 4,
@@ -10853,6 +11244,7 @@ func _test_rci_aftermath(reference_root: String) -> void:
 		0
 	)
 	_check(radioactive_result.ok, "Radioactivity ecology path completes: %s" % radioactive_result.error)
+
 	if radioactive_result.ok:
 		_check(
 			radioactive_document.find_chunk("XBLD").decoded_payload[radioactive_index] == 0
@@ -10863,6 +11255,7 @@ func _test_rci_aftermath(reference_root: String) -> void:
 
 func _test_weather_disaster_phase(reference_root: String) -> void:
 	var power_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x001c, 1],
 		[0x006c, 1],
@@ -10872,6 +11265,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 			power_document.set_misc_u32(setting[0], setting[1]),
 			"City-status fixture sets MISC 0x%x" % setting[0],
 		)
+
 	var power_random := SequenceRandom.new([])
 	var power_result := WeatherDisaster.run(
 		CityModel.from_document(power_document),
@@ -10883,6 +11277,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 		0,
 	)
 	_check(power_result.ok, "City-status phase completes: %s" % power_result.error)
+
 	if power_result.ok:
 		_check(
 			power_result.status_index == WeatherDisaster.STATUS_POWER
@@ -10897,6 +11292,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 		)
 
 	var stable_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x001c, 1],
 		[0x006c, 1],
@@ -10912,6 +11308,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 			stable_document.set_misc_u32(setting[0], setting[1]),
 			"Stable city fixture sets MISC 0x%x" % setting[0],
 		)
+
 	var stable_result := WeatherDisaster.run(
 		CityModel.from_document(stable_document),
 		SequenceRandom.new([]),
@@ -10929,6 +11326,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 	)
 
 	var hospital_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x001c, 1],
 		[0x006c, 1],
@@ -10945,6 +11343,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 			hospital_document.set_misc_u32(setting[0], setting[1]),
 			"Hospital-demand fixture sets MISC 0x%x" % setting[0],
 		)
+
 	var hospital_result := WeatherDisaster.run(
 		CityModel.from_document(hospital_document),
 		SequenceRandom.new([]),
@@ -10980,6 +11379,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 	)
 
 	var hurricane_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x001c, 3],
 		[0x006c, 10],
@@ -10990,6 +11390,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 			hurricane_document.set_misc_u32(setting[0], setting[1]),
 			"Hurricane fixture sets MISC 0x%x" % setting[0],
 		)
+
 	var hurricane_city := CityModel.from_document(hurricane_document)
 	_check(hurricane_city.set_age_in_days(30 * 25), "Hurricane fixture reaches Hard wait age")
 	var hurricane_random := SequenceRandom.new([14])
@@ -11005,6 +11406,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 	)
 
 	var tornado_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x001c, 3],
 		[0x006c, 11],
@@ -11014,6 +11416,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 			tornado_document.set_misc_u32(setting[0], setting[1]),
 			"Tornado fixture sets MISC 0x%x" % setting[0],
 		)
+
 	var tornado_city := CityModel.from_document(tornado_document)
 	_check(tornado_city.set_age_in_days(30 * 25), "Tornado fixture reaches Hard wait age")
 	var tornado_random := SequenceRandom.new([14, 5, 7])
@@ -11029,6 +11432,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 	)
 
 	var fire_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x001c, 3],
 		[0x0060, 255],
@@ -11039,6 +11443,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 			fire_document.set_misc_u32(setting[0], setting[1]),
 			"Fire selector fixture sets MISC 0x%x" % setting[0],
 		)
+
 	var fire_city := CityModel.from_document(fire_document)
 	_check(fire_city.set_age_in_days(30 * 25), "Fire selector fixture reaches Hard wait age")
 	var fire_random := SequenceRandom.new([0, 1, 0, 4, 6])
@@ -11055,6 +11460,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 	)
 
 	var toxic_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x001c, 3],
 		[0x006c, 9],
@@ -11064,6 +11470,7 @@ func _test_weather_disaster_phase(reference_root: String) -> void:
 			toxic_document.set_misc_u32(setting[0], setting[1]),
 			"Toxic selector fixture sets MISC 0x%x" % setting[0],
 		)
+
 	var pollution := PackedByteArray()
 	pollution.resize(64 * 64)
 	pollution.fill(0)
@@ -11132,6 +11539,7 @@ func _test_simnation(reference_root: String) -> void:
 	)
 
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x0050, 1_200_000],
 		[0x0054, 3_000_000],
@@ -11147,9 +11555,11 @@ func _test_simnation(reference_root: String) -> void:
 		[0x0710, 0],
 	]:
 		_check(document.set_misc_u32(setting[0], setting[1]), "SimNation fixture sets MISC 0x%x" % setting[0])
+
 	var random := SequenceRandom.new([1, 0, 0, 2, 4, 0, 1, 0, 1])
 	var result := SimNation.run(CityModel.from_document(document), random)
 	_check(result.ok, "SimNation phase completes: %s" % result.error)
+
 	if result.ok:
 		_check(
 			result.national_population == 1_202_000
@@ -11174,6 +11584,7 @@ func _test_simnation(reference_root: String) -> void:
 		)
 
 	var news_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x0050, 1_000_000],
 		[0x0054, 800_000],
@@ -11182,9 +11593,11 @@ func _test_simnation(reference_root: String) -> void:
 		[0x06dc, 0], [0x06ec, 0], [0x06fc, 0], [0x070c, 0],
 	]:
 		_check(news_document.set_misc_u32(setting[0], setting[1]), "SimNation news fixture sets MISC 0x%x" % setting[0])
+
 	var news_random := SequenceRandom.new([0, 0, 0, 99, 0, 1])
 	var news_result := SimNation.run(CityModel.from_document(news_document), news_random)
 	_check(news_result.ok, "Controlled SimNation news phase completes: %s" % news_result.error)
+
 	if news_result.ok:
 		_check(
 			news_result.news_items == [
@@ -11203,15 +11616,18 @@ func _test_simnation(reference_root: String) -> void:
 		_check(news_random.position == 6, "The national-news path consumes six process-random values")
 
 	var shock_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x0050, 1_000_000], [0x0054, 1_000_000], [0x0058, 3], [0x005c, 0],
 		[0x06dc, 1200], [0x06e0, 1200],
 		[0x06ec, 0], [0x06fc, 0], [0x070c, 0],
 	]:
 		_check(shock_document.set_misc_u32(setting[0], setting[1]), "Regional shock fixture sets MISC 0x%x" % setting[0])
+
 	var shock_random := SequenceRandom.new([1, 0, 0, 0, 0, 0])
 	var shock_result := SimNation.run(CityModel.from_document(shock_document), shock_random)
 	_check(shock_result.ok, "Regional shock phase completes: %s" % shock_result.error)
+
 	if shock_result.ok:
 		_check(
 			shock_result.shocked_neighbor == 0
@@ -11235,18 +11651,22 @@ func _test_industries(reference_root: String) -> void:
 	)
 
 	var stable_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x000c, 1900], [0x0010, 0], [0x004c, 80], [0x0fa0, 0],
 		[0x0604, 40], [0x0608, 60],
 	]:
 		_check(stable_document.set_misc_u32(setting[0], setting[1]), "Industry fixture sets MISC 0x%x" % setting[0])
+
 	var stable_ratios := [30, 10, 10, 0, 0, 10, 0, 0, 0, 0, 40]
 	var initial_demands := [20, 20, 10, 10, 15, 5, 0, 15, 8, 0, 10]
+
 	for industry in 11:
 		var base := 0x016c + industry * 0x0c
 		_check(stable_document.set_misc_u32(base, initial_demands[industry]), "Industry fixture sets demand %d" % industry)
 		_check(stable_document.set_misc_u32(base + 4, 0), "Industry fixture clears tax %d" % industry)
 		_check(stable_document.set_misc_u32(base + 8, stable_ratios[industry]), "Industry fixture sets ratio %d" % industry)
+
 	var stable_lfsr_values: Array[int] = []
 	stable_lfsr_values.resize(44)
 	stable_lfsr_values.fill(64)
@@ -11256,6 +11676,7 @@ func _test_industries(reference_root: String) -> void:
 		CityModel.from_document(stable_document), stable_random, stable_lfsr, 0
 	)
 	_check(stable_result.ok, "Stable industry phase completes: %s" % stable_result.error)
+
 	if stable_result.ok:
 		_check(
 			stable_result.demands == PackedInt32Array(initial_demands),
@@ -11282,22 +11703,26 @@ func _test_industries(reference_root: String) -> void:
 		)
 
 	var growth_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x000c, 1900], [0x0010, 0], [0x004c, 131], [0x0fa0, 0x00080000],
 		[0x0604, 44], [0x0608, 44],
 	]:
 		_check(growth_document.set_misc_u32(setting[0], setting[1]), "Industry growth fixture sets MISC 0x%x" % setting[0])
+
 	for industry in 11:
 		var base := 0x016c + industry * 0x0c
 		_check(growth_document.set_misc_u32(base, 100), "Industry growth fixture sets demand %d" % industry)
 		_check(growth_document.set_misc_u32(base + 4, 70), "Industry growth fixture sets tax %d" % industry)
 		_check(growth_document.set_misc_u32(base + 8, 0), "Industry growth fixture clears ratio %d" % industry)
+
 	var growth_lfsr := SequenceLfsrRandom.new(stable_lfsr_values)
 	var growth_random := SequenceRandom.new([1, 1, 1, 1, 1, 1, 1, 1, 1])
 	var growth_result := Industries.run(
 		CityModel.from_document(growth_document), growth_random, growth_lfsr, 1
 	)
 	_check(growth_result.ok, "Growing industry phase completes: %s" % growth_result.error)
+
 	if growth_result.ok:
 		_check(
 			growth_result.demands == PackedInt32Array([80, 80, 77, 77, 78, 76, 75, 78, 77, 75, 77]),
@@ -11317,22 +11742,26 @@ func _test_industries(reference_root: String) -> void:
 		_check(growth_lfsr.position == 44, "Growing industry demand preserves the LFSR call count")
 
 	var excess_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for setting in [
 		[0x000c, 1900], [0x0010, 0], [0x004c, 80], [0x0fa0, 0],
 		[0x0604, 50], [0x0608, 50],
 	]:
 		_check(excess_document.set_misc_u32(setting[0], setting[1]), "Industry excess fixture sets MISC 0x%x" % setting[0])
+
 	for industry in 11:
 		var base := 0x016c + industry * 0x0c
 		_check(excess_document.set_misc_u32(base, initial_demands[industry]), "Industry excess fixture sets demand %d" % industry)
 		_check(excess_document.set_misc_u32(base + 4, 0), "Industry excess fixture clears tax %d" % industry)
 		_check(excess_document.set_misc_u32(base + 8, 100), "Industry excess fixture sets ratio %d" % industry)
+
 	var excess_lfsr := SequenceLfsrRandom.new(stable_lfsr_values)
 	var excess_random := SequenceRandom.new([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0])
 	var excess_result := Industries.run(
 		CityModel.from_document(excess_document), excess_random, excess_lfsr, 0
 	)
 	_check(excess_result.ok, "Excess industry phase completes: %s" % excess_result.error)
+
 	if excess_result.ok:
 		_check(
 			excess_result.ratios == PackedInt64Array([9, 9, 9, 9, 9, 9, 9, 9, 9, 9, 9])
@@ -11344,12 +11773,14 @@ func _test_industries(reference_root: String) -> void:
 
 func _test_education_health(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for cohort in 20:
 		for field in [0, 4, 8]:
 			_check(
 				document.set_misc_u32(0x007c + cohort * 12 + field, 0),
 				"Demographic fixture clears cohort %d field %d" % [cohort, field],
 			)
+
 	for setting in [
 		[0x102c, 600],
 		[0x0034, 0],
@@ -11376,11 +11807,14 @@ func _test_education_health(reference_root: String) -> void:
 			document.set_misc_u32(setting[0], setting[1]),
 			"Demographic fixture sets MISC 0x%x" % setting[0],
 		)
+
 	var city := CityModel.from_document(document)
 	var result := EducationHealth.run(city, Random.new(1))
 	_check(result.ok, "Education and health phase completes: %s" % result.error)
+
 	if not result.ok:
 		return
+
 	_check(result.population == 600, "Demographic phase preserves the controlled population")
 	_check(result.deaths == 0 and result.births == 0, "Healthy fixture has no deaths or births")
 	_check(result.immigrants == 0 and result.emigrants == 0, "Balanced fixture needs no migration")
@@ -11407,12 +11841,14 @@ func _test_education_health(reference_root: String) -> void:
 	_check(empty_document.misc_u32(0x007c) == 0, "Empty-city path clears demographic tables")
 
 	var mortality_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for cohort in 20:
 		for field in [0, 4, 8]:
 			_check(
 				mortality_document.set_misc_u32(0x007c + cohort * 12 + field, 0),
 				"Mortality fixture clears cohort %d field %d" % [cohort, field],
 			)
+
 	_check(mortality_document.set_misc_u32(0x102c, 230), "Mortality fixture sets city population")
 	_check(mortality_document.set_misc_u32(0x007c + 19 * 12, 240), "Mortality fixture sets oldest population")
 	_check(mortality_document.set_misc_u32(0x0080 + 19 * 12, 24000), "Mortality fixture sets education points")
@@ -11420,30 +11856,36 @@ func _test_education_health(reference_root: String) -> void:
 		CityModel.from_document(mortality_document), Random.new(1)
 	)
 	_check(mortality_result.ok, "Mortality fixture completes: %s" % mortality_result.error)
+
 	if mortality_result.ok:
 		_check(mortality_result.deaths == 10, "Mortality uses the recovered two-stage divisor")
 		_check(mortality_document.misc_u32(0x007c + 19 * 12) == 230, "Mortality removes residents")
 		_check(mortality_document.misc_u32(0x0080 + 19 * 12) == 23000, "Mortality removes education in proportion")
 
 	var migration_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for cohort in 20:
 		for field in [0, 4, 8]:
 			_check(
 				migration_document.set_misc_u32(0x007c + cohort * 12 + field, 0),
 				"Migration fixture clears cohort %d field %d" % [cohort, field],
 			)
+
 	_check(migration_document.set_misc_u32(0x102c, 16), "Migration fixture sets city population")
 	var migration_result := EducationHealth.run(
 		CityModel.from_document(migration_document), Random.new(1)
 	)
 	_check(migration_result.ok, "Migration fixture completes: %s" % migration_result.error)
+
 	if migration_result.ok:
 		_check(migration_result.immigrants == 16, "Demographic phase adds missing residents")
+
 		for cohort in range(0, 8):
 			_check(
 				migration_document.misc_u32(0x007c + cohort * 12) == 2,
 				"Migration uses recovered cohort order at cohort %d" % cohort,
 			)
+
 		_check(migration_document.misc_u32(0x0044) == 47, "Migration updates workforce percentage")
 		_check(migration_document.misc_u32(0x0048) == 59, "Migration installs default workforce life points")
 		_check(migration_document.misc_u32(0x004c) == 84, "Migration installs default workforce education points")
@@ -11454,15 +11896,20 @@ func _test_traffic(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 	var original := document.find_chunk("XTRF").decoded_payload.duplicate()
 	var expected_total := 0
+
 	for value in original:
 		expected_total += int(value) - (int(value) >> 2)
+
 	var result := Traffic.run(city)
 	_check(result.ok, "Traffic phase completes: %s" % result.error)
+
 	if not result.ok:
 		return
+
 	_check(result.traffic_count == expected_total, "Traffic phase returns the decayed total")
 	_check(document.misc_u32(0x30) == expected_total, "Traffic phase stores the city traffic count")
 	var changed := document.find_chunk("XTRF").decoded_payload
+
 	for index in original.size():
 		_check(
 			changed[index] == int(original[index]) - (int(original[index]) >> 2),
@@ -11493,16 +11940,22 @@ func _test_pollution(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 	var result := Pollution.run(city)
 	_check(result.ok, "Pollution map phase completes: %s" % result.error)
+
 	if not result.ok:
 		return
+
 	var pollution := document.find_chunk("XPLT").decoded_payload
 	_check(pollution[10 * 64 + 10] == 63, "Pollution source uses traffic, history, and tile weights")
+
 	for point in [Vector2i(9, 10), Vector2i(11, 10), Vector2i(10, 9), Vector2i(10, 11)]:
 		_check(pollution[point.x * 64 + point.y] == 31, "Pollution spreads to a direct neighbor")
+
 	var nonzero_count := 0
+
 	for value in pollution:
 		if value != 0:
 			nonzero_count += 1
+
 	_check(nonzero_count == 5, "Pollution smoothing changes only the source and direct neighbors")
 	_check(result.pollution_total == 187, "Pollution phase returns the smoothed total")
 	_check(document.misc_u32(0x34) == 187, "Pollution phase stores the city pollution total")
@@ -11520,34 +11973,42 @@ func _test_pollution(reference_root: String) -> void:
 	)
 
 	var clean_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XBIT"]:
 		_check(
 			clean_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Combined scan test clears %s" % chunk_id
 		)
+
 	for chunk_id in ["XTRF", "XPLT", "XVAL", "XCRM"]:
 		_check(
 			clean_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(64 * 64, 0)),
 			"Combined scan test clears %s" % chunk_id
 		)
+
 	for chunk_id in ["XPLC", "XFIR", "XPOP", "XROG"]:
 		_check(
 			clean_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(32 * 32, 0)),
 			"Combined scan test clears %s" % chunk_id
 		)
+
 	var clean_buildings := clean_document.find_chunk("XBLD").decoded_payload.duplicate()
 	clean_buildings[40 * 128 + 40] = 0x1d
 	_check(
 		clean_document.find_chunk("XBLD").set_decoded_payload(clean_buildings),
 		"Combined scan test places one road tile"
 	)
+
 	for offset in [0x0fa0, 0x1034, 0x103c, 0x104c]:
 		_check(clean_document.set_misc_u32(offset, 0), "Combined scan test clears MISC 0x%x" % offset)
+
 	var clean_city := CityModel.from_document(clean_document)
 	var clean_result := Pollution.run(clean_city)
 	_check(clean_result.ok, "Combined day-two scan completes: %s" % clean_result.error)
+
 	if not clean_result.ok:
 		return
+
 	_check(clean_result.developed_tiles == 1, "Combined scan counts one developed tile")
 	_check(clean_result.city_center == Vector2i.ZERO, "Roads do not enter the city-center average")
 	_check(clean_result.pollution_total == 0, "Clean road fixture has no pollution")
@@ -11569,9 +12030,11 @@ func _test_graph_history(reference_root: String) -> void:
 	var city := CityModel.from_document(document)
 	var data := PackedByteArray()
 	data.resize(CityModel.GRAPH_COUNT * CityModel.GRAPH_VALUE_COUNT * 4)
+
 	for series in CityModel.GRAPH_COUNT:
 		for index in CityModel.GRAPH_VALUE_COUNT:
 			_write_u32_be(data, (series * CityModel.GRAPH_VALUE_COUNT + index) * 4, series * 1000 + index)
+
 	_check(document.find_chunk("XGRP").set_decoded_payload(data), "Graph test installs known history")
 	_check(city.set_age_in_days(150), "Graph test selects July")
 	var year_history := GraphView.history_for_scale(city, 2, GraphView.TIME_YEAR)
@@ -11630,16 +12093,19 @@ func _test_graph_history(reference_root: String) -> void:
 		and month_labels[-1] == "Jul",
 		"Graph window aligns the one-year labels to the current month",
 	)
+
 	for index in 8:
 		_check(
 			document.set_misc_u32(0x05f0 + index * 4, [0, 10, 20, 5, 7, 3, 4, 9][index]),
 			"Graph test installs zone population %d" % index
 		)
+
 	for tile_id in range(0xfb, 0xff):
 		_check(
 			document.set_misc_u32(0x01f0 + tile_id * 4, 600),
 			"Graph test installs arcology tile count %d" % tile_id
 		)
+
 	for setting in [
 		[0x1020, 1000],
 		[0x0030, 1000],
@@ -11656,6 +12122,7 @@ func _test_graph_history(reference_root: String) -> void:
 			document.set_misc_u32(setting[0], setting[1]),
 			"Graph test installs MISC value 0x%x" % setting[0]
 		)
+
 	var developed_tiles := 400
 	var developed_divisor := int(developed_tiles / 4) + 1
 	_check(document.set_misc_u32(0x0034, developed_divisor * 11), "Graph test installs pollution")
@@ -11683,11 +12150,14 @@ func _test_graph_history(reference_root: String) -> void:
 	)
 	var result := Graphs.run(city, developed_tiles, 23, 45)
 	_check(result.ok, "Graph statistics and history advance: %s" % result.error)
+
 	if not result.ok:
 		return
+
 	_check(result.values == expected, "Graph phase calculates all sixteen current values")
 	_check(result.unemployment == 15, "Graph phase calculates unemployment")
 	_check(document.misc_u32(0x0fa4) == 15, "Graph phase stores unemployment in MISC")
+
 	for series in CityModel.GRAPH_COUNT:
 		var values := city.graph_series(series)
 		_check(values.year[0] == expected[series], "Graph %d stores its current month" % series)
@@ -11707,27 +12177,38 @@ func _write_u32_be(data: PackedByteArray, offset: int, value: int) -> void:
 func _load_indexed_u16_resource(reference_root: String, resource_id: int) -> PackedInt32Array:
 	var index := FileAccess.get_file_as_bytes(reference_root.path_join("DATA/DATA_USA.IDX"))
 	var data := FileAccess.get_file_as_bytes(reference_root.path_join("DATA/DATA_USA.DAT"))
+
 	if index.is_empty() or data.is_empty() or index.size() % 8 != 0:
 		return PackedInt32Array()
+
 	var start := -1
 	var end := -1
+
 	for offset in range(0, index.size(), 8):
 		var current_id := _read_u32_le(index, offset)
 		var current_start := _read_u32_le(index, offset + 4)
+
 		if start >= 0 and end < 0:
 			end = current_start
 			break
+
 		if current_id == resource_id:
 			start = current_start
+
 	if start < 0:
 		return PackedInt32Array()
+
 	if end < 0:
 		end = data.size()
+
 	if start > end or end > data.size() or (end - start) % 2 != 0:
 		return PackedInt32Array()
+
 	var values := PackedInt32Array()
+
 	for offset in range(start, end, 2):
 		values.append((int(data[offset]) << 8) | int(data[offset + 1]))
+
 	return values
 
 
@@ -11746,16 +12227,22 @@ func _read_u16_le(data: PackedByteArray, offset: int) -> int:
 
 func _load_pe_rva_bytes(path: String, rva: int, size: int) -> PackedByteArray:
 	var data := FileAccess.get_file_as_bytes(path)
+
 	if data.size() < 0x40 or _read_u16_le(data, 0) != 0x5a4d:
 		return PackedByteArray()
+
 	var pe_offset := _read_u32_le(data, 0x3c)
+
 	if pe_offset < 0 or pe_offset > data.size() - 24:
 		return PackedByteArray()
+
 	var section_count := _read_u16_le(data, pe_offset + 6)
 	var optional_size := _read_u16_le(data, pe_offset + 20)
 	var section_offset := pe_offset + 24 + optional_size
+
 	if section_offset < 0 or section_offset > data.size() - section_count * 40:
 		return PackedByteArray()
+
 	for section_index in section_count:
 		var header := section_offset + section_index * 40
 		var virtual_size := _read_u32_le(data, header + 8)
@@ -11763,27 +12250,37 @@ func _load_pe_rva_bytes(path: String, rva: int, size: int) -> PackedByteArray:
 		var raw_size := _read_u32_le(data, header + 16)
 		var raw_offset := _read_u32_le(data, header + 20)
 		var mapped_size := maxi(virtual_size, raw_size)
+
 		if rva < virtual_address or rva + size > virtual_address + mapped_size:
 			continue
+
 		var file_offset := raw_offset + rva - virtual_address
+
 		if file_offset < 0 or file_offset > data.size() - size:
 			return PackedByteArray()
+
 		return data.slice(file_offset, file_offset + size)
+
 	return PackedByteArray()
 
 
 func _clear_news_records(document) -> bool:
 	var misc_chunk = document.find_chunk("MISC")
+
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
 		return false
+
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+
 	for slot in NewsQueue.STORY_RECORD_COUNT:
 		var offset := NewsQueue.STORY_OFFSET + slot * NewsQueue.STORY_RECORD_SIZE
 		_write_u32_be(misc, offset, 11 + slot)
 		_write_u32_be(misc, offset + 4, 0)
 		_write_u32_be(misc, offset + 8, 0)
+
 		for field in range(3, NewsQueue.STORY_FIELD_COUNT):
 			_write_u32_be(misc, offset + field * 4, 0xff)
+
 	return misc_chunk.set_decoded_payload(misc)
 
 
@@ -11796,12 +12293,15 @@ func _test_modified_save(reference_root: String) -> void:
 	_check(loaded_city.set_label(0, "Test Mayor"), "Mayor label can change")
 	var serialized := document.serialize()
 	_check(serialized.ok, "Modified city serializes")
+
 	if not serialized.ok:
 		return
+
 	_check(serialized.data != FileAccess.get_file_as_bytes(source_path), "Modified save bytes change")
 
 	var reparsed := Sc2Document.new()
 	_check(reparsed.parse(serialized.data), "Modified save parses again: %s" % reparsed.parse_error)
+
 	if reparsed.is_valid():
 		_check(reparsed.misc_u32(0x10) == 311, "Modified city age is preserved")
 		_check(reparsed.misc_i32(0x14) == -12345, "Modified city funds are preserved")
@@ -11809,11 +12309,14 @@ func _test_modified_save(reference_root: String) -> void:
 		_check(reparsed_city.mayor_name() == "Test Mayor", "Modified mayor label is preserved")
 
 	var original := Sc2Document.load_path(source_path)
+
 	for original_chunk in original.chunks:
 		if original_chunk.chunk_id == "MISC" or original_chunk.chunk_id == "XLAB":
 			continue
+
 		var modified_chunk := reparsed.find_chunk(original_chunk.chunk_id)
 		_check(modified_chunk != null, "%s stays present after edit" % original_chunk.chunk_id)
+
 		if modified_chunk != null:
 			_check(
 				modified_chunk.stored_payload == original_chunk.stored_payload,
@@ -11830,8 +12333,10 @@ func _test_modified_save(reference_root: String) -> void:
 		and FileAccess.get_file_as_bytes(saved_copy.path) == serialized.data,
 		"City file store adds the SC2 extension and writes exact serialized bytes",
 	)
+
 	if saved_copy.ok and FileAccess.file_exists(saved_copy.path):
 		DirAccess.remove_absolute(saved_copy.path)
+
 	_check(
 		CityFileStore.is_reference_path(
 			ProjectSettings.globalize_path("user://original_game/DEFAULT.SC2"),
@@ -11870,6 +12375,7 @@ func _test_new_city_terrain(reference_root: String) -> void:
 		process_random, game_random, options
 	)
 	_check(generated.ok, "Default new-city terrain generates: %s" % generated.error)
+
 	if generated.ok:
 		var document: Sc2File = generated.document
 		var city := CityModel.from_document(document)
@@ -11884,26 +12390,34 @@ func _test_new_city_terrain(reference_root: String) -> void:
 		var water_tiles := 0
 		var tree_tiles := 0
 		var cardinal_grade_is_valid := true
+
 		for x in CityState.MAP_SIZE:
 			for y in CityState.MAP_SIZE:
 				var building := city.building_id(x, y)
+
 				if city.is_water(x, y):
 					water_tiles += 1
+
 				if building >= 0x06 and building <= 0x0c:
 					tree_tiles += 1
+
 				if x < CityState.MAP_SIZE - 1:
 					cardinal_grade_is_valid = cardinal_grade_is_valid and (
 						absi(city.land_altitude(x, y) - city.land_altitude(x + 1, y)) <= 1
 					)
+
 				if y < CityState.MAP_SIZE - 1:
 					cardinal_grade_is_valid = cardinal_grade_is_valid and (
 						absi(city.land_altitude(x, y) - city.land_altitude(x, y + 1)) <= 1
 					)
+
 		var saved_count_total := 0
+
 		for building_id in 256:
 			saved_count_total += document.misc_u32(
 				NewCityTerrain.MISC_TILE_COUNTS + building_id * 4
 			)
+
 		_check(
 			water_tiles == terrain_result.water_tiles and water_tiles > 0,
 			"Default terrain makes the recovered river and water paths",
@@ -11943,13 +12457,16 @@ func _test_new_city_terrain(reference_root: String) -> void:
 		repeated_process, repeated_game, options
 	)
 	_check(repeated.ok, "Repeated terrain generation succeeds: %s" % repeated.error)
+
 	if generated.ok and repeated.ok:
 		var same_maps := true
+
 		for chunk_id in ["ALTM", "XTER", "XBLD", "XBIT"]:
 			same_maps = same_maps and (
 				generated.document.find_chunk(chunk_id).decoded_payload
 				== repeated.document.find_chunk(chunk_id).decoded_payload
 			)
+
 		_check(
 			same_maps
 			and repeated_process.state == process_random.state
@@ -11981,12 +12498,14 @@ func _test_new_city_terrain(reference_root: String) -> void:
 	var repeated_preview_matches: bool = (
 		bool(session_preview.ok) and bool(repeated_preview.ok)
 	)
+
 	if repeated_preview_matches:
 		for chunk_id in ["ALTM", "XTER", "XBLD", "XBIT"]:
 			repeated_preview_matches = repeated_preview_matches and (
 				session_preview.document.find_chunk(chunk_id).decoded_payload
 				== repeated_preview.document.find_chunk(chunk_id).decoded_payload
 			)
+
 	_check(
 		repeated_preview_matches
 		and terrain_session.preview_process_start == 1
@@ -12016,12 +12535,15 @@ func _test_new_city_terrain(reference_root: String) -> void:
 		{"ocean": true, "river": false, "hills": 12, "water": 5, "trees": 0}
 	)
 	_check(ocean.ok, "Ocean-only terrain generates: %s" % ocean.error)
+
 	if ocean.ok:
 		var ocean_city := CityModel.from_document(ocean.document)
 		var wet_east_edge := 0
+
 		for y in CityState.MAP_SIZE:
 			if ocean_city.is_water(CityState.MAP_SIZE - 1, y):
 				wet_east_edge += 1
+
 		_check(
 			ocean.terrain.salt_water_tiles > 0
 			and wet_east_edge > (CityState.MAP_SIZE >> 1),
@@ -12067,6 +12589,7 @@ func _test_new_city_setup(reference_root: String) -> void:
 		newspaper_session,
 	)
 	_check(easy.ok, "Easy new city initializes: %s" % easy.error)
+
 	if easy.ok:
 		var document: Sc2File = easy.document
 		var city := CityModel.from_document(document)
@@ -12112,19 +12635,23 @@ func _test_new_city_setup(reference_root: String) -> void:
 			"New city inserts the founding newspaper story",
 		)
 		var new_city_paper_state_valid := true
+
 		for paper_index in NewsQueue.PAPER_COUNT:
 			new_city_paper_state_valid = new_city_paper_state_valid and (
 				NewsQueue.paper_record(
 					document.find_chunk("MISC").decoded_payload, paper_index
 				) == NewsQueue.paper_record(newspaper_session, paper_index)
 			)
+
 		var expected_story_types := PackedInt32Array([2, 11, 12, 13, 14, 15, 16, 18, 19])
+
 		for slot in NewsQueue.STORY_RECORD_COUNT:
 			new_city_paper_state_valid = new_city_paper_state_valid and (
 				NewsQueue.story_record(
 					document.find_chunk("MISC").decoded_payload, slot
 				).type == expected_story_types[slot]
 			)
+
 		_check(
 			new_city_paper_state_valid,
 			"New city copies the session papers before it inserts the founding story",
@@ -12135,6 +12662,7 @@ func _test_new_city_setup(reference_root: String) -> void:
 			serialized.ok and reparsed.parse(serialized.data),
 			"New city serializes and reparses: %s" % reparsed.parse_error,
 		)
+
 		if reparsed.is_valid():
 			_check(
 				reparsed.city_name() == "Test City"
@@ -12147,6 +12675,7 @@ func _test_new_city_setup(reference_root: String) -> void:
 		"12345678901234567890123EXTRA", 2, 2000, Random.new(1)
 	)
 	_check(medium.ok, "Medium new city initializes: %s" % medium.error)
+
 	if medium.ok:
 		var medium_city := CityModel.from_document(medium.document)
 		_check(
@@ -12174,6 +12703,7 @@ func _test_new_city_setup(reference_root: String) -> void:
 		template, "", "", 3, 2050, Random.new(1)
 	)
 	_check(hard.ok, "Hard new city initializes: %s" % hard.error)
+
 	if hard.ok:
 		var hard_city := CityModel.from_document(hard.document)
 		var bond_budget := (
@@ -12237,12 +12767,16 @@ func _test_map_edits(reference_root: String) -> void:
 	_check(city.set_tunnel_levels(4, 5, 41), "Tunnel depth can change")
 	var serialized := document.serialize()
 	_check(serialized.ok, "Map-edited city serializes")
+
 	if not serialized.ok:
 		return
+
 	var reparsed := Sc2Document.new()
 	_check(reparsed.parse(serialized.data), "Map-edited city parses")
+
 	if not reparsed.is_valid():
 		return
+
 	var result := CityModel.from_document(reparsed)
 	_check(result.terrain_id(4, 5) == 0x2a, "Terrain edit persists")
 	_check(result.building_id(4, 5) == 0x8a, "Building edit persists")
@@ -12307,6 +12841,7 @@ func _test_tool_availability(reference_root: String) -> void:
 	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 0), "Tool availability fixture clears progression")
 	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0), "Tool availability fixture clears rewards")
 	_check(document.set_misc_u32(ToolAvailability.MISC_ORDINANCES, 0), "Tool availability fixture clears ordinances")
+
 	for invention_index in ToolAvailability.INVENTION_COUNT:
 		_check(
 			document.set_misc_u32(
@@ -12315,11 +12850,14 @@ func _test_tool_availability(reference_root: String) -> void:
 			),
 			"Tool availability fixture schedules invention %d" % invention_index,
 		)
+
 	var city := CityModel.from_document(document)
 	var base := ToolAvailability.inspect(city)
 	_check(base.ok, "Tool availability reads the saved MISC state: %s" % base.error)
+
 	if not base.ok:
 		return
+
 	_check(
 		base.group_masks == PackedInt32Array([
 			0x1f, 0x03, 0x03, 0x03, 0x07, 0x00,
@@ -12400,6 +12938,7 @@ func _test_tool_availability(reference_root: String) -> void:
 			),
 			"Tool availability fixture releases invention %d" % invention_index,
 		)
+
 	var released := ToolAvailability.inspect(city)
 	_check(released.power_plant_mask == 0x1ff, "The first six inventions unlock all later power plants")
 	_check(
@@ -12445,11 +12984,13 @@ func _test_tool_availability(reference_root: String) -> void:
 
 func _test_zone_command(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XBIT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Zone command test clears %s" % chunk_id
 		)
+
 	var buildings := document.find_chunk("XBLD").decoded_payload.duplicate()
 	buildings[11 * 128 + 11] = 0x1d
 	_check(document.find_chunk("XBLD").set_decoded_payload(buildings), "Zone test places a road")
@@ -12503,8 +13044,10 @@ func _test_zone_command(reference_root: String) -> void:
 	)
 	var command := Zones.apply_rectangle(city, 9, 0, Vector2i(10, 10), Vector2i(12, 12))
 	_check(command.ok, "Residential zone rectangle applies: %s" % command.error)
+
 	if not command.ok:
 		return
+
 	_check(command.zone_type == 1, "Light residential maps to zone type one")
 	_check(command.tile_indices.size() == 6, "Zone command skips road, water, and military tiles")
 	_check(command.cost == 30 and city.funds() == 70, "Zone command charges per changed tile")
@@ -12604,11 +13147,13 @@ func _test_query_info(reference_root: String) -> void:
 		"Query requests each reachable tile name, facility, action, and analysis string",
 	)
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XTXT", "XBIT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Query fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		document.find_chunk("XTHG").set_decoded_payload(
 			_filled_bytes(CityState.THING_COUNT * CityState.THING_RECORD_SIZE, 0)
@@ -12620,10 +13165,12 @@ func _test_query_info(reference_root: String) -> void:
 	traffic[5 * 64 + 4] = 8
 	traffic[5 * 64 + 5] = 8
 	_check(document.find_chunk("XTRF").set_decoded_payload(traffic), "Query fixture sets traffic")
+
 	for entry in [["XVAL", 9], ["XCRM", 61], ["XPLT", 181]]:
 		var values := _filled_bytes(64 * 64, 0)
 		values[5 * 64 + 5] = entry[1]
 		_check(document.find_chunk(entry[0]).set_decoded_payload(values), "Query fixture sets %s" % entry[0])
+
 	_check(document.set_misc_u32(0x0e40, 4), "Query fixture sets water level")
 	var city := CityModel.from_document(document)
 	_check(city.set_building_id(10, 10, 0x1d), "Query fixture places a road")
@@ -12643,8 +13190,10 @@ func _test_query_info(reference_root: String) -> void:
 	var things_data := document.find_chunk("XTHG").decoded_payload.duplicate()
 	var thing_offset := CityState.THING_RECORD_SIZE
 	var thing_values := [2, 5, 3, 42, 42, 6, 7, 8, 50, 51, 12, 13]
+
 	for field in CityState.THING_RECORD_SIZE:
 		things_data[thing_offset + field] = thing_values[field]
+
 	_check(
 		document.find_chunk("XTHG").set_decoded_payload(things_data),
 		"Query fixture stores an XTHG helicopter",
@@ -12754,10 +13303,13 @@ func _test_query_info(reference_root: String) -> void:
 	var pump := Queries.inspect(city, Vector2i(20, 20))
 	_check(pump.title == "Water pump", "Query identifies a water pump")
 	_check(pump.water_detail == "Water: 24480 gallons per month", "Query reports recovered pump output")
+
 	for tower_tile in [Vector2i(30, 30), Vector2i(31, 30), Vector2i(30, 29), Vector2i(31, 29)]:
 		_check(city.set_building_id(tower_tile.x, tower_tile.y, 0xeb), "Query tower fixture places a tower tile")
+
 	for watered_tile in [Vector2i(30, 30), Vector2i(31, 30), Vector2i(30, 29)]:
 		_check(city.set_tile_flag(watered_tile.x, watered_tile.y, 0x10, true), "Query tower fixture stores water")
+
 	var tower := Queries.inspect(city, Vector2i(31, 29))
 	_check(tower.title == "Water tower", "Query identifies a water tower")
 	_check(tower.water_detail == "Water: 30000 stored gallons", "Query counts stored tower water")
@@ -12822,6 +13374,7 @@ func _test_query_info(reference_root: String) -> void:
 		and specific.action_resource_id == Queries.CITY_HALL_ACTION_RESOURCE,
 		"City Hall query exposes its Analyze action",
 	)
+
 	if original_strings_result.ok:
 		_check(
 			specific.lines
@@ -12831,6 +13384,7 @@ func _test_query_info(reference_root: String) -> void:
 			]),
 			"City Hall query expands its original resource rows",
 		)
+
 	var fallback := Queries.inspect(city, Vector2i(10, 10))
 	_check(
 		fallback.lines.size() == 4
@@ -12852,6 +13406,7 @@ func _test_query_info(reference_root: String) -> void:
 	_check(city.set_label(0xfd, "Camel City Flyers"), "Query fixture names a Stadium team")
 	var stadium := Queries.inspect(city, Vector2i(10, 10), original_strings)
 	_check(stadium.microsim_type == 7 and stadium.lines.size() == 5, "Stadium query uses all five original rows")
+
 	if original_strings_result.ok:
 		_check(
 			stadium.lines
@@ -12875,6 +13430,7 @@ func _test_query_info(reference_root: String) -> void:
 	microsim_data[7] = 0xd0
 	_check(document.find_chunk("XMIC").set_decoded_payload(microsim_data), "Query fixture sets Hospital data")
 	var hospital := Queries.inspect(city, Vector2i(10, 10), original_strings)
+
 	if original_strings_result.ok:
 		_check(
 			hospital.lines[3] == str(original_strings[952]).replace("#G", "A+"),
@@ -12934,12 +13490,14 @@ func _test_query_info(reference_root: String) -> void:
 	)
 
 	var analysis_misc := document.find_chunk("MISC").decoded_payload.duplicate()
+
 	for tile_id in range(QueryFacilityActions.FIRST_BUILDING, 0x100):
 		_write_u32_be(
 			analysis_misc,
 			QueryFacilityActions.MISC_TILE_COUNTS + tile_id * 4,
 			0,
 		)
+
 	var category_examples := [
 		0x1d,
 		0x0e,
@@ -12953,12 +13511,14 @@ func _test_query_info(reference_root: String) -> void:
 		0x0d,
 		0xfb,
 	]
+
 	for tile_id in category_examples:
 		_write_u32_be(
 			analysis_misc,
 			QueryFacilityActions.MISC_TILE_COUNTS + tile_id * 4,
 			1,
 		)
+
 	_write_u32_be(
 		analysis_misc,
 		QueryFacilityActions.MISC_TILE_COUNTS + 0x88 * 4,
@@ -12976,18 +13536,21 @@ func _test_query_info(reference_root: String) -> void:
 	var analysis := QueryFacilityActions.city_analysis(city, original_strings)
 	_check(analysis.ok, "City Hall analysis succeeds: %s" % analysis.error)
 	_check(analysis.total == 11 and analysis.counts[0] == 1, "City Hall analysis excludes hidden and unmatched tiles from its total")
+
 	for category_id in range(1, QueryFacilityActions.CATEGORY_COUNT):
 		_check(
 			analysis.counts[category_id] == 1
 			and analysis.categories[category_id - 1].percent == 9,
 			"City Hall analysis classifies category %d" % category_id,
 		)
+
 	if original_strings_result.ok:
 		_check(
 			analysis.header == str(original_strings[988])
 			and analysis.categories[0].name == str(original_strings[989]).strip_edges(),
 			"City Hall analysis uses the original table labels",
 		)
+
 	_check(
 		QueryFacilityActions.format_city_analysis(analysis).contains("9%"),
 		"City Hall analysis formats category percentages",
@@ -12996,15 +13559,19 @@ func _test_query_info(reference_root: String) -> void:
 
 func _test_landscape_command(reference_root: String) -> void:
 	var tree_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XTXT", "XBIT"]:
 		_check(
 			tree_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Tree fixture clears %s" % chunk_id,
 		)
+
 	_check(tree_document.set_misc_i32(0x14, 100), "Tree fixture sets funds")
 	_check(tree_document.set_misc_u32(0x01f0, 16384), "Tree fixture counts clear tiles")
+
 	for tree_id in range(6, 13):
 		_check(tree_document.set_misc_u32(0x01f0 + tree_id * 4, 0), "Tree fixture clears tree count")
+
 	var tree_city := CityModel.from_document(tree_document)
 	var tree_random := Random.new(1)
 	var first_tree := Landscapes.apply_path(
@@ -13031,11 +13598,13 @@ func _test_landscape_command(reference_root: String) -> void:
 	_check(not rejected_tree.ok, "Tree tool rejects water")
 
 	var water_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XTXT", "XBIT"]:
 		_check(
 			water_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Water fixture clears %s" % chunk_id,
 		)
+
 	_check(water_document.set_misc_i32(0x14, 500), "Water fixture sets funds")
 	_check(water_document.set_misc_u32(0x01f0, 16383), "Water fixture counts clear tiles")
 	_check(water_document.set_misc_u32(0x01f0 + 6 * 4, 1), "Water fixture counts one tree")
@@ -13087,11 +13656,13 @@ func _test_building_command(reference_root: String) -> void:
 	_check(Buildings.footprint(Vector2i(20, 20), 4) == Rect2i(19, 19, 4, 4), "Four-tile footprint starts one tile before the pointer")
 
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Building fixture clears %s" % chunk_id,
 		)
+
 	_check(document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Building fixture clears XLAB")
 	_check(document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Building fixture clears XMIC")
 	_check(document.set_misc_i32(0x14, 20000), "Building fixture sets funds")
@@ -13106,6 +13677,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x077c + 6 * 0x6c + 4, 80), "Building fixture funds fire")
 	_check(document.set_misc_u32(ToolAvailability.MISC_PROGRESSION, 0), "Building fixture clears progression")
 	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0x0f), "Building fixture grants one-use rewards")
+
 	for invention_index in ToolAvailability.INVENTION_COUNT:
 		_check(
 			document.set_misc_u32(
@@ -13114,11 +13686,13 @@ func _test_building_command(reference_root: String) -> void:
 			),
 			"Building fixture unlocks invention %d" % invention_index,
 		)
+
 	var city := CityModel.from_document(document)
 	var random := LfsrRandom.new(1)
 	var process_random := Random.new(1)
 
 	var utility_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			utility_document.find_chunk(chunk_id).set_decoded_payload(
@@ -13126,6 +13700,7 @@ func _test_building_command(reference_root: String) -> void:
 			),
 			"Immediate utility fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		utility_document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)),
 		"Immediate utility fixture clears XLAB",
@@ -13382,6 +13957,7 @@ func _test_building_command(reference_root: String) -> void:
 		assigned_stadium.ok,
 		"Stadium team assignment succeeds: %s" % assigned_stadium.error,
 	)
+
 	if assigned_stadium.ok:
 		var stadium_record_id := (
 			int(stadium.overlay_id) - Buildings.MICROSIM_LABEL_BASE
@@ -13411,6 +13987,7 @@ func _test_building_command(reference_root: String) -> void:
 			and city.building_id(89, 89) == 0,
 			"Stadium undo restores the team bit, label, XMIC, and map",
 		)
+
 	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0x1b), "Stadium fixture uses four teams")
 	_check(
 		Buildings.stadium_team_choices(city) == PackedInt32Array([2]),
@@ -13437,15 +14014,19 @@ func _test_building_command(reference_root: String) -> void:
 	for x in range(50, 53):
 		for y in range(50, 53):
 			_check(city.set_tile_flag(x, y, 0x04, x == 50), "Marina fixture sets shoreline water")
+
 	var marina := Buildings.apply(city, 14, 4, Vector2i(51, 51), random, process_random)
 	_check(marina.ok, "Marina placement accepts mixed land and water")
 	_check(Buildings.undo(city, marina, random, process_random).ok, "Marina placement can be undone")
+
 	for y in range(50, 53):
 		_check(city.set_tile_flag(50, y, 0x04, false), "Marina dry fixture removes water")
+
 	var dry_marina := Buildings.apply(city, 14, 4, Vector2i(51, 51), random, process_random)
 	_check(not dry_marina.ok and dry_marina.error.contains("land and water"), "Marina rejects an all-dry site")
 
 	var nuisance_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			nuisance_document.find_chunk(chunk_id).set_decoded_payload(
@@ -13453,6 +14034,7 @@ func _test_building_command(reference_root: String) -> void:
 			),
 			"Nuisance fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		nuisance_document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0))
 		and nuisance_document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)),
@@ -13464,11 +14046,13 @@ func _test_building_command(reference_root: String) -> void:
 		"Nuisance fixture prevents an immediate utility refresh",
 	)
 	var nuisance_city := CityModel.from_document(nuisance_document)
+
 	for residential_point in [Vector2i(12, 12), Vector2i(12, 13), Vector2i(12, 14)]:
 		_check(
 			nuisance_city.set_zone_id(residential_point.x, residential_point.y, 1),
 			"Nuisance fixture stores one nearby residential tile",
 		)
+
 	var nuisance_lfsr := LfsrRandom.new(1)
 	var nuisance_process := Random.new(123)
 	var nuisance_process_before := nuisance_process.state
@@ -13500,11 +14084,13 @@ func _test_building_command(reference_root: String) -> void:
 		and nuisance_city.building_id(19, 19) == 0,
 		"Nuisance rejection changes only the original LFSR state",
 	)
+
 	for residential_point in [Vector2i(12, 12), Vector2i(12, 13), Vector2i(12, 14)]:
 		_check(
 			nuisance_city.set_zone_id(residential_point.x, residential_point.y, 0),
 			"Nuisance fixture clears one nearby residential tile",
 		)
+
 	_check(nuisance_city.set_building_id(20, 20, 0x1d), "Nuisance fixture blocks a Coal plant site")
 	var blocked_lfsr := LfsrRandom.new(1)
 	var nuisance_blocked := Buildings.apply(
@@ -13563,11 +14149,13 @@ func _test_network_command(reference_root: String) -> void:
 	)
 
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Network fixture clears %s" % chunk_id,
 		)
+
 	_check(document.set_misc_i32(0x14, 10000), "Network fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16384), "Network fixture counts clear tiles")
 	_check(document.set_misc_u32(0x0fe8, 0), "Network fixture clears subway count")
@@ -13576,8 +14164,10 @@ func _test_network_command(reference_root: String) -> void:
 	var road := Networks.apply(city, 6, 0, Vector2i(10, 10), Vector2i(14, 10))
 	_check(road.ok and road.points.size() == 5, "Road drag builds five tiles")
 	_check(road.cost == 50 and city.funds() == 9950, "Road drag charges ten dollars per route tile")
+
 	for x in range(10, 15):
 		_check(city.building_id(x, 10) == 0x1e, "Road drag stores a connected road shape")
+
 	_check(Networks.undo(city, road).ok, "Road drag can be undone")
 	_check(city.funds() == 10000 and city.building_id(12, 10) == 0, "Road undo restores funds and tiles")
 
@@ -13586,6 +14176,7 @@ func _test_network_command(reference_root: String) -> void:
 		var base := Networks.apply(city, group, 0, Vector2i(50, 48), Vector2i(50, 52))
 		_check(base.ok, "Reuse fixture builds its existing network")
 		var before: PackedByteArray = document.serialize().data
+
 		for endpoints in [
 			[Vector2i(50, 50), Vector2i(53, 50)],
 			[Vector2i(47, 50), Vector2i(50, 50)],
@@ -13599,11 +14190,14 @@ func _test_network_command(reference_root: String) -> void:
 				"Road, rail and power routes start, end, cross, retrace and click existing networks")
 			_check(command.get("cost", -1) == new_count * tile_cost,
 				"Existing network tiles have no repeat construction charge")
+
 			if endpoints[0].x == 48:
 				_check(city.building_id(50, 50) == (0x1c if group == 3 else (0x2b if group == 6 else 0x3a)),
 					"Crossing the same network forms a four-way junction")
+
 			_check(Networks.undo(city, command).ok and document.serialize().data == before,
 				"Reused network route Undo restores exact bytes")
+
 		_check(Networks.undo(city, base).ok, "Reuse fixture restores the original map")
 
 	var road_connection_request := Networks.apply(
@@ -13823,9 +14417,11 @@ func _test_network_command(reference_root: String) -> void:
 
 	var pipes := Networks.apply(city, 4, 0, Vector2i(10, 30), Vector2i(12, 30))
 	_check(pipes.ok and pipes.cost == 9, "Pipe drag charges three dollars per tile")
+
 	for x in range(10, 13):
 		_check(city.underground_id(x, 30) == 0x11, "Pipe drag stores connected pipe shapes")
 		_check(city.is_piped(x, 30), "Pipe drag sets the piped flag")
+
 	var pipes_before: PackedByteArray = document.serialize().data
 	var pipe_extension := Networks.apply(city, 4, 0, Vector2i(11, 30), Vector2i(11, 33))
 	_check(pipe_extension.ok and pipe_extension.cost == 9 and not pipe_extension.stopped_early,
@@ -13835,17 +14431,21 @@ func _test_network_command(reference_root: String) -> void:
 	var subway_over_pipe := Networks.apply(city, 7, 1, Vector2i(10, 30), Vector2i(12, 30))
 	_check(subway_over_pipe.ok and subway_over_pipe.cost == 300 and not subway_over_pipe.stopped_early,
 		"Subway can run under parallel pipe tiles")
+
 	for x in range(10, 13):
 		_check(city.is_piped(x, 30) and city.underground_id(x, 30) in [0x1f, 0x20],
 			"Subway under a pipe keeps the dual-network cell and piped flag")
+
 	_check(Networks.undo(city, subway_over_pipe).ok and document.serialize().data == pipes_before,
 		"Subway under pipes has exact Undo")
 	_check(Networks.undo(city, pipes).ok, "Pipe drag can be undone")
 
 	var subway := Networks.apply(city, 7, 1, Vector2i(30, 30), Vector2i(30, 32))
 	_check(subway.ok and subway.cost == 300, "Subway drag charges one hundred dollars per tile")
+
 	for y in range(30, 33):
 		_check(city.underground_id(30, y) == 0x01, "Subway drag stores connected subway shapes")
+
 	_check(document.misc_u32(0x0fe8) == 3, "Subway drag increments the saved subway count")
 	_check(Networks.undo(city, subway).ok, "Subway drag can be undone")
 	_check(document.misc_u32(0x0fe8) == 0, "Subway undo restores the saved subway count")
@@ -13865,6 +14465,7 @@ func _test_network_command(reference_root: String) -> void:
 			city.set_terrain_id(x, 20, 0x21 if x == 80 else (0x10 if x < 88 else 0)),
 			"Bridge fixture sets shoreline and water terrain",
 		)
+
 	var bridge_request := Networks.apply(
 		city, 6, 0, Vector2i(80, 20), Vector2i(88, 20)
 	)
@@ -13951,6 +14552,7 @@ func _test_network_command(reference_root: String) -> void:
 		and not city.is_water(87, 20),
 		"Causeway raises and reshapes both recovered bank tiles",
 	)
+
 	for x in range(81, 87):
 		_check(
 			city.building_id(x, 20) == 0x57
@@ -13958,6 +14560,7 @@ func _test_network_command(reference_root: String) -> void:
 			and (city.tile_flags[x * 128 + 20] & 0x02) != 0,
 			"Causeway stores horizontal span tiles with the recovered mirror flag",
 		)
+
 	_check(Networks.undo(city, causeway).ok, "Causeway placement can be undone")
 	_check(
 		city.funds() == 10000
@@ -14032,11 +14635,13 @@ func _test_network_command(reference_root: String) -> void:
 		and wire_bridge.bridge_cost == 80,
 		"Raised wires use the recovered ten-dollar span price",
 	)
+
 	for x in range(81, 87):
 		_check(
 			city.building_id(x, 20) == 0x5c and city.is_powerable(x, 20),
 			"Raised wires store powered bridge tiles",
 		)
+
 	_check(Networks.undo(city, wire_bridge).ok, "Raised-wire placement can be undone")
 
 	_check(city.set_funds(100), "Bridge funds fixture limits available funds")
@@ -14069,11 +14674,13 @@ func _test_hydro_command(reference_root: String) -> void:
 	_check(Hydro.supports_tool(3, 3), "Hydroelectric command supports the hydro tool")
 	_check(not Hydro.supports_tool(3, 2), "Hydroelectric command rejects coal power")
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XZON", "XBIT", "XTXT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Hydroelectric fixture clears %s" % chunk_id,
 		)
+
 	_check(document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Hydroelectric fixture clears XLAB")
 	_check(document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Hydroelectric fixture clears XMIC")
 	_check(document.set_misc_i32(0x14, 1000), "Hydroelectric fixture sets funds")
@@ -14128,11 +14735,13 @@ func _test_hydro_command(reference_root: String) -> void:
 func _test_subway_to_rail_command(reference_root: String) -> void:
 	_check(SubwayToRail.supports_tool(7, 4), "Subway-to-rail command supports its catalog tool")
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Subway-to-rail fixture clears %s" % chunk_id,
 		)
+
 	_check(document.set_misc_i32(0x14, 0), "Subway-to-rail fixture clears funds")
 	_check(document.set_misc_u32(0x01f0, 16383), "Subway-to-rail fixture counts clear tiles")
 	_check(document.set_misc_u32(0x01f0 + 0x2c * 4, 1), "Subway-to-rail fixture counts rail")
@@ -14165,11 +14774,13 @@ func _test_onramp_command(reference_root: String) -> void:
 	_check(Onramps.supports_tool(6, 3), "On-ramp command supports its catalog tool")
 	_check(not Onramps.supports_tool(6, 1), "On-ramp command rejects the highway tool")
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XBIT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"On-ramp fixture clears %s" % chunk_id,
 		)
+
 	_check(document.set_misc_i32(0x14, 100), "On-ramp fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16382), "On-ramp fixture counts clear tiles")
 	_check(document.set_misc_u32(0x01f0 + 0x49 * 4, 1), "On-ramp fixture counts highway")
@@ -14226,12 +14837,14 @@ func _test_tunnel_command(reference_root: String) -> void:
 	_check(Tunnels.supports_tool(6, 2), "Tunnel command supports its catalog tool")
 	_check(not Tunnels.supports_tool(6, 1), "Tunnel command rejects the highway tool")
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
 			"Tunnel fixture clears %s" % chunk_id,
 		)
+
 	_check(document.set_misc_i32(0x14, 1000), "Tunnel fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16383), "Tunnel fixture counts clear tiles")
 	_check(document.set_misc_u32(0x01f0 + 0x1d * 4, 1), "Tunnel fixture counts road")
@@ -14334,23 +14947,28 @@ func _test_highway_command(reference_root: String) -> void:
 	_check(not Highways.supports_tool(6, 0), "Highway command rejects the road tool")
 	_check(Highways.snap_anchor(Vector2i(11, 13)) == Vector2i(10, 12), "Highway pointer snaps to even coordinates")
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
 			"Highway fixture clears %s" % chunk_id,
 		)
+
 	_check(document.set_misc_i32(0x14, 1000), "Highway fixture sets funds")
 	_check(document.set_misc_u32(0x01f0, 16384), "Highway fixture counts clear tiles")
 	var city := CityModel.from_document(document)
 	var straight := Highways.apply(city, 6, 1, Vector2i(10, 10), Vector2i(14, 10))
 	_check(straight.ok and straight.sections.size() == 3, "Highway drag builds three 2-by-2 sections")
 	_check(straight.cost == 300 and city.funds() == 700, "Highway drag charges one hundred dollars per section")
+
 	for x in range(10, 16):
 		for y in range(10, 12):
 			_check(city.building_id(x, y) == 0x4a, "Horizontal highway stores straight tile 0x4a")
 			_check(city.zones[x * 128 + y] == 0xf0, "Straight highway sets all XZON corner bits")
+
 	var highway_before: PackedByteArray = document.serialize().data
+
 	for endpoints in [
 		[Vector2i(14, 10), Vector2i(18, 10)],
 		[Vector2i(6, 10), Vector2i(10, 10)],
@@ -14363,6 +14981,7 @@ func _test_highway_command(reference_root: String) -> void:
 			"Highway reuse charges only new sections")
 		_check(Highways.undo(city, reuse).ok and document.serialize().data == highway_before,
 			"Highway reuse Undo restores exact bytes")
+
 	_check(Highways.undo(city, straight).ok, "Straight highway can be undone")
 	_check(city.funds() == 1000 and city.building_id(12, 10) == 0, "Highway undo restores funds and tiles")
 
@@ -14397,6 +15016,7 @@ func _test_highway_command(reference_root: String) -> void:
 	)
 
 	var bridge_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
 		_check(
@@ -14405,12 +15025,14 @@ func _test_highway_command(reference_root: String) -> void:
 			),
 			"Highway bridge fixture clears %s" % chunk_id,
 		)
+
 	_check(bridge_document.set_misc_i32(0x14, 5000), "Highway bridge fixture sets funds")
 	_check(
 		bridge_document.set_misc_u32(0x01f0, CityState.TILE_COUNT),
 		"Highway bridge fixture counts clear tiles",
 	)
 	var bridge_city := CityModel.from_document(bridge_document)
+
 	for x in range(76, 88):
 		for y in range(20, 22):
 			var water_cell := x >= 80 and x < 86
@@ -14421,6 +15043,7 @@ func _test_highway_command(reference_root: String) -> void:
 				and bridge_city.set_terrain_id(x, y, 0x10 if water_cell else 0),
 				"Highway bridge fixture writes its banks and water sections",
 			)
+
 	var bridge_request := Highways.apply(
 		bridge_city, 6, 1, Vector2i(76, 20), Vector2i(84, 20)
 	)
@@ -14481,6 +15104,7 @@ func _test_highway_command(reference_root: String) -> void:
 		and bridge_city.funds() == 4200,
 		"Normal highway bridge charges 200 dollars for each 2-by-2 section",
 	)
+
 	for x in range(80, 86):
 		for y in range(20, 22):
 			_check(
@@ -14489,6 +15113,7 @@ func _test_highway_command(reference_root: String) -> void:
 				and (bridge_city.zones[x * 128 + y] & 0xf0) == 0xf0,
 				"Normal highway bridge stores straight highway over water",
 			)
+
 	_check(
 		bridge_city.building_id(86, 20) == 0,
 		"Normal highway bridge does not construct a far-bank section",
@@ -14529,6 +15154,7 @@ func _test_highway_command(reference_root: String) -> void:
 		and bridge_city.building_id(86, 20) == 0x4a,
 		"Reinforced highway bridge alternates deck and pylon sections",
 	)
+
 	for x in range(80, 86):
 		for y in range(20, 22):
 			_check(
@@ -14536,6 +15162,7 @@ func _test_highway_command(reference_root: String) -> void:
 				and (bridge_city.tile_flags[x * 128 + y] & 0x02) != 0,
 				"Horizontal reinforced bridge stores its recovered mirror bit",
 			)
+
 	_check(
 		Highways.undo(bridge_city, reinforced_bridge).ok
 		and bridge_city.funds() == 5000
@@ -14577,6 +15204,7 @@ func _test_highway_command(reference_root: String) -> void:
 			and bridge_city.set_tile_flag(entry[0].x, entry[0].y, 0x04, entry[2]),
 			"Direct highway bridge fixture writes its shoreline mask",
 		)
+
 	var direct_plan := Highways._plan_bridge_from_start(
 		bridge_document.find_chunk("XBLD").decoded_payload,
 		bridge_document.find_chunk("XTER").decoded_payload,
@@ -14595,6 +15223,7 @@ func _test_highway_command(reference_root: String) -> void:
 	)
 
 	var connection_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
 		_check(
@@ -14603,6 +15232,7 @@ func _test_highway_command(reference_root: String) -> void:
 			),
 			"Highway connection fixture clears %s" % chunk_id,
 		)
+
 	_check(connection_document.set_misc_i32(0x14, 5000), "Highway connection fixture sets funds")
 	_check(connection_document.set_misc_u32(0x01f0, 16384), "Highway connection fixture counts clear tiles")
 	var connection_city := CityModel.from_document(connection_document)
@@ -14667,6 +15297,7 @@ func _test_highway_command(reference_root: String) -> void:
 	)
 
 	var grade_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
 		_check(
@@ -14675,6 +15306,7 @@ func _test_highway_command(reference_root: String) -> void:
 			),
 			"Graded highway fixture clears %s" % chunk_id,
 		)
+
 	_check(grade_document.set_misc_i32(0x14, 5000), "Graded highway fixture sets funds")
 	_check(
 		grade_document.set_misc_u32(0x01f0, 16384),
@@ -14687,11 +15319,13 @@ func _test_highway_command(reference_root: String) -> void:
 		[Vector2i(21, 21), 0],
 		[Vector2i(20, 21), 0],
 	]
+
 	for entry in north_slope:
 		_check(
 			grade_city.set_terrain_id(entry[0].x, entry[0].y, entry[1]),
 			"Graded highway fixture writes the north slope",
 		)
+
 	var north_grade := Highways.apply(
 		grade_city, 6, 1, Vector2i(20, 20), Vector2i(20, 20)
 	)
@@ -14702,11 +15336,13 @@ func _test_highway_command(reference_root: String) -> void:
 		and grade_city.funds() == 4900,
 		"A north slope builds one graded highway section for one hundred dollars",
 	)
+
 	for point in [Vector2i(20, 20), Vector2i(21, 20), Vector2i(21, 21), Vector2i(20, 21)]:
 		_check(
 			grade_city.building_id(point.x, point.y) == 0x62,
 			"The north grade stores composite tile 0x62",
 		)
+
 	_check(
 		[
 			grade_city.terrain_id(20, 20),
@@ -14730,11 +15366,13 @@ func _test_highway_command(reference_root: String) -> void:
 		[Vector2i(31, 31), 1],
 		[Vector2i(30, 31), 0],
 	]
+
 	for entry in east_slope:
 		_check(
 			grade_city.set_terrain_id(entry[0].x, entry[0].y, entry[1]),
 			"Graded highway fixture writes the east slope",
 		)
+
 	var east_grade := Highways.apply(
 		grade_city, 6, 1, Vector2i(30, 30), Vector2i(30, 30)
 	)
@@ -14761,6 +15399,7 @@ func _test_highway_command(reference_root: String) -> void:
 		Vector2i(59, 61),
 		Vector2i(58, 61),
 	]
+
 	for point in high_neighbor_points:
 		_check(
 			grade_city.set_building_id(point.x, point.y, 0x4a)
@@ -14768,6 +15407,7 @@ func _test_highway_command(reference_root: String) -> void:
 			and grade_city.set_land_altitude(point.x, point.y, 2),
 			"Highway retile fixture installs a higher west section",
 		)
+
 	_check(
 		grade_document.set_misc_u32(0x01f0, CityState.TILE_COUNT - 4)
 		and grade_document.set_misc_u32(0x01f0 + 0x4a * 4, 4),
@@ -14779,11 +15419,13 @@ func _test_highway_command(reference_root: String) -> void:
 		[Vector2i(61, 61), 0],
 		[Vector2i(60, 61), 0],
 	]
+
 	for entry in compound_slope:
 		_check(
 			grade_city.set_terrain_id(entry[0].x, entry[0].y, entry[1]),
 			"Highway retile fixture writes a two-direction terrain mask",
 		)
+
 	var neighbor_grade := Highways.apply(
 		grade_city, 6, 1, Vector2i(60, 60), Vector2i(60, 60)
 	)
@@ -14834,6 +15476,7 @@ func _test_highway_command(reference_root: String) -> void:
 				grade_city.set_land_altitude(x, y, 2),
 				"Highway elevation fixture raises the next section two levels",
 			)
+
 	var steep_route := Highways.apply(
 		grade_city, 6, 1, Vector2i(50, 50), Vector2i(52, 50)
 	)
@@ -14845,12 +15488,14 @@ func _test_highway_command(reference_root: String) -> void:
 		"A highway route stops before a section more than one level away",
 	)
 	_check(Highways.undo(grade_city, steep_route).ok, "The stopped elevation route can be undone")
+
 	for x in range(52, 54):
 		for y in range(50, 52):
 			_check(
 				grade_city.set_land_altitude(x, y, 1),
 				"Highway elevation fixture lowers the next section to one level",
 			)
+
 	var stepped_route := Highways.apply(
 		grade_city, 6, 1, Vector2i(50, 50), Vector2i(52, 50)
 	)
@@ -14868,11 +15513,13 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(Demolish.supports_tool(0, 0), "Demolish command supports its catalog tool")
 	_check(not Demolish.supports_tool(0, 4), "Demolish command rejects De-zone")
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Demolish fixture clears %s" % chunk_id,
 		)
+
 	_check(document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Demolish fixture clears XLAB")
 	_check(document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Demolish fixture clears XMIC")
 	_check(document.set_misc_i32(0x14, 1000), "Demolish fixture sets funds")
@@ -14898,18 +15545,22 @@ func _test_demolish_command(reference_root: String) -> void:
 		"Building demolition emits one native dust frame per footprint level",
 	)
 	var expected_demolition_random := Random.new(29)
+
 	for _value in 63:
 		expected_demolition_random.next_u15()
+
 	_check(
 		demolition_random.state == expected_demolition_random.state,
 		"Building demolition consumes visual values before its nine rubble values",
 	)
+
 	for x in range(19, 22):
 		for y in range(19, 22):
 			_check(city.building_id(x, y) >= 1 and city.building_id(x, y) <= 4, "Demolished dry building becomes rubble")
 			_check((city.zones[x * 128 + y] & 0xf0) == 0, "Demolish clears building corner bits")
 			_check((city.tile_flags[x * 128 + y] & 0xc2) == 0, "Demolish clears flip, powered, and powerable flags")
 			_check(city.text_overlay_id(x, y) == 0, "Demolish clears dynamic text overlays")
+
 	_check(city.microsim(10).tile_id == 0 and city.label(61).is_empty(), "Demolish releases dynamic XMIC and XLAB records")
 	_check(building.cost == 1 and city.funds() == 499, "One building demolition costs one dollar")
 	_check(Demolish.undo(city, building, demolition_random).ok, "Building demolition can be undone")
@@ -14940,11 +15591,13 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(Buildings.undo(city, city_hall, placement_random, process_random).ok, "Reward demolition fixture removes City Hall")
 
 	var simple_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		_check(
 			simple_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(128 * 128, 0)),
 			"Simple demolish fixture clears %s" % chunk_id,
 		)
+
 	_check(simple_document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Simple demolish fixture clears XLAB")
 	_check(simple_document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Simple demolish fixture clears XMIC")
 	_check(simple_document.set_misc_i32(0x14, 10), "Simple demolish fixture sets funds")
@@ -14971,6 +15624,7 @@ func _test_demolish_command(reference_root: String) -> void:
 	)
 	var parallel_effects := true
 	var first_effect_frames := PackedInt32Array()
+
 	for effect in parallel_demolition.get("effect_events", []):
 		var frame := int(effect.get("frame", -1))
 		parallel_effects = (
@@ -14979,6 +15633,7 @@ func _test_demolish_command(reference_root: String) -> void:
 			and frame <= Demolish.MAX_PARALLEL_EFFECT_OFFSET_FRAMES
 		)
 		first_effect_frames.append(frame)
+
 	_check(
 		parallel_demolition.ok
 		and parallel_demolition.action_count == 2
@@ -15000,6 +15655,7 @@ func _test_demolish_command(reference_root: String) -> void:
 		simple_document.set_misc_u32(0x01f0 + 0x1d * 4, 0),
 		"Parallel demolish fixture clears its road count",
 	)
+
 	for story_slot in NewsQueue.QUEUE_COUNT:
 		for story_field in NewsQueue.STORY_FIELD_COUNT:
 			_check(
@@ -15011,6 +15667,7 @@ func _test_demolish_command(reference_root: String) -> void:
 				),
 				"Forest protest fixture clears a newspaper story field",
 			)
+
 	_check(simple_city.set_building_id(10, 10, 0x06), "Forest protest fixture places a tree")
 	var forest_random := Random.new(19)
 	var forest_protest := Demolish.apply_path(
@@ -15064,15 +15721,18 @@ func _test_demolish_command(reference_root: String) -> void:
 		and removed_highway.effect_events[4].frame == 1,
 		"Demolish removes a complete 2-by-2 highway section with two dust frames",
 	)
+
 	for x in range(10, 12):
 		for y in range(10, 12):
 			_check(simple_city.building_id(x, y) >= 1 and simple_city.building_id(x, y) <= 4, "Demolished highway becomes rubble")
+
 	_check(Demolish.undo(simple_city, removed_highway, demolition_random).ok, "Highway demolition can be undone")
 	_check(Highways.undo(simple_city, placed_highway).ok, "Highway fixture can be removed after demolition undo")
 
 	var underground_document := Sc2Document.load_path(
 		reference_root.path_join("DEFAULT.SC2")
 	)
+
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
 		_check(
@@ -15081,6 +15741,7 @@ func _test_demolish_command(reference_root: String) -> void:
 			),
 			"Underground demolition fixture clears %s" % chunk_id,
 		)
+
 	_check(
 		underground_document.find_chunk("XLAB").set_decoded_payload(
 			_filled_bytes(6400, 0)
@@ -15113,11 +15774,13 @@ func _test_demolish_command(reference_root: String) -> void:
 		"Underground demolition fixture unlocks subway stations",
 	)
 	var underground_city := CityModel.from_document(underground_document)
+
 	for y in range(19, 22):
 		_check(
 			underground_city.set_underground_id(20, y, 0x01),
 			"Underground demolition fixture places subway",
 		)
+
 	var underground_random := Random.new(101)
 	var removed_subway := Demolish.apply_path(
 		underground_city,
@@ -15147,6 +15810,7 @@ func _test_demolish_command(reference_root: String) -> void:
 		and underground_document.misc_u32(0x0fe8) == 3,
 		"Underground subway demolition can be undone with its saved count",
 	)
+
 	for y in range(29, 32):
 		_check(
 			underground_city.set_underground_id(30, y, 0x10),
@@ -15156,6 +15820,7 @@ func _test_demolish_command(reference_root: String) -> void:
 			underground_city.set_tile_flag(30, y, 0x20, true),
 			"Underground demolition fixture marks pipe",
 		)
+
 	var removed_pipe := Demolish.apply_path(
 		underground_city,
 		0,
@@ -15231,12 +15896,14 @@ func _test_demolish_command(reference_root: String) -> void:
 	)
 
 	var special_document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
 		_check(
 			special_document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
 			"Special demolition fixture clears %s" % chunk_id,
 		)
+
 	_check(special_document.find_chunk("XLAB").set_decoded_payload(_filled_bytes(6400, 0)), "Special demolition fixture clears XLAB")
 	_check(special_document.find_chunk("XMIC").set_decoded_payload(_filled_bytes(1200, 0)), "Special demolition fixture clears XMIC")
 	_check(special_document.set_misc_i32(0x14, 100), "Special demolition fixture sets funds")
@@ -15245,8 +15912,10 @@ func _test_demolish_command(reference_root: String) -> void:
 	var special_city := CityModel.from_document(special_document)
 	_check(special_city.set_building_id(30, 30, 0x3f), "Tunnel demolition fixture places its first entrance")
 	_check(special_city.set_building_id(28, 30, 0x41), "Tunnel demolition fixture places its second entrance")
+
 	for x in range(28, 31):
 		_check(special_city.set_tunnel_levels(x, 30, 3), "Tunnel demolition fixture stores tunnel depth")
+
 	var tunnel := Demolish.apply_path(special_city, 0, 0, [Vector2i(30, 30)], demolition_random)
 	_check(
 		tunnel.ok
@@ -15257,12 +15926,15 @@ func _test_demolish_command(reference_root: String) -> void:
 		"Demolish follows a tunnel and emits dust at both entrances",
 	)
 	_check(special_city.building_id(30, 30) == 0 and special_city.building_id(28, 30) == 0, "Tunnel demolition clears both entrances")
+
 	for x in range(28, 31):
 		_check(special_city.tunnel_levels(x, 30) == 0, "Tunnel demolition clears each saved depth")
+
 	_check(Demolish.undo(special_city, tunnel, demolition_random).ok, "Tunnel demolition can be undone")
 
 	for point in [Vector2i(40, 40), Vector2i(41, 40), Vector2i(41, 41)]:
 		_check(special_city.set_building_id(point.x, point.y, 0xdd), "Runway demolition fixture places a connected tile")
+
 	_check(special_city.set_building_id(45, 45, 0xdd), "Runway demolition fixture places a separate tile")
 	var runway := Demolish.apply_path(special_city, 0, 0, [Vector2i(40, 40)], demolition_random)
 	_check(
@@ -15270,12 +15942,15 @@ func _test_demolish_command(reference_root: String) -> void:
 		"Demolish removes one connected runway component with dust on each tile",
 	)
 	_check(special_city.building_id(45, 45) == 0xdd, "Runway demolition preserves a separate component")
+
 	for point in [Vector2i(40, 40), Vector2i(41, 40), Vector2i(41, 41)]:
 		_check(special_city.building_id(point.x, point.y) >= 1 and special_city.building_id(point.x, point.y) <= 4, "Demolished runway becomes rubble")
+
 	_check(Demolish.undo(special_city, runway, demolition_random).ok, "Runway demolition can be undone")
 
 	for point in [Vector2i(50, 50), Vector2i(50, 51)]:
 		_check(special_city.set_building_id(point.x, point.y, 0xdf), "Pier demolition fixture places a connected tile")
+
 	var pier := Demolish.apply_path(special_city, 0, 0, [Vector2i(50, 50)], demolition_random)
 	_check(
 		pier.ok
@@ -15287,14 +15962,17 @@ func _test_demolish_command(reference_root: String) -> void:
 	_check(Demolish.undo(special_city, pier, demolition_random).ok, "Pier demolition can be undone")
 
 	_check(special_document.set_misc_u32(0x0e40, 1), "Bridge demolition fixture sets sea level")
+
 	for x in range(70, 73):
 		_check(special_city.set_building_id(x, 70, 0x51 + x - 70), "Bridge demolition fixture places a span tile")
 		_check(special_city.set_terrain_id(x, 70, 0x30), "Bridge demolition fixture places water terrain")
 		_check(special_city.set_tile_flag(x, 70, 0x04, true), "Bridge demolition fixture marks span water")
 		_check(special_city.set_tile_flag(x, 70, 0x02, true), "Bridge demolition fixture sets a horizontal span")
+
 	for x in [69, 73]:
 		_check(special_city.set_land_altitude(x, 70, 1), "Bridge demolition fixture raises a bank")
 		_check(special_city.set_building_id(x, 70, 0x1d), "Bridge demolition fixture places a bank road")
+
 	var bridge := Demolish.apply_path(special_city, 0, 0, [Vector2i(71, 70)], demolition_random)
 	_check(
 		bridge.ok
@@ -15303,24 +15981,30 @@ func _test_demolish_command(reference_root: String) -> void:
 		and bridge.sound_events == [504],
 		"Demolish clears one bridge span and requests its debris and sound",
 	)
+
 	for x in range(70, 73):
 		_check(special_city.building_id(x, 70) == 0, "Bridge demolition clears each span tile")
+
 	for x in [69, 73]:
 		_check(special_city.land_altitude(x, 70) == 0, "Bridge demolition lowers each dry bank")
 		_check((special_city.tile_flags[x * 128 + 70] & 0x04) != 0, "Bridge demolition restores bank water")
+
 	_check(Demolish.undo(special_city, bridge, demolition_random).ok, "Bridge demolition can be undone")
 
 	for section in 3:
 		var reinforced_tile := 0x6b if section != 1 else 0x6a
+
 		for x_offset in 2:
 			for y_offset in 2:
 				var point := Vector2i(80 + section * 2 + x_offset, 80 + y_offset)
 				_check(special_city.set_building_id(point.x, point.y, reinforced_tile), "Reinforced demolition fixture places a span tile")
 				_check(special_city.set_terrain_id(point.x, point.y, 0x30), "Reinforced demolition fixture places water terrain")
 				_check(special_city.set_tile_flag(point.x, point.y, 0x04, true), "Reinforced demolition fixture marks span water")
+
 	for bank_point in [Vector2i(78, 80), Vector2i(86, 80)]:
 		_check(special_city.set_building_id(bank_point.x, bank_point.y, 0x49), "Reinforced demolition fixture places a bank")
 		_check(special_city.set_land_altitude(bank_point.x, bank_point.y, 1), "Reinforced demolition fixture raises a bank")
+
 	var reinforced_bridge := Demolish.apply_path(
 		special_city, 0, 0, [Vector2i(80, 80)], demolition_random
 	)
@@ -15331,9 +16015,11 @@ func _test_demolish_command(reference_root: String) -> void:
 		and reinforced_bridge.sound_events == [504],
 		"Demolish clears a reinforced span and the original forward-bank cell",
 	)
+
 	for x in range(80, 86):
 		for y in range(80, 82):
 			_check(special_city.building_id(x, y) == 0, "Reinforced demolition clears each span tile")
+
 	_check(special_city.building_id(78, 80) == 0x49, "Reinforced demolition preserves the rear bank")
 	_check(special_city.building_id(86, 80) == 0, "Reinforced demolition clears the forward bank")
 	_check(special_city.land_altitude(86, 80) == 0, "Reinforced demolition lowers the forward bank")
@@ -15380,11 +16066,13 @@ func _test_terrain_command(reference_root: String) -> void:
 		reference_root.path_join("SIMCITY.EXE"), 0x000e7958, 256
 	)
 	var shape_table_matches := executable_shapes.size() == TerrainTools.TERRAIN_SHAPES.size()
+
 	if shape_table_matches:
 		for shape_index in executable_shapes.size():
 			if executable_shapes[shape_index] != TerrainTools.TERRAIN_SHAPES[shape_index]:
 				shape_table_matches = false
 				break
+
 	_check(
 		shape_table_matches,
 		"Terrain shape table matches all 256 supplied executable bytes",
@@ -15408,12 +16096,14 @@ func _test_terrain_command(reference_root: String) -> void:
 		"Partial Raise Terrain funds apply in executable west-north-east-south order",
 	)
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT"]:
 		var size := 128 * 128 * 2 if chunk_id == "ALTM" else 128 * 128
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
 			"Terrain fixture clears %s" % chunk_id,
 		)
+
 	_check(document.set_misc_i32(0x14, 200), "Terrain fixture sets funds")
 	_check(document.set_misc_u32(0x0e40, 0), "Terrain fixture sets sea level")
 	_check(document.set_misc_u32(0x01f0, 16384), "Terrain fixture counts clear tiles")
@@ -15511,6 +16201,7 @@ func _test_terrain_command(reference_root: String) -> void:
 	for x in range(60, 62):
 		for y in range(60, 62):
 			_check(city.set_building_id(x, y, 0x8c), "Terrain structure fixture fills its site")
+
 	_check(city.set_building_corners(60, 60, 0x10), "Terrain structure fixture sets bottom-left")
 	_check(city.set_building_corners(61, 60, 0x20), "Terrain structure fixture sets bottom-right")
 	_check(city.set_building_corners(61, 61, 0x40), "Terrain structure fixture sets top-left")
@@ -15549,6 +16240,7 @@ func _test_terrain_command(reference_root: String) -> void:
 	var basin_point := Vector2i(70, 70)
 	var basin_index := basin_point.x * CityState.MAP_SIZE + basin_point.y
 	basin_zones[basin_index] = 6
+
 	for offset in TerrainTools.CARDINAL_OFFSETS:
 		var neighbor: Vector2i = basin_point + offset
 		TerrainTools._set_land_altitude(
@@ -15556,6 +16248,7 @@ func _test_terrain_command(reference_root: String) -> void:
 			neighbor.x * CityState.MAP_SIZE + neighbor.y,
 			1,
 		)
+
 	TerrainTools._retile_region(
 		basin_altitude,
 		basin_buildings,
@@ -15587,12 +16280,14 @@ func _test_dispatch_command(reference_root: String) -> void:
 	_check(Dispatch.supports_tool(2, 2), "Dispatch command supports Military")
 	_check(not Dispatch.supports_tool(3, 0), "Dispatch command rejects another tool group")
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for chunk_id in ["XBIT", "XTXT", "XTHG"]:
 		var size := 480 if chunk_id == "XTHG" else 128 * 128
 		_check(
 			document.find_chunk(chunk_id).set_decoded_payload(_filled_bytes(size, 0)),
 			"Dispatch fixture clears %s" % chunk_id,
 		)
+
 	_check(document.set_misc_u32(0x01f0 + 0xd2 * 4, 9), "Dispatch fixture counts one police station")
 	_check(document.set_misc_u32(0x01f0 + 0xd3 * 4, 18), "Dispatch fixture counts two fire stations")
 	_check(document.set_misc_u32(0x0e4c, 4), "Dispatch fixture selects a navy base")
@@ -15705,9 +16400,11 @@ func _test_city_rotation(reference_root: String) -> void:
 	_check(city.set_terrain_id(14, 10, 0x01), "Rotation fixture stores directional terrain")
 	_check(city.set_underground_id(15, 10, 0x03), "Rotation fixture stores a directional subway")
 	var old_payloads := {}
+
 	for specification in CityRotation.REQUIRED_CHUNKS:
 		var chunk_id: String = specification[0]
 		old_payloads[chunk_id] = document.find_chunk(chunk_id).decoded_payload.duplicate()
+
 	var old_compass := city.compass_rotation()
 	var rotated := CityRotation.apply(city, true)
 	_check(rotated.ok, "Counter-clockwise city rotation succeeds: %s" % rotated.error)
@@ -15772,12 +16469,14 @@ func _test_city_rotation(reference_root: String) -> void:
 	)
 	var restored := CityRotation.apply(city, false)
 	_check(restored.ok, "Inverse clockwise city rotation succeeds: %s" % restored.error)
+
 	for specification in CityRotation.REQUIRED_CHUNKS:
 		var chunk_id: String = specification[0]
 		_check(
 			document.find_chunk(chunk_id).decoded_payload == old_payloads[chunk_id],
 			"Opposite rotations restore %s bytes" % chunk_id,
 		)
+
 	var engine := Simulation.new(city, 1, 1, 1)
 	engine.ship_home = Vector2i(10, 20)
 	engine.pending_disaster_type = 1
@@ -15792,10 +16491,13 @@ func _test_city_rotation(reference_root: String) -> void:
 
 func _files_with_extension(directory: String, extension: String) -> PackedStringArray:
 	var paths := PackedStringArray()
+
 	for filename in DirAccess.get_files_at(directory):
 		if filename.get_extension().to_upper() == extension:
 			paths.append(directory.path_join(filename))
+
 	paths.sort()
+
 	return paths
 
 
@@ -15803,25 +16505,31 @@ func _filled_bytes(size: int, value: int) -> PackedByteArray:
 	var result := PackedByteArray()
 	result.resize(size)
 	result.fill(value)
+
 	return result
 
 
 func _brute_force_screen_to_tile(city: CityState, point: Vector2) -> Vector2i:
 	var result := Vector2i(-1, -1)
+
 	for diagonal in CityModel.MAP_SIZE * 2 - 1:
 		for y in diagonal + 1:
 			var x := diagonal - y
+
 			if x >= CityModel.MAP_SIZE or y >= CityModel.MAP_SIZE:
 				continue
+
 			if Geometry2D.is_point_in_polygon(
 				point, IsometricRenderer.terrain_surface_polygon(city, x, y)
 			):
 				result = Vector2i(x, y)
+
 	return result
 
 
 func _check(condition: bool, message: String) -> void:
 	checks += 1
+
 	if not condition:
 		failures += 1
 		printerr("FAIL: %s" % message)

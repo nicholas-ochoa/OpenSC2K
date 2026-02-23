@@ -1,8 +1,12 @@
 extends SceneTree
 
 class RecordingEngine extends SimulationEngine:
+
+
 	func advance_disaster_tick() -> Dictionary:
 		return {"ok": true}
+
+
 	func advance_moving_things(_current_time_msec := -1) -> Dictionary:
 		return {"ok": true}
 
@@ -11,14 +15,18 @@ var failures := 0
 var settings_path := "user://compatibility-test-%d.cfg" % OS.get_process_id()
 var save_path := "user://compatibility-test-%d.SC2" % OS.get_process_id()
 
+
 func _initialize() -> void:
 	call_deferred("_run")
 
+
 func check(ok: bool, message: String) -> void:
 	checks += 1
+
 	if not ok:
 		failures += 1
 		push_error(message)
+
 
 func _run() -> void:
 	check(not AppSettingsStore.load_values(settings_path).original_compatibility, "Existing defaults retain extensions")
@@ -36,15 +44,19 @@ func _run() -> void:
 	print("Original compatibility: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 
+
 func check_formats() -> void:
 	for edge in Sc2File.MAP_SIZES:
 		for native in [false, true]:
 			var doc := EmptyCityTemplate.create(edge)
+
 			if native:
 				doc.enable_full_resolution_maps()
+
 			var original: PackedByteArray = doc.serialize().data
 			check(OriginalCompatibility.document_error(doc, true).is_empty() == (edge == 128 and not native), "Format gate covers size and grid extensions")
 			check(OriginalCompatibility.document_error(doc, false).is_empty(), "Extensions remain available when mode is off")
+
 			if doc.is_extended():
 				var file := FileAccess.open(save_path, FileAccess.WRITE)
 				file.store_string("keep existing file")
@@ -55,7 +67,9 @@ func check_formats() -> void:
 				check(CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000", true).ok, "Save original city")
 				check(FileAccess.get_file_as_bytes(save_path) == original, "Original save stays byte-identical")
 				check(not CityFileStore.save_copy(doc, save_path + "x", "res://../references/SIMCITY2000", true).ok, "Strict mode rejects SC2X output extension")
+
 			check(doc.serialize().data == original, "Policy does not convert or mutate city")
+
 	var options := {"size": 512, "native_maps": true, "hills": 10}
 	check(OriginalCompatibility.terrain_options(options, true) == {"size": 128, "native_maps": false, "hills": 10}, "Creation options force original format")
 	check(options.size == 512 and options.native_maps, "Creation policy leaves caller options unchanged")
@@ -67,6 +81,7 @@ func check_formats() -> void:
 	doc.chunks.append(chunk)
 	check(CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000", true).ok, "Original unknown chunks remain supported")
 	check(Sc2File.load_path(ProjectSettings.globalize_path(save_path)).find_chunk("TEST").decoded_payload == chunk.decoded_payload, "Unknown original bytes survive")
+
 
 func check_fire_clock() -> void:
 	for disaster in [1, 12]:
@@ -81,6 +96,7 @@ func check_fire_clock() -> void:
 			var captured := SimulationSnapshot.capture(controller, null)
 			check(captured.original_compatibility == original, "Simulation snapshot retains compatibility")
 
+
 func check_ui() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
@@ -92,8 +108,10 @@ func check_ui() -> void:
 	main.set_process(false)
 	check(main.app_original_compatibility, "Startup loads compatibility preference")
 	check(main.new_city_dialog.native_maps_input.disabled and not main.new_city_dialog.native_maps_input.button_pressed, "New City disables native grids")
+
 	for index in main.new_city_dialog.size_input.item_count:
 		check(main.new_city_dialog.size_input.is_item_disabled(index) == (index != 0), "New City disables larger sizes")
+
 	main.new_city_dialog.size_input.select(3)
 	main.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
 	check(main._new_city_terrain_options().size == 128 and not main._new_city_terrain_options().native_maps, "Creation guard survives programmatic UI selection")
@@ -152,9 +170,11 @@ func check_ui() -> void:
 func check_reference_files(path: String) -> void:
 	for directory in DirAccess.get_directories_at(path):
 		check_reference_files(path.path_join(directory))
+
 	for filename in DirAccess.get_files_at(path):
 		if filename.get_extension().to_upper() not in ["SC2", "SCN"]:
 			continue
+
 		var doc := Sc2File.load_path(ProjectSettings.globalize_path(path.path_join(filename)))
 		var original := FileAccess.get_file_as_bytes(path.path_join(filename))
 		check(doc.is_valid() and OriginalCompatibility.document_error(doc, true).is_empty(), "Compatibility accepts supplied " + filename)

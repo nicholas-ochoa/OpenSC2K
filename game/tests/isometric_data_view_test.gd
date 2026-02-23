@@ -1,21 +1,31 @@
 extends SceneTree
 var failures := 0
 var checks := 0
+
+
 func _initialize() -> void:
 	call_deferred("_run")
+
+
 func check(ok: bool, label: String) -> void:
 	checks += 1
+
 	if not ok:
 		failures += 1
 		push_error(label)
+
+
 func _run() -> void:
 	for edge in Sc2File.MAP_SIZES:
 		for native in [false, true]:
 			var doc := EmptyCityTemplate.create(edge)
+
 			if native:
 				check(doc.enable_full_resolution_maps(), "Native fixture")
+
 			var city := CityState.from_document(doc)
 			var point := Vector2i(edge - 4, edge - 4)
+
 			for mode in CityDataView.CHUNKS:
 				var chunk := doc.find_chunk(CityDataView.CHUNKS[mode])
 				var data := chunk.decoded_payload.duplicate()
@@ -26,6 +36,7 @@ func _run() -> void:
 				var scale: int = edge / image.get_width()
 				check(roundi(image.get_pixel(point.y / scale, point.x / scale).r * 255) == 173, "Texture retains far value and column-major coordinates")
 				check(CityDataView.value(city, mode, point.x, point.y + 1) == (0 if native else 173), "Native/legacy resolution")
+
 			city.set_tile_flag(point.x, point.y, 0x80, true)
 			check(CityDataView.value(city, "power", point.x, point.y) == 1, "Powerable but not powered")
 			city.set_tile_flag(point.x, point.y, 0x40, true)
@@ -42,12 +53,15 @@ func _run() -> void:
 			check(arrays[Mesh.ARRAY_TEX_UV].size() == edge * edge * 4, "Every tile has border coordinates")
 			check(doc.serialize().data == before, "Rendering does not change city bytes")
 			print("PASS: data mesh %d native=%s" % [edge, native])
+
 	check_land_value_amounts()
 	check_height_and_walls()
 	await check_ui()
 	await check_shader()
 	print("Isometric data views: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
+
+
 func check_ui() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
@@ -61,12 +75,15 @@ func check_ui() -> void:
 	main._select_tool_group(16)
 	var center: Vector2 = main.map_view.source_center
 	var shared_mesh: ArrayMesh
+
 	for index in CityDataView.MODES.size():
 		var mode: String = CityDataView.MODES[index]
 		main._on_view_menu(index + 2)
 		check(main.overlay_mode == mode and main.map_view.data_view_mesh != null, "Menu opens isometric data view")
+
 		if shared_mesh != null and mode != "height":
 			check(main.map_view.data_view_mesh == shared_mesh, "All data modes share terrain geometry")
+
 		shared_mesh = main.map_view.data_view_mesh
 		check(main.view_menu.get_popup().is_item_checked(index + 2), "Selected menu check")
 		check(main.city_toolbar.data_view_input.selected == index + 1, "Sidebar follows view menu")
@@ -78,6 +95,7 @@ func check_ui() -> void:
 		check(main.map_view.data_view_mesh == mesh, "Unchanged data reuses mesh")
 		check(main.map_view.data_view_layer.visible and main.map_view.data_view_layer.material != null, "Grid shader is active")
 		check(doc.serialize().data == before, "View changes preserve saved city")
+
 	main.city_toolbar.data_view_input.item_selected.emit(1)
 	check(main.overlay_mode == "land_value", "Sidebar opens data view")
 	var old_mesh: ArrayMesh = main.map_view.data_view_mesh
@@ -87,8 +105,10 @@ func check_ui() -> void:
 	main._refresh_map(false)
 	check(main.map_view.data_view_mesh == old_mesh, "Changed simulation grid retains geometry")
 	check(main.map_view.data_view_signature == CityDataView.signature(main.city, "land_value"), "Updated texture tracks current data revision")
+
 	if DisplayServer.get_name() != "headless":
 		check(roundi(main.map_view.data_value_texture.get_image().get_pixel(20, 20).r * 255) == 255, "Changed grid uploads current value")
+
 	check(CityDataView.tile_text(main.city, "land_value", Vector2i(20, 20), true).contains("255 / 0xFF"), "Exact hover value")
 	main._select_tool_group(17)
 	check(main.overlay_mode == "land_value" and main.map_view.edit_enabled, "Center preserves data view")
@@ -103,15 +123,18 @@ func check_ui() -> void:
 	main.queue_free()
 	await process_frame
 
+
 func check_height_and_walls() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create())
 	var colors: Dictionary = {}
+
 	for level in 32:
 		city.set_land_altitude(level, 0, level)
 		check(CityDataView.value(city, "height", level, 0) == level, "Height uses the stored five bits")
 		check(CityDataView.tile_text(city, "height", Vector2i(level, 0)) == "Height: Level %d of 32" % (level + 1), "Height has one-based friendly levels")
 		check(CityDataView.tile_text(city, "height", Vector2i(level, 0), true).ends_with("(%d / 0x%02X)" % [level, level]), "Shift retains raw decimal and hex height")
 		colors[CityDataView.color(level, "height").to_rgba32()] = true
+
 	check(colors.size() == 32, "Every height has a distinct rainbow color")
 	var heights := CityDataView.value_image(city, "height")
 	check(roundi(heights.get_pixel(0, 31).r * 255) == 31, "Height texture retains highest land level")
@@ -137,9 +160,11 @@ func check_height_and_walls() -> void:
 	var wet_mesh := CityDataView.create_mesh(city, "height", true)
 	var wet_colors: PackedColorArray = wet_mesh.surface_get_arrays(0)[Mesh.ARRAY_COLOR]
 	var transparent_vertices := 0
+
 	for tint in wet_colors:
 		if tint.a < 0.9:
 			transparent_vertices += 1
+
 	check(transparent_vertices == 4, "Water has one transparent tile at its surface")
 	city.set_tile_flag(0, 0, 0x04, false)
 	city.set_terrain_id(0, 0, 0)
@@ -152,15 +177,19 @@ func check_height_and_walls() -> void:
 	var vertices: PackedVector2Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
 	# The left outer wall reaches ground at both ends, including beside a hidden wall.
 	var found_outer_wall := false
+
 	for first in range(0, vertices.size(), 4):
 		if uvs[first] == Vector2(254, 0) and vertices[first + 2].y > vertices[first + 1].y + 100:
 			check(vertices[first + 3].y > vertices[first].y + 100, "Outside wall has two full-height ends")
 			found_outer_wall = true
+
 	check(found_outer_wall, "Outside wall geometry is covered")
+
 
 func check_shader() -> void:
 	if DisplayServer.get_name() == "headless":
 		return
+
 	var viewport := SubViewport.new()
 	viewport.size = Vector2i(64, 64)
 	viewport.disable_3d = true
@@ -184,6 +213,7 @@ func check_shader() -> void:
 	viewport.add_child(layer)
 	material.set_shader_parameter("map_edge", 512.0)
 	var values := Image.create(512, 512, false, Image.FORMAT_R8)
+
 	for mode in CityDataView.MODES:
 		var number := 31 if mode == "height" else (2 if mode in ["water", "power"] else 255)
 		values.set_pixel(510, 511, Color(number / 255.0, 0, 0))
@@ -196,13 +226,16 @@ func check_shader() -> void:
 		var expected := CityDataView.color(number, mode)
 		check(absf(actual.r - expected.r) < 0.02 and absf(actual.g - expected.g) < 0.02 and absf(actual.b - expected.b) < 0.02, "GPU colors use the exact far tile: " + mode)
 		check(output.get_pixel(0, 32).get_luminance() < actual.get_luminance() * 0.8, "GPU tile borders remain visible: " + mode)
+
 	viewport.queue_free()
 	await process_frame
+
 
 func check_land_value_amounts() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create())
 	var cases := {0: "Land Value: $1,000 (Very low)", 63: "Land Value: $64,000 (Low)",
 		124: "Land Value: $125,000 (Medium)", 255: "Land Value: $256,000 (Very high)"}
+
 	for raw in cases:
 		var chunk := city.document.find_chunk("XVAL")
 		var data := chunk.decoded_payload.duplicate()

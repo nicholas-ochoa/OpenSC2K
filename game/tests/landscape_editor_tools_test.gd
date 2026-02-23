@@ -1,5 +1,6 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	var document := Sc2File.load_path(ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
 	var generated := NewCityTerrain.generate(document, false, false, 0, 0, 0, SimRandom.new(1), GameLcgRandom.new(1))
@@ -9,6 +10,7 @@ func _initialize() -> void:
 	var random := SimRandom.new(22)
 	var bytes: PackedByteArray = document.serialize().data
 	var funds := city.funds()
+
 	for tool in [Vector2i(0, 5), Vector2i(0, 6), Vector2i(0, 7), Vector2i(1, 2), Vector2i(1, 3)]:
 		var result := LandscapeEditorCommand.apply(city, tool.x, tool.y, Vector2i(60, 60), random, 3)
 		assert(result.ok, str(tool) + ": " + str(result.get("error")))
@@ -17,6 +19,7 @@ func _initialize() -> void:
 		assert(TerrainCommand.undo(city, result, random).ok)
 		assert(document.serialize().data == bytes)
 		assert(random.state == 22)
+
 	var forest := LandscapeCommand.apply_path(city, 1, 3, [Vector2i(60, 60)], random)
 	assert(forest.ok and forest.cost > 0)
 	assert(forest.tile_indices.size() >= 8 and forest.tile_indices.size() <= 20)

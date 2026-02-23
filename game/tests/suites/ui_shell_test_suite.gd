@@ -55,8 +55,10 @@ class DebugMetricsControl:
 
 	var query_count := 0
 
+
 	func _debug_metrics() -> Dictionary:
 		query_count += 1
+
 		return {"speed": "Paused"}
 
 
@@ -367,10 +369,13 @@ func _test_main_menu() -> void:
 	save_changes_dialog._ready()
 	save_changes_dialog.set_city("Starter City")
 	var has_discard_button := false
+
 	for child in save_changes_dialog.find_children("*", "Button", true, false):
 		var button := child as Button
+
 		if button != null and button.text == "Don't Save":
 			has_discard_button = true
+
 	_check(
 		save_changes_dialog.title == "Save Changes"
 		and save_changes_dialog.dialog_text
@@ -759,6 +764,7 @@ func _test_budget_dialog() -> void:
 		"Budget dialog owns funding and bond controls",
 	)
 	dialog.free()
+
 
 func _check(condition: bool, message: String) -> void:
 	check_callback.call(condition, message)

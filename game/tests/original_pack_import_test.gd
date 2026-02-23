@@ -1,4 +1,6 @@
 extends SceneTree
+
+
 func _initialize() -> void:
 	var folder := ProjectSettings.globalize_path("user://pack-import-test-%d" % OS.get_process_id())
 	var result := OriginalPackImporter.import_executable(ProjectSettings.globalize_path("res://../references/SIMCITY2000/SIMCITY.EXE"), folder)

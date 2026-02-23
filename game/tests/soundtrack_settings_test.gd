@@ -1,7 +1,9 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var path := "user://test_soundtrack_settings_%d.cfg" % OS.get_process_id()

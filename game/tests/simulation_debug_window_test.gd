@@ -4,14 +4,21 @@ class MetricsHost extends Control:
 	var simulation_timings := SimulationTimingHistory.new()
 	var queries := 0
 	var terrain_levels := 32
+
+
 	func _debug_set_visible_altitude_levels(value: int) -> void:
 		terrain_levels = value
+
+
 	func _debug_metrics() -> Dictionary:
 		queries += 1
+
 		return {"city_name": "Timing test", "date": "01/03/1900", "speed": "Paused"}
+
 
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var host := MetricsHost.new()

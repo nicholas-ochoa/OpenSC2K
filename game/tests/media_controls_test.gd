@@ -1,6 +1,10 @@
 extends SceneTree
+
+
 func _initialize() -> void:
 	call_deferred("_run")
+
+
 func _run() -> void:
 	var audio := CityAudioController.new()
 	root.add_child(audio)
@@ -25,8 +29,10 @@ func _run() -> void:
 	assert(bar.reports_label.text == "Playing: Test track")
 	bar.update_report_rotation(5.1)
 	assert(bar.reports_label.text == "News: Test report")
+
 	for tile in range(0xfb, 0xff):
 		assert(QueryNeighborhood.zoom_for_tile(tile) == 2.0)
+
 	assert(QueryNeighborhood.zoom_for_tile(0xc9) == 2.5)
 	assert(ToolSoundRules.success_events(2, 0) == [506])
 	assert(ToolSoundRules.success_events(2, 1) == [509])

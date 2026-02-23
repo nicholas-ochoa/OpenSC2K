@@ -1,17 +1,22 @@
 extends SceneTree
+
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	await check_texture_patch()
 	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT")
 	assert(sprites.is_valid())
 	var palette := Sc2Palette.index_encoding()
+
 	for edge in [128, 256, 384, 512]:
 		var city := CityState.from_document(EmptyCityTemplate.create(edge))
 		var before := CityIsometricRenderer.create_image(city, palette, sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 		assert(before.ok)
 		var dirty := PackedInt32Array()
+
 		for point in [Vector2i(edge - 10, edge - 10), Vector2i(edge / 2, edge - 20), Vector2i(4, 4)]:
 			city.set_building_id(point.x, point.y, 0x1d)
 			dirty.append(city.index_of(point.x, point.y))
@@ -21,8 +26,11 @@ func _run() -> void:
 			assert(patch.image.get_data() == full.image.get_data(), "Partial draw differs from full draw at %d" % edge)
 			before = full
 			dirty.clear()
+
 		print("PASS: far, middle, and near edit rendering at %d" % edge)
+
 	quit()
+
 
 func check_texture_patch() -> void:
 	var image := Image.create(8192, 64, false, Image.FORMAT_RGBA8)
@@ -38,7 +46,9 @@ func check_texture_patch() -> void:
 	assert(result == texture and tiles[0].texture == first and tiles[1].texture == second)
 	await process_frame
 	await process_frame
+
 	if DisplayServer.get_name() != "headless":
 		assert(first.get_image().get_pixel(5, 5) == Color.BLUE)
 		assert(second.get_image().get_pixel(904, 5) == Color.RED)
+
 	print("PASS: texture identity retained; pixel checks require native rendering")

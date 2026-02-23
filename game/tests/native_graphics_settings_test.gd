@@ -1,7 +1,9 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var path := "user://native-graphics-settings-test.cfg"
@@ -19,8 +21,10 @@ func _run() -> void:
 	var dialog := AppSettingsDialog.new()
 	root.add_child(dialog)
 	dialog.show_values(0.5, 0.5, false, "folder", values.graphics_folder, "gpu", false, values.zoom_graphics)
+
 	for selector in dialog.zoom_graphics_selectors:
 		assert(selector.item_count == 3)
+
 	assert(dialog.selected_values().graphics_source == "folder")
 	assert(dialog.selected_values().zoom_graphics == values.zoom_graphics)
 	dialog.queue_free()

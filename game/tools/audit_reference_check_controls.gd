@@ -10,16 +10,20 @@ func _initialize() -> void:
 	var source := CityUiGraphics.load_original("res://../references/SIMCITY2000")
 	assert(source.check_sheet.get_size() == Vector2i(70, 39) and source.check_system_colors)
 	var original_colors := [Color.BLACK, Color8(128, 0, 0), Color8(0, 128, 0), Color8(128, 128, 0), Color8(0, 0, 128), Color8(128, 0, 128), Color8(0, 128, 128), Color8(128, 128, 128), Color8(192, 192, 192), Color.RED, Color.GREEN, Color.YELLOW, Color.BLUE, Color.MAGENTA, Color.CYAN, Color.WHITE]
+
 	for cell in audit.cells:
 		var point := Vector2i(int(cell.column), int(cell.row))
 		var image := CheckControlGraphics.cell_image(source.check_sheet, point)
 		var indices := PackedByteArray()
+
 		for y in 13:
 			for x in 14:
 				var index := original_colors.find(image.get_pixel(x, y))
 				assert(index >= 0)
 				indices.append(index)
+
 		assert(_sha256(indices) == cell.sha256)
+
 	var directory := PeBitmapResource._load_resource_directory("res://../references/SIMCITY2000/SIMCITY.EXE")
 	var address := PeBitmapResource._rva_to_offset(directory.bytes, 0x4eac8c - 0x400000, directory.section_offset, directory.section_count)
 	assert(directory.bytes.slice(address, address + 11).get_string_from_ascii() == "CTL3D32.DLL")
@@ -30,4 +34,5 @@ func _initialize() -> void:
 func _sha256(bytes: PackedByteArray) -> String:
 	var hash := HashingContext.new()
 	assert(hash.start(HashingContext.HASH_SHA256) == OK and hash.update(bytes) == OK)
+
 	return hash.finish().hex_encode()

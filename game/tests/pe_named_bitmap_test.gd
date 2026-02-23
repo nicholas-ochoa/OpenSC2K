@@ -10,27 +10,40 @@ func _initialize() -> void:
 	bytes.encode_u32(116, 0x800000c0)
 	bytes.encode_u32(120, 7)
 	bytes.encode_u32(124, 0x800000d0)
+
 	for name in ["ADVICEU", "城🏙"]:
 		var encoded: PackedByteArray = name.to_utf16_buffer()
 		bytes.encode_u16(192, encoded.size() / 2)
+
 		for i in encoded.size():
 			bytes[194 + i] = encoded[i]
+
 		bytes[194 + encoded.size()] = 0xff # Names are length-prefixed, not terminated.
 		assert(PeBitmapResource._named_child_directory(bytes, 64, 96, name) == 256)
 		assert(PeBitmapResource._named_child_directory(bytes, 64, 96, "missing") == -1)
 		assert(PeBitmapResource._named_child_directory(bytes, 64, 96, "7") == -1)
 		assert(PeBitmapResource._numeric_child_directory(bytes, 64, 96, 7) == 272)
+
 		for length in 272:
 			assert(PeBitmapResource._named_child_directory(bytes.slice(0, length), 64, 96, name) == -1)
+
 	for change in ["entry_count", "name_offset", "name_length", "leaf_target", "target_offset"]:
 		var bad := bytes.duplicate()
+
 		match change:
-			"entry_count": bad.encode_u16(108, 0xffff)
-			"name_offset": bad.encode_u32(112, 0xffffffff)
-			"name_length": bad.encode_u16(192, 0xffff)
-			"leaf_target": bad.encode_u32(116, 192)
-			"target_offset": bad.encode_u32(116, 0xffffffff)
+			"entry_count":
+				bad.encode_u16(108, 0xffff)
+			"name_offset":
+				bad.encode_u32(112, 0xffffffff)
+			"name_length":
+				bad.encode_u16(192, 0xffff)
+			"leaf_target":
+				bad.encode_u32(116, 192)
+			"target_offset":
+				bad.encode_u32(116, 0xffffffff)
+
 		assert(PeBitmapResource._named_child_directory(bad, 64, 96, "城🏙") == -1, change)
+
 	# Independent ImageMagick decoding of read-only in-memory DIBs produced these hashes.
 	var expected := {
 		"ADVICED": "ac6c2f888d87a64906e1089abd66a601c993a94d0b3511af2ba0b031fb777a08",
@@ -49,6 +62,7 @@ func _initialize() -> void:
 		"PAPERCLOSEU": "8c180ef106f593993430dfb47cbb2bcb888cafd6c1d52b796e7080bd3d1e8f14",
 	}
 	var path := "res://../references/SIMCITY2000/SIMCITY.EXE"
+
 	for name in expected:
 		var result := PeBitmapResource.load_named(path, name)
 		assert(result.ok, str(result.error))
@@ -57,8 +71,10 @@ func _initialize() -> void:
 		var hash := HashingContext.new()
 		assert(hash.start(HashingContext.HASH_SHA256) == OK and hash.update(image.get_data()) == OK)
 		assert(hash.finish().hex_encode() == expected[name], "named bitmap decoder agreement: " + name)
+
 	for name in ["", "adviceu", "MISSING", "2"]:
 		assert(not PeBitmapResource.load_named(path, name).ok)
+
 	assert(PeBitmapResource.load_numeric(path, 2).ok)
 	print("PASS: exact UTF-16 resource names, root-relative offsets, numeric separation, all truncated prefixes, malformed directories and all 14 supplied named bitmaps against independent RGBA hashes")
 	quit()

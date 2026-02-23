@@ -1,13 +1,16 @@
 extends SceneTree
 var failures := 0
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func check(ok: bool, message: String) -> void:
 	if not ok:
 		failures += 1
 		push_error(message)
+
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()

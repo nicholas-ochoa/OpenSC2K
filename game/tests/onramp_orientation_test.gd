@@ -6,11 +6,14 @@ const CASES := [[1, 0, 0x5f], [3, 0, 0x5e], [0, 1, 0x5d], [2, 1, 0x60],
 var failures := 0
 var checks := 0
 
+
 func check(ok: bool, label: String) -> void:
 	checks += 1
+
 	if not ok:
 		failures += 1
 		push_error(label)
+
 
 func _initialize() -> void:
 	for edge in [128, 256, 384, 512]:
@@ -27,11 +30,13 @@ func _initialize() -> void:
 			check(command.ok and city.building_id(point.x, point.y) == entry[2], "Correct ramp for %s" % [entry])
 			check(city.is_flipped(point.x, point.y) == (entry[1] % 2 == 0), "Correct mirror")
 			check(city.funds() == 75 and city.building_id(road.x, road.y) == 0x2b, "Cost and adjacent road")
+
 			for ccw in [false, true]:
 				var rotated := CityState.from_document(city.document.duplicate_document())
 				var rotated_point := point
 				var rotated_highway := highway
 				var rotated_road := road
+
 				for turn in 4:
 					check(CityRotationCommand.apply(rotated, ccw).ok, "Rotate ramp")
 					rotated_point = CityRotationCommand.rotate_point(rotated_point, edge, ccw)
@@ -41,6 +46,8 @@ func _initialize() -> void:
 					var rd := OnrampCommand.DIRECTIONS.find(rotated_road - rotated_point)
 					check(rotated.building_id(rotated_point.x, rotated_point.y) == OnrampCommand._ramp_tile(1 << hd, rd), "Rotation agrees with placement")
 					check(rotated.is_flipped(rotated_point.x, rotated_point.y) == (rd % 2 == 0), "Rotated mirror agrees with placement")
+
 			check(OnrampCommand.undo(city, command).ok and city.document.serialize().data == before, "Exact ramp Undo")
+
 	print("On-ramp orientation: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)

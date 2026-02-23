@@ -14,8 +14,10 @@ func _run() -> void:
 	_test_settings()
 	var source := GameAssetSource.load_source(MISSING_ROOT, "auto")
 	assert(not source.error.is_empty() and source.assets == null)
+
 	for mode in ["original", "invalid", "folder"]:
 		assert(not GameAssetSource.load_source(MISSING_ROOT, mode).error.is_empty())
+
 	var original := GameAssetSource.load_source(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), "original", "", "res://../ext/graphics")
 	assert(original.error.is_empty(), original.error)
 	_test_generated_mif(original.assets)
@@ -28,9 +30,12 @@ func _run() -> void:
 func _test_generated_cities() -> void:
 	var template := EmptyCityTemplate.create()
 	assert(template.is_valid() and template.source_path.is_empty())
+
 	for chunk in template.chunks:
 		assert(chunk.decoded_payload.size() == Sc2File.DECODED_SIZES[chunk.chunk_id])
+
 	var unchanged: PackedByteArray = template.serialize().data
+
 	for difficulty in range(1, 4):
 		for year in NewCitySetup.STARTING_YEARS:
 			var made := NewCitySetup.create(template, "Independent", "Builder", difficulty, year, SimRandom.new(1))
@@ -42,6 +47,7 @@ func _test_generated_cities() -> void:
 			assert(city.document.misc_u32(0x14) == (20000 if difficulty == 1 else 10000))
 			assert(city.document.misc_u32(0x18) == (1 if difficulty == 3 else 0))
 			_round_trip_city(made.document)
+
 	assert(template.serialize().data == unchanged)
 	assert(template.misc_u32(0x1008) == 0 and template.misc_u32(0x1010) == 0)
 	assert(template.misc_u32(0x1040) == 0)
@@ -53,14 +59,18 @@ func _test_generated_cities() -> void:
 	assert(preview.ok, str(preview))
 	var made := session.create_city(MISSING_ROOT.path_join("DEFAULT.SC2"), "Coast", "Mayor", 1, 1900, options, PackedByteArray())
 	assert(made.ok, str(made))
+
 	for chunk_id in ["ALTM", "XTER", "XBLD", "XUND", "XZON"]:
 		assert(made.document.find_chunk(chunk_id).decoded_payload == preview.document.find_chunk(chunk_id).decoded_payload)
+
 	var city := CityState.from_document(made.document)
 	city.set_auto_budget_enabled(true)
 	var simulation := SimulationEngine.new(city, 1, 1, 1)
+
 	for day in 300:
 		var advanced := simulation.advance_day()
 		assert(advanced.ok, str(advanced))
+
 	assert(city.age_in_days() == 300 and city.current_year() == 1901)
 	_round_trip_city(city.document)
 	var path := ProjectSettings.globalize_path("user://independent-city-%d.SC2" % OS.get_process_id())
@@ -101,6 +111,7 @@ func _test_generated_mif(assets: OriginalGameAssets) -> void:
 	var restored := ScurkMif.new()
 	assert(restored.parse(encoded.bytes), restored.parse_error)
 	assert(restored.to_bytes().bytes == encoded.bytes)
+
 	for sprite_id in combined.entries_by_id:
 		var expected := combined.find_sprite(sprite_id)
 		var actual := restored.archive.find_sprite(sprite_id)
@@ -120,10 +131,12 @@ func _test_main() -> void:
 	assert(main.audio_controller.original_media_enabled)
 	main._open_settings_dialog()
 	assert(main.settings_dialog.visible)
+
 	for mode in GameAssetSource.MODES:
 		main.settings_dialog.show_values(0.2, 0.4, false, mode, "user://example-pack")
 		assert(main.settings_dialog.selected_values().graphics_source == ("folder" if mode == "folder" else "auto"))
 		assert(main.settings_dialog.folder_row.visible)
+
 	main.settings_dialog.hide()
 	main._open_new_city_dialog()
 	assert(main.new_city_dialog.visible and main.new_city_session.preview_document != null)

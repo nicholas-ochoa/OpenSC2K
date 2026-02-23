@@ -1,6 +1,10 @@
 extends SceneTree
+
+
 func _initialize() -> void:
 	call_deferred("run")
+
+
 func run() -> void:
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", "/tmp/no-city-assets")
 	var main = (load("res://main.tscn") as PackedScene).instantiate()

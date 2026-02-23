@@ -1,7 +1,9 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
@@ -13,9 +15,11 @@ func _run() -> void:
 	main.map_view.zoom_factor = 0.25
 	assert(main._activate_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x")))
 	var deadline := Time.get_ticks_msec() + 30000
+
 	while not main.region_cache.ready() and Time.get_ticks_msec() < deadline:
 		main._poll_region_cache()
 		await process_frame
+
 	assert(main.region_cache.ready())
 	main._refresh_moving_things(main._city_view_size())
 	var sign_scans: int = main.map_view.debug_metrics().sign_scans
@@ -31,9 +35,11 @@ func _run() -> void:
 	assert(not previous.is_empty())
 	main.sign_foreground_cache.clear()
 	main._refresh_sign_occlusion(main._city_view_size())
+
 	for key in previous:
 		assert(main.map_view.sign_occlusion_visuals[key].texture == previous[key].texture, "Identical pixels caused another texture upload")
 		assert(main.map_view.sign_occlusion_visuals[key].indices == previous[key].indices)
+
 	var key: int = previous.keys()[0]
 	# Simulate a retained foreground from an earlier region with different pixels.
 	var stale: Image = previous[key].indices.duplicate()

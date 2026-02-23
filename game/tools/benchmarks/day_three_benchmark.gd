@@ -1,8 +1,11 @@
 extends SceneTree
+
+
 ## Read-only SC2X day-3 worker profile. Pass a city path after --.
 ## Headless frame admission costs exclude rendering and GPU work.
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var args := OS.get_cmdline_user_args()
@@ -21,12 +24,14 @@ func _run() -> void:
 	var started := Time.get_ticks_usec()
 	var result := runner.advance_time(200, 200)
 	max_call_usec = Time.get_ticks_usec() - started
+
 	while runner.is_pending():
 		await create_timer(1.0 / 60.0).timeout
 		var frame_started := Time.get_ticks_usec()
 		result = runner.advance_time(0, 200)
 		max_call_usec = maxi(max_call_usec, Time.get_ticks_usec() - frame_started)
 		frames += 1
+
 	assert(result.ok and result.day_results.size() == 1)
 	assert(int(result.day_results[0].day) % 25 == 2)
 	print(JSON.stringify({"edge": city.map_size, "frames_while_pending": frames,

@@ -1,16 +1,24 @@
 extends SceneTree
+
+
 func _initialize() -> void:
 	call_deferred("_run")
+
+
 func _run() -> void:
 	var motion := CityCameraMotion.new()
 	var moved := Vector2.ZERO
+
 	for frame in 60:
 		moved += motion.step(Vector2.RIGHT, 1.0 / 60.0)
+
 	assert(motion.velocity == Vector2.RIGHT * motion.SPEED)
 	assert(moved.x > 500 and moved.x < 650)
 	assert(motion.step(Vector2.ZERO, 1.0 / 60.0).x > 0, "Release should have brief momentum")
+
 	for frame in 10:
 		motion.step(Vector2.ZERO, 1.0 / 60.0)
+
 	assert(motion.velocity.is_zero_approx())
 	motion.step(Vector2.ONE, 1.0)
 	assert(motion.velocity.length() <= motion.SPEED)
@@ -19,19 +27,25 @@ func _run() -> void:
 	# Hold a key for several seconds without sending repeat events.
 	motion.press(KEY_W)
 	var first_speed := motion.step(motion.held_direction(), 1.0 / 60.0).length()
+
 	for frame in 180:
 		assert(motion.step(motion.held_direction(), 1.0 / 60.0).y < 0)
+
 	assert(motion.velocity.length() > first_speed * 60.0)
 	motion.press(KEY_D)
 	assert(is_equal_approx(motion.held_direction().length(), 1.0))
 	motion.release(KEY_W)
 	assert(motion.held_direction() == Vector2.RIGHT)
+
 	for frame in 60:
 		motion.step(motion.held_direction(), 1.0 / 60.0)
+
 	motion.release(KEY_D)
 	assert(motion.step(motion.held_direction(), 1.0 / 60.0).x > 0)
+
 	for frame in 12:
 		motion.step(motion.held_direction(), 1.0 / 60.0)
+
 	assert(motion.velocity == Vector2.ZERO)
 	motion.press(KEY_A)
 	motion.step(motion.held_direction(), 0.016, false)
@@ -78,8 +92,10 @@ func _run() -> void:
 	assert(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_SETTINGS) >= 0)
 	main._on_options_menu(CityMenuBar.MENU_SETTINGS)
 	assert(main.settings_dialog.visible)
+
 	for menu_index in main.options_menu.get_popup().item_count:
 		assert(main.options_menu.get_popup().get_item_text(menu_index) != "Renderer")
+
 	assert(not main._camera_keys_allowed())
 	main.settings_dialog.background_audio_check.button_pressed = true
 	assert(main.settings_dialog.selected_values().background_audio)
@@ -93,12 +109,16 @@ func _run() -> void:
 	main.query_dialog._enable_rename()
 	main.query_dialog.name_input.text = "North Police"
 	assert(main.query_dialog.facility_name() == "North Police")
+
 	if "--preview" in OS.get_cmdline_user_args():
 		main.query_dialog.name_input.editable = false
 		main.query_dialog.ok_button.grab_focus()
-		main.map_view.viewport_changed.connect(func() -> void: print("CAMERA center=%s zoom=%d" % [main.map_view.source_center, main.map_view.zoom_percent()]))
+		main.map_view.viewport_changed.connect(func() -> void:
+			print("CAMERA center=%s zoom=%d" % [main.map_view.source_center, main.map_view.zoom_percent()]))
 		print("PREVIEW ready center=%s" % main.map_view.source_center)
+
 		return
+
 	main.query_dialog.close_query()
 	main.queue_free()
 	await process_frame

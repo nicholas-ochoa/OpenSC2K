@@ -21,8 +21,10 @@ func _initialize() -> void:
 	assert(round_trip.ok and round_trip.pixels == decoded.pixels)
 	assert(round_trip.palette.colors == decoded.palette.colors)
 	var all_indices := PackedInt32Array()
+
 	for index in 256:
 		all_indices.append(index)
+
 	var opaque := Codec.encode(256, 1, all_indices, decoded.palette)
 	assert(opaque.ok and Codec.decode(opaque.bytes).pixels == all_indices)
 	all_indices.append(-1)

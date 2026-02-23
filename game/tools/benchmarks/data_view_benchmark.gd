@@ -1,7 +1,11 @@
 extends SceneTree
+
+
 ## CPU geometry and texture-update timings. Use --audio-driver Dummy.
 func _initialize() -> void:
 	call_deferred("_run")
+
+
 func _run() -> void:
 	for edge in [128, 256, 384, 512]:
 		var document := EmptyCityTemplate.create(edge)
@@ -16,6 +20,7 @@ func _run() -> void:
 		var mesh := view.data_view_mesh
 		print("data_view edge=%d initial_ms=%.2f vertices=%d" % [edge, (Time.get_ticks_usec() - start) / 1000.0, mesh.surface_get_array_len(0)])
 		var refresh_usec := 0
+
 		for iteration in 20:
 			var chunk := document.find_chunk("XVAL")
 			var data := chunk.decoded_payload.duplicate()
@@ -25,6 +30,8 @@ func _run() -> void:
 			view.set_data_view(city, "land_value")
 			refresh_usec += Time.get_ticks_usec() - start
 			assert(view.data_view_mesh == mesh)
+
 		print("data_view edge=%d refresh_ms=%.4f mesh_reused=true" % [edge, refresh_usec / 20000.0])
 		view.free()
+
 	quit()

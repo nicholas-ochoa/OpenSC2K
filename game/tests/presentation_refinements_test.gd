@@ -1,7 +1,9 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
@@ -13,11 +15,13 @@ func _run() -> void:
 	var panel: PanelContainer = main.main_menu.new_city_button.get_parent().get_parent()
 	assert(is_equal_approx(panel.size.y, panel.get_combined_minimum_size().y))
 	var background: MainMenuCityBackground = main.main_menu.city_background
+
 	for stretch in [0.5, 1.0, 2.0, 2.5, 3.0, 4.0, 6.0, 8.0]:
 		for shot in 4:
 			var zoom := MainMenuCityBackground.camera_zoom(shot, stretch)
 			assert(zoom >= 0.5, "Menu city zoom must stay at or above 50%")
 			assert(is_equal_approx(zoom * stretch, roundf(zoom * stretch)))
+
 	assert(MainMenuCityBackground.SHOT_MAGNIFICATIONS[0] > MainMenuCityBackground.SHOT_MAGNIFICATIONS[1])
 	assert(MainMenuCityBackground.SHOT_MAGNIFICATIONS[1] > MainMenuCityBackground.SHOT_MAGNIFICATIONS[2])
 	assert(background.city_name_label.text == background.demo_city.city_name())
@@ -25,6 +29,7 @@ func _run() -> void:
 	assert(background.city_name_label.get_theme_color("font_shadow_color").a > 0.9)
 	assert(background.city_name_label.anchor_bottom == 1.0 and background.city_name_label.anchor_left == 0.0)
 	var magnifications := {}
+
 	for time in [0.0, 0.017, 24.0, 48.0, 72.0]:
 		background.elapsed = time
 		var camera := background._camera()
@@ -34,6 +39,7 @@ func _run() -> void:
 		var position: Vector2 = camera.offset * pixel_scale
 		assert(position.is_equal_approx(position.round()))
 		magnifications[roundi(magnification)] = true
+
 	assert(magnifications.has(1) and magnifications.has(2) and magnifications.has(3))
 	main._open_new_city_dialog()
 	main._create_new_city_unchecked()
@@ -81,10 +87,12 @@ func _run() -> void:
 	print("PASS: fitted menu, pixel-aligned wide and close shots, enabled landscape tools, founding sound and paper, paused reading and opening music, HTML-only content, and separate tunnel/subway cutoff depths")
 	quit()
 
+
 func _cutaway(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> Image:
 	var image := Image.create(256, 256, false, Image.FORMAT_RGBA8)
 	image.fill(Color.TRANSPARENT)
 	var configuration := CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE).duplicate()
 	configuration.top_margin = 128
 	CityUndergroundView._draw_tile(image, city, palette, sprites, {}, configuration, 128, 5, 5, false, true)
+
 	return image

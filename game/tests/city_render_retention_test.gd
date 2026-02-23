@@ -1,7 +1,9 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var view := CityMapControl.new()
@@ -62,6 +64,7 @@ func _run() -> void:
 	print("PASS: GPU node retention, changed mesh replacement, eviction and foreground input ownership")
 	quit()
 
+
 func _check_sign_layout_tokens(view: CityMapControl) -> void:
 	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
 	view.set_city_view(city, view.city_texture, null, false, true, [1])
@@ -78,9 +81,11 @@ func _check_sign_layout_tokens(view: CityMapControl) -> void:
 	view._invalidate_sign_entries()
 	assert(view._external_sign_layout_token.is_empty())
 
+
 func _source(meshes: Array) -> Texture2D:
 	var result := PlaceholderTexture2D.new()
 	result.size = Vector2(1024, 1024)
 	result.set_meta("map_tiles", [])
 	result.set_meta("map_meshes", meshes)
+
 	return result

@@ -1,17 +1,22 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	root.add_child(main)
 	await process_frame
 	var background := main.main_menu.city_background as MainMenuCityBackground
+
 	for frame in 300:
 		if background.demo_texture != null:
 			break
+
 		await create_timer(0.02).timeout
+
 	assert(background.demo_texture != null)
 	var revision := background.animation_revision
 	var before_source := FileAccess.get_file_as_bytes(background.source_path)
@@ -28,6 +33,7 @@ func _run() -> void:
 	assert(not main.city_toolbar.toolbar_buttons[6].visible)
 	assert(not main.city_toolbar.child_tool_buttons.has(4))
 	assert(main.city_toolbar.child_tool_buttons[2].text == "Raise Terrain")
+
 	for subtool in [1, 2, 3]:
 		main._select_subtool(subtool)
 		assert(main.map_view.shift_rectangle_enabled)
@@ -39,10 +45,13 @@ func _run() -> void:
 		main.map_view._shift_pressed = false
 		main.map_view._rebuild_selection_path()
 		assert(main.map_view.selection_path.size() == 6)
+
 	main.map_view._clear_selection()
+
 	for subtool in [6, 7]:
 		var expected := TerrainToolIcons.terrain_action(main.asset_source.assets.city_ui_graphics, "sea_raise" if subtool == 6 else "sea_lower")
 		assert(main._tool_button_icon(0, subtool).get_image().get_data() == expected.get_image().get_data())
+
 	var funds: int = main.city.funds()
 	var day: int = main.city.age_in_days()
 	main._process(0.5)
@@ -70,10 +79,12 @@ func _run() -> void:
 	main._debug_set_visible_altitude_levels(1)
 	assert(main.city.visible_altitude_levels == 1)
 	var hidden := 0
+
 	for x in 128:
 		for y in 128:
 			if not main.city.tile_is_visible(x, y):
 				hidden += 1
+
 	assert(hidden > 0)
 	var cutaway := CityIsometricRenderer.create_image(main.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	assert(all_levels.ok and cutaway.ok and all_levels.image.get_data() != cutaway.image.get_data())
@@ -95,12 +106,14 @@ func _run() -> void:
 	bridge.preview_palette = main.palette
 	bridge.preview_sprites = main.large_sprites
 	var images := {}
+
 	for type in [2, 3, 4, 5, 6]:
 		var texture := bridge.preview_image("highway" if type >= 5 else "network", type)
 		assert(texture != null)
 		var signature := hash(texture.get_image().get_data())
 		assert(not images.has(signature))
 		images[signature] = true
+
 	main._open_scurk_dialog()
 	await process_frame
 	await process_frame

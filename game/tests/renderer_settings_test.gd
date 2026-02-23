@@ -1,7 +1,9 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var path := "user://renderer_settings_%d.cfg" % OS.get_process_id()
@@ -34,8 +36,10 @@ func _run() -> void:
 	main._set_city_renderer("gpu")
 	assert(not main.region_cache.gpu_enabled)
 	assert(main.city.document.serialize().data == before, "Changing renderer altered saved data")
+
 	for menu_index in main.options_menu.get_popup().item_count:
 		assert(main.options_menu.get_popup().get_item_text(menu_index) != "Renderer")
+
 	main.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))

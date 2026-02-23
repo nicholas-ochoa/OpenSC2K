@@ -3,8 +3,10 @@ extends SceneTree
 const Fixture = preload("res://tests/indexed_png_test.gd")
 var folder := ""
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	folder = "user://scurk-png-%d" % OS.get_process_id()
@@ -30,10 +32,13 @@ func _run() -> void:
 	assert(editor.load_path("res://../references/SIMCITY2000/SCURKART/ORIGINAL.MIF").ok)
 	assert(editor.import_bmp_dialog.filters[0].contains("*.PNG"))
 	pixels.resize(32 * 8)
+
 	for index in pixels.size():
 		pixels[index] = 171 if index % 2 == 0 else 172
+
 	_write(path, IndexedPng.encode(32, 8, pixels, assets.palette).bytes)
 	var source_hash := FileAccess.get_sha256(path)
+
 	for view in 3:
 		editor.current_view = view
 		editor._refresh_sprite()
@@ -54,6 +59,7 @@ func _run() -> void:
 		editor.redo()
 		assert(editor.tile_set.to_bytes().bytes == after)
 		editor.undo()
+
 	assert(FileAccess.get_sha256(path) == source_hash)
 	var before_bad: PackedByteArray = editor.tile_set.to_bytes().bytes
 	pixels.resize(129)
@@ -71,10 +77,12 @@ func _run() -> void:
 	print("PASS: indexed PNG depths, transparency, duplicate indices, remapping, all SCURK views, exact Undo/Redo and invalid imports")
 	quit()
 
+
 func _write(path: String, bytes: PackedByteArray) -> void:
 	var file := FileAccess.open(path, FileAccess.WRITE)
 	file.store_buffer(bytes)
 	file.close()
+
 
 # Independent Python struct/zlib fixtures with two palette entries.
 func _test_small_palettes() -> void:

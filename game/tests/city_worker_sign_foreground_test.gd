@@ -1,15 +1,19 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
 	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
 	var palette := Sc2Palette.index_encoding()
+
 	for edge in [128, 512]:
 		var path := "res://../references/SIMCITY2000/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-512.sc2x"
 		var city := CityState.from_document(Sc2File.load_path(path))
+
 		for view in [0, 1, 2]:
 			var sprites := large if view == 2 else small
 			var cache := CityRegionCache.new()
@@ -23,19 +27,25 @@ func _run() -> void:
 			])
 			cache.update_viewport(Rect2(bounds).grow(64))
 			var deadline := Time.get_ticks_msec() + 30000
+
 			while not cache.ready() and Time.get_ticks_msec() < deadline:
 				cache.tick()
 				assert(cache.last_error.is_empty())
 				await process_frame
+
 			assert(cache.ready())
 			var masks: Array[Dictionary] = []
 			var images := {}
+
 			for command in cache.occlusion_candidates(bounds):
 				var mask := CityIsometricRenderer._sprite_image(sprites, palette, images, command.sprite_id, command.flip)
+
 				if cache.divisor > 1:
 					mask = mask.duplicate()
 					mask.resize(mask.get_width() * cache.divisor, mask.get_height() * cache.divisor, Image.INTERPOLATE_NEAREST)
+
 				masks.append({"image": mask, "position": command.position * cache.divisor})
+
 			var expected := CitySignForeground.static_pixels(cache.image_region(bounds), masks, bounds)
 			var actual := cache.sign_foreground(1, bounds, -1)
 			assert(actual != null and actual.get_data() == expected.get_data(), "Worker sign pixels differ from main-thread output")
@@ -43,5 +53,6 @@ func _run() -> void:
 			assert(cache.sign_foreground(1, bounds, 99) == null)
 			assert(cache.sign_foreground(1, Rect2i(bounds.position, Vector2i(1, 1)), -1) == null)
 			cache.close()
+
 	print("PASS: worker sign masks match main-thread composition across borders, zoom scaling, empty masks and stale requests")
 	quit()

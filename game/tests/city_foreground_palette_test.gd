@@ -1,8 +1,10 @@
 extends SceneTree
 const ForegroundPalette = preload("res://src/view/city_foreground_palette.gd")
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	var viewport := SubViewport.new()
@@ -28,6 +30,7 @@ func _run() -> void:
 		canvas.draw_texture_rect(texture, Rect2(8, 0, 4, 4), false)
 	)
 	canvas.queue_redraw()
+
 	if DisplayServer.get_name() != "headless":
 		await RenderingServer.frame_post_draw
 		var actual := viewport.get_texture().get_image()
@@ -43,6 +46,7 @@ func _run() -> void:
 		print("PASS: GPU foreground palette pixels, normal overlay colors, transparency and retained animation")
 	else:
 		print("PASS: foreground palette material setup; pixel checks require native rendering")
+
 	viewport.queue_free()
 	await process_frame
 	quit()

@@ -113,6 +113,7 @@ func _test_population_window(reference_root: String) -> void:
 
 func _test_industry_window(reference_root: String) -> void:
 	var document := Sc2Document.load_path(reference_root.path_join("DEFAULT.SC2"))
+
 	for industry in IndustryView.INDUSTRY_COUNT:
 		var offset := 0x016c + industry * 0x0c
 		_check(
@@ -127,6 +128,7 @@ func _test_industry_window(reference_root: String) -> void:
 			document.set_misc_u32(offset + 8, (industry + 1) * 100),
 			"Industry-window fixture sets ratio %d" % industry,
 		)
+
 	_check(
 		document.set_misc_i32(0x077c + 2 * 0x006c + 4, 7),
 		"Industry-window fixture sets city tax",
@@ -162,11 +164,13 @@ func _test_industry_window(reference_root: String) -> void:
 	)
 	var changed_all := IndustryView.set_tax_rate(city, 0, 99, true)
 	var all_clamped: bool = changed_all.ok and changed_all.value == 20
+
 	for industry in IndustryView.INDUSTRY_COUNT:
 		all_clamped = (
 			all_clamped
 			and document.misc_i32(0x016c + industry * 0x0c + 4) == 20
 		)
+
 	_check(all_clamped, "Industry window clamps and changes all tax rates")
 	_check(
 		not IndustryView.set_tax_rate(city, 11, 5).ok,
@@ -177,12 +181,14 @@ func _test_industry_window(reference_root: String) -> void:
 		PackedInt32Array(range(422, 433)),
 	)
 	var all_names: bool = names.get("ok", false) and names.strings.size() == 11
+
 	if all_names:
 		for resource_id in range(422, 433):
 			all_names = (
 				all_names
 				and not str(names.strings.get(resource_id, "")).is_empty()
 			)
+
 	_check(all_names, "Supplied executable contains all eleven industry labels")
 	var icons := PeBitmap.load_numeric(reference_root.path_join("SIMCITY.EXE"), 178)
 	var icon_image: Image = icons.get("image") as Image
@@ -198,23 +204,27 @@ func _test_simnation_window(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x0050, 123456), "SimNation fixture sets national population")
 	_check(document.set_misc_u32(0x1020, 200), "SimNation fixture sets arcology population")
 	_check(document.set_misc_u32(0x102c, 1000), "SimNation fixture sets normal population")
+
 	for tile_id in range(0xfb, 0xff):
 		_check(
 			document.set_misc_i32(0x01f0 + tile_id * 4, 0),
 			"SimNation fixture clears arcology count %d" % tile_id,
 		)
+
 	_check(
 		document.set_misc_i32(0x01f0 + 0xfb * 4, 141 * 16),
 		"SimNation fixture sets large arcology count",
 	)
 	var name_indices := PackedInt32Array([1, 2, 0, 36])
 	var populations := PackedInt32Array([1999, 2000, 50000, 100000])
+
 	for index in 4:
 		var offset := 0x06d8 + index * 0x10
 		_check(document.set_misc_i32(offset, name_indices[index]), "SimNation fixture sets name %d" % index)
 		_check(document.set_misc_u32(offset + 4, populations[index]), "SimNation fixture sets population %d" % index)
 		_check(document.set_misc_u32(offset + 8, 3000 + index), "SimNation fixture sets value %d" % index)
 		_check(document.set_misc_u32(offset + 12, 4000 + index), "SimNation fixture sets fame %d" % index)
+
 	var city := CityModel.from_document(document)
 	var data := SimNationView.snapshot(city)
 	_check(
@@ -363,6 +373,7 @@ func _test_ordinance_window(reference_root: String) -> void:
 		and Ordinances.compact_amount(9999999) == "10m",
 		"Ordinance amounts use the recovered compact-number boundaries",
 	)
+
 
 func _check(condition: bool, message: String) -> void:
 	check_callback.call(condition, message)

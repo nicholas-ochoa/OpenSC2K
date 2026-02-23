@@ -1,7 +1,14 @@
 extends SceneTree
 class QuietRandom extends RefCounted:
-	func next_u15() -> int: return 1
-	func next_mod(_limit: int) -> int: return 1
+
+
+	func next_u15() -> int:
+		return 1
+
+
+	func next_mod(_limit: int) -> int:
+		return 1
+
 
 func _initialize() -> void:
 	for direction in 8:
@@ -21,6 +28,7 @@ func _initialize() -> void:
 		assert(not ShipThingTick._move(text, things, 0, direction))
 		assert(things[0] == 0, "Ship failed to leave at a map edge or corner")
 		assert(text[point.x * 128 + point.y] == 42, "Restore the tile's saved text marker")
+
 		for state in [0, 4]:
 			things[0] = 3
 			things[1] = direction
@@ -36,5 +44,6 @@ func _initialize() -> void:
 			ShipThingTick.update(blank, blank, water, text, things, 0, point, QuietRandom.new(), QuietRandom.new(), counters)
 			assert(things[0] == 0 and counters.removed_ships == 1 and counters.moved_ships == 0)
 			assert(text[point.x * 128 + point.y] == 42)
+
 	print("PASS: ship exits in all eight directions")
 	quit()

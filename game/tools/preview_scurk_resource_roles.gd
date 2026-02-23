@@ -9,9 +9,11 @@ var page := 0
 
 func _initialize() -> void:
 	var screen := 0
+
 	for candidate in DisplayServer.get_screen_count():
 		if DisplayServer.screen_get_position(candidate).x < DisplayServer.screen_get_position(screen).x:
 			screen = candidate
+
 	root.current_screen = screen
 	root.position = DisplayServer.screen_get_position(screen) + Vector2i(40, 40)
 	call_deferred("_build")
@@ -22,17 +24,22 @@ func _build() -> void:
 	root.size = Vector2i(1800, 1350)
 	root.content_scale_size = Vector2i(1200, 900)
 	var inventory: Dictionary = JSON.parse_string(FileAccess.get_file_as_string("res://../data/formats/graphics-inventory.json"))
+
 	for record in inventory.entries:
 		if record.source == "WINSCURK.EXE" and record.kind == "bitmap":
 			records.append(record)
+
 	if records.is_empty():
 		print("No remaining SCURK bitmap records in the current coverage inventory.")
 		quit()
+
 		return
+
 	var backdrop := ColorRect.new()
 	backdrop.color = Color("c0c0c0")
 	backdrop.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	root.add_child(backdrop)
+
 	for i in 2:
 		var button := Button.new()
 		button.text = "Previous page" if i == 0 else "Next page"
@@ -43,6 +50,7 @@ func _build() -> void:
 			_refresh()
 		)
 		root.add_child(button)
+
 	content = Control.new()
 	content.position = Vector2(12, 75)
 	root.add_child(content)
@@ -57,10 +65,13 @@ func _refresh() -> void:
 	for child in content.get_children():
 		content.remove_child(child)
 		child.queue_free()
+
 	for slot in 16:
 		var index := page * 16 + slot
+
 		if index >= records.size():
 			break
+
 		var record := records[index]
 		var loaded := PeBitmapResource.load_numeric("res://../references/SIMCITY2000/WINSCURK.EXE", int(record.id))
 		assert(loaded.ok, str(loaded.error))
@@ -73,8 +84,10 @@ func _refresh() -> void:
 		label.add_theme_font_size_override("font_size", 17)
 		content.add_child(label)
 		var zoom := minf(4, minf(270.0 / image.get_width(), 150.0 / image.get_height()))
+
 		if zoom >= 1:
 			zoom = floorf(zoom)
+
 		var view := TextureRect.new()
 		view.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 		view.texture = ImageTexture.create_from_image(image)
@@ -82,4 +95,5 @@ func _refresh() -> void:
 		view.position = p + Vector2(5, 34)
 		view.size = Vector2(image.get_size()) * zoom
 		content.add_child(view)
+
 	status.text = "Page %d/%d • supplied bitmap pixels for role inspection only • no original images are exported or changed" % [page + 1, ceili(records.size() / 16.0)]

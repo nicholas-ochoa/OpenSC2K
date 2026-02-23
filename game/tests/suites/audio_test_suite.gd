@@ -31,8 +31,10 @@ func test_sound_rules() -> void:
 func _test_music_director() -> void:
 	var director := Music.new()
 	var general_tracks := PackedInt32Array()
+
 	for index in 7:
 		general_tracks.append(director.next_general_track())
+
 	_check(
 		general_tracks == PackedInt32Array([
 			10001, 10004, 10008, 10012, 10018, 10001, 10004,
@@ -81,14 +83,17 @@ func _test_midi_files(reference_root: String) -> void:
 		192, 192, 192, 192, 192, 480, 192, 192, 480, 192,
 		192, 192, 192, 192, 480, 192, 480, 480, 120,
 	]
+
 	for track_offset in Music.TRACK_COUNT:
 		var track_id := Music.FIRST_TRACK_ID + track_offset
 		var midi := MidiFile.load_path(
 			reference_root.path_join("SOUNDS/%d.MID" % track_id)
 		)
 		_check(midi.is_valid(), "MIDI %d parses: %s" % [track_id, midi.parse_error])
+
 		if not midi.is_valid():
 			continue
+
 		_check(
 			midi.format_type == 1
 			and midi.track_count == expected_tracks[track_offset]
@@ -99,15 +104,20 @@ func _test_midi_files(reference_root: String) -> void:
 		var note_off_count := 0
 		var previous_time := -1.0
 		var ordered := true
+
 		for event in midi.events:
 			var event_time := float(event.time_seconds)
+
 			if event_time < previous_time:
 				ordered = false
+
 			previous_time = event_time
+
 			if event.type == "note_on":
 				note_on_count += 1
 			elif event.type == "note_off":
 				note_off_count += 1
+
 		_check(
 			note_on_count > 0 and note_off_count > 0,
 			"MIDI %d contains playable note events" % track_id,
@@ -116,6 +126,7 @@ func _test_midi_files(reference_root: String) -> void:
 			ordered and midi.duration_seconds > 0.0,
 			"MIDI %d has ordered event times and a positive duration" % track_id,
 		)
+
 	var missing := MidiFile.load_path(reference_root.path_join("SOUNDS/MISSING.MID"))
 	_check(not missing.is_valid(), "MIDI loader rejects a missing file")
 	var invalid := MidiFile.new()
@@ -137,8 +148,10 @@ func _test_midi_synth_helpers() -> void:
 		"MIDI synthesizer applies the default two-semitone pitch-bend range",
 	)
 	var families := PackedInt32Array()
+
 	for program in [0, 8, 16, 24, 32, 40, 56, 72, 80, 104, 127]:
 		families.append(MidiSynth.waveform_family(program))
+
 	_check(
 		families == PackedInt32Array([0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 9]),
 		"MIDI synthesizer assigns every General MIDI program range",
@@ -176,14 +189,18 @@ func _test_tool_sound_rules() -> void:
 		and ToolSounds.success_events(7, 2) == [524, 500],
 		"Bus and rail depots keep their special dispatcher sounds",
 	)
+
 	for zone_type in range(1, 10):
 		_check(ToolSounds.zone_success_events(zone_type) == [503],
 			"RCI, military, airport and seaport zones share sound 503")
+
 	_check(ToolSounds.zone_success_events(0).is_empty(), "De-zone does not add a placement sound")
+
 	for group in [8, 9, 10, 11]:
 		for subtool in [0, 1]:
 			_check(ToolSounds.success_events(group, subtool) == [503],
 				"All zone tools use the industrial placement sound")
+
 	_check(
 		ToolSounds.success_events(12, 0) == [523]
 		and ToolSounds.success_events(13, 0) == [506]

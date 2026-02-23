@@ -1,5 +1,6 @@
 extends SceneTree
 
+
 func _initialize() -> void:
 	call_deferred("_run")
 
@@ -13,15 +14,18 @@ func _run() -> void:
 	var toolbar := main.get("city_toolbar") as CityToolbar
 	var map := main.get("map_view") as CityMapControl
 	var status := main.get("city_status_bar") as CityStatusBar
+
 	# Shared tools retain the selected layer and remain usable in either view.
 	for mode in ["city", "underground"]:
 		main.call("_set_overlay", mode)
+
 		for group in [16, 17, 0]:
 			toolbar.toolbar_buttons[group].pressed.emit()
 			assert(main.get("overlay_mode") == mode and toolbar.view_mode_buttons[mode].button_pressed)
 			assert(map.edit_enabled)
 			main.call("_select_subtool", 0)
 			assert(main.get("overlay_mode") == mode and map.edit_enabled)
+
 			if group == 16:
 				main.call("_open_query", Vector2i(20, 20))
 				assert(main.query_dialog.visible and main.get("overlay_mode") == mode)
@@ -29,6 +33,7 @@ func _run() -> void:
 			elif group == 17:
 				main.call("_center_map_on_tile", Vector2i(20, 20))
 				assert(main.get("overlay_mode") == mode)
+
 	# Surface-only terrain tools still change back to the surface.
 	main.call("_select_subtool", 2)
 	assert(main.get("overlay_mode") == "city")
@@ -48,6 +53,7 @@ func _run() -> void:
 	assert(status.zoom_label.text == "Zoom: 50%")
 	assert(toolbar.view_layers_heading.text == "Visible Layers")
 	assert(toolbar.child_palette.size_flags_vertical == Control.SIZE_EXPAND_FILL)
+
 	for group in [3, 6, 7]:
 		main.call("_select_tool_group", group)
 		await process_frame
@@ -55,6 +61,7 @@ func _run() -> void:
 		main.call("_select_tool_group", 3 if group != 3 else 6)
 		await process_frame
 		assert(toolbar.child_tool_scroll.scroll_vertical == 0)
+
 	# Let the hold timer expire after a short press; the menu stays closed.
 	toolbar.toolbar_buttons[6].button_down.emit()
 	toolbar.toolbar_buttons[6].button_up.emit()
@@ -102,8 +109,10 @@ func _run() -> void:
 	assert(city.document.serialize().data == before)
 	main.call("_select_tool_group", 5)
 	assert(toolbar.child_tool_buttons.size() == 8 and not toolbar.child_tool_buttons.has(4))
+
 	for arcology in range(5, 9):
 		assert(toolbar.child_tool_buttons.has(arcology))
+
 	main.call("_select_tool_group", 4)
 	assert(main.get("overlay_mode") == "underground")
 	main.call("_select_subtool", 1)
@@ -120,6 +129,7 @@ func _run() -> void:
 	assert(main.selected_subtool == 3 and map.edit_enabled and map.point_footprint_area == 7)
 	assert(map.point_preview_tiles(Vector2i(80, 80)).size() == 37)
 	assert(map.point_preview_tiles(Vector2i(127, 127)).is_empty())
+
 	for subtool in [0, 1]:
 		main.call("_select_subtool", subtool)
 		assert(map.selection_mode == "rectangle" and map.shift_line_enabled)
@@ -134,6 +144,7 @@ func _run() -> void:
 		map._input(shift)
 		assert(map.selection_path.size() == 12)
 		map._clear_selection()
+
 	map.shift_line_enabled = false
 	# Held brush emits on its cadence and stops after the selection clears.
 	var brush := CityMapControl.new()
@@ -142,7 +153,8 @@ func _run() -> void:
 	brush.selection_start = Vector2i(40, 40)
 	brush.hover_tile = Vector2i(40, 40)
 	var dabs: Array[Vector2i] = []
-	brush.selection_completed.connect(func(_start, finish, _path, _dragged): dabs.append(finish))
+	brush.selection_completed.connect(func(_start, finish, _path, _dragged):
+		dabs.append(finish))
 	brush._process(0.29)
 	assert(dabs.is_empty())
 	brush._process(0.02)
@@ -187,6 +199,7 @@ func _run() -> void:
 	assert(DispatchCommand.undo(city, dispatched).ok)
 	# All four slopes receive a low-side rail transition, with exact Undo.
 	var low_sides := [Vector2i(1, 0), Vector2i(0, 1), Vector2i(-1, 0), Vector2i(0, -1)]
+
 	for shape in range(1, 5):
 		var slope := Vector2i(30 + shape * 5, 30)
 		city.set_terrain_id(slope.x, slope.y, shape)
@@ -197,16 +210,19 @@ func _run() -> void:
 		assert(city.building_id(foot.x, foot.y) == 0x3a + shape)
 		assert(NetworkCommand.undo(city, rail).ok)
 		assert(city.document.serialize().data == rail_before)
+
 	var tunnel := main.get("tunnel_dialog") as RouteConfirmationDialog
 	assert(tunnel.get_label().get_theme_color("font_color") == Color.WHITE)
 	var paper := main.get("newspaper_dialog") as NewspaperDialog
 	paper.open_reports(city, city.document, null, {}, {}, 123)
 	assert(paper.published_articles.size() == 5)
 	assert(" ".join(paper.published_articles).contains(str(city.population())))
+
 	for layout in range(3):
 		paper.page.set_page(layout, "Test Gazette", "September 8", "25 cents", "Opinion", "Weather", PackedStringArray(["A", "B", "C", "D", "E"]))
 		paper.page.set_articles(paper.published_articles)
 		assert(not paper.page.articles[1].is_empty())
+
 	paper.hide()
 	_test_fire_clock(city)
 	main.queue_free()
@@ -217,10 +233,15 @@ func _run() -> void:
 
 class CountingEngine extends SimulationEngine:
 	var fire_ticks := 0
+
+
 	func advance_moving_things(_current_time_msec := -1) -> Dictionary:
 		return {"ok": true}
+
+
 	func advance_disaster_tick() -> Dictionary:
 		fire_ticks += 1
+
 		return {"ok": true}
 
 
@@ -229,8 +250,10 @@ func _test_fire_clock(city: CityState) -> void:
 	engine.active_disaster_type = 1
 	var controller := GameSpeedController.new(engine)
 	controller.set_speed(GameSpeedController.Speed.AFRICAN_SWALLOW)
+
 	for frame in range(120):
 		assert(controller.advance_time(1000.0 / 120.0).ok)
+
 	assert(engine.fire_ticks <= 1)
 	controller.advance_time(1000.0)
 	assert(engine.fire_ticks == 2)

@@ -2,8 +2,10 @@ extends SceneTree
 var main: Control
 var point := Vector2i(60, 60)
 
+
 func _initialize() -> void:
 	call_deferred("_run")
+
 
 func _run() -> void:
 	main = (load("res://main.tscn") as PackedScene).instantiate()
@@ -58,6 +60,7 @@ func _run() -> void:
 	print("PASS: live stretch before release, Shift deferral and switching, no repeated raise, cancellation, reversed drag and single exact Undo")
 	quit()
 
+
 func _begin() -> void:
 	main.map_view.selection_start = point
 	main.map_view.selection_end = point
@@ -65,12 +68,14 @@ func _begin() -> void:
 	main.map_view._stretch_press_y = 200.0
 	main._on_map_selection_started()
 
+
 func _motion(offset: float, shift: bool) -> void:
 	var event := InputEventMouseMotion.new()
 	event.position = Vector2(200, 200 + offset)
 	event.button_mask = MOUSE_BUTTON_MASK_LEFT
 	event.shift_pressed = shift
 	main.map_view._handle_mouse_motion(event)
+
 
 func _release(offset: float, shift: bool) -> void:
 	var event := InputEventMouseButton.new()
@@ -80,9 +85,12 @@ func _release(offset: float, shift: bool) -> void:
 	event.shift_pressed = shift
 	main.map_view._handle_mouse_button(event)
 
+
 func _wait_for_render() -> void:
 	for frame in 300:
 		await create_timer(0.02).timeout
+
 		if main.static_city_image != null and main.static_render_thread == null:
 			return
+
 	assert(false, "Terrain render did not finish")

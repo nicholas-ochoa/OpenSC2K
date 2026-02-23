@@ -16,8 +16,10 @@ func _initialize() -> void:
 		"large_sprites": [{"id": 1001, "png": "sprite.png"}, {"id": 1001, "png": "sprite.png"}],
 		"small_medium_sprites": [{"id": 1, "png": "sprite.png"}], "ui": {},
 	}
+
 	for field in Pack.UI_FIELDS:
 		manifest.ui[field] = "sprite.png"
+
 	_write_manifest(root, manifest)
 	var loaded := Pack.load_root(root)
 	assert(loaded.error.is_empty(), loaded.error)
@@ -56,6 +58,7 @@ func _initialize() -> void:
 	var assets := OriginalGameAssets.new()
 	assert(loaded.apply_to(assets))
 	assert(assets.large_sprites == loaded.large_sprites)
+
 	for bad_path in ["../sprite.png", "/sprite.png", "res://sprite.png", "a\\sprite.png", "./sprite.png"]:
 		manifest.palette = bad_path
 		_write_manifest(root, manifest)
@@ -63,6 +66,7 @@ func _initialize() -> void:
 		assert(not bad.error.is_empty())
 		assert(not bad.apply_to(assets))
 		assert(assets.large_sprites == loaded.large_sprites)
+
 	manifest.palette = "missing.png"
 	_write_manifest(root, manifest)
 	assert(not Pack.load_root(root).error.is_empty())

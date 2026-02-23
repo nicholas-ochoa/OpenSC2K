@@ -1,17 +1,24 @@
 extends SceneTree
+
+
 func _initialize() -> void:
 	call_deferred("_run")
+
+
 func _run() -> void:
 	var order := MusicShuffle.new()
 	order.random.seed = 42
 	var previous := -1
+
 	for cycle in 3:
 		var seen := {}
+
 		for index in 19:
 			var id := order.next_track()
 			assert(id >= 10000 and id <= 10018 and not seen.has(id) and id != previous)
 			seen[id] = true
 			previous = id
+
 	var audio := CityAudioController.new()
 	root.add_child(audio)
 	audio.setup(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), 0.5, 0.0)

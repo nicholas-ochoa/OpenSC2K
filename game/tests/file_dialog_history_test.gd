@@ -2,8 +2,12 @@ extends SceneTree
 const History = preload("res://src/ui/file_dialog_history.gd")
 const PATH := "user://file-dialog-history-test.cfg"
 var history: Node
+
+
 func _initialize() -> void:
 	call_deferred("_run")
+
+
 func _run() -> void:
 	var mode := OS.get_cmdline_user_args()[0]
 	history = History.new()
@@ -11,6 +15,7 @@ func _run() -> void:
 	root.add_child(history)
 	var favorites := PackedStringArray([ProjectSettings.globalize_path("res://../references/SIMCITY2000/"), "/Volumes/Offline Cities/"])
 	var recents := PackedStringArray([ProjectSettings.globalize_path("res://../local/large-cities/")])
+
 	if mode == "write":
 		FileDialog.set_favorite_list(favorites)
 		FileDialog.set_recent_list(recents)
@@ -34,9 +39,12 @@ func _run() -> void:
 		history.save_history()
 		history.restore_history()
 		assert(FileDialog.get_favorite_list().is_empty(), "Removed favorites returned after restart")
+
 	history.queue_free()
 	await process_frame
+
 	if mode != "write":
 		DirAccess.remove_absolute(ProjectSettings.globalize_path(PATH))
+
 	print("PASS: file dialog history " + mode)
 	quit()
