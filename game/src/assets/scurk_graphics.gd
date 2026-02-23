@@ -45,54 +45,81 @@ var presentation_pixels: Dictionary = {}
 static func load_manifest(value: Variant, read_png: Callable, palette: Sc2Palette) -> ScurkGraphics:
 	var graphics := ScurkGraphics.new()
 	graphics._load(value, read_png, palette)
+
 	return graphics
 
 
 func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 	if not value is Dictionary or not value.has_all(["textures", "backgrounds"]):
 		error = "scurk must contain textures and backgrounds"
+
 		return
+
 	for key in value:
 		if key not in ["textures", "backgrounds", "controls", "workspace", "presentation"]:
 			error = "Unknown SCURK graphics field: %s" % key
+
 			return
+
 	for group in ["textures", "backgrounds", "controls", "workspace", "presentation"]:
 		if group in ["controls", "workspace", "presentation"] and not value.has(group):
 			continue
+
 		var records: Variant = value[group]
 		var ids: Array = {"textures": TEXTURE_IDS, "backgrounds": BACKGROUND_IDS, "controls": CONTROL_IDS, "workspace": WORKSPACE_SIZES.keys(), "presentation": PRESENTATION_SIZES.keys()}[group]
+
 		if not records is Array or records.size() != ids.size():
 			error = "scurk.%s must contain %d records in resource order" % [group, ids.size()]
+
 			return
+
 		for i in ids.size():
 			var record: Variant = records[i]
+
 			if not record is Dictionary or record.get("id") != ids[i]:
 				error = "scurk.%s record %d must have id %d" % [group, i, ids[i]]
+
 				return
+
 			if group == "textures" and (not record.get("name") is String or str(record.name).strip_edges().is_empty()):
 				error = "SCURK texture name is required"
+
 				return
+
 			var png: Dictionary = read_png.call(record.get("png"))
+
 			if png.is_empty() or not png.get("ok", false):
 				error = "Cannot read SCURK bitmap %d" % ids[i]
+
 				return
+
 			var size: Vector2i = {"textures": Vector2i(8, 8), "backgrounds": Vector2i(128, 256), "controls": Vector2i(20, 20), "workspace": WORKSPACE_SIZES.get(ids[i], Vector2i.ZERO), "presentation": PRESENTATION_SIZES.get(ids[i], Vector2i.ZERO)}[group]
 			var allows_alpha: bool = group == "presentation" and ids[i] in [123, 124]
+
 			if Vector2i(png.width, png.height) != size:
 				error = "SCURK bitmap %d must be %d by %d" % [ids[i], size.x, size.y]
+
 				return
+
 			if not allows_alpha and png.pixels.has(-1):
 				error = "SCURK bitmap %d must be opaque" % ids[i]
+
 				return
+
 			if png.palette.colors != palette.colors:
 				error = "SCURK bitmap palette differs from the pack palette: %s" % record.png
+
 				return
+
 			if group == "workspace" and ids[i] == 22005:
 				for index in 256:
 					var center := ((index / 16) * 16 + 8) * 256 + (index % 16) * 16 + 8
+
 					if png.pixels[center] != index:
 						error = "SCURK palette-sheet cell center must use index %d" % index
+
 						return
+
 			if group == "textures":
 				patterns.append(png.pixels)
 				pattern_names.append(record.name)
