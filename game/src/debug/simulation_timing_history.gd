@@ -17,9 +17,11 @@ const DAY_SUMMARIES := [
 var days: Dictionary = {}
 var steps: Dictionary = {}
 
+
 func clear() -> void:
 	days.clear()
 	steps.clear()
+
 
 func record_step(label: String, usec: int) -> void:
 	var row: Dictionary = steps.get(label, {"count": 0, "total_usec": 0, "last_usec": 0, "max_usec": 0})
@@ -29,30 +31,38 @@ func record_step(label: String, usec: int) -> void:
 	row.max_usec = maxi(row.max_usec, usec)
 	steps[label] = row
 
+
 func consume(result: Dictionary) -> void:
 	for day in result.get("day_results", []):
 		if not day.get("ok", false) or not day.has("timing"):
 			continue
+
 		var age := int(day.day)
 		var slot := posmod(age, 25)
 		var row: Dictionary = days.get(slot, {"count": 0, "total_usec": 0, "last_usec": 0, "max_usec": 0, "age": -1})
+
 		if row.age != age:
 			row.count += 1
 			row.last_usec = 0
 			row.age = age
+
 		# resuming a blocking interaction adds work to the same day's sample
 		row.last_usec += int(day.timing.work_usec)
 		row.total_usec += int(day.timing.work_usec)
 		row.max_usec = maxi(row.max_usec, row.last_usec)
 		days[slot] = row
+
 		for label in day.timing.steps:
 			record_step("Day %02d / %s" % [slot + 1, label], day.timing.steps[label])
+
 		for phase in day.get("phase_results", {}).values():
 			for label in phase.get("timing", {}).get("steps", {}):
 				record_step("Day %02d / data maps / %s" % [slot + 1, label], phase.timing.steps[label])
+
 	for key in ["moving_results", "disaster_results"]:
 		for item in result.get(key, []):
 			if item.get("ok", false) and item.has("timing"):
 				record_step(key.trim_suffix("_results"), item.timing.work_usec)
+
 	for label in result.get("job_timings", {}):
 		record_step(label, result.job_timings[label])
