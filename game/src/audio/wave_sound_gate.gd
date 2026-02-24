@@ -27,46 +27,63 @@ var _tick_accumulator_msec := 0.0
 static func duration_ticks(sound_id: int) -> int:
 	if sound_id < SOUND_FIRST or sound_id > SOUND_LAST:
 		return 0
+
 	return int(RAW_DURATION_MSEC[sound_id - SOUND_FIRST] / 200) + 1
 
 
 func request(sound_id: int, ambient := false) -> bool:
 	var total_ticks := duration_ticks(sound_id)
+
 	if total_ticks == 0:
 		return false
+
 	if ambient and float(_ambient_remaining.get(sound_id, 0.0)) > 0.0:
 		suppressed_count += 1
+
 		return false
+
 	if (
 		current_sound_id == sound_id
 		and remaining_ticks > 0
 		and total_ticks - remaining_ticks < MINIMUM_REPLAY_TICKS
 	):
 		suppressed_count += 1
+
 		return false
+
 	current_sound_id = sound_id
 	remaining_ticks = total_ticks
+
 	if ambient:
 		_ambient_remaining[sound_id] = AMBIENT_REPLAY_MSEC
+
 	accepted_count += 1
+
 	return true
 
 
 func advance(delta_msec: float) -> void:
 	if delta_msec <= 0.0:
 		return
+
 	for sound_id in _ambient_remaining.keys():
 		var remaining := float(_ambient_remaining[sound_id]) - delta_msec
+
 		if remaining <= 0.0:
 			_ambient_remaining.erase(sound_id)
 		else:
 			_ambient_remaining[sound_id] = remaining
+
 	_tick_accumulator_msec += delta_msec
+
 	while _tick_accumulator_msec >= BASE_TICK_MSEC:
 		_tick_accumulator_msec -= BASE_TICK_MSEC
+
 		if remaining_ticks <= 0:
 			continue
+
 		remaining_ticks -= 1
+
 		if remaining_ticks == 0:
 			current_sound_id = -1
 

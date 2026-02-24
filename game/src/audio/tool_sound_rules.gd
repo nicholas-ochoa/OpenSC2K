@@ -24,16 +24,19 @@ static func success_events(group_index: int, subtool_index: int) -> Array[int]:
 		1:
 			if subtool_index in [0, 3]:
 				return [SOUND_TREE]
+
 			if subtool_index == 1:
 				return [SOUND_WATER]
 		2:
 			if subtool_index == 1:
 				return [SOUND_FIRE_STATION]
+
 			if subtool_index in [0, 2]:
 				return [SOUND_SERVICE]
 		3:
 			if subtool_index == 0:
 				return [SOUND_POWER_LINE]
+
 			if subtool_index >= 2 and subtool_index <= 10:
 				return [SOUND_BUILD]
 		4:
@@ -45,11 +48,13 @@ static func success_events(group_index: int, subtool_index: int) -> Array[int]:
 		6:
 			if subtool_index == 4:
 				return [SOUND_BUS_DEPOT]
+
 			if subtool_index >= 0 and subtool_index <= 3:
 				return [SOUND_BUILD]
 		7:
 			if subtool_index == 2:
 				return [SOUND_RAIL_DEPOT, SOUND_BUILD]
+
 			if subtool_index >= 0 and subtool_index <= 4:
 				return [SOUND_BUILD]
 		8, 9, 10, 11:
@@ -67,10 +72,12 @@ static func success_events(group_index: int, subtool_index: int) -> Array[int]:
 		14:
 			if subtool_index == 2:
 				return [SOUND_ZOO]
+
 			if subtool_index >= 0 and subtool_index <= 4:
 				return [SOUND_REWARD]
 		17:
 			return [SOUND_CENTER]
+
 	return []
 
 
@@ -87,8 +94,11 @@ static func failure_events(
 		if error == "insufficient funds":
 			return [SOUND_ERROR]
 		return []
+
 	if group_index < 3 or group_index > 14:
 		return []
+
 	if (group_index == 3 and subtool_index == 1) or (group_index == 5 and subtool_index == 4):
 		return []
+
 	return [SOUND_ERROR]

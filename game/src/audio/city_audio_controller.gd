@@ -56,7 +56,8 @@ func setup(
 	effects_volume = initial_effects_volume
 	soundtrack_folder = resolve_soundtrack_folder("")
 	recording_player = AudioStreamPlayer.new()
-	recording_player.finished.connect(func() -> void: _on_music_track_finished(current_track_id))
+	recording_player.finished.connect(func() -> void:
+		_on_music_track_finished(current_track_id))
 	add_child(recording_player)
 	recording_player.volume_linear = music_volume
 	_load_wave_sound_cache()
@@ -68,19 +69,25 @@ func setup(
 
 func advance(delta_msec: float) -> void:
 	wave_sound_gate.advance(delta_msec)
+
 	if music_gap_remaining_msec > 0.0:
 		if not audio_allowed() or music_paused or music_volume <= 0.0:
 			return
+
 		music_gap_remaining_msec = maxf(0.0, music_gap_remaining_msec - maxf(0.0, delta_msec))
+
 		if music_gap_remaining_msec > 0.0:
 			return
+
 		var next_track := queued_music_track
 		var choose_shuffle := queued_choose_shuffle
 		queued_music_track = -1
+
 		if next_track >= 0:
 			play_music_track(next_track, choose_shuffle)
 		else:
 			music_activity_changed.emit(false)
+
 	if menu_music and audio_allowed() and music_volume > 0.0 and not music_playback_is_active():
 		play_music_track(Music.MAIN_THEME_TRACK)
 
@@ -88,8 +95,10 @@ func advance(delta_msec: float) -> void:
 func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 	music_volume = clampf(new_music_volume, 0.0, 1.0)
 	effects_volume = clampf(new_effects_volume, 0.0, 1.0)
+
 	if music_player != null:
 		music_player.set_volume_linear(music_volume)
+
 	if recording_player != null:
 		recording_player.volume_linear = music_volume
 
@@ -97,48 +106,68 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 func play_music_track(track_id: int, choose_shuffle := true) -> bool:
 	if music_paused or not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
 		return false
+
 	if music_gap_remaining_msec > 0.0:
 		queued_music_track = track_id
 		queued_choose_shuffle = choose_shuffle
 		music_activity_changed.emit(true)
+
 		return true
+
 	if shuffle_music and choose_shuffle:
 		if music_playback_is_active():
 			return true
+
 		track_id = shuffle_order.next_track()
+
 	var replacement := str(music_pack.files.get(track_id, ""))
 	var recordings := RecordedSoundtrack.find_tracks(soundtrack_folder, track_id)
+
 	if not replacement.is_empty():
 		recordings = PackedStringArray() if replacement.get_extension().to_lower() in ["mid", "midi"] else PackedStringArray([replacement])
+
 	if recordings.is_empty() and replacement.is_empty() and not original_media_enabled:
 		return false
+
 	stop_music()
 	current_track_id = track_id
 	current_track_name = "Track %d" % track_id
+
 	if not recordings.is_empty():
 		current_track_name = recordings[0].get_file().get_basename().trim_prefix("%d - " % track_id)
+
 	music_notice.emit("Playing: " + current_track_name)
+
 	if AudioServer.get_driver_name() == "Dummy":
 		dummy_music_active = true
 		music_activity_changed.emit(true)
+
 		return true
+
 	if not recordings.is_empty():
 		pending_recording = {"paths": recordings, "request": music_request}
 		music_activity_changed.emit(true)
+
 		return true
+
 	return _play_midi_fallback()
 
 
 func _play_midi_fallback() -> bool:
 	var midi_path := str(music_pack.files.get(current_track_id, ""))
+
 	if midi_path.get_extension().to_lower() not in ["mid", "midi"]:
 		midi_path = reference_root.path_join("SOUNDS/%d.MID" % current_track_id) if original_media_enabled else ""
+
 	if midi_path.is_empty():
 		music_activity_changed.emit(false)
+
 		return false
+
 	var result := music_player.play_path(midi_path, current_track_id)
 	music_player.set_paused(music_paused or focus_paused)
 	music_activity_changed.emit(bool(result.ok))
+
 	return bool(result.ok)
 
 
@@ -146,19 +175,23 @@ func _process(_delta: float) -> void:
 	if recording_thread != null and not recording_thread.is_alive():
 		var result: Dictionary = recording_thread.wait_to_finish()
 		recording_thread = null
+
 		if recording_request == music_request:
 			recording_player.stream = result.stream
+
 			if recording_player.stream != null:
 				recording_player.play()
 				recording_player.stream_paused = music_paused or focus_paused
 			else:
 				push_warning("Cannot decode soundtrack recording; trying MIDI. FLAC requires FFmpeg.")
 				_play_midi_fallback()
+
 	if recording_thread == null and not pending_recording.is_empty():
 		recording_request = int(pending_recording.request)
 		var paths: PackedStringArray = pending_recording.paths
 		pending_recording.clear()
 		recording_thread = Thread.new()
+
 		if recording_thread.start(RecordedSoundtrack.load_track.bind(paths), Thread.PRIORITY_LOW) != OK:
 			recording_thread = null
 			_play_midi_fallback()
@@ -173,8 +206,10 @@ func _exit_tree() -> void:
 func music_playback_is_active() -> bool:
 	if music_gap_remaining_msec > 0.0 or queued_music_track >= 0:
 		return true
+
 	if AudioServer.get_driver_name() == "Dummy":
 		return dummy_music_active or (recording_player != null and recording_player.stream != null and (recording_player.playing or recording_player.stream_paused))
+
 	return (not pending_recording.is_empty()
 		or (recording_thread != null and recording_request == music_request)
 		or (recording_player != null and recording_player.stream != null and (recording_player.playing or recording_player.stream_paused))
@@ -189,12 +224,14 @@ func set_background_audio(enabled: bool) -> void:
 	background_audio = enabled
 	focus_paused = not audio_allowed() and music_playback_is_active()
 	_sync_music_pause()
+
 	if not audio_allowed():
 		stop_sound_effects()
 
 
 func handle_application_focus_out() -> void:
 	application_has_focus = false
+
 	if not background_audio:
 		focus_paused = music_playback_is_active()
 		_sync_music_pause()
@@ -204,23 +241,32 @@ func handle_application_focus_out() -> void:
 func handle_application_focus_in(music_enabled: bool) -> void:
 	var regained_focus := not application_has_focus
 	application_has_focus = true
+
 	if background_audio:
 		return
+
 	focus_paused = false
+
 	if not music_enabled:
 		stop_music()
+
 		return
+
 	_sync_music_pause()
+
 	if not regained_focus or music_paused:
 		return
+
 	if not music_playback_is_active():
 		play_music_track(Music.MAIN_THEME_TRACK if menu_music else music_director.next_general_track())
 
 
 func _sync_music_pause() -> void:
 	var paused := music_paused or focus_paused or not audio_allowed()
+
 	if recording_player != null:
 		recording_player.stream_paused = paused
+
 	if music_player != null:
 		music_player.set_paused(paused)
 
@@ -229,37 +275,48 @@ func set_shuffle_music(enabled: bool) -> void:
 	if shuffle_music != enabled:
 		shuffle_order.remaining.clear()
 		shuffle_order.last_track = current_track_id
+
 	shuffle_music = enabled
 
 
 func stop_music(clear_gap := true) -> void:
 	if clear_gap:
 		music_gap_remaining_msec = 0.0
+
 	queued_music_track = -1
 	queued_choose_shuffle = true
 	focus_paused = false
 	music_request += 1
 	pending_recording.clear()
+
 	if recording_player != null:
 		recording_player.stop()
 		recording_player.stream = null
+
 	current_track_id = -1
 	dummy_music_active = false
+
 	if music_player != null:
 		music_player.stop()
+
 	music_activity_changed.emit(false)
 
 
 func stop_sound_effects() -> void:
 	wave_sound_gate.stop()
+
 	if not is_inside_tree():
 		return
+
 	for node in get_tree().get_nodes_in_group(SOUND_EFFECT_GROUP):
 		var player := node as AudioStreamPlayer
+
 		if player == null:
 			continue
+
 		player.stop()
 		player.queue_free()
+
 	tool_loop_player = null
 
 
@@ -268,17 +325,22 @@ func play_sound_events(
 ) -> void:
 	if not sound_enabled or not audio_allowed():
 		return
+
 	for sound_event in sound_events:
 		var sound_id := MovingThingAudio.event_sound_id(
 			sound_event, overlay_mode, view_size
 		)
+
 		if sound_id < 0:
 			continue
+
 		var stream := wave_stream_cache.get(sound_id) as AudioStreamWAV
+
 		if stream == null or not wave_sound_gate.request(
 			sound_id, sound_event is Dictionary and sound_event.has("thing_type")
 		):
 			continue
+
 		var player := AudioStreamPlayer.new()
 		player.stream = stream
 		player.volume_linear = effects_volume
@@ -290,14 +352,20 @@ func play_sound_events(
 
 func start_tool_loop_sound(sound_id: int, sound_enabled: bool) -> void:
 	stop_tool_loop_sound()
+
 	if not sound_enabled or not audio_allowed():
 		return
+
 	var cached_stream := wave_stream_cache.get(sound_id) as AudioStreamWAV
+
 	if cached_stream == null:
 		return
+
 	var stream := cached_stream.duplicate() as AudioStreamWAV
+
 	if stream == null:
 		return
+
 	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	stream.loop_begin = 0
 	stream.loop_end = maxi(1, roundi(stream.get_length() * stream.mix_rate))
@@ -312,7 +380,9 @@ func start_tool_loop_sound(sound_id: int, sound_enabled: bool) -> void:
 func stop_tool_loop_sound() -> void:
 	if not is_instance_valid(tool_loop_player):
 		tool_loop_player = null
+
 		return
+
 	tool_loop_player.stop()
 	tool_loop_player.queue_free()
 	tool_loop_player = null
@@ -331,21 +401,28 @@ func debug_metrics() -> Dictionary:
 func _on_music_track_finished(track_id: int) -> void:
 	if track_id != current_track_id:
 		return
+
 	stop_music()
 	music_gap_remaining_msec = MUSIC_GAP_MSEC
+
 	if shuffle_music or menu_music:
 		queued_music_track = Music.MAIN_THEME_TRACK
+
 	# Reserve the gap between tracks so simulation music requests cannot skip it.
 	music_activity_changed.emit(true)
 
 
 func _load_wave_sound_cache() -> void:
 	wave_stream_cache.clear()
+
 	for sound_id in range(WaveSounds.SOUND_FIRST, WaveSounds.SOUND_LAST + 1):
 		var sound_path := str(sound_pack.files.get(sound_id, reference_root.path_join("SOUNDS/%d.WAV" % sound_id) if original_media_enabled else ""))
+
 		if not FileAccess.file_exists(sound_path):
 			continue
+
 		var stream := AudioStreamWAV.load_from_file(sound_path)
+
 		if stream != null:
 			wave_stream_cache[sound_id] = stream
 
@@ -353,12 +430,17 @@ func _load_wave_sound_cache() -> void:
 func set_menu_music(enabled: bool) -> void:
 	if menu_music == enabled:
 		return
+
 	menu_music = enabled
+
 	if shuffle_music and music_playback_is_active():
 		return
+
 	stop_music(false)
+
 	if music_gap_remaining_msec > 0.0:
 		music_activity_changed.emit(true)
+
 	if enabled and audio_allowed() and music_volume > 0.0:
 		play_music_track(Music.MAIN_THEME_TRACK)
 
@@ -366,17 +448,22 @@ func set_menu_music(enabled: bool) -> void:
 func resolve_soundtrack_folder(selected_folder: String) -> String:
 	if not selected_folder.strip_edges().is_empty():
 		return selected_folder.strip_edges()
+
 	var environment_folder := OS.get_environment("OPENSC2K_SOUNDTRACK_DIR")
+
 	return environment_folder if not environment_folder.is_empty() else reference_root.path_join("OST")
 
 
 func set_soundtrack_folder(selected_folder: String, restart_music := false) -> void:
 	var resolved := resolve_soundtrack_folder(selected_folder)
+
 	if soundtrack_folder == resolved:
 		return
+
 	var track_id := current_track_id
 	stop_music(false)
 	soundtrack_folder = resolved
+
 	if restart_music and audio_allowed() and music_volume > 0.0:
 		play_music_track(track_id if track_id >= 0 else Music.MAIN_THEME_TRACK if menu_music else music_director.next_general_track())
 
@@ -394,6 +481,7 @@ func handle_media_key(key: int) -> bool:
 			var offset := 1 if key == KEY_MEDIANEXT else -1
 			var track := current_track_id if current_track_id >= Music.FIRST_TRACK_ID else Music.MAIN_THEME_TRACK
 			music_paused = false
+
 			if shuffle_music:
 				stop_music(false)
 				play_music_track(Music.MAIN_THEME_TRACK)
@@ -405,12 +493,14 @@ func handle_media_key(key: int) -> bool:
 			music_notice.emit("Music stopped")
 		_:
 			return false
+
 	return true
 
 
 func _set_music_paused(value: bool) -> void:
 	music_paused = value
 	_sync_music_pause()
+
 	if not value and not music_playback_is_active():
 		play_music_track(Music.MAIN_THEME_TRACK)
 	else:
@@ -420,17 +510,22 @@ func _set_music_paused(value: bool) -> void:
 static func validate_media_packs(sound_folder: String, music_folder: String) -> String:
 	for pair in [[sound_folder, "sound"], [music_folder, "music"]]:
 		var pack := MediaPack.load_folder(pair[0], pair[1])
+
 		if not pack.error.is_empty():
 			return pack.error
+
 	return ""
 
 
 func set_media_packs(sound_folder: String, music_folder: String) -> bool:
 	var sounds := MediaPack.load_folder(sound_folder, "sound")
 	var music := MediaPack.load_folder(music_folder, "music")
+
 	if not sounds.error.is_empty() or not music.error.is_empty():
 		music_notice.emit(sounds.error + music.error)
+
 		return false
+
 	var track := current_track_id
 	var queued_track := queued_music_track
 	var choose_shuffle := queued_choose_shuffle
@@ -440,6 +535,7 @@ func set_media_packs(sound_folder: String, music_folder: String) -> bool:
 	sound_pack = sounds
 	music_pack = music
 	_load_wave_sound_cache()
+
 	if restart:
 		if queued_track >= 0:
 			play_music_track(queued_track, choose_shuffle)
@@ -447,15 +543,19 @@ func set_media_packs(sound_folder: String, music_folder: String) -> bool:
 			play_music_track(track, false)
 		elif music_gap_remaining_msec > 0.0:
 			music_activity_changed.emit(true)
+
 	return true
 
 
 func play_toolbar_click(sound_enabled: bool) -> void:
 	if not sound_enabled or not audio_allowed():
 		return
+
 	var stream := wave_stream_cache.get(ToolSoundRules.SOUND_CENTER) as AudioStreamWAV
+
 	if stream == null:
 		return
+
 	# each button activation gets feedback, including rapid consecutive clicks
 	var player := AudioStreamPlayer.new()
 	player.stream = stream
