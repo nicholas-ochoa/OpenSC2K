@@ -65,16 +65,20 @@ const ALIGNMENTS := [
 	[1, 1, 2, 2, 0, 0, 0, 0, 0, 0, 0],
 ]
 
+
 static func section_rect(layout: int, section: int) -> Rect2i:
 	if layout < 0 or layout >= LAYOUT_RECTS.size():
 		return Rect2i()
+
 	if section < 0 or section >= SECTION_COUNT:
 		return Rect2i()
+
 	return LAYOUT_RECTS[layout][section]
 
 
 static func story_rect(layout: int, slot: int) -> Rect2i:
 	if slot < 0 or slot >= STORY_RECT_INDICES.size():
 		return Rect2i()
+
 	return section_rect(layout, STORY_RECT_INDICES[slot])
 

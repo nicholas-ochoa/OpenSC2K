@@ -37,19 +37,24 @@ func matches(options: Dictionary) -> bool:
 func generate_preview(
 	template_path: String, options: Dictionary, advance_seed: bool) -> Dictionary:
 	var document := _load_template(template_path)
+
 	if not document.is_valid():
 		return {
 			"ok": false,
 			"stage": "template",
 			"error": document.parse_error,
 		}
+
 	if not document.resize_empty_map(int(options.get("size", 128))):
 		return {"ok": false, "stage": "size", "error": "Unsupported city size"}
+
 	if options.get("native_maps", false) and not document.enable_full_resolution_maps():
 		return {"ok": false, "stage": "data_maps", "error": "Cannot enable per-tile data maps"}
+
 	if advance_seed or preview_document == null:
 		preview_process_start = preview_process_cursor
 		preview_game_start = preview_game_cursor
+
 	var preview_process := Random.new(preview_process_start)
 	var preview_game := GameRandom.new(preview_game_start)
 	var generated := NewTerrain.generate(
@@ -62,19 +67,23 @@ func generate_preview(
 		preview_process,
 		preview_game,
 	)
+
 	if not generated.ok:
 		return {
 			"ok": false,
 			"stage": "terrain",
 			"error": generated.error,
 		}
+
 	var preview_city := CityModel.from_document(document)
+
 	if not preview_city.is_valid():
 		return {
 			"ok": false,
 			"stage": "city",
 			"error": preview_city.load_error,
 		}
+
 	preview_document = document
 	preview_options = options.duplicate(true)
 	preview_process_cursor = preview_process.state
@@ -82,6 +91,7 @@ func generate_preview(
 	var result: Dictionary = generated.duplicate(true)
 	result["document"] = document
 	result["city"] = preview_city
+
 	return result
 
 
@@ -94,16 +104,20 @@ func create_city(
 	terrain_options: Dictionary,
 	newspaper_session_state: PackedByteArray) -> Dictionary:
 	var template := _load_template(template_path)
+
 	if not template.is_valid():
 		return {
 			"ok": false,
 			"stage": "template",
 			"error": template.parse_error,
 		}
+
 	if not template.resize_empty_map(int(terrain_options.get("size", 128))):
 		return {"ok": false, "stage": "size", "error": "Unsupported city size"}
+
 	if terrain_options.get("native_maps", false) and not template.enable_full_resolution_maps():
 		return {"ok": false, "stage": "data_maps", "error": "Cannot enable per-tile data maps"}
+
 	var process_random := Random.new(preview_process_start)
 	var game_random := GameRandom.new(preview_game_start)
 	var created := NewCity.create(
@@ -117,15 +131,18 @@ func create_city(
 		terrain_options,
 		newspaper_session_state,
 	)
+
 	if not created.ok:
 		return {
 			"ok": false,
 			"stage": "setup",
 			"error": created.error,
 		}
+
 	var result: Dictionary = created.duplicate(true)
 	result["process_state"] = process_random.state
 	result["game_state"] = game_random.state
+
 	return result
 
 

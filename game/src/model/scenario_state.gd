@@ -37,19 +37,29 @@ var second_building_tile_count := 0
 static func from_document(source: Sc2File) -> ScenarioState:
 	var scenario := ScenarioState.new()
 	scenario.document = source
+
 	if source == null or not source.is_valid():
 		scenario.load_error = "The source document is not valid"
+
 		return scenario
+
 	var chunk := source.find_chunk("SCEN")
+
 	if chunk == null:
 		scenario.load_error = "SCEN chunk is missing"
+
 		return scenario
+
 	var data := chunk.decoded_payload
+
 	if data.size() != LEGACY_SIZE and data.size() != EXTENDED_SIZE:
 		scenario.load_error = "SCEN has %d bytes; expected 52 or 56" % data.size()
+
 		return scenario
+
 	if _read_u32_be(data, 0) != 0x80000000:
 		scenario.load_error = "SCEN header is not 0x80000000"
+
 		return scenario
 
 	scenario.format_size = data.size()
@@ -65,10 +75,12 @@ static func from_document(source: Sc2File) -> ScenarioState:
 	scenario.land_value_goal = _read_i32_be(data, 0x1e)
 
 	var limit_offset := 0x22
+
 	if data.size() == EXTENDED_SIZE:
 		scenario.life_expectancy_goal = _read_u16_be(data, 0x22)
 		scenario.education_goal = _read_u16_be(data, 0x24)
 		limit_offset = 0x26
+
 	scenario.pollution_limit = _read_u32_be(data, limit_offset)
 	scenario.crime_limit = _read_u32_be(data, limit_offset + 4)
 	scenario.traffic_limit = _read_u32_be(data, limit_offset + 8)
@@ -76,6 +88,7 @@ static func from_document(source: Sc2File) -> ScenarioState:
 	scenario.second_building_id = data[limit_offset + 13]
 	scenario.first_building_tile_count = _read_u16_be(data, limit_offset + 14)
 	scenario.second_building_tile_count = _read_u16_be(data, limit_offset + 16)
+
 	return scenario
 
 
@@ -93,14 +106,19 @@ func opening_description() -> String:
 
 func picture_indices() -> Dictionary:
 	var chunk := document.find_chunk("PICT")
+
 	if chunk == null:
 		return _failure("PICT chunk is missing")
+
 	var data := chunk.decoded_payload
+
 	if data.size() < 8 or _read_u32_be(data, 0) != 0x80000000:
 		return _failure("PICT header is invalid")
+
 	# pict dimensions are little-endian even though scen and form values are big-endian
 	var width := _read_u16_le(data, 4)
 	var height := _read_u16_le(data, 6)
+
 	if width <= 0 or height <= 0:
 		return _failure("PICT dimensions are empty")
 
@@ -109,27 +127,37 @@ func picture_indices() -> Dictionary:
 	var position := 8
 	var remaining := data.size() - position
 	var has_row_terminators := remaining == height * (width + 1)
+
 	if remaining != width * height and not has_row_terminators:
 		return _failure("PICT byte count does not match its dimensions")
+
 	for y in height:
 		if position + width > data.size():
 			return _failure("PICT row %d is truncated" % y)
+
 		for x in width:
 			pixels[y * width + x] = data[position + x]
+
 		position += width
+
 		if has_row_terminators:
 			if data[position] != 0x00 and data[position] != 0xff:
 				return _failure("PICT row %d has invalid terminator 0x%02x" % [y, data[position]])
+
 			position += 1
+
 	if position != data.size():
 		return _failure("PICT has %d unparsed bytes" % (data.size() - position))
+
 	return {"ok": true, "width": width, "height": height, "pixels": pixels, "error": ""}
 
 
 func picture_image(palette: Sc2Palette) -> Dictionary:
 	if palette == null or not palette.is_valid():
 		return _failure("PICT palette is invalid")
+
 	var picture := picture_indices()
+
 	if not picture.ok:
 		return picture
 
@@ -137,11 +165,13 @@ func picture_image(palette: Sc2Palette) -> Dictionary:
 	var height: int = picture.height
 	var pixels: PackedByteArray = picture.pixels
 	var image := Image.create(width, height, false, Image.FORMAT_RGBA8)
+
 	# 004745d0 sets the dib orientation to -1. 00474bc0 multiplies the
 	# height by that sign before createdibsection, so stored rows are top-down
 	for source_y in height:
 		for x in width:
 			image.set_pixel(x, source_y, palette.color(pixels[source_y * width + x]))
+
 	return {
 		"ok": true,
 		"width": width,
@@ -153,6 +183,7 @@ func picture_image(palette: Sc2Palette) -> Dictionary:
 
 func template_fields() -> Dictionary:
 	var chunk := document.find_chunk("TMPL") if document != null else null
+
 	if chunk == null:
 		return {
 			"ok": true,
@@ -161,27 +192,36 @@ func template_fields() -> Dictionary:
 			"scenario_size": 0,
 			"error": "",
 		}
+
 	var data := chunk.decoded_payload
+
 	if data.size() < 4 or _read_u32_be(data, 0) != TEMPLATE_HEADER:
 		return _failure("TMPL header is invalid")
+
 	var fields: Array[Dictionary] = []
 	var position := 4
 	var scenario_offset := 4
+
 	while position < data.size():
 		var name_length := int(data[position])
 		position += 1
+
 		if name_length == 0:
 			return _failure("TMPL field %d has an empty name" % fields.size())
+
 		if position + name_length + 4 > data.size():
 			return _failure("TMPL field %d is truncated" % fields.size())
+
 		var name := data.slice(position, position + name_length).get_string_from_ascii()
 		position += name_length
 		var type_code := data.slice(position, position + 4).get_string_from_ascii()
 		position += 4
+
 		if not TEMPLATE_TYPE_SIZES.has(type_code):
 			return _failure(
 				"TMPL field %d has unknown type %s" % [fields.size(), type_code]
 			)
+
 		var field_size := int(TEMPLATE_TYPE_SIZES[type_code])
 		fields.append({
 			"name": name,
@@ -190,6 +230,7 @@ func template_fields() -> Dictionary:
 			"scenario_offset": scenario_offset,
 		})
 		scenario_offset += field_size
+
 	return {
 		"ok": true,
 		"present": true,
@@ -202,6 +243,7 @@ func template_fields() -> Dictionary:
 func evaluate_goals(city: CityState) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	var unmet := PackedStringArray()
 	var values := {
 		"city_size": city.document.misc_u32(0x102c),
@@ -231,13 +273,17 @@ func evaluate_goals(city: CityState) -> Dictionary:
 	if first_building_id != 0:
 		var first_count := city.document.misc_u32(0x01f0 + first_building_id * 4)
 		values["first_building_tiles"] = first_count
+
 		if first_count < first_building_tile_count:
 			unmet.append("first_building")
+
 	if second_building_id != 0:
 		var second_count := city.document.misc_u32(0x01f0 + second_building_id * 4)
 		values["second_building_tiles"] = second_count
+
 		if second_count < second_building_tile_count:
 			unmet.append("second_building")
+
 	return {
 		"ok": true,
 		"met": unmet.is_empty(),
@@ -250,14 +296,20 @@ func evaluate_goals(city: CityState) -> Dictionary:
 func set_time_limit_months(value: int) -> bool:
 	if not is_valid() or value < 0 or value > 0xffff:
 		return false
+
 	var chunk := document.find_chunk("SCEN")
+
 	if chunk == null or chunk.decoded_payload.size() != format_size:
 		return false
+
 	var data: PackedByteArray = chunk.decoded_payload.duplicate()
 	_write_u16_be(data, 0x08, value)
+
 	if not chunk.set_decoded_payload(data):
 		return false
+
 	time_limit_months = value
+
 	return true
 
 
@@ -283,12 +335,17 @@ func _text_chunk(expected_header: int) -> String:
 	for chunk in document.chunks:
 		if chunk.chunk_id != "TEXT" or chunk.decoded_payload.size() < 4:
 			continue
+
 		if _read_u32_be(chunk.decoded_payload, 0) != expected_header:
 			continue
+
 		var end := 4
+
 		while end < chunk.decoded_payload.size() and chunk.decoded_payload[end] != 0:
 			end += 1
+
 		return chunk.decoded_payload.slice(4, end).get_string_from_ascii()
+
 	return ""
 
 
@@ -316,6 +373,7 @@ static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
 
 static func _read_i32_be(data: PackedByteArray, offset: int) -> int:
 	var value := _read_u32_be(data, offset)
+
 	return value - 0x100000000 if value >= 0x80000000 else value
 
 

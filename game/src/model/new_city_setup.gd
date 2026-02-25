@@ -63,39 +63,54 @@ static func create(
 ) -> Dictionary:
 	if template == null or not template.is_valid():
 		return _failure("default city template is invalid")
+
 	if difficulty < 1 or difficulty > 3:
 		return _failure("difficulty must be Easy, Medium, or Hard")
+
 	if not STARTING_YEARS.has(starting_year):
 		return _failure("starting year must be 1900, 1950, 2000, or 2050")
+
 	if random == null:
 		return _failure("random state is missing")
+
 	if not terrain_options.is_empty() and game_random == null:
 		return _failure("terrain game-random state is missing")
+
 	if (
 		not newspaper_session_state.is_empty()
 		and newspaper_session_state.size() != NewsQueue.MISC_SIZE
 	):
 		return _failure("newspaper session state has the wrong size")
+
 	var source_misc := template.find_chunk("MISC")
 	var source_graph := template.find_chunk("XGRP")
+
 	if source_misc == null or source_misc.decoded_payload.size() != MISC_SIZE:
 		return _failure("default MISC data is missing or invalid")
+
 	if source_graph == null or source_graph.decoded_payload.size() != GRAPH_SIZE:
 		return _failure("default XGRP data is missing or invalid")
+
 	if template.find_chunk("CNAM") == null or template.find_chunk("XLAB") == null:
 		return _failure("default name data is missing")
 
 	var document := template.duplicate_document()
 	document.source_path = ""
 	var city_name := requested_city_name.strip_edges()
+
 	if city_name.is_empty():
 		city_name = "New City"
+
 	var mayor_name := requested_mayor_name.strip_edges()
+
 	if mayor_name.is_empty():
 		mayor_name = "Mayor"
+
 	if not document.set_city_name(city_name):
 		return _failure("cannot store the city name")
+
 	var city := CityModel.from_document(document)
+
 	if not city.is_valid() or not city.set_label(0, mayor_name):
 		return _failure("cannot store the mayor name")
 
@@ -104,6 +119,7 @@ static func create(
 		GameRandom.new(game_random.state) if game_random != null else null
 	)
 	var terrain_result := {}
+
 	if not terrain_options.is_empty():
 		terrain_result = Terrain.generate(
 			document,
@@ -115,8 +131,10 @@ static func create(
 			staged_random,
 			staged_game_random,
 		)
+
 		if not terrain_result.ok:
 			return _failure("cannot generate terrain: %s" % terrain_result.error)
+
 	var misc_chunk := document.find_chunk("MISC")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var national_population := int(NATIONAL_POPULATIONS[starting_year])
@@ -128,11 +146,15 @@ static func create(
 	_write_u32(misc, MISC_NATIONAL_POPULATION, national_population)
 	_write_u32(misc, MISC_NATIONAL_FEDERAL_RATE, 3)
 	_write_u32(misc, MISC_NATIONAL_ECONOMY_TREND, difficulty - 1)
+
 	for bond_index in MAX_BONDS:
 		_write_u32(misc, MISC_BOND_RATES + bond_index * 4, 0)
+
 	var bond_budget := MISC_BUDGETS + BUDGET_BONDS * BUDGET_RECORD_SIZE
+
 	for byte_index in BUDGET_RECORD_SIZE:
 		misc[bond_budget + byte_index] = 0
+
 	if difficulty == 3:
 		_write_u32(misc, MISC_BONDS, 1)
 		_write_u32(misc, MISC_BOND_RATES, HARD_BOND_RATE)
@@ -141,6 +163,7 @@ static func create(
 		_write_u32(misc, bond_budget + BUDGET_YEAR_TO_DATE, 30000)
 		_write_u32(misc, bond_budget + BUDGET_COUNT_MONTH_0, 1)
 		_write_u32(misc, bond_budget + BUDGET_FUND_MONTH_0, 30000)
+
 	if not newspaper_session_state.is_empty():
 		_copy_range(
 			newspaper_session_state,
@@ -156,20 +179,26 @@ static func create(
 		)
 
 	var invention_years := PackedInt32Array()
+
 	for invention_index in INVENTION_BASE_YEARS.size():
 		var invention_year := (
 			int(INVENTION_BASE_YEARS[invention_index])
 			+ staged_random.next_u15() % 20
 		)
+
 		if invention_year < starting_year:
 			invention_year = 0
+
 		invention_years.append(invention_year)
 		_write_u32(
 			misc, MISC_INVENTION_YEARS + invention_index * 4, invention_year
 		)
+
 	var news_result := NewsQueue.insert(misc, FOUNDING_STORY_TYPE, 0)
+
 	if not news_result.ok:
 		return _failure("cannot initialize the founding newspaper: %s" % news_result.error)
+
 	if not misc_chunk.set_decoded_payload(misc):
 		return _failure("cannot store new-city settings")
 
@@ -181,12 +210,15 @@ static func create(
 	_write_graph_value(
 		graph, GRAPH_NATIONAL_POPULATION, 0, national_population
 	)
+
 	if not graph_chunk.set_decoded_payload(graph):
 		return _failure("cannot initialize graph history")
 
 	random.state = staged_random.state
+
 	if game_random != null:
 		game_random.state = staged_game_random.state
+
 	return {
 		"ok": true,
 		"document": document,
