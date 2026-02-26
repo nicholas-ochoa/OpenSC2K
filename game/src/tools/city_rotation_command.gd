@@ -31,11 +31,15 @@ const REQUIRED_CHUNKS := [
 # View rotation rewrites the saved city coordinates.
 static func apply(city: CityState, counter_clockwise: bool) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	var old_payloads := _payloads(city)
+
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "rotation data is missing or invalid"}
+
 	var changed := _duplicate_payloads(old_payloads)
 	var surface_table := _surface_table(counter_clockwise)
 	changed.ALTM = _rotate_grid(changed.ALTM, map_edge, 2, counter_clockwise)
@@ -51,8 +55,10 @@ static func apply(city: CityState, counter_clockwise: bool) -> Dictionary:
 	)
 	var overlay_cells := map_edge * map_edge
 	var rotated_text := _rotate_grid(changed.XTXT.slice(0, overlay_cells), map_edge, 1, counter_clockwise)
+
 	if changed.XTXT.size() > overlay_cells:
 		rotated_text.append_array(_rotate_grid(changed.XTXT.slice(overlay_cells), map_edge, 1, counter_clockwise))
+
 	changed.XTXT = rotated_text
 	changed.XBIT = _rotate_grid(changed.XBIT, map_edge, 1, counter_clockwise)
 	_rotate_surface_tile_counts(changed.MISC, surface_table)
@@ -64,22 +70,29 @@ static func apply(city: CityState, counter_clockwise: bool) -> Dictionary:
 		surface_table,
 		counter_clockwise,
 	)
+
 	for chunk_id in ["XTRF", "XPLT", "XVAL", "XCRM"]:
 		changed[chunk_id] = _rotate_grid(changed[chunk_id], CityDataGrid.edge(changed[chunk_id], map_edge), 1, counter_clockwise)
+
 	for chunk_id in ["XPLC", "XFIR", "XPOP", "XROG"]:
 		changed[chunk_id] = _rotate_grid(changed[chunk_id], CityDataGrid.edge(changed[chunk_id], map_edge), 1, counter_clockwise)
+
 	_rotate_things(changed.XTHG, counter_clockwise, map_edge)
 	var old_compass := _read_u32_be(changed.MISC, COMPASS_OFFSET) & 3
 	var new_compass := (old_compass + (1 if counter_clockwise else 3)) & 3
 	_write_u32_be(changed.MISC, COMPASS_OFFSET, new_compass)
 
 	var changed_ids := PackedStringArray()
+
 	for specification in REQUIRED_CHUNKS:
 		var chunk_id: String = specification[0]
+
 		if changed[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
+
 	if not _apply_payloads(city, changed_ids, changed, old_payloads):
 		return {"ok": false, "error": "cannot store rotated city data"}
+
 	return {
 		"ok": true,
 		"counter_clockwise": counter_clockwise,
@@ -93,43 +106,54 @@ static func apply(city: CityState, counter_clockwise: bool) -> Dictionary:
 static func rotate_point(point: Vector2i, size: int, counter_clockwise: bool) -> Vector2i:
 	if size < 1 or point.x < 0 or point.x >= size or point.y < 0 or point.y >= size:
 		return Vector2i(-1, -1)
+
 	if counter_clockwise:
 		return Vector2i(point.y, size - 1 - point.x)
+
 	return Vector2i(size - 1 - point.y, point.x)
 
 
 static func surface_tile_after_rotation(tile: int, counter_clockwise: bool) -> int:
 	if tile < 0 or tile > 0xff:
 		return tile
+
 	return _surface_table(counter_clockwise)[tile]
 
 
 static func terrain_tile_after_rotation(tile: int, counter_clockwise: bool) -> int:
 	var table := _terrain_table(counter_clockwise)
+
 	return table[tile] if tile >= 0 and tile < table.size() else tile
 
 
 static func underground_tile_after_rotation(tile: int, counter_clockwise: bool) -> int:
 	var table := _underground_table(counter_clockwise)
+
 	return table[tile] if tile >= 0 and tile < table.size() else tile
 
 
 static func _payloads(city: CityState) -> Dictionary:
 	var result := {}
+
 	for specification in REQUIRED_CHUNKS:
 		var chunk_id: String = specification[0]
 		var expected_size: int = city.document.decoded_size(chunk_id)
 		var chunk := city.document.find_chunk(chunk_id)
+
 		if chunk == null or chunk.decoded_payload.size() != expected_size:
 			return {}
+
 		result[chunk_id] = chunk.decoded_payload.duplicate()
+
 	return result
 
 
 static func _duplicate_payloads(payloads: Dictionary) -> Dictionary:
 	var result := {}
+
 	for chunk_id in payloads:
 		result[chunk_id] = payloads[chunk_id].duplicate()
+
 	return result
 
 
@@ -137,23 +161,32 @@ static func _apply_payloads(
 	city: CityState, chunk_ids: PackedStringArray, payloads: Dictionary, rollback: Dictionary
 ) -> bool:
 	var applied := PackedStringArray()
+
 	for chunk_id in chunk_ids:
 		var chunk := city.document.find_chunk(chunk_id)
+
 		if chunk == null or not chunk.set_decoded_payload(payloads[chunk_id]):
 			for rollback_id in applied:
 				city.document.find_chunk(rollback_id).set_decoded_payload(rollback[rollback_id])
+
 			_sync_city_arrays(city)
+
 			return false
+
 		applied.append(chunk_id)
+
 	_sync_city_arrays(city)
+
 	return true
 
 
 static func _sync_city_arrays(city: CityState) -> void:
 	var map_edge: int = city.map_size if city != null else 128
 	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
+
 	for index in (map_edge * map_edge):
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
+
 	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
 	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
 	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
@@ -168,6 +201,7 @@ static func _rotate_grid(
 ) -> PackedByteArray:
 	var output := PackedByteArray()
 	output.resize(input.size())
+
 	for old_x in size:
 		for old_y in size:
 			var destination := rotate_point(
@@ -175,8 +209,10 @@ static func _rotate_grid(
 			)
 			var source_offset := (old_x * size + old_y) * record_size
 			var destination_offset := (destination.x * size + destination.y) * record_size
+
 			for byte_index in record_size:
 				output[destination_offset + byte_index] = input[source_offset + byte_index]
+
 	return output
 
 
@@ -187,30 +223,37 @@ static func _rotate_byte_grid(
 	mapping: PackedByteArray
 ) -> PackedByteArray:
 	var output := _rotate_grid(input, size, 1, counter_clockwise)
+
 	for index in output.size():
 		var value := int(output[index])
+
 		if value < mapping.size():
 			output[index] = mapping[value]
+
 	return output
 
 
 static func _identity_table(size: int) -> PackedByteArray:
 	var table := PackedByteArray()
 	table.resize(size)
+
 	for index in size:
 		table[index] = index
+
 	return table
 
 
 # the tile number has a direction baked into it too
 static func _surface_table(counter_clockwise: bool) -> PackedByteArray:
 	var table := _identity_table(256)
+
 	for pair in [
 		[0x0e, 0x0f], [0x1d, 0x1e], [0x2c, 0x2d], [0x43, 0x44],
 		[0x45, 0x46], [0x47, 0x48], [0x49, 0x4a], [0x4b, 0x4c],
 		[0x4d, 0x4e], [0x4f, 0x50], [0x51, 0x55], [0x52, 0x54],
 	]:
 		_swap(table, pair[0], pair[1])
+
 	for cycle in [
 		[0x10, 0x11, 0x12, 0x13], [0x14, 0x15, 0x16, 0x17],
 		[0x18, 0x19, 0x1a, 0x1b], [0x1f, 0x20, 0x21, 0x22],
@@ -221,15 +264,19 @@ static func _surface_table(counter_clockwise: bool) -> PackedByteArray:
 		[0x65, 0x66, 0x67, 0x68], [0x6c, 0x6d, 0x6e, 0x6f],
 	]:
 		_set_cycle(table, cycle, counter_clockwise)
+
 	return table
 
 
 # four turns won't recover garbage tile ids
 static func _terrain_table(counter_clockwise: bool) -> PackedByteArray:
 	var table := _identity_table(0x48)
+
 	for invalid in [0x0e, 0x0f, 0x1e, 0x1f, 0x2f, 0x3f, 0x46, 0x47]:
 		table[invalid] = 0
+
 	_swap(table, 0x40, 0x41)
+
 	for cycle in [
 		[0x01, 0x02, 0x03, 0x04], [0x05, 0x06, 0x07, 0x08],
 		[0x09, 0x0a, 0x0b, 0x0c], [0x11, 0x12, 0x13, 0x14],
@@ -240,21 +287,26 @@ static func _terrain_table(counter_clockwise: bool) -> PackedByteArray:
 		[0x42, 0x43, 0x44, 0x45],
 	]:
 		_set_cycle(table, cycle, counter_clockwise)
+
 	return table
 
 
 static func _underground_table(counter_clockwise: bool) -> PackedByteArray:
 	var table := _identity_table(0x28)
+
 	for invalid in [0x24, 0x25, 0x26, 0x27]:
 		table[invalid] = 0
+
 	for pair in [[0x01, 0x02], [0x10, 0x11], [0x1f, 0x20]]:
 		_swap(table, pair[0], pair[1])
+
 	for cycle in [
 		[0x03, 0x04, 0x05, 0x06], [0x07, 0x08, 0x09, 0x0a],
 		[0x0b, 0x0c, 0x0d, 0x0e], [0x12, 0x13, 0x14, 0x15],
 		[0x16, 0x17, 0x18, 0x19], [0x1a, 0x1b, 0x1c, 0x1d],
 	]:
 		_set_cycle(table, cycle, counter_clockwise)
+
 	return table
 
 
@@ -285,16 +337,20 @@ static func _rotate_special_surface(
 		if counter_clockwise
 		else [0x60, 0x5f, 0x5e, 0x5d, 0x5e, 0x5d, 0x60, 0x5f]
 	)
+
 	for index in buildings.size():
 		var tile := int(buildings[index])
 		var flipped := (flags[index] & FLIP_FLAG) != 0
+
 		if tile >= 0x5d and tile <= 0x60:
 			var ramp_index := tile - 0x5d + (4 if flipped else 0)
 			_replace_building(buildings, zones, misc, index, ramp_tiles[ramp_index])
 			flags[index] = (flags[index] & 0xfd) | (FLIP_FLAG if ramp_index < 4 else 0)
 			continue
+
 		if not ((tile >= 0x51 and tile <= 0x5c) or tile == 0x6a or tile == 0x6b):
 			continue
+
 		if counter_clockwise:
 			if flipped:
 				flags[index] &= 0xfd
@@ -315,8 +371,10 @@ static func _rotate_surface_tile_counts(
 ) -> void:
 	var old_counts := PackedInt64Array()
 	old_counts.resize(0x70)
+
 	for tile in 0x70:
 		old_counts[tile] = _read_u32_be(misc, TILE_COUNT_OFFSET + tile * 4)
+
 	for tile in 0x70:
 		_write_u32_be(
 			misc, TILE_COUNT_OFFSET + int(surface_table[tile]) * 4, old_counts[tile]
@@ -332,13 +390,16 @@ static func _replace_building(
 	new_tile: int
 ) -> void:
 	var old_tile := int(buildings[index])
+
 	if old_tile == new_tile:
 		return
+
 	if (zones[index] & 0x0f) != MILITARY_ZONE:
 		var old_offset := TILE_COUNT_OFFSET + old_tile * 4
 		var new_offset := TILE_COUNT_OFFSET + new_tile * 4
 		_write_u32_be(misc, old_offset, (_read_u32_be(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
 		_write_u32_be(misc, new_offset, (_read_u32_be(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
+
 	buildings[index] = new_tile
 
 
@@ -347,19 +408,24 @@ static func _rotate_things(things: PackedByteArray, counter_clockwise: bool, map
 	for record in range(1, ThingData.count(things)):
 		var offset := record * CityState.THING_RECORD_SIZE
 		var type := int(ThingData.read(things, offset))
+
 		if type == 0:
 			continue
+
 		if type == 3 and map_edge > 128:
 			var home := ThingData.ship_home(things, record, Vector2i(-1, -1))
 			ThingData.set_ship_home(things, record, Vector2i(home.y, map_edge - 1 - home.x) if counter_clockwise else Vector2i(map_edge - 1 - home.y, home.x))
+
 		var old_x := int(ThingData.read(things, offset + 3))
 		var old_y := int(ThingData.read(things, offset + 4))
+
 		if counter_clockwise:
 			ThingData.write(things, offset + 3, old_y)
 			ThingData.write(things, offset + 4, (map_edge - 1 - old_x))
 		else:
 			ThingData.write(things, offset + 3, (map_edge - 1 - old_y))
 			ThingData.write(things, offset + 4, old_x)
+
 		if type >= 10 and type <= 13:
 			_rotate_train_thing(things, offset, counter_clockwise, map_edge)
 		else:
@@ -368,12 +434,14 @@ static func _rotate_things(things: PackedByteArray, counter_clockwise: bool, map
 			) & 7)
 			var old_dx := int(ThingData.read(things, offset + 8))
 			var old_dy := int(ThingData.read(things, offset + 9))
+
 			if counter_clockwise:
 				ThingData.write(things, offset + 8, old_dy)
 				ThingData.write(things, offset + 9, (map_edge - 1 - old_dx))
 			else:
 				ThingData.write(things, offset + 8, (map_edge - 1 - old_dy))
 				ThingData.write(things, offset + 9, old_dx)
+
 			if type == 1:
 				var turn := -0x20 if counter_clockwise else 0x20
 				ThingData.write(things, offset + 2, (
@@ -392,6 +460,7 @@ static func _rotate_train_thing(
 	) & 7)
 	var old_px := int(ThingData.read(things, offset + 6))
 	var old_py := int(ThingData.read(things, offset + 7))
+
 	if counter_clockwise:
 		ThingData.write(things, offset + 6, old_py)
 		ThingData.write(things, offset + 7, map_edge - 1 - old_px)
