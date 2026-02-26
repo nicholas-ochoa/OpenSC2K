@@ -58,17 +58,22 @@ const NEWS_ORDINANCE := 0x29
 static func run(city: CityState, random, annual_budget_approved := false) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible random generator is required"}
+
 	var misc_chunk := city.document.find_chunk("MISC")
+
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var month := int(city.age_in_days() % 300 / 25)
 	var funds_before := _read_i32(misc, MISC_FUNDS)
 	var funds := funds_before
 	var settled_year := false
 	var auto_budget_disabled := false
+
 	if (
 		_read_u32(misc, MISC_YEAR_END) != 0
 		and month == 0
@@ -86,17 +91,22 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 
 	if _read_u32(misc, MISC_YEAR_END) != 0 and month == 0:
 		settled_year = true
+
 		for budget_id in BUDGET_COUNT:
 			var budget_offset := _budget_offset(budget_id)
 			var factor: int = ANNUAL_DIVISOR_FACTORS[budget_id]
+
 			if factor != 0:
 				var year_to_date := _read_i32(misc, budget_offset + BUDGET_YEAR_TO_DATE)
 				funds = _to_i32(
 					funds + _divide_toward_zero(year_to_date, factor * 12)
 				)
+
 			_write_i32(misc, budget_offset + BUDGET_YEAR_TO_DATE, 0)
+
 		_write_u32(misc, MISC_YEAR_END, 0)
 		_write_i32(misc, MISC_FUNDS, funds)
+
 		if funds < 0 and _read_u32(misc, MISC_AUTO_BUDGET) != 0:
 			_write_u32(misc, MISC_AUTO_BUDGET, 0)
 			auto_budget_disabled = true
@@ -120,6 +130,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 		_write_u32(misc, MISC_YEAR_END, 1)
 
 	_write_i32(misc, _budget_offset(BUDGET_BONDS), _read_i32(misc, MISC_BONDS))
+
 	for budget_id in SERVICE_TILE_IDS:
 		var divisor := 16 if budget_id == BUDGET_COLLEGE else 9
 		_write_i32(
@@ -130,8 +141,10 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 
 	for budget_id in range(BUDGET_ROAD, BUDGET_TUNNEL + 1):
 		_write_i32(misc, _budget_offset(budget_id), 0)
+
 	for tile_id in range(0x1d, 0x70):
 		var count := _tile_count(misc, tile_id)
+
 		if (
 			(tile_id >= 0x1d and tile_id <= 0x2b)
 			or (tile_id >= 0x3f and tile_id <= 0x46)
@@ -140,6 +153,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 			or (tile_id >= 0x5d and tile_id <= 0x60)
 		):
 			_add_current(misc, BUDGET_ROAD, count)
+
 		if (
 			(tile_id >= 0x2c and tile_id <= 0x3e)
 			or (tile_id >= 0x45 and tile_id <= 0x48)
@@ -148,10 +162,13 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 			or tile_id == 0x4e
 		):
 			_add_current(misc, BUDGET_RAIL, count)
+
 		if (tile_id >= 0x51 and tile_id <= 0x5c) or tile_id == 0x6a or tile_id == 0x6b:
 			_add_current(misc, BUDGET_BRIDGE, count)
+
 		if (tile_id >= 0x61 and tile_id <= 0x6b) or (tile_id >= 0x49 and tile_id <= 0x50):
 			_add_current(misc, BUDGET_HIGHWAY, count)
+
 		if tile_id >= 0x3f and tile_id <= 0x42:
 			_add_current(misc, BUDGET_TUNNEL, count)
 
@@ -173,6 +190,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 	)
 
 	var news_items: Array[Dictionary] = []
+
 	if (
 		_read_u32(misc, MISC_NO_DISASTERS) == 0
 		and (random.next_u15() & 7) == 0
@@ -190,8 +208,10 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 		return {"ok": false, "error": "cannot store the monthly budget update"}
 
 	var current_costs := PackedInt32Array()
+
 	for budget_id in BUDGET_COUNT:
 		current_costs.append(_read_i32(misc, _budget_offset(budget_id)))
+
 	return {
 		"ok": true,
 		"error": "",
@@ -211,6 +231,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 static func requires_annual_budget(city: CityState) -> bool:
 	if city == null or not city.is_valid():
 		return false
+
 	return (
 		city.age_in_days() % 300 == 0
 		and city.document.misc_u32(MISC_YEAR_END) != 0
@@ -220,10 +241,13 @@ static func requires_annual_budget(city: CityState) -> bool:
 
 static func funding_values(city: CityState) -> PackedInt32Array:
 	var values := PackedInt32Array()
+
 	if city == null or not city.is_valid():
 		return values
+
 	for budget_id in BUDGET_COUNT:
 		values.append(city.document.misc_i32(_budget_offset(budget_id) + BUDGET_FUNDING))
+
 	return values
 
 
@@ -232,17 +256,25 @@ static func set_funding(
 ) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if values.size() != BUDGET_COUNT:
 		return {"ok": false, "error": "sixteen budget funding values are required"}
+
 	var misc_chunk := city.document.find_chunk("MISC")
+
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+
 	for budget_id in BUDGET_COUNT:
 		_write_i32(misc, _budget_offset(budget_id) + BUDGET_FUNDING, values[budget_id])
+
 	_write_u32(misc, MISC_AUTO_BUDGET, 1 if auto_budget else 0)
+
 	if not misc_chunk.set_decoded_payload(misc):
 		return {"ok": false, "error": "cannot store budget funding values"}
+
 	return {"ok": true, "error": ""}
 
 
@@ -262,12 +294,15 @@ static func _add_current(misc: PackedByteArray, budget_id: int, value: int) -> v
 static func _divide_toward_zero(value: int, divisor: int) -> int:
 	if divisor == 0:
 		return 0
+
 	var quotient := int(absi(value) / absi(divisor))
+
 	return -quotient if (value < 0) != (divisor < 0) else quotient
 
 
 static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
+
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
 
 

@@ -61,12 +61,16 @@ const BUILDING_RULES := {
 
 static func calculate(city: CityState) -> Dictionary:
 	var validated := _misc_data(city)
+
 	if not validated.ok:
 		return validated
+
 	var misc: PackedByteArray = validated.misc
 	var value := _to_i32(-_read_count(misc, MISC_SUBWAY_COUNT, city.map_size))
+
 	for tile_id in range(0x0e, 0x70):
 		var cost := 0
+
 		if tile_id < 0x1d:
 			cost = 2
 		elif tile_id < 0x2c:
@@ -81,32 +85,42 @@ static func calculate(city: CityState) -> Dictionary:
 			cost = 100
 		else:
 			cost = 250
+
 		value = _add_value(value, _tile_count(misc, tile_id, city.map_size), cost)
+
 	for tile_id in BUILDING_RULES:
 		var rule: Array = BUILDING_RULES[tile_id]
 		var count := _divide_toward_zero(_tile_count(misc, tile_id, city.map_size), int(rule[0]))
 		value = _add_value(value, count, int(rule[1]))
+
 	return {"ok": true, "error": "", "city_value": value}
 
 
 static func run(city: CityState) -> Dictionary:
 	var calculated := calculate(city)
+
 	if not calculated.ok:
 		return calculated
+
 	var misc_chunk := city.document.find_chunk("MISC")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	_write_i32(misc, MISC_CITY_VALUE, int(calculated.city_value))
+
 	if not misc_chunk.set_decoded_payload(misc):
 		return {"ok": false, "error": "cannot store the city value"}
+
 	return calculated
 
 
 static func _misc_data(city: CityState) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	var misc_chunk := city.document.find_chunk("MISC")
+
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+
 	return {"ok": true, "error": "", "misc": misc_chunk.decoded_payload}
 
 
@@ -124,16 +138,19 @@ static func _add_value(current: int, count: int, cost: int) -> int:
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
 	var quotient := int(absi(value) / absi(divisor))
+
 	return -quotient if value < 0 else quotient
 
 
 static func _read_i16_low(data: PackedByteArray, offset: int) -> int:
 	var value := (data[offset + 2] << 8) | data[offset + 3]
+
 	return value - 0x10000 if value & 0x8000 else value
 
 
 static func _to_i32(value: int) -> int:
 	var unsigned := value & 0xffffffff
+
 	return unsigned - 0x100000000 if unsigned & 0x80000000 else unsigned
 
 

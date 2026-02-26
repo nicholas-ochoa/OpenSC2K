@@ -37,15 +37,19 @@ const ORDINANCE_CPR_TRAINING := 0x0400
 static func run(city: CityState, random) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible random generator is required"}
+
 	var misc := city.document.find_chunk("MISC")
+
 	if misc == null or misc.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
 
 	var population := PackedInt64Array()
 	var education := PackedInt64Array()
 	var life_expectancy := PackedInt64Array()
+
 	for cohort in POPULATION_COHORTS:
 		var offset := MISC_POPULATION_TABLE + cohort * POPULATION_STRIDE
 		population.append(city.document.misc_u32(offset + RAW_POPULATION_FIELD))
@@ -53,14 +57,17 @@ static func run(city: CityState, random) -> Dictionary:
 		life_expectancy.append(city.document.misc_u32(offset + LIFE_EXPECTANCY_FIELD))
 
 	var city_population := city.document.misc_u32(MISC_NORMAL_POPULATION)
+
 	if city_population == 0:
 		population.fill(0)
 		education.fill(0)
 		life_expectancy.fill(0)
 		var empty_data: PackedByteArray = misc.decoded_payload.duplicate()
 		_write_tables(empty_data, population, education, life_expectancy)
+
 		if not misc.set_decoded_payload(empty_data):
 			return {"ok": false, "error": "cannot store cleared demographic tables"}
+
 		return {
 			"ok": true,
 			"population": 0,
@@ -92,12 +99,16 @@ static func run(city: CityState, random) -> Dictionary:
 		/ 100
 	)
 	var newborn_life_expectancy := 85
+
 	if ordinance_flags & ORDINANCE_ANTI_DRUG:
 		newborn_life_expectancy += 5
+
 	if ordinance_flags & ORDINANCE_CPR_TRAINING:
 		newborn_life_expectancy += 5
+
 	if ordinance_flags & ORDINANCE_PUBLIC_SMOKING_BAN:
 		newborn_life_expectancy += 5
+
 	if ordinance_flags & ORDINANCE_FREE_CLINICS:
 		health_capacity += int(
 			city.document.misc_i32(MISC_BUDGETS) / 400
@@ -122,13 +133,17 @@ static func run(city: CityState, random) -> Dictionary:
 	)
 
 	var fertile_population := 0
+
 	for cohort in range(4, 9):
 		fertile_population += population[cohort]
+
 	var births := int(fertile_population / 300)
 	# The original subtracts pollution here instead of using the modulo remainder.
 	var birth_threshold := fertile_population - pollution_penalty * 300
+
 	if random.next_u15() % 300 < birth_threshold:
 		births += 1
+
 	if births > 0:
 		var protected_births := mini(births, health_capacity)
 		life_expectancy[0] += (
@@ -142,6 +157,7 @@ static func run(city: CityState, random) -> Dictionary:
 	var table_population := _sum(population)
 	var immigrants := 0
 	var emigrants := 0
+
 	if table_population < city_population:
 		immigrants = city_population - table_population
 		_add_population(population, education, life_expectancy, immigrants)
@@ -150,19 +166,23 @@ static func run(city: CityState, random) -> Dictionary:
 		var removal := _remove_population(
 			population, education, life_expectancy, emigrants, city_population, random
 		)
+
 		if not removal.ok:
 			return removal
 
 	var workforce_population := 0
 	var workforce_education := 0
 	var workforce_life_expectancy := 0
+
 	for cohort in range(4, 11):
 		workforce_population += population[cohort]
 		workforce_education += education[cohort]
 		workforce_life_expectancy += life_expectancy[cohort]
+
 	var workforce_percent := 0
 	var workforce_eq := 0
 	var workforce_le := 0
+
 	if workforce_population > 0:
 		workforce_percent = int(workforce_population * 100 / (city_population + 1))
 		workforce_eq = int(workforce_education / workforce_population)
@@ -173,8 +193,10 @@ static func run(city: CityState, random) -> Dictionary:
 	_write_u32(changed, MISC_WORKFORCE_PERCENT, workforce_percent)
 	_write_u32(changed, MISC_WORKFORCE_LE, workforce_le)
 	_write_u32(changed, MISC_WORKFORCE_EQ, workforce_eq)
+
 	if not misc.set_decoded_payload(changed):
 		return {"ok": false, "error": "cannot store updated demographic data"}
+
 	return {
 		"ok": true,
 		"population": _sum(population),
@@ -203,25 +225,35 @@ static func _apply_mortality(
 	random
 ) -> int:
 	var total_deaths := 0
+
 	for cohort in range(1, POPULATION_COHORTS):
 		var count := population[cohort]
+
 		if count == 0:
 			continue
+
 		var average_life_expectancy := int(life_expectancy[cohort] / count)
 		var survival_ratio := int(average_life_expectancy * 100 / (cohort * 5))
+
 		if survival_ratio >= 100:
 			continue
+
 		var scaled_deaths := int((100 - survival_ratio) * count / 24)
 		var deaths := int(scaled_deaths / 100)
+
 		if random.next_u15() % 100 < scaled_deaths - deaths * 100:
 			deaths += 1
+
 		deaths = mini(deaths, count)
+
 		if deaths == 0:
 			continue
+
 		education[cohort] -= int(education[cohort] * deaths / count)
 		life_expectancy[cohort] -= int(life_expectancy[cohort] * deaths / count)
 		population[cohort] -= deaths
 		total_deaths += deaths
+
 	return total_deaths
 
 
@@ -238,12 +270,17 @@ static func _apply_aging(
 	for target_cohort in range(POPULATION_COHORTS - 1, 0, -1):
 		var source_cohort := target_cohort - 1
 		var source_population := population[source_cohort]
+
 		if source_population == 0:
 			continue
+
 		var moved_population := int(source_population / 60)
+
 		if random.next_u15() % 60 < source_population % 60:
 			moved_population += 1
+
 		moved_population = mini(moved_population, source_population)
+
 		if moved_population == 0:
 			continue
 
@@ -251,6 +288,7 @@ static func _apply_aging(
 			education[source_cohort] * moved_population / source_population
 		)
 		education[source_cohort] -= moved_education
+
 		if target_cohort < 3:
 			moved_education += mini(moved_population, school_capacity) * 35
 		elif target_cohort == 3:
@@ -258,8 +296,10 @@ static func _apply_aging(
 			moved_education += int(
 				int(educated_population * moved_education / moved_population) / 2
 			)
+
 		if ordinance_flags & ORDINANCE_PRO_READING == 0:
 			moved_education -= moved_population
+
 		education[target_cohort] = _u32(education[target_cohort] + moved_education)
 
 		var moved_life_expectancy := int(
@@ -281,6 +321,7 @@ static func _add_population(
 ) -> void:
 	var remaining := amount
 	var portion := int(remaining / 16) + 1
+
 	while remaining > 0:
 		for cohort in range(4, 8):
 			var added := mini(portion, remaining)
@@ -288,9 +329,11 @@ static func _add_population(
 			education[cohort] += (90 - cohort) * added
 			population[cohort] += added
 			remaining -= added
+
 		for cohort in range(0, 12):
 			if remaining == 0:
 				return
+
 			var added := mini(portion, remaining)
 			life_expectancy[cohort] += (65 - cohort) * added
 			var education_value := 17 + cohort * 35 if cohort < 3 else 90 - cohort
@@ -309,27 +352,39 @@ static func _remove_population(
 ) -> Dictionary:
 	var remaining := amount
 	var pass_count := 0
+
 	while remaining > 0:
 		var pass_start := remaining
+
 		for cohort in POPULATION_COHORTS:
 			if remaining == 0:
 				break
+
 			var count := population[cohort]
+
 			if count == 0:
 				continue
+
 			var removed := int(count * pass_start / (remaining + city_population))
+
 			if removed == 0 and random.next_u15() & 3 == 0:
 				removed = 1
+
 			removed = mini(removed, mini(count, remaining))
+
 			if removed == 0:
 				continue
+
 			life_expectancy[cohort] -= int(life_expectancy[cohort] * removed / count)
 			education[cohort] -= int(education[cohort] * removed / count)
 			population[cohort] -= removed
 			remaining -= removed
+
 		pass_count += 1
+
 		if pass_count > 100000:
 			return {"ok": false, "error": "demographic removal did not converge"}
+
 	return {"ok": true, "error": ""}
 
 
@@ -345,8 +400,10 @@ static func _budget_funding(city: CityState, budget_id: int) -> int:
 
 static func _sum(values: PackedInt64Array) -> int:
 	var total := 0
+
 	for value in values:
 		total += value
+
 	return total
 
 
