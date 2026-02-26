@@ -15,6 +15,7 @@ func _init(initial_city_days: int = 0) -> void:
 
 func advance_day() -> Dictionary:
 	city_days += 1
+
 	return state_for_day(city_days)
 
 

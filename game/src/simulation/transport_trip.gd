@@ -44,15 +44,21 @@ static func run(
 	maximum_cost := 100
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible random generator is required"}
+
 	if zone < 0 or zone >= DESTINATION_ZONE_MASKS.size():
 		return {"ok": false, "error": "zone is outside the supported range"}
+
 	if traffic_weight < 0:
 		return {"ok": false, "error": "traffic weight cannot be negative"}
+
 	var traffic_chunk := city.document.find_chunk("XTRF")
+
 	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != city.document.decoded_size("XTRF"):
 		return {"ok": false, "error": "XTRF is missing or has the wrong size"}
 
@@ -70,10 +76,13 @@ static func run(
 		random,
 		maximum_cost, map_edge,
 	)
+
 	if not result.ok:
 		return result
+
 	if result.reached_destination and not traffic_chunk.set_decoded_payload(traffic):
 		return {"ok": false, "error": "cannot store updated XTRF data"}
+
 	return result
 
 
@@ -100,19 +109,26 @@ static func trace(
 		or not CityDataGrid.valid(traffic, map_edge)
 	):
 		return {"ok": false, "error": "transport input maps have the wrong size"}
+
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible random generator is required"}
+
 	if zone < 0 or zone >= DESTINATION_ZONE_MASKS.size():
 		return {"ok": false, "error": "zone is outside the supported range"}
+
 	if traffic_weight < 0:
 		return {"ok": false, "error": "traffic weight cannot be negative"}
 
 	var start := _find_transport(buildings, origin, map_edge)
+
 	if start < 0:
 		return _result(false, 0, 0, false, false, false)
+
 	var limit := maxi(maximum_cost, 0)
+
 	if traffic_weight == 1:
 		limit -= int(limit / 4)
+
 	var turn_direction := 1 if random.next_u15() & 1 else 3
 	var start_index := start & (POINT_INDEX_MASK if map_edge == 128 else 0x3ffff)
 	var state_points: Array[Vector2i] = [
@@ -134,11 +150,14 @@ static func trace(
 		var cost := state_costs[state_index]
 		var direction: int = random.next_u15() & 3
 		var moved := false
+
 		for unused in 4:
 			direction = (direction + turn_direction) & 3
 			var bit: int = 1 << direction
+
 			if state_directions[state_index] & bit == 0:
 				continue
+
 			state_directions[state_index] &= ~bit
 			var next_point: Vector2i = point + DIRECTIONS[direction]
 			var advance := _advance(
@@ -152,22 +171,27 @@ static func trace(
 				mode,
 				zone, map_edge,
 			)
+
 			if advance == ADVANCE_SUCCESS:
 				reached_destination = true
 				final_cost = cost
 				moved = true
 				break
+
 			if advance == ADVANCE_BLOCKED:
 				continue
+
 			var next_cost := cost + (advance & 0xff)
 			var next_mode := advance >> 8
 			var next_directions: int
+
 			if next_mode == ROAD_BRIDGE_MODE or next_mode == BUS_BRIDGE_MODE:
 				next_directions = bit
 			elif next_mode == SUBWAY_STATION_MODE:
 				next_directions = 0x0f
 			else:
 				next_directions = FORWARD_DIRECTION_MASKS[direction]
+
 			state_points.append(next_point)
 			state_modes.append(next_mode)
 			state_costs.append(next_cost)
@@ -175,14 +199,18 @@ static func trace(
 			final_cost = next_cost
 			moved = true
 			break
+
 		if reached_destination:
 			break
+
 		if moved:
 			continue
+
 		state_points.pop_back()
 		state_modes.resize(state_modes.size() - 1)
 		state_costs.resize(state_costs.size() - 1)
 		state_directions.resize(state_directions.size() - 1)
+
 		while not state_points.is_empty() and state_directions[-1] == 0:
 			state_points.pop_back()
 			state_modes.resize(state_modes.size() - 1)
@@ -192,16 +220,19 @@ static func trace(
 	if reached_destination and traffic_weight > 0:
 		for index in state_points.size():
 			var mode := state_modes[index]
+
 			if mode == SUBWAY_STATION_MODE:
 				used_subway = true
 			elif mode == RAIL_STATION_MODE:
 				used_rail = true
 			elif mode == BUS_STOP_MODE:
 				used_bus = true
+
 			if mode == ROAD_MODE or mode == HIGHWAY_MODE or mode == ROAD_BRIDGE_MODE:
 				var point := state_points[index]
 				var traffic_index := CityDataGrid.index(traffic, map_edge, point.x, point.y)
 				traffic[traffic_index] = mini(int(traffic[traffic_index]) + traffic_weight, 0xff)
+
 	return _result(
 		reached_destination,
 		final_cost,
@@ -219,20 +250,28 @@ static func has_nearby_transport(buildings: PackedByteArray, origin: Vector2i, m
 static func _find_transport(buildings: PackedByteArray, origin: Vector2i, map_edge: int = 128) -> int:
 	if buildings.size() != (map_edge * map_edge):
 		return -1
+
 	for offset in TRANSPORT_OFFSETS:
 		var point: Vector2i = origin + offset
 		var index := _index(point, map_edge)
+
 		if index < 0:
 			continue
+
 		var tile := int(buildings[index])
+
 		if _is_surface_road(tile):
 			return (ROAD_MODE << (14 if map_edge == 128 else 18)) | index
+
 		if tile == 0xec:
 			return (BUS_STOP_MODE << (14 if map_edge == 128 else 18)) | index
+
 		if tile == 0xed:
 			return (RAIL_STATION_MODE << (14 if map_edge == 128 else 18)) | index
+
 		if tile == 0xe9:
 			return (SUBWAY_STATION_MODE << (14 if map_edge == 128 else 18)) | index
+
 	return -1
 
 
@@ -249,11 +288,15 @@ static func _advance(
 	map_edge: int = 128,
 ) -> int:
 	var index := _index(next_point, map_edge)
+
 	if index < 0:
 		var current_index := _index(current, map_edge)
+
 		if current_index >= 0 and OverlayData.read(text_overlays, current_index) == CONNECTION_LABEL:
 			return ADVANCE_SUCCESS
+
 		return ADVANCE_BLOCKED
+
 	var tile := int(buildings[index])
 	var destination: bool = (
 		DESTINATION_ZONE_MASKS[origin_zone] & (1 << (zones[index] & 0x0f))
@@ -263,84 +306,109 @@ static func _advance(
 		ROAD_MODE:
 			if destination:
 				return ADVANCE_SUCCESS
+
 			if tile >= 0x3f and tile <= 0x42:
 				return _move(HIGHWAY_MODE, 3)
+
 			if _is_road_bridge(tile):
 				return _move(ROAD_BRIDGE_MODE, 3)
+
 			if tile >= 0x5d and tile <= 0x60:
 				return _move(HIGHWAY_MODE, 2)
+
 			if _is_surface_road(tile):
 				return _move(ROAD_MODE, 3)
+
 			if tile == 0xec:
 				return _move(BUS_STOP_MODE, 4)
+
 			if tile == 0xed:
 				return _move(RAIL_STATION_MODE, 4)
+
 			if tile == 0xe9:
 				return _move(SUBWAY_STATION_MODE, 4)
 		HIGHWAY_MODE:
 			if _is_highway_span(tile):
 				return _move(HIGHWAY_MODE, 1)
+
 			if tile >= 0x5d and tile <= 0x60:
 				return _move(ROAD_MODE, 1)
 		ROAD_TUNNEL_MODE:
 			if altitudes[index] & 0xfc00:
 				return _move(ROAD_TUNNEL_MODE, 3)
+
 			if _is_surface_road(tile):
 				return _move(ROAD_MODE, 3)
 		ROAD_BRIDGE_MODE:
 			if _is_road_bridge(tile):
 				return _move(ROAD_BRIDGE_MODE, 3)
+
 			if _is_surface_road(tile):
 				return _move(ROAD_MODE, 3)
 		BUS_ROAD_MODE:
 			if destination:
 				return ADVANCE_SUCCESS
+
 			if tile >= 0x3f and tile <= 0x42:
 				return _move(BUS_TUNNEL_MODE, 2)
+
 			if _is_road_bridge(tile):
 				return _move(BUS_BRIDGE_MODE, 2)
+
 			if tile >= 0x5d and tile <= 0x60:
 				return _move(BUS_HIGHWAY_MODE, 2)
+
 			if _is_surface_road(tile):
 				return _move(BUS_ROAD_MODE, 2)
+
 			if tile == 0xec:
 				return _move(BUS_RAIL_MODE, 4)
+
 			if tile == 0xed:
 				return _move(RAIL_STATION_MODE, 4)
+
 			if tile == 0xe9:
 				return _move(SUBWAY_STATION_MODE, 4)
 		BUS_HIGHWAY_MODE:
 			if _is_highway_span(tile):
 				return _move(BUS_HIGHWAY_MODE, 1)
+
 			if tile >= 0x5d and tile <= 0x60:
 				return _move(BUS_ROAD_MODE, 1)
 		BUS_TUNNEL_MODE:
 			if altitudes[index] & 0xfc00:
 				return _move(BUS_TUNNEL_MODE, 2)
+
 			if _is_surface_road(tile):
 				return _move(BUS_ROAD_MODE, 2)
 		BUS_BRIDGE_MODE:
 			if _is_road_bridge(tile):
 				return _move(BUS_BRIDGE_MODE, 2)
+
 			if _is_surface_road(tile):
 				return _move(BUS_ROAD_MODE, 2)
 		BUS_STOP_MODE:
 			if destination:
 				return ADVANCE_SUCCESS
+
 			if tile == 0xec:
 				return _move(BUS_STOP_MODE, 4)
+
 			if _is_surface_road(tile):
 				return _move(BUS_ROAD_MODE, 2)
 		BUS_RAIL_MODE:
 			if destination:
 				return ADVANCE_SUCCESS
+
 			if tile == 0xec or tile == 0xed:
 				return _move(BUS_RAIL_MODE, 4)
+
 			if _is_surface_road(tile):
 				return _move(ROAD_MODE, 3)
 		RAIL_STATION_MODE:
 			if tile == 0xed:
 				return _move(RAIL_STATION_MODE, 4)
+
 			if _is_rail(tile):
 				return _move(RAIL_MODE, 1)
 		SUBWAY_STATION_MODE:
@@ -349,15 +417,19 @@ static func _advance(
 		RAIL_MODE:
 			if tile == 0xed:
 				return _move(BUS_RAIL_MODE, 4)
+
 			if _is_rail(tile):
 				return _move(RAIL_MODE, 1)
+
 			if tile > 0xfa:
 				return ADVANCE_SUCCESS
 		SUBWAY_MODE:
 			if tile == 0xe9:
 				return _move(BUS_RAIL_MODE, 4)
+
 			if _is_subway(int(underground[index])):
 				return _move(SUBWAY_MODE, 1)
+
 	return ADVANCE_BLOCKED
 
 
@@ -426,4 +498,5 @@ static func _is_subway(tile: int) -> bool:
 static func _index(point: Vector2i, map_edge: int = 128) -> int:
 	if point.x < 0 or point.x >= map_edge or point.y < 0 or point.y >= map_edge:
 		return -1
+
 	return point.x * map_edge + point.y

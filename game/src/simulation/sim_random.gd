@@ -13,4 +13,5 @@ func _init(seed := 1) -> void:
 
 func next_u15() -> int:
 	state = (state * MULTIPLIER + INCREMENT) & 0xffffffff
+
 	return (state >> 16) & 0x7fff

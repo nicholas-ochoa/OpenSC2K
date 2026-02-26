@@ -41,20 +41,27 @@ const INDUSTRY_CONNECTION_RANGES := [
 static func run(city: CityState) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	var misc := city.document.find_chunk("MISC")
+
 	if misc == null or misc.decoded_payload.size() < 0x1054:
 		return {"ok": false, "error": "MISC data is missing or too short"}
 
 	var zone_population := PackedInt64Array()
 	zone_population.resize(8)
+
 	for index in 8:
 		if city.simulation_slice != null and (index & 127) == 0:
 			city.simulation_slice.checkpoint()
+
 		zone_population[index] = city.document.misc_i32(ZONE_POPULATION_OFFSET + index * 4)
+
 	zone_population[0] = 0
+
 	for index in range(1, 7):
 		if city.simulation_slice != null and (index & 127) == 0:
 			city.simulation_slice.checkpoint()
+
 		zone_population[0] += zone_population[index]
 
 	var tax_population := PackedInt64Array([
@@ -124,9 +131,11 @@ static func run(city: CityState) -> Dictionary:
 	var targets := [residential_target, commercial_target, industrial_target]
 	var ordinance_flags := city.document.misc_u32(ORDINANCES_OFFSET)
 	var demands := PackedInt32Array()
+
 	for index in 3:
 		if city.simulation_slice != null and (index & 127) == 0:
 			city.simulation_slice.checkpoint()
+
 		var tax_rate := city.document.misc_i32(BUDGET_OFFSET + index * BUDGET_RECORD_SIZE + 4)
 		tax_rate = _ordinance_adjusted_tax_rate(index, tax_rate, ordinance_flags)
 		tax_rate = clampi(tax_rate, 0, TAX_EFFECT.size() - 1)
@@ -141,13 +150,16 @@ static func run(city: CityState) -> Dictionary:
 	_write_i32(changed, GARBAGE_OFFSET, city.document.misc_i32(GARBAGE_OFFSET) + normal_population)
 	_write_i32(changed, OLD_RESIDENTIAL_POPULATION_OFFSET, tax_population[0])
 	var arcology_population := city.document.misc_i32(ARCOLOGY_POPULATION_OFFSET)
+
 	for index in 3:
 		if city.simulation_slice != null and (index & 127) == 0:
 			city.simulation_slice.checkpoint()
+
 		var budget_population := tax_population[index] * 10
 		budget_population += int(arcology_population / (6 if index == 0 else 12))
 		_write_i32(changed, BUDGET_OFFSET + index * BUDGET_RECORD_SIZE, budget_population)
 		_write_i32(changed, DEMAND_OFFSET + index * 4, demands[index])
+
 	if not misc.set_decoded_payload(changed):
 		return {"ok": false, "error": "cannot store updated MISC data"}
 
@@ -168,16 +180,22 @@ static func connection_counts(city: CityState) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 	var commerce := 0
 	var industry := 0
+
 	for index in (map_edge * map_edge):
 		if city.simulation_slice != null and (index & 127) == 0:
 			city.simulation_slice.checkpoint()
+
 		if OverlayData.read(city.text_overlays, index) != CONNECTION_LABEL:
 			continue
+
 		var tile := city.buildings[index]
+
 		if _in_ranges(tile, COMMERCE_CONNECTION_RANGES):
 			commerce += 1
+
 		if _in_ranges(tile, INDUSTRY_CONNECTION_RANGES):
 			industry += 1
+
 	return {"commerce": commerce, "industry": industry}
 
 
@@ -185,6 +203,7 @@ static func _in_ranges(value: int, ranges: Array) -> bool:
 	for range_value in ranges:
 		if value >= range_value.x and value <= range_value.y:
 			return true
+
 	return false
 
 
@@ -197,19 +216,23 @@ static func _ordinance_adjusted_tax_rate(category: int, rate: int, flags: int) -
 		0:
 			if flags & 0x0002:
 				rate += 1
+
 			if flags & 0x4000:
 				rate -= 1
 		1:
 			if flags & 0x0001:
 				rate += 1
+
 			for mask in [0x1000, 0x8000, 0x40000]:
 				if flags & mask:
 					rate -= 1
 		2:
 			if flags & 0x2000:
 				rate -= 1
+
 			if flags & 0x80000:
 				rate += 1
+
 	return maxi(rate, 0)
 
 

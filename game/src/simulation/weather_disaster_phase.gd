@@ -92,18 +92,25 @@ static func run(
 	current_disaster_point := Vector2i.ZERO
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
+
 	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
+
 	var misc_chunk := city.document.find_chunk("MISC")
 	var pollution_chunk := city.document.find_chunk("XPLT")
+
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+
 	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != city.document.decoded_size("XPLT"):
 		return {"ok": false, "error": "XPLT is missing or has the wrong size"}
+
 	var misc: PackedByteArray = misc_chunk.decoded_payload
 	var pollution: PackedByteArray = pollution_chunk.decoded_payload
 	var effective_power := maxi(power_usage_percent, 0)
@@ -117,14 +124,17 @@ static func run(
 		industry_connections & 0xffff, map_edge
 	)
 	var news_items: Array[Dictionary] = []
+
 	if status_index >= 0:
 		news_items.append({"type": NEWS_DEMAND_BASE + status_index, "argument": 0})
 
 	var selection := _select_disaster(
 		misc, pollution, random, lfsr_random, current_disaster_point, map_edge
 	)
+
 	if not selection.ok:
 		return selection
+
 	return {
 		"ok": true,
 		"error": "",
@@ -149,10 +159,13 @@ static func _status_index(
 	industry_connections: int, map_edge: int = 128
 ) -> int:
 	var weather_trend := _read_u32(misc, MISC_WEATHER_TREND) & 0xff
+
 	if weather_trend >= 9:
 		return STATUS_WEATHER
+
 	if power_usage_percent >= 99:
 		return STATUS_POWER
+
 	var population := _read_u32(misc, MISC_NORMAL_POPULATION)
 	var arcology_share := int(_read_u32(misc, MISC_ARCOLOGY_POPULATION) / 12)
 	var transit_capacity := (
@@ -160,36 +173,51 @@ static func _status_index(
 		+ _tile_count(misc, TILE_RAIL_STATION, map_edge)
 		+ _budget_current(misc, BUDGET_ROAD)
 	)
+
 	if int(population / 100) >= transit_capacity:
 		return STATUS_TRANSIT
+
 	if population < 1000:
 		return STATUS_NONE
+
 	var large_city_unit := int(population / 20000)
+
 	if large_city_unit >= int(_tile_count(misc, TILE_POLICE, map_edge) / 9) + int(
 		_tile_count(misc, TILE_PRISON, map_edge) / 16
 	):
 		return STATUS_POLICE
+
 	if large_city_unit >= int(_tile_count(misc, TILE_FIRE, map_edge) / 9):
 		return STATUS_FIRE
+
 	if water_usage_percent >= 99:
 		return STATUS_WATER
+
 	if population < 3000:
 		return STATUS_NONE
+
 	if int(population / 25000) >= int(_tile_count(misc, TILE_HOSPITAL, map_edge) / 9):
 		return STATUS_HOSPITAL
+
 	if large_city_unit >= int(_tile_count(misc, TILE_SCHOOL, map_edge) / 9):
 		return STATUS_SCHOOL
+
 	if population < 8000:
 		return STATUS_NONE
+
 	var industrial_population := _budget_current(misc, BUDGET_INDUSTRIAL) - arcology_share
+
 	if (
 		_tile_count(misc, TILE_PIER, map_edge) + industry_connections
 		< int(industrial_population / 10000)
 	):
 		if _read_u32(misc, 0x0e44) == 0 and _read_u32(misc, 0x0e48) == 0:
 			return STATUS_INDUSTRIAL_CONNECTION
+
 		return STATUS_SEAPORT
+
 	var commercial_population := _budget_current(misc, BUDGET_COMMERCIAL) - arcology_share
+
 	if (
 		_tile_count(misc, TILE_RUNWAY, map_edge)
 		+ _tile_count(misc, TILE_RUNWAY_CROSSING, map_edge)
@@ -197,7 +225,9 @@ static func _status_index(
 		< int(commercial_population / 2000)
 	):
 		var airport_release_year := _read_u32(misc, MISC_INVENTION_YEARS + 6 * 4) & 0xffff
+
 		return STATUS_AIRPORT if airport_release_year == 0 else STATUS_COMMERCIAL_CONNECTION
+
 	var recreation_count := (
 		int(_tile_count(misc, TILE_BIG_PARK, map_edge) / 3)
 		+ _tile_count(misc, TILE_STADIUM, map_edge)
@@ -205,8 +235,10 @@ static func _status_index(
 		+ _tile_count(misc, TILE_MARINA, map_edge)
 	)
 	var residential_population := _budget_current(misc, BUDGET_RESIDENTIAL) - arcology_share * 2
+
 	if recreation_count < int(residential_population / 1000):
 		return STATUS_ZOO + (random.next_u15() & 3)
+
 	return STATUS_NONE
 
 
@@ -230,25 +262,35 @@ static func _select_disaster(
 		"disaster_roll": -1,
 		"candidate_type": DISASTER_NONE,
 	}
+
 	if _read_u32(misc, MISC_NO_DISASTERS) != 0:
 		return result
+
 	if not difficulty_is_valid:
 		return {"ok": false, "error": "city difficulty is out of range"}
+
 	var city_months := int(_read_u32(misc, MISC_CITY_DAYS) / 25)
+
 	if city_months < wait_months:
 		return result
+
 	var disaster_roll: int = random.next_u15() % wait_months
 	result.disaster_roll = disaster_roll
 	var weather_trend := _read_u32(misc, MISC_WEATHER_TREND) & 0xff
 	var has_ocean := _read_u32(misc, 0x0e44) != 0
 	var has_river := _read_u32(misc, 0x0e48) != 0
+
 	if weather_trend == 10 and has_ocean and disaster_roll < 15:
 		result.disaster_type = DISASTER_HURRICANE
+
 		return result
+
 	if weather_trend == 11 and disaster_roll < 15:
 		result.disaster_type = DISASTER_TORNADO
 		result.disaster_point = _random_map_point(random, map_edge)
+
 		return result
+
 	if disaster_roll != 0:
 		return result
 
@@ -259,25 +301,31 @@ static func _select_disaster(
 		_read_u32(misc, MISC_CITY_CENTER_Y) & 0xffff
 	)
 	var population := _read_u32(misc, MISC_NORMAL_POPULATION)
+
 	match candidate:
 		DISASTER_FIRE:
 			if (_read_u32(misc, MISC_WEATHER_HEAT) & 0xff) < ((random.next_u15() & 0x7f) + 0x7f):
 				return result
+
 			result.disaster_point = _random_map_point(random, map_edge)
 		DISASTER_TOXIC_SPILL:
 			var toxic_point := _toxic_spill_point(pollution, lfsr_random, map_edge)
+
 			if toxic_point.x < 0:
 				return result
+
 			result.disaster_point = toxic_point
 		DISASTER_EARTHQUAKE:
 			result.disaster_point = _random_map_point(random, map_edge)
 		DISASTER_TORNADO:
 			if weather_trend < 8:
 				return result
+
 			result.disaster_point = _random_map_point(random, map_edge)
 		DISASTER_MONSTER:
 			if population < 45000:
 				return result
+
 			result.disaster_point = _random_center_point(random, center, 15)
 		DISASTER_MELTDOWN:
 			if _tile_count(misc, TILE_NUCLEAR_PLANT, map_edge) == 0:
@@ -288,22 +336,29 @@ static func _select_disaster(
 		DISASTER_RIOT, DISASTER_MASS_RIOTS:
 			if candidate == DISASTER_MASS_RIOTS and population < 30000:
 				return result
+
 			if _read_u32(misc, MISC_UNEMPLOYMENT) < 10:
 				return result
+
 			if (_read_u32(misc, MISC_WEATHER_HEAT) & 0xff) < 170:
 				return result
+
 			result.disaster_point = _random_center_point(random, center, 16)
 		DISASTER_FLOOD, DISASTER_MASS_FLOODS:
 			if candidate == DISASTER_MASS_FLOODS and weather_trend < 9:
 				return result
+
 			if not has_ocean and not has_river:
 				return result
+
 			if weather_trend < 3:
 				return result
+
 			result.disaster_point = _random_map_point(random, map_edge)
 		DISASTER_POLLUTION:
 			if _budget_current(misc, BUDGET_INDUSTRIAL) < 10000:
 				return result
+
 			result.disaster_point = _random_center_point(random, center, 15)
 		DISASTER_HURRICANE:
 			if weather_trend < 8 or not has_ocean:
@@ -311,22 +366,27 @@ static func _select_disaster(
 		DISASTER_PLANE_CRASH:
 			if _tile_count(misc, TILE_RUNWAY, map_edge) == 0:
 				return result
+
 			result.disaster_point = _random_map_point(random, map_edge)
 		_:
 			return result
+
 	result.disaster_type = candidate
+
 	return result
 
 
 static func _random_map_point(random, map_edge: int = 128) -> Vector2i:
 	var y: int = random.next_u15() % (map_edge - 2) + 1
 	var x: int = random.next_u15() % (map_edge - 2) + 1
+
 	return Vector2i(x, y)
 
 
 static func _random_center_point(random, center: Vector2i, radius: int) -> Vector2i:
 	var y: int = (random.next_u15() & 0x1f) + center.y - radius
 	var x: int = (random.next_u15() & 0x1f) + center.x - radius
+
 	return Vector2i(x, y)
 
 
@@ -337,23 +397,31 @@ static func _toxic_spill_point(
 	var highest := 0
 	var point := Vector2i(-1, -1)
 	var grid_edge := CityDataGrid.edge(pollution, map_edge)
+
 	if grid_edge == 0:
 		return point
+
 	var scale := map_edge / grid_edge
+
 	for x in grid_edge:
 		for y in grid_edge:
 			var value := int(pollution[x * grid_edge + y])
+
 			if value <= 0x95 or value <= highest:
 				continue
+
 			if lfsr_random.next_mod(10) != 0:
 				continue
+
 			highest = value
 			point = Vector2i(
 				x * scale + lfsr_random.next_mod(10) - 5,
 				y * scale + lfsr_random.next_mod(10) - 5
 			)
+
 	if point.x < 0 or point.x > (map_edge - 1) or point.y < 0 or point.y > (map_edge - 1) or highest == 0:
 		return Vector2i(-1, -1)
+
 	return point
 
 
@@ -365,16 +433,19 @@ static func _budget_current(misc: PackedByteArray, budget_id: int) -> int:
 
 static func _tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> int:
 	var value := _read_u32(misc, MISC_TILE_COUNTS + tile_id * 4)
+
 	return _to_i16(value) if map_edge == 128 else value
 
 
 static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
+
 	return word - 0x10000 if word & 0x8000 else word
 
 
 static func _read_i32(data: PackedByteArray, offset: int) -> int:
 	var value := _read_u32(data, offset)
+
 	return value - 0x100000000 if value & 0x80000000 else value
 
 

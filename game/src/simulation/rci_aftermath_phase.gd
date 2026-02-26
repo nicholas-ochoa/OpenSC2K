@@ -97,25 +97,34 @@ const MILITARY_TILE_COUNT_INDEX := {
 
 static func run(city: CityState, random, season: int) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
+
 	if season < 0 or season > 3:
 		return {"ok": false, "error": "weather season is out of range"}
+
 	var misc_chunk := city.document.find_chunk("MISC")
 	var building_chunk := city.document.find_chunk("XBLD")
 	var zone_chunk := city.document.find_chunk("XZON")
 	var flag_chunk := city.document.find_chunk("XBIT")
 	var graph_chunk := city.document.find_chunk("XGRP")
+
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+
 	if building_chunk == null or building_chunk.decoded_payload.size() != (map_edge * map_edge):
 		return {"ok": false, "error": "XBLD is missing or has the wrong size"}
+
 	if zone_chunk == null or zone_chunk.decoded_payload.size() != (map_edge * map_edge):
 		return {"ok": false, "error": "XZON is missing or has the wrong size"}
+
 	if flag_chunk == null or flag_chunk.decoded_payload.size() != (map_edge * map_edge):
 		return {"ok": false, "error": "XBIT is missing or has the wrong size"}
+
 	if graph_chunk == null or graph_chunk.decoded_payload.size() != 16 * 52 * 4:
 		return {"ok": false, "error": "XGRP is missing or has the wrong size"}
 
@@ -130,17 +139,22 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 
 	_update_random_tree(city, random, buildings, zones, flags, misc, map_changes)
 	var queue_decay := NewsQueue.decay_and_sort(misc)
+
 	if not queue_decay.ok:
 		return queue_decay
+
 	var news_items: Array = [{"type": NEWS_JUNK, "argument": 0}]
 	_append_general_news(random, misc, graphs, news_items, map_edge)
 	var invention_index := _release_invention(city, random, misc, news_items)
+
 	if invention_index >= 0:
 		ToolAvailability.rebuild_reward_mask(misc)
 
 	var old_trend := _read_u32(misc, MISC_WEATHER_TREND) & 0xff
+
 	if old_trend >= WEATHER_NAMES.size():
 		return {"ok": false, "error": "weather trend is out of range"}
+
 	var weather_roll: int = random.next_u15() & 7
 	var new_trend := weather_transition(old_trend, season, weather_roll)
 	var old_heat := _read_u32(misc, MISC_WEATHER_HEAT) & 0xff
@@ -154,15 +168,19 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 	_write_u32(misc, MISC_WEATHER_RAIN, new_rain)
 	_write_u32(misc, MISC_WEATHER_TREND, new_trend)
 	var queue_insert := NewsQueue.insert_items(misc, news_items)
+
 	if not queue_insert.ok:
 		return queue_insert
 
 	if not building_chunk.set_decoded_payload(buildings):
 		return {"ok": false, "error": "cannot store the monthly tree update"}
+
 	if not misc_chunk.set_decoded_payload(misc):
 		building_chunk.set_decoded_payload(old_buildings)
 		city.buildings = old_buildings
+
 		return {"ok": false, "error": "cannot store the monthly RCI side effects"}
+
 	city.buildings = buildings.duplicate()
 
 	return {
@@ -187,6 +205,7 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 static func weather_transition(current_trend: int, season: int, roll: int) -> int:
 	if current_trend < 0 or current_trend >= 12 or season < 0 or season >= 4:
 		return -1
+
 	return WEATHER_TRANSITIONS[(season * 12 + current_trend) * 8 + (roll & 7)]
 
 
@@ -203,14 +222,18 @@ static func _update_random_tree(
 	var point := Vector2i(random.next_u15() % map_edge, random.next_u15() % map_edge)
 	var index := point.x * map_edge + point.y
 	var old_tile := int(buildings[index])
+
 	if old_tile == RADIOACTIVITY_TILE and (random.next_u15() & 0x0f) == 0:
 		_replace_building(buildings, zones, misc, index, 0)
 		map_changes.append({"point": point, "old_tile": old_tile, "new_tile": 0})
+
 	if flags[index] & 0x04 != 0:
 		return
+
 	if not (old_tile >= FIRST_TREE_TILE and old_tile <= LAST_TREE_TILE):
 		if (random.next_u15() & 0x0f) != 0:
 			return
+
 	if old_tile >= FIRST_TREE_TILE and old_tile <= LAST_GROWING_TREE_TILE:
 		_replace_building(buildings, zones, misc, index, old_tile + 1)
 		map_changes.append({"point": point, "old_tile": old_tile, "new_tile": old_tile + 1})
@@ -224,10 +247,13 @@ static func _update_random_tree(
 			point.y = mini(point.y + 1, map_edge - 1)
 		3:
 			point.y = maxi(point.y - 1, 0)
+
 	index = point.x * map_edge + point.y
 	old_tile = int(buildings[index])
+
 	if flags[index] & 0x04 != 0 or old_tile >= 0x0c or old_tile == RADIOACTIVITY_TILE:
 		return
+
 	var new_tile := FIRST_TREE_TILE if old_tile < FIRST_TREE_TILE else old_tile + 1
 	_replace_building(buildings, zones, misc, index, new_tile)
 	map_changes.append({"point": point, "old_tile": old_tile, "new_tile": new_tile})
@@ -241,6 +267,7 @@ static func _append_general_news(
 		0:
 			if (random.next_u15() & 3) == 0:
 				news_items.append({"type": NEWS_WAR, "argument": 0})
+
 			if (random.next_u15() & 3) == 0:
 				news_items.append({
 					"type": NEWS_MARKET,
@@ -258,8 +285,10 @@ static func _append_general_news(
 			news_items.append({"type": 0x0f, "argument": 0})
 
 	var stadium_tiles := _read_u32(misc, MISC_TILE_COUNTS + STADIUM_TILE * 4)
+
 	if (_to_i16(stadium_tiles) if map_edge == 128 else stadium_tiles) > 0:
 		var team: int = random.next_u15() % 5
+
 		if _to_i16(_read_u32(misc, MISC_STADIUM_TEAMS)) & (1 << team):
 			news_items.append({"type": NEWS_SPORTS, "argument": team})
 
@@ -268,13 +297,16 @@ static func _append_general_news(
 	_append_graph_news(random, graphs, GRAPH_CRIME, NEWS_HIGH_CRIME, NEWS_LOW_CRIME, news_items)
 
 	var unemployment := _read_i32(misc, MISC_UNEMPLOYMENT)
+
 	if (random.next_u15() & 0x3f) < unemployment:
 		news_items.append({"type": NEWS_POOR_EMPLOYMENT, "argument": 0})
+
 	if unemployment < (random.next_u15() & 3):
 		news_items.append({"type": NEWS_GOOD_EMPLOYMENT, "argument": 0})
 
 	var education := _read_u32(misc, 0x004c)
 	var education_roll: int = random.next_u15() % 80
+
 	if education < 80:
 		if education < education_roll:
 			news_items.append({"type": NEWS_POOR_EDUCATION, "argument": 0})
@@ -283,6 +315,7 @@ static func _append_general_news(
 
 	var health := _read_u32(misc, 0x0048)
 	var health_roll: int = random.next_u15() % 60
+
 	if health < 60:
 		if health < health_roll:
 			news_items.append({"type": NEWS_POOR_HEALTH, "argument": 0})
@@ -299,8 +332,10 @@ static func _append_graph_news(
 	news_items: Array
 ) -> void:
 	var value := _read_i32(graphs, series * 52 * 4)
+
 	if (random.next_u15() & 0x7f) < value:
 		news_items.append({"type": high_type, "argument": 0})
+
 	if value < (random.next_u15() & 0x0f):
 		news_items.append({"type": low_type, "argument": 0})
 
@@ -310,17 +345,23 @@ static func _release_invention(
 ) -> int:
 	if (random.next_u15() & 7) != 0:
 		return -1
+
 	var current_year := _to_i16(_read_u32(misc, MISC_START_YEAR)) + int(city.age_in_days() / 300)
+
 	for index in INVENTION_COUNT:
 		var offset := MISC_INVENTION_YEARS + index * 4
 		var invention_year := _to_i16(_read_u32(misc, offset))
+
 		if invention_year == 0 or invention_year > current_year:
 			continue
+
 		var news_type := NEWS_INVENTION if index < 7 else NEWS_INNOVATION
 		var argument := index if index < 7 else index - 7
 		news_items.append({"type": news_type, "argument": argument})
 		_write_u32(misc, offset, 0)
+
 		return index
+
 	return -1
 
 
@@ -332,8 +373,10 @@ static func _replace_building(
 	new_tile: int
 ) -> void:
 	var old_tile := int(buildings[index])
+
 	if old_tile == new_tile:
 		return
+
 	var military := (zones[index] & 0x0f) == 7
 	var old_offset := _tile_count_offset(old_tile, military)
 	var new_offset := _tile_count_offset(new_tile, military)
@@ -345,16 +388,19 @@ static func _replace_building(
 static func _tile_count_offset(tile: int, military: bool) -> int:
 	if not military:
 		return MISC_TILE_COUNTS + tile * 4
+
 	return MISC_MILITARY_TILE_COUNTS + int(MILITARY_TILE_COUNT_INDEX.get(tile, 0)) * 4
 
 
 static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
+
 	return word - 0x10000 if word & 0x8000 else word
 
 
 static func _read_i32(data: PackedByteArray, offset: int) -> int:
 	var value := _read_u32(data, offset)
+
 	return value - 0x100000000 if value & 0x80000000 else value
 
 

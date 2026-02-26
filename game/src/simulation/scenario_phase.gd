@@ -14,11 +14,15 @@ static func run(scenario: ScenarioState, city: CityState) -> Dictionary:
 			"game_over_events": [],
 			"complete": true,
 		}
+
 	if not scenario.is_valid():
 		return {"ok": false, "error": "scenario is invalid"}
+
 	var goals := scenario.evaluate_goals(city)
+
 	if not goals.ok:
 		return goals
+
 	if goals.met:
 		return {
 			"ok": true,
@@ -32,12 +36,16 @@ static func run(scenario: ScenarioState, city: CityState) -> Dictionary:
 		}
 
 	var remaining := (scenario.time_limit_months - 1) & 0xffff
+
 	if not scenario.set_time_limit_months(remaining):
 		return {"ok": false, "error": "cannot store the scenario time limit"}
+
 	var outcome := "failure" if remaining == 0 else ""
 	var events: Array[Dictionary] = []
+
 	if outcome == "failure":
 		events.append({"type": "scenario_failure"})
+
 	return {
 		"ok": true,
 		"error": "",

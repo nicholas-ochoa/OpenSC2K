@@ -16,6 +16,7 @@ func next_word() -> int:
 		state = ((state << 1) ^ FEEDBACK) & 0xffff
 	else:
 		state = (state << 1) & 0xffff
+
 	return state
 
 
@@ -26,4 +27,5 @@ func next_mask(mask: int) -> int:
 func next_mod(divisor: int) -> int:
 	if divisor <= 0:
 		return 0
+
 	return next_word() % divisor

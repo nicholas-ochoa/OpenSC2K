@@ -25,19 +25,26 @@ const NEWS_FEDERAL_RATE_DOWN := 0x0a
 static func run(city: CityState, random) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
+
 	var misc_chunk := city.document.find_chunk("MISC")
+
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
 
 	var data: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var economy_trend := _to_i16(_read_u32(data, MISC_NATIONAL_ECONOMY_TREND))
+
 	if economy_trend < 0 or economy_trend >= ECONOMY_FACTORS.size():
 		return {"ok": false, "error": "the national economy trend is out of range"}
+
 	var federal_rate := _to_i16(_read_u32(data, MISC_NATIONAL_FEDERAL_RATE))
+
 	if federal_rate <= 0:
 		return {"ok": false, "error": "the national federal rate is not positive"}
+
 	var news_items: Array = []
 
 	var national_population := _read_u32(data, MISC_NATIONAL_POPULATION)
@@ -54,20 +61,26 @@ static func run(city: CityState, random) -> Dictionary:
 
 	if random.next_u15() % 10 == 0:
 		var national_score := int(float(national_value) / float(national_population + 1) * 100.0)
+
 		if random.next_u15() % 5 < 2:
 			if random.next_u15() % (federal_rate * 25) < national_score:
 				federal_rate += 1
 				_write_u32(data, MISC_NATIONAL_FEDERAL_RATE, federal_rate)
 				news_items.append({"type": NEWS_FEDERAL_RATE_UP, "argument": federal_rate})
+
 			if national_score < random.next_u15() % (federal_rate * 25):
 				federal_rate -= 1
+
 				if federal_rate == 0:
 					federal_rate = 1
 				else:
 					news_items.append({"type": NEWS_FEDERAL_RATE_DOWN, "argument": federal_rate})
+
 				_write_u32(data, MISC_NATIONAL_FEDERAL_RATE, federal_rate)
+
 		if random.next_u15() % 3 == 0:
 			var new_trend := economy_level(national_score)
+
 			if new_trend != economy_trend:
 				economy_trend = new_trend
 				_write_u32(data, MISC_NATIONAL_ECONOMY_TREND, economy_trend)
@@ -75,10 +88,12 @@ static func run(city: CityState, random) -> Dictionary:
 
 	var neighbor_populations := PackedInt64Array()
 	var neighbor_values := PackedInt64Array()
+
 	for neighbor in NEIGHBOR_COUNT:
 		var base := MISC_NEIGHBORS + neighbor * NEIGHBOR_STRIDE
 		var population := _read_u32(data, base + NEIGHBOR_POPULATION)
 		var value := _read_u32(data, base + NEIGHBOR_VALUE)
+
 		if population != 0:
 			population_change = _scaled_change(
 				population, economy_trend + random.next_u15() % 3
@@ -86,8 +101,10 @@ static func run(city: CityState, random) -> Dictionary:
 			population = _move_about_center(
 				population, population_change, NATIONAL_POPULATION_CENTER
 			)
+
 			if population_change == 0:
 				population = (population + (random.next_u15() & 1)) & 0xffffffff
+
 			_write_u32(data, base + NEIGHBOR_POPULATION, population)
 
 			var neighbor_score := int(float(value) / float(population) * 100.0)
@@ -100,10 +117,12 @@ static func run(city: CityState, random) -> Dictionary:
 			value_change = _scaled_change(value, value_factor)
 			value = _move_about_center(value, value_change, NATIONAL_VALUE_CENTER)
 			_write_u32(data, base + NEIGHBOR_VALUE, value)
+
 		neighbor_populations.append(population)
 		neighbor_values.append(value)
 
 	var shocked_neighbor := -1
+
 	if random.next_u15() & 0x3f == 0:
 		shocked_neighbor = random.next_u15() & 3
 		var shock_base := MISC_NEIGHBORS + shocked_neighbor * NEIGHBOR_STRIDE
@@ -120,6 +139,7 @@ static func run(city: CityState, random) -> Dictionary:
 
 	if not misc_chunk.set_decoded_payload(data):
 		return {"ok": false, "error": "cannot store the SimNation update"}
+
 	return {
 		"ok": true,
 		"error": "",
@@ -137,10 +157,13 @@ static func run(city: CityState, random) -> Dictionary:
 static func economy_level(score: int) -> int:
 	if score < 45:
 		return 0
+
 	if score < 60:
 		return 1
+
 	if score < 75:
 		return 2
+
 	return 3
 
 
@@ -154,6 +177,7 @@ static func _move_about_center(value: int, change: int, center: int) -> int:
 
 static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
+
 	return word - 0x10000 if word & 0x8000 else word
 
 
