@@ -49,13 +49,18 @@ const HIGH_EQ_INDUSTRIES := [6, 9]
 static func run(city: CityState, random, lfsr_random, population_growth: int) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible process random generator is required"}
+
 	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
 		return {"ok": false, "error": "a compatible game LFSR generator is required"}
+
 	if population_growth < 0:
 		return {"ok": false, "error": "population growth is negative"}
+
 	var misc_chunk := city.document.find_chunk("MISC")
+
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
 
@@ -63,6 +68,7 @@ static func run(city: CityState, random, lfsr_random, population_growth: int) ->
 	var start_year := _to_i16(_read_u32(data, MISC_START_YEAR))
 	var elapsed_years := int(_read_u32(data, MISC_CITY_DAYS) / 300)
 	var targets := world_demands(start_year, elapsed_years)
+
 	if targets.is_empty():
 		return {"ok": false, "error": "the industry era is before 1900"}
 
@@ -70,12 +76,15 @@ static func run(city: CityState, random, lfsr_random, population_growth: int) ->
 	var adjusted := PackedInt32Array()
 	var ratios := PackedInt64Array()
 	var ratio_total := 0
+
 	for industry in INDUSTRY_COUNT:
 		var base := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
 		var old_demand := _to_i16(_read_u32(data, base + INDUSTRY_DEMAND))
 		var random_sum := 0
+
 		for roll in 4:
 			random_sum += lfsr_random.next_mask(0x7f)
+
 		var random_target := _divide_toward_zero(random_sum * targets[industry], 256)
 		var demand := _divide_toward_zero(random_target + old_demand * 3, 4)
 		demands.append(demand)
@@ -85,11 +94,15 @@ static func run(city: CityState, random, lfsr_random, population_growth: int) ->
 		ratio_total += ratio
 
 	var ordinances := _read_u32(data, MISC_ORDINANCES)
+
 	if ordinances & ORDINANCE_CLEAN_INDUSTRY:
 		_scale_demands(adjusted, POLLUTING_INDUSTRIES, 0.9)
+
 	if population_growth != 0:
 		_scale_demands(adjusted, [4], 1.1)
+
 	var workforce_eq := _read_u32(data, MISC_WORKFORCE_EQ)
+
 	if workforce_eq > 130:
 		_scale_demands(adjusted, HIGH_EQ_INDUSTRIES, 1.2)
 	elif workforce_eq > 100:
@@ -98,9 +111,11 @@ static func run(city: CityState, random, lfsr_random, population_growth: int) ->
 		_scale_demands(adjusted, HIGH_EQ_INDUSTRIES, 0.8)
 
 	var positive_total := 0
+
 	for industry in INDUSTRY_COUNT:
 		var base := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
 		adjusted[industry] -= _to_i16(_read_u32(data, base + INDUSTRY_TAX_RATE))
+
 		if adjusted[industry] <= 0:
 			adjusted[industry] = 0
 		else:
@@ -110,20 +125,26 @@ static func run(city: CityState, random, lfsr_random, population_growth: int) ->
 		_read_u32(data, MISC_ZONE_POPULATIONS + 5 * 4)
 		+ _read_u32(data, MISC_ZONE_POPULATIONS + 6 * 4)
 	)
+
 	if ratio_total > industrial_population:
 		var excess := ratio_total - industrial_population
+
 		for industry in INDUSTRY_COUNT:
 			var scaled := int(excess * 100 * ratios[industry] / ratio_total)
 			ratios[industry] -= int(scaled / 100)
+
 			if random.next_u15() % 100 < scaled % 100:
 				ratios[industry] -= 1
 	elif ratio_total < industrial_population and positive_total != 0:
 		var shortage := industrial_population - ratio_total
+
 		for industry in INDUSTRY_COUNT:
 			if adjusted[industry] == 0:
 				continue
+
 			var scaled := int(shortage * 100 * adjusted[industry] / positive_total)
 			ratios[industry] += int(scaled / 100)
+
 			if random.next_u15() % 100 < scaled % 100:
 				ratios[industry] += 1
 
@@ -136,18 +157,23 @@ static func run(city: CityState, random, lfsr_random, population_growth: int) ->
 		0xffff if pollution_share < 20 else int((pollution_share - 20) / 30)
 	)
 	var maximum_share := 0
+
 	for ratio in ratios:
 		maximum_share = maxi(maximum_share, int(ratio * 100 / (industrial_population + 1)))
+
 	var mix_bonus := 0 if maximum_share < 20 else int((maximum_share - 20) / 5)
 
 	for industry in INDUSTRY_COUNT:
 		var base := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
 		_write_u32(data, base + INDUSTRY_DEMAND, demands[industry])
 		_write_u32(data, base + INDUSTRY_RATIO, ratios[industry])
+
 	_write_u32(data, MISC_INDUSTRIAL_MIX_BONUS, mix_bonus)
 	_write_u32(data, MISC_INDUSTRIAL_POLLUTION_BONUS, pollution_bonus)
+
 	if not misc_chunk.set_decoded_payload(data):
 		return {"ok": false, "error": "cannot store the industry update"}
+
 	return {
 		"ok": true,
 		"error": "",
@@ -170,12 +196,16 @@ static func run(city: CityState, random, lfsr_random, population_growth: int) ->
 
 static func world_demands(start_year: int, elapsed_years: int) -> PackedInt32Array:
 	var period := _divide_toward_zero(start_year - 1900, 50) + int(elapsed_years / 50)
+
 	if period < 0:
 		return PackedInt32Array()
+
 	if period >= WORLD_DEMAND.size() - 1:
 		return PackedInt32Array(WORLD_DEMAND[WORLD_DEMAND.size() - 1])
+
 	var remainder := elapsed_years % 50
 	var result := PackedInt32Array()
+
 	for industry in INDUSTRY_COUNT:
 		result.append(int(
 			(
@@ -183,6 +213,7 @@ static func world_demands(start_year: int, elapsed_years: int) -> PackedInt32Arr
 				+ (50 - remainder) * int(WORLD_DEMAND[period][industry])
 			) / 50
 		))
+
 	return result
 
 
@@ -193,8 +224,10 @@ static func _scale_demands(values: PackedInt32Array, industries: Array, factor: 
 
 static func _sum(values: PackedInt64Array) -> int:
 	var total := 0
+
 	for value in values:
 		total += value
+
 	return total
 
 
@@ -204,6 +237,7 @@ static func _divide_toward_zero(value: int, divisor: int) -> int:
 
 static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
+
 	return word - 0x10000 if word & 0x8000 else word
 
 

@@ -14,5 +14,7 @@ func _init(seed := 1) -> void:
 func next_mod(divisor: int) -> int:
 	if divisor <= 0:
 		return 0
+
 	state = (state * MULTIPLIER + INCREMENT) & 0xffffffff
+
 	return ((state >> 16) & 0x7fff) % divisor

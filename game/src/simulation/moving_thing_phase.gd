@@ -36,22 +36,29 @@ static func run(
 	traffic_news_deadline_msec := 0
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if random == null or not random.has_method("next_u15"):
 		return {"ok": false, "error": "a compatible random generator is required"}
+
 	if (
 		lfsr_random == null
 		or not lfsr_random.has_method("next_mod")
 		or not lfsr_random.has_method("next_mask")
 	):
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
+
 	if game_random == null:
 		game_random = GameLcgRandom.new(1)
+
 	if not game_random.has_method("next_mod"):
 		return {"ok": false, "error": "a compatible game random generator is required"}
+
 	if traffic_news_time_msec < 0:
 		traffic_news_time_msec = Time.get_ticks_msec()
+
 	var building_chunk := city.document.find_chunk("XBLD")
 	var altitude_chunk := city.document.find_chunk("ALTM")
 	var terrain_chunk := city.document.find_chunk("XTER")
@@ -64,6 +71,7 @@ static func run(
 	var label_chunk := city.document.find_chunk("XLAB")
 	var microsim_chunk := city.document.find_chunk("XMIC")
 	var misc_chunk := city.document.find_chunk("MISC")
+
 	if (
 		building_chunk == null
 		or building_chunk.decoded_payload.size() != (map_edge * map_edge)
@@ -185,7 +193,9 @@ static func run(
 	for record in range(FIRST_RECORD, ThingData.count(things)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
+
 		var offset := record * RECORD_SIZE
+
 		match int(ThingData.read(things, offset)):
 			TYPE_AIRPLANE:
 				counters.active_airplanes += 1
@@ -244,6 +254,7 @@ static func run(
 				)
 
 	var applied: Array = []
+
 	for update in [
 		[thing_chunk, things, original_things, "XTHG"],
 		[text_chunk, text, original_text, "XTXT"],
@@ -260,21 +271,28 @@ static func run(
 	]:
 		if update[1] == update[2]:
 			continue
+
 		if not update[0].set_decoded_payload(update[1]):
 			for rollback in applied:
 				rollback[0].set_decoded_payload(rollback[1])
+
 			return {"ok": false, "error": "cannot store %s after the moving-thing tick" % update[3]}
+
 		applied.push_front([update[0], update[2]])
+
 	city.buildings = buildings.duplicate()
 	city.terrain = terrain.duplicate()
 	city.zones = zones.duplicate()
 	city.underground = underground.duplicate()
 	city.text_overlays = text.duplicate()
 	city.tile_flags = flags.duplicate()
+
 	for index in (map_edge * map_edge):
 		if city.simulation_slice != null and (index & 127) == 0:
 			city.simulation_slice.checkpoint()
+
 		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
+
 	counters["ok"] = true
 	counters["sailboats_complete"] = true
 	counters["train_routes_complete"] = true
@@ -288,4 +306,5 @@ static func run(
 	counters["explosion_map_damage_complete"] = counters.deferred_facility_explosion_hits == 0
 	counters["complete"] = counters.explosion_map_damage_complete
 	counters["error"] = ""
+
 	return counters
