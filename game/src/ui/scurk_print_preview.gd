@@ -21,8 +21,10 @@ func _ready() -> void:
 
 func set_magnification(value: int) -> bool:
 	var grid := Output.page_grid(value)
+
 	if grid.is_empty():
 		return false
+
 	magnification = value
 	columns = int(grid.columns)
 	rows = int(grid.rows)
@@ -30,6 +32,7 @@ func set_magnification(value: int) -> bool:
 	selected_pages.fill(1)
 	queue_redraw()
 	selection_changed.emit()
+
 	return true
 
 
@@ -43,6 +46,7 @@ func set_preview_image(image: Image) -> void:
 		preview_texture = null
 	else:
 		preview_texture = ImageTexture.create_from_image(image)
+
 	queue_redraw()
 
 
@@ -55,15 +59,19 @@ func select_all(value := true) -> void:
 func selected_page_count() -> int:
 	if entire_city:
 		return selected_pages.size()
+
 	var count := 0
+
 	for selected in selected_pages:
 		count += 1 if selected != 0 else 0
+
 	return count
 
 
 func _draw() -> void:
 	var bounds := Rect2(Vector2.ZERO, size)
 	draw_rect(bounds, Color("ffffff"))
+
 	if preview_texture != null:
 		draw_texture_rect(preview_texture, bounds, false)
 	else:
@@ -76,8 +84,10 @@ func _draw() -> void:
 			16,
 			Color("303030")
 		)
+
 	var cell_size := Vector2(size.x / float(columns), size.y / float(rows))
 	var font := ThemeDB.fallback_font
+
 	for column in columns:
 		for row in rows:
 			var page_index := column * rows + row
@@ -86,8 +96,10 @@ func _draw() -> void:
 				cell_size
 			)
 			var selected := entire_city or selected_pages[page_index] != 0
+
 			if not selected:
 				draw_rect(cell.grow(-1.0), Color(0.25, 0.25, 0.25, 0.72))
+
 			draw_rect(
 				cell.grow(-0.5),
 				Color("1b4f9c") if selected else Color("686868"),
@@ -117,6 +129,7 @@ func _gui_input(event: InputEvent) -> void:
 		or entire_city
 	):
 		return
+
 	var column := clampi(floori(event.position.x * columns / size.x), 0, columns - 1)
 	var row := clampi(floori(event.position.y * rows / size.y), 0, rows - 1)
 	var page_index := column * rows + row

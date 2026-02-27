@@ -67,6 +67,7 @@ func options() -> Dictionary:
 		"zones": zones_check.button_pressed,
 		"signs": signs_check.button_pressed,
 	}
+
 	return {
 		"magnification": MAGNIFICATIONS[magnification_selector.selected],
 		"view": "underground" if view_selector.selected == 1 else "city",
@@ -151,6 +152,7 @@ func _build_interface() -> void:
 	zones_check = _add_layer_check(layers_row, "Zones")
 	signs_check = _add_layer_check(layers_row, "Signs")
 	pipes_check = _add_layer_check(layers_row, "Pipes")
+
 	for check in [
 		buildings_check, infrastructure_check, zones_check, signs_check, pipes_check,
 	]:
@@ -194,9 +196,12 @@ func _add_selector(parent: GridContainer, label_text: String, items: Array) -> O
 	parent.add_child(label)
 	var selector := OptionButton.new()
 	selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
 	for item in items:
 		selector.add_item(String(item))
+
 	parent.add_child(selector)
+
 	return selector
 
 
@@ -205,6 +210,7 @@ func _add_layer_check(parent: HBoxContainer, label: String) -> CheckBox:
 	check.text = label
 	check.button_pressed = true
 	parent.add_child(check)
+
 	return check
 
 
@@ -251,5 +257,7 @@ func _refresh_page_state() -> void:
 func _request_pdf() -> void:
 	if preview.selected_page_count() <= 0:
 		set_status("Select at least one page.")
+
 		return
+
 	save_pdf_requested.emit(options())

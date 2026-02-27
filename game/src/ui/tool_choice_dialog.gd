@@ -26,6 +26,7 @@ func _ready() -> void:
 	choices.add_theme_constant_override("h_separation", 8)
 	choices.add_theme_constant_override("v_separation", 8)
 	add_child(choices)
+
 	for choice_index in 9:
 		var choice_button := Button.new()
 		choice_button.custom_minimum_size = Vector2(205, 72)
@@ -38,11 +39,14 @@ func _ready() -> void:
 func set_tools(title_text: String, prompt_text: String, tools: Array) -> void:
 	title = title_text
 	dialog_text = prompt_text
+
 	for choice_index in choice_buttons.size():
 		var choice_button := choice_buttons[choice_index]
 		choice_button.visible = choice_index < tools.size()
+
 		if not choice_button.visible:
 			continue
+
 		var tool: Dictionary = tools[choice_index]
 		choice_button.text = "%s\n$%s" % [
 			tool.get("name", "Building"),
