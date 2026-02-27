@@ -21,6 +21,7 @@ func _ready() -> void:
 func _create_dialogs() -> void:
 	if open_dialog != null:
 		return
+
 	open_dialog = FileDialog.new()
 	open_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	open_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE

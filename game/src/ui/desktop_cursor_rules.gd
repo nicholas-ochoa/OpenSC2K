@@ -14,13 +14,18 @@ static func city_family(display_width: int) -> int:
 static func city_tool(group: int, subtool: int) -> int:
 	if group < 0 or group >= CITY_TOOLS.size():
 		return 0
+
 	return 16 if group == 1 and subtool == 1 else CITY_TOOLS[group]
 
 
 static func paint_tool(tool: int) -> int:
 	# winscurk drawing commands 20000..20013 select 30000..30003
 	match tool:
-		ScurkPixelCanvas.TOOL_PENCIL: return 30000
-		ScurkPixelCanvas.TOOL_ERASER: return 30001
-		ScurkPixelCanvas.TOOL_PASTE: return 30003
+		ScurkPixelCanvas.TOOL_PENCIL:
+			return 30000
+		ScurkPixelCanvas.TOOL_ERASER:
+			return 30001
+		ScurkPixelCanvas.TOOL_PASTE:
+			return 30003
+
 	return 30002

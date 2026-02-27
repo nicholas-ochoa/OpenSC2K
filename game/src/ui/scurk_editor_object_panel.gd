@@ -21,6 +21,7 @@ func _ready() -> void:
 func build() -> void:
 	if object_search != null:
 		return
+
 	custom_minimum_size = Vector2(220, 0)
 	add_theme_constant_override("separation", 5)
 

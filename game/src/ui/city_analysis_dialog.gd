@@ -30,6 +30,7 @@ func _ready() -> void:
 func set_categories(categories: Array) -> void:
 	table.clear()
 	var root := table.create_item()
+
 	for category in categories:
 		var item := table.create_item(root)
 		item.set_text(0, str(category.name))

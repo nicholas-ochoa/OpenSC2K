@@ -74,7 +74,8 @@ func _ready() -> void:
 
 func _add_title_bar(column: VBoxContainer) -> void:
 	var title_bar := DialogTitleBar.new("New City")
-	title_bar.close_requested.connect(func() -> void: cancel_requested.emit())
+	title_bar.close_requested.connect(func() -> void:
+		cancel_requested.emit())
 	column.add_child(title_bar)
 
 
@@ -95,13 +96,16 @@ func _build_city_and_terrain_fields(content: HBoxContainer) -> void:
 	city_grid.add_theme_constant_override("h_separation", 12)
 	city_grid.add_theme_constant_override("v_separation", 8)
 	left.add_child(city_grid)
+
 	for label_text in ["City Name", "Mayor Name", "Difficulty", "Starting Year", "Map Size"]:
 		_add_city_field(city_grid, label_text)
+
 	native_maps_input = CheckBox.new()
 	native_maps_input.text = "Per-tile data maps"
 	native_maps_input.button_pressed = true
 	native_maps_input.tooltip_text = "Calculate land value, pollution, crime, traffic and services for each tile. Uses SC2X saves, which the original game cannot open."
-	native_maps_input.toggled.connect(func(_enabled: bool) -> void: preview_requested.emit())
+	native_maps_input.toggled.connect(func(_enabled: bool) -> void:
+		preview_requested.emit())
 	left.add_child(native_maps_input)
 
 	left.add_child(HSeparator.new())
@@ -131,6 +135,7 @@ func _add_city_field(grid: GridContainer, label_text: String) -> void:
 	field_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	field_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	grid.add_child(field_label)
+
 	match label_text:
 		"City Name":
 			city_name_input = LineEdit.new()
@@ -151,16 +156,21 @@ func _add_city_field(grid: GridContainer, label_text: String) -> void:
 			grid.add_child(difficulty_input)
 		"Map Size":
 			size_input = OptionButton.new()
+
 			for edge in Sc2File.MAP_SIZES:
 				size_input.add_item("%d × %d%s" % [edge, edge, " (experimental)" if edge > 128 else ""], edge)
+
 			size_input.tooltip_text = "Larger cities use .sc2x files. They cannot open in the original game."
-			size_input.item_selected.connect(func(_index: int) -> void: preview_requested.emit())
+			size_input.item_selected.connect(func(_index: int) -> void:
+				preview_requested.emit())
 			grid.add_child(size_input)
 		"Starting Year":
 			year_input = OptionButton.new()
 			year_input.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
 			for starting_year in NewCity.STARTING_YEARS:
 				year_input.add_item(str(starting_year), starting_year)
+
 			grid.add_child(year_input)
 
 
@@ -173,11 +183,13 @@ func _add_feature_fields(grid: GridContainer) -> void:
 	features.add_theme_constant_override("separation", 16)
 	ocean_input = CheckBox.new()
 	ocean_input.text = "Ocean"
-	ocean_input.toggled.connect(func(_enabled: bool) -> void: preview_requested.emit())
+	ocean_input.toggled.connect(func(_enabled: bool) -> void:
+		preview_requested.emit())
 	features.add_child(ocean_input)
 	river_input = CheckBox.new()
 	river_input.text = "River"
-	river_input.toggled.connect(func(_enabled: bool) -> void: preview_requested.emit())
+	river_input.toggled.connect(func(_enabled: bool) -> void:
+		preview_requested.emit())
 	features.add_child(river_input)
 	grid.add_child(features)
 
@@ -205,13 +217,15 @@ func _add_terrain_slider(grid: GridContainer, label_text: String) -> void:
 	slider.max_value = NewTerrain.MAX_SLIDER
 	slider.step = 1
 	slider.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	slider.value_changed.connect(func(_value: float) -> void: preview_requested.emit())
+	slider.value_changed.connect(func(_value: float) -> void:
+		preview_requested.emit())
 	slider_row.add_child(slider)
 	var value_label := Label.new()
 	value_label.custom_minimum_size = Vector2(30, 0)
 	value_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	value_label.hide()
 	slider_row.add_child(value_label)
+
 	match label_text:
 		"Hills":
 			hills_input = slider
@@ -222,24 +236,29 @@ func _add_terrain_slider(grid: GridContainer, label_text: String) -> void:
 		"Trees":
 			trees_input = slider
 			trees_value = value_label
+
 	grid.add_child(slider_row)
 
 
 func set_control_graphics(graphics: CityUiGraphics) -> void:
 	control_graphics = graphics
+
 	for label in terrain_icons:
 		var role: String = {"Hills": "hills", "Water": "water_amount", "Trees": "trees_amount"}[label]
 		var image: Image = null if graphics == null else graphics.terrain_icon(role)
 		var view: TextureRect = terrain_icons[label]
 		view.texture = null
 		view.visible = image != null
+
 		if image != null:
 			image.convert(Image.FORMAT_RGBA8)
 			var background := image.get_pixel(0, 0)
+
 			for y in image.get_height():
 				for x in image.get_width():
 					if image.get_pixel(x, y).is_equal_approx(background):
 						image.set_pixel(x, y, Color.TRANSPARENT)
+
 			view.texture = ImageTexture.create_from_image(image)
 
 
@@ -271,7 +290,8 @@ func _build_preview(content: HBoxContainer) -> void:
 	var make_terrain_button := Button.new()
 	make_terrain_button.text = "Regenerate Terrain"
 	make_terrain_button.pressed.connect(
-		func() -> void: terrain_regeneration_requested.emit()
+		func() -> void:
+			terrain_regeneration_requested.emit()
 	)
 	right.add_child(make_terrain_button)
 
@@ -286,10 +306,12 @@ func _add_action_buttons(column: VBoxContainer) -> void:
 	var cancel_button := Button.new()
 	cancel_button.text = "Cancel"
 	cancel_button.custom_minimum_size = Vector2(80, 30)
-	cancel_button.pressed.connect(func() -> void: cancel_requested.emit())
+	cancel_button.pressed.connect(func() -> void:
+		cancel_requested.emit())
 	button_row.add_child(cancel_button)
 	var build_button := Button.new()
 	build_button.text = "Edit This Landscape"
 	build_button.custom_minimum_size = Vector2(210, 30)
-	build_button.pressed.connect(func() -> void: build_requested.emit())
+	build_button.pressed.connect(func() -> void:
+		build_requested.emit())
 	button_row.add_child(build_button)

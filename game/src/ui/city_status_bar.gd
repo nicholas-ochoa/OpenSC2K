@@ -142,8 +142,10 @@ func set_reports(reports: PackedStringArray) -> void:
 func prepend_reports(reports: PackedStringArray, maximum := 3) -> void:
 	for report in reports:
 		recent_reports.insert(0, report)
+
 	while recent_reports.size() > maximum:
 		recent_reports.remove_at(recent_reports.size() - 1)
+
 	report_index = 0
 	report_elapsed_seconds = 0.0
 	_refresh_report_text()
@@ -152,8 +154,10 @@ func prepend_reports(reports: PackedStringArray, maximum := 3) -> void:
 
 func prepend_news_items(news_items: Array, maximum := 3) -> void:
 	var reports := PackedStringArray()
+
 	for item in news_items:
 		reports.append(report_name(int(item.get("type", 0))))
+
 	prepend_reports(reports, maximum)
 
 
@@ -164,13 +168,18 @@ static func report_name(news_type: int) -> String:
 func update_report_rotation(delta: float) -> void:
 	if music_notice_seconds > 0.0:
 		music_notice_seconds = maxf(0.0, music_notice_seconds - delta)
+
 		if music_notice_seconds == 0.0:
 			_refresh_report_text()
+
 	if delta <= 0.0 or recent_reports.size() < 2:
 		return
+
 	report_elapsed_seconds += delta
+
 	if report_elapsed_seconds < REPORT_ROTATION_SECONDS:
 		return
+
 	var steps := floori(report_elapsed_seconds / REPORT_ROTATION_SECONDS)
 	report_elapsed_seconds = fmod(
 		report_elapsed_seconds, REPORT_ROTATION_SECONDS
@@ -196,14 +205,18 @@ func _refresh_report_text() -> void:
 	if music_notice_seconds > 0.0:
 		reports_label.text = music_notice
 		reports_label.set_meta("status_tooltip_text", music_notice)
+
 		return
+
 	var current_report := "None"
+
 	if not recent_reports.is_empty():
 		report_index = posmod(report_index, recent_reports.size())
 		current_report = recent_reports[report_index]
 	else:
 		report_index = 0
 		report_elapsed_seconds = 0.0
+
 	reports_label.text = "News: %s" % current_report
 	reports_label.set_meta(
 		"status_tooltip_text",
@@ -221,11 +234,13 @@ func _refresh_report_text() -> void:
 func _sync_overflow_tooltip(label: Label) -> void:
 	if label == null:
 		return
+
 	var font := label.get_theme_font("font")
 	var font_size := label.get_theme_font_size("font_size")
 	var text_width := font.get_string_size(
 		label.text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 	).x
+
 	if (
 		bool(label.get_meta("always_status_tooltip", false))
 		or text_width > maxf(0.0, label.size.x - 4.0)
@@ -241,8 +256,10 @@ func _metric_label(text_value: String, minimum_width: int, expand := false) -> L
 	label.custom_minimum_size = Vector2(minimum_width, 20)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+
 	if expand:
 		label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+
 	return label
 
 

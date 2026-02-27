@@ -29,6 +29,7 @@ func _ready() -> void:
 func build() -> void:
 	if palette_control != null:
 		return
+
 	custom_minimum_size = Vector2(300, 0)
 	add_theme_constant_override("separation", 6)
 
@@ -133,6 +134,7 @@ func set_workspace_images(images: Dictionary) -> void:
 	background_marker.visible = background_marker.texture != null
 	palette_control.set_palette_image(images.get(22005))
 	var scrollbar := texture_scroll.get_v_scroll_bar()
+
 	for item in [["increment", 22003], ["decrement", 22004]]:
 		if images.has(item[1]):
 			scrollbar.add_theme_icon_override(item[0], ImageTexture.create_from_image(images[item[1]]))
@@ -190,13 +192,16 @@ func _organize_tabs() -> void:
 	tabs.use_hidden_tabs_for_min_size = false
 	add_child(tabs)
 	move_child(tabs, 0)
+
 	for definition in [["Colors", [0, 1, 2, 3, 6]], ["Textures", [4, 5]]]:
 		var page := VBoxContainer.new()
 		page.name = definition[0]
 		page.add_theme_constant_override("separation", 8)
 		tabs.add_child(page)
+
 		for index in definition[1]:
 			rows[index].reparent(page)
+
 	rows[7].hide()
 	tooltip_text = rows[7].text
 	rows[8].queue_free()

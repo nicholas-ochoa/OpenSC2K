@@ -38,10 +38,12 @@ func _ready() -> void:
 	text_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	text_view.add_theme_color_override("font_color", Color("101010"))
 	text_view.add_theme_color_override("font_readonly_color", Color("101010"))
+
 	for state in ["normal", "focus", "read_only"]:
 		text_view.add_theme_stylebox_override(
 			state, ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1)
 		)
+
 	content.add_child(text_view)
 
 	var content_parent := get_label().get_parent()

@@ -10,6 +10,7 @@ class NeighborhoodPreview extends Control:
 	var ticks := 0
 	var elapsed := 0.0
 
+
 	func configure_animation(source: Sc2Palette, start_ticks: int) -> void:
 		palette = source
 		ticks = start_ticks
@@ -17,8 +18,10 @@ class NeighborhoodPreview extends Control:
 		material = null
 		palette_texture = null
 		set_process(source != null)
+
 		if source == null:
 			return
+
 		palette_texture = ImageTexture.create_from_image(source.animation_image(ticks))
 		var shader := Shader.new()
 		shader.code = CityMapControl.PALETTE_CYCLE_SHADER
@@ -29,13 +32,17 @@ class NeighborhoodPreview extends Control:
 		lookup.set_shader_parameter("palette_lookup_all", true)
 		material = lookup
 
+
 	func _process(delta: float) -> void:
 		if not is_visible_in_tree() or palette == null:
 			return
+
 		elapsed += delta
 		var steps := int(elapsed / 0.2)
+
 		if steps == 0:
 			return
+
 		elapsed -= steps * 0.2
 		ticks += steps
 		palette_texture.update(palette.animation_image(ticks))
@@ -44,6 +51,8 @@ class NeighborhoodPreview extends Control:
 		set(value):
 			texture = value
 			queue_redraw()
+
+
 	func _draw() -> void:
 		if texture != null:
 			var target := texture.get_size() * zoom
@@ -138,7 +147,8 @@ func close_query() -> void:
 func _add_title_bar(column: VBoxContainer) -> void:
 	var title_bar := DialogTitleBar.new("Query")
 	title_label = title_bar.title_label
-	title_bar.close_requested.connect(func() -> void: close_requested.emit(false))
+	title_bar.close_requested.connect(func() -> void:
+		close_requested.emit(false))
 	column.add_child(title_bar)
 
 
@@ -157,11 +167,13 @@ func _add_body(column: VBoxContainer) -> void:
 	name_input.editable = false
 	name_input.add_theme_color_override("font_color", Color("101010"))
 	name_input.add_theme_color_override("font_uneditable_color", Color("303030"))
+
 	for state in ["normal", "focus", "read_only"]:
 		name_input.add_theme_stylebox_override(
 			state,
 			ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1, 8, 8)
 		)
+
 	text_column.add_child(name_input)
 	tabs = TabContainer.new()
 	tabs.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("eceeea"), Color("a0a5a0"), 1, 8, 8))
@@ -191,46 +203,63 @@ func _make_details_grid(title: String) -> Tree:
 	grid.hide_root = true
 	grid.column_titles_visible = true
 	grid.select_mode = Tree.SELECT_ROW
+
 	for index in 4:
 		grid.set_column_title(index, ["Field", "Decimal", "Text", "Hex"][index])
 		grid.set_column_custom_minimum_width(index, [150, 70, 160, 80][index])
 		grid.set_column_expand(index, index == 2)
+
 	grid.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("ffffff"), Color("a0a5a0"), 1, 4, 4))
 	grid.add_theme_color_override("font_color", Color("202830"))
 	grid.add_theme_color_override("title_button_color", Color("202830"))
+
 	for state in ["normal", "hover", "pressed"]:
 		var fill := Color("d2d5d2")
+
 		if state == "hover":
 			fill = Color("e0e3e0")
 		elif state == "pressed":
 			fill = Color("bcc2bc")
+
 		grid.add_theme_stylebox_override("title_button_" + state, ClassicStyle.create_box(fill, Color("a0a5a0"), 1, 8, 6))
+
 	for color_name in ["font_hovered_color", "font_selected_color", "font_hovered_selected_color"]:
 		grid.add_theme_color_override(color_name, Color("202830"))
+
 	for style_name in ["hovered", "selected", "selected_focus", "hovered_selected", "hovered_dimmed"]:
 		grid.add_theme_stylebox_override(style_name, ClassicStyle.create_box(Color("dce7ef"), Color("839aaa"), 1, 2, 2))
+
 	grid.add_theme_constant_override("v_separation", 8)
 	tabs.add_child(grid)
+
 	return grid
+
 
 func _populate_summary(details: String, info: Dictionary) -> void:
 	for child in summary_rows.get_children():
 		summary_rows.remove_child(child)
 		child.queue_free()
+
 	var lines := details.split("\n")
+
 	if info.has("point"):
 		var point: Vector2i = info.point
 		lines.insert(1, "Location: X: %d, Y: %d, Z: %d" % [point.x, point.y, int(info.get("altitude_raw", 0)) & 0x1f])
+
 	for index in range(1, lines.size()):
 		var line := lines[index].strip_edges()
+
 		if line == "Advanced tile data":
 			break
+
 		if line.is_empty() or (info.has("point") and line.begins_with("Tile: ")):
 			continue
+
 		var card := PanelContainer.new()
 		card.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("f4f4ef"), Color("d3d3cc"), 1, 12, 10))
 		summary_rows.add_child(card)
 		var split := line.find(":")
+
 		if split > 0:
 			var row := HBoxContainer.new()
 			row.add_theme_constant_override("separation", 14)
@@ -258,12 +287,15 @@ func _populate_grid(grid: Tree, rows: Array[PackedStringArray]) -> void:
 	grid.clear()
 	var root := grid.create_item()
 	var row_index := 0
+
 	for row in rows:
 		var item := grid.create_item(root)
+
 		for column in 4:
 			item.set_text(column, row[column])
 			item.set_tooltip_text(column, row[column])
 			item.set_custom_bg_color(column, Color("f0f2ee") if row_index % 2 == 0 else Color.WHITE)
+
 		row_index += 1
 
 
@@ -273,6 +305,7 @@ func _summary_label(value: String) -> Label:
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	label.add_theme_color_override("font_color", Color("202830"))
 	label.add_theme_font_size_override("font_size", 16)
+
 	return label
 
 
@@ -308,12 +341,14 @@ func _add_buttons(column: VBoxContainer) -> void:
 	button_row.add_child(spacer)
 	action_button = Button.new()
 	action_button.visible = false
-	action_button.pressed.connect(func() -> void: action_requested.emit())
+	action_button.pressed.connect(func() -> void:
+		action_requested.emit())
 	button_row.add_child(action_button)
 	ok_button = Button.new()
 	ok_button.text = "OK"
 	ok_button.custom_minimum_size = Vector2(70, 30)
-	ok_button.pressed.connect(func() -> void: close_requested.emit(true))
+	ok_button.pressed.connect(func() -> void:
+		close_requested.emit(true))
 	button_row.add_child(ok_button)
 
 

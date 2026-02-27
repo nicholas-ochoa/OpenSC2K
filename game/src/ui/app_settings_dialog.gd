@@ -43,9 +43,11 @@ func _ready() -> void:
 	tabs.custom_minimum_size = Vector2(660, 350)
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	tabs.add_theme_stylebox_override("panel", ClassicUiStyle.create_box(Color("eceeea"), Color("808080"), 1, 16, 16))
+
 	for state in ["selected", "unselected", "hovered"]:
 		tabs.add_theme_stylebox_override("tab_" + state, ClassicUiStyle.create_box(Color("eceeea") if state == "selected" else Color("d2d5d2"), Color("808080"), 1, 14, 8))
 		tabs.add_theme_color_override("font_" + state + "_color", Color("202830"))
+
 	var settings_parent := get_label().get_parent()
 	settings_parent.add_child(tabs)
 	settings_parent.move_child(tabs, 0)
@@ -57,6 +59,7 @@ func _ready() -> void:
 	pack_error_label.hide()
 	settings_grid.get_parent().add_child(pack_error_label)
 	settings_grid.get_parent().move_child(pack_error_label, 0)
+
 	for label_text in ["Music Volume", "Sound Effects Volume"]:
 		var label := Label.new()
 		label.text = label_text
@@ -69,10 +72,12 @@ func _ready() -> void:
 		slider.step = 1
 		slider.custom_minimum_size = Vector2(250, 32)
 		settings_grid.add_child(slider)
+
 		if label_text == "Music Volume":
 			music_slider = slider
 		else:
 			effects_slider = slider
+
 	settings_grid.add_child(Label.new())
 	background_audio_check = CheckBox.new()
 	background_audio_check.text = "Play music and sounds in background"
@@ -105,7 +110,8 @@ func _ready() -> void:
 	renderer_selector.add_item("CPU")
 	renderer_selector.tooltip_text = "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
 	settings_grid.add_child(renderer_selector)
-	renderer_selector.item_selected.connect(func(_index: int) -> void: _update_graphics_counts())
+	renderer_selector.item_selected.connect(func(_index: int) -> void:
+		_update_graphics_counts())
 	settings_grid = _add_settings_tab("Graphics", true)
 	var zoom_grid := GridContainer.new()
 	zoom_grid.columns = 4
@@ -115,6 +121,7 @@ func _ready() -> void:
 	settings_grid.get_parent().move_child(zoom_grid, 0)
 	zoom_graphics_selectors.resize(6)
 	zoom_graphics_counts.resize(6)
+
 	for zoom_index in [0, 3, 1, 4, 2, 5]:
 		var zoom_label := Label.new()
 		zoom_label.text = "%d%% zoom" % AppSettingsStore.GRAPHICS_ZOOMS[zoom_index]
@@ -123,7 +130,8 @@ func _ready() -> void:
 		for size_name: String in AppSettingsStore.GRAPHICS_SIZES:
 			selector.add_item(size_name)
 		selector.tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
-		selector.item_selected.connect(func(_size: int) -> void: _update_zoom_graphics_choices())
+		selector.item_selected.connect(func(_size: int) -> void:
+			_update_zoom_graphics_choices())
 		zoom_graphics_selectors[zoom_index] = selector
 		var zoom_row := HBoxContainer.new()
 		zoom_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -134,6 +142,7 @@ func _ready() -> void:
 		zoom_graphics_counts[zoom_index] = count_label
 		zoom_row.add_child(count_label)
 		zoom_grid.add_child(zoom_row)
+
 	folder_edit = _pack_folder_row(settings_grid, "Graphics pack", "graphics")
 	folder_row = folder_edit.get_parent() as HBoxContainer
 	settings_grid = _add_settings_tab("Import Data")
@@ -174,6 +183,7 @@ func _add_settings_tab(tab_title: String, scrollable := false) -> GridContainer:
 	var page := VBoxContainer.new()
 	page.name = tab_title
 	page.add_theme_constant_override("separation", 16)
+
 	if scrollable:
 		var scroll := ScrollContainer.new()
 		scroll.name = tab_title
@@ -183,12 +193,14 @@ func _add_settings_tab(tab_title: String, scrollable := false) -> GridContainer:
 		scroll.add_child(page)
 	else:
 		tabs.add_child(page)
+
 	var grid := GridContainer.new()
 	grid.columns = 2
 	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	grid.add_theme_constant_override("h_separation", 14)
 	grid.add_theme_constant_override("v_separation", 14)
 	page.add_child(grid)
+
 	return grid
 
 
@@ -199,8 +211,10 @@ func show_values(
 	pack_error_label.hide()
 	compatibility_error_label.hide()
 	var normalized := AppSettingsStore.normalize_zoom_graphics(zoom_graphics)
+
 	for index in zoom_graphics_selectors.size():
 		zoom_graphics_selectors[index].select(normalized[index])
+
 	_update_zoom_graphics_choices()
 	background_audio_check.button_pressed = background_audio
 	renderer_selector.select(1 if city_renderer == "cpu" else 0)
@@ -234,16 +248,20 @@ func selected_values() -> Dictionary:
 
 func _selected_zoom_graphics() -> Array[int]:
 	var sizes: Array[int] = []
+
 	for selector in zoom_graphics_selectors:
 		sizes.append(selector.selected)
+
 	return AppSettingsStore.normalize_zoom_graphics(sizes)
 
 
 func _update_zoom_graphics_choices() -> void:
 	var sizes := _selected_zoom_graphics()
+
 	for index in zoom_graphics_selectors.size():
 		var selector := zoom_graphics_selectors[index]
 		selector.select(sizes[index])
+
 		for size_index in AppSettingsStore.GRAPHICS_SIZES.size():
 			selector.set_item_disabled(size_index, index > 0 and size_index < sizes[index - 1])
 
@@ -253,6 +271,7 @@ func _update_zoom_graphics_choices() -> void:
 func _update_graphics_counts() -> void:
 	if graphics_availability.is_empty():
 		return
+
 	for index in zoom_graphics_counts.size():
 		var size_index := zoom_graphics_selectors[index].selected
 		var counts: Dictionary = graphics_availability.sizes[size_index]
@@ -275,9 +294,12 @@ func _pack_folder_row(grid: GridContainer, caption: String, kind: String) -> Lin
 	browse.text = "Browse..."
 	row.add_child(browse)
 	var picker := _pack_picker(kind, edit)
+
 	if kind == "graphics":
 		folder_dialog = picker
-	browse.pressed.connect(func() -> void: picker.popup_centered_ratio(0.8))
+
+	browse.pressed.connect(func() -> void:
+		picker.popup_centered_ratio(0.8))
 	var pack_name := Label.new()
 	pack_name.custom_minimum_size.x = 150
 	pack_name.clip_text = true
@@ -286,7 +308,9 @@ func _pack_folder_row(grid: GridContainer, caption: String, kind: String) -> Lin
 	row.add_child(pack_name)
 	pack_name_labels[kind] = pack_name
 	pack_edits[kind] = edit
-	edit.text_changed.connect(func(_text: String) -> void: _refresh_pack_name(kind))
+	edit.text_changed.connect(func(_text: String) -> void:
+		_refresh_pack_name(kind))
+
 	return edit
 
 
@@ -315,6 +339,7 @@ func show_pack_error(message: String) -> void:
 static func pack_file_path(value: String) -> String:
 	if value.is_empty() or value.get_file() == "pack.json":
 		return value
+
 	return value.path_join("pack.json")
 
 
@@ -326,7 +351,9 @@ func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 	picker.access = FileDialog.ACCESS_FILESYSTEM
 	picker.exclusive = true
 	add_child(picker)
-	picker.file_selected.connect(func(path: String) -> void: edit.text = path)
+	picker.file_selected.connect(func(path: String) -> void:
+		edit.text = path)
+
 	return picker
 
 

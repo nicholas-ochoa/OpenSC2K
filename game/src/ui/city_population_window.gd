@@ -25,8 +25,10 @@ func _ready() -> void:
 	)
 	add_child(background)
 	var margin := MarginContainer.new()
+
 	for side in ["left", "top", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 10)
+
 	background.add_child(margin)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
@@ -49,6 +51,7 @@ func _ready() -> void:
 	mode_row.add_theme_constant_override("separation", 0)
 	column.add_child(mode_row)
 	var mode_group := ButtonGroup.new()
+
 	for entry in [
 		["Population", PopulationWindowControl.Mode.POPULATION],
 		["Health", PopulationWindowControl.Mode.HEALTH],
@@ -67,7 +70,9 @@ func _ready() -> void:
 func show_city(value: CityState) -> void:
 	if value == null or population_control == null:
 		return
+
 	population_control.set_city(value)
+
 	if visible:
 		move_to_foreground()
 	else:

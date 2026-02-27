@@ -16,8 +16,10 @@ func _ready() -> void:
 	theme = ThemeDB.get_default_theme().duplicate()
 	theme.set_color("font_color", "Label", Color.WHITE)
 	theme.set_color("font_uneditable_color", "LineEdit", Color.WHITE)
+
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
 		theme.set_color(state, "CheckBox", Color.WHITE)
+
 	size = Vector2i(800, 640)
 	min_size = Vector2i(720, 580)
 	transient = true
@@ -32,8 +34,10 @@ func _ready() -> void:
 	)
 	add_child(background)
 	var margin := MarginContainer.new()
+
 	for side in ["left", "top", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 10)
+
 	background.add_child(margin)
 	ordinance_control = OrdinanceView.new()
 	ordinance_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -47,9 +51,12 @@ func _ready() -> void:
 func open_city(value: CityState) -> Dictionary:
 	if value == null or ordinance_control == null:
 		return {"ok": false, "error": "city is not available"}
+
 	var result := ordinance_control.set_city(value)
+
 	if result.get("ok", false):
 		popup_centered(Vector2i(800, 640))
+
 	return result
 
 

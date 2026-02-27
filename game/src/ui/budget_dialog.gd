@@ -45,8 +45,10 @@ func _ready() -> void:
 	title = "Budget"
 	min_size = Vector2i(720, 560)
 	get_ok_button().text = "Apply"
-	confirmed.connect(func() -> void: apply_requested.emit())
-	canceled.connect(func() -> void: cancel_requested.emit())
+	confirmed.connect(func() -> void:
+		apply_requested.emit())
+	canceled.connect(func() -> void:
+		cancel_requested.emit())
 	var budget_scroll := MarginContainer.new()
 	budget_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	budget_scroll.offset_left = 16
@@ -64,9 +66,11 @@ func _ready() -> void:
 	budget_rows.add_child(notice_label)
 	auto_budget_check = CheckBox.new()
 	auto_budget_check.theme = ThemeDB.get_default_theme().duplicate()
+
 	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
 		auto_budget_check.add_theme_stylebox_override(state, StyleBoxEmpty.new())
 		auto_budget_check.add_theme_color_override("font_" + ("color" if state == "normal" else state + "_color"), Color.WHITE)
+
 	auto_budget_check.text = "Use the same funding automatically next year"
 	budget_rows.add_child(auto_budget_check)
 	var columns := HBoxContainer.new()
@@ -74,12 +78,15 @@ func _ready() -> void:
 	budget_rows.add_child(columns)
 	var left := VBoxContainer.new()
 	var right := VBoxContainer.new()
+
 	for column in [left, right]:
 		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		column.add_theme_constant_override("separation", 5)
 		columns.add_child(column)
+
 	for budget_id in BUDGET_NAMES.size():
 		_add_budget_row(left if budget_id < 8 else right, budget_id)
+
 	_add_bond_controls(budget_rows)
 	_build_bond_dialog()
 
@@ -94,15 +101,19 @@ func open_budget(values: PackedInt32Array, annual: bool, auto_budget: bool) -> v
 	auto_budget_check.button_pressed = auto_budget
 	get_cancel_button().disabled = annual
 	exclusive = annual
+
 	for budget_id in mini(values.size(), controls.size()):
 		controls[budget_id].value = values[budget_id]
+
 	popup_centered()
 
 
 func funding_values() -> PackedInt32Array:
 	var values := PackedInt32Array()
+
 	for control in controls:
 		values.append(roundi(control.value))
+
 	return values
 
 
@@ -117,18 +128,21 @@ func set_bond_state(
 	oldest_rate: int,
 ) -> void:
 	controls[Budget.BUDGET_BONDS].value = average_fixed
+
 	if bond_count == 0:
 		bond_summary_label.text = "No outstanding bonds"
 	else:
 		bond_summary_label.text = "%d outstanding; oldest %d%%; average %.2f%%" % [
 			bond_count, oldest_rate, float(average_fixed) / 10000.0,
 		]
+
 	issue_bond_button.disabled = bond_count > Bonds.MAX_BONDS
 	repay_bond_button.disabled = bond_count == 0 or funds < Bonds.BOND_VALUE
 
 
 func open_bond_confirmation(action: String, rate: int) -> void:
 	pending_bond_action = action
+
 	if action == "issue":
 		_style_bond_confirmation()
 		bond_dialog.title = "Issue Bond"
@@ -141,13 +155,16 @@ func open_bond_confirmation(action: String, rate: int) -> void:
 		bond_dialog.dialog_text = (
 			"Oldest Bond Rate is %d%%\nDo You Want to Repay the Bond?" % rate
 		)
+
 	bond_dialog.popup_centered()
 
 
 func reset_dialogs() -> void:
 	if visible:
 		hide()
+
 	pending_bond_action = ""
+
 	if bond_dialog.visible:
 		bond_dialog.hide()
 
@@ -169,6 +186,7 @@ func _add_budget_row(rows: VBoxContainer, budget_id: int) -> void:
 	control.step = 1
 	control.min_value = -2147483648
 	control.max_value = 2147483647
+
 	if budget_id <= Budget.BUDGET_INDUSTRIAL:
 		control.min_value = 0
 		control.max_value = 22
@@ -178,14 +196,18 @@ func _add_budget_row(rows: VBoxContainer, budget_id: int) -> void:
 		control.max_value = 100
 		control.suffix = "% funded"
 		var effect := "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution."
+
 		if budget_id >= Budget.BUDGET_ROAD:
 			effect = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded."
+
 		control.tooltip_text = effect + " Lower funding reduces annual spending."
 		control.get_line_edit().tooltip_text = control.tooltip_text
 	else:
 		control.editable = false
+
 	if budget_id == Budget.BUDGET_BONDS:
 		control.visible = false
+
 	row.add_child(control)
 	controls.append(control)
 	rows.add_child(row)
@@ -199,11 +221,13 @@ func _add_bond_controls(rows: VBoxContainer) -> void:
 	bond_controls.add_child(bond_summary_label)
 	issue_bond_button = Button.new()
 	issue_bond_button.text = "Issue $10K Bond"
-	issue_bond_button.pressed.connect(func() -> void: issue_bond_requested.emit())
+	issue_bond_button.pressed.connect(func() -> void:
+		issue_bond_requested.emit())
 	bond_controls.add_child(issue_bond_button)
 	repay_bond_button = Button.new()
 	repay_bond_button.text = "Repay $10K Bond"
-	repay_bond_button.pressed.connect(func() -> void: repay_bond_requested.emit())
+	repay_bond_button.pressed.connect(func() -> void:
+		repay_bond_requested.emit())
 	bond_controls.add_child(repay_bond_button)
 	rows.add_child(bond_controls)
 
@@ -223,6 +247,7 @@ func _build_bond_dialog() -> void:
 func _resolve_bond_confirmation(confirmed_value: bool) -> void:
 	var action := pending_bond_action
 	pending_bond_action = ""
+
 	if not action.is_empty():
 		bond_confirmation_resolved.emit(action, confirmed_value)
 

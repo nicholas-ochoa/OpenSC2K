@@ -19,6 +19,7 @@ func configure(
 
 func set_message(message_text: String, cancel_text := "") -> void:
 	dialog_text = message_text
+
 	if not cancel_text.is_empty():
 		get_cancel_button().text = cancel_text
 

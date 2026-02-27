@@ -71,8 +71,10 @@ func _ready() -> void:
 	hold_menu.subtool_requested.connect(subtool_requested.emit)
 	add_child(hold_menu)
 	var toolbar_margin := MarginContainer.new()
+
 	for side in ["left", "top", "right", "bottom"]:
 		toolbar_margin.add_theme_constant_override("margin_" + side, 6)
+
 	add_child(toolbar_margin)
 
 	var toolbar := VBoxContainer.new()
@@ -93,6 +95,7 @@ func _ready() -> void:
 	tool_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	toolbar.add_child(tool_grid)
 	var tool_button_group := ButtonGroup.new()
+
 	for group_index in range(15):
 		_add_group_button(tool_grid, tool_button_group, group_index)
 
@@ -102,6 +105,7 @@ func _ready() -> void:
 	special_tool_grid.add_theme_constant_override("h_separation", 3)
 	special_tool_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	toolbar.add_child(special_tool_grid)
+
 	for group_index in range(15, Tools.GROUPS.size()):
 		_add_group_button(special_tool_grid, tool_button_group, group_index)
 
@@ -150,6 +154,7 @@ func _ready() -> void:
 	view_grid.add_theme_constant_override("separation", 0)
 	toolbar.add_child(view_grid)
 	var view_group := ButtonGroup.new()
+
 	for mode in MAP_DISPLAY_MODES:
 		var button := CheckBox.new()
 		button.text = mode.capitalize()
@@ -162,8 +167,10 @@ func _ready() -> void:
 
 	data_view_input = OptionButton.new()
 	data_view_input.add_item("Data view: off")
+
 	for title in CityDataView.TITLES:
 		data_view_input.add_item(title)
+
 	data_view_input.tooltip_text = "Replace structures with current tile values."
 	data_view_input.item_selected.connect(func(index: int) -> void:
 		overlay_requested.emit("city" if index == 0 else CityDataView.MODES[index - 1]))
@@ -174,6 +181,7 @@ func _ready() -> void:
 	layers_grid.add_theme_constant_override("h_separation", 4)
 	layers_grid.add_theme_constant_override("v_separation", 2)
 	toolbar.add_child(layers_grid)
+
 	for layer in [
 		["Buildings", "buildings"], ["Networks", "networks"],
 		["Water", "water"], ["Trees", "trees"],
@@ -188,6 +196,7 @@ func _ready() -> void:
 		check.toggled.connect(_on_surface_visibility_toggled.bind(layer[1]))
 		view_visibility_checks[layer[1]] = check
 		layers_grid.add_child(check)
+
 	var pipes_check := CheckBox.new()
 	pipes_check.text = "Pipes"
 	pipes_check.tooltip_text = "Show or hide pipes in the underground view."
@@ -208,6 +217,7 @@ func _ready() -> void:
 func group_icon(group_index: int) -> Texture2D:
 	if group_index < 0 or group_index >= GROUP_ICON_REGIONS.size():
 		return null
+
 	return _toolbar_icon(GROUP_ICON_REGIONS[group_index])
 
 
@@ -218,10 +228,13 @@ func show_tool_group(
 ) -> int:
 	if group_index < 0 or group_index >= Tools.GROUPS.size():
 		return 0
+
 	_current_city = city
 	_icon_provider = icon_provider
+
 	for button_index in toolbar_buttons.size():
 		toolbar_buttons[button_index].button_pressed = button_index == group_index
+
 	return child_palette.show_tool_group(group_index, city, icon_provider)
 
 
@@ -281,14 +294,17 @@ func _toolbar_icon(region: Rect2i) -> Texture2D:
 		or not Rect2i(Vector2i.ZERO, toolbar_art.get_size()).encloses(region)
 	):
 		return null
+
 	var image := toolbar_art.get_region(region)
 	image.convert(Image.FORMAT_RGBA8)
 	var background := image.get_pixel(0, 0)
 	var minimum := Vector2i(image.get_width(), image.get_height())
 	var maximum := Vector2i(-1, -1)
+
 	for y in image.get_height():
 		for x in image.get_width():
 			var color := image.get_pixel(x, y)
+
 			if color.is_equal_approx(background):
 				image.set_pixel(x, y, Color(color.r, color.g, color.b, 0.0))
 			else:
@@ -296,9 +312,12 @@ func _toolbar_icon(region: Rect2i) -> Texture2D:
 				minimum.y = mini(minimum.y, y)
 				maximum.x = maxi(maximum.x, x)
 				maximum.y = maxi(maximum.y, y)
+
 	if maximum.x < minimum.x:
 		return null
+
 	var bounds := Rect2i(minimum, maximum - minimum + Vector2i.ONE)
+
 	return ImageTexture.create_from_image(image.get_region(bounds))
 
 
@@ -311,6 +330,7 @@ func _icon_button(region: Rect2i, tooltip: String) -> Button:
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
 	button.text = tooltip.left(1) if button.icon == null else ""
 	button.tooltip_text = tooltip
+
 	return button
 
 
@@ -321,6 +341,7 @@ func _on_surface_visibility_toggled(visible: bool, layer: String) -> void:
 func sync_view_mode(mode: String) -> void:
 	if data_view_input != null:
 		data_view_input.select(CityDataView.MODES.find(mode) + 1)
+
 	for key in view_mode_buttons:
 		(view_mode_buttons[key] as CheckBox).set_pressed_no_signal(key == mode)
 
@@ -342,6 +363,7 @@ func _camera_row(parent: VBoxContainer, title: String) -> HBoxContainer:
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	spacer.custom_minimum_size.x = 45
 	row.add_child(spacer)
+
 	return buttons
 
 
@@ -349,8 +371,10 @@ func _begin_group_hold(group_index: int) -> void:
 	_hold_generation += 1
 	_held_group = group_index
 	_hold_opened = false
+
 	if group_index >= 15 or not is_inside_tree():
 		return
+
 	get_tree().create_timer(HOLD_SECONDS).timeout.connect(
 		_show_held_group.bind(group_index, _hold_generation)
 	)
@@ -369,7 +393,9 @@ func _cancel_group_hold() -> void:
 func _activate_group(group_index: int) -> void:
 	if _hold_opened:
 		_hold_opened = false
+
 		return
+
 	hold_menu.hide()
 	group_requested.emit(group_index)
 
@@ -377,6 +403,7 @@ func _activate_group(group_index: int) -> void:
 func _show_held_group(group_index: int, generation: int) -> void:
 	if generation != _hold_generation or _held_group != group_index:
 		return
+
 	_hold_opened = true
 	group_requested.emit(group_index)
 	hold_menu.show_tools(
@@ -390,25 +417,31 @@ func set_landscape_editor(enabled: bool) -> void:
 	start_city_button.visible = enabled
 	child_palette.free_landscape = enabled
 	hold_menu.palette.free_landscape = enabled
+
 	for index in toolbar_buttons.size():
 		toolbar_buttons[index].visible = not enabled or index in [0, 1, 16, 17]
+
 	view_mode_buttons.underground.disabled = enabled
 
 
 func _watch_buttons(node: Node) -> void:
 	if node is BaseButton and not node.pressed.is_connected(button_clicked.emit):
 		node.pressed.connect(button_clicked.emit)
+
 	if not node.child_entered_tree.is_connected(_watch_buttons):
 		node.child_entered_tree.connect(_watch_buttons)
+
 	for child in node.get_children():
 		_watch_buttons(child)
 
 
 func replace_artwork(value: Image) -> void:
 	toolbar_art = value
+
 	for index in toolbar_buttons.size():
 		toolbar_buttons[index].icon = group_icon(index)
 		toolbar_buttons[index].text = str(index + 1) if toolbar_buttons[index].icon == null else ""
+
 	_refresh_artwork_buttons(self)
 
 
@@ -416,5 +449,6 @@ func _refresh_artwork_buttons(node: Node) -> void:
 	if node is Button and node.has_meta("toolbar_region"):
 		node.icon = _toolbar_icon(node.get_meta("toolbar_region"))
 		node.text = node.tooltip_text.left(1) if node.icon == null else ""
+
 	for child in node.get_children():
 		_refresh_artwork_buttons(child)

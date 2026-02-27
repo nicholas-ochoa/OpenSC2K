@@ -25,8 +25,10 @@ func _ready() -> void:
 	)
 	add_child(background)
 	var margin := MarginContainer.new()
+
 	for side in ["left", "top", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 10)
+
 	background.add_child(margin)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
@@ -53,6 +55,7 @@ func _ready() -> void:
 	series_grid.add_theme_constant_override("h_separation", 8)
 	series_grid.add_theme_constant_override("v_separation", 2)
 	controls.add_child(series_grid)
+
 	for series in CityGraphControl.SERIES_COUNT:
 		var check := CheckBox.new()
 		check.text = CityGraphControl.SERIES_NAMES[series]
@@ -76,6 +79,7 @@ func _ready() -> void:
 	scale_heading.add_theme_color_override("font_color", Color("000080"))
 	scale_column.add_child(scale_heading)
 	var scale_group := ButtonGroup.new()
+
 	for entry in [["1 Year", 0], ["10 Years", 1], ["100 Yrs", 2]]:
 		var radio := CheckBox.new()
 		radio.text = entry[0]
@@ -88,7 +92,9 @@ func _ready() -> void:
 func show_city(value: CityState) -> void:
 	if value == null or graph_control == null:
 		return
+
 	graph_control.set_city(value)
+
 	if visible:
 		move_to_foreground()
 	else:

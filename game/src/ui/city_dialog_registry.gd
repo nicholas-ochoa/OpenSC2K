@@ -85,8 +85,10 @@ func _create_file_dialogs() -> void:
 func _create_tool_dialogs() -> void:
 	new_city_dialog = NewCityDialogView.new()
 	add_child(new_city_dialog)
+
 	if original_assets != null:
 		new_city_dialog.set_control_graphics(original_assets.city_ui_graphics)
+
 	sign_dialog = SignDialogView.new()
 	add_child(sign_dialog)
 	bridge_dialog = BridgeDialogView.new()
@@ -128,11 +130,13 @@ func _create_information_windows() -> void:
 	industry_window = IndustryWindowView.new()
 	add_child(industry_window)
 	var industry_names := PackedStringArray()
+
 	for index in IndustryView.INDUSTRY_COUNT:
 		var fallback: String = IndustryView.DEFAULT_NAMES[index]
 		industry_names.append(str(original_assets.strings.get(
 			OriginalGameAssets.INDUSTRY_STRING_FIRST + index, fallback
 		)))
+
 	industry_window.set_resources(industry_names, original_assets.industry_icons)
 	simnation_window = SimNationWindowView.new()
 	add_child(simnation_window)
@@ -211,4 +215,5 @@ func _route_dialog(
 	var dialog := RouteDialogView.new()
 	dialog.configure(title, prompt, accept_text, cancel_text, minimum_size)
 	add_child(dialog)
+
 	return dialog

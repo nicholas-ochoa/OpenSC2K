@@ -49,6 +49,8 @@ static func _create(file_mode: int, filters: Array) -> FileDialog:
 	dialog.theme.set_color("font_color", "Label", Color.WHITE)
 	dialog.access = FileDialog.ACCESS_FILESYSTEM
 	dialog.file_mode = file_mode
+
 	for filter in filters:
 		dialog.add_filter(str(filter[0]), str(filter[1]))
+
 	return dialog

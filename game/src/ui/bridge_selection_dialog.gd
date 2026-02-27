@@ -28,6 +28,7 @@ func _ready() -> void:
 	choices.offset_bottom = 290
 	choices.add_theme_constant_override("separation", 8)
 	add_child(choices)
+
 	for choice_index in 3:
 		var choice_button := Button.new()
 		choice_button.custom_minimum_size = Vector2(230, 210)
@@ -76,11 +77,14 @@ func set_choices(
 	var cost_unit := (
 		"2 by 2 water section" if request_type == "highway" else "water tile"
 	)
+
 	for choice_index in choice_buttons.size():
 		var choice_button := choice_buttons[choice_index]
 		choice_button.visible = choice_index < choices.size()
+
 		if not choice_button.visible:
 			continue
+
 		var choice: Dictionary = choices[choice_index]
 		choice_button.text = (
 			"%s\nFree in Place & Print" % choice.get("name", "Bridge")
@@ -111,13 +115,16 @@ func show_choices(
 func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	if preview_palette == null or preview_sprites == null:
 		return null
+
 	var tiles: Array[Dictionary] = []
 	var highway := request_type == "highway"
 	var count := 8 if highway else 12
+
 	# use the same native grid as the city renderer. include a water apron
 	for x in range(-2, count + 2):
 		for y in range(-2, 4 if highway else 3):
 			_append_preview_tile(tiles, 1270, _preview_baseline(x, y))
+
 	if highway and bridge_type == HighwayCommand.BRIDGE_REINFORCED:
 		for section in 4:
 			_append_preview_tile(tiles, 1000 + 0x5d + (14 if section % 2 == 0 else 13), _preview_baseline(section * 2, 0) + Vector2i(0, CityIsometricRenderer.HALF_HEIGHT * 2), true)
@@ -126,6 +133,7 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 			for y in (2 if highway else 1):
 				var tile := 0x4a if highway else NetworkCommand._bridge_tile(bridge_type, count + 2, x + 1, 1)
 				_append_preview_tile(tiles, 1000 + tile, _preview_baseline(x, y), not highway)
+
 	if not highway:
 		# these are the two graded road banks written for an eastward span
 		for bank in [Vector2i(-1, 3), Vector2i(count, 1)]:
@@ -133,31 +141,44 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 			var terrain_sprite := CityIsometricRenderer.terrain_sprite_id(bank.y, false)
 			_append_preview_tile(tiles, terrain_sprite, baseline)
 			_append_preview_tile(tiles, 1000 + 0x1d + int(NetworkCommand.NETWORK_SLOPE_SHAPES[bank.y]), baseline)
+
 	var bounds := Rect2i()
+
 	for tile in tiles:
 		bounds = bounds.merge(Rect2i(tile.position, tile.image.get_size()))
+
 	var assembled := Image.create(maxi(1, bounds.size.x), maxi(1, bounds.size.y), false, Image.FORMAT_RGBA8)
 	assembled.fill(Color.TRANSPARENT)
+
 	for tile in tiles:
 		assembled.blend_rect(tile.image, Rect2i(Vector2i.ZERO, tile.image.get_size()), tile.position - bounds.position)
+
 	var factor := minf(1.0, minf(228.0 / assembled.get_width(), 128.0 / assembled.get_height()))
+
 	if factor < 1.0:
 		assembled.resize(maxi(1, roundi(assembled.get_width() * factor)), maxi(1, roundi(assembled.get_height() * factor)), Image.INTERPOLATE_NEAREST)
+
 	var output := Image.create(240, 140, false, Image.FORMAT_RGBA8)
 	output.fill(Color.TRANSPARENT)
 	output.blend_rect(assembled, Rect2i(Vector2i.ZERO, assembled.get_size()), (output.get_size() - assembled.get_size()) / 2)
+
 	return ImageTexture.create_from_image(output)
 
 
 func _append_preview_tile(tiles: Array[Dictionary], sprite_id: int, baseline: Vector2i, flip := false) -> void:
 	var sprite = preview_sprites.find_sprite(sprite_id)
+
 	if sprite == null:
 		return
+
 	var rendered: Dictionary = sprite.create_image(preview_palette)
+
 	if rendered.get("ok", false):
 		var image: Image = rendered.image
+
 		if flip:
 			image.flip_x()
+
 		tiles.append({"image": image, "position": baseline - Vector2i(image.get_width() / 2, image.get_height() - 1)})
 
 

@@ -58,6 +58,7 @@ func _ready() -> void:
 func build() -> void:
 	if zoom_label != null:
 		return
+
 	add_theme_constant_override("separation", 5)
 	_build_view_row()
 	_build_tool_row()
@@ -67,30 +68,40 @@ func build() -> void:
 	_build_cycle_row()
 	_organize_settings_tabs()
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	round_brush_check.toggled.connect(func(_enabled: bool) -> void: _refresh_icons())
-	filled_shapes_check.toggled.connect(func(_enabled: bool) -> void: _refresh_icons())
+	round_brush_check.toggled.connect(func(_enabled: bool) -> void:
+		_refresh_icons())
+	filled_shapes_check.toggled.connect(func(_enabled: bool) -> void:
+		_refresh_icons())
 
 
 func set_control_images(images: Dictionary) -> void:
 	build()
 	control_icons.clear()
+
 	for id in images:
 		control_icons[id] = ImageTexture.create_from_image(images[id])
+
 	_refresh_icons()
 
 
 func _refresh_icons() -> void:
 	for i in tool_buttons.size():
 		var id: int = TOOL_ICON_IDS[i]
+
 		if i >= 3 and i <= 7 and filled_shapes_check.button_pressed:
 			id = FILLED_ICON_IDS[i - 3]
+
 		tool_buttons[i].icon = control_icons.get(id)
+
 	zoom_out_button.icon = control_icons.get(20010)
 	zoom_in_button.icon = control_icons.get(20011)
+
 	for i in 6:
 		var id := 21000 + i
+
 		if i >= 4 and round_brush_check.button_pressed:
 			id += 2
+
 		brush_size_selector.set_item_icon(i, control_icons.get(id))
 
 
@@ -99,6 +110,7 @@ func _build_view_row() -> void:
 	row.add_theme_constant_override("separation", 4)
 	add_child(row)
 	var group := ButtonGroup.new()
+
 	for view_data in [
 		["Large", VIEW_LARGE],
 		["Medium", VIEW_MEDIUM],
@@ -113,6 +125,7 @@ func _build_view_row() -> void:
 		)
 		row.add_child(button)
 		view_buttons.append(button)
+
 	view_buttons[0].button_pressed = true
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -140,6 +153,7 @@ func _build_tool_row() -> void:
 	row.add_theme_constant_override("v_separation", 4)
 	add_child(row)
 	var group := ButtonGroup.new()
+
 	for tool_data in [
 		["Pencil", ScurkPixelCanvas.TOOL_PENCIL],
 		["Eraser", ScurkPixelCanvas.TOOL_ERASER],
@@ -165,9 +179,11 @@ func _build_tool_row() -> void:
 		)
 		row.add_child(button)
 		tool_buttons.append(button)
+
 		if int(tool_data[1]) == ScurkPixelCanvas.TOOL_PASTE:
 			paste_tool_button = button
 			paste_tool_button.disabled = true
+
 	tool_buttons[0].button_pressed = true
 
 
@@ -178,6 +194,7 @@ func _build_clipboard_rows() -> void:
 	var scurk_label := Label.new()
 	scurk_label.text = "SCURK Clipboard"
 	scurk_row.add_child(scurk_label)
+
 	for action_data in [
 		[
 			"Rotate CCW",
@@ -230,8 +247,10 @@ func _build_brush_row() -> void:
 	label.text = "Brush"
 	row.add_child(label)
 	brush_size_selector = OptionButton.new()
+
 	for size_value in range(1, 7):
 		brush_size_selector.add_item("%d px" % size_value, size_value)
+
 	brush_size_selector.item_selected.connect(brush_size_selected.emit)
 	row.add_child(brush_size_selector)
 	round_brush_check = CheckBox.new()
@@ -314,6 +333,7 @@ func _button(label: String, signal_name: StringName, tooltip: String) -> Button:
 	button.tooltip_text = tooltip
 	button.custom_minimum_size = Vector2(0, 30)
 	button.pressed.connect(emit_signal.bind(signal_name))
+
 	return button
 
 
@@ -326,6 +346,7 @@ func _grid_size_selector() -> SpinBox:
 	selector.allow_greater = false
 	selector.allow_lesser = false
 	selector.custom_minimum_size = Vector2(66, 0)
+
 	return selector
 
 
@@ -334,10 +355,12 @@ func _organize_settings_tabs() -> void:
 	var tabs := TabContainer.new()
 	tabs.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	add_child(tabs)
+
 	for group in [["Brush", [4]], ["Grid", [5]], ["Clipboard", [2, 3]], ["Animation", [6]]]:
 		var page := VBoxContainer.new()
 		page.name = group[0]
 		page.add_theme_constant_override("separation", 5)
 		tabs.add_child(page)
+
 		for index in group[1]:
 			(rows[index] as Node).reparent(page)

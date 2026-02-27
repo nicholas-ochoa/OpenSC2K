@@ -78,12 +78,14 @@ func _ready() -> void:
 	import_button = Button.new()
 	import_button.text = "Import Assets..."
 	import_button.custom_minimum_size.y = 42
-	import_button.pressed.connect(func() -> void: import_assets_requested.emit())
+	import_button.pressed.connect(func() -> void:
+		import_assets_requested.emit())
 	import_border = ClassicStyle.create_box(Color("c0c0c0"), Color("ffb000"), 4, 8, 8)
 	import_button.add_theme_stylebox_override("normal", import_border)
 	import_button.add_theme_stylebox_override("focus", import_border)
 	column.add_child(import_button)
 	import_button.hide()
+
 	for index in BUTTON_LABELS.size():
 		var button := Button.new()
 		button.name = BUTTON_LABELS[index].trim_suffix("...").replace(" ", "")
@@ -92,8 +94,10 @@ func _ready() -> void:
 		button.add_theme_font_size_override("font_size", 16)
 		button.pressed.connect(_emit_action.bind(index))
 		column.add_child(button)
+
 		if index < 6:
 			game_buttons.append(button)
+
 		if index == 0:
 			continue_button = button
 		elif index == 1:
@@ -105,12 +109,15 @@ func _ready() -> void:
 func show_menu(can_continue: bool) -> void:
 	if continue_button != null:
 		continue_button.visible = can_continue
+
 	if scurk_place_button != null:
 		scurk_place_button.disabled = not can_continue or not assets_ready
+
 	# let the panel shrink when continue city is hidden
 	var panel := new_city_button.get_parent().get_parent() as PanelContainer
 	panel.reset_size()
 	show()
+
 	if not assets_ready:
 		import_button.grab_focus()
 	elif can_continue and continue_button != null:
@@ -122,22 +129,34 @@ func show_menu(can_continue: bool) -> void:
 func _emit_action(index: int) -> void:
 	if index < 6 and not assets_ready:
 		return
+
 	match index:
-		0: continue_requested.emit()
-		1: new_city_requested.emit()
-		2: open_city_requested.emit()
-		3: scenario_requested.emit()
-		4: scurk_requested.emit()
-		5: scurk_place_requested.emit()
-		6: settings_requested.emit()
-		7: about_requested.emit()
-		8: exit_requested.emit()
+		0:
+			continue_requested.emit()
+		1:
+			new_city_requested.emit()
+		2:
+			open_city_requested.emit()
+		3:
+			scenario_requested.emit()
+		4:
+			scurk_requested.emit()
+		5:
+			scurk_place_requested.emit()
+		6:
+			settings_requested.emit()
+		7:
+			about_requested.emit()
+		8:
+			exit_requested.emit()
 
 
 func set_assets_ready(value: bool) -> void:
 	assets_ready = value
+
 	for button in game_buttons:
 		button.disabled = not value
+
 	import_button.visible = not value
 	set_process(not value)
 
@@ -145,5 +164,6 @@ func set_assets_ready(value: bool) -> void:
 func _process(delta: float) -> void:
 	if assets_ready or import_border == null:
 		return
+
 	flash_time += delta
 	import_border.border_color = Color("ffb000") if fmod(flash_time, 1.2) < 0.6 else Color("805800")

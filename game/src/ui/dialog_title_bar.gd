@@ -6,6 +6,7 @@ signal close_requested
 var title_label: Label
 var close_button: TextureButton
 
+
 func _init(title_text := "") -> void:
 	var window_theme := ThemeDB.get_default_theme()
 	var border := window_theme.get_stylebox("embedded_border", "Window") as StyleBoxFlat
@@ -34,5 +35,6 @@ func _init(title_text := "") -> void:
 	close_button.texture_normal = window_theme.get_icon("close", "Window")
 	close_button.texture_pressed = window_theme.get_icon("close_pressed", "Window")
 	close_button.tooltip_text = "Close"
-	close_button.pressed.connect(func() -> void: close_requested.emit())
+	close_button.pressed.connect(func() -> void:
+		close_requested.emit())
 	row.add_child(close_button)

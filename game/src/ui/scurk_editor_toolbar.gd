@@ -29,8 +29,10 @@ func _ready() -> void:
 func build() -> void:
 	if save_button != null:
 		return
+
 	custom_minimum_size = Vector2(0, 30)
 	var actions := {}
+
 	for entry in [
 		["Open...", "open"], ["Save", "save"], ["Save As...", "save_as"],
 		["Import Image...", "import_bmp"], ["Export Image...", "export_bmp"],
@@ -42,11 +44,13 @@ func build() -> void:
 		action.hide()
 		add_child(action)
 		actions[entry[1]] = action
+
 	save_button = actions.save
 	undo_button = actions.undo
 	redo_button = actions.redo
 	revert_button = actions.revert
 	clear_button = actions.clear
+
 	for group in [
 		["File", ["open", "save", "save_as", "", "import_bmp", "export_bmp", "", "close"]],
 		["Edit", ["undo", "redo", "", "revert", "clear", "", "pick_copy"]],
@@ -57,17 +61,20 @@ func build() -> void:
 		add_child(menu)
 		var popup := menu.get_popup()
 		var entries: Array = group[1]
+
 		for index in entries.size():
 			if str(entries[index]).is_empty():
 				popup.add_separator()
 			else:
 				popup.add_item((actions[entries[index]] as Button).text, index)
+
 		popup.about_to_popup.connect(func() -> void:
 			for index in entries.size():
 				if actions.has(entries[index]):
 					popup.set_item_disabled(index, (actions[entries[index]] as Button).disabled))
 		popup.id_pressed.connect(func(index: int) -> void:
 			var action: Button = actions[entries[index]]
+
 			if not action.disabled:
 				action.pressed.emit())
 
@@ -78,4 +85,5 @@ func _button(label: String, signal_name: StringName, tooltip: String) -> Button:
 	button.tooltip_text = tooltip
 	button.custom_minimum_size = Vector2(0, 30)
 	button.pressed.connect(emit_signal.bind(signal_name))
+
 	return button

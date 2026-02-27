@@ -14,12 +14,14 @@ var text_views: Array[TextEdit] = []
 func _ready() -> void:
 	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
+
 	for resource_id in TEXT_RESOURCE_IDS:
 		_add_text_window(resource_id)
 
 
 func show_texts(texts: Dictionary, viewport_size: Vector2i) -> void:
 	var window_rects := WindowLayout.rects(viewport_size, TEXT_RESOURCE_IDS.size())
+
 	for index in TEXT_RESOURCE_IDS.size():
 		var resource_id: int = TEXT_RESOURCE_IDS[index]
 		text_views[index].text = (
@@ -43,8 +45,10 @@ func _add_text_window(resource_id: int) -> void:
 	window.gui_input.connect(_on_window_input.bind(window))
 
 	var margin := MarginContainer.new()
+
 	for side in ["left", "top", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 8)
+
 	window.add_child(margin)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 8)
@@ -56,10 +60,12 @@ func _add_text_window(resource_id: int) -> void:
 	text_view.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	text_view.add_theme_color_override("font_color", Color("101010"))
 	text_view.add_theme_color_override("font_readonly_color", Color("101010"))
+
 	for state in ["normal", "focus", "read_only"]:
 		text_view.add_theme_stylebox_override(
 			state, ClassicStyle.create_box(Color("ffffff"), Color("808080"), 1)
 		)
+
 	text_view.gui_input.connect(_on_window_input.bind(window))
 	column.add_child(text_view)
 
@@ -89,4 +95,5 @@ func _bring_to_front(window: PanelContainer) -> void:
 	for other in windows:
 		if other != window and other.z_index > BASE_Z_INDEX:
 			other.z_index -= 1
+
 	window.z_index = BASE_Z_INDEX + windows.size()

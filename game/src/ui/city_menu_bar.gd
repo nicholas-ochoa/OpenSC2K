@@ -69,6 +69,7 @@ func _ready() -> void:
 		["Pause", 0], ["Turtle", 1], ["Llama", 2], ["Cheetah", 3],
 		["African Swallow", 4],
 	], _on_speed_menu)
+
 	for speed_id in range(5):
 		var speed_index := speed_menu.get_popup().get_item_index(speed_id)
 		speed_menu.get_popup().set_item_as_checkable(speed_index, true)
@@ -78,9 +79,11 @@ func _ready() -> void:
 		["Sound Effects", MENU_SOUND_EFFECTS], ["Music", MENU_MUSIC],
 
 	], _on_options_menu)
+
 	for option_id in [MENU_AUTO_BUDGET, MENU_AUTO_GOTO, MENU_SOUND_EFFECTS, MENU_MUSIC]:
 		var option_index := options_menu.get_popup().get_item_index(option_id)
 		options_menu.get_popup().set_item_as_checkable(option_index, true)
+
 	options_menu.get_popup().add_separator()
 	options_menu.get_popup().add_item("Settings...", MENU_SETTINGS)
 	options_menu.disabled = true
@@ -91,9 +94,12 @@ func _ready() -> void:
 		["Water Supply", 5], ["Power Supply", 6], ["Height", 7],
 		["City Map...", MENU_VIEW_CITY_MAP],
 	], _on_view_menu)
+
 	for index in 7:
 		view_menu.get_popup().set_item_as_radio_checkable(index, true)
+
 	view_menu.get_popup().add_separator()
+
 	for view_item in [
 		["Show Buildings", MENU_VIEW_BUILDINGS],
 		["Show Networks", MENU_VIEW_NETWORKS],
@@ -114,12 +120,15 @@ func _ready() -> void:
 		7: true, 8: true, 9: true, 10: true, 11: true, 12: true,
 		13: true, 14: true, 15: true, 16: true, 17: true, 18: true,
 	}
+
 	for item_index in disasters_menu.get_popup().item_count:
 		var disaster_id := disasters_menu.get_popup().get_item_id(item_index)
+
 		if disaster_id > 0 and disaster_id != MENU_NO_DISASTERS:
 			disasters_menu.get_popup().set_item_disabled(
 				item_index, not implemented_disasters.has(disaster_id)
 			)
+
 	disasters_menu.tooltip_text = (
 		"Air Crash and Helicopter Crash do nothing when selected, as in the original Windows game."
 	)
@@ -198,12 +207,15 @@ func _add_menu(
 	menu.flat = true
 	menu.custom_minimum_size = Vector2(0, 23)
 	parent.add_child(menu)
+
 	for item in items:
 		if str(item[0]).is_empty():
 			menu.get_popup().add_separator()
 		else:
 			menu.get_popup().add_item(item[0], item[1])
+
 	menu.get_popup().id_pressed.connect(callback)
+
 	return menu
 
 
@@ -213,6 +225,7 @@ func _metric_label(text_value: String, minimum_width: int) -> Label:
 	label.custom_minimum_size = Vector2(minimum_width, 20)
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+
 	return label
 
 
@@ -252,6 +265,7 @@ static func disaster_name(disaster_id: int) -> String:
 	for item in DISASTER_ITEMS:
 		if int(item[1]) == disaster_id:
 			return str(item[0])
+
 	return "None" if disaster_id == 0 else "Disaster"
 
 

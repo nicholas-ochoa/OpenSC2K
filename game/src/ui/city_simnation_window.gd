@@ -33,8 +33,10 @@ func set_resources(
 func show_city(value: CityState) -> void:
 	if value == null or simnation_control == null:
 		return
+
 	simnation_control.set_neighbor_names(_neighbor_names(value))
 	simnation_control.set_city(value)
+
 	if visible:
 		move_to_foreground()
 	else:
@@ -49,14 +51,19 @@ func refresh_city(value: CityState) -> void:
 func _neighbor_names(value: CityState) -> Dictionary:
 	var names := {}
 	var data := SimNationView.snapshot(value)
+
 	if not data.get("ok", false):
 		return names
+
 	for neighbor in data.neighbors:
 		var name_index := int(neighbor.name_index)
+
 		if name_index <= 0:
 			continue
+
 		var resource_id := SimNationView.NEIGHBOR_NAME_STRING_BASE + name_index
 		names[name_index] = str(
 			neighbor_name_strings.get(resource_id, "City %d" % name_index)
 		)
+
 	return names

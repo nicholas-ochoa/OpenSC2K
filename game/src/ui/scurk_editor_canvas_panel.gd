@@ -23,6 +23,7 @@ func _ready() -> void:
 func build() -> void:
 	if pixel_canvas != null:
 		return
+
 	size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	size_flags_vertical = Control.SIZE_EXPAND_FILL
 	add_theme_constant_override("separation", 5)

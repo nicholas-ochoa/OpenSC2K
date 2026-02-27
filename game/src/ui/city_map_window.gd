@@ -27,8 +27,10 @@ func _ready() -> void:
 	)
 	add_child(background)
 	var margin := MarginContainer.new()
+
 	for side in ["left", "top", "right", "bottom"]:
 		margin.add_theme_constant_override("margin_" + side, 10)
+
 	background.add_child(margin)
 	map_control = CityMapView.new()
 	map_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -47,9 +49,12 @@ func toggle_city(
 ) -> void:
 	if value == null or map_control == null:
 		return
+
 	if visible:
 		hide()
+
 		return
+
 	map_control.set_city(value, palette)
 	map_control.refresh_viewport(viewport_outline)
 	popup_centered(Vector2i(480, 680))
@@ -60,6 +65,7 @@ func refresh_city(
 ) -> void:
 	if not visible or map_control == null:
 		return
+
 	map_control.set_city(value, palette)
 	map_control.refresh_viewport(viewport_outline)
 

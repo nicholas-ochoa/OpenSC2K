@@ -7,13 +7,17 @@ var payload: Dictionary = {}
 var ready_for_data := false
 var diagnostics: Dictionary = {}
 
+
 static func supported() -> bool:
 	return DisplayServer.get_name() != "headless" and ClassDB.class_exists("WebView")
 
+
 func open(data: Dictionary) -> void:
 	payload = data
+
 	if not supported():
 		return
+
 	if view == null:
 		view = ClassDB.instantiate("WebView") as Control
 		view.set("url", "")
@@ -30,22 +34,29 @@ func open(data: Dictionary) -> void:
 		view.call("set_visible", true)
 		_send_data()
 
+
 func close() -> void:
 	if view != null:
 		view.call("set_visible", false)
 		view.call("focus_parent")
 
+
 func _send_data() -> void:
 	if ready_for_data and view != null:
 		view.call("post_message", JSON.stringify(payload))
 
+
 func _on_message(message: String) -> void:
 	var decoder := JSON.new()
+
 	if decoder.parse(message) != OK:
 		return
+
 	var parsed: Variant = decoder.data
+
 	if not parsed is Dictionary:
 		return
+
 	match str(parsed.get("action", "")):
 		"ready":
 			ready_for_data = true
