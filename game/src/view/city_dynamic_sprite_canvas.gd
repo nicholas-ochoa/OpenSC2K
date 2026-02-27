@@ -37,6 +37,7 @@ static func batch_special_visuals(
 	var result: Array[Dictionary] = []
 	var pending: Array[Dictionary] = []
 	var pending_bounds := Rect2i()
+
 	for visual in value:
 		if not visual.get("special_overlay", false):
 			_append_special_batch(result, pending, batch_cache)
@@ -44,8 +45,10 @@ static func batch_special_visuals(
 			pending_bounds = Rect2i()
 			result.append(visual)
 			continue
+
 		var bounds := _visual_bounds(visual)
 		var merged := bounds if pending.is_empty() else pending_bounds.merge(bounds)
+
 		if (
 			not pending.is_empty()
 			and (
@@ -59,8 +62,11 @@ static func batch_special_visuals(
 			pending_bounds = bounds
 		else:
 			pending_bounds = merged
+
 		pending.append(visual)
+
 	_append_special_batch(result, pending, batch_cache)
+
 	return result
 
 
@@ -69,31 +75,43 @@ static func _append_special_batch(
 ) -> void:
 	if pending.is_empty():
 		return
+
 	if pending.size() == 1:
 		result.append(pending[0])
+
 		return
+
 	var cache_key := _special_batch_cache_key(pending)
+
 	if not cache_key.is_empty() and batch_cache.has(cache_key):
 		result.append(batch_cache[cache_key])
+
 		return
+
 	var bounds := _visual_bounds(pending[0])
+
 	for index in range(1, pending.size()):
 		bounds = bounds.merge(_visual_bounds(pending[index]))
+
 	var factor := int(pending[0].get("texture_factor", 1))
 	var image := Image.create(
 		bounds.size.x * factor, bounds.size.y * factor, false, Image.FORMAT_RGBA8
 	)
 	image.fill(Color.TRANSPARENT)
+
 	for visual in pending:
 		var source: Image = visual.get("image") as Image
+
 		if source == null:
 			continue
+
 		var position := Vector2i(visual.get("position", Vector2.ZERO))
 		image.blend_rect(
 			source,
 			Rect2i(Vector2i.ZERO, source.get_size()),
 			(position - bounds.position) * factor,
 		)
+
 	var texture := ImageTexture.create_from_image(image)
 	var batch := {
 		"texture": texture,
@@ -105,6 +123,7 @@ static func _append_special_batch(
 		"special_batch": true,
 	}
 	result.append(batch)
+
 	if not cache_key.is_empty():
 		batch_cache[cache_key] = batch
 
@@ -112,11 +131,15 @@ static func _append_special_batch(
 static func _special_batch_cache_key(pending: Array[Dictionary]) -> String:
 	var parts := PackedStringArray()
 	parts.resize(pending.size())
+
 	for index in pending.size():
 		var key := String(pending[index].get("batch_cache_key", ""))
+
 		if key.is_empty():
 			return ""
+
 		parts[index] = key
+
 	return "|".join(parts)
 
 
@@ -130,8 +153,10 @@ static func _visual_bounds(visual: Dictionary) -> Rect2i:
 func _draw() -> void:
 	for visual in visuals:
 		var texture: Texture2D = visual.get("texture") as Texture2D
+
 		if texture == null:
 			continue
+
 		var source_position: Vector2 = visual.get("position", Vector2.ZERO)
 		var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
 		draw_texture_rect(

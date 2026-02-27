@@ -21,10 +21,12 @@ void fragment() {
 }
 """
 
+
 static func create_material(palette: Texture2D) -> ShaderMaterial:
 	var shader := Shader.new()
 	shader.code = SHADER
 	var result := ShaderMaterial.new()
 	result.shader = shader
 	result.set_shader_parameter("foreground_palette", palette)
+
 	return result

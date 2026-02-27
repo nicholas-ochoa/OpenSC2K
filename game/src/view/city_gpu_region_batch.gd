@@ -3,6 +3,7 @@ extends RefCounted
 
 const MAX_REGIONS := 4
 
+
 static func build(request: Dictionary, context: CityGpuBuildContext, uploaded_revision: int) -> Dictionary:
 	var display: CityState = request.city if request.prepared else CityViewFilter.surface_copy(request.city, request.visibility)
 	var regions: Array[Dictionary] = []
@@ -13,22 +14,29 @@ static func build(request: Dictionary, context: CityGpuBuildContext, uploaded_re
 		var result := CityGpuRegionRenderer.render(display, request.palette, request.sprites,
 			bounds, request.view, request.mode, request.pipes, request.subways,
 			context, request.generation, uploaded_revision, false)
+
 		if not result.ok:
 			return result
+
 		if request.mode == "city":
 			result.sign_foregrounds = CityGpuSignForegrounds.build(result, request.signs,
 				request.palette, request.sprites, context, divisor)
+
 		result.key = key
 		result.usec = Time.get_ticks_usec() - started
 		regions.append(result)
+
 	# a later region can grow the shared atlas after earlier uvs were built
 	for region in regions:
 		if int(region.atlas_edge) != context.atlas_edge:
 			var uvs: PackedVector2Array = region.gpu_arrays[Mesh.ARRAY_TEX_UV]
+
 			for index in uvs.size():
 				uvs[index] *= float(region.atlas_edge) / context.atlas_edge
+
 			region.gpu_arrays[Mesh.ARRAY_TEX_UV] = uvs
 			region.atlas_edge = context.atlas_edge
+
 	return {"ok": true, "regions": regions, "display_city": display,
 		"atlas_revision": context.atlas_revision,
 		"atlas_image": context.atlas.duplicate() if context.atlas != null and context.atlas_revision != uploaded_revision else null}
