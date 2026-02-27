@@ -34,26 +34,34 @@ func current_command() -> Dictionary:
 func undo(city: CityState, random: SimRandom) -> Dictionary:
 	if not can_undo():
 		return {"ok": false, "error": "No SCURK edit is available to undo."}
+
 	var command: Dictionary = undo_stack[-1]
 	var result := ScurkPlace.undo(city, command, random)
+
 	if not result.get("ok", false):
 		return result
+
 	undo_stack.pop_back()
 	redo_stack.append(command)
 	result["command"] = command
 	result["current_command"] = current_command()
+
 	return result
 
 
 func redo(city: CityState, random: SimRandom) -> Dictionary:
 	if not can_redo():
 		return {"ok": false, "error": "No SCURK edit is available to redo."}
+
 	var command: Dictionary = redo_stack[-1]
 	var result := ScurkPlace.redo(city, command, random)
+
 	if not result.get("ok", false):
 		return result
+
 	redo_stack.pop_back()
 	undo_stack.append(command)
 	result["command"] = command
 	result["current_command"] = command
+
 	return result

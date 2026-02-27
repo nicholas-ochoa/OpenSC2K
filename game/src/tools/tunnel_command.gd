@@ -28,21 +28,29 @@ static func apply(
 	free_mode := false
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if not supports_tool(group_index, subtool_index):
 		return {"ok": false, "error": "tool is not a tunnel"}
+
 	var start_index := city.index_of(start.x, start.y)
+
 	if start_index < 0:
 		return {"ok": false, "error": "tunnel entrance is outside the city"}
+
 	if city.buildings[start_index] > MAX_CLEAR_BUILDING or city.buildings[start_index] == RADIOACTIVITY:
 		return {"ok": false, "error": "tunnel entrance contains a protected building"}
+
 	if city.underground[start_index] != 0:
 		return {"ok": false, "error": "tunnel entrance conflicts with an underground network"}
 
 	var start_terrain := int(city.terrain[start_index])
+
 	if start_terrain < 1 or start_terrain > 4:
 		return {"ok": false, "error": "tunnel entrance requires a cardinal slope"}
+
 	var direction_index := (start_terrain + 2) & 3
 	var direction: Vector2i = DIRECTIONS[direction_index]
 	var start_altitude := city.land_altitude(start.x, start.y)
@@ -51,37 +59,50 @@ static func apply(
 	while true:
 		if current.x < 0 or current.x > map_edge - 2 or current.y < 0 or current.y > map_edge - 2:
 			return {"ok": false, "error": "tunnel cannot reach an opposite slope"}
+
 		var current_index := city.index_of(current.x, current.y)
 		var altitude_word := int(city.altitude_words[current_index])
+
 		if (altitude_word & TUNNEL_MASK) != 0:
 			return {"ok": false, "error": "tunnel path conflicts with another tunnel"}
+
 		var altitude_difference := (altitude_word & 0x1f) - start_altitude
+
 		if altitude_difference > 30:
 			return {"ok": false, "error": "tunnel path is too deep"}
+
 		if altitude_difference == 1 and _underground_blocks_tunnel(city.underground[current_index]):
 			return {"ok": false, "error": "tunnel path conflicts with an underground network"}
+
 		current += direction
 		var next_index := city.index_of(current.x, current.y)
+
 		if next_index < 0 or city.land_altitude(current.x, current.y) <= start_altitude:
 			break
 
 	var finish := current
 	var finish_index := city.index_of(finish.x, finish.y)
 	var expected_terrain := ((start_terrain + 1) & 3) + 1
+
 	if finish_index < 0 or city.terrain[finish_index] != expected_terrain:
 		return {"ok": false, "error": "tunnel cannot reach an opposite slope"}
 
 	var points: Array[Vector2i] = []
 	current = start
+
 	while true:
 		points.append(current)
+
 		if current == finish:
 			break
+
 		current += direction
+
 	var listed_cost := (
 		points.size() * int(ToolCatalog.tool(group_index, subtool_index).cost)
 	)
 	var cost := 0 if free_mode else listed_cost
+
 	if confirmation_choice == CONFIRMATION_UNSELECTED:
 		return {
 			"ok": false,
@@ -94,6 +115,7 @@ static func apply(
 			"free_mode": free_mode,
 			"error": "tunnel construction confirmation is required",
 		}
+
 	if confirmation_choice == CONFIRMATION_CANCELLED:
 		return {
 			"ok": false,
@@ -106,14 +128,18 @@ static func apply(
 			"free_mode": free_mode,
 			"error": "tunnel construction canceled",
 		}
+
 	if confirmation_choice != CONFIRMATION_CONFIRMED:
 		return {"ok": false, "error": "tunnel confirmation choice is invalid"}
+
 	if city.funds() < cost:
 		return {"ok": false, "error": "insufficient funds", "cost": cost}
 
 	var old_payloads := NetworkCommand._city_payloads(city)
+
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
+
 	var changed_payloads := NetworkCommand._duplicate_payloads(old_payloads)
 	var altitude: PackedByteArray = changed_payloads.ALTM
 	var buildings: PackedByteArray = changed_payloads.XBLD
@@ -130,10 +156,12 @@ static func apply(
 	_retile_adjacent_roads(
 		buildings, terrain, zones, flags, misc, start, text_overlays, map_edge
 	)
+
 	for point_index in range(1, points.size() - 1):
 		var point := points[point_index]
 		var index := point.x * map_edge + point.y
 		_set_tunnel_level(altitude, index, city.land_altitude(point.x, point.y) - start_altitude + 1)
+
 	NetworkCommand._replace_building(buildings, zones, misc, finish_index, finish_tile)
 	_set_tunnel_level(altitude, finish_index, 1)
 	_retile_adjacent_roads(
@@ -142,11 +170,14 @@ static func apply(
 	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
+
 	for chunk_id in ["ALTM", "XBLD", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
+
 	if not NetworkCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		return {"ok": false, "error": "cannot store tunnel changes"}
+
 	return {
 		"ok": true,
 		"command_type": "tunnel",
@@ -170,18 +201,25 @@ static func apply(
 static func undo(city: CityState, command: Dictionary) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	if not command.get("ok", false) or command.get("command_type", "") != "tunnel":
 		return {"ok": false, "error": "tunnel command is invalid"}
+
 	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
 	var old_payloads: Dictionary = command.get("old_payloads", {})
 	var new_payloads: Dictionary = command.get("new_payloads", {})
+
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
+
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
 			return {"ok": false, "error": "city changed after this tunnel command"}
+
 	if not NetworkCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore tunnel changes"}
+
 	var points: Array = command.get("points", [])
+
 	return {"ok": true, "restored_tiles": points.size(), "error": ""}
 
 
@@ -213,6 +251,7 @@ static func _retile_adjacent_roads(
 ) -> void:
 	for offset in DIRECTIONS:
 		var neighbor: Vector2i = point + offset
+
 		if neighbor.x >= 0 and neighbor.x < map_edge and neighbor.y >= 0 and neighbor.y < map_edge:
 			NetworkCommand._retile_surface(
 				buildings,

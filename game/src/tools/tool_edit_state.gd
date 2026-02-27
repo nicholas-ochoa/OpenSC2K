@@ -35,6 +35,7 @@ static func scurk_object(
 		and overlay_mode == "city"
 		and ScurkPlace.is_placeable_tile(tile_id)
 	)
+
 	return {
 		"available": can_place,
 		"enabled": can_place,
@@ -63,11 +64,14 @@ static func scurk_tool(city: CityState, tool: Dictionary) -> Dictionary:
 	var is_highway := Highways.supports_tool(group_index, subtool_index)
 	var is_terrain := TerrainTools.supports_tool(group_index, subtool_index)
 	var selection := "point"
+
 	if is_zone or is_demolish:
 		selection = "rectangle"
 	elif is_landscape or is_network or is_highway or is_terrain:
 		selection = "path"
+
 	var tool_name := String(tool.get("name", "Edit Tool"))
+
 	return {
 		"available": can_edit,
 		"enabled": can_edit,
@@ -142,14 +146,18 @@ static func normal(
 		and supported
 	)
 	var selection := "point"
+
 	if is_zone or is_demolish:
 		selection = "rectangle"
 	elif is_landscape or is_network or is_highway or is_terrain:
 		selection = "path"
+
 	if group_index == 1 and subtool_index == 3:
 		selection = "point"
 		point_area = 7
+
 	var tool := Tools.tool(group_index, subtool_index)
+
 	return {
 		"available": available,
 		"enabled": enabled,
@@ -207,45 +215,67 @@ static func _normal_status_detail(
 ) -> String:
 	if city == null:
 		return ""
+
 	var tool_name := str(tool.get("name", "Tool"))
+
 	if not available:
 		return "%s is not available in this city." % tool_name
+
 	if is_tool_chooser(group_index, subtool_index):
 		return "%s selected. Select an available type from the choice window." % tool_name
+
 	if is_zone:
 		return "%s selected. Drag on the city map to zone. Use the mouse wheel to zoom and the right or middle button to pan." % tool_name
+
 	if group_index == 1 and subtool_index == 3:
 		return "Place Forest selected. Hold to scatter trees in a seven-tile brush. Each tree placement costs $3. Hold Shift to Query."
+
 	if is_landscape:
 		return "%s selected. Drag to fill an area. Hold Shift to draw a line." % tool_name
+
 	if is_building:
 		return "%s selected. Click a clear city site to build it." % tool_name
+
 	if is_network:
 		return "%s selected. Drag between city tiles to build a route." % tool_name
+
 	if is_hydro:
 		return "Hydroelectric Power Plant selected. Click an unused waterfall tile."
+
 	if is_subway_to_rail:
 		return "Subway-to-Rail Connection selected. Click beside a rail or subway."
+
 	if is_onramp:
 		return "On-ramp selected. Click on clear terrain between a highway and a perpendicular road."
+
 	if is_tunnel:
 		return "Tunnel selected. Click a cardinal slope that faces through a hill."
+
 	if is_highway:
 		return "Highway selected. Drag between city tiles to build a two-tile-wide route."
+
 	if is_demolish:
 		return "Demolish selected. Drag a rectangle across eligible city tiles."
+
 	if is_terrain:
 		return "%s selected. Click or drag across terrain." % tool_name
+
 	if is_dispatch:
 		var inspected := Dispatch.availability(city)
 		var count := 0
+
 		if inspected.ok:
 			count = [inspected.police, inspected.fire, inspected.military][subtool_index]
+
 		return "%s selected. Click dry, unlabeled terrain to deploy one of %d available units." % [tool_name, count]
+
 	if is_sign:
 		return "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
+
 	if is_query:
 		return "Query selected. Click a city tile to inspect it."
+
 	if is_center:
 		return "Center View selected. Click a city tile to center the map on it."
+
 	return "%s is in the original tool catalog. Its command is not implemented yet." % tool_name

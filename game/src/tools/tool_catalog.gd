@@ -192,14 +192,18 @@ const GROUPS := [
 static func group(group_index: int) -> Dictionary:
 	if group_index < 0 or group_index >= GROUPS.size():
 		return {}
+
 	return GROUPS[group_index]
 
 
 static func tool(group_index: int, subtool_index: int) -> Dictionary:
 	var group_entry := group(group_index)
+
 	if group_entry.is_empty() or subtool_index < 0 or subtool_index >= group_entry.tools.size():
 		return {}
+
 	var source: Array = group_entry.tools[subtool_index]
+
 	return {
 		"group_index": group_index,
 		"subtool_index": subtool_index,
@@ -215,9 +219,11 @@ static func tool(group_index: int, subtool_index: int) -> Dictionary:
 
 static func all_tools() -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
+
 	for group_index in GROUPS.size():
 		for subtool_index in GROUPS[group_index].tools.size():
 			result.append(tool(group_index, subtool_index))
+
 	return result
 
 

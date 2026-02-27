@@ -52,14 +52,19 @@ const VARIABLE_ZONE_TILES := {
 
 static func placeable_large_ids(group: int) -> PackedInt32Array:
 	var result := PackedInt32Array()
+
 	if group == PickCopy.GROUP_ALL:
 		for tile_id in 500:
 			result.append(1000 + tile_id)
+
 		return result
+
 	result = PickCopy.group_large_ids(group)
+
 	if group == 5:
 		for tile_id in range(0x0e, 0x70):
 			result.append(1000 + tile_id)
+
 	return result
 
 
@@ -70,6 +75,7 @@ static func is_placeable_tile(tile_id: int) -> bool:
 static func footprint(tile_id: int, selected: Vector2i) -> Rect2i:
 	if not is_placeable_tile(tile_id):
 		return Rect2i()
+
 	return Buildings.footprint(selected, Demolish.structure_area(tile_id) if tile_id <= 255 else 1)
 
 
@@ -82,29 +88,38 @@ static func apply(
 	australian_locale := false
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
+
 	if not is_placeable_tile(tile_id):
 		return _failure("object is not available in Place & Print")
+
 	if process_random == null:
 		return _failure("process random state is required")
 
 	if tile_id > 255:
 		if selected.x < 0 or selected.y < 0 or selected.x >= map_edge or selected.y >= map_edge:
 			return _failure("object does not fit inside the map")
+
 		var before := city.scurk_artwork_stamps.duplicate(true)
 		city.scurk_artwork_stamps.append({"tile_id": tile_id, "point": selected})
+
 		return {"ok": true, "error": "", "command_type": "scurk_artwork",
 			"scurk_place_history": true, "area": 1, "old_stamps": before,
 			"new_stamps": city.scurk_artwork_stamps.duplicate(true)}
+
 	var area := Demolish.structure_area(tile_id)
 	var site := Buildings.footprint(selected, area)
+
 	if not Buildings._footprint_is_in_bounds(site, area, map_edge):
 		return _failure("object does not fit inside the map")
 
 	var old_payloads := Buildings._city_payloads(city)
+
 	if old_payloads.is_empty():
 		return _failure("required city data is missing or invalid")
+
 	var changed_payloads := Buildings._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
 	var terrain: PackedByteArray = changed_payloads.XTER
@@ -117,6 +132,7 @@ static func apply(
 	var misc: PackedByteArray = changed_payloads.MISC
 
 	var site_check := _check_site(buildings, terrain, flags, site, tile_id, map_edge)
+
 	if not site_check.ok:
 		return _failure(site_check.error)
 
@@ -136,18 +152,24 @@ static func apply(
 	var placed_flags := (
 		FLAG_PIPED if tile_id == SMALL_PARK or tile_id == BIG_PARK else STRUCTURE_FLAGS
 	)
+
 	if tile_id < 0x70:
 		placed_flags = FLAG_POWERABLE if tile_id >= 0x0e else 0
+
 	var tile_indices := PackedInt32Array()
+
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			var index := x * map_edge + y
 			Networks._replace_building(buildings, zones, misc, index, tile_id)
 			zones[index] = zone_id
 			flags[index] = (flags[index] & 0x1f) | placed_flags
+
 			if overlay_id != 0:
 				OverlayData.write(text_overlays, index, overlay_id)
+
 			tile_indices.append(index)
+
 	Buildings._set_corners(zones, site, area, city.compass_rotation(), map_edge)
 
 	if tile_id == STATUE:
@@ -156,6 +178,7 @@ static func apply(
 		Buildings._place_pipe(underground, terrain, zones, flags, misc, selected, map_edge)
 	elif tile_id == SUBWAY_STATION:
 		Buildings._place_subway_station(underground, terrain, zones, flags, misc, selected, map_edge)
+
 	if BUDGET_CURRENT.has(tile_id):
 		var budget_offset: int = (
 			Buildings.MISC_BUDGETS
@@ -168,11 +191,14 @@ static func apply(
 		)
 
 	var changed_ids := PackedStringArray()
+
 	for chunk_id in ["XBLD", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
+
 	if not Buildings._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		process_random.state = process_random_state_before
+
 		return _failure("cannot store Place & Print changes")
 
 	return {
@@ -213,36 +239,48 @@ static func _apply_history(
 	forward: bool
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
+
 	if not command.get("ok", false) or not command.get(
 		"scurk_place_history", false
 	):
 		return _failure("Place & Print command is invalid")
+
 	if command.get("command_type", "") == "scurk_artwork":
 		var expected: Array = command.old_stamps if forward else command.new_stamps
+
 		if city.scurk_artwork_stamps != expected:
 			return _failure("artwork changed after this command")
+
 		city.scurk_artwork_stamps.assign((command.new_stamps if forward else command.old_stamps).duplicate(true))
+
 		return {"ok": true, "error": "", "restored_tiles": 1}
+
 	var before_random_key := ""
 	var after_random_key := ""
+
 	if command.has("process_random_state_before"):
 		before_random_key = "process_random_state_before"
 		after_random_key = "process_random_state_after"
 	elif command.has("random_state_before"):
 		before_random_key = "random_state_before"
 		after_random_key = "random_state_after"
+
 	if not before_random_key.is_empty():
 		if process_random == null:
 			return _failure("process random state is required")
+
 		var expected_state := int(command.get(
 			before_random_key if forward else after_random_key, -1
 		))
+
 		if process_random.state != expected_state:
 			return _failure(
 				"process random state changed after this Place & Print command"
 			)
+
 	var changed_ids: PackedStringArray = command.get(
 		"changed_ids", PackedStringArray()
 	)
@@ -252,28 +290,35 @@ static func _apply_history(
 	var destination_payloads: Dictionary = command.get(
 		"new_payloads" if forward else "old_payloads", {}
 	)
+
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
+
 		if (
 			chunk == null
 			or not source_payloads.has(chunk_id)
 			or chunk.decoded_payload != source_payloads[chunk_id]
 		):
 			return _failure("city changed after this Place & Print command")
+
 	if not Buildings._apply_payloads(
 		city, changed_ids, destination_payloads, source_payloads
 	):
 		return _failure("cannot restore Place & Print changes")
+
 	if changed_ids.has("ALTM"):
 		var altitude: PackedByteArray = destination_payloads.ALTM
+
 		for index in (map_edge * map_edge):
 			city.altitude_words[index] = (
 				(altitude[index * 2] << 8) | altitude[index * 2 + 1]
 			)
+
 	if not before_random_key.is_empty():
 		process_random.state = int(command.get(
 			after_random_key if forward else before_random_key, -1
 		))
+
 	return {
 		"ok": true,
 		"error": "",
@@ -293,19 +338,24 @@ static func _check_site(
 	map_edge: int = 128,
 ) -> Dictionary:
 	var marina_water_tiles := 0
+
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			var index := x * map_edge + y
 			var old_building := int(buildings[index])
+
 			if (
 				old_building >= ROAD_FIRST
 				or old_building == RADIOACTIVITY
 				or old_building == SMALL_PARK
 			):
 				return _failure("site contains a protected tile")
+
 			if tile_id == SMALL_PARK and old_building > 0x0c:
 				return _failure("site contains a protected tile")
+
 			var is_water := (flags[index] & FLAG_WATER) != 0
+
 			if tile_id == MARINA:
 				if is_water:
 					marina_water_tiles += 1
@@ -314,11 +364,13 @@ static func _check_site(
 					return _failure("hydroelectric dam requires water terrain")
 			elif tile_id >= 0x70 and (terrain[index] != 0 or is_water):
 				return _failure("site is not flat clear land")
+
 	if tile_id == MARINA and (
 		marina_water_tiles == 0
 		or marina_water_tiles == site.size.x * site.size.y
 	):
 		return _failure("marina must span land and water")
+
 	return {"ok": true, "error": ""}
 
 
@@ -332,30 +384,43 @@ static func _zone_for_tile(
 			if selected_zone >= 1 and selected_zone <= 9
 			else int(VARIABLE_ZONE_TILES[tile_id])
 		)
+
 		for x in range(site.position.x, site.end.x):
 			for y in range(site.position.y, site.end.y):
 				var existing_zone := zones[x * map_edge + y] & 0x0f
+
 				if existing_zone != 0:
 					result = existing_zone
+
 		return result
+
 	if tile_id >= 0x70 and tile_id <= 0x7b:
 		return 1
+
 	if tile_id >= 0x8c and tile_id <= 0x93 or tile_id >= 0xae and tile_id <= 0xb1:
 		return 2
+
 	if tile_id >= 0x7c and tile_id <= 0x83:
 		return 3
+
 	if tile_id >= 0x94 and tile_id <= 0x9d or tile_id >= 0xb2 and tile_id <= 0xbb:
 		return 4
+
 	if tile_id >= 0x84 and tile_id <= 0x87 or tile_id >= 0xa4 and tile_id <= 0xa5:
 		return 5
+
 	if tile_id >= 0x9e and tile_id <= 0xa3 or tile_id >= 0xbc and tile_id <= 0xc1:
 		return 6
+
 	if tile_id in [0xe2, 0xe7, 0xef, 0xf1, 0xf9]:
 		return 7
+
 	if tile_id in [0xe1, 0xe4, 0xe5, 0xe6, 0xe8, 0xea, 0xee, 0xf6]:
 		return 8
+
 	if tile_id in [0xe0, 0xf0, 0xf2]:
 		return 9
+
 	return 0
 
 

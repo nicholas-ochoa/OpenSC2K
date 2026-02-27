@@ -62,12 +62,16 @@ const GROUP_TILE_IDS := [
 
 static func group_large_ids(group: int) -> PackedInt32Array:
 	var result := PackedInt32Array()
+
 	if group == GROUP_ALL:
 		for group_index in GROUP_TILE_IDS.size():
 			result.append_array(_large_ids_for_tiles(GROUP_TILE_IDS[group_index]))
+
 		return result
+
 	if group < 0 or group >= GROUP_TILE_IDS.size():
 		return result
+
 	return _large_ids_for_tiles(GROUP_TILE_IDS[group])
 
 
@@ -80,33 +84,45 @@ static func copy_objects(
 ) -> Dictionary:
 	if working == null or not working.is_valid():
 		return _failure("The working object set is invalid.")
+
 	if source == null or not source.is_valid():
 		return _failure("The source object set is invalid.")
+
 	if source == working:
 		return _failure("The source and working object sets must be different.")
+
 	if base_large == null or not base_large.is_valid():
 		return _failure("The original large sprites are not available.")
+
 	if base_small_medium == null or not base_small_medium.is_valid():
 		return _failure("The original small and medium sprites are not available.")
 
 	var prepared: Array[Dictionary] = []
 	var seen := {}
+
 	for large_id in large_ids:
 		if large_id < 1000 or large_id > 1499:
 			return _failure("Object sprite %d is outside the SCURK range." % large_id)
+
 		if seen.has(large_id):
 			continue
+
 		seen[large_id] = true
+
 		for view in 3:
 			var sprite_id := large_id - view * 500
 			var entry := resolved_entry(
 				source, sprite_id, base_large, base_small_medium
 			)
+
 			if entry == null:
 				return _failure("Source sprite %d is missing." % sprite_id)
+
 			var decoded := entry.decode_indices()
+
 			if not decoded.ok:
 				return _failure(decoded.error)
+
 			prepared.append({
 				"sprite_id": sprite_id,
 				"width": entry.width,
@@ -118,8 +134,10 @@ static func copy_objects(
 		var changed := working.set_shape_indices(
 			shape.sprite_id, shape.width, shape.height, shape.pixels
 		)
+
 		if not changed.ok:
 			return _failure(changed.error)
+
 	return {
 		"ok": true,
 		"error": "",
@@ -136,20 +154,27 @@ static func resolved_entry(
 ) -> Sc2SpriteArchive.SpriteEntry:
 	if tile_set == null:
 		return null
+
 	var entry := tile_set.overrides.find_sprite(sprite_id)
+
 	if entry != null:
 		return entry
+
 	var base := base_large if sprite_id >= 1000 else base_small_medium
 	entry = base.find_sprite(sprite_id) if base != null else null
+
 	if entry != null:
 		return entry
+
 	return tile_set.archive.find_sprite(sprite_id)
 
 
 static func _large_ids_for_tiles(tile_ids: Array) -> PackedInt32Array:
 	var result := PackedInt32Array()
+
 	for tile_id in tile_ids:
 		result.append(1000 + int(tile_id))
+
 	return result
 
 

@@ -24,11 +24,14 @@ static func apply_supported(
 	free_mode: bool
 ) -> Dictionary:
 	var command: Dictionary
+
 	if Landscapes.supports_tool(group_index, subtool_index):
 		command = Landscapes.apply_path(
 			city, group_index, subtool_index, path, random, free_mode
 		)
+
 		return _result("landscape", command, group_index, subtool_index, free_mode)
+
 	if Demolish.supports_tool(group_index, subtool_index):
 		command = Demolish.apply_path(
 			city,
@@ -39,25 +42,35 @@ static func apply_supported(
 			underground,
 			free_mode
 		)
+
 		return _result("demolish", command, group_index, subtool_index, free_mode)
+
 	if TerrainTools.supports_tool(group_index, subtool_index):
 		command = TerrainTools.apply_path(
 			city, group_index, subtool_index, start, path, random, free_mode
 		)
+
 		return _result("terrain", command, group_index, subtool_index, free_mode)
+
 	if Hydro.supports_tool(group_index, subtool_index):
 		command = Hydro.apply(city, group_index, subtool_index, finish, random)
+
 		return _result("hydro", command, group_index, subtool_index, free_mode)
+
 	if SubwayToRail.supports_tool(group_index, subtool_index):
 		command = SubwayToRail.apply(city, group_index, subtool_index, finish)
+
 		return _result(
 			"subway_to_rail", command, group_index, subtool_index, free_mode
 		)
+
 	if Onramps.supports_tool(group_index, subtool_index):
 		command = Onramps.apply(
 			city, group_index, subtool_index, finish, free_mode
 		)
+
 		return _result("onramp", command, group_index, subtool_index, free_mode)
+
 	return {"handled": false}
 
 
@@ -81,6 +94,7 @@ static func apply_zone(
 		free_mode,
 		zone_type
 	)
+
 	return _result("zone", command, group_index, subtool_index, free_mode)
 
 
@@ -108,12 +122,16 @@ static func _result(
 			"landscape", "hydro", "subway_to_rail", "onramp", "zone"
 		],
 	}
+
 	if not bool(command.get("ok", false)):
 		result["message"] = _failure_message(
 			kind, tool_name, str(command.get("error", "unknown error"))
 		)
+
 		return result
+
 	result["message"] = _success_message(kind, tool_name, command)
+
 	return result
 
 
@@ -143,26 +161,31 @@ static func _success_message(
 				command.tile_indices.size(),
 				DisplayNumbers.format(int(command.cost)),
 			]
+
 			if command.skipped_insufficient > 0:
 				message += (
 					" Funds were not sufficient for %d later path tiles."
 					% command.skipped_insufficient
 				)
+
 			return message
 		"demolish":
 			var message := "Applied %d demolition actions for $%s." % [
 				command.action_count, DisplayNumbers.format(int(command.cost))
 			]
+
 			if command.skipped_specialized > 0:
 				message += (
 					" %d specialized structures were not changed."
 					% command.skipped_specialized
 				)
+
 			if command.easter_events > 0:
 				message += " A forest protest kept %d %s." % [
 					command.easter_events,
 					"tree" if command.easter_events == 1 else "trees",
 				]
+
 			return message
 		"terrain":
 			var message := "%s applied %d actions for $%s." % [
@@ -170,11 +193,13 @@ static func _success_message(
 				command.action_count,
 				DisplayNumbers.format(int(command.cost)),
 			]
+
 			if command.skipped_conflicts > 0:
 				message += (
 					" %d structure conflicts were not changed."
 					% command.skipped_conflicts
 				)
+
 			return message
 		"hydro":
 			return (

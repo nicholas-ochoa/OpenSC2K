@@ -34,6 +34,7 @@ func mark_saved(encoded_bytes: PackedByteArray) -> void:
 func capture_edit(document: ScurkMif) -> void:
 	if document == null:
 		return
+
 	var encoded := document.to_bytes()
 	pending_edit_before = (
 		encoded.bytes.duplicate() if encoded.ok else PackedByteArray()
@@ -45,9 +46,12 @@ func capture_object(document: ScurkMif, large_id: int) -> void:
 	object_start_bytes.clear()
 	object_start_large_id = large_id
 	object_start_blank_shape_ids = blank_shape_ids.duplicate()
+
 	if document == null or large_id < 0:
 		return
+
 	var encoded := document.to_bytes()
+
 	if encoded.ok:
 		object_start_bytes = encoded.bytes.duplicate()
 
@@ -63,21 +67,27 @@ func cancel_pending_edit() -> void:
 func record(before: PackedByteArray, document: ScurkMif) -> bool:
 	if before.is_empty() or document == null:
 		return false
+
 	var encoded := document.to_bytes()
+
 	if not encoded.ok or encoded.bytes == before:
 		return false
+
 	undo_stack.append({
 		"before": before.duplicate(),
 		"after": encoded.bytes.duplicate(),
 		"blank_before": pending_blank_shape_ids.duplicate(),
 		"blank_after": blank_shape_ids.duplicate(),
 	})
+
 	if undo_stack.size() > HISTORY_LIMIT:
 		undo_stack.pop_front()
+
 	redo_stack.clear()
 	pending_edit_before.clear()
 	pending_blank_shape_ids.clear()
 	_update_dirty_bytes(encoded.bytes)
+
 	return true
 
 
@@ -92,39 +102,51 @@ func can_redo() -> bool:
 func undo() -> Dictionary:
 	if not can_undo():
 		return {"ok": false, "no_action": true, "error": ""}
+
 	var action: Dictionary = undo_stack.pop_back()
 	var replacement := _decode_document(action.before)
+
 	if not replacement.ok:
 		return replacement
+
 	blank_shape_ids = action.get("blank_before", {}).duplicate()
 	redo_stack.append(action)
+
 	return {"ok": true, "document": replacement.document, "error": ""}
 
 
 func redo() -> Dictionary:
 	if not can_redo():
 		return {"ok": false, "no_action": true, "error": ""}
+
 	var action: Dictionary = redo_stack.pop_back()
 	var replacement := _decode_document(action.after)
+
 	if not replacement.ok:
 		return replacement
+
 	blank_shape_ids = action.get("blank_after", {}).duplicate()
 	undo_stack.append(action)
+
 	return {"ok": true, "document": replacement.document, "error": ""}
 
 
 func revert_object(document: ScurkMif, large_id: int) -> Dictionary:
 	if not can_revert_object(document, large_id):
 		return {"ok": false, "no_action": true, "error": ""}
+
 	var encoded := document.to_bytes()
 	var before: PackedByteArray = encoded.bytes.duplicate()
 	var blank_before := blank_shape_ids.duplicate()
 	var replacement := _decode_document(object_start_bytes)
+
 	if not replacement.ok:
 		return replacement
+
 	blank_shape_ids = object_start_blank_shape_ids.duplicate()
 	pending_blank_shape_ids = blank_before
 	record(before, replacement.document)
+
 	return {"ok": true, "document": replacement.document, "error": ""}
 
 
@@ -136,7 +158,9 @@ func can_revert_object(document: ScurkMif, large_id: int) -> bool:
 		or document == null
 	):
 		return false
+
 	var encoded := document.to_bytes()
+
 	return encoded.ok and encoded.bytes != object_start_bytes
 
 
@@ -146,14 +170,18 @@ func mark_shape_blank_state(
 	for pixel in value_pixels:
 		if pixel >= 0:
 			blank_shape_ids.erase(sprite_id)
+
 			return
+
 	blank_shape_ids[sprite_id] = true
 
 
 func update_dirty(document: ScurkMif) -> void:
 	if document == null:
 		dirty = false
+
 		return
+
 	var encoded := document.to_bytes()
 	dirty = encoded.ok and encoded.bytes != saved_bytes
 
@@ -164,6 +192,8 @@ func _update_dirty_bytes(encoded_bytes: PackedByteArray) -> void:
 
 func _decode_document(bytes: PackedByteArray) -> Dictionary:
 	var replacement := Mif.new()
+
 	if not replacement.parse(bytes):
 		return {"ok": false, "error": replacement.parse_error}
+
 	return {"ok": true, "document": replacement, "error": ""}
