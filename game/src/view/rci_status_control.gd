@@ -40,20 +40,25 @@ func clear_demand() -> void:
 
 static func bar_rects(value: Vector3i, graph_rect: Rect2) -> Array[Rect2]:
 	var result: Array[Rect2] = []
+
 	if graph_rect.size.x <= 0.0 or graph_rect.size.y <= 0.0:
 		return result
+
 	var baseline := floorf(graph_rect.position.y + graph_rect.size.y * 0.5)
 	var half_height := maxf(1.0, floorf((graph_rect.size.y - 3.0) * 0.5))
 	var slot_width := graph_rect.size.x / 3.0
 	var bar_width := maxf(2.0, floorf(slot_width * 0.52))
 	var values := [value.x, value.y, value.z]
+
 	for index in 3:
 		var magnitude := floorf(
 			minf(1.0, absf(float(values[index])) / float(MAX_DEMAND))
 			* half_height
 		)
+
 		if values[index] != 0:
 			magnitude = maxf(1.0, magnitude)
+
 		var x := floorf(
 			graph_rect.position.x
 			+ slot_width * (float(index) + 0.5)
@@ -61,6 +66,7 @@ static func bar_rects(value: Vector3i, graph_rect: Rect2) -> Array[Rect2]:
 		)
 		var y := baseline - magnitude if values[index] >= 0 else baseline + 1.0
 		result.append(Rect2(x, y, bar_width, magnitude))
+
 	return result
 
 
@@ -101,10 +107,13 @@ func _draw() -> void:
 		1.0,
 	)
 	var bars: Array[Rect2] = []
+
 	if demand_available:
 		bars = bar_rects(demand, graph_rect)
+
 	for index in bars.size():
 		if bars[index].size.y > 0.0:
 			draw_rect(bars[index], ZONE_COLORS[index], true)
+
 	draw_rect(graph_rect, Color("505050"), false, 1.0)
 	draw_rect(graph_rect.grow(-1.0), Color("ffffff"), false, 1.0)

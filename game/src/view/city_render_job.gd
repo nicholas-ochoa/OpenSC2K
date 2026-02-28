@@ -20,6 +20,7 @@ var show_underground_subways := true
 
 func run() -> Dictionary:
 	var indexed: Dictionary
+
 	if render_mode == "underground":
 		indexed = UndergroundView.create_image(
 			city_snapshot, index_palette, sprites, view_size, false,
@@ -31,6 +32,7 @@ func run() -> Dictionary:
 			city_snapshot, index_palette, sprites, view_size, animation_phase,
 			false, true, false, false
 		)
+
 	if not indexed.ok:
 		return {
 			"ok": false,
@@ -40,18 +42,23 @@ func run() -> Dictionary:
 			"epoch": epoch,
 			"render_mode": render_mode,
 		}
+
 	var index_image: Image = indexed.image
+
 	if view_size != Renderer.VIEW_LARGE:
 		index_image.resize(
 			Renderer.output_size_for_view(Renderer.VIEW_LARGE, city_snapshot.map_size).x,
 			Renderer.output_size_for_view(Renderer.VIEW_LARGE, city_snapshot.map_size).y,
 			Image.INTERPOLATE_NEAREST
 		)
+
 	var occlusion_commands: Array[Dictionary] = []
+
 	if render_mode == "city":
 		occlusion_commands = Renderer.static_occlusion_commands(
 			city_snapshot, sprites, view_size
 		)
+
 	return {
 		"ok": true,
 		"error": "",

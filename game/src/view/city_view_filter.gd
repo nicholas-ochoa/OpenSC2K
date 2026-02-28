@@ -12,8 +12,10 @@ const DEFAULT_VISIBILITY := {
 
 static func surface_copy(source: CityState, visibility: Dictionary) -> CityState:
 	var map_edge: int = source.map_size if source != null else 128
+
 	if source == null or not source.is_valid():
 		return source
+
 	var result := CityState.new()
 	result.document = source.document
 	result.map_size = source.map_size
@@ -32,36 +34,47 @@ static func surface_copy(source: CityState, visibility: Dictionary) -> CityState
 	var show_water := bool(visibility.get("water", true))
 	var show_trees := bool(visibility.get("trees", true))
 	var show_zones := bool(visibility.get("zones", true))
+
 	if show_buildings and show_networks and show_water and show_trees and show_zones:
 		return result
+
 	if not show_water:
 		result.object_altitude_overrides.resize((map_edge * map_edge))
 		result.object_altitude_overrides.fill(-1)
+
 	for index in (map_edge * map_edge):
 		var building := int(result.buildings[index])
+
 		if not show_buildings and building >= 0x70:
 			result.buildings[index] = 0
 		elif not show_networks and building >= 0x0e and building <= 0x6f:
 			result.buildings[index] = 0
 		elif not show_trees and building >= 0x06 and building <= 0x0c:
 			result.buildings[index] = 0
+
 		if not show_zones:
 			result.zones[index] &= 0xf0
+
 		if not show_water:
 			if result.tile_flags[index] & 0x04:
 				result.object_altitude_overrides[index] = (
 					int(result.altitude_words[index]) >> 5
 				) & 0x1f
+
 			result.tile_flags[index] &= 0xfb
 			var terrain := int(result.terrain[index])
+
 			if terrain >= 0x10 and terrain <= 0x4f:
 				result.terrain[index] = mini(terrain & 0x0f, 0x0e)
+
 	return result
 
 
 static func normalized(visibility: Dictionary) -> Dictionary:
 	var result := DEFAULT_VISIBILITY.duplicate()
+
 	for key in result:
 		if visibility.has(key):
 			result[key] = bool(visibility[key])
+
 	return result

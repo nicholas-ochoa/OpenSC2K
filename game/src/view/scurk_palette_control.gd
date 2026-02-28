@@ -37,8 +37,10 @@ func set_selected_indices(foreground: int, background: int) -> void:
 func index_at(position: Vector2) -> int:
 	var column := floori(position.x / cell_size)
 	var row := floori(position.y / cell_size)
+
 	if column < 0 or row < 0 or column >= COLUMN_COUNT or row >= COLUMN_COUNT:
 		return -1
+
 	return row * COLUMN_COUNT + column
 
 
@@ -49,12 +51,15 @@ func _gui_input(event: InputEvent) -> void:
 		and event.pressed
 	):
 		var index := index_at(event.position)
+
 		if index >= 0:
 			var background: bool = event.button_index == MOUSE_BUTTON_RIGHT
+
 			if background:
 				background_index = index
 			else:
 				foreground_index = index
+
 			queue_redraw()
 			index_selected.emit(index, background)
 			accept_event()
@@ -62,15 +67,18 @@ func _gui_input(event: InputEvent) -> void:
 
 func _get_tooltip(at_position: Vector2) -> String:
 	var index := index_at(at_position)
+
 	return "Palette index %d (0x%02X)" % [index, index] if index >= 0 else ""
 
 
 func _draw() -> void:
 	if palette_texture != null:
 		draw_texture_rect(palette_texture, Rect2(Vector2.ZERO, Vector2.ONE * COLUMN_COUNT * cell_size), false)
+
 	for index in 256:
 		if palette_texture != null:
 			break
+
 		var x := (index % COLUMN_COUNT) * cell_size
 		var y := int(index / COLUMN_COUNT) * cell_size
 		var color := (
@@ -80,6 +88,7 @@ func _draw() -> void:
 		)
 		draw_rect(Rect2(x, y, cell_size, cell_size), color, true)
 		draw_rect(Rect2(x, y, cell_size, cell_size), Color(0.0, 0.0, 0.0, 0.3), false, 1.0)
+
 	var background_x := (background_index % COLUMN_COUNT) * cell_size
 	var background_y := int(background_index / COLUMN_COUNT) * cell_size
 	draw_rect(

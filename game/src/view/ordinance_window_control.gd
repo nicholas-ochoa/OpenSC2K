@@ -46,9 +46,11 @@ var refreshing := false
 func _ready() -> void:
 	name = "OrdinanceWindowControl"
 	add_theme_constant_override("separation", 8)
+
 	for ordinance_id in Ordinances.ORDINANCE_COUNT:
 		ordinance_checks.append(null)
 		ordinance_amounts.append(null)
+
 	for category in Ordinances.CATEGORY_NAMES.size():
 		category_amounts.append(null)
 
@@ -62,6 +64,7 @@ func _ready() -> void:
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_theme_constant_override("separation", 8)
 	columns.add_child(left)
+
 	for category in LEFT_CATEGORIES:
 		_add_group(left, category)
 
@@ -69,8 +72,10 @@ func _ready() -> void:
 	right.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	right.add_theme_constant_override("separation", 8)
 	columns.add_child(right)
+
 	for category in RIGHT_CATEGORIES:
 		_add_group(right, category)
+
 	_add_summary(right)
 
 	var totals := GridContainer.new()
@@ -108,6 +113,7 @@ func set_city(value: CityState) -> Dictionary:
 	city = value
 	var result := Ordinances.synchronize_current(city)
 	_refresh_controls()
+
 	return result
 
 
@@ -133,6 +139,7 @@ func _add_group(parent: VBoxContainer, category: int) -> void:
 	rows.add_theme_constant_override("h_separation", 6)
 	rows.add_theme_constant_override("v_separation", 1)
 	column.add_child(rows)
+
 	for ordinance_id in range(category * 4, category * 4 + 4):
 		var check := CheckBox.new()
 		check.name = "Ordinance%d" % ordinance_id
@@ -166,6 +173,7 @@ func _add_summary(parent: VBoxContainer) -> void:
 	rows.add_theme_constant_override("h_separation", 6)
 	rows.add_theme_constant_override("v_separation", 1)
 	column.add_child(rows)
+
 	for category in Ordinances.CATEGORY_NAMES.size():
 		var caption := Label.new()
 		caption.text = Ordinances.CATEGORY_NAMES[category]
@@ -184,6 +192,7 @@ func _amount_field(node_name: String, minimum_width: float) -> LineEdit:
 	field.focus_mode = Control.FOCUS_NONE
 	field.alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	field.tooltip_text = "Estimated annual amount"
+
 	return field
 
 
@@ -193,18 +202,24 @@ func _group_box() -> StyleBoxFlat:
 	box.border_color = Color("808080")
 	box.set_border_width_all(1)
 	box.set_content_margin_all(7)
+
 	return box
 
 
 func _on_ordinance_toggled(enabled: bool, ordinance_id: int) -> void:
 	if refreshing:
 		return
+
 	var result := Ordinances.set_enabled(city, ordinance_id, enabled)
+
 	if not result.get("ok", false):
 		_refresh_controls()
 		update_failed.emit(str(result.get("error", "cannot change the ordinance")))
+
 		return
+
 	_refresh_controls()
+
 	if result.get("changed", false):
 		ordinances_changed.emit()
 
@@ -212,6 +227,7 @@ func _on_ordinance_toggled(enabled: bool, ordinance_id: int) -> void:
 func _refresh_controls() -> void:
 	if not is_node_ready():
 		return
+
 	var data := Ordinances.snapshot(city)
 	refreshing = true
 	var valid: bool = data.get("ok", false)
@@ -219,6 +235,7 @@ func _refresh_controls() -> void:
 	var item_values: PackedInt32Array = data.get(
 		"item_amounts", PackedInt32Array()
 	)
+
 	for ordinance_id in Ordinances.ORDINANCE_COUNT:
 		var check := ordinance_checks[ordinance_id]
 		var amount := ordinance_amounts[ordinance_id]
@@ -229,15 +246,18 @@ func _refresh_controls() -> void:
 			if valid and ordinance_id < item_values.size()
 			else ""
 		)
+
 	var category_values: PackedInt32Array = data.get(
 		"category_amounts", PackedInt32Array()
 	)
+
 	for category in Ordinances.CATEGORY_NAMES.size():
 		category_amounts[category].text = (
 			Ordinances.compact_amount(category_values[category])
 			if valid and category < category_values.size()
 			else ""
 		)
+
 	year_to_date_amount.text = (
 		Ordinances.compact_amount(int(data.get("year_to_date_amount", 0)))
 		if valid

@@ -63,6 +63,7 @@ var _preserve_sign_layout := false
 var city: CityState:
 	set(value):
 		city = value
+
 		if not _preserve_sign_layout:
 			_invalidate_sign_entries()
 var city_texture: Texture2D
@@ -154,9 +155,11 @@ func set_data_view(value: CityState, mode: String) -> void:
 	var mode_changed := data_view_mode != mode
 	var signature := CityDataView.signature(value, mode)
 	var geometry_signature := CityDataView.geometry_signature(value, mode)
+
 	if data_geometry_signature != geometry_signature:
 		data_view_mesh = CityDataView.create_mesh(value, mode, true)
 		data_geometry_signature = geometry_signature
+
 	if data_view_layer == null:
 		data_view_layer = MeshInstance2D.new()
 		data_view_layer.name = "TileDataLayer"
@@ -167,66 +170,89 @@ func set_data_view(value: CityState, mode: String) -> void:
 		grid_material.shader = shader
 		data_view_layer.material = grid_material
 		add_child(data_view_layer)
+
 	var material := data_view_layer.material as ShaderMaterial
 	material.set_shader_parameter("map_edge", float(value.map_size))
+
 	if data_view_signature != signature:
 		var image := CityDataView.value_image(value, mode)
+
 		if data_value_texture != null and Vector2i(data_value_texture.get_size()) == image.get_size():
 			data_value_texture.update(image)
 		else:
 			data_value_texture = ImageTexture.create_from_image(image)
+
 		material.set_shader_parameter("tile_values", data_value_texture)
 		data_view_signature = signature
+
 	if data_view_mode != mode:
 		material.set_shader_parameter("value_colors", ImageTexture.create_from_image(CityDataView.color_image(mode)))
+
 	data_view_mode = mode
 	data_view_layer.mesh = data_view_mesh
 	var placeholder := PlaceholderTexture2D.new()
 	placeholder.size = Renderer.output_size_for_view(Renderer.VIEW_LARGE, value.map_size)
 	set_city_view(value, placeholder)
+
 	if mode_changed and hover_tile.x >= 0:
 		hover_tile = _tile_at(get_local_mouse_position())
+
 	queue_redraw()
+
 
 func clear_data_view() -> void:
 	if data_view_mode.is_empty():
 		return
+
 	data_view_mode = ""
 	data_view_mesh = null
+
 	if data_view_layer != null:
 		data_view_layer.hide()
 		data_view_layer.mesh = null
+
 	data_view_signature.clear()
 	data_geometry_signature.clear()
 	data_value_texture = null
+
 	if _dynamic_canvas != null:
 		_dynamic_canvas.show()
+
 	_sync_base_layer()
 	queue_redraw()
+
 
 func _draw_data_view(scale: float, offset: Vector2) -> void:
 	if hover_tile.x >= 0:
 		var outline := CityDataView.surface_polygon(city, hover_tile.x, hover_tile.y, data_view_mode == "height")
+
 		for index in outline.size():
 			outline[index] = offset + outline[index] * scale
+
 		if not outline.is_empty():
 			outline.append(outline[0])
 			draw_polyline(outline, Color.WHITE, 1.0)
+
 	_draw_data_key()
+
 	if hover_tile.x >= 0:
 		var text := CityDataView.tile_text(city, data_view_mode, hover_tile, _shift_pressed)
 		var font := ThemeDB.fallback_font
 		var lines := text.split("\n")
 		var width := 0.0
+
 		for line in lines:
 			width = maxf(width, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x)
+
 		var extent := Vector2(width + 20, lines.size() * 24 + 8)
 		var position := get_local_mouse_position() + Vector2(18, 24)
 		position.x = clampf(position.x, 4, maxf(4, size.x - extent.x - 4))
 		position.y = clampf(position.y, 4, maxf(4, size.y - extent.y - 4))
 		draw_style_box(_data_legend_box(), Rect2(position, extent))
+
 		for index in lines.size():
 			draw_string(font, position + Vector2(10, 22 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+
 
 func _draw_data_key() -> void:
 	var font := ThemeDB.fallback_font
@@ -234,6 +260,7 @@ func _draw_data_key() -> void:
 	draw_style_box(_data_legend_box(), Rect2(origin, Vector2(320, 116 if data_view_mode == "height" else 96)))
 	var title: String = CityDataView.TITLES[CityDataView.MODES.find(data_view_mode)]
 	draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+
 	if data_view_mode in ["water", "power"]:
 		for index in 3:
 			var position := origin + Vector2(12 + index * 100, 38)
@@ -243,18 +270,22 @@ func _draw_data_key() -> void:
 		for index in 32:
 			var number := index if data_view_mode == "height" else roundi(index * 255.0 / 31)
 			draw_rect(Rect2(origin + Vector2(12 + index * 9.25, 38), Vector2(9.25, 20)), CityDataView.color(number, data_view_mode))
+
 		if data_view_mode == "height":
 			draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
 			draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+
 		var low := "Level 1" if data_view_mode == "height" else "Very low"
 		var high := "Level 32" if data_view_mode == "height" else "Very high"
 		draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 
+
 func _data_legend_box() -> StyleBoxFlat:
 	var box := StyleBoxFlat.new()
 	box.bg_color = Color(0.04, 0.06, 0.09, 0.94)
+
 	return box
 
 
@@ -270,31 +301,41 @@ func set_city_view(
 	var old_center := source_center
 	var old_sign_scans := _sign_cache_build_count
 	var reuse_layout := preserve_sign_cache and not sign_layout_token.is_empty() and sign_layout_token == _external_sign_layout_token and _sign_entries_city != null and is_equal_approx(_sign_entries_zoom, zoom_factor)
+
 	if not preserve_sign_cache or city != value:
 		_preserve_sign_layout = preserve_sign_cache
 		city = value
 		_preserve_sign_layout = false
+
 	if reuse_layout:
 		_sign_entries_city = value
 	elif not sign_layout_token.is_empty() and sign_layout_token != _external_sign_layout_token:
 		_sign_entries_city = null
+
 	_external_sign_layout_token = sign_layout_token.duplicate()
 	city_texture = texture
 	palette_index_texture = index_texture
 	base_palette_lookup_all = palette_lookup_all
+
 	if not preserve_sign_cache:
 		_invalidate_sign_entries()
+
 	if reset_center and city_texture != null:
 		source_center = Vector2(city_texture.get_size()) * 0.5
+
 	if pending_loaded_center.x >= 0:
 		center_on_tile(pending_loaded_center)
 		pending_loaded_center = Vector2i(-1, -1)
+
 	_clamp_source_center()
 	_sync_base_layer()
+
 	if preserve_sign_cache:
 		_ensure_sign_entries()
+
 	if not preserve_sign_cache or reset_center or old_center != source_center or old_sign_scans != _sign_cache_build_count or hover_tile.x >= 0 or selection_start.x >= 0:
 		queue_redraw()
+
 	viewport_changed.emit()
 
 
@@ -306,6 +347,7 @@ func set_animated_palette(texture: Texture2D) -> void:
 func set_signs_visible(value: bool) -> void:
 	if signs_visible == value:
 		return
+
 	signs_visible = value
 	queue_redraw()
 
@@ -313,6 +355,7 @@ func set_signs_visible(value: bool) -> void:
 func set_sign_occlusion_visuals(value: Dictionary) -> void:
 	if sign_occlusion_visuals == value:
 		return
+
 	sign_occlusion_visuals = value.duplicate(true)
 	queue_redraw()
 
@@ -320,36 +363,48 @@ func set_sign_occlusion_visuals(value: Dictionary) -> void:
 func sign_source_entries() -> Array[Dictionary]:
 	if not signs_visible or city == null:
 		return []
+
 	_ensure_sign_entries()
 	var entries: Array[Dictionary] = []
+
 	for entry in _sign_entries:
 		entries.append({
 			"key": int(entry.key),
 			"bounds": entry.bounds,
 			"draw_order": int(entry.draw_order),
 		})
+
 	return entries
 
 
 func _ensure_sign_entries() -> void:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if _sign_entries_city == city and is_equal_approx(_sign_entries_zoom, zoom_factor):
 		return
+
 	if city == null:
 		_sign_entries.clear()
 		_sign_entries_city = null
+
 		return
+
 	var sign_indices := OverlayData.sign_indices(city.text_overlays)
 	sign_indices.sort()
 	var sign_values := PackedInt32Array()
+
 	for index in sign_indices:
 		sign_values.append(index)
 		sign_values.append(OverlayData.read(city.text_overlays, index))
+
 	var labels := city.document.find_chunk("XLAB")
 	var signature := [map_edge, city.visible_altitude_levels, city.compass_rotation(), hash(city.altitude_words), hash(sign_values), hash(labels.decoded_payload) if labels != null else 0]
+
 	if _sign_layout_signature == signature and is_equal_approx(_sign_entries_zoom, zoom_factor):
 		_sign_entries_city = city
+
 		return
+
 	_sign_layout_signature = signature
 	_sign_entries.clear()
 	_sign_entries_city = city
@@ -360,25 +415,37 @@ func _ensure_sign_entries() -> void:
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
 	var positions: Array[Vector2i] = []
+
 	for index in sign_indices:
 		var x := int(index / map_edge)
 		var y := index % map_edge
 		positions.append(Vector2i((x + y) * map_edge + y, index))
-	positions.sort_custom(func(a: Vector2i, b: Vector2i) -> bool: return a.x < b.x)
+
+	positions.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		return a.x < b.x)
+
 	for entry in positions:
 		var x := int(entry.y / map_edge)
 		var y := entry.y % map_edge
+
 		if not city.tile_is_visible(x, y):
 			continue
+
 		var label_id := city.text_overlay_id(x, y)
+
 		if not OverlayData.is_sign(label_id):
 			continue
+
 		var label_text := city.label(label_id)
+
 		if label_text.is_empty():
 			continue
+
 		var polygon := Renderer.tile_polygon(city, x, y)
+
 		if polygon.size() != 4:
 			continue
+
 		var native_width := roundf(font.get_string_size(
 			label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 		).x)
@@ -423,11 +490,13 @@ func set_edit_enabled(
 	mouse_default_cursor_shape = (
 		Control.CURSOR_CROSS if edit_enabled else Control.CURSOR_ARROW
 	)
+
 	if not edit_enabled:
 		selection_start = Vector2i(-1, -1)
 		selection_end = Vector2i(-1, -1)
 		selection_path.clear()
 		hover_tile = Vector2i(-1, -1)
+
 	queue_redraw()
 
 
@@ -448,13 +517,18 @@ func wheel_zoom(
 ) -> bool:
 	if direction == 0:
 		return false
+
 	if current_time_msec < 0:
 		current_time_msec = Time.get_ticks_msec()
+
 	if current_time_msec < _next_wheel_zoom_msec:
 		return false
+
 	var changed := _change_zoom(1 if direction > 0 else -1, local_point)
+
 	if changed:
 		_next_wheel_zoom_msec = current_time_msec + WHEEL_ZOOM_DEBOUNCE_MSEC
+
 	return changed
 
 
@@ -473,6 +547,7 @@ func is_left_drag_active() -> bool:
 func pan_screen(displacement: Vector2) -> void:
 	if displacement.is_zero_approx():
 		return
+
 	source_center += displacement / _view_scale()
 	_clamp_source_center()
 	_hide_placement_error()
@@ -504,6 +579,7 @@ func set_selection_price(value: int, affordable := true) -> void:
 func clear_selection_price() -> void:
 	if selection_price < 0:
 		return
+
 	selection_price = -1
 	selection_price_affordable = true
 	queue_redraw()
@@ -512,68 +588,86 @@ func clear_selection_price() -> void:
 func selection_price_text() -> String:
 	if selection_price < 0:
 		return ""
+
 	return "$%s" % _format_price(selection_price)
 
 
 func point_preview_tiles(point: Vector2i) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
+
 	if city == null or city.index_of(point.x, point.y) < 0:
 		return result
+
 	if point_footprint_area == 7:
 		for x in range(-3, 4):
 			for y in range(-3, 4):
 				var tile := point + Vector2i(x + 3, y + 3)
+
 				if x * x + y * y <= 10 and city.index_of(tile.x, tile.y) >= 0:
 					result.append(tile)
+
 		return result
+
 	var site := BuildingTool.footprint(point, point_footprint_area)
+
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			if city.index_of(x, y) >= 0:
 				result.append(Vector2i(x, y))
+
 	return result
 
 
 func cancel_active_selection() -> bool:
 	if selection_start.x < 0:
 		return false
+
 	_clear_selection()
 	queue_redraw()
 	selection_canceled.emit()
 	selection_finished.emit()
+
 	return true
 
 
 func center_on_tile(point: Vector2i) -> bool:
 	if city == null or city.index_of(point.x, point.y) < 0:
 		return false
+
 	var polygon := Renderer.tile_polygon(city, point.x, point.y)
+
 	if polygon.size() != 4:
 		return false
+
 	source_center = (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
 	_clamp_source_center()
 	_sync_base_layer()
 	queue_redraw()
 	viewport_changed.emit()
+
 	return true
 
 
 func center_tile() -> Vector2i:
 	if city == null:
 		return Vector2i(-1, -1)
+
 	return Renderer.screen_to_tile(city, source_center + Vector2(0, -0.5))
 
 
 func visible_source_rect() -> Rect2:
 	var scale := _view_scale()
+
 	return Rect2(-_draw_offset(scale) / scale, size / scale)
 
 
 func visible_tile_outline() -> PackedVector2Array:
 	var map_edge: int = city.map_size if city != null else 128
 	var result := PackedVector2Array()
+
 	if city == null or city_texture == null:
 		return result
+
 	var half_visible := size / (_view_scale() * 2.0)
 	var source_points := PackedVector2Array([
 		source_center + Vector2(-half_visible.x, -half_visible.y),
@@ -582,6 +676,7 @@ func visible_tile_outline() -> PackedVector2Array:
 		source_center + Vector2(-half_visible.x, half_visible.y),
 	])
 	var origin_x := Renderer.SIDE_MARGIN + map_edge * Renderer.HALF_WIDTH
+
 	for point in source_points:
 		var difference := (
 			(point.x - origin_x - Renderer.HALF_WIDTH) / float(Renderer.HALF_WIDTH)
@@ -591,12 +686,14 @@ func visible_tile_outline() -> PackedVector2Array:
 			/ float(Renderer.HALF_HEIGHT)
 		)
 		result.append(Vector2((sum + difference) * 0.5, (sum - difference) * 0.5))
+
 	return result
 
 
 func scroll_state() -> Dictionary:
 	if city_texture == null:
 		return {}
+
 	var content := Vector2(city_texture.get_size())
 	var visible := size / _view_scale()
 	var page := Vector2(
@@ -604,20 +701,25 @@ func scroll_state() -> Dictionary:
 		minf(content.y, visible.y),
 	)
 	var value := source_center - page * 0.5
+
 	for axis in 2:
 		if page[axis] >= content[axis]:
 			value[axis] = 0.0
 		else:
 			value[axis] = clampf(value[axis], 0.0, content[axis] - page[axis])
+
 	return {"content": content, "page": page, "value": value}
 
 
 func set_scroll_value(axis: int, value: float) -> bool:
 	if axis < 0 or axis > 1:
 		return false
+
 	var state := scroll_state()
+
 	if state.is_empty():
 		return false
+
 	var offset: Vector2 = state.value
 	offset[axis] = value
 	var page: Vector2 = state.page
@@ -626,6 +728,7 @@ func set_scroll_value(axis: int, value: float) -> bool:
 	_sync_base_layer()
 	queue_redraw()
 	viewport_changed.emit()
+
 	return true
 
 
@@ -633,13 +736,17 @@ func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void
 	_effect_generation += 1
 	transient_effects.clear()
 	queue_redraw()
+
 	if effects.is_empty() or not is_inside_tree():
 		return
+
 	var sequence: Array[Dictionary] = []
 	sequence.append_array(effects)
 	var last_frame := 0
+
 	for effect in sequence:
 		last_frame = maxi(last_frame, int(effect.get("frame", 0)))
+
 	_show_transient_effect_frame(
 		sequence, 0, last_frame, maxf(0.0, float(duration)), _effect_generation
 	)
@@ -648,10 +755,13 @@ func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void
 func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
 	_shake_generation += 1
 	_shake_offset = Vector2.ZERO
+
 	if frames <= 0 or not is_inside_tree():
 		_sync_base_layer()
 		queue_redraw()
+
 		return
+
 	_show_shake_frame(
 		0,
 		frames,
@@ -664,7 +774,9 @@ func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
 func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
 	if dynamic_sprites == sprites:
 		return
+
 	dynamic_sprites = sprites.duplicate(true)
+
 	if _dynamic_canvas != null:
 		_dynamic_canvas.set_visuals(
 			dynamic_sprites, _view_scale(), _draw_offset(_view_scale())
@@ -698,6 +810,7 @@ func debug_metrics() -> Dictionary:
 func _expire_transient_effects(generation: int) -> void:
 	if generation != _effect_generation:
 		return
+
 	transient_effects.clear()
 	queue_redraw()
 
@@ -711,12 +824,16 @@ func _show_transient_effect_frame(
 ) -> void:
 	if generation != _effect_generation:
 		return
+
 	transient_effects.clear()
+
 	for effect in effects:
 		if int(effect.get("frame", 0)) == frame:
 			transient_effects.append(effect)
+
 	queue_redraw()
 	var timer := get_tree().create_timer(duration)
+
 	if frame >= last_frame:
 		timer.timeout.connect(_expire_transient_effects.bind(generation))
 	else:
@@ -730,11 +847,14 @@ func _show_shake_frame(
 ) -> void:
 	if generation != _shake_generation:
 		return
+
 	if frame >= frames:
 		_shake_offset = Vector2.ZERO
 		_sync_base_layer()
 		queue_redraw()
+
 		return
+
 	_shake_offset = Vector2(-distance * maxf(1.0, zoom_factor), 0.0) if frame & 1 == 0 else Vector2.ZERO
 	_sync_base_layer()
 	queue_redraw()
@@ -746,40 +866,55 @@ func _show_shake_frame(
 func _draw() -> void:
 	if city_texture == null:
 		return
+
 	var scale := _view_scale()
 	var offset := _draw_offset(scale)
+
 	if data_view_mesh != null:
 		_draw_data_view(scale, offset)
+
 		return
+
 	if _base_layer == null:
 		draw_texture_rect(
 			city_texture,
 			Rect2(offset, Vector2(city_texture.get_size()) * scale),
 			false
 		)
+
 	if _base_layer == null:
 		_draw_dynamic_sprites(scale, offset)
+
 	_draw_transient_effects(scale, offset)
 	_draw_signs(scale, offset)
+
 	for stamp in scurk_stamp_visuals:
 		draw_texture_rect(stamp.texture, Rect2(offset + stamp.position * scale, stamp.texture.get_size() * scale), false)
+
 	if city == null:
 		return
+
 	var valid := not placement_validator.is_valid() or bool(placement_validator.call(selection_end if selection_end.x >= 0 else hover_tile))
+
 	for source_polygon in _selection_source_polygons():
 		var local_polygon := PackedVector2Array()
+
 		for point in source_polygon:
 			local_polygon.append(offset + point * scale)
+
 		draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28) if valid else Color(1.0, 0.15, 0.12, 0.35))
 		local_polygon.append(local_polygon[0])
 		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95), 1.0)
+
 	_draw_selection_price(scale, offset)
 
 
 func _selection_source_polygons() -> Array[PackedVector2Array]:
 	var tiles: Array[Vector2i]
+
 	if not show_selection_preview or not edit_enabled:
 		return []
+
 	if network_preview_active:
 		if hover_tile.x >= 0:
 			tiles.append(hover_tile)
@@ -792,38 +927,51 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 		tiles = selection_path
 	elif edit_enabled and selection_mode == "path" and hover_tile.x >= 0:
 		tiles = [hover_tile]
+
 	if highway_preview and not network_preview_active:
 		var expanded: Array[Vector2i] = []
 		var seen := {}
+
 		for tile in tiles:
 			var anchor := HighwayTool.snap_anchor(tile)
+
 			for x in range(anchor.x, anchor.x + 2):
 				for y in range(anchor.y, anchor.y + 2):
 					var point := Vector2i(x, y)
+
 					if not seen.has(point) and city.index_of(x, y) >= 0:
 						seen[point] = true
 						expanded.append(point)
+
 		tiles = expanded
+
 	var polygons: Array[PackedVector2Array] = []
+
 	for tile in tiles:
 		var polygon := Renderer.tile_polygon(city, tile.x, tile.y) if terrain_diamond_preview else Renderer.terrain_surface_polygon(city, tile.x, tile.y)
+
 		if polygon.size() == 4:
 			polygons.append(polygon)
+
 	return polygons
 
 
 func _draw_selection_price(scale: float, offset: Vector2) -> void:
 	if selection_price < 0 or selection_start.x < 0:
 		return
+
 	var polygon := Renderer.tile_polygon(city, selection_start.x, selection_start.y)
+
 	if polygon.size() != 4:
 		return
+
 	var anchor := offset + (
 		polygon[0] + polygon[1] + polygon[2] + polygon[3]
 	) * 0.25 * scale + Vector2(10, -12)
 	var font := get_theme_default_font()
 	var text := selection_price_text()
 	var color := Color("101010") if selection_price_affordable else Color("c00000")
+
 	for outline in [
 		Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1), Vector2(-1, 0),
 		Vector2(1, 0), Vector2(-1, 1), Vector2(0, 1), Vector2(1, 1),
@@ -832,14 +980,17 @@ func _draw_selection_price(scale: float, offset: Vector2) -> void:
 			font, anchor + outline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
 			Color.WHITE,
 		)
+
 	draw_string(font, anchor, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
 
 
 func _draw_transient_effects(scale: float, offset: Vector2) -> void:
 	for effect in transient_effects:
 		var texture: Texture2D = effect.get("texture") as Texture2D
+
 		if texture == null:
 			continue
+
 		var source_position: Vector2 = effect.get("position", Vector2.ZERO)
 		draw_texture_rect(
 			texture,
@@ -851,8 +1002,10 @@ func _draw_transient_effects(scale: float, offset: Vector2) -> void:
 func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
 	for visual in dynamic_sprites:
 		var texture: Texture2D = visual.get("texture") as Texture2D
+
 		if texture == null:
 			continue
+
 		var source_position: Vector2 = visual.get("position", Vector2.ZERO)
 		var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
 		draw_texture_rect(
@@ -864,25 +1017,31 @@ func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
 
 func _draw_signs(scale: float, offset: Vector2) -> void:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if not signs_visible or city == null or city_texture.get_width() <= map_edge:
 		return
+
 	_ensure_sign_entries()
 	var view_index := sign_view_index(zoom_factor)
 	var display_multiplier := sign_display_multiplier(zoom_factor)
 	var font := _get_sign_font()
 	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
+
 	for entry in _sign_entries:
 		if not Rect2(entry.bounds).intersects(visible_source_rect()):
 			continue
+
 		# every native painter moves from the tile's top point by the
 		# equivalent of 16 pixels right and 8 pixels up in large space
 		var anchor := offset + Vector2(entry.anchor) * scale
 		var drawing_anchor := anchor
+
 		if display_multiplier > 1.0:
 			drawing_anchor = Vector2.ZERO
 			draw_set_transform(
 				anchor, 0.0, Vector2(display_multiplier, display_multiplier)
 			)
+
 		var layout := sign_layout(
 			drawing_anchor, float(entry.text_width), view_index
 		)
@@ -896,18 +1055,24 @@ func _draw_signs(scale: float, offset: Vector2) -> void:
 			font_size, SIGN_TEXT_COLOR,
 		)
 		_draw_raised_sign_part(layout.post, SIGN_POST_FILL, 1.0)
+
 		if display_multiplier > 1.0:
 			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
+
 		_draw_sign_occlusion(int(entry.key), scale, offset)
 
 
 func _draw_sign_occlusion(key: int, scale: float, offset: Vector2) -> void:
 	var visual: Dictionary = sign_occlusion_visuals.get(key, {})
+
 	if visual.is_empty():
 		return
+
 	var texture: Texture2D = visual.get("texture") as Texture2D
+
 	if texture == null:
 		return
+
 	var source_position: Vector2 = visual.get("position", Vector2.ZERO)
 	var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
 	draw_texture_rect(
@@ -921,8 +1086,10 @@ func _draw_sign_occlusion(key: int, scale: float, offset: Vector2) -> void:
 static func sign_view_index(zoom: float) -> int:
 	if zoom <= 0.25:
 		return Renderer.VIEW_SMALL
+
 	if zoom <= 0.5:
 		return Renderer.VIEW_MEDIUM
+
 	return Renderer.VIEW_LARGE
 
 
@@ -934,15 +1101,19 @@ static func later_sign_occluder_visuals(
 	visuals: Array[Dictionary], bounds: Rect2i, draw_order: int
 ) -> Array[Dictionary]:
 	var result: Array[Dictionary] = []
+
 	for visual in visuals:
 		if bool(visual.get("shadow", false)) or int(visual.get("depth_order", -1)) <= draw_order:
 			continue
+
 		var visual_bounds := Rect2i(
 			Vector2i(visual.get("position", Vector2.ZERO)),
 			Vector2i(visual.get("size", Vector2.ZERO)),
 		)
+
 		if bounds.intersects(visual_bounds):
 			result.append(visual)
+
 	return result
 
 
@@ -951,6 +1122,7 @@ static func sign_layout(
 ) -> Dictionary:
 	if view_index < Renderer.VIEW_SMALL or view_index > Renderer.VIEW_LARGE:
 		return {}
+
 	var multiplier: float = maxf(1.0, display_multiplier)
 	var width: float = roundf(text_width)
 	var font_height: float = float(SIGN_FONT_HEIGHTS[view_index]) * multiplier
@@ -960,6 +1132,7 @@ static func sign_layout(
 	var panel_top: float = panel_bottom - font_height - 5.0 * multiplier
 	var panel_left: float = anchor.x - floorf(width * 0.5) - 8.0 * multiplier
 	var panel_right: float = panel_left + width + 16.0 * multiplier
+
 	return {
 		"panel": Rect2(
 			Vector2(panel_left, panel_top),
@@ -978,6 +1151,7 @@ func _get_sign_font() -> Font:
 		# the executable asks for "ariel", windows substitutes arial
 		_sign_font.font_names = PackedStringArray(["Arial"])
 		_sign_font.font_weight = 600
+
 	return _sign_font
 
 
@@ -1014,8 +1188,10 @@ func _draw_raised_sign_part(rect: Rect2, fill: Color, multiplier: float) -> void
 func _gui_input(event: InputEvent) -> void:
 	if not data_view_mode.is_empty() and event is InputEventMouseMotion:
 		queue_redraw()
+
 	if city_texture == null:
 		return
+
 	if event is InputEventMouseButton:
 		_handle_mouse_button(event)
 	elif event is InputEventMouseMotion:
@@ -1026,15 +1202,21 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 	if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
 		wheel_zoom(1, event.position)
 		accept_event()
+
 		return
+
 	if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
 		wheel_zoom(-1, event.position)
 		accept_event()
+
 		return
+
 	if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed and cancel_active_selection():
 		_panning = false
 		accept_event()
+
 		return
+
 	if event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:
 		if event.button_index == MOUSE_BUTTON_MIDDLE:
 			if event.pressed:
@@ -1042,27 +1224,39 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 				_middle_press_position = event.position
 			elif _middle_click_pending:
 				var tile := _tile_at(event.position)
+
 				if tile.x >= 0 and event.position.distance_to(_middle_press_position) <= 4.0:
 					center_requested.emit(tile)
+
 				_middle_click_pending = false
 		else:
 			_middle_click_pending = false
+
 		_panning = event.pressed
 		accept_event()
+
 		return
+
 	if event.button_index != MOUSE_BUTTON_LEFT or not edit_enabled:
 		return
+
 	var tile := _tile_at(event.position)
 	_shift_pressed = event.shift_pressed
+
 	if event.pressed:
 		_shift_pressed = event.shift_pressed
+
 		if shift_query_enabled and not shift_rectangle_enabled and not shift_line_enabled and event.shift_pressed:
 			if tile.x >= 0:
 				hover_tile = tile
 				query_requested.emit(tile)
+
 			accept_event()
+
 			return
+
 		_show_placement_error(event.position)
+
 		if tile.x >= 0:
 			hover_tile = tile
 			_stretch_press_y = event.position.y
@@ -1073,8 +1267,10 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			_rebuild_selection_path()
 			selection_started.emit()
 			_brush_elapsed = 0.0
+
 			if continuous_placement:
 				_emit_brush_dab(tile, false)
+
 			selection_changed.emit(
 				selection_start, selection_end, selection_path.duplicate(), false
 			)
@@ -1085,11 +1281,13 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 				selection_end = tile
 				selection_moved = true
 				_rebuild_selection_path()
+
 			if stretch_terrain:
 				selection_end = selection_start
 				selection_path.assign([selection_start])
 				stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
 				selection_moved = selection_moved or absf(_stretch_press_y - event.position.y) >= 6.0
+
 			if not continuous_placement:
 				selection_completed.emit(
 					selection_start,
@@ -1097,18 +1295,22 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 					selection_path.duplicate(),
 					selection_moved,
 				)
+
 			_clear_selection()
 			queue_redraw()
 			selection_finished.emit()
+
 	accept_event()
 
 
 func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	_hide_placement_error()
+
 	if _shift_pressed != event.shift_pressed:
 		_shift_pressed = event.shift_pressed
 		_rebuild_selection_path()
 		queue_redraw()
+
 	if (
 		_panning
 		and (
@@ -1118,16 +1320,20 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 	):
 		_panning = false
 		_middle_click_pending = false
+
 	if _panning:
 		if event.position.distance_to(_middle_press_position) > 4.0:
 			_middle_click_pending = false
+
 		source_center -= event.relative / _view_scale()
 		_clamp_source_center()
 		_sync_base_layer()
 		queue_redraw()
 		viewport_changed.emit()
 		accept_event()
+
 		return
+
 	if stretch_terrain and selection_start.x >= 0:
 		stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
 		hover_tile = selection_start
@@ -1135,11 +1341,15 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 		stretch_changed.emit(stretch_height_delta, event.shift_pressed)
 		queue_redraw()
 		accept_event()
+
 		return
+
 	var tile := _tile_at(event.position)
+
 	if tile != hover_tile:
 		hover_tile = tile
 		queue_redraw()
+
 	if edit_enabled and selection_start.x >= 0:
 		if tile.x >= 0 and tile != selection_end:
 			selection_end = tile
@@ -1152,16 +1362,21 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 				true,
 			)
 			queue_redraw()
+
 		accept_event()
 
 
 func _rebuild_selection_path() -> void:
 	selection_path.clear()
+
 	if selection_start.x < 0 or selection_end.x < 0:
 		return
+
 	if selection_mode == "point":
 		selection_path.append(selection_end)
+
 		return
+
 	if (selection_mode == "rectangle" and not (shift_line_enabled and _shift_pressed)) or (shift_rectangle_enabled and _shift_pressed):
 		var minimum := Vector2i(
 			mini(selection_start.x, selection_end.x),
@@ -1171,18 +1386,24 @@ func _rebuild_selection_path() -> void:
 			maxi(selection_start.x, selection_end.x),
 			maxi(selection_start.y, selection_end.y),
 		)
+
 		for x in range(minimum.x, maximum.x + 1):
 			for y in range(minimum.y, maximum.y + 1):
 				selection_path.append(Vector2i(x, y))
+
 		return
+
 	var current := selection_start
 	selection_path.append(current)
+
 	while current != selection_end:
 		var difference := selection_end - current
+
 		if absi(difference.y) < absi(difference.x):
 			current.x += 1 if difference.x > 0 else -1
 		else:
 			current.y += 1 if difference.y > 0 else -1
+
 		selection_path.append(current)
 
 
@@ -1197,16 +1418,20 @@ func _clear_selection() -> void:
 static func _format_price(value: int) -> String:
 	var digits := str(absi(value))
 	var formatted := ""
+
 	while digits.length() > 3:
 		formatted = "," + digits.right(3) + formatted
 		digits = digits.left(digits.length() - 3)
+
 	return ("-" if value < 0 else "") + digits + formatted
 
 
 func _clear_hover() -> void:
 	_hide_placement_error()
+
 	if hover_tile.x < 0:
 		return
+
 	hover_tile = Vector2i(-1, -1)
 	queue_redraw()
 
@@ -1214,21 +1439,28 @@ func _clear_hover() -> void:
 func _tile_at(local_point: Vector2) -> Vector2i:
 	var scale := _view_scale()
 	var source_point := (local_point - _draw_offset(scale)) / scale
+
 	return Renderer.screen_to_tile(city, source_point, data_view_mode == "height")
 
 
 func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	var old_index := _zoom_index()
 	var new_index := clampi(old_index + direction, 0, ZOOM_LEVELS.size() - 1)
+
 	if new_index == old_index:
 		return false
+
 	var anchor := local_point
+
 	if not anchor.is_finite():
 		anchor = size * 0.5
+
 	var old_scale := _view_scale()
 	var source_point := source_center
+
 	if old_scale > 0.0:
 		source_point = (anchor - _draw_offset(old_scale)) / old_scale
+
 	zoom_factor = ZOOM_LEVELS[new_index]
 	_invalidate_sign_entries()
 	var new_scale := _view_scale()
@@ -1236,21 +1468,27 @@ func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	_clamp_source_center()
 	_sync_base_layer()
 	zoom_changed.emit(zoom_percent())
+
 	if not data_view_mode.is_empty() and hover_tile.x >= 0:
 		hover_tile = _tile_at(get_local_mouse_position())
+
 	queue_redraw()
 	viewport_changed.emit()
+
 	return true
 
 
 func _zoom_index() -> int:
 	var closest := 0
 	var distance := absf(zoom_factor - ZOOM_LEVELS[0])
+
 	for index in range(1, ZOOM_LEVELS.size()):
 		var candidate := absf(zoom_factor - ZOOM_LEVELS[index])
+
 		if candidate < distance:
 			closest = index
 			distance = candidate
+
 	return closest
 
 
@@ -1265,8 +1503,10 @@ func _draw_offset(scale: float) -> Vector2:
 func _clamp_source_center() -> void:
 	if city_texture == null:
 		return
+
 	var source_size := Vector2(city_texture.get_size())
 	var half_visible := size / (_view_scale() * 2.0)
+
 	for axis in 2:
 		if half_visible[axis] >= source_size[axis] * 0.5:
 			source_center[axis] = source_size[axis] * 0.5
@@ -1286,6 +1526,7 @@ func _on_resized() -> void:
 func _ensure_base_layer() -> void:
 	if _base_layer != null:
 		return
+
 	_base_layer = TextureRect.new()
 	_base_layer.name = "CityBaseLayer"
 	_base_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -1320,26 +1561,38 @@ func _sync_base_layer() -> void:
 			data_view_layer.position = _draw_offset(data_scale)
 			data_view_layer.scale = Vector2.ONE * data_scale
 			data_view_layer.show()
+
 		if _base_layer != null:
 			_base_layer.hide()
+
 		if _dynamic_canvas != null:
 			_dynamic_canvas.hide()
+
 		return
+
 	if _base_layer == null:
 		return
+
 	if city_texture == null:
 		_base_layer.hide()
+
 		return
+
 	var scale := _view_scale()
+
 	if _tiled_source != city_texture:
 		for tile in _tile_layers:
 			tile.queue_free()
+
 		_tile_layers.clear()
 		var retained_meshes := {}
+
 		for mesh in _mesh_layers:
 			retained_meshes[mesh.get_meta("source_position")] = mesh
+
 		_mesh_layers.clear()
 		_tiled_source = city_texture
+
 		for entry in city_texture.get_meta("map_tiles", []):
 			var tile := TextureRect.new()
 			tile.texture = entry.texture
@@ -1351,22 +1604,29 @@ func _sync_base_layer() -> void:
 			tile.material = _base_material
 			_base_layer.add_child(tile)
 			_tile_layers.append(tile)
+
 		for entry in city_texture.get_meta("map_meshes", []):
 			var mesh: MeshInstance2D = retained_meshes.get(entry.position)
+
 			if mesh == null:
 				mesh = MeshInstance2D.new()
 				_base_layer.add_child(mesh)
 			else:
 				retained_meshes.erase(entry.position)
+
 				if mesh.mesh == entry.mesh and mesh.texture == entry.texture and int(mesh.get_meta("divisor")) == int(entry.divisor):
 					_mesh_layers.append(mesh)
 					continue
+
 			mesh.position = Vector2(entry.position) * scale
 			mesh.scale = Vector2.ONE * scale * int(entry.divisor)
+
 			if mesh.mesh != entry.mesh:
 				mesh.mesh = entry.mesh
+
 			if mesh.texture != entry.texture:
 				mesh.texture = entry.texture
+
 			mesh.set_meta("source_position", entry.position)
 			mesh.set_meta("divisor", entry.divisor)
 			mesh.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -1375,15 +1635,20 @@ func _sync_base_layer() -> void:
 		for mesh: MeshInstance2D in retained_meshes.values():
 			mesh.hide()
 			mesh.queue_free()
+
 	_base_layer.texture = null if city_texture.has_meta("map_tiles") else city_texture
+
 	for tile in _tile_layers:
 		tile.position = Vector2(tile.get_meta("source_position")) * scale
 		tile.size = Vector2(tile.get_meta("source_size")) * scale
+
 	if not is_equal_approx(_mesh_view_scale, scale):
 		for mesh in _mesh_layers:
 			mesh.position = Vector2(mesh.get_meta("source_position")) * scale
 			mesh.scale = Vector2.ONE * scale * int(mesh.get_meta("divisor"))
+
 		_mesh_view_scale = scale
+
 	_base_layer.position = _draw_offset(scale)
 	_base_layer.size = Vector2(city_texture.get_size()) * scale
 	_base_layer.show()
@@ -1394,8 +1659,10 @@ func _sync_base_layer() -> void:
 func _sync_base_material() -> void:
 	if _foreground_palette_material != null:
 		_foreground_palette_material.set_shader_parameter("foreground_palette", animated_palette_texture)
+
 	if _base_material == null:
 		return
+
 	_base_material.set_shader_parameter("palette_indices", palette_index_texture)
 	_base_material.set_shader_parameter("animated_palette", animated_palette_texture)
 	_base_material.set_shader_parameter(
@@ -1403,6 +1670,7 @@ func _sync_base_material() -> void:
 		palette_index_texture != null and animated_palette_texture != null,
 	)
 	_base_material.set_shader_parameter("palette_lookup_all", base_palette_lookup_all)
+
 	if _dynamic_material != null:
 		_dynamic_material.set_shader_parameter(
 			"animated_palette", animated_palette_texture
@@ -1416,9 +1684,12 @@ func _sync_base_material() -> void:
 func _sync_dynamic_canvas() -> void:
 	if _dynamic_canvas == null:
 		return
+
 	if city_texture == null:
 		_dynamic_canvas.hide()
+
 		return
+
 	var scale := _view_scale()
 	var offset := _draw_offset(scale)
 	_dynamic_canvas.set_view_transform(scale, offset)
@@ -1427,17 +1698,21 @@ func _sync_dynamic_canvas() -> void:
 func _new_palette_material() -> ShaderMaterial:
 	var material := ShaderMaterial.new()
 	material.shader = _palette_shader
+
 	return material
 
 
 func _input(event: InputEvent) -> void:
 	if event is InputEventKey and event.keycode == KEY_SHIFT:
 		_shift_pressed = event.pressed
+
 		if stretch_terrain and selection_start.x >= 0:
 			stretch_changed.emit(stretch_height_delta, event.pressed)
+
 		if (shift_rectangle_enabled or shift_line_enabled) and selection_start.x >= 0:
 			_rebuild_selection_path()
 			selection_changed.emit(selection_start, selection_end, selection_path.duplicate(), selection_moved)
+
 		queue_redraw()
 
 
@@ -1445,38 +1720,50 @@ func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
 	var map_edge: int = city.map_size if city != null else 128
 	var result: Array[Vector2i] = []
 	var source := query_city if query_city != null else city
+
 	if source == null or source.index_of(point.x, point.y) < 0:
 		return result
+
 	var tile_id := source.building_id(point.x, point.y)
 	var area := DemolishTool._building_area(tile_id)
 	var site := Rect2i(point, Vector2i.ONE)
+
 	if area > 1:
 		var found := DemolishTool._find_building_site(
 			source.buildings, source.zones, point, tile_id, area, source.compass_rotation(), map_edge
 		)
+
 		if found.has_area():
 			site = found
+
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			result.append(Vector2i(x, y))
+
 	return result
 
 
 func _get_tooltip(at_position: Vector2) -> String:
 	if not edit_enabled or not show_selection_preview or is_panning() or selection_start.x >= 0 or not placement_error_provider.is_valid():
 		return ""
+
 	var tile := _tile_at(at_position)
+
 	if tile.x < 0:
 		return ""
+
 	var reason := String(placement_error_provider.call(tile))
+
 	return "Cannot build here: " + reason if not reason.is_empty() else ""
 
 
 func _show_placement_error(at_position: Vector2) -> void:
 	_hide_placement_error()
 	var message := _get_tooltip(at_position)
+
 	if message.is_empty():
 		return
+
 	if placement_error_popup == null:
 		placement_error_popup = PanelContainer.new()
 		placement_error_popup.name = "PlacementErrorTooltip"
@@ -1493,6 +1780,7 @@ func _show_placement_error(at_position: Vector2) -> void:
 		placement_error_label.custom_minimum_size.x = 300
 		placement_error_popup.add_child(placement_error_label)
 		add_child(placement_error_popup)
+
 	placement_error_label.text = message
 	placement_error_popup.reset_size()
 	placement_error_popup.position = (at_position + Vector2(16, 20)).clamp(
@@ -1509,11 +1797,16 @@ func _hide_placement_error() -> void:
 func _process(delta: float) -> void:
 	if not continuous_placement or not edit_enabled or selection_start.x < 0:
 		_brush_elapsed = 0.0
+
 		return
+
 	_brush_elapsed += delta
+
 	if _brush_elapsed < 0.3:
 		return
+
 	_brush_elapsed = 0.0
+
 	if hover_tile.x >= 0:
 		_emit_brush_dab(hover_tile, true)
 

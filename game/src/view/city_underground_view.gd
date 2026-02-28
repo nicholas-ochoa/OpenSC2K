@@ -22,17 +22,24 @@ static func create_image(
 	show_subways := true
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
+
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
+
 	if palette == null or not palette.is_valid():
 		return _failure("palette is invalid")
+
 	if sprites == null or not sprites.is_valid():
 		return _failure("sprite archive is invalid")
+
 	var configuration := Renderer.view_configuration(view_size)
+
 	if configuration.is_empty():
 		return _failure("underground view size is invalid")
+
 	if validate_required_assets:
 		var asset_errors := validate_assets(city, sprites, view_size, show_pipes, show_subways)
+
 		if not asset_errors.is_empty():
 			return _failure(asset_errors[0])
 
@@ -49,17 +56,22 @@ static func create_image(
 		+ map_edge * int(configuration.half_width)
 	)
 	var cache: Dictionary = {}
+
 	for diagonal in map_edge * 2 - 1:
 		for y in diagonal + 1:
 			var x := diagonal - y
+
 			if x >= map_edge or y >= map_edge:
 				continue
+
 			_draw_tile(
 				output, city, palette, sprites, cache, configuration, origin_x, x, y,
 				show_pipes, show_subways
 			)
+
 	if palette.is_index_encoding:
 		output.convert(Image.FORMAT_L8)
+
 	return {"ok": true, "image": output, "error": ""}
 
 
@@ -72,29 +84,43 @@ static func validate_assets(
 ) -> PackedStringArray:
 	var map_edge: int = city.map_size if city != null else 128
 	var errors := PackedStringArray()
+
 	if city == null or not city.is_valid():
 		errors.append("city is invalid")
+
 		return errors
+
 	if sprites == null or not sprites.is_valid():
 		errors.append("sprite archive is invalid")
+
 		return errors
+
 	var configuration := Renderer.view_configuration(view_size)
+
 	if configuration.is_empty():
 		errors.append("underground view size is invalid")
+
 		return errors
+
 	var missing: Dictionary = {}
+
 	for x in map_edge:
 		for y in map_edge:
 			for sprite_id in tile_sprite_ids(city, x, y, view_size, show_pipes, show_subways):
 				if sprites.find_sprite(sprite_id) == null:
 					missing[sprite_id] = true
+
 			var tunnel_sprite := tunnel_sprite_id(city, x, y, view_size)
+
 			if tunnel_sprite > 0 and sprites.find_sprite(tunnel_sprite) == null:
 				missing[tunnel_sprite] = true
+
 	var ids := missing.keys()
 	ids.sort()
+
 	for sprite_id in ids:
 		errors.append("required underground sprite %d is missing" % sprite_id)
+
 	return errors
 
 
@@ -107,13 +133,18 @@ static func tile_sprite_ids(
 	show_subways := true
 ) -> PackedInt32Array:
 	var result := PackedInt32Array()
+
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return result
+
 	var configuration := Renderer.view_configuration(view_size)
+
 	if configuration.is_empty():
 		return result
+
 	var sprite_base := int(configuration.sprite_base)
 	var underground := city.underground_id(x, y)
+
 	if not show_subways:
 		if underground == 0x1f:
 			underground = 0x11
@@ -121,11 +152,13 @@ static func tile_sprite_ids(
 			underground = 0x10
 		elif underground in range(1, 0x10) or underground == 0x23:
 			underground = 0
+
 	var is_pipe := (
 		(underground >= 0x10 and underground <= 0x1e)
 		or underground == 0x1f
 		or underground == 0x20
 	)
+
 	if is_pipe:
 		if not show_pipes:
 			if underground == 0x1f:
@@ -136,10 +169,14 @@ static func tile_sprite_ids(
 				result.append(
 					sprite_base + terrain_wireframe_offset(city.terrain_id(x, y))
 				)
+
 			return result
+
 		if city.is_piped(x, y) and city.is_watered(x, y):
 			underground += WATERED_PIPE_OFFSET
+
 		result.append(sprite_base + SUBWAY_AND_PIPE_FIRST + underground)
+
 		return result
 
 	if underground == 0:
@@ -151,23 +188,29 @@ static func tile_sprite_ids(
 			result.append(sprite_base + WATERED_TERRAIN)
 		else:
 			result.append(sprite_base + PIPED_TERRAIN)
+
 		return result
 
 	result.append(sprite_base + SUBWAY_AND_PIPE_FIRST + underground)
+
 	if show_pipes and city.is_piped(x, y):
 		result.append(
 			sprite_base + (WATERED_TERRAIN if city.is_watered(x, y) else PIPED_TERRAIN)
 		)
+
 	return result
 
 
 static func terrain_wireframe_offset(terrain: int) -> int:
 	if terrain >= 0x00 and terrain <= 0x0e:
 		return TERRAIN_WIREFRAME_FIRST + mini(terrain, 0x0d)
+
 	if terrain >= 0x10 and terrain <= 0x1e:
 		return TERRAIN_WIREFRAME_FIRST + mini(terrain - 0x10, 0x0d)
+
 	if terrain >= 0x20 and terrain <= 0x2e:
 		return TERRAIN_WIREFRAME_FIRST + mini(terrain - 0x20, 0x0d)
+
 	return TERRAIN_WIREFRAME_FIRST
 
 
@@ -176,20 +219,27 @@ static func tunnel_sprite_id(
 ) -> int:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return -1
+
 	var configuration := Renderer.view_configuration(view_size)
+
 	if configuration.is_empty():
 		return -1
+
 	var levels := city.tunnel_levels(x, y) & 0x1f
+
 	if levels == 0:
 		return -1
+
 	if levels == 1:
 		return int(configuration.sprite_base) + 0x3e + city.terrain_id(x, y)
+
 	return int(configuration.sprite_base) + DEEP_TUNNEL
 
 
 static func visual_signature(city: CityState, view_size: int, show_pipes := true, show_subways := true) -> Array:
 	if city == null or not city.is_valid():
 		return []
+
 	return [
 		"underground",
 		city.visible_altitude_levels,
@@ -233,21 +283,27 @@ static func _draw_tile(
 	var terrain_top := base_y + int(configuration.tile_height) - terrain_image.get_height()
 
 	var tunnel_sprite := tunnel_sprite_id(city, x, y, int(configuration.view_size))
+
 	if tunnel_sprite > 0 and city.underground_level_is_visible(x, y, maxi(0, (city.tunnel_levels(x, y) & 0x1f) - 1)):
 		var tunnel_image := _sprite_image(sprites, palette, cache, tunnel_sprite)
 		var tunnel_y := base_y + int(configuration.tile_height) - tunnel_image.get_height()
 		var levels := city.tunnel_levels(x, y) & 0x1f
+
 		if levels > 1:
 			tunnel_y += (levels - 1) * int(configuration.altitude_step)
+
 		_blend(output, tunnel_image, Vector2i(screen_x, tunnel_y))
 
 	# pipes and the wireframe follow the terrain. subways sit one level below it
 	if not surface_visible:
 		var underground := city.underground_id(x, y)
+
 		if not show_subways or not city.underground_level_is_visible(x, y, 1):
 			return
+
 		if not (underground in range(1, 0x10) or underground in [0x1f, 0x20, 0x23]):
 			return
+
 	for sprite_id in tile_sprite_ids(
 		city, x, y, int(configuration.view_size), show_pipes and surface_visible, show_subways
 	):
@@ -263,10 +319,12 @@ static func _sprite_image(
 ) -> Image:
 	if cache.has(sprite_id):
 		return cache[sprite_id]
+
 	var entry := sprites.find_sprite(sprite_id)
 	var rendered := entry.create_image(palette)
 	var image: Image = rendered.image
 	cache[sprite_id] = image
+
 	return image
 
 

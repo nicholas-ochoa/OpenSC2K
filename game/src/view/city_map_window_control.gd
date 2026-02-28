@@ -113,6 +113,7 @@ func set_resources(value: Image, value_strings: Dictionary) -> void:
 func set_city(value: CityState, value_palette: Sc2Palette) -> void:
 	if city != value or palette != value_palette:
 		image_signature.clear()
+
 	city = value
 	palette = value_palette
 	refresh()
@@ -121,10 +122,13 @@ func set_city(value: CityState, value_palette: Sc2Palette) -> void:
 func refresh(points := PackedVector2Array()) -> void:
 	if not is_node_ready() or city == null or palette == null:
 		return
+
 	var signature := _image_signature()
+
 	if signature != image_signature:
 		preview.set_map(Minimap.create_image(city, palette, current_mode()))
 		image_signature = signature
+
 	preview.set_viewport_outline(points)
 
 
@@ -135,16 +139,20 @@ func refresh_viewport(points: PackedVector2Array) -> void:
 
 func current_mode() -> String:
 	var modes: Array = TAB_MODES[selected_tab]
+
 	return str(modes[clampi(selected_item, 0, modes.size() - 1)])
 
 
 func _rebuild_tabs() -> void:
 	if tab_bar == null:
 		return
+
 	refreshing = true
 	tab_bar.clear_tabs()
+
 	for index in TAB_NAMES.size():
 		var icon: Texture2D
+
 		if (
 			icon_sheet != null
 			and not icon_sheet.is_empty()
@@ -152,8 +160,10 @@ func _rebuild_tabs() -> void:
 		):
 			var region := icon_sheet.get_region(Rect2i(index * 26, 0, 26, 20))
 			icon = ImageTexture.create_from_image(region)
+
 		tab_bar.add_tab("", icon)
 		tab_bar.set_tab_tooltip(index, TAB_NAMES[index])
+
 	tab_bar.current_tab = selected_tab
 	refreshing = false
 
@@ -161,12 +171,15 @@ func _rebuild_tabs() -> void:
 func _rebuild_modes() -> void:
 	if mode_list == null:
 		return
+
 	refreshing = true
 	mode_list.clear()
 	var modes: Array = TAB_MODES[selected_tab]
+
 	for mode in modes:
 		var resource_id := int(MODE_STRING_IDS.get(mode, 0))
 		mode_list.add_item(str(strings.get(resource_id, MODE_NAMES.get(mode, mode))))
+
 	selected_item = clampi(selected_item, 0, modes.size() - 1)
 	mode_list.select(selected_item)
 	refreshing = false
@@ -175,6 +188,7 @@ func _rebuild_modes() -> void:
 func _on_tab_changed(tab: int) -> void:
 	if refreshing:
 		return
+
 	selected_tab = clampi(tab, 0, TAB_MODES.size() - 1)
 	selected_item = 0
 	_rebuild_modes()
@@ -185,6 +199,7 @@ func _on_tab_changed(tab: int) -> void:
 func _on_mode_selected(item: int) -> void:
 	if refreshing:
 		return
+
 	selected_item = clampi(item, 0, TAB_MODES[selected_tab].size() - 1)
 	refresh()
 	mode_changed.emit(current_mode())
@@ -198,10 +213,12 @@ func _image_signature() -> Array:
 		hash(city.buildings),
 		hash(city.tile_flags),
 	]
+
 	if mode == "zones":
 		result.append(hash(city.zones))
 	elif mode == "water":
 		result.append(hash(city.underground))
+
 	var chunk_id: String = {
 		"traffic": "XTRF",
 		"density": "XPOP",
@@ -212,7 +229,9 @@ func _image_signature() -> Array:
 		"land_value": "XVAL",
 		"fire_power": "XFIR",
 	}.get(mode, "")
+
 	if not chunk_id.is_empty():
 		var chunk := city.document.find_chunk(chunk_id)
 		result.append(hash(chunk.decoded_payload) if chunk != null else 0)
+
 	return result

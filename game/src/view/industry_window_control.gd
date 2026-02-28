@@ -54,6 +54,7 @@ func set_city(value: CityState) -> void:
 func set_mode(value: int) -> void:
 	if value < Mode.RATIOS or value > Mode.DEMAND:
 		return
+
 	mode = value
 	dragging_tax = false
 	queue_redraw()
@@ -62,6 +63,7 @@ func set_mode(value: int) -> void:
 func set_industry_names(value: PackedStringArray) -> void:
 	if value.size() != INDUSTRY_COUNT:
 		return
+
 	industry_names = value.duplicate()
 	queue_redraw()
 
@@ -78,17 +80,21 @@ func refresh() -> void:
 static func snapshot(value_city: CityState) -> Dictionary:
 	if value_city == null or not value_city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
+
 	var ratios := PackedInt64Array()
 	var tax_rates := PackedInt32Array()
 	var demands := PackedInt32Array()
+
 	for industry in INDUSTRY_COUNT:
 		var offset := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
 		demands.append(_to_i16(value_city.document.misc_u32(offset)))
 		tax_rates.append(_to_i16(value_city.document.misc_u32(offset + 4)))
 		ratios.append(value_city.document.misc_u32(offset + 8))
+
 	var industrial_tax_offset := (
 		MISC_BUDGETS + BUDGET_INDUSTRIAL * BUDGET_RECORD_SIZE + BUDGET_FUNDING
 	)
+
 	return {
 		"ok": true,
 		"ratios": ratios,
@@ -102,19 +108,25 @@ static func snapshot(value_city: CityState) -> Dictionary:
 static func values_for_mode(data: Dictionary, selected_mode: int) -> Array:
 	if not data.get("ok", false):
 		return []
+
 	if selected_mode == Mode.RATIOS:
 		return Array(data.get("ratios", PackedInt64Array()))
+
 	if selected_mode == Mode.TAX_RATES:
 		return Array(data.get("tax_rates", PackedInt32Array()))
+
 	return Array(data.get("demands", PackedInt32Array()))
 
 
 static func maximum_for_mode(data: Dictionary, selected_mode: int) -> int:
 	if selected_mode < Mode.RATIOS or selected_mode > Mode.DEMAND:
 		return 1
+
 	var maximum := int(INITIAL_MAXIMUMS[selected_mode])
+
 	for value in values_for_mode(data, selected_mode):
 		maximum = maxi(maximum, int(value))
+
 	return maximum
 
 
@@ -123,40 +135,54 @@ static func set_tax_rate(
 ) -> Dictionary:
 	if value_city == null or not value_city.is_valid():
 		return {"ok": false, "changed": false, "error": "city is invalid"}
+
 	if industry < 0 or industry >= INDUSTRY_COUNT:
 		return {"ok": false, "changed": false, "error": "industry is outside the valid range"}
+
 	var misc_chunk := value_city.document.find_chunk("MISC")
+
 	if misc_chunk == null or misc_chunk.decoded_payload.size() < MISC_INDUSTRIES + INDUSTRY_COUNT * INDUSTRY_STRIDE:
 		return {"ok": false, "changed": false, "error": "MISC is missing or too short"}
+
 	var tax_rate := clampi(value, 0, MAXIMUM_INDUSTRY_TAX)
 	var data: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var changed := false
+
 	for current in INDUSTRY_COUNT:
 		if not all_industries and current != industry:
 			continue
+
 		var offset := MISC_INDUSTRIES + current * INDUSTRY_STRIDE + 4
+
 		if _read_i32_be(data, offset) == tax_rate:
 			continue
+
 		_write_i32_be(data, offset, tax_rate)
 		changed = true
+
 	if changed and not misc_chunk.set_decoded_payload(data):
 		return {"ok": false, "changed": false, "error": "cannot store industry tax rates"}
+
 	return {"ok": true, "changed": changed, "value": tax_rate, "error": ""}
 
 
 func _gui_input(event: InputEvent) -> void:
 	if mode != Mode.TAX_RATES or city == null or not city.is_valid():
 		return
+
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		dragging_tax = event.pressed
+
 		if event.pressed:
 			_apply_tax_pointer(event.position, event.alt_pressed)
+
 		accept_event()
 
 
 func _input(event: InputEvent) -> void:
 	if not dragging_tax:
 		return
+
 	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
 		if not event.pressed:
 			dragging_tax = false
@@ -166,14 +192,17 @@ func _input(event: InputEvent) -> void:
 
 func _apply_tax_pointer(pointer: Vector2, apply_all: bool) -> void:
 	var plot := _plot_rect()
+
 	if not plot.has_point(pointer):
 		return
+
 	var row_height := plot.size.y / float(INDUSTRY_COUNT)
 	var industry := clampi(int((pointer.y - plot.position.y) / row_height), 0, INDUSTRY_COUNT - 1)
 	var data := snapshot(city)
 	var maximum := maximum_for_mode(data, Mode.TAX_RATES)
 	var value := int((pointer.x - plot.position.x) * maximum / plot.size.x)
 	var result := set_tax_rate(city, industry, value, apply_all)
+
 	if result.get("ok", false) and result.get("changed", false):
 		queue_redraw()
 		tax_rates_changed.emit()
@@ -182,8 +211,10 @@ func _apply_tax_pointer(pointer: Vector2, apply_all: bool) -> void:
 func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Color("c0c0c0"), true)
 	var data := snapshot(city)
+
 	if not data.get("ok", false):
 		_draw_centered_message("No city is loaded.")
+
 		return
 
 	var plot := _plot_rect()
@@ -197,6 +228,7 @@ func _draw() -> void:
 
 	draw_rect(plot, Color("ffffff"), true)
 	draw_rect(plot, Color("404040"), false, 1.0)
+
 	for industry in INDUSTRY_COUNT:
 		var center_y := plot.position.y + row_height * (float(industry) + 0.5)
 		var label := industry_names[industry]
@@ -218,11 +250,13 @@ func _draw() -> void:
 			Color("808080"),
 			1.0,
 		)
+
 	if icon_strip != null:
 		draw_texture_rect(icon_strip, icons, false)
 
 	var values := values_for_mode(data, mode)
 	var maximum := maximum_for_mode(data, mode)
+
 	for industry in INDUSTRY_COUNT:
 		var value := maxi(0, int(values[industry]))
 		var width := floorf(plot.size.x * float(value) / float(maximum))
@@ -233,9 +267,11 @@ func _draw() -> void:
 			width,
 			maxf(1.0, row_height - 4),
 		)
+
 		if bar.size.x > 0:
 			draw_rect(bar, Color("0000c0"), true)
 			draw_rect(bar, Color("00007f"), false, 1.0)
+
 		if mode == Mode.TAX_RATES:
 			var text := "%d%%" % value
 			var text_width := font.get_string_size(
@@ -267,6 +303,7 @@ func _draw() -> void:
 
 func _plot_rect() -> Rect2:
 	var left := maxf(250.0, size.x * 0.48)
+
 	return Rect2(left, 8.0, maxf(1.0, size.x - left - 12.0), maxf(1.0, size.y - 16.0))
 
 
@@ -289,6 +326,7 @@ func _draw_centered_message(message: String) -> void:
 
 static func _to_i16(value: int) -> int:
 	var word := value & 0xffff
+
 	return word - 0x10000 if word & 0x8000 else word
 
 
@@ -299,6 +337,7 @@ static func _read_i32_be(data: PackedByteArray, offset: int) -> int:
 		| (data[offset + 2] << 8)
 		| data[offset + 3]
 	)
+
 	return value - 0x100000000 if value & 0x80000000 else value
 
 

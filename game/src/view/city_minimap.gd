@@ -36,24 +36,30 @@ static func create_image(city: CityState, palette: Sc2Palette, mode := "structur
 	var image := Image.create(
 		map_edge, map_edge, false, Image.FORMAT_RGBA8
 	)
+
 	if city == null or not city.is_valid() or palette == null or not palette.is_valid():
 		return image
+
 	for x in map_edge:
 		for y in map_edge:
 			image.set_pixel(x, y, palette.color(color_index(city, x, y, mode)))
+
 	return image
 
 
 static func color_index(city: CityState, x: int, y: int, mode := "structures") -> int:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return 0
+
 	var building := city.building_id(x, y)
 	var base := _base_index(city, x, y, building)
+
 	match mode:
 		"structures":
 			return base
 		"zones":
 			var zone := city.zone_id(x, y)
+
 			return ZONE_COLORS[zone] if zone != 0 else base
 		"roads":
 			return 0xff if _is_road_map_tile(building) else base
@@ -61,30 +67,40 @@ static func color_index(city: CityState, x: int, y: int, mode := "structures") -
 			return 0xff if _is_rail_map_tile(building) else base
 		"traffic":
 			var traffic := _coarse_value(city, "XTRF", city.map_size / 2, 2, x, y) >> 4
+
 			if traffic != 0:
 				return traffic + 0x9b
+
 			return 0xff if _is_traffic_network(building) else base
 		"power":
 			if _is_power_line(building):
 				return 0xff
+
 			if city.is_powered(x, y):
 				return 0x32
+
 			return 0x1d if city.is_powerable(x, y) else base
 		"water":
 			var underground := city.underground_id(x, y)
+
 			if underground >= 0x10 and underground <= 0x23:
 				return 0xff
+
 			if city.is_watered(x, y):
 				return 0x32
+
 			return 0x1d if city.is_piped(x, y) else base
 		"density":
 			return _gradient_or_base(city, "XPOP", city.map_size / 4, 4, x, y, base)
 		"growth":
 			var growth := _coarse_value(city, "XROG", city.map_size / 4, 4, x, y)
+
 			if growth < 0x7d:
 				return 0x1d
+
 			if growth >= 0x83:
 				return 0x43
+
 			return base
 		"crime":
 			return _gradient_or_base(city, "XCRM", city.map_size / 2, 2, x, y, base)
@@ -104,6 +120,7 @@ static func color_index(city: CityState, x: int, y: int, mode := "structures") -
 			return 0xff if building == SCHOOL else base
 		"colleges":
 			return 0xff if building == COLLEGE else base
+
 	return base
 
 
@@ -111,12 +128,17 @@ static func _base_index(city: CityState, x: int, y: int, building: int) -> int:
 	if building == 0:
 		if city.is_water(x, y):
 			return 0x62
+
 		var altitude := mini(city.land_altitude(x, y), 0x10)
+
 		return 0x80 - int(altitude * 3 / 4)
+
 	if building < 6:
 		return 0x35
+
 	if building < 0x0d:
 		return 0x43
+
 	return 0
 
 
@@ -130,6 +152,7 @@ static func _gradient_or_base(
 	base: int
 ) -> int:
 	var gradient := _coarse_value(city, chunk_id, map_size, scale, x, y) >> 4
+
 	return gradient + 0x9b if gradient != 0 else base
 
 
@@ -137,9 +160,12 @@ static func _coarse_value(
 	city: CityState, chunk_id: String, _map_size: int, _scale: int, x: int, y: int
 ) -> int:
 	var chunk := city.document.find_chunk(chunk_id)
+
 	if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(chunk_id):
 		return 0
+
 	var index := CityDataGrid.index(chunk.decoded_payload, city.map_size, x, y)
+
 	return chunk.decoded_payload[index] if index >= 0 else 0
 
 
