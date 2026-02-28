@@ -113,53 +113,50 @@ static func smooth(values: PackedInt32Array, edge: int, center_weight: int, base
 	step: int = 1, rings: int = 2, budget: SimulationSliceBudget = null) -> PackedInt32Array:
 	var result := PackedInt32Array()
 	result.resize(values.size())
+	var margin := step * rings
+	var near_row := step * edge
+	var far_row := 2 * near_row
+	var far_column := 2 * step
+	var interior_divisor := base_divisor + 4 * rings
+	var has_interior := step > 0 and rings in [1, 2] and edge > 2 * margin
 
 	for x in edge:
 		if budget != null:
 			budget.checkpoint()
 
 		var row := x * edge
-		var margin := step * rings
-		var interior_row := x >= margin and x < edge - margin and rings in [1, 2]
+		var interior_row := has_interior and x >= margin and x < edge - margin
+		var rim_width := margin if interior_row else edge
+		var rim_count := 2 * rim_width if interior_row else rim_width
 
-		for y in edge:
+		# visit only the clipped rim here. interior cells use fixed offsets below
+		for rim_index in rim_count:
+			var y := rim_index if rim_index < rim_width else edge - 2 * rim_width + rim_index
 			var index := row + y
+			var value := _smooth_edge_value(values, edge, x, y, center_weight, base_divisor, step, rings)
+			result[index] = value
 
-			if interior_row and y >= margin and y < edge - margin:
+		if not interior_row:
+			continue
+
+		var first := row + margin
+		var finish := row + edge - margin
+
+		if rings == 1:
+			for index in range(first, finish):
 				var total := values[index] * center_weight
-				total += values[index - step * edge] + values[index + step * edge]
+				total += values[index - near_row] + values[index + near_row]
 				total += values[index - step] + values[index + step]
+				result[index] = int(total / interior_divisor)
 
-				if rings == 2:
-					total += values[index - 2 * step * edge] + values[index + 2 * step * edge]
-					total += values[index - 2 * step] + values[index + 2 * step]
-
-				result[index] = int(total / (base_divisor + 4 * rings))
-				continue
-
-			var total := values[index] * center_weight
-			var divisor := base_divisor
-
-			for ring in range(1, rings + 1):
-				var distance := ring * step
-
-				if x >= distance:
-					total += values[index - distance * edge]
-					divisor += 1
-
-				if x + distance < edge:
-					total += values[index + distance * edge]
-					divisor += 1
-
-				if y >= distance:
-					total += values[index - distance]
-					divisor += 1
-
-				if y + distance < edge:
-					total += values[index + distance]
-					divisor += 1
-
-			result[index] = int(total / divisor)
+		else:
+			for index in range(first, finish):
+				var total := values[index] * center_weight
+				total += values[index - near_row] + values[index + near_row]
+				total += values[index - step] + values[index + step]
+				total += values[index - far_row] + values[index + far_row]
+				total += values[index - far_column] + values[index + far_column]
+				result[index] = int(total / interior_divisor)
 
 	return result
 
@@ -167,59 +164,85 @@ static func smooth(values: PackedInt32Array, edge: int, center_weight: int, base
 static func smooth_bytes(values: PackedInt32Array, edge: int, center_weight: int, base_divisor: int,
 	step: int = 1, rings: int = 2, budget: SimulationSliceBudget = null) -> Dictionary:
 	var result := PackedByteArray()
-	var sum := 0
 	result.resize(values.size())
+	var sum := 0
+	var margin := step * rings
+	var near_row := step * edge
+	var far_row := 2 * near_row
+	var far_column := 2 * step
+	var interior_divisor := base_divisor + 4 * rings
+	var has_interior := step > 0 and rings in [1, 2] and edge > 2 * margin
 
 	for x in edge:
 		if budget != null:
 			budget.checkpoint()
 
 		var row := x * edge
-		var margin := step * rings
-		var interior_row := x >= margin and x < edge - margin and rings in [1, 2]
+		var interior_row := has_interior and x >= margin and x < edge - margin
+		var rim_width := margin if interior_row else edge
+		var rim_count := 2 * rim_width if interior_row else rim_width
 
-		for y in edge:
+		# visit only the clipped rim here. interior cells use fixed offsets below
+		for rim_index in rim_count:
+			var y := rim_index if rim_index < rim_width else edge - 2 * rim_width + rim_index
 			var index := row + y
-
-			if interior_row and y >= margin and y < edge - margin:
-				var total := values[index] * center_weight
-				total += values[index - step * edge] + values[index + step * edge]
-				total += values[index - step] + values[index + step]
-
-				if rings == 2:
-					total += values[index - 2 * step * edge] + values[index + 2 * step * edge]
-					total += values[index - 2 * step] + values[index + 2 * step]
-
-				result[index] = clampi(int(total / (base_divisor + 4 * rings)), 0, 255)
-				sum += result[index]
-				continue
-
-			var total := values[index] * center_weight
-			var divisor := base_divisor
-
-			for ring in range(1, rings + 1):
-				var distance := ring * step
-
-				if x >= distance:
-					total += values[index - distance * edge]
-					divisor += 1
-
-				if x + distance < edge:
-					total += values[index + distance * edge]
-					divisor += 1
-
-				if y >= distance:
-					total += values[index - distance]
-					divisor += 1
-
-				if y + distance < edge:
-					total += values[index + distance]
-					divisor += 1
-
-			result[index] = clampi(int(total / divisor), 0, 255)
+			var value := _smooth_edge_value(values, edge, x, y, center_weight, base_divisor, step, rings)
+			result[index] = clampi(value, 0, 255)
 			sum += result[index]
 
+		if not interior_row:
+			continue
+
+		var first := row + margin
+		var finish := row + edge - margin
+
+		if rings == 1:
+			for index in range(first, finish):
+				var total := values[index] * center_weight
+				total += values[index - near_row] + values[index + near_row]
+				total += values[index - step] + values[index + step]
+				result[index] = clampi(int(total / interior_divisor), 0, 255)
+				sum += result[index]
+
+		else:
+			for index in range(first, finish):
+				var total := values[index] * center_weight
+				total += values[index - near_row] + values[index + near_row]
+				total += values[index - step] + values[index + step]
+				total += values[index - far_row] + values[index + far_row]
+				total += values[index - far_column] + values[index + far_column]
+				result[index] = clampi(int(total / interior_divisor), 0, 255)
+				sum += result[index]
+
 	return {"values": result, "total": sum}
+
+
+static func _smooth_edge_value(values: PackedInt32Array, edge: int, x: int, y: int,
+	center_weight: int, base_divisor: int, step: int, rings: int) -> int:
+	var index := x * edge + y
+	var total := values[index] * center_weight
+	var divisor := base_divisor
+
+	for ring in range(1, rings + 1):
+		var distance := ring * step
+
+		if x >= distance:
+			total += values[index - distance * edge]
+			divisor += 1
+
+		if x + distance < edge:
+			total += values[index + distance * edge]
+			divisor += 1
+
+		if y >= distance:
+			total += values[index - distance]
+			divisor += 1
+
+		if y + distance < edge:
+			total += values[index + distance]
+			divisor += 1
+
+	return int(total / divisor)
 
 
 static func bytes(values: PackedInt32Array, budget: SimulationSliceBudget = null) -> PackedByteArray:

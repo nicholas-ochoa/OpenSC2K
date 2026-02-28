@@ -89,6 +89,7 @@ func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Dicti
 	snapshot_usec = Time.get_ticks_usec() - started
 	_discard = false
 	_thread = Thread.new()
+	_budget.grant(budget_usec)
 	var error := _thread.start(_run.bind(_working, _budget, _submitted_msec, submitted_time), Thread.PRIORITY_LOW)
 
 	if error != OK:
@@ -102,7 +103,12 @@ func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Dicti
 
 
 static func budget_for_frame(delta_seconds: float) -> int:
-	return clampi(roundi(delta_seconds * 750000.0), 4000, 12000)
+	# healthy frames permit overlap with the next frame. a slow frame reduces
+	# the next lease so rendering has room to recover. this is worker time only
+	if delta_seconds > 0.020:
+		return 4000
+
+	return clampi(roundi(delta_seconds * 1250000.0), 4000, 20000)
 
 
 func is_pending() -> bool:

@@ -13,7 +13,7 @@ var _cancelled := false
 var _stopped := false
 var _deadline := 0
 var _started := 0
-var _allowance_usec := 4000
+var _grant_deadline := 0
 var _slices := 0
 var _max_slice_usec := 0
 
@@ -31,6 +31,14 @@ func checkpoint() -> void:
 
 		return
 
+	# A new frame replaces the current lease, even while the worker runs.
+	# Unused time expires instead of accumulating.
+	if Time.get_ticks_usec() < _grant_deadline:
+		_start_slice()
+		_mutex.unlock()
+
+		return
+
 	_waiting = true
 	_mutex.unlock()
 	var wait_started := Time.get_ticks_usec()
@@ -42,9 +50,7 @@ func checkpoint() -> void:
 	if _cancelled:
 		_stopped = true
 	else:
-		_started = Time.get_ticks_usec()
-		_deadline = _started + _allowance_usec
-		_slices += 1
+		_start_slice()
 
 	_mutex.unlock()
 
@@ -53,9 +59,11 @@ func grant(usec: int) -> void:
 	_mutex.lock()
 	var wake := _waiting and not _cancelled
 
+	if not _cancelled:
+		_grant_deadline = Time.get_ticks_usec() + maxi(100, usec)
+
 	if wake:
 		_waiting = false
-		_allowance_usec = maxi(100, usec)
 
 	_mutex.unlock()
 
@@ -92,3 +100,9 @@ func _record_slice() -> void:
 	if _started > 0:
 		_max_slice_usec = maxi(_max_slice_usec, Time.get_ticks_usec() - _started)
 		_started = 0
+
+
+func _start_slice() -> void:
+	_started = Time.get_ticks_usec()
+	_deadline = _grant_deadline
+	_slices += 1
