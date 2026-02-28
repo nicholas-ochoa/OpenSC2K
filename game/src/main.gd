@@ -307,6 +307,7 @@ func _initialize_runtime() -> void:
 	runtime_initialized = true
 	new_city_session.independent_template = not asset_source.use_original_data
 	audio_controller = CityAudio.new()
+	audio_controller.startup_theme_pending = true
 	audio_controller.background_audio = app_background_audio
 	audio_controller.set_shuffle_music(app_shuffle_music)
 	audio_controller.music_activity_changed.connect(_on_music_activity_changed)

@@ -30,6 +30,7 @@ var recording_request := -1
 var pending_recording: Dictionary = {}
 var dummy_music_active := false
 var menu_music := false
+var startup_theme_pending := false
 var current_track_id := -1
 var music_paused := false
 var music_gap_remaining_msec := 0.0
@@ -107,6 +108,18 @@ func play_music_track(track_id: int, choose_shuffle := true) -> bool:
 	if music_paused or not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
 		return false
 
+	if startup_theme_pending:
+		if music_volume <= 0.0:
+			return false
+
+		# keep the first request on the title track, including focus recovery,
+		# city loading, and asynchronous recording preparation
+		if music_playback_is_active():
+			return true
+
+		track_id = Music.MAIN_THEME_TRACK
+		choose_shuffle = false
+
 	if music_gap_remaining_msec > 0.0:
 		queued_music_track = track_id
 		queued_choose_shuffle = choose_shuffle
@@ -140,6 +153,7 @@ func play_music_track(track_id: int, choose_shuffle := true) -> bool:
 
 	if AudioServer.get_driver_name() == "Dummy":
 		dummy_music_active = true
+		_music_started()
 		music_activity_changed.emit(true)
 
 		return true
@@ -166,9 +180,20 @@ func _play_midi_fallback() -> bool:
 
 	var result := music_player.play_path(midi_path, current_track_id)
 	music_player.set_paused(music_paused or focus_paused)
+
+	if result.ok:
+		_music_started()
+
 	music_activity_changed.emit(bool(result.ok))
 
 	return bool(result.ok)
+
+
+func _music_started() -> void:
+	if startup_theme_pending:
+		startup_theme_pending = false
+		shuffle_order.last_track = current_track_id
+		shuffle_order.remaining.erase(current_track_id)
 
 
 func _process(_delta: float) -> void:
@@ -182,6 +207,7 @@ func _process(_delta: float) -> void:
 			if recording_player.stream != null:
 				recording_player.play()
 				recording_player.stream_paused = music_paused or focus_paused
+				_music_started()
 			else:
 				push_warning("Cannot decode soundtrack recording; trying MIDI. FLAC requires FFmpeg.")
 				_play_midi_fallback()

@@ -92,6 +92,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/ship_map_exit_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/menu_music_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/title_music_startup_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/stream_waterfall_render_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/newspaper_web_view_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/newspaper_layout_test.gd
