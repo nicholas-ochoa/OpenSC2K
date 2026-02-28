@@ -28,8 +28,10 @@ func set_palette(value: Sc2Palette) -> void:
 
 func set_patterns(value: Array[PackedInt32Array]) -> void:
 	patterns.clear()
+
 	for pattern in value:
 		patterns.append(pattern.duplicate())
+
 	selected_index = clampi(selected_index, 0, maxi(0, patterns.size() - 1))
 	var row_count := int(ceil(float(patterns.size()) / COLUMN_COUNT))
 	custom_minimum_size = Vector2(COLUMN_COUNT * CELL_SIZE, row_count * CELL_SIZE)
@@ -52,6 +54,7 @@ func index_at(position: Vector2) -> int:
 	var column := floori(position.x / CELL_SIZE)
 	var row := floori(position.y / CELL_SIZE)
 	var index := row * COLUMN_COUNT + column
+
 	if (
 		column < 0
 		or column >= COLUMN_COUNT
@@ -60,6 +63,7 @@ func index_at(position: Vector2) -> int:
 		or index >= patterns.size()
 	):
 		return -1
+
 	return index
 
 
@@ -70,6 +74,7 @@ func _gui_input(event: InputEvent) -> void:
 		and event.pressed
 	):
 		var index := index_at(event.position)
+
 		if index >= 0:
 			selected_index = index
 			queue_redraw()
@@ -79,16 +84,22 @@ func _gui_input(event: InputEvent) -> void:
 
 func _get_tooltip(at_position: Vector2) -> String:
 	var index := index_at(at_position)
+
 	if index < 0:
 		return ""
+
 	if index < pattern_names.size():
 		return pattern_names[index]
+
 	if index == 0:
 		return "Solid foreground"
+
 	if index == 1:
 		return "Foreground and background mix"
+
 	if index == 2:
 		return "Solid background"
+
 	return "Original SCURK texture %d" % (index - 2)
 
 
@@ -100,6 +111,7 @@ func _draw() -> void:
 		)
 		draw_rect(Rect2(origin, Vector2i(CELL_SIZE, CELL_SIZE)), Color("c0c0c0"), true)
 		var pattern := patterns[index]
+
 		if pattern.size() == 64:
 			for y in 8:
 				for x in 8:
@@ -118,10 +130,12 @@ func _draw() -> void:
 						),
 						color, true
 					)
+
 		draw_rect(
 			Rect2(origin, Vector2i(CELL_SIZE, CELL_SIZE)),
 			Color("404040"), false, 1.0
 		)
+
 	if selected_index >= 0 and selected_index < patterns.size():
 		var selected_origin := Vector2i(
 			(selected_index % COLUMN_COUNT) * CELL_SIZE,
@@ -136,6 +150,8 @@ func _draw() -> void:
 func _resolve(source: int) -> int:
 	if source == 0xff:
 		return foreground_index
+
 	if source == 0xf5 or source == 0:
 		return background_index
+
 	return clampi(source, 0, 255)
