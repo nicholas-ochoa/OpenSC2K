@@ -86,6 +86,10 @@ static func normalize_zoom_graphics(value: Variant) -> Array[int]:
 
 
 static func graphics_size_at_zoom(sizes: Array[int], zoom_percent: int) -> int:
+	# overview always uses small; retain the six existing saved preferences
+	if zoom_percent <= 10:
+		return 0
+
 	for index in GRAPHICS_ZOOMS.size():
 		if zoom_percent <= GRAPHICS_ZOOMS[index]:
 			return sizes[index]

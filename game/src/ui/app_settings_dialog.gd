@@ -113,6 +113,9 @@ func _ready() -> void:
 	renderer_selector.item_selected.connect(func(_index: int) -> void:
 		_update_graphics_counts())
 	settings_grid = _add_settings_tab("Graphics", true)
+	var overview_label := Label.new()
+	overview_label.text = "10% overview uses Small graphics."
+	settings_grid.get_parent().add_child(overview_label)
 	var zoom_grid := GridContainer.new()
 	zoom_grid.columns = 4
 	zoom_grid.add_theme_constant_override("h_separation", 12)
