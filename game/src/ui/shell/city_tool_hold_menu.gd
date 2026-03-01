@@ -3,7 +3,7 @@ extends PopupPanel
 
 signal subtool_requested(index: int)
 
-const PaletteView = preload("res://src/ui/city_child_tool_palette.gd")
+const PaletteView = preload("res://src/ui/shell/city_child_tool_palette.gd")
 var palette: CityChildToolPalette
 
 

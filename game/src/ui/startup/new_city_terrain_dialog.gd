@@ -8,7 +8,7 @@ signal terrain_regeneration_requested
 
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewTerrain = preload("res://src/model/new_city_terrain.gd")
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 var city_name_input: LineEdit
 var mayor_name_input: LineEdit

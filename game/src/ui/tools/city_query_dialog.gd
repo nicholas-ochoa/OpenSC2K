@@ -1,7 +1,7 @@
 class_name CityQueryDialog
 extends ColorRect
 
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 class NeighborhoodPreview extends Control:
 	var zoom := 3.5

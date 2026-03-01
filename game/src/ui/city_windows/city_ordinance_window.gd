@@ -5,7 +5,7 @@ signal ordinances_changed
 signal update_failed(message: String)
 
 const OrdinanceView = preload("res://src/view/ordinance_window_control.gd")
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 var ordinance_control: OrdinanceWindowControl
 

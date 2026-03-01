@@ -4,7 +4,7 @@ extends Window
 signal tax_rates_changed
 
 const IndustryView = preload("res://src/view/industry_window_control.gd")
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 var industry_control: IndustryWindowControl
 var mode_buttons: Array[CheckBox] = []

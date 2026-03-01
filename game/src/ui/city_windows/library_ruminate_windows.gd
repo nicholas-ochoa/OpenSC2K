@@ -1,8 +1,8 @@
 class_name LibraryRuminateWindows
 extends Control
 
-const WindowLayout = preload("res://src/ui/library_window_layout.gd")
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const WindowLayout = preload("res://src/ui/city_windows/library_window_layout.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 const TEXT_RESOURCE_IDS := [3000, 3001, 3002, 3003]
 const BASE_Z_INDEX := 1000

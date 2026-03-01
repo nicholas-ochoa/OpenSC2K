@@ -4,8 +4,8 @@ extends Window
 signal preview_options_changed(options: Dictionary)
 signal save_pdf_requested(options: Dictionary)
 
-const PreviewView = preload("res://src/ui/scurk_print_preview.gd")
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const PreviewView = preload("res://src/ui/scurk/scurk_print_preview.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 const PANEL_SIZE := Vector2i(760, 680)
 const MAGNIFICATIONS := [1, 2, 4]

@@ -2,7 +2,7 @@ class_name CityPopulationWindow
 extends Window
 
 const PopulationView = preload("res://src/view/population_window_control.gd")
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 var population_control: PopulationWindowControl
 var mode_buttons: Array[CheckBox] = []

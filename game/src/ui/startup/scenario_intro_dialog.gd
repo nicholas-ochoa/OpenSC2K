@@ -1,7 +1,7 @@
 class_name ScenarioIntroDialog
 extends AcceptDialog
 
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 var picture_view: TextureRect
 var text_view: TextEdit

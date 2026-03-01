@@ -5,7 +5,7 @@ signal mode_changed(mode: String)
 signal center_requested(point: Vector2i)
 
 const CityMapView = preload("res://src/view/city_map_window_control.gd")
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 var map_control: CityMapWindowControl
 

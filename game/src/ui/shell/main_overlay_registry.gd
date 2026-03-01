@@ -1,13 +1,13 @@
 class_name MainOverlayRegistry
 extends Control
 
-const MainMenuView = preload("res://src/ui/main_menu_control.gd")
-const SettingsDialogView = preload("res://src/ui/app_settings_dialog.gd")
-const ScurkEditorView = preload("res://src/ui/scurk_editor_control.gd")
-const ScurkPlacePrintView = preload("res://src/ui/scurk_place_print_control.gd")
-const ScurkPrintView = preload("res://src/ui/scurk_print_control.gd")
-const AboutDialogView = preload("res://src/ui/about_dialog.gd")
-const SaveChangesDialogView = preload("res://src/ui/save_changes_dialog.gd")
+const MainMenuView = preload("res://src/ui/startup/main_menu_control.gd")
+const SettingsDialogView = preload("res://src/ui/settings/app_settings_dialog.gd")
+const ScurkEditorView = preload("res://src/ui/scurk/scurk_editor_control.gd")
+const ScurkPlacePrintView = preload("res://src/ui/scurk/scurk_place_print_control.gd")
+const ScurkPrintView = preload("res://src/ui/scurk/scurk_print_control.gd")
+const AboutDialogView = preload("res://src/ui/settings/about_dialog.gd")
+const SaveChangesDialogView = preload("res://src/ui/shared/save_changes_dialog.gd")
 
 var main_menu: MainMenuControl
 var settings_dialog: AppSettingsDialog

@@ -1,11 +1,11 @@
 class_name CityWorkspace
 extends Control
 
-const MenuBarView = preload("res://src/ui/city_menu_bar.gd")
-const ToolbarView = preload("res://src/ui/city_toolbar.gd")
+const MenuBarView = preload("res://src/ui/shell/city_menu_bar.gd")
+const ToolbarView = preload("res://src/ui/shell/city_toolbar.gd")
 const MapView = preload("res://src/view/city_map_control.gd")
-const StatusBarView = preload("res://src/ui/city_status_bar.gd")
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const StatusBarView = preload("res://src/ui/shell/city_status_bar.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 var toolbar_art: Image
 var menu_bar: CityMenuBar

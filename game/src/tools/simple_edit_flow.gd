@@ -2,7 +2,7 @@ class_name SimpleEditFlow
 extends RefCounted
 
 const Tools = preload("res://src/tools/tool_catalog.gd")
-const DisplayNumbers = preload("res://src/ui/display_number_format.gd")
+const DisplayNumbers = preload("res://src/ui/shared/display_number_format.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Demolish = preload("res://src/tools/demolish_command.gd")
 const TerrainTools = preload("res://src/tools/terrain_command.gd")

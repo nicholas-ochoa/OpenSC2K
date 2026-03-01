@@ -27,14 +27,14 @@ const Zones = preload("res://src/tools/zone_command.gd")
 const Signs = preload("res://src/tools/sign_command.gd")
 const Queries = preload("res://src/tools/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/query_actions.gd")
-const SettingsStore = preload("res://src/ui/app_settings_store.gd")
-const LibraryRuminateWindowsView = preload("res://src/ui/library_ruminate_windows.gd")
-const DisplayNumbers = preload("res://src/ui/display_number_format.gd")
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
-const CityMenuBarView = preload("res://src/ui/city_menu_bar.gd")
-const CityWorkspaceView = preload("res://src/ui/city_workspace.gd")
-const CityDialogsView = preload("res://src/ui/city_dialog_registry.gd")
-const MainOverlaysView = preload("res://src/ui/main_overlay_registry.gd")
+const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
+const LibraryRuminateWindowsView = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
+const DisplayNumbers = preload("res://src/ui/shared/display_number_format.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
+const CityMenuBarView = preload("res://src/ui/shell/city_menu_bar.gd")
+const CityWorkspaceView = preload("res://src/ui/shell/city_workspace.gd")
+const CityDialogsView = preload("res://src/ui/shell/city_dialog_registry.gd")
+const MainOverlaysView = preload("res://src/ui/shell/main_overlay_registry.gd")
 const Landscapes = preload("res://src/tools/landscape_command.gd")
 const Random = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
@@ -273,7 +273,7 @@ var debug_overlay: CityDebugOverlay
 
 
 func _ready() -> void:
-	add_child(preload("res://src/ui/file_dialog_history.gd").new())
+	add_child(preload("res://src/ui/shared/file_dialog_history.gd").new())
 	get_tree().auto_accept_quit = false
 
 	if reference_root.is_empty():

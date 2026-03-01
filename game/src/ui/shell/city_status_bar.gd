@@ -2,7 +2,7 @@ class_name CityStatusBar
 extends PanelContainer
 
 const RciStatusView = preload("res://src/view/rci_status_control.gd")
-const ClassicStyle = preload("res://src/ui/classic_ui_style.gd")
+const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 const REPORT_ROTATION_SECONDS := 7.0
 const NEWS_NAMES := {
 	1: "Local news",
