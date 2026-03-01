@@ -8,7 +8,7 @@ const OriginalAssets = preload("res://src/assets/original_game_assets.gd")
 const PopulationView = preload("res://src/view/population_window_control.gd")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
-const Ordinances = preload("res://src/simulation/ordinance_command.gd")
+const Ordinances = preload("res://src/simulation/economy/ordinance_command.gd")
 
 var check_callback: Callable
 

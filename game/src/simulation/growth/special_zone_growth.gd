@@ -1,7 +1,7 @@
 class_name SpecialZoneGrowth
 extends RefCounted
 
-const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
+const MovingThings = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_MILITARY_BASE_TYPE := 0x0e4c
 const MISC_MILITARY_TILE_COUNTS := 0x0fa8

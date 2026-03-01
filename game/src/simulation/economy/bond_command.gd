@@ -1,7 +1,7 @@
 class_name BondCommand
 extends RefCounted
 
-const CityValue = preload("res://src/simulation/city_value_phase.gd")
+const CityValue = preload("res://src/simulation/economy/city_value_phase.gd")
 
 const MISC_SIZE := 4800
 const MISC_FUNDS := 0x0014

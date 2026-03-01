@@ -5,7 +5,7 @@ signal ordinances_changed
 signal update_failed(message: String)
 signal close_requested
 
-const Ordinances = preload("res://src/simulation/ordinance_command.gd")
+const Ordinances = preload("res://src/simulation/economy/ordinance_command.gd")
 
 # describes the implemented simulation, not real-world policy effects
 const EFFECTS := [

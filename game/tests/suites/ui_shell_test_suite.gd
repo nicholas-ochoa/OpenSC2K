@@ -3,7 +3,7 @@ extends RefCounted
 const CityModel = preload("res://src/model/city_state.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
-const Budget = preload("res://src/simulation/budget_phase.gd")
+const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const ScurkPlaceControl = preload("res://src/ui/scurk/scurk_place_print_control.gd")
 const RciStatus = preload("res://src/view/rci_status_control.gd")
 const GraphControl = preload("res://src/view/city_graph_control.gd")

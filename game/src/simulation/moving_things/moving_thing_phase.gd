@@ -1,12 +1,12 @@
 class_name MovingThingPhase
 extends RefCounted
 
-const TrainTick = preload("res://src/simulation/train_thing_tick.gd")
-const SailboatTick = preload("res://src/simulation/sailboat_thing_tick.gd")
-const ShipTick = preload("res://src/simulation/ship_thing_tick.gd")
-const AirTick = preload("res://src/simulation/air_thing_tick.gd")
-const MaxisManTick = preload("res://src/simulation/maxis_man_thing_tick.gd")
-const DisasterTick = preload("res://src/simulation/disaster_thing_tick.gd")
+const TrainTick = preload("res://src/simulation/moving_things/train_thing_tick.gd")
+const SailboatTick = preload("res://src/simulation/moving_things/sailboat_thing_tick.gd")
+const ShipTick = preload("res://src/simulation/moving_things/ship_thing_tick.gd")
+const AirTick = preload("res://src/simulation/moving_things/air_thing_tick.gd")
+const MaxisManTick = preload("res://src/simulation/moving_things/maxis_man_thing_tick.gd")
+const DisasterTick = preload("res://src/simulation/disasters/disaster_thing_tick.gd")
 const RECORD_SIZE := 12
 const FIRST_RECORD := 1
 const LAST_RECORD := 39

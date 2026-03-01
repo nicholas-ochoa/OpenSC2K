@@ -1,8 +1,8 @@
 class_name NewspaperDialog
 extends AcceptDialog
 
-const NewsQueue = preload("res://src/simulation/news_queue.gd")
-const NewspaperTextGenerator = preload("res://src/simulation/newspaper_text.gd")
+const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
+const NewspaperTextGenerator = preload("res://src/simulation/reports/newspaper_text.gd")
 
 const MONTH_NAMES := [
 	"January", "February", "March", "April", "May", "June",

@@ -7,8 +7,8 @@ signal issue_bond_requested
 signal repay_bond_requested
 signal bond_confirmation_resolved(action: String, confirmed: bool)
 
-const Budget = preload("res://src/simulation/budget_phase.gd")
-const Bonds = preload("res://src/simulation/bond_command.gd")
+const Budget = preload("res://src/simulation/economy/budget_phase.gd")
+const Bonds = preload("res://src/simulation/economy/bond_command.gd")
 
 const BUDGET_NAMES := [
 	"Residential Tax",

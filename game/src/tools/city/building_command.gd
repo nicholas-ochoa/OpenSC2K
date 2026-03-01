@@ -2,8 +2,8 @@ class_name BuildingCommand
 extends RefCounted
 
 const Availability = preload("res://src/tools/shared/tool_availability.gd")
-const Power = preload("res://src/simulation/power_phase.gd")
-const Water = preload("res://src/simulation/water_phase.gd")
+const Power = preload("res://src/simulation/infrastructure/power_phase.gd")
+const Water = preload("res://src/simulation/infrastructure/water_phase.gd")
 
 const MISC_FUNDS := 0x0014
 const MISC_ARCOLOGY_POPULATION := 0x1020

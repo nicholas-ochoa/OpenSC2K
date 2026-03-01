@@ -5,8 +5,8 @@ const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewTerrain = preload("res://src/model/new_city_terrain.gd")
-const Random = preload("res://src/simulation/sim_random.gd")
-const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
+const Random = preload("res://src/simulation/random/sim_random.gd")
+const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 
 var preview_document: Sc2File
 var independent_template := false

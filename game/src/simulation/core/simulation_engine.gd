@@ -1,12 +1,12 @@
 class_name SimulationEngine
 extends RefCounted
 
-const DisasterMap = preload("res://src/simulation/disaster_map_phase.gd")
-const RciAftermath = preload("res://src/simulation/rci_aftermath_phase.gd")
-const SimNation = preload("res://src/simulation/simnation_phase.gd")
-const Industries = preload("res://src/simulation/industry_phase.gd")
-const NewsQueue = preload("res://src/simulation/news_queue.gd")
-const WeatherDisaster = preload("res://src/simulation/weather_disaster_phase.gd")
+const DisasterMap = preload("res://src/simulation/disasters/disaster_map_phase.gd")
+const RciAftermath = preload("res://src/simulation/growth/rci_aftermath_phase.gd")
+const SimNation = preload("res://src/simulation/civic/simnation_phase.gd")
+const Industries = preload("res://src/simulation/growth/industry_phase.gd")
+const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
+const WeatherDisaster = preload("res://src/simulation/disasters/weather_disaster_phase.gd")
 const Music = preload("res://src/audio/music_director.gd")
 
 var city: CityState

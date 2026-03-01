@@ -1,7 +1,7 @@
 class_name BudgetPhase
 extends RefCounted
 
-const Ordinances = preload("res://src/simulation/ordinance_command.gd")
+const Ordinances = preload("res://src/simulation/economy/ordinance_command.gd")
 
 const MISC_SIZE := 4800
 const MISC_FUNDS := 0x0014

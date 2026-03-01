@@ -1,7 +1,7 @@
 class_name NewspaperText
 extends RefCounted
 
-const Random = preload("res://src/simulation/sim_random.gd")
+const Random = preload("res://src/simulation/random/sim_random.gd")
 
 const MAX_OUTPUT_BYTES := 2047
 const MAX_RECURSION_DEPTH := 128

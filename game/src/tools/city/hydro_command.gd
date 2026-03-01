@@ -1,7 +1,7 @@
 class_name HydroCommand
 extends RefCounted
 
-const Power = preload("res://src/simulation/power_phase.gd")
+const Power = preload("res://src/simulation/infrastructure/power_phase.gd")
 
 const GROUP_POWER := 3
 const SUBTOOL_HYDRO := 3

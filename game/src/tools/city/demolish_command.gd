@@ -1,7 +1,7 @@
 class_name DemolishCommand
 extends RefCounted
 
-const NewsQueue = preload("res://src/simulation/news_queue.gd")
+const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 
 const GROUP_BULLDOZER := 0
 const SUBTOOL_DEMOLISH := 0

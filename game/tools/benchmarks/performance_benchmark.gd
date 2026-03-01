@@ -7,10 +7,10 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
-const Simulation = preload("res://src/simulation/simulation_engine.gd")
-const DisasterMap = preload("res://src/simulation/disaster_map_phase.gd")
-const Random = preload("res://src/simulation/sim_random.gd")
-const LfsrRandom = preload("res://src/simulation/sim_lfsr_random.gd")
+const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
+const DisasterMap = preload("res://src/simulation/disasters/disaster_map_phase.gd")
+const Random = preload("res://src/simulation/random/sim_random.gd")
+const LfsrRandom = preload("res://src/simulation/random/sim_lfsr_random.gd")
 const DEFAULT_CITY_FILE := "SYDNEY.SC2"
 
 

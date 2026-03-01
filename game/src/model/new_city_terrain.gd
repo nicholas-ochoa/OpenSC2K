@@ -1,8 +1,8 @@
 class_name NewCityTerrain
 extends RefCounted
 
-const ProcessRandom = preload("res://src/simulation/sim_random.gd")
-const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
+const ProcessRandom = preload("res://src/simulation/random/sim_random.gd")
+const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
 const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
 

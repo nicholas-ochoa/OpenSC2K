@@ -2,8 +2,8 @@ class_name GrowthPhase
 extends RefCounted
 
 const Demolish = preload("res://src/tools/city/demolish_command.gd")
-const MovingThings = preload("res://src/simulation/moving_thing_spawner.gd")
-const SpecialZoneGrowth = preload("res://src/simulation/special_zone_growth.gd")
+const MovingThings = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
+const SpecialZoneGrowth = preload("res://src/simulation/growth/special_zone_growth.gd")
 const MAP_VALUE_COUNT := 64 * 64
 const MISC_SIZE := 4800
 const MISC_TILE_COUNTS := 0x01f0
