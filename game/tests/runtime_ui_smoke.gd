@@ -106,7 +106,7 @@ func _run() -> void:
 			or city_label.horizontal_alignment != HORIZONTAL_ALIGNMENT_LEFT
 			or city_field == null
 			or city_field.get_theme_constant("margin_left") != 9
-			or population_label.custom_minimum_size.x != 148
+			or population_label.custom_minimum_size.x != 210
 			or population_label.get_parent() == weather_label.get_parent()
 			or population_label.text
 			!= "Population: %s" % main.call("_format_number", loaded_city.population())

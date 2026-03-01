@@ -1373,8 +1373,8 @@ func _test_sprite_archives(reference_root: String) -> void:
 		overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_LARGE, 3
 	)
 	_check(
-		fire_visual.sprite_id == 1399 and not fire_visual.flip,
-		"Fire view selects the recovered large frame from its visual phase",
+		fire_visual.sprite_id >= 1396 and fire_visual.sprite_id <= 1399,
+		"Fire view selects a native large frame from its visual phase",
 	)
 	var fire_command := IsometricRenderer.special_overlay_draw_command(
 		overlay_city,
@@ -1384,16 +1384,39 @@ func _test_sprite_archives(reference_root: String) -> void:
 		IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE),
 	)
 	_check(
-		not fire_command.static_occlusion,
-		"The dynamic fire marker stays above the static city at close zoom levels",
+		fire_command.static_occlusion,
+		"Foreground buildings occlude dynamic fire markers",
 	)
 	var flipped_fire := IsometricRenderer.fire_overlay_visual(
 		overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_LARGE, 4
 	)
 	_check(
-		flipped_fire.sprite_id == 1396 and flipped_fire.flip,
-		"Fire view changes frame and mirror without simulation random state",
+		flipped_fire.sprite_id == 1396 + (int(fire_visual.sprite_id) - 1396 + 1) % 4,
+		"Fire advances to the next native frame",
 	)
+	var fire_frames := {}
+	var fire_differences := {}
+	var previous_frame := -1
+
+	for fire_x in range(32, 64):
+		var original_overlay := overlay_city.text_overlay_id(fire_x, overlay_point.y)
+		var original_water := overlay_city.is_water(fire_x, overlay_point.y)
+		overlay_city.set_text_overlay_id(fire_x, overlay_point.y, 0xff)
+		overlay_city.set_tile_flag(fire_x, overlay_point.y, 0x04, false)
+		var visual := IsometricRenderer.fire_overlay_visual(overlay_city, fire_x, overlay_point.y)
+		fire_frames[visual.sprite_id] = true
+		_check(visual == IsometricRenderer.fire_overlay_visual(overlay_city, fire_x, overlay_point.y),
+			"Fire animation is stable for the same tile and display time")
+		overlay_city.set_text_overlay_id(fire_x, overlay_point.y, original_overlay)
+		overlay_city.set_tile_flag(fire_x, overlay_point.y, 0x04, original_water)
+
+		if previous_frame >= 0:
+			fire_differences[(int(visual.sprite_id) - previous_frame + 4) % 4] = true
+
+		previous_frame = int(visual.sprite_id)
+
+	_check(fire_frames.size() == 4 and fire_differences.size() == 4,
+		"Adjacent fires use varied phases instead of a constant wave step")
 	_check(
 		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x04, true),
 		"Fire view fixture changes to a water tile",

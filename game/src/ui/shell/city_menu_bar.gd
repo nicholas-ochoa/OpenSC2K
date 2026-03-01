@@ -167,7 +167,7 @@ func _ready() -> void:
 	city_field.add_child(city_label)
 	menu_row.add_child(VSeparator.new())
 
-	population_label = _metric_label("Population: --", 148)
+	population_label = _metric_label("Population: --", 210)
 	population_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	menu_row.add_child(population_label)
 	menu_row.add_child(VSeparator.new())

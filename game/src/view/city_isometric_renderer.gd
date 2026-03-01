@@ -1118,6 +1118,13 @@ static func special_overlay_visual(
 		return {}
 
 	var phase := animation_phase + x * 3 + y * 5
+
+	if overlay == 0xff:
+		# Mix tile coordinates to break up diagonal fire patterns without advancing the simulation RNG.
+		var seed_value := ((x + y * city.map_size + 1) * 0x45d9f3b) & 0xffffffff
+		seed_value = ((seed_value >> 16) ^ seed_value) * 0x45d9f3b
+		phase = animation_phase + (((seed_value >> 16) ^ seed_value) & 0xffff)
+
 	var sprite_offsets: Array = SPECIAL_OVERLAY_SPRITE_OFFSETS[overlay]
 	var sprite_offset: int = sprite_offsets[0]
 
@@ -1724,7 +1731,7 @@ static func special_overlay_draw_command(
 		),
 		"shadow": false,
 		"overlay": int(visual.overlay),
-		"static_occlusion": int(visual.overlay) != 0xff,
+		"static_occlusion": true,
 	}
 
 
