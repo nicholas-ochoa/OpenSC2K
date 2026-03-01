@@ -1,8 +1,8 @@
 class_name DisasterDamage
 extends RefCounted
 
-const NetworkTiles = preload("res://src/tools/network_command.gd")
-const Demolish = preload("res://src/tools/demolish_command.gd")
+const NetworkTiles = preload("res://src/tools/city/network_command.gd")
+const Demolish = preload("res://src/tools/city/demolish_command.gd")
 const TEXT_LABEL_BASE := 201
 const SOUND_DAMAGE := 0x1f8
 

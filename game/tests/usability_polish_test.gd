@@ -1,8 +1,8 @@
 extends SceneTree
 
 const Main = preload("res://src/main.gd")
-const Place = preload("res://src/tools/scurk_place_command.gd")
-const ToolState = preload("res://src/tools/tool_edit_state.gd")
+const Place = preload("res://src/tools/scurk/scurk_place_command.gd")
+const ToolState = preload("res://src/tools/shared/tool_edit_state.gd")
 
 
 func _initialize() -> void:

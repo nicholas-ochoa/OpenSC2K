@@ -7,7 +7,7 @@ const BitmapLoader = preload("res://src/assets/pe_bitmap_resource.gd")
 const StringLoader = preload("res://src/assets/pe_string_resource.gd")
 const TextLoader = preload("res://src/assets/text_usa_resource.gd")
 const NewspaperLoader = preload("res://src/assets/data_usa_resource.gd")
-const Queries = preload("res://src/tools/query_info.gd")
+const Queries = preload("res://src/tools/city/query_info.gd")
 const LibraryWindows = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 
 const FOREST_PROTEST_BITMAP_ID := 403

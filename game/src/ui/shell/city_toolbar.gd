@@ -17,7 +17,7 @@ signal surface_visibility_requested(visible: bool, layer: String)
 signal underground_pipes_visibility_requested(visible: bool)
 signal underground_subways_visibility_requested(visible: bool)
 
-const Tools = preload("res://src/tools/tool_catalog.gd")
+const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 const ChildToolPalette = preload("res://src/ui/shell/city_child_tool_palette.gd")
 const HoldMenu = preload("res://src/ui/shell/city_tool_hold_menu.gd")

@@ -1,7 +1,7 @@
 class_name ScurkEditHistory
 extends RefCounted
 
-const ScurkPlace = preload("res://src/tools/scurk_place_command.gd")
+const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
 
 var undo_stack: Array[Dictionary] = []
 var redo_stack: Array[Dictionary] = []

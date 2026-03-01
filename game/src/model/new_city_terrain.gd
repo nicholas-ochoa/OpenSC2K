@@ -3,8 +3,8 @@ extends RefCounted
 
 const ProcessRandom = preload("res://src/simulation/sim_random.gd")
 const GameRandom = preload("res://src/simulation/game_lcg_random.gd")
-const TerrainTools = preload("res://src/tools/terrain_command.gd")
-const Landscapes = preload("res://src/tools/landscape_command.gd")
+const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
+const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
 
 const MAP_SIZE := 128
 const TILE_COUNT := MAP_SIZE * MAP_SIZE

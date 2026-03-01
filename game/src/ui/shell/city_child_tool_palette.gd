@@ -3,9 +3,9 @@ extends VBoxContainer
 
 signal subtool_requested(index: int)
 
-const Tools = preload("res://src/tools/tool_catalog.gd")
-const ToolAvailability = preload("res://src/tools/tool_availability.gd")
-const ToolState = preload("res://src/tools/tool_edit_state.gd")
+const Tools = preload("res://src/tools/shared/tool_catalog.gd")
+const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
+const ToolState = preload("res://src/tools/shared/tool_edit_state.gd")
 const DisplayNumbers = preload("res://src/ui/shared/display_number_format.gd")
 
 var free_landscape := false

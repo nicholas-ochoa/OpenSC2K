@@ -1,7 +1,7 @@
 extends SceneTree
 
 const GameSpeed = preload("res://src/simulation/game_speed_controller.gd")
-const ToolAvailability = preload("res://src/tools/tool_availability.gd")
+const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const DisasterStart = preload("res://src/simulation/disaster_start_phase.gd")
 const Music = preload("res://src/audio/music_director.gd")
 

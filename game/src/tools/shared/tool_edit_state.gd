@@ -1,21 +1,21 @@
 class_name ToolEditState
 extends RefCounted
 
-const Tools = preload("res://src/tools/tool_catalog.gd")
-const ToolAvailability = preload("res://src/tools/tool_availability.gd")
-const Zones = preload("res://src/tools/zone_command.gd")
-const Landscapes = preload("res://src/tools/landscape_command.gd")
-const Buildings = preload("res://src/tools/building_command.gd")
-const Networks = preload("res://src/tools/network_command.gd")
-const Hydro = preload("res://src/tools/hydro_command.gd")
-const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
-const Onramps = preload("res://src/tools/onramp_command.gd")
-const Tunnels = preload("res://src/tools/tunnel_command.gd")
-const Highways = preload("res://src/tools/highway_command.gd")
-const Demolish = preload("res://src/tools/demolish_command.gd")
-const TerrainTools = preload("res://src/tools/terrain_command.gd")
-const Dispatch = preload("res://src/tools/dispatch_command.gd")
-const ScurkPlace = preload("res://src/tools/scurk_place_command.gd")
+const Tools = preload("res://src/tools/shared/tool_catalog.gd")
+const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
+const Zones = preload("res://src/tools/city/zone_command.gd")
+const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
+const Buildings = preload("res://src/tools/city/building_command.gd")
+const Networks = preload("res://src/tools/city/network_command.gd")
+const Hydro = preload("res://src/tools/city/hydro_command.gd")
+const SubwayToRail = preload("res://src/tools/city/subway_to_rail_command.gd")
+const Onramps = preload("res://src/tools/city/onramp_command.gd")
+const Tunnels = preload("res://src/tools/city/tunnel_command.gd")
+const Highways = preload("res://src/tools/city/highway_command.gd")
+const Demolish = preload("res://src/tools/city/demolish_command.gd")
+const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
+const Dispatch = preload("res://src/tools/city/dispatch_command.gd")
+const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
 
 
 static func is_tool_chooser(group_index: int, subtool_index: int) -> bool:

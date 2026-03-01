@@ -17,9 +17,9 @@ signal zoom_changed(percent: int)
 signal viewport_changed()
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
-const HighwayTool = preload("res://src/tools/highway_command.gd")
-const DemolishTool = preload("res://src/tools/demolish_command.gd")
-const BuildingTool = preload("res://src/tools/building_command.gd")
+const HighwayTool = preload("res://src/tools/city/highway_command.gd")
+const DemolishTool = preload("res://src/tools/city/demolish_command.gd")
+const BuildingTool = preload("res://src/tools/city/building_command.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const ZOOM_LEVELS := [0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0]
 const DEFAULT_ZOOM_INDEX := 3

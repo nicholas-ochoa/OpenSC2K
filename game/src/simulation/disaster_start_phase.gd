@@ -2,9 +2,9 @@ class_name DisasterStartPhase
 extends RefCounted
 
 const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
-const Demolish = preload("res://src/tools/demolish_command.gd")
+const Demolish = preload("res://src/tools/city/demolish_command.gd")
 const SpecialZoneGrowth = preload("res://src/simulation/special_zone_growth.gd")
-const TerrainCommand = preload("res://src/tools/terrain_command.gd")
+const TerrainCommand = preload("res://src/tools/landscape/terrain_command.gd")
 const DISASTER_NONE := 0
 const DISASTER_FIRE := 1
 const DISASTER_FLOOD := 2

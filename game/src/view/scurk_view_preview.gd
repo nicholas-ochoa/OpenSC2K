@@ -1,7 +1,7 @@
 class_name ScurkViewPreview
 extends Control
 
-const DrawingWorkspace = preload("res://src/tools/scurk_drawing_workspace.gd")
+const DrawingWorkspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
 
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
 

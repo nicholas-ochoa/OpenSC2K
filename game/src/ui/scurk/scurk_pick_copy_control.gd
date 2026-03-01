@@ -7,7 +7,7 @@ signal copy_requested(
 	source: ScurkMif, large_ids: PackedInt32Array, description: String
 )
 
-const PickCopy = preload("res://src/tools/scurk_pick_copy.gd")
+const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 const ObjectListControl = preload("res://src/ui/scurk/scurk_object_list.gd")
 
 const VIEW_LARGE := 0

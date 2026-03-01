@@ -2,9 +2,9 @@ class_name DisasterMapPhase
 extends RefCounted
 
 const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
-const Demolish = preload("res://src/tools/demolish_command.gd")
+const Demolish = preload("res://src/tools/city/demolish_command.gd")
 const Growth = preload("res://src/simulation/growth_phase.gd")
-const NetworkTiles = preload("res://src/tools/network_command.gd")
+const NetworkTiles = preload("res://src/tools/city/network_command.gd")
 const FIRE_OVERLAY := 0xff
 const TOXIC_OVERLAY := 0xfb
 const FLOOD_OVERLAY := 0xfc

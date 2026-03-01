@@ -530,7 +530,7 @@ static func _clear_terrain_conflicts(
 	random: SimRandom
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
-	var demolition = load("res://src/tools/demolish_command.gd")
+	var demolition = load("res://src/tools/city/demolish_command.gd")
 	var changed_indices := PackedInt32Array()
 	var effect_events: Array[Dictionary] = []
 	var sound_events: Array[int] = []

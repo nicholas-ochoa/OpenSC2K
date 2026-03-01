@@ -8,8 +8,8 @@ signal print_city_requested
 signal undo_requested
 signal redo_requested
 
-const Place = preload("res://src/tools/scurk_place_command.gd")
-const PickCopy = preload("res://src/tools/scurk_pick_copy.gd")
+const Place = preload("res://src/tools/scurk/scurk_place_command.gd")
+const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 const MODE_OBJECTS := 0

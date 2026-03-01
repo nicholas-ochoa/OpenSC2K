@@ -1,7 +1,7 @@
 class_name RciAftermathPhase
 extends RefCounted
 
-const ToolAvailability = preload("res://src/tools/tool_availability.gd")
+const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const NewsQueue = preload("res://src/simulation/news_queue.gd")
 
 const MISC_SIZE := 4800

@@ -1,10 +1,10 @@
 class_name ScurkPlaceCommand
 extends RefCounted
 
-const Buildings = preload("res://src/tools/building_command.gd")
-const Demolish = preload("res://src/tools/demolish_command.gd")
-const Networks = preload("res://src/tools/network_command.gd")
-const PickCopy = preload("res://src/tools/scurk_pick_copy.gd")
+const Buildings = preload("res://src/tools/city/building_command.gd")
+const Demolish = preload("res://src/tools/city/demolish_command.gd")
+const Networks = preload("res://src/tools/city/network_command.gd")
+const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 
 const ROAD_FIRST := 0x1d
 const RADIOACTIVITY := 0x05

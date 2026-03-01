@@ -1,10 +1,10 @@
 class_name DisasterThingTick
 extends RefCounted
 
-const NetworkTiles = preload("res://src/tools/network_command.gd")
-const Demolish = preload("res://src/tools/demolish_command.gd")
-const Landscape = preload("res://src/tools/landscape_command.gd")
-const Buildings = preload("res://src/tools/building_command.gd")
+const NetworkTiles = preload("res://src/tools/city/network_command.gd")
+const Demolish = preload("res://src/tools/city/demolish_command.gd")
+const Landscape = preload("res://src/tools/landscape/landscape_command.gd")
+const Buildings = preload("res://src/tools/city/building_command.gd")
 const DisasterMapDamage = preload("res://src/simulation/disaster_damage.gd")
 const MAP_SIZE := CityState.MAP_SIZE
 const RECORD_SIZE := CityState.THING_RECORD_SIZE

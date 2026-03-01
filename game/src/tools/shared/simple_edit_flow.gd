@@ -1,15 +1,15 @@
 class_name SimpleEditFlow
 extends RefCounted
 
-const Tools = preload("res://src/tools/tool_catalog.gd")
+const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const DisplayNumbers = preload("res://src/ui/shared/display_number_format.gd")
-const Landscapes = preload("res://src/tools/landscape_command.gd")
-const Demolish = preload("res://src/tools/demolish_command.gd")
-const TerrainTools = preload("res://src/tools/terrain_command.gd")
-const Hydro = preload("res://src/tools/hydro_command.gd")
-const SubwayToRail = preload("res://src/tools/subway_to_rail_command.gd")
-const Onramps = preload("res://src/tools/onramp_command.gd")
-const Zones = preload("res://src/tools/zone_command.gd")
+const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
+const Demolish = preload("res://src/tools/city/demolish_command.gd")
+const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
+const Hydro = preload("res://src/tools/city/hydro_command.gd")
+const SubwayToRail = preload("res://src/tools/city/subway_to_rail_command.gd")
+const Onramps = preload("res://src/tools/city/onramp_command.gd")
+const Zones = preload("res://src/tools/city/zone_command.gd")
 
 
 static func apply_supported(

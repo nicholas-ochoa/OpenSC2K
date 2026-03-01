@@ -1,7 +1,7 @@
 class_name CityDebugActions
 extends RefCounted
 
-const ToolAvailability = preload("res://src/tools/tool_availability.gd")
+const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const DisasterStart = preload("res://src/simulation/disaster_start_phase.gd")
 const MovingThingSpawner = preload("res://src/simulation/moving_thing_spawner.gd")
 
