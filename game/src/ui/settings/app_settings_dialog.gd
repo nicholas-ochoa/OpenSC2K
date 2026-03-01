@@ -27,6 +27,7 @@ var fullscreen_check: CheckBox
 var zoom_graphics_selectors: Array[OptionButton] = []
 var overview_graphics_selector: OptionButton
 var default_mayor_edit: LineEdit
+var default_organization_edit: LineEdit
 var renderer_selector: OptionButton
 var background_audio_check: CheckBox
 
@@ -53,16 +54,24 @@ func _ready() -> void:
 	settings_parent.move_child(tabs, 0)
 	var general_grid := _add_settings_tab("General")
 	var mayor_label := Label.new()
-	mayor_label.text = "Default mayor / organization"
+	mayor_label.text = "Default mayor name"
 	general_grid.add_child(mayor_label)
 	default_mayor_edit = LineEdit.new()
 	default_mayor_edit.max_length = 23
 	default_mayor_edit.placeholder_text = "Mayor"
 	default_mayor_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	general_grid.add_child(default_mayor_edit)
+	var organization_label := Label.new()
+	organization_label.text = "Default organization name"
+	general_grid.add_child(organization_label)
+	default_organization_edit = LineEdit.new()
+	default_organization_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	general_grid.add_child(default_organization_edit)
 	var general_note := Label.new()
-	general_note.text = "Used as the mayor name for new cities."
-	general_grid.get_parent().add_child(general_note)
+	general_note.text = "The mayor name is used for new cities.\nThe organization name is saved but is not yet used."
+	general_note.add_theme_color_override("font_color", Color("606060"))
+	general_grid.add_child(Label.new())
+	general_grid.add_child(general_note)
 	var display_grid := _add_settings_tab("Display")
 	var settings_grid := _add_settings_tab("Audio", true)
 	pack_error_label = Label.new()
@@ -243,6 +252,7 @@ func show_values(
 func selected_values() -> Dictionary:
 	return {
 		"default_mayor_name": default_mayor_edit.text.strip_edges(),
+		"default_organization_name": default_organization_edit.text.strip_edges(),
 		"overview_graphics": overview_graphics_selector.selected,
 		"original_compatibility": original_compatibility_check.button_pressed,
 		"warn_sc2x_conversion": warn_sc2x_conversion_check.button_pressed,

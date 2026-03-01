@@ -76,12 +76,15 @@ func _run() -> void:
 		assert(cell.get_index() == (index % 3) * 4 + (5 if index < 3 else 3))
 
 	dialog.folder_dialog.file_selected.emit(folder.path_join("pack.json"))
-	dialog.default_mayor_edit.text = "Port Authority"
+	dialog.default_mayor_edit.text = "Alex"
+	dialog.default_organization_edit.text = "Port Authority"
 	dialog.overview_graphics_selector.select(2)
 	main._apply_settings()
-	assert(main.app_default_mayor_name == "Port Authority")
+	assert(main.app_default_mayor_name == "Alex")
+	assert(main.app_default_organization_name == "Port Authority")
+	assert(AppSettingsStore.load_values(main.app_settings_path).default_organization_name == "Port Authority")
 	assert(main.app_overview_graphics == 2)
-	assert(AppSettingsStore.load_values(main.app_settings_path).default_mayor_name == "Port Authority")
+	assert(AppSettingsStore.load_values(main.app_settings_path).default_mayor_name == "Alex")
 	assert(main.asset_source.graphics_name == "Runtime test")
 	assert(dialog.pack_name_labels.graphics.text == "Runtime test")
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels == sprite.pixels)
@@ -96,7 +99,7 @@ func _run() -> void:
 	assert(main.city.document.serialize().data == before)
 	main.settings_dialog.hide()
 	main._open_new_city_dialog()
-	assert(main.new_city_dialog.mayor_name_input.text == "Port Authority")
+	assert(main.new_city_dialog.mayor_name_input.text == "Alex")
 	assert(main.city.document.serialize().data == before)
 	main.new_city_dialog.hide()
 	main.queue_free()

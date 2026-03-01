@@ -15,6 +15,7 @@ static func load_values(
 ) -> Dictionary:
 	var result := {
 		"default_mayor_name": "Mayor",
+		"default_organization_name": "",
 		"overview_graphics": 0,
 		"music_volume": clampf(default_music_volume, 0.0, 1.0),
 		"effects_volume": clampf(default_effects_volume, 0.0, 1.0),
@@ -38,6 +39,7 @@ static func load_values(
 		return result
 
 	result.default_mayor_name = str(config.get_value("general", "default_mayor_name", "Mayor"))
+	result.default_organization_name = str(config.get_value("general", "default_organization_name", ""))
 	result.overview_graphics = clampi(int(config.get_value("graphics", "overview_graphics", 0)), 0, 2)
 	result.music_volume = clampf(
 		float(config.get_value("audio", "music_volume", result.music_volume)),
@@ -120,6 +122,7 @@ static func save_values(
 	warn_sc2x_conversion: Variant = null,
 	default_mayor_name: Variant = null,
 	overview_graphics: Variant = null,
+	default_organization_name: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 
@@ -133,6 +136,9 @@ static func save_values(
 	if default_mayor_name != null:
 		var mayor := str(default_mayor_name).strip_edges().left(23)
 		config.set_value("general", "default_mayor_name", "Mayor" if mayor.is_empty() else mayor)
+
+	if default_organization_name != null:
+		config.set_value("general", "default_organization_name", str(default_organization_name).strip_edges())
 
 	if overview_graphics != null:
 		config.set_value("graphics", "overview_graphics", clampi(int(overview_graphics), 0, 2))
