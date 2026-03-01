@@ -137,7 +137,7 @@ func _run() -> void:
 		var encoded := DesktopCursorPresenter.mask_image(masked)
 
 		for at in 1024:
-			var color := encoded.get_pixel(at % 32, at / 32)
+			var color := encoded.get_pixel(at % 32, IntegerMath.div_trunc(at, 32))
 			var source: Color = masked.palette[masked.pixels[at]]
 			assert(color.r8 == source.r8 and color.g8 == source.g8 and color.b8 == source.b8)
 			assert(color.a8 == 255 * masked.and_mask[at])

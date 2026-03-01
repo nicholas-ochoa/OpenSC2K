@@ -362,7 +362,7 @@ func decoded_size(chunk_id: String) -> int:
 		return map_size * map_size
 
 	if map_size > 128 and large_version >= 2:
-		var factor := map_size * map_size / 16384
+		var factor := IntegerMath.div_trunc(map_size * map_size, 16384)
 
 		match chunk_id:
 			"XTXT":
@@ -381,10 +381,10 @@ func decoded_size(chunk_id: String) -> int:
 		return map_size * map_size * (2 if chunk_id == "ALTM" else 1)
 
 	if chunk_id in HALF_MAP_CHUNKS:
-		return (map_size / 2) * (map_size / 2)
+		return (IntegerMath.div_trunc(map_size, 2)) * (IntegerMath.div_trunc(map_size, 2))
 
 	if chunk_id in QUARTER_MAP_CHUNKS:
-		return (map_size / 4) * (map_size / 4)
+		return (IntegerMath.div_trunc(map_size, 4)) * (IntegerMath.div_trunc(map_size, 4))
 
 	return DECODED_SIZES.get(chunk_id, -1)
 
@@ -436,7 +436,7 @@ func upgrade_large_limits() -> void:
 		if id == "XTHG":
 			for index in 480:
 				expanded[index] = old[index]
-				expanded[expanded.size() / 2 + index] = old[480 + index]
+				expanded[IntegerMath.div_trunc(expanded.size(), 2) + index] = old[480 + index]
 		else:
 			for index in old.size():
 				expanded[index] = old[index]

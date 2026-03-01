@@ -137,7 +137,7 @@ static func _add_value(current: int, count: int, cost: int) -> int:
 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
-	var quotient := int(absi(value) / absi(divisor))
+	var quotient := int(IntegerMath.div_trunc(absi(value), absi(divisor)))
 
 	return -quotient if value < 0 else quotient
 

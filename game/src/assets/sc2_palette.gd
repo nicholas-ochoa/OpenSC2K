@@ -103,7 +103,7 @@ static func index_encoding() -> Sc2Palette:
 func animation_index_map(base_ticks: int) -> PackedInt32Array:
 	var safe_ticks := maxi(0, base_ticks)
 	var fast_steps := posmod(safe_ticks, 8)
-	var slow_ticks := int(safe_ticks / 8)
+	var slow_ticks := int(IntegerMath.div_trunc(safe_ticks, 8))
 	var slow_steps := 0 if slow_ticks == 0 else 1 + posmod(slow_ticks - 1, 2)
 
 	return animation_index_map_steps(fast_steps, slow_steps)
@@ -112,8 +112,8 @@ func animation_index_map(base_ticks: int) -> PackedInt32Array:
 # scurk has its own palette clock, including the startup delay
 func scurk_animation_index_map(timer_ticks: int) -> PackedInt32Array:
 	var safe_ticks := maxi(0, timer_ticks)
-	var fast_steps := 0 if safe_ticks < 6 else 1 + int((safe_ticks - 6) / 5)
-	var slow_steps := 0 if safe_ticks < 31 else 1 + int((safe_ticks - 31) / 30)
+	var fast_steps := 0 if safe_ticks < 6 else 1 + int(IntegerMath.div_trunc((safe_ticks - 6), 5))
+	var slow_steps := 0 if safe_ticks < 31 else 1 + int(IntegerMath.div_trunc((safe_ticks - 31), 30))
 
 	return animation_index_map_steps(fast_steps, slow_steps)
 

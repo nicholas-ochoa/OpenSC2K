@@ -21,7 +21,7 @@ func _initialize() -> void:
 
 	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
 	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
-	var center := CityIsometricRenderer.output_size_for_view(2, city.map_size) / 2 / 256
+	var center := IntegerMath.div_trunc_vec2i(IntegerMath.div_trunc_vec2i(CityIsometricRenderer.output_size_for_view(2, city.map_size), 2), 256)
 	context = CityGpuBuildContext.new()
 	context.atlas_edge = 64
 	var request := {"city": city, "prepared": true, "visibility": {}, "palette": Sc2Palette.index_encoding(),

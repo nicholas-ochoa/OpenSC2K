@@ -1,5 +1,8 @@
 class_name CityDataGrid
 extends RefCounted
+
+# Inline integer division avoids a function call for every cell.
+@warning_ignore_start("integer_division")
 # coordinates for legacy coarse grids and sc2x per-tile grids
 
 

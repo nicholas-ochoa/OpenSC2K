@@ -204,10 +204,10 @@ static func inspect(
 		return {"ok": false, "error": "query position is outside the city"}
 
 	for checked in [
-		["XTRF", (map_edge / 2) * (map_edge / 2)],
-		["XPLT", (map_edge / 2) * (map_edge / 2)],
-		["XVAL", (map_edge / 2) * (map_edge / 2)],
-		["XCRM", (map_edge / 2) * (map_edge / 2)],
+		["XTRF", (IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))],
+		["XPLT", (IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))],
+		["XVAL", (IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))],
+		["XCRM", (IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
 
@@ -692,7 +692,7 @@ static func _traffic(
 	if values.size() == map_edge * map_edge:
 		var value := int(values[point.x * map_edge + point.y])
 
-		return value if _is_highway_traffic_tile(building) else value / 2
+		return value if _is_highway_traffic_tile(building) else IntegerMath.div_trunc(value, 2)
 
 	var total := 0
 
@@ -711,7 +711,7 @@ static func _traffic(
 	if _is_highway_traffic_tile(building):
 		total *= 2
 
-	return int(total / 8)
+	return int(IntegerMath.div_trunc(total, 8))
 
 
 static func _is_traffic_tile(building: int) -> bool:
@@ -753,7 +753,7 @@ static func _water_detail(city: CityState, point: Vector2i, building: int) -> St
 
 		if city.is_powered(point.x, point.y):
 			supply = city.document.misc_u32(0x0e40) * 5
-			supply += int((city.document.misc_u32(0x68) & 0xff) / 2)
+			supply += int(IntegerMath.div_trunc((city.document.misc_u32(0x68) & 0xff), 2))
 
 			for x in range(maxi(point.x - 1, 0), mini(point.x + 2, map_edge)):
 				for y in range(maxi(point.y - 1, 0), mini(point.y + 2, map_edge)):

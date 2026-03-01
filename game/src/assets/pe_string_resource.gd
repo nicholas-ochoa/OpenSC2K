@@ -17,7 +17,7 @@ static func load_ids(path: String, resource_ids: PackedInt32Array) -> Dictionary
 			return _failure("string resource ID is outside the valid range")
 
 		wanted_ids[resource_id] = true
-		wanted_blocks[int(resource_id / STRINGS_PER_BLOCK) + 1] = true
+		wanted_blocks[int(IntegerMath.div_trunc(resource_id, STRINGS_PER_BLOCK)) + 1] = true
 
 	if wanted_ids.is_empty():
 		return {"ok": true, "strings": {}, "error": ""}
@@ -121,7 +121,7 @@ static func _decode_block(
 		var length := _read_u16(bytes, cursor)
 		cursor += 2
 
-		if length > int((end - cursor) / 2):
+		if length > int(IntegerMath.div_trunc((end - cursor), 2)):
 			return _failure("PE string block %d text is truncated" % block_id)
 
 		var value := ""

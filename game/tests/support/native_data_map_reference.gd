@@ -44,7 +44,7 @@ static func run(city: CityState) -> Dictionary:
 			var building := int(city.buildings[index])
 			var flags := int(city.tile_flags[index])
 			var zone := int(city.zones[index]) & 15
-			sources[index] = int(old.XPLT[index]) + int(old.XTRF[index]) / 5
+			sources[index] = int(old.XPLT[index]) + IntegerMath.div_trunc(int(old.XTRF[index]), 5)
 			sources[index] += int(PollutionPhase.BUILDING_POLLUTION.get(building, 0)) * 4
 
 			if building == PollutionPhase.RADIOACTIVITY:
@@ -80,7 +80,7 @@ static func run(city: CityState) -> Dictionary:
 			elif building >= 0xc6:
 				weights[index] = 12 if building >= 0xfb and building <= 0xfe else 2
 
-	var center := Vector2i(edge / 2, edge / 2) if center_count == 0 else Vector2i(center_sum.x / center_count, center_sum.y / center_count)
+	var center := Vector2i(IntegerMath.div_trunc(edge, 2), IntegerMath.div_trunc(edge, 2)) if center_count == 0 else Vector2i(IntegerMath.div_trunc(center_sum.x, center_count), IntegerMath.div_trunc(center_sum.y, center_count))
 	var ordinances := doc.misc_u32(PollutionPhase.MISC_ORDINANCES)
 	var divisor := PollutionPhase.pollution_divisor(doc)
 	var pollution := NativeGridMath.bytes(NativeGridMath.smooth(sources, edge, 4, maxi(divisor, 1) * 2, 1, 2, city.simulation_slice), city.simulation_slice)
@@ -112,27 +112,27 @@ static func run(city: CityState) -> Dictionary:
 
 		for y in edge:
 			var index := x * edge + y
-			growth[index] = clampi((int(old.XROG[index]) * 7 + (int(population[index]) - int(old.XPOP[index])) * 8 + 128) / 8, 0, 255)
+			growth[index] = clampi(IntegerMath.div_trunc((int(old.XROG[index]) * 7 + (int(population[index]) - int(old.XPOP[index])) * 8 + 128), 8), 0, 255)
 			var zone := int(city.zones[index]) & 15
 
 			if city.buildings[index] < PollutionPhase.FIRST_ROAD and zone == 0:
 				continue
 
-			var distance_value := 64 - (absi(center.x - x) + absi(center.y - y)) / 2
+			var distance_value := 64 - IntegerMath.div_trunc((absi(center.x - x) + absi(center.y - y)), 2)
 			var value := residential[index]
 
 			match zone:
 				3, 4:
-					value += maxi(distance_value, 0) - int(pollution[index]) / 4 - int(old.XCRM[index]) / 3 + int(old.XPOP[index]) / 3
+					value += maxi(distance_value, 0) - IntegerMath.div_trunc(int(pollution[index]), 4) - IntegerMath.div_trunc(int(old.XCRM[index]), 3) + IntegerMath.div_trunc(int(old.XPOP[index]), 3)
 				5, 6:
 					value = industrial[index] + (21 if zone == 6 else 0)
-					value += maxi(distance_value / 4, 0) - int(pollution[index]) / 16 - int(old.XCRM[index]) / 4
+					value += maxi(IntegerMath.div_trunc(distance_value, 4), 0) - IntegerMath.div_trunc(int(pollution[index]), 16) - IntegerMath.div_trunc(int(old.XCRM[index]), 4)
 				_:
 					value += 21 if old.XPOP[index] < 64 else 0
-					value += maxi(distance_value / 2, 0) - int(pollution[index]) / 5 - int(old.XCRM[index]) / 3
+					value += maxi(IntegerMath.div_trunc(distance_value, 2), 0) - IntegerMath.div_trunc(int(pollution[index]), 5) - IntegerMath.div_trunc(int(old.XCRM[index]), 3)
 
 			if PollutionPhase.LAND_VALUE_HALVED.has(int(city.buildings[index])):
-				value -= value / 2
+				value -= IntegerMath.div_trunc(value, 2)
 
 			land[index] = clampi(value, 0, 255)
 
@@ -145,7 +145,7 @@ static func run(city: CityState) -> Dictionary:
 			sources[index] = 0
 
 			if city.buildings[index] >= PollutionPhase.FIRST_ROAD or city.zones[index] & 15:
-				sources[index] = int(population[index]) - int(land[index]) / 4 - int(police[index]) / 2
+				sources[index] = int(population[index]) - IntegerMath.div_trunc(int(land[index]), 4) - IntegerMath.div_trunc(int(police[index]), 2)
 
 				if ordinances & PollutionPhase.CRIME_REDUCTION_ORDINANCE:
 					sources[index] += 16
@@ -157,9 +157,9 @@ static func run(city: CityState) -> Dictionary:
 		doc.find_chunk(id).set_decoded_payload(updates[id])
 
 	# MISC totals retain the original half-resolution area unit for economic consumers.
-	var pollution_total := _sum(pollution, city) / 4
-	var land_total := _sum(land, city) / 4
-	var crime_total := _sum(crime, city) / 4
+	var pollution_total := IntegerMath.div_trunc(_sum(pollution, city), 4)
+	var land_total := IntegerMath.div_trunc(_sum(land, city), 4)
+	var crime_total := IntegerMath.div_trunc(_sum(crime, city), 4)
 
 	for update in [[PollutionPhase.MISC_CITY_POLLUTION, pollution_total],
 		[PollutionPhase.MISC_CITY_LAND_VALUE, land_total], [PollutionPhase.MISC_CITY_CRIME, crime_total],
@@ -186,9 +186,9 @@ static func _add_stations(city: CityState, police: PackedByteArray, fire: Packed
 			var strength := 0
 
 			if building == PollutionPhase.POLICE_STATION:
-				strength = (city.document.misc_i32(PollutionPhase.MISC_PRISON_BONUS) + 5) * PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_POLICE) / 2
+				strength = IntegerMath.div_trunc((city.document.misc_i32(PollutionPhase.MISC_PRISON_BONUS) + 5) * PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_POLICE), 2)
 			elif building == PollutionPhase.FIRE_STATION:
-				strength = PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_FIRE) * 5 / 2
+				strength = IntegerMath.div_trunc(PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_FIRE) * 5, 2)
 			else:
 				continue
 

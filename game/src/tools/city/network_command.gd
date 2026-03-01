@@ -787,7 +787,7 @@ static func _bridge_tile(
 		BRIDGE_WIRE:
 			return 0x5c
 		BRIDGE_RAIL:
-			var middle := int(span_length / 2)
+			var middle := int(IntegerMath.div_trunc(span_length, 2))
 
 			if (
 				span_index != middle
@@ -798,7 +798,7 @@ static func _bridge_tile(
 
 			return 0x5a
 		BRIDGE_ROAD_RAISING:
-			var quarter := int((span_length + 1) / 4)
+			var quarter := int(IntegerMath.div_trunc((span_length + 1), 4))
 
 			if span_index < quarter:
 				return 0x57
@@ -815,8 +815,8 @@ static func _bridge_tile(
 			return 0x57
 		BRIDGE_ROAD_SUSPENSION:
 			var pattern_span := (span_length - 2) % 5 + 2
-			var first_pattern := int(pattern_span / 2)
-			var pattern_end := span_length - int((pattern_span + 1) / 2)
+			var first_pattern := int(IntegerMath.div_trunc(pattern_span, 2))
+			var pattern_end := span_length - int(IntegerMath.div_trunc((pattern_span + 1), 2))
 
 			if span_index < first_pattern or span_index >= pattern_end:
 				return 0x57

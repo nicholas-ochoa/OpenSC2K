@@ -214,7 +214,7 @@ static func patch_static_image(
 	var half_height := int(configuration.half_height)
 	var full_origin_x := int(configuration.side_margin) + map_edge * half_width
 	var top_margin := int(configuration.top_margin)
-	var bottom_extra := int(configuration.tile_height) + int(sprite_limit.x / 4) + 1
+	var bottom_extra := int(configuration.tile_height) + int(IntegerMath.div_trunc(sprite_limit.x, 4)) + 1
 	var top_extra := 32 * int(configuration.altitude_step) + sprite_limit.y
 	var first_diagonal := maxi(0, floori(float(native_rect.position.y - top_margin - bottom_extra) / half_height))
 	var last_diagonal := mini(2 * (map_edge - 1), ceili(float(native_rect.end.y - top_margin + top_extra) / half_height))
@@ -301,7 +301,7 @@ static func dirty_screen_rect(
 			continue
 
 		seen[index] = true
-		var x := int(index / map_edge)
+		var x := int(IntegerMath.div_trunc(index, map_edge))
 		var y := index % map_edge
 		var bounds := _potential_tile_bounds(
 			configuration, sprite_limit, x, y, map_edge
@@ -350,7 +350,7 @@ static func _potential_tile_bounds(
 	var bottom := (
 		flat_base_y
 		+ int(configuration.tile_height)
-		+ int(sprite_limit.x / 4)
+		+ int(IntegerMath.div_trunc(sprite_limit.x, 4))
 		+ 1
 	)
 
@@ -534,7 +534,7 @@ static func output_size_for_view(view_size: int, map_edge: int = 128) -> Vector2
 	if configuration.is_empty():
 		return Vector2i.ZERO
 
-	return (IMAGE_SIZE_LARGE + Vector2i((map_edge - 128) * 32, (map_edge - 128) * 16)) / int(configuration.divisor)
+	return IntegerMath.div_trunc_vec2i((IMAGE_SIZE_LARGE + Vector2i((map_edge - 128) * 32, (map_edge - 128) * 16)), int(configuration.divisor))
 
 
 static func tile_polygon(city: CityState, x: int, y: int, land_surface := false) -> PackedVector2Array:
@@ -626,7 +626,7 @@ static func screen_to_tile(city: CityState, point: Vector2, land_surface := fals
 	var result_order := -1
 
 	for index in candidates:
-		var x: int = int(index) / map_edge
+		var x: int = IntegerMath.div_trunc(int(index), map_edge)
 		var y: int = int(index) % map_edge
 		var order := (x + y) * map_edge + y
 		var visible := city.land_altitude(x, y) < city.visible_altitude_levels if land_surface else city.tile_is_visible(x, y)
@@ -667,7 +667,7 @@ static func transient_effect_position(
 	var divisor := int(configuration.divisor)
 	var large_offset: Vector2i = effect.get("screen_offset", Vector2i.ZERO)
 	var offset := Vector2i(
-		int(large_offset.x / divisor), int(large_offset.y / divisor)
+		int(IntegerMath.div_trunc(large_offset.x, divisor)), int(IntegerMath.div_trunc(large_offset.y, divisor))
 	)
 	var effect_altitude := int(
 		effect.get("altitude", city.water_altitude(point.x, point.y))
@@ -811,8 +811,8 @@ static func _draw_tile(
 				sprites, palette, cache, power_marker.sprite_id, false
 			)
 			var marker_x := (
-				screen_x + int(building_image.get_width() / 2)
-				- int(marker_image.get_width() / 2)
+				screen_x + int(IntegerMath.div_trunc(building_image.get_width(), 2))
+				- int(IntegerMath.div_trunc(marker_image.get_width(), 2))
 			)
 			_blend_on_base(
 				output, marker_image, marker_x, building_base_y, configuration.tile_height
@@ -826,7 +826,7 @@ static func _draw_tile(
 		)
 		var dispatch_x := (
 			screen_x + int(configuration.half_width)
-			- int(dispatch_image.get_width() / 2)
+			- int(IntegerMath.div_trunc(dispatch_image.get_width(), 2))
 		)
 		var dispatch_base_y := (
 			flat_base_y - city.land_altitude(x, y) * int(configuration.altitude_step)
@@ -857,7 +857,7 @@ static func _draw_tile(
 			)
 			var special_x := (
 				screen_x + int(configuration.half_width)
-				- int(special_image.get_width() / 2)
+				- int(IntegerMath.div_trunc(special_image.get_width(), 2))
 			)
 			var special_altitude := city.object_altitude(x, y)
 			var special_base_y := (
@@ -1636,7 +1636,7 @@ static func dynamic_draw_commands(
 
 		while found >= 0:
 			var point := Vector2i(
-				int(found / map_edge), found % map_edge
+				int(IntegerMath.div_trunc(found, map_edge)), found % map_edge
 			)
 			entries.append({
 				"order": (point.x + point.y) * map_edge + point.y,
@@ -1719,7 +1719,7 @@ static func special_overlay_draw_command(
 		"sprite_id": int(visual.sprite_id),
 		"flip": bool(visual.flip),
 		"position": Vector2i(
-			screen_x + int(configuration.half_width) - int(entry.width / 2),
+			screen_x + int(configuration.half_width) - int(IntegerMath.div_trunc(entry.width, 2)),
 			base_y + int(configuration.tile_height) - entry.height,
 		),
 		"shadow": false,
@@ -1798,7 +1798,7 @@ static func moving_thing_draw_commands_for_visual(
 			+ (visual.x - visual.y) * HALF_WIDTH + HALF_WIDTH + visual.screen_x
 		)
 		destination = Vector2i(
-			center_x - int(entry.width / 2),
+			center_x - int(IntegerMath.div_trunc(entry.width, 2)),
 			TOP_MARGIN + TILE_HEIGHT
 				+ (visual.x + visual.y) * HALF_HEIGHT + visual.screen_y
 				- visual.elevation - entry.height
@@ -1814,7 +1814,7 @@ static func moving_thing_draw_commands_for_visual(
 			+ int((visual.px - visual.py) / THING_X_DIVISOR[view_size])
 		)
 		destination = Vector2i(
-			center_x - int(entry.width / 2),
+			center_x - int(IntegerMath.div_trunc(entry.width, 2)),
 			int(configuration.top_margin)
 				+ (visual.x + visual.y) * int(configuration.half_height)
 				+ int(configuration.tile_height)
@@ -1924,7 +1924,7 @@ static func patch_static_occlusion_commands(
 		if index < 0 or index >= (map_edge * map_edge):
 			continue
 
-		var x := int(index / map_edge)
+		var x := int(IntegerMath.div_trunc(index, map_edge))
 		var y := index % map_edge
 		var order := (x + y) * map_edge + y
 		replacements[order] = _tile_occlusion_commands(
@@ -2458,7 +2458,7 @@ static func building_baseline_offset(
 		return int(configuration.half_height)
 
 	if building_id >= 0x70:
-		return int(sprite_width / 4) - int(configuration.half_height)
+		return int(IntegerMath.div_trunc(sprite_width, 4)) - int(configuration.half_height)
 
 	if terrain_id == 0x0d:
 		return -int(configuration.altitude_step)

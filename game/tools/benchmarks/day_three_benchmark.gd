@@ -13,7 +13,7 @@ func _run() -> void:
 	var doc := Sc2File.load_path(args[0])
 	assert(doc.is_valid() and doc.full_resolution_maps())
 	var city := CityState.from_document(doc)
-	assert(city.set_age_in_days(city.age_in_days() / 25 * 25 + 1))
+	assert(city.set_age_in_days(IntegerMath.div_trunc(city.age_in_days(), 25) * 25 + 1))
 	var controller := GameSpeedController.new(SimulationEngine.new(city, 123, 456, 789))
 	controller.set_speed(GameSpeedController.Speed.CHEETAH)
 	controller.simulation_ready = true

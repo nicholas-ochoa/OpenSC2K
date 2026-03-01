@@ -79,7 +79,7 @@ static func update_airplane(
 		# building artwork height is part of aircraft physics
 		var sprite_height: int = BUILDING_SPRITE_HEIGHTS[building - 0x71]
 
-		if ThingData.read(things, offset + 5) < int(sprite_height / 3):
+		if ThingData.read(things, offset + 5) < int(IntegerMath.div_trunc(sprite_height, 3)):
 			_convert_to_explosion(things, record, 5, 1)
 			counters.crashed_airplanes += 1
 
@@ -290,10 +290,10 @@ static func update_helicopter(
 				var target_y: int = (random.next_u15() & 0x3f) - 0x20 + city_center.y
 
 				if target_x < 0 or target_x >= map_edge:
-					target_x = random.next_u15() % (map_edge / 2) + map_edge / 4
+					target_x = random.next_u15() % (IntegerMath.div_trunc(map_edge, 2)) + IntegerMath.div_trunc(map_edge, 4)
 
 				if target_y < 0 or target_y >= map_edge:
-					target_y = random.next_u15() % (map_edge / 2) + map_edge / 4
+					target_y = random.next_u15() % (IntegerMath.div_trunc(map_edge, 2)) + IntegerMath.div_trunc(map_edge, 4)
 
 				ThingData.write(things, offset + 8, target_x)
 				ThingData.write(things, offset + 9, target_y)
@@ -486,10 +486,10 @@ static func _direction_between(start: Vector2i, target: Vector2i) -> int:
 	var absolute_x := absi(difference.x)
 	var absolute_y := absi(difference.y)
 
-	if absolute_x < int((absolute_y + 1) / 2):
+	if absolute_x < int(IntegerMath.div_trunc((absolute_y + 1), 2)):
 		return 0 if difference.y < 0 else 4
 
-	if absolute_y < int((absolute_x + 1) / 2):
+	if absolute_y < int(IntegerMath.div_trunc((absolute_x + 1), 2)):
 		return 6 if difference.x < 0 else 2
 
 	if difference.x < 0:

@@ -470,7 +470,7 @@ func mayor_name() -> String:
 
 
 func label(label_id: int) -> String:
-	if label_id < 0 or label_id >= document.decoded_size("XLAB") / LABEL_RECORD_SIZE:
+	if label_id < 0 or label_id >= IntegerMath.div_trunc(document.decoded_size("XLAB"), LABEL_RECORD_SIZE):
 		return ""
 
 	var chunk := document.find_chunk("XLAB")
@@ -490,7 +490,7 @@ func label(label_id: int) -> String:
 
 
 func set_label(label_id: int, value: String) -> bool:
-	if label_id < 0 or label_id >= document.decoded_size("XLAB") / LABEL_RECORD_SIZE:
+	if label_id < 0 or label_id >= IntegerMath.div_trunc(document.decoded_size("XLAB"), LABEL_RECORD_SIZE):
 		return false
 
 	var chunk := document.find_chunk("XLAB")
@@ -516,7 +516,7 @@ func set_label(label_id: int, value: String) -> bool:
 
 
 func microsim(microsim_id: int) -> Dictionary:
-	if microsim_id < 0 or microsim_id >= document.decoded_size("XMIC") / MICROSIM_RECORD_SIZE:
+	if microsim_id < 0 or microsim_id >= IntegerMath.div_trunc(document.decoded_size("XMIC"), MICROSIM_RECORD_SIZE):
 		return {}
 
 	var chunk := document.find_chunk("XMIC")
@@ -536,7 +536,7 @@ func microsim(microsim_id: int) -> Dictionary:
 
 
 func thing(thing_id: int) -> Dictionary:
-	if thing_id < 0 or thing_id >= document.decoded_size("XTHG") / (24 if map_size > 128 else 12):
+	if thing_id < 0 or thing_id >= IntegerMath.div_trunc(document.decoded_size("XTHG"), (24 if map_size > 128 else 12)):
 		return {}
 
 	var chunk := document.find_chunk("XTHG")
@@ -683,11 +683,11 @@ func set_no_disasters_enabled(enabled: bool) -> bool:
 
 
 func current_year() -> int:
-	return founding_year() + int(age_in_days() / 300)
+	return founding_year() + int(IntegerMath.div_trunc(age_in_days(), 300))
 
 
 func current_month() -> int:
-	return int(age_in_days() % 300 / 25) + 1
+	return int(IntegerMath.div_trunc(age_in_days() % 300, 25)) + 1
 
 
 func current_day() -> int:
@@ -783,7 +783,7 @@ func thing_count() -> int:
 
 
 func microsim_count() -> int:
-	return document.decoded_size("XMIC") / MICROSIM_RECORD_SIZE
+	return IntegerMath.div_trunc(document.decoded_size("XMIC"), MICROSIM_RECORD_SIZE)
 
 
 static func copy_for_edit(source: CityState) -> CityState:

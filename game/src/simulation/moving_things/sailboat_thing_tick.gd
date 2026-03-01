@@ -27,7 +27,7 @@ static func update(
 ) -> void:
 	var offset := record * RECORD_SIZE
 
-	if counters.active_sailboats > 4 * (map_edge * map_edge / 16384):
+	if counters.active_sailboats > 4 * (IntegerMath.div_trunc(map_edge * map_edge, 16384)):
 		_remove(text, things, record, map_edge)
 		counters.removed_sailboats += 1
 

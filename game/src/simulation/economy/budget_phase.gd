@@ -68,7 +68,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	var month := int(city.age_in_days() % 300 / 25)
+	var month := int(IntegerMath.div_trunc(city.age_in_days() % 300, 25))
 	var funds_before := _read_i32(misc, MISC_FUNDS)
 	var funds := funds_before
 	var settled_year := false
@@ -295,7 +295,7 @@ static func _divide_toward_zero(value: int, divisor: int) -> int:
 	if divisor == 0:
 		return 0
 
-	var quotient := int(absi(value) / absi(divisor))
+	var quotient := int(IntegerMath.div_trunc(absi(value), absi(divisor)))
 
 	return -quotient if (value < 0) != (divisor < 0) else quotient
 

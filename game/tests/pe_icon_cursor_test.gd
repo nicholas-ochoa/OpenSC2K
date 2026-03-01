@@ -85,7 +85,7 @@ func _fixture(bits: int, cursor: bool) -> PackedByteArray:
 	for row in 2:
 		for x in 4:
 			var value := (x + 1 - row) % 2
-			bytes[pixels + row * 4 + int(x * bits / 8)] |= value << (8 - bits - (x * bits) % 8)
+			bytes[pixels + row * 4 + int(IntegerMath.div_trunc(x * bits, 8))] |= value << (8 - bits - (x * bits) % 8)
 
 	bytes[pixels + 8] = 0xc0
 	bytes[pixels + 12] = 0x30

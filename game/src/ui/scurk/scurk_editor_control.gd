@@ -710,7 +710,7 @@ func clear_object() -> void:
 			continue
 
 		var width := (
-			int(active_base_width / DrawingWorkspace.view_divisor(view))
+			int(IntegerMath.div_trunc(active_base_width, DrawingWorkspace.view_divisor(view)))
 			if active_workspace
 			else pixel_canvas.sprite_width
 		)

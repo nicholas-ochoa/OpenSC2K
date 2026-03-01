@@ -124,7 +124,7 @@ static func calculate_current_values(
 
 	var developed_divisor := _divide_toward_zero(developed_tiles, 4) + 1
 	var unemployment := int(
-		zone_populations[7] * 100 / (total_zone_population + zone_populations[7] + 1)
+		IntegerMath.div_trunc(zone_populations[7] * 100, (total_zone_population + zone_populations[7] + 1))
 	)
 
 	var values := PackedInt64Array(
@@ -133,10 +133,10 @@ static func calculate_current_values(
 			_divide_toward_zero(adjusted_arcology_population, 2) + tax_populations[0] * 10,
 			_divide_toward_zero(adjusted_arcology_population, 4) + tax_populations[1] * 10,
 			_divide_toward_zero(adjusted_arcology_population, 4) + tax_populations[2] * 10,
-			int(city.document.misc_u32(MISC_CITY_TRAFFIC) / transport_cost),
-			int(city.document.misc_u32(MISC_CITY_POLLUTION) / developed_divisor),
-			int(city.document.misc_u32(MISC_CITY_LAND_VALUE) / developed_divisor),
-			int(city.document.misc_u32(MISC_CITY_CRIME) / developed_divisor),
+			int(IntegerMath.div_trunc(city.document.misc_u32(MISC_CITY_TRAFFIC), transport_cost)),
+			int(IntegerMath.div_trunc(city.document.misc_u32(MISC_CITY_POLLUTION), developed_divisor)),
+			int(IntegerMath.div_trunc(city.document.misc_u32(MISC_CITY_LAND_VALUE), developed_divisor)),
+			int(IntegerMath.div_trunc(city.document.misc_u32(MISC_CITY_CRIME), developed_divisor)),
 			100 - power_usage_percent,
 			100 - water_usage_percent,
 			city.document.misc_u32(MISC_WORKFORCE_LE),
@@ -164,8 +164,8 @@ static func advance(city: CityState, current_values: PackedInt64Array) -> Dictio
 		return {"ok": false, "error": "XGRP is missing or has the wrong size"}
 
 	var data := chunk.decoded_payload.duplicate()
-	var month := int(city.age_in_days() % 300 / 25)
-	var elapsed_years := int(city.age_in_days() / 300)
+	var month := int(IntegerMath.div_trunc(city.age_in_days() % 300, 25))
+	var elapsed_years := int(IntegerMath.div_trunc(city.age_in_days(), 300))
 
 	for series in SERIES_COUNT:
 		for index in range(11, 0, -1):
@@ -207,4 +207,4 @@ static func _write_value(data: PackedByteArray, series: int, index: int, value: 
 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
-	return int(value / divisor)
+	return int(IntegerMath.div_trunc(value, divisor))

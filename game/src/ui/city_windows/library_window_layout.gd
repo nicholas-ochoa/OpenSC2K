@@ -23,8 +23,8 @@ static func rects(viewport_size: Vector2i, count := 4) -> Array[Rect2i]:
 	)
 	var group_size := window_size + cascade_size
 	var start := Vector2i(
-		maxi(VIEWPORT_MARGIN, (viewport_size.x - group_size.x) / 2),
-		maxi(VIEWPORT_MARGIN, (viewport_size.y - group_size.y) / 2),
+		maxi(VIEWPORT_MARGIN, IntegerMath.div_trunc((viewport_size.x - group_size.x), 2)),
+		maxi(VIEWPORT_MARGIN, IntegerMath.div_trunc((viewport_size.y - group_size.y), 2)),
 	)
 
 	for index in count:

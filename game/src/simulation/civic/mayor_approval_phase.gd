@@ -83,7 +83,7 @@ static func run(city: CityState, random, previous_approval: int) -> Dictionary:
 
 	var updated_records := 0
 
-	for record_id in range(1, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
+	for record_id in range(1, IntegerMath.div_trunc(microsims.size(), CityState.MICROSIM_RECORD_SIZE)):
 		var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 
 		if int(microsims[offset]) != TILE_MAYOR_HOUSE:

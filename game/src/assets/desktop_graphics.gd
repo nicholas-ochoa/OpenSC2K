@@ -76,8 +76,8 @@ static func cursor_id(app: String, group: int) -> int:
 		if CITY_SYSTEM_GROUPS.has(group):
 			return CITY_SYSTEM_GROUPS[group]
 
-		if group / 1000 in [1, 2, 3] and group % 1000 < 30:
-			return 22 + (group / 1000 - 1) * 30 + group % 1000
+		if IntegerMath.div_trunc(group, 1000) in [1, 2, 3] and group % 1000 < 30:
+			return 22 + (IntegerMath.div_trunc(group, 1000) - 1) * 30 + group % 1000
 	elif app == "scurk":
 		if group >= 30000 and group <= 30005:
 			return group - 29999

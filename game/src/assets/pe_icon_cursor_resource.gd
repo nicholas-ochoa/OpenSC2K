@@ -100,8 +100,7 @@ static func decode_image(bytes: PackedByteArray, cursor := false) -> Dictionary:
 	if header != 40 or width < 1 or width > 256 or stored_height < 2 or stored_height > 512 or stored_height % 2 != 0:
 		return _failure("Unsupported icon/cursor DIB dimensions or header")
 
-	# dib height counts the pixels and the mask, halve it for the visible cursor
-	var height := int(stored_height / 2)
+	var height := int(IntegerMath.div_trunc(stored_height, 2))
 
 	if hotspot.x >= width or hotspot.y >= height:
 		return _failure("Cursor hotspot is outside its image")
@@ -118,8 +117,8 @@ static func decode_image(bytes: PackedByteArray, cursor := false) -> Dictionary:
 		return _failure("Invalid icon/cursor palette length")
 
 	var pixels_start := start + header + count * 4
-	var xor_stride := int((width * bits + 31) / 32) * 4
-	var and_stride := int((width + 31) / 32) * 4
+	var xor_stride := int(IntegerMath.div_trunc((width * bits + 31), 32)) * 4
+	var and_stride := int(IntegerMath.div_trunc((width + 31), 32)) * 4
 	var mask_start := pixels_start + xor_stride * height
 	var end := mask_start + and_stride * height
 
@@ -141,12 +140,12 @@ static func decode_image(bytes: PackedByteArray, cursor := false) -> Dictionary:
 
 		for x in width:
 			var bit_offset := x * bits
-			var index := (bytes[pixels_start + row * xor_stride + int(bit_offset / 8)] >> (8 - bits - bit_offset % 8)) & ((1 << bits) - 1)
+			var index := (bytes[pixels_start + row * xor_stride + int(IntegerMath.div_trunc(bit_offset, 8))] >> (8 - bits - bit_offset % 8)) & ((1 << bits) - 1)
 
 			if index >= count:
 				return _failure("Icon/cursor index is outside its palette")
 
-			var mask := (bytes[mask_start + row * and_stride + int(x / 8)] >> (7 - x % 8)) & 1
+			var mask := (bytes[mask_start + row * and_stride + int(IntegerMath.div_trunc(x, 8))] >> (7 - x % 8)) & 1
 			pixels.append(index)
 			and_mask.append(mask)
 

@@ -19,7 +19,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 
 	var limit := Renderer._maximum_sprite_size(sprites)
 	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
-	var bottom := int(configuration.tile_height) + int(limit.x / 4) + 1
+	var bottom := int(configuration.tile_height) + int(IntegerMath.div_trunc(limit.x, 4)) + 1
 
 	if mode == "underground":
 		bottom += 31 * int(configuration.altitude_step)

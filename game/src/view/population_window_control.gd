@@ -59,10 +59,10 @@ static func snapshot(value_city: CityState) -> Dictionary:
 			"education_points": education_points,
 			"life_points": life_points,
 			"education_quotient": (
-				int(education_points / population) if population > 0 else 0
+				int(IntegerMath.div_trunc(education_points, population)) if population > 0 else 0
 			),
 			"life_expectancy": (
-				int(life_points / population) if population > 0 else 0
+				int(IntegerMath.div_trunc(life_points, population)) if population > 0 else 0
 			),
 		})
 
@@ -90,7 +90,7 @@ static func chart_values(data: Dictionary, selected_mode: int) -> PackedInt32Arr
 		var value := 0
 
 		if selected_mode == Mode.POPULATION and total > 0:
-			value = int(population * 600 / total)
+			value = int(IntegerMath.div_trunc(population * 600, total))
 
 			if population > 0 and value == 0:
 				value = 1
@@ -114,7 +114,7 @@ static func indicator_value(data: Dictionary, selected_mode: int) -> int:
 	if selected_mode == Mode.HEALTH:
 		return int(data.get("workforce_life_expectancy", 0))
 
-	return int(data.get("workforce_education_quotient", 0)) * 15 / 25
+	return IntegerMath.div_trunc(int(data.get("workforce_education_quotient", 0)) * 15, 25)
 
 
 static func indicator_text(data: Dictionary, selected_mode: int) -> String:
@@ -129,7 +129,7 @@ static func indicator_text(data: Dictionary, selected_mode: int) -> String:
 
 static func y_axis_label(selected_mode: int, step: int) -> String:
 	if selected_mode == Mode.POPULATION:
-		return "%d%%" % int(step * 5 / 2) if step % 2 == 0 else ""
+		return "%d%%" % int(IntegerMath.div_trunc(step * 5, 2)) if step % 2 == 0 else ""
 
 	if selected_mode == Mode.HEALTH:
 		return "%d yrs" % (step * 15)

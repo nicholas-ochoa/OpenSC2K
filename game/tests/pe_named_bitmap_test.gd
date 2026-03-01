@@ -13,7 +13,7 @@ func _initialize() -> void:
 
 	for name in ["ADVICEU", "城🏙"]:
 		var encoded: PackedByteArray = name.to_utf16_buffer()
-		bytes.encode_u16(192, encoded.size() / 2)
+		bytes.encode_u16(192, IntegerMath.div_trunc(encoded.size(), 2))
 
 		for i in encoded.size():
 			bytes[194 + i] = encoded[i]

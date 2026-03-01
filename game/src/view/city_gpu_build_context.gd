@@ -193,7 +193,7 @@ func intersects(city: CityState, sprites: Sc2SpriteArchive, config: Dictionary,
 			var marker := sprites.find_sprite(int(config.sprite_base) + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET)
 
 			if marker != null:
-				bounds = bounds.merge(Rect2i(screen_x + int(entry.width / 2) - int(marker.width / 2), object_y - marker.height, marker.width, marker.height))
+				bounds = bounds.merge(Rect2i(screen_x + int(IntegerMath.div_trunc(entry.width, 2)) - int(IntegerMath.div_trunc(marker.width, 2)), object_y - marker.height, marker.width, marker.height))
 	elif city.zone_id(x, y) > 0:
 		var zone := sprites.find_sprite(int(config.sprite_base) + 290 + city.zone_id(x, y))
 
@@ -273,13 +273,13 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 	if city.object_altitude_overrides.size() == city.map_size * city.map_size and city.object_altitude_overrides[key] >= 0:
 		object_altitude = city.object_altitude_overrides[key]
 
-	var offset := int(image.get_width() / 4) - int(config.half_height) if building >= 0x70 else (-int(config.altitude_step) if terrain == 0x0d else 0)
+	var offset := int(IntegerMath.div_trunc(image.get_width(), 4)) - int(config.half_height) if building >= 0x70 else (-int(config.altitude_step) if terrain == 0x0d else 0)
 	var object_y := flat_y - object_altitude * int(config.altitude_step) + offset
 	recorder.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i(screen_x, object_y - image.get_height()))
 
 	if building >= 0x70 and (flags & 0xc0) == 0x80:
 		var marker := CityIsometricRenderer._sprite_image(sprites, palette, images, int(config.sprite_base) + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET, false)
-		recorder.blend_rect(marker, Rect2i(Vector2i.ZERO, marker.get_size()), Vector2i(screen_x + int(image.get_width() / 2) - int(marker.get_width() / 2), object_y - marker.get_height()))
+		recorder.blend_rect(marker, Rect2i(Vector2i.ZERO, marker.get_size()), Vector2i(screen_x + int(IntegerMath.div_trunc(image.get_width(), 2)) - int(IntegerMath.div_trunc(marker.get_width(), 2)), object_y - marker.get_height()))
 
 	return true
 

@@ -63,10 +63,10 @@ static func process(
 				if random.next_u15() & 3:
 					return
 
-				var parking_count := int(_special_tile_count(misc, 0xef, true, map_edge) / 4)
+				var parking_count := int(IntegerMath.div_trunc(_special_tile_count(misc, 0xef, true, map_edge), 4))
 				selected_tile = 0xef
 
-				if int(_special_tile_count(misc, 0xe8, true, map_edge) / 12) < parking_count:
+				if int(IntegerMath.div_trunc(_special_tile_count(misc, 0xe8, true, map_edge), 12)) < parking_count:
 					selected_tile = 0xe8
 
 				fallback_tile = 0xe8
@@ -166,11 +166,11 @@ static func _airport_growth_selection(
 		return -1
 
 	var runway_groups := int(
-		(_special_tile_count(misc, 0xdd, military, map_edge) + _special_tile_count(misc, 0xde, military, map_edge)) / 5
+		IntegerMath.div_trunc((_special_tile_count(misc, 0xdd, military, map_edge) + _special_tile_count(misc, 0xde, military, map_edge)), 5)
 	)
 	var parking_tile := 0xef if military else 0xee
 
-	if int(_special_tile_count(misc, parking_tile, military, map_edge) / 4) >= runway_groups:
+	if int(IntegerMath.div_trunc(_special_tile_count(misc, parking_tile, military, map_edge), 4)) >= runway_groups:
 		return 0xdd
 
 	var selected := 0xe2 if military else 0xe1
@@ -190,15 +190,15 @@ static func _airport_growth_selection(
 
 	selected = 0xe4
 
-	if int(_special_tile_count(misc, selected, military, map_edge) / 2) < runway_groups:
+	if int(IntegerMath.div_trunc(_special_tile_count(misc, selected, military, map_edge), 2)) < runway_groups:
 		return selected
 
 	selected = 0xe5
 
-	if int(_special_tile_count(misc, selected, military, map_edge) / 2) < runway_groups:
+	if int(IntegerMath.div_trunc(_special_tile_count(misc, selected, military, map_edge), 2)) < runway_groups:
 		return selected
 
-	if int(_special_tile_count(misc, 0xf6, military, map_edge) / 4) < runway_groups:
+	if int(IntegerMath.div_trunc(_special_tile_count(misc, 0xf6, military, map_edge), 4)) < runway_groups:
 		return 0xf6
 
 	return parking_tile
@@ -236,15 +236,15 @@ static func _seaport_growth_selection(
 
 	var crane_count := _special_tile_count(misc, 0xe0, military, map_edge)
 
-	if int(_special_tile_count(misc, 0xf2, military, map_edge) / 4) >= crane_count:
+	if int(IntegerMath.div_trunc(_special_tile_count(misc, 0xf2, military, map_edge), 4)) >= crane_count:
 		return 0xe0
 
 	var second_tile := 0xf1 if military else 0xf0
 
-	if int(_special_tile_count(misc, second_tile, military, map_edge) / 4) < crane_count:
+	if int(IntegerMath.div_trunc(_special_tile_count(misc, second_tile, military, map_edge), 4)) < crane_count:
 		return second_tile
 
-	if int(_special_tile_count(misc, 0xe3, military, map_edge) / 3) < crane_count:
+	if int(IntegerMath.div_trunc(_special_tile_count(misc, 0xe3, military, map_edge), 3)) < crane_count:
 		return 0xe3
 
 	return 0xf2

@@ -203,7 +203,7 @@ func _paper_title(paper_index: int, paper: Dictionary) -> String:
 	var name_style := clampi(int(paper.get("name", 0)), 0, 5)
 	var paper_name: String = original_strings.get(360 + name_style, ["Gazette", "Herald", "Chronicle", "Times", "Journal", "Dispatch"][name_style])
 
-	if paper_index < int(NewsQueue.PAPER_COUNT / 2):
+	if paper_index < int(IntegerMath.div_trunc(NewsQueue.PAPER_COUNT, 2)):
 		return "%s%s" % [original_strings.get(376, "The "), paper_name]
 
 	var city_name := city.city_name() if not city.city_name().is_empty() else "City"

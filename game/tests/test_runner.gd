@@ -1640,7 +1640,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		IsometricRenderer.view_configuration(IsometricRenderer.VIEW_LARGE)
 	)
 	var expected_plane_position := Vector2i(
-		2096 - int(plane_entry.width / 2), 1545 - plane_entry.height
+		2096 - int(IntegerMath.div_trunc(plane_entry.width, 2)), 1545 - plane_entry.height
 	)
 	_check(
 		plane_commands.size() == 2
@@ -1689,7 +1689,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Static occlusion commands keep the isometric map order",
 	)
 	var occlusion_grid := IsometricRenderer.build_occlusion_grid(static_occluders, 1)
-	var occlusion_target_index := int(static_occluders.size() / 2)
+	var occlusion_target_index := int(IntegerMath.div_trunc(static_occluders.size(), 2))
 	var occlusion_target: Dictionary = static_occluders[occlusion_target_index]
 	var occlusion_target_bounds := Rect2i(
 		Vector2i(occlusion_target.position), Vector2i(occlusion_target.size)
@@ -2301,7 +2301,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		batch_input.append({
 			"texture": marker_texture,
 			"image": marker_image,
-			"position": Vector2(index % 100, int(index / 100)),
+			"position": Vector2(index % 100, int(IntegerMath.div_trunc(index, 100))),
 			"size": Vector2(4, 4),
 			"special_overlay": true,
 			"batch_cache_key": "marker:%d" % index,
@@ -2524,7 +2524,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		train_commands.size() == 1
 		and train_commands[0].position == Vector2i(
-			2096 - int(train_entry.width / 2), 1553 - train_entry.height
+			2096 - int(IntegerMath.div_trunc(train_entry.width, 2)), 1553 - train_entry.height
 		),
 		"Surface train uses the same recovered baseline as its rail tile",
 	)
@@ -2611,7 +2611,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		Vector2i(0, crossing_height - crossing_surface.get_height()),
 	)
 	var crossing_train_position := Vector2i(
-		16 + crossing_train.screen_x - int(crossing_train_image.get_width() / 2),
+		16 + crossing_train.screen_x - int(IntegerMath.div_trunc(crossing_train_image.get_width(), 2)),
 		crossing_height + crossing_train.screen_y - crossing_train_image.get_height(),
 	)
 	var crossing_surface_position := Vector2i(
@@ -3359,7 +3359,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 			var clear_view_is_blank: bool = (
 				clear_entry != null
 				and clear_entry.width
-					== int(scurk_editor.active_base_width / ScurkWorkspace.view_divisor(clear_view))
+					== int(IntegerMath.div_trunc(scurk_editor.active_base_width, ScurkWorkspace.view_divisor(clear_view)))
 				and clear_entry.height == 1
 				and clear_decoded.get("ok", false)
 				and not clear_decoded.pixels.has(0)
@@ -4388,7 +4388,7 @@ func _test_simulation_clock() -> void:
 		var phase := phases[month_day - 1]
 		_check(phase.actions == PackedStringArray(["growth"]), "Day %d schedules growth" % month_day)
 		_check(
-			phase.growth_step == int((month_day - 3) / 4) % 4,
+			phase.growth_step == int(IntegerMath.div_trunc((month_day - 3), 4)) % 4,
 			"Day %d has the correct growth step" % month_day
 		)
 		_check(
@@ -4682,7 +4682,7 @@ func _test_water(reference_root: String) -> void:
 	_check(city.set_tile_flag(30, 30, 0x40, true), "Water pump is powered")
 	_check(city.set_tile_flag(29, 30, 0x04, true), "Fresh water is next to the pump")
 	_check(city.set_tile_flag(29, 30, 0x01, false), "Pump water is not salt water")
-	var expected_supply := int((document.misc_u32(0x68) & 0xff) / 2) + (
+	var expected_supply := int(IntegerMath.div_trunc((document.misc_u32(0x68) & 0xff), 2)) + (
 		document.misc_u32(0x0e40) * 5
 	) + 10
 	var result := Water.run(city)
@@ -12124,7 +12124,7 @@ func _test_graph_history(reference_root: String) -> void:
 		)
 
 	var developed_tiles := 400
-	var developed_divisor := int(developed_tiles / 4) + 1
+	var developed_divisor := int(IntegerMath.div_trunc(developed_tiles, 4)) + 1
 	_check(document.set_misc_u32(0x0034, developed_divisor * 11), "Graph test installs pollution")
 	_check(document.set_misc_u32(0x0028, developed_divisor * 22), "Graph test installs land value")
 	_check(document.set_misc_u32(0x002c, developed_divisor * 33), "Graph test installs crime")

@@ -46,7 +46,7 @@ static func spawn_helicopter(
 		index < 0
 		or OverlayData.blocks_thing(OverlayData.read(text, index))
 		or count_type(things, TYPE_MONSTER) != 0
-		or count_type(things, TYPE_HELICOPTER) >= 1 * (map_edge * map_edge / 16384)
+		or count_type(things, TYPE_HELICOPTER) >= 1 * (IntegerMath.div_trunc(map_edge * map_edge, 16384))
 	):
 		return {"spawned": false}
 
@@ -86,7 +86,7 @@ static func spawn_airplane(
 		source_index < 0
 		or OverlayData.blocks_thing(OverlayData.read(text, source_index))
 		or count_type(things, TYPE_MONSTER) != 0
-		or count_type(things, TYPE_AIRPLANE) >= 2 * (map_edge * map_edge / 16384)
+		or count_type(things, TYPE_AIRPLANE) >= 2 * (IntegerMath.div_trunc(map_edge * map_edge, 16384))
 	):
 		return {"spawned": false}
 
@@ -149,7 +149,7 @@ static func spawn_ship(
 	random,
 	map_edge: int = 128,
 ) -> Dictionary:
-	if count_type(things, TYPE_SHIP) >= 1 * (map_edge * map_edge / 16384):
+	if count_type(things, TYPE_SHIP) >= 1 * (IntegerMath.div_trunc(map_edge * map_edge, 16384)):
 		return {"spawned": false}
 
 	var start := Vector2i(-1, -1)
@@ -210,7 +210,7 @@ static func spawn_sailboats(
 	lfsr_random,
 	map_edge: int = 128,
 ) -> int:
-	if count_type(things, TYPE_SAILBOAT) >= 4 * (map_edge * map_edge / 16384):
+	if count_type(things, TYPE_SAILBOAT) >= 4 * (IntegerMath.div_trunc(map_edge * map_edge, 16384)):
 		return 0
 
 	var spawned := 0
@@ -322,7 +322,7 @@ static func _spawn_train_record(
 	lfsr_random,
 	map_edge: int = 128,
 ) -> bool:
-	if count_type(things, TYPE_TRAIN_ENGINE) >= 5 * (map_edge * map_edge / 16384):
+	if count_type(things, TYPE_TRAIN_ENGINE) >= 5 * (IntegerMath.div_trunc(map_edge * map_edge, 16384)):
 		return false
 
 	if start.x < 2 or start.x > map_edge - 4 or start.y < 2 or start.y > map_edge - 4:
@@ -424,10 +424,10 @@ static func _direction_between(start: Vector2i, target: Vector2i) -> int:
 	var absolute_x := absi(difference.x)
 	var absolute_y := absi(difference.y)
 
-	if absolute_x < int((absolute_y + 1) / 2):
+	if absolute_x < int(IntegerMath.div_trunc((absolute_y + 1), 2)):
 		return 0 if difference.y < 0 else 4
 
-	if absolute_y < int((absolute_x + 1) / 2):
+	if absolute_y < int(IntegerMath.div_trunc((absolute_x + 1), 2)):
 		return 6 if difference.x < 0 else 2
 
 	if difference.x < 0:

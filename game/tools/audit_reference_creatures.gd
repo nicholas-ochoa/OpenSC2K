@@ -32,7 +32,7 @@ func _initialize() -> void:
 				if index in range(171, 239):
 					cycles[index] = int(cycles.get(index, 0)) + 1
 
-				var point := Vector2i(i % entry.width, i / entry.width)
+				var point := Vector2i(i % entry.width, IntegerMath.div_trunc(i, entry.width))
 
 				if point.y == entry.height - 1:
 					bottom_x.append(point.x)

@@ -251,7 +251,7 @@ static func run(
 						counters.subway_passengers += density
 
 					growth_pressure = _read_i32(
-						misc, MISC_DEMAND + int((zone - 1) / 2) * 4
+						misc, MISC_DEMAND + int(IntegerMath.div_trunc((zone - 1), 2)) * 4
 					) + 2000
 					decline_pressure = 4000 - growth_pressure
 				else:
@@ -262,7 +262,7 @@ static func run(
 				_add_i32(misc, MISC_ZONE_POPULATIONS + zone * 4, population)
 				counters.population_added += population
 
-				if random.next_u15() < int(decline_pressure / density):
+				if random.next_u15() < int(IntegerMath.div_trunc(decline_pressure, density)):
 					_abandon(
 						buildings,
 						zones,
@@ -283,7 +283,7 @@ static func run(
 					continue
 
 			if status == STATUS_CONSTRUCTION:
-				if random.next_u15() < int(0x4000 / density):
+				if random.next_u15() < int(IntegerMath.div_trunc(0x4000, density)):
 					if (
 						_read_u32(misc, MISC_NORMAL_POPULATION)
 						> _read_u32(misc, MISC_TILE_COUNTS + CHURCH_TILE * 4) * 2500
@@ -301,7 +301,7 @@ static func run(
 							land_value,
 							Vector2i(x, y),
 							density,
-							int((zone - 1) / 2),
+							int(IntegerMath.div_trunc((zone - 1), 2)),
 							random,
 							rotation, map_edge,
 						)
@@ -317,7 +317,7 @@ static func run(
 				_add_i32(misc, MISC_ZONE_POPULATIONS + 7 * 4, abandoned_population)
 				counters.abandoned_population_added += abandoned_population
 
-				if random.next_u15() < int(growth_pressure * 15 / density):
+				if random.next_u15() < int(IntegerMath.div_trunc(growth_pressure * 15, density)):
 					_place_zone(
 						buildings,
 						zones,
@@ -326,7 +326,7 @@ static func run(
 						land_value,
 						Vector2i(x, y),
 						density,
-						int((zone - 1) / 2),
+						int(IntegerMath.div_trunc((zone - 1), 2)),
 						random,
 						rotation, map_edge,
 					)
@@ -339,7 +339,7 @@ static func run(
 				continue
 
 			if _can_advance_density(zone_byte, zone, density, land_value, x, y, map_edge):
-				if random.next_u15() < int(growth_pressure * 3 / (density + 1)):
+				if random.next_u15() < int(IntegerMath.div_trunc(growth_pressure * 3, (density + 1))):
 					var advanced := _advance_construction(
 						buildings,
 						zones,
@@ -505,7 +505,7 @@ static func _process_microsim_growth(
 		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
 			return
 
-		var train_limit := int(SpecialZoneGrowth.tile_count(misc, 0xed, false, map_edge) / 4)
+		var train_limit := int(IntegerMath.div_trunc(SpecialZoneGrowth.tile_count(misc, 0xed, false, map_edge), 4))
 
 		if MovingThings.count_type(things, MovingThings.TYPE_TRAIN_ENGINE) < train_limit:
 			if MovingThings.spawn_train(
@@ -519,7 +519,7 @@ static func _process_microsim_growth(
 		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
 			return
 
-		var sailboat_limit := int(SpecialZoneGrowth.tile_count(misc, 0xf8, false, map_edge) / 9)
+		var sailboat_limit := int(IntegerMath.div_trunc(SpecialZoneGrowth.tile_count(misc, 0xf8, false, map_edge), 9))
 
 		if MovingThings.count_type(things, MovingThings.TYPE_SAILBOAT) < sailboat_limit:
 			counters.spawned_sailboats += MovingThings.spawn_sailboats(
@@ -828,7 +828,7 @@ static func _advance_to_density_four(
 	var height := altitudes[_index(point, map_edge)] & 0x1f
 
 	for candidate_index in 4:
-		var anchor := point + Vector2i(-(candidate_index & 1), int(candidate_index / 2))
+		var anchor := point + Vector2i(-(candidate_index & 1), int(IntegerMath.div_trunc(candidate_index, 2)))
 		var perimeter := [
 			anchor,
 			anchor + Vector2i(0, -1),
@@ -1035,7 +1035,7 @@ static func _abandon(
 					flags,
 					misc,
 					land_value,
-					point + Vector2i(selection & 1, -int(selection / 2)),
+					point + Vector2i(selection & 1, -int(IntegerMath.div_trunc(selection, 2))),
 					3,
 					CLASS_ABANDONED,
 					random,
@@ -1079,7 +1079,7 @@ static func _place_zone(
 
 		return true
 
-	var radius := int(density / 2)
+	var radius := int(IntegerMath.div_trunc(density, 2))
 
 	if (
 		anchor.x <= 1
@@ -1254,10 +1254,10 @@ static func _payloads(city: CityState) -> Dictionary:
 		["XMIC", CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE],
 		["XTHG", city.document.decoded_size("XTHG")],
 		["XBIT", (map_edge * map_edge)],
-		["XTRF", ((map_edge / 2) * (map_edge / 2))],
-		["XPLT", ((map_edge / 2) * (map_edge / 2))],
-		["XVAL", ((map_edge / 2) * (map_edge / 2))],
-		["XCRM", ((map_edge / 2) * (map_edge / 2))],
+		["XTRF", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
+		["XPLT", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
+		["XVAL", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
+		["XCRM", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
 		["MISC", MISC_SIZE],
 	]:
 		var chunk := city.document.find_chunk(checked[0])

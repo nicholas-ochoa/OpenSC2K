@@ -23,7 +23,7 @@ static func select(story_type: int, session_seed: int, city_days: int, paper_ind
 	if resource != 0:
 		return resource
 
-	var random := SimRandom.new(session_seed + int(city_days / 25) + paper_index * 500 + 21)
+	var random := SimRandom.new(session_seed + int(IntegerMath.div_trunc(city_days, 25)) + paper_index * 500 + 21)
 
 	return 400 + random.next_u15() % 12
 
@@ -38,7 +38,7 @@ static func filler_lines(rect: Rect2i, seed: int) -> Array[Rect2i]:
 
 	var random := SimRandom.new(seed)
 	var row := 0
-	var row_count := int(rect.size.y / 5)
+	var row_count := int(IntegerMath.div_trunc(rect.size.y, 5))
 
 	while row < row_count:
 		lines.append(Rect2i(rect.position + Vector2i(13, row * 5 + 2), Vector2i(rect.size.x - 16, 3)))
@@ -56,7 +56,7 @@ static func filler_lines(rect: Rect2i, seed: int) -> Array[Rect2i]:
 		var short_row := row + 1
 
 		if short_row < row_count:
-			var cut := random.next_u15() % int(rect.size.x * 2 / 3)
+			var cut := random.next_u15() % int(IntegerMath.div_trunc(rect.size.x * 2, 3))
 			lines.append(Rect2i(rect.position + Vector2i(3, short_row * 5 + 2), Vector2i(rect.size.x - 6 - cut, 3)))
 
 		row += 2

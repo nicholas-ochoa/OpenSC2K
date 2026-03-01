@@ -187,7 +187,7 @@ static func city_analysis(
 			"id": category_id,
 			"name": name,
 			"acres": counts[category_id],
-			"percent": int(counts[category_id] * 100 / total) if total != 0 else 0,
+			"percent": int(IntegerMath.div_trunc(counts[category_id] * 100, total)) if total != 0 else 0,
 		})
 
 	var header := "Category                 Acres   Share"

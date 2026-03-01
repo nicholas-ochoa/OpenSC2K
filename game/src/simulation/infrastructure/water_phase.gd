@@ -37,7 +37,7 @@ static func run(city: CityState) -> Dictionary:
 	var total_supply := 0
 	var total_consumers := 0
 	var watered_consumers := 0
-	var pump_base_supply := int((city.document.misc_u32(0x68) & 0xff) / 2)
+	var pump_base_supply := int(IntegerMath.div_trunc((city.document.misc_u32(0x68) & 0xff), 2))
 	pump_base_supply += city.document.misc_u32(0x0e40) * 5
 
 	for index in _source_scan_order(city.compass_rotation(), map_edge, city.simulation_slice):
@@ -58,7 +58,7 @@ static func run(city: CityState) -> Dictionary:
 		var served := mini(supply, consumers)
 		var tower_capacity: int = component.tower_capacity
 		var stored_units := mini(supply - served, tower_capacity)
-		var towers_to_fill := int((stored_units + 50) / 100)
+		var towers_to_fill := int(IntegerMath.div_trunc((stored_units + 50), 100))
 
 		total_supply += supply
 		total_consumers += consumers
@@ -90,14 +90,14 @@ static func run(city: CityState) -> Dictionary:
 	var usage_percent := 100
 
 	if total_supply != 0:
-		usage_percent = int(watered_consumers * 100 / total_supply)
+		usage_percent = int(IntegerMath.div_trunc(watered_consumers * 100, total_supply))
 
 	var treatment_tile_count := city.document.misc_u32(MISC_TILE_COUNTS + WATER_TREATMENT * 4)
 
 	if not city.document.is_extended():
 		treatment_tile_count = _to_i16(treatment_tile_count)
 
-	var treatment_capacity := int(treatment_tile_count / 4) * 2000
+	var treatment_capacity := int(IntegerMath.div_trunc(treatment_tile_count, 4)) * 2000
 	var treatment_sufficient := watered_consumers <= treatment_capacity
 
 	if not city.document.set_misc_u32(
@@ -149,7 +149,7 @@ static func _trace_component(
 		var index := queue[queue_position]
 		queue_position += 1
 		tiles.append(index)
-		var x := int(index / map_edge)
+		var x := int(IntegerMath.div_trunc(index, map_edge))
 		var y := index % map_edge
 		var building := buildings[index]
 

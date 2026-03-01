@@ -21,7 +21,7 @@ func _run() -> void:
 				var context := CityGpuBuildContext.new()
 				var size := CityIsometricRenderer.output_size_for_view(view, city.map_size)
 
-				for center in [size / 2, Vector2i(size.x / 2, size.y - 160)]:
+				for center in [IntegerMath.div_trunc_vec2i(size, 2), Vector2i(IntegerMath.div_trunc(size.x, 2), size.y - 160)]:
 					var bounds := Rect2i(center - Vector2i(256, 128), Vector2i(517, 263))
 					await _compare(city, palette, sprites, bounds, view, mode, context)
 
@@ -36,7 +36,7 @@ func _run() -> void:
 		for visibility in [{}, {"water": false}, {"buildings": false, "networks": false, "trees": false, "zones": false}]:
 			var displayed := CityViewFilter.surface_copy(city, visibility)
 			displayed.visible_altitude_levels = 16 if visibility.is_empty() else 32
-			var bounds := Rect2i(CityIsometricRenderer.output_size_for_view(2, 128) / 2 - Vector2i(256, 128), Vector2i(517, 263))
+			var bounds := Rect2i(IntegerMath.div_trunc_vec2i(CityIsometricRenderer.output_size_for_view(2, 128), 2) - Vector2i(256, 128), Vector2i(517, 263))
 			await _compare(displayed, palette, large, bounds, 2, "city", CityGpuBuildContext.new())
 
 	print("PASS: GPU rotations, cutaways and layer filtering")
@@ -45,7 +45,7 @@ func _run() -> void:
 		for mode in ["city", "underground"]:
 			var sprites := large if view == 2 else small
 			var context := CityGpuBuildContext.new()
-			var center := CityIsometricRenderer.output_size_for_view(view, city.map_size) / 2 / 256
+			var center := IntegerMath.div_trunc_vec2i(IntegerMath.div_trunc_vec2i(CityIsometricRenderer.output_size_for_view(view, city.map_size), 2), 256)
 			var request := {"city": city, "prepared": true, "visibility": {},
 				"palette": palette, "sprites": sprites, "keys": [center, center + Vector2i.ONE, center + Vector2i(2, 0)],
 				"edge": 256, "view": view, "mode": mode, "pipes": true, "subways": true,

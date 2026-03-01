@@ -3543,7 +3543,7 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 		sprite_archive,
 		dirty_indices,
 		view_size,
-		int(Time.get_ticks_msec() / 100),
+		int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100)),
 		false
 	)
 
@@ -3601,7 +3601,7 @@ static func _collect_changed_tiles(before: PackedByteArray, after: PackedByteArr
 
 		for offset in range(start, end, stride):
 			if before[offset] != after[offset] or (stride == 2 and before[offset + 1] != after[offset + 1]):
-				var index := int(offset / stride)
+				var index := int(IntegerMath.div_trunc(offset, stride))
 				seen[index % plane_cells if plane_cells > 0 else index] = true
 
 
@@ -3790,7 +3790,7 @@ func _refresh_map(force := true) -> void:
 		else:
 			indexed = IsometricRenderer.create_image(
 				display_city, palette_index_encoding, sprite_archive, view_size,
-				int(Time.get_ticks_msec() / 100), false, true, true, false
+				int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100)), false, true, true, false
 			)
 
 		if not indexed.ok:
@@ -4002,7 +4002,7 @@ func _request_static_render(
 	static_render_job.index_palette = palette_index_encoding
 	static_render_job.sprites = sprite_archive
 	static_render_job.view_size = view_size
-	static_render_job.animation_phase = int(Time.get_ticks_msec() / 100)
+	static_render_job.animation_phase = int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100))
 	static_render_job.signature = signature.duplicate()
 	static_render_job.epoch = static_render_epoch
 	static_render_job.render_mode = render_mode
@@ -4198,7 +4198,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 	var divisor := int(configuration.divisor)
 	var factor := 1
 	var commands := dynamic_command_cache.get_commands(
-		city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
+		city, sprite_archive, view_size, int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100))
 	)
 	var visuals: Array[Dictionary] = []
 
@@ -4644,10 +4644,11 @@ func _dynamic_shadow_image(
 	)
 	shadow.fill(Color.TRANSPARENT)
 	var changed_pixels := 0
+	@warning_ignore("integer_division")
 	var sampled: Image = region_cache.image_region(Rect2i(position, mask.get_size() / texture_factor), texture_factor) if region_cache != null else null
 
 	for source_y in mask.get_height():
-		var output_y := position.y + int(source_y / texture_factor)
+		var output_y := position.y + int(IntegerMath.div_trunc(source_y, texture_factor))
 
 		if output_y < 0 or output_y >= _static_image_size().y:
 			continue
@@ -4662,7 +4663,7 @@ func _dynamic_shadow_image(
 			):
 				continue
 
-			var output_x := position.x + int(source_x / texture_factor)
+			var output_x := position.x + int(IntegerMath.div_trunc(source_x, texture_factor))
 
 			if output_x < 0 or output_x >= _static_image_size().x:
 				continue
@@ -6399,7 +6400,7 @@ func _debug_center_map() -> void:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if map_view != null and city != null:
-		map_view.center_on_tile(Vector2i(map_edge / 2, map_edge / 2))
+		map_view.center_on_tile(Vector2i(IntegerMath.div_trunc(map_edge, 2), IntegerMath.div_trunc(map_edge, 2)))
 
 
 func _debug_full_redraw() -> void:

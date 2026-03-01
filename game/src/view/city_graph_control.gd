@@ -155,9 +155,9 @@ static func format_value(series: int, value: int) -> String:
 		return str(value)
 
 	if absolute < 1000000:
-		return "%dk" % int(value / 1000)
+		return "%dk" % int(IntegerMath.div_trunc(value, 1000))
 
-	return "%dm" % int(value / 1000000)
+	return "%dm" % int(IntegerMath.div_trunc(value, 1000000))
 
 
 static func time_labels(value_city: CityState, scale: int) -> PackedStringArray:
@@ -178,9 +178,9 @@ static func time_labels(value_city: CityState, scale: int) -> PackedStringArray:
 
 		for index in 20:
 			var half_year := newest_half_year - 19 + index
-			labels.append("'%02d" % posmod(int(half_year / 2), 100))
+			labels.append("'%02d" % posmod(int(IntegerMath.div_trunc(half_year, 2)), 100))
 	elif scale == TIME_CENTURY:
-		var newest_five_year := int(year / 5) * 5
+		var newest_five_year := int(IntegerMath.div_trunc(year, 5)) * 5
 
 		for index in 20:
 			labels.append("'%02d" % posmod(newest_five_year - (19 - index) * 5, 100))

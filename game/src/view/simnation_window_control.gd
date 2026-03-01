@@ -298,6 +298,6 @@ static func _to_i16(value: int) -> int:
 
 static func _divide_toward_zero(numerator: int, denominator: int) -> int:
 	if numerator < 0:
-		return -int(-numerator / denominator)
+		return -int(IntegerMath.div_trunc(-numerator, denominator))
 
-	return int(numerator / denominator)
+	return int(IntegerMath.div_trunc(numerator, denominator))

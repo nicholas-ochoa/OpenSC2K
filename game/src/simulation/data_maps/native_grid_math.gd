@@ -1,5 +1,8 @@
 class_name NativeGridMath
 extends RefCounted
+
+# Inline integer division avoids a function call for every cell.
+@warning_ignore_start("integer_division")
 # integer spatial filters for the independent sc2x per-tile simulation
 
 

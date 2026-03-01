@@ -185,7 +185,7 @@ static func build(job: Dictionary) -> Dictionary:
 		if before_buildings[index] == city.buildings[index] and before_terrain[index] == city.terrain[index] and before_underground[index] == city.underground[index] and before_flags[index] == city.tile_flags[index] and before_altitude[index] == city.altitude_words[index]:
 			continue
 
-		var point := Vector2i(index / city.map_size, index % city.map_size)
+		var point := Vector2i(IntegerMath.div_trunc(index, city.map_size), index % city.map_size)
 		tiles[(point.x + point.y) * city.map_size + point.y] = point
 	var order := tiles.keys()
 	order.sort()
@@ -209,7 +209,7 @@ static func candidate_indices(command: Dictionary, start: Vector2i, finish: Vect
 	var points: Array = [start, finish]
 	points.append_array(command.get("points", []))
 	for index: int in command.get("tile_indices", []):
-		points.append(Vector2i(index / edge, index % edge))
+		points.append(Vector2i(IntegerMath.div_trunc(index, edge), index % edge))
 
 	if command.has("road_point"):
 		points.append(command.road_point)

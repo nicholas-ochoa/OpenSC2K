@@ -229,8 +229,8 @@ static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
 
 	while true:
 		point = Vector2i(
-			lfsr_random.next_mask(0xffff) % (map_edge / 2) + map_edge / 4,
-			lfsr_random.next_mask(0xffff) % (map_edge / 2) + map_edge / 4
+			lfsr_random.next_mask(0xffff) % (IntegerMath.div_trunc(map_edge, 2)) + IntegerMath.div_trunc(map_edge, 4),
+			lfsr_random.next_mask(0xffff) % (IntegerMath.div_trunc(map_edge, 2)) + IntegerMath.div_trunc(map_edge, 4)
 		)
 
 		if OverlayData.read(text, _index(point, map_edge)) == 0:
@@ -490,7 +490,7 @@ static func _start_mass_riots(city: CityState, point: Vector2i, random) -> Dicti
 		return {"ok": false, "error": "mass-riot disaster map data is missing or invalid"}
 
 	var attempt_count := (
-		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
+		int(IntegerMath.div_trunc(city.document.misc_u32(MISC_NORMAL_POPULATION), 10000)) + 5
 	) & 0xffff
 
 	if attempt_count & 0x8000:
@@ -642,7 +642,7 @@ static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictio
 		return {"ok": false, "error": "pollution-disaster map data is missing or invalid"}
 
 	var attempt_count := (
-		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
+		int(IntegerMath.div_trunc(city.document.misc_u32(MISC_NORMAL_POPULATION), 10000)) + 5
 	) & 0xffff
 
 	if attempt_count & 0x8000:
@@ -1356,7 +1356,7 @@ static func _start_mass_floods(
 		return {"ok": false, "error": "mass-flood disaster input chunks are missing or invalid"}
 
 	var attempt_count := (
-		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
+		int(IntegerMath.div_trunc(city.document.misc_u32(MISC_NORMAL_POPULATION), 10000)) + 5
 	) & 0xffff
 
 	if attempt_count & 0x8000:

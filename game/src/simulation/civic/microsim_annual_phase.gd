@@ -162,7 +162,7 @@ static func run(
 	var updated_bus := 0
 	var updated_rail := 0
 
-	for record_id in range(1, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
+	for record_id in range(1, IntegerMath.div_trunc(microsims.size(), CityState.MICROSIM_RECORD_SIZE)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
 
@@ -324,7 +324,7 @@ static func run(
 				var park_visitors := mini(old_visitors * 412, 65000)
 				park_visitors = mini(
 					park_visitors,
-					mini(int(_read_u32(misc, MISC_NORMAL_POPULATION) / 6), 65000)
+					mini(int(IntegerMath.div_trunc(_read_u32(misc, MISC_NORMAL_POPULATION), 6)), 65000)
 				)
 				_write_u16_be(microsims, offset + 2, park_visitors)
 				var park_count := _tile_count(misc, TILE_SMALL_PARK, map_edge) + _tile_count(misc, TILE_BIG_PARK, map_edge)
@@ -332,7 +332,7 @@ static func run(
 				_write_u16_be(
 					microsims,
 					offset + 6,
-					_population_cap(misc, int(park_count / 9), 120, map_edge)
+					_population_cap(misc, int(IntegerMath.div_trunc(park_count, 9)), 120, map_edge)
 				)
 				counts.park += 1
 			TILE_SCHOOL:
@@ -487,12 +487,12 @@ static func run(
 				_write_u16_be(microsims, offset + 6, subway_passengers)
 				updated_subway += 1
 			TILE_BUS_DEPOT:
-				_write_u16_be(microsims, offset + 2, int(bus_count / 4))
+				_write_u16_be(microsims, offset + 2, int(IntegerMath.div_trunc(bus_count, 4)))
 				_write_u16_be(microsims, offset + 4, bus_count)
 				_write_u16_be(microsims, offset + 6, bus_passengers)
 				updated_bus += 1
 			TILE_RAIL_STATION:
-				_write_u16_be(microsims, offset + 2, int(rail_count / 4))
+				_write_u16_be(microsims, offset + 2, int(IntegerMath.div_trunc(rail_count, 4)))
 				_write_u16_be(microsims, offset + 6, rail_passengers)
 				updated_rail += 1
 			TILE_MAYOR_HOUSE:
@@ -544,7 +544,7 @@ static func run(
 					_write_u16_be(microsims, offset + 4, books)
 
 				var population := maxi(_read_u32(misc, MISC_NORMAL_POPULATION), 1)
-				var library_score := int(library_count * school_funding * 300 / population)
+				var library_score := int(IntegerMath.div_trunc(library_count * school_funding * 300, population))
 				microsims[offset + 1] = mini(library_score, 12) & 0xff
 				counts.library += 1
 			TILE_MARINA:
@@ -869,7 +869,7 @@ static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int, m
 		+ _read_u32(misc, MISC_ARCOLOGY_POPULATION)
 		+ _read_u32(misc, MISC_NORMAL_POPULATION)
 	)
-	var available := int(total_population / divisor) & (0xffff if map_edge == 128 else 0xffffffff)
+	var available := int(IntegerMath.div_trunc(total_population, divisor)) & (0xffff if map_edge == 128 else 0xffffffff)
 	var signed_maximum := _to_i16(maximum)
 
 	return signed_maximum if signed_maximum <= available else available
@@ -919,9 +919,9 @@ static func _write_i32(data: PackedByteArray, offset: int, value: int) -> void:
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
 	if value >= 0:
-		return int(value / divisor)
+		return int(IntegerMath.div_trunc(value, divisor))
 
-	return -int(-value / divisor)
+	return -int(IntegerMath.div_trunc(-value, divisor))
 
 
 static func _write_u16_be(data: PackedByteArray, offset: int, value: int) -> void:

@@ -143,7 +143,7 @@ static func generate(
 	)
 
 	_grow_trees(
-		buildings, flags, ((trees * trees) >> 1) * (map_edge / 128) * (map_edge / 128), staged_process, map_edge
+		buildings, flags, ((trees * trees) >> 1) * (IntegerMath.div_trunc(map_edge, 128)) * (IntegerMath.div_trunc(map_edge, 128)), staged_process, map_edge
 	)
 
 	if has_ocean:
@@ -291,7 +291,7 @@ static func _carve_river(
 	heights: PackedInt32Array, water_level: int, random: GameLcgRandom,
 	map_edge: int = 128,
 ) -> void:
-	var center := map_edge / 2
+	var center := IntegerMath.div_trunc(map_edge, 2)
 	var bend := random.next_mod(3) - 1
 
 	for y in range(map_edge - 1, -1, -1):

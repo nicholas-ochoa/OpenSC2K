@@ -37,7 +37,7 @@ func _init() -> void:
 
 
 func build_fixture(edge: int) -> void:
-	var across := edge / 128
+	var across := IntegerMath.div_trunc(edge, 128)
 	var document := EmptyCityTemplate.create(edge)
 	var created := NewCitySetup.create(document, "Stitched %d" % edge, "Test Mayor", 1, 2050, SimRandom.new(1))
 	assert(created.ok)
@@ -71,8 +71,8 @@ func build_fixture(edge: int) -> void:
 					scale = 4
 
 				var stride := 2 if chunk_id == "ALTM" else 1
-				var source_edge := 128 / scale
-				var target_edge := edge / scale
+				var source_edge := IntegerMath.div_trunc(128, scale)
+				var target_edge := IntegerMath.div_trunc(edge, scale)
 				var input := source.document.find_chunk(chunk_id).decoded_payload
 				var target := document.find_chunk(chunk_id).decoded_payload.duplicate()
 
@@ -144,8 +144,8 @@ func build_fixture(edge: int) -> void:
 
 	document.set_misc_u32(0x102c, normal_population)
 	document.set_misc_u32(0x1020, arcology_population)
-	document.set_misc_u32(0x1018, edge / 2)
-	document.set_misc_u32(0x101c, edge / 2)
+	document.set_misc_u32(0x1018, IntegerMath.div_trunc(edge, 2))
+	document.set_misc_u32(0x101c, IntegerMath.div_trunc(edge, 2))
 	city.set_funds(10000000)
 	city.set_simulation_speed(1)
 	city.set_auto_budget_enabled(true)
@@ -172,9 +172,9 @@ func build_fixture(edge: int) -> void:
 			var input := source.document.find_chunk(chunk_id).decoded_payload
 			var output := reloaded.find_chunk(chunk_id).decoded_payload
 
-			for x in 128 / divisor:
-				var start := ((int(block.x / divisor) + x) * (edge / divisor) + int(block.y / divisor)) * stride
-				assert(output.slice(start, start + (128 / divisor) * stride) == input.slice(x * (128 / divisor) * stride, (x + 1) * (128 / divisor) * stride))
+			for x in IntegerMath.div_trunc(128, divisor):
+				var start := ((int(block.x / divisor) + x) * (IntegerMath.div_trunc(edge, divisor)) + int(block.y / divisor)) * stride
+				assert(output.slice(start, start + (IntegerMath.div_trunc(128, divisor)) * stride) == input.slice(x * (IntegerMath.div_trunc(128, divisor)) * stride, (x + 1) * (IntegerMath.div_trunc(128, divisor)) * stride))
 
 	report["output_sha256"] = FileAccess.get_sha256(path)
 	report["population"] = city.population()

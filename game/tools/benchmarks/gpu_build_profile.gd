@@ -39,7 +39,7 @@ func _initialize() -> void:
 	var sprites := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
 	var palette := Sc2Palette.index_encoding()
 	var context := ProfiledContext.new()
-	var center := CityIsometricRenderer.output_size_for_view(2, 512) / 2 / 256
+	var center := IntegerMath.div_trunc_vec2i(IntegerMath.div_trunc_vec2i(CityIsometricRenderer.output_size_for_view(2, 512), 2), 256)
 	var began := Time.get_ticks_usec()
 	var quads := 0
 

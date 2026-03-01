@@ -31,7 +31,7 @@ func _initialize() -> void:
 				if index in range(171, 239):
 					cycles[index] = int(cycles.get(index, 0)) + 1
 
-				var point := Vector2i(i % entry.width, i / entry.width)
+				var point := Vector2i(i % entry.width, IntegerMath.div_trunc(i, entry.width))
 				bounds = bounds.merge(Rect2i(point, Vector2i.ONE)) if bounds.has_area() else Rect2i(point, Vector2i.ONE)
 
 			print("%d %s: %dx%d, %d opaque, bounds %s, colors %s, cycles %s" % [entry.sprite_id, str(roles[base]), entry.width, entry.height, pixels.size() - pixels.count(-1), str(bounds), str(colors), str(cycles)])

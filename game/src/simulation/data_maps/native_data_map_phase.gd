@@ -1,5 +1,8 @@
 class_name NativeDataMapPhase
 extends RefCounted
+
+# Inline integer division avoids a function call for every cell.
+@warning_ignore_start("integer_division")
 # SC2X v3 per-tile rules. These differ from the original executable's coarse-grid rules.
 
 

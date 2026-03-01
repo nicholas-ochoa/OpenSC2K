@@ -27,7 +27,7 @@ func _initialize() -> void:
 		if name == "workspace-22005.png":
 			for y in 256:
 				for x in 256:
-					pixels[y * 256 + x] = (y / 16) * 16 + x / 16
+					pixels[y * 256 + x] = (IntegerMath.div_trunc(y, 16)) * 16 + IntegerMath.div_trunc(x, 16)
 
 		_write_png(name, pixels, palette, size.x, size.y)
 

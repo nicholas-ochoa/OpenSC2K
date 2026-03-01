@@ -9,7 +9,7 @@ const EXTRA_THING := 8192
 static func count(data: PackedByteArray) -> int:
 	var bytes := data.size()
 
-	return bytes / 2 if bytes == 131072 or bytes == 294912 or bytes == 524288 else bytes
+	return IntegerMath.div_trunc(bytes, 2) if bytes == 131072 or bytes == 294912 or bytes == 524288 else bytes
 
 
 static func read(data: PackedByteArray, index: int) -> int:
@@ -61,7 +61,7 @@ static func thing_record(id: int) -> int:
 static func sign_ids(label_bytes: int) -> PackedInt32Array:
 	var ids := PackedInt32Array(range(1, 51))
 
-	for id in range(EXTRA_SIGN, label_bytes / 25):
+	for id in range(EXTRA_SIGN, IntegerMath.div_trunc(label_bytes, 25)):
 		ids.append(id)
 
 	return ids
@@ -101,7 +101,7 @@ static func valid_id(id: int, edge: int) -> bool:
 	if edge == 128:
 		return false
 
-	var factor := edge * edge / 16384
+	var factor := IntegerMath.div_trunc(edge * edge, 16384)
 
 	return (is_facility(id) and facility_record(id) < 150 * factor) or (is_sign(id) and id < EXTRA_SIGN + 50 * factor - 50) or (is_thing(id) and thing_record(id) < 40 * factor)
 

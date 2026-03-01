@@ -170,8 +170,8 @@ func update_viewport(source_rect: Rect2) -> void:
 
 		return
 
-	var first := Vector2i(rect.position / region_edge)
-	var last := Vector2i((rect.end - Vector2i.ONE) / region_edge)
+	var first := Vector2i(IntegerMath.div_trunc_vec2i(rect.position, region_edge))
+	var last := Vector2i(IntegerMath.div_trunc_vec2i((rect.end - Vector2i.ONE), region_edge))
 	var margin := clampi(ceili(minf(rect.size.x, rect.size.y) / (3.0 * region_edge)), 1, 4) if gpu_enabled else 1
 	var side_margin := margin
 	var top_margin := maxi(1, ceili(margin / 2.0)) if gpu_enabled else 1
@@ -433,8 +433,8 @@ func pixel(point: Vector2i) -> Color:
 	if point.x < 0 or point.y < 0:
 		return Color.TRANSPARENT
 
-	var native := Vector2i(point / divisor)
-	var key := Vector2i(native / region_edge)
+	var native := Vector2i(IntegerMath.div_trunc_vec2i(point, divisor))
+	var key := Vector2i(IntegerMath.div_trunc_vec2i(native, region_edge))
 
 	if not entries.has(key):
 		return Color.TRANSPARENT
@@ -667,7 +667,7 @@ func _tick_gpu() -> bool:
 
 			# keep neighboring wide-view regions on the same worker so their tile
 			# geometry and bounds are prepared once. small views use either worker
-			if not _edit_priority.has(key) and visible.size() >= 32 and int(key.x / 8) % _gpu_workers.size() != worker_index:
+			if not _edit_priority.has(key) and visible.size() >= 32 and int(IntegerMath.div_trunc(key.x, 8)) % _gpu_workers.size() != worker_index:
 				continue
 
 			keys.append(key)

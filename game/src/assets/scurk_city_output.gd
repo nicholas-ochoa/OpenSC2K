@@ -271,7 +271,7 @@ static func _encode_pdf(
 
 	for output_index in selected.size():
 		var page_index := int(selected[output_index])
-		var column := page_index / rows
+		var column := IntegerMath.div_trunc(page_index, rows)
 		var row := page_index % rows
 
 		if column < 0 or column >= columns:
@@ -523,7 +523,7 @@ static func _draw_artwork_stamps(output: Image, city: CityState, palette: Sc2Pal
 
 		var image: Image = rendered.image
 		var anchor := Renderer.tile_polygon(city, stamp.point.x, stamp.point.y)[2] / float(configuration.divisor)
-		var origin := Vector2i(anchor) - Vector2i(image.get_width() / 2, image.get_height() - 1)
+		var origin := Vector2i(anchor) - Vector2i(IntegerMath.div_trunc(image.get_width(), 2), image.get_height() - 1)
 
 		for y in image.get_height():
 			for x in image.get_width():

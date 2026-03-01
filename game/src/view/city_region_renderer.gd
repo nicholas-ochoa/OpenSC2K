@@ -32,7 +32,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	var count := 0
 	var half_width := int(configuration.half_width)
 	var half_height := int(configuration.half_height)
-	var bottom_extra := int(configuration.tile_height) + int(sprite_limit.x / 4) + 1
+	var bottom_extra := int(configuration.tile_height) + int(IntegerMath.div_trunc(sprite_limit.x, 4)) + 1
 
 	if mode == "underground":
 		bottom_extra += 31 * int(configuration.altitude_step)

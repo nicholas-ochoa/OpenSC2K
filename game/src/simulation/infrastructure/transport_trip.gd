@@ -127,12 +127,12 @@ static func trace(
 	var limit := maxi(maximum_cost, 0)
 
 	if traffic_weight == 1:
-		limit -= int(limit / 4)
+		limit -= int(IntegerMath.div_trunc(limit, 4))
 
 	var turn_direction := 1 if random.next_u15() & 1 else 3
 	var start_index := start & (POINT_INDEX_MASK if map_edge == 128 else 0x3ffff)
 	var state_points: Array[Vector2i] = [
-		Vector2i(int(start_index / map_edge), start_index % map_edge)
+		Vector2i(int(IntegerMath.div_trunc(start_index, map_edge)), start_index % map_edge)
 	]
 	var state_modes := PackedInt32Array([start >> (14 if map_edge == 128 else 18)])
 	var state_costs := PackedInt32Array([0])

@@ -74,12 +74,12 @@ func export_packs(source: String, target: String, original_data := "") -> Dictio
 				return {"ok": false, "error": "Unsupported original bitmap"}
 
 			var pixels := PackedInt32Array()
-			var stride := ((int(dib.width) * 4 + 31) / 32) * 4
+			var stride := (IntegerMath.div_trunc((int(dib.width) * 4 + 31), 32)) * 4
 			var start := int(bytes.decode_u32(0)) + count * 4
 
 			for y in int(dib.height):
 				for x in int(dib.width):
-					var value := bytes[start + (int(dib.height) - 1 - y) * stride + x / 2]
+					var value := bytes[start + (int(dib.height) - 1 - y) * stride + IntegerMath.div_trunc(x, 2)]
 					pixels.append((value >> 4) if x % 2 == 0 else (value & 15))
 
 			decoded = {"ok": true, "width": dib.width, "height": dib.height, "pixels": pixels}

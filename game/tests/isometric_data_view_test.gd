@@ -34,7 +34,7 @@ func _run() -> void:
 				check(CityDataView.value(city, mode, point.x, point.y) == 173, "Far-tile value")
 				var image := CityDataView.value_image(city, mode)
 				var scale: int = edge / image.get_width()
-				check(roundi(image.get_pixel(point.y / scale, point.x / scale).r * 255) == 173, "Texture retains far value and column-major coordinates")
+				check(roundi(image.get_pixel(IntegerMath.div_trunc(point.y, scale), IntegerMath.div_trunc(point.x, scale)).r * 255) == 173, "Texture retains far value and column-major coordinates")
 				check(CityDataView.value(city, mode, point.x, point.y + 1) == (0 if native else 173), "Native/legacy resolution")
 
 			city.set_tile_flag(point.x, point.y, 0x80, true)

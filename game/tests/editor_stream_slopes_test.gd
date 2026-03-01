@@ -14,7 +14,7 @@ func _initialize() -> void:
 
 	for index in CityState.TILE_COUNT:
 		indices.append(index)
-		TerrainCommand._set_land_altitude(payloads.ALTM, index, maxi(0, 16 - (index / 128) / 4))
+		TerrainCommand._set_land_altitude(payloads.ALTM, index, maxi(0, 16 - IntegerMath.div_trunc((IntegerMath.div_trunc(index, 128)), 4)))
 
 	TerrainCommand._retile_region(payloads.ALTM,payloads.XBLD,payloads.XTER,payloads.XZON,payloads.XBIT,payloads.MISC,indices,0)
 
@@ -32,7 +32,7 @@ func _initialize() -> void:
 		if not city.tile_flags[index] & 4:
 			continue
 
-		var point := Vector2i(index / 128,index % 128)
+		var point := Vector2i(IntegerMath.div_trunc(index, 128),index % 128)
 
 		if CityIsometricRenderer.surface_terrain_id(city,point.x,point.y) == 0x3e:
 			assert(city.terrain[index] == 0x3e, 'Edited slope still needs display repair')

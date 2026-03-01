@@ -83,19 +83,19 @@ static func run(city: CityState) -> Dictionary:
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != 4800:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
 
-	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
+	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))):
 		return {"ok": false, "error": "XTRF is missing or has the wrong size"}
 
-	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
+	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))):
 		return {"ok": false, "error": "XPLT is missing or has the wrong size"}
 
 	for checked in [
-		[land_value_chunk, "XVAL", ((map_edge / 2) * (map_edge / 2))],
-		[crime_chunk, "XCRM", ((map_edge / 2) * (map_edge / 2))],
-		[police_chunk, "XPLC", (map_edge / 4) * (map_edge / 4)],
-		[fire_chunk, "XFIR", (map_edge / 4) * (map_edge / 4)],
-		[population_chunk, "XPOP", (map_edge / 4) * (map_edge / 4)],
-		[growth_chunk, "XROG", (map_edge / 4) * (map_edge / 4)],
+		[land_value_chunk, "XVAL", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
+		[crime_chunk, "XCRM", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
+		[police_chunk, "XPLC", (IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4))],
+		[fire_chunk, "XFIR", (IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4))],
+		[population_chunk, "XPOP", (IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4))],
+		[growth_chunk, "XROG", (IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4))],
 	]:
 		if checked[0] == null or checked[0].decoded_payload.size() != checked[2]:
 			return {"ok": false, "error": "%s is missing or has the wrong size" % checked[1]}
@@ -108,16 +108,16 @@ static func run(city: CityState) -> Dictionary:
 	var temporary := PackedInt32Array()
 	temporary.resize(map_edge * map_edge)
 
-	for x in (map_edge / 2):
+	for x in (IntegerMath.div_trunc(map_edge, 2)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
 
-		var coarse_row := x * (map_edge / 2)
+		var coarse_row := x * (IntegerMath.div_trunc(map_edge, 2))
 		var temporary_row := x * map_edge
 
-		for y in (map_edge / 2):
+		for y in (IntegerMath.div_trunc(map_edge, 2)):
 			var map_index := coarse_row + y
-			var value := int(old_traffic[map_index] / 5)
+			var value := int(IntegerMath.div_trunc(old_traffic[map_index], 5))
 			value += old_pollution[map_index]
 
 			for full_x in range(x * 2, x * 2 + 2):
@@ -138,17 +138,17 @@ static func run(city: CityState) -> Dictionary:
 	var base_divisor := pollution_divisor(city.document)
 
 	var pollution := PackedByteArray()
-	pollution.resize(((map_edge / 2) * (map_edge / 2)))
+	pollution.resize(((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))))
 	var total := 0
 
-	for x in (map_edge / 2):
+	for x in (IntegerMath.div_trunc(map_edge, 2)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
 
-		var map_row := x * (map_edge / 2)
+		var map_row := x * (IntegerMath.div_trunc(map_edge, 2))
 		var temporary_row := x * map_edge
 
-		for y in (map_edge / 2):
+		for y in (IntegerMath.div_trunc(map_edge, 2)):
 			var index := map_row + y
 			var temporary_index := temporary_row + y
 			var numerator := temporary[temporary_index] * 2
@@ -158,7 +158,7 @@ static func run(city: CityState) -> Dictionary:
 				numerator += temporary[temporary_index - map_edge]
 				divisor += 1
 
-			if x < (map_edge / 2) - 1:
+			if x < (IntegerMath.div_trunc(map_edge, 2)) - 1:
 				numerator += temporary[temporary_index + map_edge]
 				divisor += 1
 
@@ -166,11 +166,11 @@ static func run(city: CityState) -> Dictionary:
 				numerator += temporary[temporary_index - 1]
 				divisor += 1
 
-			if y < (map_edge / 2) - 1:
+			if y < (IntegerMath.div_trunc(map_edge, 2)) - 1:
 				numerator += temporary[temporary_index + 1]
 				divisor += 1
 
-			var value := mini(int(numerator / divisor), 0xff)
+			var value := mini(int(IntegerMath.div_trunc(numerator, divisor)), 0xff)
 			pollution[index] = value
 			total += value
 
@@ -197,8 +197,8 @@ static func run(city: CityState) -> Dictionary:
 				temporary[index] = 40
 				flags[index] &= ~FLAG_MARK & 0xff
 
-	var center_x := int(coordinate_sum_x / (center_divisor * 2))
-	var center_y := int(coordinate_sum_y / (center_divisor * 2))
+	var center_x := int(IntegerMath.div_trunc(coordinate_sum_x, (center_divisor * 2)))
+	var center_y := int(IntegerMath.div_trunc(coordinate_sum_y, (center_divisor * 2)))
 
 	span.mark("terrain desirability")
 	var developed_tiles := 0
@@ -210,7 +210,7 @@ static func run(city: CityState) -> Dictionary:
 		var row := x * map_edge
 		var quarter_x := x >> 2
 		var residential_row := quarter_x * map_edge
-		var industrial_row := (quarter_x + (map_edge / 4)) * map_edge
+		var industrial_row := (quarter_x + (IntegerMath.div_trunc(map_edge, 4))) * map_edge
 		var marked_row := (x >> 1) * map_edge
 
 		for y in map_edge:
@@ -256,19 +256,19 @@ static func run(city: CityState) -> Dictionary:
 	var old_population: PackedByteArray = population_chunk.decoded_payload
 	var old_growth: PackedByteArray = growth_chunk.decoded_payload
 	var land_value := PackedByteArray()
-	land_value.resize(((map_edge / 2) * (map_edge / 2)))
+	land_value.resize(((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))))
 	var land_value_total := 0
 
-	for x in (map_edge / 2):
+	for x in (IntegerMath.div_trunc(map_edge, 2)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
 
-		var map_row := x * (map_edge / 2)
+		var map_row := x * (IntegerMath.div_trunc(map_edge, 2))
 		var flag_row := x * map_edge
 		var full_x := x * 2
 		var building_row := full_x * map_edge
 
-		for y in (map_edge / 2):
+		for y in (IntegerMath.div_trunc(map_edge, 2)):
 			var map_index := map_row + y
 
 			if not flags[flag_row + y] & FLAG_MARK:
@@ -290,29 +290,29 @@ static func run(city: CityState) -> Dictionary:
 				3, 4:
 					value = _average_service_grid(temporary, service_x, service_y, 0, map_edge)
 					value += maxi(distance_value, 0)
-					value -= int(pollution[map_index] / 4)
-					value -= int(old_crime[map_index] / 3)
-					value += int(old_population[service_x * (map_edge / 4) + service_y] / 3)
+					value -= int(IntegerMath.div_trunc(pollution[map_index], 4))
+					value -= int(IntegerMath.div_trunc(old_crime[map_index], 3))
+					value += int(IntegerMath.div_trunc(old_population[service_x * (IntegerMath.div_trunc(map_edge, 4)) + service_y], 3))
 				5, 6:
 					value = _average_service_grid(
-						temporary, service_x, service_y, (map_edge / 4), map_edge
+						temporary, service_x, service_y, (IntegerMath.div_trunc(map_edge, 4)), map_edge
 					)
 
 					if zone == 6:
 						value += 21
 
 					value += maxi(_divide_toward_zero(distance_value, 4), 0)
-					value -= int(pollution[map_index] / 16)
-					value -= int(old_crime[map_index] / 4)
+					value -= int(IntegerMath.div_trunc(pollution[map_index], 16))
+					value -= int(IntegerMath.div_trunc(old_crime[map_index], 4))
 				_:
 					value = _average_service_grid(temporary, service_x, service_y, 0, map_edge)
 
-					if old_population[service_x * (map_edge / 4) + service_y] < 0x40:
+					if old_population[service_x * (IntegerMath.div_trunc(map_edge, 4)) + service_y] < 0x40:
 						value += 21
 
 					value += maxi(_divide_toward_zero(distance_value, 2), 0)
-					value -= int(pollution[map_index] / 5)
-					value -= int(old_crime[map_index] / 3)
+					value -= int(IntegerMath.div_trunc(pollution[map_index], 5))
+					value -= int(IntegerMath.div_trunc(old_crime[map_index], 3))
 
 			var building := buildings[full_index]
 
@@ -323,20 +323,20 @@ static func run(city: CityState) -> Dictionary:
 			land_value[map_index] = value
 			land_value_total += value
 
-	for x in (map_edge / 4):
+	for x in (IntegerMath.div_trunc(map_edge, 4)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
 
 		var row := x * map_edge
 
-		for y in (map_edge / 4):
+		for y in (IntegerMath.div_trunc(map_edge, 4)):
 			temporary[row + y] = 0
 
 	span.mark("services and population sources")
 	var police := PackedByteArray()
-	police.resize((map_edge / 4) * (map_edge / 4))
+	police.resize((IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4)))
 	var fire := PackedByteArray()
-	fire.resize((map_edge / 4) * (map_edge / 4))
+	fire.resize((IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4)))
 	var ordinances := city.document.misc_u32(MISC_ORDINANCES)
 
 	for x in range(1, map_edge - 1):
@@ -351,7 +351,7 @@ static func run(city: CityState) -> Dictionary:
 			var index := row + y
 			var building := buildings[index]
 			var service_y := y >> 2
-			var service_index := service_x * (map_edge / 4) + service_y
+			var service_index := service_x * (IntegerMath.div_trunc(map_edge, 4)) + service_y
 
 			if building >= FIRST_POLLUTING_BUILDING and building < FIRST_POWER_PLANT:
 				temporary[temporary_row + service_y] += _population_weight(building)
@@ -371,9 +371,8 @@ static func run(city: CityState) -> Dictionary:
 
 				if building == POLICE_STATION:
 					var strength := int(
-						(city.document.misc_i32(MISC_PRISON_BONUS) + 5)
-						* _budget_funding(city, BUDGET_POLICE)
-						/ 2
+						IntegerMath.div_trunc((city.document.misc_i32(MISC_PRISON_BONUS) + 5)
+						* _budget_funding(city, BUDGET_POLICE), 2)
 					)
 
 					if not flags[index] & FLAG_POWERED:
@@ -381,7 +380,7 @@ static func run(city: CityState) -> Dictionary:
 
 					_add_service(police, service_x, service_y, strength, map_edge)
 				elif building == FIRE_STATION:
-					var strength := int(_budget_funding(city, BUDGET_FIRE) * 5 / 2)
+					var strength := int(IntegerMath.div_trunc(_budget_funding(city, BUDGET_FIRE) * 5, 2))
 
 					if not flags[index] & FLAG_POWERED:
 						strength = _divide_toward_zero(strength, 2)
@@ -390,18 +389,18 @@ static func run(city: CityState) -> Dictionary:
 
 	span.mark("population and growth")
 	var population := PackedByteArray()
-	population.resize((map_edge / 4) * (map_edge / 4))
+	population.resize((IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4)))
 	var growth := PackedByteArray()
-	growth.resize((map_edge / 4) * (map_edge / 4))
+	growth.resize((IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4)))
 
-	for x in (map_edge / 4):
+	for x in (IntegerMath.div_trunc(map_edge, 4)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
 
-		var row := x * (map_edge / 4)
+		var row := x * (IntegerMath.div_trunc(map_edge, 4))
 		var temporary_row := x * map_edge
 
-		for y in (map_edge / 4):
+		for y in (IntegerMath.div_trunc(map_edge, 4)):
 			var index := row + y
 			var population_value := mini(temporary[temporary_row + y] * 4, 0xff)
 			population[index] = population_value
@@ -412,15 +411,15 @@ static func run(city: CityState) -> Dictionary:
 			)
 			growth[index] = clampi(_divide_toward_zero(growth_numerator, 8), 0, 0xff)
 
-	for x in (map_edge / 2):
+	for x in (IntegerMath.div_trunc(map_edge, 2)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
 
-		var map_row := x * (map_edge / 2)
+		var map_row := x * (IntegerMath.div_trunc(map_edge, 2))
 		var temporary_row := x * map_edge
-		var service_row := (x >> 1) * (map_edge / 4)
+		var service_row := (x >> 1) * (IntegerMath.div_trunc(map_edge, 4))
 
-		for y in (map_edge / 2):
+		for y in (IntegerMath.div_trunc(map_edge, 2)):
 			var index := map_row + y
 			var temporary_index := temporary_row + y
 
@@ -430,8 +429,8 @@ static func run(city: CityState) -> Dictionary:
 
 			var service_index := service_row + (y >> 1)
 			var value := int(population[service_index])
-			value -= int(land_value[index] / 4)
-			value -= int(police[service_index] / 2)
+			value -= int(IntegerMath.div_trunc(land_value[index], 4))
+			value -= int(IntegerMath.div_trunc(police[service_index], 2))
 
 			if ordinances & CRIME_REDUCTION_ORDINANCE:
 				value += 16
@@ -440,17 +439,17 @@ static func run(city: CityState) -> Dictionary:
 
 	span.mark("crime smoothing")
 	var crime := PackedByteArray()
-	crime.resize(((map_edge / 2) * (map_edge / 2)))
+	crime.resize(((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))))
 	var crime_total := 0
 
-	for x in (map_edge / 2):
+	for x in (IntegerMath.div_trunc(map_edge, 2)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
 
-		var map_row := x * (map_edge / 2)
+		var map_row := x * (IntegerMath.div_trunc(map_edge, 2))
 		var temporary_row := x * map_edge
 
-		for y in (map_edge / 2):
+		for y in (IntegerMath.div_trunc(map_edge, 2)):
 			var temporary_index := temporary_row + y
 			var numerator := temporary[temporary_index]
 			var divisor := 1
@@ -459,7 +458,7 @@ static func run(city: CityState) -> Dictionary:
 				numerator += temporary[temporary_index - map_edge]
 				divisor += 1
 
-			if x < (map_edge / 2) - 1:
+			if x < (IntegerMath.div_trunc(map_edge, 2)) - 1:
 				numerator += temporary[temporary_index + map_edge]
 				divisor += 1
 
@@ -467,7 +466,7 @@ static func run(city: CityState) -> Dictionary:
 				numerator += temporary[temporary_index - 1]
 				divisor += 1
 
-			if y < (map_edge / 2) - 1:
+			if y < (IntegerMath.div_trunc(map_edge, 2)) - 1:
 				numerator += temporary[temporary_index + 1]
 				divisor += 1
 
@@ -550,7 +549,7 @@ static func _average_service_grid(
 		total += values[neighbor_row - map_edge]
 		divisor += 1
 
-	if x < (map_edge / 4) - 1:
+	if x < (IntegerMath.div_trunc(map_edge, 4)) - 1:
 		total += values[neighbor_row + map_edge]
 		divisor += 1
 
@@ -558,7 +557,7 @@ static func _average_service_grid(
 		total += values[center_index - 1]
 		divisor += 1
 
-	if y < (map_edge / 4) - 1:
+	if y < (IntegerMath.div_trunc(map_edge, 4)) - 1:
 		total += values[center_index + 1]
 		divisor += 1
 
@@ -641,12 +640,12 @@ static func _add_service_cell(
 	values: PackedByteArray, x: int, y: int, strength: int,
 	map_edge: int = 128,
 ) -> void:
-	if x < 0 or x >= (map_edge / 4) or y < 0 or y >= (map_edge / 4):
+	if x < 0 or x >= (IntegerMath.div_trunc(map_edge, 4)) or y < 0 or y >= (IntegerMath.div_trunc(map_edge, 4)):
 		return
 
-	var index := x * (map_edge / 4) + y
+	var index := x * (IntegerMath.div_trunc(map_edge, 4)) + y
 	values[index] = clampi(int(values[index]) + strength, 0, 0xff)
 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
-	return int(value / divisor)
+	return int(IntegerMath.div_trunc(value, divisor))

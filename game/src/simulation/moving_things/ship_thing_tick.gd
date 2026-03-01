@@ -321,10 +321,10 @@ static func _direction_between(start: Vector2i, target: Vector2i) -> int:
 	var absolute_x := absi(difference.x)
 	var absolute_y := absi(difference.y)
 
-	if absolute_x < int((absolute_y + 1) / 2):
+	if absolute_x < int(IntegerMath.div_trunc((absolute_y + 1), 2)):
 		return 0 if difference.y < 0 else 4
 
-	if absolute_y < int((absolute_x + 1) / 2):
+	if absolute_y < int(IntegerMath.div_trunc((absolute_x + 1), 2)):
 		return 6 if difference.x < 0 else 2
 
 	if difference.x < 0:

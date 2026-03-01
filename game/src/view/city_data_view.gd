@@ -82,7 +82,7 @@ static func tile_text(city: CityState, mode: String, point: Vector2i, exact := f
 	elif mode == "height":
 		description = "Level %d of 32" % (number + 1)
 	else:
-		description = ["Very low", "Low", "Moderate", "High", "Very high"][mini(number * 5 / 256, 4)]
+		description = ["Very low", "Low", "Moderate", "High", "Very high"][mini(IntegerMath.div_trunc(number * 5, 256), 4)]
 
 	var title: String = TITLES[MODES.find(mode)]
 	var result := "%s: %s" % [title, description]

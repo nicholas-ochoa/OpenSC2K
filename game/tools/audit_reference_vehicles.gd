@@ -24,7 +24,7 @@ func _initialize() -> void:
 				if index < 0:
 					continue
 
-				var point := Vector2i(i % entry.width, i / entry.width)
+				var point := Vector2i(i % entry.width, IntegerMath.div_trunc(i, entry.width))
 				minimum = minimum.min(point)
 				maximum = maximum.max(point)
 

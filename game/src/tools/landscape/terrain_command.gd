@@ -502,7 +502,7 @@ static func _expanded_indices(indices: PackedInt32Array, map_edge: int = 128) ->
 	var result := PackedInt32Array()
 
 	for index in indices:
-		var point := Vector2i(int(index / map_edge), index % map_edge)
+		var point := Vector2i(int(IntegerMath.div_trunc(index, map_edge)), index % map_edge)
 
 		for x in range(maxi(0, point.x - 1), mini(map_edge, point.x + 2)):
 			for y in range(maxi(0, point.y - 1), mini(map_edge, point.y + 2)):
@@ -538,7 +538,7 @@ static func _clear_terrain_conflicts(
 	var random_used := false
 
 	for index in indices:
-		var point := Vector2i(int(index / map_edge), index % map_edge)
+		var point := Vector2i(int(IntegerMath.div_trunc(index, map_edge)), index % map_edge)
 		var old_building := int(buildings[index])
 
 		if old_building >= 0x0d:
@@ -638,7 +638,7 @@ static func _retile_region(
 	map_edge: int = 128,
 ) -> void:
 	for index in indices:
-		var point := Vector2i(int(index / map_edge), index % map_edge)
+		var point := Vector2i(int(IntegerMath.div_trunc(index, map_edge)), index % map_edge)
 		var land := _land_altitude(altitude, index)
 		var higher_mask := 0
 

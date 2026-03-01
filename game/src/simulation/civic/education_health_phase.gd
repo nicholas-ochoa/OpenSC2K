@@ -81,22 +81,19 @@ static func run(city: CityState, random) -> Dictionary:
 
 	var ordinance_flags := city.document.misc_u32(MISC_ORDINANCES)
 	var health_capacity := int(
-		int(_tile_count(city, HOSPITAL_TILE) / 9)
+		IntegerMath.div_trunc(int(IntegerMath.div_trunc(_tile_count(city, HOSPITAL_TILE), 9))
 		* _budget_funding(city, BUDGET_HEALTH)
-		* 25
-		/ 100
+		* 25, 100)
 	)
 	var school_capacity := int(
-		int(_tile_count(city, SCHOOL_TILE) / 9)
+		IntegerMath.div_trunc(int(IntegerMath.div_trunc(_tile_count(city, SCHOOL_TILE), 9))
 		* _budget_funding(city, BUDGET_SCHOOL)
-		* 15
-		/ 100
+		* 15, 100)
 	)
 	var college_capacity := int(
-		int(_tile_count(city, COLLEGE_TILE) / 16)
+		IntegerMath.div_trunc(int(IntegerMath.div_trunc(_tile_count(city, COLLEGE_TILE), 16))
 		* _budget_funding(city, BUDGET_COLLEGE)
-		* 50
-		/ 100
+		* 50, 100)
 	)
 	var newborn_life_expectancy := 85
 
@@ -111,14 +108,13 @@ static func run(city: CityState, random) -> Dictionary:
 
 	if ordinance_flags & ORDINANCE_FREE_CLINICS:
 		health_capacity += int(
-			city.document.misc_i32(MISC_BUDGETS) / 400
+			IntegerMath.div_trunc(city.document.misc_i32(MISC_BUDGETS), 400)
 		)
 
 	var deaths := _apply_mortality(population, education, life_expectancy, random)
 	var abandoned_population := city.document.misc_u32(MISC_ZONE_POPULATIONS + 7 * 4)
 	var pollution_penalty := int(
-		city.document.misc_u32(MISC_CITY_POLLUTION)
-		/ (city_population + abandoned_population * 10 + 1)
+		IntegerMath.div_trunc(city.document.misc_u32(MISC_CITY_POLLUTION), (city_population + abandoned_population * 10 + 1))
 	)
 	pollution_penalty = mini(pollution_penalty, 3)
 	_apply_aging(
@@ -137,7 +133,7 @@ static func run(city: CityState, random) -> Dictionary:
 	for cohort in range(4, 9):
 		fertile_population += population[cohort]
 
-	var births := int(fertile_population / 300)
+	var births := int(IntegerMath.div_trunc(fertile_population, 300))
 	# The original subtracts pollution here instead of using the modulo remainder.
 	var birth_threshold := fertile_population - pollution_penalty * 300
 
@@ -150,7 +146,7 @@ static func run(city: CityState, random) -> Dictionary:
 			(newborn_life_expectancy - 35) * protected_births + births * 35
 		)
 		education[0] += int(
-			births * city.document.misc_u32(MISC_WORKFORCE_EQ) / 5
+			IntegerMath.div_trunc(births * city.document.misc_u32(MISC_WORKFORCE_EQ), 5)
 		)
 		population[0] += births
 
@@ -184,9 +180,9 @@ static func run(city: CityState, random) -> Dictionary:
 	var workforce_le := 0
 
 	if workforce_population > 0:
-		workforce_percent = int(workforce_population * 100 / (city_population + 1))
-		workforce_eq = int(workforce_education / workforce_population)
-		workforce_le = int(workforce_life_expectancy / workforce_population)
+		workforce_percent = int(IntegerMath.div_trunc(workforce_population * 100, (city_population + 1)))
+		workforce_eq = int(IntegerMath.div_trunc(workforce_education, workforce_population))
+		workforce_le = int(IntegerMath.div_trunc(workforce_life_expectancy, workforce_population))
 
 	var changed: PackedByteArray = misc.decoded_payload.duplicate()
 	_write_tables(changed, population, education, life_expectancy)
@@ -232,14 +228,14 @@ static func _apply_mortality(
 		if count == 0:
 			continue
 
-		var average_life_expectancy := int(life_expectancy[cohort] / count)
-		var survival_ratio := int(average_life_expectancy * 100 / (cohort * 5))
+		var average_life_expectancy := int(IntegerMath.div_trunc(life_expectancy[cohort], count))
+		var survival_ratio := int(IntegerMath.div_trunc(average_life_expectancy * 100, (cohort * 5)))
 
 		if survival_ratio >= 100:
 			continue
 
-		var scaled_deaths := int((100 - survival_ratio) * count / 24)
-		var deaths := int(scaled_deaths / 100)
+		var scaled_deaths := int(IntegerMath.div_trunc((100 - survival_ratio) * count, 24))
+		var deaths := int(IntegerMath.div_trunc(scaled_deaths, 100))
 
 		if random.next_u15() % 100 < scaled_deaths - deaths * 100:
 			deaths += 1
@@ -249,8 +245,8 @@ static func _apply_mortality(
 		if deaths == 0:
 			continue
 
-		education[cohort] -= int(education[cohort] * deaths / count)
-		life_expectancy[cohort] -= int(life_expectancy[cohort] * deaths / count)
+		education[cohort] -= int(IntegerMath.div_trunc(education[cohort] * deaths, count))
+		life_expectancy[cohort] -= int(IntegerMath.div_trunc(life_expectancy[cohort] * deaths, count))
 		population[cohort] -= deaths
 		total_deaths += deaths
 
@@ -274,7 +270,7 @@ static func _apply_aging(
 		if source_population == 0:
 			continue
 
-		var moved_population := int(source_population / 60)
+		var moved_population := int(IntegerMath.div_trunc(source_population, 60))
 
 		if random.next_u15() % 60 < source_population % 60:
 			moved_population += 1
@@ -285,7 +281,7 @@ static func _apply_aging(
 			continue
 
 		var moved_education := int(
-			education[source_cohort] * moved_population / source_population
+			IntegerMath.div_trunc(education[source_cohort] * moved_population, source_population)
 		)
 		education[source_cohort] -= moved_education
 
@@ -294,7 +290,7 @@ static func _apply_aging(
 		elif target_cohort == 3:
 			var educated_population := mini(moved_population, college_capacity)
 			moved_education += int(
-				int(educated_population * moved_education / moved_population) / 2
+				IntegerMath.div_trunc(int(IntegerMath.div_trunc(educated_population * moved_education, moved_population)), 2)
 			)
 
 		if ordinance_flags & ORDINANCE_PRO_READING == 0:
@@ -303,7 +299,7 @@ static func _apply_aging(
 		education[target_cohort] = _u32(education[target_cohort] + moved_education)
 
 		var moved_life_expectancy := int(
-			life_expectancy[source_cohort] * moved_population / source_population
+			IntegerMath.div_trunc(life_expectancy[source_cohort] * moved_population, source_population)
 		)
 		life_expectancy[source_cohort] -= moved_life_expectancy
 		life_expectancy[target_cohort] = _u32(
@@ -320,7 +316,7 @@ static func _add_population(
 	amount: int
 ) -> void:
 	var remaining := amount
-	var portion := int(remaining / 16) + 1
+	var portion := int(IntegerMath.div_trunc(remaining, 16)) + 1
 
 	while remaining > 0:
 		for cohort in range(4, 8):
@@ -365,7 +361,7 @@ static func _remove_population(
 			if count == 0:
 				continue
 
-			var removed := int(count * pass_start / (remaining + city_population))
+			var removed := int(IntegerMath.div_trunc(count * pass_start, (remaining + city_population)))
 
 			if removed == 0 and random.next_u15() & 3 == 0:
 				removed = 1
@@ -375,8 +371,8 @@ static func _remove_population(
 			if removed == 0:
 				continue
 
-			life_expectancy[cohort] -= int(life_expectancy[cohort] * removed / count)
-			education[cohort] -= int(education[cohort] * removed / count)
+			life_expectancy[cohort] -= int(IntegerMath.div_trunc(life_expectancy[cohort] * removed, count))
+			education[cohort] -= int(IntegerMath.div_trunc(education[cohort] * removed, count))
 			population[cohort] -= removed
 			remaining -= removed
 

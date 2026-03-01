@@ -417,7 +417,7 @@ func _ensure_sign_entries() -> void:
 	var positions: Array[Vector2i] = []
 
 	for index in sign_indices:
-		var x := int(index / map_edge)
+		var x := int(IntegerMath.div_trunc(index, map_edge))
 		var y := index % map_edge
 		positions.append(Vector2i((x + y) * map_edge + y, index))
 
@@ -425,7 +425,7 @@ func _ensure_sign_entries() -> void:
 		return a.x < b.x)
 
 	for entry in positions:
-		var x := int(entry.y / map_edge)
+		var x := int(IntegerMath.div_trunc(entry.y, map_edge))
 		var y := entry.y % map_edge
 
 		if not city.tile_is_visible(x, y):

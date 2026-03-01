@@ -34,7 +34,7 @@ static func neighborhood(values: PackedInt32Array, edge: int, radius: int, scale
 			var bottom := mini(y + radius + 1, edge)
 			var total := integral[right * stride + bottom] - integral[left * stride + bottom]
 			total -= integral[right * stride + top] - integral[left * stride + top]
-			result[x * edge + y] = int(total * scale / ((right - left) * (bottom - top)))
+			result[x * edge + y] = int(IntegerMath.div_trunc(total * scale, ((right - left) * (bottom - top))))
 
 	return result
 
@@ -72,7 +72,7 @@ static func smooth(values: PackedInt32Array, edge: int, center_weight: int, base
 					total += values[index + distance]
 					divisor += 1
 
-			result[index] = int(total / divisor)
+			result[index] = int(IntegerMath.div_trunc(total, divisor))
 
 	return result
 
@@ -119,7 +119,7 @@ static func add_service(values: PackedByteArray, edge: int, origin: Vector2i, st
 			weighted += _sample(kernel, kx, ky + 1) * (4 - fx) * fy
 			weighted += _sample(kernel, kx + 1, ky + 1) * fx * fy
 			var index := x * edge + y
-			values[index] = clampi(int(values[index]) + weighted / 16, 0, 255)
+			values[index] = clampi(int(values[index]) + IntegerMath.div_trunc(weighted, 16), 0, 255)
 
 
 static func _sample(kernel: PackedByteArray, x: int, y: int) -> int:
