@@ -186,11 +186,13 @@ func _create_event_dialogs() -> void:
 		original_assets.building_objection_text,
 	)
 	game_over_dialog = AcceptDialog.new()
+	game_over_dialog.theme = ClassicUiStyle.create_dialog_theme()
 	game_over_dialog.min_size = Vector2i(460, 220)
 	add_child(game_over_dialog)
 	scenario_dialog = ScenarioDialogView.new()
 	add_child(scenario_dialog)
 	military_dialog = ConfirmationDialog.new()
+	military_dialog.theme = ClassicUiStyle.create_dialog_theme()
 	military_dialog.title = "Military Base Proposal"
 	military_dialog.dialog_text = (
 		"The military wants to build a base in the city. "

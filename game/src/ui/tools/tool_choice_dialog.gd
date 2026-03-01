@@ -9,6 +9,7 @@ var choice_buttons: Array[Button] = []
 
 
 func _ready() -> void:
+	theme = ClassicUiStyle.create_dialog_theme()
 	title = "Select Building"
 	dialog_text = "Select a building type."
 	min_size = Vector2i(680, 390)

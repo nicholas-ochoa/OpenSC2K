@@ -47,15 +47,20 @@ func _ready() -> void:
 	panel.add_child(margin)
 	var box := VBoxContainer.new()
 	margin.add_child(box)
+	var header := HBoxContainer.new()
+	box.add_child(header)
 	_status = Label.new()
+	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_status.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(_status)
+	header.add_child(_status)
 	var note := Label.new()
 	note.text = "Work time excludes frame-budget waits and player prompts. OS scheduling can still affect it.\nAverages cover this city since load or Reset. Unmeasured days show —."
 	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(note)
 	var reset := Button.new()
-	reset.text = "Reset timing averages"
+	reset.text = "Reset averages"
+	reset.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
 	reset.pressed.connect(func() -> void:
 		var history := _history()
 
@@ -63,7 +68,7 @@ func _ready() -> void:
 			history.clear()
 
 		_refresh_metrics())
-	box.add_child(reset)
+	header.add_child(reset)
 	var tabs := TabContainer.new()
 	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	box.add_child(tabs)

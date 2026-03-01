@@ -221,12 +221,14 @@ func _build_interface() -> void:
 	page.add_child(status_label)
 
 	source_dialog = FileDialog.new()
+	source_dialog.theme = ThemeDB.get_default_theme().duplicate()
 	source_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	source_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	source_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
 	source_dialog.file_selected.connect(_source_selected)
 	add_child(source_dialog)
 	confirm_all_dialog = ConfirmationDialog.new()
+	confirm_all_dialog.theme = ClassicUiStyle.create_dialog_theme()
 	confirm_all_dialog.title = "Copy Object Group"
 	confirm_all_dialog.get_ok_button().text = "Copy All"
 	confirm_all_dialog.confirmed.connect(_copy_all_confirmed)

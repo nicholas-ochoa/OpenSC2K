@@ -9,6 +9,7 @@ func configure(
 	cancel_text: String,
 	dialog_size := Vector2i(520, 210)
 ) -> void:
+	theme = ClassicUiStyle.create_dialog_theme()
 	title = dialog_title
 	dialog_text = prompt_text
 	min_size = dialog_size

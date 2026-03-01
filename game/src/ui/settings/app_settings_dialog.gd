@@ -25,8 +25,8 @@ var music_slider: HSlider
 var effects_slider: HSlider
 var fullscreen_check: CheckBox
 var zoom_graphics_selectors: Array[OptionButton] = []
-var zoom_graphics_counts: Array[Label] = []
-var graphics_availability: Dictionary = {}
+var overview_graphics_selector: OptionButton
+var default_mayor_edit: LineEdit
 var renderer_selector: OptionButton
 var background_audio_check: CheckBox
 
@@ -51,6 +51,18 @@ func _ready() -> void:
 	var settings_parent := get_label().get_parent()
 	settings_parent.add_child(tabs)
 	settings_parent.move_child(tabs, 0)
+	var general_grid := _add_settings_tab("General")
+	var mayor_label := Label.new()
+	mayor_label.text = "Default mayor / organization"
+	general_grid.add_child(mayor_label)
+	default_mayor_edit = LineEdit.new()
+	default_mayor_edit.max_length = 23
+	default_mayor_edit.placeholder_text = "Mayor"
+	default_mayor_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	general_grid.add_child(default_mayor_edit)
+	var general_note := Label.new()
+	general_note.text = "Used as the mayor name for new cities."
+	general_grid.get_parent().add_child(general_note)
 	var display_grid := _add_settings_tab("Display")
 	var settings_grid := _add_settings_tab("Audio", true)
 	pack_error_label = Label.new()
@@ -110,12 +122,7 @@ func _ready() -> void:
 	renderer_selector.add_item("CPU")
 	renderer_selector.tooltip_text = "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
 	settings_grid.add_child(renderer_selector)
-	renderer_selector.item_selected.connect(func(_index: int) -> void:
-		_update_graphics_counts())
 	settings_grid = _add_settings_tab("Graphics", true)
-	var overview_label := Label.new()
-	overview_label.text = "10% overview uses Small graphics."
-	settings_grid.get_parent().add_child(overview_label)
 	var zoom_grid := GridContainer.new()
 	zoom_grid.columns = 4
 	zoom_grid.add_theme_constant_override("h_separation", 12)
@@ -123,27 +130,30 @@ func _ready() -> void:
 	settings_grid.get_parent().add_child(zoom_grid)
 	settings_grid.get_parent().move_child(zoom_grid, 0)
 	zoom_graphics_selectors.resize(6)
-	zoom_graphics_counts.resize(6)
 
-	for zoom_index in [0, 3, 1, 4, 2, 5]:
+	for zoom_index in [-1, 3, 0, 4, 1, 5, 2]:
 		var zoom_label := Label.new()
-		zoom_label.text = "%d%% zoom" % AppSettingsStore.GRAPHICS_ZOOMS[zoom_index]
+		zoom_label.text = "%d%% zoom" % (10 if zoom_index == -1 else AppSettingsStore.GRAPHICS_ZOOMS[zoom_index])
 		zoom_grid.add_child(zoom_label)
 		var selector := OptionButton.new()
+
 		for size_name: String in AppSettingsStore.GRAPHICS_SIZES:
 			selector.add_item(size_name)
+
 		selector.tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
 		selector.item_selected.connect(func(_size: int) -> void:
 			_update_zoom_graphics_choices())
-		zoom_graphics_selectors[zoom_index] = selector
+
+		if zoom_index == -1:
+			overview_graphics_selector = selector
+			selector.tooltip_text = "Graphics size for the 10% overview."
+		else:
+			zoom_graphics_selectors[zoom_index] = selector
+
 		var zoom_row := HBoxContainer.new()
 		zoom_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		zoom_row.add_child(selector)
-		var count_label := Label.new()
-		count_label.add_theme_color_override("font_color", Color("606060"))
-		zoom_graphics_counts[zoom_index] = count_label
-		zoom_row.add_child(count_label)
 		zoom_grid.add_child(zoom_row)
 
 	folder_edit = _pack_folder_row(settings_grid, "Graphics pack", "graphics")
@@ -163,6 +173,7 @@ func _ready() -> void:
 	compatibility_grid.columns = 1
 	original_compatibility_check = CheckBox.new()
 	original_compatibility_check.text = "Original SimCity 2000 compatibility"
+	original_compatibility_check.add_theme_color_override("font_disabled_color", Color("606060"))
 	compatibility_grid.add_child(original_compatibility_check)
 	var explanation := Label.new()
 	explanation.text = "• Use original SC2 cities and SCN scenarios.\n• New cities use the original 128 × 128 map and data grids.\n• Larger maps and per-tile data maps are disabled.\n• Fire uses the original update timing.\n• Opening an SC2X city turns this option off automatically.\n• SC2X cities cannot return to original compatibility.\n• Graphics, audio, and interface improvements remain available."
@@ -225,13 +236,14 @@ func show_values(
 	effects_slider.value = clampf(effects_volume, 0.0, 1.0) * 100.0
 	fullscreen_check.button_pressed = fullscreen
 	folder_edit.text = pack_file_path(folder) if source == "folder" else ""
-	_update_graphics_counts()
 	tabs.current_tab = 0
 	popup_centered()
 
 
 func selected_values() -> Dictionary:
 	return {
+		"default_mayor_name": default_mayor_edit.text.strip_edges(),
+		"overview_graphics": overview_graphics_selector.selected,
 		"original_compatibility": original_compatibility_check.button_pressed,
 		"warn_sc2x_conversion": warn_sc2x_conversion_check.button_pressed,
 		"toolbar_sounds": toolbar_sounds_check.button_pressed,
@@ -268,27 +280,16 @@ func _update_zoom_graphics_choices() -> void:
 		for size_index in AppSettingsStore.GRAPHICS_SIZES.size():
 			selector.set_item_disabled(size_index, index > 0 and size_index < sizes[index - 1])
 
-	_update_graphics_counts()
-
-
-func _update_graphics_counts() -> void:
-	if graphics_availability.is_empty():
-		return
-
-	for index in zoom_graphics_counts.size():
-		var size_index := zoom_graphics_selectors[index].selected
-		var counts: Dictionary = graphics_availability.sizes[size_index]
-		var label := zoom_graphics_counts[index]
-		label.text = "%d / %d valid" % [counts.valid, counts.total]
-		label.tooltip_text = "Valid images in the selected graphics size. Missing images use original artwork."
-
 
 func _pack_folder_row(grid: GridContainer, caption: String, kind: String) -> LineEdit:
 	var label := Label.new()
 	label.text = caption
 	grid.add_child(label)
+	var column := VBoxContainer.new()
+	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_child(column)
 	var row := HBoxContainer.new()
-	grid.add_child(row)
+	column.add_child(row)
 	var edit := LineEdit.new()
 	edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	edit.placeholder_text = "Automatic (user://packs/%s/pack.json)" % kind
@@ -308,7 +309,7 @@ func _pack_folder_row(grid: GridContainer, caption: String, kind: String) -> Lin
 	pack_name.clip_text = true
 	pack_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	pack_name.add_theme_color_override("font_color", Color("606060"))
-	row.add_child(pack_name)
+	column.add_child(pack_name)
 	pack_name_labels[kind] = pack_name
 	pack_edits[kind] = edit
 	edit.text_changed.connect(func(_text: String) -> void:
@@ -334,8 +335,8 @@ func _refresh_pack_name(kind: String) -> void:
 func show_pack_error(message: String) -> void:
 	pack_error_label.text = message
 	pack_error_label.show()
-	tabs.current_tab = 1
-	(tabs.get_child(1) as ScrollContainer).scroll_vertical = 0
+	tabs.current_tab = 2
+	(tabs.get_child(2) as ScrollContainer).scroll_vertical = 0
 	call_deferred("popup_centered")
 
 
@@ -348,6 +349,7 @@ static func pack_file_path(value: String) -> String:
 
 func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 	var picker := FileDialog.new()
+	picker.theme = ThemeDB.get_default_theme().duplicate()
 	picker.title = "Select %s pack.json" % kind
 	picker.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	picker.filters = PackedStringArray(["pack.json ; OpenSC2K pack"])
@@ -363,5 +365,5 @@ func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 func show_compatibility_error(message: String) -> void:
 	compatibility_error_label.text = message
 	compatibility_error_label.show()
-	tabs.current_tab = 4
+	tabs.current_tab = 5
 	call_deferred("popup_centered")

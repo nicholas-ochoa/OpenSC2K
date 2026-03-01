@@ -37,6 +37,13 @@ func _run() -> void:
 		var local := map._draw_offset(map._view_scale()) + center * map._view_scale()
 		assert(map._tile_at(local) == point, "Overview picking uses the displayed tile")
 
+	for graphics_size in [1, 2, 0]:
+		main.app_overview_graphics = graphics_size
+		main._close_region_cache()
+		main._refresh_map()
+		assert(main._city_view_size() == graphics_size)
+		await process_frame
+
 	assert(map.zoom_in(Vector2.INF) and map.zoom_percent() == 25)
 	assert(map.zoom_out(Vector2.INF) and map.zoom_percent() == 10)
 	assert(doc.serialize().data == before, "Overview is display-only")

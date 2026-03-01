@@ -115,6 +115,8 @@ var app_toolbar_sounds := true
 var app_sound_pack_folder := ""
 var app_music_pack_folder := ""
 var app_city_renderer := "gpu"
+var app_default_mayor_name := "Mayor"
+var app_overview_graphics := 0
 var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
 var app_background_audio := false
 var app_shuffle_music := false
@@ -397,7 +399,7 @@ func _build_reference_import_dialogs() -> void:
 	add_child(reference_import_error_dialog)
 
 	for dialog in [graphics_source_error_dialog, reference_import_dialog, reference_import_error_dialog]:
-		dialog.theme = ClassicUiStyle.create_dialog_theme()
+		dialog.theme = ThemeDB.get_default_theme().duplicate() if dialog is FileDialog else ClassicUiStyle.create_dialog_theme()
 
 
 func _show_graphics_source_error(message: String) -> void:
@@ -454,7 +456,7 @@ func _import_original_game(executable_path: String) -> void:
 	audio_controller.set_soundtrack_folder("")
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics,
 	)
 	_open_import_settings()
 	status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
@@ -999,10 +1001,12 @@ func _set_city_renderer(value: String) -> void:
 
 func _open_import_settings() -> void:
 	_open_settings_dialog()
-	settings_dialog.tabs.current_tab = 3
+	settings_dialog.tabs.current_tab = 4
 
 
 func _open_settings_dialog() -> void:
+	settings_dialog.default_mayor_edit.text = app_default_mayor_name
+	settings_dialog.overview_graphics_selector.select(app_overview_graphics)
 	settings_dialog.original_compatibility_check.button_pressed = app_original_compatibility
 	settings_dialog.original_compatibility_check.disabled = current_document != null and current_document.is_extended()
 	settings_dialog.original_compatibility_check.tooltip_text = "SC2X cities cannot return to original compatibility." if settings_dialog.original_compatibility_check.disabled else ""
@@ -1011,8 +1015,6 @@ func _open_settings_dialog() -> void:
 	settings_dialog.toolbar_sounds_check.button_pressed = app_toolbar_sounds
 	settings_dialog.sound_pack_edit.text = AppSettingsDialog.pack_file_path(app_sound_pack_folder)
 	settings_dialog.music_pack_edit.text = AppSettingsDialog.pack_file_path(app_music_pack_folder)
-	settings_dialog.graphics_availability = GraphicsPackAvailability.inspect(
-		small_medium_sprites, large_sprites)
 	settings_dialog.show_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
 		app_graphics_source, app_graphics_folder, app_city_renderer, app_background_audio, app_zoom_graphics,
@@ -1068,7 +1070,21 @@ func _apply_settings() -> void:
 	app_graphics_source = values.graphics_source
 	app_graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
+	app_default_mayor_name = str(values.default_mayor_name)
+
+	if app_default_mayor_name.is_empty():
+		app_default_mayor_name = "Mayor"
+
+	var overview_changed := app_overview_graphics != int(values.overview_graphics)
+	app_overview_graphics = int(values.overview_graphics)
 	_set_graphics_preferences(values.zoom_graphics)
+
+	if overview_changed:
+		_close_region_cache()
+		dynamic_visual_cache.clear()
+		sign_foreground_cache.clear()
+		_refresh_map()
+
 	app_toolbar_sounds = bool(values.toolbar_sounds)
 	app_sound_pack_folder = str(values.sound_pack_folder)
 	app_music_pack_folder = str(values.music_pack_folder)
@@ -1099,7 +1115,7 @@ func _apply_settings() -> void:
 
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics,
 	)
 	status_label.text = (
 		"Settings saved."
@@ -1171,8 +1187,6 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	if main_menu.visible:
 		main_menu.city_background.configure(reference_root, palette, large_sprites)
 
-	settings_dialog.graphics_availability = GraphicsPackAvailability.inspect(small_medium_sprites, large_sprites)
-	settings_dialog._update_graphics_counts()
 	_refresh_map(false)
 
 
@@ -1186,6 +1200,8 @@ func _load_app_settings() -> void:
 	app_toolbar_sounds = bool(values.toolbar_sounds)
 	app_sound_pack_folder = str(values.sound_pack_folder)
 	app_music_pack_folder = str(values.music_pack_folder)
+	app_default_mayor_name = str(values.default_mayor_name)
+	app_overview_graphics = int(values.overview_graphics)
 	app_zoom_graphics = values.zoom_graphics
 	app_background_audio = values.background_audio
 	app_original_compatibility = bool(values.original_compatibility)
@@ -2329,9 +2345,7 @@ func _open_new_city_dialog() -> void:
 	new_city_dialog.preview_timer.stop()
 	new_city_session.begin(tool_random.state, nuisance_random.state)
 	new_city_dialog.city_name_input.text = "New City"
-	new_city_dialog.mayor_name_input.text = (
-		city.mayor_name() if city != null and not city.mayor_name().is_empty() else "Mayor"
-	)
+	new_city_dialog.mayor_name_input.text = app_default_mayor_name
 	new_city_dialog.difficulty_input.select(0)
 	new_city_dialog.year_input.select(0)
 	new_city_dialog.ocean_input.button_pressed = NewTerrain.DEFAULT_OCEAN
@@ -4159,7 +4173,7 @@ func _update_palette_cycle_texture() -> void:
 
 
 func _city_graphics_size() -> int:
-	return SettingsStore.graphics_size_at_zoom(app_zoom_graphics, map_view.zoom_percent())
+	return SettingsStore.graphics_size_at_zoom(app_zoom_graphics, map_view.zoom_percent(), app_overview_graphics)
 
 
 func _city_view_size() -> int:

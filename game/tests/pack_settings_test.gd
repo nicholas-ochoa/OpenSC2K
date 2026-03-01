@@ -45,7 +45,7 @@ func _run() -> void:
 	var before: PackedByteArray = main.city.document.serialize().data
 	main._open_settings_dialog()
 	var dialog: AppSettingsDialog = main.settings_dialog
-	assert(dialog.tabs.get_tab_count() == 5 and dialog.tabs.get_tab_title(3) == "Import Data")
+	assert(dialog.tabs.get_tab_count() == 6 and dialog.tabs.get_tab_title(4) == "Import Data")
 	assert(dialog.toolbar_sounds_check.text == "Play toolbar sounds")
 	assert(dialog.folder_row.visible)
 
@@ -73,11 +73,15 @@ func _run() -> void:
 
 	for index in 6:
 		var cell := dialog.zoom_graphics_selectors[index].get_parent()
-		assert(cell.get_index() == (index % 3) * 4 + (1 if index < 3 else 3))
-		assert(dialog.zoom_graphics_counts[index].get_theme_color("font_color") == Color("606060"))
+		assert(cell.get_index() == (index % 3) * 4 + (5 if index < 3 else 3))
 
 	dialog.folder_dialog.file_selected.emit(folder.path_join("pack.json"))
+	dialog.default_mayor_edit.text = "Port Authority"
+	dialog.overview_graphics_selector.select(2)
 	main._apply_settings()
+	assert(main.app_default_mayor_name == "Port Authority")
+	assert(main.app_overview_graphics == 2)
+	assert(AppSettingsStore.load_values(main.app_settings_path).default_mayor_name == "Port Authority")
 	assert(main.asset_source.graphics_name == "Runtime test")
 	assert(dialog.pack_name_labels.graphics.text == "Runtime test")
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels == sprite.pixels)
@@ -91,6 +95,10 @@ func _run() -> void:
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels != sprite.pixels)
 	assert(main.city.document.serialize().data == before)
 	main.settings_dialog.hide()
+	main._open_new_city_dialog()
+	assert(main.new_city_dialog.mayor_name_input.text == "Port Authority")
+	assert(main.city.document.serialize().data == before)
+	main.new_city_dialog.hide()
 	main.queue_free()
 	await process_frame
 	_remove_folder(ProjectSettings.globalize_path(folder))

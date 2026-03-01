@@ -13,6 +13,7 @@ var preview_sprites: Sc2SpriteArchive
 
 
 func _ready() -> void:
+	theme = ClassicUiStyle.create_dialog_theme()
 	title = "Select Bridge"
 	dialog_text = "Select a bridge type."
 	min_size = Vector2i(760, 350)

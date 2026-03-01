@@ -8,6 +8,7 @@ var text_view: TextEdit
 
 
 func _ready() -> void:
+	theme = ClassicUiStyle.create_dialog_theme()
 	title = "Scenario"
 	min_size = Vector2i(760, 520)
 	exclusive = true

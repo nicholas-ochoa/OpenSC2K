@@ -6,6 +6,7 @@ var name_input: LineEdit
 
 
 func _ready() -> void:
+	theme = ClassicUiStyle.create_dialog_theme()
 	title = "Select Stadium Team"
 	dialog_text = "Select an unused team and edit its name."
 	min_size = Vector2i(520, 260)

@@ -14,6 +14,8 @@ static func load_values(
 	default_fullscreen := false
 ) -> Dictionary:
 	var result := {
+		"default_mayor_name": "Mayor",
+		"overview_graphics": 0,
 		"music_volume": clampf(default_music_volume, 0.0, 1.0),
 		"effects_volume": clampf(default_effects_volume, 0.0, 1.0),
 		"fullscreen": default_fullscreen,
@@ -35,6 +37,8 @@ static func load_values(
 	if config.load(path) != OK:
 		return result
 
+	result.default_mayor_name = str(config.get_value("general", "default_mayor_name", "Mayor"))
+	result.overview_graphics = clampi(int(config.get_value("graphics", "overview_graphics", 0)), 0, 2)
 	result.music_volume = clampf(
 		float(config.get_value("audio", "music_volume", result.music_volume)),
 		0.0,
@@ -85,10 +89,10 @@ static func normalize_zoom_graphics(value: Variant) -> Array[int]:
 	return result
 
 
-static func graphics_size_at_zoom(sizes: Array[int], zoom_percent: int) -> int:
-	# overview always uses small; retain the six existing saved preferences
+static func graphics_size_at_zoom(sizes: Array[int], zoom_percent: int, overview_size := 0) -> int:
+	# retain the six existing saved preferences and store overview separately
 	if zoom_percent <= 10:
-		return 0
+		return clampi(overview_size, 0, 2)
 
 	for index in GRAPHICS_ZOOMS.size():
 		if zoom_percent <= GRAPHICS_ZOOMS[index]:
@@ -114,6 +118,8 @@ static func save_values(
 	shuffle_music: Variant = null,
 	original_compatibility: Variant = null,
 	warn_sc2x_conversion: Variant = null,
+	default_mayor_name: Variant = null,
+	overview_graphics: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 
@@ -123,6 +129,13 @@ static func save_values(
 	if not graphics_source.is_empty():
 		config.set_value("graphics", "source", graphics_source)
 		config.set_value("graphics", "folder", graphics_folder)
+
+	if default_mayor_name != null:
+		var mayor := str(default_mayor_name).strip_edges().left(23)
+		config.set_value("general", "default_mayor_name", "Mayor" if mayor.is_empty() else mayor)
+
+	if overview_graphics != null:
+		config.set_value("graphics", "overview_graphics", clampi(int(overview_graphics), 0, 2))
 
 	if soundtrack_folder != null:
 		config.set_value("audio", "soundtrack_folder", str(soundtrack_folder).strip_edges())

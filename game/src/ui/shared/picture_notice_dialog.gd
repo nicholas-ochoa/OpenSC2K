@@ -8,6 +8,7 @@ var message_label: Label
 
 
 func _ready() -> void:
+	theme = ClassicUiStyle.create_dialog_theme()
 	min_size = Vector2i(520, 230)
 	exclusive = true
 	get_ok_button().text = "OK"
