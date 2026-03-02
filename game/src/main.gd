@@ -116,7 +116,6 @@ var app_sound_pack_folder := ""
 var app_music_pack_folder := ""
 var app_city_renderer := "gpu"
 var app_default_mayor_name := "Mayor"
-var app_default_organization_name := ""
 var app_overview_graphics := 0
 var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
 var app_background_audio := false
@@ -457,7 +456,7 @@ func _import_original_game(executable_path: String) -> void:
 	audio_controller.set_soundtrack_folder("")
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics, app_default_organization_name,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics,
 	)
 	_open_import_settings()
 	status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
@@ -1007,7 +1006,6 @@ func _open_import_settings() -> void:
 
 func _open_settings_dialog() -> void:
 	settings_dialog.default_mayor_edit.text = app_default_mayor_name
-	settings_dialog.default_organization_edit.text = app_default_organization_name
 	settings_dialog.overview_graphics_selector.select(app_overview_graphics)
 	settings_dialog.original_compatibility_check.button_pressed = app_original_compatibility
 	settings_dialog.original_compatibility_check.disabled = current_document != null and current_document.is_extended()
@@ -1073,7 +1071,6 @@ func _apply_settings() -> void:
 	app_graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
 	app_default_mayor_name = str(values.default_mayor_name)
-	app_default_organization_name = str(values.default_organization_name)
 
 	if app_default_mayor_name.is_empty():
 		app_default_mayor_name = "Mayor"
@@ -1118,7 +1115,7 @@ func _apply_settings() -> void:
 
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics, app_default_organization_name,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics,
 	)
 	status_label.text = (
 		"Settings saved."
@@ -1204,7 +1201,6 @@ func _load_app_settings() -> void:
 	app_sound_pack_folder = str(values.sound_pack_folder)
 	app_music_pack_folder = str(values.music_pack_folder)
 	app_default_mayor_name = str(values.default_mayor_name)
-	app_default_organization_name = str(values.default_organization_name)
 	app_overview_graphics = int(values.overview_graphics)
 	app_zoom_graphics = values.zoom_graphics
 	app_background_audio = values.background_audio
