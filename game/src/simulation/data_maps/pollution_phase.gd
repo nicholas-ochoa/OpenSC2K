@@ -105,15 +105,15 @@ static func run(city: CityState) -> Dictionary:
 	var terrain_map := city.terrain
 	var old_pollution: PackedByteArray = pollution_chunk.decoded_payload
 	var old_traffic: PackedByteArray = traffic_chunk.decoded_payload
-	var temporary := PackedInt32Array()
-	temporary.resize(map_edge * map_edge)
+	var pollution_sources := PackedInt32Array()
+	pollution_sources.resize(map_edge * map_edge)
 
 	for x in (IntegerMath.div_trunc(map_edge, 2)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
 
 		var coarse_row := x * (IntegerMath.div_trunc(map_edge, 2))
-		var temporary_row := x * map_edge
+		var pollution_sources_row := x * map_edge
 
 		for y in (IntegerMath.div_trunc(map_edge, 2)):
 			var map_index := coarse_row + y
@@ -132,7 +132,7 @@ static func run(city: CityState) -> Dictionary:
 					if building == RADIOACTIVITY:
 						value += 200
 
-			temporary[temporary_row + y] = value
+			pollution_sources[pollution_sources_row + y] = value
 
 	span.mark("pollution smoothing")
 	var base_divisor := pollution_divisor(city.document)
@@ -146,28 +146,28 @@ static func run(city: CityState) -> Dictionary:
 			city.simulation_slice.checkpoint()
 
 		var map_row := x * (IntegerMath.div_trunc(map_edge, 2))
-		var temporary_row := x * map_edge
+		var pollution_sources_row := x * map_edge
 
 		for y in (IntegerMath.div_trunc(map_edge, 2)):
 			var index := map_row + y
-			var temporary_index := temporary_row + y
-			var numerator := temporary[temporary_index] * 2
+			var pollution_sources_index := pollution_sources_row + y
+			var numerator := pollution_sources[pollution_sources_index] * 2
 			var divisor := base_divisor
 
 			if x > 0:
-				numerator += temporary[temporary_index - map_edge]
+				numerator += pollution_sources[pollution_sources_index - map_edge]
 				divisor += 1
 
 			if x < (IntegerMath.div_trunc(map_edge, 2)) - 1:
-				numerator += temporary[temporary_index + map_edge]
+				numerator += pollution_sources[pollution_sources_index + map_edge]
 				divisor += 1
 
 			if y > 0:
-				numerator += temporary[temporary_index - 1]
+				numerator += pollution_sources[pollution_sources_index - 1]
 				divisor += 1
 
 			if y < (IntegerMath.div_trunc(map_edge, 2)) - 1:
-				numerator += temporary[temporary_index + 1]
+				numerator += pollution_sources[pollution_sources_index + 1]
 				divisor += 1
 
 			var value := mini(int(IntegerMath.div_trunc(numerator, divisor)), 0xff)
@@ -194,13 +194,15 @@ static func run(city: CityState) -> Dictionary:
 				coordinate_sum_x += x
 				coordinate_sum_y += y
 				center_divisor += 1
-				temporary[index] = 40
 				flags[index] &= ~FLAG_MARK & 0xff
 
 	var center_x := int(IntegerMath.div_trunc(coordinate_sum_x, (center_divisor * 2)))
 	var center_y := int(IntegerMath.div_trunc(coordinate_sum_y, (center_divisor * 2)))
 
 	span.mark("terrain desirability")
+	# pollution and full-coordinate center scans must not seed quarter-grid values
+	var temporary := PackedInt32Array()
+	temporary.resize(map_edge * map_edge)
 	var developed_tiles := 0
 
 	for x in map_edge:
@@ -541,9 +543,8 @@ static func _average_service_grid(
 	var center_index := (x + x_offset) * map_edge + y
 	var total := values[center_index]
 	var divisor := 1
-	# the original industrial branch uses residential x-neighbors, but keeps
-	# the industrial center and y-neighbors (0x0046aff1..0x0046b051)
-	var neighbor_row := x * map_edge + y
+	# keep every neighbor in the selected desirability grid
+	var neighbor_row := center_index
 
 	if x > 0:
 		total += values[neighbor_row - map_edge]

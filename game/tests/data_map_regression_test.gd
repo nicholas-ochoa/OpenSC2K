@@ -132,8 +132,8 @@ func check_industrial_samples(edge: int) -> void:
 	var scratch := PackedInt32Array()
 	scratch.resize(edge * edge)
 	var offset := IntegerMath.div_trunc(edge, 4)
-	# Independent source-derived samples: center 30, residential X-neighbors
-	# 100 and 200, industrial Y-neighbors 40 and 50. Mean is 84.
+	# Distinct grids: industrial center 30 and neighbors 10, 20, 40, 50.
+	# Residential X-neighbors must not enter the industrial mean.
 	var x := offset - 2
 	var y := offset - 2
 	scratch[(x + offset) * edge + y] = 30
@@ -141,9 +141,9 @@ func check_industrial_samples(edge: int) -> void:
 	scratch[(x + 1) * edge + y] = 200
 	scratch[(x + offset) * edge + y - 1] = 40
 	scratch[(x + offset) * edge + y + 1] = 50
-	scratch[(x + offset - 1) * edge + y] = 999
-	scratch[(x + offset + 1) * edge + y] = 999
-	check(PollutionPhase._average_service_grid(scratch, x, y, offset, edge) == 84, "Industrial land samples original mixed scratch rows")
+	scratch[(x + offset - 1) * edge + y] = 10
+	scratch[(x + offset + 1) * edge + y] = 20
+	check(PollutionPhase._average_service_grid(scratch, x, y, offset, edge) == 30, "Industrial land samples only industrial scratch rows")
 
 
 func check_district(edge: int, native: bool) -> void:

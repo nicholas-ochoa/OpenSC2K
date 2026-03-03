@@ -59,6 +59,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/native_data_maps_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/industrial_connection_regression_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/eq_decay_regression_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/land_value_isolation_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/data_map_regression_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/utility_capacity_regression_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/original_compatibility_test.gd
