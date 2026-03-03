@@ -294,7 +294,8 @@ static func _apply_aging(
 			)
 
 		if ordinance_flags & ORDINANCE_PRO_READING == 0:
-			moved_education -= moved_population
+			# decay cannot turn the transferred education into unsigned debt
+			moved_education = maxi(moved_education - moved_population, 0)
 
 		education[target_cohort] = _u32(education[target_cohort] + moved_education)
 
