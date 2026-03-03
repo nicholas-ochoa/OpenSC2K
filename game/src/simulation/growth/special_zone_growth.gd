@@ -269,7 +269,7 @@ static func _grow_special_zone(
 
 	if tile == 0xdd:
 		return _place_runway(
-			buildings, zones, flags, misc, point, zone, rotation, map_edge
+			buildings, zones, flags, misc, point, zone, rotation, map_edge, terrain, underground
 		)
 
 	if tile == 0xe0:
@@ -295,7 +295,7 @@ static func _grow_special_zone(
 
 	if SPECIAL_TWO_BY_TWO_TILES.has(tile):
 		return _place_special_two_by_two(
-			buildings, zones, flags, terrain, misc, point, tile, zone, rotation, map_edge
+			buildings, zones, flags, terrain, misc, point, tile, zone, rotation, map_edge, underground
 		)
 
 	if tile == 0xf9:
@@ -315,10 +315,11 @@ static func _place_runway(
 	zone: int,
 	rotation: int,
 	map_edge: int = 128,
+	terrain: PackedByteArray = PackedByteArray(),
+	underground: PackedByteArray = PackedByteArray(),
 ) -> Dictionary:
-	# the supplied win95 executable always uses the normal runway count here
-	# sc2kfix changes this to use the military count for a military zone
-	var count := _special_tile_count(misc, 0xdd, false, map_edge)
+	# military runway orientation uses its own count, as in sc2kfix
+	var count := _special_tile_count(misc, 0xdd, zone == 7, map_edge)
 	var direction := Vector2i.ZERO
 
 	if count & 1 == 0:
@@ -344,6 +345,13 @@ static func _place_runway(
 
 		if (zones[checked_index] & 0x0f) != zone:
 			return {"ok": false, "changed_tiles": 0}
+
+		if zone == 7:
+			var tile := int(buildings[checked_index])
+			if (tile >= 0x1d and tile <= 0x2b) or tile == 0xe0 or tile == 0xf9:
+				return {"ok": false, "changed_tiles": 0}
+			if (not terrain.is_empty() and terrain[checked_index] != 0) or (not underground.is_empty() and underground[checked_index] != 0):
+				return {"ok": false, "changed_tiles": 0}
 
 		if buildings[checked_index] == 0xdd or buildings[checked_index] == 0xde:
 			new_tiles -= 1
@@ -478,6 +486,7 @@ static func _place_special_two_by_two(
 	zone: int,
 	rotation: int,
 	map_edge: int = 128,
+	underground: PackedByteArray = PackedByteArray(),
 ) -> Dictionary:
 	var anchor := Vector2i(point.x & ~1, point.y & ~1)
 
@@ -500,6 +509,12 @@ static func _place_special_two_by_two(
 		# the missile-silo restriction across the whole footprint.
 		if point_index == 0 and checked_tile > 0xea:
 			return {"ok": false, "changed_tiles": 0}
+
+		if zone == 7:
+			if (checked_tile >= 0x1d and checked_tile <= 0x2b) or checked_tile == 0xf9 or checked_tile == 0x05 or checked_tile == 0x0d:
+				return {"ok": false, "changed_tiles": 0}
+			if terrain[index] != 0 or flags[index] & 0x04 or (not underground.is_empty() and underground[index] != 0):
+				return {"ok": false, "changed_tiles": 0}
 
 		if (zones[index] & 0x0f) != zone:
 			return {"ok": false, "changed_tiles": 0}
@@ -555,7 +570,7 @@ static func _place_special_item(
 			if buildings[index] >= 0x1d or buildings[index] == 0x05 or buildings[index] == 0x0d:
 				return false
 
-			if (zones[index] & 0x0f) == 7:
+			if (zones[index] & 0x0f) == 7 and zone != 7:
 				return false
 
 			if terrain[index] != 0 or flags[index] & 0x04:

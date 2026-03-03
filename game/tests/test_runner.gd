@@ -8722,11 +8722,11 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	var army_result := Growth.run(army.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(army_result.ok, "Army growth scan completes: %s" % army_result.error)
 	_check(army_result.special_growth_attempts == 1, "Army growth attempts one controlled building")
-	_check(army_result.special_tiles_placed == 0, "Win95 military item placement rejects its own zone")
+	_check(army_result.special_tiles_placed == 4, "Military growth can develop its own zone")
 
 	for x in range(20, 22):
 		for y in range(20, 22):
-			_check(army.city.building_id(x, y) == 0, "Win95 military placement leaves the plot clear")
+			_check(army.city.building_id(x, y) == 0xef, "Military placement builds parking lots")
 			_check(army.city.tile_flags[x * 128 + y] & 0xf0 == 0, "Win95 military placement clears utility flags")
 
 	var air_force := _special_growth_fixture(reference_root)
@@ -8746,16 +8746,11 @@ func _test_special_zone_growth(reference_root: String) -> void:
 		air_force.city, ZeroRandom.new(), 1, 1, NonzeroLfsrRandom.new()
 	)
 	_check(air_force_result.ok, "Air Force growth scan completes: %s" % air_force_result.error)
-	_check(air_force_result.special_tiles_placed == 5, "Air Force growth places a five-tile runway")
-
-	for x in range(21, 26):
-		_check(air_force.city.building_id(x, 21) == 0xdd, "Air Force growth follows normal-runway parity")
-
-	_check(air_force.city.terrain_id(23, 21) == 1, "Win95 military runway growth preserves underlying terrain")
-	_check(air_force.city.underground_id(23, 21) == 1, "Win95 military runway growth preserves its subway")
-	_check(air_force.document.misc_u32(0x01f0 + 0xdd * 4) == 1, "Military runways do not change the normal runway count")
-	_check(air_force.document.misc_u32(0x0fa8) == 0, "Air Force growth consumes military other tiles")
-	_check(air_force.document.misc_u32(0x0fa8 + 4) == 5, "Air Force growth counts military runway tiles")
+	_check(air_force_result.special_tiles_placed == 0, "Military runway cannot cross roads, slopes or subway")
+	_check(air_force.city.building_id(23, 21) == 0x1d, "Military runway preserves the road")
+	_check(air_force.city.terrain_id(23, 21) == 1, "Military runway preserves terrain")
+	_check(air_force.city.underground_id(23, 21) == 1, "Military runway preserves subway")
+	_check(air_force.document.misc_u32(0x01f0 + 0xdd * 4) == 1, "Military runways keep civilian counts separate")
 
 	var aircraft := _special_growth_fixture(reference_root)
 	_check(aircraft.city.set_zone_id(20, 20, 8), "Aircraft fixture sets an airport zone")
