@@ -2968,7 +2968,7 @@ func _resolve_military_proposal(accepted: bool) -> void:
 	status_label.remove_theme_color_override("font_color")
 	var proposal: Dictionary = result.day_results[0].phase_results.military_proposal
 
-	if int(proposal.base_type) in [2, 3, 5]:
+	if int(proposal.base_type) in [2, 3, 4, 5]:
 		_play_sound_events(ToolSounds.zone_success_events(7))
 
 	match int(proposal.base_type):
@@ -2976,6 +2976,8 @@ func _resolve_military_proposal(accepted: bool) -> void:
 			status_label.text = "The Army base site is reserved."
 		3:
 			status_label.text = "The Air Force base site is reserved."
+		4:
+			status_label.text = "The Navy base site is reserved."
 		5:
 			status_label.text = "The missile silo sites are reserved."
 		_:

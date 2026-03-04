@@ -11,10 +11,12 @@ const FLAG_WATER := 0x04
 const BASE_DECLINED := 1
 const BASE_ARMY := 2
 const BASE_AIR_FORCE := 3
+const BASE_NAVY := 4
 const BASE_MISSILE_SILOS := 5
 
 const NOTICE_ARMY := 0xf1
 const NOTICE_AIR_FORCE := 0xf2
+const NOTICE_NAVY := 0xf3
 const NOTICE_MISSILE_SILOS := 0xf4
 const NOTICE_NO_SITE := 0x19b
 
@@ -48,6 +50,19 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 	var terrain: PackedByteArray = chunks.XTER.decoded_payload.duplicate()
 	var underground: PackedByteArray = chunks.XUND.decoded_payload
 	var flags: PackedByteArray = chunks.XBIT.decoded_payload.duplicate()
+	var navy_site := NavalBaseSite.find(city)
+	if navy_site.has_area() and game_random.next_mod(2) == 1:
+		var changed := _zone_plot(buildings, terrain, underground, flags, zones, misc, navy_site, map_edge)
+		for index in changed:
+			# ownership was transferred to the military-other counter above
+			buildings[index] = 0
+		_write_u32(misc, MISC_BASE_TYPE, BASE_NAVY)
+		if not _store(city, chunks, zones, misc, {"XBLD": buildings}):
+			return {"ok": false, "error": "cannot store the Navy base plot"}
+		var result := _result(true, BASE_NAVY, navy_site, changed, NOTICE_NAVY)
+		result["view_center_requests"] = [navy_site.get_center()]
+		return result
+
 	var last_altitude := 0
 
 	for _attempt in 24:
