@@ -44,10 +44,10 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 
 		return _result(false, BASE_DECLINED, Rect2i(), PackedInt32Array(), -1)
 
-	var buildings: PackedByteArray = chunks.XBLD.decoded_payload
-	var terrain: PackedByteArray = chunks.XTER.decoded_payload
+	var buildings: PackedByteArray = chunks.XBLD.decoded_payload.duplicate()
+	var terrain: PackedByteArray = chunks.XTER.decoded_payload.duplicate()
 	var underground: PackedByteArray = chunks.XUND.decoded_payload
-	var flags: PackedByteArray = chunks.XBIT.decoded_payload
+	var flags: PackedByteArray = chunks.XBIT.decoded_payload.duplicate()
 	var last_altitude := 0
 
 	for _attempt in 24:
@@ -60,7 +60,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 			for y in range(origin.y, origin.y + 8):
 				var index := x * map_edge + y
 
-				if _is_clear_land(buildings, terrain, flags, index):
+				if _is_clear_land(buildings, terrain, flags, index) and (zones[index] & 15) == 0 and underground[index] == 0:
 					valid += 1
 
 					if city.land_altitude(x, y) == last_altitude:
@@ -76,7 +76,10 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 		)
 		_write_u32(misc, MISC_BASE_TYPE, base_type)
 
-		if not _store(city, chunks, zones, misc):
+		if base_type == BASE_ARMY:
+			ArmyBaseLayout.build(buildings, terrain, zones, underground, flags, misc, origin, map_edge)
+
+		if not _store(city, chunks, zones, misc, {"XBLD": buildings, "XTER": terrain, "XBIT": flags}):
 			return {"ok": false, "error": "cannot store the military base plot"}
 
 		return _result(true, base_type, Rect2i(origin, Vector2i(8, 8)), changed, notice)
@@ -86,7 +89,6 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 	for _attempt in 40:
 		var origin := Vector2i(game_random.next_mod(map_edge - 4), game_random.next_mod(map_edge - 4))
 		var valid := 0
-		var origin_index := origin.x * map_edge + origin.y
 
 		for x in range(origin.x, origin.x + 3):
 			for y in range(origin.y, origin.y + 3):
@@ -96,7 +98,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 					_is_clear_land(buildings, terrain, flags, index)
 					and city.land_altitude(x, y) == last_altitude
 					and (zones[index] & 0x0f) != ZONE_MILITARY
-					and underground[origin_index] == 0
+					and underground[index] == 0
 				):
 					valid += 1
 
@@ -149,7 +151,6 @@ static func _zone_plot(
 	map_edge: int = 128,
 ) -> PackedInt32Array:
 	var changed := PackedInt32Array()
-	var origin_index := site.position.x * map_edge + site.position.y
 
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
@@ -158,7 +159,7 @@ static func _zone_plot(
 			if (
 				_is_clear_land(buildings, terrain, flags, index)
 				and (zones[index] & 0x0f) == 0
-				and underground[origin_index] == 0
+				and underground[index] == 0
 			):
 				_decrement_tile_count(misc, int(buildings[index]), map_edge)
 				zones[index] = (zones[index] & 0xf7) | ZONE_MILITARY
@@ -178,17 +179,17 @@ static func _is_clear_land(
 
 
 static func _store(
-	city: CityState, chunks: Dictionary, zones: PackedByteArray, misc: PackedByteArray
+	city: CityState, chunks: Dictionary, zones: PackedByteArray, misc: PackedByteArray,
+	map_changes: Dictionary = {},
 ) -> bool:
-	var old_payloads := {
-		"XZON": chunks.XZON.decoded_payload.duplicate(),
-		"MISC": chunks.MISC.decoded_payload.duplicate(),
-	}
 	var payloads := {"XZON": zones, "MISC": misc}
-
-	return BuildingCommand._apply_payloads(
-		city, PackedStringArray(["XZON", "MISC"]), payloads, old_payloads
-	)
+	payloads.merge(map_changes)
+	var old_payloads := {}
+	var ids := PackedStringArray()
+	for id in payloads:
+		old_payloads[id] = chunks[id].decoded_payload.duplicate()
+		ids.append(id)
+	return BuildingCommand._apply_payloads(city, ids, payloads, old_payloads)
 
 
 static func _chunks(city: CityState) -> Dictionary:
