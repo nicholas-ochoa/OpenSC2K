@@ -225,7 +225,7 @@ func check_tools(edge: int) -> void:
 		for direction in 2:
 			var kind := HighwayCommand._select_section_kind(p.XBLD, p.XTER, p.XZON, p.XBIT,
 				p.ALTM, p.XTXT, anchor, direction, edge)
-			var expected := 3 if anchor.x == edge - 2 else (2 if anchor.y == edge - 2 else direction + 2)
+			var expected: int = direction + 2
 			check(kind == expected, "Highway edge connection at %s: %d expected %d" % [anchor, kind, expected])
 
 	var doc := EmptyCityTemplate.create(edge)

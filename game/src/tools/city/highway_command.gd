@@ -1370,7 +1370,7 @@ static func _select_section_kind(
 	zones: PackedByteArray,
 	flags: PackedByteArray,
 	altitude: PackedByteArray,
-	text_overlays: PackedByteArray,
+	_text_overlays: PackedByteArray,
 	anchor: Vector2i,
 	direction: int,
 	map_edge: int = 128,
@@ -1403,21 +1403,7 @@ static func _select_section_kind(
 			direction_index, map_edge
 		)
 
-	if (
-		OverlayData.count(text_overlays) == (map_edge * map_edge)
-		and OverlayData.read(text_overlays, anchor.x * map_edge + anchor.y) == CONNECTION_LABEL
-	):
-		if anchor.x < 2:
-			connections |= 8
-
-		if anchor.x > map_edge - 3:
-			connections |= 2
-
-		if anchor.y < 2:
-			connections |= 1
-
-		if anchor.y > map_edge - 3:
-			connections |= 4
+	# neighbor markers affect the economy, not the highway geometry
 
 	var terrain_shape := _terrain_section_shape(
 		buildings, terrain, altitude, anchor, map_edge
@@ -1437,6 +1423,10 @@ static func _select_section_kind(
 			return -1
 
 	if connections == 0:
+		if current_kind == 2 or current_kind == 3:
+			# no adjacent geometry changed. keep the installed straight pixels
+			return -1
+
 		if terrain_shape == FLAT_TERRAIN_SHAPE:
 			return (direction & 1) + 2
 
