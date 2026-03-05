@@ -389,7 +389,7 @@ func _test_main_menu() -> void:
 		"Save Changes dialog owns its prompt and standard actions",
 	)
 	save_changes_dialog.free()
-	var status_bar := CityStatusBarUi.new()
+	var status_bar := preload("res://src/ui/shell/city_status_bar.tscn").instantiate() as CityStatusBar
 	status_bar._ready()
 	_check(
 		status_bar.message_label.text == "Ready."

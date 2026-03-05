@@ -15,7 +15,7 @@ const DEFAULT_CITY_FILE := "SYDNEY.SC2"
 
 
 func _init() -> void:
-	var reference_root := ProjectSettings.globalize_path("res://../references")
+	var reference_root := ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	var city_file := DEFAULT_CITY_FILE
 	var arguments := OS.get_cmdline_user_args()
 

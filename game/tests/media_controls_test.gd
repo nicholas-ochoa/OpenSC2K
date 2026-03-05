@@ -22,7 +22,7 @@ func _run() -> void:
 	assert(audio.handle_media_key(KEY_MEDIASTOP) and audio.music_paused)
 	assert(audio.handle_media_key(KEY_MEDIAPLAY) and audio.current_track_id == MusicDirector.MAIN_THEME_TRACK)
 	assert(not audio.handle_media_key(KEY_A))
-	var bar := CityStatusBar.new()
+	var bar := preload("res://src/ui/shell/city_status_bar.tscn").instantiate() as CityStatusBar
 	root.add_child(bar)
 	bar.set_reports(PackedStringArray(["Test report"]))
 	bar.show_music_notice("Playing: Test track")
