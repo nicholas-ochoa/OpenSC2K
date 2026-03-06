@@ -27,7 +27,7 @@ func _run() -> void:
 	assert(updated.zoom_graphics == values.zoom_graphics)
 	assert(AppSettingsStore.graphics_size_at_zoom(updated.zoom_graphics, 10, updated.overview_graphics) == 2)
 	assert(AppSettingsStore.graphics_size_at_zoom(updated.zoom_graphics, 25, updated.overview_graphics) == 0)
-	var dialog := AppSettingsDialog.new()
+	var dialog := preload("res://src/ui/settings/app_settings_dialog.tscn").instantiate() as AppSettingsDialog
 	root.add_child(dialog)
 	dialog.show_values(0.5, 0.5, false, "folder", values.graphics_folder, "gpu", false, values.zoom_graphics)
 

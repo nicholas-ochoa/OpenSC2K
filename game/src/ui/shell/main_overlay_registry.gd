@@ -2,7 +2,7 @@ class_name MainOverlayRegistry
 extends Control
 
 const MainMenuView = preload("res://src/ui/startup/main_menu_control.gd")
-const SettingsDialogView = preload("res://src/ui/settings/app_settings_dialog.gd")
+const SettingsDialogView = preload("res://src/ui/settings/app_settings_dialog.tscn")
 const ScurkEditorView = preload("res://src/ui/scurk/scurk_editor_control.gd")
 const ScurkPlacePrintView = preload("res://src/ui/scurk/scurk_place_print_control.gd")
 const ScurkPrintView = preload("res://src/ui/scurk/scurk_print_control.gd")
@@ -30,7 +30,7 @@ func _create_overlays() -> void:
 	main_menu.visible = false
 	add_child(main_menu)
 
-	settings_dialog = SettingsDialogView.new()
+	settings_dialog = SettingsDialogView.instantiate() as AppSettingsDialog
 	add_child(settings_dialog)
 
 	scurk_editor = ScurkEditorView.new()

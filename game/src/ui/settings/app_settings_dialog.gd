@@ -32,192 +32,50 @@ var background_audio_check: CheckBox
 
 
 func _ready() -> void:
-	title = "OpenSC2K Settings"
 	theme = ClassicUiStyle.create_dialog_theme()
-	min_size = Vector2i(700, 500)
-	exclusive = true
 	get_ok_button().text = "Apply"
 	get_label().visible = false
+	background_audio_check = %BackgroundAudioCheck
+	compatibility_error_label = %CompatibilityErrorLabel
+	default_mayor_edit = %DefaultMayorEdit
+	effects_slider = %EffectsSlider
+	folder_edit = %FolderEdit
+	fullscreen_check = %FullscreenCheck
+	music_pack_edit = %MusicPackEdit
+	music_slider = %MusicSlider
+	original_compatibility_check = %OriginalCompatibilityCheck
+	overview_graphics_selector = %OverviewGraphicsSelector
+	pack_error_label = %PackErrorLabel
+	renderer_selector = %RendererSelector
+	shuffle_music_check = %ShuffleMusicCheck
+	sound_pack_edit = %SoundPackEdit
+	tabs = %Tabs
+	toolbar_sounds_check = %ToolbarSoundsCheck
+	warn_sc2x_conversion_check = %WarnSc2xConversionCheck
+	folder_row = folder_edit.get_parent() as HBoxContainer
+	zoom_graphics_selectors = [%Zoom25, %Zoom50, %Zoom100, %Zoom200, %Zoom300, %Zoom400]
 
-	tabs = TabContainer.new()
-	tabs.custom_minimum_size = Vector2(660, 350)
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tabs.add_theme_stylebox_override("panel", ClassicUiStyle.create_box(Color("eceeea"), Color("808080"), 1, 16, 16))
-
-	for state in ["selected", "unselected", "hovered"]:
-		tabs.add_theme_stylebox_override("tab_" + state, ClassicUiStyle.create_box(Color("eceeea") if state == "selected" else Color("d2d5d2"), Color("808080"), 1, 14, 8))
-		tabs.add_theme_color_override("font_" + state + "_color", Color("202830"))
-
+	# acceptdialog owns the standard buttons and content placement
 	var settings_parent := get_label().get_parent()
-	settings_parent.add_child(tabs)
+
+	if tabs.get_parent() != settings_parent:
+		tabs.reparent(settings_parent)
+
 	settings_parent.move_child(tabs, 0)
-	var general_grid := _add_settings_tab("General")
-	var mayor_label := Label.new()
-	mayor_label.text = "Default mayor name"
-	general_grid.add_child(mayor_label)
-	default_mayor_edit = LineEdit.new()
-	default_mayor_edit.max_length = 23
-	default_mayor_edit.placeholder_text = "Mayor"
-	default_mayor_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	general_grid.add_child(default_mayor_edit)
-	var general_note := Label.new()
-	general_note.text = "Used as the mayor name for new cities."
-	general_note.add_theme_color_override("font_color", Color("606060"))
-	general_grid.add_child(Label.new())
-	general_grid.add_child(general_note)
-	var display_grid := _add_settings_tab("Display")
-	var settings_grid := _add_settings_tab("Audio", true)
-	pack_error_label = Label.new()
-	pack_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	pack_error_label.add_theme_color_override("font_color", Color("800000"))
-	pack_error_label.hide()
-	settings_grid.get_parent().add_child(pack_error_label)
-	settings_grid.get_parent().move_child(pack_error_label, 0)
 
-	for label_text in ["Music Volume", "Sound Effects Volume"]:
-		var label := Label.new()
-		label.text = label_text
-		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		settings_grid.add_child(label)
-		var slider := HSlider.new()
-		slider.min_value = 0
-		slider.max_value = 100
-		slider.step = 1
-		slider.custom_minimum_size = Vector2(250, 32)
-		settings_grid.add_child(slider)
-
-		if label_text == "Music Volume":
-			music_slider = slider
-		else:
-			effects_slider = slider
-
-	settings_grid.add_child(Label.new())
-	background_audio_check = CheckBox.new()
-	background_audio_check.text = "Play music and sounds in background"
-	settings_grid.add_child(background_audio_check)
-	settings_grid.add_child(Label.new())
-	toolbar_sounds_check = CheckBox.new()
-	toolbar_sounds_check.text = "Play toolbar sounds"
-	toolbar_sounds_check.button_pressed = true
-	settings_grid.add_child(toolbar_sounds_check)
-	settings_grid.add_child(Label.new())
-	shuffle_music_check = CheckBox.new()
-	shuffle_music_check.text = "Shuffle all music"
-	shuffle_music_check.tooltip_text = "Play all 19 tracks, including menu and special music, once per shuffle cycle."
-	settings_grid.add_child(shuffle_music_check)
-	sound_pack_edit = _pack_folder_row(settings_grid, "Sound Pack", "sound")
-	music_pack_edit = _pack_folder_row(settings_grid, "Music Pack", "music")
-	settings_grid = display_grid
-	var display_label := Label.new()
-	display_label.text = "Display"
-	display_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	settings_grid.add_child(display_label)
-	fullscreen_check = CheckBox.new()
-	fullscreen_check.text = "Fullscreen"
-	settings_grid.add_child(fullscreen_check)
-	var renderer_label := Label.new()
-	renderer_label.text = "Renderer"
-	settings_grid.add_child(renderer_label)
-	renderer_selector = OptionButton.new()
-	renderer_selector.add_item("GPU (recommended)")
-	renderer_selector.add_item("CPU")
-	renderer_selector.tooltip_text = "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
-	settings_grid.add_child(renderer_selector)
-	settings_grid = _add_settings_tab("Graphics", true)
-	var zoom_grid := GridContainer.new()
-	zoom_grid.columns = 4
-	zoom_grid.add_theme_constant_override("h_separation", 12)
-	zoom_grid.add_theme_constant_override("v_separation", 14)
-	settings_grid.get_parent().add_child(zoom_grid)
-	settings_grid.get_parent().move_child(zoom_grid, 0)
-	zoom_graphics_selectors.resize(6)
-
-	for zoom_index in [-1, 3, 0, 4, 1, 5, 2]:
-		var zoom_label := Label.new()
-		zoom_label.text = "%d%% zoom" % (10 if zoom_index == -1 else AppSettingsStore.GRAPHICS_ZOOMS[zoom_index])
-		zoom_grid.add_child(zoom_label)
-		var selector := OptionButton.new()
-
-		for size_name: String in AppSettingsStore.GRAPHICS_SIZES:
-			selector.add_item(size_name)
-
-		selector.tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
+	for selector in zoom_graphics_selectors + [overview_graphics_selector]:
 		selector.item_selected.connect(func(_size: int) -> void:
 			_update_zoom_graphics_choices())
 
-		if zoom_index == -1:
-			overview_graphics_selector = selector
-			selector.tooltip_text = "Graphics size for the 10% overview."
-		else:
-			zoom_graphics_selectors[zoom_index] = selector
-
-		var zoom_row := HBoxContainer.new()
-		zoom_row.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		zoom_row.add_child(selector)
-		zoom_grid.add_child(zoom_row)
-
-	folder_edit = _pack_folder_row(settings_grid, "Graphics pack", "graphics")
-	folder_row = folder_edit.get_parent() as HBoxContainer
-	settings_grid = _add_settings_tab("Import Data")
-	var import_label := Label.new()
-	import_label.text = "Original Data"
-	settings_grid.add_child(import_label)
-	var import_button := Button.new()
-	import_button.text = "Import SimCity 2000..."
-	import_button.pressed.connect(func() -> void:
-		hide()
-		import_original_requested.emit()
-	)
-	settings_grid.add_child(import_button)
-	var compatibility_grid := _add_settings_tab("Compatibility")
-	compatibility_grid.columns = 1
-	original_compatibility_check = CheckBox.new()
-	original_compatibility_check.text = "Original SimCity 2000 compatibility"
-	original_compatibility_check.add_theme_color_override("font_disabled_color", Color("606060"))
-	compatibility_grid.add_child(original_compatibility_check)
-	var explanation := Label.new()
-	explanation.text = "• Use original SC2 cities and SCN scenarios.\n• New cities use the original 128 × 128 map and data grids.\n• Larger maps and per-tile data maps are disabled.\n• Fire uses the original update timing.\n• Opening an SC2X city turns this option off automatically.\n• SC2X cities cannot return to original compatibility.\n• Graphics, audio, and interface improvements remain available."
-	explanation.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	explanation.custom_minimum_size.x = 560
-	compatibility_grid.add_child(explanation)
-	warn_sc2x_conversion_check = CheckBox.new()
-	warn_sc2x_conversion_check.text = "Warn before converting an SC2 city to SC2X"
-	warn_sc2x_conversion_check.button_pressed = true
-	compatibility_grid.add_child(warn_sc2x_conversion_check)
-	compatibility_error_label = Label.new()
-	compatibility_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	compatibility_error_label.custom_minimum_size.x = 560
-	compatibility_error_label.add_theme_color_override("font_color", Color("800000"))
-	compatibility_error_label.hide()
-	compatibility_grid.add_child(compatibility_error_label)
+	_bind_pack_controls("graphics", folder_edit, %GraphicsPackName, %GraphicsBrowse)
+	_bind_pack_controls("sound", sound_pack_edit, %SoundPackName, %SoundBrowse)
+	_bind_pack_controls("music", music_pack_edit, %MusicPackName, %MusicBrowse)
+	%ImportButton.pressed.connect(_request_original_import)
 
 
-
-func _add_settings_tab(tab_title: String, scrollable := false) -> GridContainer:
-	var page := VBoxContainer.new()
-	page.name = tab_title
-	page.add_theme_constant_override("separation", 16)
-
-	if scrollable:
-		var scroll := ScrollContainer.new()
-		scroll.name = tab_title
-		scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-		tabs.add_child(scroll)
-		page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		scroll.add_child(page)
-	else:
-		tabs.add_child(page)
-
-	var grid := GridContainer.new()
-	grid.columns = 2
-	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_theme_constant_override("h_separation", 14)
-	grid.add_theme_constant_override("v_separation", 14)
-	page.add_child(grid)
-
-	return grid
+func _request_original_import() -> void:
+	hide()
+	import_original_requested.emit()
 
 
 func show_values(
@@ -283,22 +141,7 @@ func _update_zoom_graphics_choices() -> void:
 			selector.set_item_disabled(size_index, index > 0 and size_index < sizes[index - 1])
 
 
-func _pack_folder_row(grid: GridContainer, caption: String, kind: String) -> LineEdit:
-	var label := Label.new()
-	label.text = caption
-	grid.add_child(label)
-	var column := VBoxContainer.new()
-	column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	grid.add_child(column)
-	var row := HBoxContainer.new()
-	column.add_child(row)
-	var edit := LineEdit.new()
-	edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	edit.placeholder_text = "Automatic (user://packs/%s/pack.json)" % kind
-	row.add_child(edit)
-	var browse := Button.new()
-	browse.text = "Browse..."
-	row.add_child(browse)
+func _bind_pack_controls(kind: String, edit: LineEdit, label: Label, browse: Button) -> void:
 	var picker := _pack_picker(kind, edit)
 
 	if kind == "graphics":
@@ -306,18 +149,10 @@ func _pack_folder_row(grid: GridContainer, caption: String, kind: String) -> Lin
 
 	browse.pressed.connect(func() -> void:
 		picker.popup_centered_ratio(0.8))
-	var pack_name := Label.new()
-	pack_name.custom_minimum_size.x = 150
-	pack_name.clip_text = true
-	pack_name.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	pack_name.add_theme_color_override("font_color", Color("606060"))
-	column.add_child(pack_name)
-	pack_name_labels[kind] = pack_name
+	pack_name_labels[kind] = label
 	pack_edits[kind] = edit
 	edit.text_changed.connect(func(_text: String) -> void:
 		_refresh_pack_name(kind))
-
-	return edit
 
 
 func set_loaded_pack(kind: String, pack_name: String, path: String) -> void:

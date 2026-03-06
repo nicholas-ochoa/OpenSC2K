@@ -197,7 +197,7 @@ func _test_main_menu() -> void:
 	)
 	debug_overlay.free()
 	debug_metrics_control.free()
-	var settings_dialog := SettingsDialogUi.new()
+	var settings_dialog := preload("res://src/ui/settings/app_settings_dialog.tscn").instantiate() as AppSettingsDialog
 	settings_dialog._ready()
 	settings_dialog.music_slider.value = 25
 	settings_dialog.effects_slider.value = 75

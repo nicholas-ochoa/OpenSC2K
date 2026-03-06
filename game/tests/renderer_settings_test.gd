@@ -13,7 +13,7 @@ func _run() -> void:
 	assert(AppSettingsStore.save_values(0.4, 0.4, false, path) == OK)
 	assert(AppSettingsStore.load_values(path).city_renderer == "cpu")
 	assert(AppSettingsStore.normalize_renderer("invalid") == "gpu")
-	var dialog := AppSettingsDialog.new()
+	var dialog := preload("res://src/ui/settings/app_settings_dialog.tscn").instantiate() as AppSettingsDialog
 	root.add_child(dialog)
 	dialog.show_values(0.5, 0.5, false, "auto", "", "cpu")
 	assert(dialog.selected_values().city_renderer == "cpu")

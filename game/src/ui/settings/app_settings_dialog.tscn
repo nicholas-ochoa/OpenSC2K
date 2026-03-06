@@ -1,0 +1,548 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/settings/app_settings_dialog.gd" id="1_wx7kb"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_63l1n"]
+content_margin_left = 16.0
+content_margin_top = 16.0
+content_margin_right = 16.0
+content_margin_bottom = 16.0
+bg_color = Color(0.9254902, 0.93333334, 0.91764706, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_c3fyp"]
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+bg_color = Color(0.8235294, 0.8352941, 0.8235294, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jtw6o"]
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+bg_color = Color(0.8235294, 0.8352941, 0.8235294, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_bdop4"]
+content_margin_left = 14.0
+content_margin_top = 8.0
+content_margin_right = 14.0
+content_margin_bottom = 8.0
+bg_color = Color(0.9254902, 0.93333334, 0.91764706, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
+
+[node name="AppSettingsDialog" type="ConfirmationDialog"]
+title = "OpenSC2K Settings"
+size = Vector2i(700, 500)
+min_size = Vector2i(700, 500)
+script = ExtResource("1_wx7kb")
+
+[node name="Tabs" type="TabContainer" parent="."]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(660, 350)
+offset_right = 660.0
+offset_bottom = 350.0
+size_flags_vertical = 3
+theme_override_colors/font_selected_color = Color(0.1254902, 0.15686275, 0.1882353, 1)
+theme_override_colors/font_hovered_color = Color(0.1254902, 0.15686275, 0.1882353, 1)
+theme_override_colors/font_unselected_color = Color(0.1254902, 0.15686275, 0.1882353, 1)
+theme_override_styles/panel = SubResource("StyleBoxFlat_63l1n")
+theme_override_styles/tab_unselected = SubResource("StyleBoxFlat_c3fyp")
+theme_override_styles/tab_hovered = SubResource("StyleBoxFlat_jtw6o")
+theme_override_styles/tab_selected = SubResource("StyleBoxFlat_bdop4")
+current_tab = 0
+
+[node name="General" type="VBoxContainer" parent="Tabs"]
+layout_mode = 2
+theme_override_constants/separation = 16
+metadata/_tab_index = 0
+
+[node name="Fields" type="GridContainer" parent="Tabs/General"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+columns = 2
+
+[node name="Label0" type="Label" parent="Tabs/General/Fields"]
+layout_mode = 2
+text = "Default mayor name"
+
+[node name="DefaultMayorEdit" type="LineEdit" parent="Tabs/General/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Mayor"
+max_length = 23
+
+[node name="Label2" type="Label" parent="Tabs/General/Fields"]
+layout_mode = 2
+
+[node name="Label3" type="Label" parent="Tabs/General/Fields"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3764706, 0.3764706, 0.3764706, 1)
+text = "Used as the mayor name for new cities."
+
+[node name="Display" type="VBoxContainer" parent="Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 16
+metadata/_tab_index = 1
+
+[node name="Fields" type="GridContainer" parent="Tabs/Display"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+columns = 2
+
+[node name="Label0" type="Label" parent="Tabs/Display/Fields"]
+layout_mode = 2
+text = "Display"
+horizontal_alignment = 2
+
+[node name="FullscreenCheck" type="CheckBox" parent="Tabs/Display/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Fullscreen"
+
+[node name="Label2" type="Label" parent="Tabs/Display/Fields"]
+layout_mode = 2
+text = "Renderer"
+
+[node name="RendererSelector" type="OptionButton" parent="Tabs/Display/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Use this renderer now and for new cities. If GPU setup fails, use the CPU renderer."
+selected = 0
+item_count = 2
+popup/item_0/text = "GPU (recommended)"
+popup/item_0/id = 0
+popup/item_1/text = "CPU"
+popup/item_1/id = 1
+
+[node name="Audio" type="ScrollContainer" parent="Tabs"]
+visible = false
+layout_mode = 2
+horizontal_scroll_mode = 0
+metadata/_tab_index = 2
+
+[node name="Content" type="VBoxContainer" parent="Tabs/Audio"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="PackErrorLabel" type="Label" parent="Tabs/Audio/Content"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5019608, 0, 0, 1)
+autowrap_mode = 3
+
+[node name="PackFields" type="GridContainer" parent="Tabs/Audio/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+columns = 2
+
+[node name="Label0" type="Label" parent="Tabs/Audio/Content/PackFields"]
+layout_mode = 2
+text = "Music Volume"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="MusicSlider" type="HSlider" parent="Tabs/Audio/Content/PackFields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 32)
+layout_mode = 2
+
+[node name="Label2" type="Label" parent="Tabs/Audio/Content/PackFields"]
+layout_mode = 2
+text = "Sound Effects Volume"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="EffectsSlider" type="HSlider" parent="Tabs/Audio/Content/PackFields"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(250, 32)
+layout_mode = 2
+
+[node name="Label4" type="Label" parent="Tabs/Audio/Content/PackFields"]
+layout_mode = 2
+
+[node name="BackgroundAudioCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Play music and sounds in background"
+
+[node name="Label6" type="Label" parent="Tabs/Audio/Content/PackFields"]
+layout_mode = 2
+
+[node name="ToolbarSoundsCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Play toolbar sounds"
+
+[node name="Label8" type="Label" parent="Tabs/Audio/Content/PackFields"]
+layout_mode = 2
+
+[node name="ShuffleMusicCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Play all 19 tracks, including menu and special music, once per shuffle cycle."
+text = "Shuffle all music"
+
+[node name="Label10" type="Label" parent="Tabs/Audio/Content/PackFields"]
+layout_mode = 2
+text = "Sound Pack"
+
+[node name="VBoxContainer11" type="VBoxContainer" parent="Tabs/Audio/Content/PackFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HBoxContainer0" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/VBoxContainer11"]
+layout_mode = 2
+
+[node name="SoundPackEdit" type="LineEdit" parent="Tabs/Audio/Content/PackFields/VBoxContainer11/HBoxContainer0"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Automatic (user://packs/sound/pack.json)"
+
+[node name="SoundBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/VBoxContainer11/HBoxContainer0"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Browse..."
+
+[node name="SoundPackName" type="Label" parent="Tabs/Audio/Content/PackFields/VBoxContainer11"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3764706, 0.3764706, 0.3764706, 1)
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="Label12" type="Label" parent="Tabs/Audio/Content/PackFields"]
+layout_mode = 2
+text = "Music Pack"
+
+[node name="VBoxContainer13" type="VBoxContainer" parent="Tabs/Audio/Content/PackFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HBoxContainer0" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/VBoxContainer13"]
+layout_mode = 2
+
+[node name="MusicPackEdit" type="LineEdit" parent="Tabs/Audio/Content/PackFields/VBoxContainer13/HBoxContainer0"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Automatic (user://packs/music/pack.json)"
+
+[node name="MusicBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/VBoxContainer13/HBoxContainer0"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Browse..."
+
+[node name="MusicPackName" type="Label" parent="Tabs/Audio/Content/PackFields/VBoxContainer13"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3764706, 0.3764706, 0.3764706, 1)
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="Graphics" type="ScrollContainer" parent="Tabs"]
+visible = false
+layout_mode = 2
+horizontal_scroll_mode = 0
+metadata/_tab_index = 3
+
+[node name="Content" type="VBoxContainer" parent="Tabs/Graphics"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 16
+
+[node name="Fields" type="GridContainer" parent="Tabs/Graphics/Content"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 14
+columns = 4
+
+[node name="Label0" type="Label" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+text = "10% zoom"
+
+[node name="HBoxContainer1" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="OverviewGraphicsSelector" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer1"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Graphics size for the 10% overview."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Label2" type="Label" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+text = "200% zoom"
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Zoom200" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer3"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Label4" type="Label" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+text = "25% zoom"
+
+[node name="HBoxContainer5" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Zoom25" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer5"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Label6" type="Label" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+text = "300% zoom"
+
+[node name="HBoxContainer7" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Zoom300" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer7"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Label8" type="Label" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+text = "50% zoom"
+
+[node name="HBoxContainer9" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Zoom50" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer9"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Label10" type="Label" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+text = "400% zoom"
+
+[node name="HBoxContainer11" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Zoom400" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer11"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="Label12" type="Label" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+text = "100% zoom"
+
+[node name="HBoxContainer13" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Zoom100" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer13"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Higher zoom levels must use the same graphics size or a larger size."
+selected = 0
+item_count = 3
+popup/item_0/text = "Small"
+popup/item_0/id = 0
+popup/item_1/text = "Medium"
+popup/item_1/id = 1
+popup/item_2/text = "Large"
+popup/item_2/id = 2
+
+[node name="PackFields" type="GridContainer" parent="Tabs/Graphics/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+columns = 2
+
+[node name="Label0" type="Label" parent="Tabs/Graphics/Content/PackFields"]
+layout_mode = 2
+text = "Graphics pack"
+
+[node name="VBoxContainer1" type="VBoxContainer" parent="Tabs/Graphics/Content/PackFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="HBoxContainer0" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/VBoxContainer1"]
+layout_mode = 2
+
+[node name="FolderEdit" type="LineEdit" parent="Tabs/Graphics/Content/PackFields/VBoxContainer1/HBoxContainer0"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Automatic (user://packs/graphics/pack.json)"
+
+[node name="GraphicsBrowse" type="Button" parent="Tabs/Graphics/Content/PackFields/VBoxContainer1/HBoxContainer0"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Browse..."
+
+[node name="GraphicsPackName" type="Label" parent="Tabs/Graphics/Content/PackFields/VBoxContainer1"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.3764706, 0.3764706, 0.3764706, 1)
+clip_text = true
+text_overrun_behavior = 3
+
+[node name="Import Data" type="VBoxContainer" parent="Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 16
+metadata/_tab_index = 4
+
+[node name="Fields" type="GridContainer" parent="Tabs/Import Data"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+columns = 2
+
+[node name="Label0" type="Label" parent="Tabs/Import Data/Fields"]
+layout_mode = 2
+text = "Original Data"
+
+[node name="ImportButton" type="Button" parent="Tabs/Import Data/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Import SimCity 2000..."
+
+[node name="Compatibility" type="VBoxContainer" parent="Tabs"]
+visible = false
+layout_mode = 2
+theme_override_constants/separation = 16
+metadata/_tab_index = 5
+
+[node name="Fields" type="GridContainer" parent="Tabs/Compatibility"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 14
+theme_override_constants/v_separation = 14
+
+[node name="OriginalCompatibilityCheck" type="CheckBox" parent="Tabs/Compatibility/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_disabled_color = Color(0.3764706, 0.3764706, 0.3764706, 1)
+text = "Original SimCity 2000 compatibility"
+
+[node name="Label1" type="Label" parent="Tabs/Compatibility/Fields"]
+custom_minimum_size = Vector2(560, 0)
+layout_mode = 2
+text = "• Use original SC2 cities and SCN scenarios.
+• New cities use the original 128 × 128 map and data grids.
+• Larger maps and per-tile data maps are disabled.
+• Fire uses the original update timing.
+• Opening an SC2X city turns this option off automatically.
+• SC2X cities cannot return to original compatibility.
+• Graphics, audio, and interface improvements remain available."
+autowrap_mode = 3
+
+[node name="WarnSc2xConversionCheck" type="CheckBox" parent="Tabs/Compatibility/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+button_pressed = true
+text = "Warn before converting an SC2 city to SC2X"
+
+[node name="CompatibilityErrorLabel" type="Label" parent="Tabs/Compatibility/Fields"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(560, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.5019608, 0, 0, 1)
+autowrap_mode = 3

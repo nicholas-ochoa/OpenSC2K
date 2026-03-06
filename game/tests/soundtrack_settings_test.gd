@@ -13,7 +13,7 @@ func _run() -> void:
 	assert(AppSettingsStore.load_values(path).soundtrack_folder == folder)
 	assert(AppSettingsStore.save_values(0.2, 0.3, false, path) == OK)
 	assert(AppSettingsStore.load_values(path).soundtrack_folder == folder)
-	var dialog := AppSettingsDialog.new()
+	var dialog := preload("res://src/ui/settings/app_settings_dialog.tscn").instantiate() as AppSettingsDialog
 	root.add_child(dialog)
 	dialog.show_values(0.5, 0.3, false)
 	assert(not dialog.selected_values().has("soundtrack_folder"))
