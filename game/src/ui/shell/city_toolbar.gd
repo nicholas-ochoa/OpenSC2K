@@ -18,8 +18,6 @@ signal underground_pipes_visibility_requested(visible: bool)
 signal underground_subways_visibility_requested(visible: bool)
 
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
-const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
-const ChildToolPalette = preload("res://src/ui/shell/city_child_tool_palette.gd")
 const HoldMenu = preload("res://src/ui/shell/city_tool_hold_menu.gd")
 const HOLD_SECONDS := 0.45
 const MAP_DISPLAY_MODES := ["city", "underground"]
@@ -57,160 +55,60 @@ var view_visibility_checks: Dictionary = {}
 var view_mode_buttons: Dictionary = {}
 
 
-func _init(source_art: Image = null) -> void:
-	toolbar_art = source_art
-
-
 func _ready() -> void:
-	custom_minimum_size = Vector2(195, 0)
-	size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
-	add_theme_stylebox_override(
-		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("808080"), 2)
-	)
+	start_city_button = %StartCityButton
+	rotate_counter_clockwise_button = %RotateCounterClockwiseButton
+	rotate_clockwise_button = %RotateClockwiseButton
+	zoom_out_button = %ZoomOutButton
+	zoom_in_button = %ZoomInButton
+	child_palette = %ChildPalette
+	view_layers_heading = %ViewLayersHeading
+	data_view_input = %DataViewInput
+	view_mode_buttons = {"city": %CityView, "underground": %UndergroundView}
+	view_visibility_checks = {
+		"buildings": %BuildingsVisible, "networks": %NetworksVisible,
+		"water": %WaterVisible, "trees": %TreesVisible,
+		"zones": %ZonesVisible, "signs": %SignsVisible,
+		"pipes": %PipesVisible, "subways": %SubwaysVisible,
+	}
+
 	hold_menu = HoldMenu.new()
 	hold_menu.subtool_requested.connect(subtool_requested.emit)
 	add_child(hold_menu)
-	var toolbar_margin := MarginContainer.new()
-
-	for side in ["left", "top", "right", "bottom"]:
-		toolbar_margin.add_theme_constant_override("margin_" + side, 6)
-
-	add_child(toolbar_margin)
-
-	var toolbar := VBoxContainer.new()
-	toolbar.add_theme_constant_override("separation", 4)
-	toolbar_margin.add_child(toolbar)
-
-	start_city_button = Button.new()
-	start_city_button.text = "Start City"
-	start_city_button.custom_minimum_size.y = 36
-	start_city_button.hide()
+	move_child(hold_menu, 0)
 	start_city_button.pressed.connect(start_city_requested.emit)
-	toolbar.add_child(start_city_button)
-
-	var tool_grid := GridContainer.new()
-	tool_grid.columns = 3
-	tool_grid.add_theme_constant_override("h_separation", 3)
-	tool_grid.add_theme_constant_override("v_separation", 3)
-	tool_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	toolbar.add_child(tool_grid)
 	var tool_button_group := ButtonGroup.new()
 
 	for group_index in range(15):
-		_add_group_button(tool_grid, tool_button_group, group_index)
-
-	toolbar.add_child(HSeparator.new())
-	var special_tool_grid := GridContainer.new()
-	special_tool_grid.columns = 3
-	special_tool_grid.add_theme_constant_override("h_separation", 3)
-	special_tool_grid.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
-	toolbar.add_child(special_tool_grid)
+		_add_group_button(%ToolGroups, tool_button_group, group_index)
 
 	for group_index in range(15, Tools.GROUPS.size()):
-		_add_group_button(special_tool_grid, tool_button_group, group_index)
+		_add_group_button(%SpecialTools, tool_button_group, group_index)
 
-	toolbar.add_child(HSeparator.new())
-	var camera_row := _camera_row(toolbar, "Rotate")
-	rotate_counter_clockwise_button = _icon_button(
-		Rect2i(405, 0, 27, 23), "Rotate Counter-Clockwise"
-	)
-	rotate_counter_clockwise_button.disabled = true
-	rotate_counter_clockwise_button.pressed.connect(
-		rotate_requested.emit.bind(true)
-	)
-	camera_row.add_child(rotate_counter_clockwise_button)
-	rotate_clockwise_button = _icon_button(
-		Rect2i(433, 0, 27, 23), "Rotate Clockwise"
-	)
-	rotate_clockwise_button.disabled = true
+	_refresh_artwork_buttons(self)
+	rotate_counter_clockwise_button.pressed.connect(rotate_requested.emit.bind(true))
 	rotate_clockwise_button.pressed.connect(rotate_requested.emit.bind(false))
-	camera_row.add_child(rotate_clockwise_button)
-
-	var zoom_row := _camera_row(toolbar, "Zoom")
-	zoom_out_button = _icon_button(Rect2i(462, 0, 23, 23), "Zoom Out (Q / -)")
 	zoom_out_button.pressed.connect(zoom_out_requested.emit)
-	zoom_row.add_child(zoom_out_button)
-	zoom_in_button = _icon_button(Rect2i(486, 0, 23, 23), "Zoom In (E / +)")
 	zoom_in_button.pressed.connect(zoom_in_requested.emit)
-	zoom_row.add_child(zoom_in_button)
 
-	child_palette = ChildToolPalette.new()
 	child_palette.build()
-	child_palette.size_flags_vertical = Control.SIZE_EXPAND_FILL
 	child_palette.subtool_requested.connect(subtool_requested.emit)
-	toolbar.add_child(child_palette)
 	active_tool_group_label = child_palette.heading
 	child_tool_scroll = child_palette.scroll
 	child_tool_grid = child_palette.grid
 	child_tool_buttons = child_palette.buttons
 
-	toolbar.add_child(HSeparator.new())
-	view_layers_heading = Label.new()
-	view_layers_heading.text = "Visible Layers"
-	view_layers_heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	view_layers_heading.add_theme_color_override("font_color", Color("000080"))
-	toolbar.add_child(view_layers_heading)
-	var view_grid := VBoxContainer.new()
-	view_grid.add_theme_constant_override("separation", 0)
-	toolbar.add_child(view_grid)
-	var view_group := ButtonGroup.new()
-
 	for mode in MAP_DISPLAY_MODES:
-		var button := CheckBox.new()
-		button.text = mode.capitalize()
-		button.button_group = view_group
-		button.button_pressed = mode == "city"
-		button.tooltip_text = "Show the %s isometric view." % mode
-		button.pressed.connect(overlay_requested.emit.bind(mode))
-		view_grid.add_child(button)
-		view_mode_buttons[mode] = button
+		view_mode_buttons[mode].pressed.connect(overlay_requested.emit.bind(mode))
 
-	data_view_input = OptionButton.new()
-	data_view_input.add_item("Data view: off")
-
-	for title in CityDataView.TITLES:
-		data_view_input.add_item(title)
-
-	data_view_input.tooltip_text = "Replace structures with current tile values."
 	data_view_input.item_selected.connect(func(index: int) -> void:
 		overlay_requested.emit("city" if index == 0 else CityDataView.MODES[index - 1]))
-	toolbar.add_child(data_view_input)
 
-	var layers_grid := GridContainer.new()
-	layers_grid.columns = 2
-	layers_grid.add_theme_constant_override("h_separation", 4)
-	layers_grid.add_theme_constant_override("v_separation", 2)
-	toolbar.add_child(layers_grid)
+	for layer in ["buildings", "networks", "water", "trees", "zones", "signs"]:
+		view_visibility_checks[layer].toggled.connect(_on_surface_visibility_toggled.bind(layer))
 
-	for layer in [
-		["Buildings", "buildings"], ["Networks", "networks"],
-		["Water", "water"], ["Trees", "trees"],
-		["Zones", "zones"], ["Signs", "signs"],
-	]:
-		var check := CheckBox.new()
-		check.text = layer[0]
-		check.tooltip_text = (
-			"Show or hide %s in the city view." % str(layer[0]).to_lower()
-		)
-		check.button_pressed = true
-		check.toggled.connect(_on_surface_visibility_toggled.bind(layer[1]))
-		view_visibility_checks[layer[1]] = check
-		layers_grid.add_child(check)
-
-	var pipes_check := CheckBox.new()
-	pipes_check.text = "Pipes"
-	pipes_check.tooltip_text = "Show or hide pipes in the underground view."
-	pipes_check.button_pressed = true
-	pipes_check.toggled.connect(underground_pipes_visibility_requested.emit)
-	view_visibility_checks["pipes"] = pipes_check
-	layers_grid.add_child(pipes_check)
-	var subway_check := CheckBox.new()
-	subway_check.text = "Subways"
-	subway_check.tooltip_text = "Show or hide subways in the underground view."
-	subway_check.button_pressed = true
-	subway_check.toggled.connect(underground_subways_visibility_requested.emit)
-	view_visibility_checks["subways"] = subway_check
-	layers_grid.add_child(subway_check)
+	view_visibility_checks.pipes.toggled.connect(underground_pipes_visibility_requested.emit)
+	view_visibility_checks.subways.toggled.connect(underground_subways_visibility_requested.emit)
 	_watch_buttons(self)
 
 
@@ -321,19 +219,6 @@ func _toolbar_icon(region: Rect2i) -> Texture2D:
 	return ImageTexture.create_from_image(image.get_region(bounds))
 
 
-func _icon_button(region: Rect2i, tooltip: String) -> Button:
-	var button := Button.new()
-	button.custom_minimum_size = Vector2(36, 30)
-	button.icon = _toolbar_icon(region)
-	button.set_meta("toolbar_region", region)
-	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
-	button.text = tooltip.left(1) if button.icon == null else ""
-	button.tooltip_text = tooltip
-
-	return button
-
-
 func _on_surface_visibility_toggled(visible: bool, layer: String) -> void:
 	surface_visibility_requested.emit(visible, layer)
 
@@ -346,33 +231,12 @@ func sync_view_mode(mode: String) -> void:
 		(view_mode_buttons[key] as CheckBox).set_pressed_no_signal(key == mode)
 
 
-func _camera_row(parent: VBoxContainer, title: String) -> HBoxContainer:
-	# equal side columns center the buttons independently of the left label
-	var row := HBoxContainer.new()
-	row.add_theme_constant_override("separation", 0)
-	parent.add_child(row)
-	var label := Label.new()
-	label.text = title
-	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	label.custom_minimum_size.x = 45
-	row.add_child(label)
-	var buttons := HBoxContainer.new()
-	buttons.add_theme_constant_override("separation", 3)
-	row.add_child(buttons)
-	var spacer := Control.new()
-	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	spacer.custom_minimum_size.x = 45
-	row.add_child(spacer)
-
-	return buttons
-
-
 func _begin_group_hold(group_index: int) -> void:
 	_hold_generation += 1
 	_held_group = group_index
 	_hold_opened = false
 
-	if group_index >= 15 or not is_inside_tree():
+	if (group_index >= 15 and group_index != 16) or not is_inside_tree():
 		return
 
 	get_tree().create_timer(HOLD_SECONDS).timeout.connect(

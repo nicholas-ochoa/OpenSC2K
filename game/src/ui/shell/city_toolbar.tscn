@@ -1,0 +1,259 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/city_toolbar.gd" id="1_3va6y"]
+[ext_resource type="Script" path="res://src/ui/shell/city_child_tool_palette.gd" id="2_uaa4s"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gfpmc"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_06b3w"]
+resource_local_to_scene = true
+
+[node name="CityToolbar" type="PanelContainer"]
+custom_minimum_size = Vector2(195, 0)
+size_flags_horizontal = 0
+theme_override_styles/panel = SubResource("StyleBoxFlat_gfpmc")
+script = ExtResource("1_3va6y")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 6
+theme_override_constants/margin_top = 6
+theme_override_constants/margin_right = 6
+theme_override_constants/margin_bottom = 6
+
+[node name="Column" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 4
+
+[node name="StartCityButton" type="Button" parent="Margin/Column"]
+unique_name_in_owner = true
+visible = false
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Start City"
+
+[node name="ToolGroups" type="GridContainer" parent="Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/h_separation = 3
+theme_override_constants/v_separation = 3
+columns = 3
+
+[node name="HSeparator2" type="HSeparator" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="SpecialTools" type="GridContainer" parent="Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/h_separation = 3
+columns = 3
+
+[node name="HSeparator4" type="HSeparator" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="RotateRow" type="HBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Label0" type="Label" parent="Margin/Column/RotateRow"]
+custom_minimum_size = Vector2(45, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Rotate"
+
+[node name="HBoxContainer1" type="HBoxContainer" parent="Margin/Column/RotateRow"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="RotateCounterClockwiseButton" type="Button" parent="Margin/Column/RotateRow/HBoxContainer1"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+tooltip_text = "Rotate Counter-Clockwise"
+disabled = true
+text = "R"
+icon_alignment = 1
+metadata/toolbar_region = Rect2i(405, 0, 27, 23)
+
+[node name="RotateClockwiseButton" type="Button" parent="Margin/Column/RotateRow/HBoxContainer1"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+tooltip_text = "Rotate Clockwise"
+disabled = true
+text = "R"
+icon_alignment = 1
+metadata/toolbar_region = Rect2i(433, 0, 27, 23)
+
+[node name="Control2" type="Control" parent="Margin/Column/RotateRow"]
+custom_minimum_size = Vector2(45, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ZoomRow" type="HBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="Label0" type="Label" parent="Margin/Column/ZoomRow"]
+custom_minimum_size = Vector2(45, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Zoom"
+
+[node name="HBoxContainer1" type="HBoxContainer" parent="Margin/Column/ZoomRow"]
+layout_mode = 2
+theme_override_constants/separation = 3
+
+[node name="ZoomOutButton" type="Button" parent="Margin/Column/ZoomRow/HBoxContainer1"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+tooltip_text = "Zoom Out (Q / -)"
+text = "Z"
+icon_alignment = 1
+metadata/toolbar_region = Rect2i(462, 0, 23, 23)
+
+[node name="ZoomInButton" type="Button" parent="Margin/Column/ZoomRow/HBoxContainer1"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+tooltip_text = "Zoom In (E / +)"
+text = "Z"
+icon_alignment = 1
+metadata/toolbar_region = Rect2i(486, 0, 23, 23)
+
+[node name="Control2" type="Control" parent="Margin/Column/ZoomRow"]
+custom_minimum_size = Vector2(45, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="ChildPalette" type="VBoxContainer" parent="Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+script = ExtResource("2_uaa4s")
+
+[node name="HSeparator8" type="HSeparator" parent="Margin/Column"]
+layout_mode = 2
+
+[node name="ViewLayersHeading" type="Label" parent="Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
+text = "Visible Layers"
+horizontal_alignment = 1
+
+[node name="ViewModes" type="VBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 0
+
+[node name="CityView" type="CheckBox" parent="Margin/Column/ViewModes"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show the city isometric view."
+button_pressed = true
+button_group = SubResource("ButtonGroup_06b3w")
+text = "City"
+
+[node name="UndergroundView" type="CheckBox" parent="Margin/Column/ViewModes"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show the underground isometric view."
+button_group = SubResource("ButtonGroup_06b3w")
+text = "Underground"
+
+[node name="DataViewInput" type="OptionButton" parent="Margin/Column"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Replace structures with current tile values."
+selected = 0
+item_count = 7
+popup/item_0/text = "Data view: off"
+popup/item_0/id = 0
+popup/item_1/text = "Land Value"
+popup/item_1/id = 1
+popup/item_2/text = "Pollution"
+popup/item_2/id = 2
+popup/item_3/text = "Crime"
+popup/item_3/id = 3
+popup/item_4/text = "Water Supply"
+popup/item_4/id = 4
+popup/item_5/text = "Power Supply"
+popup/item_5/id = 5
+popup/item_6/text = "Height"
+popup/item_6/id = 6
+
+[node name="Layers" type="GridContainer" parent="Margin/Column"]
+layout_mode = 2
+theme_override_constants/h_separation = 4
+theme_override_constants/v_separation = 2
+columns = 2
+
+[node name="BuildingsVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide buildings in the city view."
+button_pressed = true
+text = "Buildings"
+
+[node name="NetworksVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide networks in the city view."
+button_pressed = true
+text = "Networks"
+
+[node name="WaterVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide water in the city view."
+button_pressed = true
+text = "Water"
+
+[node name="TreesVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide trees in the city view."
+button_pressed = true
+text = "Trees"
+
+[node name="ZonesVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide zones in the city view."
+button_pressed = true
+text = "Zones"
+
+[node name="SignsVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide signs in the city view."
+button_pressed = true
+text = "Signs"
+
+[node name="PipesVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide pipes in the underground view."
+button_pressed = true
+text = "Pipes"
+
+[node name="SubwaysVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide subways in the underground view."
+button_pressed = true
+text = "Subways"

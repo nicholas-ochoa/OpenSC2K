@@ -80,7 +80,8 @@ func _run() -> void:
 	assert(AppSettingsStore.save_values(0.5, 0.5, false, config, "auto", "", null, null, null, null, false, base.path_join("sound"), base.path_join("music")) == OK)
 	var values := AppSettingsStore.load_values(config)
 	assert(not values.toolbar_sounds and values.sound_pack_folder == base.path_join("sound") and values.music_pack_folder == base.path_join("music"))
-	var toolbar := CityToolbar.new(original.toolbar_art)
+	var toolbar := preload("res://src/ui/shell/city_toolbar.tscn").instantiate() as CityToolbar
+	toolbar.toolbar_art = original.toolbar_art
 	root.add_child(toolbar)
 	var clicks := [0]
 	toolbar.button_clicked.connect(func() -> void:

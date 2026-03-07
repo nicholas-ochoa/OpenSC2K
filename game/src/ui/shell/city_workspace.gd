@@ -2,7 +2,7 @@ class_name CityWorkspace
 extends Control
 
 const MenuBarView = preload("res://src/ui/shell/city_menu_bar.gd")
-const ToolbarView = preload("res://src/ui/shell/city_toolbar.gd")
+const ToolbarView = preload("res://src/ui/shell/city_toolbar.tscn")
 const MapView = preload("res://src/view/city_map_control.gd")
 const StatusBarView = preload("res://src/ui/shell/city_status_bar.tscn")
 const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
@@ -39,7 +39,8 @@ func _ready() -> void:
 	content.add_theme_constant_override("separation", 4)
 	page.add_child(content)
 
-	toolbar = ToolbarView.new(toolbar_art)
+	toolbar = ToolbarView.instantiate() as CityToolbar
+	toolbar.toolbar_art = toolbar_art
 	content.add_child(toolbar)
 
 	var map_panel := PanelContainer.new()

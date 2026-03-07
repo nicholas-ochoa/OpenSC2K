@@ -495,7 +495,7 @@ func _test_main_menu() -> void:
 		"City menu bar owns live metric formatting",
 	)
 	menu_bar.free()
-	var toolbar := CityToolbarUi.new(null)
+	var toolbar := preload("res://src/ui/shell/city_toolbar.tscn").instantiate() as CityToolbar
 	toolbar._ready()
 	var first_residential := toolbar.show_tool_group(9, null)
 	_check(
