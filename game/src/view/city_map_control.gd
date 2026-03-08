@@ -100,6 +100,7 @@ var network_preview_active := false
 var highway_preview := false
 var query_footprint_preview := false
 var scurk_stamp_visuals: Array[Dictionary] = []
+var trip_reach: TripReachOverlay
 var query_city: CityState
 var _shift_pressed := false
 var shift_line_enabled := false
@@ -873,6 +874,9 @@ func _draw() -> void:
 	if data_view_mesh != null:
 		_draw_data_view(scale, offset)
 
+		if trip_reach != null:
+			trip_reach.draw_on(self, scale, offset)
+
 		return
 
 	if _base_layer == null:
@@ -907,6 +911,9 @@ func _draw() -> void:
 		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95), 1.0)
 
 	_draw_selection_price(scale, offset)
+
+	if trip_reach != null:
+		trip_reach.draw_on(self, scale, offset)
 
 
 func _selection_source_polygons() -> Array[PackedVector2Array]:
@@ -1744,6 +1751,9 @@ func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
 
 
 func _get_tooltip(at_position: Vector2) -> String:
+	if trip_reach != null and not is_panning():
+		return trip_reach.tile_tooltip(_tile_at(at_position))
+
 	if not edit_enabled or not show_selection_preview or is_panning() or selection_start.x >= 0 or not placement_error_provider.is_valid():
 		return ""
 
@@ -1814,3 +1824,18 @@ func _process(delta: float) -> void:
 func _emit_brush_dab(tile: Vector2i, dragged: bool) -> void:
 	var points: Array[Vector2i] = [tile]
 	selection_completed.emit(tile, tile, points, dragged)
+
+
+func show_trip_reach(source: CityState, point: Vector2i) -> Dictionary:
+	var result := TripReachAnalysis.inspect(source, point)
+	if result.ok:
+		trip_reach = TripReachOverlay.new()
+		trip_reach.rebuild(source, result)
+		queue_redraw()
+	return result
+
+
+func clear_trip_reach() -> void:
+	if trip_reach != null:
+		trip_reach = null
+		queue_redraw()

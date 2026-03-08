@@ -55,7 +55,7 @@ func show_tool_group(
 	_clear_buttons()
 	scroll.scroll_vertical = 0
 	scroll.set_deferred("scroll_vertical", 0)
-	var visible_group := group_index < 15
+	var visible_group := group_index < 15 or group_index == 16
 	heading.visible = visible_group
 	scroll.visible = visible_group
 
@@ -155,6 +155,9 @@ func tool_button_tooltip(
 
 	if tool.is_empty():
 		return ""
+
+	if group_index == 16 and subtool_index == 1:
+		return "Trip Query\nClick a zone or transport tile. Colors show trip cost. A blue pin marks the origin. Gold diamonds mark possible destinations. Inspection does not change the city."
 
 	var price := _tool_price(tool)
 	var lines := PackedStringArray([str(tool.name)])

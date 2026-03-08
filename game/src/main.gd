@@ -663,6 +663,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_Z and event.is_command_or_control_pressed():
 		_undo_last_edit()
 		get_viewport().set_input_as_handled()
+	elif event.keycode == KEY_ESCAPE and map_view != null and map_view.trip_reach != null:
+		map_view.clear_trip_reach()
+		get_viewport().set_input_as_handled()
 	elif _camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed and (event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL or event.physical_keycode == KEY_E):
 		if map_view.zoom_in():
 			get_viewport().set_input_as_handled()
@@ -1742,6 +1745,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 		simulation_engine.rotate_runtime_coordinates(counter_clockwise)
 
 	last_edit_command = {}
+	map_view.clear_trip_reach()
 	map_view.show_transient_effects([])
 	_refresh_map()
 
@@ -3130,6 +3134,7 @@ func _activate_document(
 
 		return false
 
+	map_view.clear_trip_reach()
 	var loaded_city := CityModel.from_document(document)
 
 	if not loaded_city.is_valid():
@@ -5070,6 +5075,8 @@ func _update_edit_state() -> void:
 	map_view.terrain_diamond_preview = selected_group == 0 and selected_subtool in [2, 3, 5]
 	map_view.highway_preview = selected_group == 6 and selected_subtool == 1
 	map_view.query_footprint_preview = selected_group == 16
+	if selected_group != 16 or selected_subtool != 1:
+		map_view.clear_trip_reach()
 	map_view.query_city = city
 	map_view.set_edit_enabled(
 		bool(state.enabled),
@@ -5139,7 +5146,10 @@ func _apply_map_selection(
 		return
 
 	if selected_group == 16:
-		_open_query(finish)
+		if selected_subtool == 1:
+			map_view.show_trip_reach(city, finish)
+		else:
+			_open_query(finish)
 
 		return
 

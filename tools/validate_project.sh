@@ -161,3 +161,6 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/original_pack_import_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/import_packs_runtime_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/saved_camera_test.gd
+
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/trip_reach_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/trip_footprint_test.gd

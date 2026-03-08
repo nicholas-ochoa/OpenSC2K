@@ -272,6 +272,9 @@ static func _normal_status_detail(
 	if is_sign:
 		return "Place Sign selected. Click a city tile to add, edit, or remove a user sign."
 
+	if is_query and subtool_index == 1:
+		return "Trip Query selected. Click a zone or network tile to show potential routes, trip cost, and growth access."
+
 	if is_query:
 		return "Query selected. Click a city tile to inspect it."
 

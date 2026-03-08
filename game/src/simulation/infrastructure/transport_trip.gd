@@ -99,6 +99,8 @@ static func trace(
 	random,
 	maximum_cost := 100,
 	map_edge: int = 128,
+	collect_reach := false,
+	start_override := -1,
 ) -> Dictionary:
 	if (
 		buildings.size() != (map_edge * map_edge)
@@ -119,7 +121,7 @@ static func trace(
 	if traffic_weight < 0:
 		return {"ok": false, "error": "traffic weight cannot be negative"}
 
-	var start := _find_transport(buildings, origin, map_edge)
+	var start := start_override if start_override >= 0 else _find_transport(buildings, origin, map_edge)
 
 	if start < 0:
 		return _result(false, 0, 0, false, false, false)
@@ -129,118 +131,191 @@ static func trace(
 	if traffic_weight == 1:
 		limit -= int(IntegerMath.div_trunc(limit, 4))
 
+	# positive edge costs and the best cost for each mode/heading prevent cycles
+	# cost buckets are a bounded dijkstra queue. reaching the limit discards one
+	# candidate, not the remaining search. equal-cost choices still use the rng
 	var turn_direction := 1 if random.next_u15() & 1 else 3
 	var start_index := start & (POINT_INDEX_MASK if map_edge == 128 else 0x3ffff)
-	var state_points: Array[Vector2i] = [
-		Vector2i(int(IntegerMath.div_trunc(start_index, map_edge)), start_index % map_edge)
-	]
-	var state_modes := PackedInt32Array([start >> (14 if map_edge == 128 else 18)])
-	var state_costs := PackedInt32Array([0])
-	var state_directions := PackedInt32Array([0x0f])
-	var reached_destination := false
+	var points: Array[Vector2i] = [Vector2i(IntegerMath.div_trunc(start_index, map_edge), start_index % map_edge)]
+	var modes := PackedInt32Array([start >> (14 if map_edge == 128 else 18)])
+	var costs := PackedInt32Array([0])
+	var headings := PackedInt32Array([4])
+	var parents := PackedInt32Array([-1])
+	var pending := {0: [0]}
+	var best := {_state_key(start_index, modes[0], 4): 0}
+	var reachable: Array[Dictionary] = []
+	var links: Array[Dictionary] = []
+	var destinations: Dictionary = {}
+	var link_keys: Dictionary = {}
+	var endpoints: Dictionary = {}
+	var winner := -1
+	var expanded := 0
+
+	for cost in limit:
+		if not pending.has(cost):
+			continue
+
+		for state_index: int in pending[cost]:
+			var point := points[state_index]
+			var mode := modes[state_index]
+			var heading := headings[state_index]
+			var key := _state_key(_index(point, map_edge), mode, heading)
+
+			if int(best[key]) != cost:
+				continue
+
+			expanded += 1
+
+			if collect_reach:
+				reachable.append({"point": point, "mode": mode, "cost": cost})
+				if not endpoints.has(point):
+					endpoints[point] = {"exit": false, "destination": false, "limited": false}
+
+			# a station's walking catchment must work at both ends of a trip
+			var walk_destinations := _station_destinations(zones, point, mode, zone, map_edge)
+
+			if not walk_destinations.is_empty():
+				if collect_reach:
+					endpoints[point].destination = true
+				for target in walk_destinations:
+					destinations[target] = mini(int(destinations.get(target, cost)), cost)
+
+				if winner < 0:
+					winner = state_index
+
+				if not collect_reach:
+					break
+
+			var direction: int = random.next_u15() & 3
+
+			for unused in 4:
+				direction = (direction + turn_direction) & 3
+
+				if heading < 4 and direction != heading:
+					continue
+
+				var next_point: Vector2i = point + DIRECTIONS[direction]
+				var advance := _advance(buildings, zones, underground, text_overlays,
+					altitudes, point, next_point, mode, zone, map_edge)
+
+				if advance == ADVANCE_SUCCESS:
+					if collect_reach:
+						endpoints[point].destination = true
+					destinations[next_point] = mini(int(destinations.get(next_point, cost)), cost)
+
+					if winner < 0:
+						winner = state_index
+
+					if not collect_reach:
+						break
+
+					continue
+
+				if advance == ADVANCE_BLOCKED:
+					continue
+
+				var next_cost := cost + (advance & 0xff)
+
+				if next_cost >= limit:
+					if collect_reach:
+						endpoints[point].limited = true
+					continue
+
+				if collect_reach and (parents[state_index] < 0 or next_point != points[parents[state_index]]):
+					endpoints[point].exit = true
+
+				var next_mode := advance >> 8
+				var next_heading := direction if next_mode in [ROAD_BRIDGE_MODE,
+					BUS_BRIDGE_MODE, ROAD_TUNNEL_MODE, BUS_TUNNEL_MODE] else 4
+				var next_index := _index(next_point, map_edge)
+				var next_key := _state_key(next_index, next_mode, next_heading)
+
+				if collect_reach:
+					var link_key := Vector2i(_index(point, map_edge) * 14 + mode, next_index * 14 + next_mode)
+
+					if not link_keys.has(link_key):
+						link_keys[link_key] = true
+						links.append({"from": point, "to": next_point, "mode": next_mode, "cost": next_cost})
+
+				if next_cost >= int(best.get(next_key, limit)):
+					continue
+
+				best[next_key] = next_cost
+
+				if not pending.has(next_cost):
+					pending[next_cost] = []
+
+				pending[next_cost].append(points.size())
+				points.append(next_point)
+				modes.append(next_mode)
+				costs.append(next_cost)
+				headings.append(next_heading)
+				parents.append(state_index)
+
+			if winner >= 0 and not collect_reach:
+				break
+
+		if winner >= 0 and not collect_reach:
+			break
+
+	var path: Array[int] = []
+	var cursor := winner
+
+	while cursor >= 0:
+		path.push_front(cursor)
+		cursor = parents[cursor]
+
 	var used_bus := false
 	var used_rail := false
 	var used_subway := false
-	var final_cost := 0
 
-	while not state_points.is_empty() and state_costs[-1] < limit:
-		var state_index := state_points.size() - 1
-		var point := state_points[state_index]
-		var mode := state_modes[state_index]
-		var cost := state_costs[state_index]
-		var direction: int = random.next_u15() & 3
-		var moved := false
+	if winner >= 0 and traffic_weight > 0:
+		for index in path:
+			var mode := modes[index]
+			used_bus = used_bus or mode == BUS_STOP_MODE
+			used_rail = used_rail or mode == RAIL_STATION_MODE
+			used_subway = used_subway or mode == SUBWAY_STATION_MODE
 
-		for unused in 4:
-			direction = (direction + turn_direction) & 3
-			var bit: int = 1 << direction
-
-			if state_directions[state_index] & bit == 0:
-				continue
-
-			state_directions[state_index] &= ~bit
-			var next_point: Vector2i = point + DIRECTIONS[direction]
-			var advance := _advance(
-				buildings,
-				zones,
-				underground,
-				text_overlays,
-				altitudes,
-				point,
-				next_point,
-				mode,
-				zone, map_edge,
-			)
-
-			if advance == ADVANCE_SUCCESS:
-				reached_destination = true
-				final_cost = cost
-				moved = true
-				break
-
-			if advance == ADVANCE_BLOCKED:
-				continue
-
-			var next_cost := cost + (advance & 0xff)
-			var next_mode := advance >> 8
-			var next_directions: int
-
-			if next_mode == ROAD_BRIDGE_MODE or next_mode == BUS_BRIDGE_MODE:
-				next_directions = bit
-			elif next_mode == SUBWAY_STATION_MODE:
-				next_directions = 0x0f
-			else:
-				next_directions = FORWARD_DIRECTION_MASKS[direction]
-
-			state_points.append(next_point)
-			state_modes.append(next_mode)
-			state_costs.append(next_cost)
-			state_directions.append(next_directions)
-			final_cost = next_cost
-			moved = true
-			break
-
-		if reached_destination:
-			break
-
-		if moved:
-			continue
-
-		state_points.pop_back()
-		state_modes.resize(state_modes.size() - 1)
-		state_costs.resize(state_costs.size() - 1)
-		state_directions.resize(state_directions.size() - 1)
-
-		while not state_points.is_empty() and state_directions[-1] == 0:
-			state_points.pop_back()
-			state_modes.resize(state_modes.size() - 1)
-			state_costs.resize(state_costs.size() - 1)
-			state_directions.resize(state_directions.size() - 1)
-
-	if reached_destination and traffic_weight > 0:
-		for index in state_points.size():
-			var mode := state_modes[index]
-
-			if mode == SUBWAY_STATION_MODE:
-				used_subway = true
-			elif mode == RAIL_STATION_MODE:
-				used_rail = true
-			elif mode == BUS_STOP_MODE:
-				used_bus = true
-
-			if mode == ROAD_MODE or mode == HIGHWAY_MODE or mode == ROAD_BRIDGE_MODE:
-				var point := state_points[index]
+			if not collect_reach and mode in [ROAD_MODE, HIGHWAY_MODE, ROAD_BRIDGE_MODE]:
+				var point := points[index]
 				var traffic_index := CityDataGrid.index(traffic, map_edge, point.x, point.y)
 				traffic[traffic_index] = mini(int(traffic[traffic_index]) + traffic_weight, 0xff)
 
-	return _result(
-		reached_destination,
-		final_cost,
-		state_points.size() if reached_destination else 0,
-		used_bus,
-		used_rail,
-		used_subway,
-	)
+	var result := _result(winner >= 0, costs[winner] if winner >= 0 else 0,
+		path.size(), used_bus, used_rail, used_subway)
+	result["expanded_states"] = expanded
+
+	if collect_reach:
+		var limit_points := {}
+		for point: Vector2i in endpoints:
+			var endpoint: Dictionary = endpoints[point]
+			if endpoint.limited and not endpoint.exit and not endpoint.destination:
+				limit_points[point] = "Trip limit reached"
+		result["limit_points"] = limit_points
+		result.merge({"reachable": reachable, "links": links, "destinations": destinations,
+			"limit": limit, "start": points[0], "origin": origin})
+
+	return result
+
+
+static func _state_key(index: int, mode: int, heading: int) -> int:
+	return (index * 14 + mode) * 5 + heading
+
+
+static func _station_destinations(zones: PackedByteArray, point: Vector2i,
+	mode: int, origin_zone: int, map_edge: int) -> Array[Vector2i]:
+	var result: Array[Vector2i] = []
+	if mode != BUS_RAIL_MODE:
+		return result
+
+	for offset in TRANSPORT_OFFSETS:
+		var target: Vector2i = point + offset
+		var index := _index(target, map_edge)
+
+		if index >= 0 and (DESTINATION_ZONE_MASKS[origin_zone] & (1 << (zones[index] & 15))) != 0:
+			result.append(target)
+
+	return result
 
 
 static func has_nearby_transport(buildings: PackedByteArray, origin: Vector2i, map_edge: int = 128) -> bool:
@@ -304,11 +379,16 @@ static func _advance(
 
 	match mode:
 		ROAD_MODE:
+			if _is_highway_span(tile) and _highway_step(buildings, current, next_point, map_edge):
+				var current_tile := int(buildings[_index(current, map_edge)])
+				if current_tile >= 0x5d and current_tile <= 0x60:
+					return _move(HIGHWAY_MODE, 1)
+
 			if destination:
 				return ADVANCE_SUCCESS
 
 			if tile >= 0x3f and tile <= 0x42:
-				return _move(HIGHWAY_MODE, 3)
+				return _move(ROAD_TUNNEL_MODE, 3)
 
 			if _is_road_bridge(tile):
 				return _move(ROAD_BRIDGE_MODE, 3)
@@ -328,10 +408,10 @@ static func _advance(
 			if tile == 0xe9:
 				return _move(SUBWAY_STATION_MODE, 4)
 		HIGHWAY_MODE:
-			if _is_highway_span(tile):
+			if _is_highway_span(tile) and _highway_step(buildings, current, next_point, map_edge):
 				return _move(HIGHWAY_MODE, 1)
 
-			if tile >= 0x5d and tile <= 0x60:
+			if tile >= 0x5d and tile <= 0x60 and _highway_exit(buildings, current, next_point, map_edge):
 				return _move(ROAD_MODE, 1)
 		ROAD_TUNNEL_MODE:
 			if altitudes[index] & 0xfc00:
@@ -370,10 +450,10 @@ static func _advance(
 			if tile == 0xe9:
 				return _move(SUBWAY_STATION_MODE, 4)
 		BUS_HIGHWAY_MODE:
-			if _is_highway_span(tile):
+			if _is_highway_span(tile) and _highway_step(buildings, current, next_point, map_edge):
 				return _move(BUS_HIGHWAY_MODE, 1)
 
-			if tile >= 0x5d and tile <= 0x60:
+			if tile >= 0x5d and tile <= 0x60 and _highway_exit(buildings, current, next_point, map_edge):
 				return _move(BUS_ROAD_MODE, 1)
 		BUS_TUNNEL_MODE:
 			if altitudes[index] & 0xfc00:
@@ -472,7 +552,7 @@ static func _is_road_bridge(tile: int) -> bool:
 
 
 static func _is_highway_span(tile: int) -> bool:
-	return (tile >= 0x61 and tile <= 0x6b) or (tile >= 0x49 and tile <= 0x50)
+	return (tile >= 0x61 and tile <= 0x69) or (tile >= 0x49 and tile <= 0x50)
 
 
 static func _is_rail(tile: int) -> bool:
@@ -500,3 +580,72 @@ static func _index(point: Vector2i, map_edge: int = 128) -> int:
 		return -1
 
 	return point.x * map_edge + point.y
+
+
+# independent corrected lane model. port bits: north, east, south, west
+# straight sections have one direction per lane. curves connect the ingress
+# and egress corners of their two-by-two footprint with right-hand traffic
+const HIGHWAY_PORTS := {0x49: 5, 0x4a: 10, 0x4b: 10, 0x4c: 5,
+	0x4d: 5, 0x4e: 10, 0x4f: 5, 0x50: 10,
+	0x61: 10, 0x62: 5, 0x63: 10, 0x64: 5,
+	0x65: 3, 0x66: 6, 0x67: 12, 0x68: 9, 0x69: 15}
+const LANE_CORNERS := [Vector2i(0, 0), Vector2i(0, 1), Vector2i(1, 1), Vector2i(1, 0)]
+const INGRESS_CORNERS := [0, 3, 2, 1]
+const EGRESS_CORNERS := [3, 2, 1, 0]
+
+
+# lane corners come from coordinate parity; this isn't plain flood fill
+static func _highway_step(buildings: PackedByteArray, current: Vector2i,
+	next_point: Vector2i, map_edge: int) -> bool:
+	var tile := int(buildings[_index(current, map_edge)])
+	var next_tile := int(buildings[_index(next_point, map_edge)])
+	var direction := DIRECTIONS.find(next_point - current)
+	var ports := int(HIGHWAY_PORTS.get(tile, 0))
+	var next_ports := int(HIGHWAY_PORTS.get(next_tile, 0))
+	var corner := LANE_CORNERS.find(Vector2i(current.x & 1, current.y & 1))
+	var next_corner := LANE_CORNERS.find(Vector2i(next_point.x & 1, next_point.y & 1))
+
+	if tile >= 0x5d and tile <= 0x60:
+		# ramps enter the adjacent outside lane; they cannot cross the median
+		return _ramp_side(next_point, current, next_ports)
+
+	if (current.x & ~1) != (next_point.x & ~1) or (current.y & ~1) != (next_point.y & ~1):
+		return (ports & (1 << direction)) != 0 and (next_ports & (1 << ((direction + 2) & 3))) != 0 and corner == EGRESS_CORNERS[direction]
+
+	if next_corner != (corner + 1) % 4:
+		return false
+
+	for entry in 4:
+		if (ports & (1 << entry)) == 0:
+			continue
+
+		for leave in 4:
+			if leave == entry or (ports & (1 << leave)) == 0:
+				continue
+
+			var step: int = INGRESS_CORNERS[entry]
+
+			while step != EGRESS_CORNERS[leave]:
+				if step == corner:
+					return true
+
+				step = (step + 1) % 4
+
+	return false
+
+
+static func _ramp_side(highway: Vector2i, ramp: Vector2i, ports: int) -> bool:
+	var delta := ramp - highway
+
+	if ports == 5:
+		return delta == Vector2i(-1 if (highway.x & 1) == 0 else 1, 0)
+
+	if ports == 10:
+		return delta == Vector2i(0, -1 if (highway.y & 1) == 0 else 1)
+
+	return false
+
+
+static func _highway_exit(buildings: PackedByteArray, current: Vector2i,
+	next_point: Vector2i, map_edge: int) -> bool:
+	return _ramp_side(current, next_point, int(HIGHWAY_PORTS.get(buildings[_index(current, map_edge)], 0)))
