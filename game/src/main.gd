@@ -32,7 +32,7 @@ const LibraryRuminateWindowsView = preload("res://src/ui/city_windows/library_ru
 const DisplayNumbers = preload("res://src/ui/shared/display_number_format.gd")
 const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 const CityMenuBarView = preload("res://src/ui/shell/city_menu_bar.gd")
-const CityWorkspaceView = preload("res://src/ui/shell/city_workspace.gd")
+const CityWorkspaceView = preload("res://src/ui/shell/city_workspace.tscn")
 const CityDialogsView = preload("res://src/ui/shell/city_dialog_registry.gd")
 const MainOverlaysView = preload("res://src/ui/shell/main_overlay_registry.gd")
 const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
@@ -743,7 +743,8 @@ func _consume_simulation_result(result: Dictionary) -> void:
 func _build_interface(original_assets: OriginalGameAssets) -> void:
 	theme = ClassicStyle.create_theme()
 	CheckControlGraphics.apply_theme(theme, original_assets.city_ui_graphics)
-	city_workspace = CityWorkspaceView.new(original_assets.toolbar_art)
+	city_workspace = CityWorkspaceView.instantiate() as CityWorkspace
+	city_workspace.toolbar_art = original_assets.toolbar_art
 	add_child(city_workspace)
 
 	city_menu_bar = city_workspace.menu_bar

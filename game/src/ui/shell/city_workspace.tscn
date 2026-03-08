@@ -1,0 +1,78 @@
+[gd_scene load_steps=7 format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/city_workspace.gd" id="1"]
+[ext_resource type="Script" path="res://src/ui/shell/city_menu_bar.gd" id="2"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/city_toolbar.tscn" id="3"]
+[ext_resource type="Script" path="res://src/view/city_map_control.gd" id="4"]
+[ext_resource type="PackedScene" path="res://src/ui/shell/city_status_bar.tscn" id="5"]
+
+[sub_resource type="StyleBoxFlat" id="MapPanel"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(0.09411765, 0.14117648, 0.17254902, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
+
+[node name="CityWorkspace" type="Control"]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1")
+
+[node name="Background" type="ColorRect" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+
+[node name="Page" type="VBoxContainer" parent="."]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 0
+
+[node name="MenuBar" type="PanelContainer" parent="Page"]
+unique_name_in_owner = true
+layout_mode = 2
+script = ExtResource("2")
+
+[node name="Content" type="HBoxContainer" parent="Page"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_constants/separation = 4
+
+[node name="Toolbar" parent="Page/Content" instance=ExtResource("3")]
+unique_name_in_owner = true
+layout_mode = 2
+
+[node name="MapPanel" type="PanelContainer" parent="Page/Content"]
+custom_minimum_size = Vector2(560, 480)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("MapPanel")
+
+[node name="MapView" type="Control" parent="Page/Content/MapPanel"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("4")
+
+[node name="StatusBar" parent="Page" instance=ExtResource("5")]
+unique_name_in_owner = true
+layout_mode = 2

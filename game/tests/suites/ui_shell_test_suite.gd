@@ -517,7 +517,7 @@ func _test_main_menu() -> void:
 		"City toolbar owns tool groups, child tools, views, and layer controls",
 	)
 	toolbar.free()
-	var workspace := CityWorkspaceUi.new(null)
+	var workspace := preload("res://src/ui/shell/city_workspace.tscn").instantiate() as CityWorkspace
 	workspace._ready()
 	_check(
 		workspace.menu_bar != null
