@@ -24,7 +24,11 @@ func _run() -> void:
 	assert(workspace.menu_bar.size.x == host.size.x)
 	assert(workspace.status_bar.size.x == host.size.x)
 	assert(is_equal_approx(workspace.status_bar.get_rect().end.y, host.size.y))
-	assert(workspace.toolbar.get_global_rect().end.x < workspace.map_view.global_position.x)
+	assert(workspace.map_view.get_rect() == Rect2(Vector2.ZERO, host.size))
+	assert(workspace.map_view.get_index() < workspace.get_node("Page").get_index())
+	assert(workspace.get_node("Page").mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	assert(workspace.get_node("Page/Content").mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	assert(workspace.get_node("Page/Content/MapSpace").mouse_filter == Control.MOUSE_FILTER_IGNORE)
 	host.size = Vector2(1600, 1000)
 	await process_frame
 	await process_frame

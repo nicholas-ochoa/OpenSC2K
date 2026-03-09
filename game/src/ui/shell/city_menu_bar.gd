@@ -52,7 +52,7 @@ var fps_label: Label
 func _ready() -> void:
 	custom_minimum_size = Vector2(0, 25)
 	add_theme_stylebox_override(
-		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("ffffff"), 0)
+		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("808080"), 2)
 	)
 	var menu_row := HBoxContainer.new()
 	menu_row.add_theme_constant_override("separation", 0)
@@ -136,7 +136,7 @@ func _ready() -> void:
 	_add_menu(menu_row, "Windows", [
 		["Budget", 0], ["Ordinances", 1], ["Population", 2],
 		["City Industry", 3], ["Graphs", 4], ["Neighbors", 5],
-		["City Map", 6],
+		["City Map", 6], ["Debug Info", 7],
 	], _on_windows_menu)
 	_add_menu(
 		menu_row,
@@ -144,7 +144,7 @@ func _ready() -> void:
 		[["Show Latest Reports", 0]],
 		_on_newspaper_menu,
 	)
-	_add_menu(menu_row, "Help", [["Simulation timings / Debug (F12)", 1], ["About", 0]], _on_help_menu)
+	_add_menu(menu_row, "Help", [["About", 0]], _on_help_menu)
 
 	var menu_spacer := Control.new()
 	menu_spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -205,6 +205,7 @@ func _add_menu(
 	var menu := MenuButton.new()
 	menu.text = label
 	menu.flat = true
+	menu.switch_on_hover = true
 	menu.custom_minimum_size = Vector2(0, 23)
 	parent.add_child(menu)
 

@@ -524,8 +524,8 @@ func _test_main_menu() -> void:
 		and workspace.toolbar != null
 		and workspace.map_view != null
 		and workspace.status_bar != null
-		and workspace.toolbar.get_parent() == workspace.map_view.get_parent().get_parent()
-		and workspace.map_view.get_parent().custom_minimum_size == Vector2(560, 480)
+		and workspace.map_view.get_parent() == workspace
+		and workspace.get_node("Page/Content/MapSpace").mouse_filter == Control.MOUSE_FILTER_IGNORE
 		and workspace.status_bar.get_parent() == workspace.menu_bar.get_parent(),
 		"City workspace owns the main shell layout",
 	)

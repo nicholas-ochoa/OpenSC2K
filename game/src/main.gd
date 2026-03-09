@@ -2227,6 +2227,8 @@ func _on_windows_menu(id: int) -> void:
 		_open_simnation_window()
 	elif id == 6:
 		_open_city_map_window()
+	elif id == 7:
+		debug_overlay.toggle()
 
 
 func _open_ordinance_window() -> void:
@@ -2326,12 +2328,7 @@ func _on_newspaper_menu(_id: int) -> void:
 	)
 
 
-func _on_help_menu(id: int) -> void:
-	if id == 1:
-		debug_overlay.toggle()
-
-		return
-
+func _on_help_menu(_id: int) -> void:
 	_open_about_dialog()
 
 
