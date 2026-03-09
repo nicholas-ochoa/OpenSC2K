@@ -31,6 +31,21 @@ func _run() -> void:
 	assert(debug._window.title == "Debug")
 	assert(debug._window.owner == debug)
 	assert(debug._days.get_column_title(1) == "What happens")
+	var metrics_tree: Tree = debug._metrics_tree
+	metrics_tree.refresh({"simulation_slices": {"snapshot_usec": 2500, "work": {"parked_usec": 12000}},
+		"render_regions": {"cpu_image_bytes": 1048576}, "no_disasters": false})
+	assert(metrics_tree.rows["simulation_slices/snapshot_usec"].get_text(1) == "2.500 ms")
+	assert(metrics_tree.rows["render_regions/cpu_image_bytes"].get_text(1) == "1.00 MiB")
+	assert(metrics_tree.rows["no_disasters"].get_text(1) == "No")
+	var worker_row: TreeItem = metrics_tree.rows["simulation_slices"]
+	worker_row.collapsed = true
+	metrics_tree.refresh({"simulation_slices": {"snapshot_usec": 4000}, "new_counter": 7})
+	assert(metrics_tree.rows["simulation_slices"] == worker_row and worker_row.collapsed)
+	assert(metrics_tree.rows["simulation_slices/snapshot_usec"].get_text(1) == "4.000 ms")
+	assert(metrics_tree.rows["simulation_slices/work/parked_usec"].get_text(1) == "—")
+	assert(metrics_tree.rows["new_counter"].get_text(1) == "7")
+	assert(not debug.has_node("DebugWindow/Panel/Margin/Content/Header/Status"))
+	assert(not debug.has_node("DebugWindow/Panel/Margin/Content/Note"))
 	var theme := debug._window.theme
 	assert(theme.get_color("font_color", "Label").get_luminance() > 0.8)
 	assert((theme.get_stylebox("panel", "PanelContainer") as StyleBoxFlat).bg_color.get_luminance() < 0.2)

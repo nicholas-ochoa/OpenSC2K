@@ -13,9 +13,8 @@ var _metrics: Dictionary = {}
 var _window: Window
 var _days: Tree
 var _steps: Tree
-var _metrics_label: Label
+var _metrics_tree: Tree
 var _action_label: Label
-var _status: Label
 var _resume_speed := 2
 var _terrain_slider: HSlider
 var _terrain_value: Label
@@ -32,14 +31,13 @@ func _ready() -> void:
 	_window.close_requested.connect(toggle)
 	_window.window_input.connect(_input)
 	var box: VBoxContainer = $DebugWindow/Panel/Margin/Content
-	_status = box.get_node("Header/Status")
 	box.get_node("Header/Reset").pressed.connect(_reset_averages)
 	var tabs: TabContainer = box.get_node("Tabs")
 	_days = tabs.get_node("Simulation days")
 	_steps = tabs.get_node("Steps")
 	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples"])
 	_configure_table(_steps, ["Step", "Average ms", "Last ms", "Max ms", "Samples"])
-	_metrics_label = tabs.get_node("Metrics/Text")
+	_metrics_tree = tabs.get_node("Metrics")
 	_build_actions(tabs)
 
 
@@ -227,7 +225,6 @@ func _refresh_metrics() -> void:
 	if _days == null:
 		return
 
-	_status.text = "%s — %s — %s — FPS %d" % [_metrics.get("city_name", "No city"), _metrics.get("date", "—"), _metrics.get("speed", "—"), Engine.get_frames_per_second()]
 	var levels := int(_metrics.get("visible_altitude_levels", 32))
 	_terrain_slider.set_value_no_signal(levels)
 	_terrain_value.text = str(levels)
@@ -256,12 +253,7 @@ func _refresh_metrics() -> void:
 			item.set_tooltip_text(0, label)
 			_stats(item, 1, history.steps[label])
 
-	var lines := PackedStringArray()
-
-	for key in _metrics:
-		lines.append("%s: %s" % [key, _metrics[key]])
-
-	_metrics_label.text = "\n".join(lines)
+	_metrics_tree.refresh(_metrics)
 
 
 func _stats(item: TreeItem, column: int, row: Dictionary) -> void:
