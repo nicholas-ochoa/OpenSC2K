@@ -61,7 +61,7 @@ const Bonds = preload("res://src/simulation/economy/bond_command.gd")
 const RciAftermath = preload("res://src/simulation/growth/rci_aftermath_phase.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
-const DebugOverlayView = preload("res://src/debug/debug_overlay.gd")
+const DebugOverlayView = preload("res://src/debug/debug_overlay.tscn")
 const DebugActions = preload("res://src/debug/city_debug_actions.gd")
 
 const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "crime", "water", "power", "height"]
@@ -351,7 +351,7 @@ func _initialize_runtime() -> void:
 	desktop_presentation.print_dialog = scurk_print
 	add_child(desktop_presentation)
 	desktop_presentation.set_graphics(original_assets.desktop_graphics)
-	debug_overlay = DebugOverlayView.new()
+	debug_overlay = DebugOverlayView.instantiate()
 	debug_overlay.setup(self)
 	add_child(debug_overlay)
 

@@ -23,11 +23,14 @@ func _initialize() -> void:
 func _run() -> void:
 	var host := MetricsHost.new()
 	root.add_child(host)
-	var debug := CityDebugOverlay.new()
+	var debug := preload("res://src/debug/debug_overlay.tscn").instantiate() as CityDebugOverlay
 	debug.setup(host)
 	host.add_child(debug)
 	await process_frame
 	assert(not debug.is_open and not debug._window.visible)
+	assert(debug._window.title == "Debug")
+	assert(debug._window.owner == debug)
+	assert(debug._days.get_column_title(1) == "What happens")
 	var theme := debug._window.theme
 	assert(theme.get_color("font_color", "Label").get_luminance() > 0.8)
 	assert((theme.get_stylebox("panel", "PanelContainer") as StyleBoxFlat).bg_color.get_luminance() < 0.2)
@@ -56,6 +59,8 @@ func _run() -> void:
 	var queries := host.queries
 	debug._process(1.0)
 	assert(not debug.is_open and not debug._window.visible and host.queries == queries)
+	debug._reset_averages()
+	assert(host.simulation_timings.days.is_empty())
 	host.queue_free()
 	await process_frame
 	print("PASS: native debug window builds, displays timing rows and stays idle while hidden")

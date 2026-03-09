@@ -1,0 +1,77 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/debug/debug_overlay.gd" id="1_ggiji"]
+
+[node name="DebugOverlay" type="Node"]
+script = ExtResource("1_ggiji")
+
+[node name="DebugWindow" type="Window" parent="."]
+title = "Debug"
+size = Vector2i(1040, 740)
+visible = false
+min_size = Vector2i(640, 420)
+
+[node name="Panel" type="PanelContainer" parent="DebugWindow"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Margin" type="MarginContainer" parent="DebugWindow/Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 12
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 12
+
+[node name="Content" type="VBoxContainer" parent="DebugWindow/Panel/Margin"]
+layout_mode = 2
+
+[node name="Header" type="HBoxContainer" parent="DebugWindow/Panel/Margin/Content"]
+layout_mode = 2
+
+[node name="Status" type="Label" parent="DebugWindow/Panel/Margin/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+autowrap_mode = 3
+
+[node name="Reset" type="Button" parent="DebugWindow/Panel/Margin/Content/Header"]
+layout_mode = 2
+size_flags_vertical = 0
+text = "Reset averages"
+
+[node name="Note" type="Label" parent="DebugWindow/Panel/Margin/Content"]
+layout_mode = 2
+text = "Work time excludes frame-budget waits and player prompts. OS scheduling can still affect it.
+Averages cover this city since load or Reset. Unmeasured days show —."
+autowrap_mode = 3
+
+[node name="Tabs" type="TabContainer" parent="DebugWindow/Panel/Margin/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+current_tab = 0
+
+[node name="Simulation days" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs"]
+layout_mode = 2
+columns = 6
+column_titles_visible = true
+hide_root = true
+metadata/_tab_index = 0
+
+
+[node name="Steps" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs"]
+visible = false
+layout_mode = 2
+columns = 5
+column_titles_visible = true
+hide_root = true
+metadata/_tab_index = 1
+
+
+[node name="Metrics" type="ScrollContainer" parent="DebugWindow/Panel/Margin/Content/Tabs"]
+visible = false
+layout_mode = 2
+metadata/_tab_index = 2
+
+[node name="Text" type="Label" parent="DebugWindow/Panel/Margin/Content/Tabs/Metrics"]
+layout_mode = 2
+text = "No samples yet."

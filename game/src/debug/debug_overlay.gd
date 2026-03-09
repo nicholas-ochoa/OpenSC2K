@@ -27,77 +27,36 @@ func setup(value: Control) -> void:
 
 
 func _ready() -> void:
-	_window = Window.new()
-	_window.title = "Simulation timings and debug — F12"
-	_window.size = Vector2i(1040, 740)
-	_window.min_size = Vector2i(640, 420)
-	_window.visible = false
+	_window = $DebugWindow
 	_window.theme = _create_debug_theme()
-	add_child(_window)
 	_window.close_requested.connect(toggle)
 	_window.window_input.connect(_input)
-	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_window.add_child(panel)
-	var margin := MarginContainer.new()
-
-	for side in ["left", "top", "right", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 12)
-
-	panel.add_child(margin)
-	var box := VBoxContainer.new()
-	margin.add_child(box)
-	var header := HBoxContainer.new()
-	box.add_child(header)
-	_status = Label.new()
-	_status.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	_status.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	_status.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	header.add_child(_status)
-	var note := Label.new()
-	note.text = "Work time excludes frame-budget waits and player prompts. OS scheduling can still affect it.\nAverages cover this city since load or Reset. Unmeasured days show —."
-	note.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	box.add_child(note)
-	var reset := Button.new()
-	reset.text = "Reset averages"
-	reset.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	reset.pressed.connect(func() -> void:
-		var history := _history()
-
-		if history != null:
-			history.clear()
-
-		_refresh_metrics())
-	header.add_child(reset)
-	var tabs := TabContainer.new()
-	tabs.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_child(tabs)
-	_days = _table(tabs, "Simulation days", ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples"])
-	_steps = _table(tabs, "Steps", ["Step", "Average ms", "Last ms", "Max ms", "Samples"])
-	var scroll := ScrollContainer.new()
-	scroll.name = "Metrics"
-	tabs.add_child(scroll)
-	_metrics_label = Label.new()
-	_metrics_label.text = "No samples yet."
-	scroll.add_child(_metrics_label)
+	var box: VBoxContainer = $DebugWindow/Panel/Margin/Content
+	_status = box.get_node("Header/Status")
+	box.get_node("Header/Reset").pressed.connect(_reset_averages)
+	var tabs: TabContainer = box.get_node("Tabs")
+	_days = tabs.get_node("Simulation days")
+	_steps = tabs.get_node("Steps")
+	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples"])
+	_configure_table(_steps, ["Step", "Average ms", "Last ms", "Max ms", "Samples"])
+	_metrics_label = tabs.get_node("Metrics/Text")
 	_build_actions(tabs)
 
 
-func _table(tabs: TabContainer, caption: String, titles: Array) -> Tree:
-	var tree := Tree.new()
-	tree.name = caption
-	tree.columns = titles.size()
-	tree.column_titles_visible = true
-	tree.hide_root = true
+func _reset_averages() -> void:
+	var history := _history()
 
+	if history != null:
+		history.clear()
+
+	_refresh_metrics()
+
+
+func _configure_table(tree: Tree, titles: Array) -> void:
 	for column in titles.size():
 		tree.set_column_title(column, titles[column])
 		tree.set_column_expand(column, column == (1 if titles.size() == 6 else 0))
 		tree.set_column_custom_minimum_width(column, 68 if column == 0 and titles.size() == 6 else 95)
-
-	tabs.add_child(tree)
-
-	return tree
 
 
 func _build_actions(tabs: TabContainer) -> void:
