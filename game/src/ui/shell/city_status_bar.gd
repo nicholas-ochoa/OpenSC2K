@@ -68,7 +68,21 @@ func _ready() -> void:
 	reports_label = $Metrics/Reports
 	speed_label = $Metrics/Speed
 	zoom_label = $Metrics/Zoom
+	speed_label.theme_changed.connect(_fit_speed_label)
+	_fit_speed_label()
 	refresh_tooltips()
+
+
+func _fit_speed_label() -> void:
+	var font := speed_label.get_theme_font("font")
+	var font_size := speed_label.get_theme_font_size("font_size")
+	var width := 122.0
+
+	for speed_name: String in GameSpeedController.SPEED_NAMES.values():
+		width = maxf(width, font.get_string_size("Speed: " + speed_name,
+			HORIZONTAL_ALIGNMENT_LEFT, -1, font_size).x + 8.0)
+
+	speed_label.custom_minimum_size.x = ceilf(width)
 
 
 func set_environment(demand: Vector3i, weather_name: String) -> void:

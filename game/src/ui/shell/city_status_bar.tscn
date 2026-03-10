@@ -73,7 +73,7 @@ custom_minimum_size = Vector2(122, 20)
 layout_mode = 2
 text = "Speed: --"
 vertical_alignment = 1
-text_overrun_behavior = 3
+text_overrun_behavior = 0
 
 [node name="Separator5" type="VSeparator" parent="Metrics"]
 layout_mode = 2
