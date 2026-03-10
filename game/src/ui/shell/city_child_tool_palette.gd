@@ -157,7 +157,7 @@ func tool_button_tooltip(
 		return ""
 
 	if group_index == 16 and subtool_index == 1:
-		return "Trip Query\nClick a zone or transport tile. Colors show trip cost. A blue pin marks the origin. Gold diamonds mark possible destinations. Inspection does not change the city."
+		return "Trip Query\nClick a zone or transport tile. Colors show trip cost. A blue pin marks the origin. Green checkmarks mark possible destinations. Inspection does not change the city."
 
 	var price := _tool_price(tool)
 	var lines := PackedStringArray([str(tool.name)])

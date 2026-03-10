@@ -28,6 +28,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> Dictionary:
 	var result := TransportTrip.trace(city.buildings, city.zones, city.underground,
 		city.text_overlays, city.altitude_words, traffic, origin, zone if rci else 7,
 		density, SimRandom.new(1), 100, city.map_size, true, start)
+	_add_building_coverage(city, result, origin)
 	var powered := GrowthPhase._has_power(city.tile_flags, origin.x, origin.y, city.map_size)
 	var demand := city.document.misc_i32(0x0718 + IntegerMath.div_trunc(zone - 1, 2) * 4) if rci else 0
 	var lines := PackedStringArray()
@@ -72,3 +73,41 @@ static func _growth_anchor(city: CityState, point: Vector2i) -> Vector2i:
 			if city.zones[city.index_of(x, y)] & mask:
 				return Vector2i(x, y)
 	return point
+
+
+static func _building_site(city: CityState, point: Vector2i) -> Rect2i:
+	var tile := city.building_id(point.x, point.y)
+	if tile < 0x70:
+		return Rect2i(point, Vector2i.ONE)
+	return DemolishCommand._find_building_site(city.buildings, city.zones, point,
+		tile, DemolishCommand._building_area(tile), city.compass_rotation(), city.map_size)
+
+
+static func _cover_site(city: CityState, point: Vector2i, cost: int, tiles: Dictionary) -> void:
+	var site := _building_site(city, point)
+	for x in range(site.position.x, site.end.x):
+		for y in range(site.position.y, site.end.y):
+			var part := Vector2i(x, y)
+			tiles[part] = mini(cost, int(tiles.get(part, cost)))
+
+
+static func _add_building_coverage(city: CityState, result: Dictionary, origin: Vector2i) -> void:
+	var destinations: Dictionary = result.get("destinations", {}).duplicate()
+	for point: Vector2i in result.get("destinations", {}):
+		if city.index_of(point.x, point.y) >= 0:
+			_cover_site(city, point, int(destinations[point]), destinations)
+	var access_tiles := {}
+	for node: Dictionary in result.get("reachable", []):
+		if int(node.mode) not in [TransportTrip.ROAD_MODE, TransportTrip.BUS_ROAD_MODE,
+			TransportTrip.BUS_STOP_MODE, TransportTrip.BUS_RAIL_MODE,
+			TransportTrip.RAIL_STATION_MODE, TransportTrip.SUBWAY_STATION_MODE]:
+			continue
+		for offset: Vector2i in TransportTrip.TRANSPORT_OFFSETS:
+			var point: Vector2i = node.point + offset
+			var index := city.index_of(point.x, point.y)
+			if index >= 0 and ((city.zones[index] & 15) != 0 or city.buildings[index] >= 0x70):
+				_cover_site(city, point, int(node.cost), access_tiles)
+	var origin_tiles := {}
+	_cover_site(city, origin, 0, origin_tiles)
+	result.merge({"destinations": destinations, "access_tiles": access_tiles,
+		"origin_tiles": origin_tiles}, true)

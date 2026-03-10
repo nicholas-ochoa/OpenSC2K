@@ -171,8 +171,8 @@ static func trace(
 				if not endpoints.has(point):
 					endpoints[point] = {"exit": false, "destination": false, "limited": false}
 
-			# a station's walking catchment must work at both ends of a trip
-			var walk_destinations := _station_destinations(zones, point, mode, zone, map_edge)
+			# walking access uses the same catchment at both ends of a trip
+			var walk_destinations := _walking_destinations(zones, point, mode, zone, map_edge, collect_reach and zone == 7)
 
 			if not walk_destinations.is_empty():
 				if collect_reach:
@@ -302,17 +302,21 @@ static func _state_key(index: int, mode: int, heading: int) -> int:
 	return (index * 14 + mode) * 5 + heading
 
 
-static func _station_destinations(zones: PackedByteArray, point: Vector2i,
-	mode: int, origin_zone: int, map_edge: int) -> Array[Vector2i]:
+static func _walking_destinations(zones: PackedByteArray, point: Vector2i,
+	mode: int, origin_zone: int, map_edge: int, any_rci := false) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	if mode != BUS_RAIL_MODE:
+	if mode not in [ROAD_MODE, BUS_ROAD_MODE, BUS_STOP_MODE, BUS_RAIL_MODE]:
 		return result
 
 	for offset in TRANSPORT_OFFSETS:
 		var target: Vector2i = point + offset
 		var index := _index(target, map_edge)
 
-		if index >= 0 and (DESTINATION_ZONE_MASKS[origin_zone] & (1 << (zones[index] & 15))) != 0:
+		if index < 0:
+			continue
+		var target_zone := int(zones[index]) & 15
+		var compatible: bool = target_zone >= 1 and target_zone <= 6 if any_rci else (DESTINATION_ZONE_MASKS[origin_zone] & (1 << target_zone)) != 0
+		if compatible:
 			result.append(target)
 
 	return result
@@ -585,7 +589,7 @@ static func _index(point: Vector2i, map_edge: int = 128) -> int:
 # independent corrected lane model. port bits: north, east, south, west
 # straight sections have one direction per lane. curves connect the ingress
 # and egress corners of their two-by-two footprint with right-hand traffic
-const HIGHWAY_PORTS := {0x49: 5, 0x4a: 10, 0x4b: 10, 0x4c: 5,
+const HIGHWAY_PORTS := {0x49: 5, 0x4a: 10, 0x4b: 5, 0x4c: 10,
 	0x4d: 5, 0x4e: 10, 0x4f: 5, 0x50: 10,
 	0x61: 10, 0x62: 5, 0x63: 10, 0x64: 5,
 	0x65: 3, 0x66: 6, 0x67: 12, 0x68: 9, 0x69: 15}

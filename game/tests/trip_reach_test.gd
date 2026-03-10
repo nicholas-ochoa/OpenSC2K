@@ -27,6 +27,7 @@ func _initialize() -> void:
 			_test_branches(edge, native)
 			_test_station_and_tunnel(edge, native)
 	_test_multimodal()
+	_test_overpasses()
 	_test_curve()
 	_test_lane_geometry()
 	_test_ui()
@@ -92,7 +93,7 @@ func _test_branches(edge: int, native: bool) -> void:
 	check(not TransportTrip.run(city, Vector2i(19, 20), 1, 2, SimRandom.new(1)).reached_destination,
 		"Road still obeys the trip cost limit")
 	city.set_zone_id(61, 20, 0)
-	city.set_zone_id(46, 20, 3)
+	city.set_zone_id(48, 20, 3)
 	check(TransportTrip.run(city, Vector2i(19, 20), 1, 2, SimRandom.new(1)).reached_destination,
 		"Normal density has a 100-unit limit")
 	check(not TransportTrip.run(city, Vector2i(19, 20), 1, 1, SimRandom.new(1)).reached_destination,
@@ -119,7 +120,7 @@ func _test_station_and_tunnel(edge: int, native: bool) -> void:
 		city.altitude_words[20 * edge + y] = 0x400
 	city.set_building_id(20, 25, 0x40)
 	city.set_building_id(20, 26, 0x1d)
-	city.set_zone_id(20, 27, 3)
+	city.set_zone_id(20, 29, 3)
 	trip = TransportTrip.run(city, Vector2i(20, 19), 1, 2, SimRandom.new(1))
 	check(trip.reached_destination and trip.cost == 18, "Car traverses tunnel in tunnel mode at road cost")
 
@@ -169,7 +170,7 @@ func _test_multimodal() -> void:
 	city.set_building_id(20, 21, 0xec)
 	for y in range(22, 61):
 		city.set_building_id(20, y, 0x1d)
-	city.set_zone_id(20, 61, 3)
+	city.set_zone_id(20, 63, 3)
 	var result := TransportTrip.run(city, Vector2i(20, 20), 1, 2, SimRandom.new(1))
 	check(result.reached_destination and result.used_bus and result.cost == 78, "Bus route keeps its two-unit road cost")
 	city = fixture(128, false)
@@ -206,3 +207,44 @@ func _test_curve() -> void:
 		check(result.reached_destination, "Trip follows a constructed highway curve")
 		CityRotationCommand.apply(city, false)
 		origin = CityRotationCommand.rotate_point(origin, 128, false)
+
+
+func _test_overpasses() -> void:
+	for edge: int in [128, 512]:
+		for network: int in [0, 1, 2]:
+			for highway_first in [false, true]:
+				var city := fixture(edge, false)
+				var shift := Vector2i.ONE * (edge - 100)
+				var a := Vector2i(20, 20) + shift
+				var b := Vector2i(60, 20) + shift
+				var under_start := Vector2i(40, 10) + shift
+				var under_end := Vector2i(40, 32) + shift
+				var group: int = [6, 7, 3][network]
+				if highway_first:
+					check(HighwayCommand.apply(city, 6, 1, a, b, 0).ok, "Place highway before crossing")
+				check(NetworkCommand.apply(city, group, 0, under_start, under_end).ok, "Place road, rail, or power crossing")
+				if not highway_first:
+					check(HighwayCommand.apply(city, 6, 1, a, b, 0).ok, "Place highway over existing network")
+				city.set_building_id(a.x - 1, a.y + 2, 0x1d)
+				city.set_building_id(b.x + 1, b.y + 2, 0x1d)
+				check(OnrampCommand.apply(city, 6, 3, a + Vector2i(0, 2)).ok, "Place overpass entry ramp")
+				check(OnrampCommand.apply(city, 6, 3, b + Vector2i(0, 2)).ok, "Place overpass exit ramp")
+				var origin := a + Vector2i(-2, 2)
+				var destination := b + Vector2i(2, 2)
+				city.set_zone_id(origin.x, origin.y, 1)
+				city.set_zone_id(destination.x, destination.y, 3)
+				for rotation in 4:
+					var trip := TransportTrip.run(city, origin, 1, 2, SimRandom.new(1))
+					check(trip.reached_destination, "Highway trip continues across each overpass orientation and build order")
+					var reach := TripReachAnalysis.inspect(city, origin)
+					check(reach.reached_destination, "Highway overlay continues across the overpass")
+					if network < 2:
+						var under := TripReachAnalysis.inspect(city, under_start)
+						var points := {}
+						for node: Dictionary in under.reachable:
+							points[node.point] = true
+						check(points.has(under_end), "Road and rail trips continue under the highway")
+					CityRotationCommand.apply(city, false)
+					origin = CityRotationCommand.rotate_point(origin, edge, false)
+					under_start = CityRotationCommand.rotate_point(under_start, edge, false)
+					under_end = CityRotationCommand.rotate_point(under_end, edge, false)

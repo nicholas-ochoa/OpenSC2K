@@ -65,3 +65,30 @@ static func add_block(city: CityState, origin := Vector2i(70, 20)) -> Rect2i:
 	for x in range(block.end.x, block.end.x + 9):
 		city.set_building_id(x, block.position.y + 3, 0x1e)
 	return block
+
+
+static func add_scenario(city: CityState, variant: int, base: Vector2i) -> Dictionary:
+	var road_y := base.y + 6
+	assert(NetworkCommand.apply(city, 6, 0, Vector2i(base.x, road_y), Vector2i(base.x + 44, road_y)).ok)
+	for x in range(base.x, base.x + 8):
+		for y in range(base.y + 4, base.y + 6):
+			stamp(city, Rect2i(x, y, 1, 1), 0x70 + (x + y) % 4, 1)
+	stamp(city, Rect2i(base.x + 41, base.y + 4, 2, 2), 0x9e, 5)
+	stamp(city, Rect2i(base.x + 41, base.y + 7, 2, 2), 0x9f, 5)
+	assert(NetworkCommand.apply(city, 3, 0, base + Vector2i(7, 3), base + Vector2i(44, 3)).ok)
+	assert(NetworkCommand.apply(city, 3, 0, base + Vector2i(44, 3), base + Vector2i(44, 9)).ok)
+	if variant >= 1:
+		assert(HighwayCommand.apply(city, 6, 1, base + Vector2i(4, 0), base + Vector2i(46, 0), 0).ok)
+		for x in [base.x + 8, base.x + 40]:
+			assert(NetworkCommand.apply(city, 6, 0, Vector2i(x, base.y + 2), Vector2i(x, road_y)).ok)
+			assert(OnrampCommand.apply(city, 6, 3, Vector2i(x + 1, base.y + 2)).ok)
+	if variant >= 2:
+		stamp(city, Rect2i(base.x + 4, base.y + 8, 2, 2), 0xed, 0)
+		stamp(city, Rect2i(base.x + 38, base.y + 8, 2, 2), 0xed, 0)
+		assert(NetworkCommand.apply(city, 7, 0, base + Vector2i(4, 10), base + Vector2i(39, 10)).ok)
+		city.set_building_id(base.x + 5, base.y + 7, 0x1d)
+		city.set_building_id(base.x + 39, base.y + 7, 0x1d)
+	var label: String = ["1 Road only", "2 Road and highway", "3 Road highway and rail"][variant]
+	assert(SignCommand.set_sign(city, base + Vector2i(0, 1), label).ok)
+	return {"origin": base + Vector2i(7, 5), "destination": base + Vector2i(41, 5),
+		"road_end": base + Vector2i(44, 6), "variant": variant}

@@ -8551,7 +8551,7 @@ func _test_transport_trip(reference_root: String) -> void:
 		_check(city.set_building_id(point.x, point.y, 0x1d), "Transport fixture places a road")
 
 	_check(city.set_zone_id(20, 20, 1), "Transport fixture sets the origin zone")
-	_check(city.set_zone_id(20, 24, 3), "Transport fixture sets a job destination")
+	_check(city.set_zone_id(20, 26, 3), "Transport fixture sets a job destination")
 	var result := Transport.run(city, Vector2i(20, 20), 1, 2, Random.new(1))
 	_check(result.ok and result.reached_destination, "Road trip reaches a compatible zone")
 	_check(result.path_length == 3, "Road trip records the three-tile path")
@@ -8559,7 +8559,7 @@ func _test_transport_trip(reference_root: String) -> void:
 	_check(traffic[10 * 64 + 10] == 2, "Road trip adds traffic to its first coarse cell")
 	_check(traffic[10 * 64 + 11] == 4, "Road trip accumulates two tiles in one coarse cell")
 
-	_check(city.set_zone_id(20, 24, 1), "Transport fixture changes the destination to residential")
+	_check(city.set_zone_id(20, 26, 1), "Transport fixture changes the destination to residential")
 	var before_failed_trip: PackedByteArray = document.find_chunk("XTRF").decoded_payload.duplicate()
 	var failed := Transport.run(city, Vector2i(20, 20), 1, 2, Random.new(1))
 	_check(failed.ok and not failed.reached_destination, "Trip rejects an incompatible destination")

@@ -40,6 +40,8 @@ func _initialize() -> void:
 					for point: Vector2i in inspected.get("destinations", {}):
 						check(route.destination.has_point(point), label + " destination marker belongs to the destination footprint")
 
+	_test_scenarios()
+	_test_building_coverage()
 	_test_block_and_endpoints()
 	print("Trip footprints: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
@@ -71,3 +73,67 @@ func _test_block_and_endpoints() -> void:
 	check(view.trip_reach.failed_points.size() == 1, "Long route has one trip-limit marker")
 	check(city.document.serialize().data == before, "Endpoint inspection leaves city bytes unchanged")
 	view.free()
+
+
+func _test_building_coverage() -> void:
+	for edge: int in [128, 256, 384, 512]:
+		for distance in range(1, 5):
+			var city := CityState.from_document(EmptyCityTemplate.create(edge))
+			var shift := Vector2i.ONE * (edge - 100)
+			var origin := shift + Vector2i(20, 19)
+			var target := shift + Vector2i(35, 20 + distance)
+			for x in range(20, 36):
+				city.set_building_id(x + shift.x, 20 + shift.y, 0x1e)
+			TripQueryFixture.stamp(city, Rect2i(origin, Vector2i.ONE), 0x70, 1)
+			TripQueryFixture.stamp(city, Rect2i(target, Vector2i.ONE), 0x7c, 3)
+			for rotation in 4:
+				var result := TripReachAnalysis.inspect(city, origin)
+				var trip := TransportTrip.run(city, origin, 1, 1, SimRandom.new(1))
+				check(result.destinations.has(target) == (distance <= 3), "Road arrival catchment includes three tiles, excludes four, at every rotation and map size")
+				check(trip.reached_destination == result.reached_destination, "Growth and displayed walking destinations agree")
+				CityRotationCommand.apply(city, false)
+				origin = CityRotationCommand.rotate_point(origin, edge, false)
+				target = CityRotationCommand.rotate_point(target, edge, false)
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	var block := TripQueryFixture.add_block(city)
+	var origin := block.position + Vector2i(3, 3)
+	var result := TripReachAnalysis.inspect(city, origin)
+	var overlay := TripReachOverlay.new()
+	overlay.rebuild(city, result)
+	for x in range(block.position.x + 1, block.end.x - 1):
+		for y in range(block.position.y + 1, block.end.y - 1):
+			var point := Vector2i(x, y)
+			check(result.destinations.has(point) == ((city.zones[city.index_of(x, y)] & 15) == 3), "Every compatible building in the filled block has a checkmark")
+			check("Not reached" not in overlay.tile_tooltip(point), "Every interior building has an accurate access tooltip")
+	var network := TripReachAnalysis.inspect(city, block.position)
+	check(network.destinations.size() == 36, "Direct network query shows every RCI building in its catchment")
+	city = CityState.from_document(EmptyCityTemplate.create(128))
+	var route := TripQueryFixture.add_route(city, 2, 3, "road")
+	result = TripReachAnalysis.inspect(city, route.origin)
+	overlay.rebuild(city, result)
+	for x in range(route.destination.position.x, route.destination.end.x):
+		for y in range(route.destination.position.y, route.destination.end.y):
+			check("Destination:" in overlay.tile_tooltip(Vector2i(x, y)), "All destination footprint tiles have a destination tooltip")
+	check("Origin:" in overlay.tile_tooltip(route.source.position), "All source footprint tiles have an origin tooltip")
+	check(overlay.destinations.size() == 1, "Multi-tile destination has one centered checkmark")
+	city = CityState.from_document(EmptyCityTemplate.create(128))
+	for x in range(20, 40):
+		city.set_building_id(x, 20, 0x2d)
+	TripQueryFixture.stamp(city, Rect2i(30, 23, 1, 1), 0x7c, 3)
+	result = TripReachAnalysis.inspect(city, Vector2i(20, 20))
+	check(result.destinations.is_empty(), "Bare rail has no walking destination catchment")
+	check(result.access_tiles.is_empty(), "Bare rail does not label nearby buildings as having access")
+
+
+func _test_scenarios() -> void:
+	for variant in 3:
+		var city := CityState.from_document(EmptyCityTemplate.create(128))
+		city.set_funds(1000000)
+		var scenario := TripQueryFixture.add_scenario(city, variant, Vector2i(16, 12))
+		var result := TripReachAnalysis.inspect(city, scenario.origin)
+		check(result.reached_destination == (variant > 0), "Long road fails budget; parallel highway and rail enable access")
+		var modes := {}
+		for node: Dictionary in result.reachable:
+			modes[node.mode] = true
+		check(modes.has(TransportTrip.HIGHWAY_MODE) == (variant > 0), "Scenario explores highway when present")
+		check(modes.has(TransportTrip.RAIL_MODE) == (variant == 2), "Scenario explores rail when stations are present")

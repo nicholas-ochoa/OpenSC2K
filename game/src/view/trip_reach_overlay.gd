@@ -54,10 +54,19 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 				tip, tip, tip - direction * 4 - normal * 2]))
 			arrow_colors.append_array(PackedColorArray([color, color, color, color]))
 
+	var destination_sites := {}
 	for point: Vector2i in result.get("destinations", {}):
 		# neighbor connections end one tile outside the map
 		var bounded := point.clamp(Vector2i.ZERO, Vector2i.ONE * (city.map_size - 1))
-		destinations.append(_center(city, bounded))
+		var site := TripReachAnalysis._building_site(city, bounded)
+		if destination_sites.has(site):
+			continue
+		destination_sites[site] = true
+		var center := Vector2.ZERO
+		for x in range(site.position.x, site.end.x):
+			for y in range(site.position.y, site.end.y):
+				center += _center(city, Vector2i(x, y))
+		destinations.append(center / float(site.get_area()))
 
 	for point: Vector2i in result.get("limit_points", {}):
 		failed_points.append(seen.get(point, _center(city, point)))
@@ -99,7 +108,7 @@ func _draw_key(canvas: Control) -> void:
 	var panel := Rect2(available.position + Vector2(12, 12), Vector2(width, 134 + lines.size() * 22))
 	canvas.draw_rect(panel, Color(0.06, 0.08, 0.12, 0.94))
 	canvas.draw_rect(panel, Color("98aabf"), false, 1.0)
-	canvas.draw_string(font, panel.position + Vector2(12, 25), "Trip Query • potential routes", HORIZONTAL_ALIGNMENT_LEFT, width - 24, 17, Color.WHITE)
+	canvas.draw_string(font, panel.position + Vector2(12, 25), "Trip Query", HORIZONTAL_ALIGNMENT_LEFT, width - 24, 17, Color.WHITE)
 	for i in 48:
 		canvas.draw_rect(Rect2(panel.position + Vector2(12 + i * (width - 24) / 48.0, 36),
 			Vector2((width - 24) / 48.0 + 1, 12)), heat_color(i / 47.0))
@@ -146,16 +155,18 @@ func tile_tooltip(point: Vector2i) -> String:
 	if point.x < 0:
 		return ""
 	var title := "Trip Query\n"
-	if point == analysis.origin or point == analysis.get("clicked", analysis.origin):
+	if analysis.get("origin_tiles", {}).has(point):
 		return title + "Origin: tile %d, %d\n%s\nTrip Budget: %d" % [point.x, point.y,
 			"Destination reachable" if analysis.reached_destination else "Destination not reachable", analysis.limit]
 	if analysis.get("destinations", {}).has(point):
 		return title + "Destination: tile %d, %d\nTrip Cost: %d / %d" % [point.x, point.y, analysis.destinations[point], analysis.limit]
+	if analysis.get("access_tiles", {}).has(point):
+		return title + "Building: tile %d, %d\nWithin network access\nNot a compatible destination for this trip." % [point.x, point.y]
 	if analysis.get("limit_points", {}).has(point):
 		return title + "Tile: %d, %d\nTrip limit reached\nTrip Cost: %d / %d" % [point.x, point.y, tile_costs[point], analysis.limit]
 	if tile_costs.has(point):
 		return title + "Tile: %d, %d\nMinimum Trip Cost: %d / %d" % [point.x, point.y, tile_costs[point], analysis.limit]
-	return title + "Tile: %d, %d\nOutside the reachable transport network." % [point.x, point.y]
+	return title + "Tile: %d, %d\nNot reached by this trip." % [point.x, point.y]
 
 
 static func _draw_origin(canvas: Control, point: Vector2, scale: float) -> void:
@@ -172,15 +183,11 @@ static func _draw_origin(canvas: Control, point: Vector2, scale: float) -> void:
 
 
 static func _draw_destination(canvas: Control, point: Vector2, scale: float) -> void:
-	var diamond := PackedVector2Array([point + Vector2(0, -8) * scale,
-		point + Vector2(8, 0) * scale, point + Vector2(0, 8) * scale,
-		point + Vector2(-8, 0) * scale])
-	canvas.draw_colored_polygon(diamond, Color("ffd36a"))
-	diamond.append(diamond[0])
-	canvas.draw_polyline(diamond, Color("795724"), 1.5 * scale, true)
-	canvas.draw_polyline(PackedVector2Array([point + Vector2(-3, 0) * scale,
-		point + Vector2(-1, 2) * scale, point + Vector2(3, -2) * scale]),
-		Color("795724"), 1.5 * scale, true)
+	canvas.draw_circle(point, 8 * scale, Color("249957"))
+	canvas.draw_arc(point, 8 * scale, 0, TAU, 24, Color("145c35"), 1.2 * scale, true)
+	canvas.draw_polyline(PackedVector2Array([point + Vector2(-4, 0) * scale,
+		point + Vector2(-1, 3) * scale, point + Vector2(4, -3) * scale]),
+		Color.WHITE, 2 * scale, true)
 
 
 static func _draw_failure(canvas: Control, point: Vector2, scale: float) -> void:
