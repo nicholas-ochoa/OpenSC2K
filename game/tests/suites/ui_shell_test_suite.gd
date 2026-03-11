@@ -18,7 +18,7 @@ const BridgeSelectionDialogUi = preload("res://src/ui/tools/bridge_selection_dia
 const ToolChoiceDialogUi = preload("res://src/ui/tools/tool_choice_dialog.gd")
 const StadiumTeamDialogUi = preload("res://src/ui/tools/stadium_team_dialog.gd")
 const RouteConfirmationDialogUi = preload("res://src/ui/tools/route_confirmation_dialog.gd")
-const PictureNoticeDialogUi = preload("res://src/ui/shared/picture_notice_dialog.gd")
+const PictureNoticeDialogUi = preload("res://src/ui/shared/picture_notice_dialog.tscn")
 const AboutDialogUi = preload("res://src/ui/settings/about_dialog.tscn")
 const SaveChangesDialogUi = preload("res://src/ui/shared/save_changes_dialog.gd")
 const DebugOverlayUi = preload("res://src/debug/debug_overlay.tscn")
@@ -334,7 +334,7 @@ func _test_main_menu() -> void:
 		"Route confirmation dialog owns its prompt and button labels",
 	)
 	route_dialog.free()
-	var notice_dialog := PictureNoticeDialogUi.new()
+	var notice_dialog := PictureNoticeDialogUi.instantiate()
 	notice_dialog._ready()
 	notice_dialog.configure(
 		"TestNoticeDialog",

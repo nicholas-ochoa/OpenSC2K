@@ -17,7 +17,7 @@ const CityMapWindowView = preload("res://src/ui/city_windows/city_map_window.gd"
 const OrdinanceWindowView = preload("res://src/ui/city_windows/city_ordinance_window.gd")
 const AnalysisDialogView = preload("res://src/ui/city_windows/city_analysis_dialog.gd")
 const NewspaperDialogView = preload("res://src/ui/newspaper/newspaper_dialog.gd")
-const PictureDialogView = preload("res://src/ui/shared/picture_notice_dialog.gd")
+const PictureDialogView = preload("res://src/ui/shared/picture_notice_dialog.tscn")
 const LibraryWindowsView = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 const ScenarioDialogView = preload("res://src/ui/startup/scenario_intro_dialog.gd")
 const BudgetDialogView = preload("res://src/ui/city_windows/budget_dialog.gd")
@@ -165,7 +165,7 @@ func _create_information_windows() -> void:
 
 
 func _create_event_dialogs() -> void:
-	forest_protest_dialog = PictureDialogView.new()
+	forest_protest_dialog = PictureDialogView.instantiate()
 	add_child(forest_protest_dialog)
 	forest_protest_dialog.configure(
 		"ForestProtestDialog",
@@ -175,7 +175,7 @@ func _create_event_dialogs() -> void:
 		original_assets.forest_protest_image,
 		original_assets.forest_protest_text,
 	)
-	building_objection_dialog = PictureDialogView.new()
+	building_objection_dialog = PictureDialogView.instantiate()
 	add_child(building_objection_dialog)
 	building_objection_dialog.configure(
 		"BuildingObjectionDialog",
