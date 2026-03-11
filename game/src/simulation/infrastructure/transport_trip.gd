@@ -619,6 +619,17 @@ static func _highway_step(buildings: PackedByteArray, current: Vector2i,
 	if next_corner != (corner + 1) % 4:
 		return false
 
+	# cross into the return lane only at an unconnected highway endpoint
+	for exit_direction in 4:
+		var exit_bit := 1 << exit_direction
+		if corner != EGRESS_CORNERS[exit_direction] or (ports & next_ports & exit_bit) == 0:
+			continue
+		var forward: Vector2i = current + DIRECTIONS[exit_direction]
+		var forward_index := _index(forward, map_edge)
+		var forward_ports := int(HIGHWAY_PORTS.get(buildings[forward_index], 0)) if forward_index >= 0 else 0
+		if (forward_ports & (1 << ((exit_direction + 2) & 3))) == 0:
+			return true
+
 	for entry in 4:
 		if (ports & (1 << entry)) == 0:
 			continue

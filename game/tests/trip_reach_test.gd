@@ -27,6 +27,7 @@ func _initialize() -> void:
 			_test_branches(edge, native)
 			_test_station_and_tunnel(edge, native)
 	_test_multimodal()
+	_test_dead_end_turns()
 	_test_overpasses()
 	_test_curve()
 	_test_lane_geometry()
@@ -66,10 +67,10 @@ func _test_highway(edge: int, native: bool) -> void:
 		reached[node.point] = true
 		check(node.cost < diagnostic.limit, "All displayed states are within budget")
 	check(reached.has(a + Vector2i(10, 1)), "Correct lane is reached")
-	check(not reached.has(a + Vector2i(10, 0)), "Trip cannot cross the highway median")
-	# Reverse-direction travel cannot use this lane without a real return route.
+	check(reached.has(a + Vector2i(10, 0)), "Trip reaches the return lane through the highway endpoint")
+	# Reverse-direction travel must go around the endpoints to use the return lane.
 	var reverse := TransportTrip.run(city, destination, 3, 2, SimRandom.new(1))
-	check(not reverse.reached_destination, "Wrong-way highway trip is rejected")
+	check(reverse.reached_destination and reverse.cost > first_cost, "Reverse trip uses longer endpoint turnaround route")
 	for ccw in [false, true]:
 		var rotated := CityState.from_document(city.document.duplicate_document())
 		var rotated_origin := origin
@@ -248,3 +249,35 @@ func _test_overpasses() -> void:
 					origin = CityRotationCommand.rotate_point(origin, edge, false)
 					under_start = CityRotationCommand.rotate_point(under_start, edge, false)
 					under_end = CityRotationCommand.rotate_point(under_end, edge, false)
+
+
+func _test_dead_end_turns() -> void:
+	for edge: int in [128, 256, 384, 512]:
+		var city := fixture(edge, false)
+		var a := Vector2i(edge - 40, edge - 40)
+		var b := a + Vector2i(20, 0)
+		check(HighwayCommand.apply(city, 6, 1, a, b, 0).ok, "Construct highway with open ends")
+		var end_lane := b + Vector2i(1, 1)
+		var return_lane := b + Vector2i(1, 0)
+		var middle := a + Vector2i(11, 1)
+		var middle_across := a + Vector2i(11, 0)
+		for rotation in 4:
+			check(TransportTrip._highway_step(city.buildings, end_lane, return_lane, edge), "Open highway end permits a median turnaround")
+			check(not TransportTrip._highway_step(city.buildings, middle, middle_across, edge), "Connected highway does not permit a median shortcut")
+			for mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
+				check(TransportTrip._advance(city.buildings, city.zones, city.underground,
+					city.text_overlays, city.altitude_words, end_lane, return_lane, mode, 1, edge) == ((mode << 8) | 1),
+					"Car and bus turnaround costs one highway step")
+			var result := TripReachAnalysis.inspect(city, middle)
+			check(result.expanded_states <= 88, "End turnarounds terminate without repeatedly circling")
+			CityRotationCommand.apply(city, false)
+			end_lane = CityRotationCommand.rotate_point(end_lane, edge, false)
+			return_lane = CityRotationCommand.rotate_point(return_lane, edge, false)
+			middle = CityRotationCommand.rotate_point(middle, edge, false)
+			middle_across = CityRotationCommand.rotate_point(middle_across, edge, false)
+		var boundary := fixture(edge, false)
+		for x in range(edge - 4, edge):
+			boundary.set_building_id(x, 20, 0x4a)
+			boundary.set_building_id(x, 21, 0x4a)
+		check(TransportTrip._highway_step(boundary.buildings, Vector2i(edge - 1, 21), Vector2i(edge - 1, 20), edge),
+			"True map edge permits a safe turnaround")
