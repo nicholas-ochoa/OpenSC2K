@@ -60,7 +60,19 @@ func _run() -> void:
 	var day_three := debug._days.get_root().get_child(2)
 	assert(day_three.get_text(0) == "3" and day_three.get_text(2) == "2.500")
 	assert(day_three.get_text(5) == "1")
-	assert(debug._steps.get_root().get_child_count() == 1)
+	assert(day_three.collapsed and day_three.get_child_count() == 1)
+	assert(day_three.get_child(0).get_text(1) == "      pollution")
+	assert(day_three.get_child(0).get_text(2) == "2.500")
+	day_three.collapsed = false
+	host.simulation_timings.consume({"day_results": [{"ok": true, "day": 3,
+		"timing": {"work_usec": 900, "steps": {"pollution": 900}}}],
+		"job_timings": {"worker elapsed": 6000}})
+	debug._refresh_metrics()
+	assert(debug._days.get_root().get_child(2) == day_three and not day_three.collapsed)
+	assert(day_three.get_child_count() == 1 and day_three.get_child(0).get_text(2) == "2.500")
+	assert(debug._days.get_root().get_child(3).get_child(0).get_text(2) == "0.900")
+	assert(debug._other_steps.collapsed and debug._other_steps.get_child(0).get_text(2) == "6.000")
+	assert(not debug.has_node("DebugWindow/Panel/Margin/Content/Tabs/Steps"))
 	assert(debug._terrain_slider.min_value == 1 and debug._terrain_slider.max_value == 32)
 	debug._terrain_slider.value = 12
 	assert(host.terrain_levels == 12 and debug._terrain_value.text == "12")
@@ -76,6 +88,8 @@ func _run() -> void:
 	assert(not debug.is_open and not debug._window.visible and host.queries == queries)
 	debug._reset_averages()
 	assert(host.simulation_timings.days.is_empty())
+	assert(day_three.get_child_count() == 0 and day_three.get_text(2) == "—")
+	assert(not day_three.collapsed and debug._other_steps == null)
 	host.queue_free()
 	await process_frame
 	print("PASS: native debug window builds, displays timing rows and stays idle while hidden")

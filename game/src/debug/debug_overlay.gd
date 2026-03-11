@@ -12,7 +12,9 @@ var _sample_elapsed := 0.0
 var _metrics: Dictionary = {}
 var _window: Window
 var _days: Tree
-var _steps: Tree
+var _day_rows: Array[TreeItem] = []
+var _step_rows: Dictionary = {}
+var _other_steps: TreeItem
 var _metrics_tree: Tree
 var _action_label: Label
 var _resume_speed := 2
@@ -33,10 +35,9 @@ func _ready() -> void:
 	var box: VBoxContainer = $DebugWindow/Panel/Margin/Content
 	box.get_node("Header/Reset").pressed.connect(_reset_averages)
 	var tabs: TabContainer = box.get_node("Tabs")
-	_days = tabs.get_node("Simulation days")
-	_steps = tabs.get_node("Steps")
+	_days = tabs.get_node("Simulation")
 	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples"])
-	_configure_table(_steps, ["Step", "Average ms", "Last ms", "Max ms", "Samples"])
+	_build_day_rows()
 	_metrics_tree = tabs.get_node("Metrics")
 	_build_actions(tabs)
 
@@ -229,31 +230,72 @@ func _refresh_metrics() -> void:
 	_terrain_slider.set_value_no_signal(levels)
 	_terrain_value.text = str(levels)
 	_no_disasters_check.set_pressed_no_signal(bool(_metrics.get("no_disasters", false)))
-	var history := _history()
-	_days.clear()
-	var root := _days.create_item()
-
-	for day in 25:
-		var item := _days.create_item(root)
-		item.set_text(0, str(day + 1))
-		item.set_text(1, SimulationTimingHistory.DAY_SUMMARIES[day])
-		item.set_tooltip_text(1, SimulationTimingHistory.DAY_SUMMARIES[day])
-		_stats(item, 2, history.days.get(day, {}) if history != null else {})
-
-	_steps.clear()
-	root = _steps.create_item()
-
-	if history != null:
-		var labels := history.steps.keys()
-		labels.sort()
-
-		for label in labels:
-			var item := _steps.create_item(root)
-			item.set_text(0, label)
-			item.set_tooltip_text(0, label)
-			_stats(item, 1, history.steps[label])
+	_refresh_day_rows(_history())
 
 	_metrics_tree.refresh(_metrics)
+
+
+func _build_day_rows() -> void:
+	var base := _days.create_item()
+
+	for day in 25:
+		var row := _days.create_item(base)
+		row.set_text(0, str(day + 1))
+		row.set_text(1, SimulationTimingHistory.DAY_SUMMARIES[day])
+		row.set_tooltip_text(1, SimulationTimingHistory.DAY_SUMMARIES[day])
+		row.set_tooltip_text(5, "Day samples combine work resumed after a player prompt. Child steps count individual measurements.")
+		row.collapsed = true
+		_day_rows.append(row)
+
+
+func _refresh_day_rows(history: SimulationTimingHistory) -> void:
+	for day in 25:
+		_stats(_day_rows[day], 2, history.days.get(day, {}) if history != null else {})
+
+	var samples: Dictionary = history.steps if history != null else {}
+
+	for label: String in _step_rows.keys():
+		if not samples.has(label):
+			_step_rows[label].free()
+			_step_rows.erase(label)
+
+	var labels := samples.keys()
+	labels.sort()
+
+	for label: String in labels:
+		var row: TreeItem = _step_rows.get(label)
+
+		if row == null:
+			var parent: TreeItem
+			var caption := label
+
+			for day in 25:
+				var prefix := "Day %02d / " % (day + 1)
+
+				if label.begins_with(prefix):
+					parent = _day_rows[day]
+					caption = label.trim_prefix(prefix)
+					break
+
+			if parent == null:
+				if _other_steps == null:
+					_other_steps = _days.create_item(_days.get_root())
+					_other_steps.set_text(1, "Other simulation work")
+					_other_steps.set_tooltip_text(1, "Moving objects, disasters and jobs without a recorded day association.")
+					_other_steps.collapsed = true
+
+				parent = _other_steps
+
+			row = _days.create_item(parent)
+			row.set_text(1, "      " + caption)
+			row.set_tooltip_text(1, label)
+			_step_rows[label] = row
+
+		_stats(row, 2, samples[label])
+
+	if _other_steps != null and _other_steps.get_child_count() == 0:
+		_other_steps.free()
+		_other_steps = null
 
 
 func _stats(item: TreeItem, column: int, row: Dictionary) -> void:

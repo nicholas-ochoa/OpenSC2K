@@ -42,21 +42,12 @@ layout_mode = 2
 size_flags_vertical = 3
 current_tab = 0
 
-[node name="Simulation days" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs"]
+[node name="Simulation" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs"]
 layout_mode = 2
 columns = 6
 column_titles_visible = true
 hide_root = true
 metadata/_tab_index = 0
-
-
-[node name="Steps" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs"]
-visible = false
-layout_mode = 2
-columns = 5
-column_titles_visible = true
-hide_root = true
-metadata/_tab_index = 1
 
 
 [node name="Metrics" type="Tree" parent="DebugWindow/Panel/Margin/Content/Tabs"]
@@ -66,4 +57,4 @@ columns = 3
 column_titles_visible = true
 hide_root = true
 script = ExtResource("2_metrics")
-metadata/_tab_index = 2
+metadata/_tab_index = 1
