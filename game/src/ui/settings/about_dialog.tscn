@@ -1,0 +1,32 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/settings/about_dialog.gd" id="1_about"]
+
+[node name="AboutDialog" type="AcceptDialog"]
+title = "About OpenSC2K"
+min_size = Vector2i(560, 250)
+exclusive = true
+dialog_text = "OpenSC2K is an open-source reimplementation of SimCity 2000 for Windows 95."
+script = ExtResource("1_about")
+
+[node name="Artwork" type="CenterContainer" parent="."]
+visible = false
+custom_minimum_size = Vector2(480, 299)
+
+[node name="Panel" type="Control" parent="Artwork"]
+custom_minimum_size = Vector2(480, 299)
+layout_mode = 2
+
+[node name="Picture" type="TextureRect" parent="Artwork/Panel"]
+texture_filter = 1
+mouse_filter = 2
+
+[node name="ProjectText" type="Label" parent="Artwork/Panel"]
+offset_left = 245.0
+offset_top = 94.0
+offset_right = 468.0
+offset_bottom = 284.0
+theme_override_colors/font_color = Color(0.0627451, 0.0627451, 0.0627451, 1)
+theme_override_font_sizes/font_size = 14
+text = "OpenSC2K is an open-source reimplementation of SimCity 2000 for Windows 95."
+autowrap_mode = 3

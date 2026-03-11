@@ -19,7 +19,7 @@ const ToolChoiceDialogUi = preload("res://src/ui/tools/tool_choice_dialog.gd")
 const StadiumTeamDialogUi = preload("res://src/ui/tools/stadium_team_dialog.gd")
 const RouteConfirmationDialogUi = preload("res://src/ui/tools/route_confirmation_dialog.gd")
 const PictureNoticeDialogUi = preload("res://src/ui/shared/picture_notice_dialog.gd")
-const AboutDialogUi = preload("res://src/ui/settings/about_dialog.gd")
+const AboutDialogUi = preload("res://src/ui/settings/about_dialog.tscn")
 const SaveChangesDialogUi = preload("res://src/ui/shared/save_changes_dialog.gd")
 const DebugOverlayUi = preload("res://src/debug/debug_overlay.tscn")
 const CityStatusBarUi = preload("res://src/ui/shell/city_status_bar.gd")
@@ -355,7 +355,7 @@ func _test_main_menu() -> void:
 		"Picture notice dialog owns its image and message layout",
 	)
 	notice_dialog.free()
-	var about_dialog := AboutDialogUi.new()
+	var about_dialog := AboutDialogUi.instantiate()
 	about_dialog._ready()
 	_check(
 		about_dialog.title == "About OpenSC2K"

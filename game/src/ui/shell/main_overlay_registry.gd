@@ -6,7 +6,7 @@ const SettingsDialogView = preload("res://src/ui/settings/app_settings_dialog.ts
 const ScurkEditorView = preload("res://src/ui/scurk/scurk_editor_control.gd")
 const ScurkPlacePrintView = preload("res://src/ui/scurk/scurk_place_print_control.gd")
 const ScurkPrintView = preload("res://src/ui/scurk/scurk_print_control.gd")
-const AboutDialogView = preload("res://src/ui/settings/about_dialog.gd")
+const AboutDialogView = preload("res://src/ui/settings/about_dialog.tscn")
 const SaveChangesDialogView = preload("res://src/ui/shared/save_changes_dialog.gd")
 
 var main_menu: MainMenuControl
@@ -43,7 +43,7 @@ func _create_overlays() -> void:
 	scurk_print = ScurkPrintView.new()
 	add_child(scurk_print)
 
-	about_dialog = AboutDialogView.new()
+	about_dialog = AboutDialogView.instantiate()
 	add_child(about_dialog)
 
 	save_changes_dialog = SaveChangesDialogView.new()
