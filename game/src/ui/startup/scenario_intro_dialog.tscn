@@ -1,0 +1,63 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/startup/scenario_intro_dialog.gd" id="1_notice"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_frame"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBox_text"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
+
+[node name="ScenarioIntroDialog" type="AcceptDialog"]
+min_size = Vector2i(760, 520)
+exclusive = true
+title = "Scenario"
+ok_button_text = "Begin Scenario"
+script = ExtResource("1_notice")
+
+[node name="Layout" type="HBoxContainer" parent="."]
+custom_minimum_size = Vector2(700, 400)
+theme_override_constants/separation = 16
+
+[node name="PictureFrame" type="PanelContainer" parent="Layout"]
+custom_minimum_size = Vector2(276, 276)
+layout_mode = 2
+size_flags_vertical = 0
+theme_override_styles/panel = SubResource("StyleBox_frame")
+
+[node name="Picture" type="TextureRect" parent="Layout/PictureFrame"]
+texture_filter = 1
+custom_minimum_size = Vector2(260, 260)
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Text" type="TextEdit" parent="Layout"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+editable = false
+wrap_mode = 1
+theme_override_colors/font_color = Color(0.0627451, 0.0627451, 0.0627451, 1)
+theme_override_colors/font_readonly_color = Color(0.0627451, 0.0627451, 0.0627451, 1)
+theme_override_styles/normal = SubResource("StyleBox_text")
+theme_override_styles/focus = SubResource("StyleBox_text")
+theme_override_styles/read_only = SubResource("StyleBox_text")
