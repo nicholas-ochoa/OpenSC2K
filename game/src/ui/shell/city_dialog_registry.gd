@@ -3,7 +3,7 @@ extends Control
 
 const FileDialogs = preload("res://src/ui/shared/file_dialog_factory.gd")
 const NewCityDialogView = preload("res://src/ui/startup/new_city_terrain_dialog.gd")
-const SignDialogView = preload("res://src/ui/tools/city_sign_dialog.gd")
+const SignDialogView = preload("res://src/ui/tools/city_sign_dialog.tscn")
 const BridgeDialogView = preload("res://src/ui/tools/bridge_selection_dialog.gd")
 const ToolChoiceDialogView = preload("res://src/ui/tools/tool_choice_dialog.gd")
 const StadiumDialogView = preload("res://src/ui/tools/stadium_team_dialog.gd")
@@ -89,7 +89,7 @@ func _create_tool_dialogs() -> void:
 	if original_assets != null:
 		new_city_dialog.set_control_graphics(original_assets.city_ui_graphics)
 
-	sign_dialog = SignDialogView.new()
+	sign_dialog = SignDialogView.instantiate()
 	add_child(sign_dialog)
 	bridge_dialog = BridgeDialogView.new()
 	add_child(bridge_dialog)

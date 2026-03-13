@@ -1,0 +1,18 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/tools/city_sign_dialog.gd" id="1_sign"]
+
+[node name="CitySignDialog" type="ConfirmationDialog"]
+title = "Enter sign text..."
+dialog_text = "An empty value removes the sign."
+min_size = Vector2i(440, 170)
+script = ExtResource("1_sign")
+
+[node name="TextInput" type="LineEdit" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 14.0
+offset_top = 58.0
+offset_right = -14.0
+offset_bottom = 92.0
+max_length = 23

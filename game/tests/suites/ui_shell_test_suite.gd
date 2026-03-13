@@ -13,7 +13,7 @@ const SettingsStoreUi = preload("res://src/ui/settings/app_settings_store.gd")
 const ScenarioIntroDialogUi = preload("res://src/ui/startup/scenario_intro_dialog.tscn")
 const CityAnalysisDialogUi = preload("res://src/ui/city_windows/city_analysis_dialog.gd")
 const LibraryRuminateWindowsUi = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
-const CitySignDialogUi = preload("res://src/ui/tools/city_sign_dialog.gd")
+const CitySignDialogUi = preload("res://src/ui/tools/city_sign_dialog.tscn")
 const BridgeSelectionDialogUi = preload("res://src/ui/tools/bridge_selection_dialog.gd")
 const ToolChoiceDialogUi = preload("res://src/ui/tools/tool_choice_dialog.gd")
 const StadiumTeamDialogUi = preload("res://src/ui/tools/stadium_team_dialog.gd")
@@ -261,7 +261,7 @@ func _test_main_menu() -> void:
 		"Library Ruminate container owns its modeless text windows",
 	)
 	library_windows.free()
-	var sign_dialog := CitySignDialogUi.new()
+	var sign_dialog := CitySignDialogUi.instantiate()
 	sign_dialog._ready()
 	sign_dialog.text_input.text = "Waterfront"
 	_check(
