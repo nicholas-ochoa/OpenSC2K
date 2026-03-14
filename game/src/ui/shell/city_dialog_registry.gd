@@ -4,7 +4,7 @@ extends Control
 const FileDialogs = preload("res://src/ui/shared/file_dialog_factory.gd")
 const NewCityDialogView = preload("res://src/ui/startup/new_city_terrain_dialog.gd")
 const SignDialogView = preload("res://src/ui/tools/city_sign_dialog.tscn")
-const BridgeDialogView = preload("res://src/ui/tools/bridge_selection_dialog.gd")
+const BridgeDialogView = preload("res://src/ui/tools/bridge_selection_dialog.tscn")
 const ToolChoiceDialogView = preload("res://src/ui/tools/tool_choice_dialog.tscn")
 const StadiumDialogView = preload("res://src/ui/tools/stadium_team_dialog.tscn")
 const RouteDialogView = preload("res://src/ui/tools/route_confirmation_dialog.gd")
@@ -91,7 +91,7 @@ func _create_tool_dialogs() -> void:
 
 	sign_dialog = SignDialogView.instantiate()
 	add_child(sign_dialog)
-	bridge_dialog = BridgeDialogView.new()
+	bridge_dialog = BridgeDialogView.instantiate()
 	add_child(bridge_dialog)
 	tool_choice_dialog = ToolChoiceDialogView.instantiate()
 	add_child(tool_choice_dialog)

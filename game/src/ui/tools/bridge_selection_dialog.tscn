@@ -1,0 +1,112 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/tools/bridge_selection_dialog.gd" id="1_8m8sg"]
+
+[node name="BridgeSelectionDialog" type="ConfirmationDialog"]
+title = "Select Bridge"
+size = Vector2i(760, 350)
+min_size = Vector2i(760, 350)
+dialog_text = "Select a bridge type."
+script = ExtResource("1_8m8sg")
+
+[node name="Choices" type="HBoxContainer" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 72.0
+offset_right = -16.0
+offset_bottom = 290.0
+theme_override_constants/separation = 8
+
+[node name="Choice1" type="Button" parent="Choices"]
+custom_minimum_size = Vector2(230, 210)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+
+[node name="Column" type="VBoxContainer" parent="Choices/Choice1"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 8.0
+offset_bottom = -8.0
+mouse_filter = 2
+
+[node name="Preview" type="TextureRect" parent="Choices/Choice1/Column"]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Caption" type="Label" parent="Choices/Choice1/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.08235294, 0.08235294, 0.08235294, 1)
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Choice2" type="Button" parent="Choices"]
+custom_minimum_size = Vector2(230, 210)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+
+[node name="Column" type="VBoxContainer" parent="Choices/Choice2"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 8.0
+offset_bottom = -8.0
+mouse_filter = 2
+
+[node name="Preview" type="TextureRect" parent="Choices/Choice2/Column"]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Caption" type="Label" parent="Choices/Choice2/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.08235294, 0.08235294, 0.08235294, 1)
+horizontal_alignment = 1
+vertical_alignment = 1
+
+[node name="Choice3" type="Button" parent="Choices"]
+custom_minimum_size = Vector2(230, 210)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(1, 1, 1, 0)
+theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
+
+[node name="Column" type="VBoxContainer" parent="Choices/Choice3"]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_top = 8.0
+offset_bottom = -8.0
+mouse_filter = 2
+
+[node name="Preview" type="TextureRect" parent="Choices/Choice3/Column"]
+custom_minimum_size = Vector2(0, 140)
+layout_mode = 2
+mouse_filter = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Caption" type="Label" parent="Choices/Choice3/Column"]
+layout_mode = 2
+size_flags_vertical = 3
+theme_override_colors/font_color = Color(0.08235294, 0.08235294, 0.08235294, 1)
+horizontal_alignment = 1
+vertical_alignment = 1

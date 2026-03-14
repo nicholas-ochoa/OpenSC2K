@@ -14,7 +14,7 @@ const ScenarioIntroDialogUi = preload("res://src/ui/startup/scenario_intro_dialo
 const CityAnalysisDialogUi = preload("res://src/ui/city_windows/city_analysis_dialog.gd")
 const LibraryRuminateWindowsUi = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 const CitySignDialogUi = preload("res://src/ui/tools/city_sign_dialog.tscn")
-const BridgeSelectionDialogUi = preload("res://src/ui/tools/bridge_selection_dialog.gd")
+const BridgeSelectionDialogUi = preload("res://src/ui/tools/bridge_selection_dialog.tscn")
 const ToolChoiceDialogUi = preload("res://src/ui/tools/tool_choice_dialog.tscn")
 const StadiumTeamDialogUi = preload("res://src/ui/tools/stadium_team_dialog.tscn")
 const RouteConfirmationDialogUi = preload("res://src/ui/tools/route_confirmation_dialog.gd")
@@ -270,7 +270,7 @@ func _test_main_menu() -> void:
 		"City Sign dialog owns its bounded text input",
 	)
 	sign_dialog.free()
-	var bridge_dialog := BridgeSelectionDialogUi.new()
+	var bridge_dialog := BridgeSelectionDialogUi.instantiate()
 	bridge_dialog._ready()
 	bridge_dialog.set_choices(4, "network", [
 		{"name": "Standard", "cost": 12345, "cost_per_tile": 678},

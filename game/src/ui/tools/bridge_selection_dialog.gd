@@ -14,55 +14,14 @@ var preview_sprites: Sc2SpriteArchive
 
 func _ready() -> void:
 	theme = ClassicUiStyle.create_dialog_theme()
-	title = "Select Bridge"
-	dialog_text = "Select a bridge type."
-	min_size = Vector2i(760, 350)
-	exclusive = true
 	get_ok_button().visible = false
-	get_cancel_button().text = "Cancel"
 
-	var choices := HBoxContainer.new()
-	choices.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	choices.offset_left = 16
-	choices.offset_top = 72
-	choices.offset_right = -16
-	choices.offset_bottom = 290
-	choices.add_theme_constant_override("separation", 8)
-	add_child(choices)
-
-	for choice_index in 3:
-		var choice_button := Button.new()
-		choice_button.custom_minimum_size = Vector2(230, 210)
-		choice_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		choice_button.pressed.connect(choice_requested.emit.bind(choice_index))
-		choices.add_child(choice_button)
-		choice_buttons.append(choice_button)
-		# use a centered column; button icon placement also reserves text width
-		choice_button.add_theme_color_override("font_color", Color.TRANSPARENT)
-		choice_button.add_theme_color_override("font_hover_color", Color.TRANSPARENT)
-		choice_button.add_theme_color_override("font_pressed_color", Color.TRANSPARENT)
-		choice_button.add_theme_color_override("font_focus_color", Color.TRANSPARENT)
-		var column := VBoxContainer.new()
-		column.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-		column.offset_top = 8
-		column.offset_bottom = -8
-		column.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		choice_button.add_child(column)
-		var preview := TextureRect.new()
-		preview.custom_minimum_size = Vector2(0, 140)
-		preview.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-		preview.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
-		preview.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		column.add_child(preview)
-		preview_controls.append(preview)
-		var caption := Label.new()
-		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-		caption.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-		caption.size_flags_vertical = Control.SIZE_EXPAND_FILL
-		caption.add_theme_color_override("font_color", Color("151515"))
-		caption.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		column.add_child(caption)
-		choice_labels.append(caption)
+	for child in $Choices.get_children():
+		var button := child as Button
+		button.pressed.connect(choice_requested.emit.bind(choice_buttons.size()))
+		choice_buttons.append(button)
+		preview_controls.append(button.get_node("Column/Preview"))
+		choice_labels.append(button.get_node("Column/Caption"))
 
 
 func set_choices(
