@@ -1,6 +1,7 @@
 extends SceneTree
 
 var confirmations := 0
+var selected_choice := -1
 
 
 func _initialize() -> void:
@@ -33,5 +34,13 @@ func _run() -> void:
 	assert(stadium.entered_name() == "City Bears" and stadium.name_input.owner == stadium)
 	stadium.hide()
 	stadium.free()
+	var choice := preload("res://src/ui/tools/tool_choice_dialog.tscn").instantiate() as ToolChoiceDialog
+	root.add_child(choice)
+	choice.choice_requested.connect(func(index: int) -> void: selected_choice = index)
+	choice.set_tools("Tools", "Pick one", [{"name": "First", "cost": 25}, {"name": "Second", "cost": 75}])
+	assert(choice.choice_buttons[0].owner == choice and not choice.choice_buttons[2].visible)
+	choice.choice_buttons[1].pressed.emit()
+	assert(selected_choice == 1 and choice.choice_buttons[1].text.contains("Second"))
+	choice.free()
 	print("PASS: Player dialog scene input, confirmation and ownership")
 	quit()

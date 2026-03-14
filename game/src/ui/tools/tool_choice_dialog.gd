@@ -10,30 +10,11 @@ var choice_buttons: Array[Button] = []
 
 func _ready() -> void:
 	theme = ClassicUiStyle.create_dialog_theme()
-	title = "Select Building"
-	dialog_text = "Select a building type."
-	min_size = Vector2i(680, 390)
-	exclusive = true
 	get_ok_button().visible = false
-	get_cancel_button().text = "Cancel"
 
-	var choices := GridContainer.new()
-	choices.columns = 3
-	choices.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	choices.offset_left = 16
-	choices.offset_top = 72
-	choices.offset_right = -16
-	choices.offset_bottom = 320
-	choices.add_theme_constant_override("h_separation", 8)
-	choices.add_theme_constant_override("v_separation", 8)
-	add_child(choices)
-
-	for choice_index in 9:
-		var choice_button := Button.new()
-		choice_button.custom_minimum_size = Vector2(205, 72)
-		choice_button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		choice_button.pressed.connect(choice_requested.emit.bind(choice_index))
-		choices.add_child(choice_button)
+	for child in $Choices.get_children():
+		var choice_button := child as Button
+		choice_button.pressed.connect(choice_requested.emit.bind(choice_buttons.size()))
 		choice_buttons.append(choice_button)
 
 

@@ -15,7 +15,7 @@ const CityAnalysisDialogUi = preload("res://src/ui/city_windows/city_analysis_di
 const LibraryRuminateWindowsUi = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 const CitySignDialogUi = preload("res://src/ui/tools/city_sign_dialog.tscn")
 const BridgeSelectionDialogUi = preload("res://src/ui/tools/bridge_selection_dialog.gd")
-const ToolChoiceDialogUi = preload("res://src/ui/tools/tool_choice_dialog.gd")
+const ToolChoiceDialogUi = preload("res://src/ui/tools/tool_choice_dialog.tscn")
 const StadiumTeamDialogUi = preload("res://src/ui/tools/stadium_team_dialog.tscn")
 const RouteConfirmationDialogUi = preload("res://src/ui/tools/route_confirmation_dialog.gd")
 const PictureNoticeDialogUi = preload("res://src/ui/shared/picture_notice_dialog.tscn")
@@ -285,7 +285,7 @@ func _test_main_menu() -> void:
 		"Bridge dialog owns its choice layout and price formatting",
 	)
 	bridge_dialog.free()
-	var tool_choice_dialog := ToolChoiceDialogUi.new()
+	var tool_choice_dialog := ToolChoiceDialogUi.instantiate()
 	tool_choice_dialog._ready()
 	tool_choice_dialog.set_tools("Select Arcology", "Select one.", [
 		{"name": "Plymouth Arcology", "cost": 100000},

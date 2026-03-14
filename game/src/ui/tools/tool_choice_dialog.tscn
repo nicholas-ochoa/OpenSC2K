@@ -1,0 +1,66 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/tools/tool_choice_dialog.gd" id="1_choice"]
+
+[node name="ToolChoiceDialog" type="ConfirmationDialog"]
+title = "Select Building"
+dialog_text = "Select a building type."
+min_size = Vector2i(680, 390)
+exclusive = true
+script = ExtResource("1_choice")
+
+[node name="Choices" type="GridContainer" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 72.0
+offset_right = -16.0
+offset_bottom = 320.0
+columns = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 8
+
+[node name="Choice1" type="Button" parent="Choices"]
+layout_mode = 2
+custom_minimum_size = Vector2(205, 72)
+size_flags_horizontal = 3
+
+[node name="Choice2" type="Button" parent="Choices"]
+layout_mode = 2
+custom_minimum_size = Vector2(205, 72)
+size_flags_horizontal = 3
+
+[node name="Choice3" type="Button" parent="Choices"]
+layout_mode = 2
+custom_minimum_size = Vector2(205, 72)
+size_flags_horizontal = 3
+
+[node name="Choice4" type="Button" parent="Choices"]
+layout_mode = 2
+custom_minimum_size = Vector2(205, 72)
+size_flags_horizontal = 3
+
+[node name="Choice5" type="Button" parent="Choices"]
+layout_mode = 2
+custom_minimum_size = Vector2(205, 72)
+size_flags_horizontal = 3
+
+[node name="Choice6" type="Button" parent="Choices"]
+layout_mode = 2
+custom_minimum_size = Vector2(205, 72)
+size_flags_horizontal = 3
+
+[node name="Choice7" type="Button" parent="Choices"]
+layout_mode = 2
+custom_minimum_size = Vector2(205, 72)
+size_flags_horizontal = 3
+
+[node name="Choice8" type="Button" parent="Choices"]
+layout_mode = 2
+custom_minimum_size = Vector2(205, 72)
+size_flags_horizontal = 3
+
+[node name="Choice9" type="Button" parent="Choices"]
+layout_mode = 2
+custom_minimum_size = Vector2(205, 72)
+size_flags_horizontal = 3
