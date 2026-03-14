@@ -16,7 +16,7 @@ const LibraryRuminateWindowsUi = preload("res://src/ui/city_windows/library_rumi
 const CitySignDialogUi = preload("res://src/ui/tools/city_sign_dialog.tscn")
 const BridgeSelectionDialogUi = preload("res://src/ui/tools/bridge_selection_dialog.gd")
 const ToolChoiceDialogUi = preload("res://src/ui/tools/tool_choice_dialog.gd")
-const StadiumTeamDialogUi = preload("res://src/ui/tools/stadium_team_dialog.gd")
+const StadiumTeamDialogUi = preload("res://src/ui/tools/stadium_team_dialog.tscn")
 const RouteConfirmationDialogUi = preload("res://src/ui/tools/route_confirmation_dialog.gd")
 const PictureNoticeDialogUi = preload("res://src/ui/shared/picture_notice_dialog.tscn")
 const AboutDialogUi = preload("res://src/ui/settings/about_dialog.tscn")
@@ -300,7 +300,7 @@ func _test_main_menu() -> void:
 		"Tool choice dialog owns its building grid and price formatting",
 	)
 	tool_choice_dialog.free()
-	var stadium_dialog := StadiumTeamDialogUi.new()
+	var stadium_dialog := StadiumTeamDialogUi.instantiate()
 	stadium_dialog._ready()
 	stadium_dialog.set_teams([
 		{"id": 2, "name": "Llamas"},

@@ -6,7 +6,7 @@ const NewCityDialogView = preload("res://src/ui/startup/new_city_terrain_dialog.
 const SignDialogView = preload("res://src/ui/tools/city_sign_dialog.tscn")
 const BridgeDialogView = preload("res://src/ui/tools/bridge_selection_dialog.gd")
 const ToolChoiceDialogView = preload("res://src/ui/tools/tool_choice_dialog.gd")
-const StadiumDialogView = preload("res://src/ui/tools/stadium_team_dialog.gd")
+const StadiumDialogView = preload("res://src/ui/tools/stadium_team_dialog.tscn")
 const RouteDialogView = preload("res://src/ui/tools/route_confirmation_dialog.gd")
 const QueryDialogView = preload("res://src/ui/tools/city_query_dialog.gd")
 const GraphWindowView = preload("res://src/ui/city_windows/city_graph_window.gd")
@@ -95,7 +95,7 @@ func _create_tool_dialogs() -> void:
 	add_child(bridge_dialog)
 	tool_choice_dialog = ToolChoiceDialogView.new()
 	add_child(tool_choice_dialog)
-	stadium_dialog = StadiumDialogView.new()
+	stadium_dialog = StadiumDialogView.instantiate()
 	add_child(stadium_dialog)
 	network_connection_dialog = _route_dialog(
 		"Neighbor Connection",

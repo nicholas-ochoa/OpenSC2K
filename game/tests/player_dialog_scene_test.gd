@@ -22,5 +22,16 @@ func _run() -> void:
 	assert(sign.entered_text().is_empty())
 	sign.hide()
 	sign.free()
+	var stadium := preload("res://src/ui/tools/stadium_team_dialog.tscn").instantiate() as StadiumTeamDialog
+	root.add_child(stadium)
+	stadium.show_teams([{"id": 4, "name": "Lions"}, {"id": 9, "name": "Bears"}])
+	assert(stadium.selected_team_id() == 4 and stadium.entered_name() == "Lions")
+	stadium.team_selector.select(1)
+	stadium.team_selector.item_selected.emit(1)
+	assert(stadium.selected_team_id() == 9 and stadium.entered_name() == "Bears")
+	stadium.name_input.text = "City Bears"
+	assert(stadium.entered_name() == "City Bears" and stadium.name_input.owner == stadium)
+	stadium.hide()
+	stadium.free()
 	print("PASS: Player dialog scene input, confirmation and ownership")
 	quit()

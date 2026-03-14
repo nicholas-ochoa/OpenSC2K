@@ -1,0 +1,29 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/tools/stadium_team_dialog.gd" id="1_stadium"]
+
+[node name="StadiumTeamDialog" type="ConfirmationDialog"]
+title = "Select Stadium Team"
+dialog_text = "Select an unused team and edit its name."
+min_size = Vector2i(520, 260)
+exclusive = true
+ok_button_text = "Assign Team"
+cancel_button_text = "No Team"
+script = ExtResource("1_stadium")
+
+[node name="Fields" type="VBoxContainer" parent="."]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 16.0
+offset_top = 72.0
+offset_right = -16.0
+offset_bottom = 170.0
+theme_override_constants/separation = 10
+
+[node name="TeamSelector" type="OptionButton" parent="Fields"]
+layout_mode = 2
+
+[node name="NameInput" type="LineEdit" parent="Fields"]
+layout_mode = 2
+max_length = 23
+placeholder_text = "Team name"

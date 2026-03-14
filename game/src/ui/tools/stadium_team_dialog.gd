@@ -7,29 +7,9 @@ var name_input: LineEdit
 
 func _ready() -> void:
 	theme = ClassicUiStyle.create_dialog_theme()
-	title = "Select Stadium Team"
-	dialog_text = "Select an unused team and edit its name."
-	min_size = Vector2i(520, 260)
-	exclusive = true
-	get_ok_button().text = "Assign Team"
-	get_cancel_button().text = "No Team"
-
-	var fields := VBoxContainer.new()
-	fields.set_anchors_preset(Control.PRESET_TOP_WIDE)
-	fields.offset_left = 16
-	fields.offset_top = 72
-	fields.offset_right = -16
-	fields.offset_bottom = 170
-	fields.add_theme_constant_override("separation", 10)
-	add_child(fields)
-
-	team_selector = OptionButton.new()
+	team_selector = $Fields/TeamSelector
+	name_input = $Fields/NameInput
 	team_selector.item_selected.connect(_select_team)
-	fields.add_child(team_selector)
-	name_input = LineEdit.new()
-	name_input.max_length = 23
-	name_input.placeholder_text = "Team name"
-	fields.add_child(name_input)
 
 
 func set_teams(teams: Array) -> void:
