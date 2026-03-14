@@ -40,6 +40,7 @@ func _initialize() -> void:
 					for point: Vector2i in inspected.get("destinations", {}):
 						check(route.destination.has_point(point), label + " destination marker belongs to the destination footprint")
 
+	_test_subway_scenario()
 	_test_scenarios()
 	_test_building_coverage()
 	_test_block_and_endpoints()
@@ -137,3 +138,45 @@ func _test_scenarios() -> void:
 			modes[node.mode] = true
 		check(modes.has(TransportTrip.HIGHWAY_MODE) == (variant > 0), "Scenario explores highway when present")
 		check(modes.has(TransportTrip.RAIL_MODE) == (variant == 2), "Scenario explores rail when stations are present")
+
+
+func _test_subway_scenario() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	city.set_funds(1000000)
+	var scenario := TripQueryFixture.add_subway_scenario(city, Vector2i(16, 102))
+	var before: PackedByteArray = city.document.serialize().data
+	var result := TripReachAnalysis.inspect(city, scenario.origin)
+	check(result.reached_destination and result.used_subway, "Subway scenario reaches industry through both stations")
+	check(city.underground_id(scenario.entrance.x, scenario.entrance.y) == 0x23,
+		"Subway scenario uses a real underground station entrance")
+	var found := false
+	for node: Dictionary in result.reachable:
+		if node.point == scenario.underground_midpoint and node.mode == TransportTrip.SUBWAY_MODE:
+			found = true
+	check(found, "Trip Query explores the bent underground route")
+	var subway_links := 0
+	for link: Dictionary in result.links:
+		var underground: bool = link.mode == TransportTrip.SUBWAY_MODE or link.from_mode == TransportTrip.SUBWAY_MODE
+		var color := TripReachOverlay.route_color(link, result.limit)
+		if underground:
+			subway_links += 1
+			check(color == TripReachOverlay.UNDERGROUND_COLOR, "Subway links and station transitions use purple")
+		else:
+			check(color == TripReachOverlay.heat_color(float(link.cost) / result.limit), "Surface links retain the trip-cost heatmap")
+	check(subway_links > 0, "Subway fixture has purple underground links")
+	var overlay := TripReachOverlay.new()
+	overlay.rebuild(city, result)
+	check(overlay.colors.size() * 2 == overlay.segments.size(), "Each drawn line segment has one color")
+	for index in result.links.size():
+		check(overlay.colors[index] == TripReachOverlay.route_color(result.links[index], result.limit),
+			"Rendered segment colors match their corresponding transport links")
+	check(overlay.destinations.size() == 2, "Both industrial buildings have destination markers")
+	check(city.document.serialize().data == before, "Subway inspection preserves saved city bytes")
+	var exit_tile := city.building_id(scenario.exit_station.x, scenario.exit_station.y)
+	city.set_building_id(scenario.exit_station.x, scenario.exit_station.y, 0)
+	check(not TripReachAnalysis.inspect(city, scenario.origin).reached_destination,
+		"Subway cannot deliver passengers without the exit station")
+	city.set_building_id(scenario.exit_station.x, scenario.exit_station.y, exit_tile)
+	city.set_underground_id(scenario.underground_midpoint.x, scenario.underground_midpoint.y, 0)
+	check(not TripReachAnalysis.inspect(city, scenario.origin).reached_destination,
+		"A gap in the subway stops the trip")

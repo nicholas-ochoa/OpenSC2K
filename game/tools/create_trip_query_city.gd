@@ -15,6 +15,9 @@ func _initialize() -> void:
 		if scenario.is_empty():
 			quit(1)
 			return
+	if TripQueryFixture.add_subway_scenario(city, Vector2i(16, 102)).is_empty():
+		quit(1)
+		return
 	for size in range(1, 5):
 		TripQueryFixture.add_route(city, size, size, ["road", "rail", "highway", "rail"][size - 1], Vector2i(82, 12 + size * 16))
 	TripQueryFixture.add_block(city, Vector2i(90, 96))

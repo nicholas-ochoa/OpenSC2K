@@ -1,6 +1,8 @@
 class_name TripReachOverlay
 extends RefCounted
 
+const UNDERGROUND_COLOR := Color("9b59df")
+
 var analysis: Dictionary = {}
 var segments := PackedVector2Array()
 var colors := PackedColorArray()
@@ -42,9 +44,9 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 	for link: Dictionary in result.get("links", []):
 		var a := _center(city, link.from, int(link.mode))
 		var b := _center(city, link.to, int(link.mode))
-		var color := heat_color(float(link.cost) / limit)
+		var color := route_color(link, limit)
 		segments.append_array(PackedVector2Array([a, b]))
-		colors.append_array(PackedColorArray([color, color]))
+		colors.append(color)
 
 		if int(link.mode) in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
 			var direction := (b - a).normalized()
@@ -52,7 +54,7 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 			var tip := a.lerp(b, 0.7)
 			arrows.append_array(PackedVector2Array([tip - direction * 4 + normal * 2,
 				tip, tip, tip - direction * 4 - normal * 2]))
-			arrow_colors.append_array(PackedColorArray([color, color, color, color]))
+			arrow_colors.append_array(PackedColorArray([color, color]))
 
 	var destination_sites := {}
 	for point: Vector2i in result.get("destinations", {}):
@@ -120,6 +122,8 @@ func _draw_key(canvas: Control) -> void:
 	canvas.draw_string(font, panel.position + Vector2(138, 94), "Destinations", HORIZONTAL_ALIGNMENT_LEFT, width - 150, 14, Color.WHITE)
 	_draw_failure(canvas, panel.position + Vector2(260, 90), 0.8)
 	canvas.draw_string(font, panel.position + Vector2(275, 94), "Trip limit", HORIZONTAL_ALIGNMENT_LEFT, width - 287, 14, Color.WHITE)
+	canvas.draw_line(panel.position + Vector2(355, 90), panel.position + Vector2(373, 90), UNDERGROUND_COLOR, 2.5)
+	canvas.draw_string(font, panel.position + Vector2(380, 94), "Underground", HORIZONTAL_ALIGNMENT_LEFT, width - 392, 14, Color.WHITE)
 	canvas.draw_string(font, panel.position + Vector2(12, 120), "Trip Budget: %d" % analysis.limit, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 	var status := "Destination reachable" if analysis.reached_destination else "Destination not reachable"
 	var status_width := font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
@@ -133,6 +137,12 @@ func _draw_key(canvas: Control) -> void:
 	canvas.draw_string(font, panel.position + Vector2(status_x, 120), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 	for i in lines.size():
 		canvas.draw_string(font, panel.position + Vector2(12, 144 + i * 22), lines[i], HORIZONTAL_ALIGNMENT_LEFT, width - 24, 14, Color.WHITE)
+
+
+static func route_color(link: Dictionary, limit: int) -> Color:
+	if int(link.mode) == TransportTrip.SUBWAY_MODE or int(link.get("from_mode", -1)) == TransportTrip.SUBWAY_MODE:
+		return UNDERGROUND_COLOR
+	return heat_color(float(link.cost) / limit)
 
 
 static func heat_color(fraction: float) -> Color:

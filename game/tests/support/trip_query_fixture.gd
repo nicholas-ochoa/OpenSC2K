@@ -92,3 +92,22 @@ static func add_scenario(city: CityState, variant: int, base: Vector2i) -> Dicti
 	assert(SignCommand.set_sign(city, base + Vector2i(0, 1), label).ok)
 	return {"origin": base + Vector2i(7, 5), "destination": base + Vector2i(41, 5),
 		"road_end": base + Vector2i(44, 6), "variant": variant}
+
+
+static func add_subway_scenario(city: CityState, base: Vector2i) -> Dictionary:
+	var scenario := add_scenario(city, 0, base)
+	var entrance := base + Vector2i(8, 5)
+	var exit_station := base + Vector2i(40, 5)
+	var bend_a := base + Vector2i(8, 10)
+	var bend_b := base + Vector2i(40, 10)
+	assert(NetworkCommand.apply(city, 7, 1, entrance, bend_a).ok)
+	assert(NetworkCommand.apply(city, 7, 1, bend_a, bend_b).ok)
+	assert(NetworkCommand.apply(city, 7, 1, bend_b, exit_station).ok)
+	var lfsr := SimLfsrRandom.new(1)
+	var random := SimRandom.new(1)
+	assert(BuildingCommand.apply(city, 7, 3, entrance, lfsr, random).ok)
+	assert(BuildingCommand.apply(city, 7, 3, exit_station, lfsr, random).ok)
+	assert(SignCommand.set_sign(city, base + Vector2i(0, 1), "4 Road and subway").ok)
+	scenario.merge({"entrance": entrance, "exit_station": exit_station,
+		"underground_midpoint": base + Vector2i(24, 10)})
+	return scenario

@@ -235,7 +235,7 @@ static func trace(
 
 					if not link_keys.has(link_key):
 						link_keys[link_key] = true
-						links.append({"from": point, "to": next_point, "mode": next_mode, "cost": next_cost})
+						links.append({"from": point, "to": next_point, "from_mode": mode, "mode": next_mode, "cost": next_cost})
 
 				if next_cost >= int(best.get(next_key, limit)):
 					continue
