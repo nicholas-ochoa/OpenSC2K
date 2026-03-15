@@ -111,3 +111,37 @@ static func add_subway_scenario(city: CityState, base: Vector2i) -> Dictionary:
 	scenario.merge({"entrance": entrance, "exit_station": exit_station,
 		"underground_midpoint": base + Vector2i(24, 10)})
 	return scenario
+
+
+static func add_tunnel_scenario(city: CityState, base: Vector2i) -> Dictionary:
+	var road_y := base.y + 6
+	var entrance := base + Vector2i(7, 6)
+	var exit_portal := base + Vector2i(17, 6)
+	var ground := city.land_altitude(base.x, base.y)
+	# A one-level plateau with a continuous sloped rim.
+	for x in range(base.x + 7, base.x + 18):
+		for y in range(base.y + 2, base.y + 11):
+			var left := x == base.x + 7
+			var right := x == base.x + 17
+			var top := y == base.y + 2
+			var bottom := y == base.y + 10
+			var mask := 15
+			if left:
+				mask &= 6
+			if right:
+				mask &= 9
+			if top:
+				mask &= 12
+			if bottom:
+				mask &= 3
+			city.set_land_altitude(x, y, ground + (1 if mask == 15 else 0))
+			city.set_terrain_id(x, y, 0 if mask == 15 else CityIsometricRenderer.TERRAIN_SURFACE_CORNER_MASKS.find(mask))
+	assert(NetworkCommand.apply(city, 6, 0, base + Vector2i(0, 6), entrance - Vector2i(1, 0)).ok)
+	assert(NetworkCommand.apply(city, 6, 0, exit_portal + Vector2i(1, 0), base + Vector2i(24, 6)).ok)
+	assert(TunnelCommand.apply(city, 6, 2, entrance, TunnelCommand.CONFIRMATION_CONFIRMED).ok)
+	stamp(city, Rect2i(base + Vector2i(3, 4), Vector2i(2, 2)), 0x8c, 1)
+	stamp(city, Rect2i(base + Vector2i(20, 3), Vector2i(3, 3)), 0xb2, 3)
+	assert(SignCommand.set_sign(city, base, "5 Road tunnel").ok)
+	return {"origin": base + Vector2i(3, 5), "destination": base + Vector2i(20, 5),
+		"entrance": entrance, "exit_portal": exit_portal,
+		"tunnel_midpoint": Vector2i(base.x + 12, road_y)}

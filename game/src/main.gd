@@ -3705,6 +3705,7 @@ func _refresh_map(force := true) -> void:
 	if city == null or palette == null:
 		return
 
+	map_view.trip_query_underground = overlay_mode == "underground"
 	map_view.set_signs_visible(
 		overlay_mode == "city" and bool(surface_visibility.signs)
 	)

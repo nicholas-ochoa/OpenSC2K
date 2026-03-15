@@ -40,6 +40,7 @@ func _initialize() -> void:
 					for point: Vector2i in inspected.get("destinations", {}):
 						check(route.destination.has_point(point), label + " destination marker belongs to the destination footprint")
 
+	_test_tunnel_scenario()
 	_test_subway_scenario()
 	_test_scenarios()
 	_test_building_coverage()
@@ -182,3 +183,29 @@ func _test_subway_scenario() -> void:
 	city.set_underground_id(scenario.underground_midpoint.x, scenario.underground_midpoint.y, 0)
 	check(not TripReachAnalysis.inspect(city, scenario.origin).reached_destination,
 		"A gap in the subway stops the trip")
+
+
+func _test_tunnel_scenario() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	city.set_funds(1000000)
+	var scenario := TripQueryFixture.add_tunnel_scenario(city, Vector2i(80, 6))
+	var before: PackedByteArray = city.document.serialize().data
+	var result := TripReachAnalysis.inspect(city, scenario.origin)
+	check(result.reached_destination, "Road tunnel connects residential and commercial buildings")
+	check(result.destinations.has(scenario.destination), "Tunnel destination footprint is marked")
+	var found := false
+	for node: Dictionary in result.reachable:
+		if node.point == scenario.tunnel_midpoint and node.mode == TransportTrip.ROAD_TUNNEL_MODE:
+			found = true
+	check(found, "Trip Query traverses the middle of the road tunnel")
+	check(city.tunnel_levels(scenario.tunnel_midpoint.x, scenario.tunnel_midpoint.y) == 2,
+		"Constructed road tunnel has saved underground depth")
+	check(city.document.serialize().data == before, "Tunnel inspection preserves saved city bytes")
+	var document := Sc2File.new()
+	check(document.parse(before), "Tunnel fixture reload parses")
+	var loaded := CityState.from_document(document)
+	check(TripReachAnalysis.inspect(loaded, scenario.origin).reached_destination,
+		"Road tunnel remains reachable after save reload")
+	city.set_tunnel_levels(scenario.tunnel_midpoint.x, scenario.tunnel_midpoint.y, 0)
+	check(not TripReachAnalysis.inspect(city, scenario.origin).reached_destination,
+		"A broken tunnel prevents reaching the destination")

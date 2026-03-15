@@ -101,6 +101,7 @@ var highway_preview := false
 var query_footprint_preview := false
 var scurk_stamp_visuals: Array[Dictionary] = []
 var trip_reach: TripReachOverlay
+var trip_query_underground := false
 var query_city: CityState
 var _shift_pressed := false
 var shift_line_enabled := false
@@ -875,7 +876,7 @@ func _draw() -> void:
 		_draw_data_view(scale, offset)
 
 		if trip_reach != null:
-			trip_reach.draw_on(self, scale, offset)
+			trip_reach.draw_on(self, scale, offset, trip_query_underground)
 
 		return
 
@@ -913,7 +914,7 @@ func _draw() -> void:
 	_draw_selection_price(scale, offset)
 
 	if trip_reach != null:
-		trip_reach.draw_on(self, scale, offset)
+		trip_reach.draw_on(self, scale, offset, trip_query_underground)
 
 
 func _selection_source_polygons() -> Array[PackedVector2Array]:

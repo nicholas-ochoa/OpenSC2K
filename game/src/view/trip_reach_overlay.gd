@@ -77,7 +77,7 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 		failed_points.append(seen.get(point, _center(city, point)))
 
 
-func draw_on(canvas: Control, scale: float, offset: Vector2) -> void:
+func draw_on(canvas: Control, scale: float, offset: Vector2, underground := false) -> void:
 	if analysis.is_empty():
 		return
 
@@ -92,7 +92,7 @@ func draw_on(canvas: Control, scale: float, offset: Vector2) -> void:
 		canvas.draw_circle(markers[i], 3.5, marker_colors[i])
 	for point in destinations:
 		_draw_destination(canvas, point, 1.0)
-	canvas.draw_dashed_line(origin, access, Color.WHITE, 1.5, 5.0)
+	canvas.draw_dashed_line(origin, access, Color("263a4d") if underground else Color.WHITE, 1.5, 5.0)
 	_draw_origin(canvas, origin, 1.0)
 	for point in failed_points:
 		_draw_failure(canvas, point, 1.0)
@@ -187,12 +187,14 @@ static func _draw_origin(canvas: Control, point: Vector2, scale: float) -> void:
 	var center := point + Vector2(0, -12) * scale
 	var edge := Color("244960")
 	var fill := Color("42b6ff")
-	var triangle := PackedVector2Array([point, point + Vector2(-7, -11) * scale,
-		point + Vector2(7, -11) * scale])
-	canvas.draw_colored_polygon(triangle, fill)
-	canvas.draw_polyline(PackedVector2Array([triangle[1], point, triangle[2]]), edge, 1.5 * scale, true)
-	canvas.draw_circle(center, 8 * scale, fill)
-	canvas.draw_arc(center, 8 * scale, PI, TAU, 16, edge, 1.5 * scale, true)
+	# join the circle to the pin tip with one continuous outer contour
+	var outline := PackedVector2Array([point])
+	for step in 49:
+		var angle := PI * 0.25 - step * (PI * 1.5 / 48.0)
+		outline.append(center + Vector2(cos(angle), sin(angle)) * 8 * scale)
+	outline.append(point)
+	canvas.draw_colored_polygon(outline, fill)
+	canvas.draw_polyline(outline, edge, 1.5 * scale, true)
 	canvas.draw_circle(center, 3 * scale, Color.WHITE)
 
 
