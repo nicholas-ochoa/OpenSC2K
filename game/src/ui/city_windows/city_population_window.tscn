@@ -1,0 +1,94 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/city_windows/city_population_window.gd" id="1_xtqid"]
+[ext_resource type="Script" path="res://src/view/population_window_control.gd" id="2_crc4u"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_jnt00"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sbb6m"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_m7ekg"]
+resource_local_to_scene = true
+
+[node name="PopulationWindow" type="Window"]
+title = "Population"
+size = Vector2i(700, 450)
+visible = false
+transient = true
+min_size = Vector2i(560, 380)
+script = ExtResource("1_xtqid")
+
+[node name="Background" type="PanelContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_jnt00")
+
+[node name="Margin" type="MarginContainer" parent="Background"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Column" type="VBoxContainer" parent="Background/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ChartFrame" type="PanelContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_sbb6m")
+
+[node name="Chart" type="Control" parent="Background/Margin/Column/ChartFrame"]
+custom_minimum_size = Vector2(600, 330)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+script = ExtResource("2_crc4u")
+
+[node name="Modes" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="Population" type="CheckBox" parent="Background/Margin/Column/Modes"]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+button_pressed = true
+button_group = SubResource("ButtonGroup_m7ekg")
+text = "Population"
+
+[node name="Health" type="CheckBox" parent="Background/Margin/Column/Modes"]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+button_group = SubResource("ButtonGroup_m7ekg")
+text = "Health"
+
+[node name="Education" type="CheckBox" parent="Background/Margin/Column/Modes"]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+button_group = SubResource("ButtonGroup_m7ekg")
+text = "Education"

@@ -38,7 +38,7 @@ const ScurkEditorCanvasPanelUi = preload("res://src/ui/scurk/scurk_editor_canvas
 const OriginalAssetsUi = preload("res://src/assets/original_game_assets.gd")
 const ClassicStyleUi = preload("res://src/ui/shared/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_windows/city_graph_window.gd")
-const PopulationWindowUi = preload("res://src/ui/city_windows/city_population_window.gd")
+const PopulationWindowUi = preload("res://src/ui/city_windows/city_population_window.tscn")
 const IndustryWindowUi = preload("res://src/ui/city_windows/city_industry_window.gd")
 const SimNationWindowUi = preload("res://src/ui/city_windows/city_simnation_window.gd")
 const CityMapWindowUi = preload("res://src/ui/city_windows/city_map_window.gd")
@@ -686,7 +686,7 @@ func _test_main_menu() -> void:
 		"Graph Window owns its graph and series controls",
 	)
 	graph_window.free()
-	var population_window := PopulationWindowUi.new()
+	var population_window := PopulationWindowUi.instantiate()
 	population_window._ready()
 	_check(
 		population_window.population_control != null
