@@ -66,7 +66,7 @@ func _run() -> void:
 		CityRotationCommand.apply(facility_city, false)
 		selected_point = Vector2i(255 - selected_point.y, selected_point.x)
 
-	var dialog := CityQueryDialog.new()
+	var dialog := preload("res://src/ui/tools/city_query_dialog.tscn").instantiate() as CityQueryDialog
 	root.add_child(dialog)
 	dialog.show_query("Station", "Station", true, "Station\nOfficers: 42\nAdvanced tile data", "", values)
 	assert(dialog.summary_rows.get_child_count() == 2)

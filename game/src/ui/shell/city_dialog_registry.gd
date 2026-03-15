@@ -8,7 +8,7 @@ const BridgeDialogView = preload("res://src/ui/tools/bridge_selection_dialog.tsc
 const ToolChoiceDialogView = preload("res://src/ui/tools/tool_choice_dialog.tscn")
 const StadiumDialogView = preload("res://src/ui/tools/stadium_team_dialog.tscn")
 const RouteDialogView = preload("res://src/ui/tools/route_confirmation_dialog.gd")
-const QueryDialogView = preload("res://src/ui/tools/city_query_dialog.gd")
+const QueryDialogView = preload("res://src/ui/tools/city_query_dialog.tscn")
 const GraphWindowView = preload("res://src/ui/city_windows/city_graph_window.gd")
 const PopulationWindowView = preload("res://src/ui/city_windows/city_population_window.gd")
 const IndustryWindowView = preload("res://src/ui/city_windows/city_industry_window.gd")
@@ -118,7 +118,7 @@ func _create_tool_dialogs() -> void:
 	)
 	tunnel_dialog.theme = ThemeDB.get_default_theme().duplicate()
 	tunnel_dialog.get_label().add_theme_color_override("font_color", Color.WHITE)
-	query_dialog = QueryDialogView.new()
+	query_dialog = QueryDialogView.instantiate()
 	add_child(query_dialog)
 
 
