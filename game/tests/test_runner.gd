@@ -13785,34 +13785,37 @@ func _test_building_command(reference_root: String) -> void:
 		and utility_document.misc_u32(Water.MISC_TREATMENT_SUFFICIENT) == 0,
 		"Building undo restores the utility phase changes",
 	)
-	_check(
-		utility_document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 50000),
-		"Immediate utility fixture selects the strict threshold",
-	)
-	var threshold_station := Buildings.apply(
-		utility_city,
-		13,
-		0,
-		Vector2i(20, 20),
-		utility_random,
-		utility_process_random,
-	)
-	_check(
-		threshold_station.ok
-		and not threshold_station.immediate_power_refresh
-		and not threshold_station.immediate_water_refresh
-		and utility_city.is_powered(20, 20),
-		"Population 50,000 does not run the strict below-threshold refresh",
-	)
-	_check(
-		Buildings.undo(
+	for population in [49_999, 50_000, 49_999_999, 50_000_000]:
+		var expect_refresh: bool = population < 50_000_000
+
+		_check(
+			utility_document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, population),
+			"Immediate utility fixture selects the strict threshold",
+		)
+		var threshold_station := Buildings.apply(
 			utility_city,
-			threshold_station,
+			13,
+			0,
+			Vector2i(20, 20),
 			utility_random,
 			utility_process_random,
-		).ok,
-		"Threshold building placement can be undone",
-	)
+		)
+		_check(
+			threshold_station.ok
+			and threshold_station.immediate_power_refresh == expect_refresh
+			and threshold_station.immediate_water_refresh == expect_refresh
+			and utility_city.is_powered(20, 20) != expect_refresh,
+			"Building utility refresh at population %d" % population,
+		)
+		_check(
+			Buildings.undo(
+				utility_city,
+				threshold_station,
+				utility_random,
+				utility_process_random,
+			).ok,
+			"Threshold building placement can be undone",
+		)
 
 	var coal := Buildings.apply(city, 3, 2, Vector2i(20, 20), random, process_random)
 	_check(coal.ok, "Coal plant placement succeeds: %s" % coal.error)
@@ -13933,7 +13936,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(city.underground_id(65, 65) == 0x23, "Subway station writes the underground entrance")
 	_check(city.underground_id(64, 65) == 0x02, "Subway station reconnects its adjacent subway")
 	_check(document.misc_u32(0x0fe8) == 2, "Subway station increments the saved subway count")
-	_check(not city.is_piped(65, 65) and city.is_powered(65, 65) and city.is_powerable(65, 65), "Subway station clears only the piped structure flag")
+	_check(not city.is_piped(65, 65) and not city.is_powered(65, 65) and city.is_powerable(65, 65) and subway_station.immediate_power_refresh, "Subway station clears piped and refreshes its isolated power state")
 	_check(Buildings.undo(city, subway_station, random, process_random).ok, "Subway station underground changes can be undone")
 	_check(document.misc_u32(0x0fe8) == 1, "Subway station undo restores the saved subway count")
 
@@ -14060,7 +14063,7 @@ func _test_building_command(reference_root: String) -> void:
 	)
 	_check(nuisance_document.set_misc_i32(0x14, 5000), "Nuisance fixture sets funds")
 	_check(
-		nuisance_document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 50000),
+		nuisance_document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 50_000_000),
 		"Nuisance fixture prevents an immediate utility refresh",
 	)
 	var nuisance_city := CityModel.from_document(nuisance_document)
@@ -14728,24 +14731,27 @@ func _test_hydro_command(reference_root: String) -> void:
 	_check(city.microsim(5).stat_1 == 1 and city.microsim(5).stat_2 == 20, "Hydroelectric placement increments fixed XMIC totals")
 	_check(Hydro.undo(city, command, process_random).ok, "Hydroelectric placement can be undone")
 	_check(city.building_id(20, 20) == 0 and city.funds() == 1000, "Hydroelectric undo restores the tile and funds")
-	_check(
-		document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, 50000),
-		"Hydroelectric fixture sets the strict utility threshold",
-	)
-	var threshold_command := Hydro.apply(
-		city, 3, 3, Vector2i(20, 20), process_random
-	)
-	_check(
-		threshold_command.ok
-		and not threshold_command.immediate_power_refresh
-		and city.is_powerable(20, 20)
-		and not city.is_powered(20, 20),
-		"Population 50,000 does not run the hydroelectric power refresh",
-	)
-	_check(
-		Hydro.undo(city, threshold_command, process_random).ok,
-		"Threshold hydroelectric placement can be undone",
-	)
+	for population in [49_999, 50_000, 49_999_999, 50_000_000]:
+		var expect_refresh: bool = population < 50_000_000
+
+		_check(
+			document.set_misc_u32(Buildings.MISC_NORMAL_POPULATION, population),
+			"Hydroelectric fixture sets the strict utility threshold",
+		)
+		var threshold_command := Hydro.apply(
+			city, 3, 3, Vector2i(20, 20), process_random
+		)
+		_check(
+			threshold_command.ok
+			and threshold_command.immediate_power_refresh == expect_refresh
+			and city.is_powerable(20, 20)
+			and city.is_powered(20, 20) == expect_refresh,
+			"Hydroelectric power refresh at population %d" % population,
+		)
+		_check(
+			Hydro.undo(city, threshold_command, process_random).ok,
+			"Threshold hydroelectric placement can be undone",
+		)
 	var wrong_terrain := Hydro.apply(city, 3, 3, Vector2i(21, 21), process_random)
 	_check(not wrong_terrain.ok and wrong_terrain.error.contains("waterfall"), "Hydroelectric placement requires waterfall terrain")
 

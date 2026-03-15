@@ -90,7 +90,7 @@ static func apply(
 
 	var immediate_power_refresh := false
 
-	if city.document.misc_u32(BuildingCommand.MISC_NORMAL_POPULATION) < 50000:
+	if city.document.misc_u32(BuildingCommand.MISC_NORMAL_POPULATION) < BuildingCommand.IMMEDIATE_UTILITY_POPULATION_LIMIT:
 		var power_result := Power.run(city, process_random)
 
 		if not power_result.ok:

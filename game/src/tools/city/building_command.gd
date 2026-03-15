@@ -8,6 +8,7 @@ const Water = preload("res://src/simulation/infrastructure/water_phase.gd")
 const MISC_FUNDS := 0x0014
 const MISC_ARCOLOGY_POPULATION := 0x1020
 const MISC_NORMAL_POPULATION := 0x102c
+const IMMEDIATE_UTILITY_POPULATION_LIMIT := 50_000_000
 const MISC_TILE_COUNTS := 0x01f0
 const MISC_BUDGETS := 0x077c
 const MISC_SUBWAY_COUNT := 0x0fe8
@@ -437,7 +438,7 @@ static func apply(
 	var immediate_power_refresh := false
 	var immediate_water_refresh := false
 
-	if _read_u32_be(misc, MISC_NORMAL_POPULATION) < 50000:
+	if _read_u32_be(misc, MISC_NORMAL_POPULATION) < IMMEDIATE_UTILITY_POPULATION_LIMIT:
 		var selected_index := city.index_of(selected.x, selected.y)
 
 		if selected_index >= 0 and city.tile_flags[selected_index] & FLAG_POWERABLE:
