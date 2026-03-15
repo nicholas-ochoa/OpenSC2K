@@ -160,12 +160,14 @@ func _test_subway_scenario() -> void:
 		var color := TripReachOverlay.route_color(link, result.limit)
 		if underground:
 			subway_links += 1
-			check(color == TripReachOverlay.UNDERGROUND_COLOR, "Subway links and station transitions use purple")
-		else:
-			check(color == TripReachOverlay.heat_color(float(link.cost) / result.limit), "Surface links retain the trip-cost heatmap")
-	check(subway_links > 0, "Subway fixture has purple underground links")
+		check(color == TripReachOverlay.heat_color(float(link.cost) / result.limit), "Surface and subway links use the same trip-cost heatmap")
+	check(subway_links > 0, "Subway fixture has underground links")
 	var overlay := TripReachOverlay.new()
 	overlay.rebuild(city, result)
+	check("Route: Subway (underground)" in overlay.tile_tooltip(scenario.underground_midpoint),
+		"Underground route tooltip identifies subway travel")
+	check("subway" not in overlay.tile_tooltip(Vector2i(20, 108)).to_lower(),
+		"Surface road tooltip does not claim subway travel")
 	check(overlay.colors.size() * 2 == overlay.segments.size(), "Each drawn line segment has one color")
 	for index in result.links.size():
 		check(overlay.colors[index] == TripReachOverlay.route_color(result.links[index], result.limit),

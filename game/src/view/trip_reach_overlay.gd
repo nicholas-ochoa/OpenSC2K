@@ -1,7 +1,7 @@
 class_name TripReachOverlay
 extends RefCounted
 
-const UNDERGROUND_COLOR := Color("9b59df")
+const ROUTE_BORDER_COLOR := Color(0.12, 0.20, 0.28, 0.55)
 
 var analysis: Dictionary = {}
 var segments := PackedVector2Array()
@@ -12,6 +12,7 @@ var markers := PackedVector2Array()
 var marker_colors := PackedColorArray()
 var destinations := PackedVector2Array()
 var tile_costs: Dictionary = {}
+var tile_modes: Dictionary = {}
 var failed_points := PackedVector2Array()
 var origin := Vector2.ZERO
 var access := Vector2.ZERO
@@ -27,6 +28,7 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 	marker_colors.clear()
 	destinations.clear()
 	tile_costs.clear()
+	tile_modes.clear()
 	failed_points.clear()
 	origin = _center(city, result.origin)
 	access = _center(city, result.get("start", result.origin))
@@ -35,6 +37,7 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 
 	for node: Dictionary in result.get("reachable", []):
 		var key: Vector2i = node.point
+		tile_modes[key] = int(tile_modes.get(key, 0)) | (1 << int(node.mode))
 		if not seen.has(key):
 			seen[key] = _center(city, key, int(node.mode))
 			tile_costs[key] = int(node.cost)
@@ -80,11 +83,12 @@ func draw_on(canvas: Control, scale: float, offset: Vector2) -> void:
 
 	canvas.draw_set_transform(offset, 0.0, Vector2.ONE * scale)
 	if not segments.is_empty():
-		canvas.draw_multiline(segments, Color(0.12, 0.20, 0.28, 0.55), 5.0)
+		canvas.draw_multiline(segments, ROUTE_BORDER_COLOR, 5.0)
 		canvas.draw_multiline_colors(segments, colors, 2.5)
 	if not arrows.is_empty():
 		canvas.draw_multiline_colors(arrows, arrow_colors, 1.5)
 	for i in markers.size():
+		canvas.draw_circle(markers[i], 4.75, ROUTE_BORDER_COLOR)
 		canvas.draw_circle(markers[i], 3.5, marker_colors[i])
 	for point in destinations:
 		_draw_destination(canvas, point, 1.0)
@@ -122,8 +126,6 @@ func _draw_key(canvas: Control) -> void:
 	canvas.draw_string(font, panel.position + Vector2(138, 94), "Destinations", HORIZONTAL_ALIGNMENT_LEFT, width - 150, 14, Color.WHITE)
 	_draw_failure(canvas, panel.position + Vector2(260, 90), 0.8)
 	canvas.draw_string(font, panel.position + Vector2(275, 94), "Trip limit", HORIZONTAL_ALIGNMENT_LEFT, width - 287, 14, Color.WHITE)
-	canvas.draw_line(panel.position + Vector2(355, 90), panel.position + Vector2(373, 90), UNDERGROUND_COLOR, 2.5)
-	canvas.draw_string(font, panel.position + Vector2(380, 94), "Underground", HORIZONTAL_ALIGNMENT_LEFT, width - 392, 14, Color.WHITE)
 	canvas.draw_string(font, panel.position + Vector2(12, 120), "Trip Budget: %d" % analysis.limit, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
 	var status := "Destination reachable" if analysis.reached_destination else "Destination not reachable"
 	var status_width := font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
@@ -140,8 +142,6 @@ func _draw_key(canvas: Control) -> void:
 
 
 static func route_color(link: Dictionary, limit: int) -> Color:
-	if int(link.mode) == TransportTrip.SUBWAY_MODE or int(link.get("from_mode", -1)) == TransportTrip.SUBWAY_MODE:
-		return UNDERGROUND_COLOR
 	return heat_color(float(link.cost) / limit)
 
 
@@ -165,6 +165,10 @@ func tile_tooltip(point: Vector2i) -> String:
 	if point.x < 0:
 		return ""
 	var title := "Trip Query\n"
+	var modes := int(tile_modes.get(point, 0))
+	var subway_bit := 1 << TransportTrip.SUBWAY_MODE
+	if modes & subway_bit:
+		title += "Routes: Surface and subway\n" if modes & ~subway_bit else "Route: Subway (underground)\n"
 	if analysis.get("origin_tiles", {}).has(point):
 		return title + "Origin: tile %d, %d\n%s\nTrip Budget: %d" % [point.x, point.y,
 			"Destination reachable" if analysis.reached_destination else "Destination not reachable", analysis.limit]
