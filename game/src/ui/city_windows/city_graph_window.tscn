@@ -1,0 +1,206 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/city_windows/city_graph_window.gd" id="1_dd4sk"]
+[ext_resource type="Script" path="res://src/view/city_graph_control.gd" id="2_n5puo"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sswbp"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2m62u"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(1, 1, 1, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_881vh"]
+resource_local_to_scene = true
+
+[node name="GraphWindow" type="Window"]
+title = "Graph Window"
+size = Vector2i(860, 560)
+visible = false
+transient = true
+min_size = Vector2i(700, 480)
+script = ExtResource("1_dd4sk")
+
+[node name="Background" type="PanelContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_sswbp")
+
+[node name="Margin" type="MarginContainer" parent="Background"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Column" type="VBoxContainer" parent="Background/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ChartFrame" type="PanelContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_2m62u")
+
+[node name="Chart" type="Control" parent="Background/Margin/Column/ChartFrame"]
+custom_minimum_size = Vector2(620, 330)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+mouse_filter = 2
+script = ExtResource("2_n5puo")
+
+[node name="Controls" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="GridContainer1" type="GridContainer" parent="Background/Margin/Column/Controls"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 2
+columns = 4
+
+[node name="CheckBox1" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "City Size graph (S)"
+button_pressed = true
+text = "City Size"
+
+[node name="CheckBox2" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Residents graph (R)"
+button_pressed = true
+text = "Residents"
+
+[node name="CheckBox3" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Commerce graph (C)"
+button_pressed = true
+text = "Commerce"
+
+[node name="CheckBox4" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Industry graph (I)"
+button_pressed = true
+text = "Industry"
+
+[node name="CheckBox5" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Traffic graph (T)"
+text = "Traffic"
+
+[node name="CheckBox6" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Pollution graph (P)"
+text = "Pollution"
+
+[node name="CheckBox7" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Value graph (V)"
+text = "Value"
+
+[node name="CheckBox8" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Crime graph (X)"
+text = "Crime"
+
+[node name="CheckBox9" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Power % graph (p)"
+text = "Power %"
+
+[node name="CheckBox10" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Water % graph (w)"
+text = "Water %"
+
+[node name="CheckBox11" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Health graph (h)"
+text = "Health"
+
+[node name="CheckBox12" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Education graph (e)"
+text = "Education"
+
+[node name="CheckBox13" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Unemployment graph (u)"
+text = "Unemployment"
+
+[node name="CheckBox14" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "GNP graph (g)"
+text = "GNP"
+
+[node name="CheckBox15" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Nat'n Pop. graph (n)"
+text = "Nat'n Pop."
+
+[node name="CheckBox16" type="CheckBox" parent="Background/Margin/Column/Controls/GridContainer1"]
+custom_minimum_size = Vector2(132, 24)
+layout_mode = 2
+tooltip_text = "Fed Rate graph (%)"
+text = "Fed Rate"
+
+[node name="VBoxContainer1" type="VBoxContainer" parent="Background/Margin/Column/Controls"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Background/Margin/Column/Controls/VBoxContainer1"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
+text = "Time Scale"
+
+[node name="CheckBox1" type="CheckBox" parent="Background/Margin/Column/Controls/VBoxContainer1"]
+layout_mode = 2
+button_pressed = true
+button_group = SubResource("ButtonGroup_881vh")
+text = "1 Year"
+
+[node name="CheckBox2" type="CheckBox" parent="Background/Margin/Column/Controls/VBoxContainer1"]
+layout_mode = 2
+button_group = SubResource("ButtonGroup_881vh")
+text = "10 Years"
+
+[node name="CheckBox3" type="CheckBox" parent="Background/Margin/Column/Controls/VBoxContainer1"]
+layout_mode = 2
+button_group = SubResource("ButtonGroup_881vh")
+text = "100 Yrs"

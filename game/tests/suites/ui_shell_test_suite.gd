@@ -37,7 +37,7 @@ const ScurkEditorDrawingControlsUi = preload("res://src/ui/scurk/scurk_editor_dr
 const ScurkEditorCanvasPanelUi = preload("res://src/ui/scurk/scurk_editor_canvas_panel.gd")
 const OriginalAssetsUi = preload("res://src/assets/original_game_assets.gd")
 const ClassicStyleUi = preload("res://src/ui/shared/classic_ui_style.gd")
-const GraphWindowUi = preload("res://src/ui/city_windows/city_graph_window.gd")
+const GraphWindowUi = preload("res://src/ui/city_windows/city_graph_window.tscn")
 const PopulationWindowUi = preload("res://src/ui/city_windows/city_population_window.tscn")
 const IndustryWindowUi = preload("res://src/ui/city_windows/city_industry_window.tscn")
 const SimNationWindowUi = preload("res://src/ui/city_windows/city_simnation_window.gd")
@@ -678,7 +678,7 @@ func _test_main_menu() -> void:
 		"New City terrain dialog owns its input and preview controls",
 	)
 	new_city_dialog.free()
-	var graph_window := GraphWindowUi.new()
+	var graph_window := GraphWindowUi.instantiate()
 	graph_window._ready()
 	_check(
 		graph_window.graph_control != null

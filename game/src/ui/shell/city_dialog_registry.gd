@@ -9,7 +9,7 @@ const ToolChoiceDialogView = preload("res://src/ui/tools/tool_choice_dialog.tscn
 const StadiumDialogView = preload("res://src/ui/tools/stadium_team_dialog.tscn")
 const RouteDialogView = preload("res://src/ui/tools/route_confirmation_dialog.gd")
 const QueryDialogView = preload("res://src/ui/tools/city_query_dialog.tscn")
-const GraphWindowView = preload("res://src/ui/city_windows/city_graph_window.gd")
+const GraphWindowView = preload("res://src/ui/city_windows/city_graph_window.tscn")
 const PopulationWindowView = preload("res://src/ui/city_windows/city_population_window.tscn")
 const IndustryWindowView = preload("res://src/ui/city_windows/city_industry_window.tscn")
 const SimNationWindowView = preload("res://src/ui/city_windows/city_simnation_window.gd")
@@ -123,7 +123,7 @@ func _create_tool_dialogs() -> void:
 
 
 func _create_information_windows() -> void:
-	graph_window = GraphWindowView.new()
+	graph_window = GraphWindowView.instantiate()
 	add_child(graph_window)
 	population_window = PopulationWindowView.instantiate()
 	add_child(population_window)
