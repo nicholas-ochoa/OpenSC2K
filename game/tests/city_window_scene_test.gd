@@ -23,5 +23,11 @@ func _run() -> void:
 	assert(not first.visible)
 	first.free()
 	second.free()
+	var industry := preload("res://src/ui/city_windows/city_industry_window.tscn").instantiate() as CityIndustryWindow
+	root.add_child(industry)
+	industry.mode_buttons[1].pressed.emit()
+	assert(industry.industry_control.mode == IndustryWindowControl.Mode.TAX_RATES)
+	assert(industry.industry_control.owner == industry)
+	industry.free()
 	print("PASS: City window scene controls, independent selections and close")
 	quit()

@@ -1,0 +1,95 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/city_windows/city_industry_window.gd" id="1_72cth"]
+[ext_resource type="Script" path="res://src/view/industry_window_control.gd" id="2_vfftn"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_1rijf"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tri4h"]
+content_margin_left = 5.0
+content_margin_top = 3.0
+content_margin_right = 5.0
+content_margin_bottom = 3.0
+bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_qa0db"]
+resource_local_to_scene = true
+
+[node name="IndustryWindow" type="Window"]
+title = "City Industry"
+size = Vector2i(700, 450)
+visible = false
+transient = true
+min_size = Vector2i(600, 390)
+script = ExtResource("1_72cth")
+
+[node name="Background" type="PanelContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_1rijf")
+
+[node name="Margin" type="MarginContainer" parent="Background"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Column" type="VBoxContainer" parent="Background/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="ChartFrame" type="PanelContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_styles/panel = SubResource("StyleBoxFlat_tri4h")
+
+[node name="Chart" type="Control" parent="Background/Margin/Column/ChartFrame"]
+texture_filter = 1
+custom_minimum_size = Vector2(600, 340)
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+tooltip_text = "In Tax Rates view, drag a bar to set its surcharge. Hold Alt to set all industries."
+script = ExtResource("2_vfftn")
+
+[node name="Controls" type="HBoxContainer" parent="Background/Margin/Column"]
+layout_mode = 2
+theme_override_constants/separation = 0
+alignment = 1
+
+[node name="CheckBox1" type="CheckBox" parent="Background/Margin/Column/Controls"]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+button_pressed = true
+button_group = SubResource("ButtonGroup_qa0db")
+text = "Ratios"
+
+[node name="CheckBox2" type="CheckBox" parent="Background/Margin/Column/Controls"]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+button_group = SubResource("ButtonGroup_qa0db")
+text = "Tax Rates"
+
+[node name="CheckBox3" type="CheckBox" parent="Background/Margin/Column/Controls"]
+custom_minimum_size = Vector2(120, 28)
+layout_mode = 2
+button_group = SubResource("ButtonGroup_qa0db")
+text = "Demand"

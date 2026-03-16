@@ -11,7 +11,7 @@ const RouteDialogView = preload("res://src/ui/tools/route_confirmation_dialog.gd
 const QueryDialogView = preload("res://src/ui/tools/city_query_dialog.tscn")
 const GraphWindowView = preload("res://src/ui/city_windows/city_graph_window.gd")
 const PopulationWindowView = preload("res://src/ui/city_windows/city_population_window.tscn")
-const IndustryWindowView = preload("res://src/ui/city_windows/city_industry_window.gd")
+const IndustryWindowView = preload("res://src/ui/city_windows/city_industry_window.tscn")
 const SimNationWindowView = preload("res://src/ui/city_windows/city_simnation_window.gd")
 const CityMapWindowView = preload("res://src/ui/city_windows/city_map_window.gd")
 const OrdinanceWindowView = preload("res://src/ui/city_windows/city_ordinance_window.gd")
@@ -127,7 +127,7 @@ func _create_information_windows() -> void:
 	add_child(graph_window)
 	population_window = PopulationWindowView.instantiate()
 	add_child(population_window)
-	industry_window = IndustryWindowView.new()
+	industry_window = IndustryWindowView.instantiate()
 	add_child(industry_window)
 	var industry_names := PackedStringArray()
 
