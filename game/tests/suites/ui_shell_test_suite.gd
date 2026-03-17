@@ -40,7 +40,7 @@ const ClassicStyleUi = preload("res://src/ui/shared/classic_ui_style.gd")
 const GraphWindowUi = preload("res://src/ui/city_windows/city_graph_window.tscn")
 const PopulationWindowUi = preload("res://src/ui/city_windows/city_population_window.tscn")
 const IndustryWindowUi = preload("res://src/ui/city_windows/city_industry_window.tscn")
-const SimNationWindowUi = preload("res://src/ui/city_windows/city_simnation_window.gd")
+const SimNationWindowUi = preload("res://src/ui/city_windows/city_simnation_window.tscn")
 const CityMapWindowUi = preload("res://src/ui/city_windows/city_map_window.gd")
 const OrdinanceWindowUi = preload("res://src/ui/city_windows/city_ordinance_window.gd")
 const NewCityTerrainDialogUi = preload("res://src/ui/startup/new_city_terrain_dialog.gd")
@@ -702,7 +702,7 @@ func _test_main_menu() -> void:
 		"City Industry window owns its chart and mode controls",
 	)
 	industry_window.free()
-	var simnation_window := SimNationWindowUi.new()
+	var simnation_window := SimNationWindowUi.instantiate()
 	simnation_window._ready()
 	_check(
 		simnation_window.simnation_control != null,

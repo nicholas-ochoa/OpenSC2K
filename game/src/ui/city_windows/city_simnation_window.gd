@@ -8,18 +8,8 @@ var neighbor_name_strings: Dictionary = {}
 
 
 func _ready() -> void:
-	name = "SimNationWindow"
-	title = "SimNation"
-	size = Vector2i(612, 480)
-	min_size = Vector2i(408, 320)
-	transient = true
-	exclusive = false
-	visible = false
 	close_requested.connect(hide)
-
-	simnation_control = SimNationView.new()
-	simnation_control.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(simnation_control)
+	simnation_control = get_node("View")
 
 
 func set_resources(

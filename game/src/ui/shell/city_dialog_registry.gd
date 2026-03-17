@@ -12,7 +12,7 @@ const QueryDialogView = preload("res://src/ui/tools/city_query_dialog.tscn")
 const GraphWindowView = preload("res://src/ui/city_windows/city_graph_window.tscn")
 const PopulationWindowView = preload("res://src/ui/city_windows/city_population_window.tscn")
 const IndustryWindowView = preload("res://src/ui/city_windows/city_industry_window.tscn")
-const SimNationWindowView = preload("res://src/ui/city_windows/city_simnation_window.gd")
+const SimNationWindowView = preload("res://src/ui/city_windows/city_simnation_window.tscn")
 const CityMapWindowView = preload("res://src/ui/city_windows/city_map_window.gd")
 const OrdinanceWindowView = preload("res://src/ui/city_windows/city_ordinance_window.gd")
 const AnalysisDialogView = preload("res://src/ui/city_windows/city_analysis_dialog.gd")
@@ -138,7 +138,7 @@ func _create_information_windows() -> void:
 		)))
 
 	industry_window.set_resources(industry_names, original_assets.industry_icons)
-	simnation_window = SimNationWindowView.new()
+	simnation_window = SimNationWindowView.instantiate()
 	add_child(simnation_window)
 	simnation_window.set_resources(
 		original_assets.simnation_sprites,

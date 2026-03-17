@@ -1,0 +1,22 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/city_windows/city_simnation_window.gd" id="1_bhlrl"]
+[ext_resource type="Script" path="res://src/view/simnation_window_control.gd" id="2_klvug"]
+
+[node name="SimNationWindow" type="Window"]
+title = "SimNation"
+size = Vector2i(612, 480)
+visible = false
+transient = true
+min_size = Vector2i(408, 320)
+script = ExtResource("1_bhlrl")
+
+[node name="View" type="Control" parent="."]
+texture_filter = 1
+custom_minimum_size = Vector2(408, 320)
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("2_klvug")
