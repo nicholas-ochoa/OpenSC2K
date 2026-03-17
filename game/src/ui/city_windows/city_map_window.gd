@@ -11,33 +11,10 @@ var map_control: CityMapWindowControl
 
 
 func _ready() -> void:
-	name = "CityMapWindow"
-	title = "City Map"
-	size = Vector2i(480, 680)
-	min_size = Vector2i(420, 620)
-	transient = true
-	exclusive = false
-	visible = false
 	close_requested.connect(hide)
-
-	var background := PanelContainer.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.add_theme_stylebox_override(
-		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("808080"), 2)
-	)
-	add_child(background)
-	var margin := MarginContainer.new()
-
-	for side in ["left", "top", "right", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-
-	background.add_child(margin)
-	map_control = CityMapView.new()
-	map_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	map_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	map_control = get_node("Background/Margin/Map")
 	map_control.mode_changed.connect(mode_changed.emit)
 	map_control.center_requested.connect(center_requested.emit)
-	margin.add_child(map_control)
 
 
 func set_resources(icon_strip: Image, strings: Dictionary) -> void:

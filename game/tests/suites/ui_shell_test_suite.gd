@@ -41,7 +41,7 @@ const GraphWindowUi = preload("res://src/ui/city_windows/city_graph_window.tscn"
 const PopulationWindowUi = preload("res://src/ui/city_windows/city_population_window.tscn")
 const IndustryWindowUi = preload("res://src/ui/city_windows/city_industry_window.tscn")
 const SimNationWindowUi = preload("res://src/ui/city_windows/city_simnation_window.tscn")
-const CityMapWindowUi = preload("res://src/ui/city_windows/city_map_window.gd")
+const CityMapWindowUi = preload("res://src/ui/city_windows/city_map_window.tscn")
 const OrdinanceWindowUi = preload("res://src/ui/city_windows/city_ordinance_window.gd")
 const NewCityTerrainDialogUi = preload("res://src/ui/startup/new_city_terrain_dialog.gd")
 const BudgetDialogUi = preload("res://src/ui/city_windows/budget_dialog.gd")
@@ -709,7 +709,7 @@ func _test_main_menu() -> void:
 		"SimNation window owns its neighbor view",
 	)
 	simnation_window.free()
-	var city_map_window := CityMapWindowUi.new()
+	var city_map_window := CityMapWindowUi.instantiate()
 	city_map_window._ready()
 	_check(
 		city_map_window.map_control != null,

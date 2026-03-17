@@ -13,7 +13,7 @@ const GraphWindowView = preload("res://src/ui/city_windows/city_graph_window.tsc
 const PopulationWindowView = preload("res://src/ui/city_windows/city_population_window.tscn")
 const IndustryWindowView = preload("res://src/ui/city_windows/city_industry_window.tscn")
 const SimNationWindowView = preload("res://src/ui/city_windows/city_simnation_window.tscn")
-const CityMapWindowView = preload("res://src/ui/city_windows/city_map_window.gd")
+const CityMapWindowView = preload("res://src/ui/city_windows/city_map_window.tscn")
 const OrdinanceWindowView = preload("res://src/ui/city_windows/city_ordinance_window.gd")
 const AnalysisDialogView = preload("res://src/ui/city_windows/city_analysis_dialog.gd")
 const NewspaperDialogView = preload("res://src/ui/newspaper/newspaper_dialog.gd")
@@ -148,7 +148,7 @@ func _create_information_windows() -> void:
 		)),
 		original_assets.strings,
 	)
-	city_map_window = CityMapWindowView.new()
+	city_map_window = CityMapWindowView.instantiate()
 	add_child(city_map_window)
 	city_map_window.set_resources(
 		original_assets.city_map_icons, original_assets.strings
