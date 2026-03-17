@@ -1,7 +1,7 @@
 class_name TripReachOverlay
 extends RefCounted
 
-const ROUTE_BORDER_COLOR := Color(0.12, 0.20, 0.28, 0.55)
+const ROUTE_BORDER_COLOR := Color(0.12, 0.20, 0.28, 0.75)
 
 var analysis: Dictionary = {}
 var segments := PackedVector2Array()
@@ -44,20 +44,28 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 			markers.append(_center(city, key, int(node.mode)))
 			marker_colors.append(heat_color(float(node.cost) / limit))
 
+	var arrow_links := {}
 	for link: Dictionary in result.get("links", []):
-		var a := _center(city, link.from, int(link.mode))
+		var from_mode := int(link.get("from_mode", link.mode))
+		var a := _center(city, link.from, from_mode)
 		var b := _center(city, link.to, int(link.mode))
 		var color := route_color(link, limit)
 		segments.append_array(PackedVector2Array([a, b]))
 		colors.append(color)
 
-		if int(link.mode) in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
+		if int(link.mode) in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE] and from_mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
+			var arrow_key := Vector4i(link.from.x, link.from.y, link.to.x, link.to.y)
+			if arrow_links.has(arrow_key):
+				continue
+			arrow_links[arrow_key] = true
 			var direction := (b - a).normalized()
 			var normal := Vector2(-direction.y, direction.x)
-			var tip := a.lerp(b, 0.7)
-			arrows.append_array(PackedVector2Array([tip - direction * 4 + normal * 2,
-				tip, tip, tip - direction * 4 - normal * 2]))
-			arrow_colors.append_array(PackedColorArray([color, color]))
+			var middle := a.lerp(b, 0.5)
+			var tip := middle + direction * 2
+			var tail := middle - direction * 2
+			arrows.append_array(PackedVector2Array([tail + normal * 2.5,
+				tip, tip, tail - normal * 2.5]))
+			arrow_colors.append_array(PackedColorArray([Color.WHITE, Color.WHITE]))
 
 	var destination_sites := {}
 	for point: Vector2i in result.get("destinations", {}):
@@ -86,6 +94,7 @@ func draw_on(canvas: Control, scale: float, offset: Vector2, underground := fals
 		canvas.draw_multiline(segments, ROUTE_BORDER_COLOR, 5.0)
 		canvas.draw_multiline_colors(segments, colors, 2.5)
 	if not arrows.is_empty():
+		canvas.draw_multiline(arrows, Color("243849"), 3.5)
 		canvas.draw_multiline_colors(arrows, arrow_colors, 1.5)
 	for i in markers.size():
 		canvas.draw_circle(markers[i], 4.75, ROUTE_BORDER_COLOR)
@@ -156,7 +165,11 @@ static func _center(city: CityState, point: Vector2i, mode := -1) -> Vector2:
 	var center := Vector2.ZERO
 	for corner in CityIsometricRenderer.terrain_surface_polygon(city, point.x, point.y):
 		center += corner / 4.0
-	if mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
+	var tile := city.building_id(point.x, point.y)
+	if tile >= 0x5d and tile <= 0x60:
+		# all travel modes meet at the same point halfway up the ramp
+		center.y -= CityIsometricRenderer.ALTITUDE_STEP * 0.5
+	elif mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
 		center.y -= CityIsometricRenderer.ALTITUDE_STEP
 	return center
 
@@ -194,21 +207,21 @@ static func _draw_origin(canvas: Control, point: Vector2, scale: float) -> void:
 		outline.append(center + Vector2(cos(angle), sin(angle)) * 8 * scale)
 	outline.append(point)
 	canvas.draw_colored_polygon(outline, fill)
-	canvas.draw_polyline(outline, edge, 1.5 * scale, true)
+	canvas.draw_polyline(outline, edge, 2 * scale, false)
 	canvas.draw_circle(center, 3 * scale, Color.WHITE)
 
 
 static func _draw_destination(canvas: Control, point: Vector2, scale: float) -> void:
 	canvas.draw_circle(point, 8 * scale, Color("249957"))
-	canvas.draw_arc(point, 8 * scale, 0, TAU, 24, Color("145c35"), 1.2 * scale, true)
+	canvas.draw_arc(point, 8 * scale, 0, TAU, 48, Color("145c35"), 2 * scale, false)
 	canvas.draw_polyline(PackedVector2Array([point + Vector2(-4, 0) * scale,
 		point + Vector2(-1, 3) * scale, point + Vector2(4, -3) * scale]),
-		Color.WHITE, 2 * scale, true)
+		Color.WHITE, 2 * scale, false)
 
 
 static func _draw_failure(canvas: Control, point: Vector2, scale: float) -> void:
 	var cross := PackedVector2Array([point + Vector2(-5, -5) * scale,
 		point + Vector2(5, 5) * scale, point + Vector2(5, -5) * scale,
 		point + Vector2(-5, 5) * scale])
-	canvas.draw_multiline(cross, Color(0.16, 0.22, 0.28, 0.75), 4 * scale, true)
-	canvas.draw_multiline(cross, Color("ff5959"), 2.5 * scale, true)
+	canvas.draw_multiline(cross, Color(0.16, 0.22, 0.28), 4 * scale, false)
+	canvas.draw_multiline(cross, Color("ff5959"), 2 * scale, false)

@@ -139,6 +139,22 @@ func _test_scenarios() -> void:
 			modes[node.mode] = true
 		check(modes.has(TransportTrip.HIGHWAY_MODE) == (variant > 0), "Scenario explores highway when present")
 		check(modes.has(TransportTrip.RAIL_MODE) == (variant == 2), "Scenario explores rail when stations are present")
+		var overlay := TripReachOverlay.new()
+		overlay.rebuild(city, result)
+		var ramp_points := {}
+		for i in result.links.size():
+			var link: Dictionary = result.links[i]
+			for end in 2:
+				var point: Vector2i = link.from if end == 0 else link.to
+				if city.building_id(point.x, point.y) not in range(0x5d, 0x61):
+					continue
+				var drawn: Vector2 = overlay.segments[i * 2 + end]
+				if ramp_points.has(point):
+					check(drawn.is_equal_approx(ramp_points[point]), "All links meet at one ramp endpoint")
+				ramp_points[point] = drawn
+		check(not ramp_points.is_empty() == (variant > 0), "Ramp continuity checks cover highway scenarios")
+		check(overlay.arrow_colors.size() * 2 == overlay.arrows.size(), "Arrow segments retain one color per segment")
+
 
 
 func _test_subway_scenario() -> void:
