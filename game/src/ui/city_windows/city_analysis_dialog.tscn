@@ -1,0 +1,15 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/city_windows/city_analysis_dialog.gd" id="1_mmtav"]
+
+[node name="CityAnalysisDialog" type="AcceptDialog"]
+title = "City Analysis"
+size = Vector2i(600, 480)
+min_size = Vector2i(600, 480)
+script = ExtResource("1_mmtav")
+
+[node name="Table" type="Tree" parent="."]
+custom_minimum_size = Vector2(540, 360)
+columns = 3
+column_titles_visible = true
+hide_root = true

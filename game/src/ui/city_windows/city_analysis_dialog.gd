@@ -5,15 +5,8 @@ var table: Tree
 
 
 func _ready() -> void:
-	title = "City Analysis"
-	min_size = Vector2i(600, 480)
+	table = get_node("Table")
 	get_label().visible = false
-
-	table = Tree.new()
-	table.custom_minimum_size = Vector2i(540, 360)
-	table.columns = 3
-	table.column_titles_visible = true
-	table.hide_root = true
 	table.set_column_title(0, "LAND USE")
 	table.set_column_title(1, "ACRES")
 	table.set_column_title(2, "% of CITY")
@@ -22,9 +15,6 @@ func _ready() -> void:
 	table.set_column_expand(2, false)
 	table.set_column_custom_minimum_width(1, 100)
 	table.set_column_custom_minimum_width(2, 100)
-	var content := get_label().get_parent()
-	content.add_child(table)
-	content.move_child(table, 0)
 
 
 func set_categories(categories: Array) -> void:

@@ -11,7 +11,7 @@ const MainMenu = preload("res://src/ui/startup/main_menu_control.gd")
 const SettingsDialogUi = preload("res://src/ui/settings/app_settings_dialog.gd")
 const SettingsStoreUi = preload("res://src/ui/settings/app_settings_store.gd")
 const ScenarioIntroDialogUi = preload("res://src/ui/startup/scenario_intro_dialog.tscn")
-const CityAnalysisDialogUi = preload("res://src/ui/city_windows/city_analysis_dialog.gd")
+const CityAnalysisDialogUi = preload("res://src/ui/city_windows/city_analysis_dialog.tscn")
 const LibraryRuminateWindowsUi = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 const CitySignDialogUi = preload("res://src/ui/tools/city_sign_dialog.tscn")
 const BridgeSelectionDialogUi = preload("res://src/ui/tools/bridge_selection_dialog.tscn")
@@ -226,7 +226,7 @@ func _test_main_menu() -> void:
 		"Scenario dialog owns its picture and normalized briefing text",
 	)
 	scenario_dialog.free()
-	var analysis_dialog := CityAnalysisDialogUi.new()
+	var analysis_dialog := CityAnalysisDialogUi.instantiate() as CityAnalysisDialog
 	analysis_dialog._ready()
 	analysis_dialog.set_categories([
 		{"name": "Roads", "acres": 12, "percent": 34},
