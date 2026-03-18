@@ -12,7 +12,7 @@ var map_control: CityMapWindowControl
 
 func _ready() -> void:
 	close_requested.connect(hide)
-	map_control = get_node("Background/Margin/Map")
+	map_control = get_node("Background/Margin/CityMapWindowControl")
 	map_control.mode_changed.connect(mode_changed.emit)
 	map_control.center_requested.connect(center_requested.emit)
 
