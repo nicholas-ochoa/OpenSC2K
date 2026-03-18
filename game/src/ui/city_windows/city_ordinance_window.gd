@@ -11,8 +11,7 @@ var ordinance_control: OrdinanceWindowControl
 
 
 func _ready() -> void:
-	name = "OrdinanceWindow"
-	title = "Ordinances"
+	close_requested.connect(hide)
 	theme = ThemeDB.get_default_theme().duplicate()
 	theme.set_color("font_color", "Label", Color.WHITE)
 	theme.set_color("font_uneditable_color", "LineEdit", Color.WHITE)
@@ -20,32 +19,10 @@ func _ready() -> void:
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
 		theme.set_color(state, "CheckBox", Color.WHITE)
 
-	size = Vector2i(800, 640)
-	min_size = Vector2i(720, 580)
-	transient = true
-	exclusive = true
-	visible = false
-	close_requested.connect(hide)
-
-	var background := PanelContainer.new()
-	background.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	background.add_theme_stylebox_override(
-		"panel", ClassicStyle.create_box(Color("303030"), Color("b0b0b0"), 2)
-	)
-	add_child(background)
-	var margin := MarginContainer.new()
-
-	for side in ["left", "top", "right", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-
-	background.add_child(margin)
-	ordinance_control = OrdinanceView.new()
-	ordinance_control.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	ordinance_control.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	ordinance_control = get_node("Background/Margin/OrdinanceWindowControl")
 	ordinance_control.ordinances_changed.connect(ordinances_changed.emit)
 	ordinance_control.update_failed.connect(update_failed.emit)
 	ordinance_control.close_requested.connect(hide)
-	margin.add_child(ordinance_control)
 
 
 func open_city(value: CityState) -> Dictionary:

@@ -42,7 +42,7 @@ const PopulationWindowUi = preload("res://src/ui/city_windows/city_population_wi
 const IndustryWindowUi = preload("res://src/ui/city_windows/city_industry_window.tscn")
 const SimNationWindowUi = preload("res://src/ui/city_windows/city_simnation_window.tscn")
 const CityMapWindowUi = preload("res://src/ui/city_windows/city_map_window.tscn")
-const OrdinanceWindowUi = preload("res://src/ui/city_windows/city_ordinance_window.gd")
+const OrdinanceWindowUi = preload("res://src/ui/city_windows/city_ordinance_window.tscn")
 const NewCityTerrainDialogUi = preload("res://src/ui/startup/new_city_terrain_dialog.gd")
 const BudgetDialogUi = preload("res://src/ui/city_windows/budget_dialog.gd")
 const MainControl = preload("res://src/main.gd")
@@ -716,7 +716,7 @@ func _test_main_menu() -> void:
 		"City Map window owns its map control",
 	)
 	city_map_window.free()
-	var ordinance_window := OrdinanceWindowUi.new()
+	var ordinance_window := OrdinanceWindowUi.instantiate()
 	ordinance_window._ready()
 	_check(
 		ordinance_window.ordinance_control != null,
