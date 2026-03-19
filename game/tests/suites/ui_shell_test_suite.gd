@@ -44,7 +44,7 @@ const SimNationWindowUi = preload("res://src/ui/city_windows/city_simnation_wind
 const CityMapWindowUi = preload("res://src/ui/city_windows/city_map_window.tscn")
 const OrdinanceWindowUi = preload("res://src/ui/city_windows/city_ordinance_window.tscn")
 const NewCityTerrainDialogUi = preload("res://src/ui/startup/new_city_terrain_dialog.gd")
-const BudgetDialogUi = preload("res://src/ui/city_windows/budget_dialog.gd")
+const BudgetDialogUi = preload("res://src/ui/city_windows/budget_dialog.tscn")
 const MainControl = preload("res://src/main.gd")
 
 var check_callback: Callable
@@ -750,7 +750,7 @@ func _test_main_menu() -> void:
 
 
 func _test_budget_dialog() -> void:
-	var dialog := BudgetDialogUi.new()
+	var dialog := BudgetDialogUi.instantiate() as BudgetDialog
 	dialog._ready()
 	dialog.set_bond_state(2, 15000, 27500, 3)
 	_check(

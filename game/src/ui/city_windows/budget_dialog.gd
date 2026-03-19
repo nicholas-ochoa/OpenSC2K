@@ -42,53 +42,26 @@ var pending_bond_action := ""
 func _ready() -> void:
 	theme = theme.duplicate() if theme != null else ThemeDB.get_default_theme().duplicate()
 	theme.set_color("font_color", "Label", Color.WHITE)
-	title = "Budget"
-	min_size = Vector2i(720, 560)
-	get_ok_button().text = "Apply"
-	confirmed.connect(func() -> void:
-		apply_requested.emit())
-	canceled.connect(func() -> void:
-		cancel_requested.emit())
-	var budget_scroll := MarginContainer.new()
-	budget_scroll.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	budget_scroll.offset_left = 16
-	budget_scroll.offset_top = 48
-	budget_scroll.offset_right = -16
-	budget_scroll.offset_bottom = -58
-	add_child(budget_scroll)
-	var budget_rows := VBoxContainer.new()
-	budget_rows.custom_minimum_size = Vector2(660, 0)
-	budget_rows.add_theme_constant_override("separation", 6)
-	budget_scroll.add_child(budget_rows)
-	notice_label = Label.new()
-	notice_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	notice_label.custom_minimum_size = Vector2(640, 42)
-	budget_rows.add_child(notice_label)
-	auto_budget_check = CheckBox.new()
+	confirmed.connect(apply_requested.emit)
+	canceled.connect(cancel_requested.emit)
+	notice_label = get_node("Margin/Content/Notice")
+	auto_budget_check = get_node("Margin/Content/AutoBudget")
+	bond_summary_label = get_node("Margin/Content/Bonds/Summary")
+	issue_bond_button = get_node("Margin/Content/Bonds/Issue")
+	repay_bond_button = get_node("Margin/Content/Bonds/Repay")
+	bond_dialog = get_node("BondConfirmation")
 	auto_budget_check.theme = ThemeDB.get_default_theme().duplicate()
 
-	for state in ["normal", "hover", "pressed", "hover_pressed", "disabled"]:
-		auto_budget_check.add_theme_stylebox_override(state, StyleBoxEmpty.new())
-		auto_budget_check.add_theme_color_override("font_" + ("color" if state == "normal" else state + "_color"), Color.WHITE)
+	for column in $Margin/Content/Columns.get_children():
+		for row in column.get_children():
+			var control := row.get_node("SpinBox1") as SpinBox
+			control.get_line_edit().tooltip_text = control.tooltip_text
+			controls.append(control)
 
-	auto_budget_check.text = "Use the same funding automatically next year"
-	budget_rows.add_child(auto_budget_check)
-	var columns := HBoxContainer.new()
-	columns.add_theme_constant_override("separation", 24)
-	budget_rows.add_child(columns)
-	var left := VBoxContainer.new()
-	var right := VBoxContainer.new()
-
-	for column in [left, right]:
-		column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-		column.add_theme_constant_override("separation", 5)
-		columns.add_child(column)
-
-	for budget_id in BUDGET_NAMES.size():
-		_add_budget_row(left if budget_id < 8 else right, budget_id)
-
-	_add_bond_controls(budget_rows)
-	_build_bond_dialog()
+	issue_bond_button.pressed.connect(issue_bond_requested.emit)
+	repay_bond_button.pressed.connect(repay_bond_requested.emit)
+	bond_dialog.confirmed.connect(_resolve_bond_confirmation.bind(true))
+	bond_dialog.canceled.connect(_resolve_bond_confirmation.bind(false))
 
 
 func open_budget(values: PackedInt32Array, annual: bool, auto_budget: bool) -> void:
@@ -171,77 +144,6 @@ func reset_dialogs() -> void:
 
 func bond_confirmation_visible() -> bool:
 	return bond_dialog != null and bond_dialog.visible
-
-
-func _add_budget_row(rows: VBoxContainer, budget_id: int) -> void:
-	var row := HBoxContainer.new()
-	var row_label := Label.new()
-	row_label.text = BUDGET_NAMES[budget_id]
-	row_label.custom_minimum_size = Vector2(150, 0)
-	row_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	row.add_child(row_label)
-	var control := SpinBox.new()
-	control.custom_minimum_size = Vector2(145, 30)
-	control.rounded = true
-	control.step = 1
-	control.min_value = -2147483648
-	control.max_value = 2147483647
-
-	if budget_id <= Budget.BUDGET_INDUSTRIAL:
-		control.min_value = 0
-		control.max_value = 22
-		control.suffix = "% tax"
-	elif budget_id >= Budget.BUDGET_POLICE:
-		control.min_value = 0
-		control.max_value = 100
-		control.suffix = "% funded"
-		var effect := "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution."
-
-		if budget_id >= Budget.BUDGET_ROAD:
-			effect = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded."
-
-		control.tooltip_text = effect + " Lower funding reduces annual spending."
-		control.get_line_edit().tooltip_text = control.tooltip_text
-	else:
-		control.editable = false
-
-	if budget_id == Budget.BUDGET_BONDS:
-		control.visible = false
-
-	row.add_child(control)
-	controls.append(control)
-	rows.add_child(row)
-
-
-func _add_bond_controls(rows: VBoxContainer) -> void:
-	var bond_controls := HBoxContainer.new()
-	bond_controls.add_theme_constant_override("separation", 8)
-	bond_summary_label = Label.new()
-	bond_summary_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	bond_controls.add_child(bond_summary_label)
-	issue_bond_button = Button.new()
-	issue_bond_button.text = "Issue $10K Bond"
-	issue_bond_button.pressed.connect(func() -> void:
-		issue_bond_requested.emit())
-	bond_controls.add_child(issue_bond_button)
-	repay_bond_button = Button.new()
-	repay_bond_button.text = "Repay $10K Bond"
-	repay_bond_button.pressed.connect(func() -> void:
-		repay_bond_requested.emit())
-	bond_controls.add_child(repay_bond_button)
-	rows.add_child(bond_controls)
-
-
-func _build_bond_dialog() -> void:
-	bond_dialog = ConfirmationDialog.new()
-	bond_dialog.title = "Bond"
-	bond_dialog.min_size = Vector2i(500, 210)
-	bond_dialog.exclusive = true
-	bond_dialog.get_ok_button().text = "Yes"
-	bond_dialog.get_cancel_button().text = "No"
-	bond_dialog.confirmed.connect(_resolve_bond_confirmation.bind(true))
-	bond_dialog.canceled.connect(_resolve_bond_confirmation.bind(false))
-	add_child(bond_dialog)
 
 
 func _resolve_bond_confirmation(confirmed_value: bool) -> void:

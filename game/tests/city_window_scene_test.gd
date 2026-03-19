@@ -43,5 +43,11 @@ func _run() -> void:
 	root.add_child(city_map)
 	assert(city_map.map_control != null and city_map.map_control.owner == city_map)
 	city_map.free()
+	var budget := preload("res://src/ui/city_windows/budget_dialog.tscn").instantiate() as BudgetDialog
+	root.add_child(budget)
+	assert(budget.controls.size() == 16 and budget.controls[0].owner == budget)
+	assert(budget.get_ok_button().text == "Apply")
+	assert(budget.bond_dialog.get_ok_button().text == "Yes" and budget.bond_dialog.get_cancel_button().text == "No")
+	budget.free()
 	print("PASS: City window scene controls, independent selections and close")
 	quit()

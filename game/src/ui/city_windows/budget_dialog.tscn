@@ -1,0 +1,349 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/city_windows/budget_dialog.gd" id="1_il4yx"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yl3mj"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_27qxg"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_vnhmf"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_bwutx"]
+
+[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_83738"]
+
+[node name="BudgetDialog" type="ConfirmationDialog"]
+title = "Budget"
+ok_button_text = "Apply"
+size = Vector2i(720, 560)
+min_size = Vector2i(720, 560)
+script = ExtResource("1_il4yx")
+
+[node name="Margin" type="MarginContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 16.0
+offset_top = 48.0
+offset_right = -16.0
+offset_bottom = -58.0
+
+[node name="Content" type="VBoxContainer" parent="Margin"]
+custom_minimum_size = Vector2(660, 0)
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Notice" type="Label" parent="Margin/Content"]
+custom_minimum_size = Vector2(640, 42)
+layout_mode = 2
+autowrap_mode = 3
+
+[node name="AutoBudget" type="CheckBox" parent="Margin/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(1, 1, 1, 1)
+theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
+theme_override_colors/font_hover_pressed_color = Color(1, 1, 1, 1)
+theme_override_colors/font_disabled_color = Color(1, 1, 1, 1)
+theme_override_styles/normal = SubResource("StyleBoxEmpty_yl3mj")
+theme_override_styles/pressed = SubResource("StyleBoxEmpty_27qxg")
+theme_override_styles/hover = SubResource("StyleBoxEmpty_vnhmf")
+theme_override_styles/hover_pressed = SubResource("StyleBoxEmpty_bwutx")
+theme_override_styles/disabled = SubResource("StyleBoxEmpty_83738")
+text = "Use the same funding automatically next year"
+
+[node name="Columns" type="HBoxContainer" parent="Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 24
+
+[node name="Left" type="VBoxContainer" parent="Margin/Content/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="HBoxContainer1" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer1"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Residential Tax"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer1"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+max_value = 22.0
+rounded = true
+suffix = "% tax"
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer2"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Commercial Tax"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer2"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+max_value = 22.0
+rounded = true
+suffix = "% tax"
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer3"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Industrial Tax"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer3"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+max_value = 22.0
+rounded = true
+suffix = "% tax"
+
+[node name="HBoxContainer4" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer4"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Ordinances"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer4"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+min_value = -2147483600.0
+max_value = 2147483647.0
+rounded = true
+editable = false
+
+[node name="HBoxContainer5" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer5"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Bonds"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer5"]
+visible = false
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+min_value = -2147483600.0
+max_value = 2147483647.0
+rounded = true
+editable = false
+
+[node name="HBoxContainer6" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer6"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Police"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer6"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="HBoxContainer7" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer7"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Fire"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer7"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="HBoxContainer8" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer8"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Health"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer8"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="Right" type="VBoxContainer" parent="Margin/Content/Columns"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="HBoxContainer1" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer1"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "School"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer1"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer2"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "College"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer2"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer3"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Road"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer3"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="HBoxContainer4" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer4"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Highway"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer4"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="HBoxContainer5" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer5"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Bridge"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer5"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="HBoxContainer6" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer6"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Rail"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer6"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="HBoxContainer7" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer7"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Subway"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer7"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="HBoxContainer8" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer8"]
+custom_minimum_size = Vector2(150, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+text = "Tunnel"
+
+[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer8"]
+custom_minimum_size = Vector2(145, 30)
+layout_mode = 2
+tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
+rounded = true
+suffix = "% funded"
+
+[node name="Bonds" type="HBoxContainer" parent="Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Summary" type="Label" parent="Margin/Content/Bonds"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Issue" type="Button" parent="Margin/Content/Bonds"]
+layout_mode = 2
+text = "Issue $10K Bond"
+
+[node name="Repay" type="Button" parent="Margin/Content/Bonds"]
+layout_mode = 2
+text = "Repay $10K Bond"
+
+[node name="BondConfirmation" type="ConfirmationDialog" parent="."]
+title = "Bond"
+ok_button_text = "Yes"
+size = Vector2i(500, 210)
+min_size = Vector2i(500, 210)
+cancel_button_text = "No"

@@ -20,7 +20,7 @@ const NewspaperDialogView = preload("res://src/ui/newspaper/newspaper_dialog.gd"
 const PictureDialogView = preload("res://src/ui/shared/picture_notice_dialog.tscn")
 const LibraryWindowsView = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 const ScenarioDialogView = preload("res://src/ui/startup/scenario_intro_dialog.tscn")
-const BudgetDialogView = preload("res://src/ui/city_windows/budget_dialog.gd")
+const BudgetDialogView = preload("res://src/ui/city_windows/budget_dialog.tscn")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
 
@@ -203,7 +203,7 @@ func _create_event_dialogs() -> void:
 	military_dialog.get_cancel_button().text = "Decline"
 	military_dialog.exclusive = true
 	add_child(military_dialog)
-	budget_dialog = BudgetDialogView.new()
+	budget_dialog = BudgetDialogView.instantiate() as BudgetDialog
 	add_child(budget_dialog)
 
 
