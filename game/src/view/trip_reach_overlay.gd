@@ -2,6 +2,7 @@ class_name TripReachOverlay
 extends RefCounted
 
 const ROUTE_BORDER_COLOR := Color(0.12, 0.20, 0.28, 0.75)
+const DIRECTION_COLOR := Color(0.12, 0.20, 0.28, 1.0)
 
 var analysis: Dictionary = {}
 var segments := PackedVector2Array()
@@ -54,18 +55,17 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 		colors.append(color)
 
 		if int(link.mode) in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE] and from_mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
-			var arrow_key := Vector4i(link.from.x, link.from.y, link.to.x, link.to.y)
-			if arrow_links.has(arrow_key):
+			var arrow_key: Vector2i = link.from
+			if arrow_links.has(arrow_key) or not seen.get(arrow_key, Vector2.INF).is_equal_approx(a):
 				continue
 			arrow_links[arrow_key] = true
 			var direction := (b - a).normalized()
 			var normal := Vector2(-direction.y, direction.x)
-			var middle := a.lerp(b, 0.5)
-			var tip := middle + direction * 2
-			var tail := middle - direction * 2
-			arrows.append_array(PackedVector2Array([tail + normal * 2.5,
-				tip, tip, tail - normal * 2.5]))
-			arrow_colors.append_array(PackedColorArray([Color.WHITE, Color.WHITE]))
+			var tip := a + direction * 1.5
+			var tail := a - direction * 1.2
+			arrows.append_array(PackedVector2Array([tail + normal * 1.6,
+				tip, tip, tail - normal * 1.6]))
+			arrow_colors.append_array(PackedColorArray([DIRECTION_COLOR, DIRECTION_COLOR]))
 
 	var destination_sites := {}
 	for point: Vector2i in result.get("destinations", {}):
@@ -93,12 +93,13 @@ func draw_on(canvas: Control, scale: float, offset: Vector2, underground := fals
 	if not segments.is_empty():
 		canvas.draw_multiline(segments, ROUTE_BORDER_COLOR, 5.0)
 		canvas.draw_multiline_colors(segments, colors, 2.5)
-	if not arrows.is_empty():
-		canvas.draw_multiline(arrows, Color("243849"), 3.5)
-		canvas.draw_multiline_colors(arrows, arrow_colors, 1.5)
 	for i in markers.size():
 		canvas.draw_circle(markers[i], 4.75, ROUTE_BORDER_COLOR)
 		canvas.draw_circle(markers[i], 3.5, marker_colors[i])
+	for i in range(0, arrows.size(), 4):
+		# one joined stroke closes the tip instead of leaving two separate caps
+		canvas.draw_polyline(PackedVector2Array([arrows[i], arrows[i + 1], arrows[i + 3]]),
+			DIRECTION_COLOR, 1.0, false)
 	for point in destinations:
 		_draw_destination(canvas, point, 1.0)
 	canvas.draw_dashed_line(origin, access, Color("263a4d") if underground else Color.WHITE, 1.5, 5.0)
@@ -220,8 +221,9 @@ static func _draw_destination(canvas: Control, point: Vector2, scale: float) -> 
 
 
 static func _draw_failure(canvas: Control, point: Vector2, scale: float) -> void:
-	var cross := PackedVector2Array([point + Vector2(-5, -5) * scale,
-		point + Vector2(5, 5) * scale, point + Vector2(5, -5) * scale,
-		point + Vector2(-5, 5) * scale])
-	canvas.draw_multiline(cross, Color(0.16, 0.22, 0.28), 4 * scale, false)
-	canvas.draw_multiline(cross, Color("ff5959"), 2 * scale, false)
+	canvas.draw_circle(point, 8 * scale, Color("d94b4b"))
+	canvas.draw_arc(point, 8 * scale, 0, TAU, 48, Color("862d32"), 2 * scale, false)
+	var cross := PackedVector2Array([point + Vector2(-3, -3) * scale,
+		point + Vector2(3, 3) * scale, point + Vector2(3, -3) * scale,
+		point + Vector2(-3, 3) * scale])
+	canvas.draw_multiline(cross, Color.WHITE, 2 * scale, false)

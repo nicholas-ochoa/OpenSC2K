@@ -11,8 +11,7 @@ static func add_route(city: CityState, source_size: int, destination_size: int,
 	stamp(city, source, SOURCE_TILES[source_size], 1 if source_size < 4 else 0)
 	var route_y := base.y + 6
 	var road_x := base.x - 1
-	for y in range(base.y, route_y + 1):
-		city.set_building_id(road_x, y, 0x1d)
+	assert(NetworkCommand.apply(city, 6, 0, Vector2i(road_x, base.y), Vector2i(road_x, route_y)).ok)
 
 	var destination := Rect2i(Vector2i(base.x + 16, route_y), Vector2i.ONE * destination_size)
 	if network == "highway":
@@ -21,8 +20,7 @@ static func add_route(city: CityState, source_size: int, destination_size: int,
 		var a := Vector2i(base.x + 4, highway_y)
 		var b := Vector2i(base.x + 14, highway_y)
 		assert(HighwayCommand.apply(city, 6, 1, a, b, 0).ok)
-		for x in range(road_x, a.x):
-			city.set_building_id(x, route_y, 0x1e)
+		assert(NetworkCommand.apply(city, 6, 0, Vector2i(road_x, route_y), Vector2i(a.x - 1, route_y)).ok)
 		city.set_building_id(b.x + 1, route_y, 0x1e)
 		assert(OnrampCommand.apply(city, 6, 3, a + Vector2i(0, 2)).ok)
 		assert(OnrampCommand.apply(city, 6, 3, b + Vector2i(0, 2)).ok)
@@ -33,8 +31,7 @@ static func add_route(city: CityState, source_size: int, destination_size: int,
 		if destination_size < 4:
 			stamp(city, Rect2i(base.x + 14, route_y, 2, 2), 0xed, 0)
 	else:
-		for x in range(road_x, destination.position.x):
-			city.set_building_id(x, route_y, 0x1e)
+		assert(NetworkCommand.apply(city, 6, 0, Vector2i(road_x, route_y), Vector2i(destination.position.x - 1, route_y)).ok)
 
 	stamp(city, destination, DESTINATION_TILES[destination_size], 3 if destination_size < 4 else 0)
 	city.document.find_chunk("XZON").set_decoded_payload(city.zones)
@@ -64,6 +61,12 @@ static func add_block(city: CityState, origin := Vector2i(70, 20)) -> Rect2i:
 	# A spur deliberately ends without a destination.
 	for x in range(block.end.x, block.end.x + 9):
 		city.set_building_id(x, block.position.y + 3, 0x1e)
+	for endpoints in [[block.position, Vector2i(block.end.x - 1, block.position.y)],
+		[Vector2i(block.end.x - 1, block.position.y), block.end - Vector2i.ONE],
+		[block.end - Vector2i.ONE, Vector2i(block.position.x, block.end.y - 1)],
+		[Vector2i(block.position.x, block.end.y - 1), block.position],
+		[Vector2i(block.end.x - 1, block.position.y + 3), Vector2i(block.end.x + 8, block.position.y + 3)]]:
+		assert(NetworkCommand.apply(city, 6, 0, endpoints[0], endpoints[1]).ok)
 	return block
 
 
@@ -145,3 +148,17 @@ static func add_tunnel_scenario(city: CityState, base: Vector2i) -> Dictionary:
 	return {"origin": base + Vector2i(3, 5), "destination": base + Vector2i(20, 5),
 		"entrance": entrance, "exit_portal": exit_portal,
 		"tunnel_midpoint": Vector2i(base.x + 12, road_y)}
+
+
+static func add_bus_scenario(city: CityState, base: Vector2i) -> Dictionary:
+	var origin := base + Vector2i(1, 2)
+	var destination := base + Vector2i(0, 34)
+	var stops: Array[Vector2i] = [base + Vector2i(2, 2), base + Vector2i(2, 30)]
+	assert(NetworkCommand.apply(city, 6, 0, base + Vector2i(4, 0), base + Vector2i(4, 38)).ok)
+	stamp(city, Rect2i(origin, Vector2i.ONE), 0x70, 1)
+	stamp(city, Rect2i(destination, Vector2i(3, 3)), 0xb2, 3)
+	for stop in stops:
+		assert(BuildingCommand.apply(city, 6, 4, stop, SimLfsrRandom.new(1), SimRandom.new(1)).ok)
+	assert(SignCommand.set_sign(city, base, "6 Road and buses").ok)
+	return {"origin": origin, "destination": destination, "stops": stops,
+		"road_midpoint": base + Vector2i(4, 18)}

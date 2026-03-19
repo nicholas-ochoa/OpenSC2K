@@ -40,6 +40,7 @@ func _initialize() -> void:
 					for point: Vector2i in inspected.get("destinations", {}):
 						check(route.destination.has_point(point), label + " destination marker belongs to the destination footprint")
 
+	_test_bus_scenario()
 	_test_tunnel_scenario()
 	_test_subway_scenario()
 	_test_scenarios()
@@ -225,3 +226,29 @@ func _test_tunnel_scenario() -> void:
 	city.set_tunnel_levels(scenario.tunnel_midpoint.x, scenario.tunnel_midpoint.y, 0)
 	check(not TripReachAnalysis.inspect(city, scenario.origin).reached_destination,
 		"A broken tunnel prevents reaching the destination")
+
+
+func _test_bus_scenario() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	city.set_funds(1000000)
+	var scenario := TripQueryFixture.add_bus_scenario(city, Vector2i(110, 24))
+	var before: PackedByteArray = city.document.serialize().data
+	var result := TripReachAnalysis.inspect(city, scenario.origin)
+	check(result.reached_destination and result.used_bus, "Bus example reaches its destination by bus")
+	check(result.destinations.has(scenario.destination), "Bus example marks the commercial destination")
+	var found := false
+	for node: Dictionary in result.reachable:
+		if node.point == scenario.road_midpoint and node.mode == TransportTrip.BUS_ROAD_MODE:
+			found = true
+	check(found, "Trip Query explores the road in bus mode")
+	check(city.document.serialize().data == before, "Bus inspection preserves saved city bytes")
+	var document := Sc2File.new()
+	check(document.parse(before), "Bus example parses after saving")
+	check(TripReachAnalysis.inspect(CityState.from_document(document), scenario.origin).used_bus,
+		"Bus route survives save reload")
+	for stop: Vector2i in scenario.stops:
+		for x in range(stop.x, stop.x + 2):
+			for y in range(stop.y, stop.y + 2):
+				city.set_building_id(x, y, 0)
+	check(not TripReachAnalysis.inspect(city, scenario.origin).reached_destination,
+		"Without bus depots the road exceeds the trip budget")
