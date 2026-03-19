@@ -275,6 +275,9 @@ static func _normal_status_detail(
 	if is_query and subtool_index == 1:
 		return "Trip Query selected. Click a zone or network tile to show potential routes, trip cost, and growth access."
 
+	if is_query and subtool_index == 2:
+		return "Service Query selected. Click a police or fire station to show its coverage. Shift-click shows all stations of that type."
+
 	if is_query:
 		return "Query selected. Click a city tile to inspect it."
 

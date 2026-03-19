@@ -663,8 +663,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_Z and event.is_command_or_control_pressed():
 		_undo_last_edit()
 		get_viewport().set_input_as_handled()
-	elif event.keycode == KEY_ESCAPE and map_view != null and map_view.trip_reach != null:
+	elif event.keycode == KEY_ESCAPE and map_view != null and (map_view.trip_reach != null or map_view.service_query != null):
 		map_view.clear_trip_reach()
+		map_view.clear_service_query()
 		get_viewport().set_input_as_handled()
 	elif _camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed and (event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL or event.physical_keycode == KEY_E):
 		if map_view.zoom_in():
@@ -1746,6 +1747,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 
 	last_edit_command = {}
 	map_view.clear_trip_reach()
+	map_view.clear_service_query()
 	map_view.show_transient_effects([])
 	_refresh_map()
 
@@ -3132,6 +3134,7 @@ func _activate_document(
 		return false
 
 	map_view.clear_trip_reach()
+	map_view.clear_service_query()
 	var loaded_city := CityModel.from_document(document)
 
 	if not loaded_city.is_valid():
@@ -5075,6 +5078,8 @@ func _update_edit_state() -> void:
 	map_view.query_footprint_preview = selected_group == 16
 	if selected_group != 16 or selected_subtool != 1:
 		map_view.clear_trip_reach()
+	if selected_group != 16 or selected_subtool != 2:
+		map_view.clear_service_query()
 	map_view.query_city = city
 	map_view.set_edit_enabled(
 		bool(state.enabled),
@@ -5146,6 +5151,10 @@ func _apply_map_selection(
 	if selected_group == 16:
 		if selected_subtool == 1:
 			map_view.show_trip_reach(city, finish)
+		elif selected_subtool == 2:
+			var result := map_view.show_service_query(city, finish, map_view._shift_pressed)
+			if not result.ok:
+				_show_error(str(result.error))
 		else:
 			_open_query(finish)
 

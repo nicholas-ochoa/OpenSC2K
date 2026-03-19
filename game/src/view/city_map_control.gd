@@ -100,6 +100,7 @@ var network_preview_active := false
 var highway_preview := false
 var query_footprint_preview := false
 var scurk_stamp_visuals: Array[Dictionary] = []
+var service_query: ServiceQueryOverlay
 var trip_reach: TripReachOverlay
 var trip_query_underground := false
 var query_city: CityState
@@ -875,6 +876,8 @@ func _draw() -> void:
 	if data_view_mesh != null:
 		_draw_data_view(scale, offset)
 
+		if service_query != null:
+			service_query.draw_on(self, scale, offset)
 		if trip_reach != null:
 			trip_reach.draw_on(self, scale, offset, trip_query_underground)
 
@@ -913,6 +916,8 @@ func _draw() -> void:
 
 	_draw_selection_price(scale, offset)
 
+	if service_query != null:
+		service_query.draw_on(self, scale, offset)
 	if trip_reach != null:
 		trip_reach.draw_on(self, scale, offset, trip_query_underground)
 
@@ -1752,6 +1757,8 @@ func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
 
 
 func _get_tooltip(at_position: Vector2) -> String:
+	if service_query != null and not is_panning():
+		return service_query.tile_tooltip(_tile_at(at_position))
 	if trip_reach != null and not is_panning():
 		return trip_reach.tile_tooltip(_tile_at(at_position))
 
@@ -1839,4 +1846,20 @@ func show_trip_reach(source: CityState, point: Vector2i) -> Dictionary:
 func clear_trip_reach() -> void:
 	if trip_reach != null:
 		trip_reach = null
+		queue_redraw()
+
+
+func show_service_query(source: CityState, point: Vector2i, all_stations := false) -> Dictionary:
+	clear_service_query()
+	var result := ServiceQueryAnalysis.inspect(source, point, all_stations)
+	if result.ok:
+		service_query = ServiceQueryOverlay.new()
+		service_query.rebuild(source, result)
+	queue_redraw()
+	return result
+
+
+func clear_service_query() -> void:
+	if service_query != null:
+		service_query = null
 		queue_redraw()

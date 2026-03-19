@@ -183,6 +183,7 @@ const GROUPS := [
 	{"id": "query", "name": "Query", "tools": [
 		["query", "Query", 0, 1],
 		["trip_reach", "Trip Query", 0, 1],
+		["service_query", "Service Query", 0, 1],
 	]},
 	{"id": "centering", "name": "Center", "tools": [
 		["center", "Center View", 0, 0],
