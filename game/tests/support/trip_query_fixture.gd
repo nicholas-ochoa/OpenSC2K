@@ -162,3 +162,24 @@ static func add_bus_scenario(city: CityState, base: Vector2i) -> Dictionary:
 	assert(SignCommand.set_sign(city, base, "6 Road and buses").ok)
 	return {"origin": origin, "destination": destination, "stops": stops,
 		"road_midpoint": base + Vector2i(4, 18)}
+
+
+static func add_full_interchange_scenario(city: CityState, base: Vector2i) -> Dictionary:
+	var highway_y := base.y + 4
+	assert(HighwayCommand.apply(city, 6, 1, base + Vector2i(2, 4), base + Vector2i(36, 4), 0).ok)
+	var ramps: Array[Vector2i] = []
+	for road_x in [base.x + 6, base.x + 32]:
+		assert(NetworkCommand.apply(city, 6, 0, Vector2i(road_x, base.y), Vector2i(road_x, base.y + 11)).ok)
+		for dx in [-1, 1]:
+			for y in [highway_y - 1, highway_y + 2]:
+				var ramp := Vector2i(road_x + dx, y)
+				assert(OnrampCommand.apply(city, 6, 3, ramp).ok)
+				ramps.append(ramp)
+	var origin := base + Vector2i(5, 9)
+	stamp(city, Rect2i(origin, Vector2i.ONE), 0x70, 1)
+	stamp(city, Rect2i(base + Vector2i(3, 0), Vector2i(2, 2)), 0x8c, 1)
+	var destinations: Array[Vector2i] = [base + Vector2i(30, 0), base + Vector2i(30, 8)]
+	for destination in destinations:
+		stamp(city, Rect2i(destination, Vector2i(2, 2)), 0x94, 3)
+	assert(SignCommand.set_sign(city, base + Vector2i(15, 0), "11 Highway - four ramps per end").ok)
+	return {"origin": origin, "ramps": ramps, "destinations": destinations}

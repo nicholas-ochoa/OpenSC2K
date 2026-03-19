@@ -27,6 +27,7 @@ func _initialize() -> void:
 			TripQueryFixture.stamp(city, route.source, 0xd9, 0)
 			TripQueryFixture.stamp(city, route.destination, 0xd7, 0)
 	TripQueryFixture.add_bus_scenario(city, Vector2i(110, 24))
+	TripQueryFixture.add_full_interchange_scenario(city, Vector2i(80, 96))
 	var result := CityFileStore.save_copy(city.document, args[0], "res://../references")
 	if not result.ok:
 		push_error(result.error)

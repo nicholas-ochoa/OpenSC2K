@@ -40,6 +40,7 @@ func _initialize() -> void:
 					for point: Vector2i in inspected.get("destinations", {}):
 						check(route.destination.has_point(point), label + " destination marker belongs to the destination footprint")
 
+	_test_full_interchange_scenario()
 	_test_bus_scenario()
 	_test_tunnel_scenario()
 	_test_subway_scenario()
@@ -252,3 +253,26 @@ func _test_bus_scenario() -> void:
 				city.set_building_id(x, y, 0)
 	check(not TripReachAnalysis.inspect(city, scenario.origin).reached_destination,
 		"Without bus depots the road exceeds the trip budget")
+
+
+func _test_full_interchange_scenario() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	city.set_funds(1000000)
+	var scenario := TripQueryFixture.add_full_interchange_scenario(city, Vector2i(80, 96))
+	var before: PackedByteArray = city.document.serialize().data
+	var result := TripReachAnalysis.inspect(city, scenario.origin)
+	check(result.reached_destination, "Full interchange reaches commercial destinations")
+	check(scenario.ramps.size() == 8, "Full interchange has four ramps at each end")
+	var reached := {}
+	for node: Dictionary in result.reachable:
+		reached[node.point] = true
+	for ramp: Vector2i in scenario.ramps:
+		check(city.building_id(ramp.x, ramp.y) in range(0x5d, 0x61), "Full interchange contains a real constructed ramp")
+		check(reached.has(ramp), "Trip Query reaches each of the eight ramps")
+	for destination: Vector2i in scenario.destinations:
+		check(result.destinations.has(destination), "Both sides of the destination interchange are reachable")
+	check(city.document.serialize().data == before, "Full interchange inspection preserves city bytes")
+	var document := Sc2File.new()
+	check(document.parse(before), "Full interchange saved bytes parse")
+	check(TripReachAnalysis.inspect(CityState.from_document(document), scenario.origin).reached_destination,
+		"Full interchange remains reachable after reload")
