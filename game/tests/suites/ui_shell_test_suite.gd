@@ -43,7 +43,7 @@ const IndustryWindowUi = preload("res://src/ui/city_windows/city_industry_window
 const SimNationWindowUi = preload("res://src/ui/city_windows/city_simnation_window.tscn")
 const CityMapWindowUi = preload("res://src/ui/city_windows/city_map_window.tscn")
 const OrdinanceWindowUi = preload("res://src/ui/city_windows/city_ordinance_window.tscn")
-const NewCityTerrainDialogUi = preload("res://src/ui/startup/new_city_terrain_dialog.gd")
+const NewCityTerrainDialogUi = preload("res://src/ui/startup/new_city_terrain_dialog.tscn")
 const BudgetDialogUi = preload("res://src/ui/city_windows/budget_dialog.tscn")
 const MainControl = preload("res://src/main.gd")
 
@@ -664,7 +664,7 @@ func _test_main_menu() -> void:
 		"SCURK canvas panel owns the pixel canvas, view windows, and sprite status",
 	)
 	scurk_canvas_panel.free()
-	var new_city_dialog := NewCityTerrainDialogUi.new()
+	var new_city_dialog := NewCityTerrainDialogUi.instantiate() as NewCityTerrainDialog
 	new_city_dialog._ready()
 	_check(
 		new_city_dialog.city_name_input != null

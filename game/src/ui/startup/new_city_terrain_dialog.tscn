@@ -1,0 +1,346 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/startup/new_city_terrain_dialog.gd" id="1_yoq8j"]
+[ext_resource type="Script" path="res://src/ui/shared/dialog_title_bar.gd" id="2_pepar"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s08hv"]
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
+
+[node name="NewCityOverlay" type="ColorRect"]
+visible = false
+z_index = 910
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0, 0, 0, 0.22)
+script = ExtResource("1_yoq8j")
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="NewCityDialog" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(820, 600)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_s08hv")
+
+[node name="Content" type="VBoxContainer" parent="Center/NewCityDialog"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="TitleBar" type="ColorRect" parent="Center/NewCityDialog/Content"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+color = Color(0.25, 0.25, 0.25, 1)
+script = ExtResource("2_pepar")
+
+[node name="Body" type="HBoxContainer" parent="Center/NewCityDialog/Content"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 18
+
+[node name="Fields" type="VBoxContainer" parent="Center/NewCityDialog/Content/Body"]
+custom_minimum_size = Vector2(340, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 10
+
+[node name="Label1" type="Label" parent="Center/NewCityDialog/Content/Body/Fields"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "City Details"
+
+[node name="CityFields" type="GridContainer" parent="Center/NewCityDialog/Content/Body/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="Label1" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+text = "City Name"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="LineEdit1" type="LineEdit" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_length = 30
+
+[node name="Label2" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+text = "Mayor Name"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="LineEdit2" type="LineEdit" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_length = 23
+
+[node name="Label3" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+text = "Difficulty"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="OptionButton1" type="OptionButton" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+selected = 0
+item_count = 3
+popup/item_0/text = "Easy — $20,000"
+popup/item_0/id = 1
+popup/item_1/text = "Medium — $10,000"
+popup/item_1/id = 2
+popup/item_2/text = "Hard — $10,000 bond at 3%"
+popup/item_2/id = 3
+
+[node name="Label4" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+text = "Starting Year"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="OptionButton2" type="OptionButton" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+selected = 0
+item_count = 4
+popup/item_0/text = "1900"
+popup/item_0/id = 1900
+popup/item_1/text = "1950"
+popup/item_1/id = 1950
+popup/item_2/text = "2000"
+popup/item_2/id = 2000
+popup/item_3/text = "2050"
+popup/item_3/id = 2050
+
+[node name="Label5" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+text = "Map Size"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="OptionButton3" type="OptionButton" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+tooltip_text = "Larger cities use .sc2x files. They cannot open in the original game."
+selected = 0
+item_count = 4
+popup/item_0/text = "128 × 128"
+popup/item_0/id = 128
+popup/item_1/text = "256 × 256 (experimental)"
+popup/item_1/id = 256
+popup/item_2/text = "384 × 384 (experimental)"
+popup/item_2/id = 384
+popup/item_3/text = "512 × 512 (experimental)"
+popup/item_3/id = 512
+
+[node name="CheckBox1" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields"]
+layout_mode = 2
+tooltip_text = "Calculate land value, pollution, crime, traffic and services for each tile. Uses SC2X saves, which the original game cannot open."
+button_pressed = true
+text = "Per-tile data maps"
+
+[node name="HSeparator1" type="HSeparator" parent="Center/NewCityDialog/Content/Body/Fields"]
+layout_mode = 2
+
+[node name="Label2" type="Label" parent="Center/NewCityDialog/Content/Body/Fields"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Terrain"
+
+[node name="TerrainFields" type="GridContainer" parent="Center/NewCityDialog/Content/Body/Fields"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="Label1" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+text = "Features"
+horizontal_alignment = 2
+
+[node name="HBoxContainer1" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="CheckBox1" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer1"]
+layout_mode = 2
+text = "Ocean"
+
+[node name="CheckBox2" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer1"]
+layout_mode = 2
+text = "River"
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+alignment = 2
+
+[node name="TextureRect1" type="TextureRect" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer2"]
+visible = false
+texture_filter = 1
+custom_minimum_size = Vector2(18, 19)
+layout_mode = 2
+stretch_mode = 3
+
+[node name="Label1" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer2"]
+layout_mode = 2
+text = "Hills"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="HSlider1" type="HSlider" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer3"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 47.0
+
+[node name="Label1" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer3"]
+visible = false
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="HBoxContainer4" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+alignment = 2
+
+[node name="TextureRect1" type="TextureRect" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer4"]
+visible = false
+texture_filter = 1
+custom_minimum_size = Vector2(18, 19)
+layout_mode = 2
+stretch_mode = 3
+
+[node name="Label1" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer4"]
+layout_mode = 2
+text = "Water"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="HBoxContainer5" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="HSlider1" type="HSlider" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer5"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 47.0
+
+[node name="Label1" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer5"]
+visible = false
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="HBoxContainer6" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+alignment = 2
+
+[node name="TextureRect1" type="TextureRect" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer6"]
+visible = false
+texture_filter = 1
+custom_minimum_size = Vector2(18, 19)
+layout_mode = 2
+stretch_mode = 3
+
+[node name="Label1" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer6"]
+layout_mode = 2
+text = "Trees"
+horizontal_alignment = 2
+vertical_alignment = 1
+
+[node name="HBoxContainer7" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="HSlider1" type="HSlider" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer7"]
+layout_mode = 2
+size_flags_horizontal = 3
+max_value = 47.0
+
+[node name="Label1" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer7"]
+visible = false
+custom_minimum_size = Vector2(30, 0)
+layout_mode = 2
+horizontal_alignment = 2
+
+[node name="Label3" type="Label" parent="Center/NewCityDialog/Content/Body/Fields"]
+visible = false
+modulate = Color(0.72, 0.72, 0.72, 1)
+layout_mode = 2
+
+[node name="Preview" type="VBoxContainer" parent="Center/NewCityDialog/Content/Body"]
+custom_minimum_size = Vector2(320, 0)
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 8
+
+[node name="Label1" type="Label" parent="Center/NewCityDialog/Content/Body/Preview"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Terrain Preview"
+horizontal_alignment = 1
+
+[node name="PanelContainer1" type="PanelContainer" parent="Center/NewCityDialog/Content/Body/Preview"]
+custom_minimum_size = Vector2(320, 320)
+layout_mode = 2
+size_flags_vertical = 0
+
+[node name="TextureRect1" type="TextureRect" parent="Center/NewCityDialog/Content/Body/Preview/PanelContainer1"]
+texture_filter = 1
+layout_mode = 2
+expand_mode = 1
+stretch_mode = 5
+
+[node name="Label2" type="Label" parent="Center/NewCityDialog/Content/Body/Preview"]
+layout_mode = 2
+text = "Generating terrain..."
+horizontal_alignment = 1
+autowrap_mode = 3
+
+[node name="Regenerate" type="Button" parent="Center/NewCityDialog/Content/Body/Preview"]
+layout_mode = 2
+text = "Regenerate Terrain"
+
+[node name="Buttons" type="HBoxContainer" parent="Center/NewCityDialog/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Control1" type="Control" parent="Center/NewCityDialog/Content/Buttons"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="Cancel" type="Button" parent="Center/NewCityDialog/Content/Buttons"]
+custom_minimum_size = Vector2(80, 30)
+layout_mode = 2
+text = "Cancel"
+
+[node name="Start" type="Button" parent="Center/NewCityDialog/Content/Buttons"]
+custom_minimum_size = Vector2(210, 30)
+layout_mode = 2
+text = "Edit This Landscape"
+
+[node name="PreviewTimer" type="Timer" parent="."]
+wait_time = 0.12
+one_shot = true

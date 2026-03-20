@@ -2,7 +2,7 @@ class_name CityDialogRegistry
 extends Control
 
 const FileDialogs = preload("res://src/ui/shared/file_dialog_factory.gd")
-const NewCityDialogView = preload("res://src/ui/startup/new_city_terrain_dialog.gd")
+const NewCityDialogView = preload("res://src/ui/startup/new_city_terrain_dialog.tscn")
 const SignDialogView = preload("res://src/ui/tools/city_sign_dialog.tscn")
 const BridgeDialogView = preload("res://src/ui/tools/bridge_selection_dialog.tscn")
 const ToolChoiceDialogView = preload("res://src/ui/tools/tool_choice_dialog.tscn")
@@ -83,7 +83,7 @@ func _create_file_dialogs() -> void:
 
 
 func _create_tool_dialogs() -> void:
-	new_city_dialog = NewCityDialogView.new()
+	new_city_dialog = NewCityDialogView.instantiate() as NewCityTerrainDialog
 	add_child(new_city_dialog)
 
 	if original_assets != null:
