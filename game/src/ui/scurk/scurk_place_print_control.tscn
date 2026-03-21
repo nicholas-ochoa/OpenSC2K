@@ -1,0 +1,222 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_place_print_control.gd" id="1_wk7rl"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lpcdu"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 1)
+
+[node name="SCURKPlacePrint" type="Window"]
+title = "SCURK Place & Print"
+size = Vector2i(440, 680)
+visible = false
+min_size = Vector2i(440, 680)
+script = ExtResource("1_wk7rl")
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_lpcdu")
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 10
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 10
+theme_override_constants/margin_bottom = 10
+
+[node name="Content" type="VBoxContainer" parent="Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label1" type="Label" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
+theme_override_font_sizes/font_size = 20
+text = "Place & Print Work Area"
+horizontal_alignment = 1
+
+[node name="Label2" type="Label" parent="Panel/Margin/Content"]
+custom_minimum_size = Vector2(0, 48)
+layout_mode = 2
+text = "Select an object. Then click its anchor tile in the city. SCURK placement does not use city funds or normal development gates."
+autowrap_mode = 3
+
+[node name="HBoxContainer1" type="HBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label1" type="Label" parent="Panel/Margin/Content/HBoxContainer1"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+text = "Workspace"
+
+[node name="OptionButton1" type="OptionButton" parent="Panel/Margin/Content/HBoxContainer1"]
+layout_mode = 2
+size_flags_horizontal = 3
+selected = 0
+item_count = 2
+popup/item_0/text = "Object Selector"
+popup/item_0/id = 0
+popup/item_1/text = "Edit Tools"
+popup/item_1/id = 1
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label1" type="Label" parent="Panel/Margin/Content/HBoxContainer2"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+text = "Object Group"
+
+[node name="OptionButton1" type="OptionButton" parent="Panel/Margin/Content/HBoxContainer2"]
+layout_mode = 2
+size_flags_horizontal = 3
+selected = 0
+item_count = 9
+popup/item_0/text = "Residential"
+popup/item_0/id = 0
+popup/item_1/text = "Commercial"
+popup/item_1/id = 1
+popup/item_2/text = "Industrial"
+popup/item_2/id = 2
+popup/item_3/text = "Special"
+popup/item_3/id = 3
+popup/item_4/text = "Power"
+popup/item_4/id = 4
+popup/item_5/text = "Transportation"
+popup/item_5/id = 5
+popup/item_6/text = "Misc"
+popup/item_6/id = 6
+popup/item_7/text = "Construction"
+popup/item_7/id = 9
+popup/item_8/text = "All"
+popup/item_8/id = 10
+
+[node name="HBoxContainer3" type="HBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label1" type="Label" parent="Panel/Margin/Content/HBoxContainer3"]
+custom_minimum_size = Vector2(110, 0)
+layout_mode = 2
+text = "Building Zone"
+
+[node name="OptionButton1" type="OptionButton" parent="Panel/Margin/Content/HBoxContainer3"]
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Select the saved zone type for transitional Residential, Commercial, or Industrial objects. Other objects use their fixed zone type."
+selected = 0
+item_count = 10
+popup/item_0/text = "Automatic"
+popup/item_0/id = 0
+popup/item_1/text = "Light Residential"
+popup/item_1/id = 1
+popup/item_2/text = "Dense Residential"
+popup/item_2/id = 2
+popup/item_3/text = "Light Commercial"
+popup/item_3/id = 3
+popup/item_4/text = "Dense Commercial"
+popup/item_4/id = 4
+popup/item_5/text = "Light Industrial"
+popup/item_5/id = 5
+popup/item_6/text = "Dense Industrial"
+popup/item_6/id = 6
+popup/item_7/text = "Military"
+popup/item_7/id = 7
+popup/item_8/text = "Airport or Seaport"
+popup/item_8/id = 8
+popup/item_9/text = "Special"
+popup/item_9/id = 9
+
+[node name="PlaceObjectList" type="ItemList" parent="Panel/Margin/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+allow_reselect = true
+max_columns = 3
+same_column_width = true
+fixed_column_width = 124
+icon_mode = 0
+fixed_icon_size = Vector2i(64, 64)
+
+[node name="PlaceEditToolList" type="ItemList" parent="Panel/Margin/Content"]
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+allow_reselect = true
+item_count = 25
+item_0/text = "Bulldozer"
+item_1/text = "Level Terrain"
+item_2/text = "Raise Terrain"
+item_3/text = "Lower Terrain"
+item_4/text = "De-zone"
+item_5/text = "Pond, Lake, or River"
+item_6/text = "Water Pipes"
+item_7/text = "Light Residential"
+item_8/text = "Dense Residential"
+item_9/text = "Light Commercial"
+item_10/text = "Dense Commercial"
+item_11/text = "Light Industrial"
+item_12/text = "Dense Industrial"
+item_13/text = "Seaport Zone"
+item_14/text = "Airport Zone"
+item_15/text = "Military Zone"
+item_16/text = "Road"
+item_17/text = "Highway"
+item_18/text = "Tunnel"
+item_19/text = "On-ramp"
+item_20/text = "Power Line"
+item_21/text = "Rail"
+item_22/text = "Subway"
+item_23/text = "Subway-to-Rail Connector"
+item_24/text = "Center"
+
+[node name="Label3" type="Label" parent="Panel/Margin/Content"]
+custom_minimum_size = Vector2(0, 36)
+layout_mode = 2
+text = "Select an object."
+autowrap_mode = 3
+text_overrun_behavior = 3
+
+[node name="HBoxContainer4" type="HBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="Button1" type="Button" parent="Panel/Margin/Content/HBoxContainer4"]
+layout_mode = 2
+text = "Export BMP..."
+
+[node name="Button2" type="Button" parent="Panel/Margin/Content/HBoxContainer4"]
+layout_mode = 2
+tooltip_text = "Choose the city pages, detail, view, layers, and output color."
+text = "Print City..."
+
+[node name="HBoxContainer5" type="HBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="Button1" type="Button" parent="Panel/Margin/Content/HBoxContainer5"]
+layout_mode = 2
+disabled = true
+text = "Undo"
+
+[node name="Button2" type="Button" parent="Panel/Margin/Content/HBoxContainer5"]
+layout_mode = 2
+disabled = true
+text = "Redo"
+
+[node name="Button3" type="Button" parent="Panel/Margin/Content/HBoxContainer5"]
+layout_mode = 2
+text = "Close"

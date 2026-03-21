@@ -4,7 +4,7 @@ const CityModel = preload("res://src/model/city_state.gd")
 const NewCity = preload("res://src/model/new_city_setup.gd")
 const NewCityTerrain = preload("res://src/model/new_city_terrain.gd")
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
-const ScurkPlaceControl = preload("res://src/ui/scurk/scurk_place_print_control.gd")
+const ScurkPlaceControl = preload("res://src/ui/scurk/scurk_place_print_control.tscn")
 const RciStatus = preload("res://src/view/rci_status_control.gd")
 const GraphControl = preload("res://src/view/city_graph_control.gd")
 const MainMenu = preload("res://src/ui/startup/main_menu_control.tscn")
@@ -174,7 +174,7 @@ func _test_main_menu() -> void:
 		"Main menu builds its initial and continuing city actions",
 	)
 	_check(
-		ScurkPlaceControl.placeable_groups()
+		ScurkPlacePrintControl.placeable_groups()
 		== PackedInt32Array([0, 1, 2, 3, 4, 5, 6, 9, 10]),
 		"SCURK Place & Print omits both non-placeable animation groups",
 	)

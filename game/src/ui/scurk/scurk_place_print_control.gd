@@ -80,13 +80,39 @@ var redo_button: Button
 
 
 func _ready() -> void:
-	name = "SCURKPlacePrint"
-	title = "SCURK Place & Print"
-	min_size = PANEL_SIZE
-	size = PANEL_SIZE
-	unresizable = false
-	_build_interface()
-	hide()
+	instructions = get_node("Panel/Margin/Content/Label2")
+	mode_selector = get_node("Panel/Margin/Content/HBoxContainer1/OptionButton1")
+	group_row = get_node("Panel/Margin/Content/HBoxContainer2")
+	group_selector = get_node("Panel/Margin/Content/HBoxContainer2/OptionButton1")
+	zone_row = get_node("Panel/Margin/Content/HBoxContainer3")
+	zone_selector = get_node("Panel/Margin/Content/HBoxContainer3/OptionButton1")
+	object_list = get_node("Panel/Margin/Content/PlaceObjectList")
+	tool_list = get_node("Panel/Margin/Content/PlaceEditToolList")
+	selection_label = get_node("Panel/Margin/Content/Label3")
+	export_bmp_button = get_node("Panel/Margin/Content/HBoxContainer4/Button1")
+	undo_button = get_node("Panel/Margin/Content/HBoxContainer5/Button1")
+	redo_button = get_node("Panel/Margin/Content/HBoxContainer5/Button2")
+	get_node("Panel/Margin/Content/HBoxContainer1/OptionButton1").item_selected.connect(_on_mode_selected)
+	get_node("Panel/Margin/Content/HBoxContainer2/OptionButton1").item_selected.connect(_on_group_selected)
+	get_node("Panel/Margin/Content/PlaceObjectList").item_selected.connect(_on_object_selected)
+	get_node("Panel/Margin/Content/PlaceObjectList").item_activated.connect(_on_object_selected)
+	get_node("Panel/Margin/Content/PlaceEditToolList").item_selected.connect(_on_edit_tool_selected)
+	get_node("Panel/Margin/Content/PlaceEditToolList").item_activated.connect(_on_edit_tool_selected)
+	export_bmp_button.pressed.connect(export_bmp_requested.emit)
+	$Panel/Margin/Content/HBoxContainer4/Button2.pressed.connect(print_city_requested.emit)
+	undo_button.pressed.connect(undo_requested.emit)
+	redo_button.pressed.connect(redo_requested.emit)
+	$Panel/Margin/Content/HBoxContainer5/Button3.pressed.connect(close_requested.emit)
+	tool_list.clear()
+
+	for index in EDIT_TOOLS.size():
+		var tool: Dictionary = EDIT_TOOLS[index]
+		var item := tool_list.add_item(String(tool.name))
+		tool_list.set_item_metadata(item, index)
+		tool_list.set_item_tooltip(item, "%s is free in Place & Print. Normal terrain and map-edge rules still apply." % tool.name)
+
+	tool_list.select(selected_edit_index)
+	_sync_mode_controls()
 
 
 func configure(
@@ -239,168 +265,6 @@ func set_status(message: String) -> void:
 	if selection_label != null:
 		selection_label.text = message
 		selection_label.tooltip_text = message
-
-
-func _build_interface() -> void:
-	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var panel_box := ClassicStyle.create_box(
-		Color("c0c0c0"), Color("ffffff"), 1, 0, 0
-	)
-	panel.add_theme_stylebox_override("panel", panel_box)
-	add_child(panel)
-	var margin := MarginContainer.new()
-
-	for side in ["left", "top", "right", "bottom"]:
-		margin.add_theme_constant_override("margin_" + side, 10)
-
-	panel.add_child(margin)
-	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 8)
-	margin.add_child(page)
-
-	var heading := Label.new()
-	heading.text = "Place & Print Work Area"
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_color_override("font_color", Color("000080"))
-	heading.add_theme_font_size_override("font_size", 20)
-	page.add_child(heading)
-
-	instructions = Label.new()
-	instructions.text = (
-		"Select an object. Then click its anchor tile in the city. "
-		+ "SCURK placement does not use city funds or normal development gates."
-	)
-	instructions.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	instructions.custom_minimum_size = Vector2(0, 48)
-	page.add_child(instructions)
-
-	var mode_row := HBoxContainer.new()
-	mode_row.add_theme_constant_override("separation", 8)
-	page.add_child(mode_row)
-	var mode_label := Label.new()
-	mode_label.text = "Workspace"
-	mode_label.custom_minimum_size = Vector2(110, 0)
-	mode_row.add_child(mode_label)
-	mode_selector = OptionButton.new()
-	mode_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	mode_selector.add_item("Object Selector", MODE_OBJECTS)
-	mode_selector.add_item("Edit Tools", MODE_EDIT_TOOLS)
-	mode_selector.item_selected.connect(_on_mode_selected)
-	mode_row.add_child(mode_selector)
-
-	group_row = HBoxContainer.new()
-	group_row.add_theme_constant_override("separation", 8)
-	page.add_child(group_row)
-	var group_label := Label.new()
-	group_label.text = "Object Group"
-	group_label.custom_minimum_size = Vector2(110, 0)
-	group_row.add_child(group_label)
-	group_selector = OptionButton.new()
-	group_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	for group in placeable_groups():
-		group_selector.add_item(PickCopy.GROUP_NAMES[group], group)
-
-	group_selector.item_selected.connect(_on_group_selected)
-	group_row.add_child(group_selector)
-
-	zone_row = HBoxContainer.new()
-	zone_row.add_theme_constant_override("separation", 8)
-	page.add_child(zone_row)
-	var zone_label := Label.new()
-	zone_label.text = "Building Zone"
-	zone_label.custom_minimum_size = Vector2(110, 0)
-	zone_row.add_child(zone_label)
-	zone_selector = OptionButton.new()
-	zone_selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	zone_selector.tooltip_text = (
-		"Select the saved zone type for transitional Residential, Commercial, "
-		+ "or Industrial objects. Other objects use their fixed zone type."
-	)
-
-	for choice in ZONE_CHOICES:
-		zone_selector.add_item(choice[0], choice[1])
-
-	zone_row.add_child(zone_selector)
-
-	object_list = ItemList.new()
-	object_list.name = "PlaceObjectList"
-	object_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	object_list.select_mode = ItemList.SELECT_SINGLE
-	object_list.icon_mode = ItemList.ICON_MODE_TOP
-	object_list.fixed_icon_size = Vector2i(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-	object_list.fixed_column_width = 124
-	object_list.max_columns = 3
-	object_list.same_column_width = true
-	object_list.allow_reselect = true
-	object_list.item_selected.connect(_on_object_selected)
-	object_list.item_activated.connect(_on_object_selected)
-	page.add_child(object_list)
-
-	tool_list = ItemList.new()
-	tool_list.name = "PlaceEditToolList"
-	tool_list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	tool_list.select_mode = ItemList.SELECT_SINGLE
-	tool_list.allow_reselect = true
-	tool_list.item_selected.connect(_on_edit_tool_selected)
-	tool_list.item_activated.connect(_on_edit_tool_selected)
-
-	for tool_index in EDIT_TOOLS.size():
-		var tool: Dictionary = EDIT_TOOLS[tool_index]
-		var item := tool_list.add_item(String(tool.name))
-		tool_list.set_item_metadata(item, tool_index)
-		tool_list.set_item_tooltip(
-			item,
-			"%s is free in Place & Print. Normal terrain and map-edge rules still apply."
-			% tool.name
-		)
-
-	tool_list.select(selected_edit_index)
-	page.add_child(tool_list)
-
-	selection_label = Label.new()
-	selection_label.text = "Select an object."
-	selection_label.custom_minimum_size = Vector2(0, 36)
-	selection_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	selection_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	page.add_child(selection_label)
-
-	var output_buttons := HBoxContainer.new()
-	output_buttons.alignment = BoxContainer.ALIGNMENT_END
-	output_buttons.add_theme_constant_override("separation", 8)
-	page.add_child(output_buttons)
-	export_bmp_button = Button.new()
-	export_bmp_button.text = "Export BMP..."
-	export_bmp_button.pressed.connect(export_bmp_requested.emit)
-	output_buttons.add_child(export_bmp_button)
-	var print_button := Button.new()
-	print_button.text = "Print City..."
-	print_button.tooltip_text = (
-		"Choose the city pages, detail, view, layers, and output color."
-	)
-	print_button.pressed.connect(print_city_requested.emit)
-	output_buttons.add_child(print_button)
-
-	var buttons := HBoxContainer.new()
-	buttons.alignment = BoxContainer.ALIGNMENT_END
-	buttons.add_theme_constant_override("separation", 8)
-	page.add_child(buttons)
-	undo_button = Button.new()
-	undo_button.text = "Undo"
-	undo_button.disabled = true
-	undo_button.pressed.connect(undo_requested.emit)
-	buttons.add_child(undo_button)
-	redo_button = Button.new()
-	redo_button.text = "Redo"
-	redo_button.disabled = true
-	redo_button.pressed.connect(redo_requested.emit)
-	buttons.add_child(redo_button)
-	var close_button := Button.new()
-	close_button.text = "Close"
-	close_button.pressed.connect(close_requested.emit)
-	buttons.add_child(close_button)
-	_sync_mode_controls()
 
 
 func _on_mode_selected(index: int) -> void:
