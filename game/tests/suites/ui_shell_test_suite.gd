@@ -7,7 +7,7 @@ const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const ScurkPlaceControl = preload("res://src/ui/scurk/scurk_place_print_control.gd")
 const RciStatus = preload("res://src/view/rci_status_control.gd")
 const GraphControl = preload("res://src/view/city_graph_control.gd")
-const MainMenu = preload("res://src/ui/startup/main_menu_control.gd")
+const MainMenu = preload("res://src/ui/startup/main_menu_control.tscn")
 const SettingsDialogUi = preload("res://src/ui/settings/app_settings_dialog.gd")
 const SettingsStoreUi = preload("res://src/ui/settings/app_settings_store.gd")
 const ScenarioIntroDialogUi = preload("res://src/ui/startup/scenario_intro_dialog.tscn")
@@ -152,7 +152,7 @@ func _test_main_menu() -> void:
 		"Classic UI style owns shared boxes and theme defaults",
 	)
 	_check(
-		MainMenu.BUTTON_LABELS == [
+		MainMenuControl.BUTTON_LABELS == [
 			"Continue City",
 			"Start New City",
 			"Open City...",
@@ -165,7 +165,7 @@ func _test_main_menu() -> void:
 		],
 		"Main menu exposes every startup workflow",
 	)
-	var menu := MainMenu.new()
+	var menu := MainMenu.instantiate() as MainMenuControl
 	menu._ready()
 	_check(
 		menu.continue_button != null

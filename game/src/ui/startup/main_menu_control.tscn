@@ -1,0 +1,140 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/startup/main_menu_control.gd" id="1_h28vu"]
+[ext_resource type="Script" path="res://src/ui/startup/main_menu_city_background.gd" id="2_lsbxt"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_ltv1w"]
+resource_local_to_scene = true
+content_margin_left = 44.0
+content_margin_top = 34.0
+content_margin_right = 44.0
+content_margin_bottom = 34.0
+bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+border_width_left = 2
+border_width_top = 2
+border_width_right = 2
+border_width_bottom = 2
+border_color = Color(1, 1, 1, 1)
+shadow_color = Color(0, 0, 0, 0.55)
+shadow_size = 12
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lw3dn"]
+resource_local_to_scene = true
+content_margin_left = 8.0
+content_margin_top = 8.0
+content_margin_right = 8.0
+content_margin_bottom = 8.0
+bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+border_width_left = 4
+border_width_top = 4
+border_width_right = 4
+border_width_bottom = 4
+border_color = Color(1, 0.6901961, 0, 1)
+
+[node name="MainMenu" type="ColorRect"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.0627451, 0.15686275, 0.19607843, 1)
+script = ExtResource("1_h28vu")
+
+[node name="CityBackground" type="Control" parent="."]
+texture_filter = 1
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("2_lsbxt")
+
+[node name="Center" type="CenterContainer" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+
+[node name="Panel" type="PanelContainer" parent="Center"]
+custom_minimum_size = Vector2(460, 0)
+layout_mode = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_ltv1w")
+
+[node name="Content" type="VBoxContainer" parent="Center/Panel"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Label1" type="Label" parent="Center/Panel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
+theme_override_font_sizes/font_size = 42
+text = "OpenSC2K"
+horizontal_alignment = 1
+
+[node name="Label2" type="Label" parent="Center/Panel/Content"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.1882353, 0.1882353, 0.1882353, 1)
+theme_override_font_sizes/font_size = 16
+text = "An open-source SimCity 2000 remake"
+horizontal_alignment = 1
+
+[node name="HSeparator1" type="HSeparator" parent="Center/Panel/Content"]
+layout_mode = 2
+
+[node name="ImportAssets" type="Button" parent="Center/Panel/Content"]
+visible = false
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_styles/normal = SubResource("StyleBoxFlat_lw3dn")
+theme_override_styles/focus = SubResource("StyleBoxFlat_lw3dn")
+text = "Import Assets..."
+
+[node name="ContinueCity" type="Button" parent="Center/Panel/Content"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Continue City"
+
+[node name="StartNewCity" type="Button" parent="Center/Panel/Content"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Start New City"
+
+[node name="OpenCity" type="Button" parent="Center/Panel/Content"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Open City..."
+
+[node name="PlayScenario" type="Button" parent="Center/Panel/Content"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Play Scenario..."
+
+[node name="SCURKPainttheTown" type="Button" parent="Center/Panel/Content"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "SCURK Paint the Town"
+
+[node name="SCURKPlace&Print" type="Button" parent="Center/Panel/Content"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "SCURK Place & Print"
+
+[node name="Settings" type="Button" parent="Center/Panel/Content"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Settings..."
+
+[node name="AboutOpenSC2K" type="Button" parent="Center/Panel/Content"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "About OpenSC2K..."
+
+[node name="Exit" type="Button" parent="Center/Panel/Content"]
+custom_minimum_size = Vector2(0, 42)
+layout_mode = 2
+theme_override_font_sizes/font_size = 16
+text = "Exit"

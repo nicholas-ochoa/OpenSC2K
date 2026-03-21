@@ -38,62 +38,16 @@ var scurk_place_button: Button
 
 
 func _ready() -> void:
-	name = "MainMenu"
-	color = Color("102832")
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-
-	city_background = MainMenuCityBackground.new()
-	add_child(city_background)
-	var center := CenterContainer.new()
-	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	add_child(center)
-	var panel := PanelContainer.new()
-	panel.custom_minimum_size = Vector2(460, 0)
-	var box := ClassicStyle.create_box(
-		Color("c0c0c0"), Color("ffffff"), 2, 44, 34
-	)
-	box.shadow_color = Color(0.0, 0.0, 0.0, 0.55)
-	box.shadow_size = 12
-	panel.add_theme_stylebox_override("panel", box)
-	center.add_child(panel)
-
-	var column := VBoxContainer.new()
-	column.add_theme_constant_override("separation", 12)
-	panel.add_child(column)
-	var title := Label.new()
-	title.text = "OpenSC2K"
-	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	title.add_theme_color_override("font_color", Color("000080"))
-	title.add_theme_font_size_override("font_size", 42)
-	column.add_child(title)
-	var subtitle := Label.new()
-	subtitle.text = "An open-source SimCity 2000 remake"
-	subtitle.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	subtitle.add_theme_color_override("font_color", Color("303030"))
-	subtitle.add_theme_font_size_override("font_size", 16)
-	column.add_child(subtitle)
-	column.add_child(HSeparator.new())
-
-	import_button = Button.new()
-	import_button.text = "Import Assets..."
-	import_button.custom_minimum_size.y = 42
-	import_button.pressed.connect(func() -> void:
-		import_assets_requested.emit())
-	import_border = ClassicStyle.create_box(Color("c0c0c0"), Color("ffb000"), 4, 8, 8)
-	import_button.add_theme_stylebox_override("normal", import_border)
-	import_button.add_theme_stylebox_override("focus", import_border)
-	column.add_child(import_button)
-	import_button.hide()
+	city_background = $CityBackground
+	var content: VBoxContainer = $Center/Panel/Content
+	import_button = content.get_node("ImportAssets")
+	import_border = import_button.get_theme_stylebox("normal") as StyleBoxFlat
+	import_button.pressed.connect(import_assets_requested.emit)
 
 	for index in BUTTON_LABELS.size():
-		var button := Button.new()
-		button.name = BUTTON_LABELS[index].trim_suffix("...").replace(" ", "")
-		button.text = BUTTON_LABELS[index]
-		button.custom_minimum_size = Vector2(0, 42)
-		button.add_theme_font_size_override("font_size", 16)
+		var button_name: String = BUTTON_LABELS[index].trim_suffix("...").replace(" ", "")
+		var button: Button = content.get_node(button_name)
 		button.pressed.connect(_emit_action.bind(index))
-		column.add_child(button)
 
 		if index < 6:
 			game_buttons.append(button)
