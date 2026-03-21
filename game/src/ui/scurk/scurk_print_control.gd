@@ -29,11 +29,36 @@ var save_pdf_button: Button
 
 
 func _ready() -> void:
-	title = "Prints of the City"
-	min_size = PANEL_SIZE
-	exclusive = false
-	close_requested.connect(hide)
-	_build_interface()
+	magnification_selector = get_node("Panel/Margin/Content/GridContainer1/OptionButton1")
+	view_selector = get_node("Panel/Margin/Content/GridContainer1/OptionButton2")
+	color_selector = get_node("Panel/Margin/Content/GridContainer1/OptionButton3")
+	print_what_selector = get_node("Panel/Margin/Content/GridContainer1/OptionButton4")
+	layers_row = get_node("Panel/Margin/Content/HBoxContainer1")
+	buildings_check = get_node("Panel/Margin/Content/HBoxContainer1/CheckBox1")
+	infrastructure_check = get_node("Panel/Margin/Content/HBoxContainer1/CheckBox2")
+	zones_check = get_node("Panel/Margin/Content/HBoxContainer1/CheckBox3")
+	signs_check = get_node("Panel/Margin/Content/HBoxContainer1/CheckBox4")
+	pipes_check = get_node("Panel/Margin/Content/HBoxContainer1/CheckBox5")
+	preview = get_node("Panel/Margin/Content/Control1")
+	status_label = get_node("Panel/Margin/Content/Label2")
+	select_all_button = get_node("Panel/Margin/Content/HBoxContainer2/Button1")
+	clear_all_button = get_node("Panel/Margin/Content/HBoxContainer2/Button2")
+	save_pdf_button = get_node("Panel/Margin/Content/HBoxContainer2/Button3")
+	self.close_requested.connect(hide)
+	get_node("Panel/Margin/Content/GridContainer1/OptionButton1").item_selected.connect(_on_magnification_changed)
+	get_node("Panel/Margin/Content/GridContainer1/OptionButton2").item_selected.connect(_on_view_changed)
+	get_node("Panel/Margin/Content/GridContainer1/OptionButton3").item_selected.connect(_on_preview_option_changed)
+	get_node("Panel/Margin/Content/GridContainer1/OptionButton4").item_selected.connect(_on_print_what_changed)
+	get_node("Panel/Margin/Content/HBoxContainer1/CheckBox1").toggled.connect(_on_preview_option_changed)
+	get_node("Panel/Margin/Content/HBoxContainer1/CheckBox2").toggled.connect(_on_preview_option_changed)
+	get_node("Panel/Margin/Content/HBoxContainer1/CheckBox3").toggled.connect(_on_preview_option_changed)
+	get_node("Panel/Margin/Content/HBoxContainer1/CheckBox4").toggled.connect(_on_preview_option_changed)
+	get_node("Panel/Margin/Content/HBoxContainer1/CheckBox5").toggled.connect(_on_preview_option_changed)
+	get_node("Panel/Margin/Content/Control1").selection_changed.connect(_refresh_page_state)
+	get_node("Panel/Margin/Content/HBoxContainer2/Button1").pressed.connect(get_node("Panel/Margin/Content/Control1").select_all.bind(true))
+	get_node("Panel/Margin/Content/HBoxContainer2/Button2").pressed.connect(get_node("Panel/Margin/Content/Control1").select_all.bind(false))
+	get_node("Panel/Margin/Content/HBoxContainer2/Button3").pressed.connect(_request_pdf)
+	get_node("Panel/Margin/Content/HBoxContainer2/Button4").pressed.connect(hide)
 
 
 func configure(
@@ -96,122 +121,6 @@ func set_status(message: String) -> void:
 func request_preview() -> void:
 	set_status("Preparing the city preview...")
 	preview_options_changed.emit(options())
-
-
-func _build_interface() -> void:
-	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	var panel_box := ClassicStyle.create_box(
-		Color("c0c0c0"), Color("ffffff"), 1, 0, 0
-	)
-	panel.add_theme_stylebox_override("panel", panel_box)
-	add_child(panel)
-	var margin := MarginContainer.new()
-	margin.add_theme_constant_override("margin_left", 12)
-	margin.add_theme_constant_override("margin_right", 12)
-	margin.add_theme_constant_override("margin_top", 10)
-	margin.add_theme_constant_override("margin_bottom", 10)
-	panel.add_child(margin)
-	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 8)
-	margin.add_child(page)
-
-	var heading := Label.new()
-	heading.text = "Prints of the City"
-	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_font_size_override("font_size", 20)
-	page.add_child(heading)
-
-	var selectors := GridContainer.new()
-	selectors.columns = 4
-	selectors.add_theme_constant_override("h_separation", 8)
-	selectors.add_theme_constant_override("v_separation", 6)
-	page.add_child(selectors)
-	magnification_selector = _add_selector(
-		selectors, "Magnification", ["1x - Small", "2x - Medium", "4x - Large"]
-	)
-	view_selector = _add_selector(selectors, "View", ["Above Ground", "Below Ground"])
-	color_selector = _add_selector(selectors, "Output", ["Color", "Black and White"])
-	print_what_selector = _add_selector(
-		selectors, "Print What", ["Entire City", "Selected Pages"]
-	)
-	magnification_selector.item_selected.connect(_on_magnification_changed)
-	view_selector.item_selected.connect(_on_view_changed)
-	color_selector.item_selected.connect(_on_preview_option_changed)
-	print_what_selector.item_selected.connect(_on_print_what_changed)
-
-	layers_row = HBoxContainer.new()
-	layers_row.add_theme_constant_override("separation", 12)
-	page.add_child(layers_row)
-	var layers_label := Label.new()
-	layers_label.text = "Layers"
-	layers_label.custom_minimum_size = Vector2(78, 0)
-	layers_row.add_child(layers_label)
-	buildings_check = _add_layer_check(layers_row, "Buildings")
-	infrastructure_check = _add_layer_check(layers_row, "Infrastructure")
-	zones_check = _add_layer_check(layers_row, "Zones")
-	signs_check = _add_layer_check(layers_row, "Signs")
-	pipes_check = _add_layer_check(layers_row, "Pipes")
-
-	for check in [
-		buildings_check, infrastructure_check, zones_check, signs_check, pipes_check,
-	]:
-		check.toggled.connect(_on_preview_option_changed)
-
-	preview = PreviewView.new()
-	preview.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	preview.selection_changed.connect(_refresh_page_state)
-	page.add_child(preview)
-
-	status_label = Label.new()
-	status_label.text = "Select the print options."
-	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	page.add_child(status_label)
-
-	var buttons := HBoxContainer.new()
-	buttons.alignment = BoxContainer.ALIGNMENT_END
-	buttons.add_theme_constant_override("separation", 8)
-	page.add_child(buttons)
-	select_all_button = Button.new()
-	select_all_button.text = "Select All"
-	select_all_button.pressed.connect(preview.select_all.bind(true))
-	buttons.add_child(select_all_button)
-	clear_all_button = Button.new()
-	clear_all_button.text = "Clear All"
-	clear_all_button.pressed.connect(preview.select_all.bind(false))
-	buttons.add_child(clear_all_button)
-	save_pdf_button = Button.new()
-	save_pdf_button.text = "Save Printable PDF..."
-	save_pdf_button.pressed.connect(_request_pdf)
-	buttons.add_child(save_pdf_button)
-	var close_button := Button.new()
-	close_button.text = "Close"
-	close_button.pressed.connect(hide)
-	buttons.add_child(close_button)
-
-
-func _add_selector(parent: GridContainer, label_text: String, items: Array) -> OptionButton:
-	var label := Label.new()
-	label.text = label_text
-	parent.add_child(label)
-	var selector := OptionButton.new()
-	selector.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-
-	for item in items:
-		selector.add_item(String(item))
-
-	parent.add_child(selector)
-
-	return selector
-
-
-func _add_layer_check(parent: HBoxContainer, label: String) -> CheckBox:
-	var check := CheckBox.new()
-	check.text = label
-	check.button_pressed = true
-	parent.add_child(check)
-
-	return check
 
 
 func _on_magnification_changed(_index: int) -> void:

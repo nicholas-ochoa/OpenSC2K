@@ -1,0 +1,176 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_print_control.gd" id="1_njrvu"]
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_print_preview.gd" id="2_x2ed6"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_fefpe"]
+content_margin_left = 0.0
+content_margin_top = 0.0
+content_margin_right = 0.0
+content_margin_bottom = 0.0
+bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 1, 1, 1)
+
+[node name="ScurkPrintControl" type="Window"]
+title = "Prints of the City"
+size = Vector2i(760, 680)
+min_size = Vector2i(760, 680)
+script = ExtResource("1_njrvu")
+
+[node name="Panel" type="PanelContainer" parent="."]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+theme_override_styles/panel = SubResource("StyleBoxFlat_fefpe")
+
+[node name="Margin" type="MarginContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/margin_left = 12
+theme_override_constants/margin_top = 10
+theme_override_constants/margin_right = 12
+theme_override_constants/margin_bottom = 10
+
+[node name="Content" type="VBoxContainer" parent="Panel/Margin"]
+layout_mode = 2
+theme_override_constants/separation = 8
+
+[node name="Label1" type="Label" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_font_sizes/font_size = 20
+text = "Prints of the City"
+horizontal_alignment = 1
+
+[node name="GridContainer1" type="GridContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 6
+columns = 4
+
+[node name="Label1" type="Label" parent="Panel/Margin/Content/GridContainer1"]
+layout_mode = 2
+text = "Magnification"
+
+[node name="OptionButton1" type="OptionButton" parent="Panel/Margin/Content/GridContainer1"]
+layout_mode = 2
+size_flags_horizontal = 3
+selected = 0
+item_count = 3
+popup/item_0/text = "1x - Small"
+popup/item_0/id = 0
+popup/item_1/text = "2x - Medium"
+popup/item_1/id = 1
+popup/item_2/text = "4x - Large"
+popup/item_2/id = 2
+
+[node name="Label2" type="Label" parent="Panel/Margin/Content/GridContainer1"]
+layout_mode = 2
+text = "View"
+
+[node name="OptionButton2" type="OptionButton" parent="Panel/Margin/Content/GridContainer1"]
+layout_mode = 2
+size_flags_horizontal = 3
+selected = 0
+item_count = 2
+popup/item_0/text = "Above Ground"
+popup/item_0/id = 0
+popup/item_1/text = "Below Ground"
+popup/item_1/id = 1
+
+[node name="Label3" type="Label" parent="Panel/Margin/Content/GridContainer1"]
+layout_mode = 2
+text = "Output"
+
+[node name="OptionButton3" type="OptionButton" parent="Panel/Margin/Content/GridContainer1"]
+layout_mode = 2
+size_flags_horizontal = 3
+selected = 0
+item_count = 2
+popup/item_0/text = "Color"
+popup/item_0/id = 0
+popup/item_1/text = "Black and White"
+popup/item_1/id = 1
+
+[node name="Label4" type="Label" parent="Panel/Margin/Content/GridContainer1"]
+layout_mode = 2
+text = "Print What"
+
+[node name="OptionButton4" type="OptionButton" parent="Panel/Margin/Content/GridContainer1"]
+layout_mode = 2
+size_flags_horizontal = 3
+selected = 0
+item_count = 2
+popup/item_0/text = "Entire City"
+popup/item_0/id = 0
+popup/item_1/text = "Selected Pages"
+popup/item_1/id = 1
+
+[node name="HBoxContainer1" type="HBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Label1" type="Label" parent="Panel/Margin/Content/HBoxContainer1"]
+custom_minimum_size = Vector2(78, 0)
+layout_mode = 2
+text = "Layers"
+
+[node name="CheckBox1" type="CheckBox" parent="Panel/Margin/Content/HBoxContainer1"]
+layout_mode = 2
+button_pressed = true
+text = "Buildings"
+
+[node name="CheckBox2" type="CheckBox" parent="Panel/Margin/Content/HBoxContainer1"]
+layout_mode = 2
+button_pressed = true
+text = "Infrastructure"
+
+[node name="CheckBox3" type="CheckBox" parent="Panel/Margin/Content/HBoxContainer1"]
+layout_mode = 2
+button_pressed = true
+text = "Zones"
+
+[node name="CheckBox4" type="CheckBox" parent="Panel/Margin/Content/HBoxContainer1"]
+layout_mode = 2
+button_pressed = true
+text = "Signs"
+
+[node name="CheckBox5" type="CheckBox" parent="Panel/Margin/Content/HBoxContainer1"]
+layout_mode = 2
+button_pressed = true
+text = "Pipes"
+
+[node name="Control1" type="Control" parent="Panel/Margin/Content"]
+texture_filter = 2
+custom_minimum_size = Vector2(560, 310)
+layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("2_x2ed6")
+
+[node name="Label2" type="Label" parent="Panel/Margin/Content"]
+layout_mode = 2
+text = "Select the print options."
+text_overrun_behavior = 3
+
+[node name="HBoxContainer2" type="HBoxContainer" parent="Panel/Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 8
+alignment = 2
+
+[node name="Button1" type="Button" parent="Panel/Margin/Content/HBoxContainer2"]
+layout_mode = 2
+text = "Select All"
+
+[node name="Button2" type="Button" parent="Panel/Margin/Content/HBoxContainer2"]
+layout_mode = 2
+text = "Clear All"
+
+[node name="Button3" type="Button" parent="Panel/Margin/Content/HBoxContainer2"]
+layout_mode = 2
+text = "Save Printable PDF..."
+
+[node name="Button4" type="Button" parent="Panel/Margin/Content/HBoxContainer2"]
+layout_mode = 2
+text = "Close"
