@@ -1,7 +1,7 @@
 class_name ScurkEditorDialogs
 extends Control
 
-const PickCopyControl = preload("res://src/ui/scurk/scurk_pick_copy_control.gd")
+const PickCopyControl = preload("res://src/ui/scurk/scurk_pick_copy_control.tscn")
 
 var open_dialog: FileDialog
 var save_dialog: FileDialog
@@ -64,5 +64,5 @@ func _create_dialogs() -> void:
 	error_dialog.title = "SCURK Error"
 	add_child(error_dialog)
 
-	pick_copy_control = PickCopyControl.new()
+	pick_copy_control = PickCopyControl.instantiate() as ScurkPickCopyControl
 	add_child(pick_copy_control)

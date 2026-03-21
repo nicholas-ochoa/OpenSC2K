@@ -1,0 +1,195 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_pick_copy_control.gd" id="1_qaw42"]
+[ext_resource type="Script" path="res://src/ui/shared/dialog_title_bar.gd" id="2_mh0cu"]
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_object_list.gd" id="3_ya3l6"]
+
+[sub_resource type="ButtonGroup" id="ButtonGroup_py6sq"]
+resource_local_to_scene = true
+
+[node name="ScurkPickCopy" type="PanelContainer"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 38.0
+offset_top = 48.0
+offset_right = -38.0
+offset_bottom = -38.0
+script = ExtResource("1_qaw42")
+
+[node name="Content" type="VBoxContainer" parent="."]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="TitleBar" type="ColorRect" parent="Content"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+color = Color(0.25, 0.25, 0.25, 1)
+script = ExtResource("2_mh0cu")
+
+[node name="Controls" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Button1" type="Button" parent="Content/Controls"]
+layout_mode = 2
+tooltip_text = "Choose the read-only object set to copy from."
+text = "Change Source..."
+
+[node name="Button2" type="Button" parent="Content/Controls"]
+layout_mode = 2
+tooltip_text = "Choose the object set that receives copied graphics."
+text = "Change Working..."
+
+[node name="VSeparator1" type="VSeparator" parent="Content/Controls"]
+layout_mode = 2
+
+[node name="Label1" type="Label" parent="Content/Controls"]
+layout_mode = 2
+text = "Object Group"
+vertical_alignment = 1
+
+[node name="OptionButton1" type="OptionButton" parent="Content/Controls"]
+layout_mode = 2
+selected = 0
+item_count = 11
+popup/item_0/text = "Residential"
+popup/item_0/id = 0
+popup/item_1/text = "Commercial"
+popup/item_1/id = 1
+popup/item_2/text = "Industrial"
+popup/item_2/id = 2
+popup/item_3/text = "Special"
+popup/item_3/id = 3
+popup/item_4/text = "Power"
+popup/item_4/id = 4
+popup/item_5/text = "Transportation"
+popup/item_5/id = 5
+popup/item_6/text = "Misc"
+popup/item_6/id = 6
+popup/item_7/text = "Animating I"
+popup/item_7/id = 7
+popup/item_8/text = "Animating II"
+popup/item_8/id = 8
+popup/item_9/text = "Construction"
+popup/item_9/id = 9
+popup/item_10/text = "All"
+popup/item_10/id = 10
+
+[node name="VSeparator2" type="VSeparator" parent="Content/Controls"]
+layout_mode = 2
+
+[node name="Button3" type="Button" parent="Content/Controls"]
+layout_mode = 2
+toggle_mode = true
+button_pressed = true
+button_group = SubResource("ButtonGroup_py6sq")
+text = "Large"
+
+[node name="Button4" type="Button" parent="Content/Controls"]
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_py6sq")
+text = "Medium"
+
+[node name="Button5" type="Button" parent="Content/Controls"]
+layout_mode = 2
+toggle_mode = true
+button_group = SubResource("ButtonGroup_py6sq")
+text = "Small"
+
+[node name="Sets" type="HSplitContainer" parent="Content"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offsets = PackedInt32Array(570)
+split_offset = 570
+
+[node name="VBoxContainer1" type="VBoxContainer" parent="Content/Sets"]
+custom_minimum_size = Vector2(430, 0)
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Label1" type="Label" parent="Content/Sets/VBoxContainer1"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
+text = "Source Object Set"
+
+[node name="Label2" type="Label" parent="Content/Sets/VBoxContainer1"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
+text_overrun_behavior = 3
+
+[node name="ItemList1" type="ItemList" parent="Content/Sets/VBoxContainer1"]
+layout_mode = 2
+size_flags_vertical = 3
+select_mode = 1
+max_columns = 0
+same_column_width = true
+icon_mode = 0
+fixed_icon_size = Vector2i(88, 88)
+script = ExtResource("3_ya3l6")
+
+[node name="VBoxContainer2" type="VBoxContainer" parent="Content/Sets"]
+custom_minimum_size = Vector2(430, 0)
+layout_mode = 2
+theme_override_constants/separation = 5
+
+[node name="Label1" type="Label" parent="Content/Sets/VBoxContainer2"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
+text = "Working Object Set"
+
+[node name="Label2" type="Label" parent="Content/Sets/VBoxContainer2"]
+layout_mode = 2
+theme_override_colors/font_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
+text_overrun_behavior = 3
+
+[node name="ItemList1" type="ItemList" parent="Content/Sets/VBoxContainer2"]
+layout_mode = 2
+size_flags_vertical = 3
+select_mode = 1
+max_columns = 0
+same_column_width = true
+icon_mode = 0
+fixed_icon_size = Vector2i(88, 88)
+script = ExtResource("3_ya3l6")
+
+[node name="Actions" type="HBoxContainer" parent="Content"]
+layout_mode = 2
+theme_override_constants/separation = 7
+
+[node name="Button1" type="Button" parent="Content/Actions"]
+layout_mode = 2
+tooltip_text = "Replace each equivalent working object with its selected source graphics."
+disabled = true
+text = "Copy Selected"
+
+[node name="Button2" type="Button" parent="Content/Actions"]
+layout_mode = 2
+tooltip_text = "Replace every working object in the selected group."
+disabled = true
+text = "Copy All"
+
+[node name="Label1" type="Label" parent="Content/Actions"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
+text = "Ctrl-click or Shift-click to select more objects. You can also drag source objects onto the working set."
+autowrap_mode = 3
+
+[node name="Label1" type="Label" parent="Content"]
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="SourceDialog" type="FileDialog" parent="."]
+title = "Open a File"
+file_mode = 0
+access = 2
+filters = PackedStringArray("*.MIF, *.mif ; SCURK tile sets")
+
+[node name="CopyConfirmation" type="ConfirmationDialog" parent="."]
+title = "Copy Object Group"
+ok_button_text = "Copy All"

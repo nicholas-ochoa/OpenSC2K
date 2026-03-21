@@ -43,15 +43,36 @@ var confirm_all_dialog: ConfirmationDialog
 
 
 func _ready() -> void:
-	name = "ScurkPickCopy"
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	offset_left = 38
-	offset_top = 48
-	offset_right = -38
-	offset_bottom = -38
-	_build_interface()
-	hide()
+	group_selector = get_node("Content/Controls/OptionButton1")
+	view_buttons.assign([get_node("Content/Controls/Button3"), get_node("Content/Controls/Button4"), get_node("Content/Controls/Button5")])
+	source_name_label = get_node("Content/Sets/VBoxContainer1/Label2")
+	working_name_label = get_node("Content/Sets/VBoxContainer2/Label2")
+	source_list = get_node("Content/Sets/VBoxContainer1/ItemList1")
+	working_list = get_node("Content/Sets/VBoxContainer2/ItemList1")
+	copy_selected_button = get_node("Content/Actions/Button1")
+	copy_all_button = get_node("Content/Actions/Button2")
+	status_label = get_node("Content/Label1")
+	source_dialog = get_node("SourceDialog")
+	confirm_all_dialog = get_node("CopyConfirmation")
+	get_node("Content/TitleBar").close_requested.connect(request_close)
+	get_node("Content/Controls/Button1").pressed.connect(request_source)
+	get_node("Content/Controls/OptionButton1").item_selected.connect(_select_group)
+	get_node("Content/Controls/Button3").pressed.connect(_select_view.bind(0))
+	get_node("Content/Controls/Button4").pressed.connect(_select_view.bind(1))
+	get_node("Content/Controls/Button5").pressed.connect(_select_view.bind(2))
+	get_node("Content/Sets/VBoxContainer1/ItemList1").multi_selected.connect(_source_selection_changed)
+	get_node("Content/Sets/VBoxContainer1/ItemList1").item_activated.connect(_source_item_activated)
+	get_node("Content/Sets/VBoxContainer2/ItemList1").objects_dropped.connect(_objects_dropped)
+	get_node("Content/Actions/Button1").pressed.connect(_request_copy_selected)
+	get_node("Content/Actions/Button2").pressed.connect(_request_copy_all)
+	get_node("SourceDialog").file_selected.connect(_source_selected)
+	get_node("CopyConfirmation").confirmed.connect(_copy_all_confirmed)
+	$Content/TitleBar.title_label.text = "SCURK Pick & Copy"
+	$Content/Controls/Button2.pressed.connect(change_working_requested.emit)
+	source_list.drag_source = true
+	working_list.drop_target = true
+	source_dialog.theme = ThemeDB.get_default_theme().duplicate()
+	confirm_all_dialog.theme = ClassicUiStyle.create_dialog_theme()
 
 
 func configure(
@@ -133,142 +154,6 @@ func request_source() -> void:
 func request_close() -> void:
 	hide()
 	close_requested.emit()
-
-
-func _build_interface() -> void:
-	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 7)
-	add_child(page)
-
-	var title_bar := DialogTitleBar.new("SCURK Pick & Copy")
-	title_bar.close_requested.connect(request_close)
-	page.add_child(title_bar)
-
-	var controls := HBoxContainer.new()
-	controls.add_theme_constant_override("separation", 6)
-	page.add_child(controls)
-	var source_button := Button.new()
-	source_button.text = "Change Source..."
-	source_button.tooltip_text = "Choose the read-only object set to copy from."
-	source_button.pressed.connect(request_source)
-	controls.add_child(source_button)
-	var working_button := Button.new()
-	working_button.text = "Change Working..."
-	working_button.tooltip_text = "Choose the object set that receives copied graphics."
-	working_button.pressed.connect(change_working_requested.emit)
-	controls.add_child(working_button)
-	controls.add_child(VSeparator.new())
-	var group_label := Label.new()
-	group_label.text = "Object Group"
-	group_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	controls.add_child(group_label)
-	group_selector = OptionButton.new()
-
-	for group_index in ScurkPickCopy.GROUP_NAMES.size():
-		group_selector.add_item(ScurkPickCopy.GROUP_NAMES[group_index], group_index)
-
-	group_selector.item_selected.connect(_select_group)
-	controls.add_child(group_selector)
-	controls.add_child(VSeparator.new())
-	var view_group := ButtonGroup.new()
-
-	for view_data in [["Large", VIEW_LARGE], ["Medium", VIEW_MEDIUM], ["Small", VIEW_SMALL]]:
-		var button := Button.new()
-		button.text = view_data[0]
-		button.toggle_mode = true
-		button.button_group = view_group
-		button.pressed.connect(_select_view.bind(view_data[1]))
-		controls.add_child(button)
-		view_buttons.append(button)
-
-	view_buttons[0].button_pressed = true
-
-	var sets := HSplitContainer.new()
-	sets.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	sets.split_offset = 570
-	page.add_child(sets)
-	var source_column := _set_column("Source Object Set", true)
-	sets.add_child(source_column)
-	var working_column := _set_column("Working Object Set", false)
-	sets.add_child(working_column)
-
-	var actions := HBoxContainer.new()
-	actions.add_theme_constant_override("separation", 7)
-	page.add_child(actions)
-	copy_selected_button = Button.new()
-	copy_selected_button.text = "Copy Selected"
-	copy_selected_button.tooltip_text = "Replace each equivalent working object with its selected source graphics."
-	copy_selected_button.disabled = true
-	copy_selected_button.pressed.connect(_request_copy_selected)
-	actions.add_child(copy_selected_button)
-	copy_all_button = Button.new()
-	copy_all_button.text = "Copy All"
-	copy_all_button.tooltip_text = "Replace every working object in the selected group."
-	copy_all_button.disabled = true
-	copy_all_button.pressed.connect(_request_copy_all)
-	actions.add_child(copy_all_button)
-	var action_help := Label.new()
-	action_help.text = "Ctrl-click or Shift-click to select more objects. You can also drag source objects onto the working set."
-	action_help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	action_help.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	action_help.add_theme_color_override("font_color", Color("404040"))
-	actions.add_child(action_help)
-
-	status_label = Label.new()
-	status_label.custom_minimum_size = Vector2(0, 26)
-	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	page.add_child(status_label)
-
-	source_dialog = FileDialog.new()
-	source_dialog.theme = ThemeDB.get_default_theme().duplicate()
-	source_dialog.access = FileDialog.ACCESS_FILESYSTEM
-	source_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
-	source_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
-	source_dialog.file_selected.connect(_source_selected)
-	add_child(source_dialog)
-	confirm_all_dialog = ConfirmationDialog.new()
-	confirm_all_dialog.theme = ClassicUiStyle.create_dialog_theme()
-	confirm_all_dialog.title = "Copy Object Group"
-	confirm_all_dialog.get_ok_button().text = "Copy All"
-	confirm_all_dialog.confirmed.connect(_copy_all_confirmed)
-	add_child(confirm_all_dialog)
-
-
-func _set_column(heading_text: String, source: bool) -> VBoxContainer:
-	var column := VBoxContainer.new()
-	column.custom_minimum_size = Vector2(430, 0)
-	column.add_theme_constant_override("separation", 5)
-	var heading := Label.new()
-	heading.text = heading_text
-	heading.add_theme_color_override("font_color", Color("000080"))
-	column.add_child(heading)
-	var filename := Label.new()
-	filename.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	filename.add_theme_color_override("font_color", Color("404040"))
-	column.add_child(filename)
-	var list := ObjectListControl.new()
-	list.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	list.select_mode = ItemList.SELECT_MULTI
-	list.icon_mode = ItemList.ICON_MODE_TOP
-	list.fixed_icon_size = Vector2i(THUMBNAIL_SIZE, THUMBNAIL_SIZE)
-	list.same_column_width = true
-	list.max_columns = 0
-	column.add_child(list)
-
-	if source:
-		source_name_label = filename
-		source_list = list
-		list.drag_source = true
-		list.multi_selected.connect(_source_selection_changed)
-		list.item_activated.connect(_source_item_activated)
-	else:
-		working_name_label = filename
-		working_list = list
-		list.drop_target = true
-		list.objects_dropped.connect(_objects_dropped)
-
-	return column
 
 
 func _refresh_lists() -> void:
