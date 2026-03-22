@@ -1,0 +1,108 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_control.gd" id="1_6gmos"]
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_toolbar.gd" id="2_kf1jg"]
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_object_panel.gd" id="3_j31id"]
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_drawing_controls.gd" id="4_ayr7b"]
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_canvas_panel.gd" id="5_3xc3p"]
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_palette_panel.gd" id="6_j8ii2"]
+[ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_dialogs.gd" id="7_78x3n"]
+
+[node name="SCURKEditor" type="ColorRect"]
+visible = false
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+color = Color(0.7529412, 0.7529412, 0.7529412, 1)
+script = ExtResource("1_6gmos")
+
+[node name="Panel" type="PanelContainer" parent="."]
+layout_mode = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+offset_left = 10.0
+offset_top = 10.0
+offset_right = -10.0
+offset_bottom = -10.0
+
+[node name="Content" type="VBoxContainer" parent="Panel"]
+layout_mode = 2
+theme_override_constants/separation = 6
+
+[node name="Toolbar" type="HBoxContainer" parent="Panel/Content"]
+custom_minimum_size = Vector2(0, 30)
+layout_mode = 2
+script = ExtResource("2_kf1jg")
+
+[node name="Header" type="HBoxContainer" parent="Panel/Content"]
+layout_mode = 2
+
+[node name="Title" type="Label" parent="Panel/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_colors/font_color = Color(0.8627451, 0.9098039, 1, 1)
+theme_override_font_sizes/font_size = 20
+text = "Paint the Town"
+
+[node name="Source" type="Label" parent="Panel/Content/Header"]
+custom_minimum_size = Vector2(180, 0)
+layout_mode = 2
+theme_override_colors/font_color = Color(0.78431374, 0.78431374, 0.78431374, 1)
+horizontal_alignment = 2
+text_overrun_behavior = 3
+
+[node name="Body" type="HSplitContainer" parent="Panel/Content"]
+layout_mode = 2
+size_flags_vertical = 3
+split_offsets = PackedInt32Array(250)
+split_offset = 250
+
+[node name="Objects" type="VBoxContainer" parent="Panel/Content/Body"]
+custom_minimum_size = Vector2(220, 0)
+layout_mode = 2
+theme_override_constants/separation = 5
+script = ExtResource("3_j31id")
+
+[node name="EditorSplit" type="HSplitContainer" parent="Panel/Content/Body"]
+layout_mode = 2
+size_flags_horizontal = 3
+split_offsets = PackedInt32Array(680)
+split_offset = 680
+
+[node name="Editor" type="VBoxContainer" parent="Panel/Content/Body/EditorSplit"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_constants/separation = 5
+
+[node name="DrawingControls" type="VBoxContainer" parent="Panel/Content/Body/EditorSplit/Editor"]
+texture_filter = 1
+layout_mode = 2
+theme_override_constants/separation = 5
+script = ExtResource("4_ayr7b")
+
+[node name="Canvas" type="VBoxContainer" parent="Panel/Content/Body/EditorSplit/Editor"]
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_constants/separation = 5
+script = ExtResource("5_3xc3p")
+
+[node name="Palette" type="VBoxContainer" parent="Panel/Content/Body/EditorSplit"]
+custom_minimum_size = Vector2(300, 0)
+layout_mode = 2
+tooltip_text = "Left mouse uses the foreground color or texture. Right mouse uses the background color. Edit Large, Medium, and Small separately."
+theme_override_constants/separation = 6
+script = ExtResource("6_j8ii2")
+
+[node name="Status" type="Label" parent="Panel/Content"]
+custom_minimum_size = Vector2(0, 26)
+layout_mode = 2
+vertical_alignment = 1
+text_overrun_behavior = 3
+
+[node name="Dialogs" type="Control" parent="."]
+anchors_preset = 0
+anchor_right = 1.0
+anchor_bottom = 1.0
+mouse_filter = 2
+script = ExtResource("7_78x3n")

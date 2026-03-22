@@ -3,7 +3,7 @@ extends Control
 
 const MainMenuView = preload("res://src/ui/startup/main_menu_control.tscn")
 const SettingsDialogView = preload("res://src/ui/settings/app_settings_dialog.tscn")
-const ScurkEditorView = preload("res://src/ui/scurk/scurk_editor_control.gd")
+const ScurkEditorView = preload("res://src/ui/scurk/scurk_editor_control.tscn")
 const ScurkPlacePrintView = preload("res://src/ui/scurk/scurk_place_print_control.tscn")
 const ScurkPrintView = preload("res://src/ui/scurk/scurk_print_control.tscn")
 const AboutDialogView = preload("res://src/ui/settings/about_dialog.tscn")
@@ -33,7 +33,7 @@ func _create_overlays() -> void:
 	settings_dialog = SettingsDialogView.instantiate() as AppSettingsDialog
 	add_child(settings_dialog)
 
-	scurk_editor = ScurkEditorView.new()
+	scurk_editor = ScurkEditorView.instantiate() as ScurkEditorControl
 	scurk_editor.z_index = 940
 	add_child(scurk_editor)
 

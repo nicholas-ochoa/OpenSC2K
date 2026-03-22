@@ -26,7 +26,7 @@ func _run() -> void:
 	assert(mapped.ok and mapped.remapped_color_count > 0 and mapped.pixels[1] == -1)
 	_test_small_palettes()
 	var assets := OriginalGameAssets.load_root(ProjectSettings.globalize_path("res://../references/SIMCITY2000"))
-	var editor := ScurkEditorControl.new()
+	var editor := preload("res://src/ui/scurk/scurk_editor_control.tscn").instantiate() as ScurkEditorControl
 	root.add_child(editor)
 	editor.configure(assets.palette, assets.large_sprites, assets.small_medium_sprites, ProjectSettings.globalize_path("res://../references/SIMCITY2000"), assets.scurk_graphics)
 	assert(editor.load_path("res://../references/SIMCITY2000/SCURKART/ORIGINAL.MIF").ok)

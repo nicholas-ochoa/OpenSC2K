@@ -97,13 +97,13 @@ var pick_copy_control: ScurkPickCopyControl
 var dialog_registry: ScurkEditorDialogs
 
 
+func _init() -> void:
+	# set the theme before the scene children build their controls
+	theme = ThemeDB.get_default_theme().duplicate()
+
+
 func _ready() -> void:
-	name = "SCURKEditor"
-	color = Color("c0c0c0")
-	mouse_filter = Control.MOUSE_FILTER_STOP
-	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	_build_interface()
-	hide()
+	_bind_interface()
 
 
 func configure(
@@ -801,22 +801,9 @@ static func path_is_within(path: String, directory: String) -> bool:
 	return EditorRules.path_is_within(path, directory)
 
 
-func _build_interface() -> void:
-	theme = ThemeDB.get_default_theme().duplicate()
-	var panel := PanelContainer.new()
-	panel.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
-	panel.offset_left = 10
-	panel.offset_top = 10
-	panel.offset_right = -10
-	panel.offset_bottom = -10
-	add_child(panel)
-	var page := VBoxContainer.new()
-	page.add_theme_constant_override("separation", 6)
-	panel.add_child(page)
-
-	var toolbar := ToolbarView.new()
+func _bind_interface() -> void:
+	var toolbar := get_node("Panel/Content/Toolbar") as ToolbarView
 	toolbar.build()
-	page.add_child(toolbar)
 	toolbar.open_requested.connect(request_open)
 	toolbar.save_requested.connect(request_save)
 	toolbar.save_as_requested.connect(request_save_as)
@@ -836,48 +823,23 @@ func _build_interface() -> void:
 	revert_button = toolbar.revert_button
 	clear_object_button = toolbar.clear_button
 
-	var header := HBoxContainer.new()
-	page.add_child(header)
-	title_label = Label.new()
-	title_label.text = "Paint the Town"
-	title_label.add_theme_color_override("font_color", Color("dce8ff"))
-	title_label.add_theme_font_size_override("font_size", 20)
-	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	header.add_child(title_label)
-	source_label = Label.new()
-	source_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	source_label.custom_minimum_size = Vector2(180, 0)
-	source_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	source_label.add_theme_color_override("font_color", Color("c8c8c8"))
-	header.add_child(source_label)
+	title_label = get_node("Panel/Content/Header/Title")
+	source_label = get_node("Panel/Content/Header/Source")
 
-	var body := HSplitContainer.new()
-	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	body.split_offset = 250
-	page.add_child(body)
-	object_panel = ObjectPanelView.new()
+	object_panel = get_node("Panel/Content/Body/Objects")
 	object_panel.build()
 	object_panel.search_changed.connect(_on_search_changed)
 	object_panel.object_selected.connect(_on_object_selected)
 	object_panel.name_submitted.connect(_commit_name)
 	object_panel.set_name_requested.connect(_commit_name)
 	object_panel.revert_name_requested.connect(revert_name)
-	body.add_child(object_panel)
 	object_search = object_panel.object_search
 	object_list = object_panel.object_list
 	name_edit = object_panel.name_edit
 	name_button = object_panel.name_button
 	revert_name_button = object_panel.revert_name_button
 
-	var right_split := HSplitContainer.new()
-	right_split.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	right_split.split_offset = 680
-	body.add_child(right_split)
-	var editor_column := VBoxContainer.new()
-	editor_column.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	editor_column.add_theme_constant_override("separation", 5)
-	right_split.add_child(editor_column)
-	drawing_controls = DrawingControlsView.new()
+	drawing_controls = get_node("Panel/Content/Body/EditorSplit/Editor/DrawingControls")
 	drawing_controls.build()
 	drawing_controls.view_selected.connect(_select_view)
 	drawing_controls.zoom_fit_requested.connect(_fit_canvas)
@@ -903,7 +865,6 @@ func _build_interface() -> void:
 	drawing_controls.clip_region_changed.connect(_set_clip_region_visible)
 	drawing_controls.cycle_colors_changed.connect(_set_cycle_colors)
 	drawing_controls.increment_cycle_requested.connect(_increment_cycle)
-	editor_column.add_child(drawing_controls)
 	view_buttons = drawing_controls.view_buttons
 	zoom_label = drawing_controls.zoom_label
 	tool_buttons = drawing_controls.tool_buttons
@@ -922,9 +883,8 @@ func _build_interface() -> void:
 	cycle_colors_check = drawing_controls.cycle_colors_check
 	increment_cycle_button = drawing_controls.increment_cycle_button
 
-	canvas_panel = CanvasPanelView.new()
+	canvas_panel = get_node("Panel/Content/Body/EditorSplit/Editor/Canvas")
 	canvas_panel.build()
-	editor_column.add_child(canvas_panel)
 	pixel_canvas = canvas_panel.pixel_canvas
 	view_previews = canvas_panel.view_previews
 	view_preview_panels = canvas_panel.view_preview_panels
@@ -936,7 +896,7 @@ func _build_interface() -> void:
 	pixel_canvas.clipboard_changed.connect(_on_clipboard_changed)
 	pixel_canvas.clipboard_copy_rejected.connect(_on_clipboard_copy_rejected)
 
-	palette_panel = PalettePanelView.new()
+	palette_panel = get_node("Panel/Content/Body/EditorSplit/Palette")
 	palette_panel.build()
 	palette_panel.set_patterns(pixel_canvas.texture_patterns)
 	palette_panel.palette_index_selected.connect(_select_palette_index)
@@ -944,18 +904,12 @@ func _build_interface() -> void:
 	palette_panel.eraser_requested.connect(
 		_select_tool.bind(ScurkPixelCanvas.TOOL_ERASER)
 	)
-	right_split.add_child(palette_panel)
 	palette_panel.add_view_panel(canvas_panel.previews_panel)
 
-	status_label = Label.new()
-	status_label.custom_minimum_size = Vector2(0, 26)
-	status_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
-	page.add_child(status_label)
+	status_label = get_node("Panel/Content/Status")
 
-	dialog_registry = DialogsView.new()
+	dialog_registry = get_node("Dialogs")
 	dialog_registry._create_dialogs()
-	add_child(dialog_registry)
 	open_dialog = dialog_registry.open_dialog
 	open_dialog.file_selected.connect(_load_selected_path)
 	save_dialog = dialog_registry.save_dialog

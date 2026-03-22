@@ -12,7 +12,7 @@ const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
 const OriginalInstaller = preload("res://src/assets/original_game_installer.gd")
 const ScurkTileSet = preload("res://src/assets/scurk_mif.gd")
 const ScurkOutput = preload("res://src/assets/scurk_city_output.gd")
-const ScurkEditor = preload("res://src/ui/scurk/scurk_editor_control.gd")
+const ScurkEditor = preload("res://src/ui/scurk/scurk_editor_control.tscn")
 const ScurkPlaceControl = preload("res://src/ui/scurk/scurk_place_print_control.tscn")
 const ScurkPickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
@@ -2894,7 +2894,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 	_check(original.is_valid(), "ORIGINAL.MIF parses: %s" % original.parse_error)
 
 	if original.is_valid():
-		var editable_ids := ScurkEditor.editable_large_sprite_ids(original)
+		var editable_ids := ScurkEditorControl.editable_large_sprite_ids(original)
 		var grouped_ids := ScurkPickCopy.group_large_ids(ScurkPickCopy.GROUP_ALL)
 		var grouped_unique := {}
 
@@ -2910,11 +2910,11 @@ func _test_scurk_mif(reference_root: String) -> void:
 		)
 		_check(
 			editable_ids.size() == 186
-			and ScurkEditor.view_sprite_id(editable_ids[0], ScurkEditor.VIEW_LARGE)
+			and ScurkEditorControl.view_sprite_id(editable_ids[0], ScurkEditorControl.VIEW_LARGE)
 				== editable_ids[0]
-			and ScurkEditor.view_sprite_id(editable_ids[0], ScurkEditor.VIEW_MEDIUM)
+			and ScurkEditorControl.view_sprite_id(editable_ids[0], ScurkEditorControl.VIEW_MEDIUM)
 				== editable_ids[0] - 500
-			and ScurkEditor.view_sprite_id(editable_ids[0], ScurkEditor.VIEW_SMALL)
+			and ScurkEditorControl.view_sprite_id(editable_ids[0], ScurkEditorControl.VIEW_SMALL)
 				== editable_ids[0] - 1000,
 			"SCURK editor exposes 186 objects with direct three-view sprite IDs",
 		)
@@ -2949,7 +2949,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 		editor_small_medium = SpriteArchive.combine([
 			editor_small_medium, editor_special,
 		])
-		var complete_editor_ids := ScurkEditor.editable_large_sprite_ids(
+		var complete_editor_ids := ScurkEditorControl.editable_large_sprite_ids(
 			original, editor_large
 		)
 		_check(
@@ -2993,10 +2993,10 @@ func _test_scurk_mif(reference_root: String) -> void:
 		sample_shape[96 + 47] = 8
 		sample_shape[2 * 96 + 47] = 9
 		var sample_workspace := ScurkWorkspace.from_shape(
-			96, 3, sample_shape, ScurkEditor.VIEW_LARGE, 96
+			96, 3, sample_shape, ScurkEditorControl.VIEW_LARGE, 96
 		)
 		var sample_round_trip := ScurkWorkspace.shape_from_workspace(
-			sample_workspace, 96, ScurkEditor.VIEW_LARGE
+			sample_workspace, 96, ScurkEditorControl.VIEW_LARGE
 		)
 		_check(
 			sample_round_trip.ok
@@ -3057,7 +3057,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 			and pick_working.to_bytes().bytes == invalid_pick_bytes,
 			"SCURK Pick & Copy rejects an invalid object without another edit",
 		)
-		var scurk_editor := ScurkEditor.new()
+		var scurk_editor := ScurkEditor.instantiate() as ScurkEditorControl
 		scurk_editor._ready()
 		scurk_editor.configure(
 			editor_palette, editor_large, editor_small_medium, reference_root
@@ -3265,7 +3265,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 			"SCURK Revert enters exact-byte Undo history",
 		)
 		scurk_editor.redo()
-		var current_tile_id := ScurkEditor.object_tile_id(scurk_editor.current_large_id)
+		var current_tile_id := ScurkEditorControl.object_tile_id(scurk_editor.current_large_id)
 		scurk_editor.name_edit.text = "Temporary Query Name"
 		scurk_editor._commit_name()
 		_check(
@@ -3303,7 +3303,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 		var added_sprite_id := 1256
 		var added_before: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
 		scurk_editor.current_large_id = added_sprite_id
-		scurk_editor.current_view = ScurkEditor.VIEW_LARGE
+		scurk_editor.current_view = ScurkEditorControl.VIEW_LARGE
 		scurk_editor._capture_object_start()
 		scurk_editor._refresh_sprite()
 		var added_pixels := scurk_editor.pixel_canvas.pixels.duplicate()
@@ -3367,7 +3367,7 @@ func _test_scurk_mif(reference_root: String) -> void:
 			"SCURK editor centers and clips an imported bitmap without changing its base",
 		)
 		scurk_editor.current_large_id = editable_ids[0]
-		scurk_editor.current_view = ScurkEditor.VIEW_LARGE
+		scurk_editor.current_view = ScurkEditorControl.VIEW_LARGE
 		scurk_editor._refresh_sprite()
 		var before_clear: PackedByteArray = scurk_editor.tile_set.to_bytes().bytes
 		scurk_editor.clear_object()
