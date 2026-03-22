@@ -5,6 +5,10 @@ var analysis: Dictionary = {}
 var polygons: Array[PackedVector2Array] = []
 var colors: Array[Color] = []
 var station_polygons: Array[PackedVector2Array] = []
+var fill_mesh: ArrayMesh
+var border_mesh: ArrayMesh
+var station_border_mesh: ArrayMesh
+var station_highlight_mesh: ArrayMesh
 
 
 func rebuild(city: CityState, result: Dictionary) -> void:
@@ -21,6 +25,70 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 			for y in range(site.position.y, site.end.y):
 				station_polygons.append(CityIsometricRenderer.terrain_surface_polygon(city, x, y))
 
+	fill_mesh = _fill_mesh(polygons, colors)
+	border_mesh = _stroke_mesh(polygons, 0.65, Color(0.08, 0.18, 0.28, 0.7))
+	station_border_mesh = _stroke_mesh(station_polygons, 3.5, Color("172333"))
+	station_highlight_mesh = _stroke_mesh(station_polygons, 1.8, Color("fff1a3"))
+
+
+static func _fill_mesh(shapes: Array[PackedVector2Array], tints: Array[Color]) -> ArrayMesh:
+	var vertices := PackedVector2Array()
+	var vertex_colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	for i in shapes.size():
+		var tint := tints[i]
+		tint.a = 0.55
+		_append_quad(vertices, vertex_colors, indices, shapes[i], tint)
+	return _mesh(vertices, vertex_colors, indices)
+
+
+static func _stroke_mesh(shapes: Array[PackedVector2Array], width: float, tint: Color) -> ArrayMesh:
+	var vertices := PackedVector2Array()
+	var vertex_colors := PackedColorArray()
+	var indices := PackedInt32Array()
+	for polygon in shapes:
+		# cache the same closed miter joins as the former draw_polyline calls
+		var outside := PackedVector2Array()
+		var inside := PackedVector2Array()
+		for i in polygon.size():
+			var incoming := (polygon[i] - polygon[posmod(i - 1, polygon.size())]).normalized()
+			var outgoing := (polygon[(i + 1) % polygon.size()] - polygon[i]).normalized()
+			var normal := Vector2(-incoming.y, incoming.x)
+			var next_normal := Vector2(-outgoing.y, outgoing.x)
+			var miter := (normal + next_normal).normalized()
+			var length := width * 0.5 / maxf(absf(miter.dot(normal)), 0.1)
+			outside.append(polygon[i] + miter * length)
+			inside.append(polygon[i] - miter * length)
+		for i in polygon.size():
+			var next := (i + 1) % polygon.size()
+			_append_quad(vertices, vertex_colors, indices,
+				PackedVector2Array([outside[i], outside[next], inside[next], inside[i]]), tint)
+	return _mesh(vertices, vertex_colors, indices)
+
+
+static func _append_quad(vertices: PackedVector2Array, vertex_colors: PackedColorArray,
+	indices: PackedInt32Array, polygon: PackedVector2Array, tint: Color) -> void:
+	var first := vertices.size()
+	for point in polygon:
+		vertices.append(point)
+		vertex_colors.append(tint)
+	for index in [0, 1, 2, 0, 2, 3]:
+		indices.append(first + index)
+
+
+static func _mesh(vertices: PackedVector2Array, vertex_colors: PackedColorArray,
+	indices: PackedInt32Array) -> ArrayMesh:
+	if vertices.is_empty():
+		return null
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_COLOR] = vertex_colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+	return mesh
+
 
 static func coverage_color(value: int, fire := false) -> Color:
 	var weak := Color("ffe45c") if fire else Color("58cbe8")
@@ -30,19 +98,14 @@ static func coverage_color(value: int, fire := false) -> Color:
 
 func draw_on(canvas: Control, scale: float, offset: Vector2) -> void:
 	canvas.draw_set_transform(offset, 0.0, Vector2.ONE * scale)
-	for i in polygons.size():
-		var fill := colors[i]
-		fill.a = 0.55
-		canvas.draw_colored_polygon(polygons[i], fill)
-		var border := polygons[i].duplicate()
-		border.append(border[0])
-		canvas.draw_polyline(border, Color(0.08, 0.18, 0.28, 0.7), 0.65)
-
-	for polygon in station_polygons:
-		var border := polygon.duplicate()
-		border.append(border[0])
-		canvas.draw_polyline(border, Color("172333"), 3.5)
-		canvas.draw_polyline(border, Color("fff1a3"), 1.8)
+	if fill_mesh != null:
+		canvas.draw_mesh(fill_mesh, null)
+	if border_mesh != null:
+		canvas.draw_mesh(border_mesh, null)
+	if station_border_mesh != null:
+		canvas.draw_mesh(station_border_mesh, null)
+	if station_highlight_mesh != null:
+		canvas.draw_mesh(station_highlight_mesh, null)
 
 	canvas.draw_set_transform(Vector2.ZERO)
 	_draw_key(canvas)
