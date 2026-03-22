@@ -15,6 +15,7 @@ var _days: Tree
 var _day_rows: Array[TreeItem] = []
 var _step_rows: Dictionary = {}
 var _other_steps: TreeItem
+var _tabs: TabContainer
 var _metrics_tree: Tree
 var _action_label: Label
 var _resume_speed := 2
@@ -35,6 +36,8 @@ func _ready() -> void:
 	var box: VBoxContainer = $DebugWindow/Panel/Margin/Content
 	box.get_node("Header/Reset").pressed.connect(_reset_averages)
 	var tabs: TabContainer = box.get_node("Tabs")
+	_tabs = tabs
+	tabs.tab_changed.connect(func(_index: int) -> void: _refresh_record_tab())
 	_days = tabs.get_node("Simulation")
 	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples"])
 	_build_day_rows()
@@ -233,6 +236,7 @@ func _refresh_metrics() -> void:
 	_refresh_day_rows(_history())
 
 	_metrics_tree.refresh(_metrics)
+	_refresh_record_tab()
 
 
 func _build_day_rows() -> void:
@@ -364,3 +368,13 @@ static func _create_debug_theme() -> Theme:
 	theme.set_color("font_hover_color", "PopupMenu", Color.WHITE)
 
 	return theme
+
+
+func _refresh_record_tab(force := false) -> void:
+	if not is_open or _tabs == null:
+		return
+
+	var tab := _tabs.get_current_tab_control()
+
+	if tab is DebugRecordTable:
+		tab.refresh_from_host(main_control, force)

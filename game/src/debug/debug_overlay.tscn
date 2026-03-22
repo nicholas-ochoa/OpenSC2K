@@ -4,6 +4,8 @@
 
 [ext_resource type="Script" path="res://src/debug/debug_metrics_tree.gd" id="2_metrics"]
 
+[ext_resource type="PackedScene" path="res://src/debug/debug_record_table.tscn" id="3_records"]
+
 [node name="DebugOverlay" type="Node"]
 script = ExtResource("1_ggiji")
 
@@ -58,3 +60,18 @@ column_titles_visible = true
 hide_root = true
 script = ExtResource("2_metrics")
 metadata/_tab_index = 1
+
+[node name="XMIC" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
+visible = false
+layout_mode = 2
+kind = "XMIC"
+
+[node name="Objects" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
+visible = false
+layout_mode = 2
+kind = "Objects"
+
+[node name="State" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
+visible = false
+layout_mode = 2
+kind = "State"
