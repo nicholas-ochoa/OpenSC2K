@@ -74,7 +74,7 @@ func _run() -> void:
 		var debug := preload("res://src/debug/debug_overlay.tscn").instantiate() as CityDebugOverlay
 		debug.setup(host)
 		host.add_child(debug)
-		var xmic_tab: DebugRecordTable = debug._tabs.get_node("XMIC")
+		var xmic_tab: DebugRecordTable = debug._tabs.get_node("MicroSims")
 		debug.toggle()
 		debug._process(2.0)
 		assert(xmic_tab._last_refresh == -1000, "Inactive record tabs do not collect")

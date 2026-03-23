@@ -15,11 +15,18 @@ var _city_id := 0
 
 func _ready() -> void:
 	var titles := ["Record / field", "Value", "Hex / position", "Details"]
+	var widths := [240, 160, 140, 270]
 
-	for column in 4:
+	if kind == "Objects":
+		titles = ["Record / field", "Value", "State", "Position", "Direction", "Goal"]
+		widths = [115, 150, 190, 120, 155, 210]
+
+	table.columns = titles.size()
+
+	for column in titles.size():
 		table.set_column_title(column, titles[column])
-		table.set_column_custom_minimum_width(column, [240, 160, 140, 270][column])
-		table.set_column_expand(column, column == 3)
+		table.set_column_custom_minimum_width(column, widths[column])
+		table.set_column_expand(column, column == titles.size() - 1)
 
 	show_empty.visible = kind != "State"
 	search.text_changed.connect(func(_text: String) -> void: _filter())
@@ -86,8 +93,25 @@ func update_records(records: Array[Dictionary]) -> void:
 
 
 func _set_cells(row: TreeItem, record: Dictionary) -> void:
-	for column in 4:
-		var text := str(record.get(["name", "value", "raw", "detail"][column], ""))
+	var cells: Array = record.get("cells", [])
+
+	if cells.is_empty():
+		if kind == "Objects":
+			# child fields use the value area across the empty summary columns
+			var translated := str(record.get("translation", ""))
+			var value_text := "%s / %s" % [record.value, record.raw]
+
+			if not translated.is_empty():
+				value_text += " — " + translated
+
+			cells = [record.name, value_text + "\n" + str(record.get("detail", "")), "", "", "", ""]
+			row.set_expand_right(1, true)
+		else:
+			for key in ["name", "value", "raw", "detail"]:
+				cells.append(str(record.get(key, "")))
+
+	for column in table.columns:
+		var text := str(cells[column])
 		row.set_text(column, text)
 		row.set_tooltip_text(column, text)
 
@@ -99,7 +123,7 @@ func _filter() -> void:
 		var content := ""
 
 		for item: TreeItem in [row] + row.get_children():
-			for column in 4:
+			for column in table.columns:
 				content += " " + item.get_text(column).to_lower()
 
 		row.visible = needle.is_empty() or needle in content

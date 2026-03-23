@@ -61,7 +61,7 @@ hide_root = true
 script = ExtResource("2_metrics")
 metadata/_tab_index = 1
 
-[node name="XMIC" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
+[node name="MicroSims" parent="DebugWindow/Panel/Margin/Content/Tabs" instance=ExtResource("3_records")]
 visible = false
 layout_mode = 2
 kind = "XMIC"

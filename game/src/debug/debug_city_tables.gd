@@ -69,16 +69,18 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				if record.type == 0 and not include_empty:
 					continue
 
-				var fields: Array[Dictionary] = []
-
-				for key in record:
-					fields.append(_field(key, record[key], "Decoded XTHG field; meaning depends on object type"))
-
+				var fields := DebugObjectFields.fields(record, city)
+				var position := "(%d, %d, %d)" % [record.x, record.y, record.z]
 				result.append({"id": str(id), "name": "Object %d" % id,
-					"value": "%s • state %d" % [QueryInfo.THING_NAMES[record.type] if record.type >= 0 and record.type < QueryInfo.THING_NAMES.size() else "Type %d" % record.type, record.state],
-					"raw": "(%d, %d, %d)" % [record.x, record.y, record.z],
-					"detail": "Direction %d • goal %d" % [record.direction, record.goal],
+					"value": DebugObjectFields.type_name(record.type), "raw": position,
+					"cells": ["Object %d" % id,
+						DebugObjectFields.numeric(record.type, DebugObjectFields.type_name(record.type)),
+						DebugObjectFields.numeric(record.state, DebugObjectFields.state(record, city)),
+						position,
+						DebugObjectFields.numeric(record.direction, DebugObjectFields.direction(record)),
+						DebugObjectFields.numeric(record.goal, DebugObjectFields.goal(record, city))],
 					"empty": record.type == 0, "fields": fields})
+
 		"State":
 			if engine != null:
 				var fields: Array[Dictionary] = []
