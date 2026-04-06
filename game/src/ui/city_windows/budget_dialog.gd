@@ -40,6 +40,8 @@ var pending_bond_action := ""
 
 
 func _ready() -> void:
+	# the scene is visible for editor layout work. open it only on request in game
+	hide()
 	theme = theme.duplicate() if theme != null else ThemeDB.get_default_theme().duplicate()
 	theme.set_color("font_color", "Label", Color.WHITE)
 	confirmed.connect(apply_requested.emit)

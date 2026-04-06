@@ -45,6 +45,7 @@ func _run() -> void:
 	city_map.free()
 	var budget := preload("res://src/ui/city_windows/budget_dialog.tscn").instantiate() as BudgetDialog
 	root.add_child(budget)
+	assert(not budget.visible, "Budget must stay closed until requested in game")
 	assert(budget.controls.size() == 16 and budget.controls[0].owner == budget)
 	assert(budget.get_ok_button().text == "Apply")
 	assert(budget.bond_dialog.get_ok_button().text == "Yes" and budget.bond_dialog.get_cancel_button().text == "No")

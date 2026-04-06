@@ -13,6 +13,7 @@
 [sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_83738"]
 
 [node name="BudgetDialog" type="ConfirmationDialog"]
+visible = true
 title = "Budget"
 ok_button_text = "Apply"
 size = Vector2i(720, 560)
