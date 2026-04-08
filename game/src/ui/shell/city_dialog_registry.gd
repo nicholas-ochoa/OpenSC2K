@@ -24,12 +24,12 @@ const BudgetDialogView = preload("res://src/ui/city_windows/budget_dialog.tscn")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
 
+var dialog_groups: Dictionary = {}
+
 var original_assets: OriginalGameAssets
 var city_open_dialog: FileDialog
 var city_save_dialog: FileDialog
 var tile_set_dialog: FileDialog
-var city_bitmap_dialog: FileDialog
-var city_pdf_dialog: FileDialog
 var new_city_dialog: NewCityTerrainDialog
 var sign_dialog: CitySignDialog
 var bridge_dialog: BridgeSelectionDialog
@@ -71,32 +71,28 @@ func _ready() -> void:
 
 func _create_file_dialogs() -> void:
 	city_open_dialog = FileDialogs.city_open()
-	add_child(city_open_dialog)
+	_dialog_parent("Files").add_child(city_open_dialog)
 	city_save_dialog = FileDialogs.city_save()
-	add_child(city_save_dialog)
+	_dialog_parent("Files").add_child(city_save_dialog)
 	tile_set_dialog = FileDialogs.tile_set_open()
-	add_child(tile_set_dialog)
-	city_bitmap_dialog = FileDialogs.city_bitmap_save()
-	add_child(city_bitmap_dialog)
-	city_pdf_dialog = FileDialogs.city_pdf_save()
-	add_child(city_pdf_dialog)
+	_dialog_parent("Files").add_child(tile_set_dialog)
 
 
 func _create_tool_dialogs() -> void:
 	new_city_dialog = NewCityDialogView.instantiate() as NewCityTerrainDialog
-	add_child(new_city_dialog)
+	_dialog_parent("Startup").add_child(new_city_dialog)
 
 	if original_assets != null:
 		new_city_dialog.set_control_graphics(original_assets.city_ui_graphics)
 
 	sign_dialog = SignDialogView.instantiate()
-	add_child(sign_dialog)
+	_dialog_parent("Tools").add_child(sign_dialog)
 	bridge_dialog = BridgeDialogView.instantiate()
-	add_child(bridge_dialog)
+	_dialog_parent("Tools").add_child(bridge_dialog)
 	tool_choice_dialog = ToolChoiceDialogView.instantiate()
-	add_child(tool_choice_dialog)
+	_dialog_parent("Tools").add_child(tool_choice_dialog)
 	stadium_dialog = StadiumDialogView.instantiate()
-	add_child(stadium_dialog)
+	_dialog_parent("Tools").add_child(stadium_dialog)
 	network_connection_dialog = _route_dialog(
 		"Neighbor Connection",
 		"Build a road connection to a neighboring city for $1,000?",
@@ -119,16 +115,16 @@ func _create_tool_dialogs() -> void:
 	tunnel_dialog.theme = ThemeDB.get_default_theme().duplicate()
 	tunnel_dialog.get_label().add_theme_color_override("font_color", Color.WHITE)
 	query_dialog = QueryDialogView.instantiate()
-	add_child(query_dialog)
+	_dialog_parent("Tools").add_child(query_dialog)
 
 
 func _create_information_windows() -> void:
 	graph_window = GraphWindowView.instantiate()
-	add_child(graph_window)
+	_dialog_parent("CityWindows").add_child(graph_window)
 	population_window = PopulationWindowView.instantiate()
-	add_child(population_window)
+	_dialog_parent("CityWindows").add_child(population_window)
 	industry_window = IndustryWindowView.instantiate()
-	add_child(industry_window)
+	_dialog_parent("CityWindows").add_child(industry_window)
 	var industry_names := PackedStringArray()
 
 	for index in IndustryView.INDUSTRY_COUNT:
@@ -139,7 +135,7 @@ func _create_information_windows() -> void:
 
 	industry_window.set_resources(industry_names, original_assets.industry_icons)
 	simnation_window = SimNationWindowView.instantiate()
-	add_child(simnation_window)
+	_dialog_parent("CityWindows").add_child(simnation_window)
 	simnation_window.set_resources(
 		original_assets.simnation_sprites,
 		str(original_assets.strings.get(
@@ -149,24 +145,24 @@ func _create_information_windows() -> void:
 		original_assets.strings,
 	)
 	city_map_window = CityMapWindowView.instantiate()
-	add_child(city_map_window)
+	_dialog_parent("CityWindows").add_child(city_map_window)
 	city_map_window.set_resources(
 		original_assets.city_map_icons, original_assets.strings
 	)
 	ordinance_window = OrdinanceWindowView.instantiate()
-	add_child(ordinance_window)
+	_dialog_parent("CityWindows").add_child(ordinance_window)
 	analysis_dialog = AnalysisDialogView.instantiate()
-	add_child(analysis_dialog)
+	_dialog_parent("CityWindows").add_child(analysis_dialog)
 	newspaper_dialog = NewspaperDialogView.new()
-	add_child(newspaper_dialog)
+	_dialog_parent("CityWindows").add_child(newspaper_dialog)
 	newspaper_dialog.set_control_graphics(original_assets.city_ui_graphics)
 	library_windows = LibraryWindowsView.new()
-	add_child(library_windows)
+	_dialog_parent("CityWindows").add_child(library_windows)
 
 
 func _create_event_dialogs() -> void:
 	forest_protest_dialog = PictureDialogView.instantiate()
-	add_child(forest_protest_dialog)
+	_dialog_parent("CityEvents").add_child(forest_protest_dialog)
 	forest_protest_dialog.configure(
 		"ForestProtestDialog",
 		"Forest Protest",
@@ -176,7 +172,7 @@ func _create_event_dialogs() -> void:
 		original_assets.forest_protest_text,
 	)
 	building_objection_dialog = PictureDialogView.instantiate()
-	add_child(building_objection_dialog)
+	_dialog_parent("CityEvents").add_child(building_objection_dialog)
 	building_objection_dialog.configure(
 		"BuildingObjectionDialog",
 		"Citizen Objection",
@@ -186,12 +182,14 @@ func _create_event_dialogs() -> void:
 		original_assets.building_objection_text,
 	)
 	game_over_dialog = AcceptDialog.new()
+	game_over_dialog.name = "GameOverDialog"
 	game_over_dialog.theme = ClassicUiStyle.create_dialog_theme()
 	game_over_dialog.min_size = Vector2i(460, 220)
-	add_child(game_over_dialog)
+	_dialog_parent("CityEvents").add_child(game_over_dialog)
 	scenario_dialog = ScenarioDialogView.instantiate()
-	add_child(scenario_dialog)
+	_dialog_parent("Startup").add_child(scenario_dialog)
 	military_dialog = ConfirmationDialog.new()
+	military_dialog.name = "MilitaryProposalDialog"
 	military_dialog.theme = ClassicUiStyle.create_dialog_theme()
 	military_dialog.title = "Military Base Proposal"
 	military_dialog.dialog_text = (
@@ -202,9 +200,9 @@ func _create_event_dialogs() -> void:
 	military_dialog.get_ok_button().text = "Accept"
 	military_dialog.get_cancel_button().text = "Decline"
 	military_dialog.exclusive = true
-	add_child(military_dialog)
+	_dialog_parent("CityEvents").add_child(military_dialog)
 	budget_dialog = BudgetDialogView.instantiate() as BudgetDialog
-	add_child(budget_dialog)
+	_dialog_parent("CityWindows").add_child(budget_dialog)
 
 
 func _route_dialog(
@@ -216,6 +214,18 @@ func _route_dialog(
 ) -> RouteConfirmationDialog:
 	var dialog := RouteDialogView.new()
 	dialog.configure(title, prompt, accept_text, cancel_text, minimum_size)
-	add_child(dialog)
+	_dialog_parent("Tools").add_child(dialog)
 
 	return dialog
+
+
+func _dialog_parent(group_name: String) -> Control:
+	if not dialog_groups.has(group_name):
+		var group := Control.new()
+		group.name = group_name
+		group.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		add_child(group)
+		group.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+		dialog_groups[group_name] = group
+
+	return dialog_groups[group_name] as Control

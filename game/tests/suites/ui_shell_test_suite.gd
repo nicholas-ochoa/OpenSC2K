@@ -558,13 +558,13 @@ func _test_main_menu() -> void:
 		and not main_overlays.main_menu.visible
 		and main_overlays.main_menu.z_index == 850
 		and main_overlays.settings_dialog != null
-		and main_overlays.scurk_editor != null
-		and main_overlays.scurk_editor.z_index == 940
-		and main_overlays.scurk_place_print != null
-		and main_overlays.scurk_print != null
+		and main_overlays.scurk_editor == null
+		and main_overlays.scurk_workspace == null
+		and main_overlays.scurk_place_print == null
+		and main_overlays.scurk_print == null
 		and main_overlays.about_dialog != null
 		and main_overlays.save_changes_dialog != null,
-		"Main overlay registry owns menu, SCURK, and application overlays",
+		"Main overlay registry creates application overlays without SCURK",
 	)
 	main_overlays.free()
 	var scurk_toolbar := ScurkEditorToolbarUi.new()

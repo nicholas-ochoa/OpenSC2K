@@ -576,7 +576,7 @@ func _camera_keys_allowed() -> bool:
 			return false
 
 	if city_dialogs != null:
-		for dialog in city_dialogs.get_children():
+		for dialog in city_dialogs.find_children("*", "Window", true, false):
 			if dialog is Window and dialog.visible:
 				return false
 
@@ -811,6 +811,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	_sync_speed_ui()
 
 	city_dialogs = CityDialogsView.new(original_assets)
+	city_dialogs.name = "CityDialogs"
 	add_child(city_dialogs)
 
 	file_dialog = city_dialogs.city_open_dialog
@@ -820,10 +821,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	save_dialog.canceled.connect(_on_save_dialog_canceled)
 	tile_set_dialog = city_dialogs.tile_set_dialog
 	tile_set_dialog.file_selected.connect(_load_tile_set)
-	scurk_city_export_dialog = city_dialogs.city_bitmap_dialog
-	scurk_city_export_dialog.file_selected.connect(_export_scurk_city_bmp)
-	scurk_print_pdf_dialog = city_dialogs.city_pdf_dialog
-	scurk_print_pdf_dialog.file_selected.connect(_save_scurk_city_pdf)
+
 
 	city_toolbar.start_city_requested.connect(_start_city)
 	new_city_dialog = city_dialogs.new_city_dialog
@@ -897,6 +895,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 
 func _build_main_menu() -> void:
 	main_overlays = MainOverlaysView.new()
+	main_overlays.name = "ApplicationOverlays"
 	add_child(main_overlays)
 	main_menu = main_overlays.main_menu
 	main_menu.continue_requested.connect(_hide_main_menu)
@@ -914,11 +913,29 @@ func _build_main_menu() -> void:
 	settings_dialog.confirmed.connect(_apply_settings)
 	settings_dialog.import_original_requested.connect(_show_reference_import_dialog)
 
-	scurk_editor = main_overlays.scurk_editor
+	about_dialog = main_overlays.about_dialog
+
+	save_changes_dialog = main_overlays.save_changes_dialog
+	save_changes_dialog.confirmed.connect(_save_pending_city_exit)
+	save_changes_dialog.canceled.connect(_cancel_pending_city_exit)
+	save_changes_dialog.custom_action.connect(_on_save_changes_action)
+
+
+func _ensure_scurk_editor() -> void:
+	if scurk_editor != null:
+		return
+
+	scurk_editor = main_overlays.ensure_scurk_editor()
 	scurk_editor.tile_set_applied.connect(_apply_scurk_tile_set)
 	scurk_editor.place_print_requested.connect(_open_scurk_place_print)
+	desktop_presentation.editor = scurk_editor
 
-	scurk_place_print = main_overlays.scurk_place_print
+
+func _ensure_scurk_place_print() -> void:
+	if scurk_place_print != null:
+		return
+
+	scurk_place_print = main_overlays.ensure_scurk_place_print()
 	scurk_place_print.tile_selected.connect(_select_scurk_place_tile)
 	scurk_place_print.edit_tool_selected.connect(_select_scurk_edit_tool)
 	scurk_place_print.export_bmp_requested.connect(_open_scurk_city_export)
@@ -926,17 +943,23 @@ func _build_main_menu() -> void:
 	scurk_place_print.undo_requested.connect(_undo_scurk_place)
 	scurk_place_print.redo_requested.connect(_redo_scurk_place)
 	scurk_place_print.close_requested.connect(_close_scurk_place_print)
+	desktop_presentation.place_print = scurk_place_print
+	scurk_city_export_dialog = preload("res://src/ui/shared/file_dialog_factory.gd").city_bitmap_save()
+	scurk_place_print.add_child(scurk_city_export_dialog)
+	scurk_city_export_dialog.file_selected.connect(_export_scurk_city_bmp)
 
-	scurk_print = main_overlays.scurk_print
+
+func _ensure_scurk_print() -> void:
+	if scurk_print != null:
+		return
+
+	scurk_print = main_overlays.ensure_scurk_print()
 	scurk_print.preview_options_changed.connect(_refresh_scurk_print_preview)
 	scurk_print.save_pdf_requested.connect(_open_scurk_print_pdf_dialog)
-
-	about_dialog = main_overlays.about_dialog
-
-	save_changes_dialog = main_overlays.save_changes_dialog
-	save_changes_dialog.confirmed.connect(_save_pending_city_exit)
-	save_changes_dialog.canceled.connect(_cancel_pending_city_exit)
-	save_changes_dialog.custom_action.connect(_on_save_changes_action)
+	desktop_presentation.print_dialog = scurk_print
+	scurk_print_pdf_dialog = preload("res://src/ui/shared/file_dialog_factory.gd").city_pdf_save()
+	scurk_print.add_child(scurk_print_pdf_dialog)
+	scurk_print_pdf_dialog.file_selected.connect(_save_scurk_city_pdf)
 
 
 func _sync_asset_menu_actions() -> void:
@@ -1180,7 +1203,8 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	city_map_window.set_resources(assets.city_map_icons, assets.strings)
 	forest_protest_dialog.set_picture(assets.forest_protest_image)
 	building_objection_dialog.set_picture(assets.forest_protest_image)
-	scurk_editor.configure(palette, base_large_sprites, base_small_medium_sprites, reference_root, scurk_graphics)
+	if scurk_editor != null:
+		scurk_editor.configure(palette, base_large_sprites, base_small_medium_sprites, reference_root, scurk_graphics)
 
 	if scurk_place_print != null and scurk_place_print.visible:
 		scurk_place_print.configure(palette, large_sprites, active_scurk_tile_set.names if active_scurk_tile_set != null else {}, scurk_graphics)
@@ -1238,6 +1262,7 @@ func _open_scurk_dialog() -> void:
 
 		return
 
+	_ensure_scurk_editor()
 	scurk_editor.configure(
 		palette, base_large_sprites, base_small_medium_sprites, reference_root, scurk_graphics
 	)
@@ -1292,12 +1317,12 @@ func _open_scurk_place_print() -> void:
 		or not palette.is_valid()
 		or large_sprites == null
 		or not large_sprites.is_valid()
-		or scurk_place_print == null
 	):
 		_show_error("The SCURK Place & Print graphics are not available.")
 
 		return
 
+	_ensure_scurk_place_print()
 	_hide_main_menu()
 
 	if scurk_editor != null and scurk_editor.visible:
@@ -1401,8 +1426,11 @@ func _export_scurk_city_bmp(path: String) -> void:
 
 
 func _open_scurk_print_dialog() -> void:
-	if city == null or scurk_print == null:
+	if city == null:
 		return
+
+	_ensure_scurk_place_print()
+	_ensure_scurk_print()
 
 	scurk_print.configure(
 		city.city_name(), overlay_mode, surface_visibility, show_underground_pipes

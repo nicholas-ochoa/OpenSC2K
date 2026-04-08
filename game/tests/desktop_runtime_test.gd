@@ -93,6 +93,9 @@ func _run() -> void:
 	root.gui_cancel_drag()
 	target.queue_free()
 	var presenter := desktop.presenter
+	main._ensure_scurk_editor()
+	main._ensure_scurk_place_print()
+	main._ensure_scurk_print()
 
 	for graphics in [original, alternate]:
 		desktop.set_graphics(graphics)
