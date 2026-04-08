@@ -11,6 +11,8 @@ var map_control: CityMapWindowControl
 
 
 func _ready() -> void:
+	# visible in the editor, closed at startup
+	hide()
 	close_requested.connect(hide)
 	map_control = get_node("Background/Margin/CityMapWindowControl")
 	map_control.mode_changed.connect(mode_changed.emit)

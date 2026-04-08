@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/settings/about_dialog.gd" id="1_about"]
 
 [node name="AboutDialog" type="AcceptDialog"]
+visible = true
 title = "About OpenSC2K"
 min_size = Vector2i(560, 250)
 exclusive = true

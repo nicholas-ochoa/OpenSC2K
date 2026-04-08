@@ -17,7 +17,7 @@ border_color = Color(1, 1, 1, 1)
 [node name="SCURKPlacePrint" type="Window"]
 title = "SCURK Place & Print"
 size = Vector2i(440, 680)
-visible = false
+visible = true
 min_size = Vector2i(440, 680)
 script = ExtResource("1_wk7rl")
 
@@ -38,29 +38,29 @@ theme_override_constants/margin_bottom = 10
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Label1" type="Label" parent="Panel/Margin/Content"]
+[node name="PlacePrintWorkAreaLabel" type="Label" parent="Panel/Margin/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
 theme_override_font_sizes/font_size = 20
 text = "Place & Print Work Area"
 horizontal_alignment = 1
 
-[node name="Label2" type="Label" parent="Panel/Margin/Content"]
+[node name="Instructions" type="Label" parent="Panel/Margin/Content"]
 custom_minimum_size = Vector2(0, 48)
 layout_mode = 2
 text = "Select an object. Then click its anchor tile in the city. SCURK placement does not use city funds or normal development gates."
 autowrap_mode = 3
 
-[node name="HBoxContainer1" type="HBoxContainer" parent="Panel/Margin/Content"]
+[node name="WorkspaceRow" type="HBoxContainer" parent="Panel/Margin/Content"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Label1" type="Label" parent="Panel/Margin/Content/HBoxContainer1"]
+[node name="WorkspaceLabel" type="Label" parent="Panel/Margin/Content/WorkspaceRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 text = "Workspace"
 
-[node name="OptionButton1" type="OptionButton" parent="Panel/Margin/Content/HBoxContainer1"]
+[node name="ModeSelector" type="OptionButton" parent="Panel/Margin/Content/WorkspaceRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 selected = 0
@@ -70,16 +70,16 @@ popup/item_0/id = 0
 popup/item_1/text = "Edit Tools"
 popup/item_1/id = 1
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="Panel/Margin/Content"]
+[node name="GroupRow" type="HBoxContainer" parent="Panel/Margin/Content"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Label1" type="Label" parent="Panel/Margin/Content/HBoxContainer2"]
+[node name="ObjectGroupLabel" type="Label" parent="Panel/Margin/Content/GroupRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 text = "Object Group"
 
-[node name="OptionButton1" type="OptionButton" parent="Panel/Margin/Content/HBoxContainer2"]
+[node name="GroupSelector" type="OptionButton" parent="Panel/Margin/Content/GroupRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 selected = 0
@@ -103,16 +103,16 @@ popup/item_7/id = 9
 popup/item_8/text = "All"
 popup/item_8/id = 10
 
-[node name="HBoxContainer3" type="HBoxContainer" parent="Panel/Margin/Content"]
+[node name="ZoneRow" type="HBoxContainer" parent="Panel/Margin/Content"]
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Label1" type="Label" parent="Panel/Margin/Content/HBoxContainer3"]
+[node name="BuildingZoneLabel" type="Label" parent="Panel/Margin/Content/ZoneRow"]
 custom_minimum_size = Vector2(110, 0)
 layout_mode = 2
 text = "Building Zone"
 
-[node name="OptionButton1" type="OptionButton" parent="Panel/Margin/Content/HBoxContainer3"]
+[node name="ZoneSelector" type="OptionButton" parent="Panel/Margin/Content/ZoneRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 tooltip_text = "Select the saved zone type for transitional Residential, Commercial, or Industrial objects. Other objects use their fixed zone type."
@@ -181,42 +181,42 @@ item_22/text = "Subway"
 item_23/text = "Subway-to-Rail Connector"
 item_24/text = "Center"
 
-[node name="Label3" type="Label" parent="Panel/Margin/Content"]
+[node name="SelectionLabel" type="Label" parent="Panel/Margin/Content"]
 custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 text = "Select an object."
 autowrap_mode = 3
 text_overrun_behavior = 3
 
-[node name="HBoxContainer4" type="HBoxContainer" parent="Panel/Margin/Content"]
+[node name="OutputActions" type="HBoxContainer" parent="Panel/Margin/Content"]
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 2
 
-[node name="Button1" type="Button" parent="Panel/Margin/Content/HBoxContainer4"]
+[node name="ExportBmpButton" type="Button" parent="Panel/Margin/Content/OutputActions"]
 layout_mode = 2
 text = "Export BMP..."
 
-[node name="Button2" type="Button" parent="Panel/Margin/Content/HBoxContainer4"]
+[node name="PrintCity" type="Button" parent="Panel/Margin/Content/OutputActions"]
 layout_mode = 2
 tooltip_text = "Choose the city pages, detail, view, layers, and output color."
 text = "Print City..."
 
-[node name="HBoxContainer5" type="HBoxContainer" parent="Panel/Margin/Content"]
+[node name="HistoryActions" type="HBoxContainer" parent="Panel/Margin/Content"]
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 2
 
-[node name="Button1" type="Button" parent="Panel/Margin/Content/HBoxContainer5"]
+[node name="UndoButton" type="Button" parent="Panel/Margin/Content/HistoryActions"]
 layout_mode = 2
 disabled = true
 text = "Undo"
 
-[node name="Button2" type="Button" parent="Panel/Margin/Content/HBoxContainer5"]
+[node name="RedoButton" type="Button" parent="Panel/Margin/Content/HistoryActions"]
 layout_mode = 2
 disabled = true
 text = "Redo"
 
-[node name="Button3" type="Button" parent="Panel/Margin/Content/HBoxContainer5"]
+[node name="Close" type="Button" parent="Panel/Margin/Content/HistoryActions"]
 layout_mode = 2
 text = "Close"

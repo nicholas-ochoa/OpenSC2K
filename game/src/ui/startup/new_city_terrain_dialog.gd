@@ -32,22 +32,24 @@ var control_graphics: CityUiGraphics
 
 
 func _ready() -> void:
-	city_name_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/LineEdit1")
-	mayor_name_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/LineEdit2")
-	difficulty_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/OptionButton1")
-	year_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/OptionButton2")
-	size_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/OptionButton3")
-	native_maps_input = get_node("Center/NewCityDialog/Content/Body/Fields/CheckBox1")
-	ocean_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer1/CheckBox1")
-	river_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer1/CheckBox2")
-	hills_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer3/HSlider1")
-	water_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer5/HSlider1")
-	trees_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer7/HSlider1")
-	hills_value = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer3/Label1")
-	water_value = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer5/Label1")
-	trees_value = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer7/Label1")
-	preview_view = get_node("Center/NewCityDialog/Content/Body/Preview/PanelContainer1/TextureRect1")
-	preview_status = get_node("Center/NewCityDialog/Content/Body/Preview/Label2")
+	# visible in the editor, closed at startup
+	hide()
+	city_name_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameInput")
+	mayor_name_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/MayorNameInput")
+	difficulty_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/DifficultyInput")
+	year_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/YearInput")
+	size_input = get_node("Center/NewCityDialog/Content/Body/Fields/CityFields/SizeInput")
+	native_maps_input = get_node("Center/NewCityDialog/Content/Body/Fields/NativeMapsInput")
+	ocean_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow/OceanInput")
+	river_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow/RiverInput")
+	hills_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsInputGroup/HillsInput")
+	water_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterInputGroup/WaterInput")
+	trees_input = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesInputGroup/TreesInput")
+	hills_value = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsInputGroup/HillsValue")
+	water_value = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterInputGroup/WaterValue")
+	trees_value = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesInputGroup/TreesValue")
+	preview_view = get_node("Center/NewCityDialog/Content/Body/Preview/PreviewFrame/TerrainPreview")
+	preview_status = get_node("Center/NewCityDialog/Content/Body/Preview/PreviewStatus")
 	preview_timer = get_node("PreviewTimer")
 	var title_bar: DialogTitleBar = $Center/NewCityDialog/Content/TitleBar
 	title_bar.title_label.text = "New City"
@@ -63,9 +65,9 @@ func _ready() -> void:
 	$Center/NewCityDialog/Content/Body/Preview/Regenerate.pressed.connect(terrain_regeneration_requested.emit)
 	$Center/NewCityDialog/Content/Buttons/Cancel.pressed.connect(cancel_requested.emit)
 	$Center/NewCityDialog/Content/Buttons/Start.pressed.connect(build_requested.emit)
-	terrain_icons["Hills"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer2/TextureRect1")
-	terrain_icons["Water"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer4/TextureRect1")
-	terrain_icons["Trees"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HBoxContainer6/TextureRect1")
+	terrain_icons["Hills"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/HillsRow/TerrainPreview")
+	terrain_icons["Water"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterRow/TerrainPreview")
+	terrain_icons["Trees"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesRow/TerrainPreview")
 	set_control_graphics(control_graphics)
 
 

@@ -16,6 +16,7 @@ border_width_bottom = 1
 border_color = Color(1, 1, 1, 1)
 
 [node name="ScurkPrintControl" type="Window"]
+visible = true
 title = "Prints of the City"
 size = Vector2i(760, 680)
 min_size = Vector2i(760, 680)
@@ -38,23 +39,23 @@ theme_override_constants/margin_bottom = 10
 layout_mode = 2
 theme_override_constants/separation = 8
 
-[node name="Label1" type="Label" parent="Panel/Margin/Content"]
+[node name="PrintsOfTheCityLabel" type="Label" parent="Panel/Margin/Content"]
 layout_mode = 2
 theme_override_font_sizes/font_size = 20
 text = "Prints of the City"
 horizontal_alignment = 1
 
-[node name="GridContainer1" type="GridContainer" parent="Panel/Margin/Content"]
+[node name="PrintOptions" type="GridContainer" parent="Panel/Margin/Content"]
 layout_mode = 2
 theme_override_constants/h_separation = 8
 theme_override_constants/v_separation = 6
 columns = 4
 
-[node name="Label1" type="Label" parent="Panel/Margin/Content/GridContainer1"]
+[node name="MagnificationLabel" type="Label" parent="Panel/Margin/Content/PrintOptions"]
 layout_mode = 2
 text = "Magnification"
 
-[node name="OptionButton1" type="OptionButton" parent="Panel/Margin/Content/GridContainer1"]
+[node name="MagnificationSelector" type="OptionButton" parent="Panel/Margin/Content/PrintOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
 selected = 0
@@ -66,11 +67,11 @@ popup/item_1/id = 1
 popup/item_2/text = "4x - Large"
 popup/item_2/id = 2
 
-[node name="Label2" type="Label" parent="Panel/Margin/Content/GridContainer1"]
+[node name="ViewLabel" type="Label" parent="Panel/Margin/Content/PrintOptions"]
 layout_mode = 2
 text = "View"
 
-[node name="OptionButton2" type="OptionButton" parent="Panel/Margin/Content/GridContainer1"]
+[node name="ViewSelector" type="OptionButton" parent="Panel/Margin/Content/PrintOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
 selected = 0
@@ -80,11 +81,11 @@ popup/item_0/id = 0
 popup/item_1/text = "Below Ground"
 popup/item_1/id = 1
 
-[node name="Label3" type="Label" parent="Panel/Margin/Content/GridContainer1"]
+[node name="OutputLabel" type="Label" parent="Panel/Margin/Content/PrintOptions"]
 layout_mode = 2
 text = "Output"
 
-[node name="OptionButton3" type="OptionButton" parent="Panel/Margin/Content/GridContainer1"]
+[node name="ColorSelector" type="OptionButton" parent="Panel/Margin/Content/PrintOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
 selected = 0
@@ -94,11 +95,11 @@ popup/item_0/id = 0
 popup/item_1/text = "Black and White"
 popup/item_1/id = 1
 
-[node name="Label4" type="Label" parent="Panel/Margin/Content/GridContainer1"]
+[node name="PrintWhatLabel" type="Label" parent="Panel/Margin/Content/PrintOptions"]
 layout_mode = 2
 text = "Print What"
 
-[node name="OptionButton4" type="OptionButton" parent="Panel/Margin/Content/GridContainer1"]
+[node name="PrintWhatSelector" type="OptionButton" parent="Panel/Margin/Content/PrintOptions"]
 layout_mode = 2
 size_flags_horizontal = 3
 selected = 0
@@ -108,69 +109,69 @@ popup/item_0/id = 0
 popup/item_1/text = "Selected Pages"
 popup/item_1/id = 1
 
-[node name="HBoxContainer1" type="HBoxContainer" parent="Panel/Margin/Content"]
+[node name="LayersRow" type="HBoxContainer" parent="Panel/Margin/Content"]
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Label1" type="Label" parent="Panel/Margin/Content/HBoxContainer1"]
+[node name="LayersLabel" type="Label" parent="Panel/Margin/Content/LayersRow"]
 custom_minimum_size = Vector2(78, 0)
 layout_mode = 2
 text = "Layers"
 
-[node name="CheckBox1" type="CheckBox" parent="Panel/Margin/Content/HBoxContainer1"]
+[node name="BuildingsCheck" type="CheckBox" parent="Panel/Margin/Content/LayersRow"]
 layout_mode = 2
 button_pressed = true
 text = "Buildings"
 
-[node name="CheckBox2" type="CheckBox" parent="Panel/Margin/Content/HBoxContainer1"]
+[node name="InfrastructureCheck" type="CheckBox" parent="Panel/Margin/Content/LayersRow"]
 layout_mode = 2
 button_pressed = true
 text = "Infrastructure"
 
-[node name="CheckBox3" type="CheckBox" parent="Panel/Margin/Content/HBoxContainer1"]
+[node name="ZonesCheck" type="CheckBox" parent="Panel/Margin/Content/LayersRow"]
 layout_mode = 2
 button_pressed = true
 text = "Zones"
 
-[node name="CheckBox4" type="CheckBox" parent="Panel/Margin/Content/HBoxContainer1"]
+[node name="SignsCheck" type="CheckBox" parent="Panel/Margin/Content/LayersRow"]
 layout_mode = 2
 button_pressed = true
 text = "Signs"
 
-[node name="CheckBox5" type="CheckBox" parent="Panel/Margin/Content/HBoxContainer1"]
+[node name="PipesCheck" type="CheckBox" parent="Panel/Margin/Content/LayersRow"]
 layout_mode = 2
 button_pressed = true
 text = "Pipes"
 
-[node name="Control1" type="Control" parent="Panel/Margin/Content"]
+[node name="Preview" type="Control" parent="Panel/Margin/Content"]
 texture_filter = 2
 custom_minimum_size = Vector2(560, 310)
 layout_mode = 2
 size_flags_vertical = 3
 script = ExtResource("2_x2ed6")
 
-[node name="Label2" type="Label" parent="Panel/Margin/Content"]
+[node name="StatusLabel" type="Label" parent="Panel/Margin/Content"]
 layout_mode = 2
 text = "Select the print options."
 text_overrun_behavior = 3
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="Panel/Margin/Content"]
+[node name="Actions" type="HBoxContainer" parent="Panel/Margin/Content"]
 layout_mode = 2
 theme_override_constants/separation = 8
 alignment = 2
 
-[node name="Button1" type="Button" parent="Panel/Margin/Content/HBoxContainer2"]
+[node name="SelectAllButton" type="Button" parent="Panel/Margin/Content/Actions"]
 layout_mode = 2
 text = "Select All"
 
-[node name="Button2" type="Button" parent="Panel/Margin/Content/HBoxContainer2"]
+[node name="ClearAllButton" type="Button" parent="Panel/Margin/Content/Actions"]
 layout_mode = 2
 text = "Clear All"
 
-[node name="Button3" type="Button" parent="Panel/Margin/Content/HBoxContainer2"]
+[node name="SavePdfButton" type="Button" parent="Panel/Margin/Content/Actions"]
 layout_mode = 2
 text = "Save Printable PDF..."
 
-[node name="Button4" type="Button" parent="Panel/Margin/Content/HBoxContainer2"]
+[node name="Close" type="Button" parent="Panel/Margin/Content/Actions"]
 layout_mode = 2
 text = "Close"

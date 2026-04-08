@@ -36,7 +36,7 @@ func _run() -> void:
 	assert((graph.graph_control.selected_mask & 1) == 0)
 	graph.series_buttons[0].toggled.emit(true)
 	assert((graph.graph_control.selected_mask & 1) == 1)
-	graph.get_node("Background/Margin/Column/Controls/VBoxContainer1/CheckBox3").pressed.emit()
+	graph.get_node("Background/Margin/Column/Controls/TimeScales/Scale100Yrs").pressed.emit()
 	assert(graph.graph_control.time_scale == 2)
 	graph.free()
 	var city_map := preload("res://src/ui/city_windows/city_map_window.tscn").instantiate() as CityMapDialog

@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/tools/tool_choice_dialog.gd" id="1_choice"]
 
 [node name="ToolChoiceDialog" type="ConfirmationDialog"]
+visible = true
 title = "Select Building"
 dialog_text = "Select a building type."
 min_size = Vector2i(680, 390)

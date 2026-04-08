@@ -49,7 +49,7 @@ border_width_bottom = 1
 border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
 
 [node name="LibraryTextWindow" type="PanelContainer"]
-visible = false
+visible = true
 layout_mode = 0
 theme_override_styles/panel = SubResource("StyleBoxFlat_qqvte")
 

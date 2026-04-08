@@ -7,6 +7,8 @@ var project_text: Label
 
 
 func _ready() -> void:
+	# visible in the editor, closed at startup
+	hide()
 	get_label().autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	artwork = $Artwork
 	picture = $Artwork/Panel/Picture

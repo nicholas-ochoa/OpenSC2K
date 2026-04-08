@@ -7,6 +7,8 @@ var mode_buttons: Array[CheckBox] = []
 
 
 func _ready() -> void:
+	# visible in the editor, closed at startup
+	hide()
 	close_requested.connect(hide)
 	population_control = $Background/Margin/Column/ChartFrame/Chart
 

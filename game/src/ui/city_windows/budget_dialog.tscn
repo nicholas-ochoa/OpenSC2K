@@ -62,64 +62,64 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 5
 
-[node name="HBoxContainer1" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+[node name="ResidentialTaxRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer1"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/ResidentialTaxRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Residential Tax"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer1"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/ResidentialTaxRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 max_value = 22.0
 rounded = true
 suffix = "% tax"
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+[node name="CommercialTaxRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer2"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/CommercialTaxRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Commercial Tax"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer2"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/CommercialTaxRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 max_value = 22.0
 rounded = true
 suffix = "% tax"
 
-[node name="HBoxContainer3" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+[node name="IndustrialTaxRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer3"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/IndustrialTaxRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Industrial Tax"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer3"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/IndustrialTaxRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 max_value = 22.0
 rounded = true
 suffix = "% tax"
 
-[node name="HBoxContainer4" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+[node name="OrdinancesRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer4"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/OrdinancesRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Ordinances"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer4"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/OrdinancesRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 min_value = -2147483600.0
@@ -127,16 +127,16 @@ max_value = 2147483647.0
 rounded = true
 editable = false
 
-[node name="HBoxContainer5" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+[node name="BondsRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer5"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/BondsRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Bonds"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer5"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/BondsRow"]
 visible = false
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
@@ -145,48 +145,48 @@ max_value = 2147483647.0
 rounded = true
 editable = false
 
-[node name="HBoxContainer6" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+[node name="PoliceRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer6"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/PoliceRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Police"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer6"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/PoliceRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
 rounded = true
 suffix = "% funded"
 
-[node name="HBoxContainer7" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+[node name="FireRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer7"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/FireRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Fire"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer7"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/FireRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
 rounded = true
 suffix = "% funded"
 
-[node name="HBoxContainer8" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
+[node name="HealthRow" type="HBoxContainer" parent="Margin/Content/Columns/Left"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Left/HBoxContainer8"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Left/HealthRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Health"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Left/HBoxContainer8"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Left/HealthRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
@@ -198,128 +198,128 @@ layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/separation = 5
 
-[node name="HBoxContainer1" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+[node name="SchoolRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer1"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/SchoolRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "School"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer1"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/SchoolRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
 rounded = true
 suffix = "% funded"
 
-[node name="HBoxContainer2" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+[node name="CollegeRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer2"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/CollegeRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "College"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer2"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/CollegeRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "Service capacity and coverage scale with funding: 100% gives full strength, 50% gives about half, and 0% removes the funded contribution. Lower funding reduces annual spending."
 rounded = true
 suffix = "% funded"
 
-[node name="HBoxContainer3" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+[node name="RoadRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer3"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/RoadRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Road"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer3"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/RoadRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
 rounded = true
 suffix = "% funded"
 
-[node name="HBoxContainer4" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+[node name="HighwayRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer4"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/HighwayRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Highway"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer4"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/HighwayRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
 rounded = true
 suffix = "% funded"
 
-[node name="HBoxContainer5" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+[node name="BridgeRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer5"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/BridgeRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Bridge"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer5"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/BridgeRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
 rounded = true
 suffix = "% funded"
 
-[node name="HBoxContainer6" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+[node name="RailRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer6"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/RailRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Rail"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer6"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/RailRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
 rounded = true
 suffix = "% funded"
 
-[node name="HBoxContainer7" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+[node name="SubwayRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer7"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/SubwayRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Subway"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer7"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/SubwayRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."
 rounded = true
 suffix = "% funded"
 
-[node name="HBoxContainer8" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
+[node name="TunnelRow" type="HBoxContainer" parent="Margin/Content/Columns/Right"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Margin/Content/Columns/Right/HBoxContainer8"]
+[node name="FundingLabel" type="Label" parent="Margin/Content/Columns/Right/TunnelRow"]
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Tunnel"
 
-[node name="SpinBox1" type="SpinBox" parent="Margin/Content/Columns/Right/HBoxContainer8"]
+[node name="FundingInput" type="SpinBox" parent="Margin/Content/Columns/Right/TunnelRow"]
 custom_minimum_size = Vector2(145, 30)
 layout_mode = 2
 tooltip_text = "100% funds normal maintenance. Lower funding increases the risk of network decay; 50% is partial maintenance and 0% leaves the network unfunded. Lower funding reduces annual spending."

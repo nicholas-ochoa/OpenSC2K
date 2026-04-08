@@ -8,6 +8,8 @@ var neighbor_name_strings: Dictionary = {}
 
 
 func _ready() -> void:
+	# visible in the editor, closed at startup
+	hide()
 	close_requested.connect(hide)
 	simnation_control = get_node("View")
 

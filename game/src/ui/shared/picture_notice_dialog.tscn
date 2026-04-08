@@ -15,6 +15,7 @@ border_width_bottom = 2
 border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
 
 [node name="PictureNoticeDialog" type="AcceptDialog"]
+visible = true
 min_size = Vector2i(520, 230)
 exclusive = true
 script = ExtResource("1_notice")

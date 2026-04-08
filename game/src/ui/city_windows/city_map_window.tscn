@@ -18,7 +18,7 @@ border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
 [node name="CityMapWindow" type="Window"]
 title = "City Map"
 size = Vector2i(480, 680)
-visible = false
+visible = true
 transient = true
 min_size = Vector2i(420, 620)
 script = ExtResource("1_ujfl6")

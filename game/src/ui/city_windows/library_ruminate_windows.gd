@@ -41,6 +41,7 @@ func _add_text_window(resource_id: int) -> void:
 	var text_view: TextEdit = window.get_node("Margin/Content/Text")
 	text_view.gui_input.connect(_on_window_input.bind(window))
 	window.get_node("Margin/Content/Buttons/OK").pressed.connect(window.hide)
+	window.hide()
 	add_child(window)
 	windows.append(window)
 	text_views.append(text_view)

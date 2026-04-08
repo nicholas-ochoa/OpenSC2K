@@ -27,6 +27,7 @@ border_width_bottom = 1
 border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
 
 [node name="ScenarioIntroDialog" type="AcceptDialog"]
+visible = true
 min_size = Vector2i(760, 520)
 exclusive = true
 title = "Scenario"

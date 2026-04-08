@@ -103,6 +103,8 @@ func _init() -> void:
 
 
 func _ready() -> void:
+	# visible in the editor, closed at startup
+	hide()
 	_bind_interface()
 
 

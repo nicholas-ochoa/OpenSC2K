@@ -33,7 +33,7 @@ resource_local_to_scene = true
 [node name="IndustryWindow" type="Window"]
 title = "City Industry"
 size = Vector2i(700, 450)
-visible = false
+visible = true
 transient = true
 min_size = Vector2i(600, 390)
 script = ExtResource("1_72cth")
@@ -75,20 +75,20 @@ layout_mode = 2
 theme_override_constants/separation = 0
 alignment = 1
 
-[node name="CheckBox1" type="CheckBox" parent="Background/Margin/Column/Controls"]
+[node name="Ratios" type="CheckBox" parent="Background/Margin/Column/Controls"]
 custom_minimum_size = Vector2(120, 28)
 layout_mode = 2
 button_pressed = true
 button_group = SubResource("ButtonGroup_qa0db")
 text = "Ratios"
 
-[node name="CheckBox2" type="CheckBox" parent="Background/Margin/Column/Controls"]
+[node name="TaxRates" type="CheckBox" parent="Background/Margin/Column/Controls"]
 custom_minimum_size = Vector2(120, 28)
 layout_mode = 2
 button_group = SubResource("ButtonGroup_qa0db")
 text = "Tax Rates"
 
-[node name="CheckBox3" type="CheckBox" parent="Background/Margin/Column/Controls"]
+[node name="Demand" type="CheckBox" parent="Background/Margin/Column/Controls"]
 custom_minimum_size = Vector2(120, 28)
 layout_mode = 2
 button_group = SubResource("ButtonGroup_qa0db")

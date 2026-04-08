@@ -34,7 +34,7 @@ vertical_alignment = 1
 text_overrun_behavior = 3
 metadata/always_status_tooltip = true
 
-[node name="Separator1" type="VSeparator" parent="Metrics"]
+[node name="MessageDivider" type="VSeparator" parent="Metrics"]
 layout_mode = 2
 
 [node name="Weather" type="Label" parent="Metrics"]
@@ -44,7 +44,7 @@ text = "Weather: --"
 vertical_alignment = 1
 text_overrun_behavior = 0
 
-[node name="Separator2" type="VSeparator" parent="Metrics"]
+[node name="WeatherDivider" type="VSeparator" parent="Metrics"]
 layout_mode = 2
 
 [node name="RCI" type="Control" parent="Metrics"]
@@ -53,7 +53,7 @@ layout_mode = 2
 mouse_filter = 1
 script = ExtResource("2")
 
-[node name="Separator3" type="VSeparator" parent="Metrics"]
+[node name="RCIDivider" type="VSeparator" parent="Metrics"]
 layout_mode = 2
 
 [node name="Reports" type="Label" parent="Metrics"]
@@ -65,7 +65,7 @@ vertical_alignment = 1
 text_overrun_behavior = 3
 metadata/always_status_tooltip = true
 
-[node name="Separator4" type="VSeparator" parent="Metrics"]
+[node name="ReportsDivider" type="VSeparator" parent="Metrics"]
 layout_mode = 2
 
 [node name="Speed" type="Label" parent="Metrics"]
@@ -75,7 +75,7 @@ text = "Speed: --"
 vertical_alignment = 1
 text_overrun_behavior = 0
 
-[node name="Separator5" type="VSeparator" parent="Metrics"]
+[node name="SpeedDivider" type="VSeparator" parent="Metrics"]
 layout_mode = 2
 
 [node name="Zoom" type="Label" parent="Metrics"]

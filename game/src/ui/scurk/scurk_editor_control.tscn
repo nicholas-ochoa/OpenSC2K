@@ -9,7 +9,7 @@
 [ext_resource type="Script" path="res://src/ui/scurk/scurk_editor_dialogs.gd" id="7_78x3n"]
 
 [node name="SCURKEditor" type="ColorRect"]
-visible = false
+visible = true
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0

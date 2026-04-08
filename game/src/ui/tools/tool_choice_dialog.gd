@@ -9,6 +9,8 @@ var choice_buttons: Array[Button] = []
 
 
 func _ready() -> void:
+	# visible in the editor, closed at startup
+	hide()
 	theme = ClassicUiStyle.create_dialog_theme()
 	get_ok_button().visible = false
 

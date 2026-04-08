@@ -11,6 +11,8 @@ var ordinance_control: OrdinanceWindowControl
 
 
 func _ready() -> void:
+	# visible in the editor, closed at startup
+	hide()
 	close_requested.connect(hide)
 	theme = ThemeDB.get_default_theme().duplicate()
 	theme.set_color("font_color", "Label", Color.WHITE)

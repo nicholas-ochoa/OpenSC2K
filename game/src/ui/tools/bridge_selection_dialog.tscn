@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/tools/bridge_selection_dialog.gd" id="1_8m8sg"]
 
 [node name="BridgeSelectionDialog" type="ConfirmationDialog"]
+visible = true
 title = "Select Bridge"
 size = Vector2i(760, 350)
 min_size = Vector2i(760, 350)

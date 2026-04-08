@@ -56,7 +56,7 @@ func _ready() -> void:
 
 	for column in $Margin/Content/Columns.get_children():
 		for row in column.get_children():
-			var control := row.get_node("SpinBox1") as SpinBox
+			var control := row.get_node("FundingInput") as SpinBox
 			control.get_line_edit().tooltip_text = control.tooltip_text
 			controls.append(control)
 

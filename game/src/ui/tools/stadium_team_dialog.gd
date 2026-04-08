@@ -6,6 +6,8 @@ var name_input: LineEdit
 
 
 func _ready() -> void:
+	# visible in the editor, closed at startup
+	hide()
 	theme = ClassicUiStyle.create_dialog_theme()
 	team_selector = $Fields/TeamSelector
 	name_input = $Fields/NameInput

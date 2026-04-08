@@ -60,21 +60,21 @@ theme_override_styles/panel = SubResource("StyleBoxFlat_ltv1w")
 layout_mode = 2
 theme_override_constants/separation = 12
 
-[node name="Label1" type="Label" parent="Center/Panel/Content"]
+[node name="GameTitle" type="Label" parent="Center/Panel/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
 theme_override_font_sizes/font_size = 42
 text = "OpenSC2K"
 horizontal_alignment = 1
 
-[node name="Label2" type="Label" parent="Center/Panel/Content"]
+[node name="Subtitle" type="Label" parent="Center/Panel/Content"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.1882353, 0.1882353, 0.1882353, 1)
 theme_override_font_sizes/font_size = 16
 text = "An open-source SimCity 2000 remake"
 horizontal_alignment = 1
 
-[node name="HSeparator1" type="HSeparator" parent="Center/Panel/Content"]
+[node name="TitleDivider" type="HSeparator" parent="Center/Panel/Content"]
 layout_mode = 2
 
 [node name="ImportAssets" type="Button" parent="Center/Panel/Content"]

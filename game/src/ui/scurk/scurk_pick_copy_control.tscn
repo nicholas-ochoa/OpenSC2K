@@ -8,7 +8,7 @@
 resource_local_to_scene = true
 
 [node name="ScurkPickCopy" type="PanelContainer"]
-visible = false
+visible = true
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
@@ -32,25 +32,25 @@ script = ExtResource("2_mh0cu")
 layout_mode = 2
 theme_override_constants/separation = 6
 
-[node name="Button1" type="Button" parent="Content/Controls"]
+[node name="ChangeSource" type="Button" parent="Content/Controls"]
 layout_mode = 2
 tooltip_text = "Choose the read-only object set to copy from."
 text = "Change Source..."
 
-[node name="Button2" type="Button" parent="Content/Controls"]
+[node name="ChangeWorking" type="Button" parent="Content/Controls"]
 layout_mode = 2
 tooltip_text = "Choose the object set that receives copied graphics."
 text = "Change Working..."
 
-[node name="VSeparator1" type="VSeparator" parent="Content/Controls"]
+[node name="SourceControlsDivider" type="VSeparator" parent="Content/Controls"]
 layout_mode = 2
 
-[node name="Label1" type="Label" parent="Content/Controls"]
+[node name="ObjectGroupLabel" type="Label" parent="Content/Controls"]
 layout_mode = 2
 text = "Object Group"
 vertical_alignment = 1
 
-[node name="OptionButton1" type="OptionButton" parent="Content/Controls"]
+[node name="GroupSelector" type="OptionButton" parent="Content/Controls"]
 layout_mode = 2
 selected = 0
 item_count = 11
@@ -77,23 +77,23 @@ popup/item_9/id = 9
 popup/item_10/text = "All"
 popup/item_10/id = 10
 
-[node name="VSeparator2" type="VSeparator" parent="Content/Controls"]
+[node name="ViewControlsDivider" type="VSeparator" parent="Content/Controls"]
 layout_mode = 2
 
-[node name="Button3" type="Button" parent="Content/Controls"]
+[node name="Large" type="Button" parent="Content/Controls"]
 layout_mode = 2
 toggle_mode = true
 button_pressed = true
 button_group = SubResource("ButtonGroup_py6sq")
 text = "Large"
 
-[node name="Button4" type="Button" parent="Content/Controls"]
+[node name="Medium" type="Button" parent="Content/Controls"]
 layout_mode = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_py6sq")
 text = "Medium"
 
-[node name="Button5" type="Button" parent="Content/Controls"]
+[node name="Small" type="Button" parent="Content/Controls"]
 layout_mode = 2
 toggle_mode = true
 button_group = SubResource("ButtonGroup_py6sq")
@@ -105,22 +105,22 @@ size_flags_vertical = 3
 split_offsets = PackedInt32Array(570)
 split_offset = 570
 
-[node name="VBoxContainer1" type="VBoxContainer" parent="Content/Sets"]
+[node name="SourceObjectSetRow" type="VBoxContainer" parent="Content/Sets"]
 custom_minimum_size = Vector2(430, 0)
 layout_mode = 2
 theme_override_constants/separation = 5
 
-[node name="Label1" type="Label" parent="Content/Sets/VBoxContainer1"]
+[node name="SourceObjectSetLabel" type="Label" parent="Content/Sets/SourceObjectSetRow"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
 text = "Source Object Set"
 
-[node name="Label2" type="Label" parent="Content/Sets/VBoxContainer1"]
+[node name="SourceNameLabel" type="Label" parent="Content/Sets/SourceObjectSetRow"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
 text_overrun_behavior = 3
 
-[node name="ItemList1" type="ItemList" parent="Content/Sets/VBoxContainer1"]
+[node name="SourceList" type="ItemList" parent="Content/Sets/SourceObjectSetRow"]
 layout_mode = 2
 size_flags_vertical = 3
 select_mode = 1
@@ -130,22 +130,22 @@ icon_mode = 0
 fixed_icon_size = Vector2i(88, 88)
 script = ExtResource("3_ya3l6")
 
-[node name="VBoxContainer2" type="VBoxContainer" parent="Content/Sets"]
+[node name="WorkingObjectSetRow" type="VBoxContainer" parent="Content/Sets"]
 custom_minimum_size = Vector2(430, 0)
 layout_mode = 2
 theme_override_constants/separation = 5
 
-[node name="Label1" type="Label" parent="Content/Sets/VBoxContainer2"]
+[node name="WorkingObjectSetLabel" type="Label" parent="Content/Sets/WorkingObjectSetRow"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
 text = "Working Object Set"
 
-[node name="Label2" type="Label" parent="Content/Sets/VBoxContainer2"]
+[node name="WorkingNameLabel" type="Label" parent="Content/Sets/WorkingObjectSetRow"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
 text_overrun_behavior = 3
 
-[node name="ItemList1" type="ItemList" parent="Content/Sets/VBoxContainer2"]
+[node name="WorkingList" type="ItemList" parent="Content/Sets/WorkingObjectSetRow"]
 layout_mode = 2
 size_flags_vertical = 3
 select_mode = 1
@@ -159,26 +159,26 @@ script = ExtResource("3_ya3l6")
 layout_mode = 2
 theme_override_constants/separation = 7
 
-[node name="Button1" type="Button" parent="Content/Actions"]
+[node name="CopySelectedButton" type="Button" parent="Content/Actions"]
 layout_mode = 2
 tooltip_text = "Replace each equivalent working object with its selected source graphics."
 disabled = true
 text = "Copy Selected"
 
-[node name="Button2" type="Button" parent="Content/Actions"]
+[node name="CopyAllButton" type="Button" parent="Content/Actions"]
 layout_mode = 2
 tooltip_text = "Replace every working object in the selected group."
 disabled = true
 text = "Copy All"
 
-[node name="Label1" type="Label" parent="Content/Actions"]
+[node name="CopyHint" type="Label" parent="Content/Actions"]
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_colors/font_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
 text = "Ctrl-click or Shift-click to select more objects. You can also drag source objects onto the working set."
 autowrap_mode = 3
 
-[node name="Label1" type="Label" parent="Content"]
+[node name="StatusLabel" type="Label" parent="Content"]
 custom_minimum_size = Vector2(0, 26)
 layout_mode = 2
 vertical_alignment = 1

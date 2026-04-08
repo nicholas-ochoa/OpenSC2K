@@ -5,6 +5,8 @@ var table: Tree
 
 
 func _ready() -> void:
+	# visible in the editor, closed at startup
+	hide()
 	table = get_node("Table")
 	get_label().visible = false
 	table.set_column_title(0, "LAND USE")

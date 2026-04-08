@@ -51,6 +51,7 @@ border_width_bottom = 1
 border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
 
 [node name="AppSettingsDialog" type="ConfirmationDialog"]
+visible = true
 title = "OpenSC2K Settings"
 size = Vector2i(700, 500)
 min_size = Vector2i(700, 500)
@@ -83,7 +84,7 @@ theme_override_constants/h_separation = 14
 theme_override_constants/v_separation = 14
 columns = 2
 
-[node name="Label0" type="Label" parent="Tabs/General/Fields"]
+[node name="DefaultMayorNameLabel" type="Label" parent="Tabs/General/Fields"]
 layout_mode = 2
 text = "Default mayor name"
 
@@ -94,10 +95,10 @@ size_flags_horizontal = 3
 placeholder_text = "Mayor"
 max_length = 23
 
-[node name="Label2" type="Label" parent="Tabs/General/Fields"]
+[node name="MayorHintSpacer" type="Label" parent="Tabs/General/Fields"]
 layout_mode = 2
 
-[node name="Label3" type="Label" parent="Tabs/General/Fields"]
+[node name="MayorHint" type="Label" parent="Tabs/General/Fields"]
 layout_mode = 2
 theme_override_colors/font_color = Color(0.3764706, 0.3764706, 0.3764706, 1)
 text = "Used as the mayor name for new cities."
@@ -115,7 +116,7 @@ theme_override_constants/h_separation = 14
 theme_override_constants/v_separation = 14
 columns = 2
 
-[node name="Label0" type="Label" parent="Tabs/Display/Fields"]
+[node name="DisplayLabel" type="Label" parent="Tabs/Display/Fields"]
 layout_mode = 2
 text = "Display"
 horizontal_alignment = 2
@@ -125,7 +126,7 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Fullscreen"
 
-[node name="Label2" type="Label" parent="Tabs/Display/Fields"]
+[node name="RendererLabel" type="Label" parent="Tabs/Display/Fields"]
 layout_mode = 2
 text = "Renderer"
 
@@ -165,7 +166,7 @@ theme_override_constants/h_separation = 14
 theme_override_constants/v_separation = 14
 columns = 2
 
-[node name="Label0" type="Label" parent="Tabs/Audio/Content/PackFields"]
+[node name="MusicVolumeLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
 text = "Music Volume"
 horizontal_alignment = 2
@@ -176,7 +177,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 32)
 layout_mode = 2
 
-[node name="Label2" type="Label" parent="Tabs/Audio/Content/PackFields"]
+[node name="SoundEffectsVolumeLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
 text = "Sound Effects Volume"
 horizontal_alignment = 2
@@ -187,7 +188,7 @@ unique_name_in_owner = true
 custom_minimum_size = Vector2(250, 32)
 layout_mode = 2
 
-[node name="Label4" type="Label" parent="Tabs/Audio/Content/PackFields"]
+[node name="ShuffleSpacer" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
 
 [node name="BackgroundAudioCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
@@ -195,7 +196,7 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Play music and sounds in background"
 
-[node name="Label6" type="Label" parent="Tabs/Audio/Content/PackFields"]
+[node name="ToolbarSoundSpacer" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
 
 [node name="ToolbarSoundsCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
@@ -204,7 +205,7 @@ layout_mode = 2
 button_pressed = true
 text = "Play toolbar sounds"
 
-[node name="Label8" type="Label" parent="Tabs/Audio/Content/PackFields"]
+[node name="BackgroundAudioSpacer" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
 
 [node name="ShuffleMusicCheck" type="CheckBox" parent="Tabs/Audio/Content/PackFields"]
@@ -213,29 +214,29 @@ layout_mode = 2
 tooltip_text = "Play all 19 tracks, including menu and special music, once per shuffle cycle."
 text = "Shuffle all music"
 
-[node name="Label10" type="Label" parent="Tabs/Audio/Content/PackFields"]
+[node name="SoundPackLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
 text = "Sound Pack"
 
-[node name="VBoxContainer11" type="VBoxContainer" parent="Tabs/Audio/Content/PackFields"]
+[node name="SoundPackControls" type="VBoxContainer" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="HBoxContainer0" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/VBoxContainer11"]
+[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/SoundPackControls"]
 layout_mode = 2
 
-[node name="SoundPackEdit" type="LineEdit" parent="Tabs/Audio/Content/PackFields/VBoxContainer11/HBoxContainer0"]
+[node name="SoundPackEdit" type="LineEdit" parent="Tabs/Audio/Content/PackFields/SoundPackControls/BrowseRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "Automatic (user://packs/sound/pack.json)"
 
-[node name="SoundBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/VBoxContainer11/HBoxContainer0"]
+[node name="SoundBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/SoundPackControls/BrowseRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Browse..."
 
-[node name="SoundPackName" type="Label" parent="Tabs/Audio/Content/PackFields/VBoxContainer11"]
+[node name="SoundPackName" type="Label" parent="Tabs/Audio/Content/PackFields/SoundPackControls"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
@@ -243,29 +244,29 @@ theme_override_colors/font_color = Color(0.3764706, 0.3764706, 0.3764706, 1)
 clip_text = true
 text_overrun_behavior = 3
 
-[node name="Label12" type="Label" parent="Tabs/Audio/Content/PackFields"]
+[node name="MusicPackLabel" type="Label" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
 text = "Music Pack"
 
-[node name="VBoxContainer13" type="VBoxContainer" parent="Tabs/Audio/Content/PackFields"]
+[node name="MusicPackControls" type="VBoxContainer" parent="Tabs/Audio/Content/PackFields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="HBoxContainer0" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/VBoxContainer13"]
+[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Audio/Content/PackFields/MusicPackControls"]
 layout_mode = 2
 
-[node name="MusicPackEdit" type="LineEdit" parent="Tabs/Audio/Content/PackFields/VBoxContainer13/HBoxContainer0"]
+[node name="MusicPackEdit" type="LineEdit" parent="Tabs/Audio/Content/PackFields/MusicPackControls/BrowseRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "Automatic (user://packs/music/pack.json)"
 
-[node name="MusicBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/VBoxContainer13/HBoxContainer0"]
+[node name="MusicBrowse" type="Button" parent="Tabs/Audio/Content/PackFields/MusicPackControls/BrowseRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Browse..."
 
-[node name="MusicPackName" type="Label" parent="Tabs/Audio/Content/PackFields/VBoxContainer13"]
+[node name="MusicPackName" type="Label" parent="Tabs/Audio/Content/PackFields/MusicPackControls"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
@@ -290,15 +291,15 @@ theme_override_constants/h_separation = 12
 theme_override_constants/v_separation = 14
 columns = 4
 
-[node name="Label0" type="Label" parent="Tabs/Graphics/Content/Fields"]
+[node name="Scale10ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 text = "10% zoom"
 
-[node name="HBoxContainer1" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+[node name="OverviewGraphicsSelectorGroup" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="OverviewGraphicsSelector" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer1"]
+[node name="OverviewGraphicsSelector" type="OptionButton" parent="Tabs/Graphics/Content/Fields/OverviewGraphicsSelectorGroup"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -312,15 +313,15 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Label2" type="Label" parent="Tabs/Graphics/Content/Fields"]
+[node name="Scale200ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 text = "200% zoom"
 
-[node name="HBoxContainer3" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+[node name="Zoom200Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Zoom200" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer3"]
+[node name="Zoom200" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom200Group"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -334,15 +335,15 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Label4" type="Label" parent="Tabs/Graphics/Content/Fields"]
+[node name="Scale25ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 text = "25% zoom"
 
-[node name="HBoxContainer5" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+[node name="Zoom25Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Zoom25" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer5"]
+[node name="Zoom25" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom25Group"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -356,15 +357,15 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Label6" type="Label" parent="Tabs/Graphics/Content/Fields"]
+[node name="Scale300ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 text = "300% zoom"
 
-[node name="HBoxContainer7" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+[node name="Zoom300Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Zoom300" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer7"]
+[node name="Zoom300" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom300Group"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -378,15 +379,15 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Label8" type="Label" parent="Tabs/Graphics/Content/Fields"]
+[node name="Scale50ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 text = "50% zoom"
 
-[node name="HBoxContainer9" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+[node name="Zoom50Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Zoom50" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer9"]
+[node name="Zoom50" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom50Group"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -400,15 +401,15 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Label10" type="Label" parent="Tabs/Graphics/Content/Fields"]
+[node name="Scale400ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 text = "400% zoom"
 
-[node name="HBoxContainer11" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+[node name="Zoom400Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Zoom400" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer11"]
+[node name="Zoom400" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom400Group"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -422,15 +423,15 @@ popup/item_1/id = 1
 popup/item_2/text = "Large"
 popup/item_2/id = 2
 
-[node name="Label12" type="Label" parent="Tabs/Graphics/Content/Fields"]
+[node name="Scale100ZoomLabel" type="Label" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 text = "100% zoom"
 
-[node name="HBoxContainer13" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
+[node name="Zoom100Group" type="HBoxContainer" parent="Tabs/Graphics/Content/Fields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Zoom100" type="OptionButton" parent="Tabs/Graphics/Content/Fields/HBoxContainer13"]
+[node name="Zoom100" type="OptionButton" parent="Tabs/Graphics/Content/Fields/Zoom100Group"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
@@ -451,29 +452,29 @@ theme_override_constants/h_separation = 14
 theme_override_constants/v_separation = 14
 columns = 2
 
-[node name="Label0" type="Label" parent="Tabs/Graphics/Content/PackFields"]
+[node name="GraphicsPackLabel" type="Label" parent="Tabs/Graphics/Content/PackFields"]
 layout_mode = 2
 text = "Graphics pack"
 
-[node name="VBoxContainer1" type="VBoxContainer" parent="Tabs/Graphics/Content/PackFields"]
+[node name="GraphicsPackControls" type="VBoxContainer" parent="Tabs/Graphics/Content/PackFields"]
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="HBoxContainer0" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/VBoxContainer1"]
+[node name="BrowseRow" type="HBoxContainer" parent="Tabs/Graphics/Content/PackFields/GraphicsPackControls"]
 layout_mode = 2
 
-[node name="FolderEdit" type="LineEdit" parent="Tabs/Graphics/Content/PackFields/VBoxContainer1/HBoxContainer0"]
+[node name="FolderEdit" type="LineEdit" parent="Tabs/Graphics/Content/PackFields/GraphicsPackControls/BrowseRow"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 3
 placeholder_text = "Automatic (user://packs/graphics/pack.json)"
 
-[node name="GraphicsBrowse" type="Button" parent="Tabs/Graphics/Content/PackFields/VBoxContainer1/HBoxContainer0"]
+[node name="GraphicsBrowse" type="Button" parent="Tabs/Graphics/Content/PackFields/GraphicsPackControls/BrowseRow"]
 unique_name_in_owner = true
 layout_mode = 2
 text = "Browse..."
 
-[node name="GraphicsPackName" type="Label" parent="Tabs/Graphics/Content/PackFields/VBoxContainer1"]
+[node name="GraphicsPackName" type="Label" parent="Tabs/Graphics/Content/PackFields/GraphicsPackControls"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(150, 0)
 layout_mode = 2
@@ -494,7 +495,7 @@ theme_override_constants/h_separation = 14
 theme_override_constants/v_separation = 14
 columns = 2
 
-[node name="Label0" type="Label" parent="Tabs/Import Data/Fields"]
+[node name="OriginalDataLabel" type="Label" parent="Tabs/Import Data/Fields"]
 layout_mode = 2
 text = "Original Data"
 
@@ -521,7 +522,7 @@ layout_mode = 2
 theme_override_colors/font_disabled_color = Color(0.3764706, 0.3764706, 0.3764706, 1)
 text = "Original SimCity 2000 compatibility"
 
-[node name="Label1" type="Label" parent="Tabs/Compatibility/Fields"]
+[node name="CompatibilityHint" type="Label" parent="Tabs/Compatibility/Fields"]
 custom_minimum_size = Vector2(560, 0)
 layout_mode = 2
 text = "• Use original SC2 cities and SCN scenarios.

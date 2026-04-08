@@ -12,7 +12,7 @@ script = ExtResource("1_ggiji")
 [node name="DebugWindow" type="Window" parent="."]
 title = "Debug"
 size = Vector2i(1040, 740)
-visible = false
+visible = true
 min_size = Vector2i(640, 420)
 
 [node name="Panel" type="PanelContainer" parent="DebugWindow"]

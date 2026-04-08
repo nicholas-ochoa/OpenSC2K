@@ -6,6 +6,8 @@ var text_view: TextEdit
 
 
 func _ready() -> void:
+	# visible in the editor, closed at startup
+	hide()
 	theme = ClassicUiStyle.create_dialog_theme()
 	get_label().visible = false
 	picture_view = $Layout/PictureFrame/Picture

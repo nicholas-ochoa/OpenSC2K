@@ -317,7 +317,7 @@ border_width_bottom = 1
 border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
 
 [node name="QueryOverlay" type="ColorRect"]
-visible = false
+visible = true
 z_index = 900
 anchors_preset = 15
 anchor_right = 1.0

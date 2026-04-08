@@ -76,7 +76,7 @@ theme_override_constants/h_separation = 3
 theme_override_constants/v_separation = 3
 columns = 3
 
-[node name="HSeparator2" type="HSeparator" parent="Margin/Column"]
+[node name="ToolGroupsDivider" type="HSeparator" parent="Margin/Column"]
 layout_mode = 2
 
 [node name="SpecialTools" type="GridContainer" parent="Margin/Column"]
@@ -86,24 +86,24 @@ size_flags_horizontal = 4
 theme_override_constants/h_separation = 3
 columns = 3
 
-[node name="HSeparator4" type="HSeparator" parent="Margin/Column"]
+[node name="SpecialToolsDivider" type="HSeparator" parent="Margin/Column"]
 layout_mode = 2
 
 [node name="RotateRow" type="HBoxContainer" parent="Margin/Column"]
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="Label0" type="Label" parent="Margin/Column/RotateRow"]
+[node name="RotateLabel" type="Label" parent="Margin/Column/RotateRow"]
 custom_minimum_size = Vector2(45, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Rotate"
 
-[node name="HBoxContainer1" type="HBoxContainer" parent="Margin/Column/RotateRow"]
+[node name="RotationButtons" type="HBoxContainer" parent="Margin/Column/RotateRow"]
 layout_mode = 2
 theme_override_constants/separation = 3
 
-[node name="RotateCounterClockwiseButton" type="Button" parent="Margin/Column/RotateRow/HBoxContainer1"]
+[node name="RotateCounterClockwiseButton" type="Button" parent="Margin/Column/RotateRow/RotationButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(36, 30)
 layout_mode = 2
@@ -113,7 +113,7 @@ text = "R"
 icon_alignment = 1
 metadata/toolbar_region = Rect2i(405, 0, 27, 23)
 
-[node name="RotateClockwiseButton" type="Button" parent="Margin/Column/RotateRow/HBoxContainer1"]
+[node name="RotateClockwiseButton" type="Button" parent="Margin/Column/RotateRow/RotationButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(36, 30)
 layout_mode = 2
@@ -123,7 +123,7 @@ text = "R"
 icon_alignment = 1
 metadata/toolbar_region = Rect2i(433, 0, 27, 23)
 
-[node name="Control2" type="Control" parent="Margin/Column/RotateRow"]
+[node name="RotationSpacer" type="Control" parent="Margin/Column/RotateRow"]
 custom_minimum_size = Vector2(45, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -132,17 +132,17 @@ size_flags_horizontal = 3
 layout_mode = 2
 theme_override_constants/separation = 0
 
-[node name="Label0" type="Label" parent="Margin/Column/ZoomRow"]
+[node name="ZoomLabel" type="Label" parent="Margin/Column/ZoomRow"]
 custom_minimum_size = Vector2(45, 0)
 layout_mode = 2
 size_flags_horizontal = 3
 text = "Zoom"
 
-[node name="HBoxContainer1" type="HBoxContainer" parent="Margin/Column/ZoomRow"]
+[node name="ZoomButtons" type="HBoxContainer" parent="Margin/Column/ZoomRow"]
 layout_mode = 2
 theme_override_constants/separation = 3
 
-[node name="ZoomOutButton" type="Button" parent="Margin/Column/ZoomRow/HBoxContainer1"]
+[node name="ZoomOutButton" type="Button" parent="Margin/Column/ZoomRow/ZoomButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(36, 30)
 layout_mode = 2
@@ -151,7 +151,7 @@ text = "Z"
 icon_alignment = 1
 metadata/toolbar_region = Rect2i(462, 0, 23, 23)
 
-[node name="ZoomInButton" type="Button" parent="Margin/Column/ZoomRow/HBoxContainer1"]
+[node name="ZoomInButton" type="Button" parent="Margin/Column/ZoomRow/ZoomButtons"]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(36, 30)
 layout_mode = 2
@@ -160,7 +160,7 @@ text = "Z"
 icon_alignment = 1
 metadata/toolbar_region = Rect2i(486, 0, 23, 23)
 
-[node name="Control2" type="Control" parent="Margin/Column/ZoomRow"]
+[node name="ZoomSpacer" type="Control" parent="Margin/Column/ZoomRow"]
 custom_minimum_size = Vector2(45, 0)
 layout_mode = 2
 size_flags_horizontal = 3
@@ -172,7 +172,7 @@ size_flags_vertical = 3
 theme_override_constants/separation = 4
 script = ExtResource("2_uaa4s")
 
-[node name="HSeparator8" type="HSeparator" parent="Margin/Column"]
+[node name="ChildPaletteDivider" type="HSeparator" parent="Margin/Column"]
 layout_mode = 2
 
 [node name="ViewLayersHeading" type="Label" parent="Margin/Column"]

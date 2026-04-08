@@ -3,6 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/tools/stadium_team_dialog.gd" id="1_stadium"]
 
 [node name="StadiumTeamDialog" type="ConfirmationDialog"]
+visible = true
 title = "Select Stadium Team"
 dialog_text = "Select an unused team and edit its name."
 min_size = Vector2i(520, 260)

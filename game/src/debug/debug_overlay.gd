@@ -30,6 +30,7 @@ func setup(value: Control) -> void:
 
 func _ready() -> void:
 	_window = $DebugWindow
+	_window.hide()
 	_window.theme = _create_debug_theme()
 	_window.close_requested.connect(toggle)
 	_window.window_input.connect(_input)
