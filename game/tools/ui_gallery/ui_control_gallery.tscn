@@ -1,0 +1,59 @@
+[gd_scene load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://tools/ui_gallery/ui_control_gallery.gd" id="1"]
+
+[node name="UiControlGallery" type="PanelContainer"]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+script = ExtResource("1")
+
+[node name="Margin" type="MarginContainer" parent="."]
+layout_mode = 2
+theme_override_constants/margin_left = 20
+theme_override_constants/margin_top = 16
+theme_override_constants/margin_right = 20
+theme_override_constants/margin_bottom = 16
+
+[node name="Content" type="VBoxContainer" parent="Margin"]
+layout_mode = 2
+theme_override_constants/separation = 12
+
+[node name="Header" type="HBoxContainer" parent="Margin/Content"]
+layout_mode = 2
+theme_override_constants/separation = 16
+
+[node name="Title" type="Label" parent="Margin/Content/Header"]
+layout_mode = 2
+size_flags_horizontal = 3
+theme_override_font_sizes/font_size = 24
+text = "UI Control Gallery"
+
+[node name="ThemeLabel" type="Label" parent="Margin/Content/Header"]
+layout_mode = 2
+text = "Preview theme"
+
+[node name="ThemeSelector" type="OptionButton" parent="Margin/Content/Header"]
+unique_name_in_owner = true
+layout_mode = 2
+item_count = 2
+selected = 0
+popup/item_0/text = "Current app theme"
+popup/item_0/id = 0
+popup/item_1/text = "Godot default theme"
+popup/item_1/id = 1
+
+[node name="Help" type="Label" parent="Margin/Content"]
+layout_mode = 2
+text = "Compare fixed state samples, then try the live controls. Tab moves focus. Hover live controls to see tooltips."
+autowrap_mode = 3
+
+[node name="Tabs" type="TabContainer" parent="Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="Status" type="Label" parent="Margin/Content"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Preview only • Dummy data • No saved settings or city files are changed"
