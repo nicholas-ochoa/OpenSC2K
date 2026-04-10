@@ -17,14 +17,14 @@ func _run() -> void:
 	root.add_child(gallery)
 	if "--smoke" in OS.get_cmdline_user_args():
 		await process_frame
-		for theme_index in 2:
+		for theme_index in 7:
 			gallery.get_node("%ThemeSelector").select(theme_index)
 			gallery.get_node("%ThemeSelector").item_selected.emit(theme_index)
 			var tabs: TabContainer = gallery.get_node("%Tabs")
-			assert(tabs.get_tab_count() == 8)
+			assert(tabs.get_tab_count() == 9)
 			for tab_index in tabs.get_tab_count():
 				tabs.current_tab = tab_index
 				await process_frame
 		gallery.free()
-		print("PASS: UI control gallery builds all eight pages with both preview themes")
+		print("PASS: UI control gallery builds all nine pages with all seven preview themes")
 		quit()

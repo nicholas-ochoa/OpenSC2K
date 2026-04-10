@@ -2,13 +2,16 @@ extends PanelContainer
 ## Generated state catalog. Fixed examples use the real control's theme resources.
 ## State samples ignore input; live examples below them retain normal behavior.
 
+const GalleryThemes = preload("res://tools/ui_gallery/gallery_themes.gd")
+
 const STATES := ["Normal", "Hover", "Pressed", "Hover + pressed", "Disabled", "Focus"]
 var preview_dialogs: Array[Window] = []
 
 
 func _ready() -> void:
 	%ThemeSelector.item_selected.connect(_rebuild)
-	_rebuild(0)
+	%ThemeSelector.select(4)
+	_rebuild(4)
 
 
 func _rebuild(theme_index: int) -> void:
@@ -18,11 +21,16 @@ func _rebuild(theme_index: int) -> void:
 	for page in %Tabs.get_children():
 		%Tabs.remove_child(page)
 		page.queue_free()
-	theme = ClassicUiStyle.create_dialog_theme() if theme_index == 0 else ThemeDB.get_default_theme().duplicate()
+	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if theme_index in [2, 3, 6] else CanvasItem.TEXTURE_FILTER_LINEAR
+	if theme_index < 2:
+		theme = ClassicUiStyle.create_dialog_theme() if theme_index == 0 else ThemeDB.get_default_theme().duplicate()
+	else:
+		theme = GalleryThemes.make(theme_index - 2)
 	# Give the catalog a readable canvas without changing the sampled shared theme.
-	var canvas := ClassicUiStyle.create_box(Color("c0c0c0"), Color("808080"), 1, 12, 12) if theme_index == 0 else ThemeDB.get_default_theme().get_stylebox("panel", "PanelContainer")
+	var canvas := ClassicUiStyle.create_box(Color("c0c0c0"), Color("808080"), 1, 12, 12) if theme_index == 0 else theme.get_stylebox("panel", "PanelContainer")
 	add_theme_stylebox_override("panel", canvas)
 	%Tabs.add_theme_stylebox_override("panel", canvas)
+	_comparison_page()
 	_buttons_page()
 	_choices_page()
 	_fields_page()
@@ -108,7 +116,7 @@ func _button_state(button: Button, state: String) -> void:
 		"Normal": "normal", "Hover": "hover", "Pressed": "pressed",
 		"Hover + pressed": "hover_pressed", "Disabled": "disabled", "Focus": "normal",
 	}[state] as String
-	var box := _focus_box(button) if state == "Focus" else button.get_theme_stylebox(style_name)
+	var box := button.get_theme_stylebox(style_name)
 	if button.flat and state != "Normal":
 		button.flat = false
 	var font_name := {
@@ -120,29 +128,29 @@ func _button_state(button: Button, state: String) -> void:
 		button.add_theme_stylebox_override(target, box)
 	for target in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_disabled_color"]:
 		button.add_theme_color_override(target, font_color)
+	if state == "Focus":
+		_add_focus_overlay(button)
 	button.disabled = state == "Disabled"
 	_freeze(button)
 
 
-func _focus_box(control: Control) -> StyleBox:
-	var normal := control.get_theme_stylebox("normal") as StyleBoxFlat
-	var focus := control.get_theme_stylebox("focus") as StyleBoxFlat
-	if normal == null or focus == null:
-		return control.get_theme_stylebox("focus")
-	var combined := normal.duplicate() as StyleBoxFlat
-	combined.bg_color = normal.bg_color.blend(focus.bg_color) if focus.draw_center else normal.bg_color
-	combined.border_color = focus.border_color
-	for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
-		combined.set_border_width(side, focus.get_border_width(side))
-	return combined
+func _add_focus_overlay(control: Control) -> void:
+	var overlay := Panel.new()
+	var focus := control.get_theme_stylebox("focus").duplicate() as StyleBox
+	if focus is StyleBoxFlat or focus is StyleBoxTexture:
+		focus.draw_center = false
+	overlay.add_theme_stylebox_override("panel", focus)
+	overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	control.add_child(overlay)
+	_freeze(overlay)
 
 
 func _button(parent: Node, text: String) -> Button:
 	var button := Button.new()
 	button.text = text
-	button.custom_minimum_size.y = 34
 	button.tooltip_text = "Sample button: " + text
 	parent.add_child(button)
+	button.custom_minimum_size.y = 23 if button.get_theme_font_size("font_size") == 11 else 34
 	button.pressed.connect(func() -> void: _status("Pressed: " + text))
 	return button
 
@@ -216,7 +224,7 @@ func _choices_page() -> void:
 			if kind != "OptionButton":
 				button.text = "Option"
 				button.button_pressed = kind.ends_with("on")
-			button.custom_minimum_size.y = 34
+			button.custom_minimum_size.y = 23 if button.get_theme_font_size("font_size") == 11 else 34
 			_button_state(button, state)
 	_section(page, "Live choices")
 	var row := _row(page)
@@ -252,7 +260,7 @@ func _fields_page() -> void:
 		if state == "Selected":
 			edit.select_all()
 		if state == "Focus":
-			edit.add_theme_stylebox_override("normal", _focus_box(edit))
+			_add_focus_overlay(edit)
 		_freeze(edit)
 	_section(page, "Live text input")
 	var row := _row(page)
@@ -553,3 +561,117 @@ func _theme_parts_page() -> void:
 			icon.custom_minimum_size = Vector2(245, 32)
 			icon.stretch_mode = TextureRect.STRETCH_KEEP_CENTERED
 			cell.add_child(icon)
+
+
+func _comparison_page() -> void:
+	var page := _page("Compare styles")
+	_section(page, "Five desktop styles — compact Windows controls and modern alternatives")
+	var grid := GridContainer.new()
+	grid.columns = 2
+	grid.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	grid.add_theme_constant_override("h_separation", 20)
+	grid.add_theme_constant_override("v_separation", 18)
+	page.add_child(grid)
+	for index in 5:
+		_comparison_card(grid, index)
+
+
+func _comparison_card(parent: Node, index: int) -> void:
+	var p := GalleryThemes.palette(index)
+	var legacy := index in [0, 1, 4]
+	var card := PanelContainer.new()
+	card.theme = GalleryThemes.make(index)
+	card.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST if legacy else CanvasItem.TEXTURE_FILTER_LINEAR
+	card.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	card.custom_minimum_size.x = 530
+	if legacy:
+		var frame := card.theme.get_stylebox("panel", "PanelContainer").duplicate() as StyleBox
+		for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+			frame.set_content_margin(side, 3)
+		card.add_theme_stylebox_override("panel", frame)
+	parent.add_child(card)
+	var body := VBoxContainer.new()
+	body.add_theme_constant_override("separation", 6)
+	card.add_child(body)
+	var title := PanelContainer.new()
+	title.add_theme_stylebox_override("panel", GalleryThemes.title_box(index))
+	body.add_child(title)
+	var heading := _row(title)
+	heading.add_theme_constant_override("separation", 2)
+	if index == 4:
+		_title_button(heading, "−")
+	var title_label := _label(heading, GalleryThemes.LABELS[index])
+	title_label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	title_label.add_theme_color_override("font_color", Color.WHITE if legacy else p.text)
+	title_label.add_theme_font_size_override("font_size", 11 if legacy else 14)
+	if legacy:
+		var title_font := SystemFont.new()
+		title_font.font_names = PackedStringArray(["Tahoma", "Arial"] if index == 1 else ["Microsoft Sans Serif", "Arial"])
+		title_font.font_weight = 700
+		title_font.antialiasing = TextServer.FONT_ANTIALIASING_NONE
+		title_label.add_theme_font_override("font", title_font)
+	if index == 4:
+		title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		var title_spacer := Control.new()
+		title_spacer.custom_minimum_size.x = 16
+		heading.add_child(title_spacer)
+	elif legacy:
+		_title_button(heading, "?")
+		_title_button(heading, "×")
+	else:
+		var close := _button(heading, "×")
+		close.custom_minimum_size = Vector2(24, 24)
+	var tabs := TabContainer.new()
+	body.add_child(tabs)
+	# Windows 3.11 has no native common-control tabs. Use a plain framed form.
+	tabs.tabs_visible = index != 4
+	for tab_title in (["General"] if index == 4 else ["General", "Graphics", "Audio"]):
+		var content := VBoxContainer.new()
+		content.name = tab_title
+		content.add_theme_constant_override("separation", 6 if legacy else 8)
+		tabs.add_child(content)
+		_comparison_fields(content, legacy)
+	var actions := _row(body)
+	var note := _label(actions, ["Raised edges · 11 px system text", "Tahoma · gradient caption", "Attached tabs · blue focus", "Attached tabs · bright focus", "Centered caption · system menu"][index])
+	note.add_theme_color_override("font_color", p.muted)
+	note.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	_button(actions, "Cancel")
+	var save := _button(actions, "Save Changes")
+	if not legacy:
+		save.add_theme_stylebox_override("normal", GalleryThemes.box(p.accent, p.accent, p.radius))
+		save.add_theme_color_override("font_color", p.selection_text)
+
+
+func _title_button(parent: Node, text: String) -> void:
+	var button := _button(parent, text)
+	button.custom_minimum_size = Vector2(16, 14)
+	for state in ["normal", "hover", "pressed", "disabled"]:
+		var box := button.get_theme_stylebox(state).duplicate() as StyleBox
+		for side in [SIDE_LEFT, SIDE_TOP, SIDE_RIGHT, SIDE_BOTTOM]:
+			box.set_content_margin(side, 1)
+		button.add_theme_stylebox_override(state, box)
+
+
+func _comparison_fields(parent: Node, legacy: bool) -> void:
+	var fields := GridContainer.new()
+	fields.columns = 2
+	fields.add_theme_constant_override("h_separation", 8 if legacy else 12)
+	fields.add_theme_constant_override("v_separation", 6 if legacy else 8)
+	parent.add_child(fields)
+	_label(fields, "Mayor name")
+	var name_edit := LineEdit.new()
+	name_edit.text = "Alex Morgan"
+	name_edit.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	fields.add_child(name_edit)
+	_label(fields, "Graphics pack")
+	var file_row := _row(fields)
+	file_row.add_theme_constant_override("separation", 6)
+	var path := LineEdit.new()
+	path.text = "Original graphics"
+	path.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	file_row.add_child(path)
+	_button(file_row, "Browse...")
+	var check := CheckBox.new()
+	check.text = "Retain original compatibility"
+	check.button_pressed = true
+	parent.add_child(check)
