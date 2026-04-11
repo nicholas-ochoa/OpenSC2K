@@ -51,6 +51,11 @@ func _run() -> void:
 		assert(fields.get_node("MayorHint").get_index() < fields.get_node("ThemeLabel").get_index())
 		assert(dialog.fullscreen_check.get_index() > dialog.renderer_selector.get_index())
 		assert(not fields.has_node("DisplayLabel"))
+		var legend := main.theme.get_stylebox("panel", "MapLegend") as StyleBoxFlat
+		assert(legend.bg_color == Color(0.06, 0.08, 0.12, 0.85))
+		assert(legend.corner_radius_top_left == 6 and legend.border_width_top == 0)
+		var hint := dialog.get_node("Tabs/Compatibility/Fields/HintMargin/CompatibilityHint") as Label
+		assert(hint.get_theme_color("font_color") == main.theme.get_color("font_color", "HelpLabel"))
 		assert(AppSettingsStore.load_values(path).ui_theme == main.app_ui_theme)
 		assert(AppUiTheme.current() == original_theme and AppUiTheme.file_dialog() == original_files)
 		assert(main.city.document.serialize().data == before)

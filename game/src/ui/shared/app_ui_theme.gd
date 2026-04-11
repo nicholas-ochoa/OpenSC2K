@@ -45,6 +45,11 @@ static func bind_canvas(control: ColorRect) -> void:
 static func build(value: String, files := false) -> Theme:
 	var dark := value == "dark"
 	var result := _dark_theme() if dark else _light_file_dialog_theme() if files else _light_theme()
+	# map keys remain readable over city artwork, independent of the ui theme
+	var legend := create_box(Color(0.06, 0.08, 0.12, 0.85), Color.TRANSPARENT, 0, 12, 12)
+	legend.set_corner_radius_all(6)
+	result.set_stylebox("panel", "MapLegend", legend)
+	result.set_color("font_color", "MapLegend", Color("eeeeee"))
 	# godot's file toolbar and menubutton have their own native theme types
 	for type_name in ["MenuButton", "FlatButton", "FlatMenuButton"]:
 		if type_name != "MenuButton":

@@ -499,6 +499,7 @@ text = "• Use original SC2 cities and SCN scenarios.
 • SC2X cities cannot return to original compatibility.
 • Graphics, audio, and interface improvements remain available."
 autowrap_mode = 3
+theme_type_variation = "HelpLabel"
 
 [node name="WarnSc2xConversionCheck" type="CheckBox" parent="Tabs/Compatibility/Fields"]
 unique_name_in_owner = true

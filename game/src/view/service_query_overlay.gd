@@ -121,8 +121,7 @@ func _draw_key(canvas: Control) -> void:
 
 	var width := minf(390.0, available.size.x - 24.0)
 	var panel := Rect2(available.position + Vector2(12, 12), Vector2(width, 174))
-	canvas.draw_rect(panel, canvas.get_theme_color("canvas", "AppPalette"))
-	canvas.draw_rect(panel, canvas.get_theme_color("border", "AppPalette"), false, 1.0)
+	canvas.draw_style_box(canvas.get_theme_stylebox("panel", "MapLegend"), panel)
 	var operating := "Funding: %d%% · %s" % [analysis.funding, "Powered" if analysis.powered else "No power — half strength"]
 	if analysis.all_stations:
 		operating = "%d stations · %d powered · Funding: %d%%" % [analysis.station_count, analysis.powered_count, analysis.funding]
@@ -133,12 +132,12 @@ func _draw_key(canvas: Control) -> void:
 		"Shift-click: all stations. Esc: clear."])
 	for i in lines.size():
 		canvas.draw_string(ThemeDB.fallback_font, panel.position + Vector2(12, 25 + i * 27), lines[i],
-			HORIZONTAL_ALIGNMENT_LEFT, width - 24, 14, canvas.get_theme_color("ink", "AppPalette"))
+			HORIZONTAL_ALIGNMENT_LEFT, width - 24, 14, canvas.get_theme_color("font_color", "MapLegend"))
 	for i in 48:
 		canvas.draw_rect(Rect2(panel.position + Vector2(12 + i * (width - 24) / 48.0, 63),
 			Vector2((width - 24) / 48.0 + 1, 9)), coverage_color(roundi(i * 255.0 / 47.0), analysis.fire))
-	canvas.draw_string(ThemeDB.fallback_font, panel.position + Vector2(12, 86), "Weak", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, canvas.get_theme_color("ink", "AppPalette"))
-	canvas.draw_string(ThemeDB.fallback_font, panel.position + Vector2(width - 52, 86), "Strong", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, canvas.get_theme_color("ink", "AppPalette"))
+	canvas.draw_string(ThemeDB.fallback_font, panel.position + Vector2(12, 86), "Weak", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(ThemeDB.fallback_font, panel.position + Vector2(width - 52, 86), "Strong", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, canvas.get_theme_color("font_color", "MapLegend"))
 
 
 func tile_tooltip(point: Vector2i) -> String:

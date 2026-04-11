@@ -255,7 +255,7 @@ func _draw_data_view(scale: float, offset: Vector2) -> void:
 		draw_style_box(_data_legend_box(), Rect2(position, extent))
 
 		for index in lines.size():
-			draw_string(font, position + Vector2(10, 22 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, get_theme_color("ink", "AppPalette"))
+			draw_string(font, position + Vector2(10, 22 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, get_theme_color("font_color", "MapLegend"))
 
 
 func _draw_data_key() -> void:
@@ -263,13 +263,13 @@ func _draw_data_key() -> void:
 	var origin := Vector2(maxf(8, size.x - 332), maxf(8, size.y - (128 if data_view_mode == "height" else 108)))
 	draw_style_box(_data_legend_box(), Rect2(origin, Vector2(320, 116 if data_view_mode == "height" else 96)))
 	var title: String = CityDataView.TITLES[CityDataView.MODES.find(data_view_mode)]
-	draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, get_theme_color("ink", "AppPalette"))
+	draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, get_theme_color("font_color", "MapLegend"))
 
 	if data_view_mode in ["water", "power"]:
 		for index in 3:
 			var position := origin + Vector2(12 + index * 100, 38)
 			draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(index, data_view_mode))
-			draw_string(font, position + Vector2(0, 38), ["No link", "No supply", "Supplied"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("ink", "AppPalette"))
+			draw_string(font, position + Vector2(0, 38), ["No link", "No supply", "Supplied"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("font_color", "MapLegend"))
 	else:
 		for index in 32:
 			var number := index if data_view_mode == "height" else roundi(index * 255.0 / 31)
@@ -277,17 +277,17 @@ func _draw_data_key() -> void:
 
 		if data_view_mode == "height":
 			draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
-			draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, get_theme_color("ink", "AppPalette"))
+			draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, get_theme_color("font_color", "MapLegend"))
 
 		var low := "Level 1" if data_view_mode == "height" else "Very low"
 		var high := "Level 32" if data_view_mode == "height" else "Very high"
-		draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("ink", "AppPalette"))
+		draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("font_color", "MapLegend"))
 		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-		draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("ink", "AppPalette"))
+		draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("font_color", "MapLegend"))
 
 
 func _data_legend_box() -> StyleBoxFlat:
-	return get_theme_stylebox("panel", "PanelContainer") as StyleBoxFlat
+	return get_theme_stylebox("panel", "MapLegend") as StyleBoxFlat
 
 
 func set_city_view(
