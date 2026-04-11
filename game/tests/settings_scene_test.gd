@@ -12,7 +12,7 @@ func _run() -> void:
 	var first := SettingsScene.instantiate() as AppSettingsDialog
 	var second := SettingsScene.instantiate() as AppSettingsDialog
 	# Create fixed controls before _ready so they can be edited in the scene.
-	assert(first.get_node("%Tabs").get_child_count() == 6)
+	assert(first.get_node("%Tabs").get_child_count() == 5)
 	assert(first.get_node("%DefaultMayorEdit").owner == first)
 	root.add_child(first)
 	root.add_child(second)

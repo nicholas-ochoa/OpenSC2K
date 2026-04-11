@@ -124,14 +124,13 @@ func refresh() -> void:
 func _add_group(parent: VBoxContainer, category: int) -> void:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _group_box())
 	parent.add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 3)
 	panel.add_child(column)
 	var heading := Label.new()
 	heading.text = Ordinances.CATEGORY_NAMES[category]
-	heading.add_theme_color_override("font_color", Color.WHITE)
+
 	heading.add_theme_font_size_override("font_size", 14)
 	column.add_child(heading)
 	var rows := GridContainer.new()
@@ -158,14 +157,13 @@ func _add_group(parent: VBoxContainer, category: int) -> void:
 func _add_summary(parent: VBoxContainer) -> void:
 	var panel := PanelContainer.new()
 	panel.size_flags_horizontal = Control.SIZE_EXPAND_FILL
-	panel.add_theme_stylebox_override("panel", _group_box())
 	parent.add_child(panel)
 	var column := VBoxContainer.new()
 	column.add_theme_constant_override("separation", 3)
 	panel.add_child(column)
 	var heading := Label.new()
 	heading.text = "Estimated Annual Cost"
-	heading.add_theme_color_override("font_color", Color.WHITE)
+
 	heading.add_theme_font_size_override("font_size", 14)
 	column.add_child(heading)
 	var rows := GridContainer.new()
@@ -194,16 +192,6 @@ func _amount_field(node_name: String, minimum_width: float) -> LineEdit:
 	field.tooltip_text = "Estimated annual amount"
 
 	return field
-
-
-func _group_box() -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color("303030")
-	box.border_color = Color("808080")
-	box.set_border_width_all(1)
-	box.set_content_margin_all(7)
-
-	return box
 
 
 func _on_ordinance_toggled(enabled: bool, ordinance_id: int) -> void:

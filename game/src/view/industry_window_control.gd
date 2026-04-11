@@ -40,6 +40,7 @@ var dragging_tax := false
 
 
 func _init() -> void:
+	theme_changed.connect(queue_redraw)
 	custom_minimum_size = Vector2(600, 340)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -209,7 +210,7 @@ func _apply_tax_pointer(pointer: Vector2, apply_all: bool) -> void:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color("c0c0c0"), true)
+	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("canvas", "AppPalette"), true)
 	var data := snapshot(city)
 
 	if not data.get("ok", false):
@@ -226,8 +227,8 @@ func _draw() -> void:
 	var font := get_theme_default_font()
 	var font_size := 13
 
-	draw_rect(plot, Color("ffffff"), true)
-	draw_rect(plot, Color("404040"), false, 1.0)
+	draw_rect(plot, get_theme_color("paper", "AppPalette"), true)
+	draw_rect(plot, get_theme_color("border", "AppPalette"), false, 1.0)
 
 	for industry in INDUSTRY_COUNT:
 		var center_y := plot.position.y + row_height * (float(industry) + 0.5)
@@ -242,7 +243,7 @@ func _draw() -> void:
 			HORIZONTAL_ALIGNMENT_LEFT,
 			-1,
 			font_size,
-			Color("202020"),
+			get_theme_color("ink", "AppPalette"),
 		)
 		draw_line(
 			Vector2(names_right + 2, center_y),
@@ -269,7 +270,7 @@ func _draw() -> void:
 		)
 
 		if bar.size.x > 0:
-			draw_rect(bar, Color("0000c0"), true)
+			draw_rect(bar, get_theme_color("chart_accent", "AppPalette"), true)
 			draw_rect(bar, Color("00007f"), false, 1.0)
 
 		if mode == Mode.TAX_RATES:
@@ -284,7 +285,7 @@ func _draw() -> void:
 				HORIZONTAL_ALIGNMENT_LEFT,
 				-1,
 				font_size,
-				Color("202020"),
+				get_theme_color("ink", "AppPalette"),
 			)
 
 	if mode == Mode.TAX_RATES:
@@ -295,7 +296,7 @@ func _draw() -> void:
 		draw_dashed_line(
 			Vector2(reference_x, plot.position.y),
 			Vector2(reference_x, plot.end.y),
-			Color("202020"),
+			get_theme_color("ink", "AppPalette"),
 			1.0,
 			3.0,
 		)
@@ -320,7 +321,7 @@ func _draw_centered_message(message: String) -> void:
 		HORIZONTAL_ALIGNMENT_LEFT,
 		-1,
 		font_size,
-		Color("202020"),
+		get_theme_color("ink", "AppPalette"),
 	)
 
 

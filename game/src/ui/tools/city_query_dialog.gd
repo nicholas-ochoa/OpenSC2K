@@ -114,7 +114,6 @@ func _populate_summary(details: String, info: Dictionary) -> void:
 			continue
 
 		var card := PanelContainer.new()
-		card.add_theme_stylebox_override("panel", ClassicStyle.create_box(Color("f4f4ef"), Color("d3d3cc"), 1, 12, 10))
 		summary_rows.add_child(card)
 		var split := line.find(":")
 
@@ -125,7 +124,6 @@ func _populate_summary(details: String, info: Dictionary) -> void:
 			var label := Label.new()
 			label.text = line.left(split)
 			label.custom_minimum_size.x = 145
-			label.add_theme_color_override("font_color", Color("555b62"))
 			row.add_child(label)
 			var value := _summary_label(line.substr(split + 1).strip_edges())
 			value.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -144,7 +142,6 @@ func _populate_details(info: Dictionary) -> void:
 func _populate_grid(grid: Tree, rows: Array[PackedStringArray]) -> void:
 	grid.clear()
 	var root := grid.create_item()
-	var row_index := 0
 
 	for row in rows:
 		var item := grid.create_item(root)
@@ -152,16 +149,12 @@ func _populate_grid(grid: Tree, rows: Array[PackedStringArray]) -> void:
 		for column in 4:
 			item.set_text(column, row[column])
 			item.set_tooltip_text(column, row[column])
-			item.set_custom_bg_color(column, Color("f0f2ee") if row_index % 2 == 0 else Color.WHITE)
-
-		row_index += 1
 
 
 func _summary_label(value: String) -> Label:
 	var label := Label.new()
 	label.text = value
 	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	label.add_theme_color_override("font_color", Color("202830"))
 	label.add_theme_font_size_override("font_size", 16)
 
 	return label

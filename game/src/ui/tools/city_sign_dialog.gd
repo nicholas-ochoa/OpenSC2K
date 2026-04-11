@@ -7,8 +7,7 @@ var text_input: LineEdit
 func _ready() -> void:
 	# visible in the editor, closed at startup
 	hide()
-	theme = ThemeDB.get_default_theme().duplicate() as Theme
-	theme.set_color("font_color", "Label", Color.WHITE)
+	theme = AppUiTheme.current()
 	text_input = $TextInput
 
 

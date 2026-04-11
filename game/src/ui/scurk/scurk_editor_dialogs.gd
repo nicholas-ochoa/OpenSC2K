@@ -23,21 +23,21 @@ func _create_dialogs() -> void:
 		return
 
 	open_dialog = FileDialog.new()
-	open_dialog.theme = ThemeDB.get_default_theme().duplicate()
+	open_dialog.theme = AppUiTheme.file_dialog()
 	open_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	open_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	open_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
 	add_child(open_dialog)
 
 	save_dialog = FileDialog.new()
-	save_dialog.theme = ThemeDB.get_default_theme().duplicate()
+	save_dialog.theme = AppUiTheme.file_dialog()
 	save_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	save_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 	save_dialog.add_filter("*.MIF, *.mif", "SCURK tile sets")
 	add_child(save_dialog)
 
 	import_bmp_dialog = FileDialog.new()
-	import_bmp_dialog.theme = ThemeDB.get_default_theme().duplicate()
+	import_bmp_dialog.theme = AppUiTheme.file_dialog()
 	import_bmp_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	import_bmp_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	import_bmp_dialog.title = "Import indexed PNG or BMP"
@@ -45,7 +45,7 @@ func _create_dialogs() -> void:
 	add_child(import_bmp_dialog)
 
 	export_bmp_dialog = FileDialog.new()
-	export_bmp_dialog.theme = ThemeDB.get_default_theme().duplicate()
+	export_bmp_dialog.theme = AppUiTheme.file_dialog()
 	export_bmp_dialog.access = FileDialog.ACCESS_FILESYSTEM
 	export_bmp_dialog.file_mode = FileDialog.FILE_MODE_SAVE_FILE
 	export_bmp_dialog.title = "Export Image"

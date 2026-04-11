@@ -51,9 +51,6 @@ var fps_label: Label
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(0, 25)
-	add_theme_stylebox_override(
-		"panel", ClassicStyle.create_box(Color("c0c0c0"), Color("808080"), 2)
-	)
 	var menu_row := HBoxContainer.new()
 	menu_row.add_theme_constant_override("separation", 0)
 	add_child(menu_row)

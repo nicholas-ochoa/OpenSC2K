@@ -23,10 +23,6 @@ theme_override_constants/separation = 8
 custom_minimum_size = Vector2(230, 210)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
 
 [node name="Column" type="VBoxContainer" parent="Choices/Choice1"]
 layout_mode = 0
@@ -46,7 +42,6 @@ stretch_mode = 5
 [node name="Caption" type="Label" parent="Choices/Choice1/Column"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.08235294, 0.08235294, 0.08235294, 1)
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -54,10 +49,6 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(230, 210)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
 
 [node name="Column" type="VBoxContainer" parent="Choices/Choice2"]
 layout_mode = 0
@@ -77,7 +68,6 @@ stretch_mode = 5
 [node name="Caption" type="Label" parent="Choices/Choice2/Column"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.08235294, 0.08235294, 0.08235294, 1)
 horizontal_alignment = 1
 vertical_alignment = 1
 
@@ -85,10 +75,6 @@ vertical_alignment = 1
 custom_minimum_size = Vector2(230, 210)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(1, 1, 1, 0)
-theme_override_colors/font_focus_color = Color(1, 1, 1, 0)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 0)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 0)
 
 [node name="Column" type="VBoxContainer" parent="Choices/Choice3"]
 layout_mode = 0
@@ -108,6 +94,5 @@ stretch_mode = 5
 [node name="Caption" type="Label" parent="Choices/Choice3/Column"]
 layout_mode = 2
 size_flags_vertical = 3
-theme_override_colors/font_color = Color(0.08235294, 0.08235294, 0.08235294, 1)
 horizontal_alignment = 1
 vertical_alignment = 1

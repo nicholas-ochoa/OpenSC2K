@@ -3,30 +3,6 @@
 [ext_resource type="Script" path="res://src/ui/city_windows/city_graph_window.gd" id="1_dd4sk"]
 [ext_resource type="Script" path="res://src/view/city_graph_control.gd" id="2_n5puo"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_sswbp"]
-content_margin_left = 5.0
-content_margin_top = 3.0
-content_margin_right = 5.0
-content_margin_bottom = 3.0
-bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
-
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_2m62u"]
-content_margin_left = 5.0
-content_margin_top = 3.0
-content_margin_right = 5.0
-content_margin_bottom = 3.0
-bg_color = Color(1, 1, 1, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
-
 [sub_resource type="ButtonGroup" id="ButtonGroup_881vh"]
 resource_local_to_scene = true
 
@@ -42,7 +18,7 @@ script = ExtResource("1_dd4sk")
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_sswbp")
+theme_type_variation = "PanelPadding5_3_5_3"
 
 [node name="Margin" type="MarginContainer" parent="Background"]
 layout_mode = 2
@@ -59,7 +35,7 @@ theme_override_constants/separation = 8
 layout_mode = 2
 size_flags_horizontal = 3
 size_flags_vertical = 3
-theme_override_styles/panel = SubResource("StyleBoxFlat_2m62u")
+theme_type_variation = "PanelPadding5_3_5_3"
 
 [node name="Chart" type="Control" parent="Background/Margin/Column/ChartFrame"]
 custom_minimum_size = Vector2(620, 330)
@@ -186,7 +162,6 @@ layout_mode = 2
 
 [node name="TimeScaleLabel" type="Label" parent="Background/Margin/Column/Controls/TimeScales"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
 text = "Time Scale"
 
 [node name="Scale1Year" type="CheckBox" parent="Background/Margin/Column/Controls/TimeScales"]

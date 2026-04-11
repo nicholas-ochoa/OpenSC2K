@@ -2,16 +2,6 @@
 
 [ext_resource type="Script" path="res://src/ui/city_windows/budget_dialog.gd" id="1_il4yx"]
 
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_yl3mj"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_27qxg"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_vnhmf"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_bwutx"]
-
-[sub_resource type="StyleBoxEmpty" id="StyleBoxEmpty_83738"]
-
 [node name="BudgetDialog" type="ConfirmationDialog"]
 visible = true
 title = "Budget"
@@ -41,16 +31,6 @@ autowrap_mode = 3
 
 [node name="AutoBudget" type="CheckBox" parent="Margin/Content"]
 layout_mode = 2
-theme_override_colors/font_color = Color(1, 1, 1, 1)
-theme_override_colors/font_pressed_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_color = Color(1, 1, 1, 1)
-theme_override_colors/font_hover_pressed_color = Color(1, 1, 1, 1)
-theme_override_colors/font_disabled_color = Color(1, 1, 1, 1)
-theme_override_styles/normal = SubResource("StyleBoxEmpty_yl3mj")
-theme_override_styles/pressed = SubResource("StyleBoxEmpty_27qxg")
-theme_override_styles/hover = SubResource("StyleBoxEmpty_vnhmf")
-theme_override_styles/hover_pressed = SubResource("StyleBoxEmpty_bwutx")
-theme_override_styles/disabled = SubResource("StyleBoxEmpty_83738")
 text = "Use the same funding automatically next year"
 
 [node name="Columns" type="HBoxContainer" parent="Margin/Content"]

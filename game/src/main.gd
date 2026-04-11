@@ -115,6 +115,7 @@ var app_toolbar_sounds := true
 var app_sound_pack_folder := ""
 var app_music_pack_folder := ""
 var app_city_renderer := "gpu"
+var app_ui_theme := "light"
 var app_default_mayor_name := "Mayor"
 var app_overview_graphics := 0
 var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
@@ -399,7 +400,7 @@ func _build_reference_import_dialogs() -> void:
 	add_child(reference_import_error_dialog)
 
 	for dialog in [graphics_source_error_dialog, reference_import_dialog, reference_import_error_dialog]:
-		dialog.theme = ThemeDB.get_default_theme().duplicate() if dialog is FileDialog else ClassicUiStyle.create_dialog_theme()
+		dialog.theme = AppUiTheme.file_dialog() if dialog is FileDialog else ClassicUiStyle.create_dialog_theme()
 
 
 func _show_graphics_source_error(message: String) -> void:
@@ -456,7 +457,7 @@ func _import_original_game(executable_path: String) -> void:
 	audio_controller.set_soundtrack_folder("")
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics, app_ui_theme,
 	)
 	_open_import_settings()
 	status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
@@ -571,7 +572,7 @@ func _camera_keys_allowed() -> bool:
 	if focus is LineEdit or focus is TextEdit:
 		return false
 
-	for overlay in [main_menu, scurk_editor, scurk_place_print, scurk_print, settings_dialog, save_changes_dialog]:
+	for overlay in [main_menu, new_city_dialog, query_dialog, scurk_editor, scurk_place_print, scurk_print, settings_dialog, save_changes_dialog]:
 		if overlay != null and overlay.visible:
 			return false
 
@@ -746,7 +747,6 @@ func _consume_simulation_result(result: Dictionary) -> void:
 
 func _build_interface(original_assets: OriginalGameAssets) -> void:
 	theme = ClassicStyle.create_theme()
-	CheckControlGraphics.apply_theme(theme, original_assets.city_ui_graphics)
 	city_workspace = CityWorkspaceView.instantiate() as CityWorkspace
 	city_workspace.toolbar_art = original_assets.toolbar_art
 	add_child(city_workspace)
@@ -890,7 +890,6 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	_update_zoom_controls(map_view.zoom_percent())
 	_build_main_menu()
 	about_dialog.set_control_graphics(original_assets.city_ui_graphics)
-	CheckControlGraphics.apply_theme(settings_dialog.theme, original_assets.city_ui_graphics)
 
 
 func _build_main_menu() -> void:
@@ -1029,10 +1028,11 @@ func _set_city_renderer(value: String) -> void:
 
 func _open_import_settings() -> void:
 	_open_settings_dialog()
-	settings_dialog.tabs.current_tab = 4
+	settings_dialog.tabs.current_tab = 3
 
 
 func _open_settings_dialog() -> void:
+	settings_dialog.theme_selector.select(1 if app_ui_theme == "dark" else 0)
 	settings_dialog.default_mayor_edit.text = app_default_mayor_name
 	settings_dialog.overview_graphics_selector.select(app_overview_graphics)
 	settings_dialog.original_compatibility_check.button_pressed = app_original_compatibility
@@ -1098,6 +1098,8 @@ func _apply_settings() -> void:
 	app_graphics_source = values.graphics_source
 	app_graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
+	app_ui_theme = str(values.ui_theme)
+	AppUiTheme.select(app_ui_theme)
 	app_default_mayor_name = str(values.default_mayor_name)
 
 	if app_default_mayor_name.is_empty():
@@ -1143,7 +1145,7 @@ func _apply_settings() -> void:
 
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics, app_ui_theme,
 	)
 	status_label.text = (
 		"Settings saved."
@@ -1191,8 +1193,6 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	_update_palette_cycle_texture()
 	city_toolbar.replace_artwork(assets.toolbar_art)
 	_refresh_child_tool_icons()
-	CheckControlGraphics.apply_theme(theme, assets.city_ui_graphics)
-	CheckControlGraphics.apply_theme(settings_dialog.theme, assets.city_ui_graphics)
 	about_dialog.set_control_graphics(assets.city_ui_graphics)
 	new_city_dialog.set_control_graphics(assets.city_ui_graphics)
 	newspaper_dialog.set_control_graphics(assets.city_ui_graphics)
@@ -1229,6 +1229,8 @@ func _load_app_settings() -> void:
 	app_toolbar_sounds = bool(values.toolbar_sounds)
 	app_sound_pack_folder = str(values.sound_pack_folder)
 	app_music_pack_folder = str(values.music_pack_folder)
+	app_ui_theme = str(values.ui_theme)
+	AppUiTheme.select(app_ui_theme)
 	app_default_mayor_name = str(values.default_mayor_name)
 	app_overview_graphics = int(values.overview_graphics)
 	app_zoom_graphics = values.zoom_graphics
@@ -1364,7 +1366,7 @@ func _close_scurk_place_print() -> void:
 	_update_edit_state()
 
 	if city != null:
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "Closed SCURK Place & Print."
 
 
@@ -1421,7 +1423,7 @@ func _export_scurk_city_bmp(path: String) -> void:
 
 	var message := "Exported the small Place & Print city to %s." % output_path
 	scurk_place_print.set_status(message)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = message
 
 
@@ -1517,7 +1519,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 	]
 	scurk_print.set_status(message)
 	scurk_place_print.set_status(message)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = message
 	pending_scurk_print_options.clear()
 
@@ -1603,7 +1605,7 @@ func _apply_scurk_place_selection(point: Vector2i) -> void:
 		tile_id, point.x, point.y, area, area,
 	]
 	scurk_place_print.set_status(message)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = message
 
 
@@ -1630,7 +1632,7 @@ func _undo_scurk_place() -> void:
 		command_name, result.restored_tiles,
 	]
 	scurk_place_print.set_status(message)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = message
 
 
@@ -1657,7 +1659,7 @@ func _redo_scurk_place() -> void:
 		command_name, result.restored_tiles,
 	]
 	scurk_place_print.set_status(message)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = message
 
 
@@ -1782,7 +1784,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 	if new_center.x >= 0:
 		map_view.center_on_tile(new_center)
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Rotated %s. Compass: %d." % [
 		"counter-clockwise" if counter_clockwise else "clockwise",
 		result.new_compass,
@@ -1837,7 +1839,7 @@ func _on_map_selection_canceled() -> void:
 	if status_label == null:
 		return
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Forest brush stopped. Use Undo to remove its last placement." if map_view.continuous_placement else "Selection canceled. No action was taken."
 
 
@@ -1914,7 +1916,7 @@ func _on_map_selection_changed(
 			return
 
 		map_view.set_selection_price(0, true)
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "%s preview: %d tiles; free in SCURK." % [
 			scurk_tool.name, int(scurk_preview.changed_tiles),
 		]
@@ -1932,7 +1934,7 @@ func _on_map_selection_changed(
 
 	if not preview.get("ok", false):
 		map_view.clear_selection_price()
-		status_label.add_theme_color_override("font_color", Color("b00000"))
+		status_label.theme_type_variation = "ErrorLabel"
 		status_label.text = "Cannot start zone selection: %s" % preview.error
 
 		return
@@ -1940,7 +1942,7 @@ func _on_map_selection_changed(
 	var cost := int(preview.cost)
 	var affordable := bool(preview.affordable)
 	map_view.set_selection_price(cost, affordable)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "%s preview: %d charged %s for $%s." % [
 		Tools.tool(selected_group, selected_subtool).name,
 		int(preview.charged_tiles),
@@ -1949,7 +1951,7 @@ func _on_map_selection_changed(
 	]
 
 	if not affordable:
-		status_label.add_theme_color_override("font_color", Color("b00000"))
+		status_label.theme_type_variation = "ErrorLabel"
 		status_label.text += " Funds are not sufficient."
 
 
@@ -2044,7 +2046,7 @@ func _on_options_menu(id: int) -> void:
 		else:
 			_stop_music()
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "%s %s." % [option_name, "enabled" if enabled else "disabled"]
 
 
@@ -2192,7 +2194,7 @@ func _on_disaster_menu(id: int) -> void:
 			return
 
 		_sync_city_option_menus()
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "No Disasters %s." % ("enabled" if enabled else "disabled")
 
 		return
@@ -2235,7 +2237,7 @@ func _start_disaster_at_view_center(id: int) -> Dictionary:
 	)
 	_show_news_items(result.get("news_items", []))
 	var disaster_name := CityMenuBar.disaster_name(id)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "%s started." % disaster_name
 	result["name"] = disaster_name
 
@@ -2273,7 +2275,7 @@ func _open_ordinance_window() -> void:
 
 func _on_ordinances_changed() -> void:
 	_refresh_details()
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Ordinance selection saved."
 
 
@@ -2300,7 +2302,7 @@ func _open_industry_window() -> void:
 
 func _on_industry_tax_rates_changed() -> void:
 	_refresh_details()
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Industry tax rates saved."
 
 
@@ -2319,13 +2321,13 @@ func _open_city_map_window() -> void:
 
 
 func _on_city_map_mode_changed(mode: String) -> void:
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "City Map: %s" % CityMapView.MODE_NAMES.get(mode, mode)
 
 
 func _on_city_map_center_requested(point: Vector2i) -> void:
 	map_view.center_on_tile(point)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "City view centered at %d, %d." % [point.x, point.y]
 
 
@@ -2743,7 +2745,7 @@ func _apply_scurk_tile_set(
 	if city != null:
 		_refresh_map()
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Loaded tile set %s: %d graphic replacements and %d names." % [
 		active_scurk_name, tile_set.overrides.entries.size(), tile_set.names.size(),
 	]
@@ -2767,7 +2769,7 @@ func _restore_original_tile_set() -> void:
 	if city != null:
 		_refresh_map()
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Restored the original tile set."
 
 
@@ -2890,7 +2892,7 @@ func _resolve_bond_action(action: String, confirmed: bool) -> void:
 
 	_update_bond_controls()
 	_refresh_details()
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 
 	match result.status:
 		"issued":
@@ -2943,7 +2945,7 @@ func _commit_budget() -> void:
 		annual_budget_pending = false
 		_consume_simulation_result(result)
 		_refresh_details()
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "Annual budget applied. The simulation can continue."
 
 		return
@@ -2955,7 +2957,7 @@ func _commit_budget() -> void:
 
 		return
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Budget funding saved."
 
 
@@ -2997,7 +2999,7 @@ func _resolve_military_proposal(accepted: bool) -> void:
 	military_proposal_pending = false
 	_consume_simulation_result(result)
 	_refresh_details()
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	var proposal: Dictionary = result.day_results[0].phase_results.military_proposal
 
 	if int(proposal.base_type) in [2, 3, 4, 5]:
@@ -3033,13 +3035,13 @@ func _open_scenario_intro(scenario: ScenarioState) -> void:
 	if name.is_empty():
 		name = current_document.source_path.get_file().get_basename()
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Review the scenario briefing before the simulation starts."
 	scenario_dialog.show_briefing(name, picture, scenario.opening_description())
 
 
 func _begin_scenario() -> void:
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Scenario started."
 
 
@@ -3336,7 +3338,7 @@ func _activate_document(
 
 	city_menu_bar.set_city_name(display_name)
 	_refresh_details()
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = status_text if not status_text.is_empty() else "City ready."
 	_refresh_map()
 	_update_edit_state()
@@ -3424,7 +3426,7 @@ func _save_copy(path: String) -> bool:
 	current_save_path = output_path
 	current_city_saved_once = true
 	saved_city_snapshot = result.data.duplicate()
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Saved city: %s" % output_path
 	_sync_upgrade_city_option()
 
@@ -3496,7 +3498,7 @@ func _select_speed(speed_value: int) -> void:
 		return
 
 	_sync_speed_ui()
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "%s speed selected." % speed_controller.speed_name()
 
 
@@ -4936,7 +4938,7 @@ func _show_game_over_events(events: Array) -> void:
 	)
 	game_over_dialog.dialog_text = "\n".join(messages) + "\n\nOpen another city to continue."
 	game_over_dialog.popup_centered()
-	status_label.add_theme_color_override("font_color", Color("ffcf70"))
+	status_label.theme_type_variation = "WarningLabel"
 	status_label.text = "\n".join(messages)
 
 
@@ -5120,7 +5122,7 @@ func _update_edit_state() -> void:
 	if status_label == null or not bool(state.show_status):
 		return
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = str(state.status_text)
 	status_label.set_meta("status_tooltip_text", str(state.status_detail))
 	city_status_bar.refresh_message_tooltip()
@@ -5218,7 +5220,7 @@ func _apply_map_selection(
 		last_edit_command = dispatch
 		_refresh_after_city_edit(dispatch)
 		_play_tool_success_sound(selected_group, selected_subtool)
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "Deployed %s unit %d of %d." % [
 			Tools.tool(selected_group, selected_subtool).name,
 			dispatch.slot_index,
@@ -5320,7 +5322,7 @@ func _apply_map_selection(
 				pending_building_objection_group = building_group
 				pending_building_objection_subtool = building_subtool
 				_show_building_objection()
-				status_label.remove_theme_color_override("font_color")
+				status_label.theme_type_variation = ""
 				status_label.text = "%s placement was rejected by nearby residents." % building_name
 
 				return
@@ -5352,7 +5354,7 @@ func _apply_map_selection(
 		if building_group == 14 and city.music_enabled() and not stadium_team_pending:
 			_play_music_track(Music.RECREATION_TRACK)
 
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "Built %s for $%s." % [
 			building_name,
 			_format_number(building.cost),
@@ -5422,7 +5424,7 @@ func _finish_simple_edit(
 	elif edit.play_success_sound:
 		_play_tool_success_sound(selected_group, selected_subtool, scurk_tool_mode)
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = str(edit.message)
 
 
@@ -5468,7 +5470,7 @@ func _apply_network_selection(
 
 	if network.get("cancelled", false):
 		_play_tool_failure_sound(group_index, subtool_index, "cancelled", free_mode)
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "Bridge selection canceled. No action was taken."
 
 		return
@@ -5520,7 +5522,7 @@ func _apply_network_selection(
 	_refresh_details()
 	_refresh_after_city_edit(network)
 	_play_tool_success_sound(group_index, subtool_index, free_mode)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	var dry_count := int(network.get("dry_points", []).size())
 
 	if int(network.get("bridge_count", 0)) > 1:
@@ -5707,7 +5709,7 @@ func _confirm_stadium_team() -> void:
 	if city.music_enabled():
 		_play_music_track(Music.RECREATION_TRACK)
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Assigned %s to the new stadium." % result.team_name
 
 
@@ -5718,7 +5720,7 @@ func _cancel_stadium_team() -> void:
 	if city != null and city.music_enabled():
 		_play_music_track(Music.RECREATION_TRACK)
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "The stadium was built without a team."
 
 
@@ -5811,7 +5813,7 @@ func _cancel_bridge() -> void:
 			"cancelled",
 			bool(request.get("free_mode", false)),
 		)
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "Bridge selection canceled. No action was taken."
 
 		return
@@ -5879,7 +5881,7 @@ func _apply_tunnel_selection(
 		_play_tool_failure_sound(
 			selected_group, selected_subtool, "cancelled", free_mode
 		)
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "Tunnel construction canceled. No action was taken."
 
 		return
@@ -5907,7 +5909,7 @@ func _apply_tunnel_selection(
 	_refresh_details()
 	_refresh_after_city_edit(tunnel)
 	_play_tool_success_sound(selected_group, selected_subtool, free_mode)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Built a %d-tile tunnel for $%s." % [
 		tunnel.points.size(), _format_number(tunnel.cost)
 	]
@@ -5968,7 +5970,7 @@ func _apply_highway_selection(
 		_play_tool_failure_sound(
 			selected_group, selected_subtool, "cancelled", free_mode
 		)
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "Bridge selection canceled. No action was taken."
 
 		return
@@ -6016,7 +6018,7 @@ func _apply_highway_selection(
 	_refresh_details()
 	_refresh_after_city_edit(highway)
 	_play_tool_success_sound(selected_group, selected_subtool, free_mode)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 
 	if int(highway.get("bridge_count", 0)) > 1:
 		status_label.text = "Built %d highway sections and %d bridges for $%s." % [highway.sections.size(), highway.bridge_count, _format_number(int(highway.cost))]
@@ -6151,7 +6153,7 @@ func _undo_last_edit() -> void:
 	if undo_forest_protest:
 		_refresh_saved_news_summary()
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 
 	if command_type == "sign":
 		status_label.text = "Restored the previous sign."
@@ -6207,7 +6209,7 @@ func _commit_sign() -> void:
 
 	last_edit_command = result
 	_refresh_after_city_edit(result)
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
 
 
@@ -6399,13 +6401,13 @@ func _refresh_status_summary(
 func _center_map_on_tile(point: Vector2i) -> void:
 	if map_view.center_on_tile(point):
 		_play_tool_success_sound(17, 0)
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 		status_label.text = "Centered the map on tile %d, %d." % [point.x, point.y]
 
 
 func _show_error(message: String) -> void:
 	status_label.text = message
-	status_label.add_theme_color_override("font_color", Color("800000"))
+	status_label.theme_type_variation = "ErrorLabel"
 
 
 func _debug_metrics() -> Dictionary:
@@ -6710,7 +6712,7 @@ func _request_main_menu() -> void:
 	var prompt := ConfirmationDialog.new()
 	prompt.title = "Return to Main Menu"
 	prompt.dialog_text = "Return to the main menu? You can use Continue City to resume this city."
-	prompt.theme = ThemeDB.get_default_theme().duplicate()
+	prompt.theme = AppUiTheme.current()
 	prompt.min_size = Vector2i(480, 180)
 	add_child(prompt)
 	prompt.confirmed.connect(func() -> void:

@@ -26,6 +26,7 @@ var effects_slider: HSlider
 var fullscreen_check: CheckBox
 var zoom_graphics_selectors: Array[OptionButton] = []
 var overview_graphics_selector: OptionButton
+var theme_selector: OptionButton
 var default_mayor_edit: LineEdit
 var renderer_selector: OptionButton
 var background_audio_check: CheckBox
@@ -35,17 +36,24 @@ func _ready() -> void:
 	# visible in the editor, closed at startup
 	hide()
 	theme = ClassicUiStyle.create_dialog_theme()
-	get_ok_button().text = "Apply"
+
+	get_ok_button().text = "Save Changes"
+	var button_row := get_ok_button().get_parent()
+	var cancel_index := get_cancel_button().get_index()
+	button_row.move_child(get_cancel_button(), get_ok_button().get_index())
+	button_row.move_child(get_ok_button(), cancel_index)
 	get_label().visible = false
 	background_audio_check = %BackgroundAudioCheck
 	compatibility_error_label = %CompatibilityErrorLabel
 	default_mayor_edit = %DefaultMayorEdit
+	theme_selector = %ThemeSelector
 	effects_slider = %EffectsSlider
 	folder_edit = %FolderEdit
 	fullscreen_check = %FullscreenCheck
 	music_pack_edit = %MusicPackEdit
 	music_slider = %MusicSlider
 	original_compatibility_check = %OriginalCompatibilityCheck
+
 	overview_graphics_selector = %OverviewGraphicsSelector
 	pack_error_label = %PackErrorLabel
 	renderer_selector = %RendererSelector
@@ -105,6 +113,7 @@ func show_values(
 func selected_values() -> Dictionary:
 	return {
 		"default_mayor_name": default_mayor_edit.text.strip_edges(),
+		"ui_theme": "dark" if theme_selector.selected == 1 else "light",
 		"overview_graphics": overview_graphics_selector.selected,
 		"original_compatibility": original_compatibility_check.button_pressed,
 		"warn_sc2x_conversion": warn_sc2x_conversion_check.button_pressed,
@@ -174,8 +183,8 @@ func _refresh_pack_name(kind: String) -> void:
 func show_pack_error(message: String) -> void:
 	pack_error_label.text = message
 	pack_error_label.show()
-	tabs.current_tab = 2
-	(tabs.get_child(2) as ScrollContainer).scroll_vertical = 0
+	tabs.current_tab = 1
+	(tabs.get_child(1) as ScrollContainer).scroll_vertical = 0
 	call_deferred("popup_centered")
 
 
@@ -188,7 +197,7 @@ static func pack_file_path(value: String) -> String:
 
 func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 	var picker := FileDialog.new()
-	picker.theme = ThemeDB.get_default_theme().duplicate()
+	picker.theme = AppUiTheme.file_dialog()
 	picker.title = "Select %s pack.json" % kind
 	picker.file_mode = FileDialog.FILE_MODE_OPEN_FILE
 	picker.filters = PackedStringArray(["pack.json ; OpenSC2K pack"])
@@ -204,5 +213,5 @@ func _pack_picker(kind: String, edit: LineEdit) -> FileDialog:
 func show_compatibility_error(message: String) -> void:
 	compatibility_error_label.text = message
 	compatibility_error_label.show()
-	tabs.current_tab = 5
+	tabs.current_tab = 4
 	call_deferred("popup_centered")

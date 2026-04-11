@@ -6,7 +6,7 @@ func _ready() -> void:
 	title = "Save Changes"
 	min_size = Vector2i(480, 190)
 	exclusive = true
-	get_label().add_theme_color_override("font_color", Color.WHITE)
+	theme = AppUiTheme.current()
 	get_ok_button().text = "Save"
 	get_cancel_button().text = "Cancel"
 	add_button("Don't Save", true, "discard")

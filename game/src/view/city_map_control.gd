@@ -146,6 +146,7 @@ var _sign_cache_build_count := 0
 
 
 func _ready() -> void:
+	theme_changed.connect(queue_redraw)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -254,7 +255,7 @@ func _draw_data_view(scale: float, offset: Vector2) -> void:
 		draw_style_box(_data_legend_box(), Rect2(position, extent))
 
 		for index in lines.size():
-			draw_string(font, position + Vector2(10, 22 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+			draw_string(font, position + Vector2(10, 22 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, get_theme_color("ink", "AppPalette"))
 
 
 func _draw_data_key() -> void:
@@ -262,13 +263,13 @@ func _draw_data_key() -> void:
 	var origin := Vector2(maxf(8, size.x - 332), maxf(8, size.y - (128 if data_view_mode == "height" else 108)))
 	draw_style_box(_data_legend_box(), Rect2(origin, Vector2(320, 116 if data_view_mode == "height" else 96)))
 	var title: String = CityDataView.TITLES[CityDataView.MODES.find(data_view_mode)]
-	draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Color.WHITE)
+	draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, get_theme_color("ink", "AppPalette"))
 
 	if data_view_mode in ["water", "power"]:
 		for index in 3:
 			var position := origin + Vector2(12 + index * 100, 38)
 			draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(index, data_view_mode))
-			draw_string(font, position + Vector2(0, 38), ["No link", "No supply", "Supplied"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+			draw_string(font, position + Vector2(0, 38), ["No link", "No supply", "Supplied"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("ink", "AppPalette"))
 	else:
 		for index in 32:
 			var number := index if data_view_mode == "height" else roundi(index * 255.0 / 31)
@@ -276,20 +277,17 @@ func _draw_data_key() -> void:
 
 		if data_view_mode == "height":
 			draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
-			draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, Color.WHITE)
+			draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, get_theme_color("ink", "AppPalette"))
 
 		var low := "Level 1" if data_view_mode == "height" else "Very low"
 		var high := "Level 32" if data_view_mode == "height" else "Very high"
-		draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+		draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("ink", "AppPalette"))
 		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-		draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, Color.WHITE)
+		draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("ink", "AppPalette"))
 
 
 func _data_legend_box() -> StyleBoxFlat:
-	var box := StyleBoxFlat.new()
-	box.bg_color = Color(0.04, 0.06, 0.09, 0.94)
-
-	return box
+	return get_theme_stylebox("panel", "PanelContainer") as StyleBoxFlat
 
 
 func set_city_view(
@@ -1786,14 +1784,13 @@ func _show_placement_error(at_position: Vector2) -> void:
 		placement_error_popup = PanelContainer.new()
 		placement_error_popup.name = "PlacementErrorTooltip"
 		placement_error_popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		placement_error_popup.theme = ThemeDB.get_default_theme()
-		placement_error_popup.add_theme_stylebox_override(
-			"panel", placement_error_popup.theme.get_stylebox("panel", "TooltipPanel")
-		)
+		placement_error_popup.theme = AppUiTheme.current()
+		placement_error_popup.theme_type_variation = "TooltipPanel"
 		placement_error_popup.z_index = 100
 		placement_error_label = Label.new()
+		placement_error_label.theme_type_variation = "TooltipLabel"
 		placement_error_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		placement_error_label.add_theme_color_override("font_color", Color.WHITE)
+
 		placement_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 		placement_error_label.custom_minimum_size.x = 300
 		placement_error_popup.add_child(placement_error_label)

@@ -42,8 +42,7 @@ var pending_bond_action := ""
 func _ready() -> void:
 	# the scene is visible for editor layout work. open it only on request in game
 	hide()
-	theme = theme.duplicate() if theme != null else ThemeDB.get_default_theme().duplicate()
-	theme.set_color("font_color", "Label", Color.WHITE)
+	theme = AppUiTheme.current()
 	confirmed.connect(apply_requested.emit)
 	canceled.connect(cancel_requested.emit)
 	notice_label = get_node("Margin/Content/Notice")
@@ -52,7 +51,7 @@ func _ready() -> void:
 	issue_bond_button = get_node("Margin/Content/Bonds/Issue")
 	repay_bond_button = get_node("Margin/Content/Bonds/Repay")
 	bond_dialog = get_node("BondConfirmation")
-	auto_budget_check.theme = ThemeDB.get_default_theme().duplicate()
+	auto_budget_check.theme = AppUiTheme.current()
 
 	for column in $Margin/Content/Columns.get_children():
 		for row in column.get_children():
@@ -157,11 +156,4 @@ func _resolve_bond_confirmation(confirmed_value: bool) -> void:
 
 
 func _style_bond_confirmation() -> void:
-	bond_dialog.theme = ThemeDB.get_default_theme().duplicate()
-	bond_dialog.get_label().add_theme_color_override("font_color", Color.WHITE)
-	var panel := StyleBoxFlat.new()
-	panel.bg_color = Color("303030")
-	panel.border_color = Color("b0b0b0")
-	panel.set_border_width_all(2)
-	panel.set_content_margin_all(12)
-	bond_dialog.add_theme_stylebox_override("panel", panel)
+	bond_dialog.theme = AppUiTheme.current()

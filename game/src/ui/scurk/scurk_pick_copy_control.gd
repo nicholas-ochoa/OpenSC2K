@@ -73,7 +73,7 @@ func _ready() -> void:
 	$Content/Controls/ChangeWorking.pressed.connect(change_working_requested.emit)
 	source_list.drag_source = true
 	working_list.drop_target = true
-	source_dialog.theme = ThemeDB.get_default_theme().duplicate()
+	source_dialog.theme = AppUiTheme.file_dialog()
 	confirm_all_dialog.theme = ClassicUiStyle.create_dialog_theme()
 
 
@@ -342,9 +342,9 @@ func _set_status(message: String, error := false) -> void:
 		return
 
 	if error:
-		status_label.add_theme_color_override("font_color", Color("b00000"))
+		status_label.theme_type_variation = "ErrorLabel"
 	else:
-		status_label.remove_theme_color_override("font_color")
+		status_label.theme_type_variation = ""
 
 	status_label.text = message
 

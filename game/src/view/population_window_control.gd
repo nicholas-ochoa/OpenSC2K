@@ -21,6 +21,7 @@ var mode := Mode.POPULATION
 
 
 func _init() -> void:
+	theme_changed.connect(queue_redraw)
 	custom_minimum_size = Vector2(600, 330)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -138,8 +139,8 @@ static func y_axis_label(selected_mode: int, step: int) -> String:
 
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Color("ffffff"), true)
-	draw_rect(Rect2(Vector2.ZERO, size), Color("404040"), false, 1.0)
+	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("paper", "AppPalette"), true)
+	draw_rect(Rect2(Vector2.ZERO, size), get_theme_color("border", "AppPalette"), false, 1.0)
 	var data := snapshot(city)
 
 	if not data.ok:
@@ -153,7 +154,7 @@ func _draw() -> void:
 
 	for step in 7:
 		var y := plot.end.y - plot.size.y * float(step) / 6.0
-		draw_line(Vector2(plot.position.x, y), Vector2(plot.end.x, y), Color("dddddd"), 1.0)
+		draw_line(Vector2(plot.position.x, y), Vector2(plot.end.x, y), get_theme_color("grid", "AppPalette"), 1.0)
 		var label := y_axis_label(mode, step)
 
 		if not label.is_empty():
@@ -162,11 +163,11 @@ func _draw() -> void:
 			).x
 			draw_string(
 				font, Vector2(plot.position.x - label_width - 5, y + 4), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("202020")
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
 			)
 
-	draw_line(plot.position, Vector2(plot.position.x, plot.end.y), Color("404040"), 1.0)
-	draw_line(Vector2(plot.position.x, plot.end.y), plot.end, Color("404040"), 1.0)
+	draw_line(plot.position, Vector2(plot.position.x, plot.end.y), get_theme_color("border", "AppPalette"), 1.0)
+	draw_line(Vector2(plot.position.x, plot.end.y), plot.end, get_theme_color("border", "AppPalette"), 1.0)
 
 	var values := chart_values(data, mode)
 	var slot_width := plot.size.x / float(COHORT_COUNT)
@@ -183,8 +184,8 @@ func _draw() -> void:
 				maxf(1.0, slot_width - 2),
 				maxf(1.0, bar_height),
 			)
-			draw_rect(bar, Color("000080"), true)
-			draw_rect(bar, Color("202020"), false, 1.0)
+			draw_rect(bar, get_theme_color("chart_accent", "AppPalette"), true)
+			draw_rect(bar, get_theme_color("ink", "AppPalette"), false, 1.0)
 
 		if cohort % 2 == 0:
 			var age_label := str(cohort * 5)
@@ -194,7 +195,7 @@ func _draw() -> void:
 			).x
 			draw_string(
 				font, Vector2(x - width * 0.5, plot.end.y + 16), age_label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("202020")
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
 			)
 
 	var indicator := indicator_value(data, mode)
@@ -211,11 +212,11 @@ func _draw() -> void:
 	).x
 	draw_rect(
 		Rect2(plot.end.x - indicator_width - 6, indicator_y - 13, indicator_width + 6, 15),
-		Color("ffffff"), true
+		get_theme_color("paper", "AppPalette"), true
 	)
 	draw_string(
 		font, Vector2(plot.end.x - indicator_width - 3, indicator_y - 1), indicator_label,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("800000")
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("error", "AppPalette")
 	)
 
 
@@ -227,5 +228,5 @@ func _draw_centered_message(message: String) -> void:
 	).x
 	draw_string(
 		font, Vector2((size.x - width) * 0.5, size.y * 0.5), message,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("202020")
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
 	)

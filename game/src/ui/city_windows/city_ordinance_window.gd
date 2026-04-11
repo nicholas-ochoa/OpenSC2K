@@ -14,12 +14,7 @@ func _ready() -> void:
 	# visible in the editor, closed at startup
 	hide()
 	close_requested.connect(hide)
-	theme = ThemeDB.get_default_theme().duplicate()
-	theme.set_color("font_color", "Label", Color.WHITE)
-	theme.set_color("font_uneditable_color", "LineEdit", Color.WHITE)
-
-	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color"]:
-		theme.set_color(state, "CheckBox", Color.WHITE)
+	theme = AppUiTheme.current()
 
 	ordinance_control = get_node("Background/Margin/OrdinanceWindowControl")
 	ordinance_control.ordinances_changed.connect(ordinances_changed.emit)

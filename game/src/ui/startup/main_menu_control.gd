@@ -38,10 +38,14 @@ var scurk_place_button: Button
 
 
 func _ready() -> void:
+	AppUiTheme.bind_canvas(self)
+	theme = ClassicStyle.create_theme()
+
 	city_background = $CityBackground
 	var content: VBoxContainer = $Center/Panel/Content
 	import_button = content.get_node("ImportAssets")
-	import_border = import_button.get_theme_stylebox("normal") as StyleBoxFlat
+	_refresh_import_style()
+	theme_changed.connect(_refresh_import_style)
 	import_button.pressed.connect(import_assets_requested.emit)
 
 	for index in BUTTON_LABELS.size():
@@ -121,3 +125,10 @@ func _process(delta: float) -> void:
 
 	flash_time += delta
 	import_border.border_color = Color("ffb000") if fmod(flash_time, 1.2) < 0.6 else Color("805800")
+
+
+func _refresh_import_style() -> void:
+	if import_button == null:
+		return
+	import_border = AppUiTheme.current().get_stylebox("normal", "Button").duplicate() as StyleBoxFlat
+	import_button.add_theme_stylebox_override("normal", import_border)

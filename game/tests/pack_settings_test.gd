@@ -45,7 +45,7 @@ func _run() -> void:
 	var before: PackedByteArray = main.city.document.serialize().data
 	main._open_settings_dialog()
 	var dialog: AppSettingsDialog = main.settings_dialog
-	assert(dialog.tabs.get_tab_count() == 6 and dialog.tabs.get_tab_title(4) == "Import Data")
+	assert(dialog.tabs.get_tab_count() == 5 and dialog.tabs.get_tab_title(3) == "Import Data")
 	assert(dialog.toolbar_sounds_check.text == "Play toolbar sounds")
 	assert(dialog.folder_row.visible)
 

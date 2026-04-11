@@ -15,6 +15,7 @@ var demand_available := false
 
 
 func _init() -> void:
+	theme_changed.connect(queue_redraw)
 	custom_minimum_size = Vector2(100, 24)
 	mouse_filter = Control.MOUSE_FILTER_PASS
 	_update_tooltip()
@@ -91,7 +92,7 @@ func _draw() -> void:
 		HORIZONTAL_ALIGNMENT_LEFT,
 		-1,
 		font_size,
-		Color("202020"),
+		get_theme_color("ink", "AppPalette"),
 	)
 	var graph_rect := Rect2(
 		GRAPH_LEFT,
@@ -99,11 +100,11 @@ func _draw() -> void:
 		maxf(1.0, size.x - GRAPH_LEFT - 2.0),
 		maxf(1.0, size.y - 4.0),
 	)
-	draw_rect(graph_rect, GRAPH_BACKGROUND, true)
+	draw_rect(graph_rect, get_theme_color("paper", "AppPalette"), true)
 	draw_line(
 		Vector2(graph_rect.position.x, floorf(graph_rect.get_center().y)),
 		Vector2(graph_rect.end.x, floorf(graph_rect.get_center().y)),
-		Color("909090"),
+		get_theme_color("grid", "AppPalette"),
 		1.0,
 	)
 	var bars: Array[Rect2] = []
@@ -115,5 +116,4 @@ func _draw() -> void:
 		if bars[index].size.y > 0.0:
 			draw_rect(bars[index], ZONE_COLORS[index], true)
 
-	draw_rect(graph_rect, Color("505050"), false, 1.0)
-	draw_rect(graph_rect.grow(-1.0), Color("ffffff"), false, 1.0)
+	draw_rect(graph_rect, get_theme_color("border", "AppPalette"), false, 1.0)

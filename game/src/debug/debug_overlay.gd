@@ -317,59 +317,7 @@ func _stats(item: TreeItem, column: int, row: Dictionary) -> void:
 
 
 static func _create_debug_theme() -> Theme:
-	var theme := ClassicUiStyle.create_dialog_theme()
-	var ink := Color("f0f3f6")
-	var paper := Color("161b22")
-	var face := Color("252a30")
-	var border := Color("4a5664")
-	var selection := Color("1f5c99")
-	theme.set_stylebox("panel", "PanelContainer", ClassicUiStyle.create_box(face, border, 1))
-
-	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
-		theme.set_color(state, "CheckBox", ink)
-
-	theme.set_color("font_color", "Label", ink)
-
-	for control in ["Button", "OptionButton"]:
-		for state in ["font_color", "font_hover_color", "font_pressed_color", "font_hover_pressed_color", "font_focus_color"]:
-			theme.set_color(state, control, ink)
-
-		for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
-			var fill := Color("354252") if state in ["hover", "focus"] else selection if state in ["pressed", "hover_pressed"] else face
-			theme.set_stylebox(state, control, ClassicUiStyle.create_box(fill, border, 1, 8, 5))
-
-	# define every content surface and its text together. do not inherit
-	# black classic-shell text on the debug window's dark backgrounds
-	theme.set_stylebox("panel", "TabContainer", ClassicUiStyle.create_box(face, border, 1, 8, 8))
-
-	for state in ["selected", "unselected", "hovered", "disabled"]:
-		theme.set_stylebox("tab_" + state, "TabContainer", ClassicUiStyle.create_box(Color("354252") if state == "selected" else face, border, 1, 12, 6))
-		theme.set_color("font_" + state + "_color", "TabContainer", ink if state != "disabled" else Color("86909e"))
-
-	theme.set_stylebox("panel", "Tree", ClassicUiStyle.create_box(paper, border, 1))
-	theme.set_color("font_color", "Tree", ink)
-	theme.set_color("font_hovered_color", "Tree", ink)
-	theme.set_color("font_selected_color", "Tree", Color.WHITE)
-	theme.set_color("title_button_color", "Tree", ink)
-
-	for state in ["normal", "hover", "pressed"]:
-		theme.set_stylebox("title_button_" + state, "Tree", ClassicUiStyle.create_box(face, border, 1, 6, 5))
-
-	for state in ["selected", "selected_focus"]:
-		theme.set_stylebox(state, "Tree", ClassicUiStyle.create_box(selection, selection, 0))
-
-	theme.set_stylebox("hover", "Tree", ClassicUiStyle.create_box(Color("2f3b49"), border, 0))
-	theme.set_stylebox("normal", "LineEdit", ClassicUiStyle.create_box(paper, border, 1))
-	theme.set_color("font_color", "LineEdit", ink)
-	theme.set_color("font_selected_color", "LineEdit", Color.WHITE)
-	theme.set_color("selection_color", "LineEdit", selection)
-	theme.set_stylebox("panel", "PopupMenu", ClassicUiStyle.create_box(paper, border, 1))
-	theme.set_stylebox("hover", "PopupMenu", ClassicUiStyle.create_box(selection, selection, 0))
-	theme.set_color("font_color", "PopupMenu", ink)
-	theme.set_color("font_hover_color", "PopupMenu", Color.WHITE)
-
-	return theme
-
+	return AppUiTheme.current()
 
 func _refresh_record_tab(force := false) -> void:
 	if not is_open or _tabs == null:

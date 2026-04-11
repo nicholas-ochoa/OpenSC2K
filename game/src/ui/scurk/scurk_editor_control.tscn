@@ -40,16 +40,15 @@ layout_mode = 2
 [node name="Title" type="Label" parent="Panel/Content/Header"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.8627451, 0.9098039, 1, 1)
 theme_override_font_sizes/font_size = 20
 text = "Paint the Town"
 
 [node name="Source" type="Label" parent="Panel/Content/Header"]
 custom_minimum_size = Vector2(180, 0)
 layout_mode = 2
-theme_override_colors/font_color = Color(0.78431374, 0.78431374, 0.78431374, 1)
 horizontal_alignment = 2
 text_overrun_behavior = 3
+theme_type_variation = "HelpLabel"
 
 [node name="Body" type="HSplitContainer" parent="Panel/Content"]
 layout_mode = 2

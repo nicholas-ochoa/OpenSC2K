@@ -3,52 +3,14 @@
 [ext_resource type="Script" path="res://src/ui/shell/city_toolbar.gd" id="1_3va6y"]
 [ext_resource type="Script" path="res://src/ui/shell/city_child_tool_palette.gd" id="2_uaa4s"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_gfpmc"]
-content_margin_left = 5.0
-content_margin_top = 3.0
-content_margin_right = 5.0
-content_margin_bottom = 3.0
-bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
-border_width_right = 2
-border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
-
-[sub_resource type="StyleBoxFlat" id="ButtonNormal"]
-content_margin_left = 5.0
-content_margin_top = 3.0
-content_margin_right = 5.0
-content_margin_bottom = 3.0
-bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
-
-[sub_resource type="StyleBoxFlat" id="ButtonHover"]
-content_margin_left = 5.0
-content_margin_top = 3.0
-content_margin_right = 5.0
-content_margin_bottom = 3.0
-bg_color = Color(0.8156863, 0.8156863, 0.8156863, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
-
-[sub_resource type="Theme" id="ToolbarTheme"]
-Button/styles/normal = SubResource("ButtonNormal")
-Button/styles/hover = SubResource("ButtonHover")
-
 [sub_resource type="ButtonGroup" id="ButtonGroup_06b3w"]
 resource_local_to_scene = true
 
 [node name="CityToolbar" type="PanelContainer"]
 custom_minimum_size = Vector2(195, 0)
 size_flags_horizontal = 0
-theme = SubResource("ToolbarTheme")
-theme_override_styles/panel = SubResource("StyleBoxFlat_gfpmc")
 script = ExtResource("1_3va6y")
+theme_type_variation = "PanelPadding5_3_5_3"
 
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 2
@@ -178,7 +140,6 @@ layout_mode = 2
 [node name="ViewLayersHeading" type="Label" parent="Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
 text = "Visible Layers"
 horizontal_alignment = 1
 

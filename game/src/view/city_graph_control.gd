@@ -57,6 +57,7 @@ var time_scale := TIME_YEAR
 
 
 func _init() -> void:
+	theme_changed.connect(queue_redraw)
 	custom_minimum_size = Vector2(620, 330)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
@@ -203,8 +204,8 @@ static func _scale_key(scale: int) -> String:
 
 func _draw() -> void:
 	var frame := Rect2(Vector2.ZERO, size)
-	draw_rect(frame, Color("ffffff"), true)
-	draw_rect(frame, Color("404040"), false, 1.0)
+	draw_rect(frame, get_theme_color("paper", "AppPalette"), true)
+	draw_rect(frame, get_theme_color("border", "AppPalette"), false, 1.0)
 
 	if city == null or not city.is_valid():
 		_draw_centered_message("No city is loaded.")
@@ -219,11 +220,11 @@ func _draw() -> void:
 		var y := plot.position.y + plot.size.y * float(step) / 4.0
 		draw_line(
 			Vector2(plot.position.x, y), Vector2(plot.end.x, y),
-			Color("dddddd"), 1.0
+			get_theme_color("grid", "AppPalette"), 1.0
 		)
 
-	draw_line(plot.position, Vector2(plot.position.x, plot.end.y), Color("606060"), 1.0)
-	draw_line(Vector2(plot.position.x, plot.end.y), plot.end, Color("606060"), 1.0)
+	draw_line(plot.position, Vector2(plot.position.x, plot.end.y), get_theme_color("border", "AppPalette"), 1.0)
+	draw_line(Vector2(plot.position.x, plot.end.y), plot.end, get_theme_color("border", "AppPalette"), 1.0)
 
 	var labels := time_labels(city, time_scale)
 	var point_count := 12 if time_scale == TIME_YEAR else 20
@@ -233,14 +234,14 @@ func _draw() -> void:
 		var major_tick := time_scale == TIME_YEAR or index % 2 == 1
 
 		if major_tick:
-			draw_line(Vector2(x, plot.end.y), Vector2(x, plot.end.y + 4), Color("606060"), 1.0)
+			draw_line(Vector2(x, plot.end.y), Vector2(x, plot.end.y + 4), get_theme_color("border", "AppPalette"), 1.0)
 			var label := labels[index] if index < labels.size() else ""
 			var label_width := font.get_string_size(
 				label, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
 			).x
 			draw_string(
 				font, Vector2(x - label_width * 0.5, plot.end.y + 17), label,
-				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("202020")
+				HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
 			)
 
 	var maxima := display_maxima(city)
@@ -264,7 +265,7 @@ func _draw() -> void:
 			))
 
 		if points.size() >= 2:
-			draw_polyline(points, SERIES_COLORS[series], 1.0, false)
+			draw_polyline(points, _series_color(series), 1.0, false)
 
 		endpoints.append({
 			"series": series,
@@ -316,7 +317,7 @@ func _draw_endpoint_labels(
 		var point: Vector2 = endpoint.point
 		var label_y := label_positions[index]
 		var series: int = endpoint.series
-		var color: Color = SERIES_COLORS[series]
+		var color: Color = _series_color(series)
 		var label := "%s %s" % [
 			SERIES_MARKERS[series], format_value(series, int(endpoint.value))
 		]
@@ -335,7 +336,7 @@ func _draw_centered_message(message: String) -> void:
 	).x
 	draw_string(
 		font, Vector2((size.x - width) * 0.5, size.y * 0.5), message,
-		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, Color("202020")
+		HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, get_theme_color("ink", "AppPalette")
 	)
 
 
@@ -350,3 +351,8 @@ func _value_y(plot: Rect2, value: int, maximum: int) -> float:
 	var fraction := clampf(float(value) / float(maxi(1, maximum)), 0.0, 1.0)
 
 	return plot.end.y - plot.size.y * fraction
+
+
+func _series_color(series: int) -> Color:
+	var original: Color = SERIES_COLORS[series]
+	return original.lerp(Color.WHITE, 0.5) if AppUiTheme.selected == "dark" else original

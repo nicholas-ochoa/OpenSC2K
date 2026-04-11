@@ -47,12 +47,12 @@ func _run() -> void:
 	assert(not debug.has_node("DebugWindow/Panel/Margin/Content/Header/Status"))
 	assert(not debug.has_node("DebugWindow/Panel/Margin/Content/Note"))
 	var theme := debug._window.theme
-	assert(theme.get_color("font_color", "Label").get_luminance() > 0.8)
-	assert((theme.get_stylebox("panel", "PanelContainer") as StyleBoxFlat).bg_color.get_luminance() < 0.2)
-	assert(theme.get_color("font_color", "Tree").get_luminance() > 0.8)
-	assert((theme.get_stylebox("panel", "Tree") as StyleBoxFlat).bg_color.get_luminance() < 0.2)
-	assert(theme.get_color("font_selected_color", "Tree") == Color.WHITE)
-	assert((theme.get_stylebox("selected", "Tree") as StyleBoxFlat).bg_color.get_luminance() < 0.4)
+	assert(theme == AppUiTheme.current())
+	for mode in ["dark", "light"]:
+		AppUiTheme.select(mode)
+		await process_frame
+		assert(debug._window.theme == theme)
+		assert(theme.get_color("font_color", "Label").get_luminance() > 0.8 if mode == "dark" else theme.get_color("font_color", "Label").get_luminance() < 0.1)
 	host.simulation_timings.consume({"day_results": [{"ok": true, "day": 2,
 		"timing": {"work_usec": 2500, "steps": {"pollution": 2500}}}]})
 	debug.toggle()

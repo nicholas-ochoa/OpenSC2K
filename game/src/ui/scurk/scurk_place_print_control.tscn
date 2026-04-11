@@ -2,18 +2,6 @@
 
 [ext_resource type="Script" path="res://src/ui/scurk/scurk_place_print_control.gd" id="1_wk7rl"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_lpcdu"]
-content_margin_left = 0.0
-content_margin_top = 0.0
-content_margin_right = 0.0
-content_margin_bottom = 0.0
-bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
-border_width_left = 1
-border_width_top = 1
-border_width_right = 1
-border_width_bottom = 1
-border_color = Color(1, 1, 1, 1)
-
 [node name="SCURKPlacePrint" type="Window"]
 title = "SCURK Place & Print"
 size = Vector2i(440, 680)
@@ -25,7 +13,7 @@ script = ExtResource("1_wk7rl")
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
-theme_override_styles/panel = SubResource("StyleBoxFlat_lpcdu")
+theme_type_variation = "PanelPadding0_0_0_0"
 
 [node name="Margin" type="MarginContainer" parent="Panel"]
 layout_mode = 2
@@ -40,7 +28,6 @@ theme_override_constants/separation = 8
 
 [node name="PlacePrintWorkAreaLabel" type="Label" parent="Panel/Margin/Content"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
 theme_override_font_sizes/font_size = 20
 text = "Place & Print Work Area"
 horizontal_alignment = 1

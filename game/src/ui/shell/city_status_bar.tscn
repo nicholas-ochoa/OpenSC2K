@@ -3,22 +3,10 @@
 [ext_resource type="Script" path="res://src/ui/shell/city_status_bar.gd" id="1"]
 [ext_resource type="Script" path="res://src/view/rci_status_control.gd" id="2"]
 
-[sub_resource type="StyleBoxFlat" id="Panel"]
-content_margin_left = 5.0
-content_margin_top = 3.0
-content_margin_right = 5.0
-content_margin_bottom = 3.0
-bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
-
 [node name="CityStatusBar" type="PanelContainer"]
 custom_minimum_size = Vector2(0, 31)
-theme_override_styles/panel = SubResource("Panel")
 script = ExtResource("1")
+theme_type_variation = "PanelPadding5_3_5_3"
 
 [node name="Metrics" type="HBoxContainer" parent="."]
 layout_mode = 2
@@ -28,7 +16,6 @@ theme_override_constants/separation = 8
 custom_minimum_size = Vector2(150, 22)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.1254902, 0.1254902, 0.1254902, 1)
 text = "Ready."
 vertical_alignment = 1
 text_overrun_behavior = 3

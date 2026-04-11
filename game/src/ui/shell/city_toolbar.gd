@@ -174,6 +174,7 @@ func _add_group_button(
 	button.toggle_mode = true
 	button.button_group = button_group
 	button.tooltip_text = Tools.GROUPS[group_index].name
+	button.theme_type_variation = "ArtworkButton"
 	button.icon = group_icon(group_index)
 	button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -303,6 +304,7 @@ func replace_artwork(value: Image) -> void:
 	toolbar_art = value
 
 	for index in toolbar_buttons.size():
+		toolbar_buttons[index].theme_type_variation = "ArtworkButton"
 		toolbar_buttons[index].icon = group_icon(index)
 		toolbar_buttons[index].text = str(index + 1) if toolbar_buttons[index].icon == null else ""
 
@@ -311,6 +313,7 @@ func replace_artwork(value: Image) -> void:
 
 func _refresh_artwork_buttons(node: Node) -> void:
 	if node is Button and node.has_meta("toolbar_region"):
+		node.theme_type_variation = "ArtworkButton"
 		node.icon = _toolbar_icon(node.get_meta("toolbar_region"))
 		node.text = node.tooltip_text.left(1) if node.icon == null else ""
 

@@ -8,7 +8,7 @@ var close_button: TextureButton
 
 
 func _init(title_text := "") -> void:
-	var window_theme := ThemeDB.get_default_theme()
+	var window_theme := AppUiTheme.current()
 	var border := window_theme.get_stylebox("embedded_border", "Window") as StyleBoxFlat
 	color = border.bg_color
 	custom_minimum_size.y = 30
@@ -38,3 +38,17 @@ func _init(title_text := "") -> void:
 	close_button.pressed.connect(func() -> void:
 		close_requested.emit())
 	row.add_child(close_button)
+
+
+func _ready() -> void:
+	theme_changed.connect(_refresh_theme)
+	_refresh_theme()
+
+
+func _refresh_theme() -> void:
+	color = (get_theme_stylebox("embedded_border", "Window") as StyleBoxFlat).bg_color
+	title_label.add_theme_font_override("font", get_theme_font("title_font", "Window"))
+	title_label.add_theme_font_size_override("font_size", get_theme_font_size("title_font_size", "Window"))
+	title_label.add_theme_color_override("font_color", get_theme_color("title_color", "Window"))
+	close_button.texture_normal = get_theme_icon("close", "Window")
+	close_button.texture_pressed = get_theme_icon("close_pressed", "Window")

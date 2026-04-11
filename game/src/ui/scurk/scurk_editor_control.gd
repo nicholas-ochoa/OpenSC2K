@@ -99,10 +99,11 @@ var dialog_registry: ScurkEditorDialogs
 
 func _init() -> void:
 	# set the theme before the scene children build their controls
-	theme = ThemeDB.get_default_theme().duplicate()
+	theme = AppUiTheme.current()
 
 
 func _ready() -> void:
+	AppUiTheme.bind_canvas(self)
 	# visible in the editor, closed at startup
 	hide()
 	_bind_interface()
@@ -1618,13 +1619,13 @@ func _set_status(message: String) -> void:
 	if status_label == null:
 		return
 
-	status_label.remove_theme_color_override("font_color")
+	status_label.theme_type_variation = ""
 	status_label.text = message
 
 
 func _show_error(message: String) -> void:
 	if status_label != null:
-		status_label.add_theme_color_override("font_color", Color("b00000"))
+		status_label.theme_type_variation = "ErrorLabel"
 		status_label.text = message
 
 	if error_dialog != null:

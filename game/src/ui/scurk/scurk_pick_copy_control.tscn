@@ -112,13 +112,12 @@ theme_override_constants/separation = 5
 
 [node name="SourceObjectSetLabel" type="Label" parent="Content/Sets/SourceObjectSetRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
 text = "Source Object Set"
 
 [node name="SourceNameLabel" type="Label" parent="Content/Sets/SourceObjectSetRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
 text_overrun_behavior = 3
+theme_type_variation = "HelpLabel"
 
 [node name="SourceList" type="ItemList" parent="Content/Sets/SourceObjectSetRow"]
 layout_mode = 2
@@ -137,13 +136,12 @@ theme_override_constants/separation = 5
 
 [node name="WorkingObjectSetLabel" type="Label" parent="Content/Sets/WorkingObjectSetRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0, 0, 0.5019608, 1)
 text = "Working Object Set"
 
 [node name="WorkingNameLabel" type="Label" parent="Content/Sets/WorkingObjectSetRow"]
 layout_mode = 2
-theme_override_colors/font_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
 text_overrun_behavior = 3
+theme_type_variation = "HelpLabel"
 
 [node name="WorkingList" type="ItemList" parent="Content/Sets/WorkingObjectSetRow"]
 layout_mode = 2
@@ -174,9 +172,9 @@ text = "Copy All"
 [node name="CopyHint" type="Label" parent="Content/Actions"]
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_colors/font_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
 text = "Ctrl-click or Shift-click to select more objects. You can also drag source objects onto the working set."
 autowrap_mode = 3
+theme_type_variation = "HelpLabel"
 
 [node name="StatusLabel" type="Label" parent="Content"]
 custom_minimum_size = Vector2(0, 26)

@@ -43,10 +43,7 @@ static func city_pdf_save() -> FileDialog:
 
 static func _create(file_mode: int, filters: Array) -> FileDialog:
 	var dialog := FileDialog.new()
-	# filedialog has dark built-in panels. keep its full matching theme local so
-	# the city shell cannot mix black labels and pale buttons into those panels
-	dialog.theme = ThemeDB.get_default_theme().duplicate() as Theme
-	dialog.theme.set_color("font_color", "Label", Color.WHITE)
+	dialog.theme = AppUiTheme.file_dialog()
 	dialog.access = FileDialog.ACCESS_FILESYSTEM
 	dialog.file_mode = file_mode
 

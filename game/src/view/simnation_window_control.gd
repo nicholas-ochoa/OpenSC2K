@@ -40,6 +40,7 @@ var display_font: SystemFont
 
 
 func _init() -> void:
+	theme_changed.connect(queue_redraw)
 	custom_minimum_size = Vector2(408, 320)
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -270,7 +271,7 @@ func _draw_outlined_text(text: String, center: Vector2, font_size: int) -> void:
 	for offset in [Vector2(1, 1), Vector2(1, -1), Vector2(-1, 1), Vector2(-1, -1)]:
 		draw_string(
 			display_font, baseline + offset, text, HORIZONTAL_ALIGNMENT_LEFT, -1,
-			font_size, Color("202020")
+			font_size, get_theme_color("ink", "AppPalette")
 		)
 
 	draw_string(

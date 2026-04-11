@@ -27,7 +27,6 @@ func build() -> void:
 	heading = Label.new()
 	heading.text = "Selected Group"
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	heading.add_theme_color_override("font_color", Color("000080"))
 	heading.add_theme_font_size_override("font_size", 13)
 	add_child(heading)
 	scroll = ScrollContainer.new()
@@ -113,6 +112,7 @@ func refresh_icons(group_index: int, icon_provider: Callable) -> void:
 
 	for subtool_index in buttons:
 		var button: Button = buttons[subtool_index]
+		button.theme_type_variation = "ArtworkButton"
 		button.icon = icon_provider.call(group_index, int(subtool_index))
 
 
@@ -216,6 +216,7 @@ func _create_button(
 	button.button_group = button_group
 	button.text = str(tool.name) if free_landscape else "%s\n%s" % [tool.name, _tool_price(tool)]
 	button.clip_text = true
+	button.theme_type_variation = "ArtworkButton"
 	button.icon = (
 		icon_provider.call(group_index, subtool_index)
 		if icon_provider.is_valid()

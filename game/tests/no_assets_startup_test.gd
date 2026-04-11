@@ -26,7 +26,7 @@ func run() -> void:
 	main._open_new_city_dialog()
 	assert(not main.new_city_dialog.visible)
 	main._open_import_settings()
-	assert(main.settings_dialog.visible and main.settings_dialog.tabs.current_tab == 4)
+	assert(main.settings_dialog.visible and main.settings_dialog.tabs.current_tab == 3)
 	main.settings_dialog.hide()
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", "")
 	main.queue_free()

@@ -2,18 +2,6 @@
 
 [ext_resource type="Script" path="res://src/ui/shared/picture_notice_dialog.gd" id="1_notice"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBox_frame"]
-content_margin_left = 5.0
-content_margin_top = 3.0
-content_margin_right = 5.0
-content_margin_bottom = 3.0
-bg_color = Color(1, 1, 1, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.5019608, 0.5019608, 0.5019608, 1)
-
 [node name="PictureNoticeDialog" type="AcceptDialog"]
 visible = true
 min_size = Vector2i(520, 230)
@@ -28,7 +16,7 @@ theme_override_constants/separation = 14
 custom_minimum_size = Vector2(171, 116)
 layout_mode = 2
 size_flags_vertical = 0
-theme_override_styles/panel = SubResource("StyleBox_frame")
+theme_type_variation = "PanelPadding5_3_5_3"
 
 [node name="Picture" type="TextureRect" parent="Layout/PictureFrame"]
 texture_filter = 1

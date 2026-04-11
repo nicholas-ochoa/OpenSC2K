@@ -91,9 +91,12 @@ func _refresh_icons() -> void:
 		if i >= 3 and i <= 7 and filled_shapes_check.button_pressed:
 			id = FILLED_ICON_IDS[i - 3]
 
+		tool_buttons[i].theme_type_variation = "ArtworkButton"
 		tool_buttons[i].icon = control_icons.get(id)
 
+	zoom_out_button.theme_type_variation = "ArtworkButton"
 	zoom_out_button.icon = control_icons.get(20010)
+	zoom_in_button.theme_type_variation = "ArtworkButton"
 	zoom_in_button.icon = control_icons.get(20011)
 
 	for i in 6:

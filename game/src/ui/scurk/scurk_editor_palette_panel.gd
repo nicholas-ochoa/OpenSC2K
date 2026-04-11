@@ -35,7 +35,6 @@ func build() -> void:
 
 	var heading := Label.new()
 	heading.text = "256-Color Palette"
-	heading.add_theme_color_override("font_color", Color("dce8ff"))
 	add_child(heading)
 
 	palette_control = PaletteControl.new()
@@ -96,7 +95,6 @@ func build() -> void:
 		+ "background color. Edit Large, Medium, and Small separately."
 	)
 	help.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	help.add_theme_color_override("font_color", Color("c8c8c8"))
 	add_child(help)
 	var spacer := Control.new()
 	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
@@ -133,13 +131,6 @@ func set_workspace_images(images: Dictionary) -> void:
 	foreground_marker.visible = foreground_marker.texture != null
 	background_marker.visible = background_marker.texture != null
 	palette_control.set_palette_image(images.get(22005))
-	var scrollbar := texture_scroll.get_v_scroll_bar()
-
-	for item in [["increment", 22003], ["decrement", 22004]]:
-		if images.has(item[1]):
-			scrollbar.add_theme_icon_override(item[0], ImageTexture.create_from_image(images[item[1]]))
-		else:
-			scrollbar.remove_theme_icon_override(item[0])
 
 
 func set_colors(foreground_index: int, background_index: int) -> void:

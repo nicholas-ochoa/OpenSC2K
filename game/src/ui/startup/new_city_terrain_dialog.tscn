@@ -3,18 +3,6 @@
 [ext_resource type="Script" path="res://src/ui/startup/new_city_terrain_dialog.gd" id="1_yoq8j"]
 [ext_resource type="Script" path="res://src/ui/shared/dialog_title_bar.gd" id="2_pepar"]
 
-[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_s08hv"]
-content_margin_left = 8.0
-content_margin_top = 8.0
-content_margin_right = 8.0
-content_margin_bottom = 8.0
-bg_color = Color(0.7529412, 0.7529412, 0.7529412, 1)
-border_width_left = 2
-border_width_top = 2
-border_width_right = 2
-border_width_bottom = 2
-border_color = Color(0.2509804, 0.2509804, 0.2509804, 1)
-
 [node name="NewCityOverlay" type="ColorRect"]
 visible = true
 z_index = 910
@@ -32,7 +20,7 @@ anchor_bottom = 1.0
 [node name="NewCityDialog" type="PanelContainer" parent="Center"]
 custom_minimum_size = Vector2(820, 600)
 layout_mode = 2
-theme_override_styles/panel = SubResource("StyleBoxFlat_s08hv")
+theme_type_variation = "PanelPadding8_8_8_8"
 
 [node name="Content" type="VBoxContainer" parent="Center/NewCityDialog"]
 layout_mode = 2

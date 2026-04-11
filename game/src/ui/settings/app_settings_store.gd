@@ -15,6 +15,7 @@ static func load_values(
 ) -> Dictionary:
 	var result := {
 		"default_mayor_name": "Mayor",
+		"ui_theme": "light",
 		"overview_graphics": 0,
 		"music_volume": clampf(default_music_volume, 0.0, 1.0),
 		"effects_volume": clampf(default_effects_volume, 0.0, 1.0),
@@ -37,6 +38,7 @@ static func load_values(
 	if config.load(path) != OK:
 		return result
 
+	result.ui_theme = normalize_theme(config.get_value("general", "ui_theme", "light"))
 	result.default_mayor_name = str(config.get_value("general", "default_mayor_name", "Mayor"))
 	result.overview_graphics = clampi(int(config.get_value("graphics", "overview_graphics", 0)), 0, 2)
 	result.music_volume = clampf(
@@ -69,6 +71,10 @@ static func load_values(
 	result.city_renderer = normalize_renderer(config.get_value("display", "city_renderer", "gpu"))
 
 	return result
+
+
+static func normalize_theme(value: Variant) -> String:
+	return "dark" if str(value) == "dark" else "light"
 
 
 static func normalize_renderer(value: Variant) -> String:
@@ -120,6 +126,7 @@ static func save_values(
 	warn_sc2x_conversion: Variant = null,
 	default_mayor_name: Variant = null,
 	overview_graphics: Variant = null,
+	ui_theme: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 
@@ -129,6 +136,9 @@ static func save_values(
 	if not graphics_source.is_empty():
 		config.set_value("graphics", "source", graphics_source)
 		config.set_value("graphics", "folder", graphics_folder)
+
+	if ui_theme != null:
+		config.set_value("general", "ui_theme", normalize_theme(ui_theme))
 
 	if default_mayor_name != null:
 		var mayor := str(default_mayor_name).strip_edges().left(23)
