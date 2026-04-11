@@ -19,7 +19,7 @@ func _rebuild(theme_index: int) -> void:
 		%Tabs.remove_child(page)
 		page.queue_free()
 	theme = _light_theme() if theme_index == 0 else ThemeDB.get_default_theme().duplicate()
-	# Give the catalog a readable canvas without changing the sampled shared theme.
+	# Give the catalog a readable canvas without changing the shared game theme.
 	var canvas := ClassicUiStyle.create_box(Color("c0c0c0"), Color("808080"), 1, 12, 12) if theme_index == 0 else theme.get_stylebox("panel", "PanelContainer")
 	add_theme_stylebox_override("panel", canvas)
 	%Tabs.add_theme_stylebox_override("panel", canvas)
@@ -36,13 +36,107 @@ func _rebuild(theme_index: int) -> void:
 
 func _light_theme() -> Theme:
 	var result := ClassicUiStyle.create_dialog_theme()
-	var normal := result.get_stylebox("normal", "Button").duplicate() as StyleBoxFlat
-	normal.border_color = Color("202020")
-	result.set_stylebox("normal", "Button", normal)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		var button_box := _copy_style(result, "Button", state)
+		button_box.border_color = Color("383838") if state != "disabled" else Color("606060")
+		button_box.set_border_width_all(2)
+		result.set_stylebox(state, "Button", button_box)
 	for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
-		result.set_color("icon_" + state + "_color", "Button", Color("202020"))
+		result.set_color("icon_" + state + "_color", "Button", Color("303030"))
 	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
 		result.set_color(state, "LinkButton", Color("0000cc"))
+	for type_name in ["CheckBox", "CheckButton"]:
+		for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+			var empty := StyleBoxEmpty.new()
+			empty.content_margin_left = 4
+			empty.content_margin_right = 4
+			empty.content_margin_top = 4
+			empty.content_margin_bottom = 4
+			result.set_stylebox(state, type_name, empty)
+		result.set_color("font_disabled_color", type_name, Color("606060"))
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled", "normal_mirrored", "hover_mirrored", "pressed_mirrored", "disabled_mirrored"]:
+		var option_box := _copy_style(result, "OptionButton", state)
+		option_box.set_corner_radius_all(0)
+		result.set_stylebox(state, "OptionButton", option_box)
+	for type_name in ["LineEdit", "TextEdit"]:
+		var readonly := _copy_style(result, type_name, "read_only")
+		readonly.bg_color = Color("c8c8c8")
+		result.set_stylebox("read_only", type_name, readonly)
+	result.set_color("font_uneditable_color", "LineEdit", Color("505050"))
+	result.set_color("font_readonly_color", "TextEdit", Color("505050"))
+	for type_name in ["HSlider", "VSlider"]:
+		result.set_icon("tick", type_name, _tinted_icon(ThemeDB.get_default_theme().get_icon("tick", type_name), Color("505050")))
+	result.set_stylebox("background", "ProgressBar", ClassicUiStyle.create_box(Color("d0d0d0"), Color("484848"), 1, 1, 1))
+	result.set_stylebox("fill", "ProgressBar", ClassicUiStyle.create_box(Color("173f73"), Color("173f73"), 0, 0, 0))
+	for state in ["selected", "selected_focus", "hovered_selected", "hovered_selected_focus", "cursor", "cursor_unfocused"]:
+		var selection := _copy_style(result, "ItemList", state)
+		selection.set_corner_radius_all(0)
+		result.set_stylebox(state, "ItemList", selection)
+	for state in ["title_button_normal", "title_button_hover", "title_button_pressed"]:
+		var heading := _copy_style(result, "Tree", state)
+		heading.set_corner_radius_all(0)
+		result.set_stylebox(state, "Tree", heading)
+	for type_name in ["ItemList", "Tree"]:
+		for color_name in ["font_color", "font_hovered_color", "font_selected_color", "font_hovered_selected_color"]:
+			result.set_color(color_name, type_name, Color("eeeeee"))
+	result.set_color("title_button_color", "Tree", Color("eeeeee"))
+	var tooltip := _copy_style(result, "TooltipPanel", "panel")
+	tooltip.set_corner_radius_all(3)
+	result.set_stylebox("panel", "TooltipPanel", tooltip)
+	result.set_stylebox("panel", "PanelContainer", ClassicUiStyle.create_box(Color("dedede"), Color("808080"), 1, 8, 8))
+	return result
+
+
+func _copy_style(source: Theme, type_name: String, state: String) -> StyleBoxFlat:
+	var style := source.get_stylebox(state, type_name) if source.has_stylebox(state, type_name) else ThemeDB.get_default_theme().get_stylebox(state, type_name)
+	return style.duplicate() as StyleBoxFlat
+
+
+func _tinted_icon(texture: Texture2D, color: Color) -> Texture2D:
+	var image := texture.get_image()
+	if image == null:
+		return texture
+	var maximum_alpha := 0.0
+	for y in image.get_height():
+		for x in image.get_width():
+			maximum_alpha = maxf(maximum_alpha, image.get_pixel(x, y).a)
+	if maximum_alpha == 0.0:
+		return texture
+	for y in image.get_height():
+		for x in image.get_width():
+			var pixel := color
+			pixel.a *= image.get_pixel(x, y).a / maximum_alpha
+			image.set_pixel(x, y, pixel)
+	return ImageTexture.create_from_image(image)
+
+
+func _light_file_dialog_theme() -> Theme:
+	var result := theme.duplicate() as Theme
+	var native := ThemeDB.get_default_theme()
+	for icon_name in native.get_icon_list("FileDialog"):
+		result.set_icon(icon_name, "FileDialog", _tinted_icon(native.get_icon(icon_name, "FileDialog"), Color("383838")))
+	for type_name in ["OptionButton", "LineEdit"]:
+		for icon_name in native.get_icon_list(type_name):
+			result.set_icon(icon_name, type_name, _tinted_icon(native.get_icon(icon_name, type_name), Color("383838")))
+	for icon_name in ["arrow", "arrow_collapsed", "arrow_collapsed_mirrored", "select_arrow", "updown"]:
+		result.set_icon(icon_name, "Tree", _tinted_icon(native.get_icon(icon_name, "Tree"), Color("383838")))
+	result.set_color("caret_color", "LineEdit", Color("383838"))
+	result.set_color("font_placeholder_color", "LineEdit", Color("606060"))
+	result.set_color("font_uneditable_color", "LineEdit", Color("505050"))
+	result.set_color("title_button_color", "Tree", Color("383838"))
+	for type_name in ["Label", "Button", "OptionButton", "CheckBox", "LineEdit", "ItemList", "Tree", "PopupMenu"]:
+		for color_name in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color", "font_hover_pressed_color", "font_disabled_color", "font_selected_color", "font_hovered_color", "font_hovered_selected_color"]:
+			result.set_color(color_name, type_name, Color("383838"))
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+		result.set_color("icon_" + state + "_color", "Button", Color("383838"))
+	for type_name in ["Tree", "ItemList", "PopupMenu"]:
+		result.set_stylebox("panel", type_name, ClassicUiStyle.create_box(Color("dedede"), Color("808080"), 1, 4, 4))
+		for state in ["selected", "selected_focus", "hovered", "hovered_selected", "hovered_selected_focus", "hover"]:
+			result.set_stylebox(state, type_name, ClassicUiStyle.create_box(Color("aec8e5"), Color("6a88aa"), 1, 4, 4))
+	for state in ["normal", "read_only"]:
+		result.set_stylebox(state, "LineEdit", ClassicUiStyle.create_box(Color("eeeeee"), Color("808080"), 1, 4, 4))
+	result.set_color("folder_icon_color", "FileDialog", Color.WHITE)
+	result.set_color("file_icon_color", "FileDialog", Color.WHITE)
 	return result
 
 
@@ -296,7 +390,7 @@ func _fields_page() -> void:
 		edit.editable = state != "Read-only"
 		cell.add_child(edit)
 	_section(page, "Validation messages", "These colors are explicit semantic examples. They are separate from the native text-field states.")
-	for sample in [["Help: Choose a pack.json file.", "606060"], ["Error: This pack could not be loaded.", "800000"], ["Success: Pack loaded.", "216b35"]]:
+	for sample in [["Help: Choose a pack.json file.", "606060"], ["Error: This pack could not be loaded.", "d02020" if %ThemeSelector.selected == 0 else "800000"], ["Success: Pack loaded.", "16803a" if %ThemeSelector.selected == 0 else "216b35"]]:
 		_label(page, sample[0]).add_theme_color_override("font_color", Color(sample[1]))
 
 
@@ -458,6 +552,8 @@ func _menus_page() -> void:
 	file.filters = PackedStringArray(["*.json ; JSON files", "*.tscn ; Scene files"])
 	file.use_native_dialog = false
 	_add_dialog(file)
+	if %ThemeSelector.selected == 0:
+		file.theme = _light_file_dialog_theme()
 	file.file_selected.connect(func(_path: String) -> void: _status("Sample file selected; no file was opened"))
 	_button(row, "File dialog...").pressed.connect(func() -> void: file.popup_centered(Vector2i(800, 520)))
 	_section(page, "Tooltip")
@@ -488,7 +584,7 @@ func _text_page() -> void:
 	panel.add_child(content)
 	_label(content, "PanelContainer with shared panel style")
 	_label(content, "Default body text: population 125,400")
-	_label(content, "Secondary help text").add_theme_color_override("font_color", Color("606060"))
+	_label(content, "Secondary help text").add_theme_color_override("font_color", Color("505050") if %ThemeSelector.selected == 0 else Color("606060"))
 	content.add_child(HSeparator.new())
 	_label(content, "Horizontal separator above")
 	row.add_child(VSeparator.new())
