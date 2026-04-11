@@ -18,11 +18,11 @@ func _rebuild(theme_index: int) -> void:
 	for page in %Tabs.get_children():
 		%Tabs.remove_child(page)
 		page.queue_free()
-	theme = _light_theme() if theme_index == 0 else ThemeDB.get_default_theme().duplicate()
+	theme = _light_theme() if theme_index == 0 else _dark_theme()
 	# Give the catalog a readable canvas without changing the shared game theme.
 	var canvas := ClassicUiStyle.create_box(Color("c0c0c0"), Color("808080"), 1, 12, 12) if theme_index == 0 else theme.get_stylebox("panel", "PanelContainer")
 	add_theme_stylebox_override("panel", canvas)
-	%Tabs.add_theme_stylebox_override("panel", canvas)
+	%Tabs.add_theme_stylebox_override("panel", canvas if theme_index == 0 else theme.get_stylebox("panel", "TabContainer"))
 	_buttons_page()
 	_choices_page()
 	_fields_page()
@@ -84,6 +84,74 @@ func _light_theme() -> Theme:
 	tooltip.set_corner_radius_all(3)
 	result.set_stylebox("panel", "TooltipPanel", tooltip)
 	result.set_stylebox("panel", "PanelContainer", ClassicUiStyle.create_box(Color("dedede"), Color("808080"), 1, 8, 8))
+	return result
+
+
+func _dark_theme() -> Theme:
+	var result := ThemeDB.get_default_theme().duplicate() as Theme
+	result.default_font_size = 13
+	for type_name in result.get_type_list():
+		for size_name in result.get_font_size_list(type_name):
+			result.set_font_size(size_name, type_name, 13)
+	var panel := _copy_style(result, "TabContainer", "panel")
+	panel.bg_color = Color("383d43")
+	result.set_stylebox("panel", "TabContainer", panel)
+	var selected_tab := _copy_style(result, "TabContainer", "tab_selected")
+	selected_tab.bg_color = panel.bg_color
+	result.set_stylebox("tab_selected", "TabContainer", selected_tab)
+	for type_name in ["Button", "OptionButton"]:
+		for state in ["normal", "disabled"]:
+			var box := _copy_style(result, type_name, state)
+			box.bg_color = Color("50565e") if state == "normal" else Color("353a40")
+			box.border_color = Color("9099a5") if state == "normal" else Color("69727e")
+			box.set_border_width_all(1)
+			result.set_stylebox(state, type_name, box)
+			if type_name == "OptionButton":
+				result.set_stylebox(state + "_mirrored", type_name, box)
+	for type_name in ["Button", "OptionButton"]:
+		for state in ["hover", "hover_pressed"]:
+			var hover := _copy_style(result, type_name, "hover" if state == "hover" else "pressed")
+			hover.bg_color = Color("65717d") if state == "hover" else Color("506c78")
+			hover.border_color = Color("8dcbd4")
+			hover.set_border_width_all(1)
+			result.set_stylebox(state, type_name, hover)
+			if type_name == "OptionButton" and state == "hover":
+				result.set_stylebox("hover_mirrored", type_name, hover)
+	for icon_name in ["unchecked", "unchecked_disabled", "radio_unchecked", "radio_unchecked_disabled"]:
+		var tint := Color("aeb8c4") if not "disabled" in icon_name else Color("79838f")
+		result.set_icon(icon_name, "CheckBox", _tinted_icon(result.get_icon(icon_name, "CheckBox"), tint))
+	result.set_color("checkbox_unchecked_color", "CheckBox", Color.WHITE)
+	result.set_color("button_unchecked_color", "CheckButton", Color.WHITE)
+	# Preserve the switch's separate track and thumb tones while lifting dark pixels.
+	for icon_name in ["unchecked", "unchecked_disabled", "unchecked_mirrored", "unchecked_disabled_mirrored"]:
+		var image := result.get_icon(icon_name, "CheckButton").get_image()
+		for y in image.get_height():
+			for x in image.get_width():
+				var pixel := image.get_pixel(x, y)
+				var lifted := Color(pixel.r, pixel.g, pixel.b).lerp(Color.WHITE, 0.35)
+				lifted.a = pixel.a
+				image.set_pixel(x, y, lifted)
+		result.set_icon(icon_name, "CheckButton", ImageTexture.create_from_image(image))
+	for type_name in ["LineEdit", "TextEdit"]:
+		for state in ["normal", "read_only"]:
+			var field := _copy_style(result, type_name, state)
+			field.bg_color = Color("41474f") if state == "normal" else Color("3b4149")
+			result.set_stylebox(state, type_name, field)
+	var fill := _copy_style(result, "ProgressBar", "fill")
+	fill.bg_color = Color("087e8b")
+	result.set_stylebox("fill", "ProgressBar", fill)
+	for state in ["selected", "selected_focus", "hovered_selected", "hovered_selected_focus", "cursor", "cursor_unfocused"]:
+		var selection := _copy_style(result, "ItemList", state)
+		selection.set_corner_radius_all(0)
+		result.set_stylebox(state, "ItemList", selection)
+	for state in ["title_button_normal", "title_button_hover", "title_button_pressed"]:
+		var heading := _copy_style(result, "Tree", state)
+		heading.set_corner_radius_all(0)
+		result.set_stylebox(state, "Tree", heading)
+	for state in ["embedded_border", "embedded_unfocused_border"]:
+		var window := _copy_style(result, "Window", state)
+		window.bg_color = Color("202a36") if state == "embedded_border" else Color("2c333d")
+		result.set_stylebox(state, "Window", window)
 	return result
 
 
@@ -390,7 +458,7 @@ func _fields_page() -> void:
 		edit.editable = state != "Read-only"
 		cell.add_child(edit)
 	_section(page, "Validation messages", "These colors are explicit semantic examples. They are separate from the native text-field states.")
-	for sample in [["Help: Choose a pack.json file.", "606060"], ["Error: This pack could not be loaded.", "d02020" if %ThemeSelector.selected == 0 else "800000"], ["Success: Pack loaded.", "16803a" if %ThemeSelector.selected == 0 else "216b35"]]:
+	for sample in [["Help: Choose a pack.json file.", "606060"], ["Error: This pack could not be loaded.", "d02020" if %ThemeSelector.selected == 0 else "ff7777"], ["Success: Pack loaded.", "16803a" if %ThemeSelector.selected == 0 else "64db99"]]:
 		_label(page, sample[0]).add_theme_color_override("font_color", Color(sample[1]))
 
 
@@ -562,6 +630,9 @@ func _menus_page() -> void:
 	_section(page, "Custom title bar used by app panels")
 	var title := DialogTitleBar.new("Sample modeless window")
 	page.add_child(title)
+	if %ThemeSelector.selected == 1:
+		title.color = (theme.get_stylebox("embedded_border", "Window") as StyleBoxFlat).bg_color
+		title.title_label.add_theme_font_size_override("font_size", 13)
 	title.close_requested.connect(func() -> void: _status("Sample title-bar close pressed"))
 
 
