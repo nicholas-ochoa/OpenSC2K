@@ -18,7 +18,7 @@ func _rebuild(theme_index: int) -> void:
 	for page in %Tabs.get_children():
 		%Tabs.remove_child(page)
 		page.queue_free()
-	theme = ClassicUiStyle.create_dialog_theme() if theme_index == 0 else ThemeDB.get_default_theme().duplicate()
+	theme = _light_theme() if theme_index == 0 else ThemeDB.get_default_theme().duplicate()
 	# Give the catalog a readable canvas without changing the sampled shared theme.
 	var canvas := ClassicUiStyle.create_box(Color("c0c0c0"), Color("808080"), 1, 12, 12) if theme_index == 0 else theme.get_stylebox("panel", "PanelContainer")
 	add_theme_stylebox_override("panel", canvas)
@@ -32,6 +32,18 @@ func _rebuild(theme_index: int) -> void:
 	_text_page()
 	_theme_parts_page()
 	%Tabs.current_tab = 0
+
+
+func _light_theme() -> Theme:
+	var result := ClassicUiStyle.create_dialog_theme()
+	var normal := result.get_stylebox("normal", "Button").duplicate() as StyleBoxFlat
+	normal.border_color = Color("202020")
+	result.set_stylebox("normal", "Button", normal)
+	for state in ["normal", "hover", "pressed", "hover_pressed", "focus"]:
+		result.set_color("icon_" + state + "_color", "Button", Color("202020"))
+	for state in ["font_color", "font_hover_color", "font_pressed_color", "font_focus_color"]:
+		result.set_color(state, "LinkButton", Color("0000cc"))
+	return result
 
 
 func _page(title: String) -> VBoxContainer:
@@ -159,7 +171,7 @@ func _buttons_page() -> void:
 		_label(grid, kind)
 		for state in STATES:
 			var button := _button(grid, "Save Changes" if kind == "Button" else "Sample")
-			button.flat = kind == "Flat button"
+			button.flat = kind == "Flat button" and %ThemeSelector.selected != 0
 			if kind == "Icon + text":
 				button.icon = get_theme_icon("folder", "FileDialog")
 			if kind == "Toggle button":
@@ -185,6 +197,8 @@ func _buttons_page() -> void:
 	icon_button.icon = get_theme_icon("folder", "FileDialog")
 	icon_button.tooltip_text = "Open folder (sample)"
 	var texture_button := TextureButton.new()
+	if %ThemeSelector.selected == 0:
+		texture_button.self_modulate = Color("202020")
 	texture_button.texture_normal = get_theme_icon("close", "Window")
 	texture_button.texture_pressed = get_theme_icon("close_pressed", "Window")
 	texture_button.custom_minimum_size = Vector2(40, 34)
