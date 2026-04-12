@@ -6,6 +6,7 @@ const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
 const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
 
+const LAYOUTS := ["classic", "crossing", "branch", "rejoin", "bay", "island", "islands"]
 const MAP_SIZE := 128
 const TILE_COUNT := MAP_SIZE * MAP_SIZE
 const MISC_SIZE := 4800
@@ -48,7 +49,14 @@ static func generate(
 	trees: int,
 	process_random: SimRandom,
 	game_random: GameLcgRandom,
+	layout: String = "classic",
 ) -> Dictionary:
+	if layout not in LAYOUTS:
+		return _failure("unknown terrain layout")
+
+	if layout != "classic":
+		has_ocean = layout in ["bay", "island", "islands"]
+		has_river = layout in ["crossing", "branch", "rejoin"]
 	var map_edge: int = document.map_size if document != null else 128
 
 	if document == null or not document.is_valid():
@@ -95,35 +103,44 @@ static func generate(
 	zones.fill(0)
 	flags.fill(0)
 
+	# Generate one original-size landform, then scale it to the map.
+	# Larger maps should not gain extra basins.
 	var heights := PackedInt32Array()
-	heights.resize((map_edge * map_edge))
-	_seed_hills(heights, hills + 11, staged_process, map_edge)
+	heights.resize(128 * 128)
+	var coast_flags := PackedByteArray()
+	coast_flags.resize(128 * 128)
+	_seed_hills(heights, hills + 11, staged_process)
 
 	for pass_values in INTERPOLATION_PASSES:
-		_interpolate(
-			heights,
-			pass_values.x,
-			pass_values.y,
-			hills + 10,
-			has_ocean,
-			staged_process, map_edge,
-		)
+		_interpolate(heights, pass_values.x, pass_values.y, hills + 10,
+			has_ocean and layout == "classic", staged_process)
 
 	var water_level := (water + 4) >> 3
 
 	if has_ocean or has_river:
 		water_level = maxi(water_level, 4)
 
-	if has_ocean:
-		_carve_ocean(heights, flags, water_level, staged_game, map_edge)
+	if has_ocean and layout not in ["bay", "island", "islands"]:
+		_carve_ocean(heights, coast_flags, water_level, staged_game)
 
-	if has_river:
-		_carve_river(heights, water_level, staged_game, map_edge)
+	if has_river and layout == "classic":
+		_carve_river(heights, water_level, staged_game)
 
-	_smooth(heights, map_edge)
-	_smooth(heights, map_edge)
-	_scale_heights(heights, map_edge)
-	_smooth(heights, map_edge)
+	_smooth(heights)
+	_smooth(heights)
+	_scale_heights(heights)
+	_smooth(heights)
+
+	if layout != "classic":
+		_carve_layout(heights, coast_flags, water_level, layout, staged_game, water)
+		_grade_layout(heights)
+
+	if map_edge != 128:
+		heights = _enlarge_landform(heights, coast_flags, flags, map_edge)
+	else:
+		flags = coast_flags
+		payloads.XBIT = flags
+
 	_grade_heights(heights, map_edge)
 
 	for index in (map_edge * map_edge):
@@ -149,12 +166,12 @@ static func generate(
 	if has_ocean:
 		_finish_ocean(flags, map_edge)
 
-	for _stream_index in (water >> 2):
+	for _stream_index in ((water >> 2) if layout == "classic" else 0):
 		var start := Vector2i(
 			staged_process.next_u15() % map_edge,
 			staged_process.next_u15() % map_edge,
 		)
-		var length := (staged_process.next_u15() & 0x7f) + 50
+		var length := ((staged_process.next_u15() & 0x7f) + 50) * IntegerMath.div_trunc(map_edge, 128)
 		_make_stream(
 			altitude,
 			buildings,
@@ -192,6 +209,93 @@ static func generate(
 		"maximum_altitude": _maximum(altitude, map_edge),
 		"error": "",
 	}
+
+
+static func _enlarge_landform(source: PackedInt32Array, coast: PackedByteArray,
+	flags: PackedByteArray, edge: int) -> PackedInt32Array:
+	var result := PackedInt32Array()
+	result.resize(edge * edge)
+
+	for x in edge:
+		var u := float(x) * 127.0 / float(edge - 1)
+		var left := floori(u)
+		var right := mini(left + 1, 127)
+
+		for y in edge:
+			var v := float(y) * 127.0 / float(edge - 1)
+			var top := floori(v)
+			var bottom := mini(top + 1, 127)
+			var a := lerpf(source[_index(left, top)], source[_index(right, top)], u - left)
+			var b := lerpf(source[_index(left, bottom)], source[_index(right, bottom)], u - left)
+			result[_index(x, y, edge)] = roundi(lerpf(a, b, v - top))
+			flags[_index(x, y, edge)] = coast[_index(roundi(u), roundi(v))]
+
+	return result
+
+
+static func _carve_layout(heights: PackedInt32Array, flags: PackedByteArray,
+	sea: int, layout: String, random: GameLcgRandom, water: int) -> void:
+	var wetness := float(water) / 47.0
+	var river_width := lerpf(0.025, 0.065, wetness)
+	var island_scale := lerpf(1.08, 0.78, wetness)
+	var phase := float(random.next_mod(628)) / 100.0
+	var mirror := random.next_mod(2) == 1
+	var ocean := layout in ["bay", "island", "islands"]
+
+	for x in 128:
+		for y in 128:
+			var u := float(x) / 127.0
+			var v := float(y) / 127.0
+			var center := 0.5 + 0.025 * sin(v * TAU + phase)
+			var distance := 1.0
+
+			match layout:
+				"crossing":
+					distance = minf(absf(u - center), absf(v - 0.5 - 0.025 * sin(u * TAU + phase))) - river_width
+				"branch":
+					var spread := maxf(0.0, 0.5 - v) * 0.7
+					distance = minf(absf(u - center - spread), absf(u - center + spread)) - river_width
+				"rejoin":
+					var spread := 0.22 * sin(clampf((v - 0.18) / 0.64, 0.0, 1.0) * PI)
+					distance = minf(absf(u - center - spread), absf(u - center + spread)) - river_width
+				"bay":
+					distance = Vector2((u - 1.03) / lerpf(0.62, 0.86, wetness), (v - 0.5) / lerpf(0.32, 0.45, wetness)).length() - 1.0
+				"island":
+					distance = 1.0 - Vector2((u - 0.5) / (0.36 * island_scale), (v - 0.5) / (0.36 * island_scale)).length()
+				"islands":
+					var a := Vector2((u - 0.28) / (0.20 * island_scale), (v - 0.43) / (0.31 * island_scale)).length()
+					var b := Vector2((u - 0.73) / (0.19 * island_scale), (v - 0.59) / (0.29 * island_scale)).length()
+					distance = 1.0 - minf(a, b)
+
+			if ocean:
+				distance += 0.035 * sin(u * 19.0 + phase) * sin(v * 17.0 + phase)
+
+			var index := _index(127 - x if mirror else x, y)
+			if distance <= 0.0:
+				heights[index] = maxi(0, sea - 2)
+				if ocean:
+					flags[index] |= FLAG_SALT_WATER
+			else:
+				# keep the intended land mass connected above the sea
+				heights[index] = maxi(heights[index], sea + 1)
+
+
+static func _grade_layout(heights: PackedInt32Array) -> void:
+	# two distance-transform sweeps lower steep cut banks to cardinal grades
+	for x in 128:
+		for y in 128:
+			var index := _index(x, y)
+			if x > 0:
+				heights[index] = mini(heights[index], heights[_index(x - 1, y)] + 1)
+			if y > 0:
+				heights[index] = mini(heights[index], heights[_index(x, y - 1)] + 1)
+	for x in range(127, -1, -1):
+		for y in range(127, -1, -1):
+			var index := _index(x, y)
+			if x < 127:
+				heights[index] = mini(heights[index], heights[_index(x + 1, y)] + 1)
+			if y < 127:
+				heights[index] = mini(heights[index], heights[_index(x, y + 1)] + 1)
 
 
 static func _seed_hills(
@@ -305,7 +409,7 @@ static func _carve_river(
 			bend = random.next_mod(3) - 1
 
 		center += bend + random.next_mod(3) - 1
-		center = clampi(center, 5, 122)
+		center = clampi(center, 5, map_edge - 6)
 
 
 static func _smooth(heights: PackedInt32Array, map_edge: int = 128) -> void:

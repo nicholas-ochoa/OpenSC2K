@@ -130,6 +130,7 @@ static func create(
 			int(terrain_options.get("trees", Terrain.DEFAULT_TREES)),
 			staged_random,
 			staged_game_random,
+			str(terrain_options.get("layout", "classic")),
 		)
 
 		if not terrain_result.ok:

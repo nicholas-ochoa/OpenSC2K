@@ -1,0 +1,14 @@
+{
+  "prefix": ["New", "Old", "Upper", "Lower", "East", "West", "North", "South", "Little", "Greater", "Port", "Fort", "Mount", "Saint"],
+  "root": ["Alder", "Amber", "Ashwick", "Aster", "Bellfern", "Birch", "Bramble", "Brindle", "Cedar", "Clearbrook", "Clover", "Copper", "Coral", "Dunmere", "Elder", "Elm", "Ember", "Fairwind", "Fern", "Foxglade", "Goldleaf", "Greyhaven", "Hazel", "Hearth", "Hemlock", "Ironwood", "Ivydale", "Juniper", "Kestrel", "Lark", "Laurel", "Linden", "Maple", "Marigold", "Meadow", "Moss", "Oak", "Opal", "Pine", "Quail", "Redfern", "Reed", "Rowan", "Sable", "Silver", "Sorrel", "Sparrow", "Stone", "Summer", "Thistle", "Westrill", "Willow", "Windmere", "Winter", "Woodlark"],
+  "suffix": ["Park", "Grove", "Village", "Heights", "Hollow", "Meadow", "Falls", "Crossing", "Vale", "Reach", "Fields", "Ridge", "Springs", "Gardens", "Wood", "Landing"],
+  "patterns": ["{root} {suffix}", "{prefix} {root}", "{prefix} {root} {suffix}", "City of {root}", "{root}field", "{root}ford", "{root}haven", "{root}wick"],
+  "features": {
+    "island": ["{root} Island", "New {root} Island", "Isle of {root}", "{root} Cay"],
+    "islands": ["{root} Isles", "Twin {root}", "{root} Islands", "Isles of {root}"],
+    "bay": ["{root} Bay", "Port {root}", "{root} Harbor", "{root} Cove"],
+    "crossing": ["{root} Crossing", "{root} Bridges", "{root} Waters"],
+    "branch": ["{root} Forks", "{root} Rivers", "{root} Bend"],
+    "rejoin": ["{root} Loop", "{root} Banks", "{root} Reach"]
+  }
+}
