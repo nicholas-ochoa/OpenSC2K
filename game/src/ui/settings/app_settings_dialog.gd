@@ -83,6 +83,25 @@ func _ready() -> void:
 	_bind_pack_controls("sound", sound_pack_edit, %SoundPackName, %SoundBrowse)
 	_bind_pack_controls("music", music_pack_edit, %MusicPackName, %MusicBrowse)
 	%ImportButton.pressed.connect(_request_original_import)
+	about_to_popup.connect(_fit_to_viewport)
+	if get_parent() != null:
+		get_parent().get_viewport().size_changed.connect(_fit_to_viewport)
+	theme_changed.connect(func() -> void: call_deferred("_fit_to_viewport"))
+	_fit_to_viewport()
+
+
+func _fit_to_viewport() -> void:
+	if get_parent() == null:
+		return
+
+	var viewport_size := Vector2i(get_parent().get_viewport().get_visible_rect().size)
+	# include the embedded title bar in the 90% height allowance
+	var height_limit := maxi(1, int(viewport_size.y * 0.9) - get_theme_constant("title_height"))
+	max_size = Vector2i(0, height_limit)
+	size = Vector2i(700, mini(500, height_limit))
+
+	if visible:
+		position = IntegerMath.div_trunc_vec2i(viewport_size - size, 2)
 
 
 func _request_original_import() -> void:

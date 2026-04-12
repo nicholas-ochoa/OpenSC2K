@@ -6,18 +6,19 @@
 visible = true
 title = "OpenSC2K Settings"
 size = Vector2i(700, 500)
-min_size = Vector2i(700, 500)
+min_size = Vector2i(700, 0)
 script = ExtResource("1_wx7kb")
 
 [node name="Tabs" type="TabContainer" parent="."]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(660, 350)
+custom_minimum_size = Vector2(660, 0)
 offset_right = 660.0
 offset_bottom = 350.0
 size_flags_vertical = 3
 current_tab = 0
 
-[node name="General" type="VBoxContainer" parent="Tabs"]
+[node name="General" type="ScrollContainer" parent="Tabs"]
+horizontal_scroll_mode = 0
 layout_mode = 2
 theme_override_constants/separation = 16
 metadata/_tab_index = 0
@@ -452,7 +453,8 @@ clip_text = true
 text_overrun_behavior = 3
 theme_type_variation = "HelpLabel"
 
-[node name="Import Data" type="VBoxContainer" parent="Tabs"]
+[node name="Import Data" type="ScrollContainer" parent="Tabs"]
+horizontal_scroll_mode = 0
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 16
@@ -484,7 +486,8 @@ text = "Select SIMCITY.EXE from your SimCity 2000 installation to import graphic
 autowrap_mode = 3
 theme_type_variation = "HelpLabel"
 
-[node name="Compatibility" type="VBoxContainer" parent="Tabs"]
+[node name="Compatibility" type="ScrollContainer" parent="Tabs"]
+horizontal_scroll_mode = 0
 visible = false
 layout_mode = 2
 theme_override_constants/separation = 16
