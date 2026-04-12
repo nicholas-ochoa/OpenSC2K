@@ -15,7 +15,7 @@ func _enter_tree() -> void:
 
 
 func _ready() -> void:
-	AppUiTheme.bind_canvas($Background)
+	AppUiTheme.bind_canvas($Background, "map_canvas")
 	menu_bar = %MenuBar
 	toolbar = %Toolbar
 	map_view = %MapView

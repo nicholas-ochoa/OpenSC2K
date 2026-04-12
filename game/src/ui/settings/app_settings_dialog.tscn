@@ -85,6 +85,23 @@ unique_name_in_owner = true
 layout_mode = 2
 text = "Fullscreen"
 
+[node name="DarkUndergroundSpacer" type="Control" parent="Tabs/General/Fields"]
+layout_mode = 2
+
+[node name="DarkUndergroundCheck" type="CheckBox" parent="Tabs/General/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+text = "Dark underground view"
+
+[node name="UndergroundHintSpacer" type="Control" parent="Tabs/General/Fields"]
+layout_mode = 2
+
+[node name="UndergroundHint" type="Label" parent="Tabs/General/Fields"]
+layout_mode = 2
+theme_type_variation = &"HelpLabel"
+text = "Use a dark background and brighter underground lines."
+autowrap_mode = 2
+
 [node name="Audio" type="ScrollContainer" parent="Tabs"]
 visible = false
 layout_mode = 2

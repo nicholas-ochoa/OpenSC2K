@@ -36,8 +36,8 @@ static func select(value: String) -> void:
 		_files.emit_changed()
 
 
-static func bind_canvas(control: ColorRect) -> void:
-	var refresh := func() -> void: control.color = control.get_theme_color("canvas", "AppPalette")
+static func bind_canvas(control: ColorRect, role := "canvas") -> void:
+	var refresh := func() -> void: control.color = control.get_theme_color(role, "AppPalette")
 	control.theme_changed.connect(refresh)
 	refresh.call()
 
@@ -71,6 +71,7 @@ static func build(value: String, files := false) -> Theme:
 	result.set_color("font_color", "SuccessLabel", Color("64db99") if dark else Color("16803a"))
 	result.set_color("error", "AppPalette", Color("ff7777") if dark else Color("d02020"))
 	result.set_color("warning", "AppPalette", Color("ffcf70") if dark else Color("805000"))
+	result.set_color("map_canvas", "AppPalette", Color("202830"))
 	result.set_color("canvas", "AppPalette", Color("383d43") if dark else Color("c0c0c0"))
 	result.set_color("ink", "AppPalette", Color("eeeeee") if dark else Color("202020"))
 	result.set_color("paper", "AppPalette", Color("30353b") if dark else Color.WHITE)

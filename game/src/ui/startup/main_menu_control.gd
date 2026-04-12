@@ -38,7 +38,7 @@ var scurk_place_button: Button
 
 
 func _ready() -> void:
-	AppUiTheme.bind_canvas(self)
+	AppUiTheme.bind_canvas(self, "map_canvas")
 	theme = ClassicStyle.create_theme()
 
 	city_background = $CityBackground

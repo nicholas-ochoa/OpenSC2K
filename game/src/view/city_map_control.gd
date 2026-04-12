@@ -38,6 +38,7 @@ uniform sampler2D palette_indices : filter_nearest, repeat_disable;
 uniform sampler2D animated_palette : source_color, filter_nearest, repeat_disable;
 uniform bool palette_cycle_enabled = false;
 uniform bool palette_lookup_all = false;
+uniform bool dark_underground = false;
 
 void fragment() {
 	vec4 base_color = texture(TEXTURE, UV);
@@ -56,6 +57,14 @@ void fragment() {
 	} else {
 		COLOR = base_color;
 	}
+	if (dark_underground) {
+		float high = max(COLOR.r, max(COLOR.g, COLOR.b));
+		float low = min(COLOR.r, min(COLOR.g, COLOR.b));
+		// Invert neutral wireframe tones. Keep network hues distinct.
+		vec3 neutral = mix(vec3(0.78, 0.82, 0.86), vec3(0.125, 0.157, 0.188), high);
+		vec3 network = COLOR.rgb * max(1.0, 0.55 / max(high, 0.001));
+		COLOR.rgb = mix(neutral, network, smoothstep(0.04, 0.18, high - low));
+	}
 }
 """
 
@@ -69,6 +78,10 @@ var city: CityState:
 var city_texture: Texture2D
 var palette_index_texture: Texture2D
 var animated_palette_texture: Texture2D
+var dark_underground := false:
+	set(value):
+		dark_underground = value
+		_sync_base_material()
 var base_palette_lookup_all := false
 var signs_visible := true
 var edit_enabled := false
@@ -1674,6 +1687,7 @@ func _sync_base_material() -> void:
 	if _base_material == null:
 		return
 
+	_base_material.set_shader_parameter("dark_underground", dark_underground)
 	_base_material.set_shader_parameter("palette_indices", palette_index_texture)
 	_base_material.set_shader_parameter("animated_palette", animated_palette_texture)
 	_base_material.set_shader_parameter(

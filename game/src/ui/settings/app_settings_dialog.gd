@@ -23,6 +23,7 @@ var folder_dialog: FileDialog
 
 var music_slider: HSlider
 var effects_slider: HSlider
+var dark_underground_check: CheckBox
 var fullscreen_check: CheckBox
 var zoom_graphics_selectors: Array[OptionButton] = []
 var overview_graphics_selector: OptionButton
@@ -49,6 +50,7 @@ func _ready() -> void:
 	theme_selector = %ThemeSelector
 	effects_slider = %EffectsSlider
 	folder_edit = %FolderEdit
+	dark_underground_check = %DarkUndergroundCheck
 	fullscreen_check = %FullscreenCheck
 	music_pack_edit = %MusicPackEdit
 	music_slider = %MusicSlider
@@ -126,6 +128,7 @@ func selected_values() -> Dictionary:
 		"city_renderer": "cpu" if renderer_selector.selected == 1 else "gpu",
 		"music_volume": float(music_slider.value) / 100.0,
 		"effects_volume": float(effects_slider.value) / 100.0,
+		"dark_underground": dark_underground_check.button_pressed,
 		"fullscreen": fullscreen_check.button_pressed,
 		"graphics_source": "auto" if folder_edit.text.strip_edges().is_empty() else "folder",
 		"graphics_folder": folder_edit.text.strip_edges(),

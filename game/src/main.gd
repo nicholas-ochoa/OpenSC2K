@@ -116,6 +116,7 @@ var app_sound_pack_folder := ""
 var app_music_pack_folder := ""
 var app_city_renderer := "gpu"
 var app_ui_theme := "light"
+var app_dark_underground := false
 var app_default_mayor_name := "Mayor"
 var app_overview_graphics := 0
 var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
@@ -457,7 +458,7 @@ func _import_original_game(executable_path: String) -> void:
 	audio_controller.set_soundtrack_folder("")
 	var saved := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics, app_ui_theme,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics, app_ui_theme, app_dark_underground,
 	)
 	_open_import_settings()
 	status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
@@ -1032,6 +1033,7 @@ func _open_import_settings() -> void:
 
 
 func _open_settings_dialog() -> void:
+	settings_dialog.dark_underground_check.button_pressed = app_dark_underground
 	settings_dialog.theme_selector.select(1 if app_ui_theme == "dark" else 0)
 	settings_dialog.default_mayor_edit.text = app_default_mayor_name
 	settings_dialog.overview_graphics_selector.select(app_overview_graphics)
@@ -1098,6 +1100,8 @@ func _apply_settings() -> void:
 	app_graphics_source = values.graphics_source
 	app_graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
+	app_dark_underground = bool(values.dark_underground)
+	_sync_map_style()
 	app_ui_theme = str(values.ui_theme)
 	AppUiTheme.select(app_ui_theme)
 	app_default_mayor_name = str(values.default_mayor_name)
@@ -1145,7 +1149,7 @@ func _apply_settings() -> void:
 
 	var error := SettingsStore.save_values(
 		app_music_volume, app_effects_volume, app_fullscreen,
-		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics, app_ui_theme,
+		app_settings_path, app_graphics_source, app_graphics_folder, app_soundtrack_folder, app_city_renderer, app_background_audio, app_zoom_graphics, app_toolbar_sounds, app_sound_pack_folder, app_music_pack_folder, app_shuffle_music, app_original_compatibility, app_warn_sc2x_conversion, app_default_mayor_name, app_overview_graphics, app_ui_theme, app_dark_underground,
 	)
 	status_label.text = (
 		"Settings saved."
@@ -1229,6 +1233,8 @@ func _load_app_settings() -> void:
 	app_toolbar_sounds = bool(values.toolbar_sounds)
 	app_sound_pack_folder = str(values.sound_pack_folder)
 	app_music_pack_folder = str(values.music_pack_folder)
+	app_dark_underground = bool(values.dark_underground)
+	_sync_map_style()
 	app_ui_theme = str(values.ui_theme)
 	AppUiTheme.select(app_ui_theme)
 	app_default_mayor_name = str(values.default_mayor_name)
@@ -3433,6 +3439,12 @@ func _save_copy(path: String) -> bool:
 	return true
 
 
+func _sync_map_style() -> void:
+	# use the published texture until the mode change finishes
+	if map_view != null:
+		map_view.dark_underground = app_dark_underground and static_render_mode == "underground" and map_view.base_palette_lookup_all
+
+
 func _set_overlay(mode: String) -> void:
 	if not MAP_DISPLAY_MODES.has(mode):
 		return
@@ -3631,6 +3643,7 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	profile_start = Time.get_ticks_usec()
 	var texture := CityMapTexture.update_region(map_view.city_texture, static_city_image, patched.output_rect)
 	map_view.set_city_view(static_display_city, texture, texture, true)
+	_sync_map_style()
 	_refresh_moving_things(view_size)
 	edit_display_timings.upload_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 
@@ -3787,6 +3800,7 @@ func _refresh_map(force := true) -> void:
 			map_view.set_city_view(
 				static_display_city, cached_texture, cached_texture, true
 			)
+			_sync_map_style()
 
 			if overlay_mode == "city":
 				_refresh_moving_things(view_size)
@@ -3897,6 +3911,7 @@ func _refresh_map(force := true) -> void:
 		texture, texture if overlay_mode in ["city", "underground"] else null,
 		overlay_mode in ["city", "underground"]
 	)
+	_sync_map_style()
 
 	if overlay_mode == "city":
 		_refresh_moving_things(_city_view_size())
@@ -3947,6 +3962,7 @@ func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	static_display_city = region_cache.display_city
 	var texture := region_cache.texture()
 	map_view.set_city_view(static_display_city, texture, texture, true, true, region_cache.sign_layout_token)
+	_sync_map_style()
 	region_cache.set_sign_requests(map_view.sign_source_entries())
 	region_cache.update_viewport(map_view.visible_source_rect())
 
@@ -3976,6 +3992,7 @@ func _poll_region_cache() -> void:
 	var foreground_changed := _invalidate_region_foregrounds(region_cache.foreground_changes)
 	var texture := region_cache.texture()
 	map_view.set_city_view(static_display_city, texture, texture, true, true, region_cache.sign_layout_token)
+	_sync_map_style()
 
 	if overlay_mode == "city":
 		if foreground_changed or not foreground_complete or foreground_view_rect != map_view.visible_source_rect():
@@ -4135,6 +4152,7 @@ func _poll_static_render() -> void:
 	map_view.set_city_view(
 		static_display_city, texture, texture, true
 	)
+	_sync_map_style()
 
 	if overlay_mode == "city":
 		_refresh_moving_things(int(rendered.view_size))

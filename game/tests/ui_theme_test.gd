@@ -11,6 +11,7 @@ func _initialize() -> void:
 func _run() -> void:
 	var path := "user://theme-test-%d.cfg" % OS.get_process_id()
 	assert(AppSettingsStore.load_values(path).ui_theme == "light")
+	assert(not AppSettingsStore.load_values(path).dark_underground)
 	assert(AppSettingsStore.normalize_theme("invalid") == "light")
 	var config := ConfigFile.new()
 	config.set_value("general", "ui_theme", "invalid")
@@ -35,15 +36,21 @@ func _run() -> void:
 		main._open_settings_dialog()
 		var dialog: AppSettingsDialog = main.settings_dialog
 		dialog.theme_selector.select(selected)
+		dialog.dark_underground_check.button_pressed = not main.app_dark_underground
 		# Cancel discards the selection when Settings next opens.
 		dialog.hide()
 		main._open_settings_dialog()
 		assert(dialog.theme_selector.selected == (1 if main.app_ui_theme == "dark" else 0))
+		assert(dialog.dark_underground_check.button_pressed == main.app_dark_underground)
 		dialog.theme_selector.select(selected)
+		dialog.dark_underground_check.button_pressed = true
 		main._apply_settings()
 		dialog.hide()
 		await process_frame
 		await process_frame
+		assert(AppSettingsStore.load_values(path).dark_underground)
+		assert(main.main_menu.color == Color("202830"))
+		assert(main.map_view.get_parent().get_node("Background").color == Color("202830"))
 		assert(main.app_ui_theme == ("dark" if selected == 1 else "light"))
 		var menu := main.main_menu.get_node("Center/Panel").get_theme_stylebox("panel") as StyleBoxFlat
 		assert(is_equal_approx(menu.bg_color.a, 0.85 if selected == 1 else 0.90))
@@ -73,6 +80,22 @@ func _run() -> void:
 		var actual := main.theme.get_stylebox("normal", "Button") as StyleBoxFlat
 		assert(sample.bg_color == actual.bg_color and sample.border_color == actual.border_color)
 		gallery.free()
+	for renderer in ["cpu", "gpu"]:
+		main._set_city_renderer(renderer)
+		main._set_overlay("underground")
+		main._refresh_map(true)
+		assert(main.map_view.dark_underground)
+		assert(main.map_view._base_material.get_shader_parameter("dark_underground"))
+		main.app_dark_underground = false
+		main._sync_map_style()
+		assert(not main.map_view.dark_underground)
+		main.app_dark_underground = true
+		main._sync_map_style()
+		assert(main.map_view.dark_underground)
+		main._set_overlay("city")
+		main._refresh_map(true)
+		assert(not main.map_view.dark_underground)
+		assert(main.city.document.serialize().data == before)
 	main.free()
 	await process_frame
 	var restored := (load("res://main.tscn") as PackedScene).instantiate()
@@ -81,6 +104,7 @@ func _run() -> void:
 	root.add_child(restored)
 	await process_frame
 	assert(restored.app_ui_theme == "dark")
+	assert(restored.app_dark_underground)
 	restored.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	AppUiTheme.select("light")
