@@ -66,6 +66,7 @@ func generate_preview(
 		int(options.trees),
 		preview_process,
 		preview_game,
+		str(options.get("layout", "classic")),
 	)
 
 	if not generated.ok:
@@ -96,30 +97,20 @@ func generate_preview(
 
 
 func create_city(
-	template_path: String,
+	_template_path: String,
 	city_name: String,
 	mayor_name: String,
 	difficulty: int,
 	starting_year: int,
 	terrain_options: Dictionary,
 	newspaper_session_state: PackedByteArray) -> Dictionary:
-	var template := _load_template(template_path)
+	if not matches(terrain_options):
+		return {"ok": false, "stage": "terrain", "error": "Regenerate terrain first"}
 
-	if not template.is_valid():
-		return {
-			"ok": false,
-			"stage": "template",
-			"error": template.parse_error,
-		}
-
-	if not template.resize_empty_map(int(terrain_options.get("size", 128))):
-		return {"ok": false, "stage": "size", "error": "Unsupported city size"}
-
-	if terrain_options.get("native_maps", false) and not template.enable_full_resolution_maps():
-		return {"ok": false, "stage": "data_maps", "error": "Cannot enable per-tile data maps"}
-
-	var process_random := Random.new(preview_process_start)
-	var game_random := GameRandom.new(preview_game_start)
+	# Found the displayed city. Generating it again here could produce a different map.
+	var template := preview_document.duplicate_document()
+	var process_random := Random.new(preview_process_cursor)
+	var game_random := GameRandom.new(preview_game_cursor)
 	var created := NewCity.create(
 		template,
 		city_name,
@@ -128,7 +119,7 @@ func create_city(
 		starting_year,
 		process_random,
 		game_random,
-		terrain_options,
+		{},
 		newspaper_session_state,
 	)
 

@@ -106,6 +106,9 @@ git -C "$repo_dir" diff --check
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/usability_polish_test.gd
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/terrain_workflow_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/new_city_workflow_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/terrain_layout_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/landscape_brush_test.gd
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/landscape_editor_tools_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/presentation_refinements_test.gd

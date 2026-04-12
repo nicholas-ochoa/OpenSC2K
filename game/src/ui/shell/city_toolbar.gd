@@ -2,10 +2,23 @@ class_name CityToolbar
 extends PanelContainer
 
 signal button_clicked
+signal brush_changed
+signal regenerate_requested
 signal start_city_requested
 
 var start_city_button: Button
 var landscape_editor := false
+var brush_controls: VBoxContainer
+var brush_size_input: SpinBox
+var brush_shape_input: OptionButton
+var landscape_tools: GridContainer
+var regenerate_button: Button
+var landscape_buttons: Dictionary = {}
+const LANDSCAPE_TOOL_ORDER := [
+	Vector2i(0, 2), Vector2i(0, 3), Vector2i(0, 5), Vector2i(0, 1),
+	Vector2i(0, 6), Vector2i(0, 7), Vector2i(1, 1), Vector2i(1, 2),
+	Vector2i(1, 0), Vector2i(1, 3), Vector2i(16, 0), Vector2i(17, 0),
+]
 
 signal group_requested(index: int)
 signal subtool_requested(index: int)
@@ -64,7 +77,7 @@ func _ready() -> void:
 	child_palette = %ChildPalette
 	view_layers_heading = %ViewLayersHeading
 	data_view_input = %DataViewInput
-	view_mode_buttons = {"city": %CityView, "underground": %UndergroundView}
+	view_mode_buttons = {"city": %CityView, "underground": %UndergroundView, "height": %HeightView}
 	view_visibility_checks = {
 		"buildings": %BuildingsVisible, "networks": %NetworksVisible,
 		"water": %WaterVisible, "trees": %TreesVisible,
@@ -85,6 +98,15 @@ func _ready() -> void:
 	for group_index in range(15, Tools.GROUPS.size()):
 		_add_group_button(%SpecialTools, tool_button_group, group_index)
 
+	brush_controls = %BrushControls
+	brush_size_input = %BrushSizeInput
+	brush_shape_input = %BrushShapeInput
+	brush_size_input.get_line_edit().set("minimum_character_width", 2)
+	landscape_tools = %LandscapeTools
+	regenerate_button = %RegenerateTerrainButton
+	brush_size_input.value_changed.connect(func(_value: float) -> void: brush_changed.emit())
+	brush_shape_input.item_selected.connect(func(_index: int) -> void: brush_changed.emit())
+	regenerate_button.pressed.connect(regenerate_requested.emit)
 	_refresh_artwork_buttons(self)
 	rotate_counter_clockwise_button.pressed.connect(rotate_requested.emit.bind(true))
 	rotate_clockwise_button.pressed.connect(rotate_requested.emit.bind(false))
@@ -98,7 +120,7 @@ func _ready() -> void:
 	child_tool_grid = child_palette.grid
 	child_tool_buttons = child_palette.buttons
 
-	for mode in MAP_DISPLAY_MODES:
+	for mode in view_mode_buttons:
 		view_mode_buttons[mode].pressed.connect(overlay_requested.emit.bind(mode))
 
 	data_view_input.item_selected.connect(func(index: int) -> void:
@@ -133,12 +155,18 @@ func show_tool_group(
 	for button_index in toolbar_buttons.size():
 		toolbar_buttons[button_index].button_pressed = button_index == group_index
 
-	return child_palette.show_tool_group(group_index, city, icon_provider)
+	var selected := child_palette.show_tool_group(group_index, city, icon_provider)
+	if landscape_editor:
+		child_palette.hide()
+		_build_landscape_tools()
+	return selected
 
 
 func sync_child_tool_selection(group_index: int, subtool_index: int) -> void:
 	_selected_subtool = subtool_index
 	child_palette.sync_selection(group_index, subtool_index)
+	for key in landscape_buttons:
+		landscape_buttons[key].set_pressed_no_signal(key == Vector2i(group_index, subtool_index))
 
 
 func refresh_child_tool_icons(
@@ -280,13 +308,24 @@ func _show_held_group(group_index: int, generation: int) -> void:
 func set_landscape_editor(enabled: bool) -> void:
 	landscape_editor = enabled
 	start_city_button.visible = enabled
+	regenerate_button.visible = enabled
+	landscape_tools.visible = enabled
+	child_palette.visible = not enabled
+	hold_menu.hide()
 	child_palette.free_landscape = enabled
 	hold_menu.palette.free_landscape = enabled
 
 	for index in toolbar_buttons.size():
-		toolbar_buttons[index].visible = not enabled or index in [0, 1, 16, 17]
+		toolbar_buttons[index].visible = not enabled
 
 	view_mode_buttons.underground.disabled = enabled
+	view_mode_buttons.underground.visible = not enabled
+	view_mode_buttons.height.visible = enabled
+	data_view_input.visible = not enabled
+	%LandscapeSpacer.visible = enabled
+	$Margin/Column/ToolGroupsDivider.visible = not enabled
+	for key in view_visibility_checks:
+		view_visibility_checks[key].visible = key in ["water", "trees"] if enabled else key not in ["pipes", "subways"]
 
 
 func _watch_buttons(node: Node) -> void:
@@ -319,3 +358,33 @@ func _refresh_artwork_buttons(node: Node) -> void:
 
 	for child in node.get_children():
 		_refresh_artwork_buttons(child)
+
+
+func _build_landscape_tools() -> void:
+	if not landscape_buttons.is_empty():
+		return
+	var selection := ButtonGroup.new()
+	for key in LANDSCAPE_TOOL_ORDER:
+		var group: int = key.x
+		var tool: int = key.y
+		var button := Button.new()
+		button.toggle_mode = true
+		button.button_group = selection
+		button.custom_minimum_size = Vector2(46, 30)
+		button.icon_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		button.vertical_icon_alignment = VERTICAL_ALIGNMENT_CENTER
+		button.tooltip_text = str(Tools.GROUPS[group].tools[tool][1])
+		button.icon = _icon_provider.call(group, tool) if _icon_provider.is_valid() else null
+		if group in [0, 1] and button.icon != null:
+			# terrain symbols are 19-pixel native icons, like the city toolbar
+			var native_icon := button.icon.get_image()
+			native_icon.resize(IntegerMath.div_trunc(native_icon.get_width(), 2),
+				IntegerMath.div_trunc(native_icon.get_height(), 2), Image.INTERPOLATE_NEAREST)
+			button.icon = ImageTexture.create_from_image(native_icon)
+		button.text = button.tooltip_text if button.icon == null else ""
+		button.theme_type_variation = "ArtworkButton"
+		button.pressed.connect(func() -> void:
+			group_requested.emit(group)
+			subtool_requested.emit(tool))
+		landscape_tools.add_child(button)
+		landscape_buttons[key] = button

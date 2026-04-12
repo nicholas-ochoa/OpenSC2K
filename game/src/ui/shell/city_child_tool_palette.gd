@@ -70,7 +70,7 @@ func show_tool_group(
 		if not free_landscape and LandscapeEditorCommand.supports_tool(group_index, subtool_index) and not (group_index == 1 and subtool_index == 3):
 			continue
 
-		if free_landscape and group_index == 0 and subtool_index == 4:
+		if free_landscape and ((group_index == 0 and subtool_index == 4) or (group_index == 16 and subtool_index != 0)):
 			continue
 
 		if (group_index == 3 and subtool_index == 1) or (group_index == 5 and subtool_index == 4):

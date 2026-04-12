@@ -32,7 +32,8 @@ static func apply_path(
 	subtool_index: int,
 	points: Array[Vector2i],
 	random: SimRandom,
-	free_mode := false
+	free_mode := false,
+	use_brush_points := false
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -77,12 +78,18 @@ static func apply_path(
 		placement_points = []
 		var candidates: Array[Vector2i] = []
 
-		for x in range(-3, 4):
-			for y in range(-3, 4):
-				if x * x + y * y <= 10:
-					candidates.append(points[0] + Vector2i(x + 3, y + 3))
+		if use_brush_points:
+			candidates.assign(points)
+		else:
+			for x in range(-3, 4):
+				for y in range(-3, 4):
+					if x * x + y * y <= 10:
+						candidates.append(points[0] + Vector2i(x + 3, y + 3))
 
-		for attempt in 8 + random.next_u15() % 13:
+		var attempts := 8 + random.next_u15() % 13
+		if use_brush_points:
+			attempts = maxi(1, IntegerMath.div_trunc(candidates.size() * (25 + random.next_u15() % 36), 100))
+		for attempt in mini(attempts, candidates.size()):
 			var choice := random.next_u15() % candidates.size()
 			placement_points.append(candidates[choice])
 			candidates.remove_at(choice)

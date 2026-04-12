@@ -12,6 +12,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main._open_new_city_dialog()
+	main._make_new_city_preview()
 	main._create_new_city_unchecked()
 	main._select_tool_group(0)
 	main._select_subtool(5)

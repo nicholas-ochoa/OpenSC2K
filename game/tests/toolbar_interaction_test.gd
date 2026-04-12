@@ -100,7 +100,7 @@ func _run() -> void:
 	assert(map._selection_source_polygons().size() == 1)
 	var sign_dialog := main.get("sign_dialog") as CitySignDialog
 	assert(sign_dialog.title == "Enter sign text...")
-	assert(sign_dialog.get_label().get_theme_color("font_color") == Color.WHITE)
+	assert(sign_dialog.get_label().get_theme_color("font_color") == AppUiTheme.current().get_color("font_color", "Label"))
 	# Check city and random state after an invalid preview.
 	var before: PackedByteArray = city.document.serialize().data
 	assert(BuildingCommand.preview_valid(city, 3, 2, Vector2i(75, 75)))
@@ -214,7 +214,7 @@ func _run() -> void:
 		assert(city.document.serialize().data == rail_before)
 
 	var tunnel := main.get("tunnel_dialog") as RouteConfirmationDialog
-	assert(tunnel.get_label().get_theme_color("font_color") == Color.WHITE)
+	assert(tunnel.get_label().get_theme_color("font_color") == AppUiTheme.current().get_color("font_color", "Label"))
 	var paper := main.get("newspaper_dialog") as NewspaperDialog
 	paper.open_reports(city, city.document, null, {}, {}, 123)
 	assert(paper.published_articles.size() == 5)

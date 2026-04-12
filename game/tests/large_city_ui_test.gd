@@ -16,7 +16,8 @@ func run_check() -> void:
 		var edge: int = Sc2File.MAP_SIZES[selection]
 		main.new_city_dialog.size_input.select(selection)
 		main.new_city_dialog.size_input.item_selected.emit(selection)
-		await create_timer(0.3).timeout
+		assert(main.new_city_dialog.done_button.disabled)
+		main._make_new_city_preview()
 		assert(main.new_city_session.preview_document.map_size == edge)
 		assert(main.new_city_session.preview_options.get("size") == edge)
 		assert(main.new_city_dialog.preview_view.texture.get_width() == edge)

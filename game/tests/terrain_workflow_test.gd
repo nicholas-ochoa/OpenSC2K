@@ -27,6 +27,7 @@ func _run() -> void:
 	assert(FileAccess.get_file_as_bytes(background.source_path) == before_source)
 	assert(background.static_image.get_pixel(0, 0).a == 0.0)
 	main._open_new_city_dialog()
+	main._make_new_city_preview()
 	main._create_new_city_unchecked()
 	await process_frame
 	assert(main.landscape_editor and main.city_toolbar.start_city_button.visible)

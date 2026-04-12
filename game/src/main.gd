@@ -209,6 +209,7 @@ var scurk_print_pdf_dialog: FileDialog
 var new_city_dialog: NewCityTerrainDialog
 var new_city_session := NewCitySession.new()
 var new_city_return_to_main_menu := false
+var landscape_brush_command: Dictionary = {}
 var landscape_editor := false
 var terrain_stretch := TerrainStretchSession.new()
 var founding_newspaper_pending := false
@@ -825,11 +826,12 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 
 
 	city_toolbar.start_city_requested.connect(_start_city)
+	city_toolbar.regenerate_requested.connect(_reopen_terrain_dialog)
+	city_toolbar.brush_changed.connect(_update_edit_state)
 	new_city_dialog = city_dialogs.new_city_dialog
 	new_city_dialog.cancel_requested.connect(_cancel_new_city)
 	new_city_dialog.build_requested.connect(_create_new_city)
 	new_city_dialog.preview_requested.connect(_schedule_new_city_preview)
-	new_city_dialog.preview_timer.timeout.connect(_refresh_new_city_preview)
 	new_city_dialog.terrain_regeneration_requested.connect(_make_new_city_preview)
 	sign_dialog = city_dialogs.sign_dialog
 	sign_dialog.confirmed.connect(_commit_sign)
@@ -1582,7 +1584,19 @@ func _record_edit_command(
 		if scurk_place_print != null:
 			scurk_place_print.set_history_enabled(true, false)
 
-	last_edit_command = command
+	if map_view.landscape_brush and map_view.is_left_drag_active():
+		if landscape_brush_command.is_empty():
+			landscape_brush_command = command.duplicate(true)
+		else:
+			for id in command.changed_ids:
+				if id not in landscape_brush_command.changed_ids:
+					landscape_brush_command.changed_ids.append(id)
+				landscape_brush_command.new_payloads[id] = command.new_payloads[id]
+			landscape_brush_command.random_state_after = command.random_state_after
+			landscape_brush_command.tile_indices.append_array(command.tile_indices)
+		last_edit_command = landscape_brush_command
+	else:
+		last_edit_command = command
 
 
 func _apply_scurk_place_selection(point: Vector2i) -> void:
@@ -1678,6 +1692,10 @@ func _choose_tool_group(group_index: int) -> void:
 
 
 func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
+	if group_index == 1 and subtool_index in [0, 1, 2, 3]:
+		return TerrainToolIcons.terrain_action(asset_source.assets.city_ui_graphics,
+			["tree", "water", "stream", "forest"][subtool_index])
+
 	if group_index == 0 and subtool_index in [1, 2, 3]:
 		return TerrainToolIcons.terrain_action(
 			asset_source.assets.city_ui_graphics, ["", "level", "raise", "lower"][subtool_index]
@@ -1846,10 +1864,11 @@ func _on_map_selection_canceled() -> void:
 		return
 
 	status_label.theme_type_variation = ""
-	status_label.text = "Forest brush stopped. Use Undo to remove its last placement." if map_view.continuous_placement else "Selection canceled. No action was taken."
+	status_label.text = "Brush stopped. Use Undo to remove its last placement." if map_view.continuous_placement else "Selection canceled. No action was taken."
 
 
 func _on_map_selection_started() -> void:
+	landscape_brush_command = {}
 	if landscape_editor and selected_group == 0 and selected_subtool == 5:
 		terrain_stretch.begin(map_view.selection_start)
 
@@ -2152,6 +2171,9 @@ func _sync_view_controls() -> void:
 	for key in view_visibility_checks:
 		var check: CheckBox = view_visibility_checks[key]
 		check.visible = (underground_active if key in ["pipes", "subways"] else not underground_active) and not CityDataView.MODES.has(overlay_mode)
+		if landscape_editor:
+			check.visible = key in ["water", "trees"]
+		check.disabled = CityDataView.MODES.has(overlay_mode)
 		var enabled := (
 			show_underground_pipes
 			if key == "pipes"
@@ -2384,10 +2406,17 @@ func _open_new_city_dialog() -> void:
 
 	new_city_dialog.preview_timer.stop()
 	new_city_session.begin(tool_random.state, nuisance_random.state)
+	new_city_dialog.preview_view.texture = null
+	new_city_dialog.landscape_background.texture = null
+	new_city_dialog.compatibility_input.set_pressed_no_signal(false)
+	new_city_dialog._compatibility_changed(false)
+	new_city_dialog.native_maps_input.set_pressed_no_signal(true)
 	new_city_dialog.city_name_input.text = "New City"
 	new_city_dialog.mayor_name_input.text = app_default_mayor_name
 	new_city_dialog.difficulty_input.select(0)
 	new_city_dialog.year_input.select(0)
+	new_city_dialog.layout_input.select(0)
+	new_city_dialog.layout_input.item_selected.emit(0)
 	new_city_dialog.ocean_input.button_pressed = NewTerrain.DEFAULT_OCEAN
 	new_city_dialog.river_input.button_pressed = NewTerrain.DEFAULT_RIVER
 	new_city_dialog.hills_input.value = NewTerrain.DEFAULT_HILLS
@@ -2395,16 +2424,24 @@ func _open_new_city_dialog() -> void:
 	new_city_dialog.trees_input.value = NewTerrain.DEFAULT_TREES
 	_update_new_city_slider_labels()
 	new_city_dialog.show()
-	_generate_new_city_preview(false)
+	new_city_dialog.invalidate()
 	new_city_dialog.city_name_input.grab_focus()
 	new_city_dialog.city_name_input.select_all()
+
+
+func _reopen_terrain_dialog() -> void:
+	if not landscape_editor:
+		return
+	new_city_return_to_main_menu = false
+	new_city_dialog.show()
+	new_city_dialog.invalidate()
 
 
 func _schedule_new_city_preview(_value: Variant = null) -> void:
 	_update_new_city_slider_labels()
 
 	if new_city_dialog != null and new_city_dialog.visible:
-		new_city_dialog.preview_timer.start()
+		new_city_dialog.invalidate()
 
 
 func _update_new_city_slider_labels() -> void:
@@ -2418,6 +2455,7 @@ func _update_new_city_slider_labels() -> void:
 
 func _new_city_terrain_options() -> Dictionary:
 	return OriginalCompatibility.terrain_options({
+		"layout": NewCityTerrainDialog.LAYOUTS[new_city_dialog.layout_input.selected],
 		"size": new_city_dialog.size_input.get_selected_id(),
 		"native_maps": new_city_dialog.native_maps_input.button_pressed,
 		"ocean": new_city_dialog.ocean_input.button_pressed,
@@ -2425,15 +2463,13 @@ func _new_city_terrain_options() -> Dictionary:
 		"hills": roundi(new_city_dialog.hills_input.value),
 		"water": roundi(new_city_dialog.water_input.value),
 		"trees": roundi(new_city_dialog.trees_input.value),
-	}, app_original_compatibility)
-
-
-func _refresh_new_city_preview() -> void:
-	_generate_new_city_preview(false)
+	}, new_city_dialog.compatibility_input.button_pressed)
 
 
 func _make_new_city_preview() -> void:
 	new_city_dialog.preview_timer.stop()
+	new_city_dialog.invalidate()
+	audio_controller.play_sound_events([529], city == null or city.sound_enabled(), "city", IsometricRenderer.VIEW_LARGE)
 	_generate_new_city_preview(true)
 
 
@@ -2461,7 +2497,10 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 
 		return false
 
+	new_city_dialog.candidate_valid = true
+	new_city_dialog.done_button.disabled = false
 	var preview_city: CityState = generated.city
+	new_city_dialog.show_landscape(preview_city, palette, small_medium_sprites)
 	var image := Minimap.create_image(preview_city, palette, "structures")
 	new_city_dialog.preview_view.texture = ImageTexture.create_from_image(image)
 	new_city_dialog.preview_status.text = (
@@ -2490,18 +2529,20 @@ func _cancel_new_city() -> void:
 
 
 func _create_new_city() -> void:
-	_request_city_exit("create_new_city")
+	if not new_city_dialog.candidate_valid:
+		return
+	if landscape_editor:
+		_create_new_city_unchecked()
+	else:
+		_request_city_exit("create_new_city")
 
 
 func _create_new_city_unchecked() -> void:
 	new_city_dialog.preview_timer.stop()
 	var terrain_options := _new_city_terrain_options()
 
-	if not new_city_session.matches(terrain_options):
-		if not _generate_new_city_preview(false):
-			_show_error("Cannot prepare the selected terrain.")
-
-			return
+	if not new_city_dialog.candidate_valid or not new_city_session.matches(terrain_options):
+		return
 
 	var template_path := reference_root.path_join("DEFAULT.SC2")
 	var difficulty := new_city_dialog.difficulty_input.get_selected_id()
@@ -5025,7 +5066,7 @@ func _select_subtool(index: int) -> void:
 	if not landscape_editor and LandscapeEditorCommand.supports_tool(selected_group, index) and not (selected_group == 1 and index == 3):
 		return
 
-	if landscape_editor and (selected_group not in [0, 1, 16, 17] or (selected_group == 0 and index == 4)):
+	if landscape_editor and (selected_group not in [0, 1, 16, 17] or (selected_group == 0 and index == 4) or (selected_group == 16 and index != 0)):
 		return
 
 	if selected_group == 2 and index == 3:
@@ -5118,6 +5159,16 @@ func _update_edit_state() -> void:
 		state.status_text = str(Tools.tool(selected_group, selected_subtool).name)
 		state.status_detail = "Drag up or down to stretch terrain live. Hold Shift to apply on release." if selected_group == 0 and selected_subtool == 5 else "Free landscape editor tool."
 
+	map_view.landscape_brush = landscape_editor and selected_group == 1 and selected_subtool in [0, 1, 3]
+	city_toolbar.brush_controls.visible = map_view.landscape_brush
+	map_view.brush_size = int(city_toolbar.brush_size_input.value)
+	map_view.brush_round = city_toolbar.brush_shape_input.selected == 1
+	if map_view.landscape_brush:
+		map_view.continuous_placement = true
+		map_view.shift_line_enabled = false
+		map_view.shift_rectangle_enabled = false
+		state.selection = "point"
+		state.area = 1
 	map_view.stretch_terrain = landscape_editor and selected_group == 0 and selected_subtool == 5
 	map_view.placement_error_provider = _placement_preview_error
 	map_view.show_selection_preview = selected_group != 17
@@ -5267,6 +5318,13 @@ func _apply_map_selection(
 		var command := LandscapeEditorCommand.apply(city, selected_group, selected_subtool, start, tool_random, levels)
 		_finish_simple_edit(SimpleEdits._result("terrain", command, selected_group, selected_subtool, true), false, {})
 
+		return
+
+	if map_view.landscape_brush:
+		var command := LandscapeCommand.apply_path(city, selected_group, selected_subtool,
+			path, tool_random, true, true)
+		if command.ok:
+			_finish_simple_edit(SimpleEdits._result("landscape", command, selected_group, selected_subtool, true), false, {})
 		return
 
 	var simple_edit := SimpleEdits.apply_supported(
@@ -6899,14 +6957,5 @@ func _apply_compatibility_controls() -> void:
 		speed_controller.original_compatibility = app_original_compatibility
 		speed_controller.fire_elapsed_msec = 0.0
 
-	if new_city_dialog != null:
-		for index in new_city_dialog.size_input.item_count:
-			new_city_dialog.size_input.set_item_disabled(index, app_original_compatibility and new_city_dialog.size_input.get_item_id(index) != 128)
-
-		new_city_dialog.native_maps_input.disabled = app_original_compatibility
-
-		if app_original_compatibility:
-			new_city_dialog.size_input.select(0)
-			new_city_dialog.native_maps_input.set_pressed_no_signal(false)
 
 	_sync_upgrade_city_option()

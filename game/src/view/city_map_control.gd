@@ -137,6 +137,10 @@ var query_city: CityState
 var _shift_pressed := false
 var shift_line_enabled := false
 var continuous_placement := false
+var landscape_brush := false
+var brush_size := 1
+var brush_round := false
+var _last_brush_tile := Vector2i(-1, -1)
 var _brush_elapsed := 0.0
 var data_view_mode := ""
 var data_view_mesh: ArrayMesh
@@ -628,6 +632,9 @@ func point_preview_tiles(point: Vector2i) -> Array[Vector2i]:
 
 	if city == null or city.index_of(point.x, point.y) < 0:
 		return result
+
+	if landscape_brush:
+		return brush_tiles(point)
 
 	if point_footprint_area == 7:
 		for x in range(-3, 4):
@@ -1308,6 +1315,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			_rebuild_selection_path()
 			selection_started.emit()
 			_brush_elapsed = 0.0
+			_last_brush_tile = Vector2i(-1, -1)
 
 			if continuous_placement:
 				_emit_brush_dab(tile, false)
@@ -1396,6 +1404,8 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 			selection_end = tile
 			selection_moved = true
 			_rebuild_selection_path()
+			if landscape_brush:
+				_emit_brush_dab(tile, true)
 			selection_changed.emit(
 				selection_start,
 				selection_end,
@@ -1452,6 +1462,7 @@ func _clear_selection() -> void:
 	selection_start = Vector2i(-1, -1)
 	selection_end = Vector2i(-1, -1)
 	selection_path.clear()
+	_last_brush_tile = Vector2i(-1, -1)
 	selection_moved = false
 	clear_selection_price()
 
@@ -1848,7 +1859,7 @@ func _process(delta: float) -> void:
 
 	_brush_elapsed += delta
 
-	if _brush_elapsed < 0.3:
+	if _brush_elapsed < (0.1 if landscape_brush else 0.3):
 		return
 
 	_brush_elapsed = 0.0
@@ -1859,7 +1870,36 @@ func _process(delta: float) -> void:
 
 func _emit_brush_dab(tile: Vector2i, dragged: bool) -> void:
 	var points: Array[Vector2i] = [tile]
+	if landscape_brush:
+		points.clear()
+		var previous := _last_brush_tile if _last_brush_tile.x >= 0 else tile
+		var distance := maxi(absi(tile.x - previous.x), absi(tile.y - previous.y))
+		var seen := {}
+		for step in range(distance + 1):
+			var center := Vector2i(Vector2(previous).lerp(Vector2(tile), float(step) / maxf(1.0, distance)).round())
+			for point in brush_tiles(center):
+				if not seen.has(point):
+					seen[point] = true
+					points.append(point)
+		_last_brush_tile = tile
 	selection_completed.emit(tile, tile, points, dragged)
+
+
+func brush_tiles(center: Vector2i) -> Array[Vector2i]:
+	var points: Array[Vector2i] = []
+	if city == null or center.x < 0:
+		return points
+	var width := clampi(brush_size, 1, 15)
+	var offset := IntegerMath.div_trunc(width - 1, 2)
+	var middle := float(width - 1) * 0.5
+	for x in width:
+		for y in width:
+			if brush_round and Vector2(x - middle, y - middle).length_squared() > pow(float(width) * 0.5, 2.0):
+				continue
+			var point := center + Vector2i(x - offset, y - offset)
+			if city.index_of(point.x, point.y) >= 0:
+				points.append(point)
+	return points
 
 
 func show_trip_reach(source: CityState, point: Vector2i) -> Dictionary:

@@ -3,6 +3,8 @@
 [ext_resource type="Script" path="res://src/ui/startup/new_city_terrain_dialog.gd" id="1_yoq8j"]
 [ext_resource type="Script" path="res://src/ui/shared/dialog_title_bar.gd" id="2_pepar"]
 
+[ext_resource type="Texture2D" path="res://artwork/ui/refresh.svg" id="3_refresh"]
+
 [node name="NewCityOverlay" type="ColorRect"]
 visible = true
 z_index = 910
@@ -62,10 +64,21 @@ text = "City Name"
 horizontal_alignment = 2
 vertical_alignment = 1
 
-[node name="CityNameInput" type="LineEdit" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+[node name="CityNameRow" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="CityNameInput" type="LineEdit" parent="Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow"]
 layout_mode = 2
 size_flags_horizontal = 3
 max_length = 30
+
+[node name="RandomName" type="Button" parent="Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow"]
+layout_mode = 2
+icon = ExtResource("3_refresh")
+custom_minimum_size = Vector2(28, 0)
+icon_alignment = 1
+tooltip_text = "Generate a random city name"
 
 [node name="MayorNameLabel" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
 layout_mode = 2
@@ -136,7 +149,10 @@ popup/item_2/id = 384
 popup/item_3/text = "512 × 512 (experimental)"
 popup/item_3/id = 512
 
-[node name="NativeMapsInput" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields"]
+[node name="NativeMapsSpacer" type="Control" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
+layout_mode = 2
+
+[node name="NativeMapsInput" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
 layout_mode = 2
 tooltip_text = "Calculate land value, pollution, crime, traffic and services for each tile. Uses SC2X saves, which the original game cannot open."
 button_pressed = true
@@ -173,6 +189,15 @@ text = "Ocean"
 [node name="RiverInput" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow"]
 layout_mode = 2
 text = "River"
+
+[node name="LayoutLabel" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+text = "Layout"
+horizontal_alignment = 2
+
+[node name="LayoutInput" type="OptionButton" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+size_flags_horizontal = 3
 
 [node name="HillsRow" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
 layout_mode = 2
@@ -315,6 +340,10 @@ text = "Regenerate Terrain"
 layout_mode = 2
 theme_override_constants/separation = 8
 
+[node name="CompatibilityInput" type="CheckBox" parent="Center/NewCityDialog/Content/Buttons"]
+layout_mode = 2
+text = "Maintain SimCity 2000 Compatibility"
+
 [node name="ActionSpacer" type="Control" parent="Center/NewCityDialog/Content/Buttons"]
 layout_mode = 2
 size_flags_horizontal = 3
@@ -325,9 +354,9 @@ layout_mode = 2
 text = "Cancel"
 
 [node name="Start" type="Button" parent="Center/NewCityDialog/Content/Buttons"]
-custom_minimum_size = Vector2(210, 30)
+custom_minimum_size = Vector2(80, 30)
 layout_mode = 2
-text = "Edit This Landscape"
+text = "Done"
 
 [node name="PreviewTimer" type="Timer" parent="."]
 wait_time = 0.12

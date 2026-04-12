@@ -107,10 +107,11 @@ func check_ui() -> void:
 	await process_frame
 	main.set_process(false)
 	check(main.app_original_compatibility, "Startup loads compatibility preference")
+	main.new_city_dialog.compatibility_input.button_pressed = true
 	check(main.new_city_dialog.native_maps_input.disabled and not main.new_city_dialog.native_maps_input.button_pressed, "New City disables native grids")
 
 	for index in main.new_city_dialog.size_input.item_count:
-		check(main.new_city_dialog.size_input.is_item_disabled(index) == (index != 0), "New City disables larger sizes")
+		check(main.new_city_dialog.size_input.disabled, "New City disables map size")
 
 	main.new_city_dialog.size_input.select(3)
 	main.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
@@ -151,7 +152,8 @@ func check_ui() -> void:
 	main.settings_dialog.hide()
 	main._apply_settings()
 	check(not main.app_original_compatibility and not main.speed_controller.original_compatibility, "Mode can be disabled live")
-	check(not main.new_city_dialog.native_maps_input.disabled, "Disabling mode restores extensions")
+	main.new_city_dialog.compatibility_input.button_pressed = false
+	check(not main.new_city_dialog.native_maps_input.disabled, "Disabling New City compatibility restores extensions")
 	check(not main.app_warn_sc2x_conversion and not AppSettingsStore.load_values(settings_path).warn_sc2x_conversion, "Warning checkbox disables and persists warning")
 	check(main._activate_document(extended), "Extended city activates when mode is off")
 	main._open_settings_dialog()

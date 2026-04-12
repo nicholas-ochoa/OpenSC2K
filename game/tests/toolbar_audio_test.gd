@@ -10,6 +10,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main._open_new_city_dialog()
+	main._make_new_city_preview()
 	main._create_new_city_unchecked()
 	main.city.set_sound_enabled(true)
 	main.audio_controller.application_has_focus = true

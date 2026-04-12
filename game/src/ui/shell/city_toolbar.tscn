@@ -30,6 +30,21 @@ custom_minimum_size = Vector2(0, 36)
 layout_mode = 2
 text = "Start City"
 
+[node name="RegenerateTerrainButton" type="Button" parent="Margin/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+text = "Regenerate Terrain"
+
+[node name="LandscapeTools" type="GridContainer" parent="Margin/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/h_separation = 3
+theme_override_constants/v_separation = 3
+columns = 2
+
 [node name="ToolGroups" type="GridContainer" parent="Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -137,6 +152,51 @@ script = ExtResource("2_uaa4s")
 [node name="ChildPaletteDivider" type="HSeparator" parent="Margin/Column"]
 layout_mode = 2
 
+[node name="LandscapeSpacer" type="Control" parent="Margin/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="BrushControls" type="VBoxContainer" parent="Margin/Column"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+
+[node name="Heading" type="Label" parent="Margin/Column/BrushControls"]
+layout_mode = 2
+text = "Brush"
+
+[node name="SizeRow" type="HBoxContainer" parent="Margin/Column/BrushControls"]
+layout_mode = 2
+
+[node name="Label" type="Label" parent="Margin/Column/BrushControls/SizeRow"]
+visible = false
+layout_mode = 2
+text = "Size"
+
+[node name="BrushSizeInput" type="SpinBox" parent="Margin/Column/BrushControls/SizeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+tooltip_text = "Brush size in tiles (1–15)"
+min_value = 1.0
+max_value = 15.0
+value = 1.0
+
+[node name="BrushShapeInput" type="OptionButton" parent="Margin/Column/BrushControls/SizeRow"]
+unique_name_in_owner = true
+layout_mode = 2
+selected = 0
+item_count = 2
+popup/item_0/text = "Square"
+popup/item_0/id = 0
+popup/item_1/text = "Round"
+popup/item_1/id = 1
+
+[node name="Divider" type="HSeparator" parent="Margin/Column/BrushControls"]
+layout_mode = 2
+
 [node name="ViewLayersHeading" type="Label" parent="Margin/Column"]
 unique_name_in_owner = true
 layout_mode = 2
@@ -161,6 +221,14 @@ layout_mode = 2
 tooltip_text = "Show the underground isometric view."
 button_group = SubResource("ButtonGroup_06b3w")
 text = "Underground"
+
+[node name="HeightView" type="CheckBox" parent="Margin/Column/ViewModes"]
+unique_name_in_owner = true
+visible = false
+layout_mode = 2
+tooltip_text = "Show terrain height and transparent water."
+button_group = SubResource("ButtonGroup_06b3w")
+text = "Height Map"
 
 [node name="DataViewInput" type="OptionButton" parent="Margin/Column"]
 unique_name_in_owner = true
