@@ -26,7 +26,7 @@ func _run() -> void:
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	main._load_city_unchecked(main.reference_root.path_join("DEFAULT.SC2"))
+	main._load_city_unchecked(main.reference_root.path_join("CITIES/CAPEQUES.SC2"))
 	main._select_speed(GameSpeedController.Speed.PAUSED)
 	main._ensure_scurk_editor()
 	var before: PackedByteArray = main.city.document.serialize().data
