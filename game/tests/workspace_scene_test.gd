@@ -18,6 +18,13 @@ func _run() -> void:
 	host.add_child(workspace)
 	await process_frame
 	await process_frame
+	for mode in ["dark", "light"]:
+		AppUiTheme.select(mode)
+		await process_frame
+		await process_frame
+		assert(is_equal_approx(workspace.menu_bar.size.y, workspace.status_bar.size.y))
+		assert(workspace.menu_bar.population_label.get_parent().get_theme_constant("margin_right") == 10)
+		assert(workspace.menu_bar.money_label.get_parent().get_theme_constant("margin_right") == 10)
 	var initial_map_size := workspace.map_view.size
 	var sidebar_width := workspace.toolbar.size.x
 	assert(workspace.size == host.size)

@@ -81,6 +81,7 @@ static func build(value: String, files := false) -> Theme:
 	for entry in [
 		["PanelPadding0_0_0_0", 0, 0, 0, 0],
 		["PanelPadding44_34_44_34", 44, 34, 44, 34],
+		["PanelPadding5_2_5_2", 5, 2, 5, 2],
 		["PanelPadding5_3_5_3", 5, 3, 5, 3],
 		["PanelPadding8_8_8_8", 8, 8, 8, 8],
 	]:
@@ -93,8 +94,7 @@ static func build(value: String, files := false) -> Theme:
 		result.set_stylebox("panel", entry[0], box)
 	result.set_type_variation("MainMenuPanel", "PanelContainer")
 	var menu := _copy_style(result, "PanelPadding44_34_44_34", "panel")
-	if dark:
-		menu.bg_color.a = 0.85
+	menu.bg_color.a = 0.85 if dark else 0.90
 	result.set_stylebox("panel", "MainMenuPanel", menu)
 	return result
 

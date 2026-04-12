@@ -50,7 +50,8 @@ var fps_label: Label
 
 
 func _ready() -> void:
-	custom_minimum_size = Vector2(0, 25)
+	custom_minimum_size = Vector2(0, 31)
+	theme_type_variation = "PanelPadding5_2_5_2"
 	var menu_row := HBoxContainer.new()
 	menu_row.add_theme_constant_override("separation", 0)
 	add_child(menu_row)
@@ -166,7 +167,7 @@ func _ready() -> void:
 
 	population_label = _metric_label("Population: --", 210)
 	population_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-	menu_row.add_child(population_label)
+	_add_padded_metric(menu_row, population_label, "PopulationField")
 	menu_row.add_child(VSeparator.new())
 
 	date_label = Label.new()
@@ -184,7 +185,7 @@ func _ready() -> void:
 	money_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	money_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	money_label.tooltip_text = "Current city funds"
-	menu_row.add_child(money_label)
+	_add_padded_metric(menu_row, money_label, "MoneyField")
 	menu_row.add_child(VSeparator.new())
 
 	fps_label = Label.new()
@@ -194,6 +195,14 @@ func _ready() -> void:
 	fps_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	fps_label.tooltip_text = "Current rendered frames per second"
 	menu_row.add_child(fps_label)
+
+
+func _add_padded_metric(parent: Control, label: Label, field_name: String) -> void:
+	var field := MarginContainer.new()
+	field.name = field_name
+	field.add_theme_constant_override("margin_right", 10)
+	parent.add_child(field)
+	field.add_child(label)
 
 
 func _add_menu(

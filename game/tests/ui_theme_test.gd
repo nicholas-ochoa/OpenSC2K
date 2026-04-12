@@ -46,7 +46,7 @@ func _run() -> void:
 		await process_frame
 		assert(main.app_ui_theme == ("dark" if selected == 1 else "light"))
 		var menu := main.main_menu.get_node("Center/Panel").get_theme_stylebox("panel") as StyleBoxFlat
-		assert(is_equal_approx(menu.bg_color.a, 0.85 if selected == 1 else 1.0))
+		assert(is_equal_approx(menu.bg_color.a, 0.85 if selected == 1 else 0.90))
 		var fields := dialog.theme_selector.get_parent()
 		assert(fields.get_node("MayorHint").get_index() < fields.get_node("ThemeLabel").get_index())
 		assert(dialog.fullscreen_check.get_index() > dialog.renderer_selector.get_index())
