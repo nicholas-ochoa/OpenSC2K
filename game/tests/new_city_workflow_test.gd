@@ -59,6 +59,9 @@ func _run() -> void:
 		assert(button.icon.get_height() <= 23)
 	main.city_toolbar.view_mode_buttons.height.pressed.emit()
 	assert(main.overlay_mode == "height")
+	await process_frame
+	var map_space: Control = main.map_view.get_parent().get_node("Page/Content/MapSpace")
+	assert(main.map_view.global_position + main.map_view.data_key_origin() == map_space.global_position + Vector2(12, 12))
 	main.city_toolbar.view_mode_buttons.city.pressed.emit()
 	main._select_tool_group(16)
 	main._select_subtool(1)

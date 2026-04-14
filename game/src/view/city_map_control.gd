@@ -294,7 +294,7 @@ func _draw_data_view(scale: float, offset: Vector2) -> void:
 
 func _draw_data_key() -> void:
 	var font := ThemeDB.fallback_font
-	var origin := Vector2(maxf(8, size.x - 332), maxf(8, size.y - (128 if data_view_mode == "height" else 108)))
+	var origin := data_key_origin()
 	draw_style_box(_data_legend_box(), Rect2(origin, Vector2(320, 116 if data_view_mode == "height" else 96)))
 	var title: String = CityDataView.TITLES[CityDataView.MODES.find(data_view_mode)]
 	draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, get_theme_color("font_color", "MapLegend"))
@@ -318,6 +318,18 @@ func _draw_data_key() -> void:
 		draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("font_color", "MapLegend"))
 		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("font_color", "MapLegend"))
+
+
+func data_key_origin() -> Vector2:
+	if data_view_mode == "height":
+		# match trip query: anchor inside the map area, clear of the sidebar
+		var workspace := get_parent()
+		if workspace != null:
+			var map_space := workspace.get_node_or_null("Page/Content/MapSpace") as Control
+			if map_space != null:
+				return map_space.global_position - global_position + Vector2(12, 12)
+		return Vector2(12, 12)
+	return Vector2(maxf(8, size.x - 332), maxf(8, size.y - 108))
 
 
 func _data_legend_box() -> StyleBoxFlat:

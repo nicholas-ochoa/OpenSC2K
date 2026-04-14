@@ -9,6 +9,13 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	for mode in ["light", "dark"]:
+		var spin_theme := AppUiTheme.build(mode)
+		for direction in ["up", "down"]:
+			var ink := spin_theme.get_color(direction + "_icon_modulate", "SpinBox")
+			var background := spin_theme.get_stylebox(direction + "_background", "SpinBox") as StyleBoxFlat
+			assert(ink.a == 1.0)
+			assert(absf(ink.get_luminance() - background.bg_color.get_luminance()) > 0.5)
 	var path := "user://theme-test-%d.cfg" % OS.get_process_id()
 	assert(AppSettingsStore.load_values(path).ui_theme == "light")
 	assert(not AppSettingsStore.load_values(path).dark_underground)

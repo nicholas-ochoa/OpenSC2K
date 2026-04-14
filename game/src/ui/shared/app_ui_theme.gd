@@ -45,6 +45,20 @@ static func bind_canvas(control: ColorRect, role := "canvas") -> void:
 static func build(value: String, files := false) -> Theme:
 	var dark := value == "dark"
 	var result := _dark_theme() if dark else _light_file_dialog_theme() if files else _light_theme()
+	# spinbox has separate arrow buttons; button icon colors do not reach them
+	for direction in ["up", "down"]:
+		for state in ["", "_hover", "_pressed", "_disabled"]:
+			var ink := Color("eeeeee") if dark else Color("303030")
+			if state == "_disabled":
+				ink.a = 0.45
+			result.set_color(direction + state + "_icon_modulate", "SpinBox", ink)
+		for state in ["", "_hovered", "_pressed", "_disabled"]:
+			var background := Color("50565e") if dark else Color("c0c0c0")
+			if state == "_hovered":
+				background = Color("606974") if dark else Color("d0d0d0")
+			elif state == "_pressed":
+				background = Color("353a40") if dark else Color("a0a0a0")
+			result.set_stylebox(direction + "_background" + state, "SpinBox", create_box(background, Color.TRANSPARENT, 0, 0, 0))
 	# map keys remain readable over city artwork, independent of the ui theme
 	var legend := create_box(Color(0.06, 0.08, 0.12, 0.85), Color.TRANSPARENT, 0, 12, 12)
 	legend.set_corner_radius_all(6)
