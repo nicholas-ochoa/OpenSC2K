@@ -1,5 +1,5 @@
 class_name CityToolbar
-extends PanelContainer
+extends Panel
 
 signal button_clicked
 signal brush_changed
@@ -11,6 +11,7 @@ var landscape_editor := false
 var brush_controls: VBoxContainer
 var brush_size_input: SpinBox
 var brush_shape_input: OptionButton
+var _brush_wheel_updated_ms := -50
 var landscape_tools: GridContainer
 var regenerate_button: Button
 var landscape_buttons: Dictionary = {}
@@ -132,6 +133,29 @@ func _ready() -> void:
 	view_visibility_checks.pipes.toggled.connect(underground_pipes_visibility_requested.emit)
 	view_visibility_checks.subways.toggled.connect(underground_subways_visibility_requested.emit)
 	_watch_buttons(self)
+
+
+func _input(event: InputEvent) -> void:
+	if not brush_controls.is_visible_in_tree() or not event is InputEventMouseButton:
+		return
+
+	var mouse := event as InputEventMouseButton
+	if mouse.button_index not in [MOUSE_BUTTON_WHEEL_UP, MOUSE_BUTTON_WHEEL_DOWN]:
+		return
+	if not brush_size_input.get_global_rect().has_point(mouse.position):
+		return
+
+	# consume before spinbox or lineedit handles the wheel a second time
+	get_viewport().set_input_as_handled()
+	if not mouse.pressed:
+		return
+
+	var now := Time.get_ticks_msec()
+	if now - _brush_wheel_updated_ms < 50:
+		return
+
+	_brush_wheel_updated_ms = now
+	brush_size_input.value += 1 if mouse.button_index == MOUSE_BUTTON_WHEEL_UP else -1
 
 
 func group_icon(group_index: int) -> Texture2D:

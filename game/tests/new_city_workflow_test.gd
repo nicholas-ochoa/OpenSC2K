@@ -75,9 +75,33 @@ func _run() -> void:
 	assert(is_equal_approx(main.city_toolbar.size.x, toolbar_width))
 	assert(main.map_view.continuous_placement and main.map_view.landscape_brush)
 	assert(main.city_toolbar.brush_controls.visible)
+	assert(main.city_toolbar.brush_shape_input.selected == 1 and main.map_view.brush_round)
 	assert(main.city_toolbar.brush_size_input.get_parent() == main.city_toolbar.brush_shape_input.get_parent())
 	var random_button: Button = dialog.city_name_input.get_parent().get_node("RandomName")
 	assert(random_button.position.x > dialog.city_name_input.position.x and random_button.icon != null)
+	var wheel := InputEventMouseButton.new()
+	wheel.position = main.city_toolbar.brush_size_input.get_global_rect().get_center()
+	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
+	wheel.pressed = true
+	root.push_input(wheel, true)
+	assert(main.city_toolbar.brush_size_input.value == 2)
+	root.push_input(wheel, true)
+	assert(main.city_toolbar.brush_size_input.value == 2)
+	await create_timer(0.06).timeout
+	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
+	root.push_input(wheel, true)
+	assert(main.city_toolbar.brush_size_input.value == 1)
+	for tool in CityToolbar.LANDSCAPE_TOOL_ORDER:
+		main._select_tool_group(tool.x)
+		main._select_subtool(tool.y)
+		await process_frame
+		await process_frame
+		assert(is_equal_approx(main.city_toolbar.size.x, toolbar_width))
+		var content: Control = main.city_toolbar.get_node("Margin")
+		assert(content.size.x <= toolbar_width)
+	main._select_tool_group(1)
+	main._select_subtool(0)
+
 	main.city_toolbar.brush_size_input.value = 5
 	main.city_toolbar.brush_shape_input.select(1)
 	main.city_toolbar.brush_shape_input.item_selected.emit(1)
@@ -106,6 +130,12 @@ func _run() -> void:
 	main._start_city()
 	assert(not main.city_toolbar.regenerate_button.visible)
 	assert(main.city_toolbar.child_palette.visible)
+	for group in CityToolbar.Tools.GROUPS.size():
+		main._select_tool_group(group)
+		await process_frame
+		await process_frame
+		assert(is_equal_approx(main.city_toolbar.size.x, toolbar_width))
+		assert(main.city_toolbar.get_node("Margin").size.x <= toolbar_width)
 	main.queue_free()
 	await process_frame
 	print("New City workflow checks passed")

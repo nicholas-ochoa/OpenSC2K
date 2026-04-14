@@ -27,6 +27,7 @@ func build() -> void:
 	heading = Label.new()
 	heading.text = "Selected Group"
 	heading.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	heading.clip_text = true
 	heading.add_theme_font_size_override("font_size", 13)
 	add_child(heading)
 	scroll = ScrollContainer.new()
@@ -210,7 +211,7 @@ func _create_button(
 ) -> Button:
 	var tool := Tools.tool(group_index, subtool_index)
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(175, 52)
+	button.custom_minimum_size = Vector2(0, 52)
 	button.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	button.toggle_mode = true
 	button.button_group = button_group
