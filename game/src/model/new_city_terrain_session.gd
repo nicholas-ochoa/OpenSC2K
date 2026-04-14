@@ -67,6 +67,8 @@ func generate_preview(
 		preview_process,
 		preview_game,
 		str(options.get("layout", "classic")),
+		options.get("features", []),
+		bool(options.get("smooth_slopes", false)),
 	)
 
 	if not generated.ok:

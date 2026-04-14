@@ -131,6 +131,8 @@ static func create(
 			staged_random,
 			staged_game_random,
 			str(terrain_options.get("layout", "classic")),
+			terrain_options.get("features", []),
+			bool(terrain_options.get("smooth_slopes", false)),
 		)
 
 		if not terrain_result.ok:

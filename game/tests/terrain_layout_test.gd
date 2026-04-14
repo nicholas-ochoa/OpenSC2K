@@ -30,13 +30,15 @@ func _run() -> void:
 		for layout in NewCityTerrain.LAYOUTS:
 			var doc := EmptyCityTemplate.create()
 			assert(doc.resize_empty_map(edge))
-			var result := NewCityTerrain.generate(doc, false, true, 12, 5, 0, SimRandom.new(1), GameLcgRandom.new(1), layout)
+			var result := NewCityTerrain.generate(doc, false, layout == "classic", 12, 5, 0, SimRandom.new(1), GameLcgRandom.new(1), layout)
 			assert(result.ok)
 			var city := CityState.from_document(doc)
 			for x in edge:
 				for y in edge:
 					if x + 1 < edge:
 						assert(absi(city.land_altitude(x, y) - city.land_altitude(x + 1, y)) <= 1)
+					if x + 1 < edge and y + 1 < edge and layout != "classic":
+						assert(absi(city.land_altitude(x, y) - city.land_altitude(x + 1, y + 1)) <= 1)
 					if y + 1 < edge:
 						assert(absi(city.land_altitude(x, y) - city.land_altitude(x, y + 1)) <= 1)
 			if layout in ["island", "islands"]:
@@ -48,7 +50,7 @@ func _run() -> void:
 			if layout in ["crossing", "branch", "rejoin"]:
 				assert(_components(city, true) == 1)
 				var dry_regions := _components(city, false)
-				assert(dry_regions == {"crossing": 4, "branch": 3, "rejoin": 3}[layout], "%s %s: %s regions" % [edge, layout, dry_regions])
+				assert(dry_regions == {"crossing": 3, "branch": 3, "rejoin": 3}[layout], "%s %s: %s regions" % [edge, layout, dry_regions])
 			if layout == "bay":
 				assert(_components(city, true) == 1 and _components(city, false) == 1)
 			var data: PackedByteArray = doc.serialize().data
@@ -56,6 +58,30 @@ func _run() -> void:
 			assert(reloaded.parse(data))
 			assert(reloaded.serialize().data == data)
 			print("Terrain ", edge, " ", layout, ": water=", result.water_tiles)
+	for seed in [1, 29, 719]:
+		for features in [["crossing"], ["branch"], ["rejoin"], ["bay"], ["island"], ["islands"],
+			["bay", "island"], ["bay", "islands"], ["bay", "branch"], ["bay", "rejoin", "crossing"], ["branch", "crossing", "rejoin"]]:
+			var doc := EmptyCityTemplate.create()
+			var result := NewCityTerrain.generate(doc, true, false, 30, 10, 0,
+				SimRandom.new(seed), GameLcgRandom.new(seed), "classic", features, true)
+			assert(result.ok)
+			var city := CityState.from_document(doc)
+			assert(_components(city, true) == 1, "Disconnected water: %s seed %d" % [features, seed])
+			if "island" in features or "islands" in features:
+				assert(_components(city, false) == (2 if "islands" in features else 1))
+			# Ocean additions must retain the bay and all connected river branches.
+			var inland := EmptyCityTemplate.create()
+			assert(NewCityTerrain.generate(inland, false, false, 30, 10, 0,
+				SimRandom.new(seed), GameLcgRandom.new(seed), "classic", features, true).ok)
+			var inland_city := CityState.from_document(inland)
+			for x in 128:
+				for y in 128:
+					if inland_city.is_water(x, y):
+						assert(city.is_water(x, y), "Feature outlet is disconnected from the ocean")
+	var estuary := EmptyCityTemplate.create()
+	assert(NewCityTerrain.generate(estuary, true, true, 30, 10, 0,
+		SimRandom.new(719), GameLcgRandom.new(719), "classic", [], true).ok)
+	assert(_components(CityState.from_document(estuary), true) == 1)
 	print("Terrain layout and name checks passed: ", names.size(), " distinct names")
 	quit()
 

@@ -577,6 +577,16 @@ static func terrain_surface_polygon(
 		return polygon
 
 	var shape := terrain & 0x0f
+	if land_surface and terrain >= 0x30:
+		# water picking uses the flat surface, not the seabed drawn underneath
+		# surface water encodes connecting banks, not the ground corner mask
+		var mask := 0
+		var altitude := city.land_altitude(x, y)
+		for index in TerrainCommand.NEIGHBOR_OFFSETS.size():
+			var near: Vector2i = Vector2i(x, y) + TerrainCommand.NEIGHBOR_OFFSETS[index]
+			if city.index_of(near.x, near.y) >= 0 and city.land_altitude(near.x, near.y) > altitude:
+				mask |= TerrainCommand.NEIGHBOR_MASKS[index]
+		shape = TerrainCommand.TERRAIN_SHAPES[mask]
 
 	if shape >= TERRAIN_SURFACE_CORNER_MASKS.size():
 		return polygon
