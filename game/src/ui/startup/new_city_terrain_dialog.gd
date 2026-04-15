@@ -74,14 +74,20 @@ func _ready() -> void:
 	preview_timer = get_node("PreviewTimer")
 	compatibility_input = $Center/NewCityDialog/Content/Buttons/CompatibilityInput
 	done_button = $Center/NewCityDialog/Content/Buttons/Start
-	var feature_titles := {"crossing": "Intersecting rivers", "branch": "Y river",
-		"rejoin": "Split and rejoin river", "bay": "Ocean bay", "island": "One large island", "islands": "Two islands"}
+	var feature_titles := {"crossing": "Intersecting rivers", "branch": "Forked River",
+		"rejoin": "Split and rejoin river", "bay": "Ocean bay", "island": "Single Island", "islands": "Two islands"}
 	for key in feature_titles:
 		var check := CheckBox.new()
 		check.text = feature_titles[key]
 		$Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow.add_child(check)
 		feature_inputs[key] = check
 		check.toggled.connect(_feature_changed.bind(key))
+	var feature_grid: GridContainer = $Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow
+	var ordered_checks := [ocean_input, feature_inputs.bay, river_input,
+		feature_inputs.branch, feature_inputs.rejoin, feature_inputs.crossing,
+		feature_inputs.island, feature_inputs.islands]
+	for index in ordered_checks.size():
+		feature_grid.move_child(ordered_checks[index], index)
 	visibility_changed.connect(_visibility_changed)
 	resized.connect(_clamp_panel)
 	_build_busy_overlay()
@@ -92,10 +98,6 @@ func _ready() -> void:
 	title_bar.close_requested.connect(cancel_requested.emit)
 	size_input.item_selected.connect(func(_index: int) -> void: preview_requested.emit())
 
-	for input in [city_name_input, mayor_name_input]:
-		input.text_changed.connect(func(_text: String) -> void: preview_requested.emit())
-	for input in [difficulty_input, year_input]:
-		input.item_selected.connect(func(_index: int) -> void: preview_requested.emit())
 	for check in [native_maps_input, ocean_input, river_input]:
 		check.toggled.connect(func(_enabled: bool) -> void: preview_requested.emit())
 
@@ -160,7 +162,6 @@ func _random_name() -> void:
 			feature = key
 			break
 	city_name_input.text = CityNameGenerator.generate(feature)
-	preview_requested.emit()
 
 
 func selected_features() -> Array:

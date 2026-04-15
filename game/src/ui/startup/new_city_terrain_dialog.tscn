@@ -179,6 +179,7 @@ columns = 2
 layout_mode = 2
 text = "Features"
 horizontal_alignment = 2
+vertical_alignment = 0
 
 [node name="OceanRow" type="GridContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
 layout_mode = 2
@@ -331,6 +332,12 @@ autowrap_mode = 3
 [node name="Regenerate" type="Button" parent="Center/NewCityDialog/Content/Body/Preview"]
 layout_mode = 2
 text = "Regenerate Terrain"
+
+[node name="HideTip" type="Label" parent="Center/NewCityDialog/Content"]
+layout_mode = 2
+theme_type_variation = "HelpLabel"
+theme_override_font_sizes/font_size = 12
+text = "Tip: Hold the right mouse button to hide this dialog."
 
 [node name="Buttons" type="HBoxContainer" parent="Center/NewCityDialog/Content"]
 layout_mode = 2

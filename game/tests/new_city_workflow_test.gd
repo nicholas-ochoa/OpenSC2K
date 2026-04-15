@@ -14,6 +14,16 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	assert(dialog.panel.size.y < 600, str(dialog.panel.size))
+	var feature_grid: GridContainer = dialog.ocean_input.get_parent()
+	var titles: Array[String] = []
+	for check in feature_grid.get_children():
+		titles.append(check.text)
+	assert(titles == ["Ocean", "Ocean bay", "River", "Forked River",
+		"Split and rejoin river", "Intersecting rivers", "Single Island", "Two islands"])
+	var label: Label = feature_grid.get_parent().get_node("FeaturesLabel")
+	assert(label.vertical_alignment == VERTICAL_ALIGNMENT_TOP)
+	var tip: Label = dialog.panel.get_node("Content/HideTip")
+	assert(tip.theme_type_variation == "HelpLabel" and "right mouse button" in tip.text)
 	assert(not dialog.compatibility_input.button_pressed)
 	assert(dialog.native_maps_input.button_pressed)
 	assert(dialog.done_button.disabled and main.new_city_session.preview_document == null)
@@ -59,6 +69,21 @@ func _run() -> void:
 	var candidate: Sc2File = main.new_city_session.preview_document
 	var bytes: PackedByteArray = candidate.serialize().data
 	var cursor: int = main.new_city_session.preview_process_cursor
+	var revision := dialog.generation_revision
+	dialog.city_name_input.text = "New Cedar Grove"
+	dialog.city_name_input.text_changed.emit(dialog.city_name_input.text)
+	dialog.mayor_name_input.text = "Cedar Mayor"
+	dialog.mayor_name_input.text_changed.emit(dialog.mayor_name_input.text)
+	dialog.difficulty_input.select(1)
+	dialog.difficulty_input.item_selected.emit(1)
+	dialog.year_input.select(1)
+	dialog.year_input.item_selected.emit(1)
+	dialog._random_name()
+	assert(dialog.candidate_valid and not dialog.done_button.disabled)
+	assert(dialog.generation_revision == revision)
+	assert(main.new_city_session.preview_document == candidate)
+	assert(candidate.serialize().data == bytes)
+	assert(main.new_city_session.preview_process_cursor == cursor)
 	dialog.hills_input.value += 1
 	await create_timer(0.25).timeout
 	assert(dialog.done_button.disabled and not dialog.candidate_valid)
@@ -74,7 +99,13 @@ func _run() -> void:
 	while main.new_city_preview_job != null:
 		await process_frame
 	var generated: Sc2File = main.new_city_session.preview_document
+	dialog.city_name_input.text = "New Cedar Grove"
+	dialog.city_name_input.text_changed.emit(dialog.city_name_input.text)
 	main._create_new_city_unchecked()
+	assert(main.city.city_name() == "New Cedar Grove")
+	assert(main.city.mayor_name() == "Cedar Mayor")
+	assert(main.city.founding_year() == dialog.year_input.get_selected_id())
+	assert(main.city.difficulty() == dialog.difficulty_input.get_selected_id())
 	assert(main.landscape_editor)
 	for id in ["ALTM", "XTER", "XBLD", "XBIT"]:
 		assert(main.current_document.find_chunk(id).decoded_payload == generated.find_chunk(id).decoded_payload)
@@ -120,7 +151,9 @@ func _run() -> void:
 	assert(main.city_toolbar.brush_size_input.value == 2)
 	root.push_input(wheel, true)
 	assert(main.city_toolbar.brush_size_input.value == 2)
-	await create_timer(0.06).timeout
+	var wheel_time := Time.get_ticks_msec()
+	while Time.get_ticks_msec() - wheel_time < 60:
+		await process_frame
 	wheel.position = main.city_toolbar.brush_size_input.get_global_rect().get_center()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	root.push_input(wheel, true)
