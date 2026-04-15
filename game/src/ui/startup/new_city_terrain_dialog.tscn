@@ -3,7 +3,7 @@
 [ext_resource type="Script" path="res://src/ui/startup/new_city_terrain_dialog.gd" id="1_yoq8j"]
 [ext_resource type="Script" path="res://src/ui/shared/dialog_title_bar.gd" id="2_pepar"]
 
-[ext_resource type="Texture2D" path="res://artwork/ui/refresh.svg" id="3_refresh"]
+[ext_resource type="Script" path="res://src/ui/shared/refresh_icon_button.gd" id="3_refresh"]
 
 [node name="NewCityOverlay" type="ColorRect"]
 visible = true
@@ -14,14 +14,16 @@ anchor_bottom = 1.0
 color = Color(0, 0, 0, 0.22)
 script = ExtResource("1_yoq8j")
 
-[node name="Center" type="CenterContainer" parent="."]
+[node name="Center" type="Control" parent="."]
 layout_mode = 0
 anchor_right = 1.0
 anchor_bottom = 1.0
 
 [node name="NewCityDialog" type="PanelContainer" parent="Center"]
-custom_minimum_size = Vector2(820, 600)
-layout_mode = 2
+custom_minimum_size = Vector2(820, 0)
+layout_mode = 0
+offset_right = 820.0
+offset_bottom = 540.0
 theme_type_variation = "PanelPadding8_8_8_8"
 
 [node name="Content" type="VBoxContainer" parent="Center/NewCityDialog"]
@@ -44,7 +46,7 @@ theme_override_constants/separation = 18
 custom_minimum_size = Vector2(340, 0)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_override_constants/separation = 10
+theme_override_constants/separation = 6
 
 [node name="CityDetailsLabel" type="Label" parent="Center/NewCityDialog/Content/Body/Fields"]
 layout_mode = 2
@@ -55,7 +57,7 @@ text = "City Details"
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 8
+theme_override_constants/v_separation = 5
 columns = 2
 
 [node name="CityNameLabel" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
@@ -75,7 +77,7 @@ max_length = 30
 
 [node name="RandomName" type="Button" parent="Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow"]
 layout_mode = 2
-icon = ExtResource("3_refresh")
+script = ExtResource("3_refresh")
 custom_minimum_size = Vector2(28, 0)
 icon_alignment = 1
 tooltip_text = "Generate a random city name"
@@ -142,11 +144,11 @@ selected = 0
 item_count = 4
 popup/item_0/text = "128 × 128"
 popup/item_0/id = 128
-popup/item_1/text = "256 × 256 (experimental)"
+popup/item_1/text = "256 × 256"
 popup/item_1/id = 256
-popup/item_2/text = "384 × 384 (experimental)"
+popup/item_2/text = "384 × 384"
 popup/item_2/id = 384
-popup/item_3/text = "512 × 512 (experimental)"
+popup/item_3/text = "512 × 512"
 popup/item_3/id = 512
 
 [node name="NativeMapsSpacer" type="Control" parent="Center/NewCityDialog/Content/Body/Fields/CityFields"]
@@ -170,7 +172,7 @@ text = "Terrain"
 layout_mode = 2
 size_flags_horizontal = 3
 theme_override_constants/h_separation = 12
-theme_override_constants/v_separation = 8
+theme_override_constants/v_separation = 5
 columns = 2
 
 [node name="FeaturesLabel" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
@@ -178,9 +180,11 @@ layout_mode = 2
 text = "Features"
 horizontal_alignment = 2
 
-[node name="OceanRow" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+[node name="OceanRow" type="GridContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
 layout_mode = 2
-theme_override_constants/separation = 16
+columns = 2
+theme_override_constants/h_separation = 8
+theme_override_constants/v_separation = 0
 
 [node name="OceanInput" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow"]
 layout_mode = 2
@@ -189,15 +193,6 @@ text = "Ocean"
 [node name="RiverInput" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow"]
 layout_mode = 2
 text = "River"
-
-[node name="LayoutLabel" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
-layout_mode = 2
-text = "Layout"
-horizontal_alignment = 2
-
-[node name="LayoutInput" type="OptionButton" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
-layout_mode = 2
-size_flags_horizontal = 3
 
 [node name="HillsRow" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
 layout_mode = 2
@@ -327,6 +322,7 @@ expand_mode = 1
 stretch_mode = 5
 
 [node name="PreviewStatus" type="Label" parent="Center/NewCityDialog/Content/Body/Preview"]
+custom_minimum_size = Vector2(320, 0)
 layout_mode = 2
 text = "Generating terrain..."
 horizontal_alignment = 1

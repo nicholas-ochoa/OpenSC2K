@@ -13,6 +13,8 @@ func _run() -> void:
 	await process_frame
 	main._open_new_city_dialog()
 	main._make_new_city_preview()
+	while main.new_city_preview_job != null:
+		await process_frame
 	main._create_new_city_unchecked()
 	main._select_tool_group(0)
 	main._select_subtool(5)

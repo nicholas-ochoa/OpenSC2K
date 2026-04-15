@@ -11,9 +11,34 @@ func _run() -> void:
 	await process_frame
 	main._open_new_city_dialog()
 	var dialog: NewCityTerrainDialog = main.new_city_dialog
+	await process_frame
+	await process_frame
+	assert(dialog.panel.size.y < 600, str(dialog.panel.size))
 	assert(not dialog.compatibility_input.button_pressed)
 	assert(dialog.native_maps_input.button_pressed)
 	assert(dialog.done_button.disabled and main.new_city_session.preview_document == null)
+	for index in dialog.size_input.item_count:
+		assert("experimental" not in dialog.size_input.get_item_text(index))
+	dialog.feature_inputs.branch.button_pressed = true
+	dialog.feature_inputs.bay.button_pressed = true
+	assert(dialog.selected_features() == ["branch", "bay"])
+	dialog.feature_inputs.island.button_pressed = true
+	assert(dialog.river_input.disabled and not dialog.river_input.button_pressed)
+	assert(dialog.feature_inputs.branch.disabled and not dialog.feature_inputs.branch.button_pressed)
+	dialog.feature_inputs.islands.button_pressed = true
+	assert(not dialog.feature_inputs.island.button_pressed)
+	dialog.reset_features()
+	dialog.river_input.button_pressed = true
+	var peek := InputEventMouseButton.new()
+	peek.position = dialog.panel.get_global_rect().get_center()
+	peek.button_index = MOUSE_BUTTON_RIGHT
+	peek.pressed = true
+	root.push_input(peek, true)
+	assert(dialog.panel.modulate.a == 0.0 and dialog.visible)
+	peek.position = Vector2.ZERO
+	peek.pressed = false
+	root.push_input(peek, true)
+	assert(dialog.panel.modulate.a == 1.0)
 	dialog.size_input.select(3)
 	dialog.compatibility_input.button_pressed = true
 	assert(dialog.size_input.get_selected_id() == 128)
@@ -22,6 +47,12 @@ func _run() -> void:
 	main.audio_controller.application_has_focus = true
 	main.audio_controller.wave_sound_gate.stop()
 	main._make_new_city_preview()
+	assert(dialog.generating and dialog.done_button.disabled)
+	var frames := 0
+	while main.new_city_preview_job != null:
+		frames += 1
+		await process_frame
+	assert(frames > 1 and not dialog.generating)
 	assert(main.audio_controller.wave_sound_gate.current_sound_id == 529)
 	assert(dialog.candidate_valid and not dialog.done_button.disabled)
 	assert(dialog.landscape_background.texture != null)
@@ -40,6 +71,8 @@ func _run() -> void:
 	dialog._random_name()
 	assert(dialog.city_name_input.text.length() <= 30)
 	main._make_new_city_preview()
+	while main.new_city_preview_job != null:
+		await process_frame
 	var generated: Sc2File = main.new_city_session.preview_document
 	main._create_new_city_unchecked()
 	assert(main.landscape_editor)
@@ -78,7 +111,7 @@ func _run() -> void:
 	assert(main.city_toolbar.brush_shape_input.selected == 1 and main.map_view.brush_round)
 	assert(main.city_toolbar.brush_size_input.get_parent() == main.city_toolbar.brush_shape_input.get_parent())
 	var random_button: Button = dialog.city_name_input.get_parent().get_node("RandomName")
-	assert(random_button.position.x > dialog.city_name_input.position.x and random_button.icon != null)
+	assert(random_button.position.x > dialog.city_name_input.position.x and random_button is RefreshIconButton)
 	var wheel := InputEventMouseButton.new()
 	wheel.position = main.city_toolbar.brush_size_input.get_global_rect().get_center()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
@@ -88,6 +121,7 @@ func _run() -> void:
 	root.push_input(wheel, true)
 	assert(main.city_toolbar.brush_size_input.value == 2)
 	await create_timer(0.06).timeout
+	wheel.position = main.city_toolbar.brush_size_input.get_global_rect().get_center()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	root.push_input(wheel, true)
 	assert(main.city_toolbar.brush_size_input.value == 1)
@@ -125,6 +159,8 @@ func _run() -> void:
 	assert(main.current_document.serialize().data == original and main.landscape_editor)
 	main._reopen_terrain_dialog()
 	main._make_new_city_preview()
+	while main.new_city_preview_job != null:
+		await process_frame
 	main._create_new_city()
 	assert(main.landscape_editor and not dialog.visible)
 	main._start_city()
@@ -136,6 +172,19 @@ func _run() -> void:
 		await process_frame
 		assert(is_equal_approx(main.city_toolbar.size.x, toolbar_width))
 		assert(main.city_toolbar.get_node("Margin").size.x <= toolbar_width)
+	main._open_new_city_dialog()
+	main._make_new_city_preview()
+	main._cancel_new_city()
+	while main.new_city_preview_job != null:
+		await process_frame
+	assert(not dialog.visible and main.new_city_session.preview_document == null)
+	main._open_new_city_dialog()
+	main._make_new_city_preview()
+	dialog.hills_input.value += 1
+	while main.new_city_preview_job != null:
+		await process_frame
+	assert(not dialog.candidate_valid and main.new_city_session.preview_document == null)
+	main._cancel_new_city()
 	main.queue_free()
 	await process_frame
 	print("New City workflow checks passed")

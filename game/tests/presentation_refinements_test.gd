@@ -43,6 +43,8 @@ func _run() -> void:
 	assert(magnifications.has(1) and magnifications.has(2) and magnifications.has(3))
 	main._open_new_city_dialog()
 	main._make_new_city_preview()
+	while main.new_city_preview_job != null:
+		await process_frame
 	main._create_new_city_unchecked()
 	await process_frame
 	main._select_tool_group(0)

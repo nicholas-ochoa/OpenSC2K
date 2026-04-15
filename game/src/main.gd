@@ -208,6 +208,7 @@ var scurk_city_export_dialog: FileDialog
 var scurk_print_pdf_dialog: FileDialog
 var new_city_dialog: NewCityTerrainDialog
 var new_city_session := NewCitySession.new()
+var new_city_preview_job: NewCityPreviewJob
 var new_city_return_to_main_menu := false
 var landscape_brush_command: Dictionary = {}
 var landscape_editor := false
@@ -478,6 +479,7 @@ func _notification(what: int) -> void:
 
 
 func _process(delta: float) -> void:
+	_poll_new_city_preview()
 	_update_network_preview()
 	_update_keyboard_camera(delta)
 
@@ -2415,8 +2417,7 @@ func _open_new_city_dialog() -> void:
 	new_city_dialog.mayor_name_input.text = app_default_mayor_name
 	new_city_dialog.difficulty_input.select(0)
 	new_city_dialog.year_input.select(0)
-	new_city_dialog.layout_input.select(0)
-	new_city_dialog.layout_input.item_selected.emit(0)
+	new_city_dialog.reset_features()
 	new_city_dialog.ocean_input.button_pressed = NewTerrain.DEFAULT_OCEAN
 	new_city_dialog.river_input.button_pressed = NewTerrain.DEFAULT_RIVER
 	new_city_dialog.hills_input.value = NewTerrain.DEFAULT_HILLS
@@ -2455,7 +2456,8 @@ func _update_new_city_slider_labels() -> void:
 
 func _new_city_terrain_options() -> Dictionary:
 	return OriginalCompatibility.terrain_options({
-		"layout": NewCityTerrainDialog.LAYOUTS[new_city_dialog.layout_input.selected],
+		"features": new_city_dialog.selected_features(),
+		"smooth_slopes": true,
 		"size": new_city_dialog.size_input.get_selected_id(),
 		"native_maps": new_city_dialog.native_maps_input.button_pressed,
 		"ocean": new_city_dialog.ocean_input.button_pressed,
@@ -2467,6 +2469,8 @@ func _new_city_terrain_options() -> Dictionary:
 
 
 func _make_new_city_preview() -> void:
+	if new_city_preview_job != null:
+		return
 	new_city_dialog.preview_timer.stop()
 	new_city_dialog.invalidate()
 	audio_controller.play_sound_events([529], city == null or city.sound_enabled(), "city", IsometricRenderer.VIEW_LARGE)
@@ -2479,30 +2483,39 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 
 		return false
 
-	var template_path := reference_root.path_join("DEFAULT.SC2")
-	var options := _new_city_terrain_options()
-	var generated := new_city_session.generate_preview(
-		template_path, options, advance_seed
-	)
-
-	if not generated.ok:
-		if generated.stage == "template":
-			new_city_dialog.preview_status.text = "Cannot load the default city."
-		elif generated.stage == "city":
-			new_city_dialog.preview_status.text = "Cannot display the generated terrain."
-		else:
-			new_city_dialog.preview_status.text = (
-				"Cannot generate terrain: %s" % generated.error
-			)
-
+	if new_city_preview_job != null:
 		return false
+	new_city_preview_job = NewCityPreviewJob.new()
+	new_city_preview_job.revision = new_city_dialog.generation_revision
+	var error := new_city_preview_job.start(new_city_session,
+		reference_root.path_join("DEFAULT.SC2"), _new_city_terrain_options(),
+		palette, small_medium_sprites, advance_seed)
+	if error != OK:
+		new_city_preview_job = null
+		new_city_dialog.preview_status.text = "Cannot start terrain generation."
+		return false
+	new_city_dialog.set_generating(true)
+	return true
 
+
+func _poll_new_city_preview() -> void:
+	if new_city_preview_job == null or new_city_preview_job.thread.is_alive():
+		return
+	var job := new_city_preview_job
+	var generated: Dictionary = job.thread.wait_to_finish()
+	new_city_preview_job = null
+	new_city_dialog.set_generating(false)
+	if not new_city_dialog.visible or job.revision != new_city_dialog.generation_revision:
+		return
+	if not generated.ok:
+		new_city_dialog.preview_status.text = "Cannot generate terrain: %s" % generated.error
+		return
+	new_city_session = job.session
+	new_city_dialog.landscape_background.texture = ImageTexture.create_from_image(generated.landscape_image)
+	new_city_dialog.preview_view.texture = ImageTexture.create_from_image(generated.minimap_image)
 	new_city_dialog.candidate_valid = true
 	new_city_dialog.done_button.disabled = false
-	var preview_city: CityState = generated.city
-	new_city_dialog.show_landscape(preview_city, palette, small_medium_sprites)
-	var image := Minimap.create_image(preview_city, palette, "structures")
-	new_city_dialog.preview_view.texture = ImageTexture.create_from_image(image)
+
 	new_city_dialog.preview_status.text = (
 		"Water: %s tiles   Trees: %s tiles   Height: %s–%s"
 		% [
@@ -2513,10 +2526,9 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 		]
 	)
 
-	return true
-
 
 func _cancel_new_city() -> void:
+	new_city_dialog.invalidate()
 	new_city_dialog.preview_timer.stop()
 	new_city_dialog.hide()
 	new_city_session.clear()
@@ -4235,6 +4247,9 @@ func _static_signature_for_mode(mode: String, view_size: int) -> Array:
 
 
 func _exit_tree() -> void:
+	if new_city_preview_job != null and new_city_preview_job.thread.is_started():
+		new_city_preview_job.thread.wait_to_finish()
+	new_city_preview_job = null
 	_close_region_cache()
 
 	if frame_simulation != null:

@@ -18,6 +18,8 @@ func run_check() -> void:
 		main.new_city_dialog.size_input.item_selected.emit(selection)
 		assert(main.new_city_dialog.done_button.disabled)
 		main._make_new_city_preview()
+		while main.new_city_preview_job != null:
+			await process_frame
 		assert(main.new_city_session.preview_document.map_size == edge)
 		assert(main.new_city_session.preview_options.get("size") == edge)
 		assert(main.new_city_dialog.preview_view.texture.get_width() == edge)

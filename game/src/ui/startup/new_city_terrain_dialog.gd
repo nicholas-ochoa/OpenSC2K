@@ -16,7 +16,14 @@ var difficulty_input: OptionButton
 var year_input: OptionButton
 var size_input: OptionButton
 var compatibility_input: CheckBox
-var layout_input: OptionButton
+var feature_inputs: Dictionary = {}
+var generating := false
+var generation_revision := 0
+var _dragging := false
+var _peek := false
+var _drag_offset := Vector2.ZERO
+var _busy_overlay: Control
+@onready var panel: PanelContainer = $Center/NewCityDialog
 var done_button: Button
 var candidate_valid := false
 var landscape_background: TextureRect
@@ -66,18 +73,18 @@ func _ready() -> void:
 	preview_status = get_node("Center/NewCityDialog/Content/Body/Preview/PreviewStatus")
 	preview_timer = get_node("PreviewTimer")
 	compatibility_input = $Center/NewCityDialog/Content/Buttons/CompatibilityInput
-	layout_input = $Center/NewCityDialog/Content/Body/Fields/TerrainFields/LayoutInput
 	done_button = $Center/NewCityDialog/Content/Buttons/Start
-	for title in ["Original features", "Intersecting rivers", "Y river", "Split and rejoin river", "Ocean bay", "One large island", "Two large islands"]:
-		layout_input.add_item(title)
-	layout_input.item_selected.connect(func(_index: int) -> void:
-		var classic := layout_input.selected == 0
-		ocean_input.disabled = not classic
-		river_input.disabled = not classic
-		if not classic:
-			ocean_input.set_pressed_no_signal(LAYOUTS[layout_input.selected] in ["bay", "island", "islands"])
-			river_input.set_pressed_no_signal(not ocean_input.button_pressed)
-		preview_requested.emit())
+	var feature_titles := {"crossing": "Intersecting rivers", "branch": "Y river",
+		"rejoin": "Split and rejoin river", "bay": "Ocean bay", "island": "One large island", "islands": "Two islands"}
+	for key in feature_titles:
+		var check := CheckBox.new()
+		check.text = feature_titles[key]
+		$Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow.add_child(check)
+		feature_inputs[key] = check
+		check.toggled.connect(_feature_changed.bind(key))
+	visibility_changed.connect(_visibility_changed)
+	resized.connect(_clamp_panel)
+	_build_busy_overlay()
 	compatibility_input.toggled.connect(_compatibility_changed)
 	$Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow/RandomName.pressed.connect(_random_name)
 	var title_bar: DialogTitleBar = $Center/NewCityDialog/Content/TitleBar
@@ -102,7 +109,7 @@ func _ready() -> void:
 	terrain_icons["Water"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/WaterRow/TerrainPreview")
 	terrain_icons["Trees"] = get_node("Center/NewCityDialog/Content/Body/Fields/TerrainFields/TreesRow/TerrainPreview")
 	hills_input.tooltip_text = "Original range: 0–47. Controls hill height. Landforms scale with map size."
-	water_input.tooltip_text = "Original layout: stepped sea level and downhill streams. New layouts: wider rivers or more ocean."
+	water_input.tooltip_text = "Original features: stepped sea level and downhill streams. Extra features: wider rivers or more ocean."
 	trees_input.tooltip_text = "Original range: 0–47. Tree cluster count grows with the square of this value."
 	set_control_graphics(control_graphics)
 
@@ -140,17 +147,129 @@ func _compatibility_changed(enabled: bool) -> void:
 
 func invalidate() -> void:
 	candidate_valid = false
+	generation_revision += 1
 	done_button.disabled = true
 	preview_status.text = "Settings changed. Click Regenerate Terrain."
 
 
 func _random_name() -> void:
-	city_name_input.text = CityNameGenerator.generate(LAYOUTS[layout_input.selected])
+	var selected := selected_features()
+	var feature := "classic"
+	for key in ["islands", "island", "bay", "rejoin", "branch", "crossing"]:
+		if key in selected:
+			feature = key
+			break
+	city_name_input.text = CityNameGenerator.generate(feature)
 	preview_requested.emit()
 
 
-func show_landscape(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
-	var rendered := CityIsometricRenderer.create_image(city, palette, sprites,
-		CityIsometricRenderer.VIEW_SMALL, 0, false, false, false, false)
-	if rendered.get("ok", false):
-		landscape_background.texture = ImageTexture.create_from_image(rendered.image)
+func selected_features() -> Array:
+	var result: Array = []
+	for key in feature_inputs:
+		if feature_inputs[key].button_pressed:
+			result.append(key)
+	return result
+
+
+func reset_features() -> void:
+	for check in feature_inputs.values():
+		check.set_pressed_no_signal(false)
+	_feature_changed(false, "")
+
+
+func _feature_changed(enabled: bool, key: String) -> void:
+	if enabled and key in ["island", "islands"]:
+		feature_inputs["islands" if key == "island" else "island"].set_pressed_no_signal(false)
+	var island: bool = feature_inputs.island.button_pressed or feature_inputs.islands.button_pressed
+	for check in [river_input, feature_inputs.crossing, feature_inputs.branch, feature_inputs.rejoin]:
+		check.disabled = island
+		if island:
+			check.set_pressed_no_signal(false)
+	preview_requested.emit()
+
+
+func _build_busy_overlay() -> void:
+	_busy_overlay = Control.new()
+	_busy_overlay.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	add_child(_busy_overlay)
+	var center := CenterContainer.new()
+	center.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	_busy_overlay.add_child(center)
+	var box := PanelContainer.new()
+	box.theme_type_variation = "PanelPadding8_8_8_8"
+	center.add_child(box)
+	var label := Label.new()
+	label.text = "Generating…"
+	label.custom_minimum_size = Vector2(180, 48)
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	box.add_child(label)
+	_busy_overlay.hide()
+
+
+func set_generating(value: bool) -> void:
+	generating = value
+	_busy_overlay.visible = value
+	if value:
+		preview_status.text = "Generating…"
+
+
+func _visibility_changed() -> void:
+	panel.modulate.a = 1.0
+	_busy_overlay.modulate.a = 1.0
+	color.a = 0.22
+	_peek = false
+	_dragging = false
+	if visible:
+		panel.reset_size()
+		panel.position = ((size - panel.size) * 0.5).round()
+		_center_panel.call_deferred()
+
+
+func _center_panel() -> void:
+	panel.reset_size()
+	panel.position = ((size - panel.size) * 0.5).round()
+	_clamp_panel()
+
+
+func _clamp_panel() -> void:
+	if panel == null:
+		return
+	panel.position = panel.position.clamp(Vector2.ZERO, (size - panel.size).max(Vector2.ZERO)).round()
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT and is_node_ready():
+		panel.modulate.a = 1.0
+		_busy_overlay.modulate.a = 1.0
+		color.a = 0.22
+		_peek = false
+		_dragging = false
+
+
+func _input(event: InputEvent) -> void:
+	if not visible:
+		return
+	if event is InputEventMouseButton:
+		if event.button_index == MOUSE_BUTTON_RIGHT:
+			if not event.pressed or panel.get_global_rect().has_point(event.position):
+				_peek = event.pressed
+				panel.modulate.a = 0.0 if _peek else 1.0
+				_busy_overlay.modulate.a = panel.modulate.a
+				color.a = 0.0 if _peek else 0.22
+				get_viewport().set_input_as_handled()
+		elif event.button_index == MOUSE_BUTTON_LEFT:
+			var title: DialogTitleBar = $Center/NewCityDialog/Content/TitleBar
+			if event.pressed and title.get_global_rect().has_point(event.position) and not title.close_button.get_global_rect().has_point(event.position):
+				_dragging = true
+				_drag_offset = event.position - panel.global_position
+				get_viewport().set_input_as_handled()
+			elif not event.pressed and _dragging:
+				_dragging = false
+				get_viewport().set_input_as_handled()
+	elif event is InputEventMouseMotion and _dragging:
+		panel.global_position = event.position - _drag_offset
+		_clamp_panel()
+		get_viewport().set_input_as_handled()
+	if _peek:
+		get_viewport().set_input_as_handled()

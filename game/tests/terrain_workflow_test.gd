@@ -28,6 +28,8 @@ func _run() -> void:
 	assert(background.static_image.get_pixel(0, 0).a == 0.0)
 	main._open_new_city_dialog()
 	main._make_new_city_preview()
+	while main.new_city_preview_job != null:
+		await process_frame
 	main._create_new_city_unchecked()
 	await process_frame
 	assert(main.landscape_editor and main.city_toolbar.start_city_button.visible)
