@@ -6,7 +6,7 @@ const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
 const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
 
-const LAYOUTS := ["classic", "meander", "delta", "peninsula", "crossing", "branch", "rejoin", "bay", "island", "islands"]
+const LAYOUTS := ["classic", "meander", "delta", "peninsula", "crossing", "branch", "rejoin", "bay", "island", "islands", "plateau", "ridge", "valley", "rolling", "basin", "canyon", "cliffs", "lake", "lakes"]
 const MAP_SIZE := 128
 const TILE_COUNT := MAP_SIZE * MAP_SIZE
 const MISC_SIZE := 4800
@@ -64,9 +64,9 @@ static func generate(
 			return _failure("unknown terrain feature")
 	var extended := not selected.is_empty() or (smooth_slopes and has_ocean and has_river)
 	var island := "island" in selected or "islands" in selected
-	var ocean_requested := has_ocean or "delta" in selected or "peninsula" in selected
+	var ocean_requested := has_ocean or "delta" in selected or "peninsula" in selected or "cliffs" in selected
 	has_ocean = ocean_requested or island or "bay" in selected
-	has_river = not island and (has_river or "delta" in selected or "meander" in selected or "crossing" in selected or "branch" in selected or "rejoin" in selected)
+	has_river = not island and (has_river or "valley" in selected or "canyon" in selected or "delta" in selected or "meander" in selected or "crossing" in selected or "branch" in selected or "rejoin" in selected)
 	var map_edge: int = document.map_size if document != null else 128
 
 	if document == null or not document.is_valid():
@@ -127,7 +127,7 @@ static func generate(
 
 	var water_level := (water + 4) >> 3
 
-	if has_ocean or has_river:
+	if has_ocean or has_river or "lake" in selected or "lakes" in selected:
 		water_level = maxi(water_level, 4)
 
 	if has_ocean and not extended:
@@ -142,7 +142,7 @@ static func generate(
 	_smooth(heights)
 
 	if extended:
-		TerrainFeatures.carve(heights, coast_flags, water_level, selected, ocean_requested, has_river, staged_game, water)
+		TerrainFeatures.carve(heights, coast_flags, water_level, selected, ocean_requested, has_river, staged_game, water, hills)
 		_grade_layout(heights)
 
 	if map_edge != 128:

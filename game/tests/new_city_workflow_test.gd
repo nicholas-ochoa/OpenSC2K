@@ -13,13 +13,14 @@ func _run() -> void:
 	var dialog: NewCityTerrainDialog = main.new_city_dialog
 	await process_frame
 	await process_frame
-	assert(dialog.panel.size.y < 720 and dialog.panel.size.x >= 960, str(dialog.panel.size))
+	assert(dialog.panel.size.y < 790 and dialog.panel.size.x >= 960, str(dialog.panel.size))
 	var feature_grid: GridContainer = dialog.ocean_input.get_parent()
 	var titles: Array[String] = []
 	for check in feature_grid.get_children():
 		titles.append(check.text)
 	assert(titles == ["Ocean", "Ocean bay", "River", "Meandering River", "Forked River",
-		"Split and rejoin river", "Intersecting rivers", "River Delta", "Peninsula", "Single Island", "Two islands"])
+		"Split and rejoin river", "Intersecting rivers", "River Delta", "Single Lake", "Two Lakes", "Plateau", "Mountain Ridge", "River Valley",
+		"Rolling Hills", "Basin", "Canyon", "Coastal Cliffs", "Single Island", "Two islands", "Peninsula"])
 	var label: Label = feature_grid.get_parent().get_node("FeaturesLabel")
 	assert(is_equal_approx(label.get_global_rect().get_center().y, dialog.ocean_input.get_global_rect().get_center().y))
 	var tip: Label = dialog.panel.get_node("Content/Buttons/HideTip")
@@ -32,6 +33,30 @@ func _run() -> void:
 	assert(dialog.done_button.disabled and main.new_city_session.preview_document == null)
 	for index in dialog.size_input.item_count:
 		assert("experimental" not in dialog.size_input.get_item_text(index))
+	for key in ["bay", "delta", "peninsula", "island", "islands", "meander", "crossing", "branch", "rejoin", "valley", "canyon", "cliffs"]:
+		dialog.reset_features()
+		dialog.ocean_input.button_pressed = false
+		dialog.river_input.button_pressed = false
+		dialog.feature_inputs[key].button_pressed = true
+		if key in ["bay", "delta", "peninsula", "island", "islands", "cliffs"]:
+			assert(dialog.ocean_input.button_pressed)
+		if key in ["delta", "meander", "crossing", "branch", "rejoin", "valley", "canyon"]:
+			assert(dialog.river_input.button_pressed)
+		dialog.ocean_input.button_pressed = false
+		dialog.river_input.button_pressed = false
+		assert(not dialog.feature_inputs[key].button_pressed)
+	for group in dialog.EXCLUSIVE_GROUPS:
+		for selected in group:
+			dialog.reset_features()
+			dialog.feature_inputs[selected].button_pressed = true
+			for other in group:
+				if other != selected:
+					assert(dialog.feature_inputs[other].disabled)
+					assert(dialog.feature_inputs[selected].text in dialog.feature_inputs[other].tooltip_text)
+			dialog.feature_inputs[selected].button_pressed = false
+			for other in group:
+				assert(not dialog.feature_inputs[other].disabled)
+	dialog.reset_features()
 	dialog.feature_inputs.branch.button_pressed = true
 	dialog.feature_inputs.bay.button_pressed = true
 	assert(dialog.selected_features() == ["branch", "bay"])

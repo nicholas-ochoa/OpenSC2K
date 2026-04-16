@@ -109,6 +109,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/new_city_workflow_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/terrain_layout_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/meandering_terrain_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/terrain_elevation_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/terrain_surface_continuity_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/landscape_brush_test.gd
 

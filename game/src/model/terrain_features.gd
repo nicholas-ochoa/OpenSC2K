@@ -3,7 +3,7 @@ extends RefCounted
 
 
 static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
-	features: Array, ocean: bool, river: bool, random: GameLcgRandom, water: int) -> void:
+	features: Array, ocean: bool, river: bool, random: GameLcgRandom, water: int, hills: int = 12) -> void:
 	var wetness := float(water) / 47.0
 	var angle := float(random.next_mod(6283)) / 1000.0
 	var phase := float(random.next_mod(6283)) / 1000.0
@@ -40,6 +40,12 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 			var spread := (float(branch) - 1.0) * 0.42
 			var end := Vector2(spread + 0.04 * sin(phase + branch), 0.9)
 			paths.append(_channel(mouth, end, spread * 0.20, phase + branch))
+
+	if "peninsula" in features and not islands:
+		# route the shared river beside the neck instead of through the headland
+		for index in paths.size():
+			for point_index in paths[index].size():
+				paths[index][point_index].x -= 0.24
 
 	var oxbows: Array[PackedVector2Array] = []
 	if "meander" in features and not islands:
@@ -78,13 +84,13 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 					var bay := Vector2(point.x / lerpf(0.27, 0.36, wetness), (point.y - bay_center) / lerpf(0.65, 0.77, wetness)).length()
 					wet = wet or bay < 1.0 + rough * 0.20 + 0.08 * sin(point.x * 19.0 + phase)
 				if "peninsula" in features:
-					var axis := 0.19 + 0.035 * sin(point.y * 8.0 + phase)
-					var neck := (point.x - axis) / lerpf(0.19, 0.14, wetness)
-					var coast := lerpf(0.12, 0.02, wetness) + 0.43 * exp(-neck * neck) + rough * 0.055
+					var axis := 0.08 + 0.025 * sin(point.y * 8.0 + phase)
+					var neck := (point.x - axis) / lerpf(0.17, 0.14, wetness)
+					var coast := lerpf(-0.20, -0.25, wetness) + 0.55 * exp(-pow(absf(neck), 4.0)) + rough * 0.025
 					# keep the headland attached to the mainland; channels can cross it
 					wet = point.y > coast
 					if "bay" in features and point.x < axis - 0.15:
-						wet = wet or point.y > -0.06 + rough * 0.06
+						wet = wet or point.y > -0.28 + rough * 0.06
 				if not wet:
 					var local_width := width * (1.0 + rough * 0.50 + 0.12 * sin(point.y * 31.0 + phase))
 					if "meander" in features:
@@ -111,6 +117,10 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 					var index := x * 128 + y
 					heights[index] = maxi(0, sea - 2)
 					flags[index] = 0
+
+	if "lake" in features or "lakes" in features:
+		TerrainLakes.carve(heights, flags, sea, 2 if "lakes" in features else 1, random, water)
+	TerrainElevation.apply(heights, sea, features, angle, phase, noise, hills)
 
 
 static func _meander_channels(paths: Array[PackedVector2Array], width: float,

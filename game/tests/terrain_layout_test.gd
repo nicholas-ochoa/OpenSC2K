@@ -6,6 +6,13 @@ func _initialize() -> void:
 
 
 func _run() -> void:
+	_check_peninsula_headland()
+	for lake in ["lake", "lakes"]:
+		for seed in [1, 29, 719]:
+			var doc := EmptyCityTemplate.create()
+			assert(NewCityTerrain.generate(doc, false, false, 12, 5, 0,
+				SimRandom.new(seed), GameLcgRandom.new(seed), lake).ok)
+			assert(_components(CityState.from_document(doc), true) == (2 if lake == "lakes" else 1))
 	var names := {}
 	var random := RandomNumberGenerator.new()
 	random.seed = 123
@@ -17,6 +24,8 @@ func _run() -> void:
 	assert(names.size() > 1000)
 	# Compare water coverage at both ends of the new-layout Water setting.
 	for layout in NewCityTerrain.LAYOUTS.slice(1):
+		if layout in ["plateau", "ridge", "rolling", "basin"]:
+			continue
 		var previous_water := -1
 		for water in [0, 47]:
 			var source := EmptyCityTemplate.create()
@@ -111,3 +120,26 @@ func _components(city: CityState, water: bool) -> int:
 						seen[next_index] = 1
 						queue.append(next)
 	return count
+
+
+func _check_peninsula_headland() -> void:
+	for seed in [1, 29, 719, 5000]:
+		for features in [["peninsula"], ["peninsula", "bay"]]:
+			var heights := PackedInt32Array()
+			heights.resize(128 * 128)
+			heights.fill(6)
+			var flags := PackedByteArray()
+			flags.resize(128 * 128)
+			var random := GameLcgRandom.new(seed)
+			var angle := float(GameLcgRandom.new(seed).next_mod(6283)) / 1000.0
+			TerrainFeatures.carve(heights, flags, 5, features, true, false, random, 5)
+			# The neck and tip stay on-map, with ocean on both sides and beyond the tip.
+			for point in [Vector2(0.08, -0.18), Vector2(0.08, 0.0), Vector2(0.08, 0.25)]:
+				assert(_peninsula_height(heights, point, angle) >= 5)
+			for point in [Vector2(-0.20, 0.15), Vector2(0.35, 0.15), Vector2(0.08, 0.46)]:
+				assert(_peninsula_height(heights, point, angle) < 5, "Headland is missing ocean on one of three sides")
+
+
+func _peninsula_height(heights: PackedInt32Array, point: Vector2, angle: float) -> int:
+	var tile := Vector2i(((point.rotated(angle) + Vector2(0.5, 0.5)) * 127.0).round())
+	return heights[tile.x * 128 + tile.y]
