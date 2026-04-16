@@ -55,10 +55,10 @@ func _run() -> void:
 	for index in range(1, 256):
 		var before := smooth_paths[0][index] - smooth_paths[0][index - 1]
 		var after := smooth_paths[0][index + 1] - smooth_paths[0][index]
-		assert(absf(before.angle_to(after)) < 0.1, "Sharp bend in the channel")
+		assert(absf(before.angle_to(after)) < 0.15, "Sharp bend in the channel")
 		if before.x * after.x < 0:
 			turns += 1
-	assert(turns >= 2 and turns <= 3, "Keep bends broad")
+	assert(turns >= 3 and turns <= 4, "Keep bends broad")
 	print("Meandering River and oxbow checks passed")
 	quit()
 

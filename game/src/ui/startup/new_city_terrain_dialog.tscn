@@ -186,7 +186,7 @@ vertical_alignment = 1
 layout_mode = 2
 columns = 2
 theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 6
+theme_override_constants/v_separation = 3
 
 [node name="OceanInput" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow"]
 layout_mode = 2
@@ -353,7 +353,6 @@ size_flags_horizontal = 0
 theme_type_variation = "HelpLabel"
 theme_override_font_sizes/font_size = 12
 text = "Hold the right mouse button to hide this dialog."
-autowrap_mode = 3
 
 [node name="Cancel" type="Button" parent="Center/NewCityDialog/Content/Buttons"]
 custom_minimum_size = Vector2(80, 30)

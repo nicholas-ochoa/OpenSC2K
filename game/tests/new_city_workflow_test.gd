@@ -24,6 +24,8 @@ func _run() -> void:
 	assert(is_equal_approx(label.get_global_rect().get_center().y, dialog.ocean_input.get_global_rect().get_center().y))
 	var tip: Label = dialog.panel.get_node("Content/Buttons/HideTip")
 	assert(tip.get_index() + 1 == tip.get_parent().get_node("Cancel").get_index())
+	assert(tip.autowrap_mode == TextServer.AUTOWRAP_OFF)
+	assert(feature_grid.get_theme_constant("v_separation") == 3)
 	assert(tip.theme_type_variation == "HelpLabel" and "right mouse button" in tip.text)
 	assert(not dialog.compatibility_input.button_pressed)
 	assert(dialog.native_maps_input.button_pressed)
@@ -62,11 +64,14 @@ func _run() -> void:
 	main.audio_controller.wave_sound_gate.stop()
 	main._make_new_city_preview()
 	assert(dialog.generating and dialog.done_button.disabled)
+	assert(dialog._busy_spinner.is_visible_in_tree() and dialog._busy_spinner.is_processing())
 	var frames := 0
 	while main.new_city_preview_job != null:
 		frames += 1
 		await process_frame
 	assert(frames > 1 and not dialog.generating)
+	assert(not dialog._busy_spinner.is_processing())
+	assert(dialog._busy_spinner.angle > 0.0)
 	assert(main.audio_controller.wave_sound_gate.current_sound_id == 529)
 	assert(dialog.candidate_valid and not dialog.done_button.disabled)
 	assert(dialog.landscape_background.texture != null)

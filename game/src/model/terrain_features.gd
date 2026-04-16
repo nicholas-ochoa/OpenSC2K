@@ -116,7 +116,7 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 static func _meander_channels(paths: Array[PackedVector2Array], width: float,
 	angle: float, phase: float, random: GameLcgRandom) -> Array[PackedVector2Array]:
 	var amplitude := 0.19 + float(random.next_mod(60)) / 1000.0
-	var frequency := TAU * (1.05 + float(random.next_mod(350)) / 1000.0)
+	var frequency := TAU * (1.45 + float(random.next_mod(350)) / 1000.0)
 	var bends: Array[Vector2] = []
 	for path_index in paths.size():
 		var path := paths[path_index]
@@ -134,7 +134,8 @@ static func _meander_channels(paths: Array[PackedVector2Array], width: float,
 				bends.append(point)
 
 	var lakes: Array[PackedVector2Array] = []
-	if bends.is_empty() or random.next_mod(3) == 0:
+	# most maps have no oxbows. a suitable bend is still required on selected maps
+	if bends.is_empty() or random.next_mod(100) >= 35:
 		return lakes
 	var first := random.next_mod(bends.size())
 	var limit := 1 + random.next_mod(2)

@@ -23,6 +23,7 @@ var _dragging := false
 var _peek := false
 var _drag_offset := Vector2.ZERO
 var _busy_overlay: Control
+var _busy_spinner: Control
 @onready var panel: PanelContainer = $Center/NewCityDialog
 var done_button: Button
 var candidate_valid := false
@@ -209,12 +210,18 @@ func _build_busy_overlay() -> void:
 	var box := PanelContainer.new()
 	box.theme_type_variation = "PanelPadding8_8_8_8"
 	center.add_child(box)
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 10)
+	box.add_child(row)
+	_busy_spinner = preload("res://src/ui/shared/loading_spinner.gd").new()
+	_busy_spinner.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	row.add_child(_busy_spinner)
 	var label := Label.new()
 	label.text = "Generating…"
-	label.custom_minimum_size = Vector2(180, 48)
+	label.custom_minimum_size = Vector2(140, 48)
 	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	box.add_child(label)
+	row.add_child(label)
 	_busy_overlay.hide()
 
 
