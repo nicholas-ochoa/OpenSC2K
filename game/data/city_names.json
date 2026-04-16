@@ -9,6 +9,9 @@
     "bay": ["{root} Bay", "Port {root}", "{root} Harbor", "{root} Cove"],
     "crossing": ["{root} Crossing", "{root} Bridges", "{root} Waters"],
     "branch": ["{root} Forks", "{root} Rivers", "{root} Bend"],
+    "delta": ["{root} Delta", "{root} Mouth", "{root} Marsh", "Port {root}"],
+    "peninsula": ["{root} Point", "Cape {root}", "{root} Head", "{root} Peninsula"],
+    "meander": ["{root} Bend", "{root} Oxbow", "{root} River", "{root} Banks"],
     "rejoin": ["{root} Loop", "{root} Banks", "{root} Reach"]
   }
 }

@@ -74,7 +74,7 @@ func _ready() -> void:
 	preview_timer = get_node("PreviewTimer")
 	compatibility_input = $Center/NewCityDialog/Content/Buttons/CompatibilityInput
 	done_button = $Center/NewCityDialog/Content/Buttons/Start
-	var feature_titles := {"crossing": "Intersecting rivers", "branch": "Forked River",
+	var feature_titles := {"meander": "Meandering River", "delta": "River Delta", "peninsula": "Peninsula", "crossing": "Intersecting rivers", "branch": "Forked River",
 		"rejoin": "Split and rejoin river", "bay": "Ocean bay", "island": "Single Island", "islands": "Two islands"}
 	for key in feature_titles:
 		var check := CheckBox.new()
@@ -83,11 +83,16 @@ func _ready() -> void:
 		feature_inputs[key] = check
 		check.toggled.connect(_feature_changed.bind(key))
 	var feature_grid: GridContainer = $Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow
-	var ordered_checks := [ocean_input, feature_inputs.bay, river_input,
-		feature_inputs.branch, feature_inputs.rejoin, feature_inputs.crossing,
+	var ordered_checks := [ocean_input, feature_inputs.bay, river_input, feature_inputs.meander,
+		feature_inputs.branch, feature_inputs.rejoin, feature_inputs.crossing, feature_inputs.delta,
+		feature_inputs.peninsula,
 		feature_inputs.island, feature_inputs.islands]
 	for index in ordered_checks.size():
 		feature_grid.move_child(ordered_checks[index], index)
+	feature_inputs.delta.tooltip_text = "A river fans into several channels at the ocean. Includes an ocean coast."
+	feature_inputs.peninsula.tooltip_text = "A broad headland extends from the mainland into the ocean."
+	ocean_input.minimum_size_changed.connect(_align_features_label)
+	_align_features_label()
 	visibility_changed.connect(_visibility_changed)
 	resized.connect(_clamp_panel)
 	_build_busy_overlay()
@@ -157,7 +162,7 @@ func invalidate() -> void:
 func _random_name() -> void:
 	var selected := selected_features()
 	var feature := "classic"
-	for key in ["islands", "island", "bay", "rejoin", "branch", "crossing"]:
+	for key in ["islands", "island", "delta", "peninsula", "bay", "meander", "rejoin", "branch", "crossing"]:
 		if key in selected:
 			feature = key
 			break
@@ -181,8 +186,13 @@ func reset_features() -> void:
 func _feature_changed(enabled: bool, key: String) -> void:
 	if enabled and key in ["island", "islands"]:
 		feature_inputs["islands" if key == "island" else "island"].set_pressed_no_signal(false)
+	if enabled and key == "peninsula":
+		feature_inputs.island.set_pressed_no_signal(false)
+		feature_inputs.islands.set_pressed_no_signal(false)
 	var island: bool = feature_inputs.island.button_pressed or feature_inputs.islands.button_pressed
-	for check in [river_input, feature_inputs.crossing, feature_inputs.branch, feature_inputs.rejoin]:
+	if island:
+		feature_inputs.peninsula.set_pressed_no_signal(false)
+	for check in [river_input, feature_inputs.delta, feature_inputs.meander, feature_inputs.crossing, feature_inputs.branch, feature_inputs.rejoin]:
 		check.disabled = island
 		if island:
 			check.set_pressed_no_signal(false)
@@ -274,3 +284,8 @@ func _input(event: InputEvent) -> void:
 		get_viewport().set_input_as_handled()
 	if _peek:
 		get_viewport().set_input_as_handled()
+
+
+func _align_features_label() -> void:
+	var label: Label = $Center/NewCityDialog/Content/Body/Fields/TerrainFields/FeaturesLabel
+	label.custom_minimum_size.y = ocean_input.get_combined_minimum_size().y

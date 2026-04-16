@@ -6,7 +6,7 @@ const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const TerrainTools = preload("res://src/tools/landscape/terrain_command.gd")
 const Landscapes = preload("res://src/tools/landscape/landscape_command.gd")
 
-const LAYOUTS := ["classic", "crossing", "branch", "rejoin", "bay", "island", "islands"]
+const LAYOUTS := ["classic", "meander", "delta", "peninsula", "crossing", "branch", "rejoin", "bay", "island", "islands"]
 const MAP_SIZE := 128
 const TILE_COUNT := MAP_SIZE * MAP_SIZE
 const MISC_SIZE := 4800
@@ -64,9 +64,9 @@ static func generate(
 			return _failure("unknown terrain feature")
 	var extended := not selected.is_empty() or (smooth_slopes and has_ocean and has_river)
 	var island := "island" in selected or "islands" in selected
-	var ocean_requested := has_ocean
-	has_ocean = has_ocean or island or "bay" in selected
-	has_river = not island and (has_river or "crossing" in selected or "branch" in selected or "rejoin" in selected)
+	var ocean_requested := has_ocean or "delta" in selected or "peninsula" in selected
+	has_ocean = ocean_requested or island or "bay" in selected
+	has_river = not island and (has_river or "delta" in selected or "meander" in selected or "crossing" in selected or "branch" in selected or "rejoin" in selected)
 	var map_edge: int = document.map_size if document != null else 128
 
 	if document == null or not document.is_valid():

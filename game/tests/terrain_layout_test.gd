@@ -51,15 +51,17 @@ func _run() -> void:
 				assert(_components(city, true) == 1)
 				var dry_regions := _components(city, false)
 				assert(dry_regions == {"crossing": 3, "branch": 3, "rejoin": 3}[layout], "%s %s: %s regions" % [edge, layout, dry_regions])
-			if layout == "bay":
+			if layout in ["bay", "peninsula"]:
 				assert(_components(city, true) == 1 and _components(city, false) == 1)
+			if layout == "delta":
+				assert(_components(city, true) == 1, "Delta channel is disconnected from the ocean")
 			var data: PackedByteArray = doc.serialize().data
 			var reloaded := Sc2File.new()
 			assert(reloaded.parse(data))
 			assert(reloaded.serialize().data == data)
 			print("Terrain ", edge, " ", layout, ": water=", result.water_tiles)
 	for seed in [1, 29, 719]:
-		for features in [["crossing"], ["branch"], ["rejoin"], ["bay"], ["island"], ["islands"],
+		for features in [["delta"], ["peninsula"], ["delta", "bay"], ["delta", "peninsula"], ["peninsula", "bay"], ["crossing"], ["branch"], ["rejoin"], ["bay"], ["island"], ["islands"],
 			["bay", "island"], ["bay", "islands"], ["bay", "branch"], ["bay", "rejoin", "crossing"], ["branch", "crossing", "rejoin"]]:
 			var doc := EmptyCityTemplate.create()
 			var result := NewCityTerrain.generate(doc, true, false, 30, 10, 0,

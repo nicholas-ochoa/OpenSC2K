@@ -4,6 +4,7 @@ extends RefCounted
 var session := NewCityTerrainSession.new()
 var thread := Thread.new()
 var revision := 0
+var view_size := CityIsometricRenderer.VIEW_SMALL
 
 func start(source: NewCityTerrainSession, template_path: String, options: Dictionary,
 	palette: Sc2Palette, sprites: Sc2SpriteArchive, advance_seed: bool) -> Error:
@@ -19,9 +20,18 @@ func _generate(template_path: String, options: Dictionary, palette: Sc2Palette,
 	if not result.ok:
 		return result
 	var rendered := CityIsometricRenderer.create_image(result.city, palette, sprites,
-		CityIsometricRenderer.VIEW_SMALL, 0, false, false, false, false)
+		view_size, 0, false, false, false, false)
 	if not rendered.ok:
 		return {"ok": false, "stage": "preview", "error": rendered.error}
 	result["landscape_image"] = rendered.image
 	result["minimap_image"] = CityMinimap.create_image(result.city, palette, "structures")
 	return result
+
+
+static func preview_view_size(edge: int, target: Vector2) -> int:
+	# never enlarge the small sprite set when a more detailed native set fits
+	for view in [CityIsometricRenderer.VIEW_SMALL, CityIsometricRenderer.VIEW_MEDIUM]:
+		var extent := Vector2(CityIsometricRenderer.output_size_for_view(view, edge))
+		if extent.x >= target.x * 2.0 and extent.y >= target.y * 2.0:
+			return view
+	return CityIsometricRenderer.VIEW_LARGE

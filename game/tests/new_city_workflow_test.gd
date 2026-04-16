@@ -13,16 +13,17 @@ func _run() -> void:
 	var dialog: NewCityTerrainDialog = main.new_city_dialog
 	await process_frame
 	await process_frame
-	assert(dialog.panel.size.y < 600, str(dialog.panel.size))
+	assert(dialog.panel.size.y < 720 and dialog.panel.size.x >= 960, str(dialog.panel.size))
 	var feature_grid: GridContainer = dialog.ocean_input.get_parent()
 	var titles: Array[String] = []
 	for check in feature_grid.get_children():
 		titles.append(check.text)
-	assert(titles == ["Ocean", "Ocean bay", "River", "Forked River",
-		"Split and rejoin river", "Intersecting rivers", "Single Island", "Two islands"])
+	assert(titles == ["Ocean", "Ocean bay", "River", "Meandering River", "Forked River",
+		"Split and rejoin river", "Intersecting rivers", "River Delta", "Peninsula", "Single Island", "Two islands"])
 	var label: Label = feature_grid.get_parent().get_node("FeaturesLabel")
-	assert(label.vertical_alignment == VERTICAL_ALIGNMENT_TOP)
-	var tip: Label = dialog.panel.get_node("Content/HideTip")
+	assert(is_equal_approx(label.get_global_rect().get_center().y, dialog.ocean_input.get_global_rect().get_center().y))
+	var tip: Label = dialog.panel.get_node("Content/Buttons/HideTip")
+	assert(tip.get_index() + 1 == tip.get_parent().get_node("Cancel").get_index())
 	assert(tip.theme_type_variation == "HelpLabel" and "right mouse button" in tip.text)
 	assert(not dialog.compatibility_input.button_pressed)
 	assert(dialog.native_maps_input.button_pressed)
@@ -32,8 +33,11 @@ func _run() -> void:
 	dialog.feature_inputs.branch.button_pressed = true
 	dialog.feature_inputs.bay.button_pressed = true
 	assert(dialog.selected_features() == ["branch", "bay"])
+	dialog.feature_inputs.meander.button_pressed = true
 	dialog.feature_inputs.island.button_pressed = true
 	assert(dialog.river_input.disabled and not dialog.river_input.button_pressed)
+	assert(dialog.feature_inputs.delta.disabled)
+	assert(dialog.feature_inputs.meander.disabled and not dialog.feature_inputs.meander.button_pressed)
 	assert(dialog.feature_inputs.branch.disabled and not dialog.feature_inputs.branch.button_pressed)
 	dialog.feature_inputs.islands.button_pressed = true
 	assert(not dialog.feature_inputs.island.button_pressed)
@@ -66,6 +70,9 @@ func _run() -> void:
 	assert(main.audio_controller.wave_sound_gate.current_sound_id == 529)
 	assert(dialog.candidate_valid and not dialog.done_button.disabled)
 	assert(dialog.landscape_background.texture != null)
+	assert(NewCityPreviewJob.preview_view_size(128, Vector2(3000, 1800)) == CityIsometricRenderer.VIEW_LARGE)
+	assert(NewCityPreviewJob.preview_view_size(512, Vector2(1920, 1080)) == CityIsometricRenderer.VIEW_SMALL)
+	assert(dialog.landscape_background.texture.get_width() >= dialog.size.x)
 	var candidate: Sc2File = main.new_city_session.preview_document
 	var bytes: PackedByteArray = candidate.serialize().data
 	var cursor: int = main.new_city_session.preview_process_cursor

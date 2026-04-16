@@ -2487,9 +2487,12 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 		return false
 	new_city_preview_job = NewCityPreviewJob.new()
 	new_city_preview_job.revision = new_city_dialog.generation_revision
+	new_city_preview_job.view_size = NewCityPreviewJob.preview_view_size(
+		new_city_dialog.size_input.get_selected_id(), new_city_dialog.size)
+	var preview_sprites := large_sprites if new_city_preview_job.view_size == IsometricRenderer.VIEW_LARGE else small_medium_sprites
 	var error := new_city_preview_job.start(new_city_session,
 		reference_root.path_join("DEFAULT.SC2"), _new_city_terrain_options(),
-		palette, small_medium_sprites, advance_seed)
+		palette, preview_sprites, advance_seed)
 	if error != OK:
 		new_city_preview_job = null
 		new_city_dialog.preview_status.text = "Cannot start terrain generation."

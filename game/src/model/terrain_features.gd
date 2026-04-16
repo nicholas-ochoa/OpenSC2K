@@ -13,11 +13,12 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 	var islands := "island" in features or "islands" in features
 	var paths: Array[PackedVector2Array] = []
 	var junction := Vector2(bend, split)
-	var mouth := Vector2(0.0, 0.9)
+	var delta := "delta" in features and not islands
+	var mouth := Vector2(0.0, 0.02 if delta else 0.9)
 	if not islands:
 		if "rejoin" in features:
 			var start := Vector2(bend, -0.30)
-			var end := Vector2(bend * -0.5, 0.30)
+			var end := Vector2(bend * -0.5, -0.08 if delta else 0.30)
 			paths.append(_channel(Vector2(-bend, -0.9), start, 0.04, phase))
 			paths.append(_channel(start, end, -0.18, phase))
 			paths.append(_channel(start, end, 0.20, phase + 1.0))
@@ -32,6 +33,17 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 			# one tributary ends at the shared channel: a t, not an x
 			var side := -1.0 if random.next_mod(2) == 0 else 1.0
 			paths.append(_channel(Vector2(side * 0.9, split - 0.12), junction, 0.08, phase + 0.8))
+
+	if delta:
+		# distributaries fan out from one shared river mouth into the coast
+		for branch in 3:
+			var spread := (float(branch) - 1.0) * 0.42
+			var end := Vector2(spread + 0.04 * sin(phase + branch), 0.9)
+			paths.append(_channel(mouth, end, spread * 0.20, phase + branch))
+
+	var oxbows: Array[PackedVector2Array] = []
+	if "meander" in features and not islands:
+		oxbows = _meander_channels(paths, width, angle, phase, random)
 
 	var noise := FastNoiseLite.new()
 	noise.seed = random.next_mod(2147483647)
@@ -62,10 +74,21 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 				if ocean:
 					wet = point.y > lerpf(0.34, 0.23, wetness) + rough * 0.12 + 0.04 * sin(point.x * 12.0 + phase)
 				if "bay" in features:
-					var bay := Vector2(point.x / lerpf(0.27, 0.36, wetness), (point.y - 0.64) / lerpf(0.65, 0.77, wetness)).length()
+					var bay_center := 0.86 if delta else 0.64
+					var bay := Vector2(point.x / lerpf(0.27, 0.36, wetness), (point.y - bay_center) / lerpf(0.65, 0.77, wetness)).length()
 					wet = wet or bay < 1.0 + rough * 0.20 + 0.08 * sin(point.x * 19.0 + phase)
+				if "peninsula" in features:
+					var axis := 0.19 + 0.035 * sin(point.y * 8.0 + phase)
+					var neck := (point.x - axis) / lerpf(0.19, 0.14, wetness)
+					var coast := lerpf(0.12, 0.02, wetness) + 0.43 * exp(-neck * neck) + rough * 0.055
+					# keep the headland attached to the mainland; channels can cross it
+					wet = point.y > coast
+					if "bay" in features and point.x < axis - 0.15:
+						wet = wet or point.y > -0.06 + rough * 0.06
 				if not wet:
 					var local_width := width * (1.0 + rough * 0.50 + 0.12 * sin(point.y * 31.0 + phase))
+					if "meander" in features:
+						local_width = width * (1.0 + rough * 0.20 + 0.06 * sin(point.y * 10.0 + phase))
 					for path in paths:
 						if _near_channel(point, path, local_width):
 							wet = true
@@ -79,6 +102,63 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 				heights[index] = maxi(heights[index], sea + 1)
 
 	_keep_main_water(heights, flags, sea)
+	# preserve intentional abandoned bends after removing accidental coast pools
+	for lake in oxbows:
+		for x in 128:
+			for y in 128:
+				var point := (Vector2(x, y) / 127.0 - Vector2(0.5, 0.5)).rotated(-angle)
+				if _near_channel(point, lake, 0.012):
+					var index := x * 128 + y
+					heights[index] = maxi(0, sea - 2)
+					flags[index] = 0
+
+
+static func _meander_channels(paths: Array[PackedVector2Array], width: float,
+	angle: float, phase: float, random: GameLcgRandom) -> Array[PackedVector2Array]:
+	var amplitude := 0.19 + float(random.next_mod(60)) / 1000.0
+	var frequency := TAU * (1.05 + float(random.next_mod(350)) / 1000.0)
+	var bends: Array[Vector2] = []
+	for path_index in paths.size():
+		var path := paths[path_index]
+		for index in path.size():
+			var point := path[index]
+			var fade := smoothstep(0.9, 0.6, absf(point.y))
+			point.x += fade * amplitude * sin(point.y * frequency + phase)
+			path[index] = point
+		paths[path_index] = path
+		for index in range(1, path.size() - 1):
+			var point := path[index]
+			if absf(point.x) < 0.12 or absf(point.y) > 0.32:
+				continue
+			if (point.x - path[index - 1].x) * (path[index + 1].x - point.x) < 0.0:
+				bends.append(point)
+
+	var lakes: Array[PackedVector2Array] = []
+	if bends.is_empty() or random.next_mod(3) == 0:
+		return lakes
+	var first := random.next_mod(bends.size())
+	var limit := 1 + random.next_mod(2)
+	for attempt in bends.size():
+		var point := bends[(first + attempt) % bends.size()]
+		var side := signf(point.x)
+		var center := point + Vector2(side * (width * 1.5 + 0.07), 0.0)
+		var lake := PackedVector2Array()
+		var clear := true
+		for index in 17:
+			var t := -PI * 0.5 + PI * float(index) / 16.0
+			var sample := center + Vector2(side * 0.045 * cos(t), 0.055 * sin(t))
+			var world := sample.rotated(angle)
+			if absf(world.x) > 0.46 or absf(world.y) > 0.46:
+				clear = false
+			for path in paths:
+				if _near_channel(sample, path, width * 1.5 + 0.04):
+					clear = false
+			lake.append(sample)
+		if clear:
+			lakes.append(lake)
+		if lakes.size() >= limit:
+			break
+	return lakes
 
 
 static func _island_distance(point: Vector2, center: Vector2, radius: Vector2, phase: float) -> float:

@@ -20,15 +20,15 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 
 [node name="NewCityDialog" type="PanelContainer" parent="Center"]
-custom_minimum_size = Vector2(820, 0)
+custom_minimum_size = Vector2(960, 0)
 layout_mode = 0
-offset_right = 820.0
+offset_right = 960.0
 offset_bottom = 540.0
 theme_type_variation = "PanelPadding8_8_8_8"
 
 [node name="Content" type="VBoxContainer" parent="Center/NewCityDialog"]
 layout_mode = 2
-theme_override_constants/separation = 8
+theme_override_constants/separation = 12
 
 [node name="TitleBar" type="ColorRect" parent="Center/NewCityDialog/Content"]
 custom_minimum_size = Vector2(0, 30)
@@ -177,15 +177,16 @@ columns = 2
 
 [node name="FeaturesLabel" type="Label" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
 layout_mode = 2
+size_flags_vertical = 0
 text = "Features"
 horizontal_alignment = 2
-vertical_alignment = 0
+vertical_alignment = 1
 
 [node name="OceanRow" type="GridContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
 layout_mode = 2
 columns = 2
 theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 0
+theme_override_constants/v_separation = 6
 
 [node name="OceanInput" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow"]
 layout_mode = 2
@@ -333,12 +334,6 @@ autowrap_mode = 3
 layout_mode = 2
 text = "Regenerate Terrain"
 
-[node name="HideTip" type="Label" parent="Center/NewCityDialog/Content"]
-layout_mode = 2
-theme_type_variation = "HelpLabel"
-theme_override_font_sizes/font_size = 12
-text = "Tip: Hold the right mouse button to hide this dialog."
-
 [node name="Buttons" type="HBoxContainer" parent="Center/NewCityDialog/Content"]
 layout_mode = 2
 theme_override_constants/separation = 8
@@ -350,6 +345,15 @@ text = "Maintain SimCity 2000 Compatibility"
 [node name="ActionSpacer" type="Control" parent="Center/NewCityDialog/Content/Buttons"]
 layout_mode = 2
 size_flags_horizontal = 3
+
+[node name="HideTip" type="Label" parent="Center/NewCityDialog/Content/Buttons"]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+size_flags_horizontal = 0
+theme_type_variation = "HelpLabel"
+theme_override_font_sizes/font_size = 12
+text = "Hold the right mouse button to hide this dialog."
+autowrap_mode = 3
 
 [node name="Cancel" type="Button" parent="Center/NewCityDialog/Content/Buttons"]
 custom_minimum_size = Vector2(80, 30)
