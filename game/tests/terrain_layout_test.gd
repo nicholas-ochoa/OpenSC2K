@@ -34,7 +34,7 @@ func _run() -> void:
 	assert(names.size() > 1000)
 	# Compare water coverage at both ends of the new-layout Water setting.
 	for layout in NewCityTerrain.LAYOUTS.slice(1):
-		if layout in ["plateau", "ridge", "rolling", "basin"]:
+		if layout in ["plateau", "ridge", "rolling", "basin", "canyon"]:
 			continue
 		var previous_water := -1
 		for water in [0, 47]:

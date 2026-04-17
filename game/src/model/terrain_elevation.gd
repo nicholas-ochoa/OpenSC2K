@@ -14,6 +14,7 @@ static func apply(heights: PackedInt32Array, sea: int, selected: Array,
 		return
 	var distances := _water_distances(heights, sea)
 	var relief := 7.0 + float(hills) / 5.0
+	var inland_base := sea + (relief if "cliffs" in selected else 0.0)
 	var plateau_anchor := _plateau_anchor(heights, sea, angle).rotated(-angle)
 	for x in 128:
 		for y in 128:
@@ -23,6 +24,9 @@ static func apply(heights: PackedInt32Array, sea: int, selected: Array,
 			var point := (Vector2(x, y) / 127.0 - Vector2(0.5, 0.5)).rotated(-angle)
 			var rough := noise.get_noise_2d(point.x, point.y)
 			var value := float(heights[index])
+			if "cliffs" in selected:
+				# keep the inland tableland high. grading supplies the coastal descent
+				value = sea + roundf(relief)
 			if "plateau" in selected:
 				var radius := ((point - plateau_anchor) / Vector2(0.42, 0.36)).length() + rough * 0.22
 				var top := 1.0 - smoothstep(0.72, 1.12, radius)
@@ -37,28 +41,30 @@ static func apply(heights: PackedInt32Array, sea: int, selected: Array,
 					noise.get_noise_2d(point.x, point.y - 17.0)) * 0.16
 				var broad := noise.get_noise_2d((point.x + warp.x) * 0.45 + 21.3, (point.y + warp.y) * 0.45 - 9.7)
 				var waves := clampf(0.5 + broad * 1.3 + rough * 0.08, 0.0, 1.0)
-				value = sea + 2.0 + waves * relief * 0.85
+				value = inland_base + 2.0 + waves * relief * 0.85
 			if "basin" in selected:
 				var local := point - Vector2(0.06 * sin(phase), 0.05 * cos(phase))
 				local += Vector2(rough, noise.get_noise_2d(point.x + 7.0, point.y - 11.0)) * 0.14
 				var edge := 1.0 + 0.16 * sin(local.angle() * 3.0 + phase) + 0.10 * sin(local.angle() * 5.0 - phase)
 				var radius := (local / Vector2(1.0, 0.87)).length() / edge + rough * 0.04
-				value = sea + 1.0 + relief * smoothstep(0.08, 0.48, radius)
-			if "valley" in selected or "canyon" in selected:
+				value = inland_base + 1.0 + relief * smoothstep(0.08, 0.48, radius)
+			if "valley" in selected:
 				var distance := float(distances[index]) / 127.0
-				var bank := 0.065 if "canyon" in selected else 0.23
-				var rise := smoothstep(0.0, bank, distance)
+				var rise := smoothstep(0.0, 0.23, distance)
 				value = lerpf(sea + 1.0, maxf(value, sea + relief), rise)
-			if "cliffs" in selected:
-				var coastal := 1.0 - smoothstep(12.0, 32.0, float(distances[index]))
-				value = maxf(value, sea + relief * coastal)
+			if "canyon" in selected:
+				var axis := 0.14 * sin(point.y * 6.0 + phase) + 0.035 * sin(point.y * 11.0 - phase)
+				var distance := absf(point.x - axis)
+				var floor_width := 0.09 + 0.015 * sin(point.y * 4.0 + phase)
+				var rise := smoothstep(floor_width, floor_width + 0.08, distance)
+				value = lerpf(sea + 1.0, maxf(value, sea + relief), rise)
 			heights[index] = clampi(roundi(value), sea + 1, 31)
 
 
-static func _water_distances(heights: PackedInt32Array, sea: int) -> PackedInt32Array:
+static func _water_distances(heights: PackedInt32Array, sea: int, map_edge: int = 128) -> PackedInt32Array:
 	var distances := PackedInt32Array()
 	distances.resize(heights.size())
-	distances.fill(256)
+	distances.fill(map_edge * 2)
 	var queue := PackedInt32Array()
 	for index in heights.size():
 		if heights[index] < sea:
@@ -68,13 +74,13 @@ static func _water_distances(heights: PackedInt32Array, sea: int) -> PackedInt32
 	while cursor < queue.size():
 		var index := queue[cursor]
 		cursor += 1
-		var x := IntegerMath.div_trunc(index, 128)
-		var y := index % 128
+		var x := IntegerMath.div_trunc(index, map_edge)
+		var y := index % map_edge
 		for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 			var near: Vector2i = Vector2i(x, y) + offset
-			if near.x < 0 or near.y < 0 or near.x >= 128 or near.y >= 128:
+			if near.x < 0 or near.y < 0 or near.x >= map_edge or near.y >= map_edge:
 				continue
-			var next := near.x * 128 + near.y
+			var next := near.x * map_edge + near.y
 			if distances[next] > distances[index] + 1:
 				distances[next] = distances[index] + 1
 				queue.append(next)

@@ -37,18 +37,26 @@ func _run() -> void:
 	assert(dialog.done_button.disabled and main.new_city_session.preview_document == null)
 	for index in dialog.size_input.item_count:
 		assert("experimental" not in dialog.size_input.get_item_text(index))
-	for key in ["bay", "delta", "peninsula", "island", "islands", "meander", "crossing", "branch", "rejoin", "valley", "canyon", "cliffs"]:
+	for key in ["bay", "delta", "peninsula", "island", "islands", "meander", "crossing", "branch", "rejoin", "valley", "cliffs"]:
 		dialog.reset_features()
 		dialog.ocean_input.button_pressed = false
 		dialog.river_input.button_pressed = false
 		dialog.feature_inputs[key].button_pressed = true
 		if key in ["bay", "delta", "peninsula", "island", "islands", "cliffs"]:
 			assert(dialog.ocean_input.button_pressed)
-		if key in ["delta", "meander", "crossing", "branch", "rejoin", "valley", "canyon"]:
+		if key in ["delta", "meander", "crossing", "branch", "rejoin", "valley"]:
 			assert(dialog.river_input.button_pressed)
 		dialog.ocean_input.button_pressed = false
 		dialog.river_input.button_pressed = false
 		assert(not dialog.feature_inputs[key].button_pressed)
+	dialog.reset_features()
+	dialog.river_input.button_pressed = true
+	dialog.feature_inputs.canyon.button_pressed = true
+	assert(not dialog.river_input.button_pressed and dialog.river_input.disabled)
+	assert("Canyon" in dialog.river_input.tooltip_text)
+	for key in dialog.RIVER_FEATURES:
+		assert(dialog.feature_inputs[key].disabled and not dialog.feature_inputs[key].button_pressed)
+		assert("Canyon" in dialog.feature_inputs[key].tooltip_text)
 	for group in dialog.EXCLUSIVE_GROUPS:
 		for selected in group:
 			dialog.reset_features()

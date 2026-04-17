@@ -21,11 +21,16 @@ func _initialize() -> void:
 			assert(Array(heights).max() - Array(heights).min() >= 4)
 		if feature == "basin":
 			assert(heights[64 * 128 + 64] + 4 < heights[8 * 128 + 64])
-		if feature in ["valley", "canyon"]:
+		if feature == "valley":
 			assert(heights[66 * 128 + 64] < heights[96 * 128 + 64])
 			assert(heights[64 * 128 + 64] == 2, "Preserve river water")
+		if feature == "canyon":
+			assert(heights[78 * 128 + 64] <= 6, "Dry floor follows its own winding path")
+			assert(heights[110 * 128 + 64] >= 13, "Retain steep canyon walls")
 		if feature == "cliffs":
-			assert(heights[66 * 128 + 64] > heights[110 * 128 + 64] + 3)
+			assert(heights[110 * 128 + 64] >= 13, "Keep inland terrain high")
+			assert(absi(heights[66 * 128 + 64] - heights[110 * 128 + 64]) <= 1)
+			assert(heights[64 * 128 + 64] == 2, "Preserve coastal water")
 		assert(Array(heights).max() <= 31)
 	for feature in ["rolling", "basin"]:
 		var outputs: Array[PackedInt32Array] = []

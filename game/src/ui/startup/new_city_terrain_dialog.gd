@@ -29,7 +29,7 @@ var done_button: Button
 var candidate_valid := false
 var landscape_background: TextureRect
 const LAYOUTS = NewTerrain.LAYOUTS
-const RIVER_FEATURES := ["delta", "meander", "crossing", "branch", "rejoin", "valley", "canyon"]
+const RIVER_FEATURES := ["delta", "meander", "crossing", "branch", "rejoin", "valley"]
 const OCEAN_FEATURES := ["bay", "delta", "peninsula", "island", "islands", "cliffs"]
 const EXCLUSIVE_GROUPS := [["island", "islands", "peninsula"],
 	["plateau", "ridge", "rolling", "basin"], ["valley", "canyon", "basin"], ["lake", "lakes"], ["plateau", "island"], ["plateau", "islands"]]
@@ -199,10 +199,12 @@ func _feature_changed(enabled: bool, key: String) -> void:
 				for other in group:
 					if other != key:
 						feature_inputs[other].set_pressed_no_signal(false)
-		if key in ["island", "islands"]:
+		if key in ["island", "islands", "canyon"]:
 			river_input.set_pressed_no_signal(false)
 			for dependent in RIVER_FEATURES:
 				feature_inputs[dependent].set_pressed_no_signal(false)
+		if key == "river" or key in RIVER_FEATURES:
+			feature_inputs.canyon.set_pressed_no_signal(false)
 		if key in RIVER_FEATURES:
 			river_input.set_pressed_no_signal(true)
 		if key in OCEAN_FEATURES:
@@ -217,12 +219,14 @@ func _feature_changed(enabled: bool, key: String) -> void:
 func _refresh_feature_constraints() -> void:
 	var island_key := "island" if feature_inputs.island.button_pressed else "islands"
 	var island: bool = feature_inputs[island_key].button_pressed
-	river_input.disabled = island
-	river_input.tooltip_text = "Unavailable while %s is selected. Clear it first." % feature_inputs[island_key].text if island else ""
+	var canyon: bool = feature_inputs.canyon.button_pressed
+	var river_blocker: String = "Canyon" if canyon else (feature_inputs[island_key].text if island else "")
+	river_input.disabled = not river_blocker.is_empty()
+	river_input.tooltip_text = "Unavailable while %s is selected. Clear it first." % river_blocker if river_input.disabled else ""
 	for key in feature_inputs:
 		var reason := ""
-		if island and key in RIVER_FEATURES:
-			reason = feature_inputs[island_key].text
+		if (island or canyon) and key in RIVER_FEATURES:
+			reason = river_blocker
 		for group in EXCLUSIVE_GROUPS:
 			if key in group:
 				for other in group:

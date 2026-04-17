@@ -62,11 +62,14 @@ static func generate(
 	for feature in selected:
 		if feature not in LAYOUTS or feature == "classic":
 			return _failure("unknown terrain feature")
+	if "canyon" in selected:
+		for river_feature in ["meander", "delta", "crossing", "branch", "rejoin", "valley"]:
+			selected.erase(river_feature)
 	var extended := not selected.is_empty() or (smooth_slopes and has_ocean and has_river)
 	var island := "island" in selected or "islands" in selected
 	var ocean_requested := has_ocean or "delta" in selected or "peninsula" in selected or "cliffs" in selected
 	has_ocean = ocean_requested or island or "bay" in selected
-	has_river = not island and (has_river or "valley" in selected or "canyon" in selected or "delta" in selected or "meander" in selected or "crossing" in selected or "branch" in selected or "rejoin" in selected)
+	has_river = not island and "canyon" not in selected and (has_river or "valley" in selected or "delta" in selected or "meander" in selected or "crossing" in selected or "branch" in selected or "rejoin" in selected)
 	var map_edge: int = document.map_size if document != null else 128
 
 	if document == null or not document.is_valid():
