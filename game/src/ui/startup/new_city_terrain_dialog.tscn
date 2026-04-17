@@ -196,6 +196,15 @@ text = "Ocean"
 layout_mode = 2
 text = "River"
 
+[node name="FeatureGapLabel" type="Control" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+custom_minimum_size = Vector2(0, 4)
+layout_mode = 2
+mouse_filter = 2
+
+[node name="FeatureGap" type="Control" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
+layout_mode = 2
+mouse_filter = 2
+
 [node name="HillsRow" type="HBoxContainer" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields"]
 layout_mode = 2
 alignment = 2
