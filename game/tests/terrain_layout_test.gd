@@ -13,6 +13,16 @@ func _run() -> void:
 			assert(NewCityTerrain.generate(doc, false, false, 12, 5, 0,
 				SimRandom.new(seed), GameLcgRandom.new(seed), lake).ok)
 			assert(_components(CityState.from_document(doc), true) == (2 if lake == "lakes" else 1))
+	for seed in [1, 29, 719]:
+		var counts: Array[int] = []
+		for water in [0, 47]:
+			var lakes := EmptyCityTemplate.create()
+			var result := NewCityTerrain.generate(lakes, false, false, 12, water, 0,
+				SimRandom.new(seed), GameLcgRandom.new(seed), "lakes")
+			assert(result.ok)
+			counts.append(result.water_tiles)
+			assert(_components(CityState.from_document(lakes), true) == 2)
+		assert(counts[1] >= counts[0] * 3, "Two Lakes must grow substantially with Water")
 	var names := {}
 	var random := RandomNumberGenerator.new()
 	random.seed = 123
@@ -62,6 +72,12 @@ func _run() -> void:
 				assert(dry_regions == {"crossing": 3, "branch": 3, "rejoin": 3}[layout], "%s %s: %s regions" % [edge, layout, dry_regions])
 			if layout in ["bay", "peninsula"]:
 				assert(_components(city, true) == 1 and _components(city, false) == 1)
+			if layout == "plateau":
+				var edge_high := 0
+				for coordinate in edge:
+					for point in [Vector2i(coordinate, 0), Vector2i(coordinate, edge - 1), Vector2i(0, coordinate), Vector2i(edge - 1, coordinate)]:
+						edge_high = maxi(edge_high, city.land_altitude(point.x, point.y))
+				assert(edge_high >= 9, "Plateau stops before the map edge")
 			if layout == "delta":
 				assert(_components(city, true) == 1, "Delta channel is disconnected from the ocean")
 			var data: PackedByteArray = doc.serialize().data

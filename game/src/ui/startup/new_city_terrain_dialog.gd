@@ -32,7 +32,7 @@ const LAYOUTS = NewTerrain.LAYOUTS
 const RIVER_FEATURES := ["delta", "meander", "crossing", "branch", "rejoin", "valley", "canyon"]
 const OCEAN_FEATURES := ["bay", "delta", "peninsula", "island", "islands", "cliffs"]
 const EXCLUSIVE_GROUPS := [["island", "islands", "peninsula"],
-	["plateau", "ridge", "rolling", "basin"], ["valley", "canyon", "basin"], ["lake", "lakes"]]
+	["plateau", "ridge", "rolling", "basin"], ["valley", "canyon", "basin"], ["lake", "lakes"], ["plateau", "island"], ["plateau", "islands"]]
 var native_maps_input: CheckBox
 var ocean_input: CheckBox
 var river_input: CheckBox
@@ -96,6 +96,8 @@ func _ready() -> void:
 		feature_inputs.island, feature_inputs.islands, feature_inputs.peninsula]
 	for index in ordered_checks.size():
 		feature_grid.move_child(ordered_checks[index], index)
+	_compact_feature_rows()
+	theme_changed.connect(_compact_feature_rows)
 	_refresh_feature_constraints()
 	ocean_input.minimum_size_changed.connect(_align_features_label)
 	_align_features_label()
@@ -331,3 +333,12 @@ func _input(event: InputEvent) -> void:
 func _align_features_label() -> void:
 	var label: Label = $Center/NewCityDialog/Content/Body/Fields/TerrainFields/FeaturesLabel
 	label.custom_minimum_size.y = ocean_input.get_combined_minimum_size().y
+
+
+func _compact_feature_rows() -> void:
+	for check in ocean_input.get_parent().get_children():
+		for state in ["normal", "hover", "pressed", "hover_pressed", "focus", "disabled"]:
+			var style: StyleBox = check.get_theme_stylebox(state).duplicate()
+			style.content_margin_top = 1
+			style.content_margin_bottom = 1
+			check.add_theme_stylebox_override(state, style)

@@ -84,9 +84,10 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 					var bay := Vector2(point.x / lerpf(0.27, 0.36, wetness), (point.y - bay_center) / lerpf(0.65, 0.77, wetness)).length()
 					wet = wet or bay < 1.0 + rough * 0.20 + 0.08 * sin(point.x * 19.0 + phase)
 				if "peninsula" in features:
-					var axis := 0.08 + 0.025 * sin(point.y * 8.0 + phase)
-					var neck := (point.x - axis) / lerpf(0.17, 0.14, wetness)
-					var coast := lerpf(-0.20, -0.25, wetness) + 0.55 * exp(-pow(absf(neck), 4.0)) + rough * 0.025
+					var axis := 0.08 + 0.04 * sin(point.y * 8.0 + phase)
+					var neck_width := lerpf(0.17, 0.14, wetness) * (1.0 + 0.13 * sin(point.y * 12.0 + phase) + rough * 0.20)
+					var neck := (point.x - axis) / neck_width
+					var coast := lerpf(-0.20, -0.25, wetness) + 0.55 * exp(-pow(absf(neck), 4.0)) + rough * 0.045 + 0.016 * sin(point.x * 23.0 + point.y * 13.0 + phase)
 					# keep the headland attached to the mainland; channels can cross it
 					wet = point.y > coast
 					if "bay" in features and point.x < axis - 0.15:

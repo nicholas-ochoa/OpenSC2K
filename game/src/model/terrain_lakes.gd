@@ -8,7 +8,7 @@ static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 		var distance := TerrainElevation._water_distances(heights, sea)
 		var preferred := Vector2(24 + random.next_mod(80), 24 + random.next_mod(80))
 		var phase := float(random.next_mod(6283)) / 1000.0
-		var desired := lerpf(13.0, 20.0, float(water) / 47.0) * (0.78 if count == 2 else 1.0)
+		var desired := lerpf(10.0, 30.0, float(water) / 47.0) if count == 2 else lerpf(13.0, 20.0, float(water) / 47.0)
 		var center := Vector2.ZERO
 		var clearance := 0.0
 		var best := -INF

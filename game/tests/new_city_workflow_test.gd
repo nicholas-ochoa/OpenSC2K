@@ -28,6 +28,9 @@ func _run() -> void:
 	assert(tip.get_index() + 1 == tip.get_parent().get_node("Cancel").get_index())
 	assert(tip.autowrap_mode == TextServer.AUTOWRAP_OFF)
 	assert(feature_grid.get_theme_constant("v_separation") == 1)
+	for check in feature_grid.get_children():
+		assert(check.get_theme_stylebox("normal").content_margin_top == 1)
+		assert(check.get_theme_stylebox("normal").content_margin_bottom == 1)
 	assert(tip.theme_type_variation == "HelpLabel" and "right mouse button" in tip.text)
 	assert(not dialog.compatibility_input.button_pressed)
 	assert(dialog.native_maps_input.button_pressed)

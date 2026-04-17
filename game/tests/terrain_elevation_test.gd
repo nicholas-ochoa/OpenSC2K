@@ -13,8 +13,8 @@ func _initialize() -> void:
 				heights[64 * 128 + y] = 2
 		TerrainElevation.apply(heights, 4, [feature], 0.0, 1.0, noise, 12)
 		if feature == "plateau":
-			assert(heights[64 * 128 + 64] == heights[70 * 128 + 70])
-			assert(heights[64 * 128 + 64] > heights[8 * 128 + 64] + 4)
+			assert(heights[0] == heights[6 * 128 + 6])
+			assert(heights[0] > heights[64 * 128 + 64] + 4)
 		if feature == "ridge":
 			assert(heights[64 * 128 + 64] > heights[8 * 128 + 64] + 4)
 		if feature == "rolling":
@@ -27,5 +27,19 @@ func _initialize() -> void:
 		if feature == "cliffs":
 			assert(heights[66 * 128 + 64] > heights[110 * 128 + 64] + 3)
 		assert(Array(heights).max() <= 31)
+	for feature in ["rolling", "basin"]:
+		var outputs: Array[PackedInt32Array] = []
+		for seed in [71, 912]:
+			var heights := PackedInt32Array()
+			heights.resize(128 * 128)
+			heights.fill(6)
+			noise.seed = seed
+			TerrainElevation.apply(heights, 4, [feature], 0.0, 1.0, noise, 12)
+			outputs.append(heights)
+		var changed := 0
+		for index in outputs[0].size():
+			if outputs[0][index] != outputs[1][index]:
+				changed += 1
+		assert(changed > 500, "Seeded noise left the landform unchanged")
 	print("Elevation profiles passed")
 	quit()
