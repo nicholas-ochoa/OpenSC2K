@@ -20,3 +20,7 @@ func _ready() -> void:
 	toolbar = %Toolbar
 	map_view = %MapView
 	status_bar = %StatusBar
+
+
+func set_editor_controls_visible(value: bool) -> void:
+	$Page.visible = value

@@ -13,6 +13,7 @@ func _run() -> void:
 	var dialog: NewCityTerrainDialog = main.new_city_dialog
 	await process_frame
 	await process_frame
+	_assert_editor_controls(main, false)
 	assert(dialog.panel.size.y < 790 and dialog.panel.size.x >= 960, str(dialog.panel.size))
 	var feature_grid: GridContainer = dialog.ocean_input.get_parent()
 	var titles: Array[String] = []
@@ -26,7 +27,7 @@ func _run() -> void:
 	var tip: Label = dialog.panel.get_node("Content/Buttons/HideTip")
 	assert(tip.get_index() + 1 == tip.get_parent().get_node("Cancel").get_index())
 	assert(tip.autowrap_mode == TextServer.AUTOWRAP_OFF)
-	assert(feature_grid.get_theme_constant("v_separation") == 3)
+	assert(feature_grid.get_theme_constant("v_separation") == 1)
 	assert(tip.theme_type_variation == "HelpLabel" and "right mouse button" in tip.text)
 	assert(not dialog.compatibility_input.button_pressed)
 	assert(dialog.native_maps_input.button_pressed)
@@ -76,6 +77,7 @@ func _run() -> void:
 	peek.pressed = true
 	root.push_input(peek, true)
 	assert(dialog.panel.modulate.a == 0.0 and dialog.visible)
+	_assert_editor_controls(main, false)
 	peek.position = Vector2.ZERO
 	peek.pressed = false
 	root.push_input(peek, true)
@@ -224,15 +226,18 @@ func _run() -> void:
 	var original: PackedByteArray = main.current_document.serialize().data
 	main._reopen_terrain_dialog()
 	assert(dialog.visible and dialog.done_button.disabled)
+	_assert_editor_controls(main, false)
 	dialog.water_input.value += 1
 	main._cancel_new_city()
 	assert(main.current_document.serialize().data == original and main.landscape_editor)
+	_assert_editor_controls(main, true)
 	main._reopen_terrain_dialog()
 	main._make_new_city_preview()
 	while main.new_city_preview_job != null:
 		await process_frame
 	main._create_new_city()
 	assert(main.landscape_editor and not dialog.visible)
+	_assert_editor_controls(main, true)
 	main._start_city()
 	assert(not main.city_toolbar.regenerate_button.visible)
 	assert(main.city_toolbar.child_palette.visible)
@@ -259,3 +264,9 @@ func _run() -> void:
 	await process_frame
 	print("New City workflow checks passed")
 	quit()
+
+
+func _assert_editor_controls(main: Node, expected: bool) -> void:
+	for control in [main.city_menu_bar, main.city_toolbar, main.city_status_bar]:
+		assert(control.is_visible_in_tree() == expected)
+	assert(main.map_view.is_visible_in_tree())

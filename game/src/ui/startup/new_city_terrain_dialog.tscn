@@ -186,7 +186,7 @@ vertical_alignment = 1
 layout_mode = 2
 columns = 2
 theme_override_constants/h_separation = 8
-theme_override_constants/v_separation = 3
+theme_override_constants/v_separation = 1
 
 [node name="OceanInput" type="CheckBox" parent="Center/NewCityDialog/Content/Body/Fields/TerrainFields/OceanRow"]
 layout_mode = 2

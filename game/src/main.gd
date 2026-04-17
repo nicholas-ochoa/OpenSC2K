@@ -831,6 +831,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	city_toolbar.regenerate_requested.connect(_reopen_terrain_dialog)
 	city_toolbar.brush_changed.connect(_update_edit_state)
 	new_city_dialog = city_dialogs.new_city_dialog
+	new_city_dialog.visibility_changed.connect(_sync_new_city_workspace)
 	new_city_dialog.cancel_requested.connect(_cancel_new_city)
 	new_city_dialog.build_requested.connect(_create_new_city)
 	new_city_dialog.preview_requested.connect(_schedule_new_city_preview)
@@ -2392,6 +2393,10 @@ func _on_newspaper_menu(_id: int) -> void:
 
 func _on_help_menu(_id: int) -> void:
 	_open_about_dialog()
+
+
+func _sync_new_city_workspace() -> void:
+	city_workspace.set_editor_controls_visible(not new_city_dialog.visible)
 
 
 func _open_new_city_dialog() -> void:
