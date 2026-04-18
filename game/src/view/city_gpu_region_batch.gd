@@ -13,7 +13,7 @@ static func build(request: Dictionary, context: CityGpuBuildContext, uploaded_re
 		var bounds := Rect2i(key * int(request.edge), Vector2i.ONE * int(request.edge))
 		var result := CityGpuRegionRenderer.render(display, request.palette, request.sprites,
 			bounds, request.view, request.mode, request.pipes, request.subways,
-			context, request.generation, uploaded_revision, false)
+			context, request.generation, uploaded_revision, false, bool(request.get("water_mains", true)))
 
 		if not result.ok:
 			return result

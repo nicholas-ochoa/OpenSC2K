@@ -20,6 +20,7 @@ var buildings_check: CheckBox
 var infrastructure_check: CheckBox
 var zones_check: CheckBox
 var signs_check: CheckBox
+var water_mains_check: CheckBox
 var pipes_check: CheckBox
 var preview: ScurkPrintPreview
 var status_label: Label
@@ -40,6 +41,7 @@ func _ready() -> void:
 	infrastructure_check = get_node("Panel/Margin/Content/LayersRow/InfrastructureCheck")
 	zones_check = get_node("Panel/Margin/Content/LayersRow/ZonesCheck")
 	signs_check = get_node("Panel/Margin/Content/LayersRow/SignsCheck")
+	water_mains_check = get_node("Panel/Margin/Content/LayersRow/WaterMainsCheck")
 	pipes_check = get_node("Panel/Margin/Content/LayersRow/PipesCheck")
 	preview = get_node("Panel/Margin/Content/Preview")
 	status_label = get_node("Panel/Margin/Content/StatusLabel")
@@ -55,6 +57,7 @@ func _ready() -> void:
 	get_node("Panel/Margin/Content/LayersRow/InfrastructureCheck").toggled.connect(_on_preview_option_changed)
 	get_node("Panel/Margin/Content/LayersRow/ZonesCheck").toggled.connect(_on_preview_option_changed)
 	get_node("Panel/Margin/Content/LayersRow/SignsCheck").toggled.connect(_on_preview_option_changed)
+	water_mains_check.toggled.connect(_on_preview_option_changed)
 	get_node("Panel/Margin/Content/LayersRow/PipesCheck").toggled.connect(_on_preview_option_changed)
 	get_node("Panel/Margin/Content/Preview").selection_changed.connect(_refresh_page_state)
 	get_node("Panel/Margin/Content/Actions/SelectAllButton").pressed.connect(get_node("Panel/Margin/Content/Preview").select_all.bind(true))
@@ -67,7 +70,7 @@ func configure(
 	value_city_name: String,
 	view := "city",
 	surface_visibility: Dictionary = {},
-	show_pipes := true
+	show_pipes := true, show_water_mains := true
 ) -> void:
 	city_name = value_city_name if not value_city_name.is_empty() else "City"
 	view_selector.select(1 if view == "underground" else 0)
@@ -76,6 +79,7 @@ func configure(
 	zones_check.button_pressed = bool(surface_visibility.get("zones", true))
 	signs_check.button_pressed = bool(surface_visibility.get("signs", true))
 	pipes_check.button_pressed = show_pipes
+	water_mains_check.button_pressed = show_water_mains
 	_sync_view_controls()
 	_refresh_page_state()
 
@@ -103,6 +107,7 @@ func options() -> Dictionary:
 		"selected_pages": preview.selected_pages.duplicate(),
 		"surface_visibility": visibility,
 		"show_pipes": pipes_check.button_pressed,
+		"show_water_mains": water_mains_check.button_pressed,
 	}
 
 
@@ -151,6 +156,7 @@ func _sync_view_controls() -> void:
 	zones_check.visible = not underground
 	signs_check.visible = not underground
 	pipes_check.visible = underground
+	water_mains_check.visible = underground
 
 
 func _refresh_page_state() -> void:

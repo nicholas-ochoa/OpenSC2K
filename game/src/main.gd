@@ -79,6 +79,7 @@ const MENU_VIEW_WATER := CityMenuBarView.MENU_VIEW_WATER
 const MENU_VIEW_TREES := CityMenuBarView.MENU_VIEW_TREES
 const MENU_VIEW_ZONES := CityMenuBarView.MENU_VIEW_ZONES
 const MENU_VIEW_SIGNS := CityMenuBarView.MENU_VIEW_SIGNS
+const MENU_VIEW_WATER_MAINS := CityMenuBarView.MENU_VIEW_WATER_MAINS
 const MENU_VIEW_PIPES := CityMenuBarView.MENU_VIEW_PIPES
 const MENU_SCURK_PLACE_PRINT := CityMenuBarView.MENU_SCURK_PLACE_PRINT
 
@@ -108,6 +109,7 @@ var surface_visibility := {
 	"zones": true,
 	"signs": true,
 }
+var show_underground_water_mains := true
 var show_underground_pipes := true
 var show_underground_subways := true
 var app_soundtrack_folder := ""
@@ -781,6 +783,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	city_toolbar.zoom_in_requested.connect(_zoom_in)
 	city_toolbar.overlay_requested.connect(_set_overlay)
 	city_toolbar.surface_visibility_requested.connect(_set_surface_visibility)
+	city_toolbar.underground_water_mains_visibility_requested.connect(_set_underground_water_mains_visible)
 	city_toolbar.underground_pipes_visibility_requested.connect(
 		_set_underground_pipes_visible
 	)
@@ -1446,7 +1449,7 @@ func _open_scurk_print_dialog() -> void:
 	_ensure_scurk_print()
 
 	scurk_print.configure(
-		city.city_name(), overlay_mode, surface_visibility, show_underground_pipes
+		city.city_name(), overlay_mode, surface_visibility, show_underground_pipes, show_underground_water_mains
 	)
 	scurk_print.show_workspace()
 
@@ -1541,6 +1544,7 @@ func _current_scurk_output_options() -> Dictionary:
 		"color": true,
 		"surface_visibility": surface_visibility.duplicate(),
 		"show_pipes": show_underground_pipes,
+		"show_water_mains": show_underground_water_mains,
 	}
 
 
@@ -2099,6 +2103,8 @@ func _on_view_menu(id: int) -> void:
 			_set_surface_visibility(not bool(surface_visibility.zones), "zones")
 		MENU_VIEW_SIGNS:
 			_set_surface_visibility(not bool(surface_visibility.signs), "signs")
+		MENU_VIEW_WATER_MAINS:
+			_set_underground_water_mains_visible(not show_underground_water_mains)
 		MENU_VIEW_PIPES:
 			_set_underground_pipes_visible(not show_underground_pipes)
 
@@ -2158,6 +2164,7 @@ func _sync_view_controls() -> void:
 		MENU_VIEW_ZONES: bool(surface_visibility.zones),
 		MENU_VIEW_SIGNS: bool(surface_visibility.signs),
 		MENU_VIEW_PIPES: show_underground_pipes,
+		MENU_VIEW_WATER_MAINS: show_underground_water_mains,
 	}
 
 	if view_menu != null:
@@ -2173,15 +2180,18 @@ func _sync_view_controls() -> void:
 
 	for key in view_visibility_checks:
 		var check: CheckBox = view_visibility_checks[key]
-		check.visible = (underground_active if key in ["pipes", "subways"] else not underground_active) and not CityDataView.MODES.has(overlay_mode)
+		check.visible = (underground_active if key in ["water_mains", "pipes", "subways"] else not underground_active) and not CityDataView.MODES.has(overlay_mode)
 		if landscape_editor:
 			check.visible = key in ["water", "trees"]
 		check.disabled = CityDataView.MODES.has(overlay_mode)
-		var enabled := (
-			show_underground_pipes
-			if key == "pipes"
-			else (show_underground_subways if key == "subways" else bool(surface_visibility.get(key, true)))
-		)
+		var enabled := bool(surface_visibility.get(key, true))
+		match key:
+			"water_mains":
+				enabled = show_underground_water_mains
+			"pipes":
+				enabled = show_underground_pipes
+			"subways":
+				enabled = show_underground_subways
 		check.set_pressed_no_signal(enabled)
 
 
@@ -2192,6 +2202,7 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 		popup.remove_item(popup.item_count - 1)
 
 	if underground_active:
+		popup.add_check_item("Show Water Mains", MENU_VIEW_WATER_MAINS)
 		popup.add_check_item("Show Underground Pipes", MENU_VIEW_PIPES)
 	else:
 		for view_item in [
@@ -3535,6 +3546,20 @@ func _set_surface_visibility(enabled: bool, layer: String) -> void:
 	]
 
 
+func _set_underground_water_mains_visible(enabled: bool) -> void:
+	if show_underground_water_mains == enabled:
+		return
+
+	show_underground_water_mains = enabled
+	_invalidate_view_render()
+	_sync_view_controls()
+
+	if city != null and overlay_mode == "underground":
+		_refresh_map(false)
+
+	status_label.text = "Water mains %s." % ("shown" if enabled else "hidden")
+
+
 func _set_underground_pipes_visible(enabled: bool) -> void:
 	if show_underground_pipes == enabled:
 		return
@@ -3913,7 +3938,7 @@ func _refresh_map(force := true) -> void:
 		if overlay_mode == "underground":
 			indexed = UndergroundView.create_image(
 				display_city, palette_index_encoding, sprite_archive, view_size, true,
-				show_underground_pipes, show_underground_subways
+				show_underground_pipes, show_underground_subways, show_underground_water_mains
 			)
 		else:
 			indexed = IsometricRenderer.create_image(
@@ -4009,7 +4034,7 @@ func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 		region_cache.signature = []
 
 	region_cache.configure(city, palette_index_encoding, sprites, signature, view_size,
-		overlay_mode, surface_visibility, show_underground_pipes, show_underground_subways, dirty)
+		overlay_mode, surface_visibility, show_underground_pipes, show_underground_subways, dirty, show_underground_water_mains)
 
 	if overlay_mode == "city":
 		var labels := city.document.find_chunk("XLAB")
@@ -4139,6 +4164,7 @@ func _request_static_render(
 	static_render_job.render_mode = render_mode
 	static_render_job.surface_visibility = surface_visibility.duplicate()
 	static_render_job.show_underground_subways = show_underground_subways
+	static_render_job.show_underground_water_mains = show_underground_water_mains
 	static_render_job.show_underground_pipes = show_underground_pipes
 	static_render_thread = Thread.new()
 	var start_error := static_render_thread.start(
@@ -4239,7 +4265,7 @@ func _poll_static_render() -> void:
 func _static_signature_for_mode(mode: String, view_size: int) -> Array:
 	if mode == "underground":
 		return UndergroundView.visual_signature(
-			city, view_size, show_underground_pipes, show_underground_subways
+			city, view_size, show_underground_pipes, show_underground_subways, show_underground_water_mains
 		)
 
 	var result := IsometricRenderer.static_visual_signature(city, view_size)

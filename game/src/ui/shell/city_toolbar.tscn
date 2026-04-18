@@ -308,10 +308,17 @@ tooltip_text = "Show or hide signs in the city view."
 button_pressed = true
 text = "Signs"
 
+[node name="WaterMainsVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide water mains in the underground view."
+button_pressed = true
+text = "Water mains"
+
 [node name="PipesVisible" type="CheckBox" parent="Margin/Column/Layers"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Show or hide pipes in the underground view."
+tooltip_text = "Show or hide pipes beneath buildings in the underground view."
 button_pressed = true
 text = "Pipes"
 

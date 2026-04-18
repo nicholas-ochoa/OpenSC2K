@@ -28,6 +28,7 @@ var _snapshot: CityState
 var _palette: Sc2Palette
 var _sprites: Sc2SpriteArchive
 var _visibility: Dictionary
+var _show_water_mains := true
 var _show_pipes := true
 var _show_subways := true
 var _prepared := false
@@ -57,14 +58,14 @@ static func gpu_supported(preference := "gpu") -> bool:
 
 func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		new_signature: Array, new_view: int, new_mode: String, visibility: Dictionary,
-		show_pipes: bool, show_subways: bool, dirty := Rect2i()) -> void:
+		show_pipes: bool, show_subways: bool, dirty := Rect2i(), show_water_mains := true) -> void:
 	if _snapshot == null:
 		region_edge = GPU_REGION_EDGE if gpu_enabled else REGION_EDGE
 
-	if signature == new_signature and view_size == new_view and mode == new_mode and _snapshot != null:
+	if signature == new_signature and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes and _show_subways == show_subways and _show_water_mains == show_water_mains:
 		return
 
-	var reset := _snapshot == null or _snapshot.map_size != city.map_size or view_size != new_view or mode != new_mode or _snapshot.document.source_path != city.document.source_path or _snapshot.compass_rotation() != city.compass_rotation() or _snapshot.visible_altitude_levels != city.visible_altitude_levels or _visibility != visibility or _sprites != sprites or _show_pipes != show_pipes or _show_subways != show_subways
+	var reset := _snapshot == null or _snapshot.map_size != city.map_size or view_size != new_view or mode != new_mode or _snapshot.document.source_path != city.document.source_path or _snapshot.compass_rotation() != city.compass_rotation() or _snapshot.visible_altitude_levels != city.visible_altitude_levels or _visibility != visibility or _sprites != sprites or _show_pipes != show_pipes or _show_subways != show_subways or _show_water_mains != show_water_mains
 	generation += 1
 	_gpu_has_work = true
 	last_error = ""
@@ -104,6 +105,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_palette = palette
 	_sprites = sprites
 	_visibility = visibility.duplicate()
+	_show_water_mains = show_water_mains
 	_show_pipes = show_pipes
 	_show_subways = show_subways
 	_prepared = mode == "underground"
@@ -307,7 +309,7 @@ func tick() -> bool:
 			_job_layout = _layout_generation
 			_thread = Thread.new()
 			var bounds := Rect2i(key * region_edge, Vector2i(region_edge, region_edge))
-			var error := _thread.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared, _show_pipes, _show_subways), Thread.PRIORITY_LOW)
+			var error := _thread.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared, _show_pipes, _show_subways, _show_water_mains), Thread.PRIORITY_LOW)
 
 			if error != OK:
 				_thread = null
@@ -499,10 +501,10 @@ func close() -> void:
 	display_city = null
 
 
-static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, render_mode: String, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool, gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1, foreground_requests: Array[Dictionary] = []) -> Dictionary:
+static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, render_mode: String, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool, water_mains: bool, gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1, foreground_requests: Array[Dictionary] = []) -> Dictionary:
 	var started := Time.get_ticks_usec()
 	var display := city if prepared else CityViewFilter.surface_copy(city, visibility)
-	var result := CityGpuRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, gpu_context, revision, atlas_revision) if gpu_context != null else CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways)
+	var result := CityGpuRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, gpu_context, revision, atlas_revision, true, water_mains) if gpu_context != null else CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains)
 
 	if result.ok and gpu_context != null and render_mode == "city":
 		result.sign_foregrounds = CityGpuSignForegrounds.build(result, foreground_requests, palette, sprites, gpu_context, int(CityIsometricRenderer.view_configuration(view).divisor))
@@ -692,7 +694,7 @@ func _tick_gpu() -> bool:
 		worker.thread = Thread.new()
 		var request := {"city": _snapshot, "prepared": _prepared, "visibility": _visibility,
 			"palette": _palette, "sprites": _sprites, "keys": keys, "edge": region_edge,
-			"view": view_size, "mode": mode, "pipes": _show_pipes, "subways": _show_subways,
+			"view": view_size, "mode": mode, "water_mains": _show_water_mains, "pipes": _show_pipes, "subways": _show_subways,
 			"generation": generation, "signs": sign_requests}
 		var error: Error = worker.thread.start(CityGpuRegionBatch.build.bind(request, worker.context, worker.atlas_revision), Thread.PRIORITY_LOW)
 

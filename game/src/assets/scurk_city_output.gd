@@ -94,7 +94,7 @@ static func render(
 			sprites,
 			view_size,
 			true,
-			bool(options.get("show_pipes", true))
+			bool(options.get("show_pipes", true)), true, bool(options.get("show_water_mains", true))
 		)
 	elif view == "city":
 		var show_signs := bool(

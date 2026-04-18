@@ -28,6 +28,7 @@ const MENU_VIEW_TREES := 0x8104
 const MENU_VIEW_ZONES := 0x8105
 const MENU_VIEW_SIGNS := 0x8106
 const MENU_VIEW_PIPES := 0x8107
+const MENU_VIEW_WATER_MAINS := 0x8108
 const MENU_SCURK_PLACE_PRINT := 0x8200
 const DISASTER_ITEMS := [
 	["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],

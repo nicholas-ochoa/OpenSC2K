@@ -14,6 +14,7 @@ var signature: Array = []
 var epoch := 0
 var render_mode := "city"
 var surface_visibility: Dictionary = ViewFilter.DEFAULT_VISIBILITY.duplicate()
+var show_underground_water_mains := true
 var show_underground_pipes := true
 var show_underground_subways := true
 
@@ -24,7 +25,7 @@ func run() -> Dictionary:
 	if render_mode == "underground":
 		indexed = UndergroundView.create_image(
 			city_snapshot, index_palette, sprites, view_size, false,
-			show_underground_pipes, show_underground_subways
+			show_underground_pipes, show_underground_subways, show_underground_water_mains
 		)
 	else:
 		city_snapshot = ViewFilter.surface_copy(city_snapshot, surface_visibility)

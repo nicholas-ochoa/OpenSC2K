@@ -29,7 +29,7 @@ func set_revision(value: int) -> void:
 
 
 func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
-		configuration: Dictionary, x: int, y: int, mode: String, pipes: bool, subways: bool) -> Dictionary:
+		configuration: Dictionary, x: int, y: int, mode: String, pipes: bool, subways: bool, water_mains := true) -> Dictionary:
 	var key := city.index_of(x, y)
 
 	if tiles.has(key):
@@ -41,7 +41,7 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	var foreground: Array[Dictionary] = []
 
 	if mode == "underground":
-		CityUndergroundView._draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, pipes, subways)
+		CityUndergroundView._draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, pipes, subways, water_mains)
 	else:
 		if not _fast_tile(recorder, city, palette, sprites, configuration, origin, x, y):
 			CityIsometricRenderer._draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, 0, false, false)

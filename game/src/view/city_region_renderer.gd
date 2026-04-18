@@ -7,7 +7,7 @@ const Underground = preload("res://src/view/city_underground_view.gd")
 
 static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 		bounds: Rect2i, view_size := Renderer.VIEW_LARGE, mode := "city",
-		show_pipes := true, show_subways := true) -> Dictionary:
+		show_pipes := true, show_subways := true, show_water_mains := true) -> Dictionary:
 	if city == null or not city.is_valid() or palette == null or not palette.is_valid() or sprites == null or not sprites.is_valid():
 		return {"ok": false, "error": "invalid region assets"}
 
@@ -58,7 +58,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				continue
 
 			if mode == "underground":
-				Underground._draw_tile(image, city, palette, sprites, cache, local, origin - bounds.position.x, x, y, show_pipes, show_subways)
+				Underground._draw_tile(image, city, palette, sprites, cache, local, origin - bounds.position.x, x, y, show_pipes, show_subways, show_water_mains)
 			else:
 				Renderer._draw_tile(image, city, palette, sprites, cache, local, origin - bounds.position.x, x, y, 0, false, false)
 				var order := diagonal * city.map_size + y

@@ -28,6 +28,7 @@ signal zoom_out_requested
 signal zoom_in_requested
 signal overlay_requested(mode: String)
 signal surface_visibility_requested(visible: bool, layer: String)
+signal underground_water_mains_visibility_requested(visible: bool)
 signal underground_pipes_visibility_requested(visible: bool)
 signal underground_subways_visibility_requested(visible: bool)
 
@@ -83,7 +84,7 @@ func _ready() -> void:
 		"buildings": %BuildingsVisible, "networks": %NetworksVisible,
 		"water": %WaterVisible, "trees": %TreesVisible,
 		"zones": %ZonesVisible, "signs": %SignsVisible,
-		"pipes": %PipesVisible, "subways": %SubwaysVisible,
+		"water_mains": %WaterMainsVisible, "pipes": %PipesVisible, "subways": %SubwaysVisible,
 	}
 
 	hold_menu = HoldMenu.new()
@@ -130,6 +131,7 @@ func _ready() -> void:
 	for layer in ["buildings", "networks", "water", "trees", "zones", "signs"]:
 		view_visibility_checks[layer].toggled.connect(_on_surface_visibility_toggled.bind(layer))
 
+	view_visibility_checks.water_mains.toggled.connect(underground_water_mains_visibility_requested.emit)
 	view_visibility_checks.pipes.toggled.connect(underground_pipes_visibility_requested.emit)
 	view_visibility_checks.subways.toggled.connect(underground_subways_visibility_requested.emit)
 	_watch_buttons(self)
@@ -349,7 +351,7 @@ func set_landscape_editor(enabled: bool) -> void:
 	%LandscapeSpacer.visible = enabled
 	$Margin/Column/ToolGroupsDivider.visible = not enabled
 	for key in view_visibility_checks:
-		view_visibility_checks[key].visible = key in ["water", "trees"] if enabled else key not in ["pipes", "subways"]
+		view_visibility_checks[key].visible = key in ["water", "trees"] if enabled else key not in ["water_mains", "pipes", "subways"]
 
 
 func _watch_buttons(node: Node) -> void:

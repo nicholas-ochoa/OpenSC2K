@@ -2412,21 +2412,21 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(
 		UndergroundView.tile_sprite_ids(
 			underground_city, wet_pipe.x, wet_pipe.y,
-			IsometricRenderer.VIEW_LARGE, false
+			IsometricRenderer.VIEW_LARGE, true, true, false
 		) == PackedInt32Array([1305]),
-		"Hidden pipes leave the terrain wireframe visible",
+		"Hidden water mains leave the terrain wireframe visible",
 	)
 	_check(
 		UndergroundView.tile_sprite_ids(
-			underground_city, 24, 20, IsometricRenderer.VIEW_LARGE, false
+			underground_city, 24, 20, IsometricRenderer.VIEW_LARGE, true, true, false
 		) == PackedInt32Array([1319]),
-		"Hidden pipes replace the first pipe-subway crossover with subway LR",
+		"Hidden water mains replace the first pipe-subway crossover with subway LR",
 	)
 	_check(
 		UndergroundView.tile_sprite_ids(
-			underground_city, 25, 20, IsometricRenderer.VIEW_LARGE, false
+			underground_city, 25, 20, IsometricRenderer.VIEW_LARGE, true, true, false
 		) == PackedInt32Array([1320]),
-		"Hidden pipes replace the second pipe-subway crossover with subway TB",
+		"Hidden water mains replace the second pipe-subway crossover with subway TB",
 	)
 	_check(
 		UndergroundView.tile_sprite_ids(

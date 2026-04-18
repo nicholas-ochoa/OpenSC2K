@@ -126,6 +126,11 @@ layout_mode = 2
 button_pressed = true
 text = "Signs"
 
+[node name="WaterMainsCheck" type="CheckBox" parent="Panel/Margin/Content/LayersRow"]
+layout_mode = 2
+button_pressed = true
+text = "Water mains"
+
 [node name="PipesCheck" type="CheckBox" parent="Panel/Margin/Content/LayersRow"]
 layout_mode = 2
 button_pressed = true
