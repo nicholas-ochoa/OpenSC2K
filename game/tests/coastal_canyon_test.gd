@@ -2,7 +2,7 @@ extends SceneTree
 
 func _initialize() -> void:
 	for edge in [128, 256, 384, 512]:
-		for feature in ["cliffs", "canyon"]:
+		for feature in ["cliffs", "canyon", "valley"]:
 			var doc := EmptyCityTemplate.create(edge)
 			var generated := NewCityTerrain.generate(doc, false, feature == "canyon", 12, 5, 0,
 				SimRandom.new(29), GameLcgRandom.new(29), feature, [], true)
@@ -22,6 +22,11 @@ func _initialize() -> void:
 				var floor_level: int = Array(heights).min()
 				assert(_largest_flat_square(city, floor_level) >= 12 * IntegerMath.div_trunc(edge, 128),
 					"The canyon floor must fit a city neighborhood")
+			elif feature == "valley":
+				assert(generated.water_tiles > 0)
+				assert(_largest_flat_square(city, sea + 1) >= 6 * IntegerMath.div_trunc(edge, 128),
+					"River banks must fit a flat buildable neighborhood")
+				assert(Array(heights).max() >= sea + 6, "Retain raised valley sides")
 			else:
 				var distances := TerrainElevation._water_distances(heights, sea, edge)
 				var inland_min := 31
@@ -42,7 +47,7 @@ func _initialize() -> void:
 			var loaded := Sc2File.new()
 			assert(loaded.parse(data) and loaded.serialize().data == data)
 			print(feature, " terrain checks: ", edge)
-	print("Coastal plateau and dry canyon checks passed")
+	print("Coastal plateau, dry canyon, and river floodplain checks passed")
 	quit()
 
 

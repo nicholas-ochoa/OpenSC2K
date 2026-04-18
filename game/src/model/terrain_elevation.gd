@@ -50,7 +50,8 @@ static func apply(heights: PackedInt32Array, sea: int, selected: Array,
 				value = inland_base + 1.0 + relief * smoothstep(0.08, 0.48, radius)
 			if "valley" in selected:
 				var distance := float(distances[index]) / 127.0
-				var rise := smoothstep(0.0, 0.23, distance)
+				# leave a buildable floodplain before the gentle valley sides rise
+				var rise := smoothstep(0.065, 0.295, distance)
 				value = lerpf(sea + 1.0, maxf(value, sea + relief), rise)
 			if "canyon" in selected:
 				var axis := 0.14 * sin(point.y * 6.0 + phase) + 0.035 * sin(point.y * 11.0 - phase)

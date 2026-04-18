@@ -22,6 +22,8 @@ func _initialize() -> void:
 		if feature == "basin":
 			assert(heights[64 * 128 + 64] + 4 < heights[8 * 128 + 64])
 		if feature == "valley":
+			for x in range(66, 73):
+				assert(heights[x * 128 + 64] == 5, "Keep a flat dry strip beside the river")
 			assert(heights[66 * 128 + 64] < heights[96 * 128 + 64])
 			assert(heights[64 * 128 + 64] == 2, "Preserve river water")
 		if feature == "canyon":
