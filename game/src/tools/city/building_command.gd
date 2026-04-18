@@ -200,36 +200,6 @@ const FORCED_TERRAIN_MASKS := {
 	11: true,
 	12: true,
 }
-const VERTICAL_TERRAIN_BLOCKS := {
-	1: true,
-	3: true,
-	15: true,
-	17: true,
-	19: true,
-	31: true,
-	33: true,
-	35: true,
-	47: true,
-	68: true,
-	69: true,
-	70: true,
-	71: true,
-}
-const HORIZONTAL_TERRAIN_BLOCKS := {
-	2: true,
-	4: true,
-	15: true,
-	18: true,
-	20: true,
-	31: true,
-	34: true,
-	36: true,
-	47: true,
-	68: true,
-	69: true,
-	70: true,
-	71: true,
-}
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:
@@ -1190,11 +1160,11 @@ static func _underground_connects(tile_id: int, pipes: bool) -> bool:
 
 
 static func _allows_vertical(terrain_id: int) -> bool:
-	return terrain_id >= 0 and terrain_id <= 71 and not VERTICAL_TERRAIN_BLOCKS.has(terrain_id)
+	return NetworkTerrainRules.allows_connection(terrain_id, 0)
 
 
 static func _allows_horizontal(terrain_id: int) -> bool:
-	return terrain_id >= 0 and terrain_id <= 71 and not HORIZONTAL_TERRAIN_BLOCKS.has(terrain_id)
+	return NetworkTerrainRules.allows_connection(terrain_id, 1)
 
 
 static func _update_building_count(

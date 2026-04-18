@@ -857,7 +857,9 @@ static func _plan_flat_route(
 			buildings, terrain, altitude, current, map_edge
 		)
 
-		if current_shape == FLAT_TERRAIN_SHAPE:
+		var keep_straight := current_shape != FLAT_TERRAIN_SHAPE or _section_has_straight_crossing(buildings, current, direction, map_edge)
+
+		if not keep_straight:
 			direction = _primary_direction(current, finish)
 
 		var next: Vector2i = current + DIRECTIONS[direction] * 2
@@ -870,7 +872,7 @@ static func _plan_flat_route(
 		if not _section_follows(
 			buildings, terrain, flags, altitude, current, next, direction, map_edge
 		):
-			if current_shape != FLAT_TERRAIN_SHAPE:
+			if keep_straight:
 				break
 
 			var alternate := _alternate_direction(current, finish, direction)
@@ -895,6 +897,20 @@ static func _plan_flat_route(
 		result.append(current)
 
 	return result
+
+
+static func _section_has_straight_crossing(buildings: PackedByteArray, anchor: Vector2i, direction: int, map_edge: int) -> bool:
+	# SIMCITY.EXE 0x00461bfa checks all four cells before changing axis.
+	# Include both straight power crossings; its threshold misses 0x0e.
+	# Existing highways can still extend.
+	for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
+		var point: Vector2i = anchor + offset
+		var tile_id := int(buildings[point.x * map_edge + point.y])
+
+		if tile_id >= 0x0e and not _is_highway_tile(tile_id) and _network_can_cross(tile_id, direction):
+			return true
+
+	return false
 
 
 static func _primary_direction(current: Vector2i, finish: Vector2i) -> int:

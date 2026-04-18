@@ -63,24 +63,7 @@ const TERRAIN_IS_NETWORK_SLOPE := [
 	false, true, true, true, true, false, false, false,
 	false, true, true, true, true, false, false, false,
 ]
-const TERRAIN_BLOCKS_DIRECTION := [
-	false, false, false, false,
-	true, false, true, false,
-	false, true, false, true,
-	true, false, true, false,
-	false, true, false, true,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	false, false, false, false,
-	true, false, true, false,
-	true, false, true, false,
-]
+const TERRAIN_BLOCKS_DIRECTION := NetworkTerrainRules.ENTRY_BLOCKS_DIRECTION
 const GRADED_TERRAIN := [
 	0, 0, 1, 0,
 	0, 0, 0, 0,
@@ -185,9 +168,10 @@ static func apply_segment(
 	var altitude: PackedByteArray = changed_payloads.ALTM
 	var mode := int(NETWORK_TOOLS[group_index * ToolCatalog.MAX_SLOTS_PER_GROUP + subtool_index])
 
+	var planned_directions: Array[int] = []
 	var planned := _plan_route(
 		buildings, terrain, zones, underground, flags, altitude,
-		start, finish, mode, map_edge
+		start, finish, mode, map_edge, planned_directions
 	)
 	var bridge_plan := {}
 	var surface_mode := mode == MODE_ROAD or mode == MODE_RAIL or mode == MODE_POWER
@@ -216,22 +200,18 @@ static func apply_segment(
 	var graded_tiles := 0
 	var new_tiles := planned.size()
 
-	if surface_mode:
-		for point in planned:
-			var index := point.x * map_edge + point.y
+	for point in planned:
+		var index := point.x * map_edge + point.y
+		var reused := _reuses_surface(buildings[index], mode) if surface_mode else _reuses_underground(underground[index], mode)
 
-			if _reuses_surface(buildings[index], mode):
-				new_tiles -= 1
-				continue
+		if reused:
+			new_tiles -= 1
+			continue
 
-			var terrain_id := int(terrain[index])
+		var terrain_id := int(terrain[index])
 
-			if terrain_id < 0x30 and TERRAIN_REQUIRES_GRADING[terrain_id & 0x0f]:
-				graded_tiles += 1
-	else:
-		for point in planned:
-			if _reuses_underground(underground[point.x * map_edge + point.y], mode):
-				new_tiles -= 1
+		if terrain_id < 0x30 and TERRAIN_REQUIRES_GRADING[terrain_id & 0x0f]:
+			graded_tiles += 1
 
 	var listed_dry_cost := new_tiles * int(tool.cost) + graded_tiles * 25
 	var dry_cost := 0 if free_mode else listed_dry_cost
@@ -354,7 +334,7 @@ static func apply_segment(
 
 	for point_index in planned.size():
 		var point := planned[point_index]
-		var direction := _route_direction(planned, point_index)
+		var direction := planned_directions[point_index]
 
 		match mode:
 			MODE_ROAD:
@@ -850,6 +830,7 @@ static func _plan_route(
 	finish: Vector2i,
 	mode: int,
 	map_edge: int = 128,
+	planned_directions: Array[int] = [],
 ) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
 	var current := start
@@ -863,6 +844,7 @@ static func _plan_route(
 					current, mode, candidate_direction, map_edge
 				):
 					result.append(current)
+					planned_directions.append(candidate_direction)
 
 					return result
 
@@ -877,8 +859,10 @@ static func _plan_route(
 		direction = start_alternate
 
 	result.append(current)
+	planned_directions.append(direction)
 
 	while current != finish:
+		var incoming_direction := direction
 		var keep_straight := _route_keeps_direction(buildings, terrain, underground, current, mode, direction, map_edge)
 
 		if not keep_straight:
@@ -889,7 +873,7 @@ static func _plan_route(
 		if keep_straight and (next.x < mini(start.x, finish.x) or next.x > maxi(start.x, finish.x) or next.y < mini(start.y, finish.y) or next.y > maxi(start.y, finish.y)):
 			break
 
-		if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, next, mode, direction, map_edge):
+		if not _step_is_eligible(buildings, terrain, zones, underground, flags, altitude, current, next, mode, direction, keep_straight, map_edge):
 			var alternate := _alternate_direction(current, finish, direction)
 
 			if keep_straight or alternate < 0:
@@ -897,15 +881,40 @@ static func _plan_route(
 
 			next = current + DIRECTIONS[alternate]
 
-			if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, next, mode, alternate, map_edge):
+			if not _step_is_eligible(buildings, terrain, zones, underground, flags, altitude, current, next, mode, alternate, keep_straight, map_edge):
 				break
 
 			direction = alternate
 
+		# Check the rail grade after choosing the axis, as the original does.
+		# A failed check ends the route; it does not try the other turn.
+		if mode == MODE_RAIL and direction != incoming_direction and terrain[next.x * map_edge + next.y] != 0:
+			break
+
 		current = next
 		result.append(current)
+		planned_directions.append(direction)
 
 	return result
+
+
+static func _step_is_eligible(
+	buildings: PackedByteArray, terrain: PackedByteArray, zones: PackedByteArray,
+	underground: PackedByteArray, flags: PackedByteArray, altitude: PackedByteArray,
+	current: Vector2i, next: Vector2i, mode: int, direction: int,
+	keep_straight: bool, map_edge: int,
+) -> bool:
+	if not _tile_is_eligible(buildings, terrain, zones, underground, flags, altitude, next, mode, direction, map_edge):
+		return false
+
+	var current_index := current.x * map_edge + current.y
+	var next_index := next.x * map_edge + next.y
+
+	return NetworkTerrainRules.allows_height_step(
+		terrain[current_index], _land_altitude(altitude, current_index),
+		terrain[next_index], _land_altitude(altitude, next_index),
+		keep_straight, mode == MODE_RAIL
+	)
 
 
 # some tiles force the incoming direction before we can turn toward the pointer
@@ -920,11 +929,11 @@ static func _route_keeps_direction(buildings: PackedByteArray, terrain: PackedBy
 	if mode < MODE_SUBWAY:
 		var tile := int(buildings[index])
 
-		return tile > 0x0d and tile + (direction & 1) in [0x0f, 0x1e, 0x2d, 0x4a]
+		return _surface_fixed_axis(tile, mode) >= 0 or (tile > 0x0d and tile + (direction & 1) in [0x0f, 0x1e, 0x2d, 0x4a])
 
 	var tile := int(underground[index])
 
-	return tile != 0 and tile + (direction & 1) in [2, 0x11]
+	return tile in [0x1f, 0x20] or (tile != 0 and tile + (direction & 1) in [2, 0x11])
 
 
 static func _primary_direction(current: Vector2i, finish: Vector2i) -> int:
@@ -989,6 +998,11 @@ static func _tile_is_eligible(
 	if (zones[index] & 0x0f) == MILITARY_ZONE:
 		return false
 
+	var terrain_id := int(terrain[index])
+
+	if not NetworkTerrainRules.allows_entry(terrain_id, direction):
+		return false
+
 	if mode == MODE_SUBWAY or mode == MODE_PIPE:
 		var altitude_offset := index * 2
 		var altitude_word := (altitude[altitude_offset] << 8) | altitude[altitude_offset + 1]
@@ -1000,6 +1014,12 @@ static func _tile_is_eligible(
 		var under_tile := int(underground[index])
 
 		if _reuses_underground(under_tile, mode):
+			if under_tile in [0x1f, 0x20]:
+				var axis := under_tile - 0x1f
+				if mode == MODE_PIPE:
+					axis = 1 - axis
+				return (direction & 1) == axis
+
 			return true
 
 		if under_tile == 0:
@@ -1010,21 +1030,17 @@ static func _tile_is_eligible(
 
 		return under_tile >= 0x10 and under_tile <= 0x1e
 
-	var terrain_id := int(terrain[index])
-
 	if flags[index] & FLAG_WATER and terrain_id < 0x40:
 		return false
 
 	if terrain_id >= 0x10 and terrain_id < 0x20:
 		return false
 
-	if terrain_id < 0x40 and TERRAIN_BLOCKS_DIRECTION[(terrain_id & 0x0f) * 4 + direction]:
-		return false
-
 	var building := int(buildings[index])
 
 	if _reuses_surface(building, mode):
-		return true
+		var axis := _surface_fixed_axis(building, mode)
+		return axis < 0 or (direction & 1) == axis
 
 	if building == 0x05 or building == 0x0d or building > 0x50:
 		return false
@@ -1035,6 +1051,16 @@ static func _tile_is_eligible(
 	var directional_id := building + (direction & 1)
 
 	return directional_id == 0x0f or directional_id == 0x1e or directional_id == 0x2d or directional_id == 0x4a
+
+
+static func _surface_fixed_axis(tile_id: int, mode: int) -> int:
+	# existing mixed crossings cannot turn. this is a geometry constraint,
+	# separate from whether reuse is free or a future saved edge is blocked
+	if mode == MODE_ROAD:
+		return {0x43: 0, 0x44: 1, 0x45: 0, 0x46: 1, 0x4b: 1, 0x4c: 0}.get(tile_id, -1)
+	if mode == MODE_RAIL:
+		return {0x45: 1, 0x46: 0, 0x47: 0, 0x48: 1, 0x4d: 1, 0x4e: 0}.get(tile_id, -1)
+	return {0x43: 1, 0x44: 0, 0x47: 1, 0x48: 0, 0x4f: 1, 0x50: 0}.get(tile_id, -1)
 
 
 static func _reuses_surface(tile_id: int, mode: int) -> bool:
@@ -1237,7 +1263,7 @@ static func _retile_surface(
 		else:
 			connects = _rail_connects(buildings[near_index])
 
-		if connects:
+		if connects and NetworkTerrainRules.allows_connection(terrain[near_index], direction):
 			connections |= 1 << direction
 
 	_replace_building(buildings, zones, misc, index, base + NETWORK_SHAPES[connections])
@@ -1307,6 +1333,7 @@ static func _place_underground(
 		else:
 			return
 
+	_grade_surface_terrain(terrain, flags, point, direction, map_edge)
 	BuildingCommand._replace_underground(underground, zones, misc, index, new_tile)
 	_retile_underground_neighborhood(underground, terrain, point, pipes, map_edge)
 
