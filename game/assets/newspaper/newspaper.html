@@ -1,131 +1,978 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'">
-<title>City Newspaper</title>
-<style>
-*{box-sizing:border-box;cursor:inherit;-webkit-user-select:none;user-select:none}html,body{cursor:default}html,body{margin:0;height:100%;background:transparent;color:#171713}body{font-family:Georgia,'Times New Roman',serif;display:grid;place-items:center}#shell{position:relative;width:65vw;height:85vh;min-width:min(380px,95vw);min-height:240px;max-width:95vw;max-height:95vh;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 8px 40px #0009;border:1px solid #666}nav{flex:none;display:flex;gap:12px;align-items:center;padding:9px 20px;background:#252a2d;color:#eee;font:13px system-ui}nav label{margin-right:auto}button,select{font:inherit;padding:5px 12px;border:1px solid #777;border-radius:3px;background:#444b50;color:white;cursor:pointer}button:hover{background:#606a70}main{overflow:auto;flex:1;padding:18px}#paper{max-width:1280px;margin:auto;background:#d0cfc9;padding:10px 16px 16px;box-shadow:0 2px 12px #0006}#banner{text-align:center;font-weight:bold;font-size:clamp(20px,2.6vw,34px);line-height:1.02;padding-bottom:9px;border-bottom:2px solid #34342e;margin:0}header{display:grid;grid-template-columns:1fr 2fr 1fr;align-items:end;border-bottom:1px solid #34342e;padding:8px 0}#masthead{font-size:clamp(22px,3vw,36px);text-align:center;margin:0;line-height:1.1}#date{text-align:right}.summary{display:flex;justify-content:space-between;gap:20px;padding:7px 0;border-bottom:1px solid #777;font-size:11px;white-space:pre-line}.summary p{margin:0}/* Fixed newspaper regions follow the supplied original-game examples. */
-main{min-height:0;padding:10px}
-#paper{height:100%;min-height:440px;display:flex;flex-direction:column;container-type:inline-size}
-header{order:0;flex:none;padding:3px 0}
-#masthead{font-size:clamp(22px,3cqw,36px);font-weight:normal}
-#banner{order:1;flex:none;border:0;font-weight:bold;font-size:clamp(24px,3.8cqw,44px);padding:5px 0 8px;line-height:1.03}
-.summary{display:none}
-#stories{order:2;position:relative;flex:1;min-height:290px;font-size:12px;line-height:1.12}
-#stories article,#stories figure{position:absolute;margin:0;overflow:hidden}
-article{cursor:pointer;display:flex;flex-direction:column;min-width:0}
-article h2{flex:none;font-size:16px;line-height:1.05;text-align:center;font-weight:bold;margin:0 0 5px;text-wrap:balance}
-article:hover h2{text-decoration:underline}
-article:focus-visible,figure:focus-visible{outline:2px solid #555;outline-offset:-2px}
-.story-copy{min-height:0;flex:1;column-gap:10px;column-fill:auto;text-align:justify;hyphens:auto;overflow:hidden;orphans:2;widows:2}
-.story-copy p{margin:0}
-.continuation{flex:none;text-align:right;font-size:10px;font-style:italic;padding-top:3px}
-.column-note{font-size:12px;line-height:1.1;white-space:pre-line;margin:0 0 7px;flex:none}
-#lead-photo{display:flex;flex-direction:column;align-items:center;cursor:pointer}
-#lead-photo img{width:100%;min-height:0;flex:1;object-fit:contain;filter:grayscale(1)}
-#lead-photo figcaption{font-size:11px;text-align:center;margin:3px 0 0;flex:none}
-#paper[data-edition="chronicle"] header{order:1}#paper[data-edition="chronicle"] #banner{order:0;border-bottom:1px solid #555}
-dialog{color:#171713;background:#d0cfc9;border:1px solid #555;width:min(720px,90vw);max-height:85vh;padding:24px}dialog::backdrop{background:#0009}dialog h2{font-size:24px;text-align:center;padding:0 30px;margin-bottom:22px}#fulltext{font-size:15px;line-height:1.25;white-space:pre-line;text-align:justify}dialog button{position:absolute;right:10px;top:10px;width:28px;height:28px;padding:0;font:24px/24px system-ui;background:transparent;border:0;color:#222}dialog button:hover{background:#0002}@media(max-width:850px){main{padding:10px}}@media(max-width:580px){header{grid-template-columns:1fr}#date{text-align:center}#price{text-align:center}.summary{font-size:12px}}
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'none'; img-src data:; font-src data:; style-src 'unsafe-inline'; script-src 'unsafe-inline'"
+    />
+    <title>City Newspaper</title>
+    <style>
+      @font-face {
+        font-family: 'Newspaper Headline';
+        src: url('data:font/ttf;base64,__NEWSPAPER_HEADLINE_FONT__') format('truetype');
+        font-style: normal;
+        font-weight: 400;
+      }
+      @font-face {
+        font-family: 'Chomsky';
+        src: url('data:font/otf;base64,__NEWSPAPER_CHOMSKY_FONT__') format('opentype');
+        font-style: normal;
+        font-weight: 400;
+      }
+      @font-face {
+        font-family: 'Grenze Gotisch';
+        src: url('data:font/ttf;base64,__NEWSPAPER_GRENZE_FONT__') format('truetype');
+        font-style: normal;
+        font-weight: 100 900;
+      }
+      @font-face {
+        font-family: 'UnifrakturMaguntia';
+        src: url('data:font/ttf;base64,__NEWSPAPER_MAGUNTIA_FONT__') format('truetype');
+        font-style: normal;
+        font-weight: 400;
+      }
+      * {
+        box-sizing: border-box;
+        cursor: inherit;
+        -webkit-user-select: none;
+        user-select: none;
+      }
+      html,
+      body {
+        cursor: default;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        background: transparent;
+        color: #171713;
+      }
+      body {
+        font-family: Georgia, 'Times New Roman', serif;
+        display: grid;
+        place-items: center;
+      }
+      #shell {
+        position: relative;
+        width: 65vw;
+        height: 85vh;
+        min-width: min(380px, 95vw);
+        min-height: 240px;
+        max-width: 95vw;
+        max-height: 95vh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        box-shadow: 0 8px 40px #0009;
+        border: 1px solid #666;
+      }
+      nav {
+        flex: none;
+        display: flex;
+        gap: 12px;
+        align-items: center;
+        padding: 9px 20px;
+        background: #252a2d;
+        color: #eee;
+        font: 13px system-ui;
+      }
+      nav label {
+        margin-right: auto;
+      }
+      button,
+      select {
+        font: inherit;
+        padding: 5px 12px;
+        border: 1px solid #777;
+        border-radius: 3px;
+        background: #444b50;
+        color: white;
+        cursor: pointer;
+      }
+      button:hover {
+        background: #606a70;
+      }
+      main {
+        overflow: auto;
+        flex: 1;
+        padding: 18px;
+      }
+      #paper {
+        max-width: 1280px;
+        margin: auto;
+        background: #d0cfc9;
+        padding: 10px 16px 16px;
+        box-shadow: 0 2px 12px #0006;
+      }
+      #banner {
+        text-align: center;
+        font-weight: bold;
+        font-size: clamp(20px, 2.6vw, 34px);
+        line-height: 1.02;
+        padding-bottom: 9px;
+        border-bottom: 2px solid #34342e;
+        margin: 0;
+      }
+      header {
+        display: grid;
+        grid-template-columns: 1fr 2fr 1fr;
+        align-items: end;
+        border-bottom: 1px solid #34342e;
+        padding: 8px 0;
+      }
+      #masthead {
+        font-size: clamp(22px, 3vw, 36px);
+        text-align: center;
+        margin: 0;
+        line-height: 1.1;
+      }
+      #date {
+        text-align: right;
+      }
+      .summary {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+        padding: 7px 0;
+        border-bottom: 1px solid #777;
+        font-size: 11px;
+        white-space: pre-line;
+      }
+      .summary p {
+        margin: 0;
+      } /* Fixed newspaper regions follow the supplied original-game examples. */
+      main {
+        min-height: 0;
+        padding: 10px;
+      }
+      #paper {
+        height: 100%;
+        min-height: 440px;
+        display: flex;
+        flex-direction: column;
+        container-type: inline-size;
+      }
+      header {
+        order: 0;
+        flex: none;
+        padding: 3px 0;
+      }
+      #masthead {
+        font-family: 'Chomsky', serif;
+        font-size: clamp(28px, 3.5cqw, 44px);
+        font-weight: 400;
+        font-synthesis: none;
+      }
+      #banner {
+        order: 1;
+        flex: none;
+        border: 0;
+        font-weight: bold;
+        font-size: clamp(24px, 3.8cqw, 44px);
+        padding: 5px 0 8px;
+        line-height: 1.03;
+      }
+      .summary {
+        display: none;
+      }
+      #stories {
+        order: 2;
+        margin-top: 8px;
+        position: relative;
+        flex: 1;
+        min-height: 360px;
+        font-size: 12px;
+        line-height: 1.12;
+      }
+      #stories article,
+      #stories aside,
+      #stories figure {
+        position: absolute;
+        margin: 0;
+        overflow: hidden;
+      }
+      article,
+      #opinion-report,
+      #weather-report {
+        cursor: pointer;
+        display: flex;
+        flex-direction: column;
+        min-width: 0;
+      }
+      article h2,
+      #weather-report h2,
+      #weather-report h3,
+      #opinion-report h2,
+      #opinion-report h3 {
+        flex: none;
+        font-size: 16px;
+        line-height: 1.05;
+        text-align: center;
+        font-weight: bold;
+        margin: 0 0 5px;
+        text-wrap: balance;
+      }
+      article:hover h2,
+      #weather-report:hover h3,
+      #opinion-report:hover h3 {
+        text-decoration: underline;
+      }
+      article:focus-visible,
+      #weather-report:focus-visible,
+      #opinion-report:focus-visible,
+      figure:focus-visible {
+        outline: 2px solid #555;
+        outline-offset: -2px;
+      }
+      .story-copy {
+        min-height: 0;
+        flex: 1;
+        font-size: 13px;
+        line-height: 1.2;
+        column-gap: 16px;
+        column-rule: 1px solid #666;
+        column-fill: auto;
+        text-align: justify;
+        hyphens: auto;
+        overflow: hidden;
+        orphans: 2;
+        widows: 2;
+      }
+      .story-copy p {
+        margin: 0;
+      }
+      .continuation {
+        flex: none;
+        text-align: right;
+        font-size: 10px;
+        font-style: italic;
+        padding-top: 3px;
+      }
+      .column-rule {
+        position: absolute;
+        border-left: 1px solid #666;
+        pointer-events: none;
+      }
+      #weather-report,
+      #opinion-report {
+        border-top: 1px solid #777;
+        border-bottom: 1px solid #777;
+        padding: 6px 0;
+      }
+      #weather-report h2,
+      #opinion-report h2 {
+        font-size: 17px;
+      }
+      #weather-report h3,
+      #opinion-report h3 {
+        font-size: 13px;
+      }
+      #lead-photo {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        cursor: pointer;
+      }
+      #lead-photo img {
+        width: 100%;
+        min-height: 0;
+        flex: 1;
+        object-fit: contain;
+        filter: grayscale(1);
+      }
+      #paper[data-edition='chronicle'] header {
+        order: 1;
+      }
+      #paper[data-edition='chronicle'] #banner {
+        order: 0;
+        border-bottom: 1px solid #555;
+      }
+      #banner,
+      article h2,
+      #weather-report h3,
+      #opinion-report h3,
+      #fulltitle {
+        font-family: 'Newspaper Headline', sans-serif;
+        font-weight: 400;
+        letter-spacing: 0.02em;
+      }
+      article h2,
+      #weather-report h3,
+      #opinion-report h3 {
+        font-size: 19px;
+        line-height: 1.08;
+      }
+      dialog {
+        color: #171713;
+        background: #d0cfc9;
+        border: 1px solid #555;
+        width: min(720px, 90vw);
+        max-height: 85vh;
+        padding: 24px;
+      }
+      dialog::backdrop {
+        background: #0009;
+      }
+      dialog h2 {
+        font-size: 24px;
+        text-align: center;
+        padding: 0 30px;
+        margin-bottom: 22px;
+      }
+      #fulltext {
+        font-size: 15px;
+        line-height: 1.25;
+        white-space: pre-line;
+        text-align: justify;
+      }
+      dialog button {
+        position: absolute;
+        right: 10px;
+        top: 10px;
+        width: 28px;
+        height: 28px;
+        padding: 0;
+        font: 24px/24px system-ui;
+        background: transparent;
+        border: 0;
+        color: #222;
+      }
+      dialog button:hover {
+        background: #0002;
+      }
+      @media (max-width: 850px) {
+        main {
+          padding: 10px;
+        }
+      }
+      @media (max-width: 580px) {
+        header {
+          grid-template-columns: 1fr;
+        }
+        #date {
+          text-align: center;
+        }
+        #price {
+          text-align: center;
+        }
+        .summary {
+          font-size: 12px;
+        }
+      }
 
-#shell{background:#d0cfc9;width:min(1280px,85vw);height:85vh;min-width:0;min-height:0}
-main{padding:0}#paper{max-width:none;box-shadow:none;padding-top:30px}
-#close{position:absolute;right:5px;top:3px;z-index:8;border:0;background:transparent;color:#171713;font:24px/28px system-ui;width:30px;padding:0}#close:hover{background:#0002}
-.paper-heading{position:relative;display:flex;justify-content:center;align-items:center;gap:5px}
-#paper-menu{font:18px system-ui;padding:0 3px;border:0;background:transparent;color:inherit}#paper-menu:hover{background:#0002}
-#papers{position:absolute;top:100%;left:50%;transform:translateX(-50%);z-index:10;background:#d0cfc9;border:1px solid #555;box-shadow:0 3px 8px #0005;min-width:190px;padding:4px}
-#papers[hidden]{display:none}#papers button{display:block;width:100%;text-align:left;white-space:nowrap;color:#171713;background:transparent;border:0;border-radius:0;padding:7px 10px;font:14px system-ui}#papers button:hover,#papers button:focus{background:#b0afa9}#papers button[aria-checked="true"]{font-weight:bold}
-</style></head><body>
-<div id="shell" role="dialog" aria-modal="true" aria-labelledby="masthead"><button id="close" aria-label="Close newspaper" title="Close newspaper">×</button>
-<main><section id="paper"><h1 id="banner"></h1><header><span id="price"></span><div class="paper-heading"><h1 id="masthead"></h1><button id="paper-menu" aria-label="Choose newspaper" aria-haspopup="menu" aria-expanded="false" aria-controls="papers">⌄</button><div id="papers" role="menu" hidden></div></div><span id="date"></span></header><div class="summary"><p id="weather"></p><p id="opinion"></p></div><div id="stories"></div></section></main></div>
-<dialog id="reader"><button id="back" aria-label="Close article" title="Close article">×</button><h2 id="fulltitle"></h2><div id="fulltext"></div></dialog>
-<script>
-'use strict';
-const $=id=>document.getElementById(id);
-const send=data=>window.ipc.postMessage(JSON.stringify(data));
-let data={};
-const shell=$('shell');
-new ResizeObserver(scheduleLayout).observe(shell);
-let layoutFrame=0;
-function scheduleLayout(){cancelAnimationFrame(layoutFrame);layoutFrame=requestAnimationFrame(layoutStories)}
-function editionPlan(d){
-const selected=Number(d.selected)||0;
-const words=d.articles.map(text=>text.trim().split(/\s+/).filter(Boolean));
-const split=(a,b)=>Math.max(.40,Math.min(.72,words[a].length/(words[a].length+words[b].length||1)));
-return {edition:selected%3===1?'chronicle':'herald',left:split(1,4),right:split(2,3),words};
-}
-function fitArticle(article,words){
-const copy=article.querySelector('.story-copy'),paragraph=copy.firstChild,notice=article.querySelector('.continuation');
-notice.hidden=true;paragraph.textContent=words.join(' ');
-// Measure actual browser wrapping, including hyphenation, at each panel size.
-const fits=()=>copy.scrollWidth<=copy.clientWidth+1&&copy.scrollHeight<=copy.clientHeight+1;
-let low=11,high=16;
-for(let n=0;n<6;n++){const size=(low+high)/2;copy.style.fontSize=size+'px';if(fits())low=size;else high=size}
-copy.style.fontSize=low+'px';
-if(fits()){copy.style.columnFill='balance';return}
-copy.style.columnFill='auto';notice.hidden=false;
-let start=0,end=words.length;
-while(start<end){const middle=Math.ceil((start+end)/2);paragraph.textContent=words.slice(0,middle).join(' ');if(fits())start=middle;else end=middle-1}
-paragraph.textContent=words.slice(0,start).join(' ');
-}
-function layoutStories(){
-const stories=$('stories');if(!data.articles||!stories.clientWidth)return;
-const plan=editionPlan(data);$('paper').dataset.edition=plan.edition;
-const w=stories.clientWidth,h=stories.clientHeight,gap=12;
-const articles=[...stories.querySelectorAll('article')];
-const place=(element,x,y,width,height)=>Object.assign(element.style,{left:x+'px',top:y+'px',width:Math.max(1,width)+'px',height:Math.max(1,height)+'px'});
-const third=(w-gap*2)/3,center=third+gap,right=center*2;
-const photo=$('lead-photo'),photoHeight=data.picture?Math.min(h*.42,190):0;
-if(photo)place(photo,center,0,third,photoHeight);
-place(articles[0],center,photoHeight+(photoHeight?gap:0),third,h-photoHeight-(photoHeight?gap:0));
-place(articles[1],0,0,third,h*plan.left-gap/2);
-place(articles[4],0,h*plan.left+gap/2,third,h*(1-plan.left)-gap/2);
-place(articles[2],right,0,third,h*plan.right-gap/2);
-place(articles[3],right,h*plan.right+gap/2,third,h*(1-plan.right)-gap/2);
-if(plan.edition==='chronicle'){
-// A wide lead above a central picture, like the Chronicle reference.
-const col=(w-gap*4)/5,top=h*.29,photoH=data.picture?h*.32:0;
-place(articles[1],0,0,col,h);
-place(articles[0],col+gap,0,w-col-gap,top);
-if(photo)place(photo,col+gap,top+gap,col*2+gap,photoH);
-place(articles[4],col+gap,top+gap+photoH+(photoH?gap:0),col*2+gap,h-top-gap-photoH-(photoH?gap:0));
-place(articles[2],(col+gap)*3,top+gap,col,h-top-gap);
-place(articles[3],(col+gap)*4,top+gap,col,h-top-gap);
-}
-articles.forEach((article,i)=>{
-const copy=article.querySelector('.story-copy');copy.style.columnFill='auto';
-copy.style.columnCount=Math.max(1,Math.min(4,Math.floor((article.clientWidth+10)/125)));
-fitArticle(article,plan.words[i]);
-});
-send({action:'metrics',edition:plan.edition,articles:articles.length,width:w,height:h,
-fits:articles.every(article=>{const copy=article.querySelector('.story-copy');return copy.scrollWidth<=copy.clientWidth+1&&copy.scrollHeight<=copy.clientHeight+1}),
-continuations:articles.filter(article=>!article.querySelector('.continuation').hidden).length});
-}
+      #shell {
+        background: #d0cfc9;
+        width: min(1280px, 85vw);
+        height: 85vh;
+        min-width: 0;
+        min-height: 0;
+      }
+      #shell.opening {
+        animation: newspaper-spin-in 0.75s cubic-bezier(0.16, 0.75, 0.28, 1) both;
+        transform-origin: center;
+      }
+      html,
+      body {
+        overflow: hidden;
+      }
+      #shell.preparing {
+        visibility: hidden;
+        pointer-events: none;
+      }
+      #shell.preparing,
+      #shell.opening {
+        will-change: transform, opacity;
+      }
+      @keyframes newspaper-spin-in {
+        0% {
+          transform: scale(0.03) rotate(-1080deg);
+          opacity: 0;
+        }
+        12% {
+          opacity: 1;
+        }
+        76% {
+          transform: scale(1.08) rotate(12deg);
+        }
+        90% {
+          transform: scale(0.98) rotate(-4deg);
+        }
+        100% {
+          transform: scale(1) rotate(0deg);
+          opacity: 1;
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        #shell.opening {
+          animation: none;
+        }
+      }
+      main {
+        padding: 0;
+      }
+      #paper {
+        max-width: none;
+        box-shadow: none;
+        padding-top: 30px;
+      }
+      #close {
+        position: absolute;
+        right: 5px;
+        top: 3px;
+        z-index: 8;
+        border: 0;
+        background: transparent;
+        color: #171713;
+        font: 24px/28px system-ui;
+        width: 30px;
+        padding: 0;
+      }
+      #close:hover {
+        background: #0002;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="shell" class="preparing" role="dialog" aria-modal="true" aria-labelledby="masthead">
+      <button id="close" aria-label="Close newspaper" title="Close newspaper">×</button>
+      <main>
+        <section id="paper">
+          <h1 id="banner"></h1>
+          <header>
+            <span id="price"></span>
+            <h1 id="masthead"></h1>
+            <span id="date"></span>
+          </header>
+          <div class="summary">
+            <p id="weather"></p>
+            <p id="opinion"></p>
+          </div>
+          <div id="stories"></div>
+        </section>
+      </main>
+    </div>
+    <dialog id="reader">
+      <button id="back" aria-label="Close article" title="Close article">×</button>
+      <h2 id="fulltitle"></h2>
+      <div id="fulltext"></div>
+    </dialog>
+    <script>
+      'use strict';
+      const $ = (id) => document.getElementById(id);
+      const send = (data) => window.ipc.postMessage(JSON.stringify(data));
+      let data = {};
+      const shell = $('shell');
+      let layoutFrame = 0;
+      let revision = 0;
+      let phase = 'closed';
+      let layoutPending = false;
+      let layoutPasses = 0;
+      let layoutMetrics = {};
+      new ResizeObserver(scheduleLayout).observe(shell);
 
-function readStory(i){$('fulltitle').textContent=data.headlines[i];$('fulltext').textContent=data.articles[i];$('reader').showModal()}
-function render(d){data=d;$('reader').close();for(const [id,key] of Object.entries({banner:'headline',masthead:'title',date:'date',price:'price',weather:'weather',opinion:'opinion'}))$(id).textContent=d[key]||'';
-closePaperMenu();
-$('papers').replaceChildren(...d.papers.map((name,i)=>{const button=document.createElement('button');button.textContent=name;button.setAttribute('role','menuitemradio');button.setAttribute('aria-checked',String(i===Number(d.selected)));button.onclick=()=>{closePaperMenu();send({action:'paper',index:i})};return button}));
-const stories=$('stories');stories.replaceChildren();
-d.articles.forEach((body,i)=>{const a=document.createElement('article');a.className='story-'+i;a.tabIndex=0;a.setAttribute('role','button');a.setAttribute('aria-label','Read '+d.headlines[i]);a.onclick=()=>readStory(i);a.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();readStory(i)}};
-const h=document.createElement('h2');h.textContent=d.headlines[i];a.append(h);
-if((i===4)||(i===3)){const note=document.createElement('p');note.className='column-note';note.textContent=i===4?d.opinion:d.weather;a.prepend(note)}
-const copy=document.createElement('div');copy.className='story-copy';copy.append(document.createElement('p'));a.append(copy);
-const continuation=document.createElement('div');continuation.className='continuation';continuation.textContent='... (continued on pg '+d.pages[i]+')';a.append(continuation);stories.append(a)});
-if(d.picture){const figure=document.createElement('figure');figure.id='lead-photo';figure.tabIndex=0;figure.setAttribute('role','button');figure.setAttribute('aria-label','Read '+d.headlines[0]);
-const image=document.createElement('img');image.src=d.picture;image.alt=d.headlines[0];image.onload=scheduleLayout;
-const caption=document.createElement('figcaption');caption.textContent=d.headlines[0];figure.append(image,caption);figure.onclick=()=>readStory(0);figure.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();readStory(0)}};stories.append(figure)}
-scheduleLayout();
-}
-document.addEventListener('message',e=>{try{render(JSON.parse(e.detail))}catch(error){send({action:'metrics',error:String(error)})}});
-$('reader').addEventListener('click',event=>{
-const reader=$('reader'),bounds=reader.getBoundingClientRect();
-if(event.target===reader&&(event.clientX<bounds.left||event.clientX>bounds.right||event.clientY<bounds.top||event.clientY>bounds.bottom))reader.close();
-});
-function closePaperMenu(){ $('papers').hidden=true;$('paper-menu').setAttribute('aria-expanded','false') }
-$('paper-menu').onclick=()=>{const open=$('papers').hidden;$('papers').hidden=!open;$('paper-menu').setAttribute('aria-expanded',String(open));if(open)$('papers').querySelector('[aria-checked="true"]')?.focus()};
-$('papers').onkeydown=e=>{const buttons=[...$('papers').children],index=buttons.indexOf(document.activeElement);if(['ArrowDown','ArrowUp','Home','End'].includes(e.key)){e.preventDefault();buttons[e.key==='Home'?0:e.key==='End'?buttons.length-1:(index+(e.key==='ArrowDown'?1:-1)+buttons.length)%buttons.length]?.focus()}};
-document.addEventListener('click',e=>{if(!e.target.closest('.paper-heading'))closePaperMenu()});
-$('close').onclick=()=>send({action:'close'});$('back').onclick=()=>$('reader').close();
-document.addEventListener('keydown',e=>{if(e.key!=='Escape')return;if($('reader').open)return;if(!$('papers').hidden){e.preventDefault();closePaperMenu();$('paper-menu').focus()}else send({action:'close'})});
-document.addEventListener('selectstart',event=>event.preventDefault());send({action:'ready'});
-</script></body></html>
+      function scheduleLayout() {
+        cancelAnimationFrame(layoutFrame);
+        if (phase !== 'open') {
+          layoutPending = true;
+          return;
+        }
+        layoutFrame = requestAnimationFrame(layoutStories);
+      }
+
+      const nextFrame = () => new Promise((resolve) => requestAnimationFrame(resolve));
+
+      function reportPresentation() {
+        send({ action: 'metrics', ...layoutMetrics, phase, layoutPasses });
+      }
+
+      async function prepareOpening(currentRevision) {
+        await Promise.allSettled([
+          document.fonts.load("19px 'Newspaper Headline'"),
+          document.fonts.load('400 44px ' + getComputedStyle($('masthead')).fontFamily),
+          document.fonts.ready,
+          ...[...shell.querySelectorAll('img')].map((image) => image.decode())
+        ]);
+        if (currentRevision !== revision) return;
+        // Measure at the final size and allow the browser to finish a frame before spinning.
+        await nextFrame();
+        if (currentRevision !== revision) return;
+        const width = shell.clientWidth;
+        const height = shell.clientHeight;
+        layoutStories();
+        await nextFrame();
+        if (currentRevision !== revision) return;
+        if (shell.clientWidth !== width || shell.clientHeight !== height) {
+          return prepareOpening(currentRevision);
+        }
+        layoutPending = false;
+        phase = 'opening';
+        shell.classList.add('opening');
+        shell.classList.remove('preparing');
+        reportPresentation();
+        if (matchMedia('(prefers-reduced-motion: reduce)').matches) finishOpening();
+      }
+
+      function finishOpening() {
+        if (phase !== 'opening') return;
+        phase = 'open';
+        shell.classList.remove('opening');
+        shell.inert = false;
+        reportPresentation();
+        if (layoutPending) {
+          layoutPending = false;
+          scheduleLayout();
+        }
+      }
+
+      shell.addEventListener('animationend', (event) => {
+        if (event.target === shell && event.animationName === 'newspaper-spin-in') finishOpening();
+      });
+      shell.addEventListener('animationcancel', (event) => {
+        if (event.target === shell && event.animationName === 'newspaper-spin-in') finishOpening();
+      });
+
+      function hidePaper() {
+        revision++;
+        phase = 'closed';
+        cancelAnimationFrame(layoutFrame);
+        shell.classList.add('preparing');
+        shell.classList.remove('opening');
+        shell.inert = true;
+        $('reader').close();
+      }
+
+      function closePaper() {
+        hidePaper();
+        send({ action: 'close' });
+      }
+
+      function editionPlan(d) {
+        const selected = Number(d.selected) || 0;
+        const words = d.articles.map((text) => text.trim().split(/\s+/).filter(Boolean));
+        const split = (a, b) =>
+          Math.max(0.4, Math.min(0.72, words[a].length / (words[a].length + words[b].length || 1)));
+        return {
+          edition: selected % 3 === 1 ? 'chronicle' : 'herald',
+          left: split(1, 4),
+          right: split(2, 3),
+          words
+        };
+      }
+
+      function fitArticle(article, words) {
+        const copy = article.querySelector('.story-copy'),
+          paragraph = copy.firstChild,
+          notice = article.querySelector('.continuation');
+        copy.style.height = '';
+        copy.style.flex = '1';
+        copy.style.columnFill = 'auto';
+        notice.hidden = true;
+        paragraph.textContent = words.join(' ');
+        const availableHeight = Math.floor(parseFloat(getComputedStyle(copy).height));
+        // Find the smallest balanced height that fits the complete story.
+        // WebKit can retain the flex height when a column container uses height: auto.
+        copy.style.flex = 'none';
+        copy.style.height = availableHeight + 'px';
+        copy.style.columnFill = 'balance';
+        // Measure actual browser wrapping, including hyphenation, at each panel size.
+        const fits = () =>
+          copy.scrollWidth <= copy.clientWidth && copy.scrollHeight <= copy.clientHeight;
+        if (fits()) {
+          let low = 1,
+            high = availableHeight;
+          while (low < high) {
+            const middle = Math.floor((low + high) / 2);
+            copy.style.height = middle + 'px';
+            if (fits()) high = middle;
+            else low = middle + 1;
+          }
+          copy.style.height = Math.min(availableHeight, low + 1) + 'px';
+          return;
+        }
+        copy.style.columnFill = 'auto';
+        notice.hidden = false;
+        copy.style.height = '';
+        copy.style.flex = '1';
+        copy.style.height = Math.floor(parseFloat(getComputedStyle(copy).height)) + 'px';
+        copy.style.flex = 'none';
+        let start = 0,
+          end = words.length;
+        while (start < end) {
+          const middle = Math.ceil((start + end) / 2);
+          paragraph.textContent = words.slice(0, middle).join(' ');
+          if (fits()) start = middle;
+          else end = middle - 1;
+        }
+        paragraph.textContent = words.slice(0, start).join(' ');
+      }
+
+      function layoutStories() {
+        const stories = $('stories');
+        if (!data.articles || !stories.clientWidth) return;
+        layoutPasses++;
+        const plan = editionPlan(data);
+        $('paper').dataset.edition = plan.edition;
+        const w = stories.clientWidth,
+          h = stories.clientHeight,
+          gap = 16;
+        stories.querySelectorAll('.extra-story').forEach((article) => article.remove());
+        stories.querySelectorAll('.column-rule').forEach((rule) => rule.remove());
+        const articles = [...stories.querySelectorAll('article')];
+        const weather = $('weather-report');
+        const opinion = $('opinion-report');
+        const place = (element, x, y, width, height) =>
+          Object.assign(element.style, {
+            left: x + 'px',
+            top: y + 'px',
+            width: Math.max(1, width) + 'px',
+            height: Math.max(1, height) + 'px'
+          });
+        const third = (w - gap * 2) / 3,
+          center = third + gap,
+          right = center * 2;
+        const photo = $('lead-photo'),
+          photoHeight = data.picture ? Math.min(h * 0.42, 190) : 0;
+        if (photo) place(photo, center, 0, third, photoHeight);
+        place(
+          articles[0],
+          center,
+          photoHeight + (photoHeight ? gap : 0),
+          third,
+          h - photoHeight - (photoHeight ? gap : 0)
+        );
+        const opinionHeight = Math.max(140, h * 0.27);
+        const leftTop = Math.min(h * Math.min(plan.left, 0.48), h - opinionHeight - 80);
+        place(articles[1], 0, 0, third, leftTop - gap);
+        place(opinion, 0, leftTop, third, opinionHeight - gap);
+        place(articles[4], 0, leftTop + opinionHeight, third, h - leftTop - opinionHeight);
+        const weatherHeight = h * 0.36;
+        const reportsTop = weatherHeight + gap;
+        const reportsHeight = h - reportsTop;
+        place(weather, right, 0, third, weatherHeight);
+        place(articles[2], right, reportsTop, third, reportsHeight * plan.right - gap / 2);
+        place(articles[3], right, reportsTop + reportsHeight * plan.right + gap / 2,
+          third, reportsHeight * (1 - plan.right) - gap / 2);
+        if (plan.edition === 'chronicle') {
+          // A wide lead above a central picture, like the Chronicle reference.
+          const col = (w - gap * 4) / 5,
+            top = h * 0.29,
+            photoH = data.picture ? h * 0.32 : 0;
+          place(articles[1], 0, 0, col, h * 0.66 - gap);
+          place(opinion, 0, h * 0.66, col, h * 0.34);
+          place(articles[0], col + gap, 0, col * 3 + gap * 2, top);
+          place(weather, (col + gap) * 4, 0, col, weatherHeight);
+          if (photo) place(photo, col + gap, top + gap, col * 2 + gap, photoH);
+          place(
+            articles[4],
+            col + gap,
+            top + gap + photoH + (photoH ? gap : 0),
+            col * 2 + gap,
+            h - top - gap - photoH - (photoH ? gap : 0)
+          );
+          place(articles[2], (col + gap) * 3, top + gap, col, h - top - gap);
+          place(articles[3], (col + gap) * 4, reportsTop, col, reportsHeight);
+        }
+        articles.forEach((article, i) => {
+          const copy = article.querySelector('.story-copy');
+          copy.style.columnFill = 'auto';
+          copy.style.columnCount = Math.max(
+            1,
+            Math.min(2, Math.floor((article.clientWidth + 16) / 131))
+          );
+          fitArticle(article, plan.words[i]);
+        });
+        fitArticle(weather, (data.weather_article || '').trim().split(/\s+/).filter(Boolean));
+        fitArticle(opinion, (data.opinion_article || '').trim().split(/\s+/).filter(Boolean));
+        const photoSpaces = [];
+        if (photo) {
+          const image = photo.querySelector('img');
+          if (image.naturalHeight) {
+            const imageWidth = Math.min(photo.clientWidth,
+              photo.clientHeight * image.naturalWidth / image.naturalHeight);
+            const spareWidth = photo.clientWidth - imageWidth - gap;
+            // Put a story beside the photograph when its frame is wider than the image.
+            if (spareWidth >= 120) {
+              const x = parseFloat(photo.style.left),
+                y = parseFloat(photo.style.top),
+                height = photo.clientHeight;
+              photoSpaces.push({ x, y, width: spareWidth, height });
+              place(photo, x + spareWidth + gap, y, imageWidth, height);
+            }
+          }
+        }
+        fillStoryGaps([...articles, weather, opinion], place, gap, photoSpaces);
+        const displayedStories = [...articles, weather, opinion, ...stories.querySelectorAll('.extra-story')];
+        drawColumnRules([...displayedStories, ...(photo ? [photo] : [])], gap);
+        layoutMetrics = {
+          mastheadFont: getComputedStyle($('masthead')).fontFamily,
+          edition: plan.edition,
+          articles: articles.length,
+          extraStories: stories.querySelectorAll('.extra-story').length,
+          bodyFontSizes: [...new Set(displayedStories.map((article) =>
+            getComputedStyle(article.querySelector('.story-copy')).fontSize))],
+          width: w,
+          height: h,
+          fits: displayedStories.every((article) => {
+            const copy = article.querySelector('.story-copy');
+            return (
+              copy.scrollWidth <= copy.clientWidth && copy.scrollHeight <= copy.clientHeight &&
+              article.scrollHeight <= article.clientHeight
+            );
+          }),
+          continuations: articles.filter(
+            (article) => !article.querySelector('.continuation').hidden
+          ).length
+        };
+        reportPresentation();
+      }
+
+      function drawColumnRules(panels, gap) {
+        const boxes = panels.map((panel) => ({
+          x: parseFloat(panel.style.left), y: parseFloat(panel.style.top),
+          width: parseFloat(panel.style.width), height: parseFloat(panel.style.height)
+        }));
+        for (const left of boxes) {
+          for (const right of boxes) {
+            const space = right.x - left.x - left.width;
+            const top = Math.max(left.y, right.y);
+            const bottom = Math.min(left.y + left.height, right.y + right.height);
+            if (space < gap - 2 || space > gap + 2 || bottom <= top) continue;
+            const rule = document.createElement('div');
+            rule.className = 'column-rule';
+            rule.setAttribute('aria-hidden', 'true');
+            Object.assign(rule.style, {
+              left: (right.x - space / 2) + 'px', top: top + 'px',
+              height: (bottom - top) + 'px'
+            });
+            $('stories').append(rule);
+          }
+        }
+      }
+
+      function storyGap(article, gap) {
+        if (!article.querySelector('.continuation').hidden) return null;
+        const copy = article.querySelector('.story-copy');
+        const padding = parseFloat(getComputedStyle(article).paddingBottom) || 0;
+        // Use untransformed dimensions so the entrance spin cannot affect layout.
+        const used = Math.ceil(copy.offsetTop + copy.clientHeight + padding + 2);
+        const remaining = article.offsetHeight - used - gap;
+        if (remaining < 48) return null;
+        copy.style.height = copy.clientHeight + 'px';
+        article.style.height = used + 'px';
+        return {
+          x: parseFloat(article.style.left),
+          y: parseFloat(article.style.top) + used + gap,
+          width: article.offsetWidth,
+          height: remaining
+        };
+      }
+
+      function fillStoryGaps(articles, place, gap, photoSpaces) {
+        const spaces = [...photoSpaces,
+          ...articles.map((article) => storyGap(article, gap)).filter(Boolean)];
+        spaces.sort((a, b) => a.y - b.y || a.x - b.x);
+        const candidates = [...(data.extra_stories || [])];
+        for (const space of spaces) {
+          let available = space;
+          const skipped = [];
+          while (available && candidates.length) {
+            const story = candidates.shift();
+            const article = document.createElement('article');
+            article.className = 'extra-story';
+            article.tabIndex = 0;
+            article.setAttribute('role', 'button');
+            article.setAttribute('aria-label', 'Read ' + story.headline);
+            const heading = document.createElement('h2');
+            heading.textContent = story.headline;
+            const copy = document.createElement('div');
+            copy.className = 'story-copy';
+            copy.style.columnCount = available.height < 120 ? 1 :
+              Math.max(1, Math.min(2, Math.floor((available.width + 16) / 131)));
+            copy.append(document.createElement('p'));
+            const notice = document.createElement('div');
+            notice.className = 'continuation';
+            notice.textContent = 'Turn to pg ' + (story.page || 2) + ' for the full story';
+            article.append(heading, copy, notice);
+            const read = () => {
+              $('fulltitle').textContent = story.headline;
+              $('fulltext').textContent = story.article;
+              $('reader').showModal();
+            };
+            article.onclick = read;
+            article.onkeydown = (event) => {
+              if (event.key === 'Enter' || event.key === ' ') {
+                event.preventDefault();
+                read();
+              }
+            };
+            $('stories').append(article);
+            place(article, available.x, available.y, available.width, available.height);
+            fitArticle(article, story.article.trim().split(/\s+/).filter(Boolean));
+            const lineHeight = parseFloat(getComputedStyle(copy).lineHeight);
+            if (!copy.firstChild.textContent.trim() || copy.clientHeight < lineHeight) {
+              article.remove();
+              skipped.push(story);
+              continue;
+            }
+            available = storyGap(article, gap);
+          }
+          candidates.push(...skipped);
+        }
+      }
+
+
+      function readStory(i) {
+        $('fulltitle').textContent = data.headlines[i];
+        $('fulltext').textContent = data.articles[i];
+        $('reader').showModal();
+      }
+
+      function makeReport(id, title, headline, body, continuation) {
+        const report = document.createElement('aside');
+        report.id = id;
+        report.tabIndex = 0;
+        report.setAttribute('role', 'button');
+        report.setAttribute('aria-label', 'Read ' + title);
+        const heading = document.createElement('h2');
+        heading.textContent = title;
+        const subheading = document.createElement('h3');
+        subheading.textContent = headline || '';
+        const copy = document.createElement('div');
+        copy.className = 'story-copy';
+        copy.append(document.createElement('p'));
+        const notice = document.createElement('div');
+        notice.className = 'continuation';
+        notice.textContent = continuation;
+        report.append(heading, subheading, copy, notice);
+        const read = () => {
+          $('fulltitle').textContent = headline || title;
+          $('fulltext').textContent = body || '';
+          $('reader').showModal();
+        };
+        report.onclick = read;
+        report.onkeydown = (event) => {
+          if (event.key === 'Enter' || event.key === ' ') {
+            event.preventDefault();
+            read();
+          }
+        };
+        return report;
+      }
+
+      function render(d) {
+        hidePaper();
+        const currentRevision = revision;
+        phase = 'preparing';
+        layoutPasses = 0;
+        layoutMetrics = {};
+        data = d;
+        // Each paper keeps its own masthead. The first paper uses Chomsky.
+        const mastheads = ['Chomsky', 'Grenze Gotisch', 'UnifrakturMaguntia'];
+        const paperIndex = Math.max(0, Math.trunc(Number(d.selected) || 0));
+        $('masthead').style.fontFamily = '"' + mastheads[paperIndex % mastheads.length] + '", serif';
+        $('reader').close();
+        for (const [id, key] of Object.entries({
+          banner: 'headline',
+          masthead: 'title',
+          date: 'date',
+          price: 'price',
+          weather: 'weather',
+          opinion: 'opinion'
+        }))
+          $(id).textContent = d[key] || '';
+        const stories = $('stories');
+        stories.replaceChildren();
+        d.articles.forEach((body, i) => {
+          const a = document.createElement('article');
+          a.className = 'story-' + i;
+          a.tabIndex = 0;
+          a.setAttribute('role', 'button');
+          a.setAttribute('aria-label', 'Read ' + d.headlines[i]);
+          a.onclick = () => readStory(i);
+          a.onkeydown = (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              readStory(i);
+            }
+          };
+          if (i !== 0) {
+            const h = document.createElement('h2');
+            h.textContent = d.headlines[i];
+            a.append(h);
+          }
+          const copy = document.createElement('div');
+          copy.className = 'story-copy';
+          copy.append(document.createElement('p'));
+          a.append(copy);
+          const continuation = document.createElement('div');
+          continuation.className = 'continuation';
+          continuation.textContent = '... (continued on pg ' + d.pages[i] + ')';
+          a.append(continuation);
+          stories.append(a);
+        });
+        stories.append(makeReport('weather-report', d.weather_heading || 'Weather',
+          d.weather_headline, d.weather_article,
+          'Turn to pg ' + d.weather_page + ' for the full forecast'));
+        stories.append(makeReport('opinion-report', d.opinion_heading || 'Opinion',
+          d.opinion_headline, d.opinion_article,
+          'Turn to pg ' + d.opinion_page + ' for the full column'));
+        if (d.picture) {
+          const figure = document.createElement('figure');
+          figure.id = 'lead-photo';
+          figure.tabIndex = 0;
+          figure.setAttribute('role', 'button');
+          figure.setAttribute('aria-label', 'Read ' + d.headlines[0]);
+          const image = document.createElement('img');
+          image.src = d.picture;
+          image.alt = d.headlines[0];
+          figure.append(image);
+          figure.onclick = () => readStory(0);
+          figure.onkeydown = (e) => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              readStory(0);
+            }
+          };
+          stories.append(figure);
+        }
+        prepareOpening(currentRevision).catch((error) => {
+          if (currentRevision === revision) send({ action: 'metrics', error: String(error) });
+        });
+      }
+      document.addEventListener('message', (e) => {
+        try {
+          const message = JSON.parse(e.detail);
+          if (message.action === 'hide') hidePaper();
+          else render(message);
+        } catch (error) {
+          send({ action: 'metrics', error: String(error) });
+        }
+      });
+      $('reader').addEventListener('click', (event) => {
+        const reader = $('reader'),
+          bounds = reader.getBoundingClientRect();
+        if (
+          event.target === reader &&
+          (event.clientX < bounds.left ||
+            event.clientX > bounds.right ||
+            event.clientY < bounds.top ||
+            event.clientY > bounds.bottom)
+        )
+          reader.close();
+      });
+
+      $('close').onclick = closePaper;
+      $('back').onclick = () => $('reader').close();
+      document.addEventListener('keydown', (e) => {
+        if (e.key !== 'Escape') return;
+        if ($('reader').open) return;
+        closePaper();
+      });
+      document.addEventListener('selectstart', (event) => event.preventDefault());
+      send({ action: 'ready' });
+    </script>
+  </body>
+</html>

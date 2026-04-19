@@ -45,15 +45,7 @@ static func run(city: CityState, random, previous_approval: int) -> Dictionary:
 	var misc: PackedByteArray = misc_chunk.decoded_payload
 	var graphs: PackedByteArray = graph_chunk.decoded_payload
 	var microsims: PackedByteArray = microsim_chunk.decoded_payload.duplicate()
-	var weights := PackedInt32Array([
-		_to_i16(_graph_current(graphs, GRAPH_TRAFFIC)),
-		_to_i16(_graph_current(graphs, GRAPH_POLLUTION)),
-		_to_i16(_graph_current(graphs, GRAPH_CRIME)),
-		_to_i16(_read_u32(misc, MISC_UNEMPLOYMENT)),
-		_to_i16(_budget_funding(misc, BUDGET_RESIDENTIAL) * 3),
-		maxi(100 - _to_i16(_read_u32(misc, MISC_WORKFORCE_EDUCATION)), 0),
-		maxi(70 - _to_i16(_read_u32(misc, MISC_WORKFORCE_LIFE_EXPECTANCY)), 0),
-	])
+	var weights := complaint_weights(city)
 	var total := _to_i16(_graph_current(graphs, GRAPH_LAND_VALUE)) + 50
 
 	for weight in weights:
@@ -126,6 +118,32 @@ static func run(city: CityState, random, previous_approval: int) -> Dictionary:
 		"news_items": news_items,
 		"complete": true,
 	}
+
+
+static func complaint_weights(city: CityState) -> PackedInt32Array:
+	if city == null or not city.is_valid():
+		return PackedInt32Array()
+
+	var misc_chunk := city.document.find_chunk("MISC")
+	var graph_chunk := city.document.find_chunk("XGRP")
+
+	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
+		return PackedInt32Array()
+
+	if graph_chunk == null or graph_chunk.decoded_payload.size() != XGRP_SIZE:
+		return PackedInt32Array()
+
+	var misc: PackedByteArray = misc_chunk.decoded_payload
+	var graphs: PackedByteArray = graph_chunk.decoded_payload
+	return PackedInt32Array([
+		_to_i16(_graph_current(graphs, GRAPH_TRAFFIC)),
+		_to_i16(_graph_current(graphs, GRAPH_POLLUTION)),
+		_to_i16(_graph_current(graphs, GRAPH_CRIME)),
+		_to_i16(_read_u32(misc, MISC_UNEMPLOYMENT)),
+		_to_i16(_budget_funding(misc, BUDGET_RESIDENTIAL) * 3),
+		maxi(100 - _to_i16(_read_u32(misc, MISC_WORKFORCE_EDUCATION)), 0),
+		maxi(70 - _to_i16(_read_u32(misc, MISC_WORKFORCE_LIFE_EXPECTANCY)), 0),
+	])
 
 
 static func _graph_current(data: PackedByteArray, graph_id: int) -> int:

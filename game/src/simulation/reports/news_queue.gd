@@ -198,6 +198,45 @@ static func story_record(misc: PackedByteArray, slot: int) -> Dictionary:
 	}
 
 
+static func available_paper_count(progression: int) -> int:
+	# the supplied menu builder at 0x00406d70 reads a signed progression word
+	var level := progression & 0xffff
+
+	if level & 0x8000:
+		level -= 0x10000
+
+	return clampi(level + 1, 0, PAPER_COUNT)
+
+
+static func prepare_weather_report(misc: PackedByteArray, weather: int) -> Dictionary:
+	var validation := _validate_misc(misc)
+
+	if not validation.ok:
+		return validation
+
+	# newspaper opening sets display slot 7 to weather type 0 and the current trend
+	var offset := STORY_OFFSET + 7 * STORY_RECORD_SIZE
+	_write_u32(misc, offset, 0)
+	_write_u32(misc, offset + 8, weather & 0xff)
+
+	return {"ok": true, "error": ""}
+
+
+static func prepare_opinion_report(misc: PackedByteArray, style: int, subject: int) -> Dictionary:
+	var validation := _validate_misc(misc)
+
+	if not validation.ok:
+		return validation
+
+	# the supplied newspaper opener selects these types from the paper's opinion style
+	var types := [42, 43, 43, 44, 44, 45]
+	var offset := STORY_OFFSET + 8 * STORY_RECORD_SIZE
+	_write_u32(misc, offset, types[clampi(style, 0, 5)])
+	_write_u32(misc, offset + 8, subject & 0xff)
+
+	return {"ok": true, "error": ""}
+
+
 static func paper_record(misc: PackedByteArray, paper: int) -> Dictionary:
 	if not _validate_misc(misc).ok or paper < 0 or paper >= PAPER_COUNT:
 		return {}

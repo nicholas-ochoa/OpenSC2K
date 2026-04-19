@@ -8,6 +8,9 @@ var generation := 0
 var worker_generation := 0
 var visuals: Array[Dictionary] = []
 var divisor := 1
+# planned price for the pending route, anchored at the drag start tile
+var cost := -1
+var affordable := true
 var map_view: CityMapControl
 var context_key := ""
 var render_key := ""
@@ -27,7 +30,7 @@ static func supports_tool(group: int, tool: int) -> bool:
 
 
 func clear() -> void:
-	if request_key.is_empty() and visuals.is_empty():
+	if request_key.is_empty() and visuals.is_empty() and cost < 0:
 		return
 
 	generation += 1
@@ -36,22 +39,25 @@ func clear() -> void:
 	render_key = ""
 	pending.clear()
 	visuals.clear()
+	cost = -1
+	affordable = true
 
 	if map_view != null:
 		map_view.network_preview_active = false
+		map_view.clear_selection_price()
 		map_view.queue_redraw()
 
 	painter.queue_redraw()
 
 
-func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Vector2i, view: int, palette: Sc2Palette, sprites: Sc2SpriteArchive, underground: bool) -> void:
+func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Vector2i, view: int, palette: Sc2Palette, sprites: Sc2SpriteArchive, underground: bool, free_mode := false) -> void:
 	# include chunk revisions so simulation and edits invalidate an idle preview
 	var revisions := ""
 
 	for chunk in city.document.chunks:
 		revisions += ":%d" % chunk.mutation_revision
 
-	var appearance := "%d:%d:%d:%d:%d:%d:%s" % [city.get_instance_id(), group, tool, view, palette.get_instance_id(), sprites.get_instance_id(), underground]
+	var appearance := "%d:%d:%d:%d:%d:%d:%s:%s" % [city.get_instance_id(), group, tool, view, palette.get_instance_id(), sprites.get_instance_id(), underground, free_mode]
 	var context := appearance + revisions
 	var key := "%s:%s:%s" % [context, start, finish]
 
@@ -76,7 +82,7 @@ func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Ve
 		map_view.network_preview_active = true
 		map_view.queue_redraw()
 
-	pending = {"city": city, "group": group, "tool": tool, "start": start, "finish": finish, "view": view, "palette": palette, "sprites": sprites, "underground": underground, "cache": sprite_cache}
+	pending = {"city": city, "group": group, "tool": tool, "start": start, "finish": finish, "view": view, "palette": palette, "sprites": sprites, "underground": underground, "free_mode": free_mode, "cache": sprite_cache}
 
 
 func _process(_delta: float) -> void:
@@ -90,6 +96,7 @@ func _process(_delta: float) -> void:
 
 		if worker_generation == generation and not request_key.is_empty():
 			visuals.clear()
+			_read_price(result.get("command", {}))
 			divisor = int(result.get("divisor", 1))
 			for draw: Dictionary in result.get("draws", []):
 				var source: Image = draw.image
@@ -122,6 +129,32 @@ func _process(_delta: float) -> void:
 		position = map_view._draw_offset(view_scale)
 		scale = Vector2.ONE * view_scale * divisor
 
+		# only an active request owns the anchored price. an idle preview must
+		# leave a zone or other tool price alone
+		if not request_key.is_empty():
+			if cost < 0:
+				map_view.clear_selection_price()
+			else:
+				map_view.set_selection_price(cost, affordable)
+
+
+func _read_price(command: Dictionary) -> void:
+	if command.get("ok", false):
+		cost = int(command.get("cost", 0))
+		affordable = true
+
+		return
+
+	# a rejected plan still reports its price when only the funds fall short
+	if command.get("error", "") == "insufficient funds":
+		cost = maxi(0, int(command.get("cost", 0)))
+		affordable = false
+
+		return
+
+	cost = -1
+	affordable = true
+
 
 func _exit_tree() -> void:
 	if worker != null:
@@ -133,7 +166,7 @@ func _draw_preview() -> void:
 		painter.draw_texture_rect_region(visual.texture, Rect2(visual.position, visual.source.size), visual.source)
 
 
-static func apply_preview(city: CityState, group: int, tool: int, start: Vector2i, finish: Vector2i) -> Dictionary:
+static func apply_preview(city: CityState, group: int, tool: int, start: Vector2i, finish: Vector2i, free_mode := false) -> Dictionary:
 	if NetworkCommand.supports_tool(group, tool) or HighwayCommand.supports_tool(group, tool):
 		var bridge := -1
 		var connection := -1
@@ -142,9 +175,9 @@ static func apply_preview(city: CityState, group: int, tool: int, start: Vector2
 			var result: Dictionary
 
 			if HighwayCommand.supports_tool(group, tool):
-				result = HighwayCommand.apply(city, group, tool, start, finish, connection, bridge)
+				result = HighwayCommand.apply(city, group, tool, start, finish, connection, bridge, free_mode)
 			else:
-				result = NetworkCommand.apply(city, group, tool, start, finish, bridge, connection)
+				result = NetworkCommand.apply(city, group, tool, start, finish, bridge, connection, free_mode)
 
 			if result.get("bridge_selection_required", false):
 				bridge = int(result.bridge_choices[0].type)
@@ -154,10 +187,10 @@ static func apply_preview(city: CityState, group: int, tool: int, start: Vector2
 				return result
 
 	if TunnelCommand.supports_tool(group, tool):
-		return TunnelCommand.apply(city, group, tool, finish, TunnelCommand.CONFIRMATION_CONFIRMED)
+		return TunnelCommand.apply(city, group, tool, finish, TunnelCommand.CONFIRMATION_CONFIRMED, free_mode)
 
 	if OnrampCommand.supports_tool(group, tool):
-		return OnrampCommand.apply(city, group, tool, finish)
+		return OnrampCommand.apply(city, group, tool, finish, free_mode)
 
 	if SubwayToRailCommand.supports_tool(group, tool):
 		return SubwayToRailCommand.apply(city, group, tool, finish)
@@ -172,10 +205,10 @@ static func build(job: Dictionary) -> Dictionary:
 	var before_underground := city.underground
 	var before_flags := city.tile_flags
 	var before_altitude := city.altitude_words.duplicate()
-	var result := apply_preview(city, job.group, job.tool, job.start, job.finish)
+	var result := apply_preview(city, job.group, job.tool, job.start, job.finish, bool(job.get("free_mode", false)))
 
 	if not result.get("ok", false):
-		return {"draws": []}
+		return {"draws": [], "command": result}
 
 	var tiles := {}
 	# command footprints include bridge decks and tunnel paths. check adjacent

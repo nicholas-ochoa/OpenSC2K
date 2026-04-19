@@ -83,8 +83,52 @@ func _run() -> void:
 	controller.queue_free()
 	await process_frame
 	await _test_highway_recovery(palette, sprites)
+	await _test_route_price(palette, sprites)
 	print("PASS: network artwork matches placement for roads rail power pipes subway and highways; live city bytes preserved")
 	quit()
+
+
+func _test_route_price(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	var map := CityMapControl.new()
+	map.city = city
+	var preview := NetworkPlacementPreview.new()
+	preview.map_view = map
+	root.add_child(preview)
+	var start := Vector2i(60, 60)
+	var finish := Vector2i(70, 60)
+	var planned := NetworkCommand.apply(NetworkPlacementPreview.snapshot_city(city), 6, 0, start, finish)
+	assert(planned.ok and int(planned.cost) > 0)
+	map.selection_start = start
+	map.selection_end = finish
+	preview.request(city, 6, 0, start, finish, 2, palette, sprites, false)
+	await _wait_for_preview(preview)
+	assert(preview.cost == int(planned.cost), "The planned route reports its own command price")
+	assert(preview.affordable)
+	assert(map.selection_price == int(planned.cost), "The route price reaches the anchored map label")
+	assert(map.selection_price_affordable)
+	assert(map.selection_price_text() == "$%d" % int(planned.cost))
+	assert(city.set_funds(int(planned.cost) - 1))
+	preview.request(city, 6, 0, start, finish, 2, palette, sprites, false)
+	await _wait_for_preview(preview)
+	assert(preview.cost == int(planned.cost), "An unaffordable route still shows its planned price")
+	assert(not preview.affordable)
+	assert(not map.selection_price_affordable, "The anchored price marks unaffordable routes")
+	preview.clear()
+	assert(preview.cost == -1 and map.selection_price == -1, "Releasing the drag removes the price")
+	assert(city.set_funds(20000))
+	preview.request(city, 6, 0, start, finish, 2, palette, sprites, false, true)
+	await _wait_for_preview(preview)
+	assert(preview.cost == 0 and preview.affordable, "SCURK Place & Print builds networks for free")
+	assert(map.selection_price == 0)
+	preview.clear()
+	map.set_selection_price(500, true)
+	preview._process(0.0)
+	assert(map.selection_price == 500, "An idle preview leaves another tool price alone")
+	map.free()
+	preview.map_view = null
+	preview.queue_free()
+	await process_frame
 
 
 func _test_highway_recovery(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:

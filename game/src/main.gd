@@ -765,6 +765,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	city_menu_bar.disaster_menu_requested.connect(_on_disaster_menu)
 	city_menu_bar.windows_menu_requested.connect(_on_windows_menu)
 	city_menu_bar.newspaper_menu_requested.connect(_on_newspaper_menu)
+	city_menu_bar.newspaper_menu.about_to_popup.connect(_refresh_newspaper_menu)
 	city_menu_bar.help_menu_requested.connect(_on_help_menu)
 	speed_menu = city_menu_bar.speed_menu
 	options_menu = city_menu_bar.options_menu
@@ -800,7 +801,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	map_view.selection_changed.connect(_on_map_selection_changed)
 	network_preview = NetworkPlacementPreview.new()
 	network_preview.map_view = map_view
-	network_preview.z_index = 80
+	network_preview.z_index = CityMapControl.NETWORK_PREVIEW_Z_INDEX
 	network_preview.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	map_view.add_child(network_preview)
 	map_view.selection_finished.connect(network_preview.clear)
@@ -1965,6 +1966,10 @@ func _on_map_selection_changed(
 
 		return
 
+	if city != null and NetworkPlacementPreview.supports_tool(selected_group, selected_subtool):
+		# route preview owns the anchored price
+		return
+
 	if city == null or not Zones.supports_tool(selected_group, selected_subtool):
 		map_view.clear_selection_price()
 
@@ -2395,8 +2400,17 @@ func _refresh_city_map_viewport() -> void:
 		city_map_window.refresh_viewport(_city_map_viewport_outline())
 
 
-func _on_newspaper_menu(_id: int) -> void:
+func _refresh_newspaper_menu() -> void:
+	city_menu_bar.set_newspapers(
+		NewspaperDialog.newspaper_titles(city, current_document, original_query_strings),
+	)
+
+
+func _on_newspaper_menu(id: int) -> void:
 	if city == null or current_document == null:
+		return
+
+	if id < 0 or id >= NewsQueue.available_paper_count(city.city_status()):
 		return
 
 	if city.music_enabled() and simulation_engine != null:
@@ -2409,6 +2423,7 @@ func _on_newspaper_menu(_id: int) -> void:
 		original_query_strings,
 		CityStatusBar.NEWS_NAMES,
 		newspaper_session_seed,
+		id,
 	)
 
 
@@ -3425,6 +3440,7 @@ func _activate_document(
 		display_name = "New City"
 
 	city_menu_bar.set_city_name(display_name)
+	_refresh_newspaper_menu()
 	_refresh_details()
 	status_label.theme_type_variation = ""
 	status_label.text = status_text if not status_text.is_empty() else "City ready."
@@ -5270,11 +5286,7 @@ func _apply_map_selection(
 
 		return
 
-	var scurk_tool_mode := (
-		scurk_place_print != null
-		and scurk_place_print.visible
-		and not scurk_place_print.is_object_mode()
-	)
+	var scurk_tool_mode := _scurk_edit_tool_active()
 	var scurk_tool := (
 		scurk_place_print.selected_edit_tool() if scurk_tool_mode else {}
 	)
@@ -6964,6 +6976,14 @@ func _sign_palette_image(indexed: Image, mapping: PackedInt32Array) -> Image:
 	return Image.create_from_data(indexed.get_width(), indexed.get_height(), false, Image.FORMAT_RGBA8, bytes)
 
 
+func _scurk_edit_tool_active() -> bool:
+	return (
+		scurk_place_print != null
+		and scurk_place_print.visible
+		and not scurk_place_print.is_object_mode()
+	)
+
+
 func _update_network_preview() -> void:
 	if network_preview == null:
 		return
@@ -6986,7 +7006,10 @@ func _update_network_preview() -> void:
 	var sprites := large_sprites if view == IsometricRenderer.VIEW_LARGE else small_medium_sprites
 
 	if sprites != null and palette != null:
-		network_preview.request(city, selected_group, selected_subtool, start, finish, view, palette, sprites, overlay_mode == "underground")
+		network_preview.request(
+			city, selected_group, selected_subtool, start, finish, view, palette, sprites,
+			overlay_mode == "underground", _scurk_edit_tool_active()
+		)
 
 
 func _clear_dynamic_composition_cache() -> void:

@@ -24,6 +24,9 @@ const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.g
 const ZOOM_LEVELS := [0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0]
 const DEFAULT_ZOOM_INDEX := 3
 const WHEEL_ZOOM_DEBOUNCE_MSEC := 250
+# child layer order: network preview artwork, then the price label above it
+const NETWORK_PREVIEW_Z_INDEX := 80
+const PRICE_LAYER_Z_INDEX := 90
 const SIGN_FONT_HEIGHTS := [12, 14, 16]
 const SIGN_PANEL_FILL := Color("9f9f9f")
 const SIGN_POST_FILL := Color("bbbbbb")
@@ -117,6 +120,8 @@ var selection_path: Array[Vector2i] = []
 var selection_moved := false
 var selection_price := -1
 var selection_price_affordable := true
+# the price label draws above the network preview layer, not under it
+var _price_layer: Node2D
 var placement_error_provider := Callable()
 var placement_error_popup: PanelContainer
 var placement_error_label: Label
@@ -619,7 +624,12 @@ func selection_was_dragged() -> bool:
 
 
 func set_selection_price(value: int, affordable := true) -> void:
-	selection_price = maxi(-1, value)
+	var price := maxi(-1, value)
+
+	if price == selection_price and affordable == selection_price_affordable:
+		return
+
+	selection_price = price
 	selection_price_affordable = affordable
 	queue_redraw()
 
@@ -921,6 +931,9 @@ func _draw() -> void:
 	var scale := _view_scale()
 	var offset := _draw_offset(scale)
 
+	if _price_layer != null:
+		_price_layer.queue_redraw()
+
 	if data_view_mesh != null:
 		_draw_data_view(scale, offset)
 
@@ -961,8 +974,6 @@ func _draw() -> void:
 		draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28) if valid else Color(1.0, 0.15, 0.12, 0.35))
 		local_polygon.append(local_polygon[0])
 		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95), 1.0)
-
-	_draw_selection_price(scale, offset)
 
 	if service_query != null:
 		service_query.draw_on(self, scale, offset)
@@ -1019,8 +1030,11 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 	return polygons
 
 
-func _draw_selection_price(scale: float, offset: Vector2) -> void:
-	if selection_price < 0 or selection_start.x < 0:
+func _draw_selection_price() -> void:
+	if city == null or selection_price < 0 or selection_start.x < 0:
+		return
+
+	if not data_view_mode.is_empty():
 		return
 
 	var polygon := Renderer.tile_polygon(city, selection_start.x, selection_start.y)
@@ -1028,7 +1042,8 @@ func _draw_selection_price(scale: float, offset: Vector2) -> void:
 	if polygon.size() != 4:
 		return
 
-	var anchor := offset + (
+	var scale := _view_scale()
+	var anchor := _draw_offset(scale) + (
 		polygon[0] + polygon[1] + polygon[2] + polygon[3]
 	) * 0.25 * scale + Vector2(10, -12)
 	var font := get_theme_default_font()
@@ -1039,12 +1054,14 @@ func _draw_selection_price(scale: float, offset: Vector2) -> void:
 		Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1), Vector2(-1, 0),
 		Vector2(1, 0), Vector2(-1, 1), Vector2(0, 1), Vector2(1, 1),
 	]:
-		draw_string(
+		_price_layer.draw_string(
 			font, anchor + outline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
 			Color.WHITE,
 		)
 
-	draw_string(font, anchor, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color)
+	_price_layer.draw_string(
+		font, anchor, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color
+	)
 
 
 func _draw_transient_effects(scale: float, offset: Vector2) -> void:
@@ -1606,6 +1623,11 @@ func _ensure_base_layer() -> void:
 	_base_layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	_base_layer.stretch_mode = TextureRect.STRETCH_SCALE
 	_base_layer.show_behind_parent = true
+	_price_layer = Node2D.new()
+	_price_layer.name = "SelectionPriceLayer"
+	_price_layer.z_index = PRICE_LAYER_Z_INDEX
+	_price_layer.draw.connect(_draw_selection_price)
+	add_child(_price_layer)
 	_foreground_palette_material = CityForegroundPalette.create_material(animated_palette_texture)
 	material = _foreground_palette_material
 	_palette_shader = Shader.new()

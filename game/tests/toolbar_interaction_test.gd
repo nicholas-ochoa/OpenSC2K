@@ -224,11 +224,43 @@ func _run() -> void:
 		assert(not paper.page.articles[1].is_empty())
 
 	paper.hide()
+	await _test_network_drag_price(main, map, city)
 	_test_fire_clock(city)
 	main.queue_free()
 	await process_frame
 	print("PASS: toolbar interactions, placement validity, rail transitions, dispatch recall, landscape rectangles, fire timing, newspaper articles and display options")
 	quit()
+
+
+func _test_network_drag_price(main: Node, map: CityMapControl, city: CityState) -> void:
+	main.call("_set_overlay", "city")
+	main.call("_select_tool_group", 6)
+	main.call("_select_subtool", 0)
+	var start := Vector2i(30, 30)
+	var finish := Vector2i(36, 30)
+	var planned := NetworkCommand.apply(
+		NetworkPlacementPreview.snapshot_city(city), 6, 0, start, finish
+	)
+	assert(planned.ok and int(planned.cost) > 0)
+	map.selection_start = start
+	map.selection_end = finish
+	map._rebuild_selection_path()
+	map.selection_changed.emit(start, finish, map.selection_tiles(), true)
+	assert(map.selection_price < 0, "The route price waits for the planned command")
+	var deadline := Time.get_ticks_msec() + 5000
+
+	while map.selection_price < 0:
+		assert(Time.get_ticks_msec() < deadline, "Timed out waiting for the road drag price")
+		await create_timer(0.01).timeout
+
+	assert(
+		map.selection_price == int(planned.cost),
+		"A road drag shows its planned price anchored at the start tile",
+	)
+	assert(map.selection_price_affordable)
+	map._clear_selection()
+	main.call("_update_network_preview")
+	assert(map.selection_price < 0, "Ending the drag removes the route price")
 
 
 class CountingEngine extends SimulationEngine:

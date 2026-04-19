@@ -43,6 +43,7 @@ var speed_menu: MenuButton
 var options_menu: MenuButton
 var view_menu: MenuButton
 var disasters_menu: MenuButton
+var newspaper_menu: MenuButton
 var city_label: Label
 var population_label: Label
 var date_label: Label
@@ -137,12 +138,13 @@ func _ready() -> void:
 		["City Industry", 3], ["Graphs", 4], ["Neighbors", 5],
 		["City Map", 6], ["Debug Info", 7],
 	], _on_windows_menu)
-	_add_menu(
+	newspaper_menu = _add_menu(
 		menu_row,
 		"Newspaper",
-		[["Show Latest Reports", 0]],
+		[],
 		_on_newspaper_menu,
 	)
+	newspaper_menu.disabled = true
 	_add_menu(menu_row, "Help", [["About", 0]], _on_help_menu)
 
 	var menu_spacer := Control.new()
@@ -240,6 +242,15 @@ func _metric_label(text_value: String, minimum_width: int) -> Label:
 func set_city_name(display_name: String) -> void:
 	city_label.text = display_name
 	city_label.tooltip_text = display_name
+
+
+func set_newspapers(titles: PackedStringArray) -> void:
+	var popup := newspaper_menu.get_popup()
+	popup.clear()
+	newspaper_menu.disabled = titles.is_empty()
+
+	for index in titles.size():
+		popup.add_item(titles[index], index)
 
 
 func set_population(display_value: String, available := true) -> void:

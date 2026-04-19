@@ -12,6 +12,23 @@ static func supported() -> bool:
 	return DisplayServer.get_name() != "headless" and ClassDB.class_exists("WebView")
 
 
+static func html_document() -> String:
+	var html := FileAccess.get_file_as_string("res://assets/newspaper/newspaper.html")
+	var font := load("res://assets/fonts/anton/Anton-Regular.ttf") as FontFile
+	html = html.replace("__NEWSPAPER_HEADLINE_FONT__", Marshalls.raw_to_base64(font.data))
+	var mastheads := {
+		"CHOMSKY": "res://assets/fonts/chomsky/Chomsky.otf",
+		"GRENZE": "res://assets/fonts/grenzegotisch/GrenzeGotisch[wght].ttf",
+		"MAGUNTIA": "res://assets/fonts/unifrakturmaguntia/UnifrakturMaguntia-Book.ttf",
+	}
+
+	for name in mastheads:
+		var masthead := load(mastheads[name]) as FontFile
+		html = html.replace("__NEWSPAPER_%s_FONT__" % name, Marshalls.raw_to_base64(masthead.data))
+
+	return html
+
+
 func open(data: Dictionary) -> void:
 	payload = data
 
@@ -21,7 +38,7 @@ func open(data: Dictionary) -> void:
 	if view == null:
 		view = ClassDB.instantiate("WebView") as Control
 		view.set("url", "")
-		view.set("html", FileAccess.get_file_as_string("res://assets/newspaper/newspaper.html"))
+		view.set("html", html_document())
 		view.set("full_window_size", true)
 		view.set("transparent", true)
 		view.set("forward_input_events", false)
@@ -37,6 +54,8 @@ func open(data: Dictionary) -> void:
 
 func close() -> void:
 	if view != null:
+		# clear the old page before the native surface is shown on the next opening
+		view.call("post_message", JSON.stringify({"action": "hide"}))
 		view.call("set_visible", false)
 		view.call("focus_parent")
 

@@ -66,6 +66,10 @@ func _build_licenses() -> void:
 		engine_notices += str(license_name) + "\n" + str(engine_licenses[license_name]) + "\n\n"
 	_add_license("Godot Engine — dependency notices", engine_notices)
 	_add_license("Rajdhani — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/rajdhani/OFL.txt"))
+	_add_license("Anton — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/anton/OFL.txt"))
+	_add_license("UnifrakturMaguntia — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/unifrakturmaguntia/OFL.txt"))
+	_add_license("Grenze Gotisch — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/grenzegotisch/OFL.txt"))
+	_add_license("Chomsky — SIL OFL 1.1", FileAccess.get_file_as_string("res://assets/fonts/chomsky/OFL.txt"))
 	_add_license("Godot WRY — MIT", FileAccess.get_file_as_string("res://addons/godot_wry/LICENSE"))
 	_add_license("Godot WRY — dependency notices", FileAccess.get_file_as_string("res://assets/licenses/wry-dependencies.txt"))
 	_add_license("Research and original game", """RESEARCH
