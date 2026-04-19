@@ -138,6 +138,7 @@ var _shift_pressed := false
 var shift_line_enabled := false
 var continuous_placement := false
 var landscape_brush := false
+var brush_box_selection := false
 var brush_size := 1
 var brush_round := false
 var _last_brush_tile := Vector2i(-1, -1)
@@ -980,6 +981,8 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 			tiles.append(hover_tile)
 	elif query_footprint_preview and _shift_pressed:
 		tiles = _query_footprint_tiles(hover_tile)
+	elif brush_box_selection:
+		tiles = selection_path.duplicate()
 	elif selection_mode == "point":
 		var preview_point := selection_end if selection_end.x >= 0 else hover_tile
 		tiles = point_preview_tiles(preview_point)
@@ -1321,6 +1324,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			hover_tile = tile
 			_stretch_press_y = event.position.y
 			stretch_height_delta = 0
+			brush_box_selection = landscape_brush and shift_rectangle_enabled and event.shift_pressed
 			selection_start = tile
 			selection_end = tile
 			selection_moved = false
@@ -1329,7 +1333,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			_brush_elapsed = 0.0
 			_last_brush_tile = Vector2i(-1, -1)
 
-			if continuous_placement:
+			if continuous_placement and not brush_box_selection:
 				_emit_brush_dab(tile, false)
 
 			selection_changed.emit(
@@ -1349,7 +1353,10 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 				stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
 				selection_moved = selection_moved or absf(_stretch_press_y - event.position.y) >= 6.0
 
-			if not continuous_placement:
+			if landscape_brush and not brush_box_selection and tile.x >= 0 and tile != _last_brush_tile:
+				_emit_brush_dab(tile, true)
+
+			if not continuous_placement or brush_box_selection:
 				selection_completed.emit(
 					selection_start,
 					selection_end,
@@ -1416,7 +1423,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 			selection_end = tile
 			selection_moved = true
 			_rebuild_selection_path()
-			if landscape_brush:
+			if landscape_brush and not brush_box_selection:
 				_emit_brush_dab(tile, true)
 			selection_changed.emit(
 				selection_start,
@@ -1435,12 +1442,12 @@ func _rebuild_selection_path() -> void:
 	if selection_start.x < 0 or selection_end.x < 0:
 		return
 
-	if selection_mode == "point":
+	if selection_mode == "point" and not brush_box_selection:
 		selection_path.append(selection_end)
 
 		return
 
-	if (selection_mode == "rectangle" and not (shift_line_enabled and _shift_pressed)) or (shift_rectangle_enabled and _shift_pressed):
+	if (selection_mode == "rectangle" and not (shift_line_enabled and _shift_pressed)) or brush_box_selection or (shift_rectangle_enabled and _shift_pressed and not landscape_brush):
 		var minimum := Vector2i(
 			mini(selection_start.x, selection_end.x),
 			mini(selection_start.y, selection_end.y),
@@ -1471,6 +1478,7 @@ func _rebuild_selection_path() -> void:
 
 
 func _clear_selection() -> void:
+	brush_box_selection = false
 	selection_start = Vector2i(-1, -1)
 	selection_end = Vector2i(-1, -1)
 	selection_path.clear()
@@ -1864,7 +1872,7 @@ func _hide_placement_error() -> void:
 
 
 func _process(delta: float) -> void:
-	if not continuous_placement or not edit_enabled or selection_start.x < 0:
+	if not continuous_placement or brush_box_selection or not edit_enabled or selection_start.x < 0:
 		_brush_elapsed = 0.0
 
 		return

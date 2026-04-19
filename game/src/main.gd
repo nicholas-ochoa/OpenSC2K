@@ -1599,6 +1599,8 @@ func _record_edit_command(
 				if id not in landscape_brush_command.changed_ids:
 					landscape_brush_command.changed_ids.append(id)
 				landscape_brush_command.new_payloads[id] = command.new_payloads[id]
+			for field in ["cost", "listed_cost", "skipped_insufficient"]:
+				landscape_brush_command[field] = int(landscape_brush_command.get(field, 0)) + int(command.get(field, 0))
 			landscape_brush_command.random_state_after = command.random_state_after
 			landscape_brush_command.tile_indices.append_array(command.tile_indices)
 		last_edit_command = landscape_brush_command
@@ -1873,7 +1875,13 @@ func _on_map_selection_canceled() -> void:
 		return
 
 	status_label.theme_type_variation = ""
-	status_label.text = "Brush stopped. Use Undo to remove its last placement." if map_view.continuous_placement else "Selection canceled. No action was taken."
+	var painted := map_view.continuous_placement and (
+		not map_view.landscape_brush or not landscape_brush_command.is_empty()
+	)
+	status_label.text = (
+		"Brush stopped. Use Undo to remove its last edit."
+		if painted else "Selection canceled. No action was taken."
+	)
 
 
 func _on_map_selection_started() -> void:
@@ -5210,14 +5218,14 @@ func _update_edit_state() -> void:
 		state.status_text = str(Tools.tool(selected_group, selected_subtool).name)
 		state.status_detail = "Drag up or down to stretch terrain live. Hold Shift to apply on release." if selected_group == 0 and selected_subtool == 5 else "Free landscape editor tool."
 
-	map_view.landscape_brush = landscape_editor and selected_group == 1 and selected_subtool in [0, 1, 3]
-	city_toolbar.brush_controls.visible = map_view.landscape_brush
-	map_view.brush_size = int(city_toolbar.brush_size_input.value)
-	map_view.brush_round = city_toolbar.brush_shape_input.selected == 1
+	map_view.landscape_brush = selected_group == 1 and selected_subtool in [0, 1, 3] and not (scurk_place_print != null and scurk_place_print.visible)
+	city_toolbar.brush_controls.visible = landscape_editor and map_view.landscape_brush
+	map_view.brush_size = int(city_toolbar.brush_size_input.value) if landscape_editor else (7 if selected_subtool == 3 else 1)
+	map_view.brush_round = city_toolbar.brush_shape_input.selected == 1 if landscape_editor else true
 	if map_view.landscape_brush:
 		map_view.continuous_placement = true
 		map_view.shift_line_enabled = false
-		map_view.shift_rectangle_enabled = false
+		map_view.shift_rectangle_enabled = true
 		state.selection = "point"
 		state.area = 1
 	map_view.stretch_terrain = landscape_editor and selected_group == 0 and selected_subtool == 5
@@ -5373,9 +5381,9 @@ func _apply_map_selection(
 
 	if map_view.landscape_brush:
 		var command := LandscapeCommand.apply_path(city, selected_group, selected_subtool,
-			path, tool_random, true, true)
-		if command.ok:
-			_finish_simple_edit(SimpleEdits._result("landscape", command, selected_group, selected_subtool, true), false, {})
+			path, tool_random, landscape_editor, true)
+		if command.ok or command.get("error", "") != "no eligible tiles changed":
+			_finish_simple_edit(SimpleEdits._result("landscape", command, selected_group, selected_subtool, landscape_editor), false, {})
 		return
 
 	var simple_edit := SimpleEdits.apply_supported(

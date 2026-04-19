@@ -124,26 +124,23 @@ func _run() -> void:
 	map.zoom_factor = CityMapControl.ZOOM_LEVELS[0]
 	assert(main.options_menu.get_popup().get_item_index(0x8008) == -1)
 	assert(main.call("_city_view_size") == CityIsometricRenderer.VIEW_SMALL)
-	# City forest is selectable; Trees and Water use area then Shift-line.
+	# City nature tools paint with fixed brushes and support Shift boxes.
 	main.call("_select_tool_group", 1)
 	assert(toolbar.child_tool_buttons.has(3))
 	main.call("_select_subtool", 3)
-	assert(main.selected_subtool == 3 and map.edit_enabled and map.point_footprint_area == 7)
+	assert(main.selected_subtool == 3 and map.edit_enabled and map.brush_size == 7)
 	assert(map.point_preview_tiles(Vector2i(80, 80)).size() == 37)
-	assert(map.point_preview_tiles(Vector2i(127, 127)).is_empty())
+	assert(not map.point_preview_tiles(Vector2i(127, 127)).is_empty())
 
 	for subtool in [0, 1]:
 		main.call("_select_subtool", subtool)
-		assert(map.selection_mode == "rectangle" and map.shift_line_enabled)
+		assert(map.selection_mode == "point" and not map.shift_line_enabled)
+		assert(map.continuous_placement and map.shift_rectangle_enabled)
+		assert(map.brush_size == 1 and not toolbar.brush_controls.visible)
 		map.selection_start = Vector2i(80, 80)
 		map.selection_end = Vector2i(83, 82)
+		map.brush_box_selection = true
 		map._rebuild_selection_path()
-		assert(map.selection_path.size() == 12)
-		shift.pressed = true
-		map._input(shift)
-		assert(map.selection_path.size() == 6)
-		shift.pressed = false
-		map._input(shift)
 		assert(map.selection_path.size() == 12)
 		map._clear_selection()
 
@@ -169,6 +166,7 @@ func _run() -> void:
 	assert(dabs.size() == 2)
 	brush.free()
 	# Shift changes the same in-progress path in either direction.
+	map.landscape_brush = false
 	map.set_edit_enabled(true, "path", 1, true)
 	map.shift_rectangle_enabled = true
 	map.selection_start = Vector2i(80, 80)
