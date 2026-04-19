@@ -42,9 +42,59 @@ func _run() -> void:
 	assert(newspaper.web_paper.diagnostics.articles == 5)
 	newspaper.web_paper.close()
 	_check_menu_and_forecast(newspaper)
+	_check_city_name_fallback(newspaper)
 	newspaper.free()
 	print("PASS: newspaper payload, licensed font, progression menu, forecast, opinion and headless guard")
 	quit()
+
+
+func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
+	var reference_root := ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	var path := reference_root.path_join("CITIES/BABAR.SC2")
+	var source_bytes := FileAccess.get_file_as_bytes(path)
+	var document := Sc2File.load_path(path)
+	assert(document.is_valid())
+	assert(document.find_chunk("CNAM") == null)
+	var city := CityState.from_document(document)
+	assert(city.city_name().is_empty())
+	assert(city.display_name() == "BABAR")
+	assert(document.serialize().data == source_bytes, "Reading the display name changed city bytes")
+	assert(NewspaperDialog._paper_title(city, {}, 3, {"name": 2}) == "BABAR Chronicle")
+
+	# Reproduce the first growth milestone in memory. Do not save the supplied city.
+	var misc := document.find_chunk("MISC").decoded_payload.duplicate()
+	assert(NewsQueue.insert(misc, 3, 0).ok)
+	assert(document.find_chunk("MISC").set_decoded_payload(misc))
+	var data := DataUsaResource.load_path(
+		reference_root.path_join("DATA/DATA_USA.DAT"),
+		reference_root.path_join("DATA/DATA_USA.IDX"),
+	)
+	assert(data.is_valid())
+	var seed := -28 - IntegerMath.div_trunc(city.age_in_days(), 25)
+	newspaper.open_reports(city, document, data, {}, {}, seed, 0)
+	var payload := newspaper._web_payload()
+	assert(payload.headline == "BABAR Awakens!!")
+	assert(str(payload.articles[0]).contains("BABAR"))
+	assert(document.find_chunk("CNAM") == null, "Opening the newspaper added a saved city name")
+	assert(city.city_name().is_empty())
+	newspaper.hide()
+
+	newspaper.open_reports(city, document, null, {}, {}, seed, 0)
+	assert(str(newspaper._web_payload().headlines[0]).begins_with("BABAR counts "))
+	newspaper.hide()
+	var before := document.serialize().data as PackedByteArray
+	document.source_path = ""
+	assert(city.display_name() == "New City")
+	assert(document.serialize().data == before)
+	assert(FileAccess.get_file_as_bytes(path) == source_bytes)
+
+	var named_document := Sc2File.load_path(reference_root.path_join("DEFAULT.SC2"))
+	assert(named_document.set_city_name("Saved Name"))
+	named_document.source_path = "/different/File Name.SC2"
+	var named_city := CityState.from_document(named_document)
+	assert(named_city.display_name() == "Saved Name", "Filename used instead of the saved city name")
+	assert(named_document.set_city_name(""))
+	assert(named_city.display_name() == "File Name", "Empty saved name did not fall back to the filename")
 
 
 func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:

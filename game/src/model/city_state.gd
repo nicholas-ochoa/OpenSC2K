@@ -465,6 +465,15 @@ func city_name() -> String:
 	return document.city_name()
 
 
+func display_name() -> String:
+	var name := city_name()
+
+	if name.is_empty():
+		name = document.source_path.get_file().get_basename()
+
+	return name if not name.is_empty() else "New City"
+
+
 func mayor_name() -> String:
 	return label(0)
 

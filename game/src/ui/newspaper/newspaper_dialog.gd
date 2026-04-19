@@ -144,7 +144,7 @@ func _populate_page() -> void:
 				newspaper_data,
 				record,
 				seed,
-				city.city_name(),
+				city.display_name(),
 				city.mayor_name(),
 				teams,
 			)
@@ -159,7 +159,7 @@ func _populate_page() -> void:
 			var report := _local_report(slot)
 
 			if newspaper_data != null and newspaper_data.is_valid():
-				var article := NewspaperTextGenerator.render_story(newspaper_data, record, seed, city.city_name(), city.mayor_name(), teams)
+				var article := NewspaperTextGenerator.render_story(newspaper_data, record, seed, city.display_name(), city.mayor_name(), teams)
 
 				if article.ok:
 					report.article = article.article
@@ -175,7 +175,7 @@ func _populate_page() -> void:
 
 			if newspaper_data != null and newspaper_data.is_valid():
 				var forecast := NewspaperTextGenerator.render_story(
-					newspaper_data, record, seed, city.city_name(), city.mayor_name(), teams
+					newspaper_data, record, seed, city.display_name(), city.mayor_name(), teams
 				)
 
 				if forecast.ok:
@@ -188,7 +188,7 @@ func _populate_page() -> void:
 
 			if newspaper_data != null and newspaper_data.is_valid():
 				var opinion := NewspaperTextGenerator.render_story(
-					newspaper_data, record, seed, city.city_name(), city.mayor_name(), teams
+					newspaper_data, record, seed, city.display_name(), city.mayor_name(), teams
 				)
 
 				if opinion.ok:
@@ -244,7 +244,7 @@ func _extra_stories(misc: PackedByteArray, teams: PackedStringArray) -> Array[Di
 		}
 		var story := NewspaperTextGenerator.render_story(
 			newspaper_data, record, base_seed + 77 + index * 7,
-			city.city_name(), city.mayor_name(), teams,
+			city.display_name(), city.mayor_name(), teams,
 		)
 
 		if not story.ok or seen.has(story.headline) or str(story.article).strip_edges().is_empty():
@@ -306,7 +306,7 @@ static func _paper_title(
 	if paper_index < int(IntegerMath.div_trunc(NewsQueue.PAPER_COUNT, 2)):
 		return "%s%s" % [strings.get(376, "The "), paper_name]
 
-	var city_name := city_value.city_name() if not city_value.city_name().is_empty() else "City"
+	var city_name := city_value.display_name()
 
 	return "%s %s" % [city_name, paper_name]
 
@@ -364,7 +364,7 @@ func _team_names() -> PackedStringArray:
 
 
 func _local_report(slot: int) -> Dictionary:
-	var name_text := city.city_name()
+	var name_text := city.display_name()
 	var demand := city.rci_demand()
 	var reports := [
 		["%s counts %d residents" % [name_text, city.population()], "%s has a recorded population of %d. City services and transport must keep pace as new neighborhoods develop. Residents need connections to employment, electricity and water. This edition records conditions on %s." % [name_text, city.population(), _date_text()]],
