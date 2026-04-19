@@ -3860,6 +3860,9 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 
 
 func _refresh_map(force := true) -> void:
+	if city_status_bar != null:
+		city_status_bar.set_compass(city.compass_rotation() if city != null else -1)
+
 	if city == null or palette == null:
 		return
 
@@ -6522,6 +6525,8 @@ func _refresh_status_summary(
 ) -> void:
 	if city_menu_bar == null or city_status_bar == null:
 		return
+
+	city_status_bar.set_compass(city.compass_rotation() if city != null else -1)
 
 	if city == null:
 		city_menu_bar.set_population("--", false)

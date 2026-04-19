@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://src/ui/shell/city_status_bar.gd" id="1"]
 [ext_resource type="Script" path="res://src/view/rci_status_control.gd" id="2"]
+[ext_resource type="Script" path="res://src/ui/shell/status_compass.gd" id="3"]
 
 [node name="CityStatusBar" type="PanelContainer"]
 custom_minimum_size = Vector2(0, 31)
@@ -63,6 +64,16 @@ vertical_alignment = 1
 text_overrun_behavior = 0
 
 [node name="SpeedDivider" type="VSeparator" parent="Metrics"]
+layout_mode = 2
+
+[node name="Compass" type="Control" parent="Metrics"]
+custom_minimum_size = Vector2(24, 24)
+layout_mode = 2
+mouse_filter = 1
+tooltip_text = "North points up."
+script = ExtResource("3")
+
+[node name="CompassDivider" type="VSeparator" parent="Metrics"]
 layout_mode = 2
 
 [node name="Zoom" type="Label" parent="Metrics"]

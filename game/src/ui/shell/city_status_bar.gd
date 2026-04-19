@@ -53,6 +53,7 @@ var weather_label: Label
 var rci_graph: RciStatusControl
 var reports_label: Label
 var speed_label: Label
+var compass: StatusCompass
 var zoom_label: Label
 var recent_reports := PackedStringArray()
 var music_notice := ""
@@ -67,6 +68,7 @@ func _ready() -> void:
 	rci_graph = $Metrics/RCI
 	reports_label = $Metrics/Reports
 	speed_label = $Metrics/Speed
+	compass = $Metrics/Compass
 	zoom_label = $Metrics/Zoom
 	speed_label.theme_changed.connect(_fit_speed_label)
 	_fit_speed_label()
@@ -100,6 +102,10 @@ func clear_environment() -> void:
 func set_zoom(percent: int) -> void:
 	zoom_label.text = "Zoom: %d%%" % percent
 	_sync_overflow_tooltip(zoom_label)
+
+
+func set_compass(value: int) -> void:
+	compass.set_compass(value)
 
 
 func set_speed(speed_name: String) -> void:
