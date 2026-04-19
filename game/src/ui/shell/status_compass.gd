@@ -34,6 +34,15 @@ func _draw() -> void:
 	draw_polyline(PackedVector2Array([
 		Vector2(-4, -5), Vector2(0, -9), Vector2(4, -5),
 	]), ink, 2.0, true)
-	draw_polyline(PackedVector2Array([
-		Vector2(-3.5, 9), Vector2(-3.5, 1), Vector2(3.5, 9), Vector2(3.5, 1),
-	]), ink, 2.0, true)
+	var letter := PackedVector2Array([
+		Vector2(-3.5, 7.5), Vector2(-3.5, 0.5), Vector2(3.5, 7.5), Vector2(3.5, 0.5),
+	])
+
+	# separate strokes and round joins avoid sharp mitered corners
+	for index in range(letter.size() - 1):
+		draw_line(letter[index], letter[index + 1], ink, 2.0, true)
+
+	for point in letter:
+		draw_circle(point, 1.0, ink, true, -1.0, true)
+
+	draw_line(Vector2(-4.5, 10.5), Vector2(4.5, 10.5), ink, 1.5, true)

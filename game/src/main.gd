@@ -1821,10 +1821,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 		map_view.center_on_tile(new_center)
 
 	status_label.theme_type_variation = ""
-	status_label.text = "Rotated %s. Compass: %d." % [
-		"counter-clockwise" if counter_clockwise else "clockwise",
-		result.new_compass,
-	]
+	status_label.text = "Rotated counterclockwise" if counter_clockwise else "Rotated clockwise"
 
 
 func _update_zoom_controls(percent: int) -> void:
