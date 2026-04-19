@@ -20,6 +20,18 @@ func _run() -> void:
 	assert(status.speed_label.get_index() < status.compass.get_index())
 	assert(status.compass.get_index() < status.zoom_label.get_index())
 
+	# Project north toward the same neighbor used by the Neighbors window.
+	for rotation in range(4):
+		var slot := SimNationWindowControl.display_neighbor_indices(rotation).find(0)
+		var expected: Vector2 = SimNationWindowControl.SPRITE_POSITIONS[slot + 1] - SimNationWindowControl.SPRITE_POSITIONS[0]
+		assert(StatusCompass.north_direction(rotation).normalized().is_equal_approx(expected.normalized()))
+		var projected := StatusCompass.rose_transform(rotation) * Vector2.UP
+		assert(projected.normalized().is_equal_approx(expected.normalized()))
+		# The other cardinal points must follow the same projected tile axes.
+		var east_slot := SimNationWindowControl.display_neighbor_indices(rotation).find(1)
+		var east: Vector2 = SimNationWindowControl.SPRITE_POSITIONS[east_slot + 1] - SimNationWindowControl.SPRITE_POSITIONS[0]
+		assert((StatusCompass.rose_transform(rotation) * Vector2.RIGHT).normalized().is_equal_approx(east.normalized()))
+
 	# Load an already rotated city without clicking Rotate.
 	for saved_rotation in range(4):
 		var document := Sc2File.load_path(ProjectSettings.globalize_path(
@@ -40,7 +52,7 @@ func _run() -> void:
 			var expected := (previous + (1 if counter_clockwise else 3)) & 3
 			assert(status.compass.compass_rotation == expected)
 			assert(status.compass.tooltip_text ==
-				"North points %s." % ["up", "right", "down", "left"][expected])
+				"North points %s." % ["lower-right", "upper-right", "upper-left", "lower-left"][expected])
 
 	for mode in ["light", "dark"]:
 		AppUiTheme.select(mode)

@@ -67,10 +67,10 @@ text_overrun_behavior = 0
 layout_mode = 2
 
 [node name="Compass" type="Control" parent="Metrics"]
-custom_minimum_size = Vector2(24, 24)
+custom_minimum_size = Vector2(36, 24)
 layout_mode = 2
 mouse_filter = 1
-tooltip_text = "North points up."
+tooltip_text = "North points lower-right."
 script = ExtResource("3")
 
 [node name="CompassDivider" type="VSeparator" parent="Metrics"]

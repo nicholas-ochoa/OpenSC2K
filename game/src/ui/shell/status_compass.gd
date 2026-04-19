@@ -1,7 +1,7 @@
 @tool
 class_name StatusCompass
 extends Control
-# an original vector north marker. the whole marker follows saved rotation
+# an original vector compass rose aligned with the city grid
 
 var compass_rotation := 0
 
@@ -19,8 +19,20 @@ func set_compass(value: int) -> void:
 		queue_redraw()
 
 	tooltip_text = "Map compass: no city loaded." if value < 0 else (
-		"North points %s." % ["up", "right", "down", "left"][compass_rotation]
+		"North points %s." % ["lower-right", "upper-right", "upper-left", "lower-left"][compass_rotation]
 	)
+
+
+static func north_direction(value: int) -> Vector2:
+	return [Vector2(2, 1), Vector2(2, -1), Vector2(-2, -1), Vector2(-2, 1)][value & 3]
+
+
+static func rose_transform(value: int) -> Transform2D:
+	# neighbors places north at +x for saved rotation zero. project the rotated
+	# grid axes with the city renderer's two-to-one tile width/height ratio
+	var north := north_direction(value) * 0.5
+	var east := north_direction(value - 1) * 0.5
+	return Transform2D(east, -north, Vector2.ZERO)
 
 
 func _draw() -> void:
@@ -28,21 +40,35 @@ func _draw() -> void:
 		return
 
 	var ink := get_theme_color("font_color", "Label")
-	draw_set_transform(size * 0.5, compass_rotation * PI * 0.5)
-	# arrow above a hand-drawn n. no imported artwork or font is needed
-	draw_line(Vector2(0, -2), Vector2(0, -9), ink, 2.0, true)
-	draw_polyline(PackedVector2Array([
-		Vector2(-4, -5), Vector2(0, -9), Vector2(4, -5),
-	]), ink, 2.0, true)
-	var letter := PackedVector2Array([
-		Vector2(-3.5, 7.5), Vector2(-3.5, 0.5), Vector2(3.5, 7.5), Vector2(3.5, 0.5),
-	])
+	var gray := ink.lerp(Color(0.55, 0.55, 0.55), 0.8)
+	var projection := rose_transform(compass_rotation)
+	draw_set_transform(size * 0.5)
 
-	# separate strokes and round joins avoid sharp mitered corners
-	for index in range(letter.size() - 1):
-		draw_line(letter[index], letter[index + 1], ink, 2.0, true)
+	# short gray diagonal points sit behind the four long cardinal points
+	for index in range(4):
+		var direction := Vector2.from_angle(PI * 0.25 + index * PI * 0.5)
+		var screen_direction := (projection * direction).normalized()
+		var side := screen_direction.orthogonal() * 1.5
+		draw_colored_polygon(PackedVector2Array([
+			side, screen_direction * 4.5, -side,
+		]), gray)
 
-	for point in letter:
-		draw_circle(point, 1.0, ink, true, -1.0, true)
+	for index in range(4):
+		var direction := Vector2.from_angle(index * PI * 0.5)
+		var screen_direction := (projection * direction).normalized()
+		var side := screen_direction.orthogonal() * 2.0
+		draw_colored_polygon(PackedVector2Array([
+			side, screen_direction * 9.0, -side,
+		]), ink)
 
-	draw_line(Vector2(-4.5, 10.5), Vector2(4.5, 10.5), ink, 1.5, true)
+	draw_circle(Vector2.ZERO, 2.5, gray, true, -1.0, true)
+	# n moves with the north point but stays upright and easy to read
+	var north := north_direction(compass_rotation).normalized()
+	draw_set_transform(size * 0.5 + north * 14.0)
+	# a filled outline gives the n flat ends without acute line-join spikes
+	draw_colored_polygon(PackedVector2Array([
+		Vector2(-2.5, 3.25), Vector2(-2.5, -3.25), Vector2(-1.5, -3.25),
+		Vector2(1.5, 1.1), Vector2(1.5, -3.25), Vector2(2.5, -3.25),
+		Vector2(2.5, 3.25), Vector2(1.5, 3.25), Vector2(-1.5, -1.1),
+		Vector2(-1.5, 3.25),
+	]), ink)
