@@ -141,7 +141,7 @@ static func fields(record: Dictionary, city: CityState) -> Array[Dictionary]:
 					translated = _overlay(value)
 
 		result.append({"name": key, "value": str(value), "raw": "0x%02X" % value,
-			"translation": translated, "detail": "%s; XTHG base offset +%d" % [meaning, index]})
+			"translation": translated, "detail": meaning})
 
 	return result
 

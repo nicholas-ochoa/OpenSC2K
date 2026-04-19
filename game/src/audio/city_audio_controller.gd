@@ -104,7 +104,7 @@ func set_volumes(new_music_volume: float, new_effects_volume: float) -> void:
 		recording_player.volume_linear = music_volume
 
 
-func play_music_track(track_id: int, choose_shuffle := true) -> bool:
+func play_music_track(track_id: int, choose_shuffle := true, immediate := false) -> bool:
 	if music_paused or not audio_allowed() or music_player == null or track_id < Music.FIRST_TRACK_ID or track_id >= Music.FIRST_TRACK_ID + Music.TRACK_COUNT:
 		return false
 
@@ -120,7 +120,7 @@ func play_music_track(track_id: int, choose_shuffle := true) -> bool:
 		track_id = Music.MAIN_THEME_TRACK
 		choose_shuffle = false
 
-	if music_gap_remaining_msec > 0.0:
+	if music_gap_remaining_msec > 0.0 and not immediate:
 		queued_music_track = track_id
 		queued_choose_shuffle = choose_shuffle
 		music_activity_changed.emit(true)

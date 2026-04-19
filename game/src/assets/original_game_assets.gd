@@ -10,6 +10,7 @@ const NewspaperLoader = preload("res://src/assets/data_usa_resource.gd")
 const Queries = preload("res://src/tools/city/query_info.gd")
 const LibraryWindows = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 
+const CREDITS_TEXT_RESOURCE_ID := 128
 const FOREST_PROTEST_BITMAP_ID := 403
 const FOREST_PROTEST_STRING_ID := 236
 const BUILDING_OBJECTION_STRING_ID := 106
@@ -31,6 +32,7 @@ var forest_protest_text := DEFAULT_FOREST_PROTEST_TEXT
 var building_objection_text := DEFAULT_BUILDING_OBJECTION_TEXT
 var forest_protest_image: Image
 var library_texts: Dictionary = {}
+var original_credits := ""
 var newspaper_data: DataUsaResource
 var toolbar_art: Image
 var industry_icons: Image
@@ -80,6 +82,7 @@ static func required_string_ids() -> PackedInt32Array:
 
 
 func load_ui(reference_root: String) -> void:
+	load_original_credits(reference_root)
 	city_ui_graphics = CityUiGraphics.load_original(reference_root)
 	desktop_graphics = DesktopGraphics.load_original(reference_root)
 	newspaper_data = NewspaperLoader.load_path(
@@ -121,6 +124,17 @@ func load_ui(reference_root: String) -> void:
 	simnation_sprites = Image.load_from_file(
 		reference_root.path_join("BITMAPS/NEIGHBOR.BMP")
 	)
+
+
+func load_original_credits(reference_root: String) -> void:
+	original_credits = ""
+	var credits := TextLoader.load_ids(
+		reference_root.path_join("DATA/TEXT_USA.DAT"),
+		reference_root.path_join("DATA/TEXT_USA.IDX"),
+		PackedInt32Array([CREDITS_TEXT_RESOURCE_ID]),
+	)
+	if credits.ok:
+		original_credits = credits.strings[CREDITS_TEXT_RESOURCE_ID]
 
 
 func load_city_graphics(reference_root: String) -> void:

@@ -1401,7 +1401,6 @@ static func tornado_sprite(
 	}
 
 
-# For monsters, dx stores body-part flags rather than velocity.
 static func monster_layers(
 	city: CityState,
 	x: int,
@@ -1427,6 +1426,22 @@ static func monster_layers(
 	var dy := int(thing.get("dy", 0))
 	var body_x := (x - y - 3) * HALF_WIDTH
 	var body_y := (x + y) * HALF_HEIGHT - (altitude + z) * ALTITUDE_STEP
+	var head_frame := 0
+
+	if dy & 0x80:
+		head_frame = (int(thing.get("px", 0)) + int(thing.get("py", 0)) + x + y + record) & 1
+
+	return monster_pose_layers(Vector2i(body_x, body_y), dx, dy, head_frame, view_size)
+
+
+# For monsters, dx stores body-part flags rather than velocity.
+static func monster_pose_layers(
+	body_position: Vector2i, dx: int, dy: int, head_frame := 0, view_size := VIEW_LARGE
+) -> Array[Dictionary]:
+	# shared native sprite geometry. callers supply display coordinates and pose bits
+	var layers: Array[Dictionary] = []
+	var body_x := body_position.x
+	var body_y := body_position.y
 	var upper_x := body_x - 20
 	var upper_y := body_y - 75
 
@@ -1471,13 +1486,7 @@ static func monster_layers(
 	if dx & 0x80:
 		layers.append(_monster_layer(1385, body_x + 46, body_y - 18, false))
 
-	var head_sprite := 1490
-
-	if dy & 0x80:
-		head_sprite += (
-			int(thing.get("px", 0)) + int(thing.get("py", 0))
-			+ x + y + record
-		) & 1
+	var head_sprite := 1490 + (head_frame & 1)
 
 	layers.append(_monster_layer(head_sprite, body_x, body_y - 110, false))
 	layers.append(_monster_layer(head_sprite, body_x + 60, body_y - 110, true))

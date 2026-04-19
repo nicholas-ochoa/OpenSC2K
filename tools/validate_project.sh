@@ -22,6 +22,7 @@ run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/debug_city_tables_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/debug_object_fields_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/about_scene_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/about_music_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/picture_notice_scene_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/scenario_scene_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/player_dialog_scene_test.gd

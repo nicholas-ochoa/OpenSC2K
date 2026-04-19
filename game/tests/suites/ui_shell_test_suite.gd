@@ -360,7 +360,7 @@ func _test_main_menu() -> void:
 	_check(
 		about_dialog.title == "About OpenSC2K"
 		and about_dialog.dialog_text.contains("SimCity 2000 for Windows 95")
-		and about_dialog.min_size == Vector2i(560, 250)
+		and about_dialog.min_size == Vector2i(380, 200)
 		and about_dialog.exclusive,
 		"About dialog owns its fixed product text and layout",
 	)

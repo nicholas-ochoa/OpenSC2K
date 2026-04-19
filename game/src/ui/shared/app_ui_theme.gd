@@ -45,6 +45,7 @@ static func bind_canvas(control: ColorRect, role := "canvas") -> void:
 static func build(value: String, files := false) -> Theme:
 	var dark := value == "dark"
 	var result := _dark_theme() if dark else _light_file_dialog_theme() if files else _light_theme()
+	result.set_color("default_color", "RichTextLabel", result.get_color("font_color", "Label"))
 	# spinbox has separate arrow buttons; button icon colors do not reach them
 	for direction in ["up", "down"]:
 		for state in ["", "_hover", "_pressed", "_disabled"]:

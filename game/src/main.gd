@@ -898,7 +898,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	_select_tool_group(selected_group)
 	_update_zoom_controls(map_view.zoom_percent())
 	_build_main_menu()
-	about_dialog.set_control_graphics(original_assets.city_ui_graphics)
+	about_dialog.set_assets(original_assets)
 
 
 func _build_main_menu() -> void:
@@ -1205,7 +1205,7 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	_update_palette_cycle_texture()
 	city_toolbar.replace_artwork(assets.toolbar_art)
 	_refresh_child_tool_icons()
-	about_dialog.set_control_graphics(assets.city_ui_graphics)
+	about_dialog.set_assets(assets)
 	new_city_dialog.set_control_graphics(assets.city_ui_graphics)
 	newspaper_dialog.set_control_graphics(assets.city_ui_graphics)
 	desktop_presentation.set_graphics(assets.desktop_graphics)
@@ -1692,6 +1692,8 @@ func _redo_scurk_place() -> void:
 
 func _open_about_dialog() -> void:
 	about_dialog.popup_centered()
+	if assets_ready and audio_controller != null and audio_controller.music_volume > 0.0 and (city == null or city.music_enabled()):
+		audio_controller.play_music_track(Music.ABOUT_TRACK, false, true)
 
 
 func _choose_tool_group(group_index: int) -> void:

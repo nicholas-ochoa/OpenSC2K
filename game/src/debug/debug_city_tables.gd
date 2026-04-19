@@ -51,12 +51,12 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 					continue
 
 				var fields: Array[Dictionary] = []
-				fields.append(_field("tile_id", tile, "Type byte at +0"))
+				fields.append(_field("tile_id", tile, "Type"))
 				var labels: Array = STAT_LABELS.get(tile, ["Type-specific byte", "Type-specific statistic", "Type-specific statistic", "Type-specific statistic"])
 
 				for index in 4:
 					fields.append(_field("stat_%d" % index, record.get("stat_%d" % index, 0),
-						"%s; %s" % [labels[index], "byte at +1" if index == 0 else "unsigned 16-bit big-endian at +%d" % (index * 2)]))
+						labels[index]))
 
 				result.append({"id": str(id), "name": "Record %d" % id,
 					"value": "Empty" if tile == 0 else FACILITIES.get(tile, "Facility 0x%02X" % tile),
