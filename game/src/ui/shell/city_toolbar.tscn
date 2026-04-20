@@ -54,44 +54,33 @@ theme_override_constants/h_separation = 3
 theme_override_constants/v_separation = 3
 columns = 2
 
-[node name="ToolGroups" type="GridContainer" parent="Margin/Column"]
+[node name="CityToolRows" type="VBoxContainer" parent="Margin/Column"]
+layout_mode = 2
+size_flags_horizontal = 4
+theme_override_constants/separation = 2
+
+[node name="ToolGroups" type="GridContainer" parent="Margin/Column/CityToolRows"]
+unique_name_in_owner = true
+layout_mode = 2
+theme_override_constants/h_separation = 2
+theme_override_constants/v_separation = 2
+columns = 3
+
+[node name="SpecialTools" type="GridContainer" parent="Margin/Column/CityToolRows"]
 unique_name_in_owner = true
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_constants/h_separation = 3
-theme_override_constants/v_separation = 3
-columns = 3
+theme_override_constants/h_separation = 2
+columns = 2
 
-[node name="ToolGroupsDivider" type="HSeparator" parent="Margin/Column"]
-layout_mode = 2
-
-[node name="SpecialTools" type="GridContainer" parent="Margin/Column"]
-unique_name_in_owner = true
+[node name="RotationButtons" type="HBoxContainer" parent="Margin/Column/CityToolRows"]
 layout_mode = 2
 size_flags_horizontal = 4
-theme_override_constants/h_separation = 3
-columns = 3
+theme_override_constants/separation = 2
 
-[node name="SpecialToolsDivider" type="HSeparator" parent="Margin/Column"]
-layout_mode = 2
-
-[node name="RotateRow" type="HBoxContainer" parent="Margin/Column"]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="RotateLabel" type="Label" parent="Margin/Column/RotateRow"]
-custom_minimum_size = Vector2(45, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Rotate"
-
-[node name="RotationButtons" type="HBoxContainer" parent="Margin/Column/RotateRow"]
-layout_mode = 2
-theme_override_constants/separation = 3
-
-[node name="RotateCounterClockwiseButton" type="Button" parent="Margin/Column/RotateRow/RotationButtons"]
+[node name="RotateCounterClockwiseButton" type="Button" parent="Margin/Column/CityToolRows/RotationButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(36, 30)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 tooltip_text = "Rotate Counter-Clockwise"
 disabled = true
@@ -99,9 +88,9 @@ text = "R"
 icon_alignment = 1
 metadata/toolbar_region = Rect2i(405, 0, 27, 23)
 
-[node name="RotateClockwiseButton" type="Button" parent="Margin/Column/RotateRow/RotationButtons"]
+[node name="RotateClockwiseButton" type="Button" parent="Margin/Column/CityToolRows/RotationButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(36, 30)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 tooltip_text = "Rotate Clockwise"
 disabled = true
@@ -109,47 +98,28 @@ text = "R"
 icon_alignment = 1
 metadata/toolbar_region = Rect2i(433, 0, 27, 23)
 
-[node name="RotationSpacer" type="Control" parent="Margin/Column/RotateRow"]
-custom_minimum_size = Vector2(45, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-
-[node name="ZoomRow" type="HBoxContainer" parent="Margin/Column"]
-layout_mode = 2
-theme_override_constants/separation = 0
-
-[node name="ZoomLabel" type="Label" parent="Margin/Column/ZoomRow"]
-custom_minimum_size = Vector2(45, 0)
-layout_mode = 2
-size_flags_horizontal = 3
-text = "Zoom"
-
-[node name="ZoomButtons" type="HBoxContainer" parent="Margin/Column/ZoomRow"]
-layout_mode = 2
-theme_override_constants/separation = 3
-
-[node name="ZoomOutButton" type="Button" parent="Margin/Column/ZoomRow/ZoomButtons"]
+[node name="ZoomButtons" type="HBoxContainer" parent="Margin/Column/CityToolRows"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(36, 30)
+layout_mode = 2
+theme_override_constants/separation = 2
+
+[node name="ZoomOutButton" type="Button" parent="Margin/Column/CityToolRows/ZoomButtons"]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 tooltip_text = "Zoom Out (Q / -)"
 text = "Z"
 icon_alignment = 1
 metadata/toolbar_region = Rect2i(462, 0, 23, 23)
 
-[node name="ZoomInButton" type="Button" parent="Margin/Column/ZoomRow/ZoomButtons"]
+[node name="ZoomInButton" type="Button" parent="Margin/Column/CityToolRows/ZoomButtons"]
 unique_name_in_owner = true
-custom_minimum_size = Vector2(36, 30)
+custom_minimum_size = Vector2(32, 32)
 layout_mode = 2
 tooltip_text = "Zoom In (E / +)"
 text = "Z"
 icon_alignment = 1
 metadata/toolbar_region = Rect2i(486, 0, 23, 23)
-
-[node name="ZoomSpacer" type="Control" parent="Margin/Column/ZoomRow"]
-custom_minimum_size = Vector2(45, 0)
-layout_mode = 2
-size_flags_horizontal = 3
 
 [node name="ChildPalette" type="VBoxContainer" parent="Margin/Column"]
 unique_name_in_owner = true

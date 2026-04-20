@@ -97,8 +97,10 @@ func _ready() -> void:
 	for group_index in range(15):
 		_add_group_button(%ToolGroups, tool_button_group, group_index)
 
-	for group_index in range(15, Tools.GROUPS.size()):
+	for group_index in range(15, 17):
 		_add_group_button(%SpecialTools, tool_button_group, group_index)
+
+	_add_group_button(%ZoomButtons, tool_button_group, 17)
 
 	brush_controls = %BrushControls
 	brush_size_input = %BrushSizeInput
@@ -224,7 +226,7 @@ func _add_group_button(
 	parent: Control, button_group: ButtonGroup, group_index: int
 ) -> void:
 	var button := Button.new()
-	button.custom_minimum_size = Vector2(46, 30)
+	button.custom_minimum_size = Vector2(32, 32)
 	button.toggle_mode = true
 	button.button_group = button_group
 	button.tooltip_text = Tools.GROUPS[group_index].name
@@ -349,7 +351,6 @@ func set_landscape_editor(enabled: bool) -> void:
 	view_mode_buttons.height.visible = enabled
 	data_view_input.visible = not enabled
 	%LandscapeSpacer.visible = enabled
-	$Margin/Column/ToolGroupsDivider.visible = not enabled
 	for key in view_visibility_checks:
 		view_visibility_checks[key].visible = key in ["water", "trees"] if enabled else key not in ["water_mains", "pipes", "subways"]
 
