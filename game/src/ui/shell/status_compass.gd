@@ -1,7 +1,7 @@
 @tool
 class_name StatusCompass
 extends Control
-# an original split pointer aligned with map north
+# an original split pointer with fixed diagonal positions and quarter turns
 
 var compass_rotation := 0
 
@@ -23,8 +23,9 @@ func set_compass(value: int) -> void:
 	)
 
 
+# keep the 45-degree compass; it doesn't use the map projection
 static func north_direction(value: int) -> Vector2:
-	return [Vector2(2, 1), Vector2(2, -1), Vector2(-2, -1), Vector2(-2, 1)][value & 3]
+	return [Vector2(1, 1), Vector2(1, -1), Vector2(-1, -1), Vector2(-1, 1)][value & 3]
 
 
 func _draw() -> void:

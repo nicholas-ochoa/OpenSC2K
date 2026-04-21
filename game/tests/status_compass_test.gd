@@ -20,11 +20,13 @@ func _run() -> void:
 	assert(status.speed_label.get_index() < status.compass.get_index())
 	assert(status.compass.get_index() < status.zoom_label.get_index())
 
-	# Project north toward the same neighbor used by the Neighbors window.
+	# The display uses fixed diagonals and exact screen-space quarter turns.
 	for rotation in range(4):
-		var slot := SimNationWindowControl.display_neighbor_indices(rotation).find(0)
-		var expected: Vector2 = SimNationWindowControl.SPRITE_POSITIONS[slot + 1] - SimNationWindowControl.SPRITE_POSITIONS[0]
-		assert(StatusCompass.north_direction(rotation).normalized().is_equal_approx(expected.normalized()))
+		var north := StatusCompass.north_direction(rotation).normalized()
+		var next := StatusCompass.north_direction(rotation + 1).normalized()
+		assert(is_equal_approx(absf(north.x), absf(north.y)))
+		assert(is_zero_approx(north.dot(next)))
+		assert(is_equal_approx(north.cross(next), -1.0))
 
 	# Load an already rotated city without clicking Rotate.
 	for saved_rotation in range(4):
