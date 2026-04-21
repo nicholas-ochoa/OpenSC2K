@@ -1,7 +1,7 @@
 @tool
 class_name StatusCompass
 extends Control
-# an original circular compass with a split pointer aligned with map north
+# an original split pointer aligned with map north
 
 var compass_rotation := 0
 
@@ -34,7 +34,6 @@ func _draw() -> void:
 	var ink := get_theme_color("font_color", "Label")
 	var center := size * 0.5
 	var north := north_direction(compass_rotation).normalized()
-	draw_arc(center, 11.0, 0.0, TAU, 64, ink, 1.5, true)
 
 	# the right half is solid. the left half shows the panel through its outline
 	draw_set_transform(center, north.angle() + PI * 0.5)
@@ -46,8 +45,8 @@ func _draw() -> void:
 	draw_polyline(PackedVector2Array([tip, left, notch, right, tip]), ink, 1.1, true)
 	draw_line(tip, notch, ink, 1.0, true)
 
-	# n moves around the inside of the ring, beyond the tip, and stays upright
-	draw_set_transform(center + north * 7.2)
+	# n sits beyond the tip and turns with the pointer
+	draw_set_transform(center + north * 9.0, north.angle() + PI * 0.5)
 	draw_colored_polygon(PackedVector2Array([
 		Vector2(-2, 2.5), Vector2(-2, -2.5), Vector2(-1, -2.5),
 		Vector2(1, 0.5), Vector2(1, -2.5), Vector2(2, -2.5),
