@@ -67,7 +67,7 @@ text_overrun_behavior = 0
 layout_mode = 2
 
 [node name="Compass" type="Control" parent="Metrics"]
-custom_minimum_size = Vector2(36, 24)
+custom_minimum_size = Vector2(32, 24)
 layout_mode = 2
 mouse_filter = 1
 tooltip_text = "North points lower-right."

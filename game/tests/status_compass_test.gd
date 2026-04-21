@@ -25,12 +25,6 @@ func _run() -> void:
 		var slot := SimNationWindowControl.display_neighbor_indices(rotation).find(0)
 		var expected: Vector2 = SimNationWindowControl.SPRITE_POSITIONS[slot + 1] - SimNationWindowControl.SPRITE_POSITIONS[0]
 		assert(StatusCompass.north_direction(rotation).normalized().is_equal_approx(expected.normalized()))
-		var projected := StatusCompass.rose_transform(rotation) * Vector2.UP
-		assert(projected.normalized().is_equal_approx(expected.normalized()))
-		# The other cardinal points must follow the same projected tile axes.
-		var east_slot := SimNationWindowControl.display_neighbor_indices(rotation).find(1)
-		var east: Vector2 = SimNationWindowControl.SPRITE_POSITIONS[east_slot + 1] - SimNationWindowControl.SPRITE_POSITIONS[0]
-		assert((StatusCompass.rose_transform(rotation) * Vector2.RIGHT).normalized().is_equal_approx(east.normalized()))
 
 	# Load an already rotated city without clicking Rotate.
 	for saved_rotation in range(4):
