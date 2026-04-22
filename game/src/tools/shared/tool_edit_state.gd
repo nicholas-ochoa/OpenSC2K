@@ -255,7 +255,7 @@ static func _normal_status_detail(
 		return "Highway selected. Drag between city tiles to build a two-tile-wide route."
 
 	if is_demolish:
-		return "Demolish selected. Drag a rectangle across eligible city tiles."
+		return "Demolish selected. Drag to paint. Hold Shift before dragging to demolish a box."
 
 	if is_terrain:
 		return "%s selected. Click or drag across terrain." % tool_name

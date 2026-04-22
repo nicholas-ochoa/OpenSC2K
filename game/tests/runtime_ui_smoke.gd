@@ -678,7 +678,7 @@ func _run() -> void:
 	main.call("_select_tool_group", 0)
 	var tool_status := main.get("status_label") as Label
 
-	if tool_status.text != "Demolish" or not tool_status.tooltip_text.contains("Drag a rectangle"):
+	if tool_status.text != "Demolish" or not tool_status.tooltip_text.contains("Drag to paint") or not tool_status.tooltip_text.contains("Hold Shift"):
 		push_error("The status bar does not separate the tool name from its help text")
 		main.queue_free()
 		quit(2)

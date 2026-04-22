@@ -143,6 +143,9 @@ var _shift_pressed := false
 var shift_line_enabled := false
 var continuous_placement := false
 var landscape_brush := false
+var demolish_brush := false
+var bulldozer_visual_provider := Callable()
+var bulldozer_direction := 0
 var brush_box_selection := false
 var brush_size := 1
 var brush_round := false
@@ -593,6 +596,17 @@ func can_zoom_out() -> bool:
 	return _zoom_index() > 0
 
 
+func uses_paint_brush() -> bool:
+	return landscape_brush or demolish_brush
+
+
+func bulldozer_visible() -> bool:
+	return (
+		demolish_brush and edit_enabled and bulldozer_visual_provider.is_valid()
+		and is_left_drag_active() and not brush_box_selection and hover_tile.x >= 0
+	)
+
+
 func is_left_drag_active() -> bool:
 	return selection_start.x >= 0
 
@@ -975,6 +989,14 @@ func _draw() -> void:
 		local_polygon.append(local_polygon[0])
 		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95), 1.0)
 
+	if bulldozer_visible() and bulldozer_visual_provider.is_valid():
+		var visual: Dictionary = bulldozer_visual_provider.call(hover_tile, bulldozer_direction)
+		if not visual.is_empty():
+			draw_texture_rect(
+				visual.texture, Rect2(offset + visual.position * scale, visual.size * scale),
+				false, CityForegroundPalette.INDEXED_DRAW_COLOR
+			)
+
 	if service_query != null:
 		service_query.draw_on(self, scale, offset)
 	if trip_reach != null:
@@ -1341,7 +1363,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 			hover_tile = tile
 			_stretch_press_y = event.position.y
 			stretch_height_delta = 0
-			brush_box_selection = landscape_brush and shift_rectangle_enabled and event.shift_pressed
+			brush_box_selection = uses_paint_brush() and shift_rectangle_enabled and event.shift_pressed
 			selection_start = tile
 			selection_end = tile
 			selection_moved = false
@@ -1370,7 +1392,7 @@ func _handle_mouse_button(event: InputEventMouseButton) -> void:
 				stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
 				selection_moved = selection_moved or absf(_stretch_press_y - event.position.y) >= 6.0
 
-			if landscape_brush and not brush_box_selection and tile.x >= 0 and tile != _last_brush_tile:
+			if uses_paint_brush() and not brush_box_selection and tile.x >= 0 and tile != _last_brush_tile:
 				_emit_brush_dab(tile, true)
 
 			if not continuous_placement or brush_box_selection:
@@ -1440,7 +1462,7 @@ func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
 			selection_end = tile
 			selection_moved = true
 			_rebuild_selection_path()
-			if landscape_brush and not brush_box_selection:
+			if uses_paint_brush() and not brush_box_selection:
 				_emit_brush_dab(tile, true)
 			selection_changed.emit(
 				selection_start,
@@ -1464,7 +1486,7 @@ func _rebuild_selection_path() -> void:
 
 		return
 
-	if (selection_mode == "rectangle" and not (shift_line_enabled and _shift_pressed)) or brush_box_selection or (shift_rectangle_enabled and _shift_pressed and not landscape_brush):
+	if (selection_mode == "rectangle" and not (shift_line_enabled and _shift_pressed)) or brush_box_selection or (shift_rectangle_enabled and _shift_pressed and not uses_paint_brush()):
 		var minimum := Vector2i(
 			mini(selection_start.x, selection_end.x),
 			mini(selection_start.y, selection_end.y),
@@ -1901,7 +1923,7 @@ func _process(delta: float) -> void:
 
 	_brush_elapsed += delta
 
-	if _brush_elapsed < (0.1 if landscape_brush else 0.3):
+	if _brush_elapsed < (0.1 if uses_paint_brush() else 0.3):
 		return
 
 	_brush_elapsed = 0.0
@@ -1912,14 +1934,20 @@ func _process(delta: float) -> void:
 
 func _emit_brush_dab(tile: Vector2i, dragged: bool) -> void:
 	var points: Array[Vector2i] = [tile]
-	if landscape_brush:
+	if uses_paint_brush():
 		points.clear()
 		var previous := _last_brush_tile if _last_brush_tile.x >= 0 else tile
-		var distance := maxi(absi(tile.x - previous.x), absi(tile.y - previous.y))
+		var movement := tile - previous
+		if movement != Vector2i.ZERO:
+			if absi(movement.x) > absi(movement.y):
+				bulldozer_direction = 1 if movement.x > 0 else 3
+			else:
+				bulldozer_direction = 2 if movement.y > 0 else 0
+		var distance := maxi(absi(movement.x), absi(movement.y))
 		var seen := {}
 		for step in range(distance + 1):
 			var center := Vector2i(Vector2(previous).lerp(Vector2(tile), float(step) / maxf(1.0, distance)).round())
-			for point in brush_tiles(center):
+			for point in (brush_tiles(center) if landscape_brush else [center]):
 				if not seen.has(point):
 					seen[point] = true
 					points.append(point)

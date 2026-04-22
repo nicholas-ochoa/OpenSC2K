@@ -1592,7 +1592,7 @@ func _record_edit_command(
 		if scurk_place_print != null:
 			scurk_place_print.set_history_enabled(true, false)
 
-	if map_view.landscape_brush and map_view.is_left_drag_active():
+	if map_view.uses_paint_brush() and map_view.is_left_drag_active():
 		if landscape_brush_command.is_empty():
 			landscape_brush_command = command.duplicate(true)
 		else:
@@ -1600,7 +1600,7 @@ func _record_edit_command(
 				if id not in landscape_brush_command.changed_ids:
 					landscape_brush_command.changed_ids.append(id)
 				landscape_brush_command.new_payloads[id] = command.new_payloads[id]
-			for field in ["cost", "listed_cost", "skipped_insufficient"]:
+			for field in ["cost", "listed_cost", "skipped_insufficient", "action_count", "easter_events", "skipped_specialized"]:
 				landscape_brush_command[field] = int(landscape_brush_command.get(field, 0)) + int(command.get(field, 0))
 			landscape_brush_command.random_state_after = command.random_state_after
 			landscape_brush_command.tile_indices.append_array(command.tile_indices)
@@ -1874,7 +1874,7 @@ func _on_map_selection_canceled() -> void:
 
 	status_label.theme_type_variation = ""
 	var painted := map_view.continuous_placement and (
-		not map_view.landscape_brush or not landscape_brush_command.is_empty()
+		not map_view.uses_paint_brush() or not landscape_brush_command.is_empty()
 	)
 	status_label.text = (
 		"Brush stopped. Use Undo to remove its last edit."
@@ -4774,6 +4774,38 @@ func _dynamic_train_foreground_image(
 	return foreground
 
 
+func _demolish_brush_visual(tile: Vector2i, direction: int) -> Dictionary:
+	var view_size := _city_view_size()
+	var archive := _sprite_archive_for_view(view_size)
+	if city == null or archive == null or palette == null:
+		return {}
+
+	var sprite := IsometricRenderer.moving_thing_sprite({"type": 4, "direction": direction}, view_size)
+	var entry := archive.find_sprite(int(sprite.sprite_id))
+	if entry == null:
+		return {}
+
+	var configuration := IsometricRenderer.view_configuration(view_size)
+	var divisor := int(configuration.divisor)
+	var resource := _dynamic_sprite_resource(archive, int(sprite.sprite_id), bool(sprite.flip), divisor)
+	if resource.is_empty():
+		return {}
+
+	var visual := {
+		"sprite_id": sprite.sprite_id, "flip": sprite.flip, "type": 4,
+		"x": tile.x, "y": tile.y, "z": 0, "px": 0, "py": 0,
+		"monster": false, "tornado": false, "train": false,
+	}
+	var commands := IsometricRenderer.moving_thing_draw_commands_for_visual(city, archive, visual, configuration)
+	if commands.is_empty():
+		return {}
+	return {
+		"texture": resource.texture,
+		"position": Vector2(commands[0].position * divisor),
+		"size": Vector2(entry.width, entry.height) * divisor,
+	}
+
+
 func _dynamic_sprite_resource(
 	sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool, divisor: int, texture_factor := 1
 ) -> Dictionary:
@@ -5235,10 +5267,12 @@ func _update_edit_state() -> void:
 		state.status_detail = "Drag up or down to stretch terrain live. Hold Shift to apply on release." if selected_group == 0 and selected_subtool == 5 else "Free landscape editor tool."
 
 	map_view.landscape_brush = selected_group == 1 and selected_subtool in [0, 1, 3] and not (scurk_place_print != null and scurk_place_print.visible)
+	map_view.demolish_brush = selected_group == 0 and selected_subtool == 0 and not landscape_editor and not (scurk_place_print != null and scurk_place_print.visible)
+	map_view.bulldozer_visual_provider = _demolish_brush_visual if overlay_mode == "city" else Callable()
 	city_toolbar.brush_controls.visible = landscape_editor and map_view.landscape_brush
 	map_view.brush_size = int(city_toolbar.brush_size_input.value) if landscape_editor else (7 if selected_subtool == 3 else 1)
 	map_view.brush_round = city_toolbar.brush_shape_input.selected == 1 if landscape_editor else true
-	if map_view.landscape_brush:
+	if map_view.uses_paint_brush():
 		map_view.continuous_placement = true
 		map_view.shift_line_enabled = false
 		map_view.shift_rectangle_enabled = true
@@ -5411,6 +5445,8 @@ func _apply_map_selection(
 	)
 
 	if simple_edit.handled:
+		if map_view.demolish_brush and simple_edit.command.get("error", "") == "no eligible tiles changed":
+			return
 		_finish_simple_edit(simple_edit, scurk_tool_mode, scurk_tool)
 
 		return
@@ -5563,6 +5599,8 @@ func _finish_simple_edit(
 		_play_sound_events([ToolSounds.SOUND_TRACTOR])
 
 	if edit.show_forest_protest:
+		if map_view.demolish_brush:
+			map_view.cancel_active_selection()
 		_refresh_saved_news_summary()
 		_show_forest_protest()
 
