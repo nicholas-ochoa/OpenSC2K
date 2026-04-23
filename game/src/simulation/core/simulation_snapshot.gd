@@ -2,7 +2,7 @@ class_name SimulationSnapshot
 extends RefCounted
 
 const ENGINE_FIELDS := [
-	"ship_home", "developed_tiles", "power_usage_percent", "water_usage_percent",
+	"city_status_resource_id", "ship_home", "developed_tiles", "power_usage_percent", "water_usage_percent",
 	"commerce_connections", "industry_connections", "traffic_news_deadline_msec",
 	"pending_interaction", "pending_day_schedule", "terminal_state", "bus_passengers",
 	"rail_passengers", "subway_passengers", "mayor_approval", "pending_disaster_type",

@@ -170,14 +170,16 @@ func _run() -> void:
 				"Good health", "Good employment", "Low crime",
 			]))
 			main.call("_refresh_status_summary")
+			# Reports rotate when no priority city status is displayed.
+			status_bar.set_city_status(null, false)
 			var report_label := status_bar.reports_label
 			status_bar.update_report_rotation(6.0)
-			var first_report_stable := report_label.text == "News: Good health"
+			var first_report_stable := report_label.text == "Good health"
 			status_bar.update_report_rotation(1.1)
 
 			if (
 				not first_report_stable
-				or report_label.text != "News: Good employment"
+				or report_label.text != "Good employment"
 				or not report_label.tooltip_text.contains("newest saved newspaper")
 				or not report_label.tooltip_text.contains("Low crime")
 			):

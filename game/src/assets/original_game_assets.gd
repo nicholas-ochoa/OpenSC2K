@@ -59,6 +59,7 @@ static func load_root(reference_root: String) -> OriginalGameAssets:
 
 static func required_string_ids() -> PackedInt32Array:
 	var result := Queries.resource_string_ids()
+	result.append_array(CityStatusMessages.resource_ids())
 	result.append(FOREST_PROTEST_STRING_ID)
 	result.append(BUILDING_OBJECTION_STRING_ID)
 

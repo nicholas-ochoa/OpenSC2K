@@ -18,6 +18,7 @@ var ship_home := Vector2i(-1, -1)
 var developed_tiles := -1
 var power_usage_percent := -1
 var water_usage_percent := -1
+var city_status_resource_id := -1
 var commerce_connections := 0
 var industry_connections := 0
 var traffic_news_deadline_msec := 0
@@ -703,6 +704,9 @@ func _execute_day_schedule(schedule: Dictionary, annual_budget_approved: bool, s
 				if not weather_news.ok:
 					return weather_news
 
+				city_status_resource_id = CityStatusMessages.monthly_resource(
+					int(weather_disaster.status_index), city.weather_type()
+				)
 				phase_results[action] = weather_disaster
 
 				if int(weather_disaster.disaster_type) != 0:

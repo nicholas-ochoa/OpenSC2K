@@ -397,7 +397,7 @@ func _test_main_menu() -> void:
 		== Control.SIZE_EXPAND_FILL
 		and status_bar.weather_label.text == "Weather: --"
 		and status_bar.rci_graph != null
-		and status_bar.reports_label.text == "News: None"
+		and status_bar.reports_label.text == "None"
 		and status_bar.speed_label.text == "Speed: --",
 		"City status bar owns its metrics and RCI layout",
 	)
@@ -409,7 +409,7 @@ func _test_main_menu() -> void:
 		status_bar.weather_label.text == "Weather: Sunny"
 		and status_bar.rci_graph.demand == Vector3i(300, -200, 100)
 		and status_bar.speed_label.text == "Speed: Cheetah"
-		and status_bar.reports_label.text == "News: Second",
+		and status_bar.reports_label.text == "Second",
 		"City status bar owns live values and report rotation",
 	)
 	status_bar.prepend_reports(PackedStringArray(["Latest"]))
@@ -419,7 +419,7 @@ func _test_main_menu() -> void:
 	])
 	status_bar.clear_environment()
 	_check(
-		status_bar.reports_label.text == "News: City report"
+		status_bar.reports_label.text == "City report"
 		and status_bar.recent_reports.size() == 3
 		and status_bar.recent_reports[1] == "Arcology launch"
 		and status_bar.weather_label.text == "Weather: --"

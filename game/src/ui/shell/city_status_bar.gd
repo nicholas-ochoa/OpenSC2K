@@ -3,6 +3,44 @@ extends PanelContainer
 
 const REPORT_ROTATION_SECONDS := 7.0
 const NEWS_NAMES := {
+	46: CityStatusMessages.NEED_FALLBACKS[0],
+	47: CityStatusMessages.NEED_FALLBACKS[1],
+	48: CityStatusMessages.NEED_FALLBACKS[2],
+	49: CityStatusMessages.NEED_FALLBACKS[3],
+	50: CityStatusMessages.NEED_FALLBACKS[4],
+	51: CityStatusMessages.NEED_FALLBACKS[5],
+	52: CityStatusMessages.NEED_FALLBACKS[6],
+	53: CityStatusMessages.NEED_FALLBACKS[7],
+	54: CityStatusMessages.NEED_FALLBACKS[8],
+	55: CityStatusMessages.NEED_FALLBACKS[9],
+	56: CityStatusMessages.NEED_FALLBACKS[10],
+	57: CityStatusMessages.NEED_FALLBACKS[11],
+	58: CityStatusMessages.NEED_FALLBACKS[12],
+	59: CityStatusMessages.NEED_FALLBACKS[13],
+	60: CityStatusMessages.NEED_FALLBACKS[14],
+
+	0: "Weather report",
+	2: "City founded",
+	22: "Fire",
+	23: "Flood",
+	24: "Plane crash",
+	25: "Helicopter crash",
+	26: "Tornado",
+	27: "Earthquake",
+	28: "Monster attack",
+	29: "Nuclear meltdown",
+	30: "Microwave disaster",
+	31: "Volcano",
+	32: "Pollution disaster",
+	33: "Chemical spill",
+	34: "Hurricane",
+	35: "Riot",
+	37: "Prison overcrowding",
+	42: "Opinion column",
+	43: "Editorial",
+	44: "Public survey",
+	45: "Advice column",
+
 	1: "Local news",
 	4: "New invention",
 	5: "New innovation",
@@ -55,6 +93,11 @@ var reports_label: Label
 var speed_label: Label
 var compass: StatusCompass
 var zoom_label: Label
+var resource_strings: Dictionary = {}
+var city_status_text := ""
+var city_status_available := false
+var priority_status := false
+var status_style := ""
 var recent_reports := PackedStringArray()
 var music_notice := ""
 var music_notice_seconds := 0.0
@@ -141,12 +184,15 @@ func prepend_news_items(news_items: Array, maximum := 3) -> void:
 	var reports := PackedStringArray()
 
 	for item in news_items:
-		reports.append(report_name(int(item.get("type", 0))))
+		reports.append(report_name(int(item.get("type", 0)), resource_strings))
 
 	prepend_reports(reports, maximum)
 
 
-static func report_name(news_type: int) -> String:
+static func report_name(news_type: int, strings: Dictionary = {}) -> String:
+	if news_type >= 46 and news_type <= 60:
+		return CityStatusMessages.text(CityStatusMessages.NEED_FIRST + news_type - 46, strings)
+
 	return str(NEWS_NAMES.get(news_type, "City report"))
 
 
@@ -186,7 +232,42 @@ func refresh_message_tooltip() -> void:
 	_sync_overflow_tooltip(message_label)
 
 
+func set_city_status(engine: SimulationEngine, paused: bool, strings: Dictionary = {}) -> void:
+	resource_strings = strings
+	city_status_text = ""
+	city_status_available = false
+	priority_status = false
+	status_style = ""
+
+	if engine != null:
+		var resource_id := engine.city_status_resource_id
+		city_status_available = resource_id >= 0
+
+		if paused:
+			resource_id = CityStatusMessages.PAUSED
+			priority_status = true
+			status_style = "SuccessLabel"
+		elif engine.active_disaster_type != 0:
+			var disaster := engine.active_disaster_type
+			resource_id = CityStatusMessages.DISASTER_IDS[disaster] if disaster > 0 and disaster < CityStatusMessages.DISASTER_IDS.size() else 0
+			priority_status = true
+			status_style = "ErrorLabel"
+
+		city_status_text = CityStatusMessages.text(resource_id, strings)
+
+	_refresh_report_text()
+	_sync_overflow_tooltip(reports_label)
+
+
 func _refresh_report_text() -> void:
+	reports_label.theme_type_variation = status_style
+
+	if priority_status or (city_status_available and music_notice_seconds <= 0.0):
+		reports_label.text = city_status_text
+		reports_label.set_meta("status_tooltip_text", city_status_text)
+
+		return
+
 	if music_notice_seconds > 0.0:
 		reports_label.text = music_notice
 		reports_label.set_meta("status_tooltip_text", music_notice)
@@ -202,7 +283,7 @@ func _refresh_report_text() -> void:
 		report_index = 0
 		report_elapsed_seconds = 0.0
 
-	reports_label.text = "News: %s" % current_report
+	reports_label.text = current_report
 	reports_label.set_meta(
 		"status_tooltip_text",
 		(

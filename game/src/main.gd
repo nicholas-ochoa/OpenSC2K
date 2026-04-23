@@ -683,6 +683,9 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 
 func _consume_simulation_result(result: Dictionary) -> void:
+	if result.base_ticks > 0:
+		_sync_speed_ui()
+
 	simulation_timings.consume(result)
 	var refresh_started := Time.get_ticks_usec()
 	var ran_days: bool = not result.day_results.is_empty()
@@ -3640,6 +3643,10 @@ func _sync_speed_ui() -> void:
 	if city_status_bar != null:
 		var speed_name := speed_controller.speed_name() if speed_controller != null else "--"
 		city_status_bar.set_speed(speed_name)
+		city_status_bar.set_city_status(
+			simulation_engine if city != null and not landscape_editor else null,
+			selected_speed == GameSpeed.Speed.PAUSED, original_query_strings
+		)
 
 
 func _refresh_after_city_edit(command: Dictionary) -> void:
@@ -5073,7 +5080,7 @@ func _refresh_saved_news_summary() -> void:
 			continue
 
 		var story_type := int(record.type)
-		reports.append(CityStatusBar.report_name(story_type))
+		reports.append(CityStatusBar.report_name(story_type, original_query_strings))
 
 		if reports.size() == 3:
 			break
@@ -6579,6 +6586,9 @@ func _refresh_status_summary(
 			demand = city.rci_demand()
 
 		city_menu_bar.set_population(_format_number(city.population()))
+		var weather_id := CityStatusMessages.WEATHER_FIRST + city.weather_type()
+		if city.weather_type() >= 0 and city.weather_type() < CityStatusMessages.WEATHER_COUNT:
+			weather_name = CityStatusMessages.text(weather_id, original_query_strings)
 		city_status_bar.set_environment(demand, weather_name)
 
 	_sync_speed_ui()
