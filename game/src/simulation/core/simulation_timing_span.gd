@@ -7,10 +7,15 @@ var started: int
 var step_started: int
 var current_step := ""
 var steps: Dictionary = {}
+var indexed_labels: PackedStringArray
+var indexed_totals: PackedInt64Array
+var current_index := -1
 
 
-func _init(slice: SimulationSliceBudget = null) -> void:
+func _init(slice: SimulationSliceBudget = null, labels := PackedStringArray()) -> void:
 	budget = slice
+	indexed_labels = labels
+	indexed_totals.resize(labels.size())
 	started = now_usec()
 	step_started = started
 
@@ -29,7 +34,25 @@ func mark(label: String) -> void:
 	step_started = now
 
 
+# use fixed indices for hot loops. convert labels only when the phase finishes
+# a span uses either indexed marks or string marks, not both
+func mark_index(index: int) -> void:
+	var now := Time.get_ticks_usec() - (budget.parked_usec if budget != null else 0)
+
+	if current_index >= 0:
+		indexed_totals[current_index] += now - step_started
+
+	current_index = index
+	step_started = now
+
+
 func finish() -> Dictionary:
-	mark("")
+	if indexed_labels.is_empty():
+		mark("")
+	else:
+		mark_index(-1)
+
+		for index in indexed_labels.size():
+			steps[indexed_labels[index]] = indexed_totals[index]
 
 	return {"work_usec": now_usec() - started, "steps": steps}

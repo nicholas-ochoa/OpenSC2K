@@ -23,7 +23,10 @@ static func run(city: CityState) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("copy tile flags")
 	var flags := city.tile_flags.duplicate()
+	span.mark("clear water and scan marks")
 
 	for index in flags.size():
 		if city.simulation_slice != null and (index & 127) == 0:
@@ -40,7 +43,11 @@ static func run(city: CityState) -> Dictionary:
 	var pump_base_supply := int(IntegerMath.div_trunc((city.document.misc_u32(0x68) & 0xff), 2))
 	pump_base_supply += city.document.misc_u32(0x0e40) * 5
 
-	for index in _source_scan_order(city.compass_rotation(), map_edge, city.simulation_slice):
+	span.mark("build source scan order")
+	var source_order := _source_scan_order(city.compass_rotation(), map_edge, city.simulation_slice)
+	span.mark("find water sources")
+
+	for index in source_order:
 		if city.simulation_slice != null and (index & 127) == 0:
 			city.simulation_slice.checkpoint()
 
@@ -52,7 +59,9 @@ static func run(city: CityState) -> Dictionary:
 		if flags[index] & FLAG_WATERED or not flags[index] & FLAG_POWERED:
 			continue
 
+		span.mark("network traversal and supply")
 		var component := _trace_component(city.buildings, flags, index, pump_base_supply, map_edge, city.simulation_slice)
+		span.mark("capacity and tower allocation")
 		var supply: int = component.supply
 		var consumers: int = component.consumers
 		var served := mini(supply, consumers)
@@ -64,6 +73,7 @@ static func run(city: CityState) -> Dictionary:
 		total_consumers += consumers
 		watered_consumers += served
 
+		span.mark("distribute water and fill towers")
 		for component_index in component.tiles:
 			var tile_building := city.buildings[component_index]
 
@@ -84,9 +94,13 @@ static func run(city: CityState) -> Dictionary:
 
 			flags[component_index] &= ~FLAG_MARK & 0xff
 
+		span.mark("find water sources")
+
+	span.mark("store watered tiles")
 	if not city.replace_tile_flags(flags):
 		return {"ok": false, "error": "cannot store updated XBIT data"}
 
+	span.mark("utilization and treatment capacity")
 	var usage_percent := 100
 
 	if total_supply != 0:
@@ -113,6 +127,7 @@ static func run(city: CityState) -> Dictionary:
 		"usage_percent": usage_percent,
 		"treatment_capacity": treatment_capacity,
 		"treatment_sufficient": treatment_sufficient,
+		"timing": span.finish(),
 		"error": "",
 	}
 

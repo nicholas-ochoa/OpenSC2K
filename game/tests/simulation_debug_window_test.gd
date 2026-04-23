@@ -72,6 +72,20 @@ func _run() -> void:
 	assert(day_three.get_child_count() == 1 and day_three.get_child(0).get_text(2) == "2.500")
 	assert(debug._days.get_root().get_child(3).get_child(0).get_text(2) == "0.900")
 	assert(debug._other_steps.collapsed and debug._other_steps.get_child(0).get_text(2) == "6.000")
+	for pair in [[1, "power"], [3, "growth"], [19, "traffic"], [20, "water"]]:
+		host.simulation_timings.consume({"day_results": [{"ok": true, "day": pair[0],
+			"timing": {"work_usec": 7000, "steps": {pair[1]: 7000}},
+			"phase_results": {pair[1]: {"timing": {"steps": {"measured detail": 6000}}}}}]})
+
+	debug._refresh_metrics()
+
+	for pair in [[1, "power"], [3, "growth"], [19, "traffic"], [20, "water"]]:
+		var label := "Day %02d / %s / measured detail" % [pair[0] + 1, pair[1]]
+		var detail: TreeItem = debug._step_rows[label]
+		assert(detail.get_parent() == debug._day_rows[pair[0]])
+		assert(detail.get_text(1) == "      %s / measured detail" % pair[1])
+		assert(detail.get_text(2) == "6.000" and detail.get_text(5) == "1")
+
 	assert(not debug.has_node("DebugWindow/Panel/Margin/Content/Tabs/Steps"))
 	assert(debug._terrain_slider.min_value == 1 and debug._terrain_slider.max_value == 32)
 	debug._terrain_slider.value = 12

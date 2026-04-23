@@ -55,9 +55,14 @@ func consume(result: Dictionary) -> void:
 		for label in day.timing.steps:
 			record_step("Day %02d / %s" % [slot + 1, label], day.timing.steps[label])
 
-		for phase in day.get("phase_results", {}).values():
+		var phases: Dictionary = day.get("phase_results", {})
+
+		for phase_name: String in phases:
+			var phase: Dictionary = phases[phase_name]
+			var group := "data maps" if phase_name == "pollution_terrain_land_value" else phase_name
+
 			for label in phase.get("timing", {}).get("steps", {}):
-				record_step("Day %02d / data maps / %s" % [slot + 1, label], phase.timing.steps[label])
+				record_step("Day %02d / %s / %s" % [slot + 1, group, label], phase.timing.steps[label])
 
 	for key in ["moving_results", "disaster_results"]:
 		for item in result.get(key, []):

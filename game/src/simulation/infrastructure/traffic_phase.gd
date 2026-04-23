@@ -17,8 +17,11 @@ static func run(city: CityState) -> Dictionary:
 	if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size("XTRF"):
 		return {"ok": false, "error": "XTRF is missing or has the wrong size"}
 
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("copy traffic map")
 	var traffic := chunk.decoded_payload.duplicate()
 	var total := 0
+	span.mark("decay and sum traffic")
 
 	for index in traffic.size():
 		if city.simulation_slice != null and (index & 127) == 0:
@@ -28,13 +31,15 @@ static func run(city: CityState) -> Dictionary:
 		traffic[index] = decayed
 		total += decayed
 
+	span.mark("normalize total")
 	if city.document.full_resolution_maps():
 		total /= 4
 
+	span.mark("store traffic map and total")
 	if not chunk.set_decoded_payload(traffic):
 		return {"ok": false, "error": "cannot store updated XTRF data"}
 
 	if not city.document.set_misc_u32(MISC_TRAFFIC_COUNT, total):
 		return {"ok": false, "error": "cannot store the city traffic count"}
 
-	return {"ok": true, "traffic_count": total, "error": ""}
+	return {"ok": true, "traffic_count": total, "error": "", "timing": span.finish()}

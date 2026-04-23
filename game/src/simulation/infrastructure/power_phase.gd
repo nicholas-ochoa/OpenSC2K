@@ -20,7 +20,10 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 	if random == null:
 		return {"ok": false, "error": "random state is required"}
 
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("copy tile flags")
 	var flags := city.tile_flags.duplicate()
+	span.mark("clear power and scan marks")
 
 	for index in flags.size():
 		if city.simulation_slice != null and (index & 127) == 0:
@@ -31,6 +34,7 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 	var total_generation := 0
 	var supplied_consumers := 0
 	var total_consumers := 0
+	span.mark("find power sources")
 
 	for x in map_edge:
 		if city.simulation_slice != null:
@@ -46,7 +50,9 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 			if flags[index] & FLAG_POWERED:
 				continue
 
+			span.mark("network traversal and generation")
 			var component := _trace_component(city, flags, x, y, random)
+			span.mark("capacity and ordinance totals")
 			var capacity: int = component.capacity
 			var consumers: int = component.consumers
 			total_generation += capacity
@@ -57,6 +63,7 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 
 			supplied_consumers += mini(capacity, consumers)
 
+			span.mark("distribute power")
 			for component_index in component.tiles:
 				if capacity != 0:
 					if city.buildings[component_index] >= FIRST_CONSUMER:
@@ -66,9 +73,13 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 
 				flags[component_index] &= ~FLAG_MARK & 0xff
 
+			span.mark("find power sources")
+
+	span.mark("store powered tiles")
 	if not city.replace_tile_flags(flags):
 		return {"ok": false, "error": "cannot store updated XBIT data"}
 
+	span.mark("utilization")
 	var usage_percent := 100
 
 	if total_generation != 0:
@@ -80,6 +91,7 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 		"consumers": total_consumers,
 		"supplied_consumers": supplied_consumers,
 		"usage_percent": usage_percent,
+		"timing": span.finish(),
 		"error": "",
 	}
 
