@@ -113,6 +113,14 @@ var desktop_cursor_app := "city"
 var desktop_cursor_role := 0
 var zoom_factor: float = ZOOM_LEVELS[DEFAULT_ZOOM_INDEX]
 var source_center := Vector2.ZERO
+# the unobstructed camera area. rendering still covers the full control
+var camera_view_rect := Rect2():
+	set(value):
+		if camera_view_rect == value:
+			return
+
+		camera_view_rect = value
+		_on_resized()
 var pending_loaded_center := Vector2i(-1, -1)
 var selection_start := Vector2i(-1, -1)
 var selection_end := Vector2i(-1, -1)
@@ -743,7 +751,7 @@ func visible_tile_outline() -> PackedVector2Array:
 	if city == null or city_texture == null:
 		return result
 
-	var half_visible := size / (_view_scale() * 2.0)
+	var half_visible := _camera_rect().size / (_view_scale() * 2.0)
 	var source_points := PackedVector2Array([
 		source_center + Vector2(-half_visible.x, -half_visible.y),
 		source_center + Vector2(half_visible.x, -half_visible.y),
@@ -769,13 +777,14 @@ func scroll_state() -> Dictionary:
 	if city_texture == null:
 		return {}
 
-	var content := Vector2(city_texture.get_size())
-	var visible := size / _view_scale()
+	var bounds := _camera_source_bounds()
+	var content := bounds.size
+	var visible := _camera_rect().size / _view_scale()
 	var page := Vector2(
 		minf(content.x, visible.x),
 		minf(content.y, visible.y),
 	)
-	var value := source_center - page * 0.5
+	var value := source_center - bounds.position - page * 0.5
 
 	for axis in 2:
 		if page[axis] >= content[axis]:
@@ -798,7 +807,7 @@ func set_scroll_value(axis: int, value: float) -> bool:
 	var offset: Vector2 = state.value
 	offset[axis] = value
 	var page: Vector2 = state.page
-	source_center = offset + page * 0.5
+	source_center = _camera_source_bounds().position + offset + page * 0.5
 	_clamp_source_center()
 	_sync_base_layer()
 	queue_redraw()
@@ -1564,7 +1573,7 @@ func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	var anchor := local_point
 
 	if not anchor.is_finite():
-		anchor = size * 0.5
+		anchor = _camera_rect().get_center()
 
 	var old_scale := _view_scale()
 	var source_point := source_center
@@ -1575,7 +1584,7 @@ func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	zoom_factor = ZOOM_LEVELS[new_index]
 	_invalidate_sign_entries()
 	var new_scale := _view_scale()
-	source_center = source_point + (size * 0.5 - anchor) / new_scale
+	source_center = source_point + (_camera_rect().get_center() - anchor) / new_scale
 	_clamp_source_center()
 	_sync_base_layer()
 	zoom_changed.emit(zoom_percent())
@@ -1607,23 +1616,37 @@ func _view_scale() -> float:
 	return zoom_factor
 
 
+func _camera_rect() -> Rect2:
+	return camera_view_rect if camera_view_rect.has_area() else Rect2(Vector2.ZERO, size)
+
+
 func _draw_offset(scale: float) -> Vector2:
-	return (size * 0.5 - source_center * scale).round() + _shake_offset
+	return (_camera_rect().get_center() - source_center * scale).round() + _shake_offset
+
+
+func _camera_source_bounds() -> Rect2:
+	# match the existing top margin without enlarging render textures or atlases
+	var side_padding := float(Renderer.TOP_MARGIN - Renderer.SIDE_MARGIN)
+	return Rect2(
+		Vector2(-side_padding, 0),
+		Vector2(city_texture.get_size()) + Vector2(side_padding * 2.0, 0)
+	)
 
 
 func _clamp_source_center() -> void:
 	if city_texture == null:
 		return
 
-	var source_size := Vector2(city_texture.get_size())
-	var half_visible := size / (_view_scale() * 2.0)
+	var bounds := _camera_source_bounds()
+	var half_visible := _camera_rect().size / (_view_scale() * 2.0)
 
 	for axis in 2:
-		if half_visible[axis] >= source_size[axis] * 0.5:
-			source_center[axis] = source_size[axis] * 0.5
+		if half_visible[axis] >= bounds.size[axis] * 0.5:
+			source_center[axis] = bounds.get_center()[axis]
 		else:
 			source_center[axis] = clampf(
-				source_center[axis], half_visible[axis], source_size[axis] - half_visible[axis]
+				source_center[axis], bounds.position[axis] + half_visible[axis],
+				bounds.end[axis] - half_visible[axis]
 			)
 
 
