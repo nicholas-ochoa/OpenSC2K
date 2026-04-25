@@ -3370,6 +3370,16 @@ func _activate_document(
 	saved_city_snapshot = (
 		initial_serialized.data.duplicate() if initial_serialized.ok else PackedByteArray()
 	)
+	var facility_repair := FacilityRecordRepair.apply(city)
+
+	if not facility_repair.ok:
+		status_text += " " + str(facility_repair.error)
+	elif facility_repair.linked > 0 or facility_repair.unfilled > 0:
+		status_text += " Restored facility records for %d buildings." % facility_repair.linked
+
+		if facility_repair.unfilled > 0:
+			status_text += " %d buildings still need records; the table is full." % facility_repair.unfilled
+
 	current_city_saved_once = not current_document.source_path.is_empty()
 	var source_path := current_document.source_path.simplify_path()
 	current_save_path = (
@@ -3457,7 +3467,7 @@ func _activate_document(
 	if loaded_scenario != null:
 		_open_scenario_intro(loaded_scenario)
 
-	if disable_compatibility:
+	if disable_compatibility or not facility_repair.ok or facility_repair.linked > 0 or facility_repair.unfilled > 0:
 		status_label.text = status_text
 
 	return true
