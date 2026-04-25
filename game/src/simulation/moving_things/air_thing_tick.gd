@@ -52,6 +52,7 @@ static func update_airplane(
 	lfsr_random,
 	counters: Dictionary,
 	map_edge: int = 128,
+	no_disasters := false,
 ) -> void:
 	var offset := record * RECORD_SIZE
 	var current := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
@@ -67,7 +68,7 @@ static func update_airplane(
 
 	var building := int(buildings[current_index])
 
-	if building > 0x70 and zones[current_index] & 0x0f != 8:
+	if not no_disasters and building > 0x70 and zones[current_index] & 0x0f != 8:
 		if building > 0xfa:
 			_convert_to_explosion(
 				things, record, 5, 1 if lfsr_random.next_mod(16) == 0 else 0
@@ -86,6 +87,12 @@ static func update_airplane(
 			return
 
 	var state: int = int(ThingData.read(things, offset + 2)) & 0x0f
+
+	if no_disasters and state == 7:
+		_remove_without_crash(text, things, record, map_edge)
+		counters.removed_airplanes += 1
+
+		return
 
 	match state:
 		0:
@@ -121,6 +128,12 @@ static func update_airplane(
 					OverlayData.write(text, current_index, ThingData.read(things, offset + 10))
 
 				if current_index < 0 or buildings[current_index] != 0xdd:
+					if no_disasters:
+						_remove_without_crash(text, things, record, map_edge)
+						counters.removed_airplanes += 1
+
+						return
+
 					_convert_to_explosion(things, record, 5, 1)
 					counters.crashed_airplanes += 1
 				else:
@@ -230,6 +243,7 @@ static func update_helicopter(
 	random,
 	counters: Dictionary,
 	map_edge: int = 128,
+	no_disasters := false,
 ) -> void:
 	var offset := record * RECORD_SIZE
 	var current := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
@@ -243,7 +257,13 @@ static func update_helicopter(
 
 		return
 
-	if buildings[current_index] > 0xfa:
+	if no_disasters and ThingData.read(things, offset + 2) == 5:
+		_remove_without_crash(text, things, record, map_edge)
+		counters.removed_helicopters += 1
+
+		return
+
+	if not no_disasters and buildings[current_index] > 0xfa:
 		_convert_to_explosion(things, record, 5, 0)
 		counters.crashed_helicopters += 1
 
@@ -325,6 +345,19 @@ static func update_helicopter(
 			else:
 				_convert_to_explosion(things, record, 0x11, 1)
 				counters.crashed_helicopters += 1
+
+
+static func _remove_without_crash(
+	text: PackedByteArray, things: PackedByteArray, record: int, map_edge: int
+) -> void:
+	var offset := record * RECORD_SIZE
+	var point := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
+	var index := _index(point, map_edge)
+
+	if index >= 0 and OverlayData.read(text, index) == OverlayData.thing_id(record):
+		OverlayData.write(text, index, ThingData.read(things, offset + 10))
+
+	ThingData.write(things, offset, 0)
 
 
 static func _remove_thing(

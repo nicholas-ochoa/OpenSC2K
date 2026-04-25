@@ -201,13 +201,13 @@ static func run(
 				counters.active_airplanes += 1
 				AirTick.update_airplane(
 					buildings, zones, text, things, record,
-					random, lfsr_random, counters, map_edge
+					random, lfsr_random, counters, map_edge, city.no_disasters_enabled()
 				)
 			TYPE_HELICOPTER:
 				counters.active_helicopters += 1
 				AirTick.update_helicopter(
 					buildings, underground, traffic, text, things, record,
-					city_center, random, counters, map_edge
+					city_center, random, counters, map_edge, city.no_disasters_enabled()
 				)
 			TYPE_SHIP:
 				counters.active_ships += 1

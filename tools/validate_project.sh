@@ -73,6 +73,7 @@ fi
 
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/expanded_limits_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/facility_record_repair_test.gd
+run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/no_disasters_aircraft_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/map_edge_limits_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/onramp_orientation_test.gd
 run_godot godot --audio-driver Dummy --headless --path "$repo_dir/game" --script res://tests/native_data_maps_test.gd
