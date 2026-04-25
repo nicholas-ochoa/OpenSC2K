@@ -35,10 +35,7 @@ func _initialize() -> void:
 					check(city.document.serialize().data == before, "Inspection preserves all bytes")
 					check(PollutionPhase.run(city).ok, "Run actual data phase")
 					var data: PackedByteArray = city.document.find_chunk("XPLC" if subtool == 0 else "XFIR").decoded_payload
-					for x in edge:
-						for y in edge:
-							var value := int(data[CityDataGrid.index(data, edge, x, y)])
-							check(value == int(result.values.get(Vector2i(x, y), 0)), "Station overlay equals actual simulation")
+					_check_coverage(data, result.values, edge, "Station overlay")
 					CityRotationCommand.apply(city, false)
 					point = CityRotationCommand.rotate_point(point, edge, false)
 				var budget := PollutionPhase.BUDGET_POLICE if subtool == 0 else PollutionPhase.BUDGET_FIRE
@@ -88,6 +85,26 @@ func _test_all(edge: int, native: bool) -> void:
 	check(PollutionPhase.run(city).ok, "Run combined service simulation")
 	for subtool in [0, 1]:
 		var data: PackedByteArray = city.document.find_chunk("XPLC" if subtool == 0 else "XFIR").decoded_payload
-		for x in edge:
-			for y in edge:
-				check(int(data[CityDataGrid.index(data, edge, x, y)]) == int(results[subtool].values.get(Vector2i(x, y), 0)), "Combined coverage matches simulation including overlap")
+		_check_coverage(data, results[subtool].values, edge, "Combined coverage")
+
+
+func _check_coverage(data: PackedByteArray, values: Dictionary, edge: int, label: String) -> void:
+	var expected := PackedByteArray()
+	expected.resize(edge * edge) # Uncovered cells must remain zero.
+	for point: Vector2i in values:
+		var value := int(values[point])
+		check(point.x >= 0 and point.y >= 0 and point.x < edge and point.y < edge, "Coverage stays in bounds")
+		check(value >= 0 and value <= 255, "Coverage fits a byte before packing")
+		expected[point.x * edge + point.y] = value
+	var actual := PackedByteArray()
+	actual.resize(edge * edge)
+	for x in edge:
+		for y in edge:
+			actual[x * edge + y] = data[CityDataGrid.index(data, edge, x, y)]
+	if actual != expected:
+		for index in actual.size():
+			if actual[index] != expected[index]:
+				check(false, "%s at (%d, %d): simulation=%d overlay=%d" % [label,
+					IntegerMath.div_trunc(index, edge), index % edge, actual[index], expected[index]])
+				return
+	check(actual == expected, label + " matches the whole simulation map, including zeros")

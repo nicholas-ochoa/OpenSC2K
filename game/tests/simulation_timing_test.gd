@@ -22,9 +22,11 @@ func _initialize() -> void:
 	span.started -= 5000
 	span.step_started -= 5000
 	budget.parked_usec += 5000
+	var lower := Time.get_ticks_usec() - budget.parked_usec - span.started
 	var measured := span.finish()
+	var upper := Time.get_ticks_usec() - budget.parked_usec - span.started
 	assert(measured.work_usec >= 0 and measured.steps.test >= 0)
-	assert(measured.work_usec < 5000, "Explicit frame waits do not count as calculation")
+	assert(measured.work_usec >= lower and measured.work_usec <= upper, "Work time excludes parked time without a scheduler deadline")
 	var indexed := SimulationTimingSpan.new(budget, PackedStringArray(["scan", "trips", "unused"]))
 	indexed.mark_index(0)
 	indexed.mark_index(1)
@@ -32,11 +34,13 @@ func _initialize() -> void:
 	indexed.started -= 1000000
 	indexed.step_started -= 1000000
 	budget.parked_usec += 1000000
+	lower = Time.get_ticks_usec() - budget.parked_usec - indexed.started
 	var detail := indexed.finish()
+	upper = Time.get_ticks_usec() - budget.parked_usec - indexed.started
 	assert(detail.steps.size() == 3 and detail.steps.unused == 0)
 	assert(detail.steps.scan >= 0 and detail.steps.trips >= 0)
 	assert(detail.steps.scan + detail.steps.trips <= detail.work_usec)
-	assert(detail.work_usec < 1000000, "Indexed timings also exclude worker waits")
+	assert(detail.work_usec >= lower and detail.work_usec <= upper, "Indexed timings also exclude worker waits")
 	history.clear()
 	assert(history.days.is_empty() and history.steps.is_empty())
 	_check_phase_timings(history)

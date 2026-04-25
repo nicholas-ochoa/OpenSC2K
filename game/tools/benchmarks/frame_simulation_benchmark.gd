@@ -1,5 +1,7 @@
 extends SceneTree
 
+const TimingResults = preload("res://tests/support/timing_results.gd")
+
 
 ## Main-thread admission/publication costs; excludes city rendering and audio.
 func _initialize() -> void:
@@ -37,7 +39,7 @@ func _run() -> void:
 				max_frame_usec = maxi(max_frame_usec, Time.get_ticks_usec() - started)
 				frames += 1
 
-			assert(actual == expected)
+			assert(TimingResults.without_timings(actual) == TimingResults.without_timings(expected))
 			max_snapshot_usec = maxi(max_snapshot_usec, runner.snapshot_usec)
 			max_work_usec = maxi(max_work_usec, int(runner.last_work_metrics.max_slice_usec))
 			grants += int(runner.last_work_metrics.slices)
