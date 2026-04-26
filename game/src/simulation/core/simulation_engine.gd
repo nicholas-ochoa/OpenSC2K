@@ -317,7 +317,7 @@ func start_disaster(disaster_type: int, point: Vector2i) -> Dictionary:
 	if active_disaster_type != 0:
 		return {"ok": false, "error": "a disaster is already active"}
 
-	var started := DisasterStartPhase.start(city, disaster_type, point, random, lfsr_random)
+	var started := _start_disaster_phase(disaster_type, point)
 
 	if not started.get("ok", false):
 		return started
@@ -789,9 +789,7 @@ func _append_pending_disaster(result: Dictionary) -> Dictionary:
 	if not city.document.set_misc_u32(0x0070, 0):
 		return {"ok": false, "error": "cannot clear the pending disaster type"}
 
-	var started := DisasterStartPhase.start(
-		city, disaster_type, pending_disaster_point, random, lfsr_random
-	)
+	var started := _start_disaster_phase(disaster_type, pending_disaster_point)
 
 	if not started.ok:
 		return started
@@ -818,3 +816,8 @@ func _append_pending_disaster(result: Dictionary) -> Dictionary:
 		result.complete = false
 
 	return result
+
+
+func _start_disaster_phase(disaster_type: int, point: Vector2i) -> Dictionary:
+	var started := DisasterStartPhase.start(city, disaster_type, point, random, lfsr_random)
+	return MaxisManResponse.apply(city, started, random, lfsr_random)

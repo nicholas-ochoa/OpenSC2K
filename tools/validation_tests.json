@@ -1,5 +1,11 @@
 [
   {
+    "id": "maxis_man_response_test",
+    "script": "tests/maxis_man_response_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "scene_behavior_test",
     "script": "tests/scene_behavior_test.gd",
     "domain": "ui",
