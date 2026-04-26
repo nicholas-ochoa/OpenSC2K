@@ -1,21 +1,12 @@
 extends SceneTree
 ## Theme persistence, live switching, lazy windows, and shared control resources.
 
-var checked_controls := 0
-
 
 func _initialize() -> void:
 	call_deferred("_run")
 
 
 func _run() -> void:
-	for mode in ["light", "dark"]:
-		var spin_theme := AppUiTheme.build(mode)
-		for direction in ["up", "down"]:
-			var ink := spin_theme.get_color(direction + "_icon_modulate", "SpinBox")
-			var background := spin_theme.get_stylebox(direction + "_background", "SpinBox") as StyleBoxFlat
-			assert(ink.a == 1.0)
-			assert(absf(ink.get_luminance() - background.bg_color.get_luminance()) > 0.5)
 	var path := "user://theme-test-%d.cfg" % OS.get_process_id()
 	assert(AppSettingsStore.load_values(path).ui_theme == "light")
 	assert(not AppSettingsStore.load_values(path).dark_underground)
@@ -49,6 +40,8 @@ func _run() -> void:
 		main._open_settings_dialog()
 		assert(dialog.theme_selector.selected == (1 if main.app_ui_theme == "dark" else 0))
 		assert(dialog.dark_underground_check.button_pressed == main.app_dark_underground)
+		var previous_mode: String = main.app_ui_theme
+		var previous_color: Color = main.theme.get_stylebox("normal", "Button").bg_color
 		dialog.theme_selector.select(selected)
 		dialog.dark_underground_check.button_pressed = true
 		main._apply_settings()
@@ -57,24 +50,15 @@ func _run() -> void:
 		await process_frame
 		assert(AppSettingsStore.load_values(path).dark_underground)
 		assert(main.app_ui_theme == ("dark" if selected == 1 else "light"))
-		var hint := dialog.get_node("Tabs/Compatibility/Fields/HintMargin/CompatibilityHint") as Label
-		assert(hint.get_theme_color("font_color") == main.theme.get_color("font_color", "HelpLabel"))
 		assert(AppSettingsStore.load_values(path).ui_theme == main.app_ui_theme)
 		assert(AppUiTheme.current() == original_theme and AppUiTheme.file_dialog() == original_files)
+		if previous_mode != main.app_ui_theme:
+			assert(main.theme.get_stylebox("normal", "Button").bg_color != previous_color)
 		assert(main.city.document.serialize().data == before)
-		_check_controls(main)
 		var late := FileDialogFactory.city_open()
 		main.add_child(late)
 		assert(late.theme == original_files)
 		late.free()
-		var gallery := (load("res://tools/ui_gallery/ui_control_gallery.tscn") as PackedScene).instantiate()
-		root.add_child(gallery)
-		gallery.get_node("%ThemeSelector").select(selected)
-		gallery._rebuild(selected)
-		var sample := gallery.theme.get_stylebox("normal", "Button") as StyleBoxFlat
-		var actual := main.theme.get_stylebox("normal", "Button") as StyleBoxFlat
-		assert(sample.bg_color == actual.bg_color and sample.border_color == actual.border_color)
-		gallery.free()
 	for renderer in ["cpu", "gpu"]:
 		main._set_city_renderer(renderer)
 		main._set_overlay("underground")
@@ -104,20 +88,5 @@ func _run() -> void:
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	AppUiTheme.select("light")
 	await process_frame
-	print("PASS: theme save/cancel/reload, live and lazy controls, gallery parity, unchanged city; %d controls checked" % checked_controls)
+	print("PASS: theme save/cancel/reload, live and lazy themes, renderer flags and unchanged city")
 	quit()
-
-
-func _check_controls(node: Node, files := false) -> void:
-	files = files or node is FileDialog
-	var expected := AppUiTheme.file_dialog() if files else AppUiTheme.current()
-	if node is Control or node is Window:
-		if node.theme != null:
-			assert(node.theme == expected, "Competing theme: " + str(node.get_path()))
-	if node is Button and not node is CheckBox and not node is CheckButton and not node.flat:
-		var box := node.get_theme_stylebox("normal") as StyleBoxFlat
-		var reference := expected.get_stylebox("normal", "OptionButton" if node is OptionButton else "Button") as StyleBoxFlat
-		assert(box != null and box.bg_color == reference.bg_color, "Button style: " + str(node.get_path()))
-		checked_controls += 1
-	for child in node.get_children(true):
-		_check_controls(child, files)

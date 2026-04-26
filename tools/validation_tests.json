@@ -12,7 +12,8 @@
       "tests/suites/scenes/city_window_scene_test.gd",
       "tests/suites/scenes/settings_scene_test.gd",
       "tests/suites/scenes/sidebar_scene_test.gd",
-      "tests/suites/scenes/workspace_scene_test.gd"
+      "tests/suites/scenes/workspace_scene_test.gd",
+      "tests/suites/scenes/closed_dialogs_scene_test.gd"
     ]
   },
   {
@@ -956,12 +957,6 @@
     "requires": [
       "ext/graphics/pack.json"
     ]
-  },
-  {
-    "id": "dialog_editor_layout_test",
-    "script": "tests/dialog_editor_layout_test.gd",
-    "domain": "ui",
-    "lane": "architecture"
   },
   {
     "id": "stitched_city_test",

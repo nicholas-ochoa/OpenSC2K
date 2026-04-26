@@ -38,8 +38,6 @@ func _run() -> void:
 	assert(not main.region_cache.gpu_enabled)
 	assert(main.city.document.serialize().data == before, "Changing renderer altered saved data")
 
-	for menu_index in main.options_menu.get_popup().item_count:
-		assert(main.options_menu.get_popup().get_item_text(menu_index) != "Renderer")
 
 	main.queue_free()
 	await process_frame

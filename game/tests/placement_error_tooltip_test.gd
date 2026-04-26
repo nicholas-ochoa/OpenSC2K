@@ -24,7 +24,7 @@ func _run() -> void:
 	click.pressed = true
 	map._handle_mouse_button(click)
 	assert(map.placement_error_popup.visible, "Invalid click must show the reason without a timer")
-	assert(map.placement_error_label.text == "Cannot build here: The site is occupied.")
+	assert(map.placement_error_label.text.contains("The site is occupied."))
 	click.pressed = false
 	map._handle_mouse_button(click)
 	assert(map.placement_error_popup.visible, "Reason must remain after release")

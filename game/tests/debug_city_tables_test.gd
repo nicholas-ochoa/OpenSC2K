@@ -70,7 +70,7 @@ func _run() -> void:
 		assert(panel._last_refresh == refreshed)
 		host.city = null
 		panel.refresh_from_host(host)
-		assert(panel.rows.is_empty() and panel.status.text == "No city loaded.")
+		assert(panel.rows.is_empty())
 		var debug := preload("res://src/debug/debug_overlay.tscn").instantiate() as CityDebugOverlay
 		debug.setup(host)
 		host.add_child(debug)

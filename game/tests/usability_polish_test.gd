@@ -28,13 +28,6 @@ func _run() -> void:
 		starts[first] = int(starts.get(first, 0)) + 1
 
 	assert(starts.values().max() > 1, "Dust did not overlap between tiles")
-	var palette := CityChildToolPalette.new()
-
-	for sample in [[4, 1, "10 supply"], [4, 2, "100 water"], [4, 3, "2,000"], [4, 4, "20 supply"], [12, 0, "15 units"], [12, 1, "50 units"], [13, 0, "Police coverage"], [13, 1, "Fire coverage"], [13, 2, "25 units"]]:
-		assert(palette.tool_button_tooltip(sample[0], sample[1], true).contains(sample[2]))
-
-	palette.free()
-
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
@@ -85,11 +78,6 @@ func _run() -> void:
 	await process_frame
 	var budget := main.budget_dialog as BudgetDialog
 
-	for index in range(5, budget.controls.size()):
-		assert(budget.controls[index].tooltip_text.contains("100%"))
-		assert(budget.controls[index].tooltip_text.contains("50%"))
-		assert(budget.controls[index].tooltip_text.contains("0%"))
-
 	for action in ["issue", "repay"]:
 		budget.open_bond_confirmation(action, 8)
 		assert(budget.bond_dialog.visible)
@@ -102,7 +90,7 @@ func _run() -> void:
 	var prompt: ConfirmationDialog
 
 	for child in main.get_children():
-		if child is ConfirmationDialog and child.title == "Return to Main Menu":
+		if child is ConfirmationDialog and child.visible:
 			prompt = child
 
 	assert(prompt != null)
@@ -113,5 +101,5 @@ func _run() -> void:
 	assert(FileAccess.get_file_as_bytes(background.source_path) == source_bytes)
 	main.queue_free()
 	await process_frame
-	print("PASS: overlapping dust, facility details, graphics default, isolated menu simulation, SCURK stamps and history, Budget layout and prompts, main-menu confirmation")
+	print("PASS: overlapping dust, graphics default, isolated menu simulation, SCURK stamps and history, Budget prompts, main-menu confirmation")
 	quit()

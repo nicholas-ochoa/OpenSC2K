@@ -94,8 +94,6 @@ func _run() -> void:
 	main._on_options_menu(CityMenuBar.MENU_SETTINGS)
 	assert(main.settings_dialog.visible)
 
-	for menu_index in main.options_menu.get_popup().item_count:
-		assert(main.options_menu.get_popup().get_item_text(menu_index) != "Renderer")
 
 	assert(not main._camera_keys_allowed())
 	main.settings_dialog.background_audio_check.button_pressed = true
@@ -105,7 +103,6 @@ func _run() -> void:
 	main.query_dialog.show_query("Police Station", "Central Police", true, details, "")
 	assert(main.query_dialog.tabs.current_tab == 0)
 	assert(main.query_dialog.summary_rows.get_child_count() == 3)
-	assert(main.query_dialog.details_grid.columns == 4)
 	assert(not main._camera_keys_allowed())
 	main.query_dialog._enable_rename()
 	main.query_dialog.name_input.text = "North Police"

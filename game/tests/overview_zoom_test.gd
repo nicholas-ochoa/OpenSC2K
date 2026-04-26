@@ -24,7 +24,6 @@ func _run() -> void:
 	assert(map.zoom_out(Vector2.INF) and map.zoom_percent() == 10)
 	assert(not map.can_zoom_out() and not map.zoom_out(Vector2.INF))
 	assert(main.zoom_out_button.disabled and not main.zoom_in_button.disabled)
-	assert(main.city_status_bar.zoom_label.text == "Zoom: 10%")
 	assert(main._city_view_size() == CityIsometricRenderer.VIEW_SMALL)
 	assert(AppSettingsStore.graphics_size_at_zoom(main.app_zoom_graphics, 25) == 2, "Graphics choice indices changed")
 

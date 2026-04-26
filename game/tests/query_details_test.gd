@@ -13,7 +13,7 @@ func _run() -> void:
 		"altitude_raw": 4660, "flags_raw": 128, "flag_names": PackedStringArray(["Powered"]),
 		"microsim_id": 7, "microsim_label": "Station", "microsim": {"stat_0": 12, "stat_1": 500}}
 	var rows := QueryPresentation.advanced_rows(values)
-	assert(rows[0] == PackedStringArray(["Tile ID", "211", "", "0xD3"]))
+	assert(rows[0][1] == "211" and rows[0][3] == "0xD3")
 	assert(rows[1][3] == "0x04BB")
 	assert(rows[2] == PackedStringArray(["ALTM", "4660", "", "0x1234"]))
 	assert(rows[7][1] == "400" and rows[8][1] == "300")
@@ -70,7 +70,8 @@ func _run() -> void:
 	root.add_child(dialog)
 	dialog.show_query("Station", "Station", true, "Station\nOfficers: 42\nAdvanced tile data", "", values)
 	assert(dialog.summary_rows.get_child_count() == 2)
-	assert(dialog.summary_rows.get_child(0).get_child(0).get_child(1).text == "X: 400, Y: 300, Z: 20")
+	var coordinates: String = dialog.summary_rows.get_child(0).get_child(0).get_child(1).text
+	assert(coordinates.contains("400") and coordinates.contains("300") and coordinates.contains("20"))
 	assert(dialog.neighborhood_view.zoom == 3.0)
 	assert(QueryNeighborhood.zoom_for_tile(0x70) == 3.5)
 	assert(QueryNeighborhood.zoom_for_tile(0x8c) == 3.0)

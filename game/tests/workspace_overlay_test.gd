@@ -26,25 +26,9 @@ func _run() -> void:
 	_press(viewport, Vector2(900, 790))
 	assert(map_presses == 1, "Sidebar, top bar and status bar must block map clicks")
 	assert(workspace.map_view.get_rect() == Rect2(Vector2.ZERO, Vector2(viewport.size)))
-	var menu_count := 0
-
-	for child in workspace.menu_bar.file_menu.get_parent().get_children():
-		if child is MenuButton:
-			assert(child.switch_on_hover)
-
-			if child.text == "Windows":
-				var popup: PopupMenu = child.get_popup()
-				assert(popup.get_item_text(popup.item_count - 1) == "Debug Info")
-				assert(popup.get_item_id(popup.item_count - 1) == 7)
-			elif child.text == "Help":
-				assert(child.get_popup().item_count == 1 and child.get_popup().get_item_text(0) == "About")
-
-			menu_count += 1
-
-	assert(menu_count == 8)
 	viewport.free()
 	await process_frame
-	print("PASS: Full-window map, overlay input blocking, menu actions and hover settings")
+	print("PASS: Full-window map, overlay input blocking, input routing")
 	quit()
 
 

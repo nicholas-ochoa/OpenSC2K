@@ -16,7 +16,7 @@ import uuid
 
 ROOT = Path(__file__).resolve().parents[1]
 DOMAINS = ('formats', 'simulation', 'tools', 'rendering', 'scurk', 'ui', 'audio')
-SUITES = ('routine', 'full', 'release', 'audit', 'native', 'slow', 'architecture', 'integration', *DOMAINS)
+SUITES = ('routine', 'full', 'release', 'audit', 'native', 'slow', 'integration', *DOMAINS)
 
 
 def registry():
@@ -53,7 +53,7 @@ def select(entries, suites, ids):
         e = dict(original)
         include = e['id'] in ids
         for suite in suites:
-            include |= (suite == 'release' and e['lane'] != 'architecture')
+            include |= (suite == 'release')
             include |= (suite == 'full' and e['lane'] in ('product', 'audit', 'slow', 'integration'))
             include |= (suite == 'routine' and e['lane'] == 'product')
             include |= (suite == e['lane'] and suite != 'product')

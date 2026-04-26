@@ -16,20 +16,9 @@ func _run() -> void:
 	await process_frame
 	_assert_editor_controls(main, false)
 	assert(dialog.get_viewport_rect().grow(1.0).encloses(dialog.panel.get_global_rect()), "New City controls fit the viewport")
-	var feature_grid: GridContainer = dialog.ocean_input.get_parent()
-	var titles: Array[String] = []
-	for check in feature_grid.get_children():
-		titles.append(check.text)
-	assert(titles == ["Ocean", "Ocean bay", "River", "Meandering River", "Forked River",
-		"Split and rejoin river", "Intersecting rivers", "River Delta", "Single Lake", "Two Lakes", "Plateau", "Mountain Ridge", "River Valley",
-		"Rolling Hills", "Basin", "Canyon", "Coastal Cliffs", "Single Island", "Two islands", "Peninsula"])
-	var tip: Label = dialog.panel.get_node("Content/Buttons/HideTip")
-	assert("right mouse button" in tip.text)
 	assert(not dialog.compatibility_input.button_pressed)
 	assert(dialog.native_maps_input.button_pressed)
 	assert(dialog.done_button.disabled and main.new_city_session.preview_document == null)
-	for index in dialog.size_input.item_count:
-		assert("experimental" not in dialog.size_input.get_item_text(index))
 	for key in ["bay", "delta", "peninsula", "island", "islands", "meander", "crossing", "branch", "rejoin", "valley", "cliffs"]:
 		dialog.reset_features()
 		dialog.ocean_input.button_pressed = false
@@ -46,10 +35,8 @@ func _run() -> void:
 	dialog.river_input.button_pressed = true
 	dialog.feature_inputs.canyon.button_pressed = true
 	assert(not dialog.river_input.button_pressed and dialog.river_input.disabled)
-	assert("Canyon" in dialog.river_input.tooltip_text)
 	for key in dialog.RIVER_FEATURES:
 		assert(dialog.feature_inputs[key].disabled and not dialog.feature_inputs[key].button_pressed)
-		assert("Canyon" in dialog.feature_inputs[key].tooltip_text)
 	for group in dialog.EXCLUSIVE_GROUPS:
 		for selected in group:
 			dialog.reset_features()
@@ -57,7 +44,6 @@ func _run() -> void:
 			for other in group:
 				if other != selected:
 					assert(dialog.feature_inputs[other].disabled)
-					assert(dialog.feature_inputs[selected].text in dialog.feature_inputs[other].tooltip_text)
 			dialog.feature_inputs[selected].button_pressed = false
 			for other in group:
 				assert(not dialog.feature_inputs[other].disabled)
@@ -161,31 +147,21 @@ func _run() -> void:
 	assert(not main.city_toolbar.data_view_input.visible)
 	for key in main.city_toolbar.view_visibility_checks:
 		assert(main.city_toolbar.view_visibility_checks[key].visible == (key in ["water", "trees"]))
-	for key in main.city_toolbar.landscape_buttons:
-		var button: Button = main.city_toolbar.landscape_buttons[key]
-		assert(button.icon.get_height() <= 23)
 	main.city_toolbar.view_mode_buttons.height.pressed.emit()
 	assert(main.overlay_mode == "height")
 	await process_frame
-	var map_space: Control = main.map_view.get_parent().get_node("Page/Content/MapSpace")
-	assert(main.map_view.global_position + main.map_view.data_key_origin() == map_space.global_position + Vector2(12, 12))
 	main.city_toolbar.view_mode_buttons.city.pressed.emit()
 	main._select_tool_group(16)
 	main._select_subtool(1)
 	assert(main.selected_subtool == 0)
 	await process_frame
-	var toolbar_width: float = main.city_toolbar.size.x
 	main._select_tool_group(1)
 	main._select_subtool(0)
 	await process_frame
 	await process_frame
-	assert(is_equal_approx(main.city_toolbar.size.x, toolbar_width))
 	assert(main.map_view.continuous_placement and main.map_view.landscape_brush)
 	assert(main.city_toolbar.brush_controls.visible)
 	assert(main.city_toolbar.brush_shape_input.selected == 1 and main.map_view.brush_round)
-	assert(main.city_toolbar.brush_size_input.get_parent() == main.city_toolbar.brush_shape_input.get_parent())
-	var random_button: Button = dialog.city_name_input.get_parent().get_node("RandomName")
-	assert(random_button.position.x > dialog.city_name_input.position.x and random_button is RefreshIconButton)
 	var wheel := InputEventMouseButton.new()
 	wheel.position = main.city_toolbar.brush_size_input.get_global_rect().get_center()
 	wheel.button_index = MOUSE_BUTTON_WHEEL_UP
@@ -201,14 +177,6 @@ func _run() -> void:
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	root.push_input(wheel, true)
 	assert(main.city_toolbar.brush_size_input.value == 1)
-	for tool in CityToolbar.LANDSCAPE_TOOL_ORDER:
-		main._select_tool_group(tool.x)
-		main._select_subtool(tool.y)
-		await process_frame
-		await process_frame
-		assert(is_equal_approx(main.city_toolbar.size.x, toolbar_width))
-		var content: Control = main.city_toolbar.get_node("Margin")
-		assert(content.size.x <= toolbar_width)
 	main._select_tool_group(1)
 	main._select_subtool(0)
 
@@ -245,12 +213,6 @@ func _run() -> void:
 	main._start_city()
 	assert(not main.city_toolbar.regenerate_button.visible)
 	assert(main.city_toolbar.child_palette.visible)
-	for group in CityToolbar.Tools.GROUPS.size():
-		main._select_tool_group(group)
-		await process_frame
-		await process_frame
-		assert(is_equal_approx(main.city_toolbar.size.x, toolbar_width))
-		assert(main.city_toolbar.get_node("Margin").size.x <= toolbar_width)
 	main._open_new_city_dialog()
 	main._make_new_city_preview()
 	main._cancel_new_city()

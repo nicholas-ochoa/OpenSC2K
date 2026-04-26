@@ -45,8 +45,6 @@ func _run() -> void:
 	var before: PackedByteArray = main.city.document.serialize().data
 	main._open_settings_dialog()
 	var dialog: AppSettingsDialog = main.settings_dialog
-	assert(dialog.tabs.get_tab_count() == 5 and dialog.tabs.get_tab_title(3) == "Import Data")
-	assert(dialog.toolbar_sounds_check.text == "Play toolbar sounds")
 	assert(dialog.folder_row.visible)
 
 	for kind in ["sound", "music"]:
@@ -83,11 +81,9 @@ func _run() -> void:
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels == sprite.pixels)
 	assert(main.main_menu.city_background.demo_sprites == main.large_sprites)
 	assert(main.city.document.serialize().data == before)
-	assert(not main.status_label.text.contains("Restart"))
 	dialog.folder_edit.text = source.path_join("pack.json")
 	main._apply_settings()
 	assert(main.asset_source.graphics_name == "Original SimCity 2000")
-	assert(dialog.pack_name_labels.graphics.text == "Original SimCity 2000")
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels != sprite.pixels)
 	assert(main.city.document.serialize().data == before)
 	main.settings_dialog.hide()

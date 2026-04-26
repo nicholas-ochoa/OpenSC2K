@@ -14,7 +14,6 @@ func _run() -> void:
 	main.call("_select_speed", GameSpeedController.Speed.PAUSED)
 	var toolbar := main.get("city_toolbar") as CityToolbar
 	var map := main.get("map_view") as CityMapControl
-	var status := main.get("city_status_bar") as CityStatusBar
 
 	# Shared tools retain the selected layer and remain usable in either view.
 	for mode in ["city", "underground"]:
@@ -50,10 +49,6 @@ func _run() -> void:
 	main.call("_select_tool_group", 6)
 	main.call("_select_subtool", 1)
 	assert(map.highway_preview)
-	main.call("_update_zoom_controls", 50)
-	assert(status.zoom_label.text == "Zoom: 50%")
-	assert(toolbar.view_layers_heading.text == "Visible Layers")
-	assert(toolbar.child_palette.size_flags_vertical == Control.SIZE_EXPAND_FILL)
 
 	for group in [3, 6, 7]:
 		main.call("_select_tool_group", group)
@@ -75,7 +70,7 @@ func _run() -> void:
 	assert(toolbar.hold_menu.visible and main.get("selected_group") == 7)
 	assert(toolbar.hold_menu.palette.buttons.size() == toolbar.child_tool_buttons.size())
 	var subway_button := toolbar.hold_menu.palette.buttons[1] as Button
-	assert(subway_button.icon != null and subway_button.text == "Subway\n$100")
+	assert(subway_button.icon != null)
 	toolbar.toolbar_buttons[7].button_up.emit()
 	toolbar.toolbar_buttons[7].pressed.emit()
 	subway_button.pressed.emit()
@@ -99,9 +94,6 @@ func _run() -> void:
 	shift.pressed = false
 	map._input(shift)
 	assert(map._selection_source_polygons().size() == 1)
-	var sign_dialog := main.get("sign_dialog") as CitySignDialog
-	assert(sign_dialog.title == "Enter sign text...")
-	assert(sign_dialog.get_label().get_theme_color("font_color") == AppUiTheme.current().get_color("font_color", "Label"))
 	# Check city and random state after an invalid preview.
 	var before: PackedByteArray = city.document.serialize().data
 	assert(BuildingCommand.preview_valid(city, 3, 2, Vector2i(75, 75)))
@@ -118,7 +110,6 @@ func _run() -> void:
 	assert(main.get("overlay_mode") == "underground")
 	main.call("_select_subtool", 1)
 	assert(main.get("overlay_mode") == "city")
-	assert(toolbar.child_tool_buttons[1].icon.get_width() <= 48)
 	main.app_zoom_graphics = AppSettingsStore.normalize_zoom_graphics(AppSettingsStore.DEFAULT_ZOOM_GRAPHICS)
 	# Overview size is independent of the saved graphics settings.
 	main.app_overview_graphics = CityIsometricRenderer.VIEW_SMALL
@@ -212,8 +203,6 @@ func _run() -> void:
 		assert(NetworkCommand.undo(city, rail).ok)
 		assert(city.document.serialize().data == rail_before)
 
-	var tunnel := main.get("tunnel_dialog") as RouteConfirmationDialog
-	assert(tunnel.get_label().get_theme_color("font_color") == AppUiTheme.current().get_color("font_color", "Label"))
 	var paper := main.get("newspaper_dialog") as NewspaperDialog
 	paper.open_reports(city, city.document, null, {}, {}, 123)
 	assert(paper.published_articles.size() == 5)

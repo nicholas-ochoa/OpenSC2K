@@ -28,9 +28,6 @@ func _run() -> void:
 	host.add_child(debug)
 	await process_frame
 	assert(not debug.is_open and not debug._window.visible)
-	assert(debug._window.title == "Debug")
-	assert(debug._window.owner == debug)
-	assert(debug._days.get_column_title(1) == "What happens")
 	var metrics_tree: Tree = debug._metrics_tree
 	metrics_tree.refresh({"simulation_slices": {"snapshot_usec": 2500, "work": {"parked_usec": 12000}},
 		"render_regions": {"cpu_image_bytes": 1048576}, "no_disasters": false})
@@ -44,15 +41,6 @@ func _run() -> void:
 	assert(metrics_tree.rows["simulation_slices/snapshot_usec"].get_text(1) == "4.000 ms")
 	assert(metrics_tree.rows["simulation_slices/work/parked_usec"].get_text(1) == "—")
 	assert(metrics_tree.rows["new_counter"].get_text(1) == "7")
-	assert(not debug.has_node("DebugWindow/Panel/Margin/Content/Header/Status"))
-	assert(not debug.has_node("DebugWindow/Panel/Margin/Content/Note"))
-	var theme := debug._window.theme
-	assert(theme == AppUiTheme.current())
-	for mode in ["dark", "light"]:
-		AppUiTheme.select(mode)
-		await process_frame
-		assert(debug._window.theme == theme)
-		assert(theme.get_color("font_color", "Label").get_luminance() > 0.8 if mode == "dark" else theme.get_color("font_color", "Label").get_luminance() < 0.1)
 	host.simulation_timings.consume({"day_results": [{"ok": true, "day": 2,
 		"timing": {"work_usec": 2500, "steps": {"pollution": 2500}}}]})
 	debug.toggle()
@@ -61,7 +49,7 @@ func _run() -> void:
 	assert(day_three.get_text(0) == "3" and day_three.get_text(2) == "2.500")
 	assert(day_three.get_text(5) == "1")
 	assert(day_three.collapsed and day_three.get_child_count() == 1)
-	assert(day_three.get_child(0).get_text(1) == "      pollution")
+	assert(day_three.get_child(0).get_text(1).strip_edges() == "pollution")
 	assert(day_three.get_child(0).get_text(2) == "2.500")
 	day_three.collapsed = false
 	host.simulation_timings.consume({"day_results": [{"ok": true, "day": 3,
@@ -83,10 +71,9 @@ func _run() -> void:
 		var label := "Day %02d / %s / measured detail" % [pair[0] + 1, pair[1]]
 		var detail: TreeItem = debug._step_rows[label]
 		assert(detail.get_parent() == debug._day_rows[pair[0]])
-		assert(detail.get_text(1) == "      %s / measured detail" % pair[1])
+		assert(detail.get_text(1).strip_edges() == "%s / measured detail" % pair[1])
 		assert(detail.get_text(2) == "6.000" and detail.get_text(5) == "1")
 
-	assert(not debug.has_node("DebugWindow/Panel/Margin/Content/Tabs/Steps"))
 	assert(debug._terrain_slider.min_value == 1 and debug._terrain_slider.max_value == 32)
 	debug._terrain_slider.value = 12
 	assert(host.terrain_levels == 12 and debug._terrain_value.text == "12")

@@ -7,7 +7,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var cases := ["about", "picture_notice", "scenario", "player_dialog",
-		"city_window", "settings", "sidebar", "workspace"]
+		"city_window", "settings", "sidebar", "workspace", "closed_dialogs"]
 	var selected := OS.get_cmdline_user_args()
 	for name in selected:
 		assert(name in cases, "Unknown scene case: " + name)

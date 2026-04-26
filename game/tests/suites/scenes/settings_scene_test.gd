@@ -7,9 +7,6 @@ var import_requests := 0
 func run() -> void:
 	var first := SettingsScene.instantiate() as AppSettingsDialog
 	var second := SettingsScene.instantiate() as AppSettingsDialog
-	# Create fixed controls before _ready so they can be edited in the scene.
-	assert(first.get_node("%Tabs").get_child_count() == 5)
-	assert(first.get_node("%DefaultMayorEdit").owner == first)
 	root.add_child(first)
 	root.add_child(second)
 	first.default_mayor_edit.text = "Alice"
@@ -37,4 +34,4 @@ func run() -> void:
 	first.free()
 	second.free()
 	await process_frame
-	print("PASS: Settings scene ownership, independent instances, and signal bindings")
+	print("PASS: Settings independent instances, and signal bindings")

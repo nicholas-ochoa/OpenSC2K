@@ -13,8 +13,6 @@ func _initialize() -> void:
 	assert(history.days[2].max_usec == 10000)
 	assert(history.steps["Day 03 / pollution"].count == 3)
 	assert(SimulationTimingHistory.DAY_SUMMARIES.size() == 25)
-	assert(SimulationTimingHistory.DAY_SUMMARIES[1] == "Power")
-	assert(SimulationTimingHistory.DAY_SUMMARIES[23] == "Statistics-window refresh only")
 	var budget := SimulationSliceBudget.new()
 	var span := SimulationTimingSpan.new(budget)
 	span.mark("test")

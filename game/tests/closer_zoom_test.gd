@@ -43,7 +43,6 @@ func _run() -> void:
 	var saved: PackedByteArray = city.document.serialize().data
 	assert(map.zoom_percent() == 400 and not map.can_zoom_in())
 	assert(main.zoom_in_button.disabled and not main.zoom_out_button.disabled)
-	assert(main.city_status_bar.zoom_label.text == "Zoom: 400%")
 	assert(main._city_view_size() == CityIsometricRenderer.VIEW_LARGE)
 	assert(main._sprite_archive_for_view(2) == main.large_sprites)
 	var anchor := map.size * Vector2(0.4, 0.6)

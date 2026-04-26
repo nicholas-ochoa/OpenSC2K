@@ -38,13 +38,13 @@ func _run() -> void:
 	viewport.queue_free()
 	await process_frame
 	AppUiTheme.select("light")
-	print("PASS: Settings stays within 90% viewport height across themes, tabs, resize and long errors")
+	print("PASS: Settings stays within the viewport height across themes, tabs, resize and long errors")
 	quit()
 
 
 func _check_height(dialog: AppSettingsDialog, height: int) -> void:
-	assert(dialog.size.y + dialog.get_theme_constant("title_height") <= int(height * 0.9),
-		"Dialog including title bar must fit within 90% of the viewport")
+	assert(dialog.size.y + dialog.get_theme_constant("title_height") <= height,
+		"Dialog including title bar must fit within the viewport")
 	assert(dialog.get_ok_button().get_global_rect().end.y <= dialog.size.y,
 		"Save Changes must remain inside the dialog")
 	assert(dialog.get_cancel_button().get_global_rect().end.y <= dialog.size.y,

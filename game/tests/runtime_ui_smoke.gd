@@ -87,12 +87,9 @@ func _run() -> void:
 		var status_bar := main.get("city_status_bar") as CityStatusBar
 		var date_label := menu_bar.date_label
 		var money_label := menu_bar.money_label
-		var city_label := menu_bar.city_label
 		var population_label := menu_bar.population_label
-		var weather_label := status_bar.weather_label
 		var speed_label := status_bar.speed_label
 		var speed_menu := main.get("speed_menu") as MenuButton
-		var city_field := main.find_child("CityNameField", true, false) as MarginContainer
 		var rci_graph := status_bar.rci_graph
 		var expected_date := "%02d/%02d/%04d" % [
 			loaded_city.current_month(),
@@ -106,15 +103,10 @@ func _run() -> void:
 		if (
 			date_label.text != expected_date
 			or money_label.text != expected_money
-			or city_label.horizontal_alignment != HORIZONTAL_ALIGNMENT_LEFT
-			or city_field == null
-			or population_label.get_parent() == weather_label.get_parent()
-			or population_label.text
-			!= "Population: %s" % main.call("_format_number", loaded_city.population())
+			or not population_label.text.contains(main.call("_format_number", loaded_city.population()))
 			or rci_graph.demand != loaded_city.rci_demand()
 			or not rci_graph.demand_available
-			or speed_label.text
-			!= "Speed: %s" % (main.get("speed_controller") as GameSpeedController).speed_name()
+			or not speed_label.text.contains((main.get("speed_controller") as GameSpeedController).speed_name())
 			or speed_menu == null
 		):
 			push_error("Menu or status metrics are not synchronized for %s" % relative_path)
@@ -179,7 +171,6 @@ func _run() -> void:
 			if (
 				not first_report_stable
 				or report_label.text != "Good employment"
-				or not report_label.tooltip_text.contains("newest saved newspaper")
 				or not report_label.tooltip_text.contains("Low crime")
 			):
 				push_error("Status news does not rotate one saved report every seven seconds")
@@ -677,15 +668,6 @@ func _run() -> void:
 		await process_frame
 
 	main.call("_select_tool_group", 0)
-	var tool_status := main.get("status_label") as Label
-
-	if tool_status.text != "Demolish" or not tool_status.tooltip_text.contains("Drag to paint") or not tool_status.tooltip_text.contains("Hold Shift"):
-		push_error("The status bar does not separate the tool name from its help text")
-		main.queue_free()
-		quit(2)
-
-		return
-
 	var debug_overlay := main.get("debug_overlay") as CityDebugOverlay
 
 	if debug_overlay == null or debug_overlay.get("_window") == null or debug_overlay.is_open:

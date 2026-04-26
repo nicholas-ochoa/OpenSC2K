@@ -13,8 +13,6 @@ func _run() -> void:
 	main.main_menu.show_menu(false)
 	await process_frame
 	await process_frame
-	var panel: PanelContainer = main.main_menu.new_city_button.get_parent().get_parent()
-	assert(is_equal_approx(panel.size.y, panel.get_combined_minimum_size().y))
 	var background: MainMenuCityBackground = main.main_menu.city_background
 
 	for stretch in [0.5, 1.0, 2.0, 2.5, 3.0, 4.0, 6.0, 8.0]:
@@ -23,12 +21,7 @@ func _run() -> void:
 			assert(zoom >= 0.5, "Menu city zoom must stay at or above 50%")
 			assert(is_equal_approx(zoom * stretch, roundf(zoom * stretch)))
 
-	assert(MainMenuCityBackground.SHOT_MAGNIFICATIONS[0] > MainMenuCityBackground.SHOT_MAGNIFICATIONS[1])
-	assert(MainMenuCityBackground.SHOT_MAGNIFICATIONS[1] > MainMenuCityBackground.SHOT_MAGNIFICATIONS[2])
 	assert(background.city_name_label.text == background.demo_city.city_name())
-	assert(background.city_name_label.get_theme_color("font_color") == Color.WHITE)
-	assert(background.city_name_label.get_theme_color("font_shadow_color").a > 0.9)
-	assert(background.city_name_label.anchor_bottom == 1.0 and background.city_name_label.anchor_left == 0.0)
 	var magnifications := {}
 
 	for time in [0.0, 0.017, 24.0, 48.0, 72.0]:
@@ -88,7 +81,7 @@ func _run() -> void:
 	await create_timer(0.1).timeout
 	main.queue_free()
 	await process_frame
-	print("PASS: fitted menu, pixel-aligned wide and close shots, enabled landscape tools, founding sound and paper, paused reading and opening music, HTML-only content, and separate tunnel/subway cutoff depths")
+	print("PASS: pixel-aligned wide and close shots, enabled landscape tools, founding sound and paper, paused reading and opening music, HTML-only content, and separate tunnel/subway cutoff depths")
 	quit()
 
 

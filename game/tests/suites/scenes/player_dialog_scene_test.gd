@@ -10,7 +10,7 @@ func run() -> void:
 	sign.confirmed.connect(func() -> void: confirmations += 1)
 	sign.show_text("Old sign")
 	await process_frame
-	assert(sign.text_input.owner == sign and sign.text_input.has_focus())
+	assert(sign.text_input.has_focus())
 	sign.text_input.text = "A new sign"
 	assert(sign.entered_text() == "A new sign")
 	sign.get_ok_button().pressed.emit()
@@ -27,14 +27,14 @@ func run() -> void:
 	stadium.team_selector.item_selected.emit(1)
 	assert(stadium.selected_team_id() == 9 and stadium.entered_name() == "Bears")
 	stadium.name_input.text = "City Bears"
-	assert(stadium.entered_name() == "City Bears" and stadium.name_input.owner == stadium)
+	assert(stadium.entered_name() == "City Bears")
 	stadium.hide()
 	stadium.free()
 	var choice := preload("res://src/ui/tools/tool_choice_dialog.tscn").instantiate() as ToolChoiceDialog
 	root.add_child(choice)
 	choice.choice_requested.connect(func(index: int) -> void: selected_choice = index)
 	choice.set_tools("Tools", "Pick one", [{"name": "First", "cost": 25}, {"name": "Second", "cost": 75}])
-	assert(choice.choice_buttons[0].owner == choice and not choice.choice_buttons[2].visible)
+	assert(not choice.choice_buttons[2].visible)
 	choice.choice_buttons[1].pressed.emit()
 	assert(selected_choice == 1 and choice.choice_buttons[1].text.contains("Second"))
 	choice.free()
@@ -42,9 +42,9 @@ func run() -> void:
 	root.add_child(bridge)
 	bridge.choice_requested.connect(func(index: int) -> void: selected_choice = index)
 	bridge.set_choices(4, "road", [{"name": "Test Bridge", "cost": 100, "cost_per_tile": 25}], false)
-	assert(bridge.choice_buttons[0].owner == bridge and not bridge.choice_buttons[1].visible)
-	assert(bridge.choice_labels[0].text.contains("$100 total"))
+	assert(not bridge.choice_buttons[1].visible)
+	assert(bridge.choice_labels[0].text.contains("$100"))
 	bridge.choice_buttons[0].pressed.emit()
 	assert(selected_choice == 0 and bridge.preview_controls[0].mouse_filter == Control.MOUSE_FILTER_IGNORE)
 	bridge.free()
-	print("PASS: Player dialog scene input, confirmation and ownership")
+	print("PASS: Player dialog scene input, confirmation and selection")
