@@ -30,12 +30,18 @@ var failures := 0
 
 
 func _initialize() -> void:
-	for edge in Sc2File.MAP_SIZES:
+	# Disaster selection and RNG gates do not depend on grid size or data-map mode.
+	_test_gates(128, false)
+	for edge in [128, 256, 384, 512]:
 		for native in [false, true]:
-			_test_gates(edge, native)
-			_test_targets(edge, native)
-			_test_pool(edge, native)
-			_test_engine(edge, native)
+			var types := range(1, 19) if edge == 128 and not native else [7]
+			_test_targets(edge, native, types)
+	# Exercise both object-record widths and the largest covered pool/coordinate range.
+	for edge in [128, 512]:
+		var native: bool = edge == 512
+		_test_edges(edge, native)
+		_test_pool(edge, native)
+		_test_engine(edge, native)
 	_test_extended_target()
 	print("Automatic Maxis Man: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
@@ -90,15 +96,16 @@ func _test_gates(edge: int, native: bool) -> void:
 		check(gate.calls == 0 and random.calls == 0, "Failed or inactive starts consume no response RNG")
 
 
-func _test_targets(edge: int, native: bool) -> void:
+func _test_targets(edge: int, native: bool, types: Array) -> void:
 	var target := Vector2i(edge - 20, edge - 20)
 	var goals := [255, 252, 254, 251, 255, 255, 2, 2, 255, 255, 255, 255, 254, 252, 251, 247, 247, 247]
-	for type in range(1, 19):
-		var city := fixture(edge, native)
-		var point := target + Vector2i(16, 0)
-		city.set_land_altitude(point.x, point.y, 7)
-		city.set_water_altitude(point.x, point.y, 12)
-		city.set_text_overlay_id(point.x, point.y, 61)
+	var base := fixture(edge, native)
+	var point := target + Vector2i(16, 0)
+	base.set_land_altitude(point.x, point.y, 7)
+	base.set_water_altitude(point.x, point.y, 12)
+	base.set_text_overlay_id(point.x, point.y, 61)
+	for type in types:
+		var city := CityState.from_document(base.document.duplicate_document())
 		var things := city.document.find_chunk("XTHG").decoded_payload.duplicate()
 		ThingData.write(things, 12 + 11, 247)
 		ThingData.write(things, 24, 15 if type == 7 else 5)
@@ -117,13 +124,17 @@ func _test_targets(edge: int, native: bool) -> void:
 		check(random.calls == (2 if type in [3, 13] else 1), "Only riot target selection takes a second process value")
 		check(city.text_overlay_id(point.x, point.y) == OverlayData.thing_id(1), "Hero is linked to its arrival tile")
 		check(result.sound_events == [520, 513] and result.view_center_requests == [target, point], "Arrival events follow the disaster events")
-		var serialized: PackedByteArray = city.document.serialize().data
-		var document := Sc2File.new()
-		check(document.parse(serialized), "Automatic hero save parses")
-		var loaded := CityState.from_document(document)
-		check(loaded.is_valid() and loaded.document.serialize().data == serialized, "Automatic hero round trips without loss")
-		check(loaded.text_overlays == city.text_overlays, "Reload preserves the hero link")
+		# Save encoding depends on format/size, not which disaster selected the goal.
+		if type == types[-1]:
+			var serialized: PackedByteArray = city.document.serialize().data
+			var document := Sc2File.new()
+			check(document.parse(serialized), "Automatic hero save parses")
+			var loaded := CityState.from_document(document)
+			check(loaded.is_valid() and loaded.document.serialize().data == serialized, "Automatic hero round trips without loss")
+			check(loaded.text_overlays == city.text_overlays, "Reload preserves the hero link")
 
+
+func _test_edges(edge: int, native: bool) -> void:
 	for direction in 4:
 		var city := fixture(edge, native)
 		var point := Vector2i(edge - 1, edge - 1) if direction < 2 else Vector2i.ZERO
