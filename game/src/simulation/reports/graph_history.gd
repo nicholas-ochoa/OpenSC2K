@@ -30,6 +30,8 @@ const LAST_ARCOLOGY := 0xfe
 static func run(
 	city: CityState, developed_tiles: int, power_usage_percent: int, water_usage_percent: int
 ) -> Dictionary:
+	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
+	span.mark("calculate graph values")
 	var calculation := calculate_current_values(
 		city, developed_tiles, power_usage_percent, water_usage_percent
 	)
@@ -42,14 +44,17 @@ static func run(
 	if chunk == null or chunk.decoded_payload.size() != SERIES_COUNT * VALUES_PER_SERIES * 4:
 		return {"ok": false, "error": "XGRP is missing or has the wrong size"}
 
+	span.mark("store unemployment")
 	if not city.document.set_misc_u32(MISC_UNEMPLOYMENT, calculation.unemployment):
 		return {"ok": false, "error": "cannot store the unemployment percentage"}
 
+	span.mark("shift graph histories")
 	var history := advance(city, calculation.values)
 
 	if not history.ok:
 		return history
 
+	history["timing"] = span.finish()
 	history["values"] = calculation.values
 	history["unemployment"] = calculation.unemployment
 

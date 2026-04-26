@@ -47,6 +47,8 @@ static func run(city: CityState) -> Dictionary:
 	if misc == null or misc.decoded_payload.size() < 0x1054:
 		return {"ok": false, "error": "MISC data is missing or too short"}
 
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("prepare data")
 	var zone_population := PackedInt64Array()
 	zone_population.resize(8)
 
@@ -109,7 +111,9 @@ static func run(city: CityState) -> Dictionary:
 	)
 	industrial_target = maxf(industrial_target, MINIMUM_INDUSTRIAL_TARGET)
 
+	span.mark("neighbor connections")
 	var connections := connection_counts(city)
+	span.mark("demand caps and taxes")
 	commercial_target = minf(
 		commercial_target,
 		float(
@@ -144,6 +148,7 @@ static func run(city: CityState) -> Dictionary:
 		var demand := clampi(city.document.misc_i32(DEMAND_OFFSET + index * 4) + change, -2000, 2000)
 		demands.append(demand)
 
+	span.mark("store demand and population")
 	var changed := misc.decoded_payload.duplicate()
 	_write_i32(changed, ZONE_POPULATION_OFFSET, zone_population[0])
 	_write_i32(changed, NORMAL_POPULATION_OFFSET, normal_population)
@@ -165,6 +170,7 @@ static func run(city: CityState) -> Dictionary:
 
 	return {
 		"ok": true,
+		"timing": span.finish(),
 		"previous_population": previous_population,
 		"normal_population": normal_population,
 		"tax_population": tax_population,

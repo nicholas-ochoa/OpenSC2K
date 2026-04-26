@@ -53,13 +53,23 @@ func consume(result: Dictionary) -> void:
 		days[slot] = row
 
 		for label in day.timing.steps:
-			record_step("Day %02d / %s" % [slot + 1, label], day.timing.steps[label])
+			record_step("Day %02d / %s" % [slot + 1, _phase_group(label)], day.timing.steps[label])
 
 		var phases: Dictionary = day.get("phase_results", {})
 
 		for phase_name: String in phases:
 			var phase: Dictionary = phases[phase_name]
-			var group := "data maps" if phase_name == "pollution_terrain_land_value" else phase_name
+			var group := _phase_group(phase_name)
+			var timing: Dictionary = phase.get("timing", {})
+			var measured_parent := false
+
+			for label: String in day.timing.steps:
+				if _phase_group(label) == group:
+					measured_parent = true
+					break
+
+			if timing.has("work_usec") and not measured_parent:
+				record_step("Day %02d / %s" % [slot + 1, group], timing.work_usec)
 
 			for label in phase.get("timing", {}).get("steps", {}):
 				record_step("Day %02d / %s / %s" % [slot + 1, group, label], phase.timing.steps[label])
@@ -71,3 +81,13 @@ func consume(result: Dictionary) -> void:
 
 	for label in result.get("job_timings", {}):
 		record_step(label, result.job_timings[label])
+
+
+static func _phase_group(label: String) -> String:
+	match label:
+		"pollution_terrain_land_value":
+			return "data maps"
+		"simnation calculation":
+			return "simnation"
+
+	return label

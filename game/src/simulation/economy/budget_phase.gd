@@ -67,6 +67,8 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
 
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("prepare data")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var month := int(IntegerMath.div_trunc(city.age_in_days() % 300, 25))
 	var funds_before := _read_i32(misc, MISC_FUNDS)
@@ -82,6 +84,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 	):
 		return {
 			"ok": true,
+			"timing": span.finish(),
 			"error": "",
 			"month": month,
 			"requires_annual_budget": true,
@@ -89,6 +92,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 			"news_items": [],
 		}
 
+	span.mark("annual settlement")
 	if _read_u32(misc, MISC_YEAR_END) != 0 and month == 0:
 		settled_year = true
 
@@ -111,6 +115,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 			_write_u32(misc, MISC_AUTO_BUDGET, 0)
 			auto_budget_disabled = true
 
+	span.mark("monthly history")
 	for budget_id in BUDGET_COUNT:
 		var budget_offset := _budget_offset(budget_id)
 		var current := _read_i32(misc, budget_offset + BUDGET_CURRENT)
@@ -131,6 +136,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 
 	_write_i32(misc, _budget_offset(BUDGET_BONDS), _read_i32(misc, MISC_BONDS))
 
+	span.mark("service and network costs")
 	for budget_id in SERVICE_TILE_IDS:
 		var divisor := 16 if budget_id == BUDGET_COLLEGE else 9
 		_write_i32(
@@ -189,6 +195,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 		Ordinances.current_cost_for_misc(misc),
 	)
 
+	span.mark("ordinance events")
 	var news_items: Array[Dictionary] = []
 
 	if (
@@ -204,6 +211,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 		)
 		news_items.append({"type": NEWS_ORDINANCE, "argument": ordinance_id})
 
+	span.mark("store budget")
 	if not misc_chunk.set_decoded_payload(misc):
 		return {"ok": false, "error": "cannot store the monthly budget update"}
 
@@ -214,6 +222,7 @@ static func run(city: CityState, random, annual_budget_approved := false) -> Dic
 
 	return {
 		"ok": true,
+		"timing": span.finish(),
 		"error": "",
 		"month": month,
 		"settled_year": settled_year,

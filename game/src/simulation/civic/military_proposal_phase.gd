@@ -22,6 +22,17 @@ const NOTICE_NO_SITE := 0x19b
 
 
 static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
+	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
+	span.mark("prepare data")
+	var result := _resolve(city, accepted, game_random, span)
+
+	if result.get("ok", false):
+		result["timing"] = span.finish()
+
+	return result
+
+
+static func _resolve(city: CityState, accepted: bool, game_random, span: SimulationTimingSpan) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
@@ -39,6 +50,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 	var misc: PackedByteArray = chunks.MISC.decoded_payload.duplicate()
 
 	if not accepted:
+		span.mark("store declined proposal")
 		_write_u32(misc, MISC_BASE_TYPE, BASE_DECLINED)
 
 		if not chunks.MISC.set_decoded_payload(misc):
@@ -50,8 +62,10 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 	var terrain: PackedByteArray = chunks.XTER.decoded_payload.duplicate()
 	var underground: PackedByteArray = chunks.XUND.decoded_payload
 	var flags: PackedByteArray = chunks.XBIT.decoded_payload.duplicate()
+	span.mark("naval site search")
 	var navy_site := NavalBaseSite.find(city)
 	if navy_site.has_area() and game_random.next_mod(2) == 1:
+		span.mark("build and store naval base")
 		var changed := _zone_plot(buildings, terrain, underground, flags, zones, misc, navy_site, map_edge)
 		for index in changed:
 			# ownership was transferred to the military-other counter above
@@ -63,6 +77,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 		result["view_center_requests"] = [navy_site.get_center()]
 		return result
 
+	span.mark("land base site search")
 	var last_altitude := 0
 
 	for _attempt in 24:
@@ -84,6 +99,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 		if valid < 40:
 			continue
 
+		span.mark("build and store land base")
 		var base_type := BASE_AIR_FORCE if valid == level else BASE_ARMY
 		var notice := NOTICE_AIR_FORCE if base_type == BASE_AIR_FORCE else NOTICE_ARMY
 		var changed := _zone_plot(
@@ -99,6 +115,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 
 		return _result(true, base_type, Rect2i(origin, Vector2i(8, 8)), changed, notice)
 
+	span.mark("missile site search")
 	var sites: Array[Rect2i] = []
 
 	for _attempt in 40:
@@ -123,6 +140,7 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 			if sites.size() == 6:
 				break
 
+	span.mark("store missile sites or failed proposal")
 	if sites.size() != 6:
 		_write_u32(misc, MISC_BASE_TYPE, BASE_DECLINED)
 

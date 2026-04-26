@@ -101,6 +101,8 @@ static func run(
 	):
 		return {"ok": false, "error": "XMIC or MISC has the wrong size"}
 
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("prepare data")
 	var old_payloads := BuildingCommand._city_payloads(city)
 	var altitude_chunk := city.document.find_chunk("ALTM")
 
@@ -162,6 +164,7 @@ static func run(
 	var updated_bus := 0
 	var updated_rail := 0
 
+	span.mark("facility records")
 	for record_id in range(1, IntegerMath.div_trunc(microsims.size(), CityState.MICROSIM_RECORD_SIZE)):
 		if city.simulation_slice != null:
 			city.simulation_slice.checkpoint()
@@ -198,6 +201,7 @@ static func run(
 					news_items.append({"type": NEWS_POWER_PLANT, "argument": power_tile + 0x37})
 
 				if int(microsims[offset + 1]) > 50:
+					span.mark("expired plant search and demolition")
 					var location := _find_microsim_location(changed_payloads.XTXT, record_id, map_edge, city.simulation_slice)
 
 					if not location.is_empty():
@@ -232,6 +236,7 @@ static func run(
 							else:
 								expired_power_records.append(expired_record)
 
+				span.mark("facility records")
 				counts.power += 1
 			TILE_CITY_HALL:
 				_write_u16_be(microsims, offset + 2, _population_cap(misc, 200, 900, map_edge))
@@ -634,6 +639,7 @@ static func run(
 
 				counts.llamadome += 1
 
+	span.mark("annual totals and arcology launch")
 	if _has_process_random(random):
 		_write_u32(misc, MISC_OLD_ARRESTS, old_arrests)
 		_write_u32(
@@ -687,6 +693,7 @@ static func run(
 			arcology_launched = true
 			arcology_launch_pending = false
 
+	span.mark("compare payloads")
 	var changed_ids := PackedStringArray()
 
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
@@ -696,11 +703,13 @@ static func run(
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 
+	span.mark("store annual changes")
 	if not BuildingCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		return {"ok": false, "error": "cannot store annual microsimulation changes"}
 
 	return {
 		"ok": true,
+		"timing": span.finish(),
 		"error": "",
 		"updated_subway_records": updated_subway,
 		"updated_bus_records": updated_bus,

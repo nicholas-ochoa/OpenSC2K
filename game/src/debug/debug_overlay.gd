@@ -259,28 +259,49 @@ func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 
 	var samples: Dictionary = history.steps if history != null else {}
 
-	for label: String in _step_rows.keys():
-		if not samples.has(label):
+	# include intermediate groups even when they have no measured total
+	var desired: Dictionary = {}
+
+	for label: String in samples:
+		var parts := label.split(" / ")
+		var first := 1 if parts[0].begins_with("Day ") else 0
+		var path := parts[0] if first == 1 else ""
+
+		for index in range(first, parts.size()):
+			path += (" / " if not path.is_empty() else "") + parts[index]
+			desired[path] = true
+
+	# free descendants first. treeitem.free() also frees its children
+	var old_labels := _step_rows.keys()
+	old_labels.sort()
+	old_labels.reverse()
+
+	for label: String in old_labels:
+		if not desired.has(label):
 			_step_rows[label].free()
 			_step_rows.erase(label)
 
-	var labels := samples.keys()
+	var labels := desired.keys()
 	labels.sort()
 
 	for label: String in labels:
 		var row: TreeItem = _step_rows.get(label)
 
 		if row == null:
+			var parts := label.split(" / ")
+			var parent_path := label.get_slice(" / ", 0)
 			var parent: TreeItem
-			var caption := label
+			var depth := parts.size()
 
-			for day in 25:
-				var prefix := "Day %02d / " % (day + 1)
+			if parts.size() > 1:
+				parent_path = label.left(label.rfind(" / "))
+				parent = _step_rows.get(parent_path)
 
-				if label.begins_with(prefix):
-					parent = _day_rows[day]
-					caption = label.trim_prefix(prefix)
-					break
+			if parts[0].begins_with("Day "):
+				depth -= 1
+
+				if parent == null:
+					parent = _day_rows[int(parts[0].trim_prefix("Day ")) - 1]
 
 			if parent == null:
 				if _other_steps == null:
@@ -292,12 +313,12 @@ func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 				parent = _other_steps
 
 			row = _days.create_item(parent)
-			row.set_text(1, "      " + caption)
+			row.set_text(1, "      ".repeat(depth) + parts[-1])
 			row.set_tooltip_text(1, label)
-			row.set_tooltip_text(5, "One sample per measured phase execution. Repeated tile and network work is summed. Phase totals include their detail rows; do not add both.")
+			row.set_tooltip_text(5, "One sample per measured phase execution. Repeated tile and network work is summed. Phase totals include their detail rows; do not add both. Groups without measured totals show a dash.")
 			_step_rows[label] = row
 
-		_stats(row, 2, samples[label])
+		_stats(row, 2, samples.get(label, {}))
 
 	if _other_steps != null and _other_steps.get_child_count() == 0:
 		_other_steps.free()

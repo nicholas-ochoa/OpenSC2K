@@ -77,9 +77,23 @@ func _run() -> void:
 	for pair in [[1, "power"], [3, "growth"], [19, "traffic"], [20, "water"]]:
 		var label := "Day %02d / %s / measured detail" % [pair[0] + 1, pair[1]]
 		var detail: TreeItem = debug._step_rows[label]
-		assert(detail.get_parent() == debug._day_rows[pair[0]])
-		assert(detail.get_text(1).strip_edges() == "%s / measured detail" % pair[1])
+		assert(detail.get_parent() == debug._step_rows[label.get_slice(" / ", 0) + " / " + pair[1]])
 		assert(detail.get_text(2) == "6.000" and detail.get_text(5) == "1")
+
+	var power: TreeItem = debug._step_rows["Day 02 / power"]
+	power.collapsed = true
+	host.simulation_timings.record_step("Day 02 / power / network / scan", 2000)
+	host.simulation_timings.record_step("worker / publication / copy", 1000)
+	debug._refresh_metrics()
+	var network: TreeItem = debug._step_rows["Day 02 / power / network"]
+	assert(network.get_parent() == power and power.collapsed)
+	assert(network.get_text(2) == "—", "Expected no total for an unmeasured group")
+	assert(debug._step_rows["Day 02 / power / network / scan"].get_parent() == network)
+	assert(debug._step_rows["worker / publication / copy"].get_parent() == debug._step_rows["worker / publication"])
+	host.simulation_timings.steps.erase("Day 02 / power / network / scan")
+	debug._refresh_metrics()
+	assert(not debug._step_rows.has("Day 02 / power / network"))
+	assert(debug._step_rows["Day 02 / power"] == power and power.collapsed)
 
 	assert(debug._terrain_slider.min_value == 1 and debug._terrain_slider.max_value == 32)
 	debug._terrain_slider.value = 12

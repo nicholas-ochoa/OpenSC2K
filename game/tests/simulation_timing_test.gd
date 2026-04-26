@@ -47,9 +47,16 @@ func _initialize() -> void:
 
 
 func _check_phase_timings(history: SimulationTimingHistory) -> void:
-	for pair in [[1, "power"], [3, "growth"], [19, "traffic"], [20, "water"]]:
+	for pair in [[300, "budget"], [300, "annual_microsim"], [1, "power"],
+		[3, "growth"], [19, "traffic"], [20, "water"], [21, "rci_demand"],
+		[21, "rci_aftermath"], [21, "education_health"], [21, "graphs"], [24, "weather_disaster"]]:
+		history.clear()
 		var city := CityState.from_document(EmptyCityTemplate.create())
 		city.set_age_in_days(pair[0] - 1)
+		city.document.set_misc_u32(BudgetPhase.MISC_AUTO_BUDGET, 1)
+		city.document.set_misc_u32(BudgetPhase.MISC_YEAR_END, 1)
+		city.document.set_misc_u32(EducationHealthPhase.MISC_NORMAL_POPULATION, 1000)
+		city.document.set_misc_u32(RciDemandPhase.ZONE_POPULATION_OFFSET + 4, 100)
 		city.set_building_id(10, 10, 0xcf)
 		city.set_building_id(10, 11, 0xdc)
 		city.set_building_id(10, 12, 0x70)
@@ -58,10 +65,13 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 			city.set_tile_flag(10, y, 0xe0, true)
 
 		var engine := SimulationEngine.new(city, 123, 456, 789)
+		engine.developed_tiles = 3
+		engine.power_usage_percent = 50
+		engine.water_usage_percent = 50
 		var day := engine.advance_day()
 		assert(day.ok)
 		var phase: Dictionary = day.phase_results[pair[1]]
-		assert(phase.timing.steps.size() >= 4)
+		assert(phase.timing.steps.size() >= 3)
 		var total := 0
 
 		for value: int in phase.timing.steps.values():
@@ -74,8 +84,12 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 		history.consume({"day_results": [day]})
 		history.consume({"day_results": [day]})
 
+		var parent_key := "Day %02d / %s" % [posmod(pair[0], 25) + 1, pair[1]]
+		assert(history.steps[parent_key].count == 2, "Phase totals are not counted again when details arrive")
+		assert(history.steps[parent_key].total_usec == day.timing.steps[pair[1]] * 2)
+
 		for label: String in phase.timing.steps:
-			var key := "Day %02d / %s / %s" % [pair[0] + 1, pair[1], label]
+			var key := "Day %02d / %s / %s" % [posmod(pair[0], 25) + 1, pair[1], label]
 			assert(history.steps.has(key), "Phase details retain their own group and displayed day")
 			assert(history.steps[key].count == 2, "Repeated inner calls aggregate once per phase execution")
 			assert(history.steps[key].total_usec == phase.timing.steps[label] * 2)
@@ -85,9 +99,19 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 
 	# Preserve the existing data-map group while accepting other timed phases.
 	history.consume({"day_results": [{"ok": true, "day": 2,
-		"timing": {"work_usec": 500, "steps": {}},
+		"timing": {"work_usec": 500, "steps": {"pollution_terrain_land_value": 450}},
 		"phase_results": {"pollution_terrain_land_value": {"timing": {"steps": {"smoothing": 300}}}}}]})
 	assert(history.steps["Day 03 / data maps / smoothing"].last_usec == 300)
+	assert(history.steps["Day 03 / data maps"].last_usec == 450)
+	# A resumed proposal has a phase total but no separate scheduler step.
+	var proposal_city := CityState.from_document(EmptyCityTemplate.create())
+	var proposal := MilitaryProposalPhase.resolve(proposal_city, true, GameLcgRandom.new(789))
+	assert(proposal.ok and proposal.timing.steps.has("naval site search"))
+	history.consume({"day_results": [{"ok": true, "day": 22,
+		"timing": {"work_usec": proposal.timing.work_usec, "steps": {}},
+		"phase_results": {"military_proposal": proposal}}]})
+	assert(history.steps["Day 23 / military_proposal"].count == 1)
+	assert(history.steps["Day 23 / military_proposal"].last_usec == proposal.timing.work_usec)
 	history.consume({"day_results": [{"ok": false, "day": 1,
 		"timing": {"work_usec": 999, "steps": {"rejected": 999}}}]})
 	assert(not history.steps.has("Day 02 / rejected"))

@@ -128,6 +128,8 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 	if graph_chunk == null or graph_chunk.decoded_payload.size() != 16 * 52 * 4:
 		return {"ok": false, "error": "XGRP is missing or has the wrong size"}
 
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("prepare data")
 	var old_misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var old_buildings: PackedByteArray = building_chunk.decoded_payload.duplicate()
 	var misc := old_misc.duplicate()
@@ -137,7 +139,9 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 	var graphs: PackedByteArray = graph_chunk.decoded_payload
 	var map_changes: Array = []
 
+	span.mark("ecology")
 	_update_random_tree(city, random, buildings, zones, flags, misc, map_changes)
+	span.mark("news decay and selection")
 	var queue_decay := NewsQueue.decay_and_sort(misc)
 
 	if not queue_decay.ok:
@@ -145,11 +149,13 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 
 	var news_items: Array = [{"type": NEWS_JUNK, "argument": 0}]
 	_append_general_news(random, misc, graphs, news_items, map_edge)
+	span.mark("inventions")
 	var invention_index := _release_invention(city, random, misc, news_items)
 
 	if invention_index >= 0:
 		ToolAvailability.rebuild_reward_mask(misc)
 
+	span.mark("weather")
 	var old_trend := _read_u32(misc, MISC_WEATHER_TREND) & 0xff
 
 	if old_trend >= WEATHER_NAMES.size():
@@ -167,11 +173,13 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 	_write_u32(misc, MISC_WEATHER_WIND, new_wind)
 	_write_u32(misc, MISC_WEATHER_RAIN, new_rain)
 	_write_u32(misc, MISC_WEATHER_TREND, new_trend)
+	span.mark("news insertion")
 	var queue_insert := NewsQueue.insert_items(misc, news_items)
 
 	if not queue_insert.ok:
 		return queue_insert
 
+	span.mark("store monthly changes")
 	if not building_chunk.set_decoded_payload(buildings):
 		return {"ok": false, "error": "cannot store the monthly tree update"}
 
@@ -185,6 +193,7 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 
 	return {
 		"ok": true,
+		"timing": span.finish(),
 		"error": "",
 		"season": season,
 		"old_weather_trend": old_trend,

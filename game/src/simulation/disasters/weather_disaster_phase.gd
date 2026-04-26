@@ -111,10 +111,13 @@ static func run(
 	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != city.document.decoded_size("XPLT"):
 		return {"ok": false, "error": "XPLT is missing or has the wrong size"}
 
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("prepare data")
 	var misc: PackedByteArray = misc_chunk.decoded_payload
 	var pollution: PackedByteArray = pollution_chunk.decoded_payload
 	var effective_power := maxi(power_usage_percent, 0)
 	var effective_water := maxi(water_usage_percent, 0)
+	span.mark("city status")
 	var status_index := _status_index(
 		misc,
 		random,
@@ -128,6 +131,7 @@ static func run(
 	if status_index >= 0:
 		news_items.append({"type": NEWS_DEMAND_BASE + status_index, "argument": 0})
 
+	span.mark("disaster selection and location")
 	var selection := _select_disaster(
 		misc, pollution, random, lfsr_random, current_disaster_point, map_edge
 	)
@@ -137,6 +141,7 @@ static func run(
 
 	return {
 		"ok": true,
+		"timing": span.finish(),
 		"error": "",
 		"status_index": status_index,
 		"status_news_type": NEWS_DEMAND_BASE + status_index if status_index >= 0 else -1,

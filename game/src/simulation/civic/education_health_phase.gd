@@ -46,6 +46,8 @@ static func run(city: CityState, random) -> Dictionary:
 	if misc == null or misc.decoded_payload.size() != MISC_SIZE:
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
 
+	var span := SimulationTimingSpan.new(city.simulation_slice)
+	span.mark("prepare data")
 	var population := PackedInt64Array()
 	var education := PackedInt64Array()
 	var life_expectancy := PackedInt64Array()
@@ -70,6 +72,7 @@ static func run(city: CityState, random) -> Dictionary:
 
 		return {
 			"ok": true,
+			"timing": span.finish(),
 			"population": 0,
 			"deaths": 0,
 			"births": 0,
@@ -79,6 +82,7 @@ static func run(city: CityState, random) -> Dictionary:
 			"error": "",
 		}
 
+	span.mark("service capacities")
 	var ordinance_flags := city.document.misc_u32(MISC_ORDINANCES)
 	var health_capacity := int(
 		IntegerMath.div_trunc(int(IntegerMath.div_trunc(_tile_count(city, HOSPITAL_TILE), 9))
@@ -111,6 +115,7 @@ static func run(city: CityState, random) -> Dictionary:
 			IntegerMath.div_trunc(city.document.misc_i32(MISC_BUDGETS), 400)
 		)
 
+	span.mark("mortality and aging")
 	var deaths := _apply_mortality(population, education, life_expectancy, random)
 	var abandoned_population := city.document.misc_u32(MISC_ZONE_POPULATIONS + 7 * 4)
 	var pollution_penalty := int(
@@ -128,6 +133,7 @@ static func run(city: CityState, random) -> Dictionary:
 		random
 	)
 
+	span.mark("births")
 	var fertile_population := 0
 
 	for cohort in range(4, 9):
@@ -150,6 +156,7 @@ static func run(city: CityState, random) -> Dictionary:
 		)
 		population[0] += births
 
+	span.mark("migration")
 	var table_population := _sum(population)
 	var immigrants := 0
 	var emigrants := 0
@@ -166,6 +173,7 @@ static func run(city: CityState, random) -> Dictionary:
 		if not removal.ok:
 			return removal
 
+	span.mark("workforce")
 	var workforce_population := 0
 	var workforce_education := 0
 	var workforce_life_expectancy := 0
@@ -184,6 +192,7 @@ static func run(city: CityState, random) -> Dictionary:
 		workforce_eq = int(IntegerMath.div_trunc(workforce_education, workforce_population))
 		workforce_le = int(IntegerMath.div_trunc(workforce_life_expectancy, workforce_population))
 
+	span.mark("store demographics")
 	var changed: PackedByteArray = misc.decoded_payload.duplicate()
 	_write_tables(changed, population, education, life_expectancy)
 	_write_u32(changed, MISC_WORKFORCE_PERCENT, workforce_percent)
@@ -195,6 +204,7 @@ static func run(city: CityState, random) -> Dictionary:
 
 	return {
 		"ok": true,
+		"timing": span.finish(),
 		"population": _sum(population),
 		"deaths": deaths,
 		"births": births,
