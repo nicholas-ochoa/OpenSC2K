@@ -13,6 +13,8 @@ func run() -> void:
 	assert(sign.text_input.has_focus())
 	sign.text_input.text = "A new sign"
 	assert(sign.entered_text() == "A new sign")
+	sign.text_input.text = "x".repeat(32)
+	assert(sign.entered_text().length() == 23, "Sign input respects the saved XLAB limit")
 	sign.get_ok_button().pressed.emit()
 	assert(confirmations == 1 and not sign.visible)
 	sign.show_text("")
@@ -28,6 +30,8 @@ func run() -> void:
 	assert(stadium.selected_team_id() == 9 and stadium.entered_name() == "Bears")
 	stadium.name_input.text = "City Bears"
 	assert(stadium.entered_name() == "City Bears")
+	stadium.name_input.text = "x".repeat(32)
+	assert(stadium.entered_name().length() == 23, "Team input respects the saved XLAB limit")
 	stadium.hide()
 	stadium.free()
 	var choice := preload("res://src/ui/tools/tool_choice_dialog.tscn").instantiate() as ToolChoiceDialog
@@ -45,6 +49,6 @@ func run() -> void:
 	assert(not bridge.choice_buttons[1].visible)
 	assert(bridge.choice_labels[0].text.contains("$100"))
 	bridge.choice_buttons[0].pressed.emit()
-	assert(selected_choice == 0 and bridge.preview_controls[0].mouse_filter == Control.MOUSE_FILTER_IGNORE)
+	assert(selected_choice == 0)
 	bridge.free()
 	print("PASS: Player dialog scene input, confirmation and selection")

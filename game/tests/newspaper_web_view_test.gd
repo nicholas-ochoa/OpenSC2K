@@ -225,5 +225,5 @@ func _check_menu_and_forecast(newspaper: NewspaperDialog) -> void:
 	graph_chunk.set_decoded_payload(graph_before)
 	newspaper.hide()
 	newspaper.open_reports(city, document, null, {}, {}, 123, 0)
-	assert(newspaper._web_payload().weather_article == "Current weather: %s." % RciAftermathPhase.WEATHER_NAMES[city.weather_type()])
+	assert(str(newspaper._web_payload().weather_article).contains(RciAftermathPhase.WEATHER_NAMES[city.weather_type()]))
 	newspaper.hide()

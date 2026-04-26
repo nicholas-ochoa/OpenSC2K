@@ -28,6 +28,13 @@ func _run() -> void:
 	host.add_child(debug)
 	await process_frame
 	assert(not debug.is_open and not debug._window.visible)
+	debug.toggle()
+	debug._process(0.1)
+	debug._process(0.15)
+	assert(host.queries == 2, "Metrics reuse the current snapshot between refreshes")
+	debug.toggle()
+	debug._process(0.25)
+	assert(host.queries == 2, "Hidden debug UI does not collect metrics")
 	var metrics_tree: Tree = debug._metrics_tree
 	metrics_tree.refresh({"simulation_slices": {"snapshot_usec": 2500, "work": {"parked_usec": 12000}},
 		"render_regions": {"cpu_image_bytes": 1048576}, "no_disasters": false})

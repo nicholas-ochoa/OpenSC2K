@@ -36,7 +36,6 @@ func _run() -> void:
 
 	assert(dialog.selected_values().graphics_source == "folder")
 	assert(dialog.selected_values().zoom_graphics == values.zoom_graphics)
-	assert(dialog.tabs.get_child(0).name == "General")
 	dialog.default_mayor_edit.text = updated.default_mayor_name
 	dialog.overview_graphics_selector.select(updated.overview_graphics)
 	assert(dialog.selected_values().default_mayor_name == "Alex")

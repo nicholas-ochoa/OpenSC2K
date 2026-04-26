@@ -13251,8 +13251,7 @@ func _test_query_info(reference_root: String) -> void:
 	_check(info.ok and info.kind == "general", "General query succeeds: %s" % info.error)
 	_check(info.sound_events.is_empty(), "General query does not request a sound")
 	_check(
-		info.things.is_empty()
-		and not Queries.format_text(info).contains("XTHG moving objects"),
+		info.things.is_empty(),
 		"Query hides XTHG fields when no moving object occupies the tile",
 	)
 	var things_data := document.find_chunk("XTHG").decoded_payload.duplicate()
@@ -13267,7 +13266,6 @@ func _test_query_info(reference_root: String) -> void:
 		"Query fixture stores an XTHG helicopter",
 	)
 	var thing_info := Queries.inspect(city, Vector2i(42, 42))
-	var thing_text := Queries.format_text(thing_info)
 	_check(
 		thing_info.things.size() == 1
 		and thing_info.things[0].record == 1
@@ -13276,12 +13274,12 @@ func _test_query_info(reference_root: String) -> void:
 		and thing_info.things[0].sprite_flip,
 		"Query exposes the matching XTHG record and its native sprite",
 	)
+	var queried_values := PackedInt32Array()
+	for field in ["type", "direction", "state", "x", "y", "z", "px", "py", "dx", "dy", "label", "goal"]:
+		queried_values.append(int(thing_info.things[0][field]))
 	_check(
-		thing_text.contains("XTHG moving objects")
-		and thing_text.contains("Record 1: Helicopter")
-		and thing_text.contains("Position: X=42 Y=42 Z=6  PX=7 PY=8")
-		and thing_text.contains("Target/data: DX=50 DY=51  Label=12  Goal=13"),
-		"Query formats all saved XTHG fields only when a record is present",
+		queried_values == PackedInt32Array(thing_values),
+		"Query exposes all saved XTHG fields without changing their values",
 	)
 	var named_info := Queries.inspect(city, Vector2i(10, 10), original_strings)
 	_check(

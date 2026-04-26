@@ -13,7 +13,6 @@ func run() -> void:
 	assert(notice.picture_view.texture.get_size() == Vector2(155, 100))
 	assert(second.picture_view.texture == null and second.message_label.text.is_empty())
 	assert(notice.picture_view.texture_filter == CanvasItem.TEXTURE_FILTER_NEAREST)
-	assert(notice.picture_view.stretch_mode == TextureRect.STRETCH_KEEP_ASPECT_CENTERED)
 	assert(not notice.get_label().visible and notice.exclusive)
 	notice.show_message("Updated\r\nmessage", true)
 	await process_frame

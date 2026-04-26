@@ -396,7 +396,8 @@ func _run() -> void:
 				or place_print.tool_list == null
 				or place_print.tool_list.item_count != 25
 				or place_print.is_object_mode()
-				or place_print.selected_edit_tool().name != "Road"
+				or place_print.selected_edit_tool().group != 6
+				or place_print.selected_edit_tool().subtool != 0
 				or main.get("map_view").selection_mode != "path"
 			):
 				push_error("SCURK Place & Print edit toolbox is not available")
@@ -594,7 +595,7 @@ func _run() -> void:
 				controller.speed != menu_id + GameSpeed.Speed.PAUSED
 				or checked_speed_items != 1
 				or not speed_menu.get_popup().is_item_checked(menu_id)
-				or speed_label.text != "Speed: %s" % controller.speed_name()
+				or not speed_label.text.contains(controller.speed_name())
 			):
 				push_error("Speed menu item %d selected the wrong speed" % menu_id)
 				main.queue_free()

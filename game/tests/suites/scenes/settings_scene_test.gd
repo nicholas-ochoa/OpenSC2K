@@ -11,6 +11,10 @@ func run() -> void:
 	root.add_child(second)
 	first.default_mayor_edit.text = "Alice"
 	first.music_slider.value = 75
+	first.effects_slider.value = 25
+	first.fullscreen_check.button_pressed = true
+	var values := first.selected_values()
+	assert(values.music_volume == 0.75 and values.effects_volume == 0.25 and values.fullscreen)
 	assert(second.default_mayor_edit.text.is_empty())
 	assert(second.music_slider.value == 0)
 	first.set_loaded_pack("graphics", "Example", "/tmp/example")

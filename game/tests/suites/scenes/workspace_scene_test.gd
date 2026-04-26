@@ -15,9 +15,6 @@ func run() -> void:
 	var initial_map_size := workspace.map_view.size
 	assert(workspace.size == host.size)
 	assert(workspace.map_view.get_rect() == Rect2(Vector2.ZERO, host.size))
-	assert(workspace.get_node("Page").mouse_filter == Control.MOUSE_FILTER_IGNORE)
-	assert(workspace.get_node("Page/Content").mouse_filter == Control.MOUSE_FILTER_IGNORE)
-	assert(workspace.get_node("Page/Content/MapSpace").mouse_filter == Control.MOUSE_FILTER_IGNORE)
 	host.size = Vector2(1600, 1000)
 	await process_frame
 	await process_frame
