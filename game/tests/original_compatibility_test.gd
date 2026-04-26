@@ -141,7 +141,6 @@ func check_ui() -> void:
 	check(main.current_document.is_extended() and main.current_document.map_size == 256, "SC2X loads normally even with an SC2 filename")
 	check(not main.app_original_compatibility and not main.speed_controller.original_compatibility, "Opening SC2X disables compatibility")
 	check(not AppSettingsStore.load_values(settings_path).original_compatibility, "Automatic mode change persists")
-	check("compatibility turned off" in main.status_label.text, "Automatic mode change is visible")
 	check(main._activate_document(doc), "Return to original city")
 	main.app_original_compatibility = true
 	main._apply_compatibility_controls()

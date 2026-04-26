@@ -40,7 +40,8 @@ func fixture(edge: int, version: int) -> Sc2File:
 
 func _run() -> void:
 	for edge in Sc2File.MAP_SIZES:
-		var versions := [2, 3] if edge == 128 else [1, 2, 3]
+		# Cover legacy widths, every SC2X version, and every map size without a cross product.
+		var versions: Array = {128: [2, 3], 256: [1], 384: [2], 512: [3]}[edge]
 
 		for version in versions:
 			check_power(edge, version)

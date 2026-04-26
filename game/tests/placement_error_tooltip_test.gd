@@ -16,15 +16,16 @@ func _run() -> void:
 	root.add_child(map)
 	map.size = Vector2(640, 480)
 	map.set_edit_enabled(true, "point")
+	var reason := "test-placement-rejection"
 	map.placement_error_provider = func(_tile: Vector2i) -> String:
-		return "The site is occupied."
+		return reason
 	var click := InputEventMouseButton.new()
 	click.button_index = MOUSE_BUTTON_LEFT
 	click.position = Vector2(300, 200)
 	click.pressed = true
 	map._handle_mouse_button(click)
 	assert(map.placement_error_popup.visible, "Invalid click must show the reason without a timer")
-	assert(map.placement_error_label.text.contains("The site is occupied."))
+	assert(map.placement_error_label.text.contains(reason), "Forward the provider reason")
 	click.pressed = false
 	map._handle_mouse_button(click)
 	assert(map.placement_error_popup.visible, "Reason must remain after release")

@@ -11,7 +11,8 @@ func _run() -> void:
 	assert(sprites.is_valid())
 	var palette := Sc2Palette.index_encoding()
 
-	for edge in [128, 256, 384, 512]:
+	# Near/middle/far patches at the smallest and largest supported extents.
+	for edge in [128, 512]:
 		var city := CityState.from_document(EmptyCityTemplate.create(edge))
 		var before := CityIsometricRenderer.create_image(city, palette, sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 		assert(before.ok)

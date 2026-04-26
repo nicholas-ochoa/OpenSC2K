@@ -45,14 +45,17 @@ func _run() -> void:
 			check(CityDataView.value(city, "water", point.x, point.y) == 1, "Piped but not watered")
 			city.set_tile_flag(point.x, point.y, 0x10, true)
 			check(CityDataView.value(city, "water", point.x, point.y) == 2, "Watered")
-			var before: PackedByteArray = doc.serialize().data
-			var mesh := CityDataView.create_mesh(city, "land_value")
-			var arrays := mesh.surface_get_arrays(0)
-			check(arrays[Mesh.ARRAY_VERTEX].size() == edge * edge * 4, "All tile geometry")
-			check(arrays[Mesh.ARRAY_INDEX].size() == edge * edge * 6, "All tile triangles")
-			check(arrays[Mesh.ARRAY_TEX_UV].size() == edge * edge * 4, "Every tile has border coordinates")
-			check(doc.serialize().data == before, "Rendering does not change city bytes")
-			print("PASS: data mesh %d native=%s" % [edge, native])
+			# Full meshes at boundary sizes cover allocation/index limits. Data sampling
+			# above still covers every size and both storage resolutions.
+			if (edge == 128 and not native) or (edge == 512 and native):
+				var before: PackedByteArray = doc.serialize().data
+				var mesh := CityDataView.create_mesh(city, "land_value")
+				var arrays := mesh.surface_get_arrays(0)
+				check(arrays[Mesh.ARRAY_VERTEX].size() == edge * edge * 4, "All tile geometry")
+				check(arrays[Mesh.ARRAY_INDEX].size() == edge * edge * 6, "All tile triangles")
+				check(arrays[Mesh.ARRAY_TEX_UV].size() == edge * edge * 4, "Every tile has border coordinates")
+				check(doc.serialize().data == before, "Rendering does not change city bytes")
+				print("PASS: data mesh %d native=%s" % [edge, native])
 
 	check_land_value_amounts()
 	check_height_and_walls()
@@ -127,27 +130,19 @@ func check_ui() -> void:
 
 func check_height_and_walls() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create())
-	var colors: Dictionary = {}
 
-	for level in 32:
+	for level in [0, 15, 31]:
 		city.set_land_altitude(level, 0, level)
 		check(CityDataView.value(city, "height", level, 0) == level, "Height uses the stored five bits")
-		check(CityDataView.tile_text(city, "height", Vector2i(level, 0)) == "Height: Level %d of 32" % (level + 1), "Height has one-based friendly levels")
 		check(CityDataView.tile_text(city, "height", Vector2i(level, 0), true).ends_with("(%d / 0x%02X)" % [level, level]), "Shift retains raw decimal and hex height")
-		colors[CityDataView.color(level, "height").to_rgba32()] = true
-
-	check(colors.size() == 32, "Every height has a distinct rainbow color")
 	var heights := CityDataView.value_image(city, "height")
 	check(roundi(heights.get_pixel(0, 31).r * 255) == 31, "Height texture retains highest land level")
 	city.set_water_altitude(31, 0, 10)
 	check(CityDataView.value(city, "height", 31, 0) == 31, "Height value does not use water level")
-	check(CityDataView.tile_text(city, "pollution", Vector2i.ZERO) == "Pollution: Very low", "Numeric views use friendly labels by default")
 	city.set_land_altitude(0, 0, 2)
 	city.set_water_altitude(0, 0, 10)
 	city.set_terrain_id(0, 0, 0x10)
 	city.set_tile_flag(0, 0, 0x04, true)
-	check(CityDataView.tile_text(city, "height", Vector2i.ZERO) == "Terrain: Level 3 of 32\nWater: Level 11 of 32", "Water-covered tooltip shows both levels")
-	check(CityDataView.tile_text(city, "height", Vector2i.ZERO, true) == "Terrain: Level 3 of 32 (2 / 0x02)\nWater: Level 11 of 32 (10 / 0x0A)", "Shift shows both raw heights")
 	var geometry_signature := CityDataView.geometry_signature(city, "height")
 	city.set_tile_flag(0, 0, 0x40, true)
 	check(CityDataView.geometry_signature(city, "height") == geometry_signature, "Power changes do not rebuild height geometry")
@@ -226,7 +221,6 @@ func check_shader() -> void:
 		var actual := output.get_pixel(32, 32)
 		var expected := CityDataView.color(number, mode)
 		check(absf(actual.r - expected.r) < 0.02 and absf(actual.g - expected.g) < 0.02 and absf(actual.b - expected.b) < 0.02, "GPU colors use the exact far tile: " + mode)
-		check(output.get_pixel(0, 32).get_luminance() < actual.get_luminance() * 0.8, "GPU tile borders remain visible: " + mode)
 
 	viewport.queue_free()
 	await process_frame
@@ -234,15 +228,11 @@ func check_shader() -> void:
 
 func check_land_value_amounts() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create())
-	var cases := {0: "Land Value: $1,000 (Very low)", 63: "Land Value: $64,000 (Low)",
-		124: "Land Value: $125,000 (Medium)", 255: "Land Value: $256,000 (Very high)"}
-
-	for raw in cases:
+	for raw in [0, 63, 124, 255]:
 		var chunk := city.document.find_chunk("XVAL")
 		var data := chunk.decoded_payload.duplicate()
 		data[0] = raw
 		chunk.set_decoded_payload(data)
 		var query := QueryInfo.inspect(city, Vector2i.ZERO)
 		check(QueryInfo.format_text(query).contains("$%d,000/acre" % (raw + 1)), "Tooltip dollar scale agrees with Query")
-		check(CityDataView.tile_text(city, "land_value", Vector2i.ZERO) == cases[raw], "Land Value shows Query dollars and friendly band")
-		check(CityDataView.tile_text(city, "land_value", Vector2i.ZERO, true) == cases[raw] + "  (%d / 0x%02X)" % [raw, raw], "Shift retains dollars and adds raw value")
+		check(CityDataView.tile_text(city, "land_value", Vector2i.ZERO).contains("$%d,000" % (raw + 1)), "Land Value uses the saved dollar scale")

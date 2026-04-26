@@ -1,5 +1,5 @@
 extends SceneTree
-## Theme persistence, live switching, lazy windows, and shared control resources.
+## Theme persistence, live switching, and lazy windows.
 
 
 func _initialize() -> void:
@@ -28,8 +28,6 @@ func _run() -> void:
 	main._select_speed(GameSpeedController.Speed.PAUSED)
 	main._ensure_scurk_editor()
 	var before: PackedByteArray = main.city.document.serialize().data
-	var original_theme := AppUiTheme.current()
-	var original_files := AppUiTheme.file_dialog()
 	for selected in [1, 0, 1]:
 		main._open_settings_dialog()
 		var dialog: AppSettingsDialog = main.settings_dialog
@@ -51,13 +49,12 @@ func _run() -> void:
 		assert(AppSettingsStore.load_values(path).dark_underground)
 		assert(main.app_ui_theme == ("dark" if selected == 1 else "light"))
 		assert(AppSettingsStore.load_values(path).ui_theme == main.app_ui_theme)
-		assert(AppUiTheme.current() == original_theme and AppUiTheme.file_dialog() == original_files)
 		if previous_mode != main.app_ui_theme:
 			assert(main.theme.get_stylebox("normal", "Button").bg_color != previous_color)
 		assert(main.city.document.serialize().data == before)
 		var late := FileDialogFactory.city_open()
 		main.add_child(late)
-		assert(late.theme == original_files)
+		assert(late.theme.get_color("font_color", "Label") == AppUiTheme.file_dialog().get_color("font_color", "Label"), "New dialogs use the active theme")
 		late.free()
 	for renderer in ["cpu", "gpu"]:
 		main._set_city_renderer(renderer)

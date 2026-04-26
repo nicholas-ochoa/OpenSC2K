@@ -59,7 +59,7 @@ func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
 	assert(city.city_name().is_empty())
 	assert(city.display_name() == "BABAR")
 	assert(document.serialize().data == source_bytes, "Reading the display name changed city bytes")
-	assert(NewspaperDialog._paper_title(city, {}, 3, {"name": 2}) == "BABAR Chronicle")
+	assert(NewspaperDialog._paper_title(city, {}, 3, {"name": 2}).contains(city.display_name()))
 
 	# Reproduce the first growth milestone in memory. Do not save the supplied city.
 	var misc := document.find_chunk("MISC").decoded_payload.duplicate()

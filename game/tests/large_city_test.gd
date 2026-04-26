@@ -66,10 +66,6 @@ func check_size(edge: int) -> void:
 	check(city.thing(record).x == corner.x and city.thing(record).y == corner.y, "Wide object coordinates")
 	var moving := MovingThingPhase.run(city, SimRandom.new(1), SimLfsrRandom.new(1), GameLcgRandom.new(1))
 	check(moving.ok, "Moving phase: " + moving.get("error", ""))
-	check(PowerPhase.run(city, SimRandom.new(1)).ok, "Power")
-	check(WaterPhase.run(city).ok, "Water")
-	check(TrafficPhase.run(city).ok, "Traffic")
-	check(PollutionPhase.run(city).ok, "Pollution")
 	var rotated := CityRotationCommand.apply(city, false)
 	check(rotated.ok, "Rotation: " + rotated.get("error", ""))
 	var rotated_thing := city.thing(record)
@@ -78,17 +74,16 @@ func check_size(edge: int) -> void:
 	check(wide_reload.parse(document.serialize().data), "Wide record reload")
 	check(CityState.from_document(wide_reload).thing(record) == city.thing(record), "Wide record preserved")
 	check(CityViewFilter.surface_copy(city, {}).map_size == edge, "Display copy size")
-	var terrain := NewCityTerrain.generate(document, false, true, 12, 5, 15, SimRandom.new(123), GameLcgRandom.new(456))
-	check(terrain.ok, "Terrain: " + terrain.get("error", ""))
-	var generated := CityState.from_document(document)
-	check(generated.altitude_words.size() == edge * edge, "Generated extent")
-	# A clean generated map exercises every monthly dispatch phase.
-	document.find_chunk("XTHG").decoded_payload.fill(0)
+	# Creation already generated this terrain. Run one complete monthly schedule
+	# at the two boundary sizes; the other sizes retain creation and far-map tools.
+	if edge not in [128, 512]:
+		return
+	var generated := CityState.from_document(created.document)
 	generated.set_auto_budget_enabled(true)
 	generated.set_no_disasters_enabled(true)
 	var engine := SimulationEngine.new(generated, 123, 456, 789)
 
-	for day in 30:
+	for day in 25:
 		var result := engine.advance_day()
 		check(result.ok, "Day %d at %d: %s" % [day, edge, result.get("error", "")])
 

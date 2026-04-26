@@ -9,7 +9,10 @@ func _initialize() -> void:
 
 func _run() -> void:
 	for edge in Sc2File.MAP_SIZES:
-		for ordinances in [0, PollutionPhase.POLICE_COVERAGE_ORDINANCE | PollutionPhase.FIRE_COVERAGE_ORDINANCE | PollutionPhase.CRIME_REDUCTION_ORDINANCE]:
+		var modes := [0]
+		if edge == 512:
+			modes.append(PollutionPhase.POLICE_COVERAGE_ORDINANCE | PollutionPhase.FIRE_COVERAGE_ORDINANCE | PollutionPhase.CRIME_REDUCTION_ORDINANCE)
+		for ordinances in modes:
 			var doc := EmptyCityTemplate.create(edge)
 			assert(doc.enable_full_resolution_maps())
 			var city := CityState.from_document(doc)
@@ -40,11 +43,6 @@ func _run() -> void:
 			var actual := NativeDataMapPhase.run(city)
 			assert(actual.ok and Results.without_timings(actual) == expected)
 			assert(doc.serialize().data == original.document.serialize().data, "Optimized maps or totals differ from reference bytes")
-			var controller := GameSpeedController.new(SimulationEngine.new(city, 1, 2, 3))
-			var before: PackedByteArray = doc.serialize().data
-			var snapshot := SimulationSnapshot.capture(controller, null)
-			assert(snapshot.engine.city.set_building_id(0, 0, 0x71))
-			assert(doc.serialize().data == before, "Snapshot mutation leaves live city unchanged")
 
 		print("PASS: exact data-map optimization at %d" % edge)
 

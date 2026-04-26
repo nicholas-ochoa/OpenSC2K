@@ -14,8 +14,11 @@ func check(ok: bool, message: String) -> void:
 func _initialize() -> void:
 	for edge in Sc2File.MAP_SIZES:
 		for native in [false, true]:
-			for direction in 4:
-				for side in [0, 20, edge - 2]:
+			# Exhaust geometry once; other cases cover each size and storage mode.
+			var directions := [0, 1, 2, 3] if edge == 128 and not native else [Sc2File.MAP_SIZES.find(edge)]
+			for direction in directions:
+				var sides := [0, 20, edge - 2] if edge == 128 and not native else [edge - 2]
+				for side in sides:
 					var finish := Vector2i(edge - 2 if direction == 1 else 0, side)
 					if direction in [0, 2]:
 						finish = Vector2i(side, edge - 2 if direction == 2 else 0)

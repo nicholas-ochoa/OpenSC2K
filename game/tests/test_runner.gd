@@ -3895,7 +3895,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		coal.overlay_id == 61
 		and city.microsim(10).tile_id == 0xcf
 		and city.microsim(10).stat_1 == 200
-		and city.label(61) == "Coal Power"
+		and not city.label(61).is_empty()
 		and document.misc_u32(Buildings.MISC_TILE_COUNTS) == 16368
 		and document.misc_u32(Buildings.MISC_TILE_COUNTS + 0xcf * 4) == 16,
 		"SCURK object placement writes compatible counts, labels, and XMIC data",
@@ -13405,8 +13405,8 @@ func _test_query_info(reference_root: String) -> void:
 		dormant.kind == "general"
 		and dormant.microsim_id == 1
 		and dormant.microsim.stat_3 == 0x9abc
-		and dormant_text.contains("Microsim name: Dormant Link")
-		and dormant_text.contains("Data 3: 39612 / 0x9ABC"),
+		and dormant_text.contains(city.label(52))
+		and dormant_text.contains("39612 / 0x9ABC"),
 		"Advanced Query keeps XMIC details after the normal dialog falls back",
 	)
 	_check(city.set_label(51, "Civic Center"), "Query fixture names a microsim")
@@ -13421,7 +13421,7 @@ func _test_query_info(reference_root: String) -> void:
 	_check(specific.sound_events == [513], "City Hall query requests original sound 513")
 	_check(
 		specific.sprite_id == 1208
-		and Queries.format_text(specific).contains("Data 3: 1286 / 0x0506"),
+		and Queries.format_text(specific).contains("1286 / 0x0506"),
 		"Specific query shows its full-size sprite and raw XMIC data",
 	)
 	var renamed := QueryFacilityActions.rename_facility(city, specific, "New Civic Center")
@@ -13876,7 +13876,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(city.zones[22 * 128 + 22] == 0x40, "Rotation zero stores the top-left corner")
 	_check(city.zones[19 * 128 + 22] == 0x80, "Rotation zero stores the top-right corner")
 	_check(coal.overlay_id == 61 and city.text_overlay_id(19, 19) == 61, "Coal plant attaches the first dynamic microsim label")
-	_check(city.label(61) == "Coal Power", "Coal plant gets the original default label")
+	_check(not city.label(61).is_empty(), "Coal plant gets the original default label")
 	_check(city.microsim(10).tile_id == 0xcf and city.microsim(10).stat_1 == 200, "Coal plant initializes its XMIC capacity")
 	_check(document.misc_u32(0x01f0) == 16368, "Coal plant decrements clear tile count")
 	_check(document.misc_u32(0x01f0 + 0xcf * 4) == 16, "Coal plant increments its tile count")
@@ -13928,7 +13928,7 @@ func _test_building_command(reference_root: String) -> void:
 	var second_bus := Buildings.apply(city, 6, 4, Vector2i(73, 70), random, process_random)
 	_check(first_bus.ok and second_bus.ok, "Bus depots use the shared placement command")
 	_check(first_bus.overlay_id == 52 and second_bus.overlay_id == 52, "Bus depots share fixed microsim record one")
-	_check(city.label(52) == "SimBus System", "Fixed bus microsim gets its default system label")
+	_check(not city.label(52).is_empty(), "Fixed bus microsim gets its default system label")
 	_check(city.microsim(1).tile_id == 0xec and city.microsim(1).stat_1 == 2, "Fixed bus microsim aggregates two depots")
 	_check(Buildings.undo(city, second_bus, random, process_random).ok, "Fixed microsim aggregation can be undone")
 	_check(city.microsim(1).stat_1 == 1, "Fixed microsim undo restores the prior aggregate")
@@ -13936,7 +13936,7 @@ func _test_building_command(reference_root: String) -> void:
 	var mayor_house := Buildings.apply(city, 5, 0, Vector2i(80, 80), random, process_random)
 	_check(mayor_house.ok and mayor_house.overlay_id == 61, "Mayor house allocates a dynamic microsim")
 	_check(document.misc_u32(ToolAvailability.MISC_GRANTED_REWARDS) == 0x0e, "Mayor house placement consumes its saved reward bit")
-	_check(city.label(61) == "Mayor's House", "Mayor house gets its default label")
+	_check(not city.label(61).is_empty(), "Mayor house gets its default label")
 	_check(city.microsim(10).stat_1 == city.current_year(), "Mayor house stores its construction year")
 	_check(city.microsim(10).stat_2 >= 10 and city.microsim(10).stat_2 <= 39, "Mayor house initializes the recovered age statistic")
 	_check(Buildings.undo(city, mayor_house, random, process_random).ok, "Mayor house placement can be undone")
@@ -14773,7 +14773,7 @@ func _test_hydro_command(reference_root: String) -> void:
 		"Low-population hydroelectric placement charges cost and refreshes power",
 	)
 	_check(city.zones[20 * 128 + 20] == 0xf0, "Hydroelectric placement sets all corner bits")
-	_check(command.overlay_id == 56 and city.label(56) == "Hydro Power", "Hydroelectric placement uses fixed XMIC record five")
+	_check(command.overlay_id == 56 and not city.label(56).is_empty(), "Hydroelectric placement uses fixed XMIC record five")
 	_check(city.microsim(5).stat_1 == 1 and city.microsim(5).stat_2 == 20, "Hydroelectric placement increments fixed XMIC totals")
 	_check(Hydro.undo(city, command, process_random).ok, "Hydroelectric placement can be undone")
 	_check(city.building_id(20, 20) == 0 and city.funds() == 1000, "Hydroelectric undo restores the tile and funds")

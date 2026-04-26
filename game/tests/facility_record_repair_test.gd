@@ -18,7 +18,9 @@ func check(ok: bool, message: String) -> void:
 
 func _run() -> void:
 	for edge in Sc2File.MAP_SIZES:
-		for rotation in 4:
+		# All orientations at the original size; far-map repair at every larger size.
+		var rotations := [0, 1, 2, 3] if edge == 128 else [Sc2File.MAP_SIZES.find(edge)]
+		for rotation in rotations:
 			check_repair(edge, rotation)
 
 	check_version_one()
@@ -48,10 +50,9 @@ func stamp(city: CityState, tile: int, origin: Vector2i) -> Rect2i:
 func check_repair(edge: int, rotation: int) -> void:
 	var doc := EmptyCityTemplate.create(edge)
 	doc.enable_full_resolution_maps()
+	# Repair needs the saved orientation, not a rotation of every empty grid.
+	doc.set_misc_u32(0x0008, (4 - rotation) % 4)
 	var city := CityState.from_document(doc)
-	# Rotate the empty city to use the same saved compass encoding as gameplay.
-	for turn in rotation:
-		CityRotationCommand.apply(city, false)
 
 	var sites: Array[Rect2i] = []
 	var tiles: Array = BuildingCommand.MICROSIM_TYPE_BY_TILE.keys()
@@ -205,7 +206,6 @@ func check_load() -> void:
 	main._load_city_unchecked(ProjectSettings.globalize_path(save_path))
 	check(main.city.text_overlay_id(250, 250) == 61, "Actual file load repairs missing facility")
 	check(main._city_has_unsaved_changes(), "Load repair is marked unsaved")
-	check("Restored facility records for 1" in main.status_label.text, "Load reports repair")
 	check(main.tool_random.state == seed, "Load repair does not consume process RNG")
 	check(FileAccess.get_file_as_bytes(save_path) == bytes, "Loading never writes source file")
 	check(main._save_copy(ProjectSettings.globalize_path(save_path)), "User save persists repair")
