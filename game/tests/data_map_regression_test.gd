@@ -188,10 +188,14 @@ func check_district(edge: int, native: bool) -> void:
 	check(trip.ok and trip.reached_destination, "Far-map road trip succeeds")
 	var traffic := doc.find_chunk("XTRF").decoded_payload
 
-	for dy in [1, 2, 3]:
-		check(traffic[CityDataGrid.index(traffic, edge, origin.x, origin.y + dy)] == 255, "Traffic saturates at 255")
-
-	check(traffic[0] == 254, "Road trip leaves unrelated traffic unchanged")
+	# The destination is three walking tiles from the first road tile. The trip
+	# stops there; later road tiles are not traversed. In coarse mode adjacent
+	# road tiles can share the same traffic cell.
+	var expected_traffic := PackedByteArray()
+	expected_traffic.resize(traffic.size())
+	expected_traffic.fill(254)
+	expected_traffic[CityDataGrid.index(traffic, edge, origin.x, origin.y + 1)] = 255
+	check(traffic == expected_traffic, "Traversed traffic saturates at 255; all other cells stay unchanged")
 	city.set_zone_id(origin.x, origin.y + 4, 1)
 	trip = TransportTrip.run(city, origin, 1, 2, SimRandom.new(1))
 	check(trip.ok and not trip.reached_destination and doc.find_chunk("XTRF").decoded_payload == traffic, "Failed road trip leaves traffic unchanged")

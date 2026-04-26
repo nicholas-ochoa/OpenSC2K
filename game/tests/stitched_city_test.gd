@@ -1,8 +1,10 @@
 extends SceneTree
 ## Run build_large_city_fixtures.gd first. This test never saves over a fixture.
 
-# Sydney after 300 days on unchanged a21651a, with seeds 123/456/789.
-const LEGACY_YEAR_SHA256 := "c25a3c047ed84b14f279ad34c17b925a1e9d333564d276202a48280db1d68fd2"
+# Sydney after 300 days at 10f181ae, with seeds 123/456/789.
+# A deterministic current-model regression, not proof of Windows parity.
+# The a21651a baseline predates the transport, education, military, and crash fixes.
+const YEAR_SHA256 := "56f7ee574b94d6392ad2eb72167a14d70a34e2f4ce59defaf1cbe3b00373f62e"
 
 
 func _init() -> void:
@@ -95,7 +97,9 @@ func _init() -> void:
 			hash.start(HashingContext.HASH_SHA256)
 			hash.update(saved.data)
 
-			if not _check(hash.finish().hex_encode() == LEGACY_YEAR_SHA256, "legacy simulation output matches unchanged code"):
+			var actual_hash := hash.finish().hex_encode()
+			print("128-map 300-day SHA256: ", actual_hash)
+			if not _check(actual_hash == YEAR_SHA256, "300-day output matches the documented current-model baseline"):
 				return
 
 		var reloaded := Sc2File.new()
