@@ -7,6 +7,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
 	main._open_new_city_dialog()

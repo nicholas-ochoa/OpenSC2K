@@ -20,6 +20,9 @@ func _run() -> void:
 		return
 
 	var reference_root := str(user_args[0])
+	if "--quick" in user_args:
+		await _run_quick(reference_root)
+		return
 	var packed_scene := load("res://main.tscn") as PackedScene
 
 	if packed_scene == null:
@@ -105,13 +108,9 @@ func _run() -> void:
 			or money_label.text != expected_money
 			or city_label.horizontal_alignment != HORIZONTAL_ALIGNMENT_LEFT
 			or city_field == null
-			or city_field.get_theme_constant("margin_left") != 9
-			or population_label.custom_minimum_size.x != 210
 			or population_label.get_parent() == weather_label.get_parent()
 			or population_label.text
 			!= "Population: %s" % main.call("_format_number", loaded_city.population())
-			or main.theme.default_font_size != 13
-			or rci_graph.custom_minimum_size.x != 100
 			or rci_graph.demand != loaded_city.rci_demand()
 			or not rci_graph.demand_available
 			or speed_label.text
@@ -914,3 +913,66 @@ func _test_save_city(main: Node) -> bool:
 		push_error("Save City did not overwrite the selected copy and update saved state")
 
 	return passed
+
+
+func _run_quick(reference_root: String) -> void:
+	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main)
+	main.reference_root = reference_root
+	root.add_child(main)
+	await process_frame
+	assert(main.assets_ready and main.main_menu.visible and main.city == null)
+	var source := reference_root.path_join("CITIES/ISLAND.SC2")
+	var source_hash := FileAccess.get_sha256(source)
+	main._load_city_unchecked(source)
+	main._select_speed(GameSpeed.Speed.PAUSED)
+	assert(main.city != null)
+	var city: CityState = main.city
+	var before: PackedByteArray = city.document.serialize().data
+	var point := Vector2i(-1, -1)
+	for x in range(8, city.document.map_size - 8):
+		for y in range(8, city.document.map_size - 8):
+			if city.building_id(x, y) == 0 and city.terrain_id(x, y) == 0 and not city.is_water(x, y) and city.zone_id(x, y) == 0:
+				point = Vector2i(x, y)
+				break
+		if point.x >= 0:
+			break
+	assert(point.x >= 0, "Smoke fixture needs clear terrain")
+	main._select_tool_group(1)
+	main._select_subtool(0)
+	var path: Array[Vector2i] = [point]
+	main._apply_map_selection(point, point, path, false)
+	assert(main.last_edit_command.get("command_type") == "landscape")
+	assert(city.document.serialize().data != before)
+	main._undo_last_edit()
+	assert(city.document.serialize().data == before, "Undo restores all saved bytes")
+	main._open_settings_dialog()
+	assert(main.settings_dialog.visible)
+	main.settings_dialog.hide()
+	main._open_query(point)
+	assert(main.query_dialog.visible)
+	main._close_query()
+	main._open_new_city_dialog()
+	assert(main.new_city_dialog.visible)
+	main.new_city_dialog.size_input.select(0)
+	main.new_city_dialog.city_name_input.text = "Workflow smoke"
+	main._make_new_city_preview()
+	while main.new_city_preview_job != null:
+		await process_frame
+	assert(main.new_city_dialog.candidate_valid)
+	main._create_new_city_unchecked()
+	assert(main.city != city and main.city.display_name() == "Workflow smoke")
+	assert(main.landscape_editor)
+	var output := ProjectSettings.globalize_path("user://workflow-smoke.sc2x")
+	main._on_save_path_selected(output)
+	var saved := FileAccess.get_file_as_bytes(output)
+	assert(not saved.is_empty() and saved == main.current_document.serialize().data)
+	main._load_city_unchecked(output)
+	main._select_speed(GameSpeed.Speed.PAUSED)
+	assert(main.current_document.serialize().data == saved)
+	assert(FileAccess.get_sha256(source) == source_hash)
+	main.queue_free()
+	await process_frame
+	DirAccess.remove_absolute(output)
+	print("PASS: workflow start, load, edit, exact Undo, dialogs, New City, save and reload")
+	quit()

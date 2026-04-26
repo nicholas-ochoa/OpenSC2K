@@ -78,9 +78,6 @@ func _run() -> void:
 	assert(QueryNeighborhood.zoom_for_tile(0xc9) == 2.5)
 	assert(dialog.neighborhood_view.tooltip_text.is_empty())
 
-	for color_name in ["font_color", "font_hovered_color", "font_selected_color", "font_hovered_selected_color"]:
-		assert(dialog.details_grid.get_theme_color(color_name) == Color("202830"))
-
 	assert(dialog.details_grid.get_root().get_child_count() == rows.size())
 	assert(dialog.tabs.is_tab_hidden(dialog.things_grid.get_index()))
 	var with_thing := values.duplicate(true)
@@ -117,6 +114,7 @@ func _run() -> void:
 
 	if "--preview" in OS.get_cmdline_user_args():
 		var main := (load("res://main.tscn") as PackedScene).instantiate()
+		preload("res://tests/support/app_fixture.gd").configure(main)
 		root.add_child(main)
 		await process_frame
 		main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))

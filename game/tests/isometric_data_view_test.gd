@@ -64,6 +64,7 @@ func _run() -> void:
 
 func check_ui() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
 	var doc := EmptyCityTemplate.create()

@@ -39,7 +39,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
-	main.app_settings_path = "/tmp/city-demolish-paint-test.cfg"
+	main.app_settings_path = "user://city-demolish-paint-test.cfg"
 	root.add_child(main)
 	await process_frame
 	for edge in [128, 256, 384, 512]:

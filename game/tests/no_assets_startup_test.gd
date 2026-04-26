@@ -11,7 +11,7 @@ func run() -> void:
 	for kind in ["graphics", "sound", "music"]:
 		assert(MediaPack.default_folder(kind) == ProjectSettings.globalize_path("user://packs").path_join(kind))
 
-	OS.set_environment("OPENSC2K_GRAPHICS_PACK", "/tmp/no-city-assets")
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-assets"))
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
 	main.app_settings_path = "user://no-assets-test.cfg"
 	root.add_child(main)

@@ -26,6 +26,7 @@ func _run() -> void:
 		assert(_u32_at(scurk, binding[0]) == binding[1] and _u32_at(scurk, binding[2]) == binding[3])
 
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
 	var desktop: CityDesktopPresentation = main.desktop_presentation

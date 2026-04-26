@@ -36,7 +36,8 @@ func _motion(map: CityMapControl, tile: Vector2i, shift := false) -> void:
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.app_settings_path = "/tmp/city-nature-paint-test.cfg"
+	preload("res://tests/support/app_fixture.gd").configure(main)
+	main.app_settings_path = "user://city-nature-paint-test.cfg"
 	root.add_child(main)
 	await process_frame
 	for edge in [128, 256, 384, 512]:

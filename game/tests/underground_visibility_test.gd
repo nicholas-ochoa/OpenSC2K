@@ -65,7 +65,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.app_settings_path = "/tmp/opensc2k-underground-visibility-test.cfg"
+	main.app_settings_path = "user://opensc2k-underground-visibility-test.cfg"
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame

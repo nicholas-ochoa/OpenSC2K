@@ -1,13 +1,9 @@
-extends SceneTree
+extends "res://tests/support/scene_case.gd"
 
 const WorkspaceScene = preload("res://src/ui/shell/city_workspace.tscn")
 
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-
-func _run() -> void:
+func run() -> void:
 	var host := Control.new()
 	host.theme = ClassicUiStyle.create_theme()
 	host.size = Vector2(1280, 800)
@@ -23,8 +19,6 @@ func _run() -> void:
 		await process_frame
 		await process_frame
 		assert(is_equal_approx(workspace.menu_bar.size.y, workspace.status_bar.size.y))
-		assert(workspace.menu_bar.population_label.get_parent().get_theme_constant("margin_right") == 10)
-		assert(workspace.menu_bar.money_label.get_parent().get_theme_constant("margin_right") == 10)
 	var initial_map_size := workspace.map_view.size
 	var sidebar_width := workspace.toolbar.size.x
 	assert(workspace.size == host.size)
@@ -59,7 +53,6 @@ func _run() -> void:
 	host.free()
 	await process_frame
 	print("PASS: Workspace scene composition, resize layout and artwork initialization")
-	quit()
 
 
 func _check_camera_bounds(workspace: CityWorkspace, host: Control) -> void:

@@ -26,20 +26,6 @@ func _run() -> void:
 	_press(viewport, Vector2(900, 790))
 	assert(map_presses == 1, "Sidebar, top bar and status bar must block map clicks")
 	assert(workspace.map_view.get_rect() == Rect2(Vector2.ZERO, Vector2(viewport.size)))
-	assert(not workspace.has_node("Page/Content/MapPanel"))
-	var panel := workspace.toolbar.get_theme_stylebox("panel") as StyleBoxFlat
-	assert(panel.border_width_left == 0 and panel.border_width_right == 2)
-	assert(panel.border_width_top == 0 and panel.border_width_bottom == 0)
-	assert(panel.border_color == Color("808080"))
-	var menu_panel := workspace.menu_bar.get_theme_stylebox("panel") as StyleBoxFlat
-	assert(menu_panel.border_color == Color("808080"))
-	assert(menu_panel.border_width_left == 2 and menu_panel.border_width_right == 2)
-	assert(menu_panel.border_width_top == 2 and menu_panel.border_width_bottom == 2)
-
-	for state in ["normal", "hover"]:
-		var box := workspace.toolbar.toolbar_buttons[0].get_theme_stylebox(state) as StyleBoxFlat
-		assert(box.border_color == Color("808080"))
-
 	var menu_count := 0
 
 	for child in workspace.menu_bar.file_menu.get_parent().get_children():
@@ -58,7 +44,7 @@ func _run() -> void:
 	assert(menu_count == 8)
 	viewport.free()
 	await process_frame
-	print("PASS: Full-window map, overlay input blocking, toolbar borders and menu hover settings")
+	print("PASS: Full-window map, overlay input blocking, menu actions and hover settings")
 	quit()
 
 

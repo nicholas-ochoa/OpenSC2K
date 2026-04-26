@@ -1,11 +1,7 @@
-extends SceneTree
+extends "res://tests/support/scene_case.gd"
 
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-
-func _run() -> void:
+func run() -> void:
 	var dialog := preload("res://src/ui/startup/scenario_intro_dialog.tscn").instantiate() as ScenarioIntroDialog
 	root.add_child(dialog)
 	var picture := Image.create(260, 260, false, Image.FORMAT_RGB8)
@@ -22,4 +18,3 @@ func _run() -> void:
 	assert(not dialog.visible)
 	dialog.free()
 	print("PASS: Scenario scene ownership, briefing, missing image and Begin Scenario")
-	quit()

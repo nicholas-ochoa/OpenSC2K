@@ -1,11 +1,7 @@
-extends SceneTree
+extends "res://tests/support/scene_case.gd"
 
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-
-func _run() -> void:
+func run() -> void:
 	var scene := preload("res://src/ui/settings/about_dialog.tscn")
 	var dialog := scene.instantiate() as AboutDialog
 	var second := scene.instantiate() as AboutDialog
@@ -108,4 +104,3 @@ func _run() -> void:
 	dialog.free()
 	second.free()
 	print("PASS: About native sprite composition, source preservation, typography, notices, missing assets, themes, viewport limits and close")
-	quit()

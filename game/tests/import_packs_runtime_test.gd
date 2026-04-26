@@ -6,7 +6,7 @@ func _initialize() -> void:
 
 
 func run() -> void:
-	OS.set_environment("OPENSC2K_GRAPHICS_PACK", "/tmp/no-city-assets")
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-assets"))
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
 	main.app_settings_path = "user://import-runtime-test.cfg"
 	root.add_child(main)

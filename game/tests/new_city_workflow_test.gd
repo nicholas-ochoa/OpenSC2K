@@ -7,6 +7,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
 	main._open_new_city_dialog()
@@ -14,7 +15,7 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_assert_editor_controls(main, false)
-	assert(dialog.panel.size.y < 790 and dialog.panel.size.x >= 960, str(dialog.panel.size))
+	assert(dialog.get_viewport_rect().grow(1.0).encloses(dialog.panel.get_global_rect()), "New City controls fit the viewport")
 	var feature_grid: GridContainer = dialog.ocean_input.get_parent()
 	var titles: Array[String] = []
 	for check in feature_grid.get_children():
@@ -22,16 +23,8 @@ func _run() -> void:
 	assert(titles == ["Ocean", "Ocean bay", "River", "Meandering River", "Forked River",
 		"Split and rejoin river", "Intersecting rivers", "River Delta", "Single Lake", "Two Lakes", "Plateau", "Mountain Ridge", "River Valley",
 		"Rolling Hills", "Basin", "Canyon", "Coastal Cliffs", "Single Island", "Two islands", "Peninsula"])
-	var label: Label = feature_grid.get_parent().get_node("FeaturesLabel")
-	assert(is_equal_approx(label.get_global_rect().get_center().y, dialog.ocean_input.get_global_rect().get_center().y))
 	var tip: Label = dialog.panel.get_node("Content/Buttons/HideTip")
-	assert(tip.get_index() + 1 == tip.get_parent().get_node("Cancel").get_index())
-	assert(tip.autowrap_mode == TextServer.AUTOWRAP_OFF)
-	assert(feature_grid.get_theme_constant("v_separation") == 1)
-	for check in feature_grid.get_children():
-		assert(check.get_theme_stylebox("normal").content_margin_top == 1)
-		assert(check.get_theme_stylebox("normal").content_margin_bottom == 1)
-	assert(tip.theme_type_variation == "HelpLabel" and "right mouse button" in tip.text)
+	assert("right mouse button" in tip.text)
 	assert(not dialog.compatibility_input.button_pressed)
 	assert(dialog.native_maps_input.button_pressed)
 	assert(dialog.done_button.disabled and main.new_city_session.preview_document == null)

@@ -110,6 +110,7 @@ const SequenceModuloRandom = TestRandoms.SequenceModuloRandom
 
 var failures := 0
 var checks := 0
+var selected_domains := PackedStringArray()
 
 
 func _init() -> void:
@@ -119,79 +120,153 @@ func _init() -> void:
 	if not arguments.is_empty():
 		reference_root = arguments[0]
 
+	for argument in arguments.slice(1):
+		if argument not in ["formats", "simulation", "tools", "rendering", "scurk", "ui", "audio"]:
+			push_error("Unknown core domain: " + argument)
+			quit(1)
+			return
+		selected_domains.append(argument)
+
 	var audio_tests := AudioTests.new(Callable(self, "_check"))
 	var information_window_tests := InformationWindowTests.new(
 		Callable(self, "_check")
 	)
 	var ui_shell_tests := UiShellTests.new(Callable(self, "_check"))
 
-	_test_rle()
-	_test_invalid_rle()
-	_test_original_game_installer(reference_root)
-	_test_palette_and_minimap(reference_root)
-	_test_sprite_archives(reference_root)
-	_test_scurk_mif(reference_root)
-	_test_reference_corpus(reference_root)
-	_test_city_options(reference_root)
-	audio_tests.test_music(reference_root)
-	ui_shell_tests.test_shell_controls()
-	ui_shell_tests.test_rci_status_control()
-	_test_scenarios(reference_root)
-	_test_simulation_clock()
-	_test_random_and_power(reference_root)
-	_test_water(reference_root)
-	_test_traffic(reference_root)
-	_test_pollution(reference_root)
-	_test_graph_history(reference_root)
-	_test_rci_demand(reference_root)
-	_test_news_queue(reference_root)
-	_test_newspaper_text(reference_root)
-	_test_rci_aftermath(reference_root)
-	_test_weather_disaster_phase(reference_root)
-	_test_simnation(reference_root)
-	_test_industries(reference_root)
-	_test_education_health(reference_root)
-	information_window_tests.run(reference_root)
-	_test_month_start(reference_root)
-	_test_city_value_phase(reference_root)
-	_test_bond_command(reference_root)
-	_test_budget_phase(reference_root)
-	_test_milestone_phase(reference_root)
-	_test_military_proposal_phase(reference_root)
-	_test_disaster_start_phase(reference_root)
-	_test_disaster_map_phase(reference_root)
-	_test_annual_microsim_phase(reference_root)
-	_test_annual_service_microsim_phase(reference_root)
-	_test_annual_special_microsim_phase(reference_root)
-	_test_arcology_launch_phase(reference_root)
-	_test_mayor_approval_phase(reference_root)
-	_test_transport_trip(reference_root)
-	_test_growth_phase(reference_root)
-	_test_moving_thing_phase(reference_root)
-	_test_simulation_engine(reference_root)
-	_test_game_speed_controller(reference_root)
-	_test_modified_save(reference_root)
-	_test_new_city_terrain(reference_root)
-	_test_new_city_setup(reference_root)
-	_test_map_edits(reference_root)
-	_test_tool_catalog()
-	audio_tests.test_sound_rules()
-	_test_tool_availability(reference_root)
-	_test_zone_command(reference_root)
-	_test_sign_command(reference_root)
-	_test_query_info(reference_root)
-	_test_landscape_command(reference_root)
-	_test_building_command(reference_root)
-	_test_network_command(reference_root)
-	_test_hydro_command(reference_root)
-	_test_subway_to_rail_command(reference_root)
-	_test_onramp_command(reference_root)
-	_test_tunnel_command(reference_root)
-	_test_highway_command(reference_root)
-	_test_demolish_command(reference_root)
-	_test_terrain_command(reference_root)
-	_test_dispatch_command(reference_root)
-	_test_city_rotation(reference_root)
+	if _selected("formats"):
+		_test_rle()
+	if _selected("formats"):
+		_test_invalid_rle()
+	if _selected("formats"):
+		_test_original_game_installer(reference_root)
+	if _selected("rendering"):
+		_test_palette_and_minimap(reference_root)
+	if _selected("rendering"):
+		_test_sprite_archives(reference_root)
+	if _selected("scurk"):
+		_test_scurk_mif(reference_root)
+	if _selected("formats"):
+		_test_reference_corpus(reference_root)
+	if _selected("formats"):
+		_test_city_options(reference_root)
+	if _selected("audio"):
+		audio_tests.test_music(reference_root)
+	if _selected("ui"):
+		ui_shell_tests.test_shell_controls()
+	if _selected("ui"):
+		ui_shell_tests.test_rci_status_control()
+	if _selected("formats"):
+		_test_scenarios(reference_root)
+	if _selected("simulation"):
+		_test_simulation_clock()
+	if _selected("simulation"):
+		_test_random_and_power(reference_root)
+	if _selected("simulation"):
+		_test_water(reference_root)
+	if _selected("simulation"):
+		_test_traffic(reference_root)
+	if _selected("simulation"):
+		_test_pollution(reference_root)
+	if _selected("simulation"):
+		_test_graph_history(reference_root)
+	if _selected("simulation"):
+		_test_rci_demand(reference_root)
+	if _selected("simulation"):
+		_test_news_queue(reference_root)
+	if _selected("simulation"):
+		_test_newspaper_text(reference_root)
+	if _selected("simulation"):
+		_test_rci_aftermath(reference_root)
+	if _selected("simulation"):
+		_test_weather_disaster_phase(reference_root)
+	if _selected("simulation"):
+		_test_simnation(reference_root)
+	if _selected("simulation"):
+		_test_industries(reference_root)
+	if _selected("simulation"):
+		_test_education_health(reference_root)
+	if _selected("ui"):
+		information_window_tests.run(reference_root)
+	if _selected("simulation"):
+		_test_month_start(reference_root)
+	if _selected("simulation"):
+		_test_city_value_phase(reference_root)
+	if _selected("tools"):
+		_test_bond_command(reference_root)
+	if _selected("simulation"):
+		_test_budget_phase(reference_root)
+	if _selected("simulation"):
+		_test_milestone_phase(reference_root)
+	if _selected("simulation"):
+		_test_military_proposal_phase(reference_root)
+	if _selected("simulation"):
+		_test_disaster_start_phase(reference_root)
+	if _selected("simulation"):
+		_test_disaster_map_phase(reference_root)
+	if _selected("simulation"):
+		_test_annual_microsim_phase(reference_root)
+	if _selected("simulation"):
+		_test_annual_service_microsim_phase(reference_root)
+	if _selected("simulation"):
+		_test_annual_special_microsim_phase(reference_root)
+	if _selected("simulation"):
+		_test_arcology_launch_phase(reference_root)
+	if _selected("simulation"):
+		_test_mayor_approval_phase(reference_root)
+	if _selected("simulation"):
+		_test_transport_trip(reference_root)
+	if _selected("simulation"):
+		_test_growth_phase(reference_root)
+	if _selected("simulation"):
+		_test_moving_thing_phase(reference_root)
+	if _selected("simulation"):
+		_test_simulation_engine(reference_root)
+	if _selected("simulation"):
+		_test_game_speed_controller(reference_root)
+	if _selected("formats"):
+		_test_modified_save(reference_root)
+	if _selected("tools"):
+		_test_new_city_terrain(reference_root)
+	if _selected("tools"):
+		_test_new_city_setup(reference_root)
+	if _selected("tools"):
+		_test_map_edits(reference_root)
+	if _selected("tools"):
+		_test_tool_catalog()
+	if _selected("audio"):
+		audio_tests.test_sound_rules()
+	if _selected("tools"):
+		_test_tool_availability(reference_root)
+	if _selected("tools"):
+		_test_zone_command(reference_root)
+	if _selected("tools"):
+		_test_sign_command(reference_root)
+	if _selected("tools"):
+		_test_query_info(reference_root)
+	if _selected("tools"):
+		_test_landscape_command(reference_root)
+	if _selected("tools"):
+		_test_building_command(reference_root)
+	if _selected("tools"):
+		_test_network_command(reference_root)
+	if _selected("tools"):
+		_test_hydro_command(reference_root)
+	if _selected("tools"):
+		_test_subway_to_rail_command(reference_root)
+	if _selected("tools"):
+		_test_onramp_command(reference_root)
+	if _selected("tools"):
+		_test_tunnel_command(reference_root)
+	if _selected("tools"):
+		_test_highway_command(reference_root)
+	if _selected("tools"):
+		_test_demolish_command(reference_root)
+	if _selected("tools"):
+		_test_terrain_command(reference_root)
+	if _selected("tools"):
+		_test_dispatch_command(reference_root)
+	if _selected("tools"):
+		_test_city_rotation(reference_root)
 
 	if failures == 0:
 		print("PASS: %d checks" % checks)
@@ -199,6 +274,10 @@ func _init() -> void:
 	else:
 		printerr("FAIL: %d of %d checks failed" % [failures, checks])
 		quit(1)
+
+
+func _selected(domain: String) -> bool:
+	return selected_domains.is_empty() or domain in selected_domains
 
 
 func _test_rle() -> void:
@@ -4199,7 +4278,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		and is_equal_approx(monochrome_sample.g, monochrome_sample.b),
 		"SCURK printable city output supports black-and-white pages",
 	)
-	var city_bmp_path := "/tmp/open-sc2k-test-scurk-place-print-city.BMP"
+	var city_bmp_path := ProjectSettings.globalize_path("user://test-scurk-place-print-city.BMP")
 	var city_bmp := ScurkOutput.save_small_bmp(
 		city_bmp_path,
 		city,
@@ -4220,7 +4299,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 			== IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_SMALL).y,
 		"SCURK Place & Print exports the complete small city as an indexed BMP",
 	)
-	var city_pdf_path := "/tmp/open-sc2k-test-scurk-place-print-city.PDF"
+	var city_pdf_path := ProjectSettings.globalize_path("user://test-scurk-place-print-city.PDF")
 	var city_pdf := ScurkOutput.save_pdf(
 		city_pdf_path, city, output_palette, output_sprites, output_options
 	)

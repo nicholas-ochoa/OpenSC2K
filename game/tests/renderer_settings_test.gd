@@ -21,6 +21,7 @@ func _run() -> void:
 	assert(dialog.selected_values().city_renderer == "gpu")
 	dialog.free()
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)

@@ -14,6 +14,7 @@ func check(ok: bool, message: String) -> void:
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
 	check(main.new_city_dialog.native_maps_input.button_pressed, "New City defaults to per-tile maps")

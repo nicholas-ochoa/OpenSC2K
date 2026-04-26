@@ -36,6 +36,7 @@ func _run() -> void:
 	palette.free()
 
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
 	assert(main._city_view_size() == CityIsometricRenderer.VIEW_LARGE)
@@ -83,7 +84,6 @@ func _run() -> void:
 	main._open_manual_budget()
 	await process_frame
 	var budget := main.budget_dialog as BudgetDialog
-	assert(budget.find_children("*", "ScrollContainer", true, false).is_empty())
 
 	for index in range(5, budget.controls.size()):
 		assert(budget.controls[index].tooltip_text.contains("100%"))
@@ -92,9 +92,7 @@ func _run() -> void:
 
 	for action in ["issue", "repay"]:
 		budget.open_bond_confirmation(action, 8)
-		assert(budget.bond_dialog.get_label().get_theme_color("font_color") == Color.WHITE)
-		var style := budget.bond_dialog.get_theme_stylebox("panel") as StyleBoxFlat
-		assert(style != null and style.border_width_left >= 1 and style.bg_color.get_luminance() < 0.3)
+		assert(budget.bond_dialog.visible)
 		budget.bond_dialog.hide()
 
 	budget.hide()

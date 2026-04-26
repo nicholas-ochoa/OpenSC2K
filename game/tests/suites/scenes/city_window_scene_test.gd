@@ -1,11 +1,7 @@
-extends SceneTree
+extends "res://tests/support/scene_case.gd"
 
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-
-func _run() -> void:
+func run() -> void:
 	var scene := preload("res://src/ui/city_windows/city_population_window.tscn")
 	var first := scene.instantiate() as CityPopulationWindow
 	var second := scene.instantiate() as CityPopulationWindow
@@ -51,4 +47,3 @@ func _run() -> void:
 	assert(budget.bond_dialog.get_ok_button().text == "Yes" and budget.bond_dialog.get_cancel_button().text == "No")
 	budget.free()
 	print("PASS: City window scene controls, independent selections and close")
-	quit()

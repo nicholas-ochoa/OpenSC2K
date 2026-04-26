@@ -1,11 +1,7 @@
-extends SceneTree
+extends "res://tests/support/scene_case.gd"
 
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-
-func _run() -> void:
+func run() -> void:
 	var scene := preload("res://src/ui/shared/picture_notice_dialog.tscn")
 	var notice := scene.instantiate() as PictureNoticeDialog
 	var second := scene.instantiate() as PictureNoticeDialog
@@ -31,4 +27,3 @@ func _run() -> void:
 	notice.free()
 	second.free()
 	print("PASS: Picture notice scene ownership, isolation, text, image sizing and close")
-	quit()

@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tests/support/scene_case.gd"
 
 const SidebarScene = preload("res://src/ui/shell/city_toolbar.tscn")
 var clicks := 0
@@ -7,11 +7,7 @@ var rotations: Array[bool] = []
 var requested_groups: Array[int] = []
 
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-
-func _run() -> void:
+func run() -> void:
 	var first := SidebarScene.instantiate() as CityToolbar
 	var second := SidebarScene.instantiate() as CityToolbar
 	assert(first.get_node("%CityView").owner == first)
@@ -74,4 +70,3 @@ func _run() -> void:
 	second.free()
 	await process_frame
 	print("PASS: Sidebar scene ownership, independent groups, dynamic buttons and signals")
-	quit()

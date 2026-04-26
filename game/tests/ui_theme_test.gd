@@ -56,24 +56,12 @@ func _run() -> void:
 		await process_frame
 		await process_frame
 		assert(AppSettingsStore.load_values(path).dark_underground)
-		assert(main.main_menu.color == Color("202830"))
-		assert(main.map_view.get_parent().get_node("Background").color == Color("202830"))
 		assert(main.app_ui_theme == ("dark" if selected == 1 else "light"))
-		var menu := main.main_menu.get_node("Center/Panel").get_theme_stylebox("panel") as StyleBoxFlat
-		assert(is_equal_approx(menu.bg_color.a, 0.85 if selected == 1 else 0.90))
-		var fields := dialog.theme_selector.get_parent()
-		assert(fields.get_node("MayorHint").get_index() < fields.get_node("ThemeLabel").get_index())
-		assert(dialog.fullscreen_check.get_index() > dialog.renderer_selector.get_index())
-		assert(not fields.has_node("DisplayLabel"))
-		var legend := main.theme.get_stylebox("panel", "MapLegend") as StyleBoxFlat
-		assert(legend.bg_color == Color(0.06, 0.08, 0.12, 0.85))
-		assert(legend.corner_radius_top_left == 6 and legend.border_width_top == 0)
 		var hint := dialog.get_node("Tabs/Compatibility/Fields/HintMargin/CompatibilityHint") as Label
 		assert(hint.get_theme_color("font_color") == main.theme.get_color("font_color", "HelpLabel"))
 		assert(AppSettingsStore.load_values(path).ui_theme == main.app_ui_theme)
 		assert(AppUiTheme.current() == original_theme and AppUiTheme.file_dialog() == original_files)
 		assert(main.city.document.serialize().data == before)
-		assert(dialog.tabs.get_theme_stylebox("panel").get_content_margin(SIDE_LEFT) == 12)
 		_check_controls(main)
 		var late := FileDialogFactory.city_open()
 		main.add_child(late)

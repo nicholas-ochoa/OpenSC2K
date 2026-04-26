@@ -1,14 +1,10 @@
-extends SceneTree
+extends "res://tests/support/scene_case.gd"
 
 var confirmations := 0
 var selected_choice := -1
 
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-
-func _run() -> void:
+func run() -> void:
 	var sign := preload("res://src/ui/tools/city_sign_dialog.tscn").instantiate() as CitySignDialog
 	root.add_child(sign)
 	sign.confirmed.connect(func() -> void: confirmations += 1)
@@ -52,4 +48,3 @@ func _run() -> void:
 	assert(selected_choice == 0 and bridge.preview_controls[0].mouse_filter == Control.MOUSE_FILTER_IGNORE)
 	bridge.free()
 	print("PASS: Player dialog scene input, confirmation and ownership")
-	quit()

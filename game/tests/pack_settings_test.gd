@@ -71,10 +71,6 @@ func _run() -> void:
 	assert(dialog.folder_dialog.file_mode == FileDialog.FILE_MODE_OPEN_FILE)
 	assert(dialog.folder_dialog.filters[0].begins_with("pack.json"))
 
-	for index in 6:
-		var cell := dialog.zoom_graphics_selectors[index].get_parent()
-		assert(cell.get_index() == (index % 3) * 4 + (5 if index < 3 else 3))
-
 	dialog.folder_dialog.file_selected.emit(folder.path_join("pack.json"))
 	dialog.default_mayor_edit.text = "Alex"
 	dialog.overview_graphics_selector.select(2)

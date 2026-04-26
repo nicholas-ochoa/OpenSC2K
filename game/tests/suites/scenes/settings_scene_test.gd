@@ -1,14 +1,10 @@
-extends SceneTree
+extends "res://tests/support/scene_case.gd"
 
 const SettingsScene = preload("res://src/ui/settings/app_settings_dialog.tscn")
 var import_requests := 0
 
 
-func _initialize() -> void:
-	call_deferred("_run")
-
-
-func _run() -> void:
+func run() -> void:
 	var first := SettingsScene.instantiate() as AppSettingsDialog
 	var second := SettingsScene.instantiate() as AppSettingsDialog
 	# Create fixed controls before _ready so they can be edited in the scene.
@@ -42,4 +38,3 @@ func _run() -> void:
 	second.free()
 	await process_frame
 	print("PASS: Settings scene ownership, independent instances, and signal bindings")
-	quit()
