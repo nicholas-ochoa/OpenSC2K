@@ -12,6 +12,9 @@ const STATES := {
 	16: {0: "Pursuing target", 1: "Avoiding collision", 2: "Moving onward"},
 }
 const FIELDS := ["type", "direction", "state", "x", "y", "z", "px", "py", "dx", "dy", "label", "goal"]
+# debug table column order; these fields show their translation instead of the stored number
+const COLUMNS := ["type", "state", "direction", "goal", "x", "y", "z", "px", "py", "dx", "dy", "label"]
+const TRANSLATED := ["type", "state", "direction", "goal", "label"]
 
 
 static func type_name(value: int) -> String:
@@ -146,9 +149,30 @@ static func fields(record: Dictionary, city: CityState) -> Array[Dictionary]:
 	return result
 
 
-static func numeric(value: int, translation: String) -> String:
-	var summary := "Unused" if translation.begins_with("Unused") else translation.replace("; ", "\n")
-	return "%s\n%d / 0x%02X" % [summary, value, value]
+# one-line cells for the debug table: translated values, then "number / hex" for the child row
+static func table_cells(id: int, record: Dictionary, city: CityState) -> Dictionary:
+	var by_name := {}
+
+	for field in fields(record, city):
+		by_name[field.name] = field
+
+	var cells: Array[String] = ["Object %d" % id]
+	var raw: Array[String] = ["Stored values"]
+	var tips: Array[String] = ["XTHG record %d" % id]
+
+	for key: String in COLUMNS:
+		var field: Dictionary = by_name[key]
+		var text: String = field.value
+
+		if key in TRANSLATED:
+			text = "Unused" if field.translation.begins_with("Unused") else field.translation
+
+		cells.append(text)
+		raw.append("%s / %s" % [field.value, field.raw])
+		var tip := "%s: %s\n%s" % [key, field.detail, raw[-1]]
+		tips.append(tip if field.translation.is_empty() else "%s\n%s" % [tip, field.translation])
+
+	return {"cells": cells, "raw": raw, "tooltips": tips}
 
 
 static func _target(id: int, city: CityState) -> String:

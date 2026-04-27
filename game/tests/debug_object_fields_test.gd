@@ -38,10 +38,16 @@ func _run() -> void:
 	things.decoded_payload[14] = 0x53
 	panel.update_records(DebugCityTables.collect("Objects", city))
 	var row: TreeItem = panel.rows["1"]
-	assert(row.get_text(1).contains("1 / 0x01"))
-	assert(row.get_text(4).contains("3 / 0x03"))
-	assert("83 / 0x53" in row.get_text(2))
-	assert("SW" in row.get_child(2).get_text(1))
+	var raw := row.get_child(0)
+	assert(row.get_child_count() == 1 and panel.table.columns == DebugObjectFields.COLUMNS.size() + 1)
+	assert(row.get_text(1) == QueryInfo.THING_NAMES[1] and raw.get_text(1) == "1 / 0x01")
+	assert(row.get_text(3) == "SE" and raw.get_text(3) == "3 / 0x03")
+	assert(row.get_text(2) == DebugObjectFields.state(_record(1, 3, 0x53), city) and raw.get_text(2) == "83 / 0x53")
+	assert(row.get_text(4) == "Unused" and "Unused" in row.get_tooltip_text(4))
+
+	for item: TreeItem in [row, raw]:
+		for column in panel.table.columns:
+			assert(not "\n" in item.get_text(column))
 	row.collapsed = false
 	panel.update_records(DebugCityTables.collect("Objects", city))
 	assert(not row.collapsed)
@@ -49,5 +55,5 @@ func _run() -> void:
 	panel.search.text_changed.emit(panel.search.text)
 	assert(row.visible)
 	panel.free()
-	print("PASS: type-specific XTHG directions, packed states, targets, field meanings and numeric table columns")
+	print("PASS: type-specific XTHG directions, packed states, targets, field meanings and one-line translated and raw table columns")
 	quit()

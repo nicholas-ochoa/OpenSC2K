@@ -18,8 +18,13 @@ func _ready() -> void:
 	var widths := [240, 160, 140, 270]
 
 	if kind == "Objects":
-		titles = ["Record / field", "Value", "State", "Position", "Direction", "Goal"]
-		widths = [115, 150, 190, 120, 155, 210]
+		titles = ["Object"]
+		widths = [110]
+		var column_widths := {"type": 140, "state": 200, "direction": 120, "goal": 200, "label": 160}
+
+		for key: String in DebugObjectFields.COLUMNS:
+			titles.append(key.capitalize() if key.length() > 2 else key.to_upper())
+			widths.append(column_widths.get(key, 70))
 
 	table.columns = titles.size()
 
@@ -27,6 +32,8 @@ func _ready() -> void:
 		table.set_column_title(column, titles[column])
 		table.set_column_custom_minimum_width(column, widths[column])
 		table.set_column_expand(column, column == titles.size() - 1)
+		# objects cells stay one line high; long translations are trimmed and shown in tooltips
+		table.set_column_clip_content(column, kind == "Objects")
 
 	show_empty.visible = kind != "State"
 	search.text_changed.connect(func(_text: String) -> void: _filter())
@@ -95,25 +102,16 @@ func update_records(records: Array[Dictionary]) -> void:
 func _set_cells(row: TreeItem, record: Dictionary) -> void:
 	var cells: Array = record.get("cells", [])
 
+	var tooltips: Array = record.get("tooltips", [])
+
 	if cells.is_empty():
-		if kind == "Objects":
-			# child fields use the value area across the empty summary columns
-			var translated := str(record.get("translation", ""))
-			var value_text := "%s / %s" % [record.value, record.raw]
-
-			if not translated.is_empty():
-				value_text += " — " + translated
-
-			cells = [record.name, value_text + "\n" + str(record.get("detail", "")), "", "", "", ""]
-			row.set_expand_right(1, true)
-		else:
-			for key in ["name", "value", "raw", "detail"]:
-				cells.append(str(record.get(key, "")))
+		for key in ["name", "value", "raw", "detail"]:
+			cells.append(str(record.get(key, "")))
 
 	for column in table.columns:
 		var text := str(cells[column])
 		row.set_text(column, text)
-		row.set_tooltip_text(column, text)
+		row.set_tooltip_text(column, str(tooltips[column]) if column < tooltips.size() else text)
 
 
 func _filter() -> void:
