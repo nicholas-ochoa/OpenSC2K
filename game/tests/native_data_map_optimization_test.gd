@@ -8,9 +8,11 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	for edge in Sc2File.MAP_SIZES:
+	# The grid-math suite covers intermediate dimensions. Compare the full phase
+	# at both boundary sizes, with ordinance branches exercised on the small map.
+	for edge in [128, 512]:
 		var modes := [0]
-		if edge == 512:
+		if edge == 128:
 			modes.append(PollutionPhase.POLICE_COVERAGE_ORDINANCE | PollutionPhase.FIRE_COVERAGE_ORDINANCE | PollutionPhase.CRIME_REDUCTION_ORDINANCE)
 		for ordinances in modes:
 			var doc := EmptyCityTemplate.create(edge)

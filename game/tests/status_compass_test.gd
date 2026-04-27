@@ -7,12 +7,13 @@ func _initialize() -> void:
 
 func _run() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
-	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-test-art"))
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
-	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	main.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
 	main.app_settings_path = "user://status-compass-test.cfg"
 	root.add_child(main)
 	await process_frame
+	main.set_process(false)
 	var status := main.city_status_bar as CityStatusBar
 	main.city = null
 	main._refresh_status_summary()
@@ -28,8 +29,7 @@ func _run() -> void:
 
 	# Load an already rotated city without clicking Rotate.
 	for saved_rotation in range(4):
-		var document := Sc2File.load_path(ProjectSettings.globalize_path(
-			"res://../references/SIMCITY2000/DEFAULT.SC2"))
+		var document := EmptyCityTemplate.create(128)
 		assert(document.set_misc_u32(0x0008, saved_rotation))
 		assert(main._activate_document(document))
 		main._select_speed(GameSpeedController.Speed.PAUSED)

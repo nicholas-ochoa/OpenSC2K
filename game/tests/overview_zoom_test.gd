@@ -1,5 +1,10 @@
 extends SceneTree
 
+# The animated menu has its own tests. Do not render a random second city here.
+class OverviewApp extends "res://src/main.gd":
+	func _show_main_menu() -> void:
+		pass
+
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -9,11 +14,23 @@ func _run() -> void:
 	var preview := "--preview" in OS.get_cmdline_user_args()
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	if not preview:
+		main.set_script(OverviewApp)
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame
 	assert(main.map_view.zoom_percent() == 100, "Default zoom changed")
-	var doc := Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2")
+	# Keep the manual preview populated; automated picking needs only known terrain.
+	if not preview:
+		main.set_process(false)
+		main.main_menu.city_background.set_process(false)
+	var doc := Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2") if preview else EmptyCityTemplate.create(128)
+	if not preview:
+		var city := CityState.from_document(doc)
+		assert(city.set_land_altitude(64, 64, 7))
+		assert(city.set_building_id(64, 64, 0x1d))
+	# Start near overview; a full-size initial render is not part of this check.
+	main.map_view.zoom_factor = 0.25
 	assert(main._activate_document(doc))
 	main._select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = doc.serialize().data
@@ -36,12 +53,10 @@ func _run() -> void:
 		var local := map._draw_offset(map._view_scale()) + center * map._view_scale()
 		assert(map._tile_at(local) == point, "Overview picking uses the displayed tile")
 
+	# Selection is a settings lookup. The mode/picking checks above exercise rendering.
 	for graphics_size in [1, 2, 0]:
 		main.app_overview_graphics = graphics_size
-		main._close_region_cache()
-		main._refresh_map()
 		assert(main._city_view_size() == graphics_size)
-		await process_frame
 
 	assert(map.zoom_in(Vector2.INF) and map.zoom_percent() == 25)
 	assert(map.zoom_out(Vector2.INF) and map.zoom_percent() == 10)

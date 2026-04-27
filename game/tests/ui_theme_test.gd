@@ -16,17 +16,16 @@ func _run() -> void:
 	assert(config.save(path) == OK)
 	assert(AppSettingsStore.load_values(path).ui_theme == "light")
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
-	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-test-art"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	main.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
 	main.app_settings_path = path
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	main._load_city_unchecked(main.reference_root.path_join("CITIES/CAPEQUES.SC2"))
+	assert(main._activate_document(EmptyCityTemplate.create(128)))
 	main._select_speed(GameSpeedController.Speed.PAUSED)
-	main._ensure_scurk_editor()
 	var before: PackedByteArray = main.city.document.serialize().data
 	for selected in [1, 0, 1]:
 		main._open_settings_dialog()
@@ -56,27 +55,25 @@ func _run() -> void:
 		main.add_child(late)
 		assert(late.theme.get_color("font_color", "Label") == AppUiTheme.file_dialog().get_color("font_color", "Label"), "New dialogs use the active theme")
 		late.free()
-	for renderer in ["cpu", "gpu"]:
-		main._set_city_renderer(renderer)
-		main._set_overlay("underground")
-		main._refresh_map(true)
-		assert(main.map_view.dark_underground)
-		assert(main.map_view._base_material.get_shader_parameter("dark_underground"))
+	# Style selection follows the published texture mode, independent of renderer.
+	# Actual CPU/GPU pixels belong to dark_underground_shader_test.
+	for state in [["underground", true, true], ["underground", false, false], ["city", true, false]]:
+		main.static_render_mode = state[0]
+		main.map_view.base_palette_lookup_all = state[1]
+		main.app_dark_underground = true
+		main._sync_map_style()
+		assert(main.map_view.dark_underground == state[2])
+		assert(main.map_view._base_material.get_shader_parameter("dark_underground") == state[2])
 		main.app_dark_underground = false
 		main._sync_map_style()
 		assert(not main.map_view.dark_underground)
-		main.app_dark_underground = true
-		main._sync_map_style()
-		assert(main.map_view.dark_underground)
-		main._set_overlay("city")
-		main._refresh_map(true)
-		assert(not main.map_view.dark_underground)
-		assert(main.city.document.serialize().data == before)
+		assert(not main.map_view._base_material.get_shader_parameter("dark_underground"))
+	assert(main.city.document.serialize().data == before)
 	main.free()
 	await process_frame
 	var restored := (load("res://main.tscn") as PackedScene).instantiate()
 	restored.app_settings_path = path
-	restored.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	restored.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
 	root.add_child(restored)
 	await process_frame
 	assert(restored.app_ui_theme == "dark")

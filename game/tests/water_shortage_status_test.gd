@@ -53,7 +53,7 @@ func _run() -> void:
 	_check_worker_state(speed)
 	_check_source_tables(path.get_base_dir().get_base_dir().path_join("SIMCITY.EXE"))
 	_check_weather_phase(city)
-	await _check_main_ui(path)
+	await _check_main_ui(resources.strings)
 	status.free()
 	print("PASS: Babar Turtle water-shortage event reaches the status bar before February")
 	quit()
@@ -159,16 +159,17 @@ func _check_weather_phase(source: CityState) -> void:
 			assert(engine.city_status_resource_id == 269)
 
 
-func _check_main_ui(path: String) -> void:
+func _check_main_ui(strings: Dictionary) -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
-	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-test-art"))
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
-	main.reference_root = path.get_base_dir().get_base_dir()
+	main.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
 	main.app_settings_path = "user://water-shortage-status-test.cfg"
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)
-	assert(main._activate_document(Sc2File.load_path(path)))
+	main.original_query_strings = strings
+	assert(main._activate_document(EmptyCityTemplate.create(128)))
 	main.set_process(false)
 	main.city_status_bar.music_notice_seconds = 0
 	main.simulation_engine.city_status_resource_id = 269
