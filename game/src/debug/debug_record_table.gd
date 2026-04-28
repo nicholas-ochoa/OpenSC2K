@@ -15,7 +15,7 @@ var _city_id := 0
 
 func _ready() -> void:
 	var titles := ["Record / field", "Value", "Hex / position", "Details"]
-	var widths := [240, 160, 140, 270]
+	var widths := [240, 160, 200, 270]
 
 	if kind == "Objects":
 		titles = ["Object"]

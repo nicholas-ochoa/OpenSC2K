@@ -27,6 +27,28 @@ func _run() -> void:
 		things.decoded_payload[12] = 1
 		ThingData.write(things.decoded_payload, 15, edge - 1)
 		ThingData.write(things.decoded_payload, 16, edge - 2)
+		assert(city.microsim_site(1).is_empty())
+
+		for point in [Vector2i(3, 4), Vector2i(4, 4), Vector2i(3, 5), Vector2i(4, 5), Vector2i(6, 7)]:
+			assert(city.set_text_overlay_id(point.x, point.y, OverlayData.facility_id(1)))
+
+		assert(city.microsim_site(1) == {"x": 3, "y": 4, "width": 4, "height": 4, "tiles": 5})
+
+		# A moving thing covering a facility tile keeps the facility ID in its label field.
+		var covering := things.decoded_payload.duplicate()
+		covering[24] = 1
+		ThingData.write(covering, 27, 4)
+		ThingData.write(covering, 28, 5)
+		ThingData.write(covering, 34, OverlayData.facility_id(1))
+		assert(things.set_decoded_payload(covering))
+		assert(city.set_text_overlay_id(4, 5, OverlayData.thing_id(2)))
+		assert(city.set_text_overlay_id(6, 7, 0))
+		assert(city.microsim_site(1) == {"x": 3, "y": 4, "width": 2, "height": 2, "tiles": 4})
+		assert(city.microsim_sites() == city.microsim_sites())
+		# Links from a thing that is not on that tile are stale and ignored.
+		ThingData.write(covering, 27, 9)
+		assert(things.set_decoded_payload(covering))
+		assert(city.microsim_site(1).tiles == 3)
 		var before: PackedByteArray = city.document.serialize().data
 		var records := DebugCityTables.collect("XMIC", city)
 		var police: Dictionary = {}
@@ -36,6 +58,7 @@ func _run() -> void:
 				police = record
 
 		assert(police.value == "Police Station")
+		assert(police.raw.ends_with("(3, 4) 2×2"))
 		assert(police.fields[2].value == "65534" and police.fields[2].raw == "0xFFFE")
 		assert("Funded capacity" in police.fields[2].detail)
 		assert(DebugCityTables.collect("XMIC", city, null, true).size() == city.microsim_count())

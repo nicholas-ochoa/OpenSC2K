@@ -814,15 +814,23 @@ func microsim_sites() -> Dictionary:
 	if key == _microsim_sites_key:
 		return _microsim_sites
 
-	var bounds := {}
 	var overlays := text.decoded_payload
+	var tile_count := map_size * map_size
+	var wide := overlays.size() != tile_count
 	var thing_data := things.decoded_payload if things != null else PackedByteArray()
 	var thing_records := ThingData.count(thing_data)
+	var records := microsim_count()
+	# per record: min x, min y, max x, max y, tile count
+	var bounds := PackedInt32Array()
+	bounds.resize(records * 5)
 
-	for index in map_size * map_size:
-		var id := OverlayData.read(overlays, index)
+	for index in tile_count:
+		var id := int(overlays[index])
 
-		if id == 0:
+		if wide:
+			id |= int(overlays[tile_count + index]) << 8
+
+		if id < 51:
 			continue
 
 		var x := IntegerMath.div_trunc(index, map_size)
@@ -845,20 +853,33 @@ func microsim_sites() -> Dictionary:
 			continue
 
 		var record := OverlayData.facility_record(id)
-		var box: PackedInt32Array = bounds.get(record, PackedInt32Array([x, y, x, y, 0]))
-		box[0] = mini(box[0], x)
-		box[1] = mini(box[1], y)
-		box[2] = maxi(box[2], x)
-		box[3] = maxi(box[3], y)
-		box[4] += 1
-		bounds[record] = box
+
+		if record >= records:
+			continue
+
+		var at := record * 5
+
+		if bounds[at + 4] == 0:
+			bounds[at] = x
+			bounds[at + 1] = y
+			bounds[at + 2] = x
+			bounds[at + 3] = y
+		else:
+			bounds[at] = mini(bounds[at], x)
+			bounds[at + 1] = mini(bounds[at + 1], y)
+			bounds[at + 2] = maxi(bounds[at + 2], x)
+			bounds[at + 3] = maxi(bounds[at + 3], y)
+
+		bounds[at + 4] += 1
 
 	_microsim_sites = {}
 
-	for record in bounds:
-		var box: PackedInt32Array = bounds[record]
-		_microsim_sites[record] = {"x": box[0], "y": box[1], "width": box[2] - box[0] + 1,
-			"height": box[3] - box[1] + 1, "tiles": box[4]}
+	for record in records:
+		var at := record * 5
+
+		if bounds[at + 4] > 0:
+			_microsim_sites[record] = {"x": bounds[at], "y": bounds[at + 1], "width": bounds[at + 2] - bounds[at] + 1,
+				"height": bounds[at + 3] - bounds[at + 1] + 1, "tiles": bounds[at + 4]}
 
 	_microsim_sites_key = key
 

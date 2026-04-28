@@ -1,6 +1,6 @@
 class_name DebugCityTables
 extends RefCounted
-# Read the published city snapshot without map scans, serialization, or random draws.
+# Read the published city snapshot. Reuse cached scans; do not serialize or draw random values.
 
 const FACILITIES = BuildingCommand.DEFAULT_MICROSIM_LABELS
 const STAT_LABELS := {
@@ -44,6 +44,8 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 
 	match kind:
 		"XMIC":
+			var sites := city.microsim_sites()
+
 			for id in city.microsim_count():
 				var record := city.microsim(id)
 				var tile := int(record.get("tile_id", 0))
@@ -58,9 +60,12 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 					fields.append(_field("stat_%d" % index, record.get("stat_%d" % index, 0),
 						labels[index]))
 
-				result.append({"id": str(id), "name": "Record %d" % id,
-					"value": "Empty" if tile == 0 else FACILITIES.get(tile, "Facility 0x%02X" % tile),
-					"raw": "0x%02X" % tile, "detail": "XMIC +0x%04X • %s" % [id * 8, city.label(OverlayData.facility_id(id))],
+				var value: String = "Empty" if tile == 0 else FACILITIES.get(tile, "Facility 0x%02X" % tile)
+				var label := city.label(OverlayData.facility_id(id))
+				var site: Dictionary = sites.get(id, {})
+				var position := "not on map" if site.is_empty() else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height]
+				result.append({"id": str(id), "name": "Record %d" % id, "value": value,
+					"raw": "0x%02X • %s" % [tile, position], "detail": "-" if label.is_empty() or label == value else label,
 					"empty": tile == 0, "fields": fields})
 		"Objects":
 			for id in city.thing_count():
