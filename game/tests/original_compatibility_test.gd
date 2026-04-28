@@ -113,7 +113,7 @@ func check_ui() -> void:
 	for index in main.new_city_dialog.size_input.item_count:
 		check(main.new_city_dialog.size_input.disabled, "New City disables map size")
 
-	main.new_city_dialog.size_input.select(3)
+	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(512))
 	main.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
 	check(main._new_city_terrain_options().size == 128 and not main._new_city_terrain_options().native_maps, "Creation guard survives programmatic UI selection")
 	main.new_city_session.independent_template = true

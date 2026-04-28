@@ -37,7 +37,7 @@ const RAW_CHUNKS := {
 	"TMPL": true,
 }
 
-const MAP_SIZES := [128, 256, 384, 512]
+const MAP_SIZES := [16, 32, 64, 128, 256, 384, 512]
 const FULL_MAP_CHUNKS := ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT"]
 # these maps aren't all the same size; traffic uses half, services use a quarter
 const HALF_MAP_CHUNKS := ["XTRF", "XPLT", "XVAL", "XCRM"]
@@ -103,7 +103,11 @@ func parse(bytes: PackedByteArray) -> bool:
 		map_size = _read_u32_be(bytes, 24)
 		large_version = _read_u32_be(bytes, 20)
 
-		if large_version not in [1, 2, 3] or map_size not in MAP_SIZES or (map_size == 128 and large_version != 3):
+		if (
+			large_version not in [1, 2, 3] or map_size not in MAP_SIZES
+			or (map_size == 128 and large_version != 3)
+			or (map_size < 128 and large_version == 1)
+		):
 			return _fail("Unsupported experimental city version or size")
 
 		offset = 28
@@ -445,7 +449,7 @@ func upgrade_large_limits() -> void:
 
 
 func is_extended() -> bool:
-	return map_size > 128 or full_resolution_maps()
+	return map_size != 128 or full_resolution_maps()
 
 
 func full_resolution_maps() -> bool:

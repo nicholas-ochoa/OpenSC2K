@@ -72,7 +72,7 @@ func _run() -> void:
 	peek.pressed = false
 	root.push_input(peek, true)
 	assert(dialog.panel.modulate.a == 1.0)
-	dialog.size_input.select(3)
+	dialog.size_input.select(dialog.size_input.get_item_index(512))
 	dialog.compatibility_input.button_pressed = true
 	assert(dialog.size_input.get_selected_id() == 128)
 	assert(dialog.size_input.disabled and dialog.native_maps_input.disabled)

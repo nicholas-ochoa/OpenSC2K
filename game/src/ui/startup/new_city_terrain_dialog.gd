@@ -156,7 +156,7 @@ func _compatibility_changed(enabled: bool) -> void:
 	size_input.disabled = enabled
 	native_maps_input.disabled = enabled
 	if enabled:
-		size_input.select(0)
+		size_input.select(size_input.get_item_index(128))
 		native_maps_input.set_pressed_no_signal(false)
 	preview_requested.emit()
 

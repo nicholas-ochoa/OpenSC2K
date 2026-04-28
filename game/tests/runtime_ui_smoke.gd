@@ -937,7 +937,7 @@ func _run_quick(reference_root: String) -> void:
 	main._close_query()
 	main._open_new_city_dialog()
 	assert(main.new_city_dialog.visible)
-	main.new_city_dialog.size_input.select(0)
+	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(128))
 	main.new_city_dialog.city_name_input.text = "Workflow smoke"
 	main._make_new_city_preview()
 	while main.new_city_preview_job != null:

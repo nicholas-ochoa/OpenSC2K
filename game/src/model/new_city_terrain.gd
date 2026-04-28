@@ -176,7 +176,7 @@ static func generate(
 	)
 
 	_grow_trees(
-		buildings, flags, ((trees * trees) >> 1) * (IntegerMath.div_trunc(map_edge, 128)) * (IntegerMath.div_trunc(map_edge, 128)), staged_process, map_edge
+		buildings, flags, IntegerMath.div_trunc(((trees * trees) >> 1) * map_edge * map_edge, 16384), staged_process, map_edge
 	)
 
 	if has_ocean:
@@ -187,7 +187,7 @@ static func generate(
 			staged_process.next_u15() % map_edge,
 			staged_process.next_u15() % map_edge,
 		)
-		var length := ((staged_process.next_u15() & 0x7f) + 50) * IntegerMath.div_trunc(map_edge, 128)
+		var length := IntegerMath.div_trunc(((staged_process.next_u15() & 0x7f) + 50) * map_edge, 128)
 		_make_stream(
 			altitude,
 			buildings,

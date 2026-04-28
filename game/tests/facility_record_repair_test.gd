@@ -17,9 +17,9 @@ func check(ok: bool, message: String) -> void:
 
 
 func _run() -> void:
-	for edge in Sc2File.MAP_SIZES:
+	for edge in [128, 256, 384, 512]:
 		# All orientations at the original size; far-map repair at every larger size.
-		var rotations := [0, 1, 2, 3] if edge == 128 else [Sc2File.MAP_SIZES.find(edge)]
+		var rotations := [0, 1, 2, 3] if edge == 128 else [[128, 256, 384, 512].find(edge)]
 		for rotation in rotations:
 			check_repair(edge, rotation)
 

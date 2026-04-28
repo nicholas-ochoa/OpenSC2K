@@ -39,8 +39,8 @@ func fixture(edge: int, version: int) -> Sc2File:
 
 
 func _run() -> void:
-	for edge in Sc2File.MAP_SIZES:
-		# Cover legacy widths, every SC2X version, and every map size without a cross product.
+	for edge in [128, 256, 384, 512]:
+		# Retain legacy widths and every SC2X version at the original and large sizes.
 		var versions: Array = {128: [2, 3], 256: [1], 384: [2], 512: [3]}[edge]
 
 		for version in versions:

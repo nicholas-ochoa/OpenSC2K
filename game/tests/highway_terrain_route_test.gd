@@ -12,7 +12,7 @@ func check(ok: bool, message: String) -> void:
 
 
 func _initialize() -> void:
-	for edge in Sc2File.MAP_SIZES:
+	for edge in [128, 256, 384, 512]:
 		for direction in 4:
 			_test_crossing(edge, direction)
 	print("Highway terrain route: %d checks, %d failures" % [checks, failures])

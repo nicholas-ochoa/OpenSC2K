@@ -13,7 +13,7 @@ func check(ok: bool, message: String) -> void:
 
 
 func _initialize() -> void:
-	for edge in Sc2File.MAP_SIZES:
+	for edge in [128, 256, 384, 512]:
 		_test_routes(edge)
 		_test_surface_connections(edge)
 		_test_reused_crossings(edge)

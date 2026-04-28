@@ -75,8 +75,9 @@ func check_size(edge: int) -> void:
 	check(CityState.from_document(wide_reload).thing(record) == city.thing(record), "Wide record preserved")
 	check(CityViewFilter.surface_copy(city, {}).map_size == edge, "Display copy size")
 	# Creation already generated this terrain. Run one complete monthly schedule
-	# at the two boundary sizes; the other sizes retain creation and far-map tools.
-	if edge not in [128, 512]:
+	# at each small size and the original boundary sizes. Other sizes retain
+	# creation and far-map tools.
+	if edge not in [16, 32, 64, 128, 512]:
 		return
 	var generated := CityState.from_document(created.document)
 	generated.set_auto_budget_enabled(true)
@@ -148,9 +149,10 @@ func check_highways(edge: int) -> void:
 	var city := CityState.from_document(document)
 	var before: PackedByteArray = document.serialize().data
 	var far := edge - 10
+	var near := mini(20, edge - 10)
 
-	for start in [Vector2i(far, 20), Vector2i(20, far), Vector2i(far, far), Vector2i(124, 20), Vector2i(20, 124)]:
-		if edge == 128 and (start.x == 124 or start.y == 124):
+	for start in [Vector2i(far, near), Vector2i(near, far), Vector2i(far, far), Vector2i(124, near), Vector2i(near, 124)]:
+		if edge <= 128 and (start.x == 124 or start.y == 124):
 			continue
 
 		check(HighwayCommand.preview_valid(city, start), "Highway preview at %s on %d map" % [start, edge])
@@ -172,11 +174,11 @@ func check_highways(edge: int) -> void:
 		check(HighwayCommand.undo(city, built).ok, "Extended highway undo")
 		check(document.serialize().data == before, "Extended highway exact undo bytes")
 
-	for border in [Vector2i(edge - 2, 20), Vector2i(20, edge - 2)]:
+	for border in [Vector2i(edge - 2, near), Vector2i(near, edge - 2)]:
 		var prompt := HighwayCommand.apply(city, 6, 1, border, border)
 		check(prompt.get("connection_selection_required", false), "Highway connection uses actual map border")
 		check(document.serialize().data == before, "Connection prompt does not change city")
 
-	for outside in [Vector2i(edge, 20), Vector2i(20, edge), Vector2i(-1, 20)]:
+	for outside in [Vector2i(edge, near), Vector2i(near, edge), Vector2i(-1, near)]:
 		check(not HighwayCommand.preview_valid(city, outside), "Outside highway preview rejected")
 		check(not HighwayCommand.apply(city, 6, 1, outside, outside).ok, "Outside highway placement rejected")

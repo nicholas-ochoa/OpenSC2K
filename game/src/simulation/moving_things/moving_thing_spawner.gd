@@ -46,7 +46,7 @@ static func spawn_helicopter(
 		index < 0
 		or OverlayData.blocks_thing(OverlayData.read(text, index))
 		or count_type(things, TYPE_MONSTER) != 0
-		or count_type(things, TYPE_HELICOPTER) >= 1 * (IntegerMath.div_trunc(map_edge * map_edge, 16384))
+		or count_type(things, TYPE_HELICOPTER) >= 1 * maxi(1, IntegerMath.div_trunc(map_edge * map_edge, 16384))
 	):
 		return {"spawned": false}
 
@@ -86,7 +86,7 @@ static func spawn_airplane(
 		source_index < 0
 		or OverlayData.blocks_thing(OverlayData.read(text, source_index))
 		or count_type(things, TYPE_MONSTER) != 0
-		or count_type(things, TYPE_AIRPLANE) >= 2 * (IntegerMath.div_trunc(map_edge * map_edge, 16384))
+		or count_type(things, TYPE_AIRPLANE) >= 2 * maxi(1, IntegerMath.div_trunc(map_edge * map_edge, 16384))
 	):
 		return {"spawned": false}
 
@@ -100,20 +100,25 @@ static func spawn_airplane(
 	ThingData.write(things, offset + 6, 8)
 	ThingData.write(things, offset + 7, 8)
 	var attached := point
+	# preserve original entry margins at 128 and above. small maps use the same
+	# proportions so each edge coordinate stays inside the map
+	var entry_low := mini(10, maxi(1, IntegerMath.div_trunc(10 * map_edge, 128)))
+	var entry_high := mini(18, maxi(1, IntegerMath.div_trunc(18 * map_edge, 128)))
+	var entry_span := map_edge - entry_low - entry_high
 
 	if random.next_u15() % 10 < 5:
 		match random.next_u15() & 3:
 			0:
-				attached = Vector2i(0, random.next_u15() % (map_edge - 28) + 10)
+				attached = Vector2i(0, random.next_u15() % entry_span + entry_low)
 				ThingData.write(things, offset + 1, 3)
 			1:
-				attached = Vector2i(random.next_u15() % (map_edge - 28) + 10, 0)
+				attached = Vector2i(random.next_u15() % entry_span + entry_low, 0)
 				ThingData.write(things, offset + 1, 5)
 			2:
-				attached = Vector2i((map_edge - 1), random.next_u15() % (map_edge - 28) + 10)
+				attached = Vector2i((map_edge - 1), random.next_u15() % entry_span + entry_low)
 				ThingData.write(things, offset + 1, 7)
 			3:
-				attached = Vector2i(random.next_u15() % (map_edge - 28) + 10, (map_edge - 1))
+				attached = Vector2i(random.next_u15() % entry_span + entry_low, (map_edge - 1))
 				ThingData.write(things, offset + 1, 1)
 
 		ThingData.write(things, offset + 2, runway_axis * 0x10 + 3)
@@ -149,7 +154,7 @@ static func spawn_ship(
 	random,
 	map_edge: int = 128,
 ) -> Dictionary:
-	if count_type(things, TYPE_SHIP) >= 1 * (IntegerMath.div_trunc(map_edge * map_edge, 16384)):
+	if count_type(things, TYPE_SHIP) >= 1 * maxi(1, IntegerMath.div_trunc(map_edge * map_edge, 16384)):
 		return {"spawned": false}
 
 	var start := Vector2i(-1, -1)
@@ -210,7 +215,7 @@ static func spawn_sailboats(
 	lfsr_random,
 	map_edge: int = 128,
 ) -> int:
-	if count_type(things, TYPE_SAILBOAT) >= 4 * (IntegerMath.div_trunc(map_edge * map_edge, 16384)):
+	if count_type(things, TYPE_SAILBOAT) >= 4 * maxi(1, IntegerMath.div_trunc(map_edge * map_edge, 16384)):
 		return 0
 
 	var spawned := 0
@@ -322,7 +327,7 @@ static func _spawn_train_record(
 	lfsr_random,
 	map_edge: int = 128,
 ) -> bool:
-	if count_type(things, TYPE_TRAIN_ENGINE) >= 5 * (IntegerMath.div_trunc(map_edge * map_edge, 16384)):
+	if count_type(things, TYPE_TRAIN_ENGINE) >= 5 * maxi(1, IntegerMath.div_trunc(map_edge * map_edge, 16384)):
 		return false
 
 	if start.x < 2 or start.x > map_edge - 4 or start.y < 2 or start.y > map_edge - 4:

@@ -12,10 +12,10 @@ func check(ok: bool, message: String) -> void:
 
 
 func _initialize() -> void:
-	for edge in Sc2File.MAP_SIZES:
+	for edge in [128, 256, 384, 512]:
 		for native in [false, true]:
 			# Exhaust geometry once; other cases cover each size and storage mode.
-			var directions := [0, 1, 2, 3] if edge == 128 and not native else [Sc2File.MAP_SIZES.find(edge)]
+			var directions := [0, 1, 2, 3] if edge == 128 and not native else [[128, 256, 384, 512].find(edge)]
 			for direction in directions:
 				var sides := [0, 20, edge - 2] if edge == 128 and not native else [edge - 2]
 				for side in sides:

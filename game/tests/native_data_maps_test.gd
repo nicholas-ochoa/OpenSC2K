@@ -29,6 +29,7 @@ func _run() -> void:
 		check_wide_counts(edge)
 		if edge in [128, 512]:
 			check_values(edge)
+		if edge in [16, 32, 64, 128, 512]:
 			await check_sliced(edge)
 		print("PASS: native data maps at %d" % edge)
 
@@ -82,7 +83,7 @@ func check_format(edge: int) -> void:
 		check(data.size() == edge * edge, "Full-sized " + id)
 		var scale := 2 if id in Sc2File.HALF_MAP_CHUNKS else 4
 
-		for point in [Vector2i.ZERO, Vector2i(1, 1), Vector2i(edge - 1, edge - 1), Vector2i(edge - 17, edge - 11)]:
+		for point in [Vector2i.ZERO, Vector2i(1, 1), Vector2i(edge - 1, edge - 1), Vector2i(maxi(0, edge - 17), edge - 11)]:
 			var expected: int = source[id][(point.x / scale) * (IntegerMath.div_trunc(edge, scale)) + point.y / scale]
 			check(data[point.x * edge + point.y] == expected, "Migration value " + id)
 
@@ -243,7 +244,7 @@ func check_wide_counts(edge: int) -> void:
 	var news: Array = []
 	RciAftermathPhase._append_general_news(FixedRandom.new(), doc.find_chunk("MISC").decoded_payload,
 		doc.find_chunk("XGRP").decoded_payload, news, edge)
-	check(news.has({"type": RciAftermathPhase.NEWS_SPORTS, "argument": 0}) == (edge > 128),
+	check(news.has({"type": RciAftermathPhase.NEWS_SPORTS, "argument": 0}) == (edge != 128),
 		"Sports news uses wide stadium count")
 	var micro := doc.find_chunk("XMIC").decoded_payload.duplicate()
 	BuildingCommand._initialize_microsim(micro, misc, 10, 0xd0, 1900, SimRandom.new(1), false, false, edge)

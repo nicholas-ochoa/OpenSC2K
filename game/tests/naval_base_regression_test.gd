@@ -23,9 +23,9 @@ func check(ok: bool, message: String) -> void:
 
 
 func _initialize() -> void:
-	for edge in Sc2File.MAP_SIZES:
+	for edge in [128, 256, 384, 512]:
 		# Coast orientation is independent of the resolution of simulation data maps.
-		var directions := [0, 1, 2, 3] if edge == 128 else [Sc2File.MAP_SIZES.find(edge)]
+		var directions := [0, 1, 2, 3] if edge == 128 else [[128, 256, 384, 512].find(edge)]
 		for direction in directions:
 			var doc := fixture(edge, direction)
 			var city := CityState.from_document(doc)

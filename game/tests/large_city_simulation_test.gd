@@ -6,7 +6,8 @@ var failures := 0
 func _init() -> void:
 	for edge in Sc2File.MAP_SIZES:
 		check_charts(edge)
-		check_flood_order(edge)
+		if edge >= 128:
+			check_flood_order(edge)
 		check_far_services_and_year(edge)
 
 		for disaster in range(1, 19):

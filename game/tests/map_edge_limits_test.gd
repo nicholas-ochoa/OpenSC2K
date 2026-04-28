@@ -29,7 +29,7 @@ var empty_payloads := {}
 
 
 func _init() -> void:
-	for edge in Sc2File.MAP_SIZES:
+	for edge in [128, 256, 384, 512]:
 		check_growth(edge)
 		check_growth_dispatch(edge)
 		check_special(edge)

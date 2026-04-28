@@ -426,6 +426,12 @@
     "lane": "product"
   },
   {
+    "id": "small_city_test",
+    "script": "tests/small_city_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "large_city_test",
     "script": "tests/large_city_test.gd",
     "domain": "formats",

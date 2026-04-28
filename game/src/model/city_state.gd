@@ -37,6 +37,9 @@ var tile_flags := PackedByteArray()
 var visible_altitude_levels := 32 # display only; never serialized
 var object_altitude_overrides := PackedInt32Array()
 var _masked_tile_flag_signatures: Dictionary = {}
+# runtime-only microsim footprints, rebuilt when xtxt or xthg changes
+var _microsim_sites: Dictionary = {}
+var _microsim_sites_key := []
 
 
 static func from_document(source: Sc2File) -> CityState:
@@ -276,7 +279,7 @@ func text_overlay_id(x: int, y: int) -> int:
 
 
 func set_text_overlay_id(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > (0xff if map_size == 128 else 0xffff):
+	if value < 0 or value > (0xff if map_size <= 128 else 0xffff):
 		return false
 
 	var changed := text_overlays.duplicate()
@@ -793,6 +796,73 @@ func thing_count() -> int:
 
 func microsim_count() -> int:
 	return IntegerMath.div_trunc(document.decoded_size("XMIC"), MICROSIM_RECORD_SIZE)
+
+
+# map footprint of one xmic record: {x, y, width, height, tiles}, or {} when
+# no tile links to it. xmic stores no position, so this is derived from xtxt,
+# following moving things that temporarily cover a facility tile
+func microsim_site(microsim_id: int) -> Dictionary:
+	return microsim_sites().get(microsim_id, {})
+
+
+func microsim_sites() -> Dictionary:
+	var text := document.find_chunk("XTXT")
+	var things := document.find_chunk("XTHG")
+	var key := [text.get_instance_id(), text.mutation_revision,
+		things.get_instance_id() if things != null else 0, things.mutation_revision if things != null else -1]
+
+	if key == _microsim_sites_key:
+		return _microsim_sites
+
+	var bounds := {}
+	var overlays := text.decoded_payload
+	var thing_data := things.decoded_payload if things != null else PackedByteArray()
+	var thing_records := ThingData.count(thing_data)
+
+	for index in map_size * map_size:
+		var id := OverlayData.read(overlays, index)
+
+		if id == 0:
+			continue
+
+		var x := IntegerMath.div_trunc(index, map_size)
+		var y := index % map_size
+		var hops := 0
+
+		while OverlayData.is_thing(id) and hops < thing_records:
+			var offset := OverlayData.thing_record(id) * THING_RECORD_SIZE
+
+			if offset <= 0 or offset >= thing_records * THING_RECORD_SIZE or (
+				ThingData.read(thing_data, offset) == 0
+				or ThingData.read(thing_data, offset + 3) != x or ThingData.read(thing_data, offset + 4) != y
+			):
+				break
+
+			id = ThingData.read(thing_data, offset + 10)
+			hops += 1
+
+		if not OverlayData.is_facility(id):
+			continue
+
+		var record := OverlayData.facility_record(id)
+		var box: PackedInt32Array = bounds.get(record, PackedInt32Array([x, y, x, y, 0]))
+		box[0] = mini(box[0], x)
+		box[1] = mini(box[1], y)
+		box[2] = maxi(box[2], x)
+		box[3] = maxi(box[3], y)
+		box[4] += 1
+		bounds[record] = box
+
+	_microsim_sites = {}
+
+	for record in bounds:
+		var box: PackedInt32Array = bounds[record]
+		_microsim_sites[record] = {"x": box[0], "y": box[1], "width": box[2] - box[0] + 1,
+			"height": box[3] - box[1] + 1, "tiles": box[4]}
+
+	_microsim_sites_key = key
+
+	return _microsim_sites
 
 
 static func copy_for_edit(source: CityState) -> CityState:
