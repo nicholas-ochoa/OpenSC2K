@@ -63,9 +63,9 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				var value: String = "Empty" if tile == 0 else FACILITIES.get(tile, "Facility 0x%02X" % tile)
 				var label := city.label(OverlayData.facility_id(id))
 				var site: Dictionary = sites.get(id, {})
-				var position := "not on map" if site.is_empty() else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height]
-				result.append({"id": str(id), "name": "Record %d" % id, "value": value,
-					"raw": "0x%02X • %s" % [tile, position], "detail": "-" if label.is_empty() or label == value else label,
+				result.append({"id": str(id), "name": "Record %d" % id, "value": value, "raw": "0x%02X" % tile,
+					"position": "Not on map" if site.is_empty() else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height],
+					"site": site, "detail": "-" if label.is_empty() or label == value else label,
 					"empty": tile == 0, "fields": fields})
 		"Objects":
 			for id in city.thing_count():

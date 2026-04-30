@@ -43,6 +43,7 @@ func _ready() -> void:
 	_configure_table(_days, ["Day", "What happens", "Average ms", "Last ms", "Max ms", "Samples"])
 	_build_day_rows()
 	_metrics_tree = tabs.get_node("Metrics")
+	(tabs.get_node("MicroSims") as DebugRecordTable).locate_requested.connect(_locate_on_map)
 	_build_actions(tabs)
 
 
@@ -201,6 +202,13 @@ func toggle() -> void:
 
 	if is_open:
 		_refresh_metrics()
+
+
+func _locate_on_map(site: Rect2i) -> void:
+	var map_view := main_control.get("map_view") as CityMapControl if is_instance_valid(main_control) else null
+
+	if map_view != null and map_view.center_on_tiles(site.position, site.end - Vector2i.ONE) and is_open:
+		toggle()
 
 
 func _process(delta: float) -> void:

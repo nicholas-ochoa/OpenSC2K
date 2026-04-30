@@ -714,15 +714,25 @@ func cancel_active_selection() -> bool:
 
 
 func center_on_tile(point: Vector2i) -> bool:
-	if city == null or city.index_of(point.x, point.y) < 0:
+	return center_on_tiles(point, point)
+
+
+# centers the view midway between two tiles, such as a building's opposite corners
+func center_on_tiles(first: Vector2i, last: Vector2i) -> bool:
+	if city == null or city.index_of(first.x, first.y) < 0 or city.index_of(last.x, last.y) < 0:
 		return false
 
-	var polygon := Renderer.tile_polygon(city, point.x, point.y)
+	var center := Vector2.ZERO
 
-	if polygon.size() != 4:
-		return false
+	for point in [first, last]:
+		var polygon := Renderer.tile_polygon(city, point.x, point.y)
 
-	source_center = (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
+		if polygon.size() != 4:
+			return false
+
+		center += (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.125
+
+	source_center = center
 	_clamp_source_center()
 	_sync_base_layer()
 	queue_redraw()

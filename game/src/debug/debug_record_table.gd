@@ -1,11 +1,15 @@
 class_name DebugRecordTable
 extends VBoxContainer
 
+
+signal locate_requested(site: Rect2i)
+
 @export var kind := "XMIC"
 var rows: Dictionary = {}
 var _last_refresh := -1000
 var _host: Control
 var _city_id := 0
+var _locate_icon: Texture2D
 @onready var table: Tree = $Table
 @onready var search: LineEdit = $Controls/Search
 @onready var show_empty: CheckBox = $Controls/ShowEmpty
@@ -14,10 +18,15 @@ var _city_id := 0
 
 
 func _ready() -> void:
-	var titles := ["Record / field", "Value", "Hex / position", "Details"]
-	var widths := [240, 160, 200, 270]
+	var titles := ["Record / field", "Value", "Hex", "Details"]
+	var widths := [240, 160, 140, 270]
 
-	if kind == "Objects":
+	if kind == "XMIC":
+		titles.insert(3, "Position")
+		widths.insert(3, 150)
+		_locate_icon = locate_icon(16)
+		table.button_clicked.connect(_on_button_clicked)
+	elif kind == "Objects":
 		titles = ["Object"]
 		widths = [110]
 		var column_widths := {"type": 140, "state": 200, "direction": 120, "goal": 200, "label": 160}
@@ -105,13 +114,67 @@ func _set_cells(row: TreeItem, record: Dictionary) -> void:
 	var tooltips: Array = record.get("tooltips", [])
 
 	if cells.is_empty():
-		for key in ["name", "value", "raw", "detail"]:
+		for key in ["name", "value", "raw", "position", "detail"] if kind == "XMIC" else ["name", "value", "raw", "detail"]:
 			cells.append(str(record.get(key, "")))
 
 	for column in table.columns:
 		var text := str(cells[column])
 		row.set_text(column, text)
 		row.set_tooltip_text(column, str(tooltips[column]) if column < tooltips.size() else text)
+
+	if kind == "XMIC":
+		_set_locate_button(row, record.get("site", {}))
+
+
+func _set_locate_button(row: TreeItem, site: Dictionary) -> void:
+	var column := 3
+
+	if site.is_empty():
+		if row.get_button_count(column) > 0:
+			row.erase_button(column, 0)
+
+		row.set_metadata(column, null)
+
+		return
+
+	row.set_metadata(column, Rect2i(site.x, site.y, site.width, site.height))
+
+	if row.get_button_count(column) == 0:
+		row.add_button(column, _locate_icon, 0, false, "Center the map here")
+		row.set_button_color(column, 0, table.get_theme_color("font_color"))
+
+
+func _on_button_clicked(item: TreeItem, column: int, _id: int, mouse_button: int) -> void:
+	if mouse_button == MOUSE_BUTTON_LEFT and item.get_metadata(column) is Rect2i:
+		locate_requested.emit(item.get_metadata(column))
+
+
+# crosshair drawn at runtime: a ring, a centre dot and four ticks, antialiased
+static func locate_icon(size: int) -> ImageTexture:
+	var image := Image.create_empty(size, size, false, Image.FORMAT_RGBA8)
+	var samples := 4
+
+	for py in size:
+		for px in size:
+			var covered := 0
+
+			for sy in samples:
+				for sx in samples:
+					# unit coordinates in -1..1 with the icon centre at 0
+					var u := ((px + (sx + 0.5) / samples) / size) * 2.0 - 1.0
+					var v := ((py + (sy + 0.5) / samples) / size) * 2.0 - 1.0
+					var radius := sqrt(u * u + v * v)
+					var ring := radius >= 0.52 and radius <= 0.78
+					var dot := radius <= 0.22
+					var tick := (absf(u) <= 0.12 and absf(v) >= 0.6 and absf(v) <= 0.98) \
+						or (absf(v) <= 0.12 and absf(u) >= 0.6 and absf(u) <= 0.98)
+
+					if ring or dot or tick:
+						covered += 1
+
+			image.set_pixel(px, py, Color(1, 1, 1, float(covered) / (samples * samples)))
+
+	return ImageTexture.create_from_image(image)
 
 
 func _filter() -> void:

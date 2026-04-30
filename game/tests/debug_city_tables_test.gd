@@ -3,6 +3,7 @@ extends SceneTree
 class Host extends Control:
 	var city: CityState
 	var simulation_engine: SimulationEngine
+	var map_view: CityMapControl
 
 
 	func _debug_metrics() -> Dictionary:
@@ -58,7 +59,7 @@ func _run() -> void:
 				police = record
 
 		assert(police.value == "Police Station")
-		assert(police.raw.ends_with("(3, 4) 2×2"))
+		assert(police.raw == "0xD2" and police.position == "(3, 4) 2×2")
 		assert(police.fields[2].value == "65534" and police.fields[2].raw == "0xFFFE")
 		assert("Funded capacity" in police.fields[2].detail)
 		assert(DebugCityTables.collect("XMIC", city, null, true).size() == city.microsim_count())
@@ -81,6 +82,11 @@ func _run() -> void:
 		row.collapsed = false
 		panel.refresh_from_host(host, true)
 		assert(panel.rows["1"] == row and not row.collapsed)
+		var located: Array[Rect2i] = []
+		panel.locate_requested.connect(func(site: Rect2i) -> void: located.append(site))
+		assert(row.get_text(3) == "(3, 4) 2×2" and row.get_button_count(3) == 1)
+		panel.table.button_clicked.emit(row, 3, 0, MOUSE_BUTTON_LEFT)
+		assert(located == [Rect2i(3, 4, 2, 2)])
 		panel.search.text = "not a facility"
 		panel.search.text_changed.emit(panel.search.text)
 		assert(not row.visible)
@@ -98,6 +104,19 @@ func _run() -> void:
 		debug.setup(host)
 		host.add_child(debug)
 		var xmic_tab: DebugRecordTable = debug._tabs.get_node("MicroSims")
+		host.city = city
+		host.map_view = CityMapControl.new()
+		host.map_view.city = city
+		debug.toggle()
+		xmic_tab.locate_requested.emit(Rect2i(3, 4, 2, 2))
+		var map_center := host.map_view.source_center
+		host.map_view.center_on_tile(Vector2i(3, 4))
+		var corner := host.map_view.source_center
+		host.map_view.center_on_tile(Vector2i(4, 5))
+		assert(not corner.is_equal_approx(host.map_view.source_center))
+		assert(not debug.is_open and map_center.is_equal_approx((corner + host.map_view.source_center) * 0.5))
+		host.map_view.free()
+		host.city = null
 		debug.toggle()
 		debug._process(2.0)
 		assert(xmic_tab._last_refresh == -1000, "Inactive record tabs do not collect")
