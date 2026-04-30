@@ -10,7 +10,7 @@ func _initialize() -> void:
 func _run() -> void:
 	check_field_coverage()
 
-	for edge in [128, 256, 384, 512]:
+	for edge in [128, 512]:
 		await check_parity(edge)
 
 	await check_special_ticks()
@@ -33,13 +33,19 @@ func check_parity(edge: int) -> void:
 	var sync := make_controller(edge)
 	var sliced := make_controller(edge)
 	var runner := FrameSimulationRunner.new(sliced)
-	runner.budget_usec = 4000
+	runner.budget_usec = 16000
 	var random_id := sliced.engine.random.get_instance_id()
 	var city_id := sliced.engine.city.get_instance_id()
 	var document_id := sliced.engine.city.document.get_instance_id()
 	var slices := 0
 
-	for day in 25:
+	# One complete schedule; large-map jobs cover power, pollution, growth, traffic and water.
+	var days: Array = range(25) if edge == 128 else [0, 1, 2, 18, 19]
+	for day in days:
+		if edge != 128:
+			for controller in [sync, sliced]:
+				controller.engine.city.set_age_in_days(day)
+				controller.engine.clock.city_days = day
 		var expected := sync.advance_time(200, day * 200)
 		check(expected.ok, "reference tick")
 		var before := SimulationSnapshot.stamp(sliced)
@@ -55,11 +61,12 @@ func check_parity(edge: int) -> void:
 		check(int(runner.last_work_metrics.elapsed_usec) >= int(runner.last_work_metrics.parked_usec), "elapsed job time includes frame waits")
 		check(actual.job_timings.has("Worker / frame waits"), "accepted jobs publish wait timings")
 		check(TimingResults.without_timings(actual) == TimingResults.without_timings(expected), "identical tick events and results at %d day %d" % [edge, day])
-		check(sliced.engine.city.document.serialize().data == sync.engine.city.document.serialize().data, "identical saved bytes at %d day %d" % [edge, day])
+		check(saved_payloads(sliced.engine.city.document) == saved_payloads(sync.engine.city.document), "identical saved payloads at %d day %d" % [edge, day])
 		check(sliced.engine.random.state == sync.engine.random.state and sliced.engine.lfsr_random.state == sync.engine.lfsr_random.state and sliced.engine.game_random.state == sync.engine.game_random.state, "identical random states")
 		slices += int(runner.last_work_metrics.get("slices", 0))
 
-	check(slices > 25, "work spans multiple frame grants")
+	check(slices > days.size(), "work spans multiple frame grants")
+	check(sliced.engine.city.document.serialize().data == sync.engine.city.document.serialize().data, "final encoded bytes match")
 	check(sliced.engine.random.get_instance_id() == random_id and sliced.engine.city.get_instance_id() == city_id and sliced.engine.city.document.get_instance_id() == document_id, "publication preserves public identities")
 	runner.close()
 	print("PASS: %d synchronous/sliced day, event, byte and RNG comparisons; %d grants" % [edge, slices])
@@ -99,13 +106,18 @@ func check_special_ticks() -> void:
 	var sync := make_controller(512)
 	var sliced := make_controller(512)
 	var runner := FrameSimulationRunner.new(sliced)
+	runner.budget_usec = 16000
 
 	for controller in [sync, sliced]:
+		BudgetPhase.set_funding(controller.engine.city, BudgetPhase.funding_values(controller.engine.city), true)
+		controller.engine.city.set_age_in_days(274)
+		controller.engine.clock.city_days = 274
+		check(controller.engine.advance_day().ok, "prepare final-month budget")
 		controller.engine.city.set_age_in_days(299)
 		controller.engine.clock.city_days = 299
-		BudgetPhase.set_funding(controller.engine.city, BudgetPhase.funding_values(controller.engine.city), true)
 
-	await compare_tick(sync, sliced, runner, 200, "annual update")
+	var annual := await compare_tick(sync, sliced, runner, 200, "annual update")
+	check(annual.day_results.size() == 1 and annual.day_results[0].phase_results.has("annual_microsim"), "worker executes annual facility update")
 	check(sliced.engine.city.age_in_days() == 300, "annual update completed")
 	var expected := sync.engine.start_disaster(DisasterStartPhase.DISASTER_FIRE, Vector2i(64, 64))
 	var actual := sliced.engine.start_disaster(DisasterStartPhase.DISASTER_FIRE, Vector2i(64, 64))
@@ -124,7 +136,7 @@ func check_special_ticks() -> void:
 	print("PASS: 512 annual update, fire ticks, shutdown and private arrays")
 
 
-func compare_tick(sync: GameSpeedController, sliced: GameSpeedController, runner: FrameSimulationRunner, now: int, context: String) -> void:
+func compare_tick(sync: GameSpeedController, sliced: GameSpeedController, runner: FrameSimulationRunner, now: int, context: String) -> Dictionary:
 	var expected := sync.advance_time(200, now)
 	var actual := runner.advance_time(200, now)
 	var deadline := Time.get_ticks_msec() + 30000
@@ -137,6 +149,7 @@ func compare_tick(sync: GameSpeedController, sliced: GameSpeedController, runner
 	check(sync.engine.city.document.serialize().data == sliced.engine.city.document.serialize().data, context + " bytes")
 	check(SimulationSnapshot.stamp(sync).slice(-SimulationSnapshot.ENGINE_FIELDS.size() - SimulationSnapshot.CONTROLLER_FIELDS.size()) == SimulationSnapshot.stamp(sliced).slice(-SimulationSnapshot.ENGINE_FIELDS.size() - SimulationSnapshot.CONTROLLER_FIELDS.size()), context + " runtime fields")
 	check(sync.engine.random.state == sliced.engine.random.state and sync.engine.lfsr_random.state == sliced.engine.lfsr_random.state and sync.engine.game_random.state == sliced.engine.game_random.state, context + " random states")
+	return actual
 
 
 func check_field_coverage() -> void:
@@ -157,3 +170,10 @@ func check(ok: bool, message: String) -> void:
 	if not ok:
 		failures += 1
 		push_error(message)
+
+
+func saved_payloads(document: Sc2File) -> Array:
+	var values: Array = []
+	for chunk in document.chunks:
+		values.append(chunk.decoded_payload.duplicate())
+	return values

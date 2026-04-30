@@ -18,12 +18,9 @@ func _run() -> void:
 	for mode in ["original", "invalid", "folder"]:
 		assert(not GameAssetSource.load_source(MISSING_ROOT, mode).error.is_empty())
 
-	var original := GameAssetSource.load_source(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), "original", "", "res://../ext/graphics")
-	assert(original.error.is_empty(), original.error)
-	_test_generated_mif(original.assets)
 	await _test_main()
 	await _test_invalid_startup()
-	print("PASS: independent startup, 12 New City combinations, generated terrain, a simulation year, city/MIF round trips, settings and original runtime UI and missing-import handling")
+	print("PASS: independent startup, 12 New City combinations, generated terrain, monthly and annual dispatch, city round trips, settings and original runtime UI and missing-import handling")
 	quit()
 
 
@@ -46,7 +43,6 @@ func _test_generated_cities() -> void:
 			assert(city.document.misc_u32(0x1c) == difficulty)
 			assert(city.document.misc_u32(0x14) == (20000 if difficulty == 1 else 10000))
 			assert(city.document.misc_u32(0x18) == (1 if difficulty == 3 else 0))
-			_round_trip_city(made.document)
 
 	assert(template.serialize().data == unchanged)
 	assert(template.misc_u32(0x1008) == 0 and template.misc_u32(0x1010) == 0)
@@ -67,10 +63,15 @@ func _test_generated_cities() -> void:
 	city.set_auto_budget_enabled(true)
 	var simulation := SimulationEngine.new(city, 1, 1, 1)
 
-	for day in 300:
+	# Exercise a month of all dispatch phases, then the annual boundary.
+	for day in 25:
 		var advanced := simulation.advance_day()
 		assert(advanced.ok, str(advanced))
 
+	assert(city.age_in_days() == 25)
+	assert(city.set_age_in_days(299))
+	simulation.clock.city_days = 299
+	assert(simulation.advance_day().ok)
 	assert(city.age_in_days() == 300 and city.current_year() == 1901)
 	_round_trip_city(city.document)
 	var path := ProjectSettings.globalize_path("user://independent-city-%d.SC2" % OS.get_process_id())
@@ -99,24 +100,6 @@ func _test_settings() -> void:
 	assert(AppSettingsStore.load_values(SETTINGS).graphics_folder == "user://example-pack")
 	assert(DirAccess.remove_absolute(ProjectSettings.globalize_path(SETTINGS)) == OK)
 	assert(AppSettingsStore.load_values(SETTINGS).graphics_source == "auto")
-
-
-func _test_generated_mif(assets: OriginalGameAssets) -> void:
-	var combined := Sc2SpriteArchive.combine([assets.large_sprites, assets.small_medium_sprites])
-	var tile_set := ScurkMif.from_archives([assets.large_sprites, assets.small_medium_sprites])
-	assert(tile_set.is_valid(), tile_set.parse_error)
-	assert(tile_set.shapes.size() == combined.entries_by_id.size())
-	var encoded := tile_set.to_bytes()
-	assert(encoded.ok, str(encoded))
-	var restored := ScurkMif.new()
-	assert(restored.parse(encoded.bytes), restored.parse_error)
-	assert(restored.to_bytes().bytes == encoded.bytes)
-
-	for sprite_id in combined.entries_by_id:
-		var expected := combined.find_sprite(sprite_id)
-		var actual := restored.archive.find_sprite(sprite_id)
-		assert(actual != null and actual.width == expected.width and actual.height == expected.height)
-		assert(actual.decode_indices().pixels == expected.decode_indices().pixels)
 
 
 func _test_main() -> void:

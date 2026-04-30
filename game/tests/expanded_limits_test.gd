@@ -14,19 +14,37 @@ func _init() -> void:
 		var signs := OverlayData.sign_ids(document.decoded_size("XLAB"))
 		check(signs.size() == 50 * factor, "sign capacity")
 
-		for index in signs.size():
-			var point := Vector2i(index / edge, index % edge)
+		# Fill the table directly, then allocate real signs at width/capacity boundaries.
+		var selected_signs: Array[int] = []
+		for index in [0, 49, 50, signs.size() - 1]:
+			if index < signs.size() and not selected_signs.has(signs[index]):
+				selected_signs.append(signs[index])
+		var sign_labels := document.find_chunk("XLAB").decoded_payload.duplicate()
+		for id in signs:
+			if not selected_signs.has(id):
+				BuildingCommand._write_label(sign_labels, id, "Occupied")
+		document.find_chunk("XLAB").set_decoded_payload(sign_labels)
+		for index in selected_signs.size():
+			var point := Vector2i(0, index)
 			check(SignCommand.set_sign(city, point, "Sign %d" % index).ok, "sign placement")
-			check(city.text_overlay_id(point.x, point.y) == signs[index], "sign link")
+			check(city.text_overlay_id(point.x, point.y) == selected_signs[index], "boundary sign link")
+		check(not SignCommand.set_sign(city, Vector2i(1, 0), "Overflow").ok, "full sign table rejects allocation")
 
 		var micro := document.find_chunk("XMIC").decoded_payload.duplicate()
 		var labels := document.find_chunk("XLAB").decoded_payload.duplicate()
 		var overlays := city.text_overlays.duplicate()
 		var rng := SimRandom.new(123)
 
+		var selected_records: Array[int] = []
+		for record in [10, 149, 150, city.microsim_count() - 1]:
+			if record < city.microsim_count() and not selected_records.has(record):
+				selected_records.append(record)
 		for record in range(10, city.microsim_count()):
+			if not selected_records.has(record):
+				micro[record * CityState.MICROSIM_RECORD_SIZE] = 0xd2
+		for record in selected_records:
 			var id := BuildingCommand._provision_microsim(micro, labels, overlays, 0xd2, 2050, rng, document.find_chunk("MISC").decoded_payload)
-			check(id == OverlayData.facility_id(record), "facility allocation %d" % record)
+			check(id == OverlayData.facility_id(record), "facility boundary allocation %d" % record)
 
 		check(BuildingCommand._provision_microsim(micro, labels, overlays, 0xd2, 2050, rng, document.find_chunk("MISC").decoded_payload) == 0, "capacity enforced")
 		document.find_chunk("XMIC").set_decoded_payload(micro)
@@ -72,10 +90,10 @@ func _init() -> void:
 			document.find_chunk("XTHG").set_decoded_payload(things)
 			var rotation_before: PackedByteArray = document.serialize().data
 
-			for turn in 4:
-				check(CityRotationCommand.apply(city, false).ok, "rotate extended records")
-
-			check(document.serialize().data == rotation_before, "four rotations preserve extended records")
+			if edge == 512:
+				for ccw in [false, true]:
+					check(CityRotationCommand.apply(city, ccw).ok, "rotate extended records")
+				check(document.serialize().data == rotation_before, "inverse rotations preserve extended records")
 			var markers := city.text_overlays.duplicate()
 			OverlayData.write(markers, 0, 0x1fb)
 			OverlayData.write(markers, 1, 0xfb)

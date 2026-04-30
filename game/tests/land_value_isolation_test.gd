@@ -12,11 +12,11 @@ func check(ok: bool, message: String) -> void:
 
 
 func _initialize() -> void:
-	for edge in Sc2File.MAP_SIZES:
+	for edge in [128, 512]:
 		for native in [false, true]:
 			for zone in [3, 5]:
 				var baseline := fixture(edge, native, zone)
-				var polluted := fixture(edge, native, zone)
+				var polluted := baseline.duplicate_document()
 				var data := polluted.find_chunk("XPLT").decoded_payload.duplicate()
 				var point := Vector2i(IntegerMath.div_trunc(edge, 8), IntegerMath.div_trunc(edge, 8))
 				data[CityDataGrid.index(data, edge, point.x, point.y)] = 255

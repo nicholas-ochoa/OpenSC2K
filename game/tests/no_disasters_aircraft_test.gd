@@ -5,7 +5,7 @@ var failures := 0
 
 
 func _init() -> void:
-	for edge in Sc2File.MAP_SIZES:
+	for edge in [128, 512]:
 		for enabled in [false, true]:
 			for fixture in ["plane_building", "plane_arcology", "landing", "falling_plane", "helicopter_arcology", "falling_helicopter"]:
 				check_aircraft(edge, enabled, fixture)

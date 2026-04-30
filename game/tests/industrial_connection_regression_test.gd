@@ -12,8 +12,9 @@ func check(ok: bool, message: String) -> void:
 
 
 func _initialize() -> void:
-	for edge in [128, 256, 384, 512]:
-		for native in [false, true]:
+	# SC2, coarse SC2X, and full-resolution SC2X each retain all tile IDs.
+	for edge in [128, 256, 512]:
+		for native in [edge == 512]:
 			var doc := EmptyCityTemplate.create(edge)
 			if native:
 				doc.enable_full_resolution_maps()

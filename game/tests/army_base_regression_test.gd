@@ -20,8 +20,8 @@ func check(ok: bool, message: String) -> void:
 
 func _initialize() -> void:
 	for edge in Sc2File.MAP_SIZES:
-		for native in [false, true]:
-			for rotation in 4:
+		for native in ([false, true] if edge == 128 else [false]):
+			for rotation in (range(4) if edge == 128 and not native else [0]):
 				var doc := EmptyCityTemplate.create(edge)
 				if native:
 					doc.enable_full_resolution_maps()

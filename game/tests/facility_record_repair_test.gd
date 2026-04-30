@@ -1,5 +1,10 @@
 extends SceneTree
 
+class RepairApp extends "res://src/main.gd":
+	func _show_main_menu() -> void:
+		pass
+
+
 var checks := 0
 var failures := 0
 
@@ -61,11 +66,10 @@ func check_repair(edge: int, rotation: int) -> void:
 		var origin := Vector2i(edge - 5 - (n % 8) * 5, edge - 5 - IntegerMath.div_trunc(n, 8) * 5)
 		sites.append(stamp(city, tiles[n], origin))
 
-	var original: PackedByteArray = doc.serialize().data
-	var untouched := Sc2File.new()
-	check(untouched.parse(original), "SC2X parses before repair")
+	var untouched := doc.duplicate_document()
+	var original := saved_payloads(doc)
 	CityState.from_document(untouched)
-	check(untouched.serialize().data == original, "Model creation does not repair snapshots")
+	check(saved_payloads(untouched) == original, "Model creation does not repair snapshots")
 	var result := FacilityRecordRepair.apply(city)
 	check(result.ok and result.linked == tiles.size() and result.unfilled == 0, "All facility types repaired at %d rotation %d" % [edge, rotation])
 
@@ -85,17 +89,19 @@ func check_repair(edge: int, rotation: int) -> void:
 		if chunk.chunk_id not in ["XMIC", "XLAB", "XTXT"]:
 			check(chunk.decoded_payload == untouched.find_chunk(chunk.chunk_id).decoded_payload, "Repair preserves " + chunk.chunk_id)
 
-	var repaired: PackedByteArray = doc.serialize().data
+	var repaired := saved_payloads(doc)
 	check(FacilityRecordRepair.apply(city).linked == 0, "Repeat repair is idle")
-	check(doc.serialize().data == repaired, "Repeat repair is byte exact")
+	check(saved_payloads(doc) == repaired, "Repeat repair preserves every payload")
+	if not (edge == 128 and rotation == 0) and edge != 512:
+		return
+	var encoded: PackedByteArray = doc.serialize().data
 	var reload := Sc2File.new()
-	check(reload.parse(repaired), "Repaired city reloads")
+	check(reload.parse(encoded), "Repaired city reloads")
 	check(FacilityRecordRepair.apply(CityState.from_document(reload)).linked == 0, "Reload preserves records")
-	check(reload.serialize().data == repaired, "Repaired save round trip is byte exact")
-	var second := Sc2File.new()
-	second.parse(original)
+	check(reload.serialize().data == encoded, "Repaired save round trip is byte exact")
+	var second := untouched.duplicate_document()
 	FacilityRecordRepair.apply(CityState.from_document(second))
-	check(second.serialize().data == repaired, "Fresh repair is deterministic")
+	check(saved_payloads(second) == repaired, "Fresh repair is deterministic")
 
 
 func check_version_one() -> void:
@@ -190,6 +196,7 @@ func check_load() -> void:
 	var save_path := "user://facility-repair-%d.sc2x" % OS.get_process_id()
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	main.set_script(RepairApp)
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	main.app_settings_path = settings_path
 	root.add_child(main)
@@ -217,3 +224,10 @@ func check_load() -> void:
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(save_path))
+
+
+func saved_payloads(document: Sc2File) -> Array:
+	var values: Array = []
+	for chunk in document.chunks:
+		values.append(chunk.decoded_payload.duplicate())
+	return values

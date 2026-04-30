@@ -405,10 +405,7 @@
     "id": "native_data_maps_ui_test",
     "script": "tests/native_data_maps_ui_test.gd",
     "domain": "rendering",
-    "lane": "product",
-    "requires": [
-      "ext/graphics/pack.json"
-    ]
+    "lane": "product"
   },
   {
     "id": "isometric_data_view_test",

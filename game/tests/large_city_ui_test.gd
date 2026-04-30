@@ -1,5 +1,10 @@
 extends SceneTree
 
+class TestApp extends "res://src/main.gd":
+	func _show_main_menu() -> void:
+		pass
+
+
 
 func _initialize() -> void:
 	call_deferred("run_check")
@@ -7,11 +12,18 @@ func _initialize() -> void:
 
 func run_check() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	main.set_script(TestApp)
 	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
 	main.new_city_session.independent_template = true
 	main._open_new_city_dialog()
+	# This suite tests size selection and preview jobs; terrain rules have their own tests.
+	main.new_city_dialog.ocean_input.button_pressed = false
+	main.new_city_dialog.river_input.button_pressed = false
+	main.new_city_dialog.hills_input.value = 0
+	main.new_city_dialog.water_input.value = 0
+	main.new_city_dialog.trees_input.value = 0
 
 	assert(main.new_city_dialog.size_input.get_selected_id() == 128)
 	for selection in Sc2File.MAP_SIZES.size():
@@ -19,6 +31,10 @@ func run_check() -> void:
 		main.new_city_dialog.size_input.select(selection)
 		main.new_city_dialog.size_input.item_selected.emit(selection)
 		assert(main.new_city_dialog.done_button.disabled)
+		assert(main._new_city_terrain_options().size == edge)
+		# Size wiring is checked for every option. Render previews at format boundaries.
+		if edge not in [16, 128, 512]:
+			continue
 		main._make_new_city_preview()
 		while main.new_city_preview_job != null:
 			await process_frame
@@ -31,7 +47,8 @@ func run_check() -> void:
 	main.map_view.zoom_factor = 0.25
 	main.overlay_mode = "underground"
 
-	for edge in [16, 32, 64, 256, 384, 512, 128]:
+	# Smallest and largest worker cities, then original synchronous simulation.
+	for edge in [16, 512, 128]:
 		assert(main._activate_document(EmptyCityTemplate.create(edge)))
 		assert(main.map_view.city.map_size == edge)
 		assert((main.frame_simulation != null) == (edge != 128))

@@ -29,14 +29,15 @@ func _initialize() -> void:
 		for direction in directions:
 			var doc := fixture(edge, direction)
 			var city := CityState.from_document(doc)
-			var before: PackedByteArray = doc.serialize().data
+			var untouched := doc.duplicate_document()
+			var before := saved_payloads(doc)
 			var declined := MilitaryProposalPhase.resolve(city, false, ChoiceRandom.new(1))
 			check(declined.ok and declined.base_type == 1, "Player can decline before naval selection")
-			doc = fixture(edge, direction)
+			doc = untouched
 			city = CityState.from_document(doc)
 			var site := NavalBaseSite.find(city)
 			check(site.get_area() == 40, "Naval site exists at rotated far-map coast")
-			check(doc.serialize().data == before, "Coastal search is read-only")
+			check(saved_payloads(doc) == before, "Coastal search is read-only")
 			var funds := city.funds()
 			var proposal := MilitaryProposalPhase.resolve(city, true, ChoiceRandom.new(1))
 			check(proposal.ok and proposal.base_type == 4 and proposal.notice_id == 0xf3, "Accepted proposal can select Navy")
@@ -112,3 +113,10 @@ func fixture(edge: int, rotation: int) -> Sc2File:
 	doc.find_chunk("ALTM").set_decoded_payload(heights)
 	doc.set_misc_u32(0x01f0, 120)
 	return doc
+
+
+func saved_payloads(document: Sc2File) -> Array:
+	var values: Array = []
+	for chunk in document.chunks:
+		values.append(chunk.decoded_payload.duplicate())
+	return values

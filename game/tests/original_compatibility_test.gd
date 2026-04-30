@@ -53,7 +53,7 @@ func check_formats() -> void:
 			if native:
 				doc.enable_full_resolution_maps()
 
-			var original: PackedByteArray = doc.serialize().data
+			var original := saved_payloads(doc)
 			check(OriginalCompatibility.document_error(doc, true).is_empty() == (edge == 128 and not native), "Format gate covers size and grid extensions")
 			check(OriginalCompatibility.document_error(doc, false).is_empty(), "Extensions remain available when mode is off")
 
@@ -65,10 +65,10 @@ func check_formats() -> void:
 				check(FileAccess.get_file_as_string(save_path) == "keep existing file", "Rejected save does not truncate target")
 			else:
 				check(CityFileStore.save_copy(doc, save_path, "res://../references/SIMCITY2000", true).ok, "Save original city")
-				check(FileAccess.get_file_as_bytes(save_path) == original, "Original save stays byte-identical")
+				check(FileAccess.get_file_as_bytes(save_path) == doc.serialize().data, "Original save stays byte-identical")
 				check(not CityFileStore.save_copy(doc, save_path + "x", "res://../references/SIMCITY2000", true).ok, "Strict mode rejects SC2X output extension")
 
-			check(doc.serialize().data == original, "Policy does not convert or mutate city")
+			check(saved_payloads(doc) == original, "Policy does not convert or mutate city")
 
 	var options := {"size": 512, "native_maps": true, "hills": 10}
 	check(OriginalCompatibility.terrain_options(options, true) == {"size": 128, "native_maps": false, "hills": 10}, "Creation options force original format")
@@ -110,8 +110,7 @@ func check_ui() -> void:
 	main.new_city_dialog.compatibility_input.button_pressed = true
 	check(main.new_city_dialog.native_maps_input.disabled and not main.new_city_dialog.native_maps_input.button_pressed, "New City disables native grids")
 
-	for index in main.new_city_dialog.size_input.item_count:
-		check(main.new_city_dialog.size_input.disabled, "New City disables map size")
+	check(main.new_city_dialog.size_input.disabled, "New City disables map size")
 
 	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(512))
 	main.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
@@ -180,3 +179,10 @@ func check_reference_files(path: String) -> void:
 		var original := FileAccess.get_file_as_bytes(path.path_join(filename))
 		check(doc.is_valid() and OriginalCompatibility.document_error(doc, true).is_empty(), "Compatibility accepts supplied " + filename)
 		check(doc.serialize(true).data == original, "Compatibility preserves original bytes: " + filename)
+
+
+func saved_payloads(document: Sc2File) -> Array:
+	var values: Array = []
+	for chunk in document.chunks:
+		values.append(chunk.decoded_payload.duplicate())
+	return values

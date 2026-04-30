@@ -43,9 +43,10 @@ func _initialize() -> void:
 			check(city.funds() == funds - 25 and city.building_id(road.x, road.y) == 0x2b, "Cost and adjacent road")
 
 		# One city contains every orientation. Rotate all cases together.
-		for ccw in [false, true]:
+		# Exhaust direction cycles at 128; verify wide-coordinate turns at 512.
+		for ccw in ([false, true] if edge in [128, 512] else []):
 			var rotated := CityState.from_document(city.document.duplicate_document())
-			for turn in 4:
+			for turn in (4 if edge == 128 else 1):
 				check(CityRotationCommand.apply(rotated, ccw).ok, "Rotate ramps")
 				for index in CASES.size():
 					var entry: Array = CASES[index]

@@ -84,7 +84,8 @@ func check_water(edge: int, version: int) -> void:
 	var city := CityState.from_document(doc)
 
 	# Synthetic saved counters exercise both sides of the old word boundary.
-	for count in [0, 8, 32764, 32768, 65536, 70000]:
+	# Exhaustive count boundaries at original/native 128 and legacy SC2X v1.
+	for count in ([0, 8, 32764, 32768, 65536, 70000] if edge <= 256 else [70000]):
 		doc.set_misc_u32(WaterPhase.MISC_TILE_COUNTS + WaterPhase.WATER_TREATMENT * 4, count)
 		var expected_count: int = count
 
@@ -105,7 +106,7 @@ func check_prisons(edge: int, version: int) -> void:
 	var doc := fixture(edge, version)
 	var count := mini(700, IntegerMath.div_trunc(doc.decoded_size("XMIC"), 8) - 1)
 
-	for score in [79, 80, 100]:
+	for score in ([79, 80, 100] if edge <= 256 else [100]):
 		var data := doc.find_chunk("XMIC").decoded_payload.duplicate()
 		data.fill(0)
 

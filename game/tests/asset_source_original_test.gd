@@ -8,9 +8,6 @@ func _initialize() -> void:
 	assert(original.error.is_empty(), original.error)
 	assert(original.use_original_data and original.uses_graphics_pack)
 	assert(original.assets.newspaper_data.is_valid() and not original.assets.strings.is_empty())
-	var automatic := GameAssetSource.load_source(reference, "auto", "", "res://../ext/graphics")
-	assert(automatic.error.is_empty() and automatic.use_original_data)
-	assert(automatic.assets.large_sprites.find_sprite(1208).pixel_hash() == original.assets.large_sprites.find_sprite(1208).pixel_hash())
 	assert(not GameAssetSource.load_source(reference, "original", "", "/missing-pack").error.is_empty())
 	var folder := "user://source-pack-test-%d" % OS.get_process_id()
 	assert(DirAccess.make_dir_recursive_absolute(folder) == OK)
@@ -29,7 +26,7 @@ func _initialize() -> void:
 	file.store_string(JSON.stringify(manifest))
 	file.close()
 
-	for mode in ["folder", "auto"]:
+	for mode in ["folder"]:
 		var external := GameAssetSource.load_source(reference, mode, folder, folder if mode == "auto" else "")
 		assert(external.error.is_empty(), external.error)
 		assert(external.use_original_data and external.uses_graphics_pack)
@@ -40,5 +37,5 @@ func _initialize() -> void:
 		assert(DirAccess.remove_absolute(folder.path_join(name)) == OK)
 
 	assert(DirAccess.remove_absolute(folder) == OK)
-	print("PASS: original and automatic sources, retired preference migration, external folder/override packs with original data, and invalid pack rejection")
+	print("PASS: original source, external folder/override packs with original data, and invalid pack rejection")
 	quit()

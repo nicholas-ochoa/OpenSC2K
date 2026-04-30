@@ -1,4 +1,9 @@
 extends SceneTree
+
+class TestApp extends "res://src/main.gd":
+	func _show_main_menu() -> void:
+		pass
+
 var failures := 0
 var checks := 0
 
@@ -32,9 +37,11 @@ func _run() -> void:
 				data[CityDataGrid.index(data, edge, point.x, point.y)] = 173
 				chunk.set_decoded_payload(data)
 				check(CityDataView.value(city, mode, point.x, point.y) == 173, "Far-tile value")
-				var image := CityDataView.value_image(city, mode)
-				var scale: int = edge / image.get_width()
-				check(roundi(image.get_pixel(IntegerMath.div_trunc(point.y, scale), IntegerMath.div_trunc(point.x, scale)).r * 255) == 173, "Texture retains far value and column-major coordinates")
+				# Both storage layouts at 128; maximum texture extent at 512/native.
+				if edge == 128 or (edge == 512 and native):
+					var image := CityDataView.value_image(city, mode)
+					var scale: int = edge / image.get_width()
+					check(roundi(image.get_pixel(IntegerMath.div_trunc(point.y, scale), IntegerMath.div_trunc(point.x, scale)).r * 255) == 173, "Texture retains far value and column-major coordinates")
 				check(CityDataView.value(city, mode, point.x, point.y + 1) == (0 if native else 173), "Native/legacy resolution")
 
 			city.set_tile_flag(point.x, point.y, 0x80, true)
@@ -67,6 +74,7 @@ func _run() -> void:
 
 func check_ui() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	main.set_script(TestApp)
 	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame

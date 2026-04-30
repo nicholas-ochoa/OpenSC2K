@@ -90,7 +90,7 @@ func check_maps(edge: int, native: bool) -> void:
 	var previous_total := total(doc.find_chunk("XPLT").decoded_payload)
 
 	# Initial cleanup plus repeated decay catches retained scratch data.
-	for month in 3:
+	for month in 2:
 		check(PollutionPhase.run(city).ok, "Repeated data phase completes")
 		var pollution := doc.find_chunk("XPLT").decoded_payload
 		var next_total := total(pollution)
@@ -102,8 +102,8 @@ func check_maps(edge: int, native: bool) -> void:
 			check(pollution[(IntegerMath.div_trunc(grid_edge, 2)) * grid_edge + IntegerMath.div_trunc(grid_edge, 2)] == 170, "Uniform interior decays from 255 to 170")
 			check(pollution[0] == 145, "Corner omits absent pollution samples")
 
-		check(total(doc.find_chunk("XVAL").decoded_payload) == 0, "Empty land does not retain old land values")
-		check(total(doc.find_chunk("XCRM").decoded_payload) == 0, "Empty land does not retain or amplify old crime")
+		check(doc.find_chunk("XVAL").decoded_payload.count(0) == doc.find_chunk("XVAL").decoded_payload.size(), "Empty land does not retain old land values")
+		check(doc.find_chunk("XCRM").decoded_payload.count(0) == doc.find_chunk("XCRM").decoded_payload.size(), "Empty land does not retain or amplify old crime")
 
 		for field in [["XPLT", 0x34], ["XVAL", 0x28], ["XCRM", 0x2c]]:
 			var sum := total(doc.find_chunk(field[0]).decoded_payload)

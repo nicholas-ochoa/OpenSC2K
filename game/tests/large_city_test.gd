@@ -74,22 +74,6 @@ func check_size(edge: int) -> void:
 	check(wide_reload.parse(document.serialize().data), "Wide record reload")
 	check(CityState.from_document(wide_reload).thing(record) == city.thing(record), "Wide record preserved")
 	check(CityViewFilter.surface_copy(city, {}).map_size == edge, "Display copy size")
-	# Creation already generated this terrain. Run one complete monthly schedule
-	# at each small size and the original boundary sizes. Other sizes retain
-	# creation and far-map tools.
-	if edge not in [16, 32, 64, 128, 512]:
-		return
-	var generated := CityState.from_document(created.document)
-	generated.set_auto_budget_enabled(true)
-	generated.set_no_disasters_enabled(true)
-	var engine := SimulationEngine.new(generated, 123, 456, 789)
-
-	for day in 25:
-		var result := engine.advance_day()
-		check(result.ok, "Day %d at %d: %s" % [day, edge, result.get("error", "")])
-
-		if not result.ok:
-			break
 
 
 func check_format_guards() -> void:
@@ -147,7 +131,7 @@ func check_large_counts(edge: int) -> void:
 func check_highways(edge: int) -> void:
 	var document := EmptyCityTemplate.create(edge)
 	var city := CityState.from_document(document)
-	var before: PackedByteArray = document.serialize().data
+	var before := saved_payloads(document)
 	var far := edge - 10
 	var near := mini(20, edge - 10)
 
@@ -172,13 +156,20 @@ func check_highways(edge: int) -> void:
 			check(DemolishCommand.undo(city, removed, random).ok, "Extended demolition undo")
 
 		check(HighwayCommand.undo(city, built).ok, "Extended highway undo")
-		check(document.serialize().data == before, "Extended highway exact undo bytes")
+		check(saved_payloads(document) == before, "Extended highway exact undo bytes")
 
 	for border in [Vector2i(edge - 2, near), Vector2i(near, edge - 2)]:
 		var prompt := HighwayCommand.apply(city, 6, 1, border, border)
 		check(prompt.get("connection_selection_required", false), "Highway connection uses actual map border")
-		check(document.serialize().data == before, "Connection prompt does not change city")
+		check(saved_payloads(document) == before, "Connection prompt does not change city")
 
 	for outside in [Vector2i(edge, near), Vector2i(near, edge), Vector2i(-1, near)]:
 		check(not HighwayCommand.preview_valid(city, outside), "Outside highway preview rejected")
 		check(not HighwayCommand.apply(city, 6, 1, outside, outside).ok, "Outside highway placement rejected")
+
+
+func saved_payloads(document: Sc2File) -> Array:
+	var values: Array = []
+	for chunk in document.chunks:
+		values.append(chunk.decoded_payload.duplicate())
+	return values

@@ -67,10 +67,7 @@ func check_growth(edge: int) -> void:
 				check(GrowthPhase._place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
 					anchor, density, GrowthPhase.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
 					"%d density %d rotation %d at %s" % [edge, density, rotation, anchor])
-				var count := 0
-
-				for tile in p.XBLD:
-					count += int(tile != 0)
+				var count: int = p.XBLD.size() - p.XBLD.count(0)
 
 				check(count == (radius + 1) * (radius + 1), "Growth footprint size")
 

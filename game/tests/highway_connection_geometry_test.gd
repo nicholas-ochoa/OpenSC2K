@@ -13,7 +13,7 @@ func check(ok: bool, message: String) -> void:
 
 func _initialize() -> void:
 	for edge in [128, 256, 384, 512]:
-		for native in [false, true]:
+		for native in ([false, true] if edge == 128 else [edge == 512]):
 			# Exhaust geometry once; other cases cover each size and storage mode.
 			var directions := [0, 1, 2, 3] if edge == 128 and not native else [[128, 256, 384, 512].find(edge)]
 			for direction in directions:
@@ -28,18 +28,18 @@ func _initialize() -> void:
 						doc.enable_full_resolution_maps()
 					doc.set_misc_u32(0x08, direction)
 					var city := CityState.from_document(doc)
-					var initial: PackedByteArray = doc.serialize().data
+					var initial := saved_payloads(doc)
 					var canceled := HighwayCommand.apply(city, 6, 1, start, finish, HighwayCommand.CONNECTION_CANCELLED)
 					check(canceled.ok, "Highway route reaches side or corner")
 					var shape := city.buildings.duplicate()
 					var terrain := city.terrain.duplicate()
 					var zones := city.zones.duplicate()
 					var flags := city.tile_flags.duplicate()
-					var route_bytes: PackedByteArray = doc.serialize().data
+					var route_bytes := saved_payloads(doc)
 					var existing := HighwayCommand.apply(city, 6, 1, start, finish, HighwayCommand.CONNECTION_CONFIRMED)
 					check(existing.ok and city.buildings == shape and city.terrain == terrain, "Connecting a pre-existing route preserves its shape")
-					check(HighwayCommand.undo(city, existing).ok and doc.serialize().data == route_bytes, "Connection-only Undo preserves existing route")
-					check(HighwayCommand.undo(city, canceled).ok and doc.serialize().data == initial, "Canceled route has exact Undo")
+					check(HighwayCommand.undo(city, existing).ok and saved_payloads(doc) == route_bytes, "Connection-only Undo preserves existing route")
+					check(HighwayCommand.undo(city, canceled).ok and saved_payloads(doc) == initial, "Canceled route has exact Undo")
 					var connected := HighwayCommand.apply(city, 6, 1, start, finish, HighwayCommand.CONNECTION_CONFIRMED)
 					check(connected.ok and connected.connection_built, "Confirm highway neighbor connection")
 					check(city.buildings == shape and city.terrain == terrain and city.zones == zones and city.tile_flags == flags,
@@ -51,7 +51,7 @@ func _initialize() -> void:
 					check(loaded.parse(saved), "Reload connected highway")
 					check(SimulationEngine.new(CityState.from_document(loaded)).industry_connections == 1,
 						"Straight highway marker survives industrial recount")
-					check(HighwayCommand.undo(city, connected).ok and doc.serialize().data == initial, "Connection has exact Undo")
+					check(HighwayCommand.undo(city, connected).ok and saved_payloads(doc) == initial, "Connection has exact Undo")
 					# Also test connecting a pre-existing isolated edge section by click.
 					var placed := HighwayCommand.apply(city, 6, 1, finish, finish, HighwayCommand.CONNECTION_CANCELLED)
 					check(placed.ok, "Place isolated border highway")
@@ -60,3 +60,10 @@ func _initialize() -> void:
 					check(connected.ok and city.buildings == shape, "Connecting existing edge %s direction %d: ok=%s error=%s shape=%s" % [finish, direction, connected.ok, connected.get("error", ""), city.buildings == shape])
 	print("Highway connection geometry: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
+
+
+func saved_payloads(document: Sc2File) -> Array:
+	var values: Array = []
+	for chunk in document.chunks:
+		values.append(chunk.decoded_payload.duplicate())
+	return values
