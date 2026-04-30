@@ -24,7 +24,7 @@ func _ready() -> void:
 	if kind == "XMIC":
 		titles.insert(3, "Position")
 		widths.insert(3, 150)
-		_locate_icon = locate_icon(16)
+		_locate_icon = locate_icon(12)
 		table.button_clicked.connect(_on_button_clicked)
 	elif kind == "Objects":
 		titles = ["Object"]
@@ -164,10 +164,10 @@ static func locate_icon(size: int) -> ImageTexture:
 					var u := ((px + (sx + 0.5) / samples) / size) * 2.0 - 1.0
 					var v := ((py + (sy + 0.5) / samples) / size) * 2.0 - 1.0
 					var radius := sqrt(u * u + v * v)
-					var ring := radius >= 0.52 and radius <= 0.78
-					var dot := radius <= 0.22
-					var tick := (absf(u) <= 0.12 and absf(v) >= 0.6 and absf(v) <= 0.98) \
-						or (absf(v) <= 0.12 and absf(u) >= 0.6 and absf(u) <= 0.98)
+					var ring := radius >= 0.58 and radius <= 0.74
+					var dot := radius <= 0.2
+					var tick := (absf(u) <= 0.08 and absf(v) >= 0.64 and absf(v) <= 0.98) \
+						or (absf(v) <= 0.08 and absf(u) >= 0.64 and absf(u) <= 0.98)
 
 					if ring or dot or tick:
 						covered += 1
