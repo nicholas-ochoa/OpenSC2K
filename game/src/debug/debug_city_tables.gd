@@ -79,6 +79,8 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 					"value": DebugObjectFields.type_name(record.type),
 					"raw": "(%d, %d, %d)" % [record.x, record.y, record.z],
 					"cells": table.cells, "tooltips": table.tooltips, "empty": record.type == 0,
+					"site": {} if record.type == 0 or city.index_of(record.x, record.y) < 0
+						else {"x": record.x, "y": record.y, "width": 1, "height": 1},
 					"fields": [{"cells": table.raw, "tooltips": table.tooltips}]})
 
 		"State":

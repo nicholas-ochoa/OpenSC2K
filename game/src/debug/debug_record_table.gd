@@ -9,6 +9,8 @@ var rows: Dictionary = {}
 var _last_refresh := -1000
 var _host: Control
 var _city_id := 0
+# column holding the locate icon; -1 when this table has none
+var locate_column := -1
 var _locate_icon: Texture2D
 @onready var table: Tree = $Table
 @onready var search: LineEdit = $Controls/Search
@@ -24,16 +26,23 @@ func _ready() -> void:
 	if kind == "XMIC":
 		titles.insert(3, "Position")
 		widths.insert(3, 150)
-		_locate_icon = locate_icon(12)
-		table.button_clicked.connect(_on_button_clicked)
+		locate_column = 4
 	elif kind == "Objects":
 		titles = ["Object"]
 		widths = [110]
+		locate_column = 1
 		var column_widths := {"type": 140, "state": 200, "direction": 120, "goal": 200, "label": 160}
 
 		for key: String in DebugObjectFields.COLUMNS:
 			titles.append(key.capitalize() if key.length() > 2 else key.to_upper())
 			widths.append(column_widths.get(key, 70))
+
+	if locate_column >= 0:
+		# a plain icon column: tree omits row guide lines under item buttons
+		titles.insert(locate_column, "")
+		widths.insert(locate_column, 28)
+		_locate_icon = locate_icon(12)
+		table.gui_input.connect(_on_table_input)
 
 	table.columns = titles.size()
 
@@ -109,12 +118,17 @@ func update_records(records: Array[Dictionary]) -> void:
 
 
 func _set_cells(row: TreeItem, record: Dictionary) -> void:
-	var cells: Array = record.get("cells", [])
+	var cells: Array = record.get("cells", []).duplicate()
+	var tooltips: Array = record.get("tooltips", []).duplicate()
 
-	var tooltips: Array = record.get("tooltips", [])
+	if not cells.is_empty() and locate_column >= 0:
+		cells.insert(locate_column, "")
+
+		if tooltips.size() >= locate_column:
+			tooltips.insert(locate_column, "")
 
 	if cells.is_empty():
-		for key in ["name", "value", "raw", "position", "detail"] if kind == "XMIC" else ["name", "value", "raw", "detail"]:
+		for key in ["name", "value", "raw", "position", "locate", "detail"] if kind == "XMIC" else ["name", "value", "raw", "detail"]:
 			cells.append(str(record.get(key, "")))
 
 	for column in table.columns:
@@ -122,31 +136,38 @@ func _set_cells(row: TreeItem, record: Dictionary) -> void:
 		row.set_text(column, text)
 		row.set_tooltip_text(column, str(tooltips[column]) if column < tooltips.size() else text)
 
-	if kind == "XMIC":
-		_set_locate_button(row, record.get("site", {}))
+	if locate_column >= 0:
+		_set_locate_icon(row, record.get("site", {}))
 
 
-func _set_locate_button(row: TreeItem, site: Dictionary) -> void:
-	var column := 3
+func _set_locate_icon(row: TreeItem, site: Dictionary) -> void:
+	var column := locate_column
 
 	if site.is_empty():
-		if row.get_button_count(column) > 0:
-			row.erase_button(column, 0)
-
+		row.set_icon(column, null)
 		row.set_metadata(column, null)
+		row.set_tooltip_text(column, "")
 
 		return
 
 	row.set_metadata(column, Rect2i(site.x, site.y, site.width, site.height))
+	row.set_icon(column, _locate_icon)
+	row.set_icon_modulate(column, table.get_theme_color("font_color"))
+	row.set_text_alignment(column, HORIZONTAL_ALIGNMENT_CENTER)
+	row.set_tooltip_text(column, "Center the map here")
 
-	if row.get_button_count(column) == 0:
-		row.add_button(column, _locate_icon, 0, false, "Center the map here")
-		row.set_button_color(column, 0, table.get_theme_color("font_color"))
+
+func _on_table_input(event: InputEvent) -> void:
+	var click := event as InputEventMouseButton
+
+	if click != null and click.pressed and click.button_index == MOUSE_BUTTON_LEFT \
+			and table.get_column_at_position(click.position) == locate_column:
+		locate_on_map(table.get_item_at_position(click.position))
 
 
-func _on_button_clicked(item: TreeItem, column: int, _id: int, mouse_button: int) -> void:
-	if mouse_button == MOUSE_BUTTON_LEFT and item.get_metadata(column) is Rect2i:
-		locate_requested.emit(item.get_metadata(column))
+func locate_on_map(item: TreeItem) -> void:
+	if item != null and locate_column >= 0 and item.get_metadata(locate_column) is Rect2i:
+		locate_requested.emit(item.get_metadata(locate_column))
 
 
 # crosshair drawn at runtime: a ring, a centre dot and four ticks, antialiased

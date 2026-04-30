@@ -39,12 +39,18 @@ func _run() -> void:
 	panel.update_records(DebugCityTables.collect("Objects", city))
 	var row: TreeItem = panel.rows["1"]
 	var raw := row.get_child(0)
-	assert(row.get_child_count() == 1 and panel.table.columns == DebugObjectFields.COLUMNS.size() + 1)
-	assert(row.get_text(1) == QueryInfo.THING_NAMES[1] and raw.get_text(1) == "1 / 0x01")
-	assert(row.get_text(3) == "SE" and raw.get_text(3) == "3 / 0x03")
-	assert(row.get_text(2) == DebugObjectFields.state(_record(1, 3, 0x53), city) and raw.get_text(2) == "83 / 0x53")
-	assert(row.get_text(4) == "Unused" and "Unused" in row.get_tooltip_text(4))
-
+	assert(row.get_child_count() == 1 and panel.table.columns == DebugObjectFields.COLUMNS.size() + 2)
+	# Column 1 is the locate icon; data columns follow it.
+	assert(row.get_icon(panel.locate_column) != null and raw.get_icon(panel.locate_column) == null)
+	var located: Array[Rect2i] = []
+	panel.locate_requested.connect(func(site: Rect2i) -> void: located.append(site))
+	panel.locate_on_map(row)
+	panel.locate_on_map(raw)
+	assert(located == [Rect2i(0, 0, 1, 1)])
+	assert(row.get_text(2) == QueryInfo.THING_NAMES[1] and raw.get_text(2) == "1 / 0x01")
+	assert(row.get_text(4) == "SE" and raw.get_text(4) == "3 / 0x03")
+	assert(row.get_text(3) == DebugObjectFields.state(_record(1, 3, 0x53), city) and raw.get_text(3) == "83 / 0x53")
+	assert(row.get_text(5) == "Unused" and "Unused" in row.get_tooltip_text(5))
 	for item: TreeItem in [row, raw]:
 		for column in panel.table.columns:
 			assert(not "\n" in item.get_text(column))

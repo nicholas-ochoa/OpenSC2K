@@ -84,8 +84,8 @@ func _run() -> void:
 		assert(panel.rows["1"] == row and not row.collapsed)
 		var located: Array[Rect2i] = []
 		panel.locate_requested.connect(func(site: Rect2i) -> void: located.append(site))
-		assert(row.get_text(3) == "(3, 4) 2×2" and row.get_button_count(3) == 1)
-		panel.table.button_clicked.emit(row, 3, 0, MOUSE_BUTTON_LEFT)
+		assert(row.get_text(3) == "(3, 4) 2×2" and row.get_icon(panel.locate_column) != null)
+		panel.locate_on_map(row)
 		assert(located == [Rect2i(3, 4, 2, 2)])
 		panel.search.text = "not a facility"
 		panel.search.text_changed.emit(panel.search.text)
