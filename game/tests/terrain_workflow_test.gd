@@ -37,7 +37,7 @@ func _run() -> void:
 	assert(not main.city_toolbar.toolbar_buttons[6].visible)
 	assert(not main.city_toolbar.child_tool_buttons.has(4))
 
-	for subtool in [1, 2, 3]:
+	for subtool in [2, 3]:
 		main._select_subtool(subtool)
 		assert(main.map_view.shift_rectangle_enabled)
 		main.map_view.selection_start = Vector2i(40, 40)
@@ -49,6 +49,12 @@ func _run() -> void:
 		main.map_view._rebuild_selection_path()
 		assert(main.map_view.selection_path.size() == 6)
 
+	main._select_subtool(1)
+	assert(main.map_view.uses_paint_brush() and main.map_view.shift_rectangle_enabled)
+	main.map_view.brush_box_selection = true
+	main.map_view._rebuild_selection_path()
+	assert(main.map_view.selection_path.size() == 12)
+	main.map_view.brush_box_selection = false
 	main.map_view._clear_selection()
 
 	for subtool in [6, 7]:

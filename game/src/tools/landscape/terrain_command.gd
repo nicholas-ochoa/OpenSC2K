@@ -49,7 +49,8 @@ static func apply_path(
 	start: Vector2i,
 	points: Array[Vector2i],
 	random: SimRandom = null,
-	free_mode := false
+	free_mode := false,
+	target_override := -1
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -86,7 +87,10 @@ static func apply_path(
 	var misc: PackedByteArray = changed_payloads.MISC
 	var old_funds := city.funds()
 	var funds := 0x7fffffff if free_mode else old_funds
-	var target_altitude := _land_altitude(altitude, city.index_of(start.x, start.y))
+	var target_altitude := (
+		target_override if target_override >= 0
+		else _land_altitude(altitude, city.index_of(start.x, start.y))
+	)
 	var action_count := 0
 	var total_cost := 0
 	var listed_cost := 0

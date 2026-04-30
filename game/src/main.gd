@@ -82,6 +82,8 @@ const MENU_VIEW_SIGNS := CityMenuBarView.MENU_VIEW_SIGNS
 const MENU_VIEW_WATER_MAINS := CityMenuBarView.MENU_VIEW_WATER_MAINS
 const MENU_VIEW_PIPES := CityMenuBarView.MENU_VIEW_PIPES
 const MENU_SCURK_PLACE_PRINT := CityMenuBarView.MENU_SCURK_PLACE_PRINT
+const LEVEL_BRUSH_SIZE := 1
+const EDITOR_LEVEL_BRUSH_SIZE := 5
 
 var city: CityState
 var current_document: Sc2File
@@ -213,6 +215,7 @@ var new_city_session := NewCitySession.new()
 var new_city_preview_job: NewCityPreviewJob
 var new_city_return_to_main_menu := false
 var landscape_brush_command: Dictionary = {}
+var level_brush_altitude := -1
 var landscape_editor := false
 var terrain_stretch := TerrainStretchSession.new()
 var founding_newspaper_pending := false
@@ -1602,10 +1605,12 @@ func _record_edit_command(
 			for id in command.changed_ids:
 				if id not in landscape_brush_command.changed_ids:
 					landscape_brush_command.changed_ids.append(id)
+					landscape_brush_command.old_payloads[id] = command.old_payloads[id]
 				landscape_brush_command.new_payloads[id] = command.new_payloads[id]
 			for field in ["cost", "listed_cost", "skipped_insufficient", "action_count", "easter_events", "skipped_specialized"]:
 				landscape_brush_command[field] = int(landscape_brush_command.get(field, 0)) + int(command.get(field, 0))
 			landscape_brush_command.random_state_after = command.random_state_after
+			landscape_brush_command.random_used = landscape_brush_command.get("random_used", false) or command.get("random_used", false)
 			landscape_brush_command.tile_indices.append_array(command.tile_indices)
 		last_edit_command = landscape_brush_command
 	else:
@@ -1887,6 +1892,9 @@ func _on_map_selection_canceled() -> void:
 
 func _on_map_selection_started() -> void:
 	landscape_brush_command = {}
+	level_brush_altitude = -1
+	if _level_brush_active() and city != null:
+		level_brush_altitude = city.land_altitude(map_view.selection_start.x, map_view.selection_start.y)
 	if landscape_editor and selected_group == 0 and selected_subtool == 5:
 		terrain_stretch.begin(map_view.selection_start)
 
@@ -5283,12 +5291,17 @@ func _update_edit_state() -> void:
 		state.status_text = str(Tools.tool(selected_group, selected_subtool).name)
 		state.status_detail = "Drag up or down to stretch terrain live. Hold Shift to apply on release." if selected_group == 0 and selected_subtool == 5 else "Free landscape editor tool."
 
-	map_view.landscape_brush = selected_group == 1 and selected_subtool in [0, 1, 3] and not (scurk_place_print != null and scurk_place_print.visible)
+	var level_brush := _level_brush_active()
+	map_view.landscape_brush = (level_brush or selected_group == 1 and selected_subtool in [0, 1, 3]) and not (scurk_place_print != null and scurk_place_print.visible)
 	map_view.demolish_brush = selected_group == 0 and selected_subtool == 0 and not landscape_editor and not (scurk_place_print != null and scurk_place_print.visible)
 	map_view.bulldozer_visual_provider = _demolish_brush_visual if overlay_mode == "city" else Callable()
-	city_toolbar.brush_controls.visible = landscape_editor and map_view.landscape_brush
-	map_view.brush_size = int(city_toolbar.brush_size_input.value) if landscape_editor else (7 if selected_subtool == 3 else 1)
-	map_view.brush_round = city_toolbar.brush_shape_input.selected == 1 if landscape_editor else true
+	city_toolbar.brush_controls.visible = landscape_editor and map_view.landscape_brush and not level_brush
+	if level_brush:
+		map_view.brush_size = EDITOR_LEVEL_BRUSH_SIZE if landscape_editor else LEVEL_BRUSH_SIZE
+		map_view.brush_round = true
+	else:
+		map_view.brush_size = int(city_toolbar.brush_size_input.value) if landscape_editor else (7 if selected_subtool == 3 else 1)
+		map_view.brush_round = city_toolbar.brush_shape_input.selected == 1 if landscape_editor else true
 	if map_view.uses_paint_brush():
 		map_view.continuous_placement = true
 		map_view.shift_line_enabled = false
@@ -5440,6 +5453,15 @@ func _apply_map_selection(
 		var command := LandscapeEditorCommand.apply(city, selected_group, selected_subtool, start, tool_random, levels)
 		_finish_simple_edit(SimpleEdits._result("terrain", command, selected_group, selected_subtool, true), false, {})
 
+		return
+
+	if map_view.landscape_brush and selected_group == 0:
+		var origin := map_view.selection_start if map_view.selection_start.x >= 0 else start
+		var target := level_brush_altitude if level_brush_altitude >= 0 else city.land_altitude(origin.x, origin.y)
+		var command := TerrainTools.apply_path(city, selected_group, selected_subtool,
+			origin, path, tool_random, landscape_editor, target)
+		if command.ok or command.get("error", "") != "no terrain height changed":
+			_finish_simple_edit(SimpleEdits._result("terrain", command, selected_group, selected_subtool, landscape_editor), false, {})
 		return
 
 	if map_view.landscape_brush:
@@ -6952,6 +6974,11 @@ func _refresh_scurk_artwork() -> void:
 			map_view.scurk_stamp_visuals.append({"texture": texture, "position": anchor - Vector2(texture.get_width() / 2.0, texture.get_height() - 1)})
 
 	map_view.queue_redraw()
+
+
+# level terrain paints a round brush toward the height under the first click
+func _level_brush_active() -> bool:
+	return selected_group == 0 and selected_subtool == TerrainTools.SUBTOOL_LEVEL
 
 
 func _enter_landscape_editor() -> void:
