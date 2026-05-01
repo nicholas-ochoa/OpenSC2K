@@ -47,7 +47,6 @@ var city_map_window: CityMapDialog
 var ordinance_window: CityOrdinanceWindow
 var analysis_dialog: CityAnalysisDialog
 var newspaper_dialog: NewspaperDialog
-var forest_protest_dialog: PictureNoticeDialog
 var building_objection_dialog: PictureNoticeDialog
 var library_windows: LibraryRuminateWindows
 var game_over_dialog: AcceptDialog
@@ -161,16 +160,6 @@ func _create_information_windows() -> void:
 
 
 func _create_event_dialogs() -> void:
-	forest_protest_dialog = PictureDialogView.instantiate()
-	_dialog_parent("CityEvents").add_child(forest_protest_dialog)
-	forest_protest_dialog.configure(
-		"ForestProtestDialog",
-		"Forest Protest",
-		"ForestProtestImage",
-		"ForestProtestMessage",
-		original_assets.forest_protest_image,
-		original_assets.forest_protest_text,
-	)
 	building_objection_dialog = PictureDialogView.instantiate()
 	_dialog_parent("CityEvents").add_child(building_objection_dialog)
 	building_objection_dialog.configure(

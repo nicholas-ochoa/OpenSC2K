@@ -112,7 +112,7 @@ static func _result(
 		"record_command": kind != "hydro",
 		"refresh_details": kind != "subway_to_rail",
 		"show_effects": kind == "terrain" or (kind == "demolish" and not free_mode),
-		"show_forest_protest": (
+		"refresh_news_summary": (
 			kind == "demolish" and int(command.get("easter_events", 0)) > 0
 		),
 		"play_success_sound": kind in [

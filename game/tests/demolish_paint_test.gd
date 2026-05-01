@@ -55,7 +55,7 @@ func _run() -> void:
 		var buildings: PackedByteArray = main.current_document.find_chunk("XBLD").decoded_payload.duplicate()
 		for x in range(start.x, start.x + 11):
 			for y in range(start.y, start.y + 4):
-				buildings[main.city.index_of(x, y)] = 1 # Rubble has no protest dialog.
+				buildings[main.city.index_of(x, y)] = 1 # Rubble has no protest branch.
 		assert(main.city.replace_buildings(buildings))
 		var before: PackedByteArray = main.current_document.serialize().data
 		var rng: int = main.tool_random.state
@@ -132,7 +132,7 @@ func _run() -> void:
 		assert(DemolishCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
 		assert(main.current_document.serialize().data == before and main.tool_random.state == rng)
 		main._set_overlay("city")
-		# A protest is modal. Stop the held stroke before showing the notice.
+		# A protest keeps its tree without a notice or ending the held stroke.
 		buildings = main.city.buildings.duplicate()
 		buildings[main.city.index_of(start.x, start.y)] = 6
 		assert(main.city.replace_buildings(buildings))
@@ -145,9 +145,9 @@ func _run() -> void:
 		rng = main.tool_random.state
 		before = main.current_document.serialize().data
 		_button(map, start, true)
-		assert(main.forest_protest_dialog.visible and not map.is_left_drag_active())
-		assert(not map.bulldozer_visible() and main.last_edit_command.easter_events == 1)
-		main.forest_protest_dialog.hide()
+		assert(map.is_left_drag_active() and main.last_edit_command.easter_events == 1)
+		_button(map, start, false)
+		assert(not map.bulldozer_visible())
 		assert(DemolishCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
 		assert(main.current_document.serialize().data == before and main.tool_random.state == rng)
 		print("PASS: Demolish paint, gaps, costs, native sprites, Shift boxes, cancel and exact Undo at ", edge)

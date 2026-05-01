@@ -144,7 +144,6 @@ var reference_import_dialog: FileDialog
 var reference_import_error_dialog: AcceptDialog
 var graphics_source_error_dialog: AcceptDialog
 var original_query_strings: Dictionary = {}
-var forest_protest_text := "Citizens are protesting forest demolition."
 var building_objection_text := "Residents objected to this facility site."
 var library_texts: Dictionary = {}
 var newspaper_data: DataUsaResource
@@ -250,7 +249,6 @@ var query_dialog: CityQueryDialog
 var active_query_result: Dictionary = {}
 var city_analysis_dialog: CityAnalysisDialog
 var newspaper_dialog: NewspaperDialog
-var forest_protest_dialog: PictureNoticeDialog
 var building_objection_dialog: PictureNoticeDialog
 var pending_building_objection_group := -1
 var pending_building_objection_subtool := -1
@@ -347,7 +345,6 @@ func _initialize_runtime() -> void:
 	var original_assets := asset_source.assets
 	newspaper_data = original_assets.newspaper_data
 	original_query_strings = original_assets.strings
-	forest_protest_text = original_assets.forest_protest_text
 	building_objection_text = original_assets.building_objection_text
 	library_texts = original_assets.library_texts
 	scurk_graphics = original_assets.scurk_graphics
@@ -516,7 +513,6 @@ func _process(delta: float) -> void:
 		or network_connection_dialog.visible
 		or highway_connection_dialog.visible
 		or tunnel_dialog.visible
-		or (forest_protest_dialog != null and forest_protest_dialog.visible)
 		or (building_objection_dialog != null and building_objection_dialog.visible)
 		or (sc2x_conversion_dialog != null and sc2x_conversion_dialog.visible)
 		or (settings_dialog != null and settings_dialog.visible)
@@ -884,7 +880,6 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	city_analysis_dialog = city_dialogs.analysis_dialog
 	newspaper_dialog = city_dialogs.newspaper_dialog
 	newspaper_dialog.visibility_changed.connect(_on_founding_newspaper_visibility_changed)
-	forest_protest_dialog = city_dialogs.forest_protest_dialog
 	building_objection_dialog = city_dialogs.building_objection_dialog
 	building_objection_dialog.confirmed.connect(_on_building_objection_closed)
 	building_objection_dialog.canceled.connect(_on_building_objection_closed)
@@ -1192,7 +1187,6 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	var assets := selected.assets
 	newspaper_data = assets.newspaper_data
 	original_query_strings = assets.strings
-	forest_protest_text = assets.forest_protest_text
 	building_objection_text = assets.building_objection_text
 	library_texts = assets.library_texts
 	palette = assets.palette
@@ -1220,7 +1214,6 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	industry_window.industry_control.set_icon_strip(assets.industry_icons)
 	simnation_window.simnation_control.set_sprite_sheet(assets.simnation_sprites)
 	city_map_window.set_resources(assets.city_map_icons, assets.strings)
-	forest_protest_dialog.set_picture(assets.forest_protest_image)
 	building_objection_dialog.set_picture(assets.forest_protest_image)
 	if scurk_editor != null:
 		scurk_editor.configure(palette, base_large_sprites, base_small_medium_sprites, reference_root, scurk_graphics)
@@ -3341,9 +3334,6 @@ func _activate_document(
 	if tunnel_dialog.visible:
 		tunnel_dialog.hide()
 
-	if forest_protest_dialog != null and forest_protest_dialog.visible:
-		forest_protest_dialog.hide()
-
 	if building_objection_dialog != null and building_objection_dialog.visible:
 		building_objection_dialog.hide()
 
@@ -5044,13 +5034,6 @@ func _show_news_items(news_items: Array) -> void:
 	_refresh_status_summary()
 
 
-func _show_forest_protest() -> void:
-	if forest_protest_dialog == null:
-		return
-
-	forest_protest_dialog.show_message(forest_protest_text)
-
-
 func _show_building_objection() -> void:
 	if building_objection_dialog == null:
 		return
@@ -5637,11 +5620,9 @@ func _finish_simple_edit(
 		_stop_tool_loop_sound()
 		_play_sound_events([ToolSounds.SOUND_TRACTOR])
 
-	if edit.show_forest_protest:
-		if map_view.demolish_brush:
-			map_view.cancel_active_selection()
+	# keep the tree and news story, no modal protest notice
+	if edit.refresh_news_summary:
 		_refresh_saved_news_summary()
-		_show_forest_protest()
 
 	if command.get("command_type", "") == "zone":
 		_play_sound_events(ToolSounds.zone_success_events(int(command.zone_type)))
