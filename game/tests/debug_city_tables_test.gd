@@ -128,5 +128,49 @@ func _run() -> void:
 		assert(xmic_tab._last_refresh == -1000, "Hidden record tabs do not collect")
 		host.free()
 
-	print("PASS: debug city tables decode large-map records, retain expansion, filter, freeze and preserve save bytes")
+	_check_sorting()
+
+	print("PASS: debug city tables sort, decode large-map records, retain expansion, filter, freeze and preserve save bytes")
 	quit()
+
+
+func _check_sorting() -> void:
+	var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
+	root.add_child(panel)
+	var records: Array[Dictionary] = []
+
+	# Record 2 is off-map. Sort 0x2A after 0x10 by value, not by digit count.
+	for entry in [[0, "Record 0", 0x2A, {"x": 13, "y": 4}], [2, "Record 2", 0x10, {}], [10, "Record 10", 0xD2, {"x": 3, "y": 9}]]:
+		var site: Dictionary = entry[3]
+		if not site.is_empty():
+			site.merge({"width": 1, "height": 1})
+		records.append({"id": str(entry[0]), "name": entry[1], "value": "", "raw": "", "site": site,
+			"sort": [entry[0], "", entry[2], DebugCityTables._site_sort(site), ""]})
+
+	panel.update_records(records)
+	var order := func() -> Array:
+		return panel.table.get_root().get_children().map(func(item: TreeItem) -> String: return item.get_text(0))
+	panel.rows["10"].collapsed = false
+	panel.table.column_title_clicked.emit(2, MOUSE_BUTTON_LEFT)
+	assert(order.call() == ["Record 2", "Record 0", "Record 10"])
+	panel.table.column_title_clicked.emit(2, MOUSE_BUTTON_LEFT)
+	assert(order.call() == ["Record 10", "Record 0", "Record 2"] and panel.table.get_column_title(2).ends_with("▼"))
+	# Rows without a position stay last in both directions; locate column sorts the same way.
+	for column in [3, panel.locate_column]:
+		panel.sort_by(column)
+		assert(order.call() == ["Record 10", "Record 0", "Record 2"])
+		panel.sort_by(column, true)
+		assert(order.call() == ["Record 0", "Record 10", "Record 2"])
+	# Refresh keeps the sort, and new rows land in sorted position.
+	records.append({"id": "5", "name": "Record 5", "value": "", "raw": "", "site": {"x": 8, "y": 0, "width": 1, "height": 1},
+		"sort": [5, "", 0, [8, 0, 1], ""]})
+	panel.update_records(records)
+	assert(order.call() == ["Record 0", "Record 5", "Record 10", "Record 2"])
+	panel.sort_by(0)
+	assert(order.call() == ["Record 0", "Record 2", "Record 5", "Record 10"])
+	panel.table.column_title_clicked.emit(0, MOUSE_BUTTON_LEFT)
+	panel.table.column_title_clicked.emit(0, MOUSE_BUTTON_LEFT)
+	assert(panel.sort_column == -1 and panel.table.get_column_title(0) == "Record / field")
+	assert(order.call() == ["Record 0", "Record 2", "Record 10", "Record 5"])
+	assert(not panel.rows["10"].collapsed)
+	panel.free()

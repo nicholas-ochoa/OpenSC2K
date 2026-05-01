@@ -63,9 +63,12 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 				var value: String = "Empty" if tile == 0 else FACILITIES.get(tile, "Facility 0x%02X" % tile)
 				var label := city.label(OverlayData.facility_id(id))
 				var site: Dictionary = sites.get(id, {})
+				var detail := "-" if label.is_empty() or label == value else label
 				result.append({"id": str(id), "name": "Record %d" % id, "value": value, "raw": "0x%02X" % tile,
 					"position": "Not on map" if site.is_empty() else "(%d, %d) %d×%d" % [site.x, site.y, site.width, site.height],
-					"site": site, "detail": "-" if label.is_empty() or label == value else label,
+					"site": site, "detail": detail,
+					# sort values per visible column, excluding the locate icon column
+					"sort": [id, value, tile, _site_sort(site), detail],
 					"empty": tile == 0, "fields": fields})
 		"Objects":
 			for id in city.thing_count():
@@ -75,12 +78,19 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 					continue
 
 				var table := DebugObjectFields.table_cells(id, record, city)
+				var site := {} if record.type == 0 or city.index_of(record.x, record.y) < 0 \
+					else {"x": record.x, "y": record.y, "width": 1, "height": 1}
+				var sort: Array = [id]
+
+				for key: String in DebugObjectFields.COLUMNS:
+					# translated columns sort by their visible text; the rest by stored value
+					sort.append(table.cells[sort.size()] if key in DebugObjectFields.TRANSLATED else record[key])
+
 				result.append({"id": str(id), "name": "Object %d" % id,
 					"value": DebugObjectFields.type_name(record.type),
 					"raw": "(%d, %d, %d)" % [record.x, record.y, record.z],
 					"cells": table.cells, "tooltips": table.tooltips, "empty": record.type == 0,
-					"site": {} if record.type == 0 or city.index_of(record.x, record.y) < 0
-						else {"x": record.x, "y": record.y, "width": 1, "height": 1},
+					"site": site, "sort": sort,
 					"fields": [{"cells": table.raw, "tooltips": table.tooltips}]})
 
 		"State":
@@ -106,6 +116,10 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 			result.append({"id": "chunks", "name": "Save chunks", "value": "%d chunks" % chunks.size(), "fields": chunks})
 
 	return result
+
+
+static func _site_sort(site: Dictionary) -> Variant:
+	return null if site.is_empty() else [site.x, site.y, site.width * site.height]
 
 
 static func _field(key: String, value: Variant, detail: String) -> Dictionary:

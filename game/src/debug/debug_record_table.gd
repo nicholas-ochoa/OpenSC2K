@@ -12,6 +12,10 @@ var _city_id := 0
 # column holding the locate icon; -1 when this table has none
 var locate_column := -1
 var _locate_icon: Texture2D
+var _titles: Array = []
+# sorted column and direction; -1 keeps record order
+var sort_column := -1
+var sort_descending := false
 @onready var table: Tree = $Table
 @onready var search: LineEdit = $Controls/Search
 @onready var show_empty: CheckBox = $Controls/ShowEmpty
@@ -45,6 +49,10 @@ func _ready() -> void:
 		table.gui_input.connect(_on_table_input)
 
 	table.columns = titles.size()
+	_titles = titles
+
+	if kind != "State":
+		table.column_title_clicked.connect(_on_column_title_clicked)
 
 	for column in titles.size():
 		table.set_column_title(column, titles[column])
@@ -89,7 +97,8 @@ func update_records(records: Array[Dictionary]) -> void:
 
 	var retained := {}
 
-	for record in records:
+	for order in records.size():
+		var record := records[order]
 		var id: String = record.id
 		retained[id] = true
 		var row: TreeItem = rows.get(id)
@@ -100,6 +109,7 @@ func update_records(records: Array[Dictionary]) -> void:
 			rows[id] = row
 
 		_set_cells(row, record)
+		row.set_meta("order", order)
 		var fields: Array = record.get("fields", [])
 
 		while row.get_child_count() > fields.size():
@@ -114,7 +124,96 @@ func update_records(records: Array[Dictionary]) -> void:
 			rows[id].free()
 			rows.erase(id)
 
+	_apply_sort()
 	_filter()
+
+
+func sort_by(column: int, descending := false) -> void:
+	sort_column = column
+	sort_descending = descending
+
+	for index in _titles.size():
+		var marker := "" if index != column else (" ▼" if descending else " ▲")
+		table.set_column_title(index, str(_titles[index]) + marker)
+
+	_apply_sort()
+
+
+# title clicks cycle ascending, descending, then record order
+func _on_column_title_clicked(column: int, mouse_button: int) -> void:
+	if mouse_button != MOUSE_BUTTON_LEFT:
+		return
+
+	if column != sort_column:
+		sort_by(column)
+	elif not sort_descending:
+		sort_by(column, true)
+	else:
+		sort_by(-1)
+
+
+func _apply_sort() -> void:
+	var root := table.get_root()
+
+	if root == null:
+		return
+
+	var ordered: Array[TreeItem] = []
+	var item := root.get_first_child()
+
+	while item != null:
+		ordered.append(item)
+		item = item.get_next()
+
+	var sorted := ordered.duplicate()
+	sorted.sort_custom(_row_before)
+
+	if sorted == ordered:
+		return
+
+	# move rows in place so expansion, selection and scrolling survive
+	sorted[0].move_before(root.get_first_child())
+
+	for index in range(1, sorted.size()):
+		sorted[index].move_after(sorted[index - 1])
+
+
+func _row_before(a: TreeItem, b: TreeItem) -> bool:
+	if sort_column >= 0:
+		var a_keys: Array = a.get_meta("sort", [])
+		var b_keys: Array = b.get_meta("sort", [])
+		var a_key: Variant = a_keys[sort_column] if sort_column < a_keys.size() else a.get_text(sort_column)
+		var b_key: Variant = b_keys[sort_column] if sort_column < b_keys.size() else b.get_text(sort_column)
+
+		# missing values stay last in both directions
+		if (a_key == null) != (b_key == null):
+			return b_key == null
+
+		var order := compare_keys(a_key, b_key)
+
+		if order != 0:
+			return order > 0 if sort_descending else order < 0
+
+	return int(a.get_meta("order", 0)) < int(b.get_meta("order", 0))
+
+
+static func compare_keys(a: Variant, b: Variant) -> int:
+	if a == null or b == null:
+		return 0
+
+	if a is Array and b is Array:
+		for index in mini(a.size(), b.size()):
+			var order := compare_keys(a[index], b[index])
+
+			if order != 0:
+				return order
+
+		return signi(a.size() - b.size())
+
+	if (a is int or a is float) and (b is int or b is float):
+		return -1 if a < b else (1 if a > b else 0)
+
+	return str(a).naturalnocasecmp_to(str(b))
 
 
 func _set_cells(row: TreeItem, record: Dictionary) -> void:
@@ -128,13 +227,24 @@ func _set_cells(row: TreeItem, record: Dictionary) -> void:
 			tooltips.insert(locate_column, "")
 
 	if cells.is_empty():
-		for key in ["name", "value", "raw", "position", "locate", "detail"] if kind == "XMIC" else ["name", "value", "raw", "detail"]:
+		for key in ["name", "value", "raw", "position", "detail"] if kind == "XMIC" else ["name", "value", "raw", "detail"]:
 			cells.append(str(record.get(key, "")))
+
+		if kind == "XMIC":
+			cells.insert(locate_column, "")
 
 	for column in table.columns:
 		var text := str(cells[column])
 		row.set_text(column, text)
 		row.set_tooltip_text(column, str(tooltips[column]) if column < tooltips.size() else text)
+
+	var sort: Array = record.get("sort", []).duplicate()
+
+	if not sort.is_empty() and locate_column >= 0:
+		var site: Dictionary = record.get("site", {})
+		sort.insert(locate_column, null if site.is_empty() else [site.x, site.y])
+
+	row.set_meta("sort", sort)
 
 	if locate_column >= 0:
 		_set_locate_icon(row, record.get("site", {}))
