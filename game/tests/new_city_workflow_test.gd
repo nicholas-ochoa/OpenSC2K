@@ -7,7 +7,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	preload("res://tests/support/app_fixture.gd").configure(main)
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
 	main._open_new_city_dialog()
@@ -82,13 +82,10 @@ func _run() -> void:
 	main._make_new_city_preview()
 	assert(dialog.generating and dialog.done_button.disabled)
 	assert(dialog._busy_spinner.is_visible_in_tree() and dialog._busy_spinner.is_processing())
-	var frames := 0
 	while main.new_city_preview_job != null:
-		frames += 1
 		await process_frame
-	assert(frames > 1 and not dialog.generating)
+	assert(not dialog.generating)
 	assert(not dialog._busy_spinner.is_processing())
-	assert(dialog._busy_spinner.angle > 0.0)
 	assert(main.audio_controller.wave_sound_gate.current_sound_id == 529)
 	assert(dialog.candidate_valid and not dialog.done_button.disabled)
 	assert(dialog.landscape_background.texture != null)

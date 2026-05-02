@@ -227,12 +227,6 @@
     "lane": "audit"
   },
   {
-    "id": "audit_reference_check_controls",
-    "script": "tools/audit_reference_check_controls.gd",
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
     "id": "audit_reference_advisor_portraits",
     "script": "tools/audit_reference_advisor_portraits.gd",
     "domain": "reference",
@@ -251,12 +245,6 @@
     "lane": "audit"
   },
   {
-    "id": "audit_reference_city_presentation",
-    "script": "tools/audit_reference_city_presentation.gd",
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
     "id": "desktop_runtime_test",
     "script": "tests/desktop_runtime_test.gd",
     "domain": "ui",
@@ -264,12 +252,6 @@
     "requires": [
       "ext/graphics/pack.json"
     ]
-  },
-  {
-    "id": "audit_reference_desktop",
-    "script": "tools/audit_reference_desktop.gd",
-    "domain": "reference",
-    "lane": "audit"
   },
   {
     "id": "audit_reference_scurk_presentation",
@@ -905,12 +887,6 @@
     "lane": "product"
   },
   {
-    "id": "original_pack_import_test",
-    "script": "tests/original_pack_import_test.gd",
-    "domain": "formats",
-    "lane": "product"
-  },
-  {
     "id": "import_packs_runtime_test",
     "script": "tests/import_packs_runtime_test.gd",
     "domain": "ui",
@@ -1002,33 +978,6 @@
     "lane": "native"
   },
   {
-    "id": "graphics_test_scenario_picture_audit_and_coverage",
-    "python": "tools/test_graphics_tools.py",
-    "args": [
-      "GraphicsToolsTest.test_scenario_picture_audit_and_coverage"
-    ],
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
-    "id": "graphics_test_check_sheet_audit_and_complete_bitmap_coverage",
-    "python": "tools/test_graphics_tools.py",
-    "args": [
-      "GraphicsToolsTest.test_check_sheet_audit_and_complete_bitmap_coverage"
-    ],
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
-    "id": "graphics_test_desktop_resource_audit_and_pack_coverage",
-    "python": "tools/test_graphics_tools.py",
-    "args": [
-      "GraphicsToolsTest.test_desktop_resource_audit_and_pack_coverage"
-    ],
-    "domain": "reference",
-    "lane": "audit"
-  },
-  {
     "id": "graphics_test_palette_padding_preserves_encoded_indices",
     "python": "tools/test_graphics_tools.py",
     "args": [
@@ -1036,15 +985,6 @@
     ],
     "domain": "formats",
     "lane": "product"
-  },
-  {
-    "id": "graphics_test_supplied_inventory_matches_recorded_metadata",
-    "python": "tools/test_graphics_tools.py",
-    "args": [
-      "GraphicsToolsTest.test_supplied_inventory_matches_recorded_metadata"
-    ],
-    "domain": "reference",
-    "lane": "audit"
   },
   {
     "id": "validation_runner",

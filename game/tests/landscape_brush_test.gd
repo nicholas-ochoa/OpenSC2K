@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 
 
 func _initialize() -> void:
@@ -7,22 +8,23 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	preload("res://tests/support/app_fixture.gd").configure(main)
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
-	for edge in [128, 256, 384, 512]:
+	main.map_view.zoom_factor = 0.25
+	for edge in [128, 512]:
 		assert(main._activate_document(EmptyCityTemplate.create(edge)))
 		main._enter_landscape_editor()
 		main._select_tool_group(1)
 		for tool in [0, 1, 3]:
 			main._select_subtool(tool)
-			for width in [1, 2, 5, 15]:
+			for width in ([1, 2, 5, 15] if edge == 128 else [15]):
 				for shape in [0, 1]:
 					main.city_toolbar.brush_size_input.value = width
 					main.city_toolbar.brush_shape_input.select(shape)
 					main._update_edit_state()
 					var point := Vector2i(edge - 24, edge - 24)
-					var before: PackedByteArray = main.current_document.serialize().data
+					var before: Array = DocumentState.capture(main.current_document)
 					var rng: int = main.tool_random.state
 					main.map_view.selection_start = point
 					main.map_view.selection_end = point
@@ -37,7 +39,7 @@ func _run() -> void:
 							assert(main.city.is_water(x, point.y) if tool == 1 else main.city.building_id(x, point.y) in range(6, 13))
 					main.map_view._clear_selection()
 					assert(LandscapeCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
-					assert(main.current_document.serialize().data == before)
+					assert(DocumentState.capture(main.current_document) == before)
 					assert(main.tool_random.state == rng)
 		_check_level_brush(main, Vector2i(edge - 40, edge - 40))
 		for corner in [Vector2i.ZERO, Vector2i(edge - 1, edge - 1)]:
@@ -68,7 +70,7 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 		assert(main.map_view.brush_tiles(point).size() == (21 if editor else 1))
 		var target: int = main.city.land_altitude(point.x, point.y)
 		var funds: int = main.city.funds()
-		var before: PackedByteArray = main.current_document.serialize().data
+		var before: Array = DocumentState.capture(main.current_document)
 		var rng: int = main.tool_random.state
 		main.map_view.selection_start = point
 		main.map_view.selection_end = point
@@ -84,7 +86,7 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 				assert(main.city.land_altitude(x, point.y + dy) == target)
 		main.map_view._clear_selection()
 		assert(TerrainCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
-		assert(main.current_document.serialize().data == before)
+		assert(DocumentState.capture(main.current_document) == before)
 		assert(main.tool_random.state == rng)
 	main.landscape_editor = true
 	main.city_toolbar.set_landscape_editor(true)

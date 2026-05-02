@@ -7,14 +7,12 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	preload("res://tests/support/app_fixture.gd").configure(main)
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
-	main._open_new_city_dialog()
-	main._make_new_city_preview()
-	while main.new_city_preview_job != null:
-		await process_frame
-	main._create_new_city_unchecked()
+	main.map_view.zoom_factor = 0.25
+	assert(main._activate_document(EmptyCityTemplate.create()))
+	main._enter_landscape_editor()
 	main.city.set_sound_enabled(true)
 	main.audio_controller.application_has_focus = true
 	main.app_toolbar_sounds = true

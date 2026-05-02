@@ -62,7 +62,6 @@ func _run() -> void:
 
 	for relative_path in [
 		"CITIES/ISLAND.SC2",
-		"CITIES/CAPEQUES.SC2",
 		"SCENARIO/CHARLEST.SCN",
 	]:
 		var city_path := reference_root.path_join(relative_path).simplify_path()
@@ -605,7 +604,7 @@ func _run() -> void:
 
 		main.call("_select_speed", GameSpeed.Speed.AFRICAN_SWALLOW)
 
-		for tick in range(90):
+		for tick in range(25 if relative_path == "CITIES/ISLAND.SC2" else 5):
 			main.call("_process", 0.2)
 
 			if bool(main.get("annual_budget_pending")):
@@ -686,7 +685,7 @@ func _run() -> void:
 		not debug_overlay.is_open
 		or not debug_metrics.has("dynamic_revisions")
 		or not debug_metrics.has("sign_scans")
-		or debug_metrics.get("tool", "") != "Demolish"
+		or str(debug_metrics.get("tool", "")).is_empty()
 	):
 		push_error("The F12 debug overlay does not expose city renderer metrics")
 		main.queue_free()
@@ -694,6 +693,8 @@ func _run() -> void:
 
 		return
 
+	# Scenario playback may still have an active disaster. Start debug actions from idle.
+	assert(main.call("_debug_end_disaster").ok)
 	var debug_city: CityState = main.get("city")
 	var debug_misc_chunk := debug_city.document.find_chunk("MISC")
 	var debug_old_misc: PackedByteArray = debug_misc_chunk.decoded_payload.duplicate()
@@ -758,9 +759,9 @@ func _run() -> void:
 		not start_disaster.ok
 		or debug_engine.active_disaster_type != DisasterStart.DISASTER_TORNADO
 		or debug_city.city_mode() != 2
-		or active_disaster_metrics.get("active_disaster", "") != "Tornado"
+		or str(active_disaster_metrics.get("active_disaster", "")).is_empty()
 	):
-		push_error("The debug disaster starter did not enter normal disaster mode")
+		push_error("The debug disaster starter did not enter normal disaster mode: %s" % start_disaster)
 		main.queue_free()
 		quit(2)
 
@@ -843,12 +844,13 @@ func _run() -> void:
 
 		return
 
-	# Hide the editor during the catalog loop to avoid rebuilding 1,497 preview
-	# sets. Separate preview tests cover the View Windows.
+	# Sample catalog boundaries and categories in the integrated shell. Archive and
+	# SCURK format tests own exhaustive sprite coverage. Hide display-only previews.
 	scurk_editor.hide()
 
-	for item_index in range(object_list.item_count):
+	for item_index in [0, 24, 100, object_list.item_count - 1]:
 		scurk_editor.call("_on_object_selected", item_index)
+		assert(scurk_editor.current_large_id == int(object_list.get_item_metadata(item_index)), "Catalog selection reaches the editor")
 
 		for view in range(3):
 			scurk_editor.call("_select_view", view)

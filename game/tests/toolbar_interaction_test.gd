@@ -7,9 +7,10 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	preload("res://tests/support/app_fixture.gd").configure(main)
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
+	main.map_view.zoom_factor = 0.25
 	main.call("_load_city_unchecked", ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
 	main.call("_select_speed", GameSpeedController.Speed.PAUSED)
 	var toolbar := main.get("city_toolbar") as CityToolbar

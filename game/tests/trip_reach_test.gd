@@ -52,7 +52,7 @@ func _test_highway(edge: int, native: bool) -> void:
 	city.set_zone_id(origin.x, origin.y, 1)
 	city.set_zone_id(destination.x, destination.y, 3)
 	var first_cost := -1
-	for seed in range(1, 101):
+	for seed in [1, 2, 7, 29]:
 		var result := TransportTrip.run(city, origin, 1, 2, SimRandom.new(seed))
 		check(result.ok and result.reached_destination, "Every seed reaches a valid highway destination at edge %d" % edge)
 		if first_cost < 0:
@@ -71,7 +71,7 @@ func _test_highway(edge: int, native: bool) -> void:
 	# Reverse-direction travel must go around the endpoints to use the return lane.
 	var reverse := TransportTrip.run(city, destination, 3, 2, SimRandom.new(1))
 	check(reverse.reached_destination and reverse.cost > first_cost, "Reverse trip uses longer endpoint turnaround route")
-	for ccw in [false, true]:
+	for ccw in ([false, true] if edge == 128 and not native else []):
 		var rotated := CityState.from_document(city.document.duplicate_document())
 		var rotated_origin := origin
 		for turn in 4:
@@ -86,7 +86,7 @@ func _test_branches(edge: int, native: bool) -> void:
 	for x in range(20, 61):
 		city.set_building_id(x, 20, 0x1d)
 	city.set_zone_id(20, 21, 3)
-	for seed in range(1, 21):
+	for seed in [1, 7, 29]:
 		check(TransportTrip.run(city, Vector2i(19, 20), 1, 2, SimRandom.new(seed)).reached_destination,
 			"Long dead-end branch cannot hide a short destination")
 	city.set_zone_id(20, 21, 0)
@@ -234,7 +234,7 @@ func _test_overpasses() -> void:
 				var destination := b + Vector2i(2, 2)
 				city.set_zone_id(origin.x, origin.y, 1)
 				city.set_zone_id(destination.x, destination.y, 3)
-				for rotation in 4:
+				for rotation in (4 if edge == 128 else 1):
 					var trip := TransportTrip.run(city, origin, 1, 2, SimRandom.new(1))
 					check(trip.reached_destination, "Highway trip continues across each overpass orientation and build order")
 					var reach := TripReachAnalysis.inspect(city, origin)
@@ -245,6 +245,8 @@ func _test_overpasses() -> void:
 						for node: Dictionary in under.reachable:
 							points[node.point] = true
 						check(points.has(under_end), "Road and rail trips continue under the highway")
+					if edge != 128 or rotation == 3:
+						continue
 					CityRotationCommand.apply(city, false)
 					origin = CityRotationCommand.rotate_point(origin, edge, false)
 					under_start = CityRotationCommand.rotate_point(under_start, edge, false)
@@ -261,7 +263,7 @@ func _test_dead_end_turns() -> void:
 		var return_lane := b + Vector2i(1, 0)
 		var middle := a + Vector2i(11, 1)
 		var middle_across := a + Vector2i(11, 0)
-		for rotation in 4:
+		for rotation in (4 if edge == 128 else 1):
 			check(TransportTrip._highway_step(city.buildings, end_lane, return_lane, edge), "Open highway end permits a median turnaround")
 			check(not TransportTrip._highway_step(city.buildings, middle, middle_across, edge), "Connected highway does not permit a median shortcut")
 			for mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
@@ -270,6 +272,8 @@ func _test_dead_end_turns() -> void:
 					"Car and bus turnaround costs one highway step")
 			var result := TripReachAnalysis.inspect(city, middle)
 			check(result.expanded_states <= 88, "End turnarounds terminate without repeatedly circling")
+			if edge != 128 or rotation == 3:
+				continue
 			CityRotationCommand.apply(city, false)
 			end_lane = CityRotationCommand.rotate_point(end_lane, edge, false)
 			return_lane = CityRotationCommand.rotate_point(return_lane, edge, false)

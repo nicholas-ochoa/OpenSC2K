@@ -252,7 +252,7 @@ def main():
                     command = godot_command(entry['script'], entry['lane'] == 'native', ['--', *extra] if extra else [])
                 if not run(name, command, entry.get('timeout', float(os.environ.get('GODOT_TEST_TIMEOUT_SECONDS', '900')))) and not args.keep_going:
                     break
-            run('diff-check', ['git', 'diff', '--check'])
+            run('diff-check', ['git', 'diff', '--check', '--', '.'])
         finally:
             project.close()
     totals = {status: sum(r['status'] == status for r in results) for status in ('PASS', 'FAIL', 'SKIP')}

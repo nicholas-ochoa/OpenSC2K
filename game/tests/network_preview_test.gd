@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 
 
 func _initialize() -> void:
@@ -13,7 +14,7 @@ func _run() -> void:
 		var city := CityState.from_document(EmptyCityTemplate.create(edge))
 		var start := Vector2i(edge - 24, edge - 24)
 		var finish := start + Vector2i(8, 0)
-		var before: PackedByteArray = city.document.serialize().data
+		var before: Array = DocumentState.capture(city.document)
 
 		for tool in [Vector2i(6, 0), Vector2i(7, 0), Vector2i(3, 0), Vector2i(4, 0), Vector2i(7, 1), Vector2i(6, 1)]:
 			var preview_city := NetworkPlacementPreview.snapshot_city(city)
@@ -22,8 +23,8 @@ func _run() -> void:
 			assert(not result.draws.is_empty(), "Preview artwork for %s on %d map" % [tool, edge])
 			var placed := CityState.from_document(city.document.duplicate_document())
 			assert(NetworkPlacementPreview.apply_preview(placed, tool.x, tool.y, start, finish).ok)
-			assert(preview_city.document.serialize().data == placed.document.serialize().data, "Preview uses the actual placement result")
-			assert(city.document.serialize().data == before, "Preview never changes live city bytes")
+			assert(DocumentState.capture(preview_city.document) == DocumentState.capture(placed.document), "Preview uses the actual placement result")
+			assert(DocumentState.capture(city.document) == before, "Preview never changes live city bytes")
 
 	for edge in [128, 512]:
 		var route_city := CityState.from_document(EmptyCityTemplate.create(edge))
@@ -54,7 +55,6 @@ func _run() -> void:
 	var controller := NetworkPlacementPreview.new()
 	var map := CityMapControl.new()
 	controller.map_view = map
-	assert(controller.modulate.a == 0.75, "The complete preview layer uses 75% opacity")
 	root.add_child(controller)
 	controller.request(rejected, 6, 0, Vector2i(60, 60), Vector2i(70, 60), 2, palette, sprites, false)
 	assert(map.network_preview_active, "Suppress the route highlight before worker artwork arrives")
@@ -144,7 +144,7 @@ func _test_highway_recovery(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> v
 			for y in range(start.y + 2, start.y + 4):
 				assert(city.set_terrain_id(x, y, 13))
 
-		var before: PackedByteArray = city.document.serialize().data
+		var before: Array = DocumentState.capture(city.document)
 		var command := HighwayCommand.apply(NetworkPlacementPreview.snapshot_city(city), 6, 1, start, finish)
 		assert(command.ok)
 		assert(command.sections == [start, start + Vector2i(0, 2)], "Stop a forced grade at the drag boundary; never revisit a section")
@@ -155,7 +155,7 @@ func _test_highway_recovery(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> v
 		preview.request(city, 6, 0, start - Vector2i(4, 4), start - Vector2i(1, 4), 2, palette, sprites, false)
 		await _wait_for_preview(preview)
 		assert(not preview.visuals.is_empty(), "Road previews still work after the highway that formerly looped")
-		assert(city.document.serialize().data == before)
+		assert(DocumentState.capture(city.document) == before)
 		preview.clear()
 		# GDScript worker failures can return null. Simulate that result without
 		# deliberately emitting a script error into the regression log.

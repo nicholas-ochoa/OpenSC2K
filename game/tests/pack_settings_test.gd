@@ -40,7 +40,8 @@ func _run() -> void:
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
+	main.map_view.zoom_factor = 0.25
+	assert(main._activate_document(EmptyCityTemplate.create()))
 	main._select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = main.city.document.serialize().data
 	main._open_settings_dialog()
@@ -83,7 +84,7 @@ func _run() -> void:
 	assert(main.city.document.serialize().data == before)
 	dialog.folder_edit.text = source.path_join("pack.json")
 	main._apply_settings()
-	assert(main.asset_source.graphics_name == "Original SimCity 2000")
+	assert(main.asset_source.graphics_name == str(JSON.parse_string(FileAccess.get_file_as_string(source.path_join("pack.json"))).name))
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels != sprite.pixels)
 	assert(main.city.document.serialize().data == before)
 	main.settings_dialog.hide()

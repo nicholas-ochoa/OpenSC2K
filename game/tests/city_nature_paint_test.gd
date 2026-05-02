@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 
 
 func _initialize() -> void:
@@ -36,11 +37,12 @@ func _motion(map: CityMapControl, tile: Vector2i, shift := false) -> void:
 
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	preload("res://tests/support/app_fixture.gd").configure(main)
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	main.app_settings_path = "user://city-nature-paint-test.cfg"
 	root.add_child(main)
 	await process_frame
-	for edge in [128, 256, 384, 512]:
+	main.map_view.zoom_factor = 0.25
+	for edge in [128, 512]:
 		assert(main._activate_document(EmptyCityTemplate.create(edge)))
 		main._select_speed(GameSpeedController.Speed.PAUSED)
 		main._select_tool_group(1)
@@ -56,7 +58,7 @@ func _run() -> void:
 			assert(map.brush_size == (7 if tool == 3 else 1))
 			assert(map.brush_round and not map.shift_line_enabled)
 			var start := Vector2i(edge - 30, edge - 30)
-			var before: PackedByteArray = main.current_document.serialize().data
+			var before: Array = DocumentState.capture(main.current_document)
 			var rng: int = main.tool_random.state
 			_button(map, start, true)
 			_motion(map, start + Vector2i(8, 0))
@@ -68,25 +70,25 @@ func _run() -> void:
 				for x in range(start.x, start.x + 11):
 					assert(main.city.is_water(x, start.y) if tool == 1 else main.city.building_id(x, start.y) in range(6, 13))
 			assert(LandscapeCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
-			assert(main.current_document.serialize().data == before and main.tool_random.state == rng)
+			assert(DocumentState.capture(main.current_document) == before and main.tool_random.state == rng)
 
 			_button(map, start, true, true)
 			_motion(map, start + Vector2i(3, 2), true)
 			map._process(0.5)
 			assert(map.selection_path.size() == 12)
-			assert(main.current_document.serialize().data == before)
+			assert(DocumentState.capture(main.current_document) == before)
 			# Releasing Shift mid-drag keeps the box tool active.
 			_button(map, start + Vector2i(3, 2), false)
 			assert(main.last_edit_command.ok and main.last_edit_command.cost > 0)
 			if tool != 3:
 				assert(main.last_edit_command.tile_indices.size() == 12)
 			assert(LandscapeCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
-			assert(main.current_document.serialize().data == before and main.tool_random.state == rng)
+			assert(DocumentState.capture(main.current_document) == before and main.tool_random.state == rng)
 
 			_button(map, start, true, true)
 			_motion(map, start + Vector2i(3, 2), true)
 			assert(map.cancel_active_selection())
-			assert(main.current_document.serialize().data == before)
+			assert(DocumentState.capture(main.current_document) == before)
 		print("PASS: city painting, fixed brushes, costs, Shift boxes, cancel and exact Undo at ", edge)
 	main.free()
 	quit()

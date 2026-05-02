@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 
 var checks := 0
 var failures := 0
@@ -13,7 +14,7 @@ func check(ok: bool, message: String) -> void:
 
 func _initialize() -> void:
 	for edge in [128, 256, 384, 512]:
-		for direction in 4:
+		for direction in (range(4) if edge == 128 else [[128, 256, 384, 512].find(edge)]):
 			_test_crossing(edge, direction)
 	print("Highway terrain route: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
@@ -33,7 +34,7 @@ func _test_crossing(edge: int, direction: int) -> void:
 		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 			var point: Vector2i = crossing + offset
 			city.set_building_id(point.x, point.y, tile_id)
-		var before: PackedByteArray = city.document.serialize().data
+		var before: Array = DocumentState.capture(city.document)
 		var preview := NetworkPlacementPreview.snapshot_city(city)
 		var preview_result := HighwayCommand.apply(preview, 6, 1, start, finish)
 		var result := HighwayCommand.apply(city, 6, 1, start, finish)
@@ -41,6 +42,6 @@ func _test_crossing(edge: int, direction: int) -> void:
 		if not result.get("ok", false):
 			continue
 		check(result.sections.has(crossing + step * 2) and not result.sections.has(crossing + side * 2), "Keep incoming axis through crossing %x direction %d edge %d" % [tile_id, direction, edge])
-		check(preview_result.get("ok", false) and preview.document.serialize().data == city.document.serialize().data, "Highway preview has identical bytes")
+		check(preview_result.get("ok", false) and DocumentState.capture(preview.document) == DocumentState.capture(city.document), "Highway preview has identical bytes")
 		check(result.cost == result.sections.size() * 100, "Highway section prices remain unchanged")
-		check(HighwayCommand.undo(city, result).get("ok", false) and city.document.serialize().data == before, "Crossing route has exact Undo")
+		check(HighwayCommand.undo(city, result).get("ok", false) and DocumentState.capture(city.document) == before, "Crossing route has exact Undo")

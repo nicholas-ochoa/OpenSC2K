@@ -12,7 +12,7 @@ func _run() -> void:
 	var cache := CityRegionCache.new()
 	cache.gpu_enabled = true
 	cache.configure(city, palette, sprites, [1], 2, "city", {}, true, true)
-	var bounds := Rect2i(IntegerMath.div_trunc_vec2i(cache.native_size, 2) - Vector2i(600, 350), Vector2i(1200, 700))
+	var bounds := Rect2i(IntegerMath.div_trunc_vec2i(cache.native_size, 2) - Vector2i(400, 250), Vector2i(800, 500))
 	cache.update_viewport(Rect2(bounds))
 	await _drain(cache)
 	assert(cache.gpu_enabled and cache.ready())

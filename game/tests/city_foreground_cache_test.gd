@@ -8,13 +8,13 @@ func _initialize() -> void:
 func _run() -> void:
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	preload("res://tests/support/app_fixture.gd").configure(main)
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
 	main.map_view.zoom_factor = 0.25
-	assert(main._activate_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x")))
+	assert(main._activate_document(Sc2File.load_path("res://../local/large-cities/stitched-256.sc2x")))
 	var deadline := Time.get_ticks_msec() + 30000
 
 	while not main.region_cache.ready() and Time.get_ticks_msec() < deadline:

@@ -77,7 +77,7 @@ func _run() -> void:
 	assert(audio.wave_sound_gate.accepted_count == 1)
 	audio.queue_free()
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	preload("res://tests/support/app_fixture.gd").configure(main)
+	preload("res://tests/support/app_fixture.gd").configure(main, "--preview" not in OS.get_cmdline_user_args())
 	root.add_child(main)
 	await process_frame
 	main._activate_document(EmptyCityTemplate.create())

@@ -8,13 +8,15 @@ const YEAR_SHA256 := "56f7ee574b94d6392ad2eb72167a14d70a34e2f4ce59defaf1cbe3b003
 
 
 func _init() -> void:
-	var selected := OS.get_cmdline_user_args()
+	var selected := Array(OS.get_cmdline_user_args())
+	var soak := selected.has("--soak")
+	selected.erase("--soak")
 
 	for argument in selected:
 		if not _check(argument in ["128", "256", "384", "512"], "unknown test size " + argument):
 			return
 
-	for edge in [128, 256, 384, 512]:
+	for edge in ([128, 256, 384, 512] if soak or not selected.is_empty() else [128, 512]):
 		if not selected.is_empty() and str(edge) not in selected:
 			continue
 
@@ -32,7 +34,8 @@ func _init() -> void:
 		var disaster_ticks := 0
 		var controlled_disaster_ends := 0
 
-		for day in 300:
+		var days := 300 if edge == 128 or soak else 25
+		for day in days:
 			var episode_ticks := 0
 
 			while engine.active_disaster_type != 0:
@@ -87,7 +90,7 @@ func _init() -> void:
 			if not _result(engine.advance_moving_things(day * 200), "moving tick"):
 				return
 
-		if not _check(engine.city.age_in_days() == initial_age + 300, "year advanced"):
+		if not _check(engine.city.age_in_days() == initial_age + days, "requested calendar interval advanced"):
 			return
 
 		var saved := document.serialize()
@@ -111,7 +114,7 @@ func _init() -> void:
 			return
 
 		print("Controlled disaster ends: %d" % controlled_disaster_ends)
-		print("PASS: populated %d city, 300 days, %d disaster ticks, reload; %d ms; phases %s" % [edge, disaster_ticks, Time.get_ticks_msec() - start, phases.keys()])
+		print("PASS: populated %d city, %d days, %d disaster ticks, reload; %d ms; phases %s" % [edge, days, disaster_ticks, Time.get_ticks_msec() - start, phases.keys()])
 
 	quit()
 

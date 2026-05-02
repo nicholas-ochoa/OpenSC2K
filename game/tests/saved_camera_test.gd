@@ -9,10 +9,12 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	main.app_settings_path = "user://saved-camera-test.cfg"
 	root.add_child(main)
 	await process_frame
+	main.map_view.zoom_factor = 0.25
 	main.app_city_renderer = "cpu"
 
 	for target in [Vector2i(25, 91), Vector2i(101, 40)]:

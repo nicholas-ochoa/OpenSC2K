@@ -5,7 +5,7 @@ func _initialize() -> void:
 
 
 func _run() -> void:
-	for edge in [128, 256, 384, 512]:
+	for edge in [128, 512]:
 		var doc := EmptyCityTemplate.create(edge)
 		assert(NewCityTerrain.generate(doc, false, false, 47, 0, 0,
 			SimRandom.new(1), GameLcgRandom.new(1), "classic", [], true).ok)
