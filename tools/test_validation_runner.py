@@ -48,12 +48,18 @@ class ValidationRunnerTest(unittest.TestCase):
                                             lambda entry: entry != 'fail', finish, True))
         self.assertEqual(completed, ['fail', 'next'])
 
-    def test_exclusive_checks_are_parallel_barriers(self):
-        entries = runner.registry()
-        for entry in entries:
-            if entry['lane'] in ('native', 'integration') or entry.get('state') or entry.get('driver') or 'python' in entry:
-                self.assertFalse(runner.parallel_safe(entry), entry['id'])
-        self.assertTrue(runner.parallel_safe(next(e for e in entries if e['id'] == 'integer_math_test')))
+    def test_groups_preserve_native_and_persistence_order_without_losing_checks(self):
+        entries = runner.select(runner.registry(), ['release'], [])
+        groups = runner.execution_groups(entries)
+        self.assertCountEqual([entry['id'] for group in groups for entry in group],
+                              [entry['id'] for entry in entries])
+        native = [entry['id'] for entry in entries if entry['lane'] == 'native']
+        native_groups = [group for group in groups if any(e['lane'] == 'native' for e in group)]
+        self.assertEqual([[e['id'] for e in group] for group in native_groups], [native])
+        history = [group for group in groups if group[0].get('state') == 'file-history']
+        self.assertEqual([[e['args'] for e in group] for group in history], [[['write'], ['read']]])
+        serial = runner.execution_groups(entries, parallel=False)
+        self.assertEqual([e['id'] for group in serial for e in group], [e['id'] for e in entries])
 
     def test_registry_covers_every_script(self):
         entries = runner.registry()

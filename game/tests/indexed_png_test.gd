@@ -6,6 +6,13 @@ const FIXTURE := "89504e470d0a1a0a0000000d4948445200000004000000010803000000cee2
 
 
 func _initialize() -> void:
+	# Independent zlib CRC-32 vectors: empty input, standard text, every byte value.
+	assert(Codec._crc(PackedByteArray()) == 0)
+	assert(Codec._crc("123456789".to_ascii_buffer()) == 0xcbf43926)
+	var byte_values := PackedByteArray()
+	for value in 256:
+		byte_values.append(value)
+	assert(Codec._crc(byte_values) == 0x29058c73)
 	var bytes := FIXTURE.hex_decode()
 	var decoded := Codec.decode(bytes)
 	assert(decoded.ok, str(decoded))
