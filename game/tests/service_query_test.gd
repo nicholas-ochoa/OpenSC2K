@@ -100,11 +100,12 @@ func _check_coverage(data: PackedByteArray, values: Dictionary, edge: int, label
 		check(point.x >= 0 and point.y >= 0 and point.x < edge and point.y < edge, "Coverage stays in bounds")
 		check(value >= 0 and value <= 255, "Coverage fits a byte before packing")
 		expected[point.x * edge + point.y] = value
-	var actual := PackedByteArray()
-	actual.resize(edge * edge)
-	for x in edge:
-		for y in edge:
-			actual[x * edge + y] = data[CityDataGrid.index(data, edge, x, y)]
+	var actual := data
+	if data.size() != edge * edge:
+		var source_edge := int(sqrt(data.size()))
+		var image := Image.create_from_data(source_edge, source_edge, false, Image.FORMAT_L8, data)
+		image.resize(edge, edge, Image.INTERPOLATE_NEAREST)
+		actual = image.get_data()
 	if actual != expected:
 		for index in actual.size():
 			if actual[index] != expected[index]:

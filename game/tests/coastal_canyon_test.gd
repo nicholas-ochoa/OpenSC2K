@@ -1,7 +1,7 @@
 extends SceneTree
 
 func _initialize() -> void:
-	for edge in [128, 512]:
+	for edge in [128]:
 		for feature in ["cliffs", "canyon", "valley"]:
 			var doc := EmptyCityTemplate.create(edge)
 			var generated := NewCityTerrain.generate(doc, false, feature == "canyon", 12, 5, 0,

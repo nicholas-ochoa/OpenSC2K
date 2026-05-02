@@ -22,7 +22,7 @@ func check(ok: bool, message: String) -> void:
 
 
 func _run() -> void:
-	for edge in [128, 256, 384, 512]:
+	for edge in [128, 512]:
 		# All orientations at the original size; far-map repair at every larger size.
 		var rotations := [0, 1, 2, 3] if edge == 128 else [[128, 256, 384, 512].find(edge)]
 		for rotation in rotations:
@@ -105,8 +105,8 @@ func check_repair(edge: int, rotation: int) -> void:
 
 
 func check_version_one() -> void:
-	var city := CityState.from_document(EmptyCityTemplate.create(512))
-	stamp(city, 0xd2, Vector2i(507, 507))
+	var city := CityState.from_document(EmptyCityTemplate.create(256))
+	stamp(city, 0xd2, Vector2i(251, 251))
 	var doc := city.document
 	doc.large_version = 1
 
@@ -123,7 +123,7 @@ func check_version_one() -> void:
 	var activated := CityState.from_document(loaded)
 	check(loaded.large_version == 2, "Old SC2X capacity upgrades before repair")
 	check(FacilityRecordRepair.apply(activated).created == 1, "Old SC2X receives missing facility record")
-	check(activated.text_overlay_id(507, 507) == 61, "Old SC2X far-edge facility linked")
+	check(activated.text_overlay_id(251, 251) == 61, "Old SC2X far-edge facility linked")
 
 
 func check_capacity() -> void:
@@ -186,9 +186,9 @@ func check_shared_and_obstacles() -> void:
 	city.set_text_overlay_id(230, 230, 1)
 	stamp(city, 0xd6, Vector2i(220, 220))
 	city.set_building_id(221, 221, 0)
-	var before: PackedByteArray = city.document.serialize().data
+	var before: Array = saved_payloads(city.document)
 	check(FacilityRecordRepair.apply(city).linked == 0, "Signs and incomplete footprints are preserved")
-	check(city.document.serialize().data == before, "Ambiguous structures are unchanged")
+	check(saved_payloads(city.document) == before, "Ambiguous structures are unchanged")
 
 
 func check_load() -> void:
@@ -202,8 +202,9 @@ func check_load() -> void:
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)
-	var fixture := CityState.from_document(EmptyCityTemplate.create(256))
-	stamp(fixture, 0xd2, Vector2i(250, 250))
+	main.map_view.zoom_factor = 0.25
+	var fixture := CityState.from_document(EmptyCityTemplate.create(16))
+	stamp(fixture, 0xd2, Vector2i(10, 10))
 	fixture.set_simulation_speed(1)
 	var bytes: PackedByteArray = fixture.document.serialize().data
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
@@ -211,7 +212,7 @@ func check_load() -> void:
 	file.close()
 	var seed: int = main.tool_random.state
 	main._load_city_unchecked(ProjectSettings.globalize_path(save_path))
-	check(main.city.text_overlay_id(250, 250) == 61, "Actual file load repairs missing facility")
+	check(main.city.text_overlay_id(10, 10) == 61, "Actual file load repairs missing facility")
 	check(main._city_has_unsaved_changes(), "Load repair is marked unsaved")
 	check(main.tool_random.state == seed, "Load repair does not consume process RNG")
 	check(FileAccess.get_file_as_bytes(save_path) == bytes, "Loading never writes source file")

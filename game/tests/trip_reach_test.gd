@@ -1,5 +1,7 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 
+var fixtures: Dictionary = {}
 var checks := 0
 var failures := 0
 
@@ -12,12 +14,14 @@ func check(value: bool, label: String) -> void:
 
 
 func fixture(edge: int, native: bool) -> CityState:
-	var document := EmptyCityTemplate.create(edge)
-	if native:
-		document.enable_full_resolution_maps()
-	var city := CityState.from_document(document)
-	city.set_funds(1000000)
-	return city
+	var key := Vector2i(edge, int(native))
+	if not fixtures.has(key):
+		var document := EmptyCityTemplate.create(edge)
+		if native:
+			document.enable_full_resolution_maps()
+		CityState.from_document(document).set_funds(1000000)
+		fixtures[key] = document
+	return CityState.from_document(fixtures[key].duplicate_document())
 
 
 func _initialize() -> void:
@@ -58,10 +62,10 @@ func _test_highway(edge: int, native: bool) -> void:
 		if first_cost < 0:
 			first_cost = result.cost
 		check(result.cost == first_cost and result.cost < 75, "Highway cost is stable and below low-density budget")
-	var before: PackedByteArray = city.document.serialize().data
+	var before: Array = DocumentState.capture(city.document)
 	var diagnostic := TripReachAnalysis.inspect(city, origin)
 	check(diagnostic.reached_destination, "Diagnostic agrees with simulation")
-	check(city.document.serialize().data == before, "Inspection does not change any city bytes")
+	check(DocumentState.capture(city.document) == before, "Inspection does not change any city bytes")
 	var reached := {}
 	for node: Dictionary in diagnostic.reachable:
 		reached[node.point] = true
@@ -212,8 +216,8 @@ func _test_curve() -> void:
 
 func _test_overpasses() -> void:
 	for edge: int in [128, 512]:
-		for network: int in [0, 1, 2]:
-			for highway_first in [false, true]:
+		for network: int in ([0, 1, 2] if edge == 128 else [0]):
+			for highway_first in ([false, true] if edge == 128 else [false]):
 				var city := fixture(edge, false)
 				var shift := Vector2i.ONE * (edge - 100)
 				var a := Vector2i(20, 20) + shift

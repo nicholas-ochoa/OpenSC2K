@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 const TimingResults = preload("res://tests/support/timing_results.gd")
 
 class FixedRandom extends RefCounted:
@@ -87,20 +88,32 @@ func check_format(edge: int) -> void:
 
 		check(retained.find_chunk(id).decoded_payload == source[id], "Migration leaves independent source unchanged")
 
+	# Interior sizes still migrate every map and check values. Format rebuilds
+	# use minimum, original, and maximum dimensions; small-city tests cover 32/64.
+	if edge not in [16, 128, 512]:
+		check(legacy.resize_empty_map(128) and legacy.full_resolution_maps(), "Resize retains native mode")
+		return
+
 	var bytes: PackedByteArray = legacy.serialize().data
 	check(bytes.slice(8, 12).get_string_from_ascii() == "SCLG", "Native maps have SCLG header")
 	check(loaded.parse(bytes) and loaded.full_resolution_maps() and loaded.serialize(true).data == bytes, "Native exact rebuild")
 	check(loaded.find_chunk("TEST").decoded_payload == PackedByteArray([19, 27, 33, 84]), "Unknown chunk survives conversion")
-	check(loaded.enable_full_resolution_maps() and loaded.serialize().data == bytes, "Idempotent migration")
+	check(loaded.enable_full_resolution_maps() and DocumentState.capture(loaded) == DocumentState.capture(legacy), "Idempotent migration")
 	var city := CityState.from_document(loaded)
 
-	if edge in [128, 512]:
-		var turns := [false, false, false, false] if edge == 128 else [false, true]
-		for ccw in turns:
-			check(CityRotationCommand.apply(city, ccw).ok, "Rotate every native grid")
+	if edge == 128:
+		for turn in 4:
+			check(CityRotationCommand.apply(city, false).ok, "Rotate every native grid")
+		check(DocumentState.capture(loaded) == DocumentState.capture(legacy), "Rotation cycle retains all grid bytes")
+	elif edge == 512:
+		check(CityRotationCommand.apply(city, false).ok, "Rotate maximum native grids")
+		for id in source:
+			var expected := Image.create_from_data(edge, edge, false, Image.FORMAT_L8, legacy.find_chunk(id).decoded_payload)
+			# Column-major map bytes are transposed relative to image coordinates.
+			expected.rotate_90(COUNTERCLOCKWISE)
+			check(loaded.find_chunk(id).decoded_payload == expected.get_data(), "Every rotated native value reaches its destination: " + id)
 
-		check(loaded.serialize().data == bytes, "Rotation cycle retains all grid bytes")
-	if edge in [128, 512]:
+	if edge == 128:
 		var blocked := CityFileStore.save_copy(loaded, "user://native-maps-blocked.SC2", "res://../references/SIMCITY2000")
 		check(not blocked.ok and not FileAccess.file_exists("user://native-maps-blocked.SC2"), "Reject lossy SC2 save")
 		var path := "user://native-maps-test-%d-%d" % [OS.get_process_id(), edge]
@@ -153,6 +166,10 @@ func check_values(edge: int) -> void:
 	var damage := DisasterDamage.apply(city, p.ALTM, p.XBLD, p.XTER, p.XZON, p.XUND,
 		p.XBIT, p.XTRF, p.XTXT, labels, p.XMIC, p.MISC, point, FixedRandom.new(), FixedRandom.new())
 	check(damage != 0 and p.XTRF[index] == 0 and p.XTRF[index + 1] == 30, "Disaster clears only selected native traffic tile")
+	# All adjacent consumer rules above retain far coordinates. Full-map native
+	# phase parity at 512 is owned by check_sliced and native_data_map_optimization.
+	if edge > 128:
+		return
 	# A single source changes adjacent tile values independently.
 	doc = native_document(edge)
 	city = CityState.from_document(doc)
@@ -271,7 +288,7 @@ func check_sliced(edge: int) -> void:
 		actual = runner.advance_time(0, 200)
 
 	check(not runner.is_pending() and TimingResults.without_timings(actual) == TimingResults.without_timings(expected), "Native sliced events match synchronous events")
-	check(other.document.serialize().data == doc.serialize().data, "Native sliced bytes match synchronous bytes")
+	check(DocumentState.capture(other.document) == DocumentState.capture(doc), "Native sliced bytes match synchronous bytes")
 	runner.close()
 
 	# Monthly dispatch is covered by large_city_simulation_test_native_maps.

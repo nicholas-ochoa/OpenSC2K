@@ -12,14 +12,15 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.map_view.zoom_factor = 0.25
-	for edge in [128, 512]:
+	# A 32-map fits the largest brush and gap. The second case keeps far-map input.
+	for edge in [32, 512]:
 		assert(main._activate_document(EmptyCityTemplate.create(edge)))
 		main._enter_landscape_editor()
 		main._select_tool_group(1)
-		for tool in [0, 1, 3]:
+		for tool in ([0, 1, 3] if edge == 32 else [1]):
 			main._select_subtool(tool)
-			for width in ([1, 2, 5, 15] if edge == 128 else [15]):
-				for shape in [0, 1]:
+			for width in ([1, 15] if edge == 32 else [15]):
+				for shape in ([0, 1] if edge == 32 else [1]):
 					main.city_toolbar.brush_size_input.value = width
 					main.city_toolbar.brush_shape_input.select(shape)
 					main._update_edit_state()
@@ -41,7 +42,8 @@ func _run() -> void:
 					assert(LandscapeCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
 					assert(DocumentState.capture(main.current_document) == before)
 					assert(main.tool_random.state == rng)
-		_check_level_brush(main, Vector2i(edge - 40, edge - 40))
+		if edge == 32:
+			_check_level_brush(main, Vector2i(4, 4))
 		for corner in [Vector2i.ZERO, Vector2i(edge - 1, edge - 1)]:
 			var tiles: Array[Vector2i] = main.map_view.brush_tiles(corner)
 			for tile in tiles:

@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 
 class TestApp extends "res://src/main.gd":
 	func _show_main_menu() -> void:
@@ -21,6 +22,13 @@ func check(ok: bool, label: String) -> void:
 
 
 func _run() -> void:
+	if DisplayServer.get_name() != "headless":
+		# The headless entry owns CPU grids and meshes. Native adds upload/shader checks.
+		await check_ui()
+		await check_shader()
+		print("Native isometric data views: %d checks, %d failures" % [checks, failures])
+		quit(1 if failures else 0)
+		return
 	for edge in Sc2File.MAP_SIZES:
 		for native in [false, true]:
 			var doc := EmptyCityTemplate.create(edge)
@@ -38,7 +46,7 @@ func _run() -> void:
 				chunk.set_decoded_payload(data)
 				check(CityDataView.value(city, mode, point.x, point.y) == 173, "Far-tile value")
 				# Both storage layouts at 128; maximum texture extent at 512/native.
-				if edge == 128 or (edge == 512 and native):
+				if edge == 128 or (edge == 512 and native and mode == "land_value"):
 					var image := CityDataView.value_image(city, mode)
 					var scale: int = edge / image.get_width()
 					check(roundi(image.get_pixel(IntegerMath.div_trunc(point.y, scale), IntegerMath.div_trunc(point.x, scale)).r * 255) == 173, "Texture retains far value and column-major coordinates")
@@ -52,16 +60,16 @@ func _run() -> void:
 			check(CityDataView.value(city, "water", point.x, point.y) == 1, "Piped but not watered")
 			city.set_tile_flag(point.x, point.y, 0x10, true)
 			check(CityDataView.value(city, "water", point.x, point.y) == 2, "Watered")
-			# Full meshes at boundary sizes cover allocation/index limits. Data sampling
-			# above still covers every size and both storage resolutions.
-			if (edge == 128 and not native) or (edge == 512 and native):
-				var before: PackedByteArray = doc.serialize().data
+			# Original and first enlarged meshes cover both index ranges (including
+			# more than 65,535 vertices). Data sampling retains every size and grid mode.
+			if (edge == 128 and not native) or (edge == 256 and native):
+				var before: Array = DocumentState.capture(doc)
 				var mesh := CityDataView.create_mesh(city, "land_value")
 				var arrays := mesh.surface_get_arrays(0)
 				check(arrays[Mesh.ARRAY_VERTEX].size() == edge * edge * 4, "All tile geometry")
 				check(arrays[Mesh.ARRAY_INDEX].size() == edge * edge * 6, "All tile triangles")
 				check(arrays[Mesh.ARRAY_TEX_UV].size() == edge * edge * 4, "Every tile has border coordinates")
-				check(doc.serialize().data == before, "Rendering does not change city bytes")
+				check(DocumentState.capture(doc) == before, "Rendering does not change city bytes")
 				print("PASS: data mesh %d native=%s" % [edge, native])
 
 	check_land_value_amounts()
@@ -78,12 +86,12 @@ func check_ui() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
-	var doc := EmptyCityTemplate.create()
+	var doc := EmptyCityTemplate.create(16)
 	doc.enable_full_resolution_maps()
 	main.map_view.zoom_factor = 0.25
 	check(main._activate_document(doc), "Activate fixture")
 	main._select_speed(GameSpeedController.Speed.PAUSED)
-	var before: PackedByteArray = doc.serialize().data
+	var before: Array = DocumentState.capture(doc)
 	main._select_tool_group(16)
 	var center: Vector2 = main.map_view.source_center
 	var shared_mesh: ArrayMesh
@@ -99,29 +107,29 @@ func check_ui() -> void:
 		shared_mesh = main.map_view.data_view_mesh
 		check(main.view_menu.get_popup().is_item_checked(index + 2), "Selected menu check")
 		check(main.city_toolbar.data_view_input.selected == index + 1, "Sidebar follows view menu")
-		check(Vector2i(main.map_view.city_texture.get_size()) == CityIsometricRenderer.output_size_for_view(2, 128), "Native isometric extent")
+		check(Vector2i(main.map_view.city_texture.get_size()) == CityIsometricRenderer.output_size_for_view(2, 16), "Native isometric extent")
 		check(main.map_view.source_center == center, "Switch preserves camera")
 		check(main.map_view.edit_enabled, "Query stays enabled")
 		var mesh: ArrayMesh = main.map_view.data_view_mesh
 		main._refresh_map(false)
 		check(main.map_view.data_view_mesh == mesh, "Unchanged data reuses mesh")
 		check(main.map_view.data_view_layer.visible and main.map_view.data_view_layer.material != null, "Grid shader is active")
-		check(doc.serialize().data == before, "View changes preserve saved city")
+		check(DocumentState.capture(doc) == before, "View changes preserve saved city")
 
 	main.city_toolbar.data_view_input.item_selected.emit(1)
 	check(main.overlay_mode == "land_value", "Sidebar opens data view")
 	var old_mesh: ArrayMesh = main.map_view.data_view_mesh
 	var data := doc.find_chunk("XVAL").decoded_payload.duplicate()
-	data[20 * 128 + 20] = 255
+	data[4 * 16 + 4] = 255
 	doc.find_chunk("XVAL").set_decoded_payload(data)
 	main._refresh_map(false)
 	check(main.map_view.data_view_mesh == old_mesh, "Changed simulation grid retains geometry")
 	check(main.map_view.data_view_signature == CityDataView.signature(main.city, "land_value"), "Updated texture tracks current data revision")
 
 	if DisplayServer.get_name() != "headless":
-		check(roundi(main.map_view.data_value_texture.get_image().get_pixel(20, 20).r * 255) == 255, "Changed grid uploads current value")
+		check(roundi(main.map_view.data_value_texture.get_image().get_pixel(4, 4).r * 255) == 255, "Changed grid uploads current value")
 
-	check(CityDataView.tile_text(main.city, "land_value", Vector2i(20, 20), true).contains("255 / 0xFF"), "Exact hover value")
+	check(CityDataView.tile_text(main.city, "land_value", Vector2i(4, 4), true).contains("255 / 0xFF"), "Exact hover value")
 	main._select_tool_group(17)
 	check(main.overlay_mode == "land_value" and main.map_view.edit_enabled, "Center preserves data view")
 	main._set_overlay("underground")

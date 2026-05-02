@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 const TimingResults = preload("res://tests/support/timing_results.gd")
 var failures := 0
 
@@ -88,7 +89,7 @@ func check_cancellation() -> void:
 		result = runner.advance_time(0, 200)
 
 	check(runner.cancelled_ticks == 1 and runner.completed_ticks == 1, "stale work discarded and retried")
-	check(TimingResults.without_timings(result) == TimingResults.without_timings(expected) and sliced.engine.city.document.serialize().data == sync.engine.city.document.serialize().data, "edit survives pending work")
+	check(TimingResults.without_timings(result) == TimingResults.without_timings(expected) and DocumentState.capture(sliced.engine.city.document) == DocumentState.capture(sync.engine.city.document), "edit survives pending work")
 	runner.advance_time(200, 400)
 	sliced.set_speed(GameSpeedController.Speed.PAUSED)
 	var age := sliced.engine.city.age_in_days()
@@ -126,10 +127,10 @@ func check_special_ticks() -> void:
 	for tick in 10:
 		await compare_tick(sync, sliced, runner, 400 + tick * 200, "fire tick")
 
-	var before: PackedByteArray = sliced.engine.city.document.serialize().data
+	var before: Array = DocumentState.capture(sliced.engine.city.document)
 	runner.advance_time(200, 3000)
 	runner.close()
-	check(not runner.is_pending() and sliced.engine.city.document.serialize().data == before, "closing pending work cannot publish")
+	check(not runner.is_pending() and DocumentState.capture(sliced.engine.city.document) == before, "closing pending work cannot publish")
 	var private := SimulationSnapshot.capture(sliced, null)
 	private.engine.city.buildings[0] = (private.engine.city.buildings[0] + 1) & 255
 	check(private.engine.city.buildings[0] != sliced.engine.city.buildings[0], "snapshot arrays are independent")
@@ -146,7 +147,7 @@ func compare_tick(sync: GameSpeedController, sliced: GameSpeedController, runner
 		actual = runner.advance_time(0, now)
 
 	check(not runner.is_pending() and expected.ok and TimingResults.without_timings(actual) == TimingResults.without_timings(expected), context + " results")
-	check(sync.engine.city.document.serialize().data == sliced.engine.city.document.serialize().data, context + " bytes")
+	check(DocumentState.capture(sync.engine.city.document) == DocumentState.capture(sliced.engine.city.document), context + " bytes")
 	check(SimulationSnapshot.stamp(sync).slice(-SimulationSnapshot.ENGINE_FIELDS.size() - SimulationSnapshot.CONTROLLER_FIELDS.size()) == SimulationSnapshot.stamp(sliced).slice(-SimulationSnapshot.ENGINE_FIELDS.size() - SimulationSnapshot.CONTROLLER_FIELDS.size()), context + " runtime fields")
 	check(sync.engine.random.state == sliced.engine.random.state and sync.engine.lfsr_random.state == sliced.engine.lfsr_random.state and sync.engine.game_random.state == sliced.engine.game_random.state, context + " random states")
 	return actual

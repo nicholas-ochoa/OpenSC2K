@@ -11,14 +11,19 @@ func _run() -> void:
 	var palette := Sc2Palette.index_encoding()
 
 	for edge in [128, 512]:
-		var path := "res://../references/SIMCITY2000/CITIES/SYDNEY.SC2" if edge == 128 else "res://../local/large-cities/stitched-%d.sc2x" % edge
-		var city := CityState.from_document(Sc2File.load_path(path))
+		# Dense original city for sprite coverage; sparse maximum map for extents.
+		var document := Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2") if edge == 128 else EmptyCityTemplate.create(edge)
+		var city := CityState.from_document(document)
+		if edge == 512:
+			for point in [Vector2i(10, 10), Vector2i(256, 256), Vector2i(509, 509)]:
+				assert(city.set_building_id(point.x, point.y, 0x0d))
+				assert(city.set_building_id(point.x + 1, point.y, 0x1d))
 
 		# All sprite sizes at 128; maximum map bounds with the small painter.
 		for view in ([0, 1, 2] if edge == 128 else [CityIsometricRenderer.VIEW_SMALL]):
 			var sprites := large if view == CityIsometricRenderer.VIEW_LARGE else small
 
-			for mode in ["city", "underground"]:
+			for mode in (["city", "underground"] if edge == 128 else ["city"]):
 				var full: Dictionary
 
 				if mode == "city":

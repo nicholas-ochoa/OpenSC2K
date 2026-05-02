@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 
 
 func _initialize() -> void:
@@ -17,7 +18,7 @@ func _run() -> void:
 			city.set_terrain_id(20, 20, 0)
 			city.set_tile_flag(20, 20, 0x20, true)
 			city.set_tile_flag(20, 20, 0x10, wet)
-			var saved: PackedByteArray = city.document.serialize().data
+			var saved: Array = DocumentState.capture(city.document)
 			for pipes in [false, true]:
 				for mains in [false, true]:
 					var ids := CityUndergroundView.tile_sprite_ids(city, 20, 20, view, pipes, true, mains)
@@ -31,7 +32,7 @@ func _run() -> void:
 							assert(ids == PackedInt32Array([base + 0x131]))
 					else:
 						assert(ids.has(overlay) == pipes)
-					assert(city.document.serialize().data == saved)
+					assert(DocumentState.capture(city.document) == saved)
 
 	var configuration := CityIsometricRenderer.view_configuration(view)
 	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
@@ -65,6 +66,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	main.app_settings_path = "user://opensc2k-underground-visibility-test.cfg"
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)

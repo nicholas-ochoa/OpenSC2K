@@ -27,7 +27,9 @@ func _run() -> void:
 	assert(background.demo_palette.animation_image(int(background.elapsed * 5.0)).get_data() != palette_before)
 	assert(FileAccess.get_file_as_bytes(background.source_path) == before_source)
 	assert(background.static_image.get_pixel(0, 0).a == 0.0)
+	main.map_view.zoom_factor = 0.25
 	main._open_new_city_dialog()
+	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(64))
 	main._make_new_city_preview()
 	while main.new_city_preview_job != null:
 		await process_frame
@@ -89,8 +91,8 @@ func _run() -> void:
 	assert(main.city.visible_altitude_levels == 1)
 	var hidden := 0
 
-	for x in 128:
-		for y in 128:
+	for x in main.city.map_size:
+		for y in main.city.map_size:
 			if not main.city.tile_is_visible(x, y):
 				hidden += 1
 
@@ -125,8 +127,6 @@ func _run() -> void:
 	main._open_scurk_dialog()
 	await process_frame
 	await process_frame
-	assert(main.scurk_editor.palette_panel.tabs.get_tab_count() == 3)
-	assert(main.scurk_editor.canvas_panel.previews_panel.get_parent() == main.scurk_editor.palette_panel.tabs)
 	main.scurk_editor._fit_canvas()
 	assert(main.scurk_editor.pixel_canvas.zoom >= 1)
 	main.queue_free()

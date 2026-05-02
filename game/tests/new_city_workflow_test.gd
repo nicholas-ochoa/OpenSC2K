@@ -12,6 +12,11 @@ func _run() -> void:
 	await process_frame
 	main._open_new_city_dialog()
 	var dialog: NewCityTerrainDialog = main.new_city_dialog
+	main.map_view.zoom_factor = 0.25
+	# Exercise the workflow with simple terrain; layout algorithms have their own tests.
+	dialog.hills_input.value = 0
+	dialog.water_input.value = 0
+	dialog.trees_input.value = 0
 	await process_frame
 	await process_frame
 	_assert_editor_controls(main, false)
@@ -60,7 +65,7 @@ func _run() -> void:
 	dialog.feature_inputs.islands.button_pressed = true
 	assert(not dialog.feature_inputs.island.button_pressed)
 	dialog.reset_features()
-	dialog.river_input.button_pressed = true
+	dialog.river_input.button_pressed = false
 	var peek := InputEventMouseButton.new()
 	peek.position = dialog.panel.get_global_rect().get_center()
 	peek.button_index = MOUSE_BUTTON_RIGHT
@@ -118,6 +123,7 @@ func _run() -> void:
 	main._create_new_city_unchecked()
 	assert(main.city == null)
 	dialog.compatibility_input.button_pressed = false
+	dialog.size_input.select(dialog.size_input.get_item_index(16))
 	assert(not dialog.size_input.disabled and not dialog.native_maps_input.disabled)
 	dialog._random_name()
 	assert(dialog.city_name_input.text.length() <= 30)
@@ -180,7 +186,7 @@ func _run() -> void:
 	main.city_toolbar.brush_size_input.value = 5
 	main.city_toolbar.brush_shape_input.select(1)
 	main.city_toolbar.brush_shape_input.item_selected.emit(1)
-	var brush: Array[Vector2i] = main.map_view.brush_tiles(Vector2i(64, 64))
+	var brush: Array[Vector2i] = main.map_view.brush_tiles(Vector2i(8, 8))
 	assert(brush.size() == 21)
 	main._select_subtool(1)
 	assert(main.map_view.brush_size == 5 and main.map_view.brush_round)

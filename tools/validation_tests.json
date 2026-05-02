@@ -470,10 +470,7 @@
     "id": "city_region_renderer_test",
     "script": "tests/city_region_renderer_test.gd",
     "domain": "rendering",
-    "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ]
+    "lane": "product"
   },
   {
     "id": "city_region_cache_test",

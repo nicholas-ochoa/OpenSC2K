@@ -14,7 +14,7 @@ func check(ok: bool, message: String) -> void:
 func _initialize() -> void:
 	for edge in [128, 512]:
 		for native in [false, true]:
-			for zone in [3, 5]:
+			for zone in ([3, 5] if edge == 128 else [3]):
 				var baseline := fixture(edge, native, zone)
 				var polluted := baseline.duplicate_document()
 				var data := polluted.find_chunk("XPLT").decoded_payload.duplicate()

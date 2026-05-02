@@ -8,10 +8,15 @@ func _run() -> void:
 	for edge in [128, 512]:
 		var doc := EmptyCityTemplate.create(edge)
 		assert(NewCityTerrain.generate(doc, false, false, 47, 0, 0,
-			SimRandom.new(1), GameLcgRandom.new(1), "classic", [], true).ok)
+			SimRandom.new(1), GameLcgRandom.new(1), "classic" if edge == 128 else "islands", [], true).ok)
 		var city := CityState.from_document(doc)
-		for x in edge - 1:
-			for y in edge - 1:
+		if edge == 512:
+			assert(preload("res://tests/terrain_layout_test.gd")._components(city, false) == 2)
+			for coordinate in edge:
+				assert(city.is_water(0, coordinate) and city.is_water(edge - 1, coordinate))
+				assert(city.is_water(coordinate, 0) and city.is_water(coordinate, edge - 1))
+		for x in (range(edge - 1) if edge == 128 else [0, 1, 127, 128, 255, 383, 509, 510]):
+			for y in (range(edge - 1) if edge == 128 else [0, 1, 127, 128, 255, 383, 509, 510]):
 				var a := CityIsometricRenderer.terrain_surface_polygon(city, x, y, true)
 				var b := CityIsometricRenderer.terrain_surface_polygon(city, x + 1, y, true)
 				var c := CityIsometricRenderer.terrain_surface_polygon(city, x, y + 1, true)

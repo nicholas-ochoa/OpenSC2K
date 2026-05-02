@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 
 class ProcessRandom extends SimRandom:
 	var values: Array[int]
@@ -25,6 +26,7 @@ class GateRandom extends SimLfsrRandom:
 		return value & mask
 
 
+var fixtures: Dictionary = {}
 var checks := 0
 var failures := 0
 
@@ -55,11 +57,14 @@ func check(value: bool, label: String) -> void:
 
 
 func fixture(edge: int, native: bool) -> CityState:
-	var document := EmptyCityTemplate.create(edge)
-	if native:
-		document.enable_full_resolution_maps()
-	document.set_misc_u32(0x0e4c, 1)
-	return CityState.from_document(document)
+	var key := Vector2i(edge, int(native))
+	if not fixtures.has(key):
+		var document := EmptyCityTemplate.create(edge)
+		if native:
+			document.enable_full_resolution_maps()
+		document.set_misc_u32(0x0e4c, 1)
+		fixtures[key] = document
+	return CityState.from_document(fixtures[key].duplicate_document())
 
 
 func start_result(point: Vector2i, type := 1, record := 0) -> Dictionary:
@@ -71,12 +76,12 @@ func _test_gates(edge: int, native: bool) -> void:
 	var city := fixture(edge, native)
 	for base in [0, 2, 3, 4, 5]:
 		city.document.set_misc_u32(0x0e4c, base)
-		var before: PackedByteArray = city.document.serialize().data
+		var before: Array = DocumentState.capture(city.document)
 		var random := ProcessRandom.new([0])
 		var gate := GateRandom.new()
 		MaxisManResponse.apply(city, start_result(Vector2i(30, 30)), random, gate)
 		check(random.calls == 0 and gate.calls == 0, "Only base state one consumes the gate")
-		check(city.document.serialize().data == before, "Ineligible base preserves saved bytes")
+		check(DocumentState.capture(city.document) == before, "Ineligible base preserves saved bytes")
 
 	city.document.set_misc_u32(0x0e4c, 1)
 	for outcome in 4:
@@ -87,7 +92,7 @@ func _test_gates(edge: int, native: bool) -> void:
 		check(result.has("maxis_man_response") == (outcome == 0), "Only one of four gate outcomes creates a hero")
 		check(gate.calls == 1 and random.calls == (1 if outcome == 0 else 0), "Gate and arrival RNG order")
 		if outcome != 0:
-			check(copy.document.serialize().data == city.document.serialize().data, "Rejected gate preserves saved bytes")
+			check(DocumentState.capture(copy.document) == DocumentState.capture(city.document), "Rejected gate preserves saved bytes")
 
 	for state in [{"ok": false}, {"ok": true, "started": false}]:
 		var random := ProcessRandom.new([0])
@@ -125,7 +130,7 @@ func _test_targets(edge: int, native: bool, types: Array) -> void:
 		check(city.text_overlay_id(point.x, point.y) == OverlayData.thing_id(1), "Hero is linked to its arrival tile")
 		check(result.sound_events == [520, 513] and result.view_center_requests == [target, point], "Arrival events follow the disaster events")
 		# Save encoding depends on format/size, not which disaster selected the goal.
-		if type == types[-1]:
+		if type == types[-1] and ((edge == 128 and not native) or (edge == 512 and native)):
 			var serialized: PackedByteArray = city.document.serialize().data
 			var document := Sc2File.new()
 			check(document.parse(serialized), "Automatic hero save parses")
@@ -150,13 +155,13 @@ func _test_pool(edge: int, native: bool) -> void:
 		for record in range(1, ThingData.count(things)):
 			ThingData.write(things, record * 12, 1 if full else (16 if record == ThingData.count(things) - 1 else 0))
 		city.document.find_chunk("XTHG").set_decoded_payload(things)
-		var before: PackedByteArray = city.document.serialize().data
+		var before: Array = DocumentState.capture(city.document)
 		var random := ProcessRandom.new([0])
 		var gate := GateRandom.new()
 		var result := MaxisManResponse.apply(city, start_result(Vector2i(30, 30)), random, gate)
 		check(not result.has("maxis_man_response"), "Full pool or existing hero prevents creation")
 		check(gate.calls == 1 and random.calls == 0, "Pool rejection happens after gate and before arrival RNG")
-		check(city.document.serialize().data == before, "Pool rejection preserves every saved byte")
+		check(DocumentState.capture(city.document) == before, "Pool rejection preserves every saved byte")
 
 
 func _test_engine(edge: int, native: bool) -> void:
@@ -171,12 +176,12 @@ func _test_engine(edge: int, native: bool) -> void:
 	var queued := scheduled._append_pending_disaster({"ok": true, "phase_results": {}, "applied": [], "pending": []})
 	check(direct.ok and direct.has("maxis_man_response"), "Manual disaster starts automatic hero")
 	check(queued.ok and queued.phase_results.disaster_start.has("maxis_man_response"), "Queued disaster starts automatic hero")
-	check(city.document.serialize().data == copy.document.serialize().data, "Manual and queued paths publish identical city bytes")
+	check(DocumentState.capture(city.document) == DocumentState.capture(copy.document), "Manual and queued paths publish identical city bytes")
 	check(manual.random.state == scheduled.random.state and manual.lfsr_random.state == 4, "Both paths consume exactly one response gate")
-	var before: PackedByteArray = city.document.serialize().data
+	var before: Array = DocumentState.capture(city.document)
 	var seed := manual.random.state
 	check(not manual.start_disaster(7, target).ok, "Active disaster rejects a second start")
-	check(city.document.serialize().data == before and manual.random.state == seed and manual.lfsr_random.state == 4, "Rejected second start has no response side effects")
+	check(DocumentState.capture(city.document) == before and manual.random.state == seed and manual.lfsr_random.state == 4, "Rejected second start has no response side effects")
 	var tick := manual.advance_moving_things(0)
 	check(tick.ok and tick.malformed_records == 0, "Automatic hero runs through the normal moving-object update")
 
@@ -189,7 +194,7 @@ func _test_engine(edge: int, native: bool) -> void:
 	var response := snapshot.engine.start_disaster(7, target)
 	check(response.has("maxis_man_response") and controller.engine.city.thing(2).type == 0, "Worker hero remains private until publication")
 	SimulationSnapshot.publish(snapshot, controller)
-	check(controller.engine.city.document.serialize().data == snapshot.engine.city.document.serialize().data, "Worker publication preserves hero bytes and links")
+	check(DocumentState.capture(controller.engine.city.document) == DocumentState.capture(snapshot.engine.city.document), "Worker publication preserves hero bytes and links")
 	check(controller.engine.random.state == snapshot.engine.random.state and controller.engine.lfsr_random.state == 4, "Worker publication preserves response RNG")
 
 

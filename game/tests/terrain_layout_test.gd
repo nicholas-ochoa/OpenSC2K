@@ -7,22 +7,6 @@ func _initialize() -> void:
 
 func _run() -> void:
 	_check_peninsula_headland()
-	for lake in ["lake", "lakes"]:
-		for seed in [29]:
-			var doc := EmptyCityTemplate.create()
-			assert(NewCityTerrain.generate(doc, false, false, 12, 5, 0,
-				SimRandom.new(seed), GameLcgRandom.new(seed), lake).ok)
-			assert(_components(CityState.from_document(doc), true) == (2 if lake == "lakes" else 1))
-	for seed in [29]:
-		var counts: Array[int] = []
-		for water in [0, 47]:
-			var lakes := EmptyCityTemplate.create()
-			var result := NewCityTerrain.generate(lakes, false, false, 12, water, 0,
-				SimRandom.new(seed), GameLcgRandom.new(seed), "lakes")
-			assert(result.ok)
-			counts.append(result.water_tiles)
-			assert(_components(CityState.from_document(lakes), true) == 2)
-		assert(counts[1] >= counts[0] * 3, "Two Lakes must grow substantially with Water")
 	var names := {}
 	var random := RandomNumberGenerator.new()
 	random.seed = 123
@@ -32,22 +16,21 @@ func _run() -> void:
 			assert(not value.is_empty() and value.length() <= 30)
 			names[value] = true
 	# Compare water coverage at both ends of the new-layout Water setting.
-	for layout in NewCityTerrain.LAYOUTS.slice(1):
-		if layout in ["plateau", "ridge", "rolling", "basin", "canyon"]:
-			continue
+	for layout in ["branch", "islands", "bay", "lakes"]:
 		var previous_water := -1
 		for water in [0, 47]:
 			var source := EmptyCityTemplate.create()
 			var result := NewCityTerrain.generate(source, false, false, 12, water, 0, SimRandom.new(7), GameLcgRandom.new(9), layout)
 			assert(result.ok and result.water_tiles > previous_water)
 			previous_water = result.water_tiles
-	for edge in [128, 512]:
-		for layout in (NewCityTerrain.LAYOUTS if edge == 128 else ["islands", "branch"]):
+	for edge in [128]:
+		for layout in ["island", "islands", "crossing", "branch", "rejoin", "bay", "peninsula", "plateau", "delta", "lake", "lakes"]:
 			var doc := EmptyCityTemplate.create()
 			assert(doc.resize_empty_map(edge))
 			var result := NewCityTerrain.generate(doc, false, layout == "classic", 12, 5, 0, SimRandom.new(1), GameLcgRandom.new(1), layout)
 			assert(result.ok)
 			var city := CityState.from_document(doc)
+			# Exhaustive surface joins live in terrain_surface_continuity_test.
 			for x in edge:
 				for y in edge:
 					if x + 1 < edge:
@@ -74,29 +57,24 @@ func _run() -> void:
 					for point in [Vector2i(coordinate, 0), Vector2i(coordinate, edge - 1), Vector2i(0, coordinate), Vector2i(edge - 1, coordinate)]:
 						edge_high = maxi(edge_high, city.land_altitude(point.x, point.y))
 				assert(edge_high >= 9, "Plateau stops before the map edge")
+			if layout in ["lake", "lakes"]:
+				assert(_components(city, true) == (2 if layout == "lakes" else 1))
 			if layout == "delta":
 				assert(_components(city, true) == 1, "Delta channel is disconnected from the ocean")
 			print("Terrain ", edge, " ", layout, ": water=", result.water_tiles)
 	for seed in [29]:
-		for features in [["delta"], ["peninsula"], ["delta", "bay"], ["delta", "peninsula"], ["peninsula", "bay"], ["crossing"], ["branch"], ["rejoin"], ["bay"], ["island"], ["islands"],
-			["bay", "island"], ["bay", "islands"], ["bay", "branch"], ["bay", "rejoin", "crossing"], ["branch", "crossing", "rejoin"]]:
-			var doc := EmptyCityTemplate.create()
-			var result := NewCityTerrain.generate(doc, true, false, 30, 10, 0,
-				SimRandom.new(seed), GameLcgRandom.new(seed), "classic", features, true)
-			assert(result.ok)
-			var city := CityState.from_document(doc)
+		# Representative interactions: shared delta outlet/headland, island inlet,
+		# and converging river branches. Single-feature topology is checked above.
+		for features in [["delta", "peninsula", "bay"], ["bay", "islands"], ["bay", "branch"], ["branch", "crossing", "rejoin"]]:
+			# Isolate outlet interactions from unrelated hill interpolation/retile work.
+			var city := _feature_city(features, true, seed)
 			assert(_components(city, true) == 1, "Disconnected water: %s seed %d" % [features, seed])
 			if "island" in features or "islands" in features:
 				assert(_components(city, false) == (2 if "islands" in features else 1))
-			# Ocean additions must retain the bay and all connected river branches.
-			var inland := EmptyCityTemplate.create()
-			assert(NewCityTerrain.generate(inland, false, false, 30, 10, 0,
-				SimRandom.new(seed), GameLcgRandom.new(seed), "classic", features, true).ok)
-			var inland_city := CityState.from_document(inland)
-			for x in 128:
-				for y in 128:
-					if inland_city.is_water(x, y):
-						assert(city.is_water(x, y), "Feature outlet is disconnected from the ocean")
+			var inland := _feature_city(features, false, seed)
+			for index in inland.tile_flags.size():
+				if inland.tile_flags[index] & 4:
+					assert(city.tile_flags[index] & 4, "Feature outlet is disconnected from the ocean")
 	var estuary := EmptyCityTemplate.create()
 	assert(NewCityTerrain.generate(estuary, true, true, 30, 10, 0,
 		SimRandom.new(719), GameLcgRandom.new(719), "classic", [], true).ok)
@@ -105,7 +83,7 @@ func _run() -> void:
 	quit()
 
 
-func _components(city: CityState, water: bool) -> int:
+static func _components(city: CityState, water: bool) -> int:
 	# Connectivity needs only water flags. Avoid repeated model lookups per neighbor.
 	var edge := city.map_size
 	var flags := city.tile_flags
@@ -152,3 +130,19 @@ func _check_peninsula_headland() -> void:
 func _peninsula_height(heights: PackedInt32Array, point: Vector2, angle: float) -> int:
 	var tile := Vector2i(((point.rotated(angle) + Vector2(0.5, 0.5)) * 127.0).round())
 	return heights[tile.x * 128 + tile.y]
+
+
+func _feature_city(features: Array, ocean: bool, seed: int) -> CityState:
+	var heights := PackedInt32Array()
+	heights.resize(128 * 128)
+	heights.fill(6)
+	var flags := PackedByteArray()
+	flags.resize(heights.size())
+	TerrainFeatures.carve(heights, flags, 4, features, ocean, "delta" in features,
+		GameLcgRandom.new(seed), 10, 30)
+	for index in heights.size():
+		if heights[index] <= 4:
+			flags[index] |= 4
+	var city := CityState.from_document(EmptyCityTemplate.create())
+	assert(city.replace_tile_flags(flags))
+	return city

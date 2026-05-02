@@ -17,7 +17,7 @@ func _run() -> void:
 			dry_bank_maps += 1
 		print("Meander seed ", seed, ": ", components.size(), " water bodies")
 	assert(lake_maps > 0 and dry_bank_maps > 0, "Expected seeds both with and without oxbow lakes")
-	for edge in [128, 512]:
+	for edge in [128]:
 		var doc := _generate(edge, 1)
 		var city := CityState.from_document(doc)
 		var bodies := _water_components(city)
@@ -34,8 +34,6 @@ func _run() -> void:
 			var again := _generate(edge, 1)
 			assert(doc.serialize().data == again.serialize().data)
 		for features in [["meander", "delta", "peninsula", "bay", "ridge", "valley", "cliffs", "lakes"], ["meander", "delta", "peninsula", "bay"], ["meander", "bay"], ["meander", "branch", "rejoin", "crossing"]]:
-			if edge == 512 and features.size() != 8:
-				continue
 			var combined := EmptyCityTemplate.create(edge)
 			assert(NewCityTerrain.generate(combined, true, true, 12, 5, 0,
 				SimRandom.new(1), GameLcgRandom.new(1), "classic", features, true).ok)

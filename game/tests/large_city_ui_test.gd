@@ -32,8 +32,9 @@ func run_check() -> void:
 		main.new_city_dialog.size_input.item_selected.emit(selection)
 		assert(main.new_city_dialog.done_button.disabled)
 		assert(main._new_city_terrain_options().size == edge)
-		# Size wiring is checked for every option. Render previews at format boundaries.
-		if edge not in [16, 128, 512]:
+		# Size wiring is checked for every option. The minimum-size preview exercises
+		# the worker; New City workflow and terrain tests own larger generation.
+		if edge != 16:
 			continue
 		main._make_new_city_preview()
 		while main.new_city_preview_job != null:

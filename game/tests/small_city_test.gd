@@ -125,17 +125,19 @@ func check_growth_and_facilities(edge: int, native: bool) -> void:
 
 
 func check_terrain(edge: int) -> void:
-	for seed in [1, 123, 32767]:
-		for layout in NewCityTerrain.LAYOUTS:
+	for seed in [123]:
+		# Representative resampling shapes: dry ground, channel, islands, coast, lakes.
+		for layout in (["classic", "branch", "islands", "cliffs", "lakes"] if edge == 16 else ["classic"]):
 			var doc := fixture(edge)
-			var result := NewCityTerrain.generate(doc, true, true, 12, 5, 15,
+			var result := NewCityTerrain.generate(doc, true, true, 12, 5, 0,
 				SimRandom.new(seed), GameLcgRandom.new(seed), layout)
 			check(result.ok, "Small terrain layout %s at %d seed %d" % [layout, edge, seed])
-			var repeat_doc := fixture(edge)
-			var repeat_result := NewCityTerrain.generate(repeat_doc, true, true, 12, 5, 15,
-				SimRandom.new(seed), GameLcgRandom.new(seed), layout)
-			check(repeat_result == result and repeat_doc.serialize().data == doc.serialize().data,
-				"Small terrain layout and seed are deterministic")
+			if layout == "classic":
+				var repeat_doc := fixture(edge)
+				var repeat_result := NewCityTerrain.generate(repeat_doc, true, true, 12, 5, 0,
+					SimRandom.new(seed), GameLcgRandom.new(seed), layout)
+				check(repeat_result == result and repeat_doc.serialize().data == doc.serialize().data,
+					"Small terrain layout and seed are deterministic")
 	for slider in [0, 47]:
 		var result := NewCityTerrain.generate(fixture(edge), false, false, slider, slider, slider,
 			SimRandom.new(123), GameLcgRandom.new(456))

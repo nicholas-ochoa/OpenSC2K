@@ -16,7 +16,7 @@ func _init() -> void:
 		if not _check(argument in ["128", "256", "384", "512"], "unknown test size " + argument):
 			return
 
-	for edge in ([128, 256, 384, 512] if soak or not selected.is_empty() else [128, 512]):
+	for edge in ([128, 256, 384, 512] if soak or not selected.is_empty() else [128, 256]):
 		if not selected.is_empty() and str(edge) not in selected:
 			continue
 
@@ -102,7 +102,7 @@ func _init() -> void:
 
 			var actual_hash := hash.finish().hex_encode()
 			print("128-map 300-day SHA256: ", actual_hash)
-			if not _check(actual_hash == YEAR_SHA256, "300-day output matches the documented current-model baseline"):
+			if not _check(actual_hash == YEAR_SHA256, "300-day output matches the current-model regression baseline"):
 				return
 
 		var reloaded := Sc2File.new()

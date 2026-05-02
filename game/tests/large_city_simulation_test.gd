@@ -9,17 +9,26 @@ func _init() -> void:
 		check_charts(edge)
 		if edge >= 128:
 			check_flood_order(edge)
-		check_far_services_and_year(edge)
+		if edge in [16, 128, 512]:
+			check_far_services_and_year(edge)
+		else:
+			continue
 
-		# Every disaster at the minimum, original, and maximum extents. Intermediate
-		# sizes retain a map disaster and a moving-object disaster, plus all service checks.
-		var disasters: Array = range(1, 19) if edge in [16, 128, 512] else [DisasterStartPhase.DISASTER_FIRE, DisasterStartPhase.DISASTER_MONSTER]
+		# All starts at minimum/maximum extents; original dispatch is covered by core.
+		# Native grids retain fire, direct map damage, and moving-object starts.
+		var native := "--native" in OS.get_cmdline_user_args()
+		var disasters: Array = range(1, 19) if not native and edge in [16, 512] else [DisasterStartPhase.DISASTER_FIRE, DisasterStartPhase.DISASTER_EARTHQUAKE, DisasterStartPhase.DISASTER_MONSTER]
 		for disaster in disasters:
 			print("Checking %d disaster %d" % [edge, disaster])
 			var document := fixture(edge)
 			var city := CityState.from_document(document)
 			var engine := SimulationEngine.new(city, 123, 456, 789)
-			var result := engine.start_disaster(disaster, Vector2i(edge - 16, edge - 16))
+			var origin := Vector2i(edge - 16, edge - 16)
+			if disaster in [DisasterStartPhase.DISASTER_FLOOD, DisasterStartPhase.DISASTER_MASS_FLOODS]:
+				# A real shoreline avoids repeating a full-map failed shore search per seed.
+				for y in range(maxi(0, origin.y - 16), mini(edge, origin.y + 16)):
+					city.set_terrain_id(origin.x, y, 0x20)
+			var result := engine.start_disaster(disaster, origin)
 			check(result.get("ok", false), "%d disaster %d start: %s" % [edge, disaster, result.get("error", "")])
 
 			if disaster == DisasterStartPhase.DISASTER_MONSTER or disaster == DisasterStartPhase.DISASTER_TORNADO:
@@ -27,8 +36,12 @@ func _init() -> void:
 				var offset := int(result.get("record", 0)) * CityState.THING_RECORD_SIZE
 				check(ThingData.read(things, offset + 8) < 128 and ThingData.read(things, offset + 9) < 128, "monster pose bytes")
 
-			# Start and continuation at the boundary sizes; one tick elsewhere.
-			for tick in (2 if edge in [128, 512] else 1):
+			# Every entry point above accepts every relevant record/grid width.
+			# Map and moving continuations are shared: exercise each branch at 16/128,
+			# and fire/flood/object publication at the largest extent.
+			if edge > 128 and disaster not in [DisasterStartPhase.DISASTER_FIRE, DisasterStartPhase.DISASTER_FLOOD, DisasterStartPhase.DISASTER_MONSTER]:
+				continue
+			for tick in (2 if edge == 16 else 1):
 				check(engine.advance_moving_things(tick * 200).get("ok", false), "moving disaster tick")
 
 				if engine.active_disaster_type != 0:

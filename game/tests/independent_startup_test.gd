@@ -47,7 +47,7 @@ func _test_generated_cities() -> void:
 	assert(template.serialize().data == unchanged)
 	assert(template.misc_u32(0x1008) == 0 and template.misc_u32(0x1010) == 0)
 	assert(template.misc_u32(0x1040) == 0)
-	var options := {"ocean": true, "river": true, "hills": 20, "water": 20, "trees": 20}
+	var options := {"ocean": true, "river": true, "hills": 12, "water": 5, "trees": 0}
 	var session := NewCityTerrainSession.new()
 	session.independent_template = true
 	session.begin(1, 1)
@@ -121,6 +121,7 @@ func _test_main() -> void:
 		assert(main.settings_dialog.folder_row.visible)
 
 	main.settings_dialog.hide()
+	main.map_view.zoom_factor = 0.25
 	main._open_new_city_dialog()
 	assert(main.new_city_dialog.visible and main.new_city_session.preview_document == null)
 	main.new_city_dialog.city_name_input.text = "Original Startup"

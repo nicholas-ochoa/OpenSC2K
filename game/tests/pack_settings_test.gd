@@ -1,7 +1,5 @@
 extends SceneTree
 
-const Fixture = preload("res://tests/indexed_png_test.gd")
-
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -17,10 +15,32 @@ func _run() -> void:
 
 		return
 
-	_copy_folder(source, ProjectSettings.globalize_path(folder))
-	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(folder.path_join("pack.json")))
+	var original_folder := folder.path_join("original-fixture")
+	DirAccess.make_dir_recursive_absolute(folder)
+	var manifest: Dictionary = JSON.parse_string(FileAccess.get_file_as_string(source.path_join("pack.json")))
 	manifest.name = "Runtime test"
 	var record: Dictionary = manifest.large_sprites.back()
+	# Keep flat terrain at all views and the edited sprite; other sprites are not used.
+	manifest.large_sprites = manifest.large_sprites.filter(func(item): return int(item.id) in [1256, int(record.id)])
+	manifest.small_medium_sprites = manifest.small_medium_sprites.filter(func(item): return int(item.id) in [256, 756])
+	var files: Array = [manifest.palette, manifest.scenario_palette]
+	files.append_array(manifest.ui.values())
+	for item in manifest.large_sprites + manifest.small_medium_sprites:
+		files.append(item.png)
+	for relative in files:
+		var target: String = folder.path_join(str(relative))
+		DirAccess.make_dir_recursive_absolute(target.get_base_dir())
+		assert(DirAccess.copy_absolute(source.path_join(str(relative)), target) == OK)
+	# Startup and restore use the same small real pack, before the pixel edit.
+	for relative in files:
+		var target: String = original_folder.path_join(str(relative))
+		DirAccess.make_dir_recursive_absolute(target.get_base_dir())
+		assert(DirAccess.copy_absolute(source.path_join(str(relative)), target) == OK)
+	var original_manifest := manifest.duplicate(true)
+	original_manifest.name = "Original fixture"
+	var original_file := FileAccess.open(original_folder.path_join("pack.json"), FileAccess.WRITE)
+	original_file.store_string(JSON.stringify(original_manifest))
+	original_file.close()
 	var sprite := IndexedPng.load_path(folder.path_join(record.png))
 	sprite.pixels[0] = 171 if sprite.pixels[0] != 171 else 172
 	var encoded := IndexedPng.encode(sprite.width, sprite.height, sprite.pixels, sprite.palette)
@@ -34,6 +54,8 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	preload("res://tests/support/app_fixture.gd").configure(main, true)
+	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path(original_folder))
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	main.app_settings_path = folder.path_join("settings.cfg")
 	root.add_child(main)
@@ -82,9 +104,9 @@ func _run() -> void:
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels == sprite.pixels)
 	assert(main.main_menu.city_background.demo_sprites == main.large_sprites)
 	assert(main.city.document.serialize().data == before)
-	dialog.folder_edit.text = source.path_join("pack.json")
+	dialog.folder_edit.text = original_folder.path_join("pack.json")
 	main._apply_settings()
-	assert(main.asset_source.graphics_name == str(JSON.parse_string(FileAccess.get_file_as_string(source.path_join("pack.json"))).name))
+	assert(main.asset_source.graphics_name == original_manifest.name)
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels != sprite.pixels)
 	assert(main.city.document.serialize().data == before)
 	main.settings_dialog.hide()
@@ -97,16 +119,6 @@ func _run() -> void:
 	_remove_folder(ProjectSettings.globalize_path(folder))
 	print("PASS: pack file pickers, compact settings, live graphics Apply and restore, unchanged city bytes")
 	quit()
-
-
-func _copy_folder(source: String, target: String) -> void:
-	DirAccess.make_dir_recursive_absolute(target)
-
-	for name in DirAccess.get_files_at(source):
-		assert(DirAccess.copy_absolute(source.path_join(name), target.path_join(name)) == OK)
-
-	for name in DirAccess.get_directories_at(source):
-		_copy_folder(source.path_join(name), target.path_join(name))
 
 
 func _remove_folder(folder: String) -> void:

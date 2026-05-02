@@ -7,6 +7,10 @@ func _initialize() -> void:
 
 func _run() -> void:
 	await check_texture_patch()
+	if DisplayServer.get_name() != "headless":
+		# Full CPU repaint parity is already owned by the headless entry.
+		quit()
+		return
 	var sprites := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT")
 	assert(sprites.is_valid())
 	var palette := Sc2Palette.index_encoding()
