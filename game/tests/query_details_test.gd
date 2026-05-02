@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 
 
 func _initialize() -> void:
@@ -29,7 +30,7 @@ func _run() -> void:
 
 	for edge in [128, 256, 384, 512]:
 		var city := CityState.from_document(EmptyCityTemplate.create(edge))
-		var before: PackedByteArray = city.document.serialize().data
+		var before: Array = DocumentState.capture(city.document)
 
 		for point in [Vector2i(edge / 2, edge / 2), Vector2i.ZERO, Vector2i(edge - 1, edge - 1)]:
 			var preview := QueryNeighborhood.render(city, point, palette, sprites)
@@ -44,7 +45,7 @@ func _run() -> void:
 
 			assert(opaque > 0 and dimmed > 0, "Wrong highlight alpha on the selected tile or its neighbors")
 
-		assert(city.document.serialize().data == before)
+		assert(DocumentState.capture(city.document) == before)
 
 	var facility_city := CityState.from_document(EmptyCityTemplate.create(256))
 	var built := BuildingCommand.apply(facility_city, 13, 0, Vector2i(160, 160), SimLfsrRandom.new(1), SimRandom.new(1))
@@ -52,7 +53,7 @@ func _run() -> void:
 	var selected_point := Vector2i(160, 160)
 
 	for rotation in 4:
-		var before: PackedByteArray = facility_city.document.serialize().data
+		var before: Array = DocumentState.capture(facility_city.document)
 		var preview := QueryNeighborhood.render(facility_city, selected_point, palette, sprites)
 		assert(preview.get_data().size() == QueryNeighborhood.SIZE.x * QueryNeighborhood.SIZE.y * 4)
 		var opaque := 0
@@ -62,7 +63,7 @@ func _run() -> void:
 			opaque += int(pixels[offset] == 255)
 
 		assert(opaque > 0, "Facility highlight disappeared after rotation")
-		assert(facility_city.document.serialize().data == before)
+		assert(DocumentState.capture(facility_city.document) == before)
 		if rotation == 3:
 			continue
 		CityRotationCommand.apply(facility_city, false)

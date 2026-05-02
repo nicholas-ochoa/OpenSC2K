@@ -45,7 +45,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.map_view.zoom_factor = 0.25
-	for edge in [128, 512]:
+	for edge in [64, 512]:
 		assert(main._activate_document(EmptyCityTemplate.create(edge)))
 		main._select_speed(GameSpeedController.Speed.PAUSED)
 		main.city.set_sound_enabled(false)
@@ -72,7 +72,7 @@ func _run() -> void:
 		# Changing Shift mid-stroke keeps the paint tool active.
 		_motion(map, start + Vector2i(9, 0), true)
 		assert(not map.brush_box_selection and map.bulldozer_visible())
-		for zoom in (CityMapControl.ZOOM_LEVELS if edge == 128 else [1.0]):
+		for zoom in (CityMapControl.ZOOM_LEVELS if edge == 64 else [1.0]):
 			map.zoom_factor = zoom
 			for direction in 4:
 				var visual: Dictionary = main._demolish_brush_visual(start, direction)

@@ -8,6 +8,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import threading
 import unittest
 from unittest.mock import patch
 
@@ -15,6 +16,45 @@ import validate_project as runner
 
 
 class ValidationRunnerTest(unittest.TestCase):
+    def test_parallel_bound_and_failure_drain(self):
+        entered = threading.Barrier(2)
+        release = threading.Event()
+        active = set()
+        lock = threading.Lock()
+        completed = []
+
+        def execute(entry):
+            with lock:
+                active.add(entry)
+            entered.wait(timeout=5)
+            if entry == 'slow':
+                assert release.wait(timeout=5)
+            with lock:
+                active.remove(entry)
+            return entry != 'fail'
+
+        def finish(entry, result):
+            completed.append(entry)
+            if entry == 'fail':
+                release.set()
+            return result
+
+        self.assertFalse(runner.run_parallel(['fail', 'slow', 'must-not-start'],
+                                             2, execute, finish, False))
+        self.assertCountEqual(completed, ['fail', 'slow'])
+        self.assertFalse(active)
+        completed.clear()
+        self.assertTrue(runner.run_parallel(['fail', 'next'], 1,
+                                            lambda entry: entry != 'fail', finish, True))
+        self.assertEqual(completed, ['fail', 'next'])
+
+    def test_exclusive_checks_are_parallel_barriers(self):
+        entries = runner.registry()
+        for entry in entries:
+            if entry['lane'] in ('native', 'integration') or entry.get('state') or entry.get('driver') or 'python' in entry:
+                self.assertFalse(runner.parallel_safe(entry), entry['id'])
+        self.assertTrue(runner.parallel_safe(next(e for e in entries if e['id'] == 'integer_math_test')))
+
     def test_registry_covers_every_script(self):
         entries = runner.registry()
         self.assertEqual(len({e['id'] for e in entries}), len(entries))
@@ -104,18 +144,35 @@ class ValidationRunnerTest(unittest.TestCase):
                     runner.fixtures_current({})
 
     def test_isolated_user_data_matches_godot(self):
-        # Test the actual engine setting: an absolute custom directory is sanitized.
-        with tempfile.TemporaryDirectory() as folder:
-            project = runner.Project(folder)
-            try:
-                project.configure('probe')
-                (project.path / 'probe.gd').write_text('extends SceneTree\nfunc _init():\n\tprint("USER_PATH=", OS.get_user_data_dir())\n\tquit()\n')
-                output = subprocess.check_output(['godot', '--headless', '--audio-driver', 'Dummy',
-                                                  '--path', str(project.path), '--script', 'res://probe.gd'], text=True)
-                self.assertIn('USER_PATH=' + str(project.user / 'probe'), output)
-            finally:
-                project.close()
-            self.assertFalse(project.user.exists())
+        # Give concurrent engine processes separate settings and project files.
+        user_paths = []
+        def probe(marker):
+            with tempfile.TemporaryDirectory() as folder:
+                project = runner.Project(folder)
+                try:
+                    project.configure('probe')
+                    (project.path / 'probe.gd').write_text(
+                        'extends SceneTree\nfunc _init():\n'
+                        '\tvar file = FileAccess.open("user://same-name.cfg", FileAccess.WRITE)\n'
+                        f'\tfile.store_string("{marker}")\n\tfile.close()\n'
+                        '\tprint("USER_PATH=", OS.get_user_data_dir())\n'
+                        '\tprint("MARKER=", FileAccess.get_file_as_string("user://same-name.cfg"))\n\tquit()\n')
+                    output = subprocess.check_output(['godot', '--headless', '--audio-driver', 'Dummy',
+                                                      '--path', str(project.path), '--script', 'res://probe.gd'], text=True)
+                    return project.user, output
+                finally:
+                    project.close()
+
+        def check(marker, result):
+            user, output = result
+            self.assertIn('USER_PATH=' + str(user / 'probe'), output)
+            self.assertIn('MARKER=' + marker, output)
+            self.assertFalse(user.exists())
+            user_paths.append(user)
+            return True
+
+        self.assertTrue(runner.run_parallel(['first', 'second'], 2, probe, check, False))
+        self.assertEqual(len(set(user_paths)), 2)
 
 
 if __name__ == '__main__':

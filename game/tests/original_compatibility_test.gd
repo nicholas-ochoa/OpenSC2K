@@ -118,6 +118,8 @@ func check_ui() -> void:
 	main.new_city_session.independent_template = true
 	main.new_city_session.begin(123, 456)
 	var options: Dictionary = main._new_city_terrain_options()
+	# Format policy is independent of expensive terrain feature combinations.
+	options.merge({"hills": 0, "water": 0, "trees": 0, "ocean": false, "river": false}, true)
 	var generated: Dictionary = main.new_city_session.generate_preview("", options, false)
 	check(generated.ok and not generated.document.is_extended(), "Compatibility generates original-format preview")
 	var created: Dictionary = main.new_city_session.create_city("", "Compatible", "Mayor", 1, 1900, options, PackedByteArray())
@@ -176,9 +178,8 @@ func check_reference_files(path: String) -> void:
 			continue
 
 		var doc := Sc2File.load_path(ProjectSettings.globalize_path(path.path_join(filename)))
-		var original := FileAccess.get_file_as_bytes(path.path_join(filename))
 		check(doc.is_valid() and OriginalCompatibility.document_error(doc, true).is_empty(), "Compatibility accepts supplied " + filename)
-		check(doc.serialize(true).data == original, "Compatibility preserves original bytes: " + filename)
+		# Exact corpus rebuilds belong to test_runner; this check owns the policy gate.
 
 
 func saved_payloads(document: Sc2File) -> Array:

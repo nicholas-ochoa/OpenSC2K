@@ -127,6 +127,12 @@ func _test_main() -> void:
 	main.new_city_dialog.city_name_input.text = "Original Startup"
 	# This scenario checks original SC2 save compatibility.
 	main.new_city_dialog.native_maps_input.button_pressed = false
+	# Terrain algorithms are tested separately; retain the original-size workflow.
+	main.new_city_dialog.hills_input.value = 0
+	main.new_city_dialog.water_input.value = 0
+	main.new_city_dialog.trees_input.value = 0
+	main.new_city_dialog.river_input.button_pressed = false
+	main.new_city_dialog.ocean_input.button_pressed = false
 	main._make_new_city_preview()
 	while main.new_city_preview_job != null:
 		await process_frame

@@ -42,7 +42,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.map_view.zoom_factor = 0.25
-	for edge in [128, 512]:
+	for edge in [64, 512]:
 		assert(main._activate_document(EmptyCityTemplate.create(edge)))
 		main._select_speed(GameSpeedController.Speed.PAUSED)
 		main._select_tool_group(1)

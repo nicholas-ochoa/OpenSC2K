@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Run project checks and report results and timings."""
 import argparse
+from concurrent.futures import FIRST_COMPLETED, ThreadPoolExecutor, wait
 import hashlib
 import importlib.util
 import json
@@ -164,16 +165,48 @@ def execute(command, log, timeout=900):
     return result, round(time.monotonic() - start, 3), content
 
 
+def parallel_safe(entry):
+    # Native windows, external drivers, and stateful pairs are exclusive barriers.
+    return ('script' in entry and entry['lane'] in ('product', 'audit', 'slow')
+            and not entry.get('state') and not entry.get('driver'))
+
+
+def run_parallel(entries, jobs, execute_entry, completed, keep_going):
+    """Bound in-flight work and report on the caller thread. Drain after failure."""
+    pending = {}
+    remaining = iter(entries)
+    stopped = False
+    with ThreadPoolExecutor(max_workers=jobs) as pool:
+        while True:
+            while not stopped and len(pending) < jobs:
+                entry = next(remaining, None)
+                if entry is None:
+                    break
+                pending[pool.submit(execute_entry, entry)] = entry
+            if not pending:
+                return not stopped
+            done, _ = wait(pending, return_when=FIRST_COMPLETED)
+            for future in done:
+                entry = pending.pop(future)
+                if not completed(entry, future.result()) and not keep_going:
+                    stopped = True
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--suite', action='append', choices=SUITES, default=[])
     parser.add_argument('--test', action='append', default=[], help='Exact registry ID; repeat to combine')
     parser.add_argument('--list', action='store_true')
     parser.add_argument('--keep-going', action='store_true')
+    parser.add_argument('--jobs', type=int, default=min(2, os.cpu_count() or 1),
+                        help='Concurrent isolated headless checks (default: 2; use 1 for timings)')
     parser.add_argument('--strict', action='store_true', help='Treat missing prerequisites and skips as failures')
     parser.add_argument('--godot', default=os.environ.get('GODOT', 'godot'))
     parser.add_argument('--output', type=Path, help='Log directory (default: unique local/validation run)')
     args = parser.parse_args()
+    if args.jobs < 1:
+        parser.error('--jobs must be at least 1')
+    started = time.monotonic()
     suites = args.suite or ([] if args.test else ['routine'])
     entries = select(registry(), suites, args.test)
     if args.list:
@@ -190,13 +223,14 @@ def main():
     def record(name, status, duration=0, reason=''):
         results.append(dict(id=name, status=status, seconds=duration, reason=reason))
         print(f'{status:4} {name} ({duration:.2f}s)' + (f': {reason}' if reason else ''), flush=True)
-        (output / 'summary.json').write_text(json.dumps({'suites': suites, 'selected_tests': [e['id'] for e in entries], 'results': results}, indent=2) + '\n')
+        (output / 'summary.json').write_text(json.dumps({'suites': suites, 'selected_tests': [e['id'] for e in entries], 'results': results,
+            'jobs': args.jobs, 'elapsed_seconds': round(time.monotonic() - started, 3)}, indent=2) + '\n')
 
     with tempfile.TemporaryDirectory(prefix='city-validation-') as temporary:
         project = Project(temporary)
         try:
-            def godot_command(script=None, native=False, extra=()):
-                cmd = [args.godot, '--audio-driver', 'Dummy', '--path', str(project.path)]
+            def godot_command(script=None, native=False, extra=(), target=None):
+                cmd = [args.godot, '--audio-driver', 'Dummy', '--path', str((target or project).path)]
                 if not native:
                     cmd += ['--headless']
                 if script:
@@ -206,6 +240,10 @@ def main():
             def run(name, command, timeout=900):
                 print(f'RUN  {name}', flush=True)
                 status, duration, content = execute(command, output / (name + '.log'), timeout)
+                return finish(name, (status, duration, content))
+
+            def finish(name, result):
+                status, duration, content = result
                 if status == 'SKIP' and strict:
                     status = 'FAIL'
                 record(name, status, duration)
@@ -219,15 +257,42 @@ def main():
             if not run('startup', godot_command(extra=['--quit-after', '2'])):
                 return 1
             ready = False
+            batch = []
+
+            def isolated(entry):
+                name = entry['id']
+                print(f'RUN  {name}', flush=True)
+                with tempfile.TemporaryDirectory(prefix='city-check-') as folder:
+                    isolated_project = Project(folder)
+                    try:
+                        isolated_project.configure(name)
+                        extra = [a.replace('{references}', str(ROOT / 'references/SIMCITY2000')) for a in entry.get('args', [])]
+                        command = godot_command(entry['script'], extra=['--', *extra] if extra else [], target=isolated_project)
+                        return execute(command, output / (name + '.log'), entry.get('timeout', float(os.environ.get('GODOT_TEST_TIMEOUT_SECONDS', '900'))))
+                    finally:
+                        isolated_project.close()
+
+            def flush():
+                if not batch:
+                    return True
+                work = batch[:]
+                batch.clear()
+                return run_parallel(work, args.jobs, isolated,
+                                    lambda entry, result: finish(entry['id'], result), args.keep_going)
+
             for entry in entries:
                 name = entry['id']
                 missing = missing_requirements(entry)
                 if missing:
+                    if not flush():
+                        break
                     record(name, 'FAIL' if strict else 'SKIP', reason='Missing: ' + ', '.join(missing))
                     if strict and not args.keep_going:
                         break
                     continue
                 if entry.get('fixtures') and not ready:
+                    if not flush():
+                        break
                     try:
                         identity = fixture_identity(args.godot)
                         current = fixtures_current(identity)
@@ -242,6 +307,11 @@ def main():
                             break
                         (ROOT / 'local/large-cities/validation-build.json').write_text(json.dumps(identity, indent=2) + '\n')
                     ready = True
+                if args.jobs > 1 and parallel_safe(entry):
+                    batch.append(entry)
+                    continue
+                if not flush():
+                    break
                 project.configure(entry.get('state', name))
                 extra = [a.replace('{references}', str(ROOT / 'references/SIMCITY2000')) for a in entry.get('args', [])]
                 if 'python' in entry:
@@ -252,11 +322,14 @@ def main():
                     command = godot_command(entry['script'], entry['lane'] == 'native', ['--', *extra] if extra else [])
                 if not run(name, command, entry.get('timeout', float(os.environ.get('GODOT_TEST_TIMEOUT_SECONDS', '900')))) and not args.keep_going:
                     break
+            flush()
             run('diff-check', ['git', 'diff', '--check', '--', '.'])
         finally:
             project.close()
     totals = {status: sum(r['status'] == status for r in results) for status in ('PASS', 'FAIL', 'SKIP')}
     print(' '.join(f'{status}={count}' for status, count in totals.items()), flush=True)
+    print(f'Elapsed: {time.monotonic() - started:.2f}s; summed check time: '
+          f'{sum(r["seconds"] for r in results):.2f}s; jobs: {args.jobs}', flush=True)
     return int(totals['FAIL'] > 0)
 
 

@@ -7,10 +7,15 @@ func _initialize() -> void:
 func _run() -> void:
 	var lake_maps := 0
 	var dry_bank_maps := 0
+	var first_document: Sc2File
+	var first_components: Array
 	for seed in [1, 5, 7]:
 		var doc := _generate(128, seed)
 		var components := _water_components(CityState.from_document(doc))
 		assert(not components.is_empty())
+		if seed == 1:
+			first_document = doc
+			first_components = components
 		if components.size() > 1:
 			lake_maps += 1
 		else:
@@ -18,9 +23,8 @@ func _run() -> void:
 		print("Meander seed ", seed, ": ", components.size(), " water bodies")
 	assert(lake_maps > 0 and dry_bank_maps > 0, "Expected seeds both with and without oxbow lakes")
 	for edge in [128]:
-		var doc := _generate(edge, 1)
-		var city := CityState.from_document(doc)
-		var bodies := _water_components(city)
+		var doc := first_document
+		var bodies := first_components
 		var largest: Array = []
 		for body in bodies:
 			if body.size() > largest.size():

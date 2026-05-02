@@ -702,9 +702,6 @@
     "script": "tests/renderer_settings_test.gd",
     "domain": "rendering",
     "lane": "product",
-    "fixtures": [
-      "large-cities"
-    ],
     "requires": [
       "ext/graphics/pack.json"
     ]

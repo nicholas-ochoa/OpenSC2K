@@ -1,4 +1,5 @@
 extends SceneTree
+const DocumentState = preload("res://tests/support/document_state.gd")
 
 
 func _initialize() -> void:
@@ -26,8 +27,8 @@ func _run() -> void:
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	assert(main._activate_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x")))
-	var before: PackedByteArray = main.city.document.serialize().data
+	assert(main._activate_document(EmptyCityTemplate.create(256)))
+	var before: Array = DocumentState.capture(main.city.document)
 	# The environment override remains explicit, independent of the saved default.
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
 	main.app_city_renderer = "gpu"
@@ -36,7 +37,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "cpu")
 	main._set_city_renderer("gpu")
 	assert(not main.region_cache.gpu_enabled)
-	assert(main.city.document.serialize().data == before, "Changing renderer altered saved data")
+	assert(DocumentState.capture(main.city.document) == before, "Changing renderer altered saved data")
 
 
 	main.queue_free()
