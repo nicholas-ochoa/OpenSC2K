@@ -80,9 +80,9 @@ func _run() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main, "--preview" not in OS.get_cmdline_user_args())
 	root.add_child(main)
 	await process_frame
-	main._activate_document(EmptyCityTemplate.create())
-	main._hide_main_menu()
-	main._select_speed(GameSpeedController.Speed.PAUSED)
+	main.city_session._activate_document(EmptyCityTemplate.create())
+	main.interface._hide_main_menu()
+	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 	var saved: PackedByteArray = main.city.document.serialize().data
 	var center: Vector2 = main.map_view.source_center
 	var scale: float = main.map_view._view_scale()
@@ -91,11 +91,11 @@ func _run() -> void:
 	main.map_view.pan_screen(Vector2(-10, 10))
 	assert(main.city.document.serialize().data == saved, "Panning changed saved data")
 	assert(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_SETTINGS) >= 0)
-	main._on_options_menu(CityMenuBar.MENU_SETTINGS)
+	main.menus._on_options_menu(CityMenuBar.MENU_SETTINGS)
 	assert(main.settings_dialog.visible)
 
 
-	assert(not main._camera_keys_allowed())
+	assert(not main.camera_input._camera_keys_allowed())
 	main.settings_dialog.background_audio_check.button_pressed = true
 	assert(main.settings_dialog.selected_values().background_audio)
 	main.settings_dialog.hide()
@@ -103,7 +103,7 @@ func _run() -> void:
 	main.query_dialog.show_query("Police Station", "Central Police", true, details, "")
 	assert(main.query_dialog.tabs.current_tab == 0)
 	assert(main.query_dialog.summary_rows.get_child_count() == 3)
-	assert(not main._camera_keys_allowed())
+	assert(not main.camera_input._camera_keys_allowed())
 	main.query_dialog._enable_rename()
 	main.query_dialog.name_input.text = "North Police"
 	assert(main.query_dialog.facility_name() == "North Police")

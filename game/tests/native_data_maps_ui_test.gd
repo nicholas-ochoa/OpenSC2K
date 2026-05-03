@@ -20,9 +20,9 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	check(main.new_city_dialog.native_maps_input.button_pressed, "New City defaults to per-tile maps")
-	check(main._new_city_terrain_options().native_maps, "New City passes native option")
+	check(main.new_city._new_city_terrain_options().native_maps, "New City passes native option")
 	main.new_city_dialog.native_maps_input.button_pressed = false
-	check(not main._new_city_terrain_options().native_maps, "Original grid option remains available")
+	check(not main.new_city._new_city_terrain_options().native_maps, "Original grid option remains available")
 	main.new_city_session.independent_template = true
 	var options := {"size": 128, "native_maps": true, "ocean": false, "river": false,
 		"hills": 0, "water": 0, "trees": 0}
@@ -37,25 +37,25 @@ func _run() -> void:
 	main.map_view.zoom_factor = 0.25
 	main.overlay_mode = "underground"
 	var document := EmptyCityTemplate.create(128)
-	check(main._activate_document(document), "Activate original city")
+	check(main.city_session._activate_document(document), "Activate original city")
 	var engine_id: int = main.simulation_engine.get_instance_id()
 	var random_state: int = main.simulation_engine.random.state
 	var old_bytes: PackedByteArray = document.serialize().data
 	main.current_save_path = "user://source-city.SC2"
-	main._sync_upgrade_city_option()
+	main.city_files._sync_upgrade_city_option()
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) >= 0, "Original SC2 shows upgrade in Options")
 	main.app_original_compatibility = true
-	main._apply_compatibility_controls()
+	main.settings._apply_compatibility_controls()
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) < 0, "Compatibility preference hides upgrade")
 	main.app_original_compatibility = false
-	main._apply_compatibility_controls()
+	main.settings._apply_compatibility_controls()
 	main.last_edit_command = {"kind": "old-format-undo"}
-	main._on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
+	main.menus._on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
 	check(main.sc2x_conversion_dialog.visible and document.serialize().data == old_bytes, "Warning appears before irreversible conversion")
 	main.sc2x_conversion_dialog.canceled.emit()
 	main.sc2x_conversion_dialog.hide()
 	check(document.serialize().data == old_bytes and main.current_save_path == "user://source-city.SC2", "Cancel retains original city and path")
-	main._on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
+	main.menus._on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
 	main.sc2x_conversion_dialog.hide()
 	main.sc2x_conversion_dialog.confirmed.emit()
 	check(document.full_resolution_maps(), "Options upgrades city after confirmation")
@@ -66,16 +66,16 @@ func _run() -> void:
 		"Conversion keeps simulation and RNG state")
 	check(main.frame_simulation != null, "Native 128 city uses sliced worker")
 	check(main.save_dialog.visible and main.save_dialog.current_file.ends_with(".sc2x"), "Conversion opens SC2X Save As")
-	check(document.serialize().data != old_bytes and main._city_has_unsaved_changes(), "Conversion is an unsaved change")
+	check(document.serialize().data != old_bytes and main.city_files._city_has_unsaved_changes(), "Conversion is an unsaved change")
 	main.save_dialog.hide()
 	var saved_path: String = main.current_save_path
-	main._upgrade_city_to_sc2x()
+	main.city_files._upgrade_city_to_sc2x()
 	check(main.current_save_path == saved_path and not main.save_dialog.visible, "Repeated conversion is harmless")
 	var second := EmptyCityTemplate.create(128)
-	check(main._activate_document(second), "Activate another original city")
+	check(main.city_session._activate_document(second), "Activate another original city")
 	main.current_save_path = "user://second-city.SC2"
 	main.app_warn_sc2x_conversion = false
-	main._upgrade_city_to_sc2x()
+	main.city_files._upgrade_city_to_sc2x()
 	check(second.is_extended() and not main.sc2x_conversion_dialog.visible, "Disabled warning permits direct conversion")
 	main.save_dialog.hide()
 	main.queue_free()

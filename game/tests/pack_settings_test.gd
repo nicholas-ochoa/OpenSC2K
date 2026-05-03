@@ -63,10 +63,10 @@ func _run() -> void:
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
 	main.map_view.zoom_factor = 0.25
-	assert(main._activate_document(EmptyCityTemplate.create()))
-	main._select_speed(GameSpeedController.Speed.PAUSED)
+	assert(main.city_session._activate_document(EmptyCityTemplate.create()))
+	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = main.city.document.serialize().data
-	main._open_settings_dialog()
+	main.settings._open_settings_dialog()
 	var dialog: AppSettingsDialog = main.settings_dialog
 	assert(dialog.folder_row.visible)
 
@@ -95,7 +95,7 @@ func _run() -> void:
 	dialog.folder_dialog.file_selected.emit(folder.path_join("pack.json"))
 	dialog.default_mayor_edit.text = "Alex"
 	dialog.overview_graphics_selector.select(2)
-	main._apply_settings()
+	main.settings._apply_settings()
 	assert(main.app_default_mayor_name == "Alex")
 	assert(main.app_overview_graphics == 2)
 	assert(AppSettingsStore.load_values(main.app_settings_path).default_mayor_name == "Alex")
@@ -105,12 +105,12 @@ func _run() -> void:
 	assert(main.main_menu.city_background.demo_sprites == main.large_sprites)
 	assert(main.city.document.serialize().data == before)
 	dialog.folder_edit.text = original_folder.path_join("pack.json")
-	main._apply_settings()
+	main.settings._apply_settings()
 	assert(main.asset_source.graphics_name == original_manifest.name)
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels != sprite.pixels)
 	assert(main.city.document.serialize().data == before)
 	main.settings_dialog.hide()
-	main._open_new_city_dialog()
+	main.new_city._open_new_city_dialog()
 	assert(main.new_city_dialog.mayor_name_input.text == "Alex")
 	assert(main.city.document.serialize().data == before)
 	main.new_city_dialog.hide()

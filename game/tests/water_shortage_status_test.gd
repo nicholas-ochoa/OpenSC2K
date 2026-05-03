@@ -169,23 +169,23 @@ func _check_main_ui(strings: Dictionary) -> void:
 	await process_frame
 	main.set_process(false)
 	main.original_query_strings = strings
-	assert(main._activate_document(EmptyCityTemplate.create(128)))
+	assert(main.city_session._activate_document(EmptyCityTemplate.create(128)))
 	main.set_process(false)
 	main.city_status_bar.music_notice_seconds = 0
 	main.simulation_engine.city_status_resource_id = 269
-	main._select_speed(GameSpeedController.Speed.TURTLE)
+	main.frame._select_speed(GameSpeedController.Speed.TURTLE)
 	assert(main.city_status_bar.reports_label.text == str(main.original_query_strings[269]).strip_edges())
 	for weather in CityStatusMessages.WEATHER_COUNT:
 		assert(main.city.document.set_misc_u32(RciAftermathPhase.MISC_WEATHER_TREND, weather))
-		main._refresh_status_summary()
+		main.interface._refresh_status_summary()
 		assert(main.city_status_bar.weather_label.text.contains(RciAftermathPhase.WEATHER_NAMES[weather]))
-	main._select_speed(GameSpeedController.Speed.PAUSED)
+	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 	assert(main.city_status_bar.reports_label.text == str(main.original_query_strings[528]).strip_edges())
 	main.simulation_engine.active_disaster_type = 16
-	main._select_speed(GameSpeedController.Speed.TURTLE)
+	main.frame._select_speed(GameSpeedController.Speed.TURTLE)
 	assert(main.city_status_bar.reports_label.text == str(main.original_query_strings[CityStatusMessages.DISASTER_IDS[16]]).strip_edges())
 	main.simulation_engine.active_disaster_type = 0
-	main._refresh_status_summary()
+	main.interface._refresh_status_summary()
 	assert(main.city_status_bar.reports_label.text == str(main.original_query_strings[269]).strip_edges())
 	main.queue_free()
 	await process_frame

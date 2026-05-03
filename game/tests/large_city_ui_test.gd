@@ -1,8 +1,13 @@
 extends SceneTree
 
-class TestApp extends "res://src/main.gd":
+class NoMenuInterface extends ApplicationInterface:
 	func _show_main_menu() -> void:
 		pass
+
+
+class TestApp extends "res://src/main.gd":
+	func _init() -> void:
+		interface = NoMenuInterface.new(self)
 
 
 
@@ -17,7 +22,7 @@ func run_check() -> void:
 	root.add_child(main)
 	await process_frame
 	main.new_city_session.independent_template = true
-	main._open_new_city_dialog()
+	main.new_city._open_new_city_dialog()
 	# This suite tests size selection and preview jobs; terrain rules have their own tests.
 	main.new_city_dialog.ocean_input.button_pressed = false
 	main.new_city_dialog.river_input.button_pressed = false
@@ -31,26 +36,26 @@ func run_check() -> void:
 		main.new_city_dialog.size_input.select(selection)
 		main.new_city_dialog.size_input.item_selected.emit(selection)
 		assert(main.new_city_dialog.done_button.disabled)
-		assert(main._new_city_terrain_options().size == edge)
+		assert(main.new_city._new_city_terrain_options().size == edge)
 		# Size wiring is checked for every option. The minimum-size preview exercises
 		# the worker; New City workflow and terrain tests own larger generation.
 		if edge != 16:
 			continue
-		main._make_new_city_preview()
+		main.new_city._make_new_city_preview()
 		while main.new_city_preview_job != null:
 			await process_frame
 		assert(main.new_city_session.preview_document.map_size == edge)
 		assert(main.new_city_session.preview_options.get("size") == edge)
 		assert(main.new_city_dialog.preview_view.texture.get_width() == edge)
 
-	main._cancel_new_city()
+	main.new_city._cancel_new_city()
 	main.app_zoom_graphics = AppSettingsStore.normalize_zoom_graphics([0, 1, 2, 2, 2, 2])
 	main.map_view.zoom_factor = 0.25
 	main.overlay_mode = "underground"
 
 	# Smallest and largest worker cities, then original synchronous simulation.
 	for edge in [16, 512, 128]:
-		assert(main._activate_document(EmptyCityTemplate.create(edge)))
+		assert(main.city_session._activate_document(EmptyCityTemplate.create(edge)))
 		assert(main.map_view.city.map_size == edge)
 		assert((main.frame_simulation != null) == (edge != 128))
 		assert(main.map_view.city_texture.get_size() == Vector2(CityIsometricRenderer.output_size_for_view(2, edge)))

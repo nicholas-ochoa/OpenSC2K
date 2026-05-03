@@ -114,10 +114,10 @@ func check_ui() -> void:
 
 	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(512))
 	main.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
-	check(main._new_city_terrain_options().size == 128 and not main._new_city_terrain_options().native_maps, "Creation guard survives programmatic UI selection")
+	check(main.new_city._new_city_terrain_options().size == 128 and not main.new_city._new_city_terrain_options().native_maps, "Creation guard survives programmatic UI selection")
 	main.new_city_session.independent_template = true
 	main.new_city_session.begin(123, 456)
-	var options: Dictionary = main._new_city_terrain_options()
+	var options: Dictionary = main.new_city._new_city_terrain_options()
 	# Format policy is independent of expensive terrain feature combinations.
 	options.merge({"hills": 0, "water": 0, "trees": 0, "ocean": false, "river": false}, true)
 	var generated: Dictionary = main.new_city_session.generate_preview("", options, false)
@@ -125,42 +125,42 @@ func check_ui() -> void:
 	var created: Dictionary = main.new_city_session.create_city("", "Compatible", "Mayor", 1, 1900, options, PackedByteArray())
 	check(created.ok and not created.document.is_extended(), "Compatibility creates original-format city")
 	var doc := EmptyCityTemplate.create(128)
-	check(main._activate_document(doc), "Compatible city activates")
+	check(main.city_session._activate_document(doc), "Compatible city activates")
 	check(main.speed_controller.original_compatibility, "Active simulation receives compatibility")
 	var bytes: PackedByteArray = doc.serialize().data
 	main.current_save_path = "user://compatible-city.SC2"
-	main._upgrade_city_to_sc2x()
+	main.city_files._upgrade_city_to_sc2x()
 	check(doc.serialize().data == bytes and not doc.is_extended(), "Conversion handler cannot bypass mode")
-	main._show_main_menu()
+	main.interface._show_main_menu()
 	var popup: PopupMenu = main.options_menu.get_popup()
 	check(popup.get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) < 0, "Main menu refresh retains conversion restriction")
 	var extended := EmptyCityTemplate.create(256)
 	var extended_file := FileAccess.open(save_path, FileAccess.WRITE)
 	extended_file.store_buffer(extended.serialize().data)
 	extended_file.close()
-	main._load_city_unchecked(ProjectSettings.globalize_path(save_path))
+	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
 	check(main.current_document.is_extended() and main.current_document.map_size == 256, "SC2X loads normally even with an SC2 filename")
 	check(not main.app_original_compatibility and not main.speed_controller.original_compatibility, "Opening SC2X disables compatibility")
 	check(not AppSettingsStore.load_values(settings_path).original_compatibility, "Automatic mode change persists")
-	check(main._activate_document(doc), "Return to original city")
+	check(main.city_session._activate_document(doc), "Return to original city")
 	main.app_original_compatibility = true
-	main._apply_compatibility_controls()
-	main._open_settings_dialog()
+	main.settings._apply_compatibility_controls()
+	main.settings._open_settings_dialog()
 	check(main.settings_dialog.original_compatibility_check.button_pressed, "Settings shows current mode")
 	main.settings_dialog.warn_sc2x_conversion_check.button_pressed = false
 	main.settings_dialog.original_compatibility_check.button_pressed = false
 	main.settings_dialog.hide()
-	main._apply_settings()
+	main.settings._apply_settings()
 	check(not main.app_original_compatibility and not main.speed_controller.original_compatibility, "Mode can be disabled live")
 	main.new_city_dialog.compatibility_input.button_pressed = false
 	check(not main.new_city_dialog.native_maps_input.disabled, "Disabling New City compatibility restores extensions")
 	check(not main.app_warn_sc2x_conversion and not AppSettingsStore.load_values(settings_path).warn_sc2x_conversion, "Warning checkbox disables and persists warning")
-	check(main._activate_document(extended), "Extended city activates when mode is off")
-	main._open_settings_dialog()
+	check(main.city_session._activate_document(extended), "Extended city activates when mode is off")
+	main.settings._open_settings_dialog()
 	check(main.settings_dialog.original_compatibility_check.disabled, "SC2X disables compatibility checkbox")
 	main.settings_dialog.original_compatibility_check.button_pressed = true
 	main.settings_dialog.hide()
-	main._apply_settings()
+	main.settings._apply_settings()
 	check(not main.app_original_compatibility and main.current_document == extended, "Enabling mode cannot discard or convert active SC2X city")
 	check(not AppSettingsStore.load_values(settings_path).original_compatibility, "Rejected mode change does not persist")
 	await process_frame

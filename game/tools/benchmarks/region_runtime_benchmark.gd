@@ -22,7 +22,7 @@ func _run() -> void:
 
 		var document := Sc2File.load_path("res://../local/large-cities/stitched-%d.sc2x" % edge)
 		var started := Time.get_ticks_usec()
-		assert(main._activate_document(document))
+		assert(main.city_session._activate_document(document))
 		var activation_ms := (Time.get_ticks_usec() - started) / 1000.0
 		var cache: CityRegionCache = main.region_cache
 		started = Time.get_ticks_usec()
@@ -33,7 +33,7 @@ func _run() -> void:
 
 		while Time.get_ticks_msec() < deadline:
 			var poll_started := Time.get_ticks_usec()
-			main._poll_region_cache()
+			main.map_render._poll_region_cache()
 			max_poll_usec = maxi(max_poll_usec, Time.get_ticks_usec() - poll_started)
 			assert(cache.last_error.is_empty())
 
@@ -52,7 +52,7 @@ func _run() -> void:
 
 		assert(cache.ready() and cache.prefetch_ready())
 		var dynamic_start := Time.get_ticks_usec()
-		main._refresh_moving_things(main._city_view_size())
+		main.moving_sprites._refresh_moving_things(main.static_render._city_view_size())
 		print("WARM dynamic_ms=%.2f zoom=%.2f" % [(Time.get_ticks_usec() - dynamic_start) / 1000.0, main.map_view.zoom_factor])
 		var metrics := cache.metrics()
 		print("BACKEND %s atlas_MiB=%.2f" % ["GPU" if metrics.gpu else "CPU", metrics.atlas_bytes / 1048576.0])

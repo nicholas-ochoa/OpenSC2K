@@ -24,24 +24,24 @@ func _run() -> void:
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	assert(main._activate_document(EmptyCityTemplate.create(128)))
-	main._select_speed(GameSpeedController.Speed.PAUSED)
+	assert(main.city_session._activate_document(EmptyCityTemplate.create(128)))
+	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = main.city.document.serialize().data
 	for selected in [1, 0, 1]:
-		main._open_settings_dialog()
+		main.settings._open_settings_dialog()
 		var dialog: AppSettingsDialog = main.settings_dialog
 		dialog.theme_selector.select(selected)
 		dialog.dark_underground_check.button_pressed = not main.app_dark_underground
 		# Cancel discards the selection when Settings next opens.
 		dialog.hide()
-		main._open_settings_dialog()
+		main.settings._open_settings_dialog()
 		assert(dialog.theme_selector.selected == (1 if main.app_ui_theme == "dark" else 0))
 		assert(dialog.dark_underground_check.button_pressed == main.app_dark_underground)
 		var previous_mode: String = main.app_ui_theme
 		var previous_color: Color = main.theme.get_stylebox("normal", "Button").bg_color
 		dialog.theme_selector.select(selected)
 		dialog.dark_underground_check.button_pressed = true
-		main._apply_settings()
+		main.settings._apply_settings()
 		dialog.hide()
 		await process_frame
 		await process_frame
@@ -61,11 +61,11 @@ func _run() -> void:
 		main.static_render_mode = state[0]
 		main.map_view.base_palette_lookup_all = state[1]
 		main.app_dark_underground = true
-		main._sync_map_style()
+		main.menus._sync_map_style()
 		assert(main.map_view.dark_underground == state[2])
 		assert(main.map_view._base_material.get_shader_parameter("dark_underground") == state[2])
 		main.app_dark_underground = false
-		main._sync_map_style()
+		main.menus._sync_map_style()
 		assert(not main.map_view.dark_underground)
 		assert(not main.map_view._base_material.get_shader_parameter("dark_underground"))
 	assert(main.city.document.serialize().data == before)

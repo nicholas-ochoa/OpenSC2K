@@ -31,9 +31,9 @@ func _run() -> void:
 
 			main.map_view.zoom_factor = zoom
 			var load_started := Time.get_ticks_usec()
-			assert(main._activate_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x")))
-			main._set_overlay("city")
-			main._select_speed(GameSpeedController.Speed.PAUSED)
+			assert(main.city_session._activate_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x")))
+			main.menus._set_overlay("city")
+			main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 			var deadline := Time.get_ticks_msec() + 60000
 
 			while not main.region_cache.ready() and Time.get_ticks_msec() < deadline:
@@ -41,7 +41,7 @@ func _run() -> void:
 
 			assert(main.region_cache.ready())
 			print("LOAD zoom=%.2f hires=%s visible_ms=%.2f" % [zoom, full_size_graphics, (Time.get_ticks_usec() - load_started) / 1000.0])
-			main._select_speed(speed)
+			main.frame._select_speed(speed)
 			var warm_until := Time.get_ticks_msec() + 2000
 
 			while Time.get_ticks_msec() < warm_until:

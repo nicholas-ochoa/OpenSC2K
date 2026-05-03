@@ -46,11 +46,11 @@ func _run() -> void:
 	await process_frame
 	main.map_view.zoom_factor = 0.25
 	for edge in [64, 512]:
-		assert(main._activate_document(EmptyCityTemplate.create(edge)))
-		main._select_speed(GameSpeedController.Speed.PAUSED)
+		assert(main.city_session._activate_document(EmptyCityTemplate.create(edge)))
+		main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 		main.city.set_sound_enabled(false)
-		main._select_tool_group(0)
-		main._select_subtool(0)
+		main.current_tool._select_tool_group(0)
+		main.current_tool._select_subtool(0)
 		var map: CityMapControl = main.map_view
 		map.city = main.city
 		assert(map.demolish_brush and map.continuous_placement and not map.landscape_brush)
@@ -75,7 +75,7 @@ func _run() -> void:
 		for zoom in (CityMapControl.ZOOM_LEVELS if edge == 64 else [1.0]):
 			map.zoom_factor = zoom
 			for direction in 4:
-				var visual: Dictionary = main._demolish_brush_visual(start, direction)
+				var visual: Dictionary = main.moving_sprites._demolish_brush_visual(start, direction)
 				assert(not visual.is_empty() and visual.texture.get_size().x > 0)
 		map.zoom_factor = 0.25
 		_button(map, start + Vector2i(10, 0), false)
@@ -121,7 +121,7 @@ func _run() -> void:
 		assert(DocumentState.capture(main.current_document) == before and main.tool_random.state == rng)
 
 		# The underground tool uses the same input, without a surface vehicle.
-		main._set_overlay("underground")
+		main.menus._set_overlay("underground")
 		var underground: PackedByteArray = main.current_document.find_chunk("XUND").decoded_payload.duplicate()
 		for x in range(start.x, start.x + 4):
 			underground[main.city.index_of(x, start.y)] = 0x10
@@ -134,7 +134,7 @@ func _run() -> void:
 		assert(main.last_edit_command.underground_view and main.last_edit_command.cost == 4)
 		assert(DemolishCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
 		assert(DocumentState.capture(main.current_document) == before and main.tool_random.state == rng)
-		main._set_overlay("city")
+		main.menus._set_overlay("city")
 		# A protest keeps its tree without a notice or ending the held stroke.
 		buildings = main.city.buildings.duplicate()
 		buildings[main.city.index_of(start.x, start.y)] = 6

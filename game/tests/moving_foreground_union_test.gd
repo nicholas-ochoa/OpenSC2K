@@ -1,6 +1,6 @@
 extends SceneTree
 
-class Host extends "res://src/main.gd":
+class TestSprites extends ApplicationMovingSprites:
 	var images: Dictionary = {}
 
 
@@ -9,7 +9,8 @@ class Host extends "res://src/main.gd":
 
 
 func _initialize() -> void:
-	var host := Host.new()
+	var host := CityApplication.new()
+	host.moving_sprites = TestSprites.new(host)
 
 	# The first foreground sprite overlaps only transparent pixels. Later
 	# highway and building silhouettes still cover parts of the train.
@@ -20,7 +21,7 @@ func _initialize() -> void:
 		if id > 0:
 			image.set_pixel(id, 1, Color.WHITE)
 
-		host.images[id] = image
+		host.moving_sprites.images[id] = image
 		var command := {"sprite_id": id, "position": Vector2i.ZERO,
 			"size": Vector2i(8, 4), "flip": false, "depth_order": 11 + id}
 		host.static_occlusion_commands.append(command)
@@ -29,7 +30,7 @@ func _initialize() -> void:
 	host.static_occlusion_commands[3].depth_order = 9
 
 	for train in [true, false]:
-		var mask := host._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, train)
+		var mask := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, train)
 		assert(mask != null)
 		assert(mask.get_pixel(1, 1).a > 0.0, "Later highway silhouette hides the moving sprite")
 		assert(mask.get_pixel(2, 1).a > 0.0, "Later building silhouette also hides the moving sprite")
@@ -51,24 +52,24 @@ func _initialize() -> void:
 	crossing.set_pixel(5, 1, Color.WHITE)
 	var track := crossing.duplicate()
 	track.set_pixel(4, 1, Color.TRANSPARENT)
-	host.images[4] = crossing
-	host.images[5] = track
+	host.moving_sprites.images[4] = crossing
+	host.moving_sprites.images[5] = track
 	host.static_occlusion_commands.append({"sprite_id": 4, "position": Vector2i.ZERO,
 		"size": Vector2i(8, 4), "flip": false, "depth_order": 10,
 		"train_foreground_reference_sprite_id": 5, "train_foreground_requires_depth": true})
 	host.static_occlusion_grid.clear()
 	host.dynamic_occluder_cache.clear()
-	var crossing_mask := host._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
+	var crossing_mask := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
 	assert(crossing_mask.get_pixel(4, 1).a > 0.0, "Same-tile raised deck hides train")
 	assert(crossing_mask.get_pixel(5, 1).a == 0.0, "Ground-level rails cannot hide train")
 	host.static_occlusion_commands[-1].depth_order = 9
 	host.dynamic_occluder_cache.clear()
-	var behind_mask := host._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
+	var behind_mask := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
 	assert(behind_mask.get_pixel(4, 1).a == 0.0, "Crossing behind train cannot hide it")
 	# A later power line leaves the train pixels visible.
 	host.static_occlusion_commands[1].train_ignore = true
 	host.dynamic_occluder_cache.clear()
-	var wire_mask := host._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
+	var wire_mask := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
 	assert(wire_mask.get_pixel(1, 1).a == 0.0, "Power line cannot cover train")
 	var road := Image.create(8, 8, false, Image.FORMAT_RGBA8)
 	road.fill(Color.TRANSPARENT)

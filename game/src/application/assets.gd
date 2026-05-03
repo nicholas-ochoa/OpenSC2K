@@ -1,0 +1,305 @@
+class_name ApplicationAssets
+extends RefCounted
+
+
+const Palette = preload("res://src/assets/sc2_palette.gd")
+const SpriteArchive = preload("res://src/assets/sc2_sprite_archive.gd")
+const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
+const Random = preload("res://src/simulation/random/sim_random.gd")
+const CityAudio = preload("res://src/audio/city_audio_controller.gd")
+const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
+const DebugOverlayView = preload("res://src/debug/debug_overlay.tscn")
+
+var app: CityApplication
+
+
+func _init(application: CityApplication) -> void:
+	app = application
+
+
+func _initialize_runtime() -> void:
+	if app.runtime_initialized:
+		return
+
+	var mode := OS.get_environment("OPENSC2K_ASSET_SOURCE")
+
+	if mode.is_empty():
+		mode = app.app_graphics_source
+
+	app.asset_source = GameAssetSource.load_source(
+		app.reference_root, mode, app.app_graphics_folder, OS.get_environment("OPENSC2K_GRAPHICS_PACK")
+	)
+	app.assets_ready = app.asset_source.error.is_empty()
+
+	if app.assets_ready:
+		app.reference_root = app.asset_source.reference_root
+	else:
+		app.asset_source.assets = OriginalGameAssets.new()
+		app.asset_source.use_original_data = false
+
+	app.runtime_initialized = true
+	app.new_city_session.independent_template = not app.asset_source.use_original_data
+	app.audio_controller = CityAudio.new()
+	app.audio_controller.startup_theme_pending = true
+	app.audio_controller.background_audio = app.app_background_audio
+	app.audio_controller.set_shuffle_music(app.app_shuffle_music)
+	app.audio_controller.music_activity_changed.connect(app.effects_audio._on_music_activity_changed)
+	app.audio_controller.music_notice.connect(func(message: String) -> void:
+		if app.city_status_bar != null:
+			app.city_status_bar.show_music_notice(message)
+	)
+	app.add_child(app.audio_controller)
+	app.audio_controller.setup(
+		app.reference_root, app.app_music_volume, app.app_effects_volume, app.asset_source.use_original_data
+	)
+
+	if app.assets_ready:
+		app.audio_controller.set_media_packs(app.app_sound_pack_folder, app.app_music_pack_folder)
+		app.audio_controller.set_soundtrack_folder(app.app_soundtrack_folder)
+
+	app.newspaper_session_seed = Time.get_ticks_msec() & 0xffff
+
+	if app.newspaper_session_seed & 0x8000:
+		app.newspaper_session_seed -= 0x10000
+
+	app.tool_random = Random.new(app.newspaper_session_seed)
+	app.newspaper_session_state.resize(NewsQueue.MISC_SIZE)
+	app.newspaper_session_state.fill(0)
+	NewsQueue.initialize_session(app.newspaper_session_state, app.tool_random)
+	var original_assets := app.asset_source.assets
+	app.newspaper_data = original_assets.newspaper_data
+	app.original_query_strings = original_assets.strings
+	app.building_objection_text = original_assets.building_objection_text
+	app.library_texts = original_assets.library_texts
+	app.scurk_graphics = original_assets.scurk_graphics
+	app.interface._build_interface(original_assets)
+	app.settings._apply_compatibility_controls()
+	app.desktop_presentation = CityDesktopPresentation.new()
+	app.desktop_presentation.map_view = app.map_view
+	app.desktop_presentation.editor = app.scurk_editor
+	app.desktop_presentation.place_print = app.scurk_place_print
+	app.desktop_presentation.print_dialog = app.scurk_print
+	app.add_child(app.desktop_presentation)
+	app.desktop_presentation.set_graphics(original_assets.desktop_graphics)
+	app.debug_overlay = DebugOverlayView.instantiate()
+	app.debug_overlay.setup(app)
+	app.add_child(app.debug_overlay)
+
+	if not original_assets.error.is_empty():
+		app.interface._show_error(original_assets.error)
+
+		return
+
+	app.palette = original_assets.palette
+	app.scenario_palette = original_assets.scenario_palette
+	app.scenario_graphics = original_assets.scenario_graphics
+	app.palette_index_encoding = Palette.index_encoding()
+	app.static_render._update_palette_cycle_texture()
+	app.base_large_sprites = original_assets.large_sprites
+	app.base_small_medium_sprites = original_assets.small_medium_sprites
+	app.large_sprites = app.base_large_sprites
+	app.small_medium_sprites = app.base_small_medium_sprites
+	app.camera_input._refresh_child_tool_icons()
+
+	app.interface._show_main_menu()
+
+
+func _build_reference_import_dialogs() -> void:
+	app.graphics_source_error_dialog = AcceptDialog.new()
+	app.graphics_source_error_dialog.title = "Graphics source"
+	app.graphics_source_error_dialog.exclusive = true
+	app.add_child(app.graphics_source_error_dialog)
+	app.reference_import_dialog = FileDialog.new()
+	app.reference_import_dialog.title = "Select the original SimCity 2000 SIMCITY.EXE"
+	app.reference_import_dialog.file_mode = FileDialog.FILE_MODE_OPEN_FILE
+	app.reference_import_dialog.access = FileDialog.ACCESS_FILESYSTEM
+	app.reference_import_dialog.filters = PackedStringArray([
+		"*.EXE,*.exe ; SimCity 2000 executable",
+	])
+	app.reference_import_dialog.exclusive = true
+	app.reference_import_dialog.file_selected.connect(_import_original_game)
+	app.reference_import_dialog.canceled.connect(_on_reference_import_canceled)
+	app.add_child(app.reference_import_dialog)
+
+	app.reference_import_error_dialog = AcceptDialog.new()
+	app.reference_import_error_dialog.title = "Cannot import SimCity 2000"
+	app.reference_import_error_dialog.exclusive = true
+	app.reference_import_error_dialog.confirmed.connect(_show_reference_import_dialog)
+	app.add_child(app.reference_import_error_dialog)
+
+	for dialog in [app.graphics_source_error_dialog, app.reference_import_dialog, app.reference_import_error_dialog]:
+		dialog.theme = AppUiTheme.file_dialog() if dialog is FileDialog else ClassicUiStyle.create_dialog_theme()
+
+
+func _show_graphics_source_error(message: String) -> void:
+	app.graphics_source_error_dialog.dialog_text = message
+	app.graphics_source_error_dialog.call_deferred("popup_centered", Vector2i(620, 220))
+
+
+func _show_reference_import_dialog() -> void:
+	if app.reference_import_dialog == null:
+		return
+
+	app.reference_import_dialog.popup_centered_ratio(0.8)
+
+
+func _on_reference_import_canceled() -> void:
+	if app.settings_dialog != null:
+		app.settings._open_import_settings()
+
+
+func _show_reference_import_error(message: String) -> void:
+	if app.reference_import_error_dialog == null:
+		return
+
+	app.reference_import_error_dialog.dialog_text = message
+	app.reference_import_error_dialog.popup_centered(Vector2i(640, 260))
+
+
+func _import_original_game(executable_path: String) -> void:
+	var install_result := OriginalPackImporter.import_executable(
+		executable_path, ProjectSettings.globalize_path("user://packs"), ProjectSettings.globalize_path("user://")
+	)
+
+	if not install_result.ok:
+		_show_reference_import_error(install_result.error)
+
+		return
+
+	var selected := GameAssetSource.load_source(install_result.root, "folder", install_result.graphics)
+
+	if not selected.error.is_empty():
+		_show_reference_import_error(selected.error)
+
+		return
+
+	app.reference_import_dialog.hide()
+	app.reference_import_error_dialog.hide()
+	app.app_graphics_source = "folder"
+	app.app_graphics_folder = install_result.graphics
+	app.app_sound_pack_folder = install_result.sound
+	app.app_music_pack_folder = install_result.music
+	app.app_soundtrack_folder = ""
+	_apply_graphics_source(selected)
+	app.audio_controller.set_media_packs(app.app_sound_pack_folder, app.app_music_pack_folder)
+	app.audio_controller.set_soundtrack_folder("")
+	var saved := SettingsStore.save_values(
+		app.app_music_volume, app.app_effects_volume, app.app_fullscreen,
+		app.app_settings_path, app.app_graphics_source, app.app_graphics_folder, app.app_soundtrack_folder, app.app_city_renderer, app.app_background_audio, app.app_zoom_graphics, app.app_toolbar_sounds, app.app_sound_pack_folder, app.app_music_pack_folder, app.app_shuffle_music, app.app_original_compatibility, app.app_warn_sc2x_conversion, app.app_default_mayor_name, app.app_overview_graphics, app.app_ui_theme, app.app_dark_underground,
+	)
+	app.settings._open_import_settings()
+	app.status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
+
+	if saved != OK:
+		app.interface._show_error("Packs imported, but their preferences could not be saved.")
+
+
+func _apply_graphics_source(selected: GameAssetSource) -> void:
+	# wait for workers using the old archives
+	app.map_render._close_region_cache()
+
+	if app.static_render_thread != null and app.static_render_thread.is_started():
+		app.static_render_thread.wait_to_finish()
+
+	app.static_render_thread = null
+	app.static_render_job = null
+	app.asset_source = selected
+	app.assets_ready = true
+	app.reference_root = selected.reference_root
+	app.new_city_session.independent_template = false
+	app.audio_controller.reference_root = app.reference_root
+	app.audio_controller.original_media_enabled = true
+	var assets := selected.assets
+	app.newspaper_data = assets.newspaper_data
+	app.original_query_strings = assets.strings
+	app.building_objection_text = assets.building_objection_text
+	app.library_texts = assets.library_texts
+	app.palette = assets.palette
+	app.scenario_palette = assets.scenario_palette
+	app.scenario_graphics = assets.scenario_graphics
+	app.scurk_graphics = assets.scurk_graphics
+	app.base_large_sprites = assets.large_sprites
+	app.base_small_medium_sprites = assets.small_medium_sprites
+	app.large_sprites = app.base_large_sprites
+	app.small_medium_sprites = app.base_small_medium_sprites
+
+	if app.active_scurk_tile_set != null:
+		app.large_sprites = SpriteArchive.combine([app.base_large_sprites, app.active_scurk_tile_set.overrides])
+		app.small_medium_sprites = SpriteArchive.combine([app.base_small_medium_sprites, app.active_scurk_tile_set.overrides])
+
+	_invalidate_sprite_art()
+	app.static_render._update_palette_cycle_texture()
+	app.city_toolbar.replace_artwork(assets.toolbar_art)
+	app.camera_input._refresh_child_tool_icons()
+	app.about_dialog.set_assets(assets)
+	app.new_city_dialog.set_control_graphics(assets.city_ui_graphics)
+	app.newspaper_dialog.set_control_graphics(assets.city_ui_graphics)
+	app.desktop_presentation.set_graphics(assets.desktop_graphics)
+	app.city_dialogs.original_assets = assets
+	app.industry_window.industry_control.set_icon_strip(assets.industry_icons)
+	app.simnation_window.simnation_control.set_sprite_sheet(assets.simnation_sprites)
+	app.city_map_window.set_resources(assets.city_map_icons, assets.strings)
+	app.building_objection_dialog.set_picture(assets.forest_protest_image)
+	if app.scurk_editor != null:
+		app.scurk_editor.configure(app.palette, app.base_large_sprites, app.base_small_medium_sprites, app.reference_root, app.scurk_graphics)
+
+	if app.scurk_place_print != null and app.scurk_place_print.visible:
+		app.scurk_place_print.configure(app.palette, app.large_sprites, app.active_scurk_tile_set.names if app.active_scurk_tile_set != null else {}, app.scurk_graphics)
+
+	app.menus._sync_asset_menu_actions()
+	app.main_menu.set_assets_ready(true)
+	app.main_menu.city_background.replace_graphics(app.palette, app.large_sprites)
+
+	if app.main_menu.visible:
+		app.main_menu.city_background.configure(app.reference_root, app.palette, app.large_sprites)
+
+	app.map_render._refresh_map(false)
+
+
+func _invalidate_sprite_art() -> void:
+	app.map_render._close_region_cache()
+	app.static_render_epoch += 1
+	app.static_city_image = null
+	app.static_occlusion_commands.clear()
+	app.static_occlusion_grid.clear()
+	app.static_visual_signature = []
+	app.static_render_mode = ""
+	app.static_display_city = null
+	app.static_view_cache.clear()
+	app.pending_static_render = false
+	app.dynamic_sprite_cache.clear()
+	app.dynamic_foreground_cache.clear()
+	app.dynamic_occluder_cache.clear()
+	app.dynamic_visual_cache.clear()
+	app.sign_foreground_cache.clear()
+	app.dynamic_special_batch_cache.clear()
+	app.dynamic_sign_occluders.clear()
+	app.dynamic_sign_occlusion_grid.clear()
+
+
+func _refresh_scurk_artwork() -> void:
+	if app.map_view == null:
+		return
+
+	app.map_view.scurk_stamp_visuals.clear()
+
+	if app.city != null and app.scurk_place_print != null and app.scurk_place_print.visible and app.overlay_mode == "city":
+		for stamp in app.city.scurk_artwork_stamps:
+			var entry = app.large_sprites.find_sprite(1000 + int(stamp.tile_id))
+
+			if entry == null:
+				continue
+
+			var rendered: Dictionary = entry.create_image(app.palette)
+
+			if not rendered.ok:
+				continue
+
+			var texture := ImageTexture.create_from_image(rendered.image)
+			var anchor: Vector2 = CityIsometricRenderer.tile_polygon(app.city, stamp.point.x, stamp.point.y)[2]
+			app.map_view.scurk_stamp_visuals.append({"texture": texture, "position": anchor - Vector2(texture.get_width() / 2.0, texture.get_height() - 1)})
+
+	app.map_view.queue_redraw()
+
+
+# level terrain paints a round brush toward the height under the first click

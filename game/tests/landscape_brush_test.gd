@@ -14,22 +14,22 @@ func _run() -> void:
 	main.map_view.zoom_factor = 0.25
 	# A 32-map fits the largest brush and gap. The second case keeps far-map input.
 	for edge in [32, 512]:
-		assert(main._activate_document(EmptyCityTemplate.create(edge)))
-		main._enter_landscape_editor()
-		main._select_tool_group(1)
+		assert(main.city_session._activate_document(EmptyCityTemplate.create(edge)))
+		main.new_city._enter_landscape_editor()
+		main.current_tool._select_tool_group(1)
 		for tool in ([0, 1, 3] if edge == 32 else [1]):
-			main._select_subtool(tool)
+			main.current_tool._select_subtool(tool)
 			for width in ([1, 15] if edge == 32 else [15]):
 				for shape in ([0, 1] if edge == 32 else [1]):
 					main.city_toolbar.brush_size_input.value = width
 					main.city_toolbar.brush_shape_input.select(shape)
-					main._update_edit_state()
+					main.current_tool._update_edit_state()
 					var point := Vector2i(edge - 24, edge - 24)
 					var before: Array = DocumentState.capture(main.current_document)
 					var rng: int = main.tool_random.state
 					main.map_view.selection_start = point
 					main.map_view.selection_end = point
-					main._on_map_selection_started()
+					main.camera_input._on_map_selection_started()
 					main.map_view._last_brush_tile = Vector2i(-1, -1)
 					main.map_view._emit_brush_dab(point, false)
 					main.map_view._emit_brush_dab(point + Vector2i(18, 0), true)
@@ -59,13 +59,13 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 		var point := origin + Vector2i(0, 0 if editor else 10)
 		main.landscape_editor = editor
 		main.city_toolbar.set_landscape_editor(editor)
-		main._select_tool_group(0)
-		main._select_subtool(2)
+		main.current_tool._select_tool_group(0)
+		main.current_tool._select_subtool(2)
 		for bump in [point + Vector2i(10, 0), point + Vector2i(10, 1)]:
 			for step in 3:
 				assert(TerrainCommand.apply_path(main.city, 0, 2, bump, [bump], main.tool_random, true).ok)
-		main._select_subtool(1)
-		main._update_edit_state()
+		main.current_tool._select_subtool(1)
+		main.current_tool._update_edit_state()
 		var width := 5 if editor else 1
 		assert(main.map_view.landscape_brush and main.map_view.brush_size == width and main.map_view.brush_round)
 		assert(not main.city_toolbar.brush_controls.visible)
@@ -76,7 +76,7 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 		var rng: int = main.tool_random.state
 		main.map_view.selection_start = point
 		main.map_view.selection_end = point
-		main._on_map_selection_started()
+		main.camera_input._on_map_selection_started()
 		main.map_view._last_brush_tile = Vector2i(-1, -1)
 		main.map_view._emit_brush_dab(point, false)
 		main.map_view._emit_brush_dab(point + Vector2i(18, 0), true)
@@ -92,4 +92,4 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 		assert(main.tool_random.state == rng)
 	main.landscape_editor = true
 	main.city_toolbar.set_landscape_editor(true)
-	main._select_tool_group(1)
+	main.current_tool._select_tool_group(1)

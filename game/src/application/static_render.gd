@@ -1,0 +1,429 @@
+class_name ApplicationStaticRender
+extends RefCounted
+
+
+const CityModel = preload("res://src/model/city_state.gd")
+const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
+const RenderJob = preload("res://src/view/city_render_job.gd")
+const UndergroundView = preload("res://src/view/city_underground_view.gd")
+const ViewFilter = preload("res://src/view/city_view_filter.gd")
+const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
+const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
+const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
+
+var app: CityApplication
+
+
+func _init(application: CityApplication) -> void:
+	app = application
+
+
+func _refresh_after_city_edit(command: Dictionary) -> void:
+	app.assets._refresh_scurk_artwork()
+
+	if command.get("command_type", "") == "scurk_artwork":
+		return
+
+	if not _apply_static_edit_patch(command):
+		app.map_render._refresh_map(false)
+
+
+func _apply_static_edit_patch(command: Dictionary) -> bool:
+	if app.region_cache != null:
+		var indices := _edit_dirty_indices(command, app.city.map_size)
+
+		if indices.is_empty():
+			return false
+
+		var dirty := IsometricRenderer.dirty_screen_rect(indices, _sprite_archive_for_view(_city_view_size()), _city_view_size(), Vector2i.ZERO, app.city.map_size)
+		app.map_render._refresh_region_map(false, dirty)
+
+		return true
+
+	var map_edge: int = app.city.map_size if app.city != null else 128
+
+	if (
+		app.overlay_mode != "city"
+		or app.city == null
+		or app.palette_index_encoding == null
+		or app.static_city_image == null
+		or app.static_city_image.is_empty()
+		or app.static_render_mode != "city"
+		or app.static_display_city == null
+		or app.static_render_thread != null
+	):
+		return false
+
+	var profile_start := Time.get_ticks_usec()
+	var dirty_indices := _edit_dirty_indices(command, map_edge)
+
+	if dirty_indices.is_empty():
+		return false
+
+	var view_size := _city_view_size()
+	var sprite_archive := _sprite_archive_for_view(view_size)
+	var dirty_rect := IsometricRenderer.dirty_screen_rect(
+		dirty_indices, sprite_archive, view_size, Vector2i.ZERO, map_edge
+	)
+	var full_area := IsometricRenderer.output_size_for_view(view_size, map_edge).x * (
+		IsometricRenderer.output_size_for_view(view_size, map_edge).y
+	)
+
+	if (
+		dirty_rect.get_area() <= 0
+		or float(dirty_rect.get_area()) / float(full_area)
+			> STATIC_EDIT_PATCH_MAX_AREA_RATIO
+	):
+		return false
+
+	app.edit_display_timings = {"dirty_ms": (Time.get_ticks_usec() - profile_start) / 1000.0}
+	profile_start = Time.get_ticks_usec()
+	var display_city := ViewFilter.surface_copy(app.city, app.surface_visibility)
+
+	if display_city == null or not display_city.is_valid():
+		return false
+
+	app.edit_display_timings.copy_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+	profile_start = Time.get_ticks_usec()
+	var patched := IsometricRenderer.patch_static_image(
+		app.static_city_image,
+		display_city,
+		app.palette_index_encoding,
+		sprite_archive,
+		dirty_indices,
+		view_size,
+		int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100)),
+		false
+	)
+
+	if not patched.get("ok", false):
+		return false
+
+	app.edit_display_timings.patch_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+	profile_start = Time.get_ticks_usec()
+	app.static_render_epoch += 1
+	app.static_city_image = patched.image
+	app.static_display_city = display_city
+	app.static_visual_signature = _static_signature_for_mode("city", view_size)
+	app.static_render_mode = "city"
+	app.pending_static_render = false
+	app.moving_sprites._set_static_occlusion_commands(
+		IsometricRenderer.patch_static_occlusion_commands(
+			app.static_occlusion_commands,
+			display_city,
+			sprite_archive,
+			dirty_indices,
+			view_size
+		),
+		view_size
+	)
+	app.static_view_cache["city"] = {
+		"image": app.static_city_image,
+		"occlusion_commands": app.static_occlusion_commands,
+		"signature": app.static_visual_signature,
+		"display_city": app.static_display_city,
+		"view_size": view_size,
+	}
+	app.edit_display_timings.occlusion_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+	profile_start = Time.get_ticks_usec()
+	var texture := CityMapTexture.update_region(app.map_view.city_texture, app.static_city_image, patched.output_rect)
+	app.map_view.set_city_view(app.static_display_city, texture, texture, true)
+	app.menus._sync_map_style()
+	app.moving_sprites._refresh_moving_things(view_size)
+	app.edit_display_timings.upload_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+
+	return true
+
+
+static func _collect_changed_tiles(before: PackedByteArray, after: PackedByteArray, stride: int, seen: Dictionary, plane_cells := 0) -> void:
+	# skip unchanged byte blocks
+	# changed blocks still need tile checks, including remote power/water changes
+	if before == after:
+		return
+
+	var block_bytes := 256 * stride
+
+	for start in range(0, before.size(), block_bytes):
+		var end := mini(start + block_bytes, before.size())
+
+		if before.slice(start, end) == after.slice(start, end):
+			continue
+
+		for offset in range(start, end, stride):
+			if before[offset] != after[offset] or (stride == 2 and before[offset + 1] != after[offset + 1]):
+				var index := int(IntegerMath.div_trunc(offset, stride))
+				seen[index % plane_cells if plane_cells > 0 else index] = true
+
+
+static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> PackedInt32Array:
+	var seen := {}
+	var old_payloads: Dictionary = command.get("old_payloads", {})
+	var new_payloads: Dictionary = command.get("new_payloads", {})
+
+	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT"]:
+		if not old_payloads.has(chunk_id) or not new_payloads.has(chunk_id):
+			continue
+
+		var old_bytes: PackedByteArray = old_payloads[chunk_id]
+		var new_bytes: PackedByteArray = new_payloads[chunk_id]
+		var stride := 2 if chunk_id == "ALTM" or (chunk_id == "XTXT" and map_edge > 128) else 1
+
+		if (
+			old_bytes.size() != (map_edge * map_edge) * stride
+			or new_bytes.size() != old_bytes.size()
+		):
+			continue
+
+		_collect_changed_tiles(old_bytes, new_bytes, 1 if chunk_id == "XTXT" else stride, seen, map_edge * map_edge if chunk_id == "XTXT" else 0)
+
+	if command.has("old_text") and command.has("new_text"):
+		var old_text: PackedByteArray = command.old_text
+		var new_text: PackedByteArray = command.new_text
+
+		if (
+			OverlayData.count(old_text) == (map_edge * map_edge)
+			and OverlayData.count(new_text) == (map_edge * map_edge)
+		):
+			_collect_changed_tiles(old_text, new_text, 1, seen, map_edge * map_edge)
+
+	var tile_indices: PackedInt32Array = command.get(
+		"tile_indices", PackedInt32Array()
+	)
+
+	for index in tile_indices:
+		if index >= 0 and index < (map_edge * map_edge):
+			seen[index] = true
+
+	for point_value in command.get("points", []):
+		var point: Vector2i = point_value
+		var index := point.x * map_edge + point.y
+
+		if point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge:
+			seen[index] = true
+
+	for point_key in ["point", "target"]:
+		if command.has(point_key):
+			var point: Vector2i = command[point_key]
+
+			if point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge:
+				seen[point.x * map_edge + point.y] = true
+
+	if command.has("tile_index"):
+		var tile_index := int(command.tile_index)
+
+		if tile_index >= 0 and tile_index < (map_edge * map_edge):
+			seen[tile_index] = true
+
+	if command.has("site"):
+		var site: Rect2i = command.site
+
+		for x in range(site.position.x, site.end.x):
+			for y in range(site.position.y, site.end.y):
+				if x >= 0 and x < map_edge and y >= 0 and y < map_edge:
+					seen[x * map_edge + y] = true
+
+	var sorted_indices: Array = seen.keys()
+	sorted_indices.sort()
+	var result := PackedInt32Array()
+
+	for index in sorted_indices:
+		result.append(int(index))
+
+	return result
+
+
+func _request_static_render(
+	signature: Array, view_size: int, sprite_archive: Sc2SpriteArchive, render_mode := "city"
+) -> void:
+	if app.static_render_thread != null:
+		return
+
+	var now_msec := Time.get_ticks_msec()
+
+	if (
+		app.simulation_engine != null
+		and app.simulation_engine.active_disaster_type != 0
+		and now_msec - app.last_static_render_started_msec
+			< ACTIVE_DISASTER_RENDER_INTERVAL_MSEC
+	):
+		app.pending_static_render = true
+
+		return
+
+	app.pending_static_render = false
+	var snapshot_document := app.current_document.duplicate_document()
+	var snapshot := CityModel.from_document(snapshot_document)
+
+	if not snapshot.is_valid():
+		app.interface._show_error("Cannot prepare the city for drawing: %s" % snapshot.load_error)
+
+		return
+
+	snapshot.visible_altitude_levels = app.city.visible_altitude_levels
+	app.static_render_job = RenderJob.new()
+	app.static_render_job.city_snapshot = snapshot
+	app.static_render_job.index_palette = app.palette_index_encoding
+	app.static_render_job.sprites = sprite_archive
+	app.static_render_job.view_size = view_size
+	app.static_render_job.animation_phase = int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100))
+	app.static_render_job.signature = signature.duplicate()
+	app.static_render_job.epoch = app.static_render_epoch
+	app.static_render_job.render_mode = render_mode
+	app.static_render_job.surface_visibility = app.surface_visibility.duplicate()
+	app.static_render_job.show_underground_subways = app.show_underground_subways
+	app.static_render_job.show_underground_water_mains = app.show_underground_water_mains
+	app.static_render_job.show_underground_pipes = app.show_underground_pipes
+	app.static_render_thread = Thread.new()
+	var start_error := app.static_render_thread.start(
+		app.static_render_job.run, Thread.PRIORITY_LOW
+	)
+
+	if start_error != OK:
+		app.static_render_thread = null
+		app.static_render_job = null
+		app.interface._show_error("Cannot start the city renderer: %s" % error_string(start_error))
+	else:
+		app.last_static_render_started_msec = now_msec
+
+
+func _start_pending_static_render() -> void:
+	if (
+		not app.pending_static_render
+		or app.static_render_thread != null
+		or app.city == null
+		or app.overlay_mode not in ["city", "underground"]
+	):
+		return
+
+	var view_size := _city_view_size()
+	_request_static_render(
+		_static_signature_for_mode(app.overlay_mode, view_size),
+		view_size,
+		_sprite_archive_for_view(view_size),
+		app.overlay_mode,
+	)
+
+
+func _poll_static_render() -> void:
+	app.map_render._poll_region_cache()
+
+	if app.static_render_thread == null or app.static_render_thread.is_alive():
+		return
+
+	var rendered: Dictionary = app.static_render_thread.wait_to_finish()
+	app.static_render_thread = null
+	app.static_render_job = null
+
+	if not rendered.get("ok", false):
+		app.interface._show_error(rendered.get("error", "city rendering failed"))
+
+		return
+
+	if (
+		app.city == null
+		or int(rendered.epoch) != app.static_render_epoch
+		or int(rendered.view_size) != _city_view_size()
+		or String(rendered.get("render_mode", "city")) != app.overlay_mode
+	):
+		if app.city != null and app.overlay_mode in ["city", "underground"]:
+			app.map_render._refresh_map(false)
+
+		return
+
+	app.static_city_image = rendered.index_image
+	app.moving_sprites._set_static_occlusion_commands(rendered.occlusion_commands, int(rendered.view_size))
+	app.static_visual_signature = rendered.signature
+	app.static_render_mode = String(rendered.render_mode)
+	app.static_display_city = rendered.display_city
+	app.static_view_cache[app.static_render_mode] = {
+		"image": app.static_city_image,
+		"occlusion_commands": app.static_occlusion_commands,
+		"signature": app.static_visual_signature,
+		"display_city": app.static_display_city,
+		"view_size": int(rendered.view_size),
+	}
+	var texture := CityMapTexture.create(app.static_city_image)
+	app.map_view.set_city_view(
+		app.static_display_city, texture, texture, true
+	)
+	app.menus._sync_map_style()
+
+	if app.overlay_mode == "city":
+		app.moving_sprites._refresh_moving_things(int(rendered.view_size))
+	else:
+		app.dynamic_sign_occluders.clear()
+		app.dynamic_sign_occlusion_grid.clear()
+		app.map_view.set_dynamic_sprites([])
+		app.map_render._refresh_sign_occlusion(int(rendered.view_size))
+
+	var latest_signature := _static_signature_for_mode(
+		app.overlay_mode, int(rendered.view_size)
+	)
+
+	if latest_signature != app.static_visual_signature:
+		_request_static_render(
+			latest_signature,
+			int(rendered.view_size),
+			_sprite_archive_for_view(int(rendered.view_size)),
+			app.overlay_mode,
+		)
+
+
+func _static_signature_for_mode(mode: String, view_size: int) -> Array:
+	if mode == "underground":
+		return UndergroundView.visual_signature(
+			app.city, view_size, app.show_underground_pipes, app.show_underground_subways, app.show_underground_water_mains
+		)
+
+	var result := IsometricRenderer.static_visual_signature(app.city, view_size)
+	result.append_array([
+		bool(app.surface_visibility.buildings),
+		bool(app.surface_visibility.networks),
+		bool(app.surface_visibility.water),
+		bool(app.surface_visibility.trees),
+		bool(app.surface_visibility.zones),
+	])
+
+	return result
+
+
+func _update_palette_cycle_texture() -> void:
+	if app.palette == null or not app.palette.is_valid():
+		return
+
+	app.toolbar_animation_palette = Sc2Palette.new()
+
+	for color_index in app.palette.animation_index_map(app.palette_cycle_ticks):
+		app.toolbar_animation_palette.colors.append(app.palette.colors[color_index])
+
+	app.camera_input._refresh_child_tool_icons()
+	var image := app.palette.animation_image(app.palette_cycle_ticks)
+
+	if app.palette_cycle_texture == null:
+		app.palette_cycle_texture = ImageTexture.create_from_image(image)
+	else:
+		app.palette_cycle_texture.update(image)
+
+	if app.map_view != null:
+		app.map_view.set_animated_palette(app.palette_cycle_texture)
+
+
+func _city_graphics_size() -> int:
+	return SettingsStore.graphics_size_at_zoom(app.app_zoom_graphics, app.map_view.zoom_percent(), app.app_overview_graphics)
+
+
+func _city_view_size() -> int:
+	return mini(_city_graphics_size(), IsometricRenderer.VIEW_LARGE)
+
+
+func _sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
+	return app.small_medium_sprites if view_size < IsometricRenderer.VIEW_LARGE else app.large_sprites
+
+
+func _clear_dynamic_composition_cache() -> void:
+	app.dynamic_sprite_cache.clear()
+	app.dynamic_foreground_cache.clear()
+	app.dynamic_occluder_cache.clear()
+	app.dynamic_visual_cache.clear()
+	app.dynamic_special_batch_cache.clear()
+	app.sign_foreground_cache.clear()

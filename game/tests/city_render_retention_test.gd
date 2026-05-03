@@ -45,18 +45,18 @@ func _run() -> void:
 		"empty": {},
 	}
 	var near: Array[Rect2i] = [Rect2i(0, 0, 256, 256)]
-	main._invalidate_region_foregrounds(near)
+	main.map_render._invalidate_region_foregrounds(near)
 	assert(main.dynamic_visual_cache.keys() == ["far"])
 	assert(not main.sign_foreground_cache.has(1) and main.sign_foreground_cache.has(2))
 	var whole: Array[Rect2i] = [Rect2i(0, 0, 1024, 1024)]
-	main._invalidate_region_foregrounds(whole)
+	main.map_render._invalidate_region_foregrounds(whole)
 	assert(main.sign_foreground_cache.is_empty())
 	var mapping := PackedInt32Array(range(256))
-	var colors: int = main._sign_palette_signature({17: true}, mapping)
+	var colors: int = main.map_render._sign_palette_signature({17: true}, mapping)
 	mapping[161] = 162
-	assert(main._sign_palette_signature({17: true}, mapping) == colors)
+	assert(main.map_render._sign_palette_signature({17: true}, mapping) == colors)
 	mapping[17] = 18
-	assert(main._sign_palette_signature({17: true}, mapping) != colors)
+	assert(main.map_render._sign_palette_signature({17: true}, mapping) != colors)
 	_check_sign_layout_tokens(view)
 	main.free()
 	view.queue_free()

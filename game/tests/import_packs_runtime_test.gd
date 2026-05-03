@@ -35,11 +35,11 @@ func run() -> void:
 	assert(FileAccess.get_sha256(again.created[0]) == FileAccess.get_sha256(original_city))
 	var repeated := OriginalCityImporter.import_saved_games(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), saved_root)
 	assert(repeated.ok and repeated.created.is_empty())
-	main._apply_graphics_source(selected)
+	main.assets._apply_graphics_source(selected)
 	assert(main.assets_ready and not main.main_menu.import_button.visible)
 	assert(main.audio_controller.set_media_packs(result.sound, result.music))
 	assert(main.newspaper_data != null and main.base_large_sprites != null)
-	main._open_new_city_dialog()
+	main.new_city._open_new_city_dialog()
 	assert(main.new_city_dialog.visible)
 	main.queue_free()
 	await process_frame

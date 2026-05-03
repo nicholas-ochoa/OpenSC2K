@@ -112,7 +112,7 @@ func _test_main() -> void:
 	assert(main.runtime_initialized and main.main_menu.visible)
 	assert(not main.reference_import_dialog.visible and main.city == null)
 	assert(main.audio_controller.original_media_enabled)
-	main._open_settings_dialog()
+	main.settings._open_settings_dialog()
 	assert(main.settings_dialog.visible)
 
 	for mode in GameAssetSource.MODES:
@@ -122,7 +122,7 @@ func _test_main() -> void:
 
 	main.settings_dialog.hide()
 	main.map_view.zoom_factor = 0.25
-	main._open_new_city_dialog()
+	main.new_city._open_new_city_dialog()
 	assert(main.new_city_dialog.visible and main.new_city_session.preview_document == null)
 	main.new_city_dialog.city_name_input.text = "Original Startup"
 	# This scenario checks original SC2 save compatibility.
@@ -133,26 +133,26 @@ func _test_main() -> void:
 	main.new_city_dialog.trees_input.value = 0
 	main.new_city_dialog.river_input.button_pressed = false
 	main.new_city_dialog.ocean_input.button_pressed = false
-	main._make_new_city_preview()
+	main.new_city._make_new_city_preview()
 	while main.new_city_preview_job != null:
 		await process_frame
-	main._create_new_city_unchecked()
+	main.new_city._create_new_city_unchecked()
 	await process_frame
 	assert(main.city != null and main.city.city_name() == "Original Startup")
 	assert(main.landscape_editor and main.city_toolbar.start_city_button.visible)
-	main._start_city()
+	main.new_city._start_city()
 	main.newspaper_dialog.hide()
 	main.speed_controller.set_speed(GameSpeedController.Speed.PAUSED)
 	_round_trip_city(main.current_document)
-	main._open_scurk_dialog()
+	main.scurk_workspace._open_scurk_dialog()
 	assert(main.scurk_editor.visible and main.scurk_editor.tile_set != null)
 	assert(main.scurk_editor.source_path.is_empty() and main.asset_source.uses_graphics_pack)
 	assert(main.scurk_editor.current_large_id >= 1000)
 	main.scurk_editor.hide()
-	main._open_scurk_place_print()
+	main.scurk_workspace._open_scurk_place_print()
 	assert(main.scurk_place_print.visible)
 	main.scurk_place_print.hide()
-	main._open_save_dialog()
+	main.city_files._open_save_dialog()
 	assert(main.save_dialog.visible and main.save_dialog.current_file == "Original Startup.SC2")
 	main.save_dialog.hide()
 	main.queue_free()

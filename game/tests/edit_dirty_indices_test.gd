@@ -1,5 +1,4 @@
 extends SceneTree
-const Main = preload("res://src/main.gd")
 
 
 func _initialize() -> void:
@@ -31,10 +30,10 @@ func _initialize() -> void:
 		var command := {"old_payloads": old, "new_payloads": changed}
 		var expected_indices := PackedInt32Array(expected.keys())
 		expected_indices.sort()
-		assert(Main._edit_dirty_indices(command, edge) == expected_indices)
+		assert(ApplicationStaticRender._edit_dirty_indices(command, edge) == expected_indices)
 		# Change each chunk alone so another changed chunk cannot hide a missed dirty tile.
 		for id in old:
-			assert(Main._edit_dirty_indices({"old_payloads": {id: old[id]},
+			assert(ApplicationStaticRender._edit_dirty_indices({"old_payloads": {id: old[id]},
 				"new_payloads": {id: changed[id]}}, edge) == expected_by_chunk[id])
 		var legacy_text: PackedByteArray = old.XTXT.duplicate()
 		OverlayData.write(legacy_text, 777, 202)
@@ -47,16 +46,16 @@ func _initialize() -> void:
 		combined.append(42)
 		combined.append(3 * edge + 4)
 		combined.sort()
-		assert(Main._edit_dirty_indices(command, edge) == combined,
+		assert(ApplicationStaticRender._edit_dirty_indices(command, edge) == combined,
 			"Payload, legacy text, explicit tiles and points form one sorted union")
-		assert(Main._edit_dirty_indices({"old_payloads": old, "new_payloads": old}, edge).is_empty())
+		assert(ApplicationStaticRender._edit_dirty_indices({"old_payloads": old, "new_payloads": old}, edge).is_empty())
 		command = {"old_text": old.XTXT, "new_text": changed.XTXT}
-		assert(Main._edit_dirty_indices(command, edge) == expected_by_chunk.XTXT)
+		assert(ApplicationStaticRender._edit_dirty_indices(command, edge) == expected_by_chunk.XTXT)
 
 		if edge > 128:
 			var high_only: PackedByteArray = old.XTXT.duplicate()
 			high_only[edge * edge + 257] = 16
-			assert(Main._edit_dirty_indices({"old_text": old.XTXT, "new_text": high_only}, edge) == PackedInt32Array([257]))
+			assert(ApplicationStaticRender._edit_dirty_indices({"old_text": old.XTXT, "new_text": high_only}, edge) == PackedInt32Array([257]))
 
 	print("PASS: dirty tile comparison at all map sizes and byte/block boundaries")
 	quit()

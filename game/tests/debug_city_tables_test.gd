@@ -1,6 +1,7 @@
 extends SceneTree
 
 class Host extends Control:
+	var debug: Control = self
 	var city: CityState
 	var simulation_engine: SimulationEngine
 	var map_view: CityMapControl

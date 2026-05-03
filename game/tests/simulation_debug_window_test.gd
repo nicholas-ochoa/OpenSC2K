@@ -1,6 +1,7 @@
 extends SceneTree
 
 class MetricsHost extends Control:
+	var debug: Control = self
 	var simulation_timings := SimulationTimingHistory.new()
 	var queries := 0
 	var terrain_levels := 32

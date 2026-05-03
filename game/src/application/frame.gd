@@ -1,0 +1,222 @@
+class_name ApplicationFrame
+extends RefCounted
+
+
+const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
+const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
+
+var app: CityApplication
+
+
+func _init(application: CityApplication) -> void:
+	app = application
+
+
+func _process(delta: float) -> void:
+	app.new_city._poll_new_city_preview()
+	app.current_tool._update_network_preview()
+	app.camera_input._update_keyboard_camera(delta)
+
+	if app.audio_controller != null:
+		app.audio_controller.set_menu_music(
+			app.assets_ready and app.main_menu != null and app.main_menu.visible and app.app_music_volume > 0.0
+			and (app.city == null or app.city.music_enabled())
+		)
+		app.audio_controller.advance(delta * 1000.0)
+
+	_update_fps(delta)
+
+	if app.city_status_bar != null:
+		app.city_status_bar.update_report_rotation(delta)
+
+	app.static_render._poll_static_render()
+	app.static_render._start_pending_static_render()
+
+	if app.speed_controller == null or app.city == null:
+		return
+
+	app.simulation_engine.midi_playback_active = app.effects_audio._music_playback_is_active()
+	var interaction_suspended: bool = (
+		(app.map_view != null and (app.map_view.is_left_drag_active() or app.map_view.is_panning()))
+		or app.budget_dialog.visible
+		or app.bridge_dialog.visible
+		or app.tool_choice_dialog.visible
+		or app.stadium_dialog.visible
+		or app.network_connection_dialog.visible
+		or app.highway_connection_dialog.visible
+		or app.tunnel_dialog.visible
+		or (app.building_objection_dialog != null and app.building_objection_dialog.visible)
+		or (app.sc2x_conversion_dialog != null and app.sc2x_conversion_dialog.visible)
+		or (app.settings_dialog != null and app.settings_dialog.visible)
+		or (app.query_dialog != null and app.query_dialog.visible)
+		or (app.ordinance_window != null and app.ordinance_window.visible)
+		or (app.new_city_dialog != null and app.new_city_dialog.visible)
+		or (app.scurk_editor != null and app.scurk_editor.visible)
+		or (app.scurk_place_print != null and app.scurk_place_print.visible)
+		or (app.scurk_print != null and app.scurk_print.visible)
+		or (app.main_menu != null and app.main_menu.visible)
+		or (app.save_dialog != null and app.save_dialog.visible)
+		or (app.scurk_city_export_dialog != null and app.scurk_city_export_dialog.visible)
+		or (app.scurk_print_pdf_dialog != null and app.scurk_print_pdf_dialog.visible)
+		or (app.save_changes_dialog != null and app.save_changes_dialog.visible)
+		or app.budget_dialog.bond_confirmation_visible()
+		or app.military_dialog.visible
+		or app.scenario_dialog.visible
+		or app.game_over_active
+		or app.landscape_editor
+		or app.founding_newspaper_pending
+	)
+	var result: Dictionary
+
+	if app.frame_simulation != null:
+		app.frame_simulation.budget_usec = FrameSimulationRunner.budget_for_frame(delta)
+		result = app.frame_simulation.advance_time(delta * 1000.0, Time.get_ticks_msec(), interaction_suspended)
+	else:
+		result = app.speed_controller.advance_time(delta * 1000.0, Time.get_ticks_msec(), interaction_suspended)
+
+	if not result.ok:
+		app.speed_controller.set_speed(GameSpeed.Speed.PAUSED)
+		_sync_speed_ui()
+		app.interface._show_error("Simulation stopped: %s" % result.error)
+
+		return
+
+	_advance_palette_animation(delta, interaction_suspended)
+
+	_consume_simulation_result(result)
+
+
+func _advance_palette_animation(delta: float, suspended: bool) -> void:
+	# Keep palette animation running while the simulation worker is busy.
+	if suspended or app.speed_controller.speed == GameSpeed.Speed.PAUSED:
+		return
+
+	app.palette_elapsed_msec += maxf(delta, 0.0) * 1000.0
+	var ticks := int(app.palette_elapsed_msec / GameSpeedController.BASE_TICK_MSEC)
+
+	if ticks > 0:
+		app.palette_elapsed_msec -= ticks * GameSpeedController.BASE_TICK_MSEC
+		app.palette_cycle_ticks += ticks
+		app.static_render._update_palette_cycle_texture()
+
+
+func _consume_simulation_result(result: Dictionary) -> void:
+	if result.base_ticks > 0:
+		_sync_speed_ui()
+
+	app.simulation_timings.consume(result)
+	var refresh_started := Time.get_ticks_usec()
+	var ran_days: bool = not result.day_results.is_empty()
+	var changed_disaster_map := false
+
+	for disaster in result.disaster_results:
+		if disaster.get("map_changed", false):
+			changed_disaster_map = true
+			break
+
+	var moved_things := app.reports._moving_things_are_active(result.moving_results)
+
+	if ran_days or moved_things or changed_disaster_map:
+		app.last_edit_command = {}
+		app.scurk_edit_history.clear()
+		# sc2x data-map updates do not change the surface or underground artwork
+		var data_maps_only: bool = (app.city.document.full_resolution_maps() and result.day_results.size() == 1
+			and int(result.day_results[0].get("day", -1)) % 25 == 2
+			and result.day_results[0].get("phase_results", {}).keys() == ["pollution_terrain_land_value"]
+			and result.effect_events.is_empty() and result.view_center_requests.is_empty()
+			and app.overlay_mode in ["city", "underground"])
+
+		if moved_things or changed_disaster_map or not data_maps_only:
+			app.simulation_map_dirty = true
+
+	if ran_days:
+		app.interface._refresh_details()
+
+	var force_refresh: bool = (
+		not result.effect_events.is_empty()
+		or not result.view_center_requests.is_empty()
+	)
+	var map_refresh_requested: bool = app.simulation_map_dirty and (
+		result.base_ticks > 0 or force_refresh
+	)
+
+	if map_refresh_requested:
+		app.map_render._refresh_map(false)
+		app.simulation_map_dirty = false
+	elif result.base_ticks > 0:
+		app.moving_sprites._refresh_moving_things()
+
+	if ran_days or map_refresh_requested:
+		app.simulation_timings.record_step("Main thread / simulation display refresh", Time.get_ticks_usec() - refresh_started)
+
+	for point in result.view_center_requests:
+		app.map_view.center_on_tile(point)
+
+	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
+		app.effects_audio._show_effect_events(result.effect_events, result.sound_events)
+
+	for track_id in result.get("music_track_requests", PackedInt32Array()):
+		if app.city.music_enabled():
+			app.effects_audio._play_music_track(int(track_id))
+
+	if not result.news_items.is_empty():
+		app.reports._show_news_items(result.news_items)
+
+	if not result.game_over_events.is_empty():
+		app.reports._show_game_over_events(result.game_over_events)
+
+	for request in result.interaction_requests:
+		if request.get("type", "") == "annual_budget":
+			app.budget._open_budget_dialog(request.get("funding_values", PackedInt32Array()), true)
+		elif request.get("type", "") == "military_proposal":
+			app.budget._open_military_proposal()
+
+
+func _update_fps(delta: float) -> void:
+	app.fps_update_seconds += delta
+
+	if app.city_menu_bar == null or app.fps_update_seconds < 0.25:
+		return
+
+	app.fps_update_seconds = fmod(app.fps_update_seconds, 0.25)
+	app.city_menu_bar.set_fps(Engine.get_frames_per_second())
+
+	if app.city_status_bar != null:
+		app.city_status_bar.refresh_tooltips()
+
+
+func _select_speed(speed_value: int) -> void:
+	if app.speed_controller == null:
+		return
+
+	if not app.speed_controller.set_speed(speed_value):
+		app.interface._show_error("Cannot change the simulation speed.")
+
+		return
+
+	_sync_speed_ui()
+	app.status_label.theme_type_variation = ""
+	app.status_label.text = "%s speed selected." % app.speed_controller.speed_name()
+
+
+func _sync_speed_ui() -> void:
+	var selected_speed := (
+		app.speed_controller.speed if app.speed_controller != null else GameSpeed.Speed.PAUSED
+	)
+
+	if app.speed_menu != null:
+		var popup := app.speed_menu.get_popup()
+
+		for speed_id in range(5):
+			var item_index := popup.get_item_index(speed_id)
+			popup.set_item_checked(
+				item_index, app.speed_controller != null and speed_id + 1 == selected_speed
+			)
+
+	if app.city_status_bar != null:
+		var speed_name := app.speed_controller.speed_name() if app.speed_controller != null else "--"
+		app.city_status_bar.set_speed(speed_name)
+		app.city_status_bar.set_city_status(
+			app.simulation_engine if app.city != null and not app.landscape_editor else null,
+			selected_speed == GameSpeed.Speed.PAUSED, app.original_query_strings
+		)

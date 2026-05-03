@@ -1,0 +1,258 @@
+class_name ApplicationRouteEdits
+extends RefCounted
+
+
+const Tunnels = preload("res://src/tools/city/tunnel_command.gd")
+const Highways = preload("res://src/tools/city/highway_command.gd")
+
+var app: CityApplication
+
+
+func _init(application: CityApplication) -> void:
+	app = application
+
+
+func _apply_tunnel_selection(
+	start: Vector2i,
+	confirmation_choice := Tunnels.CONFIRMATION_UNSELECTED,
+	free_mode := false
+) -> void:
+	var tunnel := Tunnels.apply(
+		app.city,
+		app.selected_group,
+		app.selected_subtool,
+		start,
+		confirmation_choice,
+		free_mode
+	)
+
+	if tunnel.get("confirmation_required", false):
+		if free_mode:
+			_apply_tunnel_selection(
+				start, Tunnels.CONFIRMATION_CONFIRMED, true
+			)
+
+			return
+
+		app.pending_tunnel_request = {
+			"start": start,
+			"group_index": app.selected_group,
+			"subtool_index": app.selected_subtool,
+		}
+		var message := (
+			"Engineers report that tunnel construction costs will be $%s.\n"
+			+ "Do you wish to construct the tunnel?"
+		) % app.interface._format_number(int(tunnel.cost))
+		app.tunnel_dialog.show_message(message)
+
+		return
+
+	if tunnel.get("cancelled", false):
+		app.effects_audio._play_tool_failure_sound(
+			app.selected_group, app.selected_subtool, "cancelled", free_mode
+		)
+		app.status_label.theme_type_variation = ""
+		app.status_label.text = "Tunnel construction canceled. No action was taken."
+
+		return
+
+	if not tunnel.get("ok", false):
+		app.effects_audio._play_tool_failure_sound(
+			app.selected_group,
+			app.selected_subtool,
+			str(tunnel.get("error", "unknown error")),
+			free_mode,
+		)
+		app.interface._show_error("Cannot build tunnel: %s" % tunnel.get("error", "unknown error"))
+
+		return
+
+	app.scurk_workspace._record_edit_command(
+		tunnel,
+		free_mode,
+		String(
+			app.scurk_place_print.selected_edit_tool().get("name", "Tunnel")
+			if free_mode and app.scurk_place_print != null
+			else "Tunnel"
+		)
+	)
+	app.interface._refresh_details()
+	app.static_render._refresh_after_city_edit(tunnel)
+	app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
+	app.status_label.theme_type_variation = ""
+	app.status_label.text = "Built a %d-tile tunnel for $%s." % [
+		tunnel.points.size(), app.interface._format_number(tunnel.cost)
+	]
+
+
+func _confirm_tunnel() -> void:
+	_apply_pending_tunnel(Tunnels.CONFIRMATION_CONFIRMED)
+
+
+func _cancel_tunnel() -> void:
+	_apply_pending_tunnel(Tunnels.CONFIRMATION_CANCELLED)
+
+
+func _apply_pending_tunnel(confirmation_choice: int) -> void:
+	if app.pending_tunnel_request.is_empty():
+		return
+
+	var request := app.pending_tunnel_request.duplicate()
+	app.pending_tunnel_request.clear()
+	app.tunnel_dialog.hide()
+	app.selected_group = int(request.group_index)
+	app.selected_subtool = int(request.subtool_index)
+	_apply_tunnel_selection(request.start, confirmation_choice)
+
+
+func _apply_highway_selection(
+	start: Vector2i,
+	finish: Vector2i,
+	connection_choice := Highways.CONNECTION_UNSELECTED,
+	bridge_type := Highways.BRIDGE_UNSELECTED,
+	free_mode := false
+) -> void:
+	var highway := Highways.apply(
+		app.city,
+		app.selected_group,
+		app.selected_subtool,
+		start,
+		finish,
+		connection_choice,
+		bridge_type,
+		free_mode
+	)
+
+	if highway.get("bridge_selection_required", false):
+		app.network_edits._open_bridge_dialog(
+			start,
+			finish,
+			app.selected_group,
+			app.selected_subtool,
+			highway,
+			"highway",
+			free_mode
+		)
+
+		return
+
+	if highway.get("cancelled", false):
+		app.effects_audio._play_tool_failure_sound(
+			app.selected_group, app.selected_subtool, "cancelled", free_mode
+		)
+		app.status_label.theme_type_variation = ""
+		app.status_label.text = "Bridge selection canceled. No action was taken."
+
+		return
+
+	if highway.get("connection_selection_required", false):
+		app.pending_highway_connection = {
+			"start": start,
+			"finish": finish,
+			"group_index": app.selected_group,
+			"subtool_index": app.selected_subtool,
+			"free_mode": free_mode,
+			"bridge_type": bridge_type,
+		}
+		var message := (
+			(
+				"Build a highway connection to a neighboring city?\n"
+				+ "The highway and connection are free in Place & Print."
+			)
+			if free_mode
+			else (
+				"Build a highway connection to a neighboring city for $%s?\n"
+				+ "The %d-section highway costs $%s and remains if you cancel."
+			) % [
+				app.interface._format_number(int(highway.get("connection_cost", 0))),
+				highway.get("sections", []).size(),
+				app.interface._format_number(int(highway.get("route_cost", 0))),
+			]
+		)
+		app.highway_connection_dialog.show_message(message)
+
+		return
+
+	if not highway.get("ok", false):
+		app.effects_audio._play_tool_failure_sound(
+			app.selected_group,
+			app.selected_subtool,
+			str(highway.get("error", "unknown error")),
+			free_mode,
+		)
+		app.interface._show_error("Cannot build highway: %s" % highway.get("error", "unknown error"))
+
+		return
+
+	app.scurk_workspace._record_edit_command(highway, free_mode, "Highway")
+	app.interface._refresh_details()
+	app.static_render._refresh_after_city_edit(highway)
+	app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
+	app.status_label.theme_type_variation = ""
+
+	if int(highway.get("bridge_count", 0)) > 1:
+		app.status_label.text = "Built %d highway sections and %d bridges for $%s." % [highway.sections.size(), highway.bridge_count, app.interface._format_number(int(highway.cost))]
+	elif highway.get("bridge_built", false):
+		if highway.sections.is_empty():
+			app.status_label.text = "Built a %s across %d water sections for $%s." % [
+				highway.get("bridge_name", "highway bridge"),
+				int(highway.get("bridge_span_length", 0)),
+				app.interface._format_number(int(highway.cost)),
+			]
+		else:
+			app.status_label.text = "Built %d highway sections and a %s across %d water sections for $%s." % [
+				highway.sections.size(),
+				highway.get("bridge_name", "highway bridge"),
+				int(highway.get("bridge_span_length", 0)),
+				app.interface._format_number(int(highway.cost)),
+			]
+	elif highway.get("connection_built", false):
+		app.status_label.text = "Built %d highway sections and a neighboring-city connection for $%s." % [
+			highway.sections.size(), app.interface._format_number(int(highway.cost))
+		]
+	else:
+		app.status_label.text = "Built %d highway sections for $%s." % [
+			highway.sections.size(), app.interface._format_number(int(highway.cost))
+		]
+
+		if highway.get("connection_cancelled", false):
+			app.status_label.text += " The neighbor connection was canceled."
+		elif highway.get("bridge_cancelled", false):
+			app.status_label.text += " The bridge selection was canceled."
+		elif not String(highway.get("bridge_error", "")).is_empty():
+			app.status_label.text += " The bridge was not built: %s." % highway.bridge_error
+		elif not String(highway.get("connection_error", "")).is_empty():
+			app.status_label.text += " The connection was not offered because funds are too low."
+		elif highway.get("stopped_early", false):
+			app.status_label.text += " The route stopped at an obstruction."
+
+	if not String(highway.get("continuation_error", "")).is_empty():
+		app.status_label.text += " Route stopped: %s." % highway.continuation_error
+	elif highway.get("bridge_built", false) and highway.get("stopped_early", false):
+		app.status_label.text += " The route stopped at an obstruction."
+
+
+func _confirm_highway_connection() -> void:
+	_apply_pending_highway_connection(Highways.CONNECTION_CONFIRMED)
+
+
+func _cancel_highway_connection() -> void:
+	_apply_pending_highway_connection(Highways.CONNECTION_CANCELLED)
+
+
+func _apply_pending_highway_connection(connection_choice: int) -> void:
+	if app.pending_highway_connection.is_empty():
+		return
+
+	var request := app.pending_highway_connection.duplicate()
+	app.pending_highway_connection.clear()
+	app.highway_connection_dialog.hide()
+	app.selected_group = int(request.group_index)
+	app.selected_subtool = int(request.subtool_index)
+	_apply_highway_selection(
+		request.start,
+		request.finish,
+		connection_choice,
+		int(request.get("bridge_type", Highways.BRIDGE_UNSELECTED)),
+		bool(request.get("free_mode", false))
+	)

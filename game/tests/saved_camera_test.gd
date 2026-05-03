@@ -21,7 +21,7 @@ func _run() -> void:
 		var document := Sc2File.load_path(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
 		assert(document.set_misc_u32(0x1018, target.x))
 		assert(document.set_misc_u32(0x101c, target.y))
-		assert(main._activate_document(document))
+		assert(main.city_session._activate_document(document))
 		var deadline := Time.get_ticks_msec() + 15000
 
 		while main.map_view.pending_loaded_center.x >= 0 and Time.get_ticks_msec() < deadline:

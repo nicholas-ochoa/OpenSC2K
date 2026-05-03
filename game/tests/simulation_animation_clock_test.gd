@@ -11,14 +11,14 @@ func _initialize() -> void:
 
 	# No simulation result is delivered during this interval, as with a pending job.
 	for frame in 61:
-		host._advance_palette_animation(1.0 / 60.0, false)
+		host.frame._advance_palette_animation(1.0 / 60.0, false)
 
 	assert(host.palette_cycle_ticks == 5, "Display animation continues without published ticks")
 	assert(SimulationSnapshot.stamp(host.speed_controller) == before, "Animation cannot advance simulation state")
-	host._advance_palette_animation(1.0, true)
+	host.frame._advance_palette_animation(1.0, true)
 	assert(host.palette_cycle_ticks == 5, "Modal pause freezes display clock")
 	host.speed_controller.set_speed(GameSpeedController.Speed.PAUSED)
-	host._advance_palette_animation(1.0, false)
+	host.frame._advance_palette_animation(1.0, false)
 	assert(host.palette_cycle_ticks == 5, "Paused speed freezes display clock")
 	host.free()
 	print("PASS: independent palette clock, simulation isolation and pause")

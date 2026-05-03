@@ -13,10 +13,10 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.map_view.zoom_factor = 0.25
-	assert(main._activate_document(EmptyCityTemplate.create()))
-	main._enter_landscape_editor()
-	main._select_tool_group(0)
-	main._select_subtool(5)
+	assert(main.city_session._activate_document(EmptyCityTemplate.create()))
+	main.new_city._enter_landscape_editor()
+	main.current_tool._select_tool_group(0)
+	main.current_tool._select_subtool(5)
 	await _wait_for_render()
 	var displayed_before: int = hash(main.static_city_image.get_data())
 	var bytes: PackedByteArray = main.current_document.serialize().data
@@ -68,7 +68,7 @@ func _begin() -> void:
 	main.map_view.selection_end = point
 	main.map_view.selection_moved = false
 	main.map_view._stretch_press_y = 200.0
-	main._on_map_selection_started()
+	main.camera_input._on_map_selection_started()
 
 
 func _motion(offset: float, shift: bool) -> void:

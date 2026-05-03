@@ -33,14 +33,14 @@ func _run() -> void:
 	desktop.set_process(false)
 	var original := desktop.graphics
 	var alternate := _alternate_graphics()
-	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
+	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
 	var map: CityMapControl = main.map_view
 	var saved: PackedByteArray = main.current_document.serialize().data
 
 	for tool in ToolCatalog.all_tools():
 		main.selected_group = tool.group_index
 		main.selected_subtool = tool.subtool_index
-		main._update_edit_state()
+		main.current_tool._update_edit_state()
 		assert(map.desktop_cursor_role == DesktopCursorRules.city_tool(tool.group_index, tool.subtool_index))
 		map.edit_enabled = true # Check every resource route, including locked tools.
 
@@ -94,9 +94,9 @@ func _run() -> void:
 	root.gui_cancel_drag()
 	target.queue_free()
 	var presenter := desktop.presenter
-	main._ensure_scurk_editor()
-	main._ensure_scurk_place_print()
-	main._ensure_scurk_print()
+	main.scurk_workspace._ensure_scurk_editor()
+	main.scurk_workspace._ensure_scurk_place_print()
+	main.scurk_output._ensure_scurk_print()
 
 	for graphics in [original, alternate]:
 		desktop.set_graphics(graphics)

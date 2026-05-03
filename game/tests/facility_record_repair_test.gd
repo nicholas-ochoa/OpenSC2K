@@ -1,8 +1,13 @@
 extends SceneTree
 
-class RepairApp extends "res://src/main.gd":
+class NoMenuInterface extends ApplicationInterface:
 	func _show_main_menu() -> void:
 		pass
+
+
+class RepairApp extends "res://src/main.gd":
+	func _init() -> void:
+		interface = NoMenuInterface.new(self)
 
 
 var checks := 0
@@ -211,15 +216,15 @@ func check_load() -> void:
 	file.store_buffer(bytes)
 	file.close()
 	var seed: int = main.tool_random.state
-	main._load_city_unchecked(ProjectSettings.globalize_path(save_path))
+	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
 	check(main.city.text_overlay_id(10, 10) == 61, "Actual file load repairs missing facility")
-	check(main._city_has_unsaved_changes(), "Load repair is marked unsaved")
+	check(main.city_files._city_has_unsaved_changes(), "Load repair is marked unsaved")
 	check(main.tool_random.state == seed, "Load repair does not consume process RNG")
 	check(FileAccess.get_file_as_bytes(save_path) == bytes, "Loading never writes source file")
-	check(main._save_copy(ProjectSettings.globalize_path(save_path)), "User save persists repair")
+	check(main.city_files._save_copy(ProjectSettings.globalize_path(save_path)), "User save persists repair")
 	var saved := FileAccess.get_file_as_bytes(save_path)
-	main._load_city_unchecked(ProjectSettings.globalize_path(save_path))
-	check(not main._city_has_unsaved_changes(), "Repaired city loads without new changes")
+	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
+	check(not main.city_files._city_has_unsaved_changes(), "Repaired city loads without new changes")
 	check(main.current_document.serialize().data == saved, "Actual reload is byte exact")
 	main.queue_free()
 	await process_frame

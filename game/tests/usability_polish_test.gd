@@ -1,6 +1,5 @@
 extends SceneTree
 
-const Main = preload("res://src/main.gd")
 const Place = preload("res://src/tools/scurk/scurk_place_command.gd")
 const ToolState = preload("res://src/tools/shared/tool_edit_state.gd")
 
@@ -17,7 +16,7 @@ func _run() -> void:
 			events.append({"point": Vector2i(tile, 0), "frame": tile * 10 + frame})
 
 	var original := events.duplicate(true)
-	var shuffled := Main._parallel_dust_events(events)
+	var shuffled := ApplicationEffectsAudio._parallel_dust_events(events)
 	assert(events == original)
 	var starts := {}
 
@@ -32,7 +31,7 @@ func _run() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
-	assert(main._city_view_size() == CityIsometricRenderer.VIEW_LARGE)
+	assert(main.static_render._city_view_size() == CityIsometricRenderer.VIEW_LARGE)
 	var background := main.main_menu.city_background as MainMenuCityBackground
 	assert(background.demo_city != null)
 	var source_bytes := FileAccess.get_file_as_bytes(background.source_path)
@@ -51,8 +50,8 @@ func _run() -> void:
 	background._process(1.0)
 	assert(background.elapsed == elapsed, "Hidden menu kept simulating")
 
-	main._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
-	main._select_speed(GameSpeedController.Speed.PAUSED)
+	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
+	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 	var city: CityState = main.city
 	var before: PackedByteArray = city.document.serialize().data
 	var rng := SimRandom.new(123)
@@ -71,10 +70,10 @@ func _run() -> void:
 			var output := Image.create(dimensions.x, dimensions.y, false, Image.FORMAT_L8 if indexed else Image.FORMAT_RGBA8)
 			output.fill(Color.BLACK)
 			var empty_hash := hash(output.get_data())
-			ScurkCityOutput._draw_artwork_stamps(output, city, main.palette_index_encoding if indexed else main.palette, main._sprite_archive_for_view(view), view)
+			ScurkCityOutput._draw_artwork_stamps(output, city, main.palette_index_encoding if indexed else main.palette, main.static_render._sprite_archive_for_view(view), view)
 			assert(hash(output.get_data()) != empty_hash, "Artwork missing from print or indexed bitmap output")
 
-	main._open_manual_budget()
+	main.budget._open_manual_budget()
 	await process_frame
 	var budget := main.budget_dialog as BudgetDialog
 
@@ -84,7 +83,7 @@ func _run() -> void:
 		budget.bond_dialog.hide()
 
 	budget.hide()
-	main._request_main_menu()
+	main.city_files._request_main_menu()
 	await process_frame
 	assert(not main.main_menu.visible)
 	var prompt: ConfirmationDialog

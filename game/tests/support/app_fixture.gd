@@ -3,9 +3,14 @@ extends RefCounted
 
 
 # Use only when the test does not exercise menu visibility or its private simulation.
-class NoMenuApp extends "res://src/main.gd":
+class NoMenuInterface extends ApplicationInterface:
 	func _show_main_menu() -> void:
 		pass
+
+
+class NoMenuApp extends "res://src/main.gd":
+	func _init() -> void:
+		interface = NoMenuInterface.new(self)
 
 
 static func configure(main: Node, skip_menu_city := false) -> void:
