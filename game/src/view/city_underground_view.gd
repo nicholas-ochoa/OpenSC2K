@@ -1,7 +1,7 @@
 class_name CityUndergroundView
 extends RefCounted
 
-const Renderer = preload("res://src/view/city_isometric_renderer.gd")
+const Geometry = preload("res://src/view/isometric/geometry.gd")
 
 const TERRAIN_WIREFRAME_FIRST := 0x131
 const SUBWAY_AND_PIPE_FIRST := 0x13e
@@ -16,7 +16,7 @@ static func create_image(
 	city: CityState,
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
-	view_size := Renderer.VIEW_LARGE,
+	view_size := Geometry.VIEW_LARGE,
 	validate_required_assets := true,
 	show_pipes := true,
 	show_subways := true, show_water_mains := true
@@ -32,7 +32,7 @@ static func create_image(
 	if sprites == null or not sprites.is_valid():
 		return _failure("sprite archive is invalid")
 
-	var configuration := Renderer.view_configuration(view_size)
+	var configuration := Geometry.view_configuration(view_size)
 
 	if configuration.is_empty():
 		return _failure("underground view size is invalid")
@@ -43,7 +43,7 @@ static func create_image(
 		if not asset_errors.is_empty():
 			return _failure(asset_errors[0])
 
-	var output_size := Renderer.output_size_for_view(view_size, map_edge)
+	var output_size := Geometry.output_size_for_view(view_size, map_edge)
 	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
 	output.fill(Color8(
 		WHITE_PALETTE_INDEX,
@@ -78,7 +78,7 @@ static func create_image(
 static func validate_assets(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
-	view_size := Renderer.VIEW_LARGE,
+	view_size := Geometry.VIEW_LARGE,
 	show_pipes := true,
 	show_subways := true, show_water_mains := true
 ) -> PackedStringArray:
@@ -95,7 +95,7 @@ static func validate_assets(
 
 		return errors
 
-	var configuration := Renderer.view_configuration(view_size)
+	var configuration := Geometry.view_configuration(view_size)
 
 	if configuration.is_empty():
 		errors.append("underground view size is invalid")
@@ -128,7 +128,7 @@ static func tile_sprite_ids(
 	city: CityState,
 	x: int,
 	y: int,
-	view_size := Renderer.VIEW_LARGE,
+	view_size := Geometry.VIEW_LARGE,
 	show_pipes := true,
 	show_subways := true, show_water_mains := true
 ) -> PackedInt32Array:
@@ -137,7 +137,7 @@ static func tile_sprite_ids(
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return result
 
-	var configuration := Renderer.view_configuration(view_size)
+	var configuration := Geometry.view_configuration(view_size)
 
 	if configuration.is_empty():
 		return result
@@ -215,12 +215,12 @@ static func terrain_wireframe_offset(terrain: int) -> int:
 
 
 static func tunnel_sprite_id(
-	city: CityState, x: int, y: int, view_size := Renderer.VIEW_LARGE
+	city: CityState, x: int, y: int, view_size := Geometry.VIEW_LARGE
 ) -> int:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return -1
 
-	var configuration := Renderer.view_configuration(view_size)
+	var configuration := Geometry.view_configuration(view_size)
 
 	if configuration.is_empty():
 		return -1
