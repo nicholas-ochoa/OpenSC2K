@@ -14,51 +14,10 @@ static func create_image(
 	validate_required_assets := true,
 	include_special_overlays := true
 ) -> Dictionary:
-	var map_edge: int = city.map_size if city != null else 128
-
-	if city == null or not city.is_valid():
-		return _failure("city is invalid")
-
-	if palette == null or not palette.is_valid():
-		return _failure("palette is invalid")
-
-	if sprites == null or not sprites.is_valid():
-		return _failure("large sprite archive is invalid")
-
-	var configuration := view_configuration(view_size)
-
-	if configuration.is_empty():
-		return _failure("city view size is invalid")
-
-	if validate_required_assets:
-		var asset_errors := validate_assets(city, sprites, view_size)
-
-		if not asset_errors.is_empty():
-			return _failure(asset_errors[0])
-
-	var output_size := output_size_for_view(view_size, map_edge)
-	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
-	output.fill(Color.TRANSPARENT if transparent_background else Color("18242c"))
-	var origin_x: int = configuration.side_margin + map_edge * configuration.half_width
-	var cache: Dictionary = {}
-
-	for diagonal in map_edge * 2 - 1:
-		for y in diagonal + 1:
-			var x := diagonal - y
-
-			if x >= map_edge or y >= map_edge:
-				continue
-
-			_draw_tile(
-				output, city, palette, sprites, cache, configuration,
-				origin_x, x, y, animation_phase, include_moving_things,
-				include_special_overlays
-			)
-
-	if palette.is_index_encoding:
-		output.convert(Image.FORMAT_LA8 if transparent_background else Image.FORMAT_L8)
-
-	return {"ok": true, "image": output, "error": ""}
+	return IsometricImageRender.create_image(
+		city, palette, sprites, view_size, animation_phase, include_moving_things, transparent_background,
+		validate_required_assets, include_special_overlays
+	)
 
 
 static func patch_static_image(
@@ -71,118 +30,9 @@ static func patch_static_image(
 	animation_phase := 0,
 	copy_image := true
 ) -> Dictionary:
-	var map_edge: int = city.map_size if city != null else 128
-
-	if base_image == null or base_image.is_empty():
-		return _failure("base city image is invalid")
-
-	if city == null or not city.is_valid():
-		return _failure("city is invalid")
-
-	if palette == null or not palette.is_valid() or not palette.is_index_encoding:
-		return _failure("indexed palette is invalid")
-
-	if sprites == null or not sprites.is_valid():
-		return _failure("sprite archive is invalid")
-
-	var configuration := view_configuration(view_size)
-
-	if configuration.is_empty():
-		return _failure("city view size is invalid")
-
-	var native_size := output_size_for_view(view_size, map_edge)
-	var output_scale := 1
-
-	if base_image.get_size() == output_size_for_view(VIEW_LARGE, map_edge):
-		output_scale = int(configuration.divisor)
-	elif base_image.get_size() != native_size:
-		return _failure("base city image has the wrong size")
-
-	var sprite_limit := _maximum_sprite_size(sprites)
-	var native_rect := dirty_screen_rect(
-		dirty_indices, sprites, view_size, sprite_limit, map_edge
+	return IsometricImageRender.patch_static_image(
+		base_image, city, palette, sprites, dirty_indices, view_size, animation_phase, copy_image
 	)
-
-	if native_rect.get_area() <= 0:
-		return _failure("dirty city region is empty")
-
-	var local_configuration := configuration.duplicate()
-	local_configuration.top_margin = (
-		int(configuration.top_margin) - native_rect.position.y
-	)
-	var origin_x := (
-		int(configuration.side_margin)
-		+ map_edge * int(configuration.half_width)
-		- native_rect.position.x
-	)
-	var region := Image.create(
-		native_rect.size.x, native_rect.size.y, false, Image.FORMAT_RGBA8
-	)
-	region.fill(Color.TRANSPARENT)
-	var cache: Dictionary = {}
-	var tiles_drawn := 0
-	# bound both x+y and x-y before walking the painter order. keep the exact
-	# rectangle test below, including the full altitude and sprite allowance
-	var half_width := int(configuration.half_width)
-	var half_height := int(configuration.half_height)
-	var full_origin_x := int(configuration.side_margin) + map_edge * half_width
-	var top_margin := int(configuration.top_margin)
-	var bottom_extra := int(configuration.tile_height) + int(IntegerMath.div_trunc(sprite_limit.x, 4)) + 1
-	var top_extra := 32 * int(configuration.altitude_step) + sprite_limit.y
-	var first_diagonal := maxi(0, floori(float(native_rect.position.y - top_margin - bottom_extra) / half_height))
-	var last_diagonal := mini(2 * (map_edge - 1), ceili(float(native_rect.end.y - top_margin + top_extra) / half_height))
-	var first_difference := floori(float(native_rect.position.x - full_origin_x - sprite_limit.x - int(configuration.tile_width) - 1) / half_width)
-	var last_difference := ceili(float(native_rect.end.x - full_origin_x + sprite_limit.x) / half_width)
-
-	for diagonal in range(first_diagonal, last_diagonal + 1):
-		var first_y := maxi(maxi(0, diagonal - (map_edge - 1)), ceili(float(diagonal - last_difference) / 2.0))
-		var last_y := mini(mini(map_edge - 1, diagonal), floori(float(diagonal - first_difference) / 2.0))
-
-		for y in range(first_y, last_y + 1):
-			var x := diagonal - y
-
-			if not _potential_tile_bounds(
-				configuration, sprite_limit, x, y, map_edge
-			).intersects(native_rect):
-				continue
-
-			_draw_tile(
-				region, city, palette, sprites, cache, local_configuration,
-				origin_x, x, y, animation_phase, false, false
-			)
-			tiles_drawn += 1
-
-	region.convert(Image.FORMAT_LA8)
-	var output_rect := native_rect
-
-	if output_scale > 1:
-		region.resize(
-			region.get_width() * output_scale,
-			region.get_height() * output_scale,
-			Image.INTERPOLATE_NEAREST
-		)
-		output_rect = Rect2i(
-			native_rect.position * output_scale,
-			native_rect.size * output_scale
-		)
-
-	var patched := base_image.duplicate() if copy_image else base_image
-
-	if patched.get_format() != region.get_format():
-		region.convert(patched.get_format())
-
-	patched.blit_rect(
-		region, Rect2i(Vector2i.ZERO, region.get_size()), output_rect.position
-	)
-
-	return {
-		"ok": true,
-		"image": patched,
-		"native_rect": native_rect,
-		"output_rect": output_rect,
-		"tiles_drawn": tiles_drawn,
-		"error": "",
-	}
 
 
 static func dirty_screen_rect(
@@ -278,159 +128,10 @@ static func _draw_tile(
 	include_moving_things: bool,
 	include_special_overlays: bool
 ) -> void:
-	if not city.tile_is_visible(x, y):
-		CityUndergroundView._draw_tile(
-			output, city, palette, sprites, cache, configuration, origin_x,
-			x, y, false, true
-		)
-
-		return
-
-	var terrain_id := surface_terrain_id(city, x, y)
-	var building_id := city.building_id(x, y)
-	var terrain_altitude := city.land_altitude(x, y)
-
-	if terrain_id >= 0x10:
-		terrain_altitude = city.water_altitude(x, y)
-
-	var screen_x: int = origin_x + (x - y) * int(configuration.half_width)
-	var flat_base_y: int = (
-		int(configuration.top_margin) + (x + y) * int(configuration.half_height)
+	IsometricImageRender._draw_tile(
+		output, city, palette, sprites, cache, configuration, origin_x, x, y, animation_phase,
+		include_moving_things, include_special_overlays
 	)
-	_draw_edge_stacks(
-		output, city, palette, sprites, cache, configuration,
-		screen_x, flat_base_y, x, y
-	)
-	var base_y: int = (
-		flat_base_y
-		- terrain_altitude * int(configuration.altitude_step)
-	)
-
-	var is_highway_composite := building_id >= 0x61 and building_id <= 0x6b
-
-	if building_id < 0x70 and not is_highway_composite:
-		var terrain := _sprite_image(
-			sprites, palette, cache,
-			terrain_sprite_id(terrain_id, city.is_water(x, y), configuration.sprite_base),
-			false
-		)
-		_blend_on_base(output, terrain, screen_x, base_y, configuration.tile_height)
-
-	var zone := city.zone_id(x, y)
-
-	if zone > 0 and building_id == 0:
-		var zone_image := _sprite_image(
-			sprites, palette, cache, int(configuration.sprite_base) + 290 + zone, false
-		)
-		_blend_on_base(output, zone_image, screen_x, base_y, configuration.tile_height)
-
-	var building_image: Image
-
-	if building_id > 0 and _should_draw_building(city, x, y, building_id):
-		var building_base_y := (
-			flat_base_y
-			- city.object_altitude(x, y) * int(configuration.altitude_step)
-		)
-
-		if is_highway_composite:
-			_draw_highway_ground(
-				output, city, palette, sprites, cache, configuration,
-				screen_x, base_y, x, y
-			)
-
-		var flip := building_sprite_flip(city, x, y, building_id)
-		building_image = _sprite_image(
-			sprites, palette, cache, int(configuration.sprite_base) + building_id, flip
-		)
-		building_base_y += building_baseline_offset(
-			building_id, terrain_id, building_image.get_width(), configuration.view_size
-		)
-		_blend_on_base(
-			output, building_image, screen_x, building_base_y, configuration.tile_height
-		)
-		var traffic_visual := traffic_overlay_visual(city, x, y, configuration.view_size)
-
-		if not traffic_visual.is_empty():
-			var traffic_image := _sprite_image(
-				sprites, palette, cache, traffic_visual.sprite_id, traffic_visual.flip
-			)
-			var masked_traffic := _traffic_masked_image(
-				traffic_image, building_image, palette, cache,
-				"traffic:%d:%d:%d:%d" % [
-					traffic_visual.sprite_id, int(traffic_visual.flip),
-					building_id, int(flip),
-				]
-			)
-			_blend_on_base(
-				output, masked_traffic, screen_x, building_base_y,
-				configuration.tile_height
-			)
-
-		var power_marker := power_marker_visual(city, x, y, configuration.view_size)
-
-		if not power_marker.is_empty():
-			var marker_image := _sprite_image(
-				sprites, palette, cache, power_marker.sprite_id, false
-			)
-			var marker_x := (
-				screen_x + int(IntegerMath.div_trunc(building_image.get_width(), 2))
-				- int(IntegerMath.div_trunc(marker_image.get_width(), 2))
-			)
-			_blend_on_base(
-				output, marker_image, marker_x, building_base_y, configuration.tile_height
-			)
-
-	var dispatch_sprite := dispatch_sprite_id(city, x, y, configuration.view_size)
-
-	if dispatch_sprite > 0:
-		var dispatch_image := _sprite_image(
-			sprites, palette, cache, dispatch_sprite, false
-		)
-		var dispatch_x := (
-			screen_x + int(configuration.half_width)
-			- int(IntegerMath.div_trunc(dispatch_image.get_width(), 2))
-		)
-		var dispatch_base_y := (
-			flat_base_y - city.land_altitude(x, y) * int(configuration.altitude_step)
-		)
-		_blend_on_base(
-			output, dispatch_image, dispatch_x, dispatch_base_y,
-			configuration.tile_height
-		)
-
-	if include_moving_things:
-		var moving_visual := moving_thing_visual(
-			city, x, y, configuration.view_size, animation_phase
-		)
-
-		if not moving_visual.is_empty():
-			_draw_moving_thing(
-				output, city, palette, sprites, cache, moving_visual, configuration
-			)
-
-	if include_special_overlays:
-		var special_visual := special_overlay_visual(
-			city, x, y, configuration.view_size, animation_phase
-		)
-
-		if not special_visual.is_empty():
-			var special_image := _sprite_image(
-				sprites, palette, cache, special_visual.sprite_id, special_visual.flip
-			)
-			var special_x := (
-				screen_x + int(configuration.half_width)
-				- int(IntegerMath.div_trunc(special_image.get_width(), 2))
-			)
-			var special_altitude := city.object_altitude(x, y)
-			var special_base_y := (
-				int(configuration.top_margin)
-				+ (x + y) * int(configuration.half_height)
-				- special_altitude * int(configuration.altitude_step)
-			)
-			_blend_on_base(
-				output, special_image, special_x, special_base_y,
-				configuration.tile_height
-			)
 
 
 static func edge_stack_visuals(
@@ -451,14 +152,7 @@ static func _draw_edge_stacks(
 	x: int,
 	y: int
 ) -> void:
-	for visual in edge_stack_visuals(city, x, y, configuration.view_size):
-		var edge_image := _sprite_image(
-			sprites, palette, cache, visual.sprite_id, false
-		)
-		_blend_on_base(
-			output, edge_image, screen_x, flat_base_y - visual.elevation,
-			configuration.tile_height
-		)
+	IsometricImageRender._draw_edge_stacks(output, city, palette, sprites, cache, configuration, screen_x, flat_base_y, x, y)
 
 
 static func _draw_highway_ground(
@@ -473,15 +167,7 @@ static func _draw_highway_ground(
 	x: int,
 	y: int
 ) -> void:
-	for visual in highway_ground_visuals(city, x, y, configuration.view_size, sprites.redraw_small_highway_ground):
-		var terrain := _sprite_image(
-			sprites, palette, cache, visual.sprite_id, false
-		)
-		var position: Vector2i = visual.offset
-		_blend_on_base(
-			output, terrain, screen_x + position.x, base_y + position.y,
-			configuration.tile_height
-		)
+	IsometricImageRender._draw_highway_ground(output, city, palette, sprites, cache, configuration, screen_x, base_y, x, y)
 
 
 static func highway_ground_visuals(
@@ -585,19 +271,7 @@ static func _draw_moving_thing(
 	visual: Dictionary,
 	configuration: Dictionary
 ) -> void:
-	for command in moving_thing_draw_commands_for_visual(
-		city, sprites, visual, configuration
-	):
-		var sprite := _sprite_image(
-			sprites, palette, cache, command.sprite_id, command.flip
-		)
-
-		if command.shadow:
-			_blend_shadow(output, sprite, palette, command.position)
-		else:
-			output.blend_rect(
-				sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), command.position
-			)
+	IsometricImageRender._draw_moving_thing(output, city, palette, sprites, cache, visual, configuration)
 
 
 static func moving_thing_draw_commands(
@@ -796,7 +470,7 @@ static func _traffic_masked_image(
 
 
 static func _failure(message: String) -> Dictionary:
-	return {"ok": false, "error": message}
+	return IsometricImageRender._failure(message)
 
 
 static func highway_train_deck_mask(surface: Image, thickness: int) -> Image:
