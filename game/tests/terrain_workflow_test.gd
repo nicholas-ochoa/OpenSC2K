@@ -45,19 +45,19 @@ func _run() -> void:
 		main.map_view.selection_start = Vector2i(40, 40)
 		main.map_view.selection_end = Vector2i(42, 43)
 		main.map_view._shift_pressed = true
-		main.map_view._rebuild_selection_path()
+		main.map_view.selection._rebuild_selection_path()
 		assert(main.map_view.selection_path.size() == 12)
 		main.map_view._shift_pressed = false
-		main.map_view._rebuild_selection_path()
+		main.map_view.selection._rebuild_selection_path()
 		assert(main.map_view.selection_path.size() == 6)
 
 	main.current_tool._select_subtool(1)
 	assert(main.map_view.uses_paint_brush() and main.map_view.shift_rectangle_enabled)
 	main.map_view.brush_box_selection = true
-	main.map_view._rebuild_selection_path()
+	main.map_view.selection._rebuild_selection_path()
 	assert(main.map_view.selection_path.size() == 12)
 	main.map_view.brush_box_selection = false
-	main.map_view._clear_selection()
+	main.map_view.selection._clear_selection()
 
 	for subtool in [6, 7]:
 		var expected := TerrainToolIcons.terrain_action(main.asset_source.assets.city_ui_graphics, "sea_raise" if subtool == 6 else "sea_lower")

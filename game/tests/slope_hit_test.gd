@@ -62,8 +62,8 @@ func _run() -> void:
 		await process_frame
 		var polygon := CityIsometricRenderer.terrain_surface_polygon(main.city, 64, 64)
 		var sample := polygon[0] + Vector2(0, 3)
-		var scale: float = main.map_view._view_scale()
-		var local: Vector2 = sample * scale + main.map_view._draw_offset(scale)
+		var scale: float = main.map_view.camera._view_scale()
+		var local: Vector2 = sample * scale + main.map_view.camera._draw_offset(scale)
 		print("SLOPE click viewport=%s expected=(64,64)" % (local + main.map_view.global_position))
 		root.title = "Slope hover check"
 

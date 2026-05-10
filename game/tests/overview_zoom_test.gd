@@ -55,8 +55,8 @@ func _run() -> void:
 		var point := Vector2i(64, 64)
 		var polygon := CityIsometricRenderer.tile_polygon(main.city, point.x, point.y, mode == "height")
 		var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
-		var local := map._draw_offset(map._view_scale()) + center * map._view_scale()
-		assert(map._tile_at(local) == point, "Overview picking uses the displayed tile")
+		var local := map.camera._draw_offset(map.camera._view_scale()) + center * map.camera._view_scale()
+		assert(map.camera._tile_at(local) == point, "Overview picking uses the displayed tile")
 
 	# Selection is a settings lookup. The mode/picking checks above exercise rendering.
 	for graphics_size in [1, 2, 0]:

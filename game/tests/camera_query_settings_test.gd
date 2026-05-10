@@ -85,7 +85,7 @@ func _run() -> void:
 	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 	var saved: PackedByteArray = main.city.document.serialize().data
 	var center: Vector2 = main.map_view.source_center
-	var scale: float = main.map_view._view_scale()
+	var scale: float = main.map_view.camera._view_scale()
 	main.map_view.pan_screen(Vector2(10, -10))
 	assert(main.map_view.source_center.is_equal_approx(center + Vector2(10, -10) / scale))
 	main.map_view.pan_screen(Vector2(-10, 10))

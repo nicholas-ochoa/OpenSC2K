@@ -47,7 +47,7 @@ func _run() -> void:
 		var tree_path: Array[Vector2i] = [point]
 
 		if subtool == 3:
-			main.map_view._emit_brush_dab(point, false)
+			main.map_view.selection._emit_brush_dab(point, false)
 		else:
 			main.city_edits._apply_map_selection(point, point, tree_path, false)
 

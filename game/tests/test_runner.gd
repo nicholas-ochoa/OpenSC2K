@@ -1971,7 +1971,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"City scroll values clamp to the last visible page and reject an invalid axis",
 	)
 	scroll_control.size = Vector2(2200, 900)
-	scroll_control._on_resized()
+	scroll_control.camera._on_resized()
 	var fitted_scroll := scroll_control.scroll_state()
 	_check(
 		fitted_scroll.page == Vector2(1960, 800)
@@ -2080,7 +2080,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.selection_end = center_tile + Vector2i(2, 1)
 	map_control.edit_enabled = true
 	map_control.selection_mode = "rectangle"
-	map_control._rebuild_selection_path()
+	map_control.selection._rebuild_selection_path()
 	_check(
 		map_control.selection_tiles().size() == 6,
 		"Rectangle selection contains every tile while it grows",
@@ -2088,8 +2088,8 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.city = surface_city
 	map_control.selection_start = surface_point
 	map_control.selection_end = surface_point + Vector2i(1, 0)
-	map_control._rebuild_selection_path()
-	var terrain_selection_polygons := map_control._selection_source_polygons()
+	map_control.selection._rebuild_selection_path()
+	var terrain_selection_polygons := map_control.selection._selection_source_polygons()
 	_check(
 		terrain_selection_polygons.size() == 2
 		and terrain_selection_polygons[0] == raised_polygon
@@ -2101,9 +2101,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.city = starter
 	map_control.selection_start = center_tile
 	map_control.selection_end = center_tile + Vector2i(2, 1)
-	map_control._rebuild_selection_path()
+	map_control.selection._rebuild_selection_path()
 	map_control.selection_end = center_tile + Vector2i(1, 0)
-	map_control._rebuild_selection_path()
+	map_control.selection._rebuild_selection_path()
 	_check(
 		map_control.selection_tiles() == [center_tile, center_tile + Vector2i(1, 0)],
 		"Rectangle selection shrinks from its fixed start",
@@ -2131,27 +2131,27 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.selection_end = Vector2i(-1, -1)
 	map_control.hover_tile = center_tile
 	_check(
-		map_control._selection_source_polygons() == [
+		map_control.selection._selection_source_polygons() == [
 			IsometricRenderer.terrain_surface_polygon(starter, center_tile.x, center_tile.y)
 		],
 		"An idle network tool highlights the exact hovered terrain tile",
 	)
 	map_control.highway_preview = true
 	map_control.hover_tile = center_tile + Vector2i.ONE
-	_check(map_control._selection_source_polygons().size() == 4,
+	_check(map_control.selection._selection_source_polygons().size() == 4,
 		"Highway hover highlights its snapped two-by-two section")
 	map_control.highway_preview = false
 	map_control.show_selection_preview = false
-	_check(map_control._selection_source_polygons().is_empty(),
+	_check(map_control.selection._selection_source_polygons().is_empty(),
 		"Center can suppress all tile previews")
 	map_control.show_selection_preview = true
 	map_control.set_edit_enabled(false)
-	_check(map_control._selection_source_polygons().is_empty(),
+	_check(map_control.selection._selection_source_polygons().is_empty(),
 		"Disabling network input clears its hover highlight")
 	map_control.set_edit_enabled(true, "path")
 	map_control.selection_start = center_tile
 	map_control.selection_end = center_tile + Vector2i(3, 2)
-	map_control._rebuild_selection_path()
+	map_control.selection._rebuild_selection_path()
 	var preview_path := map_control.selection_tiles()
 	_check(
 		preview_path == [
@@ -2204,7 +2204,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var cancel_event := InputEventMouseButton.new()
 	cancel_event.button_index = MOUSE_BUTTON_RIGHT
 	cancel_event.pressed = true
-	map_control._handle_mouse_button(cancel_event)
+	map_control.interaction._handle_mouse_button(cancel_event)
 	_check(
 		selection_cancel_signals[0] == 1 and selection_finish_signals[0] == 1,
 		"Mouse button 2 emits canceled and finished selection signals",
@@ -2219,7 +2219,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	release_event.button_index = MOUSE_BUTTON_LEFT
 	release_event.pressed = false
 	release_event.position = Vector2.ZERO
-	map_control._handle_mouse_button(release_event)
+	map_control.interaction._handle_mouse_button(release_event)
 	_check(
 		selection_complete_signals[0] == 0 and selection_complete_drags.is_empty(),
 		"Left-button release cannot commit a mouse-button-2 cancellation",
@@ -2229,7 +2229,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	drag_start_event.button_index = MOUSE_BUTTON_LEFT
 	drag_start_event.pressed = true
 	drag_start_event.position = map_control.size * 0.5
-	map_control._handle_mouse_button(drag_start_event)
+	map_control.interaction._handle_mouse_button(drag_start_event)
 	_check(
 		selection_start_signals[0] == 1 and selection_finish_signals[0] == 1,
 		"A valid left press emits one selection-started signal",
@@ -2239,13 +2239,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 		starter, drag_target.x, drag_target.y
 	)
 	var drag_motion_event := InputEventMouseMotion.new()
-	drag_motion_event.position = map_control._draw_offset(map_control._view_scale()) + (
+	drag_motion_event.position = map_control.camera._draw_offset(map_control.camera._view_scale()) + (
 		drag_target_polygon[0]
 		+ drag_target_polygon[1]
 		+ drag_target_polygon[2]
 		+ drag_target_polygon[3]
-	) * 0.25 * map_control._view_scale()
-	map_control._handle_mouse_motion(drag_motion_event)
+	) * 0.25 * map_control.camera._view_scale()
+	map_control.interaction._handle_mouse_motion(drag_motion_event)
 	_check(
 		map_control.selection_was_dragged()
 		and map_control.selection_end == drag_target,
@@ -2255,7 +2255,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	drag_release_event.button_index = MOUSE_BUTTON_LEFT
 	drag_release_event.pressed = false
 	drag_release_event.position = drag_motion_event.position
-	map_control._handle_mouse_button(drag_release_event)
+	map_control.interaction._handle_mouse_button(drag_release_event)
 	_check(
 		selection_complete_signals[0] == 1
 		and selection_complete_drags == [true]
@@ -2268,7 +2268,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	shift_query_event.pressed = true
 	shift_query_event.shift_pressed = true
 	shift_query_event.position = map_control.size * 0.5
-	map_control._handle_mouse_button(shift_query_event)
+	map_control.interaction._handle_mouse_button(shift_query_event)
 	_check(
 		query_signal_points == [center_tile],
 		"Shift-click emits Query for the selected landscape tile",
@@ -2280,7 +2280,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	map_control.set_dynamic_sprites([{"position": Vector2(10, 20)}])
 	_check(map_control.dynamic_sprites.size() == 1, "Map control accepts a dynamic sprite layer")
-	map_control._ensure_base_layer()
+	map_control.layers._ensure_base_layer()
 	var many_dynamic_sprites: Array[Dictionary] = []
 
 	for index in 1500:
@@ -2300,10 +2300,10 @@ func _test_sprite_archives(reference_root: String) -> void:
 	center_click.button_index = MOUSE_BUTTON_MIDDLE
 	center_click.position = map_control.size * 0.5
 	center_click.pressed = true
-	map_control._handle_mouse_button(center_click)
+	map_control.interaction._handle_mouse_button(center_click)
 	_check(center_requests.is_empty(), "Middle-button press waits for release before Center")
 	center_click.pressed = false
-	map_control._handle_mouse_button(center_click)
+	map_control.interaction._handle_mouse_button(center_click)
 	_check(center_requests == [center_tile] and selection_complete_signals[0] == 1,
 		"Middle click requests Center without applying the selected build tool")
 	var visual_revision := map_control._dynamic_canvas.visual_revision
@@ -2311,12 +2311,12 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var middle_press := InputEventMouseButton.new()
 	middle_press.button_index = MOUSE_BUTTON_MIDDLE
 	middle_press.pressed = true
-	map_control._handle_mouse_button(middle_press)
+	map_control.interaction._handle_mouse_button(middle_press)
 	var pan_motion := InputEventMouseMotion.new()
 	pan_motion.relative = Vector2(12, 8)
 	pan_motion.position = Vector2(12, 8)
 	pan_motion.button_mask = MOUSE_BUTTON_MASK_MIDDLE
-	map_control._handle_mouse_motion(pan_motion)
+	map_control.interaction._handle_mouse_motion(pan_motion)
 	_check(
 		map_control.is_panning()
 		and map_control._dynamic_canvas.visual_revision == visual_revision
@@ -2326,11 +2326,11 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var middle_release := InputEventMouseButton.new()
 	middle_release.button_index = MOUSE_BUTTON_MIDDLE
 	middle_release.position = pan_motion.position
-	map_control._handle_mouse_button(middle_release)
+	map_control.interaction._handle_mouse_button(middle_release)
 	_check(center_requests.size() == 1, "Middle drag release does not invoke Center")
-	map_control._handle_mouse_button(middle_press)
+	map_control.interaction._handle_mouse_button(middle_press)
 	pan_motion.button_mask = 0
-	map_control._handle_mouse_motion(pan_motion)
+	map_control.interaction._handle_mouse_motion(pan_motion)
 	_check(
 		not map_control.is_panning(),
 		"Map panning stops if the pointer no longer reports a pressed pan button",

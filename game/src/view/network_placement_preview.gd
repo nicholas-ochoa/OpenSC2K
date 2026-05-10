@@ -125,8 +125,8 @@ func _process(_delta: float) -> void:
 			clear()
 
 	if map_view != null:
-		var view_scale := map_view._view_scale()
-		position = map_view._draw_offset(view_scale)
+		var view_scale := map_view.camera._view_scale()
+		position = map_view.camera._draw_offset(view_scale)
 		scale = Vector2.ONE * view_scale * divisor
 
 		# only an active request owns the anchored price. an idle preview must

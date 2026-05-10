@@ -16,77 +16,24 @@ signal center_requested(point: Vector2i)
 signal zoom_changed(percent: int)
 signal viewport_changed()
 
-const Renderer = preload("res://src/view/city_isometric_renderer.gd")
-const HighwayTool = preload("res://src/tools/city/highway_command.gd")
-const DemolishTool = preload("res://src/tools/city/demolish_command.gd")
-const BuildingTool = preload("res://src/tools/city/building_command.gd")
-const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
-const ZOOM_LEVELS := [0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0]
-const DEFAULT_ZOOM_INDEX := 3
-const WHEEL_ZOOM_DEBOUNCE_MSEC := 250
-# child layer order: network preview artwork, then the price label above it
-const NETWORK_PREVIEW_Z_INDEX := 80
-const PRICE_LAYER_Z_INDEX := 90
-const SIGN_FONT_HEIGHTS := [12, 14, 16]
-const SIGN_PANEL_FILL := Color("9f9f9f")
-const SIGN_POST_FILL := Color("bbbbbb")
-const SIGN_EDGE_LIGHT := Color("e3e3e3")
-const SIGN_EDGE_MIDDLE := Color("838383")
-const SIGN_EDGE_DARK := Color("575757")
-const SIGN_TEXT_COLOR := Color("000030")
-const PALETTE_CYCLE_SHADER := """
-shader_type canvas_item;
-
-uniform sampler2D palette_indices : filter_nearest, repeat_disable;
-uniform sampler2D animated_palette : source_color, filter_nearest, repeat_disable;
-uniform bool palette_cycle_enabled = false;
-uniform bool palette_lookup_all = false;
-uniform bool dark_underground = false;
-
-void fragment() {
-	vec4 base_color = texture(TEXTURE, UV);
-	float encoded_index = (
-		palette_lookup_all ? base_color.r : texture(palette_indices, UV).r
-	);
-	int palette_index = int(round(encoded_index * 255.0));
-	bool animated_index =
-		(palette_index >= 171 && palette_index <= 198) ||
-		(palette_index >= 200 && palette_index <= 219) ||
-		(palette_index >= 224 && palette_index <= 239);
-	if (palette_cycle_enabled && (palette_lookup_all || animated_index)) {
-		vec2 palette_uv = vec2((float(palette_index) + 0.5) / 256.0, 0.5);
-		vec4 cycle_color = texture(animated_palette, palette_uv);
-		COLOR = vec4(cycle_color.rgb, base_color.a);
-	} else {
-		COLOR = base_color;
-	}
-	if (dark_underground) {
-		float high = max(COLOR.r, max(COLOR.g, COLOR.b));
-		float low = min(COLOR.r, min(COLOR.g, COLOR.b));
-		// Preserve sprite shading. Only white is the underground paper background.
-		if (palette_lookup_all && palette_index >= 200 && palette_index <= 207) {
-			// Original flowing-water cycle. Keep its moving highlights.
-			COLOR.rgb = mix(vec3(0.22, 0.66, 0.82), vec3(0.66, 0.94, 1.0), COLOR.g);
-		} else if (palette_lookup_all && palette_index >= 140 && palette_index <= 147) {
-			// Original fixed blue pipe ramp means no water, not flowing water.
-			COLOR.rgb = mix(vec3(0.36, 0.20, 0.12), vec3(0.72, 0.46, 0.28), high);
-		} else if (low > 0.97) {
-			COLOR.rgb = vec3(0.125, 0.157, 0.188);
-		} else if (high - low < 0.08) {
-			COLOR.rgb = mix(vec3(0.28, 0.33, 0.38), vec3(0.60, 0.66, 0.70), high);
-		} else if (COLOR.b > COLOR.r * 1.3 && COLOR.b > COLOR.g * 1.15) {
-			// Water pipes: readable blue with enough green for dark-background contrast.
-			COLOR.rgb = mix(vec3(0.18, 0.43, 0.65), vec3(0.40, 0.78, 0.96), high);
-		} else if (COLOR.g > COLOR.r * 1.2 && COLOR.g > COLOR.b * 1.2) {
-			// Subway routes remain green and distinct from the water network.
-			COLOR.rgb = mix(vec3(0.18, 0.43, 0.28), vec3(0.45, 0.82, 0.56), high);
-		} else {
-			// Keep terrain wireframes subordinate to the networks.
-			COLOR.rgb *= 0.60;
-		}
-	}
-}
-"""
+const Renderer = CityMapConstants.Renderer
+const HighwayTool = CityMapConstants.HighwayTool
+const DemolishTool = CityMapConstants.DemolishTool
+const BuildingTool = CityMapConstants.BuildingTool
+const DynamicSpriteCanvas = CityMapConstants.DynamicSpriteCanvas
+const ZOOM_LEVELS = CityMapConstants.ZOOM_LEVELS
+const DEFAULT_ZOOM_INDEX = CityMapConstants.DEFAULT_ZOOM_INDEX
+const WHEEL_ZOOM_DEBOUNCE_MSEC = CityMapConstants.WHEEL_ZOOM_DEBOUNCE_MSEC
+const NETWORK_PREVIEW_Z_INDEX = CityMapConstants.NETWORK_PREVIEW_Z_INDEX
+const PRICE_LAYER_Z_INDEX = CityMapConstants.PRICE_LAYER_Z_INDEX
+const SIGN_FONT_HEIGHTS = CityMapConstants.SIGN_FONT_HEIGHTS
+const SIGN_PANEL_FILL = CityMapConstants.SIGN_PANEL_FILL
+const SIGN_POST_FILL = CityMapConstants.SIGN_POST_FILL
+const SIGN_EDGE_LIGHT = CityMapConstants.SIGN_EDGE_LIGHT
+const SIGN_EDGE_MIDDLE = CityMapConstants.SIGN_EDGE_MIDDLE
+const SIGN_EDGE_DARK = CityMapConstants.SIGN_EDGE_DARK
+const SIGN_TEXT_COLOR = CityMapConstants.SIGN_TEXT_COLOR
+const PALETTE_CYCLE_SHADER = CityMapConstants.PALETTE_CYCLE_SHADER
 
 var _preserve_sign_layout := false
 var city: CityState:
@@ -94,14 +41,14 @@ var city: CityState:
 		city = value
 
 		if not _preserve_sign_layout:
-			_invalidate_sign_entries()
+			signs._invalidate_sign_entries()
 var city_texture: Texture2D
 var palette_index_texture: Texture2D
 var animated_palette_texture: Texture2D
 var dark_underground := false:
 	set(value):
 		dark_underground = value
-		_sync_base_material()
+		layers._sync_base_material()
 var base_palette_lookup_all := false
 var signs_visible := true
 var edit_enabled := false
@@ -120,7 +67,7 @@ var camera_view_rect := Rect2():
 			return
 
 		camera_view_rect = value
-		_on_resized()
+		camera._on_resized()
 var pending_loaded_center := Vector2i(-1, -1)
 var selection_start := Vector2i(-1, -1)
 var selection_end := Vector2i(-1, -1)
@@ -195,162 +142,34 @@ var _sign_layout_signature: Array = []
 var _external_sign_layout_token: Array = []
 var _sign_cache_build_count := 0
 
+var layers: CityMapLayers = CityMapLayers.new(self)
+var signs: CityMapSigns = CityMapSigns.new(self)
+var camera: CityMapCamera = CityMapCamera.new(self)
+var presentation: CityMapPresentation = CityMapPresentation.new(self)
+var selection: CityMapSelection = CityMapSelection.new(self)
+var interaction: CityMapInteraction = CityMapInteraction.new(self)
+
 
 func _ready() -> void:
 	theme_changed.connect(queue_redraw)
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	clip_contents = true
 	texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_ensure_base_layer()
-	resized.connect(_on_resized)
-	mouse_exited.connect(_clear_hover)
+	layers._ensure_base_layer()
+	resized.connect(camera._on_resized)
+	mouse_exited.connect(selection._clear_hover)
 
 
 func set_data_view(value: CityState, mode: String) -> void:
-	var mode_changed := data_view_mode != mode
-	var signature := CityDataView.signature(value, mode)
-	var geometry_signature := CityDataView.geometry_signature(value, mode)
-
-	if data_geometry_signature != geometry_signature:
-		data_view_mesh = CityDataView.create_mesh(value, mode, true)
-		data_geometry_signature = geometry_signature
-
-	if data_view_layer == null:
-		data_view_layer = MeshInstance2D.new()
-		data_view_layer.name = "TileDataLayer"
-		data_view_layer.show_behind_parent = true
-		var shader := Shader.new()
-		shader.code = CityDataView.GRID_SHADER
-		var grid_material := ShaderMaterial.new()
-		grid_material.shader = shader
-		data_view_layer.material = grid_material
-		add_child(data_view_layer)
-
-	var material := data_view_layer.material as ShaderMaterial
-	material.set_shader_parameter("map_edge", float(value.map_size))
-
-	if data_view_signature != signature:
-		var image := CityDataView.value_image(value, mode)
-
-		if data_value_texture != null and Vector2i(data_value_texture.get_size()) == image.get_size():
-			data_value_texture.update(image)
-		else:
-			data_value_texture = ImageTexture.create_from_image(image)
-
-		material.set_shader_parameter("tile_values", data_value_texture)
-		data_view_signature = signature
-
-	if data_view_mode != mode:
-		material.set_shader_parameter("value_colors", ImageTexture.create_from_image(CityDataView.color_image(mode)))
-
-	data_view_mode = mode
-	data_view_layer.mesh = data_view_mesh
-	var placeholder := PlaceholderTexture2D.new()
-	placeholder.size = Renderer.output_size_for_view(Renderer.VIEW_LARGE, value.map_size)
-	set_city_view(value, placeholder)
-
-	if mode_changed and hover_tile.x >= 0:
-		hover_tile = _tile_at(get_local_mouse_position())
-
-	queue_redraw()
+	layers.set_data_view(value, mode)
 
 
 func clear_data_view() -> void:
-	if data_view_mode.is_empty():
-		return
-
-	data_view_mode = ""
-	data_view_mesh = null
-
-	if data_view_layer != null:
-		data_view_layer.hide()
-		data_view_layer.mesh = null
-
-	data_view_signature.clear()
-	data_geometry_signature.clear()
-	data_value_texture = null
-
-	if _dynamic_canvas != null:
-		_dynamic_canvas.show()
-
-	_sync_base_layer()
-	queue_redraw()
-
-
-func _draw_data_view(scale: float, offset: Vector2) -> void:
-	if hover_tile.x >= 0:
-		var outline := CityDataView.surface_polygon(city, hover_tile.x, hover_tile.y, data_view_mode == "height")
-
-		for index in outline.size():
-			outline[index] = offset + outline[index] * scale
-
-		if not outline.is_empty():
-			outline.append(outline[0])
-			draw_polyline(outline, Color.WHITE, 1.0)
-
-	_draw_data_key()
-
-	if hover_tile.x >= 0:
-		var text := CityDataView.tile_text(city, data_view_mode, hover_tile, _shift_pressed)
-		var font := ThemeDB.fallback_font
-		var lines := text.split("\n")
-		var width := 0.0
-
-		for line in lines:
-			width = maxf(width, font.get_string_size(line, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x)
-
-		var extent := Vector2(width + 20, lines.size() * 24 + 8)
-		var position := get_local_mouse_position() + Vector2(18, 24)
-		position.x = clampf(position.x, 4, maxf(4, size.x - extent.x - 4))
-		position.y = clampf(position.y, 4, maxf(4, size.y - extent.y - 4))
-		draw_style_box(_data_legend_box(), Rect2(position, extent))
-
-		for index in lines.size():
-			draw_string(font, position + Vector2(10, 22 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, get_theme_color("font_color", "MapLegend"))
-
-
-func _draw_data_key() -> void:
-	var font := ThemeDB.fallback_font
-	var origin := data_key_origin()
-	draw_style_box(_data_legend_box(), Rect2(origin, Vector2(320, 116 if data_view_mode == "height" else 96)))
-	var title: String = CityDataView.TITLES[CityDataView.MODES.find(data_view_mode)]
-	draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, get_theme_color("font_color", "MapLegend"))
-
-	if data_view_mode in ["water", "power"]:
-		for index in 3:
-			var position := origin + Vector2(12 + index * 100, 38)
-			draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(index, data_view_mode))
-			draw_string(font, position + Vector2(0, 38), ["No link", "No supply", "Supplied"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("font_color", "MapLegend"))
-	else:
-		for index in 32:
-			var number := index if data_view_mode == "height" else roundi(index * 255.0 / 31)
-			draw_rect(Rect2(origin + Vector2(12 + index * 9.25, 38), Vector2(9.25, 20)), CityDataView.color(number, data_view_mode))
-
-		if data_view_mode == "height":
-			draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
-			draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, get_theme_color("font_color", "MapLegend"))
-
-		var low := "Level 1" if data_view_mode == "height" else "Very low"
-		var high := "Level 32" if data_view_mode == "height" else "Very high"
-		draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("font_color", "MapLegend"))
-		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
-		draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, get_theme_color("font_color", "MapLegend"))
+	layers.clear_data_view()
 
 
 func data_key_origin() -> Vector2:
-	if data_view_mode == "height":
-		# match trip query: anchor inside the map area, clear of the sidebar
-		var workspace := get_parent()
-		if workspace != null:
-			var map_space := workspace.get_node_or_null("Page/Content/MapSpace") as Control
-			if map_space != null:
-				return map_space.global_position - global_position + Vector2(12, 12)
-		return Vector2(12, 12)
-	return Vector2(maxf(8, size.x - 332), maxf(8, size.y - 108))
-
-
-func _data_legend_box() -> StyleBoxFlat:
-	return get_theme_stylebox("panel", "MapLegend") as StyleBoxFlat
+	return layers.data_key_origin()
 
 
 func set_city_view(
@@ -361,182 +180,23 @@ func set_city_view(
 	preserve_sign_cache := false,
 	sign_layout_token: Array = []
 ) -> void:
-	var reset_center := city_texture == null or city_texture.get_size() != texture.get_size()
-	var old_center := source_center
-	var old_sign_scans := _sign_cache_build_count
-	var reuse_layout := preserve_sign_cache and not sign_layout_token.is_empty() and sign_layout_token == _external_sign_layout_token and _sign_entries_city != null and is_equal_approx(_sign_entries_zoom, zoom_factor)
-
-	if not preserve_sign_cache or city != value:
-		_preserve_sign_layout = preserve_sign_cache
-		city = value
-		_preserve_sign_layout = false
-
-	if reuse_layout:
-		_sign_entries_city = value
-	elif not sign_layout_token.is_empty() and sign_layout_token != _external_sign_layout_token:
-		_sign_entries_city = null
-
-	_external_sign_layout_token = sign_layout_token.duplicate()
-	city_texture = texture
-	palette_index_texture = index_texture
-	base_palette_lookup_all = palette_lookup_all
-
-	if not preserve_sign_cache:
-		_invalidate_sign_entries()
-
-	if reset_center and city_texture != null:
-		source_center = Vector2(city_texture.get_size()) * 0.5
-
-	if pending_loaded_center.x >= 0:
-		center_on_tile(pending_loaded_center)
-		pending_loaded_center = Vector2i(-1, -1)
-
-	_clamp_source_center()
-	_sync_base_layer()
-
-	if preserve_sign_cache:
-		_ensure_sign_entries()
-
-	if not preserve_sign_cache or reset_center or old_center != source_center or old_sign_scans != _sign_cache_build_count or hover_tile.x >= 0 or selection_start.x >= 0:
-		queue_redraw()
-
-	viewport_changed.emit()
+	presentation.set_city_view(value, texture, index_texture, palette_lookup_all, preserve_sign_cache, sign_layout_token)
 
 
 func set_animated_palette(texture: Texture2D) -> void:
-	animated_palette_texture = texture
-	_sync_base_material()
+	signs.set_animated_palette(texture)
 
 
 func set_signs_visible(value: bool) -> void:
-	if signs_visible == value:
-		return
-
-	signs_visible = value
-	queue_redraw()
+	signs.set_signs_visible(value)
 
 
 func set_sign_occlusion_visuals(value: Dictionary) -> void:
-	if sign_occlusion_visuals == value:
-		return
-
-	sign_occlusion_visuals = value.duplicate(true)
-	queue_redraw()
+	signs.set_sign_occlusion_visuals(value)
 
 
 func sign_source_entries() -> Array[Dictionary]:
-	if not signs_visible or city == null:
-		return []
-
-	_ensure_sign_entries()
-	var entries: Array[Dictionary] = []
-
-	for entry in _sign_entries:
-		entries.append({
-			"key": int(entry.key),
-			"bounds": entry.bounds,
-			"draw_order": int(entry.draw_order),
-		})
-
-	return entries
-
-
-func _ensure_sign_entries() -> void:
-	var map_edge: int = city.map_size if city != null else 128
-
-	if _sign_entries_city == city and is_equal_approx(_sign_entries_zoom, zoom_factor):
-		return
-
-	if city == null:
-		_sign_entries.clear()
-		_sign_entries_city = null
-
-		return
-
-	var sign_indices := OverlayData.sign_indices(city.text_overlays)
-	sign_indices.sort()
-	var sign_values := PackedInt32Array()
-
-	for index in sign_indices:
-		sign_values.append(index)
-		sign_values.append(OverlayData.read(city.text_overlays, index))
-
-	var labels := city.document.find_chunk("XLAB")
-	var signature := [map_edge, city.visible_altitude_levels, city.compass_rotation(), hash(city.altitude_words), hash(sign_values), hash(labels.decoded_payload) if labels != null else 0]
-
-	if _sign_layout_signature == signature and is_equal_approx(_sign_entries_zoom, zoom_factor):
-		_sign_entries_city = city
-
-		return
-
-	_sign_layout_signature = signature
-	_sign_entries.clear()
-	_sign_entries_city = city
-	_sign_entries_zoom = zoom_factor
-	_sign_cache_build_count += 1
-	var view_index := sign_view_index(zoom_factor)
-	var divisor := int(Renderer.view_configuration(view_index).divisor)
-	var font := _get_sign_font()
-	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
-	var positions: Array[Vector2i] = []
-
-	for index in sign_indices:
-		var x := int(IntegerMath.div_trunc(index, map_edge))
-		var y := index % map_edge
-		positions.append(Vector2i((x + y) * map_edge + y, index))
-
-	positions.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
-		return a.x < b.x)
-
-	for entry in positions:
-		var x := int(IntegerMath.div_trunc(entry.y, map_edge))
-		var y := entry.y % map_edge
-
-		if not city.tile_is_visible(x, y):
-			continue
-
-		var label_id := city.text_overlay_id(x, y)
-
-		if not OverlayData.is_sign(label_id):
-			continue
-
-		var label_text := city.label(label_id)
-
-		if label_text.is_empty():
-			continue
-
-		var polygon := Renderer.tile_polygon(city, x, y)
-
-		if polygon.size() != 4:
-			continue
-
-		var native_width := roundf(font.get_string_size(
-			label_text, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size
-		).x)
-		var layout := sign_layout(
-			polygon[0] + Vector2(0, -8), native_width * divisor,
-			view_index, divisor,
-		)
-		var bounds: Rect2 = layout.panel.merge(layout.post)
-		_sign_entries.append({
-			"key": city.index_of(x, y),
-			"anchor": polygon[0] + Vector2(0, -8),
-			"label": label_text,
-			"text_width": native_width,
-			"bounds": Rect2i(
-				Vector2i(floori(bounds.position.x), floori(bounds.position.y)),
-				Vector2i(ceili(bounds.size.x), ceili(bounds.size.y)),
-			),
-			"draw_order": (x + y) * map_edge + y,
-		})
-
-
-func _invalidate_sign_entries() -> void:
-	_external_sign_layout_token.clear()
-	_sign_layout_signature.clear()
-	_sign_entries.clear()
-	_sign_entries_city = null
-	_sign_entries_zoom = -1.0
+	return signs.sign_source_entries()
 
 
 func set_edit_enabled(
@@ -545,368 +205,197 @@ func set_edit_enabled(
 	footprint_area := 1,
 	shift_queries := false
 ) -> void:
-	_hide_placement_error()
-	edit_enabled = value
-	selection_mode = mode
-	point_footprint_area = clampi(footprint_area, 1, 7)
-	shift_query_enabled = shift_queries
-	clear_selection_price()
-	mouse_default_cursor_shape = (
-		Control.CURSOR_CROSS if edit_enabled else Control.CURSOR_ARROW
-	)
-
-	if not edit_enabled:
-		selection_start = Vector2i(-1, -1)
-		selection_end = Vector2i(-1, -1)
-		selection_path.clear()
-		hover_tile = Vector2i(-1, -1)
-
-	queue_redraw()
+	selection.set_edit_enabled(value, mode, footprint_area, shift_queries)
 
 
 func zoom_percent() -> int:
-	return roundi(zoom_factor * 100.0)
+	return camera.zoom_percent()
 
 
 func zoom_in(local_point := Vector2.INF) -> bool:
-	return _change_zoom(1, local_point)
+	return camera.zoom_in(local_point)
 
 
 func zoom_out(local_point := Vector2.INF) -> bool:
-	return _change_zoom(-1, local_point)
+	return camera.zoom_out(local_point)
 
 
 func wheel_zoom(
 	direction: int, local_point := Vector2.INF, current_time_msec := -1
 ) -> bool:
-	if direction == 0:
-		return false
-
-	if current_time_msec < 0:
-		current_time_msec = Time.get_ticks_msec()
-
-	if current_time_msec < _next_wheel_zoom_msec:
-		return false
-
-	var changed := _change_zoom(1 if direction > 0 else -1, local_point)
-
-	if changed:
-		_next_wheel_zoom_msec = current_time_msec + WHEEL_ZOOM_DEBOUNCE_MSEC
-
-	return changed
+	return camera.wheel_zoom(direction, local_point, current_time_msec)
 
 
 func can_zoom_in() -> bool:
-	return _zoom_index() < ZOOM_LEVELS.size() - 1
+	return camera.can_zoom_in()
 
 
 func can_zoom_out() -> bool:
-	return _zoom_index() > 0
+	return camera.can_zoom_out()
 
 
 func uses_paint_brush() -> bool:
-	return landscape_brush or demolish_brush
+	return selection.uses_paint_brush()
 
 
 func bulldozer_visible() -> bool:
-	return (
-		demolish_brush and edit_enabled and bulldozer_visual_provider.is_valid()
-		and is_left_drag_active() and not brush_box_selection and hover_tile.x >= 0
-	)
+	return selection.bulldozer_visible()
 
 
 func is_left_drag_active() -> bool:
-	return selection_start.x >= 0
+	return selection.is_left_drag_active()
 
 
 func pan_screen(displacement: Vector2) -> void:
-	if displacement.is_zero_approx():
-		return
-
-	source_center += displacement / _view_scale()
-	_clamp_source_center()
-	_hide_placement_error()
-	var pointer := get_local_mouse_position()
-	hover_tile = _tile_at(pointer) if Rect2(Vector2.ZERO, size).has_point(pointer) else Vector2i(-1, -1)
-	_sync_base_layer()
-	queue_redraw()
-	viewport_changed.emit()
+	camera.pan_screen(displacement)
 
 
 func is_panning() -> bool:
-	return _panning
+	return camera.is_panning()
 
 
 func selection_tiles() -> Array[Vector2i]:
-	return selection_path.duplicate()
+	return selection.selection_tiles()
 
 
 func selection_was_dragged() -> bool:
-	return selection_moved
+	return selection.selection_was_dragged()
 
 
 func set_selection_price(value: int, affordable := true) -> void:
-	var price := maxi(-1, value)
-
-	if price == selection_price and affordable == selection_price_affordable:
-		return
-
-	selection_price = price
-	selection_price_affordable = affordable
-	queue_redraw()
+	selection.set_selection_price(value, affordable)
 
 
 func clear_selection_price() -> void:
-	if selection_price < 0:
-		return
-
-	selection_price = -1
-	selection_price_affordable = true
-	queue_redraw()
+	selection.clear_selection_price()
 
 
 func selection_price_text() -> String:
-	if selection_price < 0:
-		return ""
-
-	return "$%s" % _format_price(selection_price)
+	return selection.selection_price_text()
 
 
 func point_preview_tiles(point: Vector2i) -> Array[Vector2i]:
-	var result: Array[Vector2i] = []
-
-	if city == null or city.index_of(point.x, point.y) < 0:
-		return result
-
-	if landscape_brush:
-		return brush_tiles(point)
-
-	if point_footprint_area == 7:
-		for x in range(-3, 4):
-			for y in range(-3, 4):
-				var tile := point + Vector2i(x + 3, y + 3)
-
-				if x * x + y * y <= 10 and city.index_of(tile.x, tile.y) >= 0:
-					result.append(tile)
-
-		return result
-
-	var site := BuildingTool.footprint(point, point_footprint_area)
-
-	for x in range(site.position.x, site.end.x):
-		for y in range(site.position.y, site.end.y):
-			if city.index_of(x, y) >= 0:
-				result.append(Vector2i(x, y))
-
-	return result
+	return selection.point_preview_tiles(point)
 
 
 func cancel_active_selection() -> bool:
-	if selection_start.x < 0:
-		return false
-
-	_clear_selection()
-	queue_redraw()
-	selection_canceled.emit()
-	selection_finished.emit()
-
-	return true
+	return selection.cancel_active_selection()
 
 
 func center_on_tile(point: Vector2i) -> bool:
-	return center_on_tiles(point, point)
+	return camera.center_on_tile(point)
 
 
-# centers the view midway between two tiles, such as a building's opposite corners
 func center_on_tiles(first: Vector2i, last: Vector2i) -> bool:
-	if city == null or city.index_of(first.x, first.y) < 0 or city.index_of(last.x, last.y) < 0:
-		return false
-
-	var center := Vector2.ZERO
-
-	for point in [first, last]:
-		var polygon := Renderer.tile_polygon(city, point.x, point.y)
-
-		if polygon.size() != 4:
-			return false
-
-		center += (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.125
-
-	source_center = center
-	_clamp_source_center()
-	_sync_base_layer()
-	queue_redraw()
-	viewport_changed.emit()
-
-	return true
+	return camera.center_on_tiles(first, last)
 
 
 func center_tile() -> Vector2i:
-	if city == null:
-		return Vector2i(-1, -1)
-
-	return Renderer.screen_to_tile(city, source_center + Vector2(0, -0.5))
+	return camera.center_tile()
 
 
 func visible_source_rect() -> Rect2:
-	var scale := _view_scale()
-
-	return Rect2(-_draw_offset(scale) / scale, size / scale)
+	return camera.visible_source_rect()
 
 
 func visible_tile_outline() -> PackedVector2Array:
-	var map_edge: int = city.map_size if city != null else 128
-	var result := PackedVector2Array()
-
-	if city == null or city_texture == null:
-		return result
-
-	var half_visible := _camera_rect().size / (_view_scale() * 2.0)
-	var source_points := PackedVector2Array([
-		source_center + Vector2(-half_visible.x, -half_visible.y),
-		source_center + Vector2(half_visible.x, -half_visible.y),
-		source_center + Vector2(half_visible.x, half_visible.y),
-		source_center + Vector2(-half_visible.x, half_visible.y),
-	])
-	var origin_x := Renderer.SIDE_MARGIN + map_edge * Renderer.HALF_WIDTH
-
-	for point in source_points:
-		var difference := (
-			(point.x - origin_x - Renderer.HALF_WIDTH) / float(Renderer.HALF_WIDTH)
-		)
-		var sum := (
-			(point.y - Renderer.TOP_MARGIN - Renderer.HALF_HEIGHT)
-			/ float(Renderer.HALF_HEIGHT)
-		)
-		result.append(Vector2((sum + difference) * 0.5, (sum - difference) * 0.5))
-
-	return result
+	return camera.visible_tile_outline()
 
 
 func scroll_state() -> Dictionary:
-	if city_texture == null:
-		return {}
-
-	var bounds := _camera_source_bounds()
-	var content := bounds.size
-	var visible := _camera_rect().size / _view_scale()
-	var page := Vector2(
-		minf(content.x, visible.x),
-		minf(content.y, visible.y),
-	)
-	var value := source_center - bounds.position - page * 0.5
-
-	for axis in 2:
-		if page[axis] >= content[axis]:
-			value[axis] = 0.0
-		else:
-			value[axis] = clampf(value[axis], 0.0, content[axis] - page[axis])
-
-	return {"content": content, "page": page, "value": value}
+	return camera.scroll_state()
 
 
 func set_scroll_value(axis: int, value: float) -> bool:
-	if axis < 0 or axis > 1:
-		return false
-
-	var state := scroll_state()
-
-	if state.is_empty():
-		return false
-
-	var offset: Vector2 = state.value
-	offset[axis] = value
-	var page: Vector2 = state.page
-	source_center = _camera_source_bounds().position + offset + page * 0.5
-	_clamp_source_center()
-	_sync_base_layer()
-	queue_redraw()
-	viewport_changed.emit()
-
-	return true
+	return camera.set_scroll_value(axis, value)
 
 
 func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void:
-	_effect_generation += 1
-	transient_effects.clear()
-	queue_redraw()
-
-	if effects.is_empty() or not is_inside_tree():
-		return
-
-	var sequence: Array[Dictionary] = []
-	sequence.append_array(effects)
-	var last_frame := 0
-
-	for effect in sequence:
-		last_frame = maxi(last_frame, int(effect.get("frame", 0)))
-
-	_show_transient_effect_frame(
-		sequence, 0, last_frame, maxf(0.0, float(duration)), _effect_generation
-	)
+	presentation.show_transient_effects(effects, duration)
 
 
 func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
-	_shake_generation += 1
-	_shake_offset = Vector2.ZERO
-
-	if frames <= 0 or not is_inside_tree():
-		_sync_base_layer()
-		queue_redraw()
-
-		return
-
-	_show_shake_frame(
-		0,
-		frames,
-		maxf(0.0, float(frame_duration)),
-		maxf(0.0, float(distance)),
-		_shake_generation
-	)
+	presentation.shake_view(frames, frame_duration, distance)
 
 
 func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
-	if dynamic_sprites == sprites:
-		return
-
-	dynamic_sprites = sprites.duplicate(true)
-
-	if _dynamic_canvas != null:
-		_dynamic_canvas.set_visuals(
-			dynamic_sprites, _view_scale(), _draw_offset(_view_scale())
-		)
-	else:
-		queue_redraw()
+	presentation.set_dynamic_sprites(sprites)
 
 
 func dynamic_render_node_count() -> int:
-	return int(_dynamic_canvas != null)
+	return presentation.dynamic_render_node_count()
 
 
 func debug_metrics() -> Dictionary:
-	return {
-		"zoom": "%d%%" % zoom_percent(),
-		"center_tile": str(center_tile()),
-		"panning": _panning,
-		"selection_drag": is_left_drag_active(),
-		"sign_entries": _sign_entries.size(),
-		"sign_scans": _sign_cache_build_count,
-		"dynamic_visuals": (
-			_dynamic_canvas.visual_count() if _dynamic_canvas != null else 0
-		),
-		"dynamic_revisions": (
-			_dynamic_canvas.visual_revision if _dynamic_canvas != null else 0
-		),
-		"transient_effects": transient_effects.size(),
-	}
+	return presentation.debug_metrics()
+
+
+func _draw() -> void:
+	presentation._draw()
+
+
+static func sign_view_index(zoom: float) -> int:
+	return CityMapSigns.sign_view_index(zoom)
+
+
+static func sign_display_multiplier(zoom: float) -> float:
+	return CityMapSigns.sign_display_multiplier(zoom)
+
+
+static func later_sign_occluder_visuals(
+	visuals: Array[Dictionary], bounds: Rect2i, draw_order: int
+) -> Array[Dictionary]:
+	return CityMapSigns.later_sign_occluder_visuals(visuals, bounds, draw_order)
+
+
+static func sign_layout(
+	anchor: Vector2, text_width: float, view_index: int, display_multiplier := 1.0
+) -> Dictionary:
+	return CityMapSigns.sign_layout(anchor, text_width, view_index, display_multiplier)
+
+
+func _gui_input(event: InputEvent) -> void:
+	interaction._gui_input(event)
+
+
+static func _format_price(value: int) -> String:
+	return CityMapSelection._format_price(value)
+
+
+func _input(event: InputEvent) -> void:
+	interaction._input(event)
+
+
+func _get_tooltip(at_position: Vector2) -> String:
+	return selection._get_tooltip(at_position)
+
+
+func _process(delta: float) -> void:
+	interaction._process(delta)
+
+
+func brush_tiles(center: Vector2i) -> Array[Vector2i]:
+	return selection.brush_tiles(center)
+
+
+func show_trip_reach(source: CityState, point: Vector2i) -> Dictionary:
+	return presentation.show_trip_reach(source, point)
+
+
+func clear_trip_reach() -> void:
+	presentation.clear_trip_reach()
+
+
+func show_service_query(source: CityState, point: Vector2i, all_stations := false) -> Dictionary:
+	return presentation.show_service_query(source, point, all_stations)
+
+
+func clear_service_query() -> void:
+	presentation.clear_service_query()
 
 
 func _expire_transient_effects(generation: int) -> void:
-	if generation != _effect_generation:
-		return
-
-	transient_effects.clear()
-	queue_redraw()
+	presentation._expire_transient_effects(generation)
 
 
 func _show_transient_effect_frame(
@@ -916,1121 +405,10 @@ func _show_transient_effect_frame(
 	duration: float,
 	generation: int
 ) -> void:
-	if generation != _effect_generation:
-		return
-
-	transient_effects.clear()
-
-	for effect in effects:
-		if int(effect.get("frame", 0)) == frame:
-			transient_effects.append(effect)
-
-	queue_redraw()
-	var timer := get_tree().create_timer(duration)
-
-	if frame >= last_frame:
-		timer.timeout.connect(_expire_transient_effects.bind(generation))
-	else:
-		timer.timeout.connect(_show_transient_effect_frame.bind(
-			effects, frame + 1, last_frame, duration, generation
-		))
+	presentation._show_transient_effect_frame(effects, frame, last_frame, duration, generation)
 
 
 func _show_shake_frame(
 	frame: int, frames: int, duration: float, distance: float, generation: int
 ) -> void:
-	if generation != _shake_generation:
-		return
-
-	if frame >= frames:
-		_shake_offset = Vector2.ZERO
-		_sync_base_layer()
-		queue_redraw()
-
-		return
-
-	_shake_offset = Vector2(-distance * maxf(1.0, zoom_factor), 0.0) if frame & 1 == 0 else Vector2.ZERO
-	_sync_base_layer()
-	queue_redraw()
-	get_tree().create_timer(duration).timeout.connect(
-		_show_shake_frame.bind(frame + 1, frames, duration, distance, generation)
-	)
-
-
-func _draw() -> void:
-	if city_texture == null:
-		return
-
-	var scale := _view_scale()
-	var offset := _draw_offset(scale)
-
-	if _price_layer != null:
-		_price_layer.queue_redraw()
-
-	if data_view_mesh != null:
-		_draw_data_view(scale, offset)
-
-		if service_query != null:
-			service_query.draw_on(self, scale, offset)
-		if trip_reach != null:
-			trip_reach.draw_on(self, scale, offset, trip_query_underground)
-
-		return
-
-	if _base_layer == null:
-		draw_texture_rect(
-			city_texture,
-			Rect2(offset, Vector2(city_texture.get_size()) * scale),
-			false
-		)
-
-	if _base_layer == null:
-		_draw_dynamic_sprites(scale, offset)
-
-	_draw_transient_effects(scale, offset)
-	_draw_signs(scale, offset)
-
-	for stamp in scurk_stamp_visuals:
-		draw_texture_rect(stamp.texture, Rect2(offset + stamp.position * scale, stamp.texture.get_size() * scale), false)
-
-	if city == null:
-		return
-
-	var valid := not placement_validator.is_valid() or bool(placement_validator.call(selection_end if selection_end.x >= 0 else hover_tile))
-
-	for source_polygon in _selection_source_polygons():
-		var local_polygon := PackedVector2Array()
-
-		for point in source_polygon:
-			local_polygon.append(offset + point * scale)
-
-		draw_colored_polygon(local_polygon, Color(0.3, 0.95, 0.45, 0.28) if valid else Color(1.0, 0.15, 0.12, 0.35))
-		local_polygon.append(local_polygon[0])
-		draw_polyline(local_polygon, Color(0.55, 1.0, 0.65, 0.9) if valid else Color(1.0, 0.25, 0.2, 0.95), 1.0)
-
-	if bulldozer_visible() and bulldozer_visual_provider.is_valid():
-		var visual: Dictionary = bulldozer_visual_provider.call(hover_tile, bulldozer_direction)
-		if not visual.is_empty():
-			draw_texture_rect(
-				visual.texture, Rect2(offset + visual.position * scale, visual.size * scale),
-				false, CityForegroundPalette.INDEXED_DRAW_COLOR
-			)
-
-	if service_query != null:
-		service_query.draw_on(self, scale, offset)
-	if trip_reach != null:
-		trip_reach.draw_on(self, scale, offset, trip_query_underground)
-
-
-func _selection_source_polygons() -> Array[PackedVector2Array]:
-	var tiles: Array[Vector2i]
-
-	if not show_selection_preview or not edit_enabled:
-		return []
-
-	if network_preview_active:
-		if hover_tile.x >= 0:
-			tiles.append(hover_tile)
-	elif query_footprint_preview and _shift_pressed:
-		tiles = _query_footprint_tiles(hover_tile)
-	elif brush_box_selection:
-		tiles = selection_path.duplicate()
-	elif selection_mode == "point":
-		var preview_point := selection_end if selection_end.x >= 0 else hover_tile
-		tiles = point_preview_tiles(preview_point)
-	elif selection_start.x >= 0 and selection_end.x >= 0:
-		tiles = selection_path
-	elif edit_enabled and selection_mode == "path" and hover_tile.x >= 0:
-		tiles = [hover_tile]
-
-	if highway_preview and not network_preview_active:
-		var expanded: Array[Vector2i] = []
-		var seen := {}
-
-		for tile in tiles:
-			var anchor := HighwayTool.snap_anchor(tile)
-
-			for x in range(anchor.x, anchor.x + 2):
-				for y in range(anchor.y, anchor.y + 2):
-					var point := Vector2i(x, y)
-
-					if not seen.has(point) and city.index_of(x, y) >= 0:
-						seen[point] = true
-						expanded.append(point)
-
-		tiles = expanded
-
-	var polygons: Array[PackedVector2Array] = []
-
-	for tile in tiles:
-		var polygon := Renderer.tile_polygon(city, tile.x, tile.y) if terrain_diamond_preview else Renderer.terrain_surface_polygon(city, tile.x, tile.y)
-
-		if polygon.size() == 4:
-			polygons.append(polygon)
-
-	return polygons
-
-
-func _draw_selection_price() -> void:
-	if city == null or selection_price < 0 or selection_start.x < 0:
-		return
-
-	if not data_view_mode.is_empty():
-		return
-
-	var polygon := Renderer.tile_polygon(city, selection_start.x, selection_start.y)
-
-	if polygon.size() != 4:
-		return
-
-	var scale := _view_scale()
-	var anchor := _draw_offset(scale) + (
-		polygon[0] + polygon[1] + polygon[2] + polygon[3]
-	) * 0.25 * scale + Vector2(10, -12)
-	var font := get_theme_default_font()
-	var text := selection_price_text()
-	var color := Color("101010") if selection_price_affordable else Color("c00000")
-
-	for outline in [
-		Vector2(-1, -1), Vector2(0, -1), Vector2(1, -1), Vector2(-1, 0),
-		Vector2(1, 0), Vector2(-1, 1), Vector2(0, 1), Vector2(1, 1),
-	]:
-		_price_layer.draw_string(
-			font, anchor + outline, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
-			Color.WHITE,
-		)
-
-	_price_layer.draw_string(
-		font, anchor, text, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, color
-	)
-
-
-func _draw_transient_effects(scale: float, offset: Vector2) -> void:
-	for effect in transient_effects:
-		var texture: Texture2D = effect.get("texture") as Texture2D
-
-		if texture == null:
-			continue
-
-		var source_position: Vector2 = effect.get("position", Vector2.ZERO)
-		draw_texture_rect(
-			texture,
-			Rect2(offset + source_position * scale, Vector2(texture.get_size()) * scale),
-			false
-		)
-
-
-func _draw_dynamic_sprites(scale: float, offset: Vector2) -> void:
-	for visual in dynamic_sprites:
-		var texture: Texture2D = visual.get("texture") as Texture2D
-
-		if texture == null:
-			continue
-
-		var source_position: Vector2 = visual.get("position", Vector2.ZERO)
-		var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
-		draw_texture_rect(
-			texture,
-			Rect2(offset + source_position * scale, source_size * scale),
-			false
-		)
-
-
-func _draw_signs(scale: float, offset: Vector2) -> void:
-	var map_edge: int = city.map_size if city != null else 128
-
-	if not signs_visible or city == null or city_texture.get_width() <= map_edge:
-		return
-
-	_ensure_sign_entries()
-	var view_index := sign_view_index(zoom_factor)
-	var display_multiplier := sign_display_multiplier(zoom_factor)
-	var font := _get_sign_font()
-	var font_size: int = SIGN_FONT_HEIGHTS[view_index]
-
-	for entry in _sign_entries:
-		if not Rect2(entry.bounds).intersects(visible_source_rect()):
-			continue
-
-		# every native painter moves from the tile's top point by the
-		# equivalent of 16 pixels right and 8 pixels up in large space
-		var anchor := offset + Vector2(entry.anchor) * scale
-		var drawing_anchor := anchor
-
-		if display_multiplier > 1.0:
-			drawing_anchor = Vector2.ZERO
-			draw_set_transform(
-				anchor, 0.0, Vector2(display_multiplier, display_multiplier)
-			)
-
-		var layout := sign_layout(
-			drawing_anchor, float(entry.text_width), view_index
-		)
-		_draw_raised_sign_part(layout.panel, SIGN_PANEL_FILL, 1.0)
-		var text_position := Vector2(
-			layout.panel.position.x + 4.0,
-			layout.panel.position.y + 2.0 + font.get_ascent(font_size),
-		)
-		draw_string(
-			font, text_position, String(entry.label), HORIZONTAL_ALIGNMENT_LEFT, -1,
-			font_size, SIGN_TEXT_COLOR,
-		)
-		_draw_raised_sign_part(layout.post, SIGN_POST_FILL, 1.0)
-
-		if display_multiplier > 1.0:
-			draw_set_transform(Vector2.ZERO, 0.0, Vector2.ONE)
-
-		_draw_sign_occlusion(int(entry.key), scale, offset)
-
-
-func _draw_sign_occlusion(key: int, scale: float, offset: Vector2) -> void:
-	var visual: Dictionary = sign_occlusion_visuals.get(key, {})
-
-	if visual.is_empty():
-		return
-
-	var texture: Texture2D = visual.get("texture") as Texture2D
-
-	if texture == null:
-		return
-
-	var source_position: Vector2 = visual.get("position", Vector2.ZERO)
-	var source_size: Vector2 = visual.get("size", Vector2(texture.get_size()))
-	draw_texture_rect(
-		texture,
-		Rect2(offset + source_position * scale, source_size * scale),
-		false,
-		CityForegroundPalette.INDEXED_DRAW_COLOR if bool(visual.get("indexed", false)) else Color.WHITE,
-	)
-
-
-static func sign_view_index(zoom: float) -> int:
-	if zoom <= 0.25:
-		return Renderer.VIEW_SMALL
-
-	if zoom <= 0.5:
-		return Renderer.VIEW_MEDIUM
-
-	return Renderer.VIEW_LARGE
-
-
-static func sign_display_multiplier(zoom: float) -> float:
-	return maxf(1.0, zoom)
-
-
-static func later_sign_occluder_visuals(
-	visuals: Array[Dictionary], bounds: Rect2i, draw_order: int
-) -> Array[Dictionary]:
-	var result: Array[Dictionary] = []
-
-	for visual in visuals:
-		if bool(visual.get("shadow", false)) or int(visual.get("depth_order", -1)) <= draw_order:
-			continue
-
-		var visual_bounds := Rect2i(
-			Vector2i(visual.get("position", Vector2.ZERO)),
-			Vector2i(visual.get("size", Vector2.ZERO)),
-		)
-
-		if bounds.intersects(visual_bounds):
-			result.append(visual)
-
-	return result
-
-
-static func sign_layout(
-	anchor: Vector2, text_width: float, view_index: int, display_multiplier := 1.0
-) -> Dictionary:
-	if view_index < Renderer.VIEW_SMALL or view_index > Renderer.VIEW_LARGE:
-		return {}
-
-	var multiplier: float = maxf(1.0, display_multiplier)
-	var width: float = roundf(text_width)
-	var font_height: float = float(SIGN_FONT_HEIGHTS[view_index]) * multiplier
-	var panel_bottom: float = (
-		anchor.y - (15.0 * view_index + 20.0) * multiplier
-	)
-	var panel_top: float = panel_bottom - font_height - 5.0 * multiplier
-	var panel_left: float = anchor.x - floorf(width * 0.5) - 8.0 * multiplier
-	var panel_right: float = panel_left + width + 16.0 * multiplier
-
-	return {
-		"panel": Rect2(
-			Vector2(panel_left, panel_top),
-			Vector2(panel_right - panel_left, panel_bottom - panel_top),
-		),
-		"post": Rect2(
-			Vector2(anchor.x - 2.0 * multiplier, panel_bottom),
-			Vector2(4.0 * multiplier, anchor.y - panel_bottom),
-		),
-	}
-
-
-func _get_sign_font() -> Font:
-	if _sign_font == null:
-		_sign_font = SystemFont.new()
-		# the executable asks for "ariel", windows substitutes arial
-		_sign_font.font_names = PackedStringArray(["Arial"])
-		_sign_font.font_weight = 600
-
-	return _sign_font
-
-
-func _draw_raised_sign_part(rect: Rect2, fill: Color, multiplier: float) -> void:
-	var edge := maxf(1.0, multiplier)
-	var left := rect.position.x
-	var top := rect.position.y
-	var right := rect.end.x
-	var bottom := rect.end.y
-	draw_rect(rect, fill)
-	draw_polyline(
-		PackedVector2Array([
-			Vector2(right - 2.0 * edge, top + edge),
-			Vector2(left + edge, top + edge),
-			Vector2(left + edge, bottom - 2.0 * edge),
-		]),
-		SIGN_EDGE_LIGHT, 2.0 * edge, false,
-	)
-	draw_polyline(
-		PackedVector2Array([
-			Vector2(left + edge, bottom - 2.0 * edge),
-			Vector2(right - 2.0 * edge, bottom - 2.0 * edge),
-			Vector2(right - 2.0 * edge, top + edge),
-		]),
-		SIGN_EDGE_DARK, 2.0 * edge, false,
-	)
-	draw_line(
-		Vector2(left, bottom - edge),
-		Vector2(left + edge, bottom - 2.0 * edge),
-		SIGN_EDGE_MIDDLE, edge, false,
-	)
-
-
-func _gui_input(event: InputEvent) -> void:
-	if not data_view_mode.is_empty() and event is InputEventMouseMotion:
-		queue_redraw()
-
-	if city_texture == null:
-		return
-
-	if event is InputEventMouseButton:
-		_handle_mouse_button(event)
-	elif event is InputEventMouseMotion:
-		_handle_mouse_motion(event)
-
-
-func _handle_mouse_button(event: InputEventMouseButton) -> void:
-	if event.button_index == MOUSE_BUTTON_WHEEL_UP and event.pressed:
-		wheel_zoom(1, event.position)
-		accept_event()
-
-		return
-
-	if event.button_index == MOUSE_BUTTON_WHEEL_DOWN and event.pressed:
-		wheel_zoom(-1, event.position)
-		accept_event()
-
-		return
-
-	if event.button_index == MOUSE_BUTTON_RIGHT and event.pressed and cancel_active_selection():
-		_panning = false
-		accept_event()
-
-		return
-
-	if event.button_index == MOUSE_BUTTON_MIDDLE or event.button_index == MOUSE_BUTTON_RIGHT:
-		if event.button_index == MOUSE_BUTTON_MIDDLE:
-			if event.pressed:
-				_middle_click_pending = true
-				_middle_press_position = event.position
-			elif _middle_click_pending:
-				var tile := _tile_at(event.position)
-
-				if tile.x >= 0 and event.position.distance_to(_middle_press_position) <= 4.0:
-					center_requested.emit(tile)
-
-				_middle_click_pending = false
-		else:
-			_middle_click_pending = false
-
-		_panning = event.pressed
-		accept_event()
-
-		return
-
-	if event.button_index != MOUSE_BUTTON_LEFT or not edit_enabled:
-		return
-
-	var tile := _tile_at(event.position)
-	_shift_pressed = event.shift_pressed
-
-	if event.pressed:
-		_shift_pressed = event.shift_pressed
-
-		if shift_query_enabled and not shift_rectangle_enabled and not shift_line_enabled and event.shift_pressed:
-			if tile.x >= 0:
-				hover_tile = tile
-				query_requested.emit(tile)
-
-			accept_event()
-
-			return
-
-		_show_placement_error(event.position)
-
-		if tile.x >= 0:
-			hover_tile = tile
-			_stretch_press_y = event.position.y
-			stretch_height_delta = 0
-			brush_box_selection = uses_paint_brush() and shift_rectangle_enabled and event.shift_pressed
-			selection_start = tile
-			selection_end = tile
-			selection_moved = false
-			_rebuild_selection_path()
-			selection_started.emit()
-			_brush_elapsed = 0.0
-			_last_brush_tile = Vector2i(-1, -1)
-
-			if continuous_placement and not brush_box_selection:
-				_emit_brush_dab(tile, false)
-
-			selection_changed.emit(
-				selection_start, selection_end, selection_path.duplicate(), false
-			)
-			queue_redraw()
-	else:
-		if selection_start.x >= 0:
-			if tile.x >= 0 and tile != selection_end:
-				selection_end = tile
-				selection_moved = true
-				_rebuild_selection_path()
-
-			if stretch_terrain:
-				selection_end = selection_start
-				selection_path.assign([selection_start])
-				stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
-				selection_moved = selection_moved or absf(_stretch_press_y - event.position.y) >= 6.0
-
-			if uses_paint_brush() and not brush_box_selection and tile.x >= 0 and tile != _last_brush_tile:
-				_emit_brush_dab(tile, true)
-
-			if not continuous_placement or brush_box_selection:
-				selection_completed.emit(
-					selection_start,
-					selection_end,
-					selection_path.duplicate(),
-					selection_moved,
-				)
-
-			_clear_selection()
-			queue_redraw()
-			selection_finished.emit()
-
-	accept_event()
-
-
-func _handle_mouse_motion(event: InputEventMouseMotion) -> void:
-	_hide_placement_error()
-
-	if _shift_pressed != event.shift_pressed:
-		_shift_pressed = event.shift_pressed
-		_rebuild_selection_path()
-		queue_redraw()
-
-	if (
-		_panning
-		and (
-			event.button_mask
-			& (MOUSE_BUTTON_MASK_MIDDLE | MOUSE_BUTTON_MASK_RIGHT)
-		) == 0
-	):
-		_panning = false
-		_middle_click_pending = false
-
-	if _panning:
-		if event.position.distance_to(_middle_press_position) > 4.0:
-			_middle_click_pending = false
-
-		source_center -= event.relative / _view_scale()
-		_clamp_source_center()
-		_sync_base_layer()
-		queue_redraw()
-		viewport_changed.emit()
-		accept_event()
-
-		return
-
-	if stretch_terrain and selection_start.x >= 0:
-		stretch_height_delta = roundi((_stretch_press_y - event.position.y) / 12.0)
-		hover_tile = selection_start
-		selection_moved = selection_moved or stretch_height_delta != 0
-		stretch_changed.emit(stretch_height_delta, event.shift_pressed)
-		queue_redraw()
-		accept_event()
-
-		return
-
-	var tile := _tile_at(event.position)
-
-	if tile != hover_tile:
-		hover_tile = tile
-		queue_redraw()
-
-	if edit_enabled and selection_start.x >= 0:
-		if tile.x >= 0 and tile != selection_end:
-			selection_end = tile
-			selection_moved = true
-			_rebuild_selection_path()
-			if uses_paint_brush() and not brush_box_selection:
-				_emit_brush_dab(tile, true)
-			selection_changed.emit(
-				selection_start,
-				selection_end,
-				selection_path.duplicate(),
-				true,
-			)
-			queue_redraw()
-
-		accept_event()
-
-
-func _rebuild_selection_path() -> void:
-	selection_path.clear()
-
-	if selection_start.x < 0 or selection_end.x < 0:
-		return
-
-	if selection_mode == "point" and not brush_box_selection:
-		selection_path.append(selection_end)
-
-		return
-
-	if (selection_mode == "rectangle" and not (shift_line_enabled and _shift_pressed)) or brush_box_selection or (shift_rectangle_enabled and _shift_pressed and not uses_paint_brush()):
-		var minimum := Vector2i(
-			mini(selection_start.x, selection_end.x),
-			mini(selection_start.y, selection_end.y),
-		)
-		var maximum := Vector2i(
-			maxi(selection_start.x, selection_end.x),
-			maxi(selection_start.y, selection_end.y),
-		)
-
-		for x in range(minimum.x, maximum.x + 1):
-			for y in range(minimum.y, maximum.y + 1):
-				selection_path.append(Vector2i(x, y))
-
-		return
-
-	var current := selection_start
-	selection_path.append(current)
-
-	while current != selection_end:
-		var difference := selection_end - current
-
-		if absi(difference.y) < absi(difference.x):
-			current.x += 1 if difference.x > 0 else -1
-		else:
-			current.y += 1 if difference.y > 0 else -1
-
-		selection_path.append(current)
-
-
-func _clear_selection() -> void:
-	brush_box_selection = false
-	selection_start = Vector2i(-1, -1)
-	selection_end = Vector2i(-1, -1)
-	selection_path.clear()
-	_last_brush_tile = Vector2i(-1, -1)
-	selection_moved = false
-	clear_selection_price()
-
-
-static func _format_price(value: int) -> String:
-	var digits := str(absi(value))
-	var formatted := ""
-
-	while digits.length() > 3:
-		formatted = "," + digits.right(3) + formatted
-		digits = digits.left(digits.length() - 3)
-
-	return ("-" if value < 0 else "") + digits + formatted
-
-
-func _clear_hover() -> void:
-	_hide_placement_error()
-
-	if hover_tile.x < 0:
-		return
-
-	hover_tile = Vector2i(-1, -1)
-	queue_redraw()
-
-
-func _tile_at(local_point: Vector2) -> Vector2i:
-	var scale := _view_scale()
-	var source_point := (local_point - _draw_offset(scale)) / scale
-
-	return Renderer.screen_to_tile(city, source_point, data_view_mode == "height")
-
-
-func _change_zoom(direction: int, local_point: Vector2) -> bool:
-	var old_index := _zoom_index()
-	var new_index := clampi(old_index + direction, 0, ZOOM_LEVELS.size() - 1)
-
-	if new_index == old_index:
-		return false
-
-	var anchor := local_point
-
-	if not anchor.is_finite():
-		anchor = _camera_rect().get_center()
-
-	var old_scale := _view_scale()
-	var source_point := source_center
-
-	if old_scale > 0.0:
-		source_point = (anchor - _draw_offset(old_scale)) / old_scale
-
-	zoom_factor = ZOOM_LEVELS[new_index]
-	_invalidate_sign_entries()
-	var new_scale := _view_scale()
-	source_center = source_point + (_camera_rect().get_center() - anchor) / new_scale
-	_clamp_source_center()
-	_sync_base_layer()
-	zoom_changed.emit(zoom_percent())
-
-	if not data_view_mode.is_empty() and hover_tile.x >= 0:
-		hover_tile = _tile_at(get_local_mouse_position())
-
-	queue_redraw()
-	viewport_changed.emit()
-
-	return true
-
-
-func _zoom_index() -> int:
-	var closest := 0
-	var distance := absf(zoom_factor - ZOOM_LEVELS[0])
-
-	for index in range(1, ZOOM_LEVELS.size()):
-		var candidate := absf(zoom_factor - ZOOM_LEVELS[index])
-
-		if candidate < distance:
-			closest = index
-			distance = candidate
-
-	return closest
-
-
-func _view_scale() -> float:
-	return zoom_factor
-
-
-func _camera_rect() -> Rect2:
-	return camera_view_rect if camera_view_rect.has_area() else Rect2(Vector2.ZERO, size)
-
-
-func _draw_offset(scale: float) -> Vector2:
-	return (_camera_rect().get_center() - source_center * scale).round() + _shake_offset
-
-
-func _camera_source_bounds() -> Rect2:
-	# match the existing top margin without enlarging render textures or atlases
-	var side_padding := float(Renderer.TOP_MARGIN - Renderer.SIDE_MARGIN)
-	return Rect2(
-		Vector2(-side_padding, 0),
-		Vector2(city_texture.get_size()) + Vector2(side_padding * 2.0, 0)
-	)
-
-
-func _clamp_source_center() -> void:
-	if city_texture == null:
-		return
-
-	var bounds := _camera_source_bounds()
-	var half_visible := _camera_rect().size / (_view_scale() * 2.0)
-
-	for axis in 2:
-		if half_visible[axis] >= bounds.size[axis] * 0.5:
-			source_center[axis] = bounds.get_center()[axis]
-		else:
-			source_center[axis] = clampf(
-				source_center[axis], bounds.position[axis] + half_visible[axis],
-				bounds.end[axis] - half_visible[axis]
-			)
-
-
-func _on_resized() -> void:
-	_clamp_source_center()
-	_sync_base_layer()
-	queue_redraw()
-	viewport_changed.emit()
-
-
-func _ensure_base_layer() -> void:
-	if _base_layer != null:
-		return
-
-	_base_layer = TextureRect.new()
-	_base_layer.name = "CityBaseLayer"
-	_base_layer.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	_base_layer.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_base_layer.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-	_base_layer.stretch_mode = TextureRect.STRETCH_SCALE
-	_base_layer.show_behind_parent = true
-	_price_layer = Node2D.new()
-	_price_layer.name = "SelectionPriceLayer"
-	_price_layer.z_index = PRICE_LAYER_Z_INDEX
-	_price_layer.draw.connect(_draw_selection_price)
-	add_child(_price_layer)
-	_foreground_palette_material = CityForegroundPalette.create_material(animated_palette_texture)
-	material = _foreground_palette_material
-	_palette_shader = Shader.new()
-	_palette_shader.code = PALETTE_CYCLE_SHADER
-	_base_material = _new_palette_material()
-	_base_layer.material = _base_material
-	add_child(_base_layer)
-	_dynamic_canvas = DynamicSpriteCanvas.new()
-	_dynamic_canvas.name = "DynamicSpriteCanvas"
-	_dynamic_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	_dynamic_canvas.show_behind_parent = true
-	_dynamic_material = _new_palette_material()
-	_dynamic_canvas.material = _dynamic_material
-	add_child(_dynamic_canvas)
-	_dynamic_canvas.set_visuals(
-		dynamic_sprites, _view_scale(), _draw_offset(_view_scale())
-	)
-	_sync_base_layer()
-
-
-func _sync_base_layer() -> void:
-	if not data_view_mode.is_empty():
-		if data_view_layer != null:
-			var data_scale := _view_scale()
-			data_view_layer.position = _draw_offset(data_scale)
-			data_view_layer.scale = Vector2.ONE * data_scale
-			data_view_layer.show()
-
-		if _base_layer != null:
-			_base_layer.hide()
-
-		if _dynamic_canvas != null:
-			_dynamic_canvas.hide()
-
-		return
-
-	if _base_layer == null:
-		return
-
-	if city_texture == null:
-		_base_layer.hide()
-
-		return
-
-	var scale := _view_scale()
-
-	if _tiled_source != city_texture:
-		for tile in _tile_layers:
-			tile.queue_free()
-
-		_tile_layers.clear()
-		var retained_meshes := {}
-
-		for mesh in _mesh_layers:
-			retained_meshes[mesh.get_meta("source_position")] = mesh
-
-		_mesh_layers.clear()
-		_tiled_source = city_texture
-
-		for entry in city_texture.get_meta("map_tiles", []):
-			var tile := TextureRect.new()
-			tile.texture = entry.texture
-			tile.set_meta("source_position", entry.position)
-			tile.set_meta("source_size", entry.get("size", entry.texture.get_size()))
-			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			tile.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
-			tile.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			tile.material = _base_material
-			_base_layer.add_child(tile)
-			_tile_layers.append(tile)
-
-		for entry in city_texture.get_meta("map_meshes", []):
-			var mesh: MeshInstance2D = retained_meshes.get(entry.position)
-
-			if mesh == null:
-				mesh = MeshInstance2D.new()
-				_base_layer.add_child(mesh)
-			else:
-				retained_meshes.erase(entry.position)
-
-				if mesh.mesh == entry.mesh and mesh.texture == entry.texture and int(mesh.get_meta("divisor")) == int(entry.divisor):
-					_mesh_layers.append(mesh)
-					continue
-
-			mesh.position = Vector2(entry.position) * scale
-			mesh.scale = Vector2.ONE * scale * int(entry.divisor)
-
-			if mesh.mesh != entry.mesh:
-				mesh.mesh = entry.mesh
-
-			if mesh.texture != entry.texture:
-				mesh.texture = entry.texture
-
-			mesh.set_meta("source_position", entry.position)
-			mesh.set_meta("divisor", entry.divisor)
-			mesh.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-			mesh.material = _base_material
-			_mesh_layers.append(mesh)
-		for mesh: MeshInstance2D in retained_meshes.values():
-			mesh.hide()
-			mesh.queue_free()
-
-	_base_layer.texture = null if city_texture.has_meta("map_tiles") else city_texture
-
-	for tile in _tile_layers:
-		tile.position = Vector2(tile.get_meta("source_position")) * scale
-		tile.size = Vector2(tile.get_meta("source_size")) * scale
-
-	if not is_equal_approx(_mesh_view_scale, scale):
-		for mesh in _mesh_layers:
-			mesh.position = Vector2(mesh.get_meta("source_position")) * scale
-			mesh.scale = Vector2.ONE * scale * int(mesh.get_meta("divisor"))
-
-		_mesh_view_scale = scale
-
-	_base_layer.position = _draw_offset(scale)
-	_base_layer.size = Vector2(city_texture.get_size()) * scale
-	_base_layer.show()
-	_sync_base_material()
-	_sync_dynamic_canvas()
-
-
-func _sync_base_material() -> void:
-	if _foreground_palette_material != null:
-		_foreground_palette_material.set_shader_parameter("foreground_palette", animated_palette_texture)
-
-	if _base_material == null:
-		return
-
-	_base_material.set_shader_parameter("dark_underground", dark_underground)
-	_base_material.set_shader_parameter("palette_indices", palette_index_texture)
-	_base_material.set_shader_parameter("animated_palette", animated_palette_texture)
-	_base_material.set_shader_parameter(
-		"palette_cycle_enabled",
-		palette_index_texture != null and animated_palette_texture != null,
-	)
-	_base_material.set_shader_parameter("palette_lookup_all", base_palette_lookup_all)
-
-	if _dynamic_material != null:
-		_dynamic_material.set_shader_parameter(
-			"animated_palette", animated_palette_texture
-		)
-		_dynamic_material.set_shader_parameter(
-			"palette_cycle_enabled", animated_palette_texture != null
-		)
-		_dynamic_material.set_shader_parameter("palette_lookup_all", true)
-
-
-func _sync_dynamic_canvas() -> void:
-	if _dynamic_canvas == null:
-		return
-
-	if city_texture == null:
-		_dynamic_canvas.hide()
-
-		return
-
-	var scale := _view_scale()
-	var offset := _draw_offset(scale)
-	_dynamic_canvas.set_view_transform(scale, offset)
-
-
-func _new_palette_material() -> ShaderMaterial:
-	var material := ShaderMaterial.new()
-	material.shader = _palette_shader
-
-	return material
-
-
-func _input(event: InputEvent) -> void:
-	if event is InputEventKey and event.keycode == KEY_SHIFT:
-		_shift_pressed = event.pressed
-
-		if stretch_terrain and selection_start.x >= 0:
-			stretch_changed.emit(stretch_height_delta, event.pressed)
-
-		if (shift_rectangle_enabled or shift_line_enabled) and selection_start.x >= 0:
-			_rebuild_selection_path()
-			selection_changed.emit(selection_start, selection_end, selection_path.duplicate(), selection_moved)
-
-		queue_redraw()
-
-
-func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
-	var map_edge: int = city.map_size if city != null else 128
-	var result: Array[Vector2i] = []
-	var source := query_city if query_city != null else city
-
-	if source == null or source.index_of(point.x, point.y) < 0:
-		return result
-
-	var tile_id := source.building_id(point.x, point.y)
-	var area := DemolishTool._building_area(tile_id)
-	var site := Rect2i(point, Vector2i.ONE)
-
-	if area > 1:
-		var found := DemolishTool._find_building_site(
-			source.buildings, source.zones, point, tile_id, area, source.compass_rotation(), map_edge
-		)
-
-		if found.has_area():
-			site = found
-
-	for x in range(site.position.x, site.end.x):
-		for y in range(site.position.y, site.end.y):
-			result.append(Vector2i(x, y))
-
-	return result
-
-
-func _get_tooltip(at_position: Vector2) -> String:
-	if service_query != null and not is_panning():
-		return service_query.tile_tooltip(_tile_at(at_position))
-	if trip_reach != null and not is_panning():
-		return trip_reach.tile_tooltip(_tile_at(at_position))
-
-	if not edit_enabled or not show_selection_preview or is_panning() or selection_start.x >= 0 or not placement_error_provider.is_valid():
-		return ""
-
-	var tile := _tile_at(at_position)
-
-	if tile.x < 0:
-		return ""
-
-	var reason := String(placement_error_provider.call(tile))
-
-	return "Cannot build here: " + reason if not reason.is_empty() else ""
-
-
-func _show_placement_error(at_position: Vector2) -> void:
-	_hide_placement_error()
-	var message := _get_tooltip(at_position)
-
-	if message.is_empty():
-		return
-
-	if placement_error_popup == null:
-		placement_error_popup = PanelContainer.new()
-		placement_error_popup.name = "PlacementErrorTooltip"
-		placement_error_popup.mouse_filter = Control.MOUSE_FILTER_IGNORE
-		placement_error_popup.theme = AppUiTheme.current()
-		placement_error_popup.theme_type_variation = "TooltipPanel"
-		placement_error_popup.z_index = 100
-		placement_error_label = Label.new()
-		placement_error_label.theme_type_variation = "TooltipLabel"
-		placement_error_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
-
-		placement_error_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-		placement_error_label.custom_minimum_size.x = 300
-		placement_error_popup.add_child(placement_error_label)
-		add_child(placement_error_popup)
-
-	placement_error_label.text = message
-	placement_error_popup.reset_size()
-	placement_error_popup.position = (at_position + Vector2(16, 20)).clamp(
-		Vector2.ZERO, (size - placement_error_popup.size).max(Vector2.ZERO)
-	)
-	placement_error_popup.show()
-
-
-func _hide_placement_error() -> void:
-	if is_instance_valid(placement_error_popup):
-		placement_error_popup.hide()
-
-
-func _process(delta: float) -> void:
-	if not continuous_placement or brush_box_selection or not edit_enabled or selection_start.x < 0:
-		_brush_elapsed = 0.0
-
-		return
-
-	_brush_elapsed += delta
-
-	if _brush_elapsed < (0.1 if uses_paint_brush() else 0.3):
-		return
-
-	_brush_elapsed = 0.0
-
-	if hover_tile.x >= 0:
-		_emit_brush_dab(hover_tile, true)
-
-
-func _emit_brush_dab(tile: Vector2i, dragged: bool) -> void:
-	var points: Array[Vector2i] = [tile]
-	if uses_paint_brush():
-		points.clear()
-		var previous := _last_brush_tile if _last_brush_tile.x >= 0 else tile
-		var movement := tile - previous
-		if movement != Vector2i.ZERO:
-			if absi(movement.x) > absi(movement.y):
-				bulldozer_direction = 1 if movement.x > 0 else 3
-			else:
-				bulldozer_direction = 2 if movement.y > 0 else 0
-		var distance := maxi(absi(movement.x), absi(movement.y))
-		var seen := {}
-		for step in range(distance + 1):
-			var center := Vector2i(Vector2(previous).lerp(Vector2(tile), float(step) / maxf(1.0, distance)).round())
-			for point in (brush_tiles(center) if landscape_brush else [center]):
-				if not seen.has(point):
-					seen[point] = true
-					points.append(point)
-		_last_brush_tile = tile
-	selection_completed.emit(tile, tile, points, dragged)
-
-
-func brush_tiles(center: Vector2i) -> Array[Vector2i]:
-	var points: Array[Vector2i] = []
-	if city == null or center.x < 0:
-		return points
-	var width := clampi(brush_size, 1, 15)
-	var offset := IntegerMath.div_trunc(width - 1, 2)
-	var middle := float(width - 1) * 0.5
-	for x in width:
-		for y in width:
-			if brush_round and Vector2(x - middle, y - middle).length_squared() > pow(float(width) * 0.5, 2.0):
-				continue
-			var point := center + Vector2i(x - offset, y - offset)
-			if city.index_of(point.x, point.y) >= 0:
-				points.append(point)
-	return points
-
-
-func show_trip_reach(source: CityState, point: Vector2i) -> Dictionary:
-	var result := TripReachAnalysis.inspect(source, point)
-	if result.ok:
-		trip_reach = TripReachOverlay.new()
-		trip_reach.rebuild(source, result)
-		queue_redraw()
-	return result
-
-
-func clear_trip_reach() -> void:
-	if trip_reach != null:
-		trip_reach = null
-		queue_redraw()
-
-
-func show_service_query(source: CityState, point: Vector2i, all_stations := false) -> Dictionary:
-	clear_service_query()
-	var result := ServiceQueryAnalysis.inspect(source, point, all_stations)
-	if result.ok:
-		service_query = ServiceQueryOverlay.new()
-		service_query.rebuild(source, result)
-	queue_redraw()
-	return result
-
-
-func clear_service_query() -> void:
-	if service_query != null:
-		service_query = null
-		queue_redraw()
+	presentation._show_shake_frame(frame, frames, duration, distance, generation)

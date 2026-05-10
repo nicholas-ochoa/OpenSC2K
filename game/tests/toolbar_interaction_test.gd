@@ -91,10 +91,10 @@ func _run() -> void:
 	shift.keycode = KEY_SHIFT
 	shift.pressed = true
 	map._input(shift)
-	assert(map.query_footprint_preview and map._selection_source_polygons().size() == 16)
+	assert(map.query_footprint_preview and map.selection._selection_source_polygons().size() == 16)
 	shift.pressed = false
 	map._input(shift)
-	assert(map._selection_source_polygons().size() == 1)
+	assert(map.selection._selection_source_polygons().size() == 1)
 	# Check city and random state after an invalid preview.
 	var before: PackedByteArray = city.document.serialize().data
 	assert(BuildingCommand.preview_valid(city, 3, 2, Vector2i(75, 75)))
@@ -133,9 +133,9 @@ func _run() -> void:
 		map.selection_start = Vector2i(80, 80)
 		map.selection_end = Vector2i(83, 82)
 		map.brush_box_selection = true
-		map._rebuild_selection_path()
+		map.selection._rebuild_selection_path()
 		assert(map.selection_path.size() == 12)
-		map._clear_selection()
+		map.selection._clear_selection()
 
 	map.shift_line_enabled = false
 	# Held brush emits on its cadence and stops after the selection clears.
@@ -154,7 +154,7 @@ func _run() -> void:
 	brush.hover_tile = Vector2i(42, 42)
 	brush._process(0.3)
 	assert(dabs.back() == Vector2i(42, 42) and dabs.size() == 2)
-	brush._clear_selection()
+	brush.selection._clear_selection()
 	brush._process(1.0)
 	assert(dabs.size() == 2)
 	brush.free()
@@ -164,7 +164,7 @@ func _run() -> void:
 	map.shift_rectangle_enabled = true
 	map.selection_start = Vector2i(80, 80)
 	map.selection_end = Vector2i(83, 82)
-	map._rebuild_selection_path()
+	map.selection._rebuild_selection_path()
 	assert(map.selection_path.size() == 6)
 	shift.pressed = true
 	map._input(shift)
@@ -172,7 +172,7 @@ func _run() -> void:
 	shift.pressed = false
 	map._input(shift)
 	assert(map.selection_path.size() == 6)
-	map._clear_selection()
+	map.selection._clear_selection()
 	# Dual underground cells can display either or both networks without edits.
 	city.set_underground_id(90, 90, 0x1f)
 	var pipe_only := CityUndergroundView.tile_sprite_ids(city, 90, 90, 2, true, false)
@@ -235,7 +235,7 @@ func _test_network_drag_price(main: Node, map: CityMapControl, city: CityState) 
 	assert(planned.ok and int(planned.cost) > 0)
 	map.selection_start = start
 	map.selection_end = finish
-	map._rebuild_selection_path()
+	map.selection._rebuild_selection_path()
 	map.selection_changed.emit(start, finish, map.selection_tiles(), true)
 	assert(map.selection_price < 0, "The route price waits for the planned command")
 	var deadline := Time.get_ticks_msec() + 5000
@@ -249,7 +249,7 @@ func _test_network_drag_price(main: Node, map: CityMapControl, city: CityState) 
 		"A road drag shows its planned price anchored at the start tile",
 	)
 	assert(map.selection_price_affordable)
-	map._clear_selection()
+	map.selection._clear_selection()
 	main.current_tool.call("_update_network_preview")
 	assert(map.selection_price < 0, "Ending the drag removes the route price")
 

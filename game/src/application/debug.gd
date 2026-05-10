@@ -214,6 +214,6 @@ func _debug_set_visible_altitude_levels(levels: int) -> void:
 	if app.map_view.city != null:
 		app.map_view.city.visible_altitude_levels = levels
 
-	app.map_view._invalidate_sign_entries()
+	app.map_view.signs._invalidate_sign_entries()
 	app.menus._invalidate_view_render()
 	app.map_render._refresh_map(false)

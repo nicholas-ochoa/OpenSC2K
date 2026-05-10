@@ -31,14 +31,14 @@ func _run() -> void:
 					main.map_view.selection_end = point
 					main.camera_input._on_map_selection_started()
 					main.map_view._last_brush_tile = Vector2i(-1, -1)
-					main.map_view._emit_brush_dab(point, false)
-					main.map_view._emit_brush_dab(point + Vector2i(18, 0), true)
+					main.map_view.selection._emit_brush_dab(point, false)
+					main.map_view.selection._emit_brush_dab(point + Vector2i(18, 0), true)
 					assert(main.last_edit_command.ok)
 					assert(main.city.funds() == 20000)
 					if tool != 3:
 						for x in range(point.x, point.x + 19):
 							assert(main.city.is_water(x, point.y) if tool == 1 else main.city.building_id(x, point.y) in range(6, 13))
-					main.map_view._clear_selection()
+					main.map_view.selection._clear_selection()
 					assert(LandscapeCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
 					assert(DocumentState.capture(main.current_document) == before)
 					assert(main.tool_random.state == rng)
@@ -78,15 +78,15 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 		main.map_view.selection_end = point
 		main.camera_input._on_map_selection_started()
 		main.map_view._last_brush_tile = Vector2i(-1, -1)
-		main.map_view._emit_brush_dab(point, false)
-		main.map_view._emit_brush_dab(point + Vector2i(18, 0), true)
+		main.map_view.selection._emit_brush_dab(point, false)
+		main.map_view.selection._emit_brush_dab(point + Vector2i(18, 0), true)
 		assert(main.last_edit_command.ok and main.last_edit_command.command_type == "terrain")
 		assert(main.city.funds() == funds if editor else main.city.funds() < funds)
 		var rows := [-1, 0, 1] if editor else [0]
 		for x in range(point.x, point.x + 19):
 			for dy in rows:
 				assert(main.city.land_altitude(x, point.y + dy) == target)
-		main.map_view._clear_selection()
+		main.map_view.selection._clear_selection()
 		assert(TerrainCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
 		assert(DocumentState.capture(main.current_document) == before)
 		assert(main.tool_random.state == rng)

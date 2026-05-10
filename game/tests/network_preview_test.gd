@@ -66,7 +66,7 @@ func _run() -> void:
 	map.selection_end = Vector2i(70, 60)
 	map.selection_mode = "path"
 	map.highway_preview = true
-	assert(map._selection_source_polygons().size() == 1, "Keep only the current hover tile highlighted, including highways")
+	assert(map.selection._selection_source_polygons().size() == 1, "Keep only the current hover tile highlighted, including highways")
 	controller._process(0.0)
 	var session := controller.generation
 	controller.request(rejected, 6, 0, Vector2i(60, 60), Vector2i(71, 60), 2, palette, sprites, false)

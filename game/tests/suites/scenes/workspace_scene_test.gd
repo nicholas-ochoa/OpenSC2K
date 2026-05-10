@@ -53,23 +53,23 @@ func _check_camera_bounds(workspace: CityWorkspace, host: Control) -> void:
 		for zoom: float in CityMapControl.ZOOM_LEVELS:
 			map.zoom_factor = zoom
 			map.source_center = Vector2(-100000, -100000)
-			map._clamp_source_center()
+			map.camera._clamp_source_center()
 			var side_padding := float(CityIsometricRenderer.TOP_MARGIN - CityIsometricRenderer.SIDE_MARGIN)
-			var first_pixel := map._draw_offset(zoom) - Vector2(side_padding * zoom, 0)
+			var first_pixel := map.camera._draw_offset(zoom) - Vector2(side_padding * zoom, 0)
 			assert(first_pixel.x >= camera_rect.position.x - 0.5, "Left map edge is behind the sidebar")
 			assert(first_pixel.y >= camera_rect.position.y - 0.5, "Top map edge is behind the menu")
 			map.source_center = Vector2(100000, 100000)
-			map._clamp_source_center()
-			var last_pixel := map._draw_offset(zoom) + (texture.size + Vector2(side_padding, 0)) * zoom
+			map.camera._clamp_source_center()
+			var last_pixel := map.camera._draw_offset(zoom) + (texture.size + Vector2(side_padding, 0)) * zoom
 			assert(last_pixel.x <= camera_rect.end.x + 0.5)
 			assert(last_pixel.y <= camera_rect.end.y + 0.5)
 
 		map.zoom_factor = 1.0
 		map.source_center = texture.size * 0.5
 		var anchor := camera_rect.get_center() + Vector2(80, 40)
-		var source_anchor := (anchor - map._draw_offset(1.0))
+		var source_anchor := (anchor - map.camera._draw_offset(1.0))
 		assert(map.zoom_in(anchor))
-		assert(((anchor - map._draw_offset(map.zoom_factor)) / map.zoom_factor).distance_to(source_anchor) <= 0.5)
+		assert(((anchor - map.camera._draw_offset(map.zoom_factor)) / map.zoom_factor).distance_to(source_anchor) <= 0.5)
 		var center := map.source_center
 		assert(map.zoom_out(Vector2.INF))
 		assert(map.source_center.distance_to(center) <= 0.5, "Toolbar zoom moved the visible center")
@@ -81,6 +81,6 @@ func _check_camera_bounds(workspace: CityWorkspace, host: Control) -> void:
 		assert(map.visible_source_rect().size == map.size)
 
 	workspace.set_editor_controls_visible(false)
-	assert(map._camera_rect() == Rect2(Vector2.ZERO, map.size))
+	assert(map.camera._camera_rect() == Rect2(Vector2.ZERO, map.size))
 	workspace.set_editor_controls_visible(true)
-	assert(map._camera_rect() == map.camera_view_rect and map.camera_view_rect.has_area())
+	assert(map.camera._camera_rect() == map.camera_view_rect and map.camera_view_rect.has_area())

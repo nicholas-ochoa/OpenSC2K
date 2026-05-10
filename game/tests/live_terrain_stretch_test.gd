@@ -76,7 +76,7 @@ func _motion(offset: float, shift: bool) -> void:
 	event.position = Vector2(200, 200 + offset)
 	event.button_mask = MOUSE_BUTTON_MASK_LEFT
 	event.shift_pressed = shift
-	main.map_view._handle_mouse_motion(event)
+	main.map_view.interaction._handle_mouse_motion(event)
 
 
 func _release(offset: float, shift: bool) -> void:
@@ -85,7 +85,7 @@ func _release(offset: float, shift: bool) -> void:
 	event.button_index = MOUSE_BUTTON_LEFT
 	event.pressed = false
 	event.shift_pressed = shift
-	main.map_view._handle_mouse_button(event)
+	main.map_view.interaction._handle_mouse_button(event)
 
 
 func _wait_for_render() -> void:

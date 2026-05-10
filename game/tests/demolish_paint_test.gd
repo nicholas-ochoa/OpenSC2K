@@ -12,9 +12,9 @@ func _position(map: CityMapControl, tile: Vector2i) -> Vector2:
 	for point in polygon:
 		center += point
 	center /= float(polygon.size())
-	var scale := map._view_scale()
-	var result := center * scale + map._draw_offset(scale)
-	assert(map._tile_at(result) == tile, "Picked %s instead of %s" % [map._tile_at(result), tile])
+	var scale := map.camera._view_scale()
+	var result := center * scale + map.camera._draw_offset(scale)
+	assert(map.camera._tile_at(result) == tile, "Picked %s instead of %s" % [map.camera._tile_at(result), tile])
 	return result
 
 
@@ -24,7 +24,7 @@ func _button(map: CityMapControl, tile: Vector2i, pressed: bool, shift := false)
 	event.position = _position(map, tile)
 	event.pressed = pressed
 	event.shift_pressed = shift
-	map._handle_mouse_button(event)
+	map.interaction._handle_mouse_button(event)
 
 
 func _motion(map: CityMapControl, tile: Vector2i, shift := false) -> void:
@@ -32,7 +32,7 @@ func _motion(map: CityMapControl, tile: Vector2i, shift := false) -> void:
 	event.position = _position(map, tile)
 	event.button_mask = MOUSE_BUTTON_MASK_LEFT
 	event.shift_pressed = shift
-	map._handle_mouse_motion(event)
+	map.interaction._handle_mouse_motion(event)
 
 
 func _run() -> void:
