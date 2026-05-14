@@ -82,18 +82,14 @@ static func success_events(group_index: int, subtool_index: int) -> Array[int]:
 
 
 static func zone_success_events(zone_type: int) -> Array[int]:
-	if zone_type >= 1 and zone_type <= 9:
-		return [SOUND_ZONE]
-	return []
+	return [SOUND_ZONE] if zone_type >= 1 and zone_type <= 9 else []
 
 
 static func failure_events(
 	group_index: int, subtool_index: int, error: String = ""
 ) -> Array[int]:
 	if group_index == 1:
-		if error == "insufficient funds":
-			return [SOUND_ERROR]
-		return []
+		return [SOUND_ERROR] if error == "insufficient funds" else []
 
 	if group_index < 3 or group_index > 14:
 		return []
