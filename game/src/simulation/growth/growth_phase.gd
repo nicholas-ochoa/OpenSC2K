@@ -1214,57 +1214,15 @@ static func _replace_building(
 	index: int,
 	new_tile: int
 ) -> void:
-	var old_tile := int(buildings[index])
-
-	if old_tile == new_tile:
-		return
-
-	if (zones[index] & 0x0f) != 7:
-		var old_offset := MISC_TILE_COUNTS + old_tile * 4
-		var new_offset := MISC_TILE_COUNTS + new_tile * 4
-		_write_u32(misc, old_offset, (_read_u32(misc, old_offset) - 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
-		_write_u32(misc, new_offset, (_read_u32(misc, new_offset) + 1) & (0xffff if buildings.size() == 16384 else 0xffffffff))
-
-	buildings[index] = new_tile
+	GrowthState._replace_building(buildings, zones, misc, index, new_tile)
 
 
 static func _payloads(city: CityState) -> Dictionary:
-	var map_edge: int = city.map_size if city != null else 128
-	var result := {}
-
-	for checked in [
-		["ALTM", (map_edge * map_edge) * 2],
-		["XTER", (map_edge * map_edge)],
-		["XBLD", (map_edge * map_edge)],
-		["XZON", (map_edge * map_edge)],
-		["XUND", (map_edge * map_edge)],
-		["XTXT", (map_edge * map_edge)],
-		["XMIC", CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE],
-		["XTHG", city.document.decoded_size("XTHG")],
-		["XBIT", (map_edge * map_edge)],
-		["XTRF", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
-		["XPLT", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
-		["XVAL", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
-		["XCRM", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
-		["MISC", MISC_SIZE],
-	]:
-		var chunk := city.document.find_chunk(checked[0])
-
-		if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size(str(checked[0])):
-			return {}
-
-		result[checked[0]] = chunk.decoded_payload.duplicate()
-
-	return result
+	return GrowthState._payloads(city)
 
 
 static func _duplicate_payloads(payloads: Dictionary) -> Dictionary:
-	var result := {}
-
-	for chunk_id in payloads:
-		result[chunk_id] = payloads[chunk_id].duplicate()
-
-	return result
+	return GrowthState._duplicate_payloads(payloads)
 
 
 static func _apply_payloads(
@@ -1273,81 +1231,32 @@ static func _apply_payloads(
 	payloads: Dictionary,
 	rollback: Dictionary
 ) -> bool:
-	var applied := PackedStringArray()
-
-	for chunk_id in chunk_ids:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
-
-		var chunk := city.document.find_chunk(chunk_id)
-
-		if chunk == null or not chunk.set_decoded_payload(payloads[chunk_id]):
-			for rollback_id in applied:
-				city.document.find_chunk(rollback_id).set_decoded_payload(rollback[rollback_id])
-
-			_refresh_city(city)
-
-			return false
-
-		applied.append(chunk_id)
-
-	_refresh_city(city)
-
-	return true
+	return GrowthState._apply_payloads(city, chunk_ids, payloads, rollback)
 
 
 static func _refresh_city(city: CityState) -> void:
-	var map_edge: int = city.map_size if city != null else 128
-	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-
-	for index in (map_edge * map_edge):
-		if city.simulation_slice != null and (index & 127) == 0:
-			city.simulation_slice.checkpoint()
-
-		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
-
-	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
-	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
-	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
-	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
-	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
-	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
+	GrowthState._refresh_city(city)
 
 
 static func _sync_altitudes(altitude: PackedByteArray, altitudes: PackedInt32Array, map_edge: int = 128) -> void:
-	for index in (map_edge * map_edge):
-		altitudes[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
+	GrowthState._sync_altitudes(altitude, altitudes, map_edge)
 
 
 static func _index(point: Vector2i, map_edge: int = 128) -> int:
-	if point.x < 0 or point.x >= map_edge or point.y < 0 or point.y >= map_edge:
-		return -1
-
-	return point.x * map_edge + point.y
+	return GrowthState._index(point, map_edge)
 
 
 static func _add_i32(data: PackedByteArray, offset: int, value: int) -> void:
-	_write_u32(data, offset, _read_i32(data, offset) + value)
+	GrowthState._add_i32(data, offset, value)
 
 
 static func _read_i32(data: PackedByteArray, offset: int) -> int:
-	var value := _read_u32(data, offset)
-
-	return value - 0x100000000 if value & 0x80000000 else value
+	return GrowthState._read_i32(data, offset)
 
 
 static func _read_u32(data: PackedByteArray, offset: int) -> int:
-	return (
-		(data[offset] << 24)
-		| (data[offset + 1] << 16)
-		| (data[offset + 2] << 8)
-		| data[offset + 3]
-	)
+	return GrowthState._read_u32(data, offset)
 
 
 static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
-	var encoded := value & 0xffffffff
-	data[offset] = (encoded >> 24) & 0xff
-	data[offset + 1] = (encoded >> 16) & 0xff
-	data[offset + 2] = (encoded >> 8) & 0xff
-	data[offset + 3] = encoded & 0xff
+	GrowthState._write_u32(data, offset, value)
