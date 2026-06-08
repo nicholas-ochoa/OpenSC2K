@@ -966,69 +966,7 @@ static func _abandon(
 	land_value: PackedByteArray,
 	map_edge: int = 128,
 ) -> void:
-	match density:
-		1:
-			_place_zone(
-				buildings, zones, flags, misc, land_value, point,
-				1, CLASS_ABANDONED, random, rotation, map_edge
-			)
-		2:
-			if pattern == 0:
-				_place_zone(
-					buildings, zones, flags, misc, land_value, point,
-					2, CLASS_ABANDONED, random, rotation, map_edge
-				)
-			else:
-				for abandoned_point in [
-					point,
-					point + Vector2i(1, 0),
-					point + Vector2i(1, -1),
-					point + Vector2i(0, -1),
-				]:
-					_place_zone(
-						buildings, zones, flags, misc, land_value, abandoned_point,
-						1, CLASS_ABANDONED, random, rotation, map_edge
-					)
-		3:
-			_place_zone(
-				buildings, zones, flags, misc, land_value, point,
-				3 if pattern == 0 else 2, CLASS_ABANDONED, random, rotation, map_edge
-			)
-		4:
-			if pattern == 0:
-				_place_zone(
-					buildings, zones, flags, misc, land_value, point,
-					4, CLASS_ABANDONED, random, rotation, map_edge
-				)
-			else:
-				for abandoned_point in [
-					point,
-					point + Vector2i(1, 0),
-					point + Vector2i(2, 0),
-					point + Vector2i(2, -1),
-					point + Vector2i(2, -2),
-					point + Vector2i(1, -2),
-					point + Vector2i(0, -2),
-					point + Vector2i(0, -1),
-				]:
-					_place_zone(
-						buildings, zones, flags, misc, land_value, abandoned_point,
-						1, CLASS_ABANDONED, random, rotation, map_edge
-					)
-
-				var selection: int = random.next_u15() & 3
-				_place_zone(
-					buildings,
-					zones,
-					flags,
-					misc,
-					land_value,
-					point + Vector2i(selection & 1, -int(IntegerMath.div_trunc(selection, 2))),
-					3,
-					CLASS_ABANDONED,
-					random,
-					rotation, map_edge,
-				)
+	GrowthDevelopment._abandon(buildings, zones, flags, misc, point, density, pattern, random, rotation, land_value, map_edge)
 
 
 static func _place_zone(
@@ -1044,51 +982,9 @@ static func _place_zone(
 	rotation: int,
 	map_edge: int = 128,
 ) -> bool:
-	var tile: int
-
-	if density == 1 and building_class == CLASS_RESIDENTIAL:
-		var value_index := CityDataGrid.index(land_value, map_edge, anchor.x, anchor.y)
-		var value_group := mini(int(land_value[value_index]) >> 6, 2)
-		tile = BUILDING_BASE[1] + value_group * 4 + (random.next_u15() & 3)
-	else:
-		var table_index := density + building_class * 4
-		var tile_range: int = BUILDING_RANGE[table_index]
-		tile = BUILDING_BASE[table_index] + random.next_u15() % tile_range
-
-	if density == 1:
-		var index := _index(anchor, map_edge)
-
-		if index < 0:
-			return false
-
-		_replace_building(buildings, zones, misc, index, tile)
-		zones[index] |= 0xf0
-		flags[index] |= 0xe0
-
-		return true
-
-	var radius := int(IntegerMath.div_trunc(density, 2))
-
-	if (
-		anchor.x <= 1
-		or anchor.y <= 1
-		or anchor.x > map_edge - 2 - radius
-		or anchor.y > map_edge - 2 - radius
-	):
-		return false
-
-	var site_position := Vector2i(anchor.x, anchor.y - radius)
-
-	for x in range(site_position.x, site_position.x + radius + 1):
-		for y in range(site_position.y, site_position.y + radius + 1):
-			var index := x * map_edge + y
-			_replace_building(buildings, zones, misc, index, tile)
-			zones[index] &= 0x0f
-			flags[index] |= 0xe0
-
-	_set_corners(zones, site_position, radius + 1, rotation, map_edge)
-
-	return true
+	return GrowthDevelopment._place_zone(
+		buildings, zones, flags, misc, land_value, anchor, density, building_class, random, rotation, map_edge
+	)
 
 
 static func _place_church(
@@ -1100,21 +996,7 @@ static func _place_church(
 	rotation: int,
 	map_edge: int = 128,
 ) -> bool:
-	if anchor.x <= 0 or anchor.y <= 0 or anchor.x >= (map_edge - 1) or anchor.y >= (map_edge - 1):
-		return false
-
-	var position := Vector2i(anchor.x, anchor.y - 1)
-
-	for x in range(position.x, position.x + 2):
-		for y in range(position.y, position.y + 2):
-			var index := x * map_edge + y
-			_replace_building(buildings, zones, misc, index, CHURCH_TILE)
-			zones[index] = 0
-			flags[index] |= 0xe0
-
-	_set_corners(zones, position, 2, rotation, map_edge)
-
-	return true
+	return GrowthDevelopment._place_church(buildings, zones, flags, misc, anchor, rotation, map_edge)
 
 
 # The zone and building corner flags share one byte.
@@ -1122,89 +1004,19 @@ static func _set_corners(
 	zones: PackedByteArray, position: Vector2i, area: int, rotation: int,
 	map_edge: int = 128,
 ) -> void:
-	var far := position + Vector2i(area - 1, area - 1)
-	var view := rotation & 3
-	var bottom_left := position.x * map_edge + position.y
-	var bottom_right := far.x * map_edge + position.y
-	var top_left := far.x * map_edge + far.y
-	var top_right := position.x * map_edge + far.y
-	zones[bottom_left] = (zones[bottom_left] & 0x0f) | CORNER_BOTTOM_LEFT[view]
-	zones[bottom_right] = (zones[bottom_right] & 0x0f) | CORNER_BOTTOM_RIGHT[view]
-	zones[top_left] = (zones[top_left] & 0x0f) | CORNER_TOP_LEFT[view]
-	zones[top_right] = (zones[top_right] & 0x0f) | CORNER_TOP_RIGHT[view]
+	GrowthDevelopment._set_corners(zones, position, area, rotation, map_edge)
 
 
 static func _has_power(flags: PackedByteArray, x: int, y: int, map_edge: int = 128) -> bool:
-	var index := x * map_edge + y
-
-	if flags[index] & 0x40:
-		return true
-
-	if x > 1 and flags[(x - 1) * map_edge + y] & 0x40:
-		return true
-
-	if y > 1 and flags[x * map_edge + y - 1] & 0x40:
-		return true
-
-	if x < (map_edge - 1) and flags[(x + 1) * map_edge + y] & 0x40:
-		return true
-
-	return y < (map_edge - 1) and (flags[x * map_edge + y + 1] & 0x40) != 0
+	return GrowthDevelopment._has_power(flags, x, y, map_edge)
 
 
 static func _density(tile: int) -> int:
-	if tile <= 0x8b:
-		return 1
-
-	if tile <= 0x8f:
-		return 2
-
-	if tile <= 0x93:
-		return 3
-
-	if tile <= 0x98:
-		return 2
-
-	if tile <= 0x9d:
-		return 3
-
-	if tile <= 0xa1:
-		return 2
-
-	if tile <= 0xa5:
-		return 3
-
-	if tile <= 0xa7:
-		return 2
-
-	if tile <= 0xa9:
-		return 3
-
-	if tile <= 0xab:
-		return 2
-
-	if tile <= 0xad:
-		return 3
-
-	return 4
+	return GrowthDevelopment._density(tile)
 
 
 static func _status(tile: int) -> int:
-	if (
-		(tile >= 0x88 and tile <= 0x89)
-		or (tile >= 0xa6 and tile <= 0xa9)
-		or (tile >= 0xc2 and tile <= 0xc3)
-	):
-		return STATUS_CONSTRUCTION
-
-	if (
-		(tile >= 0x8a and tile <= 0x8b)
-		or (tile >= 0xaa and tile <= 0xad)
-		or (tile >= 0xc4 and tile <= 0xc5)
-	):
-		return STATUS_ABANDONED
-
-	return STATUS_NORMAL
+	return GrowthDevelopment._status(tile)
 
 
 static func _replace_building(
