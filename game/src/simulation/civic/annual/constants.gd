@@ -1,0 +1,68 @@
+class_name MicrosimAnnualConstants
+extends RefCounted
+
+const MISC_SIZE := 4800
+const MISC_CITY_CRIME := 0x002c
+const MISC_RAW_POPULATION := 0x007c
+const MISC_DEMOGRAPHIC_RECORD_SIZE := 0x000c
+const MISC_FUNDS := 0x0014
+const MISC_TILE_COUNTS := 0x01f0
+const MISC_BUDGETS := 0x077c
+const MISC_AUTO_GOTO := 0x0ff4
+const MISC_NO_DISASTERS := 0x1000
+const MISC_ARCOLOGY_POPULATION := 0x1020
+const MISC_NORMAL_POPULATION := 0x102c
+const MISC_OLD_ARRESTS := 0x1038
+const MISC_PRISON_BONUS := 0x103c
+const BUDGET_RECORD_SIZE := 0x006c
+const BUDGET_FUNDING := 0x04
+const BUDGET_POLICE := 5
+const BUDGET_FIRE := 6
+const BUDGET_HEALTH := 7
+const BUDGET_SCHOOL := 8
+const BUDGET_COLLEGE := 9
+const POWER_PLANT_COSTS := {
+	0xc9: 2000,
+	0xca: 6600,
+	0xcb: 15000,
+	0xcc: 1300,
+	0xcd: 28000,
+	0xce: 40000,
+	0xcf: 4000,
+}
+
+const TILE_SMALL_PARK := 0x0d
+const TILE_HYDRO_ONE := 0xc6
+const TILE_HYDRO_TWO := 0xc7
+const TILE_WIND_POWER := 0xc8
+const TILE_POWER_FIRST := 0xc9
+const TILE_POWER_LAST := 0xcf
+const TILE_CITY_HALL := 0xd0
+const TILE_HOSPITAL := 0xd1
+const TILE_POLICE_STATION := 0xd2
+const TILE_FIRE_STATION := 0xd3
+const TILE_MUSEUM := 0xd4
+const TILE_BIG_PARK := 0xd5
+const TILE_SCHOOL := 0xd6
+const TILE_STADIUM := 0xd7
+const TILE_PRISON := 0xd8
+const TILE_COLLEGE := 0xd9
+const TILE_ZOO := 0xda
+const TILE_STATUE := 0xdb
+const TILE_SUBWAY_STATION := 0xe9
+const TILE_BUS_DEPOT := 0xec
+const TILE_RAIL_STATION := 0xed
+const TILE_MAYOR_HOUSE := 0xf3
+const TILE_WATER_TREATMENT := 0xf4
+const TILE_LIBRARY := 0xf5
+const TILE_MARINA := 0xf8
+const TILE_DESALINIZATION := 0xfa
+const TILE_ARCOLOGY_FIRST := 0xfb
+const TILE_ARCOLOGY_LAST := 0xfe
+const TILE_LAUNCH_ARCOLOGY := 0xfe
+const TILE_LLAMADOME := 0xff
+const NEWS_POWER_PLANT := 0x24
+const NEWS_EDUCATION := 0x26
+const NEWS_ARCOLOGY_LAUNCH_START := 0x211
+const NEWS_ARCOLOGY_LAUNCH_END := 0x212
+const SOUND_EXPLOSION := 504
