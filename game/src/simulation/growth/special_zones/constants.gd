@@ -1,0 +1,35 @@
+class_name SpecialZoneConstants
+extends RefCounted
+
+const MovingThings = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
+const MISC_TILE_COUNTS := 0x01f0
+const MISC_MILITARY_BASE_TYPE := 0x0e4c
+const MISC_MILITARY_TILE_COUNTS := 0x0fa8
+const MISC_SUBWAY_COUNT := 0x0fe8
+const SOUND_SHIP := 517
+const CORNER_BOTTOM_LEFT := [0x10, 0x20, 0x40, 0x80]
+const CORNER_BOTTOM_RIGHT := [0x20, 0x40, 0x80, 0x10]
+const CORNER_TOP_LEFT := [0x40, 0x80, 0x10, 0x20]
+const CORNER_TOP_RIGHT := [0x80, 0x10, 0x20, 0x40]
+const SPECIAL_SIMPLE_TILES := [0xe1, 0xe2, 0xe3, 0xe4, 0xe5, 0xe6, 0xe7, 0xe8, 0xea]
+const SPECIAL_TWO_BY_TWO_TILES := [0xee, 0xef, 0xf0, 0xf1, 0xf2, 0xf6]
+const CARDINAL_DIRECTIONS := [
+	Vector2i(0, 1), Vector2i(1, 0), Vector2i(0, -1), Vector2i(-1, 0),
+]
+const MILITARY_TILE_COUNT_INDEX := {
+	0xdd: 1,
+	0xde: 2,
+	0xef: 3,
+	0xf2: 4,
+	0xea: 5,
+	0xe3: 6,
+	0xe4: 7,
+	0xe5: 8,
+	0xf1: 9,
+	0xe0: 10,
+	0xe2: 11,
+	0xe7: 12,
+	0xe8: 13,
+	0xf6: 14,
+	0xf9: 15,
+}
