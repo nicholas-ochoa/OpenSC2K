@@ -138,20 +138,7 @@ func terrain_id(x: int, y: int) -> int:
 
 
 func set_terrain_id(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0xff:
-		return false
-
-	var changed := terrain.duplicate()
-
-	if not _set_byte_at(changed, x, y, value):
-		return false
-
-	if not document.find_chunk("XTER").set_decoded_payload(changed):
-		return false
-
-	terrain = changed
-
-	return true
+	return CityTileEdits.set_terrain_id(self, x, y, value)
 
 
 func building_id(x: int, y: int) -> int:
@@ -159,34 +146,11 @@ func building_id(x: int, y: int) -> int:
 
 
 func set_building_id(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0xff:
-		return false
-
-	var changed := buildings.duplicate()
-
-	if not _set_byte_at(changed, x, y, value):
-		return false
-
-	if not document.find_chunk("XBLD").set_decoded_payload(changed):
-		return false
-
-	buildings = changed
-
-	return true
+	return CityTileEdits.set_building_id(self, x, y, value)
 
 
 func replace_buildings(value: PackedByteArray) -> bool:
-	if value.size() != (map_size * map_size):
-		return false
-
-	var chunk := document.find_chunk("XBLD")
-
-	if chunk == null or not chunk.set_decoded_payload(value):
-		return false
-
-	buildings = value.duplicate()
-
-	return true
+	return CityTileEdits.replace_buildings(self, value)
 
 
 func zone_id(x: int, y: int) -> int:
@@ -194,57 +158,15 @@ func zone_id(x: int, y: int) -> int:
 
 
 func set_zone_id(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0x0f:
-		return false
-
-	var index := index_of(x, y)
-
-	if index < 0:
-		return false
-
-	var changed := zones.duplicate()
-	changed[index] = (changed[index] & 0xf0) | value
-
-	if not document.find_chunk("XZON").set_decoded_payload(changed):
-		return false
-
-	zones = changed
-
-	return true
+	return CityTileEdits.set_zone_id(self, x, y, value)
 
 
 func set_building_corners(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0xf0 or value & 0x0f:
-		return false
-
-	var index := index_of(x, y)
-
-	if index < 0:
-		return false
-
-	var changed := zones.duplicate()
-	changed[index] = value | (changed[index] & 0x0f)
-
-	if not document.find_chunk("XZON").set_decoded_payload(changed):
-		return false
-
-	zones = changed
-
-	return true
+	return CityTileEdits.set_building_corners(self, x, y, value)
 
 
 func replace_zones(value: PackedByteArray) -> bool:
-	if value.size() != (map_size * map_size):
-		return false
-
-	var chunk := document.find_chunk("XZON")
-
-	if chunk == null or not chunk.set_decoded_payload(value):
-		return false
-
-	zones = value.duplicate()
-
-	return true
+	return CityTileEdits.replace_zones(self, value)
 
 
 func building_corners(x: int, y: int) -> int:
@@ -256,20 +178,7 @@ func underground_id(x: int, y: int) -> int:
 
 
 func set_underground_id(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0xff:
-		return false
-
-	var changed := underground.duplicate()
-
-	if not _set_byte_at(changed, x, y, value):
-		return false
-
-	if not document.find_chunk("XUND").set_decoded_payload(changed):
-		return false
-
-	underground = changed
-
-	return true
+	return CityTileEdits.set_underground_id(self, x, y, value)
 
 
 func text_overlay_id(x: int, y: int) -> int:
@@ -279,37 +188,11 @@ func text_overlay_id(x: int, y: int) -> int:
 
 
 func set_text_overlay_id(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > (0xff if map_size <= 128 else 0xffff):
-		return false
-
-	var changed := text_overlays.duplicate()
-	var index := index_of(x, y)
-
-	if index < 0:
-		return false
-
-	OverlayData.write(changed, index, value)
-
-	if not document.find_chunk("XTXT").set_decoded_payload(changed):
-		return false
-
-	text_overlays = changed
-
-	return true
+	return CityTileEdits.set_text_overlay_id(self, x, y, value)
 
 
 func replace_text_overlays(value: PackedByteArray) -> bool:
-	if value.size() != document.decoded_size("XTXT"):
-		return false
-
-	var chunk := document.find_chunk("XTXT")
-
-	if chunk == null or not chunk.set_decoded_payload(value):
-		return false
-
-	text_overlays = value.duplicate()
-
-	return true
+	return CityTileEdits.replace_text_overlays(self, value)
 
 
 func is_salt_water(x: int, y: int) -> bool:
@@ -355,245 +238,59 @@ func traffic_density(x: int, y: int) -> int:
 
 
 func set_tile_flag(x: int, y: int, mask: int, enabled: bool) -> bool:
-	if mask < 0 or mask > 0xff:
-		return false
-
-	var index := index_of(x, y)
-
-	if index < 0:
-		return false
-
-	var changed := tile_flags.duplicate()
-
-	if enabled:
-		changed[index] |= mask
-	else:
-		changed[index] &= ~mask & 0xff
-
-	if not document.find_chunk("XBIT").set_decoded_payload(changed):
-		return false
-
-	tile_flags = changed
-
-	return true
+	return CityTileEdits.set_tile_flag(self, x, y, mask, enabled)
 
 
 func replace_tile_flags(value: PackedByteArray) -> bool:
-	if value.size() != (map_size * map_size):
-		return false
-
-	var chunk := document.find_chunk("XBIT")
-
-	if chunk == null or not chunk.set_decoded_payload(value):
-		return false
-
-	tile_flags = value.duplicate()
-
-	return true
+	return CityTileEdits.replace_tile_flags(self, value)
 
 
 func masked_tile_flag_signature(mask: int) -> int:
-	var byte_mask := mask & 0xff
-	var source_signature := hash(tile_flags)
-	var cached: Dictionary = _masked_tile_flag_signatures.get(byte_mask, {})
-
-	if (
-		cached.get("source") == source_signature
-		and cached.get("size") == tile_flags.size()
-	):
-		return int(cached.get("value", 0))
-
-	var visible_flags := PackedByteArray()
-	visible_flags.resize(tile_flags.size())
-	var word_mask := 0
-
-	for lane in 8:
-		word_mask |= byte_mask << (lane * 8)
-
-	var full_bytes := tile_flags.size() - tile_flags.size() % 8
-
-	for offset in range(0, full_bytes, 8):
-		visible_flags.encode_u64(offset, tile_flags.decode_u64(offset) & word_mask)
-
-	for index in range(full_bytes, tile_flags.size()):
-		visible_flags[index] = tile_flags[index] & byte_mask
-
-	var value := hash(visible_flags)
-	_masked_tile_flag_signatures[byte_mask] = {
-		"source": source_signature,
-		"size": tile_flags.size(),
-		"value": value,
-	}
-
-	return value
+	return CityTileEdits.masked_tile_flag_signature(self, mask)
 
 
 func set_land_altitude(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0x1f:
-		return false
-
-	var index := index_of(x, y)
-
-	if index < 0:
-		return false
-
-	return _set_altitude_word(x, y, (altitude_words[index] & ~0x1f) | value)
+	return CityTileEdits.set_land_altitude(self, x, y, value)
 
 
 func set_water_altitude(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0x1f:
-		return false
-
-	var index := index_of(x, y)
-
-	if index < 0:
-		return false
-
-	return _set_altitude_word(x, y, (altitude_words[index] & ~0x3e0) | (value << 5))
+	return CityTileEdits.set_water_altitude(self, x, y, value)
 
 
 func set_tunnel_levels(x: int, y: int, value: int) -> bool:
-	if value < 0 or value > 0x3f:
-		return false
-
-	var index := index_of(x, y)
-
-	if index < 0:
-		return false
-
-	return _set_altitude_word(x, y, (altitude_words[index] & ~0xfc00) | (value << 10))
+	return CityTileEdits.set_tunnel_levels(self, x, y, value)
 
 
 func city_name() -> String:
-	return document.city_name()
+	return CityRecords.city_name(self)
 
 
 func display_name() -> String:
-	var name := city_name()
-
-	if name.is_empty():
-		name = document.source_path.get_file().get_basename()
-
-	return name if not name.is_empty() else "New City"
+	return CityRecords.display_name(self)
 
 
 func mayor_name() -> String:
-	return label(0)
+	return CityRecords.mayor_name(self)
 
 
 func label(label_id: int) -> String:
-	if label_id < 0 or label_id >= IntegerMath.div_trunc(document.decoded_size("XLAB"), LABEL_RECORD_SIZE):
-		return ""
-
-	var chunk := document.find_chunk("XLAB")
-
-	if chunk == null:
-		return ""
-
-	var offset := label_id * LABEL_RECORD_SIZE
-	var declared_length: int = mini(chunk.decoded_payload[offset], 23)
-	var start := offset + 1
-	var end := start
-
-	while end < start + declared_length and chunk.decoded_payload[end] != 0:
-		end += 1
-
-	return chunk.decoded_payload.slice(start, end).get_string_from_ascii()
+	return CityRecords.label(self, label_id)
 
 
 func set_label(label_id: int, value: String) -> bool:
-	if label_id < 0 or label_id >= IntegerMath.div_trunc(document.decoded_size("XLAB"), LABEL_RECORD_SIZE):
-		return false
-
-	var chunk := document.find_chunk("XLAB")
-
-	if chunk == null:
-		return false
-
-	var encoded := value.to_ascii_buffer()
-
-	if encoded.size() > 23:
-		encoded = encoded.slice(0, 23)
-
-	var changed := chunk.decoded_payload.duplicate()
-	var offset := label_id * LABEL_RECORD_SIZE
-	changed[offset] = encoded.size()
-
-	for index in encoded.size():
-		changed[offset + 1 + index] = encoded[index]
-
-	changed[offset + 1 + encoded.size()] = 0
-
-	return chunk.set_decoded_payload(changed)
+	return CityRecords.set_label(self, label_id, value)
 
 
 func microsim(microsim_id: int) -> Dictionary:
-	if microsim_id < 0 or microsim_id >= IntegerMath.div_trunc(document.decoded_size("XMIC"), MICROSIM_RECORD_SIZE):
-		return {}
-
-	var chunk := document.find_chunk("XMIC")
-
-	if chunk == null:
-		return {}
-
-	var offset := microsim_id * MICROSIM_RECORD_SIZE
-
-	return {
-		"tile_id": int(chunk.decoded_payload[offset]),
-		"stat_0": int(chunk.decoded_payload[offset + 1]),
-		"stat_1": _read_u16_be(chunk.decoded_payload, offset + 2),
-		"stat_2": _read_u16_be(chunk.decoded_payload, offset + 4),
-		"stat_3": _read_u16_be(chunk.decoded_payload, offset + 6),
-	}
+	return CityRecords.microsim(self, microsim_id)
 
 
 func thing(thing_id: int) -> Dictionary:
-	if thing_id < 0 or thing_id >= IntegerMath.div_trunc(document.decoded_size("XTHG"), (24 if map_size > 128 else 12)):
-		return {}
-
-	var chunk := document.find_chunk("XTHG")
-
-	if chunk == null:
-		return {}
-
-	var offset := thing_id * THING_RECORD_SIZE
-
-	return {
-		"type": int(chunk.decoded_payload[offset]),
-		"direction": int(chunk.decoded_payload[offset + 1]),
-		"state": ThingData.read(chunk.decoded_payload, offset + 2),
-		"x": ThingData.read(chunk.decoded_payload, offset + 3),
-		"y": ThingData.read(chunk.decoded_payload, offset + 4),
-		"z": int(chunk.decoded_payload[offset + 5]),
-		"px": ThingData.read(chunk.decoded_payload, offset + 6),
-		"py": ThingData.read(chunk.decoded_payload, offset + 7),
-		"dx": ThingData.read(chunk.decoded_payload, offset + 8),
-		"dy": ThingData.read(chunk.decoded_payload, offset + 9),
-		"label": ThingData.read(chunk.decoded_payload, offset + 10),
-		"goal": ThingData.read(chunk.decoded_payload, offset + 11),
-	}
+	return CityRecords.thing(self, thing_id)
 
 
 func graph_series(graph_id: int) -> Dictionary:
-	if graph_id < 0 or graph_id >= GRAPH_COUNT:
-		return {}
-
-	var chunk := document.find_chunk("XGRP")
-
-	if chunk == null:
-		return {}
-
-	var values := PackedInt64Array()
-	var offset := graph_id * GRAPH_VALUE_COUNT * 4
-
-	for index in GRAPH_VALUE_COUNT:
-		values.append(_read_u32_be(chunk.decoded_payload, offset + index * 4))
-
-	return {
-		"year": values.slice(0, 12),
-		"decade": values.slice(12, 32),
-		"century": values.slice(32, 52),
-	}
+	return CityRecords.graph_series(self, graph_id)
 
 
 func city_mode() -> int:
@@ -725,37 +422,11 @@ func _byte_at(data: PackedByteArray, x: int, y: int) -> int:
 
 
 func _set_byte_at(data: PackedByteArray, x: int, y: int, value: int) -> bool:
-	var index := index_of(x, y)
-
-	if index < 0:
-		return false
-
-	data[index] = value
-
-	return true
+	return CityTileEdits._set_byte_at(self, data, x, y, value)
 
 
 func _set_altitude_word(x: int, y: int, value: int) -> bool:
-	var index := index_of(x, y)
-
-	if index < 0:
-		return false
-
-	var chunk := document.find_chunk("ALTM")
-
-	if chunk == null:
-		return false
-
-	var changed := chunk.decoded_payload.duplicate()
-	changed[index * 2] = (value >> 8) & 0xff
-	changed[index * 2 + 1] = value & 0xff
-
-	if not chunk.set_decoded_payload(changed):
-		return false
-
-	altitude_words[index] = value
-
-	return true
+	return CityTileEdits._set_altitude_word(self, x, y, value)
 
 
 static func _read_u16_be(data: PackedByteArray, offset: int) -> int:
@@ -791,99 +462,19 @@ func underground_level_is_visible(x: int, y: int, depth: int) -> bool:
 
 
 func thing_count() -> int:
-	return ThingData.count(document.find_chunk("XTHG").decoded_payload)
+	return CityRecords.thing_count(self)
 
 
 func microsim_count() -> int:
-	return IntegerMath.div_trunc(document.decoded_size("XMIC"), MICROSIM_RECORD_SIZE)
+	return CityRecords.microsim_count(self)
 
 
-# map footprint of one xmic record: {x, y, width, height, tiles}, or {} when
-# no tile links to it. xmic stores no position, so this is derived from xtxt,
-# following moving things that temporarily cover a facility tile
 func microsim_site(microsim_id: int) -> Dictionary:
-	return microsim_sites().get(microsim_id, {})
+	return CityRecords.microsim_site(self, microsim_id)
 
 
 func microsim_sites() -> Dictionary:
-	var text := document.find_chunk("XTXT")
-	var things := document.find_chunk("XTHG")
-	var key := [text.get_instance_id(), text.mutation_revision,
-		things.get_instance_id() if things != null else 0, things.mutation_revision if things != null else -1]
-
-	if key == _microsim_sites_key:
-		return _microsim_sites
-
-	var overlays := text.decoded_payload
-	var tile_count := map_size * map_size
-	var wide := overlays.size() != tile_count
-	var thing_data := things.decoded_payload if things != null else PackedByteArray()
-	var thing_records := ThingData.count(thing_data)
-	var records := microsim_count()
-	# per record: min x, min y, max x, max y, tile count
-	var bounds := PackedInt32Array()
-	bounds.resize(records * 5)
-
-	for index in tile_count:
-		var id := int(overlays[index])
-
-		if wide:
-			id |= int(overlays[tile_count + index]) << 8
-
-		if id < 51:
-			continue
-
-		var x := IntegerMath.div_trunc(index, map_size)
-		var y := index % map_size
-		var hops := 0
-
-		while OverlayData.is_thing(id) and hops < thing_records:
-			var offset := OverlayData.thing_record(id) * THING_RECORD_SIZE
-
-			if offset <= 0 or offset >= thing_records * THING_RECORD_SIZE or (
-				ThingData.read(thing_data, offset) == 0
-				or ThingData.read(thing_data, offset + 3) != x or ThingData.read(thing_data, offset + 4) != y
-			):
-				break
-
-			id = ThingData.read(thing_data, offset + 10)
-			hops += 1
-
-		if not OverlayData.is_facility(id):
-			continue
-
-		var record := OverlayData.facility_record(id)
-
-		if record >= records:
-			continue
-
-		var at := record * 5
-
-		if bounds[at + 4] == 0:
-			bounds[at] = x
-			bounds[at + 1] = y
-			bounds[at + 2] = x
-			bounds[at + 3] = y
-		else:
-			bounds[at] = mini(bounds[at], x)
-			bounds[at + 1] = mini(bounds[at + 1], y)
-			bounds[at + 2] = maxi(bounds[at + 2], x)
-			bounds[at + 3] = maxi(bounds[at + 3], y)
-
-		bounds[at + 4] += 1
-
-	_microsim_sites = {}
-
-	for record in records:
-		var at := record * 5
-
-		if bounds[at + 4] > 0:
-			_microsim_sites[record] = {"x": bounds[at], "y": bounds[at + 1], "width": bounds[at + 2] - bounds[at] + 1,
-				"height": bounds[at + 3] - bounds[at + 1] + 1, "tiles": bounds[at + 4]}
-
-	_microsim_sites_key = key
-
-	return _microsim_sites
+	return CityRecords.microsim_sites(self)
 
 
 static func copy_for_edit(source: CityState) -> CityState:
