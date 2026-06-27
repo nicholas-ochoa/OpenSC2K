@@ -100,28 +100,28 @@ static func run(
 	):
 		return {"ok": false, "error": "moving-thing input chunks are missing or have the wrong size"}
 
-	var original_buildings: PackedByteArray = building_chunk.decoded_payload.duplicate()
+	var original_buildings: PackedByteArray = building_chunk.decoded_payload
 	var buildings: PackedByteArray = original_buildings.duplicate()
-	var original_altitude: PackedByteArray = altitude_chunk.decoded_payload.duplicate()
+	var original_altitude: PackedByteArray = altitude_chunk.decoded_payload
 	var altitude: PackedByteArray = original_altitude.duplicate()
-	var original_terrain: PackedByteArray = terrain_chunk.decoded_payload.duplicate()
+	var original_terrain: PackedByteArray = terrain_chunk.decoded_payload
 	var terrain: PackedByteArray = original_terrain.duplicate()
-	var original_underground: PackedByteArray = underground_chunk.decoded_payload.duplicate()
+	var original_underground: PackedByteArray = underground_chunk.decoded_payload
 	var underground: PackedByteArray = original_underground.duplicate()
-	var original_zones: PackedByteArray = zone_chunk.decoded_payload.duplicate()
+	var original_zones: PackedByteArray = zone_chunk.decoded_payload
 	var zones: PackedByteArray = original_zones.duplicate()
-	var original_traffic: PackedByteArray = traffic_chunk.decoded_payload.duplicate()
+	var original_traffic: PackedByteArray = traffic_chunk.decoded_payload
 	var traffic: PackedByteArray = original_traffic.duplicate()
-	var original_flags: PackedByteArray = flag_chunk.decoded_payload.duplicate()
+	var original_flags: PackedByteArray = flag_chunk.decoded_payload
 	var flags: PackedByteArray = original_flags.duplicate()
-	var original_labels: PackedByteArray = label_chunk.decoded_payload.duplicate()
+	var original_labels: PackedByteArray = label_chunk.decoded_payload
 	var labels: PackedByteArray = original_labels.duplicate()
-	var original_microsims: PackedByteArray = microsim_chunk.decoded_payload.duplicate()
+	var original_microsims: PackedByteArray = microsim_chunk.decoded_payload
 	var microsims: PackedByteArray = original_microsims.duplicate()
-	var original_misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
+	var original_misc: PackedByteArray = misc_chunk.decoded_payload
 	var misc: PackedByteArray = original_misc.duplicate()
-	var original_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
-	var original_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
+	var original_text: PackedByteArray = text_chunk.decoded_payload
+	var original_things: PackedByteArray = thing_chunk.decoded_payload
 	var text: PackedByteArray = original_text.duplicate()
 	var things: PackedByteArray = original_things.duplicate()
 	var counters := {
