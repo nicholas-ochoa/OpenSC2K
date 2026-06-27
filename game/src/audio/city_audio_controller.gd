@@ -329,99 +329,25 @@ func stop_music(clear_gap := true) -> void:
 
 
 func stop_sound_effects() -> void:
-	wave_sound_gate.stop()
-
-	if not is_inside_tree():
-		return
-
-	for node in get_tree().get_nodes_in_group(SOUND_EFFECT_GROUP):
-		var player := node as AudioStreamPlayer
-
-		if player == null:
-			continue
-
-		player.stop()
-		player.queue_free()
-
-	tool_loop_player = null
+	CityAudioEffects.stop_sound_effects(self)
 
 
 func play_sound_events(
 	sound_events: Array, sound_enabled: bool, overlay_mode: String, view_size: int
 ) -> void:
-	if not sound_enabled or not audio_allowed():
-		return
-
-	for sound_event in sound_events:
-		var sound_id := MovingThingAudio.event_sound_id(
-			sound_event, overlay_mode, view_size
-		)
-
-		if sound_id < 0:
-			continue
-
-		var stream := wave_stream_cache.get(sound_id) as AudioStreamWAV
-
-		if stream == null or not wave_sound_gate.request(
-			sound_id, sound_event is Dictionary and sound_event.has("thing_type")
-		):
-			continue
-
-		var player := AudioStreamPlayer.new()
-		player.stream = stream
-		player.volume_linear = effects_volume
-		player.finished.connect(player.queue_free)
-		add_child(player)
-		player.add_to_group(SOUND_EFFECT_GROUP)
-		player.play()
+	CityAudioEffects.play_sound_events(self, sound_events, sound_enabled, overlay_mode, view_size)
 
 
 func start_tool_loop_sound(sound_id: int, sound_enabled: bool) -> void:
-	stop_tool_loop_sound()
-
-	if not sound_enabled or not audio_allowed():
-		return
-
-	var cached_stream := wave_stream_cache.get(sound_id) as AudioStreamWAV
-
-	if cached_stream == null:
-		return
-
-	var stream := cached_stream.duplicate() as AudioStreamWAV
-
-	if stream == null:
-		return
-
-	stream.loop_mode = AudioStreamWAV.LOOP_FORWARD
-	stream.loop_begin = 0
-	stream.loop_end = maxi(1, roundi(stream.get_length() * stream.mix_rate))
-	tool_loop_player = AudioStreamPlayer.new()
-	tool_loop_player.stream = stream
-	tool_loop_player.volume_linear = effects_volume
-	add_child(tool_loop_player)
-	tool_loop_player.add_to_group(SOUND_EFFECT_GROUP)
-	tool_loop_player.play()
+	CityAudioEffects.start_tool_loop_sound(self, sound_id, sound_enabled)
 
 
 func stop_tool_loop_sound() -> void:
-	if not is_instance_valid(tool_loop_player):
-		tool_loop_player = null
-
-		return
-
-	tool_loop_player.stop()
-	tool_loop_player.queue_free()
-	tool_loop_player = null
+	CityAudioEffects.stop_tool_loop_sound(self)
 
 
 func debug_metrics() -> Dictionary:
-	return {
-		"wave_sound_id": wave_sound_gate.current_sound_id,
-		"wave_sound_ticks": wave_sound_gate.remaining_ticks,
-		"wave_sound_accepted": wave_sound_gate.accepted_count,
-		"wave_sound_suppressed": wave_sound_gate.suppressed_count,
-		"wave_stream_cache": wave_stream_cache.size(),
-	}
+	return CityAudioEffects.debug_metrics(self)
 
 
 func _on_music_track_finished(track_id: int) -> void:
@@ -439,18 +365,7 @@ func _on_music_track_finished(track_id: int) -> void:
 
 
 func _load_wave_sound_cache() -> void:
-	wave_stream_cache.clear()
-
-	for sound_id in range(WaveSounds.SOUND_FIRST, WaveSounds.SOUND_LAST + 1):
-		var sound_path := str(sound_pack.files.get(sound_id, reference_root.path_join("SOUNDS/%d.WAV" % sound_id) if original_media_enabled else ""))
-
-		if not FileAccess.file_exists(sound_path):
-			continue
-
-		var stream := AudioStreamWAV.load_from_file(sound_path)
-
-		if stream != null:
-			wave_stream_cache[sound_id] = stream
+	CityAudioEffects._load_wave_sound_cache(self)
 
 
 func set_menu_music(enabled: bool) -> void:
@@ -574,19 +489,4 @@ func set_media_packs(sound_folder: String, music_folder: String) -> bool:
 
 
 func play_toolbar_click(sound_enabled: bool) -> void:
-	if not sound_enabled or not audio_allowed():
-		return
-
-	var stream := wave_stream_cache.get(ToolSoundRules.SOUND_CENTER) as AudioStreamWAV
-
-	if stream == null:
-		return
-
-	# each button activation gets feedback, including rapid consecutive clicks
-	var player := AudioStreamPlayer.new()
-	player.stream = stream
-	player.volume_linear = effects_volume
-	player.finished.connect(player.queue_free)
-	add_child(player)
-	player.add_to_group(SOUND_EFFECT_GROUP)
-	player.play()
+	CityAudioEffects.play_toolbar_click(self, sound_enabled)
