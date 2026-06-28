@@ -17,6 +17,8 @@ static func create(map_edge: int = 128) -> Sc2File:
 		chunk.set_decoded_payload(bytes)
 		document.chunks.append(chunk)
 
+	document.rebuild_chunk_cache()
+
 	# independent starting policy. newcitysetup supplies difficulty/year values
 	var values := {
 		0x0000: 0x122, 0x0004: 1, 0x000c: 1900, 0x0014: 20000, 0x001c: 1,

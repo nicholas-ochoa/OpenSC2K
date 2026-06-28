@@ -51,6 +51,12 @@ var source_bytes := PackedByteArray()
 var source_path := ""
 var parse_error := ""
 
+# Cache the first occurrence of each chunk ID. Worker lookups only read
+# the cache; rebuild it when the chunk list changes. A size mismatch
+# falls back to a scan. Store positions so the cache cannot keep chunks alive.
+var _chunk_cache := {}
+var _chunk_cache_size := -1
+
 
 static func load_path(path: String) -> Sc2File:
 	var city := Sc2File.new()
@@ -75,6 +81,7 @@ static func load_path(path: String) -> Sc2File:
 
 func parse(bytes: PackedByteArray) -> bool:
 	chunks.clear()
+	invalidate_chunk_cache()
 	source_bytes = PackedByteArray()
 	parse_error = ""
 	map_size = 128
@@ -165,6 +172,7 @@ func parse(bytes: PackedByteArray) -> bool:
 		return _fail("Chunk data does not end at the file boundary")
 
 	source_bytes = bytes.duplicate()
+	rebuild_chunk_cache()
 
 	return true
 
@@ -194,11 +202,49 @@ func duplicate_document(share_source_bytes := false) -> Sc2File:
 		copied.mutation_revision = chunk.mutation_revision
 		result.chunks.append(copied)
 
+	result.rebuild_chunk_cache()
+
 	return result
 
 
-# Use the first chunk with a given ID. Sprite lookup uses the last duplicate.
 func find_chunk(chunk_id: String, occurrence: int = 0) -> Sc2Chunk:
+	if occurrence != 0 or _chunk_cache_size != chunks.size():
+		return _scan_chunk(chunk_id, occurrence)
+
+	var index: int = _chunk_cache.get(chunk_id, -1)
+
+	if index < 0:
+		return null
+
+	var chunk := chunks[index]
+	# stripped from release builds; the size guard above covers every append,
+	# erase, and clear. a same-size replacement needs rebuild_chunk_cache
+	assert(chunk.chunk_id == chunk_id, "Stale chunk cache; call rebuild_chunk_cache after editing chunks")
+
+	return chunk
+
+
+# Call rebuild_chunk_cache after changing chunks directly, before sharing
+# the document with workers. The size check cannot catch same-size replacements.
+func rebuild_chunk_cache() -> void:
+	_chunk_cache.clear()
+
+	for index in chunks.size():
+		var id := chunks[index].chunk_id
+
+		if not _chunk_cache.has(id):
+			_chunk_cache[id] = index
+
+	_chunk_cache_size = chunks.size()
+
+
+# drop the cached lookups and return find_chunk to a plain scan
+func invalidate_chunk_cache() -> void:
+	_chunk_cache.clear()
+	_chunk_cache_size = -1
+
+
+func _scan_chunk(chunk_id: String, occurrence: int) -> Sc2Chunk:
 	for chunk in chunks:
 		if chunk.chunk_id != chunk_id:
 			continue
@@ -270,13 +316,7 @@ func set_misc_u32(offset: int, value: int) -> bool:
 	if chunk == null or offset < 0 or offset + 4 > chunk.decoded_payload.size():
 		return false
 
-	var changed := chunk.decoded_payload.duplicate()
-	var encoded_value := _u32_be(value & 0xffffffff)
-
-	for index in 4:
-		changed[offset + index] = encoded_value[index]
-
-	return chunk.set_decoded_payload(changed)
+	return chunk.write_decoded_bytes(offset, _u32_be(value & 0xffffffff))
 
 
 func set_misc_i32(offset: int, value: int) -> bool:
@@ -320,6 +360,7 @@ func serialize(force_rebuild: bool = false) -> Dictionary:
 func _fail(message: String) -> bool:
 	parse_error = message
 	chunks.clear()
+	invalidate_chunk_cache()
 
 	return false
 

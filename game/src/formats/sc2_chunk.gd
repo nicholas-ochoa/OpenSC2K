@@ -18,8 +18,25 @@ func set_decoded_payload(value: PackedByteArray) -> bool:
 		return false
 
 	decoded_payload = value.duplicate()
+	mark_mutated()
+
+	return true
+
+
+func mark_mutated() -> void:
 	is_dirty = true
 	mutation_revision += 1
+
+
+# Writes only the requested range. An invalid range leaves the chunk unchanged.
+func write_decoded_bytes(offset: int, bytes: PackedByteArray) -> bool:
+	if offset < 0 or offset + bytes.size() > decoded_payload.size():
+		return false
+
+	for index in bytes.size():
+		decoded_payload[offset + index] = bytes[index]
+
+	mark_mutated()
 
 	return true
 
