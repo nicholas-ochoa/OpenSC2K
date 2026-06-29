@@ -773,6 +773,12 @@
     "lane": "product"
   },
   {
+    "id": "render_signature_revision_test",
+    "script": "tests/render_signature_revision_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "static_overlay_signature_test",
     "script": "tests/static_overlay_signature_test.gd",
     "domain": "rendering",

@@ -249,6 +249,15 @@ func masked_tile_flag_signature(mask: int) -> int:
 	return CityTileEdits.masked_tile_flag_signature(self, mask)
 
 
+# revision of a stored chunk. every committed write bumps it, so a display
+# cache can ask "did this map change?" without hashing the whole payload
+# returns -1 when the document does not carry the chunk
+func chunk_revision(chunk_id: String) -> int:
+	var chunk := document.find_chunk(chunk_id) if document != null else null
+
+	return chunk.mutation_revision if chunk != null else -1
+
+
 func set_land_altitude(x: int, y: int, value: int) -> bool:
 	return CityTileEdits.set_land_altitude(self, x, y, value)
 

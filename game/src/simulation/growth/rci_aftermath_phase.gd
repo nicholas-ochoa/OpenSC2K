@@ -180,12 +180,17 @@ static func run(city: CityState, random, season: int) -> Dictionary:
 		return queue_insert
 
 	span.mark("store monthly changes")
-	if not building_chunk.set_decoded_payload(buildings):
+	# a month without tree growth must not bump the xbld revision. the render
+	# change signature reads that revision instead of hashing the whole map
+	var buildings_changed := buildings != old_buildings
+
+	if buildings_changed and not building_chunk.set_decoded_payload(buildings):
 		return {"ok": false, "error": "cannot store the monthly tree update"}
 
 	if not misc_chunk.set_decoded_payload(misc):
-		building_chunk.set_decoded_payload(old_buildings)
-		city.buildings = old_buildings
+		if buildings_changed:
+			building_chunk.set_decoded_payload(old_buildings)
+			city.buildings = old_buildings
 
 		return {"ok": false, "error": "cannot store the monthly RCI side effects"}
 

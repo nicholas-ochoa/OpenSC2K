@@ -353,22 +353,32 @@ static func dispatch_sprite_id(
 	return int(configuration.sprite_base) + sprite_offset
 
 
+# moving an object doesn't always change the static image
+# chunk revisions stand in for whole-map content hashes. every committed write
+# bumps the revision, so this answers "did the drawn city change?" in constant
+# time instead of hashing megabytes on the main thread
+# xbit and xtxt/xthg keep content signatures. the surface image follows only the
+# powered, powerable and water flag bits, and only signs and dispatch vehicles
+# among the overlays. their chunks also carry watered, piped and moving-thing
+# bytes that change every tick, so their revisions would repaint continuously
+# applicationmaprender reads entries 1, 2, 3 and 9 by position for the sign
+# layout token. keep the order and the length
+
+
 static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) -> Array:
 	if city == null or not city.is_valid():
 		return []
-
-	var traffic := city.document.find_chunk("XTRF")
 
 	return [
 		view_size,
 		city.visible_altitude_levels,
 		city.compass_rotation(),
-		hash(city.altitude_words),
-		hash(city.terrain),
-		hash(city.buildings),
-		hash(city.zones),
+		city.chunk_revision("ALTM"),
+		city.chunk_revision("XTER"),
+		city.chunk_revision("XBLD"),
+		city.chunk_revision("XZON"),
 		city.masked_tile_flag_signature(0xc6),
-		hash(traffic.decoded_payload) if traffic != null else 0,
+		city.chunk_revision("XTRF"),
 		_static_text_overlay_signature(city),
 	]
 

@@ -223,7 +223,8 @@ func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 
 	if app.overlay_mode == "city":
 		var labels := app.city.document.find_chunk("XLAB")
-		# reuse the altitude and sign/dispatch hashes already computed for this snapshot
+		# reuse the altitude revision and the sign/dispatch signature already
+		# computed for this snapshot
 		app.region_cache.sign_layout_token = [app.city.map_size, signature[1], signature[2], signature[3], signature[9], hash(labels.decoded_payload) if labels != null else 0]
 	else:
 		app.region_cache.sign_layout_token = []

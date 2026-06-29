@@ -240,6 +240,9 @@ static func visual_signature(city: CityState, view_size: int, show_pipes := true
 	if city == null or not city.is_valid():
 		return []
 
+	# chunk revisions replace whole-map content hashes. xbit keeps a masked
+	# content signature because the wireframe follows only its water-network
+	# bits, and the rest of the chunk changes every tick
 	return [
 		"underground",
 		city.visible_altitude_levels,
@@ -248,9 +251,9 @@ static func visual_signature(city: CityState, view_size: int, show_pipes := true
 		show_subways,
 		show_water_mains,
 		city.compass_rotation(),
-		hash(city.altitude_words),
-		hash(city.terrain),
-		hash(city.underground),
+		city.chunk_revision("ALTM"),
+		city.chunk_revision("XTER"),
+		city.chunk_revision("XUND"),
 		city.masked_tile_flag_signature(0x30),
 	]
 
