@@ -44,10 +44,11 @@ const CLASS_CONSTRUCTION := 3
 const CLASS_ABANDONED := 4
 const CHURCH_TILE := 0xf7
 
-# fixed timing indices keep per-tile instrumentation inexpensive
+# fixed timing indices keep per-tile instrumentation inexpensive. tiles replaces
+# the nine per-tile categories unless the debug window asks for detailed timing
 enum TimingStep {
 	PREPARE, SCAN, SURFACE, FACILITIES, SUBWAY, SPECIAL_ZONES, TRIPS,
-	POPULATION, COMPLETION, RECOVERY, DENSITY, CHANGES, STORE,
+	POPULATION, COMPLETION, RECOVERY, DENSITY, CHANGES, STORE, TILES,
 }
 const TIMING_LABELS := [
 	"prepare and copy city data", "tile scan and eligibility",
@@ -56,5 +57,9 @@ const TIMING_LABELS := [
 	"transport trips", "population and abandonment",
 	"construction completion", "abandoned building recovery",
 	"density growth", "find changed chunks",
-	"store growth changes",
+	"store growth changes", "all per-tile growth work",
 ]
+
+# scanned tiles between worker checkpoints. a growth tile is expensive, so this
+# stride stays far below one rendered frame
+const CHECKPOINT_TILE_MASK := 15

@@ -44,6 +44,7 @@ func _debug_metrics() -> Dictionary:
 			app.simulation_engine.active_disaster_type if app.simulation_engine != null else 0
 		),
 		"no_disasters": app.city != null and app.city.no_disasters_enabled(),
+		"detailed_timing": SimulationTimingSpan.detailed,
 	}
 
 	if app.audio_controller != null:
@@ -134,6 +135,17 @@ func _debug_set_no_disasters(enabled: bool) -> Dictionary:
 	return {
 		"ok": true,
 		"message": "Random disasters are %s." % ("disabled" if enabled else "enabled"),
+	}
+
+
+func _debug_set_detailed_timing(enabled: bool) -> Dictionary:
+	SimulationTimingSpan.detailed = enabled
+
+	return {
+		"ok": true,
+		"message": "Detailed per-tile timing is %s. It is measured work, so it also slows the phases it reports." % (
+			"on" if enabled else "off"
+		),
 	}
 
 

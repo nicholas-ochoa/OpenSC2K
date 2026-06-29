@@ -42,8 +42,60 @@ func _initialize() -> void:
 	history.clear()
 	assert(history.days.is_empty() and history.steps.is_empty())
 	_check_phase_timings(history)
+	_check_growth_detail_flag()
 	print("PASS: simulation timing aggregation, phase detail, displayed days and wait exclusion")
 	quit()
+
+
+## The growth scan reports one per-tile total until the debug window asks for the
+## fine steps. Neither mode may change the city, the counters, or the generators.
+func _check_growth_detail_flag() -> void:
+	const PER_TILE_LABELS := ["tile scan and eligibility", "surface maintenance",
+		"facility updates and spawning", "subway maintenance",
+		"airport, seaport and military growth", "transport trips",
+		"population and abandonment", "construction completion",
+		"abandoned building recovery", "density growth"]
+	var samples := []
+
+	for detailed in [false, true]:
+		SimulationTimingSpan.detailed = detailed
+		var city := CityState.from_document(EmptyCityTemplate.create())
+		var budget := SimulationSliceBudget.new()
+		budget.grant(60000000)
+		city.simulation_slice = budget
+
+		for y in range(8, 24):
+			city.set_zone_id(12, y, 1)
+			city.set_building_id(12, y, 0x70)
+			city.set_building_corners(12, y, 0x80)
+			city.set_tile_flag(12, y, 0xe0, true)
+
+		var random := SimRandom.new(123)
+		var lfsr := SimLfsrRandom.new(456)
+		var game := GameLcgRandom.new(789)
+		var growth := GrowthPhase.run(city, random, 0, 0, lfsr, game)
+		assert(growth.ok, str(growth.get("error", "")))
+		assert(budget.metrics().slices >= 1, "The growth scan still parks the worker")
+		var steps: Dictionary = growth.timing.steps
+		var fine := 0
+
+		for label: String in PER_TILE_LABELS:
+			fine += int(steps[label])
+
+		if detailed:
+			assert(steps["all per-tile growth work"] == 0)
+			assert(fine > 0, "Detailed timing splits the tile loop into its steps")
+		else:
+			assert(fine == 0, "The per-tile steps are not measured by default")
+			assert(steps["all per-tile growth work"] > 0)
+
+		assert(growth.scanned_tiles == 1024 and growth.rci_tiles == 4)
+		growth.erase("timing")
+		samples.append([growth, city.document.serialize().data,
+			random.state, lfsr.state, game.state])
+
+	SimulationTimingSpan.detailed = false
+	assert(samples[0] == samples[1], "Detailed timing does not change the growth result")
 
 
 func _check_phase_timings(history: SimulationTimingHistory) -> void:

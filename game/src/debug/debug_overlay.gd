@@ -22,6 +22,7 @@ var _resume_speed := 2
 var _terrain_slider: HSlider
 var _terrain_value: Label
 var _no_disasters_check: CheckBox
+var _detailed_timing_check: CheckBox
 
 
 func setup(value: Control) -> void:
@@ -92,6 +93,12 @@ func _build_actions(tabs: TabContainer) -> void:
 
 	_button(simulation, "Print metrics", func() -> void:
 		print(_metrics))
+	_detailed_timing_check = CheckBox.new()
+	_detailed_timing_check.text = "Detailed per-tile timing"
+	_detailed_timing_check.tooltip_text = "Break the growth scan into its per-tile steps. The extra clock reads are measured work and slow the phase."
+	_detailed_timing_check.toggled.connect(func(enabled: bool) -> void:
+		_record_action(main_control.debug.call("_debug_set_detailed_timing", enabled)))
+	simulation.add_child(_detailed_timing_check)
 	var cheats := _action_section(box, "City cheats", 3)
 
 	for amount in [10000, 100000, 1000000]:
@@ -243,6 +250,7 @@ func _refresh_metrics() -> void:
 	_terrain_slider.set_value_no_signal(levels)
 	_terrain_value.text = str(levels)
 	_no_disasters_check.set_pressed_no_signal(bool(_metrics.get("no_disasters", false)))
+	_detailed_timing_check.set_pressed_no_signal(bool(_metrics.get("detailed_timing", false)))
 	_refresh_day_rows(_history())
 
 	_metrics_tree.refresh(_metrics)

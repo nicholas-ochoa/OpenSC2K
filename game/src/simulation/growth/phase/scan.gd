@@ -101,43 +101,78 @@ static func run(
 		"spawned_trains": 0,
 	}
 
-	span.mark_index(TimingStep.SCAN)
+	var slice := city.simulation_slice
+	var detailed := SimulationTimingSpan.detailed
+	var scanned_tiles := 0
+	var rci_tiles := 0
+	var population_added := 0
+	var abandoned_population_added := 0
+	var started_construction := 0
+	var advanced_construction := 0
+	var completed_construction := 0
+	var abandoned_buildings := 0
+	var recovered_buildings := 0
+	var churches_built := 0
+	var successful_trips := 0
+	var failed_trips := 0
+	var bus_passengers := 0
+	var rail_passengers := 0
+	var subway_passengers := 0
+
+	span.mark_index(TimingStep.SCAN if detailed else TimingStep.TILES)
 	for x in range(step, map_edge, 4):
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+		if slice != null:
+			slice.checkpoint()
 
 		for y in range(substep, map_edge, 4):
-			if city.simulation_slice != null:
-				city.simulation_slice.checkpoint()
+			scanned_tiles += 1
 
-			counters.scanned_tiles += 1
+			# the scanned-tile count also strides the worker checkpoint. one
+			# clock read per tile costs more than the parking it enables
+			if slice != null and (scanned_tiles & CHECKPOINT_TILE_MASK) == 0:
+				slice.checkpoint()
+
 			var index := x * map_edge + y
 			var zone_byte := int(zones[index])
 			var zone := zone_byte & 0x0f
 
 			if zone == 0:
 				var maintenance_tile := int(buildings[index])
-				span.mark_index(TimingStep.SURFACE)
+
+				if detailed:
+					span.mark_index(TimingStep.SURFACE)
+
 				GrowthMaintenance._process_surface_maintenance(
 					altitude, altitudes, terrain, buildings, zones, underground, flags,
 					misc, Vector2i(x, y), random, lfsr_random, counters, map_edge
 				)
-				span.mark_index(TimingStep.FACILITIES)
+
+				if detailed:
+					span.mark_index(TimingStep.FACILITIES)
+
 				GrowthMaintenance._process_microsim_growth(
 					buildings, zones, flags, text_overlays, microsims, things,
 					land_value, crime, pollution, misc, Vector2i(x, y), maintenance_tile,
 					game_random, lfsr_random, counters, map_edge
 				)
-				span.mark_index(TimingStep.SUBWAY)
+
+				if detailed:
+					span.mark_index(TimingStep.SUBWAY)
+
 				GrowthMaintenance._process_subway_maintenance(
 					terrain, buildings, zones, flags, text_overlays, underground, misc,
 					Vector2i(x, y), random, lfsr_random, counters, map_edge
 				)
-				span.mark_index(TimingStep.SCAN)
+
+				if detailed:
+					span.mark_index(TimingStep.SCAN)
+
 				continue
 
 			if zone > 6:
-				span.mark_index(TimingStep.SPECIAL_ZONES)
+				if detailed:
+					span.mark_index(TimingStep.SPECIAL_ZONES)
+
 				SpecialZoneGrowth.process(
 					buildings,
 					zones,
@@ -153,12 +188,18 @@ static func run(
 					rotation,
 					counters, map_edge,
 				)
-				span.mark_index(TimingStep.SUBWAY)
+
+				if detailed:
+					span.mark_index(TimingStep.SUBWAY)
+
 				GrowthMaintenance._process_subway_maintenance(
 					terrain, buildings, zones, flags, text_overlays, underground, misc,
 					Vector2i(x, y), random, lfsr_random, counters, map_edge
 				)
-				span.mark_index(TimingStep.SCAN)
+
+				if detailed:
+					span.mark_index(TimingStep.SCAN)
+
 				continue
 
 			var building := int(buildings[index])
@@ -167,33 +208,45 @@ static func run(
 
 			if building < 0x70:
 				if building >= 0x1d or not TransportTrip.has_nearby_transport(buildings, Vector2i(x, y), map_edge):
-					span.mark_index(TimingStep.SUBWAY)
+					if detailed:
+						span.mark_index(TimingStep.SUBWAY)
+
 					GrowthMaintenance._process_subway_maintenance(
 						terrain, buildings, zones, flags, text_overlays, underground, misc,
 						Vector2i(x, y), random, lfsr_random, counters, map_edge
 					)
-					span.mark_index(TimingStep.SCAN)
+
+					if detailed:
+						span.mark_index(TimingStep.SCAN)
+
 					continue
 			else:
 				if building > 0xc5 or zone_byte & anchor_mask == 0:
-					span.mark_index(TimingStep.SUBWAY)
+					if detailed:
+						span.mark_index(TimingStep.SUBWAY)
+
 					GrowthMaintenance._process_subway_maintenance(
 						terrain, buildings, zones, flags, text_overlays, underground, misc,
 						Vector2i(x, y), random, lfsr_random, counters, map_edge
 					)
-					span.mark_index(TimingStep.SCAN)
+
+					if detailed:
+						span.mark_index(TimingStep.SCAN)
+
 					continue
 
 				density = GrowthDevelopment._density(building)
 				status = GrowthDevelopment._status(building)
 
-			counters.rci_tiles += 1
+			rci_tiles += 1
 
 			var growth_pressure := 0
 			var decline_pressure := 4000
 
 			if GrowthDevelopment._has_power(flags, x, y, map_edge):
-				span.mark_index(TimingStep.TRIPS)
+				if detailed:
+					span.mark_index(TimingStep.TRIPS)
+
 				var trip := TransportTrip.trace(
 					buildings,
 					zones,
@@ -212,29 +265,31 @@ static func run(
 					return trip
 
 				if trip.reached_destination:
-					counters.successful_trips += 1
+					successful_trips += 1
 
 					if trip.used_bus:
-						counters.bus_passengers += density
+						bus_passengers += density
 
 					if trip.used_rail:
-						counters.rail_passengers += density
+						rail_passengers += density
 
 					if trip.used_subway:
-						counters.subway_passengers += density
+						subway_passengers += density
 
 					growth_pressure = GrowthState._read_i32(
 						misc, MISC_DEMAND + int(IntegerMath.div_trunc((zone - 1), 2)) * 4
 					) + 2000
 					decline_pressure = 4000 - growth_pressure
 				else:
-					counters.failed_trips += 1
+					failed_trips += 1
 
-			span.mark_index(TimingStep.POPULATION)
+			if detailed:
+				span.mark_index(TimingStep.POPULATION)
+
 			if density > 0 and status == STATUS_NORMAL:
 				var population: int = POPULATION_BY_DENSITY[density]
 				GrowthState._add_i32(misc, MISC_ZONE_POPULATIONS + zone * 4, population)
-				counters.population_added += population
+				population_added += population
 
 				if random.next_u15() < int(IntegerMath.div_trunc(decline_pressure, density)):
 					GrowthDevelopment._abandon(
@@ -249,16 +304,24 @@ static func run(
 						rotation,
 						land_value, map_edge,
 					)
-					counters.abandoned_buildings += 1
-					span.mark_index(TimingStep.SUBWAY)
+					abandoned_buildings += 1
+
+					if detailed:
+						span.mark_index(TimingStep.SUBWAY)
+
 					GrowthMaintenance._process_subway_maintenance(
 						terrain, buildings, zones, flags, text_overlays, underground, misc,
 						Vector2i(x, y), random, lfsr_random, counters, map_edge
 					)
-					span.mark_index(TimingStep.SCAN)
+
+					if detailed:
+						span.mark_index(TimingStep.SCAN)
+
 					continue
 
-			span.mark_index(TimingStep.COMPLETION)
+			if detailed:
+				span.mark_index(TimingStep.COMPLETION)
+
 			if status == STATUS_CONSTRUCTION:
 				if random.next_u15() < int(IntegerMath.div_trunc(0x4000, density)):
 					if (
@@ -268,7 +331,7 @@ static func run(
 						and zone < 3
 					):
 						GrowthDevelopment._place_church(buildings, zones, flags, misc, Vector2i(x, y), rotation, map_edge)
-						counters.churches_built += 1
+						churches_built += 1
 					else:
 						GrowthDevelopment._place_zone(
 							buildings,
@@ -283,19 +346,27 @@ static func run(
 							rotation, map_edge,
 						)
 
-					counters.completed_construction += 1
-					span.mark_index(TimingStep.SUBWAY)
+					completed_construction += 1
+
+					if detailed:
+						span.mark_index(TimingStep.SUBWAY)
+
 					GrowthMaintenance._process_subway_maintenance(
 						terrain, buildings, zones, flags, text_overlays, underground, misc,
 						Vector2i(x, y), random, lfsr_random, counters, map_edge
 					)
-					span.mark_index(TimingStep.SCAN)
+
+					if detailed:
+						span.mark_index(TimingStep.SCAN)
+
 					continue
 			elif status == STATUS_ABANDONED:
-				span.mark_index(TimingStep.RECOVERY)
+				if detailed:
+					span.mark_index(TimingStep.RECOVERY)
+
 				var abandoned_population: int = POPULATION_BY_DENSITY[density]
 				GrowthState._add_i32(misc, MISC_ZONE_POPULATIONS + 7 * 4, abandoned_population)
-				counters.abandoned_population_added += abandoned_population
+				abandoned_population_added += abandoned_population
 
 				if random.next_u15() < int(IntegerMath.div_trunc(growth_pressure * 15, density)):
 					GrowthDevelopment._place_zone(
@@ -310,17 +381,24 @@ static func run(
 						random,
 						rotation, map_edge,
 					)
-					counters.recovered_buildings += 1
+					recovered_buildings += 1
 
-				span.mark_index(TimingStep.SUBWAY)
+				if detailed:
+					span.mark_index(TimingStep.SUBWAY)
+
 				GrowthMaintenance._process_subway_maintenance(
 					terrain, buildings, zones, flags, text_overlays, underground, misc,
 					Vector2i(x, y), random, lfsr_random, counters, map_edge
 				)
-				span.mark_index(TimingStep.SCAN)
+
+				if detailed:
+					span.mark_index(TimingStep.SCAN)
+
 				continue
 
-			span.mark_index(TimingStep.DENSITY)
+			if detailed:
+				span.mark_index(TimingStep.DENSITY)
+
 			if GrowthConstruction._can_advance_density(zone_byte, zone, density, land_value, x, y, map_edge):
 				if random.next_u15() < int(IntegerMath.div_trunc(growth_pressure * 3, (density + 1))):
 					var advanced := GrowthConstruction._advance_construction(
@@ -339,16 +417,36 @@ static func run(
 
 					if advanced:
 						if density == 0:
-							counters.started_construction += 1
+							started_construction += 1
 						else:
-							counters.advanced_construction += 1
+							advanced_construction += 1
 
-			span.mark_index(TimingStep.SUBWAY)
+			if detailed:
+				span.mark_index(TimingStep.SUBWAY)
+
 			GrowthMaintenance._process_subway_maintenance(
 				terrain, buildings, zones, flags, text_overlays, underground, misc,
 				Vector2i(x, y), random, lfsr_random, counters, map_edge
 			)
-			span.mark_index(TimingStep.SCAN)
+
+			if detailed:
+				span.mark_index(TimingStep.SCAN)
+
+	counters.scanned_tiles += scanned_tiles
+	counters.rci_tiles += rci_tiles
+	counters.population_added += population_added
+	counters.abandoned_population_added += abandoned_population_added
+	counters.started_construction += started_construction
+	counters.advanced_construction += advanced_construction
+	counters.completed_construction += completed_construction
+	counters.abandoned_buildings += abandoned_buildings
+	counters.recovered_buildings += recovered_buildings
+	counters.churches_built += churches_built
+	counters.successful_trips += successful_trips
+	counters.failed_trips += failed_trips
+	counters.bus_passengers += bus_passengers
+	counters.rail_passengers += rail_passengers
+	counters.subway_passengers += subway_passengers
 
 	span.mark_index(TimingStep.CHANGES)
 	var changed_ids := PackedStringArray()

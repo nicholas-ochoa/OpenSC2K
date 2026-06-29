@@ -5,16 +5,24 @@ class MetricsHost extends Control:
 	var simulation_timings := SimulationTimingHistory.new()
 	var queries := 0
 	var terrain_levels := 32
+	var detailed_timing := false
 
 
 	func _debug_set_visible_altitude_levels(value: int) -> void:
 		terrain_levels = value
 
 
+	func _debug_set_detailed_timing(enabled: bool) -> Dictionary:
+		detailed_timing = enabled
+
+		return {"ok": true, "message": "Detailed timing is %s." % ("on" if enabled else "off")}
+
+
 	func _debug_metrics() -> Dictionary:
 		queries += 1
 
-		return {"city_name": "Timing test", "date": "01/03/1900", "speed": "Paused"}
+		return {"city_name": "Timing test", "date": "01/03/1900", "speed": "Paused",
+			"detailed_timing": detailed_timing}
 
 
 func _initialize() -> void:
@@ -95,6 +103,14 @@ func _run() -> void:
 	debug._refresh_metrics()
 	assert(not debug._step_rows.has("Day 02 / power / network"))
 	assert(debug._step_rows["Day 02 / power"] == power and power.collapsed)
+
+	assert(not debug._detailed_timing_check.button_pressed, "Per-tile timing detail stays off by default")
+	debug._detailed_timing_check.button_pressed = true
+	assert(host.detailed_timing, "The debug window forwards the detailed-timing request")
+	assert(debug._action_label.text == "Detailed timing is on.")
+	host.detailed_timing = false
+	debug._refresh_metrics()
+	assert(not debug._detailed_timing_check.button_pressed, "The checkbox follows the reported state")
 
 	assert(debug._terrain_slider.min_value == 1 and debug._terrain_slider.max_value == 32)
 	debug._terrain_slider.value = 12

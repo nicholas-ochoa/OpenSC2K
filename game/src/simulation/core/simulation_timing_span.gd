@@ -2,6 +2,12 @@ class_name SimulationTimingSpan
 extends RefCounted
 # elapsed work time, excluding explicit waits for the next frame grant
 # this is not os thread cpu time: preemption is still included
+
+# per-tile step marks cost more than the work they measure in the growth scan
+# the debug window turns them on when a detailed breakdown is wanted. callers
+# read this once per phase and guard each hot mark with the local copy
+static var detailed := false
+
 var budget: SimulationSliceBudget
 var started: int
 var step_started: int
