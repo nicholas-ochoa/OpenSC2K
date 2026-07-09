@@ -48,8 +48,8 @@ static func apply(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	allow_small_tile := false,
 	runtime_events: Dictionary = {},
 ) -> int:
@@ -110,8 +110,8 @@ static func apply_flood(
 	misc: PackedByteArray,
 	point: Vector2i,
 	maximum_altitude: int,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	runtime_events: Dictionary = {},
 ) -> int:
 	var map_edge: int = city.map_size if city != null else 128
@@ -165,8 +165,8 @@ static func burn_structure(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	mark_fire := true,
 	clear_current := true,
 	emit_effects := false

@@ -2,10 +2,10 @@ class_name DisasterStartFloodWeather
 extends DisasterStartConstants
 
 
-static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random) -> Dictionary:
+static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random: SimLfsrRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterStartObjectsState._map_payloads(city)
@@ -82,14 +82,14 @@ static func _find_flood_shore(terrain: PackedByteArray, origin: Vector2i, map_ed
 
 
 static func _start_mass_floods(
-	city: CityState, center: Vector2i, random, lfsr_random
+	city: CityState, center: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterStartObjectsState._map_payloads(city)
@@ -153,18 +153,14 @@ static func _start_mass_floods(
 
 
 static func _start_hurricane(
-	city: CityState, requested_point: Vector2i, random, lfsr_random
+	city: CityState, requested_point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if (
-		lfsr_random == null
-		or not lfsr_random.has_method("next_mask")
-		or not lfsr_random.has_method("next_mod")
-	):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterStartObjectsState._map_payloads(city)
@@ -298,8 +294,8 @@ static func _hurricane_damage(
 	city: CityState,
 	payloads: Dictionary,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	damage_points: Array[Vector2i],
 	runtime_events: Dictionary,
 	emit_effects: bool
@@ -331,7 +327,7 @@ static func _hurricane_damage(
 
 static func _hurricane_flood_edge(
 	payloads: Dictionary,
-	lfsr_random,
+	lfsr_random: SimLfsrRandom,
 	direction: int,
 	attempt_count: int,
 	flood_points: Array[Vector2i],

@@ -40,7 +40,7 @@ static func _advance_construction(
 	point: Vector2i,
 	density: int,
 	zone: int,
-	random,
+	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
 ) -> bool:
@@ -126,7 +126,7 @@ static func _advance_to_density_four(
 	altitudes: PackedInt32Array,
 	point: Vector2i,
 	zone: int,
-	random,
+	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
 ) -> bool:
@@ -195,7 +195,7 @@ static func _clear_growth_building(
 	misc: PackedByteArray,
 	land_value: PackedByteArray,
 	point: Vector2i,
-	random,
+	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
 ) -> void:

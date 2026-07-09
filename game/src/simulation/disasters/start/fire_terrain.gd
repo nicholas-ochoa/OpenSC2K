@@ -2,17 +2,13 @@ class_name DisasterStartFireTerrain
 extends DisasterStartConstants
 
 
-static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
+static func _start_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if (
-		lfsr_random == null
-		or not lfsr_random.has_method("next_mask")
-		or not lfsr_random.has_method("next_mod")
-	):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterStartObjectsState._map_payloads(city)
@@ -74,18 +70,14 @@ static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
 
 
 static func _start_earthquake(
-	city: CityState, point: Vector2i, random, lfsr_random
+	city: CityState, point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if (
-		lfsr_random == null
-		or not lfsr_random.has_method("next_mask")
-		or not lfsr_random.has_method("next_mod")
-	):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterStartObjectsState._map_payloads(city)
@@ -178,10 +170,10 @@ static func _start_earthquake(
 	return result
 
 
-static func _start_volcano(city: CityState, center: Vector2i, random) -> Dictionary:
+static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
 	var original := DisasterStartObjectsState._map_payloads(city)
@@ -347,14 +339,14 @@ static func _volcano_raise_is_valid(
 
 
 static func _start_firestorm(
-	city: CityState, center: Vector2i, random, lfsr_random
+	city: CityState, center: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterStartObjectsState._map_payloads(city)
@@ -446,8 +438,8 @@ static func _apply_fire_damage(
 	city: CityState,
 	payloads: Dictionary,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	runtime_events: Dictionary = {},
 ) -> int:
 	return DisasterMapDamage.apply(

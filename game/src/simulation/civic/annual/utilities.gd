@@ -18,7 +18,7 @@ static func update_wind_power(annual: MicrosimAnnualContext, record_id: int, off
 
 
 static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: int, power_tile: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -76,7 +76,7 @@ static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: 
 
 
 static func update_water_treatment(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -102,7 +102,7 @@ static func update_water_treatment(annual: MicrosimAnnualContext, record_id: int
 
 
 static func update_arcology(annual: MicrosimAnnualContext, record_id: int, offset: int, arcology_tile: int) -> void:
-	if not _has_lfsr_random(annual.lfsr_random):
+	if annual.lfsr_random == null:
 		annual.random_records_pending += 1
 		return
 

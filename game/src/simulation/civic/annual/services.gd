@@ -4,7 +4,7 @@ extends MicrosimAnnualValues
 
 
 static func update_hospital(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -36,7 +36,7 @@ static func update_hospital(annual: MicrosimAnnualContext, record_id: int, offse
 
 
 static func update_police_station(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -63,7 +63,7 @@ static func update_police_station(annual: MicrosimAnnualContext, record_id: int,
 
 
 static func update_fire_station(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -79,7 +79,7 @@ static func update_fire_station(annual: MicrosimAnnualContext, record_id: int, o
 
 
 static func update_school(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -121,7 +121,7 @@ static func update_school(annual: MicrosimAnnualContext, record_id: int, offset:
 
 
 static func update_prison(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -163,7 +163,7 @@ static func update_prison(annual: MicrosimAnnualContext, record_id: int, offset:
 
 
 static func update_college(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 

@@ -13,7 +13,7 @@ static func trace(
 	origin: Vector2i,
 	zone: int,
 	traffic_weight: int,
-	random,
+	random: SimRandom,
 	maximum_cost := 100,
 	map_edge: int = 128,
 	collect_reach := false,
@@ -29,7 +29,7 @@ static func trace(
 	):
 		return {"ok": false, "error": "transport input maps have the wrong size"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible random generator is required"}
 
 	if zone < 0 or zone >= DESTINATION_ZONE_MASKS.size():

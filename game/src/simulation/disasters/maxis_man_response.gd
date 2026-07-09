@@ -7,7 +7,7 @@ const ARRIVAL_SOUND := 513
 const ARRIVAL_OFFSETS := [Vector2i(16, 0), Vector2i(0, 16), Vector2i(-16, 0), Vector2i(0, -16)]
 
 
-static func apply(city: CityState, started: Dictionary, random, lfsr_random) -> Dictionary:
+static func apply(city: CityState, started: Dictionary, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
 	if not started.get("ok", false) or not started.get("started", false):
 		return started
 

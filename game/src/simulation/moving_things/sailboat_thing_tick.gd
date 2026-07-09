@@ -20,8 +20,8 @@ static func update(
 	text: PackedByteArray,
 	things: PackedByteArray,
 	record: int,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> void:

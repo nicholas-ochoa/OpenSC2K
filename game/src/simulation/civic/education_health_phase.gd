@@ -34,11 +34,11 @@ const ORDINANCE_ANTI_DRUG := 0x0200
 const ORDINANCE_CPR_TRAINING := 0x0400
 
 
-static func run(city: CityState, random) -> Dictionary:
+static func run(city: CityState, random: SimRandom) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible random generator is required"}
 
 	var misc := city.document.find_chunk("MISC")
@@ -228,7 +228,7 @@ static func _apply_mortality(
 	population: PackedInt64Array,
 	education: PackedInt64Array,
 	life_expectancy: PackedInt64Array,
-	random
+	random: SimRandom
 ) -> int:
 	var total_deaths := 0
 
@@ -271,7 +271,7 @@ static func _apply_aging(
 	college_capacity: int,
 	pollution_penalty: int,
 	ordinance_flags: int,
-	random
+	random: SimRandom
 ) -> void:
 	for target_cohort in range(POPULATION_COHORTS - 1, 0, -1):
 		var source_cohort := target_cohort - 1
@@ -355,7 +355,7 @@ static func _remove_population(
 	life_expectancy: PackedInt64Array,
 	amount: int,
 	city_population: int,
-	random
+	random: SimRandom
 ) -> Dictionary:
 	var remaining := amount
 	var pass_count := 0

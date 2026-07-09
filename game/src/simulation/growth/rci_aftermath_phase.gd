@@ -95,13 +95,13 @@ const MILITARY_TILE_COUNT_INDEX := {
 }
 
 
-static func run(city: CityState, random, season: int) -> Dictionary:
+static func run(city: CityState, random: SimRandom, season: int) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
 	if season < 0 or season > 3:
@@ -225,7 +225,7 @@ static func weather_transition(current_trend: int, season: int, roll: int) -> in
 
 static func _update_random_tree(
 	city: CityState,
-	random,
+	random: SimRandom,
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
 	flags: PackedByteArray,
@@ -274,7 +274,7 @@ static func _update_random_tree(
 
 
 static func _append_general_news(
-	random, misc: PackedByteArray, graphs: PackedByteArray, news_items: Array,
+	random: SimRandom, misc: PackedByteArray, graphs: PackedByteArray, news_items: Array,
 	map_edge: int = 128
 ) -> void:
 	match random.next_u15() % 6:
@@ -338,7 +338,7 @@ static func _append_general_news(
 
 
 static func _append_graph_news(
-	random,
+	random: SimRandom,
 	graphs: PackedByteArray,
 	series: int,
 	high_type: int,
@@ -355,7 +355,7 @@ static func _append_graph_news(
 
 
 static func _release_invention(
-	city: CityState, random, misc: PackedByteArray, news_items: Array
+	city: CityState, random: SimRandom, misc: PackedByteArray, news_items: Array
 ) -> int:
 	if (random.next_u15() & 7) != 0:
 		return -1

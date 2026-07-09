@@ -14,7 +14,7 @@ static func process(
 	things: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
+	random: SimRandom,
 	rotation: int,
 	counters: Dictionary,
 	map_edge: int = 128,
@@ -104,7 +104,7 @@ static func _airport_growth_selection(
 	current_tile: int,
 	military: bool,
 	rotation: int,
-	random,
+	random: SimRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> int:
@@ -121,7 +121,7 @@ static func _seaport_growth_selection(
 	point: Vector2i,
 	current_tile: int,
 	military: bool,
-	random,
+	random: SimRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> int:

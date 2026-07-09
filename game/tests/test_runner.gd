@@ -106,7 +106,10 @@ const SequenceLfsrRandom = TestRandoms.SequenceLfsrRandom
 const SequenceRandom = TestRandoms.SequenceRandom
 const SparseRandom = TestRandoms.SparseRandom
 const CountingRandom = TestRandoms.CountingRandom
-const SequenceModuloRandom = TestRandoms.SequenceModuloRandom
+const SequenceGameModuloRandom = TestRandoms.SequenceGameModuloRandom
+const ZeroGameRandom = TestRandoms.ZeroGameRandom
+const NonzeroGameRandom = TestRandoms.NonzeroGameRandom
+const SequenceGameRandom = TestRandoms.SequenceGameRandom
 
 var fixture_documents: Dictionary = {}
 var fixture_root := ""
@@ -5772,7 +5775,7 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 		"Air Force fixture clears its military count",
 	)
 	var air_city := CityModel.from_document(air_document)
-	var air_random := SequenceModuloRandom.new([10, 20])
+	var air_random := SequenceGameModuloRandom.new([10, 20])
 	var air := MilitaryProposal.resolve(air_city, true, air_random)
 	_check(
 		air.ok
@@ -5814,7 +5817,7 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 		"Army fixture makes one plot tile uneven",
 	)
 	var army_city := CityModel.from_document(army_document)
-	var army := MilitaryProposal.resolve(army_city, true, SequenceModuloRandom.new([10, 20]))
+	var army := MilitaryProposal.resolve(army_city, true, SequenceGameModuloRandom.new([10, 20]))
 	_check(
 		army.ok
 		and army.base_type == MilitaryProposal.BASE_ARMY
@@ -5861,7 +5864,7 @@ func _test_military_proposal_phase(reference_root: String) -> void:
 	for site in expected_sites:
 		missile_values.append_array([site.position.x, site.position.y])
 
-	var missile_random := SequenceModuloRandom.new(missile_values)
+	var missile_random := SequenceGameModuloRandom.new(missile_values)
 	var missile_city := CityModel.from_document(missile_document)
 	var missile := MilitaryProposal.resolve(missile_city, true, missile_random)
 	_check(
@@ -8256,7 +8259,7 @@ func _test_annual_special_microsim_phase(reference_root: String) -> void:
 	_check(document.set_misc_u32(0x102c, 90000), "Annual special fixture sets normal population")
 	var process_random := SequenceRandom.new([6, 43, 5, 123, 31, 0xaa, 0x3ff, 0x7f, 0x3f])
 	var lfsr := SequenceLfsrRandom.new([5, 7, 9])
-	var game_lcg := SequenceLfsrRandom.new([101, 202, 303, 404])
+	var game_lcg := SequenceGameRandom.new([101, 202, 303, 404])
 	var result := AnnualMicrosims.run(
 		city, 0, 0, 0, process_random, lfsr, game_lcg, 80, 70
 	)
@@ -8941,7 +8944,7 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 		0,
 		0,
 		MicrosimLfsrRandom.new(),
-		NonzeroLfsrRandom.new()
+		NonzeroGameRandom.new()
 	)
 	_check(train_result.ok and train_result.spawned_trains == 1, "Rail station spawns a train")
 	_check(station.city.text_overlay_id(20, 18) == 202, "Train engine attaches to its rail tile")
@@ -8978,7 +8981,7 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	_check(
 		MovingThings.spawn_train(
 			full_buildings, full_things, full_text, Vector2i(20, 20),
-			ZeroLfsrRandom.new(), ZeroLfsrRandom.new()
+			ZeroGameRandom.new(), ZeroLfsrRandom.new()
 		),
 		"Full-pool train creator keeps the supplied unchecked-allocation result",
 	)
@@ -9861,7 +9864,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 
 	_set_train(train, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
 	var train_result := MovingThingTick.run(
-		train.city, ZeroRandom.new(), SequenceLfsrRandom.new([0, 1]), ZeroLfsrRandom.new()
+		train.city, ZeroRandom.new(), SequenceLfsrRandom.new([0, 1]), ZeroGameRandom.new()
 	)
 	_check(train_result.ok and train_result.moved_trains == 1, "Train tick advances a clear consist")
 	var moved_engine: Dictionary = train.city.thing(1)
@@ -9890,7 +9893,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	_check(station.city.set_building_id(20, 19, 0xed), "Pausing train fixture places an adjacent station")
 	_set_train(station, Vector2i(20, 20), Vector2i(21, 20), 1, 10)
 	var pause_result := MovingThingTick.run(
-		station.city, ZeroRandom.new(), SequenceLfsrRandom.new([1]), ZeroLfsrRandom.new()
+		station.city, ZeroRandom.new(), SequenceLfsrRandom.new([1]), ZeroGameRandom.new()
 	)
 	_check(pause_result.ok and pause_result.paused_trains == 1, "Surface train pauses beside a station")
 	_check(
@@ -9907,7 +9910,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		turning_train.city,
 		SequenceRandom.new([0]),
 		SequenceLfsrRandom.new([0, 0, 0]),
-		ZeroLfsrRandom.new()
+		ZeroGameRandom.new()
 	)
 	_check(
 		train_turn_result.ok
@@ -9936,7 +9939,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		subway_train.city,
 		ZeroRandom.new(),
 		SequenceLfsrRandom.new([0, 1]),
-		ZeroLfsrRandom.new()
+		ZeroGameRandom.new()
 	)
 	_check(subway_train_result.ok and subway_train_result.moved_trains == 1, "Train enters a subway transition")
 	_check(
@@ -9961,7 +9964,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		reversing_train.city,
 		ZeroRandom.new(),
 		SequenceLfsrRandom.new([0, 1]),
-		ZeroLfsrRandom.new()
+		ZeroGameRandom.new()
 	)
 	_check(reverse_result.ok and reverse_result.reversed_trains == 1, "Train reverses when no next route is open")
 	_check(
@@ -9984,7 +9987,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		crashed_train.city,
 		ZeroRandom.new(),
 		SequenceLfsrRandom.new([0]),
-		ZeroLfsrRandom.new()
+		ZeroGameRandom.new()
 	)
 	_check(
 		crash_result.ok

@@ -25,10 +25,10 @@ static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
 	return DisasterStartObjectsState._result(DISASTER_TOXIC_SPILL, point, true, true, 0)
 
 
-static func _start_riot(city: CityState, point: Vector2i, random) -> Dictionary:
+static func _start_riot(city: CityState, point: Vector2i, random: SimRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
 	var riot_maps := _riot_map_payloads(city)
@@ -64,10 +64,10 @@ static func _start_riot(city: CityState, point: Vector2i, random) -> Dictionary:
 	return _riot_result(DISASTER_RIOT, current_point, seed_points, 3)
 
 
-static func _start_mass_riots(city: CityState, point: Vector2i, random) -> Dictionary:
+static func _start_mass_riots(city: CityState, point: Vector2i, random: SimRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
 	var riot_maps := _riot_map_payloads(city)
@@ -216,10 +216,10 @@ static func _riot_result(
 	return result
 
 
-static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictionary:
+static func _start_pollution(city: CityState, point: Vector2i, random: SimRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
 	var text_chunk := city.document.find_chunk("XTXT")

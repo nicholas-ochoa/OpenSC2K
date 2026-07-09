@@ -9,8 +9,8 @@ static func update_airplane(
 	text: PackedByteArray,
 	things: PackedByteArray,
 	record: int,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 	no_disasters := false,
@@ -201,7 +201,7 @@ static func update_helicopter(
 	things: PackedByteArray,
 	record: int,
 	city_center: Vector2i,
-	random,
+	random: SimRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 	no_disasters := false,
@@ -356,7 +356,7 @@ static func _turn_one_step(direction: int, target: int) -> int:
 	return AirThingMotion._turn_one_step(direction, target)
 
 
-static func _random_direction_step(direction: int, divisor: int, random) -> int:
+static func _random_direction_step(direction: int, divisor: int, random: SimRandom) -> int:
 	return AirThingMotion._random_direction_step(direction, divisor, random)
 
 

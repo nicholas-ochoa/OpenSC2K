@@ -91,7 +91,7 @@ static func _provision_microsim(
 	text_overlays: PackedByteArray,
 	tile_id: int,
 	current_year: int,
-	process_random,
+	process_random: SimRandom,
 	misc := PackedByteArray(),
 	australian_locale := false,
 	scurk_place_mode := false
@@ -108,7 +108,7 @@ static func _initialize_microsim(
 	record_id: int,
 	tile_id: int,
 	current_year: int,
-	process_random,
+	process_random: SimRandom,
 	australian_locale: bool,
 	scurk_place_mode: bool,
 	map_edge: int = 128

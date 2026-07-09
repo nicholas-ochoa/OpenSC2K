@@ -19,8 +19,8 @@ static func _monster_damage(
 	things: PackedByteArray,
 	offset: int,
 	current: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
@@ -177,7 +177,7 @@ static func _move_thing_eight_way(
 	return 1
 
 
-static func _random_direction_step(direction: int, divisor: int, random) -> int:
+static func _random_direction_step(direction: int, divisor: int, random: SimRandom) -> int:
 	if random.next_u15() % divisor == 0:
 		return (direction + random.next_u15() % 3 - 1) & 7
 

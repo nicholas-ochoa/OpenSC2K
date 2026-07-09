@@ -3,21 +3,17 @@ extends DisasterMapConstants
 
 
 static func run_all(
-	city: CityState, random, lfsr_random, map_counter: int, hurricane_counter := 0
+	city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, map_counter: int, hurricane_counter := 0
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if (
-		lfsr_random == null
-		or not lfsr_random.has_method("next_mask")
-		or not lfsr_random.has_method("next_mod")
-	):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterMapState._map_payloads(city)
@@ -230,20 +226,16 @@ static func run_all(
 	return counters
 
 
-static func run_dispatch(city: CityState, random, lfsr_random) -> Dictionary:
+static func run_dispatch(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if (
-		lfsr_random == null
-		or not lfsr_random.has_method("next_mask")
-		or not lfsr_random.has_method("next_mod")
-	):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterMapState._map_payloads(city)
@@ -323,8 +315,8 @@ static func _process_dispatch_cell(
 	payloads: Dictionary,
 	point: Vector2i,
 	overlay: int,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
@@ -352,7 +344,7 @@ static func _process_dispatch_cell(
 
 
 static func _extinguish_dispatch_fire(
-	city: CityState, payloads: Dictionary, point: Vector2i, random, lfsr_random
+	city: CityState, payloads: Dictionary, point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> bool:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := DisasterMapState._index(point, map_edge)

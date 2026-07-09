@@ -52,13 +52,13 @@ static func is_story_type(story_type: int) -> bool:
 	return story_type >= 0 and story_type < STORY_PRIORITIES.size()
 
 
-static func initialize_session(misc: PackedByteArray, random: RefCounted) -> Dictionary:
+static func initialize_session(misc: PackedByteArray, random: SimRandom) -> Dictionary:
 	var validation := _validate_misc(misc)
 
 	if not validation.ok:
 		return validation
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return _failure("newspaper process-random state is missing")
 
 	for paper in PAPER_COUNT:
@@ -312,7 +312,7 @@ static func _swap_paper_field(
 
 static func _swap_random_paper_field(
 	misc: PackedByteArray,
-	random: RefCounted,
+	random: SimRandom,
 	field: int,
 	first_paper: int,
 	paper_count: int

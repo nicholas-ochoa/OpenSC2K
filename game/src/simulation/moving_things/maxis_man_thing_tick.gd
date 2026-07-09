@@ -25,7 +25,7 @@ static func update(
 	text: PackedByteArray,
 	things: PackedByteArray,
 	record: int,
-	random,
+	random: SimRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> void:

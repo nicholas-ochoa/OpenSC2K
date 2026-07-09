@@ -145,7 +145,7 @@ static func _turn_one_step(direction: int, target: int) -> int:
 	return (direction + 1) & 7 if direction - target > 4 else (direction - 1) & 7
 
 
-static func _random_direction_step(direction: int, divisor: int, random) -> int:
+static func _random_direction_step(direction: int, divisor: int, random: SimRandom) -> int:
 	if random.next_u15() % divisor == 0:
 		return (direction + random.next_u15() % 3 - 1) & 7
 

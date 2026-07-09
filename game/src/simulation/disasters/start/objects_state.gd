@@ -9,10 +9,10 @@ static func _start_crash_wrapper(disaster_type: int, point: Vector2i) -> Diction
 	return result
 
 
-static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
+static func _start_plane_crash(city: CityState, lfsr_random: SimLfsrRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var thing_chunk := city.document.find_chunk("XTHG")

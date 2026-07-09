@@ -83,8 +83,8 @@ const DISASTER_WAIT_MONTHS := [0, 100, 60, 30]
 
 static func run(
 	city: CityState,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	power_usage_percent: int,
 	water_usage_percent: int,
 	commerce_connections: int,
@@ -96,10 +96,10 @@ static func run(
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var misc_chunk := city.document.find_chunk("MISC")
@@ -157,7 +157,7 @@ static func run(
 
 static func _status_index(
 	misc: PackedByteArray,
-	random,
+	random: SimRandom,
 	power_usage_percent: int,
 	water_usage_percent: int,
 	commerce_connections: int,
@@ -250,8 +250,8 @@ static func _status_index(
 static func _select_disaster(
 	misc: PackedByteArray,
 	pollution: PackedByteArray,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	current_point: Vector2i,
 	map_edge: int = 128,
 ) -> Dictionary:
@@ -381,14 +381,14 @@ static func _select_disaster(
 	return result
 
 
-static func _random_map_point(random, map_edge: int = 128) -> Vector2i:
+static func _random_map_point(random: SimRandom, map_edge: int = 128) -> Vector2i:
 	var y: int = random.next_u15() % (map_edge - 2) + 1
 	var x: int = random.next_u15() % (map_edge - 2) + 1
 
 	return Vector2i(x, y)
 
 
-static func _random_center_point(random, center: Vector2i, radius: int) -> Vector2i:
+static func _random_center_point(random: SimRandom, center: Vector2i, radius: int) -> Vector2i:
 	var y: int = (random.next_u15() & 0x1f) + center.y - radius
 	var x: int = (random.next_u15() & 0x1f) + center.x - radius
 
@@ -396,7 +396,7 @@ static func _random_center_point(random, center: Vector2i, radius: int) -> Vecto
 
 
 static func _toxic_spill_point(
-	pollution: PackedByteArray, lfsr_random,
+	pollution: PackedByteArray, lfsr_random: SimLfsrRandom,
 	map_edge: int = 128,
 ) -> Vector2i:
 	var highest := 0

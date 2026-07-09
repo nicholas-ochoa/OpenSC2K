@@ -27,9 +27,9 @@ const MISC_CITY_CENTER_Y := 0x101c
 
 static func run(
 	city: CityState,
-	random,
-	lfsr_random,
-	game_random = null,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
+	game_random: GameLcgRandom = null,
 	ship_home := Vector2i(-1, -1),
 	allow_disaster_damage := true,
 	traffic_news_time_msec := -1,
@@ -40,21 +40,14 @@ static func run(
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible random generator is required"}
 
-	if (
-		lfsr_random == null
-		or not lfsr_random.has_method("next_mod")
-		or not lfsr_random.has_method("next_mask")
-	):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	if game_random == null:
 		game_random = GameLcgRandom.new(1)
-
-	if not game_random.has_method("next_mod"):
-		return {"ok": false, "error": "a compatible game random generator is required"}
 
 	if traffic_news_time_msec < 0:
 		traffic_news_time_msec = Time.get_ticks_msec()

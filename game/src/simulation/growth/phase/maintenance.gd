@@ -13,8 +13,8 @@ static func _process_surface_maintenance(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> void:
@@ -110,8 +110,8 @@ static func _process_microsim_growth(
 	misc: PackedByteArray,
 	point: Vector2i,
 	tile: int,
-	game_random,
-	lfsr_random,
+	game_random: GameLcgRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> void:
@@ -184,8 +184,8 @@ static func _process_subway_maintenance(
 	underground: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> void:
@@ -239,7 +239,7 @@ static func _process_subway_maintenance(
 static func _maintenance_fails(
 	misc: PackedByteArray,
 	budget_index: int,
-	random,
+	random: SimRandom,
 	random_range: int,
 	additional_value := 0
 ) -> bool:

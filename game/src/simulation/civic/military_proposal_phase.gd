@@ -21,7 +21,7 @@ const NOTICE_MISSILE_SILOS := 0xf4
 const NOTICE_NO_SITE := 0x19b
 
 
-static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
+static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom) -> Dictionary:
 	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
 	span.mark("prepare data")
 	var result := _resolve(city, accepted, game_random, span)
@@ -32,13 +32,13 @@ static func resolve(city: CityState, accepted: bool, game_random) -> Dictionary:
 	return result
 
 
-static func _resolve(city: CityState, accepted: bool, game_random, span: SimulationTimingSpan) -> Dictionary:
+static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, span: SimulationTimingSpan) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if accepted and (game_random == null or not game_random.has_method("next_mod")):
+	if accepted and game_random == null:
 		return {"ok": false, "error": "a compatible game random generator is required"}
 
 	var chunks := _chunks(city)

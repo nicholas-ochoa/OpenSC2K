@@ -43,7 +43,7 @@ static func update_big_park(annual: MicrosimAnnualContext, record_id: int, offse
 
 
 static func update_stadium(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -64,7 +64,7 @@ static func update_stadium(annual: MicrosimAnnualContext, record_id: int, offset
 
 
 static func update_zoo(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_game_random(annual.game_random):
+	if annual.game_random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -76,7 +76,7 @@ static func update_zoo(annual: MicrosimAnnualContext, record_id: int, offset: in
 
 
 static func update_statue(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -136,7 +136,7 @@ static func update_library(annual: MicrosimAnnualContext, record_id: int, offset
 
 
 static func update_marina(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_lfsr_random(annual.lfsr_random):
+	if annual.lfsr_random == null:
 		annual.random_records_pending += 1
 		return
 
@@ -153,7 +153,7 @@ static func update_marina(annual: MicrosimAnnualContext, record_id: int, offset:
 
 
 static func update_llamadome(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	if not _has_process_random(annual.random):
+	if annual.random == null:
 		annual.random_records_pending += 1
 		return
 

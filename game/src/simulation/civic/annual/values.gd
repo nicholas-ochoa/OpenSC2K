@@ -19,18 +19,6 @@ static func _raw_population(misc: PackedByteArray, cohort: int) -> int:
 	return _read_u32(misc, MISC_RAW_POPULATION + cohort * MISC_DEMOGRAPHIC_RECORD_SIZE)
 
 
-static func _has_process_random(random) -> bool:
-	return random != null and random.has_method("next_u15")
-
-
-static func _has_lfsr_random(random) -> bool:
-	return random != null and random.has_method("next_mask") and random.has_method("next_mod")
-
-
-static func _has_game_random(random) -> bool:
-	return random != null and random.has_method("next_mod")
-
-
 static func _find_microsim_location(text_overlays: PackedByteArray, record_id: int, map_edge: int = 128, budget: SimulationSliceBudget = null) -> Dictionary:
 	if OverlayData.count(text_overlays) != map_edge * map_edge:
 		return {}

@@ -8,9 +8,9 @@ static func run(
 	bus_passengers: int,
 	rail_passengers: int,
 	subway_passengers: int,
-	random = null,
-	lfsr_random = null,
-	game_random = null,
+	random: SimRandom = null,
+	lfsr_random: SimLfsrRandom = null,
+	game_random: GameLcgRandom = null,
 	power_usage_percent := -1,
 	water_usage_percent := -1,
 	australian_locale := false,
@@ -170,7 +170,7 @@ static func run(
 				MicrosimAnnualAmenities.update_llamadome(annual, record_id, offset)
 
 	annual.span.mark("annual totals and arcology launch")
-	if _has_process_random(annual.random):
+	if annual.random != null:
 		_write_u32(annual.misc, MISC_OLD_ARRESTS, annual.old_arrests)
 		_write_u32(
 			annual.misc,
@@ -183,14 +183,14 @@ static func run(
 		if annual.low_school_score:
 			annual.news_items.append({"type": NEWS_EDUCATION, "argument": 0})
 
-	if _has_lfsr_random(annual.lfsr_random):
+	if annual.lfsr_random != null:
 		_write_u32(annual.misc, MISC_ARCOLOGY_POPULATION, annual.arcology_population)
 		annual.arcology_launch_pending = (
 			_divide_toward_zero(_tile_count(annual.misc, TILE_LAUNCH_ARCOLOGY, annual.map_edge), 16) > 300
 			and annual.arcology_population > 6000000
 		)
 
-		if annual.arcology_launch_pending and _has_process_random(annual.random):
+		if annual.arcology_launch_pending and annual.random != null:
 			annual.news_items.append({"type": NEWS_ARCOLOGY_LAUNCH_START, "argument": 0})
 			var text_overlays: PackedByteArray = annual.changed_payloads.XTXT
 
@@ -278,8 +278,8 @@ static func run(
 		"view_center_requests": annual.view_center_requests,
 		"passenger_counters_reset": true,
 		"complete": (
-			_has_process_random(annual.random)
-			and _has_lfsr_random(annual.lfsr_random)
+			annual.random != null
+			and annual.lfsr_random != null
 			and annual.random_records_pending == 0
 			and annual.expired_power_records.is_empty()
 			and not annual.arcology_launch_pending

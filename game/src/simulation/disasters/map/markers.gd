@@ -2,16 +2,16 @@ class_name DisasterMapMarkers
 extends DisasterMapConstants
 
 
-static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
+static func run_toxic(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterMapState._map_payloads(city)
@@ -99,20 +99,16 @@ static func run_toxic(city: CityState, random, lfsr_random) -> Dictionary:
 	return counters
 
 
-static func run_riot(city: CityState, random, lfsr_random) -> Dictionary:
+static func run_riot(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if (
-		lfsr_random == null
-		or not lfsr_random.has_method("next_mask")
-		or not lfsr_random.has_method("next_mod")
-	):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterMapState._map_payloads(city)
@@ -252,8 +248,8 @@ static func _process_toxic_cell(
 	payloads: Dictionary,
 	point: Vector2i,
 	index: int,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
@@ -299,8 +295,8 @@ static func _process_riot_cell(
 	point: Vector2i,
 	index: int,
 	marker: int,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	runtime_events: Dictionary,
 ) -> void:
@@ -376,7 +372,7 @@ static func _process_riot_cell(
 
 
 static func _abandon_toxic_structure(
-	city: CityState, payloads: Dictionary, point: Vector2i, random
+	city: CityState, payloads: Dictionary, point: Vector2i, random: SimRandom
 ) -> bool:
 	var map_edge: int = city.map_size if city != null else 128
 	var index := DisasterMapState._index(point, map_edge)

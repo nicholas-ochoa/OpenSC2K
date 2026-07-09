@@ -11,7 +11,7 @@ static func _abandon(
 	point: Vector2i,
 	density: int,
 	pattern: int,
-	random,
+	random: SimRandom,
 	rotation: int,
 	land_value: PackedByteArray,
 	map_edge: int = 128,
@@ -90,7 +90,7 @@ static func _place_zone(
 	anchor: Vector2i,
 	density: int,
 	building_class: int,
-	random,
+	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
 ) -> bool:

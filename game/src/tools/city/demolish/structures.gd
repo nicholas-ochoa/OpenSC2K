@@ -8,7 +8,7 @@ static func structure_area(tile_id: int) -> int:
 
 
 static func damage_structure_payloads(
-	city: CityState, payloads: Dictionary, point: Vector2i, random, emit_effects := false
+	city: CityState, payloads: Dictionary, point: Vector2i, random: SimRandom, emit_effects := false
 ) -> Dictionary:
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTXT", "XLAB", "XMIC", "MISC"]:
 		if not payloads.has(chunk_id):
@@ -52,7 +52,7 @@ static func _demolish_point(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
+	random: SimRandom,
 	force_damage := false,
 	retile_neighbors := true,
 	emit_effects := true,
@@ -226,7 +226,7 @@ static func _demolish_underground_point(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
+	random: SimRandom,
 	scurk_mode := false
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128

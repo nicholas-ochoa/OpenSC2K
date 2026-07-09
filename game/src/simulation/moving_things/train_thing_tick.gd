@@ -33,9 +33,9 @@ static func update(
 	text: PackedByteArray,
 	things: PackedByteArray,
 	record: int,
-	random,
-	lfsr_random,
-	game_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
+	game_random: GameLcgRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> void:
@@ -267,7 +267,7 @@ static func _select_direction(
 	point: Vector2i,
 	initial_direction: int,
 	engine_type: int,
-	game_random,
+	game_random: GameLcgRandom,
 	map_edge: int = 128,
 ) -> int:
 	var order_index: int = game_random.next_mod(2)

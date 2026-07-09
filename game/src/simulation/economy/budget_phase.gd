@@ -55,11 +55,11 @@ const SERVICE_TILE_IDS := {
 const NEWS_ORDINANCE := 0x29
 
 
-static func run(city: CityState, random, annual_budget_approved := false) -> Dictionary:
+static func run(city: CityState, random: SimRandom, annual_budget_approved := false) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible random generator is required"}
 
 	var misc_chunk := city.document.find_chunk("MISC")

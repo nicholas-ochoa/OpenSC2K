@@ -8,7 +8,7 @@ static func run(
 	origin: Vector2i,
 	zone: int,
 	traffic_weight: int,
-	random,
+	random: SimRandom,
 	maximum_cost := 100
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
@@ -16,7 +16,7 @@ static func run(
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible random generator is required"}
 
 	if zone < 0 or zone >= DESTINATION_ZONE_MASKS.size():
@@ -64,7 +64,7 @@ static func trace(
 	origin: Vector2i,
 	zone: int,
 	traffic_weight: int,
-	random,
+	random: SimRandom,
 	maximum_cost := 100,
 	map_edge: int = 128,
 	collect_reach := false,

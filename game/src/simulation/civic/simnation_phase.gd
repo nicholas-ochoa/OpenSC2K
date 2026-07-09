@@ -22,11 +22,11 @@ const NEWS_FEDERAL_RATE_UP := 0x09
 const NEWS_FEDERAL_RATE_DOWN := 0x0a
 
 
-static func run(city: CityState, random) -> Dictionary:
+static func run(city: CityState, random: SimRandom) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
 	var misc_chunk := city.document.find_chunk("MISC")

@@ -7,8 +7,8 @@ static func _collapse_structure(
 	payloads: Dictionary,
 	point: Vector2i,
 	_tile: int,
-	random,
-	lfsr_random
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom
 ) -> void:
 	DisasterMapDamage.burn_structure(
 		city,

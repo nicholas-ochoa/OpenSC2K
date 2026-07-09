@@ -1,6 +1,6 @@
 extends SceneTree
 
-class PlotRandom extends RefCounted:
+class PlotRandom extends GameLcgRandom:
 	var origin: int
 	func _init(value: int) -> void:
 		origin = value

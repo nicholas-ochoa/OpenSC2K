@@ -37,7 +37,7 @@ static func count_type(things: PackedByteArray, thing_type: int) -> int:
 
 
 static func spawn_helicopter(
-	things: PackedByteArray, text: PackedByteArray, point: Vector2i, random,
+	things: PackedByteArray, text: PackedByteArray, point: Vector2i, random: SimRandom,
 	map_edge: int = 128,
 ) -> Dictionary:
 	var index := _index(point, map_edge)
@@ -77,7 +77,7 @@ static func spawn_airplane(
 	text: PackedByteArray,
 	point: Vector2i,
 	runway_axis: int,
-	random,
+	random: SimRandom,
 	map_edge: int = 128,
 ) -> Dictionary:
 	var source_index := _index(point, map_edge)
@@ -151,7 +151,7 @@ static func spawn_ship(
 	things: PackedByteArray,
 	text: PackedByteArray,
 	target: Vector2i,
-	random,
+	random: SimRandom,
 	map_edge: int = 128,
 ) -> Dictionary:
 	if count_type(things, TYPE_SHIP) >= 1 * maxi(1, IntegerMath.div_trunc(map_edge * map_edge, 16384)):
@@ -212,7 +212,7 @@ static func spawn_sailboats(
 	things: PackedByteArray,
 	text: PackedByteArray,
 	point: Vector2i,
-	lfsr_random,
+	lfsr_random: SimLfsrRandom,
 	map_edge: int = 128,
 ) -> int:
 	if count_type(things, TYPE_SAILBOAT) >= 4 * maxi(1, IntegerMath.div_trunc(map_edge * map_edge, 16384)):
@@ -305,8 +305,8 @@ static func spawn_train(
 	things: PackedByteArray,
 	text: PackedByteArray,
 	station: Vector2i,
-	game_random,
-	lfsr_random,
+	game_random: GameLcgRandom,
+	lfsr_random: SimLfsrRandom,
 	map_edge: int = 128,
 ) -> bool:
 	for search_offset in TRAIN_SEARCH_OFFSETS:
@@ -323,8 +323,8 @@ static func _spawn_train_record(
 	things: PackedByteArray,
 	text: PackedByteArray,
 	start: Vector2i,
-	game_random,
-	lfsr_random,
+	game_random: GameLcgRandom,
+	lfsr_random: SimLfsrRandom,
 	map_edge: int = 128,
 ) -> bool:
 	if count_type(things, TYPE_TRAIN_ENGINE) >= 5 * maxi(1, IntegerMath.div_trunc(map_edge * map_edge, 16384)):

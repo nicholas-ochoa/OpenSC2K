@@ -1,9 +1,12 @@
 extends SceneTree
-class QuietRandom extends RefCounted:
+class QuietRandom extends SimRandom:
 
 
 	func next_u15() -> int:
 		return 1
+
+
+class QuietLfsrRandom extends SimLfsrRandom:
 
 
 	func next_mod(_limit: int) -> int:
@@ -41,7 +44,7 @@ func _initialize() -> void:
 			var water := blank.duplicate()
 			water.fill(4)
 			var counters := {"moved_ships": 0, "removed_ships": 0, "sound_events": []}
-			ShipThingTick.update(blank, blank, water, text, things, 0, point, QuietRandom.new(), QuietRandom.new(), counters)
+			ShipThingTick.update(blank, blank, water, text, things, 0, point, QuietRandom.new(), QuietLfsrRandom.new(), counters)
 			assert(things[0] == 0 and counters.removed_ships == 1 and counters.moved_ships == 0)
 			assert(text[point.x * 128 + point.y] == 42)
 

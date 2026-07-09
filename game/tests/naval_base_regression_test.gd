@@ -1,6 +1,6 @@
 extends SceneTree
 
-class ChoiceRandom extends RefCounted:
+class ChoiceRandom extends GameLcgRandom:
 	var choice: int
 
 

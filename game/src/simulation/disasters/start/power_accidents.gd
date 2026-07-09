@@ -3,14 +3,14 @@ extends DisasterStartConstants
 
 
 static func _start_meltdown(
-	city: CityState, requested_point: Vector2i, random, lfsr_random
+	city: CityState, requested_point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterStartObjectsState._map_payloads(city)
@@ -193,13 +193,13 @@ static func _write_radioactivity(payloads: Dictionary, point: Vector2i, map_edge
 	return old_tile != RADIOACTIVITY_TILE
 
 
-static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary:
+static func _start_microwave(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if lfsr_random == null or not lfsr_random.has_method("next_mod"):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterStartObjectsState._map_payloads(city)

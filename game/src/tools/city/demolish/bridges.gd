@@ -12,7 +12,7 @@ static func _demolish_bridge(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	selected: Vector2i,
-	random = null,
+	random: SimRandom = null,
 	emit_effects := false,
 	map_edge: int = 128,
 ) -> Dictionary:
@@ -115,7 +115,7 @@ static func _demolish_reinforced_bridge(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	selected: Vector2i,
-	random = null,
+	random: SimRandom = null,
 	emit_effects := false,
 	map_edge: int = 128,
 ) -> Dictionary:

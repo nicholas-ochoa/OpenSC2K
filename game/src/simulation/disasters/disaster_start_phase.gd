@@ -4,7 +4,7 @@ extends DisasterStartConstants
 
 
 static func start(
-	city: CityState, disaster_type: int, point: Vector2i, random, lfsr_random = null
+	city: CityState, disaster_type: int, point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom = null
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -62,7 +62,7 @@ static func start(
 	if disaster_type != DISASTER_TORNADO and disaster_type != DISASTER_MONSTER:
 		return DisasterStartObjectsState._result(disaster_type, point, false, false, 0)
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
 	var thing_chunk := city.document.find_chunk("XTHG")
@@ -133,15 +133,15 @@ static func _start_crash_wrapper(disaster_type: int, point: Vector2i) -> Diction
 	return DisasterStartObjectsState._start_crash_wrapper(disaster_type, point)
 
 
-static func _start_plane_crash(city: CityState, lfsr_random) -> Dictionary:
+static func _start_plane_crash(city: CityState, lfsr_random: SimLfsrRandom) -> Dictionary:
 	return DisasterStartObjectsState._start_plane_crash(city, lfsr_random)
 
 
-static func _start_fire(city: CityState, random, lfsr_random) -> Dictionary:
+static func _start_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
 	return DisasterStartFireTerrain._start_fire(city, random, lfsr_random)
 
 
-static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random) -> Dictionary:
+static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random: SimLfsrRandom) -> Dictionary:
 	return DisasterStartFloodWeather._start_flood(city, requested_point, lfsr_random)
 
 
@@ -153,11 +153,11 @@ static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
 	return DisasterStartRiotsPollution._start_toxic_spill(city, point)
 
 
-static func _start_riot(city: CityState, point: Vector2i, random) -> Dictionary:
+static func _start_riot(city: CityState, point: Vector2i, random: SimRandom) -> Dictionary:
 	return DisasterStartRiotsPollution._start_riot(city, point, random)
 
 
-static func _start_mass_riots(city: CityState, point: Vector2i, random) -> Dictionary:
+static func _start_mass_riots(city: CityState, point: Vector2i, random: SimRandom) -> Dictionary:
 	return DisasterStartRiotsPollution._start_mass_riots(city, point, random)
 
 
@@ -192,18 +192,18 @@ static func _riot_result(
 	return DisasterStartRiotsPollution._riot_result(disaster_type, point, seed_points, attempt_count)
 
 
-static func _start_pollution(city: CityState, point: Vector2i, random) -> Dictionary:
+static func _start_pollution(city: CityState, point: Vector2i, random: SimRandom) -> Dictionary:
 	return DisasterStartRiotsPollution._start_pollution(city, point, random)
 
 
 static func _start_earthquake(
-	city: CityState, point: Vector2i, random, lfsr_random
+	city: CityState, point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> Dictionary:
 	return DisasterStartFireTerrain._start_earthquake(city, point, random, lfsr_random)
 
 
 static func _start_meltdown(
-	city: CityState, requested_point: Vector2i, random, lfsr_random
+	city: CityState, requested_point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> Dictionary:
 	return DisasterStartPowerAccidents._start_meltdown(city, requested_point, random, lfsr_random)
 
@@ -219,7 +219,7 @@ static func _write_radioactivity(payloads: Dictionary, point: Vector2i, map_edge
 	return DisasterStartPowerAccidents._write_radioactivity(payloads, point, map_edge)
 
 
-static func _start_microwave(city: CityState, random, lfsr_random) -> Dictionary:
+static func _start_microwave(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
 	return DisasterStartPowerAccidents._start_microwave(city, random, lfsr_random)
 
 
@@ -227,7 +227,7 @@ static func _find_first_building(buildings: PackedByteArray, tile_id: int, map_e
 	return DisasterStartPowerAccidents._find_first_building(buildings, tile_id, map_edge)
 
 
-static func _start_volcano(city: CityState, center: Vector2i, random) -> Dictionary:
+static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom) -> Dictionary:
 	return DisasterStartFireTerrain._start_volcano(city, center, random)
 
 
@@ -243,19 +243,19 @@ static func _volcano_raise_is_valid(
 
 
 static func _start_firestorm(
-	city: CityState, center: Vector2i, random, lfsr_random
+	city: CityState, center: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> Dictionary:
 	return DisasterStartFireTerrain._start_firestorm(city, center, random, lfsr_random)
 
 
 static func _start_mass_floods(
-	city: CityState, center: Vector2i, random, lfsr_random
+	city: CityState, center: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> Dictionary:
 	return DisasterStartFloodWeather._start_mass_floods(city, center, random, lfsr_random)
 
 
 static func _start_hurricane(
-	city: CityState, requested_point: Vector2i, random, lfsr_random
+	city: CityState, requested_point: Vector2i, random: SimRandom, lfsr_random: SimLfsrRandom
 ) -> Dictionary:
 	return DisasterStartFloodWeather._start_hurricane(city, requested_point, random, lfsr_random)
 
@@ -264,8 +264,8 @@ static func _hurricane_damage(
 	city: CityState,
 	payloads: Dictionary,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	damage_points: Array[Vector2i],
 	runtime_events: Dictionary,
 	emit_effects: bool
@@ -277,7 +277,7 @@ static func _hurricane_damage(
 
 static func _hurricane_flood_edge(
 	payloads: Dictionary,
-	lfsr_random,
+	lfsr_random: SimLfsrRandom,
 	direction: int,
 	attempt_count: int,
 	flood_points: Array[Vector2i],
@@ -304,8 +304,8 @@ static func _apply_fire_damage(
 	city: CityState,
 	payloads: Dictionary,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	runtime_events: Dictionary = {},
 ) -> int:
 	return DisasterStartFireTerrain._apply_fire_damage(city, payloads, point, random, lfsr_random, runtime_events)

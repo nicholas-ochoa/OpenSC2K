@@ -5,11 +5,11 @@ extends GrowthConstants
 
 static func run(
 	city: CityState,
-	random,
+	random: SimRandom,
 	step: int,
 	substep: int,
-	lfsr_random = null,
-	game_random = null
+	lfsr_random: SimLfsrRandom = null,
+	game_random: GameLcgRandom = null
 ) -> Dictionary:
 	return GrowthScan.run(city, random, step, substep, lfsr_random, game_random)
 
@@ -24,8 +24,8 @@ static func _process_surface_maintenance(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> void:
@@ -48,8 +48,8 @@ static func _process_microsim_growth(
 	misc: PackedByteArray,
 	point: Vector2i,
 	tile: int,
-	game_random,
-	lfsr_random,
+	game_random: GameLcgRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> void:
@@ -68,8 +68,8 @@ static func _process_subway_maintenance(
 	underground: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> void:
@@ -82,7 +82,7 @@ static func _process_subway_maintenance(
 static func _maintenance_fails(
 	misc: PackedByteArray,
 	budget_index: int,
-	random,
+	random: SimRandom,
 	random_range: int,
 	additional_value := 0
 ) -> bool:
@@ -141,7 +141,7 @@ static func _advance_construction(
 	point: Vector2i,
 	density: int,
 	zone: int,
-	random,
+	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
 ) -> bool:
@@ -159,7 +159,7 @@ static func _advance_to_density_four(
 	altitudes: PackedInt32Array,
 	point: Vector2i,
 	zone: int,
-	random,
+	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
 ) -> bool:
@@ -179,7 +179,7 @@ static func _clear_growth_building(
 	misc: PackedByteArray,
 	land_value: PackedByteArray,
 	point: Vector2i,
-	random,
+	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
 ) -> void:
@@ -211,7 +211,7 @@ static func _abandon(
 	point: Vector2i,
 	density: int,
 	pattern: int,
-	random,
+	random: SimRandom,
 	rotation: int,
 	land_value: PackedByteArray,
 	map_edge: int = 128,
@@ -228,7 +228,7 @@ static func _place_zone(
 	anchor: Vector2i,
 	density: int,
 	building_class: int,
-	random,
+	random: SimRandom,
 	rotation: int,
 	map_edge: int = 128,
 ) -> bool:

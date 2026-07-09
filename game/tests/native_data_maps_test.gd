@@ -1,20 +1,9 @@
 extends SceneTree
 const DocumentState = preload("res://tests/support/document_state.gd")
 const TimingResults = preload("res://tests/support/timing_results.gd")
-
-class FixedRandom extends RefCounted:
-
-
-	func next_u15() -> int:
-		return 0
-
-
-	func next_mod(_limit: int) -> int:
-		return 0
-
-
-	func next_mask(_mask: int) -> int:
-		return 0
+const TestRandoms = preload("res://tests/support/test_randoms.gd")
+const ZeroRandom = TestRandoms.ZeroRandom
+const ZeroLfsrRandom = TestRandoms.ZeroLfsrRandom
 
 var failures := 0
 var checks := 0
@@ -164,7 +153,7 @@ func check_values(edge: int) -> void:
 	var p := GrowthPhase._payloads(city)
 	var labels := doc.find_chunk("XLAB").decoded_payload.duplicate()
 	var damage := DisasterDamage.apply(city, p.ALTM, p.XBLD, p.XTER, p.XZON, p.XUND,
-		p.XBIT, p.XTRF, p.XTXT, labels, p.XMIC, p.MISC, point, FixedRandom.new(), FixedRandom.new())
+		p.XBIT, p.XTRF, p.XTXT, labels, p.XMIC, p.MISC, point, ZeroRandom.new(), ZeroLfsrRandom.new())
 	check(damage != 0 and p.XTRF[index] == 0 and p.XTRF[index + 1] == 30, "Disaster clears only selected native traffic tile")
 	# All adjacent consumer rules above retain far coordinates. Full-map native
 	# phase parity at 512 is owned by check_sliced and native_data_map_optimization.
@@ -198,9 +187,9 @@ func check_values(edge: int) -> void:
 	check(police[station_index + 16] == 0, "Service radius remains in physical tile units")
 	# Run moving objects and disasters with full-size grids.
 	check(MovingThingPhase.run(city, SimRandom.new(1), SimLfsrRandom.new(2), GameLcgRandom.new(3)).ok, "Native moving phase")
-	check(WeatherDisasterPhase._toxic_spill_point(pollution, FixedRandom.new(), edge).x == -1, "Low pollution is not a toxic source")
+	check(WeatherDisasterPhase._toxic_spill_point(pollution, ZeroLfsrRandom.new(), edge).x == -1, "Low pollution is not a toxic source")
 	pollution[index] = 200
-	check(WeatherDisasterPhase._toxic_spill_point(pollution, FixedRandom.new(), edge) == point - Vector2i(5, 5), "Toxic selector scans native coordinates")
+	check(WeatherDisasterPhase._toxic_spill_point(pollution, ZeroLfsrRandom.new(), edge) == point - Vector2i(5, 5), "Toxic selector scans native coordinates")
 
 	# Check population, growth, and crime values per tile in a dense district.
 	doc = native_document(edge)
@@ -256,7 +245,7 @@ func check_wide_counts(edge: int) -> void:
 	doc.set_misc_u32(RciAftermathPhase.MISC_TILE_COUNTS + RciAftermathPhase.STADIUM_TILE * 4, 40000)
 	doc.set_misc_u32(RciAftermathPhase.MISC_STADIUM_TEAMS, 1)
 	var news: Array = []
-	RciAftermathPhase._append_general_news(FixedRandom.new(), doc.find_chunk("MISC").decoded_payload,
+	RciAftermathPhase._append_general_news(ZeroRandom.new(), doc.find_chunk("MISC").decoded_payload,
 		doc.find_chunk("XGRP").decoded_payload, news, edge)
 	check(news.has({"type": RciAftermathPhase.NEWS_SPORTS, "argument": 0}) == (edge != 128),
 		"Sports news uses wide stadium count")

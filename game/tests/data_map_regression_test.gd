@@ -1,10 +1,13 @@
 extends SceneTree
 
-class FixedRandom extends RefCounted:
+class FixedRandom extends SimRandom:
 
 
 	func next_u15() -> int:
 		return 0
+
+
+class FixedLfsrRandom extends SimLfsrRandom:
 
 
 	func next_mask(_mask: int) -> int:
@@ -66,7 +69,7 @@ func check_maps(edge: int, native: bool) -> void:
 	# Exercise the producer as well as the consumer. An empty industrial sector
 	# takes the original below-20-percent branch and stores low-word minus one.
 	var rng := FixedRandom.new()
-	check(IndustryPhase.run(city, rng, rng, 0).ok, "Industry phase completes")
+	check(IndustryPhase.run(city, rng, FixedLfsrRandom.new(), 0).ok, "Industry phase completes")
 	check(doc.misc_u32(0x1034) == 65535, "Industry retains original low-word encoding")
 
 	for encoding in [65535, 4294967295, 0, 1, 2]:

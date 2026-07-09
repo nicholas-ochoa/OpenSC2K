@@ -1,6 +1,6 @@
 extends SceneTree
 
-class FixedRandom extends RefCounted:
+class FixedRandom extends SimRandom:
 	func next_u15() -> int:
 		return 32767
 

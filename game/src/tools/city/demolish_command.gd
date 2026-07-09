@@ -12,7 +12,7 @@ static func structure_area(tile_id: int) -> int:
 
 
 static func damage_structure_payloads(
-	city: CityState, payloads: Dictionary, point: Vector2i, random, emit_effects := false
+	city: CityState, payloads: Dictionary, point: Vector2i, random: SimRandom, emit_effects := false
 ) -> Dictionary:
 	return DemolishStructures.damage_structure_payloads(city, payloads, point, random, emit_effects)
 
@@ -58,7 +58,7 @@ static func _demolish_point(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
+	random: SimRandom,
 	force_damage := false,
 	retile_neighbors := true,
 	emit_effects := true,
@@ -83,7 +83,7 @@ static func _demolish_underground_point(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	point: Vector2i,
-	random,
+	random: SimRandom,
 	scurk_mode := false
 ) -> Dictionary:
 	return DemolishStructures._demolish_underground_point(
@@ -105,7 +105,7 @@ static func _demolish_tunnel(
 	misc: PackedByteArray,
 	start: Vector2i,
 	tile_id: int,
-	random,
+	random: SimRandom,
 	emit_effects: bool,
 	scurk_mode := false,
 	map_edge: int = 128,
@@ -126,7 +126,7 @@ static func _demolish_transport_component(
 	misc: PackedByteArray,
 	start: Vector2i,
 	tile_id: int,
-	random,
+	random: SimRandom,
 	emit_effects: bool,
 	scurk_mode := false,
 	map_edge: int = 128,
@@ -149,7 +149,7 @@ static func _demolish_highway_section(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	selected: Vector2i,
-	random,
+	random: SimRandom,
 	rotation: int,
 	emit_effects: bool,
 	scurk_mode := false,
@@ -170,7 +170,7 @@ static func _demolish_bridge(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	selected: Vector2i,
-	random = null,
+	random: SimRandom = null,
 	emit_effects := false,
 	map_edge: int = 128,
 ) -> Dictionary:
@@ -188,7 +188,7 @@ static func _demolish_reinforced_bridge(
 	flags: PackedByteArray,
 	misc: PackedByteArray,
 	selected: Vector2i,
-	random = null,
+	random: SimRandom = null,
 	emit_effects := false,
 	map_edge: int = 128,
 ) -> Dictionary:
@@ -255,7 +255,7 @@ static func _effect_altitude(
 
 
 static func _dust_effect(
-	point: Vector2i, effect_altitude: int, random, frame: int, screen_offset: Vector2i
+	point: Vector2i, effect_altitude: int, random: SimRandom, frame: int, screen_offset: Vector2i
 ) -> Dictionary:
 	return DemolishEffectsSites._dust_effect(point, effect_altitude, random, frame, screen_offset)
 
@@ -265,7 +265,7 @@ static func _structure_effects(
 	flags: PackedByteArray,
 	site: Rect2i,
 	area: int,
-	random,
+	random: SimRandom,
 	map_edge: int = 128,
 ) -> Array[Dictionary]:
 	return DemolishEffectsSites._structure_effects(altitude, flags, site, area, random, map_edge)

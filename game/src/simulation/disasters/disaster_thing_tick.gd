@@ -18,8 +18,8 @@ static func update_explosion(
 	misc: PackedByteArray,
 	things: PackedByteArray,
 	record: int,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	allow_disaster_damage: bool,
 	counters: Dictionary
 ) -> void:
@@ -103,8 +103,8 @@ static func update_monster(
 	things: PackedByteArray,
 	record: int,
 	city_center: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
@@ -234,7 +234,7 @@ static func update_tornado(
 	misc: PackedByteArray,
 	things: PackedByteArray,
 	record: int,
-	random,
+	random: SimRandom,
 	counters: Dictionary
 ) -> void:
 	var map_edge: int = city.map_size if city != null else 128
@@ -313,8 +313,8 @@ static func _monster_damage(
 	things: PackedByteArray,
 	offset: int,
 	current: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary
 ) -> void:
 	DisasterThingActions._monster_damage(
@@ -341,7 +341,7 @@ static func _move_thing_eight_way(
 	return DisasterThingActions._move_thing_eight_way(thing_type, text, things, record, direction, map_edge)
 
 
-static func _random_direction_step(direction: int, divisor: int, random) -> int:
+static func _random_direction_step(direction: int, divisor: int, random: SimRandom) -> int:
 	return DisasterThingActions._random_direction_step(direction, divisor, random)
 
 

@@ -6,9 +6,9 @@ var city: CityState
 var bus_passengers: int
 var rail_passengers: int
 var subway_passengers: int
-var random: Variant
-var lfsr_random: Variant
-var game_random: Variant
+var random: SimRandom
+var lfsr_random: SimLfsrRandom
+var game_random: GameLcgRandom
 var power_usage_percent: int
 var water_usage_percent: int
 var australian_locale: bool

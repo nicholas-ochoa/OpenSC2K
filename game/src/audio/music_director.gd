@@ -21,7 +21,7 @@ func next_general_track() -> int:
 	return track
 
 
-static func monthly_track(speed: int, playback_active: bool, random: RefCounted) -> int:
+static func monthly_track(speed: int, playback_active: bool, random: SimRandom) -> int:
 	if playback_active or random == null:
 		return -1
 
@@ -34,14 +34,14 @@ static func monthly_track(speed: int, playback_active: bool, random: RefCounted)
 	return FIRST_TRACK_ID + int(random.next_u15()) % TRACK_COUNT
 
 
-static func budget_track(random: RefCounted) -> int:
+static func budget_track(random: SimLfsrRandom) -> int:
 	if random == null:
 		return -1
 
 	return BUDGET_TRACKS[int(random.next_mod(BUDGET_TRACKS.size()))]
 
 
-static func newspaper_track(random: RefCounted) -> int:
+static func newspaper_track(random: SimLfsrRandom) -> int:
 	if random == null:
 		return -1
 

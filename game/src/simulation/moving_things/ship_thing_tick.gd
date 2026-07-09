@@ -34,8 +34,8 @@ static func update(
 	things: PackedByteArray,
 	record: int,
 	ship_home: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	map_edge: int = 128,
 ) -> void:

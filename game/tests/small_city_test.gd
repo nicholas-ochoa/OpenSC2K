@@ -1,6 +1,6 @@
 extends SceneTree
 
-class SequenceRandom extends RefCounted:
+class SequenceRandom extends SimRandom:
 	var values: Array[int]
 	var position := 0
 
@@ -12,11 +12,35 @@ class SequenceRandom extends RefCounted:
 		position += 1
 		return value
 
+class SequenceLfsr extends SimLfsrRandom:
+	var values: Array[int]
+	var position := 0
+
+	func _init(sequence: Array[int] = [0]) -> void:
+		values = sequence
+
 	func next_mod(limit: int) -> int:
-		return next_u15() % limit
+		return _next() % limit
 
 	func next_mask(mask: int) -> int:
-		return next_u15() & mask
+		return _next() & mask
+
+	func _next() -> int:
+		var value := values[position % values.size()]
+		position += 1
+		return value
+
+class SequenceGameLcg extends GameLcgRandom:
+	var values: Array[int]
+	var position := 0
+
+	func _init(sequence: Array[int] = [0]) -> void:
+		values = sequence
+
+	func next_mod(limit: int) -> int:
+		var value := values[position % values.size()]
+		position += 1
+		return value % limit
 
 var checks := 0
 var failures := 0
@@ -178,9 +202,9 @@ func check_vehicles(edge: int) -> void:
 	text.fill(0)
 	var flags := city.tile_flags.duplicate()
 	flags.fill(4)
-	check(MovingThingSpawner.spawn_sailboats(city.buildings, flags, things, text, point, SequenceRandom.new(), edge) == 4,
+	check(MovingThingSpawner.spawn_sailboats(city.buildings, flags, things, text, point, SequenceLfsr.new(), edge) == 4,
 		"Small map retains four sailboats")
-	check(MovingThingSpawner.spawn_sailboats(city.buildings, flags, things, text, point + Vector2i(3, 3), SequenceRandom.new(), edge) == 0,
+	check(MovingThingSpawner.spawn_sailboats(city.buildings, flags, things, text, point + Vector2i(3, 3), SequenceLfsr.new(), edge) == 0,
 		"Small map enforces its sailboat limit")
 	doc.find_chunk("XTHG").set_decoded_payload(things)
 	city.replace_text_overlays(text)
@@ -196,5 +220,5 @@ func check_vehicles(edge: int) -> void:
 			var track: Vector2i = start + delta
 			p.XBLD[track.x * edge + track.y] = 0x2c
 		var spawned := MovingThingSpawner._spawn_train_record(p.XBLD, p.XTHG, p.XTXT,
-			start, SequenceRandom.new(), SequenceRandom.new(), edge)
+			start, SequenceGameLcg.new(), SequenceLfsr.new(), edge)
 		check(spawned == (start.x == edge - 4), "Small-map trains retain capacity and edge margins")

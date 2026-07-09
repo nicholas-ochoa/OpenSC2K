@@ -2,7 +2,7 @@ extends RefCounted
 
 
 class ZeroRandom:
-	extends RefCounted
+	extends SimRandom
 
 
 	func next_u15() -> int:
@@ -10,7 +10,7 @@ class ZeroRandom:
 
 
 class ZeroLfsrRandom:
-	extends RefCounted
+	extends SimLfsrRandom
 
 
 	func next_mask(_mask: int) -> int:
@@ -22,7 +22,7 @@ class ZeroLfsrRandom:
 
 
 class NonzeroLfsrRandom:
-	extends RefCounted
+	extends SimLfsrRandom
 
 
 	func next_mask(_mask: int) -> int:
@@ -34,7 +34,7 @@ class NonzeroLfsrRandom:
 
 
 class MicrosimLfsrRandom:
-	extends RefCounted
+	extends SimLfsrRandom
 
 
 	func next_mask(mask: int) -> int:
@@ -46,7 +46,7 @@ class MicrosimLfsrRandom:
 
 
 class SequenceLfsrRandom:
-	extends RefCounted
+	extends SimLfsrRandom
 
 	var values := PackedInt32Array()
 	var position := 0
@@ -75,7 +75,7 @@ class SequenceLfsrRandom:
 
 
 class SequenceRandom:
-	extends RefCounted
+	extends SimRandom
 
 	var values := PackedInt32Array()
 	var position := 0
@@ -96,7 +96,7 @@ class SequenceRandom:
 
 
 class SparseRandom:
-	extends RefCounted
+	extends SimRandom
 
 	var values := {}
 	var default_value := 1
@@ -116,7 +116,7 @@ class SparseRandom:
 
 
 class CountingRandom:
-	extends RefCounted
+	extends SimRandom
 
 	var position := 0
 
@@ -128,7 +128,7 @@ class CountingRandom:
 
 
 class SequenceModuloRandom:
-	extends RefCounted
+	extends SimLfsrRandom
 
 	var values := PackedInt32Array()
 	var position := 0
@@ -143,3 +143,62 @@ class SequenceModuloRandom:
 		position += 1
 
 		return value % divisor
+
+
+class SequenceGameModuloRandom:
+	extends GameLcgRandom
+
+	var values := PackedInt32Array()
+	var position := 0
+
+
+	func _init(initial_values: Array[int]) -> void:
+		values = PackedInt32Array(initial_values)
+
+
+	func next_mod(divisor: int) -> int:
+		var value := int(values[position]) if position < values.size() else 0
+		position += 1
+
+		return value % divisor
+
+
+class ZeroGameRandom:
+	extends GameLcgRandom
+
+
+	func next_mod(_divisor: int) -> int:
+		return 0
+
+
+class NonzeroGameRandom:
+	extends GameLcgRandom
+
+
+	func next_mod(divisor: int) -> int:
+		return 1 % divisor
+
+
+class SequenceGameRandom:
+	extends GameLcgRandom
+
+	var values := PackedInt32Array()
+	var position := 0
+
+
+	func _init(initial_values: Array[int]) -> void:
+		values = PackedInt32Array(initial_values)
+
+
+	func next_mod(divisor: int) -> int:
+		return _next() % divisor
+
+
+	func _next() -> int:
+		if position >= values.size():
+			return 1
+
+		var value := int(values[position])
+		position += 1
+
+		return value

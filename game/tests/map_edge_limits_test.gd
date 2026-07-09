@@ -1,6 +1,6 @@
 extends SceneTree
 
-class SequenceRandom extends RefCounted:
+class SequenceRandom extends SimRandom:
 	var values: Array[int]
 	var position := 0
 
@@ -16,12 +16,44 @@ class SequenceRandom extends RefCounted:
 		return value
 
 
+class SequenceLfsr extends SimLfsrRandom:
+	var values: Array[int]
+	var position := 0
+
+
+	func _init(sequence: Array[int] = [0]) -> void:
+		values = sequence
+
+
 	func next_mod(limit: int) -> int:
-		return next_u15() % limit
+		return _next() % limit
 
 
 	func next_mask(mask: int) -> int:
-		return next_u15() & mask
+		return _next() & mask
+
+
+	func _next() -> int:
+		var value := values[position % values.size()]
+		position += 1
+
+		return value
+
+
+class SequenceGameLcg extends GameLcgRandom:
+	var values: Array[int]
+	var position := 0
+
+
+	func _init(sequence: Array[int] = [0]) -> void:
+		values = sequence
+
+
+	func next_mod(limit: int) -> int:
+		var value := values[position % values.size()]
+		position += 1
+
+		return value % limit
 
 var failures := 0
 var checks := 0
@@ -117,7 +149,7 @@ func check_transport(edge: int) -> void:
 			p.XBLD[point.x * edge + point.y] = 0x2c
 
 		var spawned := MovingThingSpawner._spawn_train_record(p.XBLD, p.XTHG, p.XTXT,
-			start, SequenceRandom.new(), SequenceRandom.new(), edge)
+			start, SequenceGameLcg.new(), SequenceLfsr.new(), edge)
 		check(spawned == (start.x == edge - 4), "Train uses actual edge margin")
 
 		if spawned:
@@ -136,7 +168,7 @@ func check_transport(edge: int) -> void:
 		var counters := {"active_sailboats": active, "removed_sailboats": 0, "malformed_records": 0,
 			"distressed_sailboats": 0, "turned_sailboats": 0, "moved_sailboats": 0}
 		SailboatThingTick.update(p.XBLD, p.XBIT, p.XTXT, p.XTHG, 1,
-			SequenceRandom.new(), SequenceRandom.new([1]), counters, edge)
+			SequenceRandom.new(), SequenceLfsr.new([1]), counters, edge)
 		var survives: bool = active <= IntegerMath.div_trunc(4 * edge * edge, 16384)
 		check((ThingData.read(p.XTHG, offset) != 0) == survives, "Sailboat population cap matches spawner")
 
@@ -158,7 +190,7 @@ func check_random_sites(edge: int) -> void:
 	doc.set_misc_u32(WeatherDisasterPhase.MISC_WEATHER_TREND, 11)
 	var result := WeatherDisasterPhase._select_disaster(doc.find_chunk("MISC").decoded_payload,
 		doc.find_chunk("XPLT").decoded_payload, SequenceRandom.new([0, edge - 3, edge - 3]),
-		SequenceRandom.new(), Vector2i.ZERO, edge)
+		SequenceLfsr.new(), Vector2i.ZERO, edge)
 	check(result.disaster_type == WeatherDisasterPhase.DISASTER_TORNADO
 		and result.disaster_point == Vector2i(edge - 2, edge - 2), "Weather dispatch passes map edge")
 	doc.set_misc_u32(WeatherDisasterPhase.MISC_WEATHER_TREND, 9)
@@ -177,12 +209,12 @@ func check_random_sites(edge: int) -> void:
 		sequence.append_array([edge - 3, edge - 3])
 		result = WeatherDisasterPhase._select_disaster(doc.find_chunk("MISC").decoded_payload,
 			doc.find_chunk("XPLT").decoded_payload, SequenceRandom.new(sequence),
-			SequenceRandom.new(), Vector2i.ZERO, edge)
+			SequenceLfsr.new(), Vector2i.ZERO, edge)
 		check(result.disaster_type == candidate and result.disaster_point == Vector2i(edge - 2, edge - 2),
 			"Disaster %d passes map edge" % candidate)
 
 	var city := CityState.from_document(EmptyCityTemplate.create(edge))
-	result = MilitaryProposalPhase.resolve(city, true, SequenceRandom.new([edge - 10]))
+	result = MilitaryProposalPhase.resolve(city, true, SequenceGameLcg.new([edge - 10]))
 	check(result.ok and city.zone_id(edge - 10, edge - 10) == 7, "Military base can select far map")
 	city = CityState.from_document(EmptyCityTemplate.create(edge))
 	city.buildings.fill(0x0d)
@@ -199,7 +231,7 @@ func check_random_sites(edge: int) -> void:
 				city.buildings[(origin.x + dx) * edge + origin.y + dy] = 0
 
 	city.document.find_chunk("XBLD").set_decoded_payload(city.buildings)
-	result = MilitaryProposalPhase.resolve(city, true, SequenceRandom.new(choices))
+	result = MilitaryProposalPhase.resolve(city, true, SequenceGameLcg.new(choices))
 	check(result.ok and result.get("base_type") == MilitaryProposalPhase.BASE_MISSILE_SILOS
 		and result.get("sites", []).size() == 6, "Military fallback selects six far silo plots")
 
@@ -274,7 +306,7 @@ func check_growth_dispatch(edge: int) -> void:
 	for step in 4:
 		for substep in 4:
 			var result := GrowthPhase.run(city, SequenceRandom.new(), step, substep,
-				SequenceRandom.new([1]), SequenceRandom.new())
+				SequenceLfsr.new([1]), SequenceGameLcg.new())
 			check(result.ok, "Full growth dispatch")
 			scanned += int(result.get("scanned_tiles", 0))
 			advanced += int(result.get("advanced_construction", 0))

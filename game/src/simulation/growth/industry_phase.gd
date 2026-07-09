@@ -46,14 +46,14 @@ const MID_EQ_INDUSTRIES := [2, 5, 7, 8, 6, 9]
 const HIGH_EQ_INDUSTRIES := [6, 9]
 
 
-static func run(city: CityState, random, lfsr_random, population_growth: int) -> Dictionary:
+static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, population_growth: int) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if lfsr_random == null or not lfsr_random.has_method("next_mask"):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible game LFSR generator is required"}
 
 	if population_growth < 0:

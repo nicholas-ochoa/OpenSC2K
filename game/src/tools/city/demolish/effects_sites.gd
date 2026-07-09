@@ -49,7 +49,7 @@ static func _effect_altitude(
 
 
 static func _dust_effect(
-	point: Vector2i, effect_altitude: int, random, frame: int, screen_offset: Vector2i
+	point: Vector2i, effect_altitude: int, random: SimRandom, frame: int, screen_offset: Vector2i
 ) -> Dictionary:
 	return {
 		"point": point,
@@ -66,7 +66,7 @@ static func _structure_effects(
 	flags: PackedByteArray,
 	site: Rect2i,
 	area: int,
-	random,
+	random: SimRandom,
 	map_edge: int = 128,
 ) -> Array[Dictionary]:
 	var effects: Array[Dictionary] = []

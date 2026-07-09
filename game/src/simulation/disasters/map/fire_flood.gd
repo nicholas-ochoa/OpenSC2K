@@ -2,20 +2,16 @@ class_name DisasterMapFireFlood
 extends DisasterMapConstants
 
 
-static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
+static func run_fire(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if (
-		lfsr_random == null
-		or not lfsr_random.has_method("next_mask")
-		or not lfsr_random.has_method("next_mod")
-	):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterMapState._map_payloads(city)
@@ -130,21 +126,17 @@ static func run_fire(city: CityState, random, lfsr_random) -> Dictionary:
 
 
 static func run_flood(
-	city: CityState, random, lfsr_random, map_counter: int
+	city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, map_counter: int
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible process random generator is required"}
 
-	if (
-		lfsr_random == null
-		or not lfsr_random.has_method("next_mask")
-		or not lfsr_random.has_method("next_mod")
-	):
+	if lfsr_random == null:
 		return {"ok": false, "error": "a compatible LFSR generator is required"}
 
 	var original := DisasterMapState._map_payloads(city)
@@ -268,8 +260,8 @@ static func _process_fire_cell(
 	payloads: Dictionary,
 	point: Vector2i,
 	index: int,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	runtime_events: Dictionary,
 ) -> void:
@@ -332,8 +324,8 @@ static func _process_flood_cell(
 	point: Vector2i,
 	index: int,
 	counter: int,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	counters: Dictionary,
 	runtime_events: Dictionary,
 ) -> void:
@@ -400,8 +392,8 @@ static func _apply_damage(
 	city: CityState,
 	payloads: Dictionary,
 	point: Vector2i,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	runtime_events: Dictionary = {},
 ) -> int:
 	return DisasterMapDamage.apply(
@@ -434,8 +426,8 @@ static func _apply_flood_damage(
 	payloads: Dictionary,
 	point: Vector2i,
 	maximum_altitude: int,
-	random,
-	lfsr_random,
+	random: SimRandom,
+	lfsr_random: SimLfsrRandom,
 	runtime_events: Dictionary = {},
 ) -> int:
 	return DisasterMapDamage.apply_flood(

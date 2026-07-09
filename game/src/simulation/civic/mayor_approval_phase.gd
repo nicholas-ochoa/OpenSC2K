@@ -20,11 +20,11 @@ const TILE_MAYOR_HOUSE := 0xf3
 const NEWS_HIGH_APPROVAL := 0x201
 
 
-static func run(city: CityState, random, previous_approval: int) -> Dictionary:
+static func run(city: CityState, random: SimRandom, previous_approval: int) -> Dictionary:
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
-	if random == null or not random.has_method("next_u15"):
+	if random == null:
 		return {"ok": false, "error": "a compatible random generator is required"}
 
 	var misc_chunk := city.document.find_chunk("MISC")
