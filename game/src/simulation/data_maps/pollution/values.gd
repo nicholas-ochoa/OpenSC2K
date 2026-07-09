@@ -1,6 +1,9 @@
 class_name PollutionValues
 extends PollutionConstants
 
+# Inline integer division avoids a function call for every cell.
+@warning_ignore_start("integer_division")
+
 
 
 static func _full_index(x: int, y: int, map_edge: int = 128) -> int:
@@ -28,6 +31,7 @@ static func _average_service_grid(
 	values: PackedInt32Array, x: int, y: int, x_offset: int,
 	map_edge: int = 128,
 ) -> int:
+	var quarter_edge := map_edge / 4
 	var center_index := (x + x_offset) * map_edge + y
 	var total := values[center_index]
 	var divisor := 1
@@ -38,7 +42,7 @@ static func _average_service_grid(
 		total += values[neighbor_row - map_edge]
 		divisor += 1
 
-	if x < (IntegerMath.div_trunc(map_edge, 4)) - 1:
+	if x < quarter_edge - 1:
 		total += values[neighbor_row + map_edge]
 		divisor += 1
 
@@ -46,7 +50,7 @@ static func _average_service_grid(
 		total += values[center_index - 1]
 		divisor += 1
 
-	if y < (IntegerMath.div_trunc(map_edge, 4)) - 1:
+	if y < quarter_edge - 1:
 		total += values[center_index + 1]
 		divisor += 1
 
@@ -129,10 +133,12 @@ static func _add_service_cell(
 	values: PackedByteArray, x: int, y: int, strength: int,
 	map_edge: int = 128,
 ) -> void:
-	if x < 0 or x >= (IntegerMath.div_trunc(map_edge, 4)) or y < 0 or y >= (IntegerMath.div_trunc(map_edge, 4)):
+	var quarter_edge := map_edge / 4
+
+	if x < 0 or x >= quarter_edge or y < 0 or y >= quarter_edge:
 		return
 
-	var index := x * (IntegerMath.div_trunc(map_edge, 4)) + y
+	var index := x * quarter_edge + y
 	values[index] = clampi(int(values[index]) + strength, 0, 0xff)
 
 
