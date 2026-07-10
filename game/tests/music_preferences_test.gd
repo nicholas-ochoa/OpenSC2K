@@ -87,11 +87,14 @@ func _run() -> void:
 	audio.dummy_music_active = true
 	audio.current_track_id = 10001
 	audio.handle_application_focus_out()
-	var midi_position := audio.music_player._position_seconds
-	audio.music_player._process(0.1)
-	assert(audio.music_player._position_seconds == midi_position)
+	var paused_metrics: Dictionary = audio.music_player.debug_metrics()
+	assert(paused_metrics.paused and paused_metrics.thread_running)
+	var midi_position: float = paused_metrics.position_seconds
+	await create_timer(0.2).timeout
+	assert(audio.music_player.debug_metrics().position_seconds == midi_position)
 	audio.handle_application_focus_in(true)
-	assert(audio.music_player._position_seconds == midi_position and not audio.music_player._paused)
+	var resumed_metrics: Dictionary = audio.music_player.debug_metrics()
+	assert(resumed_metrics.position_seconds >= midi_position and not resumed_metrics.paused)
 	audio.free()
 	var config := "user://shuffle-test.cfg"
 	assert(AppSettingsStore.save_values(0.5, 0.5, false, config, "auto", "", null, null, null, null, null, null, null, true) == OK)

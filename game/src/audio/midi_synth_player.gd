@@ -13,6 +13,11 @@ const MAX_TAIL_SECONDS := 2.0
 const MAX_FRAMES_PER_FILL := 1024
 const PITCH_BEND_RANGE := 2.0
 const TAU_VALUE := PI * 2.0
+# the synth thread refills once the device has taken the prefill margin, so the
+# ring keeps most of its second of slack. godot has no timed semaphore wait, so
+# a full buffer costs one paced check every idle_poll_msec, never a spin
+const PREFILL_FRAMES := int(PREFILL_SECONDS * SAMPLE_RATE)
+const IDLE_POLL_MSEC := 10
 
 
 class Voice:
@@ -35,8 +40,26 @@ class Voice:
 	var noise_state := 1
 
 
+# guarded by _mutex. the main thread publishes commands and reads status; the
+# synth thread owns every render field below the _playback handover
 var current_track_id := -1
 var _paused := false
+var _mutex := Mutex.new()
+var _wake := Semaphore.new()
+var _thread: Thread
+var _thread_exit := false
+var _thread_playing := false
+var _pending_start := false
+var _stop_requested := false
+var _pending_sequence: StandardMidiFile
+var _pending_playback: AudioStreamGeneratorPlayback
+var _generation := 0
+var _render_generation := -1
+var _frames_pushed := 0
+var _fill_count := 0
+var _idle_polls := 0
+var _skips := 0
+var _published_position := 0.0
 var _audio_player: AudioStreamPlayer
 var _generator: AudioStreamGenerator
 var _playback: AudioStreamGeneratorPlayback
@@ -74,11 +97,11 @@ func _ready() -> void:
 	_audio_player = AudioStreamPlayer.new()
 	_audio_player.stream = _generator
 	add_child(_audio_player)
-	set_process(false)
 
 
 func _exit_tree() -> void:
 	stop()
+	_stop_thread()
 
 	if _audio_player != null:
 		_audio_player.stream = null
@@ -101,25 +124,31 @@ func play_sequence(sequence: StandardMidiFile, track_id: int) -> Dictionary:
 		return {"ok": false, "error": "MIDI player is not ready"}
 
 	stop()
-	_reset_channels()
-	_sequence = sequence
-	current_track_id = track_id
-	_event_cursor = 0
-	_position_seconds = 0.0
-	_tail_start_seconds = -1.0
-	_active = true
 	_audio_player.play()
-	_playback = _audio_player.get_stream_playback() as AudioStreamGeneratorPlayback
+	var playback := _audio_player.get_stream_playback() as AudioStreamGeneratorPlayback
 
-	if _playback == null:
+	if playback == null:
 		stop()
 
 		return {"ok": false, "error": "Godot did not create MIDI audio playback"}
 
-	_fill_audio(mini(
-		_playback.get_frames_available(), int(PREFILL_SECONDS * SAMPLE_RATE)
-	))
-	set_process(true)
+	if not _start_thread():
+		stop()
+
+		return {"ok": false, "error": "Godot did not start the MIDI synthesizer thread"}
+
+	# the synth thread primes the ring buffer; the main thread never mixes
+	_mutex.lock()
+	_pending_sequence = sequence
+	_pending_playback = playback
+	_pending_start = true
+	_stop_requested = false
+	_thread_playing = true
+	_active = true
+	current_track_id = track_id
+	_generation += 1
+	_mutex.unlock()
+	_wake.post()
 
 	return {
 		"ok": true,
@@ -130,55 +159,173 @@ func play_sequence(sequence: StandardMidiFile, track_id: int) -> Dictionary:
 
 
 func stop() -> void:
+	_mutex.lock()
 	_paused = false
 	_active = false
-	set_process(false)
-	_voices.clear()
-	_sequence = null
-	_event_cursor = 0
-	_position_seconds = 0.0
-	_tail_start_seconds = -1.0
+	_thread_playing = false
+	_pending_start = false
+	_stop_requested = true
+	_pending_sequence = null
+	_pending_playback = null
 	current_track_id = -1
-
-	if _playback != null:
-		_playback.stop()
-		_playback.clear_buffer()
-
-	_playback = null
+	_published_position = 0.0
+	_skips = 0
+	_generation += 1
+	_mutex.unlock()
+	_wake.post()
 
 	if _audio_player != null:
 		_audio_player.stop()
 
 
 func is_track_active() -> bool:
-	return _active
+	_mutex.lock()
+	var active := _active
+	_mutex.unlock()
+
+	return active
 
 
+# only the main thread owns _audio_player, so the volume needs no lock
 func set_volume_linear(value: float) -> void:
 	if _audio_player != null:
 		_audio_player.volume_linear = clampf(value, 0.0, 1.0)
 
 
-func _process(_delta: float) -> void:
-	if _paused or not _active or _playback == null or _sequence == null:
+func debug_metrics() -> Dictionary:
+	_mutex.lock()
+	var result := {
+		"active": _active, "paused": _paused, "track_id": current_track_id,
+		"frames_pushed": _frames_pushed, "fills": _fill_count,
+		"idle_polls": _idle_polls, "position_seconds": _published_position,
+		"skips": _skips,
+		"thread_running": _thread != null,
+	}
+	_mutex.unlock()
+
+	return result
+
+
+func _start_thread() -> bool:
+	if _thread != null:
+		return true
+
+	_mutex.lock()
+	_thread_exit = false
+	_mutex.unlock()
+	var thread := Thread.new()
+
+	if thread.start(_synth_loop) != OK:
+		return false
+
+	_thread = thread
+
+	return true
+
+
+func _stop_thread() -> void:
+	if _thread == null:
 		return
 
-	var available := mini(_playback.get_frames_available(), MAX_FRAMES_PER_FILL)
+	_mutex.lock()
+	_thread_exit = true
+	_mutex.unlock()
+	_wake.post()
+	_thread.wait_to_finish()
+	_thread = null
 
-	if available <= 0:
-		return
 
-	_fill_audio(available)
+# the synth thread. it parks on the semaphore while no track plays and sleeps
+# between top-ups while one does, so an idle or undrained buffer costs nothing
+func _synth_loop() -> void:
+	while true:
+		_mutex.lock()
+		var exiting := _thread_exit
+		var starting := _pending_start
+		var stopping := _stop_requested
+		var paused := _paused
+		var playing := _thread_playing
+		var sequence := _pending_sequence
+		var playback := _pending_playback
+		var generation := _generation
+		_pending_start = false
+		_stop_requested = false
+		_pending_sequence = null
+		_pending_playback = null
+		_mutex.unlock()
+
+		if exiting:
+			_release_render_state()
+
+			return
+
+		if stopping and not starting:
+			_release_render_state()
+			playing = false
+
+		if starting:
+			_begin_render(sequence, playback, generation)
+			playing = true
+
+		if not playing or paused or _playback == null or _sequence == null:
+			_wake.wait()
+
+			continue
+
+		var available := _playback.get_frames_available()
+
+		if available >= PREFILL_FRAMES:
+			_fill_audio(mini(available, MAX_FRAMES_PER_FILL))
+
+			continue
+
+		_mutex.lock()
+		_idle_polls += 1
+		_mutex.unlock()
+		OS.delay_msec(IDLE_POLL_MSEC)
+
+
+func _begin_render(
+	sequence: StandardMidiFile, playback: AudioStreamGeneratorPlayback, generation: int
+) -> void:
+	_render_generation = generation
+	_reset_channels()
+	_voices.clear()
+	_playback = playback
+	_sequence = sequence
+	_event_cursor = 0
+	_position_seconds = 0.0
+	_tail_start_seconds = -1.0
+	_track_complete = false
+
+
+func _release_render_state() -> void:
+	_render_generation = -1
+	_playback = null
+	_sequence = null
+	_voices.clear()
+	_event_cursor = 0
+	_position_seconds = 0.0
+	_tail_start_seconds = -1.0
+	_track_complete = false
 
 
 func _fill_audio(frame_count: int) -> void:
-	if frame_count <= 0 or not _active or _playback == null or _sequence == null:
+	if frame_count <= 0 or _playback == null or _sequence == null:
 		return
 
 	var frames := _render_frames(frame_count)
 
 	if frames > 0:
 		_playback.push_buffer(_output)
+		# a growing skip count means the thread fell behind the device
+		var skips := _playback.get_skips()
+		_mutex.lock()
+		_frames_pushed += frames
+		_fill_count += 1
+		_published_position = _position_seconds
+		_skips = skips
+		_mutex.unlock()
 
 	if _track_complete:
 		_finish_track()
@@ -193,6 +340,9 @@ func render_offline(
 	if sequence == null or not sequence.is_valid() or max_frames <= 0:
 		return result
 
+	if _thread != null:
+		return result
+
 	var chunk := maxi(chunk_frames, 1)
 	_reset_channels()
 	_voices.clear()
@@ -201,7 +351,6 @@ func render_offline(
 	_position_seconds = 0.0
 	_tail_start_seconds = -1.0
 	_track_complete = false
-	_active = true
 
 	while not _track_complete and result.size() < max_frames:
 		if _render_frames(mini(chunk, max_frames - result.size())) <= 0:
@@ -209,7 +358,6 @@ func render_offline(
 
 		result.append_array(_output)
 
-	_active = false
 	_sequence = null
 	_voices.clear()
 
@@ -619,16 +767,39 @@ func _steal_voice() -> void:
 	_voices.remove_at(quietest_index)
 
 
+# runs on the synth thread. track_finished reaches nodes, so it must arrive on
+# the main thread, and only while this track is still the selected one
 func _finish_track() -> void:
+	var generation := _render_generation
+	_release_render_state()
+	_mutex.lock()
+	# a track the main thread already replaced must not clear the new status
 	var finished_id := current_track_id
-	_active = false
-	set_process(false)
-	_voices.clear()
-	_sequence = null
-	current_track_id = -1
-	_playback = null
-	_audio_player.stop()
-	track_finished.emit(finished_id)
+	var publish := generation == _generation
+
+	if publish:
+		current_track_id = -1
+		_active = false
+		_thread_playing = false
+
+	_mutex.unlock()
+
+	if publish:
+		_finish_on_main.call_deferred(finished_id, generation)
+
+
+func _finish_on_main(track_id: int, generation: int) -> void:
+	_mutex.lock()
+	var stale := generation != _generation
+	_mutex.unlock()
+
+	if stale:
+		return
+
+	if _audio_player != null:
+		_audio_player.stop()
+
+	track_finished.emit(track_id)
 
 
 func _reset_channels() -> void:
@@ -770,7 +941,10 @@ static func _poly_blep(phase: float, phase_step: float) -> float:
 
 
 func set_paused(value: bool) -> void:
+	_mutex.lock()
 	_paused = value
+	_mutex.unlock()
+	_wake.post()
 
 	if _audio_player != null:
 		_audio_player.stream_paused = value

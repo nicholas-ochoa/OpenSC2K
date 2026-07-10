@@ -871,6 +871,12 @@
     "lane": "product"
   },
   {
+    "id": "midi_synth_thread_test",
+    "script": "tests/midi_synth_thread_test.gd",
+    "domain": "audio",
+    "lane": "product"
+  },
+  {
     "id": "scurk_gif_export_test",
     "script": "tests/scurk_gif_export_test.gd",
     "domain": "scurk",
