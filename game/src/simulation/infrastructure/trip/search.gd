@@ -85,20 +85,25 @@ static func trace(
 				if not endpoints.has(point):
 					endpoints[point] = {"exit": false, "destination": false, "limited": false}
 
-			# walking access uses the same catchment at both ends of a trip
-			var walk_destinations := _walking_destinations(zones, point, mode, zone, map_edge, collect_reach and zone == 7)
+			# walking access uses the same catchment at both ends of a trip. only
+			# the reach analysis reads destinations, so the growth scan asks the
+			# cheaper question and stops at the first compatible neighbour
+			if collect_reach:
+				var walk_destinations := _walking_destinations(zones, point, mode, zone, map_edge, zone == 7)
 
-			if not walk_destinations.is_empty():
-				if collect_reach:
+				if not walk_destinations.is_empty():
 					endpoints[point].destination = true
-				for target in walk_destinations:
-					destinations[target] = mini(int(destinations.get(target, cost)), cost)
 
+					for target in walk_destinations:
+						destinations[target] = mini(int(destinations.get(target, cost)), cost)
+
+					if winner < 0:
+						winner = state_index
+			elif _has_walking_destination(zones, point, mode, zone, map_edge):
 				if winner < 0:
 					winner = state_index
 
-				if not collect_reach:
-					break
+				break
 
 			var direction: int = random.next_u15() & 3
 
@@ -113,15 +118,14 @@ static func trace(
 					altitudes, point, next_point, mode, zone, map_edge)
 
 				if advance == ADVANCE_SUCCESS:
-					if collect_reach:
-						endpoints[point].destination = true
-					destinations[next_point] = mini(int(destinations.get(next_point, cost)), cost)
-
 					if winner < 0:
 						winner = state_index
 
 					if not collect_reach:
 						break
+
+					endpoints[point].destination = true
+					destinations[next_point] = mini(int(destinations.get(next_point, cost)), cost)
 
 					continue
 
@@ -243,21 +247,45 @@ static func _state_key(index: int, mode: int, heading: int) -> int:
 static func _walking_destinations(zones: PackedByteArray, point: Vector2i,
 	mode: int, origin_zone: int, map_edge: int, any_rci := false) -> Array[Vector2i]:
 	var result: Array[Vector2i] = []
-	if mode not in [ROAD_MODE, BUS_ROAD_MODE, BUS_STOP_MODE, BUS_RAIL_MODE]:
+
+	if (WALK_ACCESS_MODES >> mode) & 1 == 0:
 		return result
 
-	for offset in TRANSPORT_OFFSETS:
-		var target: Vector2i = point + offset
-		var index := TransportTripSteps._index(target, map_edge)
+	# the catchment test is one mask for the whole scan, and the bounds test and
+	# index arithmetic are inline. this runs once per expansion over 24 offsets
+	var zone_mask: int = ANY_RCI_ZONE_MASK if any_rci else DESTINATION_ZONE_MASKS[origin_zone]
 
-		if index < 0:
+	for offset: Vector2i in TRANSPORT_OFFSETS:
+		var target: Vector2i = point + offset
+
+		if target.x < 0 or target.x >= map_edge or target.y < 0 or target.y >= map_edge:
 			continue
-		var target_zone := int(zones[index]) & 15
-		var compatible: bool = target_zone >= 1 and target_zone <= 6 if any_rci else (DESTINATION_ZONE_MASKS[origin_zone] & (1 << target_zone)) != 0
-		if compatible:
+
+		if (zone_mask & (1 << (int(zones[target.x * map_edge + target.y]) & 15))) != 0:
 			result.append(target)
 
 	return result
+
+
+# the same catchment as _walking_destinations, stopping at the first match
+# the growth scan only asks whether the tile has walking access
+static func _has_walking_destination(zones: PackedByteArray, point: Vector2i,
+	mode: int, origin_zone: int, map_edge: int) -> bool:
+	if (WALK_ACCESS_MODES >> mode) & 1 == 0:
+		return false
+
+	var zone_mask: int = DESTINATION_ZONE_MASKS[origin_zone]
+
+	for offset: Vector2i in TRANSPORT_OFFSETS:
+		var target: Vector2i = point + offset
+
+		if target.x < 0 or target.x >= map_edge or target.y < 0 or target.y >= map_edge:
+			continue
+
+		if (zone_mask & (1 << (int(zones[target.x * map_edge + target.y]) & 15))) != 0:
+			return true
+
+	return false
 
 
 static func _find_transport(buildings: PackedByteArray, origin: Vector2i, map_edge: int = 128) -> int:
