@@ -20,6 +20,7 @@ func test_music(reference_root: String) -> void:
 	_test_music_director()
 	_test_midi_files(reference_root)
 	_test_midi_synth_helpers()
+	_test_midi_block_mixing(reference_root)
 
 
 func test_sound_rules() -> void:
@@ -171,6 +172,74 @@ func _test_midi_synth_helpers() -> void:
 		and absf(square_start - square_end) < 0.01,
 		"Band-limited MIDI oscillators smooth their wrap edges",
 	)
+
+
+## Changing fill boundaries should leave the mixed samples unchanged.
+func _test_midi_block_mixing(reference_root: String) -> void:
+	# Track 10000 starts on its first note, so a short render already carries sound.
+	var sequence := MidiFile.load_path(
+		reference_root.path_join("SOUNDS/%d.MID" % Music.FIRST_TRACK_ID)
+	)
+	_check(sequence.is_valid(), "Track 10000 loads for the block-mixing check")
+
+	if not sequence.is_valid():
+		return
+
+	var block_render := _render_offline(sequence, 11025, 1024)
+	var split_render := _render_offline(sequence, 11025, 97)
+	var wide_render := _render_offline(sequence, 11025, 4410)
+	var scalar_render := _render_offline(sequence, 2205, 1)
+	_check(
+		block_render.size() == 11025
+		and split_render == block_render
+		and wide_render == block_render,
+		"Block mixing gives the same samples for every fill size",
+	)
+	_check(
+		scalar_render == block_render.slice(0, 2205),
+		"A single-sample block matches the block mix sample for sample",
+	)
+	var peak := 0.0
+
+	for frame in block_render:
+		peak = maxf(peak, maxf(absf(frame.x), absf(frame.y)))
+
+	_check(peak > 0.05, "The block mix produces audible samples")
+
+	var synthetic := StandardMidiFile.new()
+	synthetic.format_type = 1
+	synthetic.track_count = 1
+	synthetic.ticks_per_quarter = 192
+	synthetic.events.assign([
+		{"type": "program_change", "channel": 0, "program": 48, "time_seconds": 0.0},
+		{"type": "note_on", "channel": 0, "note": 60, "velocity": 100, "time_seconds": 0.0},
+		{"type": "note_on", "channel": 9, "note": 36, "velocity": 110, "time_seconds": 0.02},
+		{"type": "control_change", "channel": 0, "controller": 10, "value": 20, "time_seconds": 0.05},
+		{"type": "note_off", "channel": 0, "note": 60, "velocity": 0, "time_seconds": 0.10},
+		{"type": "note_on", "channel": 0, "note": 64, "velocity": 90, "time_seconds": 0.11},
+	])
+	synthetic.duration_seconds = 0.2
+	var tail_render := _render_offline(synthetic, 220500, 1024)
+	_check(
+		tail_render.size() > 0 and tail_render.size() < 220500,
+		"A released track stops inside the tail limit",
+	)
+	_check(
+		tail_render == _render_offline(synthetic, 220500, 97)
+		and tail_render == _render_offline(synthetic, 220500, 1),
+		"The end-of-track tail stops on the same sample for every fill size",
+	)
+
+
+func _render_offline(
+	sequence: StandardMidiFile, max_frames: int, chunk_frames: int
+) -> PackedVector2Array:
+	var player := MidiSynth.new()
+	var rendered := player.render_offline(sequence, max_frames, chunk_frames)
+	player.free()
+
+	return rendered
+
 
 
 func _test_tool_sound_rules() -> void:

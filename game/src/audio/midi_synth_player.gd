@@ -54,6 +54,13 @@ var _channel_sustain := PackedByteArray()
 var _channel_pitch_bends := PackedInt32Array()
 var _channel_left_gains := PackedFloat32Array()
 var _channel_right_gains := PackedFloat32Array()
+# Keep the scalar mix's summation order and 64-bit accumulators.
+# Narrower accumulators change rounding for each voice.
+var _mix_left := PackedFloat64Array()
+var _mix_right := PackedFloat64Array()
+var _frame_times := PackedFloat64Array()
+var _output := PackedVector2Array()
+var _track_complete := false
 
 
 func _init() -> void:
@@ -168,34 +175,254 @@ func _fill_audio(frame_count: int) -> void:
 	if frame_count <= 0 or not _active or _playback == null or _sequence == null:
 		return
 
-	var output := PackedVector2Array()
-	output.resize(frame_count)
+	var frames := _render_frames(frame_count)
+
+	if frames > 0:
+		_playback.push_buffer(_output)
+
+	if _track_complete:
+		_finish_track()
+
+
+# renders a sequence without an audio device. automated checks use this
+func render_offline(
+	sequence: StandardMidiFile, max_frames: int, chunk_frames := MAX_FRAMES_PER_FILL
+) -> PackedVector2Array:
+	var result := PackedVector2Array()
+
+	if sequence == null or not sequence.is_valid() or max_frames <= 0:
+		return result
+
+	var chunk := maxi(chunk_frames, 1)
+	_reset_channels()
+	_voices.clear()
+	_sequence = sequence
+	_event_cursor = 0
+	_position_seconds = 0.0
+	_tail_start_seconds = -1.0
+	_track_complete = false
+	_active = true
+
+	while not _track_complete and result.size() < max_frames:
+		if _render_frames(mini(chunk, max_frames - result.size())) <= 0:
+			break
+
+		result.append_array(_output)
+
+	_active = false
+	_sequence = null
+	_voices.clear()
+
+	return result
+
+
+# fills _output with up to frame_count frames. the render splits the request at
+# every event, tail and end-of-track boundary, then mixes each block one voice at
+# a time instead of one sample at a time
+func _render_frames(frame_count: int) -> int:
+	_track_complete = false
+	_prepare_buffers(frame_count)
+	var filled := 0
+
+	while filled < frame_count:
+		_apply_due_events()
+		var block := _block_length(filled, frame_count - filled)
+		var empty_at := _mix_block(filled, block)
+		var used := block
+		var in_tail := _tail_start_seconds >= 0.0 and _event_cursor >= _sequence.events.size()
+
+		if in_tail and empty_at >= 0:
+			used = empty_at + 1
+			_track_complete = true
+
+		_position_seconds = _frame_times[filled + used - 1]
+		filled += used
+
+		if _track_complete or _event_cursor < _sequence.events.size():
+			if _track_complete:
+				break
+
+			continue
+
+		if _tail_start_seconds < 0.0 and _position_seconds >= _sequence.duration_seconds:
+			_tail_start_seconds = _position_seconds
+			_release_all_voices()
+
+		if (
+			_tail_start_seconds >= 0.0
+			and (
+				_voices.is_empty()
+				or _position_seconds - _tail_start_seconds >= MAX_TAIL_SECONDS
+			)
+		):
+			_track_complete = true
+
+			break
+
+	_write_output(filled)
+
+	return filled
+
+
+# precomputes every frame time by the same repeated addition the scalar mix used,
+# so a block boundary lands on the sample the per-sample loop would have chosen
+func _prepare_buffers(frame_count: int) -> void:
+	if _mix_left.size() < frame_count:
+		_mix_left.resize(frame_count)
+		_mix_right.resize(frame_count)
+		_frame_times.resize(frame_count)
+
+	_mix_left.fill(0.0)
+	_mix_right.fill(0.0)
+	var step := 1.0 / SAMPLE_RATE
+	var position := _position_seconds
 
 	for frame_index in frame_count:
-		_apply_due_events()
-		var mixed := _mix_frame()
-		output[frame_index] = mixed
-		_position_seconds += 1.0 / SAMPLE_RATE
+		position += step
+		_frame_times[frame_index] = position
 
-		if _event_cursor >= _sequence.events.size():
-			if _tail_start_seconds < 0.0 and _position_seconds >= _sequence.duration_seconds:
-				_tail_start_seconds = _position_seconds
-				_release_all_voices()
 
-			if (
-				_tail_start_seconds >= 0.0
-				and (
-					_voices.is_empty()
-					or _position_seconds - _tail_start_seconds >= MAX_TAIL_SECONDS
-				)
-			):
-				output.resize(frame_index + 1)
-				_playback.push_buffer(output)
-				_finish_track()
+# returns the number of frames that can mix before the next boundary needs work
+func _block_length(offset: int, remaining: int) -> int:
+	var mode := 2
+	var threshold := _sequence.duration_seconds
 
-				return
+	if _event_cursor < _sequence.events.size():
+		mode = 0
+		threshold = float(_sequence.events[_event_cursor].time_seconds)
+	elif _tail_start_seconds >= 0.0:
+		mode = 1
+		threshold = _tail_start_seconds
 
-	_playback.push_buffer(output)
+	if not _boundary_reached(mode, threshold, _frame_times[offset + remaining - 1]):
+		return remaining
+
+	var low := 1
+	var high := remaining
+
+	while low < high:
+		var middle := IntegerMath.div_trunc(low + high, 2)
+
+		if _boundary_reached(mode, threshold, _frame_times[offset + middle - 1]):
+			high = middle
+		else:
+			low = middle + 1
+
+	return low
+
+
+func _boundary_reached(mode: int, threshold: float, position: float) -> bool:
+	if mode == 0:
+		return threshold <= position + 0.000001
+
+	if mode == 1:
+		return position - threshold >= MAX_TAIL_SECONDS
+
+	return position >= threshold
+
+
+# mixes one event-free block. the reverse voice order matches the scalar mix, so
+# the accumulated sums stay bit-identical. returns the frame that emptied the
+# voice list, or -1 while any voice survives the block
+func _mix_block(offset: int, count: int) -> int:
+	if _voices.is_empty():
+		return 0
+
+	var empty_at := -1
+	var survivors := 0
+
+	for voice_index in range(_voices.size() - 1, -1, -1):
+		var removed_at := _mix_voice(_voices[voice_index], offset, count)
+
+		if removed_at < 0:
+			survivors += 1
+
+			continue
+
+		_voices.remove_at(voice_index)
+		empty_at = maxi(empty_at, removed_at)
+
+	return -1 if survivors > 0 else empty_at
+
+
+# advances one voice across a whole block from local state. returns the frame
+# that released and removed the voice, or -1 when the voice survives the block
+func _mix_voice(voice: Voice, offset: int, count: int) -> int:
+	var left_gain := _channel_left_gains[voice.channel]
+	var right_gain := _channel_right_gains[voice.channel]
+	var velocity := voice.velocity
+	var envelope := voice.envelope
+	var releasing := voice.releasing
+	var age_seconds := voice.age_seconds
+	var phase := voice.phase
+	var secondary_phase := voice.secondary_phase
+	var noise_state := voice.noise_state
+	var percussion := voice.percussion
+	var family := voice.family
+	var note := voice.note
+
+	var age_step := 1.0 / SAMPLE_RATE
+	var phase_step := minf(voice.frequency / SAMPLE_RATE, 0.49)
+	var secondary_step := phase_step * 1.006
+	var release_step := voice.release_rate / SAMPLE_RATE
+	var attack_step := 1.0 / (_attack_seconds(voice.program, percussion) * SAMPLE_RATE)
+	# a 1.0 factor keeps the sustained families exact and avoids a per-sample branch
+	var sustain_decay := 0.9990 if percussion else (
+		0.99994 if family == 0 or family == 1 or family == 3 else 1.0
+	)
+	var frame_index := offset
+	var end_index := offset + count
+
+	while frame_index < end_index:
+		age_seconds += age_step
+
+		if releasing:
+			envelope = maxf(envelope - release_step, 0.0)
+		else:
+			envelope = minf(envelope + attack_step, 1.0) * sustain_decay
+
+			if percussion and age_seconds > 0.45:
+				releasing = true
+
+		if envelope <= 0.0 and releasing:
+			return frame_index - offset
+
+		phase = fmod(phase + phase_step, 1.0)
+		secondary_phase = fmod(secondary_phase + secondary_step, 1.0)
+		var sample := 0.0
+
+		if percussion:
+			noise_state = (noise_state * 1103515245 + 12345) & 0x7fffffff
+			sample = _percussion_sample(
+				note, phase, age_seconds,
+				float((noise_state >> 8) & 0xffff) / 32767.5 - 1.0, phase_step
+			)
+		else:
+			sample = _family_sample(family, phase, secondary_phase, phase_step)
+
+		var voice_gain := velocity * envelope
+		_mix_left[frame_index] += sample * voice_gain * left_gain
+		_mix_right[frame_index] += sample * voice_gain * right_gain
+		frame_index += 1
+
+	voice.envelope = envelope
+	voice.releasing = releasing
+	voice.age_seconds = age_seconds
+	voice.phase = phase
+	voice.secondary_phase = secondary_phase
+	voice.noise_state = noise_state
+
+	return -1
+
+
+func _write_output(frame_count: int) -> void:
+	_output.resize(frame_count)
+
+	for frame_index in frame_count:
+		_output[frame_index] = Vector2(
+			clampf(_mix_left[frame_index] * 0.18, -0.95, 0.95),
+			clampf(_mix_right[frame_index] * 0.18, -0.95, 0.95)
+		)
 
 
 func _apply_due_events() -> void:
@@ -293,57 +520,10 @@ func _apply_control_change(channel: int, controller: int, value: int) -> void:
 			_release_channel_voices(channel)
 
 
-func _mix_frame() -> Vector2:
-	var left := 0.0
-	var right := 0.0
-
-	for voice_index in range(_voices.size() - 1, -1, -1):
-		var voice := _voices[voice_index]
-		_advance_envelope(voice)
-
-		if voice.envelope <= 0.0 and voice.releasing:
-			_voices.remove_at(voice_index)
-			continue
-
-		var sample := _voice_sample(voice)
-		var voice_gain := voice.velocity * voice.envelope
-		left += sample * voice_gain * _channel_left_gains[voice.channel]
-		right += sample * voice_gain * _channel_right_gains[voice.channel]
-
-	return Vector2(clampf(left * 0.18, -0.95, 0.95), clampf(right * 0.18, -0.95, 0.95))
-
-
-func _advance_envelope(voice: Voice) -> void:
-	voice.age_seconds += 1.0 / SAMPLE_RATE
-
-	if voice.releasing:
-		voice.envelope = maxf(voice.envelope - voice.release_rate / SAMPLE_RATE, 0.0)
-
-		return
-
-	var attack := _attack_seconds(voice.program, voice.percussion)
-	voice.envelope = minf(voice.envelope + 1.0 / (attack * SAMPLE_RATE), 1.0)
-
-	if voice.percussion:
-		voice.envelope *= 0.9990
-
-		if voice.age_seconds > 0.45:
-			voice.releasing = true
-	elif voice.family == 0 or voice.family == 1 or voice.family == 3:
-		voice.envelope *= 0.99994
-
-
-func _voice_sample(voice: Voice) -> float:
-	var phase_step := minf(voice.frequency / SAMPLE_RATE, 0.49)
-	voice.phase = fmod(voice.phase + phase_step, 1.0)
-	voice.secondary_phase = fmod(voice.secondary_phase + phase_step * 1.006, 1.0)
-
-	if voice.percussion:
-		return _percussion_sample(voice)
-
-	var phase := voice.phase
-
-	match voice.family:
+static func _family_sample(
+	family: int, phase: float, secondary_phase: float, phase_step: float
+) -> float:
+	match family:
 		0:
 			return sin(TAU_VALUE * phase) * 0.72 + sin(TAU_VALUE * phase * 2.0) * 0.20 + sin(TAU_VALUE * phase * 3.0) * 0.08
 		1:
@@ -357,7 +537,7 @@ func _voice_sample(voice: Voice) -> float:
 		5:
 			return (
 				band_limited_saw(phase, phase_step) * 0.52
-				+ band_limited_saw(voice.secondary_phase, phase_step * 1.006) * 0.48
+				+ band_limited_saw(secondary_phase, phase_step * 1.006) * 0.48
 			)
 		6:
 			return band_limited_saw(phase, phase_step) * 0.45 + sin(TAU_VALUE * phase) * 0.55
@@ -372,27 +552,21 @@ func _voice_sample(voice: Voice) -> float:
 			return _triangle(phase) * 0.55 + sin(TAU_VALUE * phase * 2.0) * 0.45
 
 
-func _percussion_sample(voice: Voice) -> float:
-	voice.noise_state = (voice.noise_state * 1103515245 + 12345) & 0x7fffffff
-	var noise := float((voice.noise_state >> 8) & 0xffff) / 32767.5 - 1.0
+static func _percussion_sample(
+	note: int, phase: float, age_seconds: float, noise: float, phase_step: float
+) -> float:
+	if note == 35 or note == 36:
+		var drop := maxf(0.35, 1.0 - age_seconds * 2.5)
 
-	if voice.note == 35 or voice.note == 36:
-		var drop := maxf(0.35, 1.0 - voice.age_seconds * 2.5)
+		return sin(TAU_VALUE * phase * drop) * 0.85 + noise * 0.15
 
-		return sin(TAU_VALUE * voice.phase * drop) * 0.85 + noise * 0.15
+	if note >= 42 and note <= 46:
+		return noise * 0.82 + band_limited_square(phase, phase_step) * 0.18
 
-	if voice.note >= 42 and voice.note <= 46:
-		return (
-			noise * 0.82
-			+ band_limited_square(
-				voice.phase, minf(voice.frequency / SAMPLE_RATE, 0.49)
-			) * 0.18
-		)
+	if note == 38 or note == 40:
+		return noise * 0.72 + sin(TAU_VALUE * phase) * 0.28
 
-	if voice.note == 38 or voice.note == 40:
-		return noise * 0.72 + sin(TAU_VALUE * voice.phase) * 0.28
-
-	return noise * 0.55 + sin(TAU_VALUE * voice.phase) * 0.45
+	return noise * 0.55 + sin(TAU_VALUE * phase) * 0.45
 
 
 func _release_sustained_voices(channel: int) -> void:
