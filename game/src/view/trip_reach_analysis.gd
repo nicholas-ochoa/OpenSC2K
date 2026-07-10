@@ -25,6 +25,11 @@ static func inspect(city: CityState, clicked: Vector2i) -> Dictionary:
 			start = (mode << (14 if city.map_size == 128 else 18)) | index
 
 	var traffic := city.document.find_chunk("XTRF").decoded_payload
+
+	if not TransportTrip.valid_inputs(city.buildings, city.zones, city.underground,
+		city.text_overlays, city.altitude_words, traffic, city.map_size):
+		return {"ok": false, "error": "Transport maps for this city have the wrong size."}
+
 	var result := TransportTrip.trace(city.buildings, city.zones, city.underground,
 		city.text_overlays, city.altitude_words, traffic, origin, zone if rci else 7,
 		density, SimRandom.new(1), 100, city.map_size, true, start)

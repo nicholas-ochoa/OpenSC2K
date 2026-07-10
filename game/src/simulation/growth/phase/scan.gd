@@ -51,6 +51,13 @@ static func run(
 	var land_value: PackedByteArray = payloads.XVAL
 	var crime: PackedByteArray = payloads.XCRM
 	var misc: PackedByteArray = payloads.MISC
+
+	# the trip search reads these maps for every powered rci tile below. their
+	# sizes are invariant across the scan, so check them once here
+	if not TransportTrip.valid_inputs(buildings, zones, underground, text_overlays,
+		altitudes, traffic, map_edge):
+		return {"ok": false, "error": "transport input maps have the wrong size"}
+
 	var rotation := city.compass_rotation() & 3
 	var anchor_mask: int = ANCHOR_MASKS[rotation]
 	var counters := {

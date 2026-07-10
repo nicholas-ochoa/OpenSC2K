@@ -10,6 +10,13 @@ func _initialize() -> void:
 			if city.zone_id(x, y) in [1, 2, 3, 4, 5, 6] and tile >= 0x70 and tile <= 0xc5:
 				samples.append(Vector2i(x, y))
 	var traffic := city.document.find_chunk("XTRF").decoded_payload.duplicate()
+
+	if not TransportTrip.valid_inputs(city.buildings, city.zones, city.underground,
+		city.text_overlays, city.altitude_words, traffic, city.map_size):
+		print("Capeques transport maps have the wrong size")
+		quit()
+		return
+
 	var started := Time.get_ticks_usec()
 	var expanded := 0
 	for i in 256:

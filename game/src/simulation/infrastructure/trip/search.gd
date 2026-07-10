@@ -19,16 +19,8 @@ static func trace(
 	collect_reach := false,
 	start_override := -1,
 ) -> Dictionary:
-	if (
-		buildings.size() != (map_edge * map_edge)
-		or zones.size() != (map_edge * map_edge)
-		or underground.size() != (map_edge * map_edge)
-		or OverlayData.count(text_overlays) != (map_edge * map_edge)
-		or altitudes.size() != (map_edge * map_edge)
-		or not CityDataGrid.valid(traffic, map_edge)
-	):
-		return {"ok": false, "error": "transport input maps have the wrong size"}
-
+	# the map sizes are invariant across a caller's tile loop. callers check them
+	# once with valid_inputs(). only the per-tile arguments are checked here
 	if random == null:
 		return {"ok": false, "error": "a compatible random generator is required"}
 
@@ -213,6 +205,27 @@ static func trace(
 			"limit": limit, "start": points[0], "origin": origin})
 
 	return result
+
+
+static func valid_inputs(
+	buildings: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	text_overlays: PackedByteArray,
+	altitudes: PackedInt32Array,
+	traffic: PackedByteArray,
+	map_edge: int,
+) -> bool:
+	var cells := map_edge * map_edge
+
+	return (
+		buildings.size() == cells
+		and zones.size() == cells
+		and underground.size() == cells
+		and OverlayData.count(text_overlays) == cells
+		and altitudes.size() == cells
+		and CityDataGrid.valid(traffic, map_edge)
+	)
 
 
 static func _state_key(index: int, mode: int, heading: int) -> int:

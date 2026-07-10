@@ -31,6 +31,11 @@ static func run(
 		return {"ok": false, "error": "XTRF is missing or has the wrong size"}
 
 	var traffic: PackedByteArray = traffic_chunk.decoded_payload.duplicate()
+
+	if not TransportTripSearch.valid_inputs(city.buildings, city.zones, city.underground,
+		city.text_overlays, city.altitude_words, traffic, map_edge):
+		return {"ok": false, "error": "transport input maps have the wrong size"}
+
 	var result := TransportTripSearch.trace(
 		city.buildings,
 		city.zones,
@@ -73,6 +78,20 @@ static func trace(
 	return TransportTripSearch.trace(
 		buildings, zones, underground, text_overlays, altitudes, traffic, origin, zone, traffic_weight, random,
 		maximum_cost, map_edge, collect_reach, start_override
+	)
+
+
+static func valid_inputs(
+	buildings: PackedByteArray,
+	zones: PackedByteArray,
+	underground: PackedByteArray,
+	text_overlays: PackedByteArray,
+	altitudes: PackedInt32Array,
+	traffic: PackedByteArray,
+	map_edge: int,
+) -> bool:
+	return TransportTripSearch.valid_inputs(
+		buildings, zones, underground, text_overlays, altitudes, traffic, map_edge
 	)
 
 
