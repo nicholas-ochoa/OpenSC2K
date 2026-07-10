@@ -46,6 +46,10 @@ static func trace(
 	var turn_direction := 1 if random.next_u15() & 1 else 3
 	var start_index := start & (POINT_INDEX_MASK if map_edge == 128 else 0x3ffff)
 	var points: Array[Vector2i] = [Vector2i(IntegerMath.div_trunc(start_index, map_edge), start_index % map_edge)]
+	# the flat index of each state, kept beside points so expansion never has to
+	# recompute it from the vector2i. points still carries directions arithmetic,
+	# the traffic write, and the collect_reach outputs
+	var indices := PackedInt32Array([start_index])
 	var modes := PackedInt32Array([start >> (14 if map_edge == 128 else 18)])
 	var costs := PackedInt32Array([0])
 	var headings := PackedInt32Array([4])
@@ -66,9 +70,10 @@ static func trace(
 
 		for state_index: int in pending[cost]:
 			var point := points[state_index]
+			var point_index := indices[state_index]
 			var mode := modes[state_index]
 			var heading := headings[state_index]
-			var key := _state_key(TransportTripSteps._index(point, map_edge), mode, heading)
+			var key := _state_key(point_index, mode, heading)
 
 			if int(best[key]) != cost:
 				continue
@@ -136,11 +141,13 @@ static func trace(
 				var next_mode := advance >> 8
 				var next_heading := direction if next_mode in [ROAD_BRIDGE_MODE,
 					BUS_BRIDGE_MODE, ROAD_TUNNEL_MODE, BUS_TUNNEL_MODE] else 4
-				var next_index := TransportTripSteps._index(next_point, map_edge)
+				# a move result means _advance already resolved next_point inside
+				# the map, so the bounds check in _index cannot fail here
+				var next_index := next_point.x * map_edge + next_point.y
 				var next_key := _state_key(next_index, next_mode, next_heading)
 
 				if collect_reach:
-					var link_key := Vector2i(TransportTripSteps._index(point, map_edge) * 14 + mode, next_index * 14 + next_mode)
+					var link_key := Vector2i(point_index * 14 + mode, next_index * 14 + next_mode)
 
 					if not link_keys.has(link_key):
 						link_keys[link_key] = true
@@ -156,6 +163,7 @@ static func trace(
 
 				pending[next_cost].append(points.size())
 				points.append(next_point)
+				indices.append(next_index)
 				modes.append(next_mode)
 				costs.append(next_cost)
 				headings.append(next_heading)
