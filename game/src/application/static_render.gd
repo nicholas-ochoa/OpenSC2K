@@ -30,13 +30,20 @@ func _refresh_after_city_edit(command: Dictionary) -> void:
 
 func _apply_static_edit_patch(command: Dictionary) -> bool:
 	if app.region_cache != null:
+		var region_start := Time.get_ticks_usec()
 		var indices := _edit_dirty_indices(command, app.city.map_size)
+		app.edit_display_timings = {
+			"dirty_ms": (Time.get_ticks_usec() - region_start) / 1000.0,
+			"dirty_tiles": indices.size(),
+		}
 
 		if indices.is_empty():
 			return false
 
+		region_start = Time.get_ticks_usec()
 		var dirty := IsometricRenderer.dirty_screen_rect(indices, _sprite_archive_for_view(_city_view_size()), _city_view_size(), Vector2i.ZERO, app.city.map_size)
 		app.map_render._refresh_region_map(false, dirty)
+		app.edit_display_timings.region_ms = (Time.get_ticks_usec() - region_start) / 1000.0
 
 		return true
 
@@ -135,28 +142,65 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	return true
 
 
-static func _collect_changed_tiles(before: PackedByteArray, after: PackedByteArray, stride: int, seen: Dictionary, plane_cells := 0) -> void:
-	# skip unchanged byte blocks
-	# changed blocks still need tile checks, including remote power/water changes
+static func _collect_changed_tiles(before: PackedByteArray, after: PackedByteArray, stride: int, dirty: PackedByteArray, indices: PackedInt32Array, plane_cells := 0) -> void:
+	# native word comparisons skip unchanged runs without allocating. only
+	# changed words need per-tile gdscript work, including remote power/water
+	# changes after edits
 	if before == after:
 		return
 
-	var block_bytes := 256 * stride
+	# chunk strides are one or two bytes per tile, so a shift replaces the
+	# per-byte division that maps a byte offset back to a tile
+	var tile_shift := 1 if stride == 2 else 0
+	var size := mini(before.size(), after.size())
+	var full_bytes := size - size % 8
 
-	for start in range(0, before.size(), block_bytes):
-		var end := mini(start + block_bytes, before.size())
-
-		if before.slice(start, end) == after.slice(start, end):
+	for offset in range(0, full_bytes, 8):
+		if before.decode_u64(offset) == after.decode_u64(offset):
 			continue
 
-		for offset in range(start, end, stride):
-			if before[offset] != after[offset] or (stride == 2 and before[offset + 1] != after[offset + 1]):
-				var index := int(IntegerMath.div_trunc(offset, stride))
-				seen[index % plane_cells if plane_cells > 0 else index] = true
+		for byte_offset in range(offset, offset + 8):
+			if before[byte_offset] == after[byte_offset]:
+				continue
+
+			var index := byte_offset >> tile_shift
+
+			if plane_cells > 0:
+				index %= plane_cells
+
+			if dirty[index] == 0:
+				dirty[index] = 1
+				indices.append(index)
+
+	for byte_offset in range(full_bytes, size):
+		if before[byte_offset] == after[byte_offset]:
+			continue
+
+		var index := byte_offset >> tile_shift
+
+		if plane_cells > 0:
+			index %= plane_cells
+
+		if dirty[index] == 0:
+			dirty[index] = 1
+			indices.append(index)
+
+
+static func _mark_dirty_tile(index: int, dirty: PackedByteArray, indices: PackedInt32Array) -> void:
+	if index < 0 or index >= dirty.size() or dirty[index] != 0:
+		return
+
+	dirty[index] = 1
+	indices.append(index)
 
 
 static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> PackedInt32Array:
-	var seen := {}
+	# a flag byte per tile deduplicates without a dictionary, and the collected
+	# indices sort natively instead of as variants
+	var cells := map_edge * map_edge
+	var dirty := PackedByteArray()
+	dirty.resize(cells)
+	var indices := PackedInt32Array()
 	var old_payloads: Dictionary = command.get("old_payloads", {})
 	var new_payloads: Dictionary = command.get("new_payloads", {})
 
@@ -168,51 +212,41 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 		var new_bytes: PackedByteArray = new_payloads[chunk_id]
 		var stride := 2 if chunk_id == "ALTM" or (chunk_id == "XTXT" and map_edge > 128) else 1
 
-		if (
-			old_bytes.size() != (map_edge * map_edge) * stride
-			or new_bytes.size() != old_bytes.size()
-		):
+		if old_bytes.size() != cells * stride or new_bytes.size() != old_bytes.size():
 			continue
 
-		_collect_changed_tiles(old_bytes, new_bytes, 1 if chunk_id == "XTXT" else stride, seen, map_edge * map_edge if chunk_id == "XTXT" else 0)
+		_collect_changed_tiles(old_bytes, new_bytes, 1 if chunk_id == "XTXT" else stride,
+			dirty, indices, cells if chunk_id == "XTXT" else 0)
 
 	if command.has("old_text") and command.has("new_text"):
 		var old_text: PackedByteArray = command.old_text
 		var new_text: PackedByteArray = command.new_text
 
-		if (
-			OverlayData.count(old_text) == (map_edge * map_edge)
-			and OverlayData.count(new_text) == (map_edge * map_edge)
-		):
-			_collect_changed_tiles(old_text, new_text, 1, seen, map_edge * map_edge)
+		if OverlayData.count(old_text) == cells and OverlayData.count(new_text) == cells:
+			_collect_changed_tiles(old_text, new_text, 1, dirty, indices, cells)
 
 	var tile_indices: PackedInt32Array = command.get(
 		"tile_indices", PackedInt32Array()
 	)
 
 	for index in tile_indices:
-		if index >= 0 and index < (map_edge * map_edge):
-			seen[index] = true
+		_mark_dirty_tile(index, dirty, indices)
 
 	for point_value in command.get("points", []):
 		var point: Vector2i = point_value
-		var index := point.x * map_edge + point.y
 
 		if point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge:
-			seen[index] = true
+			_mark_dirty_tile(point.x * map_edge + point.y, dirty, indices)
 
 	for point_key in ["point", "target"]:
 		if command.has(point_key):
 			var point: Vector2i = command[point_key]
 
 			if point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge:
-				seen[point.x * map_edge + point.y] = true
+				_mark_dirty_tile(point.x * map_edge + point.y, dirty, indices)
 
 	if command.has("tile_index"):
-		var tile_index := int(command.tile_index)
-
-		if tile_index >= 0 and tile_index < (map_edge * map_edge):
-			seen[tile_index] = true
+		_mark_dirty_tile(int(command.tile_index), dirty, indices)
 
 	if command.has("site"):
 		var site: Rect2i = command.site
@@ -220,16 +254,11 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 		for x in range(site.position.x, site.end.x):
 			for y in range(site.position.y, site.end.y):
 				if x >= 0 and x < map_edge and y >= 0 and y < map_edge:
-					seen[x * map_edge + y] = true
+					_mark_dirty_tile(x * map_edge + y, dirty, indices)
 
-	var sorted_indices: Array = seen.keys()
-	sorted_indices.sort()
-	var result := PackedInt32Array()
+	indices.sort()
 
-	for index in sorted_indices:
-		result.append(int(index))
-
-	return result
+	return indices
 
 
 func _request_static_render(

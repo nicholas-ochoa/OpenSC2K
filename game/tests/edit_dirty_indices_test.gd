@@ -1,6 +1,16 @@
 extends SceneTree
 
 
+func _collect(before: PackedByteArray, after: PackedByteArray, stride: int, cells: int, plane_cells := 0) -> PackedInt32Array:
+	var dirty := PackedByteArray()
+	dirty.resize(cells)
+	var indices := PackedInt32Array()
+	ApplicationStaticRender._collect_changed_tiles(before, after, stride, dirty, indices, plane_cells)
+	indices.sort()
+
+	return indices
+
+
 func _initialize() -> void:
 	for edge in [128, 256, 384, 512]:
 		var old := {}
@@ -52,10 +62,49 @@ func _initialize() -> void:
 		command = {"old_text": old.XTXT, "new_text": changed.XTXT}
 		assert(ApplicationStaticRender._edit_dirty_indices(command, edge) == expected_by_chunk.XTXT)
 
+		var word_edge: PackedByteArray = old.XBLD.duplicate()
+		word_edge[7] = 1
+		word_edge[8] = 1
+		assert(ApplicationStaticRender._edit_dirty_indices({"old_payloads": {"XBLD": old.XBLD},
+			"new_payloads": {"XBLD": word_edge}}, edge) == PackedInt32Array([7, 8]),
+			"Changes on both sides of an eight-byte comparison group report")
+		var low_byte: PackedByteArray = old.ALTM.duplicate()
+		low_byte[600 * 2] = 5
+		assert(ApplicationStaticRender._edit_dirty_indices({"old_payloads": {"ALTM": old.ALTM},
+			"new_payloads": {"ALTM": low_byte}}, edge) == PackedInt32Array([600]),
+			"The low byte of a two-byte altitude entry marks its tile")
+
 		if edge > 128:
 			var high_only: PackedByteArray = old.XTXT.duplicate()
 			high_only[edge * edge + 257] = 16
 			assert(ApplicationStaticRender._edit_dirty_indices({"old_text": old.XTXT, "new_text": high_only}, edge) == PackedInt32Array([257]))
 
-	print("PASS: dirty tile comparison at all map sizes and byte/block boundaries")
+	# Payload lengths the map-size guards never produce: not a multiple of the
+	# eight-byte comparison group, and not a multiple of 256 tiles.
+	var odd := PackedByteArray()
+	odd.resize(1023)
+	var odd_changed := odd.duplicate()
+	odd_changed[7] = 1
+	odd_changed[8] = 2
+	odd_changed[1018] = 3
+	odd_changed[1022] = 4
+	assert(_collect(odd, odd_changed, 1, 1023) == PackedInt32Array([7, 8, 1018, 1022]),
+		"The trailing bytes past the last whole word still report")
+	var even := PackedByteArray()
+	even.resize(1022)
+	var even_changed := even.duplicate()
+	even_changed[1021] = 9
+	assert(_collect(even, even_changed, 2, 511) == PackedInt32Array([510]),
+		"A stride of two maps a trailing high byte back to its tile")
+	var planes := PackedByteArray()
+	planes.resize(1000)
+	var planes_changed := planes.duplicate()
+	planes_changed[3] = 1
+	planes_changed[503] = 1
+	planes_changed[999] = 1
+	assert(_collect(planes, planes_changed, 1, 500, 500) == PackedInt32Array([3, 499]),
+		"Wide overlay planes fold the high plane onto the same tile")
+	assert(_collect(odd, odd, 1, 1023).is_empty())
+
+	print("PASS: dirty tile comparison at all map sizes and byte/word/block boundaries")
 	quit()
