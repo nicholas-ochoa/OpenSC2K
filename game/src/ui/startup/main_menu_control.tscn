@@ -5,6 +5,10 @@
 
 [ext_resource type="FontFile" path="res://assets/fonts/rajdhani/Rajdhani-Light.ttf" id="3_title_light"]
 [ext_resource type="FontFile" path="res://assets/fonts/rajdhani/Rajdhani-Bold.ttf" id="4_title_bold"]
+[ext_resource type="Shader" path="res://src/ui/startup/main_menu_glass.gdshader" id="5_glass"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_glass"]
+shader = ExtResource("5_glass")
 
 [node name="MainMenu" type="ColorRect"]
 anchors_preset = 15
@@ -27,6 +31,7 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 
 [node name="Panel" type="PanelContainer" parent="Center"]
+material = SubResource("ShaderMaterial_glass")
 custom_minimum_size = Vector2(460, 0)
 layout_mode = 2
 theme_type_variation = "MainMenuPanel"

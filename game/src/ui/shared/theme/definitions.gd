@@ -71,7 +71,8 @@ static func build(value: String, files := false) -> Theme:
 		result.set_stylebox("panel", entry[0], box)
 	result.set_type_variation("MainMenuPanel", "PanelContainer")
 	var menu := _copy_style(result, "PanelPadding44_34_44_34", "panel")
-	menu.bg_color.a = 0.85 if dark else 0.90
+	# the main menu shader mixes this tint with the blurred city background
+	menu.bg_color.a = 0.68 if dark else 0.75
 	result.set_stylebox("panel", "MainMenuPanel", menu)
 	return result
 
