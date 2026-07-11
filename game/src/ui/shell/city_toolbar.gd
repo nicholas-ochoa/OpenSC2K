@@ -71,6 +71,7 @@ var view_mode_buttons: Dictionary = {}
 
 
 func _ready() -> void:
+	AppUiTheme.bind_frosted_panel(self)
 	start_city_button = %StartCityButton
 	rotate_counter_clockwise_button = %RotateCounterClockwiseButton
 	rotate_clockwise_button = %RotateClockwiseButton

@@ -3,7 +3,7 @@ extends RefCounted
 
 
 
-static func build(value: String, files := false) -> Theme:
+static func build(value: String, files := false, translucent_menus := true) -> Theme:
 	var dark := value == "dark"
 	var result := _dark_theme() if dark else _light_file_dialog_theme() if files else _light_theme()
 	result.set_color("default_color", "RichTextLabel", result.get_color("font_color", "Label"))
@@ -71,9 +71,13 @@ static func build(value: String, files := false) -> Theme:
 		result.set_stylebox("panel", entry[0], box)
 	result.set_type_variation("MainMenuPanel", "PanelContainer")
 	var menu := _copy_style(result, "PanelPadding44_34_44_34", "panel")
-	# the main menu shader mixes this tint with the blurred city background
-	menu.bg_color.a = 0.68 if dark else 0.75
+	# the shared glass shader mixes these tints with the blurred city background
+	menu.bg_color.a = (0.68 if dark else 0.75) if translucent_menus else 1.0
 	result.set_stylebox("panel", "MainMenuPanel", menu)
+	result.set_type_variation("CityToolbarPanel", "Panel")
+	var toolbar := _copy_style(result, "PanelPadding5_3_5_3", "panel")
+	toolbar.bg_color.a = menu.bg_color.a
+	result.set_stylebox("panel", "CityToolbarPanel", toolbar)
 	return result
 
 

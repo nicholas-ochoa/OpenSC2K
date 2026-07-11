@@ -28,6 +28,7 @@ var fullscreen_check: CheckBox
 var zoom_graphics_selectors: Array[OptionButton] = []
 var overview_graphics_selector: OptionButton
 var theme_selector: OptionButton
+var translucent_menus_check: CheckBox
 var default_mayor_edit: LineEdit
 var renderer_selector: OptionButton
 var background_audio_check: CheckBox
@@ -48,6 +49,7 @@ func _ready() -> void:
 	compatibility_error_label = %CompatibilityErrorLabel
 	default_mayor_edit = %DefaultMayorEdit
 	theme_selector = %ThemeSelector
+	translucent_menus_check = %TranslucentMenusCheck
 	effects_slider = %EffectsSlider
 	folder_edit = %FolderEdit
 	dark_underground_check = %DarkUndergroundCheck
@@ -135,6 +137,7 @@ func selected_values() -> Dictionary:
 	return {
 		"default_mayor_name": default_mayor_edit.text.strip_edges(),
 		"ui_theme": "dark" if theme_selector.selected == 1 else "light",
+		"translucent_menus": translucent_menus_check.button_pressed,
 		"overview_graphics": overview_graphics_selector.selected,
 		"original_compatibility": original_compatibility_check.button_pressed,
 		"warn_sc2x_conversion": warn_sc2x_conversion_check.button_pressed,

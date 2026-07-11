@@ -47,6 +47,7 @@ var app_sound_pack_folder := ""
 var app_music_pack_folder := ""
 var app_city_renderer := "gpu"
 var app_ui_theme := "light"
+var app_translucent_menus := true
 var app_dark_underground := false
 var app_default_mayor_name := "Mayor"
 var app_overview_graphics := 0

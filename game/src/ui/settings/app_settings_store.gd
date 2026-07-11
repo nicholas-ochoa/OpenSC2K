@@ -16,6 +16,7 @@ static func load_values(
 	var result := {
 		"default_mayor_name": "Mayor",
 		"ui_theme": "light",
+		"translucent_menus": true,
 		"dark_underground": false,
 		"overview_graphics": 0,
 		"music_volume": clampf(default_music_volume, 0.0, 1.0),
@@ -41,6 +42,7 @@ static func load_values(
 
 	result.dark_underground = bool(config.get_value("display", "dark_underground", false))
 	result.ui_theme = normalize_theme(config.get_value("general", "ui_theme", "light"))
+	result.translucent_menus = bool(config.get_value("general", "translucent_menus", true))
 	result.default_mayor_name = str(config.get_value("general", "default_mayor_name", "Mayor"))
 	result.overview_graphics = clampi(int(config.get_value("graphics", "overview_graphics", 0)), 0, 2)
 	result.music_volume = clampf(
@@ -130,6 +132,7 @@ static func save_values(
 	overview_graphics: Variant = null,
 	ui_theme: Variant = null,
 	dark_underground: Variant = null,
+	translucent_menus: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 
@@ -145,6 +148,9 @@ static func save_values(
 
 	if ui_theme != null:
 		config.set_value("general", "ui_theme", normalize_theme(ui_theme))
+
+	if translucent_menus != null:
+		config.set_value("general", "translucent_menus", bool(translucent_menus))
 
 	if default_mayor_name != null:
 		var mayor := str(default_mayor_name).strip_edges().left(23)

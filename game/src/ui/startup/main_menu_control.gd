@@ -40,6 +40,7 @@ var scurk_place_button: Button
 func _ready() -> void:
 	AppUiTheme.bind_canvas(self, "map_canvas")
 	theme = ClassicStyle.create_theme()
+	AppUiTheme.bind_frosted_panel($Center/Panel, $GlassBackgroundCopy)
 
 	city_background = $CityBackground
 	var content: VBoxContainer = $Center/Panel/Content

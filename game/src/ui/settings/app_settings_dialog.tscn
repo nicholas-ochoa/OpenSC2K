@@ -63,6 +63,16 @@ popup/item_0/id = 0
 popup/item_1/text = "Dark Theme"
 popup/item_1/id = 1
 
+[node name="TranslucentMenusSpacer" type="Control" parent="Tabs/General/Fields"]
+layout_mode = 2
+
+[node name="TranslucentMenusCheck" type="CheckBox" parent="Tabs/General/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show a blurred city background through the main menu and sidebar."
+button_pressed = true
+text = "Translucent menus"
+
 [node name="RendererLabel" type="Label" parent="Tabs/General/Fields"]
 layout_mode = 2
 text = "Renderer"

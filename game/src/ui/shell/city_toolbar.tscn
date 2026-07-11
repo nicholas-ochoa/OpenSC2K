@@ -2,15 +2,20 @@
 
 [ext_resource type="Script" path="res://src/ui/shell/city_toolbar.gd" id="1_3va6y"]
 [ext_resource type="Script" path="res://src/ui/shell/city_child_tool_palette.gd" id="2_uaa4s"]
+[ext_resource type="Shader" path="res://src/ui/shared/frosted_panel.gdshader" id="3_glass"]
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_glass"]
+shader = ExtResource("3_glass")
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_06b3w"]
 resource_local_to_scene = true
 
 [node name="CityToolbar" type="Panel"]
+material = SubResource("ShaderMaterial_glass")
 custom_minimum_size = Vector2(195, 0)
 size_flags_horizontal = 0
 script = ExtResource("1_3va6y")
-theme_type_variation = "PanelPadding5_3_5_3"
+theme_type_variation = "CityToolbarPanel"
 
 [node name="Margin" type="MarginContainer" parent="."]
 layout_mode = 1
