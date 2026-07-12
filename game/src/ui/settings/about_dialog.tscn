@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://src/ui/settings/about_artwork.gd" id="2_artwork"]
 [ext_resource type="FontFile" path="res://assets/fonts/rajdhani/Rajdhani-Light.ttf" id="3_light"]
 [ext_resource type="FontFile" path="res://assets/fonts/rajdhani/Rajdhani-Bold.ttf" id="4_bold"]
+[ext_resource type="PackedScene" path="res://src/ui/shared/frosted_dialog_backdrop.tscn" id="5_glass"]
 
 [sub_resource type="FontVariation" id="FontVariation_title"]
 base_font = ExtResource("4_bold")
@@ -98,3 +99,6 @@ layout_mode = 2
 layout_mode = 2
 size_flags_vertical = 3
 selection_enabled = true
+
+[node name="FrostedBackdrop" parent="." instance=ExtResource("5_glass")]
+content_panels = Array[NodePath]([NodePath("../Content/Tabs")])

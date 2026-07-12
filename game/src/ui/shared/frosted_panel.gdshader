@@ -2,7 +2,7 @@ shader_type canvas_item;
 render_mode unshaded;
 
 uniform sampler2D screen_texture : hint_screen_texture, repeat_disable, filter_linear_mipmap;
-uniform float blur_lod : hint_range(0.0, 5.0) = 3.0;
+uniform float blur_lod : hint_range(0.0, 5.0) = 4.0;
 
 void fragment() {
 	// each panel style supplies the active theme tint and its opacity

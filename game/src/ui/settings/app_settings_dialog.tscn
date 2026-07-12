@@ -69,9 +69,9 @@ layout_mode = 2
 [node name="TranslucentMenusCheck" type="CheckBox" parent="Tabs/General/Fields"]
 unique_name_in_owner = true
 layout_mode = 2
-tooltip_text = "Show a blurred city background through the main menu and sidebar."
+tooltip_text = "Use translucent backgrounds with a frosted glass effect."
 button_pressed = true
-text = "Translucent menus"
+text = "Translucent interface"
 
 [node name="RendererLabel" type="Label" parent="Tabs/General/Fields"]
 layout_mode = 2
