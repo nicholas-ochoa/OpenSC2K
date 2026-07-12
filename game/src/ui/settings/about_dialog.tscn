@@ -101,4 +101,3 @@ size_flags_vertical = 3
 selection_enabled = true
 
 [node name="FrostedBackdrop" parent="." instance=ExtResource("5_glass")]
-content_panels = Array[NodePath]([NodePath("../Content/Tabs")])
