@@ -77,6 +77,8 @@ static func build(value: String, files := false, translucent_menus := true) -> T
 	result.set_type_variation("CityToolbarPanel", "Panel")
 	var toolbar := _copy_style(result, "PanelPadding5_3_5_3", "panel")
 	toolbar.bg_color.a = (0.78 if dark else 0.75) if translucent_menus else 1.0
+	toolbar.border_width_top = 0
+	toolbar.border_width_bottom = 0
 	result.set_stylebox("panel", "CityToolbarPanel", toolbar)
 	return result
 
