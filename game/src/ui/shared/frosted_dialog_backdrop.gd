@@ -1,17 +1,26 @@
-extends CanvasLayer
+extends Node
 
+
+const CanvasScene = preload("res://src/ui/shared/frosted_dialog_canvas.tscn")
 
 @export var content_panels: Array[NodePath] = []
 
 var _dialog: AcceptDialog
 var _enabled := false
-@onready var _background_copy: BackBufferCopy = $BackgroundCopy
-@onready var _glass: ColorRect = $Glass
+var _layer: CanvasLayer
+var _background_copy: BackBufferCopy
+var _glass: ColorRect
 
 
 func _ready() -> void:
 	_dialog = get_parent() as AcceptDialog
-	custom_viewport = _dialog.get_parent().get_viewport()
+	_layer = CanvasScene.instantiate() as CanvasLayer
+	# Set the viewport before tree entry so Godot connects and disconnects
+	# canvas ordering signals on the same viewport.
+	_layer.custom_viewport = _dialog.get_parent().get_viewport()
+	_background_copy = _layer.get_node("BackgroundCopy")
+	_glass = _layer.get_node("Glass")
+	add_child(_layer)
 	AppUiTheme.current().changed.connect(_refresh_theme)
 	_dialog.visibility_changed.connect(_refresh_visibility)
 	_dialog.size_changed.connect(_sync_geometry)
@@ -19,7 +28,7 @@ func _ready() -> void:
 
 
 func _refresh_theme() -> void:
-	var viewport := custom_viewport as Viewport
+	var viewport := _layer.custom_viewport as Viewport
 	_enabled = AppUiTheme.translucent_menus and viewport.gui_embed_subwindows and not _dialog.force_native
 	_dialog.transparent = _enabled
 	_dialog.begin_bulk_theme_override()
@@ -60,8 +69,8 @@ func _refresh_theme() -> void:
 
 
 func _refresh_visibility() -> void:
-	visible = _enabled and _dialog.visible
-	set_process(visible)
+	_layer.visible = _enabled and _dialog.visible
+	set_process(_layer.visible)
 	_sync_geometry()
 
 

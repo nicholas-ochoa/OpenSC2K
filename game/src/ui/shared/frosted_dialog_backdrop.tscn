@@ -1,19 +1,6 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/shared/frosted_dialog_backdrop.gd" id="1_backdrop"]
-[ext_resource type="Shader" path="res://src/ui/shared/frosted_panel.gdshader" id="2_glass"]
 
-[sub_resource type="ShaderMaterial" id="ShaderMaterial_glass"]
-shader = ExtResource("2_glass")
-
-[node name="FrostedBackdrop" type="CanvasLayer"]
-layer = 120
-visible = false
+[node name="FrostedBackdrop" type="Node"]
 script = ExtResource("1_backdrop")
-
-[node name="BackgroundCopy" type="BackBufferCopy" parent="."]
-copy_mode = 0
-
-[node name="Glass" type="ColorRect" parent="."]
-material = SubResource("ShaderMaterial_glass")
-mouse_filter = 2
