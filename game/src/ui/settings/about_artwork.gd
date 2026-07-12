@@ -51,8 +51,8 @@ func set_assets(assets: OriginalGameAssets) -> void:
 	queue_redraw()
 
 
-func set_active(value: bool) -> void:
-	if value and not active:
+func set_active(value: bool, restart := true) -> void:
+	if value and not active and restart:
 		animation_time = 0.0
 	active = value
 	set_process(active and available)
@@ -118,4 +118,3 @@ func _draw() -> void:
 
 func _draw_sprite(id: int, position: Vector2, flip: bool) -> void:
 	draw_texture(textures[Vector2i(id, int(flip))], position)
-

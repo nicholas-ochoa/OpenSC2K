@@ -44,11 +44,11 @@ func set_assets(assets: OriginalGameAssets) -> void:
 
 
 func _on_tab_changed(_index: int) -> void:
-	_update_animation()
+	_update_animation(false)
 
 
-func _update_animation() -> void:
-	artwork.set_active(visible and $Content/Tabs.current_tab == 0)
+func _update_animation(restart := true) -> void:
+	artwork.set_active(visible and $Content/Tabs.current_tab == 0, restart)
 
 
 func _build_licenses() -> void:
