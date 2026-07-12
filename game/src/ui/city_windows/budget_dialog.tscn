@@ -1,7 +1,6 @@
 [gd_scene format=3]
 
 [ext_resource type="Script" path="res://src/ui/city_windows/budget_dialog.gd" id="1_il4yx"]
-[ext_resource type="PackedScene" path="res://src/ui/shared/frosted_dialog_backdrop.tscn" id="2_glass"]
 
 [node name="BudgetDialog" type="ConfirmationDialog"]
 visible = true
@@ -10,8 +9,6 @@ ok_button_text = "Apply"
 size = Vector2i(720, 560)
 min_size = Vector2i(720, 560)
 script = ExtResource("1_il4yx")
-
-[node name="FrostedBackdrop" parent="." instance=ExtResource("2_glass")]
 
 [node name="Margin" type="MarginContainer" parent="."]
 anchors_preset = 15
