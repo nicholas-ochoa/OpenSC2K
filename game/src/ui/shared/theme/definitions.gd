@@ -77,9 +77,22 @@ static func build(value: String, files := false, translucent_menus := true) -> T
 	result.set_type_variation("CityToolbarPanel", "Panel")
 	var toolbar := _copy_style(result, "PanelPadding5_3_5_3", "panel")
 	toolbar.bg_color.a = (0.78 if dark else 0.75) if translucent_menus else 1.0
+	toolbar.border_width_left = 0
 	toolbar.border_width_top = 0
 	toolbar.border_width_bottom = 0
 	result.set_stylebox("panel", "CityToolbarPanel", toolbar)
+	result.set_type_variation("CityMenuBarPanel", "PanelContainer")
+	var menu_bar := _copy_style(result, "PanelPadding5_2_5_2", "panel")
+	menu_bar.border_width_top = 0
+	menu_bar.border_width_left = 0
+	menu_bar.border_width_right = 0
+	result.set_stylebox("panel", "CityMenuBarPanel", menu_bar)
+	result.set_type_variation("CityStatusBarPanel", "PanelContainer")
+	var status_bar := _copy_style(result, "PanelPadding5_3_5_3", "panel")
+	status_bar.border_width_bottom = 0
+	status_bar.border_width_left = 0
+	status_bar.border_width_right = 0
+	result.set_stylebox("panel", "CityStatusBarPanel", status_bar)
 	return result
 
 

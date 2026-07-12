@@ -53,7 +53,7 @@ var fps_label: Label
 
 func _ready() -> void:
 	custom_minimum_size = Vector2(0, 31)
-	theme_type_variation = "PanelPadding5_2_5_2"
+	theme_type_variation = "CityMenuBarPanel"
 	var menu_row := HBoxContainer.new()
 	menu_row.add_theme_constant_override("separation", 0)
 	add_child(menu_row)

@@ -7,7 +7,7 @@
 [node name="CityStatusBar" type="PanelContainer"]
 custom_minimum_size = Vector2(0, 31)
 script = ExtResource("1")
-theme_type_variation = "PanelPadding5_3_5_3"
+theme_type_variation = "CityStatusBarPanel"
 
 [node name="Metrics" type="HBoxContainer" parent="."]
 layout_mode = 2
