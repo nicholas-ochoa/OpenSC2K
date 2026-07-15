@@ -6,16 +6,20 @@ const VALUE_COUNT := MAP_SIZE * MAP_SIZE
 const MISC_TRAFFIC_COUNT := 0x30
 
 
-static func run(city: CityState) -> Dictionary:
+class Result extends PhaseResult:
+	var traffic_count := 0
+
+
+static func run(city: CityState) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	var chunk := city.document.find_chunk("XTRF")
 
 	if chunk == null or chunk.decoded_payload.size() != city.document.decoded_size("XTRF"):
-		return {"ok": false, "error": "XTRF is missing or has the wrong size"}
+		return _failed("XTRF is missing or has the wrong size")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("copy traffic map")
@@ -39,9 +43,21 @@ static func run(city: CityState) -> Dictionary:
 	# decay leaves an empty map unchanged. the render change signature reads the
 	# xtrf revision, so a redundant write would repaint the city every phase
 	if traffic != chunk.decoded_payload and not chunk.set_decoded_payload(traffic):
-		return {"ok": false, "error": "cannot store updated XTRF data"}
+		return _failed("cannot store updated XTRF data")
 
 	if not city.document.set_misc_u32(MISC_TRAFFIC_COUNT, total):
-		return {"ok": false, "error": "cannot store the city traffic count"}
+		return _failed("cannot store the city traffic count")
 
-	return {"ok": true, "traffic_count": total, "error": "", "timing": span.finish()}
+	var result := Result.new()
+	result.ok = true
+	result.traffic_count = total
+	result.timing = span.finish()
+
+	return result
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result

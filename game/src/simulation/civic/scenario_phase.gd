@@ -2,43 +2,43 @@ class_name ScenarioPhase
 extends RefCounted
 
 
-static func run(scenario: ScenarioState, city: CityState) -> Dictionary:
+class Result extends PhaseResult:
+	var active := false
+	var outcome := ""
+	var remaining_months := 0
+	var unmet := PackedStringArray()
+
+
+static func run(scenario: ScenarioState, city: CityState) -> Result:
 	if scenario == null:
-		return {
-			"ok": true,
-			"error": "",
-			"active": false,
-			"outcome": "",
-			"remaining_months": 0,
-			"unmet": PackedStringArray(),
-			"game_over_events": [],
-			"complete": true,
-		}
+		var inactive := Result.new()
+		inactive.ok = true
+
+		return inactive
 
 	if not scenario.is_valid():
-		return {"ok": false, "error": "scenario is invalid"}
+		return _failed("scenario is invalid")
 
 	var goals := scenario.evaluate_goals(city)
 
 	if not goals.ok:
-		return goals
+		return _failed(goals.error)
 
 	if goals.met:
-		return {
-			"ok": true,
-			"error": "",
-			"active": true,
-			"outcome": "victory",
-			"remaining_months": scenario.time_limit_months,
-			"unmet": goals.unmet,
-			"game_over_events": [{"type": "scenario_victory"}],
-			"complete": true,
-		}
+		var victory := Result.new()
+		victory.ok = true
+		victory.active = true
+		victory.outcome = "victory"
+		victory.remaining_months = scenario.time_limit_months
+		victory.unmet = goals.unmet
+		victory.game_over_events = [{"type": "scenario_victory"}]
+
+		return victory
 
 	var remaining := (scenario.time_limit_months - 1) & 0xffff
 
 	if not scenario.set_time_limit_months(remaining):
-		return {"ok": false, "error": "cannot store the scenario time limit"}
+		return _failed("cannot store the scenario time limit")
 
 	var outcome := "failure" if remaining == 0 else ""
 	var events: Array[Dictionary] = []
@@ -46,13 +46,19 @@ static func run(scenario: ScenarioState, city: CityState) -> Dictionary:
 	if outcome == "failure":
 		events.append({"type": "scenario_failure"})
 
-	return {
-		"ok": true,
-		"error": "",
-		"active": true,
-		"outcome": outcome,
-		"remaining_months": remaining,
-		"unmet": goals.unmet,
-		"game_over_events": events,
-		"complete": true,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.active = true
+	result.outcome = outcome
+	result.remaining_months = remaining
+	result.unmet = goals.unmet
+	result.game_over_events = events
+
+	return result
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result

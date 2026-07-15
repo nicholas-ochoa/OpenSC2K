@@ -21,30 +21,39 @@ const NOTICE_MISSILE_SILOS := 0xf4
 const NOTICE_NO_SITE := 0x19b
 
 
-static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom) -> Dictionary:
+class Result extends PhaseResult:
+	var accepted := false
+	var base_type := 0
+	var site := Rect2i()
+	var changed_indices := PackedInt32Array()
+	var notice_id := -1
+	var sites: Array = []
+
+
+static func resolve(city: CityState, accepted: bool, game_random: GameLcgRandom) -> Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
 	span.mark("prepare data")
 	var result := _resolve(city, accepted, game_random, span)
 
-	if result.get("ok", false):
-		result["timing"] = span.finish()
+	if result.ok:
+		result.timing = span.finish()
 
 	return result
 
 
-static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, span: SimulationTimingSpan) -> Dictionary:
+static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom, span: SimulationTimingSpan) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if accepted and game_random == null:
-		return {"ok": false, "error": "a compatible game random generator is required"}
+		return _failed("a compatible game random generator is required")
 
 	var chunks := _chunks(city)
 
 	if chunks.is_empty():
-		return {"ok": false, "error": "military proposal data is missing or invalid"}
+		return _failed("military proposal data is missing or invalid")
 
 	var zones: PackedByteArray = chunks.XZON.decoded_payload.duplicate()
 	var misc: PackedByteArray = chunks.MISC.decoded_payload.duplicate()
@@ -54,7 +63,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 		_write_u32(misc, MISC_BASE_TYPE, BASE_DECLINED)
 
 		if not chunks.MISC.set_decoded_payload(misc):
-			return {"ok": false, "error": "cannot store the declined military proposal"}
+			return _failed("cannot store the declined military proposal")
 
 		return _result(false, BASE_DECLINED, Rect2i(), PackedInt32Array(), -1)
 
@@ -72,9 +81,9 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 			buildings[index] = 0
 		_write_u32(misc, MISC_BASE_TYPE, BASE_NAVY)
 		if not _store(city, chunks, zones, misc, {"XBLD": buildings}):
-			return {"ok": false, "error": "cannot store the Navy base plot"}
+			return _failed("cannot store the Navy base plot")
 		var result := _result(true, BASE_NAVY, navy_site, changed, NOTICE_NAVY)
-		result["view_center_requests"] = [navy_site.get_center()]
+		result.view_center_requests = [navy_site.get_center()]
 		return result
 
 	span.mark("land base site search")
@@ -111,7 +120,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 			ArmyBaseLayout.build(buildings, terrain, zones, underground, flags, misc, origin, map_edge)
 
 		if not _store(city, chunks, zones, misc, {"XBLD": buildings, "XTER": terrain, "XBIT": flags}):
-			return {"ok": false, "error": "cannot store the military base plot"}
+			return _failed("cannot store the military base plot")
 
 		return _result(true, base_type, Rect2i(origin, Vector2i(8, 8)), changed, notice)
 
@@ -145,7 +154,7 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 		_write_u32(misc, MISC_BASE_TYPE, BASE_DECLINED)
 
 		if not chunks.MISC.set_decoded_payload(misc):
-			return {"ok": false, "error": "cannot store the failed military proposal"}
+			return _failed("cannot store the failed military proposal")
 
 		return _result(false, BASE_DECLINED, Rect2i(), PackedInt32Array(), NOTICE_NO_SITE)
 
@@ -163,12 +172,12 @@ static func _resolve(city: CityState, accepted: bool, game_random: GameLcgRandom
 	_write_u32(misc, MISC_BASE_TYPE, BASE_MISSILE_SILOS)
 
 	if not _store(city, chunks, zones, misc):
-		return {"ok": false, "error": "cannot store the military missile sites"}
+		return _failed("cannot store the military missile sites")
 
 	var result := _result(
 		true, BASE_MISSILE_SILOS, sites[-1], changed_indices, NOTICE_MISSILE_SILOS
 	)
-	result["sites"] = sites
+	result.sites = sites
 
 	return result
 
@@ -249,22 +258,28 @@ static func _chunks(city: CityState) -> Dictionary:
 
 static func _result(
 	accepted: bool, base_type: int, site: Rect2i, changed_indices, notice_id: int
-) -> Dictionary:
-	return {
-		"ok": true,
-		"error": "",
-		"accepted": accepted,
-		"base_type": base_type,
-		"site": site,
-		"changed_indices": changed_indices,
-		"notice_id": notice_id,
-		"view_center_requests": (
-			[site.position + Vector2i(4, 4)]
-			if accepted and (base_type == BASE_ARMY or base_type == BASE_AIR_FORCE)
-			else ([site.position] if accepted else [])
-		),
-		"complete": true,
-	}
+) -> Result:
+	var result := Result.new()
+	result.ok = true
+	result.accepted = accepted
+	result.base_type = base_type
+	result.site = site
+	result.changed_indices = changed_indices
+	result.notice_id = notice_id
+	result.view_center_requests = (
+		[site.position + Vector2i(4, 4)]
+		if accepted and (base_type == BASE_ARMY or base_type == BASE_AIR_FORCE)
+		else ([site.position] if accepted else [])
+	)
+
+	return result
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func _decrement_tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> void:

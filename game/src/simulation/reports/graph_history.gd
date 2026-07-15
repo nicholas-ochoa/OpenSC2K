@@ -27,9 +27,16 @@ const FIRST_ARCOLOGY := 0xfb
 const LAST_ARCOLOGY := 0xfe
 
 
+class Result extends PhaseResult:
+	var month := 0
+	var elapsed_years := 0
+	var values := PackedInt64Array()
+	var unemployment := 0
+
+
 static func run(
 	city: CityState, developed_tiles: int, power_usage_percent: int, water_usage_percent: int
-) -> Dictionary:
+) -> Result:
 	var span := SimulationTimingSpan.new(city.simulation_slice if city != null else null)
 	span.mark("calculate graph values")
 	var calculation := calculate_current_values(
@@ -37,28 +44,39 @@ static func run(
 	)
 
 	if not calculation.ok:
-		return calculation
+		return _failed(calculation.error)
 
 	var chunk := city.document.find_chunk("XGRP")
 
 	if chunk == null or chunk.decoded_payload.size() != SERIES_COUNT * VALUES_PER_SERIES * 4:
-		return {"ok": false, "error": "XGRP is missing or has the wrong size"}
+		return _failed("XGRP is missing or has the wrong size")
 
 	span.mark("store unemployment")
 	if not city.document.set_misc_u32(MISC_UNEMPLOYMENT, calculation.unemployment):
-		return {"ok": false, "error": "cannot store the unemployment percentage"}
+		return _failed("cannot store the unemployment percentage")
 
 	span.mark("shift graph histories")
 	var history := advance(city, calculation.values)
 
 	if not history.ok:
-		return history
+		return _failed(history.error)
 
-	history["timing"] = span.finish()
-	history["values"] = calculation.values
-	history["unemployment"] = calculation.unemployment
+	var result := Result.new()
+	result.ok = true
+	result.month = history.month
+	result.elapsed_years = history.elapsed_years
+	result.values = calculation.values
+	result.unemployment = calculation.unemployment
+	result.timing = span.finish()
 
-	return history
+	return result
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func calculate_current_values(

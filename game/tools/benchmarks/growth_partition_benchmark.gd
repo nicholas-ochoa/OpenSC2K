@@ -24,7 +24,7 @@ func _initialize() -> void:
 				var started := Time.get_ticks_usec()
 				var result := GrowthScan.run(city, random, step, substep, lfsr, game)
 				elapsed += Time.get_ticks_usec() - started
-				scanned += int(result.get("scanned_tiles", 0))
+				scanned += result.scanned_tiles
 
 		totals.append(elapsed)
 		print("round %d: %d usec, %d tiles scanned" % [round, elapsed, scanned])

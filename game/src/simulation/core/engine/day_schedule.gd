@@ -100,11 +100,11 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary
 					return growth_news
 
 				phase_results[action] = growth
-				engine.bus_passengers = (engine.bus_passengers + int(growth.bus_passengers)) & 0xffffffff
-				engine.rail_passengers = (engine.rail_passengers + int(growth.rail_passengers)) & 0xffffffff
-				engine.subway_passengers = (engine.subway_passengers + int(growth.subway_passengers)) & 0xffffffff
+				engine.bus_passengers = (engine.bus_passengers + growth.bus_passengers) & 0xffffffff
+				engine.rail_passengers = (engine.rail_passengers + growth.rail_passengers) & 0xffffffff
+				engine.subway_passengers = (engine.subway_passengers + growth.subway_passengers) & 0xffffffff
 
-				if growth.has("ship_home"):
+				if growth.ship_home_found:
 					engine.ship_home = growth.ship_home
 
 				if growth.complete:
@@ -150,12 +150,9 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary
 					if engine.city.music_enabled():
 						engine.midi_playback_active = true
 
-				phase_results["music"] = {
-					"ok": true,
-					"playback_was_active": playback_was_active,
-					"selection_attempted": not playback_was_active,
-					"music_track_requests": music_requests,
-				}
+				phase_results["music"] = MonthlyMusicResult.selected(
+					playback_was_active, music_requests
+				)
 				var demand := RciDemandPhase.run(engine.city)
 
 				if not demand.ok:
@@ -163,7 +160,9 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary
 
 				phase_results[action] = demand
 				span.mark("rci_aftermath")
-				var aftermath := SimulationEngine.RciAftermath.run(engine.city, engine.random, int(schedule.season))
+				var aftermath := SimulationEngine.RciAftermath.run(
+					engine.city, engine.random, int(schedule.season)
+				)
 
 				if not aftermath.ok:
 					return {"ok": false, "error": aftermath.error}
@@ -188,14 +187,16 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary
 					return simnation_news
 
 				phase_results["simnation"] = simnation
-				var demand_result: Dictionary = phase_results.get("rci_demand", {})
+				var demand_result: RciDemandPhase.Result = phase_results.get(
+					"rci_demand", RciDemandPhase.Result.new()
+				)
 				var population_growth := maxi(
-					int(demand_result.get("normal_population", 0))
-					- int(demand_result.get("previous_population", 0)),
-					0
+					demand_result.normal_population - demand_result.previous_population, 0
 				)
 				span.mark("industries")
-				var industries := SimulationEngine.Industries.run(engine.city, engine.random, engine.lfsr_random, population_growth)
+				var industries := SimulationEngine.Industries.run(
+					engine.city, engine.random, engine.lfsr_random, population_growth
+				)
 
 				if not industries.ok:
 					return {"ok": false, "error": industries.error}
@@ -282,22 +283,13 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary
 				if not bankruptcy.game_over_events.is_empty():
 					engine.terminal_state = true
 			"statistics_windows":
-				phase_results[action] = {
-					"ok": true,
-					"refresh_requests": ["population", "industries", "graphs"],
-				}
+				phase_results[action] = PhaseResult.refreshing(["population", "industries", "graphs"])
 				applied.append(action)
 			"map":
-				phase_results[action] = {
-					"ok": true,
-					"refresh_requests": ["toolbar", "map"],
-				}
+				phase_results[action] = PhaseResult.refreshing(["toolbar", "map"])
 				applied.append(action)
 			"simnation":
-				phase_results[action] = {
-					"ok": true,
-					"refresh_requests": ["simnation"],
-				}
+				phase_results[action] = PhaseResult.refreshing(["simnation"])
 				applied.append(action)
 			"weather_disaster":
 				var weather_disaster := SimulationEngine.WeatherDisaster.run(
@@ -320,12 +312,12 @@ static func _execute_day_schedule(engine: SimulationEngine, schedule: Dictionary
 					return weather_news
 
 				engine.city_status_resource_id = CityStatusMessages.monthly_resource(
-					int(weather_disaster.status_index), engine.city.weather_type()
+					weather_disaster.status_index, engine.city.weather_type()
 				)
 				phase_results[action] = weather_disaster
 
-				if int(weather_disaster.disaster_type) != 0:
-					engine.pending_disaster_type = int(weather_disaster.disaster_type)
+				if weather_disaster.disaster_type != 0:
+					engine.pending_disaster_type = weather_disaster.disaster_type
 					engine.pending_disaster_point = weather_disaster.disaster_point
 
 				applied.append(action)
@@ -359,13 +351,11 @@ static func _schedule_after(engine: SimulationEngine, schedule: Dictionary, comp
 	return remaining
 
 
-static func _persist_news_result(engine: SimulationEngine, result: Dictionary) -> Dictionary:
-	if result.get("news_queue_updated", false):
+static func _persist_news_result(engine: SimulationEngine, result: PhaseResult) -> Dictionary:
+	if result.news_queue_updated:
 		return {"ok": true, "error": "", "inserted": 0}
 
-	var news_items: Array = result.get("news_items", [])
-
-	if news_items.is_empty():
+	if result.news_items.is_empty():
 		return {"ok": true, "error": "", "inserted": 0}
 
 	var misc_chunk := engine.city.document.find_chunk("MISC")
@@ -374,7 +364,7 @@ static func _persist_news_result(engine: SimulationEngine, result: Dictionary) -
 		return {"ok": false, "error": "MISC is missing or has the wrong size"}
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	var insertion := SimulationEngine.NewsQueue.insert_items(misc, news_items)
+	var insertion := SimulationEngine.NewsQueue.insert_items(misc, result.news_items)
 
 	if not insertion.ok:
 		return insertion
@@ -385,7 +375,7 @@ static func _persist_news_result(engine: SimulationEngine, result: Dictionary) -
 	if not misc_chunk.set_decoded_payload(misc):
 		return {"ok": false, "error": "cannot store newspaper stories"}
 
-	result["news_queue_updated"] = true
-	result["news_queue_inserted"] = insertion.inserted
+	result.news_queue_updated = true
+	result.news_queue_inserted = insertion.inserted
 
 	return insertion

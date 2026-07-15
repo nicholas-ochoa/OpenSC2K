@@ -252,24 +252,22 @@ func _consume_day_result(result: Dictionary, day: Dictionary) -> void:
 	var phase_results: Dictionary = day.get("phase_results", {})
 
 	for phase_name in phase_results:
-		var phase_result: Dictionary = phase_results[phase_name]
+		var phase_result: PhaseResult = phase_results[phase_name]
 
-		for refresh_request in phase_result.get("refresh_requests", []):
+		for refresh_request in phase_result.refresh_requests:
 			if not result.refresh_requests.has(refresh_request):
 				result.refresh_requests.append(refresh_request)
 
-		result.effect_events.append_array(phase_result.get("effect_events", []))
-		result.game_over_events.append_array(phase_result.get("game_over_events", []))
+		result.effect_events.append_array(phase_result.effect_events)
+		result.game_over_events.append_array(phase_result.game_over_events)
 
-		if phase_name == "growth":
-			result.effect_events.append_array(phase_result.get("bridge_effects", []))
+		if phase_result is GrowthResult:
+			result.effect_events.append_array(phase_result.bridge_effects)
 
-		result.news_items.append_array(phase_result.get("news_items", []))
-		result.sound_events.append_array(phase_result.get("sound_events", []))
-		result.music_track_requests.append_array(
-			phase_result.get("music_track_requests", PackedInt32Array())
-		)
-		result.view_center_requests.append_array(phase_result.get("view_center_requests", []))
+		result.news_items.append_array(phase_result.news_items)
+		result.sound_events.append_array(phase_result.sound_events)
+		result.music_track_requests.append_array(phase_result.music_track_requests)
+		result.view_center_requests.append_array(phase_result.view_center_requests)
 
 	if not result.game_over_events.is_empty():
 		terminal_blocked = true

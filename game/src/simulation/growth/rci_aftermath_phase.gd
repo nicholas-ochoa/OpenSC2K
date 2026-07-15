@@ -95,17 +95,31 @@ const MILITARY_TILE_COUNT_INDEX := {
 }
 
 
-static func run(city: CityState, random: SimRandom, season: int) -> Dictionary:
+class Result extends PhaseResult:
+	var season := 0
+	var old_weather_trend := 0
+	var weather_trend := 0
+	var weather_name := ""
+	var weather_roll := 0
+	var heat := 0
+	var wind := 0
+	var rain := 0
+	var map_changes: Array = []
+	var map_changed := false
+	var invention_index := -1
+
+
+static func run(city: CityState, random: SimRandom, season: int) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return _failed("a compatible process random generator is required")
 
 	if season < 0 or season > 3:
-		return {"ok": false, "error": "weather season is out of range"}
+		return _failed("weather season is out of range")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 	var building_chunk := city.document.find_chunk("XBLD")
@@ -114,19 +128,19 @@ static func run(city: CityState, random: SimRandom, season: int) -> Dictionary:
 	var graph_chunk := city.document.find_chunk("XGRP")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return _failed("MISC is missing or has the wrong size")
 
 	if building_chunk == null or building_chunk.decoded_payload.size() != (map_edge * map_edge):
-		return {"ok": false, "error": "XBLD is missing or has the wrong size"}
+		return _failed("XBLD is missing or has the wrong size")
 
 	if zone_chunk == null or zone_chunk.decoded_payload.size() != (map_edge * map_edge):
-		return {"ok": false, "error": "XZON is missing or has the wrong size"}
+		return _failed("XZON is missing or has the wrong size")
 
 	if flag_chunk == null or flag_chunk.decoded_payload.size() != (map_edge * map_edge):
-		return {"ok": false, "error": "XBIT is missing or has the wrong size"}
+		return _failed("XBIT is missing or has the wrong size")
 
 	if graph_chunk == null or graph_chunk.decoded_payload.size() != 16 * 52 * 4:
-		return {"ok": false, "error": "XGRP is missing or has the wrong size"}
+		return _failed("XGRP is missing or has the wrong size")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("prepare data")
@@ -145,7 +159,7 @@ static func run(city: CityState, random: SimRandom, season: int) -> Dictionary:
 	var queue_decay := NewsQueue.decay_and_sort(misc)
 
 	if not queue_decay.ok:
-		return queue_decay
+		return _failed(queue_decay.error)
 
 	var news_items: Array = [{"type": NEWS_JUNK, "argument": 0}]
 	_append_general_news(random, misc, graphs, news_items, map_edge)
@@ -159,7 +173,7 @@ static func run(city: CityState, random: SimRandom, season: int) -> Dictionary:
 	var old_trend := _read_u32(misc, MISC_WEATHER_TREND) & 0xff
 
 	if old_trend >= WEATHER_NAMES.size():
-		return {"ok": false, "error": "weather trend is out of range"}
+		return _failed("weather trend is out of range")
 
 	var weather_roll: int = random.next_u15() & 7
 	var new_trend := weather_transition(old_trend, season, weather_roll)
@@ -177,7 +191,7 @@ static func run(city: CityState, random: SimRandom, season: int) -> Dictionary:
 	var queue_insert := NewsQueue.insert_items(misc, news_items)
 
 	if not queue_insert.ok:
-		return queue_insert
+		return _failed(queue_insert.error)
 
 	span.mark("store monthly changes")
 	# a month without tree growth must not bump the xbld revision. the render
@@ -185,35 +199,35 @@ static func run(city: CityState, random: SimRandom, season: int) -> Dictionary:
 	var buildings_changed := buildings != old_buildings
 
 	if buildings_changed and not building_chunk.set_decoded_payload(buildings):
-		return {"ok": false, "error": "cannot store the monthly tree update"}
+		return _failed("cannot store the monthly tree update")
 
 	if not misc_chunk.set_decoded_payload(misc):
 		if buildings_changed:
 			building_chunk.set_decoded_payload(old_buildings)
 			city.buildings = old_buildings
 
-		return {"ok": false, "error": "cannot store the monthly RCI side effects"}
+		return _failed("cannot store the monthly RCI side effects")
 
 	city.buildings = buildings.duplicate()
 
-	return {
-		"ok": true,
-		"timing": span.finish(),
-		"error": "",
-		"season": season,
-		"old_weather_trend": old_trend,
-		"weather_trend": new_trend,
-		"weather_name": WEATHER_NAMES[new_trend],
-		"weather_roll": weather_roll,
-		"heat": new_heat,
-		"wind": new_wind,
-		"rain": new_rain,
-		"map_changes": map_changes,
-		"map_changed": not map_changes.is_empty(),
-		"invention_index": invention_index,
-		"news_items": news_items,
-		"news_queue_updated": true,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.season = season
+	result.old_weather_trend = old_trend
+	result.weather_trend = new_trend
+	result.weather_name = WEATHER_NAMES[new_trend]
+	result.weather_roll = weather_roll
+	result.heat = new_heat
+	result.wind = new_wind
+	result.rain = new_rain
+	result.map_changes = map_changes
+	result.map_changed = not map_changes.is_empty()
+	result.invention_index = invention_index
+	result.news_items = news_items
+	result.news_queue_updated = true
+	result.timing = span.finish()
+
+	return result
 
 
 static func weather_transition(current_trend: int, season: int, roll: int) -> int:
@@ -433,3 +447,10 @@ static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:
 	data[offset + 1] = (encoded >> 16) & 0xff
 	data[offset + 2] = (encoded >> 8) & 0xff
 	data[offset + 3] = encoded & 0xff
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result

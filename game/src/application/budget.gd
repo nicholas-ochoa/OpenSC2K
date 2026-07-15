@@ -220,12 +220,12 @@ func _resolve_military_proposal(accepted: bool) -> void:
 	app.frame._consume_simulation_result(result)
 	app.interface._refresh_details()
 	app.status_label.theme_type_variation = ""
-	var proposal: Dictionary = result.day_results[0].phase_results.military_proposal
+	var proposal: MilitaryProposalPhase.Result = result.day_results[0].phase_results.military_proposal
 
-	if int(proposal.base_type) in [2, 3, 4, 5]:
+	if proposal.base_type in [2, 3, 4, 5]:
 		app.effects_audio._play_sound_events(ToolSounds.zone_success_events(7))
 
-	match int(proposal.base_type):
+	match proposal.base_type:
 		2:
 			app.status_label.text = "The Army base site is reserved."
 		3:

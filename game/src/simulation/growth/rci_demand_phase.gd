@@ -38,14 +38,24 @@ const INDUSTRY_CONNECTION_RANGES := [
 ]
 
 
-static func run(city: CityState) -> Dictionary:
+class Result extends PhaseResult:
+	var previous_population := 0
+	var normal_population := 0
+	var tax_population := PackedInt64Array()
+	var targets: Array = []
+	var demands := PackedInt32Array()
+	var commerce_connections := 0
+	var industry_connections := 0
+
+
+static func run(city: CityState) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	var misc := city.document.find_chunk("MISC")
 
 	if misc == null or misc.decoded_payload.size() < 0x1054:
-		return {"ok": false, "error": "MISC data is missing or too short"}
+		return _failed("MISC data is missing or too short")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("prepare data")
@@ -166,20 +176,26 @@ static func run(city: CityState) -> Dictionary:
 		_write_i32(changed, DEMAND_OFFSET + index * 4, demands[index])
 
 	if not misc.set_decoded_payload(changed):
-		return {"ok": false, "error": "cannot store updated MISC data"}
+		return _failed("cannot store updated MISC data")
 
-	return {
-		"ok": true,
-		"timing": span.finish(),
-		"previous_population": previous_population,
-		"normal_population": normal_population,
-		"tax_population": tax_population,
-		"targets": targets,
-		"demands": demands,
-		"commerce_connections": connections.commerce,
-		"industry_connections": connections.industry,
-		"error": "",
-	}
+	var result := Result.new()
+	result.ok = true
+	result.previous_population = previous_population
+	result.normal_population = normal_population
+	result.tax_population = tax_population
+	result.targets = targets
+	result.demands = demands
+	result.commerce_connections = connections.commerce
+	result.industry_connections = connections.industry
+	result.timing = span.finish()
+
+	return result
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func connection_counts(city: CityState) -> Dictionary:

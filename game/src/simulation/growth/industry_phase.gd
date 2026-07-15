@@ -46,23 +46,40 @@ const MID_EQ_INDUSTRIES := [2, 5, 7, 8, 6, 9]
 const HIGH_EQ_INDUSTRIES := [6, 9]
 
 
-static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, population_growth: int) -> Dictionary:
+class Result extends PhaseResult:
+	var start_year := 0
+	var elapsed_years := 0
+	var world_demands := PackedInt32Array()
+	var demands := PackedInt32Array()
+	var adjusted_demands := PackedInt32Array()
+	var ratios := PackedInt64Array()
+	var ratio_total_before := 0
+	var ratio_total_after := 0
+	var industrial_population := 0
+	var positive_demand_total := 0
+	var pollution_share := 0
+	var pollution_bonus := 0
+	var maximum_share := 0
+	var mix_bonus := 0
+
+
+static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, population_growth: int) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return _failed("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible game LFSR generator is required"}
+		return _failed("a compatible game LFSR generator is required")
 
 	if population_growth < 0:
-		return {"ok": false, "error": "population growth is negative"}
+		return _failed("population growth is negative")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return _failed("MISC is missing or has the wrong size")
 
 	var data: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var start_year := _to_i16(_read_u32(data, MISC_START_YEAR))
@@ -70,7 +87,7 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 	var targets := world_demands(start_year, elapsed_years)
 
 	if targets.is_empty():
-		return {"ok": false, "error": "the industry era is before 1900"}
+		return _failed("the industry era is before 1900")
 
 	var demands := PackedInt32Array()
 	var adjusted := PackedInt32Array()
@@ -171,26 +188,32 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 	_write_u32(data, MISC_INDUSTRIAL_POLLUTION_BONUS, pollution_bonus)
 
 	if not misc_chunk.set_decoded_payload(data):
-		return {"ok": false, "error": "cannot store the industry update"}
+		return _failed("cannot store the industry update")
 
-	return {
-		"ok": true,
-		"error": "",
-		"start_year": start_year,
-		"elapsed_years": elapsed_years,
-		"world_demands": targets,
-		"demands": demands,
-		"adjusted_demands": adjusted,
-		"ratios": ratios,
-		"ratio_total_before": ratio_total,
-		"ratio_total_after": _sum(ratios),
-		"industrial_population": industrial_population,
-		"positive_demand_total": positive_total,
-		"pollution_share": pollution_share,
-		"pollution_bonus": pollution_bonus,
-		"maximum_share": maximum_share,
-		"mix_bonus": mix_bonus,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.start_year = start_year
+	result.elapsed_years = elapsed_years
+	result.world_demands = targets
+	result.demands = demands
+	result.adjusted_demands = adjusted
+	result.ratios = ratios
+	result.ratio_total_before = ratio_total
+	result.ratio_total_after = _sum(ratios)
+	result.industrial_population = industrial_population
+	result.positive_demand_total = positive_total
+	result.pollution_share = pollution_share
+	result.pollution_bonus = pollution_bonus
+	result.maximum_share = maximum_share
+	result.mix_bonus = mix_bonus
+
+	return result
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func world_demands(start_year: int, elapsed_years: int) -> PackedInt32Array:

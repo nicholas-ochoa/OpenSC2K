@@ -74,7 +74,7 @@ func _check_growth_detail_flag() -> void:
 		var lfsr := SimLfsrRandom.new(456)
 		var game := GameLcgRandom.new(789)
 		var growth := GrowthPhase.run(city, random, 0, 0, lfsr, game)
-		assert(growth.ok, str(growth.get("error", "")))
+		assert(growth.ok, growth.error)
 		assert(budget.metrics().slices >= 1, "The growth scan still parks the worker")
 		var steps: Dictionary = growth.timing.steps
 		var fine := 0
@@ -90,8 +90,9 @@ func _check_growth_detail_flag() -> void:
 			assert(steps["all per-tile growth work"] > 0)
 
 		assert(growth.scanned_tiles == 1024 and growth.rci_tiles == 4)
-		growth.erase("timing")
-		samples.append([growth, city.document.serialize().data,
+		var comparable := growth.to_dictionary()
+		comparable.erase("timing")
+		samples.append([comparable, city.document.serialize().data,
 			random.state, lfsr.state, game.state])
 
 	SimulationTimingSpan.detailed = false
@@ -122,7 +123,7 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 		engine.water_usage_percent = 50
 		var day := engine.advance_day()
 		assert(day.ok)
-		var phase: Dictionary = day.phase_results[pair[1]]
+		var phase: PhaseResult = day.phase_results[pair[1]]
 		assert(phase.timing.steps.size() >= 3)
 		var total := 0
 
@@ -152,7 +153,8 @@ func _check_phase_timings(history: SimulationTimingHistory) -> void:
 	# Preserve the existing data-map group while accepting other timed phases.
 	history.consume({"day_results": [{"ok": true, "day": 2,
 		"timing": {"work_usec": 500, "steps": {"pollution_terrain_land_value": 450}},
-		"phase_results": {"pollution_terrain_land_value": {"timing": {"steps": {"smoothing": 300}}}}}]})
+		"phase_results": {"pollution_terrain_land_value":
+			PhaseResult.from_dictionary({"timing": {"steps": {"smoothing": 300}}})}}]})
 	assert(history.steps["Day 03 / data maps / smoothing"].last_usec == 300)
 	assert(history.steps["Day 03 / data maps"].last_usec == 450)
 	# A resumed proposal has a phase total but no separate scheduler step.

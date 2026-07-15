@@ -4814,7 +4814,7 @@ func _test_simulation_engine(reference_root: String) -> void:
 	)
 	_check(
 		latest.phase_results.has("rci_aftermath")
-		and latest.phase_results.rci_aftermath.has("weather_trend"),
+		and latest.phase_results.rci_aftermath.weather_trend >= 0,
 		"Simulation engine runs monthly ecology, news, inventions, and weather after demand",
 	)
 	_check(
@@ -4826,12 +4826,12 @@ func _test_simulation_engine(reference_root: String) -> void:
 	)
 	_check(
 		latest.phase_results.has("simnation")
-		and latest.phase_results.simnation.has("national_population"),
+		and latest.phase_results.simnation.national_population >= 0,
 		"Simulation engine runs SimNation before demographics",
 	)
 	_check(
 		latest.phase_results.has("industries")
-		and latest.phase_results.industries.has("mix_bonus"),
+		and latest.phase_results.industries.mix_bonus >= 0,
 		"Simulation engine runs individual industries before demographics",
 	)
 	_check(latest.pending.is_empty(), "Day 21 has no unimplemented scheduled phase")
@@ -4856,7 +4856,7 @@ func _test_simulation_engine(reference_root: String) -> void:
 		latest.day == 24
 		and latest.applied == PackedStringArray(["map", "simnation", "weather_disaster"])
 		and latest.pending.is_empty()
-		and latest.phase_results.weather_disaster.has("status_index")
+		and latest.phase_results.weather_disaster.status_index >= -1
 		and latest.phase_results.weather_disaster.disaster_type == WeatherDisaster.DISASTER_NONE,
 		"Simulation engine completes the map, SimNation, status, and disaster work on day 24",
 	)
@@ -4991,8 +4991,8 @@ func _test_simulation_engine(reference_root: String) -> void:
 	_check(
 		monster_start.ok
 		and monster_start.phase_results.has("disaster_start")
-		and monster_start.phase_results.disaster_start.disaster_type == DisasterStart.DISASTER_MONSTER
-		and monster_start.phase_results.disaster_start.started
+		and monster_start.phase_results.disaster_start.extra.disaster_type == DisasterStart.DISASTER_MONSTER
+		and monster_start.phase_results.disaster_start.extra.started
 		and monster_scenario_engine.active_disaster_type == DisasterStart.DISASTER_MONSTER,
 		"A scenario starts its queued monster after the first calendar tick",
 	)
@@ -10876,13 +10876,13 @@ func _test_news_queue(reference_root: String) -> void:
 	_check(_clear_news_records(engine_document), "Engine newspaper fixture clears story records")
 	var engine_city := CityModel.from_document(engine_document)
 	var engine := Simulation.new(engine_city, 1, 7, 13)
-	var phase_result := {
+	var phase_result := PhaseResult.from_dictionary({
 		"ok": true,
 		"news_items": [
 			{"type": 0x1fe, "argument": 0},
 			{"type": 9, "argument": 4},
 		],
-	}
+	})
 	var persisted := engine._persist_news_result(phase_result)
 	var persisted_record := NewsQueue.story_record(
 		engine_document.find_chunk("MISC").decoded_payload, 0
@@ -10898,11 +10898,11 @@ func _test_news_queue(reference_root: String) -> void:
 		"Simulation engine persists valid story events and skips runtime notifications",
 	)
 	var before_duplicate: PackedByteArray = engine_document.find_chunk("MISC").decoded_payload.duplicate()
-	var already_updated := {
+	var already_updated := PhaseResult.from_dictionary({
 		"ok": true,
 		"news_queue_updated": true,
 		"news_items": [{"type": 3, "argument": 0}],
-	}
+	})
 	var duplicate := engine._persist_news_result(already_updated)
 	_check(
 		duplicate.ok

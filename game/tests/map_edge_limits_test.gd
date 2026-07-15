@@ -214,8 +214,8 @@ func check_random_sites(edge: int) -> void:
 			"Disaster %d passes map edge" % candidate)
 
 	var city := CityState.from_document(EmptyCityTemplate.create(edge))
-	result = MilitaryProposalPhase.resolve(city, true, SequenceGameLcg.new([edge - 10]))
-	check(result.ok and city.zone_id(edge - 10, edge - 10) == 7, "Military base can select far map")
+	var proposal := MilitaryProposalPhase.resolve(city, true, SequenceGameLcg.new([edge - 10]))
+	check(proposal.ok and city.zone_id(edge - 10, edge - 10) == 7, "Military base can select far map")
 	city = CityState.from_document(EmptyCityTemplate.create(edge))
 	city.buildings.fill(0x0d)
 	var choices: Array[int] = []
@@ -231,9 +231,9 @@ func check_random_sites(edge: int) -> void:
 				city.buildings[(origin.x + dx) * edge + origin.y + dy] = 0
 
 	city.document.find_chunk("XBLD").set_decoded_payload(city.buildings)
-	result = MilitaryProposalPhase.resolve(city, true, SequenceGameLcg.new(choices))
-	check(result.ok and result.get("base_type") == MilitaryProposalPhase.BASE_MISSILE_SILOS
-		and result.get("sites", []).size() == 6, "Military fallback selects six far silo plots")
+	var silos := MilitaryProposalPhase.resolve(city, true, SequenceGameLcg.new(choices))
+	check(silos.ok and silos.base_type == MilitaryProposalPhase.BASE_MISSILE_SILOS
+		and silos.sites.size() == 6, "Military fallback selects six far silo plots")
 
 
 func check_tools(edge: int) -> void:
@@ -308,8 +308,8 @@ func check_growth_dispatch(edge: int) -> void:
 			var result := GrowthPhase.run(city, SequenceRandom.new(), step, substep,
 				SequenceLfsr.new([1]), SequenceGameLcg.new())
 			check(result.ok, "Full growth dispatch")
-			scanned += int(result.get("scanned_tiles", 0))
-			advanced += int(result.get("advanced_construction", 0))
+			scanned += result.scanned_tiles
+			advanced += result.advanced_construction
 
 	check(scanned == edge * edge, "Growth partitions cover each map tile once")
 	check(advanced >= 16, "%d growth dispatch advances far developed sites: %d" % [edge, advanced])

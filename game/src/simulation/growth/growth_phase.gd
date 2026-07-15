@@ -10,7 +10,7 @@ static func run(
 	substep: int,
 	lfsr_random: SimLfsrRandom = null,
 	game_random: GameLcgRandom = null
-) -> Dictionary:
+) -> GrowthResult:
 	return GrowthScan.run(city, random, step, substep, lfsr_random, game_random)
 
 

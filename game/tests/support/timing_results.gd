@@ -3,6 +3,9 @@ extends RefCounted
 
 ## Compare deterministic results while retaining all non-timing fields.
 static func without_timings(value: Variant) -> Variant:
+	if value is PhaseResult:
+		return without_timings(value.to_dictionary())
+
 	if value is Dictionary:
 		var result := {}
 

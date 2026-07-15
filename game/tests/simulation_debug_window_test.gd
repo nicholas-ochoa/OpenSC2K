@@ -79,7 +79,8 @@ func _run() -> void:
 	for pair in [[1, "power"], [3, "growth"], [19, "traffic"], [20, "water"]]:
 		host.simulation_timings.consume({"day_results": [{"ok": true, "day": pair[0],
 			"timing": {"work_usec": 7000, "steps": {pair[1]: 7000}},
-			"phase_results": {pair[1]: {"timing": {"steps": {"measured detail": 6000}}}}}]})
+			"phase_results": {pair[1]:
+				PhaseResult.from_dictionary({"timing": {"steps": {"measured detail": 6000}}})}}]})
 
 	debug._refresh_metrics()
 

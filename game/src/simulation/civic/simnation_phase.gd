@@ -22,28 +22,38 @@ const NEWS_FEDERAL_RATE_UP := 0x09
 const NEWS_FEDERAL_RATE_DOWN := 0x0a
 
 
-static func run(city: CityState, random: SimRandom) -> Dictionary:
+class Result extends PhaseResult:
+	var national_population := 0
+	var national_value := 0
+	var federal_rate := 0
+	var economy_trend := 0
+	var neighbor_populations := PackedInt64Array()
+	var neighbor_values := PackedInt64Array()
+	var shocked_neighbor := -1
+
+
+static func run(city: CityState, random: SimRandom) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return _failed("a compatible process random generator is required")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return _failed("MISC is missing or has the wrong size")
 
 	var data: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var economy_trend := _to_i16(_read_u32(data, MISC_NATIONAL_ECONOMY_TREND))
 
 	if economy_trend < 0 or economy_trend >= ECONOMY_FACTORS.size():
-		return {"ok": false, "error": "the national economy trend is out of range"}
+		return _failed("the national economy trend is out of range")
 
 	var federal_rate := _to_i16(_read_u32(data, MISC_NATIONAL_FEDERAL_RATE))
 
 	if federal_rate <= 0:
-		return {"ok": false, "error": "the national federal rate is not positive"}
+		return _failed("the national federal rate is not positive")
 
 	var news_items: Array = []
 
@@ -138,20 +148,26 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 		_write_u32(data, shock_base + NEIGHBOR_VALUE, neighbor_values[shocked_neighbor])
 
 	if not misc_chunk.set_decoded_payload(data):
-		return {"ok": false, "error": "cannot store the SimNation update"}
+		return _failed("cannot store the SimNation update")
 
-	return {
-		"ok": true,
-		"error": "",
-		"national_population": national_population,
-		"national_value": national_value,
-		"federal_rate": federal_rate,
-		"economy_trend": economy_trend,
-		"neighbor_populations": neighbor_populations,
-		"neighbor_values": neighbor_values,
-		"shocked_neighbor": shocked_neighbor,
-		"news_items": news_items,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.national_population = national_population
+	result.national_value = national_value
+	result.federal_rate = federal_rate
+	result.economy_trend = economy_trend
+	result.neighbor_populations = neighbor_populations
+	result.neighbor_values = neighbor_values
+	result.shocked_neighbor = shocked_neighbor
+	result.news_items = news_items
+
+	return result
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func economy_level(score: int) -> int:

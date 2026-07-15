@@ -10,14 +10,14 @@ static func run(
 	substep: int,
 	lfsr_random: SimLfsrRandom = null,
 	game_random: GameLcgRandom = null
-) -> Dictionary:
+) -> GrowthResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible random generator is required"}
+		return _failed("a compatible random generator is required")
 
 	if lfsr_random == null:
 		lfsr_random = SimLfsrRandom.new(1)
@@ -26,14 +26,14 @@ static func run(
 		game_random = GameLcgRandom.new(1)
 
 	if step < 0 or step > 3 or substep < 0 or substep > 3:
-		return {"ok": false, "error": "growth partition is outside the supported range"}
+		return _failed("growth partition is outside the supported range")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice, TIMING_LABELS)
 	span.mark_index(TimingStep.PREPARE)
 	var payloads := GrowthState._payloads(city)
 
 	if payloads.is_empty():
-		return {"ok": false, "error": "growth input chunks are missing or have the wrong size"}
+		return _failed("growth input chunks are missing or have the wrong size")
 
 	var original := GrowthState._duplicate_payloads(payloads)
 	var altitude: PackedByteArray = payloads.ALTM
@@ -56,7 +56,7 @@ static func run(
 	# sizes are invariant across the scan, so check them once here
 	if not TransportTrip.valid_inputs(buildings, zones, underground, text_overlays,
 		altitudes, traffic, map_edge):
-		return {"ok": false, "error": "transport input maps have the wrong size"}
+		return _failed("transport input maps have the wrong size")
 
 	var rotation := city.compass_rotation() & 3
 	var anchor_mask: int = ANCHOR_MASKS[rotation]
@@ -260,7 +260,7 @@ static func run(
 				)
 
 				if not trip.ok:
-					return trip
+					return _failed(trip.error)
 
 				if trip.reached_destination:
 					successful_trips += 1
@@ -458,12 +458,56 @@ static func run(
 
 	span.mark_index(TimingStep.STORE)
 	if not GrowthState._apply_payloads(city, changed_ids, payloads, original):
-		return {"ok": false, "error": "cannot store growth phase data"}
+		return _failed("cannot store growth phase data")
 
-	counters["ok"] = true
-	counters["rci_complete"] = true
-	counters["complete"] = true
-	counters["error"] = ""
-	counters["timing"] = span.finish()
+	var result := GrowthResult.new()
+	result.ok = true
+	result.rci_complete = true
+	result.scanned_tiles = counters.scanned_tiles
+	result.rci_tiles = counters.rci_tiles
+	result.population_added = counters.population_added
+	result.abandoned_population_added = counters.abandoned_population_added
+	result.started_construction = counters.started_construction
+	result.advanced_construction = counters.advanced_construction
+	result.completed_construction = counters.completed_construction
+	result.abandoned_buildings = counters.abandoned_buildings
+	result.recovered_buildings = counters.recovered_buildings
+	result.churches_built = counters.churches_built
+	result.successful_trips = counters.successful_trips
+	result.failed_trips = counters.failed_trips
+	result.bus_passengers = counters.bus_passengers
+	result.rail_passengers = counters.rail_passengers
+	result.subway_passengers = counters.subway_passengers
+	result.decayed_roads = counters.decayed_roads
+	result.decayed_rails = counters.decayed_rails
+	result.decayed_highway_tiles = counters.decayed_highway_tiles
+	result.decayed_subway_tiles = counters.decayed_subway_tiles
+	result.collapsed_bridges = counters.collapsed_bridges
+	result.removed_subway_stations = counters.removed_subway_stations
+	result.deferred_bridge_collapses = counters.deferred_bridge_collapses
+	result.deferred_bridge_effects = counters.deferred_bridge_effects
+	result.deferred_station_removals = counters.deferred_station_removals
+	result.special_growth_attempts = counters.special_growth_attempts
+	result.special_tiles_placed = counters.special_tiles_placed
+	result.arcologies_updated = counters.arcologies_updated
+	result.spawned_airplanes = counters.spawned_airplanes
+	result.spawned_helicopters = counters.spawned_helicopters
+	result.spawned_ships = counters.spawned_ships
+	result.spawned_sailboats = counters.spawned_sailboats
+	result.spawned_trains = counters.spawned_trains
+	result.bridge_effects = counters.bridge_effects
+	result.news_items = counters.news_items
+	result.sound_events = counters.sound_events
+	result.view_center_requests = counters.view_center_requests
+	result.ship_home_found = counters.has("ship_home")
+	result.ship_home = counters.get("ship_home", Vector2i(-1, -1))
+	result.timing = span.finish()
 
-	return counters
+	return result
+
+
+static func _failed(message: String) -> GrowthResult:
+	var result := GrowthResult.new()
+	result.error = message
+
+	return result

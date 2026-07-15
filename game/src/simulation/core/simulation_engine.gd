@@ -101,7 +101,7 @@ func _timed_advance_moving_things(current_time_msec := -1) -> Dictionary:
 	if not result.get("ok", false):
 		return result
 
-	var queue_update := _persist_news_result(result)
+	var queue_update := _persist_news_result(PhaseResult.from_dictionary(result))
 
 	if not queue_update.ok:
 		return queue_update
@@ -229,7 +229,7 @@ func _timed_resolve_military_proposal(accepted: bool) -> Dictionary:
 	var proposal := MilitaryProposalPhase.resolve(city, accepted, game_random)
 
 	if not proposal.ok:
-		return proposal
+		return {"ok": false, "error": proposal.error}
 
 	var original_schedule: Dictionary = pending_day_schedule
 	var remaining_schedule := _schedule_after(original_schedule, "milestones")
@@ -273,7 +273,7 @@ func _timed_advance_disaster_tick() -> Dictionary:
 	if not phase_result.get("ok", false):
 		return phase_result
 
-	var queue_update := _persist_news_result(phase_result)
+	var queue_update := _persist_news_result(PhaseResult.from_dictionary(phase_result))
 
 	if not queue_update.ok:
 		return queue_update
@@ -340,7 +340,7 @@ func start_disaster(disaster_type: int, point: Vector2i) -> Dictionary:
 
 		return {"ok": false, "error": "cannot store active disaster mode"}
 
-	var queue_update := _persist_news_result(started)
+	var queue_update := _persist_news_result(PhaseResult.from_dictionary(started))
 
 	if not queue_update.ok:
 		return queue_update
@@ -353,7 +353,7 @@ func recalculate_mayor_house() -> Dictionary:
 
 	if result.get("ok", false):
 		mayor_approval = result.approval
-		var queue_update := _persist_news_result(result)
+		var queue_update := _persist_news_result(PhaseResult.from_dictionary(result))
 
 		if not queue_update.ok:
 			return queue_update
@@ -396,7 +396,7 @@ func _schedule_after(schedule: Dictionary, completed_action: String) -> Dictiona
 	return SimulationDaySchedule._schedule_after(self, schedule, completed_action)
 
 
-func _persist_news_result(result: Dictionary) -> Dictionary:
+func _persist_news_result(result: PhaseResult) -> Dictionary:
 	return SimulationDaySchedule._persist_news_result(self, result)
 
 
@@ -413,11 +413,12 @@ func _append_pending_disaster(result: Dictionary) -> Dictionary:
 	if not city.document.set_misc_u32(0x0070, 0):
 		return {"ok": false, "error": "cannot clear the pending disaster type"}
 
-	var started := _start_disaster_phase(disaster_type, pending_disaster_point)
+	var start_result := _start_disaster_phase(disaster_type, pending_disaster_point)
 
-	if not started.ok:
-		return started
+	if not start_result.ok:
+		return start_result
 
+	var started := PhaseResult.from_dictionary(start_result)
 	var queue_update := _persist_news_result(started)
 
 	if not queue_update.ok:
@@ -425,10 +426,10 @@ func _append_pending_disaster(result: Dictionary) -> Dictionary:
 
 	result.phase_results["disaster_start"] = started
 
-	if started.started:
+	if started.extra.started:
 		active_disaster_type = disaster_type
-		disaster_map_counter = int(started.get("map_counter", 0))
-		disaster_hurricane_counter = int(started.get("hurricane_counter", 0))
+		disaster_map_counter = int(started.extra.get("map_counter", 0))
+		disaster_hurricane_counter = int(started.extra.get("hurricane_counter", 0))
 
 		if not city.document.set_misc_u32(0x0004, 2):
 			return {"ok": false, "error": "cannot store active disaster mode"}

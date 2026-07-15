@@ -81,6 +81,16 @@ const DISASTER_PLANE_CRASH := 18
 const DISASTER_WAIT_MONTHS := [0, 100, 60, 30]
 
 
+class Result extends PhaseResult:
+	var status_index := -1
+	var status_news_type := -1
+	var disaster_type := 0
+	var disaster_point := Vector2i.ZERO
+	var wait_months := 0
+	var disaster_roll := 0
+	var candidate_type := 0
+
+
 static func run(
 	city: CityState,
 	random: SimRandom,
@@ -90,26 +100,26 @@ static func run(
 	commerce_connections: int,
 	industry_connections: int,
 	current_disaster_point := Vector2i.ZERO
-) -> Dictionary:
+) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible process random generator is required"}
+		return _failed("a compatible process random generator is required")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "a compatible LFSR generator is required"}
+		return _failed("a compatible LFSR generator is required")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 	var pollution_chunk := city.document.find_chunk("XPLT")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return _failed("MISC is missing or has the wrong size")
 
 	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != city.document.decoded_size("XPLT"):
-		return {"ok": false, "error": "XPLT is missing or has the wrong size"}
+		return _failed("XPLT is missing or has the wrong size")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("prepare data")
@@ -137,22 +147,22 @@ static func run(
 	)
 
 	if not selection.ok:
-		return selection
+		return _failed(selection.error)
 
-	return {
-		"ok": true,
-		"timing": span.finish(),
-		"error": "",
-		"status_index": status_index,
-		"status_news_type": NEWS_DEMAND_BASE + status_index if status_index >= 0 else -1,
-		"news_items": news_items,
-		"disaster_type": selection.disaster_type,
-		"disaster_point": selection.disaster_point,
-		"wait_months": selection.wait_months,
-		"disaster_roll": selection.disaster_roll,
-		"candidate_type": selection.candidate_type,
-		"refresh_requests": ["toolbar", "map", "simnation", "weather_disaster"],
-	}
+	var result := Result.new()
+	result.ok = true
+	result.status_index = status_index
+	result.status_news_type = NEWS_DEMAND_BASE + status_index if status_index >= 0 else -1
+	result.news_items = news_items
+	result.disaster_type = selection.disaster_type
+	result.disaster_point = selection.disaster_point
+	result.wait_months = selection.wait_months
+	result.disaster_roll = selection.disaster_roll
+	result.candidate_type = selection.candidate_type
+	result.refresh_requests = ["toolbar", "map", "simnation", "weather_disaster"]
+	result.timing = span.finish()
+
+	return result
 
 
 static func _status_index(
@@ -461,3 +471,10 @@ static func _read_u32(data: PackedByteArray, offset: int) -> int:
 		| (data[offset + 2] << 8)
 		| data[offset + 3]
 	)
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result

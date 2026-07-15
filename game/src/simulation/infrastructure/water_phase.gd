@@ -17,11 +17,20 @@ const WATER_TREATMENT := 0xf4
 const DESALINIZATION := 0xfa
 
 
-static func run(city: CityState) -> Dictionary:
+class Result extends PhaseResult:
+	var supply := 0
+	var consumers := 0
+	var watered_consumers := 0
+	var usage_percent := 0
+	var treatment_capacity := 0
+	var treatment_sufficient := false
+
+
+static func run(city: CityState) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("copy tile flags")
@@ -98,7 +107,7 @@ static func run(city: CityState) -> Dictionary:
 
 	span.mark("store watered tiles")
 	if not city.replace_tile_flags(flags):
-		return {"ok": false, "error": "cannot store updated XBIT data"}
+		return _failed("cannot store updated XBIT data")
 
 	span.mark("utilization and treatment capacity")
 	var usage_percent := 100
@@ -117,19 +126,26 @@ static func run(city: CityState) -> Dictionary:
 	if not city.document.set_misc_u32(
 		MISC_TREATMENT_SUFFICIENT, 1 if treatment_sufficient else 0
 	):
-		return {"ok": false, "error": "cannot store water-treatment state"}
+		return _failed("cannot store water-treatment state")
 
-	return {
-		"ok": true,
-		"supply": total_supply,
-		"consumers": total_consumers,
-		"watered_consumers": watered_consumers,
-		"usage_percent": usage_percent,
-		"treatment_capacity": treatment_capacity,
-		"treatment_sufficient": treatment_sufficient,
-		"timing": span.finish(),
-		"error": "",
-	}
+	var result := Result.new()
+	result.ok = true
+	result.supply = total_supply
+	result.consumers = total_consumers
+	result.watered_consumers = watered_consumers
+	result.usage_percent = usage_percent
+	result.treatment_capacity = treatment_capacity
+	result.treatment_sufficient = treatment_sufficient
+	result.timing = span.finish()
+
+	return result
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func _trace_component(

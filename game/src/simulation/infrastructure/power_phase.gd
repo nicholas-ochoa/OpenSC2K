@@ -11,14 +11,21 @@ const LAST_PLANT := 0xcf
 const SOLAR_EFFICIENCY_ORDINANCE := 0x10000
 
 
-static func run(city: CityState, random: SimRandom) -> Dictionary:
+class Result extends PhaseResult:
+	var generation := 0
+	var consumers := 0
+	var supplied_consumers := 0
+	var usage_percent := 0
+
+
+static func run(city: CityState, random: SimRandom) -> Result:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "random state is required"}
+		return _failed("random state is required")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("copy tile flags")
@@ -77,7 +84,7 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 
 	span.mark("store powered tiles")
 	if not city.replace_tile_flags(flags):
-		return {"ok": false, "error": "cannot store updated XBIT data"}
+		return _failed("cannot store updated XBIT data")
 
 	span.mark("utilization")
 	var usage_percent := 100
@@ -85,15 +92,22 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 	if total_generation != 0:
 		usage_percent = mini(int(IntegerMath.div_trunc(supplied_consumers * 100, total_generation)), 100)
 
-	return {
-		"ok": true,
-		"generation": total_generation,
-		"consumers": total_consumers,
-		"supplied_consumers": supplied_consumers,
-		"usage_percent": usage_percent,
-		"timing": span.finish(),
-		"error": "",
-	}
+	var result := Result.new()
+	result.ok = true
+	result.generation = total_generation
+	result.consumers = total_consumers
+	result.supplied_consumers = supplied_consumers
+	result.usage_percent = usage_percent
+	result.timing = span.finish()
+
+	return result
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func _trace_component(

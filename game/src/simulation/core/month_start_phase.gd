@@ -6,14 +6,18 @@ const MISC_ZONE_POPULATIONS := 0x05f0
 const ZONE_POPULATION_COUNT := 8
 
 
-static func run(city: CityState) -> Dictionary:
+class Result extends PhaseResult:
+	var cleared_population_fields := 0
+
+
+static func run(city: CityState) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	var misc := city.document.find_chunk("MISC")
 
 	if misc == null or misc.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return _failed("MISC is missing or has the wrong size")
 
 	var changed: PackedByteArray = misc.decoded_payload.duplicate()
 
@@ -21,9 +25,20 @@ static func run(city: CityState) -> Dictionary:
 		_write_u32(changed, MISC_ZONE_POPULATIONS + index * 4, 0)
 
 	if not misc.set_decoded_payload(changed):
-		return {"ok": false, "error": "cannot clear zone population totals"}
+		return _failed("cannot clear zone population totals")
 
-	return {"ok": true, "cleared_population_fields": ZONE_POPULATION_COUNT, "error": ""}
+	var result := Result.new()
+	result.ok = true
+	result.cleared_population_fields = ZONE_POPULATION_COUNT
+
+	return result
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func _write_u32(data: PackedByteArray, offset: int, value: int) -> void:

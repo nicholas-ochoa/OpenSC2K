@@ -58,9 +58,8 @@ func consume(result: Dictionary) -> void:
 		var phases: Dictionary = day.get("phase_results", {})
 
 		for phase_name: String in phases:
-			var phase: Dictionary = phases[phase_name]
+			var phase: PhaseResult = phases[phase_name]
 			var group := _phase_group(phase_name)
-			var timing: Dictionary = phase.get("timing", {})
 			var measured_parent := false
 
 			for label: String in day.timing.steps:
@@ -68,10 +67,10 @@ func consume(result: Dictionary) -> void:
 					measured_parent = true
 					break
 
-			if timing.has("work_usec") and not measured_parent:
-				record_step("Day %02d / %s" % [slot + 1, group], timing.work_usec)
+			if phase.timing.has("work_usec") and not measured_parent:
+				record_step("Day %02d / %s" % [slot + 1, group], phase.timing.work_usec)
 
-			for label in phase.get("timing", {}).get("steps", {}):
+			for label in phase.timing.get("steps", {}):
 				record_step("Day %02d / %s / %s" % [slot + 1, group, label], phase.timing.steps[label])
 
 	for key in ["moving_results", "disaster_results"]:

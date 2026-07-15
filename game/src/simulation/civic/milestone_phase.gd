@@ -23,14 +23,24 @@ const PROGRESSION_REQUIREMENTS := [
 ]
 
 
-static func run(city: CityState) -> Dictionary:
+class Result extends PhaseResult:
+	var advanced := false
+	var old_progression := 0
+	var progression := 0
+	var population := 0
+	var requirement := 0
+	var reward_id := -1
+	var military_proposal_pending := false
+
+
+static func run(city: CityState) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return _failed("MISC is missing or has the wrong size")
 
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var progression := _read_u32(misc, MISC_PROGRESSION) & 0xffff
@@ -67,39 +77,41 @@ static func run(city: CityState) -> Dictionary:
 	ToolAvailability.rebuild_reward_mask(misc)
 
 	if not misc_chunk.set_decoded_payload(misc):
-		return {"ok": false, "error": "cannot store milestone state"}
+		return _failed("cannot store milestone state")
 
-	return {
-		"ok": true,
-		"error": "",
-		"advanced": true,
-		"old_progression": old_progression,
-		"progression": progression,
-		"population": population,
-		"requirement": requirement,
-		"reward_id": reward_id,
-		"military_proposal_pending": military_proposal_pending,
-		"news_items": [{"type": NEWS_GROWTH, "argument": old_progression}],
-		"complete": not military_proposal_pending,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.advanced = true
+	result.old_progression = old_progression
+	result.progression = progression
+	result.population = population
+	result.requirement = requirement
+	result.reward_id = reward_id
+	result.military_proposal_pending = military_proposal_pending
+	result.news_items = [{"type": NEWS_GROWTH, "argument": old_progression}]
+	result.complete = not military_proposal_pending
+
+	return result
 
 
 static func _unchanged_result(
 	progression: int, population: int, requirement := 0
-) -> Dictionary:
-	return {
-		"ok": true,
-		"error": "",
-		"advanced": false,
-		"old_progression": progression,
-		"progression": progression,
-		"population": population,
-		"requirement": requirement,
-		"reward_id": -1,
-		"military_proposal_pending": false,
-		"news_items": [],
-		"complete": true,
-	}
+) -> Result:
+	var result := Result.new()
+	result.ok = true
+	result.old_progression = progression
+	result.progression = progression
+	result.population = population
+	result.requirement = requirement
+
+	return result
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func _read_u32(data: PackedByteArray, offset: int) -> int:

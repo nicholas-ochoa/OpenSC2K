@@ -34,17 +34,35 @@ const ORDINANCE_ANTI_DRUG := 0x0200
 const ORDINANCE_CPR_TRAINING := 0x0400
 
 
-static func run(city: CityState, random: SimRandom) -> Dictionary:
+class Result extends PhaseResult:
+	var population := 0
+	var deaths := 0
+	var births := 0
+	var immigrants := 0
+	var emigrants := 0
+	var health_capacity := 0
+	var school_capacity := 0
+	var college_capacity := 0
+	var newborn_life_expectancy := 0
+	var pollution_penalty := 0
+	var workforce_population := 0
+	var workforce_percent := 0
+	var workforce_le := 0
+	var workforce_eq := 0
+	var empty_city := false
+
+
+static func run(city: CityState, random: SimRandom) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible random generator is required"}
+		return _failed("a compatible random generator is required")
 
 	var misc := city.document.find_chunk("MISC")
 
 	if misc == null or misc.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return _failed("MISC is missing or has the wrong size")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("prepare data")
@@ -68,19 +86,14 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 		_write_tables(empty_data, population, education, life_expectancy)
 
 		if not misc.set_decoded_payload(empty_data):
-			return {"ok": false, "error": "cannot store cleared demographic tables"}
+			return _failed("cannot store cleared demographic tables")
 
-		return {
-			"ok": true,
-			"timing": span.finish(),
-			"population": 0,
-			"deaths": 0,
-			"births": 0,
-			"immigrants": 0,
-			"emigrants": 0,
-			"empty_city": true,
-			"error": "",
-		}
+		var cleared := Result.new()
+		cleared.ok = true
+		cleared.empty_city = true
+		cleared.timing = span.finish()
+
+		return cleared
 
 	span.mark("service capacities")
 	var ordinance_flags := city.document.misc_u32(MISC_ORDINANCES)
@@ -171,7 +184,7 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 		)
 
 		if not removal.ok:
-			return removal
+			return _failed(removal.error)
 
 	span.mark("workforce")
 	var workforce_population := 0
@@ -200,28 +213,34 @@ static func run(city: CityState, random: SimRandom) -> Dictionary:
 	_write_u32(changed, MISC_WORKFORCE_EQ, workforce_eq)
 
 	if not misc.set_decoded_payload(changed):
-		return {"ok": false, "error": "cannot store updated demographic data"}
+		return _failed("cannot store updated demographic data")
 
-	return {
-		"ok": true,
-		"timing": span.finish(),
-		"population": _sum(population),
-		"deaths": deaths,
-		"births": births,
-		"immigrants": immigrants,
-		"emigrants": emigrants,
-		"health_capacity": health_capacity,
-		"school_capacity": school_capacity,
-		"college_capacity": college_capacity,
-		"newborn_life_expectancy": newborn_life_expectancy,
-		"pollution_penalty": pollution_penalty,
-		"workforce_population": workforce_population,
-		"workforce_percent": workforce_percent,
-		"workforce_le": workforce_le,
-		"workforce_eq": workforce_eq,
-		"empty_city": false,
-		"error": "",
-	}
+	var result := Result.new()
+	result.ok = true
+	result.population = _sum(population)
+	result.deaths = deaths
+	result.births = births
+	result.immigrants = immigrants
+	result.emigrants = emigrants
+	result.health_capacity = health_capacity
+	result.school_capacity = school_capacity
+	result.college_capacity = college_capacity
+	result.newborn_life_expectancy = newborn_life_expectancy
+	result.pollution_penalty = pollution_penalty
+	result.workforce_population = workforce_population
+	result.workforce_percent = workforce_percent
+	result.workforce_le = workforce_le
+	result.workforce_eq = workforce_eq
+	result.timing = span.finish()
+
+	return result
+
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func _apply_mortality(

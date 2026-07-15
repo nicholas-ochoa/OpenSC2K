@@ -4,7 +4,7 @@ const NativeGridMath = preload("res://tests/support/native_grid_reference.gd")
 ## SC2X v3 rules. These are independent per-tile rules, not executable parity.
 
 
-static func run(city: CityState) -> Dictionary:
+static func run(city: CityState) -> PollutionPhase.Result:
 	var edge := city.map_size
 	var count := edge * edge
 	var doc := city.document
@@ -14,14 +14,14 @@ static func run(city: CityState) -> Dictionary:
 		var chunk := doc.find_chunk(id)
 
 		if chunk == null or chunk.decoded_payload.size() != count:
-			return {"ok": false, "error": "Native data map %s is missing or invalid" % id}
+			return PollutionPhase.failed("Native data map %s is missing or invalid" % id)
 
 		old[id] = chunk.decoded_payload
 
 	var misc := doc.find_chunk("MISC")
 
 	if misc == null or misc.decoded_payload.size() != 4800:
-		return {"ok": false, "error": "MISC is missing or invalid"}
+		return PollutionPhase.failed("MISC is missing or invalid")
 
 	var sources := PackedInt32Array()
 	var residential := PackedInt32Array()
@@ -166,8 +166,9 @@ static func run(city: CityState) -> Dictionary:
 		[PollutionPhase.MISC_CITY_CENTER_X, center.x], [PollutionPhase.MISC_CITY_CENTER_Y, center.y]]:
 		doc.set_misc_u32(update[0], update[1])
 
-	return {"ok": true, "error": "", "pollution_total": pollution_total, "land_value_total": land_total,
-		"crime_total": crime_total, "developed_tiles": developed, "city_center": center}
+	return PollutionPhase.totals(
+		pollution_total, land_total, crime_total, developed, center
+	)
 
 
 static func _add_stations(city: CityState, police: PackedByteArray, fire: PackedByteArray) -> void:

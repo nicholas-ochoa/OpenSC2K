@@ -43,7 +43,7 @@ func _run() -> void:
 			var original := CityState.from_document(doc.duplicate_document())
 			var expected := Reference.run(original)
 			var actual := NativeDataMapPhase.run(city)
-			assert(actual.ok and Results.without_timings(actual) == expected)
+			assert(actual.ok and Results.without_timings(actual) == Results.without_timings(expected))
 			assert(doc.serialize().data == original.document.serialize().data, "Optimized maps or totals differ from reference bytes")
 
 		print("PASS: exact data-map optimization at %d" % edge)

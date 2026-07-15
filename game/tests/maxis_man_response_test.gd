@@ -175,7 +175,7 @@ func _test_engine(edge: int, native: bool) -> void:
 	scheduled.pending_disaster_point = target
 	var queued := scheduled._append_pending_disaster({"ok": true, "phase_results": {}, "applied": [], "pending": []})
 	check(direct.ok and direct.has("maxis_man_response"), "Manual disaster starts automatic hero")
-	check(queued.ok and queued.phase_results.disaster_start.has("maxis_man_response"), "Queued disaster starts automatic hero")
+	check(queued.ok and queued.phase_results.disaster_start.extra.has("maxis_man_response"), "Queued disaster starts automatic hero")
 	check(DocumentState.capture(city.document) == DocumentState.capture(copy.document), "Manual and queued paths publish identical city bytes")
 	check(manual.random.state == scheduled.random.state and manual.lfsr_random.state == 4, "Both paths consume exactly one response gate")
 	var before: Array = DocumentState.capture(city.document)

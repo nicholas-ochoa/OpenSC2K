@@ -93,7 +93,7 @@ func _check_quiet_phases() -> void:
 	empty.resize(traffic.decoded_payload.size())
 	check(traffic.set_decoded_payload(empty), "Traffic fixture clears the traffic map")
 	var revision := traffic.mutation_revision
-	check(TrafficPhase.run(city).get("ok", false), "The traffic phase runs on a quiet city")
+	check(TrafficPhase.run(city).ok, "The traffic phase runs on a quiet city")
 	check(
 		traffic.mutation_revision == revision,
 		"Decaying an empty traffic map keeps the XTRF revision",
@@ -102,7 +102,7 @@ func _check_quiet_phases() -> void:
 	empty[0] = 0xff
 	check(traffic.set_decoded_payload(empty), "Traffic fixture adds one busy tile")
 	revision = traffic.mutation_revision
-	check(TrafficPhase.run(city).get("ok", false), "The traffic phase runs on a busy city")
+	check(TrafficPhase.run(city).ok, "The traffic phase runs on a busy city")
 	check(
 		traffic.mutation_revision != revision,
 		"Decaying real traffic invalidates the drawn city",

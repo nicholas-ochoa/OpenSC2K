@@ -55,17 +55,28 @@ const SERVICE_TILE_IDS := {
 const NEWS_ORDINANCE := 0x29
 
 
-static func run(city: CityState, random: SimRandom, annual_budget_approved := false) -> Dictionary:
+class Result extends PhaseResult:
+	var month := 0
+	var settled_year := false
+	var funds_before := 0
+	var funds_after := 0
+	var auto_budget_disabled := false
+	var requires_annual_budget := false
+	var current_costs := PackedInt32Array()
+	var annual_microsim_update_pending := false
+
+
+static func run(city: CityState, random: SimRandom, annual_budget_approved := false) -> Result:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return _failed("city is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "a compatible random generator is required"}
+		return _failed("a compatible random generator is required")
 
 	var misc_chunk := city.document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != MISC_SIZE:
-		return {"ok": false, "error": "MISC is missing or has the wrong size"}
+		return _failed("MISC is missing or has the wrong size")
 
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("prepare data")
@@ -82,15 +93,14 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 		and _read_u32(misc, MISC_AUTO_BUDGET) == 0
 		and not annual_budget_approved
 	):
-		return {
-			"ok": true,
-			"timing": span.finish(),
-			"error": "",
-			"month": month,
-			"requires_annual_budget": true,
-			"complete": false,
-			"news_items": [],
-		}
+		var interactive := Result.new()
+		interactive.ok = true
+		interactive.month = month
+		interactive.requires_annual_budget = true
+		interactive.complete = false
+		interactive.timing = span.finish()
+
+		return interactive
 
 	span.mark("annual settlement")
 	if _read_u32(misc, MISC_YEAR_END) != 0 and month == 0:
@@ -213,28 +223,33 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 
 	span.mark("store budget")
 	if not misc_chunk.set_decoded_payload(misc):
-		return {"ok": false, "error": "cannot store the monthly budget update"}
+		return _failed("cannot store the monthly budget update")
 
 	var current_costs := PackedInt32Array()
 
 	for budget_id in BUDGET_COUNT:
 		current_costs.append(_read_i32(misc, _budget_offset(budget_id)))
 
-	return {
-		"ok": true,
-		"timing": span.finish(),
-		"error": "",
-		"month": month,
-		"settled_year": settled_year,
-		"funds_before": funds_before,
-		"funds_after": _read_i32(misc, MISC_FUNDS),
-		"auto_budget_disabled": auto_budget_disabled,
-		"requires_annual_budget": false,
-		"current_costs": current_costs,
-		"news_items": news_items,
-		"annual_microsim_update_pending": settled_year,
-		"complete": not settled_year,
-	}
+	var result := Result.new()
+	result.ok = true
+	result.month = month
+	result.settled_year = settled_year
+	result.funds_before = funds_before
+	result.funds_after = _read_i32(misc, MISC_FUNDS)
+	result.auto_budget_disabled = auto_budget_disabled
+	result.current_costs = current_costs
+	result.news_items = news_items
+	result.annual_microsim_update_pending = settled_year
+	result.complete = not settled_year
+	result.timing = span.finish()
+
+	return result
+
+static func _failed(message: String) -> Result:
+	var result := Result.new()
+	result.error = message
+
+	return result
 
 
 static func requires_annual_budget(city: CityState) -> bool:

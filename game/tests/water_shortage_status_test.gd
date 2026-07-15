@@ -149,7 +149,7 @@ func _check_weather_phase(source: CityState) -> void:
 		engine.water_usage_percent = 100
 		var result := engine.advance_day()
 		assert(result.ok)
-		var phase: Dictionary = result.phase_results.weather_disaster
+		var phase: WeatherDisasterPhase.Result = result.phase_results.weather_disaster
 		if weather >= 9:
 			assert(phase.status_index == WeatherDisasterPhase.STATUS_WEATHER)
 			assert(engine.city_status_resource_id == 272 + weather)
