@@ -69,6 +69,6 @@ func to_dictionary() -> Dictionary:
 static func refreshing(requests: Array) -> PhaseResult:
 	var result := PhaseResult.new()
 	result.ok = true
-	result.refresh_requests = requests
+	result.refresh_requests = requests.duplicate()
 
 	return result
