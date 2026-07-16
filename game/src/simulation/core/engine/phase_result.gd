@@ -27,7 +27,8 @@ var music_track_requests := PackedInt32Array()
 # measured work for the timing window
 var timing: Dictionary = {}
 
-# from_dictionary shares this dictionary with the caller.
+# Temporary dictionary storage for disaster, moving-thing, and approval results.
+# from_dictionary shares the caller's dictionary until those paths use typed results.
 var extra: Dictionary = {}
 
 
