@@ -19,7 +19,7 @@ func _initialize() -> void:
 
 		var things := Time.get_ticks_usec() - started
 		started = Time.get_ticks_usec()
-		CityIsometricRenderer._static_text_overlay_signature(city)
+		IsometricStaticVisuals._static_text_overlay_signature(city)
 		var overlays := Time.get_ticks_usec() - started
 		started = Time.get_ticks_usec()
 

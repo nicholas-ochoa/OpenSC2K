@@ -1,6 +1,7 @@
 class_name CityIsometricRenderer
 extends IsometricConstants
-
+# Public entry points for view/isometric/. Application code uses this class;
+# tests can call the implementation classes directly.
 
 
 static func create_image(
@@ -45,15 +46,20 @@ static func dirty_screen_rect(
 	return IsometricGeometry.dirty_screen_rect(dirty_indices, sprites, view_size, sprite_limit, map_edge)
 
 
-static func _maximum_sprite_size(sprites: Sc2SpriteArchive) -> Vector2i:
-	return IsometricGeometry._maximum_sprite_size(sprites)
+# return the largest sprite width and height in the archive
+# reuse one result for every `potential_tile_bounds` call in a pass
+static func maximum_sprite_size(sprites: Sc2SpriteArchive) -> Vector2i:
+	return IsometricGeometry.maximum_sprite_size(sprites)
 
 
-static func _potential_tile_bounds(
+# return the screen rectangle that the sprites of one tile can touch
+# it is a conservative bound, not the painted area. region renderers cull
+# with it. `dirty_screen_rect` merges it for a set of tiles
+static func potential_tile_bounds(
 	configuration: Dictionary, sprite_limit: Vector2i, x: int, y: int,
 	map_edge: int = 128,
 ) -> Rect2i:
-	return IsometricGeometry._potential_tile_bounds(configuration, sprite_limit, x, y, map_edge)
+	return IsometricGeometry.potential_tile_bounds(configuration, sprite_limit, x, y, map_edge)
 
 
 static func validate_assets(
@@ -114,7 +120,14 @@ static func effect_sprite_id(large_sprite_id: int, view_size := VIEW_LARGE) -> i
 	return IsometricGeometry.effect_sprite_id(large_sprite_id, view_size)
 
 
-static func _draw_tile(
+# paint one map tile into `output`, in back-to-front order
+# `output` is an `Image` or any recorder with the same `blend_rect` call
+# `origin_x` is the screen column of tile (0, 0). shift it, or shift
+# `configuration.top_margin`, to paint into a sub-rectangle of the map
+# `cache` holds decoded sprites and belongs to the caller
+# this is the one tile painter. the city image, the region renderers, the
+# gpu geometry builder, and the previews all paint the same pixels
+static func draw_tile(
 	output: Variant,
 	city: CityState,
 	palette: Sc2Palette,
@@ -128,7 +141,7 @@ static func _draw_tile(
 	include_moving_things: bool,
 	include_special_overlays: bool
 ) -> void:
-	IsometricImageRender._draw_tile(
+	IsometricImageRender.draw_tile(
 		output, city, palette, sprites, cache, configuration, origin_x, x, y, animation_phase,
 		include_moving_things, include_special_overlays
 	)
@@ -138,36 +151,6 @@ static func edge_stack_visuals(
 	city: CityState, x: int, y: int, view_size := VIEW_LARGE
 ) -> Array[Dictionary]:
 	return IsometricStaticVisuals.edge_stack_visuals(city, x, y, view_size)
-
-
-static func _draw_edge_stacks(
-	output: Variant,
-	city: CityState,
-	palette: Sc2Palette,
-	sprites: Sc2SpriteArchive,
-	cache: Dictionary,
-	configuration: Dictionary,
-	screen_x: int,
-	flat_base_y: int,
-	x: int,
-	y: int
-) -> void:
-	IsometricImageRender._draw_edge_stacks(output, city, palette, sprites, cache, configuration, screen_x, flat_base_y, x, y)
-
-
-static func _draw_highway_ground(
-	output: Variant,
-	city: CityState,
-	palette: Sc2Palette,
-	sprites: Sc2SpriteArchive,
-	cache: Dictionary,
-	configuration: Dictionary,
-	screen_x: int,
-	base_y: int,
-	x: int,
-	y: int
-) -> void:
-	IsometricImageRender._draw_highway_ground(output, city, palette, sprites, cache, configuration, screen_x, base_y, x, y)
 
 
 static func highway_ground_visuals(
@@ -256,22 +239,20 @@ static func monster_pose_layers(
 	return IsometricMovingVisuals.monster_pose_layers(body_position, dx, dy, head_frame, view_size)
 
 
-static func _monster_layer(
-	sprite_id: int, screen_x: int, screen_y: int, flip: bool
-) -> Dictionary:
-	return IsometricMovingVisuals._monster_layer(sprite_id, screen_x, screen_y, flip)
-
-
-static func _draw_moving_thing(
+# paint the moving object of one visual into `output`
+# shadow commands darken the pixels that are already present
+# `offset` shifts every command, for painting into a sub-rectangle
+static func draw_moving_thing(
 	output: Variant,
 	city: CityState,
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
 	visual: Dictionary,
-	configuration: Dictionary
+	configuration: Dictionary,
+	offset := Vector2i.ZERO
 ) -> void:
-	IsometricImageRender._draw_moving_thing(output, city, palette, sprites, cache, visual, configuration)
+	IsometricImageRender.draw_moving_thing(output, city, palette, sprites, cache, visual, configuration, offset)
 
 
 static func moving_thing_draw_commands(
@@ -311,12 +292,6 @@ static func moving_thing_draw_commands_for_visual(
 	return IsometricDynamicCommands.moving_thing_draw_commands_for_visual(city, sprites, visual, configuration)
 
 
-static func _moving_draw_command(
-	sprite_id: int, flip: bool, position: Vector2i, shadow: bool
-) -> Dictionary:
-	return IsometricDynamicCommands._moving_draw_command(sprite_id, flip, position, shadow)
-
-
 static func static_occlusion_commands(
 	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
 ) -> Array[Dictionary]:
@@ -333,7 +308,11 @@ static func patch_static_occlusion_commands(
 	return IsometricStaticOcclusion.patch_static_occlusion_commands(base_commands, city, sprites, dirty_indices, view_size)
 
 
-static func _tile_occlusion_commands(
+# return the foreground occluder commands of one tile
+# this is the per-tile form of `static_occlusion_commands`. a caller that
+# paints tiles with `draw_tile` uses this for the foreground of the same
+# tile, with the same `draw_order` rule
+static func tile_occlusion_commands(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
 	configuration: Dictionary,
@@ -342,21 +321,7 @@ static func _tile_occlusion_commands(
 	y: int,
 	draw_order: int
 ) -> Array[Dictionary]:
-	return IsometricStaticOcclusion._tile_occlusion_commands(city, sprites, configuration, origin_x, x, y, draw_order)
-
-
-static func _append_occluder(
-	commands: Array[Dictionary],
-	sprites: Sc2SpriteArchive,
-	sprite_id: int,
-	flip: bool,
-	base_position: Vector2i,
-	draw_order: int,
-	train_foreground_reference_sprite_id := 0
-) -> void:
-	IsometricStaticOcclusion._append_occluder(
-		commands, sprites, sprite_id, flip, base_position, draw_order, train_foreground_reference_sprite_id
-	)
+	return IsometricStaticOcclusion.tile_occlusion_commands(city, sprites, configuration, origin_x, x, y, draw_order)
 
 
 static func configure_train_foreground(command: Dictionary, building_id: int, configuration: Dictionary) -> void:
@@ -402,27 +367,12 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 	return IsometricStaticVisuals.static_visual_signature(city, view_size)
 
 
-static func _static_text_overlay_signature(city: CityState) -> int:
-	return IsometricStaticVisuals._static_text_overlay_signature(city)
-
-
 static func shadow_color(palette: Sc2Palette, destination: Color) -> Color:
 	return IsometricPixelOperations.shadow_color(palette, destination)
 
 
 static func shadow_palette_index(index: int) -> int:
 	return IsometricPixelOperations.shadow_palette_index(index)
-
-
-static func _blend_shadow(
-	output: Image, mask: Image, palette: Sc2Palette, destination: Vector2i
-) -> void:
-	IsometricPixelOperations._blend_shadow(output, mask, palette, destination)
-
-
-# four occupied corners, one sprite, compass picks the winner
-static func _should_draw_building(city: CityState, x: int, y: int, building_id: int) -> bool:
-	return IsometricStaticVisuals._should_draw_building(city, x, y, building_id)
 
 
 # for buildings, flipped means unflipped every other compass turn
@@ -439,38 +389,19 @@ static func building_baseline_offset(
 	return IsometricStaticVisuals.building_baseline_offset(building_id, terrain_id, sprite_width, view_size)
 
 
-static func _sprite_image(
+# return the decoded sprite image, flipped on request
+# `cache` belongs to the caller and holds the result. a caller that shares
+# one cache with `draw_tile` gets the same image instances, so image
+# identity stays usable as a sprite key
+# the returned image belongs to the cache. do not change it
+static func sprite_image(
 	sprites: Sc2SpriteArchive,
 	palette: Sc2Palette,
 	cache: Dictionary,
 	sprite_id: int,
 	flip: bool
 ) -> Image:
-	return IsometricPixelOperations._sprite_image(sprites, palette, cache, sprite_id, flip)
-
-
-static func _blend_on_base(
-	output: Variant,
-	sprite: Image,
-	x: int,
-	base_y: int,
-	tile_height := TILE_HEIGHT
-) -> void:
-	IsometricPixelOperations._blend_on_base(output, sprite, x, base_y, tile_height)
-
-
-static func _traffic_masked_image(
-	sprite: Image,
-	surface: Image,
-	palette: Sc2Palette,
-	cache: Dictionary = {},
-	cache_key := ""
-) -> Image:
-	return IsometricPixelOperations._traffic_masked_image(sprite, surface, palette, cache, cache_key)
-
-
-static func _failure(message: String) -> Dictionary:
-	return IsometricImageRender._failure(message)
+	return IsometricPixelOperations.sprite_image(sprites, palette, cache, sprite_id, flip)
 
 
 static func highway_train_deck_mask(surface: Image, thickness: int) -> Image:

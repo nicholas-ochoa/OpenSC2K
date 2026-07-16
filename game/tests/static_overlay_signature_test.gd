@@ -4,7 +4,7 @@ extends SceneTree
 func _initialize() -> void:
 	for path in ["res://../references/SIMCITY2000/CITIES/SYDNEY.SC2", "res://../local/large-cities/stitched-512.sc2x"]:
 		var city := CityState.from_document(Sc2File.load_path(path))
-		assert(CityIsometricRenderer._static_text_overlay_signature(city) == _reference(city))
+		assert(IsometricStaticVisuals._static_text_overlay_signature(city) == _reference(city))
 		var things := city.document.find_chunk("XTHG")
 
 		for record in [1, city.thing_count() - 1]:
@@ -12,7 +12,7 @@ func _initialize() -> void:
 			OverlayData.write(city.text_overlays, 100 + record, OverlayData.thing_id(record))
 			OverlayData.write(city.text_overlays, 1000 + record, OverlayData.thing_id(record))
 
-		assert(CityIsometricRenderer._static_text_overlay_signature(city) == _reference(city))
+		assert(IsometricStaticVisuals._static_text_overlay_signature(city) == _reference(city))
 		# Include duplicate IDs and high-plane sign values at unrelated coordinates.
 		OverlayData.write(city.text_overlays, 42, 1)
 		OverlayData.write(city.text_overlays, 43, 1)
@@ -20,7 +20,7 @@ func _initialize() -> void:
 		if city.map_size > 128:
 			OverlayData.write(city.text_overlays, 44, OverlayData.EXTRA_SIGN)
 
-		assert(CityIsometricRenderer._static_text_overlay_signature(city) == _reference(city))
+		assert(IsometricStaticVisuals._static_text_overlay_signature(city) == _reference(city))
 
 	print("PASS: sparse static overlay signatures retain scan order and duplicate sign IDs")
 	quit()

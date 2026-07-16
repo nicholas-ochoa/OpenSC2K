@@ -16,7 +16,7 @@ static func dirty_screen_rect(
 		return Rect2i()
 
 	if sprite_limit.x <= 0 or sprite_limit.y <= 0:
-		sprite_limit = _maximum_sprite_size(sprites)
+		sprite_limit = maximum_sprite_size(sprites)
 
 	if sprite_limit.x <= 0 or sprite_limit.y <= 0:
 		return Rect2i()
@@ -34,7 +34,7 @@ static func dirty_screen_rect(
 		seen[index] = true
 		var x := int(IntegerMath.div_trunc(index, map_edge))
 		var y := index % map_edge
-		var bounds := _potential_tile_bounds(
+		var bounds := potential_tile_bounds(
 			configuration, sprite_limit, x, y, map_edge
 		)
 		result = result.merge(bounds) if has_result else bounds
@@ -46,7 +46,10 @@ static func dirty_screen_rect(
 	return result.intersection(Rect2i(Vector2i.ZERO, output_size_for_view(view_size, map_edge)))
 
 
-static func _maximum_sprite_size(sprites: Sc2SpriteArchive) -> Vector2i:
+# return the largest sprite width and height in the archive
+# callers reuse this limit for every tile bounds query in one pass
+# returns zero when the archive is missing
+static func maximum_sprite_size(sprites: Sc2SpriteArchive) -> Vector2i:
 	var result := Vector2i.ZERO
 
 	if sprites == null:
@@ -59,7 +62,11 @@ static func _maximum_sprite_size(sprites: Sc2SpriteArchive) -> Vector2i:
 	return result
 
 
-static func _potential_tile_bounds(
+# return the screen rectangle that the sprites of one tile can touch
+# the rectangle allows for the full altitude range and for `sprite_limit`
+# it is a conservative bound, not the painted area. region renderers cull
+# with it. `dirty_screen_rect` merges it for a set of tiles
+static func potential_tile_bounds(
 	configuration: Dictionary, sprite_limit: Vector2i, x: int, y: int,
 	map_edge: int = 128,
 ) -> Rect2i:

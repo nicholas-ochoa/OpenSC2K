@@ -90,6 +90,6 @@ func _cutaway(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive) -
 	image.fill(Color.TRANSPARENT)
 	var configuration := CityIsometricRenderer.view_configuration(CityIsometricRenderer.VIEW_LARGE).duplicate()
 	configuration.top_margin = 128
-	CityUndergroundView._draw_tile(image, city, palette, sprites, {}, configuration, 128, 5, 5, false, true)
+	CityUndergroundView.draw_tile(image, city, palette, sprites, {}, configuration, 128, 5, 5, false, true)
 
 	return image

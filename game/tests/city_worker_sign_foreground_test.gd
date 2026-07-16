@@ -38,7 +38,7 @@ func _run() -> void:
 			var images := {}
 
 			for command in cache.occlusion_candidates(bounds):
-				var mask := CityIsometricRenderer._sprite_image(sprites, palette, images, command.sprite_id, command.flip)
+				var mask := CityIsometricRenderer.sprite_image(sprites, palette, images, command.sprite_id, command.flip)
 
 				if cache.divisor > 1:
 					mask = mask.duplicate()

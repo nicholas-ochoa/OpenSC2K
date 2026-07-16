@@ -64,7 +64,7 @@ static func create_image(
 			if x >= map_edge or y >= map_edge:
 				continue
 
-			_draw_tile(
+			draw_tile(
 				output, city, palette, sprites, cache, configuration, origin_x, x, y,
 				show_pipes, show_subways, show_water_mains
 			)
@@ -258,7 +258,12 @@ static func visual_signature(city: CityState, view_size: int, show_pipes := true
 	]
 
 
-static func _draw_tile(
+# paint one underground map tile into `output`, in back-to-front order
+# `output` is an `Image` or any recorder with the same `blend_rect` call
+# `origin_x` is the screen column of tile (0, 0)
+# `cache` holds decoded sprites and belongs to the caller
+# the surface painter calls this for cutaway tiles
+static func draw_tile(
 	output: Variant,
 	city: CityState,
 	palette: Sc2Palette,

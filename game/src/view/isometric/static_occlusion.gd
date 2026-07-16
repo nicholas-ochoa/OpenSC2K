@@ -30,7 +30,7 @@ static func static_occlusion_commands(
 				continue
 
 			var order := (x + y) * map_edge + y
-			commands.append_array(_tile_occlusion_commands(
+			commands.append_array(tile_occlusion_commands(
 				city, sprites, configuration, origin_x, x, y, order
 			))
 
@@ -75,7 +75,7 @@ static func patch_static_occlusion_commands(
 		var x := int(IntegerMath.div_trunc(index, map_edge))
 		var y := index % map_edge
 		var order := (x + y) * map_edge + y
-		replacements[order] = _tile_occlusion_commands(
+		replacements[order] = tile_occlusion_commands(
 			city, sprites, configuration, origin_x, x, y, order
 		)
 
@@ -104,7 +104,11 @@ static func patch_static_occlusion_commands(
 	return commands
 
 
-static func _tile_occlusion_commands(
+# return the foreground occluder commands of one tile
+# this is the per-tile form of `static_occlusion_commands`. a caller that
+# paints tiles with `IsometricImageRender.draw_tile` uses this for the
+# foreground of the same tile, with the same `draw_order` rule
+static func tile_occlusion_commands(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
 	configuration: Dictionary,

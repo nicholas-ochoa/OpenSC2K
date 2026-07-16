@@ -41,10 +41,10 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	var foreground: Array[Dictionary] = []
 
 	if mode == "underground":
-		CityUndergroundView._draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, pipes, subways, water_mains)
+		CityUndergroundView.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, pipes, subways, water_mains)
 	else:
 		if not _fast_tile(recorder, city, palette, sprites, configuration, origin, x, y):
-			CityIsometricRenderer._draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, 0, false, false)
+			CityIsometricRenderer.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, 0, false, false)
 
 		_register_image_roles()
 
@@ -267,7 +267,7 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 		flip = not flip
 
 	var sprite_id := int(config.sprite_base) + building
-	var image := CityIsometricRenderer._sprite_image(sprites, palette, images, sprite_id, flip)
+	var image := CityIsometricRenderer.sprite_image(sprites, palette, images, sprite_id, flip)
 	var object_altitude := ((word >> 5) & 31) if (flags & 4) != 0 else (word & 31)
 
 	if city.object_altitude_overrides.size() == city.map_size * city.map_size and city.object_altitude_overrides[key] >= 0:
@@ -278,7 +278,7 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 	recorder.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), Vector2i(screen_x, object_y - image.get_height()))
 
 	if building >= 0x70 and (flags & 0xc0) == 0x80:
-		var marker := CityIsometricRenderer._sprite_image(sprites, palette, images, int(config.sprite_base) + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET, false)
+		var marker := CityIsometricRenderer.sprite_image(sprites, palette, images, int(config.sprite_base) + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET, false)
 		recorder.blend_rect(marker, Rect2i(Vector2i.ZERO, marker.get_size()), Vector2i(screen_x + int(IntegerMath.div_trunc(image.get_width(), 2)) - int(IntegerMath.div_trunc(marker.get_width(), 2)), object_y - marker.get_height()))
 
 	return true
@@ -286,5 +286,5 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 
 func _append_sprite(recorder: CityGpuDrawList, sprites: Sc2SpriteArchive,
 		palette: Sc2Palette, sprite_id: int, flip: bool, base: Vector2i) -> void:
-	var image := CityIsometricRenderer._sprite_image(sprites, palette, images, sprite_id, flip)
+	var image := CityIsometricRenderer.sprite_image(sprites, palette, images, sprite_id, flip)
 	recorder.blend_rect(image, Rect2i(Vector2i.ZERO, image.get_size()), base - Vector2i(0, image.get_height()))

@@ -231,9 +231,9 @@ static func build(job: Dictionary) -> Dictionary:
 		var point: Vector2i = tiles[key]
 
 		if job.underground:
-			CityUndergroundView._draw_tile(draws, city, job.palette, job.sprites, cache, config, origin, point.x, point.y, true, true)
+			CityUndergroundView.draw_tile(draws, city, job.palette, job.sprites, cache, config, origin, point.x, point.y, true, true)
 		else:
-			CityIsometricRenderer._draw_tile(draws, city, job.palette, job.sprites, cache, config, origin, point.x, point.y, 0, false, true)
+			CityIsometricRenderer.draw_tile(draws, city, job.palette, job.sprites, cache, config, origin, point.x, point.y, 0, false, true)
 
 	return {"draws": draws.draws, "divisor": config.divisor, "command": result, "candidate_count": candidates.size(), "tile_count": tiles.size()}
 

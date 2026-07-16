@@ -49,7 +49,7 @@ static func create_image(
 			if x >= map_edge or y >= map_edge:
 				continue
 
-			_draw_tile(
+			draw_tile(
 				output, city, palette, sprites, cache, configuration,
 				origin_x, x, y, animation_phase, include_moving_things,
 				include_special_overlays
@@ -98,7 +98,7 @@ static func patch_static_image(
 	elif base_image.get_size() != native_size:
 		return _failure("base city image has the wrong size")
 
-	var sprite_limit := IsometricGeometry._maximum_sprite_size(sprites)
+	var sprite_limit := IsometricGeometry.maximum_sprite_size(sprites)
 	var native_rect := IsometricGeometry.dirty_screen_rect(
 		dirty_indices, sprites, view_size, sprite_limit, map_edge
 	)
@@ -141,12 +141,12 @@ static func patch_static_image(
 		for y in range(first_y, last_y + 1):
 			var x := diagonal - y
 
-			if not IsometricGeometry._potential_tile_bounds(
+			if not IsometricGeometry.potential_tile_bounds(
 				configuration, sprite_limit, x, y, map_edge
 			).intersects(native_rect):
 				continue
 
-			_draw_tile(
+			draw_tile(
 				region, city, palette, sprites, cache, local_configuration,
 				origin_x, x, y, animation_phase, false, false
 			)
@@ -185,7 +185,13 @@ static func patch_static_image(
 	}
 
 
-static func _draw_tile(
+# paint one map tile into `output`, in back-to-front order
+# `output` is an `Image` or any recorder with the same `blend_rect` call
+# `origin_x` is the screen column of tile (0, 0). shift it, or shift
+# `configuration.top_margin`, to paint into a sub-rectangle of the map
+# `cache` holds decoded sprites and belongs to the caller
+# the tile order and the painted pixels are the same for every caller
+static func draw_tile(
 	output: Variant,
 	city: CityState,
 	palette: Sc2Palette,
@@ -200,7 +206,7 @@ static func _draw_tile(
 	include_special_overlays: bool
 ) -> void:
 	if not city.tile_is_visible(x, y):
-		CityUndergroundView._draw_tile(
+		CityUndergroundView.draw_tile(
 			output, city, palette, sprites, cache, configuration, origin_x,
 			x, y, false, true
 		)
@@ -230,7 +236,7 @@ static func _draw_tile(
 	var is_highway_composite := building_id >= 0x61 and building_id <= 0x6b
 
 	if building_id < 0x70 and not is_highway_composite:
-		var terrain := IsometricPixelOperations._sprite_image(
+		var terrain := IsometricPixelOperations.sprite_image(
 			sprites, palette, cache,
 			IsometricGeometry.terrain_sprite_id(terrain_id, city.is_water(x, y), configuration.sprite_base),
 			false
@@ -240,7 +246,7 @@ static func _draw_tile(
 	var zone := city.zone_id(x, y)
 
 	if zone > 0 and building_id == 0:
-		var zone_image := IsometricPixelOperations._sprite_image(
+		var zone_image := IsometricPixelOperations.sprite_image(
 			sprites, palette, cache, int(configuration.sprite_base) + 290 + zone, false
 		)
 		IsometricPixelOperations._blend_on_base(output, zone_image, screen_x, base_y, configuration.tile_height)
@@ -260,7 +266,7 @@ static func _draw_tile(
 			)
 
 		var flip := IsometricStaticVisuals.building_sprite_flip(city, x, y, building_id)
-		building_image = IsometricPixelOperations._sprite_image(
+		building_image = IsometricPixelOperations.sprite_image(
 			sprites, palette, cache, int(configuration.sprite_base) + building_id, flip
 		)
 		building_base_y += IsometricStaticVisuals.building_baseline_offset(
@@ -272,7 +278,7 @@ static func _draw_tile(
 		var traffic_visual := IsometricStaticVisuals.traffic_overlay_visual(city, x, y, configuration.view_size)
 
 		if not traffic_visual.is_empty():
-			var traffic_image := IsometricPixelOperations._sprite_image(
+			var traffic_image := IsometricPixelOperations.sprite_image(
 				sprites, palette, cache, traffic_visual.sprite_id, traffic_visual.flip
 			)
 			var masked_traffic := IsometricPixelOperations._traffic_masked_image(
@@ -290,7 +296,7 @@ static func _draw_tile(
 		var power_marker := IsometricStaticVisuals.power_marker_visual(city, x, y, configuration.view_size)
 
 		if not power_marker.is_empty():
-			var marker_image := IsometricPixelOperations._sprite_image(
+			var marker_image := IsometricPixelOperations.sprite_image(
 				sprites, palette, cache, power_marker.sprite_id, false
 			)
 			var marker_x := (
@@ -304,7 +310,7 @@ static func _draw_tile(
 	var dispatch_sprite := IsometricStaticVisuals.dispatch_sprite_id(city, x, y, configuration.view_size)
 
 	if dispatch_sprite > 0:
-		var dispatch_image := IsometricPixelOperations._sprite_image(
+		var dispatch_image := IsometricPixelOperations.sprite_image(
 			sprites, palette, cache, dispatch_sprite, false
 		)
 		var dispatch_x := (
@@ -325,7 +331,7 @@ static func _draw_tile(
 		)
 
 		if not moving_visual.is_empty():
-			_draw_moving_thing(
+			draw_moving_thing(
 				output, city, palette, sprites, cache, moving_visual, configuration
 			)
 
@@ -335,7 +341,7 @@ static func _draw_tile(
 		)
 
 		if not special_visual.is_empty():
-			var special_image := IsometricPixelOperations._sprite_image(
+			var special_image := IsometricPixelOperations.sprite_image(
 				sprites, palette, cache, special_visual.sprite_id, special_visual.flip
 			)
 			var special_x := (
@@ -367,7 +373,7 @@ static func _draw_edge_stacks(
 	y: int
 ) -> void:
 	for visual in IsometricStaticVisuals.edge_stack_visuals(city, x, y, configuration.view_size):
-		var edge_image := IsometricPixelOperations._sprite_image(
+		var edge_image := IsometricPixelOperations.sprite_image(
 			sprites, palette, cache, visual.sprite_id, false
 		)
 		IsometricPixelOperations._blend_on_base(
@@ -389,7 +395,7 @@ static func _draw_highway_ground(
 	y: int
 ) -> void:
 	for visual in IsometricStaticVisuals.highway_ground_visuals(city, x, y, configuration.view_size, sprites.redraw_small_highway_ground):
-		var terrain := IsometricPixelOperations._sprite_image(
+		var terrain := IsometricPixelOperations.sprite_image(
 			sprites, palette, cache, visual.sprite_id, false
 		)
 		var position: Vector2i = visual.offset
@@ -399,27 +405,32 @@ static func _draw_highway_ground(
 		)
 
 
-static func _draw_moving_thing(
+# paint the moving object of one visual into `output`
+# shadow commands darken the pixels that are already present
+# `offset` shifts every command, for painting into a sub-rectangle
+static func draw_moving_thing(
 	output: Variant,
 	city: CityState,
 	palette: Sc2Palette,
 	sprites: Sc2SpriteArchive,
 	cache: Dictionary,
 	visual: Dictionary,
-	configuration: Dictionary
+	configuration: Dictionary,
+	offset := Vector2i.ZERO
 ) -> void:
 	for command in IsometricDynamicCommands.moving_thing_draw_commands_for_visual(
 		city, sprites, visual, configuration
 	):
-		var sprite := IsometricPixelOperations._sprite_image(
+		var sprite := IsometricPixelOperations.sprite_image(
 			sprites, palette, cache, command.sprite_id, command.flip
 		)
+		var position: Vector2i = command.position + offset
 
 		if command.shadow:
-			IsometricPixelOperations._blend_shadow(output, sprite, palette, command.position)
+			IsometricPixelOperations._blend_shadow(output, sprite, palette, position)
 		else:
 			output.blend_rect(
-				sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), command.position
+				sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), position
 			)
 
 

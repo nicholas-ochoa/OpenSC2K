@@ -24,7 +24,7 @@ static func build(region: Dictionary, requests: Array[Dictionary], palette: Sc2P
 			if not bounds.intersects(Rect2i(command.position, command.size)):
 				continue
 
-			var image := CityIsometricRenderer._sprite_image(sprites, palette, context.images, int(command.sprite_id), bool(command.flip))
+			var image := CityIsometricRenderer.sprite_image(sprites, palette, context.images, int(command.sprite_id), bool(command.flip))
 
 			if image != null:
 				masks.append({"image": image, "position": Vector2i(command.position)})

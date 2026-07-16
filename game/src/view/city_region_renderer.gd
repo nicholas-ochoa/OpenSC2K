@@ -26,7 +26,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	var local := configuration.duplicate()
 	local.top_margin = int(local.top_margin) - bounds.position.y
 	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
-	var sprite_limit := Renderer._maximum_sprite_size(sprites)
+	var sprite_limit := Renderer.maximum_sprite_size(sprites)
 	var cache := {}
 	var foreground: Array[Dictionary] = []
 	var count := 0
@@ -49,7 +49,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 
 		for y in range(first_y, last_y + 1):
 			var x := diagonal - y
-			var potential := Renderer._potential_tile_bounds(configuration, sprite_limit, x, y, city.map_size)
+			var potential := Renderer.potential_tile_bounds(configuration, sprite_limit, x, y, city.map_size)
 
 			if mode == "underground":
 				potential.size.y += 31 * int(configuration.altitude_step)
@@ -58,11 +58,11 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				continue
 
 			if mode == "underground":
-				Underground._draw_tile(image, city, palette, sprites, cache, local, origin - bounds.position.x, x, y, show_pipes, show_subways, show_water_mains)
+				Underground.draw_tile(image, city, palette, sprites, cache, local, origin - bounds.position.x, x, y, show_pipes, show_subways, show_water_mains)
 			else:
-				Renderer._draw_tile(image, city, palette, sprites, cache, local, origin - bounds.position.x, x, y, 0, false, false)
+				Renderer.draw_tile(image, city, palette, sprites, cache, local, origin - bounds.position.x, x, y, 0, false, false)
 				var order := diagonal * city.map_size + y
-				var commands := Renderer._tile_occlusion_commands(city, sprites, configuration, origin, x, y, order)
+				var commands := Renderer.tile_occlusion_commands(city, sprites, configuration, origin, x, y, order)
 
 				for index in commands.size():
 					var command: Dictionary = commands[index]

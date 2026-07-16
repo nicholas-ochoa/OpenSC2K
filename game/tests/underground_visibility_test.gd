@@ -48,7 +48,7 @@ func _run() -> void:
 			var context := CityGpuBuildContext.new()
 			var tile := context.tile(city, palette, sprites, configuration, 20, 20, "underground", pipes, true, mains)
 			var recorded := CityGpuDrawList.new()
-			CityUndergroundView._draw_tile(recorded, city, palette, sprites, {}, configuration, origin, 20, 20, pipes, true, mains)
+			CityUndergroundView.draw_tile(recorded, city, palette, sprites, {}, configuration, origin, 20, 20, pipes, true, mains)
 			assert(tile.draws.size() == recorded.draws.size())
 			for i in recorded.draws.size():
 				assert(tile.draws[i].image.get_data() == recorded.draws[i].image.get_data())

@@ -218,7 +218,12 @@ static func _blend_shadow(
 				output.set_pixel(output_x, output_y, changed)
 
 
-static func _sprite_image(
+# return the decoded sprite image, flipped on request
+# `cache` belongs to the caller and holds the result. a caller that shares
+# one cache with `IsometricImageRender.draw_tile` gets the same image
+# instances, so image identity stays usable as a sprite key
+# the returned image belongs to the cache. do not change it
+static func sprite_image(
 	sprites: Sc2SpriteArchive,
 	palette: Sc2Palette,
 	cache: Dictionary,

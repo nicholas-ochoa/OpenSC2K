@@ -17,7 +17,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	if not bounds.has_area():
 		return {"ok": false, "error": "empty GPU region"}
 
-	var limit := Renderer._maximum_sprite_size(sprites)
+	var limit := Renderer.maximum_sprite_size(sprites)
 	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
 	var bottom := int(configuration.tile_height) + int(IntegerMath.div_trunc(limit.x, 4)) + 1
 

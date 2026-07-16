@@ -1177,7 +1177,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	traffic_base.set_pixel(1, 0, Color8(0xa0, 0xa0, 0xa0, 255))
 	var traffic_pixels := Image.create(2, 1, false, Image.FORMAT_RGBA8)
 	traffic_pixels.fill(Color8(0xc8, 0xc8, 0xc8, 255))
-	var masked_traffic := IsometricRenderer._traffic_masked_image(
+	var masked_traffic := IsometricPixelOperations._traffic_masked_image(
 		traffic_pixels, traffic_base, Palette.index_encoding()
 	)
 	_check(
@@ -1270,13 +1270,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Highway coverage fixture clears zone anchor bits",
 	)
 	_check(
-		not IsometricRenderer._should_draw_building(
+		not IsometricStaticVisuals._should_draw_building(
 			overlay_city, overlay_point.x, overlay_point.y, 0x61
 		),
 		"Elevated highway waits for its compass-selected anchor",
 	)
 	_check(
-		IsometricRenderer._should_draw_building(
+		IsometricStaticVisuals._should_draw_building(
 			overlay_city, overlay_point.x, overlay_point.y, 0x6c
 		),
 		"Subway-to-rail tiles draw without zone anchor bits",
@@ -1290,7 +1290,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Highway coverage fixture sets the active anchor bit",
 	)
 	_check(
-		IsometricRenderer._should_draw_building(
+		IsometricStaticVisuals._should_draw_building(
 			overlay_city, overlay_point.x, overlay_point.y, 0x61
 		),
 		"Elevated highway draws from its compass-selected anchor",

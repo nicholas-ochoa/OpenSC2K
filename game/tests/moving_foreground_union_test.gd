@@ -111,7 +111,7 @@ func _initialize() -> void:
 
 		for tile in [0x4d, 0x4e]:
 			assert(city.set_building_id(64, 64, tile))
-			var commands := CityIsometricRenderer._tile_occlusion_commands(city, archive, config, 0, 64, 64, 10)
+			var commands := CityIsometricRenderer.tile_occlusion_commands(city, archive, config, 0, 64, 64, 10)
 			var found := false
 
 			for command in commands:

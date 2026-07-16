@@ -39,7 +39,7 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 		for y in range(maxi(first.y, diagonal - last.x), mini(last.y, diagonal - first.x) + 1):
 			var x := diagonal - y
 			var draws := CityGpuDrawList.new()
-			Renderer._draw_tile(draws, city, palette, sprites, cache, config, origin - bounds.position.x, x, y, 0, false, true)
+			Renderer.draw_tile(draws, city, palette, sprites, cache, config, origin - bounds.position.x, x, y, 0, false, true)
 			var selected := site.has_point(Vector2i(x, y))
 			for draw: Dictionary in draws.draws:
 				var source: Image = draw.image
@@ -52,16 +52,13 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 	var visual := Renderer.moving_thing_visual(city, point.x, point.y, Renderer.VIEW_LARGE, 0)
 
 	if not visual.is_empty():
-		for command in Renderer.moving_thing_draw_commands_for_visual(city, sprites, visual, Renderer.view_configuration(Renderer.VIEW_LARGE)):
-			var sprite := Renderer._sprite_image(sprites, palette, cache, command.sprite_id, command.flip)
-			var position: Vector2i = command.position - bounds.position
+		# the moving object is always the queried one, so it stays fully opaque
+		var moving_configuration := Renderer.view_configuration(Renderer.VIEW_LARGE)
 
-			if command.shadow:
-				Renderer._blend_shadow(image, sprite, palette, position)
-				Renderer._blend_shadow(selected_image, sprite, palette, position)
-			else:
-				image.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), position)
-				selected_image.blend_rect(sprite, Rect2i(Vector2i.ZERO, sprite.get_size()), position)
+		for target in [image, selected_image]:
+			Renderer.draw_moving_thing(
+				target, city, palette, sprites, cache, visual, moving_configuration, -bounds.position
+			)
 
 	return frame_selection(apply_opacity(image, selected_image), selected_image.get_used_rect())
 
