@@ -45,13 +45,20 @@ func run() -> void:
 		for height in [480, 768]:
 			root.size = Vector2i(1000, height)
 			dialog.popup_centered()
+			assert(dialog.artwork.animation_time == 0.0, "Opening About restarts the animation")
 			await process_frame
 			await process_frame
 			assert(dialog.visible and dialog.artwork.is_processing())
+			dialog.artwork._process(0.25)
+			var paused_at := dialog.artwork.animation_time
+			assert(paused_at > 0.0)
 			dialog.get_node("Content/Tabs").current_tab = 1
 			assert(not dialog.artwork.is_processing())
 			dialog.get_node("Content/Tabs").current_tab = 0
-			assert(dialog.artwork.animation_time == 0.0)
+			assert(
+				dialog.artwork.is_processing() and dialog.artwork.animation_time == paused_at,
+				"Returning to the About tab resumes the paused animation"
+			)
 			assert(dialog.size.y + dialog.get_theme_constant("title_height") <= height)
 			dialog.get_ok_button().pressed.emit()
 			assert(not dialog.visible)
