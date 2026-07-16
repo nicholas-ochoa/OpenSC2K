@@ -1,4 +1,5 @@
 //import jszip from 'jszip';
+import { Buffer } from 'buffer';
 import * as CONST from '../constants';
 import sc2 from '../import/sc2';
 

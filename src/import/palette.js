@@ -1,5 +1,6 @@
 import * as CONST from '../constants';
 import bmp from 'bmp-js';
+import { Buffer } from 'buffer';
 
 export default class palette {
   constructor (options) {
@@ -73,7 +74,7 @@ export default class palette {
           blue:  file.data[offset + 1],
           green: file.data[offset + 2],
           red:   file.data[offset + 3],
-          alpha: file.data[offset + 4],
+          alpha: 255,
         };
 
         // offset by 4 bytes (rgba) for each pixel

@@ -1,4 +1,4 @@
-import * as tile from './tiles/';
+import * as tile from './tiles/index.js';
 import * as CONST from '../constants';
 
 export default class tiles {

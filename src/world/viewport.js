@@ -6,7 +6,6 @@ export default class viewport {
     this.scene        = options.scene;
     this.camera       = this.scene.cameras.main;
     this.camera.name  = CONST.CAMERA_NAME;
-    this.worldView    = this.camera.worldView;
 
     this.objectsRendered = 0;
 
@@ -40,9 +39,6 @@ export default class viewport {
     };
 
     this.controls = new Phaser.Cameras.Controls.SmoothedKeyControl(controlConfig);
-
-    this.camera.scrollX = -1531;
-    this.camera.scrollY = 140;
     this.camera.zoom = 1;
   }
 
@@ -62,10 +58,38 @@ export default class viewport {
       this.cullObjects();
   }
 
+  centerOnCity () {
+    const developedCells = this.scene.city.map.list.filter((cell) =>
+      cell.tiles.list.some((tile) =>
+        ![CONST.T_TERRAIN, CONST.T_WATER, CONST.T_EDGE].includes(tile.type)
+      )
+    );
+
+    const cells = developedCells.length > 0
+      ? developedCells
+      : this.scene.city.map.list;
+
+    const center = cells.reduce((point, cell) => {
+      point.x += cell.position.center.x;
+      point.y += cell.position.center.y;
+
+      return point;
+    }, { x: 0, y: 0 });
+
+    center.x /= cells.length;
+    center.y /= cells.length;
+
+    this.camera.centerOn(center.x, center.y);
+  }
 
   cullObjects () {
     let cells = this.scene.city.map.cells;
-    let view  = Phaser.Geom.Rectangle.Clone(this.worldView);
+    let view = new Phaser.Geom.Rectangle(
+      this.camera.scrollX,
+      this.camera.scrollY,
+      this.camera.width / this.camera.zoom,
+      this.camera.height / this.camera.zoom
+    );
     let cx = view.centerX;
     let cy = view.centerY;
 

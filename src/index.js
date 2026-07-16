@@ -1,12 +1,15 @@
 import Phaser from 'phaser';
+import { Buffer } from 'buffer';
 import world from './world';
 import $ from 'jquery';
 import jQuery from 'jquery';
 import './styles/global.css';
 
-var config = {
+globalThis.Buffer = Buffer;
+
+const config = {
   gameTitle: 'OpenSC2K',
-  gameURL: 'https://github.com/rage8885/OpenSC2K',
+  gameURL: 'https://github.com/nicholas-ochoa/OpenSC2K',
   type: Phaser.WEBGL,
   resolution: 1,
   autoRound: true,
@@ -21,7 +24,7 @@ var config = {
     batchSize: 32767
   },
   scale: {
-    mode: Phaser.DOM.RESIZE,
+    mode: Phaser.Scale.RESIZE,
     parent: 'content',
     width: window.innerWidth,
     height: window.innerHeight,

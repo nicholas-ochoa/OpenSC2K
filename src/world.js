@@ -6,7 +6,6 @@ import debug from './debug/debug';
 import palette from './import/palette';
 import artwork from './import/artwork';
 import * as CONST from './constants';
-import ui from './ui/gui';
 
 export default class world extends Phaser.Scene {
   constructor () {

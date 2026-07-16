@@ -1,54 +1,33 @@
 {
-  "name": "OpenSC2K",
+  "name": "opensc2k",
   "description": "An Open Source remake of SimCity 2000",
   "author": "Nicholas Ochoa",
   "version": "0.6.0",
-  "homepage": "https://github.com/rage8885/OpenSC2K",
+  "type": "module",
+  "homepage": "https://github.com/nicholas-ochoa/OpenSC2K",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rage8885/OpenSC2K.git"
+    "url": "https://github.com/nicholas-ochoa/OpenSC2K.git"
   },
   "license": "GPL-3.0",
-  "main": "index.js",
+  "engines": {
+    "node": ">=20.19"
+  },
   "scripts": {
-    "dev": "webpack-dev-server --progress --config './webpack.config.js'"
+    "dev": "vite --host 0.0.0.0 --port 3000",
+    "build": "vite build",
+    "preview": "vite preview --host 0.0.0.0 --port 3000"
   },
   "dependencies": {
-    "@vingle/bmp-js": "rage8885/bmp-js",
-    "bmp-js": "rage8885/bmp-js",
-    "dat.gui": "rage8885/dat.gui",
-    "file-saver": "^2.0.0",
-    "jquery": "^3.4.0",
-    "jszip": "^3.1.5",
-    "phaser": "3.16.0-rc2"
+    "bmp-js": "^0.1.0",
+    "buffer": "^6.0.3",
+    "dat.gui": "^0.7.9",
+    "file-saver": "^2.0.5",
+    "jquery": "^3.7.1",
+    "jszip": "^3.10.1",
+    "phaser": "^3.90.0"
   },
   "devDependencies": {
-    "@babel/cli": "^7.2.0",
-    "@babel/core": "^7.2.0",
-    "@babel/node": "^7.2.0",
-    "@babel/plugin-proposal-class-properties": "^7.2.1",
-    "@babel/plugin-proposal-optional-chaining": "^7.2.0",
-    "@babel/polyfill": "^7.0.0",
-    "@babel/preset-env": "^7.2.0",
-    "babel-eslint": "^10.0.1",
-    "babel-loader": "^8.0.4",
-    "css-loader": "^2.0.0",
-    "eslint": "^5.10.0",
-    "eslint-config-standard": "^12.0.0",
-    "eslint-loader": "2.1.1",
-    "eslint-plugin-import": "^2.7.0",
-    "eslint-plugin-node": "^8.0.0",
-    "eslint-plugin-promise": "^4.0.1",
-    "eslint-plugin-standard": "^4.0.0",
-    "expose-loader": "^0.7.5",
-    "file-loader": "^3.0.1",
-    "html-webpack-plugin": "^3.0.6",
-    "raw-loader": "^1.0.0",
-    "source-map-support": "^0.5.4",
-    "style-loader": "^0.23.1",
-    "url-loader": "^1.0.1",
-    "webpack": "^4.1.1",
-    "webpack-cli": "^3.1.2",
-    "webpack-dev-server": "^3.1.1"
+    "vite": "^7.1.7"
   }
 }

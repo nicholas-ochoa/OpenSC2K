@@ -1,4 +1,4 @@
-import * as tools from './tools/';
+import * as tools from './tools/index.js';
 import * as CONST from '../constants';
 
 export default class events {

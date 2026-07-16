@@ -1,5 +1,5 @@
 import * as CONST from '../constants';
-import * as segmentHandlers from './segmentHandlers/';
+import * as segmentHandlers from './segmentHandlers/index.js';
 import { bytesToAscii } from './segmentHandlers/common';
 
 export default class sc2 {

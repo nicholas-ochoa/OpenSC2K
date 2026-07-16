@@ -69,7 +69,7 @@ export default class artwork {
 
       tile.textures = [];
       
-      for (let t = 0; t <= tile.frames; t++)
+      for (let t = 0; t < tile.frames; t++)
         tile.textures.push(tile.image+'_'+t);
 
       this.tiles[i] = tile;
@@ -342,22 +342,20 @@ export default class artwork {
     this.scene.textures.addAtlas(CONST.TILE_ATLAS, this.canvas, this.json);
 
 
-    // remove temp canvas
-    this.scene.textures.remove('temp');
-
-
     // add animations
     for (let i = 1; i < this.tiles.length; i++) {
       let tile = this.tiles[i];
 
       // set up animations
       if (tile.frames > 1) {
+        const lastFrame = tile.frames - 1;
+
         this.scene.anims.create({
           key: tile.data.imageName,
           frames: this.scene.anims.generateFrameNames(CONST.TILE_ATLAS, {
             prefix: tile.data.imageName + '_',
-            start: (tile.reverseAnimation ? tile.frames : 0),
-            end: (tile.reverseAnimation ? 0 : tile.frames)
+            start: (tile.reverseAnimation ? lastFrame : 0),
+            end: (tile.reverseAnimation ? 0 : lastFrame)
           }),
           repeat: -1,
           frameRate: tile.frameRate || 2,
@@ -368,8 +366,8 @@ export default class artwork {
           key: tile.data.imageName+'_R',
           frames: this.scene.anims.generateFrameNames(CONST.TILE_ATLAS, {
             prefix: tile.data.imageName + '_',
-            start: (tile.reverseAnimation ? 0 : tile.frames),
-            end: (tile.reverseAnimation ? tile.frames : 0)
+            start: (tile.reverseAnimation ? 0 : lastFrame),
+            end: (tile.reverseAnimation ? lastFrame : 0)
           }),
           repeat: -1,
           frameRate: tile.frameRate || 2,

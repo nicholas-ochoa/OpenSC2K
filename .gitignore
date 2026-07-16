@@ -3,6 +3,8 @@ assets/cities/*
 !assets/cities/TESTCITY.SC2
 assets/images/*
 assets/import/*
+!assets/import/README.md
+SC2K/
 assets/tiles/*
 node_modules/
 dist/*

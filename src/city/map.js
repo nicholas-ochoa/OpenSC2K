@@ -1,6 +1,6 @@
 import cell from '../cell/cell';
 import * as CONST from '../constants';
-import * as layers from './layers/';
+import * as layers from './layers/index.js';
 
 export default class map {
   #scene;
@@ -52,6 +52,7 @@ export default class map {
     this.layers.pipe      = new layers.pipe({ scene: this.#scene });
 
     // do an initial object cull after rendering map
+    this.#scene.viewport.centerOnCity();
     this.#scene.viewport.cullObjects();
   }
 

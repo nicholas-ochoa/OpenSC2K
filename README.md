@@ -15,18 +15,33 @@ Due to copyrights, the original graphics and assets from SimCity 2000 cannot be 
 ![Screenshot](/screenshots/1.png)
 
 ## Installation
-You can use yarn (recommended) or npm to install and run. Once installed and started, open a browser to http://localhost:3000 to start the game.
+OpenSC2K requires Node.js 20.19 or newer.
 
-### OS X / Linux
-1. `git clone https://github.com/rage8885/OpenSC2K` or download this repository
+1. `git clone https://github.com/nicholas-ochoa/OpenSC2K`
 1. `cd OpenSC2K`
-1. `yarn install` downloads and installs the dependancies
-1. `yarn dev` to run
+1. `npm install`
+1. Add the local game assets described below.
+1. `npm run dev`
+1. Open http://localhost:3000.
+
+Use `npm run build` to create a production bundle in `/dist`, and
+`npm run preview` to serve that bundle locally.
 
 ## Usage
 By default, a test city included in the /assets/cities/ folder will load. Currently you must modify the `/src/city/load.js` file to load different cities.
 
-Requires two files from the Windows 95 Special Edition version of SimCity 2000: `LARGE.DAT` and `PAL_MSTR.BMP`. These must be placed in the `/assets/import/` directory prior to starting the game. The files will be automatically parsed and used for all in game graphics.
+Requires two files from a legally owned Windows 95 Special Edition version of
+SimCity 2000: `LARGE.DAT` and `PAL_MSTR.BMP`. Place them in
+`/assets/import/` before starting the game. The files are parsed locally and
+used for the in-game graphics.
+
+Common source locations in the Windows 95 installation are:
+
+- `SC2K/DATA/LARGE.DAT`
+- `SC2K/BITMAPS/PAL_MSTR.BMP`
+
+These proprietary files are ignored by Git and must not be committed or
+redistributed. See `assets/import/README.md` for the local setup reminder.
 
 ### Controls
  - `WASD` to move the camera viewport
