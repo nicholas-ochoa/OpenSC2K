@@ -4789,6 +4789,11 @@ func _test_simulation_engine(reference_root: String) -> void:
 	)
 	_check(day_two.pending.is_empty(), "Day two has no unimplemented scheduled phase")
 	_check(engine.developed_tiles >= 0, "Simulation engine retains the developed-tile count")
+	_check(
+		SimulationDaySchedule.scanned_data_maps_only(day_two)
+		and not SimulationDaySchedule.scanned_data_maps_only(day_one),
+		"Only the data-map scan day reports data-map work alone",
+	)
 	var day_three := engine.advance_day()
 	_check(day_three.ok, "Simulation engine advances the first growth day")
 	_check(day_three.phase_results.has("growth"), "Simulation engine runs the RCI growth core")
@@ -4797,6 +4802,10 @@ func _test_simulation_engine(reference_root: String) -> void:
 		"Simulation engine completes the full growth partition",
 	)
 	_check(engine.lfsr_random.state != 7, "Growth continues the engine LFSR sequence")
+	_check(
+		not SimulationDaySchedule.scanned_data_maps_only(day_three),
+		"A growth day does not report data-map work alone",
+	)
 	var latest := day_three
 
 	while latest.day < 19:

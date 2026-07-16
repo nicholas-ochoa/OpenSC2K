@@ -100,6 +100,18 @@ static func _store_context(context: SimulationPhaseContext, engine: SimulationEn
 		engine.set(field, context.get(field))
 
 
+# true when the day's only work was the data-map scan. those maps carry
+# pollution, land value, and service coverage, not surface or underground
+# artwork, so a caller can skip the map repaint
+static func scanned_data_maps_only(day: Dictionary) -> bool:
+	var results: Dictionary = day.get("phase_results", {})
+
+	if results.size() != 1:
+		return false
+
+	return results.values()[0] is PollutionPhase.Result
+
+
 static func _schedule_after(engine: SimulationEngine, schedule: Dictionary, completed_action: String) -> Dictionary:
 	var remaining := schedule.duplicate(true)
 	remaining.actions = PackedStringArray()
