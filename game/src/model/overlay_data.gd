@@ -6,10 +6,14 @@ const EXTRA_SIGN := 4096
 const EXTRA_THING := 8192
 
 
-static func count(data: PackedByteArray) -> int:
-	var bytes := data.size()
+# the overlay layout keys off the payload size alone. a wide sc2x map stores a
+# low and a high plane, so its cell count is half its bytes
+static func cells_for(byte_count: int) -> int:
+	return IntegerMath.div_trunc(byte_count, 2) if byte_count == 131072 or byte_count == 294912 or byte_count == 524288 else byte_count
 
-	return IntegerMath.div_trunc(bytes, 2) if bytes == 131072 or bytes == 294912 or bytes == 524288 else bytes
+
+static func count(data: PackedByteArray) -> int:
+	return cells_for(data.size())
 
 
 static func read(data: PackedByteArray, index: int) -> int:

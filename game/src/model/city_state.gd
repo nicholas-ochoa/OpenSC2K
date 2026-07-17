@@ -430,10 +430,6 @@ func _byte_at(data: PackedByteArray, x: int, y: int) -> int:
 	return 0 if index < 0 else data[index]
 
 
-func _set_byte_at(data: PackedByteArray, x: int, y: int, value: int) -> bool:
-	return CityTileEdits._set_byte_at(self, data, x, y, value)
-
-
 func _set_altitude_word(x: int, y: int, value: int) -> bool:
 	return CityTileEdits._set_altitude_word(self, x, y, value)
 

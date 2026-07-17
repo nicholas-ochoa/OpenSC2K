@@ -417,6 +417,12 @@
     "lane": "product"
   },
   {
+    "id": "tile_edit_sync_test",
+    "script": "tests/tile_edit_sync_test.gd",
+    "domain": "formats",
+    "lane": "product"
+  },
+  {
     "id": "edit_dirty_indices_test",
     "script": "tests/edit_dirty_indices_test.gd",
     "domain": "tools",

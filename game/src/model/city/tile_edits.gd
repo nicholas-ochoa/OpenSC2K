@@ -1,21 +1,21 @@
 class_name CityTileEdits
 extends RefCounted
-# Write tile payloads and their CityState mirrors.
+# Validate before writing: each edit updates both the saved chunk and
+# the CityState mirror in place. A partial write would leave them out of sync.
 
 
 static func set_terrain_id(city: CityState, x: int, y: int, value: int) -> bool:
 	if value < 0 or value > 0xff:
 		return false
 
-	var changed := city.terrain.duplicate()
+	var index := city.index_of(x, y)
+	var chunk := _tile_chunk(city, "XTER", city.terrain.size(), index)
 
-	if not city._set_byte_at(changed, x, y, value):
+	if chunk == null:
 		return false
 
-	if not city.document.find_chunk("XTER").set_decoded_payload(changed):
-		return false
-
-	city.terrain = changed
+	chunk.write_decoded_byte(index, value)
+	city.terrain[index] = value
 
 	return true
 
@@ -24,15 +24,14 @@ static func set_building_id(city: CityState, x: int, y: int, value: int) -> bool
 	if value < 0 or value > 0xff:
 		return false
 
-	var changed := city.buildings.duplicate()
+	var index := city.index_of(x, y)
+	var chunk := _tile_chunk(city, "XBLD", city.buildings.size(), index)
 
-	if not city._set_byte_at(changed, x, y, value):
+	if chunk == null:
 		return false
 
-	if not city.document.find_chunk("XBLD").set_decoded_payload(changed):
-		return false
-
-	city.buildings = changed
+	chunk.write_decoded_byte(index, value)
+	city.buildings[index] = value
 
 	return true
 
@@ -56,17 +55,16 @@ static func set_zone_id(city: CityState, x: int, y: int, value: int) -> bool:
 		return false
 
 	var index := city.index_of(x, y)
+	var chunk := _tile_chunk(city, "XZON", city.zones.size(), index)
 
-	if index < 0:
+	if chunk == null:
 		return false
 
-	var changed := city.zones.duplicate()
-	changed[index] = (changed[index] & 0xf0) | value
-
-	if not city.document.find_chunk("XZON").set_decoded_payload(changed):
-		return false
-
-	city.zones = changed
+	# zone and corner bits share one byte. merge over the payload, which is what
+	# the document writes, rather than over the mirrored copy
+	var merged := (chunk.decoded_payload[index] & 0xf0) | value
+	chunk.write_decoded_byte(index, merged)
+	city.zones[index] = merged
 
 	return true
 
@@ -76,17 +74,14 @@ static func set_building_corners(city: CityState, x: int, y: int, value: int) ->
 		return false
 
 	var index := city.index_of(x, y)
+	var chunk := _tile_chunk(city, "XZON", city.zones.size(), index)
 
-	if index < 0:
+	if chunk == null:
 		return false
 
-	var changed := city.zones.duplicate()
-	changed[index] = value | (changed[index] & 0x0f)
-
-	if not city.document.find_chunk("XZON").set_decoded_payload(changed):
-		return false
-
-	city.zones = changed
+	var merged := value | (chunk.decoded_payload[index] & 0x0f)
+	chunk.write_decoded_byte(index, merged)
+	city.zones[index] = merged
 
 	return true
 
@@ -109,15 +104,14 @@ static func set_underground_id(city: CityState, x: int, y: int, value: int) -> b
 	if value < 0 or value > 0xff:
 		return false
 
-	var changed := city.underground.duplicate()
+	var index := city.index_of(x, y)
+	var chunk := _tile_chunk(city, "XUND", city.underground.size(), index)
 
-	if not city._set_byte_at(changed, x, y, value):
+	if chunk == null:
 		return false
 
-	if not city.document.find_chunk("XUND").set_decoded_payload(changed):
-		return false
-
-	city.underground = changed
+	chunk.write_decoded_byte(index, value)
+	city.underground[index] = value
 
 	return true
 
@@ -126,18 +120,25 @@ static func set_text_overlay_id(city: CityState, x: int, y: int, value: int) -> 
 	if value < 0 or value > (0xff if city.map_size <= 128 else 0xffff):
 		return false
 
-	var changed := city.text_overlays.duplicate()
 	var index := city.index_of(x, y)
+	var size := city.text_overlays.size()
+	var chunk := _tile_chunk(city, "XTXT", size, index)
 
-	if index < 0:
+	if chunk == null:
 		return false
 
-	OverlayData.write(changed, index, value)
+	# Wide SC2X overlays store the high byte one full plane after the low byte.
+	var cells := OverlayData.cells_for(size)
 
-	if not city.document.find_chunk("XTXT").set_decoded_payload(changed):
+	if index >= cells or (cells < size and cells + index >= size):
 		return false
 
-	city.text_overlays = changed
+	chunk.write_decoded_byte(index, value & 0xff)
+	city.text_overlays[index] = value & 0xff
+
+	if cells < size:
+		chunk.write_decoded_byte(cells + index, (value >> 8) & 0xff)
+		city.text_overlays[cells + index] = (value >> 8) & 0xff
 
 	return true
 
@@ -161,21 +162,15 @@ static func set_tile_flag(city: CityState, x: int, y: int, mask: int, enabled: b
 		return false
 
 	var index := city.index_of(x, y)
+	var chunk := _tile_chunk(city, "XBIT", city.tile_flags.size(), index)
 
-	if index < 0:
+	if chunk == null:
 		return false
 
-	var changed := city.tile_flags.duplicate()
-
-	if enabled:
-		changed[index] |= mask
-	else:
-		changed[index] &= ~mask & 0xff
-
-	if not city.document.find_chunk("XBIT").set_decoded_payload(changed):
-		return false
-
-	city.tile_flags = changed
+	var current := chunk.decoded_payload[index]
+	var merged := (current | mask) if enabled else (current & ~mask & 0xff)
+	chunk.write_decoded_byte(index, merged)
+	city.tile_flags[index] = merged
 
 	return true
 
@@ -266,35 +261,36 @@ static func set_tunnel_levels(city: CityState, x: int, y: int, value: int) -> bo
 	return city._set_altitude_word(x, y, (city.altitude_words[index] & ~0xfc00) | (value << 10))
 
 
-static func _set_byte_at(city: CityState, data: PackedByteArray, x: int, y: int, value: int) -> bool:
-	var index := city.index_of(x, y)
+# the chunk behind a mirrored tile plane, when a single byte at index is safe
+# to write in place. returns null unless the tile is on the map and the payload
+# still has the size of the array citystate mirrors it with
+static func _tile_chunk(city: CityState, chunk_id: String, mirror_size: int, index: int) -> Sc2Chunk:
+	if index < 0 or index >= mirror_size:
+		return null
 
-	if index < 0:
-		return false
+	var chunk := city.document.find_chunk(chunk_id) if city.document != null else null
 
-	data[index] = value
+	if chunk == null or chunk.decoded_payload.size() != mirror_size:
+		return null
 
-	return true
+	return chunk
 
 
 static func _set_altitude_word(city: CityState, x: int, y: int, value: int) -> bool:
 	var index := city.index_of(x, y)
+	var cells := city.altitude_words.size()
 
-	if index < 0:
+	if index < 0 or index >= cells:
 		return false
 
-	var chunk := city.document.find_chunk("ALTM")
+	var chunk := city.document.find_chunk("ALTM") if city.document != null else null
 
-	if chunk == null:
+	if chunk == null or chunk.decoded_payload.size() != cells * 2:
 		return false
 
-	var changed := chunk.decoded_payload.duplicate()
-	changed[index * 2] = (value >> 8) & 0xff
-	changed[index * 2 + 1] = value & 0xff
-
-	if not chunk.set_decoded_payload(changed):
-		return false
-
-	city.altitude_words[index] = value
+	# Truncate to the stored 16-bit word before updating the ALTM mirror, so both copies agree.
+	var word := value & 0xffff
+	chunk.write_decoded_bytes(index * 2, PackedByteArray([word >> 8, word & 0xff]))
+	city.altitude_words[index] = word
 
 	return true

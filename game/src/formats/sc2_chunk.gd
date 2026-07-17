@@ -28,6 +28,17 @@ func mark_mutated() -> void:
 	mutation_revision += 1
 
 
+# Avoid a temporary array for single-byte edits. Invalid offsets leave the chunk unchanged.
+func write_decoded_byte(offset: int, value: int) -> bool:
+	if offset < 0 or offset >= decoded_payload.size():
+		return false
+
+	decoded_payload[offset] = value
+	mark_mutated()
+
+	return true
+
+
 # Writes only the requested range. An invalid range leaves the chunk unchanged.
 func write_decoded_bytes(offset: int, bytes: PackedByteArray) -> bool:
 	if offset < 0 or offset + bytes.size() > decoded_payload.size():
