@@ -354,6 +354,12 @@
     "lane": "product"
   },
   {
+    "id": "city_mirror_invariant_test",
+    "script": "tests/city_mirror_invariant_test.gd",
+    "domain": "simulation",
+    "lane": "product"
+  },
+  {
     "id": "eq_decay_regression_test",
     "script": "tests/eq_decay_regression_test.gd",
     "domain": "simulation",
