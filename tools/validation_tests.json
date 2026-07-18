@@ -689,6 +689,12 @@
     ]
   },
   {
+    "id": "city_gpu_fast_tile_test",
+    "script": "tests/city_gpu_fast_tile_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
     "id": "city_gpu_cache_test",
     "script": "tests/city_gpu_cache_test.gd",
     "domain": "rendering",

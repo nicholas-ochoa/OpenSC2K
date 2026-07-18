@@ -227,6 +227,8 @@ func _register_image_roles() -> void:
 	_image_key_count = images.size()
 
 
+# a shortcut for common surface tiles. city_gpu_fast_tile_test proves that it
+# records the same draws as cityisometricrenderer.draw_tile
 func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 		sprites: Sc2SpriteArchive, config: Dictionary, origin: int, x: int, y: int) -> bool:
 	var key := x * city.map_size + y
