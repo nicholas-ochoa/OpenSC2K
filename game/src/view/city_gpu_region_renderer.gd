@@ -18,17 +18,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 		return {"ok": false, "error": "empty GPU region"}
 
 	var limit := Renderer.maximum_sprite_size(sprites)
-	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
-	var bottom := int(configuration.tile_height) + int(IntegerMath.div_trunc(limit.x, 4)) + 1
-
-	if mode == "underground":
-		bottom += 31 * int(configuration.altitude_step)
-
-	var top := 32 * int(configuration.altitude_step) + limit.y
-	var first := maxi(0, floori(float(bounds.position.y - int(configuration.top_margin) - bottom) / int(configuration.half_height)))
-	var last := mini(2 * (city.map_size - 1), ceili(float(bounds.end.y - int(configuration.top_margin) + top) / int(configuration.half_height)))
-	var first_difference := floori(float(bounds.position.x - origin - limit.x - int(configuration.tile_width) - 1) / int(configuration.half_width))
-	var last_difference := ceili(float(bounds.end.x - origin + limit.x) / int(configuration.half_width))
+	var span := Renderer.region_tile_span(configuration, limit, bounds, city.map_size, mode == "underground")
 	var draws: Array[Dictionary] = []
 	var foreground: Array[Dictionary] = []
 	var vertices := PackedVector2Array()
@@ -44,11 +34,10 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 		var slot := context.slot(context.images.gpu_background)
 		_append_quad(Rect2(Vector2.ZERO, Vector2(bounds.size)), Rect2(slot), vertices, uvs, indices)
 
-	for diagonal in range(first, last + 1):
-		var first_y := maxi(maxi(0, diagonal - city.map_size + 1), ceili(float(diagonal - last_difference) / 2.0))
-		var last_y := mini(mini(city.map_size - 1, diagonal), floori(float(diagonal - first_difference) / 2.0))
+	for diagonal in range(span.first_diagonal, int(span.last_diagonal) + 1):
+		var rows := Renderer.diagonal_rows(span, diagonal, city.map_size)
 
-		for y in range(first_y, last_y + 1):
+		for y in range(rows.x, rows.y + 1):
 			if not context.intersects(city, sprites, configuration, diagonal - y, y, bounds, mode):
 				continue
 

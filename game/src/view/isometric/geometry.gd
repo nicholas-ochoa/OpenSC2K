@@ -101,6 +101,42 @@ static func potential_tile_bounds(
 	)
 
 
+# return the diagonals and screen columns whose tiles can touch `bounds`
+# diagonal d holds the tiles with x + y == d. difference c holds the tiles
+# with x - y == c. the margins allow for the largest sprite overhang and the
+# full altitude range, as `potential_tile_bounds` does. the underground view
+# also draws down to 31 altitude steps below the surface
+# walk the diagonals in order and use `diagonal_rows` for the rows of each
+static func region_tile_span(
+	configuration: Dictionary, sprite_limit: Vector2i, bounds: Rect2i,
+	map_edge: int, underground: bool
+) -> Dictionary:
+	var half_width := int(configuration.half_width)
+	var half_height := int(configuration.half_height)
+	var origin := int(configuration.side_margin) + map_edge * half_width
+	var bottom := int(configuration.tile_height) + int(IntegerMath.div_trunc(sprite_limit.x, 4)) + 1
+
+	if underground:
+		bottom += 31 * int(configuration.altitude_step)
+
+	var top := 32 * int(configuration.altitude_step) + sprite_limit.y
+
+	return {
+		"first_diagonal": maxi(0, floori(float(bounds.position.y - int(configuration.top_margin) - bottom) / half_height)),
+		"last_diagonal": mini(2 * (map_edge - 1), ceili(float(bounds.end.y - int(configuration.top_margin) + top) / half_height)),
+		"first_difference": floori(float(bounds.position.x - origin - sprite_limit.x - int(configuration.tile_width) - 1) / half_width),
+		"last_difference": ceili(float(bounds.end.x - origin + sprite_limit.x) / half_width),
+	}
+
+
+# return the first and last y of the tiles on `diagonal` inside `span`
+static func diagonal_rows(span: Dictionary, diagonal: int, map_edge: int) -> Vector2i:
+	return Vector2i(
+		maxi(maxi(0, diagonal - map_edge + 1), ceili(float(diagonal - int(span.last_difference)) / 2.0)),
+		mini(mini(map_edge - 1, diagonal), floori(float(diagonal - int(span.first_difference)) / 2.0))
+	)
+
+
 static func surface_terrain_id(city: CityState, x: int, y: int) -> int:
 	var terrain := city.terrain_id(x, y)
 

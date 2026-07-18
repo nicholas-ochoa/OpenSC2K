@@ -30,24 +30,12 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	var cache := {}
 	var foreground: Array[Dictionary] = []
 	var count := 0
-	var half_width := int(configuration.half_width)
-	var half_height := int(configuration.half_height)
-	var bottom_extra := int(configuration.tile_height) + int(IntegerMath.div_trunc(sprite_limit.x, 4)) + 1
+	var span := Renderer.region_tile_span(configuration, sprite_limit, bounds, city.map_size, mode == "underground")
 
-	if mode == "underground":
-		bottom_extra += 31 * int(configuration.altitude_step)
+	for diagonal in range(span.first_diagonal, int(span.last_diagonal) + 1):
+		var rows := Renderer.diagonal_rows(span, diagonal, city.map_size)
 
-	var top_extra := 32 * int(configuration.altitude_step) + sprite_limit.y
-	var first_diagonal := maxi(0, floori(float(bounds.position.y - int(configuration.top_margin) - bottom_extra) / half_height))
-	var last_diagonal := mini(2 * (city.map_size - 1), ceili(float(bounds.end.y - int(configuration.top_margin) + top_extra) / half_height))
-	var first_difference := floori(float(bounds.position.x - origin - sprite_limit.x - int(configuration.tile_width) - 1) / half_width)
-	var last_difference := ceili(float(bounds.end.x - origin + sprite_limit.x) / half_width)
-
-	for diagonal in range(first_diagonal, last_diagonal + 1):
-		var first_y := maxi(maxi(0, diagonal - city.map_size + 1), ceili(float(diagonal - last_difference) / 2.0))
-		var last_y := mini(mini(city.map_size - 1, diagonal), floori(float(diagonal - first_difference) / 2.0))
-
-		for y in range(first_y, last_y + 1):
+		for y in range(rows.x, rows.y + 1):
 			var x := diagonal - y
 			var potential := Renderer.potential_tile_bounds(configuration, sprite_limit, x, y, city.map_size)
 

@@ -62,6 +62,20 @@ static func potential_tile_bounds(
 	return IsometricGeometry.potential_tile_bounds(configuration, sprite_limit, x, y, map_edge)
 
 
+# return the diagonals and screen columns whose tiles can touch `bounds`
+# a region painter walks `first_diagonal` to `last_diagonal` in order
+static func region_tile_span(
+	configuration: Dictionary, sprite_limit: Vector2i, bounds: Rect2i,
+	map_edge: int, underground: bool
+) -> Dictionary:
+	return IsometricGeometry.region_tile_span(configuration, sprite_limit, bounds, map_edge, underground)
+
+
+# return the first and last y of the tiles on `diagonal` inside `span`
+static func diagonal_rows(span: Dictionary, diagonal: int, map_edge: int) -> Vector2i:
+	return IsometricGeometry.diagonal_rows(span, diagonal, map_edge)
+
+
 static func validate_assets(
 	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
 ) -> PackedStringArray:
