@@ -238,8 +238,6 @@ static func _apply_history(
 	process_random: SimRandom,
 	forward: bool
 ) -> Dictionary:
-	var map_edge: int = city.map_size if city != null else 128
-
 	if city == null or not city.is_valid():
 		return _failure("city is invalid")
 
@@ -305,14 +303,6 @@ static func _apply_history(
 		city, changed_ids, destination_payloads, source_payloads
 	):
 		return _failure("cannot restore Place & Print changes")
-
-	if changed_ids.has("ALTM"):
-		var altitude: PackedByteArray = destination_payloads.ALTM
-
-		for index in (map_edge * map_edge):
-			city.altitude_words[index] = (
-				(altitude[index * 2] << 8) | altitude[index * 2 + 1]
-			)
 
 	if not before_random_key.is_empty():
 		process_random.state = int(command.get(

@@ -192,8 +192,6 @@ static func apply_path(
 
 		return {"ok": false, "error": "cannot store demolition changes"}
 
-	DemolishTerrain._refresh_altitude(city, changed_payloads.ALTM)
-
 	return {
 		"ok": true,
 		"command_type": "demolish",
@@ -247,7 +245,6 @@ static func undo(city: CityState, command: Dictionary, random: SimRandom) -> Dic
 	if not BuildingCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore demolition changes"}
 
-	DemolishTerrain._refresh_altitude(city, old_payloads.ALTM)
 	random.state = int(command.random_state_before)
 	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
 

@@ -23,6 +23,8 @@ func _initialize() -> void:
 	_check_growth_apply_rollback()
 	_check_growth_phase()
 	_check_city_rotation()
+	_check_building_commands()
+	_check_landscape_commands()
 	_check_display_copy_is_exempt()
 	print("City mirror invariant: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
@@ -171,6 +173,65 @@ func _check_city_rotation() -> void:
 	city.set_building_id(30, 40, 0x07)
 	check(CityRotationCommand.apply(city, false).ok, "City rotation succeeds")
 	check_mirrors(city, "city rotation")
+
+
+## The building commit path resyncs by chunk id, ALTM included. Demolishing a
+## tunnel mouth rewrites the tunnel-level bits of the altitude word, which is
+## the case this path used to leave to a hand-written decode at each caller.
+func _check_building_commands() -> void:
+	var document := EmptyCityTemplate.create(128)
+	document.set_misc_i32(0x14, 100000)
+	var city := CityState.from_document(document)
+	var lfsr := SimLfsrRandom.new(1)
+	var process := SimRandom.new(1)
+	var station := BuildingCommand.apply(city, 13, 0, Vector2i(20, 20), lfsr, process)
+	check(station.ok, "Station placement succeeds")
+	check_mirrors(city, "building command")
+	check(BuildingCommand.undo(city, station, lfsr, process).ok, "Station placement undo succeeds")
+	check_mirrors(city, "building command undo")
+
+	var start := Vector2i(60, 60)
+	city.set_terrain_id(start.x, start.y, 3)
+	city.set_land_altitude(start.x, start.y, 5)
+	city.set_land_altitude(start.x + 1, start.y, 6)
+	city.set_terrain_id(start.x + 2, start.y, 1)
+	city.set_land_altitude(start.x + 2, start.y, 5)
+	check(TunnelCommand.apply(city, 6, 2, start, 1).ok, "Tunnel placement succeeds")
+	check_mirrors(city, "tunnel command")
+	var altitude_before: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload.duplicate()
+	var random := SimRandom.new(5)
+	var demolished := DemolishCommand.apply_path(city, 0, 0, [start], random)
+	check(demolished.ok, "Tunnel demolition succeeds")
+	check(city.document.find_chunk("ALTM").decoded_payload != altitude_before,
+		"Tunnel demolition commits ALTM through the building path")
+	check_mirrors(city, "demolish command")
+	check(DemolishCommand.undo(city, demolished, random).ok, "Tunnel demolition undo succeeds")
+	check_mirrors(city, "demolish command undo")
+
+
+## The landscape commit path resyncs by chunk id too. Its water tool writes the
+## water field of the altitude word, so it covers ALTM here as well.
+func _check_landscape_commands() -> void:
+	var city := CityState.from_document(EmptyCityTemplate.create(128))
+	var random := SimRandom.new(22)
+	var forest := LandscapeCommand.apply_path(city, 1, 3, [Vector2i(20, 20)], random)
+	check(forest.ok, "Forest placement succeeds")
+	check_mirrors(city, "landscape command")
+	check(LandscapeCommand.undo(city, forest, random).ok, "Forest placement undo succeeds")
+	check_mirrors(city, "landscape command undo")
+
+	for x in range(58, 64):
+		for y in range(58, 64):
+			city.set_land_altitude(x, y, 4)
+
+	var altitude_before: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload.duplicate()
+	var water := LandscapeCommand.apply_path(city, 1, 1, [Vector2i(60, 60)], random)
+	check(water.ok, "Water placement succeeds")
+	check(city.document.find_chunk("ALTM").decoded_payload != altitude_before,
+		"Water placement commits ALTM through the landscape path")
+	check_mirrors(city, "landscape water command")
+	check(LandscapeCommand.undo(city, water, random).ok, "Water placement undo succeeds")
+	check_mirrors(city, "landscape water undo")
 
 
 ## CityViewFilter builds a display city whose mirrors deliberately diverge from

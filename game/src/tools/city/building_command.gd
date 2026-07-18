@@ -237,8 +237,8 @@ static func _apply_payloads(
 	return BuildingState._apply_payloads(city, chunk_ids, payloads, rollback)
 
 
-static func _refresh_city_arrays(city: CityState) -> void:
-	BuildingState._refresh_city_arrays(city)
+static func _refresh_city_arrays(city: CityState, chunk_ids: PackedStringArray) -> void:
+	BuildingState._refresh_city_arrays(city, chunk_ids)
 
 
 static func _read_u32_be(data: PackedByteArray, offset: int) -> int:

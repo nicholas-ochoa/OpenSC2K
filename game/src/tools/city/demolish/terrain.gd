@@ -97,13 +97,6 @@ static func _point_is_in_bounds(point: Vector2i, map_edge: int = 128) -> bool:
 	return point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge
 
 
-static func _refresh_altitude(city: CityState, altitude: PackedByteArray) -> void:
-	var map_edge: int = city.map_size if city != null else 128
-
-	for index in (map_edge * map_edge):
-		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
-
-
 static func _retile_after_demolition(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,

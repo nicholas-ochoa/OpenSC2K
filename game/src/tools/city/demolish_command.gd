@@ -279,10 +279,6 @@ static func _point_is_in_bounds(point: Vector2i, map_edge: int = 128) -> bool:
 	return DemolishTerrain._point_is_in_bounds(point, map_edge)
 
 
-static func _refresh_altitude(city: CityState, altitude: PackedByteArray) -> void:
-	DemolishTerrain._refresh_altitude(city, altitude)
-
-
 static func _building_area(tile_id: int) -> int:
 	return DemolishEffectsSites._building_area(tile_id)
 

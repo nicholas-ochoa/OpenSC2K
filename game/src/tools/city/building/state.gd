@@ -85,24 +85,21 @@ static func _apply_payloads(
 			for rollback_id in applied:
 				city.document.find_chunk(rollback_id).set_decoded_payload(rollback[rollback_id])
 
-			_refresh_city_arrays(city)
+			_refresh_city_arrays(city, applied)
 
 			return false
 
 		applied.append(chunk_id)
 
-	_refresh_city_arrays(city)
+	_refresh_city_arrays(city, chunk_ids)
 
 	return true
 
 
-static func _refresh_city_arrays(city: CityState) -> void:
-	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
-	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
-	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
-	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
-	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
-	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
+# resync the mirrors of the committed chunks. passing the ids also covers
+# altm, which this path used to leave to each caller to decode by hand
+static func _refresh_city_arrays(city: CityState, chunk_ids: PackedStringArray) -> void:
+	city.resync_mirrors(chunk_ids)
 
 
 static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
