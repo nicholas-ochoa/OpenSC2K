@@ -296,8 +296,8 @@ static func _apply_payloads(
 	return GrowthState._apply_payloads(city, chunk_ids, payloads, rollback)
 
 
-static func _refresh_city(city: CityState) -> void:
-	GrowthState._refresh_city(city)
+static func _refresh_city(city: CityState, chunk_ids: PackedStringArray) -> void:
+	GrowthState._refresh_city(city, chunk_ids)
 
 
 static func _sync_altitudes(altitude: PackedByteArray, altitudes: PackedInt32Array, map_edge: int = 128) -> void:

@@ -81,33 +81,24 @@ static func _apply_payloads(
 			for rollback_id in applied:
 				city.document.find_chunk(rollback_id).set_decoded_payload(rollback[rollback_id])
 
-			_refresh_city(city)
+			# the rollback restored the chunks it had already written, so those
+			# are the mirrors that moved. a chunk later in chunk_ids was never
+			# committed and its mirror is still current
+			_refresh_city(city, applied)
 
 			return false
 
 		applied.append(chunk_id)
 
-	_refresh_city(city)
+	_refresh_city(city, chunk_ids)
 
 	return true
 
 
-static func _refresh_city(city: CityState) -> void:
-	var map_edge: int = city.map_size if city != null else 128
-	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-
-	for index in (map_edge * map_edge):
-		if city.simulation_slice != null and (index & 127) == 0:
-			city.simulation_slice.checkpoint()
-
-		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
-
-	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
-	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
-	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
-	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
-	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
-	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
+# resync the mirrors of the committed chunks. a commit that only rewrites xbld
+# must not copy five other map arrays and decode every altitude word again
+static func _refresh_city(city: CityState, chunk_ids: PackedStringArray) -> void:
+	city.resync_mirrors(chunk_ids)
 
 
 static func _sync_altitudes(altitude: PackedByteArray, altitudes: PackedInt32Array, map_edge: int = 128) -> void:
