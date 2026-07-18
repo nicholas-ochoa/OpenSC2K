@@ -247,6 +247,7 @@ static func run(
 				)
 
 	var applied: Array = []
+	var committed := PackedStringArray()
 
 	for update in [
 		[thing_chunk, things, original_things, "XTHG"],
@@ -272,19 +273,12 @@ static func run(
 			return {"ok": false, "error": "cannot store %s after the moving-thing tick" % update[3]}
 
 		applied.push_front([update[0], update[2]])
+		committed.append(update[3])
 
-	city.buildings = buildings.duplicate()
-	city.terrain = terrain.duplicate()
-	city.zones = zones.duplicate()
-	city.underground = underground.duplicate()
-	city.text_overlays = text.duplicate()
-	city.tile_flags = flags.duplicate()
-
-	for index in (map_edge * map_edge):
-		if city.simulation_slice != null and (index & 127) == 0:
-			city.simulation_slice.checkpoint()
-
-		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
+	# most ticks only move things, so they write xthg and xtxt and nothing else
+	# resyncing the chunks this tick actually wrote keeps the other map mirrors
+	# and the altitude decode out of the 5 hz path
+	city.resync_mirrors(committed)
 
 	counters["ok"] = true
 	counters["sailboats_complete"] = true

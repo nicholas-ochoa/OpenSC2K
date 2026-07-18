@@ -93,6 +93,44 @@ func is_valid() -> bool:
 	return load_error.is_empty()
 
 
+# refresh the mirrors of the named chunks from the document. a commit passes
+# the ids it actually wrote, so a tick that only moved things does not copy
+# six map arrays and decode two bytes per tile for nothing. ids without a
+# mirror are ignored, so a caller can pass its whole chunk list
+func resync_mirrors(chunk_ids: PackedStringArray) -> void:
+	for chunk_id in chunk_ids:
+		var chunk := document.find_chunk(chunk_id) if document != null else null
+
+		if chunk == null:
+			continue
+
+		match chunk_id:
+			"ALTM":
+				_resync_altitude_words(chunk.decoded_payload)
+			"XTER":
+				terrain = chunk.decoded_payload.duplicate()
+			"XBLD":
+				buildings = chunk.decoded_payload.duplicate()
+			"XZON":
+				zones = chunk.decoded_payload.duplicate()
+			"XUND":
+				underground = chunk.decoded_payload.duplicate()
+			"XTXT":
+				text_overlays = chunk.decoded_payload.duplicate()
+			"XBIT":
+				tile_flags = chunk.decoded_payload.duplicate()
+
+
+# altm is the one mirror that is decoded rather than copied: each tile is a
+# big-endian word of land, water, and tunnel fields
+func _resync_altitude_words(altitude: PackedByteArray) -> void:
+	for index in (map_size * map_size):
+		if simulation_slice != null and (index & 127) == 0:
+			simulation_slice.checkpoint()
+
+		altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
+
+
 func index_of(x: int, y: int) -> int:
 	if x < 0 or x >= map_size or y < 0 or y >= map_size:
 		return -1
