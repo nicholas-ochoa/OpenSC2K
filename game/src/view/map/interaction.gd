@@ -13,7 +13,7 @@ func _gui_input(event: InputEvent) -> void:
 	if not map.data_view_mode.is_empty() and event is InputEventMouseMotion:
 		map.queue_redraw()
 
-	if map.city_texture == null:
+	if map.city_source == null:
 		return
 
 	if event is InputEventMouseButton:

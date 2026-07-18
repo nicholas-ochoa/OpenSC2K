@@ -39,15 +39,15 @@ func _run() -> void:
 func check_texture_patch() -> void:
 	var image := Image.create(8192, 64, false, Image.FORMAT_RGBA8)
 	image.fill(Color.RED)
-	var texture := CityMapTexture.create(image)
-	var tiles: Array = texture.get_meta("map_tiles")
+	var source := CityMapTexture.create(image)
+	var tiles := source.tiles
 	var first: Texture2D = tiles[0].texture
 	var second: Texture2D = tiles[1].texture
 	image.set_pixel(5, 5, Color.BLUE)
 	# Change the backing image outside the dirty area to detect uploads of clean tiles.
 	image.set_pixel(5000, 5, Color.GREEN)
-	var result := CityMapTexture.update_region(texture, image, Rect2i(5, 5, 1, 1))
-	assert(result == texture and tiles[0].texture == first and tiles[1].texture == second)
+	var result := CityMapTexture.update_region(source, image, Rect2i(5, 5, 1, 1))
+	assert(result == source and tiles[0].texture == first and tiles[1].texture == second)
 	await process_frame
 	await process_frame
 

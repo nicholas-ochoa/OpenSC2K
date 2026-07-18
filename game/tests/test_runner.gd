@@ -1952,7 +1952,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	var scroll_control := MapControl.new()
 	scroll_control.size = Vector2(400, 300)
 	var scroll_image := Image.create_empty(1000, 800, false, Image.FORMAT_RGBA8)
-	scroll_control.set_city_view(starter, ImageTexture.create_from_image(scroll_image))
+	scroll_control.set_city_view(starter, CityMapSource.whole(ImageTexture.create_from_image(scroll_image)))
 	var initial_scroll := scroll_control.scroll_state()
 	_check(
 		initial_scroll.content == Vector2(1960, 800)
@@ -2195,9 +2195,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		query_signal_points.append(point)
 	)
 	map_control.edit_enabled = true
-	map_control.city_texture = ImageTexture.create_from_image(
+	map_control.city_source = CityMapSource.whole(ImageTexture.create_from_image(
 		Image.create(1, 1, false, Image.FORMAT_RGBA8)
-	)
+	))
 	map_control.set_selection_price(12345, false)
 	_check(
 		map_control.selection_price_text() == "$12,345"

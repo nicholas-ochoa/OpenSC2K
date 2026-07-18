@@ -16,7 +16,7 @@ func _run() -> void:
 	cache.update_viewport(Rect2(bounds))
 	await _drain(cache)
 	assert(cache.gpu_enabled and cache.ready())
-	assert(cache.texture().get_meta("map_meshes").size() == cache.visible.size())
+	assert(cache.texture().meshes.size() == cache.visible.size())
 	var expected := CityRegionRenderer.render(city, palette, sprites, bounds, 2)
 	assert(expected.ok)
 	var sampled := cache.image_region(bounds)

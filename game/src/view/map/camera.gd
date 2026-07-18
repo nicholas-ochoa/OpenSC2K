@@ -114,7 +114,7 @@ func visible_tile_outline() -> PackedVector2Array:
 	var map_edge: int = map.city.map_size if map.city != null else 128
 	var result := PackedVector2Array()
 
-	if map.city == null or map.city_texture == null:
+	if map.city == null or map.city_source == null:
 		return result
 
 	var half_visible := _camera_rect().size / (_view_scale() * 2.0)
@@ -140,7 +140,7 @@ func visible_tile_outline() -> PackedVector2Array:
 
 
 func scroll_state() -> Dictionary:
-	if map.city_texture == null:
+	if map.city_source == null:
 		return {}
 
 	var bounds := _camera_source_bounds()
@@ -255,12 +255,12 @@ func _camera_source_bounds() -> Rect2:
 	var side_padding := float(Renderer.TOP_MARGIN - Renderer.SIDE_MARGIN)
 	return Rect2(
 		Vector2(-side_padding, 0),
-		Vector2(map.city_texture.get_size()) + Vector2(side_padding * 2.0, 0)
+		Vector2(map.city_source.size) + Vector2(side_padding * 2.0, 0)
 	)
 
 
 func _clamp_source_center() -> void:
-	if map.city_texture == null:
+	if map.city_source == null:
 		return
 
 	var bounds := _camera_source_bounds()

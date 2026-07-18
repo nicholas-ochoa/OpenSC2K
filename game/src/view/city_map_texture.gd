@@ -4,39 +4,36 @@ extends RefCounted
 const TILE_EDGE := 4096
 
 
-static func create(image: Image) -> Texture2D:
+static func create(image: Image) -> CityMapSource:
 	if image.get_width() <= TILE_EDGE and image.get_height() <= TILE_EDGE:
-		return ImageTexture.create_from_image(image)
+		return CityMapSource.whole(ImageTexture.create_from_image(image))
 
-	var result := PlaceholderTexture2D.new()
-	result.size = image.get_size()
-	var tiles: Array[Dictionary] = []
+	var result := CityMapSource.new(image.get_size())
 
 	for y in range(0, image.get_height(), TILE_EDGE):
 		for x in range(0, image.get_width(), TILE_EDGE):
 			var bounds := Rect2i(x, y, mini(TILE_EDGE, image.get_width() - x), mini(TILE_EDGE, image.get_height() - y))
-			tiles.append({"position": Vector2(x, y), "texture": ImageTexture.create_from_image(image.get_region(bounds))})
-
-	result.set_meta("map_tiles", tiles)
+			var texture := ImageTexture.create_from_image(image.get_region(bounds))
+			result.tiles.append(CityMapSource.TileEntry.new(Vector2(x, y), texture.get_size(), texture))
 
 	return result
 
 
-static func update_region(texture: Texture2D, image: Image, dirty: Rect2i) -> Texture2D:
-	if texture == null or texture.get_size() != Vector2(image.get_size()):
+static func update_region(source: CityMapSource, image: Image, dirty: Rect2i) -> CityMapSource:
+	if source == null or source.size != image.get_size():
 		return create(image)
 
-	if texture.has_meta("map_tiles"):
-		for tile: Dictionary in texture.get_meta("map_tiles"):
+	if not source.tiles.is_empty():
+		for tile in source.tiles:
 			var bounds := Rect2i(Vector2i(tile.position), Vector2i(tile.texture.get_size()))
 
 			if bounds.intersects(dirty):
 				(tile.texture as ImageTexture).update(image.get_region(bounds))
-		return texture
+		return source
 
-	if texture is ImageTexture:
-		(texture as ImageTexture).update(image)
+	if source.texture is ImageTexture:
+		(source.texture as ImageTexture).update(image)
 
-		return texture
+		return source
 
 	return create(image)

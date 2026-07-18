@@ -37,9 +37,7 @@ func run() -> void:
 
 func _check_camera_bounds(workspace: CityWorkspace, host: Control) -> void:
 	var map := workspace.map_view
-	var texture := PlaceholderTexture2D.new()
-	texture.size = Vector2(4096, 2304)
-	map.city_texture = texture
+	map.city_source = CityMapSource.new(Vector2i(4096, 2304))
 
 	for window_size in [Vector2i(1280, 800), Vector2i(1600, 1000)]:
 		host.size = window_size
@@ -60,12 +58,12 @@ func _check_camera_bounds(workspace: CityWorkspace, host: Control) -> void:
 			assert(first_pixel.y >= camera_rect.position.y - 0.5, "Top map edge is behind the menu")
 			map.source_center = Vector2(100000, 100000)
 			map.camera._clamp_source_center()
-			var last_pixel := map.camera._draw_offset(zoom) + (texture.size + Vector2(side_padding, 0)) * zoom
+			var last_pixel := map.camera._draw_offset(zoom) + (Vector2(map.city_source.size) + Vector2(side_padding, 0)) * zoom
 			assert(last_pixel.x <= camera_rect.end.x + 0.5)
 			assert(last_pixel.y <= camera_rect.end.y + 0.5)
 
 		map.zoom_factor = 1.0
-		map.source_center = texture.size * 0.5
+		map.source_center = Vector2(map.city_source.size) * 0.5
 		var anchor := camera_rect.get_center() + Vector2(80, 40)
 		var source_anchor := (anchor - map.camera._draw_offset(1.0))
 		assert(map.zoom_in(anchor))

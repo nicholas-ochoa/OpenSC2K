@@ -48,9 +48,7 @@ func set_data_view(value: CityState, mode: String) -> void:
 
 	map.data_view_mode = mode
 	map.data_view_layer.mesh = map.data_view_mesh
-	var placeholder := PlaceholderTexture2D.new()
-	placeholder.size = Renderer.output_size_for_view(Renderer.VIEW_LARGE, value.map_size)
-	map.presentation.set_city_view(value, placeholder)
+	map.presentation.set_city_view(value, CityMapSource.new(Renderer.output_size_for_view(Renderer.VIEW_LARGE, value.map_size)))
 
 	if mode_changed and map.hover_tile.x >= 0:
 		map.hover_tile = map.camera._tile_at(map.get_local_mouse_position())
@@ -211,14 +209,14 @@ func _sync_base_layer() -> void:
 	if map._base_layer == null:
 		return
 
-	if map.city_texture == null:
+	if map.city_source == null:
 		map._base_layer.hide()
 
 		return
 
 	var scale := map.camera._view_scale()
 
-	if map._tiled_source != map.city_texture:
+	if map._tiled_source != map.city_source:
 		for tile in map._tile_layers:
 			tile.queue_free()
 
@@ -229,13 +227,13 @@ func _sync_base_layer() -> void:
 			retained_meshes[mesh.get_meta("source_position")] = mesh
 
 		map._mesh_layers.clear()
-		map._tiled_source = map.city_texture
+		map._tiled_source = map.city_source
 
-		for entry in map.city_texture.get_meta("map_tiles", []):
+		for entry in map.city_source.tiles:
 			var tile := TextureRect.new()
 			tile.texture = entry.texture
 			tile.set_meta("source_position", entry.position)
-			tile.set_meta("source_size", entry.get("size", entry.texture.get_size()))
+			tile.set_meta("source_size", entry.size)
 			tile.mouse_filter = Control.MOUSE_FILTER_IGNORE
 			tile.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 			tile.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
@@ -243,7 +241,7 @@ func _sync_base_layer() -> void:
 			map._base_layer.add_child(tile)
 			map._tile_layers.append(tile)
 
-		for entry in map.city_texture.get_meta("map_meshes", []):
+		for entry in map.city_source.meshes:
 			var mesh: MeshInstance2D = retained_meshes.get(entry.position)
 
 			if mesh == null:
@@ -252,12 +250,12 @@ func _sync_base_layer() -> void:
 			else:
 				retained_meshes.erase(entry.position)
 
-				if mesh.mesh == entry.mesh and mesh.texture == entry.texture and int(mesh.get_meta("divisor")) == int(entry.divisor):
+				if mesh.mesh == entry.mesh and mesh.texture == entry.texture and int(mesh.get_meta("divisor")) == entry.divisor:
 					map._mesh_layers.append(mesh)
 					continue
 
 			mesh.position = Vector2(entry.position) * scale
-			mesh.scale = Vector2.ONE * scale * int(entry.divisor)
+			mesh.scale = Vector2.ONE * scale * entry.divisor
 
 			if mesh.mesh != entry.mesh:
 				mesh.mesh = entry.mesh
@@ -274,7 +272,7 @@ func _sync_base_layer() -> void:
 			mesh.hide()
 			mesh.queue_free()
 
-	map._base_layer.texture = null if map.city_texture.has_meta("map_tiles") else map.city_texture
+	map._base_layer.texture = map.city_source.texture
 
 	for tile in map._tile_layers:
 		tile.position = Vector2(tile.get_meta("source_position")) * scale
@@ -288,7 +286,7 @@ func _sync_base_layer() -> void:
 		map._mesh_view_scale = scale
 
 	map._base_layer.position = map.camera._draw_offset(scale)
-	map._base_layer.size = Vector2(map.city_texture.get_size()) * scale
+	map._base_layer.size = Vector2(map.city_source.size) * scale
 	map._base_layer.show()
 	_sync_base_material()
 	_sync_dynamic_canvas()
@@ -304,9 +302,10 @@ func _sync_base_material() -> void:
 	map._base_material.set_shader_parameter("dark_underground", map.dark_underground)
 	map._base_material.set_shader_parameter("palette_indices", map.palette_index_texture)
 	map._base_material.set_shader_parameter("animated_palette", map.animated_palette_texture)
+	# with palette_lookup_all, the base texture holds the indices itself
 	map._base_material.set_shader_parameter(
 		"palette_cycle_enabled",
-		map.palette_index_texture != null and map.animated_palette_texture != null,
+		(map.palette_index_texture != null or map.base_palette_lookup_all) and map.animated_palette_texture != null,
 	)
 	map._base_material.set_shader_parameter("palette_lookup_all", map.base_palette_lookup_all)
 
@@ -324,7 +323,7 @@ func _sync_dynamic_canvas() -> void:
 	if map._dynamic_canvas == null:
 		return
 
-	if map.city_texture == null:
+	if map.city_source == null:
 		map._dynamic_canvas.hide()
 
 		return

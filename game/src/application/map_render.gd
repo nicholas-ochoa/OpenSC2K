@@ -67,9 +67,9 @@ func _refresh_map(force := true) -> void:
 			app.static_visual_signature = current_signature
 			app.static_render_mode = app.overlay_mode
 			app.static_display_city = cached.display_city
-			var cached_texture := CityMapTexture.create(app.static_city_image)
+			var cached_source := CityMapTexture.create(app.static_city_image)
 			app.map_view.set_city_view(
-				app.static_display_city, cached_texture, cached_texture, true
+				app.static_display_city, cached_source, null, true
 			)
 			app.menus._sync_map_style()
 
@@ -176,10 +176,10 @@ func _refresh_map(force := true) -> void:
 		app.dynamic_sign_occlusion_grid.clear()
 		app.map_view.set_dynamic_sprites([])
 
-	var texture := CityMapTexture.create(image)
+	var source := CityMapTexture.create(image)
 	app.map_view.set_city_view(
 		app.static_display_city if app.overlay_mode in ["city", "underground"] else app.city,
-		texture, texture if app.overlay_mode in ["city", "underground"] else null,
+		source, null,
 		app.overlay_mode in ["city", "underground"]
 	)
 	app.menus._sync_map_style()
@@ -232,8 +232,8 @@ func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	app.static_visual_signature = signature
 	app.static_render_mode = app.overlay_mode
 	app.static_display_city = app.region_cache.display_city
-	var texture := app.region_cache.texture()
-	app.map_view.set_city_view(app.static_display_city, texture, texture, true, true, app.region_cache.sign_layout_token)
+	var source := app.region_cache.texture()
+	app.map_view.set_city_view(app.static_display_city, source, null, true, true, app.region_cache.sign_layout_token)
 	app.menus._sync_map_style()
 	app.region_cache.set_sign_requests(app.map_view.sign_source_entries())
 	app.region_cache.update_viewport(app.map_view.visible_source_rect())
@@ -262,8 +262,8 @@ func _poll_region_cache() -> void:
 	app.static_display_city = app.region_cache.display_city
 	app.dynamic_occluder_cache.clear()
 	var foreground_changed := _invalidate_region_foregrounds(app.region_cache.foreground_changes)
-	var texture := app.region_cache.texture()
-	app.map_view.set_city_view(app.static_display_city, texture, texture, true, true, app.region_cache.sign_layout_token)
+	var source := app.region_cache.texture()
+	app.map_view.set_city_view(app.static_display_city, source, null, true, true, app.region_cache.sign_layout_token)
 	app.menus._sync_map_style()
 
 	if app.overlay_mode == "city":

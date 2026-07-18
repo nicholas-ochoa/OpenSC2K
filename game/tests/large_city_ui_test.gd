@@ -58,7 +58,7 @@ func run_check() -> void:
 		assert(main.city_session._activate_document(EmptyCityTemplate.create(edge)))
 		assert(main.map_view.city.map_size == edge)
 		assert((main.frame_simulation != null) == (edge != 128))
-		assert(main.map_view.city_texture.get_size() == Vector2(CityIsometricRenderer.output_size_for_view(2, edge)))
+		assert(main.map_view.city_source.size == CityIsometricRenderer.output_size_for_view(2, edge))
 
 		if edge != 128:
 			main.speed_controller.set_speed(GameSpeedController.Speed.CHEETAH)

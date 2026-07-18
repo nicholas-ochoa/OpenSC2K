@@ -93,9 +93,9 @@ func check_format_guards() -> void:
 	check(not refused.ok, "Reject original-game save extension")
 	check(not document.resize_empty_map(129), "Reject unsupported resize")
 	var image := Image.create(16448, 16, false, Image.FORMAT_RGBA8)
-	var texture := CityMapTexture.create(image)
-	check(texture.get_size() == Vector2(16448, 16), "Large texture extent")
-	var tiles: Array = texture.get_meta("map_tiles", [])
+	var source := CityMapTexture.create(image)
+	check(source.size == Vector2i(16448, 16) and source.texture == null, "Large texture extent")
+	var tiles := source.tiles
 	check(tiles.size() == 5, "Large image uses bounded GPU tiles")
 
 	for tile in tiles:

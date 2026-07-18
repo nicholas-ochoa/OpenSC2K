@@ -11,13 +11,13 @@ func _init(control: CityMapControl) -> void:
 
 func set_city_view(
 	value: CityState,
-	texture: Texture2D,
+	source: CityMapSource,
 	index_texture: Texture2D = null,
 	palette_lookup_all := false,
 	preserve_sign_cache := false,
 	sign_layout_token: Array = []
 ) -> void:
-	var reset_center := map.city_texture == null or map.city_texture.get_size() != texture.get_size()
+	var reset_center := map.city_source == null or map.city_source.size != source.size
 	var old_center := map.source_center
 	var old_sign_scans := map._sign_cache_build_count
 	var reuse_layout := preserve_sign_cache and not sign_layout_token.is_empty() and sign_layout_token == map._external_sign_layout_token and map._sign_entries_city != null and is_equal_approx(map._sign_entries_zoom, map.zoom_factor)
@@ -33,15 +33,15 @@ func set_city_view(
 		map._sign_entries_city = null
 
 	map._external_sign_layout_token = sign_layout_token.duplicate()
-	map.city_texture = texture
+	map.city_source = source
 	map.palette_index_texture = index_texture
 	map.base_palette_lookup_all = palette_lookup_all
 
 	if not preserve_sign_cache:
 		map.signs._invalidate_sign_entries()
 
-	if reset_center and map.city_texture != null:
-		map.source_center = Vector2(map.city_texture.get_size()) * 0.5
+	if reset_center and map.city_source != null:
+		map.source_center = Vector2(map.city_source.size) * 0.5
 
 	if map.pending_loaded_center.x >= 0:
 		map.camera.center_on_tile(map.pending_loaded_center)
@@ -192,7 +192,7 @@ func _show_shake_frame(
 
 
 func _draw() -> void:
-	if map.city_texture == null:
+	if map.city_source == null:
 		return
 
 	var scale := map.camera._view_scale()
@@ -211,10 +211,10 @@ func _draw() -> void:
 
 		return
 
-	if map._base_layer == null:
+	if map._base_layer == null and map.city_source.texture != null:
 		map.draw_texture_rect(
-			map.city_texture,
-			Rect2(offset, Vector2(map.city_texture.get_size()) * scale),
+			map.city_source.texture,
+			Rect2(offset, Vector2(map.city_source.size) * scale),
 			false
 		)
 

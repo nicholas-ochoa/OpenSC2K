@@ -42,7 +42,7 @@ var city: CityState:
 
 		if not _preserve_sign_layout:
 			signs._invalidate_sign_entries()
-var city_texture: Texture2D
+var city_source: CityMapSource
 var palette_index_texture: Texture2D
 var animated_palette_texture: Texture2D
 var dark_underground := false:
@@ -127,7 +127,7 @@ var _next_wheel_zoom_msec := 0
 var _tile_layers: Array[TextureRect] = []
 var _mesh_layers: Array[MeshInstance2D] = []
 var _mesh_view_scale := -1.0
-var _tiled_source: Texture2D
+var _tiled_source: CityMapSource
 var _base_layer: TextureRect
 var _base_material: ShaderMaterial
 var _dynamic_canvas: CityDynamicSpriteCanvas
@@ -174,13 +174,13 @@ func data_key_origin() -> Vector2:
 
 func set_city_view(
 	value: CityState,
-	texture: Texture2D,
+	source: CityMapSource,
 	index_texture: Texture2D = null,
 	palette_lookup_all := false,
 	preserve_sign_cache := false,
 	sign_layout_token: Array = []
 ) -> void:
-	presentation.set_city_view(value, texture, index_texture, palette_lookup_all, preserve_sign_cache, sign_layout_token)
+	presentation.set_city_view(value, source, index_texture, palette_lookup_all, preserve_sign_cache, sign_layout_token)
 
 
 func set_animated_palette(texture: Texture2D) -> void:

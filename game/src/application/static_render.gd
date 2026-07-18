@@ -133,8 +133,8 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	}
 	app.edit_display_timings.occlusion_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
-	var texture := CityMapTexture.update_region(app.map_view.city_texture, app.static_city_image, patched.output_rect)
-	app.map_view.set_city_view(app.static_display_city, texture, texture, true)
+	var source := CityMapTexture.update_region(app.map_view.city_source, app.static_city_image, patched.output_rect)
+	app.map_view.set_city_view(app.static_display_city, source, null, true)
 	app.menus._sync_map_style()
 	app.moving_sprites._refresh_moving_things(view_size)
 	app.edit_display_timings.upload_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
@@ -371,9 +371,9 @@ func _poll_static_render() -> void:
 		"display_city": app.static_display_city,
 		"view_size": int(rendered.view_size),
 	}
-	var texture := CityMapTexture.create(app.static_city_image)
+	var source := CityMapTexture.create(app.static_city_image)
 	app.map_view.set_city_view(
-		app.static_display_city, texture, texture, true
+		app.static_display_city, source, null, true
 	)
 	app.menus._sync_map_style()
 

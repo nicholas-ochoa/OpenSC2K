@@ -112,7 +112,7 @@ func check_ui() -> void:
 		shared_mesh = main.map_view.data_view_mesh
 		check(main.view_menu.get_popup().is_item_checked(index + 2), "Selected menu check")
 		check(main.city_toolbar.data_view_input.selected == index + 1, "Sidebar follows view menu")
-		check(Vector2i(main.map_view.city_texture.get_size()) == CityIsometricRenderer.output_size_for_view(2, 16), "Native isometric extent")
+		check(main.map_view.city_source.size == CityIsometricRenderer.output_size_for_view(2, 16), "Native isometric extent")
 		check(main.map_view.source_center == center, "Switch preserves camera")
 		check(main.map_view.edit_enabled, "Query stays enabled")
 		var mesh: ArrayMesh = main.map_view.data_view_mesh

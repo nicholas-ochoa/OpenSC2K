@@ -148,7 +148,7 @@ func _invalidate_sign_entries() -> void:
 func _draw_signs(scale: float, offset: Vector2) -> void:
 	var map_edge: int = map.city.map_size if map.city != null else 128
 
-	if not map.signs_visible or map.city == null or map.city_texture.get_width() <= map_edge:
+	if not map.signs_visible or map.city == null or map.city_source.size.x <= map_edge:
 		return
 
 	_ensure_sign_entries()

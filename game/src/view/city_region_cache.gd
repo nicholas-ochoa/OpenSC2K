@@ -229,11 +229,8 @@ func tick() -> bool:
 	return changed
 
 
-func texture() -> Texture2D:
-	var output := PlaceholderTexture2D.new()
-	output.size = Vector2(native_size * divisor)
-	var tiles: Array[Dictionary] = []
-	var meshes: Array[Dictionary] = []
+func texture() -> CityMapSource:
+	var output := CityMapSource.new(native_size * divisor)
 
 	for key in visible:
 		if not entries.has(key):
@@ -242,13 +239,10 @@ func texture() -> Texture2D:
 		var entry: Dictionary = entries[key]
 
 		if entry.has("mesh"):
-			meshes.append({"position": Vector2(entry.bounds.position * divisor), "mesh": entry.mesh, "texture": entry.atlas_texture, "divisor": divisor})
+			output.meshes.append(CityMapSource.MeshEntry.new(Vector2(entry.bounds.position * divisor), entry.mesh, entry.atlas_texture, divisor))
 			continue
 
-		tiles.append({"position": Vector2(entry.bounds.position * divisor), "size": Vector2(entry.bounds.size * divisor), "texture": entry.texture})
-
-	output.set_meta("map_tiles", tiles)
-	output.set_meta("map_meshes", meshes)
+		output.tiles.append(CityMapSource.TileEntry.new(Vector2(entry.bounds.position * divisor), Vector2(entry.bounds.size * divisor), entry.texture))
 
 	return output
 
