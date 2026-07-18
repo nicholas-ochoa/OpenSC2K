@@ -8502,7 +8502,9 @@ func _test_arcology_launch_phase(reference_root: String) -> void:
 	for index in launch.tile_indices:
 		text_overlays[index] = 0xfe
 
-	_check(document.find_chunk("XTXT").set_decoded_payload(text_overlays), "Arcology launch fixture installs launch markers")
+	# Install the markers through the city so its XTXT mirror matches the chunk.
+	# Writing the chunk alone leaves the mirror stale before the phase even runs.
+	_check(city.replace_text_overlays(text_overlays), "Arcology launch fixture installs launch markers")
 	var microsims := _filled_bytes(CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE, 0)
 
 	for record_id in range(1, 101):
