@@ -8,23 +8,22 @@ const ExportJob = preload("res://src/view/city_png_export_job.gd")
 const FileDialogs = preload("res://src/ui/shared/file_dialog_factory.gd")
 const NumberFormat = preload("res://src/ui/shared/display_number_format.gd")
 const VIEWS := [["City", "city"], ["Underground", "underground"]]
+const SURFACE_ONLY_TOOLTIP := "The underground view has no signs or moving things."
 
 var folder_input: LineEdit
 var browse_button: Button
 var file_name_input: LineEdit
 var graphics_selector: OptionButton
-var zoom_selector: OptionButton
 var view_selector: OptionButton
 var background_check: CheckBox
+var signs_check: CheckBox
+var moving_things_check: CheckBox
 var summary_label: Label
 var folder_dialog: FileDialog
 
 var _city_name := ""
 var _map_edge := 128
-var _zoom_graphics: Array[int] = []
-var _overview_graphics := 0
 var _protected_folder := ""
-var _graphics_chosen := false
 var _file_name_chosen := false
 var _updating := false
 
@@ -37,16 +36,14 @@ func _ready() -> void:
 	browse_button = $Fields/Grid/FolderRow/BrowseButton
 	file_name_input = $Fields/Grid/FileNameInput
 	graphics_selector = $Fields/Grid/GraphicsSelector
-	zoom_selector = $Fields/Grid/ZoomSelector
 	view_selector = $Fields/Grid/ViewSelector
-	background_check = $Fields/Grid/BackgroundCheck
+	background_check = $Fields/Grid/IncludeChecks/BackgroundCheck
+	signs_check = $Fields/Grid/IncludeChecks/SignsCheck
+	moving_things_check = $Fields/Grid/IncludeChecks/MovingThingsCheck
 	summary_label = $Fields/Summary
 
 	for index in AppSettingsStore.GRAPHICS_SIZES.size():
 		graphics_selector.add_item(AppSettingsStore.GRAPHICS_SIZES[index], index)
-
-	for index in CityMapConstants.ZOOM_LEVELS.size():
-		zoom_selector.add_item("%d%%" % roundi(CityMapConstants.ZOOM_LEVELS[index] * 100.0), index)
 
 	for index in VIEWS.size():
 		view_selector.add_item(VIEWS[index][0], index)
@@ -58,34 +55,29 @@ func _ready() -> void:
 	browse_button.pressed.connect(_browse_folder)
 	folder_input.text_changed.connect(_refresh.unbind(1))
 	file_name_input.text_changed.connect(_choose_file_name)
-	graphics_selector.item_selected.connect(_choose_graphics)
-	zoom_selector.item_selected.connect(_choose_zoom)
-	view_selector.item_selected.connect(_refresh_name.unbind(1))
-	background_check.toggled.connect(_refresh.unbind(1))
+	graphics_selector.item_selected.connect(_refresh_name.unbind(1))
+	view_selector.item_selected.connect(_choose_view)
 	confirmed.connect(_confirm)
 
 
-# set the defaults from the current city window. `zoom_graphics` is the
-# player's zoom-to-graphics preference, used until a size is chosen here
+# set the defaults from the current city window
 func configure(
-	city_name: String, folder: String, map_edge: int, zoom_factor: float, view: String,
-	zoom_graphics: Array[int], overview_graphics: int, protected_folder := ""
+	city_name: String, folder: String, map_edge: int, graphics_size: int, view: String,
+	show_signs: bool, protected_folder := ""
 ) -> void:
 	_updating = true
 	_city_name = city_name
 	_map_edge = map_edge
-	_zoom_graphics = zoom_graphics.duplicate()
-	_overview_graphics = overview_graphics
 	_protected_folder = protected_folder.simplify_path()
-	_graphics_chosen = false
 	_file_name_chosen = false
 	folder_input.text = folder
-	zoom_selector.select(_zoom_index(zoom_factor))
+	graphics_selector.select(clampi(graphics_size, 0, AppSettingsStore.GRAPHICS_SIZES.size() - 1))
 	view_selector.select(1 if view == "underground" else 0)
 	background_check.button_pressed = true
-	_apply_zoom_graphics()
+	signs_check.button_pressed = show_signs
+	moving_things_check.button_pressed = true
 	_updating = false
-	_refresh_name()
+	_choose_view(view_selector.selected)
 
 
 func show_options() -> void:
@@ -94,12 +86,15 @@ func show_options() -> void:
 
 
 func options() -> Dictionary:
+	var surface := _surface_view()
+
 	return {
 		"path": output_path(),
 		"view_size": graphics_selector.get_selected_id(),
-		"zoom": float(CityMapConstants.ZOOM_LEVELS[zoom_selector.get_selected_id()]),
 		"view": String(VIEWS[view_selector.get_selected_id()][1]),
 		"transparent_background": not background_check.button_pressed,
+		"signs": surface and signs_check.button_pressed,
+		"moving_things": surface and moving_things_check.button_pressed,
 	}
 
 
@@ -113,7 +108,7 @@ func output_path() -> String:
 
 
 func output_size() -> Vector2i:
-	return ExportJob.output_size(_map_edge, graphics_selector.get_selected_id(), float(CityMapConstants.ZOOM_LEVELS[zoom_selector.get_selected_id()]))
+	return ExportJob.output_size(_map_edge, graphics_selector.get_selected_id())
 
 
 # return why the current options cannot export, or an empty string
@@ -136,14 +131,11 @@ func validation_error() -> String:
 	if file_name.validate_filename() != file_name:
 		return "The file name contains characters that are not allowed."
 
-	var size := output_size()
-
-	if not ExportJob.fits(size):
-		return "The image would be %s by %s pixels, which is too large. Choose a lower zoom or smaller graphics." % [
-			NumberFormat.format(size.x), NumberFormat.format(size.y),
-		]
-
 	return ""
+
+
+func _surface_view() -> bool:
+	return String(VIEWS[view_selector.get_selected_id()][1]) == "city"
 
 
 func _refresh() -> void:
@@ -169,42 +161,22 @@ func _refresh_name() -> void:
 
 	if not _file_name_chosen:
 		var base := _city_name.validate_filename().strip_edges()
-		file_name_input.text = "%s_%s_%s_%d.png" % [
+		file_name_input.text = "%s_%s_%s.png" % [
 			base if not base.is_empty() else "CITY",
 			String(VIEWS[view_selector.get_selected_id()][1]).to_upper(),
 			String(AppSettingsStore.GRAPHICS_SIZES[graphics_selector.get_selected_id()]).to_upper(),
-			roundi(float(CityMapConstants.ZOOM_LEVELS[zoom_selector.get_selected_id()]) * 100.0),
 		]
 
 	_refresh()
 
 
-func _apply_zoom_graphics() -> void:
-	if _graphics_chosen or _zoom_graphics.is_empty():
-		return
+func _choose_view(_index: int) -> void:
+	var surface := _surface_view()
 
-	var percent := roundi(float(CityMapConstants.ZOOM_LEVELS[zoom_selector.get_selected_id()]) * 100.0)
-	var size := AppSettingsStore.graphics_size_at_zoom(_zoom_graphics, percent, _overview_graphics)
-	graphics_selector.select(clampi(size, 0, AppSettingsStore.GRAPHICS_SIZES.size() - 1))
+	for check in [signs_check, moving_things_check]:
+		check.disabled = not surface
+		check.tooltip_text = "" if surface else SURFACE_ONLY_TOOLTIP
 
-
-func _zoom_index(zoom_factor: float) -> int:
-	var best := 0
-
-	for index in CityMapConstants.ZOOM_LEVELS.size():
-		if absf(float(CityMapConstants.ZOOM_LEVELS[index]) - zoom_factor) < absf(float(CityMapConstants.ZOOM_LEVELS[best]) - zoom_factor):
-			best = index
-
-	return best
-
-
-func _choose_graphics(_index: int) -> void:
-	_graphics_chosen = true
-	_refresh_name()
-
-
-func _choose_zoom(_index: int) -> void:
-	_apply_zoom_graphics()
 	_refresh_name()
 
 

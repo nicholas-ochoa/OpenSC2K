@@ -56,13 +56,6 @@ text = "Graphics"
 [node name="GraphicsSelector" type="OptionButton" parent="Fields/Grid"]
 layout_mode = 2
 
-[node name="ZoomLabel" type="Label" parent="Fields/Grid"]
-layout_mode = 2
-text = "Zoom"
-
-[node name="ZoomSelector" type="OptionButton" parent="Fields/Grid"]
-layout_mode = 2
-
 [node name="ViewLabel" type="Label" parent="Fields/Grid"]
 layout_mode = 2
 text = "View"
@@ -70,14 +63,28 @@ text = "View"
 [node name="ViewSelector" type="OptionButton" parent="Fields/Grid"]
 layout_mode = 2
 
-[node name="BackgroundLabel" type="Label" parent="Fields/Grid"]
+[node name="IncludeLabel" type="Label" parent="Fields/Grid"]
 layout_mode = 2
-text = "Background"
+size_flags_vertical = 0
+text = "Include"
 
-[node name="BackgroundCheck" type="CheckBox" parent="Fields/Grid"]
+[node name="IncludeChecks" type="VBoxContainer" parent="Fields/Grid"]
+layout_mode = 2
+
+[node name="BackgroundCheck" type="CheckBox" parent="Fields/Grid/IncludeChecks"]
 layout_mode = 2
 button_pressed = true
-text = "Include background"
+text = "Background"
+
+[node name="SignsCheck" type="CheckBox" parent="Fields/Grid/IncludeChecks"]
+layout_mode = 2
+button_pressed = true
+text = "Signs"
+
+[node name="MovingThingsCheck" type="CheckBox" parent="Fields/Grid/IncludeChecks"]
+layout_mode = 2
+button_pressed = true
+text = "Moving things"
 
 [node name="Summary" type="Label" parent="Fields"]
 custom_minimum_size = Vector2(520, 0)

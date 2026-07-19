@@ -113,10 +113,10 @@ static func render(
 			sprites,
 			view_size,
 			0,
-			false,
+			bool(options.get("moving_things", false)),
 			transparent,
 			true,
-			false,
+			bool(options.get("special_overlays", false)),
 			progress
 		)
 

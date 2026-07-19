@@ -7,7 +7,6 @@ const ExportJob = preload("res://src/view/city_png_export_job.gd")
 const PROGRESS_DELAY_MSEC := 1000
 const STAGE_TEXT := {
 	ExportJob.STAGE_RENDER: "Drawing the city…",
-	ExportJob.STAGE_SCALE: "Scaling the image…",
 	ExportJob.STAGE_WRITE: "Writing the PNG file…",
 }
 
@@ -41,10 +40,9 @@ func _open_export_dialog() -> void:
 		app.city.city_name(),
 		_default_folder(),
 		app.city.map_size,
-		app.map_view.zoom_factor,
+		app.static_render._city_view_size(),
 		app.overlay_mode,
-		app.app_zoom_graphics,
-		app.app_overview_graphics,
+		bool(app.surface_visibility.get("signs", true)),
 		app.reference_root,
 	)
 	app.city_png_export_dialog.show_options()
@@ -69,9 +67,10 @@ func _start_export(options: Dictionary) -> void:
 	job.palette = app.palette
 	job.sprites = app.static_render._sprite_archive_for_view(view_size)
 	job.view_size = view_size
-	job.zoom = float(options.zoom)
 	job.render_mode = String(options.view)
 	job.transparent_background = bool(options.transparent_background)
+	job.include_signs = bool(options.signs)
+	job.include_moving_things = bool(options.moving_things)
 	job.surface_visibility = app.surface_visibility.duplicate()
 	job.show_underground_pipes = app.show_underground_pipes
 	job.show_underground_water_mains = app.show_underground_water_mains
@@ -98,7 +97,7 @@ func _poll_export() -> void:
 		if Time.get_ticks_msec() - _started_msec >= progress_delay_msec:
 			var progress := job.progress()
 			var stage := String(progress.stage)
-			# rendering reports its fraction; scaling and png encoding cannot
+			# rendering reports its fraction; png encoding cannot
 			var fraction := float(progress.fraction) if stage == ExportJob.STAGE_RENDER else -1.0
 			app.city_png_export_progress.show_progress(
 				"Exporting %s" % job.path.get_file(), String(STAGE_TEXT.get(stage, "")), fraction
