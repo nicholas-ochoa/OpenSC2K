@@ -181,7 +181,7 @@ func _ensure_base_layer() -> void:
 	map._dynamic_canvas.name = "DynamicSpriteCanvas"
 	map._dynamic_canvas.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	map._dynamic_canvas.show_behind_parent = true
-	map._dynamic_material = _new_palette_material()
+	map._dynamic_material = CityMapMovingOcclusion.create_sprite_material()
 	map._dynamic_canvas.material = map._dynamic_material
 	map.add_child(map._dynamic_canvas)
 	map._dynamic_canvas.set_visuals(
@@ -191,6 +191,11 @@ func _ensure_base_layer() -> void:
 
 
 func _sync_base_layer() -> void:
+	_sync_base_nodes()
+	map.moving_occlusion.sync()
+
+
+func _sync_base_nodes() -> void:
 	if not map.data_view_mode.is_empty():
 		if map.data_view_layer != null:
 			var data_scale := map.camera._view_scale()

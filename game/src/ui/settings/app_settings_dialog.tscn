@@ -88,6 +88,27 @@ popup/item_0/id = 0
 popup/item_1/text = "CPU"
 popup/item_1/id = 1
 
+[node name="MovingFrameRateLabel" type="Label" parent="Tabs/General/Fields"]
+layout_mode = 2
+text = "Moving objects"
+
+[node name="MovingFrameRateSelector" type="OptionButton" parent="Tabs/General/Fields"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "How often planes, ships, trains and other moving objects redraw. Rates above 5 Hz move them smoothly between simulation steps and need the GPU renderer."
+selected = 2
+item_count = 5
+popup/item_0/text = "5 Hz (original steps)"
+popup/item_0/id = 5
+popup/item_1/text = "10 Hz"
+popup/item_1/id = 10
+popup/item_2/text = "20 Hz (recommended)"
+popup/item_2/id = 20
+popup/item_3/text = "30 Hz"
+popup/item_3/id = 30
+popup/item_4/text = "60 Hz"
+popup/item_4/id = 60
+
 [node name="FullscreenSpacer" type="Control" parent="Tabs/General/Fields"]
 layout_mode = 2
 

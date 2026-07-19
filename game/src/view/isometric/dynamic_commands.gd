@@ -41,6 +41,7 @@ static func moving_thing_draw_commands(
 
 			for command in visual_commands:
 				command.depth_order = draw_order
+				command.record = int(visual.record)
 				commands.append(command)
 
 	return commands
@@ -139,6 +140,10 @@ static func dynamic_draw_commands(
 
 		for command in entry_commands:
 			command.depth_order = int(entry.order)
+
+			if not entry.special:
+				command.record = int(entry.record)
+
 			commands.append(command)
 
 	return commands

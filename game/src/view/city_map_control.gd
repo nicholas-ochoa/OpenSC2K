@@ -24,6 +24,7 @@ const DynamicSpriteCanvas = CityMapConstants.DynamicSpriteCanvas
 const ZOOM_LEVELS = CityMapConstants.ZOOM_LEVELS
 const DEFAULT_ZOOM_INDEX = CityMapConstants.DEFAULT_ZOOM_INDEX
 const WHEEL_ZOOM_DEBOUNCE_MSEC = CityMapConstants.WHEEL_ZOOM_DEBOUNCE_MSEC
+const WHEEL_ZOOM_MAX_DEBOUNCE_MSEC = CityMapConstants.WHEEL_ZOOM_MAX_DEBOUNCE_MSEC
 const NETWORK_PREVIEW_Z_INDEX = CityMapConstants.NETWORK_PREVIEW_Z_INDEX
 const PRICE_LAYER_Z_INDEX = CityMapConstants.PRICE_LAYER_Z_INDEX
 const SIGN_FONT_HEIGHTS = CityMapConstants.SIGN_FONT_HEIGHTS
@@ -124,6 +125,7 @@ var _effect_generation := 0
 var _shake_generation := 0
 var _shake_offset := Vector2.ZERO
 var _next_wheel_zoom_msec := 0
+var _last_wheel_zoom_msec := 0
 var _tile_layers: Array[TextureRect] = []
 var _mesh_layers: Array[MeshInstance2D] = []
 var _mesh_view_scale := -1.0
@@ -148,6 +150,7 @@ var camera: CityMapCamera = CityMapCamera.new(self)
 var presentation: CityMapPresentation = CityMapPresentation.new(self)
 var selection: CityMapSelection = CityMapSelection.new(self)
 var interaction: CityMapInteraction = CityMapInteraction.new(self)
+var moving_occlusion: CityMapMovingOcclusion = CityMapMovingOcclusion.new(self)
 
 
 func _ready() -> void:
@@ -320,6 +323,26 @@ func shake_view(frames := 24, frame_duration := 0.005, distance := 4.0) -> void:
 
 func set_dynamic_sprites(sprites: Array[Dictionary]) -> void:
 	presentation.set_dynamic_sprites(sprites)
+
+
+# use gpu occlusion and shadows for moving objects when the base allows it
+func set_moving_occlusion_enabled(value: bool) -> void:
+	moving_occlusion.set_enabled(value)
+
+
+func moving_occlusion_active() -> bool:
+	return moving_occlusion.active()
+
+
+# render-target pixels per source pixel, including zoom and window scale
+func screen_pixels_per_source_pixel() -> float:
+	return zoom_factor * moving_occlusion._screen_transform().get_scale().x
+
+
+# display-only offsets and draw orders for interpolated moving objects, by xthg record
+func set_moving_blend(offsets: Dictionary, orders: Dictionary) -> void:
+	if _dynamic_canvas != null:
+		_dynamic_canvas.set_blend(offsets, orders)
 
 
 func dynamic_render_node_count() -> int:

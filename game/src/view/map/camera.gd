@@ -30,12 +30,22 @@ func wheel_zoom(
 	if current_time_msec < 0:
 		current_time_msec = Time.get_ticks_msec()
 
+	# one wheel gesture can send events for longer than the interval, for
+	# example with smooth or momentum scrolling. each ignored event extends the
+	# interval, up to a limit after the last zoom, so a continuous scroll still
+	# steps through levels
 	if current_time_msec < map._next_wheel_zoom_msec:
+		map._next_wheel_zoom_msec = mini(
+			current_time_msec + WHEEL_ZOOM_DEBOUNCE_MSEC,
+			map._last_wheel_zoom_msec + WHEEL_ZOOM_MAX_DEBOUNCE_MSEC
+		)
+
 		return false
 
 	var changed := _change_zoom(1 if direction > 0 else -1, local_point)
 
 	if changed:
+		map._last_wheel_zoom_msec = current_time_msec
 		map._next_wheel_zoom_msec = current_time_msec + WHEEL_ZOOM_DEBOUNCE_MSEC
 
 	return changed

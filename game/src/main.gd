@@ -37,6 +37,8 @@ var surface_visibility := {
 	"zones": true,
 	"signs": true,
 }
+# display layer for vehicles. hidden vehicles also make no sound and cannot crash
+var show_vehicles := true
 var show_underground_water_mains := true
 var show_underground_pipes := true
 var show_underground_subways := true
@@ -51,6 +53,7 @@ var app_translucent_menus := true
 var app_dark_underground := false
 var app_default_mayor_name := "Mayor"
 var app_overview_graphics := 0
+var app_moving_frame_rate := SettingsStore.DEFAULT_MOVING_FRAME_RATE
 var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
 var app_background_audio := false
 var app_shuffle_music := false

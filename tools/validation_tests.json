@@ -996,6 +996,45 @@
     ]
   },
   {
+    "id": "moving_interpolation_test",
+    "script": "tests/moving_interpolation_test.gd",
+    "domain": "rendering",
+    "lane": "product"
+  },
+  {
+    "id": "moving_blend_app_test",
+    "script": "tests/moving_blend_app_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
+  },
+  {
+    "id": "vehicle_layer_test",
+    "script": "tests/vehicle_layer_test.gd",
+    "domain": "rendering",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
+  },
+  {
+    "id": "moving_occlusion_native_test",
+    "script": "tests/moving_occlusion_native_test.gd",
+    "domain": "rendering",
+    "lane": "native"
+  },
+  {
+    "id": "moving_occlusion_app_native_test",
+    "script": "tests/moving_occlusion_app_native_test.gd",
+    "domain": "rendering",
+    "lane": "native",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
+  },
+  {
     "id": "isometric_data_view_test_native",
     "script": "tests/isometric_data_view_test.gd",
     "domain": "rendering",

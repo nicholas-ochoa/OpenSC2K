@@ -21,6 +21,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	var span := Renderer.region_tile_span(configuration, limit, bounds, city.map_size, mode == "underground")
 	var draws: Array[Dictionary] = []
 	var foreground: Array[Dictionary] = []
+	var foreground_draws: Array[Dictionary] = []
 	var vertices := PackedVector2Array()
 	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
@@ -58,9 +59,20 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 				var uv := Rect2i(slot.position + source.position, source.size)
 				_append_quad(Rect2(clipped.position - bounds.position, clipped.size), Rect2(uv), vertices, uvs, indices)
 				draws.append(draw)
-			for command: Dictionary in tile.foreground:
+			for index in tile.foreground.size():
+				var command: Dictionary = tile.foreground[index]
+
 				if Rect2i(command.position, command.size).intersects(bounds):
 					foreground.append(command)
+					foreground_draws.append(tile.foreground_draws[index])
+
+	var depth := {}
+
+	if mode == "city":
+		depth = CityGpuOcclusionDepth.build(foreground, foreground_draws, bounds, context, sprites, palette)
+
+		if not context.error.is_empty():
+			return {"ok": false, "error": context.error}
 
 	var arrays := []
 
@@ -68,6 +80,14 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	if context.atlas_edge != CityGpuBuildContext.ATLAS_EDGE:
 		for index in uvs.size():
 			uvs[index] *= float(CityGpuBuildContext.ATLAS_EDGE) / context.atlas_edge
+
+		for depth_arrays: Array in depth.values():
+			var depth_uvs: PackedVector2Array = depth_arrays[Mesh.ARRAY_TEX_UV]
+
+			for index in depth_uvs.size():
+				depth_uvs[index] *= float(CityGpuBuildContext.ATLAS_EDGE) / context.atlas_edge
+
+			depth_arrays[Mesh.ARRAY_TEX_UV] = depth_uvs
 
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
@@ -77,6 +97,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	return {"ok": true, "error": "", "gpu_arrays": arrays, "gpu_draws": draws, "gpu_draw_grid": Renderer.build_occlusion_grid(draws, 1),
 		"background": Color.WHITE if mode == "underground" else Color.TRANSPARENT,
 		"bounds": bounds, "occlusion_commands": foreground,
+		"depth_arrays": depth.get("depth", []), "train_depth_arrays": depth.get("train", []),
 		"occlusion_grid": Renderer.build_occlusion_grid(foreground, int(configuration.divisor)),
 		"atlas_revision": context.atlas_revision,
 		"atlas_edge": context.atlas_edge,

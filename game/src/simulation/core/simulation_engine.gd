@@ -37,6 +37,9 @@ var unsupported_disaster_type := 0
 var disaster_map_counter := 0
 var disaster_hurricane_counter := 0
 var midi_playback_active := false
+# runtime only; never saved. false while the player hides the vehicle layer:
+# airplanes and helicopters then leave instead of crashing, as with no disasters
+var vehicle_crashes_enabled := true
 
 
 func _init(
@@ -95,7 +98,8 @@ func _timed_advance_moving_things(current_time_msec := -1) -> Dictionary:
 		ship_home,
 		true,
 		current_time_msec,
-		traffic_news_deadline_msec
+		traffic_news_deadline_msec,
+		not vehicle_crashes_enabled
 	)
 
 	if not result.get("ok", false):

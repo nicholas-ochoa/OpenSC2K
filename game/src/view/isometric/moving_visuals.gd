@@ -80,6 +80,86 @@ static func moving_thing_visual(
 	}
 
 
+# return the display anchor of one xthg record for display interpolation
+# the anchor uses the same placement terms as the draw commands, without the
+# sprite size. the result is in common large logical pixels. it is empty for
+# an unused record and for a type that the moving-object path does not move
+static func moving_thing_anchor(
+	city: CityState, record: int, view_size := VIEW_LARGE
+) -> Dictionary:
+	if city == null or not city.is_valid():
+		return {}
+
+	var thing := city.thing(record)
+
+	if thing.is_empty():
+		return {}
+
+	var type := int(thing.type)
+	var x := int(thing.x)
+	var y := int(thing.y)
+
+	if type <= 0 or type >= THING_MINIMUM_VIEW.size() or city.index_of(x, y) < 0:
+		return {}
+
+	if type in [7, 8, 12, 13, 14]:
+		return {}
+
+	var configuration := IsometricGeometry.view_configuration(view_size)
+
+	if configuration.is_empty():
+		return {}
+
+	var half_width := int(configuration.half_width)
+	var half_height := int(configuration.half_height)
+	var step := int(configuration.altitude_step)
+	var divisor := int(configuration.divisor)
+	var anchor := Vector2i.ZERO
+
+	match type:
+		10, 11:
+			var sprite := train_sprite(city, x, y, thing)
+
+			if sprite.is_empty():
+				return {}
+
+			# Trains use the large-view art and placement constants.
+			anchor = Vector2i(
+				(x - y) * HALF_WIDTH + int(sprite.screen_x),
+				(x + y) * HALF_HEIGHT + int(sprite.screen_y) - int(sprite.elevation)
+			)
+			divisor = 1
+		15:
+			anchor = Vector2i(
+				(x - y) * half_width,
+				(x + y) * half_height - city.object_altitude(x, y) * step
+			)
+		5:
+			anchor = Vector2i(
+				(x - y) * half_width,
+				(x + y) * half_height - (city.object_altitude(x, y) + int(thing.z)) * step
+			)
+		_:
+			var px := int(thing.px)
+			var py := int(thing.py)
+			anchor = Vector2i(
+				(x - y) * half_width
+					+ int(IntegerMath.div_trunc(px - py, THING_X_DIVISOR[view_size])),
+				(x + y) * half_height
+					+ int(IntegerMath.div_trunc(px + py, THING_Y_DIVISOR[view_size]))
+					- city.object_altitude(x, y) * step
+					- int(thing.z) * half_height
+			)
+
+	return {
+		"type": type,
+		"x": x,
+		"y": y,
+		"anchor": Vector2(anchor * divisor),
+		"order": (x + y) * city.map_size + y,
+	}
+
+
 static func moving_thing_sprite(thing: Dictionary, view_size := VIEW_LARGE) -> Dictionary:
 	if thing.is_empty():
 		return {}

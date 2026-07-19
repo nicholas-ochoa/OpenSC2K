@@ -239,7 +239,8 @@ func texture() -> CityMapSource:
 		var entry: Dictionary = entries[key]
 
 		if entry.has("mesh"):
-			output.meshes.append(CityMapSource.MeshEntry.new(Vector2(entry.bounds.position * divisor), entry.mesh, entry.atlas_texture, divisor))
+			output.meshes.append(CityMapSource.MeshEntry.new(Vector2(entry.bounds.position * divisor), entry.mesh, entry.atlas_texture, divisor,
+				entry.get("depth_mesh"), entry.get("train_depth_mesh")))
 			continue
 
 		output.tiles.append(CityMapSource.TileEntry.new(Vector2(entry.bounds.position * divisor), Vector2(entry.bounds.size * divisor), entry.texture))

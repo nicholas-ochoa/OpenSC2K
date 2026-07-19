@@ -8,6 +8,7 @@ const ENGINE_FIELDS := [
 	"rail_passengers", "subway_passengers", "mayor_approval", "pending_disaster_type",
 	"pending_disaster_point", "active_disaster_type", "unsupported_disaster_type",
 	"disaster_map_counter", "disaster_hurricane_counter", "midi_playback_active",
+	"vehicle_crashes_enabled",
 ]
 const CONTROLLER_FIELDS := [
 	"speed", "accumulator_msec", "fire_elapsed_msec", "subtick_counter", "original_compatibility",

@@ -23,6 +23,7 @@ const MENU_VIEW_WATER := CityMenuBarView.MENU_VIEW_WATER
 const MENU_VIEW_TREES := CityMenuBarView.MENU_VIEW_TREES
 const MENU_VIEW_ZONES := CityMenuBarView.MENU_VIEW_ZONES
 const MENU_VIEW_SIGNS := CityMenuBarView.MENU_VIEW_SIGNS
+const MENU_VIEW_VEHICLES := CityMenuBarView.MENU_VIEW_VEHICLES
 const MENU_VIEW_WATER_MAINS := CityMenuBarView.MENU_VIEW_WATER_MAINS
 const MENU_VIEW_PIPES := CityMenuBarView.MENU_VIEW_PIPES
 const MENU_SCURK_PLACE_PRINT := CityMenuBarView.MENU_SCURK_PLACE_PRINT
@@ -160,6 +161,8 @@ func _on_view_menu(id: int) -> void:
 			_set_surface_visibility(not bool(app.surface_visibility.zones), "zones")
 		MENU_VIEW_SIGNS:
 			_set_surface_visibility(not bool(app.surface_visibility.signs), "signs")
+		MENU_VIEW_VEHICLES:
+			_set_surface_visibility(not app.show_vehicles, "vehicles")
 		MENU_VIEW_WATER_MAINS:
 			_set_underground_water_mains_visible(not app.show_underground_water_mains)
 		MENU_VIEW_PIPES:
@@ -220,6 +223,7 @@ func _sync_view_controls() -> void:
 		MENU_VIEW_TREES: bool(app.surface_visibility.trees),
 		MENU_VIEW_ZONES: bool(app.surface_visibility.zones),
 		MENU_VIEW_SIGNS: bool(app.surface_visibility.signs),
+		MENU_VIEW_VEHICLES: app.show_vehicles,
 		MENU_VIEW_PIPES: app.show_underground_pipes,
 		MENU_VIEW_WATER_MAINS: app.show_underground_water_mains,
 	}
@@ -249,6 +253,8 @@ func _sync_view_controls() -> void:
 				enabled = app.show_underground_pipes
 			"subways":
 				enabled = app.show_underground_subways
+			"vehicles":
+				enabled = app.show_vehicles
 		check.set_pressed_no_signal(enabled)
 
 
@@ -269,6 +275,7 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 			["Show Trees", MENU_VIEW_TREES],
 			["Show Zones", MENU_VIEW_ZONES],
 			["Show Signs", MENU_VIEW_SIGNS],
+			["Show Vehicles", MENU_VIEW_VEHICLES],
 		]:
 			popup.add_check_item(view_item[0], view_item[1])
 
@@ -295,6 +302,11 @@ func _set_overlay(mode: String) -> void:
 
 
 func _set_surface_visibility(enabled: bool, layer: String) -> void:
+	if layer == "vehicles":
+		_set_vehicles_visible(enabled)
+
+		return
+
 	if not app.surface_visibility.has(layer) or bool(app.surface_visibility[layer]) == enabled:
 		return
 
@@ -308,6 +320,26 @@ func _set_surface_visibility(enabled: bool, layer: String) -> void:
 	app.status_label.text = "%s %s." % [
 		layer.capitalize(), "shown" if enabled else "hidden",
 	]
+
+
+# the visibility switch is also a crash switch
+# vehicles draw on the moving-object layer, so the static city is unchanged
+# a hidden vehicle also makes no sound and cannot crash into the city
+func _set_vehicles_visible(enabled: bool) -> void:
+	if app.show_vehicles == enabled:
+		return
+
+	app.show_vehicles = enabled
+
+	if app.simulation_engine != null:
+		app.simulation_engine.vehicle_crashes_enabled = enabled
+
+	_sync_view_controls()
+
+	if app.city != null and app.overlay_mode == "city":
+		app.moving_sprites._refresh_moving_things()
+
+	app.status_label.text = "Vehicles %s." % ("shown" if enabled else "hidden")
 
 
 func _set_underground_water_mains_visible(enabled: bool) -> void:

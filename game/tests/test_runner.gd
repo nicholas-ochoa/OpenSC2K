@@ -1932,9 +1932,29 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Mouse wheel rejects another zoom level before 250 milliseconds",
 	)
 	_check(
-		map_control.wheel_zoom(-1, Vector2.INF, 1250)
+		not map_control.wheel_zoom(1, Vector2.INF, 1450)
+		and map_control.zoom_percent() == 200,
+		"Mouse wheel events in one continuing gesture extend the debounce interval",
+	)
+	_check(
+		not map_control.wheel_zoom(-1, Vector2.INF, 1499)
+		and map_control.zoom_percent() == 200,
+		"Mouse wheel extends the interval up to 500 milliseconds after a zoom",
+	)
+	_check(
+		map_control.wheel_zoom(-1, Vector2.INF, 1500)
 		and map_control.zoom_percent() == 100,
-		"Mouse wheel accepts the next zoom level after 250 milliseconds",
+		"A continuing gesture changes the next level 500 milliseconds after a zoom",
+	)
+	_check(
+		not map_control.wheel_zoom(1, Vector2.INF, 1749)
+		and map_control.zoom_percent() == 100,
+		"Mouse wheel rejects a level in the next 250 milliseconds",
+	)
+	_check(
+		map_control.wheel_zoom(1, Vector2.INF, 1999)
+		and map_control.zoom_percent() == 200,
+		"Mouse wheel accepts the next level after a 250 millisecond pause",
 	)
 	var center_tile := Vector2i(64, 64)
 	var center_polygon := IsometricRenderer.tile_polygon(starter, center_tile.x, center_tile.y)

@@ -87,6 +87,7 @@ func _process(delta: float) -> void:
 	_advance_palette_animation(delta, interaction_suspended)
 
 	_consume_simulation_result(result)
+	app.moving_sprites._advance_blend()
 
 
 func _advance_palette_animation(delta: float, suspended: bool) -> void:
@@ -118,6 +119,10 @@ func _consume_simulation_result(result: Dictionary) -> void:
 			break
 
 	var moved_things := app.reports._moving_things_are_active(result.moving_results)
+
+	# start the display blend before the refresh publishes the new positions
+	if not result.moving_results.is_empty():
+		app.moving_sprites._note_moving_tick()
 
 	if ran_days or moved_things or changed_disaster_map:
 		app.last_edit_command = {}
@@ -155,7 +160,7 @@ func _consume_simulation_result(result: Dictionary) -> void:
 		app.map_view.center_on_tile(point)
 
 	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
-		app.effects_audio._show_effect_events(result.effect_events, result.sound_events)
+		app.effects_audio._show_effect_events(result.effect_events, app.moving_sprites._audible_sound_events(result.sound_events))
 
 	for track_id in result.get("music_track_requests", PackedInt32Array()):
 		if app.city.music_enabled():

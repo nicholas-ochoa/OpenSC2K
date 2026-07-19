@@ -14,6 +14,7 @@ static func update_airplane(
 	counters: Dictionary,
 	map_edge: int = 128,
 	no_disasters := false,
+	no_accidents := false,
 ) -> void:
 	var offset := record * RECORD_SIZE
 	var current := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
@@ -29,7 +30,9 @@ static func update_airplane(
 
 	var building := int(buildings[current_index])
 
-	if not no_disasters and building > 0x70 and zones[current_index] & 0x0f != 8:
+	# no_accidents blocks spontaneous collisions and landings. A plane already
+	# falling from a disaster (state 7) still follows no_disasters.
+	if not no_disasters and not no_accidents and building > 0x70 and zones[current_index] & 0x0f != 8:
 		if building > 0xfa:
 			AirThingMotion._convert_to_explosion(
 				things, record, 5, 1 if lfsr_random.next_mod(16) == 0 else 0
@@ -89,7 +92,7 @@ static func update_airplane(
 					OverlayData.write(text, current_index, ThingData.read(things, offset + 10))
 
 				if current_index < 0 or buildings[current_index] != 0xdd:
-					if no_disasters:
+					if no_disasters or no_accidents:
 						AirThingMotion._remove_without_crash(text, things, record, map_edge)
 						counters.removed_airplanes += 1
 
@@ -205,6 +208,7 @@ static func update_helicopter(
 	counters: Dictionary,
 	map_edge: int = 128,
 	no_disasters := false,
+	no_accidents := false,
 ) -> void:
 	var offset := record * RECORD_SIZE
 	var current := Vector2i(ThingData.read(things, offset + 3), ThingData.read(things, offset + 4))
@@ -224,7 +228,7 @@ static func update_helicopter(
 
 		return
 
-	if not no_disasters and buildings[current_index] > 0xfa:
+	if not no_disasters and not no_accidents and buildings[current_index] > 0xfa:
 		AirThingMotion._convert_to_explosion(things, record, 5, 0)
 		counters.crashed_helicopters += 1
 

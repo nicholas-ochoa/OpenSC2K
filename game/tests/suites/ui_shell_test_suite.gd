@@ -224,8 +224,9 @@ func _test_main_menu() -> void:
 		and toolbar.view_mode_buttons.size() == 3
 		and not toolbar.view_mode_buttons.height.visible
 		and toolbar.view_mode_buttons.city.button_pressed
-		and toolbar.view_visibility_checks.size() == 9
+		and toolbar.view_visibility_checks.size() == 10
 		and toolbar.view_visibility_checks["buildings"].button_pressed
+		and toolbar.view_visibility_checks["vehicles"].button_pressed
 		and toolbar.view_visibility_checks["pipes"].button_pressed
 		and toolbar.view_visibility_checks["water_mains"].button_pressed,
 		"City toolbar owns tool groups, child tools, views, and layer controls",

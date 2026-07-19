@@ -35,6 +35,19 @@ static func build(request: Dictionary, context: CityGpuBuildContext, uploaded_re
 				uvs[index] *= float(region.atlas_edge) / context.atlas_edge
 
 			region.gpu_arrays[Mesh.ARRAY_TEX_UV] = uvs
+
+			for field in ["depth_arrays", "train_depth_arrays"]:
+				var depth_arrays: Array = region[field]
+
+				if depth_arrays.is_empty():
+					continue
+
+				var depth_uvs: PackedVector2Array = depth_arrays[Mesh.ARRAY_TEX_UV]
+
+				for index in depth_uvs.size():
+					depth_uvs[index] *= float(region.atlas_edge) / context.atlas_edge
+
+				depth_arrays[Mesh.ARRAY_TEX_UV] = depth_uvs
 			region.atlas_edge = context.atlas_edge
 
 	return {"ok": true, "regions": regions, "display_city": display,

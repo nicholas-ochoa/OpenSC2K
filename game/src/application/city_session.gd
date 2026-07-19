@@ -169,6 +169,7 @@ func _activate_document(
 	app.dynamic_special_batch_cache.clear()
 	app.dynamic_sign_occluders.clear()
 	app.dynamic_sign_occlusion_grid.clear()
+	app.moving_sprites._reset_blend()
 	var process_seed := app.tool_random.state
 	var game_seed := app.nuisance_random.state
 	var lfsr_seed := (
@@ -183,6 +184,7 @@ func _activate_document(
 	app.frame_simulation = null
 	app.simulation_timings.clear()
 	app.simulation_engine = Simulation.new(app.city, process_seed, lfsr_seed, game_seed)
+	app.simulation_engine.vehicle_crashes_enabled = app.show_vehicles
 	app.speed_controller = GameSpeed.new(app.simulation_engine)
 	app.speed_controller.original_compatibility = app.app_original_compatibility
 

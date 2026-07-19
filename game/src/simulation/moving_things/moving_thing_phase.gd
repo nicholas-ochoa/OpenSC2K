@@ -33,7 +33,8 @@ static func run(
 	ship_home := Vector2i(-1, -1),
 	allow_disaster_damage := true,
 	traffic_news_time_msec := -1,
-	traffic_news_deadline_msec := 0
+	traffic_news_deadline_msec := 0,
+	suppress_vehicle_crashes := false
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -194,13 +195,15 @@ static func run(
 				counters.active_airplanes += 1
 				AirTick.update_airplane(
 					buildings, zones, text, things, record,
-					random, lfsr_random, counters, map_edge, city.no_disasters_enabled()
+					random, lfsr_random, counters, map_edge, city.no_disasters_enabled(),
+					suppress_vehicle_crashes
 				)
 			TYPE_HELICOPTER:
 				counters.active_helicopters += 1
 				AirTick.update_helicopter(
 					buildings, underground, traffic, text, things, record,
-					city_center, random, counters, map_edge, city.no_disasters_enabled()
+					city_center, random, counters, map_edge, city.no_disasters_enabled(),
+					suppress_vehicle_crashes
 				)
 			TYPE_SHIP:
 				counters.active_ships += 1

@@ -30,6 +30,7 @@ const MENU_VIEW_ZONES := 0x8105
 const MENU_VIEW_SIGNS := 0x8106
 const MENU_VIEW_PIPES := 0x8107
 const MENU_VIEW_WATER_MAINS := 0x8108
+const MENU_VIEW_VEHICLES := 0x8109
 const MENU_SCURK_PLACE_PRINT := 0x8200
 const DISASTER_ITEMS := [
 	["Fire", 1], ["Flood", 2], ["Riot", 3], ["Toxic Spill", 4],
@@ -109,6 +110,7 @@ func _ready() -> void:
 		["Show Trees", MENU_VIEW_TREES],
 		["Show Zones", MENU_VIEW_ZONES],
 		["Show Signs", MENU_VIEW_SIGNS],
+		["Show Vehicles", MENU_VIEW_VEHICLES],
 	]:
 		view_menu.get_popup().add_check_item(view_item[0], view_item[1])
 

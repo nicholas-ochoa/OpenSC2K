@@ -10,6 +10,8 @@ const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.g
 const ZOOM_LEVELS := [0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0]
 const DEFAULT_ZOOM_INDEX := 3
 const WHEEL_ZOOM_DEBOUNCE_MSEC := 250
+# a continuing wheel gesture can delay the next wheel zoom by at most this much
+const WHEEL_ZOOM_MAX_DEBOUNCE_MSEC := 500
 # child layer order: network preview artwork, then the price label above it
 const NETWORK_PREVIEW_Z_INDEX := 80
 const PRICE_LAYER_Z_INDEX := 90

@@ -6,6 +6,8 @@ const MAX_ATLAS_EDGE := 8192
 var atlas_edge := ATLAS_EDGE
 const TILE_CACHE_LIMIT := 16384
 var images: Dictionary = {}
+# derived train crossing masks for the moving-object depth meshes
+var occlusion_masks: Dictionary = {}
 var image_roles: Dictionary = {}
 var _image_key_count := 0
 var tiles: Dictionary = {}
@@ -39,6 +41,7 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
 	var order := (x + y) * city.map_size + y
 	var foreground: Array[Dictionary] = []
+	var foreground_draws: Array[Dictionary] = []
 
 	if mode == "underground":
 		CityUndergroundView.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, pipes, subways, water_mains)
@@ -65,8 +68,9 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 					CityIsometricRenderer.configure_train_foreground(command, building, configuration)
 
 				foreground.append(command)
+				foreground_draws.append(draw)
 
-	var result := {"draws": recorder.draws, "foreground": foreground}
+	var result := {"draws": recorder.draws, "foreground": foreground, "foreground_draws": foreground_draws}
 
 	if tiles.size() >= TILE_CACHE_LIMIT:
 		# fifo bounds geometry memory even during repeated cross-map pans

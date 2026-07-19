@@ -5,6 +5,9 @@ const SETTINGS_PATH := "user://settings.cfg"
 const GRAPHICS_ZOOMS := [25, 50, 100, 200, 300, 400]
 const GRAPHICS_SIZES := ["Small", "Medium", "Large"]
 const DEFAULT_ZOOM_GRAPHICS := [0, 1, 2, 2, 2, 2]
+# moving-object display rates. 5 hz keeps the original 200 ms steps
+const MOVING_FRAME_RATES := [5, 10, 20, 30, 60]
+const DEFAULT_MOVING_FRAME_RATE := 20
 
 
 static func load_values(
@@ -19,6 +22,7 @@ static func load_values(
 		"translucent_menus": true,
 		"dark_underground": false,
 		"overview_graphics": 0,
+		"moving_frame_rate": DEFAULT_MOVING_FRAME_RATE,
 		"music_volume": clampf(default_music_volume, 0.0, 1.0),
 		"effects_volume": clampf(default_effects_volume, 0.0, 1.0),
 		"fullscreen": default_fullscreen,
@@ -45,6 +49,7 @@ static func load_values(
 	result.translucent_menus = bool(config.get_value("general", "translucent_menus", true))
 	result.default_mayor_name = str(config.get_value("general", "default_mayor_name", "Mayor"))
 	result.overview_graphics = clampi(int(config.get_value("graphics", "overview_graphics", 0)), 0, 2)
+	result.moving_frame_rate = normalize_moving_frame_rate(config.get_value("display", "moving_frame_rate", DEFAULT_MOVING_FRAME_RATE))
 	result.music_volume = clampf(
 		float(config.get_value("audio", "music_volume", result.music_volume)),
 		0.0,
@@ -83,6 +88,13 @@ static func normalize_theme(value: Variant) -> String:
 
 static func normalize_renderer(value: Variant) -> String:
 	return "cpu" if str(value) == "cpu" else "gpu"
+
+
+static func normalize_moving_frame_rate(value: Variant) -> int:
+	if (value is int or value is float) and MOVING_FRAME_RATES.has(int(value)):
+		return int(value)
+
+	return DEFAULT_MOVING_FRAME_RATE
 
 
 static func normalize_zoom_graphics(value: Variant) -> Array[int]:
@@ -133,6 +145,7 @@ static func save_values(
 	ui_theme: Variant = null,
 	dark_underground: Variant = null,
 	translucent_menus: Variant = null,
+	moving_frame_rate: Variant = null,
 ) -> Error:
 	var config := ConfigFile.new()
 
@@ -158,6 +171,9 @@ static func save_values(
 
 	if overview_graphics != null:
 		config.set_value("graphics", "overview_graphics", clampi(int(overview_graphics), 0, 2))
+
+	if moving_frame_rate != null:
+		config.set_value("display", "moving_frame_rate", normalize_moving_frame_rate(moving_frame_rate))
 
 	if soundtrack_folder != null:
 		config.set_value("audio", "soundtrack_folder", str(soundtrack_folder).strip_edges())

@@ -84,7 +84,7 @@ func _ready() -> void:
 	view_visibility_checks = {
 		"buildings": %BuildingsVisible, "networks": %NetworksVisible,
 		"water": %WaterVisible, "trees": %TreesVisible,
-		"zones": %ZonesVisible, "signs": %SignsVisible,
+		"zones": %ZonesVisible, "signs": %SignsVisible, "vehicles": %VehiclesVisible,
 		"water_mains": %WaterMainsVisible, "pipes": %PipesVisible, "subways": %SubwaysVisible,
 	}
 
@@ -131,7 +131,7 @@ func _ready() -> void:
 	data_view_input.item_selected.connect(func(index: int) -> void:
 		overlay_requested.emit("city" if index == 0 else CityDataView.MODES[index - 1]))
 
-	for layer in ["buildings", "networks", "water", "trees", "zones", "signs"]:
+	for layer in ["buildings", "networks", "water", "trees", "zones", "signs", "vehicles"]:
 		view_visibility_checks[layer].toggled.connect(_on_surface_visibility_toggled.bind(layer))
 
 	view_visibility_checks.water_mains.toggled.connect(underground_water_mains_visibility_requested.emit)

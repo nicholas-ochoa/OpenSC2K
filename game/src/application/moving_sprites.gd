@@ -5,14 +5,162 @@ extends RefCounted
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 
+# the rate that keeps the original 200 ms steps and the cpu occlusion path
+const ORIGINAL_FRAME_RATE := 5
+# blend only a short move. a longer change is a new, removed, or reused record
+const BLEND_TILE_LIMIT := 2
+
 var app: CityApplication
+# display interpolation state by xthg record. see `_note_moving_tick`
+var _blend_from: Dictionary = {}
+var _blend_to: Dictionary = {}
+var _blend_city_id := 0
+var _blend_view_size := -1
+var _blend_tick_msec := 0
+var _blend_alpha := 1.0
 
 
 func _init(application: CityApplication) -> void:
 	app = application
 
 
+# true when moving objects use gpu occlusion and display interpolation
+func _gpu_moving_active() -> bool:
+	return (
+		app.app_moving_frame_rate > ORIGINAL_FRAME_RATE
+		and app.map_view != null
+		and app.map_view.moving_occlusion_active()
+	)
+
+
+# start a blend after a moving-object tick. each record moves from its displayed
+# position to its new saved position. the blend never changes simulation state
+func _note_moving_tick(now_msec := -1) -> void:
+	if now_msec < 0:
+		now_msec = Time.get_ticks_msec()
+
+	if app.city == null or app.app_moving_frame_rate <= ORIGINAL_FRAME_RATE:
+		_reset_blend()
+
+		return
+
+	var view_size := app.static_render._city_view_size()
+	var continuing := _blend_city_id == app.city.get_instance_id() and _blend_view_size == view_size
+	var next := {}
+	var from := {}
+
+	for record in app.city.thing_count():
+		var anchor := IsometricRenderer.moving_thing_anchor(app.city, record, view_size)
+
+		if anchor.is_empty():
+			continue
+
+		next[record] = anchor
+
+		if continuing and _blend_to.has(record) and can_blend(_blend_to[record], anchor):
+			from[record] = _displayed_anchor(record)
+
+	_blend_to = next
+	_blend_from = from
+	_blend_city_id = app.city.get_instance_id()
+	_blend_view_size = view_size
+	_blend_tick_msec = now_msec
+	_blend_alpha = 0.0
+	_apply_blend()
+
+
+# move the blend forward at the selected display rate
+func _advance_blend(now_msec := -1) -> void:
+	if _blend_from.is_empty():
+		return
+
+	if now_msec < 0:
+		now_msec = Time.get_ticks_msec()
+
+	var alpha := blend_alpha(now_msec - _blend_tick_msec, app.app_moving_frame_rate)
+
+	if is_equal_approx(alpha, _blend_alpha):
+		return
+
+	_blend_alpha = alpha
+	_apply_blend()
+
+	if alpha >= 1.0:
+		_blend_from.clear()
+
+
+func _reset_blend() -> void:
+	_blend_from.clear()
+	_blend_to.clear()
+	_blend_city_id = 0
+	_blend_view_size = -1
+	_blend_alpha = 1.0
+
+	if app.map_view != null:
+		app.map_view.set_moving_blend({}, {})
+
+
+# return the blend fraction after `elapsed_msec`, stepped at `frame_rate`
+static func blend_alpha(elapsed_msec: float, frame_rate: int) -> float:
+	if frame_rate <= ORIGINAL_FRAME_RATE:
+		return 1.0
+
+	var interval := 1000.0 / frame_rate
+	var shown := elapsed_msec if frame_rate >= 60 else floorf(elapsed_msec / interval) * interval
+
+	return clampf(shown / GameSpeedController.BASE_TICK_MSEC, 0.0, 1.0)
+
+
+# true when a record can move smoothly from `previous` to `current`
+static func can_blend(previous: Dictionary, current: Dictionary) -> bool:
+	var previous_type := int(previous.type)
+	var current_type := int(current.type)
+	var same_type := previous_type == current_type or (previous_type in [10, 11] and current_type in [10, 11])
+
+	return (
+		same_type
+		and absi(int(previous.x) - int(current.x)) <= BLEND_TILE_LIMIT
+		and absi(int(previous.y) - int(current.y)) <= BLEND_TILE_LIMIT
+	)
+
+
+func _displayed_anchor(record: int) -> Dictionary:
+	var target: Dictionary = _blend_to[record]
+
+	if not _blend_from.has(record):
+		return target
+
+	var start: Dictionary = _blend_from[record]
+
+	# Use the later draw order between tiles so neither tile's flat surface covers the sprite.
+	return {
+		"anchor": start.anchor.lerp(target.anchor, _blend_alpha),
+		"order": maxi(int(start.order), int(target.order)) if _blend_alpha < 1.0 else int(target.order),
+	}
+
+
+func _apply_blend() -> void:
+	if app.map_view == null:
+		return
+
+	var offsets := {}
+	var orders := {}
+	# keep whole screen pixels so a sprite does not shimmer between texels
+	var scale := maxf(app.map_view.screen_pixels_per_source_pixel(), 0.01)
+
+	for record in _blend_from:
+		var shown := _displayed_anchor(record)
+		var offset: Vector2 = shown.anchor - _blend_to[record].anchor
+		offsets[record] = (offset * scale).round() / scale
+		orders[record] = int(shown.order)
+
+	app.map_view.set_moving_blend(offsets, orders)
+
+
 func _refresh_moving_things(view_size := -1) -> void:
+	if app.map_view != null:
+		app.map_view.set_moving_occlusion_enabled(app.app_moving_frame_rate > ORIGINAL_FRAME_RATE)
+
 	if app.city == null or app.palette == null or app.map_view == null or app.overlay_mode != "city":
 		app.dynamic_sign_occluders.clear()
 		app.dynamic_sign_occlusion_grid.clear()
@@ -43,9 +191,22 @@ func _refresh_moving_things(view_size := -1) -> void:
 		app.city, sprite_archive, view_size, int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100))
 	)
 	var visuals: Array[Dictionary] = []
+	var gpu_moving := _gpu_moving_active()
 
 	for command in commands:
+		if not app.show_vehicles and command.has("record") and _is_vehicle(int(command.record)):
+			continue
+
 		if app.region_cache != null and not Rect2(Vector2(command.position) * divisor, Vector2(command.get("size", Vector2i(256, 256))) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor)):
+			continue
+
+		# the shader applies occlusion and shadows, so the visual needs no image work
+		if gpu_moving and not command.has("overlay"):
+			var gpu_visual := _gpu_moving_visual(sprite_archive, command, divisor, factor)
+
+			if not gpu_visual.is_empty():
+				visuals.append(gpu_visual)
+
 			continue
 
 		var visual_cache_key := var_to_str([view_size, factor, command])
@@ -139,6 +300,48 @@ func _refresh_moving_things(view_size := -1) -> void:
 	app.map_render._refresh_sign_occlusion(view_size)
 	app.foreground_view_rect = app.map_view.visible_source_rect()
 	app.foreground_complete = true
+
+
+func _is_vehicle(record: int) -> bool:
+	return int(app.city.thing(record).get("type", 0)) in CityViewFilter.VEHICLE_THING_TYPES
+
+
+# drop vehicle sounds while the vehicles layer is hidden
+func _audible_sound_events(sound_events: Array) -> Array:
+	if app.show_vehicles:
+		return sound_events
+
+	return sound_events.filter(func(event: Variant) -> bool:
+		return not (event is Dictionary and int(event.get("thing_type", 0)) in CityViewFilter.VEHICLE_THING_TYPES))
+
+
+func _gpu_moving_visual(sprite_archive: Sc2SpriteArchive, command: Dictionary, divisor: int, factor: int) -> Dictionary:
+	var resource := _dynamic_sprite_resource(
+		sprite_archive, command.sprite_id, command.flip, divisor, factor
+	)
+
+	if resource.is_empty():
+		return {}
+
+	var mode := CityMapMovingOcclusion.MODE_SPRITE
+
+	if bool(command.get("shadow", false)):
+		mode = CityMapMovingOcclusion.MODE_SHADOW
+	elif bool(command.get("train", false)):
+		mode = CityMapMovingOcclusion.MODE_TRAIN
+
+	return {
+		"texture": resource.texture,
+		"texture_factor": factor,
+		"position": Vector2(Vector2i(command.position) * divisor),
+		"size": Vector2(resource.native_size),
+		# signs treat this image as an opaque moving sprite. a shadow has none
+		"image": null if bool(command.get("shadow", false)) else resource.image,
+		"depth_order": int(command.get("depth_order", -1)) if bool(command.get("static_occlusion", true)) else -1,
+		"shadow": bool(command.get("shadow", false)),
+		"record": int(command.get("record", -1)),
+		"gpu_mode": mode,
+	}
 
 
 func _static_occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:

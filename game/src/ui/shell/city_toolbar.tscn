@@ -283,6 +283,13 @@ tooltip_text = "Show or hide signs in the city view."
 button_pressed = true
 text = "Signs"
 
+[node name="VehiclesVisible" type="CheckBox" parent="Margin/Column/Layers"]
+unique_name_in_owner = true
+layout_mode = 2
+tooltip_text = "Show or hide airplanes, helicopters, ships, boats and trains. Hidden vehicles make no sound and cannot crash."
+button_pressed = true
+text = "Vehicles"
+
 [node name="WaterMainsVisible" type="CheckBox" parent="Margin/Column/Layers"]
 unique_name_in_owner = true
 layout_mode = 2
