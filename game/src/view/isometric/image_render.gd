@@ -12,7 +12,8 @@ static func create_image(
 	include_moving_things := true,
 	transparent_background := false,
 	validate_required_assets := true,
-	include_special_overlays := true
+	include_special_overlays := true,
+	progress := Callable()
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -54,6 +55,9 @@ static func create_image(
 				origin_x, x, y, animation_phase, include_moving_things,
 				include_special_overlays
 			)
+
+		if progress.is_valid():
+			progress.call(float(diagonal + 1) / float(map_edge * 2 - 1))
 
 	if palette.is_index_encoding:
 		output.convert(Image.FORMAT_LA8 if transparent_background else Image.FORMAT_L8)

@@ -518,6 +518,15 @@
     ]
   },
   {
+    "id": "city_png_export_test",
+    "script": "tests/city_png_export_test.gd",
+    "domain": "ui",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
+  },
+  {
     "id": "usability_polish_test",
     "script": "tests/usability_polish_test.gd",
     "domain": "ui",

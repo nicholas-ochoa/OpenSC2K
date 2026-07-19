@@ -168,6 +168,8 @@ var pending_bridge_request: Dictionary = {}
 var tool_choice_dialog: ToolChoiceDialog
 var pending_tool_choices: Dictionary = {}
 var stadium_dialog: StadiumTeamDialog
+var city_png_export_dialog: CityPngExportDialog
+var city_png_export_progress: ProgressOverlay
 var pending_stadium_command: Dictionary = {}
 var network_connection_dialog: RouteConfirmationDialog
 var pending_network_connection: Dictionary = {}
@@ -218,6 +220,7 @@ var interface: ApplicationInterface = ApplicationInterface.new(self)
 var settings: ApplicationSettings = ApplicationSettings.new(self)
 var scurk_workspace: ApplicationScurkWorkspace = ApplicationScurkWorkspace.new(self)
 var scurk_output: ApplicationScurkOutput = ApplicationScurkOutput.new(self)
+var city_png_export: ApplicationCityPngExport = ApplicationCityPngExport.new(self)
 var camera_input: ApplicationCameraInput = ApplicationCameraInput.new(self)
 var menus: ApplicationMenus = ApplicationMenus.new(self)
 var reports: ApplicationReports = ApplicationReports.new(self)
@@ -275,6 +278,7 @@ func _exit_tree() -> void:
 
 	static_render_thread = null
 	static_render_job = null
+	city_png_export._close()
 
 
 func _process(delta: float) -> void:

@@ -85,6 +85,8 @@ static func render(
 		return _failure("city is invalid")
 
 	var view := String(options.get("view", "city"))
+	var transparent := bool(options.get("transparent_background", false))
+	var progress: Callable = options.get("progress", Callable())
 	var result: Dictionary
 
 	if view == "underground":
@@ -94,7 +96,8 @@ static func render(
 			sprites,
 			view_size,
 			true,
-			bool(options.get("show_pipes", true)), true, bool(options.get("show_water_mains", true))
+			bool(options.get("show_pipes", true)), true, bool(options.get("show_water_mains", true)),
+			transparent, progress
 		)
 	elif view == "city":
 		var show_signs := bool(
@@ -111,9 +114,10 @@ static func render(
 			view_size,
 			0,
 			false,
-			false,
+			transparent,
 			true,
-			false
+			false,
+			progress
 		)
 
 		if result.get("ok", false) and show_signs:

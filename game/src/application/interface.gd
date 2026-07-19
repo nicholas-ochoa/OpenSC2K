@@ -95,6 +95,9 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 	app.save_dialog.canceled.connect(app.city_files._on_save_dialog_canceled)
 	app.tile_set_dialog = app.city_dialogs.tile_set_dialog
 	app.tile_set_dialog.file_selected.connect(app.scurk_workspace._load_tile_set)
+	app.city_png_export_dialog = app.city_dialogs.png_export_dialog
+	app.city_png_export_dialog.export_requested.connect(app.city_png_export._start_export)
+	app.city_png_export_progress = app.city_dialogs.png_export_progress
 
 
 	app.city_toolbar.start_city_requested.connect(app.new_city._start_city)

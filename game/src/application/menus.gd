@@ -55,6 +55,8 @@ func _on_file_menu(id: int) -> void:
 			app.city_files._open_save_dialog()
 		CityMenuBar.MENU_SAVE_CITY:
 			app.city_files._save_city()
+		CityMenuBar.MENU_EXPORT_CITY_PNG:
+			app.city_png_export._open_export_dialog()
 		3:
 			app.scurk_workspace._open_tile_set_dialog()
 		4:

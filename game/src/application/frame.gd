@@ -31,6 +31,7 @@ func _process(delta: float) -> void:
 
 	app.static_render._poll_static_render()
 	app.static_render._start_pending_static_render()
+	app.city_png_export._poll_export()
 
 	if app.speed_controller == null or app.city == null:
 		return
@@ -42,6 +43,8 @@ func _process(delta: float) -> void:
 		or app.bridge_dialog.visible
 		or app.tool_choice_dialog.visible
 		or app.stadium_dialog.visible
+		or (app.city_png_export_dialog != null and app.city_png_export_dialog.visible)
+		or (app.city_png_export_progress != null and app.city_png_export_progress.visible)
 		or app.network_connection_dialog.visible
 		or app.highway_connection_dialog.visible
 		or app.tunnel_dialog.visible

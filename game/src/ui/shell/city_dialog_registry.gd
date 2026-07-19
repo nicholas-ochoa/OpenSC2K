@@ -7,6 +7,8 @@ const SignDialogView = preload("res://src/ui/tools/city_sign_dialog.tscn")
 const BridgeDialogView = preload("res://src/ui/tools/bridge_selection_dialog.tscn")
 const ToolChoiceDialogView = preload("res://src/ui/tools/tool_choice_dialog.tscn")
 const StadiumDialogView = preload("res://src/ui/tools/stadium_team_dialog.tscn")
+const PngExportDialogView = preload("res://src/ui/shell/city_png_export_dialog.tscn")
+const ProgressOverlayView = preload("res://src/ui/shared/progress_overlay.tscn")
 const RouteDialogView = preload("res://src/ui/tools/route_confirmation_dialog.gd")
 const QueryDialogView = preload("res://src/ui/tools/city_query_dialog.tscn")
 const GraphWindowView = preload("res://src/ui/city_windows/city_graph_window.tscn")
@@ -30,6 +32,8 @@ var original_assets: OriginalGameAssets
 var city_open_dialog: FileDialog
 var city_save_dialog: FileDialog
 var tile_set_dialog: FileDialog
+var png_export_dialog: CityPngExportDialog
+var png_export_progress: ProgressOverlay
 var new_city_dialog: NewCityTerrainDialog
 var sign_dialog: CitySignDialog
 var bridge_dialog: BridgeSelectionDialog
@@ -75,6 +79,10 @@ func _create_file_dialogs() -> void:
 	_dialog_parent("Files").add_child(city_save_dialog)
 	tile_set_dialog = FileDialogs.tile_set_open()
 	_dialog_parent("Files").add_child(tile_set_dialog)
+	png_export_dialog = PngExportDialogView.instantiate()
+	_dialog_parent("Files").add_child(png_export_dialog)
+	png_export_progress = ProgressOverlayView.instantiate()
+	_dialog_parent("Files").add_child(png_export_progress)
 
 
 func _create_tool_dialogs() -> void:

@@ -41,6 +41,10 @@ static func city_pdf_save() -> FileDialog:
 	)
 
 
+static func folder_select() -> FileDialog:
+	return _create(FileDialog.FILE_MODE_OPEN_DIR, [])
+
+
 static func _create(file_mode: int, filters: Array) -> FileDialog:
 	var dialog := FileDialog.new()
 	dialog.theme = AppUiTheme.file_dialog()

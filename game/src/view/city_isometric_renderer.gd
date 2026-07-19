@@ -13,11 +13,12 @@ static func create_image(
 	include_moving_things := true,
 	transparent_background := false,
 	validate_required_assets := true,
-	include_special_overlays := true
+	include_special_overlays := true,
+	progress := Callable()
 ) -> Dictionary:
 	return IsometricImageRender.create_image(
 		city, palette, sprites, view_size, animation_phase, include_moving_things, transparent_background,
-		validate_required_assets, include_special_overlays
+		validate_required_assets, include_special_overlays, progress
 	)
 
 

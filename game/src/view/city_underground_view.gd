@@ -19,7 +19,9 @@ static func create_image(
 	view_size := Geometry.VIEW_LARGE,
 	validate_required_assets := true,
 	show_pipes := true,
-	show_subways := true, show_water_mains := true
+	show_subways := true, show_water_mains := true,
+	transparent_background := false,
+	progress := Callable()
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 
@@ -45,7 +47,7 @@ static func create_image(
 
 	var output_size := Geometry.output_size_for_view(view_size, map_edge)
 	var output := Image.create(output_size.x, output_size.y, false, Image.FORMAT_RGBA8)
-	output.fill(Color8(
+	output.fill(Color.TRANSPARENT if transparent_background else Color8(
 		WHITE_PALETTE_INDEX,
 		WHITE_PALETTE_INDEX,
 		WHITE_PALETTE_INDEX,
@@ -69,8 +71,11 @@ static func create_image(
 				show_pipes, show_subways, show_water_mains
 			)
 
+		if progress.is_valid():
+			progress.call(float(diagonal + 1) / float(map_edge * 2 - 1))
+
 	if palette.is_index_encoding:
-		output.convert(Image.FORMAT_L8)
+		output.convert(Image.FORMAT_LA8 if transparent_background else Image.FORMAT_L8)
 
 	return {"ok": true, "image": output, "error": ""}
 

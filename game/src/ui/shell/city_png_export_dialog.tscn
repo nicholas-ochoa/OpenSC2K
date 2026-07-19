@@ -1,0 +1,85 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://src/ui/shell/city_png_export_dialog.gd" id="1_png_export"]
+
+[node name="CityPngExportDialog" type="ConfirmationDialog"]
+visible = true
+title = "Export City as PNG"
+min_size = Vector2i(560, 340)
+exclusive = true
+ok_button_text = "Export"
+script = ExtResource("1_png_export")
+
+[node name="Fields" type="VBoxContainer" parent="."]
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 552.0
+offset_bottom = 291.0
+theme_override_constants/separation = 10
+
+[node name="Grid" type="GridContainer" parent="Fields"]
+layout_mode = 2
+theme_override_constants/h_separation = 12
+theme_override_constants/v_separation = 8
+columns = 2
+
+[node name="FolderLabel" type="Label" parent="Fields/Grid"]
+layout_mode = 2
+text = "Folder"
+
+[node name="FolderRow" type="HBoxContainer" parent="Fields/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+
+[node name="FolderInput" type="LineEdit" parent="Fields/Grid/FolderRow"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "Export folder"
+
+[node name="BrowseButton" type="Button" parent="Fields/Grid/FolderRow"]
+layout_mode = 2
+text = "Browse…"
+
+[node name="FileNameLabel" type="Label" parent="Fields/Grid"]
+layout_mode = 2
+text = "File name"
+
+[node name="FileNameInput" type="LineEdit" parent="Fields/Grid"]
+layout_mode = 2
+size_flags_horizontal = 3
+placeholder_text = "city.png"
+
+[node name="GraphicsLabel" type="Label" parent="Fields/Grid"]
+layout_mode = 2
+text = "Graphics"
+
+[node name="GraphicsSelector" type="OptionButton" parent="Fields/Grid"]
+layout_mode = 2
+
+[node name="ZoomLabel" type="Label" parent="Fields/Grid"]
+layout_mode = 2
+text = "Zoom"
+
+[node name="ZoomSelector" type="OptionButton" parent="Fields/Grid"]
+layout_mode = 2
+
+[node name="ViewLabel" type="Label" parent="Fields/Grid"]
+layout_mode = 2
+text = "View"
+
+[node name="ViewSelector" type="OptionButton" parent="Fields/Grid"]
+layout_mode = 2
+
+[node name="BackgroundLabel" type="Label" parent="Fields/Grid"]
+layout_mode = 2
+text = "Background"
+
+[node name="BackgroundCheck" type="CheckBox" parent="Fields/Grid"]
+layout_mode = 2
+button_pressed = true
+text = "Include background"
+
+[node name="Summary" type="Label" parent="Fields"]
+custom_minimum_size = Vector2(520, 0)
+layout_mode = 2
+autowrap_mode = 3
