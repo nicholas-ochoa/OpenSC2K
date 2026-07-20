@@ -26,7 +26,13 @@ const BudgetDialogView = preload("res://src/ui/city_windows/budget_dialog.tscn")
 const IndustryView = preload("res://src/view/industry_window_control.gd")
 const SimNationView = preload("res://src/view/simnation_window_control.gd")
 
+# whether a visible window suspends the simulation. each registered window
+# declares one value. statistics windows are modeless, as in the original game
+enum Modality { BLOCKING, MODELESS }
+
 var dialog_groups: Dictionary = {}
+var blocking_windows: Array[Node] = []
+var modeless_windows: Array[Node] = []
 
 var original_assets: OriginalGameAssets
 var city_open_dialog: FileDialog
@@ -74,32 +80,32 @@ func _ready() -> void:
 
 func _create_file_dialogs() -> void:
 	city_open_dialog = FileDialogs.city_open()
-	_dialog_parent("Files").add_child(city_open_dialog)
+	_register(city_open_dialog, "Files", Modality.MODELESS)
 	city_save_dialog = FileDialogs.city_save()
-	_dialog_parent("Files").add_child(city_save_dialog)
+	_register(city_save_dialog, "Files", Modality.BLOCKING)
 	tile_set_dialog = FileDialogs.tile_set_open()
-	_dialog_parent("Files").add_child(tile_set_dialog)
+	_register(tile_set_dialog, "Files", Modality.MODELESS)
 	png_export_dialog = PngExportDialogView.instantiate()
-	_dialog_parent("Files").add_child(png_export_dialog)
+	_register(png_export_dialog, "Files", Modality.BLOCKING)
 	png_export_progress = ProgressOverlayView.instantiate()
-	_dialog_parent("Files").add_child(png_export_progress)
+	_register(png_export_progress, "Files", Modality.BLOCKING)
 
 
 func _create_tool_dialogs() -> void:
 	new_city_dialog = NewCityDialogView.instantiate() as NewCityTerrainDialog
-	_dialog_parent("Startup").add_child(new_city_dialog)
+	_register(new_city_dialog, "Startup", Modality.BLOCKING)
 
 	if original_assets != null:
 		new_city_dialog.set_control_graphics(original_assets.city_ui_graphics)
 
 	sign_dialog = SignDialogView.instantiate()
-	_dialog_parent("Tools").add_child(sign_dialog)
+	_register(sign_dialog, "Tools", Modality.MODELESS)
 	bridge_dialog = BridgeDialogView.instantiate()
-	_dialog_parent("Tools").add_child(bridge_dialog)
+	_register(bridge_dialog, "Tools", Modality.BLOCKING)
 	tool_choice_dialog = ToolChoiceDialogView.instantiate()
-	_dialog_parent("Tools").add_child(tool_choice_dialog)
+	_register(tool_choice_dialog, "Tools", Modality.BLOCKING)
 	stadium_dialog = StadiumDialogView.instantiate()
-	_dialog_parent("Tools").add_child(stadium_dialog)
+	_register(stadium_dialog, "Tools", Modality.BLOCKING)
 	network_connection_dialog = _route_dialog(
 		"Neighbor Connection",
 		"Build a road connection to a neighboring city for $1,000?",
@@ -122,16 +128,16 @@ func _create_tool_dialogs() -> void:
 	tunnel_dialog.theme = AppUiTheme.current()
 
 	query_dialog = QueryDialogView.instantiate()
-	_dialog_parent("Tools").add_child(query_dialog)
+	_register(query_dialog, "Tools", Modality.BLOCKING)
 
 
 func _create_information_windows() -> void:
 	graph_window = GraphWindowView.instantiate()
-	_dialog_parent("CityWindows").add_child(graph_window)
+	_register(graph_window, "CityWindows", Modality.MODELESS)
 	population_window = PopulationWindowView.instantiate()
-	_dialog_parent("CityWindows").add_child(population_window)
+	_register(population_window, "CityWindows", Modality.MODELESS)
 	industry_window = IndustryWindowView.instantiate()
-	_dialog_parent("CityWindows").add_child(industry_window)
+	_register(industry_window, "CityWindows", Modality.MODELESS)
 	var industry_names := PackedStringArray()
 
 	for index in IndustryView.INDUSTRY_COUNT:
@@ -142,7 +148,7 @@ func _create_information_windows() -> void:
 
 	industry_window.set_resources(industry_names, original_assets.industry_icons)
 	simnation_window = SimNationWindowView.instantiate()
-	_dialog_parent("CityWindows").add_child(simnation_window)
+	_register(simnation_window, "CityWindows", Modality.MODELESS)
 	simnation_window.set_resources(
 		original_assets.simnation_sprites,
 		str(original_assets.strings.get(
@@ -152,24 +158,24 @@ func _create_information_windows() -> void:
 		original_assets.strings,
 	)
 	city_map_window = CityMapWindowView.instantiate()
-	_dialog_parent("CityWindows").add_child(city_map_window)
+	_register(city_map_window, "CityWindows", Modality.MODELESS)
 	city_map_window.set_resources(
 		original_assets.city_map_icons, original_assets.strings
 	)
 	ordinance_window = OrdinanceWindowView.instantiate()
-	_dialog_parent("CityWindows").add_child(ordinance_window)
+	_register(ordinance_window, "CityWindows", Modality.BLOCKING)
 	analysis_dialog = AnalysisDialogView.instantiate()
-	_dialog_parent("CityWindows").add_child(analysis_dialog)
+	_register(analysis_dialog, "CityWindows", Modality.MODELESS)
 	newspaper_dialog = NewspaperDialogView.new()
-	_dialog_parent("CityWindows").add_child(newspaper_dialog)
+	_register(newspaper_dialog, "CityWindows", Modality.MODELESS)
 	newspaper_dialog.set_control_graphics(original_assets.city_ui_graphics)
 	library_windows = LibraryWindowsView.new()
-	_dialog_parent("CityWindows").add_child(library_windows)
+	_register(library_windows, "CityWindows", Modality.MODELESS)
 
 
 func _create_event_dialogs() -> void:
 	building_objection_dialog = PictureDialogView.instantiate()
-	_dialog_parent("CityEvents").add_child(building_objection_dialog)
+	_register(building_objection_dialog, "CityEvents", Modality.BLOCKING)
 	building_objection_dialog.configure(
 		"BuildingObjectionDialog",
 		"Citizen Objection",
@@ -182,9 +188,9 @@ func _create_event_dialogs() -> void:
 	game_over_dialog.name = "GameOverDialog"
 	game_over_dialog.theme = ClassicUiStyle.create_dialog_theme()
 	game_over_dialog.min_size = Vector2i(460, 220)
-	_dialog_parent("CityEvents").add_child(game_over_dialog)
+	_register(game_over_dialog, "CityEvents", Modality.MODELESS)
 	scenario_dialog = ScenarioDialogView.instantiate()
-	_dialog_parent("Startup").add_child(scenario_dialog)
+	_register(scenario_dialog, "Startup", Modality.BLOCKING)
 	military_dialog = ConfirmationDialog.new()
 	military_dialog.name = "MilitaryProposalDialog"
 	military_dialog.theme = ClassicUiStyle.create_dialog_theme()
@@ -197,9 +203,9 @@ func _create_event_dialogs() -> void:
 	military_dialog.get_ok_button().text = "Accept"
 	military_dialog.get_cancel_button().text = "Decline"
 	military_dialog.exclusive = true
-	_dialog_parent("CityEvents").add_child(military_dialog)
+	_register(military_dialog, "CityEvents", Modality.BLOCKING)
 	budget_dialog = BudgetDialogView.instantiate() as BudgetDialog
-	_dialog_parent("CityWindows").add_child(budget_dialog)
+	_register(budget_dialog, "CityWindows", Modality.BLOCKING)
 
 
 func _route_dialog(
@@ -211,9 +217,34 @@ func _route_dialog(
 ) -> RouteConfirmationDialog:
 	var dialog := RouteDialogView.new()
 	dialog.configure(title, prompt, accept_text, cancel_text, minimum_size)
-	_dialog_parent("Tools").add_child(dialog)
+	_register(dialog, "Tools", Modality.BLOCKING)
 
 	return dialog
+
+
+# true when a visible registered window suspends the simulation
+func blocks_simulation() -> bool:
+	return any_window_visible(blocking_windows)
+
+
+static func any_window_visible(windows: Array[Node]) -> bool:
+	for window in windows:
+		if window is Window and (window as Window).visible:
+			return true
+
+		if window is CanvasItem and (window as CanvasItem).visible:
+			return true
+
+	return false
+
+
+func _register(window: Node, group_name: String, modality: Modality) -> void:
+	_dialog_parent(group_name).add_child(window)
+
+	if modality == Modality.BLOCKING:
+		blocking_windows.append(window)
+	else:
+		modeless_windows.append(window)
 
 
 func _dialog_parent(group_name: String) -> Control:

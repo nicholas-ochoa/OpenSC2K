@@ -37,38 +37,7 @@ func _process(delta: float) -> void:
 		return
 
 	app.simulation_engine.midi_playback_active = app.effects_audio._music_playback_is_active()
-	var interaction_suspended: bool = (
-		(app.map_view != null and (app.map_view.is_left_drag_active() or app.map_view.is_panning()))
-		or app.budget_dialog.visible
-		or app.bridge_dialog.visible
-		or app.tool_choice_dialog.visible
-		or app.stadium_dialog.visible
-		or (app.city_png_export_dialog != null and app.city_png_export_dialog.visible)
-		or (app.city_png_export_progress != null and app.city_png_export_progress.visible)
-		or app.network_connection_dialog.visible
-		or app.highway_connection_dialog.visible
-		or app.tunnel_dialog.visible
-		or (app.building_objection_dialog != null and app.building_objection_dialog.visible)
-		or (app.sc2x_conversion_dialog != null and app.sc2x_conversion_dialog.visible)
-		or (app.settings_dialog != null and app.settings_dialog.visible)
-		or (app.query_dialog != null and app.query_dialog.visible)
-		or (app.ordinance_window != null and app.ordinance_window.visible)
-		or (app.new_city_dialog != null and app.new_city_dialog.visible)
-		or (app.scurk_editor != null and app.scurk_editor.visible)
-		or (app.scurk_place_print != null and app.scurk_place_print.visible)
-		or (app.scurk_print != null and app.scurk_print.visible)
-		or (app.main_menu != null and app.main_menu.visible)
-		or (app.save_dialog != null and app.save_dialog.visible)
-		or (app.scurk_city_export_dialog != null and app.scurk_city_export_dialog.visible)
-		or (app.scurk_print_pdf_dialog != null and app.scurk_print_pdf_dialog.visible)
-		or (app.save_changes_dialog != null and app.save_changes_dialog.visible)
-		or app.budget_dialog.bond_confirmation_visible()
-		or app.military_dialog.visible
-		or app.scenario_dialog.visible
-		or app.game_over_active
-		or app.landscape_editor
-		or app.founding_newspaper_pending
-	)
+	var interaction_suspended := _simulation_suspended()
 	var result: Dictionary
 
 	if app.frame_simulation != null:
@@ -88,6 +57,23 @@ func _process(delta: float) -> void:
 
 	_consume_simulation_result(result)
 	app.moving_sprites._advance_blend()
+
+
+# registered windows declare whether they block. other conditions stay listed here
+func _simulation_suspended() -> bool:
+	return (
+		(app.map_view != null and (app.map_view.is_left_drag_active() or app.map_view.is_panning()))
+		or (app.city_dialogs != null and app.city_dialogs.blocks_simulation())
+		or (app.main_overlays != null and app.main_overlays.blocks_simulation())
+		# workflows create these file prompts outside the registries
+		or (app.sc2x_conversion_dialog != null and app.sc2x_conversion_dialog.visible)
+		or (app.scurk_city_export_dialog != null and app.scurk_city_export_dialog.visible)
+		or (app.scurk_print_pdf_dialog != null and app.scurk_print_pdf_dialog.visible)
+		or app.budget_dialog.bond_confirmation_visible()
+		or app.game_over_active
+		or app.landscape_editor
+		or app.founding_newspaper_pending
+	)
 
 
 func _advance_palette_animation(delta: float, suspended: bool) -> void:

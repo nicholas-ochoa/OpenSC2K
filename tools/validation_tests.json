@@ -518,6 +518,15 @@
     ]
   },
   {
+    "id": "simulation_suspension_test",
+    "script": "tests/simulation_suspension_test.gd",
+    "domain": "ui",
+    "lane": "product",
+    "requires": [
+      "ext/graphics/pack.json"
+    ]
+  },
+  {
     "id": "city_png_export_test",
     "script": "tests/city_png_export_test.gd",
     "domain": "ui",

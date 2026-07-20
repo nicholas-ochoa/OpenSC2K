@@ -7,6 +7,8 @@ const AboutDialogView = preload("res://src/ui/settings/about_dialog.tscn")
 const SaveChangesDialogView = preload("res://src/ui/shared/save_changes_dialog.gd")
 
 var scurk_workspace: Control
+var blocking_windows: Array[Node] = []
+var modeless_windows: Array[Node] = []
 
 var main_menu: MainMenuControl
 var settings_dialog: AppSettingsDialog
@@ -27,16 +29,30 @@ func _create_overlays() -> void:
 	main_menu = MainMenuView.instantiate() as MainMenuControl
 	main_menu.z_index = 850
 	main_menu.visible = false
-	add_child(main_menu)
+	_register(main_menu, self, CityDialogRegistry.Modality.BLOCKING)
 
 	settings_dialog = SettingsDialogView.instantiate() as AppSettingsDialog
-	add_child(settings_dialog)
+	_register(settings_dialog, self, CityDialogRegistry.Modality.BLOCKING)
 
 	about_dialog = AboutDialogView.instantiate()
-	add_child(about_dialog)
+	_register(about_dialog, self, CityDialogRegistry.Modality.MODELESS)
 
 	save_changes_dialog = SaveChangesDialogView.new()
-	add_child(save_changes_dialog)
+	_register(save_changes_dialog, self, CityDialogRegistry.Modality.BLOCKING)
+
+
+# true when a visible registered overlay suspends the simulation
+func blocks_simulation() -> bool:
+	return CityDialogRegistry.any_window_visible(blocking_windows)
+
+
+func _register(window: Node, parent: Node, modality: CityDialogRegistry.Modality) -> void:
+	parent.add_child(window)
+
+	if modality == CityDialogRegistry.Modality.BLOCKING:
+		blocking_windows.append(window)
+	else:
+		modeless_windows.append(window)
 
 
 func _scurk_parent() -> Control:
@@ -54,7 +70,7 @@ func ensure_scurk_editor() -> ScurkEditorControl:
 	if scurk_editor == null:
 		scurk_editor = (load("res://src/ui/scurk/scurk_editor_control.tscn") as PackedScene).instantiate() as ScurkEditorControl
 		scurk_editor.z_index = 940
-		_scurk_parent().add_child(scurk_editor)
+		_register(scurk_editor, _scurk_parent(), CityDialogRegistry.Modality.BLOCKING)
 
 	return scurk_editor
 
@@ -62,7 +78,7 @@ func ensure_scurk_editor() -> ScurkEditorControl:
 func ensure_scurk_place_print() -> ScurkPlacePrintControl:
 	if scurk_place_print == null:
 		scurk_place_print = (load("res://src/ui/scurk/scurk_place_print_control.tscn") as PackedScene).instantiate() as ScurkPlacePrintControl
-		_scurk_parent().add_child(scurk_place_print)
+		_register(scurk_place_print, _scurk_parent(), CityDialogRegistry.Modality.BLOCKING)
 
 	return scurk_place_print
 
@@ -70,6 +86,6 @@ func ensure_scurk_place_print() -> ScurkPlacePrintControl:
 func ensure_scurk_print() -> ScurkPrintControl:
 	if scurk_print == null:
 		scurk_print = (load("res://src/ui/scurk/scurk_print_control.tscn") as PackedScene).instantiate() as ScurkPrintControl
-		ensure_scurk_place_print().add_child(scurk_print)
+		_register(scurk_print, ensure_scurk_place_print(), CityDialogRegistry.Modality.BLOCKING)
 
 	return scurk_print
