@@ -51,7 +51,9 @@ func _run() -> void:
 		BuildingCommand.undo(city, command, (main.get("simulation_engine") as SimulationEngine).lfsr_random, main.get("tool_random"))
 		main.map_render.call("_refresh_map", false)
 
-		while main.get("static_render_thread") != null or main.get("pending_static_render"):
+		var render_state := main.get("static_render_state") as StaticRenderState
+
+		while render_state.thread != null or render_state.pending:
 			await process_frame
 
 	main.queue_free()
