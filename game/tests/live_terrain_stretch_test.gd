@@ -92,7 +92,7 @@ func _wait_for_render() -> void:
 	for frame in 300:
 		await create_timer(0.02).timeout
 
-		if main.static_city_image != null and main.static_render_thread == null:
+		if main.static_city_image != null and main.static_render_state.thread == null:
 			return
 
 	assert(false, "Terrain render did not finish")

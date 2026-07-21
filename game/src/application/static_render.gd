@@ -12,10 +12,12 @@ const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
 
 var app: CityApplication
+var state: StaticRenderState
 
 
 func _init(application: CityApplication) -> void:
 	app = application
+	state = application.static_render_state
 
 
 func _refresh_after_city_edit(command: Dictionary) -> void:
@@ -57,7 +59,7 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 		or app.static_city_image.is_empty()
 		or app.static_render_mode != "city"
 		or app.static_display_city == null
-		or app.static_render_thread != null
+		or state.thread != null
 	):
 		return false
 
@@ -108,12 +110,12 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 
 	app.edit_display_timings.patch_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
-	app.static_render_epoch += 1
+	state.epoch += 1
 	app.static_city_image = patched.image
 	app.static_display_city = display_city
 	app.static_visual_signature = _static_signature_for_mode("city", view_size)
 	app.static_render_mode = "city"
-	app.pending_static_render = false
+	state.pending = false
 	app.moving_sprites._set_static_occlusion_commands(
 		IsometricRenderer.patch_static_occlusion_commands(
 			app.static_occlusion_commands,
@@ -264,7 +266,7 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 func _request_static_render(
 	signature: Array, view_size: int, sprite_archive: Sc2SpriteArchive, render_mode := "city"
 ) -> void:
-	if app.static_render_thread != null:
+	if state.thread != null:
 		return
 
 	var now_msec := Time.get_ticks_msec()
@@ -272,14 +274,14 @@ func _request_static_render(
 	if (
 		app.simulation_engine != null
 		and app.simulation_engine.active_disaster_type != 0
-		and now_msec - app.last_static_render_started_msec
+		and now_msec - state.last_started_msec
 			< ACTIVE_DISASTER_RENDER_INTERVAL_MSEC
 	):
-		app.pending_static_render = true
+		state.pending = true
 
 		return
 
-	app.pending_static_render = false
+	state.pending = false
 	var snapshot_document := app.current_document.duplicate_document()
 	var snapshot := CityModel.from_document(snapshot_document)
 
@@ -289,36 +291,36 @@ func _request_static_render(
 		return
 
 	snapshot.visible_altitude_levels = app.city.visible_altitude_levels
-	app.static_render_job = RenderJob.new()
-	app.static_render_job.city_snapshot = snapshot
-	app.static_render_job.index_palette = app.palette_index_encoding
-	app.static_render_job.sprites = sprite_archive
-	app.static_render_job.view_size = view_size
-	app.static_render_job.animation_phase = int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100))
-	app.static_render_job.signature = signature.duplicate()
-	app.static_render_job.epoch = app.static_render_epoch
-	app.static_render_job.render_mode = render_mode
-	app.static_render_job.surface_visibility = app.surface_visibility.duplicate()
-	app.static_render_job.show_underground_subways = app.show_underground_subways
-	app.static_render_job.show_underground_water_mains = app.show_underground_water_mains
-	app.static_render_job.show_underground_pipes = app.show_underground_pipes
-	app.static_render_thread = Thread.new()
-	var start_error := app.static_render_thread.start(
-		app.static_render_job.run, Thread.PRIORITY_LOW
+	state.job = RenderJob.new()
+	state.job.city_snapshot = snapshot
+	state.job.index_palette = app.palette_index_encoding
+	state.job.sprites = sprite_archive
+	state.job.view_size = view_size
+	state.job.animation_phase = int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100))
+	state.job.signature = signature.duplicate()
+	state.job.epoch = state.epoch
+	state.job.render_mode = render_mode
+	state.job.surface_visibility = app.surface_visibility.duplicate()
+	state.job.show_underground_subways = app.show_underground_subways
+	state.job.show_underground_water_mains = app.show_underground_water_mains
+	state.job.show_underground_pipes = app.show_underground_pipes
+	state.thread = Thread.new()
+	var start_error := state.thread.start(
+		state.job.run, Thread.PRIORITY_LOW
 	)
 
 	if start_error != OK:
-		app.static_render_thread = null
-		app.static_render_job = null
+		state.thread = null
+		state.job = null
 		app.interface._show_error("Cannot start the city renderer: %s" % error_string(start_error))
 	else:
-		app.last_static_render_started_msec = now_msec
+		state.last_started_msec = now_msec
 
 
 func _start_pending_static_render() -> void:
 	if (
-		not app.pending_static_render
-		or app.static_render_thread != null
+		not state.pending
+		or state.thread != null
 		or app.city == null
 		or app.overlay_mode not in ["city", "underground"]
 	):
@@ -336,12 +338,12 @@ func _start_pending_static_render() -> void:
 func _poll_static_render() -> void:
 	app.map_render._poll_region_cache()
 
-	if app.static_render_thread == null or app.static_render_thread.is_alive():
+	if state.thread == null or state.thread.is_alive():
 		return
 
-	var rendered: Dictionary = app.static_render_thread.wait_to_finish()
-	app.static_render_thread = null
-	app.static_render_job = null
+	var rendered: Dictionary = state.thread.wait_to_finish()
+	state.thread = null
+	state.job = null
 
 	if not rendered.get("ok", false):
 		app.interface._show_error(rendered.get("error", "city rendering failed"))
@@ -350,7 +352,7 @@ func _poll_static_render() -> void:
 
 	if (
 		app.city == null
-		or int(rendered.epoch) != app.static_render_epoch
+		or int(rendered.epoch) != state.epoch
 		or int(rendered.view_size) != _city_view_size()
 		or String(rendered.get("render_mode", "city")) != app.overlay_mode
 	):
@@ -451,24 +453,24 @@ func _sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
 
 # waits for the running static render and discards its job
 func _stop_render_job() -> void:
-	if app.static_render_thread != null and app.static_render_thread.is_started():
-		app.static_render_thread.wait_to_finish()
+	if state.thread != null and state.thread.is_started():
+		state.thread.wait_to_finish()
 
-	app.static_render_thread = null
-	app.static_render_job = null
+	state.thread = null
+	state.job = null
 
 
 # stops the static render and forgets cached views so the next refresh renders again
 func _restart_static_render() -> void:
 	_stop_render_job()
-	app.pending_static_render = false
+	state.pending = false
 	app.static_view_cache.clear()
 
 
 # discards every rendered image of the city after an artwork or document change
 func _invalidate_rendered_city() -> void:
 	app.map_render._close_region_cache()
-	app.static_render_epoch += 1
+	state.epoch += 1
 	app.static_city_image = null
 	app.static_occlusion_commands.clear()
 	app.static_occlusion_grid.clear()
@@ -476,7 +478,7 @@ func _invalidate_rendered_city() -> void:
 	app.static_render_mode = ""
 	app.static_display_city = null
 	app.static_view_cache.clear()
-	app.pending_static_render = false
+	state.pending = false
 	_clear_dynamic_composition_cache()
 	app.dynamic_sign_occluders.clear()
 	app.dynamic_sign_occlusion_grid.clear()
@@ -484,7 +486,7 @@ func _invalidate_rendered_city() -> void:
 
 # discards static views after a layer visibility change. sprite caches remain valid
 func _invalidate_view_render() -> void:
-	app.static_render_epoch += 1
+	state.epoch += 1
 	app.static_visual_signature.clear()
 	app.static_render_mode = ""
 	app.static_view_cache.clear()

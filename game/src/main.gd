@@ -7,7 +7,6 @@ const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const ScurkHistory = preload("res://src/tools/scurk/scurk_edit_history.gd")
-const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 
 # active document and save state
 var city: CityState
@@ -102,6 +101,7 @@ var game_over_active := false
 var edit_display_timings := {}
 # static and dynamic render caches and jobs
 var region_cache: CityRegionCache
+var static_render_state := StaticRenderState.new()
 var static_city_image: Image
 var static_occlusion_commands: Array[Dictionary] = []
 var static_occlusion_grid: Dictionary = {}
@@ -120,11 +120,6 @@ var sign_foreground_cache: Dictionary = {}
 var dynamic_special_batch_cache: Dictionary = {}
 var dynamic_sign_occluders: Array[Dictionary] = []
 var dynamic_sign_occlusion_grid: Dictionary = {}
-var static_render_thread: Thread
-var static_render_job: CityRenderJob
-var static_render_epoch := 0
-var last_static_render_started_msec := -ACTIVE_DISASTER_RENDER_INTERVAL_MSEC
-var pending_static_render := false
 var toolbar_animation_palette: Sc2Palette
 var palette_cycle_ticks := 0
 var palette_elapsed_msec := 0.0

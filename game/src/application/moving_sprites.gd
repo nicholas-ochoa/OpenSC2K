@@ -369,7 +369,7 @@ func _dynamic_occluder_image(
 
 	var cache_key := "%d:%d:%d:%d:%d:%d:%d:%d" % [
 		position.x, position.y, size.x, size.y, draw_order, int(is_train),
-		app.static_render_epoch, texture_factor,
+		app.static_render_state.epoch, texture_factor,
 	]
 
 	if app.dynamic_occluder_cache.has(cache_key):

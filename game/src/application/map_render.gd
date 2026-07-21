@@ -29,7 +29,7 @@ func _refresh_map(force := true) -> void:
 
 	if CityDataView.MODES.has(app.overlay_mode):
 		_close_region_cache()
-		app.pending_static_render = false
+		app.static_render_state.pending = false
 		app.map_view.set_dynamic_sprites([])
 		app.map_view.show_transient_effects([])
 		app.map_view.set_data_view(app.city, app.overlay_mode)
@@ -48,7 +48,7 @@ func _refresh_map(force := true) -> void:
 
 	if app.overlay_mode == "city" or app.overlay_mode == "underground":
 		if force:
-			app.pending_static_render = false
+			app.static_render_state.pending = false
 
 		var view_size := app.static_render._city_view_size()
 		var sprite_archive := app.static_render._sprite_archive_for_view(view_size)
@@ -112,7 +112,7 @@ func _refresh_map(force := true) -> void:
 
 			return
 
-		app.static_render_epoch += 1
+		app.static_render_state.epoch += 1
 		var display_city := (
 			app.city
 			if app.overlay_mode == "underground"
@@ -165,7 +165,7 @@ func _refresh_map(force := true) -> void:
 			"view_size": view_size,
 		}
 	else:
-		app.pending_static_render = false
+		app.static_render_state.pending = false
 		image = Minimap.create_image(app.city, app.palette, app.overlay_mode)
 		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
 		app.static_city_image = null
@@ -209,7 +209,7 @@ func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	app.static_view_cache.clear()
 	app.static_occlusion_commands.clear()
 	app.static_occlusion_grid.clear()
-	app.pending_static_render = false
+	app.static_render_state.pending = false
 	var view_size := app.static_render._city_view_size()
 	var sprites := app.static_render._sprite_archive_for_view(view_size)
 	var signature := app.static_render._static_signature_for_mode(app.overlay_mode, view_size)
