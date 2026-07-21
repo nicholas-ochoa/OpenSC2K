@@ -58,7 +58,7 @@ func _run() -> void:
 	assert(colored.get_pixel(0, 0) == main.palette.color(17))
 	assert(colored.get_pixel(1, 0).a == 0.0)
 	assert(indexed.get_pixel(0, 0).r8 == 161, "Palette update changed cached indices")
-	main.assets._invalidate_sprite_art()
+	main.static_render._invalidate_rendered_city()
 	assert(main.sign_foreground_cache.is_empty())
 	main.queue_free()
 	await process_frame

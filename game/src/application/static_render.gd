@@ -449,6 +449,52 @@ func _sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
 	return app.small_medium_sprites if view_size < IsometricRenderer.VIEW_LARGE else app.large_sprites
 
 
+# waits for the running static render and discards its job
+func _stop_render_job() -> void:
+	if app.static_render_thread != null and app.static_render_thread.is_started():
+		app.static_render_thread.wait_to_finish()
+
+	app.static_render_thread = null
+	app.static_render_job = null
+
+
+# stops the static render and forgets cached views so the next refresh renders again
+func _restart_static_render() -> void:
+	_stop_render_job()
+	app.pending_static_render = false
+	app.static_view_cache.clear()
+
+
+# discards every rendered image of the city after an artwork or document change
+func _invalidate_rendered_city() -> void:
+	app.map_render._close_region_cache()
+	app.static_render_epoch += 1
+	app.static_city_image = null
+	app.static_occlusion_commands.clear()
+	app.static_occlusion_grid.clear()
+	app.static_visual_signature = []
+	app.static_render_mode = ""
+	app.static_display_city = null
+	app.static_view_cache.clear()
+	app.pending_static_render = false
+	_clear_dynamic_composition_cache()
+	app.dynamic_sign_occluders.clear()
+	app.dynamic_sign_occlusion_grid.clear()
+
+
+# discards static views after a layer visibility change. sprite caches remain valid
+func _invalidate_view_render() -> void:
+	app.static_render_epoch += 1
+	app.static_visual_signature.clear()
+	app.static_render_mode = ""
+	app.static_view_cache.clear()
+	app.static_occlusion_commands.clear()
+	app.static_occlusion_grid.clear()
+	app.dynamic_occluder_cache.clear()
+	app.dynamic_sign_occluders.clear()
+	app.dynamic_sign_occlusion_grid.clear()
+
+
 func _clear_dynamic_composition_cache() -> void:
 	app.dynamic_sprite_cache.clear()
 	app.dynamic_foreground_cache.clear()

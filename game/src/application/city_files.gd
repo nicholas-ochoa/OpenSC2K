@@ -113,7 +113,7 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 	app.last_edit_command.clear()
 	app.scurk_edit_history.clear()
 	app.current_save_path = ""
-	app.menus._invalidate_view_render()
+	app.static_render._invalidate_view_render()
 	app.map_render._refresh_map(false)
 	_sync_upgrade_city_option()
 	app.status_label.text = "City upgraded to SC2X. Save a separate copy; the original game cannot open it."

@@ -148,27 +148,10 @@ func _activate_document(
 		else ""
 	)
 	app.interface._hide_main_menu()
-	app.map_render._close_region_cache()
-	app.static_render_epoch += 1
-	app.static_city_image = null
-	app.static_occlusion_commands.clear()
-	app.static_occlusion_grid.clear()
-	app.static_visual_signature = []
-	app.static_render_mode = ""
-	app.static_display_city = null
-	app.static_view_cache.clear()
-	app.pending_static_render = false
+	app.static_render._invalidate_rendered_city()
 	app.palette_cycle_ticks = 0
 	app.palette_elapsed_msec = 0.0
 	app.static_render._update_palette_cycle_texture()
-	app.dynamic_sprite_cache.clear()
-	app.dynamic_foreground_cache.clear()
-	app.dynamic_occluder_cache.clear()
-	app.dynamic_visual_cache.clear()
-	app.sign_foreground_cache.clear()
-	app.dynamic_special_batch_cache.clear()
-	app.dynamic_sign_occluders.clear()
-	app.dynamic_sign_occlusion_grid.clear()
 	app.moving_sprites._reset_blend()
 	var process_seed := app.tool_random.state
 	var game_seed := app.nuisance_random.state

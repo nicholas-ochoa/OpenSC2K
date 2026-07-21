@@ -275,12 +275,7 @@ func _exit_tree() -> void:
 		frame_simulation.close()
 
 	frame_simulation = null
-
-	if static_render_thread != null and static_render_thread.is_started():
-		static_render_thread.wait_to_finish()
-
-	static_render_thread = null
-	static_render_job = null
+	static_render._stop_render_job()
 	city_png_export._close()
 
 

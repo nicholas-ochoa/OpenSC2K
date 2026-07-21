@@ -197,12 +197,7 @@ func _import_original_game(executable_path: String) -> void:
 func _apply_graphics_source(selected: GameAssetSource) -> void:
 	# wait for workers using the old archives
 	app.map_render._close_region_cache()
-
-	if app.static_render_thread != null and app.static_render_thread.is_started():
-		app.static_render_thread.wait_to_finish()
-
-	app.static_render_thread = null
-	app.static_render_job = null
+	app.static_render._stop_render_job()
 	app.asset_source = selected
 	app.assets_ready = true
 	app.reference_root = selected.reference_root
@@ -227,7 +222,7 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 		app.large_sprites = SpriteArchive.combine([app.base_large_sprites, app.active_scurk_tile_set.overrides])
 		app.small_medium_sprites = SpriteArchive.combine([app.base_small_medium_sprites, app.active_scurk_tile_set.overrides])
 
-	_invalidate_sprite_art()
+	app.static_render._invalidate_rendered_city()
 	app.static_render._update_palette_cycle_texture()
 	app.city_toolbar.replace_artwork(assets.toolbar_art)
 	app.camera_input._refresh_child_tool_icons()
@@ -254,27 +249,6 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 		app.main_menu.city_background.configure(app.reference_root, app.palette, app.large_sprites)
 
 	app.map_render._refresh_map(false)
-
-
-func _invalidate_sprite_art() -> void:
-	app.map_render._close_region_cache()
-	app.static_render_epoch += 1
-	app.static_city_image = null
-	app.static_occlusion_commands.clear()
-	app.static_occlusion_grid.clear()
-	app.static_visual_signature = []
-	app.static_render_mode = ""
-	app.static_display_city = null
-	app.static_view_cache.clear()
-	app.pending_static_render = false
-	app.dynamic_sprite_cache.clear()
-	app.dynamic_foreground_cache.clear()
-	app.dynamic_occluder_cache.clear()
-	app.dynamic_visual_cache.clear()
-	app.sign_foreground_cache.clear()
-	app.dynamic_special_batch_cache.clear()
-	app.dynamic_sign_occluders.clear()
-	app.dynamic_sign_occlusion_grid.clear()
 
 
 func _refresh_scurk_artwork() -> void:

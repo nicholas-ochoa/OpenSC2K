@@ -311,7 +311,7 @@ func _set_surface_visibility(enabled: bool, layer: String) -> void:
 		return
 
 	app.surface_visibility[layer] = enabled
-	_invalidate_view_render()
+	app.static_render._invalidate_view_render()
 	_sync_view_controls()
 
 	if app.city != null and app.overlay_mode == "city":
@@ -347,7 +347,7 @@ func _set_underground_water_mains_visible(enabled: bool) -> void:
 		return
 
 	app.show_underground_water_mains = enabled
-	_invalidate_view_render()
+	app.static_render._invalidate_view_render()
 	_sync_view_controls()
 
 	if app.city != null and app.overlay_mode == "underground":
@@ -361,7 +361,7 @@ func _set_underground_pipes_visible(enabled: bool) -> void:
 		return
 
 	app.show_underground_pipes = enabled
-	_invalidate_view_render()
+	app.static_render._invalidate_view_render()
 	_sync_view_controls()
 
 	if app.city != null and app.overlay_mode == "underground":
@@ -370,24 +370,12 @@ func _set_underground_pipes_visible(enabled: bool) -> void:
 	app.status_label.text = "Underground pipes %s." % ("shown" if enabled else "hidden")
 
 
-func _invalidate_view_render() -> void:
-	app.static_render_epoch += 1
-	app.static_visual_signature.clear()
-	app.static_render_mode = ""
-	app.static_view_cache.clear()
-	app.static_occlusion_commands.clear()
-	app.static_occlusion_grid.clear()
-	app.dynamic_occluder_cache.clear()
-	app.dynamic_sign_occluders.clear()
-	app.dynamic_sign_occlusion_grid.clear()
-
-
 func _set_underground_subways_visible(enabled: bool) -> void:
 	if app.show_underground_subways == enabled:
 		return
 
 	app.show_underground_subways = enabled
-	_invalidate_view_render()
+	app.static_render._invalidate_view_render()
 	_sync_view_controls()
 
 	if app.city != null and app.overlay_mode == "underground":

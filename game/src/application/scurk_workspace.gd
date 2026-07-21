@@ -364,7 +364,7 @@ func _apply_scurk_tile_set(
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.configure(app.palette, app.large_sprites, tile_set.names, app.scurk_graphics)
 
-	app.assets._invalidate_sprite_art()
+	app.static_render._invalidate_rendered_city()
 
 	if app.city != null:
 		app.map_render._refresh_map()
@@ -388,7 +388,7 @@ func _restore_original_tile_set() -> void:
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.configure(app.palette, app.large_sprites, {}, app.scurk_graphics)
 
-	app.assets._invalidate_sprite_art()
+	app.static_render._invalidate_rendered_city()
 
 	if app.city != null:
 		app.map_render._refresh_map()

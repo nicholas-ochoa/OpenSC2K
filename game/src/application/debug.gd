@@ -76,7 +76,7 @@ func _debug_full_redraw() -> void:
 	if app.city == null:
 		return
 
-	app.menus._invalidate_view_render()
+	app.static_render._invalidate_view_render()
 	app.map_render._refresh_map(true)
 
 
@@ -227,5 +227,5 @@ func _debug_set_visible_altitude_levels(levels: int) -> void:
 		app.map_view.city.visible_altitude_levels = levels
 
 	app.map_view.signs._invalidate_sign_entries()
-	app.menus._invalidate_view_render()
+	app.static_render._invalidate_view_render()
 	app.map_render._refresh_map(false)

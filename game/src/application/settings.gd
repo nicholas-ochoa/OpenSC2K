@@ -18,17 +18,9 @@ func _set_city_renderer(value: String) -> void:
 		return
 
 	app.app_city_renderer = selected
+	# closing the region cache also clears the dynamic sprite caches
 	app.map_render._close_region_cache()
-
-	if app.static_render_thread != null and app.static_render_thread.is_started():
-		app.static_render_thread.wait_to_finish()
-
-	app.static_render_thread = null
-	app.static_render_job = null
-	app.pending_static_render = false
-	app.static_view_cache.clear()
-	app.dynamic_visual_cache.clear()
-	app.sign_foreground_cache.clear()
+	app.static_render._restart_static_render()
 	app.menus._sync_city_option_menus()
 	app.map_render._refresh_map()
 
@@ -125,8 +117,6 @@ func _apply_settings() -> void:
 
 	if overview_changed:
 		app.map_render._close_region_cache()
-		app.dynamic_visual_cache.clear()
-		app.sign_foreground_cache.clear()
 		app.map_render._refresh_map()
 
 	app.app_toolbar_sounds = bool(values.toolbar_sounds)
@@ -213,8 +203,6 @@ func _set_graphics_preferences(zoom_graphics: Array) -> void:
 
 	app.app_zoom_graphics = sizes
 	app.map_render._close_region_cache()
-	app.dynamic_visual_cache.clear()
-	app.sign_foreground_cache.clear()
 	app.map_render._refresh_map()
 
 
