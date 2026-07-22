@@ -36,10 +36,10 @@ func _run() -> void:
 			main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 			var deadline := Time.get_ticks_msec() + 60000
 
-			while not main.region_cache.ready() and Time.get_ticks_msec() < deadline:
+			while not main.render_caches.region_cache.ready() and Time.get_ticks_msec() < deadline:
 				await process_frame
 
-			assert(main.region_cache.ready())
+			assert(main.render_caches.region_cache.ready())
 			print("LOAD zoom=%.2f hires=%s visible_ms=%.2f" % [zoom, full_size_graphics, (Time.get_ticks_usec() - load_started) / 1000.0])
 			main.frame._select_speed(speed)
 			var warm_until := Time.get_ticks_msec() + 2000
@@ -70,7 +70,7 @@ func _run() -> void:
 
 			samples.sort()
 			assert(main.overlay_mode == "city", "Benchmark view changed during measurement")
-			print("CACHE ", main.region_cache.metrics(), " DYNAMIC ", main.map_view.debug_metrics())
+			print("CACHE ", main.render_caches.region_cache.metrics(), " DYNAMIC ", main.map_view.debug_metrics())
 			print("PROFILE ", main.frame_profile)
 			print("STATE date=%d/%d/%d blocked=%s" % [main.city.current_year(), main.city.current_month(), main.city.current_day(), main.speed_controller.interaction_blocked or main.speed_controller.terminal_blocked])
 			print("FRAME speed=%d zoom=%.2f hires=%s viewport=%s frames=%d avg_fps=%.2f p95_ms=%.2f p99_ms=%.2f max_ms=%.2f over_60_budget_pct=%.2f" % [speed, zoom, full_size_graphics, main.map_view.size, samples.size(), samples.size() * 1000.0 / total, samples[int(samples.size() * 0.95)], samples[int(samples.size() * 0.99)], samples.back(), 100.0 * late / samples.size()])

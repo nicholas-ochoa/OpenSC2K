@@ -11,6 +11,7 @@ const ORIGINAL_FRAME_RATE := 5
 const BLEND_TILE_LIMIT := 2
 
 var app: CityApplication
+var caches: RenderCaches
 # display interpolation state by xthg record. see `_note_moving_tick`
 var _blend_from: Dictionary = {}
 var _blend_to: Dictionary = {}
@@ -22,6 +23,7 @@ var _blend_alpha := 1.0
 
 func _init(application: CityApplication) -> void:
 	app = application
+	caches = application.render_caches
 
 
 # true when moving objects use gpu occlusion and display interpolation
@@ -162,23 +164,23 @@ func _refresh_moving_things(view_size := -1) -> void:
 		app.map_view.set_moving_occlusion_enabled(app.app_moving_frame_rate > ORIGINAL_FRAME_RATE)
 
 	if app.city == null or app.palette == null or app.map_view == null or app.overlay_mode != "city":
-		app.dynamic_sign_occluders.clear()
-		app.dynamic_sign_occlusion_grid.clear()
+		caches.dynamic_sign_occluders.clear()
+		caches.dynamic_sign_occlusion_grid.clear()
 
 		if app.map_view != null:
 			app.map_view.set_dynamic_sprites([])
 
 		return
 
-	if app.region_cache != null and app.region_cache.gpu_enabled and not app.region_cache.covered():
-		app.foreground_complete = false
+	if caches.region_cache != null and caches.region_cache.gpu_enabled and not caches.region_cache.covered():
+		caches.foreground_complete = false
 		app.map_view.set_dynamic_sprites([])
 		app.map_view.set_sign_occlusion_visuals({})
 
 		return
 
-	if app.dynamic_visual_cache.size() > 4096:
-		app.dynamic_visual_cache.clear()
+	if caches.dynamic_visual_cache.size() > 4096:
+		caches.dynamic_visual_cache.clear()
 
 	if view_size < 0:
 		view_size = app.static_render._city_view_size()
@@ -187,7 +189,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := int(configuration.divisor)
 	var factor := 1
-	var commands := app.dynamic_command_cache.get_commands(
+	var commands := caches.dynamic_command_cache.get_commands(
 		app.city, sprite_archive, view_size, int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100))
 	)
 	var visuals: Array[Dictionary] = []
@@ -197,7 +199,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 		if not app.show_vehicles and command.has("record") and _is_vehicle(int(command.record)):
 			continue
 
-		if app.region_cache != null and not Rect2(Vector2(command.position) * divisor, Vector2(command.get("size", Vector2i(256, 256))) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor)):
+		if caches.region_cache != null and not Rect2(Vector2(command.position) * divisor, Vector2(command.get("size", Vector2i(256, 256))) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor)):
 			continue
 
 		# the shader applies occlusion and shadows, so the visual needs no image work
@@ -211,8 +213,8 @@ func _refresh_moving_things(view_size := -1) -> void:
 
 		var visual_cache_key := var_to_str([view_size, factor, command])
 
-		if app.dynamic_visual_cache.has(visual_cache_key):
-			var cached: Dictionary = app.dynamic_visual_cache[visual_cache_key]
+		if caches.dynamic_visual_cache.has(visual_cache_key):
+			var cached: Dictionary = caches.dynamic_visual_cache[visual_cache_key]
 
 			if not cached.is_empty() and not bool(cached.get("hidden", false)):
 				visuals.append(cached)
@@ -242,7 +244,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 			var shadow_image := _dynamic_shadow_image(resource.image, position, occluder_mask, factor)
 
 			if shadow_image == null:
-				app.dynamic_visual_cache[visual_cache_key] = {"hidden": true, "position": Vector2(position), "size": Vector2(resource.native_size)}
+				caches.dynamic_visual_cache[visual_cache_key] = {"hidden": true, "position": Vector2(position), "size": Vector2(resource.native_size)}
 				continue
 
 			visual_image = shadow_image
@@ -252,13 +254,13 @@ func _refresh_moving_things(view_size := -1) -> void:
 			var foreground_indices: PackedInt32Array = command.get("same_tile_foreground_indices", PackedInt32Array())
 			var index_reader := Callable()
 
-			if app.region_cache != null and not foreground_indices.is_empty():
-				var sampled := app.region_cache.image_region(Rect2i(position, resource.native_size), factor)
+			if caches.region_cache != null and not foreground_indices.is_empty():
+				var sampled := caches.region_cache.image_region(Rect2i(position, resource.native_size), factor)
 				index_reader = func(x: int, y: int) -> Color:
 					return sampled.get_pixel(x - position.x * factor, y - position.y * factor)
 
 			var occluded := IsometricRenderer.occlude_dynamic_with_mask(
-				resource.image, occluder_mask, position * factor, app.static_city_image,
+				resource.image, occluder_mask, position * factor, caches.static_city_image,
 				foreground_indices, index_reader
 			)
 
@@ -283,23 +285,23 @@ func _refresh_moving_things(view_size := -1) -> void:
 		visuals.append(visual)
 
 		if not visual_cache_key.is_empty():
-			app.dynamic_visual_cache[visual_cache_key] = visual
+			caches.dynamic_visual_cache[visual_cache_key] = visual
 
-	app.dynamic_sign_occluders = visuals.duplicate()
-	app.dynamic_sign_occlusion_grid = IsometricRenderer.build_occlusion_grid(
-		app.dynamic_sign_occluders, 1
+	caches.dynamic_sign_occluders = visuals.duplicate()
+	caches.dynamic_sign_occlusion_grid = IsometricRenderer.build_occlusion_grid(
+		caches.dynamic_sign_occluders, 1
 	)
 
-	if app.dynamic_special_batch_cache.size() > 128:
-		app.dynamic_special_batch_cache.clear()
+	if caches.dynamic_special_batch_cache.size() > 128:
+		caches.dynamic_special_batch_cache.clear()
 
 	var batched_visuals := DynamicSpriteCanvas.batch_special_visuals(
-		visuals, app.dynamic_special_batch_cache
+		visuals, caches.dynamic_special_batch_cache
 	)
 	app.map_view.set_dynamic_sprites(batched_visuals)
 	app.map_render._refresh_sign_occlusion(view_size)
-	app.foreground_view_rect = app.map_view.visible_source_rect()
-	app.foreground_complete = true
+	caches.foreground_view_rect = app.map_view.visible_source_rect()
+	caches.foreground_complete = true
 
 
 func _is_vehicle(record: int) -> bool:
@@ -345,13 +347,13 @@ func _gpu_moving_visual(sprite_archive: Sc2SpriteArchive, command: Dictionary, d
 
 
 func _static_occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
-	if app.region_cache != null:
-		return app.region_cache.occlusion_candidates(bounds)
+	if caches.region_cache != null:
+		return caches.region_cache.occlusion_candidates(bounds)
 
 	var result: Array[Dictionary] = []
 
-	for index in IsometricRenderer.occlusion_candidate_indices(app.static_occlusion_grid, bounds):
-		result.append(app.static_occlusion_commands[index])
+	for index in IsometricRenderer.occlusion_candidate_indices(caches.static_occlusion_grid, bounds):
+		result.append(caches.static_occlusion_commands[index])
 
 	return result
 
@@ -364,7 +366,7 @@ func _dynamic_occluder_image(
 	draw_order: int,
 	is_train := false, texture_factor := 1
 ) -> Image:
-	if draw_order < 0 or (app.static_occlusion_commands.is_empty() and app.region_cache == null):
+	if draw_order < 0 or (caches.static_occlusion_commands.is_empty() and caches.region_cache == null):
 		return null
 
 	var cache_key := "%d:%d:%d:%d:%d:%d:%d:%d" % [
@@ -372,14 +374,14 @@ func _dynamic_occluder_image(
 		app.static_render_state.epoch, texture_factor,
 	]
 
-	if app.dynamic_occluder_cache.has(cache_key):
-		return app.dynamic_occluder_cache[cache_key] as Image
+	if caches.dynamic_occluder_cache.has(cache_key):
+		return caches.dynamic_occluder_cache[cache_key] as Image
 
 	var bounds := Rect2i(position, size)
 
-	if app.static_occlusion_grid.is_empty() and app.region_cache == null:
-		app.static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
-			app.static_occlusion_commands, divisor
+	if caches.static_occlusion_grid.is_empty() and caches.region_cache == null:
+		caches.static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
+			caches.static_occlusion_commands, divisor
 		)
 
 	var mask: Image
@@ -436,20 +438,20 @@ func _dynamic_occluder_image(
 			(overlap.position - position) * texture_factor,
 		)
 
-	app.dynamic_occluder_cache[cache_key] = mask
+	caches.dynamic_occluder_cache[cache_key] = mask
 
 	return mask
 
 
 func _set_static_occlusion_commands(commands: Array, view_size: int) -> void:
-	app.static_occlusion_commands.assign(commands)
-	app.dynamic_occluder_cache.clear()
-	app.dynamic_visual_cache.clear()
-	app.sign_foreground_cache.clear()
-	app.dynamic_special_batch_cache.clear()
+	caches.static_occlusion_commands.assign(commands)
+	caches.dynamic_occluder_cache.clear()
+	caches.dynamic_visual_cache.clear()
+	caches.sign_foreground_cache.clear()
+	caches.dynamic_special_batch_cache.clear()
 	var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
-	app.static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
-		app.static_occlusion_commands, divisor
+	caches.static_occlusion_grid = IsometricRenderer.build_occlusion_grid(
+		caches.static_occlusion_commands, divisor
 	)
 
 
@@ -462,8 +464,8 @@ func _dynamic_train_foreground_image(
 	if command.has("train_deck_thickness"):
 		var deck_key := "deck:%d:%d:%d:%d" % [int(command.sprite_id), int(command.flip), divisor, texture_factor]
 
-		if app.dynamic_foreground_cache.has(deck_key):
-			return app.dynamic_foreground_cache[deck_key]
+		if caches.dynamic_foreground_cache.has(deck_key):
+			return caches.dynamic_foreground_cache[deck_key]
 
 		var deck_surface := surface
 
@@ -476,7 +478,7 @@ func _dynamic_train_foreground_image(
 				deck_surface.blit_rect(background.image, Rect2i(Vector2i.ZERO, background.image.get_size()), Vector2i(0, surface.get_height() - background.image.get_height()))
 
 		var deck := IsometricRenderer.highway_train_deck_mask(deck_surface, int(command.train_deck_thickness) * divisor * texture_factor)
-		app.dynamic_foreground_cache[deck_key] = deck
+		caches.dynamic_foreground_cache[deck_key] = deck
 
 		return deck
 
@@ -489,8 +491,8 @@ func _dynamic_train_foreground_image(
 		int(command.sprite_id), int(command.flip), divisor, reference_sprite_id, texture_factor,
 	]
 
-	if app.dynamic_foreground_cache.has(key):
-		return app.dynamic_foreground_cache[key]
+	if caches.dynamic_foreground_cache.has(key):
+		return caches.dynamic_foreground_cache[key]
 
 	var reference := _dynamic_sprite_resource(
 		sprite_archive, reference_sprite_id, bool(command.flip), divisor, texture_factor
@@ -502,7 +504,7 @@ func _dynamic_train_foreground_image(
 	var foreground := IsometricRenderer.foreground_difference_mask(
 		surface, reference.image
 	)
-	app.dynamic_foreground_cache[key] = foreground
+	caches.dynamic_foreground_cache[key] = foreground
 
 	return foreground
 
@@ -544,8 +546,8 @@ func _dynamic_sprite_resource(
 ) -> Dictionary:
 	var key := "%d:%d:%d:%d:%d" % [sprite_id, int(flip), divisor, texture_factor, sprite_archive.get_instance_id()]
 
-	if app.dynamic_sprite_cache.has(key):
-		return app.dynamic_sprite_cache[key]
+	if caches.dynamic_sprite_cache.has(key):
+		return caches.dynamic_sprite_cache[key]
 
 	var entry := sprite_archive.find_sprite(sprite_id)
 
@@ -580,7 +582,7 @@ func _dynamic_sprite_resource(
 		"texture": texture,
 		"index_texture": texture,
 	}
-	app.dynamic_sprite_cache[key] = resource
+	caches.dynamic_sprite_cache[key] = resource
 
 	return resource
 
@@ -588,7 +590,7 @@ func _dynamic_sprite_resource(
 func _dynamic_shadow_image(
 	mask: Image, position: Vector2i, occluder_mask: Image = null, texture_factor := 1
 ) -> Image:
-	if app.static_city_image == null and app.region_cache == null:
+	if caches.static_city_image == null and caches.region_cache == null:
 		return null
 
 	var shadow := Image.create(
@@ -597,7 +599,7 @@ func _dynamic_shadow_image(
 	shadow.fill(Color.TRANSPARENT)
 	var changed_pixels := 0
 	@warning_ignore("integer_division")
-	var sampled: Image = app.region_cache.image_region(Rect2i(position, mask.get_size() / texture_factor), texture_factor) if app.region_cache != null else null
+	var sampled: Image = caches.region_cache.image_region(Rect2i(position, mask.get_size() / texture_factor), texture_factor) if caches.region_cache != null else null
 
 	for source_y in mask.get_height():
 		var output_y := position.y + int(IntegerMath.div_trunc(source_y, texture_factor))
@@ -620,7 +622,7 @@ func _dynamic_shadow_image(
 			if output_x < 0 or output_x >= app.map_render._static_image_size().x:
 				continue
 
-			var current: Color = sampled.get_pixel(source_x, source_y) if sampled != null else app.static_city_image.get_pixel(output_x, output_y)
+			var current: Color = sampled.get_pixel(source_x, source_y) if sampled != null else caches.static_city_image.get_pixel(output_x, output_y)
 			var palette_index := roundi(current.r * 255.0)
 			var changed_index := IsometricRenderer.shadow_palette_index(palette_index)
 

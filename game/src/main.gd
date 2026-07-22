@@ -100,26 +100,8 @@ var military_proposal_pending := false
 var game_over_active := false
 var edit_display_timings := {}
 # static and dynamic render caches and jobs
-var region_cache: CityRegionCache
+var render_caches := RenderCaches.new()
 var static_render_state := StaticRenderState.new()
-var static_city_image: Image
-var static_occlusion_commands: Array[Dictionary] = []
-var static_occlusion_grid: Dictionary = {}
-var static_visual_signature: Array = []
-var static_render_mode := ""
-var static_display_city: CityState
-var static_view_cache: Dictionary = {}
-var dynamic_sprite_cache: Dictionary = {}
-var dynamic_foreground_cache: Dictionary = {}
-var dynamic_occluder_cache: Dictionary = {}
-var dynamic_visual_cache: Dictionary = {}
-var dynamic_command_cache := CityDynamicCommandCache.new()
-var foreground_view_rect := Rect2()
-var foreground_complete := false
-var sign_foreground_cache: Dictionary = {}
-var dynamic_special_batch_cache: Dictionary = {}
-var dynamic_sign_occluders: Array[Dictionary] = []
-var dynamic_sign_occlusion_grid: Dictionary = {}
 var toolbar_animation_palette: Sc2Palette
 var palette_cycle_ticks := 0
 var palette_elapsed_msec := 0.0

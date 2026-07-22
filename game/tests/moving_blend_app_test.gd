@@ -77,11 +77,11 @@ func _run() -> void:
 func _wait_for_regions(main: Node) -> void:
 	var deadline := Time.get_ticks_msec() + 30000
 
-	while (main.region_cache == null or not main.region_cache.ready()) and Time.get_ticks_msec() < deadline:
+	while (main.render_caches.region_cache == null or not main.render_caches.region_cache.ready()) and Time.get_ticks_msec() < deadline:
 		main.map_render._poll_region_cache()
 		await process_frame
 
-	assert(main.region_cache != null and main.region_cache.ready())
+	assert(main.render_caches.region_cache != null and main.render_caches.region_cache.ready())
 
 
 ## The display keeps whole render-target pixels.

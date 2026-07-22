@@ -9,8 +9,8 @@ static func _refresh_sign_occlusion(render: ApplicationMapRender, view_size: int
 		or not bool(render.app.surface_visibility.signs)
 		or render.app.city == null
 		or render.app.map_view == null
-		or (render.app.static_city_image == null and render.app.region_cache == null)
-		or (render.app.static_occlusion_commands.is_empty() and render.app.region_cache == null)
+		or (render.caches.static_city_image == null and render.caches.region_cache == null)
+		or (render.caches.static_occlusion_commands.is_empty() and render.caches.region_cache == null)
 	):
 		if render.app.map_view != null:
 			render.app.map_view.set_sign_occlusion_visuals({})
@@ -29,20 +29,20 @@ static func _refresh_sign_occlusion(render: ApplicationMapRender, view_size: int
 	var divisor := int(configuration.divisor)
 	var factor := 1
 
-	if render.app.static_occlusion_grid.is_empty() and render.app.region_cache == null:
-		render.app.static_occlusion_grid = ApplicationMapRender.IsometricRenderer.build_occlusion_grid(
-			render.app.static_occlusion_commands, divisor
+	if render.caches.static_occlusion_grid.is_empty() and render.caches.region_cache == null:
+		render.caches.static_occlusion_grid = ApplicationMapRender.IsometricRenderer.build_occlusion_grid(
+			render.caches.static_occlusion_commands, divisor
 		)
 
 	var color_indices := render.app.palette.animation_index_map(render.app.palette_cycle_ticks)
-	var gpu_palette := render.app.region_cache != null and render.app.region_cache.gpu_enabled
+	var gpu_palette := render.caches.region_cache != null and render.caches.region_cache.gpu_enabled
 	var image_bounds := Rect2i(Vector2i.ZERO, render._static_image_size())
 	var visuals := {}
 
 	for entry in entries:
 		var source_bounds: Rect2i = entry.bounds
 
-		if render.app.region_cache != null and not Rect2(source_bounds).intersects(render.app.map_view.visible_source_rect().grow(128)):
+		if render.caches.region_cache != null and not Rect2(source_bounds).intersects(render.app.map_view.visible_source_rect().grow(128)):
 			continue
 
 		var bounds := source_bounds.intersection(image_bounds)
@@ -52,14 +52,14 @@ static func _refresh_sign_occlusion(render: ApplicationMapRender, view_size: int
 
 		var moving_candidates: Array[Dictionary] = []
 
-		for moving_index in ApplicationMapRender.IsometricRenderer.occlusion_candidate_indices(render.app.dynamic_sign_occlusion_grid, bounds):
-			moving_candidates.append(render.app.dynamic_sign_occluders[moving_index])
+		for moving_index in ApplicationMapRender.IsometricRenderer.occlusion_candidate_indices(render.caches.dynamic_sign_occlusion_grid, bounds):
+			moving_candidates.append(render.caches.dynamic_sign_occluders[moving_index])
 
 		var signature := [view_size, bounds, int(entry.draw_order), moving_candidates]
 		var key := int(entry.key)
 
-		if render.app.sign_foreground_cache.has(key) and render.app.sign_foreground_cache[key].signature == signature:
-			var cached: Dictionary = render.app.sign_foreground_cache[key]
+		if render.caches.sign_foreground_cache.has(key) and render.caches.sign_foreground_cache[key].signature == signature:
+			var cached: Dictionary = render.caches.sign_foreground_cache[key]
 
 			if cached.indices != null:
 				var palette_signature := 0 if gpu_palette else render._sign_palette_signature(cached.used_indices, color_indices)
@@ -72,7 +72,7 @@ static func _refresh_sign_occlusion(render: ApplicationMapRender, view_size: int
 
 			continue
 
-		var foreground: Image = render.app.region_cache.sign_foreground(key, bounds, int(entry.draw_order), factor) if gpu_palette else null
+		var foreground: Image = render.caches.region_cache.sign_foreground(key, bounds, int(entry.draw_order), factor) if gpu_palette else null
 
 		if foreground == null:
 			var masks: Array[Dictionary] = []
@@ -91,7 +91,7 @@ static func _refresh_sign_occlusion(render: ApplicationMapRender, view_size: int
 				if not resource.is_empty():
 					masks.append({"image": resource.image, "position": position * factor})
 
-			var sampled: Image = render.app.region_cache.image_region(bounds, factor) if render.app.region_cache != null else render.app.static_city_image.get_region(bounds)
+			var sampled: Image = render.caches.region_cache.image_region(bounds, factor) if render.caches.region_cache != null else render.caches.static_city_image.get_region(bounds)
 			foreground = CitySignForeground.static_pixels(sampled, masks, Rect2i(bounds.position * factor, bounds.size * factor))
 
 		for visual in ApplicationMapRender.MapControl.later_sign_occluder_visuals(moving_candidates, bounds, int(entry.draw_order)):
@@ -104,7 +104,7 @@ static func _refresh_sign_occlusion(render: ApplicationMapRender, view_size: int
 		var empty_foreground := foreground.is_invisible() if gpu_palette else used_indices.is_empty()
 
 		if empty_foreground:
-			render.app.sign_foreground_cache[key] = {"signature": signature, "indices": null}
+			render.caches.sign_foreground_cache[key] = {"signature": signature, "indices": null}
 			continue
 
 		var texture: Texture2D
@@ -123,7 +123,7 @@ static func _refresh_sign_occlusion(render: ApplicationMapRender, view_size: int
 			"position": Vector2(bounds.position),
 			"size": Vector2(bounds.size),
 		}
-		render.app.sign_foreground_cache[key] = {"signature": signature, "indices": foreground, "palette_signature": 0 if gpu_palette else render._sign_palette_signature(used_indices, color_indices), "used_indices": used_indices, "visual": visuals[key]}
+		render.caches.sign_foreground_cache[key] = {"signature": signature, "indices": foreground, "palette_signature": 0 if gpu_palette else render._sign_palette_signature(used_indices, color_indices), "used_indices": used_indices, "visual": visuals[key]}
 
 	render.app.map_view.set_sign_occlusion_visuals(visuals)
 

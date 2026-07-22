@@ -17,24 +17,24 @@ func _run() -> void:
 	assert(main.city_session._activate_document(Sc2File.load_path("res://../local/large-cities/stitched-256.sc2x")))
 	var deadline := Time.get_ticks_msec() + 30000
 
-	while not main.region_cache.ready() and Time.get_ticks_msec() < deadline:
+	while not main.render_caches.region_cache.ready() and Time.get_ticks_msec() < deadline:
 		main.map_render._poll_region_cache()
 		await process_frame
 
-	assert(main.region_cache.ready())
+	assert(main.render_caches.region_cache.ready())
 	main.moving_sprites._refresh_moving_things(main.static_render._city_view_size())
 	var sign_scans: int = main.map_view.debug_metrics().sign_scans
-	var display_copy := CityState.from_document(main.region_cache.display_city.document.duplicate_document())
+	var display_copy := CityState.from_document(main.render_caches.region_cache.display_city.document.duplicate_document())
 	main.map_view.set_city_view(display_copy, main.map_view.city_source, main.map_view.palette_index_texture, true, true)
 	main.map_view.sign_source_entries()
 	assert(main.map_view.debug_metrics().sign_scans == sign_scans, "Equivalent snapshot rebuilt the sign layout")
-	assert(not main.sign_foreground_cache.is_empty())
-	var saved: Dictionary = main.sign_foreground_cache.duplicate(true)
+	assert(not main.render_caches.sign_foreground_cache.is_empty())
+	var saved: Dictionary = main.render_caches.sign_foreground_cache.duplicate(true)
 	main.moving_sprites._refresh_moving_things(main.static_render._city_view_size())
-	assert(main.sign_foreground_cache == saved, "Unchanged foreground replaced cached masks or textures")
+	assert(main.render_caches.sign_foreground_cache == saved, "Unchanged foreground replaced cached masks or textures")
 	var previous: Dictionary = main.map_view.sign_occlusion_visuals.duplicate(true)
 	assert(not previous.is_empty())
-	main.sign_foreground_cache.clear()
+	main.render_caches.sign_foreground_cache.clear()
 	main.map_render._refresh_sign_occlusion(main.static_render._city_view_size())
 
 	for key in previous:
@@ -46,7 +46,7 @@ func _run() -> void:
 	var stale: Image = previous[key].indices.duplicate()
 	stale.fill(Color.TRANSPARENT)
 	main.map_view.sign_occlusion_visuals[key].indices = stale
-	main.sign_foreground_cache.clear()
+	main.render_caches.sign_foreground_cache.clear()
 	main.map_render._refresh_sign_occlusion(main.static_render._city_view_size())
 	assert(main.map_view.sign_occlusion_visuals[key].texture != previous[key].texture, "Changed foreground kept the old texture")
 	var indexed := Image.create(2, 1, false, Image.FORMAT_RGBA8)
@@ -59,7 +59,7 @@ func _run() -> void:
 	assert(colored.get_pixel(1, 0).a == 0.0)
 	assert(indexed.get_pixel(0, 0).r8 == 161, "Palette update changed cached indices")
 	main.static_render._invalidate_rendered_city()
-	assert(main.sign_foreground_cache.is_empty())
+	assert(main.render_caches.sign_foreground_cache.is_empty())
 	main.queue_free()
 	await process_frame
 	print("PASS: unchanged sign foreground reuse, palette remapping, transparency and artwork invalidation")

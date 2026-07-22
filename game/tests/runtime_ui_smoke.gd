@@ -255,7 +255,7 @@ func _run() -> void:
 			if (
 				patch_command.get("command_type", "") != "zone"
 				or main.static_render_state.thread != null
-				or main.get("static_visual_signature") != expected_signature
+				or main.render_caches.static_visual_signature != expected_signature
 			):
 				push_error("A bounded city edit did not use the exact regional refresh")
 				main.queue_free()

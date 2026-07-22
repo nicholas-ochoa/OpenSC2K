@@ -24,10 +24,10 @@ func _initialize() -> void:
 		host.moving_sprites.images[id] = image
 		var command := {"sprite_id": id, "position": Vector2i.ZERO,
 			"size": Vector2i(8, 4), "flip": false, "depth_order": 11 + id}
-		host.static_occlusion_commands.append(command)
+		host.render_caches.static_occlusion_commands.append(command)
 
 	# A background sprite leaves the moving object visible.
-	host.static_occlusion_commands[3].depth_order = 9
+	host.render_caches.static_occlusion_commands[3].depth_order = 9
 
 	for train in [true, false]:
 		var mask := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, train)
@@ -54,21 +54,21 @@ func _initialize() -> void:
 	track.set_pixel(4, 1, Color.TRANSPARENT)
 	host.moving_sprites.images[4] = crossing
 	host.moving_sprites.images[5] = track
-	host.static_occlusion_commands.append({"sprite_id": 4, "position": Vector2i.ZERO,
+	host.render_caches.static_occlusion_commands.append({"sprite_id": 4, "position": Vector2i.ZERO,
 		"size": Vector2i(8, 4), "flip": false, "depth_order": 10,
 		"train_foreground_reference_sprite_id": 5, "train_foreground_requires_depth": true})
-	host.static_occlusion_grid.clear()
-	host.dynamic_occluder_cache.clear()
+	host.render_caches.static_occlusion_grid.clear()
+	host.render_caches.dynamic_occluder_cache.clear()
 	var crossing_mask := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
 	assert(crossing_mask.get_pixel(4, 1).a > 0.0, "Same-tile raised deck hides train")
 	assert(crossing_mask.get_pixel(5, 1).a == 0.0, "Ground-level rails cannot hide train")
-	host.static_occlusion_commands[-1].depth_order = 9
-	host.dynamic_occluder_cache.clear()
+	host.render_caches.static_occlusion_commands[-1].depth_order = 9
+	host.render_caches.dynamic_occluder_cache.clear()
 	var behind_mask := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
 	assert(behind_mask.get_pixel(4, 1).a == 0.0, "Crossing behind train cannot hide it")
 	# A later power line leaves the train pixels visible.
-	host.static_occlusion_commands[1].train_ignore = true
-	host.dynamic_occluder_cache.clear()
+	host.render_caches.static_occlusion_commands[1].train_ignore = true
+	host.render_caches.dynamic_occluder_cache.clear()
 	var wire_mask := host.moving_sprites._dynamic_occluder_image(null, 1, Vector2i.ZERO, Vector2i(8, 4), 10, true)
 	assert(wire_mask.get_pixel(1, 1).a == 0.0, "Power line cannot cover train")
 	var road := Image.create(8, 8, false, Image.FORMAT_RGBA8)

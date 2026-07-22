@@ -24,7 +24,7 @@ func _run() -> void:
 		var started := Time.get_ticks_usec()
 		assert(main.city_session._activate_document(document))
 		var activation_ms := (Time.get_ticks_usec() - started) / 1000.0
-		var cache: CityRegionCache = main.region_cache
+		var cache: CityRegionCache = main.render_caches.region_cache
 		started = Time.get_ticks_usec()
 		var first_ms := -1.0
 		var visible_ms := -1.0

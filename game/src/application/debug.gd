@@ -17,7 +17,7 @@ func _init(application: CityApplication) -> void:
 func _debug_metrics() -> Dictionary:
 	var result := {
 		"simulation_slices": app.frame_simulation.metrics() if app.frame_simulation != null else {},
-		"render_regions": app.region_cache.metrics() if app.region_cache != null else {},
+		"render_regions": app.render_caches.region_cache.metrics() if app.render_caches.region_cache != null else {},
 		"visible_altitude_levels": app.city.visible_altitude_levels if app.city != null else 32,
 		"city_name": "None",
 		"date": "--",
@@ -32,9 +32,9 @@ func _debug_metrics() -> Dictionary:
 		"view": app.overlay_mode,
 		"static_render": "running" if app.static_render_state.thread != null else "idle",
 		"render_pending": app.static_render_state.pending,
-		"static_cache": app.static_view_cache.size(),
-		"dynamic_cache": app.dynamic_visual_cache.size(),
-		"foreground_cache": app.dynamic_foreground_cache.size(),
+		"static_cache": app.render_caches.static_view_cache.size(),
+		"dynamic_cache": app.render_caches.dynamic_visual_cache.size(),
+		"foreground_cache": app.render_caches.dynamic_foreground_cache.size(),
 		"active_disaster": (
 			CityMenuBar.disaster_name(app.simulation_engine.active_disaster_type)
 			if app.simulation_engine != null
@@ -81,13 +81,13 @@ func _debug_full_redraw() -> void:
 
 
 func _debug_clear_render_caches() -> void:
-	app.static_view_cache.clear()
-	app.dynamic_sprite_cache.clear()
-	app.dynamic_foreground_cache.clear()
-	app.dynamic_occluder_cache.clear()
-	app.dynamic_visual_cache.clear()
-	app.sign_foreground_cache.clear()
-	app.dynamic_special_batch_cache.clear()
+	app.render_caches.static_view_cache.clear()
+	app.render_caches.dynamic_sprite_cache.clear()
+	app.render_caches.dynamic_foreground_cache.clear()
+	app.render_caches.dynamic_occluder_cache.clear()
+	app.render_caches.dynamic_visual_cache.clear()
+	app.render_caches.sign_foreground_cache.clear()
+	app.render_caches.dynamic_special_batch_cache.clear()
 	_debug_full_redraw()
 
 

@@ -33,10 +33,10 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
 	main.app_city_renderer = "gpu"
 	main.settings._set_city_renderer("cpu")
-	assert(main.region_cache.gpu_enabled)
+	assert(main.render_caches.region_cache.gpu_enabled)
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "cpu")
 	main.settings._set_city_renderer("gpu")
-	assert(not main.region_cache.gpu_enabled)
+	assert(not main.render_caches.region_cache.gpu_enabled)
 	assert(DocumentState.capture(main.city.document) == before, "Changing renderer altered saved data")
 
 

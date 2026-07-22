@@ -12,11 +12,13 @@ const ACTIVE_DISASTER_RENDER_INTERVAL_MSEC := 1200
 const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
 
 var app: CityApplication
+var caches: RenderCaches
 var state: StaticRenderState
 
 
 func _init(application: CityApplication) -> void:
 	app = application
+	caches = application.render_caches
 	state = application.static_render_state
 
 
@@ -31,7 +33,7 @@ func _refresh_after_city_edit(command: Dictionary) -> void:
 
 
 func _apply_static_edit_patch(command: Dictionary) -> bool:
-	if app.region_cache != null:
+	if caches.region_cache != null:
 		var region_start := Time.get_ticks_usec()
 		var indices := _edit_dirty_indices(command, app.city.map_size)
 		app.edit_display_timings = {
@@ -55,10 +57,10 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 		app.overlay_mode != "city"
 		or app.city == null
 		or app.palette_index_encoding == null
-		or app.static_city_image == null
-		or app.static_city_image.is_empty()
-		or app.static_render_mode != "city"
-		or app.static_display_city == null
+		or caches.static_city_image == null
+		or caches.static_city_image.is_empty()
+		or caches.static_render_mode != "city"
+		or caches.static_display_city == null
 		or state.thread != null
 	):
 		return false
@@ -95,7 +97,7 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	app.edit_display_timings.copy_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
 	var patched := IsometricRenderer.patch_static_image(
-		app.static_city_image,
+		caches.static_city_image,
 		display_city,
 		app.palette_index_encoding,
 		sprite_archive,
@@ -111,14 +113,14 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	app.edit_display_timings.patch_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
 	state.epoch += 1
-	app.static_city_image = patched.image
-	app.static_display_city = display_city
-	app.static_visual_signature = _static_signature_for_mode("city", view_size)
-	app.static_render_mode = "city"
+	caches.static_city_image = patched.image
+	caches.static_display_city = display_city
+	caches.static_visual_signature = _static_signature_for_mode("city", view_size)
+	caches.static_render_mode = "city"
 	state.pending = false
 	app.moving_sprites._set_static_occlusion_commands(
 		IsometricRenderer.patch_static_occlusion_commands(
-			app.static_occlusion_commands,
+			caches.static_occlusion_commands,
 			display_city,
 			sprite_archive,
 			dirty_indices,
@@ -126,17 +128,17 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 		),
 		view_size
 	)
-	app.static_view_cache["city"] = {
-		"image": app.static_city_image,
-		"occlusion_commands": app.static_occlusion_commands,
-		"signature": app.static_visual_signature,
-		"display_city": app.static_display_city,
+	caches.static_view_cache["city"] = {
+		"image": caches.static_city_image,
+		"occlusion_commands": caches.static_occlusion_commands,
+		"signature": caches.static_visual_signature,
+		"display_city": caches.static_display_city,
 		"view_size": view_size,
 	}
 	app.edit_display_timings.occlusion_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
-	var source := CityMapTexture.update_region(app.map_view.city_source, app.static_city_image, patched.output_rect)
-	app.map_view.set_city_view(app.static_display_city, source, null, true)
+	var source := CityMapTexture.update_region(app.map_view.city_source, caches.static_city_image, patched.output_rect)
+	app.map_view.set_city_view(caches.static_display_city, source, null, true)
 	app.menus._sync_map_style()
 	app.moving_sprites._refresh_moving_things(view_size)
 	app.edit_display_timings.upload_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
@@ -361,29 +363,29 @@ func _poll_static_render() -> void:
 
 		return
 
-	app.static_city_image = rendered.index_image
+	caches.static_city_image = rendered.index_image
 	app.moving_sprites._set_static_occlusion_commands(rendered.occlusion_commands, int(rendered.view_size))
-	app.static_visual_signature = rendered.signature
-	app.static_render_mode = String(rendered.render_mode)
-	app.static_display_city = rendered.display_city
-	app.static_view_cache[app.static_render_mode] = {
-		"image": app.static_city_image,
-		"occlusion_commands": app.static_occlusion_commands,
-		"signature": app.static_visual_signature,
-		"display_city": app.static_display_city,
+	caches.static_visual_signature = rendered.signature
+	caches.static_render_mode = String(rendered.render_mode)
+	caches.static_display_city = rendered.display_city
+	caches.static_view_cache[caches.static_render_mode] = {
+		"image": caches.static_city_image,
+		"occlusion_commands": caches.static_occlusion_commands,
+		"signature": caches.static_visual_signature,
+		"display_city": caches.static_display_city,
 		"view_size": int(rendered.view_size),
 	}
-	var source := CityMapTexture.create(app.static_city_image)
+	var source := CityMapTexture.create(caches.static_city_image)
 	app.map_view.set_city_view(
-		app.static_display_city, source, null, true
+		caches.static_display_city, source, null, true
 	)
 	app.menus._sync_map_style()
 
 	if app.overlay_mode == "city":
 		app.moving_sprites._refresh_moving_things(int(rendered.view_size))
 	else:
-		app.dynamic_sign_occluders.clear()
-		app.dynamic_sign_occlusion_grid.clear()
+		caches.dynamic_sign_occluders.clear()
+		caches.dynamic_sign_occlusion_grid.clear()
 		app.map_view.set_dynamic_sprites([])
 		app.map_render._refresh_sign_occlusion(int(rendered.view_size))
 
@@ -391,7 +393,7 @@ func _poll_static_render() -> void:
 		app.overlay_mode, int(rendered.view_size)
 	)
 
-	if latest_signature != app.static_visual_signature:
+	if latest_signature != caches.static_visual_signature:
 		_request_static_render(
 			latest_signature,
 			int(rendered.view_size),
@@ -464,43 +466,43 @@ func _stop_render_job() -> void:
 func _restart_static_render() -> void:
 	_stop_render_job()
 	state.pending = false
-	app.static_view_cache.clear()
+	caches.static_view_cache.clear()
 
 
 # discards every rendered image of the city after an artwork or document change
 func _invalidate_rendered_city() -> void:
 	app.map_render._close_region_cache()
 	state.epoch += 1
-	app.static_city_image = null
-	app.static_occlusion_commands.clear()
-	app.static_occlusion_grid.clear()
-	app.static_visual_signature = []
-	app.static_render_mode = ""
-	app.static_display_city = null
-	app.static_view_cache.clear()
+	caches.static_city_image = null
+	caches.static_occlusion_commands.clear()
+	caches.static_occlusion_grid.clear()
+	caches.static_visual_signature = []
+	caches.static_render_mode = ""
+	caches.static_display_city = null
+	caches.static_view_cache.clear()
 	state.pending = false
 	_clear_dynamic_composition_cache()
-	app.dynamic_sign_occluders.clear()
-	app.dynamic_sign_occlusion_grid.clear()
+	caches.dynamic_sign_occluders.clear()
+	caches.dynamic_sign_occlusion_grid.clear()
 
 
 # discards static views after a layer visibility change. sprite caches remain valid
 func _invalidate_view_render() -> void:
 	state.epoch += 1
-	app.static_visual_signature.clear()
-	app.static_render_mode = ""
-	app.static_view_cache.clear()
-	app.static_occlusion_commands.clear()
-	app.static_occlusion_grid.clear()
-	app.dynamic_occluder_cache.clear()
-	app.dynamic_sign_occluders.clear()
-	app.dynamic_sign_occlusion_grid.clear()
+	caches.static_visual_signature.clear()
+	caches.static_render_mode = ""
+	caches.static_view_cache.clear()
+	caches.static_occlusion_commands.clear()
+	caches.static_occlusion_grid.clear()
+	caches.dynamic_occluder_cache.clear()
+	caches.dynamic_sign_occluders.clear()
+	caches.dynamic_sign_occlusion_grid.clear()
 
 
 func _clear_dynamic_composition_cache() -> void:
-	app.dynamic_sprite_cache.clear()
-	app.dynamic_foreground_cache.clear()
-	app.dynamic_occluder_cache.clear()
-	app.dynamic_visual_cache.clear()
-	app.dynamic_special_batch_cache.clear()
-	app.sign_foreground_cache.clear()
+	caches.dynamic_sprite_cache.clear()
+	caches.dynamic_foreground_cache.clear()
+	caches.dynamic_occluder_cache.clear()
+	caches.dynamic_visual_cache.clear()
+	caches.dynamic_special_batch_cache.clear()
+	caches.sign_foreground_cache.clear()

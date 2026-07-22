@@ -285,7 +285,7 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 func _sync_map_style() -> void:
 	# use the published texture until the mode change finishes
 	if app.map_view != null:
-		app.map_view.dark_underground = app.app_dark_underground and app.static_render_mode == "underground" and app.map_view.base_palette_lookup_all
+		app.map_view.dark_underground = app.app_dark_underground and app.render_caches.static_render_mode == "underground" and app.map_view.base_palette_lookup_all
 
 
 func _set_overlay(mode: String) -> void:

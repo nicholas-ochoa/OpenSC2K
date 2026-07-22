@@ -18,7 +18,7 @@ func _run() -> void:
 	main.current_tool._select_tool_group(0)
 	main.current_tool._select_subtool(5)
 	await _wait_for_render()
-	var displayed_before: int = hash(main.static_city_image.get_data())
+	var displayed_before: int = hash(main.render_caches.static_city_image.get_data())
 	var bytes: PackedByteArray = main.current_document.serialize().data
 	var random_before: int = main.tool_random.state
 	_begin()
@@ -26,7 +26,7 @@ func _run() -> void:
 	assert(main.current_document.serialize().data != bytes, "Terrain did not change during the drag")
 	await _wait_for_render()
 	assert(main.map_view.is_left_drag_active())
-	assert(hash(main.static_city_image.get_data()) != displayed_before, "The displayed terrain must update during the held drag")
+	assert(hash(main.render_caches.static_city_image.get_data()) != displayed_before, "The displayed terrain must update during the held drag")
 	var raised: PackedByteArray = main.current_document.serialize().data
 	_motion(-36, false)
 	assert(main.current_document.serialize().data == raised, "Repeated pointer motion raised the tile again")
@@ -92,7 +92,7 @@ func _wait_for_render() -> void:
 	for frame in 300:
 		await create_timer(0.02).timeout
 
-		if main.static_city_image != null and main.static_render_state.thread == null:
+		if main.render_caches.static_city_image != null and main.static_render_state.thread == null:
 			return
 
 	assert(false, "Terrain render did not finish")
