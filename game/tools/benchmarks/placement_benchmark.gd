@@ -12,7 +12,7 @@ func _run() -> void:
 	var main := scene.instantiate()
 	root.add_child(main)
 	await process_frame
-	var reference_path := ProjectSettings.globalize_path("res://../references/DEFAULT.SC2")
+	var reference_path := ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2")
 	main.city_files.call("_load_city_unchecked", reference_path)
 	main.frame.call("_select_speed", GameSpeedController.Speed.PAUSED)
 
