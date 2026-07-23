@@ -76,10 +76,14 @@ func _run() -> void:
 
 func _wait_for_regions(main: Node) -> void:
 	var deadline := Time.get_ticks_msec() + 30000
+	# This test stops the frame loop that polls the cache every frame. Only a
+	# poll moves the cache to the new camera, so poll before trusting ready():
+	# otherwise ready() answers for the previous view.
+	main.map_render._poll_region_cache()
 
 	while (main.render_caches.region_cache == null or not main.render_caches.region_cache.ready()) and Time.get_ticks_msec() < deadline:
-		main.map_render._poll_region_cache()
 		await process_frame
+		main.map_render._poll_region_cache()
 
 	assert(main.render_caches.region_cache != null and main.render_caches.region_cache.ready())
 

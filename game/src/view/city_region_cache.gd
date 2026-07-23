@@ -41,6 +41,9 @@ var _changed := false
 var _viewport_rect := Rect2i()
 var _viewport_valid := false
 var foreground_changes: Array[Rect2i] = []
+# regions that became visible since the last tick. occlusion reads only visible
+# regions, so a moving sprite cached beside the view lacks their silhouettes
+var _visibility_changes: Array[Rect2i] = []
 var sign_requests: Array[Dictionary] = []
 var sign_layout_token: Array = []
 var _foreground_reset := true
@@ -164,6 +167,8 @@ func _trim_retained_regions() -> void:
 
 func tick() -> bool:
 	foreground_changes.clear()
+	foreground_changes.append_array(_visibility_changes)
+	_visibility_changes.clear()
 
 	if _foreground_reset:
 		foreground_changes.append(Rect2i(Vector2i.ZERO, native_size * divisor))

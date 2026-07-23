@@ -61,6 +61,10 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 	if old_visible != cache.visible:
 		cache._changed = true
 
+		for key in cache.visible:
+			if key not in old_visible:
+				cache._visibility_changes.append(Rect2i(key * cache.region_edge * cache.divisor, Vector2i.ONE * cache.region_edge * cache.divisor))
+
 	for key in cache._edit_priority.keys():
 		if key not in cache.visible:
 			cache._edit_priority.erase(key)
