@@ -40,7 +40,7 @@ func _refresh_map(force := true) -> void:
 
 	app.map_view.clear_data_view()
 
-	if (app.city.map_size > 128 or CityRegionCache.gpu_supported(app.app_city_renderer)) and app.overlay_mode in ["city", "underground"]:
+	if (app.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer)) and app.overlay_mode in ["city", "underground"]:
 		_refresh_region_map(force)
 
 		return
@@ -205,7 +205,7 @@ func _close_region_cache() -> void:
 func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	if caches.region_cache == null:
 		caches.region_cache = CityRegionCache.new()
-		caches.region_cache.gpu_enabled = CityRegionCache.gpu_supported(app.app_city_renderer)
+		caches.region_cache.gpu_enabled = CityRegionCache.gpu_supported(app.preferences.city_renderer)
 
 	caches.static_city_image = null
 	caches.static_view_cache.clear()

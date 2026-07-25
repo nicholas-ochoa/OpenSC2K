@@ -19,7 +19,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-test-art"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
-	main.app_settings_path = path
+	main.preferences.settings_path = path
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)
@@ -31,13 +31,13 @@ func _run() -> void:
 		main.settings._open_settings_dialog()
 		var dialog: AppSettingsDialog = main.settings_dialog
 		dialog.theme_selector.select(selected)
-		dialog.dark_underground_check.button_pressed = not main.app_dark_underground
+		dialog.dark_underground_check.button_pressed = not main.preferences.dark_underground
 		# Cancel discards the selection when Settings next opens.
 		dialog.hide()
 		main.settings._open_settings_dialog()
-		assert(dialog.theme_selector.selected == (1 if main.app_ui_theme == "dark" else 0))
-		assert(dialog.dark_underground_check.button_pressed == main.app_dark_underground)
-		var previous_mode: String = main.app_ui_theme
+		assert(dialog.theme_selector.selected == (1 if main.preferences.ui_theme == "dark" else 0))
+		assert(dialog.dark_underground_check.button_pressed == main.preferences.dark_underground)
+		var previous_mode: String = main.preferences.ui_theme
 		var previous_color: Color = main.theme.get_stylebox("normal", "Button").bg_color
 		dialog.theme_selector.select(selected)
 		dialog.dark_underground_check.button_pressed = true
@@ -46,9 +46,9 @@ func _run() -> void:
 		await process_frame
 		await process_frame
 		assert(AppSettingsStore.load_values(path).dark_underground)
-		assert(main.app_ui_theme == ("dark" if selected == 1 else "light"))
-		assert(AppSettingsStore.load_values(path).ui_theme == main.app_ui_theme)
-		if previous_mode != main.app_ui_theme:
+		assert(main.preferences.ui_theme == ("dark" if selected == 1 else "light"))
+		assert(AppSettingsStore.load_values(path).ui_theme == main.preferences.ui_theme)
+		if previous_mode != main.preferences.ui_theme:
 			assert(main.theme.get_stylebox("normal", "Button").bg_color != previous_color)
 		assert(main.city.document.serialize().data == before)
 		var late := FileDialogFactory.city_open()
@@ -60,11 +60,11 @@ func _run() -> void:
 	for state in [["underground", true, true], ["underground", false, false], ["city", true, false]]:
 		main.render_caches.static_render_mode = state[0]
 		main.map_view.base_palette_lookup_all = state[1]
-		main.app_dark_underground = true
+		main.preferences.dark_underground = true
 		main.menus._sync_map_style()
 		assert(main.map_view.dark_underground == state[2])
 		assert(main.map_view._base_material.get_shader_parameter("dark_underground") == state[2])
-		main.app_dark_underground = false
+		main.preferences.dark_underground = false
 		main.menus._sync_map_style()
 		assert(not main.map_view.dark_underground)
 		assert(not main.map_view._base_material.get_shader_parameter("dark_underground"))
@@ -72,12 +72,12 @@ func _run() -> void:
 	main.free()
 	await process_frame
 	var restored := (load("res://main.tscn") as PackedScene).instantiate()
-	restored.app_settings_path = path
+	restored.preferences.settings_path = path
 	restored.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
 	root.add_child(restored)
 	await process_frame
-	assert(restored.app_ui_theme == "dark")
-	assert(restored.app_dark_underground)
+	assert(restored.preferences.ui_theme == "dark")
+	assert(restored.preferences.dark_underground)
 	restored.free()
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 	AppUiTheme.select("light")

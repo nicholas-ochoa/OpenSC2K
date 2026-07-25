@@ -48,7 +48,7 @@ func _save_city() -> void:
 
 
 func _can_upgrade_city_to_sc2x() -> bool:
-	if app.app_original_compatibility or app.landscape_editor or app.city == null or app.current_document == null or app.simulation_engine == null:
+	if app.preferences.original_compatibility or app.landscape_editor or app.city == null or app.current_document == null or app.simulation_engine == null:
 		return false
 
 	if app.current_document.is_extended() or app.current_document.full_resolution_maps():
@@ -77,7 +77,7 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 	if not _can_upgrade_city_to_sc2x():
 		return
 
-	if not app.current_document.is_extended() and app.app_warn_sc2x_conversion and not confirmed:
+	if not app.current_document.is_extended() and app.preferences.warn_sc2x_conversion and not confirmed:
 		if app.sc2x_conversion_dialog == null:
 			app.sc2x_conversion_dialog = ConfirmationDialog.new()
 			app.sc2x_conversion_dialog.title = "Upgrade city to SC2X?"
@@ -268,7 +268,7 @@ func _on_save_dialog_canceled() -> void:
 
 
 func _save_copy(path: String) -> bool:
-	var result := CityFiles.save_copy(app.current_document, path, app.reference_root, app.app_original_compatibility)
+	var result := CityFiles.save_copy(app.current_document, path, app.reference_root, app.preferences.original_compatibility)
 
 	if not result.ok:
 		app.interface._show_error(result.error)

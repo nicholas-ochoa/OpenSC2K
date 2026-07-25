@@ -164,7 +164,7 @@ func _check_main_ui(strings: Dictionary) -> void:
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-test-art"))
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
 	main.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
-	main.app_settings_path = "user://water-shortage-status-test.cfg"
+	main.preferences.settings_path = "user://water-shortage-status-test.cfg"
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)

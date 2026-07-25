@@ -111,9 +111,9 @@ func _run() -> void:
 	assert(main.get("overlay_mode") == "underground")
 	main.current_tool.call("_select_subtool", 1)
 	assert(main.get("overlay_mode") == "city")
-	main.app_zoom_graphics = AppSettingsStore.normalize_zoom_graphics(AppSettingsStore.DEFAULT_ZOOM_GRAPHICS)
+	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics(AppSettingsStore.DEFAULT_ZOOM_GRAPHICS)
 	# Overview size is independent of the saved graphics settings.
-	main.app_overview_graphics = CityIsometricRenderer.VIEW_SMALL
+	main.preferences.overview_graphics = CityIsometricRenderer.VIEW_SMALL
 	map.zoom_factor = CityMapControl.ZOOM_LEVELS[0]
 	assert(main.options_menu.get_popup().get_item_index(0x8008) == -1)
 	assert(main.static_render.call("_city_view_size") == CityIsometricRenderer.VIEW_SMALL)

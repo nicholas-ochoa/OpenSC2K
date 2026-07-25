@@ -3,7 +3,6 @@ extends Control
 
 
 const NewCitySession = preload("res://src/model/new_city_terrain_session.gd")
-const SettingsStore = preload("res://src/ui/settings/app_settings_store.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const ScurkHistory = preload("res://src/tools/scurk/scurk_edit_history.gd")
@@ -42,30 +41,9 @@ var show_underground_water_mains := true
 var show_underground_pipes := true
 var show_underground_subways := true
 # application preferences and asset source
-var app_soundtrack_folder := ""
-var app_toolbar_sounds := true
-var app_sound_pack_folder := ""
-var app_music_pack_folder := ""
-var app_city_renderer := "gpu"
-var app_ui_theme := "light"
-var app_translucent_menus := true
-var app_dark_underground := false
-var app_default_mayor_name := "Mayor"
-var app_overview_graphics := 0
-var app_moving_frame_rate := SettingsStore.DEFAULT_MOVING_FRAME_RATE
-var app_zoom_graphics: Array[int] = SettingsStore.normalize_zoom_graphics(SettingsStore.DEFAULT_ZOOM_GRAPHICS)
-var app_background_audio := false
-var app_shuffle_music := false
-var app_original_compatibility := false
-var app_warn_sc2x_conversion := true
+var preferences := AppPreferences.new()
 var sc2x_conversion_dialog: ConfirmationDialog
 var pending_sc2x_document: Sc2File
-var app_settings_path := SettingsStore.SETTINGS_PATH
-var app_music_volume := 0.8
-var app_effects_volume := 0.8
-var app_fullscreen := false
-var app_graphics_source := "auto"
-var app_graphics_folder := ""
 var asset_source: GameAssetSource
 var reference_root := ""
 var runtime_initialized := false

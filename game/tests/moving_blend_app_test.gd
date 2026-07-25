@@ -15,7 +15,7 @@ func _run() -> void:
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	main.app_moving_frame_rate = 20
+	main.preferences.moving_frame_rate = 20
 	assert(main.city_session._activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2")))
 	main.map_view.zoom_factor = 1.0
 	var airplane := _first_record(main.city, [1])

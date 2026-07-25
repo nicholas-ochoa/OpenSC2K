@@ -18,7 +18,7 @@ func _run() -> void:
 	await process_frame
 	main.main_menu.city_background.set_process(false)
 	var full_size_graphics := OS.get_environment("CITY_BENCH_HIRES") != "0"
-	main.app_zoom_graphics = AppSettingsStore.normalize_zoom_graphics([2, 2, 2, 2, 2, 2] if full_size_graphics else [0, 1, 2, 2, 2, 2])
+	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics([2, 2, 2, 2, 2, 2] if full_size_graphics else [0, 1, 2, 2, 2, 2])
 	var seconds := float(OS.get_environment("CITY_BENCH_SECONDS")) if OS.has_environment("CITY_BENCH_SECONDS") else 30.0
 
 	for speed in [GameSpeedController.Speed.PAUSED, GameSpeedController.Speed.CHEETAH]:

@@ -40,7 +40,7 @@ func _build_interface(original_assets: OriginalGameAssets) -> void:
 
 	app.city_toolbar = app.city_workspace.toolbar
 	app.city_toolbar.button_clicked.connect(func() -> void:
-		if app.app_toolbar_sounds:
+		if app.preferences.toolbar_sounds:
 			app.audio_controller.play_toolbar_click(app.city == null or app.city.sound_enabled())
 	)
 	app.city_toolbar.group_requested.connect(app.camera_input._choose_tool_group)

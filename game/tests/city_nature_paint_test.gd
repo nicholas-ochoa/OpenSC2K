@@ -38,7 +38,7 @@ func _motion(map: CityMapControl, tile: Vector2i, shift := false) -> void:
 func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	preload("res://tests/support/app_fixture.gd").configure(main, true)
-	main.app_settings_path = "user://city-nature-paint-test.cfg"
+	main.preferences.settings_path = "user://city-nature-paint-test.cfg"
 	root.add_child(main)
 	await process_frame
 	main.map_view.zoom_factor = 0.25

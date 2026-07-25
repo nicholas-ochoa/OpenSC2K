@@ -442,7 +442,7 @@ func _update_palette_cycle_texture() -> void:
 
 
 func _city_graphics_size() -> int:
-	return SettingsStore.graphics_size_at_zoom(app.app_zoom_graphics, app.map_view.zoom_percent(), app.app_overview_graphics)
+	return SettingsStore.graphics_size_at_zoom(app.preferences.zoom_graphics, app.map_view.zoom_percent(), app.preferences.overview_graphics)
 
 
 func _city_view_size() -> int:

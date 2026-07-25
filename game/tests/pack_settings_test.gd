@@ -57,7 +57,7 @@ func _run() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path(original_folder))
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
-	main.app_settings_path = folder.path_join("settings.cfg")
+	main.preferences.settings_path = folder.path_join("settings.cfg")
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)
@@ -96,9 +96,9 @@ func _run() -> void:
 	dialog.default_mayor_edit.text = "Alex"
 	dialog.overview_graphics_selector.select(2)
 	main.settings._apply_settings()
-	assert(main.app_default_mayor_name == "Alex")
-	assert(main.app_overview_graphics == 2)
-	assert(AppSettingsStore.load_values(main.app_settings_path).default_mayor_name == "Alex")
+	assert(main.preferences.default_mayor_name == "Alex")
+	assert(main.preferences.overview_graphics == 2)
+	assert(AppSettingsStore.load_values(main.preferences.settings_path).default_mayor_name == "Alex")
 	assert(main.asset_source.graphics_name == "Runtime test")
 	assert(dialog.pack_name_labels.graphics.text == "Runtime test")
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels == sprite.pixels)

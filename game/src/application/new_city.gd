@@ -38,7 +38,7 @@ func _open_new_city_dialog() -> void:
 	app.new_city_dialog._compatibility_changed(false)
 	app.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
 	app.new_city_dialog.city_name_input.text = "New City"
-	app.new_city_dialog.mayor_name_input.text = app.app_default_mayor_name
+	app.new_city_dialog.mayor_name_input.text = app.preferences.default_mayor_name
 	app.new_city_dialog.difficulty_input.select(0)
 	app.new_city_dialog.year_input.select(0)
 	app.new_city_dialog.reset_features()

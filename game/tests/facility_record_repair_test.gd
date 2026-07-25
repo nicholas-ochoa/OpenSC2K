@@ -203,7 +203,7 @@ func check_load() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.set_script(RepairApp)
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
-	main.app_settings_path = settings_path
+	main.preferences.settings_path = settings_path
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)

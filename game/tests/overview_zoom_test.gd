@@ -40,14 +40,14 @@ func _run() -> void:
 	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = doc.serialize().data
 	var map: CityMapControl = main.map_view
-	main.app_zoom_graphics = AppSettingsStore.normalize_zoom_graphics([2, 2, 2, 2, 2, 2])
+	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics([2, 2, 2, 2, 2, 2])
 	map.zoom_factor = 0.25
 	map.center_on_tile(Vector2i(64, 64))
 	assert(map.zoom_out(Vector2.INF) and map.zoom_percent() == 10)
 	assert(not map.can_zoom_out() and not map.zoom_out(Vector2.INF))
 	assert(main.zoom_out_button.disabled and not main.zoom_in_button.disabled)
 	assert(main.static_render._city_view_size() == CityIsometricRenderer.VIEW_SMALL)
-	assert(AppSettingsStore.graphics_size_at_zoom(main.app_zoom_graphics, 25) == 2, "Graphics choice indices changed")
+	assert(AppSettingsStore.graphics_size_at_zoom(main.preferences.zoom_graphics, 25) == 2, "Graphics choice indices changed")
 
 	for mode in ["underground", "height", "land_value", "city"]:
 		main.menus._set_overlay(mode)
@@ -60,7 +60,7 @@ func _run() -> void:
 
 	# Selection is a settings lookup. The mode/picking checks above exercise rendering.
 	for graphics_size in [1, 2, 0]:
-		main.app_overview_graphics = graphics_size
+		main.preferences.overview_graphics = graphics_size
 		assert(main.static_render._city_view_size() == graphics_size)
 
 	assert(map.zoom_in(Vector2.INF) and map.zoom_percent() == 25)

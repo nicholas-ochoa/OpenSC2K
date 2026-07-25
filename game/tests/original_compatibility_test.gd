@@ -102,11 +102,11 @@ func check_ui() -> void:
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
-	main.app_settings_path = settings_path
+	main.preferences.settings_path = settings_path
 	root.add_child(main)
 	await process_frame
 	main.set_process(false)
-	check(main.app_original_compatibility, "Startup loads compatibility preference")
+	check(main.preferences.original_compatibility, "Startup loads compatibility preference")
 	main.new_city_dialog.compatibility_input.button_pressed = true
 	check(main.new_city_dialog.native_maps_input.disabled and not main.new_city_dialog.native_maps_input.button_pressed, "New City disables native grids")
 
@@ -140,10 +140,10 @@ func check_ui() -> void:
 	extended_file.close()
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
 	check(main.current_document.is_extended() and main.current_document.map_size == 256, "SC2X loads normally even with an SC2 filename")
-	check(not main.app_original_compatibility and not main.speed_controller.original_compatibility, "Opening SC2X disables compatibility")
+	check(not main.preferences.original_compatibility and not main.speed_controller.original_compatibility, "Opening SC2X disables compatibility")
 	check(not AppSettingsStore.load_values(settings_path).original_compatibility, "Automatic mode change persists")
 	check(main.city_session._activate_document(doc), "Return to original city")
-	main.app_original_compatibility = true
+	main.preferences.original_compatibility = true
 	main.settings._apply_compatibility_controls()
 	main.settings._open_settings_dialog()
 	check(main.settings_dialog.original_compatibility_check.button_pressed, "Settings shows current mode")
@@ -151,17 +151,17 @@ func check_ui() -> void:
 	main.settings_dialog.original_compatibility_check.button_pressed = false
 	main.settings_dialog.hide()
 	main.settings._apply_settings()
-	check(not main.app_original_compatibility and not main.speed_controller.original_compatibility, "Mode can be disabled live")
+	check(not main.preferences.original_compatibility and not main.speed_controller.original_compatibility, "Mode can be disabled live")
 	main.new_city_dialog.compatibility_input.button_pressed = false
 	check(not main.new_city_dialog.native_maps_input.disabled, "Disabling New City compatibility restores extensions")
-	check(not main.app_warn_sc2x_conversion and not AppSettingsStore.load_values(settings_path).warn_sc2x_conversion, "Warning checkbox disables and persists warning")
+	check(not main.preferences.warn_sc2x_conversion and not AppSettingsStore.load_values(settings_path).warn_sc2x_conversion, "Warning checkbox disables and persists warning")
 	check(main.city_session._activate_document(extended), "Extended city activates when mode is off")
 	main.settings._open_settings_dialog()
 	check(main.settings_dialog.original_compatibility_check.disabled, "SC2X disables compatibility checkbox")
 	main.settings_dialog.original_compatibility_check.button_pressed = true
 	main.settings_dialog.hide()
 	main.settings._apply_settings()
-	check(not main.app_original_compatibility and main.current_document == extended, "Enabling mode cannot discard or convert active SC2X city")
+	check(not main.preferences.original_compatibility and main.current_document == extended, "Enabling mode cannot discard or convert active SC2X city")
 	check(not AppSettingsStore.load_values(settings_path).original_compatibility, "Rejected mode change does not persist")
 	await process_frame
 	main.settings_dialog.hide()

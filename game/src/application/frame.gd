@@ -19,7 +19,7 @@ func _process(delta: float) -> void:
 
 	if app.audio_controller != null:
 		app.audio_controller.set_menu_music(
-			app.assets_ready and app.main_menu != null and app.main_menu.visible and app.app_music_volume > 0.0
+			app.assets_ready and app.main_menu != null and app.main_menu.visible and app.preferences.music_volume > 0.0
 			and (app.city == null or app.city.music_enabled())
 		)
 		app.audio_controller.advance(delta * 1000.0)

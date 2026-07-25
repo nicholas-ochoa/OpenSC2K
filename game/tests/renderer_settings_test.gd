@@ -31,7 +31,7 @@ func _run() -> void:
 	var before: Array = DocumentState.capture(main.city.document)
 	# The environment override remains explicit, independent of the saved default.
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
-	main.app_city_renderer = "gpu"
+	main.preferences.city_renderer = "gpu"
 	main.settings._set_city_renderer("cpu")
 	assert(main.render_caches.region_cache.gpu_enabled)
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "cpu")

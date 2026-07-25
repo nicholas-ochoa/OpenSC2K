@@ -18,8 +18,8 @@ func _init(application: CityApplication) -> void:
 func _activate_document(
 	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := ""
 ) -> bool:
-	var disable_compatibility := app.app_original_compatibility and document != null and document.is_extended()
-	var compatibility_error := OriginalCompatibility.document_error(document, app.app_original_compatibility and not disable_compatibility)
+	var disable_compatibility := app.preferences.original_compatibility and document != null and document.is_extended()
+	var compatibility_error := OriginalCompatibility.document_error(document, app.preferences.original_compatibility and not disable_compatibility)
 
 	if not compatibility_error.is_empty():
 		app.interface._show_error(compatibility_error)
@@ -36,9 +36,9 @@ func _activate_document(
 		return false
 
 	if disable_compatibility:
-		app.app_original_compatibility = false
+		app.preferences.original_compatibility = false
 		app.settings._apply_compatibility_controls()
-		var settings_error := SettingsStore.save_original_compatibility(false, app.app_settings_path)
+		var settings_error := SettingsStore.save_original_compatibility(false, app.preferences.settings_path)
 		status_text += " Original compatibility turned off to open this SC2X city."
 
 		if settings_error != OK:
@@ -169,7 +169,7 @@ func _activate_document(
 	app.simulation_engine = Simulation.new(app.city, process_seed, lfsr_seed, game_seed)
 	app.simulation_engine.vehicle_crashes_enabled = app.show_vehicles
 	app.speed_controller = GameSpeed.new(app.simulation_engine)
-	app.speed_controller.original_compatibility = app.app_original_compatibility
+	app.speed_controller.original_compatibility = app.preferences.original_compatibility
 
 	if app.current_document.is_extended():
 		app.frame_simulation = FrameSimulationRunner.new(app.speed_controller)

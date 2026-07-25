@@ -24,10 +24,10 @@ func _initialize_runtime() -> void:
 	var mode := OS.get_environment("OPENSC2K_ASSET_SOURCE")
 
 	if mode.is_empty():
-		mode = app.app_graphics_source
+		mode = app.preferences.graphics_source
 
 	app.asset_source = GameAssetSource.load_source(
-		app.reference_root, mode, app.app_graphics_folder, OS.get_environment("OPENSC2K_GRAPHICS_PACK")
+		app.reference_root, mode, app.preferences.graphics_folder, OS.get_environment("OPENSC2K_GRAPHICS_PACK")
 	)
 	app.assets_ready = app.asset_source.error.is_empty()
 
@@ -41,8 +41,8 @@ func _initialize_runtime() -> void:
 	app.new_city_session.independent_template = not app.asset_source.use_original_data
 	app.audio_controller = CityAudio.new()
 	app.audio_controller.startup_theme_pending = true
-	app.audio_controller.background_audio = app.app_background_audio
-	app.audio_controller.set_shuffle_music(app.app_shuffle_music)
+	app.audio_controller.background_audio = app.preferences.background_audio
+	app.audio_controller.set_shuffle_music(app.preferences.shuffle_music)
 	app.audio_controller.music_activity_changed.connect(app.effects_audio._on_music_activity_changed)
 	app.audio_controller.music_notice.connect(func(message: String) -> void:
 		if app.city_status_bar != null:
@@ -50,12 +50,12 @@ func _initialize_runtime() -> void:
 	)
 	app.add_child(app.audio_controller)
 	app.audio_controller.setup(
-		app.reference_root, app.app_music_volume, app.app_effects_volume, app.asset_source.use_original_data
+		app.reference_root, app.preferences.music_volume, app.preferences.effects_volume, app.asset_source.use_original_data
 	)
 
 	if app.assets_ready:
-		app.audio_controller.set_media_packs(app.app_sound_pack_folder, app.app_music_pack_folder)
-		app.audio_controller.set_soundtrack_folder(app.app_soundtrack_folder)
+		app.audio_controller.set_media_packs(app.preferences.sound_pack_folder, app.preferences.music_pack_folder)
+		app.audio_controller.set_soundtrack_folder(app.preferences.soundtrack_folder)
 
 	app.newspaper_session_seed = Time.get_ticks_msec() & 0xffff
 
@@ -175,17 +175,17 @@ func _import_original_game(executable_path: String) -> void:
 
 	app.reference_import_dialog.hide()
 	app.reference_import_error_dialog.hide()
-	app.app_graphics_source = "folder"
-	app.app_graphics_folder = install_result.graphics
-	app.app_sound_pack_folder = install_result.sound
-	app.app_music_pack_folder = install_result.music
-	app.app_soundtrack_folder = ""
+	app.preferences.graphics_source = "folder"
+	app.preferences.graphics_folder = install_result.graphics
+	app.preferences.sound_pack_folder = install_result.sound
+	app.preferences.music_pack_folder = install_result.music
+	app.preferences.soundtrack_folder = ""
 	_apply_graphics_source(selected)
-	app.audio_controller.set_media_packs(app.app_sound_pack_folder, app.app_music_pack_folder)
+	app.audio_controller.set_media_packs(app.preferences.sound_pack_folder, app.preferences.music_pack_folder)
 	app.audio_controller.set_soundtrack_folder("")
 	var saved := SettingsStore.save_values(
-		app.app_music_volume, app.app_effects_volume, app.app_fullscreen,
-		app.app_settings_path, app.app_graphics_source, app.app_graphics_folder, app.app_soundtrack_folder, app.app_city_renderer, app.app_background_audio, app.app_zoom_graphics, app.app_toolbar_sounds, app.app_sound_pack_folder, app.app_music_pack_folder, app.app_shuffle_music, app.app_original_compatibility, app.app_warn_sc2x_conversion, app.app_default_mayor_name, app.app_overview_graphics, app.app_ui_theme, app.app_dark_underground,
+		app.preferences.music_volume, app.preferences.effects_volume, app.preferences.fullscreen,
+		app.preferences.settings_path, app.preferences.graphics_source, app.preferences.graphics_folder, app.preferences.soundtrack_folder, app.preferences.city_renderer, app.preferences.background_audio, app.preferences.zoom_graphics, app.preferences.toolbar_sounds, app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music, app.preferences.original_compatibility, app.preferences.warn_sc2x_conversion, app.preferences.default_mayor_name, app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
 	)
 	app.settings._open_import_settings()
 	app.status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]

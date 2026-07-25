@@ -18,7 +18,7 @@ func _run() -> void:
 	assert(settings.save(settings_path) == OK)
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.reference_root = reference
-	main.app_settings_path = settings_path
+	main.preferences.settings_path = settings_path
 	root.add_child(main)
 	await process_frame
 	await process_frame

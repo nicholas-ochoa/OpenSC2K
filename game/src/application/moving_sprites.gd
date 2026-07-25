@@ -29,7 +29,7 @@ func _init(application: CityApplication) -> void:
 # true when moving objects use gpu occlusion and display interpolation
 func _gpu_moving_active() -> bool:
 	return (
-		app.app_moving_frame_rate > ORIGINAL_FRAME_RATE
+		app.preferences.moving_frame_rate > ORIGINAL_FRAME_RATE
 		and app.map_view != null
 		and app.map_view.moving_occlusion_active()
 	)
@@ -41,7 +41,7 @@ func _note_moving_tick(now_msec := -1) -> void:
 	if now_msec < 0:
 		now_msec = Time.get_ticks_msec()
 
-	if app.city == null or app.app_moving_frame_rate <= ORIGINAL_FRAME_RATE:
+	if app.city == null or app.preferences.moving_frame_rate <= ORIGINAL_FRAME_RATE:
 		_reset_blend()
 
 		return
@@ -79,7 +79,7 @@ func _advance_blend(now_msec := -1) -> void:
 	if now_msec < 0:
 		now_msec = Time.get_ticks_msec()
 
-	var alpha := blend_alpha(now_msec - _blend_tick_msec, app.app_moving_frame_rate)
+	var alpha := blend_alpha(now_msec - _blend_tick_msec, app.preferences.moving_frame_rate)
 
 	if is_equal_approx(alpha, _blend_alpha):
 		return
@@ -161,7 +161,7 @@ func _apply_blend() -> void:
 
 func _refresh_moving_things(view_size := -1) -> void:
 	if app.map_view != null:
-		app.map_view.set_moving_occlusion_enabled(app.app_moving_frame_rate > ORIGINAL_FRAME_RATE)
+		app.map_view.set_moving_occlusion_enabled(app.preferences.moving_frame_rate > ORIGINAL_FRAME_RATE)
 
 	if app.city == null or app.palette == null or app.map_view == null or app.overlay_mode != "city":
 		caches.dynamic_sign_occluders.clear()

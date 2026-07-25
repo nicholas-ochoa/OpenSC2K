@@ -13,7 +13,7 @@ func run() -> void:
 
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-assets"))
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
-	main.app_settings_path = "user://no-assets-test.cfg"
+	main.preferences.settings_path = "user://no-assets-test.cfg"
 	root.add_child(main)
 	await process_frame
 	assert(main.runtime_initialized and not main.assets_ready)

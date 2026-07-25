@@ -42,13 +42,13 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.reference_root = reference
-	main.app_settings_path = settings_path
+	main.preferences.settings_path = settings_path
 	root.add_child(main)
 	# Put a known non-title song next in the bag before the first process frame.
 	main.audio_controller.shuffle_order.remaining.assign([10004])
 	await process_frame
 	await process_frame
-	assert(main.app_shuffle_music and main.main_menu.visible)
+	assert(main.preferences.shuffle_music and main.main_menu.visible)
 	assert(main.audio_controller.current_track_id == MusicDirector.MAIN_THEME_TRACK)
 	assert(not main.audio_controller.startup_theme_pending)
 	assert(main.audio_controller.shuffle_order.remaining == [10004])

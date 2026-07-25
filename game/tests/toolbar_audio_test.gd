@@ -15,11 +15,11 @@ func _run() -> void:
 	main.new_city._enter_landscape_editor()
 	main.city.set_sound_enabled(true)
 	main.audio_controller.application_has_focus = true
-	main.app_toolbar_sounds = true
+	main.preferences.toolbar_sounds = true
 	main.city_toolbar.toolbar_buttons[0].pressed.emit()
 	assert(_has_sound(main, 505))
 	await _clear(main)
-	main.app_toolbar_sounds = false
+	main.preferences.toolbar_sounds = false
 	main.city_toolbar.toolbar_buttons[0].pressed.emit()
 	assert(not _has_sound(main, 505))
 
@@ -62,12 +62,12 @@ func _run() -> void:
 	assert(not _has_sound(main, 508))
 	main.settings._open_settings_dialog()
 	main.settings_dialog.sound_pack_edit.text = "/missing/sound-pack"
-	var old_sound_folder: String = main.app_sound_pack_folder
+	var old_sound_folder: String = main.preferences.sound_pack_folder
 	main.settings._apply_settings()
 	await process_frame
 	assert(main.settings_dialog.pack_error_label.visible)
 	assert(not main.settings_dialog.pack_error_label.text.is_empty())
-	assert(main.app_sound_pack_folder == old_sound_folder)
+	assert(main.preferences.sound_pack_folder == old_sound_folder)
 	main.queue_free()
 	await process_frame
 	print("PASS: toolbar preference, Center WAV routing, terrain tractor feedback independent of toolbar setting, city sound mute")
