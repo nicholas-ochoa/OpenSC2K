@@ -211,5 +211,5 @@ func _sync_speed_ui() -> void:
 		app.city_status_bar.set_speed(speed_name)
 		app.city_status_bar.set_city_status(
 			app.simulation_engine if app.city != null and not app.landscape_editor else null,
-			selected_speed == GameSpeed.Speed.PAUSED, app.original_query_strings
+			selected_speed == GameSpeed.Speed.PAUSED, app.original_text_resources.original_query_strings
 		)

@@ -309,7 +309,7 @@ func _refresh_status_summary(
 		app.city_menu_bar.set_population(_format_number(app.city.population()))
 		var weather_id := CityStatusMessages.WEATHER_FIRST + app.city.weather_type()
 		if app.city.weather_type() >= 0 and app.city.weather_type() < CityStatusMessages.WEATHER_COUNT:
-			weather_name = CityStatusMessages.text(weather_id, app.original_query_strings)
+			weather_name = CityStatusMessages.text(weather_id, app.original_text_resources.original_query_strings)
 		app.city_status_bar.set_environment(demand, weather_name)
 
 	app.frame._sync_speed_ui()

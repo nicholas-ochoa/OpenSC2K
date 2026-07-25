@@ -10,10 +10,14 @@ const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "c
 const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
 
 var app: CityApplication
+var text_resources: OriginalTextResources
+var newspaper_session_seed := 0
+var newspaper_session_state := PackedByteArray()
 
 
 func _init(application: CityApplication) -> void:
 	app = application
+	text_resources = application.original_text_resources
 
 
 func _on_disaster_menu(id: int) -> void:
@@ -185,7 +189,7 @@ func _refresh_city_map_viewport() -> void:
 
 func _refresh_newspaper_menu() -> void:
 	app.city_menu_bar.set_newspapers(
-		NewspaperDialog.newspaper_titles(app.city, app.current_document, app.original_query_strings),
+		NewspaperDialog.newspaper_titles(app.city, app.current_document, text_resources.original_query_strings),
 	)
 
 
@@ -202,10 +206,10 @@ func _on_newspaper_menu(id: int) -> void:
 	app.newspaper_dialog.open_reports(
 		app.city,
 		app.current_document,
-		app.newspaper_data,
-		app.original_query_strings,
+		text_resources.newspaper_data,
+		text_resources.original_query_strings,
 		CityStatusBar.NEWS_NAMES,
-		app.newspaper_session_seed,
+		newspaper_session_seed,
 		id,
 	)
 
@@ -225,7 +229,7 @@ func _show_building_objection() -> void:
 	if app.building_objection_dialog == null:
 		return
 
-	app.building_objection_dialog.show_message(app.building_objection_text, true)
+	app.building_objection_dialog.show_message(text_resources.building_objection_text, true)
 
 
 func _on_building_objection_closed() -> void:
@@ -268,7 +272,7 @@ func _refresh_saved_news_summary() -> void:
 			continue
 
 		var story_type := int(record.type)
-		reports.append(CityStatusBar.report_name(story_type, app.original_query_strings))
+		reports.append(CityStatusBar.report_name(story_type, text_resources.original_query_strings))
 
 		if reports.size() == 3:
 			break

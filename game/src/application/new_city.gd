@@ -193,7 +193,7 @@ func _create_new_city_unchecked() -> void:
 		difficulty,
 		starting_year,
 		terrain_options,
-		app.newspaper_session_state,
+		app.reports.newspaper_session_state,
 	)
 
 	if not result.ok:

@@ -11,10 +11,12 @@ const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const DebugOverlayView = preload("res://src/debug/debug_overlay.tscn")
 
 var app: CityApplication
+var text_resources: OriginalTextResources
 
 
 func _init(application: CityApplication) -> void:
 	app = application
+	text_resources = application.original_text_resources
 
 
 func _initialize_runtime() -> void:
@@ -57,20 +59,20 @@ func _initialize_runtime() -> void:
 		app.audio_controller.set_media_packs(app.preferences.sound_pack_folder, app.preferences.music_pack_folder)
 		app.audio_controller.set_soundtrack_folder(app.preferences.soundtrack_folder)
 
-	app.newspaper_session_seed = Time.get_ticks_msec() & 0xffff
+	app.reports.newspaper_session_seed = Time.get_ticks_msec() & 0xffff
 
-	if app.newspaper_session_seed & 0x8000:
-		app.newspaper_session_seed -= 0x10000
+	if app.reports.newspaper_session_seed & 0x8000:
+		app.reports.newspaper_session_seed -= 0x10000
 
-	app.tool_random = Random.new(app.newspaper_session_seed)
-	app.newspaper_session_state.resize(NewsQueue.MISC_SIZE)
-	app.newspaper_session_state.fill(0)
-	NewsQueue.initialize_session(app.newspaper_session_state, app.tool_random)
+	app.tool_random = Random.new(app.reports.newspaper_session_seed)
+	app.reports.newspaper_session_state.resize(NewsQueue.MISC_SIZE)
+	app.reports.newspaper_session_state.fill(0)
+	NewsQueue.initialize_session(app.reports.newspaper_session_state, app.tool_random)
 	var original_assets := app.asset_source.assets
-	app.newspaper_data = original_assets.newspaper_data
-	app.original_query_strings = original_assets.strings
-	app.building_objection_text = original_assets.building_objection_text
-	app.library_texts = original_assets.library_texts
+	text_resources.newspaper_data = original_assets.newspaper_data
+	text_resources.original_query_strings = original_assets.strings
+	text_resources.building_objection_text = original_assets.building_objection_text
+	text_resources.library_texts = original_assets.library_texts
 	app.scurk_graphics = original_assets.scurk_graphics
 	app.interface._build_interface(original_assets)
 	app.settings._apply_compatibility_controls()
@@ -205,10 +207,10 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	app.audio_controller.reference_root = app.reference_root
 	app.audio_controller.original_media_enabled = true
 	var assets := selected.assets
-	app.newspaper_data = assets.newspaper_data
-	app.original_query_strings = assets.strings
-	app.building_objection_text = assets.building_objection_text
-	app.library_texts = assets.library_texts
+	text_resources.newspaper_data = assets.newspaper_data
+	text_resources.original_query_strings = assets.strings
+	text_resources.building_objection_text = assets.building_objection_text
+	text_resources.library_texts = assets.library_texts
 	app.palette = assets.palette
 	app.scenario_palette = assets.scenario_palette
 	app.scenario_graphics = assets.scenario_graphics

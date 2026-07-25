@@ -38,7 +38,7 @@ func run() -> void:
 	main.assets._apply_graphics_source(selected)
 	assert(main.assets_ready and not main.main_menu.import_button.visible)
 	assert(main.audio_controller.set_media_packs(result.sound, result.music))
-	assert(main.newspaper_data != null and main.base_large_sprites != null)
+	assert(main.original_text_resources.newspaper_data != null and main.base_large_sprites != null)
 	main.new_city._open_new_city_dialog()
 	assert(main.new_city_dialog.visible)
 	main.queue_free()

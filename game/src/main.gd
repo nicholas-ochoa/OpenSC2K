@@ -51,13 +51,8 @@ var assets_ready := false
 var reference_import_dialog: FileDialog
 var reference_import_error_dialog: AcceptDialog
 var graphics_source_error_dialog: AcceptDialog
-# original text resources and newspaper session
-var original_query_strings: Dictionary = {}
-var building_objection_text := "Residents objected to this facility site."
-var library_texts: Dictionary = {}
-var newspaper_data: DataUsaResource
-var newspaper_session_seed := 0
-var newspaper_session_state := PackedByteArray()
+# original text resources
+var original_text_resources := OriginalTextResources.new()
 # tool and simulation state
 var selected_group := 9
 var selected_subtool := 0

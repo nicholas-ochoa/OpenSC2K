@@ -12,10 +12,12 @@ const Buildings = preload("res://src/tools/city/building_command.gd")
 const Music = preload("res://src/audio/music_director.gd")
 
 var app: CityApplication
+var text_resources: OriginalTextResources
 
 
 func _init(application: CityApplication) -> void:
 	app = application
+	text_resources = application.original_text_resources
 
 
 func _open_tool_choice_dialog(group_index: int) -> void:
@@ -184,7 +186,7 @@ func _cancel_sign() -> void:
 
 
 func _open_query(point: Vector2i) -> void:
-	var result := Queries.inspect(app.city, point, app.original_query_strings)
+	var result := Queries.inspect(app.city, point, text_resources.original_query_strings)
 
 	if not result.ok:
 		app.interface._show_error("Cannot query tile: %s" % result.error)
@@ -200,7 +202,7 @@ func _open_query(point: Vector2i) -> void:
 			return
 
 		app.reports._show_news_items(approval.news_items)
-		result = Queries.inspect(app.city, point, app.original_query_strings)
+		result = Queries.inspect(app.city, point, text_resources.original_query_strings)
 
 	if (
 		result.get("kind", "") == "general"
@@ -217,7 +219,7 @@ func _open_query(point: Vector2i) -> void:
 	if not action.is_empty():
 		var action_resource_id := int(result.get("action_resource_id", -1))
 		var fallback := "Analyze" if action == "city_analysis" else "Ruminate"
-		action_text = str(app.original_query_strings.get(action_resource_id, fallback))
+		action_text = str(text_resources.original_query_strings.get(action_resource_id, fallback))
 
 	var neighborhood := QueryNeighborhood.render(app.city, point, app.palette_index_encoding, app.large_sprites)
 	app.query_dialog.show_query(
@@ -269,7 +271,7 @@ func _run_query_action() -> void:
 	match str(app.active_query_result.get("action", "")):
 		"city_analysis":
 			var analysis := QueryFacilityActions.city_analysis(
-				app.city, app.original_query_strings
+				app.city, text_resources.original_query_strings
 			)
 
 			if not analysis.ok:
@@ -280,7 +282,7 @@ func _run_query_action() -> void:
 			app.city_analysis_dialog.show_categories(analysis.categories)
 		"library_ruminate":
 			if (
-				app.library_texts.size()
+				text_resources.library_texts.size()
 				!= LibraryRuminateWindowsView.TEXT_RESOURCE_IDS.size()
 			):
 				app.interface._show_error("The Library text resources are missing or invalid.")
@@ -288,5 +290,5 @@ func _run_query_action() -> void:
 				return
 
 			app.library_ruminate_windows.show_texts(
-				app.library_texts, Vector2i(app.get_viewport_rect().size)
+				text_resources.library_texts, Vector2i(app.get_viewport_rect().size)
 			)
