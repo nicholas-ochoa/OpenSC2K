@@ -25,7 +25,7 @@ static func _plan_flat_route(
 	var drag_bounds := Rect2i(start.min(finish), (finish - start).abs() + Vector2i.ONE)
 
 	while current != finish:
-		var current_shape := HighwayGeometry._terrain_section_shape(
+		var current_shape := HighwayGeometry.terrain_section_shape(
 			buildings, terrain, altitude, current, map_edge
 		)
 
@@ -128,7 +128,7 @@ static func _section_is_flat_eligible(
 			return false
 
 	return (
-		HighwayGeometry._terrain_section_shape(buildings, terrain, altitude, anchor, map_edge)
+		HighwayGeometry.terrain_section_shape(buildings, terrain, altitude, anchor, map_edge)
 		!= INVALID_TERRAIN_SHAPE
 	)
 
@@ -154,7 +154,7 @@ static func _section_follows(
 	) <= 1
 
 
-static func _select_section_kind(
+static func select_section_kind(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	zones: PackedByteArray,
@@ -195,7 +195,7 @@ static func _select_section_kind(
 
 	# neighbor markers affect the economy, not the highway geometry
 
-	var terrain_shape := HighwayGeometry._terrain_section_shape(
+	var terrain_shape := HighwayGeometry.terrain_section_shape(
 		buildings, terrain, altitude, anchor, map_edge
 	)
 
@@ -345,7 +345,7 @@ static func _neighbor_kind_connects(
 
 		return (
 			neighbor_kind == 2
-			and HighwayGeometry._terrain_section_shape(buildings, terrain, altitude, neighbor, map_edge)
+			and HighwayGeometry.terrain_section_shape(buildings, terrain, altitude, neighbor, map_edge)
 			!= FILLED_FLAT_TERRAIN_SHAPE
 		)
 
@@ -362,6 +362,6 @@ static func _neighbor_kind_connects(
 
 	return (
 		neighbor_kind == 3
-		and HighwayGeometry._terrain_section_shape(buildings, terrain, altitude, neighbor, map_edge)
+		and HighwayGeometry.terrain_section_shape(buildings, terrain, altitude, neighbor, map_edge)
 		!= FILLED_FLAT_TERRAIN_SHAPE
 	)

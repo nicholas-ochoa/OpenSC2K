@@ -50,7 +50,7 @@ static func apply_segment(
 
 	if sections.is_empty() and HighwayGeometry._section_has_water(flags, start, map_edge):
 		bridge_attempted = true
-		bridge_plan = HighwayBridges._plan_bridge_from_start(
+		bridge_plan = HighwayBridges.plan_bridge_from_start(
 			buildings, terrain, altitude, start, city.compass_rotation(), map_edge
 		)
 	elif not sections.is_empty():
@@ -376,7 +376,7 @@ static func preview_valid(city: CityState, selected: Vector2i) -> bool:
 		return HighwayGeometry._section_is_existing_highway(city.buildings, anchor, map_edge) or city.funds() >= 100
 
 	if HighwayGeometry._section_has_water(city.tile_flags, anchor, map_edge):
-		var bridge := HighwayBridges._plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation(), map_edge)
+		var bridge := HighwayBridges.plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation(), map_edge)
 
 		if bridge.get("ok", false):
 			for choice in HighwayBridges._bridge_choices(bridge):
@@ -399,7 +399,7 @@ static func preview_error(city: CityState, selected: Vector2i) -> String:
 
 	if HighwayGeometry._section_has_water(city.tile_flags, anchor, map_edge):
 		var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-		var bridge := HighwayBridges._plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation(), map_edge)
+		var bridge := HighwayBridges.plan_bridge_from_start(city.buildings, city.terrain, altitude, anchor, city.compass_rotation(), map_edge)
 
 		if not bridge.get("ok", false):
 			return String(bridge.get("error", "This shore cannot start a highway bridge."))

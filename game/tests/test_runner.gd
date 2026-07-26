@@ -15017,7 +15017,7 @@ func _test_tunnel_command(reference_root: String) -> void:
 func _test_highway_command(reference_root: String) -> void:
 	_check(Highways.supports_tool(6, 1), "Highway command supports its catalog tool")
 	_check(not Highways.supports_tool(6, 0), "Highway command rejects the road tool")
-	_check(Highways.snap_anchor(Vector2i(11, 13)) == Vector2i(10, 12), "Highway pointer snaps to even coordinates")
+	_check(HighwayGeometry.snap_anchor(Vector2i(11, 13)) == Vector2i(10, 12), "Highway pointer snaps to even coordinates")
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT"]:
@@ -15275,7 +15275,7 @@ func _test_highway_command(reference_root: String) -> void:
 			"Direct highway bridge fixture writes its shoreline mask",
 		)
 
-	var direct_plan := Highways._plan_bridge_from_start(
+	var direct_plan := HighwayBridges.plan_bridge_from_start(
 		bridge_document.find_chunk("XBLD").decoded_payload,
 		bridge_document.find_chunk("XTER").decoded_payload,
 		bridge_document.find_chunk("ALTM").decoded_payload,
@@ -15283,7 +15283,7 @@ func _test_highway_command(reference_root: String) -> void:
 		0
 	)
 	_check(
-		Highways._bridge_terrain_code(
+		HighwayBridges.bridge_terrain_code(
 			bridge_document.find_chunk("XTER").decoded_payload, Vector2i(80, 20)
 		) == 0x9060
 		and direct_plan.ok
@@ -15527,7 +15527,7 @@ func _test_highway_command(reference_root: String) -> void:
 		"Invalid highway grade fixture places a building",
 	)
 	_check(
-		Highways._terrain_section_shape(
+		HighwayGeometry.terrain_section_shape(
 			grade_document.find_chunk("XBLD").decoded_payload,
 			grade_document.find_chunk("XTER").decoded_payload,
 			grade_document.find_chunk("ALTM").decoded_payload,

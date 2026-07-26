@@ -254,7 +254,7 @@ func check_tools(edge: int) -> void:
 		OverlayData.write(p.XTXT, anchor.x * edge + anchor.y, HighwayCommand.CONNECTION_LABEL)
 
 		for direction in 2:
-			var kind := HighwayCommand._select_section_kind(p.XBLD, p.XTER, p.XZON, p.XBIT,
+			var kind := HighwayRoutes.select_section_kind(p.XBLD, p.XTER, p.XZON, p.XBIT,
 				p.ALTM, p.XTXT, anchor, direction, edge)
 			var expected: int = direction + 2
 			check(kind == expected, "Highway edge connection at %s: %d expected %d" % [anchor, kind, expected])

@@ -140,7 +140,7 @@ func check_highways(edge: int) -> void:
 		if edge <= 128 and (start.x == 124 or start.y == 124):
 			continue
 
-		check(HighwayCommand.preview_valid(city, start), "Highway preview at %s on %d map" % [start, edge])
+		check(HighwayEdit.preview_valid(city, start), "Highway preview at %s on %d map" % [start, edge])
 		var finish: Vector2i = start + (Vector2i(0, 4) if start.y == 124 else Vector2i(4, 0))
 		var built := HighwayCommand.apply(city, 6, 1, start, finish)
 		check(built.ok and built.get("sections", []).size() == 3, "Highway route across extended coordinates")
@@ -165,7 +165,7 @@ func check_highways(edge: int) -> void:
 		check(saved_payloads(document) == before, "Connection prompt does not change city")
 
 	for outside in [Vector2i(edge, near), Vector2i(near, edge), Vector2i(-1, near)]:
-		check(not HighwayCommand.preview_valid(city, outside), "Outside highway preview rejected")
+		check(not HighwayEdit.preview_valid(city, outside), "Outside highway preview rejected")
 		check(not HighwayCommand.apply(city, 6, 1, outside, outside).ok, "Outside highway placement rejected")
 
 

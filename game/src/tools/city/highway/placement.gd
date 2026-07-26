@@ -50,12 +50,12 @@ static func _place_section(
 	rotation: int,
 	map_edge: int = 128,
 ) -> Dictionary:
-	if HighwayGeometry._terrain_section_shape(buildings, terrain, altitude, anchor, map_edge) == INVALID_TERRAIN_SHAPE:
+	if HighwayGeometry.terrain_section_shape(buildings, terrain, altitude, anchor, map_edge) == INVALID_TERRAIN_SHAPE:
 		return {"ok": false, "error": "highway terrain grade is invalid"}
 
 	_clear_section_zone_types(zones, anchor, map_edge)
 	var old_kind := HighwayGeometry._section_kind(buildings, zones, flags, anchor, map_edge)
-	var kind := HighwayRoutes._select_section_kind(
+	var kind := HighwayRoutes.select_section_kind(
 		buildings,
 		terrain,
 		zones,
@@ -173,7 +173,7 @@ static func _retile_section(
 	rotation: int,
 	map_edge: int = 128,
 ) -> int:
-	var kind := HighwayRoutes._select_section_kind(
+	var kind := HighwayRoutes.select_section_kind(
 		buildings,
 		terrain,
 		zones,

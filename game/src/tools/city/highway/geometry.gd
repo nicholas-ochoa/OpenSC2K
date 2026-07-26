@@ -19,7 +19,7 @@ static func _primary_direction(current: Vector2i, finish: Vector2i) -> int:
 	return 2 if difference.y >= 0 else 0
 
 
-static func _terrain_section_shape(
+static func terrain_section_shape(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	altitude: PackedByteArray,

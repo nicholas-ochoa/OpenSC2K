@@ -153,7 +153,7 @@ func _selection_source_polygons() -> Array[PackedVector2Array]:
 		var seen := {}
 
 		for tile in tiles:
-			var anchor := HighwayTool.snap_anchor(tile)
+			var anchor := HighwayGeometry.snap_anchor(tile)
 
 			for x in range(anchor.x, anchor.x + 2):
 				for y in range(anchor.y, anchor.y + 2):

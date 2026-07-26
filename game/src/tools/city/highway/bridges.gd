@@ -6,7 +6,7 @@ static func bridge_type_name(bridge_type: int) -> String:
 	return String(BRIDGE_NAMES.get(bridge_type, "Unknown Bridge"))
 
 
-static func _plan_bridge_from_start(
+static func plan_bridge_from_start(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	altitude: PackedByteArray,
@@ -17,7 +17,7 @@ static func _plan_bridge_from_start(
 	if not _section_is_bridge_clear(buildings, start, map_edge):
 		return {"ok": false, "error": "highway bridge start contains a structure"}
 
-	var terrain_code := _bridge_terrain_code(terrain, start, map_edge)
+	var terrain_code := bridge_terrain_code(terrain, start, map_edge)
 
 	if (terrain_code & 0x0f00) != 0:
 		return {"ok": false, "error": "highway bridge start terrain is invalid"}
@@ -65,7 +65,7 @@ static func _scan_bridge(
 		if not _section_is_bridge_clear(buildings, checked, map_edge):
 			return {"ok": false, "error": "highway bridge path contains a structure"}
 
-		var terrain_code := _bridge_terrain_code(terrain, checked, map_edge)
+		var terrain_code := bridge_terrain_code(terrain, checked, map_edge)
 
 		if (terrain_code & 0x0f00) != 0:
 			return {"ok": false, "error": "highway bridge bank terrain is invalid"}
@@ -168,7 +168,7 @@ static func _bridge_endpoint_is_allowed(
 	if endpoint_height < bridge_height or endpoint_height > bridge_height + 1:
 		return false
 
-	var terrain_shape := HighwayGeometry._terrain_section_shape(
+	var terrain_shape := HighwayGeometry.terrain_section_shape(
 		buildings, terrain, altitude, anchor, map_edge
 	)
 
@@ -199,7 +199,7 @@ static func _section_is_bridge_clear(
 	return true
 
 
-static func _bridge_terrain_code(
+static func bridge_terrain_code(
 	terrain: PackedByteArray, anchor: Vector2i,
 	map_edge: int = 128,
 ) -> int:

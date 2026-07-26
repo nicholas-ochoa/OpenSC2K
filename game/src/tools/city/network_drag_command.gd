@@ -11,8 +11,8 @@ static func apply(
 		return {"ok": false, "error": "city is invalid"}
 
 	var working := CityState.copy_for_edit(city)
-	var endpoint := HighwayCommand.snap_anchor(finish) if highway else finish
-	var cursor := HighwayCommand.snap_anchor(start) if highway else start
+	var endpoint := HighwayGeometry.snap_anchor(finish) if highway else finish
+	var cursor := HighwayGeometry.snap_anchor(start) if highway else start
 	var bounds := Rect2i(cursor.min(endpoint), (endpoint - cursor).abs() + Vector2i.ONE)
 	var visited := {}
 	var combined := {}
@@ -24,7 +24,7 @@ static func apply(
 		var segment: Dictionary
 
 		for attempt in 3:
-			segment = HighwayCommand.apply_segment(working, group, tool, cursor, endpoint, selected_connection, selected_bridge, free_mode) if highway else NetworkCommand.apply_segment(working, group, tool, cursor, endpoint, selected_bridge, selected_connection, free_mode)
+			segment = HighwayEdit.apply_segment(working, group, tool, cursor, endpoint, selected_connection, selected_bridge, free_mode) if highway else NetworkCommand.apply_segment(working, group, tool, cursor, endpoint, selected_bridge, selected_connection, free_mode)
 
 			if segment.get("bridge_selection_required", false) and bridge != -1:
 				selected_bridge = bridge
