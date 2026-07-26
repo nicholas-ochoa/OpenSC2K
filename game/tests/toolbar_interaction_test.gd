@@ -122,8 +122,8 @@ func _run() -> void:
 	assert(toolbar.child_tool_buttons.has(3))
 	main.current_tool.call("_select_subtool", 3)
 	assert(main.selected_subtool == 3 and map.edit_enabled and map.brush_size == 7)
-	assert(map.point_preview_tiles(Vector2i(80, 80)).size() == 37)
-	assert(not map.point_preview_tiles(Vector2i(127, 127)).is_empty())
+	assert(map.selection.point_preview_tiles(Vector2i(80, 80)).size() == 37)
+	assert(not map.selection.point_preview_tiles(Vector2i(127, 127)).is_empty())
 
 	for subtool in [0, 1]:
 		main.current_tool.call("_select_subtool", subtool)
@@ -236,7 +236,7 @@ func _test_network_drag_price(main: Node, map: CityMapControl, city: CityState) 
 	map.selection_start = start
 	map.selection_end = finish
 	map.selection._rebuild_selection_path()
-	map.selection_changed.emit(start, finish, map.selection_tiles(), true)
+	map.selection_changed.emit(start, finish, map.selection.selection_tiles(), true)
 	assert(map.selection_price < 0, "The route price waits for the planned command")
 	var deadline := Time.get_ticks_msec() + 5000
 

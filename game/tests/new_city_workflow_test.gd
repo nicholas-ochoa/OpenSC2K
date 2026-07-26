@@ -186,7 +186,7 @@ func _run() -> void:
 	main.city_toolbar.brush_size_input.value = 5
 	main.city_toolbar.brush_shape_input.select(1)
 	main.city_toolbar.brush_shape_input.item_selected.emit(1)
-	var brush: Array[Vector2i] = main.map_view.brush_tiles(Vector2i(8, 8))
+	var brush: Array[Vector2i] = main.map_view.selection.brush_tiles(Vector2i(8, 8))
 	assert(brush.size() == 21)
 	main.current_tool._select_subtool(1)
 	assert(main.map_view.brush_size == 5 and main.map_view.brush_round)

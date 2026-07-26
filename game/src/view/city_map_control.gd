@@ -1,5 +1,7 @@
 class_name CityMapControl
 extends Control
+# scene node for the city map. its public methods are the node api that
+# application and ui code call through map_view. components do the work
 
 signal selection_completed(
 	start: Vector2i, finish: Vector2i, path: Array[Vector2i], dragged: bool
@@ -171,10 +173,6 @@ func clear_data_view() -> void:
 	layers.clear_data_view()
 
 
-func data_key_origin() -> Vector2:
-	return layers.data_key_origin()
-
-
 func set_city_view(
 	value: CityState,
 	source: CityMapSource,
@@ -223,12 +221,6 @@ func zoom_out(local_point := Vector2.INF) -> bool:
 	return camera.zoom_out(local_point)
 
 
-func wheel_zoom(
-	direction: int, local_point := Vector2.INF, current_time_msec := -1
-) -> bool:
-	return camera.wheel_zoom(direction, local_point, current_time_msec)
-
-
 func can_zoom_in() -> bool:
 	return camera.can_zoom_in()
 
@@ -239,10 +231,6 @@ func can_zoom_out() -> bool:
 
 func uses_paint_brush() -> bool:
 	return selection.uses_paint_brush()
-
-
-func bulldozer_visible() -> bool:
-	return selection.bulldozer_visible()
 
 
 func is_left_drag_active() -> bool:
@@ -257,28 +245,12 @@ func is_panning() -> bool:
 	return camera.is_panning()
 
 
-func selection_tiles() -> Array[Vector2i]:
-	return selection.selection_tiles()
-
-
-func selection_was_dragged() -> bool:
-	return selection.selection_was_dragged()
-
-
 func set_selection_price(value: int, affordable := true) -> void:
 	selection.set_selection_price(value, affordable)
 
 
 func clear_selection_price() -> void:
 	selection.clear_selection_price()
-
-
-func selection_price_text() -> String:
-	return selection.selection_price_text()
-
-
-func point_preview_tiles(point: Vector2i) -> Array[Vector2i]:
-	return selection.point_preview_tiles(point)
 
 
 func cancel_active_selection() -> bool:
@@ -303,14 +275,6 @@ func visible_source_rect() -> Rect2:
 
 func visible_tile_outline() -> PackedVector2Array:
 	return camera.visible_tile_outline()
-
-
-func scroll_state() -> Dictionary:
-	return camera.scroll_state()
-
-
-func set_scroll_value(axis: int, value: float) -> bool:
-	return camera.set_scroll_value(axis, value)
 
 
 func show_transient_effects(effects: Array[Dictionary], duration := 0.1) -> void:
@@ -345,10 +309,6 @@ func set_moving_blend(offsets: Dictionary, orders: Dictionary) -> void:
 		_dynamic_canvas.set_blend(offsets, orders)
 
 
-func dynamic_render_node_count() -> int:
-	return presentation.dynamic_render_node_count()
-
-
 func debug_metrics() -> Dictionary:
 	return presentation.debug_metrics()
 
@@ -357,32 +317,8 @@ func _draw() -> void:
 	presentation._draw()
 
 
-static func sign_view_index(zoom: float) -> int:
-	return CityMapSigns.sign_view_index(zoom)
-
-
-static func sign_display_multiplier(zoom: float) -> float:
-	return CityMapSigns.sign_display_multiplier(zoom)
-
-
-static func later_sign_occluder_visuals(
-	visuals: Array[Dictionary], bounds: Rect2i, draw_order: int
-) -> Array[Dictionary]:
-	return CityMapSigns.later_sign_occluder_visuals(visuals, bounds, draw_order)
-
-
-static func sign_layout(
-	anchor: Vector2, text_width: float, view_index: int, display_multiplier := 1.0
-) -> Dictionary:
-	return CityMapSigns.sign_layout(anchor, text_width, view_index, display_multiplier)
-
-
 func _gui_input(event: InputEvent) -> void:
 	interaction._gui_input(event)
-
-
-static func _format_price(value: int) -> String:
-	return CityMapSelection._format_price(value)
 
 
 func _input(event: InputEvent) -> void:
@@ -395,10 +331,6 @@ func _get_tooltip(at_position: Vector2) -> String:
 
 func _process(delta: float) -> void:
 	interaction._process(delta)
-
-
-func brush_tiles(center: Vector2i) -> Array[Vector2i]:
-	return selection.brush_tiles(center)
 
 
 func show_trip_reach(source: CityState, point: Vector2i) -> Dictionary:
@@ -417,10 +349,12 @@ func clear_service_query() -> void:
 	presentation.clear_service_query()
 
 
+# bind timers to this node so they stop with it
 func _expire_transient_effects(generation: int) -> void:
 	presentation._expire_transient_effects(generation)
 
 
+# bind timers to this node so they stop with it
 func _show_transient_effect_frame(
 	effects: Array[Dictionary],
 	frame: int,
@@ -431,6 +365,7 @@ func _show_transient_effect_frame(
 	presentation._show_transient_effect_frame(effects, frame, last_frame, duration, generation)
 
 
+# bind timers to this node so they stop with it
 func _show_shake_frame(
 	frame: int, frames: int, duration: float, distance: float, generation: int
 ) -> void:

@@ -1924,37 +1924,37 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(map_control.zoom_out(), "City view accepts a fixed zoom-out step")
 	_check(map_control.zoom_percent() == 100, "City view zoom-out restores native scale")
 	_check(
-		map_control.wheel_zoom(1, Vector2.INF, 1000)
+		map_control.camera.wheel_zoom(1, Vector2.INF, 1000)
 		and map_control.zoom_percent() == 200,
 		"Mouse wheel accepts one zoom level at the start of its debounce interval",
 	)
 	_check(
-		not map_control.wheel_zoom(-1, Vector2.INF, 1249)
+		not map_control.camera.wheel_zoom(-1, Vector2.INF, 1249)
 		and map_control.zoom_percent() == 200,
 		"Mouse wheel rejects another zoom level before 250 milliseconds",
 	)
 	_check(
-		not map_control.wheel_zoom(1, Vector2.INF, 1450)
+		not map_control.camera.wheel_zoom(1, Vector2.INF, 1450)
 		and map_control.zoom_percent() == 200,
 		"Mouse wheel events in one continuing gesture extend the debounce interval",
 	)
 	_check(
-		not map_control.wheel_zoom(-1, Vector2.INF, 1499)
+		not map_control.camera.wheel_zoom(-1, Vector2.INF, 1499)
 		and map_control.zoom_percent() == 200,
 		"Mouse wheel extends the interval up to 500 milliseconds after a zoom",
 	)
 	_check(
-		map_control.wheel_zoom(-1, Vector2.INF, 1500)
+		map_control.camera.wheel_zoom(-1, Vector2.INF, 1500)
 		and map_control.zoom_percent() == 100,
 		"A continuing gesture changes the next level 500 milliseconds after a zoom",
 	)
 	_check(
-		not map_control.wheel_zoom(1, Vector2.INF, 1749)
+		not map_control.camera.wheel_zoom(1, Vector2.INF, 1749)
 		and map_control.zoom_percent() == 100,
 		"Mouse wheel rejects a level in the next 250 milliseconds",
 	)
 	_check(
-		map_control.wheel_zoom(1, Vector2.INF, 1999)
+		map_control.camera.wheel_zoom(1, Vector2.INF, 1999)
 		and map_control.zoom_percent() == 200,
 		"Mouse wheel accepts the next level after a 250 millisecond pause",
 	)
@@ -1975,7 +1975,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	scroll_control.size = Vector2(400, 300)
 	var scroll_image := Image.create_empty(1000, 800, false, Image.FORMAT_RGBA8)
 	scroll_control.set_city_view(starter, CityMapSource.whole(ImageTexture.create_from_image(scroll_image)))
-	var initial_scroll := scroll_control.scroll_state()
+	var initial_scroll := scroll_control.camera.scroll_state()
 	_check(
 		initial_scroll.content == Vector2(1960, 800)
 		and initial_scroll.page == Vector2(400, 300)
@@ -1983,21 +1983,21 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"City scroll state includes horizontal padding, visible page, and centered offsets",
 	)
 	_check(
-		scroll_control.set_scroll_value(0, 600)
-		and scroll_control.set_scroll_value(1, 500)
+		scroll_control.camera.set_scroll_value(0, 600)
+		and scroll_control.camera.set_scroll_value(1, 500)
 		and scroll_control.source_center == Vector2(320, 650)
-		and scroll_control.scroll_state().value == Vector2(600, 500),
+		and scroll_control.camera.scroll_state().value == Vector2(600, 500),
 		"City scroll values move the source center on both axes",
 	)
 	_check(
-		scroll_control.set_scroll_value(0, 9999)
-		and scroll_control.scroll_state().value.x == 1560
-		and not scroll_control.set_scroll_value(2, 0),
+		scroll_control.camera.set_scroll_value(0, 9999)
+		and scroll_control.camera.scroll_state().value.x == 1560
+		and not scroll_control.camera.set_scroll_value(2, 0),
 		"City scroll values clamp to the last visible page and reject an invalid axis",
 	)
 	scroll_control.size = Vector2(2200, 900)
 	scroll_control.camera._on_resized()
-	var fitted_scroll := scroll_control.scroll_state()
+	var fitted_scroll := scroll_control.camera.scroll_state()
 	_check(
 		fitted_scroll.page == Vector2(1960, 800)
 		and fitted_scroll.value == Vector2.ZERO
@@ -2005,16 +2005,16 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"A viewport larger than the city centers the texture and fills each scroll page",
 	)
 	scroll_control.free()
-	var small_sign := MapControl.sign_layout(
+	var small_sign := CityMapSigns.sign_layout(
 		Vector2(100, 80), 40.0, IsometricRenderer.VIEW_SMALL
 	)
-	var medium_sign := MapControl.sign_layout(
+	var medium_sign := CityMapSigns.sign_layout(
 		Vector2(100, 80), 40.0, IsometricRenderer.VIEW_MEDIUM
 	)
-	var large_sign := MapControl.sign_layout(
+	var large_sign := CityMapSigns.sign_layout(
 		Vector2(100, 80), 40.0, IsometricRenderer.VIEW_LARGE
 	)
-	var doubled_sign := MapControl.sign_layout(
+	var doubled_sign := CityMapSigns.sign_layout(
 		Vector2(200, 160), 80.0, IsometricRenderer.VIEW_LARGE, 2.0
 	)
 	_check(
@@ -2038,13 +2038,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Extra-large sign doubles the native large-view geometry",
 	)
 	_check(
-		MapControl.sign_view_index(0.25) == IsometricRenderer.VIEW_SMALL
-		and MapControl.sign_view_index(0.5) == IsometricRenderer.VIEW_MEDIUM
-		and MapControl.sign_view_index(1.0) == IsometricRenderer.VIEW_LARGE
-		and MapControl.sign_view_index(2.0) == IsometricRenderer.VIEW_LARGE
-		and MapControl.sign_view_index(4.0) == IsometricRenderer.VIEW_LARGE
-		and MapControl.sign_display_multiplier(2.0) == 2.0
-		and MapControl.sign_display_multiplier(4.0) == 4.0,
+		CityMapSigns.sign_view_index(0.25) == IsometricRenderer.VIEW_SMALL
+		and CityMapSigns.sign_view_index(0.5) == IsometricRenderer.VIEW_MEDIUM
+		and CityMapSigns.sign_view_index(1.0) == IsometricRenderer.VIEW_LARGE
+		and CityMapSigns.sign_view_index(2.0) == IsometricRenderer.VIEW_LARGE
+		and CityMapSigns.sign_view_index(4.0) == IsometricRenderer.VIEW_LARGE
+		and CityMapSigns.sign_display_multiplier(2.0) == 2.0
+		and CityMapSigns.sign_display_multiplier(4.0) == 4.0,
 		"Sign view selection follows all six city zoom levels",
 	)
 	var sign_city := CityModel.from_document(starter.document.duplicate_document())
@@ -2076,7 +2076,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Map control accepts one localized sign-occlusion layer",
 	)
 	map_control.set_sign_occlusion_visuals({})
-	var later_sign_visuals := MapControl.later_sign_occluder_visuals(
+	var later_sign_visuals := CityMapSigns.later_sign_occluder_visuals(
 		[
 			{"position": Vector2(100, 100), "size": Vector2(20, 20), "depth_order": 9},
 			{"position": Vector2(100, 100), "size": Vector2(20, 20), "depth_order": 10},
@@ -2107,7 +2107,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.selection_mode = "rectangle"
 	map_control.selection._rebuild_selection_path()
 	_check(
-		map_control.selection_tiles().size() == 6,
+		map_control.selection.selection_tiles().size() == 6,
 		"Rectangle selection contains every tile while it grows",
 	)
 	map_control.city = surface_city
@@ -2130,13 +2130,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.selection_end = center_tile + Vector2i(1, 0)
 	map_control.selection._rebuild_selection_path()
 	_check(
-		map_control.selection_tiles() == [center_tile, center_tile + Vector2i(1, 0)],
+		map_control.selection.selection_tiles() == [center_tile, center_tile + Vector2i(1, 0)],
 		"Rectangle selection shrinks from its fixed start",
 	)
 	map_control.selection_mode = "point"
 	map_control.point_footprint_area = 4
 	_check(
-		map_control.point_preview_tiles(center_tile)
+		map_control.selection.point_preview_tiles(center_tile)
 		== [
 			Vector2i(63, 63), Vector2i(63, 64), Vector2i(63, 65), Vector2i(63, 66),
 			Vector2i(64, 63), Vector2i(64, 64), Vector2i(64, 65), Vector2i(64, 66),
@@ -2147,7 +2147,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	map_control.point_footprint_area = 2
 	_check(
-		map_control.point_preview_tiles(center_tile)
+		map_control.selection.point_preview_tiles(center_tile)
 		== [center_tile, Vector2i(64, 65), Vector2i(65, 64), Vector2i(65, 65)],
 		"Point preview starts a two-tile building footprint at the pointer",
 	)
@@ -2177,7 +2177,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.selection_start = center_tile
 	map_control.selection_end = center_tile + Vector2i(3, 2)
 	map_control.selection._rebuild_selection_path()
-	var preview_path := map_control.selection_tiles()
+	var preview_path := map_control.selection.selection_tiles()
 	_check(
 		preview_path == [
 			center_tile,
@@ -2222,7 +2222,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	))
 	map_control.set_selection_price(12345, false)
 	_check(
-		map_control.selection_price_text() == "$12,345"
+		map_control.selection.selection_price_text() == "$12,345"
 		and not map_control.selection_price_affordable,
 		"Map control formats an unaffordable selection price",
 	)
@@ -2236,8 +2236,8 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	_check(
 		not map_control.is_left_drag_active()
-		and map_control.selection_tiles().is_empty()
-		and map_control.selection_price_text().is_empty(),
+		and map_control.selection.selection_tiles().is_empty()
+		and map_control.selection.selection_price_text().is_empty(),
 		"Canceled selection cannot commit any preview tiles",
 	)
 	var release_event := InputEventMouseButton.new()
@@ -2272,7 +2272,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	) * 0.25 * map_control.camera._view_scale()
 	map_control.interaction._handle_mouse_motion(drag_motion_event)
 	_check(
-		map_control.selection_was_dragged()
+		map_control.selection.selection_was_dragged()
 		and map_control.selection_end == drag_target,
 		"Active map selection follows local pointer motion",
 	)
@@ -2314,7 +2314,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	map_control.set_dynamic_sprites(many_dynamic_sprites)
 	_check(
 		map_control.dynamic_sprites.size() == 1500
-		and map_control.dynamic_render_node_count() == 1
+		and map_control.presentation.dynamic_render_node_count() == 1
 		and map_control._dynamic_canvas is Node2D,
 		"Map control batches 1,500 dynamic sprites in one render node",
 	)

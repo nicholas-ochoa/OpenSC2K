@@ -346,7 +346,7 @@ func _run() -> void:
 				return
 
 			print_control.hide()
-			var place_preview: Array[Vector2i] = main.get("map_view").point_preview_tiles(
+			var place_preview: Array[Vector2i] = main.get("map_view").selection.point_preview_tiles(
 				patch_point
 			)
 			main.city_edits.call(

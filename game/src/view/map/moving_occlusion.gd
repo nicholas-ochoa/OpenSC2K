@@ -196,7 +196,7 @@ func sync() -> void:
 	# integer mesh positions then map each source pixel to exactly one texel,
 	# whatever the zoom and window scale
 	var divisor := source.meshes[0].divisor
-	var visible := map.visible_source_rect()
+	var visible := map.camera.visible_source_rect()
 	var first := Vector2i((visible.position / divisor).floor()) - Vector2i.ONE
 	var last := Vector2i((visible.end / divisor).ceil()) + Vector2i.ONE
 	var native := Rect2i(first, last - first).intersection(

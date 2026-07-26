@@ -45,7 +45,7 @@ func _run() -> void:
 		if edge == 32:
 			_check_level_brush(main, Vector2i(4, 4))
 		for corner in [Vector2i.ZERO, Vector2i(edge - 1, edge - 1)]:
-			var tiles: Array[Vector2i] = main.map_view.brush_tiles(corner)
+			var tiles: Array[Vector2i] = main.map_view.selection.brush_tiles(corner)
 			for tile in tiles:
 				assert(main.city.index_of(tile.x, tile.y) >= 0)
 		print("Brush size, shape, drag gaps, edges and stroke Undo passed: ", edge)
@@ -69,7 +69,7 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 		var width := 5 if editor else 1
 		assert(main.map_view.landscape_brush and main.map_view.brush_size == width and main.map_view.brush_round)
 		assert(not main.city_toolbar.brush_controls.visible)
-		assert(main.map_view.brush_tiles(point).size() == (21 if editor else 1))
+		assert(main.map_view.selection.brush_tiles(point).size() == (21 if editor else 1))
 		var target: int = main.city.land_altitude(point.x, point.y)
 		var funds: int = main.city.funds()
 		var before: Array = DocumentState.capture(main.document_state.current_document)

@@ -94,7 +94,7 @@ static func _refresh_sign_occlusion(render: ApplicationMapRender, view_size: int
 			var sampled: Image = render.caches.region_cache.image_region(bounds, factor) if render.caches.region_cache != null else render.caches.static_city_image.get_region(bounds)
 			foreground = CitySignForeground.static_pixels(sampled, masks, Rect2i(bounds.position * factor, bounds.size * factor))
 
-		for visual in ApplicationMapRender.MapControl.later_sign_occluder_visuals(moving_candidates, bounds, int(entry.draw_order)):
+		for visual in CityMapSigns.later_sign_occluder_visuals(moving_candidates, bounds, int(entry.draw_order)):
 			var moving_image: Image = visual.get("image") as Image
 
 			if moving_image != null:

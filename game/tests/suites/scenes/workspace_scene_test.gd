@@ -71,10 +71,10 @@ func _check_camera_bounds(workspace: CityWorkspace, host: Control) -> void:
 		var center := map.source_center
 		assert(map.zoom_out(Vector2.INF))
 		assert(map.source_center.distance_to(center) <= 0.5, "Toolbar zoom moved the visible center")
-		assert(map.scroll_state().page == camera_rect.size)
-		assert(map.set_scroll_value(0, 0.0))
-		assert(is_equal_approx(map.scroll_state().value.x, 0.0))
-		assert(map.set_scroll_value(0, 100000.0))
+		assert(map.camera.scroll_state().page == camera_rect.size)
+		assert(map.camera.set_scroll_value(0, 0.0))
+		assert(is_equal_approx(map.camera.scroll_state().value.x, 0.0))
+		assert(map.camera.set_scroll_value(0, 100000.0))
 		# Rendering still includes the strips behind the overlay panels.
 		assert(map.visible_source_rect().size == map.size)
 

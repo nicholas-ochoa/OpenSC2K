@@ -63,7 +63,7 @@ func _run() -> void:
 		var before: Array = DocumentState.capture(main.document_state.current_document)
 		var rng: int = main.tool_random.state
 		_button(map, start, true)
-		assert(map.bulldozer_visible())
+		assert(map.selection.bulldozer_visible())
 		assert(main.city.building_id(start.x, start.y) == 0)
 		_motion(map, start + Vector2i(8, 0))
 		var cost: int = main.last_edit_command.cost
@@ -71,7 +71,7 @@ func _run() -> void:
 		assert(main.last_edit_command.cost == cost, "Holding over an empty tile charged again")
 		# Changing Shift mid-stroke keeps the paint tool active.
 		_motion(map, start + Vector2i(9, 0), true)
-		assert(not map.brush_box_selection and map.bulldozer_visible())
+		assert(not map.brush_box_selection and map.selection.bulldozer_visible())
 		for zoom in (CityMapControl.ZOOM_LEVELS if edge == 64 else [1.0]):
 			map.zoom_factor = zoom
 			for direction in 4:
@@ -79,7 +79,7 @@ func _run() -> void:
 				assert(not visual.is_empty() and visual.texture.get_size().x > 0)
 		map.zoom_factor = 0.25
 		_button(map, start + Vector2i(10, 0), false)
-		assert(not map.bulldozer_visible())
+		assert(not map.selection.bulldozer_visible())
 		for x in range(start.x, start.x + 11):
 			assert(main.city.building_id(x, start.y) == 0)
 			assert(main.city.building_id(x, start.y + 1) == 1)
@@ -90,7 +90,7 @@ func _run() -> void:
 		_button(map, start, true, true)
 		_motion(map, start + Vector2i(3, 2), true)
 		map._process(0.5)
-		assert(map.selection_path.size() == 12 and not map.bulldozer_visible())
+		assert(map.selection_path.size() == 12 and not map.selection.bulldozer_visible())
 		assert(DocumentState.capture(main.document_state.current_document) == before)
 		_button(map, start + Vector2i(3, 2), false)
 		assert(main.last_edit_command.cost == 12 and main.last_edit_command.action_count == 12)
@@ -100,10 +100,10 @@ func _run() -> void:
 		_button(map, start, true, true)
 		_motion(map, start + Vector2i(3, 2), true)
 		assert(map.cancel_active_selection())
-		assert(DocumentState.capture(main.document_state.current_document) == before and not map.bulldozer_visible())
+		assert(DocumentState.capture(main.document_state.current_document) == before and not map.selection.bulldozer_visible())
 		_button(map, start, true)
 		_motion(map, start + Vector2i(3, 0))
-		assert(map.cancel_active_selection() and not map.bulldozer_visible())
+		assert(map.cancel_active_selection() and not map.selection.bulldozer_visible())
 		assert(DemolishCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
 		assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_random.state == rng)
 		# Dust advances the RNG. Keep the first random-state snapshot across later dabs.
@@ -128,7 +128,7 @@ func _run() -> void:
 		assert(main.document_state.current_document.find_chunk("XUND").set_decoded_payload(underground))
 		before = DocumentState.capture(main.document_state.current_document)
 		_button(map, start, true)
-		assert(not map.bulldozer_visible())
+		assert(not map.selection.bulldozer_visible())
 		_motion(map, start + Vector2i(3, 0))
 		_button(map, start + Vector2i(3, 0), false)
 		assert(main.last_edit_command.underground_view and main.last_edit_command.cost == 4)
@@ -150,7 +150,7 @@ func _run() -> void:
 		_button(map, start, true)
 		assert(map.is_left_drag_active() and main.last_edit_command.easter_events == 1)
 		_button(map, start, false)
-		assert(not map.bulldozer_visible())
+		assert(not map.selection.bulldozer_visible())
 		assert(DemolishCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
 		assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_random.state == rng)
 		print("PASS: Demolish paint, gaps, costs, native sprites, Shift boxes, cancel and exact Undo at ", edge)

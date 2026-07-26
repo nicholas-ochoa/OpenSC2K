@@ -52,8 +52,8 @@ func _run() -> void:
 	var after := (anchor - map.camera._draw_offset(map.camera._view_scale())) / map.camera._view_scale()
 	assert(source.distance_to(after) <= 0.5, "Zoom moved the map point under the pointer")
 	assert(not map.zoom_in(anchor))
-	assert(CityMapControl.sign_display_multiplier(3.0) == 3.0)
-	assert(CityMapControl.sign_display_multiplier(4.0) == 4.0)
+	assert(CityMapSigns.sign_display_multiplier(3.0) == 3.0)
+	assert(CityMapSigns.sign_display_multiplier(4.0) == 4.0)
 
 	for mode in ["underground", "city"]:
 		main.menus._set_overlay(mode)

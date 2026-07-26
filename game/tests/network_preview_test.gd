@@ -107,7 +107,7 @@ func _test_route_price(palette: Sc2Palette, sprites: Sc2SpriteArchive) -> void:
 	assert(preview.affordable)
 	assert(map.selection_price == int(planned.cost), "The route price reaches the anchored map label")
 	assert(map.selection_price_affordable)
-	assert(map.selection_price_text() == "$%d" % int(planned.cost))
+	assert(map.selection.selection_price_text() == "$%d" % int(planned.cost))
 	assert(city.set_funds(int(planned.cost) - 1))
 	preview.request(city, 6, 0, start, finish, 2, palette, sprites, false)
 	await _wait_for_preview(preview)
