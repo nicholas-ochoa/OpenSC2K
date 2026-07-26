@@ -2,6 +2,8 @@ class_name IsometricDynamicCommands
 extends IsometricConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func moving_thing_draw_commands(
 	city: CityState,
@@ -95,7 +97,7 @@ static func dynamic_draw_commands(
 
 		while found >= 0:
 			var point := Vector2i(
-				int(IntegerMath.div_trunc(found, map_edge)), found % map_edge
+				int(found / map_edge), found % map_edge
 			)
 			entries.append({
 				"order": (point.x + point.y) * map_edge + point.y,
@@ -182,7 +184,7 @@ static func special_overlay_draw_command(
 		"sprite_id": int(visual.sprite_id),
 		"flip": bool(visual.flip),
 		"position": Vector2i(
-			screen_x + int(configuration.half_width) - int(IntegerMath.div_trunc(entry.width, 2)),
+			screen_x + int(configuration.half_width) - int(entry.width / 2),
 			base_y + int(configuration.tile_height) - entry.height,
 		),
 		"shadow": false,
@@ -261,7 +263,7 @@ static func moving_thing_draw_commands_for_visual(
 			+ (visual.x - visual.y) * HALF_WIDTH + HALF_WIDTH + visual.screen_x
 		)
 		destination = Vector2i(
-			center_x - int(IntegerMath.div_trunc(entry.width, 2)),
+			center_x - int(entry.width / 2),
 			TOP_MARGIN + TILE_HEIGHT
 				+ (visual.x + visual.y) * HALF_HEIGHT + visual.screen_y
 				- visual.elevation - entry.height
@@ -277,7 +279,7 @@ static func moving_thing_draw_commands_for_visual(
 			+ int((visual.px - visual.py) / THING_X_DIVISOR[view_size])
 		)
 		destination = Vector2i(
-			center_x - int(IntegerMath.div_trunc(entry.width, 2)),
+			center_x - int(entry.width / 2),
 			int(configuration.top_margin)
 				+ (visual.x + visual.y) * int(configuration.half_height)
 				+ int(configuration.tile_height)

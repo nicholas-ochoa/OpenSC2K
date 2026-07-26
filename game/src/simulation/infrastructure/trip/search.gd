@@ -2,6 +2,8 @@ class_name TransportTripSearch
 extends TransportTripConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func trace(
 	buildings: PackedByteArray,
@@ -38,14 +40,14 @@ static func trace(
 	var limit := maxi(maximum_cost, 0)
 
 	if traffic_weight == 1:
-		limit -= int(IntegerMath.div_trunc(limit, 4))
+		limit -= int(limit / 4)
 
 	# positive edge costs and the best cost for each mode/heading prevent cycles
 	# cost buckets are a bounded dijkstra queue. reaching the limit discards one
 	# candidate, not the remaining search. equal-cost choices still use the rng
 	var turn_direction := 1 if random.next_u15() & 1 else 3
 	var start_index := start & (POINT_INDEX_MASK if map_edge == 128 else 0x3ffff)
-	var points: Array[Vector2i] = [Vector2i(IntegerMath.div_trunc(start_index, map_edge), start_index % map_edge)]
+	var points: Array[Vector2i] = [Vector2i(start_index / map_edge, start_index % map_edge)]
 	# the flat index of each state, kept beside points so expansion never has to
 	# recompute it from the vector2i. points still carries directions arithmetic,
 	# the traffic write, and the collect_reach outputs

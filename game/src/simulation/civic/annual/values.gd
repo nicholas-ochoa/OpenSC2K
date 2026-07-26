@@ -2,6 +2,8 @@ class_name MicrosimAnnualValues
 extends MicrosimAnnualConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func _tile_count(misc: PackedByteArray, tile_id: int, map_edge: int = 128) -> int:
 	var value := _read_u32(misc, MISC_TILE_COUNTS + tile_id * 4)
@@ -106,7 +108,7 @@ static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int, m
 		+ _read_u32(misc, MISC_ARCOLOGY_POPULATION)
 		+ _read_u32(misc, MISC_NORMAL_POPULATION)
 	)
-	var available := int(IntegerMath.div_trunc(total_population, divisor)) & (0xffff if map_edge == 128 else 0xffffffff)
+	var available := int(total_population / divisor) & (0xffff if map_edge == 128 else 0xffffffff)
 	var signed_maximum := _to_i16(maximum)
 
 	return signed_maximum if signed_maximum <= available else available
@@ -156,9 +158,9 @@ static func _write_i32(data: PackedByteArray, offset: int, value: int) -> void:
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
 	if value >= 0:
-		return int(IntegerMath.div_trunc(value, divisor))
+		return int(value / divisor)
 
-	return -int(IntegerMath.div_trunc(-value, divisor))
+	return -int((-value) / divisor)
 
 
 static func _write_u16_be(data: PackedByteArray, offset: int, value: int) -> void:

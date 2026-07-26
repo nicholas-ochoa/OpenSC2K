@@ -1,6 +1,8 @@
 class_name PowerPhase
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const MAP_SIZE := CityState.MAP_SIZE
 const FLAG_MARK := 0x08
 const FLAG_POWERED := 0x40
@@ -66,7 +68,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 			total_consumers += consumers
 
 			if city.document.misc_u32(0x0fa0) & SOLAR_EFFICIENCY_ORDINANCE:
-				capacity += int(IntegerMath.div_trunc(capacity, 12))
+				capacity += int(capacity / 12)
 
 			supplied_consumers += mini(capacity, consumers)
 
@@ -90,7 +92,7 @@ static func run(city: CityState, random: SimRandom) -> Result:
 	var usage_percent := 100
 
 	if total_generation != 0:
-		usage_percent = mini(int(IntegerMath.div_trunc(supplied_consumers * 100, total_generation)), 100)
+		usage_percent = mini(int((supplied_consumers * 100) / total_generation), 100)
 
 	var result := Result.new()
 	result.ok = true
@@ -133,7 +135,7 @@ static func _trace_component(
 
 		flags[index] |= FLAG_MARK
 		tiles.append(index)
-		var x := int(IntegerMath.div_trunc(index, map_edge))
+		var x := int(index / map_edge)
 		var y := index % map_edge
 		var building := city.buildings[index]
 
@@ -166,7 +168,7 @@ static func _plant_capacity(
 		0xc8:
 			var wind := city.document.misc_u32(0x64) & 0xff
 
-			return int(IntegerMath.div_trunc((city.land_altitude(x, y) + random.next_u15() % (int(IntegerMath.div_trunc(wind, 8)) + 1)), 2))
+			return int((city.land_altitude(x, y) + random.next_u15() % (int(wind / 8) + 1)) / 2)
 		0xc9:
 			return 11
 		0xca:
@@ -175,7 +177,7 @@ static func _plant_capacity(
 			return 111
 		0xcc:
 			var rain := city.document.misc_u32(0x68) & 0xff
-			var sunlight_range: int = maxi(int(IntegerMath.div_trunc((100 - rain), 10)), 1)
+			var sunlight_range: int = maxi(int((100 - rain) / 10), 1)
 
 			return random.next_u15() % sunlight_range + 5
 		0xcd:

@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 class FixedRandom extends SimRandom:
 
 
@@ -101,8 +103,8 @@ func check_maps(edge: int, native: bool) -> void:
 		previous_total = next_total
 
 		if month == 0:
-			var grid_edge := edge if native else IntegerMath.div_trunc(edge, 2)
-			check(pollution[(IntegerMath.div_trunc(grid_edge, 2)) * grid_edge + IntegerMath.div_trunc(grid_edge, 2)] == 170, "Uniform interior decays from 255 to 170")
+			var grid_edge := edge if native else (edge / 2)
+			check(pollution[(grid_edge / 2) * grid_edge + (grid_edge / 2)] == 170, "Uniform interior decays from 255 to 170")
 			check(pollution[0] == 145, "Corner omits absent pollution samples")
 
 		check(doc.find_chunk("XVAL").decoded_payload.count(0) == doc.find_chunk("XVAL").decoded_payload.size(), "Empty land does not retain old land values")
@@ -110,7 +112,7 @@ func check_maps(edge: int, native: bool) -> void:
 
 		for field in [["XPLT", 0x34], ["XVAL", 0x28], ["XCRM", 0x2c]]:
 			var sum := total(doc.find_chunk(field[0]).decoded_payload)
-			check(doc.misc_u32(field[1]) == (IntegerMath.div_trunc(sum, 4) if native else sum), "Saved aggregate matches " + field[0])
+			check(doc.misc_u32(field[1]) == ((sum / 4) if native else sum), "Saved aggregate matches " + field[0])
 
 	# Every byte value, including the original 1..3 rounding floor.
 	var traffic := doc.find_chunk("XTRF").decoded_payload.duplicate()
@@ -127,7 +129,7 @@ func check_maps(edge: int, native: bool) -> void:
 		exact = exact and decayed[index] == int(traffic[index]) - (int(traffic[index]) >> 2)
 
 	check(exact, "Every traffic byte decays without wrapping")
-	check(doc.misc_u32(0x30) == (IntegerMath.div_trunc(total(decayed), 4) if native else total(decayed)), "Traffic aggregate retains wide sum")
+	check(doc.misc_u32(0x30) == ((total(decayed) / 4) if native else total(decayed)), "Traffic aggregate retains wide sum")
 	var bytes: PackedByteArray = doc.serialize().data
 	var loaded := Sc2File.new()
 	check(loaded.parse(bytes) and loaded.serialize(true).data == bytes, "Updated grids survive exact save round trip")
@@ -136,7 +138,7 @@ func check_maps(edge: int, native: bool) -> void:
 func check_industrial_samples(edge: int) -> void:
 	var scratch := PackedInt32Array()
 	scratch.resize(edge * edge)
-	var offset := IntegerMath.div_trunc(edge, 4)
+	var offset := edge / 4
 	# Distinct grids: industrial center 30 and neighbors 10, 20, 40, 50.
 	# Residential X-neighbors must not enter the industrial mean.
 	var x := offset - 2

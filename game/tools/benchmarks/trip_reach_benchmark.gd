@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 
 func _initialize() -> void:
 	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/CAPEQUES.SC2"))
@@ -20,7 +22,7 @@ func _initialize() -> void:
 	var started := Time.get_ticks_usec()
 	var expanded := 0
 	for i in 256:
-		var point: Vector2i = samples[IntegerMath.div_trunc(i * samples.size(), 256)]
+		var point: Vector2i = samples[(i * samples.size()) / 256]
 		var result := TransportTrip.trace(city.buildings, city.zones, city.underground,
 			city.text_overlays, city.altitude_words, traffic, point, city.zone_id(point.x, point.y),
 			GrowthPhase._density(city.building_id(point.x, point.y)), SimRandom.new(i + 1))

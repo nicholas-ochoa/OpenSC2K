@@ -2,6 +2,8 @@ class_name GrowthState
 extends GrowthConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func _replace_building(
 	buildings: PackedByteArray,
@@ -38,10 +40,10 @@ static func _payloads(city: CityState) -> Dictionary:
 		["XMIC", CityState.MICROSIM_COUNT * CityState.MICROSIM_RECORD_SIZE],
 		["XTHG", city.document.decoded_size("XTHG")],
 		["XBIT", (map_edge * map_edge)],
-		["XTRF", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
-		["XPLT", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
-		["XVAL", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
-		["XCRM", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
+		["XTRF", ((map_edge / 2) * (map_edge / 2))],
+		["XPLT", ((map_edge / 2) * (map_edge / 2))],
+		["XVAL", ((map_edge / 2) * (map_edge / 2))],
+		["XCRM", ((map_edge / 2) * (map_edge / 2))],
 		["MISC", MISC_SIZE],
 	]:
 		var chunk := city.document.find_chunk(checked[0])

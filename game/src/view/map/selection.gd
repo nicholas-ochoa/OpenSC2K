@@ -2,6 +2,8 @@ class_name CityMapSelection
 extends CityMapConstants
 
 
+@warning_ignore_start("integer_division")
+
 var map: CityMapControl
 
 
@@ -390,7 +392,7 @@ func brush_tiles(center: Vector2i) -> Array[Vector2i]:
 	if map.city == null or center.x < 0:
 		return points
 	var width := clampi(map.brush_size, 1, 15)
-	var offset := IntegerMath.div_trunc(width - 1, 2)
+	var offset := (width - 1) / 2
 	var middle := float(width - 1) * 0.5
 	for x in width:
 		for y in width:

@@ -1,6 +1,8 @@
 class_name QueryActions
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const FIRST_BUILDING := 0x0d
 const CATEGORY_COUNT := 12
 const CATEGORY_RESOURCE_BASE := 988
@@ -187,7 +189,7 @@ static func city_analysis(
 			"id": category_id,
 			"name": name,
 			"acres": counts[category_id],
-			"percent": int(IntegerMath.div_trunc(counts[category_id] * 100, total)) if total != 0 else 0,
+			"percent": int((counts[category_id] * 100) / total) if total != 0 else 0,
 		})
 
 	var header := "Category                 Acres   Share"

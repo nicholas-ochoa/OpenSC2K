@@ -1,6 +1,8 @@
 class_name RciDemandPhase
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const ZONE_POPULATION_OFFSET := 0x05f0
 const DEMAND_OFFSET := 0x0718
 const BUDGET_OFFSET := 0x077c
@@ -87,12 +89,12 @@ static func run(city: CityState) -> Result:
 	var jobs := float(tax_population[1] + tax_population[2])
 	var resident_job_ratio := float(old_residential) / (jobs + 1.0)
 
-	var residential_target := float(int(IntegerMath.div_trunc(tax_population[0], 50))) + jobs
+	var residential_target := float(int(tax_population[0] / 50)) + jobs
 	residential_target = minf(
 		residential_target,
 		float(
 			(
-				int(IntegerMath.div_trunc(_tile_count(city, 0xd5), 3))
+				int(_tile_count(city, 0xd5) / 3)
 				+ _tile_count(city, 0xd7)
 				+ _tile_count(city, 0xda)
 				+ 10
@@ -171,7 +173,7 @@ static func run(city: CityState) -> Result:
 			city.simulation_slice.checkpoint()
 
 		var budget_population := tax_population[index] * 10
-		budget_population += int(IntegerMath.div_trunc(arcology_population, (6 if index == 0 else 12)))
+		budget_population += int(arcology_population / (6 if index == 0 else 12))
 		_write_i32(changed, BUDGET_OFFSET + index * BUDGET_RECORD_SIZE, budget_population)
 		_write_i32(changed, DEMAND_OFFSET + index * 4, demands[index])
 

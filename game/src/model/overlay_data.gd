@@ -1,6 +1,9 @@
 class_name OverlayData
 extends RefCounted
 # original ids are unchanged. sc2x v2 adds disjoint 16-bit id ranges
+
+@warning_ignore_start("integer_division")
+
 const EXTRA_FACILITY := 256
 const EXTRA_SIGN := 4096
 const EXTRA_THING := 8192
@@ -9,7 +12,7 @@ const EXTRA_THING := 8192
 # the overlay layout keys off the payload size alone. a wide sc2x map stores a
 # low and a high plane, so its cell count is half its bytes
 static func cells_for(byte_count: int) -> int:
-	return IntegerMath.div_trunc(byte_count, 2) if byte_count == 131072 or byte_count == 294912 or byte_count == 524288 else byte_count
+	return (byte_count / 2) if byte_count == 131072 or byte_count == 294912 or byte_count == 524288 else byte_count
 
 
 static func count(data: PackedByteArray) -> int:
@@ -65,7 +68,7 @@ static func thing_record(id: int) -> int:
 static func sign_ids(label_bytes: int) -> PackedInt32Array:
 	var ids := PackedInt32Array(range(1, 51))
 
-	for id in range(EXTRA_SIGN, IntegerMath.div_trunc(label_bytes, 25)):
+	for id in range(EXTRA_SIGN, label_bytes / 25):
 		ids.append(id)
 
 	return ids
@@ -105,7 +108,7 @@ static func valid_id(id: int, edge: int) -> bool:
 	if edge == 128:
 		return false
 
-	var factor := IntegerMath.div_trunc(edge * edge, 16384)
+	var factor := (edge * edge) / 16384
 
 	return (is_facility(id) and facility_record(id) < 150 * factor) or (is_sign(id) and id < EXTRA_SIGN + 50 * factor - 50) or (is_thing(id) and thing_record(id) < 40 * factor)
 

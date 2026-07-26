@@ -2,6 +2,8 @@ class_name PollutionPhase
 extends PollutionValues
 
 
+@warning_ignore_start("integer_division")
+
 
 class Result extends PhaseResult:
 	var pollution_total := 0
@@ -35,19 +37,19 @@ static func run(city: CityState) -> Result:
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != 4800:
 		return failed("MISC is missing or has the wrong size")
 
-	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))):
+	if traffic_chunk == null or traffic_chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
 		return failed("XTRF is missing or has the wrong size")
 
-	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))):
+	if pollution_chunk == null or pollution_chunk.decoded_payload.size() != ((map_edge / 2) * (map_edge / 2)):
 		return failed("XPLT is missing or has the wrong size")
 
 	for checked in [
-		[land_value_chunk, "XVAL", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
-		[crime_chunk, "XCRM", ((IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2)))],
-		[police_chunk, "XPLC", (IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4))],
-		[fire_chunk, "XFIR", (IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4))],
-		[population_chunk, "XPOP", (IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4))],
-		[growth_chunk, "XROG", (IntegerMath.div_trunc(map_edge, 4)) * (IntegerMath.div_trunc(map_edge, 4))],
+		[land_value_chunk, "XVAL", ((map_edge / 2) * (map_edge / 2))],
+		[crime_chunk, "XCRM", ((map_edge / 2) * (map_edge / 2))],
+		[police_chunk, "XPLC", (map_edge / 4) * (map_edge / 4)],
+		[fire_chunk, "XFIR", (map_edge / 4) * (map_edge / 4)],
+		[population_chunk, "XPOP", (map_edge / 4) * (map_edge / 4)],
+		[growth_chunk, "XROG", (map_edge / 4) * (map_edge / 4)],
 	]:
 		if checked[0] == null or checked[0].decoded_payload.size() != checked[2]:
 			return failed("%s is missing or has the wrong size" % checked[1])

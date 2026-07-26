@@ -1,6 +1,9 @@
 class_name CityDataView
 extends RefCounted
 # display-only tile data. geometry and values come from the active city
+
+@warning_ignore_start("integer_division")
+
 const MODES := ["land_value", "pollution", "crime", "water", "power", "height"]
 const TITLES := ["Land Value", "Pollution", "Crime", "Water Supply", "Power Supply", "Height"]
 const GRID_SHADER := """
@@ -82,7 +85,7 @@ static func tile_text(city: CityState, mode: String, point: Vector2i, exact := f
 	elif mode == "height":
 		description = "Level %d of 32" % (number + 1)
 	else:
-		description = ["Very low", "Low", "Moderate", "High", "Very high"][mini(IntegerMath.div_trunc(number * 5, 256), 4)]
+		description = ["Very low", "Low", "Moderate", "High", "Very high"][mini((number * 5) / 256, 4)]
 
 	var title: String = TITLES[MODES.find(mode)]
 	var result := "%s: %s" % [title, description]

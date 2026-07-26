@@ -1,6 +1,8 @@
 class_name CityState
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const MAP_SIZE := 128
 const TILE_COUNT := MAP_SIZE * MAP_SIZE
 const COARSE_MAP_SIZE := 64
@@ -439,11 +441,11 @@ func set_no_disasters_enabled(enabled: bool) -> bool:
 
 
 func current_year() -> int:
-	return founding_year() + int(IntegerMath.div_trunc(age_in_days(), 300))
+	return founding_year() + int(age_in_days() / 300)
 
 
 func current_month() -> int:
-	return int(IntegerMath.div_trunc(age_in_days() % 300, 25)) + 1
+	return int((age_in_days() % 300) / 25) + 1
 
 
 func current_day() -> int:

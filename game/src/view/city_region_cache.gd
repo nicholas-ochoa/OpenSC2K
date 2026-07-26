@@ -1,6 +1,9 @@
 class_name CityRegionCache
 extends RefCounted
 
+
+@warning_ignore_start("integer_division")
+
 const REGION_EDGE := 512
 const OFFSCREEN_LIMIT := 12
 const GPU_OFFSCREEN_LIMIT := 384
@@ -340,8 +343,8 @@ func pixel(point: Vector2i) -> Color:
 	if point.x < 0 or point.y < 0:
 		return Color.TRANSPARENT
 
-	var native := Vector2i(IntegerMath.div_trunc_vec2i(point, divisor))
-	var key := Vector2i(IntegerMath.div_trunc_vec2i(native, region_edge))
+	var native := Vector2i(point / divisor)
+	var key := Vector2i(native / region_edge)
 
 	if not entries.has(key):
 		return Color.TRANSPARENT

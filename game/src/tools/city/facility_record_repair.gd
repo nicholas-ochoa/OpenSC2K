@@ -2,6 +2,8 @@ class_name FacilityRecordRepair
 extends RefCounted
 # Repair SC2X facility records on activation. Parsing and simulation snapshots keep the saved bytes.
 
+@warning_ignore_start("integer_division")
+
 
 static func apply(city: CityState) -> Dictionary:
 	var result := {"ok": true, "created": 0, "linked": 0, "unfilled": 0}
@@ -144,7 +146,7 @@ static func _overlay_target(
 		var offset := record * 12
 
 		if ThingData.read(things, offset) == 0 or (
-			ThingData.read(things, offset + 3) != IntegerMath.div_trunc(index, edge)
+			ThingData.read(things, offset + 3) != index / edge
 			or ThingData.read(things, offset + 4) != index % edge
 		):
 			return -1

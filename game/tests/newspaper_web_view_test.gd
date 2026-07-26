@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -70,7 +72,7 @@ func _check_city_name_fallback(newspaper: NewspaperDialog) -> void:
 		reference_root.path_join("DATA/DATA_USA.IDX"),
 	)
 	assert(data.is_valid())
-	var seed := -28 - IntegerMath.div_trunc(city.age_in_days(), 25)
+	var seed := -28 - (city.age_in_days() / 25)
 	newspaper.open_reports(city, document, data, {}, {}, seed, 0)
 	var payload := newspaper._web_payload()
 	assert(payload.headline == "BABAR Awakens!!")

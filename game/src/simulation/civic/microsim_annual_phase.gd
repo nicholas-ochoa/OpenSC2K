@@ -2,6 +2,8 @@ class_name MicrosimAnnualPhase
 extends MicrosimAnnualValues
 
 
+@warning_ignore_start("integer_division")
+
 
 class Result extends PhaseResult:
 	var updated_subway_records := 0
@@ -148,7 +150,7 @@ static func run(
 	annual.updated_rail = 0
 
 	annual.span.mark("facility records")
-	for record_id in range(1, IntegerMath.div_trunc(annual.microsims.size(), CityState.MICROSIM_RECORD_SIZE)):
+	for record_id in range(1, annual.microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 		if annual.city.simulation_slice != null:
 			annual.city.simulation_slice.checkpoint()
 

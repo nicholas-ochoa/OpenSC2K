@@ -2,6 +2,8 @@ class_name GrowthMaintenance
 extends GrowthConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func _process_surface_maintenance(
 	altitude: PackedByteArray,
@@ -121,7 +123,7 @@ static func _process_microsim_growth(
 		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
 			return
 
-		var train_limit := int(IntegerMath.div_trunc(SpecialZoneGrowth.tile_count(misc, 0xed, false, map_edge), 4))
+		var train_limit := int(SpecialZoneGrowth.tile_count(misc, 0xed, false, map_edge) / 4)
 
 		if MovingThings.count_type(things, MovingThings.TYPE_TRAIN_ENGINE) < train_limit:
 			if MovingThings.spawn_train(
@@ -135,7 +137,7 @@ static func _process_microsim_growth(
 		if flags[index] & 0x40 == 0 or lfsr_random.next_mask(3) != 0:
 			return
 
-		var sailboat_limit := int(IntegerMath.div_trunc(SpecialZoneGrowth.tile_count(misc, 0xf8, false, map_edge), 9))
+		var sailboat_limit := int(SpecialZoneGrowth.tile_count(misc, 0xf8, false, map_edge) / 9)
 
 		if MovingThings.count_type(things, MovingThings.TYPE_SAILBOAT) < sailboat_limit:
 			counters.spawned_sailboats += MovingThings.spawn_sailboats(

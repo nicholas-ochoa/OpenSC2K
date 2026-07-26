@@ -2,6 +2,8 @@ class_name IsometricMovingVisuals
 extends IsometricConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func moving_thing_visual(
 	city: CityState,
@@ -144,9 +146,9 @@ static func moving_thing_anchor(
 			var py := int(thing.py)
 			anchor = Vector2i(
 				(x - y) * half_width
-					+ int(IntegerMath.div_trunc(px - py, THING_X_DIVISOR[view_size])),
+					+ int((px - py) / THING_X_DIVISOR[view_size]),
 				(x + y) * half_height
-					+ int(IntegerMath.div_trunc(px + py, THING_Y_DIVISOR[view_size]))
+					+ int((px + py) / THING_Y_DIVISOR[view_size])
 					- city.object_altitude(x, y) * step
 					- int(thing.z) * half_height
 			)

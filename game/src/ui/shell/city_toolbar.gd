@@ -1,6 +1,8 @@
 class_name CityToolbar
 extends Panel
 
+@warning_ignore_start("integer_division")
+
 signal button_clicked
 signal brush_changed
 signal regenerate_requested
@@ -406,8 +408,8 @@ func _build_landscape_tools() -> void:
 		if group in [0, 1] and button.icon != null:
 			# terrain symbols are 19-pixel native icons, like the city toolbar
 			var native_icon := button.icon.get_image()
-			native_icon.resize(IntegerMath.div_trunc(native_icon.get_width(), 2),
-				IntegerMath.div_trunc(native_icon.get_height(), 2), Image.INTERPOLATE_NEAREST)
+			native_icon.resize(native_icon.get_width() / 2,
+				(native_icon.get_height() / 2), Image.INTERPOLATE_NEAREST)
 			button.icon = ImageTexture.create_from_image(native_icon)
 		button.text = button.tooltip_text if button.icon == null else ""
 		button.theme_type_variation = "ArtworkButton"

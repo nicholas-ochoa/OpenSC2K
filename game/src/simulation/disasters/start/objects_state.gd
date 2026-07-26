@@ -1,6 +1,8 @@
 class_name DisasterStartObjectsState
 extends DisasterStartConstants
 
+@warning_ignore_start("integer_division")
+
 
 static func _start_crash_wrapper(disaster_type: int, point: Vector2i) -> Dictionary:
 	var result := _result(disaster_type, point, true, true, 0)
@@ -33,8 +35,8 @@ static func _start_plane_crash(city: CityState, lfsr_random: SimLfsrRandom) -> D
 
 	while true:
 		point = Vector2i(
-			lfsr_random.next_mask(0xffff) % (IntegerMath.div_trunc(map_edge, 2)) + IntegerMath.div_trunc(map_edge, 4),
-			lfsr_random.next_mask(0xffff) % (IntegerMath.div_trunc(map_edge, 2)) + IntegerMath.div_trunc(map_edge, 4)
+			lfsr_random.next_mask(0xffff) % (map_edge / 2) + (map_edge / 4),
+			lfsr_random.next_mask(0xffff) % (map_edge / 2) + (map_edge / 4)
 		)
 
 		if OverlayData.read(text, _index(point, map_edge)) == 0:

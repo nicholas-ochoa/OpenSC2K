@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 var checks := 0
 var failures := 0
 
@@ -18,7 +20,7 @@ func _initialize() -> void:
 				var baseline := fixture(edge, native, zone)
 				var polluted := baseline.duplicate_document()
 				var data := polluted.find_chunk("XPLT").decoded_payload.duplicate()
-				var point := Vector2i(IntegerMath.div_trunc(edge, 8), IntegerMath.div_trunc(edge, 8))
+				var point := Vector2i(edge / 8, edge / 8)
 				data[CityDataGrid.index(data, edge, point.x, point.y)] = 255
 				polluted.find_chunk("XPLT").set_decoded_payload(data)
 				check(PollutionPhase.run(CityState.from_document(baseline)).ok, "Clean data phase")

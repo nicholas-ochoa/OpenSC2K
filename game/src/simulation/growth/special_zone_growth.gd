@@ -2,6 +2,8 @@ class_name SpecialZoneGrowth
 extends SpecialZoneConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func process(
 	buildings: PackedByteArray,
@@ -31,10 +33,10 @@ static func process(
 				if random.next_u15() & 3:
 					return
 
-				var parking_count := int(IntegerMath.div_trunc(SpecialZoneState._special_tile_count(misc, 0xef, true, map_edge), 4))
+				var parking_count := int(SpecialZoneState._special_tile_count(misc, 0xef, true, map_edge) / 4)
 				selected_tile = 0xef
 
-				if int(IntegerMath.div_trunc(SpecialZoneState._special_tile_count(misc, 0xe8, true, map_edge), 12)) < parking_count:
+				if int(SpecialZoneState._special_tile_count(misc, 0xe8, true, map_edge) / 12) < parking_count:
 					selected_tile = 0xe8
 
 				fallback_tile = 0xe8

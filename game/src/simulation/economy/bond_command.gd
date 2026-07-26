@@ -1,6 +1,8 @@
 class_name BondCommand
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const CityValue = preload("res://src/simulation/economy/city_value_phase.gd")
 
 const MISC_SIZE := 4800
@@ -54,7 +56,7 @@ static func issue(city: CityState, confirmation := CONFIRMATION_UNSELECTED) -> D
 		return {"ok": false, "error": "city value makes the credit calculation invalid"}
 
 	var numerator := (bond_count * 2500) & 0xffffffff
-	var credit_value := _to_i16(int(IntegerMath.div_trunc(numerator, denominator)))
+	var credit_value := _to_i16(int(numerator / denominator))
 
 	if credit_value >= CREDIT_LIMIT:
 		if not misc_chunk.set_decoded_payload(misc):
@@ -254,7 +256,7 @@ static func _bond_budget_offset() -> int:
 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
-	var quotient := int(IntegerMath.div_trunc(absi(value), absi(divisor)))
+	var quotient := int(absi(value) / absi(divisor))
 
 	return -quotient if (value < 0) != (divisor < 0) else quotient
 

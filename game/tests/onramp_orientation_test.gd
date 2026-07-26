@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 # Supplied executable 0x4419ae..0x441a9b: highway direction, road direction, XBLD.
 const CASES := [[1, 0, 0x5f], [3, 0, 0x5e], [0, 1, 0x5d], [2, 1, 0x60],
 	[1, 2, 0x60], [3, 2, 0x5d], [0, 3, 0x5e], [2, 3, 0x5f]]
@@ -22,7 +24,7 @@ func _initialize() -> void:
 		var points: Array[Vector2i] = []
 		for index in CASES.size():
 			var entry: Array = CASES[index]
-			var point := Vector2i(edge - 12 - (index % 4) * 12, edge - 12 - IntegerMath.div_trunc(index, 4) * 12)
+			var point := Vector2i(edge - 12 - (index % 4) * 12, edge - 12 - (index / 4) * 12)
 			points.append(point)
 			var highway: Vector2i = point + OnrampCommand.DIRECTIONS[entry[0]]
 			var road: Vector2i = point + OnrampCommand.DIRECTIONS[entry[1]]

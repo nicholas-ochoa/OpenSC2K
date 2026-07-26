@@ -2,6 +2,8 @@ class_name TerrainFeatures
 extends RefCounted
 
 
+@warning_ignore_start("integer_division")
+
 static func carve(heights: PackedInt32Array, flags: PackedByteArray, sea: int,
 	features: Array, ocean: bool, river: bool, random: GameLcgRandom, water: int, hills: int = 12) -> void:
 	var wetness := float(water) / 47.0
@@ -217,7 +219,7 @@ static func _keep_main_water(heights: PackedInt32Array, flags: PackedByteArray, 
 		while cursor < queue.size():
 			var current := queue[cursor]
 			cursor += 1
-			var x := IntegerMath.div_trunc(current, 128)
+			var x := current / 128
 			var y := current % 128
 			for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 				var near: Vector2i = Vector2i(x, y) + offset

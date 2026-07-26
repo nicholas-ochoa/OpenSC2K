@@ -1,6 +1,8 @@
 extends SceneTree
 ## Print sprite bounds and palette counts.
 
+@warning_ignore_start("integer_division")
+
 
 func _initialize() -> void:
 	if "--cities" in OS.get_cmdline_user_args():
@@ -30,7 +32,7 @@ func _initialize() -> void:
 					continue
 
 				colors[index] = int(colors.get(index, 0)) + 1
-				var point := Vector2i(i % entry.width, IntegerMath.div_trunc(i, entry.width))
+				var point := Vector2i(i % entry.width, i / entry.width)
 				var box: Rect2i = bounds.get(index, Rect2i(point, Vector2i.ONE))
 				bounds[index] = box.merge(Rect2i(point, Vector2i.ONE))
 
@@ -74,7 +76,7 @@ func _scan_cities() -> void:
 				if int(counts[tile]) > 3:
 					continue
 
-				var point := Vector2i(IntegerMath.div_trunc(index, 128), index % 128)
+				var point := Vector2i(index / 128, index % 128)
 				var adjacent := []
 
 				for direction in NetworkCommand.DIRECTIONS:

@@ -3,6 +3,8 @@ extends RefCounted
 # schedule visible and prefetched regions and manage gpu worker results
 # state remains owned by the cache; helpers do not retain a cache reference
 
+@warning_ignore_start("integer_division")
+
 
 
 static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
@@ -27,8 +29,8 @@ static func update_viewport(cache: CityRegionCache, source_rect: Rect2) -> void:
 
 		return
 
-	var first := Vector2i(IntegerMath.div_trunc_vec2i(rect.position, cache.region_edge))
-	var last := Vector2i(IntegerMath.div_trunc_vec2i((rect.end - Vector2i.ONE), cache.region_edge))
+	var first := Vector2i(rect.position / cache.region_edge)
+	var last := Vector2i((rect.end - Vector2i.ONE) / cache.region_edge)
 	var margin := clampi(ceili(minf(rect.size.x, rect.size.y) / (3.0 * cache.region_edge)), 1, 4) if cache.gpu_enabled else 1
 	var side_margin := margin
 	var top_margin := maxi(1, ceili(margin / 2.0)) if cache.gpu_enabled else 1
@@ -274,7 +276,7 @@ static func _tick_gpu(cache: CityRegionCache) -> bool:
 
 			# keep neighboring wide-view regions on the same worker so their tile
 			# geometry and bounds are prepared once. small views use either worker
-			if not cache._edit_priority.has(key) and cache.visible.size() >= 32 and int(IntegerMath.div_trunc(key.x, 8)) % cache._gpu_workers.size() != worker_index:
+			if not cache._edit_priority.has(key) and cache.visible.size() >= 32 and int(key.x / 8) % cache._gpu_workers.size() != worker_index:
 				continue
 
 			keys.append(key)

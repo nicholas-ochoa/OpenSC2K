@@ -2,6 +2,8 @@ class_name IsometricStaticVisuals
 extends IsometricConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func validate_assets(
 	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
@@ -454,7 +456,7 @@ static func building_baseline_offset(
 		return int(configuration.half_height)
 
 	if building_id >= 0x70:
-		return int(IntegerMath.div_trunc(sprite_width, 4)) - int(configuration.half_height)
+		return int(sprite_width / 4) - int(configuration.half_height)
 
 	if terrain_id == 0x0d:
 		return -int(configuration.altitude_step)

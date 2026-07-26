@@ -1,6 +1,8 @@
 class_name WeatherDisasterPhase
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const MISC_SIZE := 4800
 const POLLUTION_SIZE := 64 * 64
 const MISC_CITY_DAYS := 0x0010
@@ -182,27 +184,27 @@ static func _status_index(
 		return STATUS_POWER
 
 	var population := _read_u32(misc, MISC_NORMAL_POPULATION)
-	var arcology_share := int(IntegerMath.div_trunc(_read_u32(misc, MISC_ARCOLOGY_POPULATION), 12))
+	var arcology_share := int(_read_u32(misc, MISC_ARCOLOGY_POPULATION) / 12)
 	var transit_capacity := (
 		_tile_count(misc, TILE_SUBWAY_STATION, map_edge)
 		+ _tile_count(misc, TILE_RAIL_STATION, map_edge)
 		+ _budget_current(misc, BUDGET_ROAD)
 	)
 
-	if int(IntegerMath.div_trunc(population, 100)) >= transit_capacity:
+	if int(population / 100) >= transit_capacity:
 		return STATUS_TRANSIT
 
 	if population < 1000:
 		return STATUS_NONE
 
-	var large_city_unit := int(IntegerMath.div_trunc(population, 20000))
+	var large_city_unit := int(population / 20000)
 
-	if large_city_unit >= int(IntegerMath.div_trunc(_tile_count(misc, TILE_POLICE, map_edge), 9)) + int(
-		IntegerMath.div_trunc(_tile_count(misc, TILE_PRISON, map_edge), 16)
+	if large_city_unit >= int(_tile_count(misc, TILE_POLICE, map_edge) / 9) + int(
+		(_tile_count(misc, TILE_PRISON, map_edge) / 16)
 	):
 		return STATUS_POLICE
 
-	if large_city_unit >= int(IntegerMath.div_trunc(_tile_count(misc, TILE_FIRE, map_edge), 9)):
+	if large_city_unit >= int(_tile_count(misc, TILE_FIRE, map_edge) / 9):
 		return STATUS_FIRE
 
 	if water_usage_percent >= 99:
@@ -211,10 +213,10 @@ static func _status_index(
 	if population < 3000:
 		return STATUS_NONE
 
-	if int(IntegerMath.div_trunc(population, 25000)) >= int(IntegerMath.div_trunc(_tile_count(misc, TILE_HOSPITAL, map_edge), 9)):
+	if int(population / 25000) >= int(_tile_count(misc, TILE_HOSPITAL, map_edge) / 9):
 		return STATUS_HOSPITAL
 
-	if large_city_unit >= int(IntegerMath.div_trunc(_tile_count(misc, TILE_SCHOOL, map_edge), 9)):
+	if large_city_unit >= int(_tile_count(misc, TILE_SCHOOL, map_edge) / 9):
 		return STATUS_SCHOOL
 
 	if population < 8000:
@@ -224,7 +226,7 @@ static func _status_index(
 
 	if (
 		_tile_count(misc, TILE_PIER, map_edge) + industry_connections
-		< int(IntegerMath.div_trunc(industrial_population, 10000))
+		< int(industrial_population / 10000)
 	):
 		if _read_u32(misc, 0x0e44) == 0 and _read_u32(misc, 0x0e48) == 0:
 			return STATUS_INDUSTRIAL_CONNECTION
@@ -237,21 +239,21 @@ static func _status_index(
 		_tile_count(misc, TILE_RUNWAY, map_edge)
 		+ _tile_count(misc, TILE_RUNWAY_CROSSING, map_edge)
 		+ commerce_connections
-		< int(IntegerMath.div_trunc(commercial_population, 2000))
+		< int(commercial_population / 2000)
 	):
 		var airport_release_year := _read_u32(misc, MISC_INVENTION_YEARS + 6 * 4) & 0xffff
 
 		return STATUS_AIRPORT if airport_release_year == 0 else STATUS_COMMERCIAL_CONNECTION
 
 	var recreation_count := (
-		int(IntegerMath.div_trunc(_tile_count(misc, TILE_BIG_PARK, map_edge), 3))
+		int(_tile_count(misc, TILE_BIG_PARK, map_edge) / 3)
 		+ _tile_count(misc, TILE_STADIUM, map_edge)
 		+ _tile_count(misc, TILE_ZOO, map_edge)
 		+ _tile_count(misc, TILE_MARINA, map_edge)
 	)
 	var residential_population := _budget_current(misc, BUDGET_RESIDENTIAL) - arcology_share * 2
 
-	if recreation_count < int(IntegerMath.div_trunc(residential_population, 1000)):
+	if recreation_count < int(residential_population / 1000):
 		return STATUS_ZOO + (random.next_u15() & 3)
 
 	return STATUS_NONE
@@ -284,7 +286,7 @@ static func _select_disaster(
 	if not difficulty_is_valid:
 		return {"ok": false, "error": "city difficulty is out of range"}
 
-	var city_months := int(IntegerMath.div_trunc(_read_u32(misc, MISC_CITY_DAYS), 25))
+	var city_months := int(_read_u32(misc, MISC_CITY_DAYS) / 25)
 
 	if city_months < wait_months:
 		return result
@@ -416,7 +418,7 @@ static func _toxic_spill_point(
 	if grid_edge == 0:
 		return point
 
-	var scale := IntegerMath.div_trunc(map_edge, grid_edge)
+	var scale := map_edge / grid_edge
 
 	for x in grid_edge:
 		for y in grid_edge:

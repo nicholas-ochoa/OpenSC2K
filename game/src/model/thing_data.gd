@@ -2,6 +2,8 @@ class_name ThingData
 extends RefCounted
 # sclg stores equal low and high record planes. scdh remains byte-exact
 
+@warning_ignore_start("integer_division")
+
 const BASE_SIZE := 480
 
 
@@ -9,7 +11,7 @@ static func read(data: PackedByteArray, index: int) -> int:
 	var value := int(data[index])
 
 	if data.size() > BASE_SIZE and _wide(data, index):
-		value |= int(data[IntegerMath.div_trunc(data.size(), 2) + index]) << 8
+		value |= int(data[(data.size() / 2) + index]) << 8
 
 	return value
 
@@ -18,11 +20,11 @@ static func write(data: PackedByteArray, index: int, value: int) -> void:
 	data[index] = value & 0xff
 
 	if data.size() > BASE_SIZE and not (data[index - index % 12] == 3 and index % 12 in [0, 1, 2, 5]):
-		data[IntegerMath.div_trunc(data.size(), 2) + index] = (value >> 8) & 0xff if _wide(data, index) else 0
+		data[(data.size() / 2) + index] = (value >> 8) & 0xff if _wide(data, index) else 0
 
 
 static func count(data: PackedByteArray) -> int:
-	return IntegerMath.div_trunc(data.size(), (24 if data.size() > BASE_SIZE else 12))
+	return data.size() / (24 if data.size() > BASE_SIZE else 12)
 
 
 # only some fields widen, and which ones depends on the object type
@@ -50,7 +52,7 @@ static func set_ship_home(data: PackedByteArray, record: int, point: Vector2i) -
 	if data.size() <= BASE_SIZE:
 		return
 
-	var offset := IntegerMath.div_trunc(data.size(), 2) + record * 12
+	var offset := (data.size() / 2) + record * 12
 	# spare high-plane bytes store coordinate + 1; zero means no saved home
 	data[offset] = (point.x + 1) & 255
 	data[offset + 1] = (point.x + 1) >> 8
@@ -62,7 +64,7 @@ static func ship_home(data: PackedByteArray, record: int, fallback: Vector2i) ->
 	if data.size() <= BASE_SIZE:
 		return fallback
 
-	var offset := IntegerMath.div_trunc(data.size(), 2) + record * 12
+	var offset := (data.size() / 2) + record * 12
 	var x := (int(data[offset]) | (int(data[offset + 1]) << 8)) - 1
 	var y := (int(data[offset + 2]) | (int(data[offset + 5]) << 8)) - 1
 

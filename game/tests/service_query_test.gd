@@ -1,4 +1,7 @@
 extends SceneTree
+
+@warning_ignore_start("integer_division")
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 var checks := 0
@@ -57,7 +60,7 @@ func _initialize() -> void:
 				city.document.set_misc_u32(PollutionPhase.MISC_BUDGETS + budget * PollutionPhase.MISC_BUDGET_RECORD_SIZE + 4, 0)
 				check(ServiceQueryAnalysis.inspect(city, point).values.is_empty(), "Zero funding has no coverage")
 				check(not ServiceQueryAnalysis.inspect(city, Vector2i(-1, 0)).ok, "Reject outside map")
-				check(not ServiceQueryAnalysis.inspect(city, Vector2i.ONE * IntegerMath.div_trunc(edge, 2)).ok, "Reject nonstation")
+				check(not ServiceQueryAnalysis.inspect(city, Vector2i.ONE * (edge / 2)).ok, "Reject nonstation")
 	print("Service Query: %d checks passed" % checks)
 	quit()
 
@@ -110,6 +113,6 @@ func _check_coverage(data: PackedByteArray, values: Dictionary, edge: int, label
 		for index in actual.size():
 			if actual[index] != expected[index]:
 				check(false, "%s at (%d, %d): simulation=%d overlay=%d" % [label,
-					IntegerMath.div_trunc(index, edge), index % edge, actual[index], expected[index]])
+					(index / edge), index % edge, actual[index], expected[index]])
 				return
 	check(actual == expected, label + " matches the whole simulation map, including zeros")

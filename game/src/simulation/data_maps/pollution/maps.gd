@@ -110,8 +110,8 @@ static func build(
 				center_divisor += 1
 				flags[index] &= ~FLAG_MARK & 0xff
 
-	var center_x := int(IntegerMath.div_trunc(coordinate_sum_x, (center_divisor * 2)))
-	var center_y := int(IntegerMath.div_trunc(coordinate_sum_y, (center_divisor * 2)))
+	var center_x := int(coordinate_sum_x / (center_divisor * 2))
+	var center_y := int(coordinate_sum_y / (center_divisor * 2))
 
 	span.mark("terrain desirability")
 	# pollution and full-coordinate center scans must not seed quarter-grid values
@@ -287,8 +287,8 @@ static func build(
 
 				if building == POLICE_STATION:
 					var strength := int(
-						IntegerMath.div_trunc((city.document.misc_i32(MISC_PRISON_BONUS) + 5)
-						* _budget_funding(city, BUDGET_POLICE), 2)
+						(((city.document.misc_i32(MISC_PRISON_BONUS) + 5)
+						* _budget_funding(city, BUDGET_POLICE)) / 2)
 					)
 
 					if not flags[index] & FLAG_POWERED:
@@ -296,7 +296,7 @@ static func build(
 
 					_add_service(police, service_x, service_y, strength, map_edge)
 				elif building == FIRE_STATION:
-					var strength := int(IntegerMath.div_trunc(_budget_funding(city, BUDGET_FIRE) * 5, 2))
+					var strength := int((_budget_funding(city, BUDGET_FIRE) * 5) / 2)
 
 					if not flags[index] & FLAG_POWERED:
 						strength = _divide_toward_zero(strength, 2)

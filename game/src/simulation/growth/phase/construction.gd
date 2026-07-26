@@ -2,6 +2,8 @@ class_name GrowthConstruction
 extends GrowthConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func _can_advance_density(
 	zone_byte: int,
@@ -133,7 +135,7 @@ static func _advance_to_density_four(
 	var height := altitudes[GrowthState._index(point, map_edge)] & 0x1f
 
 	for candidate_index in 4:
-		var anchor := point + Vector2i(-(candidate_index & 1), int(IntegerMath.div_trunc(candidate_index, 2)))
+		var anchor := point + Vector2i(-(candidate_index & 1), int(candidate_index / 2))
 		var perimeter := [
 			anchor,
 			anchor + Vector2i(0, -1),

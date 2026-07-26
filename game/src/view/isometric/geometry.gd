@@ -2,6 +2,8 @@ class_name IsometricGeometry
 extends IsometricConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func dirty_screen_rect(
 	dirty_indices: PackedInt32Array,
@@ -32,7 +34,7 @@ static func dirty_screen_rect(
 			continue
 
 		seen[index] = true
-		var x := int(IntegerMath.div_trunc(index, map_edge))
+		var x := int(index / map_edge)
 		var y := index % map_edge
 		var bounds := potential_tile_bounds(
 			configuration, sprite_limit, x, y, map_edge
@@ -88,7 +90,7 @@ static func potential_tile_bounds(
 	var bottom := (
 		flat_base_y
 		+ int(configuration.tile_height)
-		+ int(IntegerMath.div_trunc(sprite_limit.x, 4))
+		+ int(sprite_limit.x / 4)
 		+ 1
 	)
 
@@ -114,7 +116,7 @@ static func region_tile_span(
 	var half_width := int(configuration.half_width)
 	var half_height := int(configuration.half_height)
 	var origin := int(configuration.side_margin) + map_edge * half_width
-	var bottom := int(configuration.tile_height) + int(IntegerMath.div_trunc(sprite_limit.x, 4)) + 1
+	var bottom := int(configuration.tile_height) + int(sprite_limit.x / 4) + 1
 
 	if underground:
 		bottom += 31 * int(configuration.altitude_step)
@@ -208,7 +210,7 @@ static func output_size_for_view(view_size: int, map_edge: int = 128) -> Vector2
 	if configuration.is_empty():
 		return Vector2i.ZERO
 
-	return IntegerMath.div_trunc_vec2i((IMAGE_SIZE_LARGE + Vector2i((map_edge - 128) * 32, (map_edge - 128) * 16)), int(configuration.divisor))
+	return (IMAGE_SIZE_LARGE + Vector2i((map_edge - 128) * 32, (map_edge - 128) * 16)) / int(configuration.divisor)
 
 
 static func tile_polygon(city: CityState, x: int, y: int, land_surface := false) -> PackedVector2Array:
@@ -310,7 +312,7 @@ static func screen_to_tile(city: CityState, point: Vector2, land_surface := fals
 	var result_order := -1
 
 	for index in candidates:
-		var x: int = IntegerMath.div_trunc(int(index), map_edge)
+		var x: int = int(index) / map_edge
 		var y: int = int(index) % map_edge
 		var order := (x + y) * map_edge + y
 		var visible := city.land_altitude(x, y) < city.visible_altitude_levels if land_surface else city.tile_is_visible(x, y)
@@ -351,7 +353,7 @@ static func transient_effect_position(
 	var divisor := int(configuration.divisor)
 	var large_offset: Vector2i = effect.get("screen_offset", Vector2i.ZERO)
 	var offset := Vector2i(
-		int(IntegerMath.div_trunc(large_offset.x, divisor)), int(IntegerMath.div_trunc(large_offset.y, divisor))
+		int(large_offset.x / divisor), int(large_offset.y / divisor)
 	)
 	var effect_altitude := int(
 		effect.get("altitude", city.water_altitude(point.x, point.y))

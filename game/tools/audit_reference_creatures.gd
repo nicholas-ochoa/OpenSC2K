@@ -1,6 +1,8 @@
 extends SceneTree
 ## Print creature metadata.
 
+@warning_ignore_start("integer_division")
+
 
 func _initialize() -> void:
 	var roles := {385: "monster attack", 478: "monster part 0", 479: "monster part 1", 480: "monster part 2", 481: "monster part 3", 482: "monster part 4", 483: "monster part 5", 484: "monster part 6", 485: "monster part 7", 486: "monster part 8", 487: "monster part 9", 488: "monster part 10", 489: "monster part 11", 490: "monster part 12", 491: "monster part 13", 495: "superhero", 497: "tornado 0", 498: "tornado 1", 499: "tornado 2"}
@@ -32,7 +34,7 @@ func _initialize() -> void:
 				if index in range(171, 239):
 					cycles[index] = int(cycles.get(index, 0)) + 1
 
-				var point := Vector2i(i % entry.width, IntegerMath.div_trunc(i, entry.width))
+				var point := Vector2i(i % entry.width, i / entry.width)
 
 				if point.y == entry.height - 1:
 					bottom_x.append(point.x)

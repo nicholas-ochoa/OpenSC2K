@@ -1,6 +1,8 @@
 class_name CityValuePhase
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const MISC_SIZE := 4800
 const MISC_CITY_VALUE := 0x0024
 const MISC_TILE_COUNTS := 0x01f0
@@ -137,7 +139,7 @@ static func _add_value(current: int, count: int, cost: int) -> int:
 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
-	var quotient := int(IntegerMath.div_trunc(absi(value), absi(divisor)))
+	var quotient := int(absi(value) / absi(divisor))
 
 	return -quotient if value < 0 else quotient
 

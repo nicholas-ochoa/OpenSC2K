@@ -2,6 +2,8 @@ class_name ApplicationMapRender
 extends RefCounted
 
 
+@warning_ignore_start("integer_division")
+
 const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
@@ -130,7 +132,7 @@ func _refresh_map(force := true) -> void:
 		else:
 			indexed = IsometricRenderer.create_image(
 				display_city, app.palette_index_encoding, sprite_archive, view_size,
-				int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100)), false, true, true, false
+				int(Time.get_ticks_msec() / 100), false, true, true, false
 			)
 
 		if not indexed.ok:

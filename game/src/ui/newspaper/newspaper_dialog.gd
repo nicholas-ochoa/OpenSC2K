@@ -1,6 +1,8 @@
 class_name NewspaperDialog
 extends AcceptDialog
 
+@warning_ignore_start("integer_division")
+
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const NewspaperTextGenerator = preload("res://src/simulation/reports/newspaper_text.gd")
 
@@ -232,7 +234,7 @@ func _extra_stories(misc: PackedByteArray, teams: PackedStringArray) -> Array[Di
 
 	# reading the newspaper mustn't spend the city's random numbers
 	# remake-only filler uses private deterministic seeds and never updates misc
-	var base_seed := session_seed + IntegerMath.div_trunc(city.age_in_days(), 25) + selected_newspaper * 500
+	var base_seed := session_seed + (city.age_in_days() / 25) + selected_newspaper * 500
 	var seen := {page.headline_for_slot(0): true}
 
 	for headline in page.headlines:
@@ -303,7 +305,7 @@ static func _paper_title(
 	var name_style := clampi(int(paper.get("name", 0)), 0, 5)
 	var paper_name: String = strings.get(360 + name_style, ["Gazette", "Herald", "Chronicle", "Times", "Journal", "Dispatch"][name_style])
 
-	if paper_index < int(IntegerMath.div_trunc(NewsQueue.PAPER_COUNT, 2)):
+	if paper_index < int(NewsQueue.PAPER_COUNT / 2):
 		return "%s%s" % [strings.get(376, "The "), paper_name]
 
 	var city_name := city_value.display_name()

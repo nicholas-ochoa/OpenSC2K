@@ -2,6 +2,8 @@ class_name NewTerrainHeights
 extends NewTerrainConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func _enlarge_landform(source: PackedInt32Array, coast: PackedByteArray,
 	flags: PackedByteArray, edge: int) -> PackedInt32Array:
@@ -58,7 +60,7 @@ static func _fill_unsupported_slopes(heights: PackedInt32Array, edge: int) -> vo
 		var index := queue[cursor]
 		cursor += 1
 		pending[index] = 0
-		var point := Vector2i(IntegerMath.div_trunc(index, edge), index % edge)
+		var point := Vector2i(index / edge, index % edge)
 		var mask := 0
 		var maximum := heights[index]
 		for neighbor in TerrainTools.NEIGHBOR_OFFSETS.size():
@@ -180,7 +182,7 @@ static func _carve_river(
 	heights: PackedInt32Array, water_level: int, random: GameLcgRandom,
 	map_edge: int = 128,
 ) -> void:
-	var center := IntegerMath.div_trunc(map_edge, 2)
+	var center := map_edge / 2
 	var bend := random.next_mod(3) - 1
 
 	for y in range(map_edge - 1, -1, -1):

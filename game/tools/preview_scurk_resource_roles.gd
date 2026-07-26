@@ -1,6 +1,8 @@
 extends SceneTree
 ## Read-only native inspection of supplied SCURK bitmap control resources.
 
+@warning_ignore_start("integer_division")
+
 var records: Array[Dictionary] = []
 var content: Control
 var status: Label
@@ -76,7 +78,7 @@ func _refresh() -> void:
 		var loaded := PeBitmapResource.load_numeric("res://../references/SIMCITY2000/WINSCURK.EXE", int(record.id))
 		assert(loaded.ok, str(loaded.error))
 		var image: Image = loaded.image
-		var p := Vector2((slot % 4) * 294, (IntegerMath.div_trunc(slot, 4)) * 195)
+		var p := Vector2((slot % 4) * 294, (slot / 4) * 195)
 		var label := Label.new()
 		label.text = "%d • %d × %d • %d-bit source" % [int(record.id), int(record.width), int(record.height), int(record.bits)]
 		label.position = p

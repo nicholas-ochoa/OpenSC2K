@@ -1,6 +1,8 @@
 class_name ServiceQueryAnalysis
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 
 # display-only contribution of one station. never runs a simulation phase
 static func inspect(city: CityState, point: Vector2i, all_stations := false) -> Dictionary:
@@ -28,10 +30,10 @@ static func inspect(city: CityState, point: Vector2i, all_stations := false) -> 
 	var police := building == PollutionPhase.POLICE_STATION
 	var funding := PollutionPhase._budget_funding(city, PollutionPhase.BUDGET_POLICE if police else PollutionPhase.BUDGET_FIRE)
 	var factor := city.document.misc_i32(PollutionPhase.MISC_PRISON_BONUS) + 5 if police else 5
-	var strength := IntegerMath.div_trunc(factor * funding, 2)
+	var strength := (factor * funding) / 2
 	var powered := bool(city.tile_flags[city.index_of(origin.x, origin.y)] & PollutionPhase.FLAG_POWERED)
 	if not powered:
-		strength = IntegerMath.div_trunc(strength, 2)
+		strength = strength / 2
 
 	var native := city.document.full_resolution_maps()
 	var values := {}
@@ -45,9 +47,9 @@ static func inspect(city: CityState, point: Vector2i, all_stations := false) -> 
 					values[tile] = value
 	elif origin.x > 0 and origin.y > 0 and origin.x < city.map_size - 1 and origin.y < city.map_size - 1:
 		var grid := PackedByteArray()
-		var edge := IntegerMath.div_trunc(city.map_size, 4)
+		var edge := city.map_size / 4
 		grid.resize(edge * edge)
-		var center := IntegerMath.div_trunc_vec2i(origin, 4)
+		var center := origin / 4
 		PollutionPhase._add_service(grid, center.x, center.y, strength, city.map_size)
 		for x in range(maxi(0, center.x - 3), mini(edge, center.x + 4)):
 			for y in range(maxi(0, center.y - 3), mini(edge, center.y + 4)):

@@ -1,6 +1,8 @@
 class_name PeBitmapResource
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const PE_SIGNATURE := 0x00004550
 const PE32_MAGIC := 0x010b
 const RESOURCE_DIRECTORY_INDEX := 2
@@ -253,7 +255,7 @@ static func _decode_indexed8_dib(loaded: Dictionary, resource_id: Variant) -> Di
 
 		return decoded
 
-	var row_stride := int(IntegerMath.div_trunc((width + 3), 4)) * 4
+	var row_stride := int((width + 3) / 4) * 4
 
 	if not _has_range(dib, pixel_offset, row_stride * height):
 		return _failure("PE bitmap resource %s pixel data is truncated" % resource_id)

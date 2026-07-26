@@ -1,6 +1,8 @@
 extends SceneTree
 ## Display interpolation and depth-mesh rules for smooth moving objects.
 
+@warning_ignore_start("integer_division")
+
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -98,7 +100,7 @@ func _check_anchors(city: CityState, sprites: Sc2SpriteArchive) -> void:
 		var entry := sprites.find_sprite(int(command.sprite_id))
 		var position := Vector2i(command.position)
 		var expected := Vector2i(
-			position.x + int(IntegerMath.div_trunc(entry.width, 2)) - origin_x,
+			position.x + int(entry.width / 2) - origin_x,
 			position.y + entry.height - base_y
 		)
 
@@ -122,7 +124,7 @@ func _check_depth_arrays(city: CityState, sprites: Sc2SpriteArchive) -> void:
 	var size := CityIsometricRenderer.output_size_for_view(2, city.map_size)
 	var totals := {"normal": 0, "train": 0, "always": 0}
 
-	for center in [IntegerMath.div_trunc_vec2i(size, 2), IntegerMath.div_trunc_vec2i(size, 3)]:
+	for center in [size / 2, size / 3]:
 		var bounds := Rect2i(center - Vector2i(128, 128), Vector2i(256, 256))
 		var result := CityGpuRegionRenderer.render(city, palette, sprites, bounds, 2, "city", true, true, context, 1, -1)
 		assert(result.ok)
@@ -163,5 +165,5 @@ func _check_depth_arrays(city: CityState, sprites: Sc2SpriteArchive) -> void:
 				assert(int(colors.size() / 4.0) <= clipped - ignored, "Ignored train crossings draw no train depth")
 
 	assert(totals.normal > 0 and totals.train > 0)
-	var underground := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i(IntegerMath.div_trunc_vec2i(size, 2), Vector2i(256, 256)), 2, "underground", true, true, CityGpuBuildContext.new(), 1, -1)
+	var underground := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i(size / 2, Vector2i(256, 256)), 2, "underground", true, true, CityGpuBuildContext.new(), 1, -1)
 	assert(underground.depth_arrays.is_empty(), "Underground regions have no moving-object depth")

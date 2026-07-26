@@ -1,4 +1,7 @@
 extends SceneTree
+
+@warning_ignore_start("integer_division")
+
 const DocumentState = preload("res://tests/support/document_state.gd")
 const TimingResults = preload("res://tests/support/timing_results.gd")
 const TestRandoms = preload("res://tests/support/test_randoms.gd")
@@ -53,7 +56,7 @@ func check_format(edge: int) -> void:
 		var data := legacy.find_chunk(id).decoded_payload.duplicate()
 
 		for index in data.size():
-			data[index] = (index * 31 + IntegerMath.div_trunc(index, 17)) % 256
+			data[index] = (index * 31 + (index / 17)) % 256
 
 		legacy.find_chunk(id).set_decoded_payload(data)
 		source[id] = data
@@ -72,7 +75,7 @@ func check_format(edge: int) -> void:
 		var scale := 2 if id in Sc2File.HALF_MAP_CHUNKS else 4
 
 		for point in [Vector2i.ZERO, Vector2i(1, 1), Vector2i(edge - 1, edge - 1), Vector2i(maxi(0, edge - 17), edge - 11)]:
-			var expected: int = source[id][(point.x / scale) * (IntegerMath.div_trunc(edge, scale)) + point.y / scale]
+			var expected: int = source[id][(point.x / scale) * (edge / scale) + point.y / scale]
 			check(data[point.x * edge + point.y] == expected, "Migration value " + id)
 
 		check(retained.find_chunk(id).decoded_payload == source[id], "Migration leaves independent source unchanged")
@@ -133,9 +136,9 @@ func check_values(edge: int) -> void:
 	check(query.ok and query.land_value == 256, "Query reads full-resolution value")
 	query = QueryInfo.inspect(city, point + Vector2i.DOWN)
 	check(query.ok and query.land_value == 1, "Query separates adjacent tiles")
-	check(CityMinimap._coarse_value(city, "XVAL", IntegerMath.div_trunc(edge, 2), 2, point.x, point.y) == 255,
+	check(CityMinimap._coarse_value(city, "XVAL", edge / 2, 2, point.x, point.y) == 255,
 		"Map view reads native value")
-	check(CityMinimap._coarse_value(city, "XVAL", IntegerMath.div_trunc(edge, 2), 2, point.x, point.y + 1) == 0,
+	check(CityMinimap._coarse_value(city, "XVAL", edge / 2, 2, point.x, point.y + 1) == 0,
 		"Map view keeps adjacent values distinct")
 	var traffic := doc.find_chunk("XTRF").decoded_payload.duplicate()
 	traffic[index] = 200
@@ -209,7 +212,7 @@ func check_values(edge: int) -> void:
 	check(population[index + 2] > population[index + 3], "Adjacent population cells differ")
 	check(growth[index + 2] > growth[index + 3], "Adjacent growth cells differ")
 	check(crime[index + 2] > crime[index + 3], "Adjacent crime cells differ")
-	check(growth[index] == clampi(IntegerMath.div_trunc((old_growth * 7 + (int(population[index]) - old_population) * 8 + 128), 8), 0, 255),
+	check(growth[index] == clampi((old_growth * 7 + (int(population[index]) - old_population) * 8 + 128) / 8, 0, 255),
 		"Growth uses previous per-tile state")
 
 

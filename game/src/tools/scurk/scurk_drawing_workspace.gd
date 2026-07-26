@@ -1,6 +1,8 @@
 class_name ScurkDrawingWorkspace
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const WIDTH := 128
 const HEIGHT := 256
 const VIEW_DIVISORS := [1, 2, 4]
@@ -16,7 +18,7 @@ static func is_standard_base_width(width: int) -> bool:
 
 
 static func base_size(base_width: int) -> int:
-	return int(IntegerMath.div_trunc(base_width, 32)) if is_standard_base_width(base_width) else -1
+	return int(base_width / 32) if is_standard_base_width(base_width) else -1
 
 
 static func clip_mask(base_width: int) -> PackedByteArray:
@@ -30,7 +32,7 @@ static func clip_mask(base_width: int) -> PackedByteArray:
 
 	mask.fill(1)
 	var outside_half_width := 63
-	var final_outside_half_width := 64 - int(IntegerMath.div_trunc(base_width, 2))
+	var final_outside_half_width := 64 - int(base_width / 2)
 	var rows := 32 if base_width == WIDTH else HEIGHT
 
 	for row_from_bottom in rows:
@@ -91,7 +93,7 @@ static func from_shape(
 	var expanded_width := shape_width * divisor
 	var expanded_height := shape_height * divisor
 	var origin := Vector2i(
-		int(IntegerMath.div_trunc((WIDTH - expanded_width), 2)),
+		int((WIDTH - expanded_width) / 2),
 		HEIGHT - expanded_height
 	)
 
@@ -129,9 +131,9 @@ static func shape_from_workspace(
 		}
 
 	var divisor := view_divisor(view)
-	var output_width := int(IntegerMath.div_trunc(base_width, divisor))
-	var output_max_height := int(IntegerMath.div_trunc(HEIGHT, divisor))
-	var source_left := int(IntegerMath.div_trunc((WIDTH - base_width), 2))
+	var output_width := int(base_width / divisor)
+	var output_max_height := int(HEIGHT / divisor)
+	var source_left := int((WIDTH - base_width) / 2)
 	var clipped := apply_clip_mask(workspace_pixels, base_width)
 	var sampled := PackedInt32Array()
 	sampled.resize(output_width * output_max_height)

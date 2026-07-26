@@ -1,6 +1,8 @@
 class_name IndustryPhase
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const MISC_SIZE := 4800
 const MISC_START_YEAR := 0x000c
 const MISC_CITY_DAYS := 0x0010
@@ -83,7 +85,7 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 
 	var data: PackedByteArray = misc_chunk.decoded_payload.duplicate()
 	var start_year := _to_i16(_read_u32(data, MISC_START_YEAR))
-	var elapsed_years := int(IntegerMath.div_trunc(_read_u32(data, MISC_CITY_DAYS), 300))
+	var elapsed_years := int(_read_u32(data, MISC_CITY_DAYS) / 300)
 	var targets := world_demands(start_year, elapsed_years)
 
 	if targets.is_empty():
@@ -147,8 +149,8 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 		var excess := ratio_total - industrial_population
 
 		for industry in INDUSTRY_COUNT:
-			var scaled := int(IntegerMath.div_trunc(excess * 100 * ratios[industry], ratio_total))
-			ratios[industry] -= int(IntegerMath.div_trunc(scaled, 100))
+			var scaled := int((excess * 100 * ratios[industry]) / ratio_total)
+			ratios[industry] -= int(scaled / 100)
 
 			if random.next_u15() % 100 < scaled % 100:
 				ratios[industry] -= 1
@@ -159,25 +161,25 @@ static func run(city: CityState, random: SimRandom, lfsr_random: SimLfsrRandom, 
 			if adjusted[industry] == 0:
 				continue
 
-			var scaled := int(IntegerMath.div_trunc(shortage * 100 * adjusted[industry], positive_total))
-			ratios[industry] += int(IntegerMath.div_trunc(scaled, 100))
+			var scaled := int((shortage * 100 * adjusted[industry]) / positive_total)
+			ratios[industry] += int(scaled / 100)
 
 			if random.next_u15() % 100 < scaled % 100:
 				ratios[industry] += 1
 
 	var pollution_share := int(
-		IntegerMath.div_trunc((ratios[0] + ratios[1] + ratios[2] + ratios[5])
-		* 100, (industrial_population + 1))
+		(((ratios[0] + ratios[1] + ratios[2] + ratios[5])
+		* 100) / (industrial_population + 1))
 	)
 	var pollution_bonus := (
-		0xffff if pollution_share < 20 else int(IntegerMath.div_trunc((pollution_share - 20), 30))
+		0xffff if pollution_share < 20 else int((pollution_share - 20) / 30)
 	)
 	var maximum_share := 0
 
 	for ratio in ratios:
-		maximum_share = maxi(maximum_share, int(IntegerMath.div_trunc(ratio * 100, (industrial_population + 1))))
+		maximum_share = maxi(maximum_share, int((ratio * 100) / (industrial_population + 1)))
 
-	var mix_bonus := 0 if maximum_share < 20 else int(IntegerMath.div_trunc((maximum_share - 20), 5))
+	var mix_bonus := 0 if maximum_share < 20 else int((maximum_share - 20) / 5)
 
 	for industry in INDUSTRY_COUNT:
 		var base := MISC_INDUSTRIES + industry * INDUSTRY_STRIDE
@@ -217,7 +219,7 @@ static func _failed(message: String) -> Result:
 
 
 static func world_demands(start_year: int, elapsed_years: int) -> PackedInt32Array:
-	var period := _divide_toward_zero(start_year - 1900, 50) + int(IntegerMath.div_trunc(elapsed_years, 50))
+	var period := _divide_toward_zero(start_year - 1900, 50) + int(elapsed_years / 50)
 
 	if period < 0:
 		return PackedInt32Array()
@@ -230,10 +232,10 @@ static func world_demands(start_year: int, elapsed_years: int) -> PackedInt32Arr
 
 	for industry in INDUSTRY_COUNT:
 		result.append(int(
-			IntegerMath.div_trunc((
+			((
 				int(WORLD_DEMAND[period + 1][industry]) * remainder
 				+ (50 - remainder) * int(WORLD_DEMAND[period][industry])
-			), 50)
+			) / 50)
 		))
 
 	return result

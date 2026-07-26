@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 class SequenceRandom extends SimRandom:
 	var values: Array[int]
 	var position := 0
@@ -92,7 +94,7 @@ func payloads(edge: int) -> Dictionary:
 func check_growth(edge: int) -> void:
 	for density in range(2, 5):
 		for rotation in 4:
-			var radius := IntegerMath.div_trunc(density, 2)
+			var radius := density / 2
 
 			for anchor in [Vector2i(20, 20), Vector2i(edge - 2 - radius, edge - 2 - radius)]:
 				var p := payloads(edge)
@@ -156,7 +158,7 @@ func check_transport(edge: int) -> void:
 			check(ThingData.read(p.XTHG, CityState.THING_RECORD_SIZE + 3) == start.x,
 				"Train keeps wide coordinates")
 
-	for active in [4, 5, IntegerMath.div_trunc(4 * edge * edge, 16384) + 1]:
+	for active in [4, 5, ((4 * edge * edge) / 16384) + 1]:
 		var p := payloads(edge)
 		p.XBIT.fill(4)
 		var offset := CityState.THING_RECORD_SIZE
@@ -169,7 +171,7 @@ func check_transport(edge: int) -> void:
 			"distressed_sailboats": 0, "turned_sailboats": 0, "moved_sailboats": 0}
 		SailboatThingTick.update(p.XBLD, p.XBIT, p.XTXT, p.XTHG, 1,
 			SequenceRandom.new(), SequenceLfsr.new([1]), counters, edge)
-		var survives: bool = active <= IntegerMath.div_trunc(4 * edge * edge, 16384)
+		var survives: bool = active <= (4 * edge * edge) / 16384
 		check((ThingData.read(p.XTHG, offset) != 0) == survives, "Sailboat population cap matches spawner")
 
 		if survives:
@@ -223,7 +225,7 @@ func check_random_sites(edge: int) -> void:
 	choices.fill(10)
 
 	for site in 6:
-		var origin := Vector2i(edge - 30 + (IntegerMath.div_trunc(site, 3)) * 5, edge - 30 + (site % 3) * 5)
+		var origin := Vector2i(edge - 30 + (site / 3) * 5, edge - 30 + (site % 3) * 5)
 		choices.append_array([origin.x, origin.y])
 
 		for dx in 3:

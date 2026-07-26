@@ -2,6 +2,8 @@ class_name ApplicationStaticRender
 extends RefCounted
 
 
+@warning_ignore_start("integer_division")
+
 const CityModel = preload("res://src/model/city_state.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
@@ -105,7 +107,7 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 		sprite_archive,
 		dirty_indices,
 		view_size,
-		int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100)),
+		int(Time.get_ticks_msec() / 100),
 		false
 	)
 
@@ -300,7 +302,7 @@ func _request_static_render(
 	state.job.index_palette = app.palette_index_encoding
 	state.job.sprites = sprite_archive
 	state.job.view_size = view_size
-	state.job.animation_phase = int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100))
+	state.job.animation_phase = int(Time.get_ticks_msec() / 100)
 	state.job.signature = signature.duplicate()
 	state.job.epoch = state.epoch
 	state.job.render_mode = render_mode

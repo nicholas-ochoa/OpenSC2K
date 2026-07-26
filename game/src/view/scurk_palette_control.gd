@@ -1,6 +1,8 @@
 class_name ScurkPaletteControl
 extends Control
 
+@warning_ignore_start("integer_division")
+
 signal index_selected(index: int, background: bool)
 
 const COLUMN_COUNT := 16
@@ -80,7 +82,7 @@ func _draw() -> void:
 			break
 
 		var x := (index % COLUMN_COUNT) * cell_size
-		var y := int(IntegerMath.div_trunc(index, COLUMN_COUNT)) * cell_size
+		var y := int(index / COLUMN_COUNT) * cell_size
 		var color := (
 			palette.color(index)
 			if palette != null and palette.is_valid()
@@ -90,12 +92,12 @@ func _draw() -> void:
 		draw_rect(Rect2(x, y, cell_size, cell_size), Color(0.0, 0.0, 0.0, 0.3), false, 1.0)
 
 	var background_x := (background_index % COLUMN_COUNT) * cell_size
-	var background_y := int(IntegerMath.div_trunc(background_index, COLUMN_COUNT)) * cell_size
+	var background_y := int(background_index / COLUMN_COUNT) * cell_size
 	draw_rect(
 		Rect2(background_x, background_y, cell_size, cell_size), Color("ff3030"), false, 2.0
 	)
 	var selected_x := (foreground_index % COLUMN_COUNT) * cell_size
-	var selected_y := int(IntegerMath.div_trunc(foreground_index, COLUMN_COUNT)) * cell_size
+	var selected_y := int(foreground_index / COLUMN_COUNT) * cell_size
 	draw_rect(
 		Rect2(selected_x, selected_y, cell_size, cell_size), Color.WHITE, false, 2.0
 	)

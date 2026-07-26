@@ -2,6 +2,8 @@ class_name IsometricStaticOcclusion
 extends IsometricConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func static_occlusion_commands(
 	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
@@ -72,7 +74,7 @@ static func patch_static_occlusion_commands(
 		if index < 0 or index >= (map_edge * map_edge):
 			continue
 
-		var x := int(IntegerMath.div_trunc(index, map_edge))
+		var x := int(index / map_edge)
 		var y := index % map_edge
 		var order := (x + y) * map_edge + y
 		replacements[order] = tile_occlusion_commands(

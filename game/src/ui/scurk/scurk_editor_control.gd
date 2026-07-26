@@ -1,6 +1,8 @@
 class_name ScurkEditorControl
 extends ColorRect
 
+@warning_ignore_start("integer_division")
+
 signal close_requested
 signal tile_set_applied(tile_set: ScurkMif, display_name: String, source_path: String)
 signal place_print_requested
@@ -713,7 +715,7 @@ func clear_object() -> void:
 			continue
 
 		var width := (
-			int(IntegerMath.div_trunc(active_base_width, DrawingWorkspace.view_divisor(view)))
+			int(active_base_width / DrawingWorkspace.view_divisor(view))
 			if active_workspace
 			else pixel_canvas.sprite_width
 		)

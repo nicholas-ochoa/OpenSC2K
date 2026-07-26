@@ -1,6 +1,8 @@
 extends SceneTree
 ## Read-only source role inspector for SimCity PE and standalone bitmap images.
 
+@warning_ignore_start("integer_division")
+
 var records: Array[Dictionary] = []
 var content: Control
 var status: Label
@@ -75,7 +77,7 @@ func _sheet() -> void:
 
 		var record := records[index]
 		var image := _load_image(record)
-		var p := Vector2((slot % 4) * 294, (IntegerMath.div_trunc(slot, 4)) * 260)
+		var p := Vector2((slot % 4) * 294, (slot / 4) * 260)
 		_label("%s / %s\n%d × %d • %d-bit" % [record.source, str(record.id), int(record.width), int(record.height), int(record.bits)], p, 16, content)
 		var zoom := minf(4, minf(270.0 / image.get_width(), 195.0 / image.get_height()))
 

@@ -1,6 +1,8 @@
 extends SceneTree
 ## Print effect metadata.
 
+@warning_ignore_start("integer_division")
+
 
 func _initialize() -> void:
 	var roles := {387: "explosion 0", 388: "explosion 1", 389: "explosion 2", 392: "dust tall", 393: "dust medium", 394: "dust low", 395: "dust short", 396: "fire 0", 397: "fire 1", 398: "fire 2", 399: "fire 3", 492: "flood", 493: "riot 0", 494: "riot 1", 496: "toxic cloud"}
@@ -31,7 +33,7 @@ func _initialize() -> void:
 				if index in range(171, 239):
 					cycles[index] = int(cycles.get(index, 0)) + 1
 
-				var point := Vector2i(i % entry.width, IntegerMath.div_trunc(i, entry.width))
+				var point := Vector2i(i % entry.width, i / entry.width)
 				bounds = bounds.merge(Rect2i(point, Vector2i.ONE)) if bounds.has_area() else Rect2i(point, Vector2i.ONE)
 
 			print("%d %s: %dx%d, %d opaque, bounds %s, colors %s, cycles %s" % [entry.sprite_id, str(roles[base]), entry.width, entry.height, pixels.size() - pixels.count(-1), str(bounds), str(colors), str(cycles)])

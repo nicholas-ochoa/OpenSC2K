@@ -1,6 +1,8 @@
 class_name SimNationWindowControl
 extends Control
 
+@warning_ignore_start("integer_division")
+
 const LOGICAL_SIZE := Vector2(204.0, 160.0)
 const SPRITE_SIZE := Vector2(128.0, 64.0)
 const SPRITE_ROW_COUNT := 6
@@ -299,6 +301,6 @@ static func _to_i16(value: int) -> int:
 
 static func _divide_toward_zero(numerator: int, denominator: int) -> int:
 	if numerator < 0:
-		return -int(IntegerMath.div_trunc(-numerator, denominator))
+		return -int((-numerator) / denominator)
 
-	return int(IntegerMath.div_trunc(numerator, denominator))
+	return int(numerator / denominator)

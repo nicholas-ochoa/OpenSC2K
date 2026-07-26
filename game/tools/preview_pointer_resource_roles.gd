@@ -1,6 +1,8 @@
 extends SceneTree
 ## Read-only role inspector. Original masks are composed over review backgrounds.
 
+@warning_ignore_start("integer_division")
+
 var records: Array[Dictionary] = []
 var content: Control
 var status: Label
@@ -80,7 +82,7 @@ func _refresh() -> void:
 			break
 
 		var record := records[index]
-		var p := Vector2((slot % 6) * 196, int(IntegerMath.div_trunc(slot, 6)) * 195)
+		var p := Vector2((slot % 6) * 196, int(slot / 6) * 195)
 		_label("%s %s %d\ngroup %s" % ["City" if record.source == "SIMCITY.EXE" else "SCURK", record.kind, int(record.id), str(record.groups)], p, 15, content)
 		var decoded := _load(record)
 		var view := _image(decoded, p + Vector2(12, 47), 4, 0)
@@ -116,7 +118,7 @@ func _image(decoded: Dictionary, position: Vector2, zoom: int, backdrop: int) ->
 			var color := Color("e5e5e5") if backdrop == 1 else Color("20364c")
 
 			if backdrop == 0:
-				color = Color("ffffff") if (int(IntegerMath.div_trunc(x, 8)) + int(IntegerMath.div_trunc(y, 8))) % 2 == 0 else Color("73999c")
+				color = Color("ffffff") if (int(x / 8) + int(y / 8)) % 2 == 0 else Color("73999c")
 
 			background.set_pixel(x, y, color)
 

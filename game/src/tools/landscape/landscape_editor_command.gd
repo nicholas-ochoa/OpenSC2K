@@ -1,6 +1,8 @@
 class_name LandscapeEditorCommand
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 
 # editor-only operations. work on a private document and publish one undo unit
 static func supports_tool(group: int, subtool: int) -> bool:
@@ -97,7 +99,7 @@ static func _finish_stream_slopes(payloads: Dictionary, previous_terrain: Packed
 		if terrain[index] < 0x30 or terrain[index] > 0x45 or not flags[index] & 4:
 			continue
 
-		var point := Vector2i(IntegerMath.div_trunc(index, map_edge), index % map_edge)
+		var point := Vector2i(index / map_edge, index % map_edge)
 		var height := TerrainCommand._land_altitude(altitude, index)
 
 		for delta in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:

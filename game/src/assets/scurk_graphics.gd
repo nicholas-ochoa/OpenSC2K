@@ -2,6 +2,8 @@ class_name ScurkGraphics
 extends RefCounted
 
 
+@warning_ignore_start("integer_division")
+
 const TEXTURE_IDS := [
 	25039, 25040, 25041,
 	25000, 25001, 25002, 25003, 25004, 25005, 25006, 25007, 25008, 25009,
@@ -113,7 +115,7 @@ func _load(value: Variant, read_png: Callable, palette: Sc2Palette) -> void:
 
 			if group == "workspace" and ids[i] == 22005:
 				for index in 256:
-					var center := ((IntegerMath.div_trunc(index, 16)) * 16 + 8) * 256 + (index % 16) * 16 + 8
+					var center := ((index / 16) * 16 + 8) * 256 + (index % 16) * 16 + 8
 
 					if png.pixels[center] != index:
 						error = "SCURK palette-sheet cell center must use index %d" % index

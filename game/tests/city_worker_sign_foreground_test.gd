@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 
 func _initialize() -> void:
 	call_deferred("_run")
@@ -19,7 +21,7 @@ func _run() -> void:
 			var cache := CityRegionCache.new()
 			cache.gpu_enabled = true
 			cache.configure(city, palette, sprites, [1], view, "city", {}, true, true)
-			var origin := Vector2i(IntegerMath.div_trunc_vec2i(IntegerMath.div_trunc_vec2i(cache.native_size, 2), CityRegionCache.GPU_REGION_EDGE)) * CityRegionCache.GPU_REGION_EDGE * cache.divisor
+			var origin := Vector2i((cache.native_size / 2) / CityRegionCache.GPU_REGION_EDGE) * CityRegionCache.GPU_REGION_EDGE * cache.divisor
 			var bounds := Rect2i(origin - Vector2i(13, 9), Vector2i(83, 127))
 			cache.set_sign_requests([
 				{"key": 1, "bounds": bounds, "draw_order": -1},

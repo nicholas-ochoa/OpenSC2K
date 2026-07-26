@@ -2,6 +2,8 @@ class_name TerrainElevation
 extends RefCounted
 
 
+@warning_ignore_start("integer_division")
+
 const FEATURES := ["plateau", "ridge", "valley", "rolling", "basin", "canyon", "cliffs"]
 
 
@@ -75,7 +77,7 @@ static func _water_distances(heights: PackedInt32Array, sea: int, map_edge: int 
 	while cursor < queue.size():
 		var index := queue[cursor]
 		cursor += 1
-		var x := IntegerMath.div_trunc(index, map_edge)
+		var x := index / map_edge
 		var y := index % map_edge
 		for offset in [Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 			var near: Vector2i = Vector2i(x, y) + offset
@@ -92,7 +94,7 @@ static func _plateau_anchor(heights: PackedInt32Array, sea: int, angle: float) -
 	var start := posmod(roundi(angle / TAU * 508.0), 508)
 	for step in 508:
 		var along := (start + step) % 508
-		var side := IntegerMath.div_trunc(along, 127)
+		var side := along / 127
 		var offset := along % 127
 		var tile: Vector2i = [Vector2i(offset, 0), Vector2i(127, offset),
 			Vector2i(127 - offset, 127), Vector2i(0, 127 - offset)][side]

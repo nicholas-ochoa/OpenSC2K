@@ -2,6 +2,8 @@ class_name QueryDetails
 extends QueryConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func _advanced_details(
 	city: CityState, point: Vector2i, microsim_id := -1
@@ -116,7 +118,7 @@ static func _traffic(
 	if values.size() == map_edge * map_edge:
 		var value := int(values[point.x * map_edge + point.y])
 
-		return value if _is_highway_traffic_tile(building) else IntegerMath.div_trunc(value, 2)
+		return value if _is_highway_traffic_tile(building) else (value / 2)
 
 	var total := 0
 
@@ -135,7 +137,7 @@ static func _traffic(
 	if _is_highway_traffic_tile(building):
 		total *= 2
 
-	return int(IntegerMath.div_trunc(total, 8))
+	return int(total / 8)
 
 
 static func _is_traffic_tile(building: int) -> bool:
@@ -177,7 +179,7 @@ static func _water_detail(city: CityState, point: Vector2i, building: int) -> St
 
 		if city.is_powered(point.x, point.y):
 			supply = city.document.misc_u32(0x0e40) * 5
-			supply += int(IntegerMath.div_trunc((city.document.misc_u32(0x68) & 0xff), 2))
+			supply += int((city.document.misc_u32(0x68) & 0xff) / 2)
 
 			for x in range(maxi(point.x - 1, 0), mini(point.x + 2, map_edge)):
 				for y in range(maxi(point.y - 1, 0), mini(point.y + 2, map_edge)):

@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 class FixedRandom extends SimRandom:
 	func next_u15() -> int:
 		return 32767
@@ -30,7 +32,7 @@ func _initialize() -> void:
 			education[5] = 7
 			EducationHealthPhase._apply_aging(population, education, life, 0, 0, 0,
 				EducationHealthPhase.ORDINANCE_PRO_READING if pro_reading else 0, FixedRandom.new())
-			var transferred := IntegerMath.div_trunc(points, 60)
+			var transferred: int = points / 60
 			check(education[5] == 7 + (transferred if pro_reading else maxi(transferred - 1, 0)),
 				"Decay floors transferred education without consuming the destination's points")
 			check(education[4] == points - transferred, "Source loses only transferred points")

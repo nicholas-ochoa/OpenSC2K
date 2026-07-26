@@ -1,6 +1,8 @@
 class_name DisasterStartRiotsPollution
 extends DisasterStartConstants
 
+@warning_ignore_start("integer_division")
+
 
 static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
@@ -76,7 +78,7 @@ static func _start_mass_riots(city: CityState, point: Vector2i, random: SimRando
 		return {"ok": false, "error": "mass-riot disaster map data is missing or invalid"}
 
 	var attempt_count := (
-		int(IntegerMath.div_trunc(city.document.misc_u32(MISC_NORMAL_POPULATION), 10000)) + 5
+		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
 	) & 0xffff
 
 	if attempt_count & 0x8000:
@@ -228,7 +230,7 @@ static func _start_pollution(city: CityState, point: Vector2i, random: SimRandom
 		return {"ok": false, "error": "pollution-disaster map data is missing or invalid"}
 
 	var attempt_count := (
-		int(IntegerMath.div_trunc(city.document.misc_u32(MISC_NORMAL_POPULATION), 10000)) + 5
+		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
 	) & 0xffff
 
 	if attempt_count & 0x8000:

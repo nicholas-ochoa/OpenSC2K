@@ -1,6 +1,8 @@
 class_name ScurkPixelCanvas
 extends Control
 
+@warning_ignore_start("integer_division")
+
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 
 signal edit_started
@@ -747,7 +749,7 @@ static func shape_points(
 		if minimum.x == maximum.x or minimum.y == maximum.y:
 			return line_points(start, finish)
 
-		var half_height := int(IntegerMath.div_trunc((maximum.y - minimum.y), 2))
+		var half_height := int((maximum.y - minimum.y) / 2)
 		var polygon := PackedVector2Array()
 
 		if shape_tool == TOOL_LEFT_WALL:
@@ -795,7 +797,7 @@ static func _snap_coordinate(value: int, spacing: int) -> int:
 	if value < 0:
 		return value
 
-	return int(IntegerMath.div_trunc((value * 2 + spacing), (spacing * 2))) * spacing
+	return int((value * 2 + spacing) / (spacing * 2)) * spacing
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -1010,7 +1012,7 @@ func _preview_shape(point: Vector2i) -> void:
 func _apply_brush(point: Vector2i) -> void:
 	var erase := tool == TOOL_ERASER
 	var force_background := stroke_button == MOUSE_BUTTON_RIGHT
-	var low := -int(IntegerMath.div_trunc((brush_size - 1), 2))
+	var low := -int((brush_size - 1) / 2)
 	var high := low + brush_size - 1
 	var brush_center := float(low + high) * 0.5
 	var radius := float(brush_size) * 0.5

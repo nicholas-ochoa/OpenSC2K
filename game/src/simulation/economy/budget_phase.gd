@@ -1,6 +1,8 @@
 class_name BudgetPhase
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const Ordinances = preload("res://src/simulation/economy/ordinance_command.gd")
 
 const MISC_SIZE := 4800
@@ -81,7 +83,7 @@ static func run(city: CityState, random: SimRandom, annual_budget_approved := fa
 	var span := SimulationTimingSpan.new(city.simulation_slice)
 	span.mark("prepare data")
 	var misc: PackedByteArray = misc_chunk.decoded_payload.duplicate()
-	var month := int(IntegerMath.div_trunc(city.age_in_days() % 300, 25))
+	var month := int((city.age_in_days() % 300) / 25)
 	var funds_before := _read_i32(misc, MISC_FUNDS)
 	var funds := funds_before
 	var settled_year := false
@@ -319,7 +321,7 @@ static func _divide_toward_zero(value: int, divisor: int) -> int:
 	if divisor == 0:
 		return 0
 
-	var quotient := int(IntegerMath.div_trunc(absi(value), absi(divisor)))
+	var quotient := int(absi(value) / absi(divisor))
 
 	return -quotient if (value < 0) != (divisor < 0) else quotient
 

@@ -1,6 +1,8 @@
 class_name MidiSynthPlayer
 extends Node
 
+@warning_ignore_start("integer_division")
+
 signal track_finished(track_id: int)
 
 const MidiFile = preload("res://src/audio/standard_midi_file.gd")
@@ -449,7 +451,7 @@ func _block_length(offset: int, remaining: int) -> int:
 	var high := remaining
 
 	while low < high:
-		var middle := IntegerMath.div_trunc(low + high, 2)
+		var middle := (low + high) / 2
 
 		if _boundary_reached(mode, threshold, _frame_times[offset + middle - 1]):
 			high = middle

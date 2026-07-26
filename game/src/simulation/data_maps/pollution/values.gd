@@ -143,4 +143,4 @@ static func _add_service_cell(
 
 
 static func _divide_toward_zero(value: int, divisor: int) -> int:
-	return int(IntegerMath.div_trunc(value, divisor))
+	return int(value / divisor)

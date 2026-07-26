@@ -1,6 +1,8 @@
 class_name BridgeSelectionDialog
 extends ConfirmationDialog
 
+@warning_ignore_start("integer_division")
+
 const Numbers = preload("res://src/ui/shared/display_number_format.gd")
 
 signal choice_requested(index: int)
@@ -122,7 +124,7 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 
 	var output := Image.create(240, 140, false, Image.FORMAT_RGBA8)
 	output.fill(Color.TRANSPARENT)
-	output.blend_rect(assembled, Rect2i(Vector2i.ZERO, assembled.get_size()), IntegerMath.div_trunc_vec2i((output.get_size() - assembled.get_size()), 2))
+	output.blend_rect(assembled, Rect2i(Vector2i.ZERO, assembled.get_size()), (output.get_size() - assembled.get_size()) / 2)
 
 	return ImageTexture.create_from_image(output)
 
@@ -141,7 +143,7 @@ func _append_preview_tile(tiles: Array[Dictionary], sprite_id: int, baseline: Ve
 		if flip:
 			image.flip_x()
 
-		tiles.append({"image": image, "position": baseline - Vector2i(IntegerMath.div_trunc(image.get_width(), 2), image.get_height() - 1)})
+		tiles.append({"image": image, "position": baseline - Vector2i(image.get_width() / 2, image.get_height() - 1)})
 
 
 static func _preview_baseline(x: int, y: int) -> Vector2i:

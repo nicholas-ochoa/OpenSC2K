@@ -1,6 +1,9 @@
 class_name QueryNeighborhood
 extends RefCounted
 # bounded, display-only snapshot using the same tile painter as the city
+
+@warning_ignore_start("integer_division")
+
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const SIZE := Vector2i(384, 384)
 const RADIUS := 16
@@ -17,7 +20,7 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 		center += corner / 4.0
 
 	var origin := int(config.side_margin) + city.map_size * int(config.half_width)
-	var bounds := Rect2i(Vector2i(center) - IntegerMath.div_trunc_vec2i(SIZE, 2) - Vector2i(0, 24), SIZE)
+	var bounds := Rect2i(Vector2i(center) - (SIZE / 2) - Vector2i(0, 24), SIZE)
 	config.top_margin = int(config.top_margin) - bounds.position.y
 	var image := Image.create(SIZE.x, SIZE.y, false, Image.FORMAT_RGBA8)
 	var selected_image := Image.create(SIZE.x, SIZE.y, false, Image.FORMAT_RGBA8)
@@ -82,7 +85,7 @@ static func frame_selection(image: Image, selected: Rect2i) -> Image:
 
 	# center the selected artwork. the ui applies the footprint-specific zoom
 	var centered := Image.create(SIZE.x, SIZE.y, false, Image.FORMAT_RGBA8)
-	centered.blit_rect(image, Rect2i(Vector2i.ZERO, SIZE), IntegerMath.div_trunc_vec2i(SIZE, 2) - selected.get_center())
+	centered.blit_rect(image, Rect2i(Vector2i.ZERO, SIZE), (SIZE / 2) - selected.get_center())
 
 	return centered
 

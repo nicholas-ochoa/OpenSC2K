@@ -23,12 +23,6 @@
     ]
   },
   {
-    "id": "integer_math_test",
-    "script": "tests/integer_math_test.gd",
-    "domain": "formats",
-    "lane": "product"
-  },
-  {
     "id": "simulation_slice_budget_test",
     "script": "tests/simulation_slice_budget_test.gd",
     "domain": "simulation",

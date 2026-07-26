@@ -2,6 +2,8 @@ class_name QueryInfo
 extends QueryConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func inspect(
 	city: CityState, point: Vector2i, resource_strings: Dictionary = {}
@@ -15,10 +17,10 @@ static func inspect(
 		return {"ok": false, "error": "query position is outside the city"}
 
 	for checked in [
-		["XTRF", (IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))],
-		["XPLT", (IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))],
-		["XVAL", (IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))],
-		["XCRM", (IntegerMath.div_trunc(map_edge, 2)) * (IntegerMath.div_trunc(map_edge, 2))],
+		["XTRF", (map_edge / 2) * (map_edge / 2)],
+		["XPLT", (map_edge / 2) * (map_edge / 2)],
+		["XVAL", (map_edge / 2) * (map_edge / 2)],
+		["XCRM", (map_edge / 2) * (map_edge / 2)],
 	]:
 		var chunk := city.document.find_chunk(checked[0])
 

@@ -2,6 +2,8 @@ class_name GrowthDevelopment
 extends GrowthConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func _abandon(
 	buildings: PackedByteArray,
@@ -73,7 +75,7 @@ static func _abandon(
 					flags,
 					misc,
 					land_value,
-					point + Vector2i(selection & 1, -int(IntegerMath.div_trunc(selection, 2))),
+					point + Vector2i(selection & 1, -int(selection / 2)),
 					3,
 					CLASS_ABANDONED,
 					random,
@@ -117,7 +119,7 @@ static func _place_zone(
 
 		return true
 
-	var radius := int(IntegerMath.div_trunc(density, 2))
+	var radius := int(density / 2)
 
 	if (
 		anchor.x <= 1

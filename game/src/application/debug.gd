@@ -2,6 +2,8 @@ class_name ApplicationDebug
 extends RefCounted
 
 
+@warning_ignore_start("integer_division")
+
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
@@ -69,7 +71,7 @@ func _debug_center_map() -> void:
 	var map_edge: int = app.city.map_size if app.city != null else 128
 
 	if app.map_view != null and app.city != null:
-		app.map_view.center_on_tile(Vector2i(IntegerMath.div_trunc(map_edge, 2), IntegerMath.div_trunc(map_edge, 2)))
+		app.map_view.center_on_tile(Vector2i(map_edge / 2, map_edge / 2))
 
 
 func _debug_full_redraw() -> void:

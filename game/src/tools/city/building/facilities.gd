@@ -2,6 +2,8 @@ class_name BuildingFacilities
 extends BuildingConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func stadium_team_choices(city: CityState) -> PackedInt32Array:
 	var result := PackedInt32Array()
@@ -156,7 +158,7 @@ static func _provision_microsim(
 	var record_id := -1
 
 	if microsim_type <= 16:
-		for checked_id in range(MICROSIM_DYNAMIC_FIRST, IntegerMath.div_trunc(microsims.size(), CityState.MICROSIM_RECORD_SIZE)):
+		for checked_id in range(MICROSIM_DYNAMIC_FIRST, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 			if microsims[checked_id * CityState.MICROSIM_RECORD_SIZE] == 0:
 				record_id = checked_id
 				break
@@ -164,7 +166,7 @@ static func _provision_microsim(
 		record_id = microsim_type - 16
 
 	if record_id < 0 and tile_id >= 0xfb:
-		for checked_id in range(MICROSIM_DYNAMIC_FIRST, IntegerMath.div_trunc(microsims.size(), CityState.MICROSIM_RECORD_SIZE)):
+		for checked_id in range(MICROSIM_DYNAMIC_FIRST, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 			if microsims[checked_id * CityState.MICROSIM_RECORD_SIZE] < 0xfb:
 				record_id = checked_id
 				var old_overlay_id := OverlayData.facility_id(checked_id)

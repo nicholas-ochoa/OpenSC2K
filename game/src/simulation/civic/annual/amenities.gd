@@ -2,6 +2,8 @@ class_name MicrosimAnnualAmenities
 extends MicrosimAnnualValues
 # update amenities records without changing record or random-call order
 
+@warning_ignore_start("integer_division")
+
 
 static func update_city_hall(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
 	_write_u16_be(annual.microsims, offset + 2, _population_cap(annual.misc, 200, 900, annual.map_edge))
@@ -29,7 +31,7 @@ static func update_big_park(annual: MicrosimAnnualContext, record_id: int, offse
 	var park_visitors := mini(old_visitors * 412, 65000)
 	park_visitors = mini(
 		park_visitors,
-		mini(int(IntegerMath.div_trunc(_read_u32(annual.misc, MISC_NORMAL_POPULATION), 6)), 65000)
+		mini(int(_read_u32(annual.misc, MISC_NORMAL_POPULATION) / 6), 65000)
 	)
 	_write_u16_be(annual.microsims, offset + 2, park_visitors)
 	var park_count := _tile_count(annual.misc, TILE_SMALL_PARK, annual.map_edge) + _tile_count(annual.misc, TILE_BIG_PARK, annual.map_edge)
@@ -37,7 +39,7 @@ static func update_big_park(annual: MicrosimAnnualContext, record_id: int, offse
 	_write_u16_be(
 		annual.microsims,
 		offset + 6,
-		_population_cap(annual.misc, int(IntegerMath.div_trunc(park_count, 9)), 120, annual.map_edge)
+		_population_cap(annual.misc, int(park_count / 9), 120, annual.map_edge)
 	)
 	annual.counts.park += 1
 
@@ -91,14 +93,14 @@ static func update_subway_station(annual: MicrosimAnnualContext, record_id: int,
 
 
 static func update_bus_depot(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	_write_u16_be(annual.microsims, offset + 2, int(IntegerMath.div_trunc(annual.bus_count, 4)))
+	_write_u16_be(annual.microsims, offset + 2, int(annual.bus_count / 4))
 	_write_u16_be(annual.microsims, offset + 4, annual.bus_count)
 	_write_u16_be(annual.microsims, offset + 6, annual.bus_passengers)
 	annual.updated_bus += 1
 
 
 static func update_rail_station(annual: MicrosimAnnualContext, record_id: int, offset: int) -> void:
-	_write_u16_be(annual.microsims, offset + 2, int(IntegerMath.div_trunc(annual.rail_count, 4)))
+	_write_u16_be(annual.microsims, offset + 2, int(annual.rail_count / 4))
 	_write_u16_be(annual.microsims, offset + 6, annual.rail_passengers)
 	annual.updated_rail += 1
 
@@ -130,7 +132,7 @@ static func update_library(annual: MicrosimAnnualContext, record_id: int, offset
 		_write_u16_be(annual.microsims, offset + 4, books)
 
 	var population := maxi(_read_u32(annual.misc, MISC_NORMAL_POPULATION), 1)
-	var library_score := int(IntegerMath.div_trunc(library_count * school_funding * 300, population))
+	var library_score := int((library_count * school_funding * 300) / population)
 	annual.microsims[offset + 1] = mini(library_score, 12) & 0xff
 	annual.counts.library += 1
 

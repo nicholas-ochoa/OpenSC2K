@@ -2,6 +2,8 @@ class_name NewCityTerrain
 extends NewTerrainConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func generate(
 	document: Sc2File,
@@ -139,7 +141,7 @@ static func generate(
 	)
 
 	NewTerrainSurface._grow_trees(
-		buildings, flags, IntegerMath.div_trunc(((trees * trees) >> 1) * map_edge * map_edge, 16384), staged_process, map_edge
+		buildings, flags, (((trees * trees) >> 1) * map_edge * map_edge) / 16384, staged_process, map_edge
 	)
 
 	if has_ocean:
@@ -150,7 +152,7 @@ static func generate(
 			staged_process.next_u15() % map_edge,
 			staged_process.next_u15() % map_edge,
 		)
-		var length := IntegerMath.div_trunc(((staged_process.next_u15() & 0x7f) + 50) * map_edge, 128)
+		var length := (((staged_process.next_u15() & 0x7f) + 50) * map_edge) / 128
 		NewTerrainSurface._make_stream(
 			altitude,
 			buildings,

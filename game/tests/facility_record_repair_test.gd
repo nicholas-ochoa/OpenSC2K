@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 class NoMenuInterface extends ApplicationInterface:
 	func _show_main_menu() -> void:
 		pass
@@ -68,7 +70,7 @@ func check_repair(edge: int, rotation: int) -> void:
 	var tiles: Array = BuildingCommand.MICROSIM_TYPE_BY_TILE.keys()
 
 	for n in tiles.size():
-		var origin := Vector2i(edge - 5 - (n % 8) * 5, edge - 5 - IntegerMath.div_trunc(n, 8) * 5)
+		var origin := Vector2i(edge - 5 - (n % 8) * 5, edge - 5 - (n / 8) * 5)
 		sites.append(stamp(city, tiles[n], origin))
 
 	var untouched := doc.duplicate_document()

@@ -2,6 +2,8 @@ class_name GrowthScan
 extends GrowthConstants
 # run the growth partition in its original scan and random-call order
 
+@warning_ignore_start("integer_division")
+
 
 static func run(
 	city: CityState,
@@ -275,7 +277,7 @@ static func run(
 						subway_passengers += density
 
 					growth_pressure = GrowthState._read_i32(
-						misc, MISC_DEMAND + int(IntegerMath.div_trunc((zone - 1), 2)) * 4
+						misc, MISC_DEMAND + int((zone - 1) / 2) * 4
 					) + 2000
 					decline_pressure = 4000 - growth_pressure
 				else:
@@ -289,7 +291,7 @@ static func run(
 				GrowthState._add_i32(misc, MISC_ZONE_POPULATIONS + zone * 4, population)
 				population_added += population
 
-				if random.next_u15() < int(IntegerMath.div_trunc(decline_pressure, density)):
+				if random.next_u15() < int(decline_pressure / density):
 					GrowthDevelopment._abandon(
 						buildings,
 						zones,
@@ -321,7 +323,7 @@ static func run(
 				span.mark_index(TimingStep.COMPLETION)
 
 			if status == STATUS_CONSTRUCTION:
-				if random.next_u15() < int(IntegerMath.div_trunc(0x4000, density)):
+				if random.next_u15() < int((0x4000) / density):
 					if (
 						GrowthState._read_u32(misc, MISC_NORMAL_POPULATION)
 						> GrowthState._read_u32(misc, MISC_TILE_COUNTS + CHURCH_TILE * 4) * 2500
@@ -339,7 +341,7 @@ static func run(
 							land_value,
 							Vector2i(x, y),
 							density,
-							int(IntegerMath.div_trunc((zone - 1), 2)),
+							int((zone - 1) / 2),
 							random,
 							rotation, map_edge,
 						)
@@ -366,7 +368,7 @@ static func run(
 				GrowthState._add_i32(misc, MISC_ZONE_POPULATIONS + 7 * 4, abandoned_population)
 				abandoned_population_added += abandoned_population
 
-				if random.next_u15() < int(IntegerMath.div_trunc(growth_pressure * 15, density)):
+				if random.next_u15() < int((growth_pressure * 15) / density):
 					GrowthDevelopment._place_zone(
 						buildings,
 						zones,
@@ -375,7 +377,7 @@ static func run(
 						land_value,
 						Vector2i(x, y),
 						density,
-						int(IntegerMath.div_trunc((zone - 1), 2)),
+						int((zone - 1) / 2),
 						random,
 						rotation, map_edge,
 					)
@@ -398,7 +400,7 @@ static func run(
 				span.mark_index(TimingStep.DENSITY)
 
 			if GrowthConstruction._can_advance_density(zone_byte, zone, density, land_value, x, y, map_edge):
-				if random.next_u15() < int(IntegerMath.div_trunc(growth_pressure * 3, (density + 1))):
+				if random.next_u15() < int((growth_pressure * 3) / (density + 1)):
 					var advanced := GrowthConstruction._advance_construction(
 						buildings,
 						zones,

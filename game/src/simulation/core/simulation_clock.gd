@@ -1,6 +1,8 @@
 class_name SimulationClock
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 # february isn't special, every month has 25 days
 const DAYS_PER_MONTH := 25
 const MONTHS_PER_YEAR := 12
@@ -26,13 +28,13 @@ func write_to_city(city: CityState) -> bool:
 static func state_for_day(days: int) -> Dictionary:
 	var safe_days := maxi(days, 0)
 	var month_day := safe_days % DAYS_PER_MONTH
-	var month := int(IntegerMath.div_trunc(safe_days, DAYS_PER_MONTH)) % MONTHS_PER_YEAR
+	var month := int(safe_days / DAYS_PER_MONTH) % MONTHS_PER_YEAR
 	var phase := {
 		"city_days": safe_days,
-		"elapsed_years": int(IntegerMath.div_trunc(safe_days, DAYS_PER_YEAR)),
+		"elapsed_years": int(safe_days / DAYS_PER_YEAR),
 		"month": month,
 		"month_day": month_day,
-		"season": int(IntegerMath.div_trunc(((month + 1) % MONTHS_PER_YEAR), 3)),
+		"season": int(((month + 1) % MONTHS_PER_YEAR) / 3),
 		"actions": PackedStringArray(),
 		"growth_step": -1,
 		"growth_substep": -1,
@@ -60,7 +62,7 @@ static func state_for_day(days: int) -> Dictionary:
 			actions.append_array(["map", "simnation", "weather_disaster"])
 		_:
 			if month_day >= 3 and month_day <= 18:
-				phase.growth_step = int(IntegerMath.div_trunc((month_day - 3), 4)) % 4
+				phase.growth_step = int((month_day - 3) / 4) % 4
 				phase.growth_substep = (month_day + 1) % 4
 				actions.append("growth")
 

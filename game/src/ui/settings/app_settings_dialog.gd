@@ -1,6 +1,8 @@
 class_name AppSettingsDialog
 extends ConfirmationDialog
 
+@warning_ignore_start("integer_division")
+
 signal import_original_requested
 
 var pack_error_label: Label
@@ -105,7 +107,7 @@ func _fit_to_viewport() -> void:
 	size = Vector2i(700, mini(500, height_limit))
 
 	if visible:
-		position = IntegerMath.div_trunc_vec2i(viewport_size - size, 2)
+		position = (viewport_size - size) / 2
 
 
 func _request_original_import() -> void:

@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 func _initialize() -> void:
 	for edge in [128]:
 		for feature in ["cliffs", "canyon", "valley"]:
@@ -20,11 +22,11 @@ func _initialize() -> void:
 				assert(Array(heights).min() > sea)
 				assert(Array(heights).max() - Array(heights).min() >= 6)
 				var floor_level: int = Array(heights).min()
-				assert(_largest_flat_square(city, floor_level) >= 12 * IntegerMath.div_trunc(edge, 128),
+				assert(_largest_flat_square(city, floor_level) >= 12 * (edge / 128),
 					"The canyon floor must fit a city neighborhood")
 			elif feature == "valley":
 				assert(generated.water_tiles > 0)
-				assert(_largest_flat_square(city, sea + 1) >= 6 * IntegerMath.div_trunc(edge, 128),
+				assert(_largest_flat_square(city, sea + 1) >= 6 * (edge / 128),
 					"River banks must fit a flat buildable neighborhood")
 				assert(Array(heights).max() >= sea + 6, "Retain raised valley sides")
 			else:
@@ -34,7 +36,7 @@ func _initialize() -> void:
 				var inland_count := 0
 				var coastal_count := 0
 				for index in heights.size():
-					if distances[index] >= 20 * IntegerMath.div_trunc(edge, 128):
+					if distances[index] >= 20 * (edge / 128):
 						inland_min = mini(inland_min, heights[index])
 						inland_max = maxi(inland_max, heights[index])
 						inland_count += 1

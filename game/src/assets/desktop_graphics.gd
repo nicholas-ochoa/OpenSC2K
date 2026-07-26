@@ -2,6 +2,8 @@ class_name DesktopGraphics
 extends RefCounted
 # optional folder-pack icons and cursors for both original applications
 
+@warning_ignore_start("integer_division")
+
 const CITY_SYSTEM_GROUPS := {30977: 11, 30979: 15, 30980: 12, 30981: 21, 30982: 14, 30983: 19, 30984: 17, 30985: 18, 30986: 20, 30987: 16, 30988: 13}
 const ICON_GROUPS := {"city": {2: [1, 2], 3: [9, 10], 77: [7, 8], 181: [3, 4], 182: [5, 6]}, "scurk": {1: [3, 4], 2: [1, 2], 3: [5, 6], 4: [7, 8]}}
 var error := ""
@@ -76,8 +78,8 @@ static func cursor_id(app: String, group: int) -> int:
 		if CITY_SYSTEM_GROUPS.has(group):
 			return CITY_SYSTEM_GROUPS[group]
 
-		if IntegerMath.div_trunc(group, 1000) in [1, 2, 3] and group % 1000 < 30:
-			return 22 + (IntegerMath.div_trunc(group, 1000) - 1) * 30 + group % 1000
+		if (group / 1000) in [1, 2, 3] and group % 1000 < 30:
+			return 22 + ((group / 1000) - 1) * 30 + group % 1000
 	elif app == "scurk":
 		if group >= 30000 and group <= 30005:
 			return group - 29999

@@ -1,6 +1,8 @@
 class_name DisasterStartFloodWeather
 extends DisasterStartConstants
 
+@warning_ignore_start("integer_division")
+
 
 static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random: SimLfsrRandom) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
@@ -98,7 +100,7 @@ static func _start_mass_floods(
 		return {"ok": false, "error": "mass-flood disaster input chunks are missing or invalid"}
 
 	var attempt_count := (
-		int(IntegerMath.div_trunc(city.document.misc_u32(MISC_NORMAL_POPULATION), 10000)) + 5
+		int(city.document.misc_u32(MISC_NORMAL_POPULATION) / 10000) + 5
 	) & 0xffff
 
 	if attempt_count & 0x8000:

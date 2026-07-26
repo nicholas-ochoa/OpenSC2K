@@ -1,6 +1,8 @@
 class_name SailboatThingTick
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const RECORD_SIZE := CityState.THING_RECORD_SIZE
 const TEXT_LABEL_BASE := 201
 const TILE_PIER := 0xdf
@@ -27,7 +29,7 @@ static func update(
 ) -> void:
 	var offset := record * RECORD_SIZE
 
-	if counters.active_sailboats > 4 * maxi(1, IntegerMath.div_trunc(map_edge * map_edge, 16384)):
+	if counters.active_sailboats > 4 * maxi(1, (map_edge * map_edge) / 16384):
 		_remove(text, things, record, map_edge)
 		counters.removed_sailboats += 1
 

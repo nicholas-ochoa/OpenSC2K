@@ -1,6 +1,8 @@
 class_name NewspaperText
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const Random = preload("res://src/simulation/random/sim_random.gd")
 
 const MAX_OUTPUT_BYTES := 2047
@@ -51,7 +53,7 @@ static func published_seed(
 	if story_offset < 0:
 		return -1
 
-	return session_seed + int(IntegerMath.div_trunc(city_days, 25)) + paper_index * 500 + story_offset
+	return session_seed + int(city_days / 25) + paper_index * 500 + story_offset
 
 
 static func token_phrase_id(value: int) -> int:

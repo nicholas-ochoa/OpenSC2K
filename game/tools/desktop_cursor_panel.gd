@@ -1,6 +1,8 @@
 extends Control
 ## Local cursor test surface. It never changes city or editor state.
 
+@warning_ignore_start("integer_division")
+
 signal tested(position: Vector2i)
 signal tick_changed
 var record: Dictionary = {}
@@ -58,13 +60,13 @@ func _gui_input(event: InputEvent) -> void:
 
 
 static func background_color(point: Vector2i) -> Color:
-	return Color("ffffff") if (int(IntegerMath.div_trunc(point.x, 32)) + int(IntegerMath.div_trunc(point.y, 32))) % 2 == 0 else Color("20364c")
+	return Color("ffffff") if (int(point.x / 32) + int(point.y / 32)) % 2 == 0 else Color("20364c")
 
 
 static func sweep_position(tick: int, bounds: Vector2i) -> Vector2i:
 	var travel := maxi(1, bounds.x - 64)
 
-	return Vector2i(32 + travel - absi(posmod(tick * 6, travel * 2) - travel), IntegerMath.div_trunc(bounds.y, 2))
+	return Vector2i(32 + travel - absi(posmod(tick * 6, travel * 2) - travel), bounds.y / 2)
 
 
 func _draw() -> void:

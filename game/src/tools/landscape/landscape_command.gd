@@ -1,6 +1,8 @@
 class_name LandscapeCommand
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const GROUP_NATURE := 1
 const FULL_MAP_SIZE := CityState.MAP_SIZE
 const SUBTOOL_TREES := 0
@@ -88,7 +90,7 @@ static func apply_path(
 
 		var attempts := 8 + random.next_u15() % 13
 		if use_brush_points:
-			attempts = maxi(1, IntegerMath.div_trunc(candidates.size() * (25 + random.next_u15() % 36), 100))
+			attempts = maxi(1, (candidates.size() * (25 + random.next_u15() % 36)) / 100)
 		for attempt in mini(attempts, candidates.size()):
 			var choice := random.next_u15() % candidates.size()
 			placement_points.append(candidates[choice])

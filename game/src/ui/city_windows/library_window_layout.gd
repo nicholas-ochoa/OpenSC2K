@@ -1,6 +1,8 @@
 class_name LibraryWindowLayout
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const WINDOW_SIZE := Vector2i(480, 300)
 const CASCADE_STEP := Vector2i(28, 28)
 const VIEWPORT_MARGIN := 16
@@ -23,8 +25,8 @@ static func rects(viewport_size: Vector2i, count := 4) -> Array[Rect2i]:
 	)
 	var group_size := window_size + cascade_size
 	var start := Vector2i(
-		maxi(VIEWPORT_MARGIN, IntegerMath.div_trunc((viewport_size.x - group_size.x), 2)),
-		maxi(VIEWPORT_MARGIN, IntegerMath.div_trunc((viewport_size.y - group_size.y), 2)),
+		maxi(VIEWPORT_MARGIN, (viewport_size.x - group_size.x) / 2),
+		maxi(VIEWPORT_MARGIN, (viewport_size.y - group_size.y) / 2),
 	)
 
 	for index in count:

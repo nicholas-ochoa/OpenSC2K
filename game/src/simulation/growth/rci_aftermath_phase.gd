@@ -1,6 +1,8 @@
 class_name RciAftermathPhase
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 
@@ -374,7 +376,7 @@ static func _release_invention(
 	if (random.next_u15() & 7) != 0:
 		return -1
 
-	var current_year := _to_i16(_read_u32(misc, MISC_START_YEAR)) + int(IntegerMath.div_trunc(city.age_in_days(), 300))
+	var current_year := _to_i16(_read_u32(misc, MISC_START_YEAR)) + int(city.age_in_days() / 300)
 
 	for index in INVENTION_COUNT:
 		var offset := MISC_INVENTION_YEARS + index * 4

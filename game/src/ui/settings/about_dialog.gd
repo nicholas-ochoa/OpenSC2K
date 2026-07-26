@@ -1,6 +1,8 @@
 class_name AboutDialog
 extends AcceptDialog
 
+@warning_ignore_start("integer_division")
+
 var artwork: AboutArtwork
 var project_text: RichTextLabel
 var license_picker: OptionButton
@@ -132,4 +134,4 @@ func _fit_to_viewport() -> void:
 	var height_limit := maxi(1, int(viewport_size.y * 0.9) - get_theme_constant("title_height"))
 	max_size = Vector2i(0, height_limit)
 	size = Vector2i(mini(760, int(viewport_size.x * 0.95)), mini(550, height_limit))
-	position = IntegerMath.div_trunc_vec2i(viewport_size - size, 2)
+	position = (viewport_size - size) / 2

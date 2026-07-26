@@ -1,6 +1,8 @@
 class_name CityDebugActions
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const ToolAvailability = preload("res://src/tools/shared/tool_availability.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
 const MovingThingSpawner = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
@@ -205,7 +207,7 @@ static func _valid_disaster_chunks(
 	return (
 		thing_chunk != null
 		and thing_chunk.decoded_payload.size()
-		== ThingData.BASE_SIZE * (1 if map_edge <= 128 else IntegerMath.div_trunc(2 * map_edge * map_edge, 16384))
+		== ThingData.BASE_SIZE * (1 if map_edge <= 128 else ((2 * map_edge * map_edge) / 16384))
 		and text_chunk != null
 		and OverlayData.count(text_chunk.decoded_payload) == (map_edge * map_edge)
 		and misc_chunk != null

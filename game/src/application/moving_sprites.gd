@@ -2,6 +2,8 @@ class_name ApplicationMovingSprites
 extends RefCounted
 
 
+@warning_ignore_start("integer_division")
+
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 
@@ -190,7 +192,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 	var divisor := int(configuration.divisor)
 	var factor := 1
 	var commands := caches.dynamic_command_cache.get_commands(
-		app.city, sprite_archive, view_size, int(IntegerMath.div_trunc(Time.get_ticks_msec(), 100))
+		app.city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
 	)
 	var visuals: Array[Dictionary] = []
 	var gpu_moving := _gpu_moving_active()
@@ -602,7 +604,7 @@ func _dynamic_shadow_image(
 	var sampled: Image = caches.region_cache.image_region(Rect2i(position, mask.get_size() / texture_factor), texture_factor) if caches.region_cache != null else null
 
 	for source_y in mask.get_height():
-		var output_y := position.y + int(IntegerMath.div_trunc(source_y, texture_factor))
+		var output_y := position.y + int(source_y / texture_factor)
 
 		if output_y < 0 or output_y >= app.map_render._static_image_size().y:
 			continue
@@ -617,7 +619,7 @@ func _dynamic_shadow_image(
 			):
 				continue
 
-			var output_x := position.x + int(IntegerMath.div_trunc(source_x, texture_factor))
+			var output_x := position.x + int(source_x / texture_factor)
 
 			if output_x < 0 or output_x >= app.map_render._static_image_size().x:
 				continue

@@ -6,6 +6,8 @@ extends SceneTree
 ## CPU rules in ApplicationMovingSprites: every later static silhouette hides a
 ## sprite, trains use the crossing masks, and a shadow remaps the static index.
 
+@warning_ignore_start("integer_division")
+
 const VIEW := 2
 const EDGE := 256
 const CROSSINGS := [0x4f, 0x50, 0x4d, 0x4e, 0x47, 0x48]
@@ -36,7 +38,7 @@ func _run() -> void:
 	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2"))
 	var configuration := CityIsometricRenderer.view_configuration(VIEW)
 	var focus := _crossing_point(city, configuration)
-	var center_key := Vector2i(IntegerMath.div_trunc_vec2i(focus, EDGE))
+	var center_key := Vector2i(focus / EDGE)
 	var keys: Array[Vector2i] = []
 
 	for y in range(-1, 2):
@@ -303,7 +305,7 @@ func _grid_visuals(grid: Array[Vector2i], sprite_id: int, mode: int, choice: Str
 				"last":
 					order = covering.back()
 				_:
-					order = covering[IntegerMath.div_trunc(covering.size(), 2)]
+					order = covering[covering.size() / 2]
 
 		visuals.append(_visual(sprite_id, grid[index], mode, order, index))
 
@@ -328,7 +330,7 @@ func _crossing_point(city: CityState, configuration: Dictionary) -> Vector2i:
 			if int(city.buildings[index]) != building:
 				continue
 
-			var x := int(IntegerMath.div_trunc(index, city.map_size))
+			var x := int(index / city.map_size)
 			var y := index % city.map_size
 			var origin := int(configuration.side_margin) + city.map_size * int(configuration.half_width)
 

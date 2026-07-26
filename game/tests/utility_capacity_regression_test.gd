@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 class FixedRandom extends SimRandom:
 
 
@@ -68,7 +70,7 @@ func check_power(edge: int, version: int) -> void:
 	var result := PowerPhase.run(city, SimRandom.new(1))
 	check(result.ok and result.generation == 44, "Plant generation stays unchanged")
 	check(result.consumers == expected and result.supplied_consumers == expected, "Power consumer range follows SC2 versus SC2X format")
-	check(result.usage_percent == IntegerMath.div_trunc(expected * 100, 44), "Power usage reports format-specific consumers")
+	check(result.usage_percent == (expected * 100) / 44, "Power usage reports format-specific consumers")
 
 	for index in buildings.size():
 		check(city.tile_flags[city.index_of(point.x, point.y + index)] & PowerPhase.FLAG_POWERED != 0, "Consumer statistics do not change power distribution")
@@ -95,7 +97,7 @@ func check_water(edge: int, version: int) -> void:
 			if expected_count >= 32768:
 				expected_count -= 65536
 
-		var expected_capacity := IntegerMath.div_trunc(expected_count, 4) * 2000
+		var expected_capacity := (expected_count / 4) * 2000
 		var result := WaterPhase.run(city)
 		check(result.ok and result.treatment_capacity == expected_capacity, "Water treatment retains full SC2X count and legacy SC2 width")
 		check(result.treatment_sufficient == (expected_capacity >= 0), "Treatment sufficiency follows computed capacity")
@@ -104,7 +106,7 @@ func check_water(edge: int, version: int) -> void:
 
 func check_prisons(edge: int, version: int) -> void:
 	var doc := fixture(edge, version)
-	var count := mini(700, IntegerMath.div_trunc(doc.decoded_size("XMIC"), 8) - 1)
+	var count := mini(700, (doc.decoded_size("XMIC") / 8) - 1)
 
 	for score in ([79, 80, 100] if edge <= 256 else [100]):
 		var data := doc.find_chunk("XMIC").decoded_payload.duplicate()

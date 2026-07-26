@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 const PeBitmap = preload("res://src/assets/pe_bitmap_resource.gd")
 
 
@@ -85,7 +87,7 @@ func _initialize() -> void:
 				var dib_bytes: PackedByteArray = dib.bytes
 				var color_count: int = dib.color_count if dib.color_count > 0 else 256
 				var pixel_offset := 40 + color_count * 4
-				var row_stride := int(IntegerMath.div_trunc((image.get_width() + 3), 4)) * 4
+				var row_stride := int((image.get_width() + 3) / 4) * 4
 
 				for y in 8:
 					var source_y := 7 - y

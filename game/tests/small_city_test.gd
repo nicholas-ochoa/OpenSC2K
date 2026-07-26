@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 class SequenceRandom extends SimRandom:
 	var values: Array[int]
 	var position := 0
@@ -120,7 +122,7 @@ func check_growth_and_facilities(edge: int, native: bool) -> void:
 		for density in range(2, 5):
 			var city := CityState.from_document(fixture(edge, native))
 			var p := GrowthPhase._payloads(city)
-			var radius := IntegerMath.div_trunc(density, 2)
+			var radius := density / 2
 			var anchor := Vector2i(edge - 2 - radius, edge - 2 - radius)
 			check(GrowthPhase._place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
 				anchor, density, GrowthPhase.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),

@@ -1,5 +1,7 @@
 extends SceneTree
 
+@warning_ignore_start("integer_division")
+
 
 class DrawProbe extends Control:
 	var overlay: ServiceQueryOverlay
@@ -68,5 +70,5 @@ func _measure(label: String, city: CityState, origin: Vector2i, all_stations: bo
 	assert(not samples.is_empty())
 	print("%s stations=%d tiles=%d analysis_ms=%.3f rebuild_ms=%.3f draw_median_ms=%.3f samples=%d" % [label,
 		result.sites.size(), result.values.size(), analysis_usec / 1000.0, rebuild_usec / 1000.0,
-		samples[IntegerMath.div_trunc(samples.size(), 2)] / 1000.0, samples.size()])
+		samples[samples.size() / 2] / 1000.0, samples.size()])
 	probe.free()

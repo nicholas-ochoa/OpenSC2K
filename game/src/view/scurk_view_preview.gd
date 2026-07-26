@@ -1,6 +1,8 @@
 class_name ScurkViewPreview
 extends Control
 
+@warning_ignore_start("integer_division")
+
 const DrawingWorkspace = preload("res://src/tools/scurk/scurk_drawing_workspace.gd")
 
 const CYCLE_INTERVAL_SECONDS := Sc2Palette.SCURK_TIMER_INTERVAL_SECONDS
@@ -33,8 +35,8 @@ func set_preview(
 	view = clampi(value_view, 0, 2)
 	palette = value_palette
 	var divisor := DrawingWorkspace.view_divisor(view)
-	preview_width = int(IntegerMath.div_trunc(DrawingWorkspace.WIDTH, divisor))
-	preview_height = int(IntegerMath.div_trunc(DrawingWorkspace.HEIGHT, divisor))
+	preview_width = int(DrawingWorkspace.WIDTH / divisor)
+	preview_height = int(DrawingWorkspace.HEIGHT / divisor)
 	preview_indices.resize(preview_width * preview_height)
 	var workspace := DrawingWorkspace.from_shape(
 		shape_width, shape_height, shape_pixels, view, base_width
@@ -66,8 +68,8 @@ func set_preview(
 func clear_preview(value_view: int) -> void:
 	view = clampi(value_view, 0, 2)
 	var divisor := DrawingWorkspace.view_divisor(view)
-	preview_width = int(IntegerMath.div_trunc(DrawingWorkspace.WIDTH, divisor))
-	preview_height = int(IntegerMath.div_trunc(DrawingWorkspace.HEIGHT, divisor))
+	preview_width = int(DrawingWorkspace.WIDTH / divisor)
+	preview_height = int(DrawingWorkspace.HEIGHT / divisor)
 	preview_indices.resize(preview_width * preview_height)
 	preview_indices.fill(-1)
 	custom_minimum_size = Vector2(preview_width + 2, preview_height + 2)
@@ -138,7 +140,7 @@ func _rebuild_texture() -> void:
 			color = palette.color(animation_map[index])
 		elif index < 0:
 			var x := offset % preview_width
-			var y := int(IntegerMath.div_trunc(offset, preview_width))
+			var y := int(offset / preview_width)
 			color = Color("d8d8d8") if (x + y) % 2 == 0 else Color("ffffff")
 
 		var byte_offset := offset * 4

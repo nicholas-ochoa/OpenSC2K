@@ -1,6 +1,8 @@
 class_name OrdinanceCommand
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const MISC_SIZE := 4800
 const MISC_CITY_DAYS := 0x0010
 const MISC_BUDGETS := 0x077c
@@ -128,7 +130,7 @@ static func snapshot(city: CityState) -> Dictionary:
 		var raw := raw_costs[ordinance_id] if enabled else 0
 		item_amounts.append(_divide_toward_zero(raw, DISPLAY_CURRENT_DIVISOR))
 		current_raw = _to_i32(current_raw + raw)
-		var category := int(IntegerMath.div_trunc(ordinance_id, 4))
+		var category := int(ordinance_id / 4)
 		category_raw[category] = _to_i32(category_raw[category] + raw)
 
 	var category_amounts := PackedInt32Array()
@@ -140,7 +142,7 @@ static func snapshot(city: CityState) -> Dictionary:
 
 	var budget_offset := _budget_offset(BUDGET_ORDINANCES)
 	var year_to_date_raw := _read_i32(misc, budget_offset + BUDGET_YEAR_TO_DATE)
-	var month := int(IntegerMath.div_trunc(_read_u32(misc, MISC_CITY_DAYS) % 300, 25))
+	var month := int((_read_u32(misc, MISC_CITY_DAYS) % 300) / 25)
 	var estimated_raw := _to_i32(current_raw * 12)
 
 	if _read_u32(misc, MISC_YEAR_END) == 0:
@@ -267,7 +269,7 @@ static func _divide_toward_zero(value: int, divisor: int) -> int:
 	if divisor == 0:
 		return 0
 
-	var quotient := int(IntegerMath.div_trunc(absi(value), absi(divisor)))
+	var quotient := int(absi(value) / absi(divisor))
 
 	return -quotient if (value < 0) != (divisor < 0) else quotient
 

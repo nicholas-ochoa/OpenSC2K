@@ -1,6 +1,8 @@
 class_name MayorApprovalPhase
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const MISC_SIZE := 4800
 const XGRP_SIZE := 16 * 52 * 4
 const MISC_WORKFORCE_LIFE_EXPECTANCY := 0x0048
@@ -75,7 +77,7 @@ static func run(city: CityState, random: SimRandom, previous_approval: int) -> D
 
 	var updated_records := 0
 
-	for record_id in range(1, IntegerMath.div_trunc(microsims.size(), CityState.MICROSIM_RECORD_SIZE)):
+	for record_id in range(1, microsims.size() / CityState.MICROSIM_RECORD_SIZE):
 		var offset := record_id * CityState.MICROSIM_RECORD_SIZE
 
 		if int(microsims[offset]) != TILE_MAYOR_HOUSE:

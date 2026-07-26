@@ -1,6 +1,8 @@
 class_name CityMinimap
 extends RefCounted
 
+@warning_ignore_start("integer_division")
+
 const MODES := [
 	"structures",
 	"zones",
@@ -66,7 +68,7 @@ static func color_index(city: CityState, x: int, y: int, mode := "structures") -
 		"rail":
 			return 0xff if _is_rail_map_tile(building) else base
 		"traffic":
-			var traffic := _coarse_value(city, "XTRF", IntegerMath.div_trunc(city.map_size, 2), 2, x, y) >> 4
+			var traffic := _coarse_value(city, "XTRF", city.map_size / 2, 2, x, y) >> 4
 
 			if traffic != 0:
 				return traffic + 0x9b
@@ -91,9 +93,9 @@ static func color_index(city: CityState, x: int, y: int, mode := "structures") -
 
 			return 0x1d if city.is_piped(x, y) else base
 		"density":
-			return _gradient_or_base(city, "XPOP", IntegerMath.div_trunc(city.map_size, 4), 4, x, y, base)
+			return _gradient_or_base(city, "XPOP", city.map_size / 4, 4, x, y, base)
 		"growth":
-			var growth := _coarse_value(city, "XROG", IntegerMath.div_trunc(city.map_size, 4), 4, x, y)
+			var growth := _coarse_value(city, "XROG", city.map_size / 4, 4, x, y)
 
 			if growth < 0x7d:
 				return 0x1d
@@ -103,17 +105,17 @@ static func color_index(city: CityState, x: int, y: int, mode := "structures") -
 
 			return base
 		"crime":
-			return _gradient_or_base(city, "XCRM", IntegerMath.div_trunc(city.map_size, 2), 2, x, y, base)
+			return _gradient_or_base(city, "XCRM", city.map_size / 2, 2, x, y, base)
 		"police_power":
-			return _gradient_or_base(city, "XPLC", IntegerMath.div_trunc(city.map_size, 4), 4, x, y, base)
+			return _gradient_or_base(city, "XPLC", city.map_size / 4, 4, x, y, base)
 		"police_stations":
 			return 0xff if building == POLICE_STATION else base
 		"pollution":
-			return _gradient_or_base(city, "XPLT", IntegerMath.div_trunc(city.map_size, 2), 2, x, y, base)
+			return _gradient_or_base(city, "XPLT", city.map_size / 2, 2, x, y, base)
 		"land_value":
-			return _gradient_or_base(city, "XVAL", IntegerMath.div_trunc(city.map_size, 2), 2, x, y, base)
+			return _gradient_or_base(city, "XVAL", city.map_size / 2, 2, x, y, base)
 		"fire_power":
-			return _gradient_or_base(city, "XFIR", IntegerMath.div_trunc(city.map_size, 4), 4, x, y, base)
+			return _gradient_or_base(city, "XFIR", city.map_size / 4, 4, x, y, base)
 		"fire_stations":
 			return 0xff if building == FIRE_STATION else base
 		"schools":
@@ -131,7 +133,7 @@ static func _base_index(city: CityState, x: int, y: int, building: int) -> int:
 
 		var altitude := mini(city.land_altitude(x, y), 0x10)
 
-		return 0x80 - int(IntegerMath.div_trunc(altitude * 3, 4))
+		return 0x80 - int((altitude * 3) / 4)
 
 	if building < 6:
 		return 0x35

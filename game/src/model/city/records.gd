@@ -2,6 +2,8 @@ class_name CityRecords
 extends RefCounted
 # Read names, labels, facility records, moving objects, graphs, and facility sites.
 
+@warning_ignore_start("integer_division")
+
 
 static func city_name(city: CityState) -> String:
 	return city.document.city_name()
@@ -21,7 +23,7 @@ static func mayor_name(city: CityState) -> String:
 
 
 static func label(city: CityState, label_id: int) -> String:
-	if label_id < 0 or label_id >= IntegerMath.div_trunc(city.document.decoded_size("XLAB"), CityState.LABEL_RECORD_SIZE):
+	if label_id < 0 or label_id >= city.document.decoded_size("XLAB") / CityState.LABEL_RECORD_SIZE:
 		return ""
 
 	var chunk := city.document.find_chunk("XLAB")
@@ -41,7 +43,7 @@ static func label(city: CityState, label_id: int) -> String:
 
 
 static func set_label(city: CityState, label_id: int, value: String) -> bool:
-	if label_id < 0 or label_id >= IntegerMath.div_trunc(city.document.decoded_size("XLAB"), CityState.LABEL_RECORD_SIZE):
+	if label_id < 0 or label_id >= city.document.decoded_size("XLAB") / CityState.LABEL_RECORD_SIZE:
 		return false
 
 	var chunk := city.document.find_chunk("XLAB")
@@ -67,7 +69,7 @@ static func set_label(city: CityState, label_id: int, value: String) -> bool:
 
 
 static func microsim(city: CityState, microsim_id: int) -> Dictionary:
-	if microsim_id < 0 or microsim_id >= IntegerMath.div_trunc(city.document.decoded_size("XMIC"), CityState.MICROSIM_RECORD_SIZE):
+	if microsim_id < 0 or microsim_id >= city.document.decoded_size("XMIC") / CityState.MICROSIM_RECORD_SIZE:
 		return {}
 
 	var chunk := city.document.find_chunk("XMIC")
@@ -87,7 +89,7 @@ static func microsim(city: CityState, microsim_id: int) -> Dictionary:
 
 
 static func thing(city: CityState, thing_id: int) -> Dictionary:
-	if thing_id < 0 or thing_id >= IntegerMath.div_trunc(city.document.decoded_size("XTHG"), (24 if city.map_size > 128 else 12)):
+	if thing_id < 0 or thing_id >= city.document.decoded_size("XTHG") / (24 if city.map_size > 128 else 12):
 		return {}
 
 	var chunk := city.document.find_chunk("XTHG")
@@ -140,7 +142,7 @@ static func thing_count(city: CityState) -> int:
 
 
 static func microsim_count(city: CityState) -> int:
-	return IntegerMath.div_trunc(city.document.decoded_size("XMIC"), CityState.MICROSIM_RECORD_SIZE)
+	return city.document.decoded_size("XMIC") / CityState.MICROSIM_RECORD_SIZE
 
 
 # map footprint of one xmic record: {x, y, width, height, tiles}, or {} when
@@ -180,7 +182,7 @@ static func microsim_sites(city: CityState) -> Dictionary:
 		if id < 51:
 			continue
 
-		var x := IntegerMath.div_trunc(index, city.map_size)
+		var x := index / city.map_size
 		var y := index % city.map_size
 		var hops := 0
 

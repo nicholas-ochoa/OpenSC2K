@@ -1,6 +1,8 @@
 extends SceneTree
 ## Print dimensions, opaque bounds, and palette counts.
 
+@warning_ignore_start("integer_division")
+
 
 func _initialize() -> void:
 	for archive_name in ["LARGE.DAT", "SMALLMED.DAT", "SPECIAL.DAT"]:
@@ -24,7 +26,7 @@ func _initialize() -> void:
 				if index < 0:
 					continue
 
-				var point := Vector2i(i % entry.width, IntegerMath.div_trunc(i, entry.width))
+				var point := Vector2i(i % entry.width, i / entry.width)
 				minimum = minimum.min(point)
 				maximum = maximum.max(point)
 

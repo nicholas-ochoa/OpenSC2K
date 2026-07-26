@@ -2,6 +2,8 @@ class_name IsometricImageRender
 extends IsometricConstants
 
 
+@warning_ignore_start("integer_division")
+
 
 static func create_image(
 	city: CityState,
@@ -131,7 +133,7 @@ static func patch_static_image(
 	var half_height := int(configuration.half_height)
 	var full_origin_x := int(configuration.side_margin) + map_edge * half_width
 	var top_margin := int(configuration.top_margin)
-	var bottom_extra := int(configuration.tile_height) + int(IntegerMath.div_trunc(sprite_limit.x, 4)) + 1
+	var bottom_extra := int(configuration.tile_height) + int(sprite_limit.x / 4) + 1
 	var top_extra := 32 * int(configuration.altitude_step) + sprite_limit.y
 	var first_diagonal := maxi(0, floori(float(native_rect.position.y - top_margin - bottom_extra) / half_height))
 	var last_diagonal := mini(2 * (map_edge - 1), ceili(float(native_rect.end.y - top_margin + top_extra) / half_height))
@@ -304,8 +306,8 @@ static func draw_tile(
 				sprites, palette, cache, power_marker.sprite_id, false
 			)
 			var marker_x := (
-				screen_x + int(IntegerMath.div_trunc(building_image.get_width(), 2))
-				- int(IntegerMath.div_trunc(marker_image.get_width(), 2))
+				screen_x + int(building_image.get_width() / 2)
+				- int(marker_image.get_width() / 2)
 			)
 			IsometricPixelOperations._blend_on_base(
 				output, marker_image, marker_x, building_base_y, configuration.tile_height
@@ -319,7 +321,7 @@ static func draw_tile(
 		)
 		var dispatch_x := (
 			screen_x + int(configuration.half_width)
-			- int(IntegerMath.div_trunc(dispatch_image.get_width(), 2))
+			- int(dispatch_image.get_width() / 2)
 		)
 		var dispatch_base_y := (
 			flat_base_y - city.land_altitude(x, y) * int(configuration.altitude_step)
@@ -350,7 +352,7 @@ static func draw_tile(
 			)
 			var special_x := (
 				screen_x + int(configuration.half_width)
-				- int(IntegerMath.div_trunc(special_image.get_width(), 2))
+				- int(special_image.get_width() / 2)
 			)
 			var special_altitude := city.object_altitude(x, y)
 			var special_base_y := (

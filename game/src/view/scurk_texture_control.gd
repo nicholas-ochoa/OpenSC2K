@@ -1,6 +1,8 @@
 class_name ScurkTextureControl
 extends Control
 
+@warning_ignore_start("integer_division")
+
 signal texture_selected(index: int)
 
 const COLUMN_COUNT := 3
@@ -107,7 +109,7 @@ func _draw() -> void:
 	for index in patterns.size():
 		var origin := Vector2i(
 			(index % COLUMN_COUNT) * CELL_SIZE,
-			int(IntegerMath.div_trunc(index, COLUMN_COUNT)) * CELL_SIZE
+			int(index / COLUMN_COUNT) * CELL_SIZE
 		)
 		draw_rect(Rect2(origin, Vector2i(CELL_SIZE, CELL_SIZE)), Color("c0c0c0"), true)
 		var pattern := patterns[index]
@@ -139,7 +141,7 @@ func _draw() -> void:
 	if selected_index >= 0 and selected_index < patterns.size():
 		var selected_origin := Vector2i(
 			(selected_index % COLUMN_COUNT) * CELL_SIZE,
-			int(IntegerMath.div_trunc(selected_index, COLUMN_COUNT)) * CELL_SIZE
+			int(selected_index / COLUMN_COUNT) * CELL_SIZE
 		)
 		draw_rect(
 			Rect2(selected_origin + Vector2i.ONE, Vector2i(CELL_SIZE - 2, CELL_SIZE - 2)),

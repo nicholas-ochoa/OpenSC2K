@@ -10,6 +10,8 @@ extends RefCounted
 # static silhouette and draws aircraft shadows from the static indices. the
 # buffers draw again only when the visible rectangle or region meshes change
 
+@warning_ignore_start("integer_division")
+
 const MAX_BUFFER_EDGE := 8192
 # item modes in the draw color alpha. 255 is an ordinary indexed sprite
 const MODE_SPRITE := 1
@@ -198,7 +200,7 @@ func sync() -> void:
 	var first := Vector2i((visible.position / divisor).floor()) - Vector2i.ONE
 	var last := Vector2i((visible.end / divisor).ceil()) + Vector2i.ONE
 	var native := Rect2i(first, last - first).intersection(
-		Rect2i(Vector2i.ZERO, IntegerMath.div_trunc_vec2i(source.size, divisor))
+		Rect2i(Vector2i.ZERO, source.size / divisor)
 	)
 
 	if not native.has_area() or native.size.x > MAX_BUFFER_EDGE or native.size.y > MAX_BUFFER_EDGE:
