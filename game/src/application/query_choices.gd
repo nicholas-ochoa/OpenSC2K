@@ -231,7 +231,7 @@ func _open_query(point: Vector2i) -> void:
 		result,
 		ImageTexture.create_from_image(neighborhood) if neighborhood != null else null,
 		app.palette,
-		app.palette_cycle_ticks,
+		app.palette_clock.cycle_ticks,
 	)
 	app.effects_audio._play_sound_events(result.get("sound_events", []))
 

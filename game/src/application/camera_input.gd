@@ -174,7 +174,7 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if entry == null:
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
 
-	var rendered := entry.create_image(app.toolbar_animation_palette if app.toolbar_animation_palette != null else app.palette)
+	var rendered := entry.create_image(app.palette_clock.toolbar_palette if app.palette_clock.toolbar_palette != null else app.palette)
 
 	if not rendered.get("ok", false):
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null

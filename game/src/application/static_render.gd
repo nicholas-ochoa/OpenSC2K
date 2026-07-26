@@ -14,12 +14,14 @@ const STATIC_EDIT_PATCH_MAX_AREA_RATIO := 0.25
 var app: CityApplication
 var caches: RenderCaches
 var state: StaticRenderState
+var palette_clock: PaletteAnimationClock
 
 
 func _init(application: CityApplication) -> void:
 	app = application
 	caches = application.render_caches
 	state = application.static_render_state
+	palette_clock = application.palette_clock
 
 
 func _refresh_after_city_edit(command: Dictionary) -> void:
@@ -424,21 +426,21 @@ func _update_palette_cycle_texture() -> void:
 	if app.palette == null or not app.palette.is_valid():
 		return
 
-	app.toolbar_animation_palette = Sc2Palette.new()
+	palette_clock.toolbar_palette = Sc2Palette.new()
 
-	for color_index in app.palette.animation_index_map(app.palette_cycle_ticks):
-		app.toolbar_animation_palette.colors.append(app.palette.colors[color_index])
+	for color_index in app.palette.animation_index_map(palette_clock.cycle_ticks):
+		palette_clock.toolbar_palette.colors.append(app.palette.colors[color_index])
 
 	app.camera_input._refresh_child_tool_icons()
-	var image := app.palette.animation_image(app.palette_cycle_ticks)
+	var image := app.palette.animation_image(palette_clock.cycle_ticks)
 
-	if app.palette_cycle_texture == null:
-		app.palette_cycle_texture = ImageTexture.create_from_image(image)
+	if palette_clock.cycle_texture == null:
+		palette_clock.cycle_texture = ImageTexture.create_from_image(image)
 	else:
-		app.palette_cycle_texture.update(image)
+		palette_clock.cycle_texture.update(image)
 
 	if app.map_view != null:
-		app.map_view.set_animated_palette(app.palette_cycle_texture)
+		app.map_view.set_animated_palette(palette_clock.cycle_texture)
 
 
 func _city_graphics_size() -> int:

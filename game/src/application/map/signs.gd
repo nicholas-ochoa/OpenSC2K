@@ -34,7 +34,7 @@ static func _refresh_sign_occlusion(render: ApplicationMapRender, view_size: int
 			render.caches.static_occlusion_commands, divisor
 		)
 
-	var color_indices := render.app.palette.animation_index_map(render.app.palette_cycle_ticks)
+	var color_indices := render.app.palette.animation_index_map(render.app.palette_clock.cycle_ticks)
 	var gpu_palette := render.caches.region_cache != null and render.caches.region_cache.gpu_enabled
 	var image_bounds := Rect2i(Vector2i.ZERO, render._static_image_size())
 	var visuals := {}

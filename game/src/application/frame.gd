@@ -6,10 +6,12 @@ const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
 
 var app: CityApplication
+var palette_clock: PaletteAnimationClock
 
 
 func _init(application: CityApplication) -> void:
 	app = application
+	palette_clock = application.palette_clock
 
 
 func _process(delta: float) -> void:
@@ -81,12 +83,12 @@ func _advance_palette_animation(delta: float, suspended: bool) -> void:
 	if suspended or app.speed_controller.speed == GameSpeed.Speed.PAUSED:
 		return
 
-	app.palette_elapsed_msec += maxf(delta, 0.0) * 1000.0
-	var ticks := int(app.palette_elapsed_msec / GameSpeedController.BASE_TICK_MSEC)
+	palette_clock.elapsed_msec += maxf(delta, 0.0) * 1000.0
+	var ticks := int(palette_clock.elapsed_msec / GameSpeedController.BASE_TICK_MSEC)
 
 	if ticks > 0:
-		app.palette_elapsed_msec -= ticks * GameSpeedController.BASE_TICK_MSEC
-		app.palette_cycle_ticks += ticks
+		palette_clock.elapsed_msec -= ticks * GameSpeedController.BASE_TICK_MSEC
+		palette_clock.cycle_ticks += ticks
 		app.static_render._update_palette_cycle_texture()
 
 

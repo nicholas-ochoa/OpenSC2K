@@ -71,10 +71,7 @@ var edit_display_timings := {}
 # static and dynamic render caches and jobs
 var render_caches := RenderCaches.new()
 var static_render_state := StaticRenderState.new()
-var toolbar_animation_palette: Sc2Palette
-var palette_cycle_ticks := 0
-var palette_elapsed_msec := 0.0
-var palette_cycle_texture: ImageTexture
+var palette_clock := PaletteAnimationClock.new()
 
 # scene controls and pending ui workflows
 var map_view: CityMapControl
