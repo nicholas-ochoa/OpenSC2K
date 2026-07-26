@@ -68,7 +68,7 @@ func _run() -> void:
 		main.city_files.call("_load_city_unchecked", city_path)
 		await process_frame
 		await process_frame
-		var document: Sc2File = main.get("current_document")
+		var document: Sc2File = main.document_state.current_document
 
 		if (
 			main.get("city") == null
@@ -137,7 +137,7 @@ func _run() -> void:
 				not main.city_files.call("_city_has_unsaved_changes")
 				or save_changes_dialog == null
 				or not save_changes_dialog.visible
-				or main.get("pending_city_exit_action") != "quit"
+				or main.city_files.pending_city_exit_action != "quit"
 			):
 				push_error("A changed city does not show the save-changes gate")
 				main.queue_free()
@@ -868,7 +868,7 @@ func _test_save_city(main: Node) -> bool:
 	dialog.hide()
 	var path := "user://save-city-smoke-%d.SC2" % OS.get_process_id()
 	var absolute_path := ProjectSettings.globalize_path(path)
-	var document := main.get("current_document") as Sc2File
+	var document := main.document_state.current_document as Sc2File
 	var source_path := document.source_path
 	var funds := document.misc_i32(0x14)
 	main.city_files.call("_on_save_path_selected", absolute_path)
@@ -881,13 +881,13 @@ func _test_save_city(main: Node) -> bool:
 		not first_save.is_empty() and saved != first_save
 		and expected.ok and saved == expected.data
 		and not dialog.visible and not main.city_files.call("_city_has_unsaved_changes")
-		and main.get("current_save_path") == absolute_path
+		and main.document_state.current_save_path == absolute_path
 	)
 	DirAccess.remove_absolute(absolute_path)
 	document.set_misc_i32(0x14, funds)
 	document.source_path = source_path
-	main.set("current_save_path", "")
-	main.set("saved_city_snapshot", document.serialize().data)
+	main.document_state.current_save_path = ""
+	main.document_state.saved_city_snapshot = document.serialize().data
 
 	if not passed:
 		push_error("Save City did not overwrite the selected copy and update saved state")
@@ -946,10 +946,10 @@ func _run_quick(reference_root: String) -> void:
 	var output := ProjectSettings.globalize_path("user://workflow-smoke.sc2x")
 	main.city_files._on_save_path_selected(output)
 	var saved := FileAccess.get_file_as_bytes(output)
-	assert(not saved.is_empty() and saved == main.current_document.serialize().data)
+	assert(not saved.is_empty() and saved == main.document_state.current_document.serialize().data)
 	main.city_files._load_city_unchecked(output)
 	main.frame._select_speed(GameSpeed.Speed.PAUSED)
-	assert(main.current_document.serialize().data == saved)
+	assert(main.document_state.current_document.serialize().data == saved)
 	assert(FileAccess.get_sha256(source) == source_hash)
 	main.queue_free()
 	await process_frame

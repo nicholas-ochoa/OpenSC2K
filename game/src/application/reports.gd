@@ -10,6 +10,7 @@ const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "c
 const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
 
 var app: CityApplication
+var document_state: ActiveDocumentState
 var text_resources: OriginalTextResources
 var newspaper_session_seed := 0
 var newspaper_session_state := PackedByteArray()
@@ -17,6 +18,7 @@ var newspaper_session_state := PackedByteArray()
 
 func _init(application: CityApplication) -> void:
 	app = application
+	document_state = application.document_state
 	text_resources = application.original_text_resources
 
 
@@ -189,12 +191,12 @@ func _refresh_city_map_viewport() -> void:
 
 func _refresh_newspaper_menu() -> void:
 	app.city_menu_bar.set_newspapers(
-		NewspaperDialog.newspaper_titles(app.city, app.current_document, text_resources.original_query_strings),
+		NewspaperDialog.newspaper_titles(app.city, document_state.current_document, text_resources.original_query_strings),
 	)
 
 
 func _on_newspaper_menu(id: int) -> void:
-	if app.city == null or app.current_document == null:
+	if app.city == null or document_state.current_document == null:
 		return
 
 	if id < 0 or id >= NewsQueue.available_paper_count(app.city.city_status()):
@@ -205,7 +207,7 @@ func _on_newspaper_menu(id: int) -> void:
 
 	app.newspaper_dialog.open_reports(
 		app.city,
-		app.current_document,
+		document_state.current_document,
 		text_resources.newspaper_data,
 		text_resources.original_query_strings,
 		CityStatusBar.NEWS_NAMES,
@@ -245,7 +247,7 @@ func _on_building_objection_closed() -> void:
 
 
 func _refresh_saved_news_summary() -> void:
-	if app.city == null or app.current_document == null:
+	if app.city == null or document_state.current_document == null:
 		if app.city_status_bar != null:
 			app.city_status_bar.set_reports(PackedStringArray())
 
@@ -253,7 +255,7 @@ func _refresh_saved_news_summary() -> void:
 
 		return
 
-	var misc_chunk := app.current_document.find_chunk("MISC")
+	var misc_chunk := document_state.current_document.find_chunk("MISC")
 
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != NewsQueue.MISC_SIZE:
 		if app.city_status_bar != null:

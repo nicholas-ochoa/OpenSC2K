@@ -35,7 +35,7 @@ func _run() -> void:
 	var alternate := _alternate_graphics()
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
 	var map: CityMapControl = main.map_view
-	var saved: PackedByteArray = main.current_document.serialize().data
+	var saved: PackedByteArray = main.document_state.current_document.serialize().data
 
 	for tool in ToolCatalog.all_tools():
 		main.selected_group = tool.group_index
@@ -150,7 +150,7 @@ func _run() -> void:
 	assert(desktop.presenter.graphics == null and desktop.presenter.active_group == -1)
 	desktop._update_icon()
 	assert(desktop.icon_image == desktop._project_icon)
-	assert(main.current_document.serialize().data == saved, "Cursor selection does not change the city")
+	assert(main.document_state.current_document.serialize().data == saved, "Cursor selection does not change the city")
 	pixel_canvas.queue_free()
 	main.queue_free()
 	await process_frame

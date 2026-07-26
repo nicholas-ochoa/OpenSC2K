@@ -128,7 +128,7 @@ func check_ui() -> void:
 	check(main.city_session._activate_document(doc), "Compatible city activates")
 	check(main.speed_controller.original_compatibility, "Active simulation receives compatibility")
 	var bytes: PackedByteArray = doc.serialize().data
-	main.current_save_path = "user://compatible-city.SC2"
+	main.document_state.current_save_path = "user://compatible-city.SC2"
 	main.city_files._upgrade_city_to_sc2x()
 	check(doc.serialize().data == bytes and not doc.is_extended(), "Conversion handler cannot bypass mode")
 	main.interface._show_main_menu()
@@ -139,7 +139,7 @@ func check_ui() -> void:
 	extended_file.store_buffer(extended.serialize().data)
 	extended_file.close()
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
-	check(main.current_document.is_extended() and main.current_document.map_size == 256, "SC2X loads normally even with an SC2 filename")
+	check(main.document_state.current_document.is_extended() and main.document_state.current_document.map_size == 256, "SC2X loads normally even with an SC2 filename")
 	check(not main.preferences.original_compatibility and not main.speed_controller.original_compatibility, "Opening SC2X disables compatibility")
 	check(not AppSettingsStore.load_values(settings_path).original_compatibility, "Automatic mode change persists")
 	check(main.city_session._activate_document(doc), "Return to original city")
@@ -161,7 +161,7 @@ func check_ui() -> void:
 	main.settings_dialog.original_compatibility_check.button_pressed = true
 	main.settings_dialog.hide()
 	main.settings._apply_settings()
-	check(not main.preferences.original_compatibility and main.current_document == extended, "Enabling mode cannot discard or convert active SC2X city")
+	check(not main.preferences.original_compatibility and main.document_state.current_document == extended, "Enabling mode cannot discard or convert active SC2X city")
 	check(not AppSettingsStore.load_values(settings_path).original_compatibility, "Rejected mode change does not persist")
 	await process_frame
 	main.settings_dialog.hide()

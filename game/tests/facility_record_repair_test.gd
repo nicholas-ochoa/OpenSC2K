@@ -225,7 +225,7 @@ func check_load() -> void:
 	var saved := FileAccess.get_file_as_bytes(save_path)
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
 	check(not main.city_files._city_has_unsaved_changes(), "Repaired city loads without new changes")
-	check(main.current_document.serialize().data == saved, "Actual reload is byte exact")
+	check(main.document_state.current_document.serialize().data == saved, "Actual reload is byte exact")
 	main.queue_free()
 	await process_frame
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(settings_path))

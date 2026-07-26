@@ -253,7 +253,7 @@ func _open_scenario_intro(scenario: ScenarioState) -> void:
 	var name := app.city.city_name()
 
 	if name.is_empty():
-		name = app.current_document.source_path.get_file().get_basename()
+		name = app.document_state.current_document.source_path.get_file().get_basename()
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Review the scenario briefing before the simulation starts."

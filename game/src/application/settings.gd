@@ -40,7 +40,7 @@ func _open_settings_dialog() -> void:
 	app.settings_dialog.overview_graphics_selector.select(preferences.overview_graphics)
 	app.settings_dialog.select_moving_frame_rate(preferences.moving_frame_rate)
 	app.settings_dialog.original_compatibility_check.button_pressed = preferences.original_compatibility
-	app.settings_dialog.original_compatibility_check.disabled = app.current_document != null and app.current_document.is_extended()
+	app.settings_dialog.original_compatibility_check.disabled = app.document_state.current_document != null and app.document_state.current_document.is_extended()
 	app.settings_dialog.original_compatibility_check.tooltip_text = "SC2X cities cannot return to original compatibility." if app.settings_dialog.original_compatibility_check.disabled else ""
 	app.settings_dialog.warn_sc2x_conversion_check.button_pressed = preferences.warn_sc2x_conversion
 	app.settings_dialog.shuffle_music_check.button_pressed = preferences.shuffle_music
@@ -69,7 +69,7 @@ func _refresh_settings_pack_names() -> void:
 func _apply_settings() -> void:
 	var values: Dictionary = app.settings_dialog.selected_values()
 
-	if bool(values.original_compatibility) and app.current_document != null and app.current_document.is_extended():
+	if bool(values.original_compatibility) and app.document_state.current_document != null and app.document_state.current_document.is_extended():
 		app.settings_dialog.show_compatibility_error("This city is SC2X and cannot return to original compatibility. Save it, then open a different original SC2 city or restart the app before enabling compatibility.")
 
 		return

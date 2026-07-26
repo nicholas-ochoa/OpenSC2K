@@ -7,10 +7,16 @@ const CityFiles = preload("res://src/formats/city_file_store.gd")
 const ScenarioModel = preload("res://src/model/scenario_state.gd")
 
 var app: CityApplication
+var document_state: ActiveDocumentState
+var pending_city_exit_action := ""
+var pending_city_exit_path := ""
+var pending_city_exit_waiting_for_save := false
+var pending_sc2x_document: Sc2File
 
 
 func _init(application: CityApplication) -> void:
 	app = application
+	document_state = application.document_state
 
 
 func _open_city_dialog() -> void:
@@ -38,23 +44,23 @@ func _open_scenario_dialog() -> void:
 
 
 func _save_city() -> void:
-	if app.current_document == null:
+	if document_state.current_document == null:
 		return
 
-	if app.current_save_path.is_empty():
+	if document_state.current_save_path.is_empty():
 		_open_save_dialog()
 	else:
-		_save_copy(app.current_save_path)
+		_save_copy(document_state.current_save_path)
 
 
 func _can_upgrade_city_to_sc2x() -> bool:
-	if app.preferences.original_compatibility or app.landscape_editor or app.city == null or app.current_document == null or app.simulation_engine == null:
+	if app.preferences.original_compatibility or app.landscape_editor or app.city == null or document_state.current_document == null or app.simulation_engine == null:
 		return false
 
-	if app.current_document.is_extended() or app.current_document.full_resolution_maps():
+	if document_state.current_document.is_extended() or document_state.current_document.full_resolution_maps():
 		return false
 
-	var path := app.current_save_path if not app.current_save_path.is_empty() else app.current_document.source_path
+	var path := document_state.current_save_path if not document_state.current_save_path.is_empty() else document_state.current_document.source_path
 
 	return path.get_extension().to_lower() == "sc2"
 
@@ -77,7 +83,7 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 	if not _can_upgrade_city_to_sc2x():
 		return
 
-	if not app.current_document.is_extended() and app.preferences.warn_sc2x_conversion and not confirmed:
+	if not document_state.current_document.is_extended() and app.preferences.warn_sc2x_conversion and not confirmed:
 		if app.sc2x_conversion_dialog == null:
 			app.sc2x_conversion_dialog = ConfirmationDialog.new()
 			app.sc2x_conversion_dialog.title = "Upgrade city to SC2X?"
@@ -88,9 +94,9 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 			app.add_child(app.sc2x_conversion_dialog)
 			app.sc2x_conversion_dialog.confirmed.connect(_confirm_sc2x_conversion)
 			app.sc2x_conversion_dialog.canceled.connect(func() -> void:
-				app.pending_sc2x_document = null)
+				pending_sc2x_document = null)
 
-		app.pending_sc2x_document = app.current_document
+		pending_sc2x_document = document_state.current_document
 		app.sc2x_conversion_dialog.popup_centered()
 
 		return
@@ -99,9 +105,9 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 		app.frame_simulation.close()
 		app.frame_simulation = null
 
-	var enabled := app.current_document.enable_full_resolution_maps()
+	var enabled := document_state.current_document.enable_full_resolution_maps()
 
-	if app.speed_controller != null and app.current_document.is_extended():
+	if app.speed_controller != null and document_state.current_document.is_extended():
 		app.frame_simulation = FrameSimulationRunner.new(app.speed_controller)
 
 	if not enabled:
@@ -112,7 +118,7 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 	app.simulation_timings.clear()
 	app.last_edit_command.clear()
 	app.scurk_edit_history.clear()
-	app.current_save_path = ""
+	document_state.current_save_path = ""
 	app.static_render._invalidate_view_render()
 	app.map_render._refresh_map(false)
 	_sync_upgrade_city_option()
@@ -121,21 +127,21 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 
 
 func _confirm_sc2x_conversion() -> void:
-	var expected := app.pending_sc2x_document
-	app.pending_sc2x_document = null
+	var expected := pending_sc2x_document
+	pending_sc2x_document = null
 
-	if expected != null and app.current_document == expected:
+	if expected != null and document_state.current_document == expected:
 		_upgrade_city_to_sc2x(true)
 
 
 func _open_save_dialog() -> void:
-	if app.current_document == null:
+	if document_state.current_document == null:
 		return
 
 	var save_directory := ProjectSettings.globalize_path("user://cities")
 	DirAccess.make_dir_recursive_absolute(save_directory)
 	app.save_dialog.current_dir = save_directory
-	var save_name := app.current_document.source_path.get_file().get_basename()
+	var save_name := document_state.current_document.source_path.get_file().get_basename()
 
 	if save_name.is_empty() and app.city != null:
 		save_name = app.city.city_name().validate_filename()
@@ -143,21 +149,21 @@ func _open_save_dialog() -> void:
 	if save_name.is_empty():
 		save_name = "New City"
 
-	app.save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"] if app.current_document.is_extended() else ["*.SC2, *.sc2 ; SimCity 2000 cities"])
-	app.save_dialog.current_file = save_name + (".sc2x" if app.current_document.is_extended() else ".SC2")
+	app.save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"] if document_state.current_document.is_extended() else ["*.SC2, *.sc2 ; SimCity 2000 cities"])
+	app.save_dialog.current_file = save_name + (".sc2x" if document_state.current_document.is_extended() else ".SC2")
 	app.save_dialog.popup_centered_ratio(0.8)
 
 
 func _city_has_unsaved_changes() -> bool:
-	if app.current_document == null or app.city == null:
+	if document_state.current_document == null or app.city == null:
 		return false
 
-	if not app.current_city_saved_once:
+	if not document_state.current_city_saved_once:
 		return true
 
-	var serialized := app.current_document.serialize()
+	var serialized := document_state.current_document.serialize()
 
-	return not serialized.ok or serialized.data != app.saved_city_snapshot
+	return not serialized.ok or serialized.data != document_state.saved_city_snapshot
 
 
 func _request_city_exit(action: String, path := "") -> void:
@@ -166,9 +172,9 @@ func _request_city_exit(action: String, path := "") -> void:
 
 		return
 
-	app.pending_city_exit_action = action
-	app.pending_city_exit_path = path
-	app.pending_city_exit_waiting_for_save = false
+	pending_city_exit_action = action
+	pending_city_exit_path = path
+	pending_city_exit_waiting_for_save = false
 	var display_name := app.city.city_name()
 
 	if display_name.is_empty():
@@ -188,16 +194,16 @@ func _perform_city_exit(action: String, path := "") -> void:
 
 
 func _save_pending_city_exit() -> void:
-	if app.pending_city_exit_action.is_empty():
+	if pending_city_exit_action.is_empty():
 		return
 
-	if app.current_save_path.is_empty():
-		app.pending_city_exit_waiting_for_save = true
+	if document_state.current_save_path.is_empty():
+		pending_city_exit_waiting_for_save = true
 		_open_save_dialog()
 
 		return
 
-	if _save_copy(app.current_save_path):
+	if _save_copy(document_state.current_save_path):
 		_continue_pending_city_exit()
 
 
@@ -210,14 +216,14 @@ func _on_save_changes_action(action: StringName) -> void:
 
 
 func _cancel_pending_city_exit() -> void:
-	app.pending_city_exit_action = ""
-	app.pending_city_exit_path = ""
-	app.pending_city_exit_waiting_for_save = false
+	pending_city_exit_action = ""
+	pending_city_exit_path = ""
+	pending_city_exit_waiting_for_save = false
 
 
 func _continue_pending_city_exit() -> void:
-	var action := app.pending_city_exit_action
-	var path := app.pending_city_exit_path
+	var action := pending_city_exit_action
+	var path := pending_city_exit_path
 	_cancel_pending_city_exit()
 	_perform_city_exit(action, path)
 
@@ -258,17 +264,17 @@ func _load_city_unchecked(path: String) -> void:
 func _on_save_path_selected(path: String) -> void:
 	var saved := _save_copy(path)
 
-	if saved and app.pending_city_exit_waiting_for_save:
+	if saved and pending_city_exit_waiting_for_save:
 		_continue_pending_city_exit()
 
 
 func _on_save_dialog_canceled() -> void:
-	if app.pending_city_exit_waiting_for_save:
+	if pending_city_exit_waiting_for_save:
 		_cancel_pending_city_exit()
 
 
 func _save_copy(path: String) -> bool:
-	var result := CityFiles.save_copy(app.current_document, path, app.reference_root, app.preferences.original_compatibility)
+	var result := CityFiles.save_copy(document_state.current_document, path, app.reference_root, app.preferences.original_compatibility)
 
 	if not result.ok:
 		app.interface._show_error(result.error)
@@ -276,10 +282,10 @@ func _save_copy(path: String) -> bool:
 		return false
 
 	var output_path: String = result.path
-	app.current_document.source_path = output_path
-	app.current_save_path = output_path
-	app.current_city_saved_once = true
-	app.saved_city_snapshot = result.data.duplicate()
+	document_state.current_document.source_path = output_path
+	document_state.current_save_path = output_path
+	document_state.current_city_saved_once = true
+	document_state.saved_city_snapshot = result.data.duplicate()
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Saved city: %s" % output_path
 	_sync_upgrade_city_option()

@@ -44,7 +44,7 @@ func _run() -> void:
 		background._process(0.2)
 
 	assert(FileAccess.get_file_as_bytes(background.source_path) == source_bytes)
-	assert(main.city == null and main.current_document == null)
+	assert(main.city == null and main.document_state.current_document == null)
 	main.main_menu.hide()
 	var elapsed := background.elapsed
 	background._process(1.0)

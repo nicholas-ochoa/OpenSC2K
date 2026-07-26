@@ -25,7 +25,7 @@ func _run() -> void:
 					main.city_toolbar.brush_shape_input.select(shape)
 					main.current_tool._update_edit_state()
 					var point := Vector2i(edge - 24, edge - 24)
-					var before: Array = DocumentState.capture(main.current_document)
+					var before: Array = DocumentState.capture(main.document_state.current_document)
 					var rng: int = main.tool_random.state
 					main.map_view.selection_start = point
 					main.map_view.selection_end = point
@@ -40,7 +40,7 @@ func _run() -> void:
 							assert(main.city.is_water(x, point.y) if tool == 1 else main.city.building_id(x, point.y) in range(6, 13))
 					main.map_view.selection._clear_selection()
 					assert(LandscapeCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
-					assert(DocumentState.capture(main.current_document) == before)
+					assert(DocumentState.capture(main.document_state.current_document) == before)
 					assert(main.tool_random.state == rng)
 		if edge == 32:
 			_check_level_brush(main, Vector2i(4, 4))
@@ -72,7 +72,7 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 		assert(main.map_view.brush_tiles(point).size() == (21 if editor else 1))
 		var target: int = main.city.land_altitude(point.x, point.y)
 		var funds: int = main.city.funds()
-		var before: Array = DocumentState.capture(main.current_document)
+		var before: Array = DocumentState.capture(main.document_state.current_document)
 		var rng: int = main.tool_random.state
 		main.map_view.selection_start = point
 		main.map_view.selection_end = point
@@ -88,7 +88,7 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 				assert(main.city.land_altitude(x, point.y + dy) == target)
 		main.map_view.selection._clear_selection()
 		assert(TerrainCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
-		assert(DocumentState.capture(main.current_document) == before)
+		assert(DocumentState.capture(main.document_state.current_document) == before)
 		assert(main.tool_random.state == rng)
 	main.landscape_editor = true
 	main.city_toolbar.set_landscape_editor(true)

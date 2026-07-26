@@ -9,10 +9,7 @@ const ScurkHistory = preload("res://src/tools/scurk/scurk_edit_history.gd")
 
 # active document and save state
 var city: CityState
-var current_document: Sc2File
-var saved_city_snapshot := PackedByteArray()
-var current_save_path := ""
-var current_city_saved_once := false
+var document_state := ActiveDocumentState.new()
 # loaded graphics and active view
 var palette: Sc2Palette
 var scenario_palette: Sc2Palette
@@ -43,7 +40,6 @@ var show_underground_subways := true
 # application preferences and asset source
 var preferences := AppPreferences.new()
 var sc2x_conversion_dialog: ConfirmationDialog
-var pending_sc2x_document: Sc2File
 var asset_source: GameAssetSource
 var reference_root := ""
 var runtime_initialized := false
@@ -156,9 +152,6 @@ var pending_scurk_print_options: Dictionary = {}
 var scurk_edit_history := ScurkHistory.new()
 var about_dialog: AboutDialog
 var save_changes_dialog: SaveChangesDialog
-var pending_city_exit_action := ""
-var pending_city_exit_path := ""
-var pending_city_exit_waiting_for_save := false
 var budget_dialog: BudgetDialog
 var game_over_dialog: AcceptDialog
 var military_dialog: ConfirmationDialog

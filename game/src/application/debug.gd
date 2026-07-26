@@ -107,7 +107,7 @@ func _debug_add_funds(amount: int) -> Dictionary:
 
 
 func _debug_unlock_everything() -> Dictionary:
-	var result := DebugActions.unlock_everything(app.city, app.current_document)
+	var result := DebugActions.unlock_everything(app.city, app.document_state.current_document)
 
 	if not result.ok:
 		return {"ok": false, "message": result.error}
@@ -170,7 +170,7 @@ func _debug_start_disaster(disaster_type: int) -> Dictionary:
 
 
 func _debug_end_disaster() -> Dictionary:
-	var result := DebugActions.end_disaster(app.city, app.current_document, app.simulation_engine)
+	var result := DebugActions.end_disaster(app.city, app.document_state.current_document, app.simulation_engine)
 
 	if not result.ok:
 		return {"ok": false, "message": result.error}
@@ -198,7 +198,7 @@ func _debug_end_disaster() -> Dictionary:
 
 func _debug_dispatch_maxis_man() -> Dictionary:
 	var center := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
-	var result := DebugActions.dispatch_maxis_man(app.city, app.current_document, center)
+	var result := DebugActions.dispatch_maxis_man(app.city, app.document_state.current_document, center)
 
 	if not result.ok:
 		return {"ok": false, "message": result.error}

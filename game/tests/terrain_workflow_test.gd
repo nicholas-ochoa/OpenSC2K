@@ -70,11 +70,11 @@ func _run() -> void:
 	main.current_tool._select_tool_group(6)
 	assert(main.selected_group == 0)
 	main.selected_group = 6
-	var data: PackedByteArray = main.current_document.serialize().data
+	var data: PackedByteArray = main.document_state.current_document.serialize().data
 	var point := Vector2i(40, 40)
 	var path: Array[Vector2i] = [point]
 	main.city_edits._apply_map_selection(point, point, path, false)
-	assert(main.current_document.serialize().data == data)
+	assert(main.document_state.current_document.serialize().data == data)
 	main.current_tool._select_tool_group(0)
 	main.current_tool._select_subtool(2)
 	main.city_edits._apply_map_selection(point, point, path, false)
@@ -85,7 +85,7 @@ func _run() -> void:
 	assert(not main.landscape_editor and not main.city_toolbar.start_city_button.visible)
 	assert(main.city_toolbar.toolbar_buttons[6].visible)
 	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
-	data = main.current_document.serialize().data
+	data = main.document_state.current_document.serialize().data
 	var all_levels := CityIsometricRenderer.create_image(main.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	main.debug._debug_set_visible_altitude_levels(1)
 	assert(main.city.visible_altitude_levels == 1)
@@ -100,12 +100,12 @@ func _run() -> void:
 	var cutaway := CityIsometricRenderer.create_image(main.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	assert(all_levels.ok and cutaway.ok and all_levels.image.get_data() != cutaway.image.get_data())
 	assert(CityViewFilter.surface_copy(main.city, {}).visible_altitude_levels == 1)
-	assert(main.current_document.serialize().data == data)
+	assert(main.document_state.current_document.serialize().data == data)
 	main.debug._debug_set_visible_altitude_levels(32)
 	assert(main.city.tile_is_visible(40, 40))
 	var restored := CityIsometricRenderer.create_image(main.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	assert(restored.image.get_data() == all_levels.image.get_data())
-	assert(main.current_document.serialize().data == data)
+	assert(main.document_state.current_document.serialize().data == data)
 	main.current_tool._select_tool_group(3)
 	main.current_tool._select_subtool(2)
 	assert(not main.current_tool._placement_preview_error(Vector2i(0, 0)).is_empty())

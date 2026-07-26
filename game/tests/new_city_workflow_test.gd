@@ -140,7 +140,7 @@ func _run() -> void:
 	assert(main.city.difficulty() == dialog.difficulty_input.get_selected_id())
 	assert(main.landscape_editor)
 	for id in ["ALTM", "XTER", "XBLD", "XBIT"]:
-		assert(main.current_document.find_chunk(id).decoded_payload == generated.find_chunk(id).decoded_payload)
+		assert(main.document_state.current_document.find_chunk(id).decoded_payload == generated.find_chunk(id).decoded_payload)
 	assert(main.city_toolbar.regenerate_button.visible)
 	assert(not main.city_toolbar.child_palette.visible)
 	assert(main.city_toolbar.landscape_buttons.size() == 12)
@@ -198,13 +198,13 @@ func _run() -> void:
 	for tool in 4:
 		var expected := TerrainToolIcons.terrain_action(main.asset_source.assets.city_ui_graphics, ["tree", "water", "stream", "forest"][tool])
 		assert(main.camera_input._tool_button_icon(1, tool).get_image().get_data() == expected.get_image().get_data())
-	var original: PackedByteArray = main.current_document.serialize().data
+	var original: PackedByteArray = main.document_state.current_document.serialize().data
 	main.new_city._reopen_terrain_dialog()
 	assert(dialog.visible and dialog.done_button.disabled)
 	_assert_editor_controls(main, false)
 	dialog.water_input.value += 1
 	main.new_city._cancel_new_city()
-	assert(main.current_document.serialize().data == original and main.landscape_editor)
+	assert(main.document_state.current_document.serialize().data == original and main.landscape_editor)
 	_assert_editor_controls(main, true)
 	main.new_city._reopen_terrain_dialog()
 	main.new_city._make_new_city_preview()

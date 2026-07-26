@@ -41,7 +41,7 @@ func _run() -> void:
 	var engine_id: int = main.simulation_engine.get_instance_id()
 	var random_state: int = main.simulation_engine.random.state
 	var old_bytes: PackedByteArray = document.serialize().data
-	main.current_save_path = "user://source-city.SC2"
+	main.document_state.current_save_path = "user://source-city.SC2"
 	main.city_files._sync_upgrade_city_option()
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) >= 0, "Original SC2 shows upgrade in Options")
 	main.preferences.original_compatibility = true
@@ -54,13 +54,13 @@ func _run() -> void:
 	check(main.sc2x_conversion_dialog.visible and document.serialize().data == old_bytes, "Warning appears before irreversible conversion")
 	main.sc2x_conversion_dialog.canceled.emit()
 	main.sc2x_conversion_dialog.hide()
-	check(document.serialize().data == old_bytes and main.current_save_path == "user://source-city.SC2", "Cancel retains original city and path")
+	check(document.serialize().data == old_bytes and main.document_state.current_save_path == "user://source-city.SC2", "Cancel retains original city and path")
 	main.menus._on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
 	main.sc2x_conversion_dialog.hide()
 	main.sc2x_conversion_dialog.confirmed.emit()
 	check(document.full_resolution_maps(), "Options upgrades city after confirmation")
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) < 0, "SC2X hides upgrade")
-	check(main.current_save_path.is_empty(), "Conversion requires a separate save path")
+	check(main.document_state.current_save_path.is_empty(), "Conversion requires a separate save path")
 	check(main.last_edit_command.is_empty(), "Old-format undo is cleared")
 	check(main.simulation_engine.get_instance_id() == engine_id and main.simulation_engine.random.state == random_state,
 		"Conversion keeps simulation and RNG state")
@@ -68,12 +68,12 @@ func _run() -> void:
 	check(main.save_dialog.visible and main.save_dialog.current_file.ends_with(".sc2x"), "Conversion opens SC2X Save As")
 	check(document.serialize().data != old_bytes and main.city_files._city_has_unsaved_changes(), "Conversion is an unsaved change")
 	main.save_dialog.hide()
-	var saved_path: String = main.current_save_path
+	var saved_path: String = main.document_state.current_save_path
 	main.city_files._upgrade_city_to_sc2x()
-	check(main.current_save_path == saved_path and not main.save_dialog.visible, "Repeated conversion is harmless")
+	check(main.document_state.current_save_path == saved_path and not main.save_dialog.visible, "Repeated conversion is harmless")
 	var second := EmptyCityTemplate.create(128)
 	check(main.city_session._activate_document(second), "Activate another original city")
-	main.current_save_path = "user://second-city.SC2"
+	main.document_state.current_save_path = "user://second-city.SC2"
 	main.preferences.warn_sc2x_conversion = false
 	main.city_files._upgrade_city_to_sc2x()
 	check(second.is_extended() and not main.sc2x_conversion_dialog.visible, "Disabled warning permits direct conversion")

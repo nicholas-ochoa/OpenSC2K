@@ -9,10 +9,12 @@ const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
 
 var app: CityApplication
+var document_state: ActiveDocumentState
 
 
 func _init(application: CityApplication) -> void:
 	app = application
+	document_state = application.document_state
 
 
 func _activate_document(
@@ -122,9 +124,9 @@ func _activate_document(
 
 	app.current_tool._select_tool_group(17)
 	app.overlay_mode = "city"
-	app.current_document = document
-	var initial_serialized := app.current_document.serialize()
-	app.saved_city_snapshot = (
+	document_state.current_document = document
+	var initial_serialized := document_state.current_document.serialize()
+	document_state.saved_city_snapshot = (
 		initial_serialized.data.duplicate() if initial_serialized.ok else PackedByteArray()
 	)
 	var facility_repair := FacilityRecordRepair.apply(app.city)
@@ -137,9 +139,9 @@ func _activate_document(
 		if facility_repair.unfilled > 0:
 			status_text += " %d buildings still need records; the table is full." % facility_repair.unfilled
 
-	app.current_city_saved_once = not app.current_document.source_path.is_empty()
-	var source_path := app.current_document.source_path.simplify_path()
-	app.current_save_path = (
+	document_state.current_city_saved_once = not document_state.current_document.source_path.is_empty()
+	var source_path := document_state.current_document.source_path.simplify_path()
+	document_state.current_save_path = (
 		source_path
 		if (
 			not source_path.is_empty()
@@ -171,7 +173,7 @@ func _activate_document(
 	app.speed_controller = GameSpeed.new(app.simulation_engine)
 	app.speed_controller.original_compatibility = app.preferences.original_compatibility
 
-	if app.current_document.is_extended():
+	if document_state.current_document.is_extended():
 		app.frame_simulation = FrameSimulationRunner.new(app.speed_controller)
 
 	app.frame._sync_speed_ui()

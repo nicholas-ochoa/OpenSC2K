@@ -53,7 +53,7 @@ func _start_export(options: Dictionary) -> void:
 		return
 
 	# the worker renders a private copy, so play and edits can continue
-	var snapshot := CityModel.from_document(app.current_document.duplicate_document())
+	var snapshot := CityModel.from_document(app.document_state.current_document.duplicate_document())
 
 	if not snapshot.is_valid():
 		app.interface._show_error("Cannot prepare the city for export: %s" % snapshot.load_error)

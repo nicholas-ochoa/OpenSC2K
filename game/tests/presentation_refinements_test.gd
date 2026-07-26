@@ -61,7 +61,7 @@ func _run() -> void:
 	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 	assert(main.newspaper_dialog.page is NewspaperContent)
 	assert(main.newspaper_dialog.exclusive)
-	var city := CityState.from_document(main.current_document.duplicate_document())
+	var city := CityState.from_document(main.document_state.current_document.duplicate_document())
 	city.set_land_altitude(5, 5, 5)
 	city.set_tile_flag(5, 5, 4, false)
 	city.set_terrain_id(5, 5, 0)
