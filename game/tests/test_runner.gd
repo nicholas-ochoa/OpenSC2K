@@ -916,17 +916,17 @@ func _test_sprite_archives(reference_root: String) -> void:
 	_check(small_medium.is_valid(), "Small, medium, and special sprite archives combine")
 	_check(small_medium.find_sprite(698) != null, "Special archive supplies medium hydro sprite 698")
 	_check(
-		IsometricRenderer.shadow_color(palette, palette.color(0x5f)).to_rgba32()
+		IsometricPixelOperations.shadow_color(palette, palette.color(0x5f)).to_rgba32()
 		== palette.color(0x64).to_rgba32(),
 		"Aircraft shadow remaps palette index 0x5f to 0x64",
 	)
 	_check(
-		IsometricRenderer.shadow_color(palette, palette.color(0x74)).to_rgba32()
+		IsometricPixelOperations.shadow_color(palette, palette.color(0x74)).to_rgba32()
 		== palette.color(0x7e).to_rgba32(),
 		"Aircraft shadow remaps the ground-color range to 0x7e",
 	)
 	_check(
-		IsometricRenderer.shadow_color(palette, palette.color(0x73)).to_rgba32()
+		IsometricPixelOperations.shadow_color(palette, palette.color(0x73)).to_rgba32()
 		== palette.color(0x73).to_rgba32(),
 		"Aircraft shadow keeps colors outside its recovered ranges",
 	)
@@ -985,16 +985,16 @@ func _test_sprite_archives(reference_root: String) -> void:
 
 	var starter_document := _load_fixture(reference_root.path_join("CITIES/STARTER.SC2"))
 	var starter := CityModel.from_document(starter_document)
-	var asset_errors := IsometricRenderer.validate_assets(starter, large)
+	var asset_errors := IsometricStaticVisuals.validate_assets(starter, large)
 	_check(asset_errors.is_empty(), "Starter city has every required large sprite: %s" % asset_errors)
-	var small_asset_errors := IsometricRenderer.validate_assets(
+	var small_asset_errors := IsometricStaticVisuals.validate_assets(
 		starter, small_medium, IsometricRenderer.VIEW_SMALL
 	)
 	_check(
 		small_asset_errors.is_empty(),
 		"Starter city has every required small sprite: %s" % small_asset_errors,
 	)
-	var medium_asset_errors := IsometricRenderer.validate_assets(
+	var medium_asset_errors := IsometricStaticVisuals.validate_assets(
 		starter, small_medium, IsometricRenderer.VIEW_MEDIUM
 	)
 	_check(
@@ -1155,7 +1155,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"City model reads the shared 64 by 64 traffic cell",
 	)
 	_check(
-		IsometricRenderer.traffic_overlay_visual(
+		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).is_empty(),
 		"Normal road traffic does not draw at density 85",
@@ -1165,7 +1165,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		overlay_document.find_chunk("XTRF").set_decoded_payload(traffic_data),
 		"Traffic view fixture crosses the first threshold",
 	)
-	var low_traffic := IsometricRenderer.traffic_overlay_visual(
+	var low_traffic := IsometricStaticVisuals.traffic_overlay_visual(
 		overlay_city, overlay_point.x, overlay_point.y
 	)
 	_check(
@@ -1188,13 +1188,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Traffic pixels replace only the recovered road-deck palette index",
 	)
 	_check(
-		IsometricRenderer.traffic_overlay_visual(
+		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_MEDIUM
 		).sprite_id == 900,
 		"Medium traffic uses its native sprite set",
 	)
 	_check(
-		IsometricRenderer.traffic_overlay_visual(
+		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_SMALL
 		).sprite_id == 400,
 		"Small traffic uses its native sprite set",
@@ -1205,13 +1205,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Traffic view fixture crosses the second threshold",
 	)
 	_check(
-		IsometricRenderer.traffic_overlay_visual(
+		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).sprite_id == 1427,
 		"Normal road traffic selects the recovered high-density variant",
 	)
 	_check(
-		IsometricRenderer.traffic_overlay_visual(
+		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_SMALL
 		).is_empty(),
 		"Small view omits high-density variants absent from its source archive",
@@ -1221,7 +1221,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Traffic exclusion fixture installs a power line",
 	)
 	_check(
-		IsometricRenderer.traffic_overlay_visual(
+		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).is_empty(),
 		"Busy traffic cells do not draw traffic sprites on power lines",
@@ -1236,7 +1236,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Traffic view fixture crosses the highway threshold",
 	)
 	_check(
-		IsometricRenderer.traffic_overlay_visual(
+		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).sprite_id == 1410,
 		"Highway traffic uses the recovered lower threshold and lane sprite",
@@ -1247,7 +1247,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Traffic view fixture crosses the second highway threshold",
 	)
 	_check(
-		IsometricRenderer.traffic_overlay_visual(
+		IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).sprite_id == 1437,
 		"Highway traffic selects the recovered high-density lane sprite",
@@ -1262,7 +1262,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Traffic view fixture restores the first highway threshold",
 	)
 	_check(
-		not IsometricRenderer.traffic_overlay_visual(
+		not IsometricStaticVisuals.traffic_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).is_empty(),
 		"Elevated highway traffic uses the recovered lower threshold",
@@ -1297,7 +1297,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		),
 		"Elevated highway draws from its compass-selected anchor",
 	)
-	var highway_ground := IsometricRenderer.highway_ground_visuals(
+	var highway_ground := IsometricStaticVisuals.highway_ground_visuals(
 		overlay_city, overlay_point.x, overlay_point.y
 	)
 	_check(
@@ -1309,7 +1309,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and highway_ground[3].offset == Vector2i(16, 8),
 		"Elevated highway redraws the recovered four-cell ground diamond",
 	)
-	var small_highway_ground := IsometricRenderer.highway_ground_visuals(
+	var small_highway_ground := IsometricStaticVisuals.highway_ground_visuals(
 		overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_SMALL
 	)
 	_check(
@@ -1317,9 +1317,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Small elevated highways omit the large and medium ground-redraw pass",
 	)
 	_check(
-		IsometricRenderer.highway_ground_visuals(overlay_city, 127, 0).size() == 1
-		and IsometricRenderer.highway_ground_visuals(overlay_city, 64, 0).size() == 2
-		and IsometricRenderer.highway_ground_visuals(overlay_city, 127, 64).size() == 2,
+		IsometricStaticVisuals.highway_ground_visuals(overlay_city, 127, 0).size() == 1
+		and IsometricStaticVisuals.highway_ground_visuals(overlay_city, 64, 0).size() == 2
+		and IsometricStaticVisuals.highway_ground_visuals(overlay_city, 127, 64).size() == 2,
 		"Malformed edge highway anchors clip ground reads to valid map cells",
 	)
 	_check(
@@ -1331,13 +1331,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Network orientation fixture clears the saved mirror",
 	)
 	_check(
-		not IsometricRenderer.building_sprite_flip(
+		not IsometricStaticVisuals.building_sprite_flip(
 			overlay_city, overlay_point.x, overlay_point.y, 0x1d
 		),
 		"Compass rotation does not add a mirror to a network sprite",
 	)
 	_check(
-		IsometricRenderer.building_sprite_flip(
+		IsometricStaticVisuals.building_sprite_flip(
 			overlay_city, overlay_point.x, overlay_point.y, 0x70
 		),
 		"Odd compass rotation adds the original mirror to a building sprite",
@@ -1347,10 +1347,10 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Network orientation fixture sets the saved mirror",
 	)
 	_check(
-		IsometricRenderer.building_sprite_flip(
+		IsometricStaticVisuals.building_sprite_flip(
 			overlay_city, overlay_point.x, overlay_point.y, 0x2c
 		)
-		and not IsometricRenderer.building_sprite_flip(
+		and not IsometricStaticVisuals.building_sprite_flip(
 			overlay_city, overlay_point.x, overlay_point.y, 0x70
 		),
 		"Saved mirror stays direct for rail and combines with compass for buildings",
@@ -1383,13 +1383,13 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Power-marker fixture clears the powered flag",
 	)
 	_check(
-		IsometricRenderer.power_marker_visual(
+		IsometricStaticVisuals.power_marker_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).sprite_id == 1386,
 		"Unpowered zone building selects the recovered large marker",
 	)
 	_check(
-		IsometricRenderer.power_marker_visual(
+		IsometricStaticVisuals.power_marker_visual(
 			overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_SMALL
 		).sprite_id == 386,
 		"Small view selects its native unpowered marker",
@@ -1399,7 +1399,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Power-marker fixture sets the powered flag",
 	)
 	_check(
-		IsometricRenderer.power_marker_visual(
+		IsometricStaticVisuals.power_marker_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).is_empty(),
 		"Powered zone building does not draw an unpowered marker",
@@ -1412,14 +1412,14 @@ func _test_sprite_archives(reference_root: String) -> void:
 		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x04, false),
 		"Fire view fixture uses a land tile",
 	)
-	var fire_visual := IsometricRenderer.fire_overlay_visual(
+	var fire_visual := IsometricStaticVisuals.fire_overlay_visual(
 		overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_LARGE, 3
 	)
 	_check(
 		fire_visual.sprite_id >= 1396 and fire_visual.sprite_id <= 1399,
 		"Fire view selects a native large frame from its visual phase",
 	)
-	var fire_command := IsometricRenderer.special_overlay_draw_command(
+	var fire_command := IsometricDynamicCommands.special_overlay_draw_command(
 		overlay_city,
 		large,
 		overlay_point,
@@ -1430,7 +1430,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		fire_command.static_occlusion,
 		"Foreground buildings occlude dynamic fire markers",
 	)
-	var flipped_fire := IsometricRenderer.fire_overlay_visual(
+	var flipped_fire := IsometricStaticVisuals.fire_overlay_visual(
 		overlay_city, overlay_point.x, overlay_point.y, IsometricRenderer.VIEW_LARGE, 4
 	)
 	_check(
@@ -1446,9 +1446,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		var original_water := overlay_city.is_water(fire_x, overlay_point.y)
 		overlay_city.set_text_overlay_id(fire_x, overlay_point.y, 0xff)
 		overlay_city.set_tile_flag(fire_x, overlay_point.y, 0x04, false)
-		var visual := IsometricRenderer.fire_overlay_visual(overlay_city, fire_x, overlay_point.y)
+		var visual := IsometricStaticVisuals.fire_overlay_visual(overlay_city, fire_x, overlay_point.y)
 		fire_frames[visual.sprite_id] = true
-		_check(visual == IsometricRenderer.fire_overlay_visual(overlay_city, fire_x, overlay_point.y),
+		_check(visual == IsometricStaticVisuals.fire_overlay_visual(overlay_city, fire_x, overlay_point.y),
 			"Fire animation is stable for the same tile and display time")
 		overlay_city.set_text_overlay_id(fire_x, overlay_point.y, original_overlay)
 		overlay_city.set_tile_flag(fire_x, overlay_point.y, 0x04, original_water)
@@ -1465,7 +1465,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Fire view fixture changes to a water tile",
 	)
 	_check(
-		IsometricRenderer.fire_overlay_visual(
+		IsometricStaticVisuals.fire_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).is_empty(),
 		"Fire does not draw on a saved water tile",
@@ -1475,7 +1475,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Special-overlay fixture installs marker 0xfb",
 	)
 	_check(
-		IsometricRenderer.special_overlay_visual(
+		IsometricStaticVisuals.special_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).sprite_id == 1496,
 		"Special marker 0xfb uses its recovered large sprite on water",
@@ -1485,7 +1485,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Special-overlay fixture installs marker 0xfc",
 	)
 	_check(
-		IsometricRenderer.special_overlay_visual(
+		IsometricStaticVisuals.special_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y,
 			IsometricRenderer.VIEW_MEDIUM
 		).sprite_id == 992,
@@ -1496,7 +1496,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Special-overlay fixture installs marker 0xfd",
 	)
 	_check(
-		IsometricRenderer.special_overlay_visual(
+		IsometricStaticVisuals.special_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y
 		).is_empty(),
 		"Special marker 0xfd does not draw on a saved water tile",
@@ -1505,7 +1505,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		overlay_city.set_tile_flag(overlay_point.x, overlay_point.y, 0x04, false),
 		"Special-overlay fixture changes back to dry land",
 	)
-	var launch_effect := IsometricRenderer.special_overlay_visual(
+	var launch_effect := IsometricStaticVisuals.special_overlay_visual(
 		overlay_city, overlay_point.x, overlay_point.y,
 		IsometricRenderer.VIEW_LARGE, 1
 	)
@@ -1518,7 +1518,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Special-overlay fixture installs marker 0xfe",
 	)
 	_check(
-		IsometricRenderer.special_overlay_visual(
+		IsometricStaticVisuals.special_overlay_visual(
 			overlay_city, overlay_point.x, overlay_point.y,
 			IsometricRenderer.VIEW_SMALL, 0
 		).sprite_id == 493,
@@ -1529,7 +1529,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		overlay_city.set_land_altitude(edge_point.x, edge_point.y, 3),
 		"Edge-stack fixture sets three land levels",
 	)
-	var land_edges := IsometricRenderer.edge_stack_visuals(
+	var land_edges := IsometricStaticVisuals.edge_stack_visuals(
 		overlay_city, edge_point.x, edge_point.y
 	)
 	_check(
@@ -1547,7 +1547,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		overlay_city.set_tile_flag(edge_point.x, edge_point.y, 0x04, true),
 		"Edge-stack fixture marks the edge as water",
 	)
-	var water_edges := IsometricRenderer.edge_stack_visuals(
+	var water_edges := IsometricStaticVisuals.edge_stack_visuals(
 		overlay_city, edge_point.x, edge_point.y
 	)
 	_check(
@@ -1557,7 +1557,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and water_edges[4].sprite_id == 1284,
 		"Large map edge adds water-side sprites above the land stack",
 	)
-	var small_edges := IsometricRenderer.edge_stack_visuals(
+	var small_edges := IsometricStaticVisuals.edge_stack_visuals(
 		overlay_city, edge_point.x, edge_point.y, IsometricRenderer.VIEW_SMALL
 	)
 	_check(
@@ -1568,7 +1568,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Small map edge uses native side sprites at three-pixel steps",
 	)
 	_check(
-		IsometricRenderer.edge_stack_visuals(
+		IsometricStaticVisuals.edge_stack_visuals(
 			overlay_city, 126, 64, IsometricRenderer.VIEW_LARGE
 		).is_empty(),
 		"Interior tiles do not draw map-edge stacks",
@@ -1885,7 +1885,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 			capeques_dynamic_moving.append(command)
 
 	_check(
-		capeques_dynamic_moving == IsometricRenderer.moving_thing_draw_commands(
+		capeques_dynamic_moving == IsometricDynamicCommands.moving_thing_draw_commands(
 			capeques, large, IsometricRenderer.VIEW_LARGE, 0
 		),
 		"Indexed dynamic lookup preserves Capeques moving-object draw order",
@@ -2630,9 +2630,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Train commands request the dedicated power-line foreground mask",
 	)
 	_check(
-		IsometricRenderer.train_power_foreground_reference_sprite_id(0x0e) == -1
-		and IsometricRenderer.train_power_foreground_reference_sprite_id(0x48) == 1045
-		and IsometricRenderer.train_power_foreground_reference_sprite_id(0x2d) == 0,
+		IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x0e) == -1
+		and IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x48) == 1045
+		and IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x2d) == 0,
 		"Power lines and crossovers select their train foreground source",
 	)
 	var crossing_foreground_command: Dictionary = {}
@@ -2786,7 +2786,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Tornado view selects its native small frame and altitude scale",
 	)
 	_check(
-		IsometricRenderer.bridge_effect_position(starter, {
+		IsometricGeometry.bridge_effect_position(starter, {
 			"point": Vector2i(64, 64),
 			"screen_offset": Vector2i(16, -8),
 		}, 10) == Vector2i(2096, 1518),
@@ -2815,7 +2815,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	var small_debris := small_medium.find_sprite(392)
 	var small_debris_height := small_debris.height if small_debris != null else -1
-	var small_debris_position := IsometricRenderer.bridge_effect_position(
+	var small_debris_position := IsometricGeometry.bridge_effect_position(
 		starter,
 		{
 			"point": Vector2i(64, 64),
@@ -2831,7 +2831,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	var medium_debris := small_medium.find_sprite(892)
 	var medium_debris_height := medium_debris.height if medium_debris != null else -1
-	var medium_debris_position := IsometricRenderer.bridge_effect_position(
+	var medium_debris_position := IsometricGeometry.bridge_effect_position(
 		starter,
 		{
 			"point": Vector2i(64, 64),
@@ -2845,7 +2845,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and medium_debris_position == Vector2i(1048, 764 - medium_debris.height),
 		"Medium bridge debris scales its tile anchor and recovered offset",
 	)
-	var monster_layers := IsometricRenderer.monster_layers(starter, 64, 64, {
+	var monster_layers := IsometricMovingVisuals.monster_layers(starter, 64, 64, {
 		"type": 5,
 		"z": 10,
 		"px": 8,
@@ -2887,7 +2887,7 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and monster_layers[14].flip,
 		"Monster view mirrors and positions the right lower outer layer",
 	)
-	var small_monster_layers := IsometricRenderer.monster_layers(starter, 64, 64, {
+	var small_monster_layers := IsometricMovingVisuals.monster_layers(starter, 64, 64, {
 		"type": 5,
 		"z": 10,
 		"px": 8,
@@ -16379,15 +16379,15 @@ func _test_dispatch_command(reference_root: String) -> void:
 	_check(police.ok and police.slot_index == 1 and police.thing_index == 1, "Police dispatch resets old units and uses the first record")
 	_check(city.thing(1).type == 7 and city.thing(1).x == 10 and city.thing(1).y == 10, "Police dispatch stores the XTHG unit")
 	_check(city.text_overlay_id(10, 10) == 202 and city.text_overlay_id(5, 5) == 0, "Police dispatch moves the XTXT unit marker")
-	_check(IsometricRenderer.dispatch_sprite_id(city, 10, 10) == 1382, "Police dispatch selects the recovered large sprite")
+	_check(IsometricStaticVisuals.dispatch_sprite_id(city, 10, 10) == 1382, "Police dispatch selects the recovered large sprite")
 	_check(
-		IsometricRenderer.dispatch_sprite_id(
+		IsometricStaticVisuals.dispatch_sprite_id(
 			city, 10, 10, IsometricRenderer.VIEW_MEDIUM
 		) == 882,
 		"Police dispatch selects the native medium sprite",
 	)
 	_check(
-		IsometricRenderer.dispatch_sprite_id(
+		IsometricStaticVisuals.dispatch_sprite_id(
 			city, 10, 10, IsometricRenderer.VIEW_SMALL
 		) == 382,
 		"Police dispatch selects the native small sprite",

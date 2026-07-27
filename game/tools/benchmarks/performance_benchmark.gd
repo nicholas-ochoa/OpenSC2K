@@ -38,7 +38,7 @@ func _init() -> void:
 		return
 
 	var started := Time.get_ticks_usec()
-	var asset_errors := Renderer.validate_assets(city, sprites)
+	var asset_errors := IsometricStaticVisuals.validate_assets(city, sprites)
 	_print_measurement("asset_validation", started, asset_errors.is_empty())
 
 	if not asset_errors.is_empty():

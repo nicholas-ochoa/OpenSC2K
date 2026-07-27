@@ -77,12 +77,6 @@ static func diagonal_rows(span: Dictionary, diagonal: int, map_edge: int) -> Vec
 	return IsometricGeometry.diagonal_rows(span, diagonal, map_edge)
 
 
-static func validate_assets(
-	city: CityState, sprites: Sc2SpriteArchive, view_size := VIEW_LARGE
-) -> PackedStringArray:
-	return IsometricStaticVisuals.validate_assets(city, sprites, view_size)
-
-
 static func surface_terrain_id(city: CityState, x: int, y: int) -> int:
 	return IsometricGeometry.surface_terrain_id(city, x, y)
 
@@ -122,15 +116,6 @@ static func transient_effect_position(
 	return IsometricGeometry.transient_effect_position(city, effect, sprite_height, view_size)
 
 
-static func bridge_effect_position(
-	city: CityState,
-	effect: Dictionary,
-	sprite_height: int,
-	view_size := VIEW_LARGE
-) -> Vector2i:
-	return IsometricGeometry.bridge_effect_position(city, effect, sprite_height, view_size)
-
-
 static func effect_sprite_id(large_sprite_id: int, view_size := VIEW_LARGE) -> int:
 	return IsometricGeometry.effect_sprite_id(large_sprite_id, view_size)
 
@@ -160,49 +145,6 @@ static func draw_tile(
 		output, city, palette, sprites, cache, configuration, origin_x, x, y, animation_phase,
 		include_moving_things, include_special_overlays
 	)
-
-
-static func edge_stack_visuals(
-	city: CityState, x: int, y: int, view_size := VIEW_LARGE
-) -> Array[Dictionary]:
-	return IsometricStaticVisuals.edge_stack_visuals(city, x, y, view_size)
-
-
-static func highway_ground_visuals(
-	city: CityState, x: int, y: int, view_size := VIEW_LARGE,
-	redraw_small := false
-) -> Array[Dictionary]:
-	return IsometricStaticVisuals.highway_ground_visuals(city, x, y, view_size, redraw_small)
-
-
-static func traffic_overlay_visual(
-	city: CityState, x: int, y: int, view_size := VIEW_LARGE
-) -> Dictionary:
-	return IsometricStaticVisuals.traffic_overlay_visual(city, x, y, view_size)
-
-
-static func power_marker_visual(
-	city: CityState, x: int, y: int, view_size := VIEW_LARGE
-) -> Dictionary:
-	return IsometricStaticVisuals.power_marker_visual(city, x, y, view_size)
-
-
-static func fire_overlay_visual(
-	city: CityState, x: int, y: int, view_size := VIEW_LARGE, animation_phase := 0
-) -> Dictionary:
-	return IsometricStaticVisuals.fire_overlay_visual(city, x, y, view_size, animation_phase)
-
-
-static func special_overlay_visual(
-	city: CityState, x: int, y: int, view_size := VIEW_LARGE, animation_phase := 0
-) -> Dictionary:
-	return IsometricStaticVisuals.special_overlay_visual(city, x, y, view_size, animation_phase)
-
-
-static func dispatch_sprite_id(
-	city: CityState, x: int, y: int, view_size := VIEW_LARGE
-) -> int:
-	return IsometricStaticVisuals.dispatch_sprite_id(city, x, y, view_size)
 
 
 static func moving_thing_visual(
@@ -240,17 +182,6 @@ static func tornado_sprite(
 	return IsometricMovingVisuals.tornado_sprite(city, x, y, thing, record, view_size)
 
 
-static func monster_layers(
-	city: CityState,
-	x: int,
-	y: int,
-	thing: Dictionary,
-	record: int,
-	view_size := VIEW_LARGE
-) -> Array[Dictionary]:
-	return IsometricMovingVisuals.monster_layers(city, x, y, thing, record, view_size)
-
-
 # For monsters, dx stores body-part flags rather than velocity.
 static func monster_pose_layers(
 	body_position: Vector2i, dx: int, dy: int, head_frame := 0, view_size := VIEW_LARGE
@@ -274,15 +205,6 @@ static func draw_moving_thing(
 	IsometricImageRender.draw_moving_thing(output, city, palette, sprites, cache, visual, configuration, offset)
 
 
-static func moving_thing_draw_commands(
-	city: CityState,
-	sprites: Sc2SpriteArchive,
-	view_size := VIEW_LARGE,
-	animation_phase := 0
-) -> Array[Dictionary]:
-	return IsometricDynamicCommands.moving_thing_draw_commands(city, sprites, view_size, animation_phase)
-
-
 static func dynamic_draw_commands(
 	city: CityState,
 	sprites: Sc2SpriteArchive,
@@ -290,16 +212,6 @@ static func dynamic_draw_commands(
 	animation_phase := 0
 ) -> Array[Dictionary]:
 	return IsometricDynamicCommands.dynamic_draw_commands(city, sprites, view_size, animation_phase)
-
-
-static func special_overlay_draw_command(
-	city: CityState,
-	sprites: Sc2SpriteArchive,
-	point: Vector2i,
-	visual: Dictionary,
-	configuration: Dictionary
-) -> Dictionary:
-	return IsometricDynamicCommands.special_overlay_draw_command(city, sprites, point, visual, configuration)
 
 
 static func moving_thing_draw_commands_for_visual(
@@ -347,12 +259,6 @@ static func configure_train_foreground(command: Dictionary, building_id: int, co
 	IsometricStaticOcclusion.configure_train_foreground(command, building_id, configuration)
 
 
-static func train_power_foreground_reference_sprite_id(
-	building_id: int, sprite_base := 1000
-) -> int:
-	return IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(building_id, sprite_base)
-
-
 static func foreground_difference_mask(sprite: Image, background: Image) -> Image:
 	return IsometricPixelOperations.foreground_difference_mask(sprite, background)
 
@@ -386,19 +292,8 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 	return IsometricStaticVisuals.static_visual_signature(city, view_size)
 
 
-static func shadow_color(palette: Sc2Palette, destination: Color) -> Color:
-	return IsometricPixelOperations.shadow_color(palette, destination)
-
-
 static func shadow_palette_index(index: int) -> int:
 	return IsometricPixelOperations.shadow_palette_index(index)
-
-
-# for buildings, flipped means unflipped every other compass turn
-static func building_sprite_flip(
-	city: CityState, x: int, y: int, building_id: int
-) -> bool:
-	return IsometricStaticVisuals.building_sprite_flip(city, x, y, building_id)
 
 
 # These sprites use their width to set the vertical offset.

@@ -43,8 +43,8 @@ func _initialize() -> void:
 
 	# The raised deck covers a train on the crossing tile too.
 	for base in [0, 500, 1000]:
-		assert(CityIsometricRenderer.train_power_foreground_reference_sprite_id(0x4d, base) == base + 0x2d)
-		assert(CityIsometricRenderer.train_power_foreground_reference_sprite_id(0x4e, base) == base + 0x2c)
+		assert(IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x4d, base) == base + 0x2d)
+		assert(IsometricStaticOcclusion.train_power_foreground_reference_sprite_id(0x4e, base) == base + 0x2c)
 
 	var crossing := Image.create(8, 4, false, Image.FORMAT_RGBA8)
 	crossing.fill(Color.TRANSPARENT)
