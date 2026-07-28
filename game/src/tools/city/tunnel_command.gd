@@ -135,12 +135,12 @@ static func apply(
 	if city.funds() < cost:
 		return {"ok": false, "error": "insufficient funds", "cost": cost}
 
-	var old_payloads := NetworkCommand._city_payloads(city)
+	var old_payloads := NetworkState.city_payloads(city)
 
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
 
-	var changed_payloads := NetworkCommand._duplicate_payloads(old_payloads)
+	var changed_payloads := NetworkState._duplicate_payloads(old_payloads)
 	var altitude: PackedByteArray = changed_payloads.ALTM
 	var buildings: PackedByteArray = changed_payloads.XBLD
 	var terrain: PackedByteArray = changed_payloads.XTER
@@ -151,7 +151,7 @@ static func apply(
 
 	var start_tile := start_terrain + 0x3e
 	var finish_tile := ((start_terrain + 1) & 3) + FIRST_ENTRANCE
-	NetworkCommand._replace_building(buildings, zones, misc, start_index, start_tile)
+	NetworkState.replace_building(buildings, zones, misc, start_index, start_tile)
 	_set_tunnel_level(altitude, start_index, 1)
 	_retile_adjacent_roads(
 		buildings, terrain, zones, flags, misc, start, text_overlays, map_edge
@@ -162,7 +162,7 @@ static func apply(
 		var index := point.x * map_edge + point.y
 		_set_tunnel_level(altitude, index, city.land_altitude(point.x, point.y) - start_altitude + 1)
 
-	NetworkCommand._replace_building(buildings, zones, misc, finish_index, finish_tile)
+	NetworkState.replace_building(buildings, zones, misc, finish_index, finish_tile)
 	_set_tunnel_level(altitude, finish_index, 1)
 	_retile_adjacent_roads(
 		buildings, terrain, zones, flags, misc, finish, text_overlays, map_edge
@@ -175,7 +175,7 @@ static func apply(
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 
-	if not NetworkCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
+	if not NetworkState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		return {"ok": false, "error": "cannot store tunnel changes"}
 
 	return {
@@ -215,7 +215,7 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
 			return {"ok": false, "error": "city changed after this tunnel command"}
 
-	if not NetworkCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
+	if not NetworkState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore tunnel changes"}
 
 	var points: Array = command.get("points", [])
@@ -253,7 +253,7 @@ static func _retile_adjacent_roads(
 		var neighbor: Vector2i = point + offset
 
 		if neighbor.x >= 0 and neighbor.x < map_edge and neighbor.y >= 0 and neighbor.y < map_edge:
-			NetworkCommand._retile_surface(
+			NetworkTiles.retile_surface(
 				buildings,
 				terrain,
 				zones,

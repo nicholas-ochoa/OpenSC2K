@@ -24,7 +24,7 @@ static func apply(
 		var segment: Dictionary
 
 		for attempt in 3:
-			segment = HighwayEdit.apply_segment(working, group, tool, cursor, endpoint, selected_connection, selected_bridge, free_mode) if highway else NetworkCommand.apply_segment(working, group, tool, cursor, endpoint, selected_bridge, selected_connection, free_mode)
+			segment = HighwayEdit.apply_segment(working, group, tool, cursor, endpoint, selected_connection, selected_bridge, free_mode) if highway else NetworkEdit.apply_segment(working, group, tool, cursor, endpoint, selected_bridge, selected_connection, free_mode)
 
 			if segment.get("bridge_selection_required", false) and bridge != -1:
 				selected_bridge = bridge
@@ -72,7 +72,7 @@ static func apply(
 		if combined.new_payloads[id] != combined.old_payloads[id]:
 			changed.append(id)
 
-	if not NetworkCommand._apply_payloads(city, changed, combined.new_payloads, combined.old_payloads):
+	if not NetworkState._apply_payloads(city, changed, combined.new_payloads, combined.old_payloads):
 		return {"ok": false, "error": "cannot store network route"}
 
 	combined.changed_ids = changed

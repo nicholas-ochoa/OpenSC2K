@@ -85,7 +85,7 @@ static func _clear_terrain_conflicts(
 				sound_events.append(504)
 
 		if old_building != 5:
-			NetworkCommand._replace_building(buildings, zones, misc, index, 0)
+			NetworkState.replace_building(buildings, zones, misc, index, 0)
 
 			if not changed_indices.has(index):
 				changed_indices.append(index)
@@ -179,7 +179,7 @@ static func _retile_region(
 		TerrainEditHeights._set_water_altitude(altitude, index, sea_level)
 
 		if buildings[index] != 0 and buildings[index] != 5:
-			NetworkCommand._replace_building(buildings, zones, misc, index, 0)
+			NetworkState.replace_building(buildings, zones, misc, index, 0)
 
 		terrain[index] = (
 			0x10

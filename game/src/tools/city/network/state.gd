@@ -3,7 +3,7 @@ extends NetworkConstants
 
 
 
-static func _replace_building(
+static func replace_building(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
 	misc: PackedByteArray,
@@ -32,7 +32,7 @@ static func _replace_building(
 	buildings[index] = new_tile
 
 
-static func _city_payloads(city: CityState) -> Dictionary:
+static func city_payloads(city: CityState) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 	var result := {}
 

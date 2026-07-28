@@ -58,7 +58,7 @@ static func _demolish_bridge(
 				"altitude": DemolishTerrain._water_altitude(altitude, index),
 			})
 
-		NetworkCommand._replace_building(buildings, zones, misc, index, 0)
+		NetworkState.replace_building(buildings, zones, misc, index, 0)
 		zones[index] &= 0x0f
 		flags[index] &= ~FLAG_FLIPPED & 0xff
 		points.append(current)
@@ -78,7 +78,7 @@ static func _demolish_bridge(
 		if (flags[bank_index] & FLAG_WATER) != 0:
 			continue
 
-		NetworkCommand._replace_building(buildings, zones, misc, bank_index, 0)
+		NetworkState.replace_building(buildings, zones, misc, bank_index, 0)
 		var land := DemolishTerrain._land_altitude(altitude, bank_index)
 		DemolishTerrain._set_land_altitude(altitude, bank_index, maxi(0, land - 1))
 		flags[bank_index] |= FLAG_WATER
@@ -164,7 +164,7 @@ static func _demolish_reinforced_bridge(
 		for offset in [Vector2i.ZERO, Vector2i(1, 0), Vector2i(1, 1), Vector2i(0, 1)]:
 			var point: Vector2i = current + offset
 			var index := point.x * map_edge + point.y
-			NetworkCommand._replace_building(buildings, zones, misc, index, 0)
+			NetworkState.replace_building(buildings, zones, misc, index, 0)
 			zones[index] &= 0x0f
 			flags[index] &= ~FLAG_FLIPPED & 0xff
 			points.append(point)
@@ -183,7 +183,7 @@ static func _demolish_reinforced_bridge(
 		var bank_index := bank.x * map_edge + bank.y
 
 		if (flags[bank_index] & FLAG_WATER) == 0:
-			NetworkCommand._replace_building(buildings, zones, misc, bank_index, 0)
+			NetworkState.replace_building(buildings, zones, misc, bank_index, 0)
 			var land := DemolishTerrain._land_altitude(altitude, bank_index)
 			DemolishTerrain._set_land_altitude(altitude, bank_index, maxi(0, land - 1))
 			flags[bank_index] |= FLAG_WATER

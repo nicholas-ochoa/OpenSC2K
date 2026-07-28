@@ -14213,7 +14213,7 @@ func _test_network_command(reference_root: String) -> void:
 	_check(Networks.supports_tool(7, 1), "Network command supports subways")
 	_check(not Networks.supports_tool(6, 1), "Highways remain a separate network tool")
 	_check(
-		Networks.route(Vector2i(10, 10), Vector2i(13, 12))
+		NetworkRoutes.route(Vector2i(10, 10), Vector2i(13, 12))
 		== [Vector2i(10, 10), Vector2i(11, 10), Vector2i(11, 11), Vector2i(12, 11), Vector2i(12, 12), Vector2i(13, 12)],
 		"Network route follows the recovered dominant-axis rule",
 	)
@@ -14550,10 +14550,10 @@ func _test_network_command(reference_root: String) -> void:
 		"Road bridge request offers all recovered choices for an eight-tile span",
 	)
 	_check(
-		Networks._bridge_choices(4, Networks.MODE_ROAD).size() == 1
-		and Networks._bridge_choices(5, Networks.MODE_ROAD).size() == 2
-		and Networks._bridge_choices(7, Networks.MODE_ROAD).size() == 3
-		and Networks._bridge_choices(12, Networks.MODE_ROAD).size() == 2,
+		NetworkBridges.bridge_choices(4, Networks.MODE_ROAD).size() == 1
+		and NetworkBridges.bridge_choices(5, Networks.MODE_ROAD).size() == 2
+		and NetworkBridges.bridge_choices(7, Networks.MODE_ROAD).size() == 3
+		and NetworkBridges.bridge_choices(12, Networks.MODE_ROAD).size() == 2,
 		"Road bridge choices use the recovered length limits",
 	)
 	var direct_bridge_cancel := Networks.apply(

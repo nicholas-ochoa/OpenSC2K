@@ -44,7 +44,7 @@ static func _is_connection_exit(
 	return not NetworkRules._point_is_in_bounds(endpoint + DIRECTIONS[direction], map_edge)
 
 
-static func _plan_route(
+static func plan_route(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	zones: PackedByteArray,
@@ -136,8 +136,8 @@ static func _step_is_eligible(
 	var next_index := next.x * map_edge + next.y
 
 	return NetworkTerrainRules.allows_height_step(
-		terrain[current_index], NetworkRules._land_altitude(altitude, current_index),
-		terrain[next_index], NetworkRules._land_altitude(altitude, next_index),
+		terrain[current_index], NetworkRules.land_altitude(altitude, current_index),
+		terrain[next_index], NetworkRules.land_altitude(altitude, next_index),
 		keep_straight, mode == MODE_RAIL
 	)
 

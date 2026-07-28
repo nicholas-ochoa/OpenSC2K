@@ -24,7 +24,7 @@ static func apply_segment(
 	if city.index_of(start.x, start.y) < 0 or city.index_of(finish.x, finish.y) < 0:
 		return {"ok": false, "error": "network path is outside the city"}
 
-	var old_payloads := NetworkState._city_payloads(city)
+	var old_payloads := NetworkState.city_payloads(city)
 
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
@@ -41,7 +41,7 @@ static func apply_segment(
 	var mode := int(NETWORK_TOOLS[group_index * ToolCatalog.MAX_SLOTS_PER_GROUP + subtool_index])
 
 	var planned_directions: Array[int] = []
-	var planned := NetworkRoutes._plan_route(
+	var planned := NetworkRoutes.plan_route(
 		buildings, terrain, zones, underground, flags, altitude,
 		start, finish, mode, map_edge, planned_directions
 	)
@@ -95,7 +95,7 @@ static func apply_segment(
 	var bridge_choices: Array[Dictionary] = []
 
 	if bridge_plan.get("ok", false):
-		bridge_choices = NetworkBridges._bridge_choices(int(bridge_plan.span_length), mode)
+		bridge_choices = NetworkBridges.bridge_choices(int(bridge_plan.span_length), mode)
 
 		if mode == MODE_ROAD and selected_bridge == BRIDGE_UNSELECTED:
 			return {

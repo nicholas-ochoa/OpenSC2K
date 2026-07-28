@@ -1,7 +1,6 @@
 class_name DisasterThingConstants
 extends RefCounted
 
-const NetworkTiles = preload("res://src/tools/city/network_command.gd")
 const Demolish = preload("res://src/tools/city/demolish_command.gd")
 const Landscape = preload("res://src/tools/landscape/landscape_command.gd")
 const Buildings = preload("res://src/tools/city/building_command.gd")

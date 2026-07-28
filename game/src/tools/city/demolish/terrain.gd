@@ -67,7 +67,7 @@ static func _retile_adjacent_roads(
 		var neighbor: Vector2i = point + offset
 
 		if _point_is_in_bounds(neighbor, map_edge):
-			NetworkCommand._retile_surface(
+			NetworkTiles.retile_surface(
 				buildings, terrain, zones, flags, misc, neighbor, NetworkCommand.MODE_ROAD, PackedByteArray(), map_edge
 			)
 
@@ -115,7 +115,7 @@ static func _retile_after_demolition(
 			if neighbor.x < 0 or neighbor.x >= map_edge or neighbor.y < 0 or neighbor.y >= map_edge:
 				continue
 
-			NetworkCommand._retile_surface(
+			NetworkTiles.retile_surface(
 				buildings,
 				terrain,
 				zones,
@@ -125,7 +125,7 @@ static func _retile_after_demolition(
 				NetworkCommand.MODE_ROAD,
 				text_overlays, map_edge
 			)
-			NetworkCommand._retile_surface(
+			NetworkTiles.retile_surface(
 				buildings,
 				terrain,
 				zones,
@@ -135,7 +135,7 @@ static func _retile_after_demolition(
 				NetworkCommand.MODE_RAIL,
 				text_overlays, map_edge
 			)
-			NetworkCommand._retile_surface(
+			NetworkTiles.retile_surface(
 				buildings,
 				terrain,
 				zones,

@@ -58,7 +58,7 @@ static func _demolish_tunnel(
 
 	for entrance in [points[0], points[-1]]:
 		var entrance_index: int = entrance.x * map_edge + entrance.y
-		NetworkCommand._replace_building(buildings, zones, misc, entrance_index, 0)
+		NetworkState.replace_building(buildings, zones, misc, entrance_index, 0)
 		zones[entrance_index] &= 0x0f
 		DemolishTerrain._retile_adjacent_roads(buildings, terrain, zones, flags, misc, entrance, map_edge)
 
@@ -133,7 +133,7 @@ static func _demolish_transport_component(
 				point, effect_altitude, random, 0, Vector2i.ZERO
 			))
 
-		NetworkCommand._replace_building(buildings, zones, misc, index, replacement)
+		NetworkState.replace_building(buildings, zones, misc, index, replacement)
 		zones[index] &= 0x0f
 		flags[index] &= FLAG_CLEAR_AFTER_STRUCTURE
 		indices.append(index)
@@ -193,7 +193,7 @@ static func _demolish_highway_section(
 		if not scurk_mode and terrain[index] == 0:
 			replacement = 1 + (random.next_u15() & 3)
 
-		NetworkCommand._replace_building(buildings, zones, misc, index, replacement)
+		NetworkState.replace_building(buildings, zones, misc, index, replacement)
 		zones[index] &= 0x0f
 		flags[index] &= FLAG_CLEAR_AFTER_STRUCTURE
 		DemolishEffectsSites._release_overlay(text_overlays, labels, microsims, index)

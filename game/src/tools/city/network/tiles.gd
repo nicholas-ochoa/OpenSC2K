@@ -27,7 +27,7 @@ static func _place_surface(
 	if new_tile < 0:
 		return
 
-	NetworkState._replace_building(buildings, zones, misc, index, new_tile)
+	NetworkState.replace_building(buildings, zones, misc, index, new_tile)
 
 	if mode == MODE_POWER:
 		flags[index] |= FLAG_POWERABLE
@@ -93,7 +93,7 @@ static func _retile_surface_neighborhood(
 	text_overlays := PackedByteArray(),
 	map_edge: int = 128,
 ) -> void:
-	_retile_surface(
+	retile_surface(
 		buildings, terrain, zones, flags, misc, point, mode, text_overlays, map_edge
 	)
 
@@ -101,12 +101,12 @@ static func _retile_surface_neighborhood(
 		var near: Vector2i = point + offset
 
 		if near.x >= 0 and near.x < map_edge and near.y >= 0 and near.y < map_edge:
-			_retile_surface(
+			retile_surface(
 				buildings, terrain, zones, flags, misc, near, mode, text_overlays, map_edge
 			)
 
 
-static func _retile_surface(
+static func retile_surface(
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
 	zones: PackedByteArray,
@@ -143,7 +143,7 @@ static func _retile_surface(
 		var terrain_shape := terrain_id & 0x0f
 
 		if TERRAIN_IS_NETWORK_SLOPE[terrain_shape] and terrain_shape < NETWORK_SLOPE_SHAPES.size():
-			NetworkState._replace_building(
+			NetworkState.replace_building(
 				buildings, zones, misc, index,
 				base + NETWORK_SLOPE_SHAPES[terrain_shape]
 			)
@@ -163,7 +163,7 @@ static func _retile_surface(
 			var slope_index := slope.x * map_edge + slope.y
 
 			if terrain[slope_index] == shape and buildings[slope_index] == 0x2d + shape:
-				NetworkState._replace_building(buildings, zones, misc, index, 0x3a + shape)
+				NetworkState.replace_building(buildings, zones, misc, index, 0x3a + shape)
 
 				return
 
@@ -195,7 +195,7 @@ static func _retile_surface(
 		if connects and NetworkTerrainRules.allows_connection(terrain[near_index], direction):
 			connections |= 1 << direction
 
-	NetworkState._replace_building(buildings, zones, misc, index, base + NETWORK_SHAPES[connections])
+	NetworkState.replace_building(buildings, zones, misc, index, base + NETWORK_SHAPES[connections])
 
 
 static func _place_underground(

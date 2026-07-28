@@ -377,7 +377,7 @@ static func _extinguish_dispatch_fire(
 			true,
 			false,
 		)
-		NetworkTiles._replace_building(
+		NetworkState.replace_building(
 			payloads.XBLD, payloads.XZON, payloads.MISC, index, lfsr_random.next_mod(4) + 1
 		)
 	elif payloads.XBIT[index] & 0xf0 == 0xf0:

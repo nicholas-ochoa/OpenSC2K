@@ -26,11 +26,11 @@ func _initialize() -> void:
 
 func _fixture(edge: int) -> Dictionary:
 	var city := CityState.from_document(EmptyCityTemplate.create(edge))
-	return NetworkCommand._city_payloads(city)
+	return NetworkState.city_payloads(city)
 
 
 func _route(data: Dictionary, start: Vector2i, finish: Vector2i, mode: int, edge: int) -> Array[Vector2i]:
-	return NetworkCommand._plan_route(data.XBLD, data.XTER, data.XZON, data.XUND, data.XBIT, data.ALTM, start, finish, mode, edge)
+	return NetworkRoutes.plan_route(data.XBLD, data.XTER, data.XZON, data.XUND, data.XBIT, data.ALTM, start, finish, mode, edge)
 
 
 func _test_routes(edge: int) -> void:
@@ -60,7 +60,7 @@ func _test_routes(edge: int) -> void:
 	data.XTER[start.x * edge + start.y] = 1
 	data.XTER[(start.x + 1) * edge + start.y] = 1
 	var next_index := (start.x + 1) * edge + start.y
-	NetworkCommand._set_land_altitude(data.ALTM, next_index, NetworkCommand._land_altitude(data.ALTM, next_index) + 1)
+	NetworkRules.set_land_altitude(data.ALTM, next_index, NetworkRules.land_altitude(data.ALTM, next_index) + 1)
 	check(_route(data, start, start + Vector2i(2, 0), NetworkCommand.MODE_RAIL, edge) == [start], "Rail rejects unequal slope bases")
 	check(_route(data, start, start + Vector2i(2, 0), NetworkCommand.MODE_ROAD, edge).size() == 3, "Road retains original non-rail slope rule")
 
@@ -84,7 +84,7 @@ func _test_surface_connections(edge: int) -> void:
 				data.XBIT[cell.x * edge + cell.y] |= 0x80
 			data.XTER[near_index] = 1 if direction % 2 == 0 else 2
 			data.XBLD[near_index] = base + 2 if direction % 2 == 0 else base + 3
-			NetworkCommand._retile_surface(data.XBLD, data.XTER, data.XZON, data.XBIT, data.MISC, point, mode, data.XTXT, edge)
+			NetworkTiles.retile_surface(data.XBLD, data.XTER, data.XZON, data.XBIT, data.MISC, point, mode, data.XTXT, edge)
 			check(data.XBLD[center] == base + (1 if direction % 2 == 0 else 0), "No false side junction mode %d direction %d edge %d" % [mode, direction, edge])
 			for cell in [point, near, left, right]:
 				data.XBLD[cell.x * edge + cell.y] = 0

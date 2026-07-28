@@ -33,11 +33,11 @@ static func _direction_index(offset: Vector2i) -> int:
 	return 0
 
 
-static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
+static func land_altitude(altitude: PackedByteArray, index: int) -> int:
 	return altitude[index * 2 + 1] & 0x1f
 
 
-static func _set_land_altitude(
+static func set_land_altitude(
 	altitude: PackedByteArray, index: int, value: int
 ) -> void:
 	var offset := index * 2

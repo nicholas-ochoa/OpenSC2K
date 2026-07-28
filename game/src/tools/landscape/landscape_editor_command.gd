@@ -74,7 +74,7 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 	if changed.is_empty():
 		return {"ok": false, "error": "no eligible terrain changed"}
 
-	if not NetworkCommand._apply_payloads(city, changed, new_payloads, old_payloads):
+	if not NetworkState._apply_payloads(city, changed, new_payloads, old_payloads):
 		return {"ok": false, "error": "cannot store landscape edit"}
 
 	random.state = staged_random.state

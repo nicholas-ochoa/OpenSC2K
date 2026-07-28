@@ -79,9 +79,9 @@ static func apply(
 		underground, terrain, zones, flags, misc, point, map_edge
 	)
 	var tile_id := CONNECTOR_FIRST + orientation
-	NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
+	NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 	zones[index] |= 0xf0
-	NetworkCommand._retile_surface(
+	NetworkTiles.retile_surface(
 		buildings,
 		terrain,
 		zones,

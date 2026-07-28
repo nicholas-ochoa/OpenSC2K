@@ -161,7 +161,7 @@ static func apply(
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			var index := x * map_edge + y
-			Networks._replace_building(buildings, zones, misc, index, tile_id)
+			NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 			zones[index] = zone_id
 			flags[index] = (flags[index] & 0x1f) | placed_flags
 

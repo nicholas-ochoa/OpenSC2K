@@ -135,7 +135,7 @@ static func _demolish_point(
 				point, DemolishEffectsSites._effect_altitude(altitude, flags, index), random, 0, Vector2i.ZERO
 			))
 
-		NetworkCommand._replace_building(buildings, zones, misc, index, 0)
+		NetworkState.replace_building(buildings, zones, misc, index, 0)
 
 		if terrain[index] >= 0x30:
 			DemolishTerrain._remove_surface_water(altitude, buildings, terrain, zones, flags, misc, point, map_edge)
@@ -172,7 +172,7 @@ static func _demolish_point(
 			if not scurk_mode and terrain[changed_index] == 0:
 				rubble = 1 + (random.next_u15() & 3)
 
-			NetworkCommand._replace_building(buildings, zones, misc, changed_index, rubble)
+			NetworkState.replace_building(buildings, zones, misc, changed_index, rubble)
 			zones[changed_index] &= 0x0f
 			flags[changed_index] &= FLAG_CLEAR_AFTER_STRUCTURE
 			DemolishEffectsSites._release_overlay(text_overlays, labels, microsims, changed_index)

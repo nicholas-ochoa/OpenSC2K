@@ -95,7 +95,7 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 	else:
 		for x in count:
 			for y in (2 if highway else 1):
-				var tile := 0x4a if highway else NetworkCommand._bridge_tile(bridge_type, count + 2, x + 1, 1)
+				var tile := 0x4a if highway else NetworkBridges._bridge_tile(bridge_type, count + 2, x + 1, 1)
 				_append_preview_tile(tiles, 1000 + tile, _preview_baseline(x, y), not highway)
 
 	if not highway:

@@ -100,8 +100,8 @@ static func apply(
 	var flags: PackedByteArray = changed_payloads.XBIT
 	var misc: PackedByteArray = changed_payloads.MISC
 
-	NetworkCommand._replace_building(buildings, zones, misc, road_index, ROAD_INTERSECTION)
-	NetworkCommand._replace_building(buildings, zones, misc, index, ramp_tile)
+	NetworkState.replace_building(buildings, zones, misc, road_index, ROAD_INTERSECTION)
+	NetworkState.replace_building(buildings, zones, misc, index, ramp_tile)
 
 	if road_direction == 0 or road_direction == 2:
 		flags[index] |= FLAG_FLIPPED

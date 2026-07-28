@@ -190,7 +190,7 @@ static func apply_path(
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 
-	if not NetworkCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
+	if not NetworkState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		if random != null:
 			random.state = random_state_before
 
@@ -245,7 +245,7 @@ static func undo(city: CityState, command: Dictionary, random: SimRandom = null)
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
 			return {"ok": false, "error": "city changed after this terrain command"}
 
-	if not NetworkCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
+	if not NetworkState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore terrain changes"}
 
 	if command.get("random_used", false):

@@ -112,7 +112,7 @@ static func _scan_bridge(
 	}
 
 
-static func _bridge_choices(span_length: int, mode: int) -> Array[Dictionary]:
+static func bridge_choices(span_length: int, mode: int) -> Array[Dictionary]:
 	var available_mask := 0x07
 
 	if span_length > 4 and span_length < 12:
@@ -175,7 +175,7 @@ static func _place_bridge(
 		if (direction & 1) != 0:
 			flags[index] |= FLAG_FLIPPED
 
-		NetworkState._replace_building(
+		NetworkState.replace_building(
 			buildings,
 			zones,
 			misc,
@@ -215,8 +215,8 @@ static func _place_bridge_bank(
 	var index := point.x * map_edge + point.y
 
 	if terrain[index] < 0x30:
-		NetworkRules._set_land_altitude(
-			altitude, index, NetworkRules._land_altitude(altitude, index) + 1
+		NetworkRules.set_land_altitude(
+			altitude, index, NetworkRules.land_altitude(altitude, index) + 1
 		)
 
 	terrain[index] = (

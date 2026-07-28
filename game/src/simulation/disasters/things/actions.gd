@@ -70,7 +70,7 @@ static func _monster_damage(
 
 	match goal:
 		1:
-			NetworkTiles._replace_building(
+			NetworkState.replace_building(
 				buildings, zones, misc, index, (random.next_u15() & 3) + 9
 			)
 		2:
@@ -81,7 +81,7 @@ static func _monster_damage(
 			var overlay_id := Buildings._provision_microsim(
 				microsims, labels, text, 200, city.current_year(), random
 			)
-			NetworkTiles._replace_building(buildings, zones, misc, index, 200)
+			NetworkState.replace_building(buildings, zones, misc, index, 200)
 			zones[index] = 0xf0
 			flags[index] = (flags[index] & 0x1f) | 0xe0
 

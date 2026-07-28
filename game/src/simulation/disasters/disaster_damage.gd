@@ -1,7 +1,6 @@
 class_name DisasterDamage
 extends RefCounted
 
-const NetworkTiles = preload("res://src/tools/city/network_command.gd")
 const Demolish = preload("res://src/tools/city/demolish_command.gd")
 const TEXT_LABEL_BASE := 201
 const SOUND_DAMAGE := 0x1f8
@@ -79,7 +78,7 @@ static func apply(
 		elif OverlayData.is_thing(overlay):
 			return 0
 		elif overlay < 250:
-			NetworkTiles._replace_building(
+			NetworkState.replace_building(
 				buildings, zones, misc, index, lfsr_random.next_mod(4) + 1
 			)
 
@@ -138,7 +137,7 @@ static func apply_flood(
 		elif OverlayData.is_thing(overlay):
 			return 0
 		elif overlay < 250:
-			NetworkTiles._replace_building(
+			NetworkState.replace_building(
 				buildings, zones, misc, index, lfsr_random.next_mod(4) + 1
 			)
 
@@ -188,7 +187,7 @@ static func burn_structure(
 		var tile := int(buildings[point_index])
 
 		if (tile < 0x3f or tile > 0x42) and tile < 0x61:
-			NetworkTiles._replace_building(
+			NetworkState.replace_building(
 				buildings, zones, misc, point_index, lfsr_random.next_mod(4) + 1
 			)
 

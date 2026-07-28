@@ -364,7 +364,7 @@ static func _write_normal_bridge_section(
 	]:
 		var point: Vector2i = anchor + offset
 		var index := point.x * map_edge + point.y
-		NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
+		NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 		zones[index] |= 0xf0
 
 
@@ -388,7 +388,7 @@ static func _write_reinforced_bridge_section(
 		var point: Vector2i = anchor + offset
 		var index := point.x * map_edge + point.y
 		zone_types.append(zones[index] & 0x0f)
-		NetworkCommand._replace_building(
+		NetworkState.replace_building(
 			buildings, zones, misc, index, 0x5d + kind
 		)
 

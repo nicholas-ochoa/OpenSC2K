@@ -33,9 +33,9 @@ static func _strip(
 			continue
 		if NetworkCommand.TERRAIN_BLOCKS_DIRECTION[(terrain[index] & 15) * 4 + direction]:
 			continue
-		NetworkCommand._grade_surface_terrain(terrain, flags, point, direction, edge)
+		NetworkTiles._grade_surface_terrain(terrain, flags, point, direction, edge)
 		SpecialZoneGrowth._replace_special_building(buildings, zones, misc, index, 0x1d)
-		NetworkCommand._retile_surface_neighborhood(buildings, terrain, zones, flags,
+		NetworkTiles._retile_surface_neighborhood(buildings, terrain, zones, flags,
 			misc, point, NetworkCommand.MODE_ROAD, PackedByteArray(), edge)
 		placed += 1
 	if placed == 0:

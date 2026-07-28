@@ -15,7 +15,7 @@ static func _place_straight_section(
 		var index := point.x * map_edge + point.y
 		zones[index] &= 0xf0
 		var tile_id := _straight_replacement(buildings[index], orientation)
-		NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
+		NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 		zones[index] |= 0xf0
 
 
@@ -316,7 +316,7 @@ static func _place_graded_section(
 		var index := point.x * map_edge + point.y
 		terrain[index] = terrain_pattern[offset_index]
 		zones[index] &= 0xf0
-		NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
+		NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 
 	BuildingCommand._set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge)
 
@@ -351,6 +351,6 @@ static func _write_shape(
 		var point: Vector2i = anchor + offset
 		var index := point.x * map_edge + point.y
 		zones[index] = 0
-		NetworkCommand._replace_building(buildings, zones, misc, index, tile_id)
+		NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 
 	BuildingCommand._set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge)

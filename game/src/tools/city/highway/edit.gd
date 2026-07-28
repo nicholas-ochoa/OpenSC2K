@@ -26,7 +26,7 @@ static func apply_segment(
 	if not HighwayGeometry._anchor_is_in_bounds(start, map_edge) or not HighwayGeometry._anchor_is_in_bounds(finish, map_edge):
 		return {"ok": false, "error": "highway is outside the city"}
 
-	var old_payloads := NetworkCommand._city_payloads(city)
+	var old_payloads := NetworkState.city_payloads(city)
 
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
@@ -186,7 +186,7 @@ static func apply_segment(
 		+ (connection_cost if connection_built else 0)
 	)
 
-	var changed_payloads := NetworkCommand._duplicate_payloads(old_payloads)
+	var changed_payloads := NetworkState._duplicate_payloads(old_payloads)
 	buildings = changed_payloads.XBLD
 	terrain = changed_payloads.XTER
 	var zones: PackedByteArray = changed_payloads.XZON
@@ -267,7 +267,7 @@ static func apply_segment(
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 
-	if not NetworkCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
+	if not NetworkState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		return {"ok": false, "error": "cannot store highway changes"}
 
 	var tile_indices := PackedInt32Array()
@@ -354,7 +354,7 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
 			return {"ok": false, "error": "city changed after this highway command"}
 
-	if not NetworkCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
+	if not NetworkState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore highway changes"}
 
 	var tile_indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())

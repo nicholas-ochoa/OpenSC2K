@@ -118,7 +118,7 @@ func check_large_counts(edge: int) -> void:
 	var graphs := GraphHistory.calculate_current_values(city, edge * edge, 25, 50)
 	check(graphs.ok and graphs.values.size() == 16, "graph values cover full map %d" % edge)
 
-	for change in [GrowthPhase._replace_building, NetworkCommand._replace_building, CityRotationCommand._replace_building, RciAftermathPhase._replace_building, SpecialZoneGrowth.replace_building]:
+	for change in [GrowthPhase._replace_building, NetworkState.replace_building, CityRotationCommand._replace_building, RciAftermathPhase._replace_building, SpecialZoneGrowth.replace_building]:
 		var buildings := PackedByteArray()
 		buildings.resize(edge * edge)
 		var zones := buildings.duplicate()
