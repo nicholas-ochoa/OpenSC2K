@@ -47,10 +47,10 @@ func _init() -> void:
 				if engine.active_disaster_type != 0:
 					check(engine.advance_disaster_tick().get("ok", false), "map disaster tick")
 
-			if engine.active_disaster_type != 0 or engine.pending_disaster_type != 0 or DisasterStartPhase.has_active_object(city, disaster):
+			if engine.active_disaster_type != 0 or engine.pending_disaster_type != 0 or DisasterStartObjectsState.has_active_object(city, disaster):
 				check(CityDebugActions.end_disaster(city, document, engine).get("ok", false), "clear disaster %d" % edge)
 
-			check(not DisasterStartPhase.has_active_object(city, disaster), "objects cleared")
+			check(not DisasterStartObjectsState.has_active_object(city, disaster), "objects cleared")
 
 		print("PASS: %d chart data and %d disaster entry points" % [edge, disasters.size()])
 
@@ -109,8 +109,8 @@ func check_flood_order(edge: int) -> void:
 		enlarged[translated.x * edge + translated.y] = 0x20
 
 	for origin in [Vector2i(8, 8), Vector2i.ZERO, Vector2i(127, 127), Vector2i(90, 90)]:
-		var expected := DisasterStartPhase._find_flood_shore(legacy, origin)
-		var actual := DisasterStartPhase._find_flood_shore(enlarged, origin + shift, edge)
+		var expected := DisasterStartFloodWeather.find_flood_shore(legacy, origin)
+		var actual := DisasterStartFloodWeather.find_flood_shore(enlarged, origin + shift, edge)
 		check(actual == expected + shift, "flood search order %d at %s" % [edge, origin])
 
 

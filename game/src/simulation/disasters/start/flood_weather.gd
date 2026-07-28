@@ -16,7 +16,7 @@ static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random
 		return {"ok": false, "error": "flood disaster input chunks are missing or invalid"}
 
 	var payloads := DisasterStartObjectsState._duplicate_payloads(original)
-	var shore := _find_flood_shore(payloads.XTER, requested_point, map_edge)
+	var shore := find_flood_shore(payloads.XTER, requested_point, map_edge)
 
 	if shore.x >= 0:
 		var offset := shore - requested_point
@@ -49,7 +49,7 @@ static func _start_flood(city: CityState, requested_point: Vector2i, lfsr_random
 	return _flood_result(requested_point, false)
 
 
-static func _find_flood_shore(terrain: PackedByteArray, origin: Vector2i, map_edge: int = 128) -> Vector2i:
+static func find_flood_shore(terrain: PackedByteArray, origin: Vector2i, map_edge: int = 128) -> Vector2i:
 	# retain the original search for legacy cities. extended cities select the
 	# same first match: smallest square radius, then increasing x and y
 	if map_edge == 128:

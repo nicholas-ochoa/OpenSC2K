@@ -5963,7 +5963,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		and monster_city.text_overlay_id(20, 20) == 202,
 		"Monster disaster stores its random fields, prior label, goal, and XTXT link",
 	)
-	_check(DisasterStart.has_active_object(monster_city, DisasterStart.DISASTER_MONSTER), "Monster activity is visible to the disaster controller")
+	_check(DisasterStartObjectsState.has_active_object(monster_city, DisasterStart.DISASTER_MONSTER), "Monster activity is visible to the disaster controller")
 
 	var fire_document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 	var fire_buildings := _filled_bytes(CityState.TILE_COUNT, 0)
@@ -7226,7 +7226,7 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 	_check(
 		plane_city.text_overlay_id(35, 36) == 50
 		and plane_city.text_overlay_id(39, 40) == 202
-		and DisasterStart.has_active_object(plane_city, DisasterStart.DISASTER_PLANE_CRASH),
+		and DisasterStartObjectsState.has_active_object(plane_city, DisasterStart.DISASTER_PLANE_CRASH),
 		"Plane Crash preserves the rejected label and links an active falling plane",
 	)
 

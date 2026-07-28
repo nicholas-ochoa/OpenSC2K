@@ -286,7 +286,7 @@ func _timed_advance_disaster_tick() -> Dictionary:
 	disaster_hurricane_counter = int(
 		phase_result.get("hurricane_counter", disaster_hurricane_counter)
 	)
-	var still_active: bool = bool(phase_result.active) or DisasterStartPhase.has_active_object(
+	var still_active: bool = bool(phase_result.active) or DisasterStartObjectsState.has_active_object(
 		city, active_disaster_type
 	)
 	var ended_type := 0
