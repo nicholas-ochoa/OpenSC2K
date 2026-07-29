@@ -6515,30 +6515,30 @@ func _test_disaster_start_phase(reference_root: String) -> void:
 		meltdown_document.find_chunk("MISC").decoded_payload
 	)
 	_check(
-		Buildings._read_u32_be(
+		BuildingState.read_u32_be(
 			stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0xcb * 4
 		) == 0
-		and Buildings._read_u32_be(
+		and BuildingState.read_u32_be(
 			stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x05 * 4
 		) == 16
-		and Buildings._read_u32_be(
+		and BuildingState.read_u32_be(
 			stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS
 		) == 1
-		and Buildings._read_u32_be(
+		and BuildingState.read_u32_be(
 			stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4
 		) == 0,
 		"Meltdown moves normal and military tile counts to their radiation buckets: nuclear=%d normal=%d military0=%d military1=%d"
 		% [
-			Buildings._read_u32_be(
+			BuildingState.read_u32_be(
 				stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0xcb * 4
 			),
-			Buildings._read_u32_be(
+			BuildingState.read_u32_be(
 				stored_meltdown_misc, Buildings.MISC_TILE_COUNTS + 0x05 * 4
 			),
-			Buildings._read_u32_be(
+			BuildingState.read_u32_be(
 				stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS
 			),
-			Buildings._read_u32_be(
+			BuildingState.read_u32_be(
 				stored_meltdown_misc, Growth.MISC_MILITARY_TILE_COUNTS + 4
 			),
 		],
@@ -13714,13 +13714,13 @@ func _test_landscape_command(reference_root: String) -> void:
 
 
 func _test_building_command(reference_root: String) -> void:
-	_check(Buildings.tile_for_tool(3, 2) == 0xcf, "Building table maps coal power")
-	_check(Buildings.tile_for_tool(14, 4) == 0xf8, "Building table maps the marina")
+	_check(BuildingSites.tile_for_tool(3, 2) == 0xcf, "Building table maps coal power")
+	_check(BuildingSites.tile_for_tool(14, 4) == 0xf8, "Building table maps the marina")
 	_check(Buildings.supports_tool(13, 0), "Building command supports police stations")
 	_check(not Buildings.supports_tool(3, 3), "Hydroelectric power remains a special tool")
-	_check(Buildings.footprint(Vector2i(20, 20), 1) == Rect2i(20, 20, 1, 1), "One-tile footprint starts at the pointer")
-	_check(Buildings.footprint(Vector2i(20, 20), 2) == Rect2i(20, 20, 2, 2), "Two-tile footprint starts at the pointer")
-	_check(Buildings.footprint(Vector2i(20, 20), 4) == Rect2i(19, 19, 4, 4), "Four-tile footprint starts one tile before the pointer")
+	_check(BuildingSites.footprint(Vector2i(20, 20), 1) == Rect2i(20, 20, 1, 1), "One-tile footprint starts at the pointer")
+	_check(BuildingSites.footprint(Vector2i(20, 20), 2) == Rect2i(20, 20, 2, 2), "Two-tile footprint starts at the pointer")
+	_check(BuildingSites.footprint(Vector2i(20, 20), 4) == Rect2i(19, 19, 4, 4), "Four-tile footprint starts one tile before the pointer")
 
 	var document := _load_fixture(reference_root.path_join("DEFAULT.SC2"))
 
@@ -14004,11 +14004,11 @@ func _test_building_command(reference_root: String) -> void:
 	_check(document.set_misc_u32(ToolAvailability.MISC_GRANTED_REWARDS, 0x0f), "Building fixture restores one-use rewards")
 
 	_check(
-		Buildings.stadium_team_choices(city) == PackedInt32Array([0, 1, 2, 3, 4]),
+		BuildingFacilities.stadium_team_choices(city) == PackedInt32Array([0, 1, 2, 3, 4]),
 		"A city without teams offers all five stadium teams",
 	)
 	_check(
-		Buildings.stadium_team_name(city, 2) == "Camels",
+		BuildingFacilities.stadium_team_name(city, 2) == "Camels",
 		"An empty sports label uses the supplied default team name",
 	)
 	var stadium := Buildings.apply(
@@ -14020,7 +14020,7 @@ func _test_building_command(reference_root: String) -> void:
 		and stadium.overlay_id >= 61,
 		"Stadium placement requests a team when it gets an XMIC record",
 	)
-	var assigned_stadium := Buildings.assign_stadium_team(
+	var assigned_stadium := BuildingFacilities.assign_stadium_team(
 		city, stadium, 2, "Camel City Flyers"
 	)
 	_check(
@@ -14060,12 +14060,12 @@ func _test_building_command(reference_root: String) -> void:
 
 	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0x1b), "Stadium fixture uses four teams")
 	_check(
-		Buildings.stadium_team_choices(city) == PackedInt32Array([2]),
+		BuildingFacilities.stadium_team_choices(city) == PackedInt32Array([2]),
 		"The Stadium dialog offers only unused teams",
 	)
 	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0x1f), "Stadium fixture uses all teams")
 	_check(
-		Buildings.stadium_team_choices(city) == PackedInt32Array([0, 1, 2, 3, 4]),
+		BuildingFacilities.stadium_team_choices(city) == PackedInt32Array([0, 1, 2, 3, 4]),
 		"The Stadium dialog permits every team after all five are used",
 	)
 	_check(document.set_misc_u32(Buildings.MISC_STADIUM_TEAMS, 0), "Building fixture restores stadium teams")

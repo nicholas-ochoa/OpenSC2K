@@ -237,7 +237,7 @@ static func _place_underground(
 			return
 
 	_grade_surface_terrain(terrain, flags, point, direction, map_edge)
-	BuildingCommand._replace_underground(underground, zones, misc, index, new_tile)
+	BuildingUnderground._replace_underground(underground, zones, misc, index, new_tile)
 	_retile_underground_neighborhood(underground, terrain, point, pipes, map_edge)
 
 
@@ -245,4 +245,4 @@ static func _retile_underground_neighborhood(
 	underground: PackedByteArray, terrain: PackedByteArray, point: Vector2i, pipes: bool,
 	map_edge: int = 128,
 ) -> void:
-	BuildingCommand._retile_neighborhood(underground, terrain, point, pipes, map_edge)
+	BuildingUnderground._retile_neighborhood(underground, terrain, point, pipes, map_edge)

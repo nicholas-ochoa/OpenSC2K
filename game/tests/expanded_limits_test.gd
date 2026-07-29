@@ -22,7 +22,7 @@ func _init() -> void:
 		var sign_labels := document.find_chunk("XLAB").decoded_payload.duplicate()
 		for id in signs:
 			if not selected_signs.has(id):
-				BuildingCommand._write_label(sign_labels, id, "Occupied")
+				BuildingFacilities.write_label(sign_labels, id, "Occupied")
 		document.find_chunk("XLAB").set_decoded_payload(sign_labels)
 		for index in selected_signs.size():
 			var point := Vector2i(0, index)
@@ -43,10 +43,10 @@ func _init() -> void:
 			if not selected_records.has(record):
 				micro[record * CityState.MICROSIM_RECORD_SIZE] = 0xd2
 		for record in selected_records:
-			var id := BuildingCommand._provision_microsim(micro, labels, overlays, 0xd2, 2050, rng, document.find_chunk("MISC").decoded_payload)
+			var id := BuildingFacilities.provision_microsim(micro, labels, overlays, 0xd2, 2050, rng, document.find_chunk("MISC").decoded_payload)
 			check(id == OverlayData.facility_id(record), "facility boundary allocation %d" % record)
 
-		check(BuildingCommand._provision_microsim(micro, labels, overlays, 0xd2, 2050, rng, document.find_chunk("MISC").decoded_payload) == 0, "capacity enforced")
+		check(BuildingFacilities.provision_microsim(micro, labels, overlays, 0xd2, 2050, rng, document.find_chunk("MISC").decoded_payload) == 0, "capacity enforced")
 		document.find_chunk("XMIC").set_decoded_payload(micro)
 		document.find_chunk("XLAB").set_decoded_payload(labels)
 		var things := document.find_chunk("XTHG").decoded_payload.duplicate()

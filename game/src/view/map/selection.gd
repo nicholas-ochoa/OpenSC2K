@@ -105,7 +105,7 @@ func point_preview_tiles(point: Vector2i) -> Array[Vector2i]:
 
 		return result
 
-	var site := BuildingTool.footprint(point, map.point_footprint_area)
+	var site := BuildingSites.footprint(point, map.point_footprint_area)
 
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):

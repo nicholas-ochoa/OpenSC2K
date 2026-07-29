@@ -76,7 +76,7 @@ static func footprint(tile_id: int, selected: Vector2i) -> Rect2i:
 	if not is_placeable_tile(tile_id):
 		return Rect2i()
 
-	return Buildings.footprint(selected, Demolish.structure_area(tile_id) if tile_id <= 255 else 1)
+	return BuildingSites.footprint(selected, Demolish.structure_area(tile_id) if tile_id <= 255 else 1)
 
 
 static func apply(
@@ -110,17 +110,17 @@ static func apply(
 			"new_stamps": city.scurk_artwork_stamps.duplicate(true)}
 
 	var area := Demolish.structure_area(tile_id)
-	var site := Buildings.footprint(selected, area)
+	var site := BuildingSites.footprint(selected, area)
 
-	if not Buildings._footprint_is_in_bounds(site, area, map_edge):
+	if not BuildingSites._footprint_is_in_bounds(site, area, map_edge):
 		return _failure("object does not fit inside the map")
 
-	var old_payloads := Buildings._city_payloads(city)
+	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
 		return _failure("required city data is missing or invalid")
 
-	var changed_payloads := Buildings._duplicate_payloads(old_payloads)
+	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
 	var terrain: PackedByteArray = changed_payloads.XTER
 	var zones: PackedByteArray = changed_payloads.XZON
@@ -137,7 +137,7 @@ static func apply(
 		return _failure(site_check.error)
 
 	var process_random_state_before := process_random.state
-	var overlay_id := Buildings._provision_microsim(
+	var overlay_id := BuildingFacilities.provision_microsim(
 		microsims,
 		labels,
 		text_overlays,
@@ -170,24 +170,24 @@ static func apply(
 
 			tile_indices.append(index)
 
-	Buildings._set_corners(zones, site, area, city.compass_rotation(), map_edge)
+	BuildingSites.set_corners(zones, site, area, city.compass_rotation(), map_edge)
 
 	if tile_id == STATUE:
 		flags[selected.x * map_edge + selected.y] &= ~FLAG_POWERABLE & 0xff
 	elif tile_id == WATER_PUMP:
-		Buildings._place_pipe(underground, terrain, zones, flags, misc, selected, map_edge)
+		BuildingUnderground._place_pipe(underground, terrain, zones, flags, misc, selected, map_edge)
 	elif tile_id == SUBWAY_STATION:
-		Buildings._place_subway_station(underground, terrain, zones, flags, misc, selected, map_edge)
+		BuildingUnderground._place_subway_station(underground, terrain, zones, flags, misc, selected, map_edge)
 
 	if BUDGET_CURRENT.has(tile_id):
 		var budget_offset: int = (
 			Buildings.MISC_BUDGETS
 			+ int(BUDGET_CURRENT[tile_id]) * Buildings.BUDGET_RECORD_SIZE
 		)
-		Buildings._write_u32_be(
+		BuildingState._write_u32_be(
 			misc,
 			budget_offset,
-			Buildings._read_u32_be(misc, budget_offset) + 1
+			BuildingState.read_u32_be(misc, budget_offset) + 1
 		)
 
 	var changed_ids := PackedStringArray()
@@ -196,7 +196,7 @@ static func apply(
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 
-	if not Buildings._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
+	if not BuildingState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		process_random.state = process_random_state_before
 
 		return _failure("cannot store Place & Print changes")
@@ -299,7 +299,7 @@ static func _apply_history(
 		):
 			return _failure("city changed after this Place & Print command")
 
-	if not Buildings._apply_payloads(
+	if not BuildingState._apply_payloads(
 		city, changed_ids, destination_payloads, source_payloads
 	):
 		return _failure("cannot restore Place & Print changes")

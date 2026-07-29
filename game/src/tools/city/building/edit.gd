@@ -92,7 +92,7 @@ static func apply(
 			"lfsr_advanced": lfsr_random.state != lfsr_state_before,
 		}
 
-	var overlay_id := BuildingFacilities._provision_microsim(
+	var overlay_id := BuildingFacilities.provision_microsim(
 		microsims,
 		labels,
 		text_overlays,
@@ -109,7 +109,7 @@ static func apply(
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			var index := x * map_edge + y
-			BuildingState._update_building_count(misc, zones[index] & 0x0f, buildings[index], tile_id, map_edge)
+			BuildingState.update_building_count(misc, zones[index] & 0x0f, buildings[index], tile_id, map_edge)
 			buildings[index] = tile_id
 			zones[index] = 0
 			flags[index] = (flags[index] & 0x1f) | placed_flags
@@ -119,7 +119,7 @@ static func apply(
 
 			tile_indices.append(index)
 
-	BuildingSites._set_corners(zones, site, area, city.compass_rotation(), map_edge)
+	BuildingSites.set_corners(zones, site, area, city.compass_rotation(), map_edge)
 
 	if tile_id == STATUE:
 		flags[selected.x * map_edge + selected.y] &= ~FLAG_POWERABLE & 0xff
@@ -130,7 +130,7 @@ static func apply(
 
 	if BUDGET_CURRENT.has(tile_id):
 		var budget_offset: int = MISC_BUDGETS + int(BUDGET_CURRENT[tile_id]) * BUDGET_RECORD_SIZE
-		BuildingState._write_u32_be(misc, budget_offset, BuildingState._read_u32_be(misc, budget_offset) + 1)
+		BuildingState._write_u32_be(misc, budget_offset, BuildingState.read_u32_be(misc, budget_offset) + 1)
 
 	if group_index == 5 and subtool_index < 4:
 		var reward_mask := Availability.rebuild_reward_mask(misc)
@@ -157,7 +157,7 @@ static func apply(
 	var immediate_power_refresh := false
 	var immediate_water_refresh := false
 
-	if BuildingState._read_u32_be(misc, MISC_NORMAL_POPULATION) < IMMEDIATE_UTILITY_POPULATION_LIMIT:
+	if BuildingState.read_u32_be(misc, MISC_NORMAL_POPULATION) < IMMEDIATE_UTILITY_POPULATION_LIMIT:
 		var selected_index := city.index_of(selected.x, selected.y)
 
 		if selected_index >= 0 and city.tile_flags[selected_index] & FLAG_POWERABLE:

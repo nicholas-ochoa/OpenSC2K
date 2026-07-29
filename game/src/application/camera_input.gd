@@ -149,7 +149,7 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if app.palette == null or app.large_sprites == null or not app.large_sprites.is_valid():
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
 
-	var tile_id := Buildings.tile_for_tool(group_index, subtool_index)
+	var tile_id := BuildingSites.tile_for_tool(group_index, subtool_index)
 	var sprite_id := 1000 + tile_id if tile_id > 0 else -1
 
 	if sprite_id < 0:

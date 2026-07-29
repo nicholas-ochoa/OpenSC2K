@@ -53,7 +53,7 @@ func stamp(city: CityState, tile: int, origin: Vector2i) -> Rect2i:
 		for y in range(site.position.y, site.end.y):
 			buildings[x * city.map_size + y] = tile
 
-	BuildingCommand._set_corners(zones, site, area, city.compass_rotation(), city.map_size)
+	BuildingSites.set_corners(zones, site, area, city.compass_rotation(), city.map_size)
 	city.replace_buildings(buildings)
 	city.replace_zones(zones)
 	return site
@@ -147,7 +147,7 @@ func check_capacity() -> void:
 	check(result.created == 1 and city.text_overlay_id(500, 500) == 256, "Old full table uses first extended slot")
 	check(doc.find_chunk("XMIC").decoded_payload.slice(0, 1200) == microsims.slice(0, 1200), "Existing statistics preserved")
 	var labels := doc.find_chunk("XLAB").decoded_payload.duplicate()
-	BuildingCommand._write_label(labels, 256, "Existing hospital")
+	BuildingFacilities.write_label(labels, 256, "Existing hospital")
 	doc.find_chunk("XLAB").set_decoded_payload(labels)
 	var before: PackedByteArray = doc.serialize().data
 	FacilityRecordRepair.apply(city)

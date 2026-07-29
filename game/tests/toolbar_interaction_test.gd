@@ -97,9 +97,9 @@ func _run() -> void:
 	assert(map.selection._selection_source_polygons().size() == 1)
 	# Check city and random state after an invalid preview.
 	var before: PackedByteArray = city.document.serialize().data
-	assert(BuildingCommand.preview_valid(city, 3, 2, Vector2i(75, 75)))
-	assert(not BuildingCommand.preview_valid(city, 3, 2, Vector2i(60, 60)))
-	assert(not BuildingCommand.preview_valid(city, 3, 2, Vector2i(0, 0)))
+	assert(BuildingSites.preview_valid(city, 3, 2, Vector2i(75, 75)))
+	assert(not BuildingSites.preview_valid(city, 3, 2, Vector2i(60, 60)))
+	assert(not BuildingSites.preview_valid(city, 3, 2, Vector2i(0, 0)))
 	assert(city.document.serialize().data == before)
 	main.current_tool.call("_select_tool_group", 5)
 	assert(toolbar.child_tool_buttons.size() == 8 and not toolbar.child_tool_buttons.has(4))

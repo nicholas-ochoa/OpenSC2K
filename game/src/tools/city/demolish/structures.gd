@@ -180,13 +180,13 @@ static func _demolish_point(
 			changed_points.append(Vector2i(x, y))
 
 	if tile_id == SUBWAY_STATION or (tile_id >= 0x6c and tile_id <= 0x70):
-		BuildingCommand._replace_underground(
+		BuildingUnderground._replace_underground(
 			underground, zones, misc, index, 0
 		)
 
 	if REWARD_BIT_BY_TILE.has(tile_id):
-		var reward_mask := BuildingCommand._read_u32_be(misc, MISC_GRANTED_REWARDS)
-		BuildingCommand._write_u32_be(
+		var reward_mask := BuildingState.read_u32_be(misc, MISC_GRANTED_REWARDS)
+		BuildingState._write_u32_be(
 			misc,
 			MISC_GRANTED_REWARDS,
 			reward_mask | (1 << int(REWARD_BIT_BY_TILE[tile_id]))
@@ -285,7 +285,7 @@ static func _demolish_underground_point(
 
 		effect_events = surface_result.get("effect_events", [])
 
-	BuildingCommand._replace_underground(underground, zones, misc, index, 0)
+	BuildingUnderground._replace_underground(underground, zones, misc, index, 0)
 	DemolishTerrain._retile_after_demolition(
 		buildings, terrain, zones, underground, flags, misc, [point], text_overlays, map_edge
 	)

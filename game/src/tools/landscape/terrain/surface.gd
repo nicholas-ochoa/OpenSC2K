@@ -91,7 +91,7 @@ static func _clear_terrain_conflicts(
 				changed_indices.append(index)
 
 		if underground[index] != 0:
-			BuildingCommand._replace_underground(underground, zones, misc, index, 0)
+			BuildingUnderground._replace_underground(underground, zones, misc, index, 0)
 
 			if not changed_indices.has(index):
 				changed_indices.append(index)

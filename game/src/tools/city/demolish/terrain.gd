@@ -24,7 +24,7 @@ static func _remove_surface_water(
 			flags,
 			misc,
 			PackedInt32Array([index]),
-			BuildingCommand._read_u32_be(misc, 0x0e40) & 0x1f, map_edge
+			BuildingState.read_u32_be(misc, 0x0e40) & 0x1f, map_edge
 		)
 	else:
 		terrain[index] = 0
@@ -146,5 +146,5 @@ static func _retile_after_demolition(
 				text_overlays, map_edge
 			)
 
-		BuildingCommand._retile_neighborhood(underground, terrain, point, false, map_edge)
-		BuildingCommand._retile_neighborhood(underground, terrain, point, true, map_edge)
+		BuildingUnderground._retile_neighborhood(underground, terrain, point, false, map_edge)
+		BuildingUnderground._retile_neighborhood(underground, terrain, point, true, map_edge)

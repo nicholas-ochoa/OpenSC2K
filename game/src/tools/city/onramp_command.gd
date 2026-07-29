@@ -89,12 +89,12 @@ static func apply(
 	if preview_only:
 		return {"ok": true}
 
-	var old_payloads := BuildingCommand._city_payloads(city)
+	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
 
-	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
+	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
 	var zones: PackedByteArray = changed_payloads.XZON
 	var flags: PackedByteArray = changed_payloads.XBIT
@@ -106,7 +106,7 @@ static func apply(
 	if road_direction == 0 or road_direction == 2:
 		flags[index] |= FLAG_FLIPPED
 
-	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
+	BuildingState._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
 
@@ -114,7 +114,7 @@ static func apply(
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 
-	if not BuildingCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
+	if not BuildingState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		return {"ok": false, "error": "cannot store on-ramp changes"}
 
 	return {
@@ -152,7 +152,7 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
 			return {"ok": false, "error": "city changed after this on-ramp command"}
 
-	if not BuildingCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
+	if not BuildingState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore on-ramp changes"}
 
 	return {"ok": true, "restored_tiles": 2, "error": ""}

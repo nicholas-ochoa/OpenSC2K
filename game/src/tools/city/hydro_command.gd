@@ -48,12 +48,12 @@ static func apply(
 	if city.funds() < cost:
 		return {"ok": false, "error": "insufficient funds", "cost": cost}
 
-	var old_payloads := BuildingCommand._city_payloads(city)
+	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
 
-	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
+	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
 	var zones: PackedByteArray = changed_payloads.XZON
 	var flags: PackedByteArray = changed_payloads.XBIT
@@ -64,18 +64,18 @@ static func apply(
 	var tile_id := _hydro_tile(city, point)
 	var process_random_state_before := process_random.state
 
-	BuildingCommand._update_building_count(misc, zones[index] & 0x0f, buildings[index], tile_id, city.map_size)
+	BuildingState.update_building_count(misc, zones[index] & 0x0f, buildings[index], tile_id, city.map_size)
 	buildings[index] = tile_id
 	flags[index] |= FLAG_POWERABLE
 	zones[index] = 0xf0
-	var overlay_id := BuildingCommand._provision_microsim(
+	var overlay_id := BuildingFacilities.provision_microsim(
 		microsims, labels, text_overlays, tile_id, city.current_year(), process_random
 	)
 
 	if overlay_id != 0:
 		OverlayData.write(text_overlays, index, overlay_id)
 
-	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
+	BuildingState._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
 
@@ -83,7 +83,7 @@ static func apply(
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 
-	if not BuildingCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
+	if not BuildingState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		process_random.state = process_random_state_before
 
 		return {"ok": false, "error": "cannot store hydroelectric changes"}
@@ -94,16 +94,16 @@ static func apply(
 		var power_result := Power.run(city, process_random)
 
 		if not power_result.ok:
-			BuildingCommand._restore_payloads(city, old_payloads)
+			BuildingState._restore_payloads(city, old_payloads)
 			process_random.state = process_random_state_before
 
 			return {"ok": false, "error": "cannot refresh power after hydroelectric placement"}
 
 		immediate_power_refresh = true
-		changed_payloads = BuildingCommand._city_payloads(city)
+		changed_payloads = BuildingState._city_payloads(city)
 
 		if changed_payloads.is_empty():
-			BuildingCommand._restore_payloads(city, old_payloads)
+			BuildingState._restore_payloads(city, old_payloads)
 			process_random.state = process_random_state_before
 
 			return {"ok": false, "error": "cannot capture hydroelectric power changes"}
@@ -156,7 +156,7 @@ static func undo(city: CityState, command: Dictionary, process_random: SimRandom
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
 			return {"ok": false, "error": "city changed after this hydroelectric command"}
 
-	if not BuildingCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
+	if not BuildingState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore hydroelectric changes"}
 
 	process_random.state = int(command.process_random_state_before)

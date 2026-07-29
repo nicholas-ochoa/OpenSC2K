@@ -259,7 +259,7 @@ static func apply_segment(
 		bridge_sections = bridge_result.sections
 		bridge_endpoint_sections = bridge_result.endpoint_sections
 
-	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
+	BuildingState._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
 

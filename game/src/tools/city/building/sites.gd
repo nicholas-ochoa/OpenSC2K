@@ -122,7 +122,7 @@ static func _count_nearby_residential(
 
 
 # The zone and building corner flags share one byte.
-static func _set_corners(zones: PackedByteArray, site: Rect2i, area: int, rotation: int, map_edge: int = 128) -> void:
+static func set_corners(zones: PackedByteArray, site: Rect2i, area: int, rotation: int, map_edge: int = 128) -> void:
 	if area == 1:
 		var index := site.position.x * map_edge + site.position.y
 		zones[index] = (zones[index] & 0x0f) | 0xf0

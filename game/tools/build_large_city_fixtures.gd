@@ -116,7 +116,7 @@ func build_fixture(edge: int) -> void:
 								can_allocate = can_allocate or microsims[slot * 8] == 0
 
 							if can_allocate:
-								mapped = BuildingCommand._provision_microsim(microsims, labels, text, tile, 2050, random, misc)
+								mapped = BuildingFacilities.provision_microsim(microsims, labels, text, tile, 2050, random, misc)
 
 							if mapped == 0:
 								report.facility_links_without_record += 1

@@ -167,7 +167,7 @@ static func apply(
 	_retile_adjacent_roads(
 		buildings, terrain, zones, flags, misc, finish, text_overlays, map_edge
 	)
-	BuildingCommand._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
+	BuildingState._write_u32_be(misc, BuildingCommand.MISC_FUNDS, city.funds() - cost)
 
 	var changed_ids := PackedStringArray()
 

@@ -109,7 +109,7 @@ func check_large_counts(edge: int) -> void:
 	document.set_misc_u32(road_offset, 65535)
 	document.set_misc_u32(0x01f0, 1)
 	var misc := document.find_chunk("MISC").decoded_payload.duplicate()
-	BuildingCommand._update_building_count(misc, 0, 0, 0x1d, edge)
+	BuildingState.update_building_count(misc, 0, 0, 0x1d, edge)
 	document.find_chunk("MISC").set_decoded_payload(misc)
 	check(document.misc_u32(road_offset) == (0 if edge == 128 else 65536), "building count width %d" % edge)
 	document.set_misc_u32(road_offset, 40000)

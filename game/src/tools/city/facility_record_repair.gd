@@ -104,7 +104,7 @@ static func apply(city: CityState) -> Dictionary:
 				if microsims[record * 8] == 0:
 					result.created += 1
 
-				BuildingCommand._provision_microsim(
+				BuildingFacilities.provision_microsim(
 					microsims, labels, text, tile, city.current_year(), random, misc
 				)
 

@@ -62,12 +62,12 @@ static func apply(
 	if preview_only:
 		return {"ok": true}
 
-	var old_payloads := BuildingCommand._city_payloads(city)
+	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
 
-	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
+	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
 	var terrain: PackedByteArray = changed_payloads.XTER
 	var zones: PackedByteArray = changed_payloads.XZON
@@ -75,7 +75,7 @@ static func apply(
 	var flags: PackedByteArray = changed_payloads.XBIT
 	var misc: PackedByteArray = changed_payloads.MISC
 
-	BuildingCommand._place_subway_station(
+	BuildingUnderground._place_subway_station(
 		underground, terrain, zones, flags, misc, point, map_edge
 	)
 	var tile_id := CONNECTOR_FIRST + orientation
@@ -98,7 +98,7 @@ static func apply(
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 
-	if not BuildingCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
+	if not BuildingState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		return {"ok": false, "error": "cannot store subway-to-rail changes"}
 
 	return {
@@ -136,7 +136,7 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
 			return {"ok": false, "error": "city changed after this subway-to-rail command"}
 
-	if not BuildingCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
+	if not BuildingState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore subway-to-rail changes"}
 
 	return {"ok": true, "restored_tiles": 1, "error": ""}

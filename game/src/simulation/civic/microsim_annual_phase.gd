@@ -88,7 +88,7 @@ static func run(
 
 	annual.span = SimulationTimingSpan.new(annual.city.simulation_slice)
 	annual.span.mark("prepare data")
-	annual.old_payloads = BuildingCommand._city_payloads(annual.city)
+	annual.old_payloads = BuildingState._city_payloads(annual.city)
 	var altitude_chunk := annual.city.document.find_chunk("ALTM")
 
 	if (
@@ -99,7 +99,7 @@ static func run(
 		return _failed("annual map payloads are missing or invalid")
 
 	annual.old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
-	annual.changed_payloads = BuildingCommand._duplicate_payloads(annual.old_payloads)
+	annual.changed_payloads = BuildingState._duplicate_payloads(annual.old_payloads)
 	annual.microsims = annual.changed_payloads.XMIC
 	annual.misc = annual.changed_payloads.MISC
 	annual.subway_count = _tile_count(annual.misc, TILE_SUBWAY_STATION, annual.map_edge)
@@ -271,7 +271,7 @@ static func run(
 			changed_ids.append(chunk_id)
 
 	annual.span.mark("store annual changes")
-	if not BuildingCommand._apply_payloads(annual.city, changed_ids, annual.changed_payloads, annual.old_payloads):
+	if not BuildingState._apply_payloads(annual.city, changed_ids, annual.changed_payloads, annual.old_payloads):
 		return _failed("cannot store annual microsimulation changes")
 
 	var result := Result.new()

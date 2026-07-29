@@ -318,7 +318,7 @@ static func _place_graded_section(
 		zones[index] &= 0xf0
 		NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 
-	BuildingCommand._set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge)
+	BuildingSites.set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge)
 
 
 static func _set_land_altitude(
@@ -353,4 +353,4 @@ static func _write_shape(
 		zones[index] = 0
 		NetworkState.replace_building(buildings, zones, misc, index, tile_id)
 
-	BuildingCommand._set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge)
+	BuildingSites.set_corners(zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge)

@@ -30,7 +30,7 @@ static func apply_path(
 	if points.is_empty():
 		return {"ok": false, "error": "demolish path is empty"}
 
-	var old_payloads := BuildingCommand._city_payloads(city)
+	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
@@ -41,7 +41,7 @@ static func apply_path(
 		return {"ok": false, "error": "required altitude data is missing or invalid"}
 
 	old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
-	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
+	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var altitude: PackedByteArray = changed_payloads.ALTM
 	var buildings: PackedByteArray = changed_payloads.XBLD
 	var terrain: PackedByteArray = changed_payloads.XTER
@@ -160,7 +160,7 @@ static func apply_path(
 
 		return {"ok": false, "error": "no eligible tiles changed"}
 
-	BuildingCommand._write_u32_be(
+	BuildingState._write_u32_be(
 		misc, BuildingCommand.MISC_FUNDS, city.funds() - total_cost
 	)
 
@@ -187,7 +187,7 @@ static func apply_path(
 		if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 
-	if not BuildingCommand._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
+	if not BuildingState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		random.state = random_state_before
 
 		return {"ok": false, "error": "cannot store demolition changes"}
@@ -242,7 +242,7 @@ static func undo(city: CityState, command: Dictionary, random: SimRandom) -> Dic
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
 			return {"ok": false, "error": "city changed after this demolish command"}
 
-	if not BuildingCommand._apply_payloads(city, changed_ids, old_payloads, new_payloads):
+	if not BuildingState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
 		return {"ok": false, "error": "cannot restore demolition changes"}
 
 	random.state = int(command.random_state_before)

@@ -12,7 +12,7 @@ static func _write_u16_be(data: PackedByteArray, offset: int, value: int) -> voi
 	data[offset + 1] = value & 0xff
 
 
-static func _update_building_count(
+static func update_building_count(
 	misc: PackedByteArray, zone: int, old_building: int, new_building: int, map_edge: int = 128
 ) -> void:
 	if zone == MILITARY_ZONE:
@@ -20,8 +20,8 @@ static func _update_building_count(
 
 	var old_offset := MISC_TILE_COUNTS + old_building * 4
 	var new_offset := MISC_TILE_COUNTS + new_building * 4
-	_write_u32_be(misc, old_offset, (_read_u32_be(misc, old_offset) - 1) & (0xffff if map_edge == 128 else 0xffffffff))
-	_write_u32_be(misc, new_offset, (_read_u32_be(misc, new_offset) + 1) & (0xffff if map_edge == 128 else 0xffffffff))
+	_write_u32_be(misc, old_offset, (read_u32_be(misc, old_offset) - 1) & (0xffff if map_edge == 128 else 0xffffffff))
+	_write_u32_be(misc, new_offset, (read_u32_be(misc, new_offset) + 1) & (0xffff if map_edge == 128 else 0xffffffff))
 
 
 static func _city_payloads(city: CityState) -> Dictionary:
@@ -102,7 +102,7 @@ static func _refresh_city_arrays(city: CityState, chunk_ids: PackedStringArray) 
 	city.resync_mirrors(chunk_ids)
 
 
-static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
+static func read_u32_be(data: PackedByteArray, offset: int) -> int:
 	return (
 		(data[offset] << 24)
 		| (data[offset + 1] << 16)
@@ -112,7 +112,7 @@ static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
 
 
 static func _read_i32_be(data: PackedByteArray, offset: int) -> int:
-	var value := _read_u32_be(data, offset)
+	var value := read_u32_be(data, offset)
 
 	return value - 0x100000000 if value >= 0x80000000 else value
 

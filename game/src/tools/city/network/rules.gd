@@ -161,6 +161,6 @@ static func _rail_connects(tile_id: int) -> bool:
 
 
 static func _reuses_underground(tile_id: int, mode: int) -> bool:
-	return (mode == MODE_PIPE or mode == MODE_SUBWAY) and BuildingCommand._underground_connects(
+	return (mode == MODE_PIPE or mode == MODE_SUBWAY) and BuildingUnderground._underground_connects(
 		tile_id, mode == MODE_PIPE
 	)

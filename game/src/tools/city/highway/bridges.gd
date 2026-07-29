@@ -397,7 +397,7 @@ static func _write_reinforced_bridge_section(
 		else:
 			flags[index] |= 0x02
 
-	BuildingCommand._set_corners(
+	BuildingSites.set_corners(
 		zones, Rect2i(anchor, Vector2i(2, 2)), 2, rotation, map_edge
 	)
 

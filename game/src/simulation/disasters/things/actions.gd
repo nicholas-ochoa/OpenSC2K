@@ -78,7 +78,7 @@ static func _monster_damage(
 				buildings, terrain, zones, flags, altitude, text, misc, point, map_edge
 			)
 		3:
-			var overlay_id := Buildings._provision_microsim(
+			var overlay_id := BuildingFacilities.provision_microsim(
 				microsims, labels, text, 200, city.current_year(), random
 			)
 			NetworkState.replace_building(buildings, zones, misc, index, 200)

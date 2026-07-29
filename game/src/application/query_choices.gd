@@ -79,7 +79,7 @@ func _cancel_tool_choice() -> void:
 
 
 func _open_stadium_dialog(command: Dictionary) -> void:
-	var choices := Buildings.stadium_team_choices(app.city)
+	var choices := BuildingFacilities.stadium_team_choices(app.city)
 
 	if choices.is_empty():
 		app.interface._show_error("Cannot read the available stadium teams.")
@@ -92,7 +92,7 @@ func _open_stadium_dialog(command: Dictionary) -> void:
 	for team_index in choices:
 		teams.append({
 			"id": team_index,
-			"name": Buildings.stadium_team_name(app.city, team_index),
+			"name": BuildingFacilities.stadium_team_name(app.city, team_index),
 		})
 
 	app.stadium_dialog.show_teams(teams)
@@ -110,7 +110,7 @@ func _confirm_stadium_team() -> void:
 
 		return
 
-	var result := Buildings.assign_stadium_team(
+	var result := BuildingFacilities.assign_stadium_team(
 		app.city,
 		app.pending_stadium_command,
 		team_index,

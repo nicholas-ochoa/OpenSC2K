@@ -28,7 +28,7 @@ static func apply_path(
 	if city.index_of(start.x, start.y) < 0 or points.is_empty():
 		return {"ok": false, "error": "terrain path is outside the city"}
 
-	var old_payloads := BuildingCommand._city_payloads(city)
+	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
 		return {"ok": false, "error": "required city data is missing or invalid"}
@@ -39,7 +39,7 @@ static func apply_path(
 		return {"ok": false, "error": "required altitude data is missing or invalid"}
 
 	old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
-	var changed_payloads := BuildingCommand._duplicate_payloads(old_payloads)
+	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var altitude: PackedByteArray = changed_payloads.ALTM
 	var buildings: PackedByteArray = changed_payloads.XBLD
 	var terrain: PackedByteArray = changed_payloads.XTER
@@ -180,7 +180,7 @@ static func apply_path(
 
 		return {"ok": false, "error": "no terrain height changed"}
 
-	BuildingCommand._write_u32_be(
+	BuildingState._write_u32_be(
 		misc, BuildingCommand.MISC_FUNDS, old_funds if free_mode else funds
 	)
 

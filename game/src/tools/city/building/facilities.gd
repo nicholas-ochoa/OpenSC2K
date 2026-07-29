@@ -16,7 +16,7 @@ static func stadium_team_choices(city: CityState) -> PackedInt32Array:
 	if misc_chunk == null or misc_chunk.decoded_payload.size() != 4800:
 		return result
 
-	var used_mask := BuildingState._read_u32_be(
+	var used_mask := BuildingState.read_u32_be(
 		misc_chunk.decoded_payload, MISC_STADIUM_TEAMS
 	) & 0x1f
 
@@ -96,7 +96,7 @@ static func assign_stadium_team(
 		record_offset + 6,
 		STADIUM_TEAM_LABEL_BASE + team_index,
 	)
-	_write_label(
+	write_label(
 		changed_payloads.XLAB,
 		STADIUM_TEAM_LABEL_BASE + team_index,
 		team_name,
@@ -105,7 +105,7 @@ static func assign_stadium_team(
 	BuildingState._write_u32_be(
 		misc,
 		MISC_STADIUM_TEAMS,
-		BuildingState._read_u32_be(misc, MISC_STADIUM_TEAMS) | (1 << team_index),
+		BuildingState.read_u32_be(misc, MISC_STADIUM_TEAMS) | (1 << team_index),
 	)
 	var team_chunk_ids := PackedStringArray(["XLAB", "XMIC", "MISC"])
 
@@ -139,7 +139,7 @@ static func assign_stadium_team(
 	}
 
 
-static func _provision_microsim(
+static func provision_microsim(
 	microsims: PackedByteArray,
 	labels: PackedByteArray,
 	text_overlays: PackedByteArray,
@@ -187,7 +187,7 @@ static func _provision_microsim(
 			microsims[record_offset + offset] = 0
 
 	microsims[record_offset] = tile_id
-	_initialize_microsim(
+	initialize_microsim(
 		microsims,
 		misc,
 		record_id,
@@ -203,12 +203,12 @@ static func _provision_microsim(
 	var label_offset := label_id * CityState.LABEL_RECORD_SIZE
 
 	if microsim_type <= 16 or labels[label_offset] == 0:
-		_write_label(labels, label_id, str(DEFAULT_MICROSIM_LABELS.get(tile_id, "")))
+		write_label(labels, label_id, str(DEFAULT_MICROSIM_LABELS.get(tile_id, "")))
 
 	return label_id
 
 
-static func _initialize_microsim(
+static func initialize_microsim(
 	microsims: PackedByteArray,
 	misc: PackedByteArray,
 	record_id: int,
@@ -244,7 +244,7 @@ static func _initialize_microsim(
 			BuildingState._write_u16_be(
 				microsims,
 				offset + 2,
-				0 if scurk_place_mode else _population_cap(misc, 200, 900, map_edge)
+				0 if scurk_place_mode else population_cap(misc, 200, 900, map_edge)
 			)
 			BuildingState._write_u16_be(microsims, offset + 4, current_year)
 		0xd1, 0xd6, 0xd9:
@@ -261,7 +261,7 @@ static func _initialize_microsim(
 				(
 					0
 					if scurk_place_mode
-					else _population_cap(misc, _to_i16(police_funding * 2), 90, map_edge)
+					else population_cap(misc, _to_i16(police_funding * 2), 90, map_edge)
 				)
 			)
 		0xd3:
@@ -276,7 +276,7 @@ static func _initialize_microsim(
 				(
 					0
 					if scurk_place_mode
-					else _population_cap(
+					else population_cap(
 						misc, _to_i16(_divide_toward_zero(fire_funding, 2)), 70, map_edge
 					)
 				)
@@ -318,14 +318,14 @@ static func _initialize_microsim(
 			)
 
 
-static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int, map_edge: int = 128) -> int:
+static func population_cap(misc: PackedByteArray, maximum: int, divisor: int, map_edge: int = 128) -> int:
 	if divisor == 0:
 		divisor = 100
 
 	var arcology_count := 0
 
 	for tile_id in range(0xfb, 0xff):
-		var count := BuildingState._read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
+		var count := BuildingState.read_u32_be(misc, MISC_TILE_COUNTS + tile_id * 4)
 		arcology_count += _to_i16(count) if map_edge == 128 else count
 
 	arcology_count = _divide_toward_zero(arcology_count, 16)
@@ -336,8 +336,8 @@ static func _population_cap(misc: PackedByteArray, maximum: int, divisor: int, m
 
 	var total_population := (
 		arcology_adjustment
-		+ BuildingState._read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
-		+ BuildingState._read_u32_be(misc, MISC_NORMAL_POPULATION)
+		+ BuildingState.read_u32_be(misc, MISC_ARCOLOGY_POPULATION)
+		+ BuildingState.read_u32_be(misc, MISC_NORMAL_POPULATION)
 	)
 	var available := _divide_toward_zero(total_population, divisor) & (0xffff if map_edge == 128 else 0xffffffff)
 	var signed_maximum := _to_i16(maximum)
@@ -355,7 +355,7 @@ static func _to_i16(value: int) -> int:
 	return wrapped - 0x10000 if wrapped >= 0x8000 else wrapped
 
 
-static func _write_label(labels: PackedByteArray, label_id: int, value: String) -> void:
+static func write_label(labels: PackedByteArray, label_id: int, value: String) -> void:
 	var encoded := value.to_ascii_buffer()
 
 	if encoded.size() > 23:

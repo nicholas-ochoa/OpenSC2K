@@ -231,7 +231,7 @@ static func _store(
 	for id in payloads:
 		old_payloads[id] = chunks[id].decoded_payload.duplicate()
 		ids.append(id)
-	return BuildingCommand._apply_payloads(city, ids, payloads, old_payloads)
+	return BuildingState._apply_payloads(city, ids, payloads, old_payloads)
 
 
 static func _chunks(city: CityState) -> Dictionary:

@@ -244,7 +244,7 @@ func check_wide_counts(edge: int) -> void:
 	misc = doc.find_chunk("MISC").decoded_payload
 	expected = 0 if edge == 128 else 200
 	check(MicrosimAnnualPhase._population_cap(misc, 200, 900, edge) == expected, "Annual population availability does not wrap")
-	check(BuildingCommand._population_cap(misc, 200, 900, edge) == expected, "Placement population availability does not wrap")
+	check(BuildingFacilities.population_cap(misc, 200, 900, edge) == expected, "Placement population availability does not wrap")
 	doc.set_misc_u32(RciAftermathPhase.MISC_TILE_COUNTS + RciAftermathPhase.STADIUM_TILE * 4, 40000)
 	doc.set_misc_u32(RciAftermathPhase.MISC_STADIUM_TEAMS, 1)
 	var news: Array = []
@@ -253,7 +253,7 @@ func check_wide_counts(edge: int) -> void:
 	check(news.has({"type": RciAftermathPhase.NEWS_SPORTS, "argument": 0}) == (edge != 128),
 		"Sports news uses wide stadium count")
 	var micro := doc.find_chunk("XMIC").decoded_payload.duplicate()
-	BuildingCommand._initialize_microsim(micro, misc, 10, 0xd0, 1900, SimRandom.new(1), false, false, edge)
+	BuildingFacilities.initialize_microsim(micro, misc, 10, 0xd0, 1900, SimRandom.new(1), false, false, edge)
 	check((micro[10 * 8 + 2] * 256 + micro[10 * 8 + 3]) == expected, "Placement passes map size to population cap")
 
 
