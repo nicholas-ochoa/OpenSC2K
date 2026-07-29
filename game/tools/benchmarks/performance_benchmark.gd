@@ -8,7 +8,6 @@ const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 const RenderJob = preload("res://src/view/city_render_job.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
-const DisasterMap = preload("res://src/simulation/disasters/disaster_map_phase.gd")
 const Random = preload("res://src/simulation/random/sim_random.gd")
 const LfsrRandom = preload("res://src/simulation/random/sim_lfsr_random.gd")
 const DEFAULT_CITY_FILE := "SYDNEY.SC2"
@@ -311,10 +310,10 @@ func _init() -> void:
 	started = Time.get_ticks_usec()
 
 	for _disaster_index in 40:
-		var fire_tick := DisasterMap.run_fire(
+		var fire_tick := DisasterMapFireFlood.run_fire(
 			split_disaster_city, split_random, split_lfsr
 		)
-		var dispatch_tick := DisasterMap.run_dispatch(
+		var dispatch_tick := DisasterMapScanDispatch.run_dispatch(
 			split_disaster_city, split_random, split_lfsr
 		)
 		split_ok = split_ok and fire_tick.ok and dispatch_tick.ok
@@ -330,7 +329,7 @@ func _init() -> void:
 	started = Time.get_ticks_usec()
 
 	for _disaster_index in 40:
-		var unified_tick := DisasterMap.run_all(
+		var unified_tick := DisasterMapScanDispatch.run_all(
 			unified_disaster_city, unified_random, unified_lfsr, 0
 		)
 		unified_ok = unified_ok and unified_tick.ok

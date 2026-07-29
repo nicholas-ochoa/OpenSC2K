@@ -58,7 +58,7 @@ const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const Milestones = preload("res://src/simulation/civic/milestone_phase.gd")
 const MilitaryProposal = preload("res://src/simulation/civic/military_proposal_phase.gd")
 const DisasterStart = preload("res://src/simulation/disasters/disaster_start_phase.gd")
-const DisasterMap = preload("res://src/simulation/disasters/disaster_map_phase.gd")
+const DisasterMap = preload("res://src/simulation/disasters/map/constants.gd")
 const ScenarioPhaseRunner = preload("res://src/simulation/civic/scenario_phase.gd")
 const Bankruptcy = preload("res://src/simulation/economy/bankruptcy_phase.gd")
 const AnnualMicrosims = preload("res://src/simulation/civic/microsim_annual_phase.gd")
@@ -7235,7 +7235,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	var water := _fire_map_fixture(reference_root, Vector2i(20, 20), 6, true)
 	var water_random := SequenceRandom.new([0])
 	var water_lfsr := SequenceLfsrRandom.new([])
-	var water_tick := DisasterMap.run_fire(water.city, water_random, water_lfsr)
+	var water_tick := DisasterMapFireFlood.run_fire(water.city, water_random, water_lfsr)
 	_check(
 		water_tick.ok
 		and water_tick.active
@@ -7251,7 +7251,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and water_lfsr.position == 0,
 		"Water extinction consumes only its process-random update gate",
 	)
-	var empty_tick := DisasterMap.run_fire(
+	var empty_tick := DisasterMapFireFlood.run_fire(
 		water.city, SequenceRandom.new([]), SequenceLfsrRandom.new([])
 	)
 	_check(
@@ -7262,7 +7262,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	var spread := _fire_map_fixture(reference_root, Vector2i(20, 20), 6)
 	_check(spread.city.set_building_id(19, 20, 6), "Fire spread fixture adds a west target")
 	var spread_random := SequenceRandom.new([0, 0])
-	var spread_tick := DisasterMap.run_fire(
+	var spread_tick := DisasterMapFireFlood.run_fire(
 		spread.city, spread_random, SequenceLfsrRandom.new([])
 	)
 	_check(
@@ -7281,7 +7281,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Linked fire spread fixture adds a west microsimulation building",
 	)
 	var linked_spread_random := SequenceRandom.new([0, 0, 2, 1])
-	var linked_spread_tick := DisasterMap.run_fire(
+	var linked_spread_tick := DisasterMapFireFlood.run_fire(
 		linked_spread.city, linked_spread_random, SequenceLfsrRandom.new([])
 	)
 	_check(
@@ -7301,7 +7301,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	var covered := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x70)
 	var covered_random := SequenceRandom.new([0, 4, 0, 2])
 	var covered_lfsr := SequenceLfsrRandom.new([3])
-	var covered_tick := DisasterMap.run_fire(covered.city, covered_random, covered_lfsr)
+	var covered_tick := DisasterMapFireFlood.run_fire(covered.city, covered_random, covered_lfsr)
 	_check(
 		covered_tick.ok
 		and covered_tick.coverage_extinctions == 1
@@ -7318,7 +7318,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	var collapsing := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x70)
 	var collapse_random := SequenceRandom.new([0, 5, 1])
 	var collapse_lfsr := SequenceLfsrRandom.new([2, 0])
-	var collapse_tick := DisasterMap.run_fire(
+	var collapse_tick := DisasterMapFireFlood.run_fire(
 		collapsing.city, collapse_random, collapse_lfsr
 	)
 	var explosion: Dictionary = collapsing.city.thing(1)
@@ -7341,7 +7341,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Fire collapse links its explosion and preserves the original random order",
 	)
 	var toxic := _fire_map_fixture(reference_root, Vector2i(20, 20), 0x85)
-	var toxic_tick := DisasterMap.run_fire(
+	var toxic_tick := DisasterMapFireFlood.run_fire(
 		toxic.city, SequenceRandom.new([0, 5, 1]), SequenceLfsrRandom.new([2, 1])
 	)
 	_check(
@@ -7360,7 +7360,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	var toxic_expiry_random := SequenceRandom.new([0])
 	var toxic_expiry_lfsr := SequenceLfsrRandom.new([0])
-	var toxic_expiry := DisasterMap.run_toxic(
+	var toxic_expiry := DisasterMapMarkers.run_toxic(
 		expired_toxic.city, toxic_expiry_random, toxic_expiry_lfsr
 	)
 	_check(
@@ -7383,7 +7383,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	var water_toxic_random := SequenceRandom.new([0, 0])
 	var water_toxic_lfsr := SequenceLfsrRandom.new([1])
-	var water_toxic_tick := DisasterMap.run_toxic(
+	var water_toxic_tick := DisasterMapMarkers.run_toxic(
 		water_toxic.city, water_toxic_random, water_toxic_lfsr
 	)
 	_check(
@@ -7407,7 +7407,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	var downhill_random := SequenceRandom.new([0])
 	var downhill_lfsr := SequenceLfsrRandom.new([1])
-	var downhill_tick := DisasterMap.run_toxic(
+	var downhill_tick := DisasterMapMarkers.run_toxic(
 		downhill_toxic.city, downhill_random, downhill_lfsr
 	)
 	_check(
@@ -7435,7 +7435,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	var flat_random := SequenceRandom.new([0, 2, 1])
 	var flat_lfsr := SequenceLfsrRandom.new([1])
-	var flat_tick := DisasterMap.run_toxic(flat_toxic.city, flat_random, flat_lfsr)
+	var flat_tick := DisasterMapMarkers.run_toxic(flat_toxic.city, flat_random, flat_lfsr)
 	_check(
 		flat_tick.ok
 		and flat_tick.toxic_markers_scanned == 2
@@ -7462,7 +7462,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Toxic abandonment fixture installs a normal residential building",
 	)
 	var abandon_random := SequenceRandom.new([0, 1])
-	var abandon_tick := DisasterMap.run_toxic(
+	var abandon_tick := DisasterMapMarkers.run_toxic(
 		abandoned_toxic.city, abandon_random, SequenceLfsrRandom.new([1])
 	)
 	_check(
@@ -7483,7 +7483,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Idle riot fixture installs its reverse marker",
 	)
 	var idle_riot_random := SequenceRandom.new([0, 1, 4, 0])
-	var idle_riot_tick := DisasterMap.run_riot(
+	var idle_riot_tick := DisasterMapMarkers.run_riot(
 		idle_riot.city, idle_riot_random, SequenceLfsrRandom.new([])
 	)
 	_check(
@@ -7506,7 +7506,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Water riot fixture installs its forward marker",
 	)
 	var water_riot_random := SequenceRandom.new([0, 1, 1])
-	var water_riot_tick := DisasterMap.run_riot(
+	var water_riot_tick := DisasterMapMarkers.run_riot(
 		water_riot.city, water_riot_random, SequenceLfsrRandom.new([])
 	)
 	_check(
@@ -7524,7 +7524,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Reverse riot fixture adds a supported west road",
 	)
 	var reverse_riot_random := SequenceRandom.new([0, 1, 4, 1, 1])
-	var reverse_riot_tick := DisasterMap.run_riot(
+	var reverse_riot_tick := DisasterMapMarkers.run_riot(
 		reverse_riot.city, reverse_riot_random, SequenceLfsrRandom.new([])
 	)
 	_check(
@@ -7546,7 +7546,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Forward riot fixture adds a supported east rail tile",
 	)
 	var forward_riot_random := SequenceRandom.new([0, 1, 4, 1, 1, 1])
-	var forward_riot_tick := DisasterMap.run_riot(
+	var forward_riot_tick := DisasterMapMarkers.run_riot(
 		forward_riot.city, forward_riot_random, SequenceLfsrRandom.new([])
 	)
 	_check(
@@ -7568,7 +7568,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and damaging_riot.city.set_building_id(19, 20, 6),
 		"Riot damage fixture adds a combustible west target",
 	)
-	var damaging_riot_tick := DisasterMap.run_riot(
+	var damaging_riot_tick := DisasterMapMarkers.run_riot(
 		damaging_riot.city,
 		SequenceRandom.new([0, 1, 0, 1]),
 		SequenceLfsrRandom.new([]),
@@ -7591,7 +7591,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	var fire_dispatch_random := SequenceRandom.new([0, 1])
 	var fire_dispatch_lfsr := SequenceLfsrRandom.new([2])
-	var fire_dispatch_tick := DisasterMap.run_dispatch(
+	var fire_dispatch_tick := DisasterMapScanDispatch.run_dispatch(
 		fire_dispatch.city, fire_dispatch_random, fire_dispatch_lfsr
 	)
 	_check(
@@ -7616,7 +7616,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and rail_dispatch.city.set_text_overlay_id(19, 20, DisasterMap.FIRE_OVERLAY),
 		"Rail dispatch fixture adds a burning west rail tile",
 	)
-	var rail_dispatch_tick := DisasterMap.run_dispatch(
+	var rail_dispatch_tick := DisasterMapScanDispatch.run_dispatch(
 		rail_dispatch.city, SequenceRandom.new([0]), SequenceLfsrRandom.new([])
 	)
 	_check(
@@ -7638,7 +7638,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	var police_dispatch_random := SequenceRandom.new([0, 2])
 	var police_dispatch_lfsr := SequenceLfsrRandom.new([0])
-	var police_dispatch_tick := DisasterMap.run_dispatch(
+	var police_dispatch_tick := DisasterMapScanDispatch.run_dispatch(
 		police_dispatch.city, police_dispatch_random, police_dispatch_lfsr
 	)
 	_check(
@@ -7664,7 +7664,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Gated police fixture adds west fire and east riot markers",
 	)
 	var gated_police_random := SequenceRandom.new([2])
-	var gated_police_tick := DisasterMap.run_dispatch(
+	var gated_police_tick := DisasterMapScanDispatch.run_dispatch(
 		gated_police.city, gated_police_random, SequenceLfsrRandom.new([1])
 	)
 	_check(
@@ -7685,7 +7685,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	var flood_random := SequenceRandom.new([0, 0])
 	var flood_lfsr := SequenceLfsrRandom.new([])
-	var flood_tick := DisasterMap.run_flood(flood.city, flood_random, flood_lfsr, 60)
+	var flood_tick := DisasterMapFireFlood.run_flood(flood.city, flood_random, flood_lfsr, 60)
 	_check(
 		flood_tick.ok
 		and flood_tick.active
@@ -7710,7 +7710,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Linked flood fixture installs a west microsimulation building",
 	)
 	var linked_flood_random := SequenceRandom.new([0, 2, 1, 1])
-	var linked_flood_tick := DisasterMap.run_flood(
+	var linked_flood_tick := DisasterMapFireFlood.run_flood(
 		linked_flood.city,
 		linked_flood_random,
 		SequenceLfsrRandom.new([]),
@@ -7735,10 +7735,10 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	var expired_random := SequenceRandom.new([1])
 	var expired_lfsr := SequenceLfsrRandom.new([1])
-	var expired_tick := DisasterMap.run_flood(
+	var expired_tick := DisasterMapFireFlood.run_flood(
 		expired_flood.city, expired_random, expired_lfsr, 1
 	)
-	var no_flood_tick := DisasterMap.run_flood(
+	var no_flood_tick := DisasterMapFireFlood.run_flood(
 		expired_flood.city, SequenceRandom.new([]), SequenceLfsrRandom.new([]), 0
 	)
 	_check(
@@ -7764,7 +7764,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		and uphill.city.set_land_altitude(19, 20, 1),
 		"Uphill flood fixture raises the west target",
 	)
-	var uphill_tick := DisasterMap.run_flood(
+	var uphill_tick := DisasterMapFireFlood.run_flood(
 		uphill.city, SequenceRandom.new([0, 1]), SequenceLfsrRandom.new([]), 60
 	)
 	_check(
@@ -7853,7 +7853,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 		"Mixed disaster fixture orders dispatch, riot, and fire markers by map position",
 	)
 	var mixed_random := SequenceRandom.new([3, 1, 0, 1])
-	var mixed_tick := DisasterMap.run_all(
+	var mixed_tick := DisasterMapScanDispatch.run_all(
 		mixed_map.city, mixed_random, SequenceLfsrRandom.new([]), 0
 	)
 	_check(
@@ -7882,7 +7882,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	var hurricane_tick_random := SequenceRandom.new([0, 0, 0, 0])
 	var hurricane_tick_lfsr := SequenceLfsrRandom.new([0, 20, 21])
-	var hurricane_tick := DisasterMap.run_all(
+	var hurricane_tick := DisasterMapScanDispatch.run_all(
 		hurricane_tick_fixture.city,
 		hurricane_tick_random,
 		hurricane_tick_lfsr,
@@ -7917,7 +7917,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	)
 	var gated_hurricane_random := SequenceRandom.new([1])
 	var gated_hurricane_lfsr := SequenceLfsrRandom.new([1])
-	var gated_hurricane_tick := DisasterMap.run_all(
+	var gated_hurricane_tick := DisasterMapScanDispatch.run_all(
 		gated_hurricane_fixture.city,
 		gated_hurricane_random,
 		gated_hurricane_lfsr,

@@ -1,7 +1,6 @@
 class_name SimulationEngine
 extends RefCounted
 
-const DisasterMap = preload("res://src/simulation/disasters/disaster_map_phase.gd")
 const RciAftermath = preload("res://src/simulation/growth/rci_aftermath_phase.gd")
 const SimNation = preload("res://src/simulation/civic/simnation_phase.gd")
 const Industries = preload("res://src/simulation/growth/industry_phase.gd")
@@ -270,7 +269,7 @@ func _timed_advance_disaster_tick() -> Dictionary:
 	if active_disaster_type == 0:
 		return {"ok": false, "error": "no disaster is active"}
 
-	var phase_result := DisasterMap.run_all(
+	var phase_result := DisasterMapScanDispatch.run_all(
 		city, random, lfsr_random, disaster_map_counter, disaster_hurricane_counter
 	)
 
