@@ -8,7 +8,6 @@ const Minimap = preload("res://src/view/city_minimap.gd")
 const IsometricRenderer = preload("res://src/view/city_isometric_renderer.gd")
 const UndergroundView = preload("res://src/view/city_underground_view.gd")
 const ViewFilter = preload("res://src/view/city_view_filter.gd")
-const MapControl = preload("res://src/view/city_map_control.gd")
 
 var app: CityApplication
 var caches: RenderCaches

@@ -4,7 +4,6 @@ extends RefCounted
 
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const Zones = preload("res://src/tools/city/zone_command.gd")
-const Buildings = preload("res://src/tools/city/building_command.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const CityRotation = preload("res://src/tools/city/city_rotation_command.gd")
 const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "crime", "water", "power", "height"]

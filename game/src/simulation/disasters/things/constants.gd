@@ -2,7 +2,6 @@ class_name DisasterThingConstants
 extends RefCounted
 
 const Landscape = preload("res://src/tools/landscape/landscape_command.gd")
-const Buildings = preload("res://src/tools/city/building_command.gd")
 const DisasterMapDamage = preload("res://src/simulation/disasters/disaster_damage.gd")
 const MAP_SIZE := CityState.MAP_SIZE
 const RECORD_SIZE := CityState.THING_RECORD_SIZE

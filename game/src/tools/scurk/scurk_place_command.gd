@@ -2,7 +2,6 @@ class_name ScurkPlaceCommand
 extends RefCounted
 
 const Buildings = preload("res://src/tools/city/building_command.gd")
-const Networks = preload("res://src/tools/city/network_command.gd")
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 
 const ROAD_FIRST := 0x1d

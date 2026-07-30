@@ -3,8 +3,6 @@ extends RefCounted
 # shared view constants and unchanged palette shader source
 
 const Renderer = preload("res://src/view/city_isometric_renderer.gd")
-const HighwayTool = preload("res://src/tools/city/highway_command.gd")
-const BuildingTool = preload("res://src/tools/city/building_command.gd")
 const DynamicSpriteCanvas = preload("res://src/view/city_dynamic_sprite_canvas.gd")
 const ZOOM_LEVELS := [0.1, 0.25, 0.5, 1.0, 2.0, 3.0, 4.0]
 const DEFAULT_ZOOM_INDEX := 3

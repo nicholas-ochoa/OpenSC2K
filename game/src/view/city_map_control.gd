@@ -19,8 +19,6 @@ signal zoom_changed(percent: int)
 signal viewport_changed()
 
 const Renderer = CityMapConstants.Renderer
-const HighwayTool = CityMapConstants.HighwayTool
-const BuildingTool = CityMapConstants.BuildingTool
 const DynamicSpriteCanvas = CityMapConstants.DynamicSpriteCanvas
 const ZOOM_LEVELS = CityMapConstants.ZOOM_LEVELS
 const DEFAULT_ZOOM_INDEX = CityMapConstants.DEFAULT_ZOOM_INDEX

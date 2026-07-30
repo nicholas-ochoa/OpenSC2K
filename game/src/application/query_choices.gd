@@ -8,7 +8,6 @@ const Signs = preload("res://src/tools/city/sign_command.gd")
 const Queries = preload("res://src/tools/city/query_info.gd")
 const QueryFacilityActions = preload("res://src/tools/city/query_actions.gd")
 const LibraryRuminateWindowsView = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
-const Buildings = preload("res://src/tools/city/building_command.gd")
 const Music = preload("res://src/audio/music_director.gd")
 
 var app: CityApplication
