@@ -381,8 +381,8 @@ static func _abandon_toxic_structure(
 	if tile < 0x70 or tile > 0xc5 or _is_construction_or_abandoned(tile):
 		return false
 
-	var area: int = Demolish._building_area(tile)
-	var site := Demolish._find_building_site(
+	var area: int = DemolishEffectsSites._building_area(tile)
+	var site := DemolishEffectsSites._find_building_site(
 		payloads.XBLD, payloads.XZON, point, tile, area, city.compass_rotation(), map_edge
 	)
 

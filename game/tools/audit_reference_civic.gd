@@ -14,7 +14,7 @@ func _initialize() -> void:
 
 	for id in range(198, 256):
 		var resource := QueryInfo.general_name_resource_id(city, Vector2i.ZERO, id)
-		print("Role %d: %s; footprint %d" % [id, str(names.strings.get(resource, "missing")), DemolishCommand.structure_area(id)])
+		print("Role %d: %s; footprint %d" % [id, str(names.strings.get(resource, "missing")), DemolishStructures.structure_area(id)])
 
 	for archive_name in ["LARGE.DAT", "SMALLMED.DAT", "SPECIAL.DAT"]:
 		var archive := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/" + archive_name)

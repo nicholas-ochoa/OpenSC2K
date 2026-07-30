@@ -359,7 +359,7 @@ static func _extinguish_dispatch_fire(
 		return true
 
 	if tile < 0x61:
-		Demolish._demolish_point(
+		DemolishStructures._demolish_point(
 			city,
 			payloads.ALTM,
 			payloads.XBLD,
@@ -381,7 +381,7 @@ static func _extinguish_dispatch_fire(
 			payloads.XBLD, payloads.XZON, payloads.MISC, index, lfsr_random.next_mod(4) + 1
 		)
 	elif payloads.XBIT[index] & 0xf0 == 0xf0:
-		Demolish._demolish_point(
+		DemolishStructures._demolish_point(
 			city,
 			payloads.ALTM,
 			payloads.XBLD,

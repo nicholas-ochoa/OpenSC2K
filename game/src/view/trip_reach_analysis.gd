@@ -71,8 +71,8 @@ static func _growth_anchor(city: CityState, point: Vector2i) -> Vector2i:
 	var tile := city.building_id(point.x, point.y)
 	if tile < 0x70:
 		return point
-	var area := DemolishCommand._building_area(tile)
-	var site := DemolishCommand._find_building_site(city.buildings, city.zones, point,
+	var area := DemolishEffectsSites._building_area(tile)
+	var site := DemolishEffectsSites._find_building_site(city.buildings, city.zones, point,
 		tile, area, city.compass_rotation(), city.map_size)
 	var mask: int = GrowthConstants.ANCHOR_MASKS[city.compass_rotation()]
 	for x in range(site.position.x, site.end.x):
@@ -86,8 +86,8 @@ static func _building_site(city: CityState, point: Vector2i) -> Rect2i:
 	var tile := city.building_id(point.x, point.y)
 	if tile < 0x70:
 		return Rect2i(point, Vector2i.ONE)
-	var site := DemolishCommand._find_building_site(city.buildings, city.zones, point,
-		tile, DemolishCommand._building_area(tile), city.compass_rotation(), city.map_size)
+	var site := DemolishEffectsSites._find_building_site(city.buildings, city.zones, point,
+		tile, DemolishEffectsSites._building_area(tile), city.compass_rotation(), city.map_size)
 	# partial buildings or missing corner flags have no complete footprint
 	# keep their query coverage and marker on the actual tile, never a zero-area site
 	return site if site.has_area() else Rect2i(point, Vector2i.ONE)

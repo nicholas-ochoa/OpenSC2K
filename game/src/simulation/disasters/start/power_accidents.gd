@@ -26,7 +26,7 @@ static func _start_meltdown(
 		return DisasterStartObjectsState._result(DISASTER_MELTDOWN, requested_point, false, true, 0)
 
 	var center := plant_point
-	var site := Demolish._find_building_site(
+	var site := DemolishEffectsSites._find_building_site(
 		payloads.XBLD,
 		payloads.XZON,
 		plant_point,

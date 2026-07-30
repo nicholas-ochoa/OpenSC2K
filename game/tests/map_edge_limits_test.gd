@@ -246,8 +246,8 @@ func check_tools(edge: int) -> void:
 		for dy in 2:
 			p.XBLD[(corner.x + dx) * edge + corner.y + dy] = 0x6a
 
-	check(DemolishCommand._reinforced_section_is_valid(p.XBLD, corner, edge), "Far reinforced bridge section")
-	check(not DemolishCommand._reinforced_section_is_valid(p.XBLD, corner + Vector2i.ONE, edge), "Bridge bounds reject overflow")
+	check(DemolishBridges.reinforced_section_is_valid(p.XBLD, corner, edge), "Far reinforced bridge section")
+	check(not DemolishBridges.reinforced_section_is_valid(p.XBLD, corner + Vector2i.ONE, edge), "Bridge bounds reject overflow")
 
 	for anchor in [Vector2i(20, 20), Vector2i(edge - 10, edge - 10), Vector2i(edge - 2, 20), Vector2i(20, edge - 2)]:
 		p = payloads(edge)

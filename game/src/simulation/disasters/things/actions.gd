@@ -60,7 +60,7 @@ static func _monster_damage(
 	if flags[index] & 0x04 or building <= 0x0d or building == 200:
 		return
 
-	var demolition := Demolish._demolish_point(
+	var demolition := DemolishStructures._demolish_point(
 		city, altitude, buildings, terrain, zones, underground,
 		flags, text, labels, microsims, misc, point, random, true, true, false
 	)

@@ -291,11 +291,11 @@ func _query_footprint_tiles(point: Vector2i) -> Array[Vector2i]:
 		return result
 
 	var tile_id := source.building_id(point.x, point.y)
-	var area := DemolishTool._building_area(tile_id)
+	var area := DemolishEffectsSites._building_area(tile_id)
 	var site := Rect2i(point, Vector2i.ONE)
 
 	if area > 1:
-		var found := DemolishTool._find_building_site(
+		var found := DemolishEffectsSites._find_building_site(
 			source.buildings, source.zones, point, tile_id, area, source.compass_rotation(), map_edge
 		)
 

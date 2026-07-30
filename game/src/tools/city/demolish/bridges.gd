@@ -121,7 +121,7 @@ static func _demolish_reinforced_bridge(
 ) -> Dictionary:
 	var anchor := Vector2i(selected.x & ~1, selected.y & ~1)
 
-	if not _reinforced_section_is_valid(buildings, anchor, map_edge):
+	if not reinforced_section_is_valid(buildings, anchor, map_edge):
 		return {"changed": false, "specialized": true}
 
 	var anchor_tile := int(buildings[anchor.x * map_edge + anchor.y])
@@ -130,12 +130,12 @@ static func _demolish_reinforced_bridge(
 	var direction := Vector2i(2, 0) if anchor_tile == REINFORCED_BRIDGE_LAST else Vector2i(0, 2)
 	var first := anchor
 
-	while _reinforced_section_is_valid(buildings, first - direction, map_edge):
+	while reinforced_section_is_valid(buildings, first - direction, map_edge):
 		first -= direction
 
 	var finish := anchor
 
-	while _reinforced_section_is_valid(buildings, finish + direction, map_edge):
+	while reinforced_section_is_valid(buildings, finish + direction, map_edge):
 		finish += direction
 
 	var points: Array[Vector2i] = []
@@ -211,7 +211,7 @@ static func _demolish_reinforced_bridge(
 	}
 
 
-static func _reinforced_section_is_valid(
+static func reinforced_section_is_valid(
 	buildings: PackedByteArray, anchor: Vector2i,
 	map_edge: int = 128,
 ) -> bool:

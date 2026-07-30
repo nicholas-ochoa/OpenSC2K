@@ -32,9 +32,9 @@ static func _building_site(
 	city: CityState, payloads: Dictionary, point: Vector2i, tile: int
 ) -> Rect2i:
 	var map_edge: int = city.map_size if city != null else 128
-	var area: int = Demolish._building_area(tile)
+	var area: int = DemolishEffectsSites._building_area(tile)
 
-	return Demolish._find_building_site(
+	return DemolishEffectsSites._find_building_site(
 		payloads.XBLD, payloads.XZON, point, tile, area, city.compass_rotation(), map_edge
 	)
 

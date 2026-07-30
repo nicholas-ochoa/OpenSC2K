@@ -27,10 +27,10 @@ static func render(city: CityState, point: Vector2i, palette: Sc2Palette, sprite
 	var cache := {}
 	var site := Rect2i(point, Vector2i.ONE)
 	var tile := city.building_id(point.x, point.y)
-	var area := DemolishCommand._building_area(tile)
+	var area := DemolishEffectsSites._building_area(tile)
 
 	if area > 1:
-		var found := DemolishCommand._find_building_site(city.buildings, city.zones, point, tile, area, city.compass_rotation(), city.map_size)
+		var found := DemolishEffectsSites._find_building_site(city.buildings, city.zones, point, tile, area, city.compass_rotation(), city.map_size)
 
 		if found.has_area():
 			site = found
@@ -94,7 +94,7 @@ static func zoom_for_tile(tile_id: int) -> float:
 	if tile_id >= 0xfb and tile_id <= 0xfe:
 		return 2.0
 
-	match DemolishCommand._building_area(tile_id):
+	match DemolishEffectsSites._building_area(tile_id):
 		4:
 			return 2.5
 		2, 3:

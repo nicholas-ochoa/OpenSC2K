@@ -44,7 +44,7 @@ func _run() -> void:
 
 
 func stamp(city: CityState, tile: int, origin: Vector2i) -> Rect2i:
-	var area := DemolishCommand.structure_area(tile)
+	var area := DemolishStructures.structure_area(tile)
 	var site := Rect2i(origin, Vector2i(area, area))
 	var buildings := city.buildings.duplicate()
 	var zones := city.zones.duplicate()

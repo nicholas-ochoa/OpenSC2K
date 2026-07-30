@@ -1,7 +1,6 @@
 class_name DisasterDamage
 extends RefCounted
 
-const Demolish = preload("res://src/tools/city/demolish_command.gd")
 const TEXT_LABEL_BASE := 201
 const SOUND_DAMAGE := 0x1f8
 
@@ -24,7 +23,7 @@ static func append_damage_events(runtime_events: Dictionary, damage: Dictionary)
 		return
 
 	var destination: Array[Dictionary] = runtime_events.get("effect_events", [])
-	runtime_events["next_effect_frame"] = Demolish.append_effect_sequence(
+	runtime_events["next_effect_frame"] = DemolishEffectsSites.append_effect_sequence(
 		destination, source, int(runtime_events.get("next_effect_frame", 0))
 	)
 	runtime_events["effect_events"] = destination
@@ -171,7 +170,7 @@ static func burn_structure(
 	emit_effects := false
 ) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
-	var result := Demolish._demolish_point(
+	var result := DemolishStructures._demolish_point(
 		city, altitude, buildings, terrain, zones, underground,
 		flags, text, labels, microsims, misc, point, random, true, true, emit_effects
 	)

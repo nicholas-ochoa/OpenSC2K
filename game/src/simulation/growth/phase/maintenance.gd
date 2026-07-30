@@ -49,12 +49,12 @@ static func _process_surface_maintenance(
 			var result: Dictionary
 
 			if tile == 0x6a or tile == 0x6b:
-				result = Demolish._demolish_reinforced_bridge(
+				result = DemolishBridges._demolish_reinforced_bridge(
 					altitude, buildings, terrain, zones, underground, flags, misc,
 					point, random, true, map_edge
 				)
 			else:
-				result = Demolish._demolish_bridge(
+				result = DemolishBridges._demolish_bridge(
 					altitude, buildings, terrain, zones, underground, flags, misc,
 					point, random, true, map_edge
 				)

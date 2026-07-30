@@ -2,7 +2,6 @@ class_name ScurkPlaceCommand
 extends RefCounted
 
 const Buildings = preload("res://src/tools/city/building_command.gd")
-const Demolish = preload("res://src/tools/city/demolish_command.gd")
 const Networks = preload("res://src/tools/city/network_command.gd")
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
 
@@ -76,7 +75,7 @@ static func footprint(tile_id: int, selected: Vector2i) -> Rect2i:
 	if not is_placeable_tile(tile_id):
 		return Rect2i()
 
-	return BuildingSites.footprint(selected, Demolish.structure_area(tile_id) if tile_id <= 255 else 1)
+	return BuildingSites.footprint(selected, DemolishStructures.structure_area(tile_id) if tile_id <= 255 else 1)
 
 
 static func apply(
@@ -109,7 +108,7 @@ static func apply(
 			"scurk_place_history": true, "area": 1, "old_stamps": before,
 			"new_stamps": city.scurk_artwork_stamps.duplicate(true)}
 
-	var area := Demolish.structure_area(tile_id)
+	var area := DemolishStructures.structure_area(tile_id)
 	var site := BuildingSites.footprint(selected, area)
 
 	if not BuildingSites._footprint_is_in_bounds(site, area, map_edge):

@@ -253,7 +253,7 @@ static func update_tornado(
 	var building := int(buildings[index])
 
 	if building > 5:
-		var demolition := Demolish._demolish_point(
+		var demolition := DemolishStructures._demolish_point(
 			city, altitude, buildings, terrain, zones, underground,
 			flags, text, labels, microsims, misc, current, random, true, true, false
 		)

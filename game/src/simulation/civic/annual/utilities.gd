@@ -53,12 +53,12 @@ static func update_power(annual: MicrosimAnnualContext, record_id: int, offset: 
 					"x": location.x,
 					"y": location.y,
 				}
-				var demolition := DemolishCommand.damage_structure_payloads(
+				var demolition := DemolishStructures.damage_structure_payloads(
 					annual.city, annual.changed_payloads, Vector2i(location.x, location.y), annual.random, true
 				)
 
 				if demolition.get("changed", false):
-					annual.next_effect_frame = DemolishCommand.append_effect_sequence(
+					annual.next_effect_frame = DemolishEffectsSites.append_effect_sequence(
 						annual.effect_events,
 						demolition.get("effect_events", []),
 						annual.next_effect_frame

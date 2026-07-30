@@ -38,13 +38,13 @@ static func apply(city: CityState) -> Dictionary:
 			if kind == 0:
 				continue
 
-			var area := DemolishCommand.structure_area(tile)
+			var area := DemolishStructures.structure_area(tile)
 			var site := Rect2i(x, y, area, area)
 
 			if site.end.x > edge or site.end.y > edge:
 				continue
 
-			if area > 1 and not DemolishCommand._site_matches(
+			if area > 1 and not DemolishEffectsSites._site_matches(
 				city.buildings, city.zones, site, tile, city.compass_rotation(), edge
 			):
 				continue

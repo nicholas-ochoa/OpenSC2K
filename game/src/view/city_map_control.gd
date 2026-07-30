@@ -20,7 +20,6 @@ signal viewport_changed()
 
 const Renderer = CityMapConstants.Renderer
 const HighwayTool = CityMapConstants.HighwayTool
-const DemolishTool = CityMapConstants.DemolishTool
 const BuildingTool = CityMapConstants.BuildingTool
 const DynamicSpriteCanvas = CityMapConstants.DynamicSpriteCanvas
 const ZOOM_LEVELS = CityMapConstants.ZOOM_LEVELS
