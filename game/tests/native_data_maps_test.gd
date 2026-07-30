@@ -130,8 +130,8 @@ func check_values(edge: int) -> void:
 	doc.find_chunk("XVAL").set_decoded_payload(land)
 	city.set_building_id(point.x, point.y, 0x70)
 	city.set_building_id(point.x, point.y + 1, 0x70)
-	check(GrowthPhase._can_advance_density(2, 2, 3, land, point.x, point.y, edge), "Growth reads selected tile land value")
-	check(not GrowthPhase._can_advance_density(2, 2, 3, land, point.x, point.y + 1, edge), "Neighbor has separate growth eligibility")
+	check(GrowthConstruction.can_advance_density(2, 2, 3, land, point.x, point.y, edge), "Growth reads selected tile land value")
+	check(not GrowthConstruction.can_advance_density(2, 2, 3, land, point.x, point.y + 1, edge), "Neighbor has separate growth eligibility")
 	var query := QueryInfo.inspect(city, point)
 	check(query.ok and query.land_value == 256, "Query reads full-resolution value")
 	query = QueryInfo.inspect(city, point + Vector2i.DOWN)
@@ -153,7 +153,7 @@ func check_values(edge: int) -> void:
 		and doc.find_chunk("XTRF").decoded_payload[index + 1] == 30
 		and doc.find_chunk("XTRF").decoded_payload[-1] == 60, "Traffic decay preserves per-tile extent")
 	# A fire clears only the affected tile, including inside one old coarse cell.
-	var p := GrowthPhase._payloads(city)
+	var p := GrowthState.payloads(city)
 	var labels := doc.find_chunk("XLAB").decoded_payload.duplicate()
 	var damage := DisasterDamage.apply(city, p.ALTM, p.XBLD, p.XTER, p.XZON, p.XUND,
 		p.XBIT, p.XTRF, p.XTXT, labels, p.XMIC, p.MISC, point, ZeroRandom.new(), ZeroLfsrRandom.new())

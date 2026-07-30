@@ -121,19 +121,19 @@ func check_growth_and_facilities(edge: int, native: bool) -> void:
 	for rotation in 4:
 		for density in range(2, 5):
 			var city := CityState.from_document(fixture(edge, native))
-			var p := GrowthPhase._payloads(city)
+			var p := GrowthState.payloads(city)
 			var radius := density / 2
 			var anchor := Vector2i(edge - 2 - radius, edge - 2 - radius)
-			check(GrowthPhase._place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
-				anchor, density, GrowthPhase.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
+			check(GrowthDevelopment.place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
+				anchor, density, GrowthConstants.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
 				"Small map grows each density at its interior edge")
 			var count := 0
 			for tile in p.XBLD:
 				count += int(tile != 0)
 			check(count == (radius + 1) * (radius + 1), "Small-map growth has the full footprint")
 			var before: PackedByteArray = p.XBLD.duplicate()
-			check(not GrowthPhase._place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
-				anchor + Vector2i.ONE, density, GrowthPhase.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
+			check(not GrowthDevelopment.place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
+				anchor + Vector2i.ONE, density, GrowthConstants.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
 				"Small-map growth rejects the outside margin")
 			check(p.XBLD == before, "Rejected growth preserves map bytes")
 	var doc := fixture(edge, native)
@@ -217,7 +217,7 @@ func check_vehicles(edge: int) -> void:
 		"Debug disaster actions accept the small-map record pool")
 
 	for start in [Vector2i(edge - 4, edge - 4), Vector2i(edge - 3, edge - 3)]:
-		var p := GrowthPhase._payloads(CityState.from_document(fixture(edge)))
+		var p := GrowthState.payloads(CityState.from_document(fixture(edge)))
 		for delta in [Vector2i.ZERO, Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP, Vector2i.DOWN]:
 			var track: Vector2i = start + delta
 			p.XBLD[track.x * edge + track.y] = 0x2c

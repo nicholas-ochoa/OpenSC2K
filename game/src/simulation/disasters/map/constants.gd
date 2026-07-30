@@ -3,7 +3,6 @@ extends RefCounted
 
 const DisasterMapDamage = preload("res://src/simulation/disasters/disaster_damage.gd")
 const Demolish = preload("res://src/tools/city/demolish_command.gd")
-const Growth = preload("res://src/simulation/growth/growth_phase.gd")
 const FIRE_OVERLAY := 0xff
 const TOXIC_OVERLAY := 0xfb
 const FLOOD_OVERLAY := 0xfc

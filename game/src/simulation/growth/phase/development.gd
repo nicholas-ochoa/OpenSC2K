@@ -20,13 +20,13 @@ static func _abandon(
 ) -> void:
 	match density:
 		1:
-			_place_zone(
+			place_zone(
 				buildings, zones, flags, misc, land_value, point,
 				1, CLASS_ABANDONED, random, rotation, map_edge
 			)
 		2:
 			if pattern == 0:
-				_place_zone(
+				place_zone(
 					buildings, zones, flags, misc, land_value, point,
 					2, CLASS_ABANDONED, random, rotation, map_edge
 				)
@@ -37,18 +37,18 @@ static func _abandon(
 					point + Vector2i(1, -1),
 					point + Vector2i(0, -1),
 				]:
-					_place_zone(
+					place_zone(
 						buildings, zones, flags, misc, land_value, abandoned_point,
 						1, CLASS_ABANDONED, random, rotation, map_edge
 					)
 		3:
-			_place_zone(
+			place_zone(
 				buildings, zones, flags, misc, land_value, point,
 				3 if pattern == 0 else 2, CLASS_ABANDONED, random, rotation, map_edge
 			)
 		4:
 			if pattern == 0:
-				_place_zone(
+				place_zone(
 					buildings, zones, flags, misc, land_value, point,
 					4, CLASS_ABANDONED, random, rotation, map_edge
 				)
@@ -63,13 +63,13 @@ static func _abandon(
 					point + Vector2i(0, -2),
 					point + Vector2i(0, -1),
 				]:
-					_place_zone(
+					place_zone(
 						buildings, zones, flags, misc, land_value, abandoned_point,
 						1, CLASS_ABANDONED, random, rotation, map_edge
 					)
 
 				var selection: int = random.next_u15() & 3
-				_place_zone(
+				place_zone(
 					buildings,
 					zones,
 					flags,
@@ -83,7 +83,7 @@ static func _abandon(
 				)
 
 
-static func _place_zone(
+static func place_zone(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
 	flags: PackedByteArray,
@@ -113,7 +113,7 @@ static func _place_zone(
 		if index < 0:
 			return false
 
-		GrowthState._replace_building(buildings, zones, misc, index, tile)
+		GrowthState.replace_building(buildings, zones, misc, index, tile)
 		zones[index] |= 0xf0
 		flags[index] |= 0xe0
 
@@ -134,7 +134,7 @@ static func _place_zone(
 	for x in range(site_position.x, site_position.x + radius + 1):
 		for y in range(site_position.y, site_position.y + radius + 1):
 			var index := x * map_edge + y
-			GrowthState._replace_building(buildings, zones, misc, index, tile)
+			GrowthState.replace_building(buildings, zones, misc, index, tile)
 			zones[index] &= 0x0f
 			flags[index] |= 0xe0
 
@@ -160,7 +160,7 @@ static func _place_church(
 	for x in range(position.x, position.x + 2):
 		for y in range(position.y, position.y + 2):
 			var index := x * map_edge + y
-			GrowthState._replace_building(buildings, zones, misc, index, CHURCH_TILE)
+			GrowthState.replace_building(buildings, zones, misc, index, CHURCH_TILE)
 			zones[index] = 0
 			flags[index] |= 0xe0
 
@@ -204,7 +204,7 @@ static func _has_power(flags: PackedByteArray, x: int, y: int, map_edge: int = 1
 	return y < (map_edge - 1) and (flags[x * map_edge + y + 1] & 0x40) != 0
 
 
-static func _density(tile: int) -> int:
+static func density(tile: int) -> int:
 	if tile <= 0x8b:
 		return 1
 

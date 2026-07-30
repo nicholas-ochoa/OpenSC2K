@@ -48,7 +48,7 @@ func _initialize() -> void:
 			for index in proposal.changed_indices:
 				check((city.zones[index] & 15) == 7 and city.buildings[index] == 0, "Navy reserves clear land")
 			# Try growing a crane and pier from the new shoreline plot.
-			var p := GrowthPhase._duplicate_payloads(GrowthPhase._payloads(city))
+			var p := GrowthState.duplicate_payloads(GrowthState.payloads(city))
 			var grown := false
 			for index in proposal.changed_indices:
 				var point := Vector2i(index / edge, index % edge)

@@ -32,12 +32,12 @@ static func run(
 
 	var span := SimulationTimingSpan.new(city.simulation_slice, TIMING_LABELS)
 	span.mark_index(TimingStep.PREPARE)
-	var payloads := GrowthState._payloads(city)
+	var payloads := GrowthState.payloads(city)
 
 	if payloads.is_empty():
 		return _failed("growth input chunks are missing or have the wrong size")
 
-	var original := GrowthState._duplicate_payloads(payloads)
+	var original := GrowthState.duplicate_payloads(payloads)
 	var altitude: PackedByteArray = payloads.ALTM
 	var altitudes := city.altitude_words.duplicate()
 	var terrain: PackedByteArray = payloads.XTER
@@ -235,7 +235,7 @@ static func run(
 
 					continue
 
-				density = GrowthDevelopment._density(building)
+				density = GrowthDevelopment.density(building)
 				status = GrowthDevelopment._status(building)
 
 			rci_tiles += 1
@@ -333,7 +333,7 @@ static func run(
 						GrowthDevelopment._place_church(buildings, zones, flags, misc, Vector2i(x, y), rotation, map_edge)
 						churches_built += 1
 					else:
-						GrowthDevelopment._place_zone(
+						GrowthDevelopment.place_zone(
 							buildings,
 							zones,
 							flags,
@@ -369,7 +369,7 @@ static func run(
 				abandoned_population_added += abandoned_population
 
 				if random.next_u15() < int((growth_pressure * 15) / density):
-					GrowthDevelopment._place_zone(
+					GrowthDevelopment.place_zone(
 						buildings,
 						zones,
 						flags,
@@ -399,7 +399,7 @@ static func run(
 			if detailed:
 				span.mark_index(TimingStep.DENSITY)
 
-			if GrowthConstruction._can_advance_density(zone_byte, zone, density, land_value, x, y, map_edge):
+			if GrowthConstruction.can_advance_density(zone_byte, zone, density, land_value, x, y, map_edge):
 				if random.next_u15() < int((growth_pressure * 3) / (density + 1)):
 					var advanced := GrowthConstruction._advance_construction(
 						buildings,

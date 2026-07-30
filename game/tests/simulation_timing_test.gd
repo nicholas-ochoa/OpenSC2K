@@ -73,7 +73,7 @@ func _check_growth_detail_flag() -> void:
 		var random := SimRandom.new(123)
 		var lfsr := SimLfsrRandom.new(456)
 		var game := GameLcgRandom.new(789)
-		var growth := GrowthPhase.run(city, random, 0, 0, lfsr, game)
+		var growth := GrowthScan.run(city, random, 0, 0, lfsr, game)
 		assert(growth.ok, growth.error)
 		assert(budget.metrics().slices >= 1, "The growth scan still parks the worker")
 		var steps: Dictionary = growth.timing.steps

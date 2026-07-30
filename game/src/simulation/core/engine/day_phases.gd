@@ -112,7 +112,7 @@ class Power extends SimulationDayPhase:
 
 class Growth extends SimulationDayPhase:
 	func run(context: SimulationPhaseContext) -> PhaseResult:
-		var growth := GrowthPhase.run(
+		var growth := GrowthScan.run(
 			context.city,
 			context.random,
 			context.schedule.growth_step,

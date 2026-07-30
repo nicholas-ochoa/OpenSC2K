@@ -390,7 +390,7 @@ static func _abandon_toxic_structure(
 		return false
 
 	var anchor := Vector2i(site.position.x, site.end.y - 1)
-	Growth._abandon(
+	GrowthDevelopment._abandon(
 		payloads.XBLD,
 		payloads.XZON,
 		payloads.XBIT,

@@ -64,7 +64,7 @@ const Bankruptcy = preload("res://src/simulation/economy/bankruptcy_phase.gd")
 const AnnualMicrosims = preload("res://src/simulation/civic/microsim_annual_phase.gd")
 const MayorApproval = preload("res://src/simulation/civic/mayor_approval_phase.gd")
 const Transport = preload("res://src/simulation/infrastructure/transport_trip.gd")
-const Growth = preload("res://src/simulation/growth/growth_phase.gd")
+const Growth = preload("res://src/simulation/growth/phase/constants.gd")
 const MovingThings = preload("res://src/simulation/moving_things/moving_thing_spawner.gd")
 const MovingThingTick = preload("res://src/simulation/moving_things/moving_thing_phase.gd")
 const Simulation = preload("res://src/simulation/core/simulation_engine.gd")
@@ -8637,7 +8637,7 @@ func _test_transport_trip(reference_root: String) -> void:
 
 func _test_growth_phase(reference_root: String) -> void:
 	var normal := _growth_fixture(reference_root, 0xae, 1, 2000)
-	var normal_result := Growth.run(normal.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
+	var normal_result := GrowthScan.run(normal.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(normal_result.ok, "Normal growth scan completes: %s" % normal_result.error)
 	_check(normal_result.scanned_tiles == 1024, "Growth scan processes one sixteenth of the map")
 	_check(normal_result.rci_tiles == 1, "Growth scan processes the controlled RCI anchor")
@@ -8646,7 +8646,7 @@ func _test_growth_phase(reference_root: String) -> void:
 	_check(normal.city.building_id(20, 20) == 0xae, "Stable density-four zone keeps its building")
 
 	var bare := _growth_fixture(reference_root, 0, 1, 2000)
-	var bare_result := Growth.run(bare.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
+	var bare_result := GrowthScan.run(bare.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(bare_result.ok, "Bare-zone growth scan completes: %s" % bare_result.error)
 	_check(bare_result.started_construction == 1, "Bare powered zone starts construction")
 	_check(bare.city.building_id(20, 20) == 0x88, "Bare zone gets the first construction tile")
@@ -8657,21 +8657,21 @@ func _test_growth_phase(reference_root: String) -> void:
 	)
 
 	var declining := _growth_fixture(reference_root, 0x70, 1, -2000)
-	var decline_result := Growth.run(declining.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
+	var decline_result := GrowthScan.run(declining.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(decline_result.ok, "Declining-zone scan completes: %s" % decline_result.error)
 	_check(decline_result.abandoned_buildings == 1, "Low demand abandons the controlled building")
 	_check(declining.city.building_id(20, 20) == 0x8a, "Density-one zone uses an abandoned tile")
 	_check(declining.document.misc_u32(0x05f4) == 1, "Population is counted before abandonment")
 
 	var abandoned := _growth_fixture(reference_root, 0x8a, 1, 2000)
-	var recovery_result := Growth.run(abandoned.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
+	var recovery_result := GrowthScan.run(abandoned.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(recovery_result.ok, "Abandoned-zone scan completes: %s" % recovery_result.error)
 	_check(recovery_result.recovered_buildings == 1, "High demand recovers an abandoned building")
 	_check(abandoned.city.building_id(20, 20) == 0x70, "Recovered residence uses value group zero")
 	_check(abandoned.document.misc_u32(0x060c) == 1, "Abandoned population is counted before recovery")
 
 	var construction := _growth_fixture(reference_root, 0x88, 1, 2000)
-	var construction_result := Growth.run(
+	var construction_result := GrowthScan.run(
 		construction.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new()
 	)
 	_check(construction_result.ok, "Construction completion scan completes: %s" % construction_result.error)
@@ -8687,7 +8687,7 @@ func _test_growth_phase(reference_root: String) -> void:
 	_check(church.document.set_misc_u32(0x01f0 + 0xa6 * 4, 4), "Church fixture counts construction tiles")
 	_check(church.document.set_misc_u32(0x01f0 + 0xf7 * 4, 0), "Church fixture clears church count")
 	_check(church.document.set_misc_u32(0x102c, 1000), "Church fixture sets city population")
-	var church_result := Growth.run(church.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
+	var church_result := GrowthScan.run(church.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(church_result.ok, "Church growth scan completes: %s" % church_result.error)
 	_check(church_result.churches_built == 1, "Residential density construction can make a church")
 
@@ -8706,7 +8706,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 		_check(airport.city.set_zone_id(x, 21, 8), "Airport fixture zones its runway strip")
 
 	_check(airport.city.set_tile_flag(20, 21, 0x40, true), "Airport fixture powers its origin")
-	var airport_result := Growth.run(
+	var airport_result := GrowthScan.run(
 		airport.city, ZeroRandom.new(), 0, 1, NonzeroLfsrRandom.new()
 	)
 	_check(airport_result.ok, "Airport growth scan completes: %s" % airport_result.error)
@@ -8731,7 +8731,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 
 	_check(seaport.city.set_land_altitude(20, 25, 0), "Seaport fixture lowers the last water tile")
 	_check(seaport.city.set_water_altitude(20, 25, 2), "Seaport fixture makes the last tile deep")
-	var seaport_result := Growth.run(
+	var seaport_result := GrowthScan.run(
 		seaport.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new()
 	)
 	_check(seaport_result.ok, "Seaport growth scan completes: %s" % seaport_result.error)
@@ -8756,7 +8756,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	_check(silos.document.set_misc_u32(0x0e4c, 5), "Missile fixture selects a missile base")
 	_check(silos.document.set_misc_u32(0x01f0, 16375), "Missile fixture excludes military tiles from the normal count")
 	_check(silos.document.set_misc_u32(0x0fa8, 9), "Missile fixture counts military other tiles")
-	var silo_result := Growth.run(silos.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
+	var silo_result := GrowthScan.run(silos.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(silo_result.ok, "Missile growth scan completes: %s" % silo_result.error)
 	_check(silo_result.special_tiles_placed == 9, "Missile growth places a three-by-three silo")
 
@@ -8779,7 +8779,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	_check(army.document.set_misc_u32(0x0e4c, 2), "Army fixture selects an army base")
 	_check(army.document.set_misc_u32(0x01f0, 16380), "Army fixture excludes military tiles from the normal count")
 	_check(army.document.set_misc_u32(0x0fa8, 4), "Army fixture counts military other tiles")
-	var army_result := Growth.run(army.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
+	var army_result := GrowthScan.run(army.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new())
 	_check(army_result.ok, "Army growth scan completes: %s" % army_result.error)
 	_check(army_result.special_growth_attempts == 1, "Army growth attempts one controlled building")
 	_check(army_result.special_tiles_placed == 4, "Military growth can develop its own zone")
@@ -8802,7 +8802,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	_check(air_force.document.set_misc_u32(0x01f0, 16378), "Air Force fixture counts normal clear tiles")
 	_check(air_force.document.set_misc_u32(0x01f0 + 0xdd * 4, 1), "Air Force fixture counts its civilian runway")
 	_check(air_force.document.set_misc_u32(0x0fa8, 5), "Air Force fixture counts military other tiles")
-	var air_force_result := Growth.run(
+	var air_force_result := GrowthScan.run(
 		air_force.city, ZeroRandom.new(), 1, 1, NonzeroLfsrRandom.new()
 	)
 	_check(air_force_result.ok, "Air Force growth scan completes: %s" % air_force_result.error)
@@ -8818,7 +8818,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	_check(aircraft.city.set_tile_flag(20, 20, 0x40, true), "Aircraft fixture powers its runway")
 	_check(aircraft.document.set_misc_u32(0x01f0, 16383), "Aircraft fixture counts clear tiles")
 	_check(aircraft.document.set_misc_u32(0x01f0 + 0xdd * 4, 1), "Aircraft fixture counts its runway")
-	var aircraft_result := Growth.run(
+	var aircraft_result := GrowthScan.run(
 		aircraft.city, SequenceRandom.new([1, 0, 0]), 0, 0, NonzeroLfsrRandom.new()
 	)
 	_check(aircraft_result.ok, "Aircraft growth scan completes: %s" % aircraft_result.error)
@@ -8847,7 +8847,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	_check(airplane.city.set_tile_flag(20, 20, 0x40, true), "Airplane fixture powers its runway")
 	_check(airplane.document.set_misc_u32(0x01f0, 16383), "Airplane fixture counts clear tiles")
 	_check(airplane.document.set_misc_u32(0x01f0 + 0xdd * 4, 1), "Airplane fixture counts its runway")
-	var airplane_result := Growth.run(
+	var airplane_result := GrowthScan.run(
 		airplane.city, SequenceRandom.new([1, 0, 4, 9]), 0, 0, NonzeroLfsrRandom.new()
 	)
 	_check(airplane_result.ok and airplane_result.spawned_airplanes == 1, "Airport spawns an airplane")
@@ -8934,7 +8934,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 		ship_fixture.document.find_chunk("XTHG").set_decoded_payload(stale_ship_record),
 		"Ship fixture sets stale target bytes",
 	)
-	var ship_result := Growth.run(
+	var ship_result := GrowthScan.run(
 		ship_fixture.city, SequenceRandom.new([1, 0, 0]), 0, 0, NonzeroLfsrRandom.new()
 	)
 	_check(
@@ -8971,7 +8971,7 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	_check(station.city.set_building_id(19, 18, 0x2c), "Train fixture places its west route rail")
 	_check(station.city.set_building_id(21, 18, 0x2c), "Train fixture places its east route rail")
 	_check(station.document.set_misc_u32(0x01f0 + 0xed * 4, 4), "Train fixture sets the station count")
-	var train_result := Growth.run(
+	var train_result := GrowthScan.run(
 		station.city,
 		ZeroRandom.new(),
 		0,
@@ -9028,7 +9028,7 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	_check(marina.city.set_tile_flag(20, 20, 0x40, true), "Sailboat fixture powers its marina")
 	_check(marina.city.set_tile_flag(20, 19, 0x04, true), "Sailboat fixture marks north water")
 	_check(marina.document.set_misc_u32(0x01f0 + 0xf8 * 4, 9), "Sailboat fixture sets the marina count")
-	var sailboat_result := Growth.run(
+	var sailboat_result := GrowthScan.run(
 		marina.city, ZeroRandom.new(), 0, 0, MicrosimLfsrRandom.new()
 	)
 	_check(
@@ -9066,7 +9066,7 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	var pollution: PackedByteArray = arcology.document.find_chunk("XPLT").decoded_payload.duplicate()
 	pollution[coarse_index] = 32
 	_check(arcology.document.find_chunk("XPLT").set_decoded_payload(pollution), "Arcology fixture sets pollution")
-	var arcology_result := Growth.run(
+	var arcology_result := GrowthScan.run(
 		arcology.city, ZeroRandom.new(), 0, 0, NonzeroLfsrRandom.new()
 	)
 	_check(arcology_result.ok and arcology_result.arcologies_updated == 1, "Arcology updates its XMIC statistic")
@@ -10263,7 +10263,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	var road := _maintenance_fixture(reference_root, 0x1d, 0)
 	_check(road.city.set_tile_flag(20, 20, 0x80, true), "Road decay fixture sets powerable")
 	_check(road.document.set_misc_i32(0x077c + 10 * 0x6c + 4, 0), "Road decay fixture removes funding")
-	var road_result := Growth.run(road.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	var road_result := GrowthScan.run(road.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(road_result.ok and road_result.decayed_roads == 1, "Unfunded road decays on the rare check")
 	_check(road.city.building_id(20, 20) == 1, "Road decay makes process-selected rubble")
 	_check(road.city.tile_flags[20 * 128 + 20] & 0x80 == 0, "Road decay clears powerable")
@@ -10271,7 +10271,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	var rail := _maintenance_fixture(reference_root, 0x2c, 0)
 	_check(rail.city.set_tile_flag(20, 20, 0x80, true), "Rail decay fixture sets powerable")
 	_check(rail.document.set_misc_i32(0x077c + 13 * 0x6c + 4, 0), "Rail decay fixture removes funding")
-	var rail_result := Growth.run(rail.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	var rail_result := GrowthScan.run(rail.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(rail_result.ok and rail_result.decayed_rails == 1, "Unfunded rail decays on the rare check")
 	_check(rail.city.building_id(20, 20) == 1, "Rail decay makes process-selected rubble")
 	_check(rail.city.tile_flags[20 * 128 + 20] & 0x80 == 0, "Rail decay clears powerable")
@@ -10284,7 +10284,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(highway.city.set_tile_flag(21, 20, 0x04, true), "Highway decay fixture sets one water tile")
 	_check(highway.document.set_misc_u32(0x01f0 + 0x49 * 4, 4), "Highway decay fixture counts its tiles")
 	_check(highway.document.set_misc_i32(0x077c + 11 * 0x6c + 4, 0), "Highway decay fixture removes funding")
-	var highway_result := Growth.run(highway.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	var highway_result := GrowthScan.run(highway.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(highway_result.ok and highway_result.decayed_highway_tiles == 4, "Unfunded highway decays as one section")
 	_check(highway.city.building_id(21, 20) == 0, "Highway decay clears a water tile")
 
@@ -10293,14 +10293,14 @@ func _test_transport_maintenance(reference_root: String) -> void:
 
 	var subway := _maintenance_fixture(reference_root, 0, 0x01)
 	_check(subway.document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Subway decay fixture removes funding")
-	var subway_result := Growth.run(subway.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	var subway_result := GrowthScan.run(subway.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(subway_result.ok and subway_result.decayed_subway_tiles == 1, "Unfunded subway decays on the rare check")
 	_check(subway.city.underground_id(20, 20) == 0, "Subway decay clears a subway tile")
 	_check(subway.document.misc_u32(0x0fe8) == 0, "Subway decay decrements the saved XUND count")
 
 	var crossover := _maintenance_fixture(reference_root, 0, 0x1f)
 	_check(crossover.document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Crossover decay fixture removes funding")
-	var crossover_result := Growth.run(crossover.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	var crossover_result := GrowthScan.run(crossover.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(crossover_result.ok and crossover_result.decayed_subway_tiles == 1, "Subway crossover loses its rail layer")
 	_check(crossover.city.underground_id(20, 20) == 0x11, "Subway crossover preserves its pipe layer")
 	_check(crossover.document.misc_u32(0x0fe8) == 0, "Crossover decay decrements the saved XUND count")
@@ -10309,7 +10309,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(station.city.set_text_overlay_id(20, 20, 54), "Station decay fixture sets its microsim label")
 	_check(station.city.set_tile_flag(20, 20, 0xe2, true), "Station decay fixture sets utility and flip flags")
 	_check(station.document.set_misc_i32(0x077c + 14 * 0x6c + 4, 0), "Station decay fixture removes funding")
-	var station_result := Growth.run(station.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	var station_result := GrowthScan.run(station.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(station_result.ok and station_result.removed_subway_stations == 1, "Unfunded subway station is removed")
 	_check(station_result.decayed_subway_tiles == 1, "Station removal counts one decayed subway tile")
 	_check(station.city.building_id(20, 20) == 1, "Station decay makes process-selected rubble")
@@ -10342,7 +10342,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(bridge.document.set_misc_u32(0x0e40, 1), "Bridge decay fixture sets sea level")
 	_check(bridge.document.set_misc_i32(0x077c + 12 * 0x6c + 4, 0), "Bridge decay fixture removes funding")
 	var bridge_random := SequenceRandom.new([0, 2, 1, 3, 0, 1, 1])
-	var bridge_result := Growth.run(bridge.city, bridge_random, 0, 0, ZeroLfsrRandom.new())
+	var bridge_result := GrowthScan.run(bridge.city, bridge_random, 0, 0, ZeroLfsrRandom.new())
 	_check(bridge_result.ok and bridge_result.collapsed_bridges == 1, "Unfunded bridge span collapses")
 	_check(
 		bridge_result.deferred_bridge_effects == 0
@@ -10386,7 +10386,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 
 	var reinforced := _maintenance_fixture(reference_root, 0x6a, 0)
 	_check(reinforced.document.set_misc_i32(0x077c + 12 * 0x6c + 4, 0), "Reinforced bridge fixture removes funding")
-	var reinforced_result := Growth.run(
+	var reinforced_result := GrowthScan.run(
 		reinforced.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new()
 	)
 	_check(reinforced_result.ok and reinforced_result.deferred_bridge_collapses == 1, "Reinforced bridge collapse stays explicit")
@@ -10434,7 +10434,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 		2, 0, 1, 0, 1,
 		1, 1, 1, 0, 0,
 	])
-	var reinforced_span_result := Growth.run(
+	var reinforced_span_result := GrowthScan.run(
 		reinforced_span.city, reinforced_span_random, 0, 0, ZeroLfsrRandom.new()
 	)
 	_check(
@@ -10474,7 +10474,7 @@ func _test_transport_maintenance(reference_root: String) -> void:
 	_check(reinforced_span.document.misc_u32(0x01f0 + 0x6b * 4) == 0, "Reinforced collapse clears its normal-span count")
 
 	var funded := _maintenance_fixture(reference_root, 0x1d, 0)
-	var funded_result := Growth.run(funded.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
+	var funded_result := GrowthScan.run(funded.city, ZeroRandom.new(), 0, 0, ZeroLfsrRandom.new())
 	_check(funded_result.ok and funded_result.decayed_roads == 0, "Full road funding prevents decay")
 	_check(funded.city.building_id(20, 20) == 0x1d, "Full road funding preserves the road")
 

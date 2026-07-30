@@ -31,7 +31,7 @@ func _initialize() -> void:
 					var expected: bool = destination_size < 4 or network == "rail"
 					if source_size < 4:
 						var trip := TransportTrip.run(city, route.origin, 1,
-							GrowthPhase._density(TripQueryFixture.SOURCE_TILES[source_size]), SimRandom.new(7))
+							GrowthDevelopment.density(TripQueryFixture.SOURCE_TILES[source_size]), SimRandom.new(7))
 						check(trip.reached_destination == expected, label + " simulation destination rule")
 						check(inspected.reached_destination == trip.reached_destination, label + " inspection matches simulation")
 					else:

@@ -5,7 +5,7 @@ extends GrowthConstants
 @warning_ignore_start("integer_division")
 
 
-static func _replace_building(
+static func replace_building(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
 	misc: PackedByteArray,
@@ -26,7 +26,7 @@ static func _replace_building(
 	buildings[index] = new_tile
 
 
-static func _payloads(city: CityState) -> Dictionary:
+static func payloads(city: CityState) -> Dictionary:
 	var map_edge: int = city.map_size if city != null else 128
 	var result := {}
 
@@ -56,7 +56,7 @@ static func _payloads(city: CityState) -> Dictionary:
 	return result
 
 
-static func _duplicate_payloads(payloads: Dictionary) -> Dictionary:
+static func duplicate_payloads(payloads: Dictionary) -> Dictionary:
 	var result := {}
 
 	for chunk_id in payloads:

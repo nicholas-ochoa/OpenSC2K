@@ -119,9 +119,9 @@ func _check_moving_thing_rollback() -> void:
 
 func _check_growth_apply_payloads() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
-	var payloads := GrowthState._payloads(city)
+	var payloads := GrowthState.payloads(city)
 	check(not payloads.is_empty(), "Growth payloads decode")
-	var rollback := GrowthState._duplicate_payloads(payloads)
+	var rollback := GrowthState.duplicate_payloads(payloads)
 	var index := 40 * 128 + 40
 	payloads.XBLD[index] = 0x07
 	payloads.ALTM[index * 2] = 0x01
@@ -136,8 +136,8 @@ func _check_growth_apply_payloads() -> void:
 ## The rollback path restores what it applied, not what it was asked to write.
 func _check_growth_apply_rollback() -> void:
 	var city := CityState.from_document(EmptyCityTemplate.create(128))
-	var payloads := GrowthState._payloads(city)
-	var rollback := GrowthState._duplicate_payloads(payloads)
+	var payloads := GrowthState.payloads(city)
+	var rollback := GrowthState.duplicate_payloads(payloads)
 	var index := 40 * 128 + 40
 	payloads.XBLD[index] = 0x07
 	payloads.ALTM = PackedByteArray()
@@ -160,7 +160,7 @@ func _check_growth_phase() -> void:
 	var budget := SimulationSliceBudget.new()
 	budget.grant(60000000)
 	city.simulation_slice = budget
-	var growth := GrowthPhase.run(city, SimRandom.new(123), 0, 0, SimLfsrRandom.new(456), GameLcgRandom.new(789))
+	var growth := GrowthScan.run(city, SimRandom.new(123), 0, 0, SimLfsrRandom.new(456), GameLcgRandom.new(789))
 	check(growth.ok, "Growth phase succeeds")
 	check_mirrors(city, "growth phase")
 

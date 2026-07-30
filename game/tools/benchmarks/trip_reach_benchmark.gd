@@ -25,7 +25,7 @@ func _initialize() -> void:
 		var point: Vector2i = samples[(i * samples.size()) / 256]
 		var result := TransportTrip.trace(city.buildings, city.zones, city.underground,
 			city.text_overlays, city.altitude_words, traffic, point, city.zone_id(point.x, point.y),
-			GrowthPhase._density(city.building_id(point.x, point.y)), SimRandom.new(i + 1))
+			GrowthDevelopment.density(city.building_id(point.x, point.y)), SimRandom.new(i + 1))
 		expanded += int(result.get("expanded_states", 0))
 	print("Capeques 256 trips: %d usec, %d expanded states" % [Time.get_ticks_usec() - started, expanded])
 	for edge in [128, 512]:

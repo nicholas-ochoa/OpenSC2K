@@ -16,7 +16,7 @@ func _initialize() -> void:
 		var base := fixture(edge)
 		for rotation in 4:
 			for tile in [0xe2, 0xe3, 0xe8, 0xef, 0xf1, 0xf2]:
-				var p := GrowthPhase._duplicate_payloads(base)
+				var p := GrowthState.duplicate_payloads(base)
 				var point := Vector2i(edge - 12, edge - 12)
 				var result := SpecialZoneGrowth._grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
 					p.altitudes, p.MISC, point, tile, 7, rotation, edge)
@@ -25,7 +25,7 @@ func _initialize() -> void:
 				check((p.XZON[point.x * edge + point.y] & 15) == 7, "Military zone survives growth")
 				check(SpecialZoneGrowth.tile_count(p.MISC, tile, true, edge) == result.changed_tiles, "Military tile counter follows growth")
 				check(SpecialZoneGrowth.tile_count(p.MISC, tile, false, edge) == 0, "Civilian count stays separate")
-			var p := GrowthPhase._duplicate_payloads(base)
+			var p := GrowthState.duplicate_payloads(base)
 			var point := Vector2i(edge - 11, edge - 11)
 			SpecialZoneGrowth._write_u32(p.MISC, 0x01f0 + 0xdd * 4, 1)
 			var runway := SpecialZoneGrowth._grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
@@ -33,7 +33,7 @@ func _initialize() -> void:
 			check(runway.ok and runway.changed_tiles == 5, "Military runway grows")
 			check(p.XBLD[point.x * edge + point.y + 4] == 0xdd, "Military parity ignores civilian runway count")
 		for obstruction in [0x1d, 0x1e, 0xdd, 0xde, 0xe0, 0xf9, 0x05, 0x0d, -1, -2, -3]:
-			var p := GrowthPhase._duplicate_payloads(base)
+			var p := GrowthState.duplicate_payloads(base)
 			var point := Vector2i(edge - 12, edge - 12)
 			var index: int = (point.x + 1) * edge + point.y + 1
 			if obstruction >= 0:
@@ -44,7 +44,7 @@ func _initialize() -> void:
 				p.XTER[index] = 1
 			else:
 				p.XBIT[index] = 4
-			var before := GrowthPhase._duplicate_payloads(p)
+			var before := GrowthState.duplicate_payloads(p)
 			var result := SpecialZoneGrowth._grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
 				p.altitudes, p.MISC, point, 0xef, 7, 0, edge)
 			check(not result.ok, "Military growth rejects obstruction anywhere in footprint")
@@ -56,7 +56,7 @@ func _initialize() -> void:
 func fixture(edge: int) -> Dictionary:
 	var doc := EmptyCityTemplate.create(edge)
 	var city := CityState.from_document(doc)
-	var p := GrowthPhase._duplicate_payloads(GrowthPhase._payloads(city))
+	var p := GrowthState.duplicate_payloads(GrowthState.payloads(city))
 	p["altitudes"] = city.altitude_words.duplicate()
 	p.XZON.fill(7)
 	SpecialZoneGrowth._write_u32(p.MISC, 0x01f0, 0)

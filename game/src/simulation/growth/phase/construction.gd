@@ -5,7 +5,7 @@ extends GrowthConstants
 @warning_ignore_start("integer_division")
 
 
-static func _can_advance_density(
+static func can_advance_density(
 	zone_byte: int,
 	zone: int,
 	density: int,
@@ -48,7 +48,7 @@ static func _advance_construction(
 ) -> bool:
 	match density:
 		0:
-			return GrowthDevelopment._place_zone(
+			return GrowthDevelopment.place_zone(
 				buildings, zones, flags, misc, land_value, point,
 				1, CLASS_CONSTRUCTION, random, rotation, map_edge
 			)
@@ -63,7 +63,7 @@ static func _advance_construction(
 				and _can_build_site(buildings, zones, altitudes, down, height, zone, 0x8c, map_edge)
 				and _can_build_site(buildings, zones, altitudes, down_right, height, zone, 0x8c, map_edge)
 			):
-				return GrowthDevelopment._place_zone(
+				return GrowthDevelopment.place_zone(
 					buildings, zones, flags, misc, land_value, down,
 					2, CLASS_CONSTRUCTION, random, rotation, map_edge
 				)
@@ -76,7 +76,7 @@ static func _advance_construction(
 				and _can_build_site(buildings, zones, altitudes, up, height, zone, 0x8c, map_edge)
 				and _can_build_site(buildings, zones, altitudes, up_right, height, zone, 0x8c, map_edge)
 			):
-				return GrowthDevelopment._place_zone(
+				return GrowthDevelopment.place_zone(
 					buildings, zones, flags, misc, land_value, point,
 					2, CLASS_CONSTRUCTION, random, rotation, map_edge
 				)
@@ -89,7 +89,7 @@ static func _advance_construction(
 				and _can_build_site(buildings, zones, altitudes, left, height, zone, 0x8c, map_edge)
 				and _can_build_site(buildings, zones, altitudes, down_left, height, zone, 0x8c, map_edge)
 			):
-				return GrowthDevelopment._place_zone(
+				return GrowthDevelopment.place_zone(
 					buildings, zones, flags, misc, land_value, down_left,
 					2, CLASS_CONSTRUCTION, random, rotation, map_edge
 				)
@@ -101,12 +101,12 @@ static func _advance_construction(
 				and _can_build_site(buildings, zones, altitudes, left, height, zone, 0x8c, map_edge)
 				and _can_build_site(buildings, zones, altitudes, up_left, height, zone, 0x8c, map_edge)
 			):
-				return GrowthDevelopment._place_zone(
+				return GrowthDevelopment.place_zone(
 					buildings, zones, flags, misc, land_value, left,
 					2, CLASS_CONSTRUCTION, random, rotation, map_edge
 				)
 		2:
-			return GrowthDevelopment._place_zone(
+			return GrowthDevelopment.place_zone(
 				buildings, zones, flags, misc, land_value, point,
 				3, CLASS_CONSTRUCTION, random, rotation, map_edge
 			)
@@ -165,7 +165,7 @@ static func _advance_to_density_four(
 					checked_point, random, rotation, map_edge
 				)
 
-		return GrowthDevelopment._place_zone(
+		return GrowthDevelopment.place_zone(
 			buildings, zones, flags, misc, land_value, anchor,
 			4, CLASS_CONSTRUCTION, random, rotation, map_edge
 		)
@@ -230,7 +230,7 @@ static func _clear_growth_building(
 		anchor + Vector2i(1, -1),
 		anchor + Vector2i(0, -1),
 	]:
-		GrowthDevelopment._place_zone(
+		GrowthDevelopment.place_zone(
 			buildings, zones, flags, misc, land_value, abandoned_point,
 			1, CLASS_ABANDONED, random, rotation, map_edge
 		)

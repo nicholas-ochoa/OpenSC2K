@@ -86,9 +86,9 @@ func check(condition: bool, message: String) -> void:
 
 func payloads(edge: int) -> Dictionary:
 	if not empty_payloads.has(edge):
-		empty_payloads[edge] = GrowthPhase._payloads(CityState.from_document(EmptyCityTemplate.create(edge)))
+		empty_payloads[edge] = GrowthState.payloads(CityState.from_document(EmptyCityTemplate.create(edge)))
 
-	return GrowthPhase._duplicate_payloads(empty_payloads[edge])
+	return GrowthState.duplicate_payloads(empty_payloads[edge])
 
 
 func check_growth(edge: int) -> void:
@@ -98,8 +98,8 @@ func check_growth(edge: int) -> void:
 
 			for anchor in [Vector2i(20, 20), Vector2i(edge - 2 - radius, edge - 2 - radius)]:
 				var p := payloads(edge)
-				check(GrowthPhase._place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
-					anchor, density, GrowthPhase.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
+				check(GrowthDevelopment.place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
+					anchor, density, GrowthConstants.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
 					"%d density %d rotation %d at %s" % [edge, density, rotation, anchor])
 				var count: int = p.XBLD.size() - p.XBLD.count(0)
 
@@ -108,8 +108,8 @@ func check_growth(edge: int) -> void:
 			for anchor in [Vector2i(edge - 1 - radius, 20), Vector2i(20, edge - 1 - radius), Vector2i(1, 20)]:
 				var p := payloads(edge)
 				var before: PackedByteArray = p.XBLD.duplicate()
-				check(not GrowthPhase._place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
-					anchor, density, GrowthPhase.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
+				check(not GrowthDevelopment.place_zone(p.XBLD, p.XZON, p.XBIT, p.MISC, p.XVAL,
+					anchor, density, GrowthConstants.CLASS_CONSTRUCTION, SequenceRandom.new(), rotation, edge),
 					"Growth retains true edge margin")
 				check(p.XBLD == before, "Rejected growth does not write buildings")
 
@@ -281,7 +281,7 @@ func check_tools(edge: int) -> void:
 func check_growth_dispatch(edge: int) -> void:
 	var doc := EmptyCityTemplate.create(edge)
 	var city := CityState.from_document(doc)
-	doc.set_misc_i32(GrowthPhase.MISC_DEMAND, 2000)
+	doc.set_misc_i32(GrowthConstants.MISC_DEMAND, 2000)
 	doc.find_chunk("XVAL").decoded_payload.fill(255)
 
 	for sx in 4:
@@ -307,7 +307,7 @@ func check_growth_dispatch(edge: int) -> void:
 
 	for step in 4:
 		for substep in 4:
-			var result := GrowthPhase.run(city, SequenceRandom.new(), step, substep,
+			var result := GrowthScan.run(city, SequenceRandom.new(), step, substep,
 				SequenceLfsr.new([1]), SequenceGameLcg.new())
 			check(result.ok, "Full growth dispatch")
 			scanned += result.scanned_tiles

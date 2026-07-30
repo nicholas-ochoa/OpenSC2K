@@ -28,7 +28,7 @@ static func _process_surface_maintenance(
 
 	if _is_road_budget_tile(tile):
 		if _maintenance_fails(misc, 10, random, 100):
-			GrowthState._replace_building(buildings, zones, misc, index, 1 + (random.next_u15() & 3))
+			GrowthState.replace_building(buildings, zones, misc, index, 1 + (random.next_u15() & 3))
 			flags[index] &= 0x7f
 			counters.decayed_roads += 1
 
@@ -36,7 +36,7 @@ static func _process_surface_maintenance(
 
 	if _is_rail_budget_tile(tile):
 		if _maintenance_fails(misc, 13, random, 100):
-			GrowthState._replace_building(buildings, zones, misc, index, 1 + (random.next_u15() & 3))
+			GrowthState.replace_building(buildings, zones, misc, index, 1 + (random.next_u15() & 3))
 			flags[index] &= 0x7f
 			counters.decayed_rails += 1
 
@@ -95,7 +95,7 @@ static func _process_surface_maintenance(
 			if flags[highway_index] & 0x04 == 0:
 				replacement = 1 + (random.next_u15() & 3)
 
-			GrowthState._replace_building(buildings, zones, misc, highway_index, replacement)
+			GrowthState.replace_building(buildings, zones, misc, highway_index, replacement)
 			counters.decayed_highway_tiles += 1
 
 
@@ -220,7 +220,7 @@ static func _process_subway_maintenance(
 		if terrain[index] == 0:
 			surface_replacement = 1 + (random.next_u15() & 3)
 
-		GrowthState._replace_building(buildings, zones, misc, index, surface_replacement)
+		GrowthState.replace_building(buildings, zones, misc, index, surface_replacement)
 		zones[index] &= 0x0f
 		flags[index] &= 0x3d
 		var overlay := int(OverlayData.read(text_overlays, index))

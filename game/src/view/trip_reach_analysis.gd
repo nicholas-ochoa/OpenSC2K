@@ -13,7 +13,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> Dictionary:
 	var zone := int(city.zones[index]) & 15
 	var rci := zone >= 1 and zone <= 6
 	var tile := int(city.buildings[index])
-	var density := GrowthPhase._density(tile) if tile >= 0x70 and tile <= 0xc5 else 0
+	var density := GrowthDevelopment.density(tile) if tile >= 0x70 and tile <= 0xc5 else 0
 	var limit := 75 if density == 1 else 100
 	var start := -1
 
@@ -36,7 +36,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> Dictionary:
 		city.text_overlays, city.altitude_words, traffic, origin, zone if rci else 7,
 		density, SimRandom.new(1), 100, city.map_size, true, start)
 	_add_building_coverage(city, result, origin)
-	var powered := GrowthPhase._has_power(city.tile_flags, origin.x, origin.y, city.map_size)
+	var powered := GrowthDevelopment._has_power(city.tile_flags, origin.x, origin.y, city.map_size)
 	var demand := city.document.misc_i32(0x0718 + ((zone - 1) / 2) * 4) if rci else 0
 	var lines := PackedStringArray()
 	if result.get("reachable", []).is_empty():
@@ -74,7 +74,7 @@ static func _growth_anchor(city: CityState, point: Vector2i) -> Vector2i:
 	var area := DemolishCommand._building_area(tile)
 	var site := DemolishCommand._find_building_site(city.buildings, city.zones, point,
 		tile, area, city.compass_rotation(), city.map_size)
-	var mask: int = GrowthPhase.ANCHOR_MASKS[city.compass_rotation()]
+	var mask: int = GrowthConstants.ANCHOR_MASKS[city.compass_rotation()]
 	for x in range(site.position.x, site.end.x):
 		for y in range(site.position.y, site.end.y):
 			if city.zones[city.index_of(x, y)] & mask:
