@@ -116,27 +116,27 @@ func check_growth(edge: int) -> void:
 
 func check_special(edge: int) -> void:
 	var wide := payloads(edge)
-	SpecialZoneGrowth._write_u32(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT, 65535)
-	SpecialZoneGrowth._replace_underground(wide.XUND, wide.XZON, wide.MISC, edge * edge - 1, 1)
-	check(SpecialZoneGrowth._read_u32(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT)
+	SpecialZoneState.write_u32(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT, 65535)
+	SpecialZoneState.replace_underground(wide.XUND, wide.XZON, wide.MISC, edge * edge - 1, 1)
+	check(SpecialZoneState.read_u32(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT)
 		== (0 if edge == 128 else 65536), "Special growth preserves wide subway count")
-	SpecialZoneGrowth._replace_underground(wide.XUND, wide.XZON, wide.MISC, edge * edge - 1, 0)
-	check(SpecialZoneGrowth._read_u32(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT) == 65535,
+	SpecialZoneState.replace_underground(wide.XUND, wide.XZON, wide.MISC, edge * edge - 1, 0)
+	check(SpecialZoneState.read_u32(wide.MISC, SpecialZoneGrowth.MISC_SUBWAY_COUNT) == 65535,
 		"Special growth subway decrement")
 
 	for area in [2, 3]:
 		for rotation in 4:
 			var p := payloads(edge)
 			var anchor := Vector2i(edge - 3, edge - 3)
-			check(SpecialZoneGrowth._place_special_item(p.XBLD, p.XZON, p.XBIT, p.XTER,
+			check(SpecialZonePlacement.place_special_item(p.XBLD, p.XZON, p.XBIT, p.XTER,
 				p.MISC, anchor, 0xdc, area, 8, rotation, edge), "Far special-zone footprint")
 			p = payloads(edge)
-			check(not SpecialZoneGrowth._place_special_item(p.XBLD, p.XZON, p.XBIT, p.XTER,
+			check(not SpecialZonePlacement.place_special_item(p.XBLD, p.XZON, p.XBIT, p.XTER,
 				p.MISC, Vector2i(edge - 2, edge - 2), 0xdc, area, 8, rotation, edge), "Special-zone edge margin")
 
 	for origin in [Vector2i(edge - 3, edge - 3), Vector2i(edge - 2, edge - 2)]:
 		var p := payloads(edge)
-		var result := SpecialZoneGrowth._place_missile_silo(p.XBLD, p.XZON, p.XUND,
+		var result := SpecialZonePlacement.place_missile_silo(p.XBLD, p.XZON, p.XUND,
 			p.MISC, origin, 7, 0, edge)
 		check(result.ok == (origin.x == edge - 3), "Silo fits exactly at map edge")
 		check(result.changed_tiles == (9 if result.ok else 0), "Silo footprint count")

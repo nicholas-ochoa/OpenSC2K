@@ -128,7 +128,7 @@ static func _seaport_growth_selection(
 	return 0xf2
 
 
-static func _grow_special_zone(
+static func grow_special_zone(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
 	underground: PackedByteArray,
@@ -160,7 +160,7 @@ static func _grow_special_zone(
 		var before := int(buildings[SpecialZoneState._index(point, map_edge)])
 
 		if before < 0x0d:
-			SpecialZonePlacement._place_special_item(
+			SpecialZonePlacement.place_special_item(
 				buildings, zones, flags, terrain, misc, point, tile, 1, zone, rotation, map_edge
 			)
 
@@ -177,7 +177,7 @@ static func _grow_special_zone(
 		)
 
 	if tile == 0xf9:
-		return SpecialZonePlacement._place_missile_silo(
+		return SpecialZonePlacement.place_missile_silo(
 			buildings, zones, underground, misc, point, zone, rotation, map_edge
 		)
 

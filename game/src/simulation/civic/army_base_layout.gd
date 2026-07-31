@@ -34,7 +34,7 @@ static func _strip(
 		if NetworkCommand.TERRAIN_BLOCKS_DIRECTION[(terrain[index] & 15) * 4 + direction]:
 			continue
 		NetworkTiles._grade_surface_terrain(terrain, flags, point, direction, edge)
-		SpecialZoneGrowth._replace_special_building(buildings, zones, misc, index, 0x1d)
+		SpecialZoneState._replace_special_building(buildings, zones, misc, index, 0x1d)
 		NetworkTiles._retile_surface_neighborhood(buildings, terrain, zones, flags,
 			misc, point, NetworkCommand.MODE_ROAD, PackedByteArray(), edge)
 		placed += 1
@@ -46,6 +46,6 @@ static func _strip(
 		if distance == 7 and placed < 2:
 			continue
 		if terrain[index] == 0 and (zones[index] & 15) == 7 and buildings[index] in [0x1d, 0x1e]:
-			SpecialZoneGrowth._replace_special_building(buildings, zones, misc, index, 0xde)
+			SpecialZoneState._replace_special_building(buildings, zones, misc, index, 0xde)
 			zones[index] |= 0xf0
 			flags[index] &= 0x0f

@@ -186,7 +186,7 @@ static func _write_radioactivity(payloads: Dictionary, point: Vector2i, map_edge
 		return false
 
 	var old_tile := int(payloads.XBLD[index])
-	SpecialZoneGrowth.replace_building(
+	SpecialZoneState.replace_building(
 		payloads.XBLD, payloads.XZON, payloads.MISC, index, RADIOACTIVITY_TILE
 	)
 

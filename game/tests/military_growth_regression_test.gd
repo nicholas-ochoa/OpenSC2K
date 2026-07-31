@@ -18,17 +18,17 @@ func _initialize() -> void:
 			for tile in [0xe2, 0xe3, 0xe8, 0xef, 0xf1, 0xf2]:
 				var p := GrowthState.duplicate_payloads(base)
 				var point := Vector2i(edge - 12, edge - 12)
-				var result := SpecialZoneGrowth._grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
+				var result := SpecialZoneSelection.grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
 					p.altitudes, p.MISC, point, tile, 7, rotation, edge)
 				check(result.ok and result.changed_tiles == (4 if tile in [0xef, 0xf1, 0xf2] else 1), "Military building grows at far map")
 				check(p.XBLD[point.x * edge + point.y] == tile, "Military building has selected tile")
 				check((p.XZON[point.x * edge + point.y] & 15) == 7, "Military zone survives growth")
-				check(SpecialZoneGrowth.tile_count(p.MISC, tile, true, edge) == result.changed_tiles, "Military tile counter follows growth")
-				check(SpecialZoneGrowth.tile_count(p.MISC, tile, false, edge) == 0, "Civilian count stays separate")
+				check(SpecialZoneState.tile_count(p.MISC, tile, true, edge) == result.changed_tiles, "Military tile counter follows growth")
+				check(SpecialZoneState.tile_count(p.MISC, tile, false, edge) == 0, "Civilian count stays separate")
 			var p := GrowthState.duplicate_payloads(base)
 			var point := Vector2i(edge - 11, edge - 11)
-			SpecialZoneGrowth._write_u32(p.MISC, 0x01f0 + 0xdd * 4, 1)
-			var runway := SpecialZoneGrowth._grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
+			SpecialZoneState.write_u32(p.MISC, 0x01f0 + 0xdd * 4, 1)
+			var runway := SpecialZoneSelection.grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
 				p.altitudes, p.MISC, point, 0xdd, 7, rotation, edge)
 			check(runway.ok and runway.changed_tiles == 5, "Military runway grows")
 			check(p.XBLD[point.x * edge + point.y + 4] == 0xdd, "Military parity ignores civilian runway count")
@@ -45,7 +45,7 @@ func _initialize() -> void:
 			else:
 				p.XBIT[index] = 4
 			var before := GrowthState.duplicate_payloads(p)
-			var result := SpecialZoneGrowth._grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
+			var result := SpecialZoneSelection.grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
 				p.altitudes, p.MISC, point, 0xef, 7, 0, edge)
 			check(not result.ok, "Military growth rejects obstruction anywhere in footprint")
 			check(p == before, "Rejected military growth is atomic")
@@ -59,6 +59,6 @@ func fixture(edge: int) -> Dictionary:
 	var p := GrowthState.duplicate_payloads(GrowthState.payloads(city))
 	p["altitudes"] = city.altitude_words.duplicate()
 	p.XZON.fill(7)
-	SpecialZoneGrowth._write_u32(p.MISC, 0x01f0, 0)
-	SpecialZoneGrowth._write_u32(p.MISC, 0x0fa8, edge * edge)
+	SpecialZoneState.write_u32(p.MISC, 0x01f0, 0)
+	SpecialZoneState.write_u32(p.MISC, 0x0fa8, edge * edge)
 	return p

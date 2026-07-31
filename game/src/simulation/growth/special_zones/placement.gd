@@ -146,7 +146,7 @@ static func _place_crane_and_pier(
 
 	_clear_special_building(buildings, zones, flags, misc, point, map_edge)
 	var before := int(buildings[SpecialZoneState._index(point, map_edge)])
-	_place_special_item(
+	place_special_item(
 		buildings, zones, flags, terrain, misc, point, 0xe0, 1, zone, rotation, map_edge
 	)
 	zones[SpecialZoneState._index(point, map_edge)] = (zones[SpecialZoneState._index(point, map_edge)] & 0xf0) | zone
@@ -220,7 +220,7 @@ static func _place_special_two_by_two(
 		_clear_special_building(buildings, zones, flags, misc, checked, map_edge)
 
 	var before := buildings.duplicate()
-	_place_special_item(
+	place_special_item(
 		buildings, zones, flags, terrain, misc, anchor, tile, 2, zone, rotation, map_edge
 	)
 
@@ -240,7 +240,7 @@ static func _place_special_two_by_two(
 	return {"ok": true, "changed_tiles": changed_tiles}
 
 
-static func _place_special_item(
+static func place_special_item(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
 	flags: PackedByteArray,
@@ -292,7 +292,7 @@ static func _place_special_item(
 	return true
 
 
-static func _place_missile_silo(
+static func place_missile_silo(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
 	underground: PackedByteArray,
@@ -329,7 +329,7 @@ static func _place_missile_silo(
 				changed_tiles += 1
 
 			SpecialZoneState._replace_special_building(buildings, zones, misc, index, 0xf9)
-			SpecialZoneState._replace_underground(underground, zones, misc, index, 0x22)
+			SpecialZoneState.replace_underground(underground, zones, misc, index, 0x22)
 
 	SpecialZoneState._set_corners(zones, origin, 3, rotation, map_edge)
 

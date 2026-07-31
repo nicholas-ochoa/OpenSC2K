@@ -52,7 +52,7 @@ func _initialize() -> void:
 			var grown := false
 			for index in proposal.changed_indices:
 				var point := Vector2i(index / edge, index % edge)
-				var result := SpecialZoneGrowth._grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
+				var result := SpecialZoneSelection.grow_special_zone(p.XBLD, p.XZON, p.XUND, p.XBIT, p.XTER,
 					city.altitude_words, p.MISC, point, 0xe0, 7, direction, edge)
 				if result.ok and result.changed_tiles == 5:
 					grown = true
