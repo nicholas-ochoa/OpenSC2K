@@ -116,7 +116,7 @@ static func trace(
 					continue
 
 				var next_point: Vector2i = point + DIRECTIONS[direction]
-				var advance := TransportTripSteps._advance(buildings, zones, underground, text_overlays,
+				var advance := TransportTripSteps.advance(buildings, zones, underground, text_overlays,
 					altitudes, point, next_point, mode, zone, map_edge)
 
 				if advance == ADVANCE_SUCCESS:

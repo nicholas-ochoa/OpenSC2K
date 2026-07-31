@@ -56,7 +56,7 @@ static func run(
 
 	# the trip search reads these maps for every powered rci tile below. their
 	# sizes are invariant across the scan, so check them once here
-	if not TransportTrip.valid_inputs(buildings, zones, underground, text_overlays,
+	if not TransportTripSearch.valid_inputs(buildings, zones, underground, text_overlays,
 		altitudes, traffic, map_edge):
 		return _failed("transport input maps have the wrong size")
 
@@ -247,7 +247,7 @@ static func run(
 				if detailed:
 					span.mark_index(TimingStep.TRIPS)
 
-				var trip := TransportTrip.trace(
+				var trip := TransportTripSearch.trace(
 					buildings,
 					zones,
 					underground,

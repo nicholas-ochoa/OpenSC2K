@@ -13,7 +13,7 @@ func _initialize() -> void:
 				samples.append(Vector2i(x, y))
 	var traffic := city.document.find_chunk("XTRF").decoded_payload.duplicate()
 
-	if not TransportTrip.valid_inputs(city.buildings, city.zones, city.underground,
+	if not TransportTripSearch.valid_inputs(city.buildings, city.zones, city.underground,
 		city.text_overlays, city.altitude_words, traffic, city.map_size):
 		print("Capeques transport maps have the wrong size")
 		quit()
@@ -23,7 +23,7 @@ func _initialize() -> void:
 	var expanded := 0
 	for i in 256:
 		var point: Vector2i = samples[(i * samples.size()) / 256]
-		var result := TransportTrip.trace(city.buildings, city.zones, city.underground,
+		var result := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
 			city.text_overlays, city.altitude_words, traffic, point, city.zone_id(point.x, point.y),
 			GrowthDevelopment.density(city.building_id(point.x, point.y)), SimRandom.new(i + 1))
 		expanded += int(result.get("expanded_states", 0))

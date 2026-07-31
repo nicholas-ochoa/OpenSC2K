@@ -141,7 +141,7 @@ func _test_lane_geometry() -> void:
 			var corner: Vector2i = TransportTrip.LANE_CORNERS[TransportTrip.EGRESS_CORNERS[direction]]
 			var point := Vector2i(20, 20) + corner
 			var next_point: Vector2i = point + TransportTrip.DIRECTIONS[direction]
-			var allowed := TransportTrip._highway_step(city.buildings, point, next_point, 128)
+			var allowed := TransportTripSteps.highway_step(city.buildings, point, next_point, 128)
 			check(allowed == ((ports & (1 << direction)) != 0 and (ports & (1 << ((direction + 2) & 3))) != 0),
 				"External highway movement respects both section ports")
 
@@ -268,10 +268,10 @@ func _test_dead_end_turns() -> void:
 		var middle := a + Vector2i(11, 1)
 		var middle_across := a + Vector2i(11, 0)
 		for rotation in (4 if edge == 128 else 1):
-			check(TransportTrip._highway_step(city.buildings, end_lane, return_lane, edge), "Open highway end permits a median turnaround")
-			check(not TransportTrip._highway_step(city.buildings, middle, middle_across, edge), "Connected highway does not permit a median shortcut")
+			check(TransportTripSteps.highway_step(city.buildings, end_lane, return_lane, edge), "Open highway end permits a median turnaround")
+			check(not TransportTripSteps.highway_step(city.buildings, middle, middle_across, edge), "Connected highway does not permit a median shortcut")
 			for mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
-				check(TransportTrip._advance(city.buildings, city.zones, city.underground,
+				check(TransportTripSteps.advance(city.buildings, city.zones, city.underground,
 					city.text_overlays, city.altitude_words, end_lane, return_lane, mode, 1, edge) == ((mode << 8) | 1),
 					"Car and bus turnaround costs one highway step")
 			var result := TripReachAnalysis.inspect(city, middle)
@@ -287,5 +287,5 @@ func _test_dead_end_turns() -> void:
 		for x in range(edge - 4, edge):
 			boundary.set_building_id(x, 20, 0x4a)
 			boundary.set_building_id(x, 21, 0x4a)
-		check(TransportTrip._highway_step(boundary.buildings, Vector2i(edge - 1, 21), Vector2i(edge - 1, 20), edge),
+		check(TransportTripSteps.highway_step(boundary.buildings, Vector2i(edge - 1, 21), Vector2i(edge - 1, 20), edge),
 			"True map edge permits a safe turnaround")

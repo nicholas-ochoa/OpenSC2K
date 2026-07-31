@@ -20,7 +20,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> Dictionary:
 	if not rci:
 		var mode := _network_mode(tile)
 
-		if mode < 0 and TransportTrip._is_subway(int(city.underground[index])):
+		if mode < 0 and TransportTripSteps._is_subway(int(city.underground[index])):
 			mode = TransportTrip.SUBWAY_MODE
 
 		if mode >= 0:
@@ -28,11 +28,11 @@ static func inspect(city: CityState, clicked: Vector2i) -> Dictionary:
 
 	var traffic := city.document.find_chunk("XTRF").decoded_payload
 
-	if not TransportTrip.valid_inputs(city.buildings, city.zones, city.underground,
+	if not TransportTripSearch.valid_inputs(city.buildings, city.zones, city.underground,
 		city.text_overlays, city.altitude_words, traffic, city.map_size):
 		return {"ok": false, "error": "Transport maps for this city have the wrong size."}
 
-	var result := TransportTrip.trace(city.buildings, city.zones, city.underground,
+	var result := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
 		city.text_overlays, city.altitude_words, traffic, origin, zone if rci else 7,
 		density, SimRandom.new(1), 100, city.map_size, true, start)
 	_add_building_coverage(city, result, origin)
@@ -50,7 +50,7 @@ static func inspect(city: CityState, clicked: Vector2i) -> Dictionary:
 
 
 static func _network_mode(tile: int) -> int:
-	if TransportTrip._is_highway_span(tile) or (tile >= 0x5d and tile <= 0x60):
+	if TransportTripSteps._is_highway_span(tile) or (tile >= 0x5d and tile <= 0x60):
 		return TransportTrip.HIGHWAY_MODE
 	if tile == 0xed:
 		return TransportTrip.RAIL_STATION_MODE
@@ -58,11 +58,11 @@ static func _network_mode(tile: int) -> int:
 		return TransportTrip.SUBWAY_STATION_MODE
 	if tile == 0xec:
 		return TransportTrip.BUS_STOP_MODE
-	if TransportTrip._is_surface_road(tile):
+	if TransportTripSteps._is_surface_road(tile):
 		return TransportTrip.ROAD_MODE
-	if TransportTrip._is_road_bridge(tile):
+	if TransportTripSteps._is_road_bridge(tile):
 		return TransportTrip.ROAD_BRIDGE_MODE
-	if TransportTrip._is_rail(tile):
+	if TransportTripSteps._is_rail(tile):
 		return TransportTrip.RAIL_MODE
 	return -1
 

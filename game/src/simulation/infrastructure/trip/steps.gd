@@ -3,7 +3,7 @@ extends TransportTripConstants
 
 
 
-static func _advance(
+static func advance(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
 	underground: PackedByteArray,
@@ -32,7 +32,7 @@ static func _advance(
 
 	match mode:
 		ROAD_MODE:
-			if _is_highway_span(tile) and _highway_step(buildings, current, next_point, map_edge):
+			if _is_highway_span(tile) and highway_step(buildings, current, next_point, map_edge):
 				var current_tile := int(buildings[_index(current, map_edge)])
 				if current_tile >= 0x5d and current_tile <= 0x60:
 					return _move(HIGHWAY_MODE, 1)
@@ -61,7 +61,7 @@ static func _advance(
 			if tile == 0xe9:
 				return _move(SUBWAY_STATION_MODE, 4)
 		HIGHWAY_MODE:
-			if _is_highway_span(tile) and _highway_step(buildings, current, next_point, map_edge):
+			if _is_highway_span(tile) and highway_step(buildings, current, next_point, map_edge):
 				return _move(HIGHWAY_MODE, 1)
 
 			if tile >= 0x5d and tile <= 0x60 and _highway_exit(buildings, current, next_point, map_edge):
@@ -103,7 +103,7 @@ static func _advance(
 			if tile == 0xe9:
 				return _move(SUBWAY_STATION_MODE, 4)
 		BUS_HIGHWAY_MODE:
-			if _is_highway_span(tile) and _highway_step(buildings, current, next_point, map_edge):
+			if _is_highway_span(tile) and highway_step(buildings, current, next_point, map_edge):
 				return _move(BUS_HIGHWAY_MODE, 1)
 
 			if tile >= 0x5d and tile <= 0x60 and _highway_exit(buildings, current, next_point, map_edge):
@@ -216,7 +216,7 @@ static func _index(point: Vector2i, map_edge: int = 128) -> int:
 
 
 # lane corners come from coordinate parity; this isn't plain flood fill
-static func _highway_step(buildings: PackedByteArray, current: Vector2i,
+static func highway_step(buildings: PackedByteArray, current: Vector2i,
 	next_point: Vector2i, map_edge: int) -> bool:
 	var tile := int(buildings[_index(current, map_edge)])
 	var next_tile := int(buildings[_index(next_point, map_edge)])
