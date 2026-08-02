@@ -83,7 +83,7 @@ static func _demolish_bridge(
 		DemolishTerrain._set_land_altitude(altitude, bank_index, maxi(0, land - 1))
 		flags[bank_index] |= FLAG_WATER
 		flags[bank_index] &= ~FLAG_FLIPPED & 0xff
-		TerrainCommand._retile_region(
+		TerrainEditSurface.retile_region(
 			altitude,
 			buildings,
 			terrain,
@@ -188,7 +188,7 @@ static func _demolish_reinforced_bridge(
 			DemolishTerrain._set_land_altitude(altitude, bank_index, maxi(0, land - 1))
 			flags[bank_index] |= FLAG_WATER
 			flags[bank_index] &= ~FLAG_FLIPPED & 0xff
-			TerrainCommand._retile_region(
+			TerrainEditSurface.retile_region(
 				altitude,
 				buildings,
 				terrain,

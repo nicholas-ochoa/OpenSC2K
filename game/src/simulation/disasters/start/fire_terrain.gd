@@ -182,7 +182,7 @@ static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom)
 		return {"ok": false, "error": "volcano disaster input chunks are missing or invalid"}
 
 	var payloads := DisasterStartObjectsState._duplicate_payloads(original)
-	var heights := TerrainCommand._decode_heights(payloads.ALTM, map_edge)
+	var heights := TerrainEditHeights._decode_heights(payloads.ALTM, map_edge)
 	var remaining_budget := VOLCANO_BUDGET
 	var iterations := 0
 	var successful_raises := 0
@@ -216,20 +216,20 @@ static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom)
 			near_fire_writes += 1
 
 		if _volcano_raise_is_valid(heights, payloads.XZON, payloads.XBIT, near_point, {}, map_edge):
-			var trial := TerrainCommand._plan_raise(
+			var trial := TerrainEditHeights.plan_raise(
 				heights, payloads.XZON, payloads.XBLD, near_point, remaining_budget, map_edge
 			)
 
 			if trial.get("valid", false):
 				heights = trial.heights
 				remaining_budget = int(trial.funds)
-				TerrainCommand._write_heights(payloads.ALTM, heights, trial.modified)
+				TerrainEditHeights._write_heights(payloads.ALTM, heights, trial.modified)
 
 				for index in trial.zone_indices:
 					payloads.XZON[index] &= 0xf0
 
-				var retile_indices := TerrainCommand._expanded_indices(trial.modified, map_edge)
-				TerrainCommand._retile_region(
+				var retile_indices := TerrainEditSurface._expanded_indices(trial.modified, map_edge)
+				TerrainEditSurface.retile_region(
 					payloads.ALTM,
 					payloads.XBLD,
 					payloads.XTER,

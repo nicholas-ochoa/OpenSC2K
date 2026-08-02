@@ -16,9 +16,9 @@ func _initialize() -> void:
 
 	for index in CityState.TILE_COUNT:
 		indices.append(index)
-		TerrainCommand._set_land_altitude(payloads.ALTM, index, maxi(0, 16 - ((index / 128) / 4)))
+		TerrainEditHeights.set_land_altitude(payloads.ALTM, index, maxi(0, 16 - ((index / 128) / 4)))
 
-	TerrainCommand._retile_region(payloads.ALTM,payloads.XBLD,payloads.XTER,payloads.XZON,payloads.XBIT,payloads.MISC,indices,0)
+	TerrainEditSurface.retile_region(payloads.ALTM,payloads.XBLD,payloads.XTER,payloads.XZON,payloads.XBIT,payloads.MISC,indices,0)
 
 	for id in payloads:
 		doc.find_chunk(id).set_decoded_payload(payloads[id])

@@ -16,7 +16,7 @@ static func _remove_surface_water(
 	var index := point.x * map_edge + point.y
 
 	if terrain[index] == 0x3e:
-		TerrainCommand._retile_region(
+		TerrainEditSurface.retile_region(
 			altitude,
 			buildings,
 			terrain,

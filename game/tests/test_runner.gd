@@ -16155,7 +16155,7 @@ func _test_terrain_command(reference_root: String) -> void:
 	var ordered_west := Vector2i(19, 20)
 	var ordered_north := Vector2i(20, 19)
 	ordered_heights[ordered_start.x * CityState.MAP_SIZE + ordered_start.y] = 1
-	var ordered_raise := TerrainTools._plan_raise(
+	var ordered_raise := TerrainEditHeights.plan_raise(
 		ordered_heights, ordered_zones, ordered_buildings, ordered_start, 25
 	)
 	_check(
@@ -16313,13 +16313,13 @@ func _test_terrain_command(reference_root: String) -> void:
 
 	for offset in TerrainTools.CARDINAL_OFFSETS:
 		var neighbor: Vector2i = basin_point + offset
-		TerrainTools._set_land_altitude(
+		TerrainEditHeights.set_land_altitude(
 			basin_altitude,
 			neighbor.x * CityState.MAP_SIZE + neighbor.y,
 			1,
 		)
 
-	TerrainTools._retile_region(
+	TerrainEditSurface.retile_region(
 		basin_altitude,
 		basin_buildings,
 		basin_terrain,
@@ -16330,7 +16330,7 @@ func _test_terrain_command(reference_root: String) -> void:
 		2,
 	)
 	_check(
-		TerrainTools._land_altitude(basin_altitude, basin_index) == 1,
+		TerrainEditHeights.land_altitude(basin_altitude, basin_index) == 1,
 		"Terrain sentinel 0x32 raises a surrounded basin by one level",
 	)
 	_check(

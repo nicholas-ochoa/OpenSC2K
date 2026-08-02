@@ -54,7 +54,7 @@ static func apply_path(
 	var funds := 0x7fffffff if free_mode else old_funds
 	var target_altitude := (
 		target_override if target_override >= 0
-		else TerrainEditHeights._land_altitude(altitude, city.index_of(start.x, start.y))
+		else TerrainEditHeights.land_altitude(altitude, city.index_of(start.x, start.y))
 	)
 	var action_count := 0
 	var total_cost := 0
@@ -77,7 +77,7 @@ static func apply_path(
 		var operation := subtool_index
 
 		if operation == SUBTOOL_LEVEL:
-			var current_altitude := TerrainEditHeights._land_altitude(altitude, index)
+			var current_altitude := TerrainEditHeights.land_altitude(altitude, index)
 
 			if current_altitude < target_altitude:
 				operation = SUBTOOL_RAISE
@@ -90,7 +90,7 @@ static func apply_path(
 		var trial := {}
 
 		if operation == SUBTOOL_RAISE:
-			trial = TerrainEditHeights._plan_raise(heights, zones, buildings, point, funds, map_edge)
+			trial = TerrainEditHeights.plan_raise(heights, zones, buildings, point, funds, map_edge)
 		else:
 			trial = TerrainEditHeights._plan_lower(heights, point, funds, map_edge)
 
@@ -144,7 +144,7 @@ static func apply_path(
 			total_cost += int(trial.cost)
 
 		action_count += 1
-		TerrainEditSurface._retile_region(
+		TerrainEditSurface.retile_region(
 			altitude, buildings, terrain, zones, flags, misc, retile_indices,
 			city.document.misc_u32(0x0e40), map_edge
 		)
@@ -254,120 +254,3 @@ static func undo(city: CityState, command: Dictionary, random: SimRandom = null)
 	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
 
 	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
-
-
-static func _plan_raise(
-	heights: PackedInt32Array,
-	zones: PackedByteArray,
-	buildings: PackedByteArray,
-	start: Vector2i,
-	funds: int,
-	map_edge: int = 128,
-) -> Dictionary:
-	return TerrainEditHeights._plan_raise(heights, zones, buildings, start, funds, map_edge)
-
-
-static func _collect_raise_dependencies(
-	heights: PackedInt32Array,
-	zones: PackedByteArray,
-	point: Vector2i,
-	visiting: Dictionary,
-	visited: Dictionary,
-	postorder: Array[Vector2i],
-	map_edge: int = 128,
-) -> bool:
-	return TerrainEditHeights._collect_raise_dependencies(heights, zones, point, visiting, visited, postorder, map_edge)
-
-
-static func _normalize_cardinal_slopes(
-	heights: PackedInt32Array,
-	buildings: PackedByteArray,
-	point: Vector2i,
-	modified: PackedInt32Array,
-	map_edge: int = 128,
-) -> void:
-	TerrainEditHeights._normalize_cardinal_slopes(heights, buildings, point, modified, map_edge)
-
-
-static func _plan_lower(
-	heights: PackedInt32Array, start: Vector2i, funds: int,
-	map_edge: int = 128,
-) -> Dictionary:
-	return TerrainEditHeights._plan_lower(heights, start, funds, map_edge)
-
-
-static func _expanded_indices(indices: PackedInt32Array, map_edge: int = 128) -> PackedInt32Array:
-	return TerrainEditSurface._expanded_indices(indices, map_edge)
-
-
-static func _clear_terrain_conflicts(
-	city: CityState,
-	altitude: PackedByteArray,
-	buildings: PackedByteArray,
-	terrain: PackedByteArray,
-	zones: PackedByteArray,
-	underground: PackedByteArray,
-	flags: PackedByteArray,
-	text_overlays: PackedByteArray,
-	labels: PackedByteArray,
-	microsims: PackedByteArray,
-	misc: PackedByteArray,
-	indices: PackedInt32Array,
-	random: SimRandom
-) -> Dictionary:
-	return TerrainEditSurface._clear_terrain_conflicts(
-		city, altitude, buildings, terrain, zones, underground, flags, text_overlays, labels, microsims, misc,
-		indices, random
-	)
-
-
-static func _terrain_conflict_needs_random(
-	buildings: PackedByteArray, indices: PackedInt32Array
-) -> bool:
-	return TerrainEditSurface._terrain_conflict_needs_random(buildings, indices)
-
-
-static func _append_effect_sequence(
-	destination: Array[Dictionary], source: Array, first_frame: int
-) -> int:
-	return TerrainEditSurface._append_effect_sequence(destination, source, first_frame)
-
-
-static func _retile_region(
-	altitude: PackedByteArray,
-	buildings: PackedByteArray,
-	terrain: PackedByteArray,
-	zones: PackedByteArray,
-	flags: PackedByteArray,
-	misc: PackedByteArray,
-	indices: PackedInt32Array,
-	sea_level: int,
-	map_edge: int = 128,
-) -> void:
-	TerrainEditSurface._retile_region(altitude, buildings, terrain, zones, flags, misc, indices, sea_level, map_edge)
-
-
-static func _decode_heights(altitude: PackedByteArray, map_edge: int = 128) -> PackedInt32Array:
-	return TerrainEditHeights._decode_heights(altitude, map_edge)
-
-
-static func _write_heights(
-	altitude: PackedByteArray, heights: PackedInt32Array, indices: PackedInt32Array
-) -> void:
-	TerrainEditHeights._write_heights(altitude, heights, indices)
-
-
-static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
-	return TerrainEditHeights._land_altitude(altitude, index)
-
-
-static func _set_land_altitude(altitude: PackedByteArray, index: int, value: int) -> void:
-	TerrainEditHeights._set_land_altitude(altitude, index, value)
-
-
-static func _set_water_altitude(altitude: PackedByteArray, index: int, value: int) -> void:
-	TerrainEditHeights._set_water_altitude(altitude, index, value)
-
-
-static func _point_is_in_bounds(point: Vector2i, map_edge: int = 128) -> bool:
-	return TerrainEditHeights._point_is_in_bounds(point, map_edge)

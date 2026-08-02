@@ -3,7 +3,7 @@ extends TerrainEditConstants
 
 
 
-static func _plan_raise(
+static func plan_raise(
 	heights: PackedInt32Array,
 	zones: PackedByteArray,
 	buildings: PackedByteArray,
@@ -219,7 +219,7 @@ static func _decode_heights(altitude: PackedByteArray, map_edge: int = 128) -> P
 	result.resize((map_edge * map_edge))
 
 	for index in (map_edge * map_edge):
-		result[index] = _land_altitude(altitude, index)
+		result[index] = land_altitude(altitude, index)
 
 	return result
 
@@ -228,14 +228,14 @@ static func _write_heights(
 	altitude: PackedByteArray, heights: PackedInt32Array, indices: PackedInt32Array
 ) -> void:
 	for index in indices:
-		_set_land_altitude(altitude, index, heights[index])
+		set_land_altitude(altitude, index, heights[index])
 
 
-static func _land_altitude(altitude: PackedByteArray, index: int) -> int:
+static func land_altitude(altitude: PackedByteArray, index: int) -> int:
 	return altitude[index * 2 + 1] & 0x1f
 
 
-static func _set_land_altitude(altitude: PackedByteArray, index: int, value: int) -> void:
+static func set_land_altitude(altitude: PackedByteArray, index: int, value: int) -> void:
 	var offset := index * 2
 	altitude[offset + 1] = (altitude[offset + 1] & 0xe0) | (value & 0x1f)
 

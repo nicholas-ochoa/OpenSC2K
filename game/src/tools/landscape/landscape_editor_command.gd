@@ -54,7 +54,7 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 			for index in (map_edge * map_edge):
 				indices.append(index)
 
-			TerrainCommand._retile_region(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.MISC, indices, sea, map_edge)
+			TerrainEditSurface.retile_region(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.MISC, indices, sea, map_edge)
 
 		for id in payloads:
 			staged.document.find_chunk(id).set_decoded_payload(payloads[id])
@@ -100,11 +100,11 @@ static func _finish_stream_slopes(payloads: Dictionary, previous_terrain: Packed
 			continue
 
 		var point := Vector2i(index / map_edge, index % map_edge)
-		var height := TerrainCommand._land_altitude(altitude, index)
+		var height := TerrainEditHeights.land_altitude(altitude, index)
 
 		for delta in [Vector2i.UP, Vector2i.RIGHT, Vector2i.DOWN, Vector2i.LEFT]:
 			var near: Vector2i = point + delta
 
-			if TerrainCommand._point_is_in_bounds(near, map_edge) and TerrainCommand._land_altitude(altitude, near.x * map_edge + near.y) > height:
+			if TerrainEditHeights._point_is_in_bounds(near, map_edge) and TerrainEditHeights.land_altitude(altitude, near.x * map_edge + near.y) > height:
 				terrain[index] = 0x3e
 				break

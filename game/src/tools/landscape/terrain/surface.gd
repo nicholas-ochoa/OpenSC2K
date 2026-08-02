@@ -133,7 +133,7 @@ static func _append_effect_sequence(
 	return first_frame + frame_count
 
 
-static func _retile_region(
+static func retile_region(
 	altitude: PackedByteArray,
 	buildings: PackedByteArray,
 	terrain: PackedByteArray,
@@ -146,7 +146,7 @@ static func _retile_region(
 ) -> void:
 	for index in indices:
 		var point := Vector2i(int(index / map_edge), index % map_edge)
-		var land := TerrainEditHeights._land_altitude(altitude, index)
+		var land := TerrainEditHeights.land_altitude(altitude, index)
 		var higher_mask := 0
 
 		for neighbor_index in 8:
@@ -155,7 +155,7 @@ static func _retile_region(
 			if TerrainEditHeights._point_is_in_bounds(neighbor, map_edge):
 				var checked_index := neighbor.x * map_edge + neighbor.y
 
-				if TerrainEditHeights._land_altitude(altitude, checked_index) > land:
+				if TerrainEditHeights.land_altitude(altitude, checked_index) > land:
 					higher_mask |= NEIGHBOR_MASKS[neighbor_index]
 
 		var shape := int(TERRAIN_SHAPES[higher_mask])
@@ -167,7 +167,7 @@ static func _retile_region(
 
 		if raised_basin:
 			land = mini(31, land + 1)
-			TerrainEditHeights._set_land_altitude(altitude, index, land)
+			TerrainEditHeights.set_land_altitude(altitude, index, land)
 			shape = 0
 
 		if land >= sea_level:
