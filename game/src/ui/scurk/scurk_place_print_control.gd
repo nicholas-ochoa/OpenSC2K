@@ -10,7 +10,6 @@ signal redo_requested
 
 const Place = preload("res://src/tools/scurk/scurk_place_command.gd")
 const PickCopy = preload("res://src/tools/scurk/scurk_pick_copy.gd")
-const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 const MODE_OBJECTS := 0
 const MODE_EDIT_TOOLS := 1

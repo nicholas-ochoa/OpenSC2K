@@ -54,13 +54,13 @@ func _create_dialogs() -> void:
 	add_child(export_bmp_dialog)
 
 	discard_dialog = ConfirmationDialog.new()
-	discard_dialog.theme = ClassicUiStyle.create_dialog_theme()
+	discard_dialog.theme = AppUiTheme.current()
 	discard_dialog.title = "Unsaved SCURK Changes"
 	discard_dialog.get_ok_button().text = "Discard"
 	add_child(discard_dialog)
 
 	error_dialog = AcceptDialog.new()
-	error_dialog.theme = ClassicUiStyle.create_dialog_theme()
+	error_dialog.theme = AppUiTheme.current()
 	error_dialog.title = "SCURK Error"
 	add_child(error_dialog)
 

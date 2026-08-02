@@ -19,7 +19,7 @@ func _run() -> void:
 	var creation_samples: Array[float] = []
 	var update_samples: Array[float] = []
 	var host := Control.new()
-	host.theme = ClassicUiStyle.create_theme()
+	host.theme = AppUiTheme.current()
 	host.size = Vector2(1280, 800)
 	root.add_child(host)
 

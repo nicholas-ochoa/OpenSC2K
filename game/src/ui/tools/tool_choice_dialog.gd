@@ -11,7 +11,7 @@ var choice_buttons: Array[Button] = []
 func _ready() -> void:
 	# visible in the editor, closed at startup
 	hide()
-	theme = ClassicUiStyle.create_dialog_theme()
+	theme = AppUiTheme.current()
 	get_ok_button().visible = false
 
 	for child in $Choices.get_children():

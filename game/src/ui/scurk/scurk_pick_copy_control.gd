@@ -74,7 +74,7 @@ func _ready() -> void:
 	source_list.drag_source = true
 	working_list.drop_target = true
 	source_dialog.theme = AppUiTheme.file_dialog()
-	confirm_all_dialog.theme = ClassicUiStyle.create_dialog_theme()
+	confirm_all_dialog.theme = AppUiTheme.current()
 
 
 func configure(

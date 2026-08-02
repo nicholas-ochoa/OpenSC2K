@@ -3,7 +3,6 @@ extends RefCounted
 
 
 const DisplayNumbers = preload("res://src/ui/shared/display_number_format.gd")
-const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 const CityWorkspaceView = preload("res://src/ui/shell/city_workspace.tscn")
 const CityDialogsView = preload("res://src/ui/shell/city_dialog_registry.gd")
 const MainOverlaysView = preload("res://src/ui/shell/main_overlay_registry.gd")
@@ -18,7 +17,7 @@ func _init(application: CityApplication) -> void:
 
 
 func _build_interface(original_assets: OriginalGameAssets) -> void:
-	app.theme = ClassicStyle.create_theme()
+	app.theme = AppUiTheme.current()
 	app.city_workspace = CityWorkspaceView.instantiate() as CityWorkspace
 	app.city_workspace.toolbar_art = original_assets.toolbar_art
 	app.add_child(app.city_workspace)

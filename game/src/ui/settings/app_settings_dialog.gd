@@ -40,7 +40,7 @@ var background_audio_check: CheckBox
 func _ready() -> void:
 	# visible in the editor, closed at startup
 	hide()
-	theme = ClassicUiStyle.create_dialog_theme()
+	theme = AppUiTheme.current()
 
 	get_ok_button().text = "Save Changes"
 	var button_row := get_ok_button().get_parent()

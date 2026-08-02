@@ -12,7 +12,7 @@ func _run() -> void:
 	viewport.size = Vector2i(1280, 800)
 	root.add_child(viewport)
 	var workspace := preload("res://src/ui/shell/city_workspace.tscn").instantiate() as CityWorkspace
-	workspace.theme = ClassicUiStyle.create_theme()
+	workspace.theme = AppUiTheme.current()
 	viewport.add_child(workspace)
 	await process_frame
 	await process_frame

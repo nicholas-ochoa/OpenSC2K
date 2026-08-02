@@ -90,7 +90,7 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 			app.sc2x_conversion_dialog.dialog_text = "This permanently converts this city to SC2X.\nIt cannot return to SC2 or use original compatibility.\nThe original SimCity 2000 cannot open SC2X files.\n\nSave a separate SC2X copy. Your existing SC2 file stays unchanged."
 			app.sc2x_conversion_dialog.get_ok_button().text = "Upgrade to SC2X"
 			app.sc2x_conversion_dialog.exclusive = true
-			app.sc2x_conversion_dialog.theme = ClassicUiStyle.create_dialog_theme()
+			app.sc2x_conversion_dialog.theme = AppUiTheme.current()
 			app.add_child(app.sc2x_conversion_dialog)
 			app.sc2x_conversion_dialog.confirmed.connect(_confirm_sc2x_conversion)
 			app.sc2x_conversion_dialog.canceled.connect(func() -> void:

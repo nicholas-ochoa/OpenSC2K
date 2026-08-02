@@ -186,14 +186,14 @@ func _create_event_dialogs() -> void:
 	)
 	game_over_dialog = AcceptDialog.new()
 	game_over_dialog.name = "GameOverDialog"
-	game_over_dialog.theme = ClassicUiStyle.create_dialog_theme()
+	game_over_dialog.theme = AppUiTheme.current()
 	game_over_dialog.min_size = Vector2i(460, 220)
 	_register(game_over_dialog, "CityEvents", Modality.MODELESS)
 	scenario_dialog = ScenarioDialogView.instantiate()
 	_register(scenario_dialog, "Startup", Modality.BLOCKING)
 	military_dialog = ConfirmationDialog.new()
 	military_dialog.name = "MilitaryProposalDialog"
-	military_dialog.theme = ClassicUiStyle.create_dialog_theme()
+	military_dialog.theme = AppUiTheme.current()
 	military_dialog.title = "Military Base Proposal"
 	military_dialog.dialog_text = (
 		"The military wants to build a base in the city. "

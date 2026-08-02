@@ -2,7 +2,6 @@ class_name CityGraphWindow
 extends Window
 
 const GraphView = preload("res://src/view/city_graph_control.gd")
-const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
 
 var graph_control: CityGraphControl
 var series_buttons: Array[CheckBox] = []

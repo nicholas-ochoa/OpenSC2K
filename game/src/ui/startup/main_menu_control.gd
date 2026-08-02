@@ -1,8 +1,6 @@
 class_name MainMenuControl
 extends ColorRect
 
-const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
-
 signal import_assets_requested
 signal continue_requested
 signal new_city_requested
@@ -39,7 +37,7 @@ var scurk_place_button: Button
 
 func _ready() -> void:
 	AppUiTheme.bind_canvas(self, "map_canvas")
-	theme = ClassicStyle.create_theme()
+	theme = AppUiTheme.current()
 	AppUiTheme.bind_frosted_panel($Center/Panel, $GlassBackgroundCopy)
 
 	city_background = $CityBackground

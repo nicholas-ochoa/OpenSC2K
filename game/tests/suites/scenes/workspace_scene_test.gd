@@ -5,7 +5,7 @@ const WorkspaceScene = preload("res://src/ui/shell/city_workspace.tscn")
 
 func run() -> void:
 	var host := Control.new()
-	host.theme = ClassicUiStyle.create_theme()
+	host.theme = AppUiTheme.current()
 	host.size = Vector2(1280, 800)
 	root.add_child(host)
 	var workspace := WorkspaceScene.instantiate() as CityWorkspace

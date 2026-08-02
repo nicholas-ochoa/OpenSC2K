@@ -20,7 +20,7 @@ func _rebuild(theme_index: int) -> void:
 		page.queue_free()
 	theme = AppUiTheme.build("light" if theme_index == 0 else "dark")
 	# Give the catalog a readable canvas without changing the shared game theme.
-	var canvas := ClassicUiStyle.create_box(Color("c0c0c0"), Color("808080"), 1, 12, 12) if theme_index == 0 else theme.get_stylebox("panel", "PanelContainer")
+	var canvas := AppUiThemeDefinitions.create_box(Color("c0c0c0"), Color("808080"), 1, 12, 12) if theme_index == 0 else theme.get_stylebox("panel", "PanelContainer")
 	add_theme_stylebox_override("panel", canvas)
 	%Tabs.add_theme_stylebox_override("panel", canvas if theme_index == 0 else theme.get_stylebox("panel", "TabContainer"))
 	_buttons_page()

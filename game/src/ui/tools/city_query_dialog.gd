@@ -1,8 +1,6 @@
 class_name CityQueryDialog
 extends ColorRect
 
-const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
-
 const NeighborhoodPreview = preload("res://src/ui/tools/query_neighborhood_preview.gd")
 
 

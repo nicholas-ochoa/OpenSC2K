@@ -130,7 +130,7 @@ func _build_reference_import_dialogs() -> void:
 	app.add_child(app.reference_import_error_dialog)
 
 	for dialog in [app.graphics_source_error_dialog, app.reference_import_dialog, app.reference_import_error_dialog]:
-		dialog.theme = AppUiTheme.file_dialog() if dialog is FileDialog else ClassicUiStyle.create_dialog_theme()
+		dialog.theme = AppUiTheme.file_dialog() if dialog is FileDialog else AppUiTheme.current()
 
 
 func _show_graphics_source_error(message: String) -> void:

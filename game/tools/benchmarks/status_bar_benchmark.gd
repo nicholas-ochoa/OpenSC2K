@@ -2,7 +2,6 @@ extends SceneTree
 
 # Compare timings on the same host.
 const StatusScript = preload("res://src/ui/shell/city_status_bar.gd")
-const Style = preload("res://src/ui/shared/classic_ui_style.gd")
 const SCENE_PATH := "res://src/ui/shell/city_status_bar.tscn"
 const SAMPLES := 11
 const CREATIONS := 200
@@ -15,7 +14,7 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var host := Control.new()
-	host.theme = Style.create_theme()
+	host.theme = AppUiTheme.current()
 	root.add_child(host)
 	var scene := load(SCENE_PATH) as PackedScene if ResourceLoader.exists(SCENE_PATH) else null
 

@@ -8,7 +8,7 @@ var message_label: Label
 func _ready() -> void:
 	# visible in the editor, closed at startup
 	hide()
-	theme = ClassicUiStyle.create_dialog_theme()
+	theme = AppUiTheme.current()
 	get_label().visible = false
 	picture_view = $Layout/PictureFrame/Picture
 	message_label = $Layout/Message

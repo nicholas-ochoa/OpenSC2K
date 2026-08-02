@@ -1,8 +1,6 @@
 class_name CityMenuBar
 extends PanelContainer
 
-const ClassicStyle = preload("res://src/ui/shared/classic_ui_style.gd")
-
 signal file_menu_requested(id: int)
 signal speed_menu_requested(id: int)
 signal options_menu_requested(id: int)

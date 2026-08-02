@@ -31,7 +31,7 @@ var _updating := false
 func _ready() -> void:
 	# visible in the editor, closed at startup
 	hide()
-	theme = ClassicUiStyle.create_dialog_theme()
+	theme = AppUiTheme.current()
 	folder_input = $Fields/Grid/FolderRow/FolderInput
 	browse_button = $Fields/Grid/FolderRow/BrowseButton
 	file_name_input = $Fields/Grid/FileNameInput
