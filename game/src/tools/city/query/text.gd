@@ -225,12 +225,12 @@ static func _specific_lines(
 			return _specific_lines(city, microsim, microsim_type, {})
 
 		var template := str(resource_strings[resource_id])
-		result.append(_expand_specific_template(city, microsim, template, resource_strings))
+		result.append(expand_specific_template(city, microsim, template, resource_strings))
 
 	return result
 
 
-static func _expand_specific_template(
+static func expand_specific_template(
 	city: CityState,
 	microsim: Dictionary,
 	template: String,

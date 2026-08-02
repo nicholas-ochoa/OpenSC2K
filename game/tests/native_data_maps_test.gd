@@ -147,7 +147,7 @@ func check_values(edge: int) -> void:
 	doc.find_chunk("XTRF").set_decoded_payload(traffic)
 	check(city.traffic_density(point.x, point.y) == 200 and city.traffic_density(point.x, point.y + 1) == 40,
 		"Renderer reads tile-specific traffic")
-	check(QueryInfo._traffic(city, traffic, point, 0x1d) == 100, "Traffic query uses selected tile")
+	check(QueryDetails.traffic(city, traffic, point, 0x1d) == 100, "Traffic query uses selected tile")
 	check(TrafficPhase.run(city).ok, "Native traffic phase")
 	check(doc.find_chunk("XTRF").decoded_payload[index] == 150
 		and doc.find_chunk("XTRF").decoded_payload[index + 1] == 30

@@ -258,5 +258,5 @@ func check_land_value_amounts() -> void:
 		data[0] = raw
 		chunk.set_decoded_payload(data)
 		var query := QueryInfo.inspect(city, Vector2i.ZERO)
-		check(QueryInfo.format_text(query).contains("$%d,000/acre" % (raw + 1)), "Tooltip dollar scale agrees with Query")
+		check(QueryText.format_text(query).contains("$%d,000/acre" % (raw + 1)), "Tooltip dollar scale agrees with Query")
 		check(CityDataView.tile_text(city, "land_value", Vector2i.ZERO).contains("$%d,000" % (raw + 1)), "Land Value uses the saved dollar scale")

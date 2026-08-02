@@ -3,7 +3,7 @@ extends SceneTree
 
 
 func _initialize() -> void:
-	var names := PeStringResource.load_ids("res://../references/SIMCITY2000/SIMCITY.EXE", QueryInfo.resource_string_ids())
+	var names := PeStringResource.load_ids("res://../references/SIMCITY2000/SIMCITY.EXE", QueryText.resource_string_ids())
 	assert(names.ok, str(names.error))
 	var city := CityState.new()
 	city.document = Sc2File.new()
@@ -13,7 +13,7 @@ func _initialize() -> void:
 	city.tile_flags.resize(CityState.TILE_COUNT)
 
 	for id in range(198, 256):
-		var resource := QueryInfo.general_name_resource_id(city, Vector2i.ZERO, id)
+		var resource := QueryText.general_name_resource_id(city, Vector2i.ZERO, id)
 		print("Role %d: %s; footprint %d" % [id, str(names.strings.get(resource, "missing")), DemolishStructures.structure_area(id)])
 
 	for archive_name in ["LARGE.DAT", "SMALLMED.DAT", "SPECIAL.DAT"]:

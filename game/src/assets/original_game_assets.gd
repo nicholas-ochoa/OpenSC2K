@@ -7,7 +7,6 @@ const BitmapLoader = preload("res://src/assets/pe_bitmap_resource.gd")
 const StringLoader = preload("res://src/assets/pe_string_resource.gd")
 const TextLoader = preload("res://src/assets/text_usa_resource.gd")
 const NewspaperLoader = preload("res://src/assets/data_usa_resource.gd")
-const Queries = preload("res://src/tools/city/query_info.gd")
 const LibraryWindows = preload("res://src/ui/city_windows/library_ruminate_windows.gd")
 
 const CREDITS_TEXT_RESOURCE_ID := 128
@@ -58,7 +57,7 @@ static func load_root(reference_root: String) -> OriginalGameAssets:
 
 
 static func required_string_ids() -> PackedInt32Array:
-	var result := Queries.resource_string_ids()
+	var result := QueryText.resource_string_ids()
 	result.append_array(CityStatusMessages.resource_ids())
 	result.append(FOREST_PROTEST_STRING_ID)
 	result.append(BUILDING_OBJECTION_STRING_ID)

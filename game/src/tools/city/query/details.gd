@@ -107,7 +107,7 @@ static func _corner_name(mask: int) -> String:
 			return "No corners"
 
 
-static func _traffic(
+static func traffic(
 	city: CityState, values: PackedByteArray, point: Vector2i, building: int
 ) -> int:
 	var map_edge: int = city.map_size if city != null else 128
@@ -155,7 +155,7 @@ static func _is_highway_traffic_tile(building: int) -> bool:
 	)
 
 
-static func _level_name(value: int) -> String:
+static func level_name(value: int) -> String:
 	if value <= 1:
 		return "None"
 

@@ -225,7 +225,7 @@ func _open_query(point: Vector2i) -> void:
 		str(result.title),
 		str(result.title) if is_specific else "",
 		is_specific,
-		Queries.format_text(result),
+		QueryText.format_text(result),
 		action_text,
 		result,
 		ImageTexture.create_from_image(neighborhood) if neighborhood != null else null,

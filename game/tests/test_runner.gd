@@ -13206,7 +13206,7 @@ func _test_sign_command(reference_root: String) -> void:
 
 func _test_query_info(reference_root: String) -> void:
 	var original_strings_result := PeString.load_ids(
-		reference_root.path_join("SIMCITY.EXE"), Queries.resource_string_ids()
+		reference_root.path_join("SIMCITY.EXE"), QueryText.resource_string_ids()
 	)
 	_check(
 		original_strings_result.ok,
@@ -13290,7 +13290,7 @@ func _test_query_info(reference_root: String) -> void:
 		"General query loads the original road-range name",
 	)
 	_check(
-		Queries.general_name_resource_id(city, Vector2i(10, 10))
+		QueryText.general_name_resource_id(city, Vector2i(10, 10))
 		== Queries.GENERAL_NAME_RESOURCE_BASE + 6,
 		"General query applies the recovered road name indirection",
 	)
@@ -13298,8 +13298,8 @@ func _test_query_info(reference_root: String) -> void:
 	_check(info.traffic == 4, "Query reproduces adjacent road traffic calculation")
 	_check(info.altitude_feet == 250 and not info.altitude_is_depth, "Query reproduces clear-terrain altitude")
 	_check(info.land_value == 10, "Query reports land value in thousands per acre")
-	_check(info.crime_level == Queries._level_name(61), "Query uses the recovered crime thresholds")
-	_check(info.pollution_level == Queries._level_name(181), "Query uses the recovered pollution thresholds")
+	_check(info.crime_level == QueryDetails.level_name(61), "Query uses the recovered crime thresholds")
+	_check(info.pollution_level == QueryDetails.level_name(181), "Query uses the recovered pollution thresholds")
 	_check(info.shows_utilities and info.powered, "Query reports utility state")
 	_check(
 		info.tile_id == 0x1d
@@ -13322,7 +13322,7 @@ func _test_query_info(reference_root: String) -> void:
 		and flag_info.underground_name == "None",
 		"Advanced Query uses the SC2KFix XBIT and empty-XUND names",
 	)
-	var advanced_general_text := Queries.format_text(info)
+	var advanced_general_text := QueryText.format_text(info)
 	_check(
 		advanced_general_text.contains("29 / 0x1D")
 		and advanced_general_text.contains("61 / 0x3D"),
@@ -13331,37 +13331,37 @@ func _test_query_info(reference_root: String) -> void:
 	var bounds := [1, 60, 120, 180]
 	for boundary in bounds:
 		_check(
-			Queries._level_name(boundary) != Queries._level_name(boundary + 1),
+			QueryDetails.level_name(boundary) != QueryDetails.level_name(boundary + 1),
 			"Query level changes at its recovered threshold",
 		)
 	for band in [[2, 60], [61, 120], [121, 180]]:
 		_check(
-			Queries._level_name(band[0]) == Queries._level_name(band[1]),
+			QueryDetails.level_name(band[0]) == QueryDetails.level_name(band[1]),
 			"Query level stays constant within a threshold band",
 		)
 	_check(city.set_building_id(40, 40, 0), "Query name fixture clears a terrain tile")
 	_check(city.set_tile_flag(40, 40, 0x04, false), "Query name fixture clears its water flag")
 	_check(
-		Queries.general_name_resource_id(city, Vector2i(40, 40))
+		QueryText.general_name_resource_id(city, Vector2i(40, 40))
 		== Queries.GENERAL_NAME_RESOURCE_BASE + Queries.GENERAL_CLEAR_NAME_INDEX,
 		"General query selects the original clear-terrain name",
 	)
 	_check(city.set_tile_flag(40, 40, 0x04, true), "Query name fixture sets its water flag")
 	_check(city.set_tile_flag(40, 40, 0x01, true), "Query name fixture sets its salt-water flag")
 	_check(
-		Queries.general_name_resource_id(city, Vector2i(40, 40))
+		QueryText.general_name_resource_id(city, Vector2i(40, 40))
 		== Queries.GENERAL_NAME_RESOURCE_BASE + Queries.GENERAL_SALT_WATER_NAME_INDEX,
 		"General query selects the original salt-water name",
 	)
 	_check(city.set_tile_flag(40, 40, 0x01, false), "Query name fixture clears its salt-water flag")
 	_check(
-		Queries.general_name_resource_id(city, Vector2i(40, 40))
+		QueryText.general_name_resource_id(city, Vector2i(40, 40))
 		== Queries.GENERAL_NAME_RESOURCE_BASE + Queries.GENERAL_FRESH_WATER_NAME_INDEX,
 		"General query selects the original fresh-water name",
 	)
 	_check(city.set_building_id(41, 40, 0xff), "Query name fixture places an exact-name tile")
 	_check(
-		Queries.general_name_resource_id(city, Vector2i(41, 40))
+		QueryText.general_name_resource_id(city, Vector2i(41, 40))
 		== Queries.GENERAL_NAME_RESOURCE_BASE + 153,
 		"General query gives tile FF its individual original name",
 	)
@@ -13402,7 +13402,7 @@ func _test_query_info(reference_root: String) -> void:
 	_check(city.set_label(52, "Dormant Link"), "Query fixture names a dormant microsim")
 	_check(city.set_text_overlay_id(11, 10, 52), "Query fixture attaches a dormant microsim")
 	var dormant := Queries.inspect(city, Vector2i(11, 10))
-	var dormant_text := Queries.format_text(dormant)
+	var dormant_text := QueryText.format_text(dormant)
 	_check(
 		dormant.kind == "general"
 		and dormant.microsim_id == 1
@@ -13423,7 +13423,7 @@ func _test_query_info(reference_root: String) -> void:
 	_check(specific.sound_events == [513], "City Hall query requests original sound 513")
 	_check(
 		specific.sprite_id == 1208
-		and Queries.format_text(specific).contains("1286 / 0x0506"),
+		and QueryText.format_text(specific).contains("1286 / 0x0506"),
 		"Specific query shows its full-size sprite and raw XMIC data",
 	)
 	var renamed := QueryFacilityActions.rename_facility(city, specific, "New Civic Center")
@@ -13515,7 +13515,7 @@ func _test_query_info(reference_root: String) -> void:
 			"stat_3": 0,
 		}
 		_check(
-			Queries._expand_specific_template(
+			QueryText.expand_specific_template(
 				city, arcology, str(original_strings[942]), original_strings
 			)
 			== str(original_strings[942]).replace("#1", "7"),
@@ -13537,22 +13537,22 @@ func _test_query_info(reference_root: String) -> void:
 		"Query uses a full-size arcology sprite as corrected by SC2KFix",
 	)
 	_check(
-		Queries.specific_sound_events(0xfb, 3) == [526, 512]
-		and Queries.specific_sound_events(0xfb, 4) == [526]
-		and Queries.specific_sound_events(0xfb, 10) == [526, 513],
+		QueryText.specific_sound_events(0xfb, 3) == [526, 512]
+		and QueryText.specific_sound_events(0xfb, 4) == [526]
+		and QueryText.specific_sound_events(0xfb, 10) == [526, 513],
 		"Arcology query keeps all three original age-dependent sound branches",
 	)
 	_check(
-		Queries.specific_sound_events(0xc8, 0) == [514]
-		and Queries.specific_sound_events(0xd1, 0) == [506]
-		and Queries.specific_sound_events(0xd3, 0) == [509]
-		and Queries.specific_sound_events(0xd6, 0) == [523]
-		and Queries.specific_sound_events(0xd8, 0) == [522]
-		and Queries.specific_sound_events(0xda, 0) == [527]
-		and Queries.specific_sound_events(0xec, 0) == [521]
-		and Queries.specific_sound_events(0xed, 0) == [524]
-		and Queries.specific_sound_events(0xf8, 0) == [511]
-		and Queries.specific_sound_events(0xf5, 0).is_empty(),
+		QueryText.specific_sound_events(0xc8, 0) == [514]
+		and QueryText.specific_sound_events(0xd1, 0) == [506]
+		and QueryText.specific_sound_events(0xd3, 0) == [509]
+		and QueryText.specific_sound_events(0xd6, 0) == [523]
+		and QueryText.specific_sound_events(0xd8, 0) == [522]
+		and QueryText.specific_sound_events(0xda, 0) == [527]
+		and QueryText.specific_sound_events(0xec, 0) == [521]
+		and QueryText.specific_sound_events(0xed, 0) == [524]
+		and QueryText.specific_sound_events(0xf8, 0) == [511]
+		and QueryText.specific_sound_events(0xf5, 0).is_empty(),
 		"Specific query maps each recovered facility sound class",
 	)
 
