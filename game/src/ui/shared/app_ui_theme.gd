@@ -54,43 +54,6 @@ static func bind_frosted_panel(control: Control, background_copy: BackBufferCopy
 	refresh.call()
 
 
+# builds with the selected translucent menu setting held by this class
 static func build(value: String, files := false) -> Theme:
 	return AppUiThemeDefinitions.build(value, files, translucent_menus)
-
-
-static func _light_theme() -> Theme:
-	return AppUiThemeDefinitions._light_theme()
-
-
-static func _dark_theme() -> Theme:
-	return AppUiThemeDefinitions._dark_theme()
-
-
-static func _copy_style(source: Theme, type_name: String, state: String) -> StyleBoxFlat:
-	return AppUiThemeDefinitions._copy_style(source, type_name, state)
-
-
-static func _tinted_icon(texture: Texture2D, color: Color) -> Texture2D:
-	return AppUiThemeDefinitions._tinted_icon(texture, color)
-
-
-static func _light_file_dialog_theme() -> Theme:
-	return AppUiThemeDefinitions._light_file_dialog_theme()
-
-
-static func create_box(
-	background: Color,
-	border: Color,
-	width: int,
-	horizontal_margin := 5,
-	vertical_margin := 3
-) -> StyleBoxFlat:
-	return AppUiThemeDefinitions.create_box(background, border, width, horizontal_margin, vertical_margin)
-
-
-static func _base_light_controls() -> Theme:
-	return AppUiThemeDefinitions._base_light_controls()
-
-
-static func _base_light_theme() -> Theme:
-	return AppUiThemeDefinitions._base_light_theme()

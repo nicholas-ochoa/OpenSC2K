@@ -12,4 +12,4 @@ static func create_dialog_theme() -> Theme:
 
 
 static func create_box(background: Color, border: Color, width: int, horizontal_margin := 5, vertical_margin := 3) -> StyleBoxFlat:
-	return AppUiTheme.create_box(background, border, width, horizontal_margin, vertical_margin)
+	return AppUiThemeDefinitions.create_box(background, border, width, horizontal_margin, vertical_margin)
