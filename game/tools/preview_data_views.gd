@@ -16,6 +16,6 @@ func _run() -> void:
 	main.city_session._activate_document(doc)
 	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 	main.current_tool._select_tool_group(16)
-	main.menus._set_overlay("height")
+	main.menus._set_overlay(CityViewMode.Mode.HEIGHT)
 	main.map_view.zoom_factor = 0.5
 	main.map_view.queue_redraw()

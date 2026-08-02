@@ -80,7 +80,7 @@ class ProfileStaticRender extends ApplicationStaticRender:
 		super._update_palette_cycle_texture()
 		app._record("palette", started)
 
-	func _static_signature_for_mode(mode: String, view_size: int) -> Array:
+	func _static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array:
 		var started := Time.get_ticks_usec()
 		var result := super._static_signature_for_mode(mode, view_size)
 		app._record("signature", started)

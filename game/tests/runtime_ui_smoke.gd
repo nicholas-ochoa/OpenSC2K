@@ -249,7 +249,7 @@ func _run() -> void:
 			var patch_command: Dictionary = main.get("last_edit_command")
 			var view_size := int(main.static_render.call("_city_view_size"))
 			var expected_signature: Array = main.static_render.call(
-				"_static_signature_for_mode", "city", view_size
+				"_static_signature_for_mode", CityViewMode.Mode.CITY, view_size
 			)
 
 			if (
@@ -619,7 +619,7 @@ func _run() -> void:
 
 		main.frame.call("_select_speed", GameSpeed.Speed.PAUSED)
 
-	for mode in ["underground", "city"]:
+	for mode in [CityViewMode.Mode.UNDERGROUND, CityViewMode.Mode.CITY]:
 		main.menus.call("_set_overlay", mode)
 		await process_frame
 
@@ -627,10 +627,10 @@ func _run() -> void:
 		main.menus.call("_set_surface_visibility", false, layer)
 		main.menus.call("_set_surface_visibility", true, layer)
 
-	main.menus.call("_set_overlay", "underground")
+	main.menus.call("_set_overlay", CityViewMode.Mode.UNDERGROUND)
 	main.menus.call("_set_underground_pipes_visible", false)
 	main.menus.call("_set_underground_pipes_visible", true)
-	main.menus.call("_set_overlay", "city")
+	main.menus.call("_set_overlay", CityViewMode.Mode.CITY)
 
 	for entry in [
 		[main.reports._open_ordinance_window, "ordinance_window"],

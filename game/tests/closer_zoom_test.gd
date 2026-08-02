@@ -55,7 +55,7 @@ func _run() -> void:
 	assert(CityMapSigns.sign_display_multiplier(3.0) == 3.0)
 	assert(CityMapSigns.sign_display_multiplier(4.0) == 4.0)
 
-	for mode in ["underground", "city"]:
+	for mode: CityViewMode.Mode in [CityViewMode.Mode.UNDERGROUND, CityViewMode.Mode.CITY]:
 		main.menus._set_overlay(mode)
 		assert(map.zoom_percent() == 400 and main.static_render._city_view_size() == 2)
 

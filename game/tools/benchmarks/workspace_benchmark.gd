@@ -48,7 +48,7 @@ func _run() -> void:
 			workspace.status_bar.set_environment(Vector3i(500, -200, 800), "Clear")
 			workspace.status_bar.set_speed("Paused")
 			workspace.status_bar.update_report_rotation(0.016)
-			workspace.toolbar.sync_view_mode("city" if index % 2 == 0 else "underground")
+			workspace.toolbar.sync_view_mode(CityViewMode.Mode.CITY if index % 2 == 0 else CityViewMode.Mode.UNDERGROUND)
 			workspace.toolbar.sync_child_tool_selection(9, index % 2)
 
 		var update_usec := float(Time.get_ticks_usec() - started) / UPDATES

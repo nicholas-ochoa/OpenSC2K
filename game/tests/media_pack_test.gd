@@ -88,7 +88,7 @@ func _run() -> void:
 		clicks[0] += 1)
 	toolbar.toolbar_buttons[6].pressed.emit()
 	toolbar.zoom_in_button.pressed.emit()
-	toolbar.view_mode_buttons.underground.pressed.emit()
+	toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].pressed.emit()
 	toolbar.show_tool_group(6, null)
 	(toolbar.child_tool_buttons[0] as Button).pressed.emit()
 	assert(clicks[0] == 4)

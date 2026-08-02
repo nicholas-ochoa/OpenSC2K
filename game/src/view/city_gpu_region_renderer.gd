@@ -4,9 +4,9 @@ const Renderer = preload("res://src/view/city_isometric_renderer.gd")
 
 
 static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
-		bounds: Rect2i, view: int, mode: String, pipes: bool, subways: bool,
+		bounds: Rect2i, view: int, mode: CityViewMode.Mode, pipes: bool, subways: bool,
 		context: CityGpuBuildContext, revision: int, uploaded_atlas_revision: int, copy_atlas := true, water_mains := true) -> Dictionary:
-	if city == null or not city.is_valid() or palette == null or not palette.is_valid() or sprites == null or not sprites.is_valid() or view not in [0, 1, 2] or mode not in ["city", "underground"]:
+	if city == null or not city.is_valid() or palette == null or not palette.is_valid() or sprites == null or not sprites.is_valid() or view not in [0, 1, 2] or not CityViewMode.is_map(mode):
 		return {"ok": false, "error": "invalid GPU region assets"}
 
 	context.set_revision(revision)
@@ -18,7 +18,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 		return {"ok": false, "error": "empty GPU region"}
 
 	var limit := Renderer.maximum_sprite_size(sprites)
-	var span := Renderer.region_tile_span(configuration, limit, bounds, city.map_size, mode == "underground")
+	var span := Renderer.region_tile_span(configuration, limit, bounds, city.map_size, mode == CityViewMode.Mode.UNDERGROUND)
 	var draws: Array[Dictionary] = []
 	var foreground: Array[Dictionary] = []
 	var foreground_draws: Array[Dictionary] = []
@@ -26,7 +26,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	var uvs := PackedVector2Array()
 	var indices := PackedInt32Array()
 
-	if mode == "underground":
+	if mode == CityViewMode.Mode.UNDERGROUND:
 		if not context.images.has("gpu_background"):
 			var white := Image.create(1, 1, false, Image.FORMAT_RGBA8)
 			white.fill(Color.WHITE)
@@ -68,7 +68,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 
 	var depth := {}
 
-	if mode == "city":
+	if mode == CityViewMode.Mode.CITY:
 		depth = CityGpuOcclusionDepth.build(foreground, foreground_draws, bounds, context, sprites, palette)
 
 		if not context.error.is_empty():
@@ -95,7 +95,7 @@ static func render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchi
 	arrays[Mesh.ARRAY_INDEX] = indices
 
 	return {"ok": true, "error": "", "gpu_arrays": arrays, "gpu_draws": draws, "gpu_draw_grid": Renderer.build_occlusion_grid(draws, 1),
-		"background": Color.WHITE if mode == "underground" else Color.TRANSPARENT,
+		"background": Color.WHITE if mode == CityViewMode.Mode.UNDERGROUND else Color.TRANSPARENT,
 		"bounds": bounds, "occlusion_commands": foreground,
 		"depth_arrays": depth.get("depth", []), "train_depth_arrays": depth.get("train", []),
 		"occlusion_grid": Renderer.build_occlusion_grid(foreground, int(configuration.divisor)),

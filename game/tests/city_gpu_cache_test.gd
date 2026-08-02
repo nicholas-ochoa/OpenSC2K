@@ -13,7 +13,7 @@ func _run() -> void:
 	var palette := Sc2Palette.index_encoding()
 	var cache := CityRegionCache.new()
 	cache.gpu_enabled = true
-	cache.configure(city, palette, sprites, [1], 2, "city", {}, true, true)
+	cache.configure(city, palette, sprites, [1], 2, CityViewMode.Mode.CITY, {}, true, true)
 	var bounds := Rect2i((cache.native_size / 2) - Vector2i(400, 250), Vector2i(800, 500))
 	cache.update_viewport(Rect2(bounds))
 	await _drain(cache)
@@ -40,7 +40,7 @@ func _run() -> void:
 	var edited: Vector2i = cache.visible[-1]
 	for entry: Dictionary in cache.entries.values():
 		entry.generation = 0
-	cache.configure(city, palette, sprites, [2], 2, "city", {}, true, true,
+	cache.configure(city, palette, sprites, [2], 2, CityViewMode.Mode.CITY, {}, true, true,
 		Rect2i(edited * cache.region_edge, Vector2i.ONE * cache.region_edge))
 	cache.tick()
 	assert(cache._gpu_workers[0].keys[0] == edited, "Background region ran before the player edit")
@@ -53,7 +53,7 @@ func _run() -> void:
 
 	while not cache.covered() and Time.get_ticks_msec() < deadline:
 		revision += 1
-		cache.configure(city, palette, sprites, [revision], 2, "city", {}, true, true)
+		cache.configure(city, palette, sprites, [revision], 2, CityViewMode.Mode.CITY, {}, true, true)
 		cache.tick()
 		await process_frame
 
@@ -64,7 +64,7 @@ func _run() -> void:
 
 	while not refreshed and Time.get_ticks_msec() < deadline:
 		revision += 1
-		cache.configure(city, palette, sprites, [revision], 2, "city", {}, true, true)
+		cache.configure(city, palette, sprites, [revision], 2, CityViewMode.Mode.CITY, {}, true, true)
 		cache.tick()
 		refreshed = true
 
@@ -77,12 +77,12 @@ func _run() -> void:
 	assert(refreshed, "Visible or prefetched region never finished during continuous updates")
 	await _drain(cache)
 	# Replace the layout while old surface jobs are still running.
-	cache.configure(city, palette, sprites, [revision + 1], 2, "city", {}, true, true)
+	cache.configure(city, palette, sprites, [revision + 1], 2, CityViewMode.Mode.CITY, {}, true, true)
 	cache.tick()
-	cache.configure(city, palette, sprites, [revision + 2], 2, "underground", {}, true, true)
+	cache.configure(city, palette, sprites, [revision + 2], 2, CityViewMode.Mode.UNDERGROUND, {}, true, true)
 	cache.update_viewport(Rect2(bounds))
 	await _drain(cache)
-	var underground := CityRegionRenderer.render(city, palette, sprites, bounds, 2, "underground")
+	var underground := CityRegionRenderer.render(city, palette, sprites, bounds, 2, CityViewMode.Mode.UNDERGROUND)
 	assert(underground.ok)
 	underground.image.convert(Image.FORMAT_LA8)
 	assert(cache.image_region(bounds).get_data() == underground.image.get_data(), "Surface job overwrote an underground region")
@@ -92,7 +92,7 @@ func _run() -> void:
 	for worker in cache._gpu_workers:
 		worker.context.error = "Test atlas failure"
 
-	cache.configure(city, palette, sprites, [revision + 1], 2, "underground", {}, true, true)
+	cache.configure(city, palette, sprites, [revision + 1], 2, CityViewMode.Mode.UNDERGROUND, {}, true, true)
 	await _drain(cache)
 	assert(not cache.gpu_enabled and cache.ready())
 	cache.close()

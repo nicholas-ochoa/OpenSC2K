@@ -106,7 +106,7 @@ var brush_size := 1
 var brush_round := false
 var _last_brush_tile := Vector2i(-1, -1)
 var _brush_elapsed := 0.0
-var data_view_mode := ""
+var data_view_mode := CityViewMode.Mode.NONE
 var data_view_mesh: ArrayMesh
 var data_view_layer: MeshInstance2D
 var data_view_signature: Array = []
@@ -162,7 +162,7 @@ func _ready() -> void:
 	mouse_exited.connect(selection._clear_hover)
 
 
-func set_data_view(value: CityState, mode: String) -> void:
+func set_data_view(value: CityState, mode: CityViewMode.Mode) -> void:
 	layers.set_data_view(value, mode)
 
 

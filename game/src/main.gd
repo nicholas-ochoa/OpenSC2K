@@ -23,7 +23,7 @@ var base_small_medium_sprites: Sc2SpriteArchive
 var active_scurk_tile_set: ScurkMif
 var active_scurk_name := ""
 var active_scurk_path := ""
-var overlay_mode := "city"
+var overlay_mode := CityViewMode.Mode.CITY
 var surface_visibility := {
 	"buildings": true,
 	"networks": true,

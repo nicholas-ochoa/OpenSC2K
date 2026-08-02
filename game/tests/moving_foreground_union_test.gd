@@ -129,7 +129,7 @@ func _initialize() -> void:
 
 			assert(found, "Each native view includes crossing foreground")
 			var context := CityGpuBuildContext.new()
-			var gpu := context.tile(city, Sc2Palette.index_encoding(), archive, config, 64, 64, "city", true, true)
+			var gpu := context.tile(city, Sc2Palette.index_encoding(), archive, config, 64, 64, CityViewMode.Mode.CITY, true, true)
 			var gpu_found := false
 
 			for command in gpu.foreground:

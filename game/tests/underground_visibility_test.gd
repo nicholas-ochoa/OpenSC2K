@@ -42,18 +42,18 @@ func _run() -> void:
 	for pipes in [false, true]:
 		for mains in [false, true]:
 			var full := CityUndergroundView.create_image(city, palette, sprites, view, true, pipes, true, mains)
-			var region := CityRegionRenderer.render(city, palette, sprites, bounds, view, "underground", pipes, true, mains)
+			var region := CityRegionRenderer.render(city, palette, sprites, bounds, view, CityViewMode.Mode.UNDERGROUND, pipes, true, mains)
 			assert(full.ok and region.ok)
 			assert(region.image.get_data() == full.image.get_region(bounds).get_data())
 			var context := CityGpuBuildContext.new()
-			var tile := context.tile(city, palette, sprites, configuration, 20, 20, "underground", pipes, true, mains)
+			var tile := context.tile(city, palette, sprites, configuration, 20, 20, CityViewMode.Mode.UNDERGROUND, pipes, true, mains)
 			var recorded := CityGpuDrawList.new()
 			CityUndergroundView.draw_tile(recorded, city, palette, sprites, {}, configuration, origin, 20, 20, pipes, true, mains)
 			assert(tile.draws.size() == recorded.draws.size())
 			for i in recorded.draws.size():
 				assert(tile.draws[i].image.get_data() == recorded.draws[i].image.get_data())
 			var generation := cache.generation
-			cache.configure(city, palette, sprites, [1], view, "underground", {}, pipes, true, Rect2i(), mains)
+			cache.configure(city, palette, sprites, [1], view, CityViewMode.Mode.UNDERGROUND, {}, pipes, true, Rect2i(), mains)
 			assert(cache.generation > generation)
 			cache.update_viewport(Rect2(bounds))
 			var deadline := Time.get_ticks_msec() + 10000
@@ -71,7 +71,7 @@ func _run() -> void:
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame
-	main.menus._set_overlay("underground")
+	main.menus._set_overlay(CityViewMode.Mode.UNDERGROUND)
 	var checks: Dictionary = main.city_toolbar.view_visibility_checks
 	assert(checks.water_mains.visible and checks.pipes.visible)
 	checks.pipes.button_pressed = false
@@ -80,7 +80,7 @@ func _run() -> void:
 	assert(not main.show_underground_water_mains)
 	main.menus._on_view_menu(CityMenuBar.MENU_VIEW_WATER_MAINS)
 	assert(main.show_underground_water_mains and not main.show_underground_pipes)
-	main.menus._set_overlay("city")
+	main.menus._set_overlay(CityViewMode.Mode.CITY)
 	assert(not checks.water_mains.visible and not checks.pipes.visible)
 	main.scurk_output._ensure_scurk_print()
 	main.scurk_print.configure("Water visibility", "underground", {}, false, true)

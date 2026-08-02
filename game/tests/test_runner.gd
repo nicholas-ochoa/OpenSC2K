@@ -9749,13 +9749,13 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 	)
 	_check(
 		ThingAudio.event_sound_id(
-			first_traffic_news.sound_events[0], "city", IsometricRenderer.VIEW_MEDIUM
+			first_traffic_news.sound_events[0], CityViewMode.Mode.CITY, IsometricRenderer.VIEW_MEDIUM
 		) == -1
 		and ThingAudio.event_sound_id(
-			first_traffic_news.sound_events[0], "underground", IsometricRenderer.VIEW_LARGE
+			first_traffic_news.sound_events[0], CityViewMode.Mode.UNDERGROUND, IsometricRenderer.VIEW_LARGE
 		) == -1
 		and ThingAudio.event_sound_id(
-			first_traffic_news.sound_events[0], "city", IsometricRenderer.VIEW_LARGE
+			first_traffic_news.sound_events[0], CityViewMode.Mode.CITY, IsometricRenderer.VIEW_LARGE
 		) == 510,
 		"Moving-object sound follows the object's minimum zoom and surface view",
 	)
@@ -12959,9 +12959,9 @@ func _test_tool_availability(reference_root: String) -> void:
 		ToolAvailability.is_available(city, 2, 2),
 		"Dispatch selection stays available because live capacity controls dispatch",
 	)
-	var zone_edit_state := ToolEditState.normal(city, "city", 9, 0)
-	var road_edit_state := ToolEditState.normal(city, "city", 6, 0)
-	var building_edit_state := ToolEditState.normal(city, "city", 13, 3)
+	var zone_edit_state := ToolEditState.normal(city, CityViewMode.Mode.CITY, 9, 0)
+	var road_edit_state := ToolEditState.normal(city, CityViewMode.Mode.CITY, 6, 0)
+	var building_edit_state := ToolEditState.normal(city, CityViewMode.Mode.CITY, 13, 3)
 	_check(
 		zone_edit_state.enabled
 		and zone_edit_state.selection == "rectangle"
@@ -12972,15 +12972,15 @@ func _test_tool_availability(reference_root: String) -> void:
 		and building_edit_state.area == 4,
 		"Tool edit state classifies zone, route, and building input",
 	)
-	var underground_pipe_state := ToolEditState.normal(city, "underground", 4, 0)
-	var underground_zone_state := ToolEditState.normal(city, "underground", 9, 0)
+	var underground_pipe_state := ToolEditState.normal(city, CityViewMode.Mode.UNDERGROUND, 4, 0)
+	var underground_zone_state := ToolEditState.normal(city, CityViewMode.Mode.UNDERGROUND, 9, 0)
 	_check(
 		underground_pipe_state.enabled
 		and underground_pipe_state.selection == "path"
 		and not underground_zone_state.enabled,
 		"Tool edit state limits underground input to supported tools",
 	)
-	var scurk_object_state := ToolEditState.scurk_object(city, "city", 0xcf)
+	var scurk_object_state := ToolEditState.scurk_object(city, CityViewMode.Mode.CITY, 0xcf)
 	var scurk_zone_state := ToolEditState.scurk_tool(city, {
 		"group": 9,
 		"subtool": 0,

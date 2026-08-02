@@ -165,7 +165,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 	if app.map_view != null:
 		app.map_view.set_moving_occlusion_enabled(app.preferences.moving_frame_rate > ORIGINAL_FRAME_RATE)
 
-	if app.city == null or app.palette == null or app.map_view == null or app.overlay_mode != "city":
+	if app.city == null or app.palette == null or app.map_view == null or app.overlay_mode != CityViewMode.Mode.CITY:
 		caches.dynamic_sign_occluders.clear()
 		caches.dynamic_sign_occlusion_grid.clear()
 

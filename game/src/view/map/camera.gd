@@ -196,7 +196,7 @@ func _tile_at(local_point: Vector2) -> Vector2i:
 	var scale := _view_scale()
 	var source_point := (local_point - _draw_offset(scale)) / scale
 
-	return Renderer.screen_to_tile(map.city, source_point, map.data_view_mode == "height")
+	return Renderer.screen_to_tile(map.city, source_point, map.data_view_mode == CityViewMode.Mode.HEIGHT)
 
 
 func _change_zoom(direction: int, local_point: Vector2) -> bool:
@@ -225,7 +225,7 @@ func _change_zoom(direction: int, local_point: Vector2) -> bool:
 	map.layers._sync_base_layer()
 	map.zoom_changed.emit(zoom_percent())
 
-	if not map.data_view_mode.is_empty() and map.hover_tile.x >= 0:
+	if not map.data_view_mode == CityViewMode.Mode.NONE and map.hover_tile.x >= 0:
 		map.hover_tile = _tile_at(map.get_local_mouse_position())
 
 	map.queue_redraw()

@@ -87,8 +87,8 @@ func _build_actions(tabs: TabContainer) -> void:
 		_button(simulation, action[0], func() -> void:
 			_invoke(method))
 
-	for mode in ["city", "underground"]:
-		_button(simulation, mode.capitalize() + " view", func() -> void:
+	for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
+		_button(simulation, CityViewMode.key(mode).capitalize() + " view", func() -> void:
 			main_control.menus.call("_set_overlay", mode))
 
 	_button(simulation, "Print metrics", func() -> void:

@@ -23,7 +23,7 @@ static func stop_sound_effects(audio: CityAudioController) -> void:
 
 static func play_sound_events(
 	audio: CityAudioController,
-	sound_events: Array, sound_enabled: bool, overlay_mode: String, view_size: int
+	sound_events: Array, sound_enabled: bool, overlay_mode: CityViewMode.Mode, view_size: int
 ) -> void:
 	if not sound_enabled or not audio.audio_allowed():
 		return

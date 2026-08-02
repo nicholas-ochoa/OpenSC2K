@@ -123,7 +123,7 @@ func _activate_document(
 		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(0x1018), 0, app.city.map_size - 1), clampi(document.misc_u32(0x101c), 0, app.city.map_size - 1))
 
 	app.current_tool._select_tool_group(17)
-	app.overlay_mode = "city"
+	app.overlay_mode = CityViewMode.Mode.CITY
 	document_state.current_document = document
 	var initial_serialized := document_state.current_document.serialize()
 	document_state.saved_city_snapshot = (

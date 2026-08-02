@@ -28,7 +28,7 @@ signal subtool_requested(index: int)
 signal rotate_requested(counter_clockwise: bool)
 signal zoom_out_requested
 signal zoom_in_requested
-signal overlay_requested(mode: String)
+signal overlay_requested(mode: CityViewMode.Mode)
 signal surface_visibility_requested(visible: bool, layer: String)
 signal underground_water_mains_visibility_requested(visible: bool)
 signal underground_pipes_visibility_requested(visible: bool)
@@ -37,7 +37,6 @@ signal underground_subways_visibility_requested(visible: bool)
 const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const HoldMenu = preload("res://src/ui/shell/city_tool_hold_menu.gd")
 const HOLD_SECONDS := 0.45
-const MAP_DISPLAY_MODES := ["city", "underground"]
 var data_view_input: OptionButton
 const GROUP_ICON_REGIONS := [
 	Rect2i(0, 0, 23, 23), Rect2i(24, 0, 26, 23), Rect2i(50, 0, 20, 23),
@@ -69,7 +68,7 @@ var child_tool_buttons: Dictionary = {}
 var child_palette: CityChildToolPalette
 var view_layers_heading: Label
 var view_visibility_checks: Dictionary = {}
-var view_mode_buttons: Dictionary = {}
+var view_mode_buttons: Dictionary[CityViewMode.Mode, CheckBox] = {}
 
 
 func _ready() -> void:
@@ -82,7 +81,7 @@ func _ready() -> void:
 	child_palette = %ChildPalette
 	view_layers_heading = %ViewLayersHeading
 	data_view_input = %DataViewInput
-	view_mode_buttons = {"city": %CityView, "underground": %UndergroundView, "height": %HeightView}
+	view_mode_buttons = {CityViewMode.Mode.CITY: %CityView, CityViewMode.Mode.UNDERGROUND: %UndergroundView, CityViewMode.Mode.HEIGHT: %HeightView}
 	view_visibility_checks = {
 		"buildings": %BuildingsVisible, "networks": %NetworksVisible,
 		"water": %WaterVisible, "trees": %TreesVisible,
@@ -131,7 +130,7 @@ func _ready() -> void:
 		view_mode_buttons[mode].pressed.connect(overlay_requested.emit.bind(mode))
 
 	data_view_input.item_selected.connect(func(index: int) -> void:
-		overlay_requested.emit("city" if index == 0 else CityDataView.MODES[index - 1]))
+		overlay_requested.emit(CityViewMode.Mode.CITY if index == 0 else CityViewMode.DATA_MODES[index - 1]))
 
 	for layer in ["buildings", "networks", "water", "trees", "zones", "signs", "vehicles"]:
 		view_visibility_checks[layer].toggled.connect(_on_surface_visibility_toggled.bind(layer))
@@ -283,12 +282,12 @@ func _on_surface_visibility_toggled(visible: bool, layer: String) -> void:
 	surface_visibility_requested.emit(visible, layer)
 
 
-func sync_view_mode(mode: String) -> void:
+func sync_view_mode(mode: CityViewMode.Mode) -> void:
 	if data_view_input != null:
-		data_view_input.select(CityDataView.MODES.find(mode) + 1)
+		data_view_input.select(CityViewMode.DATA_MODES.find(mode) + 1)
 
 	for key in view_mode_buttons:
-		(view_mode_buttons[key] as CheckBox).set_pressed_no_signal(key == mode)
+		view_mode_buttons[key].set_pressed_no_signal(key == mode)
 
 
 func _begin_group_hold(group_index: int) -> void:
@@ -349,9 +348,9 @@ func set_landscape_editor(enabled: bool) -> void:
 	for index in toolbar_buttons.size():
 		toolbar_buttons[index].visible = not enabled
 
-	view_mode_buttons.underground.disabled = enabled
-	view_mode_buttons.underground.visible = not enabled
-	view_mode_buttons.height.visible = enabled
+	view_mode_buttons[CityViewMode.Mode.UNDERGROUND].disabled = enabled
+	view_mode_buttons[CityViewMode.Mode.UNDERGROUND].visible = not enabled
+	view_mode_buttons[CityViewMode.Mode.HEIGHT].visible = enabled
 	data_view_input.visible = not enabled
 	%LandscapeSpacer.visible = enabled
 	for key in view_visibility_checks:

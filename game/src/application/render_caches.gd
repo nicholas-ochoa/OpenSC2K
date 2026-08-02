@@ -8,9 +8,9 @@ var static_city_image: Image
 var static_occlusion_commands: Array[Dictionary] = []
 var static_occlusion_grid: Dictionary = {}
 var static_visual_signature: Array = []
-var static_render_mode := ""
+var static_render_mode := CityViewMode.Mode.NONE
 var static_display_city: CityState
-var static_view_cache: Dictionary = {}
+var static_view_cache: Dictionary[CityViewMode.Mode, Dictionary] = {}
 # moving sprite and sign composition
 var dynamic_sprite_cache: Dictionary = {}
 var dynamic_foreground_cache: Dictionary = {}

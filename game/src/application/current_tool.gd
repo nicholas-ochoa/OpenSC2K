@@ -50,14 +50,14 @@ func _select_tool_group(index: int) -> void:
 
 func _auto_select_underground() -> void:
 	# query, camera and bulldozer work in both views
-	if app.selected_group in [16, 17] or (app.overlay_mode in ["city", "underground"] and Demolish.supports_tool(app.selected_group, app.selected_subtool)):
+	if app.selected_group in [16, 17] or (CityViewMode.is_map(app.overlay_mode) and Demolish.supports_tool(app.selected_group, app.selected_subtool)):
 		return
 
 	if app.city == null:
 		return
 
 	var underground_tool := (app.selected_group == 4 and app.selected_subtool == 0) or (app.selected_group == 7 and app.selected_subtool == 1)
-	var target := "underground" if underground_tool else "city"
+	var target := CityViewMode.Mode.UNDERGROUND if underground_tool else CityViewMode.Mode.CITY
 
 	if app.overlay_mode != target:
 		app.menus._set_overlay(target)
@@ -166,7 +166,7 @@ func _update_edit_state() -> void:
 	var level_brush := app.new_city._level_brush_active()
 	app.map_view.landscape_brush = (level_brush or app.selected_group == 1 and app.selected_subtool in [0, 1, 3]) and not (app.scurk_place_print != null and app.scurk_place_print.visible)
 	app.map_view.demolish_brush = app.selected_group == 0 and app.selected_subtool == 0 and not app.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible)
-	app.map_view.bulldozer_visual_provider = app.moving_sprites._demolish_brush_visual if app.overlay_mode == "city" else Callable()
+	app.map_view.bulldozer_visual_provider = app.moving_sprites._demolish_brush_visual if app.overlay_mode == CityViewMode.Mode.CITY else Callable()
 	app.city_toolbar.brush_controls.visible = app.landscape_editor and app.map_view.landscape_brush and not level_brush
 	if level_brush:
 		app.map_view.brush_size = EDITOR_LEVEL_BRUSH_SIZE if app.landscape_editor else LEVEL_BRUSH_SIZE
@@ -285,5 +285,5 @@ func _update_network_preview() -> void:
 	if sprites != null and app.palette != null:
 		app.network_preview.request(
 			app.city, app.selected_group, app.selected_subtool, start, finish, view, app.palette, sprites,
-			app.overlay_mode == "underground", app.scurk_workspace._scurk_edit_tool_active()
+			app.overlay_mode == CityViewMode.Mode.UNDERGROUND, app.scurk_workspace._scurk_edit_tool_active()
 		)

@@ -118,4 +118,4 @@ func _run() -> void:
 
 func configure(signature: Array, view := 2, dirty := Rect2i()) -> void:
 	var archive := sprites if view == 2 else medium
-	cache.configure(city, palette, archive, signature, view, "city", CityViewFilter.DEFAULT_VISIBILITY, true, true, dirty)
+	cache.configure(city, palette, archive, signature, view, CityViewMode.Mode.CITY, CityViewFilter.DEFAULT_VISIBILITY, true, true, dirty)

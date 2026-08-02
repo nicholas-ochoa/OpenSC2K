@@ -57,7 +57,7 @@ func _run() -> void:
 		late.free()
 	# Style selection follows the published texture mode, independent of renderer.
 	# Actual CPU/GPU pixels belong to dark_underground_shader_test.
-	for state in [["underground", true, true], ["underground", false, false], ["city", true, false]]:
+	for state in [[CityViewMode.Mode.UNDERGROUND, true, true], [CityViewMode.Mode.UNDERGROUND, false, false], [CityViewMode.Mode.CITY, true, false]]:
 		main.render_caches.static_render_mode = state[0]
 		main.map_view.base_palette_lookup_all = state[1]
 		main.preferences.dark_underground = true

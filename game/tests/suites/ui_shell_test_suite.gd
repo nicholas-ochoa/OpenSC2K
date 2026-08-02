@@ -222,8 +222,8 @@ func _test_main_menu() -> void:
 		and toolbar.child_tool_buttons.size() == 2
 		and first_residential == 0
 		and toolbar.view_mode_buttons.size() == 3
-		and not toolbar.view_mode_buttons.height.visible
-		and toolbar.view_mode_buttons.city.button_pressed
+		and not toolbar.view_mode_buttons[CityViewMode.Mode.HEIGHT].visible
+		and toolbar.view_mode_buttons[CityViewMode.Mode.CITY].button_pressed
 		and toolbar.view_visibility_checks.size() == 10
 		and toolbar.view_visibility_checks["buildings"].button_pressed
 		and toolbar.view_visibility_checks["vehicles"].button_pressed

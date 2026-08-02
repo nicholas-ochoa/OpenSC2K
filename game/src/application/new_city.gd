@@ -97,7 +97,7 @@ func _make_new_city_preview() -> void:
 		return
 	app.new_city_dialog.preview_timer.stop()
 	app.new_city_dialog.invalidate()
-	app.audio_controller.play_sound_events([529], app.city == null or app.city.sound_enabled(), "city", IsometricRenderer.VIEW_LARGE)
+	app.audio_controller.play_sound_events([529], app.city == null or app.city.sound_enabled(), CityViewMode.Mode.CITY, IsometricRenderer.VIEW_LARGE)
 	_generate_new_city_preview(true)
 
 
@@ -215,7 +215,7 @@ func _create_new_city_unchecked() -> void:
 			document.city_name(),
 			starting_year,
 			_difficulty_name(difficulty),
-			app.overlay_mode.capitalize(),
+			CityViewMode.key(app.overlay_mode).capitalize(),
 		],
 	)
 
@@ -243,7 +243,7 @@ func _enter_landscape_editor() -> void:
 	app.frame._select_speed(GameSpeed.Speed.PAUSED)
 	app.city_toolbar.set_landscape_editor(true)
 	app.city_menu_bar.disasters_menu.disabled = true
-	app.menus._set_overlay("city")
+	app.menus._set_overlay(CityViewMode.Mode.CITY)
 	app.current_tool._select_tool_group(0)
 	app.current_tool._select_subtool(2)
 	app.status_label.text = "Landscape editor: terrain changes are free. Select Start City when ready."

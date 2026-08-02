@@ -18,7 +18,7 @@ static func build(request: Dictionary, context: CityGpuBuildContext, uploaded_re
 		if not result.ok:
 			return result
 
-		if request.mode == "city":
+		if request.mode == CityViewMode.Mode.CITY:
 			result.sign_foregrounds = CityGpuSignForegrounds.build(result, request.signs,
 				request.palette, request.sprites, context, divisor)
 

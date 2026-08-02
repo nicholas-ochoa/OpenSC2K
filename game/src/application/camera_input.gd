@@ -6,7 +6,6 @@ const Tools = preload("res://src/tools/shared/tool_catalog.gd")
 const Zones = preload("res://src/tools/city/zone_command.gd")
 const ToolSounds = preload("res://src/audio/tool_sound_rules.gd")
 const CityRotation = preload("res://src/tools/city/city_rotation_command.gd")
-const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "crime", "water", "power", "height"]
 
 var app: CityApplication
 
@@ -224,7 +223,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 
 	var old_center := Vector2i(-1, -1)
 
-	if app.overlay_mode in MAP_DISPLAY_MODES:
+	if CityViewMode.DISPLAY_MODES.has(app.overlay_mode):
 		old_center = app.map_view.center_tile()
 
 	var new_center := CityRotation.rotate_point(
@@ -276,7 +275,7 @@ func _update_zoom_controls(percent: int) -> void:
 func _on_city_zoom_changed(percent: int) -> void:
 	_update_zoom_controls(percent)
 
-	if app.city != null and app.overlay_mode in ["city", "underground"]:
+	if app.city != null and CityViewMode.is_map(app.overlay_mode):
 		app.map_render._refresh_map(false)
 
 

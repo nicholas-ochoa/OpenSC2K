@@ -15,7 +15,7 @@ func _run() -> void:
 		var sprites := large if view == 2 else medium
 		var divisor := int(CityIsometricRenderer.view_configuration(view).divisor)
 		var cache := CityRegionCache.new()
-		cache.configure(city, palette, sprites, [view], view, "city", CityViewFilter.DEFAULT_VISIBILITY, true, true)
+		cache.configure(city, palette, sprites, [view], view, CityViewMode.Mode.CITY, CityViewFilter.DEFAULT_VISIBILITY, true, true)
 		var viewport := Rect2(1400, 800, 1400, 1100)
 		cache.update_viewport(viewport)
 		var deadline := Time.get_ticks_msec() + 30000

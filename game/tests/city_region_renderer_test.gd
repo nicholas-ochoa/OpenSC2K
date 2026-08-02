@@ -23,10 +23,10 @@ func _run() -> void:
 		for view in ([0, 1, 2] if edge == 128 else [CityIsometricRenderer.VIEW_SMALL]):
 			var sprites := large if view == CityIsometricRenderer.VIEW_LARGE else small
 
-			for mode in (["city", "underground"] if edge == 128 else ["city"]):
+			for mode: CityViewMode.Mode in ([CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND] if edge == 128 else [CityViewMode.Mode.CITY]):
 				var full: Dictionary
 
-				if mode == "city":
+				if mode == CityViewMode.Mode.CITY:
 					full = CityIsometricRenderer.create_image(city, palette, sprites, view, 0, false, true, false, false)
 				else:
 					full = CityUndergroundView.create_image(city, palette, sprites, view, false)
@@ -38,9 +38,9 @@ func _run() -> void:
 					var bounds := Rect2i(Vector2i(Vector2(size) * fraction), Vector2i(517, 263)).intersection(Rect2i(Vector2i.ZERO, size))
 					var region := CityRegionRenderer.render(city, palette, sprites, bounds, view, mode)
 					assert(region.ok)
-					assert(region.image.get_data() == full.image.get_region(bounds).get_data(), "Region pixels differ: %d %d %s %s" % [edge, view, mode, bounds])
+					assert(region.image.get_data() == full.image.get_region(bounds).get_data(), "Region pixels differ: %d %d %s %s" % [edge, view, CityViewMode.key(mode), bounds])
 					assert(region.tiles_drawn < edge * edge, "Region render scanned the whole map")
 
-				print("PASS: %d view %d %s regional pixels match whole-map painter" % [edge, view, mode])
+				print("PASS: %d view %d %s regional pixels match whole-map painter" % [edge, view, CityViewMode.key(mode)])
 
 	quit()

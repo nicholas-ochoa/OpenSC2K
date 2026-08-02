@@ -41,7 +41,7 @@ func _open_export_dialog() -> void:
 		_default_folder(),
 		app.city.map_size,
 		app.static_render._city_view_size(),
-		app.overlay_mode,
+		CityViewMode.key(app.overlay_mode),
 		bool(app.surface_visibility.get("signs", true)),
 		app.reference_root,
 	)

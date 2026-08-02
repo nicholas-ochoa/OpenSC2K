@@ -182,7 +182,7 @@ func buffer_textures() -> Array[Texture2D]:
 func sync() -> void:
 	var source := map.city_source
 	var usable := (
-		enabled and map.is_inside_tree() and source != null and map.data_view_mode.is_empty()
+		enabled and map.is_inside_tree() and source != null and map.data_view_mode == CityViewMode.Mode.NONE
 		and map._dynamic_material != null and source.has_occlusion_depth()
 		and map.size.x >= 1.0 and map.size.y >= 1.0
 	)

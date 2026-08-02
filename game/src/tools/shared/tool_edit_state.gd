@@ -27,12 +27,12 @@ static func is_tool_variant(group_index: int, subtool_index: int) -> bool:
 
 
 static func scurk_object(
-	city: CityState, overlay_mode: String, tile_id: int
+	city: CityState, overlay_mode: CityViewMode.Mode, tile_id: int
 ) -> Dictionary:
 	var area := ScurkPlace.footprint(tile_id, Vector2i(8, 8)).size.x
 	var can_place := (
 		city != null
-		and overlay_mode == "city"
+		and overlay_mode == CityViewMode.Mode.CITY
 		and ScurkPlace.is_placeable_tile(tile_id)
 	)
 
@@ -88,7 +88,7 @@ static func scurk_tool(city: CityState, tool: Dictionary) -> Dictionary:
 
 
 static func normal(
-	city: CityState, overlay_mode: String, group_index: int, subtool_index: int
+	city: CityState, overlay_mode: CityViewMode.Mode, group_index: int, subtool_index: int
 ) -> Dictionary:
 	var available := city != null and ToolAvailability.is_available(
 		city, group_index, subtool_index
@@ -136,10 +136,10 @@ static func normal(
 	var enabled := (
 		available
 		and (
-			overlay_mode == "city"
-			or (CityDataView.MODES.has(overlay_mode) and (is_query or is_center))
+			overlay_mode == CityViewMode.Mode.CITY
+			or (CityViewMode.is_data(overlay_mode) and (is_query or is_center))
 			or (
-				overlay_mode == "underground"
+				overlay_mode == CityViewMode.Mode.UNDERGROUND
 				and (is_underground_network or is_demolish or is_query or is_center)
 			)
 		)

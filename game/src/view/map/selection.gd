@@ -180,7 +180,7 @@ func _draw_selection_price() -> void:
 	if map.city == null or map.selection_price < 0 or map.selection_start.x < 0:
 		return
 
-	if not map.data_view_mode.is_empty():
+	if not map.data_view_mode == CityViewMode.Mode.NONE:
 		return
 
 	var polygon := Renderer.tile_polygon(map.city, map.selection_start.x, map.selection_start.y)

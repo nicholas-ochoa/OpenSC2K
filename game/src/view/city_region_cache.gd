@@ -18,7 +18,7 @@ var wanted: Array[Vector2i] = []
 var visible: Array[Vector2i] = []
 var signature: Array = []
 var view_size := 2
-var mode := "city"
+var mode := CityViewMode.Mode.CITY
 var divisor := 1
 var native_size := Vector2i.ZERO
 var display_city: CityState
@@ -63,7 +63,7 @@ static func gpu_supported(preference := "gpu") -> bool:
 
 
 func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
-		new_signature: Array, new_view: int, new_mode: String, visibility: Dictionary,
+		new_signature: Array, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
 		show_pipes: bool, show_subways: bool, dirty := Rect2i(), show_water_mains := true) -> void:
 	if _snapshot == null:
 		region_edge = GPU_REGION_EDGE if gpu_enabled else REGION_EDGE
@@ -114,7 +114,7 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_show_water_mains = show_water_mains
 	_show_pipes = show_pipes
 	_show_subways = show_subways
-	_prepared = mode == "underground"
+	_prepared = mode == CityViewMode.Mode.UNDERGROUND
 
 
 func set_sign_requests(requests: Array[Dictionary]) -> void:
@@ -409,12 +409,12 @@ func close() -> void:
 	display_city = null
 
 
-static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, render_mode: String, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool, water_mains: bool, gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1, foreground_requests: Array[Dictionary] = []) -> Dictionary:
+static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, render_mode: CityViewMode.Mode, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool, water_mains: bool, gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1, foreground_requests: Array[Dictionary] = []) -> Dictionary:
 	var started := Time.get_ticks_usec()
 	var display := city if prepared else CityViewFilter.surface_copy(city, visibility)
 	var result := CityGpuRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, gpu_context, revision, atlas_revision, true, water_mains) if gpu_context != null else CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains)
 
-	if result.ok and gpu_context != null and render_mode == "city":
+	if result.ok and gpu_context != null and render_mode == CityViewMode.Mode.CITY:
 		result.sign_foregrounds = CityGpuSignForegrounds.build(result, foreground_requests, palette, sprites, gpu_context, int(CityIsometricRenderer.view_configuration(view).divisor))
 
 	result.display_city = display

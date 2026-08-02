@@ -30,7 +30,7 @@ func _initialize() -> void:
 
 					for y in range(0, size.y, 256):
 						for x in range(0, size.x, 256):
-							var result := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i(x, y, 256, 256), view, "city", true, true, context, 1, -1, false)
+							var result := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i(x, y, 256, 256), view, CityViewMode.Mode.CITY, true, true, context, 1, -1, false)
 							assert(result.ok)
 							count += result.gpu_arrays[Mesh.ARRAY_VERTEX].size() / 4
 
@@ -45,7 +45,7 @@ func _initialize() -> void:
 
 				for y in range(0, size.y, 256):
 					for x in range(0, size.x, 256):
-						assert(CityRegionRenderer.render(city, palette, sprites, Rect2i(x, y, 256, 256), view, "city").ok)
+						assert(CityRegionRenderer.render(city, palette, sprites, Rect2i(x, y, 256, 256), view, CityViewMode.Mode.CITY).ok)
 
 				cpu_best = mini(cpu_best, Time.get_ticks_usec() - began)
 

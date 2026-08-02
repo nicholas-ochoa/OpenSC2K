@@ -64,7 +64,7 @@ func _run() -> void:
 	assert(audio.play_music_track(10000))
 	audio.handle_application_focus_out()
 	assert(audio.music_playback_is_active() and audio.audio_allowed())
-	audio.play_sound_events([500], true, "city", 2)
+	audio.play_sound_events([500], true, CityViewMode.Mode.CITY, 2)
 	assert(audio.wave_sound_gate.accepted_count == 1)
 	var track := audio.current_track_id
 	audio.handle_application_focus_in(true)
@@ -73,7 +73,7 @@ func _run() -> void:
 	audio.set_background_audio(false)
 	assert(audio.music_playback_is_active() and audio.focus_paused and not audio.audio_allowed())
 	assert(not audio.play_music_track(10001))
-	audio.play_sound_events([503], true, "city", 2)
+	audio.play_sound_events([503], true, CityViewMode.Mode.CITY, 2)
 	assert(audio.wave_sound_gate.accepted_count == 1)
 	audio.queue_free()
 	var main := (load("res://main.tscn") as PackedScene).instantiate()

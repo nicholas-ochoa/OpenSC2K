@@ -10,7 +10,6 @@ const Networks = preload("res://src/tools/city/network_command.gd")
 const GameSpeed = preload("res://src/simulation/core/game_speed_controller.gd")
 const Budget = preload("res://src/simulation/economy/budget_phase.gd")
 const Music = preload("res://src/audio/music_director.gd")
-const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "crime", "water", "power", "height"]
 const MENU_AUTO_BUDGET := CityMenuBarView.MENU_AUTO_BUDGET
 const MENU_AUTO_GOTO := CityMenuBarView.MENU_AUTO_GOTO
 const MENU_SOUND_EFFECTS := CityMenuBarView.MENU_SOUND_EFFECTS
@@ -141,8 +140,8 @@ func _on_options_menu(id: int) -> void:
 
 
 func _on_view_menu(id: int) -> void:
-	if id >= 0 and id < MAP_DISPLAY_MODES.size():
-		_set_overlay(MAP_DISPLAY_MODES[id])
+	if id >= 0 and id < CityViewMode.DISPLAY_MODES.size():
+		_set_overlay(CityViewMode.DISPLAY_MODES[id])
 
 		return
 
@@ -208,10 +207,10 @@ func _sync_city_option_menus() -> void:
 
 func _sync_view_controls() -> void:
 	if app.view_menu != null:
-		for index in MAP_DISPLAY_MODES.size():
-			app.view_menu.get_popup().set_item_checked(index, MAP_DISPLAY_MODES[index] == app.overlay_mode)
+		for index in CityViewMode.DISPLAY_MODES.size():
+			app.view_menu.get_popup().set_item_checked(index, CityViewMode.DISPLAY_MODES[index] == app.overlay_mode)
 
-	var underground_active := app.overlay_mode == "underground"
+	var underground_active := app.overlay_mode == CityViewMode.Mode.UNDERGROUND
 
 	if app.view_menu != null and app.view_menu_underground_items != underground_active:
 		_rebuild_view_layer_menu(underground_active)
@@ -234,17 +233,17 @@ func _sync_view_controls() -> void:
 
 			if item_index >= 0:
 				app.view_menu.get_popup().set_item_checked(item_index, bool(states[menu_id]))
-				app.view_menu.get_popup().set_item_disabled(item_index, CityDataView.MODES.has(app.overlay_mode))
+				app.view_menu.get_popup().set_item_disabled(item_index, CityViewMode.is_data(app.overlay_mode))
 
 	if app.city_toolbar != null:
 		app.city_toolbar.sync_view_mode(app.overlay_mode)
 
 	for key in app.view_visibility_checks:
 		var check: CheckBox = app.view_visibility_checks[key]
-		check.visible = (underground_active if key in ["water_mains", "pipes", "subways"] else not underground_active) and not CityDataView.MODES.has(app.overlay_mode)
+		check.visible = (underground_active if key in ["water_mains", "pipes", "subways"] else not underground_active) and not CityViewMode.is_data(app.overlay_mode)
 		if app.landscape_editor:
 			check.visible = key in ["water", "trees"]
-		check.disabled = CityDataView.MODES.has(app.overlay_mode)
+		check.disabled = CityViewMode.is_data(app.overlay_mode)
 		var enabled := bool(app.surface_visibility.get(key, true))
 		match key:
 			"water_mains":
@@ -261,7 +260,7 @@ func _sync_view_controls() -> void:
 func _rebuild_view_layer_menu(underground_active: bool) -> void:
 	var popup := app.view_menu.get_popup()
 
-	while popup.item_count > MAP_DISPLAY_MODES.size() + 2:
+	while popup.item_count > CityViewMode.DISPLAY_MODES.size() + 2:
 		popup.remove_item(popup.item_count - 1)
 
 	if underground_active:
@@ -285,11 +284,11 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 func _sync_map_style() -> void:
 	# use the published texture until the mode change finishes
 	if app.map_view != null:
-		app.map_view.dark_underground = app.preferences.dark_underground and app.render_caches.static_render_mode == "underground" and app.map_view.base_palette_lookup_all
+		app.map_view.dark_underground = app.preferences.dark_underground and app.render_caches.static_render_mode == CityViewMode.Mode.UNDERGROUND and app.map_view.base_palette_lookup_all
 
 
-func _set_overlay(mode: String) -> void:
-	if not MAP_DISPLAY_MODES.has(mode):
+func _set_overlay(mode: CityViewMode.Mode) -> void:
+	if not CityViewMode.DISPLAY_MODES.has(mode):
 		return
 
 	app.overlay_mode = mode
@@ -297,7 +296,7 @@ func _set_overlay(mode: String) -> void:
 	app.current_tool._update_edit_state()
 
 	if app.city != null:
-		app.status_label.text = "Map view: %s" % app.overlay_mode.capitalize()
+		app.status_label.text = "Map view: %s" % CityViewMode.key(app.overlay_mode).capitalize()
 		app.map_render._refresh_map(false)
 
 
@@ -314,7 +313,7 @@ func _set_surface_visibility(enabled: bool, layer: String) -> void:
 	app.static_render._invalidate_view_render()
 	_sync_view_controls()
 
-	if app.city != null and app.overlay_mode == "city":
+	if app.city != null and app.overlay_mode == CityViewMode.Mode.CITY:
 		app.map_render._refresh_map(false)
 
 	app.status_label.text = "%s %s." % [
@@ -336,7 +335,7 @@ func _set_vehicles_visible(enabled: bool) -> void:
 
 	_sync_view_controls()
 
-	if app.city != null and app.overlay_mode == "city":
+	if app.city != null and app.overlay_mode == CityViewMode.Mode.CITY:
 		app.moving_sprites._refresh_moving_things()
 
 	app.status_label.text = "Vehicles %s." % ("shown" if enabled else "hidden")
@@ -350,7 +349,7 @@ func _set_underground_water_mains_visible(enabled: bool) -> void:
 	app.static_render._invalidate_view_render()
 	_sync_view_controls()
 
-	if app.city != null and app.overlay_mode == "underground":
+	if app.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		app.map_render._refresh_map(false)
 
 	app.status_label.text = "Water mains %s." % ("shown" if enabled else "hidden")
@@ -364,7 +363,7 @@ func _set_underground_pipes_visible(enabled: bool) -> void:
 	app.static_render._invalidate_view_render()
 	_sync_view_controls()
 
-	if app.city != null and app.overlay_mode == "underground":
+	if app.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		app.map_render._refresh_map(false)
 
 	app.status_label.text = "Underground pipes %s." % ("shown" if enabled else "hidden")
@@ -378,7 +377,7 @@ func _set_underground_subways_visible(enabled: bool) -> void:
 	app.static_render._invalidate_view_render()
 	_sync_view_controls()
 
-	if app.city != null and app.overlay_mode == "underground":
+	if app.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		app.map_render._refresh_map(false)
 
 	app.status_label.text = "Underground subways %s." % ("shown" if enabled else "hidden")

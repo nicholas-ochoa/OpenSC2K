@@ -259,7 +259,7 @@ func _refresh_scurk_artwork() -> void:
 
 	app.map_view.scurk_stamp_visuals.clear()
 
-	if app.city != null and app.scurk_place_print != null and app.scurk_place_print.visible and app.overlay_mode == "city":
+	if app.city != null and app.scurk_place_print != null and app.scurk_place_print.visible and app.overlay_mode == CityViewMode.Mode.CITY:
 		for stamp in app.city.scurk_artwork_stamps:
 			var entry = app.large_sprites.find_sprite(1000 + int(stamp.tile_id))
 

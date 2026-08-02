@@ -20,7 +20,7 @@ func _run() -> void:
 			var sprites := large if view == 2 else small
 			var cache := CityRegionCache.new()
 			cache.gpu_enabled = true
-			cache.configure(city, palette, sprites, [1], view, "city", {}, true, true)
+			cache.configure(city, palette, sprites, [1], view, CityViewMode.Mode.CITY, {}, true, true)
 			var origin := Vector2i((cache.native_size / 2) / CityRegionCache.GPU_REGION_EDGE) * CityRegionCache.GPU_REGION_EDGE * cache.divisor
 			var bounds := Rect2i(origin - Vector2i(13, 9), Vector2i(83, 127))
 			cache.set_sign_requests([

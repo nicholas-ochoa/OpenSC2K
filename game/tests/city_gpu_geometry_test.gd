@@ -19,7 +19,7 @@ func _run() -> void:
 		for view in ([0, 1, 2] if edge == 128 else [2]):
 			var sprites := large if view == 2 else small
 
-			for mode in ["city", "underground"]:
+			for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
 				var context := CityGpuBuildContext.new()
 				var size := CityIsometricRenderer.output_size_for_view(view, city.map_size)
 
@@ -27,7 +27,7 @@ func _run() -> void:
 					var bounds := Rect2i(center - Vector2i(128, 64), Vector2i(257, 135))
 					await _compare(city, palette, sprites, bounds, view, mode, context)
 
-				print("PASS: GPU pixels and foreground %d view %d %s" % [edge, view, mode])
+				print("PASS: GPU pixels and foreground %d view %d %s" % [edge, view, CityViewMode.key(mode)])
 
 	# All anchor orientations, cutaway terrain, and hidden water/buildings.
 	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
@@ -39,12 +39,12 @@ func _run() -> void:
 			var displayed := CityViewFilter.surface_copy(city, visibility)
 			displayed.visible_altitude_levels = 16 if visibility.is_empty() else 32
 			var bounds := Rect2i((CityIsometricRenderer.output_size_for_view(2, 128) / 2) - Vector2i(128, 64), Vector2i(257, 135))
-			await _compare(displayed, palette, large, bounds, 2, "city", CityGpuBuildContext.new())
+			await _compare(displayed, palette, large, bounds, 2, CityViewMode.Mode.CITY, CityGpuBuildContext.new())
 
 	print("PASS: GPU rotations, cutaways and layer filtering")
 
 	for view in 3:
-		for mode in ["city", "underground"]:
+		for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
 			var sprites := large if view == 2 else small
 			var context := CityGpuBuildContext.new()
 			var center := (CityIsometricRenderer.output_size_for_view(view, city.map_size) / 2) / 256
@@ -69,7 +69,7 @@ func _run() -> void:
 	quit()
 
 
-func _compare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, mode: String, context: CityGpuBuildContext) -> void:
+func _compare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, mode: CityViewMode.Mode, context: CityGpuBuildContext) -> void:
 	var cpu := CityRegionRenderer.render(city, palette, sprites, bounds, view, mode)
 	var gpu := CityGpuRegionRenderer.render(city, palette, sprites, bounds, view, mode, true, true, context, 1, -1)
 	assert(cpu.ok and gpu.ok)

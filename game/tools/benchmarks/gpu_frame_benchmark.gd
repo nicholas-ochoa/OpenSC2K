@@ -32,7 +32,7 @@ func _run() -> void:
 			main.map_view.zoom_factor = zoom
 			var load_started := Time.get_ticks_usec()
 			assert(main.city_session._activate_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x")))
-			main.menus._set_overlay("city")
+			main.menus._set_overlay(CityViewMode.Mode.CITY)
 			main.frame._select_speed(GameSpeedController.Speed.PAUSED)
 			var deadline := Time.get_ticks_msec() + 60000
 
@@ -69,7 +69,7 @@ func _run() -> void:
 				total += value
 
 			samples.sort()
-			assert(main.overlay_mode == "city", "Benchmark view changed during measurement")
+			assert(main.overlay_mode == CityViewMode.Mode.CITY, "Benchmark view changed during measurement")
 			print("CACHE ", main.render_caches.region_cache.metrics(), " DYNAMIC ", main.map_view.debug_metrics())
 			print("PROFILE ", main.frame_profile)
 			print("STATE date=%d/%d/%d blocked=%s" % [main.city.current_year(), main.city.current_month(), main.city.current_day(), main.speed_controller.interaction_blocked or main.speed_controller.terminal_blocked])

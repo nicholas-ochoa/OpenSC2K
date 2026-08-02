@@ -40,7 +40,7 @@ func _run() -> void:
 		started = Time.get_ticks_usec()
 
 		for index in UPDATES:
-			toolbar.sync_view_mode("city" if index % 2 == 0 else "underground")
+			toolbar.sync_view_mode(CityViewMode.Mode.CITY if index % 2 == 0 else CityViewMode.Mode.UNDERGROUND)
 			toolbar.sync_child_tool_selection(9, index % 2)
 			toolbar.set_landscape_editor(index % 2 == 0)
 

@@ -6,7 +6,6 @@ const CityMapView = preload("res://src/view/city_map_window_control.gd")
 const CityMenuBarView = preload("res://src/ui/shell/city_menu_bar.gd")
 const NewsQueue = preload("res://src/simulation/reports/news_queue.gd")
 const Music = preload("res://src/audio/music_director.gd")
-const MAP_DISPLAY_MODES := ["city", "underground", "land_value", "pollution", "crime", "water", "power", "height"]
 const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
 
 var app: CityApplication
@@ -178,7 +177,7 @@ func _on_city_map_center_requested(point: Vector2i) -> void:
 
 
 func _city_map_viewport_outline() -> PackedVector2Array:
-	if app.map_view == null or app.overlay_mode not in MAP_DISPLAY_MODES:
+	if app.map_view == null or not CityViewMode.DISPLAY_MODES.has(app.overlay_mode):
 		return PackedVector2Array()
 
 	return app.map_view.visible_tile_outline()

@@ -10,7 +10,7 @@ func _init(control: CityMapControl) -> void:
 
 
 func _gui_input(event: InputEvent) -> void:
-	if not map.data_view_mode.is_empty() and event is InputEventMouseMotion:
+	if not map.data_view_mode == CityViewMode.Mode.NONE and event is InputEventMouseMotion:
 		map.queue_redraw()
 
 	if map.city_source == null:

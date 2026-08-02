@@ -58,7 +58,7 @@ func _run() -> void:
 	var stamp := Place.apply(city, 359, Vector2i(32, 32), rng)
 	assert(stamp.ok and city.scurk_artwork_stamps.size() == 1)
 	assert(city.document.serialize().data == before and rng.state == 123)
-	assert(ToolState.scurk_object(city, "city", 359).area == 1)
+	assert(ToolState.scurk_object(city, CityViewMode.Mode.CITY, 359).area == 1)
 	assert(Place.undo(city, stamp, rng).ok and city.scurk_artwork_stamps.is_empty())
 	assert(Place.redo(city, stamp, rng).ok and city.scurk_artwork_stamps.size() == 1)
 	assert(city.document.serialize().data == before)

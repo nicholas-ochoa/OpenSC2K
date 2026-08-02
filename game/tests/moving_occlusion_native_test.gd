@@ -47,7 +47,7 @@ func _run() -> void:
 
 	var request := {"city": city, "prepared": true, "visibility": {},
 		"palette": _palette, "sprites": _sprites, "keys": keys,
-		"edge": EDGE, "view": VIEW, "mode": "city", "pipes": true, "subways": true,
+		"edge": EDGE, "view": VIEW, "mode": CityViewMode.Mode.CITY, "pipes": true, "subways": true,
 		"generation": 1, "signs": [] as Array[Dictionary]}
 	var batch := CityGpuRegionBatch.build(request, CityGpuBuildContext.new(), -1)
 	assert(batch.ok, "GPU region build failed")

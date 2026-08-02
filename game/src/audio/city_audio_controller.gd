@@ -333,7 +333,7 @@ func stop_sound_effects() -> void:
 
 
 func play_sound_events(
-	sound_events: Array, sound_enabled: bool, overlay_mode: String, view_size: int
+	sound_events: Array, sound_enabled: bool, overlay_mode: CityViewMode.Mode, view_size: int
 ) -> void:
 	CityAudioEffects.play_sound_events(self, sound_events, sound_enabled, overlay_mode, view_size)
 

@@ -11,7 +11,7 @@ class ProfiledContext extends CityGpuBuildContext:
 	var slot_usec := 0
 
 
-	func intersects(city: CityState, sprites: Sc2SpriteArchive, config: Dictionary, x: int, y: int, region: Rect2i, mode: String) -> bool:
+	func intersects(city: CityState, sprites: Sc2SpriteArchive, config: Dictionary, x: int, y: int, region: Rect2i, mode: CityViewMode.Mode) -> bool:
 		var began := Time.get_ticks_usec()
 		var value := super.intersects(city, sprites, config, x, y, region, mode)
 		intersection_usec += Time.get_ticks_usec() - began
@@ -20,7 +20,7 @@ class ProfiledContext extends CityGpuBuildContext:
 		return value
 
 
-	func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, configuration: Dictionary, x: int, y: int, mode: String, pipes: bool, subways: bool) -> Dictionary:
+	func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, configuration: Dictionary, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool) -> Dictionary:
 		var began := Time.get_ticks_usec()
 		var value := super.tile(city, palette, sprites, configuration, x, y, mode, pipes, subways)
 		tile_usec += Time.get_ticks_usec() - began
@@ -48,7 +48,7 @@ func _initialize() -> void:
 
 	for y in range(-4, 4):
 		for x in range(-4, 4):
-			var result := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i((center + Vector2i(x, y)) * 256, Vector2i(256, 256)), 2, "city", true, true, context, 1, -1, false)
+			var result := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i((center + Vector2i(x, y)) * 256, Vector2i(256, 256)), 2, CityViewMode.Mode.CITY, true, true, context, 1, -1, false)
 			assert(result.ok)
 			quads += result.gpu_arrays[Mesh.ARRAY_VERTEX].size() / 4
 

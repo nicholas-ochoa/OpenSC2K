@@ -121,7 +121,7 @@ func _run() -> void:
 		assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_random.state == rng)
 
 		# The underground tool uses the same input, without a surface vehicle.
-		main.menus._set_overlay("underground")
+		main.menus._set_overlay(CityViewMode.Mode.UNDERGROUND)
 		var underground: PackedByteArray = main.document_state.current_document.find_chunk("XUND").decoded_payload.duplicate()
 		for x in range(start.x, start.x + 4):
 			underground[main.city.index_of(x, start.y)] = 0x10
@@ -134,7 +134,7 @@ func _run() -> void:
 		assert(main.last_edit_command.underground_view and main.last_edit_command.cost == 4)
 		assert(DemolishCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
 		assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_random.state == rng)
-		main.menus._set_overlay("city")
+		main.menus._set_overlay(CityViewMode.Mode.CITY)
 		# A protest keeps its tree without a notice or ending the held stroke.
 		buildings = main.city.buildings.duplicate()
 		buildings[main.city.index_of(start.x, start.y)] = 6

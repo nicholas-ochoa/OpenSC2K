@@ -16,7 +16,7 @@ func _run() -> void:
 		view.size = Vector2(1280, 720)
 		root.add_child(view)
 		var start := Time.get_ticks_usec()
-		view.set_data_view(city, "land_value")
+		view.set_data_view(city, CityViewMode.Mode.LAND_VALUE)
 		var mesh := view.data_view_mesh
 		print("data_view edge=%d initial_ms=%.2f vertices=%d" % [edge, (Time.get_ticks_usec() - start) / 1000.0, mesh.surface_get_array_len(0)])
 		var refresh_usec := 0
@@ -27,7 +27,7 @@ func _run() -> void:
 			data[edge * (edge - 2) + edge - 2] = iteration
 			chunk.set_decoded_payload(data)
 			start = Time.get_ticks_usec()
-			view.set_data_view(city, "land_value")
+			view.set_data_view(city, CityViewMode.Mode.LAND_VALUE)
 			refresh_usec += Time.get_ticks_usec() - start
 			assert(view.data_view_mesh == mesh)
 

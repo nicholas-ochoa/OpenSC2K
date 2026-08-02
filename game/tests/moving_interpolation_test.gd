@@ -126,7 +126,7 @@ func _check_depth_arrays(city: CityState, sprites: Sc2SpriteArchive) -> void:
 
 	for center in [size / 2, size / 3]:
 		var bounds := Rect2i(center - Vector2i(128, 128), Vector2i(256, 256))
-		var result := CityGpuRegionRenderer.render(city, palette, sprites, bounds, 2, "city", true, true, context, 1, -1)
+		var result := CityGpuRegionRenderer.render(city, palette, sprites, bounds, 2, CityViewMode.Mode.CITY, true, true, context, 1, -1)
 		assert(result.ok)
 		var clipped := 0
 		var ignored := 0
@@ -165,5 +165,5 @@ func _check_depth_arrays(city: CityState, sprites: Sc2SpriteArchive) -> void:
 				assert(int(colors.size() / 4.0) <= clipped - ignored, "Ignored train crossings draw no train depth")
 
 	assert(totals.normal > 0 and totals.train > 0)
-	var underground := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i(size / 2, Vector2i(256, 256)), 2, "underground", true, true, CityGpuBuildContext.new(), 1, -1)
+	var underground := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i(size / 2, Vector2i(256, 256)), 2, CityViewMode.Mode.UNDERGROUND, true, true, CityGpuBuildContext.new(), 1, -1)
 	assert(underground.depth_arrays.is_empty(), "Underground regions have no moving-object depth")

@@ -9,7 +9,7 @@ func _init(control: CityMapControl) -> void:
 	map = control
 
 
-func set_data_view(value: CityState, mode: String) -> void:
+func set_data_view(value: CityState, mode: CityViewMode.Mode) -> void:
 	var mode_changed := map.data_view_mode != mode
 	var signature := CityDataView.signature(value, mode)
 	var geometry_signature := CityDataView.geometry_signature(value, mode)
@@ -57,10 +57,10 @@ func set_data_view(value: CityState, mode: String) -> void:
 
 
 func clear_data_view() -> void:
-	if map.data_view_mode.is_empty():
+	if map.data_view_mode == CityViewMode.Mode.NONE:
 		return
 
-	map.data_view_mode = ""
+	map.data_view_mode = CityViewMode.Mode.NONE
 	map.data_view_mesh = null
 
 	if map.data_view_layer != null:
@@ -80,7 +80,7 @@ func clear_data_view() -> void:
 
 func _draw_data_view(scale: float, offset: Vector2) -> void:
 	if map.hover_tile.x >= 0:
-		var outline := CityDataView.surface_polygon(map.city, map.hover_tile.x, map.hover_tile.y, map.data_view_mode == "height")
+		var outline := CityDataView.surface_polygon(map.city, map.hover_tile.x, map.hover_tile.y, map.data_view_mode == CityViewMode.Mode.HEIGHT)
 
 		for index in outline.size():
 			outline[index] = offset + outline[index] * scale
@@ -113,33 +113,33 @@ func _draw_data_view(scale: float, offset: Vector2) -> void:
 func _draw_data_key() -> void:
 	var font := ThemeDB.fallback_font
 	var origin := data_key_origin()
-	map.draw_style_box(_data_legend_box(), Rect2(origin, Vector2(320, 116 if map.data_view_mode == "height" else 96)))
-	var title: String = CityDataView.TITLES[CityDataView.MODES.find(map.data_view_mode)]
+	map.draw_style_box(_data_legend_box(), Rect2(origin, Vector2(320, 116 if map.data_view_mode == CityViewMode.Mode.HEIGHT else 96)))
+	var title: String = CityDataView.TITLES[CityViewMode.DATA_MODES.find(map.data_view_mode)]
 	map.draw_string(font, origin + Vector2(12, 24), title, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, map.get_theme_color("font_color", "MapLegend"))
 
-	if map.data_view_mode in ["water", "power"]:
+	if map.data_view_mode in [CityViewMode.Mode.WATER, CityViewMode.Mode.POWER]:
 		for index in 3:
 			var position := origin + Vector2(12 + index * 100, 38)
 			map.draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(index, map.data_view_mode))
 			map.draw_string(font, position + Vector2(0, 38), ["No link", "No supply", "Supplied"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
 	else:
 		for index in 32:
-			var number := index if map.data_view_mode == "height" else roundi(index * 255.0 / 31)
+			var number := index if map.data_view_mode == CityViewMode.Mode.HEIGHT else roundi(index * 255.0 / 31)
 			map.draw_rect(Rect2(origin + Vector2(12 + index * 9.25, 38), Vector2(9.25, 20)), CityDataView.color(number, map.data_view_mode))
 
-		if map.data_view_mode == "height":
+		if map.data_view_mode == CityViewMode.Mode.HEIGHT:
 			map.draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
 			map.draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, map.get_theme_color("font_color", "MapLegend"))
 
-		var low := "Level 1" if map.data_view_mode == "height" else "Very low"
-		var high := "Level 32" if map.data_view_mode == "height" else "Very high"
+		var low := "Level 1" if map.data_view_mode == CityViewMode.Mode.HEIGHT else "Very low"
+		var high := "Level 32" if map.data_view_mode == CityViewMode.Mode.HEIGHT else "Very high"
 		map.draw_string(font, origin + Vector2(12, 80), low, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
 		var high_width := font.get_string_size(high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 		map.draw_string(font, origin + Vector2(308 - high_width, 80), high, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
 
 
 func data_key_origin() -> Vector2:
-	if map.data_view_mode == "height":
+	if map.data_view_mode == CityViewMode.Mode.HEIGHT:
 		# match trip query: anchor inside the map area, clear of the sidebar
 		var workspace := map.get_parent()
 		if workspace != null:
@@ -196,7 +196,7 @@ func _sync_base_layer() -> void:
 
 
 func _sync_base_nodes() -> void:
-	if not map.data_view_mode.is_empty():
+	if not map.data_view_mode == CityViewMode.Mode.NONE:
 		if map.data_view_layer != null:
 			var data_scale := map.camera._view_scale()
 			map.data_view_layer.position = map.camera._draw_offset(data_scale)

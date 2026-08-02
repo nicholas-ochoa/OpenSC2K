@@ -51,7 +51,7 @@ func run_check() -> void:
 	main.new_city._cancel_new_city()
 	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics([0, 1, 2, 2, 2, 2])
 	main.map_view.zoom_factor = 0.25
-	main.overlay_mode = "underground"
+	main.overlay_mode = CityViewMode.Mode.UNDERGROUND
 
 	# Smallest and largest worker cities, then original synchronous simulation.
 	for edge in [16, 512, 128]:

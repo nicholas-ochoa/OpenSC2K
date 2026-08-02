@@ -28,7 +28,7 @@ func _initialize() -> void:
 	context.atlas_edge = 64
 	var request := {"city": city, "prepared": true, "visibility": {}, "palette": Sc2Palette.index_encoding(),
 		"sprites": sprites, "keys": [center, center + Vector2i.ONE, center + Vector2i(2, 0)], "edge": 256,
-		"view": 2, "mode": "city", "pipes": true, "subways": true, "generation": 1, "signs": [] as Array[Dictionary]}
+		"view": 2, "mode": CityViewMode.Mode.CITY, "pipes": true, "subways": true, "generation": 1, "signs": [] as Array[Dictionary]}
 	var batch := CityGpuRegionBatch.build(request, context, -1)
 	assert(batch.ok and context.atlas_edge > 64)
 	for region: Dictionary in batch.regions:

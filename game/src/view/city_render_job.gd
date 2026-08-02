@@ -12,7 +12,7 @@ var view_size := Renderer.VIEW_LARGE
 var animation_phase := 0
 var signature: Array = []
 var epoch := 0
-var render_mode := "city"
+var render_mode := CityViewMode.Mode.CITY
 var surface_visibility: Dictionary = ViewFilter.DEFAULT_VISIBILITY.duplicate()
 var show_underground_water_mains := true
 var show_underground_pipes := true
@@ -22,7 +22,7 @@ var show_underground_subways := true
 func run() -> Dictionary:
 	var indexed: Dictionary
 
-	if render_mode == "underground":
+	if render_mode == CityViewMode.Mode.UNDERGROUND:
 		indexed = UndergroundView.create_image(
 			city_snapshot, index_palette, sprites, view_size, false,
 			show_underground_pipes, show_underground_subways, show_underground_water_mains
@@ -55,7 +55,7 @@ func run() -> Dictionary:
 
 	var occlusion_commands: Array[Dictionary] = []
 
-	if render_mode == "city":
+	if render_mode == CityViewMode.Mode.CITY:
 		occlusion_commands = Renderer.static_occlusion_commands(
 			city_snapshot, sprites, view_size
 		)

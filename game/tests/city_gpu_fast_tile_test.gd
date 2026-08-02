@@ -112,7 +112,7 @@ func _compare(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, s
 			covered.compared = int(covered.get("compared", 0)) + 1
 
 			if setup.has("routing"):
-				assert(_same(context.tile(city, palette, sprites, configuration, x, y, "city", false, false).draws, reference.draws), "GPU tile (%d, %d) differs from the tile painter" % [x, y])
+				assert(_same(context.tile(city, palette, sprites, configuration, x, y, CityViewMode.Mode.CITY, false, false).draws, reference.draws), "GPU tile (%d, %d) differs from the tile painter" % [x, y])
 
 			if slow.values().has(true):
 				assert(not taken, "Unexpected shortcut at tile (%d, %d)" % [x, y])

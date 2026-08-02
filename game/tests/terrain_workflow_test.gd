@@ -109,7 +109,7 @@ func _run() -> void:
 	main.current_tool._select_tool_group(3)
 	main.current_tool._select_subtool(2)
 	assert(not main.current_tool._placement_preview_error(Vector2i(0, 0)).is_empty())
-	main.menus._set_overlay("underground")
+	main.menus._set_overlay(CityViewMode.Mode.UNDERGROUND)
 	main.menus._set_underground_pipes_visible(false)
 	main.menus._set_underground_subways_visible(false)
 	var bridge := main.bridge_dialog as BridgeSelectionDialog

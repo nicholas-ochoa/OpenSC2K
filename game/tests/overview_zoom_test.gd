@@ -49,11 +49,11 @@ func _run() -> void:
 	assert(main.static_render._city_view_size() == CityIsometricRenderer.VIEW_SMALL)
 	assert(AppSettingsStore.graphics_size_at_zoom(main.preferences.zoom_graphics, 25) == 2, "Graphics choice indices changed")
 
-	for mode in ["underground", "height", "land_value", "city"]:
+	for mode: CityViewMode.Mode in [CityViewMode.Mode.UNDERGROUND, CityViewMode.Mode.HEIGHT, CityViewMode.Mode.LAND_VALUE, CityViewMode.Mode.CITY]:
 		main.menus._set_overlay(mode)
 		assert(map.zoom_percent() == 10)
 		var point := Vector2i(64, 64)
-		var polygon := CityIsometricRenderer.tile_polygon(main.city, point.x, point.y, mode == "height")
+		var polygon := CityIsometricRenderer.tile_polygon(main.city, point.x, point.y, mode == CityViewMode.Mode.HEIGHT)
 		var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
 		var local := map.camera._draw_offset(map.camera._view_scale()) + center * map.camera._view_scale()
 		assert(map.camera._tile_at(local) == point, "Overview picking uses the displayed tile")

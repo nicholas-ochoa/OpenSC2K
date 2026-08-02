@@ -119,7 +119,7 @@ func _consume_simulation_result(result: Dictionary) -> void:
 		var data_maps_only: bool = (app.city.document.full_resolution_maps() and result.day_results.size() == 1
 			and SimulationDaySchedule.scanned_data_maps_only(result.day_results[0])
 			and result.effect_events.is_empty() and result.view_center_requests.is_empty()
-			and app.overlay_mode in ["city", "underground"])
+			and CityViewMode.is_map(app.overlay_mode))
 
 		if moved_things or changed_disaster_map or not data_maps_only:
 			app.simulation_map_dirty = true

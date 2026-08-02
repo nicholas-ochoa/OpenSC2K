@@ -11,7 +11,7 @@ func _run() -> void:
 	var sprites := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
 	var cache := CityRegionCache.new()
 	cache.gpu_enabled = true
-	cache.configure(city, Sc2Palette.index_encoding(), sprites, [1], 2, "city", {}, true, true)
+	cache.configure(city, Sc2Palette.index_encoding(), sprites, [1], 2, CityViewMode.Mode.CITY, {}, true, true)
 
 	if OS.has_environment("CITY_BENCH_REGION_EDGE"):
 		cache.region_edge = int(OS.get_environment("CITY_BENCH_REGION_EDGE"))

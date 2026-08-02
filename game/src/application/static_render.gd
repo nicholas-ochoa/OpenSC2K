@@ -58,12 +58,12 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	var map_edge: int = app.city.map_size if app.city != null else 128
 
 	if (
-		app.overlay_mode != "city"
+		app.overlay_mode != CityViewMode.Mode.CITY
 		or app.city == null
 		or app.palette_index_encoding == null
 		or caches.static_city_image == null
 		or caches.static_city_image.is_empty()
-		or caches.static_render_mode != "city"
+		or caches.static_render_mode != CityViewMode.Mode.CITY
 		or caches.static_display_city == null
 		or state.thread != null
 	):
@@ -119,8 +119,8 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 	state.epoch += 1
 	caches.static_city_image = patched.image
 	caches.static_display_city = display_city
-	caches.static_visual_signature = _static_signature_for_mode("city", view_size)
-	caches.static_render_mode = "city"
+	caches.static_visual_signature = _static_signature_for_mode(CityViewMode.Mode.CITY, view_size)
+	caches.static_render_mode = CityViewMode.Mode.CITY
 	state.pending = false
 	app.moving_sprites._set_static_occlusion_commands(
 		IsometricRenderer.patch_static_occlusion_commands(
@@ -132,7 +132,7 @@ func _apply_static_edit_patch(command: Dictionary) -> bool:
 		),
 		view_size
 	)
-	caches.static_view_cache["city"] = {
+	caches.static_view_cache[CityViewMode.Mode.CITY] = {
 		"image": caches.static_city_image,
 		"occlusion_commands": caches.static_occlusion_commands,
 		"signature": caches.static_visual_signature,
@@ -270,7 +270,7 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 
 
 func _request_static_render(
-	signature: Array, view_size: int, sprite_archive: Sc2SpriteArchive, render_mode := "city"
+	signature: Array, view_size: int, sprite_archive: Sc2SpriteArchive, render_mode := CityViewMode.Mode.CITY
 ) -> void:
 	if state.thread != null:
 		return
@@ -328,7 +328,7 @@ func _start_pending_static_render() -> void:
 		not state.pending
 		or state.thread != null
 		or app.city == null
-		or app.overlay_mode not in ["city", "underground"]
+		or not CityViewMode.is_map(app.overlay_mode)
 	):
 		return
 
@@ -360,9 +360,9 @@ func _poll_static_render() -> void:
 		app.city == null
 		or int(rendered.epoch) != state.epoch
 		or int(rendered.view_size) != _city_view_size()
-		or String(rendered.get("render_mode", "city")) != app.overlay_mode
+		or int(rendered.get("render_mode", CityViewMode.Mode.CITY)) != app.overlay_mode
 	):
-		if app.city != null and app.overlay_mode in ["city", "underground"]:
+		if app.city != null and CityViewMode.is_map(app.overlay_mode):
 			app.map_render._refresh_map(false)
 
 		return
@@ -370,7 +370,7 @@ func _poll_static_render() -> void:
 	caches.static_city_image = rendered.index_image
 	app.moving_sprites._set_static_occlusion_commands(rendered.occlusion_commands, int(rendered.view_size))
 	caches.static_visual_signature = rendered.signature
-	caches.static_render_mode = String(rendered.render_mode)
+	caches.static_render_mode = int(rendered.render_mode) as CityViewMode.Mode
 	caches.static_display_city = rendered.display_city
 	caches.static_view_cache[caches.static_render_mode] = {
 		"image": caches.static_city_image,
@@ -385,7 +385,7 @@ func _poll_static_render() -> void:
 	)
 	app.menus._sync_map_style()
 
-	if app.overlay_mode == "city":
+	if app.overlay_mode == CityViewMode.Mode.CITY:
 		app.moving_sprites._refresh_moving_things(int(rendered.view_size))
 	else:
 		caches.dynamic_sign_occluders.clear()
@@ -406,8 +406,8 @@ func _poll_static_render() -> void:
 		)
 
 
-func _static_signature_for_mode(mode: String, view_size: int) -> Array:
-	if mode == "underground":
+func _static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array:
+	if mode == CityViewMode.Mode.UNDERGROUND:
 		return UndergroundView.visual_signature(
 			app.city, view_size, app.show_underground_pipes, app.show_underground_subways, app.show_underground_water_mains
 		)
@@ -481,7 +481,7 @@ func _invalidate_rendered_city() -> void:
 	caches.static_occlusion_commands.clear()
 	caches.static_occlusion_grid.clear()
 	caches.static_visual_signature = []
-	caches.static_render_mode = ""
+	caches.static_render_mode = CityViewMode.Mode.NONE
 	caches.static_display_city = null
 	caches.static_view_cache.clear()
 	state.pending = false
@@ -494,7 +494,7 @@ func _invalidate_rendered_city() -> void:
 func _invalidate_view_render() -> void:
 	state.epoch += 1
 	caches.static_visual_signature.clear()
-	caches.static_render_mode = ""
+	caches.static_render_mode = CityViewMode.Mode.NONE
 	caches.static_view_cache.clear()
 	caches.static_occlusion_commands.clear()
 	caches.static_occlusion_grid.clear()

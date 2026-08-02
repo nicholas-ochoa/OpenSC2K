@@ -34,7 +34,7 @@ func set_revision(value: int) -> void:
 
 
 func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
-		configuration: Dictionary, x: int, y: int, mode: String, pipes: bool, subways: bool, water_mains := true) -> Dictionary:
+		configuration: Dictionary, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool, water_mains := true) -> Dictionary:
 	var key := city.index_of(x, y)
 
 	if tiles.has(key):
@@ -46,7 +46,7 @@ func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	var foreground: Array[Dictionary] = []
 	var foreground_draws: Array[Dictionary] = []
 
-	if mode == "underground":
+	if mode == CityViewMode.Mode.UNDERGROUND:
 		CityUndergroundView.draw_tile(recorder, city, palette, sprites, images, configuration, origin, x, y, pipes, subways, water_mains)
 	else:
 		if not _fast_tile(recorder, city, palette, sprites, configuration, origin, x, y):
@@ -145,7 +145,7 @@ func _grow_atlas() -> void:
 
 
 func intersects(city: CityState, sprites: Sc2SpriteArchive, config: Dictionary,
-		x: int, y: int, region: Rect2i, mode: String) -> bool:
+		x: int, y: int, region: Rect2i, mode: CityViewMode.Mode) -> bool:
 	var key := x * city.map_size + y
 
 	if bounds_cache.has(key):
@@ -160,7 +160,7 @@ func intersects(city: CityState, sprites: Sc2SpriteArchive, config: Dictionary,
 	# cache conservative special cases too; adjacent regions revisit them often
 	bounds_cache[key] = null
 
-	if mode != "city" or x == city.map_size - 1 or y == city.map_size - 1 or not city.tile_is_visible(x, y):
+	if mode != CityViewMode.Mode.CITY or x == city.map_size - 1 or y == city.map_size - 1 or not city.tile_is_visible(x, y):
 		return true
 
 	var building := int(city.buildings[key])
