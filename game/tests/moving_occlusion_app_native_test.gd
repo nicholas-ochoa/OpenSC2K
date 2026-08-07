@@ -27,7 +27,7 @@ func _run() -> void:
 	var compared := 0
 
 	for record in main.city.thing_count():
-		var thing: Dictionary = main.city.thing(record)
+		var thing: ThingRecord = main.city.thing(record)
 
 		if int(thing.type) not in [1, 2, 3, 9, 10]:
 			continue

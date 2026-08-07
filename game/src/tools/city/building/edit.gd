@@ -11,29 +11,29 @@ static func apply(
 	lfsr_random: SimLfsrRandom,
 	process_random: SimRandom,
 	australian_locale := false
-) -> Dictionary:
+) -> BuildingEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return BuildingEditResult.rejected("city is invalid")
 
 	if not BuildingSites.supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool does not place a shared building"}
+		return BuildingEditResult.rejected("tool does not place a shared building")
 
 	if not Availability.is_available(city, group_index, subtool_index):
-		return {"ok": false, "error": "tool is not available in this city"}
+		return BuildingEditResult.rejected("tool is not available in this city")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "LFSR random state is required"}
+		return BuildingEditResult.rejected("LFSR random state is required")
 
 	if process_random == null:
-		return {"ok": false, "error": "process random state is required"}
+		return BuildingEditResult.rejected("process random state is required")
 
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 	var cost := int(tool.cost)
 
 	if cost != 0 and city.funds() < cost:
-		return {"ok": false, "error": "insufficient funds", "cost": cost}
+		return BuildingEditResult.rejected("insufficient funds", cost)
 
 	var area := int(tool.area)
 	var site := BuildingSites.footprint(selected, area)
@@ -41,7 +41,7 @@ static func apply(
 	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return BuildingEditResult.rejected("required city data is missing or invalid")
 
 	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
@@ -62,35 +62,29 @@ static func apply(
 		var residential_tiles := BuildingSites._count_nearby_residential(zones, selected, area, map_edge)
 
 		if lfsr_random.next_mod(200) < residential_tiles:
-			return {
-				"ok": false,
-				"error": "residents rejected this site",
-				"cost": cost,
-				"residential_tiles": residential_tiles,
-				"resident_objection": true,
-				"lfsr_advanced": lfsr_random.state != lfsr_state_before,
-				"sound_events": [SOUND_NUISANCE],
-				"notice_bitmap_id": NUISANCE_BITMAP_ID,
-				"notice_string_id": NUISANCE_STRING_ID,
-			}
+			var objection := BuildingEditResult.rejected("residents rejected this site", cost)
+			objection.residential_tiles = residential_tiles
+			objection.resident_objection = true
+			objection.lfsr_advanced = lfsr_random.state != lfsr_state_before
+			objection.sound_events = [SOUND_NUISANCE]
+			objection.notice_bitmap_id = NUISANCE_BITMAP_ID
+			objection.notice_string_id = NUISANCE_STRING_ID
+
+			return objection
 
 	if not BuildingSites._footprint_is_in_bounds(site, area, map_edge):
-		return {
-			"ok": false,
-			"error": "building does not fit inside the map",
-			"cost": cost,
-			"lfsr_advanced": lfsr_random.state != lfsr_state_before,
-		}
+		var outside := BuildingEditResult.rejected("building does not fit inside the map", cost)
+		outside.lfsr_advanced = lfsr_random.state != lfsr_state_before
+
+		return outside
 
 	var site_check := BuildingSites._check_site(buildings, terrain, zones, flags, site, tile_id, map_edge)
 
 	if not site_check.ok:
-		return {
-			"ok": false,
-			"error": site_check.error,
-			"cost": cost,
-			"lfsr_advanced": lfsr_random.state != lfsr_state_before,
-		}
+		var blocked := BuildingEditResult.rejected(site_check.error, cost)
+		blocked.lfsr_advanced = lfsr_random.state != lfsr_state_before
+
+		return blocked
 
 	var overlay_id := BuildingFacilities.provision_microsim(
 		microsims,
@@ -152,7 +146,7 @@ static func apply(
 		lfsr_random.state = lfsr_state_before
 		process_random.state = process_random_state_before
 
-		return {"ok": false, "error": "cannot store building changes"}
+		return BuildingEditResult.rejected("cannot store building changes")
 
 	var immediate_power_refresh := false
 	var immediate_water_refresh := false
@@ -168,7 +162,7 @@ static func apply(
 				lfsr_random.state = lfsr_state_before
 				process_random.state = process_random_state_before
 
-				return {"ok": false, "error": "cannot refresh power after placement"}
+				return BuildingEditResult.rejected("cannot refresh power after placement")
 
 			immediate_power_refresh = true
 
@@ -180,7 +174,7 @@ static func apply(
 				lfsr_random.state = lfsr_state_before
 				process_random.state = process_random_state_before
 
-				return {"ok": false, "error": "cannot refresh water after placement"}
+				return BuildingEditResult.rejected("cannot refresh water after placement")
 
 			immediate_water_refresh = true
 
@@ -192,7 +186,7 @@ static func apply(
 			lfsr_random.state = lfsr_state_before
 			process_random.state = process_random_state_before
 
-			return {"ok": false, "error": "cannot capture utility changes"}
+			return BuildingEditResult.rejected("cannot capture utility changes")
 
 		changed_ids.clear()
 
@@ -200,69 +194,69 @@ static func apply(
 			if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 				changed_ids.append(chunk_id)
 
-	return {
-		"ok": true,
-		"command_type": "building",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"tile_id": tile_id,
-		"site": site,
-		"tile_indices": tile_indices,
-		"cost": cost,
-		"overlay_id": overlay_id,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"lfsr_state_before": lfsr_state_before,
-		"lfsr_state_after": lfsr_random.state,
-		"process_random_state_before": process_random_state_before,
-		"process_random_state_after": process_random.state,
-		"immediate_power_refresh": immediate_power_refresh,
-		"immediate_water_refresh": immediate_water_refresh,
-		"stadium_team_selection_required": tile_id == STADIUM and overlay_id != 0,
-		"error": "",
-	}
+	var result := BuildingEditResult.new()
+	result.ok = true
+	result.command_type = "building"
+	result.group_index = group_index
+	result.subtool_index = subtool_index
+	result.tile_id = tile_id
+	result.site = site
+	result.tile_indices = tile_indices
+	result.cost = cost
+	result.overlay_id = overlay_id
+	result.changed_ids = changed_ids
+	result.old_payloads = old_payloads
+	result.new_payloads = changed_payloads
+	result.lfsr_state_before = lfsr_state_before
+	result.lfsr_state_after = lfsr_random.state
+	result.tracks_random = true
+	result.random_state_before = process_random_state_before
+	result.random_state_after = process_random.state
+	result.immediate_power_refresh = immediate_power_refresh
+	result.immediate_water_refresh = immediate_water_refresh
+	result.stadium_team_selection_required = tile_id == STADIUM and overlay_id != 0
+
+	return result
 
 
 static func undo(
 	city: CityState,
-	command: Dictionary,
+	command: BuildingEditResult,
 	lfsr_random: SimLfsrRandom,
 	process_random: SimRandom
-) -> Dictionary:
+) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "building":
-		return {"ok": false, "error": "building command is invalid"}
+	if command == null or not command.ok or command.command_type != "building":
+		return EditCommandResult.failure("building command is invalid")
 
 	if lfsr_random == null:
-		return {"ok": false, "error": "LFSR random state is required"}
+		return EditCommandResult.failure("LFSR random state is required")
 
 	if process_random == null:
-		return {"ok": false, "error": "process random state is required"}
+		return EditCommandResult.failure("process random state is required")
 
-	if lfsr_random.state != int(command.get("lfsr_state_after", -1)):
-		return {"ok": false, "error": "LFSR state changed after this building command"}
+	if lfsr_random.state != command.lfsr_state_after:
+		return EditCommandResult.failure("LFSR state changed after this building command")
 
-	if process_random.state != int(command.get("process_random_state_after", -1)):
-		return {"ok": false, "error": "process random state changed after this building command"}
+	if process_random.state != command.random_state_after:
+		return EditCommandResult.failure("process random state changed after this building command")
 
-	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var changed_ids := command.changed_ids
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
-			return {"ok": false, "error": "city changed after this building command"}
+			return EditCommandResult.failure("city changed after this building command")
 
 	if not BuildingState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
-		return {"ok": false, "error": "cannot restore building changes"}
+		return EditCommandResult.failure("cannot restore building changes")
 
-	lfsr_random.state = int(command.lfsr_state_before)
-	process_random.state = int(command.process_random_state_before)
-	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
+	lfsr_random.state = command.lfsr_state_before
+	process_random.state = command.random_state_before
 
-	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
+	return EditCommandResult.undone(command.tile_indices.size())

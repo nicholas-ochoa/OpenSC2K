@@ -113,8 +113,8 @@ func _apply_map_selection(
 		app.dispatch_initialized = true
 		app.dispatch_cycles[app.selected_subtool] = int(dispatch.slot_index)
 		dispatch["dispatch_cycles_after"] = app.dispatch_cycles.duplicate()
-		app.last_edit_command = dispatch
-		app.static_render._refresh_after_city_edit(dispatch)
+		app.last_edit_command = EditCommandResult.of(dispatch)
+		app.static_render._refresh_after_city_edit(app.last_edit_command)
 		app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Deployed %s unit %d of %d." % [
@@ -132,7 +132,7 @@ func _apply_map_selection(
 			app.camera_input._refresh_terrain_stretch(levels)
 			var committed := app.terrain_stretch.finish()
 
-			if not committed.is_empty():
+			if committed != null:
 				app.effects_audio._stop_tool_loop_sound()
 				app.effects_audio._play_sound_events([ToolSounds.SOUND_TRACTOR])
 				app.scurk_workspace._record_edit_command(committed)
@@ -152,14 +152,14 @@ func _apply_map_selection(
 		var target := app.level_brush_altitude if app.level_brush_altitude >= 0 else app.city.land_altitude(origin.x, origin.y)
 		var command := TerrainTools.apply_path(app.city, app.selected_group, app.selected_subtool,
 			origin, path, app.tool_random, app.landscape_editor, target)
-		if command.ok or command.get("error", "") != "no terrain height changed":
+		if command.ok or command.error != "no terrain height changed":
 			_finish_simple_edit(SimpleEdits._result("terrain", command, app.selected_group, app.selected_subtool, app.landscape_editor), false, {})
 		return
 
 	if app.map_view.landscape_brush:
 		var command := LandscapeCommand.apply_path(app.city, app.selected_group, app.selected_subtool,
 			path, app.tool_random, app.landscape_editor, true)
-		if command.ok or command.get("error", "") != "no eligible tiles changed":
+		if command.ok or command.error != "no eligible tiles changed":
 			_finish_simple_edit(SimpleEdits._result("landscape", command, app.selected_group, app.selected_subtool, app.landscape_editor), false, {})
 		return
 
@@ -176,7 +176,7 @@ func _apply_map_selection(
 	)
 
 	if simple_edit.handled:
-		if app.map_view.demolish_brush and simple_edit.command.get("error", "") == "no eligible tiles changed":
+		if app.map_view.demolish_brush and simple_edit.command.error == "no eligible tiles changed":
 			return
 		_finish_simple_edit(simple_edit, scurk_tool_mode, scurk_tool)
 
@@ -228,11 +228,11 @@ func _apply_map_selection(
 
 		if not building.ok:
 			# A failed placement can still advance the LFSR. Clear undo in that case.
-			if building.get("lfsr_advanced", false):
-				app.last_edit_command = {}
+			if building.lfsr_advanced:
+				app.last_edit_command = null
 
-			if building.get("resident_objection", false):
-				app.effects_audio._play_sound_events(building.get("sound_events", []))
+			if building.resident_objection:
+				app.effects_audio._play_sound_events(building.sound_events)
 				app.pending_building_objection_group = building_group
 				app.pending_building_objection_subtool = building_subtool
 				app.reports._show_building_objection()
@@ -252,9 +252,7 @@ func _apply_map_selection(
 			return
 
 		app.last_edit_command = building
-		var stadium_team_pending := bool(
-			building.get("stadium_team_selection_required", false)
-		)
+		var stadium_team_pending := building.stadium_team_selection_required
 
 		if not stadium_team_pending:
 			app.effects_audio._play_tool_success_sound(building_group, building_subtool, scurk_tool_mode)
@@ -296,7 +294,7 @@ func _apply_map_selection(
 func _finish_simple_edit(
 	edit: Dictionary, scurk_tool_mode: bool, scurk_tool: Dictionary
 ) -> void:
-	var command: Dictionary = edit.command
+	var command: EditCommandResult = edit.command
 
 	if not command.ok:
 		if edit.play_failure_sound:
@@ -321,11 +319,9 @@ func _finish_simple_edit(
 	app.static_render._refresh_after_city_edit(command)
 
 	if edit.show_effects:
-		app.effects_audio._show_effect_events(
-			command.get("effect_events", []), command.get("sound_events", [])
-		)
+		app.effects_audio._show_effect_events(command.effect_events, command.sound_events)
 
-	if app.selected_group == 0 and app.selected_subtool in [1, 2, 3, 5, 6, 7] and not command.get("changed_ids", []).is_empty():
+	if app.selected_group == 0 and app.selected_subtool in [1, 2, 3, 5, 6, 7] and not command.changed_ids.is_empty():
 		app.effects_audio._stop_tool_loop_sound()
 		app.effects_audio._play_sound_events([ToolSounds.SOUND_TRACTOR])
 
@@ -333,8 +329,8 @@ func _finish_simple_edit(
 	if edit.refresh_news_summary:
 		app.reports._refresh_saved_news_summary()
 
-	if command.get("command_type", "") == "zone":
-		app.effects_audio._play_sound_events(ToolSounds.zone_success_events(int(command.zone_type)))
+	if command.command_type == "zone":
+		app.effects_audio._play_sound_events(ToolSounds.zone_success_events((command as ZoneEditResult).zone_type))
 	elif edit.play_success_sound:
 		app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool, scurk_tool_mode)
 
@@ -343,51 +339,51 @@ func _finish_simple_edit(
 
 
 func _undo_last_edit() -> void:
-	if app.city == null or app.last_edit_command.is_empty():
+	if app.city == null or app.last_edit_command == null:
 		return
 
-	var undone_command := app.last_edit_command
-	var command_type: String = app.last_edit_command.get("command_type", "")
+	var command := app.last_edit_command
+	var command_type := command.command_type
 
-	if app.last_edit_command.get("scurk_place_history", false):
+	if command.scurk_place_history:
 		app.scurk_workspace._undo_scurk_place()
 
 		return
 
 	var undo_forest_protest := (
-		command_type == "demolish"
-		and int(app.last_edit_command.get("easter_events", 0)) > 0
+		command is DemolishEditResult and (command as DemolishEditResult).easter_events > 0
 	)
-	var result: Dictionary
+	# families that still return dictionaries also undo into dictionaries
+	var result: Variant
 
 	if command_type == "sign":
-		result = Signs.undo(app.city, app.last_edit_command)
+		result = Signs.undo(app.city, command.extra)
 	elif command_type == "landscape":
-		result = Landscapes.undo(app.city, app.last_edit_command, app.tool_random)
+		result = Landscapes.undo(app.city, command as LandscapeEditResult, app.tool_random)
 	elif command_type == "building":
 		result = Buildings.undo(
-			app.city, app.last_edit_command, app.simulation_engine.lfsr_random, app.tool_random
+			app.city, command as BuildingEditResult, app.simulation_engine.lfsr_random, app.tool_random
 		)
 	elif command_type == "network":
-		result = Networks.undo(app.city, app.last_edit_command)
+		result = Networks.undo(app.city, command as RouteEditResult)
 	elif command_type == "hydro":
-		result = Hydro.undo(app.city, app.last_edit_command, app.tool_random)
+		result = Hydro.undo(app.city, command.extra, app.tool_random)
 	elif command_type == "subway_to_rail":
-		result = SubwayToRail.undo(app.city, app.last_edit_command)
+		result = SubwayToRail.undo(app.city, command.extra)
 	elif command_type == "onramp":
-		result = Onramps.undo(app.city, app.last_edit_command)
+		result = Onramps.undo(app.city, command.extra)
 	elif command_type == "tunnel":
-		result = Tunnels.undo(app.city, app.last_edit_command)
+		result = Tunnels.undo(app.city, command.extra)
 	elif command_type == "highway":
-		result = Highways.undo(app.city, app.last_edit_command)
+		result = Highways.undo(app.city, command as RouteEditResult)
 	elif command_type == "demolish":
-		result = Demolish.undo(app.city, app.last_edit_command, app.tool_random)
+		result = Demolish.undo(app.city, command as DemolishEditResult, app.tool_random)
 	elif command_type == "terrain":
-		result = TerrainTools.undo(app.city, app.last_edit_command, app.tool_random)
+		result = TerrainTools.undo(app.city, command as TerrainEditResult, app.tool_random)
 	elif command_type == "dispatch":
-		result = Dispatch.undo(app.city, app.last_edit_command)
+		result = Dispatch.undo(app.city, command.extra)
 	else:
-		result = Zones.undo(app.city, app.last_edit_command)
+		result = Zones.undo(app.city, command as ZoneEditResult)
 
 	if not result.ok:
 		app.interface._show_error("Cannot undo the last edit: %s" % result.error)
@@ -395,14 +391,14 @@ func _undo_last_edit() -> void:
 		return
 
 	if command_type == "dispatch":
-		app.dispatch_cycles = app.last_edit_command.get("dispatch_cycles_before", app.dispatch_cycles)
+		app.dispatch_cycles = command.extra.get("dispatch_cycles_before", app.dispatch_cycles)
 		app.dispatch_initialized = bool(
-			app.last_edit_command.get("dispatch_initialized_before", app.dispatch_initialized)
+			command.extra.get("dispatch_initialized_before", app.dispatch_initialized)
 		)
 
-	app.last_edit_command = {}
+	app.last_edit_command = null
 	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(undone_command)
+	app.static_render._refresh_after_city_edit(command)
 
 	if undo_forest_protest:
 		app.reports._refresh_saved_news_summary()

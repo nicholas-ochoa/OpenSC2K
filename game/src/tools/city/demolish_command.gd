@@ -16,9 +16,9 @@ static func apply_path(
 	random: SimRandom,
 	underground_view := false,
 	scurk_mode := false
-) -> Dictionary:
+) -> DemolishEditResult:
 	return DemolishEdit.apply_path(city, group_index, subtool_index, points, random, underground_view, scurk_mode)
 
 
-static func undo(city: CityState, command: Dictionary, random: SimRandom) -> Dictionary:
+static func undo(city: CityState, command: DemolishEditResult, random: SimRandom) -> EditCommandResult:
 	return DemolishEdit.undo(city, command, random)

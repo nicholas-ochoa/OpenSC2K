@@ -20,14 +20,14 @@ static func apply(
 	lfsr_random: SimLfsrRandom,
 	process_random: SimRandom,
 	australian_locale := false
-) -> Dictionary:
+) -> BuildingEditResult:
 	return BuildingEdit.apply(city, group_index, subtool_index, selected, lfsr_random, process_random, australian_locale)
 
 
 static func undo(
 	city: CityState,
-	command: Dictionary,
+	command: BuildingEditResult,
 	lfsr_random: SimLfsrRandom,
 	process_random: SimRandom
-) -> Dictionary:
+) -> EditCommandResult:
 	return BuildingEdit.undo(city, command, lfsr_random, process_random)

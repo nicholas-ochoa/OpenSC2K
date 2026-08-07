@@ -59,7 +59,7 @@ func _check_application() -> void:
 			vehicle = record
 
 	assert(vehicle >= 0)
-	var thing: Dictionary = main.city.thing(vehicle)
+	var thing: ThingRecord = main.city.thing(vehicle)
 	main.map_view.zoom_factor = 1.0
 	main.map_view.center_on_tile(Vector2i(int(thing.x), int(thing.y)))
 	main.map_render._refresh_map()

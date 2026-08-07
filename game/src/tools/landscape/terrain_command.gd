@@ -16,27 +16,27 @@ static func apply_path(
 	random: SimRandom = null,
 	free_mode := false,
 	target_override := -1
-) -> Dictionary:
+) -> TerrainEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return TerrainEditResult.rejected("city is invalid")
 
 	if not supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool is not a terrain tool"}
+		return TerrainEditResult.rejected("tool is not a terrain tool")
 
 	if city.index_of(start.x, start.y) < 0 or points.is_empty():
-		return {"ok": false, "error": "terrain path is outside the city"}
+		return TerrainEditResult.rejected("terrain path is outside the city")
 
 	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return TerrainEditResult.rejected("required city data is missing or invalid")
 
 	var altitude_chunk := city.document.find_chunk("ALTM")
 
 	if altitude_chunk == null or altitude_chunk.decoded_payload.size() != (map_edge * map_edge) * 2:
-		return {"ok": false, "error": "required altitude data is missing or invalid"}
+		return TerrainEditResult.rejected("required altitude data is missing or invalid")
 
 	old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
 	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
@@ -173,12 +173,12 @@ static func apply_path(
 			random.state = random_state_before
 
 		if skipped_insufficient > 0:
-			return {"ok": false, "error": "insufficient funds", "cost": 25}
+			return TerrainEditResult.rejected("insufficient funds", 25)
 
 		if skipped_conflicts > 0:
-			return {"ok": false, "error": "terrain conflict demolition needs random state"}
+			return TerrainEditResult.rejected("terrain conflict demolition needs random state")
 
-		return {"ok": false, "error": "no terrain height changed"}
+		return TerrainEditResult.rejected("no terrain height changed")
 
 	BuildingState._write_u32_be(
 		misc, BuildingCommand.MISC_FUNDS, old_funds if free_mode else funds
@@ -194,63 +194,62 @@ static func apply_path(
 		if random != null:
 			random.state = random_state_before
 
-		return {"ok": false, "error": "cannot store terrain changes"}
+		return TerrainEditResult.rejected("cannot store terrain changes")
 
-	return {
-		"ok": true,
-		"command_type": "terrain",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"target_altitude": target_altitude,
-		"tile_indices": changed_indices,
-		"action_count": action_count,
-		"cost": total_cost,
-		"listed_cost": listed_cost,
-		"free_mode": free_mode,
-		"skipped_conflicts": skipped_conflicts,
-		"skipped_insufficient": skipped_insufficient,
-		"effect_events": effect_events,
-		"sound_events": sound_events,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"random_used": random_used,
-		"random_state_before": random_state_before,
-		"random_state_after": random.state if random != null else random_state_before,
-		"error": "",
-	}
+	var command := TerrainEditResult.new()
+	command.ok = true
+	command.command_type = "terrain"
+	command.group_index = group_index
+	command.subtool_index = subtool_index
+	command.target_altitude = target_altitude
+	command.tile_indices = changed_indices
+	command.action_count = action_count
+	command.cost = total_cost
+	command.listed_cost = listed_cost
+	command.free_mode = free_mode
+	command.skipped_conflicts = skipped_conflicts
+	command.skipped_insufficient = skipped_insufficient
+	command.effect_events = effect_events
+	command.sound_events = sound_events
+	command.changed_ids = changed_ids
+	command.old_payloads = old_payloads
+	command.new_payloads = changed_payloads
+	command.random_used = random_used
+	command.tracks_random = true
+	command.random_state_before = random_state_before
+	command.random_state_after = random.state if random != null else random_state_before
+
+	return command
 
 
-static func undo(city: CityState, command: Dictionary, random: SimRandom = null) -> Dictionary:
+static func undo(city: CityState, command: TerrainEditResult, random: SimRandom = null) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "terrain":
-		return {"ok": false, "error": "terrain command is invalid"}
+	if command == null or not command.ok or command.command_type != "terrain":
+		return EditCommandResult.failure("terrain command is invalid")
 
-	if command.get("random_used", false):
+	if command.random_used:
 		if random == null:
-			return {"ok": false, "error": "random state is required"}
+			return EditCommandResult.failure("random state is required")
 
-		if random.state != int(command.get("random_state_after", -1)):
-			return {"ok": false, "error": "random state changed after this terrain command"}
+		if random.state != command.random_state_after:
+			return EditCommandResult.failure("random state changed after this terrain command")
 
-	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var changed_ids := command.changed_ids
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
-			return {"ok": false, "error": "city changed after this terrain command"}
+			return EditCommandResult.failure("city changed after this terrain command")
 
 	if not NetworkState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
-		return {"ok": false, "error": "cannot restore terrain changes"}
+		return EditCommandResult.failure("cannot restore terrain changes")
 
-	if command.get("random_used", false):
-		random.state = int(command.random_state_before)
+	if command.random_used:
+		random.state = command.random_state_before
 
-	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
-
-	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
+	return EditCommandResult.undone(command.tile_indices.size())

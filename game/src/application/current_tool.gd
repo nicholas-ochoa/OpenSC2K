@@ -79,10 +79,10 @@ func _select_subtool(index: int) -> void:
 		if recalled.ok:
 			recalled["dispatch_cycles_before"] = app.dispatch_cycles.duplicate()
 			recalled["dispatch_initialized_before"] = app.dispatch_initialized
-			app.last_edit_command = recalled
+			app.last_edit_command = EditCommandResult.of(recalled)
 			app.dispatch_cycles = PackedInt32Array([0, 0, 0])
 			app.dispatch_initialized = false
-			app.static_render._refresh_after_city_edit(recalled)
+			app.static_render._refresh_after_city_edit(app.last_edit_command)
 			app.status_label.text = "All emergency services recalled."
 
 		_sync_child_tool_selection()

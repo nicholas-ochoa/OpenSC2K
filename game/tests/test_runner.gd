@@ -442,7 +442,7 @@ func _test_reference_corpus(reference_root: String) -> void:
 			)
 			_check(city.label(0).length() <= 23, "%s mayor label is bounded" % path.get_file())
 			_check(city.microsim(149).size() == 5, "%s has 150 microsim records" % path.get_file())
-			_check(city.thing(39).size() == 12, "%s has 40 thing records" % path.get_file())
+			_check(city.thing(39) != null, "%s has 40 thing records" % path.get_file())
 			var graph := city.graph_series(15)
 			_check(graph.year.size() == 12, "%s graph has 12 monthly values" % path.get_file())
 			_check(graph.decade.size() == 20, "%s graph has 20 decade values" % path.get_file())
@@ -1576,87 +1576,87 @@ func _test_sprite_archives(reference_root: String) -> void:
 	# All archives decode above; representative city/view asset checks cover mapping.
 	# Corpus parsing and byte-exact rebuilds belong to _test_reference_corpus.
 
-	var plane_visual := IsometricRenderer.moving_thing_sprite({
+	var plane_visual := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 		"type": 1, "direction": 4, "state": 2,
-	})
+	}))
 	_check(
 		plane_visual.sprite_id == 1362 and plane_visual.flip,
 		"Airplane view uses the recovered direction offset and mirror",
 	)
-	var medium_plane := IsometricRenderer.moving_thing_sprite({
+	var medium_plane := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 		"type": 1, "direction": 4, "state": 2,
-	}, IsometricRenderer.VIEW_MEDIUM)
+	}), IsometricRenderer.VIEW_MEDIUM)
 	_check(
 		medium_plane.sprite_id == 862 and medium_plane.flip,
 		"Airplane view selects the native medium direction sprite",
 	)
-	var small_plane := IsometricRenderer.moving_thing_sprite({
+	var small_plane := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 		"type": 1, "direction": 4, "state": 2,
-	}, IsometricRenderer.VIEW_SMALL)
+	}), IsometricRenderer.VIEW_SMALL)
 	_check(
 		small_plane.sprite_id == 362 and small_plane.flip,
 		"Airplane view selects the native small direction sprite",
 	)
-	var ship_visual := IsometricRenderer.moving_thing_sprite({
+	var ship_visual := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 		"type": 3, "direction": 7, "state": 0,
-	})
+	}))
 	_check(
 		ship_visual.sprite_id == 1369 and not ship_visual.flip,
 		"Cargo-ship view uses the recovered north-west sprite",
 	)
 	_check(
-		IsometricRenderer.moving_thing_sprite({
+		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 3, "direction": 7, "state": 0,
-		}, IsometricRenderer.VIEW_SMALL).sprite_id == 369,
+		}), IsometricRenderer.VIEW_SMALL).sprite_id == 369,
 		"Cargo-ship view selects the native small sprite",
 	)
 	_check(
-		IsometricRenderer.moving_thing_sprite({
+		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 4, "direction": 2, "state": 0,
-		}, IsometricRenderer.VIEW_MEDIUM).sprite_id == 891,
+		}), IsometricRenderer.VIEW_MEDIUM).sprite_id == 891,
 		"Bulldozer view selects the native medium direction sprite",
 	)
-	var sail_visual := IsometricRenderer.moving_thing_sprite({
+	var sail_visual := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 		"type": 9, "direction": 2, "state": 0,
-	})
+	}))
 	_check(
 		sail_visual.sprite_id == 1381 and sail_visual.flip,
 		"Sailboat view uses the recovered cardinal offset and mirror",
 	)
 	_check(
-		IsometricRenderer.moving_thing_sprite({
+		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 9, "direction": 2, "state": 1,
-		}).sprite_id == 1379,
+		})).sprite_id == 1379,
 		"A distressed sailboat uses the Nessie sprite",
 	)
 	_check(
-		IsometricRenderer.moving_thing_sprite({
+		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 6, "direction": 2, "state": 0,
-		}).sprite_id == 1389,
+		})).sprite_id == 1389,
 		"Explosion frame two uses the third recovered sprite",
 	)
 	_check(
-		IsometricRenderer.moving_thing_sprite({
+		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 6, "direction": 2, "state": 0,
-		}, IsometricRenderer.VIEW_MEDIUM).sprite_id == 889,
+		}), IsometricRenderer.VIEW_MEDIUM).sprite_id == 889,
 		"Explosion view selects the native medium frame",
 	)
 	_check(
-		IsometricRenderer.moving_thing_sprite({
+		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 6, "direction": 2, "state": 0,
-		}, IsometricRenderer.VIEW_SMALL).is_empty(),
+		}), IsometricRenderer.VIEW_SMALL).is_empty(),
 		"Explosion stays hidden below its recovered minimum view",
 	)
 	_check(
-		IsometricRenderer.moving_thing_sprite({
+		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 2, "direction": 2, "state": 0,
-		}, IsometricRenderer.VIEW_MEDIUM).is_empty(),
+		}), IsometricRenderer.VIEW_MEDIUM).is_empty(),
 		"Helicopter stays hidden below its recovered minimum view",
 	)
 	_check(
-		IsometricRenderer.moving_thing_sprite({
+		IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({
 			"type": 10, "direction": 0, "state": 0,
-		}).is_empty(),
+		})).is_empty(),
 		"The generic view defers trains to their custom renderer",
 	)
 	_check(
@@ -2562,9 +2562,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Surface visibility filtering does not change saved city state",
 	)
 	_check(starter.set_building_id(64, 64, 0x2e), "Train drawing fixture adds a rail tile")
-	var straight_train := IsometricRenderer.train_sprite(starter, 64, 64, {
+	var straight_train := IsometricRenderer.train_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 10, "dx": 0,
-	})
+	}))
 	_check(
 		straight_train.sprite_id == 1377 and straight_train.flip,
 		"Train view maps a rail tile to its recovered sprite variant",
@@ -2599,9 +2599,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"Surface train uses the same recovered baseline as its rail tile",
 	)
 	_check(starter.set_building_id(64, 64, 0x48), "Train wire fixture adds a rail-power crossover")
-	var crossing_train := IsometricRenderer.train_sprite(starter, 64, 64, {
+	var crossing_train := IsometricRenderer.train_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 10, "dx": 0,
-	})
+	}))
 	var crossing_commands := IsometricRenderer.moving_thing_draw_commands_for_visual(
 		starter,
 		large,
@@ -2747,9 +2747,9 @@ func _test_sprite_archives(reference_root: String) -> void:
 		"The train draws over the rail deck but stays behind the full power-line foreground",
 	)
 	_check(starter.set_building_id(64, 64, 0x36), "Train drawing fixture adds a turn tile")
-	var turning_train := IsometricRenderer.train_sprite(starter, 64, 64, {
+	var turning_train := IsometricRenderer.train_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 11, "dx": 1,
-	})
+	}))
 	_check(
 		turning_train.variant == 17 and turning_train.sprite_id == 1375,
 		"Train view uses the saved transition on a turn tile",
@@ -2760,25 +2760,25 @@ func _test_sprite_archives(reference_root: String) -> void:
 	)
 	_check(starter.set_building_id(64, 64, 0x5a), "Train drawing fixture adds a tunnel tile")
 	_check(starter.set_tile_flag(64, 64, 0x02, true), "Train drawing fixture mirrors the tunnel")
-	var tunnel_train := IsometricRenderer.train_sprite(starter, 64, 64, {
+	var tunnel_train := IsometricRenderer.train_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 10, "dx": 0,
-	})
+	}))
 	_check(
 		tunnel_train.variant == 1 and tunnel_train.elevation == 12,
 		"Tunnel train view uses the water level, raised track, and flip flag",
 	)
-	var tornado_visual := IsometricRenderer.tornado_sprite(starter, 64, 64, {
+	var tornado_visual := IsometricRenderer.tornado_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 15, "px": 8, "py": 8,
-	}, 1)
+	}), 1)
 	_check(
 		tornado_visual.sprite_id == 1498
 		and tornado_visual.flip
 		and tornado_visual.tornado,
 		"Tornado view selects a stable recovered frame and mirror",
 	)
-	var small_tornado := IsometricRenderer.tornado_sprite(starter, 64, 64, {
+	var small_tornado := IsometricRenderer.tornado_sprite(starter, 64, 64, ThingRecord.from_fields({
 		"type": 15, "px": 8, "py": 8,
-	}, 1, IsometricRenderer.VIEW_SMALL)
+	}), 1, IsometricRenderer.VIEW_SMALL)
 	_check(
 		small_tornado.sprite_id == 498
 		and small_tornado.elevation == 0
@@ -2845,14 +2845,14 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and medium_debris_position == Vector2i(1048, 764 - medium_debris.height),
 		"Medium bridge debris scales its tile anchor and recovered offset",
 	)
-	var monster_layers := IsometricMovingVisuals.monster_layers(starter, 64, 64, {
+	var monster_layers := IsometricMovingVisuals.monster_layers(starter, 64, 64, ThingRecord.from_fields({
 		"type": 5,
 		"z": 10,
 		"px": 8,
 		"py": 8,
 		"dx": 0xa5,
 		"dy": 0x9b,
-	}, 1)
+	}), 1)
 	_check(monster_layers.size() == 15, "Monster view builds all composite sprite layers")
 	_check(
 		monster_layers[0].sprite_id == 1483
@@ -2887,14 +2887,14 @@ func _test_sprite_archives(reference_root: String) -> void:
 		and monster_layers[14].flip,
 		"Monster view mirrors and positions the right lower outer layer",
 	)
-	var small_monster_layers := IsometricMovingVisuals.monster_layers(starter, 64, 64, {
+	var small_monster_layers := IsometricMovingVisuals.monster_layers(starter, 64, 64, ThingRecord.from_fields({
 		"type": 5,
 		"z": 10,
 		"px": 8,
 		"py": 8,
 		"dx": 0xa5,
 		"dy": 0x9b,
-	}, 1, IsometricRenderer.VIEW_SMALL)
+	}), 1, IsometricRenderer.VIEW_SMALL)
 	_check(
 		small_monster_layers.size() == 15,
 		"Small monster view keeps every composite layer",
@@ -4022,7 +4022,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		true,
 		7
 	)
-	free_zone["scurk_place_history"] = true
+	free_zone.scurk_place_history = true
 	_check(
 		free_zone.ok
 		and free_zone.cost == 0
@@ -4053,7 +4053,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		Networks.CONNECTION_UNSELECTED,
 		true
 	)
-	free_road["scurk_place_history"] = true
+	free_road.scurk_place_history = true
 	_check(
 		free_road.ok
 		and free_road.cost == 0
@@ -4074,7 +4074,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 	var free_water := Landscapes.apply_path(
 		city, 1, 1, [Vector2i(100, 100)], process_random, true
 	)
-	free_water["scurk_place_history"] = true
+	free_water.scurk_place_history = true
 	_check(
 		free_water.ok
 		and free_water.cost == 0
@@ -4099,7 +4099,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		process_random,
 		true
 	)
-	free_raise["scurk_place_history"] = true
+	free_raise.scurk_place_history = true
 	_check(
 		free_raise.ok
 		and free_raise.cost == 0
@@ -4114,10 +4114,10 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		and city.land_altitude(104, 104) == free_raise_before,
 		"SCURK free terrain changes use exact shared Undo: ok=%s before=%s current=%s error=%s"
 		% [
-			free_raise_undo.get("ok", false),
+			free_raise_undo.ok,
 			free_raise_before,
 			city.land_altitude(104, 104),
-			free_raise_undo.get("error", ""),
+			free_raise_undo.error,
 		],
 	)
 
@@ -4135,7 +4135,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		false,
 		true
 	)
-	free_bulldozer["scurk_place_history"] = true
+	free_bulldozer.scurk_place_history = true
 	_check(
 		free_bulldozer.ok
 		and free_bulldozer.cost == 0
@@ -4167,7 +4167,7 @@ func _test_scurk_place_command(reference_root: String) -> void:
 		Highways.BRIDGE_UNSELECTED,
 		true
 	)
-	free_highway["scurk_place_history"] = true
+	free_highway.scurk_place_history = true
 	_check(
 		free_highway.ok
 		and free_highway.cost == 0
@@ -7321,7 +7321,7 @@ func _test_disaster_map_phase(reference_root: String) -> void:
 	var collapse_tick := DisasterMapFireFlood.run_fire(
 		collapsing.city, collapse_random, collapse_lfsr
 	)
-	var explosion: Dictionary = collapsing.city.thing(1)
+	var explosion: ThingRecord = collapsing.city.thing(1)
 	_check(
 		collapse_tick.ok
 		and collapse_tick.structure_collapses == 1
@@ -8824,7 +8824,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 	_check(aircraft_result.ok, "Aircraft growth scan completes: %s" % aircraft_result.error)
 	_check(aircraft_result.spawned_helicopters == 1, "Powered airport runway spawns a helicopter")
 	_check(aircraft.city.text_overlay_id(20, 20) == 202, "Helicopter attaches record one to its runway")
-	var helicopter: Dictionary = aircraft.city.thing(1)
+	var helicopter: ThingRecord = aircraft.city.thing(1)
 	_check(
 		helicopter.type == 2
 		and helicopter.direction == 2
@@ -8851,7 +8851,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 		airplane.city, SequenceRandom.new([1, 0, 4, 9]), 0, 0, NonzeroLfsrRandom.new()
 	)
 	_check(airplane_result.ok and airplane_result.spawned_airplanes == 1, "Airport spawns an airplane")
-	var plane: Dictionary = airplane.city.thing(1)
+	var plane: ThingRecord = airplane.city.thing(1)
 	_check(
 		plane.type == 1
 		and plane.direction == 0
@@ -8947,7 +8947,7 @@ func _test_special_zone_growth(reference_root: String) -> void:
 		and ship_result.sound_events[0].thing_type == 3,
 		"Seaport crane spawns a cargo ship and requests its immediate sound",
 	)
-	var ship: Dictionary = ship_fixture.city.thing(1)
+	var ship: ThingRecord = ship_fixture.city.thing(1)
 	_check(
 		ship.type == 3
 		and ship.direction == 3
@@ -8981,9 +8981,9 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 	)
 	_check(train_result.ok and train_result.spawned_trains == 1, "Rail station spawns a train")
 	_check(station.city.text_overlay_id(20, 18) == 202, "Train engine attaches to its rail tile")
-	var engine: Dictionary = station.city.thing(1)
-	var first_car: Dictionary = station.city.thing(2)
-	var second_car: Dictionary = station.city.thing(3)
+	var engine: ThingRecord = station.city.thing(1)
+	var first_car: ThingRecord = station.city.thing(2)
+	var second_car: ThingRecord = station.city.thing(3)
 	_check(
 		engine.type == 10
 		and engine.direction == 1
@@ -9035,7 +9035,7 @@ func _test_growth_microsimulations(reference_root: String) -> void:
 		sailboat_result.ok and sailboat_result.spawned_sailboats == 1,
 		"Marina spawns one sailboat on its valid adjacent water tile",
 	)
-	var sailboat: Dictionary = marina.city.thing(1)
+	var sailboat: ThingRecord = marina.city.thing(1)
 	_check(
 		sailboat.type == 9
 		and sailboat.direction == 0
@@ -9833,7 +9833,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		moving.city, ZeroRandom.new(), SequenceLfsrRandom.new([1])
 	)
 	_check(move_result.ok and move_result.moved_sailboats == 1, "Sailboat tick moves on a clear water route")
-	var moved_sailboat: Dictionary = moving.city.thing(1)
+	var moved_sailboat: ThingRecord = moving.city.thing(1)
 	_check(
 		moved_sailboat.x == 21
 		and moved_sailboat.y == 20
@@ -9900,7 +9900,7 @@ func _test_moving_thing_phase(reference_root: String) -> void:
 		train.city, ZeroRandom.new(), SequenceLfsrRandom.new([0, 1]), ZeroGameRandom.new()
 	)
 	_check(train_result.ok and train_result.moved_trains == 1, "Train tick advances a clear consist")
-	var moved_engine: Dictionary = train.city.thing(1)
+	var moved_engine: ThingRecord = train.city.thing(1)
 	_check(
 		moved_engine.x == 21
 		and moved_engine.y == 20
@@ -14047,7 +14047,7 @@ func _test_building_command(reference_root: String) -> void:
 		)
 		_check(
 			Buildings.undo(
-				city, assigned_stadium.command, random, process_random
+				city, assigned_stadium, random, process_random
 			).ok,
 			"Assigned stadium placement can be undone as one transaction",
 		)
@@ -14202,7 +14202,7 @@ func _test_building_command(reference_root: String) -> void:
 	_check(
 		not unaffordable.ok
 		and not unaffordable.error.is_empty()
-		and not unaffordable.get("lfsr_advanced", false)
+		and not unaffordable.lfsr_advanced
 		and random.state == insufficient_lfsr_before,
 		"Insufficient building funds stop before the nuisance LFSR call",
 	)
@@ -14256,9 +14256,9 @@ func _test_network_command(reference_root: String) -> void:
 		]:
 			var command := Networks.apply(city, group, 0, endpoints[0], endpoints[1])
 			var new_count := 0 if endpoints[0].x == endpoints[1].x else absi(endpoints[1].x - endpoints[0].x)
-			_check(command.ok and not command.get("stopped_early", true),
+			_check(command.ok and not command.stopped_early,
 				"Road, rail and power routes start, end, cross, retrace and click existing networks")
-			_check(command.get("cost", -1) == new_count * tile_cost,
+			_check(command.cost == new_count * tile_cost,
 				"Existing network tiles have no repeat construction charge")
 
 			if endpoints[0].x == 48:
@@ -14369,7 +14369,7 @@ func _test_network_command(reference_root: String) -> void:
 	)
 	_check(
 		tangent_edge_route.ok
-		and not tangent_edge_route.get("connection_selection_required", false)
+		and not tangent_edge_route.connection_selection_required
 		and tangent_edge_route.cost == 50
 		and city.text_overlay_id(24, 0) == 0,
 		"A multi-tile route tangent to the edge does not request a connection",
@@ -15047,9 +15047,9 @@ func _test_highway_command(reference_root: String) -> void:
 		[Vector2i(10, 10), Vector2i(14, 10)],
 	]:
 		var reuse := Highways.apply(city, 6, 1, endpoints[0], endpoints[1])
-		_check(reuse.ok and not reuse.get("stopped_early", true),
+		_check(reuse.ok and not reuse.stopped_early,
 			"Highway routes can start, end and retrace existing highway sections")
-		_check(reuse.get("cost", -1) == (0 if endpoints[0].x == 10 else 200),
+		_check(reuse.cost == (0 if endpoints[0].x == 10 else 200),
 			"Highway reuse charges only new sections")
 		_check(Highways.undo(city, reuse).ok and document.serialize().data == highway_before,
 			"Highway reuse Undo restores exact bytes")
@@ -15122,7 +15122,7 @@ func _test_highway_command(reference_root: String) -> void:
 	_check(
 		not bridge_request.ok
 		and bridge_request.bridge_selection_required
-		and bridge_request.dry_sections == [Vector2i(76, 20), Vector2i(78, 20)]
+		and bridge_request.sections == [Vector2i(76, 20), Vector2i(78, 20)]
 		and bridge_request.bridge_span_length == 3
 		and bridge_request.bridge_choices.size() == 2
 		and bridge_request.bridge_choices[0].type == Highways.BRIDGE_HIGHWAY
@@ -15695,7 +15695,7 @@ func _test_demolish_command(reference_root: String) -> void:
 	var parallel_effects := true
 	var first_effect_frames := PackedInt32Array()
 
-	for effect in parallel_demolition.get("effect_events", []):
+	for effect in parallel_demolition.effect_events:
 		var frame := int(effect.get("frame", -1))
 		parallel_effects = (
 			parallel_effects

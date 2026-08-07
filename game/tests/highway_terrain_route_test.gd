@@ -38,10 +38,10 @@ func _test_crossing(edge: int, direction: int) -> void:
 		var preview := NetworkPlacementPreview.snapshot_city(city)
 		var preview_result := HighwayCommand.apply(preview, 6, 1, start, finish)
 		var result := HighwayCommand.apply(city, 6, 1, start, finish)
-		check(result.get("ok", false), "Highway crossing builds")
-		if not result.get("ok", false):
+		check(result.ok, "Highway crossing builds")
+		if not result.ok:
 			continue
 		check(result.sections.has(crossing + step * 2) and not result.sections.has(crossing + side * 2), "Keep incoming axis through crossing %x direction %d edge %d" % [tile_id, direction, edge])
-		check(preview_result.get("ok", false) and DocumentState.capture(preview.document) == DocumentState.capture(city.document), "Highway preview has identical bytes")
+		check(preview_result.ok and DocumentState.capture(preview.document) == DocumentState.capture(city.document), "Highway preview has identical bytes")
 		check(result.cost == result.sections.size() * 100, "Highway section prices remain unchanged")
-		check(HighwayCommand.undo(city, result).get("ok", false) and DocumentState.capture(city.document) == before, "Crossing route has exact Undo")
+		check(HighwayCommand.undo(city, result).ok and DocumentState.capture(city.document) == before, "Crossing route has exact Undo")

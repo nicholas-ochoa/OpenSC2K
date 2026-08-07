@@ -339,7 +339,7 @@ static func dispatch_sprite_id(
 
 	var thing := city.thing(OverlayData.thing_record(overlay))
 
-	if thing.is_empty() or thing.x != x or thing.y != y:
+	if thing == null or thing.x != x or thing.y != y:
 		return 0
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
@@ -412,11 +412,9 @@ static func _static_text_overlay_signature(city: CityState) -> int:
 		elif OverlayData.is_thing(overlay):
 			var thing := city.thing(OverlayData.thing_record(overlay))
 
-			if int(thing.get("type", 0)) in DISPATCH_SPRITE_OFFSETS:
+			if thing != null and thing.type in DISPATCH_SPRITE_OFFSETS:
 				values.append(index)
-
-				for key in ["type", "direction", "state", "x", "y", "z", "px", "py"]:
-					values.append(int(thing.get(key, 0)))
+				values.append_array([thing.type, thing.direction, thing.state, thing.x, thing.y, thing.z, thing.px, thing.py])
 
 	return hash(values)
 

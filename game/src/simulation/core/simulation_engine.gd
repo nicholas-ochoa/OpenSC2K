@@ -69,7 +69,7 @@ func _init(
 		for record in range(1, city.thing_count()):
 			var thing := initial_city.thing(record)
 
-			if thing.get("type", 0) == 3:
+			if thing != null and thing.type == 3:
 				ship_home = Vector2i(thing.x, thing.y)
 				break
 

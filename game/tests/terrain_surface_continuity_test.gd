@@ -27,7 +27,7 @@ func _run() -> void:
 	for stream in [false, true]:
 		var painted := CityState.from_document(EmptyCityTemplate.create())
 		var before := CityIsometricRenderer.terrain_surface_polygon(painted, 64, 64, true)
-		var result: Dictionary
+		var result: EditCommandResult
 		if stream:
 			result = LandscapeEditorCommand.apply(painted, 1, 2, Vector2i(64, 64), SimRandom.new(1))
 		else:

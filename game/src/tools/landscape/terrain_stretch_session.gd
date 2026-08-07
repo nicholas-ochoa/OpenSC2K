@@ -4,29 +4,31 @@ extends RefCounted
 var active := false
 var point := Vector2i.ZERO
 var levels := 0
-var command := {}
+var command: TerrainEditResult
 
 
 func begin(anchor: Vector2i) -> void:
 	active = true
 	point = anchor
 	levels = 0
-	command = {}
+	command = null
 
 
-func update(city: CityState, random: SimRandom, target_levels: int) -> Dictionary:
+# null when the height is unchanged. otherwise the result carries the display
+# payloads before and after, or the error of a failed restore
+func update(city: CityState, random: SimRandom, target_levels: int) -> EditCommandResult:
 	if not active or target_levels == levels:
-		return {}
+		return null
 
 	var before := _display_payloads(city)
 
-	if not command.is_empty():
+	if command != null:
 		var restored := TerrainCommand.undo(city, command, random)
 
 		if not restored.ok:
 			return restored
 
-	command = {}
+	command = null
 	levels = target_levels
 
 	if levels != 0:
@@ -35,13 +37,20 @@ func update(city: CityState, random: SimRandom, target_levels: int) -> Dictionar
 		if edited.ok:
 			command = edited
 
-	return {"ok": true, "command_type": "terrain", "old_payloads": before, "new_payloads": _display_payloads(city)}
+	var display := TerrainEditResult.new()
+	display.ok = true
+	display.command_type = "terrain"
+	display.old_payloads = before
+	display.new_payloads = _display_payloads(city)
+
+	return display
 
 
-func finish() -> Dictionary:
+# the committed edit, or null when nothing changed
+func finish() -> TerrainEditResult:
 	var result := command
 	active = false
-	command = {}
+	command = null
 
 	return result
 

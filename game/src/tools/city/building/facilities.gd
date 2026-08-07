@@ -42,53 +42,52 @@ static func stadium_team_name(city: CityState, team_index: int) -> String:
 
 static func assign_stadium_team(
 	city: CityState,
-	command: Dictionary,
+	command: BuildingEditResult,
 	team_index: int,
 	team_name: String
-) -> Dictionary:
+) -> BuildingEditResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return BuildingEditResult.rejected("city is invalid")
 
 	if (
-		not command.get("ok", false)
-		or command.get("command_type", "") != "building"
-		or int(command.get("tile_id", 0)) != STADIUM
-		or not command.get("stadium_team_selection_required", false)
+		command == null
+		or not command.ok
+		or command.command_type != "building"
+		or command.tile_id != STADIUM
+		or not command.stadium_team_selection_required
 	):
-		return {"ok": false, "error": "stadium building command is invalid"}
+		return BuildingEditResult.rejected("stadium building command is invalid")
 
 	if not stadium_team_choices(city).has(team_index):
-		return {"ok": false, "error": "stadium team is not available"}
+		return BuildingEditResult.rejected("stadium team is not available")
 
-	var overlay_id := int(command.get("overlay_id", 0))
+	var overlay_id := command.overlay_id
 	var record_id := OverlayData.facility_record(overlay_id)
 
 	if record_id < MICROSIM_DYNAMIC_FIRST or record_id >= city.microsim_count():
-		return {"ok": false, "error": "stadium microsimulation link is invalid"}
+		return BuildingEditResult.rejected("stadium microsimulation link is invalid")
 
 	var current_payloads := BuildingState._city_payloads(city)
 
 	if current_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return BuildingEditResult.rejected("required city data is missing or invalid")
 
-	var expected_payloads: Dictionary = command.get("new_payloads", {})
-	var command_ids: PackedStringArray = command.get(
-		"changed_ids", PackedStringArray()
-	)
+	var expected_payloads := command.new_payloads
+	var command_ids := command.changed_ids
 
 	for chunk_id in command_ids:
 		if (
 			not expected_payloads.has(chunk_id)
 			or current_payloads[chunk_id] != expected_payloads[chunk_id]
 		):
-			return {"ok": false, "error": "city changed after stadium placement"}
+			return BuildingEditResult.rejected("city changed after stadium placement")
 
 	var changed_payloads := BuildingState._duplicate_payloads(current_payloads)
 	var microsims: PackedByteArray = changed_payloads.XMIC
 	var record_offset := record_id * CityState.MICROSIM_RECORD_SIZE
 
 	if microsims[record_offset] != STADIUM:
-		return {"ok": false, "error": "stadium microsimulation record is missing"}
+		return BuildingEditResult.rejected("stadium microsimulation record is missing")
 
 	BuildingState._write_u16_be(microsims, record_offset + 4, team_index)
 	BuildingState._write_u16_be(
@@ -112,31 +111,24 @@ static func assign_stadium_team(
 	if not BuildingState._apply_payloads(
 		city, team_chunk_ids, changed_payloads, current_payloads
 	):
-		return {"ok": false, "error": "cannot store stadium team"}
+		return BuildingEditResult.rejected("cannot store stadium team")
 
-	var updated_command := command.duplicate(true)
-	var updated_payloads: Dictionary = updated_command.new_payloads
+	# the placement and the team become one undo transaction
+	var updated_command := command.copy() as BuildingEditResult
 
 	for chunk_id in team_chunk_ids:
-		updated_payloads[chunk_id] = changed_payloads[chunk_id].duplicate()
+		updated_command.new_payloads[chunk_id] = changed_payloads[chunk_id].duplicate()
 
 		if not command_ids.has(chunk_id):
 			command_ids.append(chunk_id)
 
-	updated_command["changed_ids"] = command_ids
-	updated_command["new_payloads"] = updated_payloads
-	updated_command["stadium_team_selection_required"] = false
-	updated_command["stadium_team_index"] = team_index
-	updated_command["stadium_team_label"] = STADIUM_TEAM_LABEL_BASE + team_index
+	updated_command.changed_ids = command_ids
+	updated_command.stadium_team_selection_required = false
+	updated_command.stadium_team_index = team_index
+	updated_command.stadium_team_label = STADIUM_TEAM_LABEL_BASE + team_index
+	updated_command.stadium_team_name = team_name.left(23)
 
-	return {
-		"ok": true,
-		"command": updated_command,
-		"team_index": team_index,
-		"team_label": STADIUM_TEAM_LABEL_BASE + team_index,
-		"team_name": team_name.left(23),
-		"error": "",
-	}
+	return updated_command
 
 
 static func provision_microsim(

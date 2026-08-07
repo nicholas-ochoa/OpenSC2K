@@ -161,12 +161,12 @@ static func moving_thing_anchor(city: CityState, record: int, view_size := VIEW_
 	return IsometricMovingVisuals.moving_thing_anchor(city, record, view_size)
 
 
-static func moving_thing_sprite(thing: Dictionary, view_size := VIEW_LARGE) -> Dictionary:
+static func moving_thing_sprite(thing: ThingRecord, view_size := VIEW_LARGE) -> Dictionary:
 	return IsometricMovingVisuals.moving_thing_sprite(thing, view_size)
 
 
 static func train_sprite(
-	city: CityState, x: int, y: int, thing: Dictionary
+	city: CityState, x: int, y: int, thing: ThingRecord
 ) -> Dictionary:
 	return IsometricMovingVisuals.train_sprite(city, x, y, thing)
 
@@ -175,7 +175,7 @@ static func tornado_sprite(
 	city: CityState,
 	x: int,
 	y: int,
-	thing: Dictionary,
+	thing: ThingRecord,
 	record: int,
 	view_size := VIEW_LARGE
 ) -> Dictionary:

@@ -103,12 +103,12 @@ func _test_transactions(edge: int) -> void:
 		var preview_city := NetworkPlacementPreview.snapshot_city(city)
 		var preview := NetworkPlacementPreview.apply_preview(preview_city, tool.x, tool.y, start, start + Vector2i(0, 2))
 		var result := NetworkCommand.apply(city, tool.x, tool.y, start, start + Vector2i(0, 2))
-		check(result.get("ok", false) and result.get("points", []).size() == 1, "Placement keeps valid prefix mode %d edge %d" % [mode, edge])
-		check(result.get("cost", -1) == int(ToolCatalog.tool(tool.x, tool.y).cost), "Charge only the valid prefix")
-		check(preview.get("ok", false) and DocumentState.capture(preview_city.document) == DocumentState.capture(city.document), "Preview and placement bytes agree")
+		check(result.ok and result.points.size() == 1, "Placement keeps valid prefix mode %d edge %d" % [mode, edge])
+		check(result.cost == int(ToolCatalog.tool(tool.x, tool.y).cost), "Charge only the valid prefix")
+		check(preview.ok and DocumentState.capture(preview_city.document) == DocumentState.capture(city.document), "Preview and placement bytes agree")
 		var loaded := Sc2File.new()
 		check(loaded.parse(city.document.serialize().data), "Saved corrected route reloads")
-		check(NetworkCommand.undo(city, result).get("ok", false) and DocumentState.capture(city.document) == before, "Exact terrain, flags, costs and network Undo")
+		check(NetworkCommand.undo(city, result).ok and DocumentState.capture(city.document) == before, "Exact terrain, flags, costs and network Undo")
 
 
 func _test_reused_crossings(edge: int) -> void:
@@ -144,10 +144,10 @@ func _test_underground_grading(edge: int) -> void:
 				var before: Array = DocumentState.capture(city.document)
 				var finish: Vector2i = start + NetworkCommand.DIRECTIONS[direction]
 				var result := NetworkCommand.apply(city, tool.x, tool.y, start, finish)
-				check(result.get("ok", false), "Underground compound terrain is placeable")
-				if not result.get("ok", false):
+				check(result.ok, "Underground compound terrain is placeable")
+				if not result.ok:
 					continue
 				var expected: int = 13 if shape < 9 else [[2, 1, 2, 1], [2, 3, 2, 3], [4, 3, 4, 3], [4, 1, 4, 1]][shape - 9][direction]
 				check(city.terrain_id(start.x, start.y) == expected, "Underground terrain matches the selected axis")
 				check(result.graded_tiles == 1 and result.cost == result.points.size() * int(ToolCatalog.tool(tool.x, tool.y).cost) + 25, "Underground grading costs 25 per adjusted tile")
-				check(NetworkCommand.undo(city, result).get("ok", false) and DocumentState.capture(city.document) == before, "Underground grading has exact Undo")
+				check(NetworkCommand.undo(city, result).ok and DocumentState.capture(city.document) == before, "Underground grading has exact Undo")

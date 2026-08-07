@@ -84,39 +84,42 @@ static func apply(
 	process_random: SimRandom,
 	selected_zone := 0,
 	australian_locale := false
-) -> Dictionary:
+) -> EditCommandResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return _failure("city is invalid")
+		return EditCommandResult.failure("city is invalid")
 
 	if not is_placeable_tile(tile_id):
-		return _failure("object is not available in Place & Print")
+		return EditCommandResult.failure("object is not available in Place & Print")
 
 	if process_random == null:
-		return _failure("process random state is required")
+		return EditCommandResult.failure("process random state is required")
 
 	if tile_id > 255:
 		if selected.x < 0 or selected.y < 0 or selected.x >= map_edge or selected.y >= map_edge:
-			return _failure("object does not fit inside the map")
+			return EditCommandResult.failure("object does not fit inside the map")
 
-		var before := city.scurk_artwork_stamps.duplicate(true)
+		var artwork := ScurkPlaceResult.new()
+		artwork.ok = true
+		artwork.command_type = "scurk_artwork"
+		artwork.scurk_place_history = true
+		artwork.old_stamps = city.scurk_artwork_stamps.duplicate(true)
 		city.scurk_artwork_stamps.append({"tile_id": tile_id, "point": selected})
+		artwork.new_stamps = city.scurk_artwork_stamps.duplicate(true)
 
-		return {"ok": true, "error": "", "command_type": "scurk_artwork",
-			"scurk_place_history": true, "area": 1, "old_stamps": before,
-			"new_stamps": city.scurk_artwork_stamps.duplicate(true)}
+		return artwork
 
 	var area := DemolishStructures.structure_area(tile_id)
 	var site := BuildingSites.footprint(selected, area)
 
 	if not BuildingSites._footprint_is_in_bounds(site, area, map_edge):
-		return _failure("object does not fit inside the map")
+		return EditCommandResult.failure("object does not fit inside the map")
 
 	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
-		return _failure("required city data is missing or invalid")
+		return EditCommandResult.failure("required city data is missing or invalid")
 
 	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
@@ -132,7 +135,7 @@ static func apply(
 	var site_check := _check_site(buildings, terrain, flags, site, tile_id, map_edge)
 
 	if not site_check.ok:
-		return _failure(site_check.error)
+		return EditCommandResult.failure(site_check.error)
 
 	var process_random_state_before := process_random.state
 	var overlay_id := BuildingFacilities.provision_microsim(
@@ -197,95 +200,79 @@ static func apply(
 	if not BuildingState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		process_random.state = process_random_state_before
 
-		return _failure("cannot store Place & Print changes")
+		return EditCommandResult.failure("cannot store Place & Print changes")
 
-	return {
-		"ok": true,
-		"error": "",
-		"command_type": "scurk_place_object",
-		"scurk_place_history": true,
-		"tile_id": tile_id,
-		"area": area,
-		"site": site,
-		"tile_indices": tile_indices,
-		"zone_id": zone_id,
-		"overlay_id": overlay_id,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"process_random_state_before": process_random_state_before,
-		"process_random_state_after": process_random.state,
-	}
+	var result := ScurkPlaceResult.new()
+	result.ok = true
+	result.command_type = "scurk_place_object"
+	result.scurk_place_history = true
+	result.tile_id = tile_id
+	result.area = area
+	result.site = site
+	result.tile_indices = tile_indices
+	result.zone_id = zone_id
+	result.overlay_id = overlay_id
+	result.changed_ids = changed_ids
+	result.old_payloads = old_payloads
+	result.new_payloads = changed_payloads
+	result.tracks_random = true
+	result.random_state_before = process_random_state_before
+	result.random_state_after = process_random.state
+
+	return result
 
 
+# undo any edit that scurk history owns. `command` may still be the
+# dictionary of a tool family that is not yet converted
 static func undo(
-	city: CityState, command: Dictionary, process_random: SimRandom
-) -> Dictionary:
-	return _apply_history(city, command, process_random, false)
+	city: CityState, command: Variant, process_random: SimRandom
+) -> EditCommandResult:
+	return _apply_history(city, EditCommandResult.of(command), process_random, false)
 
 
 static func redo(
-	city: CityState, command: Dictionary, process_random: SimRandom
-) -> Dictionary:
-	return _apply_history(city, command, process_random, true)
+	city: CityState, command: Variant, process_random: SimRandom
+) -> EditCommandResult:
+	return _apply_history(city, EditCommandResult.of(command), process_random, true)
 
 
 static func _apply_history(
 	city: CityState,
-	command: Dictionary,
+	command: EditCommandResult,
 	process_random: SimRandom,
 	forward: bool
-) -> Dictionary:
+) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return _failure("city is invalid")
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or not command.get(
-		"scurk_place_history", false
-	):
-		return _failure("Place & Print command is invalid")
+	if not command.ok or not command.scurk_place_history:
+		return EditCommandResult.failure("Place & Print command is invalid")
 
-	if command.get("command_type", "") == "scurk_artwork":
-		var expected: Array = command.old_stamps if forward else command.new_stamps
+	if command.command_type == "scurk_artwork":
+		var artwork := command as ScurkPlaceResult
+		var expected: Array = artwork.old_stamps if forward else artwork.new_stamps
 
 		if city.scurk_artwork_stamps != expected:
-			return _failure("artwork changed after this command")
+			return EditCommandResult.failure("artwork changed after this command")
 
-		city.scurk_artwork_stamps.assign((command.new_stamps if forward else command.old_stamps).duplicate(true))
+		city.scurk_artwork_stamps.assign((artwork.new_stamps if forward else artwork.old_stamps).duplicate(true))
 
-		return {"ok": true, "error": "", "restored_tiles": 1}
+		return EditCommandResult.undone(1)
 
-	var before_random_key := ""
-	var after_random_key := ""
-
-	if command.has("process_random_state_before"):
-		before_random_key = "process_random_state_before"
-		after_random_key = "process_random_state_after"
-	elif command.has("random_state_before"):
-		before_random_key = "random_state_before"
-		after_random_key = "random_state_after"
-
-	if not before_random_key.is_empty():
+	if command.tracks_random:
 		if process_random == null:
-			return _failure("process random state is required")
+			return EditCommandResult.failure("process random state is required")
 
-		var expected_state := int(command.get(
-			before_random_key if forward else after_random_key, -1
-		))
+		var expected_state := command.random_state_before if forward else command.random_state_after
 
 		if process_random.state != expected_state:
-			return _failure(
+			return EditCommandResult.failure(
 				"process random state changed after this Place & Print command"
 			)
 
-	var changed_ids: PackedStringArray = command.get(
-		"changed_ids", PackedStringArray()
-	)
-	var source_payloads: Dictionary = command.get(
-		"old_payloads" if forward else "new_payloads", {}
-	)
-	var destination_payloads: Dictionary = command.get(
-		"new_payloads" if forward else "old_payloads", {}
-	)
+	var changed_ids := command.changed_ids
+	var source_payloads := command.old_payloads if forward else command.new_payloads
+	var destination_payloads := command.new_payloads if forward else command.old_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
@@ -295,26 +282,17 @@ static func _apply_history(
 			or not source_payloads.has(chunk_id)
 			or chunk.decoded_payload != source_payloads[chunk_id]
 		):
-			return _failure("city changed after this Place & Print command")
+			return EditCommandResult.failure("city changed after this Place & Print command")
 
 	if not BuildingState._apply_payloads(
 		city, changed_ids, destination_payloads, source_payloads
 	):
-		return _failure("cannot restore Place & Print changes")
+		return EditCommandResult.failure("cannot restore Place & Print changes")
 
-	if not before_random_key.is_empty():
-		process_random.state = int(command.get(
-			after_random_key if forward else before_random_key, -1
-		))
+	if command.tracks_random:
+		process_random.state = command.random_state_after if forward else command.random_state_before
 
-	return {
-		"ok": true,
-		"error": "",
-		"restored_tiles": maxi(
-			command.get("tile_indices", PackedInt32Array()).size(),
-			command.get("points", []).size()
-		),
-	}
+	return EditCommandResult.undone(maxi(command.tile_indices.size(), command.points.size()))
 
 
 static func _check_site(

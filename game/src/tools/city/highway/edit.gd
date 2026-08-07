@@ -11,30 +11,30 @@ static func apply_segment(
 	connection_choice := CONNECTION_UNSELECTED,
 	bridge_type := BRIDGE_UNSELECTED,
 	free_mode := false
-) -> Dictionary:
+) -> RouteEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return RouteEditResult.rejected("city is invalid")
 
 	if not HighwayGeometry.supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool is not a highway"}
+		return RouteEditResult.rejected("tool is not a highway")
 
 	var start := HighwayGeometry.snap_anchor(selected_start)
 	var finish := HighwayGeometry.snap_anchor(selected_finish)
 
 	if not HighwayGeometry._anchor_is_in_bounds(start, map_edge) or not HighwayGeometry._anchor_is_in_bounds(finish, map_edge):
-		return {"ok": false, "error": "highway is outside the city"}
+		return RouteEditResult.rejected("highway is outside the city")
 
 	var old_payloads := NetworkState.city_payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return RouteEditResult.rejected("required city data is missing or invalid")
 
 	var text_chunk := city.document.find_chunk("XTXT")
 
 	if text_chunk == null or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT"):
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return RouteEditResult.rejected("required city data is missing or invalid")
 
 	old_payloads["XTXT"] = text_chunk.decoded_payload.duplicate()
 	var buildings: PackedByteArray = old_payloads.XBLD
@@ -65,12 +65,9 @@ static func apply_segment(
 
 	if sections.is_empty() and not bridge_plan.get("ok", false):
 		if bridge_attempted:
-			return {
-				"ok": false,
-				"error": bridge_plan.get("error", "highway bridge is invalid"),
-			}
+			return RouteEditResult.rejected(bridge_plan.get("error", "highway bridge is invalid"))
 
-		return {"ok": false, "error": "highway cannot start on this section"}
+		return RouteEditResult.rejected("highway cannot start on this section")
 
 	var new_sections := 0
 
@@ -84,7 +81,7 @@ static func apply_segment(
 	var route_cost := 0 if free_mode else listed_route_cost
 
 	if city.funds() < route_cost:
-		return {"ok": false, "error": "insufficient funds", "cost": route_cost}
+		return RouteEditResult.rejected("insufficient funds", route_cost)
 
 	var selected_bridge := bridge_type
 	var bridge_choices: Array[Dictionary] = []
@@ -93,31 +90,33 @@ static func apply_segment(
 		bridge_choices = HighwayBridges._bridge_choices(bridge_plan)
 
 		if selected_bridge == BRIDGE_UNSELECTED:
-			return {
-				"ok": false,
-				"bridge_selection_required": true,
-				"bridge_choices": bridge_choices,
-				"bridge_span_length": int(bridge_plan.span_length),
-				"route_cost": route_cost,
-				"listed_route_cost": listed_route_cost,
-				"free_mode": free_mode,
-				"dry_sections": sections,
-				"error": "highway bridge type selection is required",
-			}
+			var choice := RouteEditResult.rejected("highway bridge type selection is required")
+			choice.bridge_selection_required = true
+			choice.bridge_choices = bridge_choices
+			choice.bridge_span_length = int(bridge_plan.span_length)
+			choice.route_cost = route_cost
+			choice.listed_route_cost = listed_route_cost
+			choice.free_mode = free_mode
+			choice.sections = sections
+
+			return choice
 
 		if selected_bridge >= 0 and not HighwayBridges._bridge_choice_exists(
 			bridge_choices, selected_bridge
 		):
-			return {"ok": false, "error": "selected highway bridge is not available"}
+			return RouteEditResult.rejected("selected highway bridge is not available")
 	elif selected_bridge >= 0:
-		return {"ok": false, "error": "highway bridge is not available"}
+		return RouteEditResult.rejected("highway bridge is not available")
 
 	if (
 		bridge_plan.get("ok", false)
 		and selected_bridge == BRIDGE_CANCELLED
 		and sections.is_empty()
 	):
-		return {"ok": false, "cancelled": true, "error": "bridge selection canceled"}
+		var cancelled := RouteEditResult.rejected("bridge selection canceled")
+		cancelled.cancelled = true
+
+		return cancelled
 
 	var listed_bridge_cost := 0
 	var bridge_cost := 0
@@ -134,7 +133,7 @@ static func apply_segment(
 			bridge_error = "insufficient funds for the highway bridge"
 
 			if sections.is_empty():
-				return {"ok": false, "error": "insufficient funds", "cost": bridge_cost}
+				return RouteEditResult.rejected("insufficient funds", bridge_cost)
 		else:
 			bridge_built = true
 
@@ -155,29 +154,24 @@ static func apply_segment(
 		and connection_affordable
 		and connection_choice == CONNECTION_UNSELECTED
 	):
-		return {
-			"ok": false,
-			"connection_selection_required": true,
-			"connection_anchor": connection_anchor,
-			"connection_cost": connection_cost,
-			"listed_connection_cost": CONNECTION_COST,
-			"route_cost": route_cost,
-			"listed_route_cost": listed_route_cost,
-			"free_mode": free_mode,
-			"sections": sections,
-			"error": "neighbor connection confirmation is required",
-		}
+		var confirmation := RouteEditResult.rejected("neighbor connection confirmation is required")
+		confirmation.connection_selection_required = true
+		confirmation.connection_anchor = connection_anchor
+		confirmation.connection_cost = connection_cost
+		confirmation.listed_connection_cost = CONNECTION_COST
+		confirmation.route_cost = route_cost
+		confirmation.listed_route_cost = listed_route_cost
+		confirmation.free_mode = free_mode
+		confirmation.sections = sections
+
+		return confirmation
 
 	if connection_choice == CONNECTION_CONFIRMED:
 		if not connection_available:
-			return {"ok": false, "error": "neighbor connection is not available"}
+			return RouteEditResult.rejected("neighbor connection is not available")
 
 		if not connection_affordable:
-			return {
-				"ok": false,
-				"error": "insufficient funds",
-				"cost": route_cost + CONNECTION_COST,
-			}
+			return RouteEditResult.rejected("insufficient funds", route_cost + CONNECTION_COST)
 
 	var connection_built := connection_choice == CONNECTION_CONFIRMED
 	var cost := (
@@ -219,7 +213,7 @@ static func apply_segment(
 		)
 
 		if not placement.ok:
-			return placement
+			return RouteEditResult.rejected(placement.error)
 
 		if placement.graded:
 			graded_sections += 1
@@ -268,7 +262,7 @@ static func apply_segment(
 			changed_ids.append(chunk_id)
 
 	if not NetworkState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
-		return {"ok": false, "error": "cannot store highway changes"}
+		return RouteEditResult.rejected("cannot store highway changes")
 
 	var tile_indices := PackedInt32Array()
 	var affected_sections: Array[Vector2i] = sections.duplicate()
@@ -282,84 +276,81 @@ static func apply_segment(
 			var point: Vector2i = anchor + offset
 			tile_indices.append(point.x * map_edge + point.y)
 
-	return {
-		"ok": true,
-		"command_type": "highway",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"start": start,
-		"finish": finish,
-		"sections": sections,
-		"tile_indices": tile_indices,
-		"cost": cost,
-		"route_cost": route_cost,
-		"listed_cost": (
-			listed_route_cost
-			+ (listed_bridge_cost if bridge_built else 0)
-			+ (CONNECTION_COST if connection_built else 0)
-		),
-		"listed_route_cost": listed_route_cost,
-		"free_mode": free_mode,
-		"bridge_built": bridge_built,
-		"bridge_exit": bridge_plan.start + DIRECTIONS[int(bridge_plan.direction)] * int(bridge_plan.span_length) * 2 if bridge_built else Vector2i(-1, -1),
-		"bridge_cancelled": (
-			bridge_plan.get("ok", false) and selected_bridge == BRIDGE_CANCELLED
-		),
-		"bridge_type": selected_bridge if bridge_built else BRIDGE_UNSELECTED,
-		"bridge_name": HighwayBridges.bridge_type_name(selected_bridge) if bridge_built else "",
-		"bridge_sections": bridge_sections,
-		"bridge_endpoint_sections": bridge_endpoint_sections,
-		"bridge_span_length": int(bridge_plan.get("span_length", 0)),
-		"bridge_cost": bridge_cost if bridge_built else 0,
-		"listed_bridge_cost": listed_bridge_cost if bridge_built else 0,
-		"bridge_error": bridge_error if bridge_attempted else "",
-		"connection_built": connection_built,
-		"connection_cancelled": (
-			connection_available and connection_choice == CONNECTION_CANCELLED
-		),
-		"connection_anchor": connection_anchor,
-		"connection_cost": connection_cost if connection_built else 0,
-		"listed_connection_cost": CONNECTION_COST if connection_built else 0,
-		"graded_sections": graded_sections,
-		"connection_error": (
-			"insufficient funds for the neighbor connection"
-			if connection_available and not connection_affordable
-			else ""
-		),
-		"stopped_early": (
-			not bridge_built
-			and (sections.is_empty() or sections[-1] != finish)
-		),
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"error": "",
-	}
+	var result := RouteEditResult.new()
+	result.ok = true
+	result.command_type = "highway"
+	result.group_index = group_index
+	result.subtool_index = subtool_index
+	result.start = start
+	result.finish = finish
+	result.sections = sections
+	result.tile_indices = tile_indices
+	result.cost = cost
+	result.route_cost = route_cost
+	result.listed_cost = (
+		listed_route_cost
+		+ (listed_bridge_cost if bridge_built else 0)
+		+ (CONNECTION_COST if connection_built else 0)
+	)
+	result.listed_route_cost = listed_route_cost
+	result.free_mode = free_mode
+	result.bridge_built = bridge_built
+
+	if bridge_built:
+		result.bridge_exit = bridge_plan.start + DIRECTIONS[int(bridge_plan.direction)] * int(bridge_plan.span_length) * 2
+		result.bridge_type = selected_bridge
+		result.bridge_name = HighwayBridges.bridge_type_name(selected_bridge)
+		result.bridge_cost = bridge_cost
+		result.listed_bridge_cost = listed_bridge_cost
+
+	result.bridge_cancelled = bridge_plan.get("ok", false) and selected_bridge == BRIDGE_CANCELLED
+	result.bridge_sections = bridge_sections
+	result.bridge_endpoint_sections = bridge_endpoint_sections
+	result.bridge_span_length = int(bridge_plan.get("span_length", 0))
+	result.bridge_error = bridge_error if bridge_attempted else ""
+	result.connection_built = connection_built
+	result.connection_cancelled = connection_available and connection_choice == CONNECTION_CANCELLED
+	result.connection_anchor = connection_anchor
+
+	if connection_built:
+		result.connection_cost = connection_cost
+		result.listed_connection_cost = CONNECTION_COST
+
+	result.graded_sections = graded_sections
+	result.connection_error = (
+		"insufficient funds for the neighbor connection"
+		if connection_available and not connection_affordable
+		else ""
+	)
+	result.stopped_early = not bridge_built and (sections.is_empty() or sections[-1] != finish)
+	result.changed_ids = changed_ids
+	result.old_payloads = old_payloads
+	result.new_payloads = changed_payloads
+
+	return result
 
 
-static func undo(city: CityState, command: Dictionary) -> Dictionary:
+static func undo(city: CityState, command: RouteEditResult) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "highway":
-		return {"ok": false, "error": "highway command is invalid"}
+	if command == null or not command.ok or command.command_type != "highway":
+		return EditCommandResult.failure("highway command is invalid")
 
-	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var changed_ids := command.changed_ids
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
-			return {"ok": false, "error": "city changed after this highway command"}
+			return EditCommandResult.failure("city changed after this highway command")
 
 	if not NetworkState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
-		return {"ok": false, "error": "cannot restore highway changes"}
+		return EditCommandResult.failure("cannot restore highway changes")
 
-	var tile_indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
-
-	return {"ok": true, "restored_tiles": tile_indices.size(), "error": ""}
+	return EditCommandResult.undone(command.tile_indices.size())
 
 
 static func preview_valid(city: CityState, selected: Vector2i) -> bool:

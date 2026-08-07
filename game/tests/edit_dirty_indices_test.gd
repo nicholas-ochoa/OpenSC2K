@@ -11,6 +11,10 @@ func _collect(before: PackedByteArray, after: PackedByteArray, stride: int, cell
 	return indices
 
 
+func _dirty(fields: Dictionary, edge: int) -> PackedInt32Array:
+	return ApplicationStaticRender._edit_dirty_indices(EditCommandResult.from_dictionary(fields), edge)
+
+
 func _initialize() -> void:
 	for edge in [128, 256, 384, 512]:
 		var old := {}
@@ -40,10 +44,10 @@ func _initialize() -> void:
 		var command := {"old_payloads": old, "new_payloads": changed}
 		var expected_indices := PackedInt32Array(expected.keys())
 		expected_indices.sort()
-		assert(ApplicationStaticRender._edit_dirty_indices(command, edge) == expected_indices)
+		assert(_dirty(command, edge) == expected_indices)
 		# Change each chunk alone so another changed chunk cannot hide a missed dirty tile.
 		for id in old:
-			assert(ApplicationStaticRender._edit_dirty_indices({"old_payloads": {id: old[id]},
+			assert(_dirty({"old_payloads": {id: old[id]},
 				"new_payloads": {id: changed[id]}}, edge) == expected_by_chunk[id])
 		var legacy_text: PackedByteArray = old.XTXT.duplicate()
 		OverlayData.write(legacy_text, 777, 202)
@@ -56,28 +60,28 @@ func _initialize() -> void:
 		combined.append(42)
 		combined.append(3 * edge + 4)
 		combined.sort()
-		assert(ApplicationStaticRender._edit_dirty_indices(command, edge) == combined,
+		assert(_dirty(command, edge) == combined,
 			"Payload, legacy text, explicit tiles and points form one sorted union")
-		assert(ApplicationStaticRender._edit_dirty_indices({"old_payloads": old, "new_payloads": old}, edge).is_empty())
+		assert(_dirty({"old_payloads": old, "new_payloads": old}, edge).is_empty())
 		command = {"old_text": old.XTXT, "new_text": changed.XTXT}
-		assert(ApplicationStaticRender._edit_dirty_indices(command, edge) == expected_by_chunk.XTXT)
+		assert(_dirty(command, edge) == expected_by_chunk.XTXT)
 
 		var word_edge: PackedByteArray = old.XBLD.duplicate()
 		word_edge[7] = 1
 		word_edge[8] = 1
-		assert(ApplicationStaticRender._edit_dirty_indices({"old_payloads": {"XBLD": old.XBLD},
+		assert(_dirty({"old_payloads": {"XBLD": old.XBLD},
 			"new_payloads": {"XBLD": word_edge}}, edge) == PackedInt32Array([7, 8]),
 			"Changes on both sides of an eight-byte comparison group report")
 		var low_byte: PackedByteArray = old.ALTM.duplicate()
 		low_byte[600 * 2] = 5
-		assert(ApplicationStaticRender._edit_dirty_indices({"old_payloads": {"ALTM": old.ALTM},
+		assert(_dirty({"old_payloads": {"ALTM": old.ALTM},
 			"new_payloads": {"ALTM": low_byte}}, edge) == PackedInt32Array([600]),
 			"The low byte of a two-byte altitude entry marks its tile")
 
 		if edge > 128:
 			var high_only: PackedByteArray = old.XTXT.duplicate()
 			high_only[edge * edge + 257] = 16
-			assert(ApplicationStaticRender._edit_dirty_indices({"old_text": old.XTXT, "new_text": high_only}, edge) == PackedInt32Array([257]))
+			assert(_dirty({"old_text": old.XTXT, "new_text": high_only}, edge) == PackedInt32Array([257]))
 
 	# Payload lengths the map-size guards never produce: not a multiple of the
 	# eight-byte comparison group, and not a multiple of 256 tiles.

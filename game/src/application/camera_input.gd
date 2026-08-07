@@ -239,7 +239,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 	if app.simulation_engine != null:
 		app.simulation_engine.rotate_runtime_coordinates(counter_clockwise)
 
-	app.last_edit_command = {}
+	app.last_edit_command = null
 	app.map_view.clear_trip_reach()
 	app.map_view.clear_service_query()
 	app.map_view.show_transient_effects([])
@@ -289,7 +289,7 @@ func _on_map_selection_canceled() -> void:
 
 	app.status_label.theme_type_variation = ""
 	var painted := app.map_view.continuous_placement and (
-		not app.map_view.uses_paint_brush() or not app.landscape_brush_command.is_empty()
+		not app.map_view.uses_paint_brush() or app.landscape_brush_command != null
 	)
 	app.status_label.text = (
 		"Brush stopped. Use Undo to remove its last edit."
@@ -298,7 +298,7 @@ func _on_map_selection_canceled() -> void:
 
 
 func _on_map_selection_started() -> void:
-	app.landscape_brush_command = {}
+	app.landscape_brush_command = null
 	app.level_brush_altitude = -1
 	if app.new_city._level_brush_active() and app.city != null:
 		app.level_brush_altitude = app.city.land_altitude(app.map_view.selection_start.x, app.map_view.selection_start.y)
@@ -330,7 +330,7 @@ func _on_terrain_stretch_changed(levels: int, deferred: bool) -> void:
 func _refresh_terrain_stretch(levels: int) -> void:
 	var update := app.terrain_stretch.update(app.city, app.tool_random, levels)
 
-	if update.get("ok", false):
+	if update != null and update.ok:
 		app.static_render._refresh_after_city_edit(update)
 
 		if levels != 0 and not is_instance_valid(app.audio_controller.tool_loop_player):

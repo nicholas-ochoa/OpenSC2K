@@ -40,7 +40,7 @@ func _apply_network_selection(
 		free_mode
 	)
 
-	if network.get("bridge_selection_required", false):
+	if network.bridge_selection_required:
 		_open_bridge_dialog(
 			start,
 			finish,
@@ -53,14 +53,14 @@ func _apply_network_selection(
 
 		return
 
-	if network.get("cancelled", false):
+	if network.cancelled:
 		app.effects_audio._play_tool_failure_sound(group_index, subtool_index, "cancelled", free_mode)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Bridge selection canceled. No action was taken."
 
 		return
 
-	if network.get("connection_selection_required", false):
+	if network.connection_selection_required:
 		app.pending_network_connection = {
 			"start": start,
 			"finish": finish,
@@ -80,25 +80,25 @@ func _apply_network_selection(
 				+ "The %d-tile route costs $%s and remains if you cancel."
 			) % [
 				tool_name.to_lower(),
-				app.interface._format_number(int(network.get("connection_cost", 0))),
-				network.get("dry_points", []).size(),
-				app.interface._format_number(int(network.get("dry_cost", 0))),
+				app.interface._format_number(network.connection_cost),
+				network.dry_points.size(),
+				app.interface._format_number(network.dry_cost),
 			]
 		)
 		app.network_connection_dialog.show_message(message, "Keep %s" % tool_name)
 
 		return
 
-	if not network.get("ok", false):
+	if not network.ok:
 		app.effects_audio._play_tool_failure_sound(
 			group_index,
 			subtool_index,
-			str(network.get("error", "unknown error")),
+			network.error,
 			free_mode,
 		)
 		app.interface._show_error(
 			"Cannot build %s: %s"
-			% [tool_name, network.get("error", "unknown error")]
+			% [tool_name, network.error]
 		)
 
 		return
@@ -108,50 +108,50 @@ func _apply_network_selection(
 	app.static_render._refresh_after_city_edit(network)
 	app.effects_audio._play_tool_success_sound(group_index, subtool_index, free_mode)
 	app.status_label.theme_type_variation = ""
-	var dry_count := int(network.get("dry_points", []).size())
+	var dry_count := network.dry_points.size()
 
-	if int(network.get("bridge_count", 0)) > 1:
+	if network.bridge_count > 1:
 		app.status_label.text = "Built %d %s tiles and %d bridges for $%s." % [dry_count, tool_name, network.bridge_count, app.interface._format_number(int(network.cost))]
-	elif network.get("bridge_built", false):
+	elif network.bridge_built:
 		if dry_count > 0:
 			app.status_label.text = "Built %d %s tiles and a %s across %d water tiles for $%s." % [
 				dry_count,
 				tool_name,
-				network.get("bridge_name", "bridge"),
-				int(network.get("bridge_span_length", 0)),
-				app.interface._format_number(int(network.get("cost", 0))),
+				network.bridge_name,
+				network.bridge_span_length,
+				app.interface._format_number(network.cost),
 			]
 		else:
 			app.status_label.text = "Built a %s across %d water tiles for $%s." % [
-				network.get("bridge_name", "bridge"),
-				int(network.get("bridge_span_length", 0)),
-				app.interface._format_number(int(network.get("cost", 0))),
+				network.bridge_name,
+				network.bridge_span_length,
+				app.interface._format_number(network.cost),
 			]
-	elif network.get("connection_built", false):
+	elif network.connection_built:
 		app.status_label.text = "Built %d %s tiles and a neighboring-city connection for $%s." % [
 			dry_count,
 			tool_name,
-			app.interface._format_number(int(network.get("cost", 0))),
+			app.interface._format_number(network.cost),
 		]
 	else:
 		app.status_label.text = "Built %d %s tiles for $%s." % [
-			dry_count, tool_name, app.interface._format_number(int(network.get("cost", 0)))
+			dry_count, tool_name, app.interface._format_number(network.cost)
 		]
 
-		if network.get("bridge_cancelled", false):
+		if network.bridge_cancelled:
 			app.status_label.text += " Bridge selection was canceled."
-		elif network.get("connection_cancelled", false):
+		elif network.connection_cancelled:
 			app.status_label.text += " The neighbor connection was canceled."
-		elif not String(network.get("bridge_error", "")).is_empty():
+		elif not network.bridge_error.is_empty():
 			app.status_label.text += " The bridge was not built: %s." % network.bridge_error
-		elif not String(network.get("connection_error", "")).is_empty():
+		elif not network.connection_error.is_empty():
 			app.status_label.text += " The connection was not offered because funds are too low."
-		elif network.get("stopped_early", false):
+		elif network.stopped_early:
 			app.status_label.text += " The route stopped at an obstruction."
 
-	if not String(network.get("continuation_error", "")).is_empty():
+	if not network.continuation_error.is_empty():
 		app.status_label.text += " Route stopped: %s." % network.continuation_error
-	elif network.get("bridge_built", false) and network.get("stopped_early", false):
+	elif network.bridge_built and network.stopped_early:
 		app.status_label.text += " The route stopped at an obstruction."
 
 
@@ -188,7 +188,7 @@ func _open_bridge_dialog(
 	finish: Vector2i,
 	group_index: int,
 	subtool_index: int,
-	result: Dictionary,
+	result: RouteEditResult,
 	request_type := "network",
 	free_mode := false
 ) -> void:
@@ -199,16 +199,15 @@ func _open_bridge_dialog(
 		"subtool_index": subtool_index,
 		"request_type": request_type,
 		"free_mode": free_mode,
-		"choices": result.get("bridge_choices", []),
-		"dry_points": result.get(
-			"dry_points", result.get("dry_sections", [])
-		),
+		"choices": result.bridge_choices,
+		# highways report their route as 2 by 2 sections
+		"dry_points": result.sections if request_type == "highway" else result.dry_points,
 	}
 	var choices: Array = app.pending_bridge_request.choices
 	app.bridge_dialog.preview_palette = app.palette
 	app.bridge_dialog.preview_sprites = app.large_sprites
 	app.bridge_dialog.show_choices(
-		int(result.get("bridge_span_length", 0)),
+		result.bridge_span_length,
 		request_type,
 		choices,
 		free_mode,

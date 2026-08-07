@@ -77,7 +77,7 @@ func _cancel_tool_choice() -> void:
 	app.current_tool._update_edit_state()
 
 
-func _open_stadium_dialog(command: Dictionary) -> void:
+func _open_stadium_dialog(command: BuildingEditResult) -> void:
 	var choices := BuildingFacilities.stadium_team_choices(app.city)
 
 	if choices.is_empty():
@@ -85,7 +85,7 @@ func _open_stadium_dialog(command: Dictionary) -> void:
 
 		return
 
-	app.pending_stadium_command = command.duplicate(true)
+	app.pending_stadium_command = command.copy() as BuildingEditResult
 	var teams: Array[Dictionary] = []
 
 	for team_index in choices:
@@ -98,7 +98,7 @@ func _open_stadium_dialog(command: Dictionary) -> void:
 
 
 func _confirm_stadium_team() -> void:
-	if app.pending_stadium_command.is_empty():
+	if app.pending_stadium_command == null:
 		return
 
 	var team_index := app.stadium_dialog.selected_team_id()
@@ -122,8 +122,8 @@ func _confirm_stadium_team() -> void:
 
 		return
 
-	app.last_edit_command = result.command
-	app.pending_stadium_command.clear()
+	app.last_edit_command = result
+	app.pending_stadium_command = null
 	app.interface._refresh_details()
 	app.effects_audio._play_tool_success_sound(14, 3)
 
@@ -131,11 +131,11 @@ func _confirm_stadium_team() -> void:
 		app.effects_audio._play_music_track(Music.RECREATION_TRACK)
 
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "Assigned %s to the new stadium." % result.team_name
+	app.status_label.text = "Assigned %s to the new stadium." % result.stadium_team_name
 
 
 func _cancel_stadium_team() -> void:
-	app.pending_stadium_command.clear()
+	app.pending_stadium_command = null
 	app.effects_audio._play_tool_success_sound(14, 3)
 
 	if app.city != null and app.city.music_enabled():
@@ -146,7 +146,7 @@ func _cancel_stadium_team() -> void:
 
 
 func _restore_stadium_dialog() -> void:
-	if not app.pending_stadium_command.is_empty():
+	if app.pending_stadium_command != null:
 		app.stadium_dialog.popup_centered()
 
 
@@ -174,8 +174,8 @@ func _commit_sign() -> void:
 
 		return
 
-	app.last_edit_command = result
-	app.static_render._refresh_after_city_edit(result)
+	app.last_edit_command = EditCommandResult.of(result)
+	app.static_render._refresh_after_city_edit(app.last_edit_command)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
 

@@ -26,17 +26,17 @@ func _init(application: CityApplication) -> void:
 	palette_clock = application.palette_clock
 
 
-func _refresh_after_city_edit(command: Dictionary) -> void:
+func _refresh_after_city_edit(command: EditCommandResult) -> void:
 	app.assets._refresh_scurk_artwork()
 
-	if command.get("command_type", "") == "scurk_artwork":
+	if command.command_type == "scurk_artwork":
 		return
 
 	if not _apply_static_edit_patch(command):
 		app.map_render._refresh_map(false)
 
 
-func _apply_static_edit_patch(command: Dictionary) -> bool:
+func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	if caches.region_cache != null:
 		var region_start := Time.get_ticks_usec()
 		var indices := _edit_dirty_indices(command, app.city.map_size)
@@ -202,15 +202,15 @@ static func _mark_dirty_tile(index: int, dirty: PackedByteArray, indices: Packed
 	indices.append(index)
 
 
-static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> PackedInt32Array:
+static func _edit_dirty_indices(command: EditCommandResult, map_edge: int = 128) -> PackedInt32Array:
 	# a flag byte per tile deduplicates without a dictionary, and the collected
 	# indices sort natively instead of as variants
 	var cells := map_edge * map_edge
 	var dirty := PackedByteArray()
 	dirty.resize(cells)
 	var indices := PackedInt32Array()
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT"]:
 		if not old_payloads.has(chunk_id) or not new_payloads.has(chunk_id):
@@ -226,38 +226,35 @@ static func _edit_dirty_indices(command: Dictionary, map_edge: int = 128) -> Pac
 		_collect_changed_tiles(old_bytes, new_bytes, 1 if chunk_id == "XTXT" else stride,
 			dirty, indices, cells if chunk_id == "XTXT" else 0)
 
-	if command.has("old_text") and command.has("new_text"):
-		var old_text: PackedByteArray = command.old_text
-		var new_text: PackedByteArray = command.new_text
+	# dispatch and sign edits still return dictionaries with their own keys
+	var extra := command.extra
+
+	if extra.has("old_text") and extra.has("new_text"):
+		var old_text: PackedByteArray = extra.old_text
+		var new_text: PackedByteArray = extra.new_text
 
 		if OverlayData.count(old_text) == cells and OverlayData.count(new_text) == cells:
 			_collect_changed_tiles(old_text, new_text, 1, dirty, indices, cells)
 
-	var tile_indices: PackedInt32Array = command.get(
-		"tile_indices", PackedInt32Array()
-	)
-
-	for index in tile_indices:
+	for index in command.tile_indices:
 		_mark_dirty_tile(index, dirty, indices)
 
-	for point_value in command.get("points", []):
-		var point: Vector2i = point_value
-
+	for point in command.points:
 		if point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge:
 			_mark_dirty_tile(point.x * map_edge + point.y, dirty, indices)
 
 	for point_key in ["point", "target"]:
-		if command.has(point_key):
-			var point: Vector2i = command[point_key]
+		if extra.has(point_key):
+			var point: Vector2i = extra[point_key]
 
 			if point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge:
 				_mark_dirty_tile(point.x * map_edge + point.y, dirty, indices)
 
-	if command.has("tile_index"):
-		_mark_dirty_tile(int(command.tile_index), dirty, indices)
+	if extra.has("tile_index"):
+		_mark_dirty_tile(int(extra.tile_index), dirty, indices)
 
-	if command.has("site"):
-		var site: Rect2i = command.site
+	if command.site.has_area():
+		var site := command.site
 
 		for x in range(site.position.x, site.end.x):
 			for y in range(site.position.y, site.end.y):

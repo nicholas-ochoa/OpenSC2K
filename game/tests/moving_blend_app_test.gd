@@ -20,7 +20,7 @@ func _run() -> void:
 	main.map_view.zoom_factor = 1.0
 	var airplane := _first_record(main.city, [1])
 	assert(airplane >= 0, "The test city needs an airplane")
-	var thing: Dictionary = main.city.thing(airplane)
+	var thing: ThingRecord = main.city.thing(airplane)
 	main.map_view.center_on_tile(Vector2i(int(thing.x), int(thing.y)))
 	await _wait_for_regions(main)
 	main.moving_sprites._refresh_moving_things()

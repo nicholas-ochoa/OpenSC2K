@@ -75,7 +75,7 @@ func _activate_document(
 	if app.tool_choice_dialog.visible:
 		app.tool_choice_dialog.hide()
 
-	app.pending_stadium_command.clear()
+	app.pending_stadium_command = null
 
 	if app.stadium_dialog.visible:
 		app.stadium_dialog.hide()
@@ -181,7 +181,7 @@ func _activate_document(
 	app.nuisance_random = app.simulation_engine.game_random
 	app.simulation_map_dirty = false
 	app.reports._refresh_saved_news_summary()
-	app.last_edit_command = {}
+	app.last_edit_command = null
 	app.dispatch_cycles = PackedInt32Array([0, 0, 0])
 	app.dispatch_initialized = false
 	app.camera_input._update_zoom_controls(app.map_view.zoom_percent())

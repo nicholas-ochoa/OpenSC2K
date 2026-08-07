@@ -213,10 +213,10 @@ func _run() -> void:
 				patch_path,
 				false
 			)
-			var landscape_command: Dictionary = main.get("last_edit_command")
+			var landscape_command: EditCommandResult = main.get("last_edit_command")
 
 			if (
-				landscape_command.get("command_type", "") != "landscape"
+				landscape_command.command_type != "landscape"
 				or loaded_city.building_id(patch_point.x, patch_point.y) < 0x06
 			):
 				push_error("The simple edit flow did not apply the landscape command")
@@ -246,14 +246,14 @@ func _run() -> void:
 				patch_path,
 				false
 			)
-			var patch_command: Dictionary = main.get("last_edit_command")
+			var patch_command: EditCommandResult = main.get("last_edit_command")
 			var view_size := int(main.static_render.call("_city_view_size"))
 			var expected_signature: Array = main.static_render.call(
 				"_static_signature_for_mode", CityViewMode.Mode.CITY, view_size
 			)
 
 			if (
-				patch_command.get("command_type", "") != "zone"
+				patch_command.command_type != "zone"
 				or main.static_render_state.thread != null
 				or main.render_caches.static_visual_signature != expected_signature
 			):
@@ -356,11 +356,11 @@ func _run() -> void:
 				patch_path,
 				false
 			)
-			var scurk_command: Dictionary = main.get("last_edit_command")
+			var scurk_command: EditCommandResult = main.get("last_edit_command")
 
 			if (
 				place_preview != [patch_point]
-				or scurk_command.get("command_type", "") != "scurk_place_object"
+				or scurk_command.command_type != "scurk_place_object"
 				or loaded_city.building_id(patch_point.x, patch_point.y) != 0x0d
 				or loaded_city.funds() != funds_before_scurk
 			):
@@ -412,12 +412,12 @@ func _run() -> void:
 				patch_path,
 				false
 			)
-			var scurk_road: Dictionary = main.get("last_edit_command")
+			var scurk_road: EditCommandResult = main.get("last_edit_command")
 
 			if (
-				scurk_road.get("command_type", "") != "network"
-				or not scurk_road.get("scurk_place_history", false)
-				or scurk_road.get("cost", -1) != 0
+				scurk_road.command_type != "network"
+				or not scurk_road.scurk_place_history
+				or scurk_road.cost != 0
 				or loaded_city.funds() != funds_before_scurk
 				or loaded_city.building_id(patch_point.x, patch_point.y) < 0x1d
 			):
@@ -461,10 +461,10 @@ func _run() -> void:
 				patch_path,
 				true
 			)
-			var scurk_military_zone: Dictionary = main.get("last_edit_command")
+			var scurk_military_zone: EditCommandResult = main.get("last_edit_command")
 
 			if (
-				scurk_military_zone.get("command_type", "") != "zone"
+				scurk_military_zone.command_type != "zone"
 				or loaded_city.zone_id(patch_point.x, patch_point.y) != 7
 				or loaded_city.funds() != funds_before_scurk
 			):
@@ -922,7 +922,7 @@ func _run_quick(reference_root: String) -> void:
 	main.current_tool._select_subtool(0)
 	var path: Array[Vector2i] = [point]
 	main.city_edits._apply_map_selection(point, point, path, false)
-	assert(main.last_edit_command.get("command_type") == "landscape")
+	assert(main.last_edit_command.command_type == "landscape")
 	assert(city.document.serialize().data != before)
 	main.city_edits._undo_last_edit()
 	assert(city.document.serialize().data == before, "Undo restores all saved bytes")

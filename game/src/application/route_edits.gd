@@ -67,8 +67,9 @@ func _apply_tunnel_selection(
 
 		return
 
+	var edit := EditCommandResult.of(tunnel)
 	app.scurk_workspace._record_edit_command(
-		tunnel,
+		edit,
 		free_mode,
 		String(
 			app.scurk_place_print.selected_edit_tool().get("name", "Tunnel")
@@ -77,7 +78,7 @@ func _apply_tunnel_selection(
 		)
 	)
 	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(tunnel)
+	app.static_render._refresh_after_city_edit(edit)
 	app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Built a %d-tile tunnel for $%s." % [
@@ -123,7 +124,7 @@ func _apply_highway_selection(
 		free_mode
 	)
 
-	if highway.get("bridge_selection_required", false):
+	if highway.bridge_selection_required:
 		app.network_edits._open_bridge_dialog(
 			start,
 			finish,
@@ -136,7 +137,7 @@ func _apply_highway_selection(
 
 		return
 
-	if highway.get("cancelled", false):
+	if highway.cancelled:
 		app.effects_audio._play_tool_failure_sound(
 			app.selected_group, app.selected_subtool, "cancelled", free_mode
 		)
@@ -145,7 +146,7 @@ func _apply_highway_selection(
 
 		return
 
-	if highway.get("connection_selection_required", false):
+	if highway.connection_selection_required:
 		app.pending_highway_connection = {
 			"start": start,
 			"finish": finish,
@@ -164,23 +165,23 @@ func _apply_highway_selection(
 				"Build a highway connection to a neighboring city for $%s?\n"
 				+ "The %d-section highway costs $%s and remains if you cancel."
 			) % [
-				app.interface._format_number(int(highway.get("connection_cost", 0))),
-				highway.get("sections", []).size(),
-				app.interface._format_number(int(highway.get("route_cost", 0))),
+				app.interface._format_number(highway.connection_cost),
+				highway.sections.size(),
+				app.interface._format_number(highway.route_cost),
 			]
 		)
 		app.highway_connection_dialog.show_message(message)
 
 		return
 
-	if not highway.get("ok", false):
+	if not highway.ok:
 		app.effects_audio._play_tool_failure_sound(
 			app.selected_group,
 			app.selected_subtool,
-			str(highway.get("error", "unknown error")),
+			highway.error,
 			free_mode,
 		)
-		app.interface._show_error("Cannot build highway: %s" % highway.get("error", "unknown error"))
+		app.interface._show_error("Cannot build highway: %s" % highway.error)
 
 		return
 
@@ -190,45 +191,45 @@ func _apply_highway_selection(
 	app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
 	app.status_label.theme_type_variation = ""
 
-	if int(highway.get("bridge_count", 0)) > 1:
-		app.status_label.text = "Built %d highway sections and %d bridges for $%s." % [highway.sections.size(), highway.bridge_count, app.interface._format_number(int(highway.cost))]
-	elif highway.get("bridge_built", false):
+	if highway.bridge_count > 1:
+		app.status_label.text = "Built %d highway sections and %d bridges for $%s." % [highway.sections.size(), highway.bridge_count, app.interface._format_number(highway.cost)]
+	elif highway.bridge_built:
 		if highway.sections.is_empty():
 			app.status_label.text = "Built a %s across %d water sections for $%s." % [
-				highway.get("bridge_name", "highway bridge"),
-				int(highway.get("bridge_span_length", 0)),
-				app.interface._format_number(int(highway.cost)),
+				highway.bridge_name,
+				highway.bridge_span_length,
+				app.interface._format_number(highway.cost),
 			]
 		else:
 			app.status_label.text = "Built %d highway sections and a %s across %d water sections for $%s." % [
 				highway.sections.size(),
-				highway.get("bridge_name", "highway bridge"),
-				int(highway.get("bridge_span_length", 0)),
-				app.interface._format_number(int(highway.cost)),
+				highway.bridge_name,
+				highway.bridge_span_length,
+				app.interface._format_number(highway.cost),
 			]
-	elif highway.get("connection_built", false):
+	elif highway.connection_built:
 		app.status_label.text = "Built %d highway sections and a neighboring-city connection for $%s." % [
-			highway.sections.size(), app.interface._format_number(int(highway.cost))
+			highway.sections.size(), app.interface._format_number(highway.cost)
 		]
 	else:
 		app.status_label.text = "Built %d highway sections for $%s." % [
-			highway.sections.size(), app.interface._format_number(int(highway.cost))
+			highway.sections.size(), app.interface._format_number(highway.cost)
 		]
 
-		if highway.get("connection_cancelled", false):
+		if highway.connection_cancelled:
 			app.status_label.text += " The neighbor connection was canceled."
-		elif highway.get("bridge_cancelled", false):
+		elif highway.bridge_cancelled:
 			app.status_label.text += " The bridge selection was canceled."
-		elif not String(highway.get("bridge_error", "")).is_empty():
+		elif not highway.bridge_error.is_empty():
 			app.status_label.text += " The bridge was not built: %s." % highway.bridge_error
-		elif not String(highway.get("connection_error", "")).is_empty():
+		elif not highway.connection_error.is_empty():
 			app.status_label.text += " The connection was not offered because funds are too low."
-		elif highway.get("stopped_early", false):
+		elif highway.stopped_early:
 			app.status_label.text += " The route stopped at an obstruction."
 
-	if not String(highway.get("continuation_error", "")).is_empty():
+	if not highway.continuation_error.is_empty():
 		app.status_label.text += " Route stopped: %s." % highway.continuation_error
-	elif highway.get("bridge_built", false) and highway.get("stopped_early", false):
+	elif highway.bridge_built and highway.stopped_early:
 		app.status_label.text += " The route stopped at an obstruction."
 
 

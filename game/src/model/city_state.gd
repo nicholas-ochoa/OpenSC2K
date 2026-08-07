@@ -334,7 +334,7 @@ func microsim(microsim_id: int) -> Dictionary:
 	return CityRecords.microsim(self, microsim_id)
 
 
-func thing(thing_id: int) -> Dictionary:
+func thing(thing_id: int) -> ThingRecord:
 	return CityRecords.thing(self, thing_id)
 
 

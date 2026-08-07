@@ -307,7 +307,9 @@ func _refresh_moving_things(view_size := -1) -> void:
 
 
 func _is_vehicle(record: int) -> bool:
-	return int(app.city.thing(record).get("type", 0)) in CityViewFilter.VEHICLE_THING_TYPES
+	var thing := app.city.thing(record)
+
+	return thing != null and thing.type in CityViewFilter.VEHICLE_THING_TYPES
 
 
 # drop vehicle sounds while the vehicles layer is hidden
@@ -517,7 +519,7 @@ func _demolish_brush_visual(tile: Vector2i, direction: int) -> Dictionary:
 	if app.city == null or archive == null or app.palette == null:
 		return {}
 
-	var sprite := IsometricRenderer.moving_thing_sprite({"type": 4, "direction": direction}, view_size)
+	var sprite := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({"type": 4, "direction": direction}), view_size)
 	var entry := archive.find_sprite(int(sprite.sprite_id))
 	if entry == null:
 		return {}

@@ -9,11 +9,11 @@ static func supports_tool(group: int, subtool: int) -> bool:
 	return (group == 0 and subtool in [5, 6, 7]) or (group == 1 and subtool in [2, 3])
 
 
-static func apply(city: CityState, group: int, subtool: int, point: Vector2i, random: SimRandom, stretch_levels := 1) -> Dictionary:
+static func apply(city: CityState, group: int, subtool: int, point: Vector2i, random: SimRandom, stretch_levels := 1) -> TerrainEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not supports_tool(group, subtool) or city.index_of(point.x, point.y) < 0:
-		return {"ok": false, "error": "invalid landscape edit"}
+		return TerrainEditResult.rejected("invalid landscape edit")
 
 	var staged := CityState.from_document(city.document.duplicate_document())
 	var staged_random := SimRandom.new(random.state)
@@ -72,10 +72,10 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 			new_payloads[chunk.chunk_id] = next.decoded_payload.duplicate()
 
 	if changed.is_empty():
-		return {"ok": false, "error": "no eligible terrain changed"}
+		return TerrainEditResult.rejected("no eligible terrain changed")
 
 	if not NetworkState._apply_payloads(city, changed, new_payloads, old_payloads):
-		return {"ok": false, "error": "cannot store landscape edit"}
+		return TerrainEditResult.rejected("cannot store landscape edit")
 
 	random.state = staged_random.state
 	var indices := PackedInt32Array()
@@ -83,7 +83,23 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 	for index in (map_edge * map_edge):
 		indices.append(index)
 
-	return {"ok": true, "command_type": "terrain", "group_index": group, "subtool_index": subtool, "tile_indices": indices, "action_count": 1, "cost": 0, "listed_cost": 0, "skipped_conflicts": 0, "skipped_insufficient": 0, "free_mode": true, "changed_ids": changed, "old_payloads": old_payloads, "new_payloads": new_payloads, "random_used": before != random.state, "random_state_before": before, "random_state_after": random.state, "error": ""}
+	var command := TerrainEditResult.new()
+	command.ok = true
+	command.command_type = "terrain"
+	command.group_index = group
+	command.subtool_index = subtool
+	command.tile_indices = indices
+	command.action_count = 1
+	command.free_mode = true
+	command.changed_ids = changed
+	command.old_payloads = old_payloads
+	command.new_payloads = new_payloads
+	command.random_used = before != random.state
+	command.tracks_random = true
+	command.random_state_before = before
+	command.random_state_after = random.state
+
+	return command
 
 
 static func _finish_stream_slopes(payloads: Dictionary, previous_terrain: PackedByteArray, previous_flags: PackedByteArray, map_edge: int = 128) -> void:

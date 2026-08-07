@@ -316,7 +316,7 @@ static func general_name_resource_id(
 			if OverlayData.is_thing(overlay):
 				var thing := city.thing(OverlayData.thing_record(overlay))
 
-				if int(thing.get("type", 0)) == 9:
+				if thing != null and thing.type == 9:
 					name_index = GENERAL_SAILBOAT_NAME_INDEX
 
 	return GENERAL_NAME_RESOURCE_BASE + name_index

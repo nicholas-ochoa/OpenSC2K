@@ -75,12 +75,11 @@ static func dynamic_draw_commands(
 		if things == null or offset >= things.decoded_payload.size() or things.decoded_payload[offset] == 0:
 			continue
 
-		var thing := city.thing(record)
-		var point := Vector2i(int(thing.get("x", -1)), int(thing.get("y", -1)))
+		# only the position is needed. the type byte is nonzero here
+		var point := Vector2i(ThingData.read(things.decoded_payload, offset + 3), ThingData.read(things.decoded_payload, offset + 4))
 
 		if (
-			int(thing.get("type", 0)) == 0
-			or city.index_of(point.x, point.y) < 0
+			city.index_of(point.x, point.y) < 0
 			or city.text_overlay_id(point.x, point.y) != OverlayData.thing_id(record)
 		):
 			continue

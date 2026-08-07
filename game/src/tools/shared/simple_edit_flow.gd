@@ -23,7 +23,7 @@ static func apply_supported(
 	underground: bool,
 	free_mode: bool
 ) -> Dictionary:
-	var command: Dictionary
+	var command: Variant
 
 	if Landscapes.supports_tool(group_index, subtool_index):
 		command = Landscapes.apply_path(
@@ -98,22 +98,24 @@ static func apply_zone(
 	return _result("zone", command, group_index, subtool_index, free_mode)
 
 
+# `command` is an editcommandresult, or the dictionary of a family not yet converted
 static func _result(
 	kind: String,
-	command: Dictionary,
+	command: Variant,
 	group_index: int,
 	subtool_index: int,
 	free_mode: bool
 ) -> Dictionary:
 	var tool_name := String(Tools.tool(group_index, subtool_index).get("name", "Tool"))
+	var edit := EditCommandResult.of(command)
 	var result := {
 		"handled": true,
-		"command": command,
+		"command": edit,
 		"record_command": kind != "hydro",
 		"refresh_details": kind != "subway_to_rail",
 		"show_effects": kind == "terrain" or (kind == "demolish" and not free_mode),
 		"refresh_news_summary": (
-			kind == "demolish" and int(command.get("easter_events", 0)) > 0
+			kind == "demolish" and edit.ok and int(command.easter_events) > 0
 		),
 		"play_success_sound": kind in [
 			"landscape", "hydro", "subway_to_rail", "onramp", "zone"
@@ -123,9 +125,9 @@ static func _result(
 		],
 	}
 
-	if not bool(command.get("ok", false)):
+	if not edit.ok:
 		result["message"] = _failure_message(
-			kind, tool_name, str(command.get("error", "unknown error"))
+			kind, tool_name, edit.error if not edit.error.is_empty() else "unknown error"
 		)
 
 		return result
@@ -152,7 +154,7 @@ static func _failure_message(kind: String, tool_name: String, error: String) -> 
 
 
 static func _success_message(
-	kind: String, tool_name: String, command: Dictionary
+	kind: String, tool_name: String, command: Variant
 ) -> String:
 	match kind:
 		"landscape":

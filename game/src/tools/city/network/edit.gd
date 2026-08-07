@@ -12,22 +12,22 @@ static func apply_segment(
 	bridge_type := BRIDGE_UNSELECTED,
 	connection_choice := CONNECTION_UNSELECTED,
 	free_mode := false
-) -> Dictionary:
+) -> RouteEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return RouteEditResult.rejected("city is invalid")
 
 	if not NetworkRules.supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool is not a linear network tool"}
+		return RouteEditResult.rejected("tool is not a linear network tool")
 
 	if city.index_of(start.x, start.y) < 0 or city.index_of(finish.x, finish.y) < 0:
-		return {"ok": false, "error": "network path is outside the city"}
+		return RouteEditResult.rejected("network path is outside the city")
 
 	var old_payloads := NetworkState.city_payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return RouteEditResult.rejected("required city data is missing or invalid")
 
 	var changed_payloads := NetworkState._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
@@ -63,10 +63,7 @@ static func apply_segment(
 				)
 
 	if planned.is_empty() and not bridge_plan.get("ok", false):
-		return {
-			"ok": false,
-			"error": bridge_plan.get("error", "network cannot start on this tile"),
-		}
+		return RouteEditResult.rejected(bridge_plan.get("error", "network cannot start on this tile"))
 
 	var tool := ToolCatalog.tool(group_index, subtool_index)
 	var graded_tiles := 0
@@ -89,7 +86,7 @@ static func apply_segment(
 	var dry_cost := 0 if free_mode else listed_dry_cost
 
 	if city.funds() < dry_cost:
-		return {"ok": false, "error": "insufficient funds", "cost": dry_cost}
+		return RouteEditResult.rejected("insufficient funds", dry_cost)
 
 	var selected_bridge := bridge_type
 	var bridge_choices: Array[Dictionary] = []
@@ -98,17 +95,16 @@ static func apply_segment(
 		bridge_choices = NetworkBridges.bridge_choices(int(bridge_plan.span_length), mode)
 
 		if mode == MODE_ROAD and selected_bridge == BRIDGE_UNSELECTED:
-			return {
-				"ok": false,
-				"bridge_selection_required": true,
-				"bridge_choices": bridge_choices,
-				"bridge_span_length": bridge_plan.span_length,
-				"dry_cost": dry_cost,
-				"listed_dry_cost": listed_dry_cost,
-				"free_mode": free_mode,
-				"dry_points": planned,
-				"error": "bridge type selection is required",
-			}
+			var choice := RouteEditResult.rejected("bridge type selection is required")
+			choice.bridge_selection_required = true
+			choice.bridge_choices = bridge_choices
+			choice.bridge_span_length = bridge_plan.span_length
+			choice.dry_cost = dry_cost
+			choice.listed_dry_cost = listed_dry_cost
+			choice.free_mode = free_mode
+			choice.dry_points = planned
+
+			return choice
 
 		if mode == MODE_RAIL:
 			selected_bridge = BRIDGE_RAIL
@@ -118,14 +114,17 @@ static func apply_segment(
 		if selected_bridge >= 0 and not NetworkBridges._bridge_choice_exists(
 			bridge_choices, selected_bridge
 		):
-			return {"ok": false, "error": "selected bridge type is not available"}
+			return RouteEditResult.rejected("selected bridge type is not available")
 
 	if (
 		bridge_plan.get("ok", false)
 		and selected_bridge == BRIDGE_CANCELLED
 		and planned.is_empty()
 	):
-		return {"ok": false, "cancelled": true, "error": "bridge selection canceled"}
+		var cancelled := RouteEditResult.rejected("bridge selection canceled")
+		cancelled.cancelled = true
+
+		return cancelled
 
 	var listed_bridge_cost := 0
 	var bridge_cost := 0
@@ -142,11 +141,7 @@ static func apply_segment(
 			bridge_error = "insufficient funds for the bridge"
 
 			if planned.is_empty():
-				return {
-					"ok": false,
-					"error": "insufficient funds",
-					"cost": bridge_cost,
-				}
+				return RouteEditResult.rejected("insufficient funds", bridge_cost)
 		else:
 			bridge_built = true
 
@@ -172,29 +167,24 @@ static func apply_segment(
 		and connection_affordable
 		and connection_choice == CONNECTION_UNSELECTED
 	):
-		return {
-			"ok": false,
-			"connection_selection_required": true,
-			"connection_anchor": connection_anchor,
-			"connection_cost": connection_cost,
-			"listed_connection_cost": listed_connection_cost,
-			"dry_cost": dry_cost,
-			"listed_dry_cost": listed_dry_cost,
-			"free_mode": free_mode,
-			"dry_points": planned,
-			"error": "neighbor connection confirmation is required",
-		}
+		var confirmation := RouteEditResult.rejected("neighbor connection confirmation is required")
+		confirmation.connection_selection_required = true
+		confirmation.connection_anchor = connection_anchor
+		confirmation.connection_cost = connection_cost
+		confirmation.listed_connection_cost = listed_connection_cost
+		confirmation.dry_cost = dry_cost
+		confirmation.listed_dry_cost = listed_dry_cost
+		confirmation.free_mode = free_mode
+		confirmation.dry_points = planned
+
+		return confirmation
 
 	if connection_choice == CONNECTION_CONFIRMED:
 		if not connection_available:
-			return {"ok": false, "error": "neighbor connection is not available"}
+			return RouteEditResult.rejected("neighbor connection is not available")
 
 		if not connection_affordable:
-			return {
-				"ok": false,
-				"error": "insufficient funds",
-				"cost": dry_cost + connection_cost,
-			}
+			return RouteEditResult.rejected("insufficient funds", dry_cost + connection_cost)
 
 	var connection_built := connection_choice == CONNECTION_CONFIRMED
 	var connection_error := ""
@@ -271,79 +261,77 @@ static func apply_segment(
 			changed_ids.append(chunk_id)
 
 	if not NetworkState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
-		return {"ok": false, "error": "cannot store network changes"}
+		return RouteEditResult.rejected("cannot store network changes")
 
 	var all_points: Array[Vector2i] = planned.duplicate()
 	all_points.append_array(bridge_points)
 
-	return {
-		"ok": true,
-		"command_type": "network",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"mode": mode,
-		"points": all_points,
-		"dry_points": planned,
-		"bridge_points": bridge_points,
-		"bridge_built": bridge_built,
-		"bridge_exit": bridge_plan.start + DIRECTIONS[int(bridge_plan.direction)] * int(bridge_plan.span_length) if bridge_built else Vector2i(-1, -1),
-		"bridge_type": selected_bridge if bridge_built else BRIDGE_UNSELECTED,
-		"bridge_name": NetworkBridges.bridge_type_name(selected_bridge) if bridge_built else "",
-		"bridge_cancelled": (
-			bridge_plan.get("ok", false) and selected_bridge == BRIDGE_CANCELLED
-		),
-		"bridge_span_length": bridge_plan.get("span_length", 0),
-		"bridge_cost": bridge_cost if bridge_built else 0,
-		"listed_bridge_cost": listed_bridge_cost if bridge_built else 0,
-		"bridge_error": bridge_error,
-		"connection_anchor": connection_anchor,
-		"connection_built": connection_built,
-		"connection_cancelled": (
-			connection_available and connection_choice == CONNECTION_CANCELLED
-		),
-		"connection_cost": connection_cost if connection_built else 0,
-		"listed_connection_cost": (
-			listed_connection_cost if connection_built else 0
-		),
-		"connection_error": connection_error,
-		"cost": cost,
-		"dry_cost": dry_cost,
-		"listed_cost": (
-			listed_dry_cost
-			+ (listed_bridge_cost if bridge_built else 0)
-			+ (listed_connection_cost if connection_built else 0)
-		),
-		"listed_dry_cost": listed_dry_cost,
-		"free_mode": free_mode,
-		"graded_tiles": graded_tiles,
-		"stopped_early": not bridge_built and planned[-1] != finish,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"error": "",
-	}
+	var result := RouteEditResult.new()
+	result.ok = true
+	result.command_type = "network"
+	result.group_index = group_index
+	result.subtool_index = subtool_index
+	result.mode = mode
+	result.points = all_points
+	result.dry_points = planned
+	result.bridge_points = bridge_points
+	result.bridge_built = bridge_built
+
+	if bridge_built:
+		result.bridge_exit = bridge_plan.start + DIRECTIONS[int(bridge_plan.direction)] * int(bridge_plan.span_length)
+		result.bridge_type = selected_bridge
+		result.bridge_name = NetworkBridges.bridge_type_name(selected_bridge)
+		result.bridge_cost = bridge_cost
+		result.listed_bridge_cost = listed_bridge_cost
+
+	result.bridge_cancelled = bridge_plan.get("ok", false) and selected_bridge == BRIDGE_CANCELLED
+	result.bridge_span_length = bridge_plan.get("span_length", 0)
+	result.bridge_error = bridge_error
+	result.connection_anchor = connection_anchor
+	result.connection_built = connection_built
+	result.connection_cancelled = connection_available and connection_choice == CONNECTION_CANCELLED
+
+	if connection_built:
+		result.connection_cost = connection_cost
+		result.listed_connection_cost = listed_connection_cost
+
+	result.connection_error = connection_error
+	result.cost = cost
+	result.dry_cost = dry_cost
+	result.listed_cost = (
+		listed_dry_cost
+		+ (listed_bridge_cost if bridge_built else 0)
+		+ (listed_connection_cost if connection_built else 0)
+	)
+	result.listed_dry_cost = listed_dry_cost
+	result.free_mode = free_mode
+	result.graded_tiles = graded_tiles
+	result.stopped_early = not bridge_built and planned[-1] != finish
+	result.changed_ids = changed_ids
+	result.old_payloads = old_payloads
+	result.new_payloads = changed_payloads
+
+	return result
 
 
-static func undo(city: CityState, command: Dictionary) -> Dictionary:
+static func undo(city: CityState, command: RouteEditResult) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "network":
-		return {"ok": false, "error": "network command is invalid"}
+	if command == null or not command.ok or command.command_type != "network":
+		return EditCommandResult.failure("network command is invalid")
 
-	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var changed_ids := command.changed_ids
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
-			return {"ok": false, "error": "city changed after this network command"}
+			return EditCommandResult.failure("city changed after this network command")
 
 	if not NetworkState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
-		return {"ok": false, "error": "cannot restore network changes"}
+		return EditCommandResult.failure("cannot restore network changes")
 
-	var points: Array = command.get("points", [])
-
-	return {"ok": true, "restored_tiles": points.size(), "error": ""}
+	return EditCommandResult.undone(command.points.size())

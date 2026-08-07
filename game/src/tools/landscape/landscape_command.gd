@@ -36,25 +36,25 @@ static func apply_path(
 	random: SimRandom,
 	free_mode := false,
 	use_brush_points := false
-) -> Dictionary:
+) -> LandscapeEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return LandscapeEditResult.rejected("city is invalid")
 
 	if not supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool is not a landscape tool"}
+		return LandscapeEditResult.rejected("tool is not a landscape tool")
 
 	if random == null:
-		return {"ok": false, "error": "random state is required"}
+		return LandscapeEditResult.rejected("random state is required")
 
 	if points.is_empty():
-		return {"ok": false, "error": "landscape path is empty"}
+		return LandscapeEditResult.rejected("landscape path is empty")
 
 	var old_payloads := _city_payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return LandscapeEditResult.rejected("required city data is missing or invalid")
 
 	var changed_payloads := _duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
@@ -122,11 +122,10 @@ static func apply_path(
 	if applied_indices.is_empty():
 		random.state = random_state_before
 
-		return {
-			"ok": false,
-			"error": "insufficient funds" if skipped_insufficient > 0 else "no eligible tiles changed",
-			"cost": cost_per_tile if skipped_insufficient > 0 else 0,
-		}
+		if skipped_insufficient > 0:
+			return LandscapeEditResult.rejected("insufficient funds", cost_per_tile)
+
+		return LandscapeEditResult.rejected("no eligible tiles changed")
 
 	_write_u32_be(misc, MISC_FUNDS, old_funds - total_cost)
 
@@ -139,57 +138,57 @@ static func apply_path(
 	if not _apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		random.state = random_state_before
 
-		return {"ok": false, "error": "cannot store landscape changes"}
+		return LandscapeEditResult.rejected("cannot store landscape changes")
 
-	return {
-		"ok": true,
-		"command_type": "landscape",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"tile_indices": applied_indices,
-		"cost": total_cost,
-		"listed_cost": applied_indices.size() * listed_cost_per_tile,
-		"free_mode": free_mode,
-		"skipped_insufficient": skipped_insufficient,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"random_state_before": random_state_before,
-		"random_state_after": random.state,
-		"error": "",
-	}
+	var command := LandscapeEditResult.new()
+	command.ok = true
+	command.command_type = "landscape"
+	command.group_index = group_index
+	command.subtool_index = subtool_index
+	command.tile_indices = applied_indices
+	command.cost = total_cost
+	command.listed_cost = applied_indices.size() * listed_cost_per_tile
+	command.free_mode = free_mode
+	command.skipped_insufficient = skipped_insufficient
+	command.changed_ids = changed_ids
+	command.old_payloads = old_payloads
+	command.new_payloads = changed_payloads
+	command.tracks_random = true
+	command.random_state_before = random_state_before
+	command.random_state_after = random.state
+
+	return command
 
 
-static func undo(city: CityState, command: Dictionary, random: SimRandom) -> Dictionary:
+static func undo(city: CityState, command: LandscapeEditResult, random: SimRandom) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "landscape":
-		return {"ok": false, "error": "landscape command is invalid"}
+	if command == null or not command.ok or command.command_type != "landscape":
+		return EditCommandResult.failure("landscape command is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "random state is required"}
+		return EditCommandResult.failure("random state is required")
 
-	if random.state != int(command.get("random_state_after", -1)):
-		return {"ok": false, "error": "random state changed after this landscape command"}
+	if random.state != command.random_state_after:
+		return EditCommandResult.failure("random state changed after this landscape command")
 
-	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var changed_ids := command.changed_ids
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
-			return {"ok": false, "error": "city changed after this landscape command"}
+			return EditCommandResult.failure("city changed after this landscape command")
 
 	if not _apply_payloads(city, changed_ids, old_payloads, new_payloads):
-		return {"ok": false, "error": "cannot restore landscape changes"}
+		return EditCommandResult.failure("cannot restore landscape changes")
 
-	random.state = int(command.random_state_before)
-	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
+	random.state = command.random_state_before
 
-	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
+	return EditCommandResult.undone(command.tile_indices.size())
 
 
 static func _place_tree(

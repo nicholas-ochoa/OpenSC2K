@@ -72,7 +72,7 @@ static func collect(kind: String, city: CityState, engine: SimulationEngine = nu
 					"empty": tile == 0, "fields": fields})
 		"Objects":
 			for id in city.thing_count():
-				var record := city.thing(id)
+				var record := city.thing(id).to_dictionary()
 
 				if record.type == 0 and not include_empty:
 					continue

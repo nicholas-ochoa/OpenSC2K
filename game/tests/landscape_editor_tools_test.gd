@@ -13,7 +13,7 @@ func _initialize() -> void:
 
 	for tool in [Vector2i(0, 5), Vector2i(0, 6), Vector2i(0, 7), Vector2i(1, 2), Vector2i(1, 3)]:
 		var result := LandscapeEditorCommand.apply(city, tool.x, tool.y, Vector2i(60, 60), random, 3)
-		assert(result.ok, str(tool) + ": " + str(result.get("error")))
+		assert(result.ok, str(tool) + ": " + result.error)
 		assert(city.funds() == funds)
 		assert(document.serialize().data != bytes)
 		assert(TerrainCommand.undo(city, result, random).ok)

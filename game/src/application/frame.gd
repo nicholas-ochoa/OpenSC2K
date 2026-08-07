@@ -113,7 +113,7 @@ func _consume_simulation_result(result: Dictionary) -> void:
 		app.moving_sprites._note_moving_tick()
 
 	if ran_days or moved_things or changed_disaster_map:
-		app.last_edit_command = {}
+		app.last_edit_command = null
 		app.scurk_edit_history.clear()
 		# sc2x data-map updates do not change the surface or underground artwork
 		var data_maps_only: bool = (app.city.document.full_resolution_maps() and result.day_results.size() == 1

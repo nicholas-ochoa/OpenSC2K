@@ -62,31 +62,29 @@ static func _things_at(city: CityState, point: Vector2i) -> Array[Dictionary]:
 
 	for record in range(1, city.thing_count()):
 		var thing := city.thing(record)
-		var thing_type := int(thing.get("type", 0))
 
-		if (
-			thing_type == 0
-			or int(thing.get("x", -1)) != point.x
-			or int(thing.get("y", -1)) != point.y
-		):
+		if thing == null or thing.type == 0 or thing.x != point.x or thing.y != point.y:
 			continue
 
-		var direction := int(thing.get("direction", 0))
-		thing["record"] = record
-		thing["type_name"] = (
+		var thing_type := thing.type
+		var direction := thing.direction
+		# the query dialog reads the stored fields plus these presentation keys
+		var entry := thing.to_dictionary()
+		entry["record"] = record
+		entry["type_name"] = (
 			THING_NAMES[thing_type]
 			if thing_type >= 0 and thing_type < THING_NAMES.size()
 			else "Unknown"
 		)
-		thing["direction_name"] = (
+		entry["direction_name"] = (
 			DIRECTION_NAMES[direction]
 			if direction >= 0 and direction < DIRECTION_NAMES.size()
 			else "Unknown"
 		)
 		var visual := Presentation.thing_sprite(city, point, thing, record)
-		thing["sprite_id"] = int(visual.get("sprite_id", -1))
-		thing["sprite_flip"] = bool(visual.get("flip", false))
-		result.append(thing)
+		entry["sprite_id"] = int(visual.get("sprite_id", -1))
+		entry["sprite_flip"] = bool(visual.get("flip", false))
+		result.append(entry)
 
 	return result
 

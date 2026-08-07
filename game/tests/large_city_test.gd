@@ -46,13 +46,13 @@ func check_size(edge: int) -> void:
 	check(CityState.from_document(loaded).building_id(edge - 2, edge - 2) == 0x1d, "Reload far road")
 	var corner := Vector2i(edge - 10, edge - 10)
 	var road := NetworkCommand.apply(city, 6, 0, corner, corner + Vector2i(0, 4))
-	check(road.ok, "Far road tool: " + road.get("error", ""))
+	check(road.ok, "Far road tool: " + road.error)
 	check(NetworkCommand.undo(city, road).ok, "Far road undo")
 	var sign := SignCommand.set_sign(city, corner, "Far corner")
 	check(sign.ok and SignCommand.undo(city, sign).ok, "Far sign and undo")
 	var points: Array[Vector2i] = [corner]
 	var raised := TerrainCommand.apply_path(city, 0, 2, corner, points, SimRandom.new(1), true)
-	check(raised.ok, "Far terrain edit: " + raised.get("error", ""))
+	check(raised.ok, "Far terrain edit: " + raised.error)
 	check(TerrainCommand.undo(city, raised).ok, "Far terrain undo")
 	var polygon := CityIsometricRenderer.tile_polygon(city, corner.x, corner.y)
 	var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
@@ -73,7 +73,7 @@ func check_size(edge: int) -> void:
 	check(rotated_thing.x == edge - 1 - corner.y and rotated_thing.y == corner.x, "Wide object rotation")
 	var wide_reload := Sc2File.new()
 	check(wide_reload.parse(document.serialize().data), "Wide record reload")
-	check(CityState.from_document(wide_reload).thing(record) == city.thing(record), "Wide record preserved")
+	check(CityState.from_document(wide_reload).thing(record).equals(city.thing(record)), "Wide record preserved")
 	check(CityViewFilter.surface_copy(city, {}).map_size == edge, "Display copy size")
 
 
@@ -143,7 +143,7 @@ func check_highways(edge: int) -> void:
 		check(HighwayEdit.preview_valid(city, start), "Highway preview at %s on %d map" % [start, edge])
 		var finish: Vector2i = start + (Vector2i(0, 4) if start.y == 124 else Vector2i(4, 0))
 		var built := HighwayCommand.apply(city, 6, 1, start, finish)
-		check(built.ok and built.get("sections", []).size() == 3, "Highway route across extended coordinates")
+		check(built.ok and built.sections.size() == 3, "Highway route across extended coordinates")
 
 		if not built.ok:
 			continue
@@ -151,7 +151,7 @@ func check_highways(edge: int) -> void:
 		check(built.cost == 300, "Highway route charges three sections")
 		var random := SimRandom.new(42)
 		var removed := DemolishCommand.apply_path(city, 0, 0, [start + Vector2i.ONE], random)
-		check(removed.ok and removed.get("tile_indices", []).size() == 4, "Extended highway demolition")
+		check(removed.ok and removed.tile_indices.size() == 4, "Extended highway demolition")
 
 		if removed.ok:
 			check(DemolishCommand.undo(city, removed, random).ok, "Extended demolition undo")
@@ -161,7 +161,7 @@ func check_highways(edge: int) -> void:
 
 	for border in [Vector2i(edge - 2, near), Vector2i(near, edge - 2)]:
 		var prompt := HighwayCommand.apply(city, 6, 1, border, border)
-		check(prompt.get("connection_selection_required", false), "Highway connection uses actual map border")
+		check(prompt.connection_selection_required, "Highway connection uses actual map border")
 		check(saved_payloads(document) == before, "Connection prompt does not change city")
 
 	for outside in [Vector2i(edge, near), Vector2i(near, edge), Vector2i(-1, near)]:

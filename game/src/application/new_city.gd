@@ -256,7 +256,7 @@ func _start_city() -> void:
 	app.landscape_editor = false
 	app.city_toolbar.set_landscape_editor(false)
 	app.city_menu_bar.disasters_menu.disabled = false
-	app.last_edit_command.clear()
+	app.last_edit_command = null
 	app.current_tool._select_tool_group(9)
 	app.frame._select_speed(GameSpeed.Speed.TURTLE)
 	app.status_label.text = "City started. Build zones, roads, and services."

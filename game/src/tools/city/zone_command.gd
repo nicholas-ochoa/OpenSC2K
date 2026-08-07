@@ -35,7 +35,7 @@ static func apply_rectangle(
 	dragged := true,
 	free_mode := false,
 	zone_type_override := -1
-) -> Dictionary:
+) -> ZoneEditResult:
 	var preview := preview_rectangle(
 		city,
 		group_index,
@@ -48,7 +48,7 @@ static func apply_rectangle(
 	)
 
 	if not preview.get("ok", false):
-		return preview
+		return ZoneEditResult.rejected(preview.error)
 
 	var zone_type := int(preview.zone_type)
 	var minimum := Vector2i(mini(start.x, finish.x), mini(start.y, finish.y))
@@ -80,20 +80,20 @@ static func apply_rectangle(
 	var cost := int(preview.cost)
 
 	if int(preview.changed_tiles) == 0 and cost == 0:
-		return {"ok": false, "error": "no eligible tiles would change"}
+		return ZoneEditResult.rejected("no eligible tiles would change")
 
 	var previous_funds := city.funds()
 
 	if previous_funds < cost:
-		return {"ok": false, "error": "insufficient funds", "cost": cost}
+		return ZoneEditResult.rejected("insufficient funds", cost)
 
 	if not city.replace_zones(changed):
-		return {"ok": false, "error": "cannot store updated XZON data"}
+		return ZoneEditResult.rejected("cannot store updated XZON data")
 
 	if not city.replace_buildings(changed_buildings):
 		city.replace_zones(_restore_values(changed, tile_indices, previous_values))
 
-		return {"ok": false, "error": "cannot store updated XBLD data"}
+		return ZoneEditResult.rejected("cannot store updated XBLD data")
 
 	if cost > 0 and not city.set_funds(previous_funds - cost):
 		city.replace_zones(_restore_values(changed, tile_indices, previous_values))
@@ -101,7 +101,7 @@ static func apply_rectangle(
 			_restore_values(changed_buildings, tile_indices, previous_buildings)
 		)
 
-		return {"ok": false, "error": "cannot store the updated city funds"}
+		return ZoneEditResult.rejected("cannot store the updated city funds")
 
 	var old_payloads := {
 		"XZON": _restore_values(changed, tile_indices, previous_values),
@@ -124,29 +124,29 @@ static func apply_rectangle(
 		if old_payloads[chunk_id] != new_payloads[chunk_id]:
 			changed_ids.append(chunk_id)
 
-	return {
-		"ok": true,
-		"command_type": "zone",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"zone_type": zone_type,
-		"dragged": dragged,
-		"charged_tiles": int(preview.charged_tiles),
-		"terrain_surcharges": int(preview.terrain_surcharges),
-		"tile_indices": tile_indices,
-		"previous_values": previous_values,
-		"new_values": _values_at(changed, tile_indices),
-		"previous_buildings": previous_buildings,
-		"new_buildings": _values_at(changed_buildings, tile_indices),
-		"previous_funds": previous_funds,
-		"cost": cost,
-		"listed_cost": int(preview.listed_cost),
-		"free_mode": free_mode,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": new_payloads,
-		"error": "",
-	}
+	var result := ZoneEditResult.new()
+	result.ok = true
+	result.command_type = "zone"
+	result.group_index = group_index
+	result.subtool_index = subtool_index
+	result.zone_type = zone_type
+	result.dragged = dragged
+	result.charged_tiles = int(preview.charged_tiles)
+	result.terrain_surcharges = int(preview.terrain_surcharges)
+	result.tile_indices = tile_indices
+	result.previous_values = previous_values
+	result.new_values = _values_at(changed, tile_indices)
+	result.previous_buildings = previous_buildings
+	result.new_buildings = _values_at(changed_buildings, tile_indices)
+	result.previous_funds = previous_funds
+	result.cost = cost
+	result.listed_cost = int(preview.listed_cost)
+	result.free_mode = free_mode
+	result.changed_ids = changed_ids
+	result.old_payloads = old_payloads
+	result.new_payloads = new_payloads
+
+	return result
 
 
 static func preview_rectangle(
@@ -246,20 +246,19 @@ static func preview_rectangle(
 	}
 
 
-static func undo(city: CityState, command: Dictionary) -> Dictionary:
+# undo also rejects a command of another family
+static func undo(city: CityState, command: ZoneEditResult) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false):
-		return {"ok": false, "error": "zone command is invalid"}
+	if command == null or not command.ok:
+		return EditCommandResult.failure("zone command is invalid")
 
-	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
-	var previous: PackedByteArray = command.get("previous_values", PackedByteArray())
-	var expected: PackedByteArray = command.get("new_values", PackedByteArray())
-	var previous_buildings: PackedByteArray = command.get(
-		"previous_buildings", PackedByteArray()
-	)
-	var expected_buildings: PackedByteArray = command.get("new_buildings", PackedByteArray())
+	var indices := command.tile_indices
+	var previous := command.previous_values
+	var expected := command.new_values
+	var previous_buildings := command.previous_buildings
+	var expected_buildings := command.new_buildings
 
 	if (
 		indices.size() != previous.size()
@@ -267,14 +266,14 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 		or indices.size() != previous_buildings.size()
 		or indices.size() != expected_buildings.size()
 	):
-		return {"ok": false, "error": "zone undo data has the wrong size"}
+		return EditCommandResult.failure("zone undo data has the wrong size")
 
 	for position in indices.size():
 		if (
 			city.zones[indices[position]] != expected[position]
 			or city.buildings[indices[position]] != expected_buildings[position]
 		):
-			return {"ok": false, "error": "city changed after this zone command"}
+			return EditCommandResult.failure("city changed after this zone command")
 
 	var current := city.zones.duplicate()
 	var current_buildings := city.buildings.duplicate()
@@ -283,21 +282,21 @@ static func undo(city: CityState, command: Dictionary) -> Dictionary:
 	var current_funds := city.funds()
 
 	if not city.replace_zones(restored):
-		return {"ok": false, "error": "cannot restore XZON data"}
+		return EditCommandResult.failure("cannot restore XZON data")
 
 	if not city.replace_buildings(restored_buildings):
 		city.replace_zones(current)
 
-		return {"ok": false, "error": "cannot restore XBLD data"}
+		return EditCommandResult.failure("cannot restore XBLD data")
 
-	if not city.set_funds(int(command.previous_funds)):
+	if not city.set_funds(command.previous_funds):
 		city.replace_zones(current)
 		city.replace_buildings(current_buildings)
 		city.set_funds(current_funds)
 
-		return {"ok": false, "error": "cannot restore city funds"}
+		return EditCommandResult.failure("cannot restore city funds")
 
-	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
+	return EditCommandResult.undone(indices.size())
 
 
 static func supports_tool(group_index: int, subtool_index: int) -> bool:

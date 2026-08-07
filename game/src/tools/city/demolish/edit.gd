@@ -15,30 +15,30 @@ static func apply_path(
 	random: SimRandom,
 	underground_view := false,
 	scurk_mode := false
-) -> Dictionary:
+) -> DemolishEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return DemolishEditResult.rejected("city is invalid")
 
 	if not supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool is not the demolish tool"}
+		return DemolishEditResult.rejected("tool is not the demolish tool")
 
 	if random == null:
-		return {"ok": false, "error": "random state is required"}
+		return DemolishEditResult.rejected("random state is required")
 
 	if points.is_empty():
-		return {"ok": false, "error": "demolish path is empty"}
+		return DemolishEditResult.rejected("demolish path is empty")
 
 	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return DemolishEditResult.rejected("required city data is missing or invalid")
 
 	var altitude_chunk := city.document.find_chunk("ALTM")
 
 	if altitude_chunk == null or altitude_chunk.decoded_payload.size() != (map_edge * map_edge) * 2:
-		return {"ok": false, "error": "required altitude data is missing or invalid"}
+		return DemolishEditResult.rejected("required altitude data is missing or invalid")
 
 	old_payloads.ALTM = altitude_chunk.decoded_payload.duplicate()
 	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
@@ -131,7 +131,7 @@ static func apply_path(
 			if not news_result.ok:
 				random.state = random_state_before
 
-				return {"ok": false, "error": "cannot store forest protest news"}
+				return DemolishEditResult.rejected("cannot store forest protest news")
 
 			news_items.append({"type": NEWS_FOREST_PROTEST, "argument": 0})
 			sound_events.append(SOUND_FOREST_PROTEST)
@@ -153,12 +153,12 @@ static func apply_path(
 		random.state = random_state_before
 
 		if skipped_insufficient > 0:
-			return {"ok": false, "error": "insufficient funds", "cost": cost_per_action}
+			return DemolishEditResult.rejected("insufficient funds", cost_per_action)
 
 		if skipped_specialized > 0:
-			return {"ok": false, "error": "reinforced bridge or network data is malformed"}
+			return DemolishEditResult.rejected("reinforced bridge or network data is malformed")
 
-		return {"ok": false, "error": "no eligible tiles changed"}
+		return DemolishEditResult.rejected("no eligible tiles changed")
 
 	BuildingState._write_u32_be(
 		misc, BuildingCommand.MISC_FUNDS, city.funds() - total_cost
@@ -190,62 +190,62 @@ static func apply_path(
 	if not BuildingState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		random.state = random_state_before
 
-		return {"ok": false, "error": "cannot store demolition changes"}
+		return DemolishEditResult.rejected("cannot store demolition changes")
 
-	return {
-		"ok": true,
-		"command_type": "demolish",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"underground_view": underground_view,
-		"tile_indices": changed_indices,
-		"action_count": action_count,
-		"cost": total_cost,
-		"listed_cost": action_count * listed_cost_per_action,
-		"scurk_mode": scurk_mode,
-		"skipped_specialized": skipped_specialized,
-		"skipped_insufficient": skipped_insufficient,
-		"easter_events": easter_events,
-		"news_items": news_items,
-		"news_queue_updated": easter_events > 0,
-		"effect_events": effect_events,
-		"sound_events": sound_events,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"random_state_before": random_state_before,
-		"random_state_after": random.state,
-		"error": "",
-	}
+	var command := DemolishEditResult.new()
+	command.ok = true
+	command.command_type = "demolish"
+	command.group_index = group_index
+	command.subtool_index = subtool_index
+	command.underground_view = underground_view
+	command.tile_indices = changed_indices
+	command.action_count = action_count
+	command.cost = total_cost
+	command.listed_cost = action_count * listed_cost_per_action
+	command.scurk_mode = scurk_mode
+	command.skipped_specialized = skipped_specialized
+	command.skipped_insufficient = skipped_insufficient
+	command.easter_events = easter_events
+	command.news_items = news_items
+	command.news_queue_updated = easter_events > 0
+	command.effect_events = effect_events
+	command.sound_events = sound_events
+	command.changed_ids = changed_ids
+	command.old_payloads = old_payloads
+	command.new_payloads = changed_payloads
+	command.tracks_random = true
+	command.random_state_before = random_state_before
+	command.random_state_after = random.state
+
+	return command
 
 
-static func undo(city: CityState, command: Dictionary, random: SimRandom) -> Dictionary:
+static func undo(city: CityState, command: DemolishEditResult, random: SimRandom) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "demolish":
-		return {"ok": false, "error": "demolish command is invalid"}
+	if command == null or not command.ok or command.command_type != "demolish":
+		return EditCommandResult.failure("demolish command is invalid")
 
 	if random == null:
-		return {"ok": false, "error": "random state is required"}
+		return EditCommandResult.failure("random state is required")
 
-	if random.state != int(command.get("random_state_after", -1)):
-		return {"ok": false, "error": "random state changed after this demolish command"}
+	if random.state != command.random_state_after:
+		return EditCommandResult.failure("random state changed after this demolish command")
 
-	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var changed_ids := command.changed_ids
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
-			return {"ok": false, "error": "city changed after this demolish command"}
+			return EditCommandResult.failure("city changed after this demolish command")
 
 	if not BuildingState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
-		return {"ok": false, "error": "cannot restore demolition changes"}
+		return EditCommandResult.failure("cannot restore demolition changes")
 
-	random.state = int(command.random_state_before)
-	var indices: PackedInt32Array = command.get("tile_indices", PackedInt32Array())
+	random.state = command.random_state_before
 
-	return {"ok": true, "restored_tiles": indices.size(), "error": ""}
+	return EditCommandResult.undone(command.tile_indices.size())

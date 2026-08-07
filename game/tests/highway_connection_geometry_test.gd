@@ -57,7 +57,7 @@ func _initialize() -> void:
 					check(placed.ok, "Place isolated border highway")
 					shape = city.buildings.duplicate()
 					connected = HighwayCommand.apply(city, 6, 1, finish, finish, HighwayCommand.CONNECTION_CONFIRMED)
-					check(connected.ok and city.buildings == shape, "Connecting existing edge %s direction %d: ok=%s error=%s shape=%s" % [finish, direction, connected.ok, connected.get("error", ""), city.buildings == shape])
+					check(connected.ok and city.buildings == shape, "Connecting existing edge %s direction %d: ok=%s error=%s shape=%s" % [finish, direction, connected.ok, connected.error, city.buildings == shape])
 	print("Highway connection geometry: %d checks, %d failures" % [checks, failures])
 	quit(1 if failures else 0)
 

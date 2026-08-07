@@ -177,7 +177,7 @@ func _debug_end_disaster() -> Dictionary:
 	if not result.ok:
 		return {"ok": false, "message": result.error}
 
-	app.last_edit_command = {}
+	app.last_edit_command = null
 	app.simulation_map_dirty = false
 	app.map_render._refresh_map(false)
 	app.moving_sprites._refresh_moving_things()

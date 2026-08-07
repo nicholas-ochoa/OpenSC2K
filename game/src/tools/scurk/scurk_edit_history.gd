@@ -3,8 +3,8 @@ extends RefCounted
 
 const ScurkPlace = preload("res://src/tools/scurk/scurk_place_command.gd")
 
-var undo_stack: Array[Dictionary] = []
-var redo_stack: Array[Dictionary] = []
+var undo_stack: Array[EditCommandResult] = []
+var redo_stack: Array[EditCommandResult] = []
 
 
 func clear() -> void:
@@ -12,9 +12,15 @@ func clear() -> void:
 	redo_stack.clear()
 
 
-func record(command: Dictionary, tool_name: String) -> void:
-	command["scurk_place_history"] = true
-	command["scurk_tool_name"] = tool_name
+func record(command: EditCommandResult, tool_name: String) -> void:
+	command.scurk_place_history = true
+	command.scurk_tool_name = tool_name
+
+	# a family that still returns a dictionary reads these keys from it
+	if not command.extra.is_empty():
+		command.extra["scurk_place_history"] = true
+		command.extra["scurk_tool_name"] = tool_name
+
 	undo_stack.append(command)
 	redo_stack.clear()
 
@@ -27,41 +33,40 @@ func can_redo() -> bool:
 	return not redo_stack.is_empty()
 
 
-func current_command() -> Dictionary:
-	return undo_stack[-1] if can_undo() else {}
+# null when nothing is left to undo
+func current_command() -> EditCommandResult:
+	return undo_stack[-1] if can_undo() else null
 
 
-func undo(city: CityState, random: SimRandom) -> Dictionary:
+# on success, the undone edit moves to the top of `redo_stack`
+func undo(city: CityState, random: SimRandom) -> EditCommandResult:
 	if not can_undo():
-		return {"ok": false, "error": "No SCURK edit is available to undo."}
+		return EditCommandResult.failure("No SCURK edit is available to undo.")
 
-	var command: Dictionary = undo_stack[-1]
+	var command := undo_stack[-1]
 	var result := ScurkPlace.undo(city, command, random)
 
-	if not result.get("ok", false):
+	if not result.ok:
 		return result
 
 	undo_stack.pop_back()
 	redo_stack.append(command)
-	result["command"] = command
-	result["current_command"] = current_command()
 
 	return result
 
 
-func redo(city: CityState, random: SimRandom) -> Dictionary:
+# on success, the redone edit moves to the top of `undo_stack`
+func redo(city: CityState, random: SimRandom) -> EditCommandResult:
 	if not can_redo():
-		return {"ok": false, "error": "No SCURK edit is available to redo."}
+		return EditCommandResult.failure("No SCURK edit is available to redo.")
 
-	var command: Dictionary = redo_stack[-1]
+	var command := redo_stack[-1]
 	var result := ScurkPlace.redo(city, command, random)
 
-	if not result.get("ok", false):
+	if not result.ok:
 		return result
 
 	redo_stack.pop_back()
 	undo_stack.append(command)
-	result["command"] = command
-	result["current_command"] = command
 
 	return result

@@ -131,7 +131,7 @@ func _open_scurk_place_print() -> void:
 	)
 	app.scurk_place_print.configure(app.palette, app.large_sprites, names, app.scurk_graphics)
 
-	if not app.last_edit_command.get("scurk_place_history", false):
+	if app.last_edit_command == null or not app.last_edit_command.scurk_place_history:
 		app.scurk_edit_history.clear()
 
 	app.scurk_place_print.set_history_enabled(
@@ -195,7 +195,7 @@ func _select_scurk_edit_tool(
 
 
 func _record_edit_command(
-	command: Dictionary, scurk_history := false, scurk_name := ""
+	command: EditCommandResult, scurk_history := false, scurk_name := ""
 ) -> void:
 	if scurk_history:
 		app.scurk_edit_history.record(command, scurk_name)
@@ -204,19 +204,10 @@ func _record_edit_command(
 			app.scurk_place_print.set_history_enabled(true, false)
 
 	if app.map_view.uses_paint_brush() and app.map_view.is_left_drag_active():
-		if app.landscape_brush_command.is_empty():
-			app.landscape_brush_command = command.duplicate(true)
+		if app.landscape_brush_command == null:
+			app.landscape_brush_command = command.copy()
 		else:
-			for id in command.changed_ids:
-				if id not in app.landscape_brush_command.changed_ids:
-					app.landscape_brush_command.changed_ids.append(id)
-					app.landscape_brush_command.old_payloads[id] = command.old_payloads[id]
-				app.landscape_brush_command.new_payloads[id] = command.new_payloads[id]
-			for field in ["cost", "listed_cost", "skipped_insufficient", "action_count", "easter_events", "skipped_specialized"]:
-				app.landscape_brush_command[field] = int(app.landscape_brush_command.get(field, 0)) + int(command.get(field, 0))
-			app.landscape_brush_command.random_state_after = command.random_state_after
-			app.landscape_brush_command.random_used = app.landscape_brush_command.get("random_used", false) or command.get("random_used", false)
-			app.landscape_brush_command.tile_indices.append_array(command.tile_indices)
+			app.landscape_brush_command.merge_stroke(command)
 		app.last_edit_command = app.landscape_brush_command
 	else:
 		app.last_edit_command = command
@@ -235,15 +226,16 @@ func _apply_scurk_place_selection(point: Vector2i) -> void:
 		app.scurk_place_print.selected_zone_id()
 	)
 
-	if not result.get("ok", false):
+	if not result.ok:
 		app.interface._show_error("Cannot place the SCURK object: %s" % result.error)
 
 		return
 
-	_record_edit_command(result, true, "Object Placement")
+	var placed := result as ScurkPlaceResult
+	_record_edit_command(placed, true, "Object Placement")
 	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(result)
-	var area := int(result.get("area", 1))
+	app.static_render._refresh_after_city_edit(placed)
+	var area := placed.area
 	var message := "Placed SCURK tile %d at %d, %d (%d by %d)." % [
 		tile_id, point.x, point.y, area, area,
 	]
@@ -258,19 +250,19 @@ func _undo_scurk_place() -> void:
 
 	var result := app.scurk_edit_history.undo(app.city, app.tool_random)
 
-	if not result.get("ok", false):
+	if not result.ok:
 		app.interface._show_error("Cannot undo SCURK placement: %s" % result.error)
 
 		return
 
-	var command: Dictionary = result.command
-	app.last_edit_command = result.current_command
+	var command: EditCommandResult = app.scurk_edit_history.redo_stack[-1]
+	app.last_edit_command = app.scurk_edit_history.current_command()
 	app.scurk_place_print.set_history_enabled(
 		app.scurk_edit_history.can_undo(), app.scurk_edit_history.can_redo()
 	)
 	app.interface._refresh_details()
 	app.static_render._refresh_after_city_edit(command)
-	var command_name := String(command.get("scurk_tool_name", "edit"))
+	var command_name := command.scurk_tool_name if not command.scurk_tool_name.is_empty() else "edit"
 	var message := "Undid SCURK %s across %d tiles." % [
 		command_name, result.restored_tiles,
 	]
@@ -285,19 +277,19 @@ func _redo_scurk_place() -> void:
 
 	var result := app.scurk_edit_history.redo(app.city, app.tool_random)
 
-	if not result.get("ok", false):
+	if not result.ok:
 		app.interface._show_error("Cannot redo SCURK placement: %s" % result.error)
 
 		return
 
-	var command: Dictionary = result.command
+	var command: EditCommandResult = app.scurk_edit_history.undo_stack[-1]
 	app.last_edit_command = command
 	app.scurk_place_print.set_history_enabled(
 		app.scurk_edit_history.can_undo(), app.scurk_edit_history.can_redo()
 	)
 	app.interface._refresh_details()
 	app.static_render._refresh_after_city_edit(command)
-	var command_name := String(command.get("scurk_tool_name", "edit"))
+	var command_name := command.scurk_tool_name if not command.scurk_tool_name.is_empty() else "edit"
 	var message := "Redid SCURK %s across %d tiles." % [
 		command_name, result.restored_tiles,
 	]

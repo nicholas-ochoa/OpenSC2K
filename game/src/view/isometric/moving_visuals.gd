@@ -20,10 +20,10 @@ static func moving_thing_visual(
 	var record := OverlayData.thing_record(overlay)
 	var thing := city.thing(record)
 
-	if thing.is_empty():
+	if thing == null:
 		return {}
 
-	var type := int(thing.type)
+	var type := thing.type
 
 	if type < 0 or type >= THING_MINIMUM_VIEW.size():
 		return {}
@@ -94,12 +94,12 @@ static func moving_thing_anchor(
 
 	var thing := city.thing(record)
 
-	if thing.is_empty():
+	if thing == null:
 		return {}
 
-	var type := int(thing.type)
-	var x := int(thing.x)
-	var y := int(thing.y)
+	var type := thing.type
+	var x := thing.x
+	var y := thing.y
 
 	if type <= 0 or type >= THING_MINIMUM_VIEW.size() or city.index_of(x, y) < 0:
 		return {}
@@ -139,18 +139,18 @@ static func moving_thing_anchor(
 		5:
 			anchor = Vector2i(
 				(x - y) * half_width,
-				(x + y) * half_height - (city.object_altitude(x, y) + int(thing.z)) * step
+				(x + y) * half_height - (city.object_altitude(x, y) + thing.z) * step
 			)
 		_:
-			var px := int(thing.px)
-			var py := int(thing.py)
+			var px := thing.px
+			var py := thing.py
 			anchor = Vector2i(
 				(x - y) * half_width
 					+ int((px - py) / THING_X_DIVISOR[view_size]),
 				(x + y) * half_height
 					+ int((px + py) / THING_Y_DIVISOR[view_size])
 					- city.object_altitude(x, y) * step
-					- int(thing.z) * half_height
+					- thing.z * half_height
 			)
 
 	return {
@@ -162,13 +162,13 @@ static func moving_thing_anchor(
 	}
 
 
-static func moving_thing_sprite(thing: Dictionary, view_size := VIEW_LARGE) -> Dictionary:
-	if thing.is_empty():
+static func moving_thing_sprite(thing: ThingRecord, view_size := VIEW_LARGE) -> Dictionary:
+	if thing == null:
 		return {}
 
-	var type := int(thing.get("type", 0))
-	var direction := int(thing.get("direction", 0))
-	var state := int(thing.get("state", 0))
+	var type := thing.type
+	var direction := thing.direction
+	var state := thing.state
 
 	if type < 1 or type >= THING_SPRITES.size():
 		return {}
@@ -220,12 +220,12 @@ static func moving_thing_sprite(thing: Dictionary, view_size := VIEW_LARGE) -> D
 
 
 static func train_sprite(
-	city: CityState, x: int, y: int, thing: Dictionary
+	city: CityState, x: int, y: int, thing: ThingRecord
 ) -> Dictionary:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return {}
 
-	var type := int(thing.get("type", 0))
+	var type := thing.type
 
 	if type != 10 and type != 11:
 		return {}
@@ -252,7 +252,7 @@ static func train_sprite(
 		variant = TRAIN_TILE_VARIANT[tile_index]
 
 		if variant == 50:
-			var transition := int(thing.get("dx", 0))
+			var transition := thing.dx
 
 			if transition < 0 or transition >= TRAIN_TRANSITION_VARIANT.size():
 				return {}
@@ -282,14 +282,14 @@ static func tornado_sprite(
 	city: CityState,
 	x: int,
 	y: int,
-	thing: Dictionary,
+	thing: ThingRecord,
 	record: int,
 	view_size := VIEW_LARGE
 ) -> Dictionary:
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return {}
 
-	if int(thing.get("type", 0)) != 15:
+	if thing.type != 15:
 		return {}
 
 	var configuration := IsometricGeometry.view_configuration(view_size)
@@ -298,7 +298,7 @@ static func tornado_sprite(
 		return {}
 
 	var phase := (
-		int(thing.get("px", 0)) + int(thing.get("py", 0)) + x + y + record
+		thing.px + thing.py + x + y + record
 	)
 	var altitude := city.object_altitude(x, y)
 
@@ -316,7 +316,7 @@ static func monster_layers(
 	city: CityState,
 	x: int,
 	y: int,
-	thing: Dictionary,
+	thing: ThingRecord,
 	record: int,
 	view_size := VIEW_LARGE
 ) -> Array[Dictionary]:
@@ -325,22 +325,22 @@ static func monster_layers(
 	if city == null or not city.is_valid() or city.index_of(x, y) < 0:
 		return layers
 
-	if int(thing.get("type", 0)) != 5:
+	if thing.type != 5:
 		return layers
 
 	if IsometricGeometry.view_configuration(view_size).is_empty():
 		return layers
 
 	var altitude := city.object_altitude(x, y)
-	var z := int(thing.get("z", 0))
-	var dx := int(thing.get("dx", 0))
-	var dy := int(thing.get("dy", 0))
+	var z := thing.z
+	var dx := thing.dx
+	var dy := thing.dy
 	var body_x := (x - y - 3) * HALF_WIDTH
 	var body_y := (x + y) * HALF_HEIGHT - (altitude + z) * ALTITUDE_STEP
 	var head_frame := 0
 
 	if dy & 0x80:
-		head_frame = (int(thing.get("px", 0)) + int(thing.get("py", 0)) + x + y + record) & 1
+		head_frame = (thing.px + thing.py + x + y + record) & 1
 
 	return monster_pose_layers(Vector2i(body_x, body_y), dx, dy, head_frame, view_size)
 

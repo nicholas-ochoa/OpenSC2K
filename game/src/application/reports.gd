@@ -70,7 +70,7 @@ func _start_disaster_at_view_center(id: int) -> Dictionary:
 	if app.city.music_enabled():
 		app.effects_audio._play_music_track(Music.DISASTER_TRACK)
 
-	app.last_edit_command = {}
+	app.last_edit_command = null
 	app.simulation_map_dirty = false
 	app.map_render._refresh_map(false)
 

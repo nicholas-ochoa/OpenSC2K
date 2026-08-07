@@ -38,10 +38,10 @@ func _reference(city: CityState) -> int:
 		elif OverlayData.is_thing(overlay):
 			var thing := city.thing(OverlayData.thing_record(overlay))
 
-			if int(thing.get("type", 0)) in CityIsometricRenderer.DISPATCH_SPRITE_OFFSETS:
+			if thing != null and thing.type in CityIsometricRenderer.DISPATCH_SPRITE_OFFSETS:
 				values.append(index)
 
 				for key in ["type", "direction", "state", "x", "y", "z", "px", "py"]:
-					values.append(int(thing.get(key, 0)))
+					values.append(int(thing.get(key)))
 
 	return hash(values)

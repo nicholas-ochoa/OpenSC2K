@@ -99,7 +99,7 @@ func _process(_delta: float) -> void:
 
 		if worker_generation == generation and not request_key.is_empty():
 			visuals.clear()
-			_read_price(result.get("command", {}))
+			_read_price(result.get("command") as EditCommandResult)
 			divisor = int(result.get("divisor", 1))
 			for draw: Dictionary in result.get("draws", []):
 				var source: Image = draw.image
@@ -141,16 +141,16 @@ func _process(_delta: float) -> void:
 				map_view.set_selection_price(cost, affordable)
 
 
-func _read_price(command: Dictionary) -> void:
-	if command.get("ok", false):
-		cost = int(command.get("cost", 0))
+func _read_price(command: EditCommandResult) -> void:
+	if command != null and command.ok:
+		cost = command.cost
 		affordable = true
 
 		return
 
 	# a rejected plan still reports its price when only the funds fall short
-	if command.get("error", "") == "insufficient funds":
-		cost = maxi(0, int(command.get("cost", 0)))
+	if command != null and command.error == "insufficient funds":
+		cost = maxi(0, command.cost)
 		affordable = false
 
 		return
@@ -169,36 +169,36 @@ func _draw_preview() -> void:
 		painter.draw_texture_rect_region(visual.texture, Rect2(visual.position, visual.source.size), visual.source)
 
 
-static func apply_preview(city: CityState, group: int, tool: int, start: Vector2i, finish: Vector2i, free_mode := false) -> Dictionary:
+static func apply_preview(city: CityState, group: int, tool: int, start: Vector2i, finish: Vector2i, free_mode := false) -> EditCommandResult:
 	if NetworkCommand.supports_tool(group, tool) or HighwayCommand.supports_tool(group, tool):
 		var bridge := -1
 		var connection := -1
 
 		for attempt in 3:
-			var result: Dictionary
+			var result: RouteEditResult
 
 			if HighwayCommand.supports_tool(group, tool):
 				result = HighwayCommand.apply(city, group, tool, start, finish, connection, bridge, free_mode)
 			else:
 				result = NetworkCommand.apply(city, group, tool, start, finish, bridge, connection, free_mode)
 
-			if result.get("bridge_selection_required", false):
+			if result.bridge_selection_required:
 				bridge = int(result.bridge_choices[0].type)
-			elif result.get("connection_selection_required", false):
+			elif result.connection_selection_required:
 				connection = 1
 			else:
 				return result
 
 	if TunnelCommand.supports_tool(group, tool):
-		return TunnelCommand.apply(city, group, tool, finish, TunnelCommand.CONFIRMATION_CONFIRMED, free_mode)
+		return EditCommandResult.of(TunnelCommand.apply(city, group, tool, finish, TunnelCommand.CONFIRMATION_CONFIRMED, free_mode))
 
 	if OnrampCommand.supports_tool(group, tool):
-		return OnrampCommand.apply(city, group, tool, finish, free_mode)
+		return EditCommandResult.of(OnrampCommand.apply(city, group, tool, finish, free_mode))
 
 	if SubwayToRailCommand.supports_tool(group, tool):
-		return SubwayToRailCommand.apply(city, group, tool, finish)
+		return EditCommandResult.of(SubwayToRailCommand.apply(city, group, tool, finish))
 
-	return {"ok": false}
+	return EditCommandResult.new()
 
 
 static func build(job: Dictionary) -> Dictionary:
@@ -210,7 +210,7 @@ static func build(job: Dictionary) -> Dictionary:
 	var before_altitude := city.altitude_words.duplicate()
 	var result := apply_preview(city, job.group, job.tool, job.start, job.finish, bool(job.get("free_mode", false)))
 
-	if not result.get("ok", false):
+	if not result.ok:
 		return {"draws": [], "command": result}
 
 	var tiles := {}
@@ -241,14 +241,15 @@ static func build(job: Dictionary) -> Dictionary:
 	return {"draws": draws.draws, "divisor": config.divisor, "command": result, "candidate_count": candidates.size(), "tile_count": tiles.size()}
 
 
-static func candidate_indices(command: Dictionary, start: Vector2i, finish: Vector2i, edge: int) -> Dictionary:
+static func candidate_indices(command: EditCommandResult, start: Vector2i, finish: Vector2i, edge: int) -> Dictionary:
 	var points: Array = [start, finish]
-	points.append_array(command.get("points", []))
-	for index: int in command.get("tile_indices", []):
+	points.append_array(command.points)
+	for index: int in command.tile_indices:
 		points.append(Vector2i(index / edge, index % edge))
 
-	if command.has("road_point"):
-		points.append(command.road_point)
+	# on-ramps still return a dictionary
+	if command.extra.has("road_point"):
+		points.append(command.extra.road_point)
 
 	var candidates := {}
 	for point: Vector2i in points:

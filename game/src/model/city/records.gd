@@ -88,31 +88,17 @@ static func microsim(city: CityState, microsim_id: int) -> Dictionary:
 	}
 
 
-static func thing(city: CityState, thing_id: int) -> Dictionary:
+# null for a record outside xthg
+static func thing(city: CityState, thing_id: int) -> ThingRecord:
 	if thing_id < 0 or thing_id >= city.document.decoded_size("XTHG") / (24 if city.map_size > 128 else 12):
-		return {}
+		return null
 
 	var chunk := city.document.find_chunk("XTHG")
 
 	if chunk == null:
-		return {}
+		return null
 
-	var offset := thing_id * CityState.THING_RECORD_SIZE
-
-	return {
-		"type": int(chunk.decoded_payload[offset]),
-		"direction": int(chunk.decoded_payload[offset + 1]),
-		"state": ThingData.read(chunk.decoded_payload, offset + 2),
-		"x": ThingData.read(chunk.decoded_payload, offset + 3),
-		"y": ThingData.read(chunk.decoded_payload, offset + 4),
-		"z": int(chunk.decoded_payload[offset + 5]),
-		"px": ThingData.read(chunk.decoded_payload, offset + 6),
-		"py": ThingData.read(chunk.decoded_payload, offset + 7),
-		"dx": ThingData.read(chunk.decoded_payload, offset + 8),
-		"dy": ThingData.read(chunk.decoded_payload, offset + 9),
-		"label": ThingData.read(chunk.decoded_payload, offset + 10),
-		"goal": ThingData.read(chunk.decoded_payload, offset + 11),
-	}
+	return ThingRecord.read(chunk.decoded_payload, thing_id * CityState.THING_RECORD_SIZE)
 
 
 static func graph_series(city: CityState, graph_id: int) -> Dictionary:
