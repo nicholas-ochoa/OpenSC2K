@@ -116,7 +116,7 @@ func _run() -> void:
 		root.add_child(main)
 		await process_frame
 		main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
-		main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+		main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 		var selected := Vector2i(64, 64)
 
 		for x in range(50, 80):

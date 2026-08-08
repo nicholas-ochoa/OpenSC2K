@@ -76,10 +76,10 @@ func _build_actions(tabs: TabContainer) -> void:
 	var simulation := _action_section(box, "Simulation and view", 3)
 	_button(simulation, "Pause / Resume", func() -> void:
 		if str(_metrics.get("speed", "Paused")) == "Paused":
-			main_control.frame.call("_select_speed", _resume_speed)
+			main_control.frame.call("select_speed", _resume_speed)
 		else:
 			_resume_speed = int(_metrics.get("speed_id", 2))
-			main_control.frame.call("_select_speed", 1))
+			main_control.frame.call("select_speed", 1))
 
 	for action in [["Center map", "_debug_center_map"], ["Full redraw", "_debug_full_redraw"],
 		["Clear render caches", "_debug_clear_render_caches"]]:
@@ -89,7 +89,7 @@ func _build_actions(tabs: TabContainer) -> void:
 
 	for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
 		_button(simulation, CityViewMode.key(mode).capitalize() + " view", func() -> void:
-			main_control.menus.call("_set_overlay", mode))
+			main_control.menus.call("set_overlay", mode))
 
 	_button(simulation, "Print metrics", func() -> void:
 		print(_metrics))

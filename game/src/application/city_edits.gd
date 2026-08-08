@@ -38,18 +38,18 @@ func _apply_map_selection(
 		return
 
 	if app.landscape_editor and (app.selected_group not in [0, 1, 16, 17] or (app.selected_group == 0 and app.selected_subtool == 4)):
-		app.interface._show_error("Select Start City before building structures.")
+		app.interface.show_error("Select Start City before building structures.")
 
 		return
 
-	var scurk_tool_mode := app.scurk_workspace._scurk_edit_tool_active()
+	var scurk_tool_mode := app.scurk_workspace.scurk_edit_tool_active()
 	var scurk_tool := (
 		app.scurk_place_print.selected_edit_tool() if scurk_tool_mode else {}
 	)
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		if app.scurk_place_print.is_object_mode():
-			app.scurk_workspace._apply_scurk_place_selection(finish)
+			app.scurk_workspace.apply_scurk_place_selection(finish)
 
 			return
 
@@ -62,7 +62,7 @@ func _apply_map_selection(
 	if not scurk_tool_mode and not app.landscape_editor and not ToolAvailability.is_available(
 		app.city, app.selected_group, app.selected_subtool
 	):
-		app.interface._show_error(
+		app.interface.show_error(
 			"%s is not available in this city."
 			% Tools.tool(app.selected_group, app.selected_subtool).name
 		)
@@ -70,7 +70,7 @@ func _apply_map_selection(
 		return
 
 	if app.selected_group == 17:
-		app.camera_input._center_map_on_tile(finish)
+		app.camera_input.center_map_on_tile(finish)
 
 		return
 
@@ -80,7 +80,7 @@ func _apply_map_selection(
 		elif app.selected_subtool == 2:
 			var result := app.map_view.show_service_query(app.city, finish, app.map_view._shift_pressed)
 			if not result.ok:
-				app.interface._show_error(str(result.error))
+				app.interface.show_error(str(result.error))
 		else:
 			app.query_choices._open_query(finish)
 
@@ -104,7 +104,7 @@ func _apply_map_selection(
 		)
 
 		if not dispatch.ok:
-			app.interface._show_error("Cannot dispatch unit: %s" % dispatch.error)
+			app.interface.show_error("Cannot dispatch unit: %s" % dispatch.error)
 
 			return
 
@@ -114,8 +114,8 @@ func _apply_map_selection(
 		app.dispatch_cycles[app.selected_subtool] = dispatch.slot_index
 		dispatch.dispatch_cycles_after = app.dispatch_cycles.duplicate()
 		app.last_edit_command = dispatch
-		app.static_render._refresh_after_city_edit(dispatch)
-		app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool)
+		app.static_render.refresh_after_city_edit(dispatch)
+		app.effects_audio.play_tool_success_sound(app.selected_group, app.selected_subtool)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Deployed %s unit %d of %d." % [
 			Tools.tool(app.selected_group, app.selected_subtool).name,
@@ -129,14 +129,14 @@ func _apply_map_selection(
 		var levels := app.map_view.stretch_height_delta if dragged else 1
 
 		if app.terrain_stretch.active:
-			app.camera_input._refresh_terrain_stretch(levels)
+			app.camera_input.refresh_terrain_stretch(levels)
 			var committed := app.terrain_stretch.finish()
 
 			if committed != null:
-				app.effects_audio._stop_tool_loop_sound()
-				app.effects_audio._play_sound_events([ToolSounds.SOUND_TRACTOR])
-				app.scurk_workspace._record_edit_command(committed)
-				app.interface._refresh_details()
+				app.effects_audio.stop_tool_loop_sound()
+				app.effects_audio.play_sound_events([ToolSounds.SOUND_TRACTOR])
+				app.scurk_workspace.record_edit_command(committed)
+				app.interface.refresh_details()
 
 			app.status_label.text = "Stretch Terrain applied for $0."
 
@@ -232,20 +232,20 @@ func _apply_map_selection(
 				app.last_edit_command = null
 
 			if building.resident_objection:
-				app.effects_audio._play_sound_events(building.sound_events)
+				app.effects_audio.play_sound_events(building.sound_events)
 				app.pending_building_objection_group = building_group
 				app.pending_building_objection_subtool = building_subtool
-				app.reports._show_building_objection()
+				app.reports.show_building_objection()
 				app.status_label.theme_type_variation = ""
 				app.status_label.text = "%s placement was rejected by nearby residents." % building_name
 
 				return
 
-			app.interface._show_error(
+			app.interface.show_error(
 				"Cannot build %s: %s"
 				% [building_name, building.error]
 			)
-			app.effects_audio._play_tool_failure_sound(
+			app.effects_audio.play_tool_failure_sound(
 				building_group, building_subtool, str(building.error), scurk_tool_mode
 			)
 
@@ -255,21 +255,21 @@ func _apply_map_selection(
 		var stadium_team_pending := building.stadium_team_selection_required
 
 		if not stadium_team_pending:
-			app.effects_audio._play_tool_success_sound(building_group, building_subtool, scurk_tool_mode)
+			app.effects_audio.play_tool_success_sound(building_group, building_subtool, scurk_tool_mode)
 
-		app.interface._refresh_details()
-		app.static_render._refresh_after_city_edit(building)
+		app.interface.refresh_details()
+		app.static_render.refresh_after_city_edit(building)
 
 		if building_group == 5 and building_subtool < 4:
-			app.camera_input._choose_tool_group(17)
+			app.camera_input.choose_tool_group(17)
 
 		if building_group == 14 and app.city.music_enabled() and not stadium_team_pending:
-			app.effects_audio._play_music_track(Music.RECREATION_TRACK)
+			app.effects_audio.play_music_track(Music.RECREATION_TRACK)
 
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Built %s for $%s." % [
 			building_name,
-			app.interface._format_number(building.cost),
+			app.interface.format_number(building.cost),
 		]
 
 		if stadium_team_pending:
@@ -298,41 +298,41 @@ func _finish_simple_edit(
 
 	if not command.ok:
 		if edit.play_failure_sound:
-			app.effects_audio._play_tool_failure_sound(
+			app.effects_audio.play_tool_failure_sound(
 				app.selected_group, app.selected_subtool, str(command.error), scurk_tool_mode
 			)
 
-		app.interface._show_error(str(edit.message))
+		app.interface.show_error(str(edit.message))
 
 		return
 
 	if edit.record_command:
-		app.scurk_workspace._record_edit_command(
+		app.scurk_workspace.record_edit_command(
 			command, scurk_tool_mode, String(scurk_tool.get("name", ""))
 		)
 	else:
 		app.last_edit_command = command
 
 	if edit.refresh_details:
-		app.interface._refresh_details()
+		app.interface.refresh_details()
 
-	app.static_render._refresh_after_city_edit(command)
+	app.static_render.refresh_after_city_edit(command)
 
 	if edit.show_effects:
-		app.effects_audio._show_effect_events(command.effect_events, command.sound_events)
+		app.effects_audio.show_effect_events(command.effect_events, command.sound_events)
 
 	if app.selected_group == 0 and app.selected_subtool in [1, 2, 3, 5, 6, 7] and not command.changed_ids.is_empty():
-		app.effects_audio._stop_tool_loop_sound()
-		app.effects_audio._play_sound_events([ToolSounds.SOUND_TRACTOR])
+		app.effects_audio.stop_tool_loop_sound()
+		app.effects_audio.play_sound_events([ToolSounds.SOUND_TRACTOR])
 
 	# keep the tree and news story, no modal protest notice
 	if edit.refresh_news_summary:
-		app.reports._refresh_saved_news_summary()
+		app.reports.refresh_saved_news_summary()
 
 	if command.command_type == "zone":
-		app.effects_audio._play_sound_events(ToolSounds.zone_success_events((command as ZoneEditResult).zone_type))
+		app.effects_audio.play_sound_events(ToolSounds.zone_success_events((command as ZoneEditResult).zone_type))
 	elif edit.play_success_sound:
-		app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool, scurk_tool_mode)
+		app.effects_audio.play_tool_success_sound(app.selected_group, app.selected_subtool, scurk_tool_mode)
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = str(edit.message)
@@ -346,7 +346,7 @@ func _undo_last_edit() -> void:
 	var command_type := command.command_type
 
 	if command.scurk_place_history:
-		app.scurk_workspace._undo_scurk_place()
+		app.scurk_workspace.undo_scurk_place()
 
 		return
 
@@ -385,7 +385,7 @@ func _undo_last_edit() -> void:
 		result = Zones.undo(app.city, command as ZoneEditResult)
 
 	if not result.ok:
-		app.interface._show_error("Cannot undo the last edit: %s" % result.error)
+		app.interface.show_error("Cannot undo the last edit: %s" % result.error)
 
 		return
 
@@ -395,11 +395,11 @@ func _undo_last_edit() -> void:
 		app.dispatch_initialized = dispatch.dispatch_initialized_before
 
 	app.last_edit_command = null
-	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(command)
+	app.interface.refresh_details()
+	app.static_render.refresh_after_city_edit(command)
 
 	if undo_forest_protest:
-		app.reports._refresh_saved_news_summary()
+		app.reports.refresh_saved_news_summary()
 
 	app.status_label.theme_type_variation = ""
 

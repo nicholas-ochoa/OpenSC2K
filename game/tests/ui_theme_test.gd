@@ -25,7 +25,7 @@ func _run() -> void:
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
 	assert(main.city_session._activate_document(EmptyCityTemplate.create(128)))
-	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = main.city.document.serialize().data
 	for selected in [1, 0, 1]:
 		main.settings._open_settings_dialog()
@@ -61,11 +61,11 @@ func _run() -> void:
 		main.render_caches.static_render_mode = state[0]
 		main.map_view.base_palette_lookup_all = state[1]
 		main.preferences.dark_underground = true
-		main.menus._sync_map_style()
+		main.menus.sync_map_style()
 		assert(main.map_view.dark_underground == state[2])
 		assert(main.map_view._base_material.get_shader_parameter("dark_underground") == state[2])
 		main.preferences.dark_underground = false
-		main.menus._sync_map_style()
+		main.menus.sync_map_style()
 		assert(not main.map_view.dark_underground)
 		assert(not main.map_view._base_material.get_shader_parameter("dark_underground"))
 	assert(main.city.document.serialize().data == before)

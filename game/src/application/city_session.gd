@@ -24,7 +24,7 @@ func _activate_document(
 	var compatibility_error := OriginalCompatibility.document_error(document, app.preferences.original_compatibility and not disable_compatibility)
 
 	if not compatibility_error.is_empty():
-		app.interface._show_error(compatibility_error)
+		app.interface.show_error(compatibility_error)
 
 		return false
 
@@ -33,7 +33,7 @@ func _activate_document(
 	var loaded_city := CityModel.from_document(document)
 
 	if not loaded_city.is_valid():
-		app.interface._show_error(loaded_city.load_error)
+		app.interface.show_error(loaded_city.load_error)
 
 		return false
 
@@ -50,7 +50,7 @@ func _activate_document(
 	app.landscape_editor = false
 	app.city_toolbar.set_landscape_editor(false)
 	app.city_menu_bar.disasters_menu.disabled = false
-	var music_was_active := app.effects_audio._music_playback_is_active()
+	var music_was_active := app.effects_audio.music_playback_is_active()
 
 	app.budget_dialog.reset_dialogs()
 
@@ -122,7 +122,7 @@ func _activate_document(
 	if not document.source_path.is_empty():
 		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(0x1018), 0, app.city.map_size - 1), clampi(document.misc_u32(0x101c), 0, app.city.map_size - 1))
 
-	app.current_tool._select_tool_group(17)
+	app.current_tool.select_tool_group(17)
 	app.overlay_mode = CityViewMode.Mode.CITY
 	document_state.current_document = document
 	var initial_serialized := document_state.current_document.serialize()
@@ -149,12 +149,12 @@ func _activate_document(
 		)
 		else ""
 	)
-	app.interface._hide_main_menu()
-	app.static_render._invalidate_rendered_city()
+	app.interface.hide_main_menu()
+	app.static_render.invalidate_rendered_city()
 	app.palette_clock.cycle_ticks = 0
 	app.palette_clock.elapsed_msec = 0.0
-	app.static_render._update_palette_cycle_texture()
-	app.moving_sprites._reset_blend()
+	app.static_render.update_palette_cycle_texture()
+	app.moving_sprites.reset_blend()
 	var process_seed := app.tool_random.state
 	var game_seed := app.nuisance_random.state
 	var lfsr_seed := (
@@ -176,15 +176,15 @@ func _activate_document(
 	if document_state.current_document.is_extended():
 		app.frame_simulation = FrameSimulationRunner.new(app.speed_controller)
 
-	app.frame._sync_speed_ui()
+	app.frame.sync_speed_ui()
 	app.tool_random = app.simulation_engine.random
 	app.nuisance_random = app.simulation_engine.game_random
 	app.simulation_map_dirty = false
-	app.reports._refresh_saved_news_summary()
+	app.reports.refresh_saved_news_summary()
 	app.last_edit_command = null
 	app.dispatch_cycles = PackedInt32Array([0, 0, 0])
 	app.dispatch_initialized = false
-	app.camera_input._update_zoom_controls(app.map_view.zoom_percent())
+	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
 	var display_name := app.city.city_name()
 
 	if display_name.is_empty():
@@ -194,19 +194,19 @@ func _activate_document(
 		display_name = "New City"
 
 	app.city_menu_bar.set_city_name(display_name)
-	app.reports._refresh_newspaper_menu()
-	app.interface._refresh_details()
+	app.reports.refresh_newspaper_menu()
+	app.interface.refresh_details()
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = status_text if not status_text.is_empty() else "City ready."
-	app.map_render._refresh_map()
-	app.current_tool._update_edit_state()
+	app.map_render.refresh_map()
+	app.current_tool.update_edit_state()
 
 	if not app.city.music_enabled():
-		app.effects_audio._stop_music()
+		app.effects_audio.stop_music()
 	elif music_was_active:
 		app.simulation_engine.midi_playback_active = true
 	else:
-		app.effects_audio._play_music_track(app.audio_controller.music_director.next_general_track())
+		app.effects_audio.play_music_track(app.audio_controller.music_director.next_general_track())
 
 	if loaded_scenario != null:
 		app.budget._open_scenario_intro(loaded_scenario)

@@ -27,14 +27,14 @@ func _init() -> void:
 
 class ProfileMovingSprites extends ApplicationMovingSprites:
 
-	func _refresh_moving_things(view_size := -1) -> void:
+	func refresh_moving_things(view_size := -1) -> void:
 		var started := Time.get_ticks_usec()
-		super._refresh_moving_things(view_size)
+		super.refresh_moving_things(view_size)
 		app._record("moving", started)
 
-	func _static_occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
+	func static_occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
 		var started := Time.get_ticks_usec()
-		var result := super._static_occlusion_candidates(bounds)
+		var result := super.static_occlusion_candidates(bounds)
 		app._record("foreground_candidates", started)
 
 		return result
@@ -42,32 +42,32 @@ class ProfileMovingSprites extends ApplicationMovingSprites:
 
 class ProfileInterface extends ApplicationInterface:
 
-	func _refresh_details() -> void:
+	func refresh_details() -> void:
 		var started := Time.get_ticks_usec()
-		super._refresh_details()
+		super.refresh_details()
 		app._record("details", started)
 
 
 class ProfileMapRender extends ApplicationMapRender:
 
-	func _refresh_map(force := true) -> void:
+	func refresh_map(force := true) -> void:
 		var started := Time.get_ticks_usec()
-		super._refresh_map(force)
+		super.refresh_map(force)
 		app._record("refresh_map", started)
 
-	func _poll_region_cache() -> void:
+	func poll_region_cache() -> void:
 		var started := Time.get_ticks_usec()
-		super._poll_region_cache()
+		super.poll_region_cache()
 		app._record("poll_regions", started)
 
-	func _refresh_sign_occlusion(view_size: int) -> void:
+	func refresh_sign_occlusion(view_size: int) -> void:
 		var started := Time.get_ticks_usec()
-		super._refresh_sign_occlusion(view_size)
+		super.refresh_sign_occlusion(view_size)
 		app._record("signs", started)
 
-	func _sign_palette_image(indexed: Image, mapping: PackedInt32Array) -> Image:
+	func sign_palette_image(indexed: Image, mapping: PackedInt32Array) -> Image:
 		var started := Time.get_ticks_usec()
-		var result := super._sign_palette_image(indexed, mapping)
+		var result := super.sign_palette_image(indexed, mapping)
 		app._record("sign_palette_pixels", started)
 
 		return result
@@ -75,14 +75,14 @@ class ProfileMapRender extends ApplicationMapRender:
 
 class ProfileStaticRender extends ApplicationStaticRender:
 
-	func _update_palette_cycle_texture() -> void:
+	func update_palette_cycle_texture() -> void:
 		var started := Time.get_ticks_usec()
-		super._update_palette_cycle_texture()
+		super.update_palette_cycle_texture()
 		app._record("palette", started)
 
-	func _static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array:
+	func static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array:
 		var started := Time.get_ticks_usec()
-		var result := super._static_signature_for_mode(mode, view_size)
+		var result := super.static_signature_for_mode(mode, view_size)
 		app._record("signature", started)
 
 		return result

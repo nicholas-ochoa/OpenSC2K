@@ -62,7 +62,7 @@ func _check_application() -> void:
 	var thing: ThingRecord = main.city.thing(vehicle)
 	main.map_view.zoom_factor = 1.0
 	main.map_view.center_on_tile(Vector2i(int(thing.x), int(thing.y)))
-	main.map_render._refresh_map()
+	main.map_render.refresh_map()
 	var shown: int = main.map_view.dynamic_sprites.size()
 	assert(shown > 0, "A shown vehicle draws")
 	assert(main.simulation_engine.vehicle_crashes_enabled)
@@ -72,13 +72,13 @@ func _check_application() -> void:
 		{"sound_id": 514, "thing_type": 5, "record": 3},
 		509,
 	]
-	assert(main.moving_sprites._audible_sound_events(sounds).size() == 3)
+	assert(main.moving_sprites.audible_sound_events(sounds).size() == 3)
 
 	main.city_toolbar.view_visibility_checks.vehicles.button_pressed = false
 	assert(not main.show_vehicles, "The sidebar check hides vehicles")
 	assert(not main.simulation_engine.vehicle_crashes_enabled, "Hidden vehicles cannot crash")
 	assert(main.map_view.dynamic_sprites.size() < shown, "A hidden vehicle does not draw")
-	var audible: Array = main.moving_sprites._audible_sound_events(sounds)
+	var audible: Array = main.moving_sprites.audible_sound_events(sounds)
 	assert(audible.size() == 2 and not audible.has(sounds[0]), "Only vehicle sounds are dropped")
 	var menu := main.view_menu.get_popup() as PopupMenu
 	assert(not menu.is_item_checked(menu.get_item_index(CityMenuBar.MENU_VIEW_VEHICLES)), "The View menu follows the sidebar")
@@ -86,7 +86,7 @@ func _check_application() -> void:
 	# Opening another city keeps the layer choice in its new engine.
 	assert(main.city_session._activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/CAPE.SC2")))
 	assert(not main.simulation_engine.vehicle_crashes_enabled)
-	main.menus._on_view_menu(CityMenuBar.MENU_VIEW_VEHICLES)
+	main.menus.on_view_menu(CityMenuBar.MENU_VIEW_VEHICLES)
 	assert(main.show_vehicles and main.simulation_engine.vehicle_crashes_enabled, "The View menu shows vehicles again")
 	assert(main.city_toolbar.view_visibility_checks.vehicles.button_pressed)
 	main.queue_free()

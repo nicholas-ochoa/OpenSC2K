@@ -23,7 +23,7 @@ func _run() -> void:
 	var thing: ThingRecord = main.city.thing(airplane)
 	main.map_view.center_on_tile(Vector2i(int(thing.x), int(thing.y)))
 	await _wait_for_regions(main)
-	main.moving_sprites._refresh_moving_things()
+	main.moving_sprites.refresh_moving_things()
 	assert(main.map_view.moving_occlusion_active(), "GPU regions enable moving-object occlusion")
 	assert(_gpu_visuals(main).size() > 0, "Moving objects use the GPU visual path")
 
@@ -31,31 +31,31 @@ func _run() -> void:
 	var start := 100000
 	var moved := false
 	# The first tick has no earlier position to blend from.
-	main.moving_sprites._note_moving_tick(start - 200)
-	main.moving_sprites._advance_blend(start)
+	main.moving_sprites.note_moving_tick(start - 200)
+	main.moving_sprites.advance_blend(start)
 
 	for tick in 6:
 		var now := start + tick * 200
 		var before := CityIsometricRenderer.moving_thing_anchor(main.city, airplane, 2)
 		assert(main.simulation_engine.advance_moving_things(now).ok)
-		main.moving_sprites._note_moving_tick(now)
-		main.moving_sprites._refresh_moving_things()
+		main.moving_sprites.note_moving_tick(now)
+		main.moving_sprites.refresh_moving_things()
 		var after := CityIsometricRenderer.moving_thing_anchor(main.city, airplane, 2)
 		var canvas: CityDynamicSpriteCanvas = main.map_view._dynamic_canvas
 
 		if before.is_empty() or after.is_empty() or not ApplicationMovingSprites.can_blend(before, after) or before.anchor == after.anchor:
-			main.moving_sprites._advance_blend(now + 200)
+			main.moving_sprites.advance_blend(now + 200)
 			continue
 
 		moved = true
 		# The new tick shows the previous position first.
 		assert(canvas.blend_offsets.get(airplane, Vector2.ZERO) == _screen_round(main, before.anchor - after.anchor), "A blend starts at the displayed position")
-		main.moving_sprites._advance_blend(now + 49)
+		main.moving_sprites.advance_blend(now + 49)
 		assert(canvas.blend_offsets.get(airplane) == _screen_round(main, before.anchor - after.anchor), "20 Hz waits 50 ms between positions")
-		main.moving_sprites._advance_blend(now + 100)
+		main.moving_sprites.advance_blend(now + 100)
 		assert(canvas.blend_offsets.get(airplane) == _screen_round(main, (before.anchor - after.anchor) * 0.5), "The blend is half done after 100 ms")
 		assert(canvas.blend_orders.get(airplane) == maxi(int(before.order), int(after.order)), "A blend uses the later draw order of its two tiles")
-		main.moving_sprites._advance_blend(now + 200)
+		main.moving_sprites.advance_blend(now + 200)
 		assert(canvas.blend_offsets.get(airplane) == Vector2.ZERO, "The blend ends at the saved position")
 
 	assert(moved, "Airplane did not move during the test")
@@ -64,7 +64,7 @@ func _run() -> void:
 	main.settings._set_moving_frame_rate(5)
 	assert(not main.map_view.moving_occlusion_active())
 	assert(_gpu_visuals(main).is_empty(), "5 Hz uses the CPU visual path")
-	main.moving_sprites._note_moving_tick(start + 2000)
+	main.moving_sprites.note_moving_tick(start + 2000)
 	assert(main.map_view._dynamic_canvas.blend_offsets.is_empty(), "5 Hz does not blend")
 	main.settings._set_moving_frame_rate(30)
 	assert(main.map_view.moving_occlusion_active() and _gpu_visuals(main).size() > 0)
@@ -79,11 +79,11 @@ func _wait_for_regions(main: Node) -> void:
 	# This test stops the frame loop that polls the cache every frame. Only a
 	# poll moves the cache to the new camera, so poll before trusting ready():
 	# otherwise ready() answers for the previous view.
-	main.map_render._poll_region_cache()
+	main.map_render.poll_region_cache()
 
 	while (main.render_caches.region_cache == null or not main.render_caches.region_cache.ready()) and Time.get_ticks_msec() < deadline:
 		await process_frame
-		main.map_render._poll_region_cache()
+		main.map_render.poll_region_cache()
 
 	assert(main.render_caches.region_cache != null and main.render_caches.region_cache.ready())
 

@@ -21,10 +21,10 @@ func _set_city_renderer(value: String) -> void:
 
 	preferences.city_renderer = selected
 	# closing the region cache also clears the dynamic sprite caches
-	app.map_render._close_region_cache()
-	app.static_render._restart_static_render()
-	app.menus._sync_city_option_menus()
-	app.map_render._refresh_map()
+	app.map_render.close_region_cache()
+	app.static_render.restart_static_render()
+	app.menus.sync_city_option_menus()
+	app.map_render.refresh_map()
 
 
 func _open_import_settings() -> void:
@@ -103,7 +103,7 @@ func _apply_settings() -> void:
 	preferences.graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
 	preferences.dark_underground = bool(values.dark_underground)
-	app.menus._sync_map_style()
+	app.menus.sync_map_style()
 	preferences.ui_theme = str(values.ui_theme)
 	preferences.translucent_menus = bool(values.translucent_menus)
 	AppUiTheme.select(preferences.ui_theme, preferences.translucent_menus)
@@ -118,8 +118,8 @@ func _apply_settings() -> void:
 	_set_moving_frame_rate(int(values.moving_frame_rate))
 
 	if overview_changed:
-		app.map_render._close_region_cache()
-		app.map_render._refresh_map()
+		app.map_render.close_region_cache()
+		app.map_render.refresh_map()
 
 	preferences.toolbar_sounds = bool(values.toolbar_sounds)
 	preferences.sound_pack_folder = str(values.sound_pack_folder)
@@ -173,7 +173,7 @@ func _load_app_settings() -> void:
 	preferences.sound_pack_folder = str(values.sound_pack_folder)
 	preferences.music_pack_folder = str(values.music_pack_folder)
 	preferences.dark_underground = bool(values.dark_underground)
-	app.menus._sync_map_style()
+	app.menus.sync_map_style()
 	preferences.ui_theme = str(values.ui_theme)
 	preferences.translucent_menus = bool(values.translucent_menus)
 	AppUiTheme.select(preferences.ui_theme, preferences.translucent_menus)
@@ -204,8 +204,8 @@ func _set_graphics_preferences(zoom_graphics: Array) -> void:
 		return
 
 	preferences.zoom_graphics = sizes
-	app.map_render._close_region_cache()
-	app.map_render._refresh_map()
+	app.map_render.close_region_cache()
+	app.map_render.refresh_map()
 
 
 func _set_moving_frame_rate(value: int) -> void:
@@ -215,10 +215,10 @@ func _set_moving_frame_rate(value: int) -> void:
 		return
 
 	preferences.moving_frame_rate = rate
-	app.moving_sprites._reset_blend()
+	app.moving_sprites.reset_blend()
 
 	if app.city != null and app.map_view != null:
-		app.moving_sprites._refresh_moving_things()
+		app.moving_sprites.refresh_moving_things()
 
 
 func _apply_compatibility_controls() -> void:
@@ -227,4 +227,4 @@ func _apply_compatibility_controls() -> void:
 		app.speed_controller.fire_elapsed_msec = 0.0
 
 
-	app.city_files._sync_upgrade_city_option()
+	app.city_files.sync_upgrade_city_option()

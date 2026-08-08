@@ -146,8 +146,8 @@ func _poll_new_city_preview() -> void:
 	app.new_city_dialog.preview_status.text = (
 		"Water: %s tiles   Trees: %s tiles   Height: %s–%s"
 		% [
-			app.interface._format_number(int(generated.water_tiles)),
-			app.interface._format_number(int(generated.tree_tiles)),
+			app.interface.format_number(int(generated.water_tiles)),
+			app.interface.format_number(int(generated.tree_tiles)),
 			int(generated.minimum_altitude),
 			int(generated.maximum_altitude),
 		]
@@ -164,7 +164,7 @@ func _cancel_new_city() -> void:
 	app.new_city_return_to_main_menu = false
 
 	if return_to_main_menu:
-		app.interface._show_main_menu()
+		app.interface.show_main_menu()
 
 
 func _create_new_city() -> void:
@@ -173,7 +173,7 @@ func _create_new_city() -> void:
 	if app.landscape_editor:
 		_create_new_city_unchecked()
 	else:
-		app.city_files._request_city_exit("create_new_city")
+		app.city_files.request_city_exit("create_new_city")
 
 
 func _create_new_city_unchecked() -> void:
@@ -198,9 +198,9 @@ func _create_new_city_unchecked() -> void:
 
 	if not result.ok:
 		if result.stage == "template":
-			app.interface._show_error("Cannot load the default city: %s" % result.error)
+			app.interface.show_error("Cannot load the default city: %s" % result.error)
 		else:
-			app.interface._show_error("Cannot create a new city: %s" % result.error)
+			app.interface.show_error("Cannot create a new city: %s" % result.error)
 
 		return
 
@@ -240,12 +240,12 @@ func _level_brush_active() -> bool:
 
 func _enter_landscape_editor() -> void:
 	app.landscape_editor = true
-	app.frame._select_speed(GameSpeed.Speed.PAUSED)
+	app.frame.select_speed(GameSpeed.Speed.PAUSED)
 	app.city_toolbar.set_landscape_editor(true)
 	app.city_menu_bar.disasters_menu.disabled = true
-	app.menus._set_overlay(CityViewMode.Mode.CITY)
-	app.current_tool._select_tool_group(0)
-	app.current_tool._select_subtool(2)
+	app.menus.set_overlay(CityViewMode.Mode.CITY)
+	app.current_tool.select_tool_group(0)
+	app.current_tool.select_subtool(2)
 	app.status_label.text = "Landscape editor: terrain changes are free. Select Start City when ready."
 
 
@@ -257,12 +257,12 @@ func _start_city() -> void:
 	app.city_toolbar.set_landscape_editor(false)
 	app.city_menu_bar.disasters_menu.disabled = false
 	app.last_edit_command = null
-	app.current_tool._select_tool_group(9)
-	app.frame._select_speed(GameSpeed.Speed.TURTLE)
+	app.current_tool.select_tool_group(9)
+	app.frame.select_speed(GameSpeed.Speed.TURTLE)
 	app.status_label.text = "City started. Build zones, roads, and services."
-	app.effects_audio._play_sound_events([513])
+	app.effects_audio.play_sound_events([513])
 	app.founding_newspaper_pending = true
-	app.reports._on_newspaper_menu(0)
+	app.reports.on_newspaper_menu(0)
 
 
 func _on_founding_newspaper_visibility_changed() -> void:
@@ -273,4 +273,4 @@ func _on_founding_newspaper_visibility_changed() -> void:
 
 	if app.city != null and app.city.music_enabled():
 		app.audio_controller.music_director.general_track_index = 0
-		app.effects_audio._play_music_track(app.audio_controller.music_director.next_general_track())
+		app.effects_audio.play_music_track(app.audio_controller.music_director.next_general_track())

@@ -45,7 +45,7 @@ func _initialize_runtime() -> void:
 	app.audio_controller.startup_theme_pending = true
 	app.audio_controller.background_audio = app.preferences.background_audio
 	app.audio_controller.set_shuffle_music(app.preferences.shuffle_music)
-	app.audio_controller.music_activity_changed.connect(app.effects_audio._on_music_activity_changed)
+	app.audio_controller.music_activity_changed.connect(app.effects_audio.on_music_activity_changed)
 	app.audio_controller.music_notice.connect(func(message: String) -> void:
 		if app.city_status_bar != null:
 			app.city_status_bar.show_music_notice(message)
@@ -74,7 +74,7 @@ func _initialize_runtime() -> void:
 	text_resources.building_objection_text = original_assets.building_objection_text
 	text_resources.library_texts = original_assets.library_texts
 	app.scurk_graphics = original_assets.scurk_graphics
-	app.interface._build_interface(original_assets)
+	app.interface.build_interface(original_assets)
 	app.settings._apply_compatibility_controls()
 	app.desktop_presentation = CityDesktopPresentation.new()
 	app.desktop_presentation.map_view = app.map_view
@@ -88,7 +88,7 @@ func _initialize_runtime() -> void:
 	app.add_child(app.debug_overlay)
 
 	if not original_assets.error.is_empty():
-		app.interface._show_error(original_assets.error)
+		app.interface.show_error(original_assets.error)
 
 		return
 
@@ -96,14 +96,14 @@ func _initialize_runtime() -> void:
 	app.scenario_palette = original_assets.scenario_palette
 	app.scenario_graphics = original_assets.scenario_graphics
 	app.palette_index_encoding = Palette.index_encoding()
-	app.static_render._update_palette_cycle_texture()
+	app.static_render.update_palette_cycle_texture()
 	app.base_large_sprites = original_assets.large_sprites
 	app.base_small_medium_sprites = original_assets.small_medium_sprites
 	app.large_sprites = app.base_large_sprites
 	app.small_medium_sprites = app.base_small_medium_sprites
-	app.camera_input._refresh_child_tool_icons()
+	app.camera_input.refresh_child_tool_icons()
 
-	app.interface._show_main_menu()
+	app.interface.show_main_menu()
 
 
 func _build_reference_import_dialogs() -> void:
@@ -193,13 +193,13 @@ func _import_original_game(executable_path: String) -> void:
 	app.status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
 
 	if saved != OK:
-		app.interface._show_error("Packs imported, but their preferences could not be saved.")
+		app.interface.show_error("Packs imported, but their preferences could not be saved.")
 
 
 func _apply_graphics_source(selected: GameAssetSource) -> void:
 	# wait for workers using the old archives
-	app.map_render._close_region_cache()
-	app.static_render._stop_render_job()
+	app.map_render.close_region_cache()
+	app.static_render.stop_render_job()
 	app.asset_source = selected
 	app.assets_ready = true
 	app.reference_root = selected.reference_root
@@ -224,10 +224,10 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 		app.large_sprites = SpriteArchive.combine([app.base_large_sprites, app.active_scurk_tile_set.overrides])
 		app.small_medium_sprites = SpriteArchive.combine([app.base_small_medium_sprites, app.active_scurk_tile_set.overrides])
 
-	app.static_render._invalidate_rendered_city()
-	app.static_render._update_palette_cycle_texture()
+	app.static_render.invalidate_rendered_city()
+	app.static_render.update_palette_cycle_texture()
 	app.city_toolbar.replace_artwork(assets.toolbar_art)
-	app.camera_input._refresh_child_tool_icons()
+	app.camera_input.refresh_child_tool_icons()
 	app.about_dialog.set_assets(assets)
 	app.new_city_dialog.set_control_graphics(assets.city_ui_graphics)
 	app.newspaper_dialog.set_control_graphics(assets.city_ui_graphics)
@@ -243,14 +243,14 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.configure(app.palette, app.large_sprites, app.active_scurk_tile_set.names if app.active_scurk_tile_set != null else {}, app.scurk_graphics)
 
-	app.menus._sync_asset_menu_actions()
+	app.menus.sync_asset_menu_actions()
 	app.main_menu.set_assets_ready(true)
 	app.main_menu.city_background.replace_graphics(app.palette, app.large_sprites)
 
 	if app.main_menu.visible:
 		app.main_menu.city_background.configure(app.reference_root, app.palette, app.large_sprites)
 
-	app.map_render._refresh_map(false)
+	app.map_render.refresh_map(false)
 
 
 func _refresh_scurk_artwork() -> void:

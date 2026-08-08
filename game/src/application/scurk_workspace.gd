@@ -19,11 +19,11 @@ func _ensure_scurk_editor() -> void:
 
 	app.scurk_editor = app.main_overlays.ensure_scurk_editor()
 	app.scurk_editor.tile_set_applied.connect(_apply_scurk_tile_set)
-	app.scurk_editor.place_print_requested.connect(_open_scurk_place_print)
+	app.scurk_editor.place_print_requested.connect(open_scurk_place_print)
 	app.desktop_presentation.editor = app.scurk_editor
 
 
-func _ensure_scurk_place_print() -> void:
+func ensure_scurk_place_print() -> void:
 	if app.scurk_place_print != null:
 		return
 
@@ -32,16 +32,16 @@ func _ensure_scurk_place_print() -> void:
 	app.scurk_place_print.edit_tool_selected.connect(_select_scurk_edit_tool)
 	app.scurk_place_print.export_bmp_requested.connect(app.scurk_output._open_scurk_city_export)
 	app.scurk_place_print.print_city_requested.connect(app.scurk_output._open_scurk_print_dialog)
-	app.scurk_place_print.undo_requested.connect(_undo_scurk_place)
+	app.scurk_place_print.undo_requested.connect(undo_scurk_place)
 	app.scurk_place_print.redo_requested.connect(_redo_scurk_place)
-	app.scurk_place_print.close_requested.connect(_close_scurk_place_print)
+	app.scurk_place_print.close_requested.connect(close_scurk_place_print)
 	app.desktop_presentation.place_print = app.scurk_place_print
 	app.scurk_city_export_dialog = preload("res://src/ui/shared/file_dialog_factory.gd").city_bitmap_save()
 	app.scurk_place_print.add_child(app.scurk_city_export_dialog)
 	app.scurk_city_export_dialog.file_selected.connect(app.scurk_output._export_scurk_city_bmp)
 
 
-func _open_scurk_dialog() -> void:
+func open_scurk_dialog() -> void:
 	if not app.assets_ready:
 		return
 
@@ -51,7 +51,7 @@ func _open_scurk_dialog() -> void:
 		or app.base_large_sprites == null
 		or app.base_small_medium_sprites == null
 	):
-		app.interface._show_error("The SCURK graphics are not loaded.")
+		app.interface.show_error("The SCURK graphics are not loaded.")
 
 		return
 
@@ -74,7 +74,7 @@ func _open_scurk_dialog() -> void:
 		var switched := app.scurk_editor.load_path(app.active_scurk_path)
 
 		if not switched.ok:
-			app.interface._show_error(switched.error)
+			app.interface.show_error(switched.error)
 
 			return
 
@@ -83,17 +83,17 @@ func _open_scurk_dialog() -> void:
 		var loaded := app.scurk_editor.load_tile_set(created)
 
 		if not loaded.ok:
-			app.interface._show_error(loaded.error)
+			app.interface.show_error(loaded.error)
 
 			return
 
 	var opened := app.scurk_editor.show_editor(initial_path)
 
 	if not opened.ok:
-		app.interface._show_error(opened.error)
+		app.interface.show_error(opened.error)
 
 
-func _open_scurk_place_print() -> void:
+func open_scurk_place_print() -> void:
 	if not app.assets_ready:
 		return
 
@@ -101,7 +101,7 @@ func _open_scurk_place_print() -> void:
 		return
 
 	if app.city == null:
-		app.interface._show_error("Load or create a city before you open SCURK Place & Print.")
+		app.interface.show_error("Load or create a city before you open SCURK Place & Print.")
 
 		return
 
@@ -111,18 +111,18 @@ func _open_scurk_place_print() -> void:
 		or app.large_sprites == null
 		or not app.large_sprites.is_valid()
 	):
-		app.interface._show_error("The SCURK Place & Print graphics are not available.")
+		app.interface.show_error("The SCURK Place & Print graphics are not available.")
 
 		return
 
-	_ensure_scurk_place_print()
-	app.interface._hide_main_menu()
+	ensure_scurk_place_print()
+	app.interface.hide_main_menu()
 
 	if app.scurk_editor != null and app.scurk_editor.visible:
 		app.scurk_editor.hide()
 
 	if app.overlay_mode != CityViewMode.Mode.CITY:
-		app.menus._set_overlay(CityViewMode.Mode.CITY)
+		app.menus.set_overlay(CityViewMode.Mode.CITY)
 
 	var names := (
 		app.active_scurk_tile_set.names
@@ -140,21 +140,21 @@ func _open_scurk_place_print() -> void:
 	app.scurk_place_print.set_export_enabled(app.map_view.zoom_percent() <= 25)
 
 	if not app.scurk_place_print.show_workspace():
-		app.interface._show_error("Cannot open SCURK Place & Print.")
+		app.interface.show_error("Cannot open SCURK Place & Print.")
 
 		return
 
 	_select_scurk_place_tile(app.scurk_place_print.selected_tile_id)
 
 
-func _close_scurk_place_print() -> void:
+func close_scurk_place_print() -> void:
 	if app.scurk_place_print != null:
 		app.scurk_place_print.hide()
 
 	if app.scurk_print != null:
 		app.scurk_print.hide()
 
-	app.current_tool._update_edit_state()
+	app.current_tool.update_edit_state()
 
 	if app.city != null:
 		app.status_label.theme_type_variation = ""
@@ -171,9 +171,9 @@ func _select_scurk_place_tile(tile_id: int) -> void:
 		return
 
 	if app.overlay_mode != CityViewMode.Mode.CITY:
-		app.menus._set_overlay(CityViewMode.Mode.CITY)
+		app.menus.set_overlay(CityViewMode.Mode.CITY)
 
-	app.current_tool._update_edit_state()
+	app.current_tool.update_edit_state()
 
 
 func _select_scurk_edit_tool(
@@ -189,12 +189,12 @@ func _select_scurk_edit_tool(
 	var required_view := CityViewMode.from_key(String(tool.get("view", "either")))
 
 	if required_view != CityViewMode.Mode.NONE and app.overlay_mode != required_view:
-		app.menus._set_overlay(required_view)
+		app.menus.set_overlay(required_view)
 
-	app.current_tool._update_edit_state()
+	app.current_tool.update_edit_state()
 
 
-func _record_edit_command(
+func record_edit_command(
 	command: EditCommandResult, scurk_history := false, scurk_name := ""
 ) -> void:
 	if scurk_history:
@@ -213,7 +213,7 @@ func _record_edit_command(
 		app.last_edit_command = command
 
 
-func _apply_scurk_place_selection(point: Vector2i) -> void:
+func apply_scurk_place_selection(point: Vector2i) -> void:
 	if app.city == null or app.scurk_place_print == null:
 		return
 
@@ -227,14 +227,14 @@ func _apply_scurk_place_selection(point: Vector2i) -> void:
 	)
 
 	if not result.ok:
-		app.interface._show_error("Cannot place the SCURK object: %s" % result.error)
+		app.interface.show_error("Cannot place the SCURK object: %s" % result.error)
 
 		return
 
 	var placed := result as ScurkPlaceResult
-	_record_edit_command(placed, true, "Object Placement")
-	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(placed)
+	record_edit_command(placed, true, "Object Placement")
+	app.interface.refresh_details()
+	app.static_render.refresh_after_city_edit(placed)
 	var area := placed.area
 	var message := "Placed SCURK tile %d at %d, %d (%d by %d)." % [
 		tile_id, point.x, point.y, area, area,
@@ -244,14 +244,14 @@ func _apply_scurk_place_selection(point: Vector2i) -> void:
 	app.status_label.text = message
 
 
-func _undo_scurk_place() -> void:
+func undo_scurk_place() -> void:
 	if app.city == null or not app.scurk_edit_history.can_undo():
 		return
 
 	var result := app.scurk_edit_history.undo(app.city, app.tool_random)
 
 	if not result.ok:
-		app.interface._show_error("Cannot undo SCURK placement: %s" % result.error)
+		app.interface.show_error("Cannot undo SCURK placement: %s" % result.error)
 
 		return
 
@@ -260,8 +260,8 @@ func _undo_scurk_place() -> void:
 	app.scurk_place_print.set_history_enabled(
 		app.scurk_edit_history.can_undo(), app.scurk_edit_history.can_redo()
 	)
-	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(command)
+	app.interface.refresh_details()
+	app.static_render.refresh_after_city_edit(command)
 	var command_name := command.scurk_tool_name if not command.scurk_tool_name.is_empty() else "edit"
 	var message := "Undid SCURK %s across %d tiles." % [
 		command_name, result.restored_tiles,
@@ -278,7 +278,7 @@ func _redo_scurk_place() -> void:
 	var result := app.scurk_edit_history.redo(app.city, app.tool_random)
 
 	if not result.ok:
-		app.interface._show_error("Cannot redo SCURK placement: %s" % result.error)
+		app.interface.show_error("Cannot redo SCURK placement: %s" % result.error)
 
 		return
 
@@ -287,8 +287,8 @@ func _redo_scurk_place() -> void:
 	app.scurk_place_print.set_history_enabled(
 		app.scurk_edit_history.can_undo(), app.scurk_edit_history.can_redo()
 	)
-	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(command)
+	app.interface.refresh_details()
+	app.static_render.refresh_after_city_edit(command)
 	var command_name := command.scurk_tool_name if not command.scurk_tool_name.is_empty() else "edit"
 	var message := "Redid SCURK %s across %d tiles." % [
 		command_name, result.restored_tiles,
@@ -298,7 +298,7 @@ func _redo_scurk_place() -> void:
 	app.status_label.text = message
 
 
-func _open_tile_set_dialog() -> void:
+func open_tile_set_dialog() -> void:
 	var tile_set_directory := app.reference_root.path_join("SCURKART")
 
 	if DirAccess.dir_exists_absolute(tile_set_directory):
@@ -307,16 +307,16 @@ func _open_tile_set_dialog() -> void:
 	app.tile_set_dialog.popup_centered_ratio(0.8)
 
 
-func _load_tile_set(path: String) -> void:
+func load_tile_set(path: String) -> void:
 	if app.base_large_sprites == null or app.base_small_medium_sprites == null:
-		app.interface._show_error("Original sprite data is not loaded.")
+		app.interface.show_error("Original sprite data is not loaded.")
 
 		return
 
 	var tile_set := ScurkTileSet.load_path(path)
 
 	if not tile_set.is_valid():
-		app.interface._show_error("Cannot load tile set: %s" % tile_set.parse_error)
+		app.interface.show_error("Cannot load tile set: %s" % tile_set.parse_error)
 
 		return
 
@@ -327,12 +327,12 @@ func _apply_scurk_tile_set(
 	tile_set: ScurkMif, display_name: String, path: String
 ) -> void:
 	if app.base_large_sprites == null or app.base_small_medium_sprites == null:
-		app.interface._show_error("Original sprite data is not loaded.")
+		app.interface.show_error("Original sprite data is not loaded.")
 
 		return
 
 	if tile_set == null or not tile_set.is_valid():
-		app.interface._show_error("Cannot apply an invalid SCURK tile set.")
+		app.interface.show_error("Cannot apply an invalid SCURK tile set.")
 
 		return
 
@@ -342,7 +342,7 @@ func _apply_scurk_tile_set(
 	])
 
 	if not new_large.is_valid() or not new_small_medium.is_valid():
-		app.interface._show_error("Cannot combine the tile set with the original sprite data.")
+		app.interface.show_error("Cannot combine the tile set with the original sprite data.")
 
 		return
 
@@ -355,10 +355,10 @@ func _apply_scurk_tile_set(
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.configure(app.palette, app.large_sprites, tile_set.names, app.scurk_graphics)
 
-	app.static_render._invalidate_rendered_city()
+	app.static_render.invalidate_rendered_city()
 
 	if app.city != null:
-		app.map_render._refresh_map()
+		app.map_render.refresh_map()
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Loaded tile set %s: %d graphic replacements and %d names." % [
@@ -366,7 +366,7 @@ func _apply_scurk_tile_set(
 	]
 
 
-func _restore_original_tile_set() -> void:
+func restore_original_tile_set() -> void:
 	if app.base_large_sprites == null or app.base_small_medium_sprites == null:
 		return
 
@@ -379,16 +379,16 @@ func _restore_original_tile_set() -> void:
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.configure(app.palette, app.large_sprites, {}, app.scurk_graphics)
 
-	app.static_render._invalidate_rendered_city()
+	app.static_render.invalidate_rendered_city()
 
 	if app.city != null:
-		app.map_render._refresh_map()
+		app.map_render.refresh_map()
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Restored the original tile set."
 
 
-func _scurk_edit_tool_active() -> bool:
+func scurk_edit_tool_active() -> bool:
 	return (
 		app.scurk_place_print != null
 		and app.scurk_place_print.visible

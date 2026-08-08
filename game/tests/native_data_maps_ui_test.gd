@@ -42,7 +42,7 @@ func _run() -> void:
 	var random_state: int = main.simulation_engine.random.state
 	var old_bytes: PackedByteArray = document.serialize().data
 	main.document_state.current_save_path = "user://source-city.SC2"
-	main.city_files._sync_upgrade_city_option()
+	main.city_files.sync_upgrade_city_option()
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) >= 0, "Original SC2 shows upgrade in Options")
 	main.preferences.original_compatibility = true
 	main.settings._apply_compatibility_controls()
@@ -50,12 +50,12 @@ func _run() -> void:
 	main.preferences.original_compatibility = false
 	main.settings._apply_compatibility_controls()
 	main.last_edit_command = EditCommandResult.new()
-	main.menus._on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
+	main.menus.on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
 	check(main.sc2x_conversion_dialog.visible and document.serialize().data == old_bytes, "Warning appears before irreversible conversion")
 	main.sc2x_conversion_dialog.canceled.emit()
 	main.sc2x_conversion_dialog.hide()
 	check(document.serialize().data == old_bytes and main.document_state.current_save_path == "user://source-city.SC2", "Cancel retains original city and path")
-	main.menus._on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
+	main.menus.on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
 	main.sc2x_conversion_dialog.hide()
 	main.sc2x_conversion_dialog.confirmed.emit()
 	check(document.full_resolution_maps(), "Options upgrades city after confirmation")
@@ -69,13 +69,13 @@ func _run() -> void:
 	check(document.serialize().data != old_bytes and main.city_files._city_has_unsaved_changes(), "Conversion is an unsaved change")
 	main.save_dialog.hide()
 	var saved_path: String = main.document_state.current_save_path
-	main.city_files._upgrade_city_to_sc2x()
+	main.city_files.upgrade_city_to_sc2x()
 	check(main.document_state.current_save_path == saved_path and not main.save_dialog.visible, "Repeated conversion is harmless")
 	var second := EmptyCityTemplate.create(128)
 	check(main.city_session._activate_document(second), "Activate another original city")
 	main.document_state.current_save_path = "user://second-city.SC2"
 	main.preferences.warn_sc2x_conversion = false
-	main.city_files._upgrade_city_to_sc2x()
+	main.city_files.upgrade_city_to_sc2x()
 	check(second.is_extended() and not main.sc2x_conversion_dialog.visible, "Disabled warning permits direct conversion")
 	main.save_dialog.hide()
 	main.queue_free()

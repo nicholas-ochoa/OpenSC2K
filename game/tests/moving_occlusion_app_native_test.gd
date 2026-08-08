@@ -52,7 +52,7 @@ func _run() -> void:
 
 func _capture(main: Node, rate: int) -> Image:
 	main.settings._set_moving_frame_rate(rate)
-	main.moving_sprites._refresh_moving_things()
+	main.moving_sprites.refresh_moving_things()
 
 	for frame in 3:
 		await RenderingServer.frame_post_draw
@@ -69,11 +69,11 @@ func _wait_for_regions(main: Node) -> void:
 	# poll moves the cache to the new camera, so poll before trusting ready():
 	# otherwise ready() answers for the previous view and part of the new view
 	# stays unpainted while its moving objects and shadows still draw.
-	main.map_render._poll_region_cache()
+	main.map_render.poll_region_cache()
 
 	while (main.render_caches.region_cache == null or not main.render_caches.region_cache.ready()) and Time.get_ticks_msec() < deadline:
 		await process_frame
-		main.map_render._poll_region_cache()
+		main.map_render.poll_region_cache()
 
 	assert(main.render_caches.region_cache != null and main.render_caches.region_cache.ready())
 

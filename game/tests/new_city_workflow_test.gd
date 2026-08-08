@@ -154,12 +154,12 @@ func _run() -> void:
 	assert(main.overlay_mode == CityViewMode.Mode.HEIGHT)
 	await process_frame
 	main.city_toolbar.view_mode_buttons[CityViewMode.Mode.CITY].pressed.emit()
-	main.current_tool._select_tool_group(16)
-	main.current_tool._select_subtool(1)
+	main.current_tool.select_tool_group(16)
+	main.current_tool.select_subtool(1)
 	assert(main.selected_subtool == 0)
 	await process_frame
-	main.current_tool._select_tool_group(1)
-	main.current_tool._select_subtool(0)
+	main.current_tool.select_tool_group(1)
+	main.current_tool.select_subtool(0)
 	await process_frame
 	await process_frame
 	assert(main.map_view.continuous_placement and main.map_view.landscape_brush)
@@ -180,24 +180,24 @@ func _run() -> void:
 	wheel.button_index = MOUSE_BUTTON_WHEEL_DOWN
 	root.push_input(wheel, true)
 	assert(main.city_toolbar.brush_size_input.value == 1)
-	main.current_tool._select_tool_group(1)
-	main.current_tool._select_subtool(0)
+	main.current_tool.select_tool_group(1)
+	main.current_tool.select_subtool(0)
 
 	main.city_toolbar.brush_size_input.value = 5
 	main.city_toolbar.brush_shape_input.select(1)
 	main.city_toolbar.brush_shape_input.item_selected.emit(1)
 	var brush: Array[Vector2i] = main.map_view.selection.brush_tiles(Vector2i(8, 8))
 	assert(brush.size() == 21)
-	main.current_tool._select_subtool(1)
+	main.current_tool.select_subtool(1)
 	assert(main.map_view.brush_size == 5 and main.map_view.brush_round)
-	main.current_tool._select_subtool(2)
+	main.current_tool.select_subtool(2)
 	assert(not main.city_toolbar.brush_controls.visible)
-	main.current_tool._select_subtool(3)
+	main.current_tool.select_subtool(3)
 	assert(main.city_toolbar.brush_controls.visible)
 	assert(main.map_view.brush_size == 5)
 	for tool in 4:
 		var expected := TerrainToolIcons.terrain_action(main.asset_source.assets.city_ui_graphics, ["tree", "water", "stream", "forest"][tool])
-		assert(main.camera_input._tool_button_icon(1, tool).get_image().get_data() == expected.get_image().get_data())
+		assert(main.camera_input.tool_button_icon(1, tool).get_image().get_data() == expected.get_image().get_data())
 	var original: PackedByteArray = main.document_state.current_document.serialize().data
 	main.new_city._reopen_terrain_dialog()
 	assert(dialog.visible and dialog.done_button.disabled)

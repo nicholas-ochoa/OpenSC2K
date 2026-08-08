@@ -34,7 +34,7 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func _sync_asset_menu_actions() -> void:
+func sync_asset_menu_actions() -> void:
 	var popup := app.city_menu_bar.file_menu.get_popup()
 
 	for index in popup.item_count:
@@ -42,7 +42,7 @@ func _sync_asset_menu_actions() -> void:
 			popup.set_item_disabled(index, not app.assets_ready)
 
 
-func _on_file_menu(id: int) -> void:
+func on_file_menu(id: int) -> void:
 	if not app.assets_ready and id not in [5, 6]:
 		return
 
@@ -50,38 +50,38 @@ func _on_file_menu(id: int) -> void:
 		0:
 			app.new_city._open_new_city_dialog()
 		1:
-			app.city_files._open_city_dialog()
+			app.city_files.open_city_dialog()
 		2:
-			app.city_files._open_save_dialog()
+			app.city_files.open_save_dialog()
 		CityMenuBar.MENU_SAVE_CITY:
-			app.city_files._save_city()
+			app.city_files.save_city()
 		CityMenuBar.MENU_EXPORT_CITY_PNG:
 			app.city_png_export._open_export_dialog()
 		3:
-			app.scurk_workspace._open_tile_set_dialog()
+			app.scurk_workspace.open_tile_set_dialog()
 		4:
-			app.scurk_workspace._restore_original_tile_set()
+			app.scurk_workspace.restore_original_tile_set()
 		MENU_SCURK_PLACE_PRINT:
-			app.scurk_workspace._open_scurk_place_print()
+			app.scurk_workspace.open_scurk_place_print()
 		5:
-			app.city_files._request_main_menu()
+			app.city_files.request_main_menu()
 		6:
-			app.city_files._request_city_exit("quit")
+			app.city_files.request_city_exit("quit")
 
 
-func _on_speed_menu(id: int) -> void:
+func on_speed_menu(id: int) -> void:
 	if app.speed_controller == null:
 		return
 
 	if id < 0 or id > 4:
 		return
 
-	app.frame._select_speed(id + GameSpeed.Speed.PAUSED)
+	app.frame.select_speed(id + GameSpeed.Speed.PAUSED)
 
 
-func _on_options_menu(id: int) -> void:
+func on_options_menu(id: int) -> void:
 	if id == CityMenuBar.MENU_UPGRADE_SC2X:
-		app.city_files._upgrade_city_to_sc2x()
+		app.city_files.upgrade_city_to_sc2x()
 
 		return
 
@@ -91,7 +91,7 @@ func _on_options_menu(id: int) -> void:
 		return
 
 	if app.city == null:
-		app.interface._show_error("Load a city before you change its options.")
+		app.interface.show_error("Load a city before you change its options.")
 
 		return
 
@@ -120,59 +120,59 @@ func _on_options_menu(id: int) -> void:
 			return
 
 	if not stored:
-		app.interface._show_error("Cannot update the %s option." % option_name)
+		app.interface.show_error("Cannot update the %s option." % option_name)
 
 		return
 
-	_sync_city_option_menus()
+	sync_city_option_menus()
 
 	if id == MENU_SOUND_EFFECTS and not enabled:
-		app.effects_audio._stop_sound_effects()
+		app.effects_audio.stop_sound_effects()
 
 	if id == MENU_MUSIC:
 		if enabled:
-			app.effects_audio._play_music_track(app.audio_controller.music_director.next_general_track())
+			app.effects_audio.play_music_track(app.audio_controller.music_director.next_general_track())
 		else:
-			app.effects_audio._stop_music()
+			app.effects_audio.stop_music()
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "%s %s." % [option_name, "enabled" if enabled else "disabled"]
 
 
-func _on_view_menu(id: int) -> void:
+func on_view_menu(id: int) -> void:
 	if id >= 0 and id < CityViewMode.DISPLAY_MODES.size():
-		_set_overlay(CityViewMode.DISPLAY_MODES[id])
+		set_overlay(CityViewMode.DISPLAY_MODES[id])
 
 		return
 
 	match id:
 		MENU_VIEW_CITY_MAP:
-			app.reports._open_city_map_window()
+			app.reports.open_city_map_window()
 		MENU_VIEW_BUILDINGS:
-			_set_surface_visibility(not bool(app.surface_visibility.buildings), "buildings")
+			set_surface_visibility(not bool(app.surface_visibility.buildings), "buildings")
 		MENU_VIEW_NETWORKS:
-			_set_surface_visibility(not bool(app.surface_visibility.networks), "networks")
+			set_surface_visibility(not bool(app.surface_visibility.networks), "networks")
 		MENU_VIEW_WATER:
-			_set_surface_visibility(not bool(app.surface_visibility.water), "water")
+			set_surface_visibility(not bool(app.surface_visibility.water), "water")
 		MENU_VIEW_TREES:
-			_set_surface_visibility(not bool(app.surface_visibility.trees), "trees")
+			set_surface_visibility(not bool(app.surface_visibility.trees), "trees")
 		MENU_VIEW_ZONES:
-			_set_surface_visibility(not bool(app.surface_visibility.zones), "zones")
+			set_surface_visibility(not bool(app.surface_visibility.zones), "zones")
 		MENU_VIEW_SIGNS:
-			_set_surface_visibility(not bool(app.surface_visibility.signs), "signs")
+			set_surface_visibility(not bool(app.surface_visibility.signs), "signs")
 		MENU_VIEW_VEHICLES:
-			_set_surface_visibility(not app.show_vehicles, "vehicles")
+			set_surface_visibility(not app.show_vehicles, "vehicles")
 		MENU_VIEW_WATER_MAINS:
-			_set_underground_water_mains_visible(not app.show_underground_water_mains)
+			set_underground_water_mains_visible(not app.show_underground_water_mains)
 		MENU_VIEW_PIPES:
-			_set_underground_pipes_visible(not app.show_underground_pipes)
+			set_underground_pipes_visible(not app.show_underground_pipes)
 
 
-func _sync_city_option_menus() -> void:
+func sync_city_option_menus() -> void:
 	if app.options_menu == null or app.disasters_menu == null:
 		return
 
-	app.city_files._sync_upgrade_city_option()
+	app.city_files.sync_upgrade_city_option()
 	var has_city := app.city != null
 	app.options_menu.disabled = not has_city
 
@@ -281,26 +281,26 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 	app.view_menu_underground_items = underground_active
 
 
-func _sync_map_style() -> void:
+func sync_map_style() -> void:
 	# use the published texture until the mode change finishes
 	if app.map_view != null:
 		app.map_view.dark_underground = app.preferences.dark_underground and app.render_caches.static_render_mode == CityViewMode.Mode.UNDERGROUND and app.map_view.base_palette_lookup_all
 
 
-func _set_overlay(mode: CityViewMode.Mode) -> void:
+func set_overlay(mode: CityViewMode.Mode) -> void:
 	if not CityViewMode.DISPLAY_MODES.has(mode):
 		return
 
 	app.overlay_mode = mode
 	_sync_view_controls()
-	app.current_tool._update_edit_state()
+	app.current_tool.update_edit_state()
 
 	if app.city != null:
 		app.status_label.text = "Map view: %s" % CityViewMode.key(app.overlay_mode).capitalize()
-		app.map_render._refresh_map(false)
+		app.map_render.refresh_map(false)
 
 
-func _set_surface_visibility(enabled: bool, layer: String) -> void:
+func set_surface_visibility(enabled: bool, layer: String) -> void:
 	if layer == "vehicles":
 		_set_vehicles_visible(enabled)
 
@@ -310,11 +310,11 @@ func _set_surface_visibility(enabled: bool, layer: String) -> void:
 		return
 
 	app.surface_visibility[layer] = enabled
-	app.static_render._invalidate_view_render()
+	app.static_render.invalidate_view_render()
 	_sync_view_controls()
 
 	if app.city != null and app.overlay_mode == CityViewMode.Mode.CITY:
-		app.map_render._refresh_map(false)
+		app.map_render.refresh_map(false)
 
 	app.status_label.text = "%s %s." % [
 		layer.capitalize(), "shown" if enabled else "hidden",
@@ -336,48 +336,48 @@ func _set_vehicles_visible(enabled: bool) -> void:
 	_sync_view_controls()
 
 	if app.city != null and app.overlay_mode == CityViewMode.Mode.CITY:
-		app.moving_sprites._refresh_moving_things()
+		app.moving_sprites.refresh_moving_things()
 
 	app.status_label.text = "Vehicles %s." % ("shown" if enabled else "hidden")
 
 
-func _set_underground_water_mains_visible(enabled: bool) -> void:
+func set_underground_water_mains_visible(enabled: bool) -> void:
 	if app.show_underground_water_mains == enabled:
 		return
 
 	app.show_underground_water_mains = enabled
-	app.static_render._invalidate_view_render()
+	app.static_render.invalidate_view_render()
 	_sync_view_controls()
 
 	if app.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
-		app.map_render._refresh_map(false)
+		app.map_render.refresh_map(false)
 
 	app.status_label.text = "Water mains %s." % ("shown" if enabled else "hidden")
 
 
-func _set_underground_pipes_visible(enabled: bool) -> void:
+func set_underground_pipes_visible(enabled: bool) -> void:
 	if app.show_underground_pipes == enabled:
 		return
 
 	app.show_underground_pipes = enabled
-	app.static_render._invalidate_view_render()
+	app.static_render.invalidate_view_render()
 	_sync_view_controls()
 
 	if app.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
-		app.map_render._refresh_map(false)
+		app.map_render.refresh_map(false)
 
 	app.status_label.text = "Underground pipes %s." % ("shown" if enabled else "hidden")
 
 
-func _set_underground_subways_visible(enabled: bool) -> void:
+func set_underground_subways_visible(enabled: bool) -> void:
 	if app.show_underground_subways == enabled:
 		return
 
 	app.show_underground_subways = enabled
-	app.static_render._invalidate_view_render()
+	app.static_render.invalidate_view_render()
 	_sync_view_controls()
 
 	if app.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
-		app.map_render._refresh_map(false)
+		app.map_render.refresh_map(false)
 
 	app.status_label.text = "Underground subways %s." % ("shown" if enabled else "hidden")

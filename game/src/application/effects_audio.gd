@@ -12,16 +12,16 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func _play_music_track(track_id: int) -> bool:
+func play_music_track(track_id: int) -> bool:
 	return app.audio_controller != null and app.audio_controller.play_music_track(track_id)
 
 
-func _on_music_activity_changed(active: bool) -> void:
+func on_music_activity_changed(active: bool) -> void:
 	if app.simulation_engine != null:
 		app.simulation_engine.midi_playback_active = active
 
 
-func _music_playback_is_active() -> bool:
+func music_playback_is_active() -> bool:
 	return (
 		app.city != null
 		and app.city.music_enabled()
@@ -30,12 +30,12 @@ func _music_playback_is_active() -> bool:
 	)
 
 
-func _handle_application_focus_out() -> void:
+func handle_application_focus_out() -> void:
 	if app.audio_controller != null:
 		app.audio_controller.handle_application_focus_out()
 
 
-func _handle_application_focus_in() -> void:
+func handle_application_focus_in() -> void:
 	if app.audio_controller != null:
 		app.audio_controller.handle_application_focus_in(
 			(app.assets_ready and app.main_menu != null and app.main_menu.visible and app.preferences.music_volume > 0.0
@@ -44,17 +44,17 @@ func _handle_application_focus_in() -> void:
 		)
 
 
-func _stop_music() -> void:
+func stop_music() -> void:
 	if app.audio_controller != null:
 		app.audio_controller.stop_music()
 
 
-func _stop_sound_effects() -> void:
+func stop_sound_effects() -> void:
 	if app.audio_controller != null:
 		app.audio_controller.stop_sound_effects()
 
 
-func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
+func show_effect_events(effect_events: Array, sound_events: Array) -> void:
 	if app.city == null:
 		return
 
@@ -70,8 +70,8 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 			)
 
 	if app.overlay_mode == CityViewMode.Mode.CITY:
-		var view_size := app.static_render._city_view_size()
-		var sprite_archive := app.static_render._sprite_archive_for_view(view_size)
+		var view_size := app.static_render.city_view_size()
+		var sprite_archive := app.static_render.sprite_archive_for_view(view_size)
 		var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
 
 		for effect in effect_events:
@@ -118,28 +118,28 @@ func _show_effect_events(effect_events: Array, sound_events: Array) -> void:
 
 		app.map_view.show_transient_effects(visuals, 0.1)
 
-	_play_sound_events(sound_events)
+	play_sound_events(sound_events)
 
 
-func _play_sound_events(sound_events: Array) -> void:
+func play_sound_events(sound_events: Array) -> void:
 	if app.city == null or app.audio_controller == null:
 		return
 
 	app.audio_controller.play_sound_events(
-		sound_events, app.city.sound_enabled(), app.overlay_mode, app.static_render._city_view_size()
+		sound_events, app.city.sound_enabled(), app.overlay_mode, app.static_render.city_view_size()
 	)
 
 
-func _play_tool_success_sound(
+func play_tool_success_sound(
 	group_index: int, subtool_index: int, free_mode := false
 ) -> void:
 	if free_mode:
 		return
 
-	_play_sound_events(ToolSounds.success_events(group_index, subtool_index))
+	play_sound_events(ToolSounds.success_events(group_index, subtool_index))
 
 
-func _play_tool_failure_sound(
+func play_tool_failure_sound(
 	group_index: int,
 	subtool_index: int,
 	error := "",
@@ -148,19 +148,19 @@ func _play_tool_failure_sound(
 	if free_mode:
 		return
 
-	_play_sound_events(
+	play_sound_events(
 		ToolSounds.failure_events(group_index, subtool_index, str(error))
 	)
 
 
-func _start_tool_loop_sound(sound_id: int) -> void:
+func start_tool_loop_sound(sound_id: int) -> void:
 	if app.audio_controller != null:
 		app.audio_controller.start_tool_loop_sound(
 			sound_id, app.city != null and app.city.sound_enabled()
 		)
 
 
-func _stop_tool_loop_sound() -> void:
+func stop_tool_loop_sound() -> void:
 	if app.audio_controller != null:
 		app.audio_controller.stop_tool_loop_sound()
 

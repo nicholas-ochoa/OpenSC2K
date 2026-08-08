@@ -19,7 +19,7 @@ func _init(application: CityApplication) -> void:
 	document_state = application.document_state
 
 
-func _open_city_dialog() -> void:
+func open_city_dialog() -> void:
 	if not app.assets_ready:
 		return
 
@@ -31,7 +31,7 @@ func _open_city_dialog() -> void:
 	app.file_dialog.popup_centered_ratio(0.8)
 
 
-func _open_scenario_dialog() -> void:
+func open_scenario_dialog() -> void:
 	if not app.assets_ready:
 		return
 
@@ -43,12 +43,12 @@ func _open_scenario_dialog() -> void:
 	app.file_dialog.popup_centered_ratio(0.8)
 
 
-func _save_city() -> void:
+func save_city() -> void:
 	if document_state.current_document == null:
 		return
 
 	if document_state.current_save_path.is_empty():
-		_open_save_dialog()
+		open_save_dialog()
 	else:
 		_save_copy(document_state.current_save_path)
 
@@ -65,7 +65,7 @@ func _can_upgrade_city_to_sc2x() -> bool:
 	return path.get_extension().to_lower() == "sc2"
 
 
-func _sync_upgrade_city_option() -> void:
+func sync_upgrade_city_option() -> void:
 	if app.options_menu == null:
 		return
 
@@ -79,7 +79,7 @@ func _sync_upgrade_city_option() -> void:
 		popup.remove_item(index)
 
 
-func _upgrade_city_to_sc2x(confirmed := false) -> void:
+func upgrade_city_to_sc2x(confirmed := false) -> void:
 	if not _can_upgrade_city_to_sc2x():
 		return
 
@@ -111,7 +111,7 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 		app.frame_simulation = FrameSimulationRunner.new(app.speed_controller)
 
 	if not enabled:
-		app.interface._show_error("Cannot enable per-tile data maps: city data is incomplete.")
+		app.interface.show_error("Cannot enable per-tile data maps: city data is incomplete.")
 
 		return
 
@@ -119,11 +119,11 @@ func _upgrade_city_to_sc2x(confirmed := false) -> void:
 	app.last_edit_command = null
 	app.scurk_edit_history.clear()
 	document_state.current_save_path = ""
-	app.static_render._invalidate_view_render()
-	app.map_render._refresh_map(false)
-	_sync_upgrade_city_option()
+	app.static_render.invalidate_view_render()
+	app.map_render.refresh_map(false)
+	sync_upgrade_city_option()
 	app.status_label.text = "City upgraded to SC2X. Save a separate copy; the original game cannot open it."
-	_open_save_dialog()
+	open_save_dialog()
 
 
 func _confirm_sc2x_conversion() -> void:
@@ -131,10 +131,10 @@ func _confirm_sc2x_conversion() -> void:
 	pending_sc2x_document = null
 
 	if expected != null and document_state.current_document == expected:
-		_upgrade_city_to_sc2x(true)
+		upgrade_city_to_sc2x(true)
 
 
-func _open_save_dialog() -> void:
+func open_save_dialog() -> void:
 	if document_state.current_document == null:
 		return
 
@@ -166,7 +166,7 @@ func _city_has_unsaved_changes() -> bool:
 	return not serialized.ok or serialized.data != document_state.saved_city_snapshot
 
 
-func _request_city_exit(action: String, path := "") -> void:
+func request_city_exit(action: String, path := "") -> void:
 	if not _city_has_unsaved_changes():
 		_perform_city_exit(action, path)
 
@@ -193,13 +193,13 @@ func _perform_city_exit(action: String, path := "") -> void:
 			app.get_tree().quit()
 
 
-func _save_pending_city_exit() -> void:
+func save_pending_city_exit() -> void:
 	if pending_city_exit_action.is_empty():
 		return
 
 	if document_state.current_save_path.is_empty():
 		pending_city_exit_waiting_for_save = true
-		_open_save_dialog()
+		open_save_dialog()
 
 		return
 
@@ -207,7 +207,7 @@ func _save_pending_city_exit() -> void:
 		_continue_pending_city_exit()
 
 
-func _on_save_changes_action(action: StringName) -> void:
+func on_save_changes_action(action: StringName) -> void:
 	if action != &"discard":
 		return
 
@@ -215,7 +215,7 @@ func _on_save_changes_action(action: StringName) -> void:
 	_continue_pending_city_exit()
 
 
-func _cancel_pending_city_exit() -> void:
+func cancel_pending_city_exit() -> void:
 	pending_city_exit_action = ""
 	pending_city_exit_path = ""
 	pending_city_exit_waiting_for_save = false
@@ -224,12 +224,12 @@ func _cancel_pending_city_exit() -> void:
 func _continue_pending_city_exit() -> void:
 	var action := pending_city_exit_action
 	var path := pending_city_exit_path
-	_cancel_pending_city_exit()
+	cancel_pending_city_exit()
 	_perform_city_exit(action, path)
 
 
-func _load_city(path: String) -> void:
-	_request_city_exit("load_city", path)
+func load_city(path: String) -> void:
+	request_city_exit("load_city", path)
 
 
 func _load_city_unchecked(path: String) -> void:
@@ -239,7 +239,7 @@ func _load_city_unchecked(path: String) -> void:
 	var document := Sc2Document.load_path(path)
 
 	if not document.is_valid():
-		app.interface._show_error(document.parse_error)
+		app.interface.show_error(document.parse_error)
 
 		return
 
@@ -249,7 +249,7 @@ func _load_city_unchecked(path: String) -> void:
 		loaded_scenario = ScenarioModel.from_document(document)
 
 		if not loaded_scenario.is_valid():
-			app.interface._show_error(loaded_scenario.load_error)
+			app.interface.show_error(loaded_scenario.load_error)
 
 			return
 
@@ -261,23 +261,23 @@ func _load_city_unchecked(path: String) -> void:
 	)
 
 
-func _on_save_path_selected(path: String) -> void:
+func on_save_path_selected(path: String) -> void:
 	var saved := _save_copy(path)
 
 	if saved and pending_city_exit_waiting_for_save:
 		_continue_pending_city_exit()
 
 
-func _on_save_dialog_canceled() -> void:
+func on_save_dialog_canceled() -> void:
 	if pending_city_exit_waiting_for_save:
-		_cancel_pending_city_exit()
+		cancel_pending_city_exit()
 
 
 func _save_copy(path: String) -> bool:
 	var result := CityFiles.save_copy(document_state.current_document, path, app.reference_root, app.preferences.original_compatibility)
 
 	if not result.ok:
-		app.interface._show_error(result.error)
+		app.interface.show_error(result.error)
 
 		return false
 
@@ -288,12 +288,12 @@ func _save_copy(path: String) -> bool:
 	document_state.saved_city_snapshot = result.data.duplicate()
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Saved city: %s" % output_path
-	_sync_upgrade_city_option()
+	sync_upgrade_city_option()
 
 	return true
 
 
-func _request_main_menu() -> void:
+func request_main_menu() -> void:
 	var prompt := ConfirmationDialog.new()
 	prompt.title = "Return to Main Menu"
 	prompt.dialog_text = "Return to the main menu? You can use Continue City to resume this city."
@@ -301,7 +301,7 @@ func _request_main_menu() -> void:
 	prompt.min_size = Vector2i(480, 180)
 	app.add_child(prompt)
 	prompt.confirmed.connect(func() -> void:
-		app.interface._show_main_menu()
+		app.interface.show_main_menu()
 		prompt.queue_free())
 	prompt.canceled.connect(prompt.queue_free)
 	prompt.popup_centered()

@@ -16,7 +16,7 @@ func _run() -> void:
 	main.set_process(false)
 	var status := main.city_status_bar as CityStatusBar
 	main.city = null
-	main.interface._refresh_status_summary()
+	main.interface.refresh_status_summary()
 	assert(status.compass.compass_rotation == -1)
 
 	# The display uses fixed diagonals and exact screen-space quarter turns.
@@ -32,17 +32,17 @@ func _run() -> void:
 		var document := EmptyCityTemplate.create(128)
 		assert(document.set_misc_u32(0x0008, saved_rotation))
 		assert(main.city_session._activate_document(document))
-		main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+		main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 		assert(status.compass.compass_rotation == saved_rotation)
 		var before: PackedByteArray = document.serialize().data
-		main.interface._refresh_status_summary()
+		main.interface.refresh_status_summary()
 		assert(document.serialize().data == before, "Compass refresh changed saved data")
 
 	# Exercise the same handlers as the rotation buttons, including wraparound.
 	for counter_clockwise in [false, true]:
 		for step in range(4):
 			var previous: int = main.city.compass_rotation()
-			main.camera_input._rotate_city(counter_clockwise)
+			main.camera_input.rotate_city(counter_clockwise)
 			var expected := (previous + (1 if counter_clockwise else 3)) & 3
 			assert(status.compass.compass_rotation == expected)
 

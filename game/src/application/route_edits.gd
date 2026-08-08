@@ -42,13 +42,13 @@ func _apply_tunnel_selection(
 		var message := (
 			"Engineers report that tunnel construction costs will be $%s.\n"
 			+ "Do you wish to construct the tunnel?"
-		) % app.interface._format_number(tunnel.cost)
+		) % app.interface.format_number(tunnel.cost)
 		app.tunnel_dialog.show_message(message)
 
 		return
 
 	if tunnel.cancelled:
-		app.effects_audio._play_tool_failure_sound(
+		app.effects_audio.play_tool_failure_sound(
 			app.selected_group, app.selected_subtool, "cancelled", free_mode
 		)
 		app.status_label.theme_type_variation = ""
@@ -57,17 +57,17 @@ func _apply_tunnel_selection(
 		return
 
 	if not tunnel.ok:
-		app.effects_audio._play_tool_failure_sound(
+		app.effects_audio.play_tool_failure_sound(
 			app.selected_group,
 			app.selected_subtool,
 			tunnel.error,
 			free_mode,
 		)
-		app.interface._show_error("Cannot build tunnel: %s" % tunnel.error)
+		app.interface.show_error("Cannot build tunnel: %s" % tunnel.error)
 
 		return
 
-	app.scurk_workspace._record_edit_command(
+	app.scurk_workspace.record_edit_command(
 		tunnel,
 		free_mode,
 		String(
@@ -76,12 +76,12 @@ func _apply_tunnel_selection(
 			else "Tunnel"
 		)
 	)
-	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(tunnel)
-	app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
+	app.interface.refresh_details()
+	app.static_render.refresh_after_city_edit(tunnel)
+	app.effects_audio.play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Built a %d-tile tunnel for $%s." % [
-		tunnel.points.size(), app.interface._format_number(tunnel.cost)
+		tunnel.points.size(), app.interface.format_number(tunnel.cost)
 	]
 
 
@@ -137,7 +137,7 @@ func _apply_highway_selection(
 		return
 
 	if highway.cancelled:
-		app.effects_audio._play_tool_failure_sound(
+		app.effects_audio.play_tool_failure_sound(
 			app.selected_group, app.selected_subtool, "cancelled", free_mode
 		)
 		app.status_label.theme_type_variation = ""
@@ -164,9 +164,9 @@ func _apply_highway_selection(
 				"Build a highway connection to a neighboring city for $%s?\n"
 				+ "The %d-section highway costs $%s and remains if you cancel."
 			) % [
-				app.interface._format_number(highway.connection_cost),
+				app.interface.format_number(highway.connection_cost),
 				highway.sections.size(),
-				app.interface._format_number(highway.route_cost),
+				app.interface.format_number(highway.route_cost),
 			]
 		)
 		app.highway_connection_dialog.show_message(message)
@@ -174,45 +174,45 @@ func _apply_highway_selection(
 		return
 
 	if not highway.ok:
-		app.effects_audio._play_tool_failure_sound(
+		app.effects_audio.play_tool_failure_sound(
 			app.selected_group,
 			app.selected_subtool,
 			highway.error,
 			free_mode,
 		)
-		app.interface._show_error("Cannot build highway: %s" % highway.error)
+		app.interface.show_error("Cannot build highway: %s" % highway.error)
 
 		return
 
-	app.scurk_workspace._record_edit_command(highway, free_mode, "Highway")
-	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(highway)
-	app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
+	app.scurk_workspace.record_edit_command(highway, free_mode, "Highway")
+	app.interface.refresh_details()
+	app.static_render.refresh_after_city_edit(highway)
+	app.effects_audio.play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
 	app.status_label.theme_type_variation = ""
 
 	if highway.bridge_count > 1:
-		app.status_label.text = "Built %d highway sections and %d bridges for $%s." % [highway.sections.size(), highway.bridge_count, app.interface._format_number(highway.cost)]
+		app.status_label.text = "Built %d highway sections and %d bridges for $%s." % [highway.sections.size(), highway.bridge_count, app.interface.format_number(highway.cost)]
 	elif highway.bridge_built:
 		if highway.sections.is_empty():
 			app.status_label.text = "Built a %s across %d water sections for $%s." % [
 				highway.bridge_name,
 				highway.bridge_span_length,
-				app.interface._format_number(highway.cost),
+				app.interface.format_number(highway.cost),
 			]
 		else:
 			app.status_label.text = "Built %d highway sections and a %s across %d water sections for $%s." % [
 				highway.sections.size(),
 				highway.bridge_name,
 				highway.bridge_span_length,
-				app.interface._format_number(highway.cost),
+				app.interface.format_number(highway.cost),
 			]
 	elif highway.connection_built:
 		app.status_label.text = "Built %d highway sections and a neighboring-city connection for $%s." % [
-			highway.sections.size(), app.interface._format_number(highway.cost)
+			highway.sections.size(), app.interface.format_number(highway.cost)
 		]
 	else:
 		app.status_label.text = "Built %d highway sections for $%s." % [
-			highway.sections.size(), app.interface._format_number(highway.cost)
+			highway.sections.size(), app.interface.format_number(highway.cost)
 		]
 
 		if highway.connection_cancelled:

@@ -32,7 +32,7 @@ func _open_tool_choice_dialog(group_index: int) -> void:
 			choices.append(subtool_index)
 
 	if choices.is_empty():
-		app.interface._show_error("No building type is available for this chooser.")
+		app.interface.show_error("No building type is available for this chooser.")
 
 		return
 
@@ -69,19 +69,19 @@ func _choose_tool_variant(choice_index: int) -> void:
 	app.selected_subtool = int(choices[choice_index])
 	app.pending_tool_choices.clear()
 	app.tool_choice_dialog.hide()
-	app.current_tool._update_edit_state()
+	app.current_tool.update_edit_state()
 
 
 func _cancel_tool_choice() -> void:
 	app.pending_tool_choices.clear()
-	app.current_tool._update_edit_state()
+	app.current_tool.update_edit_state()
 
 
 func _open_stadium_dialog(command: BuildingEditResult) -> void:
 	var choices := BuildingFacilities.stadium_team_choices(app.city)
 
 	if choices.is_empty():
-		app.interface._show_error("Cannot read the available stadium teams.")
+		app.interface.show_error("Cannot read the available stadium teams.")
 
 		return
 
@@ -104,7 +104,7 @@ func _confirm_stadium_team() -> void:
 	var team_index := app.stadium_dialog.selected_team_id()
 
 	if team_index < 0:
-		app.interface._show_error("Select a stadium team.")
+		app.interface.show_error("Select a stadium team.")
 		call_deferred("_restore_stadium_dialog")
 
 		return
@@ -117,18 +117,18 @@ func _confirm_stadium_team() -> void:
 	)
 
 	if not result.ok:
-		app.interface._show_error("Cannot assign stadium team: %s" % result.error)
+		app.interface.show_error("Cannot assign stadium team: %s" % result.error)
 		call_deferred("_restore_stadium_dialog")
 
 		return
 
 	app.last_edit_command = result
 	app.pending_stadium_command = null
-	app.interface._refresh_details()
-	app.effects_audio._play_tool_success_sound(14, 3)
+	app.interface.refresh_details()
+	app.effects_audio.play_tool_success_sound(14, 3)
 
 	if app.city.music_enabled():
-		app.effects_audio._play_music_track(Music.RECREATION_TRACK)
+		app.effects_audio.play_music_track(Music.RECREATION_TRACK)
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Assigned %s to the new stadium." % result.stadium_team_name
@@ -136,10 +136,10 @@ func _confirm_stadium_team() -> void:
 
 func _cancel_stadium_team() -> void:
 	app.pending_stadium_command = null
-	app.effects_audio._play_tool_success_sound(14, 3)
+	app.effects_audio.play_tool_success_sound(14, 3)
 
 	if app.city != null and app.city.music_enabled():
-		app.effects_audio._play_music_track(Music.RECREATION_TRACK)
+		app.effects_audio.play_music_track(Music.RECREATION_TRACK)
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "The stadium was built without a team."
@@ -154,7 +154,7 @@ func _open_sign_dialog(point: Vector2i) -> void:
 	var overlay := app.city.text_overlay_id(point.x, point.y)
 
 	if overlay != 0 and not OverlayData.is_sign(overlay):
-		app.interface._show_error("This tile has a protected simulation label.")
+		app.interface.show_error("This tile has a protected simulation label.")
 
 		return
 
@@ -170,12 +170,12 @@ func _commit_sign() -> void:
 	app.pending_sign_tile = Vector2i(-1, -1)
 
 	if not result.ok:
-		app.interface._show_error("Cannot change sign: %s" % result.error)
+		app.interface.show_error("Cannot change sign: %s" % result.error)
 
 		return
 
 	app.last_edit_command = result
-	app.static_render._refresh_after_city_edit(result)
+	app.static_render.refresh_after_city_edit(result)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
 
@@ -188,7 +188,7 @@ func _open_query(point: Vector2i) -> void:
 	var result := Queries.inspect(app.city, point, text_resources.original_query_strings)
 
 	if not result.ok:
-		app.interface._show_error("Cannot query tile: %s" % result.error)
+		app.interface.show_error("Cannot query tile: %s" % result.error)
 
 		return
 
@@ -196,11 +196,11 @@ func _open_query(point: Vector2i) -> void:
 		var approval := app.simulation_engine.recalculate_mayor_house()
 
 		if not approval.get("ok", false):
-			app.interface._show_error("Cannot calculate mayor approval: %s" % approval.error)
+			app.interface.show_error("Cannot calculate mayor approval: %s" % approval.error)
 
 			return
 
-		app.reports._show_news_items(approval.news_items)
+		app.reports.show_news_items(approval.news_items)
 		result = Queries.inspect(app.city, point, text_resources.original_query_strings)
 
 	if (
@@ -232,7 +232,7 @@ func _open_query(point: Vector2i) -> void:
 		app.palette,
 		app.palette_clock.cycle_ticks,
 	)
-	app.effects_audio._play_sound_events(result.get("sound_events", []))
+	app.effects_audio.play_sound_events(result.get("sound_events", []))
 
 
 func _close_query(commit_rename := false) -> bool:
@@ -249,7 +249,7 @@ func _close_query(commit_rename := false) -> bool:
 		)
 
 		if not renamed.ok:
-			app.interface._show_error("Cannot rename facility: %s" % renamed.error)
+			app.interface.show_error("Cannot rename facility: %s" % renamed.error)
 
 			return false
 
@@ -274,7 +274,7 @@ func _run_query_action() -> void:
 			)
 
 			if not analysis.ok:
-				app.interface._show_error("Cannot analyze city: %s" % analysis.error)
+				app.interface.show_error("Cannot analyze city: %s" % analysis.error)
 
 				return
 
@@ -284,7 +284,7 @@ func _run_query_action() -> void:
 				text_resources.library_texts.size()
 				!= LibraryRuminateWindowsView.TEXT_RESOURCE_IDS.size()
 			):
-				app.interface._show_error("The Library text resources are missing or invalid.")
+				app.interface.show_error("The Library text resources are missing or invalid.")
 
 				return
 

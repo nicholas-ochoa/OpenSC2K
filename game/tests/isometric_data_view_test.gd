@@ -5,7 +5,7 @@ extends SceneTree
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 class NoMenuInterface extends ApplicationInterface:
-	func _show_main_menu() -> void:
+	func show_main_menu() -> void:
 		pass
 
 
@@ -98,15 +98,15 @@ func check_ui() -> void:
 	doc.enable_full_resolution_maps()
 	main.map_view.zoom_factor = 0.25
 	check(main.city_session._activate_document(doc), "Activate fixture")
-	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var before: Array = DocumentState.capture(doc)
-	main.current_tool._select_tool_group(16)
+	main.current_tool.select_tool_group(16)
 	var center: Vector2 = main.map_view.source_center
 	var shared_mesh: ArrayMesh
 
 	for index in CityViewMode.DATA_MODES.size():
 		var mode := CityViewMode.DATA_MODES[index]
-		main.menus._on_view_menu(index + 2)
+		main.menus.on_view_menu(index + 2)
 		check(main.overlay_mode == mode and main.map_view.data_view_mesh != null, "Menu opens isometric data view")
 
 		if shared_mesh != null and mode != CityViewMode.Mode.HEIGHT:
@@ -119,7 +119,7 @@ func check_ui() -> void:
 		check(main.map_view.source_center == center, "Switch preserves camera")
 		check(main.map_view.edit_enabled, "Query stays enabled")
 		var mesh: ArrayMesh = main.map_view.data_view_mesh
-		main.map_render._refresh_map(false)
+		main.map_render.refresh_map(false)
 		check(main.map_view.data_view_mesh == mesh, "Unchanged data reuses mesh")
 		check(main.map_view.data_view_layer.visible and main.map_view.data_view_layer.material != null, "Grid shader is active")
 		check(DocumentState.capture(doc) == before, "View changes preserve saved city")
@@ -130,7 +130,7 @@ func check_ui() -> void:
 	var data := doc.find_chunk("XVAL").decoded_payload.duplicate()
 	data[4 * 16 + 4] = 255
 	doc.find_chunk("XVAL").set_decoded_payload(data)
-	main.map_render._refresh_map(false)
+	main.map_render.refresh_map(false)
 	check(main.map_view.data_view_mesh == old_mesh, "Changed simulation grid retains geometry")
 	check(main.map_view.data_view_signature == CityDataView.signature(main.city, CityViewMode.Mode.LAND_VALUE), "Updated texture tracks current data revision")
 
@@ -138,15 +138,15 @@ func check_ui() -> void:
 		check(roundi(main.map_view.data_value_texture.get_image().get_pixel(4, 4).r * 255) == 255, "Changed grid uploads current value")
 
 	check(CityDataView.tile_text(main.city, CityViewMode.Mode.LAND_VALUE, Vector2i(4, 4), true).contains("255 / 0xFF"), "Exact hover value")
-	main.current_tool._select_tool_group(17)
+	main.current_tool.select_tool_group(17)
 	check(main.overlay_mode == CityViewMode.Mode.LAND_VALUE and main.map_view.edit_enabled, "Center preserves data view")
-	main.menus._set_overlay(CityViewMode.Mode.UNDERGROUND)
+	main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)
 	check(main.map_view.data_view_mesh == null and main.map_view.data_view_mode == CityViewMode.Mode.NONE, "Underground restores normal renderer")
-	main.menus._set_overlay(CityViewMode.Mode.CRIME)
-	main.current_tool._select_tool_group(0)
+	main.menus.set_overlay(CityViewMode.Mode.CRIME)
+	main.current_tool.select_tool_group(0)
 	check(main.overlay_mode == CityViewMode.Mode.CITY, "Demolish leaves analysis view for surface editing")
-	main.menus._set_overlay(CityViewMode.Mode.CRIME)
-	main.current_tool._select_tool_group(6)
+	main.menus.set_overlay(CityViewMode.Mode.CRIME)
+	main.current_tool.select_tool_group(6)
 	check(main.overlay_mode == CityViewMode.Mode.CITY and main.map_view.data_view_mesh == null, "Construction restores city view")
 	main.queue_free()
 	await process_frame

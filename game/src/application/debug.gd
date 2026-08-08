@@ -60,8 +60,8 @@ func _debug_metrics() -> Dictionary:
 		result.date = "%02d/%02d/%04d" % [
 			app.city.current_month(), app.city.current_day(), app.city.current_year(),
 		]
-		result.population = app.interface._format_number(app.city.population())
-		result.funds = "$%s" % app.interface._format_number(app.city.funds())
+		result.population = app.interface.format_number(app.city.population())
+		result.funds = "$%s" % app.interface.format_number(app.city.funds())
 		result.tool = str(Tools.tool(app.selected_group, app.selected_subtool).name)
 
 	return result
@@ -78,8 +78,8 @@ func _debug_full_redraw() -> void:
 	if app.city == null:
 		return
 
-	app.static_render._invalidate_view_render()
-	app.map_render._refresh_map(true)
+	app.static_render.invalidate_view_render()
+	app.map_render.refresh_map(true)
 
 
 func _debug_clear_render_caches() -> void:
@@ -99,12 +99,12 @@ func _debug_add_funds(amount: int) -> Dictionary:
 	if not result.ok:
 		return {"ok": false, "message": result.error}
 
-	app.interface._refresh_details()
+	app.interface.refresh_details()
 
 	return {
 		"ok": true,
 		"message": "Added $%s. Funds are now $%s."
-		% [app.interface._format_number(amount), app.interface._format_number(int(result.new_funds))],
+		% [app.interface.format_number(amount), app.interface.format_number(int(result.new_funds))],
 	}
 
 
@@ -114,10 +114,10 @@ func _debug_unlock_everything() -> Dictionary:
 	if not result.ok:
 		return {"ok": false, "message": result.error}
 
-	app.camera_input._refresh_child_tool_icons()
-	app.current_tool._refresh_tool_availability()
-	app.current_tool._update_edit_state()
-	app.interface._refresh_details()
+	app.camera_input.refresh_child_tool_icons()
+	app.current_tool.refresh_tool_availability()
+	app.current_tool.update_edit_state()
+	app.interface.refresh_details()
 
 	return {
 		"ok": true,
@@ -131,8 +131,8 @@ func _debug_set_no_disasters(enabled: bool) -> Dictionary:
 	if not result.ok:
 		return {"ok": false, "message": result.error}
 
-	app.menus._sync_city_option_menus()
-	app.interface._refresh_details()
+	app.menus.sync_city_option_menus()
+	app.interface.refresh_details()
 
 	return {
 		"ok": true,
@@ -155,7 +155,7 @@ func _debug_start_disaster(disaster_type: int) -> Dictionary:
 	if disaster_type < DisasterStart.DISASTER_FIRE or disaster_type > DisasterStart.DISASTER_PLANE_CRASH:
 		return {"ok": false, "message": "The disaster selection is not valid."}
 
-	var result := app.reports._start_disaster_at_view_center(disaster_type)
+	var result := app.reports.start_disaster_at_view_center(disaster_type)
 
 	if not result.get("ok", false):
 		return {
@@ -179,9 +179,9 @@ func _debug_end_disaster() -> Dictionary:
 
 	app.last_edit_command = null
 	app.simulation_map_dirty = false
-	app.map_render._refresh_map(false)
-	app.moving_sprites._refresh_moving_things()
-	app.interface._refresh_details()
+	app.map_render.refresh_map(false)
+	app.moving_sprites.refresh_moving_things()
+	app.interface.refresh_details()
 
 	return {
 		"ok": true,
@@ -205,7 +205,7 @@ func _debug_dispatch_maxis_man() -> Dictionary:
 	if not result.ok:
 		return {"ok": false, "message": result.error}
 
-	app.moving_sprites._refresh_moving_things()
+	app.moving_sprites.refresh_moving_things()
 
 	return {
 		"ok": true,
@@ -229,5 +229,5 @@ func _debug_set_visible_altitude_levels(levels: int) -> void:
 		app.map_view.city.visible_altitude_levels = levels
 
 	app.map_view.signs._invalidate_sign_entries()
-	app.static_render._invalidate_view_render()
-	app.map_render._refresh_map(false)
+	app.static_render.invalidate_view_render()
+	app.map_render.refresh_map(false)

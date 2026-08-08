@@ -14,7 +14,7 @@ const BLEND_TILE_LIMIT := 2
 
 var app: CityApplication
 var caches: RenderCaches
-# display interpolation state by xthg record. see `_note_moving_tick`
+# display interpolation state by xthg record. see `note_moving_tick`
 var _blend_from: Dictionary = {}
 var _blend_to: Dictionary = {}
 var _blend_city_id := 0
@@ -39,16 +39,16 @@ func _gpu_moving_active() -> bool:
 
 # start a blend after a moving-object tick. each record moves from its displayed
 # position to its new saved position. the blend never changes simulation state
-func _note_moving_tick(now_msec := -1) -> void:
+func note_moving_tick(now_msec := -1) -> void:
 	if now_msec < 0:
 		now_msec = Time.get_ticks_msec()
 
 	if app.city == null or app.preferences.moving_frame_rate <= ORIGINAL_FRAME_RATE:
-		_reset_blend()
+		reset_blend()
 
 		return
 
-	var view_size := app.static_render._city_view_size()
+	var view_size := app.static_render.city_view_size()
 	var continuing := _blend_city_id == app.city.get_instance_id() and _blend_view_size == view_size
 	var next := {}
 	var from := {}
@@ -74,7 +74,7 @@ func _note_moving_tick(now_msec := -1) -> void:
 
 
 # move the blend forward at the selected display rate
-func _advance_blend(now_msec := -1) -> void:
+func advance_blend(now_msec := -1) -> void:
 	if _blend_from.is_empty():
 		return
 
@@ -93,7 +93,7 @@ func _advance_blend(now_msec := -1) -> void:
 		_blend_from.clear()
 
 
-func _reset_blend() -> void:
+func reset_blend() -> void:
 	_blend_from.clear()
 	_blend_to.clear()
 	_blend_city_id = 0
@@ -161,7 +161,7 @@ func _apply_blend() -> void:
 	app.map_view.set_moving_blend(offsets, orders)
 
 
-func _refresh_moving_things(view_size := -1) -> void:
+func refresh_moving_things(view_size := -1) -> void:
 	if app.map_view != null:
 		app.map_view.set_moving_occlusion_enabled(app.preferences.moving_frame_rate > ORIGINAL_FRAME_RATE)
 
@@ -185,9 +185,9 @@ func _refresh_moving_things(view_size := -1) -> void:
 		caches.dynamic_visual_cache.clear()
 
 	if view_size < 0:
-		view_size = app.static_render._city_view_size()
+		view_size = app.static_render.city_view_size()
 
-	var sprite_archive := app.static_render._sprite_archive_for_view(view_size)
+	var sprite_archive := app.static_render.sprite_archive_for_view(view_size)
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := int(configuration.divisor)
 	var factor := 1
@@ -223,7 +223,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 
 			continue
 
-		var resource := _dynamic_sprite_resource(
+		var resource := dynamic_sprite_resource(
 			sprite_archive, command.sprite_id, command.flip, divisor, factor
 		)
 
@@ -301,7 +301,7 @@ func _refresh_moving_things(view_size := -1) -> void:
 		visuals, caches.dynamic_special_batch_cache
 	)
 	app.map_view.set_dynamic_sprites(batched_visuals)
-	app.map_render._refresh_sign_occlusion(view_size)
+	app.map_render.refresh_sign_occlusion(view_size)
 	caches.foreground_view_rect = app.map_view.visible_source_rect()
 	caches.foreground_complete = true
 
@@ -313,7 +313,7 @@ func _is_vehicle(record: int) -> bool:
 
 
 # drop vehicle sounds while the vehicles layer is hidden
-func _audible_sound_events(sound_events: Array) -> Array:
+func audible_sound_events(sound_events: Array) -> Array:
 	if app.show_vehicles:
 		return sound_events
 
@@ -322,7 +322,7 @@ func _audible_sound_events(sound_events: Array) -> Array:
 
 
 func _gpu_moving_visual(sprite_archive: Sc2SpriteArchive, command: Dictionary, divisor: int, factor: int) -> Dictionary:
-	var resource := _dynamic_sprite_resource(
+	var resource := dynamic_sprite_resource(
 		sprite_archive, command.sprite_id, command.flip, divisor, factor
 	)
 
@@ -350,7 +350,7 @@ func _gpu_moving_visual(sprite_archive: Sc2SpriteArchive, command: Dictionary, d
 	}
 
 
-func _static_occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
+func static_occlusion_candidates(bounds: Rect2i) -> Array[Dictionary]:
 	if caches.region_cache != null:
 		return caches.region_cache.occlusion_candidates(bounds)
 
@@ -392,7 +392,7 @@ func _dynamic_occluder_image(
 
 	# Bounding boxes include transparent pixels. Combine all later silhouettes
 	# to find the foreground that actually covers the sprite.
-	for command in _static_occlusion_candidates(bounds):
+	for command in static_occlusion_candidates(bounds):
 		if is_train and bool(command.get("train_ignore", false)):
 			continue
 
@@ -418,7 +418,7 @@ func _dynamic_occluder_image(
 		if overlap.get_area() <= 0:
 			continue
 
-		var resource := _dynamic_sprite_resource(
+		var resource := dynamic_sprite_resource(
 			sprite_archive, int(command.sprite_id), bool(command.flip), divisor, texture_factor
 		)
 
@@ -447,7 +447,7 @@ func _dynamic_occluder_image(
 	return mask
 
 
-func _set_static_occlusion_commands(commands: Array, view_size: int) -> void:
+func set_static_occlusion_commands(commands: Array, view_size: int) -> void:
 	caches.static_occlusion_commands.assign(commands)
 	caches.dynamic_occluder_cache.clear()
 	caches.dynamic_visual_cache.clear()
@@ -475,7 +475,7 @@ func _dynamic_train_foreground_image(
 
 		# a highway/power crossing uses the wire-free highway as its mask
 		if command.has("train_deck_reference_sprite_id"):
-			var background := _dynamic_sprite_resource(sprite_archive, int(command.train_deck_reference_sprite_id), bool(command.flip), divisor, texture_factor)
+			var background := dynamic_sprite_resource(sprite_archive, int(command.train_deck_reference_sprite_id), bool(command.flip), divisor, texture_factor)
 
 			if not background.is_empty():
 				deck_surface = Image.create(surface.get_width(), surface.get_height(), false, Image.FORMAT_RGBA8)
@@ -498,7 +498,7 @@ func _dynamic_train_foreground_image(
 	if caches.dynamic_foreground_cache.has(key):
 		return caches.dynamic_foreground_cache[key]
 
-	var reference := _dynamic_sprite_resource(
+	var reference := dynamic_sprite_resource(
 		sprite_archive, reference_sprite_id, bool(command.flip), divisor, texture_factor
 	)
 
@@ -513,9 +513,9 @@ func _dynamic_train_foreground_image(
 	return foreground
 
 
-func _demolish_brush_visual(tile: Vector2i, direction: int) -> Dictionary:
-	var view_size := app.static_render._city_view_size()
-	var archive := app.static_render._sprite_archive_for_view(view_size)
+func demolish_brush_visual(tile: Vector2i, direction: int) -> Dictionary:
+	var view_size := app.static_render.city_view_size()
+	var archive := app.static_render.sprite_archive_for_view(view_size)
 	if app.city == null or archive == null or app.palette == null:
 		return {}
 
@@ -526,7 +526,7 @@ func _demolish_brush_visual(tile: Vector2i, direction: int) -> Dictionary:
 
 	var configuration := IsometricRenderer.view_configuration(view_size)
 	var divisor := int(configuration.divisor)
-	var resource := _dynamic_sprite_resource(archive, int(sprite.sprite_id), bool(sprite.flip), divisor)
+	var resource := dynamic_sprite_resource(archive, int(sprite.sprite_id), bool(sprite.flip), divisor)
 	if resource.is_empty():
 		return {}
 
@@ -545,7 +545,7 @@ func _demolish_brush_visual(tile: Vector2i, direction: int) -> Dictionary:
 	}
 
 
-func _dynamic_sprite_resource(
+func dynamic_sprite_resource(
 	sprite_archive: Sc2SpriteArchive, sprite_id: int, flip: bool, divisor: int, texture_factor := 1
 ) -> Dictionary:
 	var key := "%d:%d:%d:%d:%d" % [sprite_id, int(flip), divisor, texture_factor, sprite_archive.get_instance_id()]
@@ -608,7 +608,7 @@ func _dynamic_shadow_image(
 	for source_y in mask.get_height():
 		var output_y := position.y + int(source_y / texture_factor)
 
-		if output_y < 0 or output_y >= app.map_render._static_image_size().y:
+		if output_y < 0 or output_y >= app.map_render.static_image_size().y:
 			continue
 
 		for source_x in mask.get_width():
@@ -623,7 +623,7 @@ func _dynamic_shadow_image(
 
 			var output_x := position.x + int(source_x / texture_factor)
 
-			if output_x < 0 or output_x >= app.map_render._static_image_size().x:
+			if output_x < 0 or output_x >= app.map_render.static_image_size().x:
 				continue
 
 			var current: Color = sampled.get_pixel(source_x, source_y) if sampled != null else caches.static_city_image.get_pixel(output_x, output_y)

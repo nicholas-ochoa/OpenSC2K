@@ -1,7 +1,7 @@
 extends SceneTree
 
 class NoMenuInterface extends ApplicationInterface:
-	func _show_main_menu() -> void:
+	func show_main_menu() -> void:
 		pass
 
 

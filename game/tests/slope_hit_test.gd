@@ -56,9 +56,9 @@ func _run() -> void:
 		root.add_child(main)
 		await process_frame
 		main.city_files._load_city_unchecked(ProjectSettings.globalize_path(path))
-		main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+		main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 		main.map_view.center_on_tile(Vector2i(64, 64))
-		main.current_tool._select_tool_group(16)
+		main.current_tool.select_tool_group(16)
 		await process_frame
 		var polygon := CityIsometricRenderer.terrain_surface_polygon(main.city, 64, 64)
 		var sample := polygon[0] + Vector2(0, 3)

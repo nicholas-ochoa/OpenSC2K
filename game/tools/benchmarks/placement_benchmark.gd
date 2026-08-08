@@ -14,7 +14,7 @@ func _run() -> void:
 	await process_frame
 	var reference_path := ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2")
 	main.city_files.call("_load_city_unchecked", reference_path)
-	main.frame.call("_select_speed", GameSpeedController.Speed.PAUSED)
+	main.frame.call("select_speed", GameSpeedController.Speed.PAUSED)
 
 	for frame in 5:
 		await process_frame
@@ -36,20 +36,20 @@ func _run() -> void:
 			continue
 
 		start = Time.get_ticks_usec()
-		main.interface.call("_refresh_details")
+		main.interface.call("refresh_details")
 		var details_ms := (Time.get_ticks_usec() - start) / 1000.0
 		start = Time.get_ticks_usec()
-		main.static_render.call("_refresh_after_city_edit", command)
+		main.static_render.call("refresh_after_city_edit", command)
 		var display_ms := (Time.get_ticks_usec() - start) / 1000.0
 		start = Time.get_ticks_usec()
-		main.effects_audio.call("_play_tool_success_sound", tool.x, tool.y)
+		main.effects_audio.call("play_tool_success_sound", tool.x, tool.y)
 		var sound_ms := (Time.get_ticks_usec() - start) / 1000.0
 		print("PLACEMENT %s command=%.2f details=%.2f display=%.2f sound=%.2f ms" % [
 			ToolCatalog.tool(tool.x, tool.y).name, command_ms, details_ms, display_ms, sound_ms
 		])
 		print(main.get("edit_display_timings"))
 		BuildingCommand.undo(city, command, (main.get("simulation_engine") as SimulationEngine).lfsr_random, main.get("tool_random"))
-		main.map_render.call("_refresh_map", false)
+		main.map_render.call("refresh_map", false)
 
 		var render_state := main.get("static_render_state") as StaticRenderState
 

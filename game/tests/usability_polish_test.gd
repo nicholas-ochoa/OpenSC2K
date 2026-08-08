@@ -31,7 +31,7 @@ func _run() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
-	assert(main.static_render._city_view_size() == CityIsometricRenderer.VIEW_LARGE)
+	assert(main.static_render.city_view_size() == CityIsometricRenderer.VIEW_LARGE)
 	var background := main.main_menu.city_background as MainMenuCityBackground
 	assert(background.demo_city != null)
 	var source_bytes := FileAccess.get_file_as_bytes(background.source_path)
@@ -51,7 +51,7 @@ func _run() -> void:
 	assert(background.elapsed == elapsed, "Hidden menu kept simulating")
 
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
-	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var city: CityState = main.city
 	var before: PackedByteArray = city.document.serialize().data
 	var rng := SimRandom.new(123)
@@ -70,7 +70,7 @@ func _run() -> void:
 			var output := Image.create(dimensions.x, dimensions.y, false, Image.FORMAT_L8 if indexed else Image.FORMAT_RGBA8)
 			output.fill(Color.BLACK)
 			var empty_hash := hash(output.get_data())
-			ScurkCityOutput._draw_artwork_stamps(output, city, main.palette_index_encoding if indexed else main.palette, main.static_render._sprite_archive_for_view(view), view)
+			ScurkCityOutput._draw_artwork_stamps(output, city, main.palette_index_encoding if indexed else main.palette, main.static_render.sprite_archive_for_view(view), view)
 			assert(hash(output.get_data()) != empty_hash, "Artwork missing from print or indexed bitmap output")
 
 	main.budget._open_manual_budget()
@@ -83,7 +83,7 @@ func _run() -> void:
 		budget.bond_dialog.hide()
 
 	budget.hide()
-	main.city_files._request_main_menu()
+	main.city_files.request_main_menu()
 	await process_frame
 	assert(not main.main_menu.visible)
 	var prompt: ConfirmationDialog

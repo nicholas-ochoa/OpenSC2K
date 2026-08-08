@@ -41,10 +41,10 @@ func _run() -> void:
 		await process_frame
 	main.new_city._create_new_city_unchecked()
 	await process_frame
-	main.current_tool._select_tool_group(0)
+	main.current_tool.select_tool_group(0)
 	assert(main.city_toolbar.child_tool_buttons.has(5))
 	assert(not main.city_toolbar.child_tool_buttons[5].disabled)
-	main.current_tool._select_tool_group(1)
+	main.current_tool.select_tool_group(1)
 	assert(main.city_toolbar.child_tool_buttons.has(2) and main.city_toolbar.child_tool_buttons.has(3))
 	main.city.set_sound_enabled(true)
 	main.city.set_music_enabled(true)
@@ -58,7 +58,7 @@ func _run() -> void:
 	assert(not main.founding_newspaper_pending)
 	assert(main.audio_controller.music_director.general_track_index == 1)
 	assert(main.audio_controller.music_playback_is_active())
-	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	assert(main.newspaper_dialog.page is NewspaperContent)
 	assert(main.newspaper_dialog.exclusive)
 	var city := CityState.from_document(main.document_state.current_document.duplicate_document())

@@ -27,12 +27,12 @@ func is_running() -> bool:
 
 func _open_export_dialog() -> void:
 	if app.city == null:
-		app.interface._show_error("Load a city before you export it.")
+		app.interface.show_error("Load a city before you export it.")
 
 		return
 
 	if is_running():
-		app.interface._show_error("A PNG export is already running.")
+		app.interface.show_error("A PNG export is already running.")
 
 		return
 
@@ -40,7 +40,7 @@ func _open_export_dialog() -> void:
 		app.city.city_name(),
 		_default_folder(),
 		app.city.map_size,
-		app.static_render._city_view_size(),
+		app.static_render.city_view_size(),
 		CityViewMode.key(app.overlay_mode),
 		bool(app.surface_visibility.get("signs", true)),
 		app.reference_root,
@@ -56,7 +56,7 @@ func _start_export(options: Dictionary) -> void:
 	var snapshot := CityModel.from_document(app.document_state.current_document.duplicate_document())
 
 	if not snapshot.is_valid():
-		app.interface._show_error("Cannot prepare the city for export: %s" % snapshot.load_error)
+		app.interface.show_error("Cannot prepare the city for export: %s" % snapshot.load_error)
 
 		return
 
@@ -65,7 +65,7 @@ func _start_export(options: Dictionary) -> void:
 	job = ExportJob.new()
 	job.city_snapshot = snapshot
 	job.palette = app.palette
-	job.sprites = app.static_render._sprite_archive_for_view(view_size)
+	job.sprites = app.static_render.sprite_archive_for_view(view_size)
 	job.view_size = view_size
 	job.render_mode = String(options.view)
 	job.transparent_background = bool(options.transparent_background)
@@ -80,7 +80,7 @@ func _start_export(options: Dictionary) -> void:
 
 	if error != OK:
 		job = null
-		app.interface._show_error("Cannot start the PNG export: %s" % error_string(error))
+		app.interface.show_error("Cannot start the PNG export: %s" % error_string(error))
 
 		return
 
@@ -110,7 +110,7 @@ func _poll_export() -> void:
 	app.city_png_export_progress.hide()
 
 	if not result.ok:
-		app.interface._show_error("Cannot export the city: %s" % result.error)
+		app.interface.show_error("Cannot export the city: %s" % result.error)
 
 		return
 

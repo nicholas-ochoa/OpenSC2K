@@ -21,7 +21,7 @@ func _run() -> void:
 	await process_frame
 	main.main_menu.hide()
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
-	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	folder = ProjectSettings.globalize_path("user://png_export_test")
 	DirAccess.make_dir_recursive_absolute(folder)
 	_check_menu_and_dialog()
@@ -51,12 +51,12 @@ func _check_output_sizes() -> void:
 func _check_menu_and_dialog() -> void:
 	var popup: PopupMenu = main.city_menu_bar.file_menu.get_popup()
 	assert(popup.get_item_index(CityMenuBar.MENU_EXPORT_CITY_PNG) >= 0)
-	main.menus._on_file_menu(CityMenuBar.MENU_EXPORT_CITY_PNG)
+	main.menus.on_file_menu(CityMenuBar.MENU_EXPORT_CITY_PNG)
 	var dialog: CityPngExportDialog = main.city_png_export_dialog
 	assert(dialog.visible)
 	assert(DirAccess.dir_exists_absolute(dialog.folder_input.text))
 	var options := dialog.options()
-	var graphics: int = main.static_render._city_view_size()
+	var graphics: int = main.static_render.city_view_size()
 	assert(options.view_size == graphics, "Graphics start at the size on screen")
 	assert(options.view == "city" and not options.transparent_background and options.signs and options.moving_things)
 	assert(options.path.get_file() == "Sydney_CITY_%s.png" % String(AppSettingsStore.GRAPHICS_SIZES[graphics]).to_upper())
@@ -107,7 +107,7 @@ func _check_content_options() -> void:
 		var job := ExportJob.new()
 		job.city_snapshot = main.city
 		job.palette = main.palette
-		job.sprites = main.static_render._sprite_archive_for_view(Renderer.VIEW_SMALL)
+		job.sprites = main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL)
 		job.view_size = Renderer.VIEW_SMALL
 		job.include_signs = variant[0]
 		job.include_moving_things = variant[1]
@@ -123,7 +123,7 @@ func _check_content_options() -> void:
 
 func _check_render_progress() -> void:
 	var values: Array[float] = []
-	var result := ScurkCityOutput.render(main.city, main.palette, main.static_render._sprite_archive_for_view(Renderer.VIEW_SMALL), Renderer.VIEW_SMALL, {
+	var result := ScurkCityOutput.render(main.city, main.palette, main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL), Renderer.VIEW_SMALL, {
 		"view": "underground", "progress": func(value: float) -> void: values.append(value),
 	})
 	assert(result.ok and values.size() == main.city.map_size * 2 - 1)

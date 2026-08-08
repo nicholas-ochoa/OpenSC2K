@@ -39,7 +39,7 @@ func _run() -> void:
 	main.desktop_presentation.set_graphics(original)
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
 	main.speed_controller.set_speed(0)
-	main.frame._sync_speed_ui()
+	main.frame.sync_speed_ui()
 	var layer := CanvasLayer.new()
 	layer.layer = 129
 	root.add_child(layer)
@@ -91,8 +91,8 @@ func _handle_input(event: InputEvent) -> void:
 	elif event.keycode == KEY_F7:
 		if main.scurk_editor.visible:
 			main.scurk_editor.hide()
-			main.current_tool._update_edit_state()
+			main.current_tool.update_edit_state()
 		else:
-			main.scurk_workspace._open_scurk_dialog()
+			main.scurk_workspace.open_scurk_dialog()
 
 		root.set_input_as_handled()

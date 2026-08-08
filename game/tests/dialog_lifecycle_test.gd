@@ -18,7 +18,7 @@ func _run() -> void:
 	assert(main.new_city_dialog.visible)
 	assert(main.main_overlays.scurk_workspace == null)
 	main.new_city_dialog.hide()
-	main.scurk_workspace._ensure_scurk_place_print()
+	main.scurk_workspace.ensure_scurk_place_print()
 	assert(main.scurk_editor == null and main.scurk_print == null)
 	assert(main.scurk_city_export_dialog.get_parent() == main.scurk_place_print)
 	main.scurk_output._ensure_scurk_print()

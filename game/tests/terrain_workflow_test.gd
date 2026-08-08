@@ -40,7 +40,7 @@ func _run() -> void:
 	assert(not main.city_toolbar.child_tool_buttons.has(4))
 
 	for subtool in [2, 3]:
-		main.current_tool._select_subtool(subtool)
+		main.current_tool.select_subtool(subtool)
 		assert(main.map_view.shift_rectangle_enabled)
 		main.map_view.selection_start = Vector2i(40, 40)
 		main.map_view.selection_end = Vector2i(42, 43)
@@ -51,7 +51,7 @@ func _run() -> void:
 		main.map_view.selection._rebuild_selection_path()
 		assert(main.map_view.selection_path.size() == 6)
 
-	main.current_tool._select_subtool(1)
+	main.current_tool.select_subtool(1)
 	assert(main.map_view.uses_paint_brush() and main.map_view.shift_rectangle_enabled)
 	main.map_view.brush_box_selection = true
 	main.map_view.selection._rebuild_selection_path()
@@ -61,13 +61,13 @@ func _run() -> void:
 
 	for subtool in [6, 7]:
 		var expected := TerrainToolIcons.terrain_action(main.asset_source.assets.city_ui_graphics, "sea_raise" if subtool == 6 else "sea_lower")
-		assert(main.camera_input._tool_button_icon(0, subtool).get_image().get_data() == expected.get_image().get_data())
+		assert(main.camera_input.tool_button_icon(0, subtool).get_image().get_data() == expected.get_image().get_data())
 
 	var funds: int = main.city.funds()
 	var day: int = main.city.age_in_days()
 	main._process(0.5)
 	assert(main.city.age_in_days() == day)
-	main.current_tool._select_tool_group(6)
+	main.current_tool.select_tool_group(6)
 	assert(main.selected_group == 0)
 	main.selected_group = 6
 	var data: PackedByteArray = main.document_state.current_document.serialize().data
@@ -75,8 +75,8 @@ func _run() -> void:
 	var path: Array[Vector2i] = [point]
 	main.city_edits._apply_map_selection(point, point, path, false)
 	assert(main.document_state.current_document.serialize().data == data)
-	main.current_tool._select_tool_group(0)
-	main.current_tool._select_subtool(2)
+	main.current_tool.select_tool_group(0)
+	main.current_tool.select_subtool(2)
 	main.city_edits._apply_map_selection(point, point, path, false)
 	assert(main.city.funds() == funds)
 	assert(main.last_edit_command.ok)
@@ -84,7 +84,7 @@ func _run() -> void:
 	main.new_city._start_city()
 	assert(not main.landscape_editor and not main.city_toolbar.start_city_button.visible)
 	assert(main.city_toolbar.toolbar_buttons[6].visible)
-	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	data = main.document_state.current_document.serialize().data
 	var all_levels := CityIsometricRenderer.create_image(main.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	main.debug._debug_set_visible_altitude_levels(1)
@@ -106,12 +106,12 @@ func _run() -> void:
 	var restored := CityIsometricRenderer.create_image(main.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	assert(restored.image.get_data() == all_levels.image.get_data())
 	assert(main.document_state.current_document.serialize().data == data)
-	main.current_tool._select_tool_group(3)
-	main.current_tool._select_subtool(2)
+	main.current_tool.select_tool_group(3)
+	main.current_tool.select_subtool(2)
 	assert(not main.current_tool._placement_preview_error(Vector2i(0, 0)).is_empty())
-	main.menus._set_overlay(CityViewMode.Mode.UNDERGROUND)
-	main.menus._set_underground_pipes_visible(false)
-	main.menus._set_underground_subways_visible(false)
+	main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)
+	main.menus.set_underground_pipes_visible(false)
+	main.menus.set_underground_subways_visible(false)
 	var bridge := main.bridge_dialog as BridgeSelectionDialog
 	bridge.preview_palette = main.palette
 	bridge.preview_sprites = main.large_sprites
@@ -124,7 +124,7 @@ func _run() -> void:
 		assert(not images.has(signature))
 		images[signature] = true
 
-	main.scurk_workspace._open_scurk_dialog()
+	main.scurk_workspace.open_scurk_dialog()
 	await process_frame
 	await process_frame
 	main.scurk_editor._fit_canvas()

@@ -33,7 +33,7 @@ func _run() -> void:
 
 		while Time.get_ticks_msec() < deadline:
 			var poll_started := Time.get_ticks_usec()
-			main.map_render._poll_region_cache()
+			main.map_render.poll_region_cache()
 			max_poll_usec = maxi(max_poll_usec, Time.get_ticks_usec() - poll_started)
 			assert(cache.last_error.is_empty())
 
@@ -52,7 +52,7 @@ func _run() -> void:
 
 		assert(cache.ready() and cache.prefetch_ready())
 		var dynamic_start := Time.get_ticks_usec()
-		main.moving_sprites._refresh_moving_things(main.static_render._city_view_size())
+		main.moving_sprites.refresh_moving_things(main.static_render.city_view_size())
 		print("WARM dynamic_ms=%.2f zoom=%.2f" % [(Time.get_ticks_usec() - dynamic_start) / 1000.0, main.map_view.zoom_factor])
 		var metrics := cache.metrics()
 		print("BACKEND %s atlas_MiB=%.2f" % ["GPU" if metrics.gpu else "CPU", metrics.atlas_bytes / 1048576.0])

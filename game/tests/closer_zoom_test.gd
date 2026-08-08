@@ -25,7 +25,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
-	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var map: CityMapControl = main.map_view
 	var city: CityState = main.city
 	assert(city != null and city.is_valid())
@@ -43,8 +43,8 @@ func _run() -> void:
 	var saved: PackedByteArray = city.document.serialize().data
 	assert(map.zoom_percent() == 400 and not map.can_zoom_in())
 	assert(main.zoom_in_button.disabled and not main.zoom_out_button.disabled)
-	assert(main.static_render._city_view_size() == CityIsometricRenderer.VIEW_LARGE)
-	assert(main.static_render._sprite_archive_for_view(2) == main.large_sprites)
+	assert(main.static_render.city_view_size() == CityIsometricRenderer.VIEW_LARGE)
+	assert(main.static_render.sprite_archive_for_view(2) == main.large_sprites)
 	var anchor := map.size * Vector2(0.4, 0.6)
 	var source := (anchor - map.camera._draw_offset(map.camera._view_scale())) / map.camera._view_scale()
 	assert(map.zoom_out(anchor) and map.zoom_percent() == 300)
@@ -56,8 +56,8 @@ func _run() -> void:
 	assert(CityMapSigns.sign_display_multiplier(4.0) == 4.0)
 
 	for mode: CityViewMode.Mode in [CityViewMode.Mode.UNDERGROUND, CityViewMode.Mode.CITY]:
-		main.menus._set_overlay(mode)
-		assert(map.zoom_percent() == 400 and main.static_render._city_view_size() == 2)
+		main.menus.set_overlay(mode)
+		assert(map.zoom_percent() == 400 and main.static_render.city_view_size() == 2)
 
 	assert(city.document.serialize().data == saved, "Zoom or layer change altered saved data")
 	main.queue_free()

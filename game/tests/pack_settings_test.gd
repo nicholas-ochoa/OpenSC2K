@@ -64,7 +64,7 @@ func _run() -> void:
 	main.main_menu.city_background.set_process(false)
 	main.map_view.zoom_factor = 0.25
 	assert(main.city_session._activate_document(EmptyCityTemplate.create()))
-	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = main.city.document.serialize().data
 	main.settings._open_settings_dialog()
 	var dialog: AppSettingsDialog = main.settings_dialog

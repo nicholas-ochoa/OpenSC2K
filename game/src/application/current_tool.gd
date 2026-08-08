@@ -24,7 +24,7 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func _select_tool_group(index: int) -> void:
+func select_tool_group(index: int) -> void:
 	if app.terrain_stretch.active:
 		app.map_view.cancel_active_selection()
 
@@ -41,11 +41,11 @@ func _select_tool_group(index: int) -> void:
 		app.dispatch_initialized = false
 
 	app.selected_subtool = app.city_toolbar.show_tool_group(
-		app.selected_group, app.city, app.camera_input._tool_button_icon
+		app.selected_group, app.city, app.camera_input.tool_button_icon
 	)
 	_auto_select_underground()
 	_sync_child_tool_selection()
-	_update_edit_state()
+	update_edit_state()
 
 
 func _auto_select_underground() -> void:
@@ -60,10 +60,10 @@ func _auto_select_underground() -> void:
 	var target := CityViewMode.Mode.UNDERGROUND if underground_tool else CityViewMode.Mode.CITY
 
 	if app.overlay_mode != target:
-		app.menus._set_overlay(target)
+		app.menus.set_overlay(target)
 
 
-func _select_subtool(index: int) -> void:
+func select_subtool(index: int) -> void:
 	if app.terrain_stretch.active:
 		app.map_view.cancel_active_selection()
 
@@ -82,7 +82,7 @@ func _select_subtool(index: int) -> void:
 			app.last_edit_command = recalled
 			app.dispatch_cycles = PackedInt32Array([0, 0, 0])
 			app.dispatch_initialized = false
-			app.static_render._refresh_after_city_edit(recalled)
+			app.static_render.refresh_after_city_edit(recalled)
 			app.status_label.text = "All emergency services recalled."
 
 		_sync_child_tool_selection()
@@ -92,7 +92,7 @@ func _select_subtool(index: int) -> void:
 	app.selected_subtool = index
 	_auto_select_underground()
 	_sync_child_tool_selection()
-	_update_edit_state()
+	update_edit_state()
 
 	if app.landscape_editor and app.selected_group == 0 and index in [6, 7]:
 		app.city_edits._apply_map_selection(Vector2i.ZERO, Vector2i.ZERO, [Vector2i.ZERO], false)
@@ -106,7 +106,7 @@ func _sync_child_tool_selection() -> void:
 		app.city_toolbar.sync_child_tool_selection(app.selected_group, app.selected_subtool)
 
 
-func _refresh_tool_availability() -> bool:
+func refresh_tool_availability() -> bool:
 	if app.city == null or app.city_toolbar == null:
 		return false
 
@@ -115,7 +115,7 @@ func _refresh_tool_availability() -> bool:
 	)
 
 
-func _update_edit_state() -> void:
+func update_edit_state() -> void:
 	if app.map_view == null:
 		return
 
@@ -166,7 +166,7 @@ func _update_edit_state() -> void:
 	var level_brush := app.new_city._level_brush_active()
 	app.map_view.landscape_brush = (level_brush or app.selected_group == 1 and app.selected_subtool in [0, 1, 3]) and not (app.scurk_place_print != null and app.scurk_place_print.visible)
 	app.map_view.demolish_brush = app.selected_group == 0 and app.selected_subtool == 0 and not app.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible)
-	app.map_view.bulldozer_visual_provider = app.moving_sprites._demolish_brush_visual if app.overlay_mode == CityViewMode.Mode.CITY else Callable()
+	app.map_view.bulldozer_visual_provider = app.moving_sprites.demolish_brush_visual if app.overlay_mode == CityViewMode.Mode.CITY else Callable()
 	app.city_toolbar.brush_controls.visible = app.landscape_editor and app.map_view.landscape_brush and not level_brush
 	if level_brush:
 		app.map_view.brush_size = EDITOR_LEVEL_BRUSH_SIZE if app.landscape_editor else LEVEL_BRUSH_SIZE
@@ -197,7 +197,7 @@ func _update_edit_state() -> void:
 		int(state.area),
 		bool(state.landscape),
 	)
-	app.interface._refresh_status_summary()
+	app.interface.refresh_status_summary()
 
 	if app.status_label == null or not bool(state.show_status):
 		return
@@ -261,11 +261,11 @@ func _placement_preview_error(point: Vector2i) -> String:
 	return ""
 
 
-func _update_network_preview() -> void:
+func update_network_preview() -> void:
 	if app.network_preview == null:
 		return
 
-	if app.city == null or not app.camera_input._camera_keys_allowed() or not app.map_view.edit_enabled or app.map_view.is_panning() or not NetworkPlacementPreview.supports_tool(app.selected_group, app.selected_subtool):
+	if app.city == null or not app.camera_input.camera_keys_allowed() or not app.map_view.edit_enabled or app.map_view.is_panning() or not NetworkPlacementPreview.supports_tool(app.selected_group, app.selected_subtool):
 		app.network_preview.clear()
 
 		return
@@ -279,11 +279,11 @@ func _update_network_preview() -> void:
 
 		return
 
-	var view := app.static_render._city_view_size()
+	var view := app.static_render.city_view_size()
 	var sprites := app.large_sprites if view == IsometricRenderer.VIEW_LARGE else app.small_medium_sprites
 
 	if sprites != null and app.palette != null:
 		app.network_preview.request(
 			app.city, app.selected_group, app.selected_subtool, start, finish, view, app.palette, sprites,
-			app.overlay_mode == CityViewMode.Mode.UNDERGROUND, app.scurk_workspace._scurk_edit_tool_active()
+			app.overlay_mode == CityViewMode.Mode.UNDERGROUND, app.scurk_workspace.scurk_edit_tool_active()
 		)

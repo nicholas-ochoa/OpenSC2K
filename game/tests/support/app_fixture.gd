@@ -4,7 +4,7 @@ extends RefCounted
 
 # Use only when the test does not exercise menu visibility or its private simulation.
 class NoMenuInterface extends ApplicationInterface:
-	func _show_main_menu() -> void:
+	func show_main_menu() -> void:
 		pass
 
 

@@ -26,14 +26,14 @@ func _init(application: CityApplication) -> void:
 	palette_clock = application.palette_clock
 
 
-func _refresh_after_city_edit(command: EditCommandResult) -> void:
+func refresh_after_city_edit(command: EditCommandResult) -> void:
 	app.assets._refresh_scurk_artwork()
 
 	if command.command_type == "scurk_artwork":
 		return
 
 	if not _apply_static_edit_patch(command):
-		app.map_render._refresh_map(false)
+		app.map_render.refresh_map(false)
 
 
 func _apply_static_edit_patch(command: EditCommandResult) -> bool:
@@ -49,8 +49,8 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 			return false
 
 		region_start = Time.get_ticks_usec()
-		var dirty := IsometricRenderer.dirty_screen_rect(indices, _sprite_archive_for_view(_city_view_size()), _city_view_size(), Vector2i.ZERO, app.city.map_size)
-		app.map_render._refresh_region_map(false, dirty)
+		var dirty := IsometricRenderer.dirty_screen_rect(indices, sprite_archive_for_view(city_view_size()), city_view_size(), Vector2i.ZERO, app.city.map_size)
+		app.map_render.refresh_region_map(false, dirty)
 		app.edit_display_timings.region_ms = (Time.get_ticks_usec() - region_start) / 1000.0
 
 		return true
@@ -75,8 +75,8 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	if dirty_indices.is_empty():
 		return false
 
-	var view_size := _city_view_size()
-	var sprite_archive := _sprite_archive_for_view(view_size)
+	var view_size := city_view_size()
+	var sprite_archive := sprite_archive_for_view(view_size)
 	var dirty_rect := IsometricRenderer.dirty_screen_rect(
 		dirty_indices, sprite_archive, view_size, Vector2i.ZERO, map_edge
 	)
@@ -119,10 +119,10 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	state.epoch += 1
 	caches.static_city_image = patched.image
 	caches.static_display_city = display_city
-	caches.static_visual_signature = _static_signature_for_mode(CityViewMode.Mode.CITY, view_size)
+	caches.static_visual_signature = static_signature_for_mode(CityViewMode.Mode.CITY, view_size)
 	caches.static_render_mode = CityViewMode.Mode.CITY
 	state.pending = false
-	app.moving_sprites._set_static_occlusion_commands(
+	app.moving_sprites.set_static_occlusion_commands(
 		IsometricRenderer.patch_static_occlusion_commands(
 			caches.static_occlusion_commands,
 			display_city,
@@ -143,8 +143,8 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	profile_start = Time.get_ticks_usec()
 	var source := CityMapTexture.update_region(app.map_view.city_source, caches.static_city_image, patched.output_rect)
 	app.map_view.set_city_view(caches.static_display_city, source, null, true)
-	app.menus._sync_map_style()
-	app.moving_sprites._refresh_moving_things(view_size)
+	app.menus.sync_map_style()
+	app.moving_sprites.refresh_moving_things(view_size)
 	app.edit_display_timings.upload_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 
 	return true
@@ -264,7 +264,7 @@ static func _edit_dirty_indices(command: EditCommandResult, map_edge: int = 128)
 	return indices
 
 
-func _request_static_render(
+func request_static_render(
 	signature: Array, view_size: int, sprite_archive: Sc2SpriteArchive, render_mode := CityViewMode.Mode.CITY
 ) -> void:
 	if state.thread != null:
@@ -287,7 +287,7 @@ func _request_static_render(
 	var snapshot := CityModel.from_document(snapshot_document)
 
 	if not snapshot.is_valid():
-		app.interface._show_error("Cannot prepare the city for drawing: %s" % snapshot.load_error)
+		app.interface.show_error("Cannot prepare the city for drawing: %s" % snapshot.load_error)
 
 		return
 
@@ -313,12 +313,12 @@ func _request_static_render(
 	if start_error != OK:
 		state.thread = null
 		state.job = null
-		app.interface._show_error("Cannot start the city renderer: %s" % error_string(start_error))
+		app.interface.show_error("Cannot start the city renderer: %s" % error_string(start_error))
 	else:
 		state.last_started_msec = now_msec
 
 
-func _start_pending_static_render() -> void:
+func start_pending_static_render() -> void:
 	if (
 		not state.pending
 		or state.thread != null
@@ -327,17 +327,17 @@ func _start_pending_static_render() -> void:
 	):
 		return
 
-	var view_size := _city_view_size()
-	_request_static_render(
-		_static_signature_for_mode(app.overlay_mode, view_size),
+	var view_size := city_view_size()
+	request_static_render(
+		static_signature_for_mode(app.overlay_mode, view_size),
 		view_size,
-		_sprite_archive_for_view(view_size),
+		sprite_archive_for_view(view_size),
 		app.overlay_mode,
 	)
 
 
-func _poll_static_render() -> void:
-	app.map_render._poll_region_cache()
+func poll_static_render() -> void:
+	app.map_render.poll_region_cache()
 
 	if state.thread == null or state.thread.is_alive():
 		return
@@ -347,23 +347,23 @@ func _poll_static_render() -> void:
 	state.job = null
 
 	if not rendered.get("ok", false):
-		app.interface._show_error(rendered.get("error", "city rendering failed"))
+		app.interface.show_error(rendered.get("error", "city rendering failed"))
 
 		return
 
 	if (
 		app.city == null
 		or int(rendered.epoch) != state.epoch
-		or int(rendered.view_size) != _city_view_size()
+		or int(rendered.view_size) != city_view_size()
 		or int(rendered.get("render_mode", CityViewMode.Mode.CITY)) != app.overlay_mode
 	):
 		if app.city != null and CityViewMode.is_map(app.overlay_mode):
-			app.map_render._refresh_map(false)
+			app.map_render.refresh_map(false)
 
 		return
 
 	caches.static_city_image = rendered.index_image
-	app.moving_sprites._set_static_occlusion_commands(rendered.occlusion_commands, int(rendered.view_size))
+	app.moving_sprites.set_static_occlusion_commands(rendered.occlusion_commands, int(rendered.view_size))
 	caches.static_visual_signature = rendered.signature
 	caches.static_render_mode = int(rendered.render_mode) as CityViewMode.Mode
 	caches.static_display_city = rendered.display_city
@@ -378,30 +378,30 @@ func _poll_static_render() -> void:
 	app.map_view.set_city_view(
 		caches.static_display_city, source, null, true
 	)
-	app.menus._sync_map_style()
+	app.menus.sync_map_style()
 
 	if app.overlay_mode == CityViewMode.Mode.CITY:
-		app.moving_sprites._refresh_moving_things(int(rendered.view_size))
+		app.moving_sprites.refresh_moving_things(int(rendered.view_size))
 	else:
 		caches.dynamic_sign_occluders.clear()
 		caches.dynamic_sign_occlusion_grid.clear()
 		app.map_view.set_dynamic_sprites([])
-		app.map_render._refresh_sign_occlusion(int(rendered.view_size))
+		app.map_render.refresh_sign_occlusion(int(rendered.view_size))
 
-	var latest_signature := _static_signature_for_mode(
+	var latest_signature := static_signature_for_mode(
 		app.overlay_mode, int(rendered.view_size)
 	)
 
 	if latest_signature != caches.static_visual_signature:
-		_request_static_render(
+		request_static_render(
 			latest_signature,
 			int(rendered.view_size),
-			_sprite_archive_for_view(int(rendered.view_size)),
+			sprite_archive_for_view(int(rendered.view_size)),
 			app.overlay_mode,
 		)
 
 
-func _static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array:
+func static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array:
 	if mode == CityViewMode.Mode.UNDERGROUND:
 		return UndergroundView.visual_signature(
 			app.city, view_size, app.show_underground_pipes, app.show_underground_subways, app.show_underground_water_mains
@@ -419,7 +419,7 @@ func _static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Arra
 	return result
 
 
-func _update_palette_cycle_texture() -> void:
+func update_palette_cycle_texture() -> void:
 	if app.palette == null or not app.palette.is_valid():
 		return
 
@@ -428,7 +428,7 @@ func _update_palette_cycle_texture() -> void:
 	for color_index in app.palette.animation_index_map(palette_clock.cycle_ticks):
 		palette_clock.toolbar_palette.colors.append(app.palette.colors[color_index])
 
-	app.camera_input._refresh_child_tool_icons()
+	app.camera_input.refresh_child_tool_icons()
 	var image := app.palette.animation_image(palette_clock.cycle_ticks)
 
 	if palette_clock.cycle_texture == null:
@@ -444,16 +444,16 @@ func _city_graphics_size() -> int:
 	return SettingsStore.graphics_size_at_zoom(app.preferences.zoom_graphics, app.map_view.zoom_percent(), app.preferences.overview_graphics)
 
 
-func _city_view_size() -> int:
+func city_view_size() -> int:
 	return mini(_city_graphics_size(), IsometricRenderer.VIEW_LARGE)
 
 
-func _sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
+func sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
 	return app.small_medium_sprites if view_size < IsometricRenderer.VIEW_LARGE else app.large_sprites
 
 
 # waits for the running static render and discards its job
-func _stop_render_job() -> void:
+func stop_render_job() -> void:
 	if state.thread != null and state.thread.is_started():
 		state.thread.wait_to_finish()
 
@@ -462,15 +462,15 @@ func _stop_render_job() -> void:
 
 
 # stops the static render and forgets cached views so the next refresh renders again
-func _restart_static_render() -> void:
-	_stop_render_job()
+func restart_static_render() -> void:
+	stop_render_job()
 	state.pending = false
 	caches.static_view_cache.clear()
 
 
 # discards every rendered image of the city after an artwork or document change
-func _invalidate_rendered_city() -> void:
-	app.map_render._close_region_cache()
+func invalidate_rendered_city() -> void:
+	app.map_render.close_region_cache()
 	state.epoch += 1
 	caches.static_city_image = null
 	caches.static_occlusion_commands.clear()
@@ -480,13 +480,13 @@ func _invalidate_rendered_city() -> void:
 	caches.static_display_city = null
 	caches.static_view_cache.clear()
 	state.pending = false
-	_clear_dynamic_composition_cache()
+	clear_dynamic_composition_cache()
 	caches.dynamic_sign_occluders.clear()
 	caches.dynamic_sign_occlusion_grid.clear()
 
 
 # discards static views after a layer visibility change. sprite caches remain valid
-func _invalidate_view_render() -> void:
+func invalidate_view_render() -> void:
 	state.epoch += 1
 	caches.static_visual_signature.clear()
 	caches.static_render_mode = CityViewMode.Mode.NONE
@@ -498,7 +498,7 @@ func _invalidate_view_render() -> void:
 	caches.dynamic_sign_occlusion_grid.clear()
 
 
-func _clear_dynamic_composition_cache() -> void:
+func clear_dynamic_composition_cache() -> void:
 	caches.dynamic_sprite_cache.clear()
 	caches.dynamic_foreground_cache.clear()
 	caches.dynamic_occluder_cache.clear()

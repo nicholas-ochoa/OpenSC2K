@@ -4,7 +4,7 @@ class TestSprites extends ApplicationMovingSprites:
 	var images: Dictionary = {}
 
 
-	func _dynamic_sprite_resource(_archive: Sc2SpriteArchive, sprite_id: int, _flip: bool, _divisor: int, _factor := 1) -> Dictionary:
+	func dynamic_sprite_resource(_archive: Sc2SpriteArchive, sprite_id: int, _flip: bool, _divisor: int, _factor := 1) -> Dictionary:
 		return {"image": images[sprite_id]}
 
 

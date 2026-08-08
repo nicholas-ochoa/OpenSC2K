@@ -26,12 +26,12 @@ func _open_manual_budget() -> void:
 
 func _open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 	if app.city == null or values.size() != Budget.BUDGET_COUNT:
-		app.interface._show_error("Cannot open the budget because its saved values are invalid.")
+		app.interface.show_error("Cannot open the budget because its saved values are invalid.")
 
 		return
 
 	if app.city.music_enabled() and app.simulation_engine != null:
-		app.effects_audio._play_music_track(Music.budget_track(app.simulation_engine.lfsr_random))
+		app.effects_audio.play_music_track(Music.budget_track(app.simulation_engine.lfsr_random))
 
 	app.annual_budget_pending = annual
 	app.budget_dialog.open_budget(
@@ -49,7 +49,7 @@ func _request_issue_bond() -> void:
 	var result := Bonds.issue(app.city)
 
 	if not result.ok:
-		app.interface._show_error("Cannot issue a bond: %s" % result.error)
+		app.interface.show_error("Cannot issue a bond: %s" % result.error)
 
 		return
 
@@ -59,13 +59,13 @@ func _request_issue_bond() -> void:
 		"confirmation_required":
 			app.budget_dialog.open_bond_confirmation("issue", int(result.rate))
 		"credit_denied":
-			app.interface._show_error(
+			app.interface.show_error(
 				"Sorry, your city may not issue more bonds\nuntil your credit rating improves."
 			)
 		"maximum_bonds":
-			app.interface._show_error("The City Council believes that 50 outstanding bonds are enough.")
+			app.interface.show_error("The City Council believes that 50 outstanding bonds are enough.")
 		_:
-			app.interface._show_error("The bond could not be issued.")
+			app.interface.show_error("The bond could not be issued.")
 
 
 func _request_repay_bond() -> void:
@@ -75,7 +75,7 @@ func _request_repay_bond() -> void:
 	var result := Bonds.repay(app.city)
 
 	if not result.ok:
-		app.interface._show_error("Cannot repay a bond: %s" % result.error)
+		app.interface.show_error("Cannot repay a bond: %s" % result.error)
 
 		return
 
@@ -83,11 +83,11 @@ func _request_repay_bond() -> void:
 		"confirmation_required":
 			app.budget_dialog.open_bond_confirmation("repay", int(result.rate))
 		"insufficient_funds":
-			app.interface._show_error("You Need $10,000 Cash\nto Repay an Outstanding Bond.")
+			app.interface.show_error("You Need $10,000 Cash\nto Repay an Outstanding Bond.")
 		"no_bonds":
-			app.interface._show_error("There are no outstanding bonds to repay.")
+			app.interface.show_error("There are no outstanding bonds to repay.")
 		_:
-			app.interface._show_error("The bond could not be repaid.")
+			app.interface.show_error("The bond could not be repaid.")
 
 
 func _resolve_bond_action(action: String, confirmed: bool) -> void:
@@ -106,12 +106,12 @@ func _resolve_bond_action(action: String, confirmed: bool) -> void:
 	)
 
 	if not result.ok:
-		app.interface._show_error("Cannot update bonds: %s" % result.error)
+		app.interface.show_error("Cannot update bonds: %s" % result.error)
 
 		return
 
 	_update_bond_controls()
-	app.interface._refresh_details()
+	app.interface.refresh_details()
 	app.status_label.theme_type_variation = ""
 
 	match result.status:
@@ -122,13 +122,13 @@ func _resolve_bond_action(action: String, confirmed: bool) -> void:
 		"cancelled":
 			app.status_label.text = "Bond action canceled. No bond balance changed."
 		"credit_denied":
-			app.interface._show_error(
+			app.interface.show_error(
 				"Sorry, your city may not issue more bonds\nuntil your credit rating improves."
 			)
 		"maximum_bonds":
-			app.interface._show_error("The City Council believes that 50 outstanding bonds are enough.")
+			app.interface.show_error("The City Council believes that 50 outstanding bonds are enough.")
 		_:
-			app.interface._show_error("The bond action did not complete.")
+			app.interface.show_error("The bond action did not complete.")
 
 
 func _update_bond_controls() -> void:
@@ -157,14 +157,14 @@ func _commit_budget() -> void:
 		var result := app.speed_controller.resolve_annual_budget(values, auto_budget)
 
 		if not result.ok:
-			app.interface._show_error("Cannot apply the annual budget: %s" % result.error)
+			app.interface.show_error("Cannot apply the annual budget: %s" % result.error)
 			call_deferred("_restore_annual_budget_dialog")
 
 			return
 
 		app.annual_budget_pending = false
-		app.frame._consume_simulation_result(result)
-		app.interface._refresh_details()
+		app.frame.consume_simulation_result(result)
+		app.interface.refresh_details()
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Annual budget applied. The simulation can continue."
 
@@ -173,7 +173,7 @@ func _commit_budget() -> void:
 	var stored := Budget.set_funding(app.city, values, auto_budget)
 
 	if not stored.ok:
-		app.interface._show_error("Cannot save the budget: %s" % stored.error)
+		app.interface.show_error("Cannot save the budget: %s" % stored.error)
 
 		return
 
@@ -211,19 +211,19 @@ func _resolve_military_proposal(accepted: bool) -> void:
 	var result := app.speed_controller.resolve_military_proposal(accepted)
 
 	if not result.ok:
-		app.interface._show_error("Cannot resolve the military proposal: %s" % result.error)
+		app.interface.show_error("Cannot resolve the military proposal: %s" % result.error)
 		call_deferred("_restore_military_proposal_dialog")
 
 		return
 
 	app.military_proposal_pending = false
-	app.frame._consume_simulation_result(result)
-	app.interface._refresh_details()
+	app.frame.consume_simulation_result(result)
+	app.interface.refresh_details()
 	app.status_label.theme_type_variation = ""
 	var proposal: MilitaryProposalPhase.Result = result.day_results[0].phase_results.military_proposal
 
 	if proposal.base_type in [2, 3, 4, 5]:
-		app.effects_audio._play_sound_events(ToolSounds.zone_success_events(7))
+		app.effects_audio.play_sound_events(ToolSounds.zone_success_events(7))
 
 	match proposal.base_type:
 		2:

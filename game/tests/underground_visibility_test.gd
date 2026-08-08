@@ -71,16 +71,16 @@ func _run() -> void:
 	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame
-	main.menus._set_overlay(CityViewMode.Mode.UNDERGROUND)
+	main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)
 	var checks: Dictionary = main.city_toolbar.view_visibility_checks
 	assert(checks.water_mains.visible and checks.pipes.visible)
 	checks.pipes.button_pressed = false
 	assert(not main.show_underground_pipes and main.show_underground_water_mains)
 	checks.water_mains.button_pressed = false
 	assert(not main.show_underground_water_mains)
-	main.menus._on_view_menu(CityMenuBar.MENU_VIEW_WATER_MAINS)
+	main.menus.on_view_menu(CityMenuBar.MENU_VIEW_WATER_MAINS)
 	assert(main.show_underground_water_mains and not main.show_underground_pipes)
-	main.menus._set_overlay(CityViewMode.Mode.CITY)
+	main.menus.set_overlay(CityViewMode.Mode.CITY)
 	assert(not checks.water_mains.visible and not checks.pipes.visible)
 	main.scurk_output._ensure_scurk_print()
 	main.scurk_print.configure("Water visibility", "underground", {}, false, true)

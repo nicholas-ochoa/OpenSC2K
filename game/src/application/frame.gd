@@ -14,10 +14,10 @@ func _init(application: CityApplication) -> void:
 	palette_clock = application.palette_clock
 
 
-func _process(delta: float) -> void:
+func process(delta: float) -> void:
 	app.new_city._poll_new_city_preview()
-	app.current_tool._update_network_preview()
-	app.camera_input._update_keyboard_camera(delta)
+	app.current_tool.update_network_preview()
+	app.camera_input.update_keyboard_camera(delta)
 
 	if app.audio_controller != null:
 		app.audio_controller.set_menu_music(
@@ -31,14 +31,14 @@ func _process(delta: float) -> void:
 	if app.city_status_bar != null:
 		app.city_status_bar.update_report_rotation(delta)
 
-	app.static_render._poll_static_render()
-	app.static_render._start_pending_static_render()
+	app.static_render.poll_static_render()
+	app.static_render.start_pending_static_render()
 	app.city_png_export._poll_export()
 
 	if app.speed_controller == null or app.city == null:
 		return
 
-	app.simulation_engine.midi_playback_active = app.effects_audio._music_playback_is_active()
+	app.simulation_engine.midi_playback_active = app.effects_audio.music_playback_is_active()
 	var interaction_suspended := _simulation_suspended()
 	var result: Dictionary
 
@@ -50,15 +50,15 @@ func _process(delta: float) -> void:
 
 	if not result.ok:
 		app.speed_controller.set_speed(GameSpeed.Speed.PAUSED)
-		_sync_speed_ui()
-		app.interface._show_error("Simulation stopped: %s" % result.error)
+		sync_speed_ui()
+		app.interface.show_error("Simulation stopped: %s" % result.error)
 
 		return
 
 	_advance_palette_animation(delta, interaction_suspended)
 
-	_consume_simulation_result(result)
-	app.moving_sprites._advance_blend()
+	consume_simulation_result(result)
+	app.moving_sprites.advance_blend()
 
 
 # registered windows declare whether they block. other conditions stay listed here
@@ -89,12 +89,12 @@ func _advance_palette_animation(delta: float, suspended: bool) -> void:
 	if ticks > 0:
 		palette_clock.elapsed_msec -= ticks * GameSpeedController.BASE_TICK_MSEC
 		palette_clock.cycle_ticks += ticks
-		app.static_render._update_palette_cycle_texture()
+		app.static_render.update_palette_cycle_texture()
 
 
-func _consume_simulation_result(result: Dictionary) -> void:
+func consume_simulation_result(result: Dictionary) -> void:
 	if result.base_ticks > 0:
-		_sync_speed_ui()
+		sync_speed_ui()
 
 	app.simulation_timings.consume(result)
 	var refresh_started := Time.get_ticks_usec()
@@ -106,11 +106,11 @@ func _consume_simulation_result(result: Dictionary) -> void:
 			changed_disaster_map = true
 			break
 
-	var moved_things := app.reports._moving_things_are_active(result.moving_results)
+	var moved_things := app.reports.moving_things_are_active(result.moving_results)
 
 	# start the display blend before the refresh publishes the new positions
 	if not result.moving_results.is_empty():
-		app.moving_sprites._note_moving_tick()
+		app.moving_sprites.note_moving_tick()
 
 	if ran_days or moved_things or changed_disaster_map:
 		app.last_edit_command = null
@@ -125,7 +125,7 @@ func _consume_simulation_result(result: Dictionary) -> void:
 			app.simulation_map_dirty = true
 
 	if ran_days:
-		app.interface._refresh_details()
+		app.interface.refresh_details()
 
 	var force_refresh: bool = (
 		not result.effect_events.is_empty()
@@ -136,10 +136,10 @@ func _consume_simulation_result(result: Dictionary) -> void:
 	)
 
 	if map_refresh_requested:
-		app.map_render._refresh_map(false)
+		app.map_render.refresh_map(false)
 		app.simulation_map_dirty = false
 	elif result.base_ticks > 0:
-		app.moving_sprites._refresh_moving_things()
+		app.moving_sprites.refresh_moving_things()
 
 	if ran_days or map_refresh_requested:
 		app.simulation_timings.record_step("Main thread / simulation display refresh", Time.get_ticks_usec() - refresh_started)
@@ -148,17 +148,17 @@ func _consume_simulation_result(result: Dictionary) -> void:
 		app.map_view.center_on_tile(point)
 
 	if not result.effect_events.is_empty() or not result.sound_events.is_empty():
-		app.effects_audio._show_effect_events(result.effect_events, app.moving_sprites._audible_sound_events(result.sound_events))
+		app.effects_audio.show_effect_events(result.effect_events, app.moving_sprites.audible_sound_events(result.sound_events))
 
 	for track_id in result.get("music_track_requests", PackedInt32Array()):
 		if app.city.music_enabled():
-			app.effects_audio._play_music_track(int(track_id))
+			app.effects_audio.play_music_track(int(track_id))
 
 	if not result.news_items.is_empty():
-		app.reports._show_news_items(result.news_items)
+		app.reports.show_news_items(result.news_items)
 
 	if not result.game_over_events.is_empty():
-		app.reports._show_game_over_events(result.game_over_events)
+		app.reports.show_game_over_events(result.game_over_events)
 
 	for request in result.interaction_requests:
 		if request.get("type", "") == "annual_budget":
@@ -180,21 +180,21 @@ func _update_fps(delta: float) -> void:
 		app.city_status_bar.refresh_tooltips()
 
 
-func _select_speed(speed_value: int) -> void:
+func select_speed(speed_value: int) -> void:
 	if app.speed_controller == null:
 		return
 
 	if not app.speed_controller.set_speed(speed_value):
-		app.interface._show_error("Cannot change the simulation speed.")
+		app.interface.show_error("Cannot change the simulation speed.")
 
 		return
 
-	_sync_speed_ui()
+	sync_speed_ui()
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "%s speed selected." % app.speed_controller.speed_name()
 
 
-func _sync_speed_ui() -> void:
+func sync_speed_ui() -> void:
 	var selected_speed := (
 		app.speed_controller.speed if app.speed_controller != null else GameSpeed.Speed.PAUSED
 	)

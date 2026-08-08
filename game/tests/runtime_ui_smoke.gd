@@ -96,13 +96,13 @@ func _run() -> void:
 			loaded_city.current_year(),
 		]
 		var expected_money := "$%s" % main.interface.call(
-			"_format_number", loaded_city.funds()
+			"format_number", loaded_city.funds()
 		)
 
 		if (
 			date_label.text != expected_date
 			or money_label.text != expected_money
-			or not population_label.text.contains(main.interface.call("_format_number", loaded_city.population()))
+			or not population_label.text.contains(main.interface.call("format_number", loaded_city.population()))
 			or rci_graph.demand != loaded_city.rci_demand()
 			or not rci_graph.demand_available
 			or not speed_label.text.contains((main.get("speed_controller") as GameSpeedController).speed_name())
@@ -130,7 +130,7 @@ func _run() -> void:
 
 			var original_funds := loaded_city.funds()
 			loaded_city.set_funds(original_funds + 1)
-			main.city_files.call("_request_city_exit", "quit")
+			main.city_files.call("request_city_exit", "quit")
 			var save_changes_dialog := main.get("save_changes_dialog") as ConfirmationDialog
 
 			if (
@@ -146,7 +146,7 @@ func _run() -> void:
 				return
 
 			save_changes_dialog.hide()
-			main.city_files.call("_cancel_pending_city_exit")
+			main.city_files.call("cancel_pending_city_exit")
 			loaded_city.set_funds(original_funds)
 
 			if main.city_files.call("_city_has_unsaved_changes"):
@@ -159,7 +159,7 @@ func _run() -> void:
 			status_bar.set_reports(PackedStringArray([
 				"Good health", "Good employment", "Low crime",
 			]))
-			main.interface.call("_refresh_status_summary")
+			main.interface.call("refresh_status_summary")
 			# Reports rotate when no priority city status is displayed.
 			status_bar.set_city_status(null, false)
 			var report_label := status_bar.reports_label
@@ -178,7 +178,7 @@ func _run() -> void:
 
 				return
 
-			main.reports.call("_refresh_saved_news_summary")
+			main.reports.call("refresh_saved_news_summary")
 			var patch_point := Vector2i(-1, -1)
 
 			for x in range(8, CityState.MAP_SIZE - 8):
@@ -247,9 +247,9 @@ func _run() -> void:
 				false
 			)
 			var patch_command: EditCommandResult = main.get("last_edit_command")
-			var view_size := int(main.static_render.call("_city_view_size"))
+			var view_size := int(main.static_render.call("city_view_size"))
 			var expected_signature: Array = main.static_render.call(
-				"_static_signature_for_mode", CityViewMode.Mode.CITY, view_size
+				"static_signature_for_mode", CityViewMode.Mode.CITY, view_size
 			)
 
 			if (
@@ -276,7 +276,7 @@ func _run() -> void:
 				return
 
 			var funds_before_scurk := loaded_city.funds()
-			main.scurk_workspace.call("_open_scurk_place_print")
+			main.scurk_workspace.call("open_scurk_place_print")
 			await process_frame
 			var place_print: ScurkPlacePrintControl = main.get("scurk_place_print")
 
@@ -370,7 +370,7 @@ func _run() -> void:
 
 				return
 
-			main.scurk_workspace.call("_undo_scurk_place")
+			main.scurk_workspace.call("undo_scurk_place")
 
 			if loaded_city.building_id(patch_point.x, patch_point.y) != 0:
 				push_error("SCURK Place & Print Undo did not restore the city")
@@ -388,7 +388,7 @@ func _run() -> void:
 
 				return
 
-			main.scurk_workspace.call("_undo_scurk_place")
+			main.scurk_workspace.call("undo_scurk_place")
 
 			if (
 				not place_print.select_edit_tool(16)
@@ -427,7 +427,7 @@ func _run() -> void:
 
 				return
 
-			main.scurk_workspace.call("_undo_scurk_place")
+			main.scurk_workspace.call("undo_scurk_place")
 
 			if loaded_city.building_id(patch_point.x, patch_point.y) != 0:
 				push_error("SCURK free road Undo did not restore the city")
@@ -445,7 +445,7 @@ func _run() -> void:
 
 				return
 
-			main.scurk_workspace.call("_undo_scurk_place")
+			main.scurk_workspace.call("undo_scurk_place")
 
 			if not place_print.select_edit_tool(15):
 				push_error("SCURK Military Zone tool is not selectable")
@@ -474,7 +474,7 @@ func _run() -> void:
 
 				return
 
-			main.scurk_workspace.call("_undo_scurk_place")
+			main.scurk_workspace.call("undo_scurk_place")
 
 			if loaded_city.zone_id(patch_point.x, patch_point.y) != 0:
 				push_error("SCURK Military Zone Undo did not restore the city")
@@ -483,7 +483,7 @@ func _run() -> void:
 
 				return
 
-			main.scurk_workspace.call("_close_scurk_place_print")
+			main.scurk_workspace.call("close_scurk_place_print")
 
 		var focus_engine: SimulationEngine = main.get("simulation_engine")
 		var audio_controller = main.get("audio_controller")
@@ -497,7 +497,7 @@ func _run() -> void:
 		var effect_probe := AudioStreamPlayer.new()
 		main.add_child(effect_probe)
 		effect_probe.add_to_group(&"open_sc2k_sound_effects")
-		main.effects_audio.call("_handle_application_focus_out")
+		main.effects_audio.call("handle_application_focus_out")
 		var focus_out_ok: bool = (
 			not audio_controller.application_has_focus
 			and audio_controller.dummy_music_active
@@ -505,7 +505,7 @@ func _run() -> void:
 			and focus_engine.midi_playback_active
 			and effect_probe.is_queued_for_deletion()
 		)
-		main.effects_audio.call("_handle_application_focus_in")
+		main.effects_audio.call("handle_application_focus_in")
 		var expected_general_index := (
 			focus_general_index
 		)
@@ -515,7 +515,7 @@ func _run() -> void:
 			and focus_engine.midi_playback_active
 			and focus_director.general_track_index == expected_general_index
 		)
-		main.effects_audio.call("_handle_application_focus_in")
+		main.effects_audio.call("handle_application_focus_in")
 
 		if (
 			not focus_out_ok
@@ -533,7 +533,7 @@ func _run() -> void:
 		var wave_cache: Dictionary = audio_controller.wave_stream_cache
 		var wave_accepted_before := int(wave_gate.accepted_count)
 		var wave_suppressed_before := int(wave_gate.suppressed_count)
-		main.effects_audio.call("_play_sound_events", [504, 504, 504])
+		main.effects_audio.call("play_sound_events", [504, 504, 504])
 
 		if (
 			wave_cache.size() != 30
@@ -547,8 +547,8 @@ func _run() -> void:
 
 			return
 
-		main.effects_audio.call("_stop_sound_effects")
-		main.effects_audio.call("_start_tool_loop_sound", 508)
+		main.effects_audio.call("stop_sound_effects")
+		main.effects_audio.call("start_tool_loop_sound", 508)
 		var bulldozer_loop := audio_controller.tool_loop_player as AudioStreamPlayer
 		var bulldozer_stream := (
 			bulldozer_loop.stream as AudioStreamWAV
@@ -561,7 +561,7 @@ func _run() -> void:
 			and bulldozer_stream != null
 			and bulldozer_stream.loop_mode == AudioStreamWAV.LOOP_FORWARD
 		)
-		main.effects_audio.call("_stop_tool_loop_sound")
+		main.effects_audio.call("stop_tool_loop_sound")
 
 		if (
 			not bulldozer_loop_ok
@@ -582,7 +582,7 @@ func _run() -> void:
 			scenario_dialog.hide()
 
 		for menu_id in range(5):
-			main.menus.call("_on_speed_menu", menu_id)
+			main.menus.call("on_speed_menu", menu_id)
 			var controller: GameSpeedController = main.get("speed_controller")
 			var checked_speed_items := 0
 
@@ -602,10 +602,10 @@ func _run() -> void:
 
 				return
 
-		main.frame.call("_select_speed", GameSpeed.Speed.AFRICAN_SWALLOW)
+		main.frame.call("select_speed", GameSpeed.Speed.AFRICAN_SWALLOW)
 
 		for tick in range(25 if relative_path == "CITIES/ISLAND.SC2" else 5):
-			main.frame.call("_process", 0.2)
+			main.frame.call("process", 0.2)
 
 			if bool(main.get("annual_budget_pending")):
 				main.budget.call("_commit_budget")
@@ -617,20 +617,20 @@ func _run() -> void:
 				var military_dialog := main.get("military_dialog") as Window
 				military_dialog.hide()
 
-		main.frame.call("_select_speed", GameSpeed.Speed.PAUSED)
+		main.frame.call("select_speed", GameSpeed.Speed.PAUSED)
 
 	for mode in [CityViewMode.Mode.UNDERGROUND, CityViewMode.Mode.CITY]:
-		main.menus.call("_set_overlay", mode)
+		main.menus.call("set_overlay", mode)
 		await process_frame
 
 	for layer in ["buildings", "networks", "water", "trees", "zones", "signs"]:
-		main.menus.call("_set_surface_visibility", false, layer)
-		main.menus.call("_set_surface_visibility", true, layer)
+		main.menus.call("set_surface_visibility", false, layer)
+		main.menus.call("set_surface_visibility", true, layer)
 
-	main.menus.call("_set_overlay", CityViewMode.Mode.UNDERGROUND)
-	main.menus.call("_set_underground_pipes_visible", false)
-	main.menus.call("_set_underground_pipes_visible", true)
-	main.menus.call("_set_overlay", CityViewMode.Mode.CITY)
+	main.menus.call("set_overlay", CityViewMode.Mode.UNDERGROUND)
+	main.menus.call("set_underground_pipes_visible", false)
+	main.menus.call("set_underground_pipes_visible", true)
+	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
 
 	for entry in [
 		[main.reports._open_ordinance_window, "ordinance_window"],
@@ -638,11 +638,11 @@ func _run() -> void:
 		[main.reports._open_industry_window, "industry_window"],
 		[main.reports._open_graph_window, "graph_window"],
 		[main.reports._open_simnation_window, "simnation_window"],
-		[main.reports._open_city_map_window, "city_map_window"],
-		[main.reports._on_newspaper_menu.bind(0), "newspaper_dialog"],
+		[main.reports.open_city_map_window, "city_map_window"],
+		[main.reports.on_newspaper_menu.bind(0), "newspaper_dialog"],
 		[main.budget._open_manual_budget, "budget_dialog"],
 		[main.settings._open_settings_dialog, "settings_dialog"],
-		[main.interface._open_about_dialog, "about_dialog"],
+		[main.interface.open_about_dialog, "about_dialog"],
 	]:
 		entry[0].call()
 
@@ -659,10 +659,10 @@ func _run() -> void:
 	main.query_choices.call("_close_query", false)
 
 	for group in range(18):
-		main.current_tool.call("_select_tool_group", group)
+		main.current_tool.call("select_tool_group", group)
 		await process_frame
 
-	main.current_tool.call("_select_tool_group", 0)
+	main.current_tool.call("select_tool_group", 0)
 	var debug_overlay := main.get("debug_overlay") as CityDebugOverlay
 
 	if debug_overlay == null or debug_overlay.get("_window") == null or debug_overlay.is_open:
@@ -790,8 +790,8 @@ func _run() -> void:
 	debug_engine.pending_disaster_point = debug_old_pending_point
 	debug_engine.disaster_map_counter = debug_old_map_counter
 	debug_engine.disaster_hurricane_counter = debug_old_hurricane_counter
-	main.interface.call("_refresh_details")
-	main.moving_sprites.call("_refresh_moving_things")
+	main.interface.call("refresh_details")
+	main.moving_sprites.call("refresh_moving_things")
 	debug_overlay.toggle()
 
 	var menu_bar := main.get("city_menu_bar") as CityMenuBar
@@ -827,7 +827,7 @@ func _run() -> void:
 	menu_bar.refresh_population_tooltip()
 	status_bar.refresh_tooltips()
 
-	main.scurk_workspace.call("_open_scurk_dialog")
+	main.scurk_workspace.call("open_scurk_dialog")
 	await process_frame
 	var scurk_editor := main.get("scurk_editor") as Control
 	var object_list := scurk_editor.get("object_list") as ItemList
@@ -858,7 +858,7 @@ func _run() -> void:
 
 func _test_save_city(main: Node) -> bool:
 	var dialog := main.get("save_dialog") as FileDialog
-	main.menus.call("_on_file_menu", CityMenuBar.MENU_SAVE_CITY)
+	main.menus.call("on_file_menu", CityMenuBar.MENU_SAVE_CITY)
 
 	if not dialog.visible:
 		push_error("Save City must use Save As for a protected reference city")
@@ -871,10 +871,10 @@ func _test_save_city(main: Node) -> bool:
 	var document := main.document_state.current_document as Sc2File
 	var source_path := document.source_path
 	var funds := document.misc_i32(0x14)
-	main.city_files.call("_on_save_path_selected", absolute_path)
+	main.city_files.call("on_save_path_selected", absolute_path)
 	var first_save := FileAccess.get_file_as_bytes(path)
 	document.set_misc_i32(0x14, funds + 123)
-	main.menus.call("_on_file_menu", CityMenuBar.MENU_SAVE_CITY)
+	main.menus.call("on_file_menu", CityMenuBar.MENU_SAVE_CITY)
 	var saved := FileAccess.get_file_as_bytes(path)
 	var expected := document.serialize()
 	var passed: bool = (
@@ -905,7 +905,7 @@ func _run_quick(reference_root: String) -> void:
 	var source := reference_root.path_join("CITIES/ISLAND.SC2")
 	var source_hash := FileAccess.get_sha256(source)
 	main.city_files._load_city_unchecked(source)
-	main.frame._select_speed(GameSpeed.Speed.PAUSED)
+	main.frame.select_speed(GameSpeed.Speed.PAUSED)
 	assert(main.city != null)
 	var city: CityState = main.city
 	var before: PackedByteArray = city.document.serialize().data
@@ -918,8 +918,8 @@ func _run_quick(reference_root: String) -> void:
 		if point.x >= 0:
 			break
 	assert(point.x >= 0, "Smoke fixture needs clear terrain")
-	main.current_tool._select_tool_group(1)
-	main.current_tool._select_subtool(0)
+	main.current_tool.select_tool_group(1)
+	main.current_tool.select_subtool(0)
 	var path: Array[Vector2i] = [point]
 	main.city_edits._apply_map_selection(point, point, path, false)
 	assert(main.last_edit_command.command_type == "landscape")
@@ -944,11 +944,11 @@ func _run_quick(reference_root: String) -> void:
 	assert(main.city != city and main.city.display_name() == "Workflow smoke")
 	assert(main.landscape_editor)
 	var output := ProjectSettings.globalize_path("user://workflow-smoke.sc2x")
-	main.city_files._on_save_path_selected(output)
+	main.city_files.on_save_path_selected(output)
 	var saved := FileAccess.get_file_as_bytes(output)
 	assert(not saved.is_empty() and saved == main.document_state.current_document.serialize().data)
 	main.city_files._load_city_unchecked(output)
-	main.frame._select_speed(GameSpeed.Speed.PAUSED)
+	main.frame.select_speed(GameSpeed.Speed.PAUSED)
 	assert(main.document_state.current_document.serialize().data == saved)
 	assert(FileAccess.get_sha256(source) == source_hash)
 	main.queue_free()

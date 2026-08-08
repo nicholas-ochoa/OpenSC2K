@@ -2,7 +2,7 @@ extends SceneTree
 
 # The animated menu has its own tests. Do not render a random second city here.
 class NoMenuInterface extends ApplicationInterface:
-	func _show_main_menu() -> void:
+	func show_main_menu() -> void:
 		pass
 
 
@@ -37,7 +37,7 @@ func _run() -> void:
 	# Start near overview; a full-size initial render is not part of this check.
 	main.map_view.zoom_factor = 0.25
 	assert(main.city_session._activate_document(doc))
-	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = doc.serialize().data
 	var map: CityMapControl = main.map_view
 	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics([2, 2, 2, 2, 2, 2])
@@ -46,11 +46,11 @@ func _run() -> void:
 	assert(map.zoom_out(Vector2.INF) and map.zoom_percent() == 10)
 	assert(not map.can_zoom_out() and not map.zoom_out(Vector2.INF))
 	assert(main.zoom_out_button.disabled and not main.zoom_in_button.disabled)
-	assert(main.static_render._city_view_size() == CityIsometricRenderer.VIEW_SMALL)
+	assert(main.static_render.city_view_size() == CityIsometricRenderer.VIEW_SMALL)
 	assert(AppSettingsStore.graphics_size_at_zoom(main.preferences.zoom_graphics, 25) == 2, "Graphics choice indices changed")
 
 	for mode: CityViewMode.Mode in [CityViewMode.Mode.UNDERGROUND, CityViewMode.Mode.HEIGHT, CityViewMode.Mode.LAND_VALUE, CityViewMode.Mode.CITY]:
-		main.menus._set_overlay(mode)
+		main.menus.set_overlay(mode)
 		assert(map.zoom_percent() == 10)
 		var point := Vector2i(64, 64)
 		var polygon := CityIsometricRenderer.tile_polygon(main.city, point.x, point.y, mode == CityViewMode.Mode.HEIGHT)
@@ -61,7 +61,7 @@ func _run() -> void:
 	# Selection is a settings lookup. The mode/picking checks above exercise rendering.
 	for graphics_size in [1, 2, 0]:
 		main.preferences.overview_graphics = graphics_size
-		assert(main.static_render._city_view_size() == graphics_size)
+		assert(main.static_render.city_view_size() == graphics_size)
 
 	assert(map.zoom_in(Vector2.INF) and map.zoom_percent() == 25)
 	assert(map.zoom_out(Vector2.INF) and map.zoom_percent() == 10)

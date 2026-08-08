@@ -30,7 +30,7 @@ func _open_scurk_city_export() -> void:
 		return
 
 	if app.map_view.zoom_percent() > 25:
-		app.interface._show_error("Zoom out to 25% before you export a Place & Print city.")
+		app.interface.show_error("Zoom out to 25% before you export a Place & Print city.")
 
 		return
 
@@ -56,7 +56,7 @@ func _export_scurk_city_bmp(path: String) -> void:
 		output_path += ".BMP"
 
 	if output_path == app.reference_root or output_path.begins_with(app.reference_root + "/"):
-		app.interface._show_error("Choose a location outside the read-only original support-data directory.")
+		app.interface.show_error("Choose a location outside the read-only original support-data directory.")
 
 		return
 
@@ -67,12 +67,12 @@ func _export_scurk_city_bmp(path: String) -> void:
 		app.city,
 		app.palette_index_encoding,
 		app.palette,
-		app.static_render._sprite_archive_for_view(IsometricRenderer.VIEW_SMALL),
+		app.static_render.sprite_archive_for_view(IsometricRenderer.VIEW_SMALL),
 		options
 	)
 
 	if not result.ok:
-		app.interface._show_error("Cannot export the Place & Print city: %s" % result.error)
+		app.interface.show_error("Cannot export the Place & Print city: %s" % result.error)
 
 		return
 
@@ -86,7 +86,7 @@ func _open_scurk_print_dialog() -> void:
 	if app.city == null:
 		return
 
-	app.scurk_workspace._ensure_scurk_place_print()
+	app.scurk_workspace.ensure_scurk_place_print()
 	_ensure_scurk_print()
 
 	app.scurk_print.configure(
@@ -102,7 +102,7 @@ func _refresh_scurk_print_preview(options: Dictionary) -> void:
 	var result := ScurkCityOutput.render(
 		app.city,
 		app.palette,
-		app.static_render._sprite_archive_for_view(IsometricRenderer.VIEW_SMALL),
+		app.static_render.sprite_archive_for_view(IsometricRenderer.VIEW_SMALL),
 		IsometricRenderer.VIEW_SMALL,
 		options
 	)
@@ -144,7 +144,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 		output_path += ".PDF"
 
 	if output_path == app.reference_root or output_path.begins_with(app.reference_root + "/"):
-		app.interface._show_error("Choose a location outside the read-only original support-data directory.")
+		app.interface.show_error("Choose a location outside the read-only original support-data directory.")
 
 		return
 
@@ -152,7 +152,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 	var grid := ScurkCityOutput.page_grid(magnification)
 
 	if grid.is_empty():
-		app.interface._show_error("The selected print magnification is invalid.")
+		app.interface.show_error("The selected print magnification is invalid.")
 
 		return
 
@@ -160,12 +160,12 @@ func _save_scurk_city_pdf(path: String) -> void:
 		output_path,
 		app.city,
 		app.palette,
-		app.static_render._sprite_archive_for_view(int(grid.view_size)),
+		app.static_render.sprite_archive_for_view(int(grid.view_size)),
 		app.pending_scurk_print_options
 	)
 
 	if not result.ok:
-		app.interface._show_error("Cannot write the printable city: %s" % result.error)
+		app.interface.show_error("Cannot write the printable city: %s" % result.error)
 
 		return
 

@@ -14,8 +14,8 @@ func _run() -> void:
 	await process_frame
 	var doc := Sc2File.load_path(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/CAPEQUES.SC2"))
 	main.city_session._activate_document(doc)
-	main.frame._select_speed(GameSpeedController.Speed.PAUSED)
-	main.current_tool._select_tool_group(16)
-	main.menus._set_overlay(CityViewMode.Mode.HEIGHT)
+	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
+	main.current_tool.select_tool_group(16)
+	main.menus.set_overlay(CityViewMode.Mode.HEIGHT)
 	main.map_view.zoom_factor = 0.5
 	main.map_view.queue_redraw()

@@ -14,7 +14,7 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func _camera_keys_allowed() -> bool:
+func camera_keys_allowed() -> bool:
 	if app.city == null or app.map_view == null or not app.map_view.is_visible_in_tree() or not DisplayServer.window_is_focused():
 		return false
 
@@ -42,8 +42,8 @@ func _camera_keys_allowed() -> bool:
 	return true
 
 
-func _update_keyboard_camera(delta: float) -> void:
-	var enabled := _camera_keys_allowed()
+func update_keyboard_camera(delta: float) -> void:
+	var enabled := camera_keys_allowed()
 	var direction := Vector2.ZERO
 	enabled = enabled and not Input.is_key_pressed(KEY_CTRL) and not Input.is_key_pressed(KEY_META) and not Input.is_key_pressed(KEY_ALT)
 
@@ -59,7 +59,7 @@ func _update_keyboard_camera(delta: float) -> void:
 		app.map_view.pan_screen(app.camera_motion.step(direction, delta, enabled and not app.map_view.is_panning() and not app.map_view.is_left_drag_active()))
 
 
-func _input(event: InputEvent) -> void:
+func input(event: InputEvent) -> void:
 	if event is InputEventKey and event.pressed and not event.echo and app.audio_controller != null:
 		if app.audio_controller.handle_media_key(event.keycode):
 			app.get_viewport().set_input_as_handled()
@@ -71,11 +71,11 @@ func _input(event: InputEvent) -> void:
 		app.camera_motion.release(event.physical_keycode)
 
 
-func _unhandled_key_input(event: InputEvent) -> void:
+func unhandled_key_input(event: InputEvent) -> void:
 	if not event is InputEventKey or not event.pressed or event.echo or app.map_view == null:
 		return
 
-	if _camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed:
+	if camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed:
 		var directions := {KEY_W: Vector2.UP, KEY_A: Vector2.LEFT, KEY_S: Vector2.DOWN, KEY_D: Vector2.RIGHT}
 
 		if directions.has(event.physical_keycode):
@@ -93,14 +93,14 @@ func _unhandled_key_input(event: InputEvent) -> void:
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		if event.keycode == KEY_ESCAPE:
-			app.scurk_workspace._close_scurk_place_print()
+			app.scurk_workspace.close_scurk_place_print()
 			app.get_viewport().set_input_as_handled()
 
 		return
 
 	if app.main_menu != null and app.main_menu.visible:
 		if event.keycode == KEY_ESCAPE and app.city != null:
-			app.interface._hide_main_menu()
+			app.interface.hide_main_menu()
 
 		app.get_viewport().set_input_as_handled()
 
@@ -119,19 +119,19 @@ func _unhandled_key_input(event: InputEvent) -> void:
 		app.map_view.clear_trip_reach()
 		app.map_view.clear_service_query()
 		app.get_viewport().set_input_as_handled()
-	elif _camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed and (event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL or event.physical_keycode == KEY_E):
+	elif camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed and (event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL or event.physical_keycode == KEY_E):
 		if app.map_view.zoom_in():
 			app.get_viewport().set_input_as_handled()
-	elif _camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed and (event.keycode == KEY_MINUS or event.physical_keycode == KEY_Q):
+	elif camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed and (event.keycode == KEY_MINUS or event.physical_keycode == KEY_Q):
 		if app.map_view.zoom_out():
 			app.get_viewport().set_input_as_handled()
 
 
-func _choose_tool_group(group_index: int) -> void:
-	app.current_tool._select_tool_group(group_index)
+func choose_tool_group(group_index: int) -> void:
+	app.current_tool.select_tool_group(group_index)
 
 
-func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
+func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if group_index == 1 and subtool_index in [0, 1, 2, 3]:
 		return TerrainToolIcons.terrain_action(app.asset_source.assets.city_ui_graphics,
 			["tree", "water", "stream", "forest"][subtool_index])
@@ -200,24 +200,24 @@ func _tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	return ImageTexture.create_from_image(image)
 
 
-func _refresh_child_tool_icons() -> void:
+func refresh_child_tool_icons() -> void:
 	if app.city_toolbar != null:
-		app.city_toolbar.refresh_child_tool_icons(app.selected_group, _tool_button_icon)
+		app.city_toolbar.refresh_child_tool_icons(app.selected_group, tool_button_icon)
 
 
-func _zoom_in() -> void:
+func zoom_in() -> void:
 	app.map_view.zoom_in()
 
 
-func _zoom_out() -> void:
+func zoom_out() -> void:
 	app.map_view.zoom_out()
 
 
-func _rotate_city(counter_clockwise: bool) -> void:
+func rotate_city(counter_clockwise: bool) -> void:
 	var map_edge: int = app.city.map_size if app.city != null else 128
 
 	if app.city == null:
-		app.interface._show_error("No city is loaded.")
+		app.interface.show_error("No city is loaded.")
 
 		return
 
@@ -232,7 +232,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 	var result := CityRotation.apply(app.city, counter_clockwise)
 
 	if not result.ok:
-		app.interface._show_error("Cannot rotate city: %s" % result.error)
+		app.interface.show_error("Cannot rotate city: %s" % result.error)
 
 		return
 
@@ -243,7 +243,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 	app.map_view.clear_trip_reach()
 	app.map_view.clear_service_query()
 	app.map_view.show_transient_effects([])
-	app.map_render._refresh_map()
+	app.map_render.refresh_map()
 
 	if new_center.x >= 0:
 		app.map_view.center_on_tile(new_center)
@@ -252,7 +252,7 @@ func _rotate_city(counter_clockwise: bool) -> void:
 	app.status_label.text = "Rotated counterclockwise" if counter_clockwise else "Rotated clockwise"
 
 
-func _update_zoom_controls(percent: int) -> void:
+func update_zoom_controls(percent: int) -> void:
 	if app.city_workspace != null and app.city_workspace.status_bar != null:
 		app.city_workspace.status_bar.set_zoom(percent)
 
@@ -272,16 +272,16 @@ func _update_zoom_controls(percent: int) -> void:
 		app.scurk_place_print.set_export_enabled(percent <= 25)
 
 
-func _on_city_zoom_changed(percent: int) -> void:
-	_update_zoom_controls(percent)
+func on_city_zoom_changed(percent: int) -> void:
+	update_zoom_controls(percent)
 
 	if app.city != null and CityViewMode.is_map(app.overlay_mode):
-		app.map_render._refresh_map(false)
+		app.map_render.refresh_map(false)
 
 
-func _on_map_selection_canceled() -> void:
+func on_map_selection_canceled() -> void:
 	if app.terrain_stretch.active:
-		_refresh_terrain_stretch(0)
+		refresh_terrain_stretch(0)
 		app.terrain_stretch.finish()
 
 	if app.status_label == null:
@@ -297,7 +297,7 @@ func _on_map_selection_canceled() -> void:
 	)
 
 
-func _on_map_selection_started() -> void:
+func on_map_selection_started() -> void:
 	app.landscape_brush_command = null
 	app.level_brush_altitude = -1
 	if app.new_city._level_brush_active() and app.city != null:
@@ -311,33 +311,33 @@ func _on_map_selection_started() -> void:
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		return
 
-	app.effects_audio._start_tool_loop_sound(508)
+	app.effects_audio.start_tool_loop_sound(508)
 
 
-func _on_map_selection_finished() -> void:
+func on_map_selection_finished() -> void:
 	if app.terrain_stretch.active:
-		_refresh_terrain_stretch(0)
+		refresh_terrain_stretch(0)
 		app.terrain_stretch.finish()
 
-	app.effects_audio._stop_tool_loop_sound()
+	app.effects_audio.stop_tool_loop_sound()
 
 
-func _on_terrain_stretch_changed(levels: int, deferred: bool) -> void:
+func on_terrain_stretch_changed(levels: int, deferred: bool) -> void:
 	if app.terrain_stretch.active:
-		_refresh_terrain_stretch(0 if deferred else levels)
+		refresh_terrain_stretch(0 if deferred else levels)
 
 
-func _refresh_terrain_stretch(levels: int) -> void:
+func refresh_terrain_stretch(levels: int) -> void:
 	var update := app.terrain_stretch.update(app.city, app.tool_random, levels)
 
 	if update != null and update.ok:
-		app.static_render._refresh_after_city_edit(update)
+		app.static_render.refresh_after_city_edit(update)
 
 		if levels != 0 and not is_instance_valid(app.audio_controller.tool_loop_player):
-			app.effects_audio._play_sound_events([ToolSounds.SOUND_TRACTOR])
+			app.effects_audio.play_sound_events([ToolSounds.SOUND_TRACTOR])
 
 
-func _on_map_selection_changed(
+func on_map_selection_changed(
 	start: Vector2i,
 	finish: Vector2i,
 	_path: Array[Vector2i],
@@ -409,7 +409,7 @@ func _on_map_selection_changed(
 		Tools.tool(app.selected_group, app.selected_subtool).name,
 		int(preview.charged_tiles),
 		"tile" if int(preview.charged_tiles) == 1 else "tiles",
-		app.interface._format_number(cost),
+		app.interface.format_number(cost),
 	]
 
 	if not affordable:
@@ -417,8 +417,8 @@ func _on_map_selection_changed(
 		app.status_label.text += " Funds are not sufficient."
 
 
-func _center_map_on_tile(point: Vector2i) -> void:
+func center_map_on_tile(point: Vector2i) -> void:
 	if app.map_view.center_on_tile(point):
-		app.effects_audio._play_tool_success_sound(17, 0)
+		app.effects_audio.play_tool_success_sound(17, 0)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Centered the map on tile %d, %d." % [point.x, point.y]

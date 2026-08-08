@@ -18,7 +18,7 @@ func _init(application: CityApplication) -> void:
 	caches = application.render_caches
 
 
-func _refresh_map(force := true) -> void:
+func refresh_map(force := true) -> void:
 	if app.city_status_bar != null:
 		app.city_status_bar.set_compass(app.city.compass_rotation() if app.city != null else -1)
 
@@ -31,7 +31,7 @@ func _refresh_map(force := true) -> void:
 	)
 
 	if CityViewMode.is_data(app.overlay_mode):
-		_close_region_cache()
+		close_region_cache()
 		app.static_render_state.pending = false
 		app.map_view.set_dynamic_sprites([])
 		app.map_view.show_transient_effects([])
@@ -42,20 +42,20 @@ func _refresh_map(force := true) -> void:
 	app.map_view.clear_data_view()
 
 	if (app.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer)) and CityViewMode.is_map(app.overlay_mode):
-		_refresh_region_map(force)
+		refresh_region_map(force)
 
 		return
 
-	_close_region_cache()
+	close_region_cache()
 	var image: Image
 
 	if app.overlay_mode == CityViewMode.Mode.CITY or app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		if force:
 			app.static_render_state.pending = false
 
-		var view_size := app.static_render._city_view_size()
-		var sprite_archive := app.static_render._sprite_archive_for_view(view_size)
-		var current_signature := app.static_render._static_signature_for_mode(app.overlay_mode, view_size)
+		var view_size := app.static_render.city_view_size()
+		var sprite_archive := app.static_render.sprite_archive_for_view(view_size)
+		var current_signature := app.static_render.static_signature_for_mode(app.overlay_mode, view_size)
 		var cached: Dictionary = caches.static_view_cache.get(app.overlay_mode, {})
 
 		if (
@@ -64,7 +64,7 @@ func _refresh_map(force := true) -> void:
 			and int(cached.get("view_size", -1)) == view_size
 		):
 			caches.static_city_image = cached.image
-			app.moving_sprites._set_static_occlusion_commands(
+			app.moving_sprites.set_static_occlusion_commands(
 				cached.get("occlusion_commands", []), view_size
 			)
 			caches.static_visual_signature = current_signature
@@ -74,15 +74,15 @@ func _refresh_map(force := true) -> void:
 			app.map_view.set_city_view(
 				caches.static_display_city, cached_source, null, true
 			)
-			app.menus._sync_map_style()
+			app.menus.sync_map_style()
 
 			if app.overlay_mode == CityViewMode.Mode.CITY:
-				app.moving_sprites._refresh_moving_things(view_size)
+				app.moving_sprites.refresh_moving_things(view_size)
 			else:
 				caches.dynamic_sign_occluders.clear()
 				caches.dynamic_sign_occlusion_grid.clear()
 				app.map_view.set_dynamic_sprites([])
-				_refresh_sign_occlusion(view_size)
+				refresh_sign_occlusion(view_size)
 
 			return
 
@@ -93,25 +93,25 @@ func _refresh_map(force := true) -> void:
 			and current_signature == caches.static_visual_signature
 		):
 			if app.overlay_mode == CityViewMode.Mode.CITY:
-				app.moving_sprites._refresh_moving_things(view_size)
+				app.moving_sprites.refresh_moving_things(view_size)
 			else:
 				caches.dynamic_sign_occluders.clear()
 				caches.dynamic_sign_occlusion_grid.clear()
 				app.map_view.set_dynamic_sprites([])
-				_refresh_sign_occlusion(view_size)
+				refresh_sign_occlusion(view_size)
 
 			return
 
 		if not force:
-			app.static_render._request_static_render(current_signature, view_size, sprite_archive, app.overlay_mode)
+			app.static_render.request_static_render(current_signature, view_size, sprite_archive, app.overlay_mode)
 
 			if app.overlay_mode == CityViewMode.Mode.CITY:
-				app.moving_sprites._refresh_moving_things(view_size)
+				app.moving_sprites.refresh_moving_things(view_size)
 			else:
 				caches.dynamic_sign_occluders.clear()
 				caches.dynamic_sign_occlusion_grid.clear()
 				app.map_view.set_dynamic_sprites([])
-				_refresh_sign_occlusion(view_size)
+				refresh_sign_occlusion(view_size)
 
 			return
 
@@ -135,7 +135,7 @@ func _refresh_map(force := true) -> void:
 			)
 
 		if not indexed.ok:
-			app.interface._show_error(indexed.error)
+			app.interface.show_error(indexed.error)
 
 			return
 
@@ -156,7 +156,7 @@ func _refresh_map(force := true) -> void:
 				display_city, sprite_archive, view_size
 			)
 
-		app.moving_sprites._set_static_occlusion_commands(occlusion_commands, view_size)
+		app.moving_sprites.set_static_occlusion_commands(occlusion_commands, view_size)
 		caches.static_visual_signature = current_signature
 		caches.static_render_mode = app.overlay_mode
 		caches.static_display_city = display_city
@@ -185,16 +185,16 @@ func _refresh_map(force := true) -> void:
 		source, null,
 		CityViewMode.is_map(app.overlay_mode)
 	)
-	app.menus._sync_map_style()
+	app.menus.sync_map_style()
 
 	if app.overlay_mode == CityViewMode.Mode.CITY:
-		app.moving_sprites._refresh_moving_things(app.static_render._city_view_size())
+		app.moving_sprites.refresh_moving_things(app.static_render.city_view_size())
 	else:
-		_refresh_sign_occlusion(app.static_render._city_view_size())
+		refresh_sign_occlusion(app.static_render.city_view_size())
 
 
-func _close_region_cache() -> void:
-	app.static_render._clear_dynamic_composition_cache()
+func close_region_cache() -> void:
+	app.static_render.clear_dynamic_composition_cache()
 	caches.foreground_complete = false
 
 	if caches.region_cache != null:
@@ -203,7 +203,7 @@ func _close_region_cache() -> void:
 	caches.region_cache = null
 
 
-func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
+func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	if caches.region_cache == null:
 		caches.region_cache = CityRegionCache.new()
 		caches.region_cache.gpu_enabled = CityRegionCache.gpu_supported(app.preferences.city_renderer)
@@ -213,9 +213,9 @@ func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	caches.static_occlusion_commands.clear()
 	caches.static_occlusion_grid.clear()
 	app.static_render_state.pending = false
-	var view_size := app.static_render._city_view_size()
-	var sprites := app.static_render._sprite_archive_for_view(view_size)
-	var signature := app.static_render._static_signature_for_mode(app.overlay_mode, view_size)
+	var view_size := app.static_render.city_view_size()
+	var sprites := app.static_render.sprite_archive_for_view(view_size)
+	var signature := app.static_render.static_signature_for_mode(app.overlay_mode, view_size)
 	signature.append(sprites.get_instance_id())
 
 	if force:
@@ -237,18 +237,18 @@ func _refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	caches.static_display_city = caches.region_cache.display_city
 	var source := caches.region_cache.texture()
 	app.map_view.set_city_view(caches.static_display_city, source, null, true, true, caches.region_cache.sign_layout_token)
-	app.menus._sync_map_style()
+	app.menus.sync_map_style()
 	caches.region_cache.set_sign_requests(app.map_view.sign_source_entries())
 	caches.region_cache.update_viewport(app.map_view.visible_source_rect())
 
 	if app.overlay_mode == CityViewMode.Mode.CITY:
-		app.moving_sprites._refresh_moving_things(view_size)
+		app.moving_sprites.refresh_moving_things(view_size)
 	else:
 		app.map_view.set_dynamic_sprites([])
 		app.map_view.set_sign_occlusion_visuals({})
 
 
-func _poll_region_cache() -> void:
+func poll_region_cache() -> void:
 	if caches.region_cache == null or app.city == null:
 		return
 
@@ -258,7 +258,7 @@ func _poll_region_cache() -> void:
 		return
 
 	if not caches.region_cache.last_error.is_empty():
-		app.interface._show_error(caches.region_cache.last_error)
+		app.interface.show_error(caches.region_cache.last_error)
 
 		return
 
@@ -267,11 +267,11 @@ func _poll_region_cache() -> void:
 	var foreground_changed := _invalidate_region_foregrounds(caches.region_cache.foreground_changes)
 	var source := caches.region_cache.texture()
 	app.map_view.set_city_view(caches.static_display_city, source, null, true, true, caches.region_cache.sign_layout_token)
-	app.menus._sync_map_style()
+	app.menus.sync_map_style()
 
 	if app.overlay_mode == CityViewMode.Mode.CITY:
 		if foreground_changed or not caches.foreground_complete or caches.foreground_view_rect != app.map_view.visible_source_rect():
-			app.moving_sprites._refresh_moving_things(caches.region_cache.view_size)
+			app.moving_sprites.refresh_moving_things(caches.region_cache.view_size)
 	else:
 		app.map_view.set_dynamic_sprites([])
 
@@ -306,7 +306,7 @@ func _invalidate_region_foregrounds(changes: Array[Rect2i]) -> bool:
 	return invalidated
 
 
-func _static_image_size() -> Vector2i:
+func static_image_size() -> Vector2i:
 	return caches.region_cache.native_size * caches.region_cache.divisor if caches.region_cache != null else (caches.static_city_image.get_size() if caches.static_city_image != null else Vector2i.ZERO)
 
 
@@ -314,13 +314,13 @@ func _static_pixel(x: int, y: int) -> Color:
 	return caches.region_cache.pixel(Vector2i(x, y)) if caches.region_cache != null else caches.static_city_image.get_pixel(x, y)
 
 
-func _refresh_sign_occlusion(view_size: int) -> void:
-	ApplicationMapSigns._refresh_sign_occlusion(self, view_size)
+func refresh_sign_occlusion(view_size: int) -> void:
+	ApplicationMapSigns.refresh_sign_occlusion(self, view_size)
 
 
-func _sign_palette_signature(used: Dictionary, mapping: PackedInt32Array) -> int:
-	return ApplicationMapSigns._sign_palette_signature(self, used, mapping)
+func sign_palette_signature(used: Dictionary, mapping: PackedInt32Array) -> int:
+	return ApplicationMapSigns.sign_palette_signature(self, used, mapping)
 
 
-func _sign_palette_image(indexed: Image, mapping: PackedInt32Array) -> Image:
-	return ApplicationMapSigns._sign_palette_image(self, indexed, mapping)
+func sign_palette_image(indexed: Image, mapping: PackedInt32Array) -> Image:
+	return ApplicationMapSigns.sign_palette_image(self, indexed, mapping)

@@ -198,34 +198,34 @@ func _ready() -> void:
 
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_WM_CLOSE_REQUEST and is_inside_tree():
-		city_files._request_city_exit("quit")
+		city_files.request_city_exit("quit")
 	elif what == NOTIFICATION_APPLICATION_FOCUS_OUT:
-		effects_audio._handle_application_focus_out()
+		effects_audio.handle_application_focus_out()
 	elif what == NOTIFICATION_APPLICATION_FOCUS_IN:
-		effects_audio._handle_application_focus_in()
+		effects_audio.handle_application_focus_in()
 
 
 func _exit_tree() -> void:
 	if new_city_preview_job != null and new_city_preview_job.thread.is_started():
 		new_city_preview_job.thread.wait_to_finish()
 	new_city_preview_job = null
-	map_render._close_region_cache()
+	map_render.close_region_cache()
 
 	if frame_simulation != null:
 		frame_simulation.close()
 
 	frame_simulation = null
-	static_render._stop_render_job()
+	static_render.stop_render_job()
 	city_png_export._close()
 
 
 func _process(delta: float) -> void:
-	frame._process(delta)
+	frame.process(delta)
 
 
 func _input(event: InputEvent) -> void:
-	camera_input._input(event)
+	camera_input.input(event)
 
 
 func _unhandled_key_input(event: InputEvent) -> void:
-	camera_input._unhandled_key_input(event)
+	camera_input.unhandled_key_input(event)

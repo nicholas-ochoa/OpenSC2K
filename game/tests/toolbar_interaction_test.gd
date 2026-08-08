@@ -12,19 +12,19 @@ func _run() -> void:
 	await process_frame
 	main.map_view.zoom_factor = 0.25
 	main.city_files.call("_load_city_unchecked", ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
-	main.frame.call("_select_speed", GameSpeedController.Speed.PAUSED)
+	main.frame.call("select_speed", GameSpeedController.Speed.PAUSED)
 	var toolbar := main.get("city_toolbar") as CityToolbar
 	var map := main.get("map_view") as CityMapControl
 
 	# Shared tools retain the selected layer and remain usable in either view.
 	for mode: CityViewMode.Mode in [CityViewMode.Mode.CITY, CityViewMode.Mode.UNDERGROUND]:
-		main.menus.call("_set_overlay", mode)
+		main.menus.call("set_overlay", mode)
 
 		for group in [16, 17, 0]:
 			toolbar.toolbar_buttons[group].pressed.emit()
 			assert(main.get("overlay_mode") == mode and toolbar.view_mode_buttons[mode].button_pressed)
 			assert(map.edit_enabled)
-			main.current_tool.call("_select_subtool", 0)
+			main.current_tool.call("select_subtool", 0)
 			assert(main.get("overlay_mode") == mode and map.edit_enabled)
 
 			if group == 16:
@@ -32,30 +32,30 @@ func _run() -> void:
 				assert(main.query_dialog.visible and main.get("overlay_mode") == mode)
 				main.query_choices.call("_close_query")
 			elif group == 17:
-				main.camera_input.call("_center_map_on_tile", Vector2i(20, 20))
+				main.camera_input.call("center_map_on_tile", Vector2i(20, 20))
 				assert(main.get("overlay_mode") == mode)
 
 	# Surface-only terrain tools still change back to the surface.
-	main.current_tool.call("_select_subtool", 2)
+	main.current_tool.call("select_subtool", 2)
 	assert(main.get("overlay_mode") == CityViewMode.Mode.CITY)
-	main.current_tool.call("_select_tool_group", 4)
+	main.current_tool.call("select_tool_group", 4)
 	assert(main.get("overlay_mode") == CityViewMode.Mode.UNDERGROUND and toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].button_pressed)
-	main.menus.call("_set_overlay", CityViewMode.Mode.CITY)
-	main.current_tool.call("_select_tool_group", 7)
-	main.current_tool.call("_select_subtool", 1)
+	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
+	main.current_tool.call("select_tool_group", 7)
+	main.current_tool.call("select_subtool", 1)
 	assert(main.get("overlay_mode") == CityViewMode.Mode.UNDERGROUND and toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].button_pressed)
-	main.menus.call("_set_overlay", CityViewMode.Mode.CITY)
-	main.current_tool.call("_select_tool_group", 17)
+	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
+	main.current_tool.call("select_tool_group", 17)
 	assert(not map.show_selection_preview)
-	main.current_tool.call("_select_tool_group", 6)
-	main.current_tool.call("_select_subtool", 1)
+	main.current_tool.call("select_tool_group", 6)
+	main.current_tool.call("select_subtool", 1)
 	assert(map.highway_preview)
 
 	for group in [3, 6, 7]:
-		main.current_tool.call("_select_tool_group", group)
+		main.current_tool.call("select_tool_group", group)
 		await process_frame
 		toolbar.child_tool_scroll.scroll_vertical = 100
-		main.current_tool.call("_select_tool_group", 3 if group != 3 else 6)
+		main.current_tool.call("select_tool_group", 3 if group != 3 else 6)
 		await process_frame
 		assert(toolbar.child_tool_scroll.scroll_vertical == 0)
 
@@ -84,8 +84,8 @@ func _run() -> void:
 	var building := BuildingCommand.apply(city, 3, 9, Vector2i(60, 60),
 		(main.get("simulation_engine") as SimulationEngine).lfsr_random, main.get("tool_random"))
 	assert(building.ok)
-	main.menus.call("_set_overlay", CityViewMode.Mode.CITY)
-	main.current_tool.call("_select_tool_group", 16)
+	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
+	main.current_tool.call("select_tool_group", 16)
 	map.hover_tile = Vector2i(61, 61)
 	var shift := InputEventKey.new()
 	shift.keycode = KEY_SHIFT
@@ -101,32 +101,32 @@ func _run() -> void:
 	assert(not BuildingSites.preview_valid(city, 3, 2, Vector2i(60, 60)))
 	assert(not BuildingSites.preview_valid(city, 3, 2, Vector2i(0, 0)))
 	assert(city.document.serialize().data == before)
-	main.current_tool.call("_select_tool_group", 5)
+	main.current_tool.call("select_tool_group", 5)
 	assert(toolbar.child_tool_buttons.size() == 8 and not toolbar.child_tool_buttons.has(4))
 
 	for arcology in range(5, 9):
 		assert(toolbar.child_tool_buttons.has(arcology))
 
-	main.current_tool.call("_select_tool_group", 4)
+	main.current_tool.call("select_tool_group", 4)
 	assert(main.get("overlay_mode") == CityViewMode.Mode.UNDERGROUND)
-	main.current_tool.call("_select_subtool", 1)
+	main.current_tool.call("select_subtool", 1)
 	assert(main.get("overlay_mode") == CityViewMode.Mode.CITY)
 	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics(AppSettingsStore.DEFAULT_ZOOM_GRAPHICS)
 	# Overview size is independent of the saved graphics settings.
 	main.preferences.overview_graphics = CityIsometricRenderer.VIEW_SMALL
 	map.zoom_factor = CityMapControl.ZOOM_LEVELS[0]
 	assert(main.options_menu.get_popup().get_item_index(0x8008) == -1)
-	assert(main.static_render.call("_city_view_size") == CityIsometricRenderer.VIEW_SMALL)
+	assert(main.static_render.call("city_view_size") == CityIsometricRenderer.VIEW_SMALL)
 	# City nature tools paint with fixed brushes and support Shift boxes.
-	main.current_tool.call("_select_tool_group", 1)
+	main.current_tool.call("select_tool_group", 1)
 	assert(toolbar.child_tool_buttons.has(3))
-	main.current_tool.call("_select_subtool", 3)
+	main.current_tool.call("select_subtool", 3)
 	assert(main.selected_subtool == 3 and map.edit_enabled and map.brush_size == 7)
 	assert(map.selection.point_preview_tiles(Vector2i(80, 80)).size() == 37)
 	assert(not map.selection.point_preview_tiles(Vector2i(127, 127)).is_empty())
 
 	for subtool in [0, 1]:
-		main.current_tool.call("_select_subtool", subtool)
+		main.current_tool.call("select_subtool", subtool)
 		assert(map.selection_mode == "point" and not map.shift_line_enabled)
 		assert(map.continuous_placement and map.shift_rectangle_enabled)
 		assert(map.brush_size == 1 and not toolbar.brush_controls.visible)
@@ -179,7 +179,7 @@ func _run() -> void:
 	var subway_only := CityUndergroundView.tile_sprite_ids(city, 90, 90, 2, false, true)
 	assert(pipe_only != subway_only and city.underground_id(90, 90) == 0x1f)
 	assert(toolbar.view_visibility_checks.has("subways"))
-	main.menus.call("_set_underground_subways_visible", false)
+	main.menus.call("set_underground_subways_visible", false)
 	assert(not toolbar.view_visibility_checks.subways.button_pressed)
 	# Recall removes only emergency records and supports exact Undo.
 	var dispatched := DispatchCommand.apply(city, 2, 2, Vector2i(85, 85))
@@ -224,9 +224,9 @@ func _run() -> void:
 
 
 func _test_network_drag_price(main: Node, map: CityMapControl, city: CityState) -> void:
-	main.menus.call("_set_overlay", CityViewMode.Mode.CITY)
-	main.current_tool.call("_select_tool_group", 6)
-	main.current_tool.call("_select_subtool", 0)
+	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
+	main.current_tool.call("select_tool_group", 6)
+	main.current_tool.call("select_subtool", 0)
 	var start := Vector2i(30, 30)
 	var finish := Vector2i(36, 30)
 	var planned := NetworkCommand.apply(
@@ -250,7 +250,7 @@ func _test_network_drag_price(main: Node, map: CityMapControl, city: CityState) 
 	)
 	assert(map.selection_price_affordable)
 	map.selection._clear_selection()
-	main.current_tool.call("_update_network_preview")
+	main.current_tool.call("update_network_preview")
 	assert(map.selection_price < 0, "Ending the drag removes the route price")
 
 

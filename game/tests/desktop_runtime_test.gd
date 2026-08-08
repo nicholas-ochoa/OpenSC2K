@@ -42,7 +42,7 @@ func _run() -> void:
 	for tool in ToolCatalog.all_tools():
 		main.selected_group = tool.group_index
 		main.selected_subtool = tool.subtool_index
-		main.current_tool._update_edit_state()
+		main.current_tool.update_edit_state()
 		assert(map.desktop_cursor_role == DesktopCursorRules.city_tool(tool.group_index, tool.subtool_index))
 		map.edit_enabled = true # Check every resource route, including locked tools.
 
@@ -97,7 +97,7 @@ func _run() -> void:
 	target.queue_free()
 	var presenter := desktop.presenter
 	main.scurk_workspace._ensure_scurk_editor()
-	main.scurk_workspace._ensure_scurk_place_print()
+	main.scurk_workspace.ensure_scurk_place_print()
 	main.scurk_output._ensure_scurk_print()
 
 	for graphics in [original, alternate]:

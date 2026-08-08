@@ -54,7 +54,7 @@ func _apply_network_selection(
 		return
 
 	if network.cancelled:
-		app.effects_audio._play_tool_failure_sound(group_index, subtool_index, "cancelled", free_mode)
+		app.effects_audio.play_tool_failure_sound(group_index, subtool_index, "cancelled", free_mode)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Bridge selection canceled. No action was taken."
 
@@ -80,9 +80,9 @@ func _apply_network_selection(
 				+ "The %d-tile route costs $%s and remains if you cancel."
 			) % [
 				tool_name.to_lower(),
-				app.interface._format_number(network.connection_cost),
+				app.interface.format_number(network.connection_cost),
 				network.dry_points.size(),
-				app.interface._format_number(network.dry_cost),
+				app.interface.format_number(network.dry_cost),
 			]
 		)
 		app.network_connection_dialog.show_message(message, "Keep %s" % tool_name)
@@ -90,28 +90,28 @@ func _apply_network_selection(
 		return
 
 	if not network.ok:
-		app.effects_audio._play_tool_failure_sound(
+		app.effects_audio.play_tool_failure_sound(
 			group_index,
 			subtool_index,
 			network.error,
 			free_mode,
 		)
-		app.interface._show_error(
+		app.interface.show_error(
 			"Cannot build %s: %s"
 			% [tool_name, network.error]
 		)
 
 		return
 
-	app.scurk_workspace._record_edit_command(network, free_mode, tool_name)
-	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(network)
-	app.effects_audio._play_tool_success_sound(group_index, subtool_index, free_mode)
+	app.scurk_workspace.record_edit_command(network, free_mode, tool_name)
+	app.interface.refresh_details()
+	app.static_render.refresh_after_city_edit(network)
+	app.effects_audio.play_tool_success_sound(group_index, subtool_index, free_mode)
 	app.status_label.theme_type_variation = ""
 	var dry_count := network.dry_points.size()
 
 	if network.bridge_count > 1:
-		app.status_label.text = "Built %d %s tiles and %d bridges for $%s." % [dry_count, tool_name, network.bridge_count, app.interface._format_number(int(network.cost))]
+		app.status_label.text = "Built %d %s tiles and %d bridges for $%s." % [dry_count, tool_name, network.bridge_count, app.interface.format_number(int(network.cost))]
 	elif network.bridge_built:
 		if dry_count > 0:
 			app.status_label.text = "Built %d %s tiles and a %s across %d water tiles for $%s." % [
@@ -119,23 +119,23 @@ func _apply_network_selection(
 				tool_name,
 				network.bridge_name,
 				network.bridge_span_length,
-				app.interface._format_number(network.cost),
+				app.interface.format_number(network.cost),
 			]
 		else:
 			app.status_label.text = "Built a %s across %d water tiles for $%s." % [
 				network.bridge_name,
 				network.bridge_span_length,
-				app.interface._format_number(network.cost),
+				app.interface.format_number(network.cost),
 			]
 	elif network.connection_built:
 		app.status_label.text = "Built %d %s tiles and a neighboring-city connection for $%s." % [
 			dry_count,
 			tool_name,
-			app.interface._format_number(network.cost),
+			app.interface.format_number(network.cost),
 		]
 	else:
 		app.status_label.text = "Built %d %s tiles for $%s." % [
-			dry_count, tool_name, app.interface._format_number(network.cost)
+			dry_count, tool_name, app.interface.format_number(network.cost)
 		]
 
 		if network.bridge_cancelled:
@@ -260,7 +260,7 @@ func _cancel_bridge() -> void:
 	app.pending_bridge_request.clear()
 
 	if request.get("dry_points", []).is_empty():
-		app.effects_audio._play_tool_failure_sound(
+		app.effects_audio.play_tool_failure_sound(
 			int(request.group_index),
 			int(request.subtool_index),
 			"cancelled",

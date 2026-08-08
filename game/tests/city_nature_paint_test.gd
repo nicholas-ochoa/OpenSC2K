@@ -44,13 +44,13 @@ func _run() -> void:
 	main.map_view.zoom_factor = 0.25
 	for edge in [64, 512]:
 		assert(main.city_session._activate_document(EmptyCityTemplate.create(edge)))
-		main.frame._select_speed(GameSpeedController.Speed.PAUSED)
-		main.current_tool._select_tool_group(1)
+		main.frame.select_speed(GameSpeedController.Speed.PAUSED)
+		main.current_tool.select_tool_group(1)
 		# City brushes use fixed settings, independent of landscape preferences.
 		main.city_toolbar.brush_size_input.value = 15
 		main.city_toolbar.brush_shape_input.select(0)
 		for tool in [0, 1, 3]:
-			main.current_tool._select_subtool(tool)
+			main.current_tool.select_subtool(tool)
 			var map: CityMapControl = main.map_view
 			map.city = main.city
 			assert(not main.landscape_editor and map.landscape_brush)

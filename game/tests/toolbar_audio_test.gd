@@ -25,8 +25,8 @@ func _run() -> void:
 
 	# Terrain use still plays the tractor with toolbar feedback disabled.
 	for tool in [2, 3, 5, 6, 7]:
-		main.current_tool._select_tool_group(0)
-		main.current_tool._select_subtool(tool)
+		main.current_tool.select_tool_group(0)
+		main.current_tool.select_subtool(tool)
 		var point := Vector2i(60, 60)
 		var path: Array[Vector2i] = [point]
 		main.city_edits._apply_map_selection(point, point, path, false)
@@ -41,8 +41,8 @@ func _run() -> void:
 
 	# Both tree tools use the original tree plop in free landscape mode.
 	for subtool in [0, 3]:
-		main.current_tool._select_tool_group(1)
-		main.current_tool._select_subtool(subtool)
+		main.current_tool.select_tool_group(1)
+		main.current_tool.select_subtool(subtool)
 		var point := Vector2i(70, 70)
 		var tree_path: Array[Vector2i] = [point]
 
@@ -55,8 +55,8 @@ func _run() -> void:
 		await _clear(main)
 
 	main.city.set_sound_enabled(false)
-	main.current_tool._select_tool_group(0)
-	main.current_tool._select_subtool(2)
+	main.current_tool.select_tool_group(0)
+	main.current_tool.select_subtool(2)
 	var muted_path: Array[Vector2i] = [Vector2i(60, 60)]
 	main.city_edits._apply_map_selection(muted_path[0], muted_path[0], muted_path, false)
 	assert(not _has_sound(main, 508))

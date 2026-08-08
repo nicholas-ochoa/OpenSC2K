@@ -52,11 +52,11 @@ func _run() -> void:
 	main.map_render._invalidate_region_foregrounds(whole)
 	assert(main.render_caches.sign_foreground_cache.is_empty())
 	var mapping := PackedInt32Array(range(256))
-	var colors: int = main.map_render._sign_palette_signature({17: true}, mapping)
+	var colors: int = main.map_render.sign_palette_signature({17: true}, mapping)
 	mapping[161] = 162
-	assert(main.map_render._sign_palette_signature({17: true}, mapping) == colors)
+	assert(main.map_render.sign_palette_signature({17: true}, mapping) == colors)
 	mapping[17] = 18
-	assert(main.map_render._sign_palette_signature({17: true}, mapping) != colors)
+	assert(main.map_render.sign_palette_signature({17: true}, mapping) != colors)
 	_check_sign_layout_tokens(view)
 	main.free()
 	view.queue_free()
