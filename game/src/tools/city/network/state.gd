@@ -32,9 +32,9 @@ static func replace_building(
 	buildings[index] = new_tile
 
 
-static func city_payloads(city: CityState) -> Dictionary:
+static func city_payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
 	var map_edge: int = city.map_size if city != null else 128
-	var result := {}
+	var result: Dictionary[String, PackedByteArray] = {}
 
 	for checked in [
 		["ALTM", (map_edge * map_edge) * 2],
@@ -56,8 +56,8 @@ static func city_payloads(city: CityState) -> Dictionary:
 	return result
 
 
-static func _duplicate_payloads(payloads: Dictionary) -> Dictionary:
-	var result := {}
+static func _duplicate_payloads(payloads: Dictionary) -> Dictionary[String, PackedByteArray]:
+	var result: Dictionary[String, PackedByteArray] = {}
 
 	for chunk_id in payloads:
 		result[chunk_id] = payloads[chunk_id].duplicate()

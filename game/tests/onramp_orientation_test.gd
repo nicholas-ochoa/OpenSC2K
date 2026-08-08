@@ -32,7 +32,7 @@ func _initialize() -> void:
 			city.set_building_id(road.x, road.y, 0x1d)
 
 		var before: PackedByteArray = city.document.serialize().data
-		var commands: Array[Dictionary] = []
+		var commands: Array[OnrampEditResult] = []
 		for index in CASES.size():
 			var entry: Array = CASES[index]
 			var point := points[index]

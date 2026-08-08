@@ -174,8 +174,8 @@ func _commit_sign() -> void:
 
 		return
 
-	app.last_edit_command = EditCommandResult.of(result)
-	app.static_render._refresh_after_city_edit(app.last_edit_command)
+	app.last_edit_command = result
+	app.static_render._refresh_after_city_edit(result)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
 

@@ -22,36 +22,36 @@ static func apply(
 	subtool_index: int,
 	point: Vector2i,
 	process_random: SimRandom
-) -> Dictionary:
+) -> HydroEditResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return HydroEditResult.rejected("city is invalid")
 
 	if not supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool is not hydroelectric power"}
+		return HydroEditResult.rejected("tool is not hydroelectric power")
 
 	if process_random == null:
-		return {"ok": false, "error": "process random state is required"}
+		return HydroEditResult.rejected("process random state is required")
 
 	var index := city.index_of(point.x, point.y)
 
 	if index < 0:
-		return {"ok": false, "error": "hydroelectric site is outside the city"}
+		return HydroEditResult.rejected("hydroelectric site is outside the city")
 
 	if city.terrain[index] != TERRAIN_WATERFALL_A and city.terrain[index] != TERRAIN_WATERFALL_B:
-		return {"ok": false, "error": "hydroelectric power requires a waterfall"}
+		return HydroEditResult.rejected("hydroelectric power requires a waterfall")
 
 	if city.buildings[index] != 0:
-		return {"ok": false, "error": "waterfall already contains a building"}
+		return HydroEditResult.rejected("waterfall already contains a building")
 
 	var cost := int(ToolCatalog.tool(group_index, subtool_index).cost)
 
 	if city.funds() < cost:
-		return {"ok": false, "error": "insufficient funds", "cost": cost}
+		return HydroEditResult.rejected("insufficient funds", cost)
 
 	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return HydroEditResult.rejected("required city data is missing or invalid")
 
 	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
@@ -86,7 +86,7 @@ static func apply(
 	if not BuildingState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
 		process_random.state = process_random_state_before
 
-		return {"ok": false, "error": "cannot store hydroelectric changes"}
+		return HydroEditResult.rejected("cannot store hydroelectric changes")
 
 	var immediate_power_refresh := false
 
@@ -97,7 +97,7 @@ static func apply(
 			BuildingState._restore_payloads(city, old_payloads)
 			process_random.state = process_random_state_before
 
-			return {"ok": false, "error": "cannot refresh power after hydroelectric placement"}
+			return HydroEditResult.rejected("cannot refresh power after hydroelectric placement")
 
 		immediate_power_refresh = true
 		changed_payloads = BuildingState._city_payloads(city)
@@ -106,7 +106,7 @@ static func apply(
 			BuildingState._restore_payloads(city, old_payloads)
 			process_random.state = process_random_state_before
 
-			return {"ok": false, "error": "cannot capture hydroelectric power changes"}
+			return HydroEditResult.rejected("cannot capture hydroelectric power changes")
 
 		changed_ids.clear()
 
@@ -114,54 +114,55 @@ static func apply(
 			if changed_payloads[chunk_id] != old_payloads[chunk_id]:
 				changed_ids.append(chunk_id)
 
-	return {
-		"ok": true,
-		"command_type": "hydro",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"tile_id": tile_id,
-		"tile_indices": PackedInt32Array([index]),
-		"overlay_id": overlay_id,
-		"cost": cost,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"process_random_state_before": process_random_state_before,
-		"process_random_state_after": process_random.state,
-		"immediate_power_refresh": immediate_power_refresh,
-		"error": "",
-	}
+	var result := HydroEditResult.new()
+	result.ok = true
+	result.command_type = "hydro"
+	result.group_index = group_index
+	result.subtool_index = subtool_index
+	result.tile_id = tile_id
+	result.tile_indices = PackedInt32Array([index])
+	result.overlay_id = overlay_id
+	result.cost = cost
+	result.changed_ids = changed_ids
+	result.old_payloads = old_payloads
+	result.new_payloads = changed_payloads
+	result.tracks_random = true
+	result.random_state_before = process_random_state_before
+	result.random_state_after = process_random.state
+	result.immediate_power_refresh = immediate_power_refresh
+
+	return result
 
 
-static func undo(city: CityState, command: Dictionary, process_random: SimRandom) -> Dictionary:
+static func undo(city: CityState, command: HydroEditResult, process_random: SimRandom) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "hydro":
-		return {"ok": false, "error": "hydroelectric command is invalid"}
+	if command == null or not command.ok or command.command_type != "hydro":
+		return EditCommandResult.failure("hydroelectric command is invalid")
 
 	if process_random == null:
-		return {"ok": false, "error": "process random state is required"}
+		return EditCommandResult.failure("process random state is required")
 
-	if process_random.state != int(command.get("process_random_state_after", -1)):
-		return {"ok": false, "error": "process random state changed after this hydroelectric command"}
+	if process_random.state != command.random_state_after:
+		return EditCommandResult.failure("process random state changed after this hydroelectric command")
 
-	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var changed_ids := command.changed_ids
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
-			return {"ok": false, "error": "city changed after this hydroelectric command"}
+			return EditCommandResult.failure("city changed after this hydroelectric command")
 
 	if not BuildingState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
-		return {"ok": false, "error": "cannot restore hydroelectric changes"}
+		return EditCommandResult.failure("cannot restore hydroelectric changes")
 
-	process_random.state = int(command.process_random_state_before)
+	process_random.state = command.random_state_before
 
-	return {"ok": true, "restored_tiles": 1, "error": ""}
+	return EditCommandResult.undone(1)
 
 
 static func _hydro_tile(city: CityState, point: Vector2i) -> int:

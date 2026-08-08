@@ -70,7 +70,7 @@ func _init() -> void:
 		document.find_chunk("XTHG").set_decoded_payload(things)
 		var dispatch_before: PackedByteArray = document.serialize().data
 		var dispatch := DispatchCommand.apply(city, 2, 2, Vector2i(edge - 3, 8))
-		check(dispatch.ok and dispatch.get("thing_index", -1) == last, "dispatch uses last extended slot")
+		check(dispatch.ok and dispatch.thing_index == last, "dispatch uses last extended slot")
 		check(DispatchCommand.undo(city, dispatch).ok, "extended dispatch undo")
 		check(document.serialize().data == dispatch_before, "exact dispatch undo")
 		ThingData.write(things, last * 12, 10)

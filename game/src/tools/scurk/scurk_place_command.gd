@@ -222,18 +222,17 @@ static func apply(
 	return result
 
 
-# undo any edit that scurk history owns. `command` may still be the
-# dictionary of a tool family that is not yet converted
+# undo any edit that scurk history owns
 static func undo(
-	city: CityState, command: Variant, process_random: SimRandom
+	city: CityState, command: EditCommandResult, process_random: SimRandom
 ) -> EditCommandResult:
-	return _apply_history(city, EditCommandResult.of(command), process_random, false)
+	return _apply_history(city, command, process_random, false)
 
 
 static func redo(
-	city: CityState, command: Variant, process_random: SimRandom
+	city: CityState, command: EditCommandResult, process_random: SimRandom
 ) -> EditCommandResult:
-	return _apply_history(city, EditCommandResult.of(command), process_random, true)
+	return _apply_history(city, command, process_random, true)
 
 
 static func _apply_history(

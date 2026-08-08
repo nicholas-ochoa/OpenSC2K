@@ -18,7 +18,7 @@ var map_view: CityMapControl
 var context_key := ""
 var render_key := ""
 var sprite_cache: Dictionary = {}
-var texture_cache: Dictionary = {}
+var texture_cache: Dictionary[int, ImageTexture] = {}
 var painter := Node2D.new()
 
 
@@ -190,13 +190,13 @@ static func apply_preview(city: CityState, group: int, tool: int, start: Vector2
 				return result
 
 	if TunnelCommand.supports_tool(group, tool):
-		return EditCommandResult.of(TunnelCommand.apply(city, group, tool, finish, TunnelCommand.CONFIRMATION_CONFIRMED, free_mode))
+		return TunnelCommand.apply(city, group, tool, finish, TunnelCommand.CONFIRMATION_CONFIRMED, free_mode)
 
 	if OnrampCommand.supports_tool(group, tool):
-		return EditCommandResult.of(OnrampCommand.apply(city, group, tool, finish, free_mode))
+		return OnrampCommand.apply(city, group, tool, finish, free_mode)
 
 	if SubwayToRailCommand.supports_tool(group, tool):
-		return EditCommandResult.of(SubwayToRailCommand.apply(city, group, tool, finish))
+		return SubwayToRailCommand.apply(city, group, tool, finish)
 
 	return EditCommandResult.new()
 
@@ -247,9 +247,8 @@ static func candidate_indices(command: EditCommandResult, start: Vector2i, finis
 	for index: int in command.tile_indices:
 		points.append(Vector2i(index / edge, index % edge))
 
-	# on-ramps still return a dictionary
-	if command.extra.has("road_point"):
-		points.append(command.extra.road_point)
+	if command is OnrampEditResult:
+		points.append((command as OnrampEditResult).road_point)
 
 	var candidates := {}
 	for point: Vector2i in points:

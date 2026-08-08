@@ -226,15 +226,15 @@ static func _edit_dirty_indices(command: EditCommandResult, map_edge: int = 128)
 		_collect_changed_tiles(old_bytes, new_bytes, 1 if chunk_id == "XTXT" else stride,
 			dirty, indices, cells if chunk_id == "XTXT" else 0)
 
-	# dispatch and sign edits still return dictionaries with their own keys
-	var extra := command.extra
+	# dispatch compares its whole text overlay instead of xtxt payloads
+	if command is DispatchEditResult:
+		var dispatch := command as DispatchEditResult
 
-	if extra.has("old_text") and extra.has("new_text"):
-		var old_text: PackedByteArray = extra.old_text
-		var new_text: PackedByteArray = extra.new_text
+		if OverlayData.count(dispatch.old_text) == cells and OverlayData.count(dispatch.new_text) == cells:
+			_collect_changed_tiles(dispatch.old_text, dispatch.new_text, 1, dirty, indices, cells)
 
-		if OverlayData.count(old_text) == cells and OverlayData.count(new_text) == cells:
-			_collect_changed_tiles(old_text, new_text, 1, dirty, indices, cells)
+		if dispatch.target.x >= 0 and dispatch.target.x < map_edge and dispatch.target.y >= 0 and dispatch.target.y < map_edge:
+			_mark_dirty_tile(dispatch.target.x * map_edge + dispatch.target.y, dirty, indices)
 
 	for index in command.tile_indices:
 		_mark_dirty_tile(index, dirty, indices)
@@ -243,15 +243,13 @@ static func _edit_dirty_indices(command: EditCommandResult, map_edge: int = 128)
 		if point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge:
 			_mark_dirty_tile(point.x * map_edge + point.y, dirty, indices)
 
-	for point_key in ["point", "target"]:
-		if extra.has(point_key):
-			var point: Vector2i = extra[point_key]
+	if command is SignEditResult:
+		var placed := command as SignEditResult
 
-			if point.x >= 0 and point.x < map_edge and point.y >= 0 and point.y < map_edge:
-				_mark_dirty_tile(point.x * map_edge + point.y, dirty, indices)
+		if placed.point.x >= 0 and placed.point.x < map_edge and placed.point.y >= 0 and placed.point.y < map_edge:
+			_mark_dirty_tile(placed.point.x * map_edge + placed.point.y, dirty, indices)
 
-	if extra.has("tile_index"):
-		_mark_dirty_tile(int(extra.tile_index), dirty, indices)
+		_mark_dirty_tile(placed.tile_index, dirty, indices)
 
 	if command.site.has_area():
 		var site := command.site

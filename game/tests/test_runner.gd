@@ -14929,7 +14929,7 @@ func _test_tunnel_command(reference_root: String) -> void:
 	_check(city.set_building_id(19, 20, 0x1d), "Tunnel fixture places an adjacent road")
 	var planned := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
 	_check(
-		planned.get("confirmation_required", false)
+		planned.confirmation_required
 		and planned.finish == Vector2i(22, 20)
 		and planned.points.size() == 3
 		and planned.cost == 450,
@@ -14945,7 +14945,7 @@ func _test_tunnel_command(reference_root: String) -> void:
 		city, 6, 2, Vector2i(20, 20), Tunnels.CONFIRMATION_CANCELLED
 	)
 	_check(
-		canceled.get("cancelled", false)
+		canceled.cancelled
 		and city.building_id(20, 20) == 0
 		and city.tunnel_levels(21, 20) == 0
 		and city.funds() == 1000,
@@ -14984,7 +14984,7 @@ func _test_tunnel_command(reference_root: String) -> void:
 	_check(city.set_funds(449), "Tunnel funds fixture sets insufficient funds")
 	var unaffordable_plan := Tunnels.apply(city, 6, 2, Vector2i(20, 20))
 	_check(
-		unaffordable_plan.get("confirmation_required", false)
+		unaffordable_plan.confirmation_required
 		and unaffordable_plan.cost == 450,
 		"Tunnel asks for confirmation before it checks funds",
 	)

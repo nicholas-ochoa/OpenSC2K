@@ -265,7 +265,7 @@ static func foreground_difference_mask(sprite: Image, background: Image) -> Imag
 
 static func build_occlusion_grid(
 	commands: Array[Dictionary], divisor: int
-) -> Dictionary:
+) -> Dictionary[Vector2i, Array]:
 	return IsometricPixelOperations.build_occlusion_grid(commands, divisor)
 
 

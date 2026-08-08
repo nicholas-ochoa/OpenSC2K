@@ -26,30 +26,30 @@ static func apply(
 	start: Vector2i,
 	confirmation_choice := CONFIRMATION_UNSELECTED,
 	free_mode := false
-) -> Dictionary:
+) -> TunnelEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return TunnelEditResult.rejected("city is invalid")
 
 	if not supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool is not a tunnel"}
+		return TunnelEditResult.rejected("tool is not a tunnel")
 
 	var start_index := city.index_of(start.x, start.y)
 
 	if start_index < 0:
-		return {"ok": false, "error": "tunnel entrance is outside the city"}
+		return TunnelEditResult.rejected("tunnel entrance is outside the city")
 
 	if city.buildings[start_index] > MAX_CLEAR_BUILDING or city.buildings[start_index] == RADIOACTIVITY:
-		return {"ok": false, "error": "tunnel entrance contains a protected building"}
+		return TunnelEditResult.rejected("tunnel entrance contains a protected building")
 
 	if city.underground[start_index] != 0:
-		return {"ok": false, "error": "tunnel entrance conflicts with an underground network"}
+		return TunnelEditResult.rejected("tunnel entrance conflicts with an underground network")
 
 	var start_terrain := int(city.terrain[start_index])
 
 	if start_terrain < 1 or start_terrain > 4:
-		return {"ok": false, "error": "tunnel entrance requires a cardinal slope"}
+		return TunnelEditResult.rejected("tunnel entrance requires a cardinal slope")
 
 	var direction_index := (start_terrain + 2) & 3
 	var direction: Vector2i = DIRECTIONS[direction_index]
@@ -58,21 +58,21 @@ static func apply(
 
 	while true:
 		if current.x < 0 or current.x > map_edge - 2 or current.y < 0 or current.y > map_edge - 2:
-			return {"ok": false, "error": "tunnel cannot reach an opposite slope"}
+			return TunnelEditResult.rejected("tunnel cannot reach an opposite slope")
 
 		var current_index := city.index_of(current.x, current.y)
 		var altitude_word := int(city.altitude_words[current_index])
 
 		if (altitude_word & TUNNEL_MASK) != 0:
-			return {"ok": false, "error": "tunnel path conflicts with another tunnel"}
+			return TunnelEditResult.rejected("tunnel path conflicts with another tunnel")
 
 		var altitude_difference := (altitude_word & 0x1f) - start_altitude
 
 		if altitude_difference > 30:
-			return {"ok": false, "error": "tunnel path is too deep"}
+			return TunnelEditResult.rejected("tunnel path is too deep")
 
 		if altitude_difference == 1 and _underground_blocks_tunnel(city.underground[current_index]):
-			return {"ok": false, "error": "tunnel path conflicts with an underground network"}
+			return TunnelEditResult.rejected("tunnel path conflicts with an underground network")
 
 		current += direction
 		var next_index := city.index_of(current.x, current.y)
@@ -85,7 +85,7 @@ static func apply(
 	var expected_terrain := ((start_terrain + 1) & 3) + 1
 
 	if finish_index < 0 or city.terrain[finish_index] != expected_terrain:
-		return {"ok": false, "error": "tunnel cannot reach an opposite slope"}
+		return TunnelEditResult.rejected("tunnel cannot reach an opposite slope")
 
 	var points: Array[Vector2i] = []
 	current = start
@@ -104,41 +104,37 @@ static func apply(
 	var cost := 0 if free_mode else listed_cost
 
 	if confirmation_choice == CONFIRMATION_UNSELECTED:
-		return {
-			"ok": false,
-			"confirmation_required": true,
-			"start": start,
-			"finish": finish,
-			"points": points,
-			"cost": cost,
-			"listed_cost": listed_cost,
-			"free_mode": free_mode,
-			"error": "tunnel construction confirmation is required",
-		}
+		var proposal := TunnelEditResult.rejected("tunnel construction confirmation is required", cost)
+		proposal.confirmation_required = true
+		proposal.start = start
+		proposal.finish = finish
+		proposal.points = points
+		proposal.listed_cost = listed_cost
+		proposal.free_mode = free_mode
+
+		return proposal
 
 	if confirmation_choice == CONFIRMATION_CANCELLED:
-		return {
-			"ok": false,
-			"cancelled": true,
-			"start": start,
-			"finish": finish,
-			"points": points,
-			"cost": cost,
-			"listed_cost": listed_cost,
-			"free_mode": free_mode,
-			"error": "tunnel construction canceled",
-		}
+		var proposal := TunnelEditResult.rejected("tunnel construction canceled", cost)
+		proposal.cancelled = true
+		proposal.start = start
+		proposal.finish = finish
+		proposal.points = points
+		proposal.listed_cost = listed_cost
+		proposal.free_mode = free_mode
+
+		return proposal
 
 	if confirmation_choice != CONFIRMATION_CONFIRMED:
-		return {"ok": false, "error": "tunnel confirmation choice is invalid"}
+		return TunnelEditResult.rejected("tunnel confirmation choice is invalid")
 
 	if city.funds() < cost:
-		return {"ok": false, "error": "insufficient funds", "cost": cost}
+		return TunnelEditResult.rejected("insufficient funds", cost)
 
 	var old_payloads := NetworkState.city_payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return TunnelEditResult.rejected("required city data is missing or invalid")
 
 	var changed_payloads := NetworkState._duplicate_payloads(old_payloads)
 	var altitude: PackedByteArray = changed_payloads.ALTM
@@ -176,51 +172,49 @@ static func apply(
 			changed_ids.append(chunk_id)
 
 	if not NetworkState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
-		return {"ok": false, "error": "cannot store tunnel changes"}
+		return TunnelEditResult.rejected("cannot store tunnel changes")
 
-	return {
-		"ok": true,
-		"command_type": "tunnel",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"start": start,
-		"finish": finish,
-		"points": points,
-		"start_tile": start_tile,
-		"finish_tile": finish_tile,
-		"cost": cost,
-		"listed_cost": listed_cost,
-		"free_mode": free_mode,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"error": "",
-	}
+	var result := TunnelEditResult.new()
+	result.ok = true
+	result.command_type = "tunnel"
+	result.group_index = group_index
+	result.subtool_index = subtool_index
+	result.start = start
+	result.finish = finish
+	result.points = points
+	result.start_tile = start_tile
+	result.finish_tile = finish_tile
+	result.cost = cost
+	result.listed_cost = listed_cost
+	result.free_mode = free_mode
+	result.changed_ids = changed_ids
+	result.old_payloads = old_payloads
+	result.new_payloads = changed_payloads
+
+	return result
 
 
-static func undo(city: CityState, command: Dictionary) -> Dictionary:
+static func undo(city: CityState, command: TunnelEditResult) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "tunnel":
-		return {"ok": false, "error": "tunnel command is invalid"}
+	if command == null or not command.ok or command.command_type != "tunnel":
+		return EditCommandResult.failure("tunnel command is invalid")
 
-	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var changed_ids := command.changed_ids
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
-			return {"ok": false, "error": "city changed after this tunnel command"}
+			return EditCommandResult.failure("city changed after this tunnel command")
 
 	if not NetworkState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
-		return {"ok": false, "error": "cannot restore tunnel changes"}
+		return EditCommandResult.failure("cannot restore tunnel changes")
 
-	var points: Array = command.get("points", [])
-
-	return {"ok": true, "restored_tiles": points.size(), "error": ""}
+	return EditCommandResult.undone(command.points.size())
 
 
 static func _underground_blocks_tunnel(tile_id: int) -> bool:

@@ -6,19 +6,19 @@ const LAST_USER_LABEL := 50
 const LABEL_RECORD_SIZE := 25
 
 
-static func set_sign(city: CityState, point: Vector2i, text: String) -> Dictionary:
+static func set_sign(city: CityState, point: Vector2i, text: String) -> SignEditResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return SignEditResult.rejected("city is invalid")
 
 	var tile_index := city.index_of(point.x, point.y)
 
 	if tile_index < 0:
-		return {"ok": false, "error": "sign position is outside the city"}
+		return SignEditResult.rejected("sign position is outside the city")
 
 	var old_overlay := OverlayData.read(city.text_overlays, tile_index)
 
 	if old_overlay != 0 and not OverlayData.is_sign(old_overlay):
-		return {"ok": false, "error": "this tile has a protected simulation label"}
+		return SignEditResult.rejected("this tile has a protected simulation label")
 
 	var label_id := old_overlay
 
@@ -26,15 +26,15 @@ static func set_sign(city: CityState, point: Vector2i, text: String) -> Dictiona
 		label_id = _first_free_label(city)
 
 		if label_id == 0:
-			return {"ok": false, "error": "all user sign labels are in use"}
+			return SignEditResult.rejected("all user sign labels are in use")
 
 	if label_id == 0:
-		return {"ok": false, "error": "this tile does not have a sign"}
+		return SignEditResult.rejected("this tile does not have a sign")
 
 	var label_chunk := city.document.find_chunk("XLAB")
 
 	if label_chunk == null:
-		return {"ok": false, "error": "XLAB data is missing"}
+		return SignEditResult.rejected("XLAB data is missing")
 
 	var record_offset := label_id * LABEL_RECORD_SIZE
 	var old_record := label_chunk.decoded_payload.slice(
@@ -43,7 +43,7 @@ static func set_sign(city: CityState, point: Vector2i, text: String) -> Dictiona
 	var new_overlay := 0 if text.is_empty() else label_id
 
 	if not city.set_label(label_id, text):
-		return {"ok": false, "error": "cannot store the sign text"}
+		return SignEditResult.rejected("cannot store the sign text")
 
 	var new_record := label_chunk.decoded_payload.slice(
 		record_offset, record_offset + LABEL_RECORD_SIZE
@@ -54,73 +54,73 @@ static func set_sign(city: CityState, point: Vector2i, text: String) -> Dictiona
 	if not city.replace_text_overlays(changed_overlays):
 		_restore_label_record(label_chunk, record_offset, old_record)
 
-		return {"ok": false, "error": "cannot store the sign position"}
+		return SignEditResult.rejected("cannot store the sign position")
 
-	return {
-		"ok": true,
-		"command_type": "sign",
-		"point": point,
-		"tile_index": tile_index,
-		"label_id": label_id,
-		"old_overlay": old_overlay,
-		"new_overlay": new_overlay,
-		"old_record": old_record,
-		"new_record": new_record,
-		"text": text.left(23),
-		"error": "",
-	}
+	var result := SignEditResult.new()
+	result.ok = true
+	result.command_type = "sign"
+	result.point = point
+	result.tile_index = tile_index
+	result.label_id = label_id
+	result.old_overlay = old_overlay
+	result.new_overlay = new_overlay
+	result.old_record = old_record
+	result.new_record = new_record
+	result.text = text.left(23)
+
+	return result
 
 
-static func undo(city: CityState, command: Dictionary) -> Dictionary:
+static func undo(city: CityState, command: SignEditResult) -> EditCommandResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "sign":
-		return {"ok": false, "error": "sign command is invalid"}
+	if command == null or not command.ok or command.command_type != "sign":
+		return EditCommandResult.failure("sign command is invalid")
 
-	var tile_index: int = command.get("tile_index", -1)
-	var label_id: int = command.get("label_id", 0)
+	var tile_index := command.tile_index
+	var label_id := command.label_id
 
 	if tile_index < 0 or tile_index >= (map_edge * map_edge):
-		return {"ok": false, "error": "sign undo tile is invalid"}
+		return EditCommandResult.failure("sign undo tile is invalid")
 
 	if not OverlayData.is_sign(label_id):
-		return {"ok": false, "error": "sign undo label is invalid"}
+		return EditCommandResult.failure("sign undo label is invalid")
 
 	var label_chunk := city.document.find_chunk("XLAB")
 
 	if label_chunk == null:
-		return {"ok": false, "error": "XLAB data is missing"}
+		return EditCommandResult.failure("XLAB data is missing")
 
 	var record_offset := label_id * LABEL_RECORD_SIZE
 	var current_record := label_chunk.decoded_payload.slice(
 		record_offset, record_offset + LABEL_RECORD_SIZE
 	)
-	var expected_record: PackedByteArray = command.get("new_record", PackedByteArray())
+	var expected_record := command.new_record
 
-	if OverlayData.read(city.text_overlays, tile_index) != int(command.new_overlay) or current_record != expected_record:
-		return {"ok": false, "error": "city changed after this sign command"}
+	if OverlayData.read(city.text_overlays, tile_index) != command.new_overlay or current_record != expected_record:
+		return EditCommandResult.failure("city changed after this sign command")
 
-	var old_record: PackedByteArray = command.get("old_record", PackedByteArray())
+	var old_record := command.old_record
 
 	if old_record.size() != LABEL_RECORD_SIZE:
-		return {"ok": false, "error": "sign undo record has the wrong size"}
+		return EditCommandResult.failure("sign undo record has the wrong size")
 
 	var current_overlays := city.text_overlays.duplicate()
 	var restored_overlays := current_overlays.duplicate()
-	OverlayData.write(restored_overlays, tile_index, int(command.old_overlay))
+	OverlayData.write(restored_overlays, tile_index, command.old_overlay)
 
 	if not _restore_label_record(label_chunk, record_offset, old_record):
-		return {"ok": false, "error": "cannot restore the sign text"}
+		return EditCommandResult.failure("cannot restore the sign text")
 
 	if not city.replace_text_overlays(restored_overlays):
 		_restore_label_record(label_chunk, record_offset, current_record)
 
-		return {"ok": false, "error": "cannot restore the sign position"}
+		return EditCommandResult.failure("cannot restore the sign position")
 
-	return {"ok": true, "restored_tiles": 1, "error": ""}
+	return EditCommandResult.undone(1)
 
 
 static func _first_free_label(city: CityState) -> int:

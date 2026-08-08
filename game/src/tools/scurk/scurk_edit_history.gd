@@ -15,12 +15,6 @@ func clear() -> void:
 func record(command: EditCommandResult, tool_name: String) -> void:
 	command.scurk_place_history = true
 	command.scurk_tool_name = tool_name
-
-	# a family that still returns a dictionary reads these keys from it
-	if not command.extra.is_empty():
-		command.extra["scurk_place_history"] = true
-		command.extra["scurk_tool_name"] = tool_name
-
 	undo_stack.append(command)
 	redo_stack.clear()
 

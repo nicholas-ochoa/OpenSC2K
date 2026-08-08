@@ -130,7 +130,7 @@ var _source: CityMapSource
 var _buffer_rect := Rect2i()
 var _buffer_divisor := 0
 # buffer mesh instances by region mesh, kept while the region is published
-var _instances: Dictionary = {}
+var _instances: Dictionary[int, Array] = {}
 var _depth_material: ShaderMaterial
 var _active := false
 

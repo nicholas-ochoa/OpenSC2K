@@ -21,8 +21,8 @@ var free_mode := false
 # decoded chunk payloads before and after the edit, keyed by chunk id. undo
 # and redo exchange the `changed_ids` entries
 var changed_ids := PackedStringArray()
-var old_payloads: Dictionary = {}
-var new_payloads: Dictionary = {}
+var old_payloads: Dictionary[String, PackedByteArray] = {}
+var new_payloads: Dictionary[String, PackedByteArray] = {}
 
 # map positions that the renderer repaints
 var tile_indices := PackedInt32Array()
@@ -46,11 +46,6 @@ var restored_tiles := 0
 var scurk_place_history := false
 var scurk_tool_name := ""
 
-# Temporary dictionary storage for tools that have not switched to typed results.
-# from_dictionary shares it so their undo code can still read it.
-var extra: Dictionary = {}
-
-
 static func failure(message: String) -> EditCommandResult:
 	var result := EditCommandResult.new()
 	result.error = message
@@ -66,51 +61,8 @@ static func undone(tiles: int) -> EditCommandResult:
 	return result
 
 
-# Copy shared fields from an older dictionary result.
-static func from_dictionary(source: Dictionary) -> EditCommandResult:
-	var result := EditCommandResult.new()
-	result.extra = source
-	result.ok = source.get("ok", false)
-	result.error = source.get("error", "")
-	result.command_type = source.get("command_type", "")
-	result.group_index = source.get("group_index", -1)
-	result.subtool_index = source.get("subtool_index", -1)
-	result.cost = source.get("cost", 0)
-	result.listed_cost = source.get("listed_cost", 0)
-	result.free_mode = source.get("free_mode", false)
-	result.changed_ids = source.get("changed_ids", PackedStringArray())
-	result.old_payloads = source.get("old_payloads", {})
-	result.new_payloads = source.get("new_payloads", {})
-	result.tile_indices = source.get("tile_indices", PackedInt32Array())
-	result.points.assign(source.get("points", []))
-	result.site = source.get("site", Rect2i())
-	result.sound_events = source.get("sound_events", [])
-	result.effect_events = source.get("effect_events", [])
-	result.restored_tiles = source.get("restored_tiles", 0)
-	result.scurk_place_history = source.get("scurk_place_history", false)
-	result.scurk_tool_name = source.get("scurk_tool_name", "")
-
-	for prefix in ["process_random_state", "random_state"]:
-		if source.has(prefix + "_before"):
-			result.tracks_random = true
-			result.random_state_before = source[prefix + "_before"]
-			result.random_state_after = source.get(prefix + "_after", -1)
-
-			break
-
-	return result
-
-
-# Accept a typed result or convert an older dictionary result.
-static func of(value: Variant) -> EditCommandResult:
-	return value if value is EditCommandResult else from_dictionary(value)
-
-
-# an independent copy for paint-brush accumulation
+# an independent copy, for paint-brush accumulation and the stadium team choice
 func copy() -> EditCommandResult:
-	if not extra.is_empty():
-		return from_dictionary(extra.duplicate(true))
-
 	var result: EditCommandResult = get_script().new()
 
 	# packed arrays are shared references, so they are copied like the containers

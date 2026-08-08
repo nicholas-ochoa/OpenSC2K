@@ -30,23 +30,23 @@ static func apply(
 	point: Vector2i,
 	free_mode := false,
 	preview_only := false
-) -> Dictionary:
+) -> OnrampEditResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return OnrampEditResult.rejected("city is invalid")
 
 	if not supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool is not an on-ramp"}
+		return OnrampEditResult.rejected("tool is not an on-ramp")
 
 	var index := city.index_of(point.x, point.y)
 
 	if index < 0:
-		return {"ok": false, "error": "on-ramp is outside the city"}
+		return OnrampEditResult.rejected("on-ramp is outside the city")
 
 	if city.buildings[index] > MAX_CLEAR_BUILDING or city.buildings[index] == RADIOACTIVITY:
-		return {"ok": false, "error": "on-ramp site contains a protected building"}
+		return OnrampEditResult.rejected("on-ramp site contains a protected building")
 
 	if city.terrain[index] != 0:
-		return {"ok": false, "error": "on-ramp site is not clear terrain"}
+		return OnrampEditResult.rejected("on-ramp site is not clear terrain")
 
 	var highway_mask := 0
 	var road_mask := 0
@@ -69,13 +69,13 @@ static func apply(
 	road_mask &= ROAD_MASK_BY_HIGHWAY_MASK[highway_mask]
 
 	if road_mask == 0:
-		return {"ok": false, "error": "on-ramp requires perpendicular highway and road neighbors"}
+		return OnrampEditResult.rejected("on-ramp requires perpendicular highway and road neighbors")
 
 	var listed_cost := int(ToolCatalog.tool(group_index, subtool_index).cost)
 	var cost := 0 if free_mode else listed_cost
 
 	if city.funds() < cost:
-		return {"ok": false, "error": "insufficient funds", "cost": cost}
+		return OnrampEditResult.rejected("insufficient funds", cost)
 
 	var road_direction := 0
 
@@ -87,12 +87,15 @@ static func apply(
 	var road_index := city.index_of(road_point.x, road_point.y)
 
 	if preview_only:
-		return {"ok": true}
+		var preview := OnrampEditResult.new()
+		preview.ok = true
+
+		return preview
 
 	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return OnrampEditResult.rejected("required city data is missing or invalid")
 
 	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
@@ -115,47 +118,47 @@ static func apply(
 			changed_ids.append(chunk_id)
 
 	if not BuildingState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
-		return {"ok": false, "error": "cannot store on-ramp changes"}
+		return OnrampEditResult.rejected("cannot store on-ramp changes")
 
-	return {
-		"ok": true,
-		"command_type": "onramp",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"tile_id": ramp_tile,
-		"road_direction": road_direction,
-		"road_point": road_point,
-		"cost": cost,
-		"listed_cost": listed_cost,
-		"free_mode": free_mode,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"error": "",
-	}
+	var result := OnrampEditResult.new()
+	result.ok = true
+	result.command_type = "onramp"
+	result.group_index = group_index
+	result.subtool_index = subtool_index
+	result.tile_id = ramp_tile
+	result.road_direction = road_direction
+	result.road_point = road_point
+	result.cost = cost
+	result.listed_cost = listed_cost
+	result.free_mode = free_mode
+	result.changed_ids = changed_ids
+	result.old_payloads = old_payloads
+	result.new_payloads = changed_payloads
+
+	return result
 
 
-static func undo(city: CityState, command: Dictionary) -> Dictionary:
+static func undo(city: CityState, command: OnrampEditResult) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "onramp":
-		return {"ok": false, "error": "on-ramp command is invalid"}
+	if command == null or not command.ok or command.command_type != "onramp":
+		return EditCommandResult.failure("on-ramp command is invalid")
 
-	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var changed_ids := command.changed_ids
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
-			return {"ok": false, "error": "city changed after this on-ramp command"}
+			return EditCommandResult.failure("city changed after this on-ramp command")
 
 	if not BuildingState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
-		return {"ok": false, "error": "cannot restore on-ramp changes"}
+		return EditCommandResult.failure("cannot restore on-ramp changes")
 
-	return {"ok": true, "restored_tiles": 2, "error": ""}
+	return EditCommandResult.undone(2)
 
 
 static func _ramp_tile(highway_mask: int, road_direction: int) -> int:

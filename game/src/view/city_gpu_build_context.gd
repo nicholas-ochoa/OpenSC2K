@@ -10,15 +10,15 @@ var atlas_edge := ATLAS_EDGE
 const TILE_CACHE_LIMIT := 16384
 var images: Dictionary = {}
 # derived train crossing masks for the moving-object depth meshes
-var occlusion_masks: Dictionary = {}
-var image_roles: Dictionary = {}
+var occlusion_masks: Dictionary[String, Image] = {}
+var image_roles: Dictionary[int, Dictionary] = {}
 var _image_key_count := 0
-var tiles: Dictionary = {}
+var tiles: Dictionary[int, Dictionary] = {}
 var bounds_cache: Dictionary = {}
 var revision := -1
 var rotation := 0
 var atlas: Image
-var atlas_slots: Dictionary = {}
+var atlas_slots: Dictionary[int, Rect2i] = {}
 var atlas_revision := 0
 var atlas_x := 0
 var atlas_y := 0

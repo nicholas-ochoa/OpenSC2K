@@ -55,8 +55,8 @@ func finish() -> TerrainEditResult:
 	return result
 
 
-static func _display_payloads(city: CityState) -> Dictionary:
-	var result := {}
+static func _display_payloads(city: CityState) -> Dictionary[String, PackedByteArray]:
+	var result: Dictionary[String, PackedByteArray] = {}
 
 	for id in ["ALTM", "XBLD", "XTER", "XZON", "XBIT", "XTXT"]:
 		result[id] = city.document.find_chunk(id).decoded_payload.duplicate()

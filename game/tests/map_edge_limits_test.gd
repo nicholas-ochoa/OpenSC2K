@@ -270,7 +270,7 @@ func check_tools(edge: int) -> void:
 	city.set_land_altitude(start.x + 2, start.y, 5)
 	var before: PackedByteArray = doc.serialize().data
 	var planned := TunnelCommand.apply(city, 6, 2, start)
-	check(planned.get("confirmation_required", false) and planned.get("finish") == start + Vector2i(2, 0), "Far tunnel search")
+	check(planned.confirmation_required and planned.finish == start + Vector2i(2, 0), "Far tunnel search")
 	var applied := TunnelCommand.apply(city, 6, 2, start, 1)
 	check(applied.ok, "Far tunnel placement")
 

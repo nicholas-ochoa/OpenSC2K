@@ -35,15 +35,15 @@ func _run() -> void:
 	view.set_sign_occlusion_visuals(foreground)
 	assert(view.sign_occlusion_visuals[1].texture == replacement)
 	var main = load("res://src/main.gd").new()
-	main.render_caches.sign_foreground_cache = {
+	main.render_caches.sign_foreground_cache.assign({
 		1: {"signature": [2, Rect2i(0, 0, 40, 40)]},
 		2: {"signature": [2, Rect2i(400, 400, 40, 40)]},
-	}
-	main.render_caches.dynamic_visual_cache = {
+	})
+	main.render_caches.dynamic_visual_cache.assign({
 		"near": {"position": Vector2.ZERO, "size": Vector2(20, 20)},
 		"far": {"position": Vector2(500, 500), "size": Vector2(20, 20)},
 		"empty": {},
-	}
+	})
 	var near: Array[Rect2i] = [Rect2i(0, 0, 256, 256)]
 	main.map_render._invalidate_region_foregrounds(near)
 	assert(main.render_caches.dynamic_visual_cache.keys() == ["far"])

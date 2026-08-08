@@ -44,8 +44,8 @@ static func foreground_difference_mask(sprite: Image, background: Image) -> Imag
 
 static func build_occlusion_grid(
 	commands: Array[Dictionary], divisor: int
-) -> Dictionary:
-	var grid := {}
+) -> Dictionary[Vector2i, Array]:
+	var grid: Dictionary[Vector2i, Array] = {}
 
 	for command_index in commands.size():
 		var command := commands[command_index]

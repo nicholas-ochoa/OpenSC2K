@@ -11,8 +11,19 @@ func _collect(before: PackedByteArray, after: PackedByteArray, stride: int, cell
 	return indices
 
 
+# Dispatch results carry payloads, whole text overlays, tiles, and points.
 func _dirty(fields: Dictionary, edge: int) -> PackedInt32Array:
-	return ApplicationStaticRender._edit_dirty_indices(EditCommandResult.from_dictionary(fields), edge)
+	var command := DispatchEditResult.new()
+
+	for key in fields:
+		if key == "points":
+			command.points.assign(fields[key])
+		elif key.ends_with("_payloads"):
+			command.get(key).assign(fields[key])
+		else:
+			command.set(key, fields[key])
+
+	return ApplicationStaticRender._edit_dirty_indices(command, edge)
 
 
 func _initialize() -> void:

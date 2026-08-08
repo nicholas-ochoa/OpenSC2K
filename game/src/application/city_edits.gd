@@ -108,13 +108,13 @@ func _apply_map_selection(
 
 			return
 
-		dispatch["dispatch_cycles_before"] = cycles_before
-		dispatch["dispatch_initialized_before"] = initialized_before
+		dispatch.dispatch_cycles_before = cycles_before
+		dispatch.dispatch_initialized_before = initialized_before
 		app.dispatch_initialized = true
-		app.dispatch_cycles[app.selected_subtool] = int(dispatch.slot_index)
-		dispatch["dispatch_cycles_after"] = app.dispatch_cycles.duplicate()
-		app.last_edit_command = EditCommandResult.of(dispatch)
-		app.static_render._refresh_after_city_edit(app.last_edit_command)
+		app.dispatch_cycles[app.selected_subtool] = dispatch.slot_index
+		dispatch.dispatch_cycles_after = app.dispatch_cycles.duplicate()
+		app.last_edit_command = dispatch
+		app.static_render._refresh_after_city_edit(dispatch)
 		app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Deployed %s unit %d of %d." % [
@@ -353,11 +353,10 @@ func _undo_last_edit() -> void:
 	var undo_forest_protest := (
 		command is DemolishEditResult and (command as DemolishEditResult).easter_events > 0
 	)
-	# families that still return dictionaries also undo into dictionaries
-	var result: Variant
+	var result: EditCommandResult
 
 	if command_type == "sign":
-		result = Signs.undo(app.city, command.extra)
+		result = Signs.undo(app.city, command as SignEditResult)
 	elif command_type == "landscape":
 		result = Landscapes.undo(app.city, command as LandscapeEditResult, app.tool_random)
 	elif command_type == "building":
@@ -367,13 +366,13 @@ func _undo_last_edit() -> void:
 	elif command_type == "network":
 		result = Networks.undo(app.city, command as RouteEditResult)
 	elif command_type == "hydro":
-		result = Hydro.undo(app.city, command.extra, app.tool_random)
+		result = Hydro.undo(app.city, command as HydroEditResult, app.tool_random)
 	elif command_type == "subway_to_rail":
-		result = SubwayToRail.undo(app.city, command.extra)
+		result = SubwayToRail.undo(app.city, command as SubwayToRailEditResult)
 	elif command_type == "onramp":
-		result = Onramps.undo(app.city, command.extra)
+		result = Onramps.undo(app.city, command as OnrampEditResult)
 	elif command_type == "tunnel":
-		result = Tunnels.undo(app.city, command.extra)
+		result = Tunnels.undo(app.city, command as TunnelEditResult)
 	elif command_type == "highway":
 		result = Highways.undo(app.city, command as RouteEditResult)
 	elif command_type == "demolish":
@@ -381,7 +380,7 @@ func _undo_last_edit() -> void:
 	elif command_type == "terrain":
 		result = TerrainTools.undo(app.city, command as TerrainEditResult, app.tool_random)
 	elif command_type == "dispatch":
-		result = Dispatch.undo(app.city, command.extra)
+		result = Dispatch.undo(app.city, command as DispatchEditResult)
 	else:
 		result = Zones.undo(app.city, command as ZoneEditResult)
 
@@ -390,11 +389,10 @@ func _undo_last_edit() -> void:
 
 		return
 
-	if command_type == "dispatch":
-		app.dispatch_cycles = command.extra.get("dispatch_cycles_before", app.dispatch_cycles)
-		app.dispatch_initialized = bool(
-			command.extra.get("dispatch_initialized_before", app.dispatch_initialized)
-		)
+	if command is DispatchEditResult:
+		var dispatch := command as DispatchEditResult
+		app.dispatch_cycles = dispatch.dispatch_cycles_before
+		app.dispatch_initialized = dispatch.dispatch_initialized_before
 
 	app.last_edit_command = null
 	app.interface._refresh_details()

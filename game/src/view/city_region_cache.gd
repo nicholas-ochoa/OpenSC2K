@@ -13,7 +13,7 @@ const GPU_WORKERS := 2
 var region_edge := REGION_EDGE
 var gpu_enabled := gpu_supported()
 var _gpu_workers: Array[Dictionary] = []
-var entries: Dictionary = {}
+var entries: Dictionary[Vector2i, Dictionary] = {}
 var wanted: Array[Vector2i] = []
 var visible: Array[Vector2i] = []
 var signature: Array = []
@@ -53,7 +53,7 @@ var _foreground_reset := true
 var _gpu_has_work := true
 var _viewport_serial := 0
 var _gpu_schedule_serial := 0
-var _edit_priority: Dictionary = {}
+var _edit_priority: Dictionary[Vector2i, int] = {}
 
 
 static func gpu_supported(preference := "gpu") -> bool:

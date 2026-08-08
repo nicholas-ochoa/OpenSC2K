@@ -59,8 +59,8 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 		for id in payloads:
 			staged.document.find_chunk(id).set_decoded_payload(payloads[id])
 
-	var old_payloads := {}
-	var new_payloads := {}
+	var old_payloads: Dictionary[String, PackedByteArray] = {}
+	var new_payloads: Dictionary[String, PackedByteArray] = {}
 	var changed := PackedStringArray()
 
 	for chunk in city.document.chunks:

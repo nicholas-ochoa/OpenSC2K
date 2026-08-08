@@ -103,7 +103,7 @@ static func apply_rectangle(
 
 		return ZoneEditResult.rejected("cannot store the updated city funds")
 
-	var old_payloads := {
+	var old_payloads: Dictionary[String, PackedByteArray] = {
 		"XZON": _restore_values(changed, tile_indices, previous_values),
 		"XBLD": _restore_values(changed_buildings, tile_indices, previous_buildings),
 		"MISC": city.document.find_chunk("MISC").decoded_payload.duplicate(),
@@ -113,7 +113,7 @@ static func apply_rectangle(
 		old_payloads.MISC = old_payloads.MISC.duplicate()
 		_write_i32_be(old_payloads.MISC, 0x14, previous_funds)
 
-	var new_payloads := {
+	var new_payloads: Dictionary[String, PackedByteArray] = {
 		"XZON": city.document.find_chunk("XZON").decoded_payload.duplicate(),
 		"XBLD": city.document.find_chunk("XBLD").decoded_payload.duplicate(),
 		"MISC": city.document.find_chunk("MISC").decoded_payload.duplicate(),

@@ -26,7 +26,7 @@ func _apply_tunnel_selection(
 		free_mode
 	)
 
-	if tunnel.get("confirmation_required", false):
+	if tunnel.confirmation_required:
 		if free_mode:
 			_apply_tunnel_selection(
 				start, Tunnels.CONFIRMATION_CONFIRMED, true
@@ -42,12 +42,12 @@ func _apply_tunnel_selection(
 		var message := (
 			"Engineers report that tunnel construction costs will be $%s.\n"
 			+ "Do you wish to construct the tunnel?"
-		) % app.interface._format_number(int(tunnel.cost))
+		) % app.interface._format_number(tunnel.cost)
 		app.tunnel_dialog.show_message(message)
 
 		return
 
-	if tunnel.get("cancelled", false):
+	if tunnel.cancelled:
 		app.effects_audio._play_tool_failure_sound(
 			app.selected_group, app.selected_subtool, "cancelled", free_mode
 		)
@@ -56,20 +56,19 @@ func _apply_tunnel_selection(
 
 		return
 
-	if not tunnel.get("ok", false):
+	if not tunnel.ok:
 		app.effects_audio._play_tool_failure_sound(
 			app.selected_group,
 			app.selected_subtool,
-			str(tunnel.get("error", "unknown error")),
+			tunnel.error,
 			free_mode,
 		)
-		app.interface._show_error("Cannot build tunnel: %s" % tunnel.get("error", "unknown error"))
+		app.interface._show_error("Cannot build tunnel: %s" % tunnel.error)
 
 		return
 
-	var edit := EditCommandResult.of(tunnel)
 	app.scurk_workspace._record_edit_command(
-		edit,
+		tunnel,
 		free_mode,
 		String(
 			app.scurk_place_print.selected_edit_tool().get("name", "Tunnel")
@@ -78,7 +77,7 @@ func _apply_tunnel_selection(
 		)
 	)
 	app.interface._refresh_details()
-	app.static_render._refresh_after_city_edit(edit)
+	app.static_render._refresh_after_city_edit(tunnel)
 	app.effects_audio._play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Built a %d-tile tunnel for $%s." % [

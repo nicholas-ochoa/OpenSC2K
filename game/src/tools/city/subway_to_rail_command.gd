@@ -16,25 +16,25 @@ static func supports_tool(group_index: int, subtool_index: int) -> bool:
 
 static func apply(
 	city: CityState, group_index: int, subtool_index: int, point: Vector2i, preview_only := false
-) -> Dictionary:
+) -> SubwayToRailEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return SubwayToRailEditResult.rejected("city is invalid")
 
 	if not supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool is not a subway-to-rail connection"}
+		return SubwayToRailEditResult.rejected("tool is not a subway-to-rail connection")
 
 	var index := city.index_of(point.x, point.y)
 
 	if index < 0:
-		return {"ok": false, "error": "connection is outside the city"}
+		return SubwayToRailEditResult.rejected("connection is outside the city")
 
 	if city.buildings[index] > MAX_CLEAR_BUILDING or city.buildings[index] == RADIOACTIVITY:
-		return {"ok": false, "error": "connection site contains a protected building"}
+		return SubwayToRailEditResult.rejected("connection site contains a protected building")
 
 	if city.terrain[index] != 0:
-		return {"ok": false, "error": "connection site is not clear terrain"}
+		return SubwayToRailEditResult.rejected("connection site is not clear terrain")
 
 	var neighbor := Vector2i(-1, -1)
 	var orientation := -1
@@ -57,15 +57,18 @@ static func apply(
 				break
 
 	if orientation < 0:
-		return {"ok": false, "error": "connection requires an adjacent rail or subway"}
+		return SubwayToRailEditResult.rejected("connection requires an adjacent rail or subway")
 
 	if preview_only:
-		return {"ok": true}
+		var preview := SubwayToRailEditResult.new()
+		preview.ok = true
+
+		return preview
 
 	var old_payloads := BuildingState._city_payloads(city)
 
 	if old_payloads.is_empty():
-		return {"ok": false, "error": "required city data is missing or invalid"}
+		return SubwayToRailEditResult.rejected("required city data is missing or invalid")
 
 	var changed_payloads := BuildingState._duplicate_payloads(old_payloads)
 	var buildings: PackedByteArray = changed_payloads.XBLD
@@ -99,47 +102,47 @@ static func apply(
 			changed_ids.append(chunk_id)
 
 	if not BuildingState._apply_payloads(city, changed_ids, changed_payloads, old_payloads):
-		return {"ok": false, "error": "cannot store subway-to-rail changes"}
+		return SubwayToRailEditResult.rejected("cannot store subway-to-rail changes")
 
-	return {
-		"ok": true,
-		"command_type": "subway_to_rail",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"tile_id": tile_id,
-		"orientation": orientation,
-		"neighbor": neighbor,
-		"tile_indices": PackedInt32Array([index]),
-		"listed_cost": int(ToolCatalog.tool(group_index, subtool_index).cost),
-		"cost": 0,
-		"changed_ids": changed_ids,
-		"old_payloads": old_payloads,
-		"new_payloads": changed_payloads,
-		"error": "",
-	}
+	var result := SubwayToRailEditResult.new()
+	result.ok = true
+	result.command_type = "subway_to_rail"
+	result.group_index = group_index
+	result.subtool_index = subtool_index
+	result.tile_id = tile_id
+	result.orientation = orientation
+	result.neighbor = neighbor
+	result.tile_indices = PackedInt32Array([index])
+	result.listed_cost = int(ToolCatalog.tool(group_index, subtool_index).cost)
+	result.cost = 0
+	result.changed_ids = changed_ids
+	result.old_payloads = old_payloads
+	result.new_payloads = changed_payloads
+
+	return result
 
 
-static func undo(city: CityState, command: Dictionary) -> Dictionary:
+static func undo(city: CityState, command: SubwayToRailEditResult) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "subway_to_rail":
-		return {"ok": false, "error": "subway-to-rail command is invalid"}
+	if command == null or not command.ok or command.command_type != "subway_to_rail":
+		return EditCommandResult.failure("subway-to-rail command is invalid")
 
-	var changed_ids: PackedStringArray = command.get("changed_ids", PackedStringArray())
-	var old_payloads: Dictionary = command.get("old_payloads", {})
-	var new_payloads: Dictionary = command.get("new_payloads", {})
+	var changed_ids := command.changed_ids
+	var old_payloads := command.old_payloads
+	var new_payloads := command.new_payloads
 
 	for chunk_id in changed_ids:
 		var chunk := city.document.find_chunk(chunk_id)
 
 		if chunk == null or not new_payloads.has(chunk_id) or chunk.decoded_payload != new_payloads[chunk_id]:
-			return {"ok": false, "error": "city changed after this subway-to-rail command"}
+			return EditCommandResult.failure("city changed after this subway-to-rail command")
 
 	if not BuildingState._apply_payloads(city, changed_ids, old_payloads, new_payloads):
-		return {"ok": false, "error": "cannot restore subway-to-rail changes"}
+		return EditCommandResult.failure("cannot restore subway-to-rail changes")
 
-	return {"ok": true, "restored_tiles": 1, "error": ""}
+	return EditCommandResult.undone(1)
 
 
 static func _surface_rail_connects(tile_id: int) -> bool:

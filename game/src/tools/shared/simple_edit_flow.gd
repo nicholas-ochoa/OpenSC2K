@@ -23,7 +23,7 @@ static func apply_supported(
 	underground: bool,
 	free_mode: bool
 ) -> Dictionary:
-	var command: Variant
+	var command: EditCommandResult
 
 	if Landscapes.supports_tool(group_index, subtool_index):
 		command = Landscapes.apply_path(
@@ -98,24 +98,22 @@ static func apply_zone(
 	return _result("zone", command, group_index, subtool_index, free_mode)
 
 
-# `command` is an editcommandresult, or the dictionary of a family not yet converted
 static func _result(
 	kind: String,
-	command: Variant,
+	command: EditCommandResult,
 	group_index: int,
 	subtool_index: int,
 	free_mode: bool
 ) -> Dictionary:
 	var tool_name := String(Tools.tool(group_index, subtool_index).get("name", "Tool"))
-	var edit := EditCommandResult.of(command)
 	var result := {
 		"handled": true,
-		"command": edit,
+		"command": command,
 		"record_command": kind != "hydro",
 		"refresh_details": kind != "subway_to_rail",
 		"show_effects": kind == "terrain" or (kind == "demolish" and not free_mode),
 		"refresh_news_summary": (
-			kind == "demolish" and edit.ok and int(command.easter_events) > 0
+			command is DemolishEditResult and command.ok and (command as DemolishEditResult).easter_events > 0
 		),
 		"play_success_sound": kind in [
 			"landscape", "hydro", "subway_to_rail", "onramp", "zone"
@@ -125,9 +123,9 @@ static func _result(
 		],
 	}
 
-	if not edit.ok:
+	if not command.ok:
 		result["message"] = _failure_message(
-			kind, tool_name, edit.error if not edit.error.is_empty() else "unknown error"
+			kind, tool_name, command.error if not command.error.is_empty() else "unknown error"
 		)
 
 		return result
@@ -154,74 +152,77 @@ static func _failure_message(kind: String, tool_name: String, error: String) -> 
 
 
 static func _success_message(
-	kind: String, tool_name: String, command: Variant
+	kind: String, tool_name: String, command: EditCommandResult
 ) -> String:
 	match kind:
 		"landscape":
+			var landscape := command as LandscapeEditResult
 			var message := "%s changed %d path tiles for $%s." % [
 				tool_name,
-				command.tile_indices.size(),
-				DisplayNumbers.format(int(command.cost)),
+				landscape.tile_indices.size(),
+				DisplayNumbers.format(landscape.cost),
 			]
 
-			if command.skipped_insufficient > 0:
+			if landscape.skipped_insufficient > 0:
 				message += (
 					" Funds were not sufficient for %d later path tiles."
-					% command.skipped_insufficient
+					% landscape.skipped_insufficient
 				)
 
 			return message
 		"demolish":
+			var demolition := command as DemolishEditResult
 			var message := "Applied %d demolition actions for $%s." % [
-				command.action_count, DisplayNumbers.format(int(command.cost))
+				demolition.action_count, DisplayNumbers.format(demolition.cost)
 			]
 
-			if command.skipped_specialized > 0:
+			if demolition.skipped_specialized > 0:
 				message += (
 					" %d specialized structures were not changed."
-					% command.skipped_specialized
+					% demolition.skipped_specialized
 				)
 
-			if command.easter_events > 0:
+			if demolition.easter_events > 0:
 				message += " A forest protest kept %d %s." % [
-					command.easter_events,
-					"tree" if command.easter_events == 1 else "trees",
+					demolition.easter_events,
+					"tree" if demolition.easter_events == 1 else "trees",
 				]
 
 			return message
 		"terrain":
+			var terrain := command as TerrainEditResult
 			var message := "%s applied %d actions for $%s." % [
 				tool_name,
-				command.action_count,
-				DisplayNumbers.format(int(command.cost)),
+				terrain.action_count,
+				DisplayNumbers.format(terrain.cost),
 			]
 
-			if command.skipped_conflicts > 0:
+			if terrain.skipped_conflicts > 0:
 				message += (
 					" %d structure conflicts were not changed."
-					% command.skipped_conflicts
+					% terrain.skipped_conflicts
 				)
 
 			return message
 		"hydro":
 			return (
 				"Built hydroelectric power for $%s."
-				% DisplayNumbers.format(int(command.cost))
+				% DisplayNumbers.format(command.cost)
 			)
 		"subway_to_rail":
 			return (
 				"Built a subway-to-rail connection at no charge. "
 				+ "Listed cost: $%s."
-				% DisplayNumbers.format(int(command.listed_cost))
+				% DisplayNumbers.format(command.listed_cost)
 			)
 		"onramp":
 			return (
 				"Built an on-ramp for $%s."
-				% DisplayNumbers.format(int(command.cost))
+				% DisplayNumbers.format(command.cost)
 			)
 		_:
 			return "%s changed %d tiles for $%s." % [
 				tool_name,
 				command.tile_indices.size(),
-				DisplayNumbers.format(int(command.cost)),
+				DisplayNumbers.format(command.cost),
 			]

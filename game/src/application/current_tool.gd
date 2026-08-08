@@ -77,12 +77,12 @@ func _select_subtool(index: int) -> void:
 		var recalled := Dispatch.recall_all(app.city)
 
 		if recalled.ok:
-			recalled["dispatch_cycles_before"] = app.dispatch_cycles.duplicate()
-			recalled["dispatch_initialized_before"] = app.dispatch_initialized
-			app.last_edit_command = EditCommandResult.of(recalled)
+			recalled.dispatch_cycles_before = app.dispatch_cycles.duplicate()
+			recalled.dispatch_initialized_before = app.dispatch_initialized
+			app.last_edit_command = recalled
 			app.dispatch_cycles = PackedInt32Array([0, 0, 0])
 			app.dispatch_initialized = false
-			app.static_render._refresh_after_city_edit(app.last_edit_command)
+			app.static_render._refresh_after_city_edit(recalled)
 			app.status_label.text = "All emergency services recalled."
 
 		_sync_child_tool_selection()
@@ -242,18 +242,18 @@ func _placement_preview_error(point: Vector2i) -> String:
 		return "" if app.city.terrain[index] in [0x2e, 0x3e] else "Hydroelectric power requires a waterfall tile."
 
 	if Onramps.supports_tool(app.selected_group, app.selected_subtool):
-		return String(Onramps.apply(app.city, app.selected_group, app.selected_subtool, point, false, true).get("error", ""))
+		return Onramps.apply(app.city, app.selected_group, app.selected_subtool, point, false, true).error
 
 	if SubwayToRail.supports_tool(app.selected_group, app.selected_subtool):
-		return String(SubwayToRail.apply(app.city, app.selected_group, app.selected_subtool, point, true).get("error", ""))
+		return SubwayToRail.apply(app.city, app.selected_group, app.selected_subtool, point, true).error
 
 	if Tunnels.supports_tool(app.selected_group, app.selected_subtool):
 		var proposal := Tunnels.apply(app.city, app.selected_group, app.selected_subtool, point)
 
-		if not proposal.get("confirmation_required", false):
-			return String(proposal.get("error", "A tunnel requires a suitable hillside and exit."))
+		if not proposal.confirmation_required:
+			return proposal.error
 
-		return "" if app.city.funds() >= int(proposal.get("cost", 0)) else "Insufficient funds for this tunnel."
+		return "" if app.city.funds() >= proposal.cost else "Insufficient funds for this tunnel."
 
 	if Highways.supports_tool(app.selected_group, app.selected_subtool):
 		return Highways.preview_error(app.city, point)

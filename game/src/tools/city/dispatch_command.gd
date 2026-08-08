@@ -61,40 +61,40 @@ static func apply(
 	target: Vector2i,
 	cycle_index: int = 0,
 	reset_existing: bool = false
-) -> Dictionary:
+) -> DispatchEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return DispatchEditResult.rejected("city is invalid")
 
 	if not supports_tool(group_index, subtool_index):
-		return {"ok": false, "error": "tool is not an emergency dispatch tool"}
+		return DispatchEditResult.rejected("tool is not an emergency dispatch tool")
 
 	var target_index := city.index_of(target.x, target.y)
 
 	if target_index < 0:
-		return {"ok": false, "error": "dispatch target is outside the city"}
+		return DispatchEditResult.rejected("dispatch target is outside the city")
 
 	var available := availability(city)
 
 	if not available.ok:
-		return available
+		return DispatchEditResult.rejected(available.error)
 
 	var available_count: int = int(
 		[available.police, available.fire, available.military][subtool_index]
 	)
 
 	if available_count == 0:
-		return {"ok": false, "error": "no dispatch units of this type are available"}
+		return DispatchEditResult.rejected("no dispatch units of this type are available")
 
 	var thing_chunk := city.document.find_chunk("XTHG")
 	var text_chunk := city.document.find_chunk("XTXT")
 
 	if thing_chunk == null or thing_chunk.decoded_payload.size() != city.document.decoded_size("XTHG"):
-		return {"ok": false, "error": "XTHG is missing or has the wrong size"}
+		return DispatchEditResult.rejected("XTHG is missing or has the wrong size")
 
 	if text_chunk == null or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT"):
-		return {"ok": false, "error": "XTXT is missing or has the wrong size"}
+		return DispatchEditResult.rejected("XTXT is missing or has the wrong size")
 
 	var old_things: PackedByteArray = thing_chunk.decoded_payload.duplicate()
 	var old_text: PackedByteArray = text_chunk.decoded_payload.duplicate()
@@ -105,10 +105,10 @@ static func apply(
 		_clear_existing_dispatch(things, text, map_edge)
 
 	if (city.tile_flags[target_index] & FLAG_WATER) != 0:
-		return {"ok": false, "error": "dispatch target is water"}
+		return DispatchEditResult.rejected("dispatch target is water")
 
 	if OverlayData.read(text, target_index) != 0:
-		return {"ok": false, "error": "dispatch target has a text overlay"}
+		return DispatchEditResult.rejected("dispatch target has a text overlay")
 
 	var slot_index := cycle_index + 1
 
@@ -128,7 +128,7 @@ static func apply(
 		_delete_thing(things, text, thing_index, map_edge)
 
 	if thing_index < 0:
-		return {"ok": false, "error": "no moving-thing record is available"}
+		return DispatchEditResult.rejected("no moving-thing record is available")
 
 	var offset := thing_index * THING_RECORD_SIZE
 
@@ -141,64 +141,64 @@ static func apply(
 	OverlayData.write(text, target_index, OverlayData.thing_id(thing_index))
 
 	if not thing_chunk.set_decoded_payload(things):
-		return {"ok": false, "error": "cannot store the dispatch unit"}
+		return DispatchEditResult.rejected("cannot store the dispatch unit")
 
 	if not text_chunk.set_decoded_payload(text):
 		thing_chunk.set_decoded_payload(old_things)
 
-		return {"ok": false, "error": "cannot store the dispatch overlay"}
+		return DispatchEditResult.rejected("cannot store the dispatch overlay")
 
 	city.text_overlays = text.duplicate()
 
-	return {
-		"ok": true,
-		"command_type": "dispatch",
-		"group_index": group_index,
-		"subtool_index": subtool_index,
-		"thing_type": thing_type,
-		"thing_index": thing_index,
-		"target": target,
-		"available": available_count,
-		"slot_index": slot_index,
-		"reset_existing": reset_existing,
-		"old_things": old_things,
-		"new_things": things,
-		"old_text": old_text,
-		"new_text": text,
-		"error": "",
-	}
+	var result := DispatchEditResult.new()
+	result.ok = true
+	result.command_type = "dispatch"
+	result.group_index = group_index
+	result.subtool_index = subtool_index
+	result.thing_type = thing_type
+	result.thing_index = thing_index
+	result.target = target
+	result.available = available_count
+	result.slot_index = slot_index
+	result.reset_existing = reset_existing
+	result.old_things = old_things
+	result.new_things = things
+	result.old_text = old_text
+	result.new_text = text
+
+	return result
 
 
-static func undo(city: CityState, command: Dictionary) -> Dictionary:
+static func undo(city: CityState, command: DispatchEditResult) -> EditCommandResult:
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return EditCommandResult.failure("city is invalid")
 
-	if not command.get("ok", false) or command.get("command_type", "") != "dispatch":
-		return {"ok": false, "error": "dispatch command is invalid"}
+	if command == null or not command.ok or command.command_type != "dispatch":
+		return EditCommandResult.failure("dispatch command is invalid")
 
 	var thing_chunk := city.document.find_chunk("XTHG")
 	var text_chunk := city.document.find_chunk("XTXT")
 
 	if thing_chunk == null or text_chunk == null:
-		return {"ok": false, "error": "dispatch chunks are missing"}
+		return EditCommandResult.failure("dispatch chunks are missing")
 
-	if thing_chunk.decoded_payload != command.get("new_things", PackedByteArray()):
-		return {"ok": false, "error": "moving things changed after this dispatch command"}
+	if thing_chunk.decoded_payload != command.new_things:
+		return EditCommandResult.failure("moving things changed after this dispatch command")
 
-	if text_chunk.decoded_payload != command.get("new_text", PackedByteArray()):
-		return {"ok": false, "error": "text overlays changed after this dispatch command"}
+	if text_chunk.decoded_payload != command.new_text:
+		return EditCommandResult.failure("text overlays changed after this dispatch command")
 
 	if not thing_chunk.set_decoded_payload(command.old_things):
-		return {"ok": false, "error": "cannot restore moving things"}
+		return EditCommandResult.failure("cannot restore moving things")
 
 	if not text_chunk.set_decoded_payload(command.old_text):
 		thing_chunk.set_decoded_payload(command.new_things)
 
-		return {"ok": false, "error": "cannot restore text overlays"}
+		return EditCommandResult.failure("cannot restore text overlays")
 
 	city.text_overlays = command.old_text.duplicate()
 
-	return {"ok": true, "restored_thing": int(command.thing_index), "error": ""}
+	return EditCommandResult.undone(0)
 
 
 static func _clear_existing_dispatch(things: PackedByteArray, text: PackedByteArray, map_edge: int = 128) -> void:
@@ -264,11 +264,11 @@ static func _read_u32_be(data: PackedByteArray, offset: int) -> int:
 	)
 
 
-static func recall_all(city: CityState) -> Dictionary:
+static func recall_all(city: CityState) -> DispatchEditResult:
 	var map_edge: int = city.map_size if city != null else 128
 
 	if city == null or not city.is_valid():
-		return {"ok": false, "error": "city is invalid"}
+		return DispatchEditResult.rejected("city is invalid")
 
 	var things_chunk := city.document.find_chunk("XTHG")
 	var text_chunk := city.document.find_chunk("XTXT")
@@ -281,5 +281,12 @@ static func recall_all(city: CityState) -> Dictionary:
 	text_chunk.set_decoded_payload(text)
 	city.text_overlays = text.duplicate()
 
-	return {"ok": true, "command_type": "dispatch", "thing_index": -1,
-		"old_things": old_things, "new_things": things, "old_text": old_text, "new_text": text}
+	var result := DispatchEditResult.new()
+	result.ok = true
+	result.command_type = "dispatch"
+	result.old_things = old_things
+	result.new_things = things
+	result.old_text = old_text
+	result.new_text = text
+
+	return result

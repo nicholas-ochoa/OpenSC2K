@@ -22,7 +22,7 @@ var active_group := -1
 var active_shape := -1
 var active_record: Dictionary = {}
 var upload_count := 0
-var _textures := {}
+var _textures: Dictionary[String, ImageTexture] = {}
 var _layer: CanvasLayer
 var _copy: BackBufferCopy
 var _patch: TextureRect
