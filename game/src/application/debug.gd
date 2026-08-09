@@ -16,7 +16,7 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func _debug_metrics() -> Dictionary:
+func debug_metrics() -> Dictionary:
 	var result := {
 		"simulation_slices": app.frame_simulation.metrics() if app.frame_simulation != null else {},
 		"render_regions": app.render_caches.region_cache.metrics() if app.render_caches.region_cache != null else {},
@@ -67,14 +67,14 @@ func _debug_metrics() -> Dictionary:
 	return result
 
 
-func _debug_center_map() -> void:
+func debug_center_map() -> void:
 	var map_edge: int = app.city.map_size if app.city != null else 128
 
 	if app.map_view != null and app.city != null:
 		app.map_view.center_on_tile(Vector2i(map_edge / 2, map_edge / 2))
 
 
-func _debug_full_redraw() -> void:
+func debug_full_redraw() -> void:
 	if app.city == null:
 		return
 
@@ -82,7 +82,7 @@ func _debug_full_redraw() -> void:
 	app.map_render.refresh_map(true)
 
 
-func _debug_clear_render_caches() -> void:
+func debug_clear_render_caches() -> void:
 	app.render_caches.static_view_cache.clear()
 	app.render_caches.dynamic_sprite_cache.clear()
 	app.render_caches.dynamic_foreground_cache.clear()
@@ -90,10 +90,10 @@ func _debug_clear_render_caches() -> void:
 	app.render_caches.dynamic_visual_cache.clear()
 	app.render_caches.sign_foreground_cache.clear()
 	app.render_caches.dynamic_special_batch_cache.clear()
-	_debug_full_redraw()
+	debug_full_redraw()
 
 
-func _debug_add_funds(amount: int) -> Dictionary:
+func debug_add_funds(amount: int) -> Dictionary:
 	var result := DebugActions.add_funds(app.city, amount)
 
 	if not result.ok:
@@ -108,7 +108,7 @@ func _debug_add_funds(amount: int) -> Dictionary:
 	}
 
 
-func _debug_unlock_everything() -> Dictionary:
+func debug_unlock_everything() -> Dictionary:
 	var result := DebugActions.unlock_everything(app.city, app.document_state.current_document)
 
 	if not result.ok:
@@ -125,7 +125,7 @@ func _debug_unlock_everything() -> Dictionary:
 	}
 
 
-func _debug_set_no_disasters(enabled: bool) -> Dictionary:
+func debug_set_no_disasters(enabled: bool) -> Dictionary:
 	var result := DebugActions.set_no_disasters(app.city, enabled)
 
 	if not result.ok:
@@ -140,7 +140,7 @@ func _debug_set_no_disasters(enabled: bool) -> Dictionary:
 	}
 
 
-func _debug_set_detailed_timing(enabled: bool) -> Dictionary:
+func debug_set_detailed_timing(enabled: bool) -> Dictionary:
 	SimulationTimingSpan.detailed = enabled
 
 	return {
@@ -151,7 +151,7 @@ func _debug_set_detailed_timing(enabled: bool) -> Dictionary:
 	}
 
 
-func _debug_start_disaster(disaster_type: int) -> Dictionary:
+func debug_start_disaster(disaster_type: int) -> Dictionary:
 	if disaster_type < DisasterStart.DISASTER_FIRE or disaster_type > DisasterStart.DISASTER_PLANE_CRASH:
 		return {"ok": false, "message": "The disaster selection is not valid."}
 
@@ -171,7 +171,7 @@ func _debug_start_disaster(disaster_type: int) -> Dictionary:
 	}
 
 
-func _debug_end_disaster() -> Dictionary:
+func debug_end_disaster() -> Dictionary:
 	var result := DebugActions.end_disaster(app.city, app.document_state.current_document, app.simulation_engine)
 
 	if not result.ok:
@@ -198,7 +198,7 @@ func _debug_end_disaster() -> Dictionary:
 	}
 
 
-func _debug_dispatch_maxis_man() -> Dictionary:
+func debug_dispatch_maxis_man() -> Dictionary:
 	var center := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
 	var result := DebugActions.dispatch_maxis_man(app.city, app.document_state.current_document, center)
 
@@ -214,7 +214,7 @@ func _debug_dispatch_maxis_man() -> Dictionary:
 	}
 
 
-func _debug_set_visible_altitude_levels(levels: int) -> void:
+func debug_set_visible_altitude_levels(levels: int) -> void:
 	if app.city == null:
 		return
 

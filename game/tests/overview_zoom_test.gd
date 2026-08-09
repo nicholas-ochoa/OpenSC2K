@@ -36,7 +36,7 @@ func _run() -> void:
 		assert(city.set_building_id(64, 64, 0x1d))
 	# Start near overview; a full-size initial render is not part of this check.
 	main.map_view.zoom_factor = 0.25
-	assert(main.city_session._activate_document(doc))
+	assert(main.city_session.activate_document(doc))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = doc.serialize().data
 	var map: CityMapControl = main.map_view

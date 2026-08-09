@@ -15,7 +15,7 @@ func _init(application: CityApplication) -> void:
 
 
 func process(delta: float) -> void:
-	app.new_city._poll_new_city_preview()
+	app.new_city.poll_new_city_preview()
 	app.current_tool.update_network_preview()
 	app.camera_input.update_keyboard_camera(delta)
 
@@ -33,7 +33,7 @@ func process(delta: float) -> void:
 
 	app.static_render.poll_static_render()
 	app.static_render.start_pending_static_render()
-	app.city_png_export._poll_export()
+	app.city_png_export.poll_export()
 
 	if app.speed_controller == null or app.city == null:
 		return
@@ -162,9 +162,9 @@ func consume_simulation_result(result: Dictionary) -> void:
 
 	for request in result.interaction_requests:
 		if request.get("type", "") == "annual_budget":
-			app.budget._open_budget_dialog(request.get("funding_values", PackedInt32Array()), true)
+			app.budget.open_budget_dialog(request.get("funding_values", PackedInt32Array()), true)
 		elif request.get("type", "") == "military_proposal":
-			app.budget._open_military_proposal()
+			app.budget.open_military_proposal()
 
 
 func _update_fps(delta: float) -> void:

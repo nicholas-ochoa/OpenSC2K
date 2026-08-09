@@ -19,7 +19,7 @@ func _init(application: CityApplication) -> void:
 	text_resources = application.original_text_resources
 
 
-func _open_tool_choice_dialog(group_index: int) -> void:
+func open_tool_choice_dialog(group_index: int) -> void:
 	if app.city == null or (group_index != 3 and group_index != 5):
 		return
 
@@ -56,7 +56,7 @@ func _open_tool_choice_dialog(group_index: int) -> void:
 	app.tool_choice_dialog.show_tools(title_text, prompt_text, available_tools)
 
 
-func _choose_tool_variant(choice_index: int) -> void:
+func choose_tool_variant(choice_index: int) -> void:
 	if app.pending_tool_choices.is_empty():
 		return
 
@@ -72,12 +72,12 @@ func _choose_tool_variant(choice_index: int) -> void:
 	app.current_tool.update_edit_state()
 
 
-func _cancel_tool_choice() -> void:
+func cancel_tool_choice() -> void:
 	app.pending_tool_choices.clear()
 	app.current_tool.update_edit_state()
 
 
-func _open_stadium_dialog(command: BuildingEditResult) -> void:
+func open_stadium_dialog(command: BuildingEditResult) -> void:
 	var choices := BuildingFacilities.stadium_team_choices(app.city)
 
 	if choices.is_empty():
@@ -97,7 +97,7 @@ func _open_stadium_dialog(command: BuildingEditResult) -> void:
 	app.stadium_dialog.show_teams(teams)
 
 
-func _confirm_stadium_team() -> void:
+func confirm_stadium_team() -> void:
 	if app.pending_stadium_command == null:
 		return
 
@@ -134,7 +134,7 @@ func _confirm_stadium_team() -> void:
 	app.status_label.text = "Assigned %s to the new stadium." % result.stadium_team_name
 
 
-func _cancel_stadium_team() -> void:
+func cancel_stadium_team() -> void:
 	app.pending_stadium_command = null
 	app.effects_audio.play_tool_success_sound(14, 3)
 
@@ -150,7 +150,7 @@ func _restore_stadium_dialog() -> void:
 		app.stadium_dialog.popup_centered()
 
 
-func _open_sign_dialog(point: Vector2i) -> void:
+func open_sign_dialog(point: Vector2i) -> void:
 	var overlay := app.city.text_overlay_id(point.x, point.y)
 
 	if overlay != 0 and not OverlayData.is_sign(overlay):
@@ -162,7 +162,7 @@ func _open_sign_dialog(point: Vector2i) -> void:
 	app.sign_dialog.show_text(app.city.label(overlay) if overlay > 0 else "")
 
 
-func _commit_sign() -> void:
+func commit_sign() -> void:
 	if app.city == null or app.pending_sign_tile.x < 0:
 		return
 
@@ -180,11 +180,11 @@ func _commit_sign() -> void:
 	app.status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
 
 
-func _cancel_sign() -> void:
+func cancel_sign() -> void:
 	app.pending_sign_tile = Vector2i(-1, -1)
 
 
-func _open_query(point: Vector2i) -> void:
+func open_query(point: Vector2i) -> void:
 	var result := Queries.inspect(app.city, point, text_resources.original_query_strings)
 
 	if not result.ok:
@@ -235,7 +235,7 @@ func _open_query(point: Vector2i) -> void:
 	app.effects_audio.play_sound_events(result.get("sound_events", []))
 
 
-func _close_query(commit_rename := false) -> bool:
+func close_query(commit_rename := false) -> bool:
 	if app.query_dialog == null or not app.query_dialog.visible:
 		return true
 
@@ -260,11 +260,11 @@ func _close_query(commit_rename := false) -> bool:
 	return true
 
 
-func _run_query_action() -> void:
+func run_query_action() -> void:
 	if app.city == null:
 		return
 
-	if not _close_query(true):
+	if not close_query(true):
 		return
 
 	match str(app.active_query_result.get("action", "")):

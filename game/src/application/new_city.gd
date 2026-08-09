@@ -14,11 +14,11 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func _sync_new_city_workspace() -> void:
+func sync_new_city_workspace() -> void:
 	app.city_workspace.set_editor_controls_visible(not app.new_city_dialog.visible)
 
 
-func _open_new_city_dialog() -> void:
+func open_new_city_dialog() -> void:
 	if not app.assets_ready:
 		return
 
@@ -35,7 +35,7 @@ func _open_new_city_dialog() -> void:
 	app.new_city_dialog.preview_view.texture = null
 	app.new_city_dialog.landscape_background.texture = null
 	app.new_city_dialog.compatibility_input.set_pressed_no_signal(false)
-	app.new_city_dialog._compatibility_changed(false)
+	app.new_city_dialog.compatibility_changed(false)
 	app.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
 	app.new_city_dialog.city_name_input.text = "New City"
 	app.new_city_dialog.mayor_name_input.text = app.preferences.default_mayor_name
@@ -54,7 +54,7 @@ func _open_new_city_dialog() -> void:
 	app.new_city_dialog.city_name_input.select_all()
 
 
-func _reopen_terrain_dialog() -> void:
+func reopen_terrain_dialog() -> void:
 	if not app.landscape_editor:
 		return
 	app.new_city_return_to_main_menu = false
@@ -62,7 +62,7 @@ func _reopen_terrain_dialog() -> void:
 	app.new_city_dialog.invalidate()
 
 
-func _schedule_new_city_preview(_value: Variant = null) -> void:
+func schedule_new_city_preview(_value: Variant = null) -> void:
 	_update_new_city_slider_labels()
 
 	if app.new_city_dialog != null and app.new_city_dialog.visible:
@@ -92,7 +92,7 @@ func _new_city_terrain_options() -> Dictionary:
 	}, app.new_city_dialog.compatibility_input.button_pressed)
 
 
-func _make_new_city_preview() -> void:
+func make_new_city_preview() -> void:
 	if app.new_city_preview_job != null:
 		return
 	app.new_city_dialog.preview_timer.stop()
@@ -125,7 +125,7 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 	return true
 
 
-func _poll_new_city_preview() -> void:
+func poll_new_city_preview() -> void:
 	if app.new_city_preview_job == null or app.new_city_preview_job.thread.is_alive():
 		return
 	var job := app.new_city_preview_job
@@ -154,7 +154,7 @@ func _poll_new_city_preview() -> void:
 	)
 
 
-func _cancel_new_city() -> void:
+func cancel_new_city() -> void:
 	app.new_city_dialog.invalidate()
 	app.new_city_dialog.preview_timer.stop()
 	app.new_city_dialog.hide()
@@ -167,16 +167,16 @@ func _cancel_new_city() -> void:
 		app.interface.show_main_menu()
 
 
-func _create_new_city() -> void:
+func create_new_city() -> void:
 	if not app.new_city_dialog.candidate_valid:
 		return
 	if app.landscape_editor:
-		_create_new_city_unchecked()
+		create_new_city_unchecked()
 	else:
 		app.city_files.request_city_exit("create_new_city")
 
 
-func _create_new_city_unchecked() -> void:
+func create_new_city_unchecked() -> void:
 	app.new_city_dialog.preview_timer.stop()
 	var terrain_options := _new_city_terrain_options()
 
@@ -207,7 +207,7 @@ func _create_new_city_unchecked() -> void:
 	app.tool_random.state = int(result.process_state)
 	app.nuisance_random.state = int(result.game_state)
 	var document: Sc2File = result.document
-	app.city_session._activate_document(
+	app.city_session.activate_document(
 		document,
 		null,
 		"Created %s in %d on %s difficulty with generated terrain. Map view: %s."
@@ -234,7 +234,7 @@ func _difficulty_name(difficulty: int) -> String:
 			return "Unknown"
 
 
-func _level_brush_active() -> bool:
+func level_brush_active() -> bool:
 	return app.selected_group == 0 and app.selected_subtool == TerrainTools.SUBTOOL_LEVEL
 
 
@@ -249,7 +249,7 @@ func _enter_landscape_editor() -> void:
 	app.status_label.text = "Landscape editor: terrain changes are free. Select Start City when ready."
 
 
-func _start_city() -> void:
+func start_city() -> void:
 	if not app.landscape_editor or app.city == null:
 		return
 
@@ -265,7 +265,7 @@ func _start_city() -> void:
 	app.reports.on_newspaper_menu(0)
 
 
-func _on_founding_newspaper_visibility_changed() -> void:
+func on_founding_newspaper_visibility_changed() -> void:
 	if not app.founding_newspaper_pending or app.newspaper_dialog.visible:
 		return
 

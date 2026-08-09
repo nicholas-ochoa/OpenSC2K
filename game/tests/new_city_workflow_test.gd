@@ -10,7 +10,7 @@ func _run() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	root.add_child(main)
 	await process_frame
-	main.new_city._open_new_city_dialog()
+	main.new_city.open_new_city_dialog()
 	var dialog: NewCityTerrainDialog = main.new_city_dialog
 	main.map_view.zoom_factor = 0.25
 	# Exercise the workflow with simple terrain; layout algorithms have their own tests.
@@ -84,7 +84,7 @@ func _run() -> void:
 	assert(not dialog.native_maps_input.button_pressed)
 	main.audio_controller.application_has_focus = true
 	main.audio_controller.wave_sound_gate.stop()
-	main.new_city._make_new_city_preview()
+	main.new_city.make_new_city_preview()
 	assert(dialog.generating and dialog.done_button.disabled)
 	assert(dialog._busy_spinner.is_visible_in_tree() and dialog._busy_spinner.is_processing())
 	while main.new_city_preview_job != null:
@@ -120,20 +120,20 @@ func _run() -> void:
 	assert(dialog.done_button.disabled and not dialog.candidate_valid)
 	assert(candidate.serialize().data == bytes)
 	assert(main.new_city_session.preview_process_cursor == cursor)
-	main.new_city._create_new_city_unchecked()
+	main.new_city.create_new_city_unchecked()
 	assert(main.city == null)
 	dialog.compatibility_input.button_pressed = false
 	dialog.size_input.select(dialog.size_input.get_item_index(16))
 	assert(not dialog.size_input.disabled and not dialog.native_maps_input.disabled)
 	dialog._random_name()
 	assert(dialog.city_name_input.text.length() <= 30)
-	main.new_city._make_new_city_preview()
+	main.new_city.make_new_city_preview()
 	while main.new_city_preview_job != null:
 		await process_frame
 	var generated: Sc2File = main.new_city_session.preview_document
 	dialog.city_name_input.text = "New Cedar Grove"
 	dialog.city_name_input.text_changed.emit(dialog.city_name_input.text)
-	main.new_city._create_new_city_unchecked()
+	main.new_city.create_new_city_unchecked()
 	assert(main.city.city_name() == "New Cedar Grove")
 	assert(main.city.mayor_name() == "Cedar Mayor")
 	assert(main.city.founding_year() == dialog.year_input.get_selected_id())
@@ -199,36 +199,36 @@ func _run() -> void:
 		var expected := TerrainToolIcons.terrain_action(main.asset_source.assets.city_ui_graphics, ["tree", "water", "stream", "forest"][tool])
 		assert(main.camera_input.tool_button_icon(1, tool).get_image().get_data() == expected.get_image().get_data())
 	var original: PackedByteArray = main.document_state.current_document.serialize().data
-	main.new_city._reopen_terrain_dialog()
+	main.new_city.reopen_terrain_dialog()
 	assert(dialog.visible and dialog.done_button.disabled)
 	_assert_editor_controls(main, false)
 	dialog.water_input.value += 1
-	main.new_city._cancel_new_city()
+	main.new_city.cancel_new_city()
 	assert(main.document_state.current_document.serialize().data == original and main.landscape_editor)
 	_assert_editor_controls(main, true)
-	main.new_city._reopen_terrain_dialog()
-	main.new_city._make_new_city_preview()
+	main.new_city.reopen_terrain_dialog()
+	main.new_city.make_new_city_preview()
 	while main.new_city_preview_job != null:
 		await process_frame
-	main.new_city._create_new_city()
+	main.new_city.create_new_city()
 	assert(main.landscape_editor and not dialog.visible)
 	_assert_editor_controls(main, true)
-	main.new_city._start_city()
+	main.new_city.start_city()
 	assert(not main.city_toolbar.regenerate_button.visible)
 	assert(main.city_toolbar.child_palette.visible)
-	main.new_city._open_new_city_dialog()
-	main.new_city._make_new_city_preview()
-	main.new_city._cancel_new_city()
+	main.new_city.open_new_city_dialog()
+	main.new_city.make_new_city_preview()
+	main.new_city.cancel_new_city()
 	while main.new_city_preview_job != null:
 		await process_frame
 	assert(not dialog.visible and main.new_city_session.preview_document == null)
-	main.new_city._open_new_city_dialog()
-	main.new_city._make_new_city_preview()
+	main.new_city.open_new_city_dialog()
+	main.new_city.make_new_city_preview()
 	dialog.hills_input.value += 1
 	while main.new_city_preview_job != null:
 		await process_frame
 	assert(not dialog.candidate_valid and main.new_city_session.preview_document == null)
-	main.new_city._cancel_new_city()
+	main.new_city.cancel_new_city()
 	main.queue_free()
 	await process_frame
 	print("New City workflow checks passed")

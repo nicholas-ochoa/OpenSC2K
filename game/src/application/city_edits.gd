@@ -28,7 +28,7 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func _apply_map_selection(
+func apply_map_selection(
 	start: Vector2i,
 	finish: Vector2i,
 	path: Array[Vector2i],
@@ -82,12 +82,12 @@ func _apply_map_selection(
 			if not result.ok:
 				app.interface.show_error(str(result.error))
 		else:
-			app.query_choices._open_query(finish)
+			app.query_choices.open_query(finish)
 
 		return
 
 	if app.selected_group == 15:
-		app.query_choices._open_sign_dialog(finish)
+		app.query_choices.open_sign_dialog(finish)
 
 		return
 
@@ -183,7 +183,7 @@ func _apply_map_selection(
 		return
 
 	if Networks.supports_tool(app.selected_group, app.selected_subtool):
-		app.network_edits._apply_network_selection(
+		app.network_edits.apply_network_selection(
 			start,
 			finish,
 			Networks.BRIDGE_UNSELECTED,
@@ -196,12 +196,12 @@ func _apply_map_selection(
 		return
 
 	if Tunnels.supports_tool(app.selected_group, app.selected_subtool):
-		app.route_edits._apply_tunnel_selection(finish, Tunnels.CONFIRMATION_UNSELECTED, scurk_tool_mode)
+		app.route_edits.apply_tunnel_selection(finish, Tunnels.CONFIRMATION_UNSELECTED, scurk_tool_mode)
 
 		return
 
 	if Highways.supports_tool(app.selected_group, app.selected_subtool):
-		app.route_edits._apply_highway_selection(
+		app.route_edits.apply_highway_selection(
 			start,
 			finish,
 			Highways.CONNECTION_UNSELECTED,
@@ -273,7 +273,7 @@ func _apply_map_selection(
 		]
 
 		if stadium_team_pending:
-			app.query_choices._open_stadium_dialog(building)
+			app.query_choices.open_stadium_dialog(building)
 			app.status_label.text += " Select a stadium team."
 
 		return
@@ -338,7 +338,7 @@ func _finish_simple_edit(
 	app.status_label.text = str(edit.message)
 
 
-func _undo_last_edit() -> void:
+func undo_last_edit() -> void:
 	if app.city == null or app.last_edit_command == null:
 		return
 

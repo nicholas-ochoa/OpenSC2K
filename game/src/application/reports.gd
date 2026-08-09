@@ -91,7 +91,7 @@ func start_disaster_at_view_center(id: int) -> Dictionary:
 
 func on_windows_menu(id: int) -> void:
 	if id == 0:
-		app.budget._open_manual_budget()
+		app.budget.open_manual_budget()
 	elif id == 1:
 		_open_ordinance_window()
 	elif id == 2:

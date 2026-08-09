@@ -133,7 +133,7 @@ func _run() -> void:
 						selected = Vector2i(x, y)
 
 		var started := Time.get_ticks_usec()
-		main.query_choices._open_query(selected)
+		main.query_choices.open_query(selected)
 		print("QUERY presentation usec=%d" % (Time.get_ticks_usec() - started))
 		root.title = "Query layout check"
 		print("PREVIEW ready")

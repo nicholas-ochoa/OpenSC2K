@@ -8,17 +8,17 @@ class MetricsHost extends Control:
 	var detailed_timing := false
 
 
-	func _debug_set_visible_altitude_levels(value: int) -> void:
+	func debug_set_visible_altitude_levels(value: int) -> void:
 		terrain_levels = value
 
 
-	func _debug_set_detailed_timing(enabled: bool) -> Dictionary:
+	func debug_set_detailed_timing(enabled: bool) -> Dictionary:
 		detailed_timing = enabled
 
 		return {"ok": true, "message": "Detailed timing is %s." % ("on" if enabled else "off")}
 
 
-	func _debug_metrics() -> Dictionary:
+	func debug_metrics() -> Dictionary:
 		queries += 1
 
 		return {"city_name": "Timing test", "date": "01/03/1900", "speed": "Paused",

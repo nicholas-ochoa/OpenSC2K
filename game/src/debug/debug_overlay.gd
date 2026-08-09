@@ -81,8 +81,8 @@ func _build_actions(tabs: TabContainer) -> void:
 			_resume_speed = int(_metrics.get("speed_id", 2))
 			main_control.frame.call("select_speed", 1))
 
-	for action in [["Center map", "_debug_center_map"], ["Full redraw", "_debug_full_redraw"],
-		["Clear render caches", "_debug_clear_render_caches"]]:
+	for action in [["Center map", "debug_center_map"], ["Full redraw", "debug_full_redraw"],
+		["Clear render caches", "debug_clear_render_caches"]]:
 		var method := str(action[1])
 		_button(simulation, action[0], func() -> void:
 			_invoke(method))
@@ -97,18 +97,18 @@ func _build_actions(tabs: TabContainer) -> void:
 	_detailed_timing_check.text = "Detailed per-tile timing"
 	_detailed_timing_check.tooltip_text = "Break the growth scan into its per-tile steps. The extra clock reads are measured work and slow the phase."
 	_detailed_timing_check.toggled.connect(func(enabled: bool) -> void:
-		_record_action(main_control.debug.call("_debug_set_detailed_timing", enabled)))
+		_record_action(main_control.debug.call("debug_set_detailed_timing", enabled)))
 	simulation.add_child(_detailed_timing_check)
 	var cheats := _action_section(box, "City cheats", 3)
 
 	for amount in [10000, 100000, 1000000]:
 		_button(cheats, "+$%d" % amount, func() -> void:
-			_record_action(main_control.debug.call("_debug_add_funds", amount)))
+			_record_action(main_control.debug.call("debug_add_funds", amount)))
 
 	_button(cheats, "Unlock everything", func() -> void:
-		_invoke("_debug_unlock_everything"))
+		_invoke("debug_unlock_everything"))
 	_button(cheats, "Call Maxis Man", func() -> void:
-		_invoke("_debug_dispatch_maxis_man"))
+		_invoke("debug_dispatch_maxis_man"))
 	var disasters := _action_section(box, "Disasters", 3)
 	var disaster := OptionButton.new()
 	disaster.size_flags_horizontal = Control.SIZE_EXPAND_FILL
@@ -118,13 +118,13 @@ func _build_actions(tabs: TabContainer) -> void:
 
 	disasters.add_child(disaster)
 	_button(disasters, "Start at view center", func() -> void:
-		_record_action(main_control.debug.call("_debug_start_disaster", disaster.selected + 1)))
+		_record_action(main_control.debug.call("debug_start_disaster", disaster.selected + 1)))
 	_button(disasters, "End active disaster", func() -> void:
-		_invoke("_debug_end_disaster"))
+		_invoke("debug_end_disaster"))
 	_no_disasters_check = CheckBox.new()
 	_no_disasters_check.text = "Disable random disasters"
 	_no_disasters_check.toggled.connect(func(enabled: bool) -> void:
-		_record_action(main_control.debug.call("_debug_set_no_disasters", enabled)))
+		_record_action(main_control.debug.call("debug_set_no_disasters", enabled)))
 	disasters.add_child(_no_disasters_check)
 	var terrain := _action_section(box, "Terrain visibility", 3)
 	var label := Label.new()
@@ -145,7 +145,7 @@ func _build_actions(tabs: TabContainer) -> void:
 	terrain.add_child(_terrain_value)
 	_terrain_slider.value_changed.connect(func(value: float) -> void:
 		_terrain_value.text = str(int(value))
-		main_control.debug.call("_debug_set_visible_altitude_levels", int(value)))
+		main_control.debug.call("debug_set_visible_altitude_levels", int(value)))
 	_action_label = Label.new()
 	_action_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	box.add_child(_action_label)
@@ -241,7 +241,7 @@ func _refresh_metrics() -> void:
 	if not is_instance_valid(main_control):
 		return
 
-	_metrics = main_control.debug.call("_debug_metrics")
+	_metrics = main_control.debug.call("debug_metrics")
 
 	if _days == null:
 		return

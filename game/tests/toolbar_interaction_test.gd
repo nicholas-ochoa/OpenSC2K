@@ -28,9 +28,9 @@ func _run() -> void:
 			assert(main.get("overlay_mode") == mode and map.edit_enabled)
 
 			if group == 16:
-				main.query_choices.call("_open_query", Vector2i(20, 20))
+				main.query_choices.call("open_query", Vector2i(20, 20))
 				assert(main.query_dialog.visible and main.get("overlay_mode") == mode)
-				main.query_choices.call("_close_query")
+				main.query_choices.call("close_query")
 			elif group == 17:
 				main.camera_input.call("center_map_on_tile", Vector2i(20, 20))
 				assert(main.get("overlay_mode") == mode)

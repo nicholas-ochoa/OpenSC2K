@@ -80,7 +80,7 @@ func _run() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main, "--preview" not in OS.get_cmdline_user_args())
 	root.add_child(main)
 	await process_frame
-	main.city_session._activate_document(EmptyCityTemplate.create())
+	main.city_session.activate_document(EmptyCityTemplate.create())
 	main.interface.hide_main_menu()
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var saved: PackedByteArray = main.city.document.serialize().data

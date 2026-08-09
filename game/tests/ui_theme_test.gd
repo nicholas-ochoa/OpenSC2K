@@ -24,24 +24,24 @@ func _run() -> void:
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	assert(main.city_session._activate_document(EmptyCityTemplate.create(128)))
+	assert(main.city_session.activate_document(EmptyCityTemplate.create(128)))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var before: PackedByteArray = main.city.document.serialize().data
 	for selected in [1, 0, 1]:
-		main.settings._open_settings_dialog()
+		main.settings.open_settings_dialog()
 		var dialog: AppSettingsDialog = main.settings_dialog
 		dialog.theme_selector.select(selected)
 		dialog.dark_underground_check.button_pressed = not main.preferences.dark_underground
 		# Cancel discards the selection when Settings next opens.
 		dialog.hide()
-		main.settings._open_settings_dialog()
+		main.settings.open_settings_dialog()
 		assert(dialog.theme_selector.selected == (1 if main.preferences.ui_theme == "dark" else 0))
 		assert(dialog.dark_underground_check.button_pressed == main.preferences.dark_underground)
 		var previous_mode: String = main.preferences.ui_theme
 		var previous_color: Color = main.theme.get_stylebox("normal", "Button").bg_color
 		dialog.theme_selector.select(selected)
 		dialog.dark_underground_check.button_pressed = true
-		main.settings._apply_settings()
+		main.settings.apply_settings()
 		dialog.hide()
 		await process_frame
 		await process_frame

@@ -97,7 +97,7 @@ func check_ui() -> void:
 	var doc := EmptyCityTemplate.create(16)
 	doc.enable_full_resolution_maps()
 	main.map_view.zoom_factor = 0.25
-	check(main.city_session._activate_document(doc), "Activate fixture")
+	check(main.city_session.activate_document(doc), "Activate fixture")
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var before: Array = DocumentState.capture(doc)
 	main.current_tool.select_tool_group(16)

@@ -95,10 +95,10 @@ func select_subtool(index: int) -> void:
 	update_edit_state()
 
 	if app.landscape_editor and app.selected_group == 0 and index in [6, 7]:
-		app.city_edits._apply_map_selection(Vector2i.ZERO, Vector2i.ZERO, [Vector2i.ZERO], false)
+		app.city_edits.apply_map_selection(Vector2i.ZERO, Vector2i.ZERO, [Vector2i.ZERO], false)
 
 	if app.selected_tool_available and ToolState.is_tool_chooser(app.selected_group, app.selected_subtool):
-		app.query_choices._open_tool_choice_dialog(app.selected_group)
+		app.query_choices.open_tool_choice_dialog(app.selected_group)
 
 
 func _sync_child_tool_selection() -> void:
@@ -120,7 +120,7 @@ func update_edit_state() -> void:
 		return
 
 	var state: Dictionary
-	app.assets._refresh_scurk_artwork()
+	app.assets.refresh_scurk_artwork()
 	app.map_view.desktop_cursor_app = "city"
 	app.map_view.desktop_cursor_role = DesktopCursorRules.city_tool(app.selected_group, app.selected_subtool)
 
@@ -163,7 +163,7 @@ func update_edit_state() -> void:
 		state.status_text = str(Tools.tool(app.selected_group, app.selected_subtool).name)
 		state.status_detail = "Drag up or down to stretch terrain live. Hold Shift to apply on release." if app.selected_group == 0 and app.selected_subtool == 5 else "Free landscape editor tool."
 
-	var level_brush := app.new_city._level_brush_active()
+	var level_brush := app.new_city.level_brush_active()
 	app.map_view.landscape_brush = (level_brush or app.selected_group == 1 and app.selected_subtool in [0, 1, 3]) and not (app.scurk_place_print != null and app.scurk_place_print.visible)
 	app.map_view.demolish_brush = app.selected_group == 0 and app.selected_subtool == 0 and not app.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible)
 	app.map_view.bulldozer_visual_provider = app.moving_sprites.demolish_brush_visual if app.overlay_mode == CityViewMode.Mode.CITY else Callable()

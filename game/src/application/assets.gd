@@ -19,7 +19,7 @@ func _init(application: CityApplication) -> void:
 	text_resources = application.original_text_resources
 
 
-func _initialize_runtime() -> void:
+func initialize_runtime() -> void:
 	if app.runtime_initialized:
 		return
 
@@ -75,7 +75,7 @@ func _initialize_runtime() -> void:
 	text_resources.library_texts = original_assets.library_texts
 	app.scurk_graphics = original_assets.scurk_graphics
 	app.interface.build_interface(original_assets)
-	app.settings._apply_compatibility_controls()
+	app.settings.apply_compatibility_controls()
 	app.desktop_presentation = CityDesktopPresentation.new()
 	app.desktop_presentation.map_view = app.map_view
 	app.desktop_presentation.editor = app.scurk_editor
@@ -106,7 +106,7 @@ func _initialize_runtime() -> void:
 	app.interface.show_main_menu()
 
 
-func _build_reference_import_dialogs() -> void:
+func build_reference_import_dialogs() -> void:
 	app.graphics_source_error_dialog = AcceptDialog.new()
 	app.graphics_source_error_dialog.title = "Graphics source"
 	app.graphics_source_error_dialog.exclusive = true
@@ -126,19 +126,19 @@ func _build_reference_import_dialogs() -> void:
 	app.reference_import_error_dialog = AcceptDialog.new()
 	app.reference_import_error_dialog.title = "Cannot import SimCity 2000"
 	app.reference_import_error_dialog.exclusive = true
-	app.reference_import_error_dialog.confirmed.connect(_show_reference_import_dialog)
+	app.reference_import_error_dialog.confirmed.connect(show_reference_import_dialog)
 	app.add_child(app.reference_import_error_dialog)
 
 	for dialog in [app.graphics_source_error_dialog, app.reference_import_dialog, app.reference_import_error_dialog]:
 		dialog.theme = AppUiTheme.file_dialog() if dialog is FileDialog else AppUiTheme.current()
 
 
-func _show_graphics_source_error(message: String) -> void:
+func show_graphics_source_error(message: String) -> void:
 	app.graphics_source_error_dialog.dialog_text = message
 	app.graphics_source_error_dialog.call_deferred("popup_centered", Vector2i(620, 220))
 
 
-func _show_reference_import_dialog() -> void:
+func show_reference_import_dialog() -> void:
 	if app.reference_import_dialog == null:
 		return
 
@@ -147,7 +147,7 @@ func _show_reference_import_dialog() -> void:
 
 func _on_reference_import_canceled() -> void:
 	if app.settings_dialog != null:
-		app.settings._open_import_settings()
+		app.settings.open_import_settings()
 
 
 func _show_reference_import_error(message: String) -> void:
@@ -182,21 +182,21 @@ func _import_original_game(executable_path: String) -> void:
 	app.preferences.sound_pack_folder = install_result.sound
 	app.preferences.music_pack_folder = install_result.music
 	app.preferences.soundtrack_folder = ""
-	_apply_graphics_source(selected)
+	apply_graphics_source(selected)
 	app.audio_controller.set_media_packs(app.preferences.sound_pack_folder, app.preferences.music_pack_folder)
 	app.audio_controller.set_soundtrack_folder("")
 	var saved := SettingsStore.save_values(
 		app.preferences.music_volume, app.preferences.effects_volume, app.preferences.fullscreen,
 		app.preferences.settings_path, app.preferences.graphics_source, app.preferences.graphics_folder, app.preferences.soundtrack_folder, app.preferences.city_renderer, app.preferences.background_audio, app.preferences.zoom_graphics, app.preferences.toolbar_sounds, app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music, app.preferences.original_compatibility, app.preferences.warn_sc2x_conversion, app.preferences.default_mayor_name, app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
 	)
-	app.settings._open_import_settings()
+	app.settings.open_import_settings()
 	app.status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
 
 	if saved != OK:
 		app.interface.show_error("Packs imported, but their preferences could not be saved.")
 
 
-func _apply_graphics_source(selected: GameAssetSource) -> void:
+func apply_graphics_source(selected: GameAssetSource) -> void:
 	# wait for workers using the old archives
 	app.map_render.close_region_cache()
 	app.static_render.stop_render_job()
@@ -253,7 +253,7 @@ func _apply_graphics_source(selected: GameAssetSource) -> void:
 	app.map_render.refresh_map(false)
 
 
-func _refresh_scurk_artwork() -> void:
+func refresh_scurk_artwork() -> void:
 	if app.map_view == null:
 		return
 

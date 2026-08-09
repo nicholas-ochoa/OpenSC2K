@@ -107,13 +107,13 @@ func unhandled_key_input(event: InputEvent) -> void:
 		return
 
 	if event.keycode == KEY_ESCAPE and app.query_dialog != null and app.query_dialog.visible:
-		app.query_choices._close_query(false)
+		app.query_choices.close_query(false)
 		app.get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_ESCAPE and app.new_city_dialog != null and app.new_city_dialog.visible:
-		app.new_city._cancel_new_city()
+		app.new_city.cancel_new_city()
 		app.get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_Z and event.is_command_or_control_pressed():
-		app.city_edits._undo_last_edit()
+		app.city_edits.undo_last_edit()
 		app.get_viewport().set_input_as_handled()
 	elif event.keycode == KEY_ESCAPE and app.map_view != null and (app.map_view.trip_reach != null or app.map_view.service_query != null):
 		app.map_view.clear_trip_reach()
@@ -300,7 +300,7 @@ func on_map_selection_canceled() -> void:
 func on_map_selection_started() -> void:
 	app.landscape_brush_command = null
 	app.level_brush_altitude = -1
-	if app.new_city._level_brush_active() and app.city != null:
+	if app.new_city.level_brush_active() and app.city != null:
 		app.level_brush_altitude = app.city.land_altitude(app.map_view.selection_start.x, app.map_view.selection_start.y)
 	if app.landscape_editor and app.selected_group == 0 and app.selected_subtool == 5:
 		app.terrain_stretch.begin(app.map_view.selection_start)

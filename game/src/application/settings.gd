@@ -27,12 +27,12 @@ func _set_city_renderer(value: String) -> void:
 	app.map_render.refresh_map()
 
 
-func _open_import_settings() -> void:
-	_open_settings_dialog()
+func open_import_settings() -> void:
+	open_settings_dialog()
 	app.settings_dialog.tabs.current_tab = 3
 
 
-func _open_settings_dialog() -> void:
+func open_settings_dialog() -> void:
 	app.settings_dialog.dark_underground_check.button_pressed = preferences.dark_underground
 	app.settings_dialog.theme_selector.select(1 if preferences.ui_theme == "dark" else 0)
 	app.settings_dialog.translucent_menus_check.button_pressed = preferences.translucent_menus
@@ -66,7 +66,7 @@ func _refresh_settings_pack_names() -> void:
 		app.settings_dialog.set_loaded_pack("music", app.audio_controller.music_pack.pack_name, preferences.music_pack_folder)
 
 
-func _apply_settings() -> void:
+func apply_settings() -> void:
 	var values: Dictionary = app.settings_dialog.selected_values()
 
 	if bool(values.original_compatibility) and app.document_state.current_document != null and app.document_state.current_document.is_extended():
@@ -89,16 +89,16 @@ func _apply_settings() -> void:
 		selected = GameAssetSource.load_source(app.reference_root, values.graphics_source, values.graphics_folder)
 
 		if not selected.error.is_empty():
-			app.assets._show_graphics_source_error(selected.error)
+			app.assets.show_graphics_source_error(selected.error)
 
 			return
 
 	if changed_source:
-		app.assets._apply_graphics_source(selected)
+		app.assets.apply_graphics_source(selected)
 
 	preferences.original_compatibility = bool(values.original_compatibility)
 	preferences.warn_sc2x_conversion = bool(values.warn_sc2x_conversion)
-	_apply_compatibility_controls()
+	apply_compatibility_controls()
 	preferences.graphics_source = values.graphics_source
 	preferences.graphics_folder = values.graphics_folder
 	_set_city_renderer(str(values.city_renderer))
@@ -162,7 +162,7 @@ func _apply_settings() -> void:
 	_refresh_settings_pack_names()
 
 
-func _load_app_settings() -> void:
+func load_app_settings() -> void:
 	var values := SettingsStore.load_values(
 		preferences.settings_path,
 		preferences.music_volume,
@@ -221,7 +221,7 @@ func _set_moving_frame_rate(value: int) -> void:
 		app.moving_sprites.refresh_moving_things()
 
 
-func _apply_compatibility_controls() -> void:
+func apply_compatibility_controls() -> void:
 	if app.speed_controller != null:
 		app.speed_controller.original_compatibility = preferences.original_compatibility
 		app.speed_controller.fire_elapsed_msec = 0.0

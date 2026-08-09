@@ -23,9 +23,9 @@ func run() -> void:
 	for button in main.main_menu.game_buttons:
 		assert(button.disabled)
 
-	main.new_city._open_new_city_dialog()
+	main.new_city.open_new_city_dialog()
 	assert(not main.new_city_dialog.visible)
-	main.settings._open_import_settings()
+	main.settings.open_import_settings()
 	assert(main.settings_dialog.visible and main.settings_dialog.tabs.current_tab == 3)
 	main.settings_dialog.hide()
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", "")

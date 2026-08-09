@@ -7,7 +7,7 @@ class Host extends Control:
 	var map_view: CityMapControl
 
 
-	func _debug_metrics() -> Dictionary:
+	func debug_metrics() -> Dictionary:
 		return {}
 
 

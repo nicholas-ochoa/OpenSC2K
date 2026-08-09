@@ -13,7 +13,7 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func _apply_network_selection(
+func apply_network_selection(
 	start: Vector2i,
 	finish: Vector2i,
 	bridge_type := Networks.BRIDGE_UNSELECTED,
@@ -41,7 +41,7 @@ func _apply_network_selection(
 	)
 
 	if network.bridge_selection_required:
-		_open_bridge_dialog(
+		open_bridge_dialog(
 			start,
 			finish,
 			group_index,
@@ -155,11 +155,11 @@ func _apply_network_selection(
 		app.status_label.text += " The route stopped at an obstruction."
 
 
-func _confirm_network_connection() -> void:
+func confirm_network_connection() -> void:
 	_apply_pending_network_connection(Networks.CONNECTION_CONFIRMED)
 
 
-func _cancel_network_connection() -> void:
+func cancel_network_connection() -> void:
 	_apply_pending_network_connection(Networks.CONNECTION_CANCELLED)
 
 
@@ -172,7 +172,7 @@ func _apply_pending_network_connection(connection_choice: int) -> void:
 	app.network_connection_dialog.hide()
 	app.selected_group = int(request.group_index)
 	app.selected_subtool = int(request.subtool_index)
-	_apply_network_selection(
+	apply_network_selection(
 		request.start,
 		request.finish,
 		int(request.bridge_type),
@@ -183,7 +183,7 @@ func _apply_pending_network_connection(connection_choice: int) -> void:
 	)
 
 
-func _open_bridge_dialog(
+func open_bridge_dialog(
 	start: Vector2i,
 	finish: Vector2i,
 	group_index: int,
@@ -214,7 +214,7 @@ func _open_bridge_dialog(
 	)
 
 
-func _choose_bridge(choice_index: int) -> void:
+func choose_bridge(choice_index: int) -> void:
 	if app.pending_bridge_request.is_empty():
 		return
 
@@ -231,7 +231,7 @@ func _choose_bridge(choice_index: int) -> void:
 	if request.get("request_type", "network") == "highway":
 		app.selected_group = int(request.group_index)
 		app.selected_subtool = int(request.subtool_index)
-		app.route_edits._apply_highway_selection(
+		app.route_edits.apply_highway_selection(
 			request.start,
 			request.finish,
 			Highways.CONNECTION_UNSELECTED,
@@ -241,7 +241,7 @@ func _choose_bridge(choice_index: int) -> void:
 
 		return
 
-	_apply_network_selection(
+	apply_network_selection(
 		request.start,
 		request.finish,
 		int(choice.get("type", Networks.BRIDGE_UNSELECTED)),
@@ -252,7 +252,7 @@ func _choose_bridge(choice_index: int) -> void:
 	)
 
 
-func _cancel_bridge() -> void:
+func cancel_bridge() -> void:
 	if app.pending_bridge_request.is_empty():
 		return
 
@@ -274,7 +274,7 @@ func _cancel_bridge() -> void:
 	if request.get("request_type", "network") == "highway":
 		app.selected_group = int(request.group_index)
 		app.selected_subtool = int(request.subtool_index)
-		app.route_edits._apply_highway_selection(
+		app.route_edits.apply_highway_selection(
 			request.start,
 			request.finish,
 			Highways.CONNECTION_UNSELECTED,
@@ -284,7 +284,7 @@ func _cancel_bridge() -> void:
 
 		return
 
-	_apply_network_selection(
+	apply_network_selection(
 		request.start,
 		request.finish,
 		Networks.BRIDGE_CANCELLED,

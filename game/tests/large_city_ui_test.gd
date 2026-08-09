@@ -22,7 +22,7 @@ func run_check() -> void:
 	root.add_child(main)
 	await process_frame
 	main.new_city_session.independent_template = true
-	main.new_city._open_new_city_dialog()
+	main.new_city.open_new_city_dialog()
 	# This suite tests size selection and preview jobs; terrain rules have their own tests.
 	main.new_city_dialog.ocean_input.button_pressed = false
 	main.new_city_dialog.river_input.button_pressed = false
@@ -41,21 +41,21 @@ func run_check() -> void:
 		# the worker; New City workflow and terrain tests own larger generation.
 		if edge != 16:
 			continue
-		main.new_city._make_new_city_preview()
+		main.new_city.make_new_city_preview()
 		while main.new_city_preview_job != null:
 			await process_frame
 		assert(main.new_city_session.preview_document.map_size == edge)
 		assert(main.new_city_session.preview_options.get("size") == edge)
 		assert(main.new_city_dialog.preview_view.texture.get_width() == edge)
 
-	main.new_city._cancel_new_city()
+	main.new_city.cancel_new_city()
 	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics([0, 1, 2, 2, 2, 2])
 	main.map_view.zoom_factor = 0.25
 	main.overlay_mode = CityViewMode.Mode.UNDERGROUND
 
 	# Smallest and largest worker cities, then original synchronous simulation.
 	for edge in [16, 512, 128]:
-		assert(main.city_session._activate_document(EmptyCityTemplate.create(edge)))
+		assert(main.city_session.activate_document(EmptyCityTemplate.create(edge)))
 		assert(main.map_view.city.map_size == edge)
 		assert((main.frame_simulation != null) == (edge != 128))
 		assert(main.map_view.city_source.size == CityIsometricRenderer.output_size_for_view(2, edge))

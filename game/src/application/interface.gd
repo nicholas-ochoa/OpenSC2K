@@ -62,7 +62,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.view_visibility_checks = app.city_toolbar.view_visibility_checks
 
 	app.map_view = app.city_workspace.map_view
-	app.map_view.selection_completed.connect(app.city_edits._apply_map_selection)
+	app.map_view.selection_completed.connect(app.city_edits.apply_map_selection)
 	app.map_view.selection_changed.connect(app.camera_input.on_map_selection_changed)
 	app.network_preview = NetworkPlacementPreview.new()
 	app.network_preview.map_view = app.map_view
@@ -75,7 +75,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.map_view.stretch_changed.connect(app.camera_input.on_terrain_stretch_changed)
 	app.map_view.selection_finished.connect(app.camera_input.on_map_selection_finished)
 	app.map_view.selection_canceled.connect(app.camera_input.on_map_selection_canceled)
-	app.map_view.query_requested.connect(app.query_choices._open_query)
+	app.map_view.query_requested.connect(app.query_choices.open_query)
 	app.map_view.center_requested.connect(app.camera_input.center_map_on_tile)
 	app.map_view.zoom_changed.connect(app.camera_input.on_city_zoom_changed)
 	app.map_view.viewport_changed.connect(app.reports.refresh_city_map_viewport)
@@ -95,43 +95,43 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.tile_set_dialog = app.city_dialogs.tile_set_dialog
 	app.tile_set_dialog.file_selected.connect(app.scurk_workspace.load_tile_set)
 	app.city_png_export_dialog = app.city_dialogs.png_export_dialog
-	app.city_png_export_dialog.export_requested.connect(app.city_png_export._start_export)
+	app.city_png_export_dialog.export_requested.connect(app.city_png_export.start_export)
 	app.city_png_export_progress = app.city_dialogs.png_export_progress
 
 
-	app.city_toolbar.start_city_requested.connect(app.new_city._start_city)
-	app.city_toolbar.regenerate_requested.connect(app.new_city._reopen_terrain_dialog)
+	app.city_toolbar.start_city_requested.connect(app.new_city.start_city)
+	app.city_toolbar.regenerate_requested.connect(app.new_city.reopen_terrain_dialog)
 	app.city_toolbar.brush_changed.connect(app.current_tool.update_edit_state)
 	app.new_city_dialog = app.city_dialogs.new_city_dialog
-	app.new_city_dialog.visibility_changed.connect(app.new_city._sync_new_city_workspace)
-	app.new_city_dialog.cancel_requested.connect(app.new_city._cancel_new_city)
-	app.new_city_dialog.build_requested.connect(app.new_city._create_new_city)
-	app.new_city_dialog.preview_requested.connect(app.new_city._schedule_new_city_preview)
-	app.new_city_dialog.terrain_regeneration_requested.connect(app.new_city._make_new_city_preview)
+	app.new_city_dialog.visibility_changed.connect(app.new_city.sync_new_city_workspace)
+	app.new_city_dialog.cancel_requested.connect(app.new_city.cancel_new_city)
+	app.new_city_dialog.build_requested.connect(app.new_city.create_new_city)
+	app.new_city_dialog.preview_requested.connect(app.new_city.schedule_new_city_preview)
+	app.new_city_dialog.terrain_regeneration_requested.connect(app.new_city.make_new_city_preview)
 	app.sign_dialog = app.city_dialogs.sign_dialog
-	app.sign_dialog.confirmed.connect(app.query_choices._commit_sign)
-	app.sign_dialog.canceled.connect(app.query_choices._cancel_sign)
+	app.sign_dialog.confirmed.connect(app.query_choices.commit_sign)
+	app.sign_dialog.canceled.connect(app.query_choices.cancel_sign)
 	app.bridge_dialog = app.city_dialogs.bridge_dialog
-	app.bridge_dialog.choice_requested.connect(app.network_edits._choose_bridge)
-	app.bridge_dialog.canceled.connect(app.network_edits._cancel_bridge)
+	app.bridge_dialog.choice_requested.connect(app.network_edits.choose_bridge)
+	app.bridge_dialog.canceled.connect(app.network_edits.cancel_bridge)
 	app.tool_choice_dialog = app.city_dialogs.tool_choice_dialog
-	app.tool_choice_dialog.choice_requested.connect(app.query_choices._choose_tool_variant)
-	app.tool_choice_dialog.canceled.connect(app.query_choices._cancel_tool_choice)
+	app.tool_choice_dialog.choice_requested.connect(app.query_choices.choose_tool_variant)
+	app.tool_choice_dialog.canceled.connect(app.query_choices.cancel_tool_choice)
 	app.stadium_dialog = app.city_dialogs.stadium_dialog
-	app.stadium_dialog.confirmed.connect(app.query_choices._confirm_stadium_team)
-	app.stadium_dialog.canceled.connect(app.query_choices._cancel_stadium_team)
+	app.stadium_dialog.confirmed.connect(app.query_choices.confirm_stadium_team)
+	app.stadium_dialog.canceled.connect(app.query_choices.cancel_stadium_team)
 	app.network_connection_dialog = app.city_dialogs.network_connection_dialog
-	app.network_connection_dialog.confirmed.connect(app.network_edits._confirm_network_connection)
-	app.network_connection_dialog.canceled.connect(app.network_edits._cancel_network_connection)
+	app.network_connection_dialog.confirmed.connect(app.network_edits.confirm_network_connection)
+	app.network_connection_dialog.canceled.connect(app.network_edits.cancel_network_connection)
 	app.highway_connection_dialog = app.city_dialogs.highway_connection_dialog
-	app.highway_connection_dialog.confirmed.connect(app.route_edits._confirm_highway_connection)
-	app.highway_connection_dialog.canceled.connect(app.route_edits._cancel_highway_connection)
+	app.highway_connection_dialog.confirmed.connect(app.route_edits.confirm_highway_connection)
+	app.highway_connection_dialog.canceled.connect(app.route_edits.cancel_highway_connection)
 	app.tunnel_dialog = app.city_dialogs.tunnel_dialog
-	app.tunnel_dialog.confirmed.connect(app.route_edits._confirm_tunnel)
-	app.tunnel_dialog.canceled.connect(app.route_edits._cancel_tunnel)
+	app.tunnel_dialog.confirmed.connect(app.route_edits.confirm_tunnel)
+	app.tunnel_dialog.canceled.connect(app.route_edits.cancel_tunnel)
 	app.query_dialog = app.city_dialogs.query_dialog
-	app.query_dialog.close_requested.connect(app.query_choices._close_query)
-	app.query_dialog.action_requested.connect(app.query_choices._run_query_action)
+	app.query_dialog.close_requested.connect(app.query_choices.close_query)
+	app.query_dialog.action_requested.connect(app.query_choices.run_query_action)
 	app.graph_window = app.city_dialogs.graph_window
 	app.population_window = app.city_dialogs.population_window
 	app.industry_window = app.city_dialogs.industry_window
@@ -145,23 +145,23 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.ordinance_window.update_failed.connect(show_error)
 	app.city_analysis_dialog = app.city_dialogs.analysis_dialog
 	app.newspaper_dialog = app.city_dialogs.newspaper_dialog
-	app.newspaper_dialog.visibility_changed.connect(app.new_city._on_founding_newspaper_visibility_changed)
+	app.newspaper_dialog.visibility_changed.connect(app.new_city.on_founding_newspaper_visibility_changed)
 	app.building_objection_dialog = app.city_dialogs.building_objection_dialog
 	app.building_objection_dialog.confirmed.connect(app.reports.on_building_objection_closed)
 	app.building_objection_dialog.canceled.connect(app.reports.on_building_objection_closed)
 	app.library_ruminate_windows = app.city_dialogs.library_windows
 	app.game_over_dialog = app.city_dialogs.game_over_dialog
 	app.scenario_dialog = app.city_dialogs.scenario_dialog
-	app.scenario_dialog.confirmed.connect(app.budget._begin_scenario)
+	app.scenario_dialog.confirmed.connect(app.budget.begin_scenario)
 	app.military_dialog = app.city_dialogs.military_dialog
-	app.military_dialog.confirmed.connect(app.budget._accept_military_proposal)
-	app.military_dialog.canceled.connect(app.budget._decline_military_proposal)
+	app.military_dialog.confirmed.connect(app.budget.accept_military_proposal)
+	app.military_dialog.canceled.connect(app.budget.decline_military_proposal)
 	app.budget_dialog = app.city_dialogs.budget_dialog
-	app.budget_dialog.apply_requested.connect(app.budget._commit_budget)
-	app.budget_dialog.cancel_requested.connect(app.budget._cancel_budget)
-	app.budget_dialog.issue_bond_requested.connect(app.budget._request_issue_bond)
-	app.budget_dialog.repay_bond_requested.connect(app.budget._request_repay_bond)
-	app.budget_dialog.bond_confirmation_resolved.connect(app.budget._resolve_bond_action)
+	app.budget_dialog.apply_requested.connect(app.budget.commit_budget)
+	app.budget_dialog.cancel_requested.connect(app.budget.cancel_budget)
+	app.budget_dialog.issue_bond_requested.connect(app.budget.request_issue_bond)
+	app.budget_dialog.repay_bond_requested.connect(app.budget.request_repay_bond)
+	app.budget_dialog.bond_confirmation_resolved.connect(app.budget.resolve_bond_action)
 
 	app.current_tool.select_tool_group(app.selected_group)
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
@@ -175,19 +175,19 @@ func _build_main_menu() -> void:
 	app.add_child(app.main_overlays)
 	app.main_menu = app.main_overlays.main_menu
 	app.main_menu.continue_requested.connect(hide_main_menu)
-	app.main_menu.new_city_requested.connect(app.new_city._open_new_city_dialog)
+	app.main_menu.new_city_requested.connect(app.new_city.open_new_city_dialog)
 	app.main_menu.open_city_requested.connect(app.city_files.open_city_dialog)
 	app.main_menu.scenario_requested.connect(app.city_files.open_scenario_dialog)
-	app.main_menu.settings_requested.connect(app.settings._open_settings_dialog)
-	app.main_menu.import_assets_requested.connect(app.settings._open_import_settings)
+	app.main_menu.settings_requested.connect(app.settings.open_settings_dialog)
+	app.main_menu.import_assets_requested.connect(app.settings.open_import_settings)
 	app.main_menu.scurk_requested.connect(app.scurk_workspace.open_scurk_dialog)
 	app.main_menu.scurk_place_requested.connect(app.scurk_workspace.open_scurk_place_print)
 	app.main_menu.about_requested.connect(open_about_dialog)
 	app.main_menu.exit_requested.connect(app.city_files.request_city_exit.bind("quit"))
 
 	app.settings_dialog = app.main_overlays.settings_dialog
-	app.settings_dialog.confirmed.connect(app.settings._apply_settings)
-	app.settings_dialog.import_original_requested.connect(app.assets._show_reference_import_dialog)
+	app.settings_dialog.confirmed.connect(app.settings.apply_settings)
+	app.settings_dialog.import_original_requested.connect(app.assets.show_reference_import_dialog)
 
 	app.about_dialog = app.main_overlays.about_dialog
 

@@ -25,7 +25,7 @@ func is_running() -> bool:
 	return job != null
 
 
-func _open_export_dialog() -> void:
+func open_export_dialog() -> void:
 	if app.city == null:
 		app.interface.show_error("Load a city before you export it.")
 
@@ -48,7 +48,7 @@ func _open_export_dialog() -> void:
 	app.city_png_export_dialog.show_options()
 
 
-func _start_export(options: Dictionary) -> void:
+func start_export(options: Dictionary) -> void:
 	if app.city == null or is_running():
 		return
 
@@ -89,7 +89,7 @@ func _start_export(options: Dictionary) -> void:
 	app.status_label.text = "Exporting the city to %s…" % options.path.get_file()
 
 
-func _poll_export() -> void:
+func poll_export() -> void:
 	if job == null:
 		return
 
@@ -119,7 +119,7 @@ func _poll_export() -> void:
 	app.status_label.text = "Exported a %d by %d city image to %s." % [size.x, size.y, result.path]
 
 
-func _close() -> void:
+func close() -> void:
 	if job != null and job.thread != null and job.thread.is_started():
 		job.thread.wait_to_finish()
 

@@ -191,9 +191,9 @@ func _ready() -> void:
 	if reference_root.is_empty():
 		reference_root = GameAssetSource.default_reference_root()
 
-	settings._load_app_settings()
-	assets._build_reference_import_dialogs()
-	assets._initialize_runtime()
+	settings.load_app_settings()
+	assets.build_reference_import_dialogs()
+	assets.initialize_runtime()
 
 
 func _notification(what: int) -> void:
@@ -216,7 +216,7 @@ func _exit_tree() -> void:
 
 	frame_simulation = null
 	static_render.stop_render_job()
-	city_png_export._close()
+	city_png_export.close()
 
 
 func _process(delta: float) -> void:

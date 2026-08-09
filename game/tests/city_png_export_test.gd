@@ -144,7 +144,7 @@ func _check_exports() -> void:
 
 	for entry in cases:
 		var path := folder.path_join("%s_%d_%d.png" % [entry[0], entry[1], entry[2]])
-		main.city_png_export._start_export({"path": path, "view_size": entry[1], "view": entry[0], "transparent_background": entry[3], "signs": true, "moving_things": true})
+		main.city_png_export.start_export({"path": path, "view_size": entry[1], "view": entry[0], "transparent_background": entry[3], "signs": true, "moving_things": true})
 		assert(main.city_png_export.is_running())
 
 		while main.city_png_export.is_running():
@@ -172,7 +172,7 @@ func _check_progress_overlay() -> void:
 	var overlay: ProgressOverlay = main.city_png_export_progress
 	var options := {"path": folder.path_join("slow.png"), "view_size": Renderer.VIEW_MEDIUM, "view": "city", "transparent_background": false, "signs": true, "moving_things": true}
 	main.city_png_export.progress_delay_msec = 0
-	main.city_png_export._start_export(options)
+	main.city_png_export.start_export(options)
 	var seen := false
 
 	while main.city_png_export.is_running():

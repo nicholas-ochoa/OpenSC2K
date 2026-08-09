@@ -31,7 +31,7 @@ func _run() -> void:
 
 			main.map_view.zoom_factor = zoom
 			var load_started := Time.get_ticks_usec()
-			assert(main.city_session._activate_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x")))
+			assert(main.city_session.activate_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x")))
 			main.menus.set_overlay(CityViewMode.Mode.CITY)
 			main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 			var deadline := Time.get_ticks_msec() + 60000

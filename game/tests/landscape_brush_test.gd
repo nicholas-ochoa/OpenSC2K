@@ -14,7 +14,7 @@ func _run() -> void:
 	main.map_view.zoom_factor = 0.25
 	# A 32-map fits the largest brush and gap. The second case keeps far-map input.
 	for edge in [32, 512]:
-		assert(main.city_session._activate_document(EmptyCityTemplate.create(edge)))
+		assert(main.city_session.activate_document(EmptyCityTemplate.create(edge)))
 		main.new_city._enter_landscape_editor()
 		main.current_tool.select_tool_group(1)
 		for tool in ([0, 1, 3] if edge == 32 else [1]):

@@ -73,7 +73,7 @@ func _run() -> void:
 			ScurkCityOutput._draw_artwork_stamps(output, city, main.palette_index_encoding if indexed else main.palette, main.static_render.sprite_archive_for_view(view), view)
 			assert(hash(output.get_data()) != empty_hash, "Artwork missing from print or indexed bitmap output")
 
-	main.budget._open_manual_budget()
+	main.budget.open_manual_budget()
 	await process_frame
 	var budget := main.budget_dialog as BudgetDialog
 

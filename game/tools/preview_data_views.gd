@@ -13,7 +13,7 @@ func _run() -> void:
 	root.title = "Data Views Preview"
 	await process_frame
 	var doc := Sc2File.load_path(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/CAPEQUES.SC2"))
-	main.city_session._activate_document(doc)
+	main.city_session.activate_document(doc)
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	main.current_tool.select_tool_group(16)
 	main.menus.set_overlay(CityViewMode.Mode.HEIGHT)

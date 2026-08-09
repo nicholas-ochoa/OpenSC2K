@@ -35,11 +35,11 @@ func _run() -> void:
 		magnifications[roundi(magnification)] = true
 
 	assert(magnifications.has(1) and magnifications.has(2) and magnifications.has(3))
-	main.new_city._open_new_city_dialog()
-	main.new_city._make_new_city_preview()
+	main.new_city.open_new_city_dialog()
+	main.new_city.make_new_city_preview()
 	while main.new_city_preview_job != null:
 		await process_frame
-	main.new_city._create_new_city_unchecked()
+	main.new_city.create_new_city_unchecked()
 	await process_frame
 	main.current_tool.select_tool_group(0)
 	assert(main.city_toolbar.child_tool_buttons.has(5))
@@ -48,7 +48,7 @@ func _run() -> void:
 	assert(main.city_toolbar.child_tool_buttons.has(2) and main.city_toolbar.child_tool_buttons.has(3))
 	main.city.set_sound_enabled(true)
 	main.city.set_music_enabled(true)
-	main.new_city._start_city()
+	main.new_city.start_city()
 	assert(main.newspaper_dialog.visible and main.founding_newspaper_pending)
 	assert(main.audio_controller.wave_sound_gate.current_sound_id == 513)
 	var age: int = main.city.age_in_days()

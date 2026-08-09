@@ -18,7 +18,7 @@ func _run() -> void:
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
 	main.main_menu.hide()
-	assert(main.city_session._activate_document(EmptyCityTemplate.create(128)))
+	assert(main.city_session.activate_document(EmptyCityTemplate.create(128)))
 	main.scurk_editor = main.main_overlays.ensure_scurk_editor()
 	main.scurk_place_print = main.main_overlays.ensure_scurk_place_print()
 	main.scurk_print = main.main_overlays.ensure_scurk_print()

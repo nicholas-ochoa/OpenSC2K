@@ -186,7 +186,7 @@ func request_city_exit(action: String, path := "") -> void:
 func _perform_city_exit(action: String, path := "") -> void:
 	match action:
 		"create_new_city":
-			app.new_city._create_new_city_unchecked()
+			app.new_city.create_new_city_unchecked()
 		"load_city":
 			_load_city_unchecked(path)
 		"quit":
@@ -253,7 +253,7 @@ func _load_city_unchecked(path: String) -> void:
 
 			return
 
-	app.city_session._activate_document(
+	app.city_session.activate_document(
 		document,
 		loaded_scenario,
 		"Loaded %s. Map view: %s."

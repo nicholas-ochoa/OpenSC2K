@@ -13,7 +13,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.map_view.zoom_factor = 0.25
-	assert(main.city_session._activate_document(EmptyCityTemplate.create()))
+	assert(main.city_session.activate_document(EmptyCityTemplate.create()))
 	main.new_city._enter_landscape_editor()
 	main.current_tool.select_tool_group(0)
 	main.current_tool.select_subtool(5)

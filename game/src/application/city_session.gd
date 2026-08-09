@@ -17,7 +17,7 @@ func _init(application: CityApplication) -> void:
 	document_state = application.document_state
 
 
-func _activate_document(
+func activate_document(
 	document: Sc2File, loaded_scenario: ScenarioState = null, status_text := ""
 ) -> bool:
 	var disable_compatibility := app.preferences.original_compatibility and document != null and document.is_extended()
@@ -39,7 +39,7 @@ func _activate_document(
 
 	if disable_compatibility:
 		app.preferences.original_compatibility = false
-		app.settings._apply_compatibility_controls()
+		app.settings.apply_compatibility_controls()
 		var settings_error := SettingsStore.save_original_compatibility(false, app.preferences.settings_path)
 		status_text += " Original compatibility turned off to open this SC2X city."
 
@@ -209,7 +209,7 @@ func _activate_document(
 		app.effects_audio.play_music_track(app.audio_controller.music_director.next_general_track())
 
 	if loaded_scenario != null:
-		app.budget._open_scenario_intro(loaded_scenario)
+		app.budget.open_scenario_intro(loaded_scenario)
 
 	if disable_compatibility or not facility_repair.ok or facility_repair.linked > 0 or facility_repair.unfilled > 0:
 		app.status_label.text = status_text

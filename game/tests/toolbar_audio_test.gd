@@ -11,7 +11,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	main.map_view.zoom_factor = 0.25
-	assert(main.city_session._activate_document(EmptyCityTemplate.create()))
+	assert(main.city_session.activate_document(EmptyCityTemplate.create()))
 	main.new_city._enter_landscape_editor()
 	main.city.set_sound_enabled(true)
 	main.audio_controller.application_has_focus = true
@@ -29,7 +29,7 @@ func _run() -> void:
 		main.current_tool.select_subtool(tool)
 		var point := Vector2i(60, 60)
 		var path: Array[Vector2i] = [point]
-		main.city_edits._apply_map_selection(point, point, path, false)
+		main.city_edits.apply_map_selection(point, point, path, false)
 		assert(_has_sound(main, 508), "Missing tractor sound for terrain tool %d" % tool)
 		await _clear(main)
 
@@ -49,7 +49,7 @@ func _run() -> void:
 		if subtool == 3:
 			main.map_view.selection._emit_brush_dab(point, false)
 		else:
-			main.city_edits._apply_map_selection(point, point, tree_path, false)
+			main.city_edits.apply_map_selection(point, point, tree_path, false)
 
 		assert(_has_sound(main, ToolSoundRules.SOUND_TREE))
 		await _clear(main)
@@ -58,12 +58,12 @@ func _run() -> void:
 	main.current_tool.select_tool_group(0)
 	main.current_tool.select_subtool(2)
 	var muted_path: Array[Vector2i] = [Vector2i(60, 60)]
-	main.city_edits._apply_map_selection(muted_path[0], muted_path[0], muted_path, false)
+	main.city_edits.apply_map_selection(muted_path[0], muted_path[0], muted_path, false)
 	assert(not _has_sound(main, 508))
-	main.settings._open_settings_dialog()
+	main.settings.open_settings_dialog()
 	main.settings_dialog.sound_pack_edit.text = "/missing/sound-pack"
 	var old_sound_folder: String = main.preferences.sound_pack_folder
-	main.settings._apply_settings()
+	main.settings.apply_settings()
 	await process_frame
 	assert(main.settings_dialog.pack_error_label.visible)
 	assert(not main.settings_dialog.pack_error_label.text.is_empty())

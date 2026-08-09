@@ -14,17 +14,17 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func _open_manual_budget() -> void:
+func open_manual_budget() -> void:
 	if app.landscape_editor:
 		return
 
 	if app.city == null:
 		return
 
-	_open_budget_dialog(Budget.funding_values(app.city), false)
+	open_budget_dialog(Budget.funding_values(app.city), false)
 
 
-func _open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
+func open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 	if app.city == null or values.size() != Budget.BUDGET_COUNT:
 		app.interface.show_error("Cannot open the budget because its saved values are invalid.")
 
@@ -42,7 +42,7 @@ func _open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 	_update_bond_controls()
 
 
-func _request_issue_bond() -> void:
+func request_issue_bond() -> void:
 	if app.city == null:
 		return
 
@@ -68,7 +68,7 @@ func _request_issue_bond() -> void:
 			app.interface.show_error("The bond could not be issued.")
 
 
-func _request_repay_bond() -> void:
+func request_repay_bond() -> void:
 	if app.city == null:
 		return
 
@@ -90,7 +90,7 @@ func _request_repay_bond() -> void:
 			app.interface.show_error("The bond could not be repaid.")
 
 
-func _resolve_bond_action(action: String, confirmed: bool) -> void:
+func resolve_bond_action(action: String, confirmed: bool) -> void:
 	if app.city == null or action.is_empty():
 		return
 
@@ -146,7 +146,7 @@ func _update_bond_controls() -> void:
 	app.budget_dialog.set_bond_state(bond_count, funds, average_fixed, oldest)
 
 
-func _commit_budget() -> void:
+func commit_budget() -> void:
 	if app.city == null:
 		return
 
@@ -181,9 +181,9 @@ func _commit_budget() -> void:
 	app.status_label.text = "Budget funding saved."
 
 
-func _cancel_budget() -> void:
+func cancel_budget() -> void:
 	if app.annual_budget_pending:
-		_commit_budget()
+		commit_budget()
 
 
 func _restore_annual_budget_dialog() -> void:
@@ -191,16 +191,16 @@ func _restore_annual_budget_dialog() -> void:
 		app.budget_dialog.popup_centered()
 
 
-func _open_military_proposal() -> void:
+func open_military_proposal() -> void:
 	app.military_proposal_pending = true
 	app.military_dialog.popup_centered()
 
 
-func _accept_military_proposal() -> void:
+func accept_military_proposal() -> void:
 	_resolve_military_proposal(true)
 
 
-func _decline_military_proposal() -> void:
+func decline_military_proposal() -> void:
 	_resolve_military_proposal(false)
 
 
@@ -247,7 +247,7 @@ func _restore_military_proposal_dialog() -> void:
 		app.military_dialog.popup_centered()
 
 
-func _open_scenario_intro(scenario: ScenarioState) -> void:
+func open_scenario_intro(scenario: ScenarioState) -> void:
 	var rendered_picture := ScenarioGraphics.render(scenario, app.scenario_palette, app.scenario_graphics)
 	var picture: Image = rendered_picture.image if rendered_picture.ok else null
 	var name := app.city.city_name()
@@ -260,6 +260,6 @@ func _open_scenario_intro(scenario: ScenarioState) -> void:
 	app.scenario_dialog.show_briefing(name, picture, scenario.opening_description())
 
 
-func _begin_scenario() -> void:
+func begin_scenario() -> void:
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Scenario started."

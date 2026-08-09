@@ -51,7 +51,7 @@ func _check_application() -> void:
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	assert(main.city_session._activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2")))
+	assert(main.city_session.activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2")))
 	var vehicle := -1
 
 	for record in main.city.thing_count():
@@ -84,7 +84,7 @@ func _check_application() -> void:
 	assert(not menu.is_item_checked(menu.get_item_index(CityMenuBar.MENU_VIEW_VEHICLES)), "The View menu follows the sidebar")
 
 	# Opening another city keeps the layer choice in its new engine.
-	assert(main.city_session._activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/CAPE.SC2")))
+	assert(main.city_session.activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/CAPE.SC2")))
 	assert(not main.simulation_engine.vehicle_crashes_enabled)
 	main.menus.on_view_menu(CityMenuBar.MENU_VIEW_VEHICLES)
 	assert(main.show_vehicles and main.simulation_engine.vehicle_crashes_enabled, "The View menu shows vehicles again")

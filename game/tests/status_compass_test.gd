@@ -31,7 +31,7 @@ func _run() -> void:
 	for saved_rotation in range(4):
 		var document := EmptyCityTemplate.create(128)
 		assert(document.set_misc_u32(0x0008, saved_rotation))
-		assert(main.city_session._activate_document(document))
+		assert(main.city_session.activate_document(document))
 		main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 		assert(status.compass.compass_rotation == saved_rotation)
 		var before: PackedByteArray = document.serialize().data

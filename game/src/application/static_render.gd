@@ -27,7 +27,7 @@ func _init(application: CityApplication) -> void:
 
 
 func refresh_after_city_edit(command: EditCommandResult) -> void:
-	app.assets._refresh_scurk_artwork()
+	app.assets.refresh_scurk_artwork()
 
 	if command.command_type == "scurk_artwork":
 		return

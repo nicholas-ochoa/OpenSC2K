@@ -48,7 +48,7 @@ func on_file_menu(id: int) -> void:
 
 	match id:
 		0:
-			app.new_city._open_new_city_dialog()
+			app.new_city.open_new_city_dialog()
 		1:
 			app.city_files.open_city_dialog()
 		2:
@@ -56,7 +56,7 @@ func on_file_menu(id: int) -> void:
 		CityMenuBar.MENU_SAVE_CITY:
 			app.city_files.save_city()
 		CityMenuBar.MENU_EXPORT_CITY_PNG:
-			app.city_png_export._open_export_dialog()
+			app.city_png_export.open_export_dialog()
 		3:
 			app.scurk_workspace.open_tile_set_dialog()
 		4:
@@ -86,7 +86,7 @@ func on_options_menu(id: int) -> void:
 		return
 
 	if id == CityMenuBar.MENU_SETTINGS:
-		app.settings._open_settings_dialog()
+		app.settings.open_settings_dialog()
 
 		return
 

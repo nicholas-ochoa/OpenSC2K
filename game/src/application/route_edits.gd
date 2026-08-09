@@ -12,7 +12,7 @@ func _init(application: CityApplication) -> void:
 	app = application
 
 
-func _apply_tunnel_selection(
+func apply_tunnel_selection(
 	start: Vector2i,
 	confirmation_choice := Tunnels.CONFIRMATION_UNSELECTED,
 	free_mode := false
@@ -28,7 +28,7 @@ func _apply_tunnel_selection(
 
 	if tunnel.confirmation_required:
 		if free_mode:
-			_apply_tunnel_selection(
+			apply_tunnel_selection(
 				start, Tunnels.CONFIRMATION_CONFIRMED, true
 			)
 
@@ -85,11 +85,11 @@ func _apply_tunnel_selection(
 	]
 
 
-func _confirm_tunnel() -> void:
+func confirm_tunnel() -> void:
 	_apply_pending_tunnel(Tunnels.CONFIRMATION_CONFIRMED)
 
 
-func _cancel_tunnel() -> void:
+func cancel_tunnel() -> void:
 	_apply_pending_tunnel(Tunnels.CONFIRMATION_CANCELLED)
 
 
@@ -102,10 +102,10 @@ func _apply_pending_tunnel(confirmation_choice: int) -> void:
 	app.tunnel_dialog.hide()
 	app.selected_group = int(request.group_index)
 	app.selected_subtool = int(request.subtool_index)
-	_apply_tunnel_selection(request.start, confirmation_choice)
+	apply_tunnel_selection(request.start, confirmation_choice)
 
 
-func _apply_highway_selection(
+func apply_highway_selection(
 	start: Vector2i,
 	finish: Vector2i,
 	connection_choice := Highways.CONNECTION_UNSELECTED,
@@ -124,7 +124,7 @@ func _apply_highway_selection(
 	)
 
 	if highway.bridge_selection_required:
-		app.network_edits._open_bridge_dialog(
+		app.network_edits.open_bridge_dialog(
 			start,
 			finish,
 			app.selected_group,
@@ -232,11 +232,11 @@ func _apply_highway_selection(
 		app.status_label.text += " The route stopped at an obstruction."
 
 
-func _confirm_highway_connection() -> void:
+func confirm_highway_connection() -> void:
 	_apply_pending_highway_connection(Highways.CONNECTION_CONFIRMED)
 
 
-func _cancel_highway_connection() -> void:
+func cancel_highway_connection() -> void:
 	_apply_pending_highway_connection(Highways.CONNECTION_CANCELLED)
 
 
@@ -249,7 +249,7 @@ func _apply_pending_highway_connection(connection_choice: int) -> void:
 	app.highway_connection_dialog.hide()
 	app.selected_group = int(request.group_index)
 	app.selected_subtool = int(request.subtool_index)
-	_apply_highway_selection(
+	apply_highway_selection(
 		request.start,
 		request.finish,
 		connection_choice,

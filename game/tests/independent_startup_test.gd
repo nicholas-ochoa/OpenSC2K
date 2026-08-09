@@ -112,7 +112,7 @@ func _test_main() -> void:
 	assert(main.runtime_initialized and main.main_menu.visible)
 	assert(not main.reference_import_dialog.visible and main.city == null)
 	assert(main.audio_controller.original_media_enabled)
-	main.settings._open_settings_dialog()
+	main.settings.open_settings_dialog()
 	assert(main.settings_dialog.visible)
 
 	for mode in GameAssetSource.MODES:
@@ -122,7 +122,7 @@ func _test_main() -> void:
 
 	main.settings_dialog.hide()
 	main.map_view.zoom_factor = 0.25
-	main.new_city._open_new_city_dialog()
+	main.new_city.open_new_city_dialog()
 	assert(main.new_city_dialog.visible and main.new_city_session.preview_document == null)
 	main.new_city_dialog.city_name_input.text = "Original Startup"
 	# This scenario checks original SC2 save compatibility.
@@ -133,14 +133,14 @@ func _test_main() -> void:
 	main.new_city_dialog.trees_input.value = 0
 	main.new_city_dialog.river_input.button_pressed = false
 	main.new_city_dialog.ocean_input.button_pressed = false
-	main.new_city._make_new_city_preview()
+	main.new_city.make_new_city_preview()
 	while main.new_city_preview_job != null:
 		await process_frame
-	main.new_city._create_new_city_unchecked()
+	main.new_city.create_new_city_unchecked()
 	await process_frame
 	assert(main.city != null and main.city.city_name() == "Original Startup")
 	assert(main.landscape_editor and main.city_toolbar.start_city_button.visible)
-	main.new_city._start_city()
+	main.new_city.start_city()
 	main.newspaper_dialog.hide()
 	main.speed_controller.set_speed(GameSpeedController.Speed.PAUSED)
 	_round_trip_city(main.document_state.current_document)

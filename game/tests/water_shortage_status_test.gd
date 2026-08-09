@@ -169,7 +169,7 @@ func _check_main_ui(strings: Dictionary) -> void:
 	await process_frame
 	main.set_process(false)
 	main.original_text_resources.original_query_strings = strings
-	assert(main.city_session._activate_document(EmptyCityTemplate.create(128)))
+	assert(main.city_session.activate_document(EmptyCityTemplate.create(128)))
 	main.set_process(false)
 	main.city_status_bar.music_notice_seconds = 0
 	main.simulation_engine.city_status_resource_id = 269

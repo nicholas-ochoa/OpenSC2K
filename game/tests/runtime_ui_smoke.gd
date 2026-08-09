@@ -38,7 +38,7 @@ func _run() -> void:
 	root.add_child(main)
 	await process_frame
 	await process_frame
-	main.new_city.call("_open_new_city_dialog")
+	main.new_city.call("open_new_city_dialog")
 	await process_frame
 	var main_menu := main.get("main_menu") as MainMenuControl
 	var new_city_dialog := main.get("new_city_dialog") as NewCityTerrainDialog
@@ -50,7 +50,7 @@ func _run() -> void:
 
 		return
 
-	main.new_city.call("_cancel_new_city")
+	main.new_city.call("cancel_new_city")
 	await process_frame
 
 	if not main_menu.visible or new_city_dialog.visible:
@@ -207,7 +207,7 @@ func _run() -> void:
 			main.set("selected_subtool", 0)
 			var patch_path: Array[Vector2i] = [patch_point]
 			main.city_edits.call(
-				"_apply_map_selection",
+				"apply_map_selection",
 				patch_point,
 				patch_point,
 				patch_path,
@@ -225,7 +225,7 @@ func _run() -> void:
 
 				return
 
-			main.city_edits.call("_undo_last_edit")
+			main.city_edits.call("undo_last_edit")
 
 			if (
 				loaded_city.building_id(patch_point.x, patch_point.y) != 0
@@ -240,7 +240,7 @@ func _run() -> void:
 			main.set("selected_group", 9)
 			main.set("selected_subtool", 0)
 			main.city_edits.call(
-				"_apply_map_selection",
+				"apply_map_selection",
 				patch_point,
 				patch_point,
 				patch_path,
@@ -263,7 +263,7 @@ func _run() -> void:
 
 				return
 
-			main.city_edits.call("_undo_last_edit")
+			main.city_edits.call("undo_last_edit")
 
 			if (
 				main.static_render_state.thread != null
@@ -350,7 +350,7 @@ func _run() -> void:
 				patch_point
 			)
 			main.city_edits.call(
-				"_apply_map_selection",
+				"apply_map_selection",
 				patch_point,
 				patch_point,
 				patch_path,
@@ -406,7 +406,7 @@ func _run() -> void:
 				return
 
 			main.city_edits.call(
-				"_apply_map_selection",
+				"apply_map_selection",
 				patch_point,
 				patch_point,
 				patch_path,
@@ -455,7 +455,7 @@ func _run() -> void:
 				return
 
 			main.city_edits.call(
-				"_apply_map_selection",
+				"apply_map_selection",
 				patch_point,
 				patch_point,
 				patch_path,
@@ -608,12 +608,12 @@ func _run() -> void:
 			main.frame.call("process", 0.2)
 
 			if bool(main.get("annual_budget_pending")):
-				main.budget.call("_commit_budget")
+				main.budget.call("commit_budget")
 				var budget_dialog := main.get("budget_dialog") as Window
 				budget_dialog.hide()
 
 			if bool(main.get("military_proposal_pending")):
-				main.budget.call("_decline_military_proposal")
+				main.budget.call("decline_military_proposal")
 				var military_dialog := main.get("military_dialog") as Window
 				military_dialog.hide()
 
@@ -640,8 +640,8 @@ func _run() -> void:
 		[main.reports._open_simnation_window, "simnation_window"],
 		[main.reports.open_city_map_window, "city_map_window"],
 		[main.reports.on_newspaper_menu.bind(0), "newspaper_dialog"],
-		[main.budget._open_manual_budget, "budget_dialog"],
-		[main.settings._open_settings_dialog, "settings_dialog"],
+		[main.budget.open_manual_budget, "budget_dialog"],
+		[main.settings.open_settings_dialog, "settings_dialog"],
 		[main.interface.open_about_dialog, "about_dialog"],
 	]:
 		entry[0].call()
@@ -654,9 +654,9 @@ func _run() -> void:
 
 		await process_frame
 
-	main.query_choices.call("_open_query", Vector2i(64, 64))
+	main.query_choices.call("open_query", Vector2i(64, 64))
 	await process_frame
-	main.query_choices.call("_close_query", false)
+	main.query_choices.call("close_query", false)
 
 	for group in range(18):
 		main.current_tool.call("select_tool_group", group)
@@ -674,7 +674,7 @@ func _run() -> void:
 
 	debug_overlay.toggle()
 	await process_frame
-	var debug_metrics: Dictionary = main.debug.call("_debug_metrics")
+	var debug_metrics: Dictionary = main.debug.call("debug_metrics")
 
 	if (
 		not debug_overlay.is_open
@@ -689,13 +689,13 @@ func _run() -> void:
 		return
 
 	# Scenario playback may still have an active disaster. Start debug actions from idle.
-	assert(main.debug.call("_debug_end_disaster").ok)
+	assert(main.debug.call("debug_end_disaster").ok)
 	var debug_city: CityState = main.get("city")
 	var debug_misc_chunk := debug_city.document.find_chunk("MISC")
 	var debug_old_misc: PackedByteArray = debug_misc_chunk.decoded_payload.duplicate()
 	var debug_old_funds := debug_city.funds()
-	var money_result: Dictionary = main.debug.call("_debug_add_funds", 10000)
-	var unlock_result: Dictionary = main.debug.call("_debug_unlock_everything")
+	var money_result: Dictionary = main.debug.call("debug_add_funds", 10000)
+	var unlock_result: Dictionary = main.debug.call("debug_unlock_everything")
 	var unlocked := ToolAvailability.inspect(debug_city)
 
 	if (
@@ -733,7 +733,7 @@ func _run() -> void:
 	debug_text_chunk.set_decoded_payload(empty_text)
 	debug_city.text_overlays = empty_text.duplicate()
 	debug_city.set_text_overlay_id(64, 64, 0xff)
-	var maxis_result: Dictionary = main.debug.call("_debug_dispatch_maxis_man")
+	var maxis_result: Dictionary = main.debug.call("debug_dispatch_maxis_man")
 
 	if not maxis_result.ok or debug_city.thing(1).type != 16:
 		push_error("The debug Maxis Man action did not dispatch a saved moving object")
@@ -746,9 +746,9 @@ func _run() -> void:
 	debug_text_chunk.set_decoded_payload(empty_text)
 	debug_city.text_overlays = empty_text.duplicate()
 	var start_disaster: Dictionary = main.debug.call(
-		"_debug_start_disaster", DisasterStart.DISASTER_TORNADO
+		"debug_start_disaster", DisasterStart.DISASTER_TORNADO
 	)
-	var active_disaster_metrics: Dictionary = main.debug.call("_debug_metrics")
+	var active_disaster_metrics: Dictionary = main.debug.call("debug_metrics")
 
 	if (
 		not start_disaster.ok
@@ -763,8 +763,8 @@ func _run() -> void:
 		return
 
 	debug_city.set_text_overlay_id(65, 64, 0xff)
-	var end_disaster: Dictionary = main.debug.call("_debug_end_disaster")
-	var disable_disasters: Dictionary = main.debug.call("_debug_set_no_disasters", true)
+	var end_disaster: Dictionary = main.debug.call("debug_end_disaster")
+	var disable_disasters: Dictionary = main.debug.call("debug_set_no_disasters", true)
 
 	if (
 		not end_disaster.ok
@@ -921,26 +921,26 @@ func _run_quick(reference_root: String) -> void:
 	main.current_tool.select_tool_group(1)
 	main.current_tool.select_subtool(0)
 	var path: Array[Vector2i] = [point]
-	main.city_edits._apply_map_selection(point, point, path, false)
+	main.city_edits.apply_map_selection(point, point, path, false)
 	assert(main.last_edit_command.command_type == "landscape")
 	assert(city.document.serialize().data != before)
-	main.city_edits._undo_last_edit()
+	main.city_edits.undo_last_edit()
 	assert(city.document.serialize().data == before, "Undo restores all saved bytes")
-	main.settings._open_settings_dialog()
+	main.settings.open_settings_dialog()
 	assert(main.settings_dialog.visible)
 	main.settings_dialog.hide()
-	main.query_choices._open_query(point)
+	main.query_choices.open_query(point)
 	assert(main.query_dialog.visible)
-	main.query_choices._close_query()
-	main.new_city._open_new_city_dialog()
+	main.query_choices.close_query()
+	main.new_city.open_new_city_dialog()
 	assert(main.new_city_dialog.visible)
 	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(128))
 	main.new_city_dialog.city_name_input.text = "Workflow smoke"
-	main.new_city._make_new_city_preview()
+	main.new_city.make_new_city_preview()
 	while main.new_city_preview_job != null:
 		await process_frame
 	assert(main.new_city_dialog.candidate_valid)
-	main.new_city._create_new_city_unchecked()
+	main.new_city.create_new_city_unchecked()
 	assert(main.city != city and main.city.display_name() == "Workflow smoke")
 	assert(main.landscape_editor)
 	var output := ProjectSettings.globalize_path("user://workflow-smoke.sc2x")

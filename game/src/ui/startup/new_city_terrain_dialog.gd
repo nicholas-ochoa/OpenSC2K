@@ -103,7 +103,7 @@ func _ready() -> void:
 	visibility_changed.connect(_visibility_changed)
 	resized.connect(_clamp_panel)
 	_build_busy_overlay()
-	compatibility_input.toggled.connect(_compatibility_changed)
+	compatibility_input.toggled.connect(compatibility_changed)
 	$Center/NewCityDialog/Content/Body/Fields/CityFields/CityNameRow/RandomName.pressed.connect(_random_name)
 	var title_bar: DialogTitleBar = $Center/NewCityDialog/Content/TitleBar
 	title_bar.title_label.text = "New City"
@@ -151,7 +151,7 @@ func set_control_graphics(graphics: CityUiGraphics) -> void:
 			view.texture = ImageTexture.create_from_image(image)
 
 
-func _compatibility_changed(enabled: bool) -> void:
+func compatibility_changed(enabled: bool) -> void:
 	size_input.disabled = enabled
 	native_maps_input.disabled = enabled
 	if enabled:

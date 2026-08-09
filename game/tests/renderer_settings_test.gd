@@ -27,7 +27,7 @@ func _run() -> void:
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
-	assert(main.city_session._activate_document(EmptyCityTemplate.create(256)))
+	assert(main.city_session.activate_document(EmptyCityTemplate.create(256)))
 	var before: Array = DocumentState.capture(main.city.document)
 	# The environment override remains explicit, independent of the saved default.
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")

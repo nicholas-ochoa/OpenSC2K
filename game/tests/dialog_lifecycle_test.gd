@@ -14,7 +14,7 @@ func _run() -> void:
 	assert(main.main_overlays.scurk_workspace == null)
 	for scene_name in ["scurk_editor_control", "scurk_place_print_control", "scurk_print_control"]:
 		assert(not ResourceLoader.has_cached("res://src/ui/scurk/%s.tscn" % scene_name), "Unexpected cached scene: " + scene_name)
-	main.new_city._open_new_city_dialog()
+	main.new_city.open_new_city_dialog()
 	assert(main.new_city_dialog.visible)
 	assert(main.main_overlays.scurk_workspace == null)
 	main.new_city_dialog.hide()

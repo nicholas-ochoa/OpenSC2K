@@ -37,7 +37,7 @@ func _run() -> void:
 	main.map_view.zoom_factor = 0.25
 	main.overlay_mode = CityViewMode.Mode.UNDERGROUND
 	var document := EmptyCityTemplate.create(128)
-	check(main.city_session._activate_document(document), "Activate original city")
+	check(main.city_session.activate_document(document), "Activate original city")
 	var engine_id: int = main.simulation_engine.get_instance_id()
 	var random_state: int = main.simulation_engine.random.state
 	var old_bytes: PackedByteArray = document.serialize().data
@@ -45,10 +45,10 @@ func _run() -> void:
 	main.city_files.sync_upgrade_city_option()
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) >= 0, "Original SC2 shows upgrade in Options")
 	main.preferences.original_compatibility = true
-	main.settings._apply_compatibility_controls()
+	main.settings.apply_compatibility_controls()
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) < 0, "Compatibility preference hides upgrade")
 	main.preferences.original_compatibility = false
-	main.settings._apply_compatibility_controls()
+	main.settings.apply_compatibility_controls()
 	main.last_edit_command = EditCommandResult.new()
 	main.menus.on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
 	check(main.sc2x_conversion_dialog.visible and document.serialize().data == old_bytes, "Warning appears before irreversible conversion")
@@ -72,7 +72,7 @@ func _run() -> void:
 	main.city_files.upgrade_city_to_sc2x()
 	check(main.document_state.current_save_path == saved_path and not main.save_dialog.visible, "Repeated conversion is harmless")
 	var second := EmptyCityTemplate.create(128)
-	check(main.city_session._activate_document(second), "Activate another original city")
+	check(main.city_session.activate_document(second), "Activate another original city")
 	main.document_state.current_save_path = "user://second-city.SC2"
 	main.preferences.warn_sc2x_conversion = false
 	main.city_files.upgrade_city_to_sc2x()

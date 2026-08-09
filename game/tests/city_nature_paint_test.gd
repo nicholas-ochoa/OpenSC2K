@@ -43,7 +43,7 @@ func _run() -> void:
 	await process_frame
 	main.map_view.zoom_factor = 0.25
 	for edge in [64, 512]:
-		assert(main.city_session._activate_document(EmptyCityTemplate.create(edge)))
+		assert(main.city_session.activate_document(EmptyCityTemplate.create(edge)))
 		main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 		main.current_tool.select_tool_group(1)
 		# City brushes use fixed settings, independent of landscape preferences.

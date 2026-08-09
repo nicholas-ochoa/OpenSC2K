@@ -22,7 +22,7 @@ func _run() -> void:
 
 		var document := Sc2File.load_path("res://../local/large-cities/stitched-%d.sc2x" % edge)
 		var started := Time.get_ticks_usec()
-		assert(main.city_session._activate_document(document))
+		assert(main.city_session.activate_document(document))
 		var activation_ms := (Time.get_ticks_usec() - started) / 1000.0
 		var cache: CityRegionCache = main.render_caches.region_cache
 		started = Time.get_ticks_usec()
