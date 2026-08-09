@@ -23,8 +23,8 @@ func on_music_activity_changed(active: bool) -> void:
 
 func music_playback_is_active() -> bool:
 	return (
-		app.city != null
-		and app.city.music_enabled()
+		app.document_state.city != null
+		and app.document_state.city.music_enabled()
 		and app.audio_controller != null
 		and app.audio_controller.music_playback_is_active()
 	)
@@ -39,8 +39,8 @@ func handle_application_focus_in() -> void:
 	if app.audio_controller != null:
 		app.audio_controller.handle_application_focus_in(
 			(app.assets_ready and app.main_menu != null and app.main_menu.visible and app.preferences.music_volume > 0.0
-			and (app.city == null or app.city.music_enabled()))
-			or (app.city != null and app.city.music_enabled())
+			and (app.document_state.city == null or app.document_state.city.music_enabled()))
+			or (app.document_state.city != null and app.document_state.city.music_enabled())
 		)
 
 
@@ -55,7 +55,7 @@ func stop_sound_effects() -> void:
 
 
 func show_effect_events(effect_events: Array, sound_events: Array) -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
 	effect_events = _parallel_dust_events(effect_events)
@@ -97,7 +97,7 @@ func show_effect_events(effect_events: Array, sound_events: Array) -> void:
 				effect_image.flip_x()
 
 			var position := IsometricRenderer.transient_effect_position(
-				app.city, effect, effect_image.get_height(), view_size
+				app.document_state.city, effect, effect_image.get_height(), view_size
 			)
 
 			if position.x < 0 or position.y < 0:
@@ -122,11 +122,11 @@ func show_effect_events(effect_events: Array, sound_events: Array) -> void:
 
 
 func play_sound_events(sound_events: Array) -> void:
-	if app.city == null or app.audio_controller == null:
+	if app.document_state.city == null or app.audio_controller == null:
 		return
 
 	app.audio_controller.play_sound_events(
-		sound_events, app.city.sound_enabled(), app.overlay_mode, app.static_render.city_view_size()
+		sound_events, app.document_state.city.sound_enabled(), app.overlay_mode, app.static_render.city_view_size()
 	)
 
 
@@ -156,7 +156,7 @@ func play_tool_failure_sound(
 func start_tool_loop_sound(sound_id: int) -> void:
 	if app.audio_controller != null:
 		app.audio_controller.start_tool_loop_sound(
-			sound_id, app.city != null and app.city.sound_enabled()
+			sound_id, app.document_state.city != null and app.document_state.city.sound_enabled()
 		)
 
 

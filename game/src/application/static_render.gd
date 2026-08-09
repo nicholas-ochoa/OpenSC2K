@@ -39,7 +39,7 @@ func refresh_after_city_edit(command: EditCommandResult) -> void:
 func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	if caches.region_cache != null:
 		var region_start := Time.get_ticks_usec()
-		var indices := _edit_dirty_indices(command, app.city.map_size)
+		var indices := _edit_dirty_indices(command, app.document_state.city.map_size)
 		app.edit_display_timings = {
 			"dirty_ms": (Time.get_ticks_usec() - region_start) / 1000.0,
 			"dirty_tiles": indices.size(),
@@ -49,17 +49,17 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 			return false
 
 		region_start = Time.get_ticks_usec()
-		var dirty := IsometricRenderer.dirty_screen_rect(indices, sprite_archive_for_view(city_view_size()), city_view_size(), Vector2i.ZERO, app.city.map_size)
+		var dirty := IsometricRenderer.dirty_screen_rect(indices, sprite_archive_for_view(city_view_size()), city_view_size(), Vector2i.ZERO, app.document_state.city.map_size)
 		app.map_render.refresh_region_map(false, dirty)
 		app.edit_display_timings.region_ms = (Time.get_ticks_usec() - region_start) / 1000.0
 
 		return true
 
-	var map_edge: int = app.city.map_size if app.city != null else 128
+	var map_edge: int = app.document_state.city.map_size if app.document_state.city != null else 128
 
 	if (
 		app.overlay_mode != CityViewMode.Mode.CITY
-		or app.city == null
+		or app.document_state.city == null
 		or app.palette_index_encoding == null
 		or caches.static_city_image == null
 		or caches.static_city_image.is_empty()
@@ -93,7 +93,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 
 	app.edit_display_timings = {"dirty_ms": (Time.get_ticks_usec() - profile_start) / 1000.0}
 	profile_start = Time.get_ticks_usec()
-	var display_city := ViewFilter.surface_copy(app.city, app.surface_visibility)
+	var display_city := ViewFilter.surface_copy(app.document_state.city, app.surface_visibility)
 
 	if display_city == null or not display_city.is_valid():
 		return false
@@ -291,7 +291,7 @@ func request_static_render(
 
 		return
 
-	snapshot.visible_altitude_levels = app.city.visible_altitude_levels
+	snapshot.visible_altitude_levels = app.document_state.city.visible_altitude_levels
 	state.job = RenderJob.new()
 	state.job.city_snapshot = snapshot
 	state.job.index_palette = app.palette_index_encoding
@@ -322,7 +322,7 @@ func start_pending_static_render() -> void:
 	if (
 		not state.pending
 		or state.thread != null
-		or app.city == null
+		or app.document_state.city == null
 		or not CityViewMode.is_map(app.overlay_mode)
 	):
 		return
@@ -352,12 +352,12 @@ func poll_static_render() -> void:
 		return
 
 	if (
-		app.city == null
+		app.document_state.city == null
 		or int(rendered.epoch) != state.epoch
 		or int(rendered.view_size) != city_view_size()
 		or int(rendered.get("render_mode", CityViewMode.Mode.CITY)) != app.overlay_mode
 	):
-		if app.city != null and CityViewMode.is_map(app.overlay_mode):
+		if app.document_state.city != null and CityViewMode.is_map(app.overlay_mode):
 			app.map_render.refresh_map(false)
 
 		return
@@ -404,10 +404,10 @@ func poll_static_render() -> void:
 func static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array:
 	if mode == CityViewMode.Mode.UNDERGROUND:
 		return UndergroundView.visual_signature(
-			app.city, view_size, app.show_underground_pipes, app.show_underground_subways, app.show_underground_water_mains
+			app.document_state.city, view_size, app.show_underground_pipes, app.show_underground_subways, app.show_underground_water_mains
 		)
 
-	var result := IsometricRenderer.static_visual_signature(app.city, view_size)
+	var result := IsometricRenderer.static_visual_signature(app.document_state.city, view_size)
 	result.append_array([
 		bool(app.surface_visibility.buildings),
 		bool(app.surface_visibility.networks),

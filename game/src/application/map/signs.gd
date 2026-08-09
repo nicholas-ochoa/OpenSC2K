@@ -7,7 +7,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 	if (
 		render.app.overlay_mode != CityViewMode.Mode.CITY
 		or not bool(render.app.surface_visibility.signs)
-		or render.app.city == null
+		or render.app.document_state.city == null
 		or render.app.map_view == null
 		or (render.caches.static_city_image == null and render.caches.region_cache == null)
 		or (render.caches.static_occlusion_commands.is_empty() and render.caches.region_cache == null)

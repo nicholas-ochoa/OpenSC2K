@@ -21,7 +21,7 @@ func _run() -> void:
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	main.current_tool.select_tool_group(16)
 	main.current_tool.select_subtool(2)
-	var before: PackedByteArray = main.city.document.serialize().data
+	var before: PackedByteArray = main.document_state.city.document.serialize().data
 	for point in [Vector2i(30, 30), Vector2i(30, 40)]:
 		var path: Array[Vector2i] = [point]
 		main.map_view._shift_pressed = true
@@ -31,11 +31,11 @@ func _run() -> void:
 		main.map_view._shift_pressed = false
 		main.city_edits.apply_map_selection(point, point, path, false)
 		assert(not main.map_view.service_query.analysis.all_stations)
-	assert(main.city.document.serialize().data == before)
+	assert(main.document_state.city.document.serialize().data == before)
 	main.current_tool.select_subtool(0)
 	assert(main.map_view.service_query == null)
 	main.current_tool.select_subtool(2)
-	main.map_view.show_service_query(main.city, Vector2i(30, 30), true)
+	main.map_view.show_service_query(main.document_state.city, Vector2i(30, 30), true)
 	var escape := InputEventKey.new()
 	escape.keycode = KEY_ESCAPE
 	escape.pressed = true

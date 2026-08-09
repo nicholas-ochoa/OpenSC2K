@@ -43,18 +43,18 @@ func note_moving_tick(now_msec := -1) -> void:
 	if now_msec < 0:
 		now_msec = Time.get_ticks_msec()
 
-	if app.city == null or app.preferences.moving_frame_rate <= ORIGINAL_FRAME_RATE:
+	if app.document_state.city == null or app.preferences.moving_frame_rate <= ORIGINAL_FRAME_RATE:
 		reset_blend()
 
 		return
 
 	var view_size := app.static_render.city_view_size()
-	var continuing := _blend_city_id == app.city.get_instance_id() and _blend_view_size == view_size
+	var continuing := _blend_city_id == app.document_state.city.get_instance_id() and _blend_view_size == view_size
 	var next := {}
 	var from := {}
 
-	for record in app.city.thing_count():
-		var anchor := IsometricRenderer.moving_thing_anchor(app.city, record, view_size)
+	for record in app.document_state.city.thing_count():
+		var anchor := IsometricRenderer.moving_thing_anchor(app.document_state.city, record, view_size)
 
 		if anchor.is_empty():
 			continue
@@ -66,7 +66,7 @@ func note_moving_tick(now_msec := -1) -> void:
 
 	_blend_to = next
 	_blend_from = from
-	_blend_city_id = app.city.get_instance_id()
+	_blend_city_id = app.document_state.city.get_instance_id()
 	_blend_view_size = view_size
 	_blend_tick_msec = now_msec
 	_blend_alpha = 0.0
@@ -165,7 +165,7 @@ func refresh_moving_things(view_size := -1) -> void:
 	if app.map_view != null:
 		app.map_view.set_moving_occlusion_enabled(app.preferences.moving_frame_rate > ORIGINAL_FRAME_RATE)
 
-	if app.city == null or app.palette == null or app.map_view == null or app.overlay_mode != CityViewMode.Mode.CITY:
+	if app.document_state.city == null or app.palette == null or app.map_view == null or app.overlay_mode != CityViewMode.Mode.CITY:
 		caches.dynamic_sign_occluders.clear()
 		caches.dynamic_sign_occlusion_grid.clear()
 
@@ -192,7 +192,7 @@ func refresh_moving_things(view_size := -1) -> void:
 	var divisor := int(configuration.divisor)
 	var factor := 1
 	var commands := caches.dynamic_command_cache.get_commands(
-		app.city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
+		app.document_state.city, sprite_archive, view_size, int(Time.get_ticks_msec() / 100)
 	)
 	var visuals: Array[Dictionary] = []
 	var gpu_moving := _gpu_moving_active()
@@ -307,7 +307,7 @@ func refresh_moving_things(view_size := -1) -> void:
 
 
 func _is_vehicle(record: int) -> bool:
-	var thing := app.city.thing(record)
+	var thing := app.document_state.city.thing(record)
 
 	return thing != null and thing.type in CityViewFilter.VEHICLE_THING_TYPES
 
@@ -516,7 +516,7 @@ func _dynamic_train_foreground_image(
 func demolish_brush_visual(tile: Vector2i, direction: int) -> Dictionary:
 	var view_size := app.static_render.city_view_size()
 	var archive := app.static_render.sprite_archive_for_view(view_size)
-	if app.city == null or archive == null or app.palette == null:
+	if app.document_state.city == null or archive == null or app.palette == null:
 		return {}
 
 	var sprite := IsometricRenderer.moving_thing_sprite(ThingRecord.from_fields({"type": 4, "direction": direction}), view_size)
@@ -535,7 +535,7 @@ func demolish_brush_visual(tile: Vector2i, direction: int) -> Dictionary:
 		"x": tile.x, "y": tile.y, "z": 0, "px": 0, "py": 0,
 		"monster": false, "tornado": false, "train": false,
 	}
-	var commands := IsometricRenderer.moving_thing_draw_commands_for_visual(app.city, archive, visual, configuration)
+	var commands := IsometricRenderer.moving_thing_draw_commands_for_visual(app.document_state.city, archive, visual, configuration)
 	if commands.is_empty():
 		return {}
 	return {

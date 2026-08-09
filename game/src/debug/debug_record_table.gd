@@ -73,7 +73,8 @@ func refresh_from_host(host: Control, force := false) -> void:
 	if not is_instance_valid(host):
 		return
 
-	var city := host.get("city") as CityState
+	var document := host.get("document_state") as ActiveDocumentState
+	var city: CityState = document.city if document != null else null
 	var city_id := city.get_instance_id() if city != null else 0
 	var changed_city := city_id != _city_id
 

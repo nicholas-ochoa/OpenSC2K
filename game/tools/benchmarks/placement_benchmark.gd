@@ -19,7 +19,7 @@ func _run() -> void:
 	for frame in 5:
 		await process_frame
 
-	var city := main.get("city") as CityState
+	var city := main.document_state.city as CityState
 	var points: Array[Vector2i] = [Vector2i(60, 60)]
 
 	for tool in [Vector2i(14, 0), Vector2i(13, 0), Vector2i(3, 2)]:

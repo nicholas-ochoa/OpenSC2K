@@ -28,7 +28,7 @@ func _run() -> void:
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
 	assert(main.city_session.activate_document(EmptyCityTemplate.create(256)))
-	var before: Array = DocumentState.capture(main.city.document)
+	var before: Array = DocumentState.capture(main.document_state.city.document)
 	# The environment override remains explicit, independent of the saved default.
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
 	main.preferences.city_renderer = "gpu"
@@ -37,7 +37,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "cpu")
 	main.settings._set_city_renderer("gpu")
 	assert(not main.render_caches.region_cache.gpu_enabled)
-	assert(DocumentState.capture(main.city.document) == before, "Changing renderer altered saved data")
+	assert(DocumentState.capture(main.document_state.city.document) == before, "Changing renderer altered saved data")
 
 
 	main.queue_free()

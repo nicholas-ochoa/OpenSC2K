@@ -18,35 +18,35 @@ func open_manual_budget() -> void:
 	if app.landscape_editor:
 		return
 
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
-	open_budget_dialog(Budget.funding_values(app.city), false)
+	open_budget_dialog(Budget.funding_values(app.document_state.city), false)
 
 
 func open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
-	if app.city == null or values.size() != Budget.BUDGET_COUNT:
+	if app.document_state.city == null or values.size() != Budget.BUDGET_COUNT:
 		app.interface.show_error("Cannot open the budget because its saved values are invalid.")
 
 		return
 
-	if app.city.music_enabled() and app.simulation_engine != null:
+	if app.document_state.city.music_enabled() and app.simulation_engine != null:
 		app.effects_audio.play_music_track(Music.budget_track(app.simulation_engine.lfsr_random))
 
 	app.annual_budget_pending = annual
 	app.budget_dialog.open_budget(
 		values,
 		annual,
-		app.city.document.misc_u32(Budget.MISC_AUTO_BUDGET) != 0,
+		app.document_state.city.document.misc_u32(Budget.MISC_AUTO_BUDGET) != 0,
 	)
 	_update_bond_controls()
 
 
 func request_issue_bond() -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
-	var result := Bonds.issue(app.city)
+	var result := Bonds.issue(app.document_state.city)
 
 	if not result.ok:
 		app.interface.show_error("Cannot issue a bond: %s" % result.error)
@@ -69,10 +69,10 @@ func request_issue_bond() -> void:
 
 
 func request_repay_bond() -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
-	var result := Bonds.repay(app.city)
+	var result := Bonds.repay(app.document_state.city)
 
 	if not result.ok:
 		app.interface.show_error("Cannot repay a bond: %s" % result.error)
@@ -91,7 +91,7 @@ func request_repay_bond() -> void:
 
 
 func resolve_bond_action(action: String, confirmed: bool) -> void:
-	if app.city == null or action.is_empty():
+	if app.document_state.city == null or action.is_empty():
 		return
 
 	var confirmation := (
@@ -100,9 +100,9 @@ func resolve_bond_action(action: String, confirmed: bool) -> void:
 		else Bonds.CONFIRMATION_CANCELLED
 	)
 	var result := (
-		Bonds.issue(app.city, confirmation)
+		Bonds.issue(app.document_state.city, confirmation)
 		if action == "issue"
-		else Bonds.repay(app.city, confirmation)
+		else Bonds.repay(app.document_state.city, confirmation)
 	)
 
 	if not result.ok:
@@ -132,22 +132,22 @@ func resolve_bond_action(action: String, confirmed: bool) -> void:
 
 
 func _update_bond_controls() -> void:
-	if app.city == null or app.budget_dialog == null:
+	if app.document_state.city == null or app.budget_dialog == null:
 		return
 
-	var bond_count := app.city.document.misc_u32(Bonds.MISC_BONDS)
-	var funds := app.city.funds()
-	var average_fixed := app.city.document.misc_i32(
+	var bond_count := app.document_state.city.document.misc_u32(Bonds.MISC_BONDS)
+	var funds := app.document_state.city.funds()
+	var average_fixed := app.document_state.city.document.misc_i32(
 		Budget.MISC_BUDGETS
 		+ Budget.BUDGET_BONDS * Budget.BUDGET_RECORD_SIZE
 		+ Budget.BUDGET_FUNDING
 	)
-	var oldest := app.city.document.misc_u32(Bonds.MISC_BOND_RATES) & 0xffff
+	var oldest := app.document_state.city.document.misc_u32(Bonds.MISC_BOND_RATES) & 0xffff
 	app.budget_dialog.set_bond_state(bond_count, funds, average_fixed, oldest)
 
 
 func commit_budget() -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
 	var values := app.budget_dialog.funding_values()
@@ -170,7 +170,7 @@ func commit_budget() -> void:
 
 		return
 
-	var stored := Budget.set_funding(app.city, values, auto_budget)
+	var stored := Budget.set_funding(app.document_state.city, values, auto_budget)
 
 	if not stored.ok:
 		app.interface.show_error("Cannot save the budget: %s" % stored.error)
@@ -250,7 +250,7 @@ func _restore_military_proposal_dialog() -> void:
 func open_scenario_intro(scenario: ScenarioState) -> void:
 	var rendered_picture := ScenarioGraphics.render(scenario, app.scenario_palette, app.scenario_graphics)
 	var picture: Image = rendered_picture.image if rendered_picture.ok else null
-	var name := app.city.city_name()
+	var name := app.document_state.city.city_name()
 
 	if name.is_empty():
 		name = app.document_state.current_document.source_path.get_file().get_basename()

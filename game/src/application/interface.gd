@@ -40,7 +40,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.city_toolbar = app.city_workspace.toolbar
 	app.city_toolbar.button_clicked.connect(func() -> void:
 		if app.preferences.toolbar_sounds:
-			app.audio_controller.play_toolbar_click(app.city == null or app.city.sound_enabled())
+			app.audio_controller.play_toolbar_click(app.document_state.city == null or app.document_state.city.sound_enabled())
 	)
 	app.city_toolbar.group_requested.connect(app.camera_input.choose_tool_group)
 	app.city_toolbar.subtool_requested.connect(app.current_tool.select_subtool)
@@ -214,7 +214,7 @@ func show_main_menu() -> void:
 	if app.assets_ready:
 		app.main_menu.city_background.configure(app.reference_root, app.palette, app.large_sprites)
 
-	app.main_menu.show_menu(app.city != null)
+	app.main_menu.show_menu(app.document_state.city != null)
 	app.status_label.text = "Main menu."
 
 
@@ -222,60 +222,60 @@ func hide_main_menu() -> void:
 	if app.audio_controller != null and app.audio_controller.menu_music:
 		app.audio_controller.set_menu_music(false)
 
-		if app.city != null and app.city.music_enabled():
+		if app.document_state.city != null and app.document_state.city.music_enabled():
 			app.effects_audio.play_music_track(app.audio_controller.music_director.next_general_track())
 
 	if app.main_menu != null:
 		app.main_menu.hide()
 
-	if app.city != null:
+	if app.document_state.city != null:
 		app.status_label.text = "City ready."
 
 
 func open_about_dialog() -> void:
 	app.about_dialog.popup_centered()
-	if app.assets_ready and app.audio_controller != null and app.audio_controller.music_volume > 0.0 and (app.city == null or app.city.music_enabled()):
+	if app.assets_ready and app.audio_controller != null and app.audio_controller.music_volume > 0.0 and (app.document_state.city == null or app.document_state.city.music_enabled()):
 		app.audio_controller.play_music_track(Music.ABOUT_TRACK, false, true)
 
 
 func refresh_details() -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
 	app.menus.sync_city_option_menus()
 
 	if app.graph_window != null:
-		app.graph_window.refresh_city(app.city)
+		app.graph_window.refresh_city(app.document_state.city)
 
 	if app.population_window != null:
-		app.population_window.refresh_city(app.city)
+		app.population_window.refresh_city(app.document_state.city)
 
 	if app.industry_window != null:
-		app.industry_window.refresh_city(app.city)
+		app.industry_window.refresh_city(app.document_state.city)
 
 	if app.simnation_window != null:
-		app.simnation_window.refresh_city(app.city)
+		app.simnation_window.refresh_city(app.document_state.city)
 
 	if app.ordinance_window != null:
 		app.ordinance_window.refresh_city()
 
 	if app.city_map_window != null:
-		app.city_map_window.refresh_city(app.city, app.palette, app.reports.city_map_viewport_outline())
+		app.city_map_window.refresh_city(app.document_state.city, app.palette, app.reports.city_map_viewport_outline())
 
-	var demand := app.city.rci_demand()
-	var weather_trend := app.city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff
+	var demand := app.document_state.city.rci_demand()
+	var weather_trend := app.document_state.city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff
 	var weather_name: String = (
 		RciAftermath.WEATHER_NAMES[weather_trend]
 		if weather_trend < RciAftermath.WEATHER_NAMES.size()
 		else "Unknown"
 	)
 	var display_date := "%02d/%02d/%04d" % [
-		app.city.current_month(),
-		app.city.current_day(),
-		app.city.current_year(),
+		app.document_state.city.current_month(),
+		app.document_state.city.current_day(),
+		app.document_state.city.current_year(),
 	]
 	app.city_menu_bar.set_date(display_date)
-	app.city_menu_bar.set_money("$%s" % format_number(app.city.funds()))
+	app.city_menu_bar.set_money("$%s" % format_number(app.document_state.city.funds()))
 	refresh_status_summary(demand, weather_name)
 
 	if app.current_tool.refresh_tool_availability():
@@ -288,14 +288,14 @@ func refresh_status_summary(
 	if app.city_menu_bar == null or app.city_status_bar == null:
 		return
 
-	app.city_status_bar.set_compass(app.city.compass_rotation() if app.city != null else -1)
+	app.city_status_bar.set_compass(app.document_state.city.compass_rotation() if app.document_state.city != null else -1)
 
-	if app.city == null:
+	if app.document_state.city == null:
 		app.city_menu_bar.set_population("--", false)
 		app.city_status_bar.clear_environment()
 	else:
 		if weather_name.is_empty():
-			var weather_trend := app.city.document.misc_u32(
+			var weather_trend := app.document_state.city.document.misc_u32(
 				RciAftermath.MISC_WEATHER_TREND
 			) & 0xff
 			weather_name = (
@@ -303,11 +303,11 @@ func refresh_status_summary(
 				if weather_trend < RciAftermath.WEATHER_NAMES.size()
 				else "Unknown"
 			)
-			demand = app.city.rci_demand()
+			demand = app.document_state.city.rci_demand()
 
-		app.city_menu_bar.set_population(format_number(app.city.population()))
-		var weather_id := CityStatusMessages.WEATHER_FIRST + app.city.weather_type()
-		if app.city.weather_type() >= 0 and app.city.weather_type() < CityStatusMessages.WEATHER_COUNT:
+		app.city_menu_bar.set_population(format_number(app.document_state.city.population()))
+		var weather_id := CityStatusMessages.WEATHER_FIRST + app.document_state.city.weather_type()
+		if app.document_state.city.weather_type() >= 0 and app.document_state.city.weather_type() < CityStatusMessages.WEATHER_COUNT:
 			weather_name = CityStatusMessages.text(weather_id, app.original_text_resources.original_query_strings)
 		app.city_status_bar.set_environment(demand, weather_name)
 

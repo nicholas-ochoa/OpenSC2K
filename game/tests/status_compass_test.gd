@@ -15,7 +15,7 @@ func _run() -> void:
 	await process_frame
 	main.set_process(false)
 	var status := main.city_status_bar as CityStatusBar
-	main.city = null
+	main.document_state.city = null
 	main.interface.refresh_status_summary()
 	assert(status.compass.compass_rotation == -1)
 
@@ -41,7 +41,7 @@ func _run() -> void:
 	# Exercise the same handlers as the rotation buttons, including wraparound.
 	for counter_clockwise in [false, true]:
 		for step in range(4):
-			var previous: int = main.city.compass_rotation()
+			var previous: int = main.document_state.city.compass_rotation()
 			main.camera_input.rotate_city(counter_clockwise)
 			var expected := (previous + (1 if counter_clockwise else 3)) & 3
 			assert(status.compass.compass_rotation == expected)

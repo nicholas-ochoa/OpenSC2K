@@ -121,7 +121,7 @@ func _run() -> void:
 	assert(candidate.serialize().data == bytes)
 	assert(main.new_city_session.preview_process_cursor == cursor)
 	main.new_city.create_new_city_unchecked()
-	assert(main.city == null)
+	assert(main.document_state.city == null)
 	dialog.compatibility_input.button_pressed = false
 	dialog.size_input.select(dialog.size_input.get_item_index(16))
 	assert(not dialog.size_input.disabled and not dialog.native_maps_input.disabled)
@@ -134,10 +134,10 @@ func _run() -> void:
 	dialog.city_name_input.text = "New Cedar Grove"
 	dialog.city_name_input.text_changed.emit(dialog.city_name_input.text)
 	main.new_city.create_new_city_unchecked()
-	assert(main.city.city_name() == "New Cedar Grove")
-	assert(main.city.mayor_name() == "Cedar Mayor")
-	assert(main.city.founding_year() == dialog.year_input.get_selected_id())
-	assert(main.city.difficulty() == dialog.difficulty_input.get_selected_id())
+	assert(main.document_state.city.city_name() == "New Cedar Grove")
+	assert(main.document_state.city.mayor_name() == "Cedar Mayor")
+	assert(main.document_state.city.founding_year() == dialog.year_input.get_selected_id())
+	assert(main.document_state.city.difficulty() == dialog.difficulty_input.get_selected_id())
 	assert(main.landscape_editor)
 	for id in ["ALTM", "XTER", "XBLD", "XBIT"]:
 		assert(main.document_state.current_document.find_chunk(id).decoded_payload == generated.find_chunk(id).decoded_payload)

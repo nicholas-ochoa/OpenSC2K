@@ -132,12 +132,12 @@ func check_ui() -> void:
 	doc.find_chunk("XVAL").set_decoded_payload(data)
 	main.map_render.refresh_map(false)
 	check(main.map_view.data_view_mesh == old_mesh, "Changed simulation grid retains geometry")
-	check(main.map_view.data_view_signature == CityDataView.signature(main.city, CityViewMode.Mode.LAND_VALUE), "Updated texture tracks current data revision")
+	check(main.map_view.data_view_signature == CityDataView.signature(main.document_state.city, CityViewMode.Mode.LAND_VALUE), "Updated texture tracks current data revision")
 
 	if DisplayServer.get_name() != "headless":
 		check(roundi(main.map_view.data_value_texture.get_image().get_pixel(4, 4).r * 255) == 255, "Changed grid uploads current value")
 
-	check(CityDataView.tile_text(main.city, CityViewMode.Mode.LAND_VALUE, Vector2i(4, 4), true).contains("255 / 0xFF"), "Exact hover value")
+	check(CityDataView.tile_text(main.document_state.city, CityViewMode.Mode.LAND_VALUE, Vector2i(4, 4), true).contains("255 / 0xFF"), "Exact hover value")
 	main.current_tool.select_tool_group(17)
 	check(main.overlay_mode == CityViewMode.Mode.LAND_VALUE and main.map_view.edit_enabled, "Center preserves data view")
 	main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)

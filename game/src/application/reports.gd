@@ -25,15 +25,15 @@ func on_disaster_menu(id: int) -> void:
 	if app.landscape_editor:
 		return
 
-	if app.city == null or app.simulation_engine == null:
+	if app.document_state.city == null or app.simulation_engine == null:
 		app.interface.show_error("Load a city before you start a disaster.")
 
 		return
 
 	if id == MENU_NO_DISASTERS:
-		var enabled := not app.city.no_disasters_enabled()
+		var enabled := not app.document_state.city.no_disasters_enabled()
 
-		if not app.city.set_no_disasters_enabled(enabled):
+		if not app.document_state.city.set_no_disasters_enabled(enabled):
 			app.interface.show_error("Cannot update the No Disasters option.")
 
 			return
@@ -51,7 +51,7 @@ func on_disaster_menu(id: int) -> void:
 
 
 func start_disaster_at_view_center(id: int) -> Dictionary:
-	if app.city == null or app.simulation_engine == null:
+	if app.document_state.city == null or app.simulation_engine == null:
 		return {"ok": false, "error": "no city is loaded"}
 
 	var point := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
@@ -67,7 +67,7 @@ func start_disaster_at_view_center(id: int) -> Dictionary:
 	if not result.get("started", false):
 		return {"ok": false, "error": "the selected disaster could not start"}
 
-	if app.city.music_enabled():
+	if app.document_state.city.music_enabled():
 		app.effects_audio.play_music_track(Music.DISASTER_TRACK)
 
 	app.last_edit_command = null
@@ -109,10 +109,10 @@ func on_windows_menu(id: int) -> void:
 
 
 func _open_ordinance_window() -> void:
-	if app.city == null or app.ordinance_window == null:
+	if app.document_state.city == null or app.ordinance_window == null:
 		return
 
-	var result: Dictionary = app.ordinance_window.open_city(app.city)
+	var result: Dictionary = app.ordinance_window.open_city(app.document_state.city)
 
 	if not result.get("ok", false):
 		app.interface.show_error("Cannot open ordinances: %s" % result.get("error", "invalid data"))
@@ -125,24 +125,24 @@ func on_ordinances_changed() -> void:
 
 
 func _open_graph_window() -> void:
-	if app.city == null or app.graph_window == null:
+	if app.document_state.city == null or app.graph_window == null:
 		return
 
-	app.graph_window.show_city(app.city)
+	app.graph_window.show_city(app.document_state.city)
 
 
 func _open_population_window() -> void:
-	if app.city == null or app.population_window == null:
+	if app.document_state.city == null or app.population_window == null:
 		return
 
-	app.population_window.show_city(app.city)
+	app.population_window.show_city(app.document_state.city)
 
 
 func _open_industry_window() -> void:
-	if app.city == null or app.industry_window == null:
+	if app.document_state.city == null or app.industry_window == null:
 		return
 
-	app.industry_window.show_city(app.city)
+	app.industry_window.show_city(app.document_state.city)
 
 
 func on_industry_tax_rates_changed() -> void:
@@ -152,17 +152,17 @@ func on_industry_tax_rates_changed() -> void:
 
 
 func _open_simnation_window() -> void:
-	if app.city == null or app.simnation_window == null:
+	if app.document_state.city == null or app.simnation_window == null:
 		return
 
-	app.simnation_window.show_city(app.city)
+	app.simnation_window.show_city(app.document_state.city)
 
 
 func open_city_map_window() -> void:
-	if app.city == null or app.city_map_window == null:
+	if app.document_state.city == null or app.city_map_window == null:
 		return
 
-	app.city_map_window.toggle_city(app.city, app.palette, city_map_viewport_outline())
+	app.city_map_window.toggle_city(app.document_state.city, app.palette, city_map_viewport_outline())
 
 
 func on_city_map_mode_changed(mode: String) -> void:
@@ -190,22 +190,22 @@ func refresh_city_map_viewport() -> void:
 
 func refresh_newspaper_menu() -> void:
 	app.city_menu_bar.set_newspapers(
-		NewspaperDialog.newspaper_titles(app.city, document_state.current_document, text_resources.original_query_strings),
+		NewspaperDialog.newspaper_titles(app.document_state.city, document_state.current_document, text_resources.original_query_strings),
 	)
 
 
 func on_newspaper_menu(id: int) -> void:
-	if app.city == null or document_state.current_document == null:
+	if app.document_state.city == null or document_state.current_document == null:
 		return
 
-	if id < 0 or id >= NewsQueue.available_paper_count(app.city.city_status()):
+	if id < 0 or id >= NewsQueue.available_paper_count(app.document_state.city.city_status()):
 		return
 
-	if app.city.music_enabled() and app.simulation_engine != null:
+	if app.document_state.city.music_enabled() and app.simulation_engine != null:
 		app.effects_audio.play_music_track(Music.newspaper_track(app.simulation_engine.lfsr_random))
 
 	app.newspaper_dialog.open_reports(
-		app.city,
+		app.document_state.city,
 		document_state.current_document,
 		text_resources.newspaper_data,
 		text_resources.original_query_strings,
@@ -246,7 +246,7 @@ func on_building_objection_closed() -> void:
 
 
 func refresh_saved_news_summary() -> void:
-	if app.city == null or document_state.current_document == null:
+	if app.document_state.city == null or document_state.current_document == null:
 		if app.city_status_bar != null:
 			app.city_status_bar.set_reports(PackedStringArray())
 

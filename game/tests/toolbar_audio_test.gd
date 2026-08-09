@@ -13,7 +13,7 @@ func _run() -> void:
 	main.map_view.zoom_factor = 0.25
 	assert(main.city_session.activate_document(EmptyCityTemplate.create()))
 	main.new_city._enter_landscape_editor()
-	main.city.set_sound_enabled(true)
+	main.document_state.city.set_sound_enabled(true)
 	main.audio_controller.application_has_focus = true
 	main.preferences.toolbar_sounds = true
 	main.city_toolbar.toolbar_buttons[0].pressed.emit()
@@ -35,9 +35,9 @@ func _run() -> void:
 
 	for x in range(70, 77):
 		for y in range(70, 77):
-			main.city.set_terrain_id(x, y, 0)
-			main.city.set_building_id(x, y, 0)
-			main.city.set_tile_flag(x, y, 4, false)
+			main.document_state.city.set_terrain_id(x, y, 0)
+			main.document_state.city.set_building_id(x, y, 0)
+			main.document_state.city.set_tile_flag(x, y, 4, false)
 
 	# Both tree tools use the original tree plop in free landscape mode.
 	for subtool in [0, 3]:
@@ -54,7 +54,7 @@ func _run() -> void:
 		assert(_has_sound(main, ToolSoundRules.SOUND_TREE))
 		await _clear(main)
 
-	main.city.set_sound_enabled(false)
+	main.document_state.city.set_sound_enabled(false)
 	main.current_tool.select_tool_group(0)
 	main.current_tool.select_subtool(2)
 	var muted_path: Array[Vector2i] = [Vector2i(60, 60)]

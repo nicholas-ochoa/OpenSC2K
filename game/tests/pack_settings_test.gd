@@ -65,7 +65,7 @@ func _run() -> void:
 	main.map_view.zoom_factor = 0.25
 	assert(main.city_session.activate_document(EmptyCityTemplate.create()))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
-	var before: PackedByteArray = main.city.document.serialize().data
+	var before: PackedByteArray = main.document_state.city.document.serialize().data
 	main.settings.open_settings_dialog()
 	var dialog: AppSettingsDialog = main.settings_dialog
 	assert(dialog.folder_row.visible)
@@ -103,16 +103,16 @@ func _run() -> void:
 	assert(dialog.pack_name_labels.graphics.text == "Runtime test")
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels == sprite.pixels)
 	assert(main.main_menu.city_background.demo_sprites == main.large_sprites)
-	assert(main.city.document.serialize().data == before)
+	assert(main.document_state.city.document.serialize().data == before)
 	dialog.folder_edit.text = original_folder.path_join("pack.json")
 	main.settings.apply_settings()
 	assert(main.asset_source.graphics_name == original_manifest.name)
 	assert(main.base_large_sprites.find_sprite(record.id).decode_indices().pixels != sprite.pixels)
-	assert(main.city.document.serialize().data == before)
+	assert(main.document_state.city.document.serialize().data == before)
 	main.settings_dialog.hide()
 	main.new_city.open_new_city_dialog()
 	assert(main.new_city_dialog.mayor_name_input.text == "Alex")
-	assert(main.city.document.serialize().data == before)
+	assert(main.document_state.city.document.serialize().data == before)
 	main.new_city_dialog.hide()
 	main.queue_free()
 	await process_frame

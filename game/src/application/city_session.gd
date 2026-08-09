@@ -116,11 +116,11 @@ func activate_document(
 	app.scurk_edit_history.clear()
 	app.annual_budget_pending = false
 	app.game_over_active = false
-	app.city = loaded_city
+	app.document_state.city = loaded_city
 	app.map_view.pending_loaded_center = Vector2i(-1, -1)
 
 	if not document.source_path.is_empty():
-		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(0x1018), 0, app.city.map_size - 1), clampi(document.misc_u32(0x101c), 0, app.city.map_size - 1))
+		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(0x1018), 0, app.document_state.city.map_size - 1), clampi(document.misc_u32(0x101c), 0, app.document_state.city.map_size - 1))
 
 	app.current_tool.select_tool_group(17)
 	app.overlay_mode = CityViewMode.Mode.CITY
@@ -129,7 +129,7 @@ func activate_document(
 	document_state.saved_city_snapshot = (
 		initial_serialized.data.duplicate() if initial_serialized.ok else PackedByteArray()
 	)
-	var facility_repair := FacilityRecordRepair.apply(app.city)
+	var facility_repair := FacilityRecordRepair.apply(app.document_state.city)
 
 	if not facility_repair.ok:
 		status_text += " " + str(facility_repair.error)
@@ -168,7 +168,7 @@ func activate_document(
 
 	app.frame_simulation = null
 	app.simulation_timings.clear()
-	app.simulation_engine = Simulation.new(app.city, process_seed, lfsr_seed, game_seed)
+	app.simulation_engine = Simulation.new(app.document_state.city, process_seed, lfsr_seed, game_seed)
 	app.simulation_engine.vehicle_crashes_enabled = app.show_vehicles
 	app.speed_controller = GameSpeed.new(app.simulation_engine)
 	app.speed_controller.original_compatibility = app.preferences.original_compatibility
@@ -185,7 +185,7 @@ func activate_document(
 	app.dispatch_cycles = PackedInt32Array([0, 0, 0])
 	app.dispatch_initialized = false
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
-	var display_name := app.city.city_name()
+	var display_name := app.document_state.city.city_name()
 
 	if display_name.is_empty():
 		display_name = document.source_path.get_file().get_basename()
@@ -201,7 +201,7 @@ func activate_document(
 	app.map_render.refresh_map()
 	app.current_tool.update_edit_state()
 
-	if not app.city.music_enabled():
+	if not app.document_state.city.music_enabled():
 		app.effects_audio.stop_music()
 	elif music_was_active:
 		app.simulation_engine.midi_playback_active = true

@@ -20,9 +20,9 @@ func _init(application: CityApplication) -> void:
 
 func refresh_map(force := true) -> void:
 	if app.city_status_bar != null:
-		app.city_status_bar.set_compass(app.city.compass_rotation() if app.city != null else -1)
+		app.city_status_bar.set_compass(app.document_state.city.compass_rotation() if app.document_state.city != null else -1)
 
-	if app.city == null or app.palette == null:
+	if app.document_state.city == null or app.palette == null:
 		return
 
 	app.map_view.trip_query_underground = app.overlay_mode == CityViewMode.Mode.UNDERGROUND
@@ -35,13 +35,13 @@ func refresh_map(force := true) -> void:
 		app.static_render_state.pending = false
 		app.map_view.set_dynamic_sprites([])
 		app.map_view.show_transient_effects([])
-		app.map_view.set_data_view(app.city, app.overlay_mode)
+		app.map_view.set_data_view(app.document_state.city, app.overlay_mode)
 
 		return
 
 	app.map_view.clear_data_view()
 
-	if (app.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer)) and CityViewMode.is_map(app.overlay_mode):
+	if (app.document_state.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer)) and CityViewMode.is_map(app.overlay_mode):
 		refresh_region_map(force)
 
 		return
@@ -117,9 +117,9 @@ func refresh_map(force := true) -> void:
 
 		app.static_render_state.epoch += 1
 		var display_city := (
-			app.city
+			app.document_state.city
 			if app.overlay_mode == CityViewMode.Mode.UNDERGROUND
-			else ViewFilter.surface_copy(app.city, app.surface_visibility)
+			else ViewFilter.surface_copy(app.document_state.city, app.surface_visibility)
 		)
 		var indexed: Dictionary
 
@@ -143,8 +143,8 @@ func refresh_map(force := true) -> void:
 
 		if view_size != IsometricRenderer.VIEW_LARGE:
 			image.resize(
-				IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_LARGE, app.city.map_size).x,
-				IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_LARGE, app.city.map_size).y,
+				IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_LARGE, app.document_state.city.map_size).x,
+				IsometricRenderer.output_size_for_view(IsometricRenderer.VIEW_LARGE, app.document_state.city.map_size).y,
 				Image.INTERPOLATE_NEAREST,
 			)
 
@@ -169,7 +169,7 @@ func refresh_map(force := true) -> void:
 		}
 	else:
 		app.static_render_state.pending = false
-		image = Minimap.create_image(app.city, app.palette, CityViewMode.key(app.overlay_mode))
+		image = Minimap.create_image(app.document_state.city, app.palette, CityViewMode.key(app.overlay_mode))
 		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
 		caches.static_city_image = null
 		caches.static_occlusion_commands.clear()
@@ -181,7 +181,7 @@ func refresh_map(force := true) -> void:
 
 	var source := CityMapTexture.create(image)
 	app.map_view.set_city_view(
-		caches.static_display_city if CityViewMode.is_map(app.overlay_mode) else app.city,
+		caches.static_display_city if CityViewMode.is_map(app.overlay_mode) else app.document_state.city,
 		source, null,
 		CityViewMode.is_map(app.overlay_mode)
 	)
@@ -221,14 +221,14 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	if force:
 		caches.region_cache.signature = []
 
-	caches.region_cache.configure(app.city, app.palette_index_encoding, sprites, signature, view_size,
+	caches.region_cache.configure(app.document_state.city, app.palette_index_encoding, sprites, signature, view_size,
 		app.overlay_mode, app.surface_visibility, app.show_underground_pipes, app.show_underground_subways, dirty, app.show_underground_water_mains)
 
 	if app.overlay_mode == CityViewMode.Mode.CITY:
-		var labels := app.city.document.find_chunk("XLAB")
+		var labels := app.document_state.city.document.find_chunk("XLAB")
 		# reuse the altitude revision and the sign/dispatch signature already
 		# computed for this snapshot
-		caches.region_cache.sign_layout_token = [app.city.map_size, signature[1], signature[2], signature[3], signature[9], hash(labels.decoded_payload) if labels != null else 0]
+		caches.region_cache.sign_layout_token = [app.document_state.city.map_size, signature[1], signature[2], signature[3], signature[9], hash(labels.decoded_payload) if labels != null else 0]
 	else:
 		caches.region_cache.sign_layout_token = []
 
@@ -249,7 +249,7 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 
 
 func poll_region_cache() -> void:
-	if caches.region_cache == null or app.city == null:
+	if caches.region_cache == null or app.document_state.city == null:
 		return
 
 	caches.region_cache.update_viewport(app.map_view.visible_source_rect())

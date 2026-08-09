@@ -22,7 +22,7 @@ func process(delta: float) -> void:
 	if app.audio_controller != null:
 		app.audio_controller.set_menu_music(
 			app.assets_ready and app.main_menu != null and app.main_menu.visible and app.preferences.music_volume > 0.0
-			and (app.city == null or app.city.music_enabled())
+			and (app.document_state.city == null or app.document_state.city.music_enabled())
 		)
 		app.audio_controller.advance(delta * 1000.0)
 
@@ -35,7 +35,7 @@ func process(delta: float) -> void:
 	app.static_render.start_pending_static_render()
 	app.city_png_export.poll_export()
 
-	if app.speed_controller == null or app.city == null:
+	if app.speed_controller == null or app.document_state.city == null:
 		return
 
 	app.simulation_engine.midi_playback_active = app.effects_audio.music_playback_is_active()
@@ -116,7 +116,7 @@ func consume_simulation_result(result: Dictionary) -> void:
 		app.last_edit_command = null
 		app.scurk_edit_history.clear()
 		# sc2x data-map updates do not change the surface or underground artwork
-		var data_maps_only: bool = (app.city.document.full_resolution_maps() and result.day_results.size() == 1
+		var data_maps_only: bool = (app.document_state.city.document.full_resolution_maps() and result.day_results.size() == 1
 			and SimulationDaySchedule.scanned_data_maps_only(result.day_results[0])
 			and result.effect_events.is_empty() and result.view_center_requests.is_empty()
 			and CityViewMode.is_map(app.overlay_mode))
@@ -151,7 +151,7 @@ func consume_simulation_result(result: Dictionary) -> void:
 		app.effects_audio.show_effect_events(result.effect_events, app.moving_sprites.audible_sound_events(result.sound_events))
 
 	for track_id in result.get("music_track_requests", PackedInt32Array()):
-		if app.city.music_enabled():
+		if app.document_state.city.music_enabled():
 			app.effects_audio.play_music_track(int(track_id))
 
 	if not result.news_items.is_empty():
@@ -212,6 +212,6 @@ func sync_speed_ui() -> void:
 		var speed_name := app.speed_controller.speed_name() if app.speed_controller != null else "--"
 		app.city_status_bar.set_speed(speed_name)
 		app.city_status_bar.set_city_status(
-			app.simulation_engine if app.city != null and not app.landscape_editor else null,
+			app.simulation_engine if app.document_state.city != null and not app.landscape_editor else null,
 			selected_speed == GameSpeed.Speed.PAUSED, app.original_text_resources.original_query_strings
 		)

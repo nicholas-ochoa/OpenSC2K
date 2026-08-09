@@ -30,7 +30,7 @@ func apply_network_selection(
 
 	var tool_name: String = Tools.tool(group_index, subtool_index).name
 	var network := Networks.apply(
-		app.city,
+		app.document_state.city,
 		group_index,
 		subtool_index,
 		start,

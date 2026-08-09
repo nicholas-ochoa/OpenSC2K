@@ -7,8 +7,7 @@ const Random = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const ScurkHistory = preload("res://src/tools/scurk/scurk_edit_history.gd")
 
-# active document and save state
-var city: CityState
+# active city, document, and save state
 var document_state := ActiveDocumentState.new()
 # loaded graphics and active view
 var palette: Sc2Palette

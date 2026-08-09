@@ -26,7 +26,7 @@ func is_running() -> bool:
 
 
 func open_export_dialog() -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		app.interface.show_error("Load a city before you export it.")
 
 		return
@@ -37,9 +37,9 @@ func open_export_dialog() -> void:
 		return
 
 	app.city_png_export_dialog.configure(
-		app.city.city_name(),
+		app.document_state.city.city_name(),
 		_default_folder(),
-		app.city.map_size,
+		app.document_state.city.map_size,
 		app.static_render.city_view_size(),
 		CityViewMode.key(app.overlay_mode),
 		bool(app.surface_visibility.get("signs", true)),
@@ -49,7 +49,7 @@ func open_export_dialog() -> void:
 
 
 func start_export(options: Dictionary) -> void:
-	if app.city == null or is_running():
+	if app.document_state.city == null or is_running():
 		return
 
 	# the worker renders a private copy, so play and edits can continue
@@ -60,7 +60,7 @@ func start_export(options: Dictionary) -> void:
 
 		return
 
-	snapshot.visible_altitude_levels = app.city.visible_altitude_levels
+	snapshot.visible_altitude_levels = app.document_state.city.visible_altitude_levels
 	var view_size := int(options.view_size)
 	job = ExportJob.new()
 	job.city_snapshot = snapshot

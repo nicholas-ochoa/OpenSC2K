@@ -100,7 +100,7 @@ func open_scurk_place_print() -> void:
 	if app.landscape_editor:
 		return
 
-	if app.city == null:
+	if app.document_state.city == null:
 		app.interface.show_error("Load or create a city before you open SCURK Place & Print.")
 
 		return
@@ -156,7 +156,7 @@ func close_scurk_place_print() -> void:
 
 	app.current_tool.update_edit_state()
 
-	if app.city != null:
+	if app.document_state.city != null:
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Closed SCURK Place & Print."
 
@@ -214,12 +214,12 @@ func record_edit_command(
 
 
 func apply_scurk_place_selection(point: Vector2i) -> void:
-	if app.city == null or app.scurk_place_print == null:
+	if app.document_state.city == null or app.scurk_place_print == null:
 		return
 
 	var tile_id := app.scurk_place_print.selected_tile_id
 	var result := ScurkPlace.apply(
-		app.city,
+		app.document_state.city,
 		tile_id,
 		point,
 		app.tool_random,
@@ -245,10 +245,10 @@ func apply_scurk_place_selection(point: Vector2i) -> void:
 
 
 func undo_scurk_place() -> void:
-	if app.city == null or not app.scurk_edit_history.can_undo():
+	if app.document_state.city == null or not app.scurk_edit_history.can_undo():
 		return
 
-	var result := app.scurk_edit_history.undo(app.city, app.tool_random)
+	var result := app.scurk_edit_history.undo(app.document_state.city, app.tool_random)
 
 	if not result.ok:
 		app.interface.show_error("Cannot undo SCURK placement: %s" % result.error)
@@ -272,10 +272,10 @@ func undo_scurk_place() -> void:
 
 
 func _redo_scurk_place() -> void:
-	if app.city == null or not app.scurk_edit_history.can_redo():
+	if app.document_state.city == null or not app.scurk_edit_history.can_redo():
 		return
 
-	var result := app.scurk_edit_history.redo(app.city, app.tool_random)
+	var result := app.scurk_edit_history.redo(app.document_state.city, app.tool_random)
 
 	if not result.ok:
 		app.interface.show_error("Cannot redo SCURK placement: %s" % result.error)
@@ -357,7 +357,7 @@ func _apply_scurk_tile_set(
 
 	app.static_render.invalidate_rendered_city()
 
-	if app.city != null:
+	if app.document_state.city != null:
 		app.map_render.refresh_map()
 
 	app.status_label.theme_type_variation = ""
@@ -381,7 +381,7 @@ func restore_original_tile_set() -> void:
 
 	app.static_render.invalidate_rendered_city()
 
-	if app.city != null:
+	if app.document_state.city != null:
 		app.map_render.refresh_map()
 
 	app.status_label.theme_type_variation = ""

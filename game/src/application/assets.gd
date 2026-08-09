@@ -259,8 +259,8 @@ func refresh_scurk_artwork() -> void:
 
 	app.map_view.scurk_stamp_visuals.clear()
 
-	if app.city != null and app.scurk_place_print != null and app.scurk_place_print.visible and app.overlay_mode == CityViewMode.Mode.CITY:
-		for stamp in app.city.scurk_artwork_stamps:
+	if app.document_state.city != null and app.scurk_place_print != null and app.scurk_place_print.visible and app.overlay_mode == CityViewMode.Mode.CITY:
+		for stamp in app.document_state.city.scurk_artwork_stamps:
 			var entry = app.large_sprites.find_sprite(1000 + int(stamp.tile_id))
 
 			if entry == null:
@@ -272,7 +272,7 @@ func refresh_scurk_artwork() -> void:
 				continue
 
 			var texture := ImageTexture.create_from_image(rendered.image)
-			var anchor: Vector2 = CityIsometricRenderer.tile_polygon(app.city, stamp.point.x, stamp.point.y)[2]
+			var anchor: Vector2 = CityIsometricRenderer.tile_polygon(app.document_state.city, stamp.point.x, stamp.point.y)[2]
 			app.map_view.scurk_stamp_visuals.append({"texture": texture, "position": anchor - Vector2(texture.get_width() / 2.0, texture.get_height() - 1)})
 
 	app.map_view.queue_redraw()

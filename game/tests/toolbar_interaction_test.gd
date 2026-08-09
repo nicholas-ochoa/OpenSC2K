@@ -78,7 +78,7 @@ func _run() -> void:
 	assert(not toolbar.hold_menu.visible and main.get("selected_subtool") == 1)
 	assert(main.get("overlay_mode") == CityViewMode.Mode.UNDERGROUND)
 	# Query's footprint is recovered from saved corner flags, from any member.
-	var city := main.get("city") as CityState
+	var city := main.document_state.city as CityState
 	city.document.set_misc_i32(0x14, 100000)
 	CityDebugActions.unlock_everything(city, city.document)
 	var building := BuildingCommand.apply(city, 3, 9, Vector2i(60, 60),

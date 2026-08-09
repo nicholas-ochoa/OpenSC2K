@@ -44,7 +44,7 @@ func _run() -> void:
 		background._process(0.2)
 
 	assert(FileAccess.get_file_as_bytes(background.source_path) == source_bytes)
-	assert(main.city == null and main.document_state.current_document == null)
+	assert(main.document_state.city == null and main.document_state.current_document == null)
 	main.main_menu.hide()
 	var elapsed := background.elapsed
 	background._process(1.0)
@@ -52,7 +52,7 @@ func _run() -> void:
 
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2"))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
-	var city: CityState = main.city
+	var city: CityState = main.document_state.city
 	var before: PackedByteArray = city.document.serialize().data
 	var rng := SimRandom.new(123)
 	var stamp := Place.apply(city, 359, Vector2i(32, 32), rng)
@@ -95,7 +95,7 @@ func _run() -> void:
 	assert(prompt != null)
 	prompt.confirmed.emit()
 	await process_frame
-	assert(main.main_menu.visible and main.city == city)
+	assert(main.main_menu.visible and main.document_state.city == city)
 	assert(city.document.serialize().data == before)
 	assert(FileAccess.get_file_as_bytes(background.source_path) == source_bytes)
 	main.queue_free()

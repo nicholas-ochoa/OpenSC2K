@@ -95,9 +95,9 @@ func _check_menu_and_dialog() -> void:
 func _check_content_options() -> void:
 	var things := 0
 
-	for y in main.city.map_size:
-		for x in main.city.map_size:
-			if OverlayData.is_thing(main.city.text_overlay_id(x, y)):
+	for y in main.document_state.city.map_size:
+		for x in main.document_state.city.map_size:
+			if OverlayData.is_thing(main.document_state.city.text_overlay_id(x, y)):
 				things += 1
 
 	assert(things > 0, "Fixture has no moving object")
@@ -105,7 +105,7 @@ func _check_content_options() -> void:
 
 	for variant in [[true, true], [false, true], [true, false]]:
 		var job := ExportJob.new()
-		job.city_snapshot = main.city
+		job.city_snapshot = main.document_state.city
 		job.palette = main.palette
 		job.sprites = main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL)
 		job.view_size = Renderer.VIEW_SMALL
@@ -123,10 +123,10 @@ func _check_content_options() -> void:
 
 func _check_render_progress() -> void:
 	var values: Array[float] = []
-	var result := ScurkCityOutput.render(main.city, main.palette, main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL), Renderer.VIEW_SMALL, {
+	var result := ScurkCityOutput.render(main.document_state.city, main.palette, main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL), Renderer.VIEW_SMALL, {
 		"view": "underground", "progress": func(value: float) -> void: values.append(value),
 	})
-	assert(result.ok and values.size() == main.city.map_size * 2 - 1)
+	assert(result.ok and values.size() == main.document_state.city.map_size * 2 - 1)
 
 	for index in range(1, values.size()):
 		assert(values[index] > values[index - 1])

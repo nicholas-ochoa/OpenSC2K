@@ -20,7 +20,7 @@ func _init(application: CityApplication) -> void:
 
 
 func open_tool_choice_dialog(group_index: int) -> void:
-	if app.city == null or (group_index != 3 and group_index != 5):
+	if app.document_state.city == null or (group_index != 3 and group_index != 5):
 		return
 
 	var first_subtool := 2 if group_index == 3 else 5
@@ -28,7 +28,7 @@ func open_tool_choice_dialog(group_index: int) -> void:
 	var choices: Array[int] = []
 
 	for subtool_index in range(first_subtool, final_subtool + 1):
-		if ToolAvailability.is_available(app.city, group_index, subtool_index):
+		if ToolAvailability.is_available(app.document_state.city, group_index, subtool_index):
 			choices.append(subtool_index)
 
 	if choices.is_empty():
@@ -78,7 +78,7 @@ func cancel_tool_choice() -> void:
 
 
 func open_stadium_dialog(command: BuildingEditResult) -> void:
-	var choices := BuildingFacilities.stadium_team_choices(app.city)
+	var choices := BuildingFacilities.stadium_team_choices(app.document_state.city)
 
 	if choices.is_empty():
 		app.interface.show_error("Cannot read the available stadium teams.")
@@ -91,7 +91,7 @@ func open_stadium_dialog(command: BuildingEditResult) -> void:
 	for team_index in choices:
 		teams.append({
 			"id": team_index,
-			"name": BuildingFacilities.stadium_team_name(app.city, team_index),
+			"name": BuildingFacilities.stadium_team_name(app.document_state.city, team_index),
 		})
 
 	app.stadium_dialog.show_teams(teams)
@@ -110,7 +110,7 @@ func confirm_stadium_team() -> void:
 		return
 
 	var result := BuildingFacilities.assign_stadium_team(
-		app.city,
+		app.document_state.city,
 		app.pending_stadium_command,
 		team_index,
 		app.stadium_dialog.entered_name(),
@@ -127,7 +127,7 @@ func confirm_stadium_team() -> void:
 	app.interface.refresh_details()
 	app.effects_audio.play_tool_success_sound(14, 3)
 
-	if app.city.music_enabled():
+	if app.document_state.city.music_enabled():
 		app.effects_audio.play_music_track(Music.RECREATION_TRACK)
 
 	app.status_label.theme_type_variation = ""
@@ -138,7 +138,7 @@ func cancel_stadium_team() -> void:
 	app.pending_stadium_command = null
 	app.effects_audio.play_tool_success_sound(14, 3)
 
-	if app.city != null and app.city.music_enabled():
+	if app.document_state.city != null and app.document_state.city.music_enabled():
 		app.effects_audio.play_music_track(Music.RECREATION_TRACK)
 
 	app.status_label.theme_type_variation = ""
@@ -151,7 +151,7 @@ func _restore_stadium_dialog() -> void:
 
 
 func open_sign_dialog(point: Vector2i) -> void:
-	var overlay := app.city.text_overlay_id(point.x, point.y)
+	var overlay := app.document_state.city.text_overlay_id(point.x, point.y)
 
 	if overlay != 0 and not OverlayData.is_sign(overlay):
 		app.interface.show_error("This tile has a protected simulation label.")
@@ -159,14 +159,14 @@ func open_sign_dialog(point: Vector2i) -> void:
 		return
 
 	app.pending_sign_tile = point
-	app.sign_dialog.show_text(app.city.label(overlay) if overlay > 0 else "")
+	app.sign_dialog.show_text(app.document_state.city.label(overlay) if overlay > 0 else "")
 
 
 func commit_sign() -> void:
-	if app.city == null or app.pending_sign_tile.x < 0:
+	if app.document_state.city == null or app.pending_sign_tile.x < 0:
 		return
 
-	var result := Signs.set_sign(app.city, app.pending_sign_tile, app.sign_dialog.entered_text())
+	var result := Signs.set_sign(app.document_state.city, app.pending_sign_tile, app.sign_dialog.entered_text())
 	app.pending_sign_tile = Vector2i(-1, -1)
 
 	if not result.ok:
@@ -185,7 +185,7 @@ func cancel_sign() -> void:
 
 
 func open_query(point: Vector2i) -> void:
-	var result := Queries.inspect(app.city, point, text_resources.original_query_strings)
+	var result := Queries.inspect(app.document_state.city, point, text_resources.original_query_strings)
 
 	if not result.ok:
 		app.interface.show_error("Cannot query tile: %s" % result.error)
@@ -201,7 +201,7 @@ func open_query(point: Vector2i) -> void:
 			return
 
 		app.reports.show_news_items(approval.news_items)
-		result = Queries.inspect(app.city, point, text_resources.original_query_strings)
+		result = Queries.inspect(app.document_state.city, point, text_resources.original_query_strings)
 
 	if (
 		result.get("kind", "") == "general"
@@ -220,7 +220,7 @@ func open_query(point: Vector2i) -> void:
 		var fallback := "Analyze" if action == "city_analysis" else "Ruminate"
 		action_text = str(text_resources.original_query_strings.get(action_resource_id, fallback))
 
-	var neighborhood := QueryNeighborhood.render(app.city, point, app.palette_index_encoding, app.large_sprites)
+	var neighborhood := QueryNeighborhood.render(app.document_state.city, point, app.palette_index_encoding, app.large_sprites)
 	app.query_dialog.show_query(
 		str(result.title),
 		str(result.title) if is_specific else "",
@@ -245,7 +245,7 @@ func close_query(commit_rename := false) -> bool:
 		and app.active_query_result.get("kind", "") == "specific"
 	):
 		var renamed := QueryFacilityActions.rename_facility(
-			app.city, app.active_query_result, app.query_dialog.facility_name()
+			app.document_state.city, app.active_query_result, app.query_dialog.facility_name()
 		)
 
 		if not renamed.ok:
@@ -261,7 +261,7 @@ func close_query(commit_rename := false) -> bool:
 
 
 func run_query_action() -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
 	if not close_query(true):
@@ -270,7 +270,7 @@ func run_query_action() -> void:
 	match str(app.active_query_result.get("action", "")):
 		"city_analysis":
 			var analysis := QueryFacilityActions.city_analysis(
-				app.city, text_resources.original_query_strings
+				app.document_state.city, text_resources.original_query_strings
 			)
 
 			if not analysis.ok:

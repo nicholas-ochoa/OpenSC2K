@@ -20,7 +20,7 @@ func debug_metrics() -> Dictionary:
 	var result := {
 		"simulation_slices": app.frame_simulation.metrics() if app.frame_simulation != null else {},
 		"render_regions": app.render_caches.region_cache.metrics() if app.render_caches.region_cache != null else {},
-		"visible_altitude_levels": app.city.visible_altitude_levels if app.city != null else 32,
+		"visible_altitude_levels": app.document_state.city.visible_altitude_levels if app.document_state.city != null else 32,
 		"city_name": "None",
 		"date": "--",
 		"population": "--",
@@ -45,7 +45,7 @@ func debug_metrics() -> Dictionary:
 		"active_disaster_id": (
 			app.simulation_engine.active_disaster_type if app.simulation_engine != null else 0
 		),
-		"no_disasters": app.city != null and app.city.no_disasters_enabled(),
+		"no_disasters": app.document_state.city != null and app.document_state.city.no_disasters_enabled(),
 		"detailed_timing": SimulationTimingSpan.detailed,
 	}
 
@@ -55,27 +55,27 @@ func debug_metrics() -> Dictionary:
 	if app.map_view != null:
 		result.merge(app.map_view.debug_metrics(), true)
 
-	if app.city != null:
-		result.city_name = app.city.city_name()
+	if app.document_state.city != null:
+		result.city_name = app.document_state.city.city_name()
 		result.date = "%02d/%02d/%04d" % [
-			app.city.current_month(), app.city.current_day(), app.city.current_year(),
+			app.document_state.city.current_month(), app.document_state.city.current_day(), app.document_state.city.current_year(),
 		]
-		result.population = app.interface.format_number(app.city.population())
-		result.funds = "$%s" % app.interface.format_number(app.city.funds())
+		result.population = app.interface.format_number(app.document_state.city.population())
+		result.funds = "$%s" % app.interface.format_number(app.document_state.city.funds())
 		result.tool = str(Tools.tool(app.selected_group, app.selected_subtool).name)
 
 	return result
 
 
 func debug_center_map() -> void:
-	var map_edge: int = app.city.map_size if app.city != null else 128
+	var map_edge: int = app.document_state.city.map_size if app.document_state.city != null else 128
 
-	if app.map_view != null and app.city != null:
+	if app.map_view != null and app.document_state.city != null:
 		app.map_view.center_on_tile(Vector2i(map_edge / 2, map_edge / 2))
 
 
 func debug_full_redraw() -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
 	app.static_render.invalidate_view_render()
@@ -94,7 +94,7 @@ func debug_clear_render_caches() -> void:
 
 
 func debug_add_funds(amount: int) -> Dictionary:
-	var result := DebugActions.add_funds(app.city, amount)
+	var result := DebugActions.add_funds(app.document_state.city, amount)
 
 	if not result.ok:
 		return {"ok": false, "message": result.error}
@@ -109,7 +109,7 @@ func debug_add_funds(amount: int) -> Dictionary:
 
 
 func debug_unlock_everything() -> Dictionary:
-	var result := DebugActions.unlock_everything(app.city, app.document_state.current_document)
+	var result := DebugActions.unlock_everything(app.document_state.city, app.document_state.current_document)
 
 	if not result.ok:
 		return {"ok": false, "message": result.error}
@@ -126,7 +126,7 @@ func debug_unlock_everything() -> Dictionary:
 
 
 func debug_set_no_disasters(enabled: bool) -> Dictionary:
-	var result := DebugActions.set_no_disasters(app.city, enabled)
+	var result := DebugActions.set_no_disasters(app.document_state.city, enabled)
 
 	if not result.ok:
 		return {"ok": false, "message": result.error}
@@ -172,7 +172,7 @@ func debug_start_disaster(disaster_type: int) -> Dictionary:
 
 
 func debug_end_disaster() -> Dictionary:
-	var result := DebugActions.end_disaster(app.city, app.document_state.current_document, app.simulation_engine)
+	var result := DebugActions.end_disaster(app.document_state.city, app.document_state.current_document, app.simulation_engine)
 
 	if not result.ok:
 		return {"ok": false, "message": result.error}
@@ -200,7 +200,7 @@ func debug_end_disaster() -> Dictionary:
 
 func debug_dispatch_maxis_man() -> Dictionary:
 	var center := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
-	var result := DebugActions.dispatch_maxis_man(app.city, app.document_state.current_document, center)
+	var result := DebugActions.dispatch_maxis_man(app.document_state.city, app.document_state.current_document, center)
 
 	if not result.ok:
 		return {"ok": false, "message": result.error}
@@ -215,15 +215,15 @@ func debug_dispatch_maxis_man() -> Dictionary:
 
 
 func debug_set_visible_altitude_levels(levels: int) -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
 	levels = clampi(levels, 1, 32)
 
-	if app.city.visible_altitude_levels == levels:
+	if app.document_state.city.visible_altitude_levels == levels:
 		return
 
-	app.city.visible_altitude_levels = levels
+	app.document_state.city.visible_altitude_levels = levels
 
 	if app.map_view.city != null:
 		app.map_view.city.visible_altitude_levels = levels

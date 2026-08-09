@@ -52,7 +52,7 @@ func _run() -> void:
 		for tool in [0, 1, 3]:
 			main.current_tool.select_subtool(tool)
 			var map: CityMapControl = main.map_view
-			map.city = main.city
+			map.city = main.document_state.city
 			assert(not main.landscape_editor and map.landscape_brush)
 			assert(not main.city_toolbar.brush_controls.visible)
 			assert(map.brush_size == (7 if tool == 3 else 1))
@@ -64,12 +64,12 @@ func _run() -> void:
 			_motion(map, start + Vector2i(8, 0))
 			_button(map, start + Vector2i(10, 0), false)
 			assert(main.last_edit_command.ok and not main.last_edit_command.free_mode)
-			assert(main.last_edit_command.cost == 20000 - main.city.funds())
+			assert(main.last_edit_command.cost == 20000 - main.document_state.city.funds())
 			assert(main.last_edit_command.cost > 0)
 			if tool != 3:
 				for x in range(start.x, start.x + 11):
-					assert(main.city.is_water(x, start.y) if tool == 1 else main.city.building_id(x, start.y) in range(6, 13))
-			assert(LandscapeCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
+					assert(main.document_state.city.is_water(x, start.y) if tool == 1 else main.document_state.city.building_id(x, start.y) in range(6, 13))
+			assert(LandscapeCommand.undo(main.document_state.city, main.last_edit_command, main.tool_random).ok)
 			assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_random.state == rng)
 
 			_button(map, start, true, true)
@@ -82,7 +82,7 @@ func _run() -> void:
 			assert(main.last_edit_command.ok and main.last_edit_command.cost > 0)
 			if tool != 3:
 				assert(main.last_edit_command.tile_indices.size() == 12)
-			assert(LandscapeCommand.undo(main.city, main.last_edit_command, main.tool_random).ok)
+			assert(LandscapeCommand.undo(main.document_state.city, main.last_edit_command, main.tool_random).ok)
 			assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_random.state == rng)
 
 			_button(map, start, true, true)

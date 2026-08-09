@@ -71,7 +71,7 @@ func _run() -> void:
 		var document: Sc2File = main.document_state.current_document
 
 		if (
-			main.get("city") == null
+			main.document_state.city == null
 			or document == null
 			or document.source_path.simplify_path() != city_path
 		):
@@ -81,7 +81,7 @@ func _run() -> void:
 
 			return
 
-		var loaded_city: CityState = main.get("city")
+		var loaded_city: CityState = main.document_state.city
 		var menu_bar := main.get("city_menu_bar") as CityMenuBar
 		var status_bar := main.get("city_status_bar") as CityStatusBar
 		var date_label := menu_bar.date_label
@@ -690,7 +690,7 @@ func _run() -> void:
 
 	# Scenario playback may still have an active disaster. Start debug actions from idle.
 	assert(main.debug.call("debug_end_disaster").ok)
-	var debug_city: CityState = main.get("city")
+	var debug_city: CityState = main.document_state.city
 	var debug_misc_chunk := debug_city.document.find_chunk("MISC")
 	var debug_old_misc: PackedByteArray = debug_misc_chunk.decoded_payload.duplicate()
 	var debug_old_funds := debug_city.funds()
@@ -901,13 +901,13 @@ func _run_quick(reference_root: String) -> void:
 	main.reference_root = reference_root
 	root.add_child(main)
 	await process_frame
-	assert(main.assets_ready and main.main_menu.visible and main.city == null)
+	assert(main.assets_ready and main.main_menu.visible and main.document_state.city == null)
 	var source := reference_root.path_join("CITIES/ISLAND.SC2")
 	var source_hash := FileAccess.get_sha256(source)
 	main.city_files._load_city_unchecked(source)
 	main.frame.select_speed(GameSpeed.Speed.PAUSED)
-	assert(main.city != null)
-	var city: CityState = main.city
+	assert(main.document_state.city != null)
+	var city: CityState = main.document_state.city
 	var before: PackedByteArray = city.document.serialize().data
 	var point := Vector2i(-1, -1)
 	for x in range(8, city.document.map_size - 8):
@@ -941,7 +941,7 @@ func _run_quick(reference_root: String) -> void:
 		await process_frame
 	assert(main.new_city_dialog.candidate_valid)
 	main.new_city.create_new_city_unchecked()
-	assert(main.city != city and main.city.display_name() == "Workflow smoke")
+	assert(main.document_state.city != city and main.document_state.city.display_name() == "Workflow smoke")
 	assert(main.landscape_editor)
 	var output := ProjectSettings.globalize_path("user://workflow-smoke.sc2x")
 	main.city_files.on_save_path_selected(output)

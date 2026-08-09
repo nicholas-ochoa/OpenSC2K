@@ -110,7 +110,7 @@ func _test_main() -> void:
 	root.add_child(main)
 	await process_frame
 	assert(main.runtime_initialized and main.main_menu.visible)
-	assert(not main.reference_import_dialog.visible and main.city == null)
+	assert(not main.reference_import_dialog.visible and main.document_state.city == null)
 	assert(main.audio_controller.original_media_enabled)
 	main.settings.open_settings_dialog()
 	assert(main.settings_dialog.visible)
@@ -138,7 +138,7 @@ func _test_main() -> void:
 		await process_frame
 	main.new_city.create_new_city_unchecked()
 	await process_frame
-	assert(main.city != null and main.city.city_name() == "Original Startup")
+	assert(main.document_state.city != null and main.document_state.city.city_name() == "Original Startup")
 	assert(main.landscape_editor and main.city_toolbar.start_city_button.visible)
 	main.new_city.start_city()
 	main.newspaper_dialog.hide()
@@ -169,7 +169,7 @@ func _test_invalid_startup() -> void:
 	await process_frame
 	assert(main.runtime_initialized and not main.assets_ready)
 	assert(not main.reference_import_error_dialog.visible and main.main_menu.import_button.visible)
-	assert(main.city == null and main.palette == null)
+	assert(main.document_state.city == null and main.palette == null)
 	assert(main.map_view != null and main.audio_controller != null and not main.audio_controller.original_media_enabled)
 	main.queue_free()
 	await process_frame

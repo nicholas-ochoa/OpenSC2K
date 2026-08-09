@@ -26,7 +26,7 @@ func _run() -> void:
 	main.main_menu.city_background.set_process(false)
 	assert(main.city_session.activate_document(EmptyCityTemplate.create(128)))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
-	var before: PackedByteArray = main.city.document.serialize().data
+	var before: PackedByteArray = main.document_state.city.document.serialize().data
 	for selected in [1, 0, 1]:
 		main.settings.open_settings_dialog()
 		var dialog: AppSettingsDialog = main.settings_dialog
@@ -50,7 +50,7 @@ func _run() -> void:
 		assert(AppSettingsStore.load_values(path).ui_theme == main.preferences.ui_theme)
 		if previous_mode != main.preferences.ui_theme:
 			assert(main.theme.get_stylebox("normal", "Button").bg_color != previous_color)
-		assert(main.city.document.serialize().data == before)
+		assert(main.document_state.city.document.serialize().data == before)
 		var late := FileDialogFactory.city_open()
 		main.add_child(late)
 		assert(late.theme.get_color("font_color", "Label") == AppUiTheme.file_dialog().get_color("font_color", "Label"), "New dialogs use the active theme")
@@ -68,7 +68,7 @@ func _run() -> void:
 		main.menus.sync_map_style()
 		assert(not main.map_view.dark_underground)
 		assert(not main.map_view._base_material.get_shader_parameter("dark_underground"))
-	assert(main.city.document.serialize().data == before)
+	assert(main.document_state.city.document.serialize().data == before)
 	main.free()
 	await process_frame
 	var restored := (load("res://main.tscn") as PackedScene).instantiate()

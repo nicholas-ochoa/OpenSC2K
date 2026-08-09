@@ -54,12 +54,12 @@ func _check_application() -> void:
 	assert(main.city_session.activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2")))
 	var vehicle := -1
 
-	for record in main.city.thing_count():
-		if int(main.city.thing(record).type) == 1:
+	for record in main.document_state.city.thing_count():
+		if int(main.document_state.city.thing(record).type) == 1:
 			vehicle = record
 
 	assert(vehicle >= 0)
-	var thing: ThingRecord = main.city.thing(vehicle)
+	var thing: ThingRecord = main.document_state.city.thing(vehicle)
 	main.map_view.zoom_factor = 1.0
 	main.map_view.center_on_tile(Vector2i(int(thing.x), int(thing.y)))
 	main.map_render.refresh_map()

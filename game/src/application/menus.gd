@@ -90,7 +90,7 @@ func on_options_menu(id: int) -> void:
 
 		return
 
-	if app.city == null:
+	if app.document_state.city == null:
 		app.interface.show_error("Load a city before you change its options.")
 
 		return
@@ -101,20 +101,20 @@ func on_options_menu(id: int) -> void:
 
 	match id:
 		MENU_AUTO_BUDGET:
-			enabled = not app.city.auto_budget_enabled()
-			stored = app.city.set_auto_budget_enabled(enabled)
+			enabled = not app.document_state.city.auto_budget_enabled()
+			stored = app.document_state.city.set_auto_budget_enabled(enabled)
 			option_name = "Auto-Budget"
 		MENU_AUTO_GOTO:
-			enabled = not app.city.auto_goto_enabled()
-			stored = app.city.set_auto_goto_enabled(enabled)
+			enabled = not app.document_state.city.auto_goto_enabled()
+			stored = app.document_state.city.set_auto_goto_enabled(enabled)
 			option_name = "Auto-Goto"
 		MENU_SOUND_EFFECTS:
-			enabled = not app.city.sound_enabled()
-			stored = app.city.set_sound_enabled(enabled)
+			enabled = not app.document_state.city.sound_enabled()
+			stored = app.document_state.city.set_sound_enabled(enabled)
 			option_name = "Sound Effects"
 		MENU_MUSIC:
-			enabled = not app.city.music_enabled()
-			stored = app.city.set_music_enabled(enabled)
+			enabled = not app.document_state.city.music_enabled()
+			stored = app.document_state.city.set_music_enabled(enabled)
 			option_name = "Music"
 		_:
 			return
@@ -173,17 +173,17 @@ func sync_city_option_menus() -> void:
 		return
 
 	app.city_files.sync_upgrade_city_option()
-	var has_city := app.city != null
+	var has_city := app.document_state.city != null
 	app.options_menu.disabled = not has_city
 
 	if app.view_menu != null:
 		app.view_menu.disabled = not has_city
 
 	var option_states := {
-		MENU_AUTO_BUDGET: has_city and app.city.auto_budget_enabled(),
-		MENU_AUTO_GOTO: has_city and app.city.auto_goto_enabled(),
-		MENU_SOUND_EFFECTS: has_city and app.city.sound_enabled(),
-		MENU_MUSIC: has_city and app.city.music_enabled(),
+		MENU_AUTO_BUDGET: has_city and app.document_state.city.auto_budget_enabled(),
+		MENU_AUTO_GOTO: has_city and app.document_state.city.auto_goto_enabled(),
+		MENU_SOUND_EFFECTS: has_city and app.document_state.city.sound_enabled(),
+		MENU_MUSIC: has_city and app.document_state.city.music_enabled(),
 	}
 
 	for option_id in option_states:
@@ -199,7 +199,7 @@ func sync_city_option_menus() -> void:
 	if no_disasters_index >= 0:
 		app.disasters_menu.get_popup().set_item_disabled(no_disasters_index, not has_city)
 		app.disasters_menu.get_popup().set_item_checked(
-			no_disasters_index, has_city and app.city.no_disasters_enabled()
+			no_disasters_index, has_city and app.document_state.city.no_disasters_enabled()
 		)
 
 	_sync_view_controls()
@@ -295,7 +295,7 @@ func set_overlay(mode: CityViewMode.Mode) -> void:
 	_sync_view_controls()
 	app.current_tool.update_edit_state()
 
-	if app.city != null:
+	if app.document_state.city != null:
 		app.status_label.text = "Map view: %s" % CityViewMode.key(app.overlay_mode).capitalize()
 		app.map_render.refresh_map(false)
 
@@ -313,7 +313,7 @@ func set_surface_visibility(enabled: bool, layer: String) -> void:
 	app.static_render.invalidate_view_render()
 	_sync_view_controls()
 
-	if app.city != null and app.overlay_mode == CityViewMode.Mode.CITY:
+	if app.document_state.city != null and app.overlay_mode == CityViewMode.Mode.CITY:
 		app.map_render.refresh_map(false)
 
 	app.status_label.text = "%s %s." % [
@@ -335,7 +335,7 @@ func _set_vehicles_visible(enabled: bool) -> void:
 
 	_sync_view_controls()
 
-	if app.city != null and app.overlay_mode == CityViewMode.Mode.CITY:
+	if app.document_state.city != null and app.overlay_mode == CityViewMode.Mode.CITY:
 		app.moving_sprites.refresh_moving_things()
 
 	app.status_label.text = "Vehicles %s." % ("shown" if enabled else "hidden")
@@ -349,7 +349,7 @@ func set_underground_water_mains_visible(enabled: bool) -> void:
 	app.static_render.invalidate_view_render()
 	_sync_view_controls()
 
-	if app.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
+	if app.document_state.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		app.map_render.refresh_map(false)
 
 	app.status_label.text = "Water mains %s." % ("shown" if enabled else "hidden")
@@ -363,7 +363,7 @@ func set_underground_pipes_visible(enabled: bool) -> void:
 	app.static_render.invalidate_view_render()
 	_sync_view_controls()
 
-	if app.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
+	if app.document_state.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		app.map_render.refresh_map(false)
 
 	app.status_label.text = "Underground pipes %s." % ("shown" if enabled else "hidden")
@@ -377,7 +377,7 @@ func set_underground_subways_visible(enabled: bool) -> void:
 	app.static_render.invalidate_view_render()
 	_sync_view_controls()
 
-	if app.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
+	if app.document_state.city != null and app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		app.map_render.refresh_map(false)
 
 	app.status_label.text = "Underground subways %s." % ("shown" if enabled else "hidden")

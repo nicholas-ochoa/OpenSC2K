@@ -60,7 +60,7 @@ func _run() -> void:
 		main.map_view.center_on_tile(Vector2i(64, 64))
 		main.current_tool.select_tool_group(16)
 		await process_frame
-		var polygon := CityIsometricRenderer.terrain_surface_polygon(main.city, 64, 64)
+		var polygon := CityIsometricRenderer.terrain_surface_polygon(main.document_state.city, 64, 64)
 		var sample := polygon[0] + Vector2(0, 3)
 		var scale: float = main.map_view.camera._view_scale()
 		var local: Vector2 = sample * scale + main.map_view.camera._draw_offset(scale)

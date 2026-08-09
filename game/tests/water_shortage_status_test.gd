@@ -176,7 +176,7 @@ func _check_main_ui(strings: Dictionary) -> void:
 	main.frame.select_speed(GameSpeedController.Speed.TURTLE)
 	assert(main.city_status_bar.reports_label.text == str(main.original_text_resources.original_query_strings[269]).strip_edges())
 	for weather in CityStatusMessages.WEATHER_COUNT:
-		assert(main.city.document.set_misc_u32(RciAftermathPhase.MISC_WEATHER_TREND, weather))
+		assert(main.document_state.city.document.set_misc_u32(RciAftermathPhase.MISC_WEATHER_TREND, weather))
 		main.interface.refresh_status_summary()
 		assert(main.city_status_bar.weather_label.text.contains(RciAftermathPhase.WEATHER_NAMES[weather]))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)

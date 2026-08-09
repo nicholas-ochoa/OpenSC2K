@@ -140,7 +140,7 @@ func apply_settings() -> void:
 	if app.audio_controller != null:
 		app.audio_controller.set_background_audio(preferences.background_audio)
 		app.audio_controller.set_volumes(preferences.music_volume, preferences.effects_volume)
-		app.audio_controller.set_soundtrack_folder(preferences.soundtrack_folder, (app.main_menu != null and app.main_menu.visible) or (app.city != null and app.city.music_enabled()))
+		app.audio_controller.set_soundtrack_folder(preferences.soundtrack_folder, (app.main_menu != null and app.main_menu.visible) or (app.document_state.city != null and app.document_state.city.music_enabled()))
 
 	if fullscreen_changed:
 		DisplayServer.window_set_mode(
@@ -217,7 +217,7 @@ func _set_moving_frame_rate(value: int) -> void:
 	preferences.moving_frame_rate = rate
 	app.moving_sprites.reset_blend()
 
-	if app.city != null and app.map_view != null:
+	if app.document_state.city != null and app.map_view != null:
 		app.moving_sprites.refresh_moving_things()
 
 

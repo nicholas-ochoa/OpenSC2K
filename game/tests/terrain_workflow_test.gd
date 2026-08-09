@@ -63,10 +63,10 @@ func _run() -> void:
 		var expected := TerrainToolIcons.terrain_action(main.asset_source.assets.city_ui_graphics, "sea_raise" if subtool == 6 else "sea_lower")
 		assert(main.camera_input.tool_button_icon(0, subtool).get_image().get_data() == expected.get_image().get_data())
 
-	var funds: int = main.city.funds()
-	var day: int = main.city.age_in_days()
+	var funds: int = main.document_state.city.funds()
+	var day: int = main.document_state.city.age_in_days()
 	main._process(0.5)
-	assert(main.city.age_in_days() == day)
+	assert(main.document_state.city.age_in_days() == day)
 	main.current_tool.select_tool_group(6)
 	assert(main.selected_group == 0)
 	main.selected_group = 6
@@ -78,7 +78,7 @@ func _run() -> void:
 	main.current_tool.select_tool_group(0)
 	main.current_tool.select_subtool(2)
 	main.city_edits.apply_map_selection(point, point, path, false)
-	assert(main.city.funds() == funds)
+	assert(main.document_state.city.funds() == funds)
 	assert(main.last_edit_command.ok)
 	assert(main.last_edit_command.free_mode)
 	main.new_city.start_city()
@@ -86,24 +86,24 @@ func _run() -> void:
 	assert(main.city_toolbar.toolbar_buttons[6].visible)
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	data = main.document_state.current_document.serialize().data
-	var all_levels := CityIsometricRenderer.create_image(main.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
+	var all_levels := CityIsometricRenderer.create_image(main.document_state.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	main.debug.debug_set_visible_altitude_levels(1)
-	assert(main.city.visible_altitude_levels == 1)
+	assert(main.document_state.city.visible_altitude_levels == 1)
 	var hidden := 0
 
-	for x in main.city.map_size:
-		for y in main.city.map_size:
-			if not main.city.tile_is_visible(x, y):
+	for x in main.document_state.city.map_size:
+		for y in main.document_state.city.map_size:
+			if not main.document_state.city.tile_is_visible(x, y):
 				hidden += 1
 
 	assert(hidden > 0)
-	var cutaway := CityIsometricRenderer.create_image(main.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
+	var cutaway := CityIsometricRenderer.create_image(main.document_state.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	assert(all_levels.ok and cutaway.ok and all_levels.image.get_data() != cutaway.image.get_data())
-	assert(CityViewFilter.surface_copy(main.city, {}).visible_altitude_levels == 1)
+	assert(CityViewFilter.surface_copy(main.document_state.city, {}).visible_altitude_levels == 1)
 	assert(main.document_state.current_document.serialize().data == data)
 	main.debug.debug_set_visible_altitude_levels(32)
-	assert(main.city.tile_is_visible(40, 40))
-	var restored := CityIsometricRenderer.create_image(main.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
+	assert(main.document_state.city.tile_is_visible(40, 40))
+	var restored := CityIsometricRenderer.create_image(main.document_state.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	assert(restored.image.get_data() == all_levels.image.get_data())
 	assert(main.document_state.current_document.serialize().data == data)
 	main.current_tool.select_tool_group(3)

@@ -2,7 +2,7 @@ extends SceneTree
 
 class Host extends Control:
 	var debug: Control = self
-	var city: CityState
+	var document_state := ActiveDocumentState.new()
 	var simulation_engine: SimulationEngine
 	var map_view: CityMapControl
 
@@ -74,7 +74,7 @@ func _run() -> void:
 		assert(city.document.serialize().data == before)
 
 		var host := Host.new()
-		host.city = city
+		host.document_state.city = city
 		root.add_child(host)
 		var panel := preload("res://src/debug/debug_record_table.tscn").instantiate() as DebugRecordTable
 		host.add_child(panel)
@@ -98,14 +98,14 @@ func _run() -> void:
 		var refreshed := panel._last_refresh
 		panel.refresh_from_host(host)
 		assert(panel._last_refresh == refreshed)
-		host.city = null
+		host.document_state.city = null
 		panel.refresh_from_host(host)
 		assert(panel.rows.is_empty())
 		var debug := preload("res://src/debug/debug_overlay.tscn").instantiate() as CityDebugOverlay
 		debug.setup(host)
 		host.add_child(debug)
 		var xmic_tab: DebugRecordTable = debug._tabs.get_node("MicroSims")
-		host.city = city
+		host.document_state.city = city
 		host.map_view = CityMapControl.new()
 		host.map_view.city = city
 		debug.toggle()
@@ -117,7 +117,7 @@ func _run() -> void:
 		assert(not corner.is_equal_approx(host.map_view.source_center))
 		assert(not debug.is_open and map_center.is_equal_approx((corner + host.map_view.source_center) * 0.5))
 		host.map_view.free()
-		host.city = null
+		host.document_state.city = null
 		debug.toggle()
 		debug._process(2.0)
 		assert(xmic_tab._last_refresh == -1000, "Inactive record tabs do not collect")

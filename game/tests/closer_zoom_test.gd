@@ -27,7 +27,7 @@ func _run() -> void:
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/SYDNEY.SC2"))
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	var map: CityMapControl = main.map_view
-	var city: CityState = main.city
+	var city: CityState = main.document_state.city
 	assert(city != null and city.is_valid())
 	assert(SignCommand.set_sign(city, Vector2i(64, 64), "Zoom check").ok)
 	map.zoom_factor = 4.0

@@ -18,7 +18,7 @@ func apply_tunnel_selection(
 	free_mode := false
 ) -> void:
 	var tunnel := Tunnels.apply(
-		app.city,
+		app.document_state.city,
 		app.selected_group,
 		app.selected_subtool,
 		start,
@@ -113,7 +113,7 @@ func apply_highway_selection(
 	free_mode := false
 ) -> void:
 	var highway := Highways.apply(
-		app.city,
+		app.document_state.city,
 		app.selected_group,
 		app.selected_subtool,
 		start,

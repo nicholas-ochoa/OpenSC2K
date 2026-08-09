@@ -54,7 +54,7 @@ func save_city() -> void:
 
 
 func _can_upgrade_city_to_sc2x() -> bool:
-	if app.preferences.original_compatibility or app.landscape_editor or app.city == null or document_state.current_document == null or app.simulation_engine == null:
+	if app.preferences.original_compatibility or app.landscape_editor or app.document_state.city == null or document_state.current_document == null or app.simulation_engine == null:
 		return false
 
 	if document_state.current_document.is_extended() or document_state.current_document.full_resolution_maps():
@@ -143,8 +143,8 @@ func open_save_dialog() -> void:
 	app.save_dialog.current_dir = save_directory
 	var save_name := document_state.current_document.source_path.get_file().get_basename()
 
-	if save_name.is_empty() and app.city != null:
-		save_name = app.city.city_name().validate_filename()
+	if save_name.is_empty() and app.document_state.city != null:
+		save_name = app.document_state.city.city_name().validate_filename()
 
 	if save_name.is_empty():
 		save_name = "New City"
@@ -155,7 +155,7 @@ func open_save_dialog() -> void:
 
 
 func _city_has_unsaved_changes() -> bool:
-	if document_state.current_document == null or app.city == null:
+	if document_state.current_document == null or app.document_state.city == null:
 		return false
 
 	if not document_state.current_city_saved_once:
@@ -175,7 +175,7 @@ func request_city_exit(action: String, path := "") -> void:
 	pending_city_exit_action = action
 	pending_city_exit_path = path
 	pending_city_exit_waiting_for_save = false
-	var display_name := app.city.city_name()
+	var display_name := app.document_state.city.city_name()
 
 	if display_name.is_empty():
 		display_name = "this city"

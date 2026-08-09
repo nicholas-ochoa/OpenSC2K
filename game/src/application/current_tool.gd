@@ -41,7 +41,7 @@ func select_tool_group(index: int) -> void:
 		app.dispatch_initialized = false
 
 	app.selected_subtool = app.city_toolbar.show_tool_group(
-		app.selected_group, app.city, app.camera_input.tool_button_icon
+		app.selected_group, app.document_state.city, app.camera_input.tool_button_icon
 	)
 	_auto_select_underground()
 	_sync_child_tool_selection()
@@ -53,7 +53,7 @@ func _auto_select_underground() -> void:
 	if app.selected_group in [16, 17] or (CityViewMode.is_map(app.overlay_mode) and Demolish.supports_tool(app.selected_group, app.selected_subtool)):
 		return
 
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
 	var underground_tool := (app.selected_group == 4 and app.selected_subtool == 0) or (app.selected_group == 7 and app.selected_subtool == 1)
@@ -74,7 +74,7 @@ func select_subtool(index: int) -> void:
 		return
 
 	if app.selected_group == 2 and index == 3:
-		var recalled := Dispatch.recall_all(app.city)
+		var recalled := Dispatch.recall_all(app.document_state.city)
 
 		if recalled.ok:
 			recalled.dispatch_cycles_before = app.dispatch_cycles.duplicate()
@@ -107,11 +107,11 @@ func _sync_child_tool_selection() -> void:
 
 
 func refresh_tool_availability() -> bool:
-	if app.city == null or app.city_toolbar == null:
+	if app.document_state.city == null or app.city_toolbar == null:
 		return false
 
 	return app.city_toolbar.refresh_tool_availability(
-		app.city, app.selected_group, app.selected_subtool, app.selected_tool_available
+		app.document_state.city, app.selected_group, app.selected_subtool, app.selected_tool_available
 	)
 
 
@@ -130,17 +130,17 @@ func update_edit_state() -> void:
 		if app.scurk_place_print.is_object_mode():
 			app.map_view.desktop_cursor_role = 9
 			state = ToolState.scurk_object(
-				app.city, app.overlay_mode, app.scurk_place_print.selected_tile_id
+				app.document_state.city, app.overlay_mode, app.scurk_place_print.selected_tile_id
 			)
 		else:
 			var cursor_tool := app.scurk_place_print.selected_edit_tool()
 			app.map_view.desktop_cursor_role = DesktopCursorRules.city_tool(cursor_tool.group, cursor_tool.subtool)
 			state = ToolState.scurk_tool(
-				app.city, app.scurk_place_print.selected_edit_tool()
+				app.document_state.city, app.scurk_place_print.selected_edit_tool()
 			)
 	else:
 		state = ToolState.normal(
-			app.city, app.overlay_mode, app.selected_group, app.selected_subtool
+			app.document_state.city, app.overlay_mode, app.selected_group, app.selected_subtool
 		)
 		app.selected_tool_available = bool(state.available)
 
@@ -190,7 +190,7 @@ func update_edit_state() -> void:
 		app.map_view.clear_trip_reach()
 	if app.selected_group != 16 or app.selected_subtool != 2:
 		app.map_view.clear_service_query()
-	app.map_view.query_city = app.city
+	app.map_view.query_city = app.document_state.city
 	app.map_view.set_edit_enabled(
 		bool(state.enabled),
 		str(state.selection),
@@ -213,9 +213,9 @@ func _placement_preview_valid(point: Vector2i) -> bool:
 
 
 func _placement_preview_error(point: Vector2i) -> String:
-	var map_edge: int = app.city.map_size if app.city != null else 128
+	var map_edge: int = app.document_state.city.map_size if app.document_state.city != null else 128
 
-	if app.city == null or app.city.index_of(point.x, point.y) < 0:
+	if app.document_state.city == null or app.document_state.city.index_of(point.x, point.y) < 0:
 		return "Select a tile inside the map."
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible and app.scurk_place_print.is_object_mode():
@@ -225,38 +225,38 @@ func _placement_preview_error(point: Vector2i) -> String:
 		if site.size.x == 0 or not Rect2i(0, 0, map_edge, map_edge).encloses(site):
 			return "The object footprint extends outside the map."
 
-		return "" if tile_id > 255 else String(ScurkPlace._check_site(app.city.buildings, app.city.terrain, app.city.tile_flags, site, tile_id, map_edge).get("error", ""))
+		return "" if tile_id > 255 else String(ScurkPlace._check_site(app.document_state.city.buildings, app.document_state.city.terrain, app.document_state.city.tile_flags, site, tile_id, map_edge).get("error", ""))
 
 	if Buildings.supports_tool(app.selected_group, app.selected_subtool):
-		return Buildings.preview_error(app.city, app.selected_group, app.selected_subtool, point)
+		return Buildings.preview_error(app.document_state.city, app.selected_group, app.selected_subtool, point)
 
 	if Hydro.supports_tool(app.selected_group, app.selected_subtool):
-		var index := app.city.index_of(point.x, point.y)
+		var index := app.document_state.city.index_of(point.x, point.y)
 
-		if app.city.funds() < int(Tools.tool(app.selected_group, app.selected_subtool).cost):
+		if app.document_state.city.funds() < int(Tools.tool(app.selected_group, app.selected_subtool).cost):
 			return "Insufficient funds."
 
-		if app.city.buildings[index] != 0:
+		if app.document_state.city.buildings[index] != 0:
 			return "Clear the existing structure first."
 
-		return "" if app.city.terrain[index] in [0x2e, 0x3e] else "Hydroelectric power requires a waterfall tile."
+		return "" if app.document_state.city.terrain[index] in [0x2e, 0x3e] else "Hydroelectric power requires a waterfall tile."
 
 	if Onramps.supports_tool(app.selected_group, app.selected_subtool):
-		return Onramps.apply(app.city, app.selected_group, app.selected_subtool, point, false, true).error
+		return Onramps.apply(app.document_state.city, app.selected_group, app.selected_subtool, point, false, true).error
 
 	if SubwayToRail.supports_tool(app.selected_group, app.selected_subtool):
-		return SubwayToRail.apply(app.city, app.selected_group, app.selected_subtool, point, true).error
+		return SubwayToRail.apply(app.document_state.city, app.selected_group, app.selected_subtool, point, true).error
 
 	if Tunnels.supports_tool(app.selected_group, app.selected_subtool):
-		var proposal := Tunnels.apply(app.city, app.selected_group, app.selected_subtool, point)
+		var proposal := Tunnels.apply(app.document_state.city, app.selected_group, app.selected_subtool, point)
 
 		if not proposal.confirmation_required:
 			return proposal.error
 
-		return "" if app.city.funds() >= proposal.cost else "Insufficient funds for this tunnel."
+		return "" if app.document_state.city.funds() >= proposal.cost else "Insufficient funds for this tunnel."
 
 	if Highways.supports_tool(app.selected_group, app.selected_subtool):
-		return Highways.preview_error(app.city, point)
+		return Highways.preview_error(app.document_state.city, point)
 
 	return ""
 
@@ -265,7 +265,7 @@ func update_network_preview() -> void:
 	if app.network_preview == null:
 		return
 
-	if app.city == null or not app.camera_input.camera_keys_allowed() or not app.map_view.edit_enabled or app.map_view.is_panning() or not NetworkPlacementPreview.supports_tool(app.selected_group, app.selected_subtool):
+	if app.document_state.city == null or not app.camera_input.camera_keys_allowed() or not app.map_view.edit_enabled or app.map_view.is_panning() or not NetworkPlacementPreview.supports_tool(app.selected_group, app.selected_subtool):
 		app.network_preview.clear()
 
 		return
@@ -284,6 +284,6 @@ func update_network_preview() -> void:
 
 	if sprites != null and app.palette != null:
 		app.network_preview.request(
-			app.city, app.selected_group, app.selected_subtool, start, finish, view, app.palette, sprites,
+			app.document_state.city, app.selected_group, app.selected_subtool, start, finish, view, app.palette, sprites,
 			app.overlay_mode == CityViewMode.Mode.UNDERGROUND, app.scurk_workspace.scurk_edit_tool_active()
 		)

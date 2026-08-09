@@ -15,7 +15,7 @@ func _init(application: CityApplication) -> void:
 
 
 func camera_keys_allowed() -> bool:
-	if app.city == null or app.map_view == null or not app.map_view.is_visible_in_tree() or not DisplayServer.window_is_focused():
+	if app.document_state.city == null or app.map_view == null or not app.map_view.is_visible_in_tree() or not DisplayServer.window_is_focused():
 		return false
 
 	var focus := app.get_viewport().gui_get_focus_owner()
@@ -99,7 +99,7 @@ func unhandled_key_input(event: InputEvent) -> void:
 		return
 
 	if app.main_menu != null and app.main_menu.visible:
-		if event.keycode == KEY_ESCAPE and app.city != null:
+		if event.keycode == KEY_ESCAPE and app.document_state.city != null:
 			app.interface.hide_main_menu()
 
 		app.get_viewport().set_input_as_handled()
@@ -214,9 +214,9 @@ func zoom_out() -> void:
 
 
 func rotate_city(counter_clockwise: bool) -> void:
-	var map_edge: int = app.city.map_size if app.city != null else 128
+	var map_edge: int = app.document_state.city.map_size if app.document_state.city != null else 128
 
-	if app.city == null:
+	if app.document_state.city == null:
 		app.interface.show_error("No city is loaded.")
 
 		return
@@ -229,7 +229,7 @@ func rotate_city(counter_clockwise: bool) -> void:
 	var new_center := CityRotation.rotate_point(
 		old_center, map_edge, counter_clockwise
 	)
-	var result := CityRotation.apply(app.city, counter_clockwise)
+	var result := CityRotation.apply(app.document_state.city, counter_clockwise)
 
 	if not result.ok:
 		app.interface.show_error("Cannot rotate city: %s" % result.error)
@@ -263,10 +263,10 @@ func update_zoom_controls(percent: int) -> void:
 		app.zoom_out_button.disabled = not app.map_view.can_zoom_out()
 
 	if app.rotate_counter_clockwise_button != null:
-		app.rotate_counter_clockwise_button.disabled = app.city == null
+		app.rotate_counter_clockwise_button.disabled = app.document_state.city == null
 
 	if app.rotate_clockwise_button != null:
-		app.rotate_clockwise_button.disabled = app.city == null
+		app.rotate_clockwise_button.disabled = app.document_state.city == null
 
 	if app.scurk_place_print != null:
 		app.scurk_place_print.set_export_enabled(percent <= 25)
@@ -275,7 +275,7 @@ func update_zoom_controls(percent: int) -> void:
 func on_city_zoom_changed(percent: int) -> void:
 	update_zoom_controls(percent)
 
-	if app.city != null and CityViewMode.is_map(app.overlay_mode):
+	if app.document_state.city != null and CityViewMode.is_map(app.overlay_mode):
 		app.map_render.refresh_map(false)
 
 
@@ -300,8 +300,8 @@ func on_map_selection_canceled() -> void:
 func on_map_selection_started() -> void:
 	app.landscape_brush_command = null
 	app.level_brush_altitude = -1
-	if app.new_city.level_brush_active() and app.city != null:
-		app.level_brush_altitude = app.city.land_altitude(app.map_view.selection_start.x, app.map_view.selection_start.y)
+	if app.new_city.level_brush_active() and app.document_state.city != null:
+		app.level_brush_altitude = app.document_state.city.land_altitude(app.map_view.selection_start.x, app.map_view.selection_start.y)
 	if app.landscape_editor and app.selected_group == 0 and app.selected_subtool == 5:
 		app.terrain_stretch.begin(app.map_view.selection_start)
 
@@ -328,7 +328,7 @@ func on_terrain_stretch_changed(levels: int, deferred: bool) -> void:
 
 
 func refresh_terrain_stretch(levels: int) -> void:
-	var update := app.terrain_stretch.update(app.city, app.tool_random, levels)
+	var update := app.terrain_stretch.update(app.document_state.city, app.tool_random, levels)
 
 	if update != null and update.ok:
 		app.static_render.refresh_after_city_edit(update)
@@ -358,7 +358,7 @@ func on_map_selection_changed(
 			return
 
 		var scurk_preview := Zones.preview_rectangle(
-			app.city,
+			app.document_state.city,
 			int(scurk_tool.group),
 			int(scurk_tool.subtool),
 			start,
@@ -381,17 +381,17 @@ func on_map_selection_changed(
 
 		return
 
-	if app.city != null and NetworkPlacementPreview.supports_tool(app.selected_group, app.selected_subtool):
+	if app.document_state.city != null and NetworkPlacementPreview.supports_tool(app.selected_group, app.selected_subtool):
 		# route preview owns the anchored price
 		return
 
-	if app.city == null or not Zones.supports_tool(app.selected_group, app.selected_subtool):
+	if app.document_state.city == null or not Zones.supports_tool(app.selected_group, app.selected_subtool):
 		app.map_view.clear_selection_price()
 
 		return
 
 	var preview := Zones.preview_rectangle(
-		app.city, app.selected_group, app.selected_subtool, start, finish, dragged
+		app.document_state.city, app.selected_group, app.selected_subtool, start, finish, dragged
 	)
 
 	if not preview.get("ok", false):

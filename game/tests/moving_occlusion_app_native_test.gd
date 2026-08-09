@@ -26,8 +26,8 @@ func _run() -> void:
 	main.main_menu.hide()
 	var compared := 0
 
-	for record in main.city.thing_count():
-		var thing: ThingRecord = main.city.thing(record)
+	for record in main.document_state.city.thing_count():
+		var thing: ThingRecord = main.document_state.city.thing(record)
 
 		if int(thing.type) not in [1, 2, 3, 9, 10]:
 			continue

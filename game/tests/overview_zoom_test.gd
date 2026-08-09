@@ -53,7 +53,7 @@ func _run() -> void:
 		main.menus.set_overlay(mode)
 		assert(map.zoom_percent() == 10)
 		var point := Vector2i(64, 64)
-		var polygon := CityIsometricRenderer.tile_polygon(main.city, point.x, point.y, mode == CityViewMode.Mode.HEIGHT)
+		var polygon := CityIsometricRenderer.tile_polygon(main.document_state.city, point.x, point.y, mode == CityViewMode.Mode.HEIGHT)
 		var center := (polygon[0] + polygon[1] + polygon[2] + polygon[3]) * 0.25
 		var local := map.camera._draw_offset(map.camera._view_scale()) + center * map.camera._view_scale()
 		assert(map.camera._tile_at(local) == point, "Overview picking uses the displayed tile")

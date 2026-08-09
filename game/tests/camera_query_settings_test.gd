@@ -83,13 +83,13 @@ func _run() -> void:
 	main.city_session.activate_document(EmptyCityTemplate.create())
 	main.interface.hide_main_menu()
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
-	var saved: PackedByteArray = main.city.document.serialize().data
+	var saved: PackedByteArray = main.document_state.city.document.serialize().data
 	var center: Vector2 = main.map_view.source_center
 	var scale: float = main.map_view.camera._view_scale()
 	main.map_view.pan_screen(Vector2(10, -10))
 	assert(main.map_view.source_center.is_equal_approx(center + Vector2(10, -10) / scale))
 	main.map_view.pan_screen(Vector2(-10, 10))
-	assert(main.city.document.serialize().data == saved, "Panning changed saved data")
+	assert(main.document_state.city.document.serialize().data == saved, "Panning changed saved data")
 	assert(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_SETTINGS) >= 0)
 	main.menus.on_options_menu(CityMenuBar.MENU_SETTINGS)
 	assert(main.settings_dialog.visible)

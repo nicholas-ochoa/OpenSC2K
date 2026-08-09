@@ -121,15 +121,15 @@ func _run() -> void:
 
 		for x in range(50, 80):
 			for y in range(50, 80):
-				var tile: int = main.city.building_id(x, y)
+				var tile: int = main.document_state.city.building_id(x, y)
 
 				if tile >= 0x70 and tile < 0xb0:
 					selected = Vector2i(x, y)
 
 		if "--thing" in OS.get_cmdline_user_args():
-			for x in main.city.map_size:
-				for y in main.city.map_size:
-					if not CityIsometricRenderer.moving_thing_visual(main.city, x, y).is_empty():
+			for x in main.document_state.city.map_size:
+				for y in main.document_state.city.map_size:
+					if not CityIsometricRenderer.moving_thing_visual(main.document_state.city, x, y).is_empty():
 						selected = Vector2i(x, y)
 
 		var started := Time.get_ticks_usec()

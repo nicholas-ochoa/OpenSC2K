@@ -26,7 +26,7 @@ func _ensure_scurk_print() -> void:
 
 
 func _open_scurk_city_export() -> void:
-	if app.city == null or app.scurk_place_print == null or not app.scurk_place_print.visible:
+	if app.document_state.city == null or app.scurk_place_print == null or not app.scurk_place_print.visible:
 		return
 
 	if app.map_view.zoom_percent() > 25:
@@ -37,7 +37,7 @@ func _open_scurk_city_export() -> void:
 	var output_directory := ProjectSettings.globalize_path("user://scurk_exports")
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	app.scurk_city_export_dialog.current_dir = output_directory
-	var output_name := app.city.city_name().validate_filename()
+	var output_name := app.document_state.city.city_name().validate_filename()
 
 	if output_name.is_empty():
 		output_name = "CITY"
@@ -47,7 +47,7 @@ func _open_scurk_city_export() -> void:
 
 
 func _export_scurk_city_bmp(path: String) -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
 	var output_path := ProjectSettings.globalize_path(path).simplify_path()
@@ -64,7 +64,7 @@ func _export_scurk_city_bmp(path: String) -> void:
 	options["color"] = true
 	var result := ScurkCityOutput.save_small_bmp(
 		output_path,
-		app.city,
+		app.document_state.city,
 		app.palette_index_encoding,
 		app.palette,
 		app.static_render.sprite_archive_for_view(IsometricRenderer.VIEW_SMALL),
@@ -83,24 +83,24 @@ func _export_scurk_city_bmp(path: String) -> void:
 
 
 func _open_scurk_print_dialog() -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
 	app.scurk_workspace.ensure_scurk_place_print()
 	_ensure_scurk_print()
 
 	app.scurk_print.configure(
-		app.city.city_name(), CityViewMode.key(app.overlay_mode), app.surface_visibility, app.show_underground_pipes, app.show_underground_water_mains
+		app.document_state.city.city_name(), CityViewMode.key(app.overlay_mode), app.surface_visibility, app.show_underground_pipes, app.show_underground_water_mains
 	)
 	app.scurk_print.show_workspace()
 
 
 func _refresh_scurk_print_preview(options: Dictionary) -> void:
-	if app.city == null or app.scurk_print == null:
+	if app.document_state.city == null or app.scurk_print == null:
 		return
 
 	var result := ScurkCityOutput.render(
-		app.city,
+		app.document_state.city,
 		app.palette,
 		app.static_render.sprite_archive_for_view(IsometricRenderer.VIEW_SMALL),
 		IsometricRenderer.VIEW_SMALL,
@@ -116,14 +116,14 @@ func _refresh_scurk_print_preview(options: Dictionary) -> void:
 
 
 func _open_scurk_print_pdf_dialog(options: Dictionary) -> void:
-	if app.city == null:
+	if app.document_state.city == null:
 		return
 
 	app.pending_scurk_print_options = options.duplicate(true)
 	var output_directory := ProjectSettings.globalize_path("user://scurk_prints")
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	app.scurk_print_pdf_dialog.current_dir = output_directory
-	var output_name := app.city.city_name().validate_filename()
+	var output_name := app.document_state.city.city_name().validate_filename()
 
 	if output_name.is_empty():
 		output_name = "CITY"
@@ -135,7 +135,7 @@ func _open_scurk_print_pdf_dialog(options: Dictionary) -> void:
 
 
 func _save_scurk_city_pdf(path: String) -> void:
-	if app.city == null or app.pending_scurk_print_options.is_empty():
+	if app.document_state.city == null or app.pending_scurk_print_options.is_empty():
 		return
 
 	var output_path := ProjectSettings.globalize_path(path).simplify_path()
@@ -158,7 +158,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 
 	var result := ScurkCityOutput.save_pdf(
 		output_path,
-		app.city,
+		app.document_state.city,
 		app.palette,
 		app.static_render.sprite_archive_for_view(int(grid.view_size)),
 		app.pending_scurk_print_options

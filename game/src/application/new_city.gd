@@ -97,7 +97,7 @@ func make_new_city_preview() -> void:
 		return
 	app.new_city_dialog.preview_timer.stop()
 	app.new_city_dialog.invalidate()
-	app.audio_controller.play_sound_events([529], app.city == null or app.city.sound_enabled(), CityViewMode.Mode.CITY, IsometricRenderer.VIEW_LARGE)
+	app.audio_controller.play_sound_events([529], app.document_state.city == null or app.document_state.city.sound_enabled(), CityViewMode.Mode.CITY, IsometricRenderer.VIEW_LARGE)
 	_generate_new_city_preview(true)
 
 
@@ -250,7 +250,7 @@ func _enter_landscape_editor() -> void:
 
 
 func start_city() -> void:
-	if not app.landscape_editor or app.city == null:
+	if not app.landscape_editor or app.document_state.city == null:
 		return
 
 	app.landscape_editor = false
@@ -271,6 +271,6 @@ func on_founding_newspaper_visibility_changed() -> void:
 
 	app.founding_newspaper_pending = false
 
-	if app.city != null and app.city.music_enabled():
+	if app.document_state.city != null and app.document_state.city.music_enabled():
 		app.audio_controller.music_director.general_track_index = 0
 		app.effects_audio.play_music_track(app.audio_controller.music_director.next_general_track())

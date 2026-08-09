@@ -72,7 +72,7 @@ func _run() -> void:
 			assert(main.overlay_mode == CityViewMode.Mode.CITY, "Benchmark view changed during measurement")
 			print("CACHE ", main.render_caches.region_cache.metrics(), " DYNAMIC ", main.map_view.debug_metrics())
 			print("PROFILE ", main.frame_profile)
-			print("STATE date=%d/%d/%d blocked=%s" % [main.city.current_year(), main.city.current_month(), main.city.current_day(), main.speed_controller.interaction_blocked or main.speed_controller.terminal_blocked])
+			print("STATE date=%d/%d/%d blocked=%s" % [main.document_state.city.current_year(), main.document_state.city.current_month(), main.document_state.city.current_day(), main.speed_controller.interaction_blocked or main.speed_controller.terminal_blocked])
 			print("FRAME speed=%d zoom=%.2f hires=%s viewport=%s frames=%d avg_fps=%.2f p95_ms=%.2f p99_ms=%.2f max_ms=%.2f over_60_budget_pct=%.2f" % [speed, zoom, full_size_graphics, main.map_view.size, samples.size(), samples.size() * 1000.0 / total, samples[int(samples.size() * 0.95)], samples[int(samples.size() * 0.99)], samples.back(), 100.0 * late / samples.size()])
 
 	main.queue_free()

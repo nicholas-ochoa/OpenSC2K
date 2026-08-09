@@ -18,9 +18,9 @@ func _run() -> void:
 	main.preferences.moving_frame_rate = 20
 	assert(main.city_session.activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/FLARANGE.SC2")))
 	main.map_view.zoom_factor = 1.0
-	var airplane := _first_record(main.city, [1])
+	var airplane := _first_record(main.document_state.city, [1])
 	assert(airplane >= 0, "The test city needs an airplane")
-	var thing: ThingRecord = main.city.thing(airplane)
+	var thing: ThingRecord = main.document_state.city.thing(airplane)
 	main.map_view.center_on_tile(Vector2i(int(thing.x), int(thing.y)))
 	await _wait_for_regions(main)
 	main.moving_sprites.refresh_moving_things()
@@ -36,11 +36,11 @@ func _run() -> void:
 
 	for tick in 6:
 		var now := start + tick * 200
-		var before := CityIsometricRenderer.moving_thing_anchor(main.city, airplane, 2)
+		var before := CityIsometricRenderer.moving_thing_anchor(main.document_state.city, airplane, 2)
 		assert(main.simulation_engine.advance_moving_things(now).ok)
 		main.moving_sprites.note_moving_tick(now)
 		main.moving_sprites.refresh_moving_things()
-		var after := CityIsometricRenderer.moving_thing_anchor(main.city, airplane, 2)
+		var after := CityIsometricRenderer.moving_thing_anchor(main.document_state.city, airplane, 2)
 		var canvas: CityDynamicSpriteCanvas = main.map_view._dynamic_canvas
 
 		if before.is_empty() or after.is_empty() or not ApplicationMovingSprites.can_blend(before, after) or before.anchor == after.anchor:

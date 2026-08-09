@@ -17,7 +17,7 @@ func run() -> void:
 	root.add_child(main)
 	await process_frame
 	assert(main.runtime_initialized and not main.assets_ready)
-	assert(main.city == null and main.palette == null)
+	assert(main.document_state.city == null and main.palette == null)
 	assert(main.main_menu.import_button.visible)
 
 	for button in main.main_menu.game_buttons:
