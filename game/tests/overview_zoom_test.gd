@@ -21,7 +21,7 @@ func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	if not preview:
 		main.set_script(OverviewApp)
-	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame
 	assert(main.map_view.zoom_percent() == 100, "Default zoom changed")

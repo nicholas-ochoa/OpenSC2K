@@ -39,11 +39,11 @@ func sync_asset_menu_actions() -> void:
 
 	for index in popup.item_count:
 		if popup.get_item_id(index) not in [5, 6] and not popup.is_item_separator(index):
-			popup.set_item_disabled(index, not app.assets_ready)
+			popup.set_item_disabled(index, not app.asset_state.assets_ready)
 
 
 func on_file_menu(id: int) -> void:
-	if not app.assets_ready and id not in [5, 6]:
+	if not app.asset_state.assets_ready and id not in [5, 6]:
 		return
 
 	match id:

@@ -248,7 +248,7 @@ func _restore_military_proposal_dialog() -> void:
 
 
 func open_scenario_intro(scenario: ScenarioState) -> void:
-	var rendered_picture := ScenarioGraphics.render(scenario, app.scenario_palette, app.scenario_graphics)
+	var rendered_picture := ScenarioGraphics.render(scenario, app.asset_state.scenario_palette, app.asset_state.scenario_graphics)
 	var picture: Image = rendered_picture.image if rendered_picture.ok else null
 	var name := app.document_state.city.city_name()
 

@@ -55,7 +55,7 @@ func _export_scurk_city_bmp(path: String) -> void:
 	if output_path.get_extension().to_lower() != "bmp":
 		output_path += ".BMP"
 
-	if output_path == app.reference_root or output_path.begins_with(app.reference_root + "/"):
+	if output_path == app.asset_state.reference_root or output_path.begins_with(app.asset_state.reference_root + "/"):
 		app.interface.show_error("Choose a location outside the read-only original support-data directory.")
 
 		return
@@ -65,8 +65,8 @@ func _export_scurk_city_bmp(path: String) -> void:
 	var result := ScurkCityOutput.save_small_bmp(
 		output_path,
 		app.document_state.city,
-		app.palette_index_encoding,
-		app.palette,
+		app.asset_state.palette_index_encoding,
+		app.asset_state.palette,
 		app.static_render.sprite_archive_for_view(IsometricRenderer.VIEW_SMALL),
 		options
 	)
@@ -101,7 +101,7 @@ func _refresh_scurk_print_preview(options: Dictionary) -> void:
 
 	var result := ScurkCityOutput.render(
 		app.document_state.city,
-		app.palette,
+		app.asset_state.palette,
 		app.static_render.sprite_archive_for_view(IsometricRenderer.VIEW_SMALL),
 		IsometricRenderer.VIEW_SMALL,
 		options
@@ -143,7 +143,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 	if output_path.get_extension().to_lower() != "pdf":
 		output_path += ".PDF"
 
-	if output_path == app.reference_root or output_path.begins_with(app.reference_root + "/"):
+	if output_path == app.asset_state.reference_root or output_path.begins_with(app.asset_state.reference_root + "/"):
 		app.interface.show_error("Choose a location outside the read-only original support-data directory.")
 
 		return
@@ -159,7 +159,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 	var result := ScurkCityOutput.save_pdf(
 		output_path,
 		app.document_state.city,
-		app.palette,
+		app.asset_state.palette,
 		app.static_render.sprite_archive_for_view(int(grid.view_size)),
 		app.pending_scurk_print_options
 	)

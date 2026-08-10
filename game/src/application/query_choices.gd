@@ -205,10 +205,10 @@ func open_query(point: Vector2i) -> void:
 
 	if (
 		result.get("kind", "") == "general"
-		and app.active_scurk_tile_set != null
-		and app.active_scurk_tile_set.names.has(int(result.get("tile_id", -1)))
+		and app.asset_state.active_scurk_tile_set != null
+		and app.asset_state.active_scurk_tile_set.names.has(int(result.get("tile_id", -1)))
 	):
-		result.title = app.active_scurk_tile_set.names[int(result.tile_id)]
+		result.title = app.asset_state.active_scurk_tile_set.names[int(result.tile_id)]
 
 	app.active_query_result = result
 	var is_specific: bool = result.kind == "specific"
@@ -220,7 +220,7 @@ func open_query(point: Vector2i) -> void:
 		var fallback := "Analyze" if action == "city_analysis" else "Ruminate"
 		action_text = str(text_resources.original_query_strings.get(action_resource_id, fallback))
 
-	var neighborhood := QueryNeighborhood.render(app.document_state.city, point, app.palette_index_encoding, app.large_sprites)
+	var neighborhood := QueryNeighborhood.render(app.document_state.city, point, app.asset_state.palette_index_encoding, app.asset_state.large_sprites)
 	app.query_dialog.show_query(
 		str(result.title),
 		str(result.title) if is_specific else "",
@@ -229,7 +229,7 @@ func open_query(point: Vector2i) -> void:
 		action_text,
 		result,
 		ImageTexture.create_from_image(neighborhood) if neighborhood != null else null,
-		app.palette,
+		app.asset_state.palette,
 		app.palette_clock.cycle_ticks,
 	)
 	app.effects_audio.play_sound_events(result.get("sound_events", []))

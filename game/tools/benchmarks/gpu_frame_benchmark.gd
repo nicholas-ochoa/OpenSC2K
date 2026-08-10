@@ -12,7 +12,7 @@ func _run() -> void:
 	root.size = Vector2i(1920, 1080)
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.set_script(load("res://tools/benchmarks/profiled_city.gd"))
-	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	root.add_child(main)
 	await process_frame

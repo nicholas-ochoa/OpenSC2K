@@ -145,7 +145,7 @@ func activate_document(
 		source_path
 		if (
 			not source_path.is_empty()
-			and not CityFiles.is_reference_path(source_path, app.reference_root)
+			and not CityFiles.is_reference_path(source_path, app.asset_state.reference_root)
 		)
 		else ""
 	)

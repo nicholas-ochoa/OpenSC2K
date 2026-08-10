@@ -133,18 +133,18 @@ func choose_tool_group(group_index: int) -> void:
 
 func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if group_index == 1 and subtool_index in [0, 1, 2, 3]:
-		return TerrainToolIcons.terrain_action(app.asset_source.assets.city_ui_graphics,
+		return TerrainToolIcons.terrain_action(app.asset_state.asset_source.assets.city_ui_graphics,
 			["tree", "water", "stream", "forest"][subtool_index])
 
 	if group_index == 0 and subtool_index in [1, 2, 3]:
 		return TerrainToolIcons.terrain_action(
-			app.asset_source.assets.city_ui_graphics, ["", "level", "raise", "lower"][subtool_index]
+			app.asset_state.asset_source.assets.city_ui_graphics, ["", "level", "raise", "lower"][subtool_index]
 		)
 
 	if group_index == 0 and subtool_index in [5, 6, 7]:
-		return TerrainToolIcons.terrain_action(app.asset_source.assets.city_ui_graphics, ["stretch", "sea_raise", "sea_lower"][subtool_index - 5])
+		return TerrainToolIcons.terrain_action(app.asset_state.asset_source.assets.city_ui_graphics, ["stretch", "sea_raise", "sea_lower"][subtool_index - 5])
 
-	if app.palette == null or app.large_sprites == null or not app.large_sprites.is_valid():
+	if app.asset_state.palette == null or app.asset_state.large_sprites == null or not app.asset_state.large_sprites.is_valid():
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
 
 	var tile_id := BuildingSites.tile_for_tool(group_index, subtool_index)
@@ -167,12 +167,12 @@ func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 	if sprite_id < 0:
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
 
-	var entry := app.large_sprites.find_sprite(sprite_id)
+	var entry := app.asset_state.large_sprites.find_sprite(sprite_id)
 
 	if entry == null:
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null
 
-	var rendered := entry.create_image(app.palette_clock.toolbar_palette if app.palette_clock.toolbar_palette != null else app.palette)
+	var rendered := entry.create_image(app.palette_clock.toolbar_palette if app.palette_clock.toolbar_palette != null else app.asset_state.palette)
 
 	if not rendered.get("ok", false):
 		return app.city_toolbar.group_icon(group_index) if app.city_toolbar != null else null

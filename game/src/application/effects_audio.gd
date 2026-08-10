@@ -38,7 +38,7 @@ func handle_application_focus_out() -> void:
 func handle_application_focus_in() -> void:
 	if app.audio_controller != null:
 		app.audio_controller.handle_application_focus_in(
-			(app.assets_ready and app.main_menu != null and app.main_menu.visible and app.preferences.music_volume > 0.0
+			(app.asset_state.assets_ready and app.main_menu != null and app.main_menu.visible and app.preferences.music_volume > 0.0
 			and (app.document_state.city == null or app.document_state.city.music_enabled()))
 			or (app.document_state.city != null and app.document_state.city.music_enabled())
 		)
@@ -86,7 +86,7 @@ func show_effect_events(effect_events: Array, sound_events: Array) -> void:
 			if sprite == null:
 				continue
 
-			var rendered := sprite.create_image(app.palette)
+			var rendered := sprite.create_image(app.asset_state.palette)
 
 			if not rendered.ok:
 				continue

@@ -11,7 +11,7 @@ func run() -> void:
 	main.preferences.settings_path = "user://import-runtime-test.cfg"
 	root.add_child(main)
 	await process_frame
-	assert(not main.assets_ready)
+	assert(not main.asset_state.assets_ready)
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", "")
 	var folder := ProjectSettings.globalize_path("user://runtime-import-test-%d" % OS.get_process_id())
 	var result := OriginalPackImporter.import_executable(ProjectSettings.globalize_path("res://../references/SIMCITY2000/SIMCITY.EXE"), folder)
@@ -36,9 +36,9 @@ func run() -> void:
 	var repeated := OriginalCityImporter.import_saved_games(ProjectSettings.globalize_path("res://../references/SIMCITY2000"), saved_root)
 	assert(repeated.ok and repeated.created.is_empty())
 	main.assets.apply_graphics_source(selected)
-	assert(main.assets_ready and not main.main_menu.import_button.visible)
+	assert(main.asset_state.assets_ready and not main.main_menu.import_button.visible)
 	assert(main.audio_controller.set_media_packs(result.sound, result.music))
-	assert(main.original_text_resources.newspaper_data != null and main.base_large_sprites != null)
+	assert(main.original_text_resources.newspaper_data != null and main.asset_state.base_large_sprites != null)
 	main.new_city.open_new_city_dialog()
 	assert(main.new_city_dialog.visible)
 	main.queue_free()

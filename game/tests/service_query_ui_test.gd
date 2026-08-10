@@ -9,7 +9,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main = (load("res://main.tscn") as PackedScene).instantiate()
-	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame
 	var city := CityState.from_document(EmptyCityTemplate.create())

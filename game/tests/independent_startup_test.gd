@@ -106,10 +106,10 @@ func _test_main() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame
-	assert(main.runtime_initialized and main.main_menu.visible)
+	assert(main.asset_state.runtime_initialized and main.main_menu.visible)
 	assert(not main.reference_import_dialog.visible and main.document_state.city == null)
 	assert(main.audio_controller.original_media_enabled)
 	main.settings.open_settings_dialog()
@@ -146,7 +146,7 @@ func _test_main() -> void:
 	_round_trip_city(main.document_state.current_document)
 	main.scurk_workspace.open_scurk_dialog()
 	assert(main.scurk_editor.visible and main.scurk_editor.tile_set != null)
-	assert(main.scurk_editor.source_path.is_empty() and main.asset_source.uses_graphics_pack)
+	assert(main.scurk_editor.source_path.is_empty() and main.asset_state.asset_source.uses_graphics_pack)
 	assert(main.scurk_editor.current_large_id >= 1000)
 	main.scurk_editor.hide()
 	main.scurk_workspace.open_scurk_place_print()
@@ -163,13 +163,13 @@ func _test_main() -> void:
 func _test_invalid_startup() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "unknown")
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.reference_root = ProjectSettings.globalize_path("res://../references")
+	main.asset_state.reference_root = ProjectSettings.globalize_path(MISSING_ROOT)
 	root.add_child(main)
 	await process_frame
 	await process_frame
-	assert(main.runtime_initialized and not main.assets_ready)
+	assert(main.asset_state.runtime_initialized and not main.asset_state.assets_ready)
 	assert(not main.reference_import_error_dialog.visible and main.main_menu.import_button.visible)
-	assert(main.document_state.city == null and main.palette == null)
+	assert(main.document_state.city == null and main.asset_state.palette == null)
 	assert(main.map_view != null and main.audio_controller != null and not main.audio_controller.original_media_enabled)
 	main.queue_free()
 	await process_frame

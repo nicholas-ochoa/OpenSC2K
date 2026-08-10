@@ -52,10 +52,10 @@ func _run() -> void:
 	var indexed := Image.create(2, 1, false, Image.FORMAT_RGBA8)
 	indexed.set_pixel(0, 0, Color8(161, 161, 161, 255))
 	indexed.set_pixel(1, 0, Color.TRANSPARENT)
-	var mapping: PackedInt32Array = main.palette.animation_index_map(0)
+	var mapping: PackedInt32Array = main.asset_state.palette.animation_index_map(0)
 	mapping[161] = 17
 	var colored: Image = main.map_render.sign_palette_image(indexed, mapping)
-	assert(colored.get_pixel(0, 0) == main.palette.color(17))
+	assert(colored.get_pixel(0, 0) == main.asset_state.palette.color(17))
 	assert(colored.get_pixel(1, 0).a == 0.0)
 	assert(indexed.get_pixel(0, 0).r8 == 161, "Palette update changed cached indices")
 	main.static_render.invalidate_rendered_city()

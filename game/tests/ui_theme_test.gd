@@ -18,7 +18,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("user://missing-test-art"))
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
+	main.asset_state.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
 	main.preferences.settings_path = path
 	root.add_child(main)
 	await process_frame
@@ -73,7 +73,7 @@ func _run() -> void:
 	await process_frame
 	var restored := (load("res://main.tscn") as PackedScene).instantiate()
 	restored.preferences.settings_path = path
-	restored.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
+	restored.asset_state.reference_root = ProjectSettings.globalize_path("user://missing-test-originals")
 	root.add_child(restored)
 	await process_frame
 	assert(restored.preferences.ui_theme == "dark")

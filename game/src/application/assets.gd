@@ -20,7 +20,7 @@ func _init(application: CityApplication) -> void:
 
 
 func initialize_runtime() -> void:
-	if app.runtime_initialized:
+	if app.asset_state.runtime_initialized:
 		return
 
 	var mode := OS.get_environment("OPENSC2K_ASSET_SOURCE")
@@ -28,19 +28,19 @@ func initialize_runtime() -> void:
 	if mode.is_empty():
 		mode = app.preferences.graphics_source
 
-	app.asset_source = GameAssetSource.load_source(
-		app.reference_root, mode, app.preferences.graphics_folder, OS.get_environment("OPENSC2K_GRAPHICS_PACK")
+	app.asset_state.asset_source = GameAssetSource.load_source(
+		app.asset_state.reference_root, mode, app.preferences.graphics_folder, OS.get_environment("OPENSC2K_GRAPHICS_PACK")
 	)
-	app.assets_ready = app.asset_source.error.is_empty()
+	app.asset_state.assets_ready = app.asset_state.asset_source.error.is_empty()
 
-	if app.assets_ready:
-		app.reference_root = app.asset_source.reference_root
+	if app.asset_state.assets_ready:
+		app.asset_state.reference_root = app.asset_state.asset_source.reference_root
 	else:
-		app.asset_source.assets = OriginalGameAssets.new()
-		app.asset_source.use_original_data = false
+		app.asset_state.asset_source.assets = OriginalGameAssets.new()
+		app.asset_state.asset_source.use_original_data = false
 
-	app.runtime_initialized = true
-	app.new_city_session.independent_template = not app.asset_source.use_original_data
+	app.asset_state.runtime_initialized = true
+	app.new_city_session.independent_template = not app.asset_state.asset_source.use_original_data
 	app.audio_controller = CityAudio.new()
 	app.audio_controller.startup_theme_pending = true
 	app.audio_controller.background_audio = app.preferences.background_audio
@@ -52,10 +52,10 @@ func initialize_runtime() -> void:
 	)
 	app.add_child(app.audio_controller)
 	app.audio_controller.setup(
-		app.reference_root, app.preferences.music_volume, app.preferences.effects_volume, app.asset_source.use_original_data
+		app.asset_state.reference_root, app.preferences.music_volume, app.preferences.effects_volume, app.asset_state.asset_source.use_original_data
 	)
 
-	if app.assets_ready:
+	if app.asset_state.assets_ready:
 		app.audio_controller.set_media_packs(app.preferences.sound_pack_folder, app.preferences.music_pack_folder)
 		app.audio_controller.set_soundtrack_folder(app.preferences.soundtrack_folder)
 
@@ -68,12 +68,12 @@ func initialize_runtime() -> void:
 	app.reports.newspaper_session_state.resize(NewsQueue.MISC_SIZE)
 	app.reports.newspaper_session_state.fill(0)
 	NewsQueue.initialize_session(app.reports.newspaper_session_state, app.tool_random)
-	var original_assets := app.asset_source.assets
+	var original_assets := app.asset_state.asset_source.assets
 	text_resources.newspaper_data = original_assets.newspaper_data
 	text_resources.original_query_strings = original_assets.strings
 	text_resources.building_objection_text = original_assets.building_objection_text
 	text_resources.library_texts = original_assets.library_texts
-	app.scurk_graphics = original_assets.scurk_graphics
+	app.asset_state.scurk_graphics = original_assets.scurk_graphics
 	app.interface.build_interface(original_assets)
 	app.settings.apply_compatibility_controls()
 	app.desktop_presentation = CityDesktopPresentation.new()
@@ -92,15 +92,15 @@ func initialize_runtime() -> void:
 
 		return
 
-	app.palette = original_assets.palette
-	app.scenario_palette = original_assets.scenario_palette
-	app.scenario_graphics = original_assets.scenario_graphics
-	app.palette_index_encoding = Palette.index_encoding()
+	app.asset_state.palette = original_assets.palette
+	app.asset_state.scenario_palette = original_assets.scenario_palette
+	app.asset_state.scenario_graphics = original_assets.scenario_graphics
+	app.asset_state.palette_index_encoding = Palette.index_encoding()
 	app.static_render.update_palette_cycle_texture()
-	app.base_large_sprites = original_assets.large_sprites
-	app.base_small_medium_sprites = original_assets.small_medium_sprites
-	app.large_sprites = app.base_large_sprites
-	app.small_medium_sprites = app.base_small_medium_sprites
+	app.asset_state.base_large_sprites = original_assets.large_sprites
+	app.asset_state.base_small_medium_sprites = original_assets.small_medium_sprites
+	app.asset_state.large_sprites = app.asset_state.base_large_sprites
+	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
 	app.camera_input.refresh_child_tool_icons()
 
 	app.interface.show_main_menu()
@@ -200,29 +200,29 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	# wait for workers using the old archives
 	app.map_render.close_region_cache()
 	app.static_render.stop_render_job()
-	app.asset_source = selected
-	app.assets_ready = true
-	app.reference_root = selected.reference_root
+	app.asset_state.asset_source = selected
+	app.asset_state.assets_ready = true
+	app.asset_state.reference_root = selected.reference_root
 	app.new_city_session.independent_template = false
-	app.audio_controller.reference_root = app.reference_root
+	app.audio_controller.reference_root = app.asset_state.reference_root
 	app.audio_controller.original_media_enabled = true
 	var assets := selected.assets
 	text_resources.newspaper_data = assets.newspaper_data
 	text_resources.original_query_strings = assets.strings
 	text_resources.building_objection_text = assets.building_objection_text
 	text_resources.library_texts = assets.library_texts
-	app.palette = assets.palette
-	app.scenario_palette = assets.scenario_palette
-	app.scenario_graphics = assets.scenario_graphics
-	app.scurk_graphics = assets.scurk_graphics
-	app.base_large_sprites = assets.large_sprites
-	app.base_small_medium_sprites = assets.small_medium_sprites
-	app.large_sprites = app.base_large_sprites
-	app.small_medium_sprites = app.base_small_medium_sprites
+	app.asset_state.palette = assets.palette
+	app.asset_state.scenario_palette = assets.scenario_palette
+	app.asset_state.scenario_graphics = assets.scenario_graphics
+	app.asset_state.scurk_graphics = assets.scurk_graphics
+	app.asset_state.base_large_sprites = assets.large_sprites
+	app.asset_state.base_small_medium_sprites = assets.small_medium_sprites
+	app.asset_state.large_sprites = app.asset_state.base_large_sprites
+	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
 
-	if app.active_scurk_tile_set != null:
-		app.large_sprites = SpriteArchive.combine([app.base_large_sprites, app.active_scurk_tile_set.overrides])
-		app.small_medium_sprites = SpriteArchive.combine([app.base_small_medium_sprites, app.active_scurk_tile_set.overrides])
+	if app.asset_state.active_scurk_tile_set != null:
+		app.asset_state.large_sprites = SpriteArchive.combine([app.asset_state.base_large_sprites, app.asset_state.active_scurk_tile_set.overrides])
+		app.asset_state.small_medium_sprites = SpriteArchive.combine([app.asset_state.base_small_medium_sprites, app.asset_state.active_scurk_tile_set.overrides])
 
 	app.static_render.invalidate_rendered_city()
 	app.static_render.update_palette_cycle_texture()
@@ -238,17 +238,17 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.city_map_window.set_resources(assets.city_map_icons, assets.strings)
 	app.building_objection_dialog.set_picture(assets.forest_protest_image)
 	if app.scurk_editor != null:
-		app.scurk_editor.configure(app.palette, app.base_large_sprites, app.base_small_medium_sprites, app.reference_root, app.scurk_graphics)
+		app.scurk_editor.configure(app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites, app.asset_state.reference_root, app.asset_state.scurk_graphics)
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
-		app.scurk_place_print.configure(app.palette, app.large_sprites, app.active_scurk_tile_set.names if app.active_scurk_tile_set != null else {}, app.scurk_graphics)
+		app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, app.asset_state.active_scurk_tile_set.names if app.asset_state.active_scurk_tile_set != null else {}, app.asset_state.scurk_graphics)
 
 	app.menus.sync_asset_menu_actions()
 	app.main_menu.set_assets_ready(true)
-	app.main_menu.city_background.replace_graphics(app.palette, app.large_sprites)
+	app.main_menu.city_background.replace_graphics(app.asset_state.palette, app.asset_state.large_sprites)
 
 	if app.main_menu.visible:
-		app.main_menu.city_background.configure(app.reference_root, app.palette, app.large_sprites)
+		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
 
 	app.map_render.refresh_map(false)
 
@@ -261,12 +261,12 @@ func refresh_scurk_artwork() -> void:
 
 	if app.document_state.city != null and app.scurk_place_print != null and app.scurk_place_print.visible and app.overlay_mode == CityViewMode.Mode.CITY:
 		for stamp in app.document_state.city.scurk_artwork_stamps:
-			var entry = app.large_sprites.find_sprite(1000 + int(stamp.tile_id))
+			var entry = app.asset_state.large_sprites.find_sprite(1000 + int(stamp.tile_id))
 
 			if entry == null:
 				continue
 
-			var rendered: Dictionary = entry.create_image(app.palette)
+			var rendered: Dictionary = entry.create_image(app.asset_state.palette)
 
 			if not rendered.ok:
 				continue

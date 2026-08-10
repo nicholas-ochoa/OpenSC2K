@@ -22,7 +22,7 @@ func refresh_map(force := true) -> void:
 	if app.city_status_bar != null:
 		app.city_status_bar.set_compass(app.document_state.city.compass_rotation() if app.document_state.city != null else -1)
 
-	if app.document_state.city == null or app.palette == null:
+	if app.document_state.city == null or app.asset_state.palette == null:
 		return
 
 	app.map_view.trip_query_underground = app.overlay_mode == CityViewMode.Mode.UNDERGROUND
@@ -125,12 +125,12 @@ func refresh_map(force := true) -> void:
 
 		if app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 			indexed = UndergroundView.create_image(
-				display_city, app.palette_index_encoding, sprite_archive, view_size, true,
+				display_city, app.asset_state.palette_index_encoding, sprite_archive, view_size, true,
 				app.show_underground_pipes, app.show_underground_subways, app.show_underground_water_mains
 			)
 		else:
 			indexed = IsometricRenderer.create_image(
-				display_city, app.palette_index_encoding, sprite_archive, view_size,
+				display_city, app.asset_state.palette_index_encoding, sprite_archive, view_size,
 				int(Time.get_ticks_msec() / 100), false, true, true, false
 			)
 
@@ -169,7 +169,7 @@ func refresh_map(force := true) -> void:
 		}
 	else:
 		app.static_render_state.pending = false
-		image = Minimap.create_image(app.document_state.city, app.palette, CityViewMode.key(app.overlay_mode))
+		image = Minimap.create_image(app.document_state.city, app.asset_state.palette, CityViewMode.key(app.overlay_mode))
 		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
 		caches.static_city_image = null
 		caches.static_occlusion_commands.clear()
@@ -221,7 +221,7 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	if force:
 		caches.region_cache.signature = []
 
-	caches.region_cache.configure(app.document_state.city, app.palette_index_encoding, sprites, signature, view_size,
+	caches.region_cache.configure(app.document_state.city, app.asset_state.palette_index_encoding, sprites, signature, view_size,
 		app.overlay_mode, app.surface_visibility, app.show_underground_pipes, app.show_underground_subways, dirty, app.show_underground_water_mains)
 
 	if app.overlay_mode == CityViewMode.Mode.CITY:

@@ -20,7 +20,7 @@ func _init(application: CityApplication) -> void:
 
 
 func open_city_dialog() -> void:
-	if not app.assets_ready:
+	if not app.asset_state.assets_ready:
 		return
 
 	var city_directory := ProjectSettings.globalize_path("user://cities")
@@ -32,7 +32,7 @@ func open_city_dialog() -> void:
 
 
 func open_scenario_dialog() -> void:
-	if not app.assets_ready:
+	if not app.asset_state.assets_ready:
 		return
 
 	var scenario_directory := ProjectSettings.globalize_path("user://scenarios")
@@ -233,7 +233,7 @@ func load_city(path: String) -> void:
 
 
 func _load_city_unchecked(path: String) -> void:
-	if not app.assets_ready:
+	if not app.asset_state.assets_ready:
 		return
 
 	var document := Sc2Document.load_path(path)
@@ -274,7 +274,7 @@ func on_save_dialog_canceled() -> void:
 
 
 func _save_copy(path: String) -> bool:
-	var result := CityFiles.save_copy(document_state.current_document, path, app.reference_root, app.preferences.original_compatibility)
+	var result := CityFiles.save_copy(document_state.current_document, path, app.asset_state.reference_root, app.preferences.original_compatibility)
 
 	if not result.ok:
 		app.interface.show_error(result.error)

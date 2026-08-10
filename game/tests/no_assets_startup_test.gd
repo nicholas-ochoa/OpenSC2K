@@ -16,8 +16,8 @@ func run() -> void:
 	main.preferences.settings_path = "user://no-assets-test.cfg"
 	root.add_child(main)
 	await process_frame
-	assert(main.runtime_initialized and not main.assets_ready)
-	assert(main.document_state.city == null and main.palette == null)
+	assert(main.asset_state.runtime_initialized and not main.asset_state.assets_ready)
+	assert(main.document_state.city == null and main.asset_state.palette == null)
 	assert(main.main_menu.import_button.visible)
 
 	for button in main.main_menu.game_buttons:

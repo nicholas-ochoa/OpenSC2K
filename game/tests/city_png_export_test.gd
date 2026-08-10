@@ -76,7 +76,7 @@ func _check_menu_and_dialog() -> void:
 	dialog.folder_input.text = folder.path_join("missing")
 	dialog.folder_input.text_changed.emit(dialog.folder_input.text)
 	assert(dialog.get_ok_button().disabled and dialog.summary_label.text == "The folder does not exist.")
-	dialog.folder_input.text = main.reference_root
+	dialog.folder_input.text = main.asset_state.reference_root
 	dialog.folder_input.text_changed.emit(dialog.folder_input.text)
 	assert(dialog.get_ok_button().disabled and "read-only" in dialog.summary_label.text)
 	dialog.folder_input.text = folder
@@ -106,7 +106,7 @@ func _check_content_options() -> void:
 	for variant in [[true, true], [false, true], [true, false]]:
 		var job := ExportJob.new()
 		job.city_snapshot = main.document_state.city
-		job.palette = main.palette
+		job.palette = main.asset_state.palette
 		job.sprites = main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL)
 		job.view_size = Renderer.VIEW_SMALL
 		job.include_signs = variant[0]
@@ -123,7 +123,7 @@ func _check_content_options() -> void:
 
 func _check_render_progress() -> void:
 	var values: Array[float] = []
-	var result := ScurkCityOutput.render(main.document_state.city, main.palette, main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL), Renderer.VIEW_SMALL, {
+	var result := ScurkCityOutput.render(main.document_state.city, main.asset_state.palette, main.static_render.sprite_archive_for_view(Renderer.VIEW_SMALL), Renderer.VIEW_SMALL, {
 		"view": "underground", "progress": func(value: float) -> void: values.append(value),
 	})
 	assert(result.ok and values.size() == main.document_state.city.map_size * 2 - 1)
@@ -162,7 +162,7 @@ func _check_exports() -> void:
 			assert(center.a == 1.0 or entry[0] == "underground")
 		else:
 			assert(image.get_format() == Image.FORMAT_RGB8)
-			var expected: Color = Color("18242c") if entry[0] == "city" else main.palette.color(0xff)
+			var expected: Color = Color("18242c") if entry[0] == "city" else main.asset_state.palette.color(0xff)
 			assert(corner.to_rgba32() == expected.to_rgba32(), "%s background" % entry[0])
 
 		DirAccess.remove_absolute(path)

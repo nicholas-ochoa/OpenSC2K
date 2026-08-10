@@ -280,10 +280,10 @@ func update_network_preview() -> void:
 		return
 
 	var view := app.static_render.city_view_size()
-	var sprites := app.large_sprites if view == IsometricRenderer.VIEW_LARGE else app.small_medium_sprites
+	var sprites := app.asset_state.large_sprites if view == IsometricRenderer.VIEW_LARGE else app.asset_state.small_medium_sprites
 
-	if sprites != null and app.palette != null:
+	if sprites != null and app.asset_state.palette != null:
 		app.network_preview.request(
-			app.document_state.city, app.selected_group, app.selected_subtool, start, finish, view, app.palette, sprites,
+			app.document_state.city, app.selected_group, app.selected_subtool, start, finish, view, app.asset_state.palette, sprites,
 			app.overlay_mode == CityViewMode.Mode.UNDERGROUND, app.scurk_workspace.scurk_edit_tool_active()
 		)

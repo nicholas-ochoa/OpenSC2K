@@ -69,13 +69,13 @@ func _run() -> void:
 	city.set_tunnel_levels(5, 5, 5)
 	var bytes: PackedByteArray = city.document.serialize().data
 	city.visible_altitude_levels = 5
-	var subway_and_tunnel := _cutaway(city, main.palette, main.large_sprites)
+	var subway_and_tunnel := _cutaway(city, main.asset_state.palette, main.asset_state.large_sprites)
 	city.visible_altitude_levels = 4
-	var tunnel := _cutaway(city, main.palette, main.large_sprites)
+	var tunnel := _cutaway(city, main.asset_state.palette, main.asset_state.large_sprites)
 	assert(subway_and_tunnel.get_data() != tunnel.get_data())
 	assert(tunnel.get_used_rect().has_area())
 	city.visible_altitude_levels = 1
-	assert(not _cutaway(city, main.palette, main.large_sprites).get_used_rect().has_area())
+	assert(not _cutaway(city, main.asset_state.palette, main.asset_state.large_sprites).get_used_rect().has_area())
 	assert(city.document.serialize().data == bytes)
 	main.audio_controller.stop_sound_effects()
 	await create_timer(0.1).timeout

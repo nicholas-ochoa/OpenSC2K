@@ -44,7 +44,7 @@ func _run() -> void:
 	assert(map.zoom_percent() == 400 and not map.can_zoom_in())
 	assert(main.zoom_in_button.disabled and not main.zoom_out_button.disabled)
 	assert(main.static_render.city_view_size() == CityIsometricRenderer.VIEW_LARGE)
-	assert(main.static_render.sprite_archive_for_view(2) == main.large_sprites)
+	assert(main.static_render.sprite_archive_for_view(2) == main.asset_state.large_sprites)
 	var anchor := map.size * Vector2(0.4, 0.6)
 	var source := (anchor - map.camera._draw_offset(map.camera._view_scale())) / map.camera._view_scale()
 	assert(map.zoom_out(anchor) and map.zoom_percent() == 300)

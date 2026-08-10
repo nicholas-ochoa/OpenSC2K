@@ -19,7 +19,7 @@ func sync_new_city_workspace() -> void:
 
 
 func open_new_city_dialog() -> void:
-	if not app.assets_ready:
+	if not app.asset_state.assets_ready:
 		return
 
 	if app.new_city_dialog == null:
@@ -102,7 +102,7 @@ func make_new_city_preview() -> void:
 
 
 func _generate_new_city_preview(advance_seed: bool) -> bool:
-	if app.palette == null or not app.palette.is_valid():
+	if app.asset_state.palette == null or not app.asset_state.palette.is_valid():
 		app.new_city_dialog.preview_status.text = "Terrain preview is not available."
 
 		return false
@@ -113,10 +113,10 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 	app.new_city_preview_job.revision = app.new_city_dialog.generation_revision
 	app.new_city_preview_job.view_size = NewCityPreviewJob.preview_view_size(
 		app.new_city_dialog.size_input.get_selected_id(), app.new_city_dialog.size)
-	var preview_sprites := app.large_sprites if app.new_city_preview_job.view_size == IsometricRenderer.VIEW_LARGE else app.small_medium_sprites
+	var preview_sprites := app.asset_state.large_sprites if app.new_city_preview_job.view_size == IsometricRenderer.VIEW_LARGE else app.asset_state.small_medium_sprites
 	var error := app.new_city_preview_job.start(app.new_city_session,
-		app.reference_root.path_join("DEFAULT.SC2"), _new_city_terrain_options(),
-		app.palette, preview_sprites, advance_seed)
+		app.asset_state.reference_root.path_join("DEFAULT.SC2"), _new_city_terrain_options(),
+		app.asset_state.palette, preview_sprites, advance_seed)
 	if error != OK:
 		app.new_city_preview_job = null
 		app.new_city_dialog.preview_status.text = "Cannot start terrain generation."
@@ -183,7 +183,7 @@ func create_new_city_unchecked() -> void:
 	if not app.new_city_dialog.candidate_valid or not app.new_city_session.matches(terrain_options):
 		return
 
-	var template_path := app.reference_root.path_join("DEFAULT.SC2")
+	var template_path := app.asset_state.reference_root.path_join("DEFAULT.SC2")
 	var difficulty := app.new_city_dialog.difficulty_input.get_selected_id()
 	var starting_year := app.new_city_dialog.year_input.get_selected_id()
 	var result := app.new_city_session.create_city(

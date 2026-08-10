@@ -60,7 +60,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	if (
 		app.overlay_mode != CityViewMode.Mode.CITY
 		or app.document_state.city == null
-		or app.palette_index_encoding == null
+		or app.asset_state.palette_index_encoding == null
 		or caches.static_city_image == null
 		or caches.static_city_image.is_empty()
 		or caches.static_render_mode != CityViewMode.Mode.CITY
@@ -103,7 +103,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	var patched := IsometricRenderer.patch_static_image(
 		caches.static_city_image,
 		display_city,
-		app.palette_index_encoding,
+		app.asset_state.palette_index_encoding,
 		sprite_archive,
 		dirty_indices,
 		view_size,
@@ -294,7 +294,7 @@ func request_static_render(
 	snapshot.visible_altitude_levels = app.document_state.city.visible_altitude_levels
 	state.job = RenderJob.new()
 	state.job.city_snapshot = snapshot
-	state.job.index_palette = app.palette_index_encoding
+	state.job.index_palette = app.asset_state.palette_index_encoding
 	state.job.sprites = sprite_archive
 	state.job.view_size = view_size
 	state.job.animation_phase = int(Time.get_ticks_msec() / 100)
@@ -420,16 +420,16 @@ func static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array
 
 
 func update_palette_cycle_texture() -> void:
-	if app.palette == null or not app.palette.is_valid():
+	if app.asset_state.palette == null or not app.asset_state.palette.is_valid():
 		return
 
 	palette_clock.toolbar_palette = Sc2Palette.new()
 
-	for color_index in app.palette.animation_index_map(palette_clock.cycle_ticks):
-		palette_clock.toolbar_palette.colors.append(app.palette.colors[color_index])
+	for color_index in app.asset_state.palette.animation_index_map(palette_clock.cycle_ticks):
+		palette_clock.toolbar_palette.colors.append(app.asset_state.palette.colors[color_index])
 
 	app.camera_input.refresh_child_tool_icons()
-	var image := app.palette.animation_image(palette_clock.cycle_ticks)
+	var image := app.asset_state.palette.animation_image(palette_clock.cycle_ticks)
 
 	if palette_clock.cycle_texture == null:
 		palette_clock.cycle_texture = ImageTexture.create_from_image(image)
@@ -449,7 +449,7 @@ func city_view_size() -> int:
 
 
 func sprite_archive_for_view(view_size: int) -> Sc2SpriteArchive:
-	return app.small_medium_sprites if view_size < IsometricRenderer.VIEW_LARGE else app.large_sprites
+	return app.asset_state.small_medium_sprites if view_size < IsometricRenderer.VIEW_LARGE else app.asset_state.large_sprites
 
 
 # waits for the running static render and discards its job

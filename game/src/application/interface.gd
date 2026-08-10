@@ -209,10 +209,10 @@ func show_main_menu() -> void:
 		app.scurk_print.hide()
 
 	app.menus.sync_asset_menu_actions()
-	app.main_menu.set_assets_ready(app.assets_ready)
+	app.main_menu.set_assets_ready(app.asset_state.assets_ready)
 
-	if app.assets_ready:
-		app.main_menu.city_background.configure(app.reference_root, app.palette, app.large_sprites)
+	if app.asset_state.assets_ready:
+		app.main_menu.city_background.configure(app.asset_state.reference_root, app.asset_state.palette, app.asset_state.large_sprites)
 
 	app.main_menu.show_menu(app.document_state.city != null)
 	app.status_label.text = "Main menu."
@@ -234,7 +234,7 @@ func hide_main_menu() -> void:
 
 func open_about_dialog() -> void:
 	app.about_dialog.popup_centered()
-	if app.assets_ready and app.audio_controller != null and app.audio_controller.music_volume > 0.0 and (app.document_state.city == null or app.document_state.city.music_enabled()):
+	if app.asset_state.assets_ready and app.audio_controller != null and app.audio_controller.music_volume > 0.0 and (app.document_state.city == null or app.document_state.city.music_enabled()):
 		app.audio_controller.play_music_track(Music.ABOUT_TRACK, false, true)
 
 
@@ -260,7 +260,7 @@ func refresh_details() -> void:
 		app.ordinance_window.refresh_city()
 
 	if app.city_map_window != null:
-		app.city_map_window.refresh_city(app.document_state.city, app.palette, app.reports.city_map_viewport_outline())
+		app.city_map_window.refresh_city(app.document_state.city, app.asset_state.palette, app.reports.city_map_viewport_outline())
 
 	var demand := app.document_state.city.rci_demand()
 	var weather_trend := app.document_state.city.document.misc_u32(RciAftermath.MISC_WEATHER_TREND) & 0xff

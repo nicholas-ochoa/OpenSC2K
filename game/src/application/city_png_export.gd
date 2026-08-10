@@ -43,7 +43,7 @@ func open_export_dialog() -> void:
 		app.static_render.city_view_size(),
 		CityViewMode.key(app.overlay_mode),
 		bool(app.surface_visibility.get("signs", true)),
-		app.reference_root,
+		app.asset_state.reference_root,
 	)
 	app.city_png_export_dialog.show_options()
 
@@ -64,7 +64,7 @@ func start_export(options: Dictionary) -> void:
 	var view_size := int(options.view_size)
 	job = ExportJob.new()
 	job.city_snapshot = snapshot
-	job.palette = app.palette
+	job.palette = app.asset_state.palette
 	job.sprites = app.static_render.sprite_archive_for_view(view_size)
 	job.view_size = view_size
 	job.render_mode = String(options.view)

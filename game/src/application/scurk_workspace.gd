@@ -42,14 +42,14 @@ func ensure_scurk_place_print() -> void:
 
 
 func open_scurk_dialog() -> void:
-	if not app.assets_ready:
+	if not app.asset_state.assets_ready:
 		return
 
 	if (
-		app.palette == null
-		or not app.palette.is_valid()
-		or app.base_large_sprites == null
-		or app.base_small_medium_sprites == null
+		app.asset_state.palette == null
+		or not app.asset_state.palette.is_valid()
+		or app.asset_state.base_large_sprites == null
+		or app.asset_state.base_small_medium_sprites == null
 	):
 		app.interface.show_error("The SCURK graphics are not loaded.")
 
@@ -57,29 +57,29 @@ func open_scurk_dialog() -> void:
 
 	_ensure_scurk_editor()
 	app.scurk_editor.configure(
-		app.palette, app.base_large_sprites, app.base_small_medium_sprites, app.reference_root, app.scurk_graphics
+		app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites, app.asset_state.reference_root, app.asset_state.scurk_graphics
 	)
 	var initial_path := (
-		app.active_scurk_path
-		if not app.active_scurk_path.is_empty()
-		else app.reference_root.path_join("SCURKART/ORIGINAL.MIF")
+		app.asset_state.active_scurk_path
+		if not app.asset_state.active_scurk_path.is_empty()
+		else app.asset_state.reference_root.path_join("SCURKART/ORIGINAL.MIF")
 	)
 
 	if (
 		app.scurk_editor.tile_set != null
 		and not app.scurk_editor.dirty
-		and not app.active_scurk_path.is_empty()
-		and app.scurk_editor.source_path != app.active_scurk_path
+		and not app.asset_state.active_scurk_path.is_empty()
+		and app.scurk_editor.source_path != app.asset_state.active_scurk_path
 	):
-		var switched := app.scurk_editor.load_path(app.active_scurk_path)
+		var switched := app.scurk_editor.load_path(app.asset_state.active_scurk_path)
 
 		if not switched.ok:
 			app.interface.show_error(switched.error)
 
 			return
 
-	if app.scurk_editor.tile_set == null and app.active_scurk_path.is_empty() and app.asset_source.uses_graphics_pack:
-		var created := ScurkMif.from_archives([app.base_large_sprites, app.base_small_medium_sprites])
+	if app.scurk_editor.tile_set == null and app.asset_state.active_scurk_path.is_empty() and app.asset_state.asset_source.uses_graphics_pack:
+		var created := ScurkMif.from_archives([app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites])
 		var loaded := app.scurk_editor.load_tile_set(created)
 
 		if not loaded.ok:
@@ -94,7 +94,7 @@ func open_scurk_dialog() -> void:
 
 
 func open_scurk_place_print() -> void:
-	if not app.assets_ready:
+	if not app.asset_state.assets_ready:
 		return
 
 	if app.landscape_editor:
@@ -106,10 +106,10 @@ func open_scurk_place_print() -> void:
 		return
 
 	if (
-		app.palette == null
-		or not app.palette.is_valid()
-		or app.large_sprites == null
-		or not app.large_sprites.is_valid()
+		app.asset_state.palette == null
+		or not app.asset_state.palette.is_valid()
+		or app.asset_state.large_sprites == null
+		or not app.asset_state.large_sprites.is_valid()
 	):
 		app.interface.show_error("The SCURK Place & Print graphics are not available.")
 
@@ -125,11 +125,11 @@ func open_scurk_place_print() -> void:
 		app.menus.set_overlay(CityViewMode.Mode.CITY)
 
 	var names := (
-		app.active_scurk_tile_set.names
-		if app.active_scurk_tile_set != null
+		app.asset_state.active_scurk_tile_set.names
+		if app.asset_state.active_scurk_tile_set != null
 		else {}
 	)
-	app.scurk_place_print.configure(app.palette, app.large_sprites, names, app.scurk_graphics)
+	app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, names, app.asset_state.scurk_graphics)
 
 	if app.last_edit_command == null or not app.last_edit_command.scurk_place_history:
 		app.scurk_edit_history.clear()
@@ -299,7 +299,7 @@ func _redo_scurk_place() -> void:
 
 
 func open_tile_set_dialog() -> void:
-	var tile_set_directory := app.reference_root.path_join("SCURKART")
+	var tile_set_directory := app.asset_state.reference_root.path_join("SCURKART")
 
 	if DirAccess.dir_exists_absolute(tile_set_directory):
 		app.tile_set_dialog.current_dir = tile_set_directory
@@ -308,7 +308,7 @@ func open_tile_set_dialog() -> void:
 
 
 func load_tile_set(path: String) -> void:
-	if app.base_large_sprites == null or app.base_small_medium_sprites == null:
+	if app.asset_state.base_large_sprites == null or app.asset_state.base_small_medium_sprites == null:
 		app.interface.show_error("Original sprite data is not loaded.")
 
 		return
@@ -326,7 +326,7 @@ func load_tile_set(path: String) -> void:
 func _apply_scurk_tile_set(
 	tile_set: ScurkMif, display_name: String, path: String
 ) -> void:
-	if app.base_large_sprites == null or app.base_small_medium_sprites == null:
+	if app.asset_state.base_large_sprites == null or app.asset_state.base_small_medium_sprites == null:
 		app.interface.show_error("Original sprite data is not loaded.")
 
 		return
@@ -336,9 +336,9 @@ func _apply_scurk_tile_set(
 
 		return
 
-	var new_large := SpriteArchive.combine([app.base_large_sprites, tile_set.overrides])
+	var new_large := SpriteArchive.combine([app.asset_state.base_large_sprites, tile_set.overrides])
 	var new_small_medium := SpriteArchive.combine([
-		app.base_small_medium_sprites, tile_set.overrides,
+		app.asset_state.base_small_medium_sprites, tile_set.overrides,
 	])
 
 	if not new_large.is_valid() or not new_small_medium.is_valid():
@@ -346,14 +346,14 @@ func _apply_scurk_tile_set(
 
 		return
 
-	app.active_scurk_tile_set = tile_set
-	app.active_scurk_name = display_name
-	app.active_scurk_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
-	app.large_sprites = new_large
-	app.small_medium_sprites = new_small_medium
+	app.asset_state.active_scurk_tile_set = tile_set
+	app.asset_state.active_scurk_name = display_name
+	app.asset_state.active_scurk_path = ProjectSettings.globalize_path(path).simplify_path() if not path.is_empty() else ""
+	app.asset_state.large_sprites = new_large
+	app.asset_state.small_medium_sprites = new_small_medium
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
-		app.scurk_place_print.configure(app.palette, app.large_sprites, tile_set.names, app.scurk_graphics)
+		app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, tile_set.names, app.asset_state.scurk_graphics)
 
 	app.static_render.invalidate_rendered_city()
 
@@ -362,22 +362,22 @@ func _apply_scurk_tile_set(
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Loaded tile set %s: %d graphic replacements and %d names." % [
-		app.active_scurk_name, tile_set.overrides.entries.size(), tile_set.names.size(),
+		app.asset_state.active_scurk_name, tile_set.overrides.entries.size(), tile_set.names.size(),
 	]
 
 
 func restore_original_tile_set() -> void:
-	if app.base_large_sprites == null or app.base_small_medium_sprites == null:
+	if app.asset_state.base_large_sprites == null or app.asset_state.base_small_medium_sprites == null:
 		return
 
-	app.active_scurk_tile_set = null
-	app.active_scurk_name = ""
-	app.active_scurk_path = ""
-	app.large_sprites = app.base_large_sprites
-	app.small_medium_sprites = app.base_small_medium_sprites
+	app.asset_state.active_scurk_tile_set = null
+	app.asset_state.active_scurk_name = ""
+	app.asset_state.active_scurk_path = ""
+	app.asset_state.large_sprites = app.asset_state.base_large_sprites
+	app.asset_state.small_medium_sprites = app.asset_state.base_small_medium_sprites
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
-		app.scurk_place_print.configure(app.palette, app.large_sprites, {}, app.scurk_graphics)
+		app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, {}, app.asset_state.scurk_graphics)
 
 	app.static_render.invalidate_rendered_city()
 

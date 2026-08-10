@@ -204,8 +204,8 @@ func open_bridge_dialog(
 		"dry_points": result.sections if request_type == "highway" else result.dry_points,
 	}
 	var choices: Array = app.pending_bridge_request.choices
-	app.bridge_dialog.preview_palette = app.palette
-	app.bridge_dialog.preview_sprites = app.large_sprites
+	app.bridge_dialog.preview_palette = app.asset_state.palette
+	app.bridge_dialog.preview_sprites = app.asset_state.large_sprites
 	app.bridge_dialog.show_choices(
 		result.bridge_span_length,
 		request_type,

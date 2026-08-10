@@ -68,7 +68,7 @@ func _run() -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	preload("res://tests/support/app_fixture.gd").configure(main, true)
 	main.preferences.settings_path = "user://opensc2k-underground-visibility-test.cfg"
-	main.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	root.add_child(main)
 	await process_frame
 	main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)

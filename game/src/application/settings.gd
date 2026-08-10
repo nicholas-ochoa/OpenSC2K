@@ -58,7 +58,7 @@ func _refresh_settings_pack_names() -> void:
 	if app.settings_dialog == null:
 		return
 
-	app.settings_dialog.set_loaded_pack("graphics", app.asset_source.graphics_name if app.assets_ready else "",
+	app.settings_dialog.set_loaded_pack("graphics", app.asset_state.asset_source.graphics_name if app.asset_state.assets_ready else "",
 		preferences.graphics_folder if preferences.graphics_source == "folder" else "")
 
 	if app.audio_controller != null:
@@ -82,11 +82,11 @@ func apply_settings() -> void:
 		return
 
 	var changed_source: bool = values.graphics_source != preferences.graphics_source or values.graphics_folder != preferences.graphics_folder
-	var media_packs_changed: bool = values.sound_pack_folder != preferences.sound_pack_folder or values.music_pack_folder != preferences.music_pack_folder or (not app.assets_ready and changed_source)
+	var media_packs_changed: bool = values.sound_pack_folder != preferences.sound_pack_folder or values.music_pack_folder != preferences.music_pack_folder or (not app.asset_state.assets_ready and changed_source)
 	var selected: GameAssetSource
 
 	if changed_source:
-		selected = GameAssetSource.load_source(app.reference_root, values.graphics_source, values.graphics_folder)
+		selected = GameAssetSource.load_source(app.asset_state.reference_root, values.graphics_source, values.graphics_folder)
 
 		if not selected.error.is_empty():
 			app.assets.show_graphics_source_error(selected.error)
@@ -125,7 +125,7 @@ func apply_settings() -> void:
 	preferences.sound_pack_folder = str(values.sound_pack_folder)
 	preferences.music_pack_folder = str(values.music_pack_folder)
 
-	if app.assets_ready and app.audio_controller != null and media_packs_changed:
+	if app.asset_state.assets_ready and app.audio_controller != null and media_packs_changed:
 		app.audio_controller.set_media_packs(preferences.sound_pack_folder, preferences.music_pack_folder)
 
 	preferences.shuffle_music = bool(values.shuffle_music)

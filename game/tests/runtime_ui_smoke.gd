@@ -32,7 +32,7 @@ func _run() -> void:
 		return
 
 	var main := packed_scene.instantiate()
-	main.set("reference_root", reference_root)
+	main.asset_state.reference_root = reference_root
 	OS.set_environment("OPENSC2K_ASSET_SOURCE", "original")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	root.add_child(main)
@@ -898,10 +898,10 @@ func _test_save_city(main: Node) -> bool:
 func _run_quick(reference_root: String) -> void:
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	preload("res://tests/support/app_fixture.gd").configure(main)
-	main.reference_root = reference_root
+	main.asset_state.reference_root = reference_root
 	root.add_child(main)
 	await process_frame
-	assert(main.assets_ready and main.main_menu.visible and main.document_state.city == null)
+	assert(main.asset_state.assets_ready and main.main_menu.visible and main.document_state.city == null)
 	var source := reference_root.path_join("CITIES/ISLAND.SC2")
 	var source_hash := FileAccess.get_sha256(source)
 	main.city_files._load_city_unchecked(source)

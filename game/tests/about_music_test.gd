@@ -17,7 +17,7 @@ func _run() -> void:
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
 	assert(settings.save(settings_path) == OK)
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
-	main.reference_root = reference
+	main.asset_state.reference_root = reference
 	main.preferences.settings_path = settings_path
 	root.add_child(main)
 	await process_frame

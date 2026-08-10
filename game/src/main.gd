@@ -9,19 +9,9 @@ const ScurkHistory = preload("res://src/tools/scurk/scurk_edit_history.gd")
 
 # active city, document, and save state
 var document_state := ActiveDocumentState.new()
-# loaded graphics and active view
-var palette: Sc2Palette
-var scenario_palette: Sc2Palette
-var scenario_graphics: ScenarioGraphics
-var scurk_graphics: ScurkGraphics
-var palette_index_encoding: Sc2Palette
-var large_sprites: Sc2SpriteArchive
-var small_medium_sprites: Sc2SpriteArchive
-var base_large_sprites: Sc2SpriteArchive
-var base_small_medium_sprites: Sc2SpriteArchive
-var active_scurk_tile_set: ScurkMif
-var active_scurk_name := ""
-var active_scurk_path := ""
+# loaded assets
+var asset_state := LoadedAssetState.new()
+# active view
 var overlay_mode := CityViewMode.Mode.CITY
 var surface_visibility := {
 	"buildings": true,
@@ -36,13 +26,9 @@ var show_vehicles := true
 var show_underground_water_mains := true
 var show_underground_pipes := true
 var show_underground_subways := true
-# application preferences and asset source
+# application preferences and asset dialogs
 var preferences := AppPreferences.new()
 var sc2x_conversion_dialog: ConfirmationDialog
-var asset_source: GameAssetSource
-var reference_root := ""
-var runtime_initialized := false
-var assets_ready := false
 var reference_import_dialog: FileDialog
 var reference_import_error_dialog: AcceptDialog
 var graphics_source_error_dialog: AcceptDialog
@@ -187,8 +173,8 @@ func _ready() -> void:
 	add_child(preload("res://src/ui/shared/file_dialog_history.gd").new())
 	get_tree().auto_accept_quit = false
 
-	if reference_root.is_empty():
-		reference_root = GameAssetSource.default_reference_root()
+	if asset_state.reference_root.is_empty():
+		asset_state.reference_root = GameAssetSource.default_reference_root()
 
 	settings.load_app_settings()
 	assets.build_reference_import_dialogs()

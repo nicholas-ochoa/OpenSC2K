@@ -162,7 +162,7 @@ func open_city_map_window() -> void:
 	if app.document_state.city == null or app.city_map_window == null:
 		return
 
-	app.city_map_window.toggle_city(app.document_state.city, app.palette, city_map_viewport_outline())
+	app.city_map_window.toggle_city(app.document_state.city, app.asset_state.palette, city_map_viewport_outline())
 
 
 func on_city_map_mode_changed(mode: String) -> void:

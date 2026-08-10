@@ -60,7 +60,7 @@ func _run() -> void:
 	main.map_view.selection._clear_selection()
 
 	for subtool in [6, 7]:
-		var expected := TerrainToolIcons.terrain_action(main.asset_source.assets.city_ui_graphics, "sea_raise" if subtool == 6 else "sea_lower")
+		var expected := TerrainToolIcons.terrain_action(main.asset_state.asset_source.assets.city_ui_graphics, "sea_raise" if subtool == 6 else "sea_lower")
 		assert(main.camera_input.tool_button_icon(0, subtool).get_image().get_data() == expected.get_image().get_data())
 
 	var funds: int = main.document_state.city.funds()
@@ -86,7 +86,7 @@ func _run() -> void:
 	assert(main.city_toolbar.toolbar_buttons[6].visible)
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	data = main.document_state.current_document.serialize().data
-	var all_levels := CityIsometricRenderer.create_image(main.document_state.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
+	var all_levels := CityIsometricRenderer.create_image(main.document_state.city, main.asset_state.palette, main.asset_state.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	main.debug.debug_set_visible_altitude_levels(1)
 	assert(main.document_state.city.visible_altitude_levels == 1)
 	var hidden := 0
@@ -97,13 +97,13 @@ func _run() -> void:
 				hidden += 1
 
 	assert(hidden > 0)
-	var cutaway := CityIsometricRenderer.create_image(main.document_state.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
+	var cutaway := CityIsometricRenderer.create_image(main.document_state.city, main.asset_state.palette, main.asset_state.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	assert(all_levels.ok and cutaway.ok and all_levels.image.get_data() != cutaway.image.get_data())
 	assert(CityViewFilter.surface_copy(main.document_state.city, {}).visible_altitude_levels == 1)
 	assert(main.document_state.current_document.serialize().data == data)
 	main.debug.debug_set_visible_altitude_levels(32)
 	assert(main.document_state.city.tile_is_visible(40, 40))
-	var restored := CityIsometricRenderer.create_image(main.document_state.city, main.palette, main.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
+	var restored := CityIsometricRenderer.create_image(main.document_state.city, main.asset_state.palette, main.asset_state.small_medium_sprites, CityIsometricRenderer.VIEW_SMALL, 0, false, true, false, false)
 	assert(restored.image.get_data() == all_levels.image.get_data())
 	assert(main.document_state.current_document.serialize().data == data)
 	main.current_tool.select_tool_group(3)
@@ -113,8 +113,8 @@ func _run() -> void:
 	main.menus.set_underground_pipes_visible(false)
 	main.menus.set_underground_subways_visible(false)
 	var bridge := main.bridge_dialog as BridgeSelectionDialog
-	bridge.preview_palette = main.palette
-	bridge.preview_sprites = main.large_sprites
+	bridge.preview_palette = main.asset_state.palette
+	bridge.preview_sprites = main.asset_state.large_sprites
 	var images := {}
 
 	for type in [2, 3, 4, 5, 6]:

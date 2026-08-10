@@ -34,7 +34,7 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 			render.caches.static_occlusion_commands, divisor
 		)
 
-	var color_indices := render.app.palette.animation_index_map(render.app.palette_clock.cycle_ticks)
+	var color_indices := render.app.asset_state.palette.animation_index_map(render.app.palette_clock.cycle_ticks)
 	var gpu_palette := render.caches.region_cache != null and render.caches.region_cache.gpu_enabled
 	var image_bounds := Rect2i(Vector2i.ZERO, render.static_image_size())
 	var visuals := {}
@@ -144,7 +144,7 @@ static func sign_palette_image(render: ApplicationMapRender, indexed: Image, map
 		if bytes[offset + 3] == 0:
 			continue
 
-		var color := render.app.palette.color(mapping[bytes[offset]])
+		var color := render.app.asset_state.palette.color(mapping[bytes[offset]])
 		bytes[offset] = color.r8
 		bytes[offset + 1] = color.g8
 		bytes[offset + 2] = color.b8
