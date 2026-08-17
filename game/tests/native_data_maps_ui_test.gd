@@ -35,7 +35,7 @@ func _run() -> void:
 		"Native preview and created terrain match")
 	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics([0, 1, 2, 2, 2, 2])
 	main.map_view.zoom_factor = 0.25
-	main.overlay_mode = CityViewMode.Mode.UNDERGROUND
+	main.view_state.overlay_mode = CityViewMode.Mode.UNDERGROUND
 	var document := EmptyCityTemplate.create(128)
 	check(main.city_session.activate_document(document), "Activate original city")
 	var engine_id: int = main.simulation_engine.get_instance_id()

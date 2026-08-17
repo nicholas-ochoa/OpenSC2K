@@ -165,7 +165,7 @@ func refresh_moving_things(view_size := -1) -> void:
 	if app.map_view != null:
 		app.map_view.set_moving_occlusion_enabled(app.preferences.moving_frame_rate > ORIGINAL_FRAME_RATE)
 
-	if app.document_state.city == null or app.asset_state.palette == null or app.map_view == null or app.overlay_mode != CityViewMode.Mode.CITY:
+	if app.document_state.city == null or app.asset_state.palette == null or app.map_view == null or app.view_state.overlay_mode != CityViewMode.Mode.CITY:
 		caches.dynamic_sign_occluders.clear()
 		caches.dynamic_sign_occlusion_grid.clear()
 
@@ -198,7 +198,7 @@ func refresh_moving_things(view_size := -1) -> void:
 	var gpu_moving := _gpu_moving_active()
 
 	for command in commands:
-		if not app.show_vehicles and command.has("record") and _is_vehicle(int(command.record)):
+		if not app.view_state.show_vehicles and command.has("record") and _is_vehicle(int(command.record)):
 			continue
 
 		if caches.region_cache != null and not Rect2(Vector2(command.position) * divisor, Vector2(command.get("size", Vector2i(256, 256))) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor)):
@@ -314,7 +314,7 @@ func _is_vehicle(record: int) -> bool:
 
 # drop vehicle sounds while the vehicles layer is hidden
 func audible_sound_events(sound_events: Array) -> Array:
-	if app.show_vehicles:
+	if app.view_state.show_vehicles:
 		return sound_events
 
 	return sound_events.filter(func(event: Variant) -> bool:

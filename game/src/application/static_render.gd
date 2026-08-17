@@ -58,7 +58,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	var map_edge: int = app.document_state.city.map_size if app.document_state.city != null else 128
 
 	if (
-		app.overlay_mode != CityViewMode.Mode.CITY
+		app.view_state.overlay_mode != CityViewMode.Mode.CITY
 		or app.document_state.city == null
 		or app.asset_state.palette_index_encoding == null
 		or caches.static_city_image == null
@@ -93,7 +93,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 
 	app.edit_display_timings = {"dirty_ms": (Time.get_ticks_usec() - profile_start) / 1000.0}
 	profile_start = Time.get_ticks_usec()
-	var display_city := ViewFilter.surface_copy(app.document_state.city, app.surface_visibility)
+	var display_city := ViewFilter.surface_copy(app.document_state.city, app.view_state.surface_visibility)
 
 	if display_city == null or not display_city.is_valid():
 		return false
@@ -301,10 +301,10 @@ func request_static_render(
 	state.job.signature = signature.duplicate()
 	state.job.epoch = state.epoch
 	state.job.render_mode = render_mode
-	state.job.surface_visibility = app.surface_visibility.duplicate()
-	state.job.show_underground_subways = app.show_underground_subways
-	state.job.show_underground_water_mains = app.show_underground_water_mains
-	state.job.show_underground_pipes = app.show_underground_pipes
+	state.job.surface_visibility = app.view_state.surface_visibility.duplicate()
+	state.job.show_underground_subways = app.view_state.show_underground_subways
+	state.job.show_underground_water_mains = app.view_state.show_underground_water_mains
+	state.job.show_underground_pipes = app.view_state.show_underground_pipes
 	state.thread = Thread.new()
 	var start_error := state.thread.start(
 		state.job.run, Thread.PRIORITY_LOW
@@ -323,16 +323,16 @@ func start_pending_static_render() -> void:
 		not state.pending
 		or state.thread != null
 		or app.document_state.city == null
-		or not CityViewMode.is_map(app.overlay_mode)
+		or not CityViewMode.is_map(app.view_state.overlay_mode)
 	):
 		return
 
 	var view_size := city_view_size()
 	request_static_render(
-		static_signature_for_mode(app.overlay_mode, view_size),
+		static_signature_for_mode(app.view_state.overlay_mode, view_size),
 		view_size,
 		sprite_archive_for_view(view_size),
-		app.overlay_mode,
+		app.view_state.overlay_mode,
 	)
 
 
@@ -355,9 +355,9 @@ func poll_static_render() -> void:
 		app.document_state.city == null
 		or int(rendered.epoch) != state.epoch
 		or int(rendered.view_size) != city_view_size()
-		or int(rendered.get("render_mode", CityViewMode.Mode.CITY)) != app.overlay_mode
+		or int(rendered.get("render_mode", CityViewMode.Mode.CITY)) != app.view_state.overlay_mode
 	):
-		if app.document_state.city != null and CityViewMode.is_map(app.overlay_mode):
+		if app.document_state.city != null and CityViewMode.is_map(app.view_state.overlay_mode):
 			app.map_render.refresh_map(false)
 
 		return
@@ -380,7 +380,7 @@ func poll_static_render() -> void:
 	)
 	app.menus.sync_map_style()
 
-	if app.overlay_mode == CityViewMode.Mode.CITY:
+	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		app.moving_sprites.refresh_moving_things(int(rendered.view_size))
 	else:
 		caches.dynamic_sign_occluders.clear()
@@ -389,7 +389,7 @@ func poll_static_render() -> void:
 		app.map_render.refresh_sign_occlusion(int(rendered.view_size))
 
 	var latest_signature := static_signature_for_mode(
-		app.overlay_mode, int(rendered.view_size)
+		app.view_state.overlay_mode, int(rendered.view_size)
 	)
 
 	if latest_signature != caches.static_visual_signature:
@@ -397,23 +397,23 @@ func poll_static_render() -> void:
 			latest_signature,
 			int(rendered.view_size),
 			sprite_archive_for_view(int(rendered.view_size)),
-			app.overlay_mode,
+			app.view_state.overlay_mode,
 		)
 
 
 func static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array:
 	if mode == CityViewMode.Mode.UNDERGROUND:
 		return UndergroundView.visual_signature(
-			app.document_state.city, view_size, app.show_underground_pipes, app.show_underground_subways, app.show_underground_water_mains
+			app.document_state.city, view_size, app.view_state.show_underground_pipes, app.view_state.show_underground_subways, app.view_state.show_underground_water_mains
 		)
 
 	var result := IsometricRenderer.static_visual_signature(app.document_state.city, view_size)
 	result.append_array([
-		bool(app.surface_visibility.buildings),
-		bool(app.surface_visibility.networks),
-		bool(app.surface_visibility.water),
-		bool(app.surface_visibility.trees),
-		bool(app.surface_visibility.zones),
+		bool(app.view_state.surface_visibility.buildings),
+		bool(app.view_state.surface_visibility.networks),
+		bool(app.view_state.surface_visibility.water),
+		bool(app.view_state.surface_visibility.trees),
+		bool(app.view_state.surface_visibility.zones),
 	])
 
 	return result

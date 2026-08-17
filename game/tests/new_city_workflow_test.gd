@@ -151,7 +151,7 @@ func _run() -> void:
 	for key in main.city_toolbar.view_visibility_checks:
 		assert(main.city_toolbar.view_visibility_checks[key].visible == (key in ["water", "trees"]))
 	main.city_toolbar.view_mode_buttons[CityViewMode.Mode.HEIGHT].pressed.emit()
-	assert(main.overlay_mode == CityViewMode.Mode.HEIGHT)
+	assert(main.view_state.overlay_mode == CityViewMode.Mode.HEIGHT)
 	await process_frame
 	main.city_toolbar.view_mode_buttons[CityViewMode.Mode.CITY].pressed.emit()
 	main.current_tool.select_tool_group(16)

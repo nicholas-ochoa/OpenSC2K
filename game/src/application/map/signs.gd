@@ -5,8 +5,8 @@ extends RefCounted
 
 static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int) -> void:
 	if (
-		render.app.overlay_mode != CityViewMode.Mode.CITY
-		or not bool(render.app.surface_visibility.signs)
+		render.app.view_state.overlay_mode != CityViewMode.Mode.CITY
+		or not bool(render.app.view_state.surface_visibility.signs)
 		or render.app.document_state.city == null
 		or render.app.map_view == null
 		or (render.caches.static_city_image == null and render.caches.region_cache == null)

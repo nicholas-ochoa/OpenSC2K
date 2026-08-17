@@ -22,28 +22,28 @@ func _run() -> void:
 
 		for group in [16, 17, 0]:
 			toolbar.toolbar_buttons[group].pressed.emit()
-			assert(main.get("overlay_mode") == mode and toolbar.view_mode_buttons[mode].button_pressed)
+			assert(main.view_state.overlay_mode == mode and toolbar.view_mode_buttons[mode].button_pressed)
 			assert(map.edit_enabled)
 			main.current_tool.call("select_subtool", 0)
-			assert(main.get("overlay_mode") == mode and map.edit_enabled)
+			assert(main.view_state.overlay_mode == mode and map.edit_enabled)
 
 			if group == 16:
 				main.query_choices.call("open_query", Vector2i(20, 20))
-				assert(main.query_dialog.visible and main.get("overlay_mode") == mode)
+				assert(main.query_dialog.visible and main.view_state.overlay_mode == mode)
 				main.query_choices.call("close_query")
 			elif group == 17:
 				main.camera_input.call("center_map_on_tile", Vector2i(20, 20))
-				assert(main.get("overlay_mode") == mode)
+				assert(main.view_state.overlay_mode == mode)
 
 	# Surface-only terrain tools still change back to the surface.
 	main.current_tool.call("select_subtool", 2)
-	assert(main.get("overlay_mode") == CityViewMode.Mode.CITY)
+	assert(main.view_state.overlay_mode == CityViewMode.Mode.CITY)
 	main.current_tool.call("select_tool_group", 4)
-	assert(main.get("overlay_mode") == CityViewMode.Mode.UNDERGROUND and toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].button_pressed)
+	assert(main.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND and toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].button_pressed)
 	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
 	main.current_tool.call("select_tool_group", 7)
 	main.current_tool.call("select_subtool", 1)
-	assert(main.get("overlay_mode") == CityViewMode.Mode.UNDERGROUND and toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].button_pressed)
+	assert(main.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND and toolbar.view_mode_buttons[CityViewMode.Mode.UNDERGROUND].button_pressed)
 	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
 	main.current_tool.call("select_tool_group", 17)
 	assert(not map.show_selection_preview)
@@ -76,7 +76,7 @@ func _run() -> void:
 	toolbar.toolbar_buttons[7].pressed.emit()
 	subway_button.pressed.emit()
 	assert(not toolbar.hold_menu.visible and main.get("selected_subtool") == 1)
-	assert(main.get("overlay_mode") == CityViewMode.Mode.UNDERGROUND)
+	assert(main.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND)
 	# Query's footprint is recovered from saved corner flags, from any member.
 	var city := main.document_state.city as CityState
 	city.document.set_misc_i32(0x14, 100000)
@@ -108,9 +108,9 @@ func _run() -> void:
 		assert(toolbar.child_tool_buttons.has(arcology))
 
 	main.current_tool.call("select_tool_group", 4)
-	assert(main.get("overlay_mode") == CityViewMode.Mode.UNDERGROUND)
+	assert(main.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND)
 	main.current_tool.call("select_subtool", 1)
-	assert(main.get("overlay_mode") == CityViewMode.Mode.CITY)
+	assert(main.view_state.overlay_mode == CityViewMode.Mode.CITY)
 	main.preferences.zoom_graphics = AppSettingsStore.normalize_zoom_graphics(AppSettingsStore.DEFAULT_ZOOM_GRAPHICS)
 	# Overview size is independent of the saved graphics settings.
 	main.preferences.overview_graphics = CityIsometricRenderer.VIEW_SMALL

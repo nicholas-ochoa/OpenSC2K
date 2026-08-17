@@ -48,15 +48,15 @@ func update_keyboard_camera(delta: float) -> void:
 	enabled = enabled and not Input.is_key_pressed(KEY_CTRL) and not Input.is_key_pressed(KEY_META) and not Input.is_key_pressed(KEY_ALT)
 
 	if enabled:
-		direction = app.camera_motion.held_direction()
+		direction = app.view_state.camera_motion.held_direction()
 
 	if direction.is_zero_approx():
-		direction = app.camera_tap
+		direction = app.view_state.camera_tap
 
-	app.camera_tap = Vector2.ZERO
+	app.view_state.camera_tap = Vector2.ZERO
 
 	if app.map_view != null:
-		app.map_view.pan_screen(app.camera_motion.step(direction, delta, enabled and not app.map_view.is_panning() and not app.map_view.is_left_drag_active()))
+		app.map_view.pan_screen(app.view_state.camera_motion.step(direction, delta, enabled and not app.map_view.is_panning() and not app.map_view.is_left_drag_active()))
 
 
 func input(event: InputEvent) -> void:
@@ -68,7 +68,7 @@ func input(event: InputEvent) -> void:
 
 	# A focused control can consume the release event. Stop camera movement anyway.
 	if event is InputEventKey and not event.pressed:
-		app.camera_motion.release(event.physical_keycode)
+		app.view_state.camera_motion.release(event.physical_keycode)
 
 
 func unhandled_key_input(event: InputEvent) -> void:
@@ -79,8 +79,8 @@ func unhandled_key_input(event: InputEvent) -> void:
 		var directions := {KEY_W: Vector2.UP, KEY_A: Vector2.LEFT, KEY_S: Vector2.DOWN, KEY_D: Vector2.RIGHT}
 
 		if directions.has(event.physical_keycode):
-			app.camera_motion.press(event.physical_keycode)
-			app.camera_tap += directions[event.physical_keycode]
+			app.view_state.camera_motion.press(event.physical_keycode)
+			app.view_state.camera_tap += directions[event.physical_keycode]
 			app.get_viewport().set_input_as_handled()
 
 			return
@@ -223,7 +223,7 @@ func rotate_city(counter_clockwise: bool) -> void:
 
 	var old_center := Vector2i(-1, -1)
 
-	if CityViewMode.DISPLAY_MODES.has(app.overlay_mode):
+	if CityViewMode.DISPLAY_MODES.has(app.view_state.overlay_mode):
 		old_center = app.map_view.center_tile()
 
 	var new_center := CityRotation.rotate_point(
@@ -275,7 +275,7 @@ func update_zoom_controls(percent: int) -> void:
 func on_city_zoom_changed(percent: int) -> void:
 	update_zoom_controls(percent)
 
-	if app.document_state.city != null and CityViewMode.is_map(app.overlay_mode):
+	if app.document_state.city != null and CityViewMode.is_map(app.view_state.overlay_mode):
 		app.map_render.refresh_map(false)
 
 

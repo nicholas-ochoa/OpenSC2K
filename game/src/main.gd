@@ -11,21 +11,8 @@ const ScurkHistory = preload("res://src/tools/scurk/scurk_edit_history.gd")
 var document_state := ActiveDocumentState.new()
 # loaded assets
 var asset_state := LoadedAssetState.new()
-# active view
-var overlay_mode := CityViewMode.Mode.CITY
-var surface_visibility := {
-	"buildings": true,
-	"networks": true,
-	"water": true,
-	"trees": true,
-	"zones": true,
-	"signs": true,
-}
-# display layer for vehicles. hidden vehicles also make no sound and cannot crash
-var show_vehicles := true
-var show_underground_water_mains := true
-var show_underground_pipes := true
-var show_underground_subways := true
+# active view settings
+var view_state := ViewState.new()
 # application preferences and asset dialogs
 var preferences := AppPreferences.new()
 var sc2x_conversion_dialog: ConfirmationDialog
@@ -108,8 +95,6 @@ var highway_connection_dialog: RouteConfirmationDialog
 var pending_highway_connection: Dictionary = {}
 var tunnel_dialog: RouteConfirmationDialog
 var pending_tunnel_request: Dictionary = {}
-var camera_tap := Vector2.ZERO
-var camera_motion := preload("res://src/view/city_camera_motion.gd").new()
 var query_dialog: CityQueryDialog
 var active_query_result: Dictionary = {}
 var city_analysis_dialog: CityAnalysisDialog

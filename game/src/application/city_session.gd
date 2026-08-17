@@ -123,7 +123,7 @@ func activate_document(
 		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(0x1018), 0, app.document_state.city.map_size - 1), clampi(document.misc_u32(0x101c), 0, app.document_state.city.map_size - 1))
 
 	app.current_tool.select_tool_group(17)
-	app.overlay_mode = CityViewMode.Mode.CITY
+	app.view_state.overlay_mode = CityViewMode.Mode.CITY
 	document_state.current_document = document
 	var initial_serialized := document_state.current_document.serialize()
 	document_state.saved_city_snapshot = (
@@ -169,7 +169,7 @@ func activate_document(
 	app.frame_simulation = null
 	app.simulation_timings.clear()
 	app.simulation_engine = Simulation.new(app.document_state.city, process_seed, lfsr_seed, game_seed)
-	app.simulation_engine.vehicle_crashes_enabled = app.show_vehicles
+	app.simulation_engine.vehicle_crashes_enabled = app.view_state.show_vehicles
 	app.speed_controller = GameSpeed.new(app.simulation_engine)
 	app.speed_controller.original_compatibility = app.preferences.original_compatibility
 

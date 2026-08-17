@@ -25,23 +25,23 @@ func refresh_map(force := true) -> void:
 	if app.document_state.city == null or app.asset_state.palette == null:
 		return
 
-	app.map_view.trip_query_underground = app.overlay_mode == CityViewMode.Mode.UNDERGROUND
+	app.map_view.trip_query_underground = app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND
 	app.map_view.set_signs_visible(
-		app.overlay_mode == CityViewMode.Mode.CITY and bool(app.surface_visibility.signs)
+		app.view_state.overlay_mode == CityViewMode.Mode.CITY and bool(app.view_state.surface_visibility.signs)
 	)
 
-	if CityViewMode.is_data(app.overlay_mode):
+	if CityViewMode.is_data(app.view_state.overlay_mode):
 		close_region_cache()
 		app.static_render_state.pending = false
 		app.map_view.set_dynamic_sprites([])
 		app.map_view.show_transient_effects([])
-		app.map_view.set_data_view(app.document_state.city, app.overlay_mode)
+		app.map_view.set_data_view(app.document_state.city, app.view_state.overlay_mode)
 
 		return
 
 	app.map_view.clear_data_view()
 
-	if (app.document_state.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer)) and CityViewMode.is_map(app.overlay_mode):
+	if (app.document_state.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer)) and CityViewMode.is_map(app.view_state.overlay_mode):
 		refresh_region_map(force)
 
 		return
@@ -49,14 +49,14 @@ func refresh_map(force := true) -> void:
 	close_region_cache()
 	var image: Image
 
-	if app.overlay_mode == CityViewMode.Mode.CITY or app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
+	if app.view_state.overlay_mode == CityViewMode.Mode.CITY or app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 		if force:
 			app.static_render_state.pending = false
 
 		var view_size := app.static_render.city_view_size()
 		var sprite_archive := app.static_render.sprite_archive_for_view(view_size)
-		var current_signature := app.static_render.static_signature_for_mode(app.overlay_mode, view_size)
-		var cached: Dictionary = caches.static_view_cache.get(app.overlay_mode, {})
+		var current_signature := app.static_render.static_signature_for_mode(app.view_state.overlay_mode, view_size)
+		var cached: Dictionary = caches.static_view_cache.get(app.view_state.overlay_mode, {})
 
 		if (
 			not cached.is_empty()
@@ -68,7 +68,7 @@ func refresh_map(force := true) -> void:
 				cached.get("occlusion_commands", []), view_size
 			)
 			caches.static_visual_signature = current_signature
-			caches.static_render_mode = app.overlay_mode
+			caches.static_render_mode = app.view_state.overlay_mode
 			caches.static_display_city = cached.display_city
 			var cached_source := CityMapTexture.create(caches.static_city_image)
 			app.map_view.set_city_view(
@@ -76,7 +76,7 @@ func refresh_map(force := true) -> void:
 			)
 			app.menus.sync_map_style()
 
-			if app.overlay_mode == CityViewMode.Mode.CITY:
+			if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 				app.moving_sprites.refresh_moving_things(view_size)
 			else:
 				caches.dynamic_sign_occluders.clear()
@@ -89,10 +89,10 @@ func refresh_map(force := true) -> void:
 		if (
 			not force
 			and caches.static_city_image != null
-			and caches.static_render_mode == app.overlay_mode
+			and caches.static_render_mode == app.view_state.overlay_mode
 			and current_signature == caches.static_visual_signature
 		):
-			if app.overlay_mode == CityViewMode.Mode.CITY:
+			if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 				app.moving_sprites.refresh_moving_things(view_size)
 			else:
 				caches.dynamic_sign_occluders.clear()
@@ -103,9 +103,9 @@ func refresh_map(force := true) -> void:
 			return
 
 		if not force:
-			app.static_render.request_static_render(current_signature, view_size, sprite_archive, app.overlay_mode)
+			app.static_render.request_static_render(current_signature, view_size, sprite_archive, app.view_state.overlay_mode)
 
-			if app.overlay_mode == CityViewMode.Mode.CITY:
+			if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 				app.moving_sprites.refresh_moving_things(view_size)
 			else:
 				caches.dynamic_sign_occluders.clear()
@@ -118,15 +118,15 @@ func refresh_map(force := true) -> void:
 		app.static_render_state.epoch += 1
 		var display_city := (
 			app.document_state.city
-			if app.overlay_mode == CityViewMode.Mode.UNDERGROUND
-			else ViewFilter.surface_copy(app.document_state.city, app.surface_visibility)
+			if app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND
+			else ViewFilter.surface_copy(app.document_state.city, app.view_state.surface_visibility)
 		)
 		var indexed: Dictionary
 
-		if app.overlay_mode == CityViewMode.Mode.UNDERGROUND:
+		if app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND:
 			indexed = UndergroundView.create_image(
 				display_city, app.asset_state.palette_index_encoding, sprite_archive, view_size, true,
-				app.show_underground_pipes, app.show_underground_subways, app.show_underground_water_mains
+				app.view_state.show_underground_pipes, app.view_state.show_underground_subways, app.view_state.show_underground_water_mains
 			)
 		else:
 			indexed = IsometricRenderer.create_image(
@@ -151,16 +151,16 @@ func refresh_map(force := true) -> void:
 		caches.static_city_image = image
 		var occlusion_commands: Array[Dictionary] = []
 
-		if app.overlay_mode == CityViewMode.Mode.CITY:
+		if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 			occlusion_commands = IsometricRenderer.static_occlusion_commands(
 				display_city, sprite_archive, view_size
 			)
 
 		app.moving_sprites.set_static_occlusion_commands(occlusion_commands, view_size)
 		caches.static_visual_signature = current_signature
-		caches.static_render_mode = app.overlay_mode
+		caches.static_render_mode = app.view_state.overlay_mode
 		caches.static_display_city = display_city
-		caches.static_view_cache[app.overlay_mode] = {
+		caches.static_view_cache[app.view_state.overlay_mode] = {
 			"image": image,
 			"occlusion_commands": caches.static_occlusion_commands,
 			"signature": current_signature,
@@ -169,7 +169,7 @@ func refresh_map(force := true) -> void:
 		}
 	else:
 		app.static_render_state.pending = false
-		image = Minimap.create_image(app.document_state.city, app.asset_state.palette, CityViewMode.key(app.overlay_mode))
+		image = Minimap.create_image(app.document_state.city, app.asset_state.palette, CityViewMode.key(app.view_state.overlay_mode))
 		image.resize(1024, 1024, Image.INTERPOLATE_NEAREST)
 		caches.static_city_image = null
 		caches.static_occlusion_commands.clear()
@@ -181,13 +181,13 @@ func refresh_map(force := true) -> void:
 
 	var source := CityMapTexture.create(image)
 	app.map_view.set_city_view(
-		caches.static_display_city if CityViewMode.is_map(app.overlay_mode) else app.document_state.city,
+		caches.static_display_city if CityViewMode.is_map(app.view_state.overlay_mode) else app.document_state.city,
 		source, null,
-		CityViewMode.is_map(app.overlay_mode)
+		CityViewMode.is_map(app.view_state.overlay_mode)
 	)
 	app.menus.sync_map_style()
 
-	if app.overlay_mode == CityViewMode.Mode.CITY:
+	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		app.moving_sprites.refresh_moving_things(app.static_render.city_view_size())
 	else:
 		refresh_sign_occlusion(app.static_render.city_view_size())
@@ -215,16 +215,16 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	app.static_render_state.pending = false
 	var view_size := app.static_render.city_view_size()
 	var sprites := app.static_render.sprite_archive_for_view(view_size)
-	var signature := app.static_render.static_signature_for_mode(app.overlay_mode, view_size)
+	var signature := app.static_render.static_signature_for_mode(app.view_state.overlay_mode, view_size)
 	signature.append(sprites.get_instance_id())
 
 	if force:
 		caches.region_cache.signature = []
 
 	caches.region_cache.configure(app.document_state.city, app.asset_state.palette_index_encoding, sprites, signature, view_size,
-		app.overlay_mode, app.surface_visibility, app.show_underground_pipes, app.show_underground_subways, dirty, app.show_underground_water_mains)
+		app.view_state.overlay_mode, app.view_state.surface_visibility, app.view_state.show_underground_pipes, app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains)
 
-	if app.overlay_mode == CityViewMode.Mode.CITY:
+	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		var labels := app.document_state.city.document.find_chunk("XLAB")
 		# reuse the altitude revision and the sign/dispatch signature already
 		# computed for this snapshot
@@ -233,7 +233,7 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 		caches.region_cache.sign_layout_token = []
 
 	caches.static_visual_signature = signature
-	caches.static_render_mode = app.overlay_mode
+	caches.static_render_mode = app.view_state.overlay_mode
 	caches.static_display_city = caches.region_cache.display_city
 	var source := caches.region_cache.texture()
 	app.map_view.set_city_view(caches.static_display_city, source, null, true, true, caches.region_cache.sign_layout_token)
@@ -241,7 +241,7 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 	caches.region_cache.set_sign_requests(app.map_view.sign_source_entries())
 	caches.region_cache.update_viewport(app.map_view.visible_source_rect())
 
-	if app.overlay_mode == CityViewMode.Mode.CITY:
+	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		app.moving_sprites.refresh_moving_things(view_size)
 	else:
 		app.map_view.set_dynamic_sprites([])
@@ -269,7 +269,7 @@ func poll_region_cache() -> void:
 	app.map_view.set_city_view(caches.static_display_city, source, null, true, true, caches.region_cache.sign_layout_token)
 	app.menus.sync_map_style()
 
-	if app.overlay_mode == CityViewMode.Mode.CITY:
+	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		if foreground_changed or not caches.foreground_complete or caches.foreground_view_rect != app.map_view.visible_source_rect():
 			app.moving_sprites.refresh_moving_things(caches.region_cache.view_size)
 	else:

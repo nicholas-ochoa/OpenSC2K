@@ -75,11 +75,11 @@ func _run() -> void:
 	var checks: Dictionary = main.city_toolbar.view_visibility_checks
 	assert(checks.water_mains.visible and checks.pipes.visible)
 	checks.pipes.button_pressed = false
-	assert(not main.show_underground_pipes and main.show_underground_water_mains)
+	assert(not main.view_state.show_underground_pipes and main.view_state.show_underground_water_mains)
 	checks.water_mains.button_pressed = false
-	assert(not main.show_underground_water_mains)
+	assert(not main.view_state.show_underground_water_mains)
 	main.menus.on_view_menu(CityMenuBar.MENU_VIEW_WATER_MAINS)
-	assert(main.show_underground_water_mains and not main.show_underground_pipes)
+	assert(main.view_state.show_underground_water_mains and not main.view_state.show_underground_pipes)
 	main.menus.set_overlay(CityViewMode.Mode.CITY)
 	assert(not checks.water_mains.visible and not checks.pipes.visible)
 	main.scurk_output._ensure_scurk_print()

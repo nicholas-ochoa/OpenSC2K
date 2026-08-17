@@ -90,7 +90,7 @@ func _open_scurk_print_dialog() -> void:
 	_ensure_scurk_print()
 
 	app.scurk_print.configure(
-		app.document_state.city.city_name(), CityViewMode.key(app.overlay_mode), app.surface_visibility, app.show_underground_pipes, app.show_underground_water_mains
+		app.document_state.city.city_name(), CityViewMode.key(app.view_state.overlay_mode), app.view_state.surface_visibility, app.view_state.show_underground_pipes, app.view_state.show_underground_water_mains
 	)
 	app.scurk_print.show_workspace()
 
@@ -181,9 +181,9 @@ func _save_scurk_city_pdf(path: String) -> void:
 
 func _current_scurk_output_options() -> Dictionary:
 	return {
-		"view": CityViewMode.key(app.overlay_mode),
+		"view": CityViewMode.key(app.view_state.overlay_mode),
 		"color": true,
-		"surface_visibility": app.surface_visibility.duplicate(),
-		"show_pipes": app.show_underground_pipes,
-		"show_water_mains": app.show_underground_water_mains,
+		"surface_visibility": app.view_state.surface_visibility.duplicate(),
+		"show_pipes": app.view_state.show_underground_pipes,
+		"show_water_mains": app.view_state.show_underground_water_mains,
 	}

@@ -215,7 +215,7 @@ func create_new_city_unchecked() -> void:
 			document.city_name(),
 			starting_year,
 			_difficulty_name(difficulty),
-			CityViewMode.key(app.overlay_mode).capitalize(),
+			CityViewMode.key(app.view_state.overlay_mode).capitalize(),
 		],
 	)
 

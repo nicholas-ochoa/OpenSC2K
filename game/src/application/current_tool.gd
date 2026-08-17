@@ -50,7 +50,7 @@ func select_tool_group(index: int) -> void:
 
 func _auto_select_underground() -> void:
 	# query, camera and bulldozer work in both views
-	if app.selected_group in [16, 17] or (CityViewMode.is_map(app.overlay_mode) and Demolish.supports_tool(app.selected_group, app.selected_subtool)):
+	if app.selected_group in [16, 17] or (CityViewMode.is_map(app.view_state.overlay_mode) and Demolish.supports_tool(app.selected_group, app.selected_subtool)):
 		return
 
 	if app.document_state.city == null:
@@ -59,7 +59,7 @@ func _auto_select_underground() -> void:
 	var underground_tool := (app.selected_group == 4 and app.selected_subtool == 0) or (app.selected_group == 7 and app.selected_subtool == 1)
 	var target := CityViewMode.Mode.UNDERGROUND if underground_tool else CityViewMode.Mode.CITY
 
-	if app.overlay_mode != target:
+	if app.view_state.overlay_mode != target:
 		app.menus.set_overlay(target)
 
 
@@ -130,7 +130,7 @@ func update_edit_state() -> void:
 		if app.scurk_place_print.is_object_mode():
 			app.map_view.desktop_cursor_role = 9
 			state = ToolState.scurk_object(
-				app.document_state.city, app.overlay_mode, app.scurk_place_print.selected_tile_id
+				app.document_state.city, app.view_state.overlay_mode, app.scurk_place_print.selected_tile_id
 			)
 		else:
 			var cursor_tool := app.scurk_place_print.selected_edit_tool()
@@ -140,7 +140,7 @@ func update_edit_state() -> void:
 			)
 	else:
 		state = ToolState.normal(
-			app.document_state.city, app.overlay_mode, app.selected_group, app.selected_subtool
+			app.document_state.city, app.view_state.overlay_mode, app.selected_group, app.selected_subtool
 		)
 		app.selected_tool_available = bool(state.available)
 
@@ -166,7 +166,7 @@ func update_edit_state() -> void:
 	var level_brush := app.new_city.level_brush_active()
 	app.map_view.landscape_brush = (level_brush or app.selected_group == 1 and app.selected_subtool in [0, 1, 3]) and not (app.scurk_place_print != null and app.scurk_place_print.visible)
 	app.map_view.demolish_brush = app.selected_group == 0 and app.selected_subtool == 0 and not app.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible)
-	app.map_view.bulldozer_visual_provider = app.moving_sprites.demolish_brush_visual if app.overlay_mode == CityViewMode.Mode.CITY else Callable()
+	app.map_view.bulldozer_visual_provider = app.moving_sprites.demolish_brush_visual if app.view_state.overlay_mode == CityViewMode.Mode.CITY else Callable()
 	app.city_toolbar.brush_controls.visible = app.landscape_editor and app.map_view.landscape_brush and not level_brush
 	if level_brush:
 		app.map_view.brush_size = EDITOR_LEVEL_BRUSH_SIZE if app.landscape_editor else LEVEL_BRUSH_SIZE
@@ -285,5 +285,5 @@ func update_network_preview() -> void:
 	if sprites != null and app.asset_state.palette != null:
 		app.network_preview.request(
 			app.document_state.city, app.selected_group, app.selected_subtool, start, finish, view, app.asset_state.palette, sprites,
-			app.overlay_mode == CityViewMode.Mode.UNDERGROUND, app.scurk_workspace.scurk_edit_tool_active()
+			app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND, app.scurk_workspace.scurk_edit_tool_active()
 		)

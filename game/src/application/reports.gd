@@ -177,7 +177,7 @@ func on_city_map_center_requested(point: Vector2i) -> void:
 
 
 func city_map_viewport_outline() -> PackedVector2Array:
-	if app.map_view == null or not CityViewMode.DISPLAY_MODES.has(app.overlay_mode):
+	if app.map_view == null or not CityViewMode.DISPLAY_MODES.has(app.view_state.overlay_mode):
 		return PackedVector2Array()
 
 	return app.map_view.visible_tile_outline()

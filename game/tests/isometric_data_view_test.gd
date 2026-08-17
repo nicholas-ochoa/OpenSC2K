@@ -107,7 +107,7 @@ func check_ui() -> void:
 	for index in CityViewMode.DATA_MODES.size():
 		var mode := CityViewMode.DATA_MODES[index]
 		main.menus.on_view_menu(index + 2)
-		check(main.overlay_mode == mode and main.map_view.data_view_mesh != null, "Menu opens isometric data view")
+		check(main.view_state.overlay_mode == mode and main.map_view.data_view_mesh != null, "Menu opens isometric data view")
 
 		if shared_mesh != null and mode != CityViewMode.Mode.HEIGHT:
 			check(main.map_view.data_view_mesh == shared_mesh, "All data modes share terrain geometry")
@@ -125,7 +125,7 @@ func check_ui() -> void:
 		check(DocumentState.capture(doc) == before, "View changes preserve saved city")
 
 	main.city_toolbar.data_view_input.item_selected.emit(1)
-	check(main.overlay_mode == CityViewMode.Mode.LAND_VALUE, "Sidebar opens data view")
+	check(main.view_state.overlay_mode == CityViewMode.Mode.LAND_VALUE, "Sidebar opens data view")
 	var old_mesh: ArrayMesh = main.map_view.data_view_mesh
 	var data := doc.find_chunk("XVAL").decoded_payload.duplicate()
 	data[4 * 16 + 4] = 255
@@ -139,15 +139,15 @@ func check_ui() -> void:
 
 	check(CityDataView.tile_text(main.document_state.city, CityViewMode.Mode.LAND_VALUE, Vector2i(4, 4), true).contains("255 / 0xFF"), "Exact hover value")
 	main.current_tool.select_tool_group(17)
-	check(main.overlay_mode == CityViewMode.Mode.LAND_VALUE and main.map_view.edit_enabled, "Center preserves data view")
+	check(main.view_state.overlay_mode == CityViewMode.Mode.LAND_VALUE and main.map_view.edit_enabled, "Center preserves data view")
 	main.menus.set_overlay(CityViewMode.Mode.UNDERGROUND)
 	check(main.map_view.data_view_mesh == null and main.map_view.data_view_mode == CityViewMode.Mode.NONE, "Underground restores normal renderer")
 	main.menus.set_overlay(CityViewMode.Mode.CRIME)
 	main.current_tool.select_tool_group(0)
-	check(main.overlay_mode == CityViewMode.Mode.CITY, "Demolish leaves analysis view for surface editing")
+	check(main.view_state.overlay_mode == CityViewMode.Mode.CITY, "Demolish leaves analysis view for surface editing")
 	main.menus.set_overlay(CityViewMode.Mode.CRIME)
 	main.current_tool.select_tool_group(6)
-	check(main.overlay_mode == CityViewMode.Mode.CITY and main.map_view.data_view_mesh == null, "Construction restores city view")
+	check(main.view_state.overlay_mode == CityViewMode.Mode.CITY and main.map_view.data_view_mesh == null, "Construction restores city view")
 	main.queue_free()
 	await process_frame
 

@@ -69,7 +69,7 @@ func _run() -> void:
 				total += value
 
 			samples.sort()
-			assert(main.overlay_mode == CityViewMode.Mode.CITY, "Benchmark view changed during measurement")
+			assert(main.view_state.overlay_mode == CityViewMode.Mode.CITY, "Benchmark view changed during measurement")
 			print("CACHE ", main.render_caches.region_cache.metrics(), " DYNAMIC ", main.map_view.debug_metrics())
 			print("PROFILE ", main.frame_profile)
 			print("STATE date=%d/%d/%d blocked=%s" % [main.document_state.city.current_year(), main.document_state.city.current_month(), main.document_state.city.current_day(), main.speed_controller.interaction_blocked or main.speed_controller.terminal_blocked])

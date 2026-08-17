@@ -69,7 +69,7 @@ func show_effect_events(effect_events: Array, sound_events: Array) -> void:
 				float(effect.get("distance", 4)),
 			)
 
-	if app.overlay_mode == CityViewMode.Mode.CITY:
+	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		var view_size := app.static_render.city_view_size()
 		var sprite_archive := app.static_render.sprite_archive_for_view(view_size)
 		var divisor := int(IsometricRenderer.view_configuration(view_size).divisor)
@@ -126,7 +126,7 @@ func play_sound_events(sound_events: Array) -> void:
 		return
 
 	app.audio_controller.play_sound_events(
-		sound_events, app.document_state.city.sound_enabled(), app.overlay_mode, app.static_render.city_view_size()
+		sound_events, app.document_state.city.sound_enabled(), app.view_state.overlay_mode, app.static_render.city_view_size()
 	)
 
 

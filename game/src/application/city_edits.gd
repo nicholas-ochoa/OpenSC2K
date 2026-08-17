@@ -171,7 +171,7 @@ func apply_map_selection(
 		finish,
 		path,
 		app.tool_random,
-		app.overlay_mode == CityViewMode.Mode.UNDERGROUND,
+		app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND,
 		scurk_tool_mode or app.landscape_editor
 	)
 

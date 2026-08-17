@@ -121,7 +121,7 @@ func open_scurk_place_print() -> void:
 	if app.scurk_editor != null and app.scurk_editor.visible:
 		app.scurk_editor.hide()
 
-	if app.overlay_mode != CityViewMode.Mode.CITY:
+	if app.view_state.overlay_mode != CityViewMode.Mode.CITY:
 		app.menus.set_overlay(CityViewMode.Mode.CITY)
 
 	var names := (
@@ -170,7 +170,7 @@ func _select_scurk_place_tile(tile_id: int) -> void:
 
 		return
 
-	if app.overlay_mode != CityViewMode.Mode.CITY:
+	if app.view_state.overlay_mode != CityViewMode.Mode.CITY:
 		app.menus.set_overlay(CityViewMode.Mode.CITY)
 
 	app.current_tool.update_edit_state()
@@ -188,7 +188,7 @@ func _select_scurk_edit_tool(
 	# "either" has no key and leaves the current view
 	var required_view := CityViewMode.from_key(String(tool.get("view", "either")))
 
-	if required_view != CityViewMode.Mode.NONE and app.overlay_mode != required_view:
+	if required_view != CityViewMode.Mode.NONE and app.view_state.overlay_mode != required_view:
 		app.menus.set_overlay(required_view)
 
 	app.current_tool.update_edit_state()

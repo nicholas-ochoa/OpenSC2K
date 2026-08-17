@@ -41,8 +41,8 @@ func open_export_dialog() -> void:
 		_default_folder(),
 		app.document_state.city.map_size,
 		app.static_render.city_view_size(),
-		CityViewMode.key(app.overlay_mode),
-		bool(app.surface_visibility.get("signs", true)),
+		CityViewMode.key(app.view_state.overlay_mode),
+		bool(app.view_state.surface_visibility.get("signs", true)),
 		app.asset_state.reference_root,
 	)
 	app.city_png_export_dialog.show_options()
@@ -71,9 +71,9 @@ func start_export(options: Dictionary) -> void:
 	job.transparent_background = bool(options.transparent_background)
 	job.include_signs = bool(options.signs)
 	job.include_moving_things = bool(options.moving_things)
-	job.surface_visibility = app.surface_visibility.duplicate()
-	job.show_underground_pipes = app.show_underground_pipes
-	job.show_underground_water_mains = app.show_underground_water_mains
+	job.surface_visibility = app.view_state.surface_visibility.duplicate()
+	job.show_underground_pipes = app.view_state.show_underground_pipes
+	job.show_underground_water_mains = app.view_state.show_underground_water_mains
 	job.path = String(options.path)
 	last_folder = job.path.get_base_dir()
 	var error := job.start()
