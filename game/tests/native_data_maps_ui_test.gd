@@ -49,7 +49,7 @@ func _run() -> void:
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) < 0, "Compatibility preference hides upgrade")
 	main.preferences.original_compatibility = false
 	main.settings.apply_compatibility_controls()
-	main.last_edit_command = EditCommandResult.new()
+	main.tool_state.last_edit_command = EditCommandResult.new()
 	main.menus.on_options_menu(CityMenuBar.MENU_UPGRADE_SC2X)
 	check(main.sc2x_conversion_dialog.visible and document.serialize().data == old_bytes, "Warning appears before irreversible conversion")
 	main.sc2x_conversion_dialog.canceled.emit()
@@ -61,7 +61,7 @@ func _run() -> void:
 	check(document.full_resolution_maps(), "Options upgrades city after confirmation")
 	check(main.options_menu.get_popup().get_item_index(CityMenuBar.MENU_UPGRADE_SC2X) < 0, "SC2X hides upgrade")
 	check(main.document_state.current_save_path.is_empty(), "Conversion requires a separate save path")
-	check(main.last_edit_command == null, "Old-format undo is cleared")
+	check(main.tool_state.last_edit_command == null, "Old-format undo is cleared")
 	check(main.simulation_engine.get_instance_id() == engine_id and main.simulation_engine.random.state == random_state,
 		"Conversion keeps simulation and RNG state")
 	check(main.frame_simulation != null, "Native 128 city uses sliced worker")

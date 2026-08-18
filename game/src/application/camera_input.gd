@@ -202,7 +202,7 @@ func tool_button_icon(group_index: int, subtool_index: int) -> Texture2D:
 
 func refresh_child_tool_icons() -> void:
 	if app.city_toolbar != null:
-		app.city_toolbar.refresh_child_tool_icons(app.selected_group, tool_button_icon)
+		app.city_toolbar.refresh_child_tool_icons(app.tool_state.selected_group, tool_button_icon)
 
 
 func zoom_in() -> void:
@@ -239,7 +239,7 @@ func rotate_city(counter_clockwise: bool) -> void:
 	if app.simulation_engine != null:
 		app.simulation_engine.rotate_runtime_coordinates(counter_clockwise)
 
-	app.last_edit_command = null
+	app.tool_state.last_edit_command = null
 	app.map_view.clear_trip_reach()
 	app.map_view.clear_service_query()
 	app.map_view.show_transient_effects([])
@@ -280,16 +280,16 @@ func on_city_zoom_changed(percent: int) -> void:
 
 
 func on_map_selection_canceled() -> void:
-	if app.terrain_stretch.active:
+	if app.tool_state.terrain_stretch.active:
 		refresh_terrain_stretch(0)
-		app.terrain_stretch.finish()
+		app.tool_state.terrain_stretch.finish()
 
 	if app.status_label == null:
 		return
 
 	app.status_label.theme_type_variation = ""
 	var painted := app.map_view.continuous_placement and (
-		not app.map_view.uses_paint_brush() or app.landscape_brush_command != null
+		not app.map_view.uses_paint_brush() or app.tool_state.landscape_brush_command != null
 	)
 	app.status_label.text = (
 		"Brush stopped. Use Undo to remove its last edit."
@@ -298,14 +298,14 @@ func on_map_selection_canceled() -> void:
 
 
 func on_map_selection_started() -> void:
-	app.landscape_brush_command = null
-	app.level_brush_altitude = -1
+	app.tool_state.landscape_brush_command = null
+	app.tool_state.level_brush_altitude = -1
 	if app.new_city.level_brush_active() and app.document_state.city != null:
-		app.level_brush_altitude = app.document_state.city.land_altitude(app.map_view.selection_start.x, app.map_view.selection_start.y)
-	if app.landscape_editor and app.selected_group == 0 and app.selected_subtool == 5:
-		app.terrain_stretch.begin(app.map_view.selection_start)
+		app.tool_state.level_brush_altitude = app.document_state.city.land_altitude(app.map_view.selection_start.x, app.map_view.selection_start.y)
+	if app.tool_state.landscape_editor and app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == 5:
+		app.tool_state.terrain_stretch.begin(app.map_view.selection_start)
 
-	if app.selected_group != 0:
+	if app.tool_state.selected_group != 0:
 		return
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
@@ -315,20 +315,20 @@ func on_map_selection_started() -> void:
 
 
 func on_map_selection_finished() -> void:
-	if app.terrain_stretch.active:
+	if app.tool_state.terrain_stretch.active:
 		refresh_terrain_stretch(0)
-		app.terrain_stretch.finish()
+		app.tool_state.terrain_stretch.finish()
 
 	app.effects_audio.stop_tool_loop_sound()
 
 
 func on_terrain_stretch_changed(levels: int, deferred: bool) -> void:
-	if app.terrain_stretch.active:
+	if app.tool_state.terrain_stretch.active:
 		refresh_terrain_stretch(0 if deferred else levels)
 
 
 func refresh_terrain_stretch(levels: int) -> void:
-	var update := app.terrain_stretch.update(app.document_state.city, app.tool_random, levels)
+	var update := app.tool_state.terrain_stretch.update(app.document_state.city, app.tool_state.tool_random, levels)
 
 	if update != null and update.ok:
 		app.static_render.refresh_after_city_edit(update)
@@ -381,17 +381,17 @@ func on_map_selection_changed(
 
 		return
 
-	if app.document_state.city != null and NetworkPlacementPreview.supports_tool(app.selected_group, app.selected_subtool):
+	if app.document_state.city != null and NetworkPlacementPreview.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		# route preview owns the anchored price
 		return
 
-	if app.document_state.city == null or not Zones.supports_tool(app.selected_group, app.selected_subtool):
+	if app.document_state.city == null or not Zones.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		app.map_view.clear_selection_price()
 
 		return
 
 	var preview := Zones.preview_rectangle(
-		app.document_state.city, app.selected_group, app.selected_subtool, start, finish, dragged
+		app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, finish, dragged
 	)
 
 	if not preview.get("ok", false):
@@ -406,7 +406,7 @@ func on_map_selection_changed(
 	app.map_view.set_selection_price(cost, affordable)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "%s preview: %d charged %s for $%s." % [
-		Tools.tool(app.selected_group, app.selected_subtool).name,
+		Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name,
 		int(preview.charged_tiles),
 		"tile" if int(preview.charged_tiles) == 1 else "tiles",
 		app.interface.format_number(cost),

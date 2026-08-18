@@ -36,7 +36,7 @@ func open_tool_choice_dialog(group_index: int) -> void:
 
 		return
 
-	app.pending_tool_choices = {
+	app.tool_state.pending_tool_choices = {
 		"group_index": group_index,
 		"subtools": choices,
 	}
@@ -57,23 +57,23 @@ func open_tool_choice_dialog(group_index: int) -> void:
 
 
 func choose_tool_variant(choice_index: int) -> void:
-	if app.pending_tool_choices.is_empty():
+	if app.tool_state.pending_tool_choices.is_empty():
 		return
 
-	var choices: Array = app.pending_tool_choices.get("subtools", [])
+	var choices: Array = app.tool_state.pending_tool_choices.get("subtools", [])
 
 	if choice_index < 0 or choice_index >= choices.size():
 		return
 
-	app.selected_group = int(app.pending_tool_choices.group_index)
-	app.selected_subtool = int(choices[choice_index])
-	app.pending_tool_choices.clear()
+	app.tool_state.selected_group = int(app.tool_state.pending_tool_choices.group_index)
+	app.tool_state.selected_subtool = int(choices[choice_index])
+	app.tool_state.pending_tool_choices.clear()
 	app.tool_choice_dialog.hide()
 	app.current_tool.update_edit_state()
 
 
 func cancel_tool_choice() -> void:
-	app.pending_tool_choices.clear()
+	app.tool_state.pending_tool_choices.clear()
 	app.current_tool.update_edit_state()
 
 
@@ -85,7 +85,7 @@ func open_stadium_dialog(command: BuildingEditResult) -> void:
 
 		return
 
-	app.pending_stadium_command = command.copy() as BuildingEditResult
+	app.tool_state.pending_stadium_command = command.copy() as BuildingEditResult
 	var teams: Array[Dictionary] = []
 
 	for team_index in choices:
@@ -98,7 +98,7 @@ func open_stadium_dialog(command: BuildingEditResult) -> void:
 
 
 func confirm_stadium_team() -> void:
-	if app.pending_stadium_command == null:
+	if app.tool_state.pending_stadium_command == null:
 		return
 
 	var team_index := app.stadium_dialog.selected_team_id()
@@ -111,7 +111,7 @@ func confirm_stadium_team() -> void:
 
 	var result := BuildingFacilities.assign_stadium_team(
 		app.document_state.city,
-		app.pending_stadium_command,
+		app.tool_state.pending_stadium_command,
 		team_index,
 		app.stadium_dialog.entered_name(),
 	)
@@ -122,8 +122,8 @@ func confirm_stadium_team() -> void:
 
 		return
 
-	app.last_edit_command = result
-	app.pending_stadium_command = null
+	app.tool_state.last_edit_command = result
+	app.tool_state.pending_stadium_command = null
 	app.interface.refresh_details()
 	app.effects_audio.play_tool_success_sound(14, 3)
 
@@ -135,7 +135,7 @@ func confirm_stadium_team() -> void:
 
 
 func cancel_stadium_team() -> void:
-	app.pending_stadium_command = null
+	app.tool_state.pending_stadium_command = null
 	app.effects_audio.play_tool_success_sound(14, 3)
 
 	if app.document_state.city != null and app.document_state.city.music_enabled():
@@ -146,7 +146,7 @@ func cancel_stadium_team() -> void:
 
 
 func _restore_stadium_dialog() -> void:
-	if app.pending_stadium_command != null:
+	if app.tool_state.pending_stadium_command != null:
 		app.stadium_dialog.popup_centered()
 
 
@@ -158,30 +158,30 @@ func open_sign_dialog(point: Vector2i) -> void:
 
 		return
 
-	app.pending_sign_tile = point
+	app.tool_state.pending_sign_tile = point
 	app.sign_dialog.show_text(app.document_state.city.label(overlay) if overlay > 0 else "")
 
 
 func commit_sign() -> void:
-	if app.document_state.city == null or app.pending_sign_tile.x < 0:
+	if app.document_state.city == null or app.tool_state.pending_sign_tile.x < 0:
 		return
 
-	var result := Signs.set_sign(app.document_state.city, app.pending_sign_tile, app.sign_dialog.entered_text())
-	app.pending_sign_tile = Vector2i(-1, -1)
+	var result := Signs.set_sign(app.document_state.city, app.tool_state.pending_sign_tile, app.sign_dialog.entered_text())
+	app.tool_state.pending_sign_tile = Vector2i(-1, -1)
 
 	if not result.ok:
 		app.interface.show_error("Cannot change sign: %s" % result.error)
 
 		return
 
-	app.last_edit_command = result
+	app.tool_state.last_edit_command = result
 	app.static_render.refresh_after_city_edit(result)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Sign removed." if result.new_overlay == 0 else "Sign saved as label %d." % result.label_id
 
 
 func cancel_sign() -> void:
-	app.pending_sign_tile = Vector2i(-1, -1)
+	app.tool_state.pending_sign_tile = Vector2i(-1, -1)
 
 
 func open_query(point: Vector2i) -> void:
@@ -210,7 +210,7 @@ func open_query(point: Vector2i) -> void:
 	):
 		result.title = app.asset_state.active_scurk_tile_set.names[int(result.tile_id)]
 
-	app.active_query_result = result
+	app.tool_state.active_query_result = result
 	var is_specific: bool = result.kind == "specific"
 	var action := str(result.get("action", ""))
 	var action_text := ""
@@ -242,10 +242,10 @@ func close_query(commit_rename := false) -> bool:
 	if (
 		commit_rename
 		and app.query_dialog.rename_is_enabled()
-		and app.active_query_result.get("kind", "") == "specific"
+		and app.tool_state.active_query_result.get("kind", "") == "specific"
 	):
 		var renamed := QueryFacilityActions.rename_facility(
-			app.document_state.city, app.active_query_result, app.query_dialog.facility_name()
+			app.document_state.city, app.tool_state.active_query_result, app.query_dialog.facility_name()
 		)
 
 		if not renamed.ok:
@@ -253,7 +253,7 @@ func close_query(commit_rename := false) -> bool:
 
 			return false
 
-		app.active_query_result["title"] = renamed.new_value
+		app.tool_state.active_query_result["title"] = renamed.new_value
 
 	app.query_dialog.close_query()
 
@@ -267,7 +267,7 @@ func run_query_action() -> void:
 	if not close_query(true):
 		return
 
-	match str(app.active_query_result.get("action", "")):
+	match str(app.tool_state.active_query_result.get("action", "")):
 		"city_analysis":
 			var analysis := QueryFacilityActions.city_analysis(
 				app.document_state.city, text_resources.original_query_strings

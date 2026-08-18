@@ -22,7 +22,7 @@ func _init(application: CityApplication) -> void:
 
 
 func on_disaster_menu(id: int) -> void:
-	if app.landscape_editor:
+	if app.tool_state.landscape_editor:
 		return
 
 	if app.document_state.city == null or app.simulation_engine == null:
@@ -70,7 +70,7 @@ func start_disaster_at_view_center(id: int) -> Dictionary:
 	if app.document_state.city.music_enabled():
 		app.effects_audio.play_music_track(Music.DISASTER_TRACK)
 
-	app.last_edit_command = null
+	app.tool_state.last_edit_command = null
 	app.simulation_map_dirty = false
 	app.map_render.refresh_map(false)
 
@@ -234,15 +234,15 @@ func show_building_objection() -> void:
 
 
 func on_building_objection_closed() -> void:
-	if app.pending_building_objection_group < 0:
+	if app.tool_state.pending_building_objection_group < 0:
 		return
 
 	app.effects_audio.play_tool_failure_sound(
-		app.pending_building_objection_group,
-		app.pending_building_objection_subtool,
+		app.tool_state.pending_building_objection_group,
+		app.tool_state.pending_building_objection_subtool,
 	)
-	app.pending_building_objection_group = -1
-	app.pending_building_objection_subtool = -1
+	app.tool_state.pending_building_objection_group = -1
+	app.tool_state.pending_building_objection_subtool = -1
 
 
 func refresh_saved_news_summary() -> void:

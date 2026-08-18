@@ -40,8 +40,8 @@ func _run() -> void:
 	var saved: PackedByteArray = main.document_state.current_document.serialize().data
 
 	for tool in ToolCatalog.all_tools():
-		main.selected_group = tool.group_index
-		main.selected_subtool = tool.subtool_index
+		main.tool_state.selected_group = tool.group_index
+		main.tool_state.selected_subtool = tool.subtool_index
 		main.current_tool.update_edit_state()
 		assert(map.desktop_cursor_role == DesktopCursorRules.city_tool(tool.group_index, tool.subtool_index))
 		map.edit_enabled = true # Check every resource route, including locked tools.

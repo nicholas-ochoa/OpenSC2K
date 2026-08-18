@@ -138,7 +138,7 @@ func _run() -> void:
 	assert(main.document_state.city.mayor_name() == "Cedar Mayor")
 	assert(main.document_state.city.founding_year() == dialog.year_input.get_selected_id())
 	assert(main.document_state.city.difficulty() == dialog.difficulty_input.get_selected_id())
-	assert(main.landscape_editor)
+	assert(main.tool_state.landscape_editor)
 	for id in ["ALTM", "XTER", "XBLD", "XBIT"]:
 		assert(main.document_state.current_document.find_chunk(id).decoded_payload == generated.find_chunk(id).decoded_payload)
 	assert(main.city_toolbar.regenerate_button.visible)
@@ -156,7 +156,7 @@ func _run() -> void:
 	main.city_toolbar.view_mode_buttons[CityViewMode.Mode.CITY].pressed.emit()
 	main.current_tool.select_tool_group(16)
 	main.current_tool.select_subtool(1)
-	assert(main.selected_subtool == 0)
+	assert(main.tool_state.selected_subtool == 0)
 	await process_frame
 	main.current_tool.select_tool_group(1)
 	main.current_tool.select_subtool(0)
@@ -204,14 +204,14 @@ func _run() -> void:
 	_assert_editor_controls(main, false)
 	dialog.water_input.value += 1
 	main.new_city.cancel_new_city()
-	assert(main.document_state.current_document.serialize().data == original and main.landscape_editor)
+	assert(main.document_state.current_document.serialize().data == original and main.tool_state.landscape_editor)
 	_assert_editor_controls(main, true)
 	main.new_city.reopen_terrain_dialog()
 	main.new_city.make_new_city_preview()
 	while main.new_city_preview_job != null:
 		await process_frame
 	main.new_city.create_new_city()
-	assert(main.landscape_editor and not dialog.visible)
+	assert(main.tool_state.landscape_editor and not dialog.visible)
 	_assert_editor_controls(main, true)
 	main.new_city.start_city()
 	assert(not main.city_toolbar.regenerate_button.visible)

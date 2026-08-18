@@ -73,7 +73,7 @@ func _simulation_suspended() -> bool:
 		or (app.scurk_print_pdf_dialog != null and app.scurk_print_pdf_dialog.visible)
 		or app.budget_dialog.bond_confirmation_visible()
 		or app.game_over_active
-		or app.landscape_editor
+		or app.tool_state.landscape_editor
 		or app.founding_newspaper_pending
 	)
 
@@ -113,7 +113,7 @@ func consume_simulation_result(result: Dictionary) -> void:
 		app.moving_sprites.note_moving_tick()
 
 	if ran_days or moved_things or changed_disaster_map:
-		app.last_edit_command = null
+		app.tool_state.last_edit_command = null
 		app.scurk_edit_history.clear()
 		# sc2x data-map updates do not change the surface or underground artwork
 		var data_maps_only: bool = (app.document_state.city.document.full_resolution_maps() and result.day_results.size() == 1
@@ -212,6 +212,6 @@ func sync_speed_ui() -> void:
 		var speed_name := app.speed_controller.speed_name() if app.speed_controller != null else "--"
 		app.city_status_bar.set_speed(speed_name)
 		app.city_status_bar.set_city_status(
-			app.simulation_engine if app.document_state.city != null and not app.landscape_editor else null,
+			app.simulation_engine if app.document_state.city != null and not app.tool_state.landscape_editor else null,
 			selected_speed == GameSpeed.Speed.PAUSED, app.original_text_resources.original_query_strings
 		)

@@ -64,10 +64,10 @@ func initialize_runtime() -> void:
 	if app.reports.newspaper_session_seed & 0x8000:
 		app.reports.newspaper_session_seed -= 0x10000
 
-	app.tool_random = Random.new(app.reports.newspaper_session_seed)
+	app.tool_state.tool_random = Random.new(app.reports.newspaper_session_seed)
 	app.reports.newspaper_session_state.resize(NewsQueue.MISC_SIZE)
 	app.reports.newspaper_session_state.fill(0)
-	NewsQueue.initialize_session(app.reports.newspaper_session_state, app.tool_random)
+	NewsQueue.initialize_session(app.reports.newspaper_session_state, app.tool_state.tool_random)
 	var original_assets := app.asset_state.asset_source.assets
 	text_resources.newspaper_data = original_assets.newspaper_data
 	text_resources.original_query_strings = original_assets.strings

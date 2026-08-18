@@ -203,8 +203,8 @@ func _run() -> void:
 				return
 
 			var funds_before_tree := loaded_city.funds()
-			main.set("selected_group", 1)
-			main.set("selected_subtool", 0)
+			main.tool_state.selected_group = 1
+			main.tool_state.selected_subtool = 0
 			var patch_path: Array[Vector2i] = [patch_point]
 			main.city_edits.call(
 				"apply_map_selection",
@@ -213,7 +213,7 @@ func _run() -> void:
 				patch_path,
 				false
 			)
-			var landscape_command: EditCommandResult = main.get("last_edit_command")
+			var landscape_command: EditCommandResult = main.tool_state.last_edit_command
 
 			if (
 				landscape_command.command_type != "landscape"
@@ -237,8 +237,8 @@ func _run() -> void:
 
 				return
 
-			main.set("selected_group", 9)
-			main.set("selected_subtool", 0)
+			main.tool_state.selected_group = 9
+			main.tool_state.selected_subtool = 0
 			main.city_edits.call(
 				"apply_map_selection",
 				patch_point,
@@ -246,7 +246,7 @@ func _run() -> void:
 				patch_path,
 				false
 			)
-			var patch_command: EditCommandResult = main.get("last_edit_command")
+			var patch_command: EditCommandResult = main.tool_state.last_edit_command
 			var view_size := int(main.static_render.call("city_view_size"))
 			var expected_signature: Array = main.static_render.call(
 				"static_signature_for_mode", CityViewMode.Mode.CITY, view_size
@@ -356,7 +356,7 @@ func _run() -> void:
 				patch_path,
 				false
 			)
-			var scurk_command: EditCommandResult = main.get("last_edit_command")
+			var scurk_command: EditCommandResult = main.tool_state.last_edit_command
 
 			if (
 				place_preview != [patch_point]
@@ -412,7 +412,7 @@ func _run() -> void:
 				patch_path,
 				false
 			)
-			var scurk_road: EditCommandResult = main.get("last_edit_command")
+			var scurk_road: EditCommandResult = main.tool_state.last_edit_command
 
 			if (
 				scurk_road.command_type != "network"
@@ -461,7 +461,7 @@ func _run() -> void:
 				patch_path,
 				true
 			)
-			var scurk_military_zone: EditCommandResult = main.get("last_edit_command")
+			var scurk_military_zone: EditCommandResult = main.tool_state.last_edit_command
 
 			if (
 				scurk_military_zone.command_type != "zone"
@@ -922,7 +922,7 @@ func _run_quick(reference_root: String) -> void:
 	main.current_tool.select_subtool(0)
 	var path: Array[Vector2i] = [point]
 	main.city_edits.apply_map_selection(point, point, path, false)
-	assert(main.last_edit_command.command_type == "landscape")
+	assert(main.tool_state.last_edit_command.command_type == "landscape")
 	assert(city.document.serialize().data != before)
 	main.city_edits.undo_last_edit()
 	assert(city.document.serialize().data == before, "Undo restores all saved bytes")
@@ -942,7 +942,7 @@ func _run_quick(reference_root: String) -> void:
 	assert(main.new_city_dialog.candidate_valid)
 	main.new_city.create_new_city_unchecked()
 	assert(main.document_state.city != city and main.document_state.city.display_name() == "Workflow smoke")
-	assert(main.landscape_editor)
+	assert(main.tool_state.landscape_editor)
 	var output := ProjectSettings.globalize_path("user://workflow-smoke.sc2x")
 	main.city_files.on_save_path_selected(output)
 	var saved := FileAccess.get_file_as_bytes(output)

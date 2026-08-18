@@ -37,7 +37,7 @@ func apply_map_selection(
 	if app.document_state.city == null:
 		return
 
-	if app.landscape_editor and (app.selected_group not in [0, 1, 16, 17] or (app.selected_group == 0 and app.selected_subtool == 4)):
+	if app.tool_state.landscape_editor and (app.tool_state.selected_group not in [0, 1, 16, 17] or (app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == 4)):
 		app.interface.show_error("Select Start City before building structures.")
 
 		return
@@ -56,28 +56,28 @@ func apply_map_selection(
 		if scurk_tool.is_empty():
 			return
 
-		app.selected_group = int(scurk_tool.group)
-		app.selected_subtool = int(scurk_tool.subtool)
+		app.tool_state.selected_group = int(scurk_tool.group)
+		app.tool_state.selected_subtool = int(scurk_tool.subtool)
 
-	if not scurk_tool_mode and not app.landscape_editor and not ToolAvailability.is_available(
-		app.document_state.city, app.selected_group, app.selected_subtool
+	if not scurk_tool_mode and not app.tool_state.landscape_editor and not ToolAvailability.is_available(
+		app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool
 	):
 		app.interface.show_error(
 			"%s is not available in this city."
-			% Tools.tool(app.selected_group, app.selected_subtool).name
+			% Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name
 		)
 
 		return
 
-	if app.selected_group == 17:
+	if app.tool_state.selected_group == 17:
 		app.camera_input.center_map_on_tile(finish)
 
 		return
 
-	if app.selected_group == 16:
-		if app.selected_subtool == 1:
+	if app.tool_state.selected_group == 16:
+		if app.tool_state.selected_subtool == 1:
 			app.map_view.show_trip_reach(app.document_state.city, finish)
-		elif app.selected_subtool == 2:
+		elif app.tool_state.selected_subtool == 2:
 			var result := app.map_view.show_service_query(app.document_state.city, finish, app.map_view._shift_pressed)
 			if not result.ok:
 				app.interface.show_error(str(result.error))
@@ -86,21 +86,21 @@ func apply_map_selection(
 
 		return
 
-	if app.selected_group == 15:
+	if app.tool_state.selected_group == 15:
 		app.query_choices.open_sign_dialog(finish)
 
 		return
 
-	if Dispatch.supports_tool(app.selected_group, app.selected_subtool):
-		var cycles_before := app.dispatch_cycles.duplicate()
-		var initialized_before := app.dispatch_initialized
+	if Dispatch.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
+		var cycles_before := app.tool_state.dispatch_cycles.duplicate()
+		var initialized_before := app.tool_state.dispatch_initialized
 		var dispatch := Dispatch.apply(
 			app.document_state.city,
-			app.selected_group,
-			app.selected_subtool,
+			app.tool_state.selected_group,
+			app.tool_state.selected_subtool,
 			finish,
-			app.dispatch_cycles[app.selected_subtool],
-			not app.dispatch_initialized
+			app.tool_state.dispatch_cycles[app.tool_state.selected_subtool],
+			not app.tool_state.dispatch_initialized
 		)
 
 		if not dispatch.ok:
@@ -110,27 +110,27 @@ func apply_map_selection(
 
 		dispatch.dispatch_cycles_before = cycles_before
 		dispatch.dispatch_initialized_before = initialized_before
-		app.dispatch_initialized = true
-		app.dispatch_cycles[app.selected_subtool] = dispatch.slot_index
-		dispatch.dispatch_cycles_after = app.dispatch_cycles.duplicate()
-		app.last_edit_command = dispatch
+		app.tool_state.dispatch_initialized = true
+		app.tool_state.dispatch_cycles[app.tool_state.selected_subtool] = dispatch.slot_index
+		dispatch.dispatch_cycles_after = app.tool_state.dispatch_cycles.duplicate()
+		app.tool_state.last_edit_command = dispatch
 		app.static_render.refresh_after_city_edit(dispatch)
-		app.effects_audio.play_tool_success_sound(app.selected_group, app.selected_subtool)
+		app.effects_audio.play_tool_success_sound(app.tool_state.selected_group, app.tool_state.selected_subtool)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Deployed %s unit %d of %d." % [
-			Tools.tool(app.selected_group, app.selected_subtool).name,
+			Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name,
 			dispatch.slot_index,
 			dispatch.available,
 		]
 
 		return
 
-	if LandscapeEditorCommand.supports_tool(app.selected_group, app.selected_subtool) and app.landscape_editor and not (app.selected_group == 1 and app.selected_subtool == 3):
+	if LandscapeEditorCommand.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool) and app.tool_state.landscape_editor and not (app.tool_state.selected_group == 1 and app.tool_state.selected_subtool == 3):
 		var levels := app.map_view.stretch_height_delta if dragged else 1
 
-		if app.terrain_stretch.active:
+		if app.tool_state.terrain_stretch.active:
 			app.camera_input.refresh_terrain_stretch(levels)
-			var committed := app.terrain_stretch.finish()
+			var committed := app.tool_state.terrain_stretch.finish()
 
 			if committed != null:
 				app.effects_audio.stop_tool_loop_sound()
@@ -142,37 +142,37 @@ func apply_map_selection(
 
 			return
 
-		var command := LandscapeEditorCommand.apply(app.document_state.city, app.selected_group, app.selected_subtool, start, app.tool_random, levels)
-		_finish_simple_edit(SimpleEdits._result("terrain", command, app.selected_group, app.selected_subtool, true), false, {})
+		var command := LandscapeEditorCommand.apply(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, app.tool_state.tool_random, levels)
+		_finish_simple_edit(SimpleEdits._result("terrain", command, app.tool_state.selected_group, app.tool_state.selected_subtool, true), false, {})
 
 		return
 
-	if app.map_view.landscape_brush and app.selected_group == 0:
+	if app.map_view.landscape_brush and app.tool_state.selected_group == 0:
 		var origin := app.map_view.selection_start if app.map_view.selection_start.x >= 0 else start
-		var target := app.level_brush_altitude if app.level_brush_altitude >= 0 else app.document_state.city.land_altitude(origin.x, origin.y)
-		var command := TerrainTools.apply_path(app.document_state.city, app.selected_group, app.selected_subtool,
-			origin, path, app.tool_random, app.landscape_editor, target)
+		var target := app.tool_state.level_brush_altitude if app.tool_state.level_brush_altitude >= 0 else app.document_state.city.land_altitude(origin.x, origin.y)
+		var command := TerrainTools.apply_path(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool,
+			origin, path, app.tool_state.tool_random, app.tool_state.landscape_editor, target)
 		if command.ok or command.error != "no terrain height changed":
-			_finish_simple_edit(SimpleEdits._result("terrain", command, app.selected_group, app.selected_subtool, app.landscape_editor), false, {})
+			_finish_simple_edit(SimpleEdits._result("terrain", command, app.tool_state.selected_group, app.tool_state.selected_subtool, app.tool_state.landscape_editor), false, {})
 		return
 
 	if app.map_view.landscape_brush:
-		var command := LandscapeCommand.apply_path(app.document_state.city, app.selected_group, app.selected_subtool,
-			path, app.tool_random, app.landscape_editor, true)
+		var command := LandscapeCommand.apply_path(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool,
+			path, app.tool_state.tool_random, app.tool_state.landscape_editor, true)
 		if command.ok or command.error != "no eligible tiles changed":
-			_finish_simple_edit(SimpleEdits._result("landscape", command, app.selected_group, app.selected_subtool, app.landscape_editor), false, {})
+			_finish_simple_edit(SimpleEdits._result("landscape", command, app.tool_state.selected_group, app.tool_state.selected_subtool, app.tool_state.landscape_editor), false, {})
 		return
 
 	var simple_edit := SimpleEdits.apply_supported(
 		app.document_state.city,
-		app.selected_group,
-		app.selected_subtool,
+		app.tool_state.selected_group,
+		app.tool_state.selected_subtool,
 		start,
 		finish,
 		path,
-		app.tool_random,
+		app.tool_state.tool_random,
 		app.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND,
-		scurk_tool_mode or app.landscape_editor
+		scurk_tool_mode or app.tool_state.landscape_editor
 	)
 
 	if simple_edit.handled:
@@ -182,25 +182,25 @@ func apply_map_selection(
 
 		return
 
-	if Networks.supports_tool(app.selected_group, app.selected_subtool):
+	if Networks.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		app.network_edits.apply_network_selection(
 			start,
 			finish,
 			Networks.BRIDGE_UNSELECTED,
-			app.selected_group,
-			app.selected_subtool,
+			app.tool_state.selected_group,
+			app.tool_state.selected_subtool,
 			Networks.CONNECTION_UNSELECTED,
 			scurk_tool_mode
 		)
 
 		return
 
-	if Tunnels.supports_tool(app.selected_group, app.selected_subtool):
+	if Tunnels.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		app.route_edits.apply_tunnel_selection(finish, Tunnels.CONFIRMATION_UNSELECTED, scurk_tool_mode)
 
 		return
 
-	if Highways.supports_tool(app.selected_group, app.selected_subtool):
+	if Highways.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		app.route_edits.apply_highway_selection(
 			start,
 			finish,
@@ -211,9 +211,9 @@ func apply_map_selection(
 
 		return
 
-	if Buildings.supports_tool(app.selected_group, app.selected_subtool):
-		var building_group := app.selected_group
-		var building_subtool := app.selected_subtool
+	if Buildings.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
+		var building_group := app.tool_state.selected_group
+		var building_subtool := app.tool_state.selected_subtool
 		var building_name: String = Tools.tool(
 			building_group, building_subtool
 		).name
@@ -223,18 +223,18 @@ func apply_map_selection(
 			building_subtool,
 			finish,
 			app.simulation_engine.lfsr_random,
-			app.tool_random
+			app.tool_state.tool_random
 		)
 
 		if not building.ok:
 			# A failed placement can still advance the LFSR. Clear undo in that case.
 			if building.lfsr_advanced:
-				app.last_edit_command = null
+				app.tool_state.last_edit_command = null
 
 			if building.resident_objection:
 				app.effects_audio.play_sound_events(building.sound_events)
-				app.pending_building_objection_group = building_group
-				app.pending_building_objection_subtool = building_subtool
+				app.tool_state.pending_building_objection_group = building_group
+				app.tool_state.pending_building_objection_subtool = building_subtool
 				app.reports.show_building_objection()
 				app.status_label.theme_type_variation = ""
 				app.status_label.text = "%s placement was rejected by nearby residents." % building_name
@@ -251,7 +251,7 @@ func apply_map_selection(
 
 			return
 
-		app.last_edit_command = building
+		app.tool_state.last_edit_command = building
 		var stadium_team_pending := building.stadium_team_selection_required
 
 		if not stadium_team_pending:
@@ -280,8 +280,8 @@ func apply_map_selection(
 
 	var zone_edit := SimpleEdits.apply_zone(
 		app.document_state.city,
-		app.selected_group,
-		app.selected_subtool,
+		app.tool_state.selected_group,
+		app.tool_state.selected_subtool,
 		start,
 		finish,
 		dragged,
@@ -299,7 +299,7 @@ func _finish_simple_edit(
 	if not command.ok:
 		if edit.play_failure_sound:
 			app.effects_audio.play_tool_failure_sound(
-				app.selected_group, app.selected_subtool, str(command.error), scurk_tool_mode
+				app.tool_state.selected_group, app.tool_state.selected_subtool, str(command.error), scurk_tool_mode
 			)
 
 		app.interface.show_error(str(edit.message))
@@ -311,7 +311,7 @@ func _finish_simple_edit(
 			command, scurk_tool_mode, String(scurk_tool.get("name", ""))
 		)
 	else:
-		app.last_edit_command = command
+		app.tool_state.last_edit_command = command
 
 	if edit.refresh_details:
 		app.interface.refresh_details()
@@ -321,7 +321,7 @@ func _finish_simple_edit(
 	if edit.show_effects:
 		app.effects_audio.show_effect_events(command.effect_events, command.sound_events)
 
-	if app.selected_group == 0 and app.selected_subtool in [1, 2, 3, 5, 6, 7] and not command.changed_ids.is_empty():
+	if app.tool_state.selected_group == 0 and app.tool_state.selected_subtool in [1, 2, 3, 5, 6, 7] and not command.changed_ids.is_empty():
 		app.effects_audio.stop_tool_loop_sound()
 		app.effects_audio.play_sound_events([ToolSounds.SOUND_TRACTOR])
 
@@ -332,17 +332,17 @@ func _finish_simple_edit(
 	if command.command_type == "zone":
 		app.effects_audio.play_sound_events(ToolSounds.zone_success_events((command as ZoneEditResult).zone_type))
 	elif edit.play_success_sound:
-		app.effects_audio.play_tool_success_sound(app.selected_group, app.selected_subtool, scurk_tool_mode)
+		app.effects_audio.play_tool_success_sound(app.tool_state.selected_group, app.tool_state.selected_subtool, scurk_tool_mode)
 
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = str(edit.message)
 
 
 func undo_last_edit() -> void:
-	if app.document_state.city == null or app.last_edit_command == null:
+	if app.document_state.city == null or app.tool_state.last_edit_command == null:
 		return
 
-	var command := app.last_edit_command
+	var command := app.tool_state.last_edit_command
 	var command_type := command.command_type
 
 	if command.scurk_place_history:
@@ -358,15 +358,15 @@ func undo_last_edit() -> void:
 	if command_type == "sign":
 		result = Signs.undo(app.document_state.city, command as SignEditResult)
 	elif command_type == "landscape":
-		result = Landscapes.undo(app.document_state.city, command as LandscapeEditResult, app.tool_random)
+		result = Landscapes.undo(app.document_state.city, command as LandscapeEditResult, app.tool_state.tool_random)
 	elif command_type == "building":
 		result = Buildings.undo(
-			app.document_state.city, command as BuildingEditResult, app.simulation_engine.lfsr_random, app.tool_random
+			app.document_state.city, command as BuildingEditResult, app.simulation_engine.lfsr_random, app.tool_state.tool_random
 		)
 	elif command_type == "network":
 		result = Networks.undo(app.document_state.city, command as RouteEditResult)
 	elif command_type == "hydro":
-		result = Hydro.undo(app.document_state.city, command as HydroEditResult, app.tool_random)
+		result = Hydro.undo(app.document_state.city, command as HydroEditResult, app.tool_state.tool_random)
 	elif command_type == "subway_to_rail":
 		result = SubwayToRail.undo(app.document_state.city, command as SubwayToRailEditResult)
 	elif command_type == "onramp":
@@ -376,9 +376,9 @@ func undo_last_edit() -> void:
 	elif command_type == "highway":
 		result = Highways.undo(app.document_state.city, command as RouteEditResult)
 	elif command_type == "demolish":
-		result = Demolish.undo(app.document_state.city, command as DemolishEditResult, app.tool_random)
+		result = Demolish.undo(app.document_state.city, command as DemolishEditResult, app.tool_state.tool_random)
 	elif command_type == "terrain":
-		result = TerrainTools.undo(app.document_state.city, command as TerrainEditResult, app.tool_random)
+		result = TerrainTools.undo(app.document_state.city, command as TerrainEditResult, app.tool_state.tool_random)
 	elif command_type == "dispatch":
 		result = Dispatch.undo(app.document_state.city, command as DispatchEditResult)
 	else:
@@ -391,10 +391,10 @@ func undo_last_edit() -> void:
 
 	if command is DispatchEditResult:
 		var dispatch := command as DispatchEditResult
-		app.dispatch_cycles = dispatch.dispatch_cycles_before
-		app.dispatch_initialized = dispatch.dispatch_initialized_before
+		app.tool_state.dispatch_cycles = dispatch.dispatch_cycles_before
+		app.tool_state.dispatch_initialized = dispatch.dispatch_initialized_before
 
-	app.last_edit_command = null
+	app.tool_state.last_edit_command = null
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(command)
 

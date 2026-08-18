@@ -47,7 +47,7 @@ func activate_document(
 			status_text += " The preference could not be saved."
 
 	app.founding_newspaper_pending = false
-	app.landscape_editor = false
+	app.tool_state.landscape_editor = false
 	app.city_toolbar.set_landscape_editor(false)
 	app.city_menu_bar.disasters_menu.disabled = false
 	var music_was_active := app.effects_audio.music_playback_is_active()
@@ -65,32 +65,32 @@ func activate_document(
 	if app.military_dialog.visible:
 		app.military_dialog.hide()
 
-	app.pending_bridge_request.clear()
+	app.tool_state.pending_bridge_request.clear()
 
 	if app.bridge_dialog.visible:
 		app.bridge_dialog.hide()
 
-	app.pending_tool_choices.clear()
+	app.tool_state.pending_tool_choices.clear()
 
 	if app.tool_choice_dialog.visible:
 		app.tool_choice_dialog.hide()
 
-	app.pending_stadium_command = null
+	app.tool_state.pending_stadium_command = null
 
 	if app.stadium_dialog.visible:
 		app.stadium_dialog.hide()
 
-	app.pending_network_connection.clear()
+	app.tool_state.pending_network_connection.clear()
 
 	if app.network_connection_dialog.visible:
 		app.network_connection_dialog.hide()
 
-	app.pending_highway_connection.clear()
+	app.tool_state.pending_highway_connection.clear()
 
 	if app.highway_connection_dialog.visible:
 		app.highway_connection_dialog.hide()
 
-	app.pending_tunnel_request.clear()
+	app.tool_state.pending_tunnel_request.clear()
 
 	if app.tunnel_dialog.visible:
 		app.tunnel_dialog.hide()
@@ -98,8 +98,8 @@ func activate_document(
 	if app.building_objection_dialog != null and app.building_objection_dialog.visible:
 		app.building_objection_dialog.hide()
 
-	app.pending_building_objection_group = -1
-	app.pending_building_objection_subtool = -1
+	app.tool_state.pending_building_objection_group = -1
+	app.tool_state.pending_building_objection_subtool = -1
 
 	if app.new_city_dialog != null and app.new_city_dialog.visible:
 		app.new_city_dialog.hide()
@@ -155,7 +155,7 @@ func activate_document(
 	app.palette_clock.elapsed_msec = 0.0
 	app.static_render.update_palette_cycle_texture()
 	app.moving_sprites.reset_blend()
-	var process_seed := app.tool_random.state
+	var process_seed := app.tool_state.tool_random.state
 	var game_seed := app.nuisance_random.state
 	var lfsr_seed := (
 		app.simulation_engine.lfsr_random.state
@@ -177,13 +177,13 @@ func activate_document(
 		app.frame_simulation = FrameSimulationRunner.new(app.speed_controller)
 
 	app.frame.sync_speed_ui()
-	app.tool_random = app.simulation_engine.random
+	app.tool_state.tool_random = app.simulation_engine.random
 	app.nuisance_random = app.simulation_engine.game_random
 	app.simulation_map_dirty = false
 	app.reports.refresh_saved_news_summary()
-	app.last_edit_command = null
-	app.dispatch_cycles = PackedInt32Array([0, 0, 0])
-	app.dispatch_initialized = false
+	app.tool_state.last_edit_command = null
+	app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
+	app.tool_state.dispatch_initialized = false
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
 	var display_name := app.document_state.city.city_name()
 

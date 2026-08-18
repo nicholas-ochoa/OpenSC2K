@@ -97,7 +97,7 @@ func open_scurk_place_print() -> void:
 	if not app.asset_state.assets_ready:
 		return
 
-	if app.landscape_editor:
+	if app.tool_state.landscape_editor:
 		return
 
 	if app.document_state.city == null:
@@ -131,7 +131,7 @@ func open_scurk_place_print() -> void:
 	)
 	app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, names, app.asset_state.scurk_graphics)
 
-	if app.last_edit_command == null or not app.last_edit_command.scurk_place_history:
+	if app.tool_state.last_edit_command == null or not app.tool_state.last_edit_command.scurk_place_history:
 		app.scurk_edit_history.clear()
 
 	app.scurk_place_print.set_history_enabled(
@@ -182,8 +182,8 @@ func _select_scurk_edit_tool(
 	if app.scurk_place_print == null or not app.scurk_place_print.visible:
 		return
 
-	app.selected_group = group_index
-	app.selected_subtool = subtool_index
+	app.tool_state.selected_group = group_index
+	app.tool_state.selected_subtool = subtool_index
 	var tool := app.scurk_place_print.selected_edit_tool()
 	# "either" has no key and leaves the current view
 	var required_view := CityViewMode.from_key(String(tool.get("view", "either")))
@@ -204,13 +204,13 @@ func record_edit_command(
 			app.scurk_place_print.set_history_enabled(true, false)
 
 	if app.map_view.uses_paint_brush() and app.map_view.is_left_drag_active():
-		if app.landscape_brush_command == null:
-			app.landscape_brush_command = command.copy()
+		if app.tool_state.landscape_brush_command == null:
+			app.tool_state.landscape_brush_command = command.copy()
 		else:
-			app.landscape_brush_command.merge_stroke(command)
-		app.last_edit_command = app.landscape_brush_command
+			app.tool_state.landscape_brush_command.merge_stroke(command)
+		app.tool_state.last_edit_command = app.tool_state.landscape_brush_command
 	else:
-		app.last_edit_command = command
+		app.tool_state.last_edit_command = command
 
 
 func apply_scurk_place_selection(point: Vector2i) -> void:
@@ -222,7 +222,7 @@ func apply_scurk_place_selection(point: Vector2i) -> void:
 		app.document_state.city,
 		tile_id,
 		point,
-		app.tool_random,
+		app.tool_state.tool_random,
 		app.scurk_place_print.selected_zone_id()
 	)
 
@@ -248,7 +248,7 @@ func undo_scurk_place() -> void:
 	if app.document_state.city == null or not app.scurk_edit_history.can_undo():
 		return
 
-	var result := app.scurk_edit_history.undo(app.document_state.city, app.tool_random)
+	var result := app.scurk_edit_history.undo(app.document_state.city, app.tool_state.tool_random)
 
 	if not result.ok:
 		app.interface.show_error("Cannot undo SCURK placement: %s" % result.error)
@@ -256,7 +256,7 @@ func undo_scurk_place() -> void:
 		return
 
 	var command: EditCommandResult = app.scurk_edit_history.redo_stack[-1]
-	app.last_edit_command = app.scurk_edit_history.current_command()
+	app.tool_state.last_edit_command = app.scurk_edit_history.current_command()
 	app.scurk_place_print.set_history_enabled(
 		app.scurk_edit_history.can_undo(), app.scurk_edit_history.can_redo()
 	)
@@ -275,7 +275,7 @@ func _redo_scurk_place() -> void:
 	if app.document_state.city == null or not app.scurk_edit_history.can_redo():
 		return
 
-	var result := app.scurk_edit_history.redo(app.document_state.city, app.tool_random)
+	var result := app.scurk_edit_history.redo(app.document_state.city, app.tool_state.tool_random)
 
 	if not result.ok:
 		app.interface.show_error("Cannot redo SCURK placement: %s" % result.error)
@@ -283,7 +283,7 @@ func _redo_scurk_place() -> void:
 		return
 
 	var command: EditCommandResult = app.scurk_edit_history.undo_stack[-1]
-	app.last_edit_command = command
+	app.tool_state.last_edit_command = command
 	app.scurk_place_print.set_history_enabled(
 		app.scurk_edit_history.can_undo(), app.scurk_edit_history.can_redo()
 	)

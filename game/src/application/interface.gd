@@ -163,7 +163,7 @@ func build_interface(original_assets: OriginalGameAssets) -> void:
 	app.budget_dialog.repay_bond_requested.connect(app.budget.request_repay_bond)
 	app.budget_dialog.bond_confirmation_resolved.connect(app.budget.resolve_bond_action)
 
-	app.current_tool.select_tool_group(app.selected_group)
+	app.current_tool.select_tool_group(app.tool_state.selected_group)
 	app.camera_input.update_zoom_controls(app.map_view.zoom_percent())
 	_build_main_menu()
 	app.about_dialog.set_assets(original_assets)

@@ -109,7 +109,7 @@ func _hide_all() -> void:
 		for window: Node in registry.blocking_windows + registry.modeless_windows:
 			_set_shown(window, false)
 
-	main.landscape_editor = false
+	main.tool_state.landscape_editor = false
 	main.founding_newspaper_pending = false
 
 

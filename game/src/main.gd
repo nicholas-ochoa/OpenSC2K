@@ -3,7 +3,6 @@ extends Control
 
 
 const NewCitySession = preload("res://src/model/new_city_terrain_session.gd")
-const Random = preload("res://src/simulation/random/sim_random.gd")
 const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const ScurkHistory = preload("res://src/tools/scurk/scurk_edit_history.gd")
 
@@ -21,17 +20,11 @@ var reference_import_error_dialog: AcceptDialog
 var graphics_source_error_dialog: AcceptDialog
 # original text resources
 var original_text_resources := OriginalTextResources.new()
-# tool and simulation state
-var selected_group := 9
-var selected_subtool := 0
-var selected_tool_available := false
-var last_edit_command: EditCommandResult
-var pending_sign_tile := Vector2i(-1, -1)
-var tool_random := Random.new(1)
+# tool state
+var tool_state := ToolState.new()
+# simulation state
 var nuisance_random := GameRandom.new(Time.get_ticks_msec() | 1)
 var audio_controller: Node
-var dispatch_cycles := PackedInt32Array([0, 0, 0])
-var dispatch_initialized := false
 var simulation_engine: SimulationEngine
 var speed_controller: GameSpeedController
 var frame_simulation: FrameSimulationRunner
@@ -63,10 +56,6 @@ var new_city_dialog: NewCityTerrainDialog
 var new_city_session := NewCitySession.new()
 var new_city_preview_job: NewCityPreviewJob
 var new_city_return_to_main_menu := false
-var landscape_brush_command: EditCommandResult
-var level_brush_altitude := -1
-var landscape_editor := false
-var terrain_stretch := TerrainStretchSession.new()
 var founding_newspaper_pending := false
 var options_menu: MenuButton
 var speed_menu: MenuButton
@@ -82,26 +71,17 @@ var rotate_counter_clockwise_button: Button
 var rotate_clockwise_button: Button
 var sign_dialog: CitySignDialog
 var bridge_dialog: BridgeSelectionDialog
-var pending_bridge_request: Dictionary = {}
 var tool_choice_dialog: ToolChoiceDialog
-var pending_tool_choices: Dictionary = {}
 var stadium_dialog: StadiumTeamDialog
 var city_png_export_dialog: CityPngExportDialog
 var city_png_export_progress: ProgressOverlay
-var pending_stadium_command: BuildingEditResult
 var network_connection_dialog: RouteConfirmationDialog
-var pending_network_connection: Dictionary = {}
 var highway_connection_dialog: RouteConfirmationDialog
-var pending_highway_connection: Dictionary = {}
 var tunnel_dialog: RouteConfirmationDialog
-var pending_tunnel_request: Dictionary = {}
 var query_dialog: CityQueryDialog
-var active_query_result: Dictionary = {}
 var city_analysis_dialog: CityAnalysisDialog
 var newspaper_dialog: NewspaperDialog
 var building_objection_dialog: PictureNoticeDialog
-var pending_building_objection_group := -1
-var pending_building_objection_subtool := -1
 var library_ruminate_windows: LibraryRuminateWindows
 var graph_window
 var population_window

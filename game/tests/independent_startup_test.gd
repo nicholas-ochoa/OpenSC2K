@@ -139,7 +139,7 @@ func _test_main() -> void:
 	main.new_city.create_new_city_unchecked()
 	await process_frame
 	assert(main.document_state.city != null and main.document_state.city.city_name() == "Original Startup")
-	assert(main.landscape_editor and main.city_toolbar.start_city_button.visible)
+	assert(main.tool_state.landscape_editor and main.city_toolbar.start_city_button.visible)
 	main.new_city.start_city()
 	main.newspaper_dialog.hide()
 	main.speed_controller.set_speed(GameSpeedController.Speed.PAUSED)

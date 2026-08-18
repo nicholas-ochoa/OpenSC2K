@@ -15,7 +15,7 @@ func _init(application: CityApplication) -> void:
 
 
 func open_manual_budget() -> void:
-	if app.landscape_editor:
+	if app.tool_state.landscape_editor:
 		return
 
 	if app.document_state.city == null:

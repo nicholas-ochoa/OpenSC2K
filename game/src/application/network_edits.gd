@@ -23,10 +23,10 @@ func apply_network_selection(
 	free_mode := false
 ) -> void:
 	if group_index < 0:
-		group_index = app.selected_group
+		group_index = app.tool_state.selected_group
 
 	if subtool_index < 0:
-		subtool_index = app.selected_subtool
+		subtool_index = app.tool_state.selected_subtool
 
 	var tool_name: String = Tools.tool(group_index, subtool_index).name
 	var network := Networks.apply(
@@ -61,7 +61,7 @@ func apply_network_selection(
 		return
 
 	if network.connection_selection_required:
-		app.pending_network_connection = {
+		app.tool_state.pending_network_connection = {
 			"start": start,
 			"finish": finish,
 			"group_index": group_index,
@@ -164,14 +164,14 @@ func cancel_network_connection() -> void:
 
 
 func _apply_pending_network_connection(connection_choice: int) -> void:
-	if app.pending_network_connection.is_empty():
+	if app.tool_state.pending_network_connection.is_empty():
 		return
 
-	var request := app.pending_network_connection.duplicate()
-	app.pending_network_connection.clear()
+	var request := app.tool_state.pending_network_connection.duplicate()
+	app.tool_state.pending_network_connection.clear()
 	app.network_connection_dialog.hide()
-	app.selected_group = int(request.group_index)
-	app.selected_subtool = int(request.subtool_index)
+	app.tool_state.selected_group = int(request.group_index)
+	app.tool_state.selected_subtool = int(request.subtool_index)
 	apply_network_selection(
 		request.start,
 		request.finish,
@@ -192,7 +192,7 @@ func open_bridge_dialog(
 	request_type := "network",
 	free_mode := false
 ) -> void:
-	app.pending_bridge_request = {
+	app.tool_state.pending_bridge_request = {
 		"start": start,
 		"finish": finish,
 		"group_index": group_index,
@@ -203,7 +203,7 @@ func open_bridge_dialog(
 		# highways report their route as 2 by 2 sections
 		"dry_points": result.sections if request_type == "highway" else result.dry_points,
 	}
-	var choices: Array = app.pending_bridge_request.choices
+	var choices: Array = app.tool_state.pending_bridge_request.choices
 	app.bridge_dialog.preview_palette = app.asset_state.palette
 	app.bridge_dialog.preview_sprites = app.asset_state.large_sprites
 	app.bridge_dialog.show_choices(
@@ -215,22 +215,22 @@ func open_bridge_dialog(
 
 
 func choose_bridge(choice_index: int) -> void:
-	if app.pending_bridge_request.is_empty():
+	if app.tool_state.pending_bridge_request.is_empty():
 		return
 
-	var request := app.pending_bridge_request.duplicate(true)
+	var request := app.tool_state.pending_bridge_request.duplicate(true)
 	var choices: Array = request.get("choices", [])
 
 	if choice_index < 0 or choice_index >= choices.size():
 		return
 
 	var choice: Dictionary = choices[choice_index]
-	app.pending_bridge_request.clear()
+	app.tool_state.pending_bridge_request.clear()
 	app.bridge_dialog.hide()
 
 	if request.get("request_type", "network") == "highway":
-		app.selected_group = int(request.group_index)
-		app.selected_subtool = int(request.subtool_index)
+		app.tool_state.selected_group = int(request.group_index)
+		app.tool_state.selected_subtool = int(request.subtool_index)
 		app.route_edits.apply_highway_selection(
 			request.start,
 			request.finish,
@@ -253,11 +253,11 @@ func choose_bridge(choice_index: int) -> void:
 
 
 func cancel_bridge() -> void:
-	if app.pending_bridge_request.is_empty():
+	if app.tool_state.pending_bridge_request.is_empty():
 		return
 
-	var request := app.pending_bridge_request.duplicate(true)
-	app.pending_bridge_request.clear()
+	var request := app.tool_state.pending_bridge_request.duplicate(true)
+	app.tool_state.pending_bridge_request.clear()
 
 	if request.get("dry_points", []).is_empty():
 		app.effects_audio.play_tool_failure_sound(
@@ -272,8 +272,8 @@ func cancel_bridge() -> void:
 		return
 
 	if request.get("request_type", "network") == "highway":
-		app.selected_group = int(request.group_index)
-		app.selected_subtool = int(request.subtool_index)
+		app.tool_state.selected_group = int(request.group_index)
+		app.tool_state.selected_subtool = int(request.subtool_index)
 		app.route_edits.apply_highway_selection(
 			request.start,
 			request.finish,

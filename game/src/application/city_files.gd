@@ -54,7 +54,7 @@ func save_city() -> void:
 
 
 func _can_upgrade_city_to_sc2x() -> bool:
-	if app.preferences.original_compatibility or app.landscape_editor or app.document_state.city == null or document_state.current_document == null or app.simulation_engine == null:
+	if app.preferences.original_compatibility or app.tool_state.landscape_editor or app.document_state.city == null or document_state.current_document == null or app.simulation_engine == null:
 		return false
 
 	if document_state.current_document.is_extended() or document_state.current_document.full_resolution_maps():
@@ -116,7 +116,7 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 		return
 
 	app.simulation_timings.clear()
-	app.last_edit_command = null
+	app.tool_state.last_edit_command = null
 	app.scurk_edit_history.clear()
 	document_state.current_save_path = ""
 	app.static_render.invalidate_view_render()

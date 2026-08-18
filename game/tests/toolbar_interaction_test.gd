@@ -64,25 +64,25 @@ func _run() -> void:
 	toolbar.toolbar_buttons[6].button_up.emit()
 	toolbar.toolbar_buttons[6].pressed.emit()
 	await create_timer(CityToolbar.HOLD_SECONDS + 0.05).timeout
-	assert(not toolbar.hold_menu.visible and main.get("selected_group") == 6)
+	assert(not toolbar.hold_menu.visible and main.tool_state.selected_group == 6)
 	# A hold opens the same icon, price and availability palette.
 	toolbar.toolbar_buttons[7].button_down.emit()
 	await create_timer(CityToolbar.HOLD_SECONDS + 0.05).timeout
-	assert(toolbar.hold_menu.visible and main.get("selected_group") == 7)
+	assert(toolbar.hold_menu.visible and main.tool_state.selected_group == 7)
 	assert(toolbar.hold_menu.palette.buttons.size() == toolbar.child_tool_buttons.size())
 	var subway_button := toolbar.hold_menu.palette.buttons[1] as Button
 	assert(subway_button.icon != null)
 	toolbar.toolbar_buttons[7].button_up.emit()
 	toolbar.toolbar_buttons[7].pressed.emit()
 	subway_button.pressed.emit()
-	assert(not toolbar.hold_menu.visible and main.get("selected_subtool") == 1)
+	assert(not toolbar.hold_menu.visible and main.tool_state.selected_subtool == 1)
 	assert(main.view_state.overlay_mode == CityViewMode.Mode.UNDERGROUND)
 	# Query's footprint is recovered from saved corner flags, from any member.
 	var city := main.document_state.city as CityState
 	city.document.set_misc_i32(0x14, 100000)
 	CityDebugActions.unlock_everything(city, city.document)
 	var building := BuildingCommand.apply(city, 3, 9, Vector2i(60, 60),
-		(main.get("simulation_engine") as SimulationEngine).lfsr_random, main.get("tool_random"))
+		(main.get("simulation_engine") as SimulationEngine).lfsr_random, main.tool_state.tool_random)
 	assert(building.ok)
 	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
 	main.current_tool.call("select_tool_group", 16)
@@ -121,7 +121,7 @@ func _run() -> void:
 	main.current_tool.call("select_tool_group", 1)
 	assert(toolbar.child_tool_buttons.has(3))
 	main.current_tool.call("select_subtool", 3)
-	assert(main.selected_subtool == 3 and map.edit_enabled and map.brush_size == 7)
+	assert(main.tool_state.selected_subtool == 3 and map.edit_enabled and map.brush_size == 7)
 	assert(map.selection.point_preview_tiles(Vector2i(80, 80)).size() == 37)
 	assert(not map.selection.point_preview_tiles(Vector2i(127, 127)).is_empty())
 

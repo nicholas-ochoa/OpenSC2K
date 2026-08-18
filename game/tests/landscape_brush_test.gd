@@ -26,22 +26,22 @@ func _run() -> void:
 					main.current_tool.update_edit_state()
 					var point := Vector2i(edge - 24, edge - 24)
 					var before: Array = DocumentState.capture(main.document_state.current_document)
-					var rng: int = main.tool_random.state
+					var rng: int = main.tool_state.tool_random.state
 					main.map_view.selection_start = point
 					main.map_view.selection_end = point
 					main.camera_input.on_map_selection_started()
 					main.map_view._last_brush_tile = Vector2i(-1, -1)
 					main.map_view.selection._emit_brush_dab(point, false)
 					main.map_view.selection._emit_brush_dab(point + Vector2i(18, 0), true)
-					assert(main.last_edit_command.ok)
+					assert(main.tool_state.last_edit_command.ok)
 					assert(main.document_state.city.funds() == 20000)
 					if tool != 3:
 						for x in range(point.x, point.x + 19):
 							assert(main.document_state.city.is_water(x, point.y) if tool == 1 else main.document_state.city.building_id(x, point.y) in range(6, 13))
 					main.map_view.selection._clear_selection()
-					assert(LandscapeCommand.undo(main.document_state.city, main.last_edit_command, main.tool_random).ok)
+					assert(LandscapeCommand.undo(main.document_state.city, main.tool_state.last_edit_command, main.tool_state.tool_random).ok)
 					assert(DocumentState.capture(main.document_state.current_document) == before)
-					assert(main.tool_random.state == rng)
+					assert(main.tool_state.tool_random.state == rng)
 		if edge == 32:
 			_check_level_brush(main, Vector2i(4, 4))
 		for corner in [Vector2i.ZERO, Vector2i(edge - 1, edge - 1)]:
@@ -57,13 +57,13 @@ func _run() -> void:
 func _check_level_brush(main: Node, origin: Vector2i) -> void:
 	for editor in [true, false]:
 		var point := origin + Vector2i(0, 0 if editor else 10)
-		main.landscape_editor = editor
+		main.tool_state.landscape_editor = editor
 		main.city_toolbar.set_landscape_editor(editor)
 		main.current_tool.select_tool_group(0)
 		main.current_tool.select_subtool(2)
 		for bump in [point + Vector2i(10, 0), point + Vector2i(10, 1)]:
 			for step in 3:
-				assert(TerrainCommand.apply_path(main.document_state.city, 0, 2, bump, [bump], main.tool_random, true).ok)
+				assert(TerrainCommand.apply_path(main.document_state.city, 0, 2, bump, [bump], main.tool_state.tool_random, true).ok)
 		main.current_tool.select_subtool(1)
 		main.current_tool.update_edit_state()
 		var width := 5 if editor else 1
@@ -73,23 +73,23 @@ func _check_level_brush(main: Node, origin: Vector2i) -> void:
 		var target: int = main.document_state.city.land_altitude(point.x, point.y)
 		var funds: int = main.document_state.city.funds()
 		var before: Array = DocumentState.capture(main.document_state.current_document)
-		var rng: int = main.tool_random.state
+		var rng: int = main.tool_state.tool_random.state
 		main.map_view.selection_start = point
 		main.map_view.selection_end = point
 		main.camera_input.on_map_selection_started()
 		main.map_view._last_brush_tile = Vector2i(-1, -1)
 		main.map_view.selection._emit_brush_dab(point, false)
 		main.map_view.selection._emit_brush_dab(point + Vector2i(18, 0), true)
-		assert(main.last_edit_command.ok and main.last_edit_command.command_type == "terrain")
+		assert(main.tool_state.last_edit_command.ok and main.tool_state.last_edit_command.command_type == "terrain")
 		assert(main.document_state.city.funds() == funds if editor else main.document_state.city.funds() < funds)
 		var rows := [-1, 0, 1] if editor else [0]
 		for x in range(point.x, point.x + 19):
 			for dy in rows:
 				assert(main.document_state.city.land_altitude(x, point.y + dy) == target)
 		main.map_view.selection._clear_selection()
-		assert(TerrainCommand.undo(main.document_state.city, main.last_edit_command, main.tool_random).ok)
+		assert(TerrainCommand.undo(main.document_state.city, main.tool_state.last_edit_command, main.tool_state.tool_random).ok)
 		assert(DocumentState.capture(main.document_state.current_document) == before)
-		assert(main.tool_random.state == rng)
-	main.landscape_editor = true
+		assert(main.tool_state.tool_random.state == rng)
+	main.tool_state.landscape_editor = true
 	main.city_toolbar.set_landscape_editor(true)
 	main.current_tool.select_tool_group(1)

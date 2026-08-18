@@ -19,8 +19,8 @@ func apply_tunnel_selection(
 ) -> void:
 	var tunnel := Tunnels.apply(
 		app.document_state.city,
-		app.selected_group,
-		app.selected_subtool,
+		app.tool_state.selected_group,
+		app.tool_state.selected_subtool,
 		start,
 		confirmation_choice,
 		free_mode
@@ -34,10 +34,10 @@ func apply_tunnel_selection(
 
 			return
 
-		app.pending_tunnel_request = {
+		app.tool_state.pending_tunnel_request = {
 			"start": start,
-			"group_index": app.selected_group,
-			"subtool_index": app.selected_subtool,
+			"group_index": app.tool_state.selected_group,
+			"subtool_index": app.tool_state.selected_subtool,
 		}
 		var message := (
 			"Engineers report that tunnel construction costs will be $%s.\n"
@@ -49,7 +49,7 @@ func apply_tunnel_selection(
 
 	if tunnel.cancelled:
 		app.effects_audio.play_tool_failure_sound(
-			app.selected_group, app.selected_subtool, "cancelled", free_mode
+			app.tool_state.selected_group, app.tool_state.selected_subtool, "cancelled", free_mode
 		)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Tunnel construction canceled. No action was taken."
@@ -58,8 +58,8 @@ func apply_tunnel_selection(
 
 	if not tunnel.ok:
 		app.effects_audio.play_tool_failure_sound(
-			app.selected_group,
-			app.selected_subtool,
+			app.tool_state.selected_group,
+			app.tool_state.selected_subtool,
 			tunnel.error,
 			free_mode,
 		)
@@ -78,7 +78,7 @@ func apply_tunnel_selection(
 	)
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(tunnel)
-	app.effects_audio.play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
+	app.effects_audio.play_tool_success_sound(app.tool_state.selected_group, app.tool_state.selected_subtool, free_mode)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = "Built a %d-tile tunnel for $%s." % [
 		tunnel.points.size(), app.interface.format_number(tunnel.cost)
@@ -94,14 +94,14 @@ func cancel_tunnel() -> void:
 
 
 func _apply_pending_tunnel(confirmation_choice: int) -> void:
-	if app.pending_tunnel_request.is_empty():
+	if app.tool_state.pending_tunnel_request.is_empty():
 		return
 
-	var request := app.pending_tunnel_request.duplicate()
-	app.pending_tunnel_request.clear()
+	var request := app.tool_state.pending_tunnel_request.duplicate()
+	app.tool_state.pending_tunnel_request.clear()
 	app.tunnel_dialog.hide()
-	app.selected_group = int(request.group_index)
-	app.selected_subtool = int(request.subtool_index)
+	app.tool_state.selected_group = int(request.group_index)
+	app.tool_state.selected_subtool = int(request.subtool_index)
 	apply_tunnel_selection(request.start, confirmation_choice)
 
 
@@ -114,8 +114,8 @@ func apply_highway_selection(
 ) -> void:
 	var highway := Highways.apply(
 		app.document_state.city,
-		app.selected_group,
-		app.selected_subtool,
+		app.tool_state.selected_group,
+		app.tool_state.selected_subtool,
 		start,
 		finish,
 		connection_choice,
@@ -127,8 +127,8 @@ func apply_highway_selection(
 		app.network_edits.open_bridge_dialog(
 			start,
 			finish,
-			app.selected_group,
-			app.selected_subtool,
+			app.tool_state.selected_group,
+			app.tool_state.selected_subtool,
 			highway,
 			"highway",
 			free_mode
@@ -138,7 +138,7 @@ func apply_highway_selection(
 
 	if highway.cancelled:
 		app.effects_audio.play_tool_failure_sound(
-			app.selected_group, app.selected_subtool, "cancelled", free_mode
+			app.tool_state.selected_group, app.tool_state.selected_subtool, "cancelled", free_mode
 		)
 		app.status_label.theme_type_variation = ""
 		app.status_label.text = "Bridge selection canceled. No action was taken."
@@ -146,11 +146,11 @@ func apply_highway_selection(
 		return
 
 	if highway.connection_selection_required:
-		app.pending_highway_connection = {
+		app.tool_state.pending_highway_connection = {
 			"start": start,
 			"finish": finish,
-			"group_index": app.selected_group,
-			"subtool_index": app.selected_subtool,
+			"group_index": app.tool_state.selected_group,
+			"subtool_index": app.tool_state.selected_subtool,
 			"free_mode": free_mode,
 			"bridge_type": bridge_type,
 		}
@@ -175,8 +175,8 @@ func apply_highway_selection(
 
 	if not highway.ok:
 		app.effects_audio.play_tool_failure_sound(
-			app.selected_group,
-			app.selected_subtool,
+			app.tool_state.selected_group,
+			app.tool_state.selected_subtool,
 			highway.error,
 			free_mode,
 		)
@@ -187,7 +187,7 @@ func apply_highway_selection(
 	app.scurk_workspace.record_edit_command(highway, free_mode, "Highway")
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(highway)
-	app.effects_audio.play_tool_success_sound(app.selected_group, app.selected_subtool, free_mode)
+	app.effects_audio.play_tool_success_sound(app.tool_state.selected_group, app.tool_state.selected_subtool, free_mode)
 	app.status_label.theme_type_variation = ""
 
 	if highway.bridge_count > 1:
@@ -241,14 +241,14 @@ func cancel_highway_connection() -> void:
 
 
 func _apply_pending_highway_connection(connection_choice: int) -> void:
-	if app.pending_highway_connection.is_empty():
+	if app.tool_state.pending_highway_connection.is_empty():
 		return
 
-	var request := app.pending_highway_connection.duplicate()
-	app.pending_highway_connection.clear()
+	var request := app.tool_state.pending_highway_connection.duplicate()
+	app.tool_state.pending_highway_connection.clear()
 	app.highway_connection_dialog.hide()
-	app.selected_group = int(request.group_index)
-	app.selected_subtool = int(request.subtool_index)
+	app.tool_state.selected_group = int(request.group_index)
+	app.tool_state.selected_subtool = int(request.subtool_index)
 	apply_highway_selection(
 		request.start,
 		request.finish,

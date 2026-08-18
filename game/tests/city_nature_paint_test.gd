@@ -53,24 +53,24 @@ func _run() -> void:
 			main.current_tool.select_subtool(tool)
 			var map: CityMapControl = main.map_view
 			map.city = main.document_state.city
-			assert(not main.landscape_editor and map.landscape_brush)
+			assert(not main.tool_state.landscape_editor and map.landscape_brush)
 			assert(not main.city_toolbar.brush_controls.visible)
 			assert(map.brush_size == (7 if tool == 3 else 1))
 			assert(map.brush_round and not map.shift_line_enabled)
 			var start := Vector2i(edge - 30, edge - 30)
 			var before: Array = DocumentState.capture(main.document_state.current_document)
-			var rng: int = main.tool_random.state
+			var rng: int = main.tool_state.tool_random.state
 			_button(map, start, true)
 			_motion(map, start + Vector2i(8, 0))
 			_button(map, start + Vector2i(10, 0), false)
-			assert(main.last_edit_command.ok and not main.last_edit_command.free_mode)
-			assert(main.last_edit_command.cost == 20000 - main.document_state.city.funds())
-			assert(main.last_edit_command.cost > 0)
+			assert(main.tool_state.last_edit_command.ok and not main.tool_state.last_edit_command.free_mode)
+			assert(main.tool_state.last_edit_command.cost == 20000 - main.document_state.city.funds())
+			assert(main.tool_state.last_edit_command.cost > 0)
 			if tool != 3:
 				for x in range(start.x, start.x + 11):
 					assert(main.document_state.city.is_water(x, start.y) if tool == 1 else main.document_state.city.building_id(x, start.y) in range(6, 13))
-			assert(LandscapeCommand.undo(main.document_state.city, main.last_edit_command, main.tool_random).ok)
-			assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_random.state == rng)
+			assert(LandscapeCommand.undo(main.document_state.city, main.tool_state.last_edit_command, main.tool_state.tool_random).ok)
+			assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_state.tool_random.state == rng)
 
 			_button(map, start, true, true)
 			_motion(map, start + Vector2i(3, 2), true)
@@ -79,11 +79,11 @@ func _run() -> void:
 			assert(DocumentState.capture(main.document_state.current_document) == before)
 			# Releasing Shift mid-drag keeps the box tool active.
 			_button(map, start + Vector2i(3, 2), false)
-			assert(main.last_edit_command.ok and main.last_edit_command.cost > 0)
+			assert(main.tool_state.last_edit_command.ok and main.tool_state.last_edit_command.cost > 0)
 			if tool != 3:
-				assert(main.last_edit_command.tile_indices.size() == 12)
-			assert(LandscapeCommand.undo(main.document_state.city, main.last_edit_command, main.tool_random).ok)
-			assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_random.state == rng)
+				assert(main.tool_state.last_edit_command.tile_indices.size() == 12)
+			assert(LandscapeCommand.undo(main.document_state.city, main.tool_state.last_edit_command, main.tool_state.tool_random).ok)
+			assert(DocumentState.capture(main.document_state.current_document) == before and main.tool_state.tool_random.state == rng)
 
 			_button(map, start, true, true)
 			_motion(map, start + Vector2i(3, 2), true)

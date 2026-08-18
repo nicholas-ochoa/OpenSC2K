@@ -35,7 +35,7 @@ func _run() -> void:
 		await process_frame
 	main.new_city.create_new_city_unchecked()
 	await process_frame
-	assert(main.landscape_editor and main.city_toolbar.start_city_button.visible)
+	assert(main.tool_state.landscape_editor and main.city_toolbar.start_city_button.visible)
 	assert(not main.city_toolbar.toolbar_buttons[6].visible)
 	assert(not main.city_toolbar.child_tool_buttons.has(4))
 
@@ -68,8 +68,8 @@ func _run() -> void:
 	main._process(0.5)
 	assert(main.document_state.city.age_in_days() == day)
 	main.current_tool.select_tool_group(6)
-	assert(main.selected_group == 0)
-	main.selected_group = 6
+	assert(main.tool_state.selected_group == 0)
+	main.tool_state.selected_group = 6
 	var data: PackedByteArray = main.document_state.current_document.serialize().data
 	var point := Vector2i(40, 40)
 	var path: Array[Vector2i] = [point]
@@ -79,10 +79,10 @@ func _run() -> void:
 	main.current_tool.select_subtool(2)
 	main.city_edits.apply_map_selection(point, point, path, false)
 	assert(main.document_state.city.funds() == funds)
-	assert(main.last_edit_command.ok)
-	assert(main.last_edit_command.free_mode)
+	assert(main.tool_state.last_edit_command.ok)
+	assert(main.tool_state.last_edit_command.free_mode)
 	main.new_city.start_city()
-	assert(not main.landscape_editor and not main.city_toolbar.start_city_button.visible)
+	assert(not main.tool_state.landscape_editor and not main.city_toolbar.start_city_button.visible)
 	assert(main.city_toolbar.toolbar_buttons[6].visible)
 	main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 	data = main.document_state.current_document.serialize().data

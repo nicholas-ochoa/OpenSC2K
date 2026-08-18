@@ -217,11 +217,11 @@ func check_load() -> void:
 	var file := FileAccess.open(save_path, FileAccess.WRITE)
 	file.store_buffer(bytes)
 	file.close()
-	var seed: int = main.tool_random.state
+	var seed: int = main.tool_state.tool_random.state
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
 	check(main.document_state.city.text_overlay_id(10, 10) == 61, "Actual file load repairs missing facility")
 	check(main.city_files._city_has_unsaved_changes(), "Load repair is marked unsaved")
-	check(main.tool_random.state == seed, "Load repair does not consume process RNG")
+	check(main.tool_state.tool_random.state == seed, "Load repair does not consume process RNG")
 	check(FileAccess.get_file_as_bytes(save_path) == bytes, "Loading never writes source file")
 	check(main.city_files._save_copy(ProjectSettings.globalize_path(save_path)), "User save persists repair")
 	var saved := FileAccess.get_file_as_bytes(save_path)

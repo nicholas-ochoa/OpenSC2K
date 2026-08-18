@@ -62,7 +62,7 @@ func debug_metrics() -> Dictionary:
 		]
 		result.population = app.interface.format_number(app.document_state.city.population())
 		result.funds = "$%s" % app.interface.format_number(app.document_state.city.funds())
-		result.tool = str(Tools.tool(app.selected_group, app.selected_subtool).name)
+		result.tool = str(Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name)
 
 	return result
 
@@ -177,7 +177,7 @@ func debug_end_disaster() -> Dictionary:
 	if not result.ok:
 		return {"ok": false, "message": result.error}
 
-	app.last_edit_command = null
+	app.tool_state.last_edit_command = null
 	app.simulation_map_dirty = false
 	app.map_render.refresh_map(false)
 	app.moving_sprites.refresh_moving_things()

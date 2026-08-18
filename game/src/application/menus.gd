@@ -241,7 +241,7 @@ func _sync_view_controls() -> void:
 	for key in app.view_visibility_checks:
 		var check: CheckBox = app.view_visibility_checks[key]
 		check.visible = (underground_active if key in ["water_mains", "pipes", "subways"] else not underground_active) and not CityViewMode.is_data(app.view_state.overlay_mode)
-		if app.landscape_editor:
+		if app.tool_state.landscape_editor:
 			check.visible = key in ["water", "trees"]
 		check.disabled = CityViewMode.is_data(app.view_state.overlay_mode)
 		var enabled := bool(app.view_state.surface_visibility.get(key, true))

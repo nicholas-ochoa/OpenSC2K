@@ -27,7 +27,7 @@ func _run() -> void:
 		while main.map_view.pending_loaded_center.x >= 0 and Time.get_ticks_msec() < deadline:
 			await process_frame
 
-		assert(main.selected_group == 17 and main.selected_subtool == 0)
+		assert(main.tool_state.selected_group == 17 and main.tool_state.selected_subtool == 0)
 		assert(main.map_view.pending_loaded_center.x < 0)
 		var actual: Vector2 = main.map_view.source_center
 		main.map_view.center_on_tile(target)

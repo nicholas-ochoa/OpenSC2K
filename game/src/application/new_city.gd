@@ -31,7 +31,7 @@ func open_new_city_dialog() -> void:
 		app.main_menu.hide()
 
 	app.new_city_dialog.preview_timer.stop()
-	app.new_city_session.begin(app.tool_random.state, app.nuisance_random.state)
+	app.new_city_session.begin(app.tool_state.tool_random.state, app.nuisance_random.state)
 	app.new_city_dialog.preview_view.texture = null
 	app.new_city_dialog.landscape_background.texture = null
 	app.new_city_dialog.compatibility_input.set_pressed_no_signal(false)
@@ -55,7 +55,7 @@ func open_new_city_dialog() -> void:
 
 
 func reopen_terrain_dialog() -> void:
-	if not app.landscape_editor:
+	if not app.tool_state.landscape_editor:
 		return
 	app.new_city_return_to_main_menu = false
 	app.new_city_dialog.show()
@@ -170,7 +170,7 @@ func cancel_new_city() -> void:
 func create_new_city() -> void:
 	if not app.new_city_dialog.candidate_valid:
 		return
-	if app.landscape_editor:
+	if app.tool_state.landscape_editor:
 		create_new_city_unchecked()
 	else:
 		app.city_files.request_city_exit("create_new_city")
@@ -204,7 +204,7 @@ func create_new_city_unchecked() -> void:
 
 		return
 
-	app.tool_random.state = int(result.process_state)
+	app.tool_state.tool_random.state = int(result.process_state)
 	app.nuisance_random.state = int(result.game_state)
 	var document: Sc2File = result.document
 	app.city_session.activate_document(
@@ -235,11 +235,11 @@ func _difficulty_name(difficulty: int) -> String:
 
 
 func level_brush_active() -> bool:
-	return app.selected_group == 0 and app.selected_subtool == TerrainTools.SUBTOOL_LEVEL
+	return app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == TerrainTools.SUBTOOL_LEVEL
 
 
 func _enter_landscape_editor() -> void:
-	app.landscape_editor = true
+	app.tool_state.landscape_editor = true
 	app.frame.select_speed(GameSpeed.Speed.PAUSED)
 	app.city_toolbar.set_landscape_editor(true)
 	app.city_menu_bar.disasters_menu.disabled = true
@@ -250,13 +250,13 @@ func _enter_landscape_editor() -> void:
 
 
 func start_city() -> void:
-	if not app.landscape_editor or app.document_state.city == null:
+	if not app.tool_state.landscape_editor or app.document_state.city == null:
 		return
 
-	app.landscape_editor = false
+	app.tool_state.landscape_editor = false
 	app.city_toolbar.set_landscape_editor(false)
 	app.city_menu_bar.disasters_menu.disabled = false
-	app.last_edit_command = null
+	app.tool_state.last_edit_command = null
 	app.current_tool.select_tool_group(9)
 	app.frame.select_speed(GameSpeed.Speed.TURTLE)
 	app.status_label.text = "City started. Build zones, roads, and services."
