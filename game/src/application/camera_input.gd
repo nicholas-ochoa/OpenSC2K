@@ -236,8 +236,8 @@ func rotate_city(counter_clockwise: bool) -> void:
 
 		return
 
-	if app.simulation_engine != null:
-		app.simulation_engine.rotate_runtime_coordinates(counter_clockwise)
+	if app.simulation_state.simulation_engine != null:
+		app.simulation_state.simulation_engine.rotate_runtime_coordinates(counter_clockwise)
 
 	app.tool_state.last_edit_command = null
 	app.map_view.clear_trip_reach()

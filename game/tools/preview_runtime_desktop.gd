@@ -38,7 +38,7 @@ func _run() -> void:
 
 	main.desktop_presentation.set_graphics(original)
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path("res://../references/SIMCITY2000/CITIES/ISLAND.SC2"))
-	main.speed_controller.set_speed(0)
+	main.simulation_state.speed_controller.set_speed(0)
 	main.frame.sync_speed_ui()
 	var layer := CanvasLayer.new()
 	layer.layer = 129

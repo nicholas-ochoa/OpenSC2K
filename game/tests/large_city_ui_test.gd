@@ -57,13 +57,13 @@ func run_check() -> void:
 	for edge in [16, 512, 128]:
 		assert(main.city_session.activate_document(EmptyCityTemplate.create(edge)))
 		assert(main.map_view.city.map_size == edge)
-		assert((main.frame_simulation != null) == (edge != 128))
+		assert((main.simulation_state.frame_simulation != null) == (edge != 128))
 		assert(main.map_view.city_source.size == CityIsometricRenderer.output_size_for_view(2, edge))
 
 		if edge != 128:
-			main.speed_controller.set_speed(GameSpeedController.Speed.CHEETAH)
-			main.frame_simulation.advance_time(200, 200)
-			assert(main.frame_simulation.is_pending())
+			main.simulation_state.speed_controller.set_speed(GameSpeedController.Speed.CHEETAH)
+			main.simulation_state.frame_simulation.advance_time(200, 200)
+			assert(main.simulation_state.frame_simulation.is_pending())
 
 	main.queue_free()
 	await process_frame

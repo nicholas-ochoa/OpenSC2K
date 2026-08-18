@@ -18,17 +18,17 @@ func _init(application: CityApplication) -> void:
 
 func debug_metrics() -> Dictionary:
 	var result := {
-		"simulation_slices": app.frame_simulation.metrics() if app.frame_simulation != null else {},
+		"simulation_slices": app.simulation_state.frame_simulation.metrics() if app.simulation_state.frame_simulation != null else {},
 		"render_regions": app.render_caches.region_cache.metrics() if app.render_caches.region_cache != null else {},
 		"visible_altitude_levels": app.document_state.city.visible_altitude_levels if app.document_state.city != null else 32,
 		"city_name": "None",
 		"date": "--",
 		"population": "--",
 		"funds": "--",
-		"speed": app.speed_controller.speed_name() if app.speed_controller != null else "--",
-		"speed_id": app.speed_controller.speed if app.speed_controller != null else 1,
+		"speed": app.simulation_state.speed_controller.speed_name() if app.simulation_state.speed_controller != null else "--",
+		"speed_id": app.simulation_state.speed_controller.speed if app.simulation_state.speed_controller != null else 1,
 		"speed_accumulator_msec": (
-			app.speed_controller.accumulator_msec if app.speed_controller != null else 0.0
+			app.simulation_state.speed_controller.accumulator_msec if app.simulation_state.speed_controller != null else 0.0
 		),
 		"tool": "--",
 		"view": CityViewMode.key(app.view_state.overlay_mode),
@@ -38,12 +38,12 @@ func debug_metrics() -> Dictionary:
 		"dynamic_cache": app.render_caches.dynamic_visual_cache.size(),
 		"foreground_cache": app.render_caches.dynamic_foreground_cache.size(),
 		"active_disaster": (
-			CityMenuBar.disaster_name(app.simulation_engine.active_disaster_type)
-			if app.simulation_engine != null
+			CityMenuBar.disaster_name(app.simulation_state.simulation_engine.active_disaster_type)
+			if app.simulation_state.simulation_engine != null
 			else "None"
 		),
 		"active_disaster_id": (
-			app.simulation_engine.active_disaster_type if app.simulation_engine != null else 0
+			app.simulation_state.simulation_engine.active_disaster_type if app.simulation_state.simulation_engine != null else 0
 		),
 		"no_disasters": app.document_state.city != null and app.document_state.city.no_disasters_enabled(),
 		"detailed_timing": SimulationTimingSpan.detailed,
@@ -172,13 +172,13 @@ func debug_start_disaster(disaster_type: int) -> Dictionary:
 
 
 func debug_end_disaster() -> Dictionary:
-	var result := DebugActions.end_disaster(app.document_state.city, app.document_state.current_document, app.simulation_engine)
+	var result := DebugActions.end_disaster(app.document_state.city, app.document_state.current_document, app.simulation_state.simulation_engine)
 
 	if not result.ok:
 		return {"ok": false, "message": result.error}
 
 	app.tool_state.last_edit_command = null
-	app.simulation_map_dirty = false
+	app.simulation_state.simulation_map_dirty = false
 	app.map_render.refresh_map(false)
 	app.moving_sprites.refresh_moving_things()
 	app.interface.refresh_details()

@@ -87,7 +87,8 @@ func refresh_from_host(host: Control, force := false) -> void:
 		_city_id = city_id
 
 	_last_refresh = Time.get_ticks_msec()
-	var engine := host.get("simulation_engine") as SimulationEngine
+	var simulation := host.get("simulation_state") as SimulationSessionState
+	var engine: SimulationEngine = simulation.simulation_engine if simulation != null else null
 	update_records(DebugCityTables.collect(kind, city, engine, show_empty.button_pressed))
 	status.text = "No city loaded." if city == null else "%d records • published state • refresh at most once per second" % rows.size()
 

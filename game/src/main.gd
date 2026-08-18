@@ -3,7 +3,6 @@ extends Control
 
 
 const NewCitySession = preload("res://src/model/new_city_terrain_session.gd")
-const GameRandom = preload("res://src/simulation/random/game_lcg_random.gd")
 const ScurkHistory = preload("res://src/tools/scurk/scurk_edit_history.gd")
 
 # active city, document, and save state
@@ -22,16 +21,9 @@ var graphics_source_error_dialog: AcceptDialog
 var original_text_resources := OriginalTextResources.new()
 # tool state
 var tool_state := ToolState.new()
-# simulation state
-var nuisance_random := GameRandom.new(Time.get_ticks_msec() | 1)
+# simulation session state
+var simulation_state := SimulationSessionState.new()
 var audio_controller: Node
-var simulation_engine: SimulationEngine
-var speed_controller: GameSpeedController
-var frame_simulation: FrameSimulationRunner
-var simulation_map_dirty := false
-var annual_budget_pending := false
-var military_proposal_pending := false
-var game_over_active := false
 var edit_display_timings := {}
 # static and dynamic render caches and jobs
 var render_caches := RenderCaches.new()
@@ -161,10 +153,10 @@ func _exit_tree() -> void:
 	new_city_preview_job = null
 	map_render.close_region_cache()
 
-	if frame_simulation != null:
-		frame_simulation.close()
+	if simulation_state.frame_simulation != null:
+		simulation_state.frame_simulation.close()
 
-	frame_simulation = null
+	simulation_state.frame_simulation = null
 	static_render.stop_render_job()
 	city_png_export.close()
 

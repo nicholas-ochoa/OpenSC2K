@@ -60,7 +60,7 @@ func activate_document(
 	if app.scenario_dialog.visible:
 		app.scenario_dialog.hide()
 
-	app.military_proposal_pending = false
+	app.simulation_state.military_proposal_pending = false
 
 	if app.military_dialog.visible:
 		app.military_dialog.hide()
@@ -114,8 +114,8 @@ func activate_document(
 
 	app.pending_scurk_print_options.clear()
 	app.scurk_edit_history.clear()
-	app.annual_budget_pending = false
-	app.game_over_active = false
+	app.simulation_state.annual_budget_pending = false
+	app.simulation_state.game_over_active = false
 	app.document_state.city = loaded_city
 	app.map_view.pending_loaded_center = Vector2i(-1, -1)
 
@@ -156,30 +156,30 @@ func activate_document(
 	app.static_render.update_palette_cycle_texture()
 	app.moving_sprites.reset_blend()
 	var process_seed := app.tool_state.tool_random.state
-	var game_seed := app.nuisance_random.state
+	var game_seed := app.simulation_state.nuisance_random.state
 	var lfsr_seed := (
-		app.simulation_engine.lfsr_random.state
-		if app.simulation_engine != null
+		app.simulation_state.simulation_engine.lfsr_random.state
+		if app.simulation_state.simulation_engine != null
 		else (Time.get_ticks_msec() & 0xffff) | 1
 	)
 
-	if app.frame_simulation != null:
-		app.frame_simulation.close()
+	if app.simulation_state.frame_simulation != null:
+		app.simulation_state.frame_simulation.close()
 
-	app.frame_simulation = null
+	app.simulation_state.frame_simulation = null
 	app.simulation_timings.clear()
-	app.simulation_engine = Simulation.new(app.document_state.city, process_seed, lfsr_seed, game_seed)
-	app.simulation_engine.vehicle_crashes_enabled = app.view_state.show_vehicles
-	app.speed_controller = GameSpeed.new(app.simulation_engine)
-	app.speed_controller.original_compatibility = app.preferences.original_compatibility
+	app.simulation_state.simulation_engine = Simulation.new(app.document_state.city, process_seed, lfsr_seed, game_seed)
+	app.simulation_state.simulation_engine.vehicle_crashes_enabled = app.view_state.show_vehicles
+	app.simulation_state.speed_controller = GameSpeed.new(app.simulation_state.simulation_engine)
+	app.simulation_state.speed_controller.original_compatibility = app.preferences.original_compatibility
 
 	if document_state.current_document.is_extended():
-		app.frame_simulation = FrameSimulationRunner.new(app.speed_controller)
+		app.simulation_state.frame_simulation = FrameSimulationRunner.new(app.simulation_state.speed_controller)
 
 	app.frame.sync_speed_ui()
-	app.tool_state.tool_random = app.simulation_engine.random
-	app.nuisance_random = app.simulation_engine.game_random
-	app.simulation_map_dirty = false
+	app.tool_state.tool_random = app.simulation_state.simulation_engine.random
+	app.simulation_state.nuisance_random = app.simulation_state.simulation_engine.game_random
+	app.simulation_state.simulation_map_dirty = false
 	app.reports.refresh_saved_news_summary()
 	app.tool_state.last_edit_command = null
 	app.tool_state.dispatch_cycles = PackedInt32Array([0, 0, 0])
@@ -204,7 +204,7 @@ func activate_document(
 	if not app.document_state.city.music_enabled():
 		app.effects_audio.stop_music()
 	elif music_was_active:
-		app.simulation_engine.midi_playback_active = true
+		app.simulation_state.simulation_engine.midi_playback_active = true
 	else:
 		app.effects_audio.play_music_track(app.audio_controller.music_director.next_general_track())
 

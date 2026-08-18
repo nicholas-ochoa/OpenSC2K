@@ -37,7 +37,7 @@ func _run() -> void:
 	for tick in 6:
 		var now := start + tick * 200
 		var before := CityIsometricRenderer.moving_thing_anchor(main.document_state.city, airplane, 2)
-		assert(main.simulation_engine.advance_moving_things(now).ok)
+		assert(main.simulation_state.simulation_engine.advance_moving_things(now).ok)
 		main.moving_sprites.note_moving_tick(now)
 		main.moving_sprites.refresh_moving_things()
 		var after := CityIsometricRenderer.moving_thing_anchor(main.document_state.city, airplane, 2)

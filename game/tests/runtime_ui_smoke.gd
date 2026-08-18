@@ -105,7 +105,7 @@ func _run() -> void:
 			or not population_label.text.contains(main.interface.call("format_number", loaded_city.population()))
 			or rci_graph.demand != loaded_city.rci_demand()
 			or not rci_graph.demand_available
-			or not speed_label.text.contains((main.get("speed_controller") as GameSpeedController).speed_name())
+			or not speed_label.text.contains((main.simulation_state.speed_controller as GameSpeedController).speed_name())
 			or speed_menu == null
 		):
 			push_error("Menu or status metrics are not synchronized for %s" % relative_path)
@@ -485,7 +485,7 @@ func _run() -> void:
 
 			main.scurk_workspace.call("close_scurk_place_print")
 
-		var focus_engine: SimulationEngine = main.get("simulation_engine")
+		var focus_engine: SimulationEngine = main.simulation_state.simulation_engine
 		var audio_controller = main.get("audio_controller")
 		var focus_director: MusicDirector = audio_controller.music_director
 		loaded_city.set_music_enabled(true)
@@ -583,7 +583,7 @@ func _run() -> void:
 
 		for menu_id in range(5):
 			main.menus.call("on_speed_menu", menu_id)
-			var controller: GameSpeedController = main.get("speed_controller")
+			var controller: GameSpeedController = main.simulation_state.speed_controller
 			var checked_speed_items := 0
 
 			for item_index in speed_menu.get_popup().item_count:
@@ -607,12 +607,12 @@ func _run() -> void:
 		for tick in range(25 if relative_path == "CITIES/ISLAND.SC2" else 5):
 			main.frame.call("process", 0.2)
 
-			if bool(main.get("annual_budget_pending")):
+			if bool(main.simulation_state.annual_budget_pending):
 				main.budget.call("commit_budget")
 				var budget_dialog := main.get("budget_dialog") as Window
 				budget_dialog.hide()
 
-			if bool(main.get("military_proposal_pending")):
+			if bool(main.simulation_state.military_proposal_pending):
 				main.budget.call("decline_military_proposal")
 				var military_dialog := main.get("military_dialog") as Window
 				military_dialog.hide()
@@ -717,7 +717,7 @@ func _run() -> void:
 	var debug_text_chunk := debug_city.document.find_chunk("XTXT")
 	var debug_old_things: PackedByteArray = debug_thing_chunk.decoded_payload.duplicate()
 	var debug_old_text: PackedByteArray = debug_text_chunk.decoded_payload.duplicate()
-	var debug_engine: SimulationEngine = main.get("simulation_engine")
+	var debug_engine: SimulationEngine = main.simulation_state.simulation_engine
 	var debug_old_active_disaster := debug_engine.active_disaster_type
 	var debug_old_pending_disaster := debug_engine.pending_disaster_type
 	var debug_old_pending_point := debug_engine.pending_disaster_point

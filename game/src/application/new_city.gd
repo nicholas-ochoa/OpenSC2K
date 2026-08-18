@@ -31,7 +31,7 @@ func open_new_city_dialog() -> void:
 		app.main_menu.hide()
 
 	app.new_city_dialog.preview_timer.stop()
-	app.new_city_session.begin(app.tool_state.tool_random.state, app.nuisance_random.state)
+	app.new_city_session.begin(app.tool_state.tool_random.state, app.simulation_state.nuisance_random.state)
 	app.new_city_dialog.preview_view.texture = null
 	app.new_city_dialog.landscape_background.texture = null
 	app.new_city_dialog.compatibility_input.set_pressed_no_signal(false)
@@ -205,7 +205,7 @@ func create_new_city_unchecked() -> void:
 		return
 
 	app.tool_state.tool_random.state = int(result.process_state)
-	app.nuisance_random.state = int(result.game_state)
+	app.simulation_state.nuisance_random.state = int(result.game_state)
 	var document: Sc2File = result.document
 	app.city_session.activate_document(
 		document,

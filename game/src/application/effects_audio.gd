@@ -17,8 +17,8 @@ func play_music_track(track_id: int) -> bool:
 
 
 func on_music_activity_changed(active: bool) -> void:
-	if app.simulation_engine != null:
-		app.simulation_engine.midi_playback_active = active
+	if app.simulation_state.simulation_engine != null:
+		app.simulation_state.simulation_engine.midi_playback_active = active
 
 
 func music_playback_is_active() -> bool:

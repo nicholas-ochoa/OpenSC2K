@@ -3,7 +3,7 @@ extends SceneTree
 class Host extends Control:
 	var debug: Control = self
 	var document_state := ActiveDocumentState.new()
-	var simulation_engine: SimulationEngine
+	var simulation_state := SimulationSessionState.new()
 	var map_view: CityMapControl
 
 

@@ -222,7 +222,7 @@ func apply_map_selection(
 			building_group,
 			building_subtool,
 			finish,
-			app.simulation_engine.lfsr_random,
+			app.simulation_state.simulation_engine.lfsr_random,
 			app.tool_state.tool_random
 		)
 
@@ -361,7 +361,7 @@ func undo_last_edit() -> void:
 		result = Landscapes.undo(app.document_state.city, command as LandscapeEditResult, app.tool_state.tool_random)
 	elif command_type == "building":
 		result = Buildings.undo(
-			app.document_state.city, command as BuildingEditResult, app.simulation_engine.lfsr_random, app.tool_state.tool_random
+			app.document_state.city, command as BuildingEditResult, app.simulation_state.simulation_engine.lfsr_random, app.tool_state.tool_random
 		)
 	elif command_type == "network":
 		result = Networks.undo(app.document_state.city, command as RouteEditResult)

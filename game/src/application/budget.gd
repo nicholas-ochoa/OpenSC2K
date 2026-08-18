@@ -30,10 +30,10 @@ func open_budget_dialog(values: PackedInt32Array, annual: bool) -> void:
 
 		return
 
-	if app.document_state.city.music_enabled() and app.simulation_engine != null:
-		app.effects_audio.play_music_track(Music.budget_track(app.simulation_engine.lfsr_random))
+	if app.document_state.city.music_enabled() and app.simulation_state.simulation_engine != null:
+		app.effects_audio.play_music_track(Music.budget_track(app.simulation_state.simulation_engine.lfsr_random))
 
-	app.annual_budget_pending = annual
+	app.simulation_state.annual_budget_pending = annual
 	app.budget_dialog.open_budget(
 		values,
 		annual,
@@ -153,8 +153,8 @@ func commit_budget() -> void:
 	var values := app.budget_dialog.funding_values()
 	var auto_budget := app.budget_dialog.auto_budget_enabled()
 
-	if app.annual_budget_pending:
-		var result := app.speed_controller.resolve_annual_budget(values, auto_budget)
+	if app.simulation_state.annual_budget_pending:
+		var result := app.simulation_state.speed_controller.resolve_annual_budget(values, auto_budget)
 
 		if not result.ok:
 			app.interface.show_error("Cannot apply the annual budget: %s" % result.error)
@@ -162,7 +162,7 @@ func commit_budget() -> void:
 
 			return
 
-		app.annual_budget_pending = false
+		app.simulation_state.annual_budget_pending = false
 		app.frame.consume_simulation_result(result)
 		app.interface.refresh_details()
 		app.status_label.theme_type_variation = ""
@@ -182,17 +182,17 @@ func commit_budget() -> void:
 
 
 func cancel_budget() -> void:
-	if app.annual_budget_pending:
+	if app.simulation_state.annual_budget_pending:
 		commit_budget()
 
 
 func _restore_annual_budget_dialog() -> void:
-	if app.annual_budget_pending:
+	if app.simulation_state.annual_budget_pending:
 		app.budget_dialog.popup_centered()
 
 
 func open_military_proposal() -> void:
-	app.military_proposal_pending = true
+	app.simulation_state.military_proposal_pending = true
 	app.military_dialog.popup_centered()
 
 
@@ -205,10 +205,10 @@ func decline_military_proposal() -> void:
 
 
 func _resolve_military_proposal(accepted: bool) -> void:
-	if not app.military_proposal_pending or app.speed_controller == null:
+	if not app.simulation_state.military_proposal_pending or app.simulation_state.speed_controller == null:
 		return
 
-	var result := app.speed_controller.resolve_military_proposal(accepted)
+	var result := app.simulation_state.speed_controller.resolve_military_proposal(accepted)
 
 	if not result.ok:
 		app.interface.show_error("Cannot resolve the military proposal: %s" % result.error)
@@ -216,7 +216,7 @@ func _resolve_military_proposal(accepted: bool) -> void:
 
 		return
 
-	app.military_proposal_pending = false
+	app.simulation_state.military_proposal_pending = false
 	app.frame.consume_simulation_result(result)
 	app.interface.refresh_details()
 	app.status_label.theme_type_variation = ""
@@ -243,7 +243,7 @@ func _resolve_military_proposal(accepted: bool) -> void:
 
 
 func _restore_military_proposal_dialog() -> void:
-	if app.military_proposal_pending:
+	if app.simulation_state.military_proposal_pending:
 		app.military_dialog.popup_centered()
 
 

@@ -70,7 +70,7 @@ func on_file_menu(id: int) -> void:
 
 
 func on_speed_menu(id: int) -> void:
-	if app.speed_controller == null:
+	if app.simulation_state.speed_controller == null:
 		return
 
 	if id < 0 or id > 4:
@@ -330,8 +330,8 @@ func _set_vehicles_visible(enabled: bool) -> void:
 
 	app.view_state.show_vehicles = enabled
 
-	if app.simulation_engine != null:
-		app.simulation_engine.vehicle_crashes_enabled = enabled
+	if app.simulation_state.simulation_engine != null:
+		app.simulation_state.simulation_engine.vehicle_crashes_enabled = enabled
 
 	_sync_view_controls()
 

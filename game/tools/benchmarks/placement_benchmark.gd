@@ -26,7 +26,7 @@ func _run() -> void:
 		var start := Time.get_ticks_usec()
 		var command := BuildingCommand.apply(
 			city, tool.x, tool.y, points[0],
-			(main.get("simulation_engine") as SimulationEngine).lfsr_random,
+			(main.simulation_state.simulation_engine as SimulationEngine).lfsr_random,
 			main.tool_state.tool_random
 		)
 		var command_ms := (Time.get_ticks_usec() - start) / 1000.0
@@ -48,7 +48,7 @@ func _run() -> void:
 			ToolCatalog.tool(tool.x, tool.y).name, command_ms, details_ms, display_ms, sound_ms
 		])
 		print(main.get("edit_display_timings"))
-		BuildingCommand.undo(city, command, (main.get("simulation_engine") as SimulationEngine).lfsr_random, main.tool_state.tool_random)
+		BuildingCommand.undo(city, command, (main.simulation_state.simulation_engine as SimulationEngine).lfsr_random, main.tool_state.tool_random)
 		main.map_render.call("refresh_map", false)
 
 		var render_state := main.get("static_render_state") as StaticRenderState

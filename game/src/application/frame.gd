@@ -35,21 +35,21 @@ func process(delta: float) -> void:
 	app.static_render.start_pending_static_render()
 	app.city_png_export.poll_export()
 
-	if app.speed_controller == null or app.document_state.city == null:
+	if app.simulation_state.speed_controller == null or app.document_state.city == null:
 		return
 
-	app.simulation_engine.midi_playback_active = app.effects_audio.music_playback_is_active()
+	app.simulation_state.simulation_engine.midi_playback_active = app.effects_audio.music_playback_is_active()
 	var interaction_suspended := _simulation_suspended()
 	var result: Dictionary
 
-	if app.frame_simulation != null:
-		app.frame_simulation.budget_usec = FrameSimulationRunner.budget_for_frame(delta)
-		result = app.frame_simulation.advance_time(delta * 1000.0, Time.get_ticks_msec(), interaction_suspended)
+	if app.simulation_state.frame_simulation != null:
+		app.simulation_state.frame_simulation.budget_usec = FrameSimulationRunner.budget_for_frame(delta)
+		result = app.simulation_state.frame_simulation.advance_time(delta * 1000.0, Time.get_ticks_msec(), interaction_suspended)
 	else:
-		result = app.speed_controller.advance_time(delta * 1000.0, Time.get_ticks_msec(), interaction_suspended)
+		result = app.simulation_state.speed_controller.advance_time(delta * 1000.0, Time.get_ticks_msec(), interaction_suspended)
 
 	if not result.ok:
-		app.speed_controller.set_speed(GameSpeed.Speed.PAUSED)
+		app.simulation_state.speed_controller.set_speed(GameSpeed.Speed.PAUSED)
 		sync_speed_ui()
 		app.interface.show_error("Simulation stopped: %s" % result.error)
 
@@ -72,7 +72,7 @@ func _simulation_suspended() -> bool:
 		or (app.scurk_city_export_dialog != null and app.scurk_city_export_dialog.visible)
 		or (app.scurk_print_pdf_dialog != null and app.scurk_print_pdf_dialog.visible)
 		or app.budget_dialog.bond_confirmation_visible()
-		or app.game_over_active
+		or app.simulation_state.game_over_active
 		or app.tool_state.landscape_editor
 		or app.founding_newspaper_pending
 	)
@@ -80,7 +80,7 @@ func _simulation_suspended() -> bool:
 
 func _advance_palette_animation(delta: float, suspended: bool) -> void:
 	# Keep palette animation running while the simulation worker is busy.
-	if suspended or app.speed_controller.speed == GameSpeed.Speed.PAUSED:
+	if suspended or app.simulation_state.speed_controller.speed == GameSpeed.Speed.PAUSED:
 		return
 
 	palette_clock.elapsed_msec += maxf(delta, 0.0) * 1000.0
@@ -122,7 +122,7 @@ func consume_simulation_result(result: Dictionary) -> void:
 			and CityViewMode.is_map(app.view_state.overlay_mode))
 
 		if moved_things or changed_disaster_map or not data_maps_only:
-			app.simulation_map_dirty = true
+			app.simulation_state.simulation_map_dirty = true
 
 	if ran_days:
 		app.interface.refresh_details()
@@ -131,13 +131,13 @@ func consume_simulation_result(result: Dictionary) -> void:
 		not result.effect_events.is_empty()
 		or not result.view_center_requests.is_empty()
 	)
-	var map_refresh_requested: bool = app.simulation_map_dirty and (
+	var map_refresh_requested: bool = app.simulation_state.simulation_map_dirty and (
 		result.base_ticks > 0 or force_refresh
 	)
 
 	if map_refresh_requested:
 		app.map_render.refresh_map(false)
-		app.simulation_map_dirty = false
+		app.simulation_state.simulation_map_dirty = false
 	elif result.base_ticks > 0:
 		app.moving_sprites.refresh_moving_things()
 
@@ -181,22 +181,22 @@ func _update_fps(delta: float) -> void:
 
 
 func select_speed(speed_value: int) -> void:
-	if app.speed_controller == null:
+	if app.simulation_state.speed_controller == null:
 		return
 
-	if not app.speed_controller.set_speed(speed_value):
+	if not app.simulation_state.speed_controller.set_speed(speed_value):
 		app.interface.show_error("Cannot change the simulation speed.")
 
 		return
 
 	sync_speed_ui()
 	app.status_label.theme_type_variation = ""
-	app.status_label.text = "%s speed selected." % app.speed_controller.speed_name()
+	app.status_label.text = "%s speed selected." % app.simulation_state.speed_controller.speed_name()
 
 
 func sync_speed_ui() -> void:
 	var selected_speed := (
-		app.speed_controller.speed if app.speed_controller != null else GameSpeed.Speed.PAUSED
+		app.simulation_state.speed_controller.speed if app.simulation_state.speed_controller != null else GameSpeed.Speed.PAUSED
 	)
 
 	if app.speed_menu != null:
@@ -205,13 +205,13 @@ func sync_speed_ui() -> void:
 		for speed_id in range(5):
 			var item_index := popup.get_item_index(speed_id)
 			popup.set_item_checked(
-				item_index, app.speed_controller != null and speed_id + 1 == selected_speed
+				item_index, app.simulation_state.speed_controller != null and speed_id + 1 == selected_speed
 			)
 
 	if app.city_status_bar != null:
-		var speed_name := app.speed_controller.speed_name() if app.speed_controller != null else "--"
+		var speed_name := app.simulation_state.speed_controller.speed_name() if app.simulation_state.speed_controller != null else "--"
 		app.city_status_bar.set_speed(speed_name)
 		app.city_status_bar.set_city_status(
-			app.simulation_engine if app.document_state.city != null and not app.tool_state.landscape_editor else null,
+			app.simulation_state.simulation_engine if app.document_state.city != null and not app.tool_state.landscape_editor else null,
 			selected_speed == GameSpeed.Speed.PAUSED, app.original_text_resources.original_query_strings
 		)

@@ -126,7 +126,7 @@ func check_ui() -> void:
 	check(created.ok and not created.document.is_extended(), "Compatibility creates original-format city")
 	var doc := EmptyCityTemplate.create(128)
 	check(main.city_session.activate_document(doc), "Compatible city activates")
-	check(main.speed_controller.original_compatibility, "Active simulation receives compatibility")
+	check(main.simulation_state.speed_controller.original_compatibility, "Active simulation receives compatibility")
 	var bytes: PackedByteArray = doc.serialize().data
 	main.document_state.current_save_path = "user://compatible-city.SC2"
 	main.city_files.upgrade_city_to_sc2x()
@@ -140,7 +140,7 @@ func check_ui() -> void:
 	extended_file.close()
 	main.city_files._load_city_unchecked(ProjectSettings.globalize_path(save_path))
 	check(main.document_state.current_document.is_extended() and main.document_state.current_document.map_size == 256, "SC2X loads normally even with an SC2 filename")
-	check(not main.preferences.original_compatibility and not main.speed_controller.original_compatibility, "Opening SC2X disables compatibility")
+	check(not main.preferences.original_compatibility and not main.simulation_state.speed_controller.original_compatibility, "Opening SC2X disables compatibility")
 	check(not AppSettingsStore.load_values(settings_path).original_compatibility, "Automatic mode change persists")
 	check(main.city_session.activate_document(doc), "Return to original city")
 	main.preferences.original_compatibility = true
@@ -151,7 +151,7 @@ func check_ui() -> void:
 	main.settings_dialog.original_compatibility_check.button_pressed = false
 	main.settings_dialog.hide()
 	main.settings.apply_settings()
-	check(not main.preferences.original_compatibility and not main.speed_controller.original_compatibility, "Mode can be disabled live")
+	check(not main.preferences.original_compatibility and not main.simulation_state.speed_controller.original_compatibility, "Mode can be disabled live")
 	main.new_city_dialog.compatibility_input.button_pressed = false
 	check(not main.new_city_dialog.native_maps_input.disabled, "Disabling New City compatibility restores extensions")
 	check(not main.preferences.warn_sc2x_conversion and not AppSettingsStore.load_values(settings_path).warn_sc2x_conversion, "Warning checkbox disables and persists warning")

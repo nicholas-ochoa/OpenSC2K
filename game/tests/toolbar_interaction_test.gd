@@ -82,7 +82,7 @@ func _run() -> void:
 	city.document.set_misc_i32(0x14, 100000)
 	CityDebugActions.unlock_everything(city, city.document)
 	var building := BuildingCommand.apply(city, 3, 9, Vector2i(60, 60),
-		(main.get("simulation_engine") as SimulationEngine).lfsr_random, main.tool_state.tool_random)
+		(main.simulation_state.simulation_engine as SimulationEngine).lfsr_random, main.tool_state.tool_random)
 	assert(building.ok)
 	main.menus.call("set_overlay", CityViewMode.Mode.CITY)
 	main.current_tool.call("select_tool_group", 16)

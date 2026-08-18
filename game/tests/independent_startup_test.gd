@@ -142,7 +142,7 @@ func _test_main() -> void:
 	assert(main.tool_state.landscape_editor and main.city_toolbar.start_city_button.visible)
 	main.new_city.start_city()
 	main.newspaper_dialog.hide()
-	main.speed_controller.set_speed(GameSpeedController.Speed.PAUSED)
+	main.simulation_state.speed_controller.set_speed(GameSpeedController.Speed.PAUSED)
 	_round_trip_city(main.document_state.current_document)
 	main.scurk_workspace.open_scurk_dialog()
 	assert(main.scurk_editor.visible and main.scurk_editor.tile_set != null)

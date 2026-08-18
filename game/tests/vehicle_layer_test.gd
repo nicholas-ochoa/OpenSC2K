@@ -65,7 +65,7 @@ func _check_application() -> void:
 	main.map_render.refresh_map()
 	var shown: int = main.map_view.dynamic_sprites.size()
 	assert(shown > 0, "A shown vehicle draws")
-	assert(main.simulation_engine.vehicle_crashes_enabled)
+	assert(main.simulation_state.simulation_engine.vehicle_crashes_enabled)
 
 	var sounds := [
 		{"sound_id": 518, "thing_type": 1, "record": vehicle},
@@ -76,7 +76,7 @@ func _check_application() -> void:
 
 	main.city_toolbar.view_visibility_checks.vehicles.button_pressed = false
 	assert(not main.view_state.show_vehicles, "The sidebar check hides vehicles")
-	assert(not main.simulation_engine.vehicle_crashes_enabled, "Hidden vehicles cannot crash")
+	assert(not main.simulation_state.simulation_engine.vehicle_crashes_enabled, "Hidden vehicles cannot crash")
 	assert(main.map_view.dynamic_sprites.size() < shown, "A hidden vehicle does not draw")
 	var audible: Array = main.moving_sprites.audible_sound_events(sounds)
 	assert(audible.size() == 2 and not audible.has(sounds[0]), "Only vehicle sounds are dropped")
@@ -85,9 +85,9 @@ func _check_application() -> void:
 
 	# Opening another city keeps the layer choice in its new engine.
 	assert(main.city_session.activate_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/CAPE.SC2")))
-	assert(not main.simulation_engine.vehicle_crashes_enabled)
+	assert(not main.simulation_state.simulation_engine.vehicle_crashes_enabled)
 	main.menus.on_view_menu(CityMenuBar.MENU_VIEW_VEHICLES)
-	assert(main.view_state.show_vehicles and main.simulation_engine.vehicle_crashes_enabled, "The View menu shows vehicles again")
+	assert(main.view_state.show_vehicles and main.simulation_state.simulation_engine.vehicle_crashes_enabled, "The View menu shows vehicles again")
 	assert(main.city_toolbar.view_visibility_checks.vehicles.button_pressed)
 	main.queue_free()
 	await process_frame

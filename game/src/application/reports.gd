@@ -25,7 +25,7 @@ func on_disaster_menu(id: int) -> void:
 	if app.tool_state.landscape_editor:
 		return
 
-	if app.document_state.city == null or app.simulation_engine == null:
+	if app.document_state.city == null or app.simulation_state.simulation_engine == null:
 		app.interface.show_error("Load a city before you start a disaster.")
 
 		return
@@ -51,7 +51,7 @@ func on_disaster_menu(id: int) -> void:
 
 
 func start_disaster_at_view_center(id: int) -> Dictionary:
-	if app.document_state.city == null or app.simulation_engine == null:
+	if app.document_state.city == null or app.simulation_state.simulation_engine == null:
 		return {"ok": false, "error": "no city is loaded"}
 
 	var point := app.map_view.center_tile() if app.map_view != null else Vector2i(64, 64)
@@ -59,7 +59,7 @@ func start_disaster_at_view_center(id: int) -> Dictionary:
 	if point.x < 0:
 		point = Vector2i(64, 64)
 
-	var result := app.simulation_engine.start_disaster(id, point)
+	var result := app.simulation_state.simulation_engine.start_disaster(id, point)
 
 	if not result.get("ok", false):
 		return result
@@ -71,7 +71,7 @@ func start_disaster_at_view_center(id: int) -> Dictionary:
 		app.effects_audio.play_music_track(Music.DISASTER_TRACK)
 
 	app.tool_state.last_edit_command = null
-	app.simulation_map_dirty = false
+	app.simulation_state.simulation_map_dirty = false
 	app.map_render.refresh_map(false)
 
 	for requested_point in result.get("view_center_requests", []):
@@ -201,8 +201,8 @@ func on_newspaper_menu(id: int) -> void:
 	if id < 0 or id >= NewsQueue.available_paper_count(app.document_state.city.city_status()):
 		return
 
-	if app.document_state.city.music_enabled() and app.simulation_engine != null:
-		app.effects_audio.play_music_track(Music.newspaper_track(app.simulation_engine.lfsr_random))
+	if app.document_state.city.music_enabled() and app.simulation_state.simulation_engine != null:
+		app.effects_audio.play_music_track(Music.newspaper_track(app.simulation_state.simulation_engine.lfsr_random))
 
 	app.newspaper_dialog.open_reports(
 		app.document_state.city,
@@ -285,7 +285,7 @@ func refresh_saved_news_summary() -> void:
 
 
 func show_game_over_events(events: Array) -> void:
-	app.game_over_active = true
+	app.simulation_state.game_over_active = true
 	var messages := PackedStringArray()
 
 	for event in events:

@@ -54,7 +54,7 @@ func save_city() -> void:
 
 
 func _can_upgrade_city_to_sc2x() -> bool:
-	if app.preferences.original_compatibility or app.tool_state.landscape_editor or app.document_state.city == null or document_state.current_document == null or app.simulation_engine == null:
+	if app.preferences.original_compatibility or app.tool_state.landscape_editor or app.document_state.city == null or document_state.current_document == null or app.simulation_state.simulation_engine == null:
 		return false
 
 	if document_state.current_document.is_extended() or document_state.current_document.full_resolution_maps():
@@ -101,14 +101,14 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 
 		return
 
-	if app.frame_simulation != null:
-		app.frame_simulation.close()
-		app.frame_simulation = null
+	if app.simulation_state.frame_simulation != null:
+		app.simulation_state.frame_simulation.close()
+		app.simulation_state.frame_simulation = null
 
 	var enabled := document_state.current_document.enable_full_resolution_maps()
 
-	if app.speed_controller != null and document_state.current_document.is_extended():
-		app.frame_simulation = FrameSimulationRunner.new(app.speed_controller)
+	if app.simulation_state.speed_controller != null and document_state.current_document.is_extended():
+		app.simulation_state.frame_simulation = FrameSimulationRunner.new(app.simulation_state.speed_controller)
 
 	if not enabled:
 		app.interface.show_error("Cannot enable per-tile data maps: city data is incomplete.")

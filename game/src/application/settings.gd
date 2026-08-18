@@ -222,9 +222,9 @@ func _set_moving_frame_rate(value: int) -> void:
 
 
 func apply_compatibility_controls() -> void:
-	if app.speed_controller != null:
-		app.speed_controller.original_compatibility = preferences.original_compatibility
-		app.speed_controller.fire_elapsed_msec = 0.0
+	if app.simulation_state.speed_controller != null:
+		app.simulation_state.speed_controller.original_compatibility = preferences.original_compatibility
+		app.simulation_state.speed_controller.fire_elapsed_msec = 0.0
 
 
 	app.city_files.sync_upgrade_city_option()

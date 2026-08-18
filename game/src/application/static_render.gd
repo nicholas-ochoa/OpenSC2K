@@ -273,8 +273,8 @@ func request_static_render(
 	var now_msec := Time.get_ticks_msec()
 
 	if (
-		app.simulation_engine != null
-		and app.simulation_engine.active_disaster_type != 0
+		app.simulation_state.simulation_engine != null
+		and app.simulation_state.simulation_engine.active_disaster_type != 0
 		and now_msec - state.last_started_msec
 			< ACTIVE_DISASTER_RENDER_INTERVAL_MSEC
 	):

@@ -192,8 +192,8 @@ func open_query(point: Vector2i) -> void:
 
 		return
 
-	if result.get("overlay_id", 0) == 111 and app.simulation_engine != null:
-		var approval := app.simulation_engine.recalculate_mayor_house()
+	if result.get("overlay_id", 0) == 111 and app.simulation_state.simulation_engine != null:
+		var approval := app.simulation_state.simulation_engine.recalculate_mayor_house()
 
 		if not approval.get("ok", false):
 			app.interface.show_error("Cannot calculate mayor approval: %s" % approval.error)
