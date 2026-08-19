@@ -17,8 +17,9 @@ var sc2x_conversion_dialog: ConfirmationDialog
 var reference_import_dialog: FileDialog
 var reference_import_error_dialog: AcceptDialog
 var graphics_source_error_dialog: AcceptDialog
-# original text resources
+# original text resources and newspaper session
 var original_text_resources := OriginalTextResources.new()
+var newspaper_state := NewspaperSessionState.new()
 # tool state
 var tool_state := ToolState.new()
 # simulation session state
@@ -48,7 +49,6 @@ var new_city_dialog: NewCityTerrainDialog
 var new_city_session := NewCitySession.new()
 var new_city_preview_job: NewCityPreviewJob
 var new_city_return_to_main_menu := false
-var founding_newspaper_pending := false
 var options_menu: MenuButton
 var speed_menu: MenuButton
 var view_menu: MenuButton

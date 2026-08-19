@@ -110,7 +110,7 @@ func _hide_all() -> void:
 			_set_shown(window, false)
 
 	main.tool_state.landscape_editor = false
-	main.founding_newspaper_pending = false
+	main.newspaper_state.founding_pending = false
 
 
 func _set_shown(window: Node, shown: bool) -> void:

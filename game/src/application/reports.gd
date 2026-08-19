@@ -11,8 +11,6 @@ const MENU_NO_DISASTERS := CityMenuBarView.MENU_NO_DISASTERS
 var app: CityApplication
 var document_state: ActiveDocumentState
 var text_resources: OriginalTextResources
-var newspaper_session_seed := 0
-var newspaper_session_state := PackedByteArray()
 
 
 func _init(application: CityApplication) -> void:
@@ -210,7 +208,7 @@ func on_newspaper_menu(id: int) -> void:
 		text_resources.newspaper_data,
 		text_resources.original_query_strings,
 		CityStatusBar.NEWS_NAMES,
-		newspaper_session_seed,
+		app.newspaper_state.session_seed,
 		id,
 	)
 

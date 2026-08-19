@@ -59,15 +59,15 @@ func initialize_runtime() -> void:
 		app.audio_controller.set_media_packs(app.preferences.sound_pack_folder, app.preferences.music_pack_folder)
 		app.audio_controller.set_soundtrack_folder(app.preferences.soundtrack_folder)
 
-	app.reports.newspaper_session_seed = Time.get_ticks_msec() & 0xffff
+	app.newspaper_state.session_seed = Time.get_ticks_msec() & 0xffff
 
-	if app.reports.newspaper_session_seed & 0x8000:
-		app.reports.newspaper_session_seed -= 0x10000
+	if app.newspaper_state.session_seed & 0x8000:
+		app.newspaper_state.session_seed -= 0x10000
 
-	app.tool_state.tool_random = Random.new(app.reports.newspaper_session_seed)
-	app.reports.newspaper_session_state.resize(NewsQueue.MISC_SIZE)
-	app.reports.newspaper_session_state.fill(0)
-	NewsQueue.initialize_session(app.reports.newspaper_session_state, app.tool_state.tool_random)
+	app.tool_state.tool_random = Random.new(app.newspaper_state.session_seed)
+	app.newspaper_state.session_state.resize(NewsQueue.MISC_SIZE)
+	app.newspaper_state.session_state.fill(0)
+	NewsQueue.initialize_session(app.newspaper_state.session_state, app.tool_state.tool_random)
 	var original_assets := app.asset_state.asset_source.assets
 	text_resources.newspaper_data = original_assets.newspaper_data
 	text_resources.original_query_strings = original_assets.strings

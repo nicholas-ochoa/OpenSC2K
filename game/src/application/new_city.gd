@@ -193,7 +193,7 @@ func create_new_city_unchecked() -> void:
 		difficulty,
 		starting_year,
 		terrain_options,
-		app.reports.newspaper_session_state,
+		app.newspaper_state.session_state,
 	)
 
 	if not result.ok:
@@ -261,15 +261,15 @@ func start_city() -> void:
 	app.frame.select_speed(GameSpeed.Speed.TURTLE)
 	app.status_label.text = "City started. Build zones, roads, and services."
 	app.effects_audio.play_sound_events([513])
-	app.founding_newspaper_pending = true
+	app.newspaper_state.founding_pending = true
 	app.reports.on_newspaper_menu(0)
 
 
 func on_founding_newspaper_visibility_changed() -> void:
-	if not app.founding_newspaper_pending or app.newspaper_dialog.visible:
+	if not app.newspaper_state.founding_pending or app.newspaper_dialog.visible:
 		return
 
-	app.founding_newspaper_pending = false
+	app.newspaper_state.founding_pending = false
 
 	if app.document_state.city != null and app.document_state.city.music_enabled():
 		app.audio_controller.music_director.general_track_index = 0

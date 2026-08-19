@@ -74,7 +74,7 @@ func _simulation_suspended() -> bool:
 		or app.budget_dialog.bond_confirmation_visible()
 		or app.simulation_state.game_over_active
 		or app.tool_state.landscape_editor
-		or app.founding_newspaper_pending
+		or app.newspaper_state.founding_pending
 	)
 
 
