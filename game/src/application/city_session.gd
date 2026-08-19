@@ -167,7 +167,7 @@ func activate_document(
 		app.simulation_state.frame_simulation.close()
 
 	app.simulation_state.frame_simulation = null
-	app.simulation_timings.clear()
+	app.timing_state.simulation_timings.clear()
 	app.simulation_state.simulation_engine = Simulation.new(app.document_state.city, process_seed, lfsr_seed, game_seed)
 	app.simulation_state.simulation_engine.vehicle_crashes_enabled = app.view_state.show_vehicles
 	app.simulation_state.speed_controller = GameSpeed.new(app.simulation_state.simulation_engine)

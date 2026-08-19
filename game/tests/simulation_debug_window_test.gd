@@ -2,7 +2,7 @@ extends SceneTree
 
 class MetricsHost extends Control:
 	var debug: Control = self
-	var simulation_timings := SimulationTimingHistory.new()
+	var timing_state := TimingState.new()
 	var queries := 0
 	var terrain_levels := 32
 	var detailed_timing := false
@@ -57,7 +57,7 @@ func _run() -> void:
 	assert(metrics_tree.rows["simulation_slices/snapshot_usec"].get_text(1) == "4.000 ms")
 	assert(metrics_tree.rows["simulation_slices/work/parked_usec"].get_text(1) == "—")
 	assert(metrics_tree.rows["new_counter"].get_text(1) == "7")
-	host.simulation_timings.consume({"day_results": [{"ok": true, "day": 2,
+	host.timing_state.simulation_timings.consume({"day_results": [{"ok": true, "day": 2,
 		"timing": {"work_usec": 2500, "steps": {"pollution": 2500}}}]})
 	debug.toggle()
 	assert(debug.is_open and debug._days.get_root().get_child_count() == 25)
@@ -68,7 +68,7 @@ func _run() -> void:
 	assert(day_three.get_child(0).get_text(1).strip_edges() == "pollution")
 	assert(day_three.get_child(0).get_text(2) == "2.500")
 	day_three.collapsed = false
-	host.simulation_timings.consume({"day_results": [{"ok": true, "day": 3,
+	host.timing_state.simulation_timings.consume({"day_results": [{"ok": true, "day": 3,
 		"timing": {"work_usec": 900, "steps": {"pollution": 900}}}],
 		"job_timings": {"worker elapsed": 6000}})
 	debug._refresh_metrics()
@@ -77,7 +77,7 @@ func _run() -> void:
 	assert(debug._days.get_root().get_child(3).get_child(0).get_text(2) == "0.900")
 	assert(debug._other_steps.collapsed and debug._other_steps.get_child(0).get_text(2) == "6.000")
 	for pair in [[1, "power"], [3, "growth"], [19, "traffic"], [20, "water"]]:
-		host.simulation_timings.consume({"day_results": [{"ok": true, "day": pair[0],
+		host.timing_state.simulation_timings.consume({"day_results": [{"ok": true, "day": pair[0],
 			"timing": {"work_usec": 7000, "steps": {pair[1]: 7000}},
 			"phase_results": {pair[1]:
 				PhaseResult.from_dictionary({"timing": {"steps": {"measured detail": 6000}}})}}]})
@@ -92,15 +92,15 @@ func _run() -> void:
 
 	var power: TreeItem = debug._step_rows["Day 02 / power"]
 	power.collapsed = true
-	host.simulation_timings.record_step("Day 02 / power / network / scan", 2000)
-	host.simulation_timings.record_step("worker / publication / copy", 1000)
+	host.timing_state.simulation_timings.record_step("Day 02 / power / network / scan", 2000)
+	host.timing_state.simulation_timings.record_step("worker / publication / copy", 1000)
 	debug._refresh_metrics()
 	var network: TreeItem = debug._step_rows["Day 02 / power / network"]
 	assert(network.get_parent() == power and power.collapsed)
 	assert(network.get_text(2) == "—", "Expected no total for an unmeasured group")
 	assert(debug._step_rows["Day 02 / power / network / scan"].get_parent() == network)
 	assert(debug._step_rows["worker / publication / copy"].get_parent() == debug._step_rows["worker / publication"])
-	host.simulation_timings.steps.erase("Day 02 / power / network / scan")
+	host.timing_state.simulation_timings.steps.erase("Day 02 / power / network / scan")
 	debug._refresh_metrics()
 	assert(not debug._step_rows.has("Day 02 / power / network"))
 	assert(debug._step_rows["Day 02 / power"] == power and power.collapsed)
@@ -127,7 +127,7 @@ func _run() -> void:
 	debug._process(1.0)
 	assert(not debug.is_open and not debug._window.visible and host.queries == queries)
 	debug._reset_averages()
-	assert(host.simulation_timings.days.is_empty())
+	assert(host.timing_state.simulation_timings.days.is_empty())
 	assert(day_three.get_child_count() == 0 and day_three.get_text(2) == "—")
 	assert(not day_three.collapsed and debug._other_steps == null)
 	host.queue_free()

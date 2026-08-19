@@ -96,7 +96,7 @@ func consume_simulation_result(result: Dictionary) -> void:
 	if result.base_ticks > 0:
 		sync_speed_ui()
 
-	app.simulation_timings.consume(result)
+	app.timing_state.simulation_timings.consume(result)
 	var refresh_started := Time.get_ticks_usec()
 	var ran_days: bool = not result.day_results.is_empty()
 	var changed_disaster_map := false
@@ -142,7 +142,7 @@ func consume_simulation_result(result: Dictionary) -> void:
 		app.moving_sprites.refresh_moving_things()
 
 	if ran_days or map_refresh_requested:
-		app.simulation_timings.record_step("Main thread / simulation display refresh", Time.get_ticks_usec() - refresh_started)
+		app.timing_state.simulation_timings.record_step("Main thread / simulation display refresh", Time.get_ticks_usec() - refresh_started)
 
 	for point in result.view_center_requests:
 		app.map_view.center_on_tile(point)
@@ -168,12 +168,12 @@ func consume_simulation_result(result: Dictionary) -> void:
 
 
 func _update_fps(delta: float) -> void:
-	app.fps_update_seconds += delta
+	app.timing_state.fps_update_seconds += delta
 
-	if app.city_menu_bar == null or app.fps_update_seconds < 0.25:
+	if app.city_menu_bar == null or app.timing_state.fps_update_seconds < 0.25:
 		return
 
-	app.fps_update_seconds = fmod(app.fps_update_seconds, 0.25)
+	app.timing_state.fps_update_seconds = fmod(app.timing_state.fps_update_seconds, 0.25)
 	app.city_menu_bar.set_fps(Engine.get_frames_per_second())
 
 	if app.city_status_bar != null:

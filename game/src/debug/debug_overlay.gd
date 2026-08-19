@@ -231,8 +231,10 @@ func _process(delta: float) -> void:
 
 
 func _history() -> SimulationTimingHistory:
-	if main_control != null and main_control.get("simulation_timings") is SimulationTimingHistory:
-		return main_control.get("simulation_timings") as SimulationTimingHistory
+	var timings: TimingState = main_control.get("timing_state") as TimingState if main_control != null else null
+
+	if timings != null:
+		return timings.simulation_timings
 
 	return null
 

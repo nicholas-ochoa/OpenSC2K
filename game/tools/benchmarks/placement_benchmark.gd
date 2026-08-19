@@ -47,7 +47,7 @@ func _run() -> void:
 		print("PLACEMENT %s command=%.2f details=%.2f display=%.2f sound=%.2f ms" % [
 			ToolCatalog.tool(tool.x, tool.y).name, command_ms, details_ms, display_ms, sound_ms
 		])
-		print(main.get("edit_display_timings"))
+		print(main.timing_state.edit_display_timings)
 		BuildingCommand.undo(city, command, (main.simulation_state.simulation_engine as SimulationEngine).lfsr_random, main.tool_state.tool_random)
 		main.map_render.call("refresh_map", false)
 

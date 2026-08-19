@@ -40,7 +40,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	if caches.region_cache != null:
 		var region_start := Time.get_ticks_usec()
 		var indices := _edit_dirty_indices(command, app.document_state.city.map_size)
-		app.edit_display_timings = {
+		app.timing_state.edit_display_timings = {
 			"dirty_ms": (Time.get_ticks_usec() - region_start) / 1000.0,
 			"dirty_tiles": indices.size(),
 		}
@@ -51,7 +51,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 		region_start = Time.get_ticks_usec()
 		var dirty := IsometricRenderer.dirty_screen_rect(indices, sprite_archive_for_view(city_view_size()), city_view_size(), Vector2i.ZERO, app.document_state.city.map_size)
 		app.map_render.refresh_region_map(false, dirty)
-		app.edit_display_timings.region_ms = (Time.get_ticks_usec() - region_start) / 1000.0
+		app.timing_state.edit_display_timings.region_ms = (Time.get_ticks_usec() - region_start) / 1000.0
 
 		return true
 
@@ -91,14 +91,14 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	):
 		return false
 
-	app.edit_display_timings = {"dirty_ms": (Time.get_ticks_usec() - profile_start) / 1000.0}
+	app.timing_state.edit_display_timings = {"dirty_ms": (Time.get_ticks_usec() - profile_start) / 1000.0}
 	profile_start = Time.get_ticks_usec()
 	var display_city := ViewFilter.surface_copy(app.document_state.city, app.view_state.surface_visibility)
 
 	if display_city == null or not display_city.is_valid():
 		return false
 
-	app.edit_display_timings.copy_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+	app.timing_state.edit_display_timings.copy_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
 	var patched := IsometricRenderer.patch_static_image(
 		caches.static_city_image,
@@ -114,7 +114,7 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	if not patched.get("ok", false):
 		return false
 
-	app.edit_display_timings.patch_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+	app.timing_state.edit_display_timings.patch_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
 	state.epoch += 1
 	caches.static_city_image = patched.image
@@ -139,13 +139,13 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 		"display_city": caches.static_display_city,
 		"view_size": view_size,
 	}
-	app.edit_display_timings.occlusion_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+	app.timing_state.edit_display_timings.occlusion_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 	profile_start = Time.get_ticks_usec()
 	var source := CityMapTexture.update_region(app.map_view.city_source, caches.static_city_image, patched.output_rect)
 	app.map_view.set_city_view(caches.static_display_city, source, null, true)
 	app.menus.sync_map_style()
 	app.moving_sprites.refresh_moving_things(view_size)
-	app.edit_display_timings.upload_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
+	app.timing_state.edit_display_timings.upload_ms = (Time.get_ticks_usec() - profile_start) / 1000.0
 
 	return true
 

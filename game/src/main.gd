@@ -25,7 +25,8 @@ var tool_state := ToolState.new()
 # simulation session state
 var simulation_state := SimulationSessionState.new()
 var audio_controller: Node
-var edit_display_timings := {}
+# timing measurements
+var timing_state := TimingState.new()
 # static and dynamic render caches and jobs
 var render_caches := RenderCaches.new()
 var static_render_state := StaticRenderState.new()
@@ -95,8 +96,6 @@ var budget_dialog: BudgetDialog
 var game_over_dialog: AcceptDialog
 var military_dialog: ConfirmationDialog
 var scenario_dialog: ScenarioIntroDialog
-var fps_update_seconds := 0.0
-var simulation_timings := SimulationTimingHistory.new()
 var debug_overlay: CityDebugOverlay
 
 # shared state for the controllers; rules and scene ownership stay elsewhere
