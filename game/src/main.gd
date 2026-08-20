@@ -21,7 +21,6 @@ var newspaper_state := NewspaperSessionState.new()
 var tool_state := ToolState.new()
 # simulation session state
 var simulation_state := SimulationSessionState.new()
-var audio_controller: Node
 # new city terrain session
 var new_city_state := NewCityState.new()
 # scurk placement session
@@ -34,6 +33,7 @@ var static_render_state := StaticRenderState.new()
 var palette_clock := PaletteAnimationClock.new()
 
 # scene controls and pending ui workflows
+var audio_controller: Node
 var map_view: CityMapControl
 var city_workspace: CityWorkspace
 var city_menu_bar: CityMenuBar
