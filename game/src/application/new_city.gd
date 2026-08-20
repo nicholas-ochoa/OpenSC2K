@@ -25,13 +25,13 @@ func open_new_city_dialog() -> void:
 	if app.new_city_dialog == null:
 		return
 
-	app.new_city_return_to_main_menu = app.main_menu != null and app.main_menu.visible
+	app.new_city_state.return_to_main_menu = app.main_menu != null and app.main_menu.visible
 
-	if app.new_city_return_to_main_menu:
+	if app.new_city_state.return_to_main_menu:
 		app.main_menu.hide()
 
 	app.new_city_dialog.preview_timer.stop()
-	app.new_city_session.begin(app.tool_state.tool_random.state, app.simulation_state.nuisance_random.state)
+	app.new_city_state.session.begin(app.tool_state.tool_random.state, app.simulation_state.nuisance_random.state)
 	app.new_city_dialog.preview_view.texture = null
 	app.new_city_dialog.landscape_background.texture = null
 	app.new_city_dialog.compatibility_input.set_pressed_no_signal(false)
@@ -57,7 +57,7 @@ func open_new_city_dialog() -> void:
 func reopen_terrain_dialog() -> void:
 	if not app.tool_state.landscape_editor:
 		return
-	app.new_city_return_to_main_menu = false
+	app.new_city_state.return_to_main_menu = false
 	app.new_city_dialog.show()
 	app.new_city_dialog.invalidate()
 
@@ -93,7 +93,7 @@ func _new_city_terrain_options() -> Dictionary:
 
 
 func make_new_city_preview() -> void:
-	if app.new_city_preview_job != null:
+	if app.new_city_state.preview_job != null:
 		return
 	app.new_city_dialog.preview_timer.stop()
 	app.new_city_dialog.invalidate()
@@ -107,18 +107,18 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 
 		return false
 
-	if app.new_city_preview_job != null:
+	if app.new_city_state.preview_job != null:
 		return false
-	app.new_city_preview_job = NewCityPreviewJob.new()
-	app.new_city_preview_job.revision = app.new_city_dialog.generation_revision
-	app.new_city_preview_job.view_size = NewCityPreviewJob.preview_view_size(
+	app.new_city_state.preview_job = NewCityPreviewJob.new()
+	app.new_city_state.preview_job.revision = app.new_city_dialog.generation_revision
+	app.new_city_state.preview_job.view_size = NewCityPreviewJob.preview_view_size(
 		app.new_city_dialog.size_input.get_selected_id(), app.new_city_dialog.size)
-	var preview_sprites := app.asset_state.large_sprites if app.new_city_preview_job.view_size == IsometricRenderer.VIEW_LARGE else app.asset_state.small_medium_sprites
-	var error := app.new_city_preview_job.start(app.new_city_session,
+	var preview_sprites := app.asset_state.large_sprites if app.new_city_state.preview_job.view_size == IsometricRenderer.VIEW_LARGE else app.asset_state.small_medium_sprites
+	var error := app.new_city_state.preview_job.start(app.new_city_state.session,
 		app.asset_state.reference_root.path_join("DEFAULT.SC2"), _new_city_terrain_options(),
 		app.asset_state.palette, preview_sprites, advance_seed)
 	if error != OK:
-		app.new_city_preview_job = null
+		app.new_city_state.preview_job = null
 		app.new_city_dialog.preview_status.text = "Cannot start terrain generation."
 		return false
 	app.new_city_dialog.set_generating(true)
@@ -126,18 +126,18 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 
 
 func poll_new_city_preview() -> void:
-	if app.new_city_preview_job == null or app.new_city_preview_job.thread.is_alive():
+	if app.new_city_state.preview_job == null or app.new_city_state.preview_job.thread.is_alive():
 		return
-	var job := app.new_city_preview_job
+	var job := app.new_city_state.preview_job
 	var generated: Dictionary = job.thread.wait_to_finish()
-	app.new_city_preview_job = null
+	app.new_city_state.preview_job = null
 	app.new_city_dialog.set_generating(false)
 	if not app.new_city_dialog.visible or job.revision != app.new_city_dialog.generation_revision:
 		return
 	if not generated.ok:
 		app.new_city_dialog.preview_status.text = "Cannot generate terrain: %s" % generated.error
 		return
-	app.new_city_session = job.session
+	app.new_city_state.session = job.session
 	app.new_city_dialog.landscape_background.texture = ImageTexture.create_from_image(generated.landscape_image)
 	app.new_city_dialog.preview_view.texture = ImageTexture.create_from_image(generated.minimap_image)
 	app.new_city_dialog.candidate_valid = true
@@ -158,10 +158,10 @@ func cancel_new_city() -> void:
 	app.new_city_dialog.invalidate()
 	app.new_city_dialog.preview_timer.stop()
 	app.new_city_dialog.hide()
-	app.new_city_session.clear()
+	app.new_city_state.session.clear()
 	app.new_city_dialog.preview_view.texture = null
-	var return_to_main_menu := app.new_city_return_to_main_menu
-	app.new_city_return_to_main_menu = false
+	var return_to_main_menu := app.new_city_state.return_to_main_menu
+	app.new_city_state.return_to_main_menu = false
 
 	if return_to_main_menu:
 		app.interface.show_main_menu()
@@ -180,13 +180,13 @@ func create_new_city_unchecked() -> void:
 	app.new_city_dialog.preview_timer.stop()
 	var terrain_options := _new_city_terrain_options()
 
-	if not app.new_city_dialog.candidate_valid or not app.new_city_session.matches(terrain_options):
+	if not app.new_city_dialog.candidate_valid or not app.new_city_state.session.matches(terrain_options):
 		return
 
 	var template_path := app.asset_state.reference_root.path_join("DEFAULT.SC2")
 	var difficulty := app.new_city_dialog.difficulty_input.get_selected_id()
 	var starting_year := app.new_city_dialog.year_input.get_selected_id()
-	var result := app.new_city_session.create_city(
+	var result := app.new_city_state.session.create_city(
 		template_path,
 		app.new_city_dialog.city_name_input.text,
 		app.new_city_dialog.mayor_name_input.text,

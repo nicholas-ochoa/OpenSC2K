@@ -21,7 +21,7 @@ func run_check() -> void:
 	preload("res://tests/support/app_fixture.gd").configure(main)
 	root.add_child(main)
 	await process_frame
-	main.new_city_session.independent_template = true
+	main.new_city_state.session.independent_template = true
 	main.new_city.open_new_city_dialog()
 	# This suite tests size selection and preview jobs; terrain rules have their own tests.
 	main.new_city_dialog.ocean_input.button_pressed = false
@@ -42,10 +42,10 @@ func run_check() -> void:
 		if edge != 16:
 			continue
 		main.new_city.make_new_city_preview()
-		while main.new_city_preview_job != null:
+		while main.new_city_state.preview_job != null:
 			await process_frame
-		assert(main.new_city_session.preview_document.map_size == edge)
-		assert(main.new_city_session.preview_options.get("size") == edge)
+		assert(main.new_city_state.session.preview_document.map_size == edge)
+		assert(main.new_city_state.session.preview_options.get("size") == edge)
 		assert(main.new_city_dialog.preview_view.texture.get_width() == edge)
 
 	main.new_city.cancel_new_city()

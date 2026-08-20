@@ -2,7 +2,6 @@ class_name CityApplication
 extends Control
 
 
-const NewCitySession = preload("res://src/model/new_city_terrain_session.gd")
 const ScurkHistory = preload("res://src/tools/scurk/scurk_edit_history.gd")
 
 # active city, document, and save state
@@ -25,6 +24,8 @@ var tool_state := ToolState.new()
 # simulation session state
 var simulation_state := SimulationSessionState.new()
 var audio_controller: Node
+# new city terrain session
+var new_city_state := NewCityState.new()
 # timing measurements
 var timing_state := TimingState.new()
 # static and dynamic render caches and jobs
@@ -47,9 +48,6 @@ var tile_set_dialog: FileDialog
 var scurk_city_export_dialog: FileDialog
 var scurk_print_pdf_dialog: FileDialog
 var new_city_dialog: NewCityTerrainDialog
-var new_city_session := NewCitySession.new()
-var new_city_preview_job: NewCityPreviewJob
-var new_city_return_to_main_menu := false
 var options_menu: MenuButton
 var speed_menu: MenuButton
 var view_menu: MenuButton
@@ -147,9 +145,9 @@ func _notification(what: int) -> void:
 
 
 func _exit_tree() -> void:
-	if new_city_preview_job != null and new_city_preview_job.thread.is_started():
-		new_city_preview_job.thread.wait_to_finish()
-	new_city_preview_job = null
+	if new_city_state.preview_job != null and new_city_state.preview_job.thread.is_started():
+		new_city_state.preview_job.thread.wait_to_finish()
+	new_city_state.preview_job = null
 	map_render.close_region_cache()
 
 	if simulation_state.frame_simulation != null:

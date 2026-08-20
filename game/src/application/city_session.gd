@@ -104,7 +104,7 @@ func activate_document(
 	if app.new_city_dialog != null and app.new_city_dialog.visible:
 		app.new_city_dialog.hide()
 
-	app.new_city_return_to_main_menu = false
+	app.new_city_state.return_to_main_menu = false
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
 		app.scurk_place_print.hide()

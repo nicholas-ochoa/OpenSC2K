@@ -40,7 +40,7 @@ func initialize_runtime() -> void:
 		app.asset_state.asset_source.use_original_data = false
 
 	app.asset_state.runtime_initialized = true
-	app.new_city_session.independent_template = not app.asset_state.asset_source.use_original_data
+	app.new_city_state.session.independent_template = not app.asset_state.asset_source.use_original_data
 	app.audio_controller = CityAudio.new()
 	app.audio_controller.startup_theme_pending = true
 	app.audio_controller.background_audio = app.preferences.background_audio
@@ -203,7 +203,7 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.asset_state.asset_source = selected
 	app.asset_state.assets_ready = true
 	app.asset_state.reference_root = selected.reference_root
-	app.new_city_session.independent_template = false
+	app.new_city_state.session.independent_template = false
 	app.audio_controller.reference_root = app.asset_state.reference_root
 	app.audio_controller.original_media_enabled = true
 	var assets := selected.assets

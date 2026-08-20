@@ -937,7 +937,7 @@ func _run_quick(reference_root: String) -> void:
 	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(128))
 	main.new_city_dialog.city_name_input.text = "Workflow smoke"
 	main.new_city.make_new_city_preview()
-	while main.new_city_preview_job != null:
+	while main.new_city_state.preview_job != null:
 		await process_frame
 	assert(main.new_city_dialog.candidate_valid)
 	main.new_city.create_new_city_unchecked()

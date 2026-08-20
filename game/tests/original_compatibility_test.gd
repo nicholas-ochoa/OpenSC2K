@@ -115,14 +115,14 @@ func check_ui() -> void:
 	main.new_city_dialog.size_input.select(main.new_city_dialog.size_input.get_item_index(512))
 	main.new_city_dialog.native_maps_input.set_pressed_no_signal(true)
 	check(main.new_city._new_city_terrain_options().size == 128 and not main.new_city._new_city_terrain_options().native_maps, "Creation guard survives programmatic UI selection")
-	main.new_city_session.independent_template = true
-	main.new_city_session.begin(123, 456)
+	main.new_city_state.session.independent_template = true
+	main.new_city_state.session.begin(123, 456)
 	var options: Dictionary = main.new_city._new_city_terrain_options()
 	# Format policy is independent of expensive terrain feature combinations.
 	options.merge({"hills": 0, "water": 0, "trees": 0, "ocean": false, "river": false}, true)
-	var generated: Dictionary = main.new_city_session.generate_preview("", options, false)
+	var generated: Dictionary = main.new_city_state.session.generate_preview("", options, false)
 	check(generated.ok and not generated.document.is_extended(), "Compatibility generates original-format preview")
-	var created: Dictionary = main.new_city_session.create_city("", "Compatible", "Mayor", 1, 1900, options, PackedByteArray())
+	var created: Dictionary = main.new_city_state.session.create_city("", "Compatible", "Mayor", 1, 1900, options, PackedByteArray())
 	check(created.ok and not created.document.is_extended(), "Compatibility creates original-format city")
 	var doc := EmptyCityTemplate.create(128)
 	check(main.city_session.activate_document(doc), "Compatible city activates")

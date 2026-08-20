@@ -23,7 +23,7 @@ func _run() -> void:
 	assert(dialog.get_viewport_rect().grow(1.0).encloses(dialog.panel.get_global_rect()), "New City controls fit the viewport")
 	assert(not dialog.compatibility_input.button_pressed)
 	assert(dialog.native_maps_input.button_pressed)
-	assert(dialog.done_button.disabled and main.new_city_session.preview_document == null)
+	assert(dialog.done_button.disabled and main.new_city_state.session.preview_document == null)
 	for key in ["bay", "delta", "peninsula", "island", "islands", "meander", "crossing", "branch", "rejoin", "valley", "cliffs"]:
 		dialog.reset_features()
 		dialog.ocean_input.button_pressed = false
@@ -87,7 +87,7 @@ func _run() -> void:
 	main.new_city.make_new_city_preview()
 	assert(dialog.generating and dialog.done_button.disabled)
 	assert(dialog._busy_spinner.is_visible_in_tree() and dialog._busy_spinner.is_processing())
-	while main.new_city_preview_job != null:
+	while main.new_city_state.preview_job != null:
 		await process_frame
 	assert(not dialog.generating)
 	assert(not dialog._busy_spinner.is_processing())
@@ -97,9 +97,9 @@ func _run() -> void:
 	assert(NewCityPreviewJob.preview_view_size(128, Vector2(3000, 1800)) == CityIsometricRenderer.VIEW_LARGE)
 	assert(NewCityPreviewJob.preview_view_size(512, Vector2(1920, 1080)) == CityIsometricRenderer.VIEW_SMALL)
 	assert(dialog.landscape_background.texture.get_width() >= dialog.size.x)
-	var candidate: Sc2File = main.new_city_session.preview_document
+	var candidate: Sc2File = main.new_city_state.session.preview_document
 	var bytes: PackedByteArray = candidate.serialize().data
-	var cursor: int = main.new_city_session.preview_process_cursor
+	var cursor: int = main.new_city_state.session.preview_process_cursor
 	var revision := dialog.generation_revision
 	dialog.city_name_input.text = "New Cedar Grove"
 	dialog.city_name_input.text_changed.emit(dialog.city_name_input.text)
@@ -112,14 +112,14 @@ func _run() -> void:
 	dialog._random_name()
 	assert(dialog.candidate_valid and not dialog.done_button.disabled)
 	assert(dialog.generation_revision == revision)
-	assert(main.new_city_session.preview_document == candidate)
+	assert(main.new_city_state.session.preview_document == candidate)
 	assert(candidate.serialize().data == bytes)
-	assert(main.new_city_session.preview_process_cursor == cursor)
+	assert(main.new_city_state.session.preview_process_cursor == cursor)
 	dialog.hills_input.value += 1
 	await create_timer(0.25).timeout
 	assert(dialog.done_button.disabled and not dialog.candidate_valid)
 	assert(candidate.serialize().data == bytes)
-	assert(main.new_city_session.preview_process_cursor == cursor)
+	assert(main.new_city_state.session.preview_process_cursor == cursor)
 	main.new_city.create_new_city_unchecked()
 	assert(main.document_state.city == null)
 	dialog.compatibility_input.button_pressed = false
@@ -128,9 +128,9 @@ func _run() -> void:
 	dialog._random_name()
 	assert(dialog.city_name_input.text.length() <= 30)
 	main.new_city.make_new_city_preview()
-	while main.new_city_preview_job != null:
+	while main.new_city_state.preview_job != null:
 		await process_frame
-	var generated: Sc2File = main.new_city_session.preview_document
+	var generated: Sc2File = main.new_city_state.session.preview_document
 	dialog.city_name_input.text = "New Cedar Grove"
 	dialog.city_name_input.text_changed.emit(dialog.city_name_input.text)
 	main.new_city.create_new_city_unchecked()
@@ -208,7 +208,7 @@ func _run() -> void:
 	_assert_editor_controls(main, true)
 	main.new_city.reopen_terrain_dialog()
 	main.new_city.make_new_city_preview()
-	while main.new_city_preview_job != null:
+	while main.new_city_state.preview_job != null:
 		await process_frame
 	main.new_city.create_new_city()
 	assert(main.tool_state.landscape_editor and not dialog.visible)
@@ -219,15 +219,15 @@ func _run() -> void:
 	main.new_city.open_new_city_dialog()
 	main.new_city.make_new_city_preview()
 	main.new_city.cancel_new_city()
-	while main.new_city_preview_job != null:
+	while main.new_city_state.preview_job != null:
 		await process_frame
-	assert(not dialog.visible and main.new_city_session.preview_document == null)
+	assert(not dialog.visible and main.new_city_state.session.preview_document == null)
 	main.new_city.open_new_city_dialog()
 	main.new_city.make_new_city_preview()
 	dialog.hills_input.value += 1
-	while main.new_city_preview_job != null:
+	while main.new_city_state.preview_job != null:
 		await process_frame
-	assert(not dialog.candidate_valid and main.new_city_session.preview_document == null)
+	assert(not dialog.candidate_valid and main.new_city_state.session.preview_document == null)
 	main.new_city.cancel_new_city()
 	main.queue_free()
 	await process_frame

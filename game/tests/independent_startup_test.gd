@@ -123,7 +123,7 @@ func _test_main() -> void:
 	main.settings_dialog.hide()
 	main.map_view.zoom_factor = 0.25
 	main.new_city.open_new_city_dialog()
-	assert(main.new_city_dialog.visible and main.new_city_session.preview_document == null)
+	assert(main.new_city_dialog.visible and main.new_city_state.session.preview_document == null)
 	main.new_city_dialog.city_name_input.text = "Original Startup"
 	# This scenario checks original SC2 save compatibility.
 	main.new_city_dialog.native_maps_input.button_pressed = false
@@ -134,7 +134,7 @@ func _test_main() -> void:
 	main.new_city_dialog.river_input.button_pressed = false
 	main.new_city_dialog.ocean_input.button_pressed = false
 	main.new_city.make_new_city_preview()
-	while main.new_city_preview_job != null:
+	while main.new_city_state.preview_job != null:
 		await process_frame
 	main.new_city.create_new_city_unchecked()
 	await process_frame
