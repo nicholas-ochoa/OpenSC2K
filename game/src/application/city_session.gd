@@ -112,8 +112,8 @@ func activate_document(
 	if app.scurk_print != null:
 		app.scurk_print.hide()
 
-	app.pending_scurk_print_options.clear()
-	app.scurk_edit_history.clear()
+	app.scurk_state.pending_print_options.clear()
+	app.scurk_state.edit_history.clear()
 	app.simulation_state.annual_budget_pending = false
 	app.simulation_state.game_over_active = false
 	app.document_state.city = loaded_city

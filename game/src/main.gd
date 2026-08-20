@@ -2,8 +2,6 @@ class_name CityApplication
 extends Control
 
 
-const ScurkHistory = preload("res://src/tools/scurk/scurk_edit_history.gd")
-
 # active city, document, and save state
 var document_state := ActiveDocumentState.new()
 # loaded assets
@@ -26,6 +24,8 @@ var simulation_state := SimulationSessionState.new()
 var audio_controller: Node
 # new city terrain session
 var new_city_state := NewCityState.new()
+# scurk placement session
+var scurk_state := ScurkSessionState.new()
 # timing measurements
 var timing_state := TimingState.new()
 # static and dynamic render caches and jobs
@@ -86,8 +86,6 @@ var scurk_editor: ScurkEditorControl
 var desktop_presentation: CityDesktopPresentation
 var scurk_place_print: ScurkPlacePrintControl
 var scurk_print: ScurkPrintControl
-var pending_scurk_print_options: Dictionary = {}
-var scurk_edit_history := ScurkHistory.new()
 var about_dialog: AboutDialog
 var save_changes_dialog: SaveChangesDialog
 var budget_dialog: BudgetDialog

@@ -132,10 +132,10 @@ func open_scurk_place_print() -> void:
 	app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, names, app.asset_state.scurk_graphics)
 
 	if app.tool_state.last_edit_command == null or not app.tool_state.last_edit_command.scurk_place_history:
-		app.scurk_edit_history.clear()
+		app.scurk_state.edit_history.clear()
 
 	app.scurk_place_print.set_history_enabled(
-		app.scurk_edit_history.can_undo(), app.scurk_edit_history.can_redo()
+		app.scurk_state.edit_history.can_undo(), app.scurk_state.edit_history.can_redo()
 	)
 	app.scurk_place_print.set_export_enabled(app.map_view.zoom_percent() <= 25)
 
@@ -198,7 +198,7 @@ func record_edit_command(
 	command: EditCommandResult, scurk_history := false, scurk_name := ""
 ) -> void:
 	if scurk_history:
-		app.scurk_edit_history.record(command, scurk_name)
+		app.scurk_state.edit_history.record(command, scurk_name)
 
 		if app.scurk_place_print != null:
 			app.scurk_place_print.set_history_enabled(true, false)
@@ -245,20 +245,20 @@ func apply_scurk_place_selection(point: Vector2i) -> void:
 
 
 func undo_scurk_place() -> void:
-	if app.document_state.city == null or not app.scurk_edit_history.can_undo():
+	if app.document_state.city == null or not app.scurk_state.edit_history.can_undo():
 		return
 
-	var result := app.scurk_edit_history.undo(app.document_state.city, app.tool_state.tool_random)
+	var result := app.scurk_state.edit_history.undo(app.document_state.city, app.tool_state.tool_random)
 
 	if not result.ok:
 		app.interface.show_error("Cannot undo SCURK placement: %s" % result.error)
 
 		return
 
-	var command: EditCommandResult = app.scurk_edit_history.redo_stack[-1]
-	app.tool_state.last_edit_command = app.scurk_edit_history.current_command()
+	var command: EditCommandResult = app.scurk_state.edit_history.redo_stack[-1]
+	app.tool_state.last_edit_command = app.scurk_state.edit_history.current_command()
 	app.scurk_place_print.set_history_enabled(
-		app.scurk_edit_history.can_undo(), app.scurk_edit_history.can_redo()
+		app.scurk_state.edit_history.can_undo(), app.scurk_state.edit_history.can_redo()
 	)
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(command)
@@ -272,20 +272,20 @@ func undo_scurk_place() -> void:
 
 
 func _redo_scurk_place() -> void:
-	if app.document_state.city == null or not app.scurk_edit_history.can_redo():
+	if app.document_state.city == null or not app.scurk_state.edit_history.can_redo():
 		return
 
-	var result := app.scurk_edit_history.redo(app.document_state.city, app.tool_state.tool_random)
+	var result := app.scurk_state.edit_history.redo(app.document_state.city, app.tool_state.tool_random)
 
 	if not result.ok:
 		app.interface.show_error("Cannot redo SCURK placement: %s" % result.error)
 
 		return
 
-	var command: EditCommandResult = app.scurk_edit_history.undo_stack[-1]
+	var command: EditCommandResult = app.scurk_state.edit_history.undo_stack[-1]
 	app.tool_state.last_edit_command = command
 	app.scurk_place_print.set_history_enabled(
-		app.scurk_edit_history.can_undo(), app.scurk_edit_history.can_redo()
+		app.scurk_state.edit_history.can_undo(), app.scurk_state.edit_history.can_redo()
 	)
 	app.interface.refresh_details()
 	app.static_render.refresh_after_city_edit(command)

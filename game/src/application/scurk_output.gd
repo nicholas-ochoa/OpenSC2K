@@ -119,7 +119,7 @@ func _open_scurk_print_pdf_dialog(options: Dictionary) -> void:
 	if app.document_state.city == null:
 		return
 
-	app.pending_scurk_print_options = options.duplicate(true)
+	app.scurk_state.pending_print_options = options.duplicate(true)
 	var output_directory := ProjectSettings.globalize_path("user://scurk_prints")
 	DirAccess.make_dir_recursive_absolute(output_directory)
 	app.scurk_print_pdf_dialog.current_dir = output_directory
@@ -135,7 +135,7 @@ func _open_scurk_print_pdf_dialog(options: Dictionary) -> void:
 
 
 func _save_scurk_city_pdf(path: String) -> void:
-	if app.document_state.city == null or app.pending_scurk_print_options.is_empty():
+	if app.document_state.city == null or app.scurk_state.pending_print_options.is_empty():
 		return
 
 	var output_path := ProjectSettings.globalize_path(path).simplify_path()
@@ -148,7 +148,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 
 		return
 
-	var magnification := int(app.pending_scurk_print_options.get("magnification", 1))
+	var magnification := int(app.scurk_state.pending_print_options.get("magnification", 1))
 	var grid := ScurkCityOutput.page_grid(magnification)
 
 	if grid.is_empty():
@@ -161,7 +161,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 		app.document_state.city,
 		app.asset_state.palette,
 		app.static_render.sprite_archive_for_view(int(grid.view_size)),
-		app.pending_scurk_print_options
+		app.scurk_state.pending_print_options
 	)
 
 	if not result.ok:
@@ -176,7 +176,7 @@ func _save_scurk_city_pdf(path: String) -> void:
 	app.scurk_place_print.set_status(message)
 	app.status_label.theme_type_variation = ""
 	app.status_label.text = message
-	app.pending_scurk_print_options.clear()
+	app.scurk_state.pending_print_options.clear()
 
 
 func _current_scurk_output_options() -> Dictionary:

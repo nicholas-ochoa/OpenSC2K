@@ -117,7 +117,7 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 
 	app.timing_state.simulation_timings.clear()
 	app.tool_state.last_edit_command = null
-	app.scurk_edit_history.clear()
+	app.scurk_state.edit_history.clear()
 	document_state.current_save_path = ""
 	app.static_render.invalidate_view_render()
 	app.map_render.refresh_map(false)

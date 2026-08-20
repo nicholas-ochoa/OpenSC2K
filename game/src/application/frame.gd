@@ -114,7 +114,7 @@ func consume_simulation_result(result: Dictionary) -> void:
 
 	if ran_days or moved_things or changed_disaster_map:
 		app.tool_state.last_edit_command = null
-		app.scurk_edit_history.clear()
+		app.scurk_state.edit_history.clear()
 		# sc2x data-map updates do not change the surface or underground artwork
 		var data_maps_only: bool = (app.document_state.city.document.full_resolution_maps() and result.day_results.size() == 1
 			and SimulationDaySchedule.scanned_data_maps_only(result.day_results[0])
