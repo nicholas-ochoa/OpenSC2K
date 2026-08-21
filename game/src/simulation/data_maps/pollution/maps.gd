@@ -6,25 +6,111 @@ extends PollutionValues
 # compute coarse maps in their original scan and checkpoint order
 
 
+# inputs, scratch grids, and outputs shared by the coarse-map passes. each
+# pass copies the fields it needs into locals before its grid loop
+class CoarseMaps:
+	var city: CityState
+	var slice: SimulationSliceBudget
+	var map_edge: int
+	var half_edge: int
+	var quarter_edge: int
+	var buildings: PackedByteArray
+	var zones: PackedByteArray
+	# full-size scratch grid. it holds terrain desirability, then population
+	# sources, then crime sources
+	var temporary: PackedInt32Array
+	var flags: PackedByteArray
+	var ordinances: int
+	var pollution: PackedByteArray
+	var land_value: PackedByteArray
+	var police: PackedByteArray
+	var fire: PackedByteArray
+	var population: PackedByteArray
+	var growth: PackedByteArray
+	var crime: PackedByteArray
+	var total := 0
+	var land_value_total := 0
+	var crime_total := 0
+	var center_x := 0
+	var center_y := 0
+	var developed_tiles := 0
+
+
 static func build(
 	city: CityState, span: SimulationTimingSpan, map_edge: int,
 	traffic_chunk: Sc2Chunk, pollution_chunk: Sc2Chunk, crime_chunk: Sc2Chunk,
 	population_chunk: Sc2Chunk, growth_chunk: Sc2Chunk
 ) -> Dictionary:
+	var maps := CoarseMaps.new()
+	maps.city = city
+	maps.slice = city.simulation_slice
+	maps.map_edge = map_edge
 	# the half and quarter grid edges stay constant for the whole scan
-	var half_edge := map_edge / 2
-	var quarter_edge := map_edge / 4
-	var buildings := city.buildings
-	var zones := city.zones
-	var terrain_map := city.terrain
-	var old_pollution: PackedByteArray = pollution_chunk.decoded_payload
-	var old_traffic: PackedByteArray = traffic_chunk.decoded_payload
+	maps.half_edge = map_edge / 2
+	maps.quarter_edge = map_edge / 4
+	maps.buildings = city.buildings
+	maps.zones = city.zones
+	var old_population: PackedByteArray = population_chunk.decoded_payload
+
+	var pollution_sources := _collect_pollution_sources(
+		maps, traffic_chunk.decoded_payload, pollution_chunk.decoded_payload
+	)
+
+	span.mark("pollution smoothing")
+	_smooth_pollution(maps, pollution_sources, pollution_divisor(city.document))
+
+	span.mark("city center")
+	_find_city_center(maps)
+
+	span.mark("terrain desirability")
+	_score_terrain(maps)
+
+	span.mark("land value")
+	_compute_land_value(maps, crime_chunk.decoded_payload, old_population)
+	_clear_service_cells(maps)
+
+	span.mark("services and population sources")
+	_add_services_and_population_sources(maps)
+
+	span.mark("population and growth")
+	_compute_population_and_growth(maps, old_population, growth_chunk.decoded_payload)
+	_seed_crime_sources(maps)
+
+	span.mark("crime smoothing")
+	_smooth_crime(maps)
+
+	return {
+		"pollution": maps.pollution,
+		"land_value": maps.land_value,
+		"police": maps.police,
+		"fire": maps.fire,
+		"population": maps.population,
+		"growth": maps.growth,
+		"crime": maps.crime,
+		"flags": maps.flags,
+		"total": maps.total,
+		"land_value_total": maps.land_value_total,
+		"crime_total": maps.crime_total,
+		"center_x": maps.center_x,
+		"center_y": maps.center_y,
+		"developed_tiles": maps.developed_tiles,
+	}
+
+
+# sum traffic, previous pollution, and polluting buildings for each half-grid
+# cell. the result uses full-grid rows so smoothing can step by map_edge
+static func _collect_pollution_sources(
+	maps: CoarseMaps, old_traffic: PackedByteArray, old_pollution: PackedByteArray
+) -> PackedInt32Array:
+	var map_edge := maps.map_edge
+	var half_edge := maps.half_edge
+	var buildings := maps.buildings
 	var pollution_sources := PackedInt32Array()
 	pollution_sources.resize(map_edge * map_edge)
 
 	for x in half_edge:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+		if maps.slice != null:
+			maps.slice.checkpoint()
 
 		var coarse_row := x * half_edge
 		var pollution_sources_row := x * map_edge
@@ -48,16 +134,22 @@ static func build(
 
 			pollution_sources[pollution_sources_row + y] = value
 
-	span.mark("pollution smoothing")
-	var base_divisor := pollution_divisor(city.document)
+	return pollution_sources
 
+
+# average each source cell with its neighbors into the half-grid pollution map
+static func _smooth_pollution(
+	maps: CoarseMaps, pollution_sources: PackedInt32Array, base_divisor: int
+) -> void:
+	var map_edge := maps.map_edge
+	var half_edge := maps.half_edge
 	var pollution := PackedByteArray()
 	pollution.resize(half_edge * half_edge)
 	var total := 0
 
 	for x in half_edge:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+		if maps.slice != null:
+			maps.slice.checkpoint()
 
 		var map_row := x * half_edge
 		var pollution_sources_row := x * map_edge
@@ -88,16 +180,22 @@ static func build(
 			pollution[index] = value
 			total += value
 
+	maps.pollution = pollution
+	maps.total = total
 
-	span.mark("city center")
-	var flags := city.tile_flags.duplicate()
+
+# find the centroid of tiles with buildings and clear their mark flags
+static func _find_city_center(maps: CoarseMaps) -> void:
+	var map_edge := maps.map_edge
+	var buildings := maps.buildings
+	var flags := maps.city.tile_flags.duplicate()
 	var coordinate_sum_x := 0
 	var coordinate_sum_y := 0
 	var center_divisor := 1
 
 	for x in map_edge:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+		if maps.slice != null:
+			maps.slice.checkpoint()
 
 		var row := x * map_edge
 
@@ -110,18 +208,28 @@ static func build(
 				center_divisor += 1
 				flags[index] &= ~FLAG_MARK & 0xff
 
-	var center_x := int(coordinate_sum_x / (center_divisor * 2))
-	var center_y := int(coordinate_sum_y / (center_divisor * 2))
+	maps.center_x = int(coordinate_sum_x / (center_divisor * 2))
+	maps.center_y = int(coordinate_sum_y / (center_divisor * 2))
+	maps.flags = flags
 
-	span.mark("terrain desirability")
+
+# score residential and industrial terrain desirability into quarter-grid
+# scratch cells, and mark half-grid cells that hold development
+static func _score_terrain(maps: CoarseMaps) -> void:
+	var map_edge := maps.map_edge
+	var quarter_edge := maps.quarter_edge
+	var buildings := maps.buildings
+	var zones := maps.zones
+	var terrain_map := maps.city.terrain
+	var flags := maps.flags
 	# pollution and full-coordinate center scans must not seed quarter-grid values
 	var temporary := PackedInt32Array()
 	temporary.resize(map_edge * map_edge)
 	var developed_tiles := 0
 
 	for x in map_edge:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+		if maps.slice != null:
+			maps.slice.checkpoint()
 
 		var row := x * map_edge
 		var quarter_x := x >> 2
@@ -167,17 +275,32 @@ static func build(
 			temporary[residential_index] = residential_value
 			temporary[industrial_index] = industrial_value
 
-	span.mark("land value")
-	var old_crime: PackedByteArray = crime_chunk.decoded_payload
-	var old_population: PackedByteArray = population_chunk.decoded_payload
-	var old_growth: PackedByteArray = growth_chunk.decoded_payload
+	maps.temporary = temporary
+	maps.developed_tiles = developed_tiles
+
+
+# land value for each marked half-grid cell from desirability, distance to the
+# center, pollution, crime, and population, by zone class
+static func _compute_land_value(
+	maps: CoarseMaps, old_crime: PackedByteArray, old_population: PackedByteArray
+) -> void:
+	var map_edge := maps.map_edge
+	var half_edge := maps.half_edge
+	var quarter_edge := maps.quarter_edge
+	var buildings := maps.buildings
+	var zones := maps.zones
+	var flags := maps.flags
+	var temporary := maps.temporary
+	var pollution := maps.pollution
+	var center_x := maps.center_x
+	var center_y := maps.center_y
 	var land_value := PackedByteArray()
 	land_value.resize(half_edge * half_edge)
 	var land_value_total := 0
 
 	for x in half_edge:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+		if maps.slice != null:
+			maps.slice.checkpoint()
 
 		var map_row := x * half_edge
 		var flag_row := x * map_edge
@@ -239,16 +362,35 @@ static func build(
 			land_value[map_index] = value
 			land_value_total += value
 
+	maps.land_value = land_value
+	maps.land_value_total = land_value_total
+
+
+# reset the scratch cells that the service pass accumulates population into
+static func _clear_service_cells(maps: CoarseMaps) -> void:
+	var map_edge := maps.map_edge
+	var quarter_edge := maps.quarter_edge
+	var temporary := maps.temporary
+
 	for x in quarter_edge:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+		if maps.slice != null:
+			maps.slice.checkpoint()
 
 		var row := x * map_edge
 
 		for y in quarter_edge:
 			temporary[row + y] = 0
 
-	span.mark("services and population sources")
+
+# accumulate police and fire coverage and building population weights into
+# quarter-grid cells
+static func _add_services_and_population_sources(maps: CoarseMaps) -> void:
+	var city := maps.city
+	var map_edge := maps.map_edge
+	var quarter_edge := maps.quarter_edge
+	var buildings := maps.buildings
+	var flags := maps.flags
+	var temporary := maps.temporary
 	var police := PackedByteArray()
 	police.resize(quarter_edge * quarter_edge)
 	var fire := PackedByteArray()
@@ -303,15 +445,27 @@ static func build(
 
 					_add_service(fire, service_x, service_y, strength, map_edge)
 
-	span.mark("population and growth")
+	maps.police = police
+	maps.fire = fire
+	maps.ordinances = ordinances
+
+
+# scale population sources into the population map and blend the change into
+# the growth-rate map
+static func _compute_population_and_growth(
+	maps: CoarseMaps, old_population: PackedByteArray, old_growth: PackedByteArray
+) -> void:
+	var map_edge := maps.map_edge
+	var quarter_edge := maps.quarter_edge
+	var temporary := maps.temporary
 	var population := PackedByteArray()
 	population.resize(quarter_edge * quarter_edge)
 	var growth := PackedByteArray()
 	growth.resize(quarter_edge * quarter_edge)
 
 	for x in quarter_edge:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+		if maps.slice != null:
+			maps.slice.checkpoint()
 
 		var row := x * quarter_edge
 		var temporary_row := x * map_edge
@@ -327,9 +481,26 @@ static func build(
 			)
 			growth[index] = clampi(_divide_toward_zero(growth_numerator, 8), 0, 0xff)
 
+	maps.population = population
+	maps.growth = growth
+
+
+# crime sources for marked half-grid cells: population less land value and
+# police coverage, raised by the crime-reduction ordinance
+static func _seed_crime_sources(maps: CoarseMaps) -> void:
+	var map_edge := maps.map_edge
+	var half_edge := maps.half_edge
+	var quarter_edge := maps.quarter_edge
+	var flags := maps.flags
+	var temporary := maps.temporary
+	var population := maps.population
+	var land_value := maps.land_value
+	var police := maps.police
+	var ordinances := maps.ordinances
+
 	for x in half_edge:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+		if maps.slice != null:
+			maps.slice.checkpoint()
 
 		var map_row := x * half_edge
 		var temporary_row := x * map_edge
@@ -353,14 +524,19 @@ static func build(
 
 			temporary[temporary_index] = value
 
-	span.mark("crime smoothing")
+
+# average each crime source with its neighbors into the half-grid crime map
+static func _smooth_crime(maps: CoarseMaps) -> void:
+	var map_edge := maps.map_edge
+	var half_edge := maps.half_edge
+	var temporary := maps.temporary
 	var crime := PackedByteArray()
 	crime.resize(half_edge * half_edge)
 	var crime_total := 0
 
 	for x in half_edge:
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
+		if maps.slice != null:
+			maps.slice.checkpoint()
 
 		var map_row := x * half_edge
 		var temporary_row := x * map_edge
@@ -390,19 +566,5 @@ static func build(
 			crime[map_row + y] = value
 			crime_total += value
 
-	return {
-		"pollution": pollution,
-		"land_value": land_value,
-		"police": police,
-		"fire": fire,
-		"population": population,
-		"growth": growth,
-		"crime": crime,
-		"flags": flags,
-		"total": total,
-		"land_value_total": land_value_total,
-		"crime_total": crime_total,
-		"center_x": center_x,
-		"center_y": center_y,
-		"developed_tiles": developed_tiles,
-	}
+	maps.crime = crime
+	maps.crime_total = crime_total
