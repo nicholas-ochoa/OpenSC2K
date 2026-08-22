@@ -23,6 +23,202 @@ const TYPE_TORNADO := 15
 const TYPE_MAXIS_MAN := 16
 const MISC_CITY_CENTER_X := 0x1018
 const MISC_CITY_CENTER_Y := 0x101c
+# things and text change on nearly every tick; the map chunks follow
+const COMMIT_ORDER := [
+	"XTHG", "XTXT", "ALTM", "XBLD", "XTER", "XZON", "XUND", "XBIT", "XTRF", "XLAB", "XMIC", "MISC",
+]
+
+
+# chunks and working copies for one tick, plus the generators and options
+# the record updates share. the steps are methods because member reads on
+# self are indexed; static steps that read these fields from outside cost
+# several percent more per 5 hz tick
+class TickContext:
+	var city: CityState
+	var map_edge: int
+	# indexed like commit_order
+	var chunks: Array[Sc2Chunk] = []
+	var altitude: PackedByteArray
+	var buildings: PackedByteArray
+	var terrain: PackedByteArray
+	var zones: PackedByteArray
+	var underground: PackedByteArray
+	var flags: PackedByteArray
+	var traffic: PackedByteArray
+	var text: PackedByteArray
+	var things: PackedByteArray
+	var labels: PackedByteArray
+	var microsims: PackedByteArray
+	var misc: PackedByteArray
+	var random: SimRandom
+	var lfsr_random: SimLfsrRandom
+	var game_random: GameLcgRandom
+	var ship_home: Vector2i
+	var allow_disaster_damage: bool
+	var suppress_vehicle_crashes: bool
+
+
+	func _init(
+		tick_random: SimRandom,
+		tick_lfsr_random: SimLfsrRandom,
+		tick_game_random: GameLcgRandom,
+		tick_ship_home: Vector2i,
+		tick_allow_disaster_damage: bool,
+		tick_suppress_vehicle_crashes: bool
+	) -> void:
+		random = tick_random
+		lfsr_random = tick_lfsr_random
+		game_random = tick_game_random
+		ship_home = tick_ship_home
+		allow_disaster_damage = tick_allow_disaster_damage
+		suppress_vehicle_crashes = tick_suppress_vehicle_crashes
+
+
+	# find each input chunk, check its size, and give the records a working copy
+	# of its payload. returns false when a chunk is missing or has the wrong size
+	func load_payloads(source: CityState) -> bool:
+		city = source
+		map_edge = source.map_size
+		var document := source.document
+		var tile_count := map_edge * map_edge
+		var expected_sizes := [
+			document.decoded_size("XTHG"), document.decoded_size("XTXT"), tile_count * 2,
+			tile_count, tile_count, tile_count, tile_count, tile_count,
+			document.decoded_size("XTRF"), document.decoded_size("XLAB"),
+			document.decoded_size("XMIC"), 4800,
+		]
+
+		for index in COMMIT_ORDER.size():
+			var chunk := document.find_chunk(COMMIT_ORDER[index])
+
+			if chunk == null or chunk.decoded_payload.size() != expected_sizes[index]:
+				return false
+
+			chunks.append(chunk)
+
+		things = chunks[0].decoded_payload.duplicate()
+		text = chunks[1].decoded_payload.duplicate()
+		altitude = chunks[2].decoded_payload.duplicate()
+		buildings = chunks[3].decoded_payload.duplicate()
+		terrain = chunks[4].decoded_payload.duplicate()
+		zones = chunks[5].decoded_payload.duplicate()
+		underground = chunks[6].decoded_payload.duplicate()
+		flags = chunks[7].decoded_payload.duplicate()
+		traffic = chunks[8].decoded_payload.duplicate()
+		labels = chunks[9].decoded_payload.duplicate()
+		microsims = chunks[10].decoded_payload.duplicate()
+		misc = chunks[11].decoded_payload.duplicate()
+
+		return true
+
+
+	# update each thing record with its type's tick rule, in record order
+	func update_records(counters: Dictionary) -> void:
+		var city_center := Vector2i(
+			city.document.misc_u32(MISC_CITY_CENTER_X),
+			city.document.misc_u32(MISC_CITY_CENTER_Y)
+		)
+
+		var slice := city.simulation_slice
+
+		for record in range(FIRST_RECORD, ThingData.count(things)):
+			if slice != null:
+				slice.checkpoint()
+
+			var offset := record * RECORD_SIZE
+
+			match int(ThingData.read(things, offset)):
+				TYPE_AIRPLANE:
+					counters.active_airplanes += 1
+					AirTick.update_airplane(
+						buildings, zones, text, things, record,
+						random, lfsr_random, counters, map_edge, city.no_disasters_enabled(),
+						suppress_vehicle_crashes
+					)
+				TYPE_HELICOPTER:
+					counters.active_helicopters += 1
+					AirTick.update_helicopter(
+						buildings, underground, traffic, text, things, record,
+						city_center, random, counters, map_edge, city.no_disasters_enabled(),
+						suppress_vehicle_crashes
+					)
+				TYPE_SHIP:
+					counters.active_ships += 1
+					ShipTick.update(
+						buildings, underground, flags, text, things, record,
+						ThingData.ship_home(things, record, ship_home), random, lfsr_random, counters, map_edge
+					)
+				TYPE_MONSTER:
+					counters.active_monsters += 1
+					DisasterTick.update_monster(
+						city, altitude, buildings, terrain, zones, underground,
+						flags, traffic, text, labels, microsims, misc, things,
+						record, city_center, random, lfsr_random, counters
+					)
+				TYPE_EXPLOSION:
+					counters.active_explosions += 1
+					DisasterTick.update_explosion(
+						city, altitude, buildings, terrain, zones, underground,
+						flags, traffic, text, labels, microsims, misc, things,
+						record, random, lfsr_random, allow_disaster_damage, counters
+					)
+				TYPE_SAILBOAT:
+					counters.active_sailboats += 1
+					SailboatTick.update(
+						buildings, flags, text, things, record, random, lfsr_random, counters, map_edge
+					)
+				TYPE_TRAIN_ENGINE, TYPE_SUBWAY_ENGINE:
+					counters.active_trains += 1
+					TrainTick.update(
+						buildings, underground, text, things, record,
+						random, lfsr_random, game_random, counters, map_edge
+					)
+				TYPE_TORNADO:
+					counters.active_tornadoes += 1
+					DisasterTick.update_tornado(
+						city, altitude, buildings, terrain, zones, underground,
+						flags, text, labels, microsims, misc, things, record,
+						random, counters
+					)
+				TYPE_MAXIS_MAN:
+					counters.active_maxis_men += 1
+					MaxisManTick.update(
+						altitude, flags, text, things, record, random, counters, map_edge
+					)
+
+
+	# store each changed working copy, newest-changing chunks first. on a failed
+	# store, restore the chunks already stored and return the failed chunk id
+	func commit_payloads() -> String:
+		var working := [
+			things, text, altitude, buildings, terrain, zones,
+			underground, flags, traffic, labels, microsims, misc,
+		]
+		var replaced: Array = []
+		var committed := PackedStringArray()
+
+		for index in COMMIT_ORDER.size():
+			var chunk := chunks[index]
+			var original := chunk.decoded_payload
+
+			if working[index] == original:
+				continue
+
+			if not chunk.set_decoded_payload(working[index]):
+				for rollback in replaced:
+					rollback[0].set_decoded_payload(rollback[1])
+
+				return COMMIT_ORDER[index]
+
+			replaced.push_front([chunk, original])
+			committed.append(COMMIT_ORDER[index])
+
+		# most ticks only move things, so they write xthg and xtxt and nothing else
+		# resyncing the chunks this tick actually wrote keeps the other map mirrors
+		# and the altitude decode out of the 5 hz path
+		city.resync_mirrors(committed)
+
+		return ""
 
 
 static func run(
@@ -36,8 +232,6 @@ static func run(
 	traffic_news_deadline_msec := 0,
 	suppress_vehicle_crashes := false
 ) -> Dictionary:
-	var map_edge: int = city.map_size if city != null else 128
-
 	if city == null or not city.is_valid():
 		return {"ok": false, "error": "city is invalid"}
 
@@ -53,72 +247,29 @@ static func run(
 	if traffic_news_time_msec < 0:
 		traffic_news_time_msec = Time.get_ticks_msec()
 
-	var building_chunk := city.document.find_chunk("XBLD")
-	var altitude_chunk := city.document.find_chunk("ALTM")
-	var terrain_chunk := city.document.find_chunk("XTER")
-	var underground_chunk := city.document.find_chunk("XUND")
-	var zone_chunk := city.document.find_chunk("XZON")
-	var traffic_chunk := city.document.find_chunk("XTRF")
-	var text_chunk := city.document.find_chunk("XTXT")
-	var thing_chunk := city.document.find_chunk("XTHG")
-	var flag_chunk := city.document.find_chunk("XBIT")
-	var label_chunk := city.document.find_chunk("XLAB")
-	var microsim_chunk := city.document.find_chunk("XMIC")
-	var misc_chunk := city.document.find_chunk("MISC")
+	var tick := TickContext.new(
+		random, lfsr_random, game_random, ship_home, allow_disaster_damage, suppress_vehicle_crashes
+	)
 
-	if (
-		building_chunk == null
-		or building_chunk.decoded_payload.size() != (map_edge * map_edge)
-		or altitude_chunk == null
-		or altitude_chunk.decoded_payload.size() != (map_edge * map_edge) * 2
-		or terrain_chunk == null
-		or terrain_chunk.decoded_payload.size() != (map_edge * map_edge)
-		or underground_chunk == null
-		or underground_chunk.decoded_payload.size() != (map_edge * map_edge)
-		or zone_chunk == null
-		or zone_chunk.decoded_payload.size() != (map_edge * map_edge)
-		or traffic_chunk == null
-		or traffic_chunk.decoded_payload.size() != city.document.decoded_size("XTRF")
-		or text_chunk == null
-		or text_chunk.decoded_payload.size() != city.document.decoded_size("XTXT")
-		or thing_chunk == null
-		or thing_chunk.decoded_payload.size() != city.document.decoded_size("XTHG")
-		or flag_chunk == null
-		or flag_chunk.decoded_payload.size() != (map_edge * map_edge)
-		or label_chunk == null
-		or label_chunk.decoded_payload.size() != city.document.decoded_size("XLAB")
-		or microsim_chunk == null
-		or microsim_chunk.decoded_payload.size() != city.document.decoded_size("XMIC")
-		or misc_chunk == null
-		or misc_chunk.decoded_payload.size() != 4800
-	):
+	if not tick.load_payloads(city):
 		return {"ok": false, "error": "moving-thing input chunks are missing or have the wrong size"}
 
-	var original_buildings: PackedByteArray = building_chunk.decoded_payload
-	var buildings: PackedByteArray = original_buildings.duplicate()
-	var original_altitude: PackedByteArray = altitude_chunk.decoded_payload
-	var altitude: PackedByteArray = original_altitude.duplicate()
-	var original_terrain: PackedByteArray = terrain_chunk.decoded_payload
-	var terrain: PackedByteArray = original_terrain.duplicate()
-	var original_underground: PackedByteArray = underground_chunk.decoded_payload
-	var underground: PackedByteArray = original_underground.duplicate()
-	var original_zones: PackedByteArray = zone_chunk.decoded_payload
-	var zones: PackedByteArray = original_zones.duplicate()
-	var original_traffic: PackedByteArray = traffic_chunk.decoded_payload
-	var traffic: PackedByteArray = original_traffic.duplicate()
-	var original_flags: PackedByteArray = flag_chunk.decoded_payload
-	var flags: PackedByteArray = original_flags.duplicate()
-	var original_labels: PackedByteArray = label_chunk.decoded_payload
-	var labels: PackedByteArray = original_labels.duplicate()
-	var original_microsims: PackedByteArray = microsim_chunk.decoded_payload
-	var microsims: PackedByteArray = original_microsims.duplicate()
-	var original_misc: PackedByteArray = misc_chunk.decoded_payload
-	var misc: PackedByteArray = original_misc.duplicate()
-	var original_text: PackedByteArray = text_chunk.decoded_payload
-	var original_things: PackedByteArray = thing_chunk.decoded_payload
-	var text: PackedByteArray = original_text.duplicate()
-	var things: PackedByteArray = original_things.duplicate()
-	var counters := {
+	var counters := _new_counters(tick.things, traffic_news_time_msec, traffic_news_deadline_msec)
+	tick.update_records(counters)
+	var failed_chunk := tick.commit_payloads()
+
+	if not failed_chunk.is_empty():
+		return {"ok": false, "error": "cannot store %s after the moving-thing tick" % failed_chunk}
+
+	_mark_complete(counters)
+
+	return counters
+
+
+static func _new_counters(
+	things: PackedByteArray, traffic_news_time_msec: int, traffic_news_deadline_msec: int
+) -> Dictionary:
+	return {
 		"scanned_records": ThingData.count(things) - 1,
 		"active_airplanes": 0,
 		"active_helicopters": 0,
@@ -179,110 +330,9 @@ static func run(
 		"created_train_crash_explosions": 0,
 		"disaster_start_requests": [],
 	}
-	var city_center := Vector2i(
-		city.document.misc_u32(MISC_CITY_CENTER_X),
-		city.document.misc_u32(MISC_CITY_CENTER_Y)
-	)
 
-	for record in range(FIRST_RECORD, ThingData.count(things)):
-		if city.simulation_slice != null:
-			city.simulation_slice.checkpoint()
 
-		var offset := record * RECORD_SIZE
-
-		match int(ThingData.read(things, offset)):
-			TYPE_AIRPLANE:
-				counters.active_airplanes += 1
-				AirTick.update_airplane(
-					buildings, zones, text, things, record,
-					random, lfsr_random, counters, map_edge, city.no_disasters_enabled(),
-					suppress_vehicle_crashes
-				)
-			TYPE_HELICOPTER:
-				counters.active_helicopters += 1
-				AirTick.update_helicopter(
-					buildings, underground, traffic, text, things, record,
-					city_center, random, counters, map_edge, city.no_disasters_enabled(),
-					suppress_vehicle_crashes
-				)
-			TYPE_SHIP:
-				counters.active_ships += 1
-				ShipTick.update(
-					buildings, underground, flags, text, things, record,
-					ThingData.ship_home(things, record, ship_home), random, lfsr_random, counters, map_edge
-				)
-			TYPE_MONSTER:
-				counters.active_monsters += 1
-				DisasterTick.update_monster(
-					city, altitude, buildings, terrain, zones, underground,
-					flags, traffic, text, labels, microsims, misc, things,
-					record, city_center, random, lfsr_random, counters
-				)
-			TYPE_EXPLOSION:
-				counters.active_explosions += 1
-				DisasterTick.update_explosion(
-					city, altitude, buildings, terrain, zones, underground,
-					flags, traffic, text, labels, microsims, misc, things,
-					record, random, lfsr_random, allow_disaster_damage, counters
-				)
-			TYPE_SAILBOAT:
-				counters.active_sailboats += 1
-				SailboatTick.update(
-					buildings, flags, text, things, record, random, lfsr_random, counters, map_edge
-				)
-			TYPE_TRAIN_ENGINE, TYPE_SUBWAY_ENGINE:
-				counters.active_trains += 1
-				TrainTick.update(
-					buildings, underground, text, things, record,
-					random, lfsr_random, game_random, counters, map_edge
-				)
-			TYPE_TORNADO:
-				counters.active_tornadoes += 1
-				DisasterTick.update_tornado(
-					city, altitude, buildings, terrain, zones, underground,
-					flags, text, labels, microsims, misc, things, record,
-					random, counters
-				)
-			TYPE_MAXIS_MAN:
-				counters.active_maxis_men += 1
-				MaxisManTick.update(
-					altitude, flags, text, things, record, random, counters, map_edge
-				)
-
-	var applied: Array = []
-	var committed := PackedStringArray()
-
-	for update in [
-		[thing_chunk, things, original_things, "XTHG"],
-		[text_chunk, text, original_text, "XTXT"],
-		[altitude_chunk, altitude, original_altitude, "ALTM"],
-		[building_chunk, buildings, original_buildings, "XBLD"],
-		[terrain_chunk, terrain, original_terrain, "XTER"],
-		[zone_chunk, zones, original_zones, "XZON"],
-		[underground_chunk, underground, original_underground, "XUND"],
-		[flag_chunk, flags, original_flags, "XBIT"],
-		[traffic_chunk, traffic, original_traffic, "XTRF"],
-		[label_chunk, labels, original_labels, "XLAB"],
-		[microsim_chunk, microsims, original_microsims, "XMIC"],
-		[misc_chunk, misc, original_misc, "MISC"],
-	]:
-		if update[1] == update[2]:
-			continue
-
-		if not update[0].set_decoded_payload(update[1]):
-			for rollback in applied:
-				rollback[0].set_decoded_payload(rollback[1])
-
-			return {"ok": false, "error": "cannot store %s after the moving-thing tick" % update[3]}
-
-		applied.push_front([update[0], update[2]])
-		committed.append(update[3])
-
-	# most ticks only move things, so they write xthg and xtxt and nothing else
-	# resyncing the chunks this tick actually wrote keeps the other map mirrors
-	# and the altitude decode out of the 5 hz path
-	city.resync_mirrors(committed)
-
+static func _mark_complete(counters: Dictionary) -> void:
 	counters["ok"] = true
 	counters["sailboats_complete"] = true
 	counters["train_routes_complete"] = true
@@ -296,5 +346,3 @@ static func run(
 	counters["explosion_map_damage_complete"] = counters.deferred_facility_explosion_hits == 0
 	counters["complete"] = counters.explosion_map_damage_complete
 	counters["error"] = ""
-
-	return counters
