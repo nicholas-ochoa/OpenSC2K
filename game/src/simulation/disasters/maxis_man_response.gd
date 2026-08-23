@@ -73,7 +73,7 @@ static func apply(city: CityState, started: Dictionary, random: SimRandom, lfsr_
 		thing_chunk.set_decoded_payload(old_things)
 		return {"ok": false, "error": "cannot link the automatic Maxis Man response"}
 
-	city.text_overlays = text
+	city.resync_mirrors(["XTXT"])
 	started["maxis_man_response"] = {"record": record, "point": point, "target": target, "goal": goal}
 	started.sound_events.append(ARRIVAL_SOUND)
 	started.view_center_requests.append(point)

@@ -77,35 +77,21 @@ static func _apply_payloads(
 			for rollback_id in applied:
 				city.document.find_chunk(rollback_id).set_decoded_payload(rollback[rollback_id])
 
-			_refresh_city_arrays(city)
+			city.resync_mirrors(CityState.MIRRORED_CHUNKS)
 
 			return false
 
 		applied.append(chunk_id)
 
-	_refresh_city_arrays(city, chunk_ids.has("ALTM"))
+	# resync every mirror, but decode altitude words only when altm changed
+	var mirrored := CityState.MIRRORED_CHUNKS.duplicate()
+
+	if not chunk_ids.has("ALTM"):
+		mirrored.remove_at(mirrored.find("ALTM"))
+
+	city.resync_mirrors(mirrored)
 
 	return true
-
-
-static func _refresh_city_arrays(city: CityState, refresh_altitude := true) -> void:
-	var map_edge: int = city.map_size if city != null else 128
-	var altitude := city.document.find_chunk("ALTM").decoded_payload
-
-	if refresh_altitude:
-		for index in (map_edge * map_edge):
-			city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
-
-	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
-	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
-	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
-	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
-	var text_chunk := city.document.find_chunk("XTXT")
-
-	if text_chunk != null:
-		city.text_overlays = text_chunk.decoded_payload.duplicate()
-
-	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
 
 
 static func _read_u32_be(data: PackedByteArray, offset: int) -> int:

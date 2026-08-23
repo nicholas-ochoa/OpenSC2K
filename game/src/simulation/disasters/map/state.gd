@@ -178,32 +178,15 @@ static func _apply_map_payloads(
 			for rollback_id in applied:
 				city.document.find_chunk(rollback_id).set_decoded_payload(original[rollback_id])
 
-			_refresh_city_arrays(city)
+			city.resync_mirrors(CityState.MIRRORED_CHUNKS)
 
 			return false
 
 		applied.append(chunk_id)
 
-	_refresh_city_arrays(city)
+	city.resync_mirrors(CityState.MIRRORED_CHUNKS)
 
 	return true
-
-
-static func _refresh_city_arrays(city: CityState) -> void:
-	var map_edge: int = city.map_size if city != null else 128
-	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
-	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
-	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
-	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
-	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
-	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
-	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-
-	for index in (map_edge * map_edge):
-		if city.simulation_slice != null and (index & 127) == 0:
-			city.simulation_slice.checkpoint()
-
-		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
 
 
 static func _index(point: Vector2i, map_edge: int = 128) -> int:

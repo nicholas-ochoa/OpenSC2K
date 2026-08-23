@@ -22,7 +22,7 @@ static func _start_toxic_spill(city: CityState, point: Vector2i) -> Dictionary:
 	if not text_chunk.set_decoded_payload(text):
 		return {"ok": false, "error": "cannot store the toxic spill"}
 
-	city.text_overlays = text.duplicate()
+	city.resync_mirrors(["XTXT"])
 
 	return DisasterStartObjectsState._result(DISASTER_TOXIC_SPILL, point, true, true, 0)
 
@@ -189,7 +189,7 @@ static func _store_riot_text(city: CityState, text: PackedByteArray) -> bool:
 	if chunk == null or not chunk.set_decoded_payload(text):
 		return false
 
-	city.text_overlays = text.duplicate()
+	city.resync_mirrors(["XTXT"])
 
 	return true
 
@@ -257,7 +257,7 @@ static func _start_pollution(city: CityState, point: Vector2i, random: SimRandom
 		if not text_chunk.set_decoded_payload(text):
 			return {"ok": false, "error": "cannot store the pollution disaster"}
 
-		city.text_overlays = text.duplicate()
+		city.resync_mirrors(["XTXT"])
 
 	var result := DisasterStartObjectsState._result(
 		DISASTER_POLLUTION, point, seed_writes > 0, true, 0

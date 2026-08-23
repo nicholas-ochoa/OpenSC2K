@@ -169,30 +169,15 @@ static func _apply_payloads(
 			for rollback_id in applied:
 				city.document.find_chunk(rollback_id).set_decoded_payload(rollback[rollback_id])
 
-			_sync_city_arrays(city)
+			city.resync_mirrors(CityState.MIRRORED_CHUNKS)
 
 			return false
 
 		applied.append(chunk_id)
 
-	_sync_city_arrays(city)
+	city.resync_mirrors(CityState.MIRRORED_CHUNKS)
 
 	return true
-
-
-static func _sync_city_arrays(city: CityState) -> void:
-	var map_edge: int = city.map_size if city != null else 128
-	var altitude: PackedByteArray = city.document.find_chunk("ALTM").decoded_payload
-
-	for index in (map_edge * map_edge):
-		city.altitude_words[index] = (altitude[index * 2] << 8) | altitude[index * 2 + 1]
-
-	city.terrain = city.document.find_chunk("XTER").decoded_payload.duplicate()
-	city.buildings = city.document.find_chunk("XBLD").decoded_payload.duplicate()
-	city.zones = city.document.find_chunk("XZON").decoded_payload.duplicate()
-	city.underground = city.document.find_chunk("XUND").decoded_payload.duplicate()
-	city.text_overlays = city.document.find_chunk("XTXT").decoded_payload.duplicate()
-	city.tile_flags = city.document.find_chunk("XBIT").decoded_payload.duplicate()
 
 
 # Scan x first to match the original rotation order.

@@ -19,6 +19,8 @@ const MISC_AUTO_GOTO_OPTION := 0x0ff4
 const MISC_SOUND_OPTION := 0x0ff8
 const MISC_MUSIC_OPTION := 0x0ffc
 const MISC_NO_DISASTERS_OPTION := 0x1000
+# chunks with a citystate mirror array. see resync_mirrors
+const MIRRORED_CHUNKS: PackedStringArray = ["ALTM", "XTER", "XBLD", "XZON", "XUND", "XTXT", "XBIT"]
 
 # scurk artwork outside xbld is kept only for this workspace session
 var scurk_artwork_stamps: Array[Dictionary] = []

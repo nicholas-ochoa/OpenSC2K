@@ -206,11 +206,11 @@ static func run(city: CityState, random: SimRandom, season: int) -> Result:
 	if not misc_chunk.set_decoded_payload(misc):
 		if buildings_changed:
 			building_chunk.set_decoded_payload(old_buildings)
-			city.buildings = old_buildings
+			city.resync_mirrors(["XBLD"])
 
 		return _failed("cannot store the monthly RCI side effects")
 
-	city.buildings = buildings.duplicate()
+	city.resync_mirrors(["XBLD"])
 
 	var result := Result.new()
 	result.ok = true

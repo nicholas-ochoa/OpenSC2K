@@ -130,7 +130,7 @@ static func end_disaster(
 
 		return {"ok": false, "error": "The disaster mode could not be cleared."}
 
-	city.text_overlays = text.duplicate()
+	city.resync_mirrors(["XTXT"])
 	_reset_disaster_engine(engine)
 
 	return {
@@ -193,7 +193,7 @@ static func dispatch_maxis_man(
 
 		return {"ok": false, "error": "The Maxis Man map link could not be stored."}
 
-	city.text_overlays = text
+	city.resync_mirrors(["XTXT"])
 
 	return {"ok": true, "start": start, "target": target.point}
 

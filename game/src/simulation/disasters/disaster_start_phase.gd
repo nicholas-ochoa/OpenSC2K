@@ -124,6 +124,6 @@ static func start(
 
 		return {"ok": false, "error": "cannot link the disaster moving object"}
 
-	city.text_overlays = text.duplicate()
+	city.resync_mirrors(["XTXT"])
 
 	return DisasterStartObjectsState._result(disaster_type, clamped, true, true, record)

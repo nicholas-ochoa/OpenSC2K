@@ -148,7 +148,7 @@ static func apply(
 
 		return DispatchEditResult.rejected("cannot store the dispatch overlay")
 
-	city.text_overlays = text.duplicate()
+	city.resync_mirrors(["XTXT"])
 
 	var result := DispatchEditResult.new()
 	result.ok = true
@@ -196,7 +196,7 @@ static func undo(city: CityState, command: DispatchEditResult) -> EditCommandRes
 
 		return EditCommandResult.failure("cannot restore text overlays")
 
-	city.text_overlays = command.old_text.duplicate()
+	city.resync_mirrors(["XTXT"])
 
 	return EditCommandResult.undone(0)
 
@@ -279,7 +279,7 @@ static func recall_all(city: CityState) -> DispatchEditResult:
 	_clear_existing_dispatch(things, text, map_edge)
 	things_chunk.set_decoded_payload(things)
 	text_chunk.set_decoded_payload(text)
-	city.text_overlays = text.duplicate()
+	city.resync_mirrors(["XTXT"])
 
 	var result := DispatchEditResult.new()
 	result.ok = true
