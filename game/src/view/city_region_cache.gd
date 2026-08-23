@@ -71,7 +71,9 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	if signature == new_signature and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes and _show_subways == show_subways and _show_water_mains == show_water_mains:
 		return
 
-	var reset := _snapshot == null or _snapshot.map_size != city.map_size or view_size != new_view or mode != new_mode or _snapshot.document.source_path != city.document.source_path or _snapshot.compass_rotation() != city.compass_rotation() or _snapshot.visible_altitude_levels != city.visible_altitude_levels or _visibility != visibility or _sprites != sprites or _show_pipes != show_pipes or _show_subways != show_subways or _show_water_mains != show_water_mains
+	var reset := _needs_reset(
+		city, new_view, new_mode, visibility, sprites, show_pipes, show_subways, show_water_mains
+	)
 	generation += 1
 	_gpu_has_work = true
 	last_error = ""
@@ -115,6 +117,31 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	_show_pipes = show_pipes
 	_show_subways = show_subways
 	_prepared = mode == CityViewMode.Mode.UNDERGROUND
+
+
+# true when the change invalidates every cached region: another city, map
+# size, rotation, altitude cut, view scale, view mode, sprite set, or layer
+# visibility. other changes keep the regions and mark only the dirty ones
+func _needs_reset(
+	city: CityState, new_view: int, new_mode: CityViewMode.Mode, visibility: Dictionary,
+	sprites: Sc2SpriteArchive, show_pipes: bool, show_subways: bool, show_water_mains: bool
+) -> bool:
+	if _snapshot == null:
+		return true
+
+	return (
+		_snapshot.map_size != city.map_size
+		or view_size != new_view
+		or mode != new_mode
+		or _snapshot.document.source_path != city.document.source_path
+		or _snapshot.compass_rotation() != city.compass_rotation()
+		or _snapshot.visible_altitude_levels != city.visible_altitude_levels
+		or _visibility != visibility
+		or _sprites != sprites
+		or _show_pipes != show_pipes
+		or _show_subways != show_subways
+		or _show_water_mains != show_water_mains
+	)
 
 
 func set_sign_requests(requests: Array[Dictionary]) -> void:
