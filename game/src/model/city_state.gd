@@ -38,6 +38,10 @@ var tile_flags := PackedByteArray()
 # draw the terrain as dry land. this array is never written to an sc2 chunk
 var visible_altitude_levels := 32 # display only; never serialized
 var object_altitude_overrides := PackedInt32Array()
+# Only the main thread fills these lazy caches. Workers also read CityState,
+# so filling them from workers would race on the dictionaries.
+# CityTileEdits and CityRecords check this in debug builds.
+# Masked XBIT signatures use the full XBIT hash as their cache key.
 var _masked_tile_flag_signatures: Dictionary = {}
 # runtime-only microsim footprints, rebuilt when xtxt or xthg changes
 var _microsim_sites: Dictionary = {}

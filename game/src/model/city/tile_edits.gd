@@ -190,6 +190,8 @@ static func replace_tile_flags(city: CityState, value: PackedByteArray) -> bool:
 
 
 static func masked_tile_flag_signature(city: CityState, mask: int) -> int:
+	assert(OS.get_thread_caller_id() == OS.get_main_thread_id(),
+		"CityState tile-flag signature cache is main-thread only")
 	var byte_mask := mask & 0xff
 	var source_signature := hash(city.tile_flags)
 	var cached: Dictionary = city._masked_tile_flag_signatures.get(byte_mask, {})
