@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 const WorkspaceScript = preload("res://src/ui/shell/city_workspace.gd")
 const SCENE_PATH := "res://src/ui/shell/city_workspace.tscn"
@@ -7,14 +7,17 @@ const CREATIONS := 50
 const UPDATES := 2000
 
 
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
 func _run() -> void:
 	var assets := OriginalGameAssets.new()
-	assets.load_ui(ProjectSettings.globalize_path("res://../references/SIMCITY2000"))
-	assert(assets.toolbar_art != null)
+	assets.load_ui(reference_path())
+	if not (assets.toolbar_art != null):
+		printerr("Benchmark check failed: assets.toolbar_art != null")
+		quit(1)
+		return
 	var scene := load(SCENE_PATH) as PackedScene if ResourceLoader.exists(SCENE_PATH) else null
 	var creation_samples: Array[float] = []
 	var update_samples: Array[float] = []
@@ -66,3 +69,10 @@ func _run() -> void:
 	}))
 	host.free()
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		reference_path("DATA/DATA_USA.DAT"), reference_path("DATA/DATA_USA.IDX"), reference_path("DATA/TEXT_USA.DAT"),
+		reference_path("DATA/TEXT_USA.IDX"), reference_path("SIMCITY.EXE"),
+	])

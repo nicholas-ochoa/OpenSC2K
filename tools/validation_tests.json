@@ -1,5 +1,15 @@
 [
   {
+    "id": "benchmark_inputs",
+    "python": "tools/test_benchmark_inputs.py",
+    "domain": "tools",
+    "lane": "product",
+    "fixtures": [
+      "large-cities"
+    ],
+    "timeout": 90
+  },
+  {
     "id": "maxis_man_response_test",
     "script": "tests/maxis_man_response_test.gd",
     "domain": "simulation",

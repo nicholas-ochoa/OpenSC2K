@@ -1,18 +1,23 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 
 # Run with --audio-driver Dummy. Reports command and presentation CPU time.
 # The fixture is in memory. No supplied city is saved.
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
 func _run() -> void:
 	var scene := load("res://main.tscn") as PackedScene
 	var main := scene.instantiate()
+	configure_application(main)
 	root.add_child(main)
+	if not main.asset_state.assets_ready:
+		printerr(main.asset_state.asset_source.error)
+		quit(1)
+		return
 	await process_frame
-	var reference_path := ProjectSettings.globalize_path("res://../references/SIMCITY2000/DEFAULT.SC2")
+	var reference_path := ProjectSettings.globalize_path(reference_path("DEFAULT.SC2"))
 	main.city_files.call("_load_city_unchecked", reference_path)
 	main.frame.call("select_speed", GameSpeedController.Speed.PAUSED)
 
@@ -59,3 +64,12 @@ func _run() -> void:
 	main.queue_free()
 	await process_frame
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	var paths := PackedStringArray([
+		"res://main.tscn", reference_path("DEFAULT.SC2"), reference_path("DATA/DATA_USA.DAT"), reference_path("DATA/DATA_USA.IDX"),
+		reference_path("DATA/TEXT_USA.DAT"), reference_path("DATA/TEXT_USA.IDX"), reference_path("SIMCITY.EXE"),
+	])
+	paths.append_array(application_paths())
+	return paths

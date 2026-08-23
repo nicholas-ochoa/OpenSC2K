@@ -1,10 +1,10 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 @warning_ignore_start("integer_division")
 
 
-func _initialize() -> void:
-	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/CAPEQUES.SC2"))
+func _benchmark_initialize() -> void:
+	var city := CityState.from_document(Sc2File.load_path(reference_path("CITIES/CAPEQUES.SC2")))
 	var samples: Array[Vector2i] = []
 	for x in city.map_size:
 		for y in city.map_size:
@@ -15,8 +15,8 @@ func _initialize() -> void:
 
 	if not TransportTripSearch.valid_inputs(city.buildings, city.zones, city.underground,
 		city.text_overlays, city.altitude_words, traffic, city.map_size):
-		print("Capeques transport maps have the wrong size")
-		quit()
+		printerr("Capeques transport maps have the wrong size")
+		quit(1)
 		return
 
 	var started := Time.get_ticks_usec()
@@ -43,3 +43,9 @@ func _initialize() -> void:
 		print("Dense %d: analysis %d usec, vector preparation %d usec, %d states, %d links" % [
 			edge, analysis_usec, Time.get_ticks_usec() - started, result.expanded_states, result.links.size()])
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		reference_path("CITIES/CAPEQUES.SC2"),
+	])

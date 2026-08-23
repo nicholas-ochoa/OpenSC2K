@@ -1,8 +1,8 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 
 ## CPU geometry and texture-update timings. Use --audio-driver Dummy.
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
@@ -29,9 +29,16 @@ func _run() -> void:
 			start = Time.get_ticks_usec()
 			view.set_data_view(city, CityViewMode.Mode.LAND_VALUE)
 			refresh_usec += Time.get_ticks_usec() - start
-			assert(view.data_view_mesh == mesh)
+			if not (view.data_view_mesh == mesh):
+				printerr("Benchmark check failed: view.data_view_mesh == mesh")
+				quit(1)
+				return
 
 		print("data_view edge=%d refresh_ms=%.4f mesh_reused=true" % [edge, refresh_usec / 20000.0])
 		view.free()
 
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray()

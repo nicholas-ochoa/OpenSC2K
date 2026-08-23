@@ -1,20 +1,27 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 ## Native frame pacing. Run without --headless and with --audio-driver Dummy.
 
 
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
 func _run() -> void:
-	assert(DisplayServer.get_name() != "headless", "Frame benchmark requires native rendering")
+	if not (DisplayServer.get_name() != "headless"):
+		printerr("Frame benchmark requires native rendering")
+		quit(1)
+		return
 	OS.set_environment("OPENSC2K_CITY_RENDERER", "gpu")
 	root.size = Vector2i(1920, 1080)
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
 	main.set_script(load("res://tools/benchmarks/profiled_city.gd"))
-	main.asset_state.reference_root = ProjectSettings.globalize_path("res://../references/SIMCITY2000")
 	OS.set_environment("OPENSC2K_GRAPHICS_PACK", ProjectSettings.globalize_path("res://../ext/graphics"))
+	configure_application(main)
 	root.add_child(main)
+	if not main.asset_state.assets_ready:
+		printerr(main.asset_state.asset_source.error)
+		quit(1)
+		return
 	await process_frame
 	main.main_menu.city_background.set_process(false)
 	var full_size_graphics := OS.get_environment("CITY_BENCH_HIRES") != "0"
@@ -31,7 +38,10 @@ func _run() -> void:
 
 			main.map_view.zoom_factor = zoom
 			var load_started := Time.get_ticks_usec()
-			assert(main.city_session.activate_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x")))
+			if not (main.city_session.activate_document(Sc2File.load_path(large_city_path(512)))):
+				printerr("Benchmark check failed: main.city_session.activate_document(Sc2File.load_path(large_city_path(512)))")
+				quit(1)
+				return
 			main.menus.set_overlay(CityViewMode.Mode.CITY)
 			main.frame.select_speed(GameSpeedController.Speed.PAUSED)
 			var deadline := Time.get_ticks_msec() + 60000
@@ -39,7 +49,10 @@ func _run() -> void:
 			while not main.render_caches.region_cache.ready() and Time.get_ticks_msec() < deadline:
 				await process_frame
 
-			assert(main.render_caches.region_cache.ready())
+			if not (main.render_caches.region_cache.ready()):
+				printerr("Benchmark check failed: main.render_caches.region_cache.ready()")
+				quit(1)
+				return
 			print("LOAD zoom=%.2f hires=%s visible_ms=%.2f" % [zoom, full_size_graphics, (Time.get_ticks_usec() - load_started) / 1000.0])
 			main.frame.select_speed(speed)
 			var warm_until := Time.get_ticks_msec() + 2000
@@ -69,7 +82,10 @@ func _run() -> void:
 				total += value
 
 			samples.sort()
-			assert(main.view_state.overlay_mode == CityViewMode.Mode.CITY, "Benchmark view changed during measurement")
+			if not (main.view_state.overlay_mode == CityViewMode.Mode.CITY):
+				printerr("Benchmark view changed during measurement")
+				quit(1)
+				return
 			print("CACHE ", main.render_caches.region_cache.metrics(), " DYNAMIC ", main.map_view.debug_metrics())
 			print("PROFILE ", main.frame_profile)
 			print("STATE date=%d/%d/%d blocked=%s" % [main.document_state.city.current_year(), main.document_state.city.current_month(), main.document_state.city.current_day(), main.simulation_state.speed_controller.interaction_blocked or main.simulation_state.speed_controller.terminal_blocked])
@@ -78,3 +94,13 @@ func _run() -> void:
 	main.queue_free()
 	await process_frame
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	var paths := PackedStringArray([
+		"res://main.tscn", "res://tools/benchmarks/profiled_city.gd", large_city_path(512), reference_path("DATA/DATA_USA.DAT"),
+		reference_path("DATA/DATA_USA.IDX"), reference_path("DATA/TEXT_USA.DAT"), reference_path("DATA/TEXT_USA.IDX"),
+		reference_path("SIMCITY.EXE"),
+	])
+	paths.append_array(application_paths())
+	return paths

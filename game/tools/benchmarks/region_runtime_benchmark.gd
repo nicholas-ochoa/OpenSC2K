@@ -1,15 +1,20 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 
 ## Headless CPU and readiness timing. This does not measure native FPS or GPU time.
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
 func _run() -> void:
 	root.size = Vector2i(1920, 1080)
 	var main := (load("res://main.tscn") as PackedScene).instantiate()
+	configure_application(main)
 	root.add_child(main)
+	if not main.asset_state.assets_ready:
+		printerr(main.asset_state.asset_source.error)
+		quit(1)
+		return
 	await process_frame
 	main.set_process(false)
 	main.main_menu.city_background.set_process(false)
@@ -20,9 +25,12 @@ func _run() -> void:
 		if OS.has_environment("CITY_BENCH_SIZE") and edge != int(OS.get_environment("CITY_BENCH_SIZE")):
 			continue
 
-		var document := Sc2File.load_path("res://../local/large-cities/stitched-%d.sc2x" % edge)
+		var document := Sc2File.load_path(large_city_path(edge))
 		var started := Time.get_ticks_usec()
-		assert(main.city_session.activate_document(document))
+		if not (main.city_session.activate_document(document)):
+			printerr("Benchmark check failed: main.city_session.activate_document(document)")
+			quit(1)
+			return
 		var activation_ms := (Time.get_ticks_usec() - started) / 1000.0
 		var cache: CityRegionCache = main.render_caches.region_cache
 		started = Time.get_ticks_usec()
@@ -35,7 +43,10 @@ func _run() -> void:
 			var poll_started := Time.get_ticks_usec()
 			main.map_render.poll_region_cache()
 			max_poll_usec = maxi(max_poll_usec, Time.get_ticks_usec() - poll_started)
-			assert(cache.last_error.is_empty())
+			if not (cache.last_error.is_empty()):
+				printerr("Benchmark check failed: cache.last_error.is_empty()")
+				quit(1)
+				return
 
 			if cache.completed_regions > 0 and first_ms < 0:
 				first_ms = (Time.get_ticks_usec() - started) / 1000.0
@@ -43,14 +54,20 @@ func _run() -> void:
 			if cache.ready() and visible_ms < 0:
 				visible_ms = (Time.get_ticks_usec() - started) / 1000.0
 
-			assert(cache.entries.size() <= cache.visible.size() + cache.offscreen_limit())
+			if not (cache.entries.size() <= cache.visible.size() + cache.offscreen_limit()):
+				printerr("Benchmark check failed: cache.entries.size() <= cache.visible.size() + cache.offscreen_limit()")
+				quit(1)
+				return
 
 			if cache.prefetch_ready() and cache.ready():
 				break
 
 			await process_frame
 
-		assert(cache.ready() and cache.prefetch_ready())
+		if not (cache.ready() and cache.prefetch_ready()):
+			printerr("Benchmark check failed: cache.ready() and cache.prefetch_ready()")
+			quit(1)
+			return
 		var dynamic_start := Time.get_ticks_usec()
 		main.moving_sprites.refresh_moving_things(main.static_render.city_view_size())
 		print("WARM dynamic_ms=%.2f zoom=%.2f" % [(Time.get_ticks_usec() - dynamic_start) / 1000.0, main.map_view.zoom_factor])
@@ -62,3 +79,13 @@ func _run() -> void:
 	main.queue_free()
 	await process_frame
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	var paths := PackedStringArray([
+		"res://main.tscn", large_city_path(256), large_city_path(384), large_city_path(512), reference_path("DATA/DATA_USA.DAT"),
+		reference_path("DATA/DATA_USA.IDX"), reference_path("DATA/TEXT_USA.DAT"), reference_path("DATA/TEXT_USA.IDX"),
+		reference_path("SIMCITY.EXE"),
+	])
+	paths.append_array(application_paths())
+	return paths

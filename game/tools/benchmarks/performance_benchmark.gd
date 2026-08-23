@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 const Sc2Document = preload("res://src/formats/sc2_file.gd")
 const CityModel = preload("res://src/model/city_state.gd")
@@ -13,8 +13,8 @@ const LfsrRandom = preload("res://src/simulation/random/sim_lfsr_random.gd")
 const DEFAULT_CITY_FILE := "SYDNEY.SC2"
 
 
-func _init() -> void:
-	var reference_root := ProjectSettings.globalize_path("res://../references/SIMCITY2000")
+func _benchmark_initialize() -> void:
+	var reference_root := reference_path()
 	var city_file := DEFAULT_CITY_FILE
 	var arguments := OS.get_cmdline_user_args()
 
@@ -386,3 +386,10 @@ func _init() -> void:
 
 func _print_measurement(label: String, started: int, ok: bool) -> void:
 	print("%s: %d us; ok=%s" % [label, Time.get_ticks_usec() - started, ok])
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		reference_path("CITIES/" + input_path(DEFAULT_CITY_FILE).get_file()), reference_path("DATA/LARGE.DAT"),
+		reference_path("SCENARIO/CHARLEST.SCN"),
+	])

@@ -1,14 +1,17 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 ## Cost of building a fixture one tile at a time, which is how the tests and the
 ## benchmarks make their cities. CPU timings only.
 
 const TILES := 4096
 
 
-func _init() -> void:
+func _benchmark_initialize() -> void:
 	for edge in [128, 512]:
 		var city := CityState.from_document(EmptyCityTemplate.create(edge))
-		assert(city.is_valid(), city.load_error)
+		if not (city.is_valid()):
+			printerr(city.load_error)
+			quit(1)
+			return
 		var side := 64
 		var results := {}
 
@@ -41,3 +44,7 @@ func _init() -> void:
 		print(line)
 
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray()

@@ -1,6 +1,6 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
@@ -23,3 +23,9 @@ func _run() -> void:
 	samples.sort()
 	print("About creation usec: ", samples, " median: ", samples[5])
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		"res://src/ui/settings/about_dialog.tscn",
+	])

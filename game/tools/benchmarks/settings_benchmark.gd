@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 const SettingsScript = preload("res://src/ui/settings/app_settings_dialog.gd")
 const SCENE_PATH := "res://src/ui/settings/app_settings_dialog.tscn"
@@ -7,7 +7,7 @@ const CREATIONS := 30
 const UPDATES := 2000
 
 
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
@@ -52,3 +52,9 @@ func _run() -> void:
 		"update_bundle_usec": update_samples,
 	}))
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		"res://src/ui/settings/app_settings_dialog.gd", SCENE_PATH,
+	])

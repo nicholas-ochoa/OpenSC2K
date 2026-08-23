@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 ## Cold GPU region build time with and without the build context's tile shortcut,
 ## and CPU region paint time, over every 256-pixel region of the city view.
 class ReferenceOnlyContext extends CityGpuBuildContext:
@@ -7,13 +7,13 @@ class ReferenceOnlyContext extends CityGpuBuildContext:
 		return false
 
 
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	var palette := Sc2Palette.index_encoding()
-	var large := Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/LARGE.DAT")
-	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SMALLMED.DAT"), Sc2SpriteArchive.load_path("res://../references/SIMCITY2000/DATA/SPECIAL.DAT")])
+	var large := Sc2SpriteArchive.load_path(reference_path("DATA/LARGE.DAT"))
+	var small := Sc2SpriteArchive.combine([Sc2SpriteArchive.load_path(reference_path("DATA/SMALLMED.DAT")), Sc2SpriteArchive.load_path(reference_path("DATA/SPECIAL.DAT"))])
 	var repeats := int(OS.get_environment("CITY_BENCH_REPEATS")) if OS.has_environment("CITY_BENCH_REPEATS") else 3
 
-	for path in ["res://../references/SIMCITY2000/CITIES/SYDNEY.SC2", "res://../local/large-cities/stitched-256.sc2x"]:
+	for path in [reference_path("CITIES/SYDNEY.SC2"), large_city_path(256)]:
 		var city := CityState.from_document(Sc2File.load_path(path))
 
 		for view in 3:
@@ -31,7 +31,10 @@ func _initialize() -> void:
 					for y in range(0, size.y, 256):
 						for x in range(0, size.x, 256):
 							var result := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i(x, y, 256, 256), view, CityViewMode.Mode.CITY, true, true, context, 1, -1, false)
-							assert(result.ok)
+							if not (result.ok):
+								printerr("Benchmark check failed: result.ok")
+								quit(1)
+								return
 							count += result.gpu_arrays[Mesh.ARRAY_VERTEX].size() / 4
 
 					best[fast] = mini(best[fast], Time.get_ticks_usec() - began)
@@ -45,11 +48,24 @@ func _initialize() -> void:
 
 				for y in range(0, size.y, 256):
 					for x in range(0, size.x, 256):
-						assert(CityRegionRenderer.render(city, palette, sprites, Rect2i(x, y, 256, 256), view, CityViewMode.Mode.CITY).ok)
+						if not (CityRegionRenderer.render(city, palette, sprites, Rect2i(x, y, 256, 256), view, CityViewMode.Mode.CITY).ok):
+							printerr("Benchmark check failed: CityRegionRenderer.render(city, palette, sprites, Rect2i(x, y, 256, 256), view, CityViewMode.Mode.CITY).ok")
+							quit(1)
+							return
 
 				cpu_best = mini(cpu_best, Time.get_ticks_usec() - began)
 
-			assert(quads[true] == quads[false])
+			if not (quads[true] == quads[false]):
+				printerr("Benchmark check failed: quads[true] == quads[false]")
+				quit(1)
+				return
 			print("FAST_TILE map=%d view=%d fast_ms=%.1f reference_ms=%.1f saving=%.1f%% quads=%d cpu_region_ms=%.1f" % [city.map_size, view, best[true] / 1000.0, best[false] / 1000.0, 100.0 * (best[false] - best[true]) / best[false], quads[true], cpu_best / 1000.0])
 
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		reference_path("DATA/LARGE.DAT"), reference_path("DATA/SMALLMED.DAT"), reference_path("DATA/SPECIAL.DAT"),
+		reference_path("CITIES/SYDNEY.SC2"), large_city_path(256),
+	])

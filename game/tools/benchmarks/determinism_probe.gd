@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 ## Determinism probe: runs fixed-seed days on populated cities and prints a
 ## hash of every decoded chunk plus the three RNG states after each city.
@@ -10,16 +10,17 @@ const CITIES := [
 const DAYS := 60
 
 
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	var lines := PackedStringArray()
 
 	for name: String in CITIES:
-		var path := "res://../references/SIMCITY2000/CITIES/" + name
+		var path := reference_path("CITIES/") + name
 		var doc := Sc2File.load_path(path)
 
 		if doc == null or not doc.is_valid():
-			lines.append("%s LOAD_FAILED" % name)
-			continue
+			printerr("%s LOAD_FAILED" % name)
+			quit(1)
+			return
 
 		var city := CityState.from_document(doc)
 		var engine := SimulationEngine.new(city, 123, 456, 789)
@@ -58,3 +59,10 @@ func _digest(values: PackedStringArray) -> String:
 	ctx.update("|".join(values).to_utf8_buffer())
 
 	return ctx.finish().hex_encode().substr(0, 16)
+
+
+static func fixture_paths() -> PackedStringArray:
+	var paths := PackedStringArray()
+	for city in CITIES:
+		paths.append(reference_path("CITIES/" + city))
+	return paths

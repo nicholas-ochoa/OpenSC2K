@@ -1,13 +1,13 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
 func _run() -> void:
 	var arguments := OS.get_cmdline_user_args()
-	var resource = load(arguments[0])
+	var resource = load(input_path("res://src/ui/settings/about_dialog.tscn"))
 	var drain_frames := "--drain-frames" in arguments
 	var iterations := 30 if drain_frames else 100
 	var samples: Array[float] = []
@@ -32,3 +32,9 @@ func _run() -> void:
 	samples.sort()
 	print("Creation usec: ", samples, " median: ", samples[5])
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		input_path("res://src/ui/settings/about_dialog.tscn"),
+	])

@@ -1,14 +1,14 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 
 ## Region preparation latency, separate from steady-state frame rate.
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
 func _run() -> void:
-	var city := CityState.from_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x"))
-	var sprites := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
+	var city := CityState.from_document(Sc2File.load_path(large_city_path(512)))
+	var sprites := Sc2SpriteArchive.load_path(reference_path("DATA/LARGE.DAT"))
 	var cache := CityRegionCache.new()
 	cache.gpu_enabled = true
 	cache.configure(city, Sc2Palette.index_encoding(), sprites, [1], 2, CityViewMode.Mode.CITY, {}, true, true)
@@ -42,7 +42,10 @@ func _run() -> void:
 
 			await process_frame
 
-		assert(cache.ready())
+		if not (cache.ready()):
+			printerr("Benchmark check failed: cache.ready()")
+			quit(1)
+			return
 		print("PAN edge=%d offset=%s missing=%d first_ms=%.2f ready_ms=%.2f max_poll_ms=%.2f metrics=%s" % [cache.region_edge, offset, missing, first, (Time.get_ticks_usec() - began) / 1000.0, max_poll / 1000.0, cache.metrics()])
 		var warm := Time.get_ticks_msec() + 2000
 
@@ -83,3 +86,9 @@ func _run() -> void:
 
 	cache.close()
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		large_city_path(512), reference_path("DATA/LARGE.DAT"),
+	])

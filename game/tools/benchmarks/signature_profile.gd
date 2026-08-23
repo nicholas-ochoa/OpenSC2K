@@ -1,8 +1,8 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 
-func _initialize() -> void:
-	var city := CityState.from_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x"))
+func _benchmark_initialize() -> void:
+	var city := CityState.from_document(Sc2File.load_path(large_city_path(512)))
 
 	for step in 4:
 		city.tile_flags[10] ^= 0xc6
@@ -30,3 +30,9 @@ func _initialize() -> void:
 		print("SIGNATURE flags_us=%d overlays_us=%d arrays_us=%d signs_us=%d things_us=%d" % [flags, overlays, arrays, signs, things])
 
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		large_city_path(512),
+	])

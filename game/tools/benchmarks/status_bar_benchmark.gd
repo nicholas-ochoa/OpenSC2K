@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 # Compare timings on the same host.
 const StatusScript = preload("res://src/ui/shell/city_status_bar.gd")
@@ -8,7 +8,7 @@ const CREATIONS := 200
 const UPDATES := 2000
 
 
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
@@ -72,3 +72,9 @@ func _run() -> void:
 
 	host.free()
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		"res://src/ui/shell/city_status_bar.gd", SCENE_PATH,
+	])

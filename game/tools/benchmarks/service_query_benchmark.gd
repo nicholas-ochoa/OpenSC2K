@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 
 @warning_ignore_start("integer_division")
 
@@ -15,12 +15,12 @@ class DrawProbe extends Control:
 		samples.append(Time.get_ticks_usec() - started)
 
 
-func _initialize() -> void:
+func _benchmark_initialize() -> void:
 	call_deferred("_run")
 
 
 func _run() -> void:
-	var city := CityState.from_document(Sc2File.load_path("res://../references/SIMCITY2000/CITIES/CAPEQUES.SC2"))
+	var city := CityState.from_document(Sc2File.load_path(reference_path("CITIES/CAPEQUES.SC2")))
 	for building in [PollutionPhase.POLICE_STATION, PollutionPhase.FIRE_STATION]:
 		var origin := Vector2i(-1, -1)
 		for x in city.map_size:
@@ -52,7 +52,10 @@ func _run() -> void:
 func _measure(label: String, city: CityState, origin: Vector2i, all_stations: bool) -> void:
 	var started := Time.get_ticks_usec()
 	var result := ServiceQueryAnalysis.inspect(city, origin, all_stations)
-	assert(result.ok)
+	if not (result.ok):
+		printerr("Benchmark check failed: result.ok")
+		quit(1)
+		return
 	var analysis_usec := Time.get_ticks_usec() - started
 	var overlay := ServiceQueryOverlay.new()
 	started = Time.get_ticks_usec()
@@ -67,8 +70,17 @@ func _measure(label: String, city: CityState, origin: Vector2i, all_stations: bo
 		await process_frame
 	var samples: Array[int] = probe.samples.slice(5)
 	samples.sort()
-	assert(not samples.is_empty())
+	if not (not samples.is_empty()):
+		printerr("Benchmark check failed: not samples.is_empty()")
+		quit(1)
+		return
 	print("%s stations=%d tiles=%d analysis_ms=%.3f rebuild_ms=%.3f draw_median_ms=%.3f samples=%d" % [label,
 		result.sites.size(), result.values.size(), analysis_usec / 1000.0, rebuild_usec / 1000.0,
 		samples[samples.size() / 2] / 1000.0, samples.size()])
 	probe.free()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		reference_path("CITIES/CAPEQUES.SC2"),
+	])

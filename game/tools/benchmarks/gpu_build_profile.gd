@@ -1,4 +1,4 @@
-extends SceneTree
+extends "res://tools/benchmarks/fixture_paths.gd"
 ## Inclusive build costs. Timers add overhead; use the pan benchmark for latency.
 
 @warning_ignore_start("integer_division")
@@ -20,9 +20,9 @@ class ProfiledContext extends CityGpuBuildContext:
 		return value
 
 
-	func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, configuration: Dictionary, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool) -> Dictionary:
+	func tile(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, configuration: Dictionary, x: int, y: int, mode: CityViewMode.Mode, pipes: bool, subways: bool, water_mains := true) -> Dictionary:
 		var began := Time.get_ticks_usec()
-		var value := super.tile(city, palette, sprites, configuration, x, y, mode, pipes, subways)
+		var value := super.tile(city, palette, sprites, configuration, x, y, mode, pipes, subways, water_mains)
 		tile_usec += Time.get_ticks_usec() - began
 		tile_calls += 1
 
@@ -37,9 +37,9 @@ class ProfiledContext extends CityGpuBuildContext:
 		return value
 
 
-func _initialize() -> void:
-	var city := CityState.from_document(Sc2File.load_path("res://../local/large-cities/stitched-512.sc2x"))
-	var sprites := Sc2SpriteArchive.load_path("res://../references/DATA/LARGE.DAT")
+func _benchmark_initialize() -> void:
+	var city := CityState.from_document(Sc2File.load_path(large_city_path(512)))
+	var sprites := Sc2SpriteArchive.load_path(reference_path("DATA/LARGE.DAT"))
 	var palette := Sc2Palette.index_encoding()
 	var context := ProfiledContext.new()
 	var center := (CityIsometricRenderer.output_size_for_view(2, 512) / 2) / 256
@@ -49,8 +49,17 @@ func _initialize() -> void:
 	for y in range(-4, 4):
 		for x in range(-4, 4):
 			var result := CityGpuRegionRenderer.render(city, palette, sprites, Rect2i((center + Vector2i(x, y)) * 256, Vector2i(256, 256)), 2, CityViewMode.Mode.CITY, true, true, context, 1, -1, false)
-			assert(result.ok)
+			if not (result.ok):
+				printerr("Benchmark check failed: result.ok")
+				quit(1)
+				return
 			quads += result.gpu_arrays[Mesh.ARRAY_VERTEX].size() / 4
 
 	print("BUILD total_us=%d intersection_us=%d calls=%d tile_us=%d calls=%d slot_us=%d quads=%d cached_tiles=%d" % [Time.get_ticks_usec() - began, context.intersection_usec, context.intersection_calls, context.tile_usec, context.tile_calls, context.slot_usec, quads, context.tiles.size()])
 	quit()
+
+
+static func fixture_paths() -> PackedStringArray:
+	return PackedStringArray([
+		large_city_path(512), reference_path("DATA/LARGE.DAT"),
+	])
