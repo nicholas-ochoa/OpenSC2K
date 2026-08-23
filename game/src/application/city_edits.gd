@@ -37,7 +37,9 @@ func apply_map_selection(
 	if app.document_state.city == null:
 		return
 
-	if app.tool_state.landscape_editor and (app.tool_state.selected_group not in [0, 1, 16, 17] or (app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == 4)):
+	var tool := app.tool_state
+
+	if tool.landscape_editor and (tool.selected_group not in [0, 1, 16, 17] or (tool.selected_group == 0 and tool.selected_subtool == 4)):
 		app.interface.show_error("Select Start City before building structures.")
 
 		return
@@ -47,122 +49,209 @@ func apply_map_selection(
 		app.scurk_place_print.selected_edit_tool() if scurk_tool_mode else {}
 	)
 
-	if app.scurk_place_print != null and app.scurk_place_print.visible:
-		if app.scurk_place_print.is_object_mode():
-			app.scurk_workspace.apply_scurk_place_selection(finish)
+	if not _select_scurk_tool(finish, scurk_tool):
+		return
 
-			return
-
-		if scurk_tool.is_empty():
-			return
-
-		app.tool_state.selected_group = int(scurk_tool.group)
-		app.tool_state.selected_subtool = int(scurk_tool.subtool)
-
-	if not scurk_tool_mode and not app.tool_state.landscape_editor and not ToolAvailability.is_available(
-		app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool
+	if not scurk_tool_mode and not tool.landscape_editor and not ToolAvailability.is_available(
+		app.document_state.city, tool.selected_group, tool.selected_subtool
 	):
 		app.interface.show_error(
 			"%s is not available in this city."
-			% Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name
+			% Tools.tool(tool.selected_group, tool.selected_subtool).name
 		)
 
 		return
 
-	if app.tool_state.selected_group == 17:
-		app.camera_input.center_map_on_tile(finish)
-
+	if _apply_view_tool(finish):
 		return
 
-	if app.tool_state.selected_group == 16:
-		if app.tool_state.selected_subtool == 1:
+	if _apply_dispatch_tool(finish):
+		return
+
+	if _apply_landscape_editor_terrain(start, dragged):
+		return
+
+	if _apply_landscape_brush(start, path):
+		return
+
+	if _apply_simple_edit(start, finish, path, scurk_tool_mode, scurk_tool):
+		return
+
+	if _apply_route_tool(start, finish, scurk_tool_mode):
+		return
+
+	if _apply_building_tool(finish, scurk_tool_mode):
+		return
+
+	var zone_edit := SimpleEdits.apply_zone(
+		app.document_state.city,
+		tool.selected_group,
+		tool.selected_subtool,
+		start,
+		finish,
+		dragged,
+		scurk_tool_mode,
+		int(scurk_tool.get("zone", -1))
+	)
+	_finish_simple_edit(zone_edit, scurk_tool_mode, scurk_tool)
+
+
+# while the scurk place-and-print window is open, place an object at finish or
+# select the window's edit tool. returns false when the selection is handled
+# or no edit tool is chosen
+func _select_scurk_tool(finish: Vector2i, scurk_tool: Dictionary) -> bool:
+	if app.scurk_place_print == null or not app.scurk_place_print.visible:
+		return true
+
+	if app.scurk_place_print.is_object_mode():
+		app.scurk_workspace.apply_scurk_place_selection(finish)
+
+		return false
+
+	if scurk_tool.is_empty():
+		return false
+
+	app.tool_state.selected_group = int(scurk_tool.group)
+	app.tool_state.selected_subtool = int(scurk_tool.subtool)
+
+	return true
+
+
+# center, query, and sign tools. these read the city or open a dialog
+func _apply_view_tool(finish: Vector2i) -> bool:
+	var tool := app.tool_state
+
+	if tool.selected_group == 17:
+		app.camera_input.center_map_on_tile(finish)
+
+		return true
+
+	if tool.selected_group == 16:
+		if tool.selected_subtool == 1:
 			app.map_view.show_trip_reach(app.document_state.city, finish)
-		elif app.tool_state.selected_subtool == 2:
+		elif tool.selected_subtool == 2:
 			var result := app.map_view.show_service_query(app.document_state.city, finish, app.map_view._shift_pressed)
 			if not result.ok:
 				app.interface.show_error(str(result.error))
 		else:
 			app.query_choices.open_query(finish)
 
-		return
+		return true
 
-	if app.tool_state.selected_group == 15:
+	if tool.selected_group == 15:
 		app.query_choices.open_sign_dialog(finish)
 
-		return
+		return true
 
-	if Dispatch.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
-		var cycles_before := app.tool_state.dispatch_cycles.duplicate()
-		var initialized_before := app.tool_state.dispatch_initialized
-		var dispatch := Dispatch.apply(
-			app.document_state.city,
-			app.tool_state.selected_group,
-			app.tool_state.selected_subtool,
-			finish,
-			app.tool_state.dispatch_cycles[app.tool_state.selected_subtool],
-			not app.tool_state.dispatch_initialized
-		)
+	return false
 
-		if not dispatch.ok:
-			app.interface.show_error("Cannot dispatch unit: %s" % dispatch.error)
 
-			return
+func _apply_dispatch_tool(finish: Vector2i) -> bool:
+	var tool := app.tool_state
 
-		dispatch.dispatch_cycles_before = cycles_before
-		dispatch.dispatch_initialized_before = initialized_before
-		app.tool_state.dispatch_initialized = true
-		app.tool_state.dispatch_cycles[app.tool_state.selected_subtool] = dispatch.slot_index
-		dispatch.dispatch_cycles_after = app.tool_state.dispatch_cycles.duplicate()
-		app.tool_state.last_edit_command = dispatch
-		app.static_render.refresh_after_city_edit(dispatch)
-		app.effects_audio.play_tool_success_sound(app.tool_state.selected_group, app.tool_state.selected_subtool)
-		app.status_label.theme_type_variation = ""
-		app.status_label.text = "Deployed %s unit %d of %d." % [
-			Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name,
-			dispatch.slot_index,
-			dispatch.available,
-		]
+	if not Dispatch.supports_tool(tool.selected_group, tool.selected_subtool):
+		return false
 
-		return
+	var cycles_before := tool.dispatch_cycles.duplicate()
+	var initialized_before := tool.dispatch_initialized
+	var dispatch := Dispatch.apply(
+		app.document_state.city,
+		tool.selected_group,
+		tool.selected_subtool,
+		finish,
+		tool.dispatch_cycles[tool.selected_subtool],
+		not tool.dispatch_initialized
+	)
 
-	if LandscapeEditorCommand.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool) and app.tool_state.landscape_editor and not (app.tool_state.selected_group == 1 and app.tool_state.selected_subtool == 3):
-		var levels := app.map_view.stretch_height_delta if dragged else 1
+	if not dispatch.ok:
+		app.interface.show_error("Cannot dispatch unit: %s" % dispatch.error)
 
-		if app.tool_state.terrain_stretch.active:
-			app.camera_input.refresh_terrain_stretch(levels)
-			var committed := app.tool_state.terrain_stretch.finish()
+		return true
 
-			if committed != null:
-				app.effects_audio.stop_tool_loop_sound()
-				app.effects_audio.play_sound_events([ToolSounds.SOUND_TRACTOR])
-				app.scurk_workspace.record_edit_command(committed)
-				app.interface.refresh_details()
+	_record_dispatch(dispatch, cycles_before, initialized_before)
 
-			app.status_label.text = "Stretch Terrain applied for $0."
+	return true
 
-			return
 
-		var command := LandscapeEditorCommand.apply(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, start, app.tool_state.tool_random, levels)
-		_finish_simple_edit(SimpleEdits._result("terrain", command, app.tool_state.selected_group, app.tool_state.selected_subtool, true), false, {})
+# advance the unit cycle, keep the cycle state undo restores, and report the unit
+func _record_dispatch(
+	dispatch: DispatchEditResult, cycles_before: PackedInt32Array, initialized_before: bool
+) -> void:
+	var tool := app.tool_state
+	dispatch.dispatch_cycles_before = cycles_before
+	dispatch.dispatch_initialized_before = initialized_before
+	tool.dispatch_initialized = true
+	tool.dispatch_cycles[tool.selected_subtool] = dispatch.slot_index
+	dispatch.dispatch_cycles_after = tool.dispatch_cycles.duplicate()
+	tool.last_edit_command = dispatch
+	app.static_render.refresh_after_city_edit(dispatch)
+	app.effects_audio.play_tool_success_sound(tool.selected_group, tool.selected_subtool)
+	app.status_label.theme_type_variation = ""
+	app.status_label.text = "Deployed %s unit %d of %d." % [
+		Tools.tool(tool.selected_group, tool.selected_subtool).name,
+		dispatch.slot_index,
+		dispatch.available,
+	]
 
-		return
 
-	if app.map_view.landscape_brush and app.tool_state.selected_group == 0:
+# landscape-editor terrain tools, including a stretch drag in progress
+func _apply_landscape_editor_terrain(start: Vector2i, dragged: bool) -> bool:
+	var tool := app.tool_state
+
+	if not (LandscapeEditorCommand.supports_tool(tool.selected_group, tool.selected_subtool) and tool.landscape_editor and not (tool.selected_group == 1 and tool.selected_subtool == 3)):
+		return false
+
+	var levels := app.map_view.stretch_height_delta if dragged else 1
+
+	if tool.terrain_stretch.active:
+		app.camera_input.refresh_terrain_stretch(levels)
+		var committed := tool.terrain_stretch.finish()
+
+		if committed != null:
+			app.effects_audio.stop_tool_loop_sound()
+			app.effects_audio.play_sound_events([ToolSounds.SOUND_TRACTOR])
+			app.scurk_workspace.record_edit_command(committed)
+			app.interface.refresh_details()
+
+		app.status_label.text = "Stretch Terrain applied for $0."
+
+		return true
+
+	var command := LandscapeEditorCommand.apply(app.document_state.city, tool.selected_group, tool.selected_subtool, start, tool.tool_random, levels)
+	_finish_simple_edit(SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, true), false, {})
+
+	return true
+
+
+# terrain and landscape brushes along the dragged path. a brush pass that
+# changes nothing is not reported
+func _apply_landscape_brush(start: Vector2i, path: Array[Vector2i]) -> bool:
+	if not app.map_view.landscape_brush:
+		return false
+
+	var tool := app.tool_state
+
+	if tool.selected_group == 0:
 		var origin := app.map_view.selection_start if app.map_view.selection_start.x >= 0 else start
-		var target := app.tool_state.level_brush_altitude if app.tool_state.level_brush_altitude >= 0 else app.document_state.city.land_altitude(origin.x, origin.y)
-		var command := TerrainTools.apply_path(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool,
-			origin, path, app.tool_state.tool_random, app.tool_state.landscape_editor, target)
+		var target := tool.level_brush_altitude if tool.level_brush_altitude >= 0 else app.document_state.city.land_altitude(origin.x, origin.y)
+		var command := TerrainTools.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
+			origin, path, tool.tool_random, tool.landscape_editor, target)
 		if command.ok or command.error != "no terrain height changed":
-			_finish_simple_edit(SimpleEdits._result("terrain", command, app.tool_state.selected_group, app.tool_state.selected_subtool, app.tool_state.landscape_editor), false, {})
-		return
+			_finish_simple_edit(SimpleEdits._result("terrain", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor), false, {})
+		return true
 
-	if app.map_view.landscape_brush:
-		var command := LandscapeCommand.apply_path(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool,
-			path, app.tool_state.tool_random, app.tool_state.landscape_editor, true)
-		if command.ok or command.error != "no eligible tiles changed":
-			_finish_simple_edit(SimpleEdits._result("landscape", command, app.tool_state.selected_group, app.tool_state.selected_subtool, app.tool_state.landscape_editor), false, {})
-		return
+	var command := LandscapeCommand.apply_path(app.document_state.city, tool.selected_group, tool.selected_subtool,
+		path, tool.tool_random, tool.landscape_editor, true)
+	if command.ok or command.error != "no eligible tiles changed":
+		_finish_simple_edit(SimpleEdits._result("landscape", command, tool.selected_group, tool.selected_subtool, tool.landscape_editor), false, {})
+	return true
 
+
+# tools that simpleedits applies in one step, such as demolish and terrain
+# a demolish brush pass that changes nothing is not reported
+func _apply_simple_edit(
+	start: Vector2i, finish: Vector2i, path: Array[Vector2i], scurk_tool_mode: bool, scurk_tool: Dictionary
+) -> bool:
 	var simple_edit := SimpleEdits.apply_supported(
 		app.document_state.city,
 		app.tool_state.selected_group,
@@ -175,32 +264,41 @@ func apply_map_selection(
 		scurk_tool_mode or app.tool_state.landscape_editor
 	)
 
-	if simple_edit.handled:
-		if app.map_view.demolish_brush and simple_edit.command.error == "no eligible tiles changed":
-			return
-		_finish_simple_edit(simple_edit, scurk_tool_mode, scurk_tool)
+	if not simple_edit.handled:
+		return false
 
-		return
+	if app.map_view.demolish_brush and simple_edit.command.error == "no eligible tiles changed":
+		return true
+	_finish_simple_edit(simple_edit, scurk_tool_mode, scurk_tool)
 
-	if Networks.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
+	return true
+
+
+# networks, tunnels, and highways. their workflows ask for bridge and
+# connection choices before they apply
+func _apply_route_tool(start: Vector2i, finish: Vector2i, scurk_tool_mode: bool) -> bool:
+	var group := app.tool_state.selected_group
+	var subtool := app.tool_state.selected_subtool
+
+	if Networks.supports_tool(group, subtool):
 		app.network_edits.apply_network_selection(
 			start,
 			finish,
 			Networks.BRIDGE_UNSELECTED,
-			app.tool_state.selected_group,
-			app.tool_state.selected_subtool,
+			group,
+			subtool,
 			Networks.CONNECTION_UNSELECTED,
 			scurk_tool_mode
 		)
 
-		return
+		return true
 
-	if Tunnels.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
+	if Tunnels.supports_tool(group, subtool):
 		app.route_edits.apply_tunnel_selection(finish, Tunnels.CONFIRMATION_UNSELECTED, scurk_tool_mode)
 
-		return
+		return true
 
-	if Highways.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
+	if Highways.supports_tool(group, subtool):
 		app.route_edits.apply_highway_selection(
 			start,
 			finish,
@@ -209,86 +307,93 @@ func apply_map_selection(
 			scurk_tool_mode
 		)
 
-		return
+		return true
 
-	if Buildings.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
-		var building_group := app.tool_state.selected_group
-		var building_subtool := app.tool_state.selected_subtool
-		var building_name: String = Tools.tool(
-			building_group, building_subtool
-		).name
-		var building := Buildings.apply(
-			app.document_state.city,
-			building_group,
-			building_subtool,
-			finish,
-			app.simulation_state.simulation_engine.lfsr_random,
-			app.tool_state.tool_random
-		)
+	return false
 
-		if not building.ok:
-			# A failed placement can still advance the LFSR. Clear undo in that case.
-			if building.lfsr_advanced:
-				app.tool_state.last_edit_command = null
 
-			if building.resident_objection:
-				app.effects_audio.play_sound_events(building.sound_events)
-				app.tool_state.pending_building_objection_group = building_group
-				app.tool_state.pending_building_objection_subtool = building_subtool
-				app.reports.show_building_objection()
-				app.status_label.theme_type_variation = ""
-				app.status_label.text = "%s placement was rejected by nearby residents." % building_name
+func _apply_building_tool(finish: Vector2i, scurk_tool_mode: bool) -> bool:
+	var building_group := app.tool_state.selected_group
+	var building_subtool := app.tool_state.selected_subtool
 
-				return
+	if not Buildings.supports_tool(building_group, building_subtool):
+		return false
 
-			app.interface.show_error(
-				"Cannot build %s: %s"
-				% [building_name, building.error]
-			)
-			app.effects_audio.play_tool_failure_sound(
-				building_group, building_subtool, str(building.error), scurk_tool_mode
-			)
-
-			return
-
-		app.tool_state.last_edit_command = building
-		var stadium_team_pending := building.stadium_team_selection_required
-
-		if not stadium_team_pending:
-			app.effects_audio.play_tool_success_sound(building_group, building_subtool, scurk_tool_mode)
-
-		app.interface.refresh_details()
-		app.static_render.refresh_after_city_edit(building)
-
-		if building_group == 5 and building_subtool < 4:
-			app.camera_input.choose_tool_group(17)
-
-		if building_group == 14 and app.document_state.city.music_enabled() and not stadium_team_pending:
-			app.effects_audio.play_music_track(Music.RECREATION_TRACK)
-
-		app.status_label.theme_type_variation = ""
-		app.status_label.text = "Built %s for $%s." % [
-			building_name,
-			app.interface.format_number(building.cost),
-		]
-
-		if stadium_team_pending:
-			app.query_choices.open_stadium_dialog(building)
-			app.status_label.text += " Select a stadium team."
-
-		return
-
-	var zone_edit := SimpleEdits.apply_zone(
+	var building := Buildings.apply(
 		app.document_state.city,
-		app.tool_state.selected_group,
-		app.tool_state.selected_subtool,
-		start,
+		building_group,
+		building_subtool,
 		finish,
-		dragged,
-		scurk_tool_mode,
-		int(scurk_tool.get("zone", -1))
+		app.simulation_state.simulation_engine.lfsr_random,
+		app.tool_state.tool_random
 	)
-	_finish_simple_edit(zone_edit, scurk_tool_mode, scurk_tool)
+
+	if building.ok:
+		_record_building(building, building_group, building_subtool, scurk_tool_mode)
+	else:
+		_report_building_rejection(building, building_group, building_subtool, scurk_tool_mode)
+
+	return true
+
+
+# A failed placement can still advance the LFSR. Clear undo in that case.
+func _report_building_rejection(
+	building: BuildingEditResult, building_group: int, building_subtool: int, scurk_tool_mode: bool
+) -> void:
+	var building_name: String = Tools.tool(building_group, building_subtool).name
+
+	if building.lfsr_advanced:
+		app.tool_state.last_edit_command = null
+
+	if building.resident_objection:
+		app.effects_audio.play_sound_events(building.sound_events)
+		app.tool_state.pending_building_objection_group = building_group
+		app.tool_state.pending_building_objection_subtool = building_subtool
+		app.reports.show_building_objection()
+		app.status_label.theme_type_variation = ""
+		app.status_label.text = "%s placement was rejected by nearby residents." % building_name
+
+		return
+
+	app.interface.show_error(
+		"Cannot build %s: %s"
+		% [building_name, building.error]
+	)
+	app.effects_audio.play_tool_failure_sound(
+		building_group, building_subtool, str(building.error), scurk_tool_mode
+	)
+
+
+# keep the placement for undo, refresh the view, and report the cost. a
+# stadium then asks for its team
+func _record_building(
+	building: BuildingEditResult, building_group: int, building_subtool: int, scurk_tool_mode: bool
+) -> void:
+	var building_name: String = Tools.tool(building_group, building_subtool).name
+	app.tool_state.last_edit_command = building
+	var stadium_team_pending := building.stadium_team_selection_required
+
+	if not stadium_team_pending:
+		app.effects_audio.play_tool_success_sound(building_group, building_subtool, scurk_tool_mode)
+
+	app.interface.refresh_details()
+	app.static_render.refresh_after_city_edit(building)
+
+	if building_group == 5 and building_subtool < 4:
+		app.camera_input.choose_tool_group(17)
+
+	if building_group == 14 and app.document_state.city.music_enabled() and not stadium_team_pending:
+		app.effects_audio.play_music_track(Music.RECREATION_TRACK)
+
+	app.status_label.theme_type_variation = ""
+	app.status_label.text = "Built %s for $%s." % [
+		building_name,
+		app.interface.format_number(building.cost),
+	]
+
+	if stadium_team_pending:
+		app.query_choices.open_stadium_dialog(building)
+		app.status_label.text += " Select a stadium team."
 
 
 func _finish_simple_edit(
