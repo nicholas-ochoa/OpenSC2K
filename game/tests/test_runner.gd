@@ -16319,7 +16319,7 @@ func _test_terrain_command(reference_root: String) -> void:
 			1,
 		)
 
-	TerrainEditSurface.retile_region(
+	TerrainRetile.retile_region(
 		basin_altitude,
 		basin_buildings,
 		basin_terrain,

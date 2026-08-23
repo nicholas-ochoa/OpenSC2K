@@ -144,7 +144,7 @@ static func apply_path(
 			total_cost += int(trial.cost)
 
 		action_count += 1
-		TerrainEditSurface.retile_region(
+		TerrainRetile.retile_region(
 			altitude, buildings, terrain, zones, flags, misc, retile_indices,
 			city.document.misc_u32(0x0e40), map_edge
 		)

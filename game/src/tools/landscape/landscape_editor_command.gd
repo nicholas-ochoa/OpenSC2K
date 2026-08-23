@@ -54,7 +54,7 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 			for index in (map_edge * map_edge):
 				indices.append(index)
 
-			TerrainEditSurface.retile_region(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.MISC, indices, sea, map_edge)
+			TerrainRetile.retile_region(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.MISC, indices, sea, map_edge)
 
 		for id in payloads:
 			staged.document.find_chunk(id).set_decoded_payload(payloads[id])

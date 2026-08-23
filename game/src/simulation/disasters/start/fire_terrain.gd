@@ -229,7 +229,7 @@ static func _start_volcano(city: CityState, center: Vector2i, random: SimRandom)
 					payloads.XZON[index] &= 0xf0
 
 				var retile_indices := TerrainEditSurface._expanded_indices(trial.modified, map_edge)
-				TerrainEditSurface.retile_region(
+				TerrainRetile.retile_region(
 					payloads.ALTM,
 					payloads.XBLD,
 					payloads.XTER,

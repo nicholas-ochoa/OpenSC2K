@@ -136,7 +136,7 @@ static func generate(
 	for index in (map_edge * map_edge):
 		all_indices[index] = index
 
-	TerrainEditSurface.retile_region(
+	TerrainRetile.retile_region(
 		altitude, buildings, terrain, zones, flags, misc, all_indices, water_level, map_edge
 	)
 
