@@ -150,8 +150,7 @@ static func trace(
 					endpoints[point].exit = true
 
 				var next_mode := advance >> 8
-				var next_heading := direction if next_mode in [ROAD_BRIDGE_MODE,
-					BUS_BRIDGE_MODE, ROAD_TUNNEL_MODE, BUS_TUNNEL_MODE] else 4
+				var next_heading := direction if (STRAIGHT_HEADING_MODES >> next_mode) & 1 else 4
 				# a move result means _advance already resolved next_point inside
 				# the map, so the bounds check in _index cannot fail here
 				var next_index := next_point.x * map_edge + next_point.y

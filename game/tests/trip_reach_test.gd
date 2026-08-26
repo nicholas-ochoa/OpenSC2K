@@ -339,7 +339,9 @@ func _test_walking_cache() -> void:
 			for y in range(19, 21):
 				scan.zones[x * edge + y] = 1
 		var access := Vector2i(18, 20)
-		_compare_walking_cache(scan, access, 3, TransportTrip.ROAD_MODE)
+		for x in range(17, 25):
+			for y in range(16, 24):
+				_compare_walking_cache(scan, Vector2i(x, y), 3, TransportTrip.ROAD_MODE)
 		check(scan.walking_access[2][access.x * edge + access.y] == 2, "Residential zone gives commercial walking access")
 		GrowthState._write_u32(scan.misc, GrowthConstants.MISC_NORMAL_POPULATION, 10000)
 		GrowthState._write_u32(scan.misc, GrowthConstants.MISC_TILE_COUNTS + GrowthConstants.CHURCH_TILE * 4, 0)
@@ -347,5 +349,7 @@ func _test_walking_cache() -> void:
 			if scan._try_complete_construction(church, 1, 2):
 				break
 		check(scan.churches_built == 1, "Construction places the church through the scan")
-		_compare_walking_cache(scan, access, 3, TransportTrip.ROAD_MODE)
+		for x in range(17, 25):
+			for y in range(16, 24):
+				_compare_walking_cache(scan, Vector2i(x, y), 3, TransportTrip.ROAD_MODE)
 		check(scan.walking_access[2][access.x * edge + access.y] == 1, "Church removes cached commercial walking access")
