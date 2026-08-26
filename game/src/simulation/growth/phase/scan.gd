@@ -27,6 +27,7 @@ class TileScan extends GrowthConstants:
 	var land_value: PackedByteArray
 	var crime: PackedByteArray
 	var misc: PackedByteArray
+	var walking_access: Array[PackedByteArray] = []
 	var map_edge: int
 	var rotation: int
 	var anchor_mask: int
@@ -107,6 +108,25 @@ class TileScan extends GrowthConstants:
 		game_random = scan_game_random
 		span = scan_span
 		detailed = SimulationTimingSpan.detailed
+		_build_walking_access()
+
+
+	# catchments for this partition: 0 unknown, 1 no destination, 2 destination
+	# zone 7 has nowhere to walk; building every table up front was slower
+	func _build_walking_access() -> void:
+		for unused in 4:
+			var access := PackedByteArray()
+			access.resize(map_edge * map_edge)
+			walking_access.append(access)
+
+
+	# church placement clears a two-by-two zone footprint. no other growth
+	# operation changes a low zone nibble between successive trip searches
+	func _invalidate_church_walking_access(tile: Vector2i) -> void:
+		for x in range(maxi(0, tile.x - 3), mini(map_edge, tile.x + 5)):
+			for y in range(maxi(0, tile.y - 4), mini(map_edge, tile.y + 4)):
+				for access in walking_access:
+					access[x * map_edge + y] = 0
 
 
 	# visit every fourth column and row from the partition origin. each tile gets
@@ -239,7 +259,7 @@ class TileScan extends GrowthConstants:
 				zone,
 				density,
 				random,
-				100, map_edge,
+				100, map_edge, false, -1, walking_access[(zone + 1) / 2],
 			)
 
 			if not trip.ok:
@@ -343,6 +363,7 @@ class TileScan extends GrowthConstants:
 			GrowthDevelopment._place_church(
 				buildings, zones, flags, misc, tile, rotation, map_edge
 			)
+			_invalidate_church_walking_access(tile)
 			churches_built += 1
 		else:
 			GrowthDevelopment.place_zone(

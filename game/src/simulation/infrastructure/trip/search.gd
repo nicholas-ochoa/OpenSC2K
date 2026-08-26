@@ -20,6 +20,7 @@ static func trace(
 	map_edge: int = 128,
 	collect_reach := false,
 	start_override := -1,
+	walking_access := PackedByteArray(),
 ) -> Dictionary:
 	# the map sizes are invariant across a caller's tile loop. callers check them
 	# once with valid_inputs(). only the per-tile arguments are checked here
@@ -87,9 +88,12 @@ static func trace(
 				if not endpoints.has(point):
 					endpoints[point] = {"exit": false, "destination": false, "limited": false}
 
-			# walking access uses the same catchment at both ends of a trip. only
-			# the reach analysis reads destinations, so the growth scan asks the
-			# cheaper question and stops at the first compatible neighbour
+			# fill the partition's selected mask table on first use. a zone write
+			# invalidates affected entries before the next trip reads them
+			if not collect_reach and not walking_access.is_empty() and (WALK_ACCESS_MODES >> mode) & 1 != 0:
+				if walking_access[point_index] == 0:
+					walking_access[point_index] = 1 + int(_has_walking_destination(zones, point, mode, zone, map_edge))
+
 			if collect_reach:
 				var walk_destinations := _walking_destinations(zones, point, mode, zone, map_edge, zone == 7)
 
@@ -101,7 +105,8 @@ static func trace(
 
 					if winner < 0:
 						winner = state_index
-			elif _has_walking_destination(zones, point, mode, zone, map_edge):
+			elif ((WALK_ACCESS_MODES >> mode) & 1 != 0 and walking_access[point_index] == 2
+				if not walking_access.is_empty() else _has_walking_destination(zones, point, mode, zone, map_edge)):
 				if winner < 0:
 					winner = state_index
 

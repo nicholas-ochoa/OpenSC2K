@@ -1,4 +1,6 @@
 extends SceneTree
+
+@warning_ignore_start("integer_division")
 const DocumentState = preload("res://tests/support/document_state.gd")
 
 var fixtures: Dictionary = {}
@@ -30,6 +32,7 @@ func _initialize() -> void:
 			_test_highway(edge, native)
 			_test_branches(edge, native)
 			_test_station_and_tunnel(edge, native)
+	_test_walking_cache()
 	_test_multimodal()
 	_test_dead_end_turns()
 	_test_overpasses()
@@ -289,3 +292,60 @@ func _test_dead_end_turns() -> void:
 			boundary.set_building_id(x, 21, 0x4a)
 		check(TransportTripSteps.highway_step(boundary.buildings, Vector2i(edge - 1, 21), Vector2i(edge - 1, 20), edge),
 			"True map edge permits a safe turnaround")
+
+
+## Compare cached and uncached searches, including their traffic and RNG writes.
+func _compare_walking_cache(scan: GrowthScan.TileScan, point: Vector2i, zone: int, mode: int) -> void:
+	var cached_random := SimRandom.new(123)
+	var direct_random := SimRandom.new(123)
+	var cached_traffic := scan.traffic.duplicate()
+	var direct_traffic := scan.traffic.duplicate()
+	var start := (mode << (14 if scan.map_edge == 128 else 18)) | (point.x * scan.map_edge + point.y)
+	var direct := TransportTripSearch.trace(scan.buildings, scan.zones, scan.underground,
+		scan.text_overlays, scan.altitudes, direct_traffic, point, zone, 2,
+		direct_random, 10, scan.map_edge, false, start)
+	var cached := TransportTripSearch.trace(scan.buildings, scan.zones, scan.underground,
+		scan.text_overlays, scan.altitudes, cached_traffic, point, zone, 2,
+		cached_random, 10, scan.map_edge, false, start, scan.walking_access[(zone + 1) >> 1])
+	check(cached == direct, "Cached trip keeps every result field")
+	check(cached_random.state == direct_random.state, "Cached trip keeps random state")
+	check(cached_traffic == direct_traffic, "Cached trip keeps traffic bytes")
+
+
+func _test_walking_cache() -> void:
+	for edge in [128, 512]:
+		var city := fixture(edge, false)
+		var payloads := GrowthState.payloads(city)
+		var scan := GrowthScan.TileScan.new(city, payloads, SimRandom.new(1),
+			SimLfsrRandom.new(1), GameLcgRandom.new(1), SimulationTimingSpan.new())
+		# All four boundaries, the inner seam, all 24 offsets, and all zone bits.
+		var points := [Vector2i.ZERO, Vector2i(edge - 1, 0), Vector2i(0, edge - 1),
+			Vector2i(edge - 1, edge - 1), Vector2i(edge / 2, edge / 2)]
+		for point: Vector2i in points:
+			for offset_index in TransportTrip.TRANSPORT_OFFSETS.size():
+				var target: Vector2i = point + TransportTrip.TRANSPORT_OFFSETS[offset_index]
+				var index := TransportTripSteps._index(target, edge)
+				if index >= 0:
+					scan.zones[index] = (offset_index % 16) | 0xa0
+			for zone in 7:
+				_compare_walking_cache(scan, point, zone, TransportTrip.ROAD_MODE)
+				_compare_walking_cache(scan, point, zone, TransportTrip.ROAD_MODE)
+		# Every mode reads the same populated cache without gaining foot access.
+		for mode in 14:
+			_compare_walking_cache(scan, points[-1], 1, mode)
+
+		var church := Vector2i(20, 20)
+		for x in range(20, 22):
+			for y in range(19, 21):
+				scan.zones[x * edge + y] = 1
+		var access := Vector2i(18, 20)
+		_compare_walking_cache(scan, access, 3, TransportTrip.ROAD_MODE)
+		check(scan.walking_access[2][access.x * edge + access.y] == 2, "Residential zone gives commercial walking access")
+		GrowthState._write_u32(scan.misc, GrowthConstants.MISC_NORMAL_POPULATION, 10000)
+		GrowthState._write_u32(scan.misc, GrowthConstants.MISC_TILE_COUNTS + GrowthConstants.CHURCH_TILE * 4, 0)
+		for unused in 100:
+			if scan._try_complete_construction(church, 1, 2):
+				break
+		check(scan.churches_built == 1, "Construction places the church through the scan")
+		_compare_walking_cache(scan, access, 3, TransportTrip.ROAD_MODE)
+		check(scan.walking_access[2][access.x * edge + access.y] == 1, "Church removes cached commercial walking access")
