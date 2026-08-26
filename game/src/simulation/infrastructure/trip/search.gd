@@ -121,8 +121,12 @@ static func trace(
 					continue
 
 				var next_point: Vector2i = point + DIRECTIONS[direction]
+				var next_index := next_point.x * map_edge + next_point.y if (
+					next_point.x >= 0 and next_point.x < map_edge
+					and next_point.y >= 0 and next_point.y < map_edge
+				) else -1
 				var advance := TransportTripSteps.advance(buildings, zones, underground, text_overlays,
-					altitudes, point, next_point, mode, zone, map_edge)
+					altitudes, point, next_point, point_index, next_index, mode, zone, map_edge)
 
 				if advance == ADVANCE_SUCCESS:
 					if winner < 0:
@@ -151,9 +155,6 @@ static func trace(
 
 				var next_mode := advance >> 8
 				var next_heading := direction if (STRAIGHT_HEADING_MODES >> next_mode) & 1 else 4
-				# a move result means _advance already resolved next_point inside
-				# the map, so the bounds check in _index cannot fail here
-				var next_index := next_point.x * map_edge + next_point.y
 				var next_key := _state_key(next_index, next_mode, next_heading)
 
 				if collect_reach:

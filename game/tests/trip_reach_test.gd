@@ -32,6 +32,7 @@ func _initialize() -> void:
 			_test_highway(edge, native)
 			_test_branches(edge, native)
 			_test_station_and_tunnel(edge, native)
+	_test_map_exits()
 	_test_walking_cache()
 	_test_multimodal()
 	_test_dead_end_turns()
@@ -275,7 +276,8 @@ func _test_dead_end_turns() -> void:
 			check(not TransportTripSteps.highway_step(city.buildings, middle, middle_across, edge), "Connected highway does not permit a median shortcut")
 			for mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
 				check(TransportTripSteps.advance(city.buildings, city.zones, city.underground,
-					city.text_overlays, city.altitude_words, end_lane, return_lane, mode, 1, edge) == ((mode << 8) | 1),
+					city.text_overlays, city.altitude_words, end_lane, return_lane,
+					end_lane.x * edge + end_lane.y, return_lane.x * edge + return_lane.y, mode, 1, edge) == ((mode << 8) | 1),
 					"Car and bus turnaround costs one highway step")
 			var result := TripReachAnalysis.inspect(city, middle)
 			check(result.expanded_states <= 88, "End turnarounds terminate without repeatedly circling")
@@ -353,3 +355,34 @@ func _test_walking_cache() -> void:
 			for y in range(16, 24):
 				_compare_walking_cache(scan, Vector2i(x, y), 3, TransportTrip.ROAD_MODE)
 		check(scan.walking_access[2][access.x * edge + access.y] == 1, "Church removes cached commercial walking access")
+
+
+## Flat indices must not wrap a row, and every mode keeps map connections.
+func _test_map_exits() -> void:
+	for edge: int in [128, 512]:
+		var city := fixture(edge, false)
+		var traffic := city.document.find_chunk("XTRF").decoded_payload.duplicate()
+		var points := [Vector2i(30, 0), Vector2i(edge - 1, 30),
+			Vector2i(30, edge - 1), Vector2i(0, 30)]
+		for direction in 4:
+			var point: Vector2i = points[direction]
+			var index := point.x * edge + point.y
+			var outside: Vector2i = point + TransportTrip.DIRECTIONS[direction]
+			var wrapped := outside.x * edge + outside.y
+			if wrapped >= 0 and wrapped < city.zones.size():
+				city.zones[wrapped] = 3
+			for mode: int in (range(14) if direction == 0 and edge == 128 else [TransportTrip.ROAD_MODE]):
+				var start := (mode << (14 if edge == 128 else 18)) | index
+				OverlayData.write(city.text_overlays, index, 0)
+				var blocked := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
+					city.text_overlays, city.altitude_words, traffic, point, 1, 0,
+					SimRandom.new(1), 1, edge, false, start)
+				check(not blocked.reached_destination, "Unlabelled edge blocks without wrapping into a zone")
+				OverlayData.write(city.text_overlays, index, TransportTrip.CONNECTION_LABEL)
+				var connected := TransportTripSearch.trace(city.buildings, city.zones, city.underground,
+					city.text_overlays, city.altitude_words, traffic, point, 1, 0,
+					SimRandom.new(1), 1, edge, false, start)
+				check(connected.reached_destination and connected.cost == 0,
+					"Labelled map connection reaches an outside destination")
+			if wrapped >= 0 and wrapped < city.zones.size():
+				city.zones[wrapped] = 0

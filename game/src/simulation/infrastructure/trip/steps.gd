@@ -3,6 +3,8 @@ extends TransportTripConstants
 
 
 
+# the search passes checked flat indices. a next index of -1 means a map exit
+# keep the points for highway lane geometry
 static func advance(
 	buildings: PackedByteArray,
 	zones: PackedByteArray,
@@ -11,15 +13,13 @@ static func advance(
 	altitudes: PackedInt32Array,
 	current: Vector2i,
 	next_point: Vector2i,
+	current_index: int,
+	index: int,
 	mode: int,
 	origin_zone: int,
 	map_edge: int = 128,
 ) -> int:
-	var index := _index(next_point, map_edge)
-
 	if index < 0:
-		var current_index := _index(current, map_edge)
-
 		if current_index >= 0 and OverlayData.read(text_overlays, current_index) == CONNECTION_LABEL:
 			return ADVANCE_SUCCESS
 
@@ -33,7 +33,7 @@ static func advance(
 	match mode:
 		ROAD_MODE:
 			if _is_highway_span(tile) and highway_step(buildings, current, next_point, map_edge):
-				var current_tile := int(buildings[_index(current, map_edge)])
+				var current_tile := int(buildings[current_index])
 				if current_tile >= 0x5d and current_tile <= 0x60:
 					return _move(HIGHWAY_MODE, 1)
 
