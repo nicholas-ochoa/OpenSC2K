@@ -24,7 +24,8 @@ static func apply(
 		var segment: RouteEditResult
 
 		for attempt in 3:
-			segment = HighwayEdit.apply_segment(working, group, tool, cursor, endpoint, selected_connection, selected_bridge, free_mode) if highway else NetworkEdit.apply_segment(working, group, tool, cursor, endpoint, selected_bridge, selected_connection, free_mode)
+			segment = (HighwayEdit.apply_segment(working, group, tool, cursor, endpoint, selected_connection, selected_bridge, free_mode) if highway
+					else NetworkEdit.apply_segment(working, group, tool, cursor, endpoint, selected_bridge, selected_connection, free_mode))
 
 			if segment.bridge_selection_required and bridge != -1:
 				selected_bridge = bridge

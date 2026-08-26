@@ -50,13 +50,15 @@ func select_tool_group(index: int) -> void:
 
 func _auto_select_underground() -> void:
 	# query, camera and bulldozer work in both views
-	if app.tool_state.selected_group in [16, 17] or (CityViewMode.is_map(app.view_state.overlay_mode) and Demolish.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool)):
+	if (app.tool_state.selected_group in [16, 17]
+			or (CityViewMode.is_map(app.view_state.overlay_mode) and Demolish.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool))):
 		return
 
 	if app.document_state.city == null:
 		return
 
-	var underground_tool := (app.tool_state.selected_group == 4 and app.tool_state.selected_subtool == 0) or (app.tool_state.selected_group == 7 and app.tool_state.selected_subtool == 1)
+	var underground_tool := ((app.tool_state.selected_group == 4 and app.tool_state.selected_subtool == 0)
+			or (app.tool_state.selected_group == 7 and app.tool_state.selected_subtool == 1))
 	var target := CityViewMode.Mode.UNDERGROUND if underground_tool else CityViewMode.Mode.CITY
 
 	if app.view_state.overlay_mode != target:
@@ -67,10 +69,13 @@ func select_subtool(index: int) -> void:
 	if app.tool_state.terrain_stretch.active:
 		app.map_view.cancel_active_selection()
 
-	if not app.tool_state.landscape_editor and LandscapeEditorCommand.supports_tool(app.tool_state.selected_group, index) and not (app.tool_state.selected_group == 1 and index == 3):
+	if (not app.tool_state.landscape_editor and LandscapeEditorCommand.supports_tool(app.tool_state.selected_group, index)
+			and not (app.tool_state.selected_group == 1 and index == 3)):
 		return
 
-	if app.tool_state.landscape_editor and (app.tool_state.selected_group not in [0, 1, 16, 17] or (app.tool_state.selected_group == 0 and index == 4) or (app.tool_state.selected_group == 16 and index != 0)):
+	if (app.tool_state.landscape_editor
+			and (app.tool_state.selected_group not in [0, 1, 16, 17] or (app.tool_state.selected_group == 0 and index == 4)
+			or (app.tool_state.selected_group == 16 and index != 0))):
 		return
 
 	if app.tool_state.selected_group == 2 and index == 3:
@@ -144,7 +149,8 @@ func update_edit_state() -> void:
 		)
 		app.tool_state.selected_tool_available = bool(state.available)
 
-	app.map_view.shift_rectangle_enabled = (bool(state.landscape) and app.tool_state.selected_subtool != 3) or (app.tool_state.landscape_editor and app.tool_state.selected_group == 0 and app.tool_state.selected_subtool in [1, 2, 3])
+	app.map_view.shift_rectangle_enabled = ((bool(state.landscape) and app.tool_state.selected_subtool != 3)
+			or (app.tool_state.landscape_editor and app.tool_state.selected_group == 0 and app.tool_state.selected_subtool in [1, 2, 3]))
 	app.map_view.continuous_placement = app.tool_state.selected_group == 1 and app.tool_state.selected_subtool == 3
 	app.map_view.shift_line_enabled = app.tool_state.selected_group == 1 and app.tool_state.selected_subtool in [0, 1]
 
@@ -161,18 +167,22 @@ func update_edit_state() -> void:
 		state.selection = "point"
 		state.area = 7 if app.tool_state.selected_group == 1 and app.tool_state.selected_subtool == 3 else 1
 		state.status_text = str(Tools.tool(app.tool_state.selected_group, app.tool_state.selected_subtool).name)
-		state.status_detail = "Drag up or down to stretch terrain live. Hold Shift to apply on release." if app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == 5 else "Free landscape editor tool."
+		state.status_detail = ("Drag up or down to stretch terrain live. Hold Shift to apply on release." if app.tool_state.selected_group == 0
+				and app.tool_state.selected_subtool == 5 else "Free landscape editor tool.")
 
 	var level_brush := app.new_city.level_brush_active()
-	app.map_view.landscape_brush = (level_brush or app.tool_state.selected_group == 1 and app.tool_state.selected_subtool in [0, 1, 3]) and not (app.scurk_place_print != null and app.scurk_place_print.visible)
-	app.map_view.demolish_brush = app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == 0 and not app.tool_state.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible)
+	app.map_view.landscape_brush = ((level_brush or app.tool_state.selected_group == 1 and app.tool_state.selected_subtool in [0, 1, 3])
+			and not (app.scurk_place_print != null and app.scurk_place_print.visible))
+	app.map_view.demolish_brush = (app.tool_state.selected_group == 0 and app.tool_state.selected_subtool == 0
+			and not app.tool_state.landscape_editor and not (app.scurk_place_print != null and app.scurk_place_print.visible))
 	app.map_view.bulldozer_visual_provider = app.moving_sprites.demolish_brush_visual if app.view_state.overlay_mode == CityViewMode.Mode.CITY else Callable()
 	app.city_toolbar.brush_controls.visible = app.tool_state.landscape_editor and app.map_view.landscape_brush and not level_brush
 	if level_brush:
 		app.map_view.brush_size = EDITOR_LEVEL_BRUSH_SIZE if app.tool_state.landscape_editor else LEVEL_BRUSH_SIZE
 		app.map_view.brush_round = true
 	else:
-		app.map_view.brush_size = int(app.city_toolbar.brush_size_input.value) if app.tool_state.landscape_editor else (7 if app.tool_state.selected_subtool == 3 else 1)
+		app.map_view.brush_size = (int(app.city_toolbar.brush_size_input.value) if app.tool_state.landscape_editor
+				else (7 if app.tool_state.selected_subtool == 3 else 1))
 		app.map_view.brush_round = app.city_toolbar.brush_shape_input.selected == 1 if app.tool_state.landscape_editor else true
 	if app.map_view.uses_paint_brush():
 		app.map_view.continuous_placement = true
@@ -225,7 +235,8 @@ func _placement_preview_error(point: Vector2i) -> String:
 		if site.size.x == 0 or not Rect2i(0, 0, map_edge, map_edge).encloses(site):
 			return "The object footprint extends outside the map."
 
-		return "" if tile_id > 255 else String(ScurkPlace._check_site(app.document_state.city.buildings, app.document_state.city.terrain, app.document_state.city.tile_flags, site, tile_id, map_edge).get("error", ""))
+		return ("" if tile_id > 255 else String(ScurkPlace._check_site(app.document_state.city.buildings, app.document_state.city.terrain,
+				app.document_state.city.tile_flags, site, tile_id, map_edge).get("error", "")))
 
 	if Buildings.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
 		return Buildings.preview_error(app.document_state.city, app.tool_state.selected_group, app.tool_state.selected_subtool, point)
@@ -265,7 +276,8 @@ func update_network_preview() -> void:
 	if app.network_preview == null:
 		return
 
-	if app.document_state.city == null or not app.camera_input.camera_keys_allowed() or not app.map_view.edit_enabled or app.map_view.is_panning() or not NetworkPlacementPreview.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool):
+	if (app.document_state.city == null or not app.camera_input.camera_keys_allowed() or not app.map_view.edit_enabled
+			or app.map_view.is_panning() or not NetworkPlacementPreview.supports_tool(app.tool_state.selected_group, app.tool_state.selected_subtool)):
 		app.network_preview.clear()
 
 		return

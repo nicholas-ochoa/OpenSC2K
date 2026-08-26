@@ -22,7 +22,8 @@ func export_packs(source: String, target: String, original_data := "") -> Dictio
 	if not assets.error.is_empty():
 		return {"ok": false, "error": assets.error}
 
-	var manifest := {"format": "opensc2k-graphics", "version": 1, "name": "Original SimCity 2000", "palette": "palette.png", "scenario_palette": "scenario-palette.png", "ui": {}}
+	var manifest := {"format": "opensc2k-graphics", "version": 1, "name": "Original SimCity 2000", "palette": "palette.png",
+			"scenario_palette": "scenario-palette.png", "ui": {}}
 
 	if not original_data.is_empty():
 		manifest.original_data = original_data

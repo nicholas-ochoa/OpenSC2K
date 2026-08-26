@@ -93,8 +93,11 @@ ORIGINAL GAME
 
 SimCity 2000 and its imported graphics, text, sound, and music belong to their respective rights holders. They are not covered by OpenSC2K's MIT license.
 
-OpenSC2K is an independent project. It is not affiliated with, sponsored by, or endorsed by Electronic Arts or Maxis. SimCity and related names and marks belong to their respective owners.
-""")
+""" + (
+		"OpenSC2K is an independent project. It is not affiliated with, sponsored by, or endorsed by Electronic "
+		+ "Arts or Maxis. SimCity and related names and marks belong to their respective owners."
+		+ "\n"
+	))
 	original_credits_index = license_documents.size()
 	_add_license("Original SimCity 2000 credits", _original_credits_document(""))
 	_select_license(0)
@@ -103,9 +106,11 @@ OpenSC2K is an independent project. It is not affiliated with, sponsored by, or 
 func _original_credits_document(credits: String) -> String:
 	var introduction := """ORIGINAL SIMCITY 2000 CREDITS
 
-These credits recognize the people who created the original SimCity 2000. They describe their work on that game, not contributions to OpenSC2K. Their inclusion does not imply affiliation or endorsement.
-
-"""
+""" + (
+		"These credits recognize the people who created the original SimCity 2000. They describe their work on "
+		+ "that game, not contributions to OpenSC2K. Their inclusion does not imply affiliation or endorsement."
+		+ "\n\n"
+	)
 	if credits.is_empty():
 		return introduction + "The original credits are unavailable. Import a complete supported game installation to view them."
 	return introduction + "Credits from the imported SimCity 2000 for Windows 95 installation:\n\n" + credits.replace("\r\n", "\n").strip_edges()

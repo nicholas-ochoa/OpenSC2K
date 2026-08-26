@@ -28,7 +28,8 @@ static func import_executable(executable: String, packs_root: String, saved_root
 	var saved_games := {"ok": true, "created": PackedStringArray()}
 
 	if exported.ok:
-		saved_games = OriginalCityImporter.import_saved_games(stage.path_join("graphics/original"), saved_root if not saved_root.is_empty() else packs_root.path_join("saved"))
+		saved_games = OriginalCityImporter.import_saved_games(stage.path_join("graphics/original"), saved_root if not saved_root.is_empty()
+				else packs_root.path_join("saved"))
 
 		if not saved_games.ok:
 			exported = saved_games

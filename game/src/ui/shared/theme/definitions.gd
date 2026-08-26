@@ -31,7 +31,8 @@ static func build(value: String, files := false, translucent_menus := true) -> T
 		if type_name != "MenuButton":
 			result.set_type_variation(type_name, "Button")
 		for state in ["normal", "hover", "pressed", "hover_pressed", "disabled", "focus"]:
-			result.set_stylebox(state, type_name, result.get_stylebox(state, "Button") if result.has_stylebox(state, "Button") else ThemeDB.get_default_theme().get_stylebox(state, "Button"))
+			result.set_stylebox(state, type_name, result.get_stylebox(state, "Button") if result.has_stylebox(state, "Button")
+					else ThemeDB.get_default_theme().get_stylebox(state, "Button"))
 		for color_name in result.get_color_list("Button"):
 			result.set_color(color_name, type_name, result.get_color(color_name, "Button"))
 	result.set_type_variation("ArtworkButton", "Button")

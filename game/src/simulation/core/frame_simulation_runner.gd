@@ -74,7 +74,8 @@ func advance_time(delta_msec: float, now_msec: int, suspended := false) -> Dicti
 
 			return empty
 
-	if suspended or controller.speed == GameSpeedController.Speed.PAUSED or controller.interaction_blocked or controller.terminal_blocked or (controller.accumulator_msec + pending_msec < GameSpeedController.BASE_TICK_MSEC and not controller.simulation_ready):
+	if (suspended or controller.speed == GameSpeedController.Speed.PAUSED or controller.interaction_blocked or controller.terminal_blocked
+			or (controller.accumulator_msec + pending_msec < GameSpeedController.BASE_TICK_MSEC and not controller.simulation_ready)):
 		var immediate := controller.advance_time(pending_msec, now_msec, suspended)
 		pending_msec = 0.0
 
@@ -116,7 +117,8 @@ func is_pending() -> bool:
 
 
 func metrics() -> Dictionary:
-	return {"pending": is_pending(), "pending_msec": pending_msec, "completed_ticks": completed_ticks, "cancelled_ticks": cancelled_ticks, "snapshot_usec": snapshot_usec, "publish_usec": publish_usec, "work": _budget.metrics() if _budget != null else last_work_metrics}
+	return {"pending": is_pending(), "pending_msec": pending_msec, "completed_ticks": completed_ticks, "cancelled_ticks": cancelled_ticks,
+			"snapshot_usec": snapshot_usec, "publish_usec": publish_usec, "work": _budget.metrics() if _budget != null else last_work_metrics}
 
 
 func close() -> void:

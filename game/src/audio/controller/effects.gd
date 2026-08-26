@@ -104,7 +104,8 @@ static func _load_wave_sound_cache(audio: CityAudioController) -> void:
 	audio.wave_stream_cache.clear()
 
 	for sound_id in range(CityAudioController.WaveSounds.SOUND_FIRST, CityAudioController.WaveSounds.SOUND_LAST + 1):
-		var sound_path := str(audio.sound_pack.files.get(sound_id, audio.reference_root.path_join("SOUNDS/%d.WAV" % sound_id) if audio.original_media_enabled else ""))
+		var sound_path := str(audio.sound_pack.files.get(sound_id, audio.reference_root.path_join("SOUNDS/%d.WAV" % sound_id)
+				if audio.original_media_enabled else ""))
 
 		if not FileAccess.file_exists(sound_path):
 			continue

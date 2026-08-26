@@ -2,7 +2,8 @@ class_name OriginalCompatibility
 extends RefCounted
 # one policy for original-format loading, creation, and saving
 
-const EXTENDED_ERROR := "Original SimCity 2000 compatibility is enabled. SC2X cities cannot be saved in this mode. Opening an SC2X city turns this option off automatically."
+const EXTENDED_ERROR := ("Original SimCity 2000 compatibility is enabled. SC2X cities cannot be saved in this mode. Opening an SC2X " +
+	"city turns this option off automatically.")
 
 
 static func document_error(document: Sc2File, enabled: bool) -> String:

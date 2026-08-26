@@ -73,7 +73,8 @@ static func goal(record: Dictionary, city: CityState) -> String:
 
 	match int(record.type):
 		5:
-			return {0: "Normal demolition / fire", 1: "Radiation", 2: "Create water", 3: "Create wind power"}.get(value, "Unknown damage mode; demolition still attempted")
+			return {0: "Normal demolition / fire", 1: "Radiation", 2: "Create water", 3: "Create wind power"}.get(value,
+					"Unknown damage mode; demolition still attempted")
 		6:
 			return "No spread damage" if value == 0 else "Spread damage enabled"
 		16:
@@ -123,7 +124,8 @@ static func fields(record: Dictionary, city: CityState) -> Array[Dictionary]:
 				meaning = "Current grid " + key.to_upper() + " coordinate"
 				translated = "Outside map" if city != null and (value < 0 or value >= city.map_size) else "Tile %d" % value
 			"z":
-				meaning = "Stored Z; rail rendering derives height from map terrain" if type in [10, 11, 12, 13] else "Vertical offset / height used by this object's renderer"
+				meaning = ("Stored Z; rail rendering derives height from map terrain" if type in [10, 11, 12, 13]
+						else "Vertical offset / height used by this object's renderer")
 			"px", "py":
 				if type in [10, 11, 12, 13]:
 					meaning = "Next grid %s coordinate" % ("X" if key == "px" else "Y")

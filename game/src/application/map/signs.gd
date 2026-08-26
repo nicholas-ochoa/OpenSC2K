@@ -91,7 +91,8 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 				if not resource.is_empty():
 					masks.append({"image": resource.image, "position": position * factor})
 
-			var sampled: Image = render.caches.region_cache.image_region(bounds, factor) if render.caches.region_cache != null else render.caches.static_city_image.get_region(bounds)
+			var sampled: Image = (render.caches.region_cache.image_region(bounds, factor) if render.caches.region_cache != null
+					else render.caches.static_city_image.get_region(bounds))
 			foreground = CitySignForeground.static_pixels(sampled, masks, Rect2i(bounds.position * factor, bounds.size * factor))
 
 		for visual in CityMapSigns.later_sign_occluder_visuals(moving_candidates, bounds, int(entry.draw_order)):
@@ -110,7 +111,8 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 		var texture: Texture2D
 		var previous: Dictionary = render.app.map_view.sign_occlusion_visuals.get(key, {})
 
-		if gpu_palette and bool(previous.get("indexed", false)) and previous.has("indices") and previous.indices.get_size() == foreground.get_size() and previous.indices.get_data() == foreground.get_data():
+		if (gpu_palette and bool(previous.get("indexed", false)) and previous.has("indices")
+				and previous.indices.get_size() == foreground.get_size() and previous.indices.get_data() == foreground.get_data()):
 			foreground = previous.indices
 			texture = previous.texture
 		else:
@@ -123,7 +125,8 @@ static func refresh_sign_occlusion(render: ApplicationMapRender, view_size: int)
 			"position": Vector2(bounds.position),
 			"size": Vector2(bounds.size),
 		}
-		render.caches.sign_foreground_cache[key] = {"signature": signature, "indices": foreground, "palette_signature": 0 if gpu_palette else render.sign_palette_signature(used_indices, color_indices), "used_indices": used_indices, "visual": visuals[key]}
+		render.caches.sign_foreground_cache[key] = {"signature": signature, "indices": foreground, "palette_signature": 0 if gpu_palette
+				else render.sign_palette_signature(used_indices, color_indices), "used_indices": used_indices, "visual": visuals[key]}
 
 	render.app.map_view.set_sign_occlusion_visuals(visuals)
 

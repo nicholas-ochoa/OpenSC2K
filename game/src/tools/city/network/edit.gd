@@ -154,7 +154,8 @@ static func _validate_dry_cost(plan: SegmentPlan) -> RouteEditResult:
 
 	for point in plan.planned:
 		var index := point.x * map_edge + point.y
-		var reused := NetworkRules._reuses_surface(buildings[index], plan.mode) if plan.surface_mode else NetworkRules._reuses_underground(underground[index], plan.mode)
+		var reused := (NetworkRules._reuses_surface(buildings[index], plan.mode) if plan.surface_mode
+				else NetworkRules._reuses_underground(underground[index], plan.mode))
 
 		if reused:
 			new_tiles -= 1

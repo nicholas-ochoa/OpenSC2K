@@ -187,7 +187,11 @@ func _import_original_game(executable_path: String) -> void:
 	app.audio_controller.set_soundtrack_folder("")
 	var saved := SettingsStore.save_values(
 		app.preferences.music_volume, app.preferences.effects_volume, app.preferences.fullscreen,
-		app.preferences.settings_path, app.preferences.graphics_source, app.preferences.graphics_folder, app.preferences.soundtrack_folder, app.preferences.city_renderer, app.preferences.background_audio, app.preferences.zoom_graphics, app.preferences.toolbar_sounds, app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music, app.preferences.original_compatibility, app.preferences.warn_sc2x_conversion, app.preferences.default_mayor_name, app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
+		app.preferences.settings_path, app.preferences.graphics_source, app.preferences.graphics_folder, app.preferences.soundtrack_folder,
+		app.preferences.city_renderer, app.preferences.background_audio, app.preferences.zoom_graphics, app.preferences.toolbar_sounds,
+		app.preferences.sound_pack_folder, app.preferences.music_pack_folder, app.preferences.shuffle_music,
+		app.preferences.original_compatibility, app.preferences.warn_sc2x_conversion, app.preferences.default_mayor_name,
+		app.preferences.overview_graphics, app.preferences.ui_theme, app.preferences.dark_underground,
 	)
 	app.settings.open_import_settings()
 	app.status_label.text = "Packs active. Imported %d cities and %d scenarios." % [install_result.cities, install_result.scenarios]
@@ -238,10 +242,12 @@ func apply_graphics_source(selected: GameAssetSource) -> void:
 	app.city_map_window.set_resources(assets.city_map_icons, assets.strings)
 	app.building_objection_dialog.set_picture(assets.forest_protest_image)
 	if app.scurk_editor != null:
-		app.scurk_editor.configure(app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites, app.asset_state.reference_root, app.asset_state.scurk_graphics)
+		app.scurk_editor.configure(app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites,
+				app.asset_state.reference_root, app.asset_state.scurk_graphics)
 
 	if app.scurk_place_print != null and app.scurk_place_print.visible:
-		app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, app.asset_state.active_scurk_tile_set.names if app.asset_state.active_scurk_tile_set != null else {}, app.asset_state.scurk_graphics)
+		app.scurk_place_print.configure(app.asset_state.palette, app.asset_state.large_sprites, app.asset_state.active_scurk_tile_set.names
+				if app.asset_state.active_scurk_tile_set != null else {}, app.asset_state.scurk_graphics)
 
 	app.menus.sync_asset_menu_actions()
 	app.main_menu.set_assets_ready(true)
@@ -259,7 +265,8 @@ func refresh_scurk_artwork() -> void:
 
 	app.map_view.scurk_stamp_visuals.clear()
 
-	if app.document_state.city != null and app.scurk_place_print != null and app.scurk_place_print.visible and app.view_state.overlay_mode == CityViewMode.Mode.CITY:
+	if (app.document_state.city != null and app.scurk_place_print != null and app.scurk_place_print.visible
+			and app.view_state.overlay_mode == CityViewMode.Mode.CITY):
 		for stamp in app.document_state.city.scurk_artwork_stamps:
 			var entry = app.asset_state.large_sprites.find_sprite(1000 + int(stamp.tile_id))
 

@@ -198,7 +198,8 @@ func _record_dispatch(
 func _apply_landscape_editor_terrain(start: Vector2i, dragged: bool) -> bool:
 	var tool := app.tool_state
 
-	if not (LandscapeEditorCommand.supports_tool(tool.selected_group, tool.selected_subtool) and tool.landscape_editor and not (tool.selected_group == 1 and tool.selected_subtool == 3)):
+	if (not (LandscapeEditorCommand.supports_tool(tool.selected_group, tool.selected_subtool) and tool.landscape_editor
+			and not (tool.selected_group == 1 and tool.selected_subtool == 3))):
 		return false
 
 	var levels := app.map_view.stretch_height_delta if dragged else 1

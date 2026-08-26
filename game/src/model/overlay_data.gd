@@ -110,7 +110,8 @@ static func valid_id(id: int, edge: int) -> bool:
 
 	var factor := (edge * edge) / 16384
 
-	return (is_facility(id) and facility_record(id) < 150 * factor) or (is_sign(id) and id < EXTRA_SIGN + 50 * factor - 50) or (is_thing(id) and thing_record(id) < 40 * factor)
+	return ((is_facility(id) and facility_record(id) < 150 * factor) or (is_sign(id) and id < EXTRA_SIGN + 50 * factor - 50)
+			or (is_thing(id) and thing_record(id) < 40 * factor))
 
 
 static func sign_indices(data: PackedByteArray) -> PackedInt32Array:

@@ -223,7 +223,9 @@ static func create_mesh(city: CityState, mode: CityViewMode.Mode, encoded := fal
 
 				if polygon[side].y < ground[side].y or polygon[side + 1].y < ground[side + 1].y:
 					_append_quad(vertices, colors, uvs, indices, PackedVector2Array([polygon[side], polygon[side + 1],
-						ground[side + 1], ground[side]]), Color(tint.r, tint.g, 0.78 if side == 1 else 0.65) if encoded else tint.darkened(0.22 if side == 1 else 0.35), Vector2(y, x) * 2 if encoded else Vector2.ZERO)
+						ground[side + 1], ground[side]]),
+						Color(tint.r, tint.g, 0.78 if side == 1 else 0.65) if encoded else tint.darkened(0.22 if side == 1 else 0.35),
+						Vector2(y, x) * 2 if encoded else Vector2.ZERO)
 
 			_append_quad(vertices, colors, uvs, indices, polygon, tint, Vector2(y, x) * 2 if encoded else Vector2.ZERO)
 

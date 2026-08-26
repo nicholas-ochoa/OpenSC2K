@@ -29,7 +29,8 @@ func _init() -> void:
 
 
 static func supports_tool(group: int, tool: int) -> bool:
-	return NetworkCommand.supports_tool(group, tool) or HighwayCommand.supports_tool(group, tool) or TunnelCommand.supports_tool(group, tool) or OnrampCommand.supports_tool(group, tool) or SubwayToRailCommand.supports_tool(group, tool)
+	return (NetworkCommand.supports_tool(group, tool) or HighwayCommand.supports_tool(group, tool) or TunnelCommand.supports_tool(group, tool)
+			or OnrampCommand.supports_tool(group, tool) or SubwayToRailCommand.supports_tool(group, tool))
 
 
 func clear() -> void:
@@ -53,14 +54,16 @@ func clear() -> void:
 	painter.queue_redraw()
 
 
-func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Vector2i, view: int, palette: Sc2Palette, sprites: Sc2SpriteArchive, underground: bool, free_mode := false) -> void:
+func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Vector2i, view: int, palette: Sc2Palette,
+		sprites: Sc2SpriteArchive, underground: bool, free_mode := false) -> void:
 	# include chunk revisions so simulation and edits invalidate an idle preview
 	var revisions := ""
 
 	for chunk in city.document.chunks:
 		revisions += ":%d" % chunk.mutation_revision
 
-	var appearance := "%d:%d:%d:%d:%d:%d:%s:%s" % [city.get_instance_id(), group, tool, view, palette.get_instance_id(), sprites.get_instance_id(), underground, free_mode]
+	var appearance := ("%d:%d:%d:%d:%d:%d:%s:%s"
+			% [city.get_instance_id(), group, tool, view, palette.get_instance_id(), sprites.get_instance_id(), underground, free_mode])
 	var context := appearance + revisions
 	var key := "%s:%s:%s" % [context, start, finish]
 
@@ -85,7 +88,8 @@ func request(city: CityState, group: int, tool: int, start: Vector2i, finish: Ve
 		map_view.network_preview_active = true
 		map_view.queue_redraw()
 
-	pending = {"city": city, "group": group, "tool": tool, "start": start, "finish": finish, "view": view, "palette": palette, "sprites": sprites, "underground": underground, "free_mode": free_mode, "cache": sprite_cache}
+	pending = {"city": city, "group": group, "tool": tool, "start": start, "finish": finish, "view": view, "palette": palette,
+			"sprites": sprites, "underground": underground, "free_mode": free_mode, "cache": sprite_cache}
 
 
 func _process(_delta: float) -> void:
@@ -218,7 +222,9 @@ static func build(job: Dictionary) -> Dictionary:
 	# cells for connection shapes and terrain grading, not the entire map
 	var candidates := candidate_indices(result, job.start, job.finish, city.map_size)
 	for index: int in candidates:
-		if before_buildings[index] == city.buildings[index] and before_terrain[index] == city.terrain[index] and before_underground[index] == city.underground[index] and before_flags[index] == city.tile_flags[index] and before_altitude[index] == city.altitude_words[index]:
+		if (before_buildings[index] == city.buildings[index] and before_terrain[index] == city.terrain[index]
+				and before_underground[index] == city.underground[index] and before_flags[index] == city.tile_flags[index]
+				and before_altitude[index] == city.altitude_words[index]):
 			continue
 
 		var point := Vector2i(index / city.map_size, index % city.map_size)

@@ -120,7 +120,8 @@ func activate_document(
 	app.map_view.pending_loaded_center = Vector2i(-1, -1)
 
 	if not document.source_path.is_empty():
-		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(0x1018), 0, app.document_state.city.map_size - 1), clampi(document.misc_u32(0x101c), 0, app.document_state.city.map_size - 1))
+		app.map_view.pending_loaded_center = Vector2i(clampi(document.misc_u32(0x1018), 0, app.document_state.city.map_size - 1),
+				clampi(document.misc_u32(0x101c), 0, app.document_state.city.map_size - 1))
 
 	app.current_tool.select_tool_group(17)
 	app.view_state.overlay_mode = CityViewMode.Mode.CITY

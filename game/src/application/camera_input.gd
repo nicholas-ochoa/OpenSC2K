@@ -56,7 +56,8 @@ func update_keyboard_camera(delta: float) -> void:
 	app.view_state.camera_tap = Vector2.ZERO
 
 	if app.map_view != null:
-		app.map_view.pan_screen(app.view_state.camera_motion.step(direction, delta, enabled and not app.map_view.is_panning() and not app.map_view.is_left_drag_active()))
+		app.map_view.pan_screen(app.view_state.camera_motion.step(direction, delta, enabled and not app.map_view.is_panning()
+				and not app.map_view.is_left_drag_active()))
 
 
 func input(event: InputEvent) -> void:
@@ -119,10 +120,12 @@ func unhandled_key_input(event: InputEvent) -> void:
 		app.map_view.clear_trip_reach()
 		app.map_view.clear_service_query()
 		app.get_viewport().set_input_as_handled()
-	elif camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed and (event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL or event.physical_keycode == KEY_E):
+	elif (camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed
+			and (event.keycode == KEY_PLUS or event.keycode == KEY_EQUAL or event.physical_keycode == KEY_E)):
 		if app.map_view.zoom_in():
 			app.get_viewport().set_input_as_handled()
-	elif camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed and (event.keycode == KEY_MINUS or event.physical_keycode == KEY_Q):
+	elif (camera_keys_allowed() and not event.is_command_or_control_pressed() and not event.alt_pressed
+			and (event.keycode == KEY_MINUS or event.physical_keycode == KEY_Q)):
 		if app.map_view.zoom_out():
 			app.get_viewport().set_input_as_handled()
 

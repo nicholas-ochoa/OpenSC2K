@@ -240,7 +240,8 @@ func _sync_view_controls() -> void:
 
 	for key in app.view_visibility_checks:
 		var check: CheckBox = app.view_visibility_checks[key]
-		check.visible = (underground_active if key in ["water_mains", "pipes", "subways"] else not underground_active) and not CityViewMode.is_data(app.view_state.overlay_mode)
+		check.visible = ((underground_active if key in ["water_mains", "pipes", "subways"] else not underground_active)
+				and not CityViewMode.is_data(app.view_state.overlay_mode))
 		if app.tool_state.landscape_editor:
 			check.visible = key in ["water", "trees"]
 		check.disabled = CityViewMode.is_data(app.view_state.overlay_mode)
@@ -284,7 +285,8 @@ func _rebuild_view_layer_menu(underground_active: bool) -> void:
 func sync_map_style() -> void:
 	# use the published texture until the mode change finishes
 	if app.map_view != null:
-		app.map_view.dark_underground = app.preferences.dark_underground and app.render_caches.static_render_mode == CityViewMode.Mode.UNDERGROUND and app.map_view.base_palette_lookup_all
+		app.map_view.dark_underground = (app.preferences.dark_underground
+				and app.render_caches.static_render_mode == CityViewMode.Mode.UNDERGROUND and app.map_view.base_palette_lookup_all)
 
 
 func set_overlay(mode: CityViewMode.Mode) -> void:

@@ -111,7 +111,8 @@ func apply_network_selection(
 	var dry_count := network.dry_points.size()
 
 	if network.bridge_count > 1:
-		app.status_label.text = "Built %d %s tiles and %d bridges for $%s." % [dry_count, tool_name, network.bridge_count, app.interface.format_number(int(network.cost))]
+		app.status_label.text = ("Built %d %s tiles and %d bridges for $%s."
+				% [dry_count, tool_name, network.bridge_count, app.interface.format_number(int(network.cost))])
 	elif network.bridge_built:
 		if dry_count > 0:
 			app.status_label.text = "Built %d %s tiles and a %s across %d water tiles for $%s." % [

@@ -140,7 +140,8 @@ static func _load_dib_from_directory(
 	if type_directory < 0:
 		return _failure("PE file does not contain bitmap resources")
 
-	var language_directory := _named_child_directory(bytes, root_offset, type_directory, resource_id) if resource_id is String else _numeric_child_directory(bytes, root_offset, type_directory, resource_id)
+	var language_directory := (_named_child_directory(bytes, root_offset, type_directory, resource_id) if resource_id is String
+			else _numeric_child_directory(bytes, root_offset, type_directory, resource_id))
 
 	if language_directory < 0:
 		return _failure("PE bitmap resource %s is missing" % resource_id)

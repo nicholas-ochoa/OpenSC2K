@@ -241,7 +241,8 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 	var key := x * city.map_size + y
 	var building := int(city.buildings[key])
 
-	if (building >= 0x0e and building < 0x70) or x == city.map_size - 1 or y == city.map_size - 1 or not city.tile_is_visible(x, y) or OverlayData.is_thing(city.text_overlay_id(x, y)):
+	if ((building >= 0x0e and building < 0x70) or x == city.map_size - 1 or y == city.map_size - 1 or not city.tile_is_visible(x, y)
+			or OverlayData.is_thing(city.text_overlay_id(x, y))):
 		return false
 
 	var flags := int(city.tile_flags[key])
@@ -257,7 +258,8 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 	var base_y := flat_y - altitude * int(config.altitude_step)
 
 	if building < 0x70:
-		_append_sprite(recorder, sprites, palette, CityIsometricRenderer.terrain_sprite_id(terrain, (flags & 4) != 0, int(config.sprite_base)), false, Vector2i(screen_x, base_y))
+		_append_sprite(recorder, sprites, palette, CityIsometricRenderer.terrain_sprite_id(terrain, (flags & 4) != 0, int(config.sprite_base)),
+				false, Vector2i(screen_x, base_y))
 
 	if building == 0:
 		var zone := int(city.zones[key]) & 15
@@ -288,7 +290,8 @@ func _fast_tile(recorder: CityGpuDrawList, city: CityState, palette: Sc2Palette,
 
 	if building >= 0x70 and (flags & 0xc0) == 0x80:
 		var marker := CityIsometricRenderer.sprite_image(sprites, palette, images, int(config.sprite_base) + CityIsometricRenderer.POWER_MARKER_SPRITE_OFFSET, false)
-		recorder.blend_rect(marker, Rect2i(Vector2i.ZERO, marker.get_size()), Vector2i(screen_x + int(image.get_width() / 2) - int(marker.get_width() / 2), object_y - marker.get_height()))
+		recorder.blend_rect(marker, Rect2i(Vector2i.ZERO, marker.get_size()),
+				Vector2i(screen_x + int(image.get_width() / 2) - int(marker.get_width() / 2), object_y - marker.get_height()))
 
 	return true
 

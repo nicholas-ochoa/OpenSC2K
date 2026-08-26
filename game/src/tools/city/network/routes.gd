@@ -95,7 +95,8 @@ static func plan_route(
 
 		var next: Vector2i = current + DIRECTIONS[direction]
 
-		if keep_straight and (next.x < mini(start.x, finish.x) or next.x > maxi(start.x, finish.x) or next.y < mini(start.y, finish.y) or next.y > maxi(start.y, finish.y)):
+		if (keep_straight and (next.x < mini(start.x, finish.x) or next.x > maxi(start.x, finish.x) or next.y < mini(start.y, finish.y)
+				or next.y > maxi(start.y, finish.y))):
 			break
 
 		if not _step_is_eligible(buildings, terrain, zones, underground, flags, altitude, current, next, mode, direction, keep_straight, map_edge):
@@ -143,7 +144,8 @@ static func _step_is_eligible(
 
 
 # some tiles force the incoming direction before we can turn toward the pointer
-static func _route_keeps_direction(buildings: PackedByteArray, terrain: PackedByteArray, underground: PackedByteArray, point: Vector2i, mode: int, direction: int, edge: int) -> bool:
+static func _route_keeps_direction(buildings: PackedByteArray, terrain: PackedByteArray, underground: PackedByteArray, point: Vector2i,
+		mode: int, direction: int, edge: int) -> bool:
 	# supplied executable 0x00448f50 preserves the incoming direction on
 	# slopes and straight crossing cells before it chooses either target axis
 	var index := point.x * edge + point.y

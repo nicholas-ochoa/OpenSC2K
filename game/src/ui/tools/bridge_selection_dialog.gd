@@ -91,7 +91,8 @@ func preview_image(request_type: String, bridge_type: int) -> Texture2D:
 
 	if highway and bridge_type == HighwayCommand.BRIDGE_REINFORCED:
 		for section in 4:
-			_append_preview_tile(tiles, 1000 + 0x5d + (14 if section % 2 == 0 else 13), _preview_baseline(section * 2, 0) + Vector2i(0, CityIsometricRenderer.HALF_HEIGHT * 2), true)
+			_append_preview_tile(tiles, 1000 + 0x5d + (14 if section % 2 == 0 else 13), _preview_baseline(section * 2, 0)
+					+ Vector2i(0, CityIsometricRenderer.HALF_HEIGHT * 2), true)
 	else:
 		for x in count:
 			for y in (2 if highway else 1):

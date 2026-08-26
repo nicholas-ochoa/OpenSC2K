@@ -57,7 +57,8 @@ func open_scurk_dialog() -> void:
 
 	_ensure_scurk_editor()
 	app.scurk_editor.configure(
-		app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites, app.asset_state.reference_root, app.asset_state.scurk_graphics
+		app.asset_state.palette, app.asset_state.base_large_sprites, app.asset_state.base_small_medium_sprites, app.asset_state.reference_root,
+		app.asset_state.scurk_graphics
 	)
 	var initial_path := (
 		app.asset_state.active_scurk_path

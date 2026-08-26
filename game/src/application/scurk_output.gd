@@ -90,7 +90,8 @@ func _open_scurk_print_dialog() -> void:
 	_ensure_scurk_print()
 
 	app.scurk_print.configure(
-		app.document_state.city.city_name(), CityViewMode.key(app.view_state.overlay_mode), app.view_state.surface_visibility, app.view_state.show_underground_pipes, app.view_state.show_underground_water_mains
+		app.document_state.city.city_name(), CityViewMode.key(app.view_state.overlay_mode), app.view_state.surface_visibility,
+		app.view_state.show_underground_pipes, app.view_state.show_underground_water_mains
 	)
 	app.scurk_print.show_workspace()
 

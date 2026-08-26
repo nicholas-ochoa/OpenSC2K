@@ -75,7 +75,8 @@ static func decode(bytes: PackedByteArray, strict_palette := true) -> Dictionary
 				if payload[10] != 0 or payload[11] != 0 or payload[12] > 1:
 					return _failure("Unsupported PNG encoding")
 			"PLTE":
-				if not palette.colors.is_empty() or has_data or has_alpha or length == 0 or length % 3 != 0 or (length / 3) > (1 << bit_depth) or (strict_palette and length != 768):
+				if (not palette.colors.is_empty() or has_data or has_alpha or length == 0 or length % 3 != 0 or (length / 3) > (1 << bit_depth)
+						or (strict_palette and length != 768)):
 					return _failure("PNG must have one 256-color palette before pixel data" if strict_palette else "PNG must have one valid indexed palette before pixel data")
 
 				palette_count = length / 3

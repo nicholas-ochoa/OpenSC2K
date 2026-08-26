@@ -191,7 +191,8 @@ func apply_highway_selection(
 	app.status_label.theme_type_variation = ""
 
 	if highway.bridge_count > 1:
-		app.status_label.text = "Built %d highway sections and %d bridges for $%s." % [highway.sections.size(), highway.bridge_count, app.interface.format_number(highway.cost)]
+		app.status_label.text = ("Built %d highway sections and %d bridges for $%s."
+				% [highway.sections.size(), highway.bridge_count, app.interface.format_number(highway.cost)])
 	elif highway.bridge_built:
 		if highway.sections.is_empty():
 			app.status_label.text = "Built a %s across %d water sections for $%s." % [

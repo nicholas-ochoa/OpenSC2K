@@ -20,7 +20,8 @@ func set_city_view(
 	var reset_center := map.city_source == null or map.city_source.size != source.size
 	var old_center := map.source_center
 	var old_sign_scans := map._sign_cache_build_count
-	var reuse_layout := preserve_sign_cache and not sign_layout_token.is_empty() and sign_layout_token == map._external_sign_layout_token and map._sign_entries_city != null and is_equal_approx(map._sign_entries_zoom, map.zoom_factor)
+	var reuse_layout := (preserve_sign_cache and not sign_layout_token.is_empty() and sign_layout_token == map._external_sign_layout_token
+			and map._sign_entries_city != null and is_equal_approx(map._sign_entries_zoom, map.zoom_factor))
 
 	if not preserve_sign_cache or map.city != value:
 		map._preserve_sign_layout = preserve_sign_cache
@@ -53,7 +54,8 @@ func set_city_view(
 	if preserve_sign_cache:
 		map.signs._ensure_sign_entries()
 
-	if not preserve_sign_cache or reset_center or old_center != map.source_center or old_sign_scans != map._sign_cache_build_count or map.hover_tile.x >= 0 or map.selection_start.x >= 0:
+	if (not preserve_sign_cache or reset_center or old_center != map.source_center or old_sign_scans != map._sign_cache_build_count
+			or map.hover_tile.x >= 0 or map.selection_start.x >= 0):
 		map.queue_redraw()
 
 	map.viewport_changed.emit()

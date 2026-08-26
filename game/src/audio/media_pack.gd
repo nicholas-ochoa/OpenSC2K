@@ -33,7 +33,8 @@ static func load_folder(folder: String, kind: String) -> MediaPack:
 
 	var data: Dictionary = json.data
 
-	if data.get("format") != "opensc2k-" + kind or data.get("version") != 1 or not data.get("name") is String or str(data.name).strip_edges().is_empty() or not data.get("files") is Dictionary:
+	if (data.get("format") != "opensc2k-" + kind or data.get("version") != 1 or not data.get("name") is String
+			or str(data.name).strip_edges().is_empty() or not data.get("files") is Dictionary):
 		pack.error = "Invalid %s manifest format, version, name, or files" % kind
 
 		return pack

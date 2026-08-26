@@ -234,7 +234,8 @@ func hide_main_menu() -> void:
 
 func open_about_dialog() -> void:
 	app.about_dialog.popup_centered()
-	if app.asset_state.assets_ready and app.audio_controller != null and app.audio_controller.music_volume > 0.0 and (app.document_state.city == null or app.document_state.city.music_enabled()):
+	if (app.asset_state.assets_ready and app.audio_controller != null and app.audio_controller.music_volume > 0.0
+			and (app.document_state.city == null or app.document_state.city.music_enabled())):
 		app.audio_controller.play_music_track(Music.ABOUT_TRACK, false, true)
 
 

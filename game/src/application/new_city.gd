@@ -97,7 +97,8 @@ func make_new_city_preview() -> void:
 		return
 	app.new_city_dialog.preview_timer.stop()
 	app.new_city_dialog.invalidate()
-	app.audio_controller.play_sound_events([529], app.document_state.city == null or app.document_state.city.sound_enabled(), CityViewMode.Mode.CITY, IsometricRenderer.VIEW_LARGE)
+	app.audio_controller.play_sound_events([529], app.document_state.city == null or app.document_state.city.sound_enabled(),
+			CityViewMode.Mode.CITY, IsometricRenderer.VIEW_LARGE)
 	_generate_new_city_preview(true)
 
 
@@ -113,7 +114,8 @@ func _generate_new_city_preview(advance_seed: bool) -> bool:
 	app.new_city_state.preview_job.revision = app.new_city_dialog.generation_revision
 	app.new_city_state.preview_job.view_size = NewCityPreviewJob.preview_view_size(
 		app.new_city_dialog.size_input.get_selected_id(), app.new_city_dialog.size)
-	var preview_sprites := app.asset_state.large_sprites if app.new_city_state.preview_job.view_size == IsometricRenderer.VIEW_LARGE else app.asset_state.small_medium_sprites
+	var preview_sprites := (app.asset_state.large_sprites if app.new_city_state.preview_job.view_size == IsometricRenderer.VIEW_LARGE
+			else app.asset_state.small_medium_sprites)
 	var error := app.new_city_state.preview_job.start(app.new_city_state.session,
 		app.asset_state.reference_root.path_join("DEFAULT.SC2"), _new_city_terrain_options(),
 		app.asset_state.palette, preview_sprites, advance_seed)

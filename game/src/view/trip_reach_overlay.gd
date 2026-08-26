@@ -54,7 +54,8 @@ func rebuild(city: CityState, result: Dictionary) -> void:
 		segments.append_array(PackedVector2Array([a, b]))
 		colors.append(color)
 
-		if int(link.mode) in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE] and from_mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]:
+		if (int(link.mode) in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]
+				and from_mode in [TransportTrip.HIGHWAY_MODE, TransportTrip.BUS_HIGHWAY_MODE]):
 			var arrow_key: Vector2i = link.from
 			if arrow_links.has(arrow_key) or not seen.get(arrow_key, Vector2.INF).is_equal_approx(a):
 				continue
@@ -123,19 +124,24 @@ func _draw_key(canvas: Control) -> void:
 	var width := minf(500.0, available.size.x - 24.0)
 	var panel := Rect2(available.position + Vector2(12, 12), Vector2(width, 134 + lines.size() * 22))
 	canvas.draw_style_box(canvas.get_theme_stylebox("panel", "MapLegend"), panel)
-	canvas.draw_string(font, panel.position + Vector2(12, 25), "Trip Query", HORIZONTAL_ALIGNMENT_LEFT, width - 24, 17, canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(font, panel.position + Vector2(12, 25), "Trip Query", HORIZONTAL_ALIGNMENT_LEFT, width - 24, 17,
+			canvas.get_theme_color("font_color", "MapLegend"))
 	for i in 48:
 		canvas.draw_rect(Rect2(panel.position + Vector2(12 + i * (width - 24) / 48.0, 36),
 			Vector2((width - 24) / 48.0 + 1, 12)), heat_color(i / 47.0))
 	canvas.draw_string(font, panel.position + Vector2(12, 67), "Low cost", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, canvas.get_theme_color("font_color", "MapLegend"))
-	canvas.draw_string(font, panel.position + Vector2(width - 108, 67), "Near trip limit", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(font, panel.position + Vector2(width - 108, 67), "Near trip limit", HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
+			canvas.get_theme_color("font_color", "MapLegend"))
 	_draw_origin(canvas, panel.position + Vector2(20, 98), 0.7)
 	canvas.draw_string(font, panel.position + Vector2(34, 94), "Origin", HORIZONTAL_ALIGNMENT_LEFT, -1, 14, canvas.get_theme_color("font_color", "MapLegend"))
 	_draw_destination(canvas, panel.position + Vector2(122, 90), 0.8)
-	canvas.draw_string(font, panel.position + Vector2(138, 94), "Destinations", HORIZONTAL_ALIGNMENT_LEFT, width - 150, 14, canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(font, panel.position + Vector2(138, 94), "Destinations", HORIZONTAL_ALIGNMENT_LEFT, width - 150, 14,
+			canvas.get_theme_color("font_color", "MapLegend"))
 	_draw_failure(canvas, panel.position + Vector2(260, 90), 0.8)
-	canvas.draw_string(font, panel.position + Vector2(275, 94), "Trip limit", HORIZONTAL_ALIGNMENT_LEFT, width - 287, 14, canvas.get_theme_color("font_color", "MapLegend"))
-	canvas.draw_string(font, panel.position + Vector2(12, 120), "Trip Budget: %d" % analysis.limit, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(font, panel.position + Vector2(275, 94), "Trip limit", HORIZONTAL_ALIGNMENT_LEFT, width - 287, 14,
+			canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(font, panel.position + Vector2(12, 120), "Trip Budget: %d" % analysis.limit, HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
+			canvas.get_theme_color("font_color", "MapLegend"))
 	var status := "Destination reachable" if analysis.reached_destination else "Destination not reachable"
 	var status_width := font.get_string_size(status, HORIZONTAL_ALIGNMENT_LEFT, -1, 14).x
 	var status_x := width - 12 - status_width
@@ -147,7 +153,8 @@ func _draw_key(canvas: Control) -> void:
 		_draw_failure(canvas, icon, 1.0)
 	canvas.draw_string(font, panel.position + Vector2(status_x, 120), status, HORIZONTAL_ALIGNMENT_LEFT, -1, 14, canvas.get_theme_color("font_color", "MapLegend"))
 	for i in lines.size():
-		canvas.draw_string(font, panel.position + Vector2(12, 144 + i * 22), lines[i], HORIZONTAL_ALIGNMENT_LEFT, width - 24, 14, canvas.get_theme_color("font_color", "MapLegend"))
+		canvas.draw_string(font, panel.position + Vector2(12, 144 + i * 22), lines[i], HORIZONTAL_ALIGNMENT_LEFT, width - 24, 14,
+				canvas.get_theme_color("font_color", "MapLegend"))
 
 
 static func route_color(link: Dictionary, limit: int) -> Color:

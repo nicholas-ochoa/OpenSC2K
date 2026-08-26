@@ -49,7 +49,8 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 			return false
 
 		region_start = Time.get_ticks_usec()
-		var dirty := IsometricRenderer.dirty_screen_rect(indices, sprite_archive_for_view(city_view_size()), city_view_size(), Vector2i.ZERO, app.document_state.city.map_size)
+		var dirty := IsometricRenderer.dirty_screen_rect(indices, sprite_archive_for_view(city_view_size()), city_view_size(), Vector2i.ZERO,
+				app.document_state.city.map_size)
 		app.map_render.refresh_region_map(false, dirty)
 		app.timing_state.edit_display_timings.region_ms = (Time.get_ticks_usec() - region_start) / 1000.0
 
@@ -150,7 +151,8 @@ func _apply_static_edit_patch(command: EditCommandResult) -> bool:
 	return true
 
 
-static func _collect_changed_tiles(before: PackedByteArray, after: PackedByteArray, stride: int, dirty: PackedByteArray, indices: PackedInt32Array, plane_cells := 0) -> void:
+static func _collect_changed_tiles(before: PackedByteArray, after: PackedByteArray, stride: int, dirty: PackedByteArray,
+		indices: PackedInt32Array, plane_cells := 0) -> void:
 	# native word comparisons skip unchanged runs without allocating. only
 	# changed words need per-tile gdscript work, including remote power/water
 	# changes after edits
@@ -404,7 +406,8 @@ func poll_static_render() -> void:
 func static_signature_for_mode(mode: CityViewMode.Mode, view_size: int) -> Array:
 	if mode == CityViewMode.Mode.UNDERGROUND:
 		return UndergroundView.visual_signature(
-			app.document_state.city, view_size, app.view_state.show_underground_pipes, app.view_state.show_underground_subways, app.view_state.show_underground_water_mains
+			app.document_state.city, view_size, app.view_state.show_underground_pipes, app.view_state.show_underground_subways,
+					app.view_state.show_underground_water_mains
 		)
 
 	var result := IsometricRenderer.static_visual_signature(app.document_state.city, view_size)

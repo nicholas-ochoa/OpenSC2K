@@ -41,7 +41,8 @@ func open_settings_dialog() -> void:
 	app.settings_dialog.select_moving_frame_rate(preferences.moving_frame_rate)
 	app.settings_dialog.original_compatibility_check.button_pressed = preferences.original_compatibility
 	app.settings_dialog.original_compatibility_check.disabled = app.document_state.current_document != null and app.document_state.current_document.is_extended()
-	app.settings_dialog.original_compatibility_check.tooltip_text = "SC2X cities cannot return to original compatibility." if app.settings_dialog.original_compatibility_check.disabled else ""
+	app.settings_dialog.original_compatibility_check.tooltip_text = ("SC2X cities cannot return to original compatibility."
+			if app.settings_dialog.original_compatibility_check.disabled else "")
 	app.settings_dialog.warn_sc2x_conversion_check.button_pressed = preferences.warn_sc2x_conversion
 	app.settings_dialog.shuffle_music_check.button_pressed = preferences.shuffle_music
 	app.settings_dialog.toolbar_sounds_check.button_pressed = preferences.toolbar_sounds
@@ -70,7 +71,8 @@ func apply_settings() -> void:
 	var values: Dictionary = app.settings_dialog.selected_values()
 
 	if bool(values.original_compatibility) and app.document_state.current_document != null and app.document_state.current_document.is_extended():
-		app.settings_dialog.show_compatibility_error("This city is SC2X and cannot return to original compatibility. Save it, then open a different original SC2 city or restart the app before enabling compatibility.")
+		app.settings_dialog.show_compatibility_error(("This city is SC2X and cannot return to original compatibility. Save it, then open a different original SC2 " +
+			"city or restart the app before enabling compatibility."))
 
 		return
 
@@ -82,7 +84,8 @@ func apply_settings() -> void:
 		return
 
 	var changed_source: bool = values.graphics_source != preferences.graphics_source or values.graphics_folder != preferences.graphics_folder
-	var media_packs_changed: bool = values.sound_pack_folder != preferences.sound_pack_folder or values.music_pack_folder != preferences.music_pack_folder or (not app.asset_state.assets_ready and changed_source)
+	var media_packs_changed: bool = (values.sound_pack_folder != preferences.sound_pack_folder
+			or values.music_pack_folder != preferences.music_pack_folder or (not app.asset_state.assets_ready and changed_source))
 	var selected: GameAssetSource
 
 	if changed_source:
@@ -140,7 +143,8 @@ func apply_settings() -> void:
 	if app.audio_controller != null:
 		app.audio_controller.set_background_audio(preferences.background_audio)
 		app.audio_controller.set_volumes(preferences.music_volume, preferences.effects_volume)
-		app.audio_controller.set_soundtrack_folder(preferences.soundtrack_folder, (app.main_menu != null and app.main_menu.visible) or (app.document_state.city != null and app.document_state.city.music_enabled()))
+		app.audio_controller.set_soundtrack_folder(preferences.soundtrack_folder, (app.main_menu != null and app.main_menu.visible)
+				or (app.document_state.city != null and app.document_state.city.music_enabled()))
 
 	if fullscreen_changed:
 		DisplayServer.window_set_mode(
@@ -151,7 +155,10 @@ func apply_settings() -> void:
 
 	var error := SettingsStore.save_values(
 		preferences.music_volume, preferences.effects_volume, preferences.fullscreen,
-		preferences.settings_path, preferences.graphics_source, preferences.graphics_folder, preferences.soundtrack_folder, preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics, preferences.toolbar_sounds, preferences.sound_pack_folder, preferences.music_pack_folder, preferences.shuffle_music, preferences.original_compatibility, preferences.warn_sc2x_conversion, preferences.default_mayor_name, preferences.overview_graphics, preferences.ui_theme, preferences.dark_underground,
+		preferences.settings_path, preferences.graphics_source, preferences.graphics_folder, preferences.soundtrack_folder,
+		preferences.city_renderer, preferences.background_audio, preferences.zoom_graphics, preferences.toolbar_sounds,
+		preferences.sound_pack_folder, preferences.music_pack_folder, preferences.shuffle_music, preferences.original_compatibility,
+		preferences.warn_sc2x_conversion, preferences.default_mayor_name, preferences.overview_graphics, preferences.ui_theme, preferences.dark_underground,
 		preferences.translucent_menus, preferences.moving_frame_rate,
 	)
 	app.status_label.text = (

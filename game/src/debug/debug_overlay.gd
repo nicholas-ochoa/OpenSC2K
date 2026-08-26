@@ -334,7 +334,8 @@ func _refresh_day_rows(history: SimulationTimingHistory) -> void:
 			row = _days.create_item(parent)
 			row.set_text(1, "      ".repeat(depth) + parts[-1])
 			row.set_tooltip_text(1, label)
-			row.set_tooltip_text(5, "One sample per measured phase execution. Repeated tile and network work is summed. Phase totals include their detail rows; do not add both. Groups without measured totals show a dash.")
+			row.set_tooltip_text(5, ("One sample per measured phase execution. Repeated tile and network work is summed. Phase totals include their " +
+				"detail rows; do not add both. Groups without measured totals show a dash."))
 			_step_rows[label] = row
 
 		_stats(row, 2, samples.get(label, {}))

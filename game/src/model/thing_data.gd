@@ -32,7 +32,8 @@ static func _wide(data: PackedByteArray, index: int) -> bool:
 	var field := index % 12
 	var type := int(data[index - field])
 
-	return field == 3 or field == 4 or field == 8 or field == 9 or field == 10 or (type >= 10 and type <= 13 and (field == 2 or field == 6 or field == 7)) or (type == 16 and field == 11)
+	return (field == 3 or field == 4 or field == 8 or field == 9 or field == 10
+			or (type >= 10 and type <= 13 and (field == 2 or field == 6 or field == 7)) or (type == 16 and field == 11))
 
 
 static func target_id(record: int) -> int:

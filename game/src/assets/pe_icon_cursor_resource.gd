@@ -155,7 +155,8 @@ static func decode_image(bytes: PackedByteArray, cursor := false) -> Dictionary:
 			if mask == 1 and palette[index] != Color.BLACK:
 				inverted += 1
 
-	return {"ok": true, "width": width, "height": height, "bits": bits, "hotspot": hotspot, "palette": palette, "pixels": pixels, "and_mask": and_mask, "inverting_pixels": inverted, "trailing_bytes": bytes.size() - end, "error": ""}
+	return {"ok": true, "width": width, "height": height, "bits": bits, "hotspot": hotspot, "palette": palette, "pixels": pixels,
+			"and_mask": and_mask, "inverting_pixels": inverted, "trailing_bytes": bytes.size() - end, "error": ""}
 
 
 static func composite(decoded: Dictionary, background: Image) -> Image:

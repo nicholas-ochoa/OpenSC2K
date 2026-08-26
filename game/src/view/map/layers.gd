@@ -107,7 +107,8 @@ func _draw_data_view(scale: float, offset: Vector2) -> void:
 		map.draw_style_box(_data_legend_box(), Rect2(position, extent))
 
 		for index in lines.size():
-			map.draw_string(font, position + Vector2(10, 22 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, map.get_theme_color("font_color", "MapLegend"))
+			map.draw_string(font, position + Vector2(10, 22 + index * 24), lines[index], HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
+					map.get_theme_color("font_color", "MapLegend"))
 
 
 func _draw_data_key() -> void:
@@ -121,7 +122,8 @@ func _draw_data_key() -> void:
 		for index in 3:
 			var position := origin + Vector2(12 + index * 100, 38)
 			map.draw_rect(Rect2(position, Vector2(88, 18)), CityDataView.color(index, map.data_view_mode))
-			map.draw_string(font, position + Vector2(0, 38), ["No link", "No supply", "Supplied"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14, map.get_theme_color("font_color", "MapLegend"))
+			map.draw_string(font, position + Vector2(0, 38), ["No link", "No supply", "Supplied"][index], HORIZONTAL_ALIGNMENT_LEFT, -1, 14,
+					map.get_theme_color("font_color", "MapLegend"))
 	else:
 		for index in 32:
 			var number := index if map.data_view_mode == CityViewMode.Mode.HEIGHT else roundi(index * 255.0 / 31)
@@ -129,7 +131,8 @@ func _draw_data_key() -> void:
 
 		if map.data_view_mode == CityViewMode.Mode.HEIGHT:
 			map.draw_rect(Rect2(origin + Vector2(12, 96), Vector2(18, 10)), Color(0.35, 0.75, 1.0, 0.65))
-			map.draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13, map.get_theme_color("font_color", "MapLegend"))
+			map.draw_string(font, origin + Vector2(38, 106), "Water surface (transparent)", HORIZONTAL_ALIGNMENT_LEFT, -1, 13,
+					map.get_theme_color("font_color", "MapLegend"))
 
 		var low := "Level 1" if map.data_view_mode == CityViewMode.Mode.HEIGHT else "Very low"
 		var high := "Level 32" if map.data_view_mode == CityViewMode.Mode.HEIGHT else "Very high"

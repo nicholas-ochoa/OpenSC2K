@@ -221,7 +221,8 @@ func _rebuild_selection_path() -> void:
 
 		return
 
-	if (map.selection_mode == "rectangle" and not (map.shift_line_enabled and map._shift_pressed)) or map.brush_box_selection or (map.shift_rectangle_enabled and map._shift_pressed and not uses_paint_brush()):
+	if ((map.selection_mode == "rectangle" and not (map.shift_line_enabled and map._shift_pressed)) or map.brush_box_selection
+			or (map.shift_rectangle_enabled and map._shift_pressed and not uses_paint_brush())):
 		var minimum := Vector2i(
 			mini(map.selection_start.x, map.selection_end.x),
 			mini(map.selection_start.y, map.selection_end.y),
@@ -315,7 +316,8 @@ func _get_tooltip(at_position: Vector2) -> String:
 	if map.trip_reach != null and not map.camera.is_panning():
 		return map.trip_reach.tile_tooltip(map.camera._tile_at(at_position))
 
-	if not map.edit_enabled or not map.show_selection_preview or map.camera.is_panning() or map.selection_start.x >= 0 or not map.placement_error_provider.is_valid():
+	if (not map.edit_enabled or not map.show_selection_preview or map.camera.is_panning() or map.selection_start.x >= 0
+			or not map.placement_error_provider.is_valid()):
 		return ""
 
 	var tile := map.camera._tile_at(at_position)

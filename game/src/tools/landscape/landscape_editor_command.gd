@@ -44,7 +44,8 @@ static func apply(city: CityState, group: int, subtool: int, point: Vector2i, ra
 		if group == 1:
 			var previous_terrain: PackedByteArray = payloads.XTER.duplicate()
 			var previous_flags: PackedByteArray = payloads.XBIT.duplicate()
-			NewTerrainSurface._make_stream(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.XTXT, payloads.MISC, point, 128, staged_random, map_edge)
+			NewTerrainSurface._make_stream(payloads.ALTM, payloads.XBLD, payloads.XTER, payloads.XZON, payloads.XBIT, payloads.XTXT, payloads.MISC,
+					point, 128, staged_random, map_edge)
 			_finish_stream_slopes(payloads, previous_terrain, previous_flags, map_edge)
 		else:
 			var sea := clampi(staged.document.misc_u32(0x0e40) + (1 if subtool == 6 else -1), 0, 31)

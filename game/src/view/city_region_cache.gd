@@ -68,7 +68,8 @@ func configure(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive,
 	if _snapshot == null:
 		region_edge = GPU_REGION_EDGE if gpu_enabled else REGION_EDGE
 
-	if signature == new_signature and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes and _show_subways == show_subways and _show_water_mains == show_water_mains:
+	if (signature == new_signature and view_size == new_view and mode == new_mode and _snapshot != null and _show_pipes == show_pipes
+			and _show_subways == show_subways and _show_water_mains == show_water_mains):
 		return
 
 	var reset := _needs_reset(
@@ -178,7 +179,8 @@ func sign_foreground(key: int, bounds: Rect2i, order: int, texture_factor := 1) 
 
 		var world := Rect2i(patch.bounds.position * divisor, patch.bounds.size * divisor)
 		var overlap := bounds.intersection(world)
-		result.blit_rect(image, Rect2i((overlap.position - world.position) * texture_factor, overlap.size * texture_factor), (overlap.position - bounds.position) * texture_factor)
+		result.blit_rect(image, Rect2i((overlap.position - world.position) * texture_factor, overlap.size * texture_factor),
+				(overlap.position - bounds.position) * texture_factor)
 
 	return result
 
@@ -249,7 +251,8 @@ func tick() -> bool:
 			_job_layout = _layout_generation
 			_thread = Thread.new()
 			var bounds := Rect2i(key * region_edge, Vector2i(region_edge, region_edge))
-			var error := _thread.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared, _show_pipes, _show_subways, _show_water_mains), Thread.PRIORITY_LOW)
+			var error := _thread.start(_render.bind(_snapshot, _palette, _sprites, bounds, view_size, mode, _visibility, _prepared, _show_pipes,
+					_show_subways, _show_water_mains), Thread.PRIORITY_LOW)
 
 			if error != OK:
 				_thread = null
@@ -354,14 +357,16 @@ func image_region(bounds: Rect2i, texture_factor := 1) -> Image:
 		var last := Vector2i((Vector2(overlap.end) / divisor).ceil())
 		var native := Rect2i(first, last - first)
 		var sample_factor := texture_factor if divisor == 1 else 1
-		var image: Image = CityGpuDrawList.paint(entry.gpu_draws, native, entry.background, entry.gpu_draw_grid, sample_factor) if entry.has("gpu_draws") else entry.image.get_region(Rect2i(native.position - entry.bounds.position, native.size))
+		var image: Image = (CityGpuDrawList.paint(entry.gpu_draws, native, entry.background, entry.gpu_draw_grid, sample_factor)
+				if entry.has("gpu_draws") else entry.image.get_region(Rect2i(native.position - entry.bounds.position, native.size)))
 		image.convert(Image.FORMAT_LA8)
 		var target_size := native.size * divisor * texture_factor
 
 		if image.get_size() != target_size:
 			image.resize(target_size.x, target_size.y, Image.INTERPOLATE_NEAREST)
 
-		output.blit_rect(image, Rect2i((overlap.position - first * divisor) * texture_factor, overlap.size * texture_factor), (overlap.position - bounds.position) * texture_factor)
+		output.blit_rect(image, Rect2i((overlap.position - first * divisor) * texture_factor, overlap.size * texture_factor),
+				(overlap.position - bounds.position) * texture_factor)
 
 	return output
 
@@ -421,7 +426,9 @@ func metrics() -> Dictionary:
 
 		bytes += entry.image.get_width() * entry.image.get_height() * (1 if entry.image.get_format() == Image.FORMAT_L8 else 2)
 
-	return {"gpu": gpu_enabled, "atlas_bytes": _gpu_atlas_bytes(), "resident": entries.size(), "visible": visible.size(), "offscreen_limit": offscreen_limit(), "cpu_image_bytes": bytes, "texture_bytes_estimate": bytes, "completed": completed_regions, "discarded": discarded_regions, "max_region_usec": max_region_usec, "ready": ready(), "covered": covered(), "pending": _thread != null or _gpu_pending()}
+	return {"gpu": gpu_enabled, "atlas_bytes": _gpu_atlas_bytes(), "resident": entries.size(), "visible": visible.size(),
+			"offscreen_limit": offscreen_limit(), "cpu_image_bytes": bytes, "texture_bytes_estimate": bytes, "completed": completed_regions,
+			"discarded": discarded_regions, "max_region_usec": max_region_usec, "ready": ready(), "covered": covered(), "pending": _thread != null or _gpu_pending()}
 
 
 func close() -> void:
@@ -436,13 +443,18 @@ func close() -> void:
 	display_city = null
 
 
-static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int, render_mode: CityViewMode.Mode, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool, water_mains: bool, gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1, foreground_requests: Array[Dictionary] = []) -> Dictionary:
+static func _render(city: CityState, palette: Sc2Palette, sprites: Sc2SpriteArchive, bounds: Rect2i, view: int,
+		render_mode: CityViewMode.Mode, visibility: Dictionary, prepared: bool, pipes: bool, subways: bool, water_mains: bool,
+		gpu_context: CityGpuBuildContext = null, revision := 0, atlas_revision := -1, foreground_requests: Array[Dictionary] = []) -> Dictionary:
 	var started := Time.get_ticks_usec()
 	var display := city if prepared else CityViewFilter.surface_copy(city, visibility)
-	var result := CityGpuRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, gpu_context, revision, atlas_revision, true, water_mains) if gpu_context != null else CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains)
+	var result := (CityGpuRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, gpu_context, revision,
+			atlas_revision, true, water_mains) if gpu_context != null
+			else CityRegionRenderer.render(display, palette, sprites, bounds, view, render_mode, pipes, subways, water_mains))
 
 	if result.ok and gpu_context != null and render_mode == CityViewMode.Mode.CITY:
-		result.sign_foregrounds = CityGpuSignForegrounds.build(result, foreground_requests, palette, sprites, gpu_context, int(CityIsometricRenderer.view_configuration(view).divisor))
+		result.sign_foregrounds = CityGpuSignForegrounds.build(result, foreground_requests, palette, sprites, gpu_context,
+				int(CityIsometricRenderer.view_configuration(view).divisor))
 
 	result.display_city = display
 	result.usec = Time.get_ticks_usec() - started

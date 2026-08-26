@@ -41,7 +41,8 @@ func refresh_map(force := true) -> void:
 
 	app.map_view.clear_data_view()
 
-	if (app.document_state.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer)) and CityViewMode.is_map(app.view_state.overlay_mode):
+	if ((app.document_state.city.map_size > 128 or CityRegionCache.gpu_supported(app.preferences.city_renderer))
+			and CityViewMode.is_map(app.view_state.overlay_mode)):
 		refresh_region_map(force)
 
 		return
@@ -234,7 +235,8 @@ func refresh_region_map(force: bool, dirty := Rect2i()) -> void:
 		caches.region_cache.signature = []
 
 	caches.region_cache.configure(app.document_state.city, app.asset_state.palette_index_encoding, sprites, signature, view_size,
-		app.view_state.overlay_mode, app.view_state.surface_visibility, app.view_state.show_underground_pipes, app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains)
+		app.view_state.overlay_mode, app.view_state.surface_visibility, app.view_state.show_underground_pipes,
+		app.view_state.show_underground_subways, dirty, app.view_state.show_underground_water_mains)
 
 	if app.view_state.overlay_mode == CityViewMode.Mode.CITY:
 		var labels := app.document_state.city.document.find_chunk("XLAB")
@@ -319,7 +321,8 @@ func _invalidate_region_foregrounds(changes: Array[Rect2i]) -> bool:
 
 
 func static_image_size() -> Vector2i:
-	return caches.region_cache.native_size * caches.region_cache.divisor if caches.region_cache != null else (caches.static_city_image.get_size() if caches.static_city_image != null else Vector2i.ZERO)
+	return (caches.region_cache.native_size * caches.region_cache.divisor if caches.region_cache != null
+			else (caches.static_city_image.get_size() if caches.static_city_image != null else Vector2i.ZERO))
 
 
 func _static_pixel(x: int, y: int) -> Color:

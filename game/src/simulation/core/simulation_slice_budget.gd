@@ -90,7 +90,8 @@ func finish() -> void:
 
 func metrics() -> Dictionary:
 	_mutex.lock()
-	var result := {"slices": _slices, "max_slice_usec": _max_slice_usec, "waiting": _waiting, "cancelled": _cancelled, "elapsed_usec": _elapsed_usec, "parked_usec": parked_usec}
+	var result := {"slices": _slices, "max_slice_usec": _max_slice_usec, "waiting": _waiting, "cancelled": _cancelled,
+			"elapsed_usec": _elapsed_usec, "parked_usec": parked_usec}
 	_mutex.unlock()
 
 	return result

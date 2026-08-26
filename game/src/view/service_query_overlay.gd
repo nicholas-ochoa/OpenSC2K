@@ -136,8 +136,10 @@ func _draw_key(canvas: Control) -> void:
 	for i in 48:
 		canvas.draw_rect(Rect2(panel.position + Vector2(12 + i * (width - 24) / 48.0, 63),
 			Vector2((width - 24) / 48.0 + 1, 9)), coverage_color(roundi(i * 255.0 / 47.0), analysis.fire))
-	canvas.draw_string(ThemeDB.fallback_font, panel.position + Vector2(12, 86), "Weak", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, canvas.get_theme_color("font_color", "MapLegend"))
-	canvas.draw_string(ThemeDB.fallback_font, panel.position + Vector2(width - 52, 86), "Strong", HORIZONTAL_ALIGNMENT_LEFT, -1, 12, canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(ThemeDB.fallback_font, panel.position + Vector2(12, 86), "Weak", HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
+			canvas.get_theme_color("font_color", "MapLegend"))
+	canvas.draw_string(ThemeDB.fallback_font, panel.position + Vector2(width - 52, 86), "Strong", HORIZONTAL_ALIGNMENT_LEFT, -1, 12,
+			canvas.get_theme_color("font_color", "MapLegend"))
 
 
 func tile_tooltip(point: Vector2i) -> String:

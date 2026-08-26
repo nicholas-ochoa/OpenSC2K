@@ -201,7 +201,8 @@ func refresh_moving_things(view_size := -1) -> void:
 		if not app.view_state.show_vehicles and command.has("record") and _is_vehicle(int(command.record)):
 			continue
 
-		if caches.region_cache != null and not Rect2(Vector2(command.position) * divisor, Vector2(command.get("size", Vector2i(256, 256))) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor)):
+		if (caches.region_cache != null and not Rect2(Vector2(command.position) * divisor,
+				Vector2(command.get("size", Vector2i(256, 256))) * divisor).intersects(app.map_view.visible_source_rect().grow(256 * divisor))):
 			continue
 
 		# the shader applies occlusion and shadows, so the visual needs no image work
@@ -479,7 +480,8 @@ func _dynamic_train_foreground_image(
 
 			if not background.is_empty():
 				deck_surface = Image.create(surface.get_width(), surface.get_height(), false, Image.FORMAT_RGBA8)
-				deck_surface.blit_rect(background.image, Rect2i(Vector2i.ZERO, background.image.get_size()), Vector2i(0, surface.get_height() - background.image.get_height()))
+				deck_surface.blit_rect(background.image, Rect2i(Vector2i.ZERO, background.image.get_size()),
+						Vector2i(0, surface.get_height() - background.image.get_height()))
 
 		var deck := IsometricRenderer.highway_train_deck_mask(deck_surface, int(command.train_deck_thickness) * divisor * texture_factor)
 		caches.dynamic_foreground_cache[deck_key] = deck
@@ -603,7 +605,8 @@ func _dynamic_shadow_image(
 	shadow.fill(Color.TRANSPARENT)
 	var changed_pixels := 0
 	@warning_ignore("integer_division")
-	var sampled: Image = caches.region_cache.image_region(Rect2i(position, mask.get_size() / texture_factor), texture_factor) if caches.region_cache != null else null
+	var sampled: Image = (caches.region_cache.image_region(Rect2i(position, mask.get_size() / texture_factor), texture_factor)
+			if caches.region_cache != null else null)
 
 	for source_y in mask.get_height():
 		var output_y := position.y + int(source_y / texture_factor)

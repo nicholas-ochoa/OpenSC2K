@@ -54,7 +54,8 @@ func save_city() -> void:
 
 
 func _can_upgrade_city_to_sc2x() -> bool:
-	if app.preferences.original_compatibility or app.tool_state.landscape_editor or app.document_state.city == null or document_state.current_document == null or app.simulation_state.simulation_engine == null:
+	if (app.preferences.original_compatibility or app.tool_state.landscape_editor or app.document_state.city == null
+			or document_state.current_document == null or app.simulation_state.simulation_engine == null):
 		return false
 
 	if document_state.current_document.is_extended() or document_state.current_document.full_resolution_maps():
@@ -87,7 +88,9 @@ func upgrade_city_to_sc2x(confirmed := false) -> void:
 		if app.sc2x_conversion_dialog == null:
 			app.sc2x_conversion_dialog = ConfirmationDialog.new()
 			app.sc2x_conversion_dialog.title = "Upgrade city to SC2X?"
-			app.sc2x_conversion_dialog.dialog_text = "This permanently converts this city to SC2X.\nIt cannot return to SC2 or use original compatibility.\nThe original SimCity 2000 cannot open SC2X files.\n\nSave a separate SC2X copy. Your existing SC2 file stays unchanged."
+			app.sc2x_conversion_dialog.dialog_text = ("This permanently converts this city to SC2X.\nIt cannot return to SC2 or use original compatibility.\nThe " +
+				"original SimCity 2000 cannot open SC2X files.\n\nSave a separate SC2X copy. Your existing SC2 file stays " +
+				"unchanged.")
 			app.sc2x_conversion_dialog.get_ok_button().text = "Upgrade to SC2X"
 			app.sc2x_conversion_dialog.exclusive = true
 			app.sc2x_conversion_dialog.theme = AppUiTheme.current()
@@ -149,7 +152,8 @@ func open_save_dialog() -> void:
 	if save_name.is_empty():
 		save_name = "New City"
 
-	app.save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"] if document_state.current_document.is_extended() else ["*.SC2, *.sc2 ; SimCity 2000 cities"])
+	app.save_dialog.filters = PackedStringArray(["*.sc2x ; Extended cities"] if document_state.current_document.is_extended()
+			else ["*.SC2, *.sc2 ; SimCity 2000 cities"])
 	app.save_dialog.current_file = save_name + (".sc2x" if document_state.current_document.is_extended() else ".SC2")
 	app.save_dialog.popup_centered_ratio(0.8)
 

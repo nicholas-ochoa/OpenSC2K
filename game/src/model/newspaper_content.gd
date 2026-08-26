@@ -76,4 +76,8 @@ func payload(papers: PackedStringArray, selected: int) -> Dictionary:
 	if picture_texture != null:
 		picture = "data:image/png;base64," + Marshalls.raw_to_base64(picture_texture.get_image().save_png_to_buffer())
 
-	return {"title": title_text, "headline": headline_for_slot(0), "date": date_text, "price": price_text, "weather": weather_text, "weather_heading": weather_heading, "weather_headline": weather_headline, "weather_article": weather_article, "weather_page": weather_page, "opinion_page": opinion_page, "extra_stories": extra_stories, "opinion": opinion_text, "opinion_heading": opinion_heading, "opinion_headline": opinion_headline, "opinion_article": opinion_article, "headlines": headlines, "articles": articles, "pages": continuation_pages, "picture": picture, "papers": papers, "selected": selected}
+	return {"title": title_text, "headline": headline_for_slot(0), "date": date_text, "price": price_text, "weather": weather_text,
+			"weather_heading": weather_heading, "weather_headline": weather_headline, "weather_article": weather_article,
+			"weather_page": weather_page, "opinion_page": opinion_page, "extra_stories": extra_stories, "opinion": opinion_text,
+			"opinion_heading": opinion_heading, "opinion_headline": opinion_headline, "opinion_article": opinion_article, "headlines": headlines,
+			"articles": articles, "pages": continuation_pages, "picture": picture, "papers": papers, "selected": selected}
