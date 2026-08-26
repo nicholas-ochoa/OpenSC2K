@@ -161,15 +161,27 @@ func _check_simulation_run() -> void:
 
 # What the replaced hashes covered: the payload bytes the signature stands for.
 func _content_signature(city: CityState) -> Dictionary:
-	var result := {"flags": city.masked_tile_flag_signature(0xc6), "overlays": IsometricStaticVisuals._static_text_overlay_signature(city)}
+	var result := {
+		"flags": _flag_content(city, 0xc6),
+		"overlays": IsometricStaticVisuals._compute_static_text_overlay_signature(city, OverlayData.sign_indices(city.text_overlays)),
+	}
 
 	for chunk_id in SURFACE_CHUNKS + UNDERGROUND_CHUNKS:
 		var chunk := city.document.find_chunk(chunk_id)
 		result[chunk_id] = hash(chunk.decoded_payload) if chunk != null else 0
 
-	result["underground"] = [result.ALTM, result.XTER, result.XUND, city.masked_tile_flag_signature(0x30)]
+	result["underground"] = [result.ALTM, result.XTER, result.XUND, _flag_content(city, 0x30)]
 
 	return result
+
+
+func _flag_content(city: CityState, mask: int) -> int:
+	var bytes := city.tile_flags.duplicate()
+
+	for index in bytes.size():
+		bytes[index] &= mask
+
+	return hash(bytes)
 
 
 func check(passed: bool, message: String) -> void:

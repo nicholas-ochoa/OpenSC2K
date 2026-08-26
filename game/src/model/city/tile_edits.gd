@@ -3,6 +3,10 @@ extends RefCounted
 # Validate before writing: each edit updates both the saved chunk and
 # the CityState mirror in place. A partial write would leave them out of sync.
 
+@warning_ignore_start("integer_division")
+
+const FLAG_SIGNATURE_PAGE_BYTES := 4096
+
 
 static func set_terrain_id(city: CityState, x: int, y: int, value: int) -> bool:
 	if value < 0 or value > 0xff:
@@ -193,32 +197,65 @@ static func masked_tile_flag_signature(city: CityState, mask: int) -> int:
 	assert(OS.get_thread_caller_id() == OS.get_main_thread_id(),
 		"CityState tile-flag signature cache is main-thread only")
 	var byte_mask := mask & 0xff
-	var source_signature := hash(city.tile_flags)
+	var revision := city.chunk_revision("XBIT")
 	var cached: Dictionary = city._masked_tile_flag_signatures.get(byte_mask, {})
+
+	if revision >= 0 and cached.get("revision") == revision and cached.get("size") == city.tile_flags.size():
+		return int(cached.get("value", 0))
+
+	# standalone mirror arrays have no chunk revision. keep the content fallback
+	var source_signature := hash(city.tile_flags)
 
 	if (
 		cached.get("source") == source_signature
 		and cached.get("size") == city.tile_flags.size()
 	):
+		cached["revision"] = revision
+
 		return int(cached.get("value", 0))
 
+	var source_pages: Array = cached.get("pages", [])
+	var masked_pages: Array = cached.get("masked_pages", [])
 	var visible_flags := PackedByteArray()
-	visible_flags.resize(city.tile_flags.size())
 	var word_mask := 0
 
 	for lane in 8:
 		word_mask |= byte_mask << (lane * 8)
 
-	var full_bytes := city.tile_flags.size() - city.tile_flags.size() % 8
+	# a simulation day often changes only part of xbit. keep the masked
+	# bytes of unchanged pages, then hash the same complete byte stream
+	for start in range(0, city.tile_flags.size(), FLAG_SIGNATURE_PAGE_BYTES):
+		var page := start / FLAG_SIGNATURE_PAGE_BYTES
+		var bytes := city.tile_flags.slice(start, mini(start + FLAG_SIGNATURE_PAGE_BYTES, city.tile_flags.size()))
 
-	for offset in range(0, full_bytes, 8):
-		visible_flags.encode_u64(offset, city.tile_flags.decode_u64(offset) & word_mask)
+		if page >= source_pages.size():
+			source_pages.append(PackedByteArray())
+			masked_pages.append(PackedByteArray())
 
-	for index in range(full_bytes, city.tile_flags.size()):
-		visible_flags[index] = city.tile_flags[index] & byte_mask
+		if source_pages[page] != bytes:
+			source_pages[page] = bytes
+			var full_bytes := bytes.size() - bytes.size() % 8
+			var word_bytes := bytes if full_bytes == bytes.size() else bytes.slice(0, full_bytes)
+			var visible_words := word_bytes.to_int64_array()
+
+			for index in visible_words.size():
+				visible_words[index] &= word_mask
+
+			var masked := visible_words.to_byte_array()
+			masked.resize(bytes.size())
+
+			for index in range(full_bytes, bytes.size()):
+				masked[index] = bytes[index] & byte_mask
+
+			masked_pages[page] = masked
+
+		visible_flags.append_array(masked_pages[page])
 
 	var value := hash(visible_flags)
 	city._masked_tile_flag_signatures[byte_mask] = {
+		"pages": source_pages,
+		"masked_pages": masked_pages,
+		"revision": revision,
 		"source": source_signature,
 		"size": city.tile_flags.size(),
 		"value": value,

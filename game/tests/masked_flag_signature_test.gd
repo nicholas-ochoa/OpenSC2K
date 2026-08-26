@@ -20,13 +20,14 @@ func _initialize() -> void:
 			assert(city.masked_tile_flag_signature(mask) == hash(expected))
 
 		if size > 0:
-			city.tile_flags[0] ^= 0xc6
-			var expected := city.tile_flags.duplicate()
+			for changed in [0, mini(4095, size - 1), mini(4096, size - 1), size - 1]:
+				city.tile_flags[changed] ^= 0xc6
+				var expected := city.tile_flags.duplicate()
 
-			for index in size:
-				expected[index] &= 0xc6
+				for index in size:
+					expected[index] &= 0xc6
 
-			assert(city.masked_tile_flag_signature(0xc6) == hash(expected))
+				assert(city.masked_tile_flag_signature(0xc6) == hash(expected))
 
 	print("PASS: packed flag signatures match byte masks, high bits, tails, empty maps and cache invalidation")
 	quit()

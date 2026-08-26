@@ -42,9 +42,11 @@ var visible_altitude_levels := 32 # display only; never serialized
 var object_altitude_overrides := PackedInt32Array()
 # Only the main thread fills these lazy caches. Workers also read CityState,
 # so filling them from workers would race on the dictionaries.
-# CityTileEdits and CityRecords check this in debug builds.
-# Masked XBIT signatures use the full XBIT hash as their cache key.
+# CityTileEdits, CityRecords, and IsometricStaticVisuals check this in debug builds.
+# Masked XBIT signatures use revisions, with a content check as fallback.
 var _masked_tile_flag_signatures: Dictionary = {}
+# runtime-only sign pages and static overlay content, keyed by xtxt/xthg revisions
+var _static_text_overlay_cache: Dictionary = {}
 # runtime-only microsim footprints, rebuilt when xtxt or xthg changes
 var _microsim_sites: Dictionary = {}
 var _microsim_sites_key := []

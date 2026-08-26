@@ -176,8 +176,7 @@ func check_rejections(edge: int) -> void:
 	check(planes_match(city), "A rejected edit keeps the mirror in sync at %d" % edge)
 
 
-# masked_tile_flag_signature caches on the content of the mirrored flag array.
-# In-place writes change that content, so the cache still invalidates.
+# In-place writes advance the chunk revision, so the masked flag cache invalidates.
 func check_flag_signature_cache() -> void:
 	var city := fixture(128)
 	var before := city.masked_tile_flag_signature(0xc6)

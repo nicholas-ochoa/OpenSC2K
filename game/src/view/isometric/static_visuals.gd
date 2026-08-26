@@ -1,8 +1,10 @@
 class_name IsometricStaticVisuals
 extends IsometricConstants
-
+# isometric static visuals and a main-thread overlay signature cache
 
 @warning_ignore_start("integer_division")
+
+const SIGN_PAGE_CELLS := 1024
 
 
 static func validate_assets(
@@ -363,6 +365,8 @@ static func dispatch_sprite_id(
 # powered, powerable and water flag bits, and only signs and dispatch vehicles
 # among the overlays. their chunks also carry watered, piped and moving-thing
 # bytes that change every tick, so their revisions would repaint continuously
+# cache those content signatures behind revisions; a changed revision only
+# triggers comparison of visible content, not an unconditional repaint
 # applicationmaprender reads entries 1, 2, 3 and 9 by position for the sign
 # layout token. keep the order and the length
 
@@ -385,9 +389,60 @@ static func static_visual_signature(city: CityState, view_size := VIEW_LARGE) ->
 	]
 
 
+# a tick usually changes only a few xtxt pages. compare their bytes natively,
+# then scan changed pages once. unchanged pages retain their sign indices
+# dispatch content is still read after every xthg revision change
 static func _static_text_overlay_signature(city: CityState) -> int:
+	assert(OS.get_thread_caller_id() == OS.get_main_thread_id(),
+		"Static overlay signature cache is main-thread only")
+	var key := [city.chunk_revision("XTXT"), city.chunk_revision("XTHG")]
+	var cache := city._static_text_overlay_cache
+
+	if cache.get("key") == key:
+		return int(cache.value)
+
+	var page_bytes: Array = cache.get("pages", [])
+	var page_indices: Array = cache.get("indices", [])
+	var high_pages: Array = cache.get("high_pages", [])
+	var previous_key: Array = cache.get("key", [])
+	var text_changed: bool = previous_key.is_empty() or previous_key[0] != key[0]
+
+	var indices := PackedInt32Array()
+	var cells := OverlayData.count(city.text_overlays)
+	var wide := cells < city.text_overlays.size()
+
+	for start in range(0, cells, SIGN_PAGE_CELLS):
+		var end := mini(start + SIGN_PAGE_CELLS, cells)
+		var page := start / SIGN_PAGE_CELLS
+
+		if not text_changed:
+			indices.append_array(page_indices[page])
+			continue
+
+		var bytes := city.text_overlays.slice(start, end)
+		var high := city.text_overlays.slice(cells + start, cells + end) if wide else PackedByteArray()
+
+		if page == page_bytes.size():
+			page_bytes.append(bytes)
+			high_pages.append(high)
+			page_indices.append(OverlayData.sign_indices(city.text_overlays, start, end))
+		elif bytes != page_bytes[page] or high != high_pages[page]:
+			page_bytes[page] = bytes
+			high_pages[page] = high
+			page_indices[page] = OverlayData.sign_indices(city.text_overlays, start, end)
+
+		indices.append_array(page_indices[page])
+
+	var value := _compute_static_text_overlay_signature(city, indices)
+	city._static_text_overlay_cache = {
+		"key": key, "value": value, "pages": page_bytes, "high_pages": high_pages, "indices": page_indices,
+	}
+
+	return value
+
+
+static func _compute_static_text_overlay_signature(city: CityState, indices: PackedInt32Array) -> int:
 	var values := PackedInt32Array()
-	var indices := OverlayData.sign_indices(city.text_overlays)
 	var things := city.document.find_chunk("XTHG")
 
 	for record in city.thing_count() if things != null else 0:
